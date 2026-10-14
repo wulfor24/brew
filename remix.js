@@ -524,7 +524,7 @@ export function createRemix(o) {
     if (!slots.length) return false;
     if (!spend('image')) return false;
     const promptOf = (i) => `Create a new photograph for ${what}${rows.length > 1 ? ` (picture ${i + 1} of ${rows.length}, same look and light as the others)` : ''}. ${briefOf(i)}${scene ? ` Scene: ${scene}.` : ''}${p.knobs?.audience ? ` It should feel right for ${p.knobs.audience}.` : ''} ${`Keep the ${BN()} ${B().config.product?.noun || 'product'} and its label exactly as in the reference`} photo; do not invent new text on the pack. Nothing else carries writing: no signs, notes, calendars, screens or other packaging. No logos, no people's scalps, no before/after. Leave calm space where a short headline can sit. Photographic, natural light.`;
-    ch.imagePending = true;
+    ch.imagePending = true; ch.imageError = null; IMG_JOBS.add(ch.id);
     (async () => {
       try {
         /* a product photo the team picked is the reference, then the card's, the lane's and the brand's lead product: the first one that can be read
@@ -543,6 +543,7 @@ export function createRemix(o) {
         ch.pkg = { ...ch.pkg, ...(first ? { image: first } : {}), ...(rows.length ? { cardImages: imgs } : {}) }; ch.imagePending = false; sync(t, ch);
         version(t, ch, `ai:${ch.agent}`, all && rows.length ? `Photos for ${made.filter(Boolean).length} ${ch.family === 'social' ? 'slides' : 'cards'}` : `New creative: ${why}`);
       } catch (e) { ch.imagePending = false; ch.imageError = String(e.message).slice(0, 160); log.warn('[studio image]', e.message); sync(t, ch); }
+      finally { IMG_JOBS.delete(ch.id); }
     })();
     return true;
   };
@@ -711,7 +712,12 @@ export function createRemix(o) {
   // move the head to a version: its package becomes the current one. No copy is made.
   const useVersion = (t, ch, v) => { const { action, amount, title, sub, state, ...pkg } = v.snapshot; ch.pkg = { ...cleanPkg(ch.family, ch.action, pkg, clean), ...keepMedia({ ...pkg, image: pkg.image || null, knobs: pkg.knobs || {} }, true) }; ch.headVersionId = v.id; sync(t, ch); };
   /* ---------- routes ---------- */
-  const C = (t, id) => changes(t)[id];
+  /* a photo being made lives in this process; one saved as pending by a server that has since stopped (a deploy, a restart)
+     will never land, so it clears and says to make it again instead of spinning for ever */
+  const IMG_JOBS = new Set();
+  const C = (t, id) => { const ch = changes(t)[id];
+    if (ch?.imagePending && !IMG_JOBS.has(ch.id)) { ch.imagePending = false; ch.imageError = 'The photo stopped before it finished. Make it again.'; }
+    return ch; };
   on('GET', '/api/cards/:cid/remix', async (b, t, p) => {
     const c = t.cards.get(p.cid); if (!c) return { error: 'not found' };
     const r = recipeFor(c); const cv = ensureCardVersion(t, c); const owner = c.agent === 'brew' && !r.conflict ? 'creative' : r.agent;

@@ -2854,7 +2854,7 @@
     if (d?.text && d.images?.[0]) return `<div class="as as-draft${size === 'lg' ? ' lg' : ''}"><img src="${esc(d.images[0])}" alt="${esc(d.title || 'First draft')}"></div>`;
     let html = assetHtml0(ch, size);
     /* a widget with no picture of its own (a page, a message, a brief) still opens on the card's draft picture */
-    if (d && !d.text && !p.video && d.images?.[0] && !html.includes(esc(d.images[0]))) html = `<div class="as as-draft${size === 'lg' ? ' lg' : ''}"><img src="${esc(d.images[0])}" alt="${esc(d.title || 'First draft')}"></div>${html}`;
+    if (d && !d.text && !p.video && d.images?.[0] && !['meta_ad', 'social', 'post'].includes(ch.family) /* an ad or a post has its own picture: never a second one stacked above it */ && !html.includes(esc(d.images[0]))) html = `<div class="as as-draft${size === 'lg' ? ' lg' : ''}"><img src="${esc(d.images[0])}" alt="${esc(d.title || 'First draft')}"></div>${html}`;
     if (!p.video) return html;
     const vid = `<video class="as-vid" src="${esc(p.video)}"${p.poster ? ` poster="${esc(p.poster)}"` : ''} controls playsinline muted loop preload="metadata"></video>`;
     const pic = p.image || p.poster, re = pic ? new RegExp(`<img\\b[^>]*\\bsrc="${esc(pic).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"[^>]*>`) : null;
@@ -3201,7 +3201,7 @@
   const PH_FAM = ['meta_ad', 'social', 'post'];
   const phTools = (ch, pkgCh, viewing) => { const p = pkgCh.pkg || {}; if (!PH_FAM.includes(ch.family) || viewing || ch.state === 'jam') return '';
     if (ch.family === 'post' && !p.media && !p.image) return '';
-    return `<div class="st-atools"><button class="btn btn-ghost sm" data-ph-open ${ch.imagePending ? 'disabled' : ''}>${ic('pic', 's14')}${ch.imagePending ? 'Making a new photo…' : p.image || (p.photos || []).length ? 'Change photo' : 'Choose a photo'}</button></div>`; };
+    return `<div class="st-atools"><button class="btn btn-ghost sm" data-ph-open ${ch.imagePending ? 'disabled' : ''}>${ic('pic', 's14')}${ch.imagePending ? 'Making a new photo…' : p.image || (p.photos || []).length ? 'Change photo' : 'Choose a photo'}</button>${!ch.imagePending && ch.imageError ? `<small class="st-aerr">${ic('info', 's14')}${esc(/stopped|budget|offline/i.test(ch.imageError) ? ch.imageError : 'The new photo didn’t come through. Make it again.')}</small>` : ''}</div>`; };
   const PH = { sel: [], data: null };
   const phPaint = (w) => { const d = PH.data, ch = RX.ch; if (!d || !ch) return; const max = d.max || 1;
     $('.ph-m', w).innerHTML = `<div class="ph-h"><b>${ch.pkg?.image ? 'Change the photo' : 'Choose a photo'}</b><button class="icon-btn" data-ph-x aria-label="Close">${ic('x', 's16')}</button></div>
