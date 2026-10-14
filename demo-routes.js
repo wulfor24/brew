@@ -89,10 +89,10 @@ export function createDemoRoutes({ packs, builder, auth, connectors, readBody, s
       if (what === 'session') { const s = await session(slug), L = await connectors.liveOf(slug, true);
         return send(res, 200, { sid: demoSid(), flow: s.flow, share: `${base(req)}/${slug}?d=${demoSid()}`, connected: Object.keys(L.live).filter((k) => !L.live[k].gone), all: SIM_IDS, admin: isAdmin(req) }), true; }
       if (what === 'start' && req.method === 'POST') { const b = await readBody(req); await setSession(slug, { flow: b.from === 'onboarding' ? 'onboarding' : 'ready', startedAt: Date.now() });
-        if (b.connect === 'all') for (const id of SIM_IDS) await connectors.finish(slug, id, connectors.sim.creds(id), auth.user(req), base(req)).catch((e) => log.warn('[demo] connect', id, e.message));
+        if (b.connect === 'all') await Promise.all(SIM_IDS.map((id) => connectors.finish(slug, id, connectors.sim.creds(id), auth.user(req), base(req)).catch((e) => log.warn('[demo] connect', id, e.message)))); /* all at once: the account file is written under a lock */
         return send(res, 200, { ok: true }), true; }
       if (what === 'connect' && req.method === 'POST') { const b = await readBody(req), ids = b.ids === 'all' || !b.ids ? SIM_IDS : [].concat(b.ids).filter((x) => SIM_IDS.includes(x)), me = auth.user(req), out = {};
-        for (const id of ids) out[id] = b.on === false ? await connectors.disconnect(slug, id).then(() => 'off', (e) => e.message) : await connectors.finish(slug, id, connectors.sim.creds(id), me, base(req)).then((r) => (r.ok ? 'on' : r.error), (e) => e.message);
+        await Promise.all(ids.map(async (id) => { out[id] = b.on === false ? await connectors.disconnect(slug, id).then(() => 'off', (e) => e.message) : await connectors.finish(slug, id, connectors.sim.creds(id), me, base(req)).then((r) => (r.ok ? 'on' : r.error), (e) => e.message); }));
         return send(res, 200, { ok: true, out }), true; }
       if (what === 'prepare') { if (req.method === 'POST') { if (!isAdmin(req)) return send(res, 403, { error: 'Only Brew admins prepare brands.' }), true; await prepare(slug); }
         return send(res, 200, await readiness(slug)), true; }

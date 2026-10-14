@@ -1182,11 +1182,16 @@ export function createFeedService(o) {
   on('POST', '/api/jams/:jid/whatsapp', async (b, t, p) => { const j = t.jams.find((x) => x.id === p.jid); if (!j) return { error: 'not found' }; j.whatsapp = true; j.messages.push({ from: 'team', agent: 'Brew', body: 'Thread moved to WhatsApp. The pod replies there and here.', at: now(t) }); return { jam: j }; });
   on('GET', '/api/tenants/:id/engine', async (b, t) => engine(t));
   on('POST', '/api/tenants/:id/watchers/:wid/run', async (b, t, p) => { const w = WATCHERS.find((x) => x.id === p.wid); if (!w) return { error: 'no watcher' }; const made = await runWatcher(t, w, 'manual'); return { made: made.map(pub) }; });
-  on('POST', '/api/tenants/:id/watchers/run-all', async (b, t) => { const made = []; for (const w of WATCHERS) made.push(...(await runWatcher(t, w, 'manual'))); return { made: made.length }; });
+  /* run every watcher now; the creative one writes with the AI (~15 s), so it finishes in the background and its card
+     lands through the feed's pulse instead of holding the reply */
+  const runAll = async (t, why) => { const made = [], slow = WATCHERS.filter((w) => w.id === 'creative');
+    for (const w of WATCHERS) if (!slow.includes(w)) made.push(...(await runWatcher(t, w, why)));
+    slow.forEach((w) => runWatcher(t, w, why).then(() => touch(t), (e) => console.warn('[watchers] creative', e.message)));
+    return { made: made.length, pending: slow.length }; };
+  on('POST', '/api/tenants/:id/watchers/run-all', async (b, t) => runAll(t, 'manual'));
   on('POST', '/api/tenants/:id/clock', async (b, t) => {
     t.clock += (b.days || 1) * D; touch(t); housekeep(t);
-    const made = []; for (const w of WATCHERS) made.push(...(await runWatcher(t, w, 'overnight')));
-    return { clock: now(t), made: made.length };
+    return { clock: now(t), ...(await runAll(t, 'overnight')) };
   });
 
   /* work board endpoints */

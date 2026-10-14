@@ -487,10 +487,10 @@
       const r = await api(`/api/brands/${slug}/confirm`, { v2 }); if (r?.notes?.length) toast(`${ic('info', 's16')}${esc(r.notes.join(' '))}`); waitMoves(); };
   };
   /* ---------- the moves take a while: show what we have now, and email when they are ready ---------- */
-  const waitMoves = async () => {
+  const waitMoves = async (o = {}) => {
     view = 'wait'; root.onclick = null; root.onkeydown = null; window.scrollTo(0, 0); const slug = B.slug || BR; clearTimeout(waitMoves.t);
     const [st, f] = await Promise.all([api(`/api/brands/${slug}/status`), api(`/api/brands/${slug}/findings`)]);
-    if (st?.done) return continueToFeed();
+    if (st?.done && !o.stay) return continueToFeed();
     const nm = esc(st?.name || B.brand.name), cards = f?.cards || [], mail = ls.get(`${LSP()}mail`);
     const stages = (s) => { const g = s?.stages || {}, n = s?.movesDone || 0, pdf = Object.keys(s?.pdfs || {}).filter((k) => +k <= 50).length;
       const row = (state, t, sub) => `<li class="is-${state}"><i>${state === 'done' ? ic('check', 's14') : state === 'run' ? '<span class="spin"></span>' : ''}</i><div><b>${t}</b>${sub ? `<span>${sub}</span>` : ''}</div></li>`;
@@ -2242,27 +2242,36 @@
   const clearLocal = () => { wiping = true; try { Object.keys(localStorage).filter((k) => k.startsWith(LSP())).forEach((k) => ls.del(k)); } catch (e) {} };
   const demoStart = async (from) => { closeModal(); clearLocal(); await fetch(`/api/demo/${DSLUG()}/start?d=new`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ from, connect: from === 'feed' ? 'all' : null }) }).catch(() => {});
     if (from === 'feed') ls.set(KEY, JSON.stringify({ onboarded: true })); location.replace(`/${DSLUG()}`); };
-  const demoConnect = async (ids, on = true) => { toast(`<span class="spin"></span>${on ? 'Connecting' : 'Disconnecting'} ${ids === 'all' ? 'every account' : esc(B.connectors[ids[0]]?.name || ids[0])}`); await api(`/api/demo/${DSLUG()}/connect`, { ids, on }); location.reload(); };
+  /* no page load: a reload would restart the onboarding. The accounts are read again and the screen you are on repaints */
+  const demoConnect = async (ids, on = true) => { closeModal(); const what = ids === 'all' ? 'every account' : esc(B.connectors[ids[0]]?.name || ids[0]);
+    toast(`<span class="spin"></span>${on ? 'Connecting' : 'Disconnecting'} ${what}`); await api(`/api/demo/${DSLUG()}/connect`, { ids, on });
+    const L2 = await fetch(`/api/brands/${DSLUG()}/live`, { credentials: 'same-origin' }).then((r) => r.json()).catch(() => null);
+    if (L2 && window.LIVE) { Object.assign(window.LIVE, L2); window.LiveConn?.overlay(B, S); }
+    for (const id of ids === 'all' ? Object.keys(B.connectors) : ids) S.conn[id] = on;
+    save();
+    if (view === 'ob') $$('[data-cxrow]').forEach((r) => (r.outerHTML = cxRow(r.dataset.cxrow))); else await refreshAfterConnect();
+    toast(`${ic('check', 's16')}${what[0].toUpperCase() + what.slice(1)} ${on ? 'connected' : 'disconnected'}`); };
   const openDemoSite = async () => { const ses = await api(`/api/demo/${DSLUG()}/session`).catch(() => null); const on = new Set(ses?.connected || []);
     modal(`<div class="sheet pick-sheet demo"><b class="sh-t">Demo controls</b><p class="sh-p">This is a demo of ${esc(B.brand.name)}. Moves, PDFs and drafts are ready; connected accounts are demo accounts built from ${esc(B.brand.host || 'the store')}'s real products and prices. Everything else is live.</p>
       <h4>Start again</h4><div class="row2"><button class="btn btn-primary sm" data-x="onboarding">From onboarding</button><button class="btn btn-ghost sm" data-x="feed">Straight to the connected feed</button></div>
       <h4>Jump to</h4><div class="row2"><button class="btn btn-ghost sm" data-x="j-setup">The read</button><button class="btn btn-ghost sm" data-x="j-check">Check what we read</button><button class="btn btn-ghost sm" data-x="j-wait">Moves being written</button><button class="btn btn-ghost sm" data-x="j-feed">Feed</button><button class="btn btn-ghost sm" data-x="j-moves">Moves</button><button class="btn btn-ghost sm" data-x="j-cx">Connectors</button></div>
-      <h4>Accounts</h4><div class="sugg">${(ses?.all || []).filter((k) => B.connectors[k] || ['slack', 'linear', 'asana', 'notion'].includes(k)).map((k) => `<button class="chip" data-cx="${k}" aria-pressed="${on.has(k)}">${esc(B.connectors[k]?.name || k[0].toUpperCase() + k.slice(1))}</button>`).join('')}</div>
+      <h4>Accounts</h4><div class="sugg">${(ses?.all || []).filter((k) => B.connectors[k] || ['slack', 'linear', 'asana', 'notion'].includes(k)).map((k) => `<button class="chip" data-dcx="${k}" aria-pressed="${on.has(k)}">${esc(B.connectors[k]?.name || k[0].toUpperCase() + k.slice(1))}</button>`).join('')}</div>
       <div class="row2"><button class="btn btn-ghost sm" data-x="all">Connect all</button><button class="btn btn-ghost sm" data-x="none">Disconnect all</button></div>
       <h4>Seat</h4><div class="sugg">${seatEntries().map(([k, r]) => `<button class="chip" data-d-role="${k}" aria-pressed="${S.viewer.role === k}">${esc(r.name)}</button>`).join('')}</div>
       <h4>Time</h4><div class="row2"><button class="btn btn-ghost sm" data-x="day">Skip a day</button><button class="btn btn-ghost sm" data-x="week">Skip a week</button><button class="btn btn-ghost sm" data-x="run">Run all watchers now</button></div>
       <h4>Share</h4><div class="row2"><button class="btn btn-ghost sm" data-x="share">Copy a link to this demo</button><a class="btn btn-ghost sm" href="/">Other brands</a></div></div>`, (m) => {
       $$('[data-d-role]', m).forEach((b) => b.onclick = () => { closeModal(); setRole(b.dataset.dRole); });
-      $$('[data-cx]', m).forEach((b) => b.onclick = () => demoConnect([b.dataset.cx], b.getAttribute('aria-pressed') !== 'true'));
+      $$('[data-dcx]', m).forEach((b) => b.onclick = () => demoConnect([b.dataset.dcx], b.getAttribute('aria-pressed') !== 'true'));
       $$('[data-x]', m).forEach((b) => b.onclick = async () => { const x = b.dataset.x;
         if (x === 'onboarding' || x === 'feed') return demoStart(x);
         if (x === 'all' || x === 'none') return demoConnect('all', x === 'all');
         closeModal();
-        if (x === 'j-setup') { await ensureTenant(true); return setup(); } if (x === 'j-check') { await ensureTenant(true); return checkRead(); } if (x === 'j-wait') return waitMoves();
+        if (x === 'j-setup') { await ensureTenant(true); return setup(); } if (x === 'j-check') { await ensureTenant(true); return checkRead(); } if (x === 'j-wait') return waitMoves({ stay: true });
         if (x === 'j-feed') { S.onboarded = true; save(); if (!$('#view')) appShell(); return renderFeed(); }
-        if (x === 'j-moves' || x === 'j-cx') { S.onboarded = true; save(); location.hash = x === 'j-moves' ? '#v=moves' : '#v=connectors'; return location.reload(); }
-        if (x === 'day' || x === 'week') { const r = await tapi('POST', '/api/tenants/:t/clock', { days: x === 'day' ? 1 : 7 }); toast(`${ic('clock', 's16')}${x === 'day' ? 'A day' : 'A week'} later: ${r.made || 0} new cards, results read again`); return renderView(); }
-        if (x === 'run') { const r = await tapi('POST', '/api/tenants/:t/watchers/run-all'); toast(`${ic('check', 's16')}${r.made} cards proposed by the watchers`); if (view === 'feed') renderFeed(); return; }
+        if (x === 'j-moves' || x === 'j-cx') { const v = x === 'j-moves' ? 'moves' : 'connectors'; S.onboarded = true; save(); $$('.ready').forEach((r) => r.remove()); if (!$('#view')) appShell(); history.pushState({ a: 'view', v }, '', `#v=${v}`); VIEWS()[v](); window.scrollTo(0, 0); return; }
+        const more = (r) => (r?.pending ? '. The creative agent is writing one more' : '');
+        if (x === 'day' || x === 'week') { toast(`<span class="spin"></span>Skipping ${x === 'day' ? 'a day' : 'a week'}`); const r = await tapi('POST', '/api/tenants/:t/clock', { days: x === 'day' ? 1 : 7 }); toast(`${ic('clock', 's16')}${x === 'day' ? 'A day' : 'A week'} later: ${r.made || 0} new cards${more(r)}`); if ($('#view')) renderView(); return; }
+        if (x === 'run') { toast('<span class="spin"></span>Running every watcher'); const r = await tapi('POST', '/api/tenants/:t/watchers/run-all'); toast(`${ic('check', 's16')}${r.made || 0} cards proposed by the watchers${more(r)}`); if (view === 'feed') renderFeed(); return; }
         if (x === 'share') { try { await navigator.clipboard.writeText(ses.share); toast(`${ic('check', 's16')}Link copied. Whoever opens it sees this demo as it is now.`); } catch (e) { toastLong(esc(ses.share), 8000); } }
       }); }); };
   const openDemo = () => window.BREW_DEMO ? openDemoSite() : modal(`<div class="sheet pick-sheet demo"><b class="sh-t">Demo controls</b><p class="sh-p">For whoever is presenting. Changes apply instantly and skip the connect sheets.</p>
