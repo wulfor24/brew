@@ -289,7 +289,7 @@
     window.scrollTo(0, 0); root.innerHTML = shell(`
         <span class="ob2-eyebrow">Design partner preview</span>
         <h1 class="ob2-h">Your store’s marketing team, in one feed.</h1>
-        <p class="ob2-lede">${DEMO_LAND ? 'Pick a real brand below and watch it run. Brew reads' : 'Add your website. Brew reads'} your store, reviews, rivals and AI answers, then five agents bring you ideas you can ship in one tap.</p>
+        <p class="ob2-lede">${DEMO_LAND ? 'Pick a real brand below and watch it run. Brew reads' : 'Add your website. Brew reads'} your store, reviews, rivals and AI answers, then five agents bring you ideas you shape together and hand over as one brief.</p>
         ${DEMO_LAND ? '<div class="ob2-demos" id="demos" aria-busy="true"></div>' : `<form class="ob2-url" id="url-form" autocomplete="off">${ic('link', 's18')}<input id="url-in" value="${LANDING ? '' : B.brand.host}" placeholder="yourbrand.com" aria-label="Your website" inputmode="url" autocapitalize="off" spellcheck="false"${window.BREW_DEMO && !LANDING ? ` readonly aria-readonly="true" title="This demo is set up for ${esc(B.brand.host)}"` : ''}><button class="btn btn-primary" id="go" type="submit">Build my feed ${ic('right', 's16')}</button></form>`}
         <div class="ob2-agents">${['creative', 'performance', 'storefront', 'visibility', 'crm'].map((a) => `<span title="${AGENT[a]}">${face(a)}</span>`).join('')}<small>Creative, ads, storefront, AI answers and retention agents</small></div>
         <p class="ob2-foot">${LANDING ? `Brew reads the live site, its reviews, rivals and AI answers, then writes its moves. Every number has a source. ${DEMO_LAND ? 'Connected accounts are a demo workspace, and nothing is sent.' : window.LIVE?.me ? `Signed in as ${esc(window.LIVE.me.email)}.` : window.LIVE?.signin ? 'You sign in with Google to start.' : 'Connected accounts are a demo workspace.'}` : `Every idea comes from the Brew × ${esc(B.brand.name)} move documents. Connected numbers are a demo workspace.`}</p>${LANDING && !DEMO_LAND ? '<div class="ob2-recent" id="recent"></div>' : ''}`, 0,
@@ -1685,7 +1685,7 @@
   const planHtml = (w) => {
     const p = w.plan; if (!p) return '';
     const open = p.questions.filter((q) => !q.answer).length, n = p.questions.length || 1;
-    return `<section class="jam-plan"><div class="jp-head"><h4>${ic('hand', 's14')}Jam plan</h4><span class="badge ${open ? 'warn' : 'ok'}">${open ? `${open} open` : 'Ready to ship'}</span></div>
+    return `<section class="jam-plan"><div class="jp-head"><h4>${ic('hand', 's14')}Jam plan</h4><span class="badge ${open ? 'warn' : 'ok'}">${open ? `${open} open` : 'Ready to share'}</span></div>
       <p class="jp-goal"><small>Goal</small>${esc(p.goal)}</p>
       ${w.chg ? `<p class="jp-chg">${ic(w.chg.team ? 'send' : 'zap', 's14')}<span>${esc(w.chg.actionLabel)} on ${esc(w.chg.target)}${w.chg.team ? `. ${esc(w.chg.teamWhy || 'It needs a person')}, so the ShopOS team ships it from your brief${w.chg.money && w.chg.amount > 0 ? ` (about ${inrS(w.chg.amount)} a week)` : ''}.` : '. Brew ships it automatically, watches it and can roll it back.'}</span></p>` : ''}
       <div class="jp-meter" title="${n - open} of ${n} answered"><i style="width:${Math.round(((n - open) / n) * 100)}%"></i></div>
