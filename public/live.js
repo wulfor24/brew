@@ -65,7 +65,11 @@
     const r = await p;
     if (!r?.ok) { s(2).hidden = true; s(1).hidden = false; let e = s(1).querySelector('.lc-err'); if (!e) { e = document.createElement('p'); e.className = 'lc-err'; s(1).querySelector('.cx-head').after(e); } e.textContent = r?.error || 'Could not connect.'; return; }
     s(2).hidden = true; s(3).hidden = false; s(3).innerHTML = result(id, r);
-    s(3).querySelector('[data-see]').onclick = () => { A().closeModal(); location.href = here(opts.then ? location.hash : ''); };
+    const see = s(3).querySelector('[data-see]');
+    /* during onboarding, stay on the step: a page load would start the onboarding again from the first screen */
+    if (A().view === 'ob') { L.conns[id] = { ...r, state: r.state || 'live' }; overlay(B(), A().S); A().S.conn[id] = true; A().save(); A().cxDone?.(id);
+      see.textContent = 'Continue'; see.onclick = () => A().closeModal(); return; }
+    see.onclick = () => { A().closeModal(); location.href = here(opts.then ? location.hash : ''); };
   }
   const result = (id, r) => `<span class="plan-check">${ic('check')}</span><h3>${esc(nm(id))} is connected</h3>${r.claimed ? `<p class="lc-note">${ic('sparkles', 's14')}<span>You are now ${esc(B().brand.name)}${/s$/i.test(B().brand.name || '') ? '’' : '’s'} owner on Brew. Teammates with the same company email join on their own.</span></p>` : ''}
     ${(r.stats || []).length ? `<div class="cx-read"><small>What Brew read <span class="dummy-tag">Dummy</span></small><dl>${r.stats.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl></div>` : ''}
