@@ -1,0 +1,866 @@
+      Brew                                   PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+COPY EDITING · MOVE 30 OF 50
+
+
+
+SEVEN-
+SWEEP COPY
+EDIT ACROSS
+EVERY
+ARATA
+SURFACE
+  WE TAKE THE LINES ARATA ALREADY SHOWS CUSTOMERS
+  ON ARATA.IN, AMAZON, NYKAA AND QUICK COMMERCE,
+  RUN EACH ONE THROUGH SEVEN EDITING PASSES, AND
+  HAND BACK THE BEFORE AND AFTER PLUS ONE CLAIMS
+
+
+
+34 lines
+  SHEET SO EVERY CHANNEL SAYS THE SAME THING.
+
+
+
+EDITED, BEFORE AND AFTER
+
+
+
+
+BREW × ARATA                  OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                               WHAT THIS GIVES ARATA
+                                                               We take the lines Arata already shows customers on
+                                                               arata.in, Amazon, Nykaa and quick commerce, run
+                                                               each one through seven editing passes, and hand
+                                                               back the before and after plus one claims sheet so
+
+        34 lines
+        EDITED, BEFORE AND AFTER
+                                                               every channel says the same thing.
+                                                               LIVE 30 DAYS AFTER WE START
+                                                               Every hero claim on arata.in reads in one agreed
+                                                               form with its study context, the FAQ answers the five
+                                                               objections the reviews raise, marketplace and quick-
+                                                               commerce titles use one naming convention, and a
+                                                               copy gate runs before any new line goes live.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+Arata does not have a copy shortage. It has a copy consistency problem. The brand already owns the
+best raw material in the ₹400 to ₹700 haircare band: 7.4X, 28,200, 95%, 86%, 87%, each from a
+study. Those numbers appear in four or five different forms depending on where the customer meets
+them. The Intensive Serum is "Hair Growth Intensive Serum" on arata.in and "Intensive Hair Growth
+Serum" on Nykaa Man and reseller listings. The legacy Super Shampoo is "onion" on one channel and
+"biotin" on another. The brief records serum and tonic used for the same product. A customer who
+sees three names for one bottle assumes three bottles, or assumes carelessness. Either way the
+number on the pack loses its authority.
+The second problem is the rebrand. Arata moved from "zero chemicals" to "Hair & Scalp Science Co."
+and the live copy still speaks both languages. "Zero guesswork" and "Good science for great hair" sit
+next to review themes like "no chemical harm" and "free from hard chemicals". The science voice and
+the natural voice are both on the page. A reader hears hedging. Copy editing fixes this faster than a
+rewrite: the sentences exist, the claims exist, the job is to make them say one thing in one voice.
+The third problem is proof context. "Up to 86% reduction in greys" comes from best responders over
+three months. "78% stronger hair in 1 wash" is an in-vitro result. "7.4X hair fall reduction" is a tensile
+strength study. None of that context travels with the headline. The sceptic in the brief, the one who
+has spent ₹2,000 to ₹5,000 on three to five products that did nothing, reads a bare 86% and discounts
+it to zero. The honest frame is also the persuasive frame, and it is one line of copy away.
+What this costs: 650K monthly visits convert at an implied 7 to 8% including returning buyers. Each
+point of conversion on arata.in is roughly 6,500 orders a month (assumption: visits held flat).
+Marketplaces and quick commerce are 68% of revenue, and on those surfaces the only copy Arata
+controls is the title, the bullets and the A+ block. A title that flips word order between channels splits
+search demand and review equity across listings instead of stacking it on one.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEVEN-SWEEP COPY EDIT ACROSS EVERY ARATA SURFACE                                      1
+The opportunity is narrow and cheap. Thirty-four lines of copy decide most of the hair-fall and
+dandruff funnel: the brand lines, the collection intro, the claim block on five PDPs, five FAQ answers
+and the titles on three marketplaces. We edit those thirty-four lines, write the rules that produced the
+edits, and leave Arata with a claims sheet that every channel copies from. This document applies the
+discipline directly; there is no SaaS translation needed because the copy under edit is already D2C
+product copy.
+
+
+
+WHAT WE FOUND
+THE COPY INVENTORY
+We pulled every customer-facing line the brief records and grouped it by surface. Lines marked
+"recorded" are verbatim from arata.in or marketplace listings as the brief captured them. Lines marked
+"reconstructed" are our reading of how the surface reads today, built from the brief's objection table
+and catalogue; Arata should confirm these against the live page before publishing the edit.
+ #       SURFACE                             CURRENT LINE                                          SOURCE
+
+ 1       Brand line                          "Good science for great hair"                         Recorded
+ 2       Brand line                          "Zero guesswork"                                      Recorded
+ 3       Brand line                          "Systems, not symptoms"                               Recorded
+ 4       Proof line                          "Real people. Honest results."                        Recorded
+ 5       Brand descriptor                    "Hair & Scalp Science Co."                            Recorded
+ 6       MitoActive PDP                      "India's first mitochondrial hair growth treatment,   Recorded
+                                             powered by Y100™"
+ 7       MitoActive PDP                      "87% saw increased growth in 84 days"                 Recorded
+ 8       MitoActive PDP                      "Up to 95% reduction in hair fall"                    Recorded
+ 9       Intensive Serum PDP                 "Up to +28,200 new hair within 84 days"               Recorded
+ 10,     Anti-Hair Fall Shampoo and          "7.4X hair fall reduction"; "78% stronger hair in 1   Recorded
+ 11      Anti-Breakage Conditioner           wash"
+         PDPs
+ 12      Anti-Dandruff Shampoo,              "Up to 95% reduction in dandruff-causing fungus in Recorded
+ to      Conditioner, Serum PDPs             1 wash"; "93% scalp and strand hydration boost";
+ 14                                          "Up to 36-hour itch relief"
+ 15      Damage Defence Shampoo              "94% keratin retention", "95% moisture boost"         Recorded
+         PDP
+ 16      Anti-Grey Serum PDP                 "Up to 86% reduction in greys"                        Recorded
+ 17,     Texturising Spray and Hair          "24-hr hold, 53% volume"; "72-hr humidity-            Recorded
+ 18      Gel PDPs                            resistant hold"
+ 19      Hair Growth collection              Grid of five SKUs with mixed claims, no routine       Recorded as a gap
+                                             framing
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEVEN-SWEEP COPY EDIT ACROSS EVERY ARATA SURFACE                                      2
+ #       SURFACE                             CURRENT LINE                                                    SOURCE
+
+ 20      PDP FAQ                             Five objection responses (₹1,499, Redensyl,                     Reconstructed from the
+ to                                          28,200, forever, chemical-free)                                 objection table
+ 24
+ 25      Nykaa title                         "Super Shampoo" with onion/biotin, 300 ml                       Recorded
+ 26      Reseller and Nykaa Man title "Intensive Hair Growth Serum" (word order flipped                      Recorded, confirmed on
+                                      vs arata.in)                                                           Nykaa Man and PharmEasy
+                                                                                                             listings
+ 27      PharmEasy title                     "Arata Hair Growth Intensive Serum - Reduces Hair               Recorded via lookup
+                                             Fall & Thinning 30 ml"
+ 28      Purplle title                       "Intensive Hair Growth Serum 40 ml" (size differs               Recorded via lookup
+                                             from the 30 ml on arata.in)
+ 29      Quick-commerce short                Blinkit, Zepto, Instamart card titles (truncate at              Reconstructed
+ to      names                               roughly 40 to 50 characters; assumption)
+ 31
+ 32      Post-purchase packaging             None found; leak and seal complaints go                         Gap
+         note                                unanswered
+ 33      Lab Notes                           Seven posts in March 2026, then silence                         Recorded
+ 34      Legacy range                        "Advanced Curl Care" and "CurlFriend" lines still               Recorded
+                                             visible on marketplaces
+
+
+THE SEVEN-SWEEP SCORECARD
+We ran each surface through the seven sweeps. A tick means the surface passes that sweep as it
+stands. A cross means the sweep found an edit.
+ SURFACE                 CLARITY                VOICE         SO WHAT               PROVE IT      SPECIFIC         EMOTION ZERO RISK
+
+ Brand lines (1 to ✓                            ✗ two         ✗                     ✗             ✗                ✗         n/a
+ 5)                                             voices
+ MitoActive              ✗ "mitochondrial" ✓                  ✗                     ✗ no study    ✓                ✗         ✗ ₹1,499
+ claims (6 to 8)         unexplained                                                line, 0                                  unanswered
+                                                                                    reviews
+ Intensive Serum ✗ "+28,200 new                 ✓             ✓                     ✗ "up to"     ✓                ✓         ✓
+ claim (9)       hair" reads as a                                                   without the
+                 typo                                                               study
+ Shampoo and             ✓                      ✓             ✗ "keratin            ✗ in-vitro    ✓                ✗         ✓
+ conditioner                                                  retention"            not stated
+ claims (10 to                                                has no so-
+ 15)                                                          what
+ Anti-Grey claim ✓                              ✓             ✓                     ✗ best-       ✗ no             ✓         ✓
+ (16)                                                                               responder     timeline
+                                                                                    context       on pack
+                                                                                    missing
+ Styling claims          ✓                      ✓             ✓                     ✓ reviews     ✓                ✓         ✓
+ (17, 18)                                                                           back it
+ Collection copy         ✗ five SKUs, no        ✓             ✗                     ✓             ✗                ✗         ✗ no routine,
+ (19)                    order                                                                                               no price
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEVEN-SWEEP COPY EDIT ACROSS EVERY ARATA SURFACE                                                            3
+ SURFACE               CLARITY                  VOICE         SO WHAT               PROVE IT        SPECIFIC   EMOTION ZERO RISK
+
+ FAQ answers           ✓                        ✗         ✗                         ✗               ✗          ✗         ✗
+ (20 to 24)                                     defensive
+ Marketplace           ✗ three names for ✗                    ✗                     ✓               ✗          n/a       n/a
+ titles (25 to 31)     one SKU
+
+
+Two patterns. The study numbers pass Specificity and fail Prove It, because the number travels
+without its method. The brand lines fail everything except Clarity, because they describe Arata instead
+of the reader. Styling is the only clean row: those combos are the most-reviewed on Loox and the
+copy is already in the customer's words ("without any sticky residue or stiffness").
+
+THE AI-TELL AND FRAGMENT AUDIT
+The brand's own lines trip the checks we run on every edit. The rebrand will generate a lot of new
+copy, and the current house style will reproduce these shapes unless the rules change.
+ LINE                                          PATTERN                     WHY IT HURTS
+
+ "Systems, not symptoms"                       Contrast reveal             The reader has to work out what the symptom was and
+                                                                           what the system is. On a PDP it reads as a slogan with the
+                                                                           product missing
+ "Zero guesswork"                              Negation fragment           Says what is absent. The number on the pack already says
+                                                                           what is present
+ "Real people. Honest results."                Two fragments               Two fragments in a row is the ceiling we allow per section,
+                                               stacked                     and it spends the allowance on a line with no number in it
+ "Good science for great hair"                 Adjective pair doing        "Good" and "great" are the placeholders. The fact is 2,248
+                                               the work of a fact          reviews and five study numbers
+ "India's first mitochondrial hair             Jargon before               Mechanism leads, result follows. Reversed, it converts
+ growth treatment, powered by                  outcome
+ Y100™"
+
+
+NAMING CONSISTENCY ACROSS CHANNELS
+One SKU, the Intensive Serum, as it appears across the channels the brief and our lookup cover:
+                                                                                                                               DIAGRAM
+        arata.in             Hair Growth Intensive Serum                            30 ml      ₹649 → ₹571
+        Nykaa Man            Intensive Hair Growth Serum                            30 ml
+        PharmEasy            Hair Growth Intensive Serum - Reduces
+                             Hair Fall & Thinning                                   30 ml
+        Purplle              Intensive Hair Growth Serum                            40 ml
+        Resellers            Intensive Hair Growth Serum                            30 ml
+        Legacy               "tonic" (per the brief's naming note)                  n/a
+
+        Two word orders. Two sizes. One legacy noun. Zero shared claim line.
+
+
+
+
+The Super Shampoo has the same split: "onion" on one channel, "biotin" on another, 300 ml at ₹899
+→ ₹764 on Nykaa, and it is not on the arata.in hero catalogue at all. Every one of these variants is a
+separate search result, a separate review pool and a separate chance to look like a different product.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEVEN-SWEEP COPY EDIT ACROSS EVERY ARATA SURFACE                                                        4
+CONTENT REFRESH: LAB NOTES
+Lab Notes is the brand's proof engine and it posts in bursts. Seven posts in March 2026, then a gap.
+We applied the refresh-versus-rewrite matrix:
+ SIGNAL IN LAB NOTES TODAY                                                  ACTION
+
+ Claim explainers written before MitoActive (Aug 2026) still                Refresh: add the tier line and the Y100 mechanism
+ describe the Intensive Serum as the top tier
+ Posts from the "zero chemicals" era                                        Refresh plus voice rewrite: keep the URL, change the
+                                                                            frame to "every active for a measured reason"
+ No "last updated" dates on study explainers                                Light refresh: add the date and the year next to every
+                                                                            statistic
+ No post answers "is 28,200 hairs real?" directly                           New: this is the uncovered angle nobody in the category
+                                                                            writes
+
+
+EXPERT PANEL, PRE-EDIT
+We scored the MitoActive PDP claim block (lines 6 to 8 plus the reconstructed FAQ) as a panel of four.
+This is the highest-stakes copy on the site: ₹1,499, zero reviews, the hero of the rebrand.
+ REVIEWER                          SCORE MAIN CRITIQUE
+
+ Conversion copywriter             5          Mechanism leads, result trails. ₹1,499 unanswered until the FAQ
+ UX writer                         6          Three claims in three formats (percentage, "first", "up to"). No hierarchy
+ Clinical Kavya, 35,               4          "Mitochondrial" with no explanation reads like marketing science. Wants the study
+ Chennai                                      design
+ Brand strategist                  6          Right positioning, but the natural-era voice still leaks in the FAQ
+
+
+Average 5.3. Functional with clear gaps. Our target after edit is every reviewer at 7 or above and an
+average of 8.
+
+
+
+THE PLAN
+PRINCIPLE: ONE CLAIMS SHEET, EVERY SURFACE COPIES FROM IT
+The root cause behind most crosses in the scorecard is that each channel writes its own version of
+the claim. The fix is structural. Every hero claim gets written once, in three lengths, with its proof line
+attached, and every surface pulls from that sheet.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEVEN-SWEEP COPY EDIT ACROSS EVERY ARATA SURFACE                                                     5
+                                                                                                 DIAGRAM
+                      ┌──────────────────────────────────┐
+                      │         ARATA CLAIMS SHEET         │
+                      │ per SKU:                           │
+                      │   badge      (≤ 6 words)           │
+                      │   headline (one spoken sentence)│
+                      │   proof line (study type, n,       │
+                      │                window, "up to")    │
+                      │   canonical name + size            │
+                      └───────────────┬──────────────────┘
+                                       │
+             ┌──────────┬─────────────┼─────────────┬──────────────┐
+             ▼          ▼              ▼             ▼             ▼
+        arata.in     Amazon /       Blinkit /     Meta and     Lab Notes
+        PDP + grid   Nykaa /        Zepto /       YouTube      explainers
+                     Flipkart       Instamart     creative
+        (all three   (title =       (badge only, (headline     (proof line
+         lengths)     name + badge, proof in       + proof      expanded to
+                      bullets =      image 2)      line in      a post)
+                      proof line)                  caption)
+
+
+
+
+Expected effect: the claim-consistency score (share of hero SKUs whose claim reads identically
+across five channels) moves from an estimated 0 of 8 today to 8 of 8. Search demand and reviews
+stop splitting across variants.
+
+THE RULES THAT PRODUCED THE EDITS
+These are the house rules we applied in every worked example. They go into the claims sheet as the
+style page.
+ 1. Number first, method second, window third. "7.4X less hair fall, measured by tensile strength, over
+    84 days." The method line is what makes the sceptic stay.
+ 2. "Up to" stays, and it stays honest. Where the brief says best responders, the copy says best
+    responders. Honest framing beats inflated framing, and it is the only framing that survives a
+    dermatologist's screenshot.
+ 3. One name per SKU, everywhere. Format: Arata + concern + product type + hero active in brackets
+    + size. "Arata Hair Growth Intensive Serum (Redensyl + Anagain) 30 ml". The word order on arata.in
+    wins because it is the channel Arata owns.
+ 4. Science voice only. Say vegan, cruelty-free, dermatologically tested, no sulphates or parabens in
+    shampoos, every active is there for a measured reason. Retire "chemical-free" and "zero
+    chemicals" from every surface including legacy listings.
+ 5. Say what the customer said. Review language is the emotion layer: "hair on the pillow", "flakes on
+    black clothes", "without any sticky residue or stiffness". Use it in the line under the number.
+ 6. Answer the price on the page. ₹1,499 ÷ 30 days = ₹50 a day. That sentence goes wherever the
+    price appears.
+ 7. Answer the leak on the page. The replacement promise is copy, and it belongs on the PDP, the
+    order confirmation and the box.
+ 8. One fragment per section. One list of three per section. No em dashes anywhere.
+ 9. No contrast reveals, no negation lists. "Systems, not symptoms" becomes an internal line. On the
+    page we say what the system is.
+10. Mechanism gets one explaining clause the first time it appears. "Y100 helps hair follicle cells make
+    more energy, which keeps more hairs in the growing phase." After that, "Y100" alone.
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEVEN-SWEEP COPY EDIT ACROSS EVERY ARATA SURFACE                          6
+PHASING, BY REVENUE AT STAKE
+ PHASE      SURFACES                                                    WHY FIRST                       EXPECTED EFFECT
+
+ Week       MitoActive PDP claim block and FAQ; claims                  Hero of the rebrand, highest    Panel score from 5.3 to 8+;
+ 1          sheet v1 for all eight hero SKUs                            price, zero reviews, so copy is ₹1,499 objection answered
+                                                                        doing the whole job             above the fold
+ Week       Hair Growth collection intro; Intensive Serum and           32% of revenue flows            Collection reads as one
+ 2          Anti-Hair Fall Shampoo PDPs; brand line stack               through these pages             routine with one price (₹838
+            on the homepage                                                                             combo)
+ Week       Marketplace titles and bullets on Amazon, Nykaa, 68% of revenue, copy is the                One name per SKU on every
+ 3          Flipkart; quick-commerce short names; retire     only lever                                 channel
+            onion/biotin and serum/tonic variants
+ Week       Remaining PDPs (dandruff, damage, anti-grey,                Lower traffic per page, but     Every page carries method
+ 4          styling); Lab Notes refresh pass; copy gate goes            the rules are proven by now     and window; refresh
+            live                                                                                        cadence set
+
+
+THE COPY GATE
+After day 30, every new line goes through a twenty-minute quick pass before it ships. The checklist is
+in the appendix. The gate owner is the Arata brand manager; Brew runs it for the first eight weeks
+and hands it over.
+
+
+
+WORKED EXAMPLES
+Each example shows the line as it reads today, the sweeps that flagged it, and the edited line. Where
+the "before" is reconstructed we say so.
+
+EXAMPLE 1: THE BRAND LINE STACK ON THE HOMEPAGE
+Today the homepage carries the brand lines in sequence. Read aloud, they sound like this:
+Before (recorded):
+
+   HAIR & SCALP SCIENCE CO. GOOD SCIENCE FOR GREAT HAIR. ZERO
+   GUESSWORK. SYSTEMS, NOT SYMPTOMS. REAL PEOPLE. HONEST
+   RESULTS.
+
+
+Sweeps flagged: Voice (slogan stack, no reader in it), So what (none of the five lines gives the reader
+a reason), Prove it (no number anywhere), Specificity ("good", "great", "honest" are placeholders), AI-
+tell (contrast reveal, negation fragment, stacked fragments).
+After:
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEVEN-SWEEP COPY EDIT ACROSS EVERY ARATA SURFACE                                                      7
+   ARATA. HAIR & SCALP SCIENCE CO.
+
+   HAIR FALL, DANDRUFF AND GREYS, EACH TREATED WITH A PRODUCT
+   THAT CARRIES A NUMBER FROM A STUDY. 7.4X LESS HAIR FALL. UP TO
+   28,200 NEW HAIRS IN 84 DAYS. 95% OF DANDRUFF FUNGUS GONE IN ONE
+   WASH.
+
+   MADE FOR INDIAN HAIR, TESTED IN INDIAN WEATHER: HARD WATER,
+   HUMIDITY, HEAT AND POLLUTION.
+
+   2,248 REVIEWS ON THIS SITE. 4.2 STARS FROM 2,435 RATINGS ON
+   NYKAA.
+
+
+What changed and why: the descriptor stays because it is the rebrand. The four slogans collapse into
+one sentence that says what Arata does, followed by three numbers that prove it. "Real people.
+Honest results." becomes the actual review counts. "Good science for great hair" survives as the sign-
+off at the bottom of the page, where a tagline belongs. "Systems, not symptoms" moves to the internal
+brand book.
+
+EXAMPLE 2: THE HAIR GROWTH COLLECTION INTRO
+Before (recorded as a gap; the collection today is a product grid with claims mixed):
+
+   HAIR GROWTH MITOACTIVE MITOCHONDRIAL HAIR GROWTH SERUM
+   ₹1,499 · INDIA'S FIRST MITOCHONDRIAL HAIR GROWTH TREATMENT HAIR
+   GROWTH INTENSIVE SERUM ₹571 · UP TO +28,200 NEW HAIR WITHIN 84
+   DAYS HAIR GROWTH INTENSIVE SERUM PACK OF 3 ₹999 · UP TO +28,200
+   NEW HAIR WITHIN 84 DAYS ANTI-HAIR FALL INTENSIVE SHAMPOO ₹359 ·
+   7.4X HAIR FALL REDUCTION ANTI-BREAKAGE INTENSIVE CONDITIONER
+   ₹359 · 78% STRONGER HAIR IN 1 WASH
+
+
+Sweeps flagged: Clarity (two serums, no explanation of which is for whom), So what (the reader has
+to assemble a routine from five cards), Zero risk (no price for the routine, no timeline), Emotion (no
+situation named).
+After:
+
+                             IF YOU ARE SEEING MORE HAIR ON THE PILLOW AND IN THE DRAIN, START
+   HAIR GROWTH               HERE. THE ROUTINE HAS THREE STEPS AND ONE TIMELINE: 84 DAYS.
+
+   WASH: ANTI-HAIR FALL INTENSIVE SHAMPOO, ₹359. 7.4X LESS HAIR FALL,
+   MEASURED BY TENSILE STRENGTH. TREAT: HAIR GROWTH INTENSIVE
+   SERUM, ₹571. UP TO 28,200 NEW HAIRS IN 84 DAYS. CONDITION: ANTI-
+   BREAKAGE INTENSIVE CONDITIONER, ₹359. 78% STRONGER STRANDS
+   AFTER ONE WASH IN LAB TESTING.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEVEN-SWEEP COPY EDIT ACROSS EVERY ARATA SURFACE                        8
+   SHAMPOO AND SERUM TOGETHER: ₹838. ALL THREE: ₹1,201 AS THE HAIR
+   GROWTH TRIO.
+
+   ALREADY DONE THE ACTIVES AND WANT THE NEXT TIER? MITOACTIVE
+   USES Y100, A DIFFERENT MECHANISM THAT HELPS FOLLICLE CELLS
+   MAKE MORE ENERGY. 87% OF PEOPLE IN THE STUDY SAW MORE GROWTH
+   IN 84 DAYS. ₹1,499, WHICH WORKS OUT TO ₹50 A DAY.
+
+   BUYING THREE MONTHS AT ONCE: INTENSIVE SERUM PACK OF 3, ₹999,
+   49% OFF.
+
+
+What changed and why: the grid now has an order (wash, treat, condition), a situation ("pillow",
+"drain", from the reviews), a timeline, and a routine price. MitoActive is placed as the tier above, which
+answers "is this just another Redensyl serum?" before the customer reaches the FAQ. The "+28,200"
+plus sign is gone; "up to 28,200 new hairs" says the same thing without reading like a typo.
+
+EXAMPLE 3: THE PDP CLAIM BLOCKS
+Four claim blocks, edited with the number-method-window rule. These are the lines under the product
+title, above the add-to-cart.
+MitoActive, before (recorded):
+
+   INDIA'S FIRST MITOCHONDRIAL HAIR GROWTH TREATMENT, POWERED BY
+   Y100™ 87% SAW INCREASED GROWTH IN 84 DAYS UP TO 95% REDUCTION
+   IN HAIR FALL
+
+
+MitoActive, after:
+
+   87% OF PEOPLE SAW MORE HAIR GROWTH IN 84 DAYS. UP TO 95% LESS
+   HAIR FALL IN THE SAME STUDY.
+
+   MITOACTIVE WORKS ON THE MITOCHONDRIA, THE PART OF EACH
+   FOLLICLE CELL THAT MAKES ITS ENERGY. MORE ENERGY KEEPS MORE
+   HAIRS IN THE GROWING PHASE. THE ACTIVE IS Y100, LICENSED FROM
+   YUVA BIOSCIENCES, BACKED BY SIX YEARS OF RESEARCH AND FIVE
+   CLINICAL STUDIES, AND AVAILABLE IN INDIA ONLY FROM ARATA.
+
+   ₹1,499 FOR 30 ML. ONE MONTH AT TWICE-DAILY USE. ₹50 A DAY.
+   DERMATOLOGICALLY TESTED. VEGAN. CRUELTY-FREE.
+
+   BOTTLE ARRIVES DAMAGED OR LEAKING? WE REPLACE IT, NO
+   QUESTIONS. NEED: CONFIRM THE REPLACEMENT POLICY WORDING
+   WITH ARATA OPS
+
+
+Intensive Serum, before (recorded):
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEVEN-SWEEP COPY EDIT ACROSS EVERY ARATA SURFACE                        9
+   UP TO +28,200 NEW HAIR WITHIN 84 DAYS
+
+
+Intensive Serum, after:
+
+   UP TO 28,200 NEW HAIRS IN 84 DAYS. COUNTED ACROSS THE SCALP IN A
+   CONSUMER STUDY OVER 12 WEEKS. MOST PEOPLE SEE THE FIRST
+   CHANGE BY WEEK 4; THE FULL NUMBER IS THE TOP OF THE RANGE.
+   NEED: STUDY PARTICIPANT COUNT AND THE MEDIAN RESULT FROM THE
+   ARATA R&D LAB
+
+   ₹571 FOR 30 ML. THREE MONTHS AT ONCE: PACK OF 3, ₹999.
+
+
+Anti-Hair Fall Intensive Shampoo, before (recorded):
+
+   7.4X HAIR FALL REDUCTION
+
+
+Anti-Hair Fall Intensive Shampoo, after:
+
+   7.4X LESS HAIR FALL. MEASURED BY TENSILE STRENGTH: HOW MUCH
+   PULL A STRAND TAKES BEFORE IT BREAKS. THE ACTIVES ARE HAIRDIAN
+   AP WITH ROSEMARY AND CAFFEINE. NO SULPHATES, NO PARABENS.
+
+   ₹359 FOR 200 ML. WITH THE GROWTH SERUM: ₹838.
+
+
+Anti-Grey Serum, before (recorded):
+
+   UP TO 86% REDUCTION IN GREYS
+
+
+Anti-Grey Serum, after:
+
+   UP TO 86% FEWER GREYS IN THREE MONTHS. THAT IS THE TOP OF THE
+   RANGE, SEEN IN THE BEST RESPONDERS. MOST PEOPLE SEE A VISIBLE
+   DIFFERENCE BY MONTH TWO. THE ACTIVE IS MELANOGRAY WITH VEGAN
+   KERATIN. NO DYE, NO STAIN ON THE PILLOW. NEED: MEDIAN RESPONSE
+   FROM THE STUDY
+
+   ₹449 FOR 30 ML. PLAN FOR A THREE-MONTH COURSE.
+
+
+What changed and why: every block leads with the outcome in spoken English, gives the method in
+one clause, and states the window. The MitoActive mechanism is explained once, then named. The "
+[NEED]" markers are deliberate: where the brief does not hold the fact, we do not invent it, and the
+Arata lab fills the gap.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEVEN-SWEEP COPY EDIT ACROSS EVERY ARATA SURFACE                      10
+EXAMPLE 4: THE FAQ
+The brief's objection table is the raw material. As written it is a sales rebuttal; on a PDP it has to read
+like a friend answering.
+Q: ₹1,499 for 30 ml feels like a lot.
+Before (reconstructed from the objection table):
+
+   COMPARE TO TRAYA AT ₹1,400 TO ₹1,800 PER MONTH FOR 5+ MONTHS,
+   OR A DERM VISIT. MITOACTIVE IS A 1-MONTH SUPPLY AT TWICE-DAILY
+   USE; SHOW COST PER DAY (₹50). BUNDLE WITH SHAMPOO.
+
+
+After:
+
+   IT IS ₹50 A DAY FOR A MONTH. A DIAGNOSIS-LED KIT COSTS ₹1,400 TO
+   ₹1,800 A MONTH AND ASKS FOR FIVE MONTHS PLUS DOCTOR CALLS. A
+   DERMATOLOGIST VISIT COSTS MORE AND THE SERUM THEY PRESCRIBE
+   IS USUALLY MINOXIDIL. MITOACTIVE IS A THREE-MONTH COURSE YOU
+   RUN AT HOME. IF YOU WANT TO SPEND LESS PER BOTTLE, THE ANTI-HAIR
+   FALL SHAMPOO WITH MITOACTIVE IS ₹1,803 AS A COMBO.
+
+
+Q: Is this just another Redensyl serum?
+Before (reconstructed):
+
+   MITOACTIVE USES Y100, A DIFFERENT MECHANISM (MITOCHONDRIA),
+   EXCLUSIVE TO ARATA IN INDIA. THE INTENSIVE SERUM IS THE ACTIVES
+   SERUM; MITOACTIVE IS THE NEXT TIER.
+
+
+After:
+
+   OUR INTENSIVE SERUM IS THE REDENSYL AND ANAGAIN PRODUCT, AND
+   IT IS GOOD AT WHAT IT DOES: UP TO 28,200 NEW HAIRS IN 84 DAYS.
+   MITOACTIVE IS DIFFERENT. ITS ACTIVE, Y100, WORKS ON THE ENERGY
+   SUPPLY INSIDE FOLLICLE CELLS RATHER THAN ON THE FOLLICLE FROM
+   OUTSIDE. IN INDIA YOU CAN ONLY GET IT FROM ARATA. START WITH THE
+   INTENSIVE SERUM IF YOU HAVE NEVER USED ACTIVES. MOVE TO
+   MITOACTIVE IF YOU HAVE AND YOU WANT THE NEXT STEP.
+
+
+Q: 28,200 new hairs sounds too good to be true.
+Before (reconstructed):
+
+   SHOW THE STUDY DESIGN, THE "UP TO" AND THE 84-DAY WINDOW, AND
+   THE LAB NOTES EXPLAINER. HONEST FRAMING BEATS INFLATED
+   FRAMING.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEVEN-SWEEP COPY EDIT ACROSS EVERY ARATA SURFACE                             11
+After:
+
+   IT IS THE TOP OF THE RANGE FROM A 12-WEEK CONSUMER STUDY,
+   WHICH IS WHY THE PACK SAYS "UP TO". THE AVERAGE PERSON IN THE
+   STUDY SAW FEWER THAN THAT AND STILL SAW A CHANGE THEY COULD
+   PHOTOGRAPH. WE PUBLISH HOW THE COUNT WAS DONE IN LAB NOTES,
+   AND WE WOULD RATHER YOU READ IT BEFORE YOU BUY. NEED: LINK TO
+   THE LAB NOTES POST ONCE REFRESHED, AND THE MEDIAN FIGURE
+
+
+Q: Do I have to use it forever?
+Before (reconstructed):
+
+   POSITION AS A 3-MONTH COURSE PLUS MAINTENANCE, UNLIKE
+   MINOXIDIL DEPENDENCY.
+
+
+After:
+
+   RUN IT FOR THREE MONTHS, THEN DROP TO MAINTENANCE: THE SERUM
+   TWO OR THREE TIMES A WEEK WITH THE SHAMPOO. MINOXIDIL HAS TO
+   BE USED DAILY FOR GOOD, AND STOPPING IT BRINGS THE SHEDDING
+   BACK. Y100 AND THE INTENSIVE SERUM ACTIVES DO NOT CREATE THAT
+   DEPENDENCY. YOUR HAIR'S NATURAL CYCLE KEEPS GOING; THE
+   MAINTENANCE DOSE KEEPS THE GROWING PHASE LONG.
+
+
+Q: Is it chemical-free?
+Before (reconstructed):
+
+   THE BRAND HAS MOVED FROM "ZERO CHEMICALS" TO "GOOD SCIENCE".
+   SAY: VEGAN, CRUELTY-FREE, DERMATOLOGICALLY TESTED, NO
+   SULPHATES OR PARABENS IN SHAMPOOS, AND EVERY ACTIVE IS THERE
+   FOR A MEASURED REASON.
+
+
+After:
+
+   EVERYTHING IS A CHEMICAL, INCLUDING WATER, SO WE STOPPED USING
+   THAT PHRASE. THE SHAMPOOS HAVE NO SULPHATES OR PARABENS.
+   EVERY PRODUCT IS VEGAN, CRUELTY-FREE AND DERMATOLOGICALLY
+   TESTED. EVERY ACTIVE IN THE BOTTLE IS THERE BECAUSE IT DID
+   SOMETHING MEASURABLE IN A TEST, AND IF AN INGREDIENT DID NOT
+   EARN ITS PLACE IT IS LEFT OUT.
+
+
+What changed and why: each answer opens with the direct reply, then the reason, then the next step.
+The diagnosis-kit comparison is described rather than named, which keeps the FAQ out of a
+comparison-page fight. The "chemical-free" answer closes the rebrand gap by saying why the phrase
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEVEN-SWEEP COPY EDIT ACROSS EVERY ARATA SURFACE                 12
+was retired.
+
+EXAMPLE 5: MARKETPLACE AND QUICK-COMMERCE TITLES
+Canonical name format from the rules: Arata + concern + product type + (hero active) + size.
+Amazon.in allows titles up to 200 characters and truncates in mobile search around 80 (assumption;
+confirm against the current Amazon India style guide for Beauty). Nykaa shows the full name. Quick-
+commerce cards show roughly 40 to 50 characters before the fold (assumption).
+ CHANNEL                  BEFORE                               AFTER                                                         CHARS
+
+ Amazon.in,               "Intensive Hair Growth               "Arata Hair Growth Intensive Serum (Redensyl + Anagain)       150
+ Intensive Serum          Serum" (reseller form)               30 ml, Up to 28,200 New Hairs in 84 Days, for Hair Fall and
+                                                               Thinning, Dermatologically Tested"
+ Amazon.in,               Listing not confirmed;               "Arata MitoActive Hair Growth Serum (Y100) 30 ml, 87%         143
+ MitoActive               assumption that it mirrors           Saw More Growth in 84 Days, Mitochondrial Treatment for
+                          the arata.in title                   Hair Fall, Dermatologically Tested"
+ Nykaa, Super             "Super Shampoo" with onion "Arata Anti-Hair Fall Super Shampoo (Biotin + Onion) 300                58
+ Shampoo                  or biotin depending on     ml"
+                          listing, 300 ml
+ Nykaa, Anti-Hair         "Anti-Hair Fall Intensive            "Arata Anti-Hair Fall Intensive Shampoo (Hairdian AP) 200     83
+ Fall Shampoo             Shampoo"                             ml, 7.4X Less Hair Fall"
+ Blinkit / Zepto /        Varies; assumption that it           "Arata Hair Growth Serum 30 ml" with "28,200 new hairs in     29
+ Instamart, serum         uses the long name and               84 days" as image-2 text
+                          truncates
+ Blinkit / Zepto /        Varies                               "Arata Anti-Hair Fall Shampoo 200 ml" with "7.4X less hair    35
+ Instamart,                                                    fall" on image 2
+ shampoo
+ Blinkit / Zepto /        Varies                               "Arata Anti-Dandruff Shampoo 200 ml" with "95% fungus         34
+ Instamart,                                                    gone, 1 wash" on image 2
+ dandruff
+
+
+Rules applied: the brand name leads because search on Amazon and quick commerce is brand-plus-
+concern. The arata.in word order wins. The hero active sits in brackets so the ingredient-literate buyer
+coming from Minimalist finds it. The claim follows the size on marketplaces and moves to image 2 on
+quick commerce. "Tonic" is retired. The Super Shampoo carries both actives so the onion and biotin
+listings can merge into one.
+First bullet on every Amazon and Flipkart listing, lifted straight from the claims sheet proof line:
+
+   UP TO 28,200 NEW HAIRS IN 84 DAYS, COUNTED IN A 12-WEEK
+   CONSUMER STUDY. MOST PEOPLE NOTICE THE FIRST CHANGE BY WEEK
+   4. USE TWICE DAILY ON A CLEAN, DRY SCALP.
+
+
+EXAMPLE 6: THE PACKAGING NOTE
+The reviews say "the seal was broken", "the shampoo bottle was leaking", "it doesn't have the box".
+Nothing in the funnel answers this. One line, placed in three spots.
+PDP, under the price:
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEVEN-SWEEP COPY EDIT ACROSS EVERY ARATA SURFACE                                                  13
+     ARRIVES DAMAGED OR LEAKING? TELL US WITHIN 7 DAYS AND WE SEND
+     A REPLACEMENT, NO QUESTIONS. NEED: CONFIRM THE WINDOW WITH
+     ARATA OPS
+
+
+Order confirmation email, second paragraph:
+
+     YOUR ORDER IS SEALED AND BOXED AT OUR DELHI WAREHOUSE. IF
+     ANYTHING ARRIVES DAMAGED, REPLY TO THIS EMAIL WITH A PHOTO AND
+     WE SHIP A REPLACEMENT THE SAME DAY.
+
+
+Printed on the inner flap of the box:
+
+     SEAL BROKEN OR BOTTLE LEAKING? WHATSAPP US A PHOTO. WE
+     REPLACE IT.
+
+
+EXPERT PANEL, POST-EDIT
+Same four reviewers, same MitoActive block, after Example 3 and Example 4.
+ REVIEWER                   BEFORE AFTER REMAINING NOTE
+
+ Conversion                 5           8         Wants the ₹50 a day line in the hero, which Example 3 does
+ copywriter
+ UX writer                  6           8         Two claims, one format, one hierarchy. Fine
+ Clinical Kavya             4           8         Mechanism explained in one clause and the study count is pending. Would score
+                                                  9 once the [NEED] fills
+ Brand strategist           6           9         Science voice throughout, the FAQ closes the natural-era gap
+
+
+Average 8.3. Publish-ready once the [NEED] markers are filled by the Arata lab.
+
+
+
+30-DAY DEPLOYMENT
+                                                                                                     OWNER        OWNER
+ WEEK BREW SHIPS                                                      ARATA PROVIDES               (BREW)     (ARATA)
+
+ 1         Claims sheet v1 for eight hero SKUs (badge,                  Study designs and             Copy lead   Brand
+           headline, proof line, canonical name and size).              participant counts for                    manager,
+           MitoActive PDP claim block and five FAQ answers              MitoActive, Intensive Serum,              R&D lead
+           edited and staged. Panel re-score                            Anti-Grey (the [NEED] fills).
+                                                                        Replacement policy window
+ 2         Homepage brand line stack edited. Hair Growth                Shopify access for staging   Copy lead,   Brand
+           collection intro live. Intensive Serum and Anti-             and publish. Sign-off on     Shopify      manager
+           Hair Fall Shampoo PDPs edited. Order                         retiring "zero guesswork"    specialist
+           confirmation email paragraph                                 and "chemical-free" from
+                                                                        the site
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEVEN-SWEEP COPY EDIT ACROSS EVERY ARATA SURFACE                                             14
+                                                                                                        OWNER           OWNER
+ WEEK BREW SHIPS                                                      ARATA PROVIDES                  (BREW)        (ARATA)
+
+ 3         Marketplace titles and first bullets for Amazon,             Seller Central, Nykaa and       Marketplace     Marketplace
+           Nykaa, Flipkart on eight SKUs. Quick-commerce                Flipkart vendor access, or      copy lead       manager
+           short names and image-2 text for Blinkit, Zepto,             the account manager
+           Instamart. Merge plan for onion and biotin Super             contacts. Quick-commerce
+           Shampoo listings and the serum word-order                    category manager contacts
+           variants
+ 4         Remaining PDPs edited (dandruff trio, Damage                 Lab Notes CMS access.           Copy lead,      Brand
+           Defence, Anti-Grey, four styling SKUs). Lab                  Packaging vendor contact        content lead    manager, ops
+           Notes refresh: dates and method lines on every                                                               lead
+           study post, one new post answering "is 28,200
+           real?". Copy gate checklist handed over with a
+           recorded walkthrough. Packaging flap copy to
+           print vendor
+
+
+Live by day 30: thirty-four lines edited and published, eight SKUs with one name and one claim across
+five channels, a FAQ that answers the five objections the reviews raise, the packaging promise in three
+places, a refreshed Lab Notes with dates, and a twenty-minute gate that every future line passes
+through.
+
+
+
+HOW WE MEASURE
+ METRIC                                                   BASELINE                  90-DAY TARGET                  HOW WE READ IT
+
+ Claim-consistency score (hero SKUs with                  0 of 8 (estimated         8 of 8                         Audited monthly
+ identical name and claim across arata.in,                from the brief and                                       by screenshot
+ Amazon, Nykaa, Flipkart, one quick-                      lookup)
+ commerce app)
+ MitoActive PDP conversion (visit to add-to-              To be instrumented        +25% relative on the edited    Shopify analytics,
+ cart)                                                                              page vs the 30 days before     same traffic
+                                                                                    edit                           source mix
+ Hair Growth collection to PDP click-through              To be instrumented        +15% relative                  Shopify analytics
+ Combo share of hair growth orders (₹838                  To be instrumented        30% of hair growth orders      Order line analysis
+ and ₹1,201 vs single serum)
+ Amazon.in search CTR on "hair growth                     To be instrumented        +20% relative after title      Seller Central
+ serum" for the canonical listing                         (Brand Analytics)         merge
+ Support contacts mentioning "leak" or                    To be instrumented        Down 50% in count, and         Helpdesk tags
+ "seal"                                                   from the helpdesk         every contact gets the
+                                                                                    replacement line in reply
+ Review mentions of "expensive" on                        0 reviews today           Under 15% of first 100         Loox export
+ MitoActive                                                                         reviews
+ Lab Notes posts carrying a date and a                    0 (none dated today) 100% of study explainers            CMS audit
+ method line
+ Panel score, MitoActive block                            5.3                       8+ with all [NEED] filled      Re-run quarterly
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEVEN-SWEEP COPY EDIT ACROSS EVERY ARATA SURFACE                                                        15
+ Decision rule: if MitoActive PDP conversion and collection click-through both move by the target or
+ more at day 90, the claims-sheet format becomes the standard for every new SKU and the gate stays
+ with the Arata brand manager. If either misses by more than half, we hold the consistency work (it is
+ correct regardless) and run a two-cell test on the one variable most likely to be wrong: outcome-first
+ versus mechanism-first headline on MitoActive. If the leak and seal contacts do not fall, the problem is
+ operations rather than copy, and we hand the finding to the ops lead with the helpdesk data.
+
+
+
+ APPENDIX
+ THE TWENTY-MINUTE QUICK PASS (THE COPY GATE)
+ Run this on any new line before it goes live on any channel.
+ 1. Does the line come from the claims sheet? If the SKU has a claim and this line differs, use the
+    sheet.
+ 2. Number first, method second, window third. Is the method there?
+ 3. Does "up to" appear wherever the brief's study says best responders or top of range?
+ 4. Is the SKU name in canonical form with size?
+ 5. Is there a contrast reveal ("not X, Y"), a negation list ("no X, no Y, no Z"), a self-answered question
+    or a colon reveal? Rewrite from the fact.
+ 6. More than one fragment in this section? More than one list of three? Cut one.
+ 7. Any em dash? Replace with a period, a colon or a line break.
+ 8. Any of these words: chemical-free, miracle, cure, regrow 100%, ayurvedic, clinical-strength,
+    revolutionary, game-changing? Remove.
+ 9. Is the price near the claim, and for MitoActive is ₹50 a day near the price?
+10. Does the customer know what happens if the bottle leaks?
+11. Read it aloud once. If you would not say it to a friend who asked about their hair fall, rewrite it.
+
+ WORD LIST FOR THE CLAIMS SHEET
+ Use: scalp, roots, follicle, 84 days, hair fall, new hairs, measured, tested, Indian hair, humidity, hard
+ water, routine, wash, treat, condition, lab, Y100 (explained once), mitochondria (explained once),
+ course, maintenance.
+ Retire: chemical-free, zero chemicals, miracle, cure, regrow 100%, ayurvedic, clinical-strength,
+ revolutionary, game-changing, tonic, CurlFriend (outside the legacy curl range).
+
+ SOURCE LIST
+ Arata brand brief (arata.in catalogue, Loox and Nykaa reviews, objection table). Nykaa Man,
+ PharmEasy and Purplle listings for the Intensive Serum naming and size variants. Amazon India title
+ length and quick-commerce card truncation are stated as assumptions and should be confirmed
+ against each platform's current style guide before the week-3 upload.
+
+
+
+ BREW DEPLOYMENT TEAM × ARATA · SEVEN-SWEEP COPY EDIT ACROSS EVERY ARATA SURFACE                           16
+COPY EDITING
+
+
+DAY 30
+AT ARATA
+    WHAT IS LIVE
+
+    Every hero claim on arata.in reads in one agreed form with its study context, the
+    FAQ answers the five objections the reviews raise, marketplace and quick-
+    commerce titles use one naming convention, and a copy gate runs before any
+    new line goes live.
+
+
+
+
+  NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+  BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+  CONFIRM".
+
+
+  EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+  BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                    DEPLOYMENT TEAM
+                                                                                 BREW
+

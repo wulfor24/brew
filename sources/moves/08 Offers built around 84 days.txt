@@ -1,0 +1,736 @@
+      Brew                                    PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+OFFER DESIGN · MOVE 08 OF 50
+
+
+
+OFFERS
+BUILT
+AROUND
+84 DAYS
+  THREE NAMED, GUARANTEED OFFERS THAT TURN
+  ARATA'S SINGLE BOTTLES AND PERCENT-OFF COMBOS
+  INTO PLANS PEOPLE FINISH, REVIEW AND REORDER.
+
+
+
+
+₹19/day
+HAIR FALL PLAN, PER DAY
+
+
+
+
+BREW × ARATA                   OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                 V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                               WHAT THIS GIVES ARATA
+                                                               Three named, guaranteed offers that turn Arata's
+                                                               single bottles and percent-off combos into plans
+
+
+        ₹19/day
+                                                               people finish, review and reorder.
+                                                               LIVE 30 DAYS AFTER WE START
+                                                               The 84-Day Hair Fall Plan, the MitoActive Founding
+         HAIR FALL PLAN, PER DAY                               500 and the Dandruff Reset are live on arata.in with
+                                                               a written guarantee, a named bonus stack, monthly
+                                                               billing and an in-box bridge for quick-commerce
+                                                               buyers.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+Offer design was written for services and courses. For Arata it means the thing a customer buys in one
+click: the bundle, the gift, the promise if it fails, the reason to buy today, the name they tell a friend,
+and how they pay. Everything else (ad, page, email) only carries that offer.
+Arata has the hardest part done. Every hero bottle carries a number from a study: 7.4X, 28,200, 95%,
+86%, 87%. Nobody else in the ₹400 to ₹700 band does that. But the number sits on a bottle, and a
+bottle is a weak offer. The customer still has to decide which serum, whether to add the shampoo,
+whether 30 ml is enough, whether to trust a brand that zero people have reviewed on its ₹1,499 hero,
+and what happens if it leaks. Each of those is a decision the customer makes alone, and every
+decision is a place to leave the cart.
+Look at what arata.in sells today. Single SKUs at ₹199 to ₹1,499. Combos at 7% to 49% off. Free
+shipping above ₹299. A free gift above ₹999 that is never named. No subscription. No guarantee
+anyone can find. No reason to buy this week instead of next. The only lever being pulled is the
+discount, and the biggest discount (49% off the Hair Growth Intensive Serum Pack of 3) is the closest
+thing Arata has to a real offer. It is the right product, three bottles, exactly the 84 days the claim needs.
+It is called "Pack of 3".
+That costs Arata in three places. First, conversion: ~650K monthly visits and 50K D2C orders means a
+visit-to-order rate near 7% to 8% including returners, which is healthy, but the brand is spending that
+traffic on single bottles when the claim only works on three. Second, repeat: the business goal is a
+repeat purchase within 45 days, and nothing in the offer makes the second bottle automatic. Beauty
+repeat rates sit near 26%; routine-led models go past 40%. Third, MitoActive: a ₹1,499 serum with
+zero reviews two months after launch has a perceived-likelihood problem that no amount of Y100
+explainer content solves. Only finished 84-day journeys solve it.
+The opportunity is to stop selling bottles and start selling plans. The 84-day window is already on the
+pack. Build the offer around it: a named plan, a guarantee that matches the claim, bonuses that close
+the exact objections in the reviews, honest scarcity for the launch, and a way to pay monthly. The
+price barely moves. The structure does.
+
+
+BREW DEPLOYMENT TEAM × ARATA · OFFERS BUILT AROUND 84 DAYS                                                          1
+WHAT WE FOUND
+THE CURRENT OFFER, STATED PLAINLY
+We wrote down the hair fall offer as a customer meets it on arata.in in October 2026.
+ COMPONENT               WHAT EXISTS TODAY                                                                   VERDICT
+
+ Core                    Hair Growth Intensive Serum 30 ml, ₹571. Or Pack of 3 at ₹999. Or Shampoo + Weak: product-pitched,
+ deliverable             Serum combo at ₹838. Or Hair Growth Trio at ₹1,201. Or MitoActive at ₹1,499. not outcome-pitched
+                         Five ways to buy the same outcome, none framed as the outcome.
+ Bonus stack             Free shipping above ₹299. Free gift above ₹999, unnamed.                            Weak: generic, closes
+                                                                                                             no objection
+ Guarantee               None visible. Standard returns assumed.                                             Missing
+ Scarcity /              None. Discounts appear permanent (49% off is always on).                            Missing, and the
+ urgency                                                                                                     permanent discount
+                                                                                                             trains waiting
+ Name                    "Pack of 3", "Hair Growth Trio", "Shampoo + Growth Serum"                           Generic descriptors;
+                                                                                                             cannot be repeated to a
+                                                                                                             friend
+ Price +                 One number. Pay in full. No subscription.                                           Single lever
+ payment
+
+
+Same audit for the dandruff range: Anti-Dandruff Shampoo ₹404, Conditioner ₹449, leave-on Serum
+₹299, S+C combo ₹866. Three SKUs that only work as a system ("systems, not symptoms" is the
+brand line), sold as three line items.
+
+VALUE EQUATION SCORES
+We scored the two hair fall offers on the four levers, 1 to 10. The lowest score is the binding constraint.
+                                                                                                                             DIAGRAM
+                            Dream outcome x Perceived likelihood
+        Value    =       -------------------------------------------
+                            Time delay     x Effort and sacrifice
+
+
+
+
+                     INTENSIVE SERUM
+                     (₹571 / PACK OF 3          MITOACTIVE
+ LEVER               ₹999)                      (₹1,499)           WHY
+
+ Dream               6                          7                  "28,200 new hair" is a study number, not a picture. The
+ outcome                                                           customer wants a clean drain, a fuller crown in a photo, and to
+                                                                   stop checking. The "87% saw growth" line is closer to that.
+ Perceived           6                          3                  474 and 388 reviews carry the Intensive Serum. MitoActive has
+ likelihood                                                        zero reviews, a new ingredient nobody has heard of, and a price
+                                                                   2.6X the serum below it.
+ Time delay          4                          4                  84 days is honest and it is long. Nothing in the offer engineers a
+                                                                   first win. A real customer wrote "I can see a visible difference in
+                                                                   two weeks" and the offer does not use it.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · OFFERS BUILT AROUND 84 DAYS                                                                             2
+                    INTENSIVE SERUM
+                    (₹571 / PACK OF 3           MITOACTIVE
+ LEVER              ₹999)                       (₹1,499)          WHY
+
+ Effort and         4                           3                 Choose a serum. Decide on the shampoo. Remember to apply
+ sacrifice                                                        twice a day. Remember to reorder on day 28 and day 56. Worry
+                                                                  about the leak. Each is friction.
+
+
+Binding constraints: for the Intensive Serum, time delay and effort (tied). For MitoActive, perceived
+likelihood by a distance.
+The implication is the same one we see in most stuck offers: Arata does not have a price problem. "A
+bit expensive in comparison to other competitive haircare lines" appears in reviews because the
+customer is comparing a ₹571 bottle to a ₹595 Pilgrim bottle, feature to feature. Nobody compares a
+₹1,599 plan with a photo guarantee to a Pilgrim bottle. They compare it to Traya.
+
+THE COMPARISON THE CUSTOMER IS ALREADY MAKING
+                                                                                                 MINTOP             PILGRIM /
+                   ARATA TODAY               TRAYA                                               (MINOXIDIL 5%)     MINIMALIST
+
+ Entry price       ₹571 serum                ₹1,400 to ₹1,800 per month                          ₹600 to ₹900       ₹595 to ₹699
+ Full course       Unclear (customer         ₹7,000 to ₹9,000 over 5 months, more at 8 or        Open-ended         Unclear
+ cost              must compute 3            12 months                                           (dependency)
+                   bottles)
+ Timeline          84 days on the            5, 8 or 12 months depending on profile              Months, with       None stated
+ promised          pack                                                                          initial shedding
+ Guarantee         None                      Money-back, with conditions: full kits bought       None               None
+                                             on time, 3 to 4 scalp photos, 3 coach calls,
+                                             claim within 30 days of the last kit, long
+                                             exclusion list
+ Effort            Twice a day, self-        Doctor call, coach calls, supplements, minoxidil    Daily, forever     Self-managed
+                   managed
+
+
+Traya's guarantee is the only one in the category and it is heavy: up to 12 months, three coach calls, a
+medical exclusion list, and the company's "decision is final". That is the gap. A customer who wants a
+guarantee today has to accept Traya's whole regimen to get one. Arata can offer a lighter one on an
+84-day course and win the "I want proof but not a doctor" segment outright.
+
+BONUS AUDIT AGAINST REAL OBJECTIONS
+The brief gives us the objections verbatim. We mapped each to the bonus that closes it, and checked
+what Arata gives today.
+ OBJECTION (FROM REVIEWS AND
+ BRIEF)                                         BONUS THAT CLOSES IT                                 TODAY
+
+ "Is 30 ml enough?"                             A plan that ships all 84 days of serum, so the       Pack of 3 exists, unframed
+                                                question disappears
+ "The shampoo bottle was leaking" / A written, no-questions replacement within 7                     Not stated anywhere
+ "the seal was broken"              days of delivery
+ "Will I waste another ₹600?"                   A guarantee tied to the claim's own timeline         None
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · OFFERS BUILT AROUND 84 DAYS                                                                       3
+ OBJECTION (FROM REVIEWS AND
+ BRIEF)                                         BONUS THAT CLOSES IT                                     TODAY
+
+ "Will it make hair fall worse first?" / A Day 0 to Day 84 guide: what to expect each                    Lab Notes exists but is not in
+ "Claims sound too good"                 fortnight, the study design in plain words                      the box
+ "Do I have to use it forever?"                 A written maintenance plan after day 84 (one             None
+                                                serum a month, shampoo as usual)
+ "I'll forget to reorder"                       Monthly shipment with a WhatsApp nudge on                No subscription
+                                                day 24
+ "₹1,499 for 30 ml is a lot"                    Cost-per-day framing, plus a first-month                 Objection table has the
+                                                shampoo included                                         answer; the page does not
+
+
+Seven objections, zero targeted bonuses. The unnamed "free gift above ₹999" is doing none of this
+work.
+
+SCARCITY AUDIT
+We looked for a real constraint Arata can state without lying.
+ CANDIDATE                                          REAL?                                                         USABLE
+
+ MitoActive founding batch                          Yes. Y100 is licensed and imported; first production          Yes, with a visible
+                                                    runs are finite. First 500 reviewed journeys is also a        counter
+                                                    real cohort.
+ Seasonal: Diwali (early November                   Yes. Demand is seasonal and the window is calendar-           Yes, for the Dandruff
+ 2026), monsoon dandruff, winter                    bound.                                                        Reset and gifting
+ dandruff
+ Permanent 49% off                                  No. It never ends, so it is a price, not an offer.            Retire as "offer",
+                                                                                                                  keep as the plan
+                                                                                                                  price
+ Countdown timers                                   None found; do not add                                        No
+ "Only N left" on serum                             No real constraint at 50K orders a month                      No
+
+
+ANATOMY SCORECARD
+                                                                                                                               DIAGRAM
+        Component              Hair fall today           Dandruff today        MitoActive today
+        ---------------        ------------------        -----------------     -----------------
+        Core                   [##........] 2/10         [##........] 2/10     [####......] 4/10
+        Bonus stack            [#.........] 1/10         [#.........] 1/10     [..........] 0/10
+        Guarantee              [..........] 0/10         [..........] 0/10     [..........] 0/10
+        Scarcity               [..........] 0/10         [..........] 0/10     [..........] 0/10
+        Name                   [##........] 2/10         [##........] 2/10     [#######...] 7/10
+        Price/payment          [###.......] 3/10         [###.......] 3/10     [##........] 2/10
+
+
+
+
+MitoActive already has the best name in the catalogue. Everything else is open.
+
+
+
+THE PLAN
+
+BREW DEPLOYMENT TEAM × ARATA · OFFERS BUILT AROUND 84 DAYS                                                                              4
+PRINCIPLE: SELL THE 84 DAYS, NOT THE BOTTLE
+Every hair-fall claim Arata makes is measured at 84 days. The offer should be the 84 days. One
+decision, one price, one promise, one name. The bottle becomes a component of the plan, the way a
+module is a component of a course.
+The same logic gives the dandruff range a shorter frame. The shampoo claim is "in 1 wash" and the
+serum claim is "36-hour itch relief". That offer is a reset, and it should feel fast.
+
+THE OFFER LADDER
+                                                                                                                     DIAGRAM
+        Entry                        Core plan                      Hero plan
+        (quick commerce,             (arata.in, Amazon,             (arata.in only)
+         marketplaces)                Nykaa)
+
+        Anti-Hair Fall          ->   84-Day Hair Fall Plan     ->   MitoActive 84-Day Plan
+        Shampoo ₹359                 ₹1,599 or ₹549 x 3             ₹3,999 or ₹1,399 x 3
+        Intensive Serum                                              (prices: assumption)
+        ₹571
+                                     Dandruff Reset
+        Anti-Dandruff           ->   ₹999 or ₹349 x 3
+        Shampoo ₹404
+
+        In-box bridge card moves the entry buyer up one rung.
+
+
+
+
+Each rung is named. Each has its own guarantee type. Each has a bonus stack that closes the
+objections at that rung. The entry rung stays as it is on Blinkit and Zepto (there is no offer surface on a
+quick-commerce tile beyond price and pack), but the box now carries the bridge to the plan.
+
+THE SIX COMPONENTS, REBUILT
+1. Core deliverable: three plans, each an outcome with a timeline.
+ PLAN                  WHAT SHIPS                                                 FRAME
+
+ 84-Day Hair           3 × Hair Growth Intensive Serum 30 ml, 2 × Anti-Hair Fall "Less hair in the drain by week 2. Up to
+ Fall Plan             Intensive Shampoo 200 ml (shampoo quantity assumes 3 28,200 new hair by day 84. One plan,
+                       washes a week; assumption)                                nothing to reorder."
+ MitoActive 84- 3 × MitoActive 30 ml, 1 × Anti-Hair Fall Shampoo in               "87% saw growth in 84 days. The full
+ Day Plan       month 1                                                           course, shipped monthly."
+ Dandruff Reset Anti-Dandruff Shampoo, Conditioner, leave-on Serum                "Flakes down after the first wash. Itch gone
+                                                                                  for 36 hours at a time. 28 days to a scalp
+                                                                                  you stop thinking about."
+
+
+Why: the customer buys the outcome, and the five-ways-to-buy problem collapses to one default per
+concern. Expected effect: higher AOV (plan price vs ₹571 single), fewer abandoned carts on the
+collection page because the decision is made.
+2. Bonus stack: one bonus per objection, delivered on a schedule.
+Bonuses are timed so the plan gets finished, which is what produces reviews and reorders.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · OFFERS BUILT AROUND 84 DAYS                                                                     5
+                                                                                     STATED VALUE
+                                                                                     (VERIFIABLE ON
+ BONUS                                                 CLOSES                        ARATA.IN)                    DELIVERED
+
+ Scalp massager                                        "Will it work for me?"        ₹199 (sold separately)       Day 1, in the box
+                                                       (application quality) and
+                                                       effort
+ Day 0 to Day 84 guide                                 "Claims sound too good" /     Not priced (it is proof,     Day 1, in the box,
+                                                       "worse before better?"        not a product)               plus WhatsApp
+ 7-day no-questions replacement for any The most common                              Not priced                   Written on the box
+ leak or broken seal                    complaint                                                                 and the page
+ Day 14, Day 42, Day 84 WhatsApp                       "What if I get stuck /        Not priced                   Scheduled
+ check-in with a photo prompt                          forget?"
+ Maintenance plan after day 84 (one                    "Do I have to use it          Reorder discount, for        Day 84
+ serum a month, 20% off reorder for plan               forever?"                     existing customers only
+ finishers)
+
+
+Total stated value with a price: ₹199 on a ₹1,599 plan. That is deliberately small. Every other bonus is
+operational and is worth more to the customer than a second free product. We do not inflate.
+3. Guarantee: three types, matched to three claims.
+                             GUARANTEE
+ OFFER                       TYPE                     TEXT (SHORT FORM)                                    CONDITIONS
+
+ Shampoos (hair fall,        Unconditional,           "First wash promise. If the first wash does          None beyond the window
+ dandruff)                   short window             nothing you can feel, tell us within 14 days. We
+                                                      refund the shampoo."
+ 84-Day Hair Fall     Conditional                     "The 84-day photo promise. Finish the plan,       Two conditions: all three
+ Plan, MitoActive 84- money-back                      send your day 0 and day 84 photos, and if your months shipped and used;
+ Day Plan                                             hair fall has not reduced, we refund the serums." two photos
+ Any order                   Service promise          "Leaked, broken seal, missing box: replacement       Photo of the delivery
+                                                      within 7 days, no questions."
+
+
+Why conditional for the plan: 84 days of twice-daily use is real effort, and the guarantee should
+reward finishing. Two conditions only. Compare to Traya's five. Why unconditional for the shampoo:
+the claim is "1 wash", so the test is one wash, and the refund exposure is ₹359 to ₹404.
+Stress test. If 10% of plan buyers invoke the photo promise, Arata refunds the serum portion (₹999 at
+pack price) on 1 in 10 plans: ₹100 per plan sold, about 6% of plan revenue. The customer who invokes
+it has still bought and used two shampoos, finished 84 days, and sent two photos. Assumption: true
+invocation rate lands under 5%, because conditional guarantees on effort-based products rarely get
+claimed by people who did not finish. We instrument this from day one and the decision rule is in the
+measurement section.
+4. Scarcity: real, visible, enforced.
+    MitoActive Founding 500: the first 500 plan buyers get the founding bonus (first-month shampoo,
+    massager, a named spot in the first published results set). Counter on the page. When it hits 500,
+    the bonus goes. We do not touch the ₹1,499 price.
+    Dandruff Reset seasonal window: monsoon and winter runs, with a dated start and end on the
+    page. Outside the window the three SKUs sell at list.
+
+
+BREW DEPLOYMENT TEAM × ARATA · OFFERS BUILT AROUND 84 DAYS                                                                           6
+    Retire "49% off" as the headline. The ₹999 number stays as the plan's serum price. The page stops
+    saying it is a sale.
+5. Name.
+    The 84-Day Hair Fall Plan
+    The MitoActive 84-Day Plan (MitoActive Founding 500 for the launch edition)
+    The Dandruff Reset
+Text-a-friend test: "I bought Arata's 84-Day Plan. ₹1,599, shampoo and serum for three months, and
+they refund the serum if your photos don't show less hair fall." Passes.
+6. Price and payment.
+                                                                         PAY MONTHLY (3
+ PLAN                     PAY ONCE                                       SHIPMENTS)                PER DAY
+
+ 84-Day Hair Fall         ₹1,599 (current sale prices total ₹1,717;      ₹549 × 3                  ₹19
+ Plan                     assumption on final number)
+ MitoActive 84-           ₹3,999 (vs ₹4,497 for three bottles;           ₹1,399 × 3                ₹48, vs Traya at ₹47 to ₹60 per
+ Day Plan                 assumption)                                                              day for 5 to 12 months
+ Dandruff Reset           ₹999 (vs ₹1,152 for the three at list;         ₹349 × 3                  ₹12
+                          assumption)
+
+
+Monthly shipments are the subscription Arata does not have, framed as a plan rather than a
+commitment. Three shipments, then it stops unless the customer chooses maintenance. Per-day
+pricing goes on the page next to the buy button, because ₹19 a day is a number that beats "a bit
+expensive" without touching the price.
+
+THE CUSTOMER JOURNEY THE OFFER CREATES
+                                                                                                                            DIAGRAM
+        Day 0                  Day 1-3               Day 14            Day 28/56         Day 84
+        Buys plan   ->         Box arrives ->        WhatsApp:    ->   Month 2/3     -> WhatsApp:
+        (one click,            massager,             "two weeks        ships           "day 84 photo"
+         ₹549 x 3)             guide, photo          in. Notice        automatically    -> review request
+                               card                  the drain?"                        -> maintenance
+                                                     photo prompt                          offer, 20% off
+                                                                                        -> guarantee
+                                                                                           window opens
+
+
+
+
+Every touch after purchase exists to get the plan finished. Finished plans produce the three things
+Arata lacks: MitoActive reviews, before/after photos for ads, and a reorder on day 84 instead of a
+lapse on day 45.
+
+CHANNEL RULES
+ CHANNEL                     WHAT THE OFFER LOOKS LIKE
+
+ arata.in                    Full plan with guarantee, monthly billing, bonus stack, counter
+ Amazon, Nykaa,              Plan as a single listing ("84-Day Hair Fall Plan, 5 items"), guarantee text in the listing, bridge card
+ Flipkart                    in the box
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · OFFERS BUILT AROUND 84 DAYS                                                                           7
+ CHANNEL                     WHAT THE OFFER LOOKS LIKE
+
+ Blinkit, Zepto,             Single SKUs only. Bridge card in every box: "This bottle is day 1 to 28. Days 29 to 84 are at
+ Instamart                   arata.in/84, ₹549 a month, with the photo promise."
+ B2B (2 lakh units a         Not an offer surface for this document
+ month)
+
+
+WHAT WE ARE NOT DOING
+    No countdown timers. None.
+    No new discount to acquire. The plan price is the plan price. Discounts go only to plan finishers
+    (maintenance) and real seasonal windows (Diwali, dandruff season).
+    No "worth ₹5,000" bonus inflation. One priced bonus at ₹199.
+    No stacked guarantees on one page. One guarantee per product, written in two sentences.
+    No touching the ₹1,499 MitoActive price. The founding offer adds value, it does not cut price.
+
+
+
+WORKED EXAMPLES
+EXAMPLE 1: THE 84-DAY HAIR FALL PLAN, PAGE OFFER BLOCK
+This is the block that sits above the fold on the plan page and replaces the combo listing. Everything
+below is finished copy.
+Headline: Less hair in the drain by week two. Up to 28,200 new hair by day 84.
+Subhead: The 84-Day Hair Fall Plan. Three months of serum, two months of shampoo, one price.
+Shipped monthly so you never reorder.
+What's in the plan
+    3 × Hair Growth Intensive Serum, 30 ml. One a month. Studied at 84 days: up to 28,200 new hair.
+    2 × Anti-Hair Fall Intensive Shampoo, 200 ml. 7.4X hair fall reduction in tensile strength testing.
+    Made for hard water and Indian humidity.
+    Scalp massager, ₹199 on its own, free in month one. Two minutes a night, better serum absorption.
+    The Day 0 to Day 84 guide. What to expect every fortnight, what the study measured, and why a
+    little extra shedding in week one is normal.
+    A WhatsApp check-in on day 14, 42 and 84. We ask for one photo each time. The day 84 one is
+    your proof.
+The 84-day photo promise
+Finish the plan. Send us your day 0 and day 84 photos. If your hair fall hasn't reduced, we refund the
+serums. Two conditions, and nobody has to see a doctor to claim it.
+Leaked or broken seal? Replacement within 7 days, no questions.
+Price
+
+
+BREW DEPLOYMENT TEAM × ARATA · OFFERS BUILT AROUND 84 DAYS                                                                 8
+₹1,599 once, or ₹549 a month for three months. ₹19 a day. For comparison: Traya runs ₹1,400 to
+₹1,800 a month for 5 to 12 months, with doctor and coach calls. Mintop needs a prescription and never
+stops.
+Button: Start the 84 days
+Below the button: Free shipping. Month 2 and 3 ship automatically on day 26 and day 54. Cancel the
+remaining months anytime on WhatsApp.
+After day 84: Most people move to one serum a month to hold the result. Plan finishers get 20% off
+maintenance, for as long as they stay on it.
+
+
+
+EXAMPLE 2: MITOACTIVE FOUNDING 500, OFFER SHEET AND LAUNCH MESSAGE
+The problem is zero reviews on a ₹1,499 hero. The founding offer buys the first 500 finished journeys,
+with photos, in exchange for the bonus stack. The price does not move.
+Offer sheet
+ COMPONENT                    MITOACTIVE FOUNDING 500
+
+ Core                         The MitoActive 84-Day Plan: 3 × MitoActive Mitochondrial Hair Growth Serum, 30 ml, shipped
+                              monthly. Y100, licensed exclusively in India, 5+ clinical studies on the ingredient. 87% saw
+                              increased growth in 84 days.
+ Founding bonuses             Anti-Hair Fall Intensive Shampoo 200 ml in month one (₹359 on its own). Scalp massager (₹199).
+ (first 500 plans only)       A place in the first published MitoActive results set: your day 0 and day 84 photos, anonymised,
+                              with your permission. Direct line to the Arata lab team on WhatsApp for 84 days.
+ Guarantee                    The 84-day photo promise. Finish all three months, send day 0 and day 84 photos. If hair fall has
+                              not reduced, we refund all three serums.
+ Scarcity                     500 founding plans. Live counter on the page. When it reaches 500, the shampoo and massager
+                              come off and the plan sells at the same price without them.
+ Name                         MitoActive Founding 500
+ Price                        ₹3,999 once or ₹1,399 × 3. ₹48 a day. (Price: assumption, for Arata to confirm.)
+
+
+Stress test on the guarantee: 500 plans, 10% invoked, ₹3,999 refunded each: ₹2 lakh against ₹20 lakh
+of founding revenue, and 450 finished journeys with photos. Worst case is a 10% cost for the proof
+MitoActive has none of today. Expected invocation is lower.
+Launch message, WhatsApp broadcast to existing Intensive Serum buyers (first 500 recipients
+are past Pack of 3 buyers, who already finished an 84-day course)
+Hi {first name}. You finished 84 days on the Intensive Serum, so you're the first person we're telling
+this to.
+MitoActive is the serum we launched in August. It works on the mitochondria in the follicle, a different
+mechanism from the actives you used. 87% of people in the study saw increased growth in 84 days.
+India has not had this ingredient before.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · OFFERS BUILT AROUND 84 DAYS                                                                      9
+We're opening 500 founding plans. Three months of MitoActive, shipped monthly, with the Anti-Hair
+Fall Shampoo and scalp massager in month one, and the 84-day photo promise: finish it, send two
+photos, and if your hair fall hasn't reduced we refund all three bottles.
+₹1,399 a month for three months. The counter is on the page. When it hits 500, the bonuses close.
+arata.in/mitoactive-500
+Reply STOP if you'd rather not hear about MitoActive.
+Email subject lines for the same launch (pick one per send, test A against B)
+    A: 500 people get to be first on MitoActive
+    B: The 84-day photo promise, now on MitoActive
+    C: You finished 84 days once. Here's the next tier.
+
+
+
+EXAMPLE 3: THE DANDRUFF RESET, PAGE OFFER BLOCK AND SEASONAL WINDOW
+Headline: Flakes down after the first wash. Itch gone for 36 hours at a time.
+Subhead: The Dandruff Reset. Shampoo, conditioner and leave-on serum that work as one system,
+because treating the fungus and drying your hair out is not a trade you should have to make.
+What's in the reset
+    Anti-Dandruff Shampoo, 200 ml. Up to 95% reduction in dandruff-causing fungus in one wash.
+    Anti-Dandruff Conditioner, 200 ml. 93% hydration boost, so the shampoo can do its job without
+    leaving your hair dry.
+    Anti-Dandruff Serum, 30 ml, leave-on. Up to 36 hours of itch relief between washes.
+The first wash promise
+One wash. If you don't notice less flaking and less itch after it, tell us within 14 days and we refund the
+shampoo. No conditions.
+Price
+₹999 once, or ₹349 a month for three months. ₹12 a day. Three products at list are ₹1,197.
+Seasonal line (shown only inside the window): The winter reset window runs 1 November to 31
+January. Outside it, the three products sell separately at list.
+Button: Start the reset
+Bridge note for Blinkit and Zepto buyers (printed on the shampoo carton): This is the shampoo. The
+conditioner and the leave-on serum are what stop the dryness and the 3 pm itch. The full reset is ₹349
+a month at arata.in/reset, with the first wash promise.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · OFFERS BUILT AROUND 84 DAYS                                              10
+EXAMPLE 4: THE IN-BOX BRIDGE CARD (ALL QUICK-COMMERCE AND MARKETPLACE ORDERS)
+Front of card, 10 cm × 15 cm, lab-blue on white:
+
+   THIS BOTTLE IS DAY 1 TO 28. HAIR FALL CLAIMS ON THE PACK ARE
+   MEASURED AT 84 DAYS. THAT'S THREE BOTTLES OF SERUM AND TWO OF
+   SHAMPOO. THE 84-DAY HAIR FALL PLAN SHIPS THE REST MONTHLY. ₹549
+   A MONTH. ₹19 A DAY. FINISH IT, SEND TWO PHOTOS, AND IF YOUR HAIR
+   FALL HASN'T DROPPED WE REFUND THE SERUMS. ARATA.IN/84 SCAN
+   THE CODE. YOUR FIRST BOTTLE COUNTS AS MONTH ONE: ENTER THE
+   CODE ON THE BACK AND WE SHIP MONTH TWO AND THREE FOR ₹549
+   EACH.
+
+
+Back of card:
+
+   LEAKED? SEAL BROKEN? BOX MISSING? WHATSAPP A PHOTO TO
+   {NUMBER} WITHIN 7 DAYS. WE REPLACE IT. NO QUESTIONS. YOUR 84-
+   DAY GUIDE IS AT ARATA.IN/GUIDE. WEEK ONE: A LITTLE EXTRA SHEDDING
+   IS NORMAL. WEEK TWO: LOOK AT THE DRAIN.
+
+
+The back of the card is the leak-replacement promise, placed where the leak is discovered. It is a
+bonus that costs almost nothing and answers the most repeated complaint in the reviews before the
+customer types it.
+
+
+
+EXAMPLE 5: GUARANTEE CLAIM FLOW, WHATSAPP SCRIPT
+What the customer sees when they invoke the 84-day photo promise. Written so the guarantee reads
+as confident, and so the claim is handled in minutes.
+
+   ARATA: HI {NAME}. YOU'RE ON DAY 84 OF THE PLAN. DID THE HAIR FALL
+   REDUCE? REPLY 1 FOR YES, 2 FOR NOT REALLY.                            (CUSTOMER REPLIES 2)
+
+   ARATA: SORRY TO HEAR THAT. THE PHOTO PROMISE IS SIMPLE: SEND
+   YOUR DAY 0 AND DAY 84 PHOTOS HERE. SAME ANGLE, SAME LIGHT IF
+   YOU CAN. WE'LL COMPARE AND REPLY WITHIN 24 HOURS.                     (PHOTOS RECEIVED)
+
+   ARATA: THANKS. WE'VE LOOKED AT BOTH. WE CAN'T SEE A REDUCTION
+   EITHER, AND WE SAID WE'D REFUND IF THAT HAPPENED. ₹999 FOR THE
+   THREE SERUMS GOES BACK TO YOUR ORIGINAL PAYMENT METHOD
+   WITHIN 5 WORKING DAYS. KEEP THE SHAMPOO AND THE MASSAGER. IF
+   YOU WANT TO TALK TO OUR LAB TEAM ABOUT WHAT MIGHT BE GOING
+   ON WITH YOUR SCALP, REPLY LAB AND WE'LL SET UP A CALL.
+
+
+There is no form to fill and nobody's decision is "final". The refund costs ₹999 and the message gets
+screenshotted and shared, which is the point.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · OFFERS BUILT AROUND 84 DAYS                                            11
+30-DAY DEPLOYMENT
+ WEEK BREW SHIPS                                             ARATA PROVIDES                             LIVE BY END OF WEEK
+
+ 1         Final plan SKUs and prices for all three            Confirmation of plan prices and the ₹549 Refund policy page
+           offers. Guarantee text (three types) and            / ₹1,399 / ₹349 monthly numbers.         live. Plan SKUs
+           refund policy page. Day 0 to Day 84 guide,          Inventory check for 500 MitoActive plans created.
+           written. Offer blocks for three plan pages.         and 2,000 scalp massagers (Arata ops
+           Monthly-shipment setup on the Shopify               lead). Sign-off on guarantee wording
+           store (Brew ecommerce lead).                      (Arata founder / brand manager).
+ 2         Three plan pages built with per-day pricing,        Product photography for plan boxes.        Plan pages live on
+           guarantee above the button, bonus list,             WhatsApp Business account access.          arata.in, unlisted.
+           founding counter. WhatsApp check-in flows           Print vendor for cards (Arata brand        WhatsApp flows
+           (day 14, 42, 84) and the claim-flow script.         manager).                                  tested.
+           Bridge card and shampoo carton copy to
+           print.
+ 3         MitoActive Founding 500 launch: WhatsApp            Approval to send. Marketplace account      Founding 500 live with
+           broadcast to past Pack of 3 buyers, email to        access.                                    counter. 84-Day Hair
+           the list, plan pages listed. Hair fall collection                                              Fall Plan live and
+           page reordered so the 84-Day Plan is the                                                       default on the
+           default. Amazon and Nykaa plan listings                                                        collection.
+           drafted (Brew marketplace lead).
+ 4         Dandruff Reset page live with the 1                 Warehouse inserts the bridge card        All three offers live.
+           November window date. Bridge cards in               (Arata ops). Customer support trained on Bridge card shipping.
+           every quick-commerce and marketplace                the three guarantees (Arata CX lead).    Measurement
+           box. First guarantee invocations handled on                                                  dashboard running.
+           the script. Week-4 readout: plan attach rate,
+           monthly-billing take rate, founding counter,
+           first refunds.
+
+
+What is live on day 30: three named plans on arata.in with written guarantees, monthly billing, a
+founding counter on MitoActive, WhatsApp check-ins scheduled for every plan buyer, and a bridge
+card in every box leaving the Delhi warehouse.
+
+
+
+HOW WE MEASURE
+ METRIC                          BASELINE                      90-DAY TARGET                           WHY IT MATTERS
+
+ Plan share of hair fall         0% (plans do not exist;       35% of hair fall orders on arata.in are Proves the outcome frame
+ D2C orders                      Pack of 3 share to be         a plan                                  beats the bottle frame
+                                 instrumented)
+ D2C AOV                         ~₹900 to ₹1,000 (brief,       ₹1,150                                  Plans at ₹1,599 and
+                                 implied)                                                              ₹3,999 should lift it
+                                                                                                       without discounting
+ Monthly-billing take            n/a                           40% of plan buyers choose ₹549 ×        The subscription Arata
+ rate on plans                                                 3 over pay-once                         does not have, in disguise
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · OFFERS BUILT AROUND 84 DAYS                                                                        12
+ METRIC                          BASELINE                      90-DAY TARGET                         WHY IT MATTERS
+
+ Repeat within 45 days           To be instrumented;           45% for plan buyers (month 2 ships    The stated key conversion
+ (hair fall buyers)              category 26%, routine-led     by design); 30% for single-bottle     action
+                                 40%+                          buyers via the bridge card
+ Plan completion                 n/a                           70%                                   Completion is what makes
+ (month 3 shipped and                                                                                reviews and photos
+ not cancelled)
+ MitoActive reviews on           0                             150, with at least 60 carrying day 0 / The perceived-likelihood
+ arata.in                                                      day 84 photos                          fix
+ Founding 500 sell-              0                             500 by day 60                         If it takes longer, the price
+ through                                                                                             assumption or the list is
+                                                                                                     wrong
+ Guarantee invocation            n/a                           Under 5% of plans; under 3% of        Refund exposure
+ rate                                                          shampoos
+ Leak / seal complaints          To be instrumented from       Halved, and every one answered        Removes the loudest
+ as a share of reviews           Loox and Nykaa                with a replacement inside 7 days      complaint theme
+ Hair fall collection page To be instrumented                  +20% relative                         The decision collapses
+ conversion                                                                                          from five ways to buy to
+                                                                                                     one default
+
+
+Decision rules
+    Plan share above 25% at day 90 and invocation under 5%: extend the plan frame to Anti-Grey (a 3-
+    month claim, "86% reduction in greys", fits an 84-Day Grey Plan) and to the Damage Defence
+    range for wedding-season gifting.
+    Plan share under 15%: the per-day framing and the guarantee are not the problem; the default on
+    the collection page is. Make the plan the only hair fall product on the first screen and move single
+    bottles below.
+    Invocation above 8% on the photo promise: do not remove the guarantee. Add the day 42 photo as
+    a third checkpoint and route anyone showing no change at day 42 to the lab team early. If
+    invocation stays above 8% after that, the claim window on the page moves from "hair fall reduced"
+    to "hair fall reduced or new growth visible", and we revisit the study language with Arata's R&D.
+    Monthly-billing take rate under 20%: the ₹549 × 3 structure is being read as a subscription trap.
+    Rename it "ship monthly, stop anytime" and move the cancel line above the button.
+    Founding 500 sells out before day 45: do not extend it. Close the bonuses on schedule, publish the
+    first results set at day 84 of the first buyers, and open "Founding 500" as a closed chapter with its
+    own page. That is what makes the next scarcity believable.
+
+
+
+APPENDIX
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · OFFERS BUILT AROUND 84 DAYS                                                                     13
+GUARANTEE TEXT, LONG FORM, FOR THE POLICY PAGE
+The first wash promise (Anti-Hair Fall Intensive Shampoo, Anti-Dandruff Shampoo). Use the
+shampoo once. If you do not notice a difference you can feel, message us on WhatsApp within 14
+days of delivery and we refund the shampoo to your original payment method within 5 working days.
+You keep the bottle. No reason needed.
+The 84-day photo promise (84-Day Hair Fall Plan, MitoActive 84-Day Plan). Finish all three months
+of the plan (all three serum shipments delivered and used as directed, twice a day). Send us a photo
+on day 0 and on day 84, same angle and similar light. If the day 84 photo does not show reduced hair
+fall compared to day 0, we refund the serums in the plan within 5 working days. Shampoo, massager
+and guide are yours to keep. Claims open on day 84 and close on day 120.
+The replacement promise (every order). If anything arrives leaked, with a broken seal, or without its
+box, send a photo on WhatsApp within 7 days of delivery. We ship a replacement without asking why,
+and you keep the damaged one.
+
+OFFER CHECKLIST USED FOR EACH PLAN
+    Outcome in the headline, with the study number and the timeline
+    One default per concern on the collection page
+    Guarantee in two sentences, above the buy button
+    Per-day price next to the full price
+    Each bonus named, timed, and tied to an objection; one priced bonus maximum
+    Scarcity only where a counter or a date can be shown
+    Cancel line visible for monthly billing
+    Name passes the text-a-friend test
+
+SOURCES
+Arata brand brief (Brew, Oct 2026) for all Arata prices, claims, reviews and channel facts. Traya
+money-back policy page (traya.health/pages/money-back-policy) for the competitor guarantee
+conditions. Plan prices marked "assumption" are proposals for Arata to confirm.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · OFFERS BUILT AROUND 84 DAYS                                            14
+OFFER DESIGN
+
+
+DAY 30
+AT ARATA
+    WHAT IS LIVE
+
+    The 84-Day Hair Fall Plan, the MitoActive Founding 500 and the Dandruff Reset
+    are live on arata.in with a written guarantee, a named bonus stack, monthly
+    billing and an in-box bridge for quick-commerce buyers.
+
+
+
+
+  NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+  BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+  CONFIRM".
+
+
+  EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+  BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                 DEPLOYMENT TEAM
+                                                                              BREW
+

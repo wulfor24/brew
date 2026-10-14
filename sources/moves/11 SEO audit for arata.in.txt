@@ -1,0 +1,803 @@
+      Brew                                    PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+SEO · MOVE 11 OF 50
+
+
+
+SEO AUDIT
+FOR
+ARATA.IN
+  A PAGE-BY-PAGE AUDIT OF ARATA.IN WITH THE FIXES,
+  TITLES AND NEW PAGES THAT TURN PROBLEM SEARCHES
+  LIKE HAIR FALL SHAMPOO INTO UNPAID ORDERS ON YOUR
+  OWN SITE.
+
+
+
+
+14 pages
+THAT DECIDE ORGANIC REVENUE
+
+
+
+
+BREW × ARATA                   OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                 V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                          WHAT THIS GIVES ARATA
+                                                          A page-by-page audit of arata.in with the fixes, titles
+                                                          and new pages that turn problem searches like hair
+                                                          fall shampoo into unpaid orders on your own site.
+         14 pages
+         THAT DECIDE ORGANIC REVENUE
+                                                          LIVE 30 DAYS AFTER WE START
+                                                          Crawl clean, every money page owns one query
+                                                          with a unique title and product schema, legacy SKUs
+                                                          redirected, and the first six problem and ingredient
+                                                          pages live and internally linked.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+This discipline applies to you directly. Arata is a Shopify store with a blog, a catalogue of about 40 live
+SKUs and a rebrand in progress. The audit below treats arata.in as the asset, Google India as the
+channel, and the Shopify defaults as the first thing to fix.
+Here is what we see. You get around 650K visits a month and the number is growing about 42%
+month on month. That growth line matches a brand buying attention: the Samay Raina campaign,
+creators, Meta and quick-commerce placements. Your own site brings in 32% of revenue. The other
+68% sits on Amazon, Nykaa, Flipkart, Blinkit, Zepto and Instamart, where you pay a margin for every
+order and own none of the customer. Organic search is the one channel that sends buyers to your own
+checkout without a bid, and it compounds. Right now it is under-built.
+The queries your customers type are commercial and problem-led: "hair fall shampoo", "hair growth
+serum", "anti dandruff shampoo", "anti grey serum", "hair gel". Pilgrim (₹200 Cr+), Traya (₹138 Cr
+marketing spend) and Mamaearth outbid you on every one of those terms in paid search. In organic,
+the fight is different. Google rewards the page that answers the query best and is linked most. You
+have something those brands do not: a number on every bottle, from a study. "7.4X hair fall reduction",
+"up to 28,200 new hairs in 84 days", "95% dandruff fungus reduction in 1 wash". Those are the exact
+sentences Google pulls into featured snippets and AI Overviews when they sit in the first 100 words of
+a page. Today they sit on packaging and in ad creative.
+The gaps in your brief map straight onto SEO problems. Naming is inconsistent across channels (onion
+vs biotin, serum vs tonic), which on a Shopify store means competing product pages for the same
+query. The legacy Curl Care range and the 300 ml Super Shampoo still live on marketplaces and
+probably still sit in your sitemap, diluting the science positioning Google reads. Lab Notes publishes in
+bursts (seven posts in March 2026), so the blog never builds topical authority on hair fall or dandruff.
+MitoActive has zero reviews, so the one product that could own "mitochondrial hair growth" outright
+shows no stars in results. The hair growth collection mixes the ₹571 Intensive Serum, the ₹999 pack of
+3 and the ₹1,499 MitoActive with no routine logic, so Google cannot tell which page owns "hair growth
+serum".
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEO AUDIT FOR ARATA.IN                                                             1
+The opportunity is timed. A rebrand to "Hair & Scalp Science Co." is underway. Rebrands that change
+URLs, titles and templates without a redirect map lose 20% to 40% of organic traffic for a quarter
+(assumption from our deployment experience, not an Arata number). If we clean the crawl, fix the
+money pages and lock the redirect map before the new site ships, the rebrand launches on a
+foundation that climbs instead of resetting.
+
+
+
+WHAT WE FOUND
+This is a desk audit built from the brief, the public catalogue, the public pricing pages and our
+knowledge of Shopify's default behaviour. We do not yet have Search Console, GA4 or a crawl export.
+Anything we could not observe directly is marked "verify in crawl". We did not report findings we
+cannot support. Schema in particular cannot be confirmed from static fetches because Loox and most
+Shopify apps inject JSON-LD with JavaScript; that check happens in a rendered browser in week one.
+
+HEALTH SCORECARD
+Scored on the audit's priority order. 1 is broken, 5 is done.
+ LAYER                   SCORE WHAT WE SEE                                                  EVIDENCE
+
+ Crawlability and        2          Shopify default duplicates, legacy SKUs likely still    Catalogue naming inconsistency
+ indexation                         indexed, no evidence of a managed redirect map          across channels; legacy ranges visible
+                                                                                            on marketplaces
+ Technical               3          HTTPS and responsive by default on Shopify;             Platform defaults; verify in PageSpeed
+ foundations                        speed at risk from app scripts (Loox widget, pixels,
+                                    quick-commerce widgets)
+ On-page                 2          Titles follow the Shopify default pattern; claims not   Product and collection structure in the
+                                    in first 100 words; no FAQ blocks; one query split      brief
+                                    across 3 to 5 pages
+ Content quality         2          Lab Notes in bursts, no visible author credentials,     Seven posts in March 2026; "Lab
+                                    no study pages behind the numbers                       Notes" exists but has no cadence
+ Authority and           3          Real press (BeautyMatter, Inc42, Storyboard18, BW Brief sources list
+ links                              Retail World), investor names, marketplace listings
+                                    (mostly nofollow)
+
+
+CRAWLABILITY AND INDEXATION
+Shopify creates several URLs for every product. The platform sets a canonical, but your theme's
+internal links usually point at the nested version, which spreads link equity across copies.
+                                                                                                                          DIAGRAM
+    arata.in
+    ├── /products/anti-hair-fall-intensive-shampoo          ← canonical (keep)
+    ├── /collections/hair-growth/products/anti-hair-fall-… ← duplicate, linked from collection grid
+    ├── /collections/all/products/anti-hair-fall-…          ← duplicate
+    ├── /collections/shampoo/products/anti-hair-fall-…      ← duplicate
+    ├── /products/anti-hair-fall-intensive-shampoo?variant=… ← parameter copy
+    └── /products/anti-hair-fall-intensive-shampoo.json     ← raw data, crawlable
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEO AUDIT FOR ARATA.IN                                                                               2
+Findings, in the audit format:
+Issue 1: Nested collection product URLs carry the internal links. Impact: Medium. Evidence: Shopify
+default theme behaviour; verify in crawl. Fix: change the collection grid, cart and recommendation
+blocks to link to /products/{handle} directly. One theme change, affects every product. Priority: High.
+Issue 2: Legacy products indexed and cannibalising. Impact: High. Evidence: Advanced Curl Care
+range (2022), Super Shampoo onion/biotin 300 ml, Happy Hair Duo and Damage Repair Duo still
+visible on marketplaces; naming differs by channel. If these product pages are still published on
+arata.in, they compete with the Anti-Hair Fall Intensive Shampoo for "hair fall shampoo" and "onion
+shampoo". If they were archived without redirects, they are 404s that still hold backlinks and old ad
+clicks. Fix: a redirect map (worked example 4) that sends every legacy handle to its successor with a
+301. Priority: Critical.
+Issue 3: Thin collection pages. Impact: High. Evidence: collections in the brief are organised by
+range (Hair Growth, Anti-Dandruff, Damage Defence, Anti-Grey, Styling, Body, Face, Tools, Combos).
+A Shopify collection page is a grid with a one-line description. For "anti dandruff shampoo" Google
+wants a page that explains the problem, shows the products and answers the follow-up questions. Fix:
+300 to 500 words of real content per money collection, above and below the grid, with the claim and
+the routine. Priority: High.
+Issue 4: Tag and sort URLs. Impact: Low. Evidence: Shopify's default robots.txt blocks
+ /collections/*sort_by* , /*+* , /search , /cart , /checkout . Tag pages like /collections/hair-
+growth/serum stay crawlable and thin. Fix: add Disallow: /collections/*/* for tag paths in
+ robots.txt.liquid only after confirming none of them rank; otherwise noindex them in the theme.
+Priority: Low.
+Issue 5: Sitemap hygiene. Impact: Medium. Evidence: Shopify auto-generates /sitemap.xml with
+product, collection, page and blog children. It includes every published product, including ones you do
+not want ranked (loofah, derma roller, legacy packs). Fix: unpublish from the Online Store sales
+channel anything that should not rank, keep it on marketplaces. Priority: Medium.
+Issue 6: Brand entity ambiguity. Impact: Medium. Evidence: "Arata" is a common Japanese given
+name and a river; a site:arata.in lookup returns unrelated entities before the brand. Google has not
+clearly resolved the entity. Fix: Organization schema on the homepage with sameAs to Instagram,
+YouTube, Amazon brand store, Nykaa brand page, LinkedIn and the Wikipedia-grade press; consistent
+"Arata, Hair & Scalp Science Co., New Delhi" naming across every profile. Priority: Medium.
+
+TECHNICAL FOUNDATIONS
+Shopify handles HTTPS, HSTS, responsive layout and CDN. The risk is what sits on top of the theme,
+and your traffic is Indian mobile on mid-range Android and patchy 4G.
+ CHECK            RISK FOR ARATA                                    ACTION
+
+ LCP under        Hero video or large banner on homepage and        Poster image, fetchpriority="high" on the LCP
+ 2.5s             collections                                       image, WebP, lazy-load below the fold
+ INP under        Loox carousel, Meta and Google pixels, WhatsApp   Defer non-critical apps, load the review widget after
+ 200ms            widget, "buy on Blinkit" widgets, each adding a   first interaction, remove unused apps
+                  script
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEO AUDIT FOR ARATA.IN                                                                     3
+ CHECK            RISK FOR ARATA                                          ACTION
+
+ CLS under        Review stars and announcement bar injected after        Reserve height for both
+ 0.1              paint
+
+
+Measured in PageSpeed Insights on the homepage, the Hair Growth collection and the Anti-Hair Fall
+Intensive Shampoo page in week one, mobile first.
+
+ON-PAGE: TITLES, DESCRIPTIONS, HEADINGS
+Shopify's default title is {Product title} – {Store name} . For you that produces titles like "Anti-Hair
+Fall Intensive Shampoo – Arata". The query is in the title, which is good. The reason to click is missing,
+and the title says nothing a Pilgrim or Mamaearth title does not.
+We ran the SERP check the title reference asks for. For "best hair fall shampoo India" the top results
+are publisher listicles: Business Insider, PharmEasy, Truemeds, MomJunction and StyleCraze. No
+brand page ranks. That tells us two things. A collection page will not win a "best" query, so we do not
+chase it. And the product page can win the commercial query "anti hair fall shampoo" where Google
+shows product results, if the title names the outcome and the page carries the study.
+What we expect the crawl to show on money pages (verify in crawl): titles unique but generic with no
+claim or size; meta descriptions auto-filled from the product description and cut mid-sentence; H2s
+used for styling ("How to use", "Ingredients") rather than for the questions people type; the claim as a
+banner image rather than text in the first 100 words; alt text equal to the product title on every image;
+combo pages titled by their contents with no query of their own.
+
+KEYWORD MAP AND CANNIBALISATION
+This is the core finding. One query, one owner page. Today every hair-growth query has three to five
+candidates.
+                                                                                                                       DIAGRAM
+    Query: "hair growth serum"
+       ├── /products/hair-growth-intensive-serum        (₹571, 474 reviews)
+       ├── /products/hair-growth-intensive-serum-pack-3 (₹999, 388 reviews)
+       ├── /products/mitoactive-hair-growth-serum        (₹1,499, 0 reviews)
+       ├── /products/hair-growth-trio                    (₹1,201)
+       └── /collections/hair-growth                      (grid)
+       → Google rotates between them. None climbs.
+
+
+
+
+The owner map we propose:
+                                                                                                SUPPORTING PAGES (LINK UP,
+ QUERY (INDIA, MONTHLY)                       INTENT      OWNER PAGE                            DO NOT COMPETE)
+
+ hair fall shampoo / anti hair fall           Buy         Anti-Hair Fall Intensive Shampoo      Anti-Hair Fall S+C combo, hair
+ shampoo                                                                                        fall hub page
+ hair growth serum                            Buy         Hair Growth Intensive Serum (30 ml)   Pack of 3 (title it as "3-month
+                                                                                                pack"), Trio
+ mitochondrial hair growth / Y100             Buy,        MitoActive product page               Y100 ingredient page, Lab
+ hair / MitoActive                            research                                          Notes explainer
+ anti dandruff shampoo                        Buy         Anti-Dandruff Shampoo                 Anti-Dandruff S+C combo,
+                                                                                                dandruff hub
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEO AUDIT FOR ARATA.IN                                                                           4
+                                                                                                   SUPPORTING PAGES (LINK UP,
+ QUERY (INDIA, MONTHLY)                       INTENT      OWNER PAGE                               DO NOT COMPETE)
+
+ dandruff serum / scalp serum for             Buy         Anti-Dandruff Serum                      Dandruff hub
+ itching
+ anti grey hair serum / grey hair             Buy         Anti-Grey Hair Serum                     Grey hair hub page
+ serum
+ hair gel for men / humidity                  Buy         Hair Gel                                 Styling collection
+ resistant hair gel
+ hair fall solution / how to stop             Research    /pages/hair-fall (new hub)               Shampoo, serum, MitoActive
+ hair fall
+ dandruff treatment / how to get              Research    /pages/dandruff (new hub)                Anti-Dandruff range
+ rid of dandruff
+ hair fall hard water / hair fall after       Research    Lab Notes: hard water post               Shampoo
+ shifting to Bangalore
+ arata shampoo / arata serum /                Brand       Respective product pages                 Homepage
+ arata hair gel
+ arata vs traya / arata vs pilgrim            Compare     Comparison pages (covered in our         Product pages
+                                                          competitors deliverable)
+
+
+Rules that come with the map:
+    The Pack of 3 and the combos keep their pages but get titles and H1s built around "3-month" and
+    "routine", never the bare query.
+    The Hair Growth collection becomes a routing page: short explainer, then "start here" cards that
+    send hair-fall searchers to the shampoo and serum, and clinical searchers to MitoActive.
+    Legacy Super Shampoo and Curl Care redirect; they do not get titles.
+
+CONTENT QUALITY AND E-E-A-T
+Google treats hair loss as a health-adjacent topic. Pages need visible expertise.
+ SIGNAL           TODAY                                   GAP                      FIX
+
+ Experience 2,248 Loox reviews, 474 on the                Reviews sit in a         Pull three verbatim reviews into the product
+            serum, Nykaa 4.2★ on 2,435                    widget; verbatim         copy as text; "Hair fall reduced drastically" and
+            ratings                                       quotes are not in page   "I can see a visible difference in two weeks"
+                                                          text                     are query-matching sentences
+ Expertise        In-house R&D and QC lab in              No named author or       Author page for the lab lead; "Reviewed by"
+                  Delhi, trichology-informed              reviewer on Lab Notes    line on every claim page
+                  formulation                             (verify in crawl)
+ Authority        Unilever Ventures and L'Oréal    None of this is on an           A "Research" page per claim: study design, n,
+                  BOLD as investors; Y100 licensed indexable page                  duration, "up to" framing
+                  from Yuva Biosciences with 5+
+                  clinical studies
+ Trust            Leak and broken-seal complaints         No visible replacement A replacement promise page linked from every
+                  in reviews                              policy                 product page and the footer
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEO AUDIT FOR ARATA.IN                                                                                5
+Lab Notes has a cadence problem, not a quality problem. Seven posts in one month then silence reads
+to Google as a campaign, not a publication. The plan fixes this with one post a week tied to the
+keyword map.
+
+SCHEMA
+Cannot be confirmed from static fetches. The week-one browser check runs
+ document.querySelectorAll('script[type="application/ld+json"]') on five page types and validates in
+the Rich Results Test.
+ PAGE               NEEDED
+
+ Product            Product, Offer in INR with availability, AggregateRating (Loox), Brand, FAQPage
+ Collection         ItemList plus BreadcrumbList
+ Lab Notes          Article with author Person and dateModified
+ Homepage           Organization with sameAs, logo, founders, New Delhi address
+ MitoActive         Same as product; stars appear only once reviews exist, so the review push is SEO work too
+
+
+AUTHORITY AND LINKS
+Press is strong for a ₹61 Cr brand: BeautyMatter, Inc42, Storyboard18, BW Retail World. We expect the
+backlink export to show most links at the homepage and none at product pages, and no Arata
+placement in the listicles that hold "best hair fall shampoo". The authority work is narrow: get the Anti-
+Hair Fall Intensive Shampoo and MitoActive into those five listicles, and point the next press cycle
+(rebrand, MitoActive data) at product and research pages.
+
+
+
+THE PLAN
+Five phases, in the audit's priority order. Each one is small enough to ship inside the 30 days and large
+enough to move a number.
+                                                                                                                DIAGRAM
+    Phase 0             Phase 1          Phase 2               Phase 3            Phase 4
+    Access and      →   Critical fixes → Money pages       →   New pages and   → Rebrand
+    baseline            (crawl, legacy, (14 pages:             cadence            protection
+                        canonicals)      titles, copy,         (hubs, ingredient, (redirect map,
+                                         schema, FAQ)          Lab Notes weekly) freeze, QA)
+    Week 1              Week 1 to 2      Week 2 to 3           Week 3 to 4        Week 4 onward
+
+
+
+
+PHASE 0: ACCESS AND BASELINE (WEEK 1)
+What: Search Console and GA4 access, a JavaScript-rendered crawl, PageSpeed on five templates,
+rendered schema check, backlink export, products.json export for the handle list. We record baseline
+position, impressions and CTR for the 12 owner queries so later changes are attributable. Why: every
+"verify in crawl" above becomes a fact or disappears. Effect: a findings table with real counts replaces
+this desk audit by day 5.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEO AUDIT FOR ARATA.IN                                                                   6
+PHASE 1: CRITICAL FIXES (WEEKS 1 TO 2)
+1. Redirect map for legacy SKUs. Every unpublished or renamed handle gets a 301 to its successor
+   (worked example 4). Why: these pages hold old links and old ad clicks, and they split the hair fall
+   query. Effect: consolidated relevance on the live page within one crawl cycle.
+2. Canonical internal links. Collection grids, recommendations and cart links point at
+    /products/{handle} . Effect: all internal link equity flows to one URL per product.
+
+3. Sitemap and channel cleanup. Products that should not rank come off the Online Store channel;
+   tag pages noindexed. Why: crawl budget on a 40-SKU store is fine; the signal of 60 thin pages is
+   the problem.
+4. Naming freeze. One name per product across arata.in, Amazon, Nykaa, Flipkart and quick
+   commerce. "Hair Growth Intensive Serum" everywhere, never "tonic". Effect: brand plus product
+   queries concentrate on one spelling.
+
+PHASE 2: THE 14 MONEY PAGES (WEEKS 2 TO 3)
+The pages: Anti-Hair Fall Intensive Shampoo, Hair Growth Intensive Serum, Pack of 3, MitoActive,
+Anti-Breakage Conditioner, Anti-Dandruff Shampoo, Anti-Dandruff Conditioner, Anti-Dandruff Serum,
+Damage Defence Super Shampoo, Anti-Grey Hair Serum, Hair Gel, and the Hair Growth, Anti-Dandruff
+and Styling collections.
+For each page, in this order:
+1. Title and meta description from the table in worked example 1
+2. H1 aligned with the title, H2s that are the questions people search
+3. The claim and the timeline in the first two sentences of body text
+4. A five-question FAQ block, marked up as FAQPage, written from the objections in the brief
+5. Three verbatim reviews as text
+6. Alt text that describes the image, not the product name
+7. Internal links: each product links to its hub page, its routine partners and the research page
+8. Product schema verified in the Rich Results Test
+Why this order: title and first 100 words carry the most ranking weight per minute of work, and the FAQ
+block is what gets quoted in AI Overviews. Effect: money pages move into the 8 to 20 band for their
+owner queries within six weeks, which makes them candidates for the push loop.
+
+PHASE 3: NEW PAGES AND CADENCE (WEEKS 3 TO 4)
+Target site architecture after this phase:
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEO AUDIT FOR ARATA.IN                                                  7
+                                                                                                  DIAGRAM
+    Home
+    ├── Shop by problem
+    │   ├── /pages/hair-fall         (hub: what, why, routine, products, FAQ)
+    │   ├── /pages/dandruff          (hub)
+    │   ├── /pages/grey-hair         (hub)
+    │   └── /pages/styling           (hub, later)
+    ├── Collections (routing pages with content)
+    │   ├── /collections/hair-growth
+    │   ├── /collections/anti-dandruff
+    │   └── /collections/styling
+    ├── Products (14 money pages, owners of buy queries)
+    ├── Research
+    │   ├── /pages/y100             (ingredient: mechanism, studies, who it is for)
+    │   ├── /pages/hairdian-ap      (ingredient)
+    │   ├── /pages/melanogray       (ingredient)
+    │   └── /pages/our-lab          (E-E-A-T: lab, team, methods, author bios)
+    └── Lab Notes (one post a week, each mapped to a query and linking to one owner page)
+
+
+
+
+Every page within three clicks of the homepage. Every hub links down to products and up to research.
+Every Lab Notes post links to exactly one owner page with a descriptive anchor ("the anti-hair fall
+shampoo with a 7.4X reduction claim").
+Why hubs: "how to stop hair fall" and "dandruff treatment" are research queries. A product page
+cannot answer them and a PharmEasy listicle currently does. A hub that answers in the first two
+sentences and routes to the routine captures the searcher one step earlier than any competitor brand
+page.
+Why ingredient pages: "Y100", "Hairdian AP" and "MelanoGray" have close to zero competition and
+you hold the India licence for Y100. These pages rank fast and become the proof layer every product
+page links to.
+Lab Notes cadence: one post a week, Thursday, each from the keyword map. The first eight titles are
+in the appendix.
+
+PHASE 4: REBRAND PROTECTION (WEEK 4 ONWARD)
+What: a URL freeze (no handle changes), a redirect map for any page that must move, title and H1
+parity checks, a pre-launch crawl of staging, a post-launch crawl within 24 hours. Why: the rebrand is
+the single biggest SEO risk in the next two quarters. Effect: organic traffic holds flat or climbs through
+the rebrand instead of dropping for a quarter.
+
+THE PUSH LOOP (FROM WEEK 6)
+Once the foundation is in, we run the striking-distance loop weekly from Search Console:
+                                                                                                 DIAGRAM
+    Pull query+page pairs (28 days)
+      → Bucket: position 8–20 with 100+ impressions   → content and links
+      → Bucket: position 1–5 with low CTR             → title and meta only
+      → Bucket: position 4–7 on a revenue query       → format and links
+      → Check cannibalisation (two pages, one query) → merge and redirect
+      → Make the smallest change that closes the gap
+      → Record baseline, wait 3 to 4 weeks, judge
+      → Two rounds with no movement → stop, it is authority
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEO AUDIT FOR ARATA.IN                                                     8
+WORKED EXAMPLES
+WORKED EXAMPLE 1: TITLE AND META DESCRIPTION REWRITES FOR THE MONEY PAGES
+Current titles are the Shopify default pattern (verify in crawl; replace the "Current" column with the
+crawl export before approval). Proposed titles keep the query first, add the reason to click, and keep
+the brand last.
+                       CURRENT
+                       (DEFAULT                 PROPOSED TITLE
+ PAGE                  PATTERN)                 (≤60 CHARS)          PROPOSED META DESCRIPTION           REASON
+
+ Anti-Hair Fall        Anti-Hair Fall           Anti Hair Fall       Hair fall shampoo with Hairdian     Query first, the study
+ Intensive             Intensive                Shampoo, 7.4X        AP, rosemary and caffeine. 7.4X     number is the click
+ Shampoo               Shampoo – Arata          Less Hair Fall |     hair fall reduction in a tensile    reason
+                                                Arata                strength study. 200 ml, ₹359.
+                                                                     Made for Indian hard water.
+ Hair Growth           Hair Growth              Hair Growth Serum: Leave-on hair growth serum for        Outcome plus timeline;
+ Intensive             Intensive Serum –        Up to 28,200 New thinning and hair fall. Up to           "not minoxidil" matches
+ Serum                 Arata                    Hairs in 84 Days   28,200 new hairs in 84 days in a      the core job
+                                                                   consumer study. 30 ml, ₹571,
+                                                                   474 reviews. Not minoxidil.
+ Hair Growth           Hair Growth              Hair Growth Serum    The full 84-day course of the       Routine framing so it
+ Serum Pack of         Intensive Serum          3-Month Pack         Hair Growth Intensive Serum.        supports the single
+ 3                     Pack of 3 – Arata        (49% Off) | Arata    Three 30 ml bottles for ₹999        serum rather than
+                                                                     instead of ₹1,947. One pack, one    competing
+                                                                     routine, no reorder gap.
+ MitoActive            MitoActive               MitoActive:          India's first mitochondrial hair    Owns "mitochondrial"
+                       Mitochondrial Hair       Mitochondrial Hair   growth treatment. Powered by        and "Y100"; cost per day
+                       Growth Serum –           Growth Serum with    Y100. 87% saw increased             answers the price
+                       Arata                    Y100                 growth in 84 days, up to 95%        objection in the snippet
+                                                                     less hair fall. 30 ml, ₹1,499,
+                                                                     about ₹50 a day.
+ Anti-Breakage Anti-Breakage                    Anti Breakage        Conditioner for hair that snaps     In-vitro claim stated
+ Intensive     Intensive                        Conditioner, 78%     and sheds. 78% stronger hair        honestly
+ Conditioner   Conditioner –                    Stronger Hair in 1   after one wash in lab testing.
+               Arata                            Wash                 Pairs with the Anti-Hair Fall
+                                                                     Shampoo. 200 ml, ₹359.
+ Anti-Dandruff         Anti-Dandruff            Anti Dandruff        Anti dandruff shampoo that          "Does not dry hair out" is
+ Shampoo               Shampoo – Arata          Shampoo: 95%         targets the fungus behind flakes.   Dandruff Divya's push
+                                                Less Fungus in 1     Up to 95% reduction in 1 wash.      away from Head &
+                                                Wash | Arata         Sulphate-free, does not dry hair    Shoulders
+                                                                     out. 200 ml, ₹404.
+ Anti-Dandruff         Anti-Dandruff            Dandruff Scalp       Leave-on scalp serum for itching Claims "scalp serum for
+ Serum                 Serum – Arata            Serum: Up to 36-     and flakes between washes. Up itching", a query with no
+                                                Hour Itch Relief |   to 36-hour itch relief. 30 ml,   brand owner
+                                                Arata                ₹299. Use after the Anti-
+                                                                     Dandruff Shampoo.
+ Damage        Damage Defence                   Shampoo for          Repair shampoo for heat, colour     Query is "shampoo for
+ Defence Super Super Shampoo –                  Damaged Hair,        and pollution damage. 94%           damaged hair", not the
+ Shampoo       Arata                            94% Keratin          keratin retention, 95% moisture     product name
+                                                Retention | Arata    boost. 200 ml, ₹395.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEO AUDIT FOR ARATA.IN                                                                               9
+                       CURRENT
+                       (DEFAULT                 PROPOSED TITLE
+ PAGE                  PATTERN)                 (≤60 CHARS)           PROPOSED META DESCRIPTION           REASON
+
+ Anti-Grey Hair Anti-Grey Hair                  Anti Grey Hair        Anti grey serum with MelanoGray "No dye" is the switch
+ Serum          Serum – Arata                   Serum: Up to 86%      and vegan keratin. Up to 86%     trigger for Grey-early
+                                                Fewer Greys, No       reduction in greys over 3 months Gaurav
+                                                Dye                   in best responders. 30 ml, ₹449.
+                                                                      A 3-month plan, no colour.
+ Hair Gel              Hair Gel – Arata         Hair Gel for Men:     Hair gel with 72-hour hold that     Humidity is the India-
+                                                72-Hour               survives Indian humidity. No        specific angle no global
+                                                Humidity-Resistant    crunch, no white flakes, no         brand claims
+                                                Hold                  stiffness. With niacinamide and
+                                                                      panthenol. From ₹269.
+ Hair Growth           Hair Growth –            Hair Growth           Shampoo, serum and MitoActive       Collection takes the
+ collection            Arata                    Products for Hair     for hair fall and thinning. Every   broad category, products
+                                                Fall and Thinning |   product carries a number from a     take the buy queries
+                                                Arata                 study. Build an 84-day routine
+                                                                      from ₹359.
+ Anti-Dandruff         Anti-Dandruff –          Dandruff Shampoo, The anti dandruff routine:              Lists the routine so it
+ collection            Arata                    Conditioner and     shampoo, conditioner and a            routes, not competes
+                                                Scalp Serum | Arata leave-on serum. 95% fungus
+                                                                    reduction, 36-hour itch relief.
+                                                                    From ₹299.
+ Styling               Styling – Arata          Hair Styling       Gel, cream, texturising spray and Same humidity angle
+ collection                                     Products for Humid stick with up to 72-hour hold.
+                                                Weather | Arata    Built for Indian heat and humidity.
+                                                                   ₹269 to ₹699.
+ Homepage              Arata                    Arata | Hair & Scalp Hair fall, dandruff, damage and      Entity line fixes the
+                                                Science Co. for      grey products with a number on       "Arata" ambiguity
+                                                Indian Hair          every bottle. Tested on Indian
+                                                                     hair and weather. 1.5M+
+                                                                     customers. Free shipping above
+                                                                     ₹299.
+
+
+WORKED EXAMPLE 2: FULL ON-PAGE SPEC FOR THE ANTI-HAIR FALL INTENSIVE SHAMPOO PAGE
+This is the page we fix first. It owns the biggest buy query and already has 222 reviews.
+URL: /products/anti-hair-fall-intensive-shampoo (keep the current handle whatever it is; never
+change slugs to chase a keyword)
+Title: Anti Hair Fall Shampoo, 7.4X Less Hair Fall | Arata
+H1: Anti-Hair Fall Intensive Shampoo
+First 100 words (above the buy box, as text):
+Anti-hair fall shampoo with Hairdian AP, rosemary and caffeine. In a tensile strength study it reduced
+hair fall by 7.4X. 200 ml, ₹359. Made for Indian hard water, humidity and heat.
+Use it every wash. Most people see less hair on the pillow and in the drain inside the first month. For
+thinning at the crown, pair it with the Hair Growth Intensive Serum and give the routine 84 days. No
+sulphates, no parabens, vegan, dermatologically tested.
+H2 structure:
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEO AUDIT FOR ARATA.IN                                                                              10
+    Who this shampoo is for (hair fall after illness, post-partum, stress, hard water, a new city)
+    How 7.4X was measured (the study, in plain words, with a link to the research page)
+    What is inside and why each active is there (Hairdian AP, rosemary, caffeine, niacinamide)
+    How to use it with the serum: the 84-day routine
+    What customers say (three verbatim reviews as text: "Hair fall reduced drastically", "Foams well
+    and cleans my scalp off dirt and excess oil", "Finally I got a shampoo free from hard chemicals")
+    Questions people ask (FAQ block)
+FAQ block (marked up as FAQPage):
+1. Does this shampoo stop hair fall? It reduces hair fall from breakage and weak roots. In a tensile
+   strength study the reduction was 7.4X. It does not treat pattern baldness on its own; for thinning,
+   add the serum.
+2. How long before I see a difference? Most customers report less shedding within two to four weeks.
+   The full routine with the serum is built around 84 days.
+3. Is it safe for coloured or chemically treated hair? Yes. It is sulphate-free and paraben-free, so it
+   does not strip colour.
+4. Will it work in hard water? It was formulated and tested for Indian hard water, so it foams and rinses
+   clean in Bangalore, Delhi and Chennai supply.
+5. Shampoo or serum, which do I buy first? If your main problem is the amount of hair you lose each
+   wash, start with the shampoo. If your main problem is visible thinning, start with the serum. The
+   combo at ₹638 covers both.
+Internal links (descriptive anchors):
+    To /pages/hair-fall : "why hair falls more in Indian cities"
+    To the serum: "the hair growth serum with the 28,200 new hairs claim"
+    To the S+C combo: "the anti-hair fall shampoo and conditioner combo at ₹638"
+    To /pages/hairdian-ap : "what Hairdian AP does to the root"
+    To the replacement policy: "if your bottle arrives leaking, we replace it, no questions"
+Alt text:
+    Hero: "Arata Anti-Hair Fall Intensive Shampoo 200 ml bottle, white and lab-blue"
+    Study graphic: "Chart showing 7.4X hair fall reduction in tensile strength study"
+    Texture shot: "Shampoo lather on wet scalp"
+    Routine shot: "Anti-hair fall shampoo and hair growth serum used together"
+Schema fields: Product (name, image, description, brand Arata, sku), Offer (price 359, priceCurrency
+INR, availability InStock, url), AggregateRating (from Loox, 222 reviews), FAQPage (five questions
+above), BreadcrumbList (Home > Hair Growth > product).
+
+WORKED EXAMPLE 3: THE HAIR FALL HUB PAGE, /PAGES/HAIR-FALL
+A research page that captures "how to stop hair fall" and "hair fall solution" one step before the
+product query. Answer first, then expand.
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEO AUDIT FOR ARATA.IN                                                  11
+Title: How to Stop Hair Fall: What Works and in How Long | Arata H1: How to stop hair fall Meta
+description: Hair fall has four common causes in India: hard water, stress and illness, post-partum
+shedding and early pattern thinning. Here is what works for each, with timelines and numbers.
+Opening (the quotable passage):
+You lose 50 to 100 hairs a day normally. Hair fall is a problem when the number climbs, when you see
+hair on the pillow every morning, or when your parting looks wider than it did six months ago. The fix
+depends on the cause, and most people in India have one of four.
+H2s and the one-line answer under each:
+    Hard water: the most common cause nobody names. Calcium and magnesium leave a film on the
+    scalp and weaken the strand. A sulphate-free shampoo built for hard water fixes this in weeks.
+    (Links to the shampoo.)
+    Stress, illness or a new city: the shedding starts two to three months after the trigger and stops on
+    its own if the scalp is supported. (Links to the shampoo and serum.)
+    Post-partum shedding: normal, peaks at four months, a routine gets you through it. (Links to the
+    combo.)
+    Early pattern thinning: the one that does not reverse by itself. The serum carries a 28,200 new hairs
+    claim over 84 days; MitoActive works on the mitochondria of the follicle. (Links to both.)
+    What does not work: onion juice, rosemary water alone, biotin gummies without a deficiency. Say it
+    plainly; the customer has already tried them.
+    When to see a dermatologist: patches, scalp pain, sudden loss. Send them. It keeps the page
+    honest.
+    The 84-day routine: shampoo every wash, serum twice a day, a photo on day 1, 28, 56, 84.
+FAQ: Is hair fall of 100 strands normal? Does hair fall increase in monsoon? Does hair fall shampoo
+work? Minoxidil or serum first?
+Internal links in: homepage "Shop by problem", every hair growth product page, the Hair Growth
+collection, three Lab Notes posts.
+
+WORKED EXAMPLE 4: LEGACY SKU REDIRECT MAP AND ROBOTS ADDITIONS
+Handles are illustrative until we pull products.json; the mapping logic is the deliverable.
+ LEGACY URL (IF LIVE OR 404)                301 TO                                          REASON
+
+ /products/super-shampoo-                   /products/anti-hair-fall-intensive-shampoo      Same job, current hero
+ onion
+ /products/super-shampoo-                   /products/anti-hair-fall-intensive-shampoo      Naming variant of the same legacy
+ biotin                                                                                     SKU
+ /products/happy-hair-duo                   /products/anti-hair-fall-shampoo-conditioner-   Successor combo at ₹638
+                                            combo
+ /products/damage-repair-duo                /products/damage-defence-super-shampoo          Nearest live successor
+ /products/hair-growth-tonic                /products/hair-growth-intensive-serum           "Tonic" naming variant
+ /collections/curl-care                     /collections/damage-defence                     Range retired; closest intent
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEO AUDIT FOR ARATA.IN                                                                     12
+ LEGACY URL (IF LIVE OR 404)                301 TO                                            REASON
+
+ /products/curl-care-shampoo                /products/damage-defence-super-shampoo            Range retired
+ /products/curl-care-                       /products/anti-breakage-intensive-conditioner     Range retired
+ conditioner
+ /collections/all                           keep, noindex                                     Shopify default, zero search value
+
+
+robots.txt.liquid           additions, applied only after the crawl confirms no tag page ranks:
+                                                                                                                       DIAGRAM
+     # Arata additions (do not remove Shopify defaults above)
+     Disallow: /collections/*/*          # tag pages
+     Disallow: /products/*.json
+     Disallow: /collections/vendors
+     Disallow: /*?variant=
+     Sitemap: https://arata.in/sitemap.xml
+
+
+
+
+WORKED EXAMPLE 5: LAB NOTES POST, WEEK ONE
+Title: Hair Fall After Moving to Bangalore? It Is Probably the Water Target query: hair fall hard water.
+Owner page: Anti-Hair Fall Intensive Shampoo. Author line: Written by the Arata lab team, New Delhi.
+Reviewed by the lab lead.
+Opening two sentences: If your hair fall started within three months of moving to Bangalore, Chennai,
+Delhi or Gurugram, the water is the first suspect. Borewell and tanker supply in these cities carries
+calcium and magnesium that coat the strand, dull the hair and loosen it at the root.
+Sections: what hard water does to the strand (the lab's own TDS readings if available), how to tell if it
+is the water, what to change (shampoo first, chelating rinse, serum if thinning has started), what not to
+buy, a 28-day check. 900 to 1,200 words, three internal links, published Thursday.
+
+
+
+30-DAY DEPLOYMENT
+ WEEK BREW SHIPS                                                    ARATA PROVIDES                    LIVE BY END OF WEEK
+
+ 1         Full JS-rendered crawl, PageSpeed on five                  Search Console, GA4 and           Baseline recorded;
+           templates, rendered schema check, backlink export,         Shopify admin access;             findings doc approved;
+           baseline table for 12 owner queries, findings doc          products.json export; list of     naming freeze agreed
+           replacing every "verify" above                             archived and unpublished
+                                                                      handles; current theme name
+                                                                      and app list
+ 2         Redirect map implemented, canonical internal links         Approval of redirect map;         Crawl clean; sitemap
+           in theme, channel and sitemap cleanup,                     confirmation of which legacy      lists only pages we want
+           robots.txt.liquid, Organization schema,                    SKUs stay on marketplaces         ranked; legacy URLs
+           replacement-policy page, CWV fixes (hero poster,           only; lab lead name and bio for   301; schema validated
+           deferred app scripts, reserved heights)                    author pages                      on product template
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEO AUDIT FOR ARATA.IN                                                                            13
+ WEEK BREW SHIPS                                                    ARATA PROVIDES                    LIVE BY END OF WEEK
+
+ 3         On-page rewrite of 14 money pages (titles, meta,           Study summaries for the 7.4X,     All 14 money pages live
+           H1/H2, first 100 words, FAQ blocks, verbatim               28,200, 95%, 86%, 87% claims      with new titles; Rich
+           reviews, alt text, internal links); FAQPage schema;        (design, n, duration); approval   Results Test passes on
+           Hair Growth collection rebuilt as routing page             of FAQ answers                    each
+ 4         /pages/hair-fall, /pages/dandruff, /pages/y100,            Review of hub copy; Y100          Six new pages indexed
+           /pages/hairdian-ap, /pages/our-lab live and linked         study material from Yuva          and linked; Lab Notes on
+           from three pages each; Lab Notes posts 1 and 2             Biosciences licence pack;         a Thursday cadence;
+           published; rebrand redirect and freeze doc handed          rebrand staging URL for pre-      rebrand protection doc
+           to the rebrand agency; weekly push loop set up in          launch crawl                      signed off
+           Search Console
+
+
+Owners: Brew SEO lead (audit, technical, push loop), Brew content lead (money pages, hubs,
+Lab Notes), Brew developer (theme, redirects, schema), Arata brand manager (approvals, naming
+freeze), Arata lab lead (study summaries, author line), Arata ops lead (marketplace naming parity).
+
+
+
+HOW WE MEASURE
+ METRIC                          BASELINE                      90-DAY TARGET                              SOURCE
+
+ Indexed pages vs                To be instrumented (week 1    Gap under 5%                               Search Console
+ intended pages                  crawl vs Search Console)                                                 coverage
+ Duplicate and legacy            To be instrumented            Zero                                       Search Console, site:
+ URLs in index                                                                                            checks
+ Core Web Vitals,                To be instrumented            LCP under 2.5s, INP under 200ms, CLS       PageSpeed, CrUX
+ mobile, product                                               under 0.1 on 75th percentile
+ template
+ Owner query positions Recorded week 1                         8 of 12 in top 10; "mitochondrial hair     Search Console
+ (12 queries)                                                  growth serum" and "Y100 hair" in top 3
+ Non-brand organic               To be instrumented            +50% over baseline (target, label as       Search Console
+ clicks to money pages                                         assumption until baseline exists)          filtered by query
+ Organic sessions to             Share of the ~650K monthly    +30% organic sessions                      GA4
+ arata.in                        visits to be split in GA4
+ Organic revenue on              To be instrumented            Organic share of the 32% own-site          GA4 ecommerce,
+ arata.in                                                      revenue up by a third                      Shopify
+ Rich results on                 To be instrumented            Stars and FAQ showing on all 11 money      Search Console
+ product pages                                                 products                                   enhancements
+ MitoActive reviews              0                             50+ so AggregateRating renders             Loox
+ Lab Notes cadence               Bursts; seven in March 2026   12 posts in 12 weeks, each linking to      Blog
+                                                               one owner page
+ Rebrand traffic hold            Organic sessions in the 28    Within 5% at 28 days after launch          GA4
+                                 days before launch
+
+
+Decision rules:
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEO AUDIT FOR ARATA.IN                                                                           14
+    If a money page moves into the 8 to 20 band within six weeks, it enters the push loop: add the
+    missing section, add three internal links, wait three to four weeks, judge.
+    If a page sits in the top 5 with CTR below the pages around it, we change the title and meta only,
+    nothing else, so the result is attributable.
+    If two rounds of changes move a page nowhere, we stop editing it. The gap is authority, and the
+    work shifts to getting that page into the listicles and press, not more copy.
+    If organic sessions do not rise by at least 15% in 90 days with a clean crawl and all 14 pages
+    shipped, the plan was wrong about intent, and we rebuild the keyword map from real Search
+    Console queries rather than the brief's assumed ones.
+    If the rebrand drops organic sessions by more than 10% at 14 days, we roll back titles and
+    templates to the pre-launch state while keeping the new visual layer.
+
+
+
+APPENDIX
+NEW PAGE CHECKLIST (EVERY HUB, INGREDIENT AND LAB NOTES PAGE)
+    Internal links from at least three existing pages, descriptive anchors
+    Unique title and meta description matching the target query; one H1 aligned with the title
+    Self-referencing canonical; in the sitemap; no stray noindex or robots block
+    Schema for the page type (Article, FAQPage, Product)
+    Main content in Shopify sections, not app-injected blocks
+    One clear path to the owner product page
+    Request indexing once in Search Console; never resubmit
+
+REBRAND PROTECTION CHECKLIST
+    Handles frozen; any page that must move gets a 301 in one approved sheet
+    New theme renders the week-3 titles and H1s, not theme defaults
+    Pre-launch crawl of staging; post-launch crawl within 24 hours
+    Loox, schema and Core Web Vitals re-verified on day 1 and day 7
+
+FIRST EIGHT LAB NOTES TITLES (ONE PER WEEK, FROM THE KEYWORD MAP)
+1. Hair Fall After Moving to Bangalore? It Is Probably the Water
+2. How Many Hairs a Day Is Normal, and When to Act
+3. Dandruff That Comes Back Every Winter: Why, and How to Stop the Cycle
+4. What Y100 Does to a Hair Follicle, Explained Without the Jargon
+5. Post-Partum Hair Fall: The 4-Month Timeline and What Helps
+6. Minoxidil or a Serum First? An Honest Comparison
+7. Early Greys in Your 20s: What MelanoGray Can and Cannot Do
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEO AUDIT FOR ARATA.IN                                                  15
+8. How We Measured 7.4X: Inside the Tensile Strength Study
+
+SOURCES USED FOR THIS AUDIT
+    The Arata product marketing brief (catalogue, prices, claims, reviews, channel mix, known gaps)
+    Live SERP check for "best hair fall shampoo India" (publisher listicles from Business Insider,
+    PharmEasy, Truemeds, MomJunction, StyleCraze hold the page)
+    A site:arata.in lookup showing unrelated "Arata" entities, used for the entity-ambiguity finding
+    Shopify platform defaults for canonicals, robots.txt, sitemaps and app-injected schema
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SEO AUDIT FOR ARATA.IN                                                16
+SEO
+
+
+DAY 30
+AT ARATA
+      WHAT IS LIVE
+
+      Crawl clean, every money page owns one query with a unique title and product
+      schema, legacy SKUs redirected, and the first six problem and ingredient pages
+      live and internally linked.
+
+
+
+
+ NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+ BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+ CONFIRM".
+
+
+ EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+ BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                   DEPLOYMENT TEAM
+                                                                                BREW
+

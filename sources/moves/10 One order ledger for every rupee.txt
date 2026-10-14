@@ -1,0 +1,824 @@
+      Brew                                       PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+ATTRIBUTION AND MEASUREMENT · MOVE 10 OF 50
+
+
+
+ONE ORDER
+LEDGER
+FOR EVERY
+RUPEE
+  A WAY TO KNOW WHICH MARKETING ACTUALLY CAUSES
+  ARATA'S ORDERS WHEN TWO OUT OF THREE ORDERS
+  HAPPEN ON BLINKIT, AMAZON AND NYKAA WHERE NO
+  PIXEL CAN SEE THEM.
+
+
+
+
+68%
+OF REVENUE YOUR PIXELS CANNOT SEE
+
+
+
+
+BREW × ARATA                      OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                    V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                              WHAT THIS GIVES ARATA
+                                                              A way to know which marketing actually causes
+                                                              Arata's orders when two out of three orders happen
+                                                              on Blinkit, Amazon and Nykaa where no pixel can
+
+
+        68%
+                                                              see them.
+                                                              LIVE 30 DAYS AFTER WE START
+                                                              One deduplicated weekly order ledger across
+        OF REVENUE YOUR PIXELS CANNOT                         arata.in, marketplaces and quick commerce, a post-
+        SEE
+                                                              purchase survey live on the thank-you page, on
+                                                              WhatsApp and on a pack insert, branded search
+                                                              split from category search, and the first all-channel
+                                                              city holdout test running on Meta.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+This document applies our attribution playbook, written for software companies, to a shampoo and
+serum brand. The "CRM as source of truth" becomes the order ledger across Shopify, marketplaces
+and quick commerce. The "demo request" becomes a first order. The "sales call that never shows up
+in analytics" becomes a Blinkit order placed ten minutes after someone saw a Reel.
+Arata has a measurement problem that is shaped like its channel mix. FY25 revenue was ₹61.1 Cr, split
+38% marketplaces, 32% arata.in, 30% quick commerce. The brand runs ads on Meta and Google,
+pays creators, and spent real money on a Samay Raina mock podcast whose stated goal was brand
+recall, in the founders' words "real estate in people's minds". Every one of those investments is
+measured by a pixel that lives on arata.in. That pixel sees 32% of the outcome. When Hair-fall Rahul
+watches the podcast clip on YouTube, sees a Reel three days later, and orders the Hair Growth
+Intensive Serum on Blinkit for ₹571, Meta reports nothing, GA4 reports nothing, Shopify reports
+nothing. The sale shows up as "Blinkit grew" in a seller dashboard a week later. The marketing that
+caused it looks like it did nothing.
+The opposite error happens on the 32% the pixel can see. Meta and Google each claim arata.in orders
+inside their own windows, including view-through. On a brand doing 50,000 D2C orders a month, the
+two platforms together will routinely report more orders than Shopify processed. Add the GA4 view,
+where WhatsApp forwards, Instagram in-app browsers and UPI payment redirects dump orders into
+"direct", and the brand is holding three dashboards that each tell a different story. Nobody is lying.
+Each one is counting its own way.
+What this costs: the ₹160 Cr target needs a marketing budget that will likely run into double-digit
+crores a year (Traya spent ₹138 Cr to reach ₹343 Cr). Allocating that budget on platform-reported
+ROAS over-funds retargeting and branded search, which collect demand, and under-funds Reels,
+YouTube and the culture campaigns, which create it. Over a year that is the difference between buying
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE ORDER LEDGER FOR EVERY RUPEE                                                     1
+growth and buying the same customers twice. It also makes the quick-commerce question
+unanswerable: if Meta spend rises 30% and Blinkit orders rise 20% in the same month, is that cause
+or coincidence? Today Arata cannot say.
+The opportunity is unusual. Quick commerce is city-level by nature. Dark stores serve pin codes. Meta
+and Google can target and exclude by city. That means Arata can run the one kind of test that answers
+"did this channel cause orders on platforms we do not own": hold Meta out of a few cities, read total
+orders across all six channels in those cities, and compare. Most D2C brands cannot do this because
+their offline sales are not geographically reported. Arata's are. This document builds the ledger, the
+survey, the taxonomy and the first test, so the brand can move budget on evidence rather than on
+whichever dashboard shouts loudest.
+
+
+
+WHAT WE FOUND
+We have no access to Arata's ad accounts, GA4 property, Shopify admin or seller dashboards.
+Everything below is a desk audit from public surfaces and the brand brief. Items we could not verify
+are marked unknown. Numbers we had to construct for illustration are marked assumption.
+
+THE TWO SCOREBOARDS
+                                                                                                                        DIAGRAM
+     SPEND SIDE (what Arata buys)                          ORDER SIDE (what is real)
+     ─────────────────────────────                         ───────────────────────────────
+     Meta (Reels, retargeting) ──┐                         arata.in / Shopify        32%
+     Google (search, Shopping) ──┤                         ├─ pixel sees this
+     YouTube (podcast, pre-roll)──┤                        │
+     Creators / affiliates      ──┤   ????                 Amazon, Nykaa, Flipkart   38%
+     Blinkit / Zepto / Instamart──┤ ────────▶              ├─ no pixel, seller reports only
+     sponsored listings           │                        │
+     WhatsApp / email (owned)   ──┤                        Blinkit, Zepto, Instamart 30%
+     PR, podcast, culture       ──┘                        └─ no pixel, city-level reports
+
+
+
+
+Every attribution tool Arata could buy today works on the left side and on the top third of the right side.
+The bottom two-thirds has no join. The whole plan below is about building that join, through four
+routes: a ledger (count everything once), a survey (ask the customer), a city holdout (test causality),
+and a pack insert (give marketplace and quick-commerce buyers a way to identify themselves).
+
+DESK AUDIT OF THE MEASUREMENT FOUNDATION
+ CHECK                           RESULT           EVIDENCE                                 WHAT WE NEED FROM ARATA
+
+ One deduplicated order          Unknown,         Channel mix is reported as revenue       Shopify export,
+ count across all                likely no        share, which suggests finance rolls it   Amazon/Nykaa/Flipkart seller reports,
+ channels                                         up monthly, not weekly by city           Blinkit/Zepto/Instamart brand
+                                                                                           dashboards
+ Shopify purchase event Unknown                   Standard Shopify setup; may be           Events Manager, Google Ads
+ as the single conversion                         double-firing through an app plus        conversion actions
+ in Meta and Google                               native pixel
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE ORDER LEDGER FOR EVERY RUPEE                                                                  2
+ CHECK                           RESULT           EVIDENCE                                  WHAT WE NEED FROM ARATA
+
+ Branded vs non-                 Unknown          No account access                         Google Ads campaign structure,
+ branded search split                                                                       Search Console queries
+ Post-purchase "how did Fail                      None visible on arata.in checkout or      Nothing; we build it
+ you hear about us"                               thank-you page
+ survey
+ Referrer exclusions for         Unknown          Indian Shopify stores typically route     GA4 referral exclusion list
+ payment and login                                through Razorpay, PayU, Cashfree or
+ redirects                                        PhonePe pages; without exclusions
+                                                  those become the "source"
+ WhatsApp links carry            Unknown          WhatsApp strips referrers; untagged       WhatsApp marketing tool link
+ UTMs                                             links read as direct                      templates
+ Creator and affiliate           Unknown          Taapsee and Samay Raina campaigns         Creator link and code list
+ links are trackable                              ran; no public evidence of tracked
+                                                  links or codes
+ City-level order                Likely yes       Blinkit, Zepto and Instamart brand        Dashboard access
+ reporting from quick                             dashboards report by city; Amazon
+ commerce                                         reports by state at best
+ Customer record carries Fail                     No subscription, no CRM-driven            Shopify customer tags, WhatsApp tool
+ a source                (assumed)                routine, so no reorder flow consumes      fields
+                                                  a source today
+ Lab Notes and organic           Unknown          Posts publish in bursts (seven in         GA4 content grouping
+ content tagged by                                March 2026)
+ cluster
+
+
+HOW EACH OF ARATA'S SOURCES LIES
+ SOURCE                              BIASED TOWARD           WHY, IN ARATA'S CASE
+
+ Meta Ads Manager                    Over-counting           7-day click and 1-day view windows; counts an arata.in order from
+                                     itself                  someone who scrolled past a Reel and later Googled the brand
+ Google Ads                          Over-counting           Branded search campaigns catch demand that Reels and the podcast
+                                     itself                  created; Shopping claims orders from people who already decided
+ GA4                                 Last non-direct      Instagram in-app browser, WhatsApp forwards and UPI app redirects
+                                     click, then "direct" strip or overwrite referrers; a big slice of real paid-social and owned
+                                                          orders lands in direct or in a payment gateway referral
+ Shopify                             Last click, its own     Shopify's own "orders attributed to marketing" uses a different
+                                     way                     window from GA4; the two will not match
+ Seller dashboards                   On-platform ads         Sponsored listings on Blinkit claim orders from people who searched
+ (Amazon, Nykaa, Blinkit,                                    "arata" because of a Reel; they never see the Reel
+ Zepto, Instamart)
+ Post-purchase survey                The memorable           A customer remembers Samay Raina; she forgets the retargeting ad
+                                     touch                   that made her tap buy
+
+
+One point to carry through this entire document: India is roughly 19 in 20 Android, so iOS App Tracking
+Transparency, the thing that broke attribution for American D2C brands, matters much less here.
+Arata's signal loss comes from three other places: payments (UPI and gateway redirects), messaging
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE ORDER LEDGER FOR EVERY RUPEE                                                                   3
+(WhatsApp), and platforms (quick commerce and marketplaces). The fixes are different, and two of
+them are cheap.
+
+WHERE ARATA'S ORDERS HIDE
+     Direct. Bookmarks and typed URLs, yes. Also every WhatsApp forward of a product link, every link
+     shared in a family group, every Instagram in-app browser session where the referrer dropped, and
+     every customer who saw the podcast and typed arata.in. We expect direct to be large on arata.in.
+     That is evidence of a working top of funnel, and we will confirm it with the survey rather than
+     assume it.
+     Branded search. "arata hair fall shampoo", "arata serum review", "arata mitoactive". People who
+     discovered the brand on Reels or YouTube and Googled the name. Last click hands this to Google
+     Ads branded campaigns. Until branded and non-branded are split, the podcast and Reels will look
+     weak and branded search will look like the best channel in the account.
+     Quick-commerce search. "arata" typed into Blinkit or Zepto is the same branded-search
+     behaviour, one tap from purchase. Where the platform reports brand search impressions, it is the
+     cleanest recall metric Arata has for 30% of its revenue. Where it does not, city-level orders are the
+     proxy.
+     Dark social. A friend's Instagram story, a WhatsApp voice note saying "try the Arata one", a Reddit
+     thread on hair fall. No referrer, ever. Only the survey sees it.
+     AI search. "best hair fall serum that is not minoxidil" asked to an assistant, then a branded search.
+     Invisible to analytics. We name it here and leave the deeper work to the AI search document.
+
+A WORKED ARATA JOURNEY SCORED SIX WAYS
+Hair-fall Rahul, 28, Bangalore. Illustrative, assumption throughout.
+ #     DAY    TOUCH                                                                       CHANNEL
+
+ T1 0         Watches a Samay Raina podcast clip on YouTube; brand name is on the props   YouTube organic / PR
+ T2 3         Sees a Reel ad: "7.4X hair fall reduction"                                  Meta paid social
+ T3 9         Googles "arata hair growth serum review", clicks a branded search ad        Google paid search, branded
+ T4 10        Orders Hair Growth Intensive Serum on Blinkit, ₹571                         Quick commerce
+ T5 38        Scans the pack insert QR, lands on arata.in, joins WhatsApp                 Pack insert → owned
+ T6 52        WhatsApp reorder message; orders Pack of 3 on arata.in, ₹999                WhatsApp owned → arata.in
+
+
+Credit for the ₹999 arata.in order, which is the first order any pixel can see:
+                         FIRST-          LAST-          LAST NON-          TIME-DECAY (7-DAY    POSITION-BASED
+ TOUCH                   TOUCH           TOUCH          DIRECT      LINEAR HALF-LIFE)           (40/40/20)
+
+ T1 YouTube /            ₹999            0              0           ₹167    ₹6                  ₹400
+ podcast
+ T2 Reel ad              0               0              0           ₹167    ₹8                  ₹50
+ T3 Branded              0               0              0           ₹167    ₹14                 ₹50
+ search
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE ORDER LEDGER FOR EVERY RUPEE                                                       4
+                         FIRST-           LAST-         LAST NON-             TIME-DECAY (7-DAY             POSITION-BASED
+ TOUCH                   TOUCH            TOUCH         DIRECT         LINEAR HALF-LIFE)                    (40/40/20)
+
+ T4 Blinkit order        0                0             0              ₹167      ₹16                        ₹50
+ T5 Pack insert          0                0             0              ₹167      ₹250                       ₹50
+ T6 WhatsApp             0                ₹999          ₹999           ₹167      ₹705                       ₹400
+
+
+What this shows. The ₹571 Blinkit order, the one that actually made Rahul a customer, is credited to
+nothing by every model because it never entered a tracked journey. The ₹999 order, if read last-touch,
+makes WhatsApp look like a star channel; WhatsApp only existed because of a pack insert, which only
+existed because of a Blinkit order, which only existed because of a podcast and a Reel. Read first-
+touch and last-touch side by side and the gap is the insight: entertainment and Reels create Arata's
+demand; owned channels and branded search collect it. Neither number is the budget answer. The
+budget answer comes from the holdout test in the plan.
+
+PARADIGM FIT FOR ARATA
+ PARADIGM                    FIT TODAY            WHY
+
+ Multi-touch on              Use daily, trust     Fast and cheap; blind to 68% of orders and to impressions; over-weights
+ arata.in                    directionally        branded search and retargeting
+ Media mix                   Not yet; start the   Needs 2 to 3 years of weekly spend and outcome data with real budget swings.
+ modelling                   data table now       Arata grew 192% last year, so history is short and noisy. We build the weekly
+                                                  table from week 1 so a model is possible in 12 to 18 months
+ Incrementality              Start in week 4      Quick commerce reports by city, Meta and Google target by city; this is the one
+ (city holdout)                                   paradigm that can see the 68%
+ Self-reported               Start in week 2      Catches YouTube, podcast, friends, Reddit and "saw it on Blinkit"; the only way
+ survey                                           to read dark social and quick-commerce discovery
+
+
+
+
+THE PLAN
+Four layers, built in order. Each one works without the next.
+                                                                                                                        DIAGRAM
+     Layer 4     CITY HOLDOUT TESTS               "did Meta cause Blinkit orders?"          week 4 onward
+     Layer 3     SOURCE ON THE RECORD             source + confidence + basis per
+                 + TOUCH PATH                      customer, feeds reorder flows              week 3
+     Layer 2     SURVEY + PACK INSERT             ask every buyer, on every channel          week 2
+     Layer 1     ONE LEDGER + CLEAN FIRST         count every order once; stop payment
+                 TOUCH + BRANDED SPLIT             and WhatsApp from polluting source         week 1
+
+
+
+
+LAYER 1: ONE LEDGER, CLEAN FIRST TOUCH, BRANDED SPLIT
+What. A weekly order table, one row per channel per city per week, deduplicated: Shopify orders by
+ship-to city, Amazon/Nykaa/Flipkart by state or city as reported, Blinkit/Zepto/Instamart by city.
+Columns: orders, new vs repeat where the platform tells us, revenue, units, hero SKU share
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE ORDER LEDGER FOR EVERY RUPEE                                                                   5
+(MitoActive, Intensive Serum, Anti-Hair Fall Shampoo, Anti-Dandruff Shampoo). Alongside it, a weekly
+spend table by channel and by city where the platform reports it.
+Why. Attribution starts with one number for conversions. Today that number is Shopify's for 32% and
+a monthly finance roll-up for the rest. Platform claims get deduplicated against the ledger. They never
+add to it.
+Rule we write down. Never sum platform-reported orders. If Meta claims 31,000 and Google claims
+17,500 against 50,000 Shopify orders, Arata has 50,000 orders with overlapping claimants. The ledger
+defines "how many". Platforms explain "from where".
+Clean first touch (settings, not code). In GA4 referral exclusions and in the analytics tool: Razorpay,
+PayU, Cashfree, PhonePe, Google Pay, Paytm, shop.app and Shopify checkout hosts,
+accounts.google.com, any Arata subdomain. Without this, a Reel-driven order whose payment went
+through a UPI app can come back with the UPI app as its source. This is the highest-trust-per-effort
+fix in the plan. One afternoon.
+Branded split. Separate Google Ads campaigns for branded ("arata", misspellings, "arata mitoactive")
+and non-branded ("hair fall shampoo", "hair growth serum", "minoxidil alternative"). In reporting,
+branded search and direct are grouped as "demand collected", never as channels that create
+customers. Branded search impressions from Search Console become a weekly recall KPI, plotted
+against culture campaign flights and Reel spend.
+Expected effect. Within two weeks Arata has, for the first time, a single page that says how many
+orders happened, where, and what was spent. The paid-social share of arata.in orders in GA4 rises
+once payment referrers stop stealing credit; direct shrinks by the same amount.
+
+LAYER 2: ASK EVERY BUYER
+What. One question at three moments.
+1. arata.in thank-you page, right after the order confirmation: "How did you first hear about Arata?"
+   Pick-list plus free text. Target 25% response (assumption, typical for a one-question thank-you
+   page survey).
+2. WhatsApp, 2 days after delivery, for every arata.in customer who opted in: same question, tap-to-
+   answer.
+3. Pack insert in every unit shipped through quick commerce and marketplaces: a QR to arata.in/start
+   that asks "where did you buy this" and "how did you first hear about us", then offers WhatsApp
+   opt-in and a reorder benefit. This is the only route to a self-reported read on 68% of orders, and
+   the only route to owning that customer's phone number.
+Why. On a brand whose founders explicitly spend on recall, the survey is the primary measurement of
+that spend. It is also the tiebreaker when Meta and Google claim the same arata.in order.
+How we use it. Survey share is evidence of awareness, never a credit rule. If 18% of respondents say
+YouTube, that tells us YouTube is working and that YouTube should earn a bounded override in
+reporting (Layer 3), after a holdout confirms direction. We discount survey share, we do not paste it
+into the allocation.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE ORDER LEDGER FOR EVERY RUPEE                                         6
+Expected effect. A monthly "where customers come from" chart that includes podcast, YouTube,
+friends, Reddit and "saw it on Blinkit", none of which any pixel reports. The pack insert adds a
+WhatsApp number from a share of quick-commerce buyers (assumption: 3% to 6% scan rate), which
+is the first owned relationship with the 68%.
+
+LAYER 3: SOURCE ON THE RECORD, FULL TOUCH PATH
+What. Three fields on every customer in Shopify (as tags) and in the WhatsApp and email tool:
+     source   : the channel, from our taxonomy below
+     source_basis  : journey_linked (tracked click path on arata.in), self_reported (survey or pack
+    insert), code (creator or affiliate coupon), campaign_window (fallback: date, landing page and active
+    UTMs narrow it to one source), or unknown
+     source_confidence : high, medium, low, computed from evidence quality, not just basis. A
+    journey_linked click with clean UTMs is high. The same with a missing medium is medium. A
+    specific self-report ("Samay Raina podcast") is high. "Social media" is low.
+Plus acquisition_cost_class : paid (cpc, paid-social, display, sponsored creator, quick-commerce
+sponsored listing), owned (WhatsApp, email, pack insert), earned (organic search, organic social, PR,
+podcast, word of mouth), marketplace_organic , direct_unknown .
+And the ordered touch path per customer: channel and timestamp for every tracked touch on arata.in,
+stored on the customer, so position-based and time-decay can be scored on Arata's own data instead
+of only read in a dropdown.
+Why. A breakdown in GA4 is a report. A source on the customer record is something the 45-day
+reorder flow can branch on. A pack-insert customer who came from Blinkit gets a different day-35
+message from a customer who came from a MitoActive search ad. That is the hand-off to the retention
+and email plans.
+Identity gap for Arata. Shopify identifies at checkout, so arata.in buyers are already joined to their
+browsing session. The un-joined conversions are: WhatsApp opt-ins that happen before purchase
+(join on phone number), quiz or routine-builder completions once those exist (join at completion), and
+every marketplace or quick-commerce buyer (join only through the pack insert or a later arata.in order
+on the same phone number). We instrument only those. We do not rebuild the checkout join that
+already works.
+Documented override rule. Once the city holdout gives a measured lift for Meta, we add a channel-
+level override in the reporting layer: shift a conservative share of "direct" and "branded search"
+arata.in orders into Meta for the test window, bounded by the measured lift, never 100% of a noisy
+point estimate. The raw table stays untouched. Decision dashboards read the adjusted one. One
+channel, one rule, dated.
+Expected effect. Every new customer carries a labelled, confidence-rated origin within 30 days. The
+share of customers with source_basis = unknown becomes a tracked coverage metric and falls month
+on month.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE ORDER LEDGER FOR EVERY RUPEE                                           7
+LAYER 4: CITY HOLDOUT TESTS
+What. Hold Meta prospecting out of a set of cities for four weeks. Keep everything else running
+everywhere. Read total orders across all six channels, by city, by week, before and during. Lift in
+exposed cities minus lift in held-out cities is the incremental effect of Meta on all of Arata's orders,
+including the ones on Blinkit and Amazon.
+Why. This is the only test that answers the question the whole channel mix raises. It also calibrates
+platform ROAS: when Meta reports a 4.0 ROAS on arata.in and the holdout shows a 1.8 incremental
+blended return across all channels, Arata knows the discount to apply to Meta's number, and knows it
+from its own data.
+Sequence. Test 1 (week 4 to 8): Meta prospecting, city holdout. Test 2 (week 9 to 12): branded search
+paid on/off, alternating two weeks on and two weeks off, measuring total branded clicks (paid plus
+organic) and arata.in orders; the question is whether paid branded buys clicks organic would have
+delivered. Test 3 (from week 6, continuous): a 10% random holdout on the day-35 WhatsApp reorder
+message, so the retention plan is measured on lift rather than on opens.
+Expected effect. Three numbers that today do not exist: incremental blended CPA for Meta across all
+channels, the cannibalisation rate of paid branded search, and the true lift of the reorder nudge. These
+three move more budget correctly than any model.
+
+CHANNEL TAXONOMY FOR ARATA
+ GROUP                 CHANNELS                                               ROLE IN REPORTING
+
+ Paid: create          Meta prospecting (Reels, statics), YouTube pre-roll,   Evaluated by first-touch, survey share, and
+                       paid creators, podcast sponsorship                     holdout lift
+ Paid: collect         Meta retargeting, Google branded search, Shopping      Evaluated by last-touch and by cannibalisation
+                       on branded terms, quick-commerce sponsored             tests; never credited with creating demand
+                       listings
+ Paid: intent          Google non-branded search ("hair fall shampoo",        Evaluated by last non-direct; the one paid
+                       "minoxidil alternative"), Shopping on category terms   channel where last click is close to honest
+ Owned                 WhatsApp, email, pack insert, Lab Notes                Evaluated by holdout lift on repeat; first-touch
+                                                                              credit goes to whatever acquired the number
+ Earned                Organic search, organic social, PR, word of mouth,     Evaluated by survey and by branded search
+                       Reddit                                                 volume
+ Marketplace           Unpaid Amazon, Nykaa, Flipkart, Blinkit, Zepto,        Counted in the ledger; credited through city
+ organic               Instamart orders                                       holdout and survey only
+ Direct unknown No source                                                     Reported separately; composition investigated
+                                                                              monthly, never celebrated as a channel
+
+
+
+
+WORKED EXAMPLES
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE ORDER LEDGER FOR EVERY RUPEE                                                                8
+EXAMPLE 1: THE POST-PURCHASE SURVEY, FINISHED
+Placement A: arata.in thank-you page, below the order summary, before the "track your order"
+button.
+Heading: Quick one. How did you first hear about Arata?
+Options, shown in randomised order except the last two:
+    Instagram or Facebook (a Reel or an ad)
+    YouTube
+    The Samay Raina podcast episode
+    A friend or family member told me
+    Google search
+    Saw it on Blinkit, Zepto or Instamart
+    Saw it on Amazon, Nykaa or Flipkart
+    A dermatologist or salon
+    Reddit or another forum
+    A creator I follow (tell us who)
+    Something else (tell us)
+Free-text field under the last two options: "Tell us more, one line is enough."
+Confirmation line after tapping: Thanks. Your 84 days start today. We will check in at day 14.
+Why these options. Each maps to a row in the taxonomy. "Saw it on Blinkit" and "Saw it on Amazon"
+are the two answers no other brand's survey asks for, and they are the ones that explain Arata's 68%.
+The podcast gets its own line because the brand paid for recall and this is the recall meter.
+Randomised order removes position bias; "something else" stays last so free text stays clean.
+Storage: answer written to the customer as source_self_reported , with source_basis = self_reported
+and confidence high when the answer is specific (podcast, named creator) and low when generic
+(Instagram).
+Placement B: WhatsApp, 2 days after delivery
+
+   HI RITIKA, YOUR ANTI-HAIR FALL SHAMPOO SHOULD HAVE REACHED YOU
+   BY NOW. ONE QUICK QUESTION SO WE SPEND OUR MONEY ON THE
+   RIGHT THINGS: HOW DID YOU FIRST HEAR ABOUT ARATA?
+
+1. Instagram or Facebook
+2. YouTube or the Samay Raina episode
+3. A friend told me
+4. Google
+5. Saw it on Blinkit, Zepto or a marketplace
+6. Somewhere else (just type it)
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE ORDER LEDGER FOR EVERY RUPEE                                       9
+   REPLY WITH A NUMBER. TAKES TWO SECONDS.
+
+
+Follow-up on reply: "Got it, thank you. Day 14 check-in coming up. Rinse well, roots first."
+Placement C: pack insert for marketplace and quick-commerce units
+Front of the card, 9 cm by 5.5 cm, white with lab-blue type:
+
+   YOU BOUGHT THIS ON BLINKIT, AMAZON OR NYKAA. WE WOULD LIKE TO
+   KNOW YOU. SCAN TO START YOUR 84 DAYS. WE WILL SEND ONE CHECK-
+   IN AT DAY 14, ONE AT DAY 45, AND YOUR REORDER AT THE ARATA.IN
+   PRICE. [QR] P.S. TELL US HOW YOU FOUND US. IT TAKES ONE TAP AND
+   DECIDES WHERE OUR NEXT RUPEE GOES.
+
+
+QR target: arata.in/start?src=pack&batch=<batch code> . The batch code identifies the channel the unit
+shipped through (we pack separately for quick commerce and for marketplaces; assumption that
+Arata's 11K sq ft warehouse can segregate inserts by outbound channel). The landing page asks two
+questions: "Where did you buy this?" (Blinkit / Zepto / Instamart / Amazon / Nykaa / Flipkart /
+somewhere else) and the same "how did you first hear" pick-list. Then a WhatsApp opt-in with the
+day-14 check-in as the reason to join. Every scan creates a customer record with source_basis =
+self_reported , acquisition_channel = quick_commerce or marketplace , and a phone number.
+
+
+EXAMPLE 2: A MONTHLY ATTRIBUTION READOUT, FILLED IN
+Every number below is an assumption, constructed to show the shape of the readout. We replace it
+with real data in week 2. Shopify order count (50,000) is from the brief.
+Attribution readout: month 1 (illustrative)
+The question. Should next month's incremental ₹50 lakh go to Meta prospecting, Google non-
+branded search, or quick-commerce sponsored listings?
+Source of truth. The weekly ledger. arata.in: 50,000 orders (Shopify). Marketplaces and quick
+commerce: pulled from seller dashboards, orders by city. Platform claims below are deduplicated
+against the 50,000 and never summed.
+What each source says about arata.in orders
+                                                         GA4 LAST
+                          META           GOOGLE          NON-       SURVEY SHARE (11,000
+ CHANNEL                  REPORTS        REPORTS         DIRECT     RESPONSES)               OUR READ
+
+ Meta prospecting         31,000                         13,500     30%                      13,500 verified clicks; lift to be
+ + retargeting                                                      Instagram/Facebook       tested; likely under-credited by
+                                                                                             GA4, over-claimed by Meta
+ Google non-                             10,500          6,000      12% Google (not split)   Close to honest; last click is a fair
+ branded search +                                                                            read for "hair fall shampoo"
+ Shopping                                                                                    searches
+ Google branded                          7,000           4,500                               Demand collected, not created;
+ search                                                                                      moves to "collect" group;
+                                                                                             cannibalisation test pending
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE ORDER LEDGER FOR EVERY RUPEE                                                                 10
+                                                         GA4 LAST
+                          META           GOOGLE          NON-       SURVEY SHARE (11,000
+ CHANNEL                  REPORTS        REPORTS         DIRECT     RESPONSES)             OUR READ
+
+ YouTube +                                               800        18% YouTube, 5%        Under-credited by every click
+ podcast                                                            podcast                model; strongest survey signal
+                                                                                           relative to its click share
+ Direct                                                  11,000                            WhatsApp forwards, in-app
+                                                                                           browsers, typed URL;
+                                                                                           composition to be investigated
+ WhatsApp + email                                        4,000                             Repeat orders mostly; lift
+ (owned)                                                                                   measured by holdout from week
+                                                                                           6
+ Organic search                                          7,500                             Lab Notes and product pages;
+                                                                                           growing
+ Creators +                                              2,000      6% named creators      Code-based credit; matches
+ affiliates                                                                                survey
+ Organic social +                                        700        14% friend or family   Dark social lives here; only the
+ referral                                                                                  survey sees it
+ Total                    31,000         17,500          50,000                            50,000, once
+                          claimed        claimed
+
+
+Platforms claim 48,500 of 50,000 orders between them (97%). GA4 credits paid channels with 24,000
+(48%). The survey says roughly 55% of customers first heard through a paid or paid-adjacent surface
+(Instagram, YouTube, podcast). The truth sits between 48% and 97% and the only way to narrow it is
+the holdout.
+Model comparison. First-touch on the tracked path: Meta 38%, YouTube 9%, non-branded Google
+14%, organic 16%, direct 23%. Last-touch: Meta 27%, branded Google 9%, owned 8%, direct 22%.
+The 11-point drop for Meta from first to last, and the 9 points that appear in branded search, is the
+demand-creation signal. (Assumption.)
+Confidence and gaps. We cannot yet see marketplace and quick-commerce orders by source at all.
+22% of arata.in orders sit in direct. Survey covers 22% of buyers. Creator links were untracked for
+part of the month.
+Recommendation. Do not move the ₹50 lakh on this readout. Run the Meta city holdout (Example 3)
+for four weeks. In the meantime, cap paid branded search at current spend, tag every WhatsApp link,
+and keep Meta flat. Confidence in the current channel ranking: medium for Google non-branded, low
+for Meta and YouTube, none for quick-commerce sponsored listings.
+
+EXAMPLE 3: THE META CITY HOLDOUT, FULLY SPECIFIED
+Question. Does Meta prospecting cause orders across all Arata channels, and at what incremental
+cost?
+Design. Geo holdout, city level, difference in differences.
+Holdout cities (Meta prospecting paused, retargeting and all other channels unchanged): Pune,
+Jaipur, Lucknow, Chandigarh tri-city, Kochi. Assumption: together these are 12% to 18% of Arata's all-
+channel orders, large enough to read and small enough to afford. Delhi NCR is excluded from holdout
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE ORDER LEDGER FOR EVERY RUPEE                                                             11
+because it is the home market and too large to switch off. Bangalore and Mumbai stay exposed for the
+same reason.
+Exposed cities: every other city where Meta prospecting runs today.
+Pre-period: 8 weeks of ledger data before the switch, by city and week, all channels. This is why the
+ledger ships in week 1.
+Test period: 4 weeks. Starts on a Monday. No price change, no new SKU launch, no festive sale
+window inside the four weeks (we pick the window around Arata's promo calendar; a Diwali week
+inside the test would wreck it).
+Mechanics.
+    Meta: exclude the five holdout cities from every prospecting campaign using city exclusion with a
+    40 km radius. Retargeting campaigns keep running in all cities. Spend in exposed cities stays flat at
+    the pre-period weekly average (assumption for illustration: ₹28 lakh a week nationally, of which ₹4
+    lakh was previously spent in the holdout cities and is reallocated, not cut, to exposed cities).
+    Google, creators, WhatsApp, quick-commerce listings: unchanged everywhere.
+    Ledger: weekly orders by city across arata.in (ship-to city), Blinkit, Zepto, Instamart (dashboard
+    city), Amazon and Flipkart (state, with the holdout states' non-holdout cities noted as
+    contamination), Nykaa (city where reported).
+Readout template.
+                                                                HOLDOUT CITIES
+                                                                (5)              EXPOSED CITIES
+
+ Pre-period weekly all-channel orders (avg of 8                 H0               E0
+ weeks)
+ Test-period weekly all-channel orders (avg of 4                H1               E1
+ weeks)
+ Change                                                         H1 − H0          E1 − E0
+ Lift attributable to Meta prospecting                                           (E1 − E0) − (H1 − H0), scaled to exposed-city
+                                                                                 share
+
+
+Incremental orders per week = exposed change minus holdout change, applied to exposed-city
+volume. Incremental CPA = exposed-city Meta prospecting spend ÷ incremental orders. Incremental
+blended ROAS = incremental all-channel revenue ÷ that spend.
+Illustrative result (assumption). Holdout cities drop 9% week on week versus pre-period. Exposed
+cities hold flat. Lift is 9 points of all-channel orders in exposed cities. If exposed cities do 90,000 all-
+channel orders a week, incremental orders are about 8,100 a week. At ₹28 lakh a week, incremental
+CPA is about ₹345 per order, across all channels, including Blinkit and Amazon. Meta's own reported
+CPA on arata.in orders alone might read ₹220. The ₹345 is the number that moves budget: it is worse
+than the platform says, and it is real, and it is better than the ₹450 target cost per new customer the
+paid media plan set because it counts orders the pixel never saw.
+Reading it honestly.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE ORDER LEDGER FOR EVERY RUPEE                                                            12
+    Check the interval. If the lift is 9% with a range of −3% to +21%, the test was underpowered and
+    we extend it two weeks rather than act.
+    Check contamination. Someone in Pune who saw a Reel while travelling in Mumbai, or a Pune pin
+    served from a Mumbai Amazon fulfilment centre, shrinks the gap. A "no lift" read can be a leaky
+    test.
+    Check the quick-commerce split specifically. If arata.in orders in holdout cities drop 15% and Blinkit
+    orders drop 4%, Meta creates web demand more than quick-commerce demand, and the
+    sponsored-listing budget on Blinkit deserves its own test.
+Decision rule.
+    Incremental CPA at or below ₹450 → scale Meta prospecting 20% a month, re-test in 90 days with
+    a different city set.
+    ₹450 to ₹650 → hold spend, move creative work to the Reels that performed in exposed cities, re-
+    test in 60 days.
+    Above ₹650 or no measurable lift → cut Meta prospecting 30%, move the money to Google non-
+    branded search and YouTube, and run the same holdout on YouTube next.
+
+EXAMPLE 4: THE SOURCE FIELDS, AS A SHOPIFY CUSTOMER TAG SPEC
+ FIELD                            ALLOWED VALUES                                  WRITTEN BY          EXAMPLE FOR RAHUL
+
+  src                             meta_prospecting, meta_retargeting,             Checkout script,    youtube (first) /
+                                  google_nonbrand, google_brand, youtube,         survey app,         whatsapp (last)
+                                  podcast, creator_, whatsapp, email,             pack insert
+                                  pack_insert, organic_search, organic_social,    page, code
+                                  referral, qc_blinkit, qc_zepto, qc_instamart,   redemption
+                                  mp_amazon, mp_nykaa, mp_flipkart,
+                                  direct_unknown
+  src_basis                       journey_linked, self_reported, code,            Same                self_reported
+                                  campaign_window, unknown
+  src_conf                        high, medium, low                               Rule table in the    high (named the
+                                                                                  analytics tool      podcast)
+  acq_cost                        paid, owned, earned, marketplace_organic,       Derived from        earned
+                                  direct_unknown                                  src
+
+  first_channel_bought            arata_in, qc, marketplace                       Pack insert page    qc
+                                                                                  or checkout
+  touch_path                      ordered list of channel:timestamp on arata.in   Analytics tool       youtube:d0, meta:d3,
+                                                                                                      google_brand:d9,
+                                                                                                      pack:d38,
+                                                                                                      whatsapp:d52
+
+
+
+Rules that produce src_conf : journey_linked with utm_source, utm_medium and utm_campaign all
+present → high. journey_linked with medium missing → medium. self_reported with a specific answer
+→ high; generic answer → low. campaign_window → low, always, and only written when date, landing
+page and active UTMs isolate one source. unknown → no tag; counted in the coverage metric.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE ORDER LEDGER FOR EVERY RUPEE                                                             13
+What consumes these fields: the day-35 reorder message (owned channel plan), the MitoActive
+upgrade offer (a src_conf = high, src = google_nonbrand customer who searched "minoxidil
+alternative" gets the Y100 explainer; a pack_insert customer from Blinkit gets the arata.in price and
+free shipping above ₹299), and this document's monthly readout.
+
+
+
+30-DAY DEPLOYMENT
+                                                                                                              LIVE BY END OF
+ WEEK BREW SHIPS                                                  ARATA PROVIDES                            WEEK
+
+ 1        Weekly order ledger (channel × city × week, 8             Shopify export, Amazon/Nykaa/Flipkart     One ledger page;
+          weeks back) built from exports; referral                  seller reports, Blinkit/Zepto/Instamart   clean first-touch on
+          exclusion list applied in GA4 and the analytics           dashboard access, GA4 and Ads             arata.in; branded
+          tool; branded and non-branded Google                      access, creator link list. Owner: Arata   search reported as
+          campaigns split; UTM templates for every                  growth manager                            "collected"
+          WhatsApp, email and creator link; Meta and
+          Google de-dup check (one purchase event, one
+          source)
+ 2        Thank-you page survey live; WhatsApp day-2                Insert print run approved; warehouse      Survey collecting
+          survey live; pack insert designed, QR landing             confirms channel-segregated packing.      on arata.in and
+          page built; survey answers written to customer            Owner: Arata ops lead, Brew lifecycle   WhatsApp; inserts
+          record                                                    lead                                      in production
+ 3        Source, basis, confidence and cost-class fields           Sign-off on holdout cities and test       Every new
+          on every new customer; touch path stored; first           window against the promo calendar.        customer labelled;
+          monthly readout (real numbers replacing                   Owner: Arata brand manager, Brew        readout 1 delivered;
+          Example 2); holdout cities and pre-period                 measurement lead                          test plan signed
+          baseline confirmed from the ledger; override
+          rule template written
+ 4        Meta city holdout switched on (Monday);                   Meta campaign access for city             Test running; inserts
+          weekly test tracker; WhatsApp reorder 10%                 exclusions; agreement to hold spend       shipping; first scans
+          holdout configured for week 6; branded on/off             flat. Owner: Brew paid media lead,      arriving
+          calendar set for weeks 9 to 12                            Arata growth manager
+
+
+Day 30 state: one ledger, three survey placements collecting, every new customer carrying a labelled
+source, and a four-week test in motion that will produce the first incremental CPA across all channels
+by day 58.
+
+
+
+HOW WE MEASURE
+ METRIC                                    BASELINE                   90-DAY TARGET                   WHY IT MATTERS
+
+ Orders counted once, all                  Does not exist             100% of orders in the ledger    The source of truth
+ channels, by city and week                                           within 7 days of month end      everything else is
+                                                                                                      deduplicated against
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE ORDER LEDGER FOR EVERY RUPEE                                                                 14
+ METRIC                                    BASELINE                 90-DAY TARGET                   WHY IT MATTERS
+
+ Share of arata.in orders in               To be instrumented       Down 5 to 8 points after        Measures signal recovered,
+ "direct"                                  (assumption: 20% to      referral exclusions and         not demand lost
+                                           25%)                     WhatsApp tagging
+ Survey response rate (thank-              0%                       25% or higher                   Coverage of the one signal
+ you page)                                                                                          that sees dark social and
+                                                                                                    quick commerce
+ Pack insert scan rate                     0%                       3% to 6% of QC and              First owned relationship
+                                                                    marketplace units               with the 68%
+ New customers with src_basis              To be instrumented       85% of arata.in customers;      Attribution coverage
+ ≠ unknown                                                          4% of QC and marketplace
+                                                                    customers (via inserts)
+ Incremental CPA, Meta                     Does not exist           Measured once, with a          The number that moves
+ prospecting, all channels                                          confidence interval, by day 58 budget
+ Paid branded search                       Does not exist           Measured by day 84              Decides whether branded
+ cannibalisation                                                                                    spend is buying free clicks
+ Day-35 WhatsApp reorder lift vs Does not exist                     Measured continuously from      Keeps the retention plan
+ 10% holdout                                                        week 6                          honest
+ Branded search impressions                To be instrumented       Reported weekly against         The recall meter for culture
+ (Search Console + QC brand                                         campaign flights                spend
+ search where reported)
+ Platform claim ratio (Meta +              To be instrumented       Tracked monthly; expect it to   A sanity metric, not a target
+ Google claimed ÷ Shopify                  (assumption: ~97%)       stay high and to stop being
+ orders)                                                            used for allocation
+
+
+Decision rules.
+    If the Meta holdout shows lift at or under ₹450 incremental CPA, Meta prospecting scales 20% a
+    month and the override rule shifts a bounded share of direct and branded credit to Meta in the
+    adjusted table. The next holdout tests YouTube.
+    If it shows no measurable lift, Meta prospecting is cut 30%, the money moves to Google non-
+    branded and YouTube, and the test repeats with a fresh city set in 60 days before anyone
+    concludes Meta is dead. One leaky test does not kill a channel.
+    If survey response stays under 15% after two weeks, we move the question above the order
+    summary and add a one-line reason ("this decides where our next rupee goes"). If it stays under
+    15% after four, we rely on the WhatsApp placement and treat the thank-you page as a secondary
+    read.
+    If pack insert scans stay under 2%, we add a reason to scan that is worth more than curiosity: a
+    free scalp massager (₹199) on the first arata.in order, funded by the margin difference between a
+    Blinkit order and an arata.in order.
+    The model stays fixed. Day-to-day reporting on arata.in uses last non-direct. The monthly readout
+    shows first-touch and last-touch side by side. Nobody switches models to make a channel look
+    better. If the model ever changes, it changes once, in writing, with the date.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE ORDER LEDGER FOR EVERY RUPEE                                                                   15
+APPENDIX
+REFERRAL EXCLUSION LIST (WEEK 1)
+razorpay.com, api.razorpay.com, payu.in, secure.payu.in, cashfree.com, payments.cashfree.com,
+phonepe.com, mercury.phonepe.com, pay.google.com, paytm.com, securegw.paytm.in, shop.app,
+checkout.shopify.com, pay.shopify.com, accounts.google.com, any *.arata.in subdomain, localhost.
+Add any gateway Arata actually uses that is missing here; the list is a starting point, confirmed against
+real referral reports in week 1.
+
+UTM CONVENTION FOR OWNED AND CREATOR LINKS
+utm_source   = whatsapp | email | creator | pack | podcast. utm_medium = owned | paid-social | code |
+insert. utm_campaign = <yyyymm>-<sku>-<intent> (example: 202611-mitoactive-upgrade ). utm_content =
+creator handle or message variant. Creator codes mirror the handle (ARATA-) so code redemption and
+link click agree.
+
+VERIFICATION CHECKLIST BEFORE THE HOLDOUT STARTS
+    Ledger reconciles to Shopify order count for the last 8 weeks within 0.5%.
+    Blinkit, Zepto and Instamart city reports pulled for the same 8 weeks; holdout cities sum to 12% to
+    18% of all-channel orders.
+    Meta prospecting campaigns show the five city exclusions; retargeting shows none.
+    No promo, price change or launch scheduled inside the test window.
+    Survey writing src_self_reported to the customer record on a test order.
+    Pack insert QR resolves to the landing page with src=pack and a batch code.
+    The adjusted reporting table and the raw table exist as separate views; the override rule is empty
+    until the test reads out.
+
+SOURCE LIST
+Brand brief (arata.in catalogue and prices, channel mix, order volume, founder quotes on recall, Traya
+spend). Platform behaviours (Meta and Google attribution windows, GA4 referral handling, city
+targeting) from public platform documentation. All illustrative figures in Examples 2 and 3 are
+assumptions and are labelled as such.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE ORDER LEDGER FOR EVERY RUPEE                                         16
+ATTRIBUTION AND MEASUREMENT
+
+
+DAY 30
+AT ARATA
+   WHAT IS LIVE
+
+   One deduplicated weekly order ledger across arata.in, marketplaces and quick
+   commerce, a post-purchase survey live on the thank-you page, on WhatsApp
+   and on a pack insert, branded search split from category search, and the first
+   all-channel city holdout test running on Meta.
+
+
+
+
+ NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+ BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+ CONFIRM".
+
+
+ EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+ BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                 DEPLOYMENT TEAM
+                                                                              BREW
+

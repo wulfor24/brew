@@ -1,0 +1,876 @@
+     Brew                                      PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+     DEPLOYMENT TEAM
+
+
+
+
+PAID ADS · MOVE 20 OF 50
+
+
+
+PAID MEDIA
+SYSTEM FOR
+ARATA.IN
+  A META AND GOOGLE SYSTEM THAT BUYS FIRST ORDERS
+  ON ARATA.IN AT A KNOWN COST, PROVES THE 84-DAY
+  CLAIM IN THE AD ITSELF, AND FEEDS REORDERS AT DAY
+  35.
+
+
+
+
+₹450
+TARGET COST PER NEW CUSTOMER
+
+
+
+
+BREW × ARATA                    OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                  V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                                  WHAT THIS GIVES ARATA
+                                                                  A Meta and Google system that buys first orders on
+
+
+
+         ₹450
+                                                                  arata.in at a known cost, proves the 84-day claim in
+                                                                  the ad itself, and feeds reorders at day 35.
+                                                                  LIVE 30 DAYS AFTER WE START
+                                                                  Tracking rebuilt, two Meta CBOs and four Google
+         TARGET COST PER NEW CUSTOMER
+                                                                  campaigns live on broad India targeting, 24 statics
+                                                                  and 2 RSAs in rotation, and the first weekly kill/scale
+                                                                  decision made on real purchase data.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+This document applies our paid media playbook, which was written for software, to a shampoo and
+serum brand: a "qualified lead" becomes a first order from a new customer, "pipeline" becomes the
+45-day reorder, and the landing page is a product page or a routine bundle page.
+Arata is already a paid-media business. The brand did ₹61.1 Cr in FY25, up 192%, with 32% of that on
+arata.in and the other 68% on Amazon, Nykaa, Flipkart, Blinkit, Zepto and Instamart. The stated goal is
+a ₹160 Cr run-rate. Nobody triples a D2C haircare brand on organic reach alone, and the one close
+comparable in the category, Traya, spent ₹138 Cr on marketing to make ₹343 Cr. The question is what
+each rupee of Arata's spend buys, and whether the brand knows the answer on a Monday morning.
+From the outside, three things stand out. First, the ad-to-page journey is weaker than the product. The
+hair growth collection mixes claims, there is no routine builder, no quiz, and no comparison page for
+the exact searches people type before buying ("minoxidil alternative", "traya vs"). Ads will land on
+pages that were built for browsing, so the spend pays for the click and then loses the scent. Second,
+MitoActive, the ₹1,499 hero the rebrand is built around, has zero reviews. Running cold traffic to a
+zero-review ₹1,499 serum is the most expensive thing a paid account can do. Third, the brand's
+strongest asset for ads, a number on every bottle, is barely used as an ad hook. "7.4X", "28,200",
+"95% in 1 wash", "87% in 84 days" are headlines. Most competitors in the ₹400 to ₹700 band (Pilgrim,
+Minimalist, Bare Anatomy) sell ingredient percentages. Arata can sell results.
+What this costs today: a website that is 32% of revenue when it could be 40%+, a hero SKU with no
+social proof loop, and 68% of sales on rented land where the margin and the customer data belong to
+someone else. Every order moved from a marketplace to arata.in is worth more twice: once in margin,
+once in a phone number we can bring back at day 35.
+The opportunity is a system, with a target cost per new customer, a weekly decision rule, and creative
+that does the targeting. This document sets the number (₹450), the structure (two Meta CBOs, four
+Google campaigns, one YouTube layer), the creative (built in the Worked examples), and the 30-day
+plan to get it live.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · PAID MEDIA SYSTEM FOR ARATA.IN                                                             1
+WHAT WE FOUND
+We have no access to Arata's ad accounts yet. Everything below is a desk audit from public surfaces
+and the brand brief. Per our audit rules, a check we could not verify is marked unknown, which lowers
+coverage and never counts against health. With coverage this low, we do not give a health score. We
+give findings.
+
+DESK AUDIT OF THE PAID-MEDIA FOUNDATION
+ CHECK                                      RESULT        EVIDENCE                                       WHAT WE WOULD NEED
+
+ Brand vs non-brand search                  Unknown No account access                                    Google Ads campaign list
+ split
+ Purchase conversion single                 Unknown Shopify store, likely native pixels                  Events Manager,
+ source of truth                                                                                         conversion actions
+ Customer list uploaded and                 Unknown 1.5M customers a year exist                          Audience list in both
+ used                                                                                                    platforms
+ Product ratings in Shopping ads Unknown 2,248 Loox reviews exist on site                                Merchant Center feed and
+                                                                                                         ratings status
+ GMC promotions (free shipping              Unknown Offers exist on site                                 Merchant Center
+ over ₹299, gift over ₹999)                                                                              promotions tab
+ Ad-to-page scent on hero                   Fail          Hair growth collection mixes serum claims      Open on site
+ product                                                  and shampoo claims; no single "84 days"
+                                                          page
+ Comparison or alternative                  Fail          None found for Traya, Pilgrim or minoxidil     Site search
+ pages
+ Quiz or routine funnel for cold            Fail          Brief confirms no quiz or regimen builder      Brief
+ traffic
+ Advertorial lander for cold                Fail          Lab Notes exist but publish in bursts (seven   Brief
+ traffic                                                  posts in March 2026), not built as landers
+ Proof on the hero SKU                      Fail          MitoActive: 0 reviews at ₹1,499                Product page
+ Naming consistency across                  Fail          Onion vs biotin, serum vs tonic across Nykaa   Brief
+ channels                                                 and site
+ Reorder audience and ads                   Unknown No subscription; no visible reorder flow             Meta audiences,
+                                                                                                         email/WhatsApp tool
+
+
+Coverage: 5 of 12 applicable checks verified. Five verified fails, all fixable within 30 days, and all of
+them post-click or proof problems. This matters because it tells us where to spend effort first: the
+pages and the proof, before the bids.
+
+THE ECONOMICS: WHAT A NEW CUSTOMER CAN COST
+We anchor every rule below to one number, the target cost per new-customer first order (we will call it
+TCPO). We derive it from Arata's own prices and labelled assumptions, and we review it monthly
+against real data.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · PAID MEDIA SYSTEM FOR ARATA.IN                                                                     2
+ INPUT                                                  VALUE                      SOURCE
+
+ First-order AOV on arata.in                            ₹950                       Brief (₹900 to ₹1,000 implied)
+ Gross margin on product                                65%                        Assumption, typical for D2C haircare at this price
+                                                                                   band
+ Shipping, packaging, payment gateway                   ₹90                        Assumption
+ per order
+ Contribution before marketing, first order ₹528                                   950 × 0.65 − 90
+ Repeat within 90 days                                  30% of first-time          Assumption; brief says beauty repeat ~26%,
+                                                        buyers                     routine-led 40%+
+ Extra contribution from that repeat                    ₹158                       0.30 × 528
+ 90-day contribution per new customer                   ₹686
+
+                                                                                                                               DIAGRAM
+    Break-even first-order CAC            ₹528   (ROAS 1.8x on first order)
+    Break-even 90-day CAC                 ₹686   (payback inside one quarter)
+    Target cost per new customer (TCPO)   ₹450   (leaves ₹78 on first order, ₹236 over 90 days)
+    Target first-order ROAS, non-brand    2.1x
+    Target blended ROAS (brand + retarget + prospect)   2.5x or better
+
+
+
+
+We set the planning target at ₹450 because it pays back on the first order at the assumed margin, and
+because the 45-day reorder is Arata's stated key conversion. If Arata's real gross margin is 55%,
+TCPO drops to ₹380. If it is 72%, it rises to ₹530. The first thing we ask for in week 1 is the real margin
+by SKU.
+Two consequences follow. MitoActive at ₹1,499 has a very different payback from the ₹359 shampoo,
+so we never judge the account on a blended number alone. And the serum Pack of 3 at ₹999 is the
+best first-order product in the catalogue for paid: it is an 84-day supply, which matches the claim
+window, and it lifts AOV without a discount code.
+
+WHERE THE DEMAND IS: THE INTENT LADDER FOR ARATA
+ RUNG                    EXAMPLE QUERIES AND AUDIENCES                      ROLE                          STATUS
+
+ 1. Brand                "arata", "arata hair growth serum", "arata Harvest, protect from                 Always on, own budget
+                         mitoactive", "arata shampoo"               Pilgrim and Traya bidding
+                                                                    on it
+ 2. High-intent          "hair growth serum", "hair fall shampoo",          Profit centre, most Google Build first
+ non-brand               "anti dandruff shampoo", "hair serum for           budget
+                         men", "anti grey serum"
+ 3. Competitor           "minoxidil alternative", "traya                    Switchers; needs              Build in week 2 with pages
+ and alternative         alternative", "traya vs", "pilgrim hair            comparison pages
+                         growth serum review"
+ 4. Problem-             "how to stop hair fall", "post partum hair         Meta and YouTube, where Meta carries this, Search
+ aware                   fall", "hard water hair fall"                      the creative creates the does not
+                                                                            demand
+ 5. Awareness            Broad video, celebrity content                     Only with spare budget        Samay Raina content exists;
+                                                                                                          use it as partnership ads, not
+                                                                                                          as awareness
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · PAID MEDIA SYSTEM FOR ARATA.IN                                                                            3
+Search harvests demand. Meta and YouTube create it. For Arata the split is roughly 60% Meta, 30%
+Google, 10% YouTube in month one, and we move money between them on non-brand ROAS, never
+on blended.
+
+WHO THE CREATIVE MUST TARGET (BECAUSE THE TARGETING WILL NOT)
+On Meta in 2026, interest stacking hurts. We target India, 22 to 45, broad, and we let the creative pick
+the person. That means every persona in the brief becomes an ad, with an identity keyword in the
+headline.
+ PERSONA                           IDENTITY KEYWORD IN THE AD     PRODUCT AND PRICE         HOOK BUILT FROM THE BRIEF
+
+ Hair-fall Rahul, 28,              "for men in their late 20s",   Intensive Serum ₹571,     "Up to 28,200 new hairs in 84
+ Bangalore                         "Bangalore hard water"         Pack of 3 ₹999            days"
+ Routine Ritika, 32,               "post-partum", "new mothers"   Hair Growth Trio ₹1,201   "One cart. One routine. 84
+ Mumbai, new mom                                                                            days."
+ Dandruff Divya, 24,               "black t-shirt", "office"      Anti-Dandruff Shampoo     "95% of dandruff-causing
+ Pune                                                             ₹404                      fungus in 1 wash"
+ Grey-early Gaurav, 29             "first greys at 29"            Anti-Grey Serum ₹449      "Up to 86% fewer greys
+                                                                                            without dye"
+ Clinical Kavya, 35,               "if you have seen a            MitoActive ₹1,499         "₹50 a day. Mitochondria,
+ Chennai                           dermatologist"                                           explained."
+ Styling Sahil, 22, Delhi          "metro", "college"             Hair Gel ₹269+            "72-hour hold in Delhi
+                                                                                            humidity"
+
+
+One compliance note that shapes every line of copy. Meta's personal-attributes policy means an ad
+must never assert that the viewer has a condition ("your hair is falling"). We write about the product,
+the study, and "people who", never "you have". On the Indian side, the Drugs and Magic Remedies Act
+bans advertising that claims to cure the conditions in its schedule, and the 2020 draft amendment
+proposed adding hair loss and greying. So every claim is written as the study result ("up to", "in 84
+days", "in a consumer study"), never as a cure, never as "regrow", never as "baldness".
+
+
+
+THE PLAN
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · PAID MEDIA SYSTEM FOR ARATA.IN                                                             4
+THE ARCHITECTURE
+                                                                                                     DIAGRAM
+                                         PAID MEDIA FOR ARATA.IN
+                                         =======================
+
+       CREATE DEMAND                           HARVEST DEMAND               KEEP THE CUSTOMER
+       (Meta + YouTube)                        (Google)                     (Meta + Google RLSA)
+
+       META_Scale_CBO (80%)                    GOOG_Brand (own budget)      META_Reorder_D35
+        broad IN 22-45                          exact + phrase on "arata"    purchasers 30-45 days
+        proven ads only                                                     serum / shampoo refill
+                                     GOOG_NB_HighIntent
+       META_Test_CBO (20%)            AG: hair growth serum       META_Lapsed_D90
+        new concepts, statics first   AG: hair fall shampoo        purchasers 90-180 d
+        identity-keyword variants     AG: anti dandruff            different product
+                                      AG: anti grey
+       YT_DemandGen_Shorts           GOOG_Competitor
+        20s cutdowns, 6s bumpers      AG: minoxidil alternative
+                                      AG: traya / kit alternative
+             │                             │                              ▲
+             ▼                             ▼                              │
+       ┌──────────────────────────────────────────────────┐             │
+       │ RETARGETING LAYER (Meta, 4 ads running together) │              │
+       │ 1 Objection    2 Proof carousel                    │            │
+       │ 3 Other-offer CBO    4 Value-first (84-day plan) │─── buys ───┘
+       │ + Catalog ad to cart abandoners (1-7 days)         │
+       └──────────────────────────────────────────────────┘
+             │
+             ▼
+       PAGES: /products/… (PDP) · /pages/84-days (advertorial) · /pages/minoxidil-alternative
+
+
+
+
+PHASE 0, WEEK 1: TRACKING AND THE REAL NUMBERS
+What: Rebuild measurement before spending. Shopify's native Meta integration with Conversions API
+and a shared event ID, Google tag with Enhanced Conversions, GA4 linked with auto-tagging, one
+UTM scheme ( utm_source=meta|google|youtube , utm_campaign = campaign name, utm_content = ad
+name). A custom new_customer_purchase event in both platforms, so bidding can optimise to new
+customers rather than to anyone. Customer list (1.5M customers a year) uploaded as hashed emails
+and phone numbers to both platforms. Purchasers in the last 30 days excluded from prospecting.
+Why: Every decision rule below keys off TCPO, and TCPO is meaningless if purchases double count or
+if the account is optimising to returning buyers who would have bought anyway.
+Expected effect: A trustworthy cost per new customer by day 14. Match quality score above 6 on
+Meta.
+
+PHASE 1, WEEKS 1 TO 2: GOOGLE, BOTTOM OF THE LADDER FIRST
+What: Four Search campaigns with independent budgets. Brand on exact and phrase, capped at about
+10% of Google spend. Non-brand high-intent with four themed ad groups (serum, shampoo, dandruff,
+grey), phrase and exact only, Maximise Conversions until each campaign clears 30 purchases a
+month, then Target ROAS. Competitor and alternative group with its own budget and its own pages.
+Shopping through a Merchant Center feed with Loox ratings synced, free-shipping-over-₹299 and
+gift-over-₹999 as promotions, and feed titles rewritten to lead with the query ("Hair Growth Serum for
+Hair Fall, 30 ml, Arata" rather than "Arata Hair Growth Intensive Serum"). Performance Max only in
+week 4, with brand exclusions and a new-customer acquisition goal, and only after Search has 30
+days of data.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · PAID MEDIA SYSTEM FOR ARATA.IN                                                5
+Why: Brand is cheap and converts; left in a shared budget it eats everything and makes the account
+look better than it is. Non-brand is where the ₹160 Cr comes from.
+Expected effect: Brand CTR above 10%, non-brand purchase conversion rate 3% to 6% on serum and
+shampoo queries (directional only, to be replaced by Arata's own first 30 days).
+
+PHASE 1, WEEKS 1 TO 2: META, TWO CBOS OVER THE SAME BROAD AUDIENCE
+What: A Scaling CBO holding only proven ads, and a Testing CBO with its own protected 20% of
+budget. Both target India broad, 22 to 45, with purchasers (30 days) excluded. Twelve statics in the
+first batch, long-form primary text, one persona per ad, identity keyword in the headline. Video only
+after a static passes. Partnership ads from creator handles in week 3 (the Samay Raina podcast
+cutdowns are the obvious first test if the usage rights allow paid amplification).
+Why: Inside one CBO, winners starve tests. The separation protects the testing budget. Statics are
+cheaper to make, cheaper to deliver, and let us ship 12 concepts in the time a single polished video
+takes.
+Expected effect: 2 to 3 proven ads by day 30, graduated into Scaling.
+
+PHASE 2, WEEKS 2 TO 3: THE PAGES THE ADS DESERVE
+What: Three landers, built by our team, owned by Arata. /pages/84-days , an advertorial that walks
+through the 84-day study for the Intensive Serum and MitoActive, with the Pack of 3 at ₹999 as the
+natural buy. /pages/minoxidil-alternative , a comparison page for rung 3 searches (price per month,
+time to result, prescription needed, dependency, side effects, with Arata's serums alongside minoxidil
+5% and the diagnosis-kit model). A routine bundle page for Ritika's cart (Trio ₹1,201). Each page's H1
+mirrors the winning Meta headline once we have one.
+Why: Meta tests a headline on a thousand times the audience that reaches the page. When the page
+restates the exact promise, the click converts. Our expectation from the headline-mirror discipline is a
+15% to 20% lift in page conversion on paid traffic.
+Expected effect: The cheapest ROAS improvement in the plan, because it costs page work rather than
+media.
+
+PHASE 2, WEEK 3: THE RETARGETING LAYER, FOUR ADS AT ONCE
+What: All four retargeting ads run together against site visitors (7 to 30 days) and engagers who did
+not buy.
+1. Objection ad: the ₹1,499 and the leak objections answered in the headline (built in Worked
+   examples).
+2. Proof carousel: five verbatim reviews from the 2,248 on site, one per card.
+3. Other-offer CBO: people who viewed the serum and did not buy see the ₹359 shampoo or the ₹199
+   scalp massager. A lower-ticket door into the same routine.
+4. Value-first ad: the 84-day plan on WhatsApp, free, before any purchase. It builds the reorder list
+   from day one.
+Catalog ads to cart abandoners at 1 to 7 days, frequency allowed to run higher.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · PAID MEDIA SYSTEM FOR ARATA.IN                                            6
+Why: The main reason someone did not buy is that the offer was wrong for them. Showing the same
+serum harder does not fix that. A different product, a proof stack, or a free plan does.
+Expected effect: Retargeting ROAS above 4x within 30 days, and a WhatsApp list that the reorder flow
+can use.
+
+PHASE 3, WEEKS 3 TO 4: REORDER AND LAPSED
+What: META_Reorder_D35 : purchasers of the 30 ml serum or the 200 ml shampoo, 30 to 45 days after
+purchase, shown a refill ad for the same product with the Pack of 3 as the upgrade. Google customer-
+match list of the same cohort with a bid-up on brand. META_Lapsed_D90 : purchasers at 90 to 180 days,
+shown a different product than they bought.
+Why: The brief names repeat within 45 days as the key conversion, and a 30 ml bottle at twice-daily
+use runs out at about day 30. The study window is 84 days. The customer who stops at day 30 never
+sees the result they paid for, and never reviews it.
+Expected effect: The 30% assumed 90-day repeat moves toward 40%, which raises the 90-day CAC
+ceiling from ₹686 to about ₹740 and funds more prospecting.
+
+THE DECISION SYSTEM (D2C VERSION)
+Everything is a multiple of TCPO (₹450).
+                                                                                                               DIAGRAM
+    TEST AD, DAY 7 (delivery check)
+      spend < (CBO daily budget / active ads) × 7 × 0.5           → kill, change hook or visual
+      zero spend                                                   → kill now
+
+    TEST AD, WEEKLY (rolling 14 days)
+      spend < ₹5,000 or < 7 days                →   wait (the 3× TCPO gate is ₹1,350; in D2C it never binds,
+                                                     so we judge at ₹5,000 and 7 days minimum)
+       0 purchases at ₹5,000                    →   swap, abandon the concept
+       new-customer CPO ≤ ₹450                  →   candidate winner
+       ₹450 to ₹675 (1 to 1.5×)                 →   monitor one more week
+       > ₹675 (1.5×)                            →   swap, change offer or angle
+
+    GRADUATE TO SCALING when all true:
+      ≥ 15 new-customer purchases · CPO ≤ ₹450 · ≥ 14 days live · ≥ 3 purchases in last 7 days
+
+    FATIGUE (broad prospecting)            safe 1.0-2.5 · warning 2.5-4.0 · critical > 4.0
+    FATIGUE (retargeting)                  safe 2.0-4.0 · warning 4.0-6.0 · critical > 6.0
+      plus: CTR down 20% over 7 days, CPM up 30% over 2 weeks, CPO up with same targeting
+      scaling ads: start 2 iterations at frequency 3.0; swap at 3.5 or CPO +40%
+
+    SCALE: +20% every 5 days, never +30% in one move. Rollback if CPO > ₹675 after a step.
+    NEVER pause without a replacement staged. NEVER edit a live winner; launch beside it.
+
+
+
+
+The ad-count ceiling, (daily budget × 14) ÷ (2 × TCPO), is in the thousands at a D2C TCPO, so it never
+binds. The binding constraint for Arata is creative supply. We plan for it: 12 new statics every two
+weeks, win rate about 1 in 6, so 2 new winners a fortnight. Each proven ad carries roughly ₹3 lakh a
+month before it fatigues (assumption, to be measured), so ₹18 lakh a month on Meta needs six proven
+ads in rotation. Budget cannot run ahead of that number.
+
+BUDGET
+Assumption: Arata's current paid spend on D2C is unknown to us. We propose month one at ₹30 lakh
+on arata.in traffic (marketplace and quick-commerce ads are a separate document), rising to ₹60 lakh
+by day 90 only if non-brand first-order ROAS holds at or above 2.1x. Diwali falls on 8 November 2026,
+
+
+BREW DEPLOYMENT TEAM × ARATA · PAID MEDIA SYSTEM FOR ARATA.IN                                                          7
+and CPMs across India climb from mid October. We launch into that on purpose: the tracking and the
+creative library get built at the worst CPMs of the year, so January's cheap auction meets a system
+that already works.
+ LINE                                                   MONTH 1   SHARE   RULE TO MOVE IT
+
+ Meta Scaling CBO                                       ₹12.0 L   40%     +20% every 5 days if CPO ≤ ₹450
+ Meta Testing CBO                                       ₹3.0 L    10%     Fixed, protected
+ Meta retargeting + catalog                             ₹3.0 L    10%     Grow with site traffic, cap frequency
+ Google Brand                                           ₹1.0 L    3%      Cap; never share budget
+ Google Non-brand Search + Shopping                     ₹6.0 L    20%     Raise when Lost IS (budget) > 20% and ROAS ≥ 2.1x
+ Google Competitor/alternative                          ₹2.0 L    7%      Only once pages are live
+ YouTube Demand Gen (Shorts, in-feed)                   ₹3.0 L    10%     Judge by new-customer CPO like any ad
+
+
+Expected month-one output at target: about 4,700 new customers from the ₹21 lakh of prospecting,
+plus retargeting and brand on top. The number to watch is new-customer CPO on the prospecting
+lines, nothing else.
+
+
+
+WORKED EXAMPLES
+All copy below follows Arata's voice: short declaratives, a number in the headline, warm and clinical.
+No claim is stated as a cure. Every claim keeps its "up to" and its window.
+
+EXAMPLE 1: META PROSPECTING STATICS (THREE PERSONAS, ONE CONCEPT FAMILY)
+Ad 1A. Hair-fall Rahul. Static: the serum bottle on a white tile, the number "28,200" hand-written
+on the tile in blue marker.
+Headline: Up to 28,200 new hairs in 84 days Description: Hair Growth Intensive Serum, ₹571. Pack of 3
+at ₹999. CTA: Shop Now → /pages/84-days
+Primary text:
+
+   WE COUNTED. UP TO 28,200 NEW HAIRS IN 84 DAYS.
+
+   THAT IS THE NUMBER FROM THE CONSUMER STUDY BEHIND THE ARATA
+   HAIR GROWTH INTENSIVE SERUM. WE PUT IT ON THE BOTTLE BECAUSE A
+   NUMBER IS EASIER TO ARGUE WITH THAN A PROMISE.
+
+   HOW IT WORKS: TWICE A DAY ON THE SCALP, 30 ML LASTS A MONTH.
+   EVERY ACTIVE IS IN THERE FOR A MEASURED REASON, AND THE STUDY
+   RAN FOR 84 DAYS BECAUSE THAT IS HOW LONG A HAIR CYCLE TAKES TO
+   SHOW.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · PAID MEDIA SYSTEM FOR ARATA.IN                                                               8
+   MOST PEOPLE WHO BUY IT HAVE ALREADY TRIED ONION SHAMPOO,
+   BIOTIN GUMMIES AND ROSEMARY WATER. WE KNOW BECAUSE THEY
+   TELL US IN THE REVIEWS. 474 OF THEM SO FAR ON ARATA.IN.
+
+   ₹571 FOR ONE BOTTLE. ₹999 FOR THREE, WHICH IS THE FULL 84-DAY
+   COURSE AT 49% OFF. FREE SHIPPING ABOVE ₹299.
+
+   MADE AND TESTED IN OUR OWN LAB IN DELHI, FOR INDIAN HAIR, HARD
+   WATER AND 40-DEGREE SUMMERS. DERMATOLOGICALLY TESTED.
+   VEGAN.
+
+   YOU CAN USE IT WITHOUT A DOCTOR, A DIAGNOSIS CALL OR A MONTHLY
+   KIT.                                                                      START THE 84 DAYS.
+
+
+Identity-keyword variants of 1A (same copy, one line changed, dropped in the same CBO): - "...the
+study behind the Arata Hair Growth Intensive Serum, which most of our buyers are men in their late
+20s..." - "...for Indian hair, Bangalore hard water and 40-degree summers..." - "...for Indian hair after a
+Mumbai monsoon..."
+Ad 1B. Routine Ritika. Static: three bottles in a row on a kitchen counter, baby bottle out of focus
+behind them. Text overlay: "One cart. 84 days."
+Headline: One routine. One price. ₹1,201. Description: Hair Growth Trio: shampoo, conditioner, serum.
+CTA: Shop Now → routine bundle page
+Primary text:
+
+   POST-PARTUM SHEDDING USUALLY STARTS AROUND MONTH THREE AND
+   CAN RUN FOR SIX. THE INTERNET WILL GIVE YOU FORTY INGREDIENTS
+   AND NINE REELS ABOUT IT.
+
+   WE MADE ONE CART INSTEAD.
+
+   THE ARATA HAIR GROWTH TRIO: THE ANTI-HAIR FALL SHAMPOO (7.4X
+   HAIR FALL REDUCTION IN OUR TENSILE STRENGTH STUDY), THE ANTI-
+   BREAKAGE CONDITIONER (78% STRONGER HAIR IN ONE WASH, IN-VITRO),
+   AND THE HAIR GROWTH INTENSIVE SERUM (UP TO 28,200 NEW HAIRS IN
+   84 DAYS).
+
+   ₹1,201 FOR THE THREE. FREE SHIPPING, AND A FREE GIFT BECAUSE IT IS
+   ABOVE ₹999.
+
+   WASH, CONDITION, TWO DROPS OF SERUM MORNING AND NIGHT. THAT
+   IS THE WHOLE ROUTINE. WE WILL SEND A WHATSAPP REMINDER WHEN
+   THE BOTTLES ARE ABOUT TO RUN OUT, SO THE REORDER IS ONE TAP.
+
+   DERMATOLOGICALLY TESTED, VEGAN, MADE IN OUR DELHI LAB FOR
+   INDIAN HAIR.                                                              GET THE TRIO.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · PAID MEDIA SYSTEM FOR ARATA.IN                                               9
+Ad 1C. Dandruff Divya. Static: a black t-shirt shoulder, clean. Overlay: "95% in 1 wash."
+Headline: 95% of dandruff-causing fungus. One wash. Description: Anti-Dandruff Shampoo, 200 ml,
+₹404. CTA: Shop Now → PDP
+Primary text:
+
+   BLACK T-SHIRTS SHOULD BE SAFE TO WEAR TO THE OFFICE.
+
+   THE ARATA ANTI-DANDRUFF SHAMPOO REDUCED DANDRUFF-CAUSING
+   FUNGUS BY UP TO 95% IN ONE WASH IN OUR IN-VITRO TEST. IT IS BUILT
+   FOR INDIAN SCALPS IN WINTER DRYNESS AND MONSOON HUMIDITY,
+   WHICH IS WHEN FLAKES COME BACK FOR MOST PEOPLE.
+
+   IT DOES THE JOB WITHOUT STRIPPING HAIR THE WAY THE MASS ANTI-
+   DANDRUFF BOTTLES DO. PAIR IT WITH THE ANTI-DANDRUFF
+   CONDITIONER (93% HYDRATION BOOST) AND THE LEAVE-ON SERUM FOR
+   UP TO 36 HOURS OF ITCH RELIEF.
+
+   ₹404 FOR 200 ML. SHAMPOO AND CONDITIONER TOGETHER AT ₹866.
+   FREE SHIPPING ABOVE ₹299.
+
+   DERMATOLOGICALLY TESTED. SULPHATE-FREE. VEGAN.                 TRY IT ON YOUR NEXT WASH DAY.
+
+
+EXAMPLE 2: THE FOUR-AD RETARGETING LAYER
+2.1 Objection ad (site visitors 7 to 30 days, viewed MitoActive, did not buy). Static: calculator on a
+notebook, "1499 ÷ 30 = 50".
+Headline: ₹1,499 for 30 ml. Here is the maths. Description: MitoActive, India's first mitochondrial hair
+growth serum.
+Primary text:
+
+   ₹1,499 IS A LOT FOR A BOTTLE YOU CAN HOLD IN TWO FINGERS. SO HERE
+   IS THE MATHS.
+
+   ONE BOTTLE IS A MONTH AT TWICE-DAILY USE. THAT IS ₹50 A DAY. A
+   DIAGNOSIS-KIT SUBSCRIPTION RUNS ₹1,400 TO ₹1,800 A MONTH FOR
+   FIVE MONTHS OR MORE, WITH DOCTOR CALLS, SUPPLEMENTS AND
+   MINOXIDIL IN THE BOX. ONE DERMATOLOGIST VISIT COSTS MORE THAN
+   THIS BOTTLE.
+
+   MITOACTIVE USES Y100, AN ACTIVE LICENSED FROM YUVA BIOSCIENCES
+   WITH SIX YEARS OF RESEARCH AND FIVE CLINICAL STUDIES BEHIND IT,
+   EXCLUSIVE TO ARATA IN INDIA. IT WORKS ON THE MITOCHONDRIA IN THE
+   FOLLICLE, WHICH IS A DIFFERENT MECHANISM FROM EVERY REDENSYL
+   SERUM ON THE SHELF. IN THE 84-DAY STUDY, 87% OF PARTICIPANTS
+   SAW INCREASED GROWTH.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · PAID MEDIA SYSTEM FOR ARATA.IN                                            10
+     TWO MORE THINGS PEOPLE ASK US. IF THE SEAL IS BROKEN OR THE
+     BOTTLE LEAKS WHEN IT LANDS, WE REPLACE IT, NO QUESTIONS ASKED.
+     AND THIS IS A THREE-MONTH COURSE WITH MAINTENANCE AFTER, SO IT
+     DOES NOT CREATE A DEPENDENCY.
+
+     IF ₹50 A DAY IS STILL TOO MUCH, THE INTENSIVE SERUM AT ₹571 IS THE
+     SAME LAB, A DIFFERENT ACTIVE, AND ITS OWN 84-DAY NUMBER.                      SEE BOTH, SIDE BY SIDE.
+
+
+2.2 Proof carousel (same audience). Five cards, each a verbatim review set in plain type on a white
+tile, name and city, star rating, nothing else.
+ CARD        COPY ON CARD                                                                SOURCE
+
+ 1           "Arata is amazing cz its affordable and actually works."                    Site review, verbatim
+ 2           "Hair fall reduced drastically."                                            Site review, verbatim
+ 3           "I can see a visible difference in two weeks."                              Site review, verbatim
+ 4           "Finally I got a shampoo free from hard chemicals."                         Site review, verbatim
+ 5           "2,248 reviews on arata.in. 4.2 stars from 2,435 ratings on Nykaa."         Brief
+
+
+Headline: Real people. Honest results. Primary text: 2,248 reviews on arata.in and counting. We do not
+edit them. Read a few, then decide.
+2.3 Other-offer CBO (viewed serum, did not buy). Two ads, one CBO.
+Ad A, scalp massager, ₹199: "The cheapest thing in our lab. The scalp massager is ₹199, free shipping
+with anything above ₹299, and it makes any serum go on better. A small way to start." Headline: Start
+at ₹199.
+Ad B, shampoo, ₹359: "If a ₹571 serum is a bigger decision than you wanted today, start where the
+study started: the Anti-Hair Fall Shampoo, 7.4X hair fall reduction in our tensile test, ₹359 for 200 ml."
+Headline: 7.4X. ₹359. Start here.
+2.4 Value-first ad (all site visitors 1 to 30 days, excluding purchasers). Lead objective to
+WhatsApp.
+Headline: The 84-day plan, free, on WhatsApp Primary text:
+
+     HAIR TAKES 84 DAYS TO SHOW YOU ANYTHING. MOST PEOPLE GIVE UP
+     AT DAY 20.
+
+     SO WE WROTE THE PLAN DOWN. WEEK BY WEEK: WHEN TO WASH, WHEN
+     TO PHOTOGRAPH THE CROWN SO YOU CAN ACTUALLY COMPARE, WHAT
+     TO EXPECT IN WEEK 3 (A LITTLE EXTRA SHEDDING IS COMMON AND
+     SHORT), WHEN A BOTTLE RUNS OUT, WHEN TO DECIDE.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · PAID MEDIA SYSTEM FOR ARATA.IN                                                  11
+   IT IS FREE. IT WORKS WITH ANY SERUM, INCLUDING ONES WE DO NOT
+   SELL. GET IT ON WHATSAPP AND WE WILL SEND THE NEXT STEP EACH
+   WEEK.                                                                       SEND ME THE PLAN.
+
+
+WhatsApp opt-in confirmation: "Day 1 of 84. Take a crown photo in daylight today. Same spot, same
+light, every Sunday. We will remind you."
+
+EXAMPLE 3: GOOGLE SEARCH, TWO RESPONSIVE SEARCH ADS TO SPEC
+Ad group structure: - AG1 [Hair growth serum, non-brand]: "hair growth serum" (phrase), [hair growth
+serum] (exact), "hair fall serum" (phrase), [hair serum for hair fall] (exact), "hair growth serum for
+men" (phrase), "hair growth serum for women" (phrase), [serum for hair growth] (exact), "hair
+regrowth serum" (phrase) → RSA1 - AG2 [Minoxidil and kit alternative]: "minoxidil alternative" (phrase),
+[alternative to minoxidil] (exact), "hair growth serum without minoxidil" (phrase), "traya alternative"
+(phrase), [traya vs] (exact), "hair fall kit alternative" (phrase) → RSA2 - AG3 [Hair fall shampoo], AG4
+[Anti dandruff shampoo], AG5 [Anti grey serum]: built in week 2 on the same pattern.
+Negative keywords (build-time starter list from the brief; expanded only from the weekly search terms
+report, never from imagination): Campaign-level (non-brand): - free - home remedy - diy - recipe - oil
+(Arata sells no hair oil) - transplant - prp - clinic near me - salon - wholesale - distributor - jobs - arata
+(routes brand traffic to the brand campaign) Ad-group level: - AG1: minoxidil, traya, shampoo (route to
+AG2 and AG3) - AG2: finasteride, buy minoxidil, mintop price (wants the drug itself)
+Sitelinks (≥4): - Hair Growth Serum ₹571 | Up to 28,200 new hairs | 84-day study, 474 reviews |
+/products/hair-growth-intensive-serum - Pack Of 3 At ₹999 | Save 49% on a 3-month course | Free
+shipping included | /products/hair-growth-serum-pack-of-3 - Anti-Hair Fall Shampoo | 7.4X hair fall
+reduction | ₹359 for 200 ml | /products/anti-hair-fall-shampoo - MitoActive ₹1,499 | Y100
+mitochondrial serum | 87% saw growth in 84 days | /products/mitoactive - Read The Lab Notes | How
+the 84-day study was run | Honest framing of every claim | /blogs/lab-notes
+(Product URLs to be confirmed against the live Shopify slugs in week 1.)
+Callouts (≥4, each ≤25 chars): - Free Shipping Above ₹299 - Free Gift Above ₹999 - Dermatologically
+Tested - Vegan & Cruelty Free - In-House Delhi Lab - 1.5M+ Customers A Year
+RSA1: AG1 Hair growth serum Final URL: https://arata.in/products/hair-growth-intensive-serum Path1:
+hair-growth Path2: serum Headlines (15, each ≤30 chars): 1. Hair Growth Serum, ₹571 (23 chars) 2. Up
+To 28,200 New Hairs (22 chars) 3. Results In 84 Days (18 chars) 4. Made For Indian Hair (20 chars) 5.
+Tested In Our Delhi Lab (23 chars) 6. 474 Reviews On Arata.in (23 chars) 7. Works Without Minoxidil
+(23 chars) 8. Pack Of 3 At ₹999, Save 49% (27 chars) 9. Free Shipping Above ₹299 (24 chars) 10.
+Arata Hair Growth Serum (23 chars) 11. Dermatologically Tested (23 chars) 12. Vegan And Cruelty Free
+(22 chars) 13. Twice A Day, 30 ml Bottle (25 chars) 14. Serum For Hair Fall (19 chars) 15. Hair Fall
+Serum With Proof (26 chars) Descriptions (4, each ≤90 chars): 1. Up to 28,200 new hairs in 84 days in
+a consumer study. Twice a day. No prescription. (84 chars) 2. The actives serum at ₹571, or the pack
+of 3 at ₹999. Free shipping above ₹299 on arata.in. (89 chars) 3. Formulated and tested in our Delhi
+lab for Indian hair, hard water and humidity. (80 chars) 4. 474 reviews. Dermatologically tested and
+vegan. Pairs with the 7.4X hair fall shampoo. (86 chars) Pinning: H1 pinned to position 1 (price and
+product in every impression); all others unpinned.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · PAID MEDIA SYSTEM FOR ARATA.IN                                              12
+RSA2: AG2 Minoxidil and kit alternative Final URL: https://arata.in/pages/minoxidil-alternative (built in
+week 2) Path1: compare Path2: serums Headlines (15, each ≤30 chars): 1. A Minoxidil Alternative (23
+chars) 2. No Doctor Visit Needed (22 chars) 3. Hair Growth Without Dependency (30 chars) 4. ₹571
+For 30 Days (16 chars) 5. Skip The Monthly Hair Kit (25 chars) 6. 87% Saw Growth In 84 Days (25
+chars) 7. Mitochondrial Hair Science (26 chars) 8. India's First Y100 Serum (24 chars) 9. Compare
+Before You Commit (25 chars) 10. Arata Hair & Scalp Science (26 chars) 11. Backed By Unilever
+Ventures (27 chars) 12. Twice A Day, Leave-On Serum (27 chars) 13. Free Shipping Above ₹299 (24
+chars) 14. Dermatologically Tested (23 chars) 15. From ₹50 A Day (14 chars) Descriptions (4, each ≤90
+chars): 1. Tried minoxidil or a monthly kit? See how Arata serums compare on price, proof and time.
+(88 chars) 2. Intensive Serum ₹571 with up to 28,200 new hairs in 84 days. MitoActive ₹1,499 with
+Y100. (89 chars) 3. A 3-month course, then maintenance. Buy it like shampoo, use it twice a day,
+done. (82 chars) 4. Made in our Delhi lab for Indian hair and weather. Dermatologically tested. Vegan.
+(82 chars) Pinning: none.
+Trademark note: we bid on "traya" as a keyword. We never put a competitor's name in headline,
+description, sitelink or callout. "Minoxidil" is a generic drug name and is allowed in copy.
+
+EXAMPLE 4: THE DAY-35 REORDER AD
+Audience: purchased Hair Growth Intensive Serum (30 ml) 30 to 45 days ago, has not purchased
+since. Catalog ad, same SKU, Pack of 3 as the second card.
+Headline: Day 30 is where most people stop. Day 84 is where the study ended. Primary text:
+
+   A 30 ML BOTTLE AT TWICE A DAY RUNS OUT AROUND NOW.
+
+   THE 84-DAY NUMBER ON THE BOX CAME FROM PEOPLE WHO KEPT
+   GOING THROUGH MONTH TWO AND MONTH THREE. MONTH ONE IS
+   MOSTLY THE SCALP SETTLING IN. MONTH TWO AND THREE ARE WHERE
+   THE COUNT HAPPENED.
+
+   REFILL THE SINGLE AT ₹571, OR SWITCH TO THE PACK OF 3 AT ₹999 AND
+   FINISH THE COURSE WITH 49% OFF. FREE SHIPPING EITHER WAY,
+   DELIVERED BEFORE THE CURRENT BOTTLE IS EMPTY IF YOU ORDER
+   TODAY.
+
+   TAKE THE DAY-30 PHOTO FIRST. SAME SPOT, SAME LIGHT.            FINISH THE 84 DAYS.
+
+
+This same audience gets the WhatsApp reminder from the 84-day plan on the same day, so the ad
+and the message say the same thing.
+
+EXAMPLE 5: YOUTUBE SHORTS, 20-SECOND SCRIPT AND A 6-SECOND BUMPER
+20-second vertical, captions always on, lab setting, one presenter in a white coat (no celebrity, no
+music bed).
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · PAID MEDIA SYSTEM FOR ARATA.IN                                        13
+                                                                                                  DIAGRAM
+    0-3s   [Close on a bottle, marker writing "28,200" on the tile]
+           VO: "We counted twenty-eight thousand two hundred."
+    3-8s   [Presenter to camera, Delhi lab behind]
+           VO: "That is the upper number of new hairs in our 84-day consumer study
+                of the Arata Hair Growth Intensive Serum."
+    8-15s [Two drops on a scalp parting; a calendar flipping to day 84]
+           VO: "Twice a day. No prescription, no monthly kit. Made here, for Indian
+                hair and Indian water."
+    15-20s [Price card: ₹571 · Pack of 3 ₹999 · Free shipping]
+           VO: "Five seventy-one for a bottle. Nine ninety-nine for the full course.
+                Start the 84 days."
+
+
+
+
+6-second bumper (non-skippable): Bottle on tile. Marker writes "84 days". VO: "Up to 28,200 new
+hairs. 84 days. Arata." End card with price.
+Both cut-downs come from one shoot, with the hook line re-recorded five ways so we can test the
+first three seconds without re-shooting.
+
+EXAMPLE 6: THE ADVERTORIAL LANDER OUTLINE, /PAGES/84-DAYS
+The H1 is left blank until the Meta test picks a winning headline, then it mirrors it verbatim.
+1. H1: winning Meta headline (placeholder: "Up to 28,200 new hairs in 84 days")
+2. Subhead: "What we measured, how, and what to expect week by week."
+3. The study in plain words: who, how long, what was counted, what "up to" means. Link to Lab
+   Notes.
+4. Week-by-week expectation strip (weeks 1 to 12), including the week-3 shedding note.
+5. Which serum is for whom: Intensive Serum ₹571 (the actives serum) vs MitoActive ₹1,499 (Y100,
+   mitochondria explained in three sentences, ₹50 a day).
+6. Proof block: six verbatim reviews, star count, Nykaa rating.
+7. The honest objections: price, "is this another Redensyl serum", "do I use it forever", leaks and
+   seals.
+8. One CTA, repeated three times: "Start the 84 days" → Pack of 3 at ₹999 (single at ₹571 as the
+   smaller button).
+9. Below the fold: Trio for the routine buyer, WhatsApp plan opt-in for the undecided.
+
+
+
+30-DAY DEPLOYMENT
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · PAID MEDIA SYSTEM FOR ARATA.IN                                         14
+ WEEK BREW SHIPS                                                 ARATA PROVIDES              LIVE BY END OF WEEK
+
+ 1         Tracking rebuild (Meta CAPI via Shopify with            Ad account and Business     Tracking verified on a real test
+           event dedup, Google Enhanced Conversions, GA4           Manager admin access,       order. Brand and Non-brand
+           link, UTM scheme, new_customer_purchase                 Shopify admin, Merchant     Search live. Meta Testing CBO
+           event, internal traffic excluded). Customer list        Center access, gross        live with 12 statics.
+           upload. TCPO model with real margin. Google             margin by SKU, shipping
+           account structure (Brand, Non-brand,                    cost per order, product
+           Competitor, Shopping) and Merchant Center fixes         photography, confirmed
+           (ratings sync, promotions, feed titles). First 12       product URLs, brand font
+           statics and 2 RSAs written and designed. Owners:        and colour files. Owner:
+           Brew performance lead, Brew analytics               Arata brand manager,
+           engineer, Brew creative lead.                         Arata ops lead.
+ 2         Day-7 delivery check on all 12 statics. Second          Review of lander copy       Both landers live. Competitor
+           batch of 12 statics (identity-keyword variants of       and claims by Arata's       campaign live. 24 statics tested
+           the top 4). /pages/84-days and                          R&D lead (study wording,    or in test.
+            /pages/minoxidil-alternative built.                    "up to" framing). Lab
+           Competitor Search campaign built, held until            Notes links. Owner: Arata
+           pages pass QA. Shopping live. First weekly              brand manager, Arata
+           search-terms pass. Owners: Brew                       R&D lead.
+           performance lead, Brew web lead.
+ 3         Retargeting layer: objection ad, proof carousel,        WhatsApp Business API       Retargeting live. Scaling CBO live
+           other-offer CBO, value-first WhatsApp ad,               number and template         with first 2 to 3 proven ads.
+           catalog ads to cart abandoners. WhatsApp 84-            approvals. Creator          WhatsApp plan live.
+           day plan sequence (12 weekly messages) written          whitelisting and usage
+           and loaded. Partnership-ad test from one creator        rights (Samay Raina
+           handle. YouTube Shorts shoot (one day, five hook        content if available, or
+           variants). First Stage 2 quality review; first          one mid-size haircare
+           graduations into the Scaling CBO. Owners:               creator). Replacement-
+           Brew performance lead, Brew creative lead,          policy wording for leaks.
+           Brew lifecycle lead.                                  Owner: Arata brand
+                                                                   manager, Arata customer
+                                                                   care lead.
+ 4         Reorder (D35) and lapsed (D90) audiences and            Sign-off on month-two       Full system live: 2 Meta CBOs,
+           ads. YouTube Demand Gen campaign live with              budget. One hour with the   retargeting, reorder, 4 Google
+           20s and 6s cuts. Performance Max with brand             founders to walk the        Search campaigns, Shopping,
+           exclusions and new-customer goal, if Search has         numbers (the monthly        YouTube. Weekly
+           30 days of data. First scale step (+20%) on any         founder review is a         Monday/Wednesday/Friday
+           ad meeting graduation. First monthly review:            standing item). Owner:      cadence running.
+           TCPO recalibrated on real data, rolling reach           Arata founders, Arata
+           logged, creative library audit, written decision log.   brand manager.
+           Owners: Brew performance lead, Brew
+           analytics engineer.
+
+
+Weekly cadence from week 2: Monday is decision day (rolling 14-day data, Stage 2 on every test ad,
+fatigue check on every scaling ad). Wednesday is launch day (new tests into freed slots, Stage 1 on
+day-7 ads, search-terms ritual). Friday is scaling day (budget steps and rollbacks).
+
+
+
+HOW WE MEASURE
+Report blended, optimise on non-brand. Never add Meta's 7-day-click conversions to Google's 30-
+day-click conversions; they sit side by side, with Shopify orders and GA4 as the neutral total.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · PAID MEDIA SYSTEM FOR ARATA.IN                                                                   15
+ METRIC                                                       BASELINE         90-DAY TARGET     READ FROM
+
+ New-customer cost per first order                            To be            ≤ ₹450            Platform, validated against
+ (prospecting, Meta + YouTube + non-brand                     instrumented                       Shopify new-vs-returning
+ Search)
+ Non-brand first-order ROAS                                   To be            ≥ 2.1x            Platform + Shopify
+                                                              instrumented
+ Blended paid ROAS (all campaigns)                            To be            ≥ 2.5x            Shopify revenue ÷ total
+                                                              instrumented                       spend
+ Retargeting ROAS                                             To be            ≥ 4.0x            Meta, 7-day click
+                                                              instrumented
+ arata.in share of total revenue                              32% (FY25)       36%               Arata finance
+ 45-day repeat rate on paid-acquired cohorts                  Assumed 30% at   40% at 90 days;   Shopify cohort report
+                                                              90 days          25% at 45 days
+ MitoActive reviews                                           0                150               Loox
+ Paid landing page conversion ( /pages/84-                    Page does not    ≥ 4% on paid      GA4
+ days )                                                       exist            traffic
+ Brand Search impression share                                Unknown          ≥ 90%             Google Ads
+ Lost IS (budget) on non-brand                                Unknown          < 20%             Google Ads
+ Rolling monthly reach on Meta                                Unknown          Up month over     Meta
+                                                                               month
+ Proven ads in Scaling CBO                                    0                ≥6                Decision log
+ Meta event match quality                                     Unknown          >6                Events Manager
+
+
+Decision rules:
+    If new-customer CPO is at or under ₹450 for two consecutive weeks on a line, that line gets +20%
+    every five days until frequency passes 3.0 or CPO passes ₹675, then we add seed audiences
+    (partnership ads, lookalikes from the top-LTV customer list) before adding more money.
+    If CPO sits between ₹450 and ₹675 for four weeks on a line, we hold budget flat and run the
+    creative and page tests harder. A CPO spike is a question, never a verdict; we check sample size,
+    learning phase and conversion lag before pausing anything.
+    If CPO is over ₹675 for four weeks on a line, with tracking verified, we cut that line by 30%, and
+    move the money to the lines that are working. If the whole prospecting layer is over ₹675 for eight
+    weeks, we stop scaling and go back to the pages, the offer and the first-order product before
+    buying more media.
+    If repeat at 45 days stays under 20% on paid cohorts by day 90, the problem is downstream of ads
+    and we shift effort to the reorder and routine work rather than lowering TCPO.
+    Every month: recalibrate TCPO against real margin and real repeat, audit the creative library, and sit
+    with the founders for the three-hour review. The confidence to scale comes from the founders
+    seeing the numbers themselves.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · PAID MEDIA SYSTEM FOR ARATA.IN                                                                16
+APPENDIX
+PRE-LAUNCH CHECKLIST (WEEK 1 GATE)
+    Purchase event fires once on the Shopify thank-you page, with value, currency INR and order ID, in
+    both Meta and Google
+    Meta pixel and CAPI deduplicate on event ID; match quality above 6
+    new_customer_purchase fires only for first-time buyers
+
+    GA4 linked, auto-tagging on, internal traffic excluded
+    Customer list uploaded to Meta and Google; purchasers (30 days) excluded from prospecting
+    Brand campaign on its own budget; "arata" negatived in non-brand
+    Search Partners and Display off on Search; location set to presence in India
+    Merchant Center: no disapprovals, ratings rendering, promotions live, titles query-first
+    Landers load under 3 seconds on a mid-range Android on 4G
+    UTMs on every destination URL
+
+COPY RULES USED IN EVERY ASSET ABOVE
+    Lead with the number from the brief; keep "up to" and the window attached to it
+    Product and study statements, never statements about the viewer's condition
+    Never "cure", "regrow", "baldness", "miracle", "chemical-free", "clinical-strength"
+    Competitor names in keywords only, never in ad text
+    One idea per sentence; price in rupees in every ad; free shipping above ₹299 wherever there is
+    room
+
+SOURCES USED
+Arata brand brief (prices, claims, reviews, channel mix, personas, objections, customer language);
+Drugs and Magic Remedies (Objectionable Advertisements) Act, 1954 and its 2020 draft amendment,
+for the claim-framing rules. All benchmarks in this document are labelled as assumptions or directional
+and are replaced by Arata's own first 30 days of data.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · PAID MEDIA SYSTEM FOR ARATA.IN                                      17
+PAID ADS
+
+
+DAY 30
+AT ARATA
+    WHAT IS LIVE
+
+    Tracking rebuilt, two Meta CBOs and four Google campaigns live on broad India
+    targeting, 24 statics and 2 RSAs in rotation, and the first weekly kill/scale
+    decision made on real purchase data.
+
+
+
+
+  NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+  BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+  CONFIRM".
+
+
+  EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+  BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                 DEPLOYMENT TEAM
+                                                                              BREW
+

@@ -1,0 +1,843 @@
+      Brew                                     PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+COLD OUTBOUND (B2B) · MOVE 46 OF 50
+
+
+
+B2B
+OUTBOUND
+FOR DERMS,
+SALONS
+AND Q-COM
+  A FOUR-SEGMENT OUTBOUND ENGINE THAT GETS
+  MITOACTIVE INTO DERMATOLOGIST CLINICS, ARATA
+  ONTO SALON SHELVES, INTO OFFICE WELLNESS
+  PROGRAMMES AND HIGHER UP THE QUICK-COMMERCE
+  CATEGORY LIST, WITHOUT SPENDING A RUPEE ON ADS.
+
+
+
+
+4 plays
+ONE PER B2B SEGMENT
+
+
+
+
+BREW × ARATA                    OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                  V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                              WHAT THIS GIVES ARATA
+                                                              A four-segment outbound engine that gets
+                                                              MitoActive into dermatologist clinics, Arata onto
+                                                              salon shelves, into office wellness programmes and
+                                                              higher up the quick-commerce category list, without
+
+        4 plays
+        ONE PER B2B SEGMENT
+                                                              spending a rupee on ads.
+                                                              LIVE 30 DAYS AFTER WE START
+                                                              Two warmed sending domains, four live sequences,
+                                                              the first 40 dermatologists holding a MitoActive
+                                                              sample kit, and the Blinkit, Zepto and Instamart
+                                                              category heads each sitting on a city-level hair fall
+                                                              teardown from Arata.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+Cold email in the software world means writing to a stranger at a company and asking for a meeting.
+For Arata the equivalent is B2B outbound: writing to the dermatologist, the salon owner, the HR head
+and the quick-commerce category manager, and asking each of them for one small thing that moves
+product. Same craft, different buyers.
+Arata already moves about 2 lakh B2B units a month. That number is almost entirely marketplace and
+quick-commerce purchase orders. There is no outbound function behind it (assumption: we found no
+partnerships or trade role in the public team, and no "for professionals" or "for clinics" page on
+arata.in). The B2B channel grows when a platform decides to reorder. Nobody at Arata is making the
+first move.
+That matters for three reasons. First, 68% of revenue sits on rented land: marketplaces 38%, quick
+commerce 30%. The people who decide where a hair fall shampoo ranks in a Blinkit search or
+whether MitoActive gets onboarded in Hyderabad are a few dozen category managers. Nobody is
+writing to them with a point of view. Second, MitoActive launched in August 2026 at ₹1,499 with zero
+reviews and a claim set (87% saw growth in 84 days, 5+ clinical studies on Y100) that is built for a
+dermatologist to repeat. Clinical Kavya, the persona who will pay ₹1,499 without blinking, trusts her
+derm more than any ad. Third, the brand line is "systems, not symptoms", and the places where a
+routine gets recommended in person, the salon chair and the clinic, are exactly where Arata has no
+presence.
+The cost of leaving this alone is quiet. MitoActive stays a D2C-only product fighting Traya on Meta,
+where Traya spends ₹138 Cr a year. Salons keep recommending L'Oréal Professionnel backbar.
+Category managers keep treating Arata as one more Redensyl brand with a slightly better price.
+The opportunity is cheap. A full outbound setup costs less per month than one week of a mid-size
+Meta campaign, and the assets it creates (derm recommendations, salon shelf presence, category
+manager relationships, corporate bulk orders) compound. This document gives Arata the sending
+
+
+BREW DEPLOYMENT TEAM × ARATA · B2B OUTBOUND FOR DERMS, SALONS AND Q-COM                                             1
+setup, the four segment plays, the finished copy, and the rules for running it.
+
+
+
+WHAT WE FOUND
+THE FOUR SEGMENTS, SCORED
+We scored each B2B segment on fit with the catalogue, how reachable the decision-maker is by email
+and phone, what one win is worth, and how strong Arata's existing proof is for that buyer. Scores are 1
+to 5.
+                                                                            DEAL    PROOF IN
+ SEGMENT                              WHO DECIDES                 FIT REACH SIZE    HAND       TOTAL PLAY
+
+ Dermatologists and                   The doctor, solo or         5         3   3   5          16    Problem-led with a
+ trichologists                        small clinic                                                   free sample kit
+ Quick-commerce and                   Category head, city         5         2   5   4          16    Value-first teardown
+ marketplace category                 category lead                                                  (Tier 1, founder-
+ managers                                                                                            led)
+ Salons and unisex grooming           Owner or chain              4         4   3   3          14    Problem-led, email
+ chains                               purchase head                                                  plus call
+ Corporate wellness, gyms,            HR or admin head,           3         4   3   2          12    Trigger-based,
+ hostels                              gym owner, hostel                                              session plus kit
+                                      operator
+
+
+Two things stand out. Dermatologists and category managers tie on total and are the two segments
+where MitoActive does the work. Corporate scores lowest on proof because Arata has nothing today
+that says "employees used this and here is what happened". That is fixable with one pilot, so
+corporate starts last and smallest.
+
+WHAT EACH BUYER IS DEALING WITH TODAY
+Dermatologists and trichologists. The brief says 5M urban Indians are on medicated OTC products
+and 1M on clinical treatment. Their doctors have two tools for hair fall: minoxidil 5% (Mintop, ₹600 to
+₹900, dependency and shedding) and finasteride. Patients ask for something that is not minoxidil
+every day. The doctor has no good answer at the ₹600 to ₹1,500 level that comes with study data.
+MitoActive's Y100 story (mitochondrial function, anagen/telogen ratio, an Indian-participant study
+showing reduced shedding and increased density) is the first thing in this price band a derm can
+explain to a patient in two sentences. The objection will be "show me the study", and the answer must
+be the study, not a landing page.
+Quick-commerce category managers. 30% of Arata's revenue runs through Blinkit, Zepto and
+Instamart. The day-to-day contact is an account manager who handles purchase orders and fill rates.
+Above that person sits a category head for personal care who decides which brands get a hero tile in
+"hair fall", which get into new cities, and which get a slot in the monsoon dandruff push. These people
+get pitched by every D2C brand on the platform. What they do not get is a brand telling them
+something true about their own category. Arata can: it has 2,248 on-site reviews, 650K monthly visits
+of search intent, and a claim on every bottle. The teardown play fits here. Note that MitoActive at
+
+
+BREW DEPLOYMENT TEAM × ARATA · B2B OUTBOUND FOR DERMS, SALONS AND Q-COM                                                   2
+₹1,499 is not a natural quick-commerce SKU (assumption: it is not yet listed on the q-com platforms;
+we would confirm before the first send). The pitch for q-com is the ₹359 shampoo and ₹571 serum
+with a number on the pack, and MitoActive as a "premium hair growth" test in two metros.
+Salons. A salon sells two things Arata can supply: a retail shelf by the billing counter and a backbar
+product the stylist uses in the chair. The owner's complaint about D2C brands is margin and
+movement. A ₹359 shampoo at a trade margin (assumption: 30% to 35% off MRP for the salon,
+standard for Indian professional haircare) leaves the salon ₹110 to ₹125 per bottle, which is thin. The
+pitch has to be about the chair conversation: a stylist who says "your scalp is flaking, this one cuts the
+fungus 95% in one wash" sells the ₹866 Anti-Dandruff combo without trying. The Anti-Hair Fall
+Intensive Shampoo (7.4X) and Anti-Dandruff Shampoo (95% fungus reduction) are the two SKUs with
+claims simple enough to say out loud in a salon.
+Corporate wellness, gyms, hostels. Hair fall from stress, hard water and a new city is the entry point
+the brief names. Bangalore, Gurugram, Hyderabad and Pune tech parks are full of 24 to 32 year olds
+who moved for the job and started losing hair in the first six months. HR runs wellness calendars with
+slots to fill. Gyms and hostels are smaller versions of the same: a captive population with a hard-water
+problem and a tuck shop. The offer is a 30-minute "why your hair fell out when you moved to
+Bangalore" session plus an employee kit at a group price.
+
+SENDING INFRASTRUCTURE: CURRENT STATE
+ CHECK                     TODAY                 WHAT IT MEANS
+
+ Cold sends from           None (good)           The primary domain carries order confirmations and 50K customer emails a
+ arata.in                                        month. It must never carry cold mail
+ Secondary                 None                  Must buy and warm before the first send
+ domains
+ Authentication on         To be                 We will check SPF, DKIM and DMARC alignment anyway, because transactional
+ arata.in                  instrumented          mail depends on it
+ Prospect mail hosts Mixed                       Salons and many solo derms use personal Gmail. Platform category managers
+                                                 are on Google Workspace. Corporates split between Workspace and Microsoft
+                                                 365
+ Reply handling            None                  No shared record of who has been contacted, no owner for replies
+
+
+The personal-Gmail point matters. Google's bulk-sender rules apply to mail sent to personal Gmail
+addresses, and most salon owners and many solo dermatologists are on @gmail.com. Volume will stay
+far below the 5,000-a-day threshold, but the complaint threshold (keep under 0.1%, never reach 0.3%)
+applies to everyone. One angry salon owner marking a bulk-looking email as spam hurts the domain
+more than ten non-replies.
+
+WHERE THE LIST COMES FROM
+List building is the prospecting discipline's job. For this document the inputs are:
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · B2B OUTBOUND FOR DERMS, SALONS AND Q-COM                                                    3
+                                                                                                                  MAIL HOST
+ SEGMENT                    SOURCE                                     ROUGH SIZE WE WOULD START WITH             PATTERN
+
+ Dermatologists and IADVL member listings, Practo and                  600 in phase 1 (assumption; IADVL has      Personal Gmail,
+ trichologists      clinic sites in 8 metros, conference               over 15,000 members nationally, we start   some clinic
+                    speaker lists, trichology society                  with metro clinics that already sell OTC   domains
+                    rolls                                              products)
+ Q-com and                  LinkedIn, by platform and category 40 to 60 people across Blinkit, Zepto,             Google
+ marketplace                title                              Instamart, Nykaa, Amazon.in, Flipkart              Workspace
+ category
+ Salons                     Google Maps, Justdial, salon chain 800 in phase 1 across Delhi NCR,                   Personal Gmail,
+                            websites, Instagram business       Mumbai, Bangalore, Hyderabad, Pune,                Instagram DM,
+                            profiles                           Chennai                                            phone
+ Corporate wellness, LinkedIn HR titles at companies    300 in phase 1                                            Mixed
+ gyms, hostels       with 300+ staff in tech parks; gym                                                           Workspace and
+                     chains; PG and co-living operators                                                           Microsoft 365
+
+
+Every list is verified the day before upload. Bounces stay under 2% or the campaign pauses itself.
+
+
+
+THE PLAN
+THE STRUCTURE
+                                                                                                                          DIAGRAM
+                         ARATA B2B OUTBOUND
+                                |
+            +-------------------+--------------------+--------------------+
+            |                   |                     |                   |
+        DERMS (T2)         Q-COM CAT (T1)       SALONS (T2/T3)     CORPORATE (T3)
+        problem-led        teardown,            problem-led,       trigger-led,
+        + sample kit       founder-led          email + call       session + kit
+            |                   |                     |                   |
+        secondary          CBO's own mailbox      secondary          secondary
+        domain A           (manual, 10/wk)      domain A+B          domain B
+            |                   |                     |                   |
+            +-------------------+--------------------+--------------------+
+                                |
+                      ONE SHARED CONTACT RECORD
+                 (reply on any channel stops all channels)
+                                |
+                       REPLY TRIAGE within 1 hour
+                                |
+               +----------------+----------------+
+               |                |                |
+          sample kit        teardown call     trade order /
+          dispatched        booked            session booked
+
+
+
+
+Four plays, one shared record, one person who owns replies every working hour. The CBO's own
+mailbox handles the 40 to 60 category managers by hand. Everything else runs from secondary
+domains.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · B2B OUTBOUND FOR DERMS, SALONS AND Q-COM                                                           4
+PHASE 1 (DAYS 1 TO 14): BUILD THE PIPES BEFORE THE COPY
+What. Buy two secondary domains that are obviously Arata's (for example aratalabs.in and arata-
+partners.in; both redirect to arata.in). Set SPF, DKIM and DMARC at p=none with reporting, aligned to
+the From domain. Create three mailboxes per domain, each a real person on the Arata team with a
+photo and a plain signature. Start warmup on day 1. Build a third domain and keep it warmed and idle
+as a spare.
+Why. Warmup takes three to four weeks. If the domains are not bought in week 1, nothing cold goes
+out in month 1. The spare domain means a burned domain costs a day, not a month.
+Expected effect. By day 21, six mailboxes ready for 5 to 10 cold sends each per day, climbing to 20 to
+25 each by day 45. That is a ceiling of 60 cold sends a day at launch and 150 a day by month 2,
+follow-ups included.
+
+PHASE 2 (DAYS 8 TO 21): THE OFFERS, SIGNED OFF
+Outbound dies when the reply comes in and nobody can say yes. Before the first send, Arata signs off
+four offers:
+ SEGMENT        THE OFFER IN ONE LINE                                       WHAT ARATA HAS TO DECIDE
+
+ Derms          A clinic sample kit: 3 MitoActive 30 ml, the Y100           Kit cost (assumption: about ₹2,500 landed at transfer
+                study summary, 20 patient leaflets, and a clinic            price), the patient discount, whether clinic codes earn
+                code that gives patients ₹200 off on arata.in               the derm anything (we recommend no; keep it clean)
+ Q-com          A city-level teardown of their hair fall and                Which two cities get a MitoActive test; what promo depth
+                dandruff search results, and a proposed 8-week              Arata will fund for monsoon dandruff
+                test with Arata as the "hair fall with a number"
+                hero
+ Salons         A starter shelf: 6 Anti-Hair Fall Shampoo, 6 Anti-          Trade margin, minimum order, return policy on unsold
+                Dandruff Shampoo, 4 Anti-Dandruff Serum,                    stock, who delivers
+                counter card, stylist cheat sheet
+ Corporate A 30-minute hair fall session for employees plus                 Session speaker (an Arata R&D person, or a derm from
+           an employee kit (Anti-Hair Fall S+C ₹638 combo                   the derm programme), group price, minimum headcount
+           at a group price)
+
+
+PHASE 3 (DAYS 15 TO 30): SEQUENCES LIVE, LOWEST-RISK SEGMENT FIRST
+Order of launch: dermatologists first (highest proof, clearest ask), category managers second (manual,
+founder-led, small list), salons third, corporate last. Each sequence gets 300 sends before we judge it.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · B2B OUTBOUND FOR DERMS, SALONS AND Q-COM                                                              5
+THE CADENCE PER SEGMENT
+                                                                                                  DIAGRAM
+    DERMS (email only, 4 touches, 21 days)
+    Day 0   email 1: the patient question + sample kit offer, no link
+    Day 3   email 2: the Indian-participant study, one number
+    Day 8   email 3: cost per day vs minoxidil, how derms are using the kit
+    Day 16 email 4: breakup, 1-2-3 reply
+            -> reply = kit dispatched within 48 hrs, WhatsApp follow-up ONLY after they reply
+
+    Q-COM CATEGORY (Tier 1, 21 days, manual)
+    Day 1   view LinkedIn profile, react to a recent post with a real comment
+            email 1 from CBO: one observation about their category, permission to send teardown
+    Day 3   LinkedIn connection request, short note
+    Day 4   email 2 in the same thread: one more observation
+    Day 8   LinkedIn message if connected; else the teardown as a 3-minute video by email
+    Day 11 email 3: the 8-week test proposal in four lines
+    Day 18 email 4: breakup or "who owns personal care for the south?"
+    Day 21 move to nurture; keep commenting on their posts
+
+    SALONS (email + call, 14 days)
+    Day 0   email 1: the chair conversation + starter shelf
+    Day 2   call 1 (afternoon, 3 to 5 pm, between client rushes); voicemail + recap email
+    Day 6   email 2: what a stylist says, margin in one line
+    Day 9   call 2
+    Day 13 email 3: breakup
+            -> reply = WhatsApp catalogue + order form, same day
+
+    CORPORATE (email + LinkedIn, 18 days)
+    Day 0   email 1: trigger (new office, hiring surge, wellness week) + session offer
+    Day 3   LinkedIn connection
+    Day 5   email 2: the session outline, one slide described in words
+    Day 11 email 3: the kit, with group price
+    Day 18 email 4: breakup
+
+
+
+
+Rules that hold all four together: a reply on any channel stops every channel. An opt-out on one is an
+opt-out on all, keyed on email, phone and LinkedIn URL together. One sender per account. WhatsApp
+is never a cold channel; it opens only after a reply, and the first WhatsApp message says why it is
+arriving.
+
+COPY RULES WE HOLD OURSELVES TO
+    Under 80 words in email 1. No link in email 1. At most one link later, never shortened.
+    Subject lines of 2 to 4 words, lowercase, no numbers, no product names. They should look like a
+    colleague wrote them.
+    "You" and "your" outnumber "I" and "we". The first line is about their patient, their shelf, their
+    category, their employees.
+    Every claim traces to the brief: 7.4X, 95% fungus reduction in 1 wash, 87% saw growth in 84 days,
+    up to 28,200 new hairs in 84 days, 5+ clinical studies on Y100. Nothing else gets said.
+    Plain text, no images, no attachments. Opt-out line and postal address in every signature.
+    Open and click tracking off. We measure replies.
+
+WHY THESE PLAYS AND NOT OTHERS
+We ruled out a broad "partner with Arata" email to all four segments at once. Identical bodies across a
+thousand sends look like bulk mail, and the four buyers do not share a problem. We also ruled out
+automating LinkedIn. The CBO's profile and the founders' profiles are business assets; a restriction on
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · B2B OUTBOUND FOR DERMS, SALONS AND Q-COM                                   6
+one of them costs more than the time saved. LinkedIn stays manual, 15 to 25 requests a day at most,
+acceptance kept above 30% by targeting fewer, better people.
+
+
+
+WORKED EXAMPLES
+Sender names are placeholders. Each sequence is written to be sent as-is once Arata fills in the name
+and confirms the offer.
+
+EXAMPLE 1: THE DERMATOLOGIST SEQUENCE (4 EMAILS)
+Sent from a secondary domain, by an Arata R&D or medical liaison person. Tuesday to Thursday, 9 to
+11 am.
+Email 1, day 0 Subject: minoxidil alternative question
+
+                                   PATIENTS WITH EARLY THINNING WHO REFUSE MINOXIDIL USUALLY
+                                   WALK OUT OF A CLINIC WITH NOTHING THEY CAN ACTUALLY USE. WE
+                                   BUILT A SERUM FOR THAT GAP. IT WORKS ON MITOCHONDRIAL
+                                   FUNCTION IN THE FOLLICLE RATHER THAN BLOOD FLOW, AND IN THE
+                                   INDIAN-PARTICIPANT STUDY IT REDUCED SHEDDING AND IMPROVED THE
+   DR. {{LAST NAME}},              ANAGEN/TELOGEN RATIO OVER 84 DAYS.
+
+   WANT ME TO SEND A CLINIC KIT WITH 3 BOTTLES, THE STUDY SUMMARY
+   AND PATIENT LEAFLETS? IT IS FREE AND NOBODY WILL VISIT.
+
+   {{NAME}} R&D, ARATA (SLICK ORGANICS PVT LTD, NEW DELHI) IF THIS
+   ISN'T RELEVANT, REPLY "NO" AND I WON'T WRITE AGAIN.
+
+
+72 words in the body. One ask. The personalisation is the patient problem, which is the same for every
+derm on the list, so no manufactured hook is needed.
+Email 2, day 3 Subject: the study
+
+   ONE NUMBER FROM THE Y100 DATA, SINCE THAT IS WHAT YOU WILL ASK
+   FOR.
+
+   ACROSS 5+ CLINICAL STUDIES ON THE ACTIVE, AND IN THE INDIAN-
+   PARTICIPANT ARM, 87% OF USERS SAW INCREASED GROWTH WITHIN 84
+   DAYS. THE MECHANISM IS MITOCHONDRIAL, WHICH IS WHY IT DOES NOT
+   CARRY THE SHEDDING PHASE MINOXIDIL PATIENTS COMPLAIN ABOUT IN
+   MONTH ONE.
+
+   HAPPY TO SEND THE FULL SUMMARY WITH THE KIT. WOULD IT HELP?              {{NAME}}
+
+
+Email 3, day 8 Subject: cost per day
+
+
+BREW DEPLOYMENT TEAM × ARATA · B2B OUTBOUND FOR DERMS, SALONS AND Q-COM                               7
+   PATIENTS ASK WHAT IT COSTS TO STAY ON. MITOACTIVE IS ₹1,499 FOR A
+   MONTH AT TWICE-DAILY USE, SO ABOUT ₹50 A DAY FOR A 3-MONTH
+   COURSE PLUS MAINTENANCE. MINTOP IS ₹600 TO ₹900 AND INDEFINITE.
+
+   THE CLINICS ALREADY USING THE KIT HAND THE LEAFLET TO PATIENTS
+   WHO SAY "I DON'T WANT MINOXIDIL" AND LET THE STUDY DO THE
+   TALKING.
+
+   SHALL I SEND ONE TO YOUR CLINIC?                     {{NAME}}
+
+
+Email 4, day 16, breakup Subject: closing the loop
+
+   I HAVE WRITTEN THREE TIMES, SO I WILL STOP HERE. REPLY WITH A
+   NUMBER AND I WILL DO THE REST:
+
+1. Send the kit
+2. Not now, write again in 3 months
+3. Not interested, please stop
+
+   EITHER WAY, THANK YOU FOR READING.                        {{NAME}}
+
+
+What happens on a "1": the kit ships within 48 hours. The first WhatsApp message goes out only after
+this reply, and it says: "Dr. {{last name}}, {{Name}} from Arata. You asked for the MitoActive clinic kit
+by email; it ships tomorrow and I'll send the tracking here. Reply STOP any time and I'll switch back to
+email."
+
+EXAMPLE 2: THE QUICK-COMMERCE CATEGORY MANAGER PLAY (FOUNDER-LED TEARDOWN)
+Sent by the CBO from his own mailbox, by hand, to the personal care category head at one platform.
+Before email 1: view the profile, follow, and leave a real comment on a recent post.
+Email 1, day 1 Subject: hair fall in bangalore
+
+                               PULLED YOUR TOP 20 RESULTS FOR "HAIR FALL SHAMPOO" IN
+                               BANGALORE, DELHI AND HYDERABAD LAST WEEK. IN ALL THREE, THE
+                               FIRST SCREEN IS ONION AND BIOTIN PRODUCTS WITH NO CLAIM ON THE
+                               TILE, WHILE THE SEARCH INTENT ON OUR OWN SITE FOR THE SAME
+                               TERM IS MOSTLY PEOPLE WHO HAVE ALREADY TRIED ONION AND WANT
+   {{FIRST NAME}},             PROOF.
+
+   I NOTED TWO OTHER THINGS IN THE HAIR FALL AND DANDRUFF SHELF I
+   THINK ARE COSTING YOU CONVERSION. WANT ME TO SEND THEM OVER?                 {{CBO NAME}} ARATA
+
+
+There is no link and nothing attached. A "yes" filters for real interest, and the teardown goes to people
+who asked.
+Email 2, day 4, same thread Subject: (reply in thread)
+
+
+BREW DEPLOYMENT TEAM × ARATA · B2B OUTBOUND FOR DERMS, SALONS AND Q-COM                                   8
+   ONE MORE FROM THE SAME PULL. DANDRUFF SEARCH SPIKES IN
+   MONSOON AND AGAIN IN DECEMBER, AND THE SHELF IN ALL THREE
+   CITIES DOES NOT CHANGE BETWEEN SEASONS. A FUNGUS-REDUCTION
+   CLAIM ON THE TILE ("95% IN 1 WASH") IS A ONE-LINE CHANGE THAT WE
+   HAVE SEEN MOVE CLICK-THROUGH ON OUR OWN PDPS.
+
+   STILL HAPPY TO SEND THE FULL THREE IF USEFUL.
+
+
+Email 3, day 11, the proposal Subject: 8 week test
+
+   IF THE THREE IDEAS LANDED, HERE IS THE TEST I WOULD RUN:
+
+   8 WEEKS, TWO CITIES, ARATA ANTI-HAIR FALL SHAMPOO (₹359, 7.4X
+   CLAIM) AND HAIR GROWTH SERUM (₹571, 28,200 NEW HAIRS CLAIM) AS
+   THE HERO TILES IN "HAIR FALL", WITH THE CLAIM ON THE TILE. WE FUND
+   THE PROMO DEPTH. WE ALSO PUT MITOACTIVE (₹1,499) INTO PREMIUM
+   HAIR GROWTH IN THOSE TWO CITIES AS A TEST SKU WITH ITS OWN
+   REVIEWS FEED.
+
+   WORTH 20 MINUTES WITH YOU AND YOUR CITY LEAD?
+
+
+The LinkedIn connection note, day 3 (under 200 characters)
+
+   SENT YOU A NOTE ON THE HAIR FALL SHELF IN BANGALORE. WE SELL A
+   FAIR AMOUNT THROUGH YOUR PLATFORM AND HAVE A VIEW ON THE
+   CATEGORY; WOULD BE GOOD TO CONNECT.
+
+
+First LinkedIn message after acceptance
+
+   THANKS FOR CONNECTING. CURIOUS WHETHER THE MONSOON
+   DANDRUFF PUSH SITS WITH YOU OR WITH THE CITY LEADS. TRYING TO
+   SEND THE RIGHT PERSON A PROPER LOOK AT THE SHELF.
+
+
+The teardown itself (sent after a "yes", as a 3-minute video or a one-page annotated screenshot)
+Three ideas, each testable on their platform:
+1. Put the claim on the tile. Arata tiles say "7.4X hair fall reduction" and "95% dandruff fungus
+   reduction in 1 wash". Test against the current image-only tile in one city.
+2. Season the dandruff shelf. Pin an anti-dandruff collection for monsoon and December. Arata funds
+   a combo (Anti-Dandruff S+C, ₹866) for those windows.
+3. A "proven hair fall" filter or collection that only admits SKUs carrying a study-backed number. This
+   is the one that separates Arata from the Redensyl pack, and it helps the platform too, because it
+   gives the customer a reason to pick beyond price.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · B2B OUTBOUND FOR DERMS, SALONS AND Q-COM                                 9
+The follow-up after the teardown asks a small question ("was the second one already on your
+roadmap?") and only then offers the call.
+
+EXAMPLE 3: THE SALON OWNER SEQUENCE (EMAIL, CALL, VOICEMAIL, RECAP)
+Sent from a secondary domain by an Arata partnerships person. Calls between 3 and 5 pm, after the
+lunch rush and before the evening one.
+Email 1, day 0 Subject: the dandruff conversation
+
+                               EVERY STYLIST AT {{SALON NAME}} HAS THE SAME CHAT TWICE A DAY:
+                               A CLIENT'S SCALP IS FLAKING, THE CLIENT ASKS WHAT TO USE, THE
+   {{FIRST NAME}},             STYLIST NAMES A SHAMPOO THE SALON DOES NOT STOCK.
+
+   WE MAKE AN ANTI-DANDRUFF SHAMPOO THAT CUTS THE FUNGUS BY
+   95% IN ONE WASH. SALONS PUT SIX BOTTLES BY THE COUNTER AND LET
+   THE STYLIST SAY THE NUMBER OUT LOUD.
+
+   WANT THE STARTER SHELF DETAILS AND THE MARGIN ON ONE PAGE?
+
+   {{NAME}} ARATA, NEW DELHI REPLY "NO" AND I WON'T FOLLOW UP.
+
+
+Call 1, day 2. The opener (20 seconds)
+
+   HI, THIS IS {{NAME}} FROM ARATA, THE HAIR AND SCALP SCIENCE
+   BRAND. I SENT YOU A NOTE ON TUESDAY ABOUT THE DANDRUFF
+   CONVERSATION YOUR STYLISTS HAVE AT THE CHAIR. DO YOU HAVE TWO
+   MINUTES, OR SHOULD I CALL BACK AFTER 5?
+
+
+If yes: "What do you currently hand a client who asks about flaking? ... Right. We'd put six bottles of a
+shampoo with a 95% fungus-reduction claim by your counter at a trade margin, with a counter card. If
+it does not move in 60 days, we take it back. Can I WhatsApp you the one-pager?"
+Voicemail (25 seconds)
+
+   HI {{FIRST NAME}}, {{NAME}} FROM ARATA. I SENT YOU AN EMAIL ON
+   TUESDAY ABOUT THE SHAMPOO YOUR STYLISTS COULD RECOMMEND
+   WHEN A CLIENT'S SCALP IS FLAKING. SIX BOTTLES, A COUNTER CARD,
+   UNSOLD STOCK COMES BACK. I'LL SEND A SHORT NOTE NOW SO YOU
+   HAVE IT IN WRITING. THANKS.
+
+
+Recap email, same day Subject: left you a voicemail
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · B2B OUTBOUND FOR DERMS, SALONS AND Q-COM                               10
+   TRIED YOU THIS AFTERNOON. THE SHORT VERSION: A STARTER SHELF OF
+   ANTI-DANDRUFF AND ANTI-HAIR FALL SHAMPOO, COUNTER CARD AND A
+   STYLIST CHEAT SHEET WITH THE TWO NUMBERS (95% FUNGUS
+   REDUCTION IN ONE WASH; 7.4X HAIR FALL REDUCTION). TRADE MARGIN
+   ON THE ONE-PAGER. UNSOLD STOCK BACK AFTER 60 DAYS.
+
+   REPLY "SEND IT" AND I'LL WHATSAPP THE PAGE TODAY.
+
+
+Email 2, day 6 Subject: what the stylist says
+
+   THE CHEAT SHEET IS ONE LINE PER BOTTLE. FOR DANDRUFF: "THIS CUTS
+   THE FUNGUS BY 95% IN ONE WASH." FOR HAIR FALL: "THIS GAVE 7.4
+   TIMES LESS HAIR FALL IN THE STUDY." STYLISTS DO NOT NEED TO
+   REMEMBER ANYTHING ELSE.
+
+   SALONS SELL THE ₹866 ANTI-DANDRUFF COMBO MOST, BECAUSE THE
+   CLIENT WALKS OUT WITH THE SHAMPOO AND THE CONDITIONER
+   TOGETHER. WANT THE ONE-PAGER?
+
+
+Email 3, day 13, breakup Subject: last one from me
+
+   I'LL STOP HERE. IF THE SHELF IS WORTH A LOOK LATER, REPLY ANY TIME
+   AND I'LL SEND THE PAGE. OTHERWISE, GOOD LUCK WITH THE WEDDING
+   SEASON RUSH.
+
+
+EXAMPLE 4: THE CORPORATE WELLNESS TRIGGER EMAIL
+Sent from a secondary domain to the HR head at a 300+ person company that just opened a
+Bangalore or Gurugram office or posted a hiring surge.
+Email 1, day 0 Subject: the bangalore move
+
+                               SAW {{COMPANY}} IS ADDING HEADCOUNT IN BANGALORE. MOST
+                               PEOPLE WHO MOVE HERE FOR A JOB START LOSING HAIR IN THE FIRST
+                               SIX MONTHS: HARD WATER, NEW STRESS, NEW DIET. IT IS THE MOST
+                               COMMON COMPLAINT OUR CUSTOMER TEAM HEARS, AND NOBODY AT
+   {{FIRST NAME}},             THE COMPANY TALKS ABOUT IT.
+
+   WE RUN A 30-MINUTE SESSION ON WHY IT HAPPENS AND WHAT
+   ACTUALLY WORKS, WITH A KIT EMPLOYEES CAN BUY AT A GROUP PRICE.
+   WOULD THAT FIT YOUR WELLNESS CALENDAR?
+
+   {{NAME}} ARATA, NEW DELHI REPLY "NO" AND I WON'T FOLLOW UP.
+
+
+Email 2, day 5 Subject: the session
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · B2B OUTBOUND FOR DERMS, SALONS AND Q-COM                      11
+   THE SESSION IS THREE PARTS. WHY HAIR FALLS AFTER A MOVE (HARD
+   WATER, TELOGEN EFFLUVIUM, STRESS). WHAT DOES NOT WORK (ONION,
+   BIOTIN GUMMIES, MOST OF WHAT IS ON INSTAGRAM). WHAT DOES, WITH
+   THE STUDY NUMBERS, AND HOW TO TELL IN 84 DAYS IF IT IS WORKING.
+
+   NO SELLING IN THE ROOM. THE KIT LINK GOES OUT AFTER, THROUGH
+   YOU.                                                                     WANT A SLOT IN {{MONTH}}?
+
+
+Email 3, day 11 Subject: the kit
+
+   FOR REFERENCE, THE EMPLOYEE KIT IS THE ANTI-HAIR FALL SHAMPOO
+   AND CONDITIONER (₹638 FOR THE PAIR ON OUR SITE) AT A GROUP PRICE,
+   WITH THE 84-DAY CHECK-IN BY EMAIL SO PEOPLE SEE WHETHER IT
+   WORKED. WE HANDLE FULFILMENT TO THE OFFICE OR TO HOMES.
+
+   HAPPY TO SEND A SAMPLE TO YOUR WELLNESS LEAD FIRST.
+
+
+EXAMPLE 5: REPLY HANDLING, WRITTEN OUT
+Positive replies get answered within the hour by a person. These are the drafts.
+"Yes, send the kit" (derm)
+
+   THANK YOU, DR. {{LAST NAME}}. IT SHIPS TOMORROW TO {{CLINIC
+   ADDRESS FROM SIGNATURE; CONFIRM IF DIFFERENT}}. I'LL ADD THE
+   STUDY SUMMARY AND 20 PATIENT LEAFLETS. ONE QUESTION SO THE
+   LEAFLET LANDS RIGHT: DO MOST OF YOUR EARLY-THINNING PATIENTS
+   COME IN MALE, FEMALE, OR AN EVEN SPLIT?
+
+
+"What's the margin?" (salon)
+
+   {{TRADE MARGIN}}% OFF MRP ON THE STARTER SHELF, SO ON THE ₹449
+   ANTI-DANDRUFF SHAMPOO YOU KEEP ABOUT ₹{{AMOUNT}} A BOTTLE.
+   THE ₹866 COMBO IS WHERE MOST SALONS MAKE IT WORTHWHILE. ONE-
+   PAGER ATTACHED ON WHATSAPP IF YOU SHARE A NUMBER, OR I CAN
+   EMAIL IT. WHICH IS EASIER?
+
+
+"We already stock L'Oréal Professionnel / Pilgrim" (salon)
+
+   MAKES SENSE, MOST OF THE SALONS WE WORK WITH DO. THE PLACE
+   ARATA FITS IS THE CLIENT WHO ASKS FOR SOMETHING WITH A NUMBER
+   ON IT; THE BACKBAR STAYS WHAT IT IS. WORTH A SIX-BOTTLE TEST BY
+   THE COUNTER, OR IS THE COUNTER FULL?
+
+
+"Send me more info" (category manager)
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · B2B OUTBOUND FOR DERMS, SALONS AND Q-COM                               12
+     SENDING THE THREE-IDEA TEARDOWN AS A 3-MINUTE VIDEO NOW; YOUR
+     BANGALORE SHELF IS ON SCREEN FROM THE FIRST SECOND. ONE
+     QUESTION THAT WILL HELP ME TAILOR THE TEST PROPOSAL: IS THE HAIR
+     FALL HERO SLOT DECIDED CENTRALLY OR BY CITY?
+
+
+"How did you get my email?" (any)
+
+     FROM {{ACTUAL SOURCE: IADVL LISTING / YOUR CLINIC WEBSITE /
+     LINKEDIN}}. IF YOU'D RATHER NOT HEAR FROM US, SAY SO AND I'LL
+     REMOVE YOU FROM EVERYTHING TODAY.
+
+
+"Not now, after Diwali" (any)
+
+     UNDERSTOOD. I'LL WRITE ONCE IN {{MONTH}} AND NOT BEFORE. GOOD
+     LUCK WITH THE SEASON.
+
+
+Every reply, of every type, is logged against the contact with the sequence, the step, the channel and
+the outcome. Out-of-office, unsubscribe, bounce and "not now" are handled by the system without a
+human. Positive, information request, objection and referral are drafted by the system and sent by the
+person on reply duty.
+
+
+
+30-DAY DEPLOYMENT
+ WEEK BREW SHIPS                                                          ARATA PROVIDES                 LIVE BY END OF WEEK
+
+ 1        Buys and authenticates 3 secondary domains (SPF,                  Names of 6 team members for    Domains warming. ICPs
+          DKIM, DMARC p=none with reporting). Creates 6                     mailboxes with photos.         signed off. List build
+          mailboxes with real team identities. Starts warmup.               Confirms the two sample-kit    underway
+          Audits arata.in authentication. Writes the four ICP               SKUs can ship from the Delhi
+          definitions and the signal list per segment. Hands                warehouse. CBO agrees to own
+          the prospecting brief to list build                               the category-manager play
+                                                                            personally
+ 2        Drafts and reviews all four sequences, calls,                     Trade margin, minimum order    Offers signed off. Copy
+          voicemails, LinkedIn notes and reply drafts (the                  and 60-day return policy for   approved. Placement
+          copy in this document, finalised against the signed-              salons. Derm kit cost and      test above 90% inbox on
+          off offers). Sets up the sending tool, the shared                 patient discount code          both domains. 50 derm
+          contact record, WhatsApp Business for post-reply                  approved. Corporate group      kits packed
+          only, and the reply-triage routing to one owner.                  price. Postal address for
+          Builds the derm kit insert and the salon counter card             signatures. Legal review of
+          and stylist cheat sheet. Runs seed placement tests                every claim used in copy
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · B2B OUTBOUND FOR DERMS, SALONS AND Q-COM                                                           13
+ WEEK BREW SHIPS                                                          ARATA PROVIDES                    LIVE BY END OF WEEK
+
+ 3        Launches the derm sequence at 5 to 10 sends per                   CBO spends 30 minutes a day       2 sequences live. First
+          mailbox per day (about 150 derms in the week).                    on the category play. R&D         derm replies. First 2 to 3
+          CBO starts the category-manager play by hand: 10                  reviews the Y100 study            teardowns requested
+          people, each with a city-level teardown drafted by                summary insert. Reply-duty
+          us and reviewed by him. Fixes the CBO's LinkedIn                  owner (Arata partnerships or
+          headline, About and Featured section with the                     customer team) starts one hour
+          teardown as the featured item. Daily bounce check,                a day
+          first weekly Postmaster check
+ 4        Launches salons (email plus calls, 3 to 5 pm) and                 Delivers the first derm kits      4 sequences live at
+          corporate (email plus manual LinkedIn). Mailboxes                 within 48 hours of each yes.      about 60 cold sends a
+          climb to 15 sends a day. Delivers the first category              Ships the first salon starter     day. 40 derm kits
+          teardown videos. Runs the first weekly sequence                   shelves. Names a speaker for      shipped. 3 category
+          review: replies by step, bounces, complaints,                     the first corporate session       teardowns delivered.
+          placement. Pauses anything above 2% bounce.                                                         First salon shelf orders.
+          Writes the derm "how the kit is being used" line                                                    First corporate session
+          from the first clinic feedback                                                                      booked
+
+
+Owners: Brew outbound lead (infrastructure, copy, weekly review), Brew creative lead (kit
+insert, counter card, teardown video), Arata CBO (category play), Arata partnerships lead (salons,
+corporate, reply duty), Arata R&D lead (derm copy and study summary), Arata brand manager (claim
+sign-off).
+
+
+
+HOW WE MEASURE
+Open rate is not on this list. Tracking is off and opens are meaningless with Apple Mail. We count
+replies, positive replies and the segment outcome.
+ METRIC                    BASELINE            90-DAY TARGET                                  HOW WE READ IT
+
+ Reply rate, all           No outbound         6% (top-quartile cold email is 5.5%+;          Under 1% after 300 sends in a segment
+ segments                  today               tight segments with a clear offer              means the offer or the list is wrong. Stop
+                                               should beat the 3.4% average)                  and fix; do not add volume
+ Positive reply            To be               35% of replies                                 Lower than 25% means the subject line
+ share                     instrumented                                                       is getting opens the body does not
+                                                                                              deserve
+ Bounce rate               To be               Under 2% per campaign, under 1% by             Above 2% pauses the campaign
+                           instrumented        month 3                                        automatically and the list goes back for
+                                                                                              verification
+ Spam complaints           To be               Under 0.1%                                     Approaching 0.1% means pause, cut
+                           instrumented                                                       volume, rewrite
+ Inbox placement           To be               Above 90%                                      Below 70% pulls the domain back to
+ (seed tests)              instrumented                                                       warmup
+ Derm kits                 0                   120 kits across 600 derms (20%                 The play works if 1 in 4 kit recipients
+ requested                                     permission rate; assumption based on           writes a clinic code into a patient's hand
+                                               a free, no-rep-visit offer)                    within 60 days
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · B2B OUTBOUND FOR DERMS, SALONS AND Q-COM                                                                  14
+ METRIC                    BASELINE            90-DAY TARGET                               HOW WE READ IT
+
+ Derm clinic codes         0                   300 MitoActive orders through clinic        Also the first MitoActive reviews with a
+ redeemed on                                   codes (assumption)                          derm behind them
+ arata.in
+ Category manager          0                   12 of 50 contacts (24% permission           4 lead to a test proposal; 2 tests running
+ teardowns                                     rate)                                       by day 90
+ delivered
+ Salon starter             0                   60 across 800 salons (7.5%;                 Reorder within 60 days on half of them is
+ shelves placed                                assumption, calls do most of the work       the pass mark
+                                               here)
+ Corporate                 0                   6, with 2 kit orders of 100+ units          The first two sessions produce the
+ sessions run                                                                              employee proof line the segment lacks
+                                                                                           today
+ Meetings or orders No baseline                1.5 (benchmark 1 to 2 for good)             Below 0.5 in a segment after 300
+ per 100 contacts                                                                          contacts means retire the segment for a
+                                                                                           quarter
+
+
+Decision rules at day 90.
+If a segment hits its reply and outcome targets, double its daily volume (more mailboxes on the same
+domains, never more sends per mailbox), hand the proven copy to a second sender, and add the next
+city.
+If derms work and q-com does not, the derm clinic codes become the review engine for MitoActive
+and we take the "derm-recommended" line into every other discipline. If q-com works and derms do
+not, we shift the derm budget into the salon play, which shares the same counter-card asset.
+If a segment misses on reply rate but the list is clean (bounces under 1%, placement above 90%), the
+copy or the offer is wrong. We rewrite email 1 with a different first line and the follow-ups with a
+different proof point, and run another 300 before deciding.
+If a segment misses on outcome but not on replies (people answer, nobody buys), the offer is the
+problem. For salons that usually means margin; for derms it means the kit asked for too much from the
+clinic; for corporate it means the session needs a derm speaker, not a brand person.
+If bounces or complaints breach the stop-loss on any domain, that domain comes out of rotation, the
+spare goes in, and the program does not stop.
+
+
+
+APPENDIX
+SUBJECT LINE BANK BY SEGMENT
+All lowercase, 2 to 4 words, no numbers, no product names.
+ DERMS                                        Q-COM CATEGORY                SALONS                           CORPORATE
+
+ minoxidil alternative question               hair fall in bangalore        the dandruff conversation        the bangalore move
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · B2B OUTBOUND FOR DERMS, SALONS AND Q-COM                                                               15
+ DERMS                                        Q-COM CATEGORY                SALONS                  CORPORATE
+
+ the study                                    the dandruff shelf            what the stylist says   the session
+ cost per day                                 8 week test                   left you a voicemail    the kit
+ closing the loop                             who owns south                last one from me        hair fall at work
+ patient leaflets                             premium hair growth           wedding season          wellness calendar
+
+
+PRE-SEND CHECKLIST (EVERY CAMPAIGN, EVERY WEEK)
+    List verified in the last 7 days, bounces projected under 2%
+    Every claim in the copy matches the brief's proof points word for word
+    No link in email 1; at most one in later emails; no shorteners
+    Opt-out line and postal address present
+    Open and click tracking off
+    Suppression list (email, phone, LinkedIn URL) checked against every contact
+    Seed placement test above 90% on the sending domain this week
+    Reply-duty owner named for every working hour this week
+    Sends per mailbox within the ramp (5 to 10 in weeks 3 and 4, 20 to 25 after)
+
+SEGMENT ONE-LINERS THE STYLIST, THE DERM AND THE HR HEAD CAN REPEAT
+    Anti-Dandruff Shampoo, ₹449: "cuts dandruff-causing fungus by up to 95% in one wash"
+    Anti-Hair Fall Intensive Shampoo, ₹399: "7.4X less hair fall in the study"
+    Hair Growth Intensive Serum, ₹649: "up to 28,200 new hairs in 84 days"
+    MitoActive, ₹1,499: "87% saw increased growth in 84 days; works on the follicle's mitochondria, so
+    no minoxidil-style dependency"
+    The routine: "wash, treat, leave on. Check at 84 days."
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · B2B OUTBOUND FOR DERMS, SALONS AND Q-COM                                               16
+COLD OUTBOUND (B2B)
+
+
+DAY 30
+AT ARATA
+    WHAT IS LIVE
+
+    Two warmed sending domains, four live sequences, the first 40 dermatologists
+    holding a MitoActive sample kit, and the Blinkit, Zepto and Instamart category
+    heads each sitting on a city-level hair fall teardown from Arata.
+
+
+
+
+  NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+  BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+  CONFIRM".
+
+
+  EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+  BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                  DEPLOYMENT TEAM
+                                                                               BREW
+

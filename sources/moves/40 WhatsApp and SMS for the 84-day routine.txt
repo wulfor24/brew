@@ -1,0 +1,842 @@
+     Brew                                      PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+     DEPLOYMENT TEAM
+
+
+
+
+SMS AND WHATSAPP MARKETING · MOVE 40 OF 50
+
+
+
+WHATSAPP
+AND SMS
+FOR THE
+84-DAY
+ROUTINE
+  A WHATSAPP-FIRST MESSAGING SYSTEM THAT WALKS
+  EVERY ARATA CUSTOMER THROUGH THE 84 DAYS THE
+  CLAIMS ARE BUILT ON, BRINGS THEM BACK FOR THE
+  SECOND BOTTLE, AND USES DLT-COMPLIANT SMS ONLY
+  WHERE SMS STILL WINS.
+
+
+
+
+84 days
+ONE ROUTINE JOURNEY ON WHATSAPP
+
+
+
+
+BREW × ARATA                    OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                  V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                               WHAT THIS GIVES ARATA
+                                                               A WhatsApp-first messaging system that walks
+                                                               every Arata customer through the 84 days the
+                                                               claims are built on, brings them back for the second
+                                                               bottle, and uses DLT-compliant SMS only where
+        84 days
+        ONE ROUTINE JOURNEY ON
+                                                               SMS still wins.
+                                                                LIVE 30 DAYS AFTER WE START
+        WHATSAPP                                                Order updates, a delivery-day seal check, cart
+                                                                recovery and the first 45 days of the routine journey
+                                                                are live on an approved WhatsApp number, with
+                                                                DLT-registered SMS headers carrying OTPs and
+                                                                fallbacks.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+Every hero claim Arata makes has a clock on it. 28,200 new hairs within 84 days. 87% saw growth
+with MitoActive in 84 days. 86% fewer greys over 3 months. The claim is a promise about what
+happens if the customer keeps going. Today nothing on the brand side keeps them going. There is no
+subscription, no routine builder, no app and no community. A customer buys the ₹571 Hair Growth
+Intensive Serum, the box arrives, and the next thing they hear from Arata is a marketplace ad. The 84
+days happen in silence.
+That silence is expensive. The brief puts beauty repeat rates at around 26% and routine-led models
+above 40%. Arata does 50,000+ D2C orders a month at an implied AOV of ₹900 to ₹1,000. If
+messaging moves the 45-day repeat rate by even 5 points on D2C alone, that is 2,500 extra orders a
+month, roughly ₹20 to ₹25 lakh of monthly revenue that does not need a single new customer. The
+customer who got the number on the bottle and then stopped at week three is the biggest leak in the
+business, bigger than the leaking bottles people complain about in reviews.
+The channel for this in India is WhatsApp, with SMS behind it. Arata's buyer is 22 to 40, internet-
+native, orders on Blinkit at 11pm and lives inside WhatsApp. Marketing SMS in India now runs through
+the TRAI DLT system: registered headers, pre-approved templates, a 10am to 9pm window, and DND
+scrubbing that silently removes a large share of any promotional list. WhatsApp runs through Meta's
+template system with its own rules, but it reaches the DND customer, carries images and buttons, and
+lets the customer reply. So the design is: WhatsApp for the relationship, SMS for OTPs, order fallbacks
+and the small promotional slice that has given DLT-grade consent.
+There is a second reason this discipline matters more for Arata than for most D2C brands. 68% of
+revenue sits on marketplaces and quick commerce. Arata gets no phone number from a Zepto order.
+The only object that travels from Arata to that customer is the box. A QR insert that opens a WhatsApp
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · WHATSAPP AND SMS FOR THE 84-DAY ROUTINE                                                1
+chat is the one bridge from rented land to an owned list, and it doubles as the fastest fix for the "seal
+was broken" and "bottle was leaking" reviews: the customer tells Arata on day 0 instead of telling
+Nykaa on day 10.
+So this document gives Arata four things: a compliance setup for both channels that will survive an
+audit, a prioritised set of flows with the 84-day routine journey at the centre, finished message copy
+for every flow, and a 30-day build plan with a warm-up schedule that respects Meta's messaging
+tiers.
+
+
+
+WHAT WE FOUND
+CHANNEL FIT FOR ARATA'S CUSTOMER
+ USE CASE                    WHATSAPP                               DLT SMS                    RCS      CALL FOR ARATA
+
+ Order confirm,              Utility template, cheap, has           Service template, reliable Later    WhatsApp first, SMS
+ shipped, delivered          tracking button                        fallback                            fallback if not delivered in
+                                                                                                        10 min
+ OTP at checkout and Authentication template                        Transactional header,      Not      SMS first (habit and
+ login                                                              fastest                    needed   speed), WhatsApp as
+                                                                                                        second option
+ Abandoned cart              Marketing template with                Promotional, DND-          Later    WhatsApp only
+                             product image and checkout             scrubbed, 10am to 9pm
+                             button                                 only
+ 84-day routine              Marketing templates with               Too long, too costly per   Later    WhatsApp only
+ journey                     reply buttons                          touch
+ Reorder and                 Marketing template with                Promotional, consented     Later    WhatsApp, SMS to
+ replenishment               "Reorder" button                       only                                consented non-WhatsApp
+                                                                                                        users
+ Review and photo            Reply opens a free 24-hour             One-way, poor              Later    WhatsApp
+ collection                  window
+ Festive or launch           Marketing template, capped             Promotional header, DLT    Later    WhatsApp primary, SMS
+ broadcast                   by messaging tier                      consent                             to the consented
+                                                                                                        remainder
+
+
+The pattern is clear. SMS keeps three jobs: OTPs, order fallbacks and a thin promotional layer.
+Everything that depends on a reply, an image or a button goes to WhatsApp.
+
+COMPLIANCE AUDIT: WHAT ARATA NEEDS BEFORE THE FIRST SEND
+We treat compliance as the first deliverable, since a blocked template or a flagged number in week 2
+costs more than a week of setup.
+WhatsApp Business Platform (Meta)
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · WHATSAPP AND SMS FOR THE 84-DAY ROUTINE                                                               2
+                                                    STATUS TODAY
+ ITEM                                               (ASSUMPTION)              WHAT WE NEED
+
+ Meta Business verification for Slick               Likely done for Meta ads; Required to move from 250 to 2,000 unique users
+ Organics Pvt Ltd                                   verify                    per day
+ Dedicated WhatsApp number on the                   Not in place              One number for marketing and utility, a second
+ Cloud API via a BSP                                                          number held for support
+ Display name "Arata" approved                      Not in place              Matches the brand on arata.in; rebrand name must
+                                                                              match packaging
+ Opt-in that names WhatsApp                         Not in place              Checkout checkbox, unchecked by default, plus
+                                                                              QR insert and CTWA entry
+ Templates by category                              None                      Utility for order updates, marketing for cart,
+                                                                              journey, reorder, launches
+ Opt-out on every marketing template                None                      Quick reply "Stop offers" plus footer line
+ Quality monitoring                                 None                      Weekly block-reason review in WhatsApp
+                                                                              Manager
+
+
+Three Meta rules shape the design:
+1. Cart reminders are marketing, even when the customer asked to be reminded. So are routine
+   check-ins that mention a product. Only pure order and account messages qualify as utility. If we
+   add a coupon to a shipping update, Meta recategorises it as marketing and we pay the marketing
+   rate.
+2. Outside the 24-hour window after a customer's last message, only approved templates can go out.
+   The QR insert and every reply button are there to open that window, because inside it we can send
+   free-form messages, photos and lists.
+3. Messaging limits are shared across the business portfolio and start at 250 unique users per day.
+   Arata needs 10,000 within the first month and 100,000 by month 3. That only happens by sending
+   high-quality templates to people who read them, so the warm-up order matters: recent buyers first,
+   cold list last.
+TRAI DLT (SMS)
+ ITEM                    WHAT WE REGISTER                                   NOTE
+
+ Principal Entity        Slick Organics Private Limited on one operator     2 to 7 working days
+                         DLT portal (Airtel, Jio or Vi; it syncs across)
+ Headers (6              ARATAA-T for OTP and transactional, ARATAA- Header suffixes by category are the current TRAI
+ characters)             S for service updates, ARATAA-P for         practice; confirm exact format with the aggregator
+                         promotional                                 on the day
+ Content                 One per message, variables as {#var#}, each        Mismatched text gets scrubbed and never delivered
+ templates               variable at most 30 characters
+ Consent                 For promotional sends to customers on DND,         Without this, DND numbers are removed from every
+ templates               via Digital Consent Acquisition                    promotional send
+ URL whitelisting        arata.in and the short domain we use               Non-whitelisted links are blocked
+ Promotional             10:00 to 21:00 IST only                            Platform must enforce it
+ window
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · WHATSAPP AND SMS FOR THE 84-DAY ROUTINE                                                         3
+ ITEM                    WHAT WE REGISTER                                         NOTE
+
+ Telemarketer            The aggregator (MSG91, Gupshup, Kaleyra or               Required for traceability
+ chain                   similar) declared on the DLT portal
+
+
+The practical effect for Arata: promotional SMS reaches only the customers who ticked a box and are
+either off DND or gave digital consent. In Indian metro lists that is often less than half of the file. We
+treat promotional SMS as a small, consented layer and never as the broadcast channel.
+
+THE ECONOMICS
+Assumptions, to be replaced with the BSP's rate card in week 1: WhatsApp marketing template roughly
+₹0.90 per delivered message in India, utility roughly ₹0.13, DLT SMS roughly ₹0.20 per segment
+through an aggregator. GST extra.
+                                                                                                                          DIAGRAM
+    Per D2C order (utility, every customer)
+      confirm + shipped + out for delivery + delivered                     4 x ₹0.13   = ₹0.52
+      50,000 orders/month                                                               = ₹26,000/month
+
+    Per opted-in customer, 84-day journey (marketing)
+      welcome + day 3 + day 14 + day 28 + day 45 + day 60 + day 84                       7 x ₹0.90  = ₹6.30
+      15,000 opt-ins/month (30% of D2C orders, assumption)                               = ₹94,500/month
+
+    Break-even
+      one recovered reorder of the ₹571 serum pays for 90 journeys
+      one recovered ₹838 shampoo+serum cart pays for 133 journeys
+
+
+
+
+The channel pays for itself if 1 in 90 journey customers reorders because of it. Routine-led brands see
+repeat lifts far above that. The cost discipline sits elsewhere: the per-user marketing cap Meta applies
+when people stop reading, and the quality rating that drops when people block. Both are fixed by
+sending fewer, better messages, which is how the journey is designed.
+
+WHAT ARATA'S CURRENT STATE TELLS US
+ KNOWN FACT FROM THE BRIEF                           WHAT IT MEANS FOR MESSAGING
+
+ No subscription                                     The reorder flow on WhatsApp is the subscription until one exists. A "Reorder"
+                                                     button on day 28 and day 45 does the job
+ MitoActive has zero reviews at ₹1,499               The day 84 message for MitoActive buyers is the review engine. Every reply
+                                                     opens a window to collect a photo
+ "Seal was broken", "bottle was leaking" A delivery-day seal check with a replacement button turns a 1-star
+ reviews                                 marketplace review into a support thread
+ 45-day repeat is the key conversion                 The journey has a reorder touch at day 28 and day 45, both before the bottle
+ action                                              runs out
+ 68% of revenue on rented land                       The QR insert is the only capture point for marketplace and quick-commerce
+                                                     buyers
+ Naming inconsistency (onion vs biotin,              Every template names the SKU exactly as on arata.in, so the customer can
+ serum vs tonic)                                     match bottle to message
+ Routine Ritika wants "one cart and a                That is the whole flow, written for her
+ reminder to reorder"
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · WHATSAPP AND SMS FOR THE 84-DAY ROUTINE                                                              4
+THE PLAN
+ARCHITECTURE
+                                                                                                           DIAGRAM
+    ENTRY POINTS                                CHANNEL                    FLOWS
+
+    arata.in checkout ──[WA + SMS tick]──┐                     ┌─ Order utility (WA, SMS fallback)
+    QR insert in box   ──[scan, says Hi]──┤                    ├─ Delivery-day seal check (WA)
+    Click-to-WhatsApp ad ─[free window]───┼──► WhatsApp ───────┼─ 84-day routine journey (WA)
+    Site popup / quiz ──[number + tick]──┤     number          ├─ Abandoned cart (WA)
+    Nykaa/Amazon box   ──[same QR]────────┘                    ├─ Reorder + replenishment (WA, SMS)
+                                                               ├─ Review + photo collection (WA)
+                                            DLT SMS ──────────┼─ OTP (SMS)
+                                            headers            ├─ Order fallback (SMS)
+                                                               └─ Festive / launch (WA first, SMS slice)
+
+
+
+
+PRIORITIES, IN BUILD ORDER
+Priority 1: Order utility and the seal check. Cheapest messages, highest read rate, and they warm
+the number with people who want to hear from Arata. The seal check on delivery day is the single
+message most likely to change Arata's review profile. Expected effect: fewer packaging complaints
+reaching Nykaa and Amazon, a growing list of customers who have replied (and so opened a window),
+and a green quality rating going into week 3.
+Priority 2: The 84-day routine journey. This is the product. Seven touches tied to the claim window,
+each with one reply button that either opens a conversation or places a reorder. Expected effect: a
+measurable lift in 45-day repeat on D2C, the first bank of MitoActive reviews, and a stream of before-
+and-after photos for ads.
+Priority 3: Abandoned cart. Arata's 650K monthly visits and 7 to 8% visit-to-order rate imply tens of
+thousands of carts a month that never close. Expected effect: 5 to 10% of reminded carts recovered,
+with no discount on the first touch.
+Priority 4: Reorder and replenishment outside the journey. For customers who bought before the
+system existed, and for the Pack of 3 buyers whose clock runs 90 days. Expected effect: repeat lift on
+the existing base, which is where most of Arata's 1.5M annual customers sit.
+Priority 5: Launch and festive broadcasts. Two marketing broadcasts a month at most. MitoActive to
+the serum buyers who have finished 84 days; Diwali to the whole opted-in file.
+Priority 6: SMS promotional layer. Only after the DLT consent file is built. One send a month to the
+consented, non-WhatsApp segment.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · WHATSAPP AND SMS FOR THE 84-DAY ROUTINE                                             5
+THE 84-DAY ROUTINE JOURNEY
+                                                                                                                        DIAGRAM
+    Day 0         Day 3        Day 14                Day 28                Day 45           Day 60        Day 84
+    Delivery      How to use   Two-week              Bottle ~ done         Reorder window   Progress      Results +
+    + seal check (video)       check-in              → Reorder             (brief: repeat   photo ask     review +
+      [Utility]    [Marketing] [Yes/Not yet]         button                within 45 d)     [Marketing]   next tier
+      reply opens               [Marketing]          [Marketing]           [Marketing]                    [Marketing]
+      window
+
+    Branches
+      Day 14 "Not yet" → free-form reply inside window: shedding phase explainer, keep going
+      Day 28 "Reorder" → checkout link, Pack of 3 at ₹999 offered once
+      Day 45 no reorder → day 52 one more nudge, then suppress reorder nudges for 30 days
+      Day 84 "Share photo" → window opens, collect photo, ask for on-site review
+      Day 84 MitoActive buyer → review request first, combo second
+
+
+
+
+The dates assume a 30 ml serum at twice-daily use lasts roughly 30 days (assumption, to be
+confirmed against Arata's usage guidance). Shampoo buyers get a shorter version: day 0, day 7, day
+21 reorder, day 45 cross-sell to serum.
+Exits and caps: any purchase pauses reorder nudges for 25 days and restarts the clock. "Stop offers"
+ends all marketing templates immediately. No customer receives more than one marketing template in
+any 5-day period, which means a journey touch always wins over a broadcast when they collide.
+
+OPT-IN DESIGN
+Checkout, unchecked by default, directly under the phone field:
+
+   [ ] SEND ME ORDER UPDATES AND MY 84-DAY ROUTINE REMINDERS ON
+   WHATSAPP AND SMS FROM ARATA. OPT OUT ANYTIME.
+
+
+Meta prefers that order updates and offers are named separately, and TRAI wants promotional
+consent to be explicit. So we store two flags per customer: wa_updates (utility, set when they give a
+number for delivery) and wa_marketing (set only by the checkbox, the QR chat, or the CTWA ad
+conversation). SMS promotional consent is a third flag, sms_promo , and is pushed to the DLT consent
+registry.
+The QR insert in every box, including every marketplace and quick-commerce box, says:
+
+   SCAN TO START YOUR 84 DAYS. WE'LL TELL YOU HOW TO USE IT, WHEN
+   TO REORDER, AND WHAT TO EXPECT EACH WEEK. IF ANYTHING ARRIVED
+   BROKEN, TELL US HERE AND WE REPLACE IT.
+
+
+The pre-filled first message is "Hi Arata, starting my 84 days with [SKU]". The customer's message
+opens a 24-hour window, which means the welcome, the usage video and the opt-in question are all
+free-form and free of charge.
+
+PLATFORM RECOMMENDATION
+Arata is on Shopify. We want one platform that owns the WhatsApp number, reads Shopify orders and
+carts natively, handles template submission and quality monitoring, and can call an Indian SMS
+aggregator for DLT traffic. The shortlist is a Shopify-native Indian BSP (Interakt, Bitespeed, Wati or
+
+
+BREW DEPLOYMENT TEAM × ARATA · WHATSAPP AND SMS FOR THE 84-DAY ROUTINE                                                          6
+AiSensy class) for WhatsApp, and MSG91 or Gupshup for DLT SMS and OTP. If Arata already runs
+email on Klaviyo, we evaluate its WhatsApp add-on first so the customer profile stays in one place,
+and keep the DLT aggregator separate either way. Decision in week 1, against three criteria: Shopify
+cart and order webhooks without custom code, template-level analytics with block reasons, and INR
+billing (Meta is moving eligible Indian accounts to INR billing by end of 2026).
+
+
+
+WORKED EXAMPLES
+All WhatsApp copy below is written as a template submission: header, body with numbered variables,
+footer and buttons. Variables carry realistic sample values because vague samples are the most
+common reason Meta rejects a template. SMS copy is written in DLT template form with {#var#}
+placeholders and a GSM-7 character count.
+
+EXAMPLE 1: ORDER UTILITY SET (WHATSAPP, UTILITY CATEGORY) WITH DLT SMS FALLBACKS
+U1. Order confirmed (trigger: Shopify order created)
+                                                                                                                               DIAGRAM
+    Header: none
+    Body:
+    Arata here. Order {{1}} is confirmed.
+    {{2}}
+    Total paid: ₹{{3}}. We'll message you when it ships.
+    Footer: Order updates only. Reply HELP for support.
+    Buttons: [URL: View order]
+    Samples: {{1}} #AR118422 | {{2}} 1 x Hair Growth Intensive Serum 30 ml, 1 x Anti-Hair Fall Intensive Shampoo 200 ml | {{3}} 838
+
+
+
+
+U2. Shipped (trigger: fulfilment created)
+                                                                                                                               DIAGRAM
+    Body:
+    Arata here. Order {{1}} has shipped with {{2}}.
+    Expected delivery: {{3}}.
+    Buttons: [URL: Track order]
+    Samples: {{1}} #AR118422 | {{2}} Delhivery | {{3}} Tue 14 Oct
+
+
+
+
+U3. Delivered, with seal check (trigger: delivery scan, same day)
+                                                                                                                               DIAGRAM
+    Body:
+    Arata here. Order {{1}} was delivered today.
+    Before you open it, check the seal and the bottle. If anything is broken or leaking, tap below and we replace it. No questions, no phot
+    Buttons: [Quick reply: Everything looks good] [Quick reply: Something's broken]
+    Samples: {{1}} #AR118422
+
+
+
+
+"Something's broken" opens a window. The free-form reply: "Sorry about that. Send us one photo of
+the bottle and we'll ship a replacement within 24 hours. Keep the damaged one, no need to return it."
+The replacement order is created in Shopify by the support agent and the customer gets U1 again.
+"Everything looks good" triggers the day 0 journey message inside the same window, free-form and
+free.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · WHATSAPP AND SMS FOR THE 84-DAY ROUTINE                                                                 7
+SMS fallbacks (sent only if the WhatsApp message is not delivered within 10 minutes; service header
+ARATAA-S)
+                                                                                                                               DIAGRAM
+    Arata: Order {#var#} confirmed. Items: {#var#}. Track at {#var#} -Arata
+
+
+
+
+Count: about 75 characters plus variables, 1 segment at typical values.
+                                                                                                                               DIAGRAM
+    Arata: Order {#var#} delivered today. Seal or bottle damaged? Reply on WhatsApp {#var#} for a free replacement. -Arata
+
+
+
+
+Count: about 110 characters plus variables, 1 segment.
+OTP (transactional header ARATAA-T, sent to every checkout and login regardless of marketing
+consent)
+                                                                                                                                   CODE
+    {#var#} is your Arata verification code. Valid 10 minutes. Do not share it. -Arata
+
+
+
+
+Count: 82 characters, 1 segment.
+
+EXAMPLE 2: THE 84-DAY ROUTINE JOURNEY FOR THE HAIR GROWTH INTENSIVE SERUM (WHATSAPP)
+J0. Welcome, inside the delivery-day window (free-form; sent as a marketing template only if the
+customer never replied to U3)
+                                                                                                                               DIAGRAM
+    Header: image (serum bottle, lab-blue, with "28,200" callout)
+    Body:
+    Hi {{1}}, this is Arata. Your Hair Growth Intensive Serum is a 84-day course. That is the window the 28,200-new-hairs study measured, a
+    Twice a day, 1 ml on a dry scalp, massage in for 60 seconds. Don't rinse.
+    We'll check in on day 14, day 28 and day 84. You can mute offers anytime.
+    Footer: Reply STOP to stop offers
+    Buttons: [Quick reply: Show me how] [Quick reply: Stop offers]
+    Samples: {{1}} Rahul
+
+
+
+
+"Show me how" sends the 40-second application video inside the window.
+J1. Day 3 (marketing)
+                                                                                                                               DIAGRAM
+    Body:
+    Arata here, {{1}}. Day 3. Quick thing most people get wrong: the serum goes on the scalp, not the hair. Part the hair, drop, massage. R
+    If you're also using the Anti-Hair Fall Shampoo, wash first, serum after, on a dry scalp.
+    Footer: Reply STOP to stop offers
+    Buttons: [Quick reply: Got it] [Quick reply: I have a question]
+
+
+
+
+J2. Day 14, the shedding question (marketing)
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · WHATSAPP AND SMS FOR THE 84-DAY ROUTINE                                                                  8
+                                                                                                                               DIAGRAM
+    Body:
+    Arata here. Two weeks in, {{1}}. Are you seeing fewer strands in the drain yet?
+    Honest answer: some people see a drop in week 2, some see nothing until week 6. Both are normal. The 7.4X number on the shampoo comes f
+    Footer: Reply STOP to stop offers
+    Buttons: [Quick reply: Yes, less fall] [Quick reply: Not yet] [Quick reply: I stopped using it]
+
+
+
+
+Branches: "Not yet" → free-form inside the window: "That's within the normal range. The study's 84-
+day result is an average, and week 2 is early. Keep the twice-a-day rhythm and we'll check at day 28.
+If your scalp is itchy or flaking, tell us and we'll adjust the routine." "I stopped using it" → free-form:
+"What made you stop?" with reply buttons [Didn't see results] [Irritation] [Forgot]. "Forgot" gets a daily
+9pm reminder opt-in for 7 days. "Irritation" goes to support. "Didn't see results" gets the honest
+timeline and the derm note.
+J3. Day 28, reorder before the bottle ends (marketing)
+                                                                                                                               DIAGRAM
+    Header: image (Pack of 3)
+    Body:
+    Arata here, {{1}}. At twice a day your 30 ml bottle runs out around now. Stopping at day 30 of an 84-day course is where most people lo
+    Two ways to keep going:
+    Single bottle ₹571. Pack of 3 at ₹999, which is 49% off and covers the rest of the 84 days plus a month.
+    Footer: Reply STOP to stop offers
+    Buttons: [URL: Reorder 1 bottle] [URL: Get Pack of 3 at ₹999] [Quick reply: Not now]
+
+
+
+
+"Not now" suppresses reorder nudges until day 45.
+J4. Day 45 (marketing, only if no reorder)
+                                                                                                                               DIAGRAM
+    Body:
+    Arata here. {{1}}, you're at day 45. If the serum ran out two weeks ago, the follicles you were working on have had two weeks off. Rest
+    Free shipping on everything above ₹299.
+    Footer: Reply STOP to stop offers
+    Buttons: [URL: Reorder serum ₹571] [Quick reply: I already reordered] [Quick reply: Not now]
+
+
+
+
+J5. Day 60, the photo (marketing)
+                                                                                                                               DIAGRAM
+    Body:
+    Arata here, {{1}}. Day 60. If you took a photo of your crown or hairline on day 1, take the same one today, same light, same angle. Sen
+    Footer: Reply STOP to stop offers
+    Buttons: [Quick reply: Sending a photo] [Quick reply: Didn't take one]
+
+
+
+
+"Didn't take one" → "Take one today. Day 84 is three weeks away and you'll want the comparison."
+J6. Day 84, results and the next step (marketing)
+                                                                                                                               DIAGRAM
+    Header: image (Lab Notes card: "84 days. What the study saw.")
+    Body:
+    Arata here. Day 84, {{1}}. This is the day the study measured.
+    Three things we'd ask:
+    1. Tell us what you saw. One line is enough.
+    2. If it worked, a review on arata.in helps the next person decide.
+    3. If you want to go further, MitoActive is our next tier: a different mechanism (mitochondrial, Y100), ₹1,499 for 30 ml, about ₹50 a d
+    Footer: Reply STOP to stop offers
+    Buttons: [Quick reply: Here's what I saw] [URL: Write a review] [URL: See MitoActive]
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · WHATSAPP AND SMS FOR THE 84-DAY ROUTINE                                                                 9
+"Here's what I saw" opens a window. The reply thanks them and, if the message is positive, asks for
+permission to use the line on the site with first name and city.
+For MitoActive buyers, J6 leads with the review ask and the "what did you see" question, and skips
+the upsell. Those replies are the first reviews the ₹1,499 product will have.
+
+EXAMPLE 3: ABANDONED CART, TWO TOUCHES (WHATSAPP, MARKETING CATEGORY)
+C1. 45 minutes after abandonment (only wa_marketing contacts, cart value above ₹299, not
+purchased in the last 24 hours)
+                                                                                                                               DIAGRAM
+    Header: image (first product in cart)
+    Body:
+    Arata here, {{1}}. You left {{2}} in your cart. It's saved, and shipping is free above ₹299.
+    If you were deciding between the serum and the shampoo: the serum works on growth, the shampoo on fall. Most people on the 84-day routi
+    Footer: Reply STOP to stop offers
+    Buttons: [URL: Finish checkout] [Quick reply: I have a question]
+    Samples: {{1}} Divya | {{2}} Anti-Dandruff Shampoo 200 ml
+
+
+
+
+C2. 24 hours later (only if C1 was delivered and not clicked)
+                                                                                                                               DIAGRAM
+    Body:
+    Arata here. Still thinking about {{1}}, {{2}}? Two things people ask us before they buy:
+    Does it work on Indian hard water? Yes, it was tested for it.
+    Will it make hair fall worse first? No. There's no minoxidil in it, so no shedding phase.
+    Your cart is still saved.
+    Footer: Reply STOP to stop offers
+    Buttons: [URL: Finish checkout] [Quick reply: Not for me]
+    Samples: {{1}} Hair Growth Intensive Serum | {{2}} Rahul
+
+
+
+
+No discount in either message. Arata's catalogue already carries a visible sale price on the product
+page (₹649 → ₹571), and a cart coupon would train every visitor to abandon. If a cart is above ₹999,
+C2 adds one line: "Orders above ₹999 get a free gift at checkout." If the cart is between ₹800 and
+₹999, C2 says: "You're ₹{{3}} from a free gift." That nudge uses an existing site rule, costs nothing
+new, and lifts AOV.
+"Not for me" asks one question with buttons [Price] [Not sure it works] [Bought elsewhere]. "Bought
+elsewhere" gets the QR-style welcome: "Then scan the card in the box when it lands and we'll run
+your 84 days anyway."
+
+EXAMPLE 4: REORDER AND REPLENISHMENT FOR CUSTOMERS OUTSIDE THE JOURNEY (WHATSAPP
+FIRST, SMS SECOND)
+R1. WhatsApp, 28 days after the last serum order, for buyers before the journey existed
+                                                                                                                               DIAGRAM
+    Body:
+    Arata here, {{1}}. Your {{2}} from {{3}} usually runs out about now. Want us to set the next one up?
+    Pack of 3 is ₹999 if you'd rather not think about it for three months.
+    Footer: Reply STOP to stop offers
+    Buttons: [URL: Reorder] [URL: Pack of 3 ₹999] [Quick reply: Not now]
+    Samples: {{1}} Gaurav | {{2}} Hair Growth Intensive Serum | {{3}} 12 Sep
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · WHATSAPP AND SMS FOR THE 84-DAY ROUTINE                                                                 10
+R2. DLT SMS, promotional header ARATAA-P, 10am to 9pm IST, consented non-DND or DCA-
+consented customers only, sent only to customers with no WhatsApp opt-in
+                                                                                                                               DIAGRAM
+    Arata: Your {#var#} usually runs out around now. Reorder in one tap: {#var#} Pack of 3 at Rs 999. -Arata
+
+
+
+
+Count: 95 characters plus variables; stays in 1 segment with a short SKU name and a short link on the
+whitelisted domain. "Rs" instead of "₹" keeps the message in GSM-7 so it is billed as one segment.
+
+EXAMPLE 5: LAUNCH AND FESTIVE BROADCASTS
+L1. MitoActive to serum graduates (customers who completed 84 days on the Intensive Serum,
+bought twice or more, no MitoActive purchase)
+                                                                                                                               DIAGRAM
+    Header: image (MitoActive bottle, "Y100" mark)
+    Body:
+    Arata here, {{1}}. You finished 84 days on the Intensive Serum, so you're the person we built this for.
+    MitoActive works on the mitochondria inside the follicle, a different mechanism from the actives in your current serum. Y100 is exclusi
+    ₹1,499 for 30 ml, about ₹50 a day. The MitoActive + shampoo combo starts at ₹1,803.
+    Footer: Reply STOP to stop offers
+    Buttons: [URL: Read the study] [URL: Start MitoActive] [Quick reply: What's different?]
+
+
+
+
+"What's different?" sends the Lab Notes explainer inside the window with the anagen/telogen framing,
+in plain words.
+L2. Diwali, whole opted-in file, one send, Monday 2 Nov 2026 at 11am IST (assumption on date;
+Arata's calendar decides)
+                                                                                                                               DIAGRAM
+    Header: image (routine set, festive)
+    Body:
+    Arata here, {{1}}. Wedding season and Diwali in the same month is a lot for hair. Our routine sets are on this week:
+    Anti-Hair Fall Shampoo + Conditioner ₹638
+    Shampoo + Growth Serum ₹838
+    Hair Growth Trio ₹1,201
+    Free gift above ₹999, free shipping above ₹299. Delivery before Diwali if you order by Thursday.
+    Footer: Reply STOP to stop offers
+    Buttons: [URL: Shop routine sets] [Quick reply: Stop offers]
+
+
+
+
+The SMS version to the consented, non-WhatsApp segment:
+                                                                                                                               DIAGRAM
+    Arata Diwali: routine sets from Rs 638. Free gift above Rs 999. Order by Thu for pre-Diwali delivery: {#var#} -Arata
+
+
+
+
+Count: 113 characters plus link, 1 segment.
+
+OPT-OUT AND HELP RESPONSES
+WhatsApp, after "Stop offers" or any STOP variant:
+                                                                                                                               DIAGRAM
+    Done. You won't get offers or routine reminders from Arata. Order updates for anything you buy will still come here. Reply START to rej
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · WHATSAPP AND SMS FOR THE 84-DAY ROUTINE                                                                 11
+SMS, after STOP on the promotional header:
+                                                                                                                                 DIAGRAM
+     Arata: You are opted out of Arata offers. Order and OTP messages continue. -Arata
+
+
+
+
+HELP on any channel:
+                                                                                                                                 DIAGRAM
+     Arata support: WhatsApp us here, email care@arata.in (confirm address) or visit arata.in/help. Reply STOP to stop offers.
+
+
+
+
+30-DAY DEPLOYMENT
+ WEEK BREW SHIPS                                                         ARATA PROVIDES                      LIVE BY END OF WEEK
+
+ 1         BSP and SMS aggregator selected and                             Access to Shopify, Meta Business Templates in review.
+           contracted. Meta Business verification check.                   Manager and the existing SMS     Checkout opt-in live on
+           WhatsApp number provisioned, display name                       vendor if any. Company           arata.in.
+           submitted. DLT Principal Entity registration filed,             documents for DLT (CIN, GST,
+           three headers requested, URL whitelist filed.                   authorised signatory). Support
+           Consent flags designed in Shopify. Checkout                     inbox owner named.
+           checkbox copy. All utility templates (U1 to U3)
+           and OTP template submitted. Rate card modelled.
+ 2         Utility flows live on WhatsApp with SMS fallback                Support agent trained on the        Every D2C order gets U1
+           and OTP on ARATAA-T. Seal-check reply routing                   seal-check thread and               to U3. Number warming
+           to the support agent built. Journey templates J0                replacement policy (we draft the    on recent buyers. Target:
+           to J6, cart templates C1 and C2, reorder R1                     policy: replacement within 24       2,000-user tier reached.
+           submitted. QR insert designed with the pre-filled               hours, no return). Product images
+           message. Short link domain whitelisted.                         for template headers.
+                                                                           Confirmation of serum usage rate
+                                                                           per bottle.
+ 3         Journey live for new serum and shampoo buyers                   Warehouse adds the insert to        Journey, cart and seal
+           (days 0 to 14 firing). Abandoned cart live. Quality             every box, including marketplace    check live. QR inserts
+           dashboard with block reasons. First A/B test set                and quick-commerce orders. Lab      shipping. Target:
+           up: J3 with and without the Pack of 3 button. QR                Notes explainer approved for the    10,000-user tier.
+           insert files handed to the warehouse.                           "What's different?" and "Not yet"
+                                                                           replies.
+ 4         R1 reorder flow to the existing base, released in               Decision on the Diwali offer set    Reorder flow live on the
+           daily cohorts of recent buyers first. L1 MitoActive             and date. Sign-off on the first     existing base. Journey
+           graduate template submitted. DLT consent                        customer quotes collected from      running through day 28
+           template filed and the first consented promotional              J2 replies for use on site.         for the first cohort. SMS
+           segment built. Measurement report v1.                                                               promotional layer ready
+                                                                                                               for its first send in month
+                                                                                                               2.
+
+
+Owners: Brew lifecycle lead (flows, templates, warm-up, measurement), Brew creative lead
+(template images, video, insert), Brew compliance owner (Meta and DLT registrations), Arata brand
+manager (approvals, product facts), Arata support lead (seal-check and question threads), Arata
+warehouse lead (inserts).
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · WHATSAPP AND SMS FOR THE 84-DAY ROUTINE                                                                     12
+HOW WE MEASURE
+ METRIC                       BASELINE                    90-DAY TARGET             SOURCE
+
+ WhatsApp marketing 0 (no program)                        35% of D2C orders         Shopify consent flag
+ opt-in rate on D2C
+ orders
+ QR scans per 100             0                           8                         BSP entry-point report
+ boxes shipped (all
+ channels)
+ Utility delivery rate        To be instrumented          97% or above, SMS         BSP
+                                                          fallback below 5% of
+                                                          sends
+ Seal-check                   Review complaints           Below 2% of deliveries,   Support queue
+ "Something's                 only                        and every case
+ broken" rate                                             replaced within 24
+                                                          hours
+ Journey day 14 reply 0                                   25%                       Template analytics
+ rate
+ 45-day repeat rate,          To be instrumented          Journey cohort 10         Shopify cohort report
+ D2C, journey cohort          from Shopify history;       points above non-
+ vs non-journey               brief suggests              journey cohort
+                              category norm near
+                              26%
+ Abandoned cart               0                           7%                        BSP attribution, UTM
+ recovery rate                                                                      utm_source=whatsapp&utm_medium=cart
+ (reminded carts that
+ purchase within 48
+ hours)
+ Reorder flow                 0                           6% per send               BSP attribution
+ conversion (R1)
+ MitoActive on-site           0                           150, with at least 40    Loox
+ reviews                                                  from the J6 reply thread
+ Messaging-                   0                           10% of D2C revenue,       Shopify + BSP
+ attributed D2C                                           measured last-click on
+ revenue                                                  the whitelisted short
+                                                          domain plus a 2-day
+                                                          view-through on
+                                                          template delivery
+ Quality rating               n/a                         Green every week; no      WhatsApp Manager
+                                                          template paused
+ Block rate per               n/a                         Below 0.5% of             WhatsApp Manager
+ marketing template                                       deliveries
+ Messaging limit tier         250                         100,000 unique users      WhatsApp Manager
+                                                          per day
+ Promotional SMS              n/a                         Below 1% per send         Aggregator
+ opt-out rate
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · WHATSAPP AND SMS FOR THE 84-DAY ROUTINE                                                  13
+Every link in every template carries UTMs. The short domain is whitelisted on DLT and used on both
+channels so attribution reads the same way.
+Decision rules at day 90
+    If the journey cohort's 45-day repeat is at least 5 points above the non-journey cohort, we extend
+    the journey to the anti-dandruff and anti-grey lines, and we build the subscribe-and-save product
+    on top of the day 28 "Reorder" button, since the demand for it will be visible in the replies.
+    If the journey lifts repeat by under 3 points, we cut it to four touches (day 0, day 14, day 28, day
+    84), keep the seal check and cart flows, and move the budget to the reorder flow on the existing
+    base.
+    If cart recovery runs below 4%, we test a single-touch version with the free-gift threshold line
+    moved into C1, before testing any discount.
+    If any marketing template's block rate passes 1% for two weeks, we pause it, read the block
+    reasons, and rewrite. A number that goes yellow pauses all broadcasts until it returns to green;
+    journey and utility continue.
+    If promotional SMS converts below 1% per send, we stop it and keep SMS for OTP and fallback
+    only.
+
+
+
+APPENDIX
+FREQUENCY AND SUPPRESSION RULES
+    Marketing templates per customer: at most one per 5 days, at most 4 per month.
+    Journey touches outrank broadcasts; a broadcast skips anyone with a journey touch inside the 5-
+    day window.
+    Any purchase pauses reorder nudges for 25 days.
+    "Not now" suppresses that flow for 30 days.
+    Customers who have not read the last 3 marketing templates drop to utility only for 60 days, then
+    get one "Want to keep hearing from us?" template with Yes / Stop buttons.
+    Promotional SMS: 10:00 to 21:00 IST, at most 2 per month, consented and scrubbed only.
+    Utility and OTP: any hour, every customer with a number.
+
+COMPLIANCE CHECKLIST BEFORE THE FIRST MARKETING SEND
+    [ ] Meta Business verified; display name "Arata" approved
+    [ ] All templates approved in the category we intended (check for marketing recategorisation on U1
+    to U3)
+    [ ] Checkout checkbox unchecked by default, names WhatsApp and SMS, stored with timestamp
+    and page URL
+    [ ] "Stop offers" button or STOP footer on every marketing template; STOP, STOPALL,
+    UNSUBSCRIBE, CANCEL, END, QUIT all handled
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · WHATSAPP AND SMS FOR THE 84-DAY ROUTINE                                   14
+    [ ] DLT Principal Entity approved; ARATAA-T, ARATAA-S, ARATAA-P headers live; aggregator
+    declared in the telemarketer chain
+    [ ] Every SMS template registered word for word, variables under 30 characters, short domain
+    whitelisted
+    [ ] DLT consent template approved before any promotional SMS to a DND number
+    [ ] Promotional SMS window enforced at the aggregator, not by hand
+    [ ] Privacy policy on arata.in has a messaging section naming WhatsApp and SMS, consent
+    withdrawal, and data retention under the DPDP Act
+    [ ] STOP and HELP tested from a real phone on both channels, repeated monthly
+    [ ] Block-reason review every Monday in WhatsApp Manager
+
+ASSUMPTIONS TO CONFIRM IN WEEK 1
+    WhatsApp marketing rate near ₹0.90, utility near ₹0.13, SMS near ₹0.20 per segment (replace with
+    the BSP and aggregator rate cards; Meta raised India marketing rates in January 2026)
+    30 ml serum lasts about 30 days at twice-daily use
+    30% of D2C orders will opt in to marketing at checkout; QR scans add marketplace and quick-
+    commerce buyers on top
+    Arata's current Meta Business Manager is verified
+    Support team can answer WhatsApp threads within 2 hours during 9am to 9pm IST
+    The support email address and help page URL used in the HELP response
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · WHATSAPP AND SMS FOR THE 84-DAY ROUTINE                               15
+SMS AND WHATSAPP MARKETING
+
+
+DAY 30
+AT ARATA
+   WHAT IS LIVE
+
+   Order updates, a delivery-day seal check, cart recovery and the first 45 days of
+   the routine journey are live on an approved WhatsApp number, with DLT-
+   registered SMS headers carrying OTPs and fallbacks.
+
+
+
+
+ NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+ BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+ CONFIRM".
+
+
+ EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+ BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                  DEPLOYMENT TEAM
+                                                                               BREW
+

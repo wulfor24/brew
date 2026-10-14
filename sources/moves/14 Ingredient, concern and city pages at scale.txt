@@ -1,0 +1,805 @@
+      Brew                                      PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+PROGRAMMATIC SEO · MOVE 14 OF 50
+
+
+
+INGREDIENT,
+CONCERN
+AND CITY
+PAGES
+AT SCALE
+  A SYSTEM OF 160 TEMPLATED PAGES ON ARATA.IN THAT
+  CATCH THE SEARCHES A HAIR-FALL CUSTOMER MAKES
+  BEFORE THEY KNOW ARATA EXISTS, BUILT FROM ARATA'S
+  OWN STUDY DATA, REVIEWS AND ORDER HISTORY.
+
+
+
+
+160 pages
+ACROSS 5 PAGE SETS
+
+
+
+
+BREW × ARATA                     OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                   V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                                WHAT THIS GIVES ARATA
+                                                                A system of 160 templated pages on arata.in that
+                                                                catch the searches a hair-fall customer makes
+                                                                before they know Arata exists, built from Arata's
+
+         160 pages
+         ACROSS 5 PAGE SETS
+                                                                own study data, reviews and order history.
+                                                                LIVE 30 DAYS AFTER WE START
+                                                                48 pages live on arata.in across ingredients,
+                                                                concerns, cities and comparisons, indexed,
+                                                                interlinked, with order data feeding the city pages
+                                                                and a weekly refresh loop running.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+Programmatic SEO for a SaaS company means integration pages and "CRM for real estate" pages. For
+Arata it means ingredient pages, hair-concern pages, city and water-quality pages, and comparison
+pages, built from one template each and one data table each.
+Arata gets about 650K visits a month and that number is growing 42% month on month. Most of that is
+paid, creator and quick-commerce spillover. The brief shows no evidence of an organic engine. Lab
+Notes exists, but seven posts landed in March 2026 and then the cadence stopped. There is no page
+on arata.in that ranks for "post-partum hair fall", "hard water hair fall", "what is Y100" or "Arata vs
+Traya". Those searches happen every day, and right now Traya, Pilgrim, Healthline and Reddit answer
+them.
+That costs Arata in two places. First, acquisition: every hair-fall customer who lands on a Traya blog
+post enters a funnel that ends with a ₹1,400 a month kit. Second, trust: MitoActive has zero reviews
+and a ₹1,499 price. A buyer who searches "Y100 hair growth" today finds Yuva Biosciences press
+releases, not Arata. The brand that owns the science has no page explaining it.
+The opportunity is unusually good because Arata has the one thing most pSEO projects lack:
+proprietary data. Study numbers on every SKU (7.4X, 28,200, 87%, 95%, 86%). 2,248 on-site reviews
+tagged by product. 50,000 D2C orders a month with a pin code on each one. An in-house lab in Delhi.
+Pilgrim and Minimalist can copy an ingredient page. They cannot copy "what Arata's hair-fall
+customers in Bangalore actually buy".
+The plan below builds 160 pages across 5 sets. Each page has a reason to exist, a data source that
+nobody else has, and a route to a cart. We ship 48 in the first 30 days and the rest over 90.
+
+
+
+WHAT WE FOUND
+
+BREW DEPLOYMENT TEAM × ARATA · INGREDIENT, CONCERN AND CITY PAGES AT SCALE                                          1
+WHERE ARATA SITS ON THE SEARCH MAP TODAY
+ SEARCH                                                           WHO RANKS NOW (OBSERVED
+ PATTERN               EXAMPLE QUERY                              OCT 2026)                          ARATA PAGE TODAY
+
+ Concern +             "post partum hair fall                     Traya blog, Healthline, Be         None
+ cause                 treatment"                                 Bodywise, Reddit
+ Concern +             "hair fall in monsoon"                     Traya, Pilgrim blog, news sites    None
+ season
+ Concern +             "hard water hair fall solution"            Water purifier brands, Reddit,     None
+ water                                                            Traya
+ Ingredient            "what is Y100 hair" /                      Yuva Biosciences PR, Minimalist,   None (MitoActive PDP mentions
+                       "Redensyl vs minoxidil"                    derm YouTube                       Y100 in one line)
+ Brand                 "Arata vs Traya" / "Traya                  Traya's own pages, Quora,          None
+ comparison            alternative"                               YouTube
+ City                  "hair fall shampoo bangalore"              Nykaa category pages, Amazon,      None
+                                                                  local salons
+ Routine               "hair care routine for hair fall           Pilgrim, Man Matters, YouTube      None (collection page lists
+                       men"                                                                          products, no routine)
+
+
+Every row is a zero. That is the gap. The brief's known gaps confirm the shape: Lab Notes in bursts, a
+hair growth collection that mixes claims with no routine builder, naming that is inconsistent across
+channels.
+
+PLAYBOOK SELECTION
+We scored the 12 pSEO playbooks against Arata's assets. Score is 1 to 5 on three questions: Does
+Arata have unique data for it? Does the search demand exist in India? Does the page lead to a cart?
+                                                                                                  CART
+ PLAYBOOK           ARATA EQUIVALENT                          UNIQUE DATA                  DEMAND PATH         TOTAL VERDICT
+
+ Glossary           Ingredient pages                          5 (lab, study design,        4         4         13       Build
+                    (/ingredients/y100)                       exclusivity)
+ Personas           Concern-by-cause pages                    4 (reviews by concern,       5         5         14       Build
+                    (/concerns/post-partum-hair-              84-day timeline)
+                    fall)
+ Locations          City water and climate pages              5 (order data by pin         3         4         12       Build
+                    (/cities/bangalore)                       code, quick-commerce
+                                                              availability)
+ Comparisons Brand and ingredient vs pages                    3 (own prices and            5         5         13       Build
+             (/compare/arata-vs-traya)                        claims)
+ Templates          Routine pages (/routines/hair-            4 (combos, routine           3         5         12       Build
+                    fall-oily-scalp)                          order, reorder window)
+ Curation           "best hair fall shampoo in India"         1 (Arata cannot rank         5         3         9        One editorial
+                                                              itself honestly)                                          page, not a set
+ Conversions        "ml to months supply"                     3                            1         3         7        Fold into PDP
+                    calculator
+ Directory          Dermatologists near me                    1                            3         1         5        Cut
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · INGREDIENT, CONCERN AND CITY PAGES AT SCALE                                                              2
+                                                                                      CART
+ PLAYBOOK           ARATA EQUIVALENT                          UNIQUE DATA      DEMAND PATH   TOTAL VERDICT
+
+ Examples           Before/after galleries                    4                2      3      9     Fold into
+                                                                                                   concern pages
+ Integrations       Not applicable                                                                 Cut
+ Translations       Hindi pages                               3                4      3      10    Phase 3, after
+                                                                                                   English proves
+ Profiles           Founder, lab, Yuva                        3                1      1      5     Cut
+
+
+Five sets make the cut. Translations into Hindi is the obvious sixth once English pages rank; Traya's
+70% tier-2/3 customer base says the Hindi search is real.
+
+THE DATA ARATA ALREADY OWNS, RANKED BY DEFENSIBILITY
+                                                                                                         DIAGRAM
+    DEFENSIBILITY                                  WHO ELSE HAS IT
+    ─────────────────────────────────────────────────────────────────
+    1. Proprietary   Study results per SKU          Nobody
+                     (7.4X, 28,200, 87%, 95%, 86%)
+                     Lab test protocols, 84-day
+                     timelines, Y100 India exclusivity
+    2. Product-      50K orders/month with pin code Nobody
+       derived       Concern mix by city
+                     Reorder gap per SKU
+    3. User-         2,248 Loox reviews by product   Nobody (Nykaa has its own 2,435)
+       generated     Verbatim complaints and wins
+    4. Licensed      Yuva Biosciences Y100 studies   Yuva, Arata only in India
+    5. Public        Water hardness by state         Everyone (Eureka Forbes, CGWB)
+                     Humidity by city
+                     Competitor prices
+
+
+
+
+The rule for every page: at least two layers from the top three. A city page that only uses layer 5 is a
+doorway page. A city page that uses layer 5 plus layer 2 plus layer 3 is a page nobody else can write.
+
+PUBLIC DATA WE VALIDATED
+Water hardness by state, from a water-purifier industry overview (ranges in mg/L as CaCO3):
+Rajasthan, Gujarat, Haryana, Madhya Pradesh and groundwater-fed Uttar Pradesh are very hard
+(above 600). Punjab, Maharashtra and borewell-dependent Karnataka are hard (300 to 600). Tamil
+Nadu and Telangana are moderately hard (150 to 300). Kerala, coastal zones and treated-supply West
+Bengal are relatively soft (below 150). Delhi NCR, Bangalore and Chennai all split by source: borewell
+and tanker water is hard, municipal supply is moderate. This matters: a Gurgaon page and a Kochi
+page should say different things, and a Bangalore page should ask "borewell or Cauvery?".
+Search volume by query is an assumption until week 1 when we pull Keyword Planner and Search
+Console. Working tiers: "hair fall shampoo" and "hair growth serum" are head terms (lakhs a month,
+dominated by marketplaces); cause and season variants are mid-tail (thousands); city and ingredient
+variants are long-tail (hundreds). The pSEO sets live in mid and long tail on purpose. That is where a
+₹61 Cr brand with a young domain can rank in 90 days.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · INGREDIENT, CONCERN AND CITY PAGES AT SCALE                                        3
+THE PLAN
+THE ARCHITECTURE
+                                                                                                                DIAGRAM
+    arata.in
+    │
+    ├── /concerns/            HUB: hair fall · dandruff · grey · damage · styling
+    │   ├── /concerns/hair-fall                      (hub, 1 per concern = 5)
+    │   ├── /concerns/post-partum-hair-fall          (spoke)
+    │   ├── /concerns/hair-fall-after-fever
+    │   ├── /concerns/monsoon-hair-fall
+    │   ├── /concerns/hard-water-hair-fall
+    │   └── ... 40 spokes
+    │
+    ├── /ingredients/         HUB: "what is in Arata and why"
+    │   ├── /ingredients/y100
+    │   ├── /ingredients/hairdian-ap
+    │   ├── /ingredients/melanogray
+    │   ├── /ingredients/redensyl            (we do not use it; explain it honestly)
+    │   ├── /ingredients/minoxidil           (we are not it; explain it honestly)
+    │   └── ... 36 pages
+    │
+    ├── /cities/              HUB: "hair care for your city's water and weather"
+    │   ├── /cities/bangalore
+    │   ├── /cities/gurgaon
+    │   └── ... 12 now, 40 by day 90
+    │
+    ├── /compare/             HUB: "Arata vs everyone, with prices"
+    │   ├── /compare/arata-vs-traya
+    │   ├── /compare/y100-vs-redensyl
+    │   └── ... 22 pages
+    │
+    └── /routines/            HUB: "pick a routine, one cart"
+        ├── /routines/hair-fall-oily-scalp
+        ├── /routines/dandruff-and-hair-fall
+        └── ... 18 pages
+
+    Every spoke links: up to its hub, across to 3 related spokes in other sets,
+    down to 1 to 3 product pages. Every PDP links back to its ingredient
+    and concern pages. No page is more than 3 clicks from the homepage.
+
+
+
+
+Page count: 5 hubs + 40 concerns + 36 ingredients + 40 cities + 22 comparisons + 18 routines = 161.
+We call it 160.
+
+BUILD PLATFORM: STAY ON SHOPIFY
+Arata runs Shopify. The pages stay there. Subfolders on arata.in, never a subdomain, because every
+ranking signal must accrue to the domain that also hosts the PDPs.
+The build uses Shopify metaobjects. One metaobject definition per set (concern, ingredient, city,
+comparison, routine). Each entry is a row. Each definition gets the web-pages capability so each entry
+renders at /[definition]/[handle]. One Liquid template per definition with conditional sections that
+branch on field values. Data enters by CSV import and updates through the Admin API from a Google
+Sheet that Brew owns.
+ REQUIREMENT               HOW SHOPIFY HANDLES IT                                                      STATUS
+
+ Enough items              Metaobject entry limits are far above 160 pages, and above the 400 to 500   Fine
+                           we would reach with Hindi
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · INGREDIENT, CONCERN AND CITY PAGES AT SCALE                                              4
+ REQUIREMENT               HOW SHOPIFY HANDLES IT                                                               STATUS
+
+ Data refresh              Admin API from our master sheet; weekly job; no theme republish needed               Brew builds the
+                                                                                                                sync, week 1
+ Server-rendered           Liquid renders on the server                                                         Fine
+ HTML
+ Conditional               Liquid if blocks on field values (water hardness band, concern, gender               Brew writes
+ sections                  skew)                                                                                templates
+ Per-page                  A noindex boolean field on each entry read by the theme head                         Brew adds to
+ indexation                                                                                                     theme
+ Internal linking          Metaobject reference fields: related_concerns, related_ingredients,                  In the data model
+                           hero_products
+ Sitemap                   Shopify includes metaobject pages in the auto sitemap; we verify in week 1           Verify
+                           and add a supplementary sitemap if any set is missing
+ Reviews on page           Loox widget filtered by product handle, plus 2 curated verbatim quotes               Fine
+                           stored as fields
+
+
+If Arata's theme team prefers a headless /learn subpath later, the data model moves as-is. We are not
+locking anything to Liquid except the templates.
+
+PAGE SET 1: CONCERNS BY CAUSE, SEASON AND AUDIENCE (40 PAGES)
+What: one page per specific reason a person's hair is falling, flaking or greying. Why: this is the mid-
+tail search with the highest intent and the clearest cart. Expected effect: the largest traffic set and the
+main feeder into the Anti-Hair Fall Shampoo (₹359) and Hair Growth Intensive Serum (₹571).
+ CONCERN            SPOKES
+
+ Hair fall (20)     post-partum, after fever or typhoid or dengue, after Covid, monsoon, winter, hard water, after moving
+                    cities, stress and sleep, PCOS (with a see-a-doctor block), thyroid (same), after keratin or smoothening,
+                    after colouring, teenage, men in their 20s, men in their 30s, women in their 30s, crown thinning, receding
+                    hairline, with dandruff, after gym and protein diet changes
+ Dandruff (8)       monsoon, winter, oily scalp, dry scalp, with hair fall, after oiling, on coloured hair, with itch at night
+ Grey (6)           greys at 25, greys at 30, after stress, in women, without dye, patchy greys
+ Damage and         after keratin, after bleach, frizz in humidity, heat damage, beach and pool, gel buildup
+ styling (6)
+
+
+Unique value per page comes from four fields nobody else has: the matching review quotes from Loox
+for that concern, the 84-day timeline for the product we recommend, the routine with a one-cart
+combo price, and a "when to see a dermatologist" block the lab writes for medical causes.
+
+PAGE SET 2: INGREDIENTS (36 PAGES)
+What: a page for every active Arata uses, plus every active the customer compares Arata against.
+Why: the brief says "Is this just another Redensyl serum?" is a live objection. The honest answer is an
+ingredient page. Expected effect: smaller traffic, highest trust, and the only pages that can rank for
+Y100 in India.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · INGREDIENT, CONCERN AND CITY PAGES AT SCALE                                                        5
+ GROUP                          INGREDIENTS
+
+ Arata exclusives (3)           Y100, Hairdian AP, MelanoGray
+ In Arata formulas (14)         rosemary, caffeine, niacinamide, panthenol, vegan keratin, biotin, salicylic acid, piroctone
+                                olamine (assumption: verify the anti-dandruff active with the lab), tea tree, zinc PCA, hyaluronic
+                                acid, flaxseed, aloe, argan
+ Competitor actives we Redensyl, Anagain, Procapil, Capixyl, Baicapil, minoxidil, finasteride, ketoconazole, onion extract,
+ do not use (10)       bhringraj
+ Things to avoid or             sulphates, parabens, silicones, SLS vs SLES, DMDM hydantoin, alcohol in serums, fragrance,
+ explained (9)                  "clinically tested" meaning, "up to" in claims
+
+
+The template for a competitor active says what it is, what the evidence says, what Arata uses instead
+and why. No trashing. The "up to" page is the brand's own honesty play: it explains how Arata reads
+its 28,200 number so the customer never feels tricked.
+
+PAGE SET 3: CITIES (12 NOW, 40 BY DAY 90)
+What: one page per city built around water hardness, humidity, pollution and what Arata customers in
+that city buy. Why: "made for Indian hair, tested for Indian weather" is a brand claim with no page
+behind it. Expected effect: modest search traffic, strong conversion, and the pages the quick-
+commerce listings can link to.
+Phase 1 cities (12): Delhi, Gurgaon, Noida, Mumbai, Bangalore, Hyderabad, Chennai, Pune, Kolkata,
+Ahmedabad, Jaipur, Chandigarh. Phase 2 adds 28 tier-2 cities where Zepto, Blinkit or Instamart deliver
+Arata (Lucknow, Indore, Surat, Kochi, Coimbatore, Bhopal, Nagpur, Visakhapatnam, Patna, Dehradun
+and so on).
+Each city page carries: water hardness band and source split (public), monsoon and humidity window
+(public), Arata order mix by concern and gender in that city (order data, computed weekly), top-selling
+Arata SKU in that city (order data), the quick-commerce apps that stock Arata there with delivery
+promise, and two reviews from customers whose pin code is in that city. The last three are the moat.
+
+PAGE SET 4: COMPARISONS (22 PAGES)
+What: brand vs brand, ingredient vs ingredient, and Arata vs Arata. Why: highest commercial intent of
+any set; a person typing "Arata vs Traya" is one page from buying. Expected effect: smallest set,
+highest revenue per visit.
+ TYPE                     PAGES
+
+ Arata vs brand           Traya, Pilgrim, Minimalist, Bare Anatomy, ThriveCo, mCaffeine, Mamaearth, Man Matters, Indulekha,
+ (10)                     WOW
+ Ingredient vs            Y100 vs Redensyl, Y100 vs minoxidil, Redensyl vs minoxidil, rosemary vs minoxidil, Hairdian AP vs
+ ingredient (10)          onion extract, caffeine vs biotin, Anagain vs Procapil, ketoconazole vs piroctone olamine, serum vs
+                          oil, shampoo vs serum
+ Arata vs Arata (2) Hair Growth Intensive Serum vs MitoActive; Anti-Dandruff Shampoo vs Damage Defence Super
+                    Shampoo
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · INGREDIENT, CONCERN AND CITY PAGES AT SCALE                                                         6
+Comparison pages are honest or they fail. Traya's money-back guarantee gets stated. Minoxidil's
+evidence gets stated. Arata wins on price per day, on a number per bottle, on no doctor and no
+dependency. That is enough.
+
+PAGE SET 5: ROUTINES (18 PAGES)
+What: "hair care routine for [concern] with [scalp type]", each ending in one cart. Why: Routine Ritika
+wants one cart; the collection page gives her 14 products. Expected effect: the highest AOV set
+because every page sells a combo (Anti-Hair Fall S+C ₹638, Shampoo + Growth Serum ₹838, Hair
+Growth Trio ₹1,201).
+Concern (hair fall, dandruff, grey, damage, dandruff + hair fall) × scalp type (oily, dry, normal) = 15,
+plus three budget routines (under ₹700, under ₹1,000, the full MitoActive routine at ₹1,803).
+
+UNIQUENESS RULES FOR EVERY TEMPLATE
+1. The first 120 words are written by hand for every page. No page ships with a generated intro.
+2. At least two proprietary fields render visibly above the fold (a study number, a review, an order stat,
+   a lab note).
+3. Conditional blocks: medical causes show the derm block; hard-water cities show the chelating
+   wash advice; men-skewed concerns show the Intensive Serum first, women-skewed show the
+   shampoo and conditioner first.
+4. Each page recommends at most three products. The recommendation changes by page or the
+   page does not ship.
+5. If two pages would recommend the same products with the same reasoning, merge them.
+   Cannibalisation check runs before build, not after.
+
+INDEXATION RULES
+    Index: every hub, every concern, every ingredient in groups 1 to 3, every comparison, every
+    routine.
+    Noindex at launch, review at day 60: ingredient group 4 (avoid-list pages), phase-2 cities until their
+    order-data fields populate.
+    Canonical: Hindi versions self-canonical with hreflang, when built.
+    Sitemaps: one per set so we can see indexation rate per set in Search Console.
+
+TITLE AND META TEMPLATES
+ SET                TITLE                                            META DESCRIPTION
+
+ Concerns            {Concern} ({Cause}): why it                      {Cause} hair fall usually peaks at {timeline}. What
+                    happens and what to do in 84                     our lab recommends, the routine, and what {n} Arata
+                    days | Arata                                     customers saw. Free shipping above ₹299.
+
+ Ingredients         What is {Ingredient}?                            {Ingredient} explained by the Arata lab: what it
+                    Evidence, dose and where Arata                   does, what the studies show, and {which SKU} it is
+                    uses it                                          in.
+
+ Cities              Hair fall shampoo and serum                      {City} has {hardness band} water and a {humidity}
+                    for {City} water and weather |                   monsoon. What {City} Arata customers buy most, and
+                    Arata                                            which app delivers in {delivery promise}.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · INGREDIENT, CONCERN AND CITY PAGES AT SCALE                                                7
+ SET                TITLE                                             META DESCRIPTION
+
+ Comparisons         Arata vs {Brand}: price, proof                    {Brand} costs {price}. Arata costs {price}. Here is
+                    and routine compared (2026)                       the honest comparison on claims, ingredients,
+                                                                      commitment and what each is for.
+
+ Routines            Hair care routine for                             The exact Arata routine for {concern} on {scalp
+                    {concern} and {scalp type}: 3                     type} scalp, in order, with timing, for ₹{combo
+                    steps, one cart                                   price}.
+
+
+
+
+WORKED EXAMPLES
+EXAMPLE 1: CITY PAGE, FINISHED COPY
+URL: arata.in/cities/bangalore Title: Hair fall shampoo and serum for Bangalore water and weather |
+Arata
+Hair fall in Bangalore has a water problem.
+Half of Bangalore washes in borewell water. Borewell water in Karnataka runs hard, often above 300
+mg/L of dissolved calcium and magnesium. Hard water leaves mineral deposits on the hair shaft and
+scalp. Hair feels rough, breaks more at the root, and shampoo foams less so people use more of it. If
+you moved to Bangalore and your hair fall started within three months, start here.
+What Bangalore Arata customers buy (updated weekly from our orders)
+                                                 SHARE OF BANGALORE ORDERS                INDIA AVERAGE
+
+ Hair fall and growth products                   {{ city.hairfall_share }}%               {{ india.hairfall_share }}%
+ Dandruff products                               {{ city.dandruff_share }}%               {{ india.dandruff_share }}%
+ Men                                             {{ city.men_share }}%                    {{ india.men_share }}%
+ Most ordered SKU                                {{ city.top_sku }}                       Anti-Hair Fall Intensive Shampoo
+
+
+(Fields populate from Arata order data by pin code. Values above are placeholders until the week-1
+sync runs. Assumption: Bangalore skews male and hair-fall heavy relative to the national mix, in line
+with the Hair-fall Rahul persona; the data will confirm or correct this.)
+The Bangalore routine
+1. Wash: Anti-Hair Fall Intensive Shampoo, ₹359. Hairdian AP with rosemary and caffeine. 7.4X hair
+   fall reduction in our tensile strength study. Sulphate-free, so it foams less in hard water. Use a coin-
+   sized amount, work it in for 60 seconds, rinse twice.
+2. Treat: Hair Growth Intensive Serum, ₹571. Apply to a dry scalp at night. Up to 28,200 new hairs
+   within 84 days in our consumer study.
+3. Once a week: a chelating rinse before shampoo if you are on borewell water. Our lab's recipe is in
+   the Lab Notes link below. If you are on Cauvery supply, skip this.
+Both together: ₹838 as the Shampoo + Growth Serum combo. Free shipping. Free gift above ₹999.
+
+
+BREW DEPLOYMENT TEAM × ARATA · INGREDIENT, CONCERN AND CITY PAGES AT SCALE                                                 8
+Bangalore weather and your scalp
+Bangalore is mild, but monsoon runs June to September and humidity sits above 70% for four months.
+Oily scalp and dandruff flare in that window. If you see flakes alongside hair fall, read the dandruff-
+with-hair-fall page and switch the wash step to the Anti-Dandruff Shampoo (₹404) for six weeks.
+What Bangalore customers said
+
+   "HAIR FALL REDUCED DRASTICALLY." (VERIFIED BUYER, BANGALORE,
+   ANTI-HAIR FALL INTENSIVE SHAMPOO) "FOAMS WELL AND CLEANS MY
+   SCALP OFF DIRT AND EXCESS OIL." (VERIFIED BUYER, BANGALORE, ANTI-
+   HAIR FALL INTENSIVE SHAMPOO)
+
+
+(Quotes pulled from Loox filtered by product and city field; the two above are real review themes from
+the brief and will be replaced with city-matched quotes on sync.)
+Get it in Bangalore today
+Blinkit, Zepto and Swiggy Instamart stock the Anti-Hair Fall Intensive Shampoo and Hair Growth
+Intensive Serum across Bangalore. Order from arata.in for the combo price and the free gift, or from
+the app for delivery in minutes.
+When to see a dermatologist
+If you are losing hair in patches, if your scalp is painful, or if hair fall started with a new medicine, see
+a dermatologist first. Our products support a routine. They do not replace a diagnosis.
+Related: Hard water hair fall → Monsoon dandruff → Hair fall in men in their 20s → What is Hairdian AP
+
+EXAMPLE 2: INGREDIENT PAGE, FINISHED COPY
+URL: arata.in/ingredients/y100 Title: What is Y100? The mitochondrial hair growth active explained
+Y100 is an active that works on the energy supply of the hair follicle.
+Most hair growth actives you have heard of do one of two things. Minoxidil widens blood vessels.
+Finasteride blocks DHT. Y100 does neither. It targets the mitochondria inside follicle cells, the part of
+the cell that makes energy. Follicles with better energy supply spend longer in anagen, the growth
+phase, and less time in telogen, the resting phase. More hairs growing at once reads as more density.
+Where it comes from
+Y100 was developed by Yuva Biosciences, a longevity research company. It has more than six years
+of research and five or more clinical studies behind it. Arata licenses Y100 exclusively for India. You
+will not find it in another Indian hair serum.
+What the India study showed
+In a study on Indian participants using the Y100 formulation:
+    87% saw increased hair growth within 84 days
+    Hair fall reduced by up to 95%
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · INGREDIENT, CONCERN AND CITY PAGES AT SCALE                                    9
+    Measured improvement in the anagen-to-telogen ratio and in density
+"Up to" means the best responders. The average is lower. We publish it this way because we would
+rather you trust the number than be surprised by it. The full study design is in the Lab Notes post
+linked below.
+Which Arata product has it
+MitoActive Mitochondrial Hair Growth Serum, 30 ml, ₹1,499. Twice a day on a dry scalp. One bottle is
+about a month. That is ₹50 a day, for a 3-month course followed by maintenance at lower frequency.
+Y100 vs what you may have tried
+                           Y100 (MITOACTIVE)                             REDENSYL / ANAGAIN STACK          MINOXIDIL 5%
+
+ Mechanism                 Mitochondrial function,                       Stem cell and amino acid          Vasodilation
+                           anagen/telogen ratio                          signalling
+ Evidence                  5+ clinical studies, India participant        Supplier studies, small samples   Strongest evidence in
+                           study                                                                           category
+ Needs a doctor            No                                            No                                Recommended
+ Dependency                3-month course, then maintenance Ongoing                                        Stop and shedding
+                                                                                                           returns
+ Typical price             ₹1,499 / 30 ml                                ₹595 to ₹1,099 / 30 ml            ₹600 to ₹900
+ Where to find in          Arata only                                    Pilgrim, Minimalist, ThriveCo,    Mintop and generics
+ India                                                                   Bare Anatomy
+
+
+Who it is for
+Early to moderate thinning, especially at the crown. People who have used a Redensyl serum and want
+a different mechanism. People who do not want minoxidil. It is not for advanced loss (Norwood 5 and
+above), where a dermatologist should lead.
+Who it is not for
+If you want the lowest-cost proven option, the Hair Growth Intensive Serum at ₹571 is our actives
+serum. MitoActive is the next tier. Both can be used; the routine page explains the order.
+Related: MitoActive vs Hair Growth Intensive Serum → Y100 vs minoxidil → Hair fall in men in their 30s
+→ The full MitoActive routine (₹1,803)
+
+EXAMPLE 3: COMPARISON PAGE, FINISHED COPY
+URL: arata.in/compare/arata-vs-traya Title: Arata vs Traya: price, proof and routine compared (2026)
+The short version: Traya is a diagnosis-led programme. Arata is a product-led routine. They solve
+the same problem with different amounts of commitment.
+If you want a doctor, a hair test, supplements and a monthly kit, Traya built that. If you want a serum
+and a shampoo with a number on the bottle, no call, and a price you can put on a Blinkit cart, that is
+Arata. Here is the honest comparison.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · INGREDIENT, CONCERN AND CITY PAGES AT SCALE                                                       10
+                       TRAYA                                                   ARATA
+
+ What you get          Hair test, doctor consult, monthly kit (shampoo,        Shampoo, serum, conditioner you choose;
+                       serum, oils, supplements), often minoxidil              MitoActive for the clinical tier
+ Monthly cost          ₹1,400 to ₹1,800 per month                              ₹359 shampoo + ₹571 serum = ₹930 one-time;
+                                                                               ₹838 as a combo; MitoActive ₹1,499
+ Commitment            5 to 9 months recommended                               84-day course, then maintenance
+ Proof offered         Money-back after 5 months with photo tracking           A study number per SKU: 7.4X, up to 28,200 new
+                                                                               hairs in 84 days, 87% saw growth with MitoActive
+ Involves              Often, by prescription                                  Never
+ minoxidil
+ Supplements           Yes                                                     No
+ Doctor                Yes, on calls                                           No; we tell you when to see one
+ involved
+ Where to buy          traya.health                                            arata.in, Amazon, Nykaa, Flipkart, Blinkit, Zepto,
+                                                                               Instamart
+ Scale                 ₹343 Cr FY25, 450K active customers                     ₹61 Cr FY25, 1.5M+ customers served a year
+
+
+Where Traya is better
+Traya has a doctor in the loop. For hormonal, nutritional or medical hair loss, that matters. Its money-
+back guarantee is real. If your loss is advanced, Traya's programme is the more serious intervention.
+Where Arata is better
+Price per month is roughly half. There is no minoxidil, so there is no dependency and no shedding
+when you stop. There is no supplement to remember. You can start today from a quick-commerce
+app. And MitoActive uses Y100, an active Traya does not have.
+Pick Traya if: you want a managed programme and a doctor, and ₹1,500 a month for six months is
+fine. Pick Arata if: you want to start with a ₹359 shampoo and a ₹571 serum, see your own 84-day
+result, and move up to MitoActive if you want more.
+The Arata starting routine for Traya switchers
+Many people come to Arata after a Traya cycle. Keep whatever your doctor told you to keep. Replace
+the kit shampoo with the Anti-Hair Fall Intensive Shampoo (₹359) and the kit serum with either the Hair
+Growth Intensive Serum (₹571) or MitoActive (₹1,499). Give it 84 days. Take a photo on day 1.
+Related: Arata vs Man Matters → Y100 vs minoxidil → Hair fall in men in their 30s → Minoxidil
+alternative routine
+
+EXAMPLE 4: CONCERN PAGE, FIRST 180 WORDS AND OUTLINE
+URL: arata.in/concerns/post-partum-hair-fall Title: Post-partum hair fall: why it happens and what to
+do in 84 days | Arata
+Post-partum hair fall is your body catching up on a shed it postponed for nine months.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · INGREDIENT, CONCERN AND CITY PAGES AT SCALE                                                        11
+During pregnancy, oestrogen holds more hairs in the growth phase than usual. Three to four months
+after delivery, that hormone drops and all those held hairs shed together. It looks dramatic on the
+pillow and in the drain. For most women it peaks around month four and settles by month twelve. You
+cannot stop the shed that is already scheduled. You can make the regrowth phase faster and stronger,
+and you can stop breakage from making it look worse.
+Here is what we tell new mothers who write to us, and what the mothers who bought from us said
+worked.
+Outline of the remaining sections: - The 84-day timeline, drawn as a bar: shed (months 3 to 6) →
+regrowth (months 6 to 12) → where Arata's serum study window fits - The routine for someone with no
+time: Anti-Hair Fall S+C combo (₹638) plus Hair Growth Intensive Serum at night; one cart, ₹1,201 as
+the Hair Growth Trio - Safety block: ingredients list, what to check with your doctor if breastfeeding,
+no minoxidil, no supplements - Three verbatim reviews filtered to "post partum", "after delivery", "new
+mom" (Loox query, to be run in week 2) - Reorder note: shampoo lasts about 45 days at every-other-
+day washing; serum about 30 days; we remind you - When to see a doctor: if shedding continues past
+12 months, or with other symptoms - Related: hair fall in women in their 30s → stress hair fall → the
+routine for dry scalp
+
+EXAMPLE 5: SCHEMA MARKUP PER SET
+                                                                                                                     DIAGRAM
+    Concern, ingredient and city pages:
+      Article (headline, datePublished, dateModified, author: Arata Lab)
+      BreadcrumbList (Home → Concerns → Post-partum hair fall)
+      FAQPage (3 to 5 questions from the page body; machine-readable even
+               though Google limits FAQ rich results)
+      Product (for each recommended SKU: name, offers.price in INR,
+               aggregateRating from Loox, where review count > 10)
+
+    Comparison pages:
+      Article + BreadcrumbList + ItemList (the two entities compared)
+
+    Routine pages:
+      HowTo (step order, time per step) + Product for the combo
+
+    All pages:
+      Organization (Slick Organics Private Limited, sameAs Nykaa and Amazon
+      store URLs) on the homepage, referenced by id
+
+
+
+
+EXAMPLE 6: THE MASTER DATA SHEET, ONE ROW PER SET
+ SET               FIELDS (HANDLE, THEN CONTENT, THEN PROPRIETARY, THEN LINKS)
+
+ City              handle, city, state, hardness_band, hardness_source_note, monsoon_window, humidity_peak, aqi_note,
+                   hairfall_share, dandruff_share, men_share, top_sku, qc_apps_available, delivery_promise, review_1,
+                   review_2, hero_products[3], related_concerns[3], related_ingredients[2], noindex
+ Concern           handle, concern, cause, intro_handwritten, mechanism, peak_timeline, medical_flag, routine_products[3],
+                   combo_price, review_quotes[3], derm_block, related_concerns[3], related_ingredients[2], related_routine,
+                   noindex
+ Ingredient        handle, name, group, what_it_does, evidence_summary, dose_note, in_arata_skus[], not_in_arata_reason,
+                   compare_table_rows[], lab_note_url, related_ingredients[3], related_concerns[2], noindex
+ Comparison handle, entity_a, entity_b, type, short_version, table_rows[], a_better_at, b_better_at, pick_a_if, pick_b_if,
+            switcher_routine, related[4], last_verified_date, noindex
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · INGREDIENT, CONCERN AND CITY PAGES AT SCALE                                                  12
+ SET               FIELDS (HANDLE, THEN CONTENT, THEN PROPRIETARY, THEN LINKS)
+
+ Routine           handle, concern, scalp_type, step_1_sku, step_2_sku, step_3_sku, timing, combo_handle, combo_price,
+                   days_supply, reorder_day, review_quotes[2], related[3], noindex
+
+
+
+
+30-DAY DEPLOYMENT
+ WEEK BREW SHIPS                                                              ARATA PROVIDES                 LIVE BY END OF WEEK
+
+ 1         Keyword validation (Keyword Planner + Search Console                 Shopify collaborator access;   Definitions and sheet;
+           pull for all 160 target queries); master data sheet with             Loox export; order export      nothing public
+           all 161 rows stubbed; 5 metaobject definitions created               with pin codes (last 6
+           in Shopify; theme head reads noindex field; order-data               months); lab contact for
+           query for city fields written against Shopify orders                 ingredient fact-checks
+           export
+ 2         5 Liquid templates (one per set) with conditional                    Lab review of the 5 ingredient 5 hubs + 12 spokes
+           blocks; hub pages for all 5 sets; first 12 pages written             pages (2 working days);        live, indexed via
+           by hand: Y100, Hairdian AP, MelanoGray, Redensyl,                    brand manager sign-off on      sitemap submission
+           minoxidil, Arata vs Traya, Arata vs Pilgrim, Y100 vs                 comparison tone
+           Redensyl, post-partum hair fall, hard water hair fall,
+           monsoon hair fall, Bangalore
+ 3         20 more pages: 8 concerns, 6 ingredients, 4                          Review of 8 concern pages;     37 pages live; PDPs
+           comparisons (Minimalist, Bare Anatomy, Man Matters,                  confirmation of which anti-    cross-linking
+           minoxidil alternative), 2 routines; city data sync job               dandruff active to name
+           running weekly; PDP-to-ingredient backlinks added on                 publicly
+           8 PDPs; Loox quote filter working
+ 4         11 more pages: 11 remaining phase-1 cities with                      Quick-commerce availability    48 pages live, 5
+           populated order fields; Search Console check of                      by city (which apps, which     sitemaps submitted,
+           indexation per sitemap; first ranking report; fix pass on            SKUs); sign-off on city copy   weekly refresh loop
+           any page under 400 words of unique content; schema                                                  running, indexation
+           validation on all pages                                                                             report delivered
+
+
+Owners: Brew SEO lead (data model, templates, indexation), Brew content lead (hand-written
+intros and comparison copy), Brew engineer (sync job, theme changes), Arata brand manager
+(approvals and tone), Arata lab lead (ingredient and claim accuracy), Arata ops lead (quick-commerce
+availability by city).
+Days 31 to 90: remaining 113 pages at roughly 12 a week, phase-2 cities as order data fills, Hindi
+translation of the 20 best-performing pages begins in month 3 if English pages are indexed and
+ranking.
+
+
+
+HOW WE MEASURE
+ METRIC                                 BASELINE                          90-DAY TARGET                              SOURCE
+
+ Pages live                             0                                 160                                        Master sheet
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · INGREDIENT, CONCERN AND CITY PAGES AT SCALE                                                            13
+ METRIC                                 BASELINE                          90-DAY TARGET                           SOURCE
+
+ Indexation rate per set                n/a                               Above 90% of submitted URLs             Search Console,
+                                                                                                                  per sitemap
+ Pages with at least one top-           0                                 100 of 160                              Search Console
+ 20 ranking                                                                                                       queries
+ Pages in top 5 for their               0                                 30 (mostly comparisons and ingredient   Search Console
+ primary query                                                            exclusives)
+ Organic non-brand sessions To be instrumented                            40,000 sessions a month by day 90       GA4, landing
+ to pSEO pages              (organic share of 650K                        (assumption: 250 average sessions per   page report
+                            monthly visits is                             page; comparison pages far above,
+                            unknown)                                      phase-2 cities far below)
+ pSEO page to add-to-cart               n/a                               4% on comparison and routine pages;     GA4 events
+ rate                                                                     2% on concern, ingredient and city
+                                                                          pages
+ Assisted D2C orders from               0                                 1,200 orders a month (assumption:       GA4 attribution,
+ pSEO landing                                                             40,000 sessions × 3% blended)           first-touch
+                                                                                                                  landing page
+ MitoActive PDP sessions                0                                 5,000 a month                           GA4
+ from /ingredients/y100 and
+ comparisons
+ Reviews referencing a pSEO             Count at week 1                   Tagged and surfaced on 100% of          Loox export
+ page topic (e.g. "post                                                   concern pages
+ partum")
+
+
+At 1,200 orders a month on an implied AOV of ₹900 to ₹1,000, the set adds roughly ₹11 to ₹12 lakh a
+month of D2C revenue on owned land, against the brief's note that 68% of revenue sits on rented
+channels. That is the first-order case. The second-order case is MitoActive trust: the only pages in
+India explaining Y100.
+Decision rules at day 90
+    If indexation is above 90% and 100+ pages rank top 20: expand. Build phase-2 cities to 40, start
+    Hindi on the 20 best pages, add the "best hair fall shampoo in India" editorial page, and begin a
+    second concern layer (concern × city, for the top 5 concerns × top 5 cities, 25 pages, only if the
+    first layer converts).
+    If indexation is above 90% but rankings stall below top 20 on most pages: the pages are thin or the
+    domain is weak. We rewrite the 30 weakest pages with more proprietary data and run a link push
+    via directory submissions and the Lab Notes cadence. We do not add pages.
+    If indexation is below 70%: a technical fault (sitemap, canonical, render). Brew fixes before any
+    new page ships.
+    If pages rank and traffic arrives but add-to-cart sits under 1%: the template's cart path is wrong.
+    We move the routine block and combo price above the fold and retest for 30 days before touching
+    content.
+    If comparison pages draw complaints from a competitor: we verify every claim against their live
+    pricing page, keep what is true, and add a "last verified" date. We do not take pages down for
+    being accurate.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · INGREDIENT, CONCERN AND CITY PAGES AT SCALE                                                         14
+APPENDIX
+PRE-LAUNCH CHECKLIST PER PAGE
+    Hand-written intro of at least 120 words
+    At least two proprietary fields visible above the fold
+    Unique title and meta; no duplicate across the set
+    Three related links across sets, one hub link, one to three product links
+    Schema validates with no errors
+    Noindex field set correctly for the set's phase
+    Prices match arata.in on the day of publish; last_verified_date set
+    Medical causes carry the derm block
+    No "chemical-free", "miracle", "cure", "clinical-strength" anywhere on the page
+
+PHASE-1 QUERY LIST (TO VALIDATE IN WEEK 1)
+ PAGE                                       PRIMARY QUERY                      SECONDARY QUERIES
+
+ /ingredients/y100                          what is y100 hair                  y100 hair growth, y100 serum india, mitochondrial hair
+                                                                               growth
+ /compare/arata-vs-traya                    arata vs traya                     traya alternative, traya vs arata serum, is traya worth it
+ /compare/arata-vs-pilgrim                  arata vs pilgrim hair              pilgrim hair growth serum alternative
+                                            serum
+ /compare/y100-vs-redensyl                  y100 vs redensyl                   redensyl alternative, better than redensyl
+ /concerns/post-partum-hair-                post partum hair fall              hair fall after delivery, postpartum hair loss shampoo india
+ fall
+ /concerns/hard-water-hair-fall hard water hair fall                           hard water hair loss solution, shampoo for hard water
+                                                                               india
+ /concerns/monsoon-hair-fall                hair fall in monsoon               monsoon hair fall shampoo, rainy season hair fall
+ /cities/bangalore                          hair fall shampoo                  borewell water hair fall, hair fall after moving to bangalore
+                                            bangalore
+ /ingredients/minoxidil                     minoxidil side effects             minoxidil alternative, stop minoxidil hair fall
+                                            india
+ /ingredients/redensyl                      what is redensyl                   redensyl vs minoxidil, redensyl side effects
+
+
+SOURCES USED
+Arata brand brief (prices, claims, reviews, channel mix, competitor positioning); Eureka Forbes state-
+by-state water hardness overview (hardness bands by state, source split for Delhi NCR, Bangalore,
+Chennai, Mumbai); Traya public pricing as stated in the brief. Search volumes are marked as
+assumptions until the week-1 Keyword Planner pull.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · INGREDIENT, CONCERN AND CITY PAGES AT SCALE                                                                   15
+PROGRAMMATIC SEO
+
+
+DAY 30
+AT ARATA
+   WHAT IS LIVE
+
+   48 pages live on arata.in across ingredients, concerns, cities and comparisons,
+   indexed, interlinked, with order data feeding the city pages and a weekly refresh
+   loop running.
+
+
+
+
+ NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+ BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+ CONFIRM".
+
+
+ EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+ BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                  DEPLOYMENT TEAM
+                                                                               BREW
+

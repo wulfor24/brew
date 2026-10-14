@@ -1,0 +1,825 @@
+      Brew                                    PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+COPYWRITING · MOVE 29 OF 50
+
+
+
+WEBSITE
+COPY FOR
+THE HAIR
+FALL FUNNEL
+  FINISHED, PASTE-READY COPY FOR THE FOUR PAGES
+  WHERE ARATA WINS OR LOSES THE HAIR FALL
+  CUSTOMER, PLUS THE HOUSE RULES THAT KEEP EVERY
+  FUTURE PAGE SOUNDING LIKE ARATA.
+
+
+
+
+4 pages
+REWRITTEN AND READY TO PASTE
+
+
+
+
+BREW × ARATA                   OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                 V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                                WHAT THIS GIVES ARATA
+                                                                Finished, paste-ready copy for the four pages where
+                                                                Arata wins or loses the hair fall customer, plus the
+                                                                house rules that keep every future page sounding
+                                                                like Arata.
+         4 pages
+         REWRITTEN AND READY TO PASTE
+                                                                LIVE 30 DAYS AFTER WE START
+                                                                The homepage, the MitoActive page, the Hair
+                                                                Growth Intensive Serum page and a hair fall routine
+                                                                landing page are live with new copy, a claims
+                                                                grammar is in use across the catalogue, and the first
+                                                                hero A/B test is running on arata.in.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+Arata has the best raw material in the ₹400 to ₹700 haircare band and the copy spends most of it.
+Every hero bottle carries a number from a study: 7.4X, 28,200, 95%, 86%, 87%. Pilgrim, Minimalist
+and Bare Anatomy sell the same Redensyl and Anagain stack and differentiate on ingredient
+percentages. Arata differentiates on results. That is the one thing on arata.in nobody can copy, and
+today it sits inside product titles and claim badges instead of carrying the page.
+The website is 32% of ₹61.1 Cr, roughly ₹19.5 Cr a year, on ~650K monthly visits converting at an
+implied 7 to 8%. Those visits are the only revenue Arata fully controls. The other 68% lives on
+Amazon, Nykaa, Blinkit and Zepto, where listing copy is constrained and the platform owns the
+customer. Each point of conversion on arata.in is worth about 6,500 orders a month, or ₹55 to ₹65 lakh
+at the implied AOV (assumption: visit count and AOV from the brief, held flat).
+Three gaps in the brief are copy problems before they are product problems. MitoActive is ₹1,499 for
+30 ml with zero reviews, so the page has to do the work that reviews normally do and has to answer
+"₹1,499 for 30 ml is a lot" before the customer asks it. The hair growth collection mixes claims and has
+no routine builder, so the copy has to build the routine in words. The brand is mid-rebrand from "zero
+chemicals" to "Hair & Scalp Science Co.", and the site still speaks both languages, which a reader
+hears as hedging.
+The reviews add a fourth: "the seal was broken", "the shampoo bottle was leaking", "a bit expensive".
+Each is an objection the page can answer in one line, and today nothing on the page does.
+The opportunity is to make arata.in the one place in Indian haircare where a reader with hair on the
+pillow sees her situation named, sees a number and a timeline she can hold the brand to, and sees
+one routine with one price. Everything below is built for that reader.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · WEBSITE COPY FOR THE HAIR FALL FUNNEL                                                  1
+WHAT WE FOUND
+THE MESSAGING SURFACES, SCORED
+We ran every line of brand and claim messaging in the brief through four tests from our copy method:
+the "Now you can" test (does the line name a new ability the reader gains?), the swap test (would the
+line work unchanged on Pilgrim's or Traya's site?), the three-beat spine (does it name a discomfort, a
+better state and a path?), and proof placement (is the evidence next to the claim?).
+                                                                                           SPINE
+                                                                                           BEATS
+ SURFACE          CURRENT LINE                  "NOW YOU CAN"             SWAP TEST        HIT        VERDICT
+
+ Brand line       "Good science for             Fails. Describes the      Fails.           0 of 3     Keep as a sign-off, never
+                  great hair"                   brand, gives the reader   Minimalist                  as a headline
+                                                nothing to do             could run it
+ Brand line       "Systems, not                 Fails. Abstract           Passes           0 of 3     Internal positioning only.
+                  symptoms"                                               narrowly                    Reads as a contrast reveal
+                                                                                                      on a page
+ Proof line       "Real people. Honest          Fails                     Fails            0 of 3     Replace with the real
+                  results."                                                                           count: 2,248 reviews,
+                                                                                                      4.2★ on Nykaa
+ Serum            "Up to +28,200 new            Passes. Now you can       Passes. Only     2 of 3     Strongest line on the site.
+ claim            hair within 84 days"          grow up to 28,200 new     Arata has this   (vision,   Promote it from badge to
+                                                hairs in 84 days          number           path)      headline
+ Shampoo          "7.4X hair fall               Passes                    Passes           1 of 3     Needs the "how
+ claim            reduction"                                                               (vision)   measured" line under it
+                                                                                                      (tensile strength) or the
+                                                                                                      sceptic discounts it
+ MitoActive       "India's first                Fails for most readers.   Passes           0 of 3     Lead with "87% saw
+ claim            mitochondrial hair            "Mitochondrial" is a                                  growth in 84 days", explain
+                  growth treatment,             mechanism, not an                                     Y100 one scroll later
+                  powered by Y100"              outcome
+ Dandruff         "Up to 95% reduction          Passes                    Passes           2 of 3     Pair with Dandruff Divya's
+ claim            in dandruff-causing                                                                 actual discomfort: flakes
+                  fungus in 1 wash"                                                                   on black clothes
+ Anti-grey        "Up to 86% reduction          Passes, with an honesty   Passes           1 of 3     The brief says "in best
+ claim            in greys"                     gap                                                   responders over 3
+                                                                                                      months". Say so on the
+                                                                                                      page or the claim will be
+                                                                                                      read as inflated
+
+
+The pattern is clear. The study numbers pass every test. The brand lines fail every test. The site leads
+with the brand lines.
+
+THE THREE-BEAT SPINE, MAPPED TO ARATA
+Every hero that converts names a current discomfort, a better state, and the specific step that
+connects them. For Arata the beats already exist in the brief's own customer language. We only had to
+line them up.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · WEBSITE COPY FOR THE HAIR FALL FUNNEL                                                              2
+                                                                                                                               DIAGRAM
+        CURRENT DISCOMFORT                  BETTER STATE                           PATH
+        (reader's own words)                (the number + the timeline)            (one routine, one price)
+
+        "hair on the pillow"    →          "7.4X less hair fall"         →        Anti-Hair Fall Shampoo ₹359
+        "hair in the drain"                 "up to 28,200 new hairs                + Growth Serum ₹571
+        "thinning at the crown"              in 84 days"                            = ₹838 as a combo
+
+        "flakes on black                    "95% of the fungus gone          →     Anti-Dandruff Shampoo ₹404
+         clothes", "itching"                 in 1 wash", "36-hr itch                + Serum ₹299
+                                             relief"
+
+        "first greys at 29"          →     "up to 86% fewer greys        →        Anti-Grey Serum ₹449
+                                             over 3 months"                        (3-month plan)
+
+        "tried minoxidil, hated →           "87% saw growth in 84        →         MitoActive ₹1,499
+         the dependency"                     days, a different                      (about ₹50 a day)
+                                             mechanism"
+
+
+
+
+WHERE EACH PERSONA READS THE SAME LINE DIFFERENTLY
+The brief has six personas, and the same claim lands as a selling point for one and a warning for
+another. This is why one homepage cannot carry MitoActive's science language at the top.
+                                    HAIR-FALL RAHUL (28, WANTS                   ROUTINE RITIKA (32, POST- CLINICAL KAVYA (35,
+ LINE                               PROOF, FEARS MINOXIDIL)                      PARTUM, NO TIME)          HAS SEEN A DERM)
+
+ "Mitochondrial hair                Curious, slightly sceptical                  Jargon. Scrolls past          Exactly what she wants
+ growth treatment"                                                                                             to read
+ "Up to 28,200 new hairs            Sold, wants the study                        Sold, wants the cart          Wants the n and the
+ in 84 days"                                                                                                   method
+ "₹1,499"                           Compares to ₹571 serum, needs                Too much for a first order    Compares to a derm visit,
+                                    a reason                                                                   fine
+ "Twice daily for 84 days"          Fine                                         Needs it as a reminder, not   Fine
+                                                                                 a task
+
+
+So: the homepage speaks to Rahul and Ritika in outcome language and names MitoActive as "the next
+tier". The MitoActive page speaks to Kavya first and brings Rahul along with the cost-per-day line. The
+routine landing page speaks to Ritika with one cart and one price.
+
+CUSTOMER LANGUAGE WE WILL REUSE VERBATIM
+From the brief's review mining. These go into headlines and FAQ answers as-is, because the reader
+recognises her own words faster than ours.
+ PROBLEM WORDS                             RESULT WORDS                                          OBJECTION WORDS
+
+ hair fall, hairfall, hair thinning,       "Hair fall reduced drastically", "I can see a         "a bit expensive in comparison", "the
+ dandruff, itching problem,                visible difference in two weeks", "affordable         seal was broken", "the shampoo bottle
+ frizzy and dry                            and actually works"                                   was leaking"
+
+
+OBJECTION-TO-COPY MAP
+Each objection in the brief gets one line on one page. The page is chosen by where the objection is
+felt.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · WEBSITE COPY FOR THE HAIR FALL FUNNEL                                                                     3
+ OBJECTION                    PAGE                         THE LINE
+
+ "₹1,499 for 30 ml is         MitoActive PDP, price        "₹1,499 is a 30-day course at two drops twice a day. About ₹50 a day.
+ a lot"                       block                        Traya's kits start at ₹1,400 a month and run five months or more."
+ "Is this just another        MitoActive PDP,              "The Intensive Serum is our actives serum. MitoActive works on a
+ Redensyl serum?"             comparison table             different target: the mitochondria inside the follicle. Y100 is licensed to
+                                                           Arata and sold by nobody else in India."
+ "28,200 hairs?               Intensive Serum PDP,         "Up to. Measured over 84 days in a consumer study. The study design is
+ Really?"                     under the headline           two scrolls down."
+ "Do I have to use it         Both serum PDPs,             "Plan on 84 days, then maintenance. Minoxidil stops working when you
+ forever?"                    FAQ                          stop. This does not have that dependency."
+ "Is it chemical-             Homepage FAQ                 "Sulphate-free, paraben-free, vegan, dermatologically tested. Every
+ free?"                                                    active is there because a test showed it does something."
+ "The seal was                Every PDP, under add "Arrives sealed. If it does not, we replace it."
+ broken"                      to cart
+
+
+
+
+THE PLAN
+PAGE PRIORITY, BY MONEY AND BY GAP
+We rewrite in the order where copy changes revenue soonest.
+ PRIORITY PAGE                                     WHY FIRST                                           EXPECTED EFFECT
+
+ 1             Hair Growth Intensive               Highest-volume hero, strongest claim, proof         Add-to-cart up; Pack of 3
+               Serum PDP (₹571, 474                already there                                       share up
+               reviews)
+ 2             MitoActive PDP (₹1,499, 0           The rebrand flagship. With zero reviews the         Cold-start conversion; AOV up
+               reviews)                            page is the whole argument                          on the ₹1,803 to ₹2,278
+                                                                                                       combos
+ 3             Homepage                            650K visits a month land somewhere. The             Hero CTA click-through up;
+                                                   hero frames every other page                        concern-page entry up
+ 4             Hair fall routine landing           Paid traffic lands on a collection that mixes       Paid conversion up; ₹838
+               page (ad traffic)                   claims. It needs a page whose headline              combo as the default cart
+                                                   matches the ad
+ 5             Anti-Dandruff Shampoo               Second concern by volume, female-skewed,            Seasonal conversion; S+C
+               PDP (₹404, ~300 reviews)            winter and monsoon spikes                           combo at ₹866
+ 6             Catalogue cleanup                   Onion vs biotin, serum vs tonic, curl-care          Fewer confused exits
+                                                   legacy copy
+
+
+THE SITE'S MESSAGE ARCHITECTURE
+One spine, five concern doors, one routine per door. The homepage is the hallway. Every concern
+page is a complete argument. The MitoActive page is the "next tier" door that both the hair fall
+concern page and the homepage point to.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · WEBSITE COPY FOR THE HAIR FALL FUNNEL                                                                   4
+                                                                                                      DIAGRAM
+                              HOMEPAGE
+              "Less hair on the pillow in 84 days."
+             proof bar → problem → pick your concern
+                      │
+         ┌────────────┼────────────┬────────────┬────────────┐
+         ▼            ▼            ▼            ▼            ▼
+      HAIR FALL    DANDRUFF     DAMAGE       GREYS       STYLING
+      7.4X, 28,200 95% in 1     94% keratin up to 86%    72-hr hold
+      in 84 days    wash        retention    in 3 months
+         │
+         ├── Intensive Serum PDP (₹571) ──► Pack of 3 (₹999)
+         ├── Anti-Hair Fall Shampoo PDP (₹359)
+         ├── Routine page: Shampoo + Serum (₹838)   ◄── ad traffic lands here
+         │
+         └── "The next tier" ──► MITOACTIVE PDP (₹1,499, ~₹50/day)
+                                   science first, cost-per-day second,
+                                   combos ₹1,803 to ₹2,278
+
+
+
+
+HOUSE RULES FOR EVERY ARATA PAGE
+These are the rules we write to and hand to Arata so every future page, listing and ad matches.
+1. The claims grammar. Every number appears with four parts: the number, what was measured, the
+timeframe, and the study type. The number goes in the headline. The other three go in the line under
+it. Example: "Up to 28,200 new hairs" / "in 84 days, counted in a consumer study". This is how a
+sceptic who has been burned by onion shampoo decides to trust the number. It also keeps the page
+on the right side of the "clinical-strength" regulatory line the brief flags.
+2. Outcome first, mechanism second. The reader buys less hair on the pillow. She reads about
+Hairdian AP, rosemary-caffeine and Y100 only after she believes the outcome. Mechanism copy lives
+one scroll below the hero on every PDP, under a heading that makes a claim ("Why the follicle stays in
+growth longer"), never under "Ingredients".
+3. One routine, one price, one CTA. Every concern page ends in a named routine with a single price.
+"Hair fall routine: Anti-Hair Fall Shampoo + Growth Serum, ₹838." The reader should never have to
+assemble a cart from a grid.
+4. Indian hair is a proof point, so say what it means. Hard water in Bangalore and Delhi, humidity in
+Mumbai and Chennai, pollution in the NCR winter. "Tested for Indian weather" is a claim; "holds
+through a Mumbai August" is a picture.
+5. The transition from "zero chemicals". The old identity shows up as a reader question ("Is it
+chemical-free?"). We answer it once, in the FAQ, with facts: sulphate-free, paraben-free, vegan,
+cruelty-free, dermatologically tested, every active there for a measured reason. The phrase
+"chemical-free" itself does not appear anywhere on the site.
+6. CTA formula. Verb + what they get. "Start my hair fall routine", "Add the 84-day pack", "Get the
+routine for ₹838". "Shop now" and "Buy now" are retired.
+7. Microcopy answers the review complaints. "Arrives sealed. If it does not, we replace it." sits under
+every add-to-cart button. The cart drawer shows the gap to the ₹299 and ₹999 thresholds.
+8. Words. Use: scalp, roots, follicle, 84 days, hair fall, new hair, tested, Indian hair, routine, lab. Avoid:
+chemical-free, miracle, cure, regrow 100%, ayurvedic, clinical-strength.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · WEBSITE COPY FOR THE HAIR FALL FUNNEL                                           5
+9. No AI tells. The banned shapes are contrast reveals, negation lists, question-then-answer setups
+and em dashes. One fragment per section at most. If a line would work on Pilgrim's site unchanged, it
+gets rewritten.
+
+
+
+WORKED EXAMPLES
+Four finished pages and one set of microcopy. Each is written to paste into the Shopify theme.
+Annotations explain the choice where it is load-bearing. Where a fact is needed that the brief does not
+hold, the line is flagged <span class="need">NEED: ...</span> rather than invented.
+
+EXAMPLE 1: HOMEPAGE
+Eyebrow: Hair & Scalp Science Co. Made in Delhi for Indian hair.
+H1: Less hair on the pillow in 84 days.
+Subhead: Arata makes shampoo and serum for Indian hair, tested on Indian scalps. Every bottle
+carries the result from its own study: 7.4X less hair fall, up to 28,200 new hairs, 95% less dandruff
+fungus in one wash.
+Primary CTA: Pick my concern Secondary CTA: Start the hair fall routine, ₹838
+Under the CTA: Free shipping above ₹299. Dermatologically tested. Minoxidil-free.
+Annotation. The headline names Rahul's and Ritika's discomfort in their own words (the pillow) and
+gives a timeline they can hold us to. "Now you can have less hair on the pillow in 84 days" is
+compelling and true, backed by the shampoo and serum claims. The subhead carries three numbers
+because there really are three, one per concern. "Minoxidil-free" is the one absence worth stating,
+because it is the brief's primary use case ("something that works, is not minoxidil, and does not
+require a doctor").
+Headline alternatives - Option B: "The hair fall shampoo with a number on the bottle." Rationale:
+makes the differentiator the headline. Weaker on the reader's own discomfort. - Option C: "Hair fall,
+measured. Hair growth, counted." Rationale: punchier, leans into the lab identity for the rebrand. Two
+fragments, so it uses the section's quota in one line.
+
+
+
+Proof bar
+1.5 million customers a year. 2,248 reviews on this site. 4.2 stars on Nykaa from 2,435 ratings. Backed
+by Unilever Ventures and L'Oréal BOLD.
+
+
+
+Section: the problem
+H2: You have already tried the onion shampoo.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · WEBSITE COPY FOR THE HAIR FALL FUNNEL                                   6
+Probably the biotin gummies too. Maybe rosemary water, maybe oiling every Sunday. Customers tell
+us the same story before they switch: three to five products, ₹2,000 to ₹5,000 spent, nothing that
+showed a number.
+Hair fall is slow and so is the fix. That is why every Arata routine comes with a timeline. Shedding
+should drop within the first few washes. The study endpoint is 84 days. If you are not seeing it by
+then, the routine is wrong for you and we will say so.
+Annotation. The first sentence passes the recognition test ("that's exactly me"). The last line is a
+promise the post-purchase flow has to keep <span class="need">NEED: Arata to confirm the 84-day
+check-in</span> .
+
+
+
+
+Section: pick your concern
+H2: Five concerns. One routine each.
+ CONCERN
+ TILE                HEADLINE ON TILE                           NUMBER                                                   FROM
+
+ Hair fall           Less hair in the drain                     7.4X less hair fall. Up to 28,200 new hairs in 84 days   ₹359
+ Dandruff            Black shirts again                         95% of dandruff fungus gone in one wash. 36-hour itch    ₹299
+                                                                relief
+ Damage              Hair that survives the                     94% keratin retention. 95% moisture boost                ₹395
+                     straightener
+ Greys               Delay the dye                              Up to 86% fewer greys over three months                  ₹449
+ Styling             Hold that outlasts the metro               72-hour humidity-resistant hold                          ₹269
+
+
+Tile CTA: "See the [concern] routine"
+
+
+
+Section: how it works
+H2: Wash. Treat. Repeat for 84 days.
+1. Wash with the shampoo for your concern. Scalp first, then lengths. Every wash, not every other.
+2. Treat with the serum on a towel-dry scalp. Two drops on the roots, morning and night. Thirty
+   seconds, no rinse.
+3. Repeat for 84 days. That is the study window for every number on this page. We will remind you
+   when the bottle is about to run out.
+Annotation. Step 3 ends on the reorder reminder, which the brief's 45-day repeat window depends on
+<span class="need">NEED: confirm reminder flow exists in email or WhatsApp</span> .
+
+
+
+
+Section: why there is a number on the bottle
+H2: We test it before we print it.
+
+
+BREW DEPLOYMENT TEAM × ARATA · WEBSITE COPY FOR THE HAIR FALL FUNNEL                                                          7
+Arata runs its own R&D and QC lab in Delhi. Every hero product is tested before its claim goes on the
+pack, either in the lab (how much keratin a strand keeps after a wash, how much fungus is left after
+one wash) or on people over 84 days (how many new hairs, how many saw growth). The pack tells
+you the number. The product page tells you which kind of test produced it, and we say "up to" when a
+number is the best result in the study rather than the average.
+Annotation. This section does the honesty work the brief asks for ("Honest framing beats inflated
+framing") and inoculates against the "claims sound too good" objection before the reader reaches a
+PDP.
+
+
+
+Section: MitoActive spotlight
+Eyebrow: New. The next tier.
+H2: When the actives serum is not enough, work on the cell.
+MitoActive is India's first mitochondrial hair growth serum. It targets the energy supply inside the
+follicle so more follicles stay in the growth phase. 87% of users saw increased growth in 84 days.
+₹1,499 for a 30-day course, about ₹50 a day.
+CTA: See how MitoActive works
+
+
+
+Section: made for Indian hair
+H2: Tested for the water in your tap and the air outside.
+Hard water in Delhi and Bangalore leaves mineral deposits on the scalp. Mumbai and Chennai humidity
+breaks down most styling hold by lunchtime. Arata's formulas are built and tested for these conditions.
+<span class="need">NEED: one sentence on the hard-water or humidity test protocol, if Arata has
+one</span>
+
+
+
+
+Section: testimonial
+"Arata is amazing cz its affordable and actually works. Hair fall reduced drastically." Verified buyer,
+Hair Growth Intensive Serum <span class="need">NEED: first name and city from Loox</span>
+"I can see a visible difference in two weeks." Verified buyer, Anti-Hair Fall Intensive Shampoo <span
+class="need">NEED: first name and city from Loox</span>
+
+
+Annotation. Both quotes carry a result and a timeframe. We did not pick "great product" style reviews.
+
+
+
+Section: FAQ
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · WEBSITE COPY FOR THE HAIR FALL FUNNEL                                    8
+Is Arata chemical-free? Every Arata shampoo is sulphate-free and paraben-free. Everything is vegan,
+cruelty-free and dermatologically tested. Every active in the bottle is there because a test showed it
+does something, and the number from that test is on the pack.
+Is this minoxidil? No. Arata's serums use Hairdian AP, rosemary-caffeine and, in MitoActive, Y100.
+Minoxidil needs a doctor and stops working when you stop using it. Arata's routines are planned as an
+84-day course and then maintenance.
+What if the bottle arrives leaking? We replace it. Send a photo on WhatsApp and a new one ships the
+same day. <span class="need">NEED: confirm same-day policy</span>
+
+
+
+Final CTA
+H2: Pick your concern. We will build the routine.
+Free shipping above ₹299. A free gift above ₹999. Every bottle arrives sealed, or we replace it.
+CTA: Pick my concern
+Meta title: Arata | Hair fall, dandruff and scalp care tested on Indian hair Meta description: Shampoo
+and serum for Indian hair with a study number on every bottle. 7.4X less hair fall, up to 28,200 new
+hairs in 84 days. Free shipping above ₹299.
+
+EXAMPLE 2: MITOACTIVE PRODUCT PAGE
+Eyebrow: New. India's first mitochondrial hair growth serum.
+H1: 87% saw new growth in 84 days.
+Subhead: MitoActive works on the energy supply inside the follicle, so more of your follicles stay in
+the growth phase and fewer sit in rest. Powered by Y100, licensed to Arata and sold by nobody else in
+India.
+Price block: ₹1,499 · 30 ml · a 30-day course at two drops, twice a day About ₹50 a day.
+Primary CTA: Start my 84-day course Secondary CTA: Add MitoActive + Anti-Hair Fall Shampoo,
+₹1,803
+Under the CTA: Dermatologically tested. Minoxidil-free. Arrives sealed, or we replace it.
+Annotation. The headline is the outcome from the study, which passes "Now you can see new growth
+in 84 days". The mechanism is in the subhead because Clinical Kavya is the first reader here and she
+wants it early. The price block answers the "₹1,499 for 30 ml" objection before it forms, using the
+brief's own cost-per-day maths. The secondary CTA makes the combo the easy upgrade.
+Headline alternatives - Option B: "Hair growth, from the cell up." Rationale: the rebrand line. Cleaner,
+less proof in it. - Option C: "A hair growth serum that is not another Redensyl." Rationale: direct at
+Rahul's objection. Uses a negation, so only one of these per page.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · WEBSITE COPY FOR THE HAIR FALL FUNNEL                                     9
+Section: what is different
+H2: Every other serum feeds the follicle. This one fixes its power supply.
+Inside every follicle are mitochondria, the parts of the cell that make its energy. With age, stress,
+illness and pollution, they make less of it. A follicle short on energy spends longer in the resting phase
+(telogen) and less time growing (anagen). You see that as thinning.
+Y100 is an active developed by Yuva Biosciences over six-plus years and five-plus clinical studies to
+support mitochondrial function. In a study on Indian participants, MitoActive users showed reduced
+shedding, a better growth-to-rest ratio and increased density. <span class="need">NEED: participant
+count, study duration and who ran it, for the study card</span>
+
+
+The actives serums you have tried, including our own Intensive Serum, work on the follicle from the
+outside. MitoActive works on the cell that runs it.
+Annotation. "Mitochondria" is explained in one plain sentence before it is used again. The last
+paragraph positions MitoActive against the Intensive Serum without disowning it, which protects the
+₹571 hero.
+
+
+
+Section: how it compares
+H2: Where MitoActive sits.
+                           ARATA INTENSIVE
+                           SERUM                          MITOACTIVE              MINOXIDIL 5%        TRAYA KIT
+
+ What it targets           Follicle, via actives          Mitochondria inside the Blood flow to the   Diagnosis, supplements,
+                                                          follicle cell           follicle            minoxidil
+ Headline result           Up to 28,200 new               87% saw growth in 84    Strongest          Money-back after 5
+                           hairs in 84 days               days                    published evidence months
+ Needs a doctor            No                             No                      Yes                 Doctor calls included
+ What happens              Maintenance routine            Maintenance routine     Gains reverse       Programme ends
+ when you stop
+ Price                     ₹571 for 30 ml                 ₹1,499 for 30 ml        ₹600 to ₹900        ₹1,400 to ₹1,800 a month,
+                                                                                                      5 to 9 months
+ Per day                   About ₹19                      About ₹50               About ₹25           About ₹50 and up
+
+
+Annotation. The table does not hide that minoxidil has the strongest evidence. A reader who has
+looked this up already knows, and a page that admits it earns the right to make the dependency point.
+Per-day figures are the brief's prices divided by 30 days.
+
+
+
+Section: how to use it
+H2: Two drops, twice a day, 84 days.
+1. Part dry or towel-dry hair at the crown and the temples.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · WEBSITE COPY FOR THE HAIR FALL FUNNEL                                                          10
+2. Two drops along each part. Massage for thirty seconds. Do not rinse.
+3. Morning and night. Wash with the Anti-Hair Fall Intensive Shampoo on wash days.
+One bottle is 30 days. The study window is 84 days, which is three bottles. We remind you at day 24
+so the next bottle arrives before this one runs out.
+
+
+
+Section: proof, with zero reviews
+H2: The study came first. Your review comes next.
+MitoActive launched in August 2026. It has no customer reviews yet, and we would rather show you
+that than pad the page. What it has is the Y100 research record and an Indian-participant study with
+the numbers above.
+Start the course and we will check in at day 28, day 56 and day 84. At day 84 we will ask you to post
+what you saw, photos included, and we will publish it whether it is good or not.
+Annotation. This is the honest answer to the zero-review problem. It turns the gap into a proof
+mechanism and feeds the review count the launch needs. The check-in cadence needs an owner
+<span class="need">NEED: Arata to confirm the day-28/56/84 email or WhatsApp flow</span> .
+
+
+
+
+Section: FAQ
+Is MitoActive minoxidil? No. It contains no minoxidil. It works on mitochondrial function inside the
+follicle cell through Y100. You do not need a prescription and it does not create the dependency
+minoxidil does.
+How is it different from the Hair Growth Intensive Serum? The Intensive Serum is Arata's actives
+serum at ₹571 and the right first step for most hair fall. MitoActive is the next tier, for people who want
+a different mechanism or have already run an actives routine. <span class="need">NEED: R&D to confirm
+whether the two can be layered</span>
+
+
+Will I shed more at first? Some users see a brief rise in shedding in the first two weeks as resting
+follicles clear for new growth. It settles. If it has not by week four, message us.
+Do I use it forever? Run the 84-day course. Then most people drop to once a day as maintenance.
+There is no rebound when you stop, which is the difference from minoxidil.
+
+
+
+Final CTA
+H2: Three bottles. 84 days. Then you decide.
+₹1,499 a bottle, about ₹50 a day. Day-28, day-56 and day-84 check-ins included.
+CTA: Start my 84-day course
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · WEBSITE COPY FOR THE HAIR FALL FUNNEL                                    11
+Meta title: MitoActive Mitochondrial Hair Growth Serum with Y100 | Arata Meta description: India's
+first mitochondrial hair growth serum. 87% saw increased growth in 84 days. Minoxidil-free,
+dermatologically tested, ₹1,499 for a 30-day course.
+
+EXAMPLE 3: HAIR FALL ROUTINE LANDING PAGE (META AND YOUTUBE TRAFFIC)
+Built on the compact landing page structure. One message, one cart, one CTA. The headline mirrors
+the ad hook so the click feels continuous.
+H1: Still finding hair in the drain?
+Subhead: The Arata hair fall routine is two bottles: a shampoo tested at 7.4X less hair fall and a serum
+that grew up to 28,200 new hairs in 84 days. ₹838 together, delivered free.
+CTA: Get the routine for ₹838 Under CTA: Minoxidil-free. Dermatologically tested. Arrives sealed, or
+we replace it.
+Annotation. A question that names the reader's pain is the one kind of question our method allows in a
+hero. The ad hook, the headline and the first line of the page all say "drain", so the reader never
+wonders if she landed in the right place. The price is in the subhead because paid traffic bounces
+when it has to hunt for it.
+
+
+
+Proof bar
+474 reviews on the serum. 222 on the shampoo. 4.2 stars on Nykaa. 1.5 million customers a year.
+
+
+
+Section: the two bottles
+H2: What is in the routine.
+Anti-Hair Fall Intensive Shampoo, 200 ml. Hairdian AP with rosemary and caffeine. Tested at 7.4X
+less hair fall by tensile strength, which means strands hold on when you pull a comb through.
+Sulphate-free. ₹359 alone.
+Hair Growth Intensive Serum, 30 ml. Two drops on the roots, morning and night. Up to 28,200 new
+hairs over 84 days in a consumer study. ₹571 alone.
+Together: ₹838. Free shipping. A scalp massager is ₹199 if you want to add it, and it pushes the cart
+over the ₹999 free-gift line.
+Annotation. The massager line is a soft upsell that lands the free gift threshold, which the brief lists. It
+is written as information, so it does not read as a push.
+
+
+
+Section: what to expect, week by week
+H2: The 84 days, in order.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · WEBSITE COPY FOR THE HAIR FALL FUNNEL                                         12
+ WHEN              WHAT MOST PEOPLE SEE
+
+ Washes 1          Scalp feels cleaner. Less hair in the drain after each wash is the first thing customers report. One review: "I
+ to 4              can see a visible difference in two weeks."
+ Weeks 2 to        Some see a brief rise in shedding as resting follicles clear. It settles.
+ 4
+ Weeks 4 to        Fine new hairs at the hairline and crown. Shedding on the pillow is noticeably lower.
+ 8
+ Day 84            The study endpoint. Up to 28,200 new hairs counted in the serum study. Time to switch to maintenance.
+
+
+<span class="need">NEED: R&D to confirm the week-4-to-8 description against the study's interim
+data; soften to "many people" if the data is only at day 84</span>
+
+
+
+
+Section: one testimonial
+"Hair fall reduced drastically. Arata is amazing cz its affordable and actually works." Verified buyer
+<span class="need">NEED: name, city, product</span>
+
+
+
+
+Final CTA
+H2: Two bottles. 84 days. ₹838.
+CTA: Get the routine for ₹838 Free shipping. Arrives sealed, or we replace it. Day-84 check-in
+included.
+
+EXAMPLE 4: HAIR GROWTH INTENSIVE SERUM PRODUCT PAGE, ABOVE THE FOLD
+The highest-volume hero. Only the hero and the claims block change; the rest of the page inherits the
+MitoActive structure.
+Eyebrow: Hair Growth · 474 reviews
+H1: Up to 28,200 new hairs in 84 days.
+Claims line (directly under H1): Counted in a consumer study over 84 days of twice-daily use. "Up
+to" means the best result in the study, so plan for the routine, not the record.
+Subhead: Arata's actives serum for hair fall and thinning. Two drops on the roots, morning and night,
+for 84 days.
+Price block: ₹571 · 30 ml (MRP ₹649) Pack of 3, the full 84-day course: ₹999 (49% off). About ₹12 a
+day.
+Primary CTA: Add the 84-day pack, ₹999 Secondary CTA: Add one bottle, ₹571
+Under CTA: Minoxidil-free. Dermatologically tested. Arrives sealed, or we replace it.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · WEBSITE COPY FOR THE HAIR FALL FUNNEL                                                               13
+Annotation. The study number moves from a badge to the H1, and the claims line underneath does the
+honest framing. The Pack of 3 is the primary CTA because it matches the 84-day story and carries the
+catalogue's biggest discount; the one-bottle option stays visible so a first-time buyer is not forced.
+"About ₹12 a day" is ₹999 over 84 days.
+Headline alternatives - Option B: "The serum that counts its results." Rationale: ownable, lab identity.
+Loses the number above the fold. - Option C: "New hair at the crown by day 84." Rationale: names the
+location Rahul worries about. Softer than the count.
+
+EXAMPLE 5: MICROCOPY SET FOR EVERY PRODUCT PAGE
+ ELEMENT                               COPY
+
+ Free shipping bar, under              ₹[gap] more for free shipping
+ ₹299
+ Free shipping bar, ₹299 to            Free shipping on. ₹[gap] more for a free gift
+ ₹999
+ Cart drawer upsell (hair fall) Most people pair this with the Anti-Hair Fall Shampoo. Add it for ₹267 more and get the
+                                routine for ₹838.
+ Cart drawer upsell (serum             Make it the 84-day pack. Three bottles for ₹999 instead of ₹1,713.
+ only)
+ Under every add-to-cart               Arrives sealed, or we replace it.
+ Review prompt (day 84)                It has been 84 days. Tell us what you saw, photos welcome. We publish every review.
+ Out of stock                          Back in [X] days. Leave your number and we will message you on WhatsApp the day it is
+                                       in.
+
+
+Annotation. The ₹267 figure is the ₹838 combo minus the ₹571 serum. The upsell lines state the maths
+instead of saying "save more".
+
+
+
+30-DAY DEPLOYMENT
+                                                                                                     OWNER        OWNER
+ WEEK BREW SHIPS                                                   ARATA PROVIDES                  (BREW)     (ARATA)
+
+ 1         Messaging spine and the nine house rules as               Study documents for the 7.4X,   Copy lead,   Brand manager,
+           a one-page voice sheet. Claims audit of every             28,200, 87%, 95% and 86%        CRO lead     R&D lead
+           live SKU title, badge and description. Site               claims (design, n, duration).
+           copy inventory with a swap-test score per                 Loox export with names and
+           page.                                                     cities.
+ 2         Intensive Serum PDP live (Example 4).                     Claim phrasing sign-off.        Copy lead,   Brand manager,
+           MitoActive PDP live (Example 2) with the                  Replacement policy wording.     Shopify      regulatory
+           study card filled from week-1 documents.                  Shopify theme access.           developer    owner
+           Day-28/56/84 check-in copy for email and
+           WhatsApp.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · WEBSITE COPY FOR THE HAIR FALL FUNNEL                                                             14
+                                                                                                      OWNER            OWNER
+ WEEK BREW SHIPS                                                   ARATA PROVIDES                   (BREW)         (ARATA)
+
+ 3         Homepage live (Example 1). Hair fall routine              The ad hooks currently           Copy lead,       Brand manager,
+           landing page live (Example 3) with UTM-                   running, so the landing          paid media       performance
+           matched headline variants for the Meta and                headline matches. Hard-water     lead             lead
+           YouTube hooks. Meta titles for the five                   test detail, if it exists.
+           concern pages.
+ 4         Anti-Dandruff Shampoo PDP live. Microcopy                 Decision on the curl-care        Copy lead,       Brand manager,
+           set (Example 5) on all PDPs and the cart                  legacy range (keep, hide or      CRO lead         marketplace
+           drawer. SKU naming fix list (onion vs biotin,             relabel). Approval of the                         lead
+           serum vs tonic). Hero A/B test live (H1 Option            naming list.
+           A vs B). Self-check pass on every new page.
+
+
+By day 30: four pages and one microcopy set live, the claims grammar on every hero SKU, the first
+hero test running, and a voice sheet Arata's team uses for every new listing and ad.
+
+
+
+HOW WE MEASURE
+ METRIC                             BASELINE                                 90-DAY TARGET                                WHERE
+
+ Blended visit-to-order on          7 to 8% implied (brief)                  8.5 to 9%                                    Shopify
+ arata.in                                                                                                                 analytics
+ Add-to-cart rate,                  To be instrumented in week 1             +15% relative on the rewritten page          Shopify,
+ Intensive Serum PDP                                                         (assumption)                                 GA4
+ Pack of 3 share of                 To be instrumented                       +10 points                                   Shopify
+ Intensive Serum orders
+ MitoActive PDP                     To be instrumented (new page)            2% of PDP sessions to order                Shopify
+ conversion                                                                  (assumption, cold start with zero reviews)
+ MitoActive combo attach            To be instrumented                       25% of MitoActive orders                     Shopify
+ (₹1,803+)
+ Homepage hero CTA                  To be instrumented                       12% of hero views                            GA4 event
+ click-through
+ Routine landing page               To be instrumented against               +20% relative vs the collection page it      Meta, GA4
+ conversion (paid)                  current collection landing               replaces
+ MitoActive reviews                 0                                        50 published, fed by the day-84 prompt       Loox
+ AOV on arata.in                    ₹900 to ₹1,000 implied                   ₹1,000 to ₹1,050                             Shopify
+
+
+Decision rules
+     Hero A/B test runs to 95% confidence or 28 days, whichever comes first. A winner by more than
+     10% relative on hero CTA click-through and no drop in visit-to-order goes site-wide. A loss reverts
+     to control and the next headline from the appendix bank goes in.
+     If the Intensive Serum PDP lifts add-to-cart but the Pack of 3 share does not move, the primary CTA
+     goes back to the single bottle and the 84-day pack moves to the cart drawer upsell.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · WEBSITE COPY FOR THE HAIR FALL FUNNEL                                                                  15
+    If MitoActive PDP conversion sits under 1% at day 60, the page leads with the cost-per-day line in
+    the H1 position and the science moves to the subhead. The perception gap table says Rahul is
+    reading the page more than Kavya in that case.
+    If the routine landing page beats the collection page by 20% or more, every paid concern (dandruff
+    next) gets its own routine page on the same template.
+    If leak and seal complaints keep appearing after the replacement promise goes live, the promise
+    stays and ops gets the review export weekly. Copy cannot fix a cap.
+
+
+
+APPENDIX
+HEADLINE BANK FOR TESTING
+    Hair fall: "Less hair on the pillow in 84 days." / "Hair fall, measured. Hair growth, counted." / "Made
+    in Delhi for the water in your tap."
+    MitoActive: "87% saw new growth in 84 days." / "Hair growth, from the cell up."
+    Dandruff: "Black shirts again." / "95% of the fungus gone in one wash."
+    Greys: "Delay the dye." / "Up to 86% fewer greys in three months."
+    Styling: "Hold that outlasts the metro." / "72 hours of hold through a Mumbai August."
+
+PRE-PUBLISH SELF-CHECK (RUN ON EVERY PAGE)
+1. Search the page for "not ", "isn't", "no ", "without", "?" and ":" in headlines and short copy. Check
+   each hit against the banned patterns.
+2. Read every sentence over 20 words. More than two commas means cut after the main claim.
+3. Count fragments and lists of three per section. One of each at most.
+4. Swap test on the H1, subhead and every H2. If Pilgrim could run it, rewrite it.
+5. Every number has its four parts: number, what was measured, timeframe, study type.
+6. Every <span class="need">NEED: ...</span> resolved or the line cut. Nothing invented.
+
+SOURCES
+All facts, prices, claims, review quotes and competitor figures are from the Arata brand brief (v1, 10
+October 2026). Per-day prices are the brief's prices divided by 30 or 84 days as stated. Conversion
+and attach-rate targets are marked as assumptions and are to be re-based once week-1
+instrumentation reports.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · WEBSITE COPY FOR THE HAIR FALL FUNNEL                                     16
+COPYWRITING
+
+
+DAY 30
+AT ARATA
+   WHAT IS LIVE
+
+   The homepage, the MitoActive page, the Hair Growth Intensive Serum page and
+   a hair fall routine landing page are live with new copy, a claims grammar is in
+   use across the catalogue, and the first hero A/B test is running on arata.in.
+
+
+
+
+ NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+ BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+ CONFIRM".
+
+
+ EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+ BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                 DEPLOYMENT TEAM
+                                                                              BREW
+

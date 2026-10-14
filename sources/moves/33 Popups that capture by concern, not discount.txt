@@ -1,0 +1,724 @@
+     Brew                                      PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+     DEPLOYMENT TEAM
+
+
+
+
+POPUPS AND OVERLAYS · MOVE 33 OF 50
+
+
+
+POPUPS THAT
+CAPTURE BY
+CONCERN,
+NOT
+DISCOUNT
+  A SIX-POPUP SYSTEM FOR ARATA.IN THAT TURNS THE
+  92% OF VISITORS WHO LEAVE WITHOUT BUYING INTO
+  NAMED CONTACTS WITH A HAIR CONCERN AND AN 84-
+  DAY PLAN, WITHOUT TRAINING THEM TO WAIT FOR A
+  COUPON.
+
+
+
+
+16,000
+NEW CONTACTS A MONTH, PROJECTED
+
+
+
+
+BREW × ARATA                    OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                  V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                               WHAT THIS GIVES ARATA
+                                                               A six-popup system for arata.in that turns the 92%
+                                                               of visitors who leave without buying into named
+                                                               contacts with a hair concern and an 84-day plan,
+
+
+        16,000
+                                                               without training them to wait for a coupon.
+                                                               LIVE 30 DAYS AFTER WE START
+                                                               Six popups live on arata.in with one-at-a-time
+        NEW CONTACTS A MONTH,                                  priority rules, a concern picker feeding WhatsApp
+        PROJECTED
+                                                               and email, exit-intent objection handlers on the two
+                                                               hero serum pages, a cart threshold bar, and a
+                                                               MitoActive first-500 review programme capturing
+                                                               buyers at the thank-you page.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+Arata gets roughly 650K visits a month and ships about 50K D2C orders. Even counting returning
+buyers, that means around 92 out of every 100 visitors leave arata.in without buying. Today, as far as
+we can see, nothing on the site asks those 92 people a single question before they go. No quiz. No
+regimen builder. No subscription. No community. The brief lists all four as gaps. A popup system is the
+cheapest way to close the first part of that gap, because it needs no new product, no new page and
+no new app. It needs a few overlays, a set of rules and a reason for the visitor to say yes.
+Assumption on current state: we have not been able to audit the live overlay stack, so we are treating
+arata.in as running either no popup or a standard "sign up for 10% off" modal on entry. Either way the
+fix is the same. A generic discount popup is the wrong tool for this brand. Arata's own reviews already
+flag price ("a bit expensive in comparison", "on pricier side for a teenager like me"). A coupon on entry
+confirms that the sticker price is negotiable and trains every new visitor to wait. The brand line is "zero
+guesswork". The popup should do what the line says: ask the visitor what their hair is doing and hand
+them a plan.
+Every hero SKU carries a number tied to a timeline: 28,200 new hairs in 84 days, 87% saw growth in
+84 days, 86% fewer greys over 3 months. That timeline is the asset a popup can sell. "Tell us your
+concern and we will check on you at day 28, 56 and 84" is a stronger reason to hand over a WhatsApp
+number than "10% off". It also sets up the 45-day reorder window the business depends on, and it
+starts building the community the brief says does not exist.
+There are three more specific costs of leaving the overlay layer empty. First, MitoActive launched in
+August 2026 at ₹1,499 with zero reviews, and the thank-you page is the one moment where every
+buyer is captive and willing. Second, the free shipping line sits at ₹299 and the free gift at ₹999, while
+implied AOV is ₹900 to ₹1,000. A cart bar that shows the distance to ₹999 nudges a large share of
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · POPUPS THAT CAPTURE BY CONCERN, NOT DISCOUNT                                         1
+carts across that line. Third, the price objection on the ₹649 serum and the ₹1,499 MitoActive is
+predictable, which means an exit-intent popup can answer it in one line (pack of 3 at ₹999 is ₹333 a
+bottle; MitoActive is ₹50 a day) at the exact moment the visitor is leaving.
+The opportunity, in plain numbers: if 60% of visits are new, 70% of those see the concern picker, and
+6% opt in, Arata gains about 16,000 named contacts a month with a stated hair concern attached.
+Those are assumptions and we say so in the measurement section. Even at half that rate it is the
+largest owned-audience input the brand has, and it lands on the 32% of revenue that already runs on
+the site Arata controls rather than the 68% on rented marketplace land.
+
+
+
+WHAT WE FOUND
+THE VISITOR JOURNEY TODAY, AND WHERE A POPUP CAN EARN ITS PLACE
+                                                                                                                    DIAGRAM
+       Meta / YouTube / Google / creator link / Blinkit curiosity
+                             |
+                             v
+        +------------- arata.in -------------+
+        | Home -> Collection -> PDP -> Cart -> Checkout -> Thank you
+        |   |         |            |      |                      |
+        |   ?         ?            ?      ?                      ?
+        +------------------------------------+
+              ^        ^            ^      ^                      ^
+              |        |            |      |                      |
+        concern    concern     exit-intent cart              MitoActive
+        picker     picker      objection   threshold         first-500 /
+        (new)      (new)       handler     bar               reorder opt-in
+
+        92 of 100 visitors leave somewhere on this line with no question asked.
+
+
+
+
+WHICH VISITOR MOMENTS DESERVE AN INTERRUPT
+We scored every candidate moment against four things: how much intent the visitor is showing, how
+annoying an interrupt is at that moment, what Arata can offer that is relevant right there, and whether
+the moment is reachable on mobile (where, by assumption, 75% or more of Indian D2C beauty traffic
+sits). Scored 1 to 5, higher is better.
+                                               LOW                                         MOBILE-
+ MOMENT                                 INTENT ANNOYANCE                 RELEVANT OFFER    SAFE      TOTAL VERDICT
+
+ Entry, 0 to 5 seconds, any             1           1                    2                 2         6     Do not build
+ page
+ Home or collection, 25%                3           4                    5 (concern picker) 5        17    Build
+ scroll or 20s, new visitor
+ PDP exit intent, hero serums           4           4                    5 (objection      3         16    Build
+                                                                         answer)
+ Cart page, threshold distance          5           5                    5 (free gift at   5         20    Build first
+                                                                         ₹999)
+ Checkout, any popup                    5           1                    1                 1         8     Exclude always
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · POPUPS THAT CAPTURE BY CONCERN, NOT DISCOUNT                                                 2
+                                               LOW                                            MOBILE-
+ MOMENT                                 INTENT ANNOYANCE                 RELEVANT OFFER       SAFE        TOTAL VERDICT
+
+ Thank-you page, MitoActive             5            5                   5 (first-500         5           20     Build first
+ buyers                                                                  programme)
+ Thank-you page, all other              5            5                   4 (reorder           5           19     Build
+ buyers                                                                  reminder)
+ Lab Notes post, 50% scroll             3            4                   4 (Lab Notes list)   4           15     Build in phase 2
+ Claim badge click ("7.4X",             4            5                   5 (study             5           19     Build
+ "28,200")                                                               explainer)
+ Returning visitor, second              4            3                   3                    4           14     Phase 2,
+ visit, no purchase                                                                                              escalation only
+
+
+Two things stand out. The highest-scoring moments are at the cart and the thank-you page, which
+most brands ignore because the sale is "already happening". For Arata they are where the AOV, the
+review count and the reorder opt-in get decided. And the lowest-scoring moment is the one most
+Shopify stores default to: a modal on entry.
+
+THE OFFER QUESTION: WHAT DOES ARATA GIVE IN EXCHANGE FOR A CONTACT?
+                                            FITS "ZERO             COST TO        TRAINS            WORKS ON
+ CANDIDATE INCENTIVE                        GUESSWORK"             MARGIN         DISCOUNTING       WHATSAPP       VERDICT
+
+ 10% off first order                        No                     ₹60 to ₹100 Yes                  Yes            Exit-only test,
+                                                                   per order                                       not entry
+ ₹100 off first routine combo               Partly                 ₹100, but      Mild              Yes            Exit-only test
+ (₹638+)                                                           lifts AOV
+ Free shipping                              Already free           None           No                Yes            Already given;
+                                            above ₹299                                                             do not repeat
+ Free scalp massager (₹199)                 Yes                    Already        No                Yes            Use as the
+ above ₹999                                                        given                                           cart bar carrot
+ The 84-day plan: concern-                  Yes                    Content        No                Yes, ideal     Primary entry
+ specific routine + day 28/56/84                                   only                                            offer
+ check-ins
+ The study behind the number                Yes                    Content        No                Yes            Click-
+ (Lab Note PDF or page)                                            only                                            triggered offer
+ First-500 MitoActive                       Yes                    Small          No                Yes            Thank-you
+ programme (before/after kit,                                                                                      page offer
+ early access to next launch)
+
+
+The primary offer is the plan. Arata already has the content for it: the 84-day window, the Lab Notes,
+the routine combos (Anti-Hair Fall S+C ₹638, Shampoo + Growth Serum ₹838, Hair Growth Trio ₹1,201,
+Anti-Dandruff S+C ₹866). The popup packages it by concern and promises three check-ins. Discount
+stays out of the entry popup and gets tested only on exit.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · POPUPS THAT CAPTURE BY CONCERN, NOT DISCOUNT                                                        3
+CHANNEL: WHATSAPP FIRST, EMAIL SECOND
+Indian D2C opt-in behaviour favours WhatsApp. Arata's customer is "internet-native, creator-
+influenced, comfortable with quick commerce" and lives on WhatsApp. So every capture popup offers
+WhatsApp as the default field and email as the alternate, never both as required. Meta's rules for
+WhatsApp Business messaging require explicit, recorded opt-in, and India's DPDP Act requires clear
+consent language, so the popup carries a one-line consent and a privacy link. That is a constraint, and
+it is also why a plan beats a coupon: "message me my 84-day plan" is a consent people mean.
+
+COPY AUDIT OF THE CLAIMS THE POPUPS WILL REUSE
+ CLAIM ON PACK                                              SAFE POPUP PHRASING                             DO NOT SAY
+
+ "Up to +28,200 new hair within 84 days"                    "Up to 28,200 new hairs in 84 days, in a        "Regrow your hair"
+                                                            consumer study"
+ "87% saw increased growth in 84 days"                      "87% of users saw growth by day 84"             "Guaranteed
+ (MitoActive)                                                                                               growth"
+ "7.4X hair fall reduction"                                 "7.4X less hair fall, tensile strength study"   "Stops hair fall"
+ "95% reduction in dandruff-causing fungus                  "95% less dandruff-causing fungus after one     "Cures dandruff"
+ in 1 wash"                                                 wash, in-vitro"
+ "Up to 86% reduction in greys"                             "Up to 86% fewer greys in best responders over 3 "Reverses grey
+                                                            months"                                          hair"
+
+
+Every number appears with its qualifier. This matters more inside a popup than on a PDP, because a
+popup is read in two seconds and a stripped claim is what gets screenshotted.
+
+
+
+THE PLAN
+THE SIX-POPUP SYSTEM
+                                                                                                                       DIAGRAM
+     PRIORITY (one popup per page view, highest wins; one per session unless cart/thank-you)
+
+      P1   Cart threshold bar ............ cart page + mini-cart, always-on, not a modal
+      P2   Thank-you page offer .......... MitoActive first-500 / reorder opt-in, buyers only
+      P3   PDP exit-intent handler ....... hero serum PDPs, desktop exit / mobile back or scroll-up
+      P4   Concern picker ................ home + collections, new visitors, 25% scroll or 20s
+      P5   Lab Notes capture ............. blog posts, 50% scroll
+      P6   Click-triggered study modal ... claim badges, any page, user-initiated (never counts
+                                          against the cap)
+
+      Sitewide announcement bar sits above all of this and is never a popup.
+
+      EXCLUDED EVERYWHERE: checkout, account pages, order tracking, policy pages.
+      EXCLUDED AUDIENCES: anyone who submitted any popup in the last 90 days;
+                          anyone who dismissed the same popup in the last 14 days;
+                          anyone with an order in the last 45 days (except P1 and P2).
+
+
+
+
+Why a priority list and a session cap: a visitor who lands on a PDP from a Meta ad, scrolls, heads for
+the back button and gets the concern picker and the exit handler within ten seconds will leave and
+remember the brand as pushy. Dhruv Madhok's stated philosophy is that the brand should blend into
+what people are already doing. The rules protect that.
+
+
+BREW DEPLOYMENT TEAM × ARATA · POPUPS THAT CAPTURE BY CONCERN, NOT DISCOUNT                                                    4
+PHASE 1 (DAYS 1 TO 14): THE MONEY MOMENTS
+1. Cart threshold bar (P1). What: a persistent bar in the mini-cart and cart page that shows distance to
+   ₹299 (free shipping) and then to ₹999 (free gift, the ₹199 scalp massager by default). Why: implied
+   AOV sits at ₹900 to ₹1,000, which is just under the gift line. Expected effect: a measurable share of
+   carts in the ₹700 to ₹998 band add one item. We target a 4 to 6% AOV lift on D2C orders
+   (assumption, to be validated in the first 30 days).
+2. Thank-you page offer (P2). What: a bottom sheet after order confirmation. MitoActive buyers see
+   the first-500 programme (day 0 and day 84 photo, a WhatsApp check-in cadence, early access to
+   the next Biosciences serum). All other buyers see a one-tap "remind me to reorder at day 35"
+   WhatsApp opt-in. Why: MitoActive has zero reviews and this is the only place where 100% of its
+   buyers pass. The reorder opt-in builds the 45-day repeat window into the customer's phone.
+   Expected effect: 25 to 40% of MitoActive buyers join (assumption; thank-you page offers to
+   confirmed buyers convert far above the 2 to 5% email popup norm), which puts the first batch of
+   day-84 reviews on the PDP by early January 2027.
+3. PDP exit-intent handler (P3) on two pages: Hair Growth Intensive Serum (₹649 → ₹571) and
+   MitoActive (₹1,499). What: a modal on desktop exit intent, a bottom sheet on mobile triggered by
+   back-button press or a fast scroll to the top after 40% depth. Why: the brief's objection table is
+   explicit about what stops these two purchases: price per bottle and "is this just another Redensyl
+   serum?". Expected effect: 3 to 6% of exit impressions click through to the pack-of-3 or the combo
+   (assumption, within the skill's 3 to 10% exit-intent range).
+
+PHASE 2 (DAYS 15 TO 30): THE CAPTURE LAYER
+4. Concern picker (P4). What: a two-step overlay on home and collection pages for new visitors after
+   25% scroll or 20 seconds, whichever comes first. Step one asks "What is your hair doing?" with
+   four answers. Step two offers the matching 84-day plan on WhatsApp or email. Step three routes to
+   the matching routine combo page. Why: it is the quiz the site does not have, compressed to one
+   tap, and it tags every contact with a concern so the follow-up message can name their SKU.
+   Expected effect: 5 to 8% of impressions opt in (assumption; one-tap choice popups outperform
+   plain email fields, and the offer is concern-matched).
+                                                                                               DIAGRAM
+       STEP 1                      STEP 2                       STEP 3
+       "What is your hair doing?"  "Where should we send        Routed landing
+                                    your 84-day plan?"
+       [ Falling more than usual ] -> WhatsApp / email field -> /collections/hair-growth
+       [ Flaking or itching      ] -> WhatsApp / email field -> Anti-Dandruff S+C ₹866
+       [ Going grey early        ] -> WhatsApp / email field -> Anti-Grey Serum ₹449
+       [ Dry, damaged, frizzy    ] -> WhatsApp / email field -> Damage Defence ₹395
+       [ Just browsing, close    ] -> dismiss, 14-day cooldown
+
+
+
+
+5. Click-triggered study modal (P6). What: every claim badge on a PDP ("7.4X", "28,200", "87%")
+   opens a modal that shows the study design in four lines and offers "send me the full Lab Note".
+   Why: the brief says honest framing beats inflated framing, and the "claims sound too good"
+   objection is best answered by the person asking. Expected effect: small volume, very high opt-in
+   (10%+ is the norm for self-selected modals) and a trust lift on the page that we read through PDP
+   add-to-cart rate.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · POPUPS THAT CAPTURE BY CONCERN, NOT DISCOUNT                            5
+6. Lab Notes capture (P5). What: a slide-in at 50% scroll on any Lab Notes post. Why: Lab Notes
+   publishes in bursts (seven posts in March 2026) and has no list to publish to. Expected effect: 2 to
+   4% of readers subscribe; small list, high quality, and it gives the content team a reason to hold a
+   cadence.
+
+THE ANNOUNCEMENT BAR (NOT A POPUP, BUT IT GOVERNS THE TOP OF EVERY PAGE)
+One message at a time, rotating by week, dismissable, never a countdown unless the date is real.
+ WEEK      MESSAGE                                                                                                     LINK
+
+ 1         Free shipping above ₹299. Free scalp massager above ₹999.                                                   /collections/all
+ 2         New: MitoActive. India's first mitochondrial hair growth serum. 87% saw growth in 84 days.                  MitoActive PDP
+ 3         Pack of 3 Growth Serum: ₹999 instead of ₹1,947. Three months, one order.                                    Pack of 3 PDP
+ 4         Lab Notes: how we tested "7.4X less hair fall". Read the study.                                             Lab Notes post
+
+
+MOBILE RULES THAT APPLY TO EVERY POPUP ABOVE
+     Bottom sheets only. No centred modal on mobile. Never more than 60% of viewport height.
+     Close X at top right, 44px tap target, plus a text dismiss ("Not now"). Tap outside closes.
+     Nothing fires before the first content paint, and nothing fires on the first page view of a Google
+     organic landing, so the site stays clear of Google's intrusive interstitial penalty.
+     One field. The WhatsApp field uses the tel keyboard and prefills +91.
+     Escape key closes on desktop, focus is trapped while open, every control has a label.
+
+TEST HYPOTHESES FOR THE FIRST 90 DAYS
+ TEST                     VARIANT A          VARIANT B                          PRIMARY METRIC           WHAT WE EXPECT
+
+ Entry offer              84-day plan        84-day plan + ₹100 off             Opt-in rate and 30-day   A wins on revenue per
+                          only               first routine                      revenue per contact      contact even if B wins on
+                                                                                                         opt-in
+ Concern picker           25% scroll         20 seconds                         Opt-in rate, bounce rate Scroll wins on mobile
+ trigger                                                                        delta
+ Exit handler on          Pack-of-3          Shampoo + Serum                    Click-through to         Pack-of-3 wins; the visitor
+ Growth Serum             maths              combo ₹838                         combo, order rate        already chose the serum
+ MitoActive exit          ₹50 a day          "Different mechanism"              Add-to-cart after        ₹50 a day wins on first visit;
+ handler                  framing            framing                            impression               mechanism wins on returning
+ Thank-you                Programme          Programme + ₹200         Join rate, day-84                  B wins on review submission
+ MitoActive               only               credit on day-84 reorder review submission
+ Decline copy             "Not now"          "I'll figure it out myself"        Close rate, brand        "Not now"; the other reads as
+                                                                                sentiment in reviews     a guilt trip
+
+
+
+
+WORKED EXAMPLES
+
+BREW DEPLOYMENT TEAM × ARATA · POPUPS THAT CAPTURE BY CONCERN, NOT DISCOUNT                                                             6
+EXAMPLE 1: THE CONCERN PICKER (HOME AND COLLECTION PAGES, NEW VISITORS)
+Format: desktop centred modal 520px wide; mobile bottom sheet. Trigger: 25% scroll or 20 seconds,
+whichever first. Audience: new visitors, no order in 45 days, no submission in 90 days. Frequency:
+once per session, 14-day cooldown after dismiss.
+Step 1
+
+   WHAT IS YOUR HAIR DOING? PICK ONE. WE WILL SEND YOU THE 84-DAY
+   PLAN OUR LAB WOULD USE FOR IT.
+
+   [ FALLING MORE THAN USUAL ] [ FLAKING OR ITCHING ] [ GOING GREY
+   EARLY ] [ DRY, DAMAGED OR FRIZZY ]                                                             NOT NOW
+
+
+Step 2 (shown after "Falling more than usual")
+
+   YOUR 84-DAY HAIR FALL PLAN THE ROUTINE, THE ORDER TO USE IT IN,
+   AND A CHECK-IN FROM US ON DAY 28, 56 AND 84 SO YOU CAN SEE THE
+   DIFFERENCE, OR TELL US IF YOU CAN'T.
+
+   WHATSAPP NUMBER [+91 __ ] OR USE EMAIL INSTEAD                               [ SEND ME MY PLAN ]
+
+   WE MESSAGE YOU FOUR TIMES IN 84 DAYS. YOU CAN STOP ANYTIME.
+   PRIVACY POLICY.
+
+
+Step 3 (confirmation, 3 seconds, then route)
+
+   PLAN ON ITS WAY. TAKING YOU TO THE HAIR GROWTH ROUTINE.
+   SHAMPOO + SERUM TOGETHER IS ₹838, WITH FREE SHIPPING.
+
+
+The first WhatsApp message, sent within 60 seconds
+
+   HI, ARATA HERE. YOUR 84-DAY HAIR FALL PLAN: DAY 1 TO 84: ANTI-HAIR
+   FALL INTENSIVE SHAMPOO (3X A WEEK) + HAIR GROWTH INTENSIVE
+   SERUM (EVERY NIGHT ON A DRY SCALP, 1 ML). WHAT TO EXPECT: LESS
+   HAIR ON THE PILLOW BY WEEK 3 TO 4. NEW GROWTH IS MEASURABLE BY
+   DAY 84; OUR STUDY SAW UP TO 28,200 NEW HAIRS BY THEN. WE WILL
+   CHECK IN ON DAY 28. REPLY STOP ANYTIME. ROUTINE LINK:
+   ARATA.IN/[HAIR-GROWTH-ROUTINE]
+
+
+Variants for the other three concerns use the same shape. Flaking: Anti-Dandruff Shampoo +
+Conditioner ₹866, "95% less dandruff-causing fungus after one wash, in-vitro", check-ins at day 7, 28
+and 56 because dandruff shows results faster. Grey: Anti-Grey Serum ₹449, "up to 86% fewer greys
+in best responders over 3 months", check-ins at day 30, 60 and 90. Damage: Damage Defence Super
+Shampoo ₹395, "94% keratin retention", check-in at day 14 and 42.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · POPUPS THAT CAPTURE BY CONCERN, NOT DISCOUNT                               7
+Design notes: product bottle on the left on desktop, hidden on mobile. The four options are full-width
+buttons, not radio circles, so the first tap is the answer. The headline sits in the brand's lab-blue. No
+stock photo of a model touching her hair.
+
+EXAMPLE 2: EXIT-INTENT HANDLER ON THE HAIR GROWTH INTENSIVE SERUM PDP
+Format: desktop modal on cursor exit; mobile bottom sheet on back-button press or fast upward scroll
+after 40% depth. Audience: everyone except visitors with the serum already in cart. Frequency: once
+per session, 7-day cooldown.
+Desktop and mobile copy
+
+   BEFORE YOU GO: ONE BOTTLE IS ₹571. THREE ARE ₹999. THE STUDY
+   THAT FOUND UP TO 28,200 NEW HAIRS RAN FOR 84 DAYS. THAT IS THREE
+   BOTTLES. THE PACK OF 3 PUTS EACH ONE AT ₹333 AND COVERS THE
+   WHOLE WINDOW.
+
+   [ GET THE PACK OF 3 FOR ₹999 ]                  STILL DECIDING? SEE HOW WE TESTED IT. NOT NOW
+
+
+"See how we tested it" opens the click-triggered study modal (Example 5). Clicking the primary button
+adds the pack of 3 to cart and opens the mini-cart, which now shows the threshold bar at "Free
+shipping and a free scalp massager are in your order" because ₹999 crosses the gift line.
+Variant B for the test: the combo framing.
+
+   BEFORE YOU GO: THE SERUM WORKS HARDER WITH THE SHAMPOO.
+   SHAMPOO + GROWTH SERUM TOGETHER IS ₹838. THE SHAMPOO'S 7.4X
+   LESS HAIR FALL COMES FROM A TENSILE STRENGTH TEST. THE SERUM'S
+   28,200 COMES FROM AN 84-DAY STUDY. SAME ROUTINE, ONE ORDER.
+
+   [ ADD BOTH FOR ₹838 ] NOT NOW
+
+
+EXAMPLE 3: EXIT-INTENT HANDLER ON THE MITOACTIVE PDP
+Same triggers as Example 2. Audience: everyone. The ₹1,499 objection is the one the brief ranks first,
+so the first variant leads with cost per day.
+
+   ₹1,499 IS ₹50 A DAY. ONE BOTTLE OF MITOACTIVE IS A ONE-MONTH
+   SUPPLY AT TWICE-DAILY USE. A TRAYA-STYLE KIT RUNS ₹1,400 TO ₹1,800
+   EVERY MONTH FOR FIVE MONTHS OR MORE, WITH DOCTOR CALLS AND
+   SUPPLEMENTS. THIS IS ONE SERUM, ONE SCALP, AND 87% OF USERS
+   SAW GROWTH BY DAY 84.                                                              [ START THE 84 DAYS ]
+
+   WANT THE SCIENCE FIRST? READ WHAT Y100 DOES TO A FOLLICLE. NOT
+   NOW
+
+
+Variant B, the mechanism framing for returning visitors who have seen the page twice.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · POPUPS THAT CAPTURE BY CONCERN, NOT DISCOUNT                                 8
+   THIS IS A DIFFERENT KIND OF SERUM. THE HAIR GROWTH INTENSIVE
+   SERUM WORKS ON ACTIVES AT THE SCALP. MITOACTIVE WORKS ON THE
+   MITOCHONDRIA INSIDE THE FOLLICLE, WITH Y100, AN INGREDIENT WITH
+   6+ YEARS OF RESEARCH AND 5+ CLINICAL STUDIES, EXCLUSIVE TO
+   ARATA IN INDIA. PICK THE ONE THAT MATCHES WHERE YOU ARE.
+
+   [ COMPARE THE TWO SERUMS ] NOT NOW
+
+
+"Compare the two serums" goes to a short on-page comparison (Intensive Serum ₹571, Redensyl-
+class actives, first tier; MitoActive ₹1,499, mitochondrial, next tier), which also answers "is this just
+another Redensyl serum?".
+
+EXAMPLE 4: CART THRESHOLD BAR
+Always-on bar inside the mini-cart drawer and at the top of the cart page. Never a modal. Updates on
+every cart change.
+ CART
+ SUBTOTAL          BAR TEXT                                               ACTION CHIP
+
+ ₹0 to ₹298        "₹[299 minus subtotal] away from free                  none
+                   shipping."
+ ₹299 to           "Free shipping is on. Add ₹[999 minus                  "+ Anti-Dandruff Serum ₹299" or "+ Scalp massager
+ ₹998              subtotal] for a free scalp massager (₹199)."           ₹199", picked by whichever gets the cart over ₹999
+                                                                          cheapest
+ ₹999 and          "Free shipping and a free scalp massager               none
+ above             are in your order."
+
+
+Example with a ₹838 cart (Shampoo + Growth Serum combo): "Free shipping is on. Add ₹161 for a free
+scalp massager (₹199)." Chip: "+ Scalp massager ₹199". The customer pays ₹199 for one massager
+and gets a second one free, which is a bad chip. So the rule prefers a different SKU: the chip becomes
+"+ Anti-Dandruff Serum ₹299" or "+ Anti-Breakage Conditioner ₹359", whichever the concern tag
+(from the picker) says fits. With no tag, the default chip is the conditioner that matches the shampoo
+already in cart.
+
+EXAMPLE 5: CLICK-TRIGGERED STUDY MODAL (CLAIM BADGES ON EVERY PDP)
+Trigger: the visitor taps a claim badge such as "7.4X" on the Anti-Hair Fall Intensive Shampoo page.
+Never counts against the session cap, because the user asked for it.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · POPUPS THAT CAPTURE BY CONCERN, NOT DISCOUNT                                                  9
+   HOW WE GOT TO 7.4X WHAT WE TESTED: TENSILE STRENGTH OF HAIR
+   STRANDS AFTER WASHING WITH THE SHAMPOO VERSUS A CONTROL.
+   THE ACTIVES: HAIRDIAN AP WITH ROSEMARY AND CAFFEINE. WHAT
+   "7.4X" MEANS: STRANDS BROKE 7.4 TIMES LESS OFTEN UNDER PULL IN
+   THE TEST. IT DOES NOT MEAN 7.4X FEWER HAIRS ON YOUR PILLOW; THAT
+   DEPENDS ON WHY YOUR HAIR IS FALLING. WHERE IT WAS DONE: OUR R&D
+   AND QC LAB IN DELHI.
+
+   WANT THE FULL LAB NOTE WITH THE METHOD AND THE NUMBERS? [
+   WHATSAPP ME THE LAB NOTE ] OR EMAIL                                              CLOSE
+
+
+For MitoActive the modal lists the Y100 Indian-participant study: reduced shedding, improved
+anagen/telogen ratio, increased density, and "87% saw increased growth in 84 days", with the note
+that "up to 95% reduction in hair fall" is the top of the range, not the average.
+
+EXAMPLE 6: THANK-YOU PAGE, MITOACTIVE FIRST-500 PROGRAMME
+Trigger: order confirmation page, order contains MitoActive. Bottom sheet on mobile, right-side panel
+on desktop. Shown once per order.
+
+   YOU'RE ONE OF THE FIRST 500 ON MITOACTIVE. WE WANT TO SHOW
+   INDIA WHAT 84 DAYS ON Y100 LOOKS LIKE, AND WE WOULD RATHER
+   SHOW YOUR RESULTS THAN A STOCK PHOTO. JOIN AND YOU GET: 1. A
+   DAY-0 PHOTO GUIDE ON WHATSAPP TODAY (TWO ANGLES, SAME LIGHT,
+   30 SECONDS) 2. A CHECK-IN ON DAY 28, 56 AND 84 3. EARLY ACCESS TO
+   THE NEXT BIOSCIENCES SERUM BEFORE IT GOES ON THE SITE
+
+   WHATSAPP NUMBER [+91 __ ] [ COUNT ME IN ]                        NOT THIS TIME
+
+
+Day 84 message (for context, so the popup promise is kept)
+
+   DAY 84. TIME FOR THE SECOND PHOTO. SAME SPOT, SAME LIGHT. REPLY
+   WITH IT AND WE WILL SEND YOU A SIDE-BY-SIDE. IF YOU ARE HAPPY TO
+   SHARE IT, WE WILL PUT IT ON THE MITOACTIVE PAGE WITH YOUR FIRST
+   NAME, AND YOU GET ₹200 OFF YOUR NEXT BOTTLE. IF YOU ARE NOT
+   HAPPY WITH THE RESULT, TELL US THAT TOO. WE READ EVERY ONE.
+
+
+Non-MitoActive buyers see the simpler version:
+
+   YOUR NEXT BOTTLE, WITHOUT THE REMINDER FROM YOUR EMPTY ONE.
+   MOST PEOPLE RUN OUT AROUND DAY 35 TO 45. WANT A WHATSAPP
+   NUDGE ON DAY 35 WITH A ONE-TAP REORDER? [ YES, REMIND ME ] NOT
+   NOW
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · POPUPS THAT CAPTURE BY CONCERN, NOT DISCOUNT                           10
+EXAMPLE 7: LAB NOTES SLIDE-IN
+Trigger: 50% scroll on any Lab Notes post. Bottom-right slide-in on desktop, bottom bar on mobile.
+Does not block the text.
+
+     LAB NOTES, WHEN WE PUBLISH THEM. ONE NOTE PER STUDY. HOW WE
+     TESTED, WHAT WE FOUND, WHAT WE CHANGED. NO LAUNCH SPAM. [
+     EMAIL ______ ] [ SEND ME LAB NOTES ] NOT NOW
+
+
+
+
+30-DAY DEPLOYMENT
+ WEEK BREW SHIPS                                                ARATA PROVIDES                          LIVE BY END OF WEEK
+
+ 1        Overlay audit of live site and app stack;               Shopify and popup app admin             Cart threshold bar live;
+          popup rules document (priority, caps,                   access; WhatsApp Business API           thank-you page offers
+          exclusions); cart threshold bar built and QA'd          provider access (or a choice            live; tracking events firing
+          on mini-cart and cart page; thank-you page              between the two shortlisted);           for impressions, closes,
+          offers built (MitoActive first-500, reorder             confirmation of the free gift SKU and   submits
+          reminder); WhatsApp consent copy and                    ₹999 threshold; sign-off on consent
+          privacy link reviewed                                   language from Arata legal
+ 2        Exit-intent handlers for the Growth Serum               Study summaries for each claim          Both exit handlers live;
+          PDP and MitoActive PDP, desktop and                     (method, sample, duration) from the     study modals live on five
+          mobile; click-triggered study modals for the            R&D team; sign-off on the pack-of-      PDPs; first-500
+          five hero claims; first-500 WhatsApp day-0              3 and ₹50-a-day framings;               programme sending day-
+          photo guide and day 28/56/84 message set                MitoActive before/after photo           0 guides
+                                                                  guidelines
+ 3        Concern picker, four concern paths, routed              Routine combo URLs confirmed;           Concern picker live for
+          landing links, four 84-day plan message sets            approval on the four plan message       new visitors on home and
+          on WhatsApp and email; announcement bar                 sets; Lab Notes team confirms which     all collection pages;
+          rotation set up for four weeks; A/B test 1              post each "read the study" link opens   announcement bar
+          (plan only vs plan + ₹100) configured                                                           rotating; test 1 running
+ 4        Lab Notes slide-in; returning-visitor                   Review of week-4 readout; decision      All six popups live under
+          escalation rule (second visit, no purchase, no          on whether the ₹100 exit discount       one rules layer; first 500
+          submission: concern picker with the exit-               stays; content calendar commitment      programme tracking
+          handler framing); week-4 readout with                   for Lab Notes (we suggest one post      enrolments; 30-day
+          impression, opt-in and revenue-per-contact              every two weeks)                        baseline recorded
+          numbers per popup; test 2 and 3 configured
+
+
+Owners: Brew CRO lead (rules, triggers, build), Brew creative lead (copy and design per popup),
+Brew lifecycle lead (WhatsApp and email message sets), Arata brand manager (approvals, claims),
+Arata R&D lead (study summaries), Arata ops lead (gift SKU stock, WhatsApp provider).
+
+
+
+HOW WE MEASURE
+
+
+BREW DEPLOYMENT TEAM × ARATA · POPUPS THAT CAPTURE BY CONCERN, NOT DISCOUNT                                                            11
+ METRIC                         BASELINE                       90-DAY TARGET           DECISION RULE
+
+ Concern picker opt-in          To be instrumented             6%                      Below 3% at day 30: switch trigger to 20s
+ rate (submits /                                                                       and test the ₹100 exit discount on step 2.
+ impressions)                                                                          Above 8%: raise the impression share by
+                                                                                       adding PDPs for new visitors.
+ New contacts per               0                              16,000 (assumption:     Below 8,000 at day 60: audit impression
+ month with a concern                                          650K visits, 60% new,   rate first; usually the trigger fires too late
+ tag                                                           70% impression rate,    on mobile.
+                                                               6% opt-in)
+ Exit handler click-            To be instrumented             4% of impressions       Below 2%: swap framing variant. Above
+ through to combo or                                                                   6% with no AOV lift: the handler is
+ pack (Growth Serum,                                                                   cannibalising single-bottle orders; narrow
+ MitoActive)                                                                           to visitors with no cart.
+ D2C AOV (implied               ₹900 to ₹1,000                 +5%                     If flat at day 45, move the gift line to ₹899
+ ₹900 to ₹1,000)                                                                       for a two-week test. If up, hold at ₹999
+                                                                                       and test a second gift above ₹1,499 for
+                                                                                       MitoActive combos.
+ Share of carts                 To be instrumented             +8 points               Same rule as AOV.
+ crossing ₹999
+ MitoActive first-500           0                              30% of MitoActive       Below 15%: move the offer earlier (order
+ join rate                                                     orders                  confirmation email) and add the ₹200
+                                                                                       day-84 credit to the popup itself.
+ MitoActive on-site             0                              150 by day 90, first    Below 50: the day-84 message is the
+ reviews                                                       batch at day 84 after   problem, call 20 enrolees and rewrite it.
+                                                               launch of the
+                                                               programme
+ Reorder reminder opt-          0                              20% of orders           Below 10%: test "remind me" as a
+ in (non-MitoActive                                                                    checkbox on the order page rather than a
+ buyers)                                                                               popup.
+ 45-day repeat rate for         To be instrumented             35% for captured        If captured contacts repeat at the same
+ popup-captured                 (brief: beauty repeat          contacts                rate as non-captured at day 90, the
+ contacts vs non-               ~26%, routine-led                                      message sets are not doing the work; the
+ captured                       models exceed 40%)                                     popups are. Rewrite the day-28 check-in
+                                                                                       before touching the popups.
+ Close rate within 2            To be instrumented             Under 40%               Above 60% on any popup: the trigger is
+ seconds (every                                                                        too early or the headline is wrong. Fix
+ popup)                                                                                within a week or pause it.
+ Bounce rate on pages           Current site bounce (to        No increase above 1     Above 2 points: switch to click-triggered
+ with the concern               be pulled from GA4)            point                   only ("Find my routine" button) on those
+ picker                                                                                pages.
+ Revenue per captured           0                              ₹180 (assumption:       This is the number that settles the discount
+ contact, 30 days                                              20% buy within 30       test. If plan-only contacts earn more per
+                                                               days at ₹900 AOV)       head than plan + ₹100, the coupon never
+                                                                                       returns.
+
+
+What we do if it works: extend the concern picker to PDPs for new visitors, add a fifth concern
+("Styling that survives the day", routed to the gel and texturising spray), and turn the 84-day plan
+contacts into the seed of the community the brief says does not exist. What we do if it does not: strip
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · POPUPS THAT CAPTURE BY CONCERN, NOT DISCOUNT                                                           12
+back to the three money moments (cart bar, thank-you page, exit handlers), which carry almost no
+annoyance cost, and rebuild the capture layer as a click-triggered "Find my routine" button on the nav
+instead of an interrupt.
+
+
+
+APPENDIX
+POPUP SPEC SHEET
+                   FORMAT               FORMAT
+ POPUP             DESKTOP              MOBILE              TRIGGER              AUDIENCE           CAP        COOLDOWN
+
+ Cart              Inline bar in        Same                Cart change          All                None       None
+ threshold         mini-cart and                                                                    (inline)
+ bar               cart
+ Thank-you         Right panel          Bottom sheet, Order confirmation         Buyers, by order   Once per   None
+ offers            420px                55% height                               contents           order
+ PDP exit          Centred modal        Bottom sheet, Exit intent / back or      All without SKU in Once per   7 days
+ handlers          540px                50% height    fast scroll-up after       cart               session
+                                                      40%
+ Concern           Centred modal        Bottom sheet, 25% scroll or 20s          New visitors, no   Once per   14 days
+ picker            520px                60% height                               order in 45 days   session
+ Lab Notes         Bottom-right         Bottom bar          50% scroll on blog   All on Lab Notes   Once per   30 days
+ slide-in          360px                                                                            session
+ Study             Centred modal        Bottom sheet, Badge click                All                Uncapped   None
+ modal             560px                60% height
+
+
+LAUNCH CHECKLIST
+    No popup fires on checkout, account, order tracking or policy pages.
+    No popup fires on the first page view of a Google organic landing on mobile.
+    Every capture popup shows consent copy and links the privacy policy; no pre-checked boxes.
+    Every popup closes on X, outside tap, "Not now", and Escape.
+    Focus is trapped while open and returns to the triggering element on close.
+    Contrast on the lab-blue headline and the CTA passes 4.5:1 on white.
+    Submitters are suppressed from every capture popup for 90 days; the suppression list syncs from
+    the WhatsApp and email tools daily.
+    Each popup sends impression, close, field-focus, submit-attempt and submit-success events to
+    GA4 with the popup name and the concern tag.
+    Every number in a popup carries its qualifier ("up to", "in-vitro", "best responders", "in 84 days").
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · POPUPS THAT CAPTURE BY CONCERN, NOT DISCOUNT                                            13
+SOURCES USED
+Arata brand brief (Brew, v1, 10 Oct 2026) for all prices, claims, traffic, order and review figures.
+Popup conversion ranges (2 to 5% email capture, 3 to 10% exit intent, 10%+ click-triggered) are
+industry norms applied as planning assumptions, with Arata-specific targets set above or below them
+as stated in the measurement table.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · POPUPS THAT CAPTURE BY CONCERN, NOT DISCOUNT                        14
+POPUPS AND OVERLAYS
+
+
+DAY 30
+AT ARATA
+   WHAT IS LIVE
+
+   Six popups live on arata.in with one-at-a-time priority rules, a concern picker
+   feeding WhatsApp and email, exit-intent objection handlers on the two hero
+   serum pages, a cart threshold bar, and a MitoActive first-500 review programme
+   capturing buyers at the thank-you page.
+
+
+
+
+ NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+ BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+ CONFIRM".
+
+
+ EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+ BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                 DEPLOYMENT TEAM
+                                                                              BREW
+

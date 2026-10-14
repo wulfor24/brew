@@ -1,0 +1,2336 @@
+[
+ {
+  "n": 0,
+  "group": "index",
+  "skill": null,
+  "kicker": "THE PLAYBOOK · INDEX",
+  "discipline": "Index",
+  "titleHint": "Fifty moves for Arata",
+  "statHint": {
+   "stat": "50",
+   "statLabel": "MOVES, ONE BRAND"
+  },
+  "deps": [],
+  "evidence": [],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 0,
+  "exemplarAlt": 0,
+  "timing": "strategy"
+ },
+ {
+  "n": 1,
+  "group": "know",
+  "skill": "product-marketing",
+  "kicker": "PRODUCT MARKETING",
+  "discipline": "Product Marketing",
+  "titleHint": "Arata positioning and messaging house",
+  "statHint": {
+   "stat": "1 doc, 3 pillars",
+   "statLabel": "SOURCE OF TRUTH FOR ALL CHANNELS"
+  },
+  "deps": [],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "rival",
+   "site",
+   "socials",
+   "listening",
+   "rival-weakness"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 1,
+  "exemplarAlt": 2,
+  "timing": "strategy"
+ },
+ {
+  "n": 2,
+  "group": "know",
+  "skill": "customer-research",
+  "kicker": "CUSTOMER RESEARCH",
+  "discipline": "Customer Research",
+  "titleHint": "Voice of customer system for Arata",
+  "statHint": {
+   "stat": "4,683",
+   "statLabel": "REVIEWS AND RATINGS ALREADY UNMINED"
+  },
+  "deps": [],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "socials",
+   "rival",
+   "listening",
+   "research"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 2,
+  "exemplarAlt": 1,
+  "timing": "research"
+ },
+ {
+  "n": 3,
+  "group": "know",
+  "skill": "competitor-profiling",
+  "kicker": "COMPETITIVE INTELLIGENCE",
+  "discipline": "Competitive Intelligence",
+  "titleHint": "Five competitor dossiers for Arata",
+  "statHint": {
+   "stat": "₹47 vs ₹50",
+   "statLabel": "TRAYA'S CHEAPEST DAY VS MITOACTIVE"
+  },
+  "deps": [],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "rival",
+   "search",
+   "site",
+   "rival-weakness",
+   "ads",
+   "seo",
+   "price-offer"
+  ],
+  "lookups": [
+   {
+    "type": "web",
+    "q": "each rival's own pricing / product page: current hero prices, plans, guarantees, outcome claims (date every fact)"
+   }
+  ],
+  "refs": [
+   "templates.md"
+  ],
+  "exemplar": 3,
+  "exemplarAlt": 2,
+  "timing": "research"
+ },
+ {
+  "n": 4,
+  "group": "know",
+  "skill": "marketing-psychology",
+  "kicker": "MARKETING PSYCHOLOGY",
+  "discipline": "Marketing Psychology",
+  "titleHint": "Twelve nudges across 84 days",
+  "statHint": {
+   "stat": "12 nudges",
+   "statLabel": "FROM FIRST AD TO THIRD BOTTLE"
+  },
+  "deps": [
+   1,
+   2
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "site",
+   "checkout",
+   "listening",
+   "cro"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 4,
+  "exemplarAlt": 8,
+  "timing": "messages"
+ },
+ {
+  "n": 5,
+  "group": "know",
+  "skill": "marketing-council",
+  "kicker": "MARKETING COUNCIL",
+  "discipline": "Marketing Council",
+  "titleHint": "Should MitoActive be the face",
+  "statHint": {
+   "stat": "₹1,499/₹571",
+   "statLabel": "FACE PRICE VS HERO PRICE"
+  },
+  "deps": [
+   1,
+   2,
+   3
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "rival",
+   "listening",
+   "rival-weakness"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 5,
+  "exemplarAlt": 6,
+  "timing": "strategy"
+ },
+ {
+  "n": 6,
+  "group": "know",
+  "skill": "marketing-plan",
+  "kicker": "MARKETING PLAN",
+  "discipline": "Marketing Plan",
+  "titleHint": "The ₹160 Cr plan for Arata",
+  "statHint": {
+   "stat": "₹13.3 Cr/mo",
+   "statLabel": "MONTHLY RUN-RATE BEHIND ₹160 CR"
+  },
+  "deps": [
+   1,
+   2,
+   3,
+   4,
+   5
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "socials",
+   "site",
+   "search",
+   "rival",
+   "listening",
+   "seasonal",
+   "ads",
+   "seo"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 6,
+  "exemplarAlt": 5,
+  "timing": "strategy"
+ },
+ {
+  "n": 7,
+  "group": "know",
+  "skill": "pricing",
+  "kicker": "PRICING",
+  "discipline": "Pricing",
+  "titleHint": "Arata price ladder and subscription",
+  "statHint": {
+   "stat": "49% vs 3%",
+   "statLabel": "PACK-OF-3 DISCOUNT VS ROUTINE DISCOUNT"
+  },
+  "deps": [
+   1,
+   3
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "rival",
+   "site",
+   "price-offer",
+   "rival-weakness"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 7,
+  "exemplarAlt": 8,
+  "timing": "pricing"
+ },
+ {
+  "n": 8,
+  "group": "know",
+  "skill": "offers",
+  "kicker": "OFFER DESIGN",
+  "discipline": "Offer Design",
+  "titleHint": "Offers built around 84 days",
+  "statHint": {
+   "stat": "₹19/day",
+   "statLabel": "HAIR FALL PLAN, PER DAY"
+  },
+  "deps": [
+   4,
+   7
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "rival",
+   "site",
+   "policies",
+   "price-offer",
+   "seasonal"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 8,
+  "exemplarAlt": 7,
+  "timing": "pricing"
+ },
+ {
+  "n": 9,
+  "group": "know",
+  "skill": "analytics",
+  "kicker": "ANALYTICS AND MEASUREMENT",
+  "discipline": "Analytics And Measurement",
+  "titleHint": "One tracking plan for every Arata channel",
+  "statHint": {
+   "stat": "68%",
+   "statLabel": "OF REVENUE WITH NO EVENT DATA"
+  },
+  "deps": [],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "site",
+   "tech",
+   "checkout",
+   "cro"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 9,
+  "exemplarAlt": 10,
+  "timing": "foundations"
+ },
+ {
+  "n": 10,
+  "group": "know",
+  "skill": "attribution",
+  "kicker": "ATTRIBUTION AND MEASUREMENT",
+  "discipline": "Attribution And Measurement",
+  "titleHint": "One order ledger for every rupee",
+  "statHint": {
+   "stat": "68%",
+   "statLabel": "OF REVENUE YOUR PIXELS CANNOT SEE"
+  },
+  "deps": [
+   9
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "site",
+   "tech",
+   "ads"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 10,
+  "exemplarAlt": 9,
+  "timing": "foundations"
+ },
+ {
+  "n": 11,
+  "group": "found",
+  "skill": "seo-audit",
+  "kicker": "SEO",
+  "discipline": "Seo",
+  "titleHint": "SEO audit for arata.in",
+  "statHint": {
+   "stat": "14 pages",
+   "statLabel": "THAT DECIDE ORGANIC REVENUE"
+  },
+  "deps": [
+   1,
+   3
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "site",
+   "search",
+   "tech",
+   "seo"
+  ],
+  "lookups": [
+   {
+    "type": "treg",
+    "id": "treg.google.serp.organic",
+    "each": "categoryQueries",
+    "body": {
+     "q": "{{q}}",
+     "country": "{{country}}",
+     "limit": 10
+    }
+   },
+   {
+    "type": "web",
+    "q": "on-page title, meta and H1 of the brand's homepage and top 3 product/collection pages"
+   }
+  ],
+  "refs": [],
+  "exemplar": 11,
+  "exemplarAlt": 12,
+  "timing": "search"
+ },
+ {
+  "n": 12,
+  "group": "found",
+  "skill": "site-architecture",
+  "kicker": "SITE ARCHITECTURE",
+  "discipline": "Site Architecture",
+  "titleHint": "A concern-led site map for arata.in",
+  "statHint": {
+   "stat": "3 clicks",
+   "statLabel": "FROM HOME TO A ROUTINE IN CART"
+  },
+  "deps": [
+   1,
+   11
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "site",
+   "search",
+   "seo"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 12,
+  "exemplarAlt": 11,
+  "timing": "site"
+ },
+ {
+  "n": 13,
+  "group": "found",
+  "skill": "schema",
+  "kicker": "SCHEMA MARKUP AND STRUCTURED DATA",
+  "discipline": "Schema Markup And Structured Data",
+  "titleHint": "Structured data for every Arata page",
+  "statHint": {
+   "stat": "6 rich results",
+   "statLabel": "GOOGLE APPEARANCES ARATA CAN EARN"
+  },
+  "deps": [
+   11,
+   12
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "site",
+   "tech",
+   "seo",
+   "ai-seo"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 13,
+  "exemplarAlt": 12,
+  "timing": "search"
+ },
+ {
+  "n": 14,
+  "group": "found",
+  "skill": "programmatic-seo",
+  "kicker": "PROGRAMMATIC SEO",
+  "discipline": "Programmatic Seo",
+  "titleHint": "Ingredient, concern and city pages at scale",
+  "statHint": {
+   "stat": "160 pages",
+   "statLabel": "ACROSS 5 PAGE SETS"
+  },
+  "deps": [
+   2,
+   11,
+   12
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "search",
+   "site",
+   "seo"
+  ],
+  "lookups": [
+   {
+    "type": "treg",
+    "id": "treg.google.serp.organic",
+    "each": "categoryQueries",
+    "body": {
+     "q": "{{q}}",
+     "country": "{{country}}",
+     "limit": 10
+    }
+   }
+  ],
+  "refs": [],
+  "exemplar": 14,
+  "exemplarAlt": 16,
+  "timing": "search"
+ },
+ {
+  "n": 15,
+  "group": "found",
+  "skill": "ai-seo",
+  "kicker": "AI SEARCH OPTIMISATION",
+  "discipline": "Ai Search Optimisation",
+  "titleHint": "Getting Arata cited in AI answers",
+  "statHint": {
+   "stat": "100M",
+   "statLabel": "WEEKLY CHATGPT USERS IN INDIA"
+  },
+  "deps": [
+   1,
+   3,
+   11
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "ai",
+   "search",
+   "rival",
+   "ai-seo",
+   "listening"
+  ],
+  "lookups": [
+   {
+    "type": "web",
+    "q": "what AI assistants and AI Overviews answer for the brand's top 3 category questions; which brands they name"
+   }
+  ],
+  "refs": [],
+  "exemplar": 15,
+  "exemplarAlt": 16,
+  "timing": "ai_search"
+ },
+ {
+  "n": 16,
+  "group": "found",
+  "skill": "content-strategy",
+  "kicker": "CONTENT STRATEGY",
+  "discipline": "Content Strategy",
+  "titleHint": "Lab Notes content engine for Arata",
+  "statHint": {
+   "stat": "5 pillars",
+   "statLabel": "THAT OWN HAIR FALL SEARCH IN INDIA"
+  },
+  "deps": [
+   1,
+   2,
+   11
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "search",
+   "site",
+   "socials",
+   "seo",
+   "listening",
+   "social-posts"
+  ],
+  "lookups": [
+   {
+    "type": "treg",
+    "id": "treg.google.serp.organic",
+    "each": "categoryQueries",
+    "body": {
+     "q": "{{q}}",
+     "country": "{{country}}",
+     "limit": 10
+    }
+   }
+  ],
+  "refs": [],
+  "exemplar": 16,
+  "exemplarAlt": 15,
+  "timing": "content"
+ },
+ {
+  "n": 17,
+  "group": "found",
+  "skill": "competitors",
+  "kicker": "COMPETITOR AND ALTERNATIVE PAGES",
+  "discipline": "Competitor And Alternative Pages",
+  "titleHint": "Comparison pages that win the switch",
+  "statHint": {
+   "stat": "12 pages",
+   "statLabel": "COMPARISON PAGES IN 90 DAYS"
+  },
+  "deps": [
+   1,
+   3
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "rival",
+   "search",
+   "rival-weakness",
+   "seo"
+  ],
+  "lookups": [
+   {
+    "type": "web",
+    "q": "existing '<brand> vs <rival>' and '<rival> alternative' pages and search results; rival comparison pages"
+   }
+  ],
+  "refs": [],
+  "exemplar": 17,
+  "exemplarAlt": 3,
+  "timing": "search"
+ },
+ {
+  "n": 18,
+  "group": "found",
+  "skill": "directory-submissions",
+  "kicker": "DIRECTORY SUBMISSIONS",
+  "discipline": "Directory Submissions",
+  "titleHint": "Every list Arata should be on",
+  "statHint": {
+   "stat": "60 listings",
+   "statLabel": "ACROSS 8 TIERS, 0 PAID"
+  },
+  "deps": [
+   1,
+   3
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "site",
+   "search",
+   "ai",
+   "seo",
+   "ai-seo"
+  ],
+  "lookups": [
+   {
+    "type": "web",
+    "q": "category directories, award lists and 'best <category>' listicles in the brand's country"
+   }
+  ],
+  "refs": [],
+  "exemplar": 18,
+  "exemplarAlt": 19,
+  "timing": "search"
+ },
+ {
+  "n": 19,
+  "group": "found",
+  "skill": "public-relations",
+  "kicker": "PUBLIC RELATIONS",
+  "discipline": "Public Relations",
+  "titleHint": "Earned media engine for Arata",
+  "statHint": {
+   "stat": "1.5M",
+   "statLabel": "CUSTOMERS BECOME THE STORY"
+  },
+  "deps": [
+   1,
+   2
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "socials",
+   "listening",
+   "research"
+  ],
+  "lookups": [
+   {
+    "type": "web",
+    "q": "press coverage of the brand and its founders in the last 24 months (outlet, date, headline)"
+   }
+  ],
+  "refs": [],
+  "exemplar": 19,
+  "exemplarAlt": 18,
+  "timing": "partners"
+ },
+ {
+  "n": 20,
+  "group": "reach",
+  "skill": "ads",
+  "kicker": "PAID ADS",
+  "discipline": "Paid Ads",
+  "titleHint": "Paid media system for arata.in",
+  "statHint": {
+   "stat": "₹450",
+   "statLabel": "TARGET COST PER NEW CUSTOMER"
+  },
+  "deps": [
+   1,
+   6,
+   7,
+   9,
+   10
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "rival",
+   "site",
+   "tech",
+   "search",
+   "ads",
+   "weather",
+   "seasonal"
+  ],
+  "lookups": [
+   {
+    "type": "treg",
+    "id": "scrapecreators.x.v1-facebook-adlibrary-company-ads",
+    "each": "brandAndRival",
+    "query": {
+     "companyName": "{{name}}",
+     "country": "{{country}}",
+     "status": "ACTIVE"
+    }
+   },
+   {
+    "type": "web",
+    "q": "current platform ad policies for the category (Meta personal attributes / health claims) in the brand's country"
+   }
+  ],
+  "refs": [],
+  "exemplar": 20,
+  "exemplarAlt": 21,
+  "timing": "paid_ads"
+ },
+ {
+  "n": 21,
+  "group": "reach",
+  "skill": "ad-creative",
+  "kicker": "AD CREATIVE",
+  "discipline": "Ad Creative",
+  "titleHint": "Hair fall ad creative for Meta",
+  "statHint": {
+   "stat": "40 ads",
+   "statLabel": "LIVE IN THE FIRST 30 DAYS"
+  },
+  "deps": [
+   1,
+   2,
+   3,
+   4,
+   20
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "rival",
+   "socials",
+   "creative",
+   "ads",
+   "listening",
+   "rival-weakness"
+  ],
+  "lookups": [
+   {
+    "type": "treg",
+    "id": "scrapecreators.x.v1-facebook-adlibrary-company-ads",
+    "each": "brandAndRival",
+    "query": {
+     "companyName": "{{name}}",
+     "country": "{{country}}",
+     "status": "ACTIVE"
+    }
+   },
+   {
+    "type": "web",
+    "q": "current Meta and Google ad character limits and category ad-policy restrictions"
+   }
+  ],
+  "refs": [
+   "creative-roadmap.md",
+   "meta-creative-formats.md",
+   "hook-system.md"
+  ],
+  "exemplar": 21,
+  "exemplarAlt": 20,
+  "timing": "paid_ads"
+ },
+ {
+  "n": 22,
+  "group": "reach",
+  "skill": "image",
+  "kicker": "MARKETING IMAGES",
+  "discipline": "Marketing Images",
+  "titleHint": "One image system for every Arata shelf",
+  "statHint": {
+   "stat": "7 slots",
+   "statLabel": "PER SKU, ON EVERY CHANNEL"
+  },
+  "deps": [
+   1,
+   21
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "site",
+   "ads",
+   "creative"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 22,
+  "exemplarAlt": 23,
+  "timing": "content"
+ },
+ {
+  "n": 23,
+  "group": "reach",
+  "skill": "video",
+  "kicker": "VIDEO PRODUCTION",
+  "discipline": "Video Production",
+  "titleHint": "A video system for Arata",
+  "statHint": {
+   "stat": "26 videos",
+   "statLabel": "LIVE ACROSS 5 SURFACES BY DAY 30"
+  },
+  "deps": [
+   1,
+   21
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "socials",
+   "ads",
+   "creative",
+   "social-posts"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 23,
+  "exemplarAlt": 22,
+  "timing": "paid_ads"
+ },
+ {
+  "n": 24,
+  "group": "reach",
+  "skill": "social",
+  "kicker": "SOCIAL MEDIA",
+  "discipline": "Social Media",
+  "titleHint": "Social content system for Arata",
+  "statHint": {
+   "stat": "84 days",
+   "statLabel": "PUBLIC HAIR JOURNEYS, FILMED LIVE"
+  },
+  "deps": [
+   1,
+   2,
+   16
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "socials",
+   "rival",
+   "social-posts",
+   "listening",
+   "creative"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 24,
+  "exemplarAlt": 25,
+  "timing": "content"
+ },
+ {
+  "n": 25,
+  "group": "reach",
+  "skill": "influencer-marketing",
+  "kicker": "INFLUENCER AND CREATOR MARKETING",
+  "discipline": "Influencer And Creator Marketing",
+  "titleHint": "Creator proof engine for the 84-day claim",
+  "statHint": {
+   "stat": "84 days",
+   "statLabel": "ONE COHORT, FILMED START TO FINISH"
+  },
+  "deps": [
+   1,
+   2,
+   21
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "socials",
+   "ads",
+   "creators",
+   "social-posts"
+  ],
+  "lookups": [
+   {
+    "type": "web",
+    "q": "creators in the brand's category and country already mentioning the brand or its rivals"
+   }
+  ],
+  "refs": [],
+  "exemplar": 25,
+  "exemplarAlt": 24,
+  "timing": "creators"
+ },
+ {
+  "n": 26,
+  "group": "reach",
+  "skill": "co-marketing",
+  "kicker": "CO-MARKETING AND PARTNERSHIPS",
+  "discipline": "Co-marketing And Partnerships",
+  "titleHint": "Partner brands that share the bathroom shelf",
+  "statHint": {
+   "stat": "5 partners",
+   "statLabel": "SCORED, SEQUENCED, FIRST KIT LIVE"
+  },
+  "deps": [
+   1,
+   2
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "rival",
+   "socials",
+   "creators",
+   "research"
+  ],
+  "lookups": [
+   {
+    "type": "web",
+    "q": "adjacent brands sold to the same customer (non-competing), with their sites"
+   }
+  ],
+  "refs": [],
+  "exemplar": 26,
+  "exemplarAlt": 27,
+  "timing": "partners"
+ },
+ {
+  "n": 27,
+  "group": "reach",
+  "skill": "events",
+  "kicker": "EVENTS AND FIELD MARKETING",
+  "discipline": "Events And Field Marketing",
+  "titleHint": "Field events built on a scalp check",
+  "statHint": {
+   "stat": "90 seconds",
+   "statLabel": "THE SCALP CHECK AT EVERY EVENT"
+  },
+  "deps": [
+   1,
+   2
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "socials",
+   "seasonal",
+   "research"
+  ],
+  "lookups": [
+   {
+    "type": "web",
+    "q": "category trade shows, conferences and consumer events in the brand's country for the next 12 months"
+   }
+  ],
+  "refs": [],
+  "exemplar": 27,
+  "exemplarAlt": 26,
+  "timing": "offline"
+ },
+ {
+  "n": 28,
+  "group": "reach",
+  "skill": "launch",
+  "kicker": "LAUNCH STRATEGY",
+  "discipline": "Launch Strategy",
+  "titleHint": "MitoActive relaunch and rebrand go-live",
+  "statHint": {
+   "stat": "0 → 300",
+   "statLabel": "MITOACTIVE REVIEWS IN 90 DAYS"
+  },
+  "deps": [
+   1,
+   5,
+   6,
+   8
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "socials",
+   "site",
+   "seasonal",
+   "ads"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 28,
+  "exemplarAlt": 5,
+  "timing": "strategy"
+ },
+ {
+  "n": 29,
+  "group": "convert",
+  "skill": "copywriting",
+  "kicker": "COPYWRITING",
+  "discipline": "Copywriting",
+  "titleHint": "Website copy for the hair fall funnel",
+  "statHint": {
+   "stat": "4 pages",
+   "statLabel": "REWRITTEN AND READY TO PASTE"
+  },
+  "deps": [
+   1,
+   2,
+   4
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "site",
+   "rival",
+   "listening",
+   "cro"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 29,
+  "exemplarAlt": 31,
+  "timing": "site"
+ },
+ {
+  "n": 30,
+  "group": "convert",
+  "skill": "copy-editing",
+  "kicker": "COPY EDITING",
+  "discipline": "Copy Editing",
+  "titleHint": "Seven-sweep copy edit across every Arata surface",
+  "statHint": {
+   "stat": "34 lines",
+   "statLabel": "EDITED, BEFORE AND AFTER"
+  },
+  "deps": [
+   1,
+   29
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "site",
+   "cro"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 30,
+  "exemplarAlt": 29,
+  "timing": "site"
+ },
+ {
+  "n": 31,
+  "group": "convert",
+  "skill": "cro",
+  "kicker": "CONVERSION RATE OPTIMISATION",
+  "discipline": "Conversion Rate Optimisation",
+  "titleHint": "Turning arata.in visits into first orders",
+  "statHint": {
+   "stat": "+0.5 pt",
+   "statLabel": "SITE CONVERSION RATE, 90 DAYS"
+  },
+  "deps": [
+   1,
+   4,
+   29
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "site",
+   "checkout",
+   "tech",
+   "cro",
+   "listening"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 31,
+  "exemplarAlt": 29,
+  "timing": "site"
+ },
+ {
+  "n": 32,
+  "group": "convert",
+  "skill": "signup",
+  "kicker": "SIGNUP AND ACCOUNT CREATION",
+  "discipline": "Signup And Account Creation",
+  "titleHint": "Phone-first checkout and opt-in for arata.in",
+  "statHint": {
+   "stat": "0 passwords",
+   "statLabel": "NEEDED TO BUY OR LOG IN"
+  },
+  "deps": [
+   9,
+   31
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "checkout",
+   "tech",
+   "site",
+   "cro"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 32,
+  "exemplarAlt": 31,
+  "timing": "site"
+ },
+ {
+  "n": 33,
+  "group": "convert",
+  "skill": "popups",
+  "kicker": "POPUPS AND OVERLAYS",
+  "discipline": "Popups And Overlays",
+  "titleHint": "Popups that capture by concern, not discount",
+  "statHint": {
+   "stat": "16,000",
+   "statLabel": "NEW CONTACTS A MONTH, PROJECTED"
+  },
+  "deps": [
+   8,
+   31
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "site",
+   "tech",
+   "cro",
+   "price-offer"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 33,
+  "exemplarAlt": 34,
+  "timing": "site"
+ },
+ {
+  "n": 34,
+  "group": "convert",
+  "skill": "lead-magnets",
+  "kicker": "LEAD MAGNETS AND OPT-IN CONTENT",
+  "discipline": "Lead Magnets And Opt-in Content",
+  "titleHint": "Lead magnets for the hair fall journey",
+  "statHint": {
+   "stat": "600K/month",
+   "statLabel": "VISITS THAT LEAVE WITH NOTHING"
+  },
+  "deps": [
+   2,
+   16,
+   33
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "site",
+   "search",
+   "listening",
+   "seo"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 34,
+  "exemplarAlt": 33,
+  "timing": "site"
+ },
+ {
+  "n": 35,
+  "group": "convert",
+  "skill": "free-tools",
+  "kicker": "FREE TOOLS (ENGINEERING AS MARKETING)",
+  "discipline": "Free Tools (engineering As Marketing)",
+  "titleHint": "Hair Fall Score and two more free tools",
+  "statHint": {
+   "stat": "60 sec",
+   "statLabel": "FROM LANDING TO A HAIR FALL SCORE"
+  },
+  "deps": [
+   2,
+   34
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "site",
+   "search",
+   "listening",
+   "seo"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 35,
+  "exemplarAlt": 34,
+  "timing": "site"
+ },
+ {
+  "n": 36,
+  "group": "convert",
+  "skill": "paywalls",
+  "kicker": "UPSELL AND SUBSCRIPTION MOMENTS",
+  "discipline": "Upsell And Subscription Moments",
+  "titleHint": "Upgrade moments from cart to day 84",
+  "statHint": {
+   "stat": "6 moments",
+   "statLabel": "UPGRADE ASKS, CART TO DAY 84"
+  },
+  "deps": [
+   7,
+   8
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "site",
+   "checkout",
+   "tech",
+   "price-offer",
+   "cro"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 36,
+  "exemplarAlt": 42,
+  "adapt": "The skill is written for SaaS paywalls. Apply it to upsell and subscription moments: cart, checkout, thank-you page, post-purchase messages, reorder.",
+  "timing": "site"
+ },
+ {
+  "n": 37,
+  "group": "convert",
+  "skill": "ab-testing",
+  "kicker": "A/B TESTING AND EXPERIMENTATION",
+  "discipline": "A/b Testing And Experimentation",
+  "titleHint": "An experiment engine for arata.in",
+  "statHint": {
+   "stat": "12 tests",
+   "statLabel": "DECIDED IN 90 DAYS"
+  },
+  "deps": [
+   9,
+   31
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "site",
+   "tech",
+   "cro"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 37,
+  "exemplarAlt": 31,
+  "timing": "site"
+ },
+ {
+  "n": 38,
+  "group": "convert",
+  "skill": "aso",
+  "kicker": "MARKETPLACE AND QUICK-COMMERCE LISTING OPTIMISATION",
+  "discipline": "Marketplace And Quick-commerce Listing Optimisation",
+  "titleHint": "Listings that rank on Amazon and Blinkit",
+  "statHint": {
+   "stat": "68%",
+   "statLabel": "OF REVENUE ON RENTED SHELVES"
+  },
+  "deps": [
+   1,
+   3,
+   22
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "site",
+   "rival",
+   "search",
+   "price-offer",
+   "rival-weakness"
+  ],
+  "lookups": [
+   {
+    "type": "web",
+    "q": "the brand's own listings on marketplaces and quick-commerce apps: titles, price, rating count, image count"
+   }
+  ],
+  "refs": [],
+  "exemplar": 38,
+  "exemplarAlt": 22,
+  "adapt": "The skill is written for app stores. Apply it to marketplace and quick-commerce listings (Amazon, Flipkart, Nykaa, Blinkit, Zepto, Instamart or the brand country's equivalents): title, images, bullets, ratings, search tile.",
+  "timing": "listings"
+ },
+ {
+  "n": 39,
+  "group": "keep",
+  "skill": "emails",
+  "kicker": "EMAIL AND LIFECYCLE MARKETING",
+  "discipline": "Email And Lifecycle Marketing",
+  "titleHint": "Lifecycle email flows for Arata",
+  "statHint": {
+   "stat": "24 emails",
+   "statLabel": "ACROSS 6 AUTOMATED FLOWS"
+  },
+  "deps": [
+   1,
+   4,
+   8
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "tech",
+   "site",
+   "email",
+   "listening",
+   "automation"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 39,
+  "exemplarAlt": 40,
+  "timing": "messages"
+ },
+ {
+  "n": 40,
+  "group": "keep",
+  "skill": "sms",
+  "kicker": "SMS AND WHATSAPP MARKETING",
+  "discipline": "Sms And Whatsapp Marketing",
+  "titleHint": "WhatsApp and SMS for the 84-day routine",
+  "statHint": {
+   "stat": "84 days",
+   "statLabel": "ONE ROUTINE JOURNEY ON WHATSAPP"
+  },
+  "deps": [
+   1,
+   4,
+   39
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "tech",
+   "site",
+   "email",
+   "automation"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 40,
+  "exemplarAlt": 39,
+  "adapt": "Cover WhatsApp first where it is the dominant messaging channel in the brand's country, SMS where it still wins.",
+  "timing": "messages"
+ },
+ {
+  "n": 41,
+  "group": "keep",
+  "skill": "onboarding",
+  "kicker": "POST-PURCHASE ONBOARDING",
+  "discipline": "Post-purchase Onboarding",
+  "titleHint": "The first 84 days with Arata",
+  "statHint": {
+   "stat": "7 of 7 days",
+   "statLabel": "WEEK-ONE ADHERENCE AS THE ACTIVATION GATE"
+  },
+  "deps": [
+   1,
+   4,
+   39,
+   40
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "site",
+   "policies",
+   "email",
+   "listening"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 41,
+  "exemplarAlt": 42,
+  "adapt": "The skill is written for SaaS user onboarding. Apply it to post-purchase onboarding: the first weeks after the first order, product use, first result, second order.",
+  "timing": "messages"
+ },
+ {
+  "n": 42,
+  "group": "keep",
+  "skill": "churn-prevention",
+  "kicker": "RETENTION AND CHURN PREVENTION",
+  "discipline": "Retention And Churn Prevention",
+  "titleHint": "Keeping Arata customers past day 84",
+  "statHint": {
+   "stat": "26% → 40%",
+   "statLabel": "90-DAY REPEAT RATE TARGET"
+  },
+  "deps": [
+   7,
+   8,
+   41
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "site",
+   "tech",
+   "policies",
+   "email",
+   "listening",
+   "automation"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 42,
+  "exemplarAlt": 41,
+  "timing": "messages"
+ },
+ {
+  "n": 43,
+  "group": "keep",
+  "skill": "referrals",
+  "kicker": "REFERRALS, AFFILIATES AND REVIEWS",
+  "discipline": "Referrals, Affiliates And Reviews",
+  "titleHint": "Referral and ambassador engine for Arata",
+  "statHint": {
+   "stat": "₹150 + ₹150",
+   "statLabel": "GIVE ONE, GET ONE"
+  },
+  "deps": [
+   8,
+   42
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "site",
+   "socials",
+   "creators",
+   "social-posts"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 43,
+  "exemplarAlt": 44,
+  "timing": "partners"
+ },
+ {
+  "n": 44,
+  "group": "keep",
+  "skill": "community-marketing",
+  "kicker": "COMMUNITY MARKETING",
+  "discipline": "Community Marketing",
+  "titleHint": "The 84 Club: Arata's hair journey community",
+  "statHint": {
+   "stat": "84 days",
+   "statLabel": "ONE COHORT, FOUR CHECK-INS"
+  },
+  "deps": [
+   2,
+   41
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "socials",
+   "listening",
+   "research",
+   "social-posts"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 44,
+  "exemplarAlt": 43,
+  "timing": "content"
+ },
+ {
+  "n": 45,
+  "group": "expand",
+  "skill": "prospecting",
+  "kicker": "B2B PROSPECTING",
+  "discipline": "B2b Prospecting",
+  "titleHint": "Six B2B prospect lists for Arata",
+  "statHint": {
+   "stat": "540 accounts",
+   "statLabel": "VERIFIED, SCORED, ACROSS SIX SEGMENTS"
+  },
+  "deps": [
+   1,
+   3
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "rival",
+   "research"
+  ],
+  "lookups": [
+   {
+    "type": "web",
+    "q": "B2B buyer categories for this brand (retail chains, clinics, salons, corporate gifting, distributors) in its country, with example named accounts from public directories"
+   }
+  ],
+  "refs": [],
+  "exemplar": 45,
+  "exemplarAlt": 46,
+  "timing": "offline"
+ },
+ {
+  "n": 46,
+  "group": "expand",
+  "skill": "cold-email",
+  "kicker": "COLD OUTBOUND (B2B)",
+  "discipline": "Cold Outbound (b2b)",
+  "titleHint": "B2B outbound for derms, salons and q-com",
+  "statHint": {
+   "stat": "4 plays",
+   "statLabel": "ONE PER B2B SEGMENT"
+  },
+  "deps": [
+   45
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "research",
+   "email"
+  ],
+  "lookups": [
+   {
+    "type": "web",
+    "q": "public contact routes and buying processes for the B2B segments in the brand's country"
+   }
+  ],
+  "refs": [],
+  "exemplar": 46,
+  "exemplarAlt": 45,
+  "timing": "offline"
+ },
+ {
+  "n": 47,
+  "group": "expand",
+  "skill": "sales-enablement",
+  "kicker": "SALES ENABLEMENT",
+  "discipline": "Sales Enablement",
+  "titleHint": "Buyer decks and derm detailing kit",
+  "statHint": {
+   "stat": "68%",
+   "statLabel": "OF REVENUE GOES THROUGH A BUYER"
+  },
+  "deps": [
+   1,
+   3,
+   45
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "rival",
+   "rival-weakness"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 47,
+  "exemplarAlt": 46,
+  "timing": "offline"
+ },
+ {
+  "n": 48,
+  "group": "expand",
+  "skill": "revops",
+  "kicker": "REVENUE OPERATIONS",
+  "discipline": "Revenue Operations",
+  "titleHint": "One customer record, one reorder clock",
+  "statHint": {
+   "stat": "Day 45",
+   "statLabel": "THE REORDER WINDOW, MADE OPERATIONAL"
+  },
+  "deps": [
+   9,
+   10,
+   42
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "tech",
+   "site",
+   "automation",
+   "email"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 48,
+  "exemplarAlt": 10,
+  "timing": "foundations"
+ },
+ {
+  "n": 49,
+  "group": "expand",
+  "skill": "marketing-loops",
+  "kicker": "MARKETING LOOPS",
+  "discipline": "Marketing Loops",
+  "titleHint": "Eight always-on loops for Arata",
+  "statHint": {
+   "stat": "8 loops",
+   "statLabel": "RUN WEEKLY, STAGED FOR APPROVAL"
+  },
+  "deps": [
+   9,
+   20,
+   21,
+   42
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "site",
+   "search",
+   "socials",
+   "automation",
+   "ads",
+   "email"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 49,
+  "exemplarAlt": 50,
+  "timing": "strategy"
+ },
+ {
+  "n": 50,
+  "group": "expand",
+  "skill": "marketing-ideas",
+  "kicker": "MARKETING IDEAS",
+  "discipline": "Marketing Ideas",
+  "titleHint": "Twelve growth ideas ranked for Arata",
+  "statHint": {
+   "stat": "12 of 139",
+   "statLabel": "IDEAS THAT FIT ARATA NOW"
+  },
+  "deps": [
+   1,
+   6
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "company",
+   "site",
+   "ads",
+   "socials",
+   "search",
+   "rival",
+   "listening",
+   "seasonal",
+   "rival-weakness",
+   "ai-seo"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 50,
+  "exemplarAlt": 49,
+  "timing": "strategy"
+ },
+ {
+  "n": 51,
+  "group": "convert",
+  "skill": "copywriting",
+  "kicker": "ANSWERS FROM LISTENING",
+  "discipline": "Answers From What People Ask",
+  "titleHint": "Answers to the six questions buyers keep asking",
+  "statHint": {
+   "stat": "6 questions",
+   "statLabel": "ASKED AGAIN AND AGAIN, UNANSWERED ON SITE"
+  },
+  "deps": [
+   1,
+   2,
+   29
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "site",
+   "policies",
+   "listening",
+   "cro"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 29,
+  "exemplarAlt": 31,
+  "adapt": "Build this move from the listening lines (listen.*), not from the skill's generic examples. Pick the 4 to 8 questions and doubts that recur across listen.theme lines (highest count first, rising week on week first among equals) and check each against the site, the policies and the catalogue in the ledger: answered clearly, answered but hidden, or not answered. For every unanswered or hidden one, write the finished answer for three surfaces: a PDP block next to the buy button, an FAQ entry in the buyer's own words, and a one-line ad or email angle. Quote the real people who asked (listen.quote lines only, with their links) and give the count behind each question. Never answer with a claim the ledger does not back: write \"to confirm with the brand\" instead.",
+  "timing": "site",
+  "needs": [
+   "listening"
+  ],
+  "cadence": "weekly"
+ },
+ {
+  "n": 52,
+  "group": "reach",
+  "skill": "ad-creative",
+  "kicker": "AD ANGLES FROM LISTENING",
+  "discipline": "Ad Angles From What People Say",
+  "titleHint": "Twelve ad angles in your buyers' own words",
+  "statHint": {
+   "stat": "12 angles",
+   "statLabel": "WRITTEN FROM WHAT PEOPLE SAID"
+  },
+  "deps": [
+   1,
+   2,
+   21
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "ads",
+   "rival",
+   "listening",
+   "creative"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 21,
+  "exemplarAlt": 23,
+  "adapt": "Turn the listening themes into ad angles. For each angle name the theme it comes from (listen.theme line: count, sentiment split, week-on-week change), the exact phrase people used (listen.quote lines only, linked), the objection or desire it answers, and the hook, primary text and headline in that language. Praise themes become proof angles, complaint themes about rivals become switch angles, recurring questions become objection-handling angles. Rank by mentions and momentum. Keep the brand's claims inside the ledger. No disclaimers or 'illustrative' labels on the ads.",
+  "timing": "paid_ads",
+  "needs": [
+   "listening"
+  ],
+  "cadence": "weekly"
+ },
+ {
+  "n": 53,
+  "group": "reach",
+  "skill": "social",
+  "kicker": "SOCIAL FROM LISTENING",
+  "discipline": "Social Posts From What Was Heard",
+  "titleHint": "Posts, carousels and replies from what people asked",
+  "statHint": {
+   "stat": "10 posts",
+   "statLabel": "BUILT FROM REAL QUESTIONS AND PRAISE"
+  },
+  "deps": [
+   1,
+   2,
+   24
+  ],
+  "evidence": [
+   "catalog",
+   "claim",
+   "reviews",
+   "socials",
+   "listening",
+   "social-posts",
+   "creative"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 24,
+  "exemplarAlt": 16,
+  "adapt": "Write a two-week slate of organic posts built only from what Brew heard: recurring questions become answer posts and carousels, praise becomes proof posts, live threads become replies. Do it per platform the brand is on or should be on (Instagram, TikTok, YouTube Shorts, X, LinkedIn, Pinterest, Reddit, Quora, Facebook groups), in each platform's native format and length. For every post cite the listen.theme line (count, sentiment, week-on-week) and, when you quote a person, the listen.quote line with its link. Replies in communities are written as a person from the brand, say so where the community requires it, and follow that community's rules; Brew drafts, the team posts.",
+  "timing": "content",
+  "needs": [
+   "listening"
+  ],
+  "cadence": "weekly"
+ },
+ {
+  "n": 54,
+  "group": "know",
+  "skill": "community-research",
+  "kicker": "ASK THE COMMUNITY",
+  "discipline": "Community Research",
+  "titleHint": "The one question to ask in r/<community> this week",
+  "statHint": {
+   "stat": "1 question",
+   "statLabel": "WHAT WE STILL DO NOT KNOW"
+  },
+  "deps": [
+   2,
+   3
+  ],
+  "evidence": [
+   "catalog",
+   "claim",
+   "reviews",
+   "company",
+   "rival",
+   "socials",
+   "research",
+   "listening"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 2,
+  "exemplarAlt": 44,
+  "adapt": "From the full evidence, find what Brew still does not know that changes a decision (a gap between what the brand claims and what people say, a theme with many questions and no answer, a rival switch reason we cannot explain). Pick ONE question per community, name 2 to 4 real communities from the listening data (listen.community or the subreddits in listen.quote links) where it fits, quote their posting rules as 'to check' when not in the evidence, and write the draft post in each community's style, disclosing the brand affiliation where the rules require it. Set the reply threshold (how many useful replies before we act, usually 5 to 15) and say exactly which moves the replies will turn into once the threshold is met. Brew never posts; the team does, from a real account.",
+  "timing": "community",
+  "needs": [
+   "listening"
+  ],
+  "cadence": "weekly"
+ },
+ {
+  "n": 55,
+  "group": "reach",
+  "skill": "seasonal-planning",
+  "kicker": "SEASONAL AND FESTIVAL",
+  "discipline": "Seasonal And Festival Planning",
+  "titleHint": "The next 90 days of events, planned backwards",
+  "statHint": {
+   "stat": "3 events",
+   "statLabel": "IN THE BRAND'S MARKETS, NEXT 90 DAYS"
+  },
+  "deps": [
+   6,
+   7,
+   8,
+   20
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "ads",
+   "site",
+   "seasonal",
+   "price-offer",
+   "weather"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 28,
+  "exemplarAlt": 8,
+  "adapt": "Use only the events in the calendar lines (cal.*) that are relevant to the brand's markets and category; never add a festival the brand does not sell into. For each event plan backwards from the event date: creative ready, offer decided, stock checked, ads live, emails and WhatsApp scheduled, and the day after. Give dates, owners and the budget split. Say what last year's same window looked like when the ledger has it, or that it is to be pulled. Measure each event against the same window last year.",
+  "timing": "seasonal",
+  "needs": [
+   "seasonal"
+  ],
+  "cadence": "weekly"
+ },
+ {
+  "n": 56,
+  "group": "reach",
+  "skill": "ads",
+  "kicker": "WEATHER TRIGGERS",
+  "discipline": "Weather-Triggered Moves",
+  "titleHint": "When it turns cold in Delhi, the ads switch on",
+  "statHint": {
+   "stat": "3 triggers",
+   "statLabel": "WEATHER RULES THAT MOVE SPEND"
+  },
+  "deps": [
+   20,
+   21
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "ads",
+   "site",
+   "weather",
+   "automation"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 20,
+  "exemplarAlt": 49,
+  "adapt": "Only if the weather lines (pulse weather) show a link between the brand's products and the weather (cold, heat, rain, pollution, humidity) in its top cities. Write 2 to 4 standing rules: the signal and its threshold, the cities, what switches on (ad sets, creative, email/WhatsApp, homepage banner), what switches off, the spend cap, and the hold-out share so we can measure the lift. Cite the forecast lines with their dates. If the evidence shows no weather link, say so and write the rules as hypotheses to test small.",
+  "timing": "automation",
+  "needs": [
+   "weather"
+  ],
+  "cadence": "weekly"
+ },
+ {
+  "n": 57,
+  "group": "reach",
+  "skill": "competitors",
+  "kicker": "SWITCH FROM RIVALS",
+  "discipline": "Rival Weakness Switch Moves",
+  "titleHint": "Winning the people who gave a rival two stars",
+  "statHint": {
+   "stat": "1–3★",
+   "statLabel": "RIVAL REVIEWS AND AD COMMENTS READ"
+  },
+  "deps": [
+   3,
+   17,
+   21
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "rival",
+   "ads",
+   "search",
+   "rival-weakness",
+   "listening"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 17,
+  "exemplarAlt": 3,
+  "adapt": "Build from rival 1 to 3 star reviews and complaints in rival ad comments (rival-weakness and listen lines where about = rival). Group the complaints into themes with counts, check whether the brand really does better on each (ledger evidence only), and write the switch moves: comparison page sections, ads aimed at the rival's unhappy buyers (no rival trademarks in ad text where the platform forbids it), and replies in threads where people are asking for alternatives. Quote only real linked reviews. Never state why a rival does something; never say a rival lacks something, say 'not observed'.",
+  "timing": "paid_ads",
+  "needs": [
+   "rival-weakness",
+   "listening"
+  ],
+  "cadence": "weekly"
+ },
+ {
+  "n": 58,
+  "group": "found",
+  "skill": "ai-seo",
+  "kicker": "AI ANSWERS",
+  "discipline": "AI Search From Fixed Buyer Questions",
+  "titleHint": "Being named when buyers ask AI which to buy",
+  "statHint": {
+   "stat": "0 of 20",
+   "statLabel": "AI ANSWERS THAT NAME THE BRAND"
+  },
+  "deps": [
+   1,
+   11,
+   15
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "ai",
+   "search",
+   "rival",
+   "ai-seo",
+   "listening",
+   "seo"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 15,
+  "exemplarAlt": 18,
+  "adapt": "Use the fixed set of buyer questions Brew asks the AI assistants every week (ai.* ledger and ai-seo pulse lines): which answers name the brand, which name rivals, which sources they cite. Add the questions people really ask from the listening lines. For each question we lose, write the answer asset that would get cited (an FAQ block, a comparison table, a facts page, a third-party listing to get on) and where it lives. Measure on the same questions, asked the same way every week.",
+  "timing": "ai_search",
+  "needs": [
+   "ai-seo"
+  ],
+  "cadence": "weekly"
+ },
+ {
+  "n": 59,
+  "group": "reach",
+  "skill": "influencer-marketing",
+  "kicker": "CREATOR SEEDING",
+  "discipline": "Creator Seeding From People Already Posting",
+  "titleHint": "Seeding the twelve people already talking about you",
+  "statHint": {
+   "stat": "12 creators",
+   "statLabel": "ALREADY POSTING ABOUT THE CATEGORY"
+  },
+  "deps": [
+   1,
+   2,
+   25
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "socials",
+   "creators",
+   "social-posts",
+   "listening"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 25,
+  "exemplarAlt": 43,
+  "adapt": "Start from people already posting about the brand or its category (creator lines and the authors of listen items with real reach), not from a cold creator search. For each, cite what they posted (linked), their audience fit, and the ask: gift only, gift plus brief, or paid. Write the outreach message, the seeding brief and the code/link scheme so orders can be counted. Paid partnerships carry the platform's partnership label. Claims stay inside the ledger.",
+  "timing": "creators",
+  "needs": [
+   "creators",
+   "listening"
+  ],
+  "cadence": "weekly"
+ },
+ {
+  "n": 60,
+  "group": "reach",
+  "skill": "video",
+  "kicker": "HOOKS FROM VIDEO",
+  "discipline": "Hooks From Video Reads",
+  "titleHint": "The first three seconds that work in your category",
+  "statHint": {
+   "stat": "8 hooks",
+   "statLabel": "READ FROM TOP VIDEOS IN THE CATEGORY"
+  },
+  "deps": [
+   21,
+   23
+  ],
+  "evidence": [
+   "catalog",
+   "claim",
+   "reviews",
+   "ads",
+   "socials",
+   "creative",
+   "social-posts"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 23,
+  "exemplarAlt": 21,
+  "adapt": "Use the video read lines (video.*: hook, scenes, format, length, the views where given) from the brand's own, rivals' and category videos. Name the patterns that recur in the strongest ones, then write 6 to 10 hooks and two full scripts for the brand in those patterns, each tied to the video line it learns from. Do not copy a video; learn its structure. Cite views and dates only as the lines give them.",
+  "timing": "paid_ads",
+  "needs": [
+   "creative"
+  ],
+  "cadence": "weekly"
+ },
+ {
+  "n": 61,
+  "group": "convert",
+  "skill": "pricing",
+  "kicker": "PRICE AND OFFER POSITION",
+  "discipline": "Price And Offer From Shopping Position",
+  "titleHint": "Where the price sits on the shelf people compare",
+  "statHint": {
+   "stat": "#4 of 12",
+   "statLabel": "PRICE RANK ON THE SHOPPING SHELF"
+  },
+  "deps": [
+   7,
+   8
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "rival",
+   "site",
+   "policies",
+   "price-offer",
+   "rival-weakness"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 7,
+  "exemplarAlt": 8,
+  "adapt": "Use the shopping and marketplace position lines (price-offer pulse lines: Google Shopping and Amazon prices, rank, ratings, offers seen) for the brand's hero products against what sits next to them. Say where each hero ranks on price, on rating and on offer, and what a buyer sees side by side. Recommend at most three price or offer moves with margin math from the ledger, and the guard (margin floor) that stops them. Discounts are a last resort; prefer bundles, guarantees and value framing when the evidence supports them.",
+  "timing": "pricing",
+  "needs": [
+   "price-offer"
+  ],
+  "cadence": "weekly"
+ },
+ {
+  "n": 62,
+  "group": "keep",
+  "skill": "customer-research",
+  "kicker": "COMPLAINT FIX",
+  "discipline": "Review And Complaint Fix From Listening",
+  "titleHint": "Fixing the sizing complaint people keep repeating",
+  "statHint": {
+   "stat": "14%",
+   "statLabel": "OF MENTIONS ARE ONE COMPLAINT"
+  },
+  "deps": [
+   2,
+   41
+  ],
+  "evidence": [
+   "catalog",
+   "claim",
+   "reviews",
+   "policies",
+   "site",
+   "listening",
+   "rival-weakness"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 2,
+  "exemplarAlt": 42,
+  "adapt": "Take the top one or two complaint themes in the listening lines (listen.theme with the most negative mentions, and rising week on week). Show the count, the negative share and the trend, quote 3 to 5 linked real complaints, and trace the cause where the evidence allows (product, sizing, delivery, expectation set by the site or ads). Write the fix for each surface Brew can touch (PDP copy, size guide, FAQ, post-purchase message, ad promise) and the brief for what only the brand can fix (product, ops). Then the reply the brand posts where people complained, and how we tell people it is fixed. Measure the complaint's share of mentions, 30 and 60 days on.",
+  "timing": "complaint_fix",
+  "needs": [
+   "listening"
+  ],
+  "cadence": "weekly"
+ },
+ {
+  "n": 63,
+  "group": "found",
+  "skill": "content-strategy",
+  "kicker": "SEARCH DEMAND",
+  "discipline": "Search Demand Pulse",
+  "titleHint": "The searches rising this month in your category",
+  "statHint": {
+   "stat": "+38%",
+   "statLabel": "RISE IN CATEGORY SEARCHES"
+  },
+  "deps": [
+   11,
+   16
+  ],
+  "evidence": [
+   "catalog",
+   "claim",
+   "search",
+   "site",
+   "seo",
+   "listening"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 16,
+  "exemplarAlt": 14,
+  "adapt": "Use the search pulse lines (seo: keyword volumes, trends, autocomplete, keyword gaps against rivals) to find the 5 to 10 searches rising or uncovered in the brand's market. For each, the page or content piece to make, the angle from the listening lines (what people say around that search), and where it links. Cite volumes and changes only as the lines give them.",
+  "timing": "search",
+  "needs": [
+   "seo"
+  ],
+  "cadence": "weekly"
+ },
+ {
+  "n": 64,
+  "group": "keep",
+  "skill": "marketing-loops",
+  "kicker": "ALWAYS-ON AUTOMATIONS",
+  "discipline": "Automations From Signals",
+  "titleHint": "Six rules that run while the team sleeps",
+  "statHint": {
+   "stat": "6 rules",
+   "statLabel": "ALWAYS ON, APPROVED ONCE"
+  },
+  "deps": [
+   9,
+   39,
+   49
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "tech",
+   "site",
+   "automation",
+   "listening",
+   "weather",
+   "email"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 49,
+  "exemplarAlt": 39,
+  "adapt": "Write 4 to 8 standing rules Brew can run once the brand approves them: the signal (a listening theme spiking, a weather threshold, stock running low, a rival price change, a reorder day reached, a festival plan point), the threshold, the action on the brand's own stack (email, WhatsApp, an ad set on or off, a banner), the cap, and the hold-out share. Each rule names the evidence line that would fire it and how often it would have fired recently if the lines show it. Brew sends only email and WhatsApp itself; everything else runs on the brand's connected accounts.",
+  "timing": "automation",
+  "needs": [
+   "any"
+  ],
+  "cadence": "weekly"
+ },
+ {
+  "n": 65,
+  "group": "keep",
+  "skill": "emails",
+  "kicker": "EMAILS FROM LISTENING",
+  "discipline": "Emails That Answer What People Ask",
+  "titleHint": "The five emails your buyers asked for",
+  "statHint": {
+   "stat": "5 emails",
+   "statLabel": "ANSWERING REAL QUESTIONS"
+  },
+  "deps": [
+   39,
+   51
+  ],
+  "evidence": [
+   "catalog",
+   "price",
+   "claim",
+   "reviews",
+   "tech",
+   "policies",
+   "email",
+   "listening"
+  ],
+  "lookups": [],
+  "refs": [],
+  "exemplar": 39,
+  "exemplarAlt": 41,
+  "adapt": "Write the emails and WhatsApp messages that answer the questions and doubts people raise most in the listening lines, timed to when a buyer has them (before the first order, after delivery, at the reorder point). Each message cites the theme and count it answers and quotes a linked real question where it helps. Subject lines, preview text, body and the one button. Hold out a share of the list so we know the lift.",
+  "timing": "messages",
+  "needs": [
+   "listening"
+  ],
+  "cadence": "weekly"
+ }
+]

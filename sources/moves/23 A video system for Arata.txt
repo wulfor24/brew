@@ -1,0 +1,800 @@
+      Brew                                      PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+VIDEO PRODUCTION · MOVE 23 OF 50
+
+
+
+A VIDEO
+SYSTEM
+FOR ARATA
+  ONE MASTER SHOOT, ONE TEMPLATE SYSTEM AND A B-
+  ROLL LIBRARY THAT TURN EVERY ARATA CLAIM INTO PDP
+  VIDEOS, META AND YOUTUBE ADS, REELS AND AMAZON
+  LISTING VIDEOS, WITH THE SCRIPTS ALREADY WRITTEN.
+
+
+
+
+26 videos
+LIVE ACROSS 5 SURFACES BY DAY 30
+
+
+
+
+BREW × ARATA                     OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                   V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                            WHAT THIS GIVES ARATA
+                                                            One master shoot, one template system and a B-roll
+                                                            library that turn every Arata claim into PDP videos,
+                                                            Meta and YouTube ads, Reels and Amazon listing
+
+        26 videos
+         LIVE ACROSS 5 SURFACES BY DAY
+                                                            videos, with the scripts already written.
+                                                            LIVE 30 DAYS AFTER WE START
+                                                            Every hero PDP on arata.in and Amazon.in has a
+         30
+                                                            product video, Meta and YouTube are running claim-
+                                                            led ads for MitoActive and the Intensive Serum, and
+                                                            a weekly Reels pipeline is producing 4 cuts a week
+                                                            from a reusable asset library.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+Translated to D2C: the product demo becomes the PDP and listing video, the explainer becomes the
+claim explainer (how 7.4X was measured), the social clip becomes the Reel, and the ad stays the ad.
+The method is the same. The surfaces change.
+Arata's whole positioning is a number on the bottle: 7.4X, 28,200, 95%, 86%, 87%. A number on a
+static pack image is a claim. A number shown being measured is proof. Right now the brand's proof
+lives in text (Lab Notes, PDP copy) and the brand's entertainment lives in video (Samay Raina,
+Taapsee). The two have not met. The proof has never been filmed.
+That gap costs most on the two SKUs that matter most. MitoActive is ₹1,499 for 30 ml with zero
+reviews and a mechanism (Y100, mitochondrial function) that nobody in the category has heard of. A
+customer cannot read their way to ₹1,499. They need to see the mechanism, the pump, the 84-day
+calendar and a real face. The Hair Growth Intensive Serum carries the "up to 28,200 new hair" claim
+that the brief itself flags as the one customers find hard to believe. A 45-second video showing the
+study design does what three paragraphs cannot.
+The channel mix makes it worse. 68% of revenue sits on marketplaces and quick commerce.
+Amazon.in gives a listing video the top slot in the image carousel and Nykaa shows video in the
+gallery. Blinkit and Zepto give you a thumbnail and three lines, so video has to do its work before the
+customer opens the app, on Reels and in the Meta feed. Every surface that Arata sells on either
+rewards video directly or depends on video upstream.
+The opportunity is that the competition is filmable but not provable. Pilgrim, Minimalist and Bare
+Anatomy sell the same Redensyl and Anagain stack and shoot the same lifestyle footage. Arata has an
+in-house lab in Delhi, a tensile strength test, a petri dish and a hair count grid. Nobody else at ₹359 to
+₹571 can point a camera at that. Traya spends ₹138 Cr a year on marketing to tell a medical story.
+Arata can tell a lab story for the cost of one shoot day and a template.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · A VIDEO SYSTEM FOR ARATA                                                          1
+WHAT WE FOUND
+WHERE VIDEO SITS TODAY
+We audited every surface Arata sells on for the job video should do there and what is there now. Items
+marked assumption are from the brief's known gaps and our review of the public site; we confirm
+each in week one.
+                       SHARE OF
+ SURFACE               REVENUE            WHAT VIDEO SHOULD DO HERE                    WHAT IS THERE NOW                   GAP
+
+ arata.in PDPs         32%                Prove the claim, show the texture and        Static packshots and claim          High
+ (Shopify)                                the pump, set the 84-day expectation         graphics; no PDP video
+                                                                                       (assumption)
+ Amazon.in             Part of 38%        Win the carousel slot, show size and   No listing video on hero ASINs            High
+ listings                                 seal, reduce "is 30 ml enough" returns (assumption)
+ Nykaa gallery         Part of 38%        Same as Amazon plus texture for the          None (assumption)                   Medium
+                                          dandruff and damage buyer
+ Blinkit, Zepto,       30%                None on-platform; demand is created          Image only by platform design       Upstream
+ Instamart                                upstream
+ Meta (feed,           Acquisition        Stop the scroll on a problem, land the       Campaign bursts (Samay Raina,       High
+ Reels, Stories)                          number, send to PDP or quick                 Feb 2026); no always-on claim
+                                          commerce                                     ads (assumption)
+ YouTube (pre-         Acquisition        Catch "hair fall shampoo" and                No always-on presence               Medium
+ roll, Shorts)                            "minoxidil side effects" intent with a       (assumption)
+                                          15s number and a 30s explainer
+ Instagram             Brand              Routine, lab, texture, customer stories,     Bursty, like Lab Notes (seven       Medium
+ organic                                  weekly cadence                               posts in March 2026, then quiet)
+ WhatsApp      Retention                  20-second "how to apply" and "what           None (assumption)                   Medium
+ post-purchase                            to expect by week 4"
+
+
+WHICH APPROACH FITS WHICH JOB
+The skill's four approaches, applied to Arata. The rule that drives every choice: the bottle, the claim
+and the face are always real. Everything around them can be generated or templated.
+ APPROACH                       USE AT ARATA FOR                                   DO NOT USE FOR          TOOLING
+
+ Programmatic (HTML             Claim cards, SKU-by-SKU PDP videos,                Anything that needs a   Hyperframes
+ templates rendered to          Amazon listing videos, WhatsApp how-to             human face              (HTML/CSS, Apache 2.0)
+ MP4)                           clips, caption burn-in
+ Generated footage              Environment B-roll: Delhi humidity, hard- The bottle, the pack             Kling for drafts and
+                                water taps, a Mumbai local at 6 pm, scalp- text, before/after, any         volume, Veo 3 for finals
+                                level abstractions, the mitochondria       "customer"                      with ambient audio
+                                explainer
+ Avatars                        Multilingual how-to clips for WhatsApp             Customer stories,       HeyGen, only if the
+                                (Hindi, Tamil, Telugu) in phase 2, if at all       founder or lab content, WhatsApp test earns it
+                                                                                   ads
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · A VIDEO SYSTEM FOR ARATA                                                                             2
+ APPROACH                       USE AT ARATA FOR                                DO NOT USE FOR            TOOLING
+
+ Editing and                    The Samay Raina long-form into 8 to 10                                    Descript for transcript
+ repurposing                    Shorts, Lab Notes into 30-second                                          cuts, CapCut for Reels
+                                explainers, creator footage into ad cuts                                  polish
+
+
+Two decisions came out of this that shape everything below.
+First, no AI-generated people presented as customers, and no AI-generated before/after. The brand
+sells on honesty of claims. One exposed fake face on Instagram undoes the 7.4X. Real customers
+come from the 2,248 Loox reviewers and the Nykaa base; we recruit six in week one.
+Second, the bottle is filmed once, properly, and reused forever. A packshot day on a turntable with the
+3.0 white and lab-blue packs gives us the hero asset for every template. Video models cannot render
+the pack text, and the rebrand is in progress, so a clean film day now and a re-shoot of packs after the
+rebrand is cheaper than fixing 40 generated clips.
+
+CLAIM TO VISUAL MAP
+Each number needs one shot that makes it believable. This is the shot list for the master day.
+                                                            THE ONE SHOT THAT
+ CLAIM                              SKU                     PROVES IT                      HOW WE FILM IT
+
+ 7.4X hair fall reduction           Anti-Hair Fall          A single strand on a pull-test Lab, macro lens, locked-off, two takes:
+ (tensile strength study)           Intensive               rig, the gauge climbing, the   treated and untreated
+                                    Shampoo, ₹359           strand holding
+ Up to 28,200 new hair in           Hair Growth             A 1 cm² scalp grid under a     Trichoscope capture from the consumer
+ 84 days                            Intensive Serum,        trichoscope, day 0 and day     study participants, with consent;
+                                    ₹571                    84 side by side                animated count overlay added in
+                                                                                           template
+ 87% saw increased                  MitoActive, ₹1,499 A pillow in the morning, hairs Bedroom set, top-down, real
+ growth in 84 days; up to                              counted; then the calendar     participant, two sessions 12 weeks
+ 95% reduction in hair fall                            flipping to day 84             apart (we start this clock on day 1)
+ Up to 95% reduction in             Anti-Dandruff           A black t-shirt shoulder,      Studio, black cotton, flat light, locked-
+ dandruff-causing fungus            Shampoo, ₹404           before and after one wash,     off
+ in 1 wash                                                  same light
+ 72-hour humidity-                  Hair Gel, ₹269 to       A styled head walking out of Handheld, gimbal, real location,
+ resistant hold                     ₹699                    a Delhi metro station at 6 pm timestamp burned in
+                                                            in July
+ Up to 86% reduction in             Anti-Grey Hair          Parting shot, temple, month    Same participant, same chair, same
+ greys over 3 months                Serum, ₹449             0 and month 3                  lens, same light
+ 94% keratin retention              Damage Defence          Wet hair comb-through,         Bathroom set, overhead, slow motion
+                                    Super Shampoo,          strands on the comb
+                                    ₹395                    counted
+
+
+THE HOUSE EDIT, DECODED INTO A BEAT SHEET
+We decomposed the short-form edit grammar that wins in Indian haircare right now (problem reveal,
+number land, routine stack, honest caveat) into a reusable spec. This is the editing grammar we apply
+to Arata's footage. The script, footage and music are always Arata's own.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · A VIDEO SYSTEM FOR ARATA                                                                              3
+                                                                                                                               DIAGRAM
+    | Beat | Time      | Shot                         | On-screen text            | Caption style                 | Motion               |
+    |------|-----------|------------------------------|---------------------------|-------------------------------|----------------------|-
+    | 1    | 0:00-0:02 | CU of the problem (pillow,   | "This is 3 days of        | big, white, centred, 2 lines | hard in, 5% push      |
+    |      |           | drain, t-shirt shoulder)     | hair fall"                |                               |                      |
+    | 2    | 0:02-0:05 | Talking head, phone-framed   | (captions only)           | word-pop, lab-blue highlight | hard cut              |
+    |      |           |                              |                           | bottom third                  |                      |
+    | 3    | 0:05-0:08 | Packshot, hand enters frame | "7.4X less hair fall"      | number card, 120px, centred   | whip-pan + whoosh    |
+    | 4    | 0:08-0:14 | Proof shot (pull test, grid, | "measured, not promised" | small, top-third               | slow push            |
+    |      |           | petri dish)                  |                           |                               |                      |
+    | 5    | 0:14-0:18 | Routine stack, 3 bottles     | "wash. treat. done."      | 3 word pops on the beat       | hard cuts per bottle |
+    |      |           | land one by one              |                           |                               |                      |
+    | 6    | 0:18-0:21 | Talking head, honest caveat | "give it 84 days"          | word-pop                      | static               |
+    | 7    | 0:21-0:24 | End card, pack + price +     | "₹359 on arata.in"        | number card                   | fade                 |
+    |      |           | where to buy                 |                           |                               |                      |
+
+
+
+
+Signature moves, so any editor or template can reproduce the style:
+1. The first two seconds are the problem, silent, no logo, no music. Hair on a pillow out-performs a
+   bottle every time.
+2. Every number gets its own card: 120px, centred, lab-blue on white, one second hold, a single ding.
+3. Captions are word-by-word, bottom third, white with lab-blue highlight on the keyword (scalp,
+   roots, 84 days).
+4. A hard cut plus a 5% punch-in on every new sentence in the talking head. Nothing drifts.
+5. The music dips for half a second before the honest caveat. The caveat is what makes the number
+   believable.
+Pacing curve across the runtime:
+                                                                                                                               DIAGRAM
+    energy
+      ^
+      |         ____                   ___
+      |       /     \                /    \
+      | ____/        \_____________/       \__
+      | problem number proof         stack caveat CTA
+      +----------------------------------------------> time
+         0s   2s    5s    8s     14s     18s   21s 24s
+
+
+
+
+THE PLAN
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · A VIDEO SYSTEM FOR ARATA                                                                                4
+THE SYSTEM IN ONE PICTURE
+                                                                                                                 DIAGRAM
+                 ONE MASTER SHOOT DAY (Delhi lab + studio + 1 location)
+                 packshots | proof shots | 6 real customers | hands + texture
+                                         |
+                                         v
+                              ASSET LIBRARY (tagged by SKU, claim, shot type)
+                                         |
+              +-------------------------+--------------------------+
+              |                          |                          |
+              v                          v                          v
+        GENERATED B-ROLL          HYPERFRAMES TEMPLATES        TALKING-HEAD CUTS
+        (humidity, hard water,    (number card, PDP, Amazon    (Descript transcript
+         metro, mitochondria)      listing, how-to, caption)    edit, CapCut polish)
+              |                          |                          |
+              +-------------------------+--------------------------+
+                                         |
+                                         v
+                      PER-SURFACE RENDERS, PER SKU, PER RATIO
+          arata.in PDP 16:9 + 4:5 | Amazon 16:9 | Meta 9:16 + 4:5 | YouTube 16:9 + 9:16 | WhatsApp 9:16
+
+
+
+
+The point of the structure: shoot once, template everything, render per surface. A new SKU or a
+rebranded pack means one packshot session and a re-render, not a new production.
+
+PHASE 1 (WEEK 1 TO 2): THE MASTER SHOOT AND THE PROOF LIBRARY
+What: one 10-hour shoot day across the Delhi lab, a white studio and one outdoor location, plus six
+real customers (two hair fall, two dandruff, one styling, one grey) recruited from Loox reviewers. Shot
+list in the claim map above, plus texture (serum drop, shampoo lather, gel between fingers), pumps
+and seals, and routine hands for each hero SKU.
+Why: every asset downstream pulls from this library. Shooting the seal and the pump also answers the
+brief's leak and broken-seal complaints on camera, in every PDP video, without saying a word about
+leaks.
+Effect: a library of roughly 120 usable clips that covers all five hero SKUs and four claims. The
+MitoActive day-84 clock also starts here.
+
+PHASE 2 (WEEK 2 TO 3): TEMPLATES
+What: four Hyperframes compositions built once and parameterised by SKU.
+ TEMPLATE          INPUTS                                       OUTPUT                        USED FOR
+
+ Number            claim text, SKU, colour                      1 to 3 s clip, any ratio      Every ad, Reel and PDP video
+ card
+ PDP video         SKU name, claim, 4 proof clips, price, 84-   45 s, 16:9 and 4:5            arata.in, Nykaa
+                   day calendar
+ Listing           SKU name, 5 clips, size and usage text       40 s, 16:9, no price, no      Amazon.in
+ video                                                          competitor
+ How-to            SKU, 3 steps, days-to-expect                 20 s, 9:16                    WhatsApp post-purchase,
+                                                                                              PDP FAQ
+
+
+Why: text in video is where generated models fail and where Arata's claims live. Programmatic
+overlays render the number, the "up to", the study footnote and the price pixel-perfectly, in the brand
+font, in both the current and the post-rebrand look. Changing the price from ₹571 to ₹599 on 12 videos
+
+
+BREW DEPLOYMENT TEAM × ARATA · A VIDEO SYSTEM FOR ARATA                                                                    5
+is a one-line change and a re-render.
+Effect: a per-SKU PDP and listing video for the five hero SKUs by week 3, and a number card for every
+claim in the catalogue.
+
+PHASE 3 (WEEK 2 TO 4, IN PARALLEL): GENERATED B-ROLL
+What: a 30-clip environment library. Delhi humidity, Mumbai monsoon, Bangalore hard-water tap, a
+hostel bathroom, a metro at 6 pm, abstract scalp and follicle macros, and a 10-second mitochondria
+explainer for MitoActive. Drafted on Kling at 720p, finals on Veo 3 at 1080p with ambient audio.
+Prompts in the worked examples.
+Why: these scenes are expensive or impossible to film and carry no claim. They set context for the
+"made for Indian hair and weather" line without a location crew.
+Effect: ads and Reels get a sense of place for the cost of credits (assumption: under ₹25,000 for the
+full library at current per-second pricing).
+
+PHASE 4 (WEEK 3 TO 4): ADS, REELS AND THE WEEKLY LOOP
+What: six Meta ads (three MitoActive, three Intensive Serum), two YouTube pre-rolls (15 s and 30 s) for
+the Anti-Hair Fall Shampoo, eight Reels, three Amazon listing videos, and the Samay Raina long-form
+cut into Shorts. Then a standing weekly cadence of four Reels and two new ad hooks, rendered from
+the library.
+Why: the brand's own philosophy is recall through culture. Culture needs cadence. A burst in February
+and silence in March loses the recall the burst bought.
+Effect: 26 videos live by day 30, and a loop that keeps shipping without a new shoot.
+
+PRIORITY BY SKU AND SURFACE
+Score is reach × margin × proof-readiness, 1 to 5, our judgement from the brief.
+                                          PDP               AMAZON   META
+ SKU                                      VIDEO             VIDEO    AD     YOUTUBE REELS PRIORITY
+
+ MitoActive, ₹1,499                       5                 4        5      4       5      1
+ Hair Growth Intensive Serum,             5                 5        5      3       4      2
+ ₹571
+ Anti-Hair Fall Intensive                 4                 5        3      5       3      3
+ Shampoo, ₹359
+ Anti-Dandruff Shampoo, ₹404              4                 5        3      3       4      4
+ Hair Gel (72-hr hold)                    3                 3        2      2       5      5
+ Anti-Grey Serum, ₹449                    3                 3        3      2       3      6 (needs the 3-month
+                                                                                           footage first)
+
+
+
+
+WORKED EXAMPLES
+
+BREW DEPLOYMENT TEAM × ARATA · A VIDEO SYSTEM FOR ARATA                                                         6
+EXAMPLE 1: PDP VIDEO, HAIR GROWTH INTENSIVE SERUM (45 S, 16:9 MASTER, 4:5 CUT)
+Job: a visitor on the ₹571 serum page is deciding between this, Pilgrim at ₹595 to ₹699 and Minimalist
+at ₹699. The video has to make "up to 28,200 new hair in 84 days" feel measured, show the routine,
+and set the 84-day expectation so the 45-day reorder lands.
+Autoplays muted. Every line is on screen. Voiceover is a bonus for the viewers who tap sound.
+ TIME       VISUAL                                                ON-SCREEN TEXT               VOICEOVER
+
+ 0:00       Top-down, a pillow at 7 am, a dozen hairs on          "You count them. So did      "You count them in the
+ to         white cotton. Hand enters, picks one up.              we."                         morning. So did we. Properly."
+ 0:03
+ 0:03       Trichoscope grid, 1 cm² of scalp, day 0. Count        "Day 0. 1 cm² of scalp."     "This is one square centimetre
+ to         overlay ticks up.                                                                  of scalp on day zero."
+ 0:07
+ 0:07       Same grid, day 84. Count overlay ticks higher.        "Day 84." then number        "Same square, day 84. Across
+ to         Split screen.                                         card: "up to 28,200 new      the whole scalp that is up to
+ 0:11                                                             hair*"                       28,200 new hair."
+ 0:11       Footnote card, small, 3 s hold.                       "*Consumer study, 84         (silence, music only)
+ to                                                               days, best responders.
+ 0:14                                                             Individual results vary."
+ 0:14       Packshot on turntable, hand picks it up, one pump     "Hair Growth Intensive       "One pump. Clear, light, no oil.
+ to         onto fingertips, serum drop in macro.                 Serum. 30 ml."               It goes on the scalp, not the
+ 0:20                                                                                          hair."
+ 0:20       Hands part dry hair at the crown, fingertips apply,   "1 pump. Roots. 20           "Part the hair. Press it into the
+ to         20-second scalp massage with the ₹199                 seconds."                    roots. Twenty seconds with
+ 0:27       massager.                                                                          the massager if you have one."
+ 0:27       Calendar flips: week 2, week 6, week 12. Real         Captions word by word        (customer audio, natural)
+ to         customer (hair-fall, male, 28) talking head: "two
+ 0:33       weeks in, less on the pillow. Twelve weeks, the
+            parting looked different."
+ 0:33       Routine stack lands: Anti-Hair Fall Shampoo,          "wash. treat. strengthen."   "Pair it with the 7.4X shampoo
+ to         Serum, Conditioner.                                                                and the routine does the rest."
+ 0:38
+ 0:38       Three bottles, price card.                            "Pack of 3: ₹999. 84 days    "Three bottles is one course.
+ to                                                               covered."                    ₹999 for 84 days."
+ 0:42
+ 0:42       End card: pack, lab-blue, line.                       "Good science for great      (music out)
+ to                                                               hair."
+ 0:45
+
+
+Shot list for the master day (this video only):
+1. Pillow, top-down, 50 mm macro, soft window light, hair count visible. 2 takes.
+2. Trichoscope capture: supplied by Arata's R&D from the consumer study with participant consent,
+   day 0 and day 84, same participant. We overlay the count in the template, never in the source.
+3. Packshot, white sweep, turntable, 3 rotations, 4K for crop. Also seal close-up and pump close-up.
+4. Serum macro: one drop on fingertips, 120 fps.
+5. Application: crown parting, male model, overhead and 45°, with and without the massager.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · A VIDEO SYSTEM FOR ARATA                                                                          7
+6. Customer talking head, phone-framed 9:16 and 16:9 both, natural light, lav mic.
+Template spec: Hyperframes composition pdp-serum , 1920×1080, 45 s, inputs { sku, claim,
+footnote, price, pack_price, clips[] } . The 4:5 cut re-frames the same timeline at 1080×1350 with
+the text block moved to the top third. Caption font: the brand sans, white, 64px, lab-blue highlight on
+the keyword.
+
+EXAMPLE 2: META AD, MITOACTIVE "₹50 A DAY" (30 S, 9:16, THREE HOOKS)
+Job: the ₹1,499 objection, head-on. Audience: hair-fall intent, 25 to 40, metro, lookalike of serum
+buyers. Creator-shot, phone-framed, honest. Landing: MitoActive PDP.
+Hook A (price reframe), 0:00 to 0:03. Creator, bathroom mirror, holding the box: "Fifteen hundred
+rupees for thirty ml. I thought the same thing." Hook B (mechanism), 0:00 to 0:03. Black screen, white
+text only: "Your hair follicles have batteries. Nobody told you." Then creator. Hook C (the pillow), 0:00
+to 0:03. Pillow, hairs, silent. Text: "Day 1 of 84."
+Body, shared across hooks:
+ TIME       VISUAL                                          ON-SCREEN TEXT         SCRIPT (CREATOR, TO CAMERA)
+
+ 0:03       Creator holds MitoActive, turns the             "Y100.                 "This is MitoActive. The active is called Y100. It
+ to         box to the Y100 mark                            Mitochondrial          works on the mitochondria in the follicle, the part
+ 0:08                                                       active."               that gives the hair cell energy to stay in the growth
+                                                                                   phase."
+ 0:08       Generated clip: a follicle in cross-            "more time in growth "Longer in the growth phase, less shedding.
+ to         section, a soft glow at the bulb                phase"               Different from the Redensyl serums you have
+ 0:12       growing steadier (abstract, no text).                                tried."
+ 0:12       Number card.                                    "87% saw increased "In the 84-day study, 87% of people saw
+ to                                                         growth in 84 days*" increased growth."
+ 0:16
+ 0:16       Creator applies: 1 pump, crown,                 "twice a day. 30       "Twice a day. Thirty seconds. One bottle is one
+ to         fingertips.                                     seconds."              month."
+ 0:20
+ 0:20       Price card animates: ₹1,499 → ÷30               "₹1,499 ÷ 30 days = "So ₹1,499 is fifty rupees a day. A hair-growth kit
+ to         → ₹50.                                          ₹50 a day"          from the clinic brands is ₹1,400 to ₹1,800 a
+ 0:25                                                                           month, for five months, with a doctor call. This is a
+                                                                                bottle."
+ 0:25       Creator, honest beat, music dips.               "give it 84 days."     "It is not instant. Give it the 84 days. I am on day
+ to                                                                                31."
+ 0:28
+ 0:28       End card: pack, "India's first                  "₹1,499 on arata.in"   (none)
+ to         mitochondrial hair growth
+ 0:30       treatment", arata.in.
+
+
+Footnote text, held from 0:12 for 3 s at the bottom in 36px: "*Consumer study, 84 days. Individual
+results vary."
+Generated B-roll prompt for 0:08 to 0:12 (Veo 3, 9:16, 4 s):
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · A VIDEO SYSTEM FOR ARATA                                                                                  8
+                                                                                                                            DIAGRAM
+    Macro cross-section of a single human hair follicle in translucent skin,
+    the bulb at the base glowing a soft warm amber that steadies and brightens,
+    camera slow push in, shallow depth of field,
+    scientific illustration style rendered photoreal, clean lab-blue and white palette,
+    soft even lighting, no text, no labels, 1080p vertical
+
+
+
+
+Variants to render from the same body: 3 hooks × 2 end cards (arata.in vs "also on Blinkit, Zepto,
+Instamart") = 6 ads. Captions burned in on all six. Thumbnail is the frame at 0:21 (the ₹50 card).
+
+EXAMPLE 3: YOUTUBE PRE-ROLL, ANTI-HAIR FALL INTENSIVE SHAMPOO (15 S BUMPER AND 30 S
+SKIPPABLE, 16:9)
+Job: intercept "hair fall shampoo" and "best shampoo for hair fall india" intent. The number has to land
+before the skip button at 5 s.
+15-second bumper (non-skippable):
+ TIME         VISUAL                                          ON-SCREEN TEXT            VOICEOVER
+
+ 0:00 to      Lab, macro: a single hair strand clamped in (none)                        "One strand."
+ 0:02         a pull-test rig, gauge at zero.
+ 0:02 to      Gauge climbs. Strand holds.                     number card: "7.4X        "Washed with this, it holds 7.4 times
+ 0:05                                                         less hair fall"           better against breakage."
+ 0:05 to      Packshot, hand, lather in palm.                 "Anti-Hair Fall           "Hairdian AP, rosemary and caffeine.
+ 0:09                                                         Intensive Shampoo"        Made for Indian hard water."
+ 0:09 to      Bathroom, real customer rinses, no hairs        "no sulphates. no         "Nothing on the drain. That is the point."
+ 0:12         on the drain cover.                             parabens."
+ 0:12 to      End card.                                       "₹359. arata.in and       "Arata. Good science for great hair."
+ 0:15                                                         Blinkit."
+
+
+30-second skippable: same first 5 seconds, then extend.
+                                                            ON-SCREEN
+ TIME        VISUAL                                         TEXT               VOICEOVER
+
+ 0:05 to The lab, wide: the Delhi R&D bench, the            "Tested in our     "We have a lab in Delhi. We test tensile strength
+ 0:11    rig, a technician in a coat (real staff, not       lab, Delhi"        on real Indian hair, washed in real Indian water."
+         an avatar).
+ 0:11 to Split: generated clip of a Bangalore tap           "hard water.       "Hard water makes hair brittle. Most shampoos
+ 0:17    with limescale, cut to lather in palm.             humidity. heat."   are formulated somewhere it rains soft water.
+                                                                               This one is formulated here."
+ 0:17 to Customer, 24, female, talking head: "I             captions           (customer audio)
+ 0:23    switched from the onion one. Two weeks,
+         the brush had less in it."
+ 0:23 to Routine: shampoo + Intensive Serum.                "Shampoo +         "Pair it with the growth serum and you have the
+ 0:27                                                       Serum: ₹838"       full routine for ₹838."
+ 0:27 to End card with search cue.                          "Search: Arata     "Arata. Search it, or find us on Blinkit."
+ 0:30                                                       hair fall"
+
+
+Generated B-roll prompt for the hard-water tap (Kling draft, Veo 3 final, 16:9, 5 s):
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · A VIDEO SYSTEM FOR ARATA                                                                             9
+                                                                                                                         DIAGRAM
+     A chrome bathroom tap in an Indian apartment with visible white limescale around the spout,
+     water runs and splashes into a steel bucket,
+     static camera, eye level, macro detail on the mineral crust,
+     documentary realism, morning light through a frosted window,
+     natural ambient sound of running water, no text, 1080p
+
+
+
+
+The 15-second cut also runs as a Shorts (9:16) with the rig shot re-framed vertical.
+
+EXAMPLE 4: ORGANIC REEL, "THE BLACK T-SHIRT TEST" (20 S, 9:16, ANTI-DANDRUFF SHAMPOO)
+Job: Dandruff Divya's problem, in her words, in her wardrobe. Posted on Arata's Instagram, then used
+as a Meta ad if it holds a 50% 3-second view rate (assumption on threshold).
+Beat sheet (applies the house edit):
+ BEAT TIME              SHOT                                                      ON-SCREEN TEXT                       AUDIO
+
+ 1        0:00 to       Shoulder of a black t-shirt, flakes visible, phone        "Monday. Black t-shirt. You know."   room tone
+          0:02          camera, no music
+ 2        0:02 to       Creator to camera, bathroom: "I have tried the            captions, word pop                   music in,
+          0:05          blue one. My hair went straw."                                                                 low
+ 3        0:05 to       Packshot, Anti-Dandruff Shampoo, hand grabs it,           number card: "up to 95% of           whoosh +
+          0:08          whip pan                                                  dandruff fungus. 1 wash.*"           ding
+ 4        0:08 to       Wash, rinse, towel. Jump cuts, fast.                      "one wash"                           music up
+          0:12
+ 5        0:12 to       Same black t-shirt, same shoulder, same light,            "Tuesday."                           music
+          0:16          after. Hand brushes it. Nothing.                                                               holds
+ 6        0:16 to       Creator: "and it is still soft. That was the part I did   captions, music dips 0.5 s
+          0:18          not expect."
+ 7        0:18 to       End card: Anti-Dandruff Shampoo + Conditioner             "S+C combo ₹866. Serum for the       music out
+          0:20          combo.                                                    itch: ₹299."
+
+
+Footnote at beat 3, 36px: "*In-vitro study on dandruff-causing fungus."
+Caption copy for the post (no hashtags): "the black t-shirt test. one wash. tuesday was fine. anti-
+dandruff shampoo, ₹404 on arata.in and your quick-commerce app of choice."
+Shot notes: same t-shirt both days, same hanger, same window, same time. Lock exposure on the
+phone so the before and after match. This is the one Reel where production discipline matters more
+than editing.
+
+EXAMPLE 5: AMAZON.IN LISTING VIDEO, ANTI-DANDRUFF SHAMPOO (40 S, 16:9)
+Job: the carousel slot. Amazon's listing video rules apply: no price, no promotions, no competitor
+references, no "best seller" language, no time-bound offers, no URLs. The video has to show size,
+texture, usage and the claim with its qualifier, and reduce "is 200 ml enough" and "did the seal come
+intact" returns.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · A VIDEO SYSTEM FOR ARATA                                                                          10
+ TIME       VISUAL                                          ON-SCREEN TEXT                      VOICEOVER
+
+ 0:00       Packshot, 200 ml bottle, turntable,             "Arata Anti-Dandruff Shampoo.       "Arata Anti-Dandruff Shampoo. 200
+ to         hand for scale.                                 200 ml."                            ml, around 25 washes."
+ 0:03
+ 0:03       Close-up: flip-cap seal intact, cap             "sealed. tamper-evident."           "It arrives sealed."
+ to         opens, inner seal peeled.
+ 0:07
+ 0:07       Petri dish, lab: fungal culture                 number card: "up to 95%             "In our lab test, one wash reduced
+ to         before and after, plated.                       reduction in dandruff-causing       dandruff-causing fungus by up to 95
+ 0:12                                                       fungus in 1 wash*"                  percent."
+ 0:12       Footnote hold.                                  "*In-vitro study. Individual results (music)
+ to                                                         vary."
+ 0:15
+ 0:15       Lather in palm, applied to wet                  "wet. lather. 60 seconds. rinse."   "Wet hair. One coin of shampoo.
+ to         scalp, massage, rinse.                                                              Massage into the scalp for a minute.
+ 0:22                                                                                           Rinse. Use it three times a week."
+ 0:22       Black t-shirt shoulder, before and              "after one wash"                    "Flakes go after the first wash for most
+ to         after one wash (same footage as                                                     people. Keep using it so they stay
+ 0:28       the Reel, 16:9 re-frame).                                                           gone."
+ 0:28       Texture: conditioner and leave-on               "pairs with the Anti-Dandruff       "If your scalp itches, the leave-on
+ to         serum alongside.                                Conditioner and Serum"              serum gives up to 36 hours of relief.
+ 0:34                                                                                           The conditioner keeps hair soft."
+ 0:34       Ingredients card, then pack.                    "No sulphates. No parabens.         "Made for Indian hair, humidity and
+ to                                                         Vegan. Dermatologically tested.     hard water. Arata, the Hair and Scalp
+ 0:40                                                       Made in India."                     Science Co."
+
+
+Thumbnail: the frame at 0:01, bottle and hand, 1920×1080 JPG. Export: MP4, H.264, 1920×1080, 16:9,
+under 5 GB, AAC audio. Captions burned in because Amazon's player does not reliably surface closed
+captions.
+The same template renders the Anti-Hair Fall Shampoo (pull-test instead of petri dish) and the
+Intensive Serum (grid instead of petri dish) listing videos. Three listing videos from one composition.
+
+THE GENERATED B-ROLL LIBRARY: FIVE MORE PROMPTS
+Each follows subject + action + camera + style + mood, under 80 words, no text requested. Kling at
+720p for the first pass, Veo 3 for the pick.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · A VIDEO SYSTEM FOR ARATA                                                                               11
+                                                                                                                    DIAGRAM
+     1. Monsoon humidity, Mumbai
+     A young Indian man steps out of a local train onto a crowded platform in heavy monsoon humidity,
+     his hair holding its shape as commuters pass, tracking shot from behind at shoulder height,
+     handheld documentary feel, overcast grey light, wet concrete reflections, ambient station sound, 9:16, 1080p
+
+     2. Delhi summer, metro exit
+     Wide shot of a Delhi metro station exit at dusk in peak summer, heat shimmer above the road,
+     people walking out into warm orange light, slow dolly forward, cinematic colour grade, 16:9, 1080p
+
+     3. Scalp abstraction
+     Extreme macro of hair emerging from skin, hundreds of strands in soft focus,
+     camera glides across the surface, clean clinical white light, scientific photoreal style, no text, 16:9
+
+     4. Mitochondria explainer
+     Inside a single cell, several mitochondria drifting, one gradually brightening with a warm internal glow,
+     slow orbit, translucent blue and amber palette, scientific illustration rendered photoreal, no labels, 9:16
+
+     5. Morning pillow, Bangalore apartment
+     A white pillow in soft morning light in a modern Indian apartment, curtains moving slightly,
+     camera tilts down slowly from the window to the pillow, calm, shallow depth of field, 9:16
+
+
+
+
+Prompt 5 is the establishing shot. The actual hairs on the pillow are always filmed, never generated, so
+the count is real.
+
+THE NUMBER CARD, AS A TEMPLATE
+The one component every video uses. Kept small so an editor can read it.
+                                                                                                                       CODE
+     <div data-composition-id="number-card" data-duration="2" data-width="1080" data-height="1920">
+       <div class="clip card" data-start="0" data-duration="2" data-track-index="0">
+         <div class="num">7.4X</div>
+         <div class="sub">less hair fall*</div>
+         <div class="foot">*tensile strength study, Arata lab</div>
+       </div>
+     </div>
+     <script>
+       const tl = gsap.timeline({ paused: true });
+       tl.from(".num", { scale: 0.6, opacity: 0, duration: 0.35, ease: "back.out(1.6)" })
+         .from(".sub", { y: 30, opacity: 0, duration: 0.25 }, "-=0.1")
+         .from(".foot", { opacity: 0, duration: 0.2 });
+       window.__timelines = [tl];
+     </script>
+
+
+
+
+Inputs per render: num , sub , foot , canvas size. One file, every claim, every ratio.
+
+
+
+30-DAY DEPLOYMENT
+                                                                                                          LIVE BY END OF
+ WEEK BREW SHIPS                                          ARATA PROVIDES                                WEEK
+
+ 1         Surface audit confirmed; shot list signed off;   Access to the Delhi lab for one day; packs Shot list and claim
+           six customers recruited from Loox and Nykaa      of all hero SKUs including legacy variants; footnotes approved;
+           reviewers with consent forms; trichoscope        study documentation for each claim          shoot booked
+           and study footage request to R&D; shoot day      (Brew creative lead with Arata brand
+           scheduled; MitoActive day-84 participants        manager and Arata R&D lead)
+           start
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · A VIDEO SYSTEM FOR ARATA                                                                     12
+                                                                                                              LIVE BY END OF
+ WEEK BREW SHIPS                                                ARATA PROVIDES                              WEEK
+
+ 2         Master shoot day (lab, studio, metro location);        Brand font files and colour tokens for      Library of ~120
+           asset library tagged by SKU and claim;                 current and rebrand looks; legal sign-off   clips; PDP video for
+           Hyperframes number-card and PDP                        on claim wording and footnotes (Arata       the Intensive Serum
+           templates built; first 10 generated B-roll             brand manager, Arata legal or regulatory    in review
+           drafts on Kling                                        contact)
+ 3         PDP videos for 5 hero SKUs rendered 16:9               Shopify theme access to place video first   5 PDP videos live; 3
+           and 4:5 and uploaded to Shopify; Amazon                in the PDP gallery; Amazon Seller Central   Amazon videos
+           listing videos for 3 ASINs submitted; 6 Meta           and Nykaa brand portal access; ad           submitted; Meta and
+           ads and 2 YouTube cuts delivered; B-roll               account access (Arata e-commerce            YouTube ads in flight
+           finals on Veo 3; Samay Raina long-form cut             manager, Arata performance lead)
+           into 8 Shorts
+ 4         8 Reels delivered and scheduled; WhatsApp              Instagram and WhatsApp Business             26 videos live;
+           how-to clips for Serum and MitoActive; A/B             access; first-week ad performance read-     weekly cadence of 4
+           test on PDP video vs no video set up; weekly           out joint review (Arata performance lead    Reels + 2 hooks
+           loop handed over with the template repo and            with Brew media lead)                     running
+           the library index
+
+
+Day-30 count: 5 PDP + 3 Amazon + 6 Meta + 2 YouTube + 8 Reels + 2 WhatsApp = 26. The Samay
+Raina Shorts are extra.
+
+
+
+HOW WE MEASURE
+ SURFACE           METRIC                              BASELINE                 90-DAY TARGET                          READ AT
+
+ arata.in PDP Video play rate; add-to-                 To be instrumented       Play rate above 30%; ATC lift of 8%    Day 30,
+              cart rate with video vs                  (Shopify + GA4 event     or more on the serum PDP               day 60,
+              without (A/B on 50/50                    on play)                                                        day 90
+              traffic)
+ Amazon.in         Listing video views; unit           To be pulled from Seller Unit session percentage up 10%         Day 45,
+                   session percentage on the           Central                  relative on video ASINs                day 90
+                   3 ASINs before vs after
+ Meta ads          3-second view rate                  No always-on claim       Thumbstop above 30%; ThruPlay          Weekly
+                   (thumbstop), ThruPlay rate,         ads today; baseline is   above 15% on 30 s; CPA at or under
+                   cost per purchase                   first 7 days             current blended D2C CPA (to be
+                                                                                shared by Arata)
+ YouTube           View-through rate on the            To be instrumented       VTR above 25%; branded search up       Weekly
+                   30 s; brand search lift for         (Google Ads + Search     20% in the running weeks
+                   "arata hair fall"                   Console)
+ Reels             3-second retention,                 Current Instagram        Average watch above 60% of             Weekly
+                   average watch time, saves,          insights (Arata to       runtime on the house-edit Reels
+                   profile visits                      share)
+ WhatsApp          Open and play rate; 45-day Repeat rate to be                 Repeat rate of the video cohort 5      Day 60,
+ how-to            repeat rate of the cohort  shared by Arata;                  points above control                   day 90
+                   that received it vs not    category average
+                                              ~26%
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · A VIDEO SYSTEM FOR ARATA                                                                            13
+ SURFACE           METRIC                              BASELINE                    90-DAY TARGET                             READ AT
+
+ MitoActive        Reviews with video or               0 reviews today             50 reviews, 10 with video, by day     Day 90
+                   photo; day-84 footage                                           90; day-84 before/after from at least
+                   captured                                                        3 participants
+
+
+Decision rules:
+    If the PDP A/B shows ATC lift of 5% or more on the serum page by day 60, we roll PDP video to the
+    full hair and scalp catalogue (every SKU with a claim) by day 90, and build the quick-commerce
+    creative off the same assets.
+    If it shows under 2%, we cut the PDP video to 20 s, lead with the proof shot, and test again. Video
+    placement (first in gallery vs below the fold) is the second variable.
+    If a Meta hook holds thumbstop above 30% and CPA under target for two weeks, it becomes the
+    control and we cut three new variants off its body. If no hook crosses 20% thumbstop in two
+    weeks, the problem is the opening two seconds and we re-shoot openings only, from the library, in
+    one day.
+    If Amazon unit session percentage does not move by day 90, we test the thumbnail and the first
+    three seconds before touching anything else, because the carousel slot is the only variable the
+    video controls.
+    The MitoActive day-84 footage is a fixed clock. It ships as the hero ad on day 85 regardless of what
+    else moves, because it is the one asset nobody in the category can make faster than Arata.
+
+
+
+APPENDIX
+EXPORT SPECS PER SURFACE
+ SURFACE             RATIO        RESOLUTION                LENGTH           CAPTIONS NOTES
+
+ arata.in PDP        16:9         1920×1080,                45 s             Burned in   Autoplay muted, loop off, poster frame at
+                     and 4:5      1080×1350                                              0:14 (packshot)
+ Amazon.in           16:9         1920×1080                 40 s             Burned in   MP4 H.264, under 5 GB, thumbnail
+ listing                                                                                 1920×1080 JPG; no price, promo,
+                                                                                         competitor, URL or time-bound claim
+ Nykaa gallery 16:9               1920×1080                 40 s             Burned in   Same as Amazon render
+ Meta feed           9:16         1080×1920,                15 to 30 s       Burned in   Safe zone: keep text out of the bottom 20%
+ and Reels           and 4:5      1080×1350                                              and top 14% on 9:16
+ YouTube pre- 16:9                1920×1080                 15 s bumper,     Burned in   Number before 5 s
+ roll                                                       30 s skippable
+ YouTube             9:16         1080×1920                 15 to 30 s       Burned in
+ Shorts
+ WhatsApp            9:16         1080×1920                 20 s             Burned in   Under 16 MB for reliable delivery
+                                                                                         (assumption on current limit)
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · A VIDEO SYSTEM FOR ARATA                                                                              14
+CLAIM AND COMPLIANCE CHECKLIST, EVERY VIDEO
+    "Up to" precedes every maximum claim (28,200, 95%, 86%).
+    A footnote names the study type (in-vitro, consumer, tensile) and holds for at least 3 s.
+    "Individual results vary" on every consumer-study claim.
+    No "cure", "regrow 100%", "clinical-strength", "chemical-free", "miracle".
+    No generated faces presented as customers. No generated before/after. Generated footage used
+    only for environment and abstract science.
+    Customer footage has signed consent covering ads, marketplaces and social, in perpetuity, with a
+    30-day takedown clause.
+    The pack on screen matches the pack shipping on that surface (legacy Super Shampoo naming on
+    Nykaa vs 3.0 on arata.in). After the rebrand, re-shoot packs and re-render; scripts do not change.
+    Amazon cut has no price, no competitor, no promo, no URL.
+
+SOURCE LIST
+Arata brand brief (Brew deployment team, v1, 10 Oct 2026); arata.in catalogue and prices as of Oct
+2026; Loox and Nykaa review language; Amazon listing video guidance as summarised by third-party
+seller guides (Seller Sprite, Goat Consulting, 2026); platform specs from Meta, YouTube and Amazon
+help pages, to be re-verified at upload.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · A VIDEO SYSTEM FOR ARATA                                              15
+VIDEO PRODUCTION
+
+
+DAY 30
+AT ARATA
+   WHAT IS LIVE
+
+   Every hero PDP on arata.in and Amazon.in has a product video, Meta and
+   YouTube are running claim-led ads for MitoActive and the Intensive Serum, and
+   a weekly Reels pipeline is producing 4 cuts a week from a reusable asset library.
+
+
+
+
+ NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+ BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+ CONFIRM".
+
+
+ EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+ BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                  DEPLOYMENT TEAM
+                                                                               BREW
+

@@ -1,0 +1,608 @@
+{
+ "url": "https://arata.in",
+ "host": "arata.in",
+ "slug": "arata-in",
+ "name": "Arata",
+ "tagline": "Good science for great hair. Zero guesswork.",
+ "descriptor": "HAIR & SCALP SCIENCE CO.",
+ "about": "Founded in 2017. In-house R&D and QC lab in Delhi; a number from a study on every bottle. First product was a flaxseed hair gel. Rebrand to Hair & Scalp Science Co. underway.",
+ "aboutUrl": "https://arata.in/pages/about-us",
+ "category": "Haircare",
+ "subcategory": "Hair fall and scalp care",
+ "country": "IN",
+ "currency": "INR",
+ "locale": "en-IN",
+ "platform": "shopify",
+ "identity": {
+  "logo": null,
+  "mark": null,
+  "colors": [],
+  "fonts": {
+   "heading": null,
+   "body": null,
+   "mono": null
+  },
+  "typeName": null
+ },
+ "catalog": {
+  "count": 72,
+  "collections": [],
+  "products": [
+   {
+    "handle": "arata-mitoactive-mitochondrial-hair-growth-serum-30-ml",
+    "title": "MitoActive™ Mitochondrial Hair Growth Serum - 30 ml",
+    "type": null,
+    "price": 1499,
+    "mrp": 1499,
+    "currency": "INR",
+    "inStock": true,
+    "variants": 1,
+    "images": [],
+    "img": null,
+    "url": "https://arata.in/products/arata-mitoactive-mitochondrial-hair-growth-serum-30-ml",
+    "published": null,
+    "tags": [],
+    "claims": [
+     "87% saw increased growth in 84 days",
+     "Y100, 6 years and 5 clinical studies, exclusive in India",
+     "up to 95% hair fall reduction"
+    ],
+    "reviews": {
+     "count": null,
+     "rating": null
+    }
+   },
+   {
+    "handle": "mitoactive-mitochondrial-hair-growth-serum-30-ml-pack-of-2",
+    "title": "MitoActive™ Mitochondrial Hair Growth Serum - 30 ml - Pack of 2",
+    "type": null,
+    "price": 2938,
+    "mrp": 2998,
+    "currency": "INR",
+    "inStock": true,
+    "variants": 1,
+    "images": [],
+    "img": null,
+    "url": "https://arata.in/products/mitoactive-mitochondrial-hair-growth-serum-30-ml-pack-of-2",
+    "published": null,
+    "tags": [],
+    "claims": [],
+    "reviews": {
+     "count": null,
+     "rating": null
+    }
+   },
+   {
+    "handle": "mitoactive-mitochondrial-hair-growth-serum-30-ml-pack-of-3",
+    "title": "MitoActive™ Mitochondrial Hair Growth Serum - 30 ml - Pack of 3",
+    "type": null,
+    "price": 4317,
+    "mrp": 4497,
+    "currency": "INR",
+    "inStock": true,
+    "variants": 1,
+    "images": [],
+    "img": null,
+    "url": "https://arata.in/products/mitoactive-mitochondrial-hair-growth-serum-30-ml-pack-of-3",
+    "published": null,
+    "tags": [],
+    "claims": [],
+    "reviews": {
+     "count": null,
+     "rating": null
+    }
+   },
+   {
+    "handle": "arata-intensive-hair-growth-serum-hair-fall-30ml",
+    "title": "Hair Growth Intensive Serum - 30 ml",
+    "type": null,
+    "price": 642,
+    "mrp": 649,
+    "currency": "INR",
+    "inStock": true,
+    "variants": 1,
+    "images": [],
+    "img": null,
+    "url": "https://arata.in/products/arata-intensive-hair-growth-serum-hair-fall-30ml",
+    "published": null,
+    "tags": [],
+    "claims": [
+     "up to 28,200 new hairs in 84 days"
+    ],
+    "reviews": {
+     "count": null,
+     "rating": null
+    }
+   },
+   {
+    "handle": "arata-hair-growth-intensive-serum-pack-of-2",
+    "title": "Arata Hair Growth Intensive Serum - Pack of 2",
+    "type": null,
+    "price": 1192,
+    "mrp": 1298,
+    "currency": "INR",
+    "inStock": true,
+    "variants": 1,
+    "images": [],
+    "img": null,
+    "url": "https://arata.in/products/arata-hair-growth-intensive-serum-pack-of-2",
+    "published": null,
+    "tags": [],
+    "claims": [],
+    "reviews": {
+     "count": null,
+     "rating": null
+    }
+   },
+   {
+    "handle": "arata-hair-growth-intensive-serum-pack-of-3",
+    "title": "Arata Hair Growth Intensive Serum - Pack of 3",
+    "type": null,
+    "price": 1947,
+    "mrp": 1947,
+    "currency": "INR",
+    "inStock": true,
+    "variants": 1,
+    "images": [],
+    "img": null,
+    "url": "https://arata.in/products/arata-hair-growth-intensive-serum-pack-of-3",
+    "published": null,
+    "tags": [],
+    "claims": [],
+    "reviews": {
+     "count": null,
+     "rating": null
+    }
+   },
+   {
+    "handle": "arata-hair-growth-serum-pack-of-3-with-anti-hair-fall-shampoo-free-combo",
+    "title": "Hair Growth Intensive Serum - Pack of 3 + Free Anti-Hair Fall Intensive Shampoo",
+    "type": null,
+    "price": 1363,
+    "mrp": 1947,
+    "currency": "INR",
+    "inStock": true,
+    "variants": 1,
+    "images": [],
+    "img": null,
+    "url": "https://arata.in/products/arata-hair-growth-serum-pack-of-3-with-anti-hair-fall-shampoo-free-combo",
+    "published": null,
+    "tags": [],
+    "claims": [],
+    "reviews": {
+     "count": null,
+     "rating": null
+    }
+   },
+   {
+    "handle": "hair-growth-intensive-serum-pack-of-2-free-anti-hair-fall-intensive-shampoo",
+    "title": "Hair Growth Intensive Serum - Pack of 2 + Free Anti-Hair Fall Intensive Shampoo",
+    "type": null,
+    "price": 1444,
+    "mrp": 1697,
+    "currency": "INR",
+    "inStock": true,
+    "variants": 1,
+    "images": [],
+    "img": null,
+    "url": "https://arata.in/products/hair-growth-intensive-serum-pack-of-2-free-anti-hair-fall-intensive-shampoo",
+    "published": null,
+    "tags": [],
+    "claims": [],
+    "reviews": {
+     "count": null,
+     "rating": null
+    }
+   },
+   {
+    "handle": "hair-growth-trio",
+    "title": "Hair Growth Trio",
+    "type": null,
+    "price": 1447,
+    "mrp": 1447,
+    "currency": "INR",
+    "inStock": true,
+    "variants": 1,
+    "images": [],
+    "img": null,
+    "url": "https://arata.in/products/hair-growth-trio",
+    "published": null,
+    "tags": [],
+    "claims": [],
+    "reviews": {
+     "count": null,
+     "rating": null
+    }
+   },
+   {
+    "handle": "arata-anti-hair-fall-shampoo-200ml",
+    "title": "Anti-Hair Fall Intensive Shampoo - 200 ml",
+    "type": null,
+    "price": 399,
+    "mrp": 399,
+    "currency": "INR",
+    "inStock": true,
+    "variants": 1,
+    "images": [],
+    "img": null,
+    "url": "https://arata.in/products/arata-anti-hair-fall-shampoo-200ml",
+    "published": null,
+    "tags": [],
+    "claims": [
+     "7.4X hair fall reduction"
+    ],
+    "reviews": {
+     "count": null,
+     "rating": null
+    }
+   },
+   {
+    "handle": "arata-anti-breakage-intensive-conditioner-200ml",
+    "title": "Anti-Breakage Intensive Conditioner - 200 ml",
+    "type": null,
+    "price": 399,
+    "mrp": 399,
+    "currency": "INR",
+    "inStock": true,
+    "variants": 1,
+    "images": [],
+    "img": null,
+    "url": "https://arata.in/products/arata-anti-breakage-intensive-conditioner-200ml",
+    "published": null,
+    "tags": [],
+    "claims": [],
+    "reviews": {
+     "count": null,
+     "rating": null
+    }
+   },
+   {
+    "handle": "arata-anti-dandruff-shampoo-conditioner-combo",
+    "title": "Arata Anti-Dandruff Shampoo & Conditioner Combo",
+    "type": null,
+    "price": 866,
+    "mrp": 898,
+    "currency": "INR",
+    "inStock": true,
+    "variants": 1,
+    "images": [],
+    "img": null,
+    "url": "https://arata.in/products/arata-anti-dandruff-shampoo-conditioner-combo",
+    "published": null,
+    "tags": [],
+    "claims": [],
+    "reviews": {
+     "count": null,
+     "rating": null
+    }
+   }
+  ],
+  "hero": [
+   "arata-mitoactive-mitochondrial-hair-growth-serum-30-ml",
+   "arata-intensive-hair-growth-serum-hair-fall-30ml",
+   "arata-anti-hair-fall-shampoo-200ml"
+  ]
+ },
+ "reviews": {
+  "platforms": [
+   {
+    "name": "Loox (arata.in)",
+    "count": 2248,
+    "rating": null,
+    "url": "https://arata.in"
+   },
+   {
+    "name": "Nykaa (Super Shampoo)",
+    "count": 2435,
+    "rating": 4.2,
+    "url": "https://www.nykaa.com"
+   }
+  ],
+  "total": null,
+  "quotes": [
+   {
+    "text": "Arata is amazing cz its affordable and actually works",
+    "rating": null,
+    "src": "Loox, arata.in",
+    "url": "https://arata.in",
+    "product": null,
+    "at": null
+   },
+   {
+    "text": "I can see a visible difference in two weeks",
+    "rating": null,
+    "src": "Loox, arata.in",
+    "url": "https://arata.in",
+    "product": null,
+    "at": null
+   },
+   {
+    "text": "Hair fall reduced drastically",
+    "rating": null,
+    "src": "Loox, arata.in",
+    "url": "https://arata.in",
+    "product": null,
+    "at": null
+   },
+   {
+    "text": "without any sticky residue or stiffness",
+    "rating": null,
+    "src": "Loox, arata.in",
+    "url": "https://arata.in",
+    "product": "Hair Gel",
+    "at": null
+   },
+   {
+    "text": "lasts upto 8+ hours",
+    "rating": null,
+    "src": "Loox, arata.in",
+    "url": "https://arata.in",
+    "product": "Hair Gel",
+    "at": null
+   },
+   {
+    "text": "Foams well and cleans my scalp off dirt and excess oil",
+    "rating": null,
+    "src": "Loox, arata.in",
+    "url": "https://arata.in",
+    "product": "Anti-Hair Fall Shampoo",
+    "at": null
+   },
+   {
+    "text": "a bit expensive in comparison to other competitive haircare lines",
+    "rating": null,
+    "src": "Nykaa",
+    "url": "https://www.nykaa.com",
+    "product": null,
+    "at": null
+   },
+   {
+    "text": "on pricier side for a teenager like me",
+    "rating": null,
+    "src": "Nykaa",
+    "url": "https://www.nykaa.com",
+    "product": null,
+    "at": null
+   },
+   {
+    "text": "the seal was broken",
+    "rating": null,
+    "src": "Nykaa",
+    "url": "https://www.nykaa.com",
+    "product": null,
+    "at": null
+   },
+   {
+    "text": "the shampoo bottle was leaking",
+    "rating": null,
+    "src": "Nykaa",
+    "url": "https://www.nykaa.com",
+    "product": null,
+    "at": null
+   }
+  ]
+ },
+ "socials": {
+  "instagram": {
+   "url": "https://www.instagram.com/arata.in/",
+   "handle": "arata.in",
+   "followers": null,
+   "posts": []
+  },
+  "youtube": {
+   "url": null,
+   "subs": null,
+   "videos": []
+  },
+  "facebook": {
+   "url": null
+  },
+  "x": {
+   "url": null
+  },
+  "linkedin": {
+   "url": null
+  },
+  "tiktok": {
+   "url": null
+  }
+ },
+ "ads": {
+  "own": {
+   "page": "Arata",
+   "live": null,
+   "items": []
+  },
+  "rivals": []
+ },
+ "rivals": [
+  {
+   "name": "Traya",
+   "host": "traya.health",
+   "why": "Diagnosis-led monthly hair kit with doctor and minoxidil; ₹1,400 to ₹1,800 a month",
+   "prices": [
+    {
+     "title": "6-month plan, per month",
+     "price": 1400,
+     "currency": "INR",
+     "url": "https://traya.health"
+    },
+    {
+     "title": "1-month plan",
+     "price": 1800,
+     "currency": "INR",
+     "url": "https://traya.health"
+    }
+   ],
+   "claims": [
+    "93% saw results",
+    "3X better hair density vs minoxidil 5% alone"
+   ],
+   "offers": [
+    "Free 2-minute hair test"
+   ],
+   "guarantee": "Money back if no results after 5 consecutive months on the full plan"
+  },
+  {
+   "name": "Pilgrim",
+   "host": "discoverpilgrim.com",
+   "why": "Redensyl 3% + Anagain 4% serum, ingredient-led",
+   "prices": [
+    {
+     "title": "Hair growth serum",
+     "price": 699,
+     "currency": "INR",
+     "url": "https://discoverpilgrim.com"
+    }
+   ],
+   "claims": [
+    "Redensyl 3% + Anagain 4%"
+   ],
+   "offers": [],
+   "guarantee": null
+  },
+  {
+   "name": "Minimalist",
+   "host": "beminimalist.co",
+   "why": "Concentration-disclosed actives; Hair Growth Actives 18%",
+   "prices": [
+    {
+     "title": "Hair Growth Actives 18%",
+     "price": 699,
+     "currency": "INR",
+     "url": "https://beminimalist.co"
+    }
+   ],
+   "claims": [
+    "18% actives"
+   ],
+   "offers": [],
+   "guarantee": null
+  },
+  {
+   "name": "Bare Anatomy",
+   "host": "bareanatomy.com",
+   "why": "Quiz-led personalised haircare; same Redensyl + Anagain stack",
+   "prices": [
+    {
+     "title": "Advanced Hair Growth Serum",
+     "price": 649,
+     "currency": "INR",
+     "url": "https://www.nykaa.com"
+    }
+   ],
+   "claims": [
+    "3% Redensyl + 4% Anagain"
+   ],
+   "offers": [
+    "Hair quiz"
+   ],
+   "guarantee": null
+  },
+  {
+   "name": "Mamaearth",
+   "host": "mamaearth.in",
+   "why": "Mass 'natural' onion haircare range; quick-commerce shelf default",
+   "prices": [],
+   "claims": [],
+   "offers": [],
+   "guarantee": null
+  }
+ ],
+ "site": {
+  "pages": null,
+  "sitemaps": null,
+  "keyPages": [
+   "https://arata.in/collections/hair-growth"
+  ],
+  "checkout": {
+   "steps": null,
+   "msToCart": null,
+   "msToCheckout": null,
+   "payments": [],
+   "cod": null,
+   "guest": null,
+   "notes": []
+  },
+  "tech": {
+   "shopify": true,
+   "klaviyo": null,
+   "metaPixel": null,
+   "ga4": null,
+   "gtm": null,
+   "tiktokPixel": null,
+   "reviewApp": "Loox",
+   "subscriptionApp": null,
+   "chat": null
+  },
+  "policies": {
+   "shipping": "Free shipping above ₹299; free gift above ₹999",
+   "returns": null
+  }
+ },
+ "ai": {
+  "questions": [],
+  "answers": [],
+  "score": {
+   "named": null,
+   "of": null
+  }
+ },
+ "search": {
+  "terms": [
+   "hair fall shampoo",
+   "hair growth serum",
+   "minoxidil alternative"
+  ],
+  "serp": [],
+  "trends": null,
+  "domain": {
+   "rank": null,
+   "traffic": null,
+   "refdomains": null
+  }
+ },
+ "company": {
+  "founders": [
+   "Dhruv Madhok",
+   "Dhruv Bhasin"
+  ],
+  "founded": 2017,
+  "hq": "Delhi",
+  "funding": [
+   {
+    "round": "Investor: Unilever Ventures",
+    "amount": null,
+    "date": null,
+    "url": null
+   }
+  ],
+  "revenue": [
+   {
+    "v": "₹61.1 Cr",
+    "period": "FY25",
+    "url": "https://inc42.com"
+   }
+  ],
+  "press": []
+ },
+ "notes": {
+  "gaps": [
+   "No quiz or routine builder (brand brief)",
+   "No subscription (brand brief)",
+   "Naming drift across channels: onion vs biotin, serum vs tonic (brand brief)",
+   "Packaging complaints: leaks, broken seals (reviews)"
+  ],
+  "personasFromBrief": [
+   "Hair-fall Rahul (28, Bangalore, tried onion shampoo and biotin gummies)",
+   "Routine Ritika (32, Mumbai, post-partum)",
+   "Dandruff Divya (24, Pune)",
+   "Grey-early Gaurav (29)",
+   "Clinical Kavya (35, Chennai, has seen a dermatologist)",
+   "Styling Sahil (22, Delhi metro)"
+  ],
+  "creative": [
+   "Samay Raina mock podcast (celebrity recall ad)"
+  ]
+ }
+}

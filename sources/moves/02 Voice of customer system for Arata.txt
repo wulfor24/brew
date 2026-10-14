@@ -1,0 +1,767 @@
+      Brew                                         PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+CUSTOMER RESEARCH · MOVE 02 OF 50
+
+
+
+VOICE OF
+CUSTOMER
+SYSTEM
+FOR ARATA
+  A WORKING RESEARCH SYSTEM THAT TELLS ARATA
+  WHAT HAIR-FALL AND DANDRUFF BUYERS SAY, FEAR AND
+  WANT, IN THEIR OWN WORDS, BEFORE ANY RUPEE GOES
+  INTO COPY, ADS OR THE REBRAND.
+
+
+
+
+4,683
+REVIEWS AND RATINGS ALREADY UNMINED
+
+
+
+
+BREW × ARATA                        OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                      V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                               WHAT THIS GIVES ARATA
+                                                               A working research system that tells Arata what hair-
+                                                               fall and dandruff buyers say, fear and want, in their
+                                                               own words, before any rupee goes into copy, ads or
+
+
+        4,683
+                                                               the rebrand.
+                                                               LIVE 30 DAYS AFTER WE START
+                                                               By day 30 Arata has a tagged voice-of-customer
+        REVIEWS AND RATINGS ALREADY                            bank built from its own 2,248 reviews plus
+        UNMINED
+                                                               competitor reviews, ten repeat-buyer calls on
+                                                               record, a three-touch 84-day pulse survey live in the
+                                                               post-purchase flow, and MitoActive's first structured
+                                                               review requests out the door.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+In software this discipline is G2 review mining, ICP interviews and the product/market-fit survey. For
+Arata it is mining Loox, Nykaa, Amazon and quick-commerce reviews, reading Reddit and YouTube
+comment threads about hair fall in India, calling repeat buyers on WhatsApp, and running a pulse
+survey across the 84-day window the brand already promises on the bottle.
+Arata is sitting on a large research asset and using almost none of it. There are 2,248 reviews on
+arata.in and 2,435 ratings on the Nykaa Super Shampoo listing alone. There are 50,000 D2C orders a
+month and 1.5 million customers a year. The brand brief we built from public sources carries about a
+dozen verbatim lines. That is the gap. Every claim headline, every rebrand decision and every
+MitoActive ad is being written with a dozen quotes behind it when thousands are available.
+The timing makes this urgent. Arata is mid-rebrand to "Hair & Scalp Science Co." and has just put its
+biggest bet, the ₹1,499 MitoActive serum, on the shelf with zero reviews. The customers who already
+love Arata describe it as "affordable and actually works" and "free from hard chemicals". Those are
+the words of a value-and-clean buyer. The rebrand speaks to a science buyer. Nobody has yet
+checked whether the existing base follows the brand up that ladder, or whether MitoActive needs a
+different person entirely. That is a research question, and the answer changes the rebrand copy, the
+MitoActive price framing and the ad targeting.
+There is also money leaking in the known gaps. Subscription, quiz, routine builder and community are
+all still open. Each is a product bet. Each is cheaper to get right if we first know how customers decide
+what to reorder, why they stop at 45 days, and whether they would call a hair-fall plan "a routine" or "a
+course". The brief's objection table already shows the shape: "₹1,499 for 30 ml is a lot", "is this just
+another Redensyl serum?", "28,200 hairs?". These are hypotheses. They need to be confirmed or
+killed in customer language.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · VOICE OF CUSTOMER SYSTEM FOR ARATA                                                    1
+The opportunity is simple. Build a voice-of-customer bank once, feed it weekly, and let every other
+discipline draw from it. Ads get hooks customers already said. Copy gets the exact phrase for the
+MitoActive page. Product gets the reorder trigger. And the founders get an honest answer to the
+question that matters most before the ₹160 Cr push: what would customers lose if Arata disappeared
+tomorrow?
+
+
+
+WHAT WE FOUND
+THE RESEARCH ASSET INVENTORY
+We audited every source of customer signal Arata has access to today. Volume and status come from
+the brief. Signal strength and bias follow our standard source weighting.
+                                                                              SIGNAL
+ SOURCE                           VOLUME TODAY                  STATUS        STRENGTH      BIAS TO CORRECT FOR
+
+ arata.in reviews (Loox)          2,248                         Displayed,    High          Prompted by post-purchase
+                                                                never coded                 email; skews 4 to 5 stars; styling
+                                                                                            combos over-represented
+ Nykaa ratings and                2,435 ratings on Super Unread               High          Legacy SKU (onion/biotin 300 ml
+ reviews                          Shampoo; more across                                      at ₹764); Nykaa buyer skews
+                                  listings                                                  female
+ Amazon.in reviews                Unknown volume                Unread        High          Delivery and packaging
+                                                                                            complaints mixed with product
+                                                                                            signal
+ Support and WhatsApp             Unknown volume                Not           Medium        Problems only; "seal was broken"
+ tickets                                                        categorised                 and "bottle was leaking" live here
+ Instagram, YouTube and Thousands, public                       Unread        Medium to     Public and performed; Reddit
+ Reddit comments on hair                                                      medium-high   skews male and minoxidil-literate
+ fall in India
+ Customer calls                   0                             Never run     Very high     Small sample; we choose who we
+                                                                                            call
+ PMF or satisfaction              0                             Never run     Medium        Primed by the question
+ survey
+ MitoActive reviews               0                             New SKU, Aug None yet       Must be built from proxy sources
+                                                                2026
+
+
+Two things stand out. The richest first-party source, Arata's own reviews, has never been coded. And
+the only very-high-signal source, customer calls, has never been used. Marketplaces and quick
+commerce hold 68% of revenue, so two thirds of buyers leave their signal on platforms Arata does not
+control. The 32% buying on arata.in are the only customers Arata can call. That is where we start.
+
+EXTRACTION FROM WHAT ALREADY EXISTS
+We ran the extraction framework on every verbatim in the brief. Sample sizes are small, so every
+finding carries a confidence label. This pass shows what the full bank looks like at scale and sets the
+hypotheses the calls and surveys must try to break.
+
+
+BREW DEPLOYMENT TEAM × ARATA · VOICE OF CUSTOMER SYSTEM FOR ARATA                                                              2
+Jobs to be done, by segment
+ SEGMENT               FUNCTIONAL JOB                                 EMOTIONAL JOB                   SOCIAL JOB
+
+ Hair fall (Rahul,     Stop the shedding I see on the pillow Stop feeling it is "too late";           Not be the friend whose crown
+ Ritika, Kavya)        and in the drain; see proof within 2  stop the dread of the                    is thinning; avoid being seen as
+                       to 3 months                           bathroom floor                           a minoxidil user
+ Dandruff              Clear flakes and itch without drying           Stop being embarrassed in     Look put together at the office
+ (Divya)               hair out                                       black clothes and in meetings
+ Styling (Sahil)       Hold through a humid metro ride                Feel confident all day, not just Look like effort was made,
+                       with no crunch or white flakes                 at 9am                           without looking like gel was
+                                                                                                       used
+ Grey (Gaurav)         Reduce greys without dye                       Not feel old at 29              Keep a youthful read without
+                                                                                                      "dyed hair"
+ Routine (Ritika)      One cart that handles it, repeated             Stop thinking about it          Be seen as someone who has it
+                       monthly                                                                        handled, even post-partum
+
+
+Themes ranked by frequency and intensity
+Theme 1: It actually works and it is affordable. Appears in on-site reviews, Nykaa reviews and the
+brief's "why customers choose us" line. Intensity high: the word "actually" implies prior failures.
+Quotes: "Arata is amazing cz its affordable and actually works", "Hair fall reduced drastically", "I can
+see a visible difference in two weeks". Confidence: high. Implication: the proof customers trust is their
+own mirror at two weeks. Copy should promise the first visible sign early and the full result at 84 days.
+Theme 2: Clean and free from hard chemicals. Quotes: "no chemical harm to the hair", "Finally I got a
+shampoo free from hard chemicals". Confidence: medium-high, with a contradiction flag. The brand
+has moved away from "zero chemicals". Customers have not moved with it. This is the one thing the
+rebrand research has to settle: can "good science" carry the same reassurance as "no hard
+chemicals" for the existing base, and in which words?
+Theme 3: Styling performance language. Quotes: "without any sticky residue or stiffness", "lasts upto
+8+ hours". Confidence: high, since styling combos are the most-reviewed products on Loox.
+Customers measure a workday. The 72-hour hold claim may read as unbelievable to the very people
+who are happiest.
+Theme 4: Packaging and delivery failure. Quotes: "the seal was broken", "the shampoo bottle was
+leaking", "it doesn't have the box". Confidence: medium-high. A support theme, coded separately so it
+does not drag product sentiment down. It also feeds the "will the bottle leak?" anxiety the brief lists.
+Theme 5: Price pressure from younger buyers. Quotes: "a bit expensive in comparison to other
+competitive haircare lines", "on pricier side for a teenager like me". Confidence: medium. It matters for
+Styling Sahil at 22 and for how ₹1,499 MitoActive lands with anyone under 25.
+Theme 6: Oil control. Quote: "Foams well and cleans my scalp off dirt and excess oil". Confidence:
+low, single source, but it names a job (oily scalp in heat) that the bottle does not.
+Contradictions we have flagged
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · VOICE OF CUSTOMER SYSTEM FOR ARATA                                                                      3
+                                                                                                                              DIAGRAM
+    What the bottle says            What the customer says
+    -----------------------------   ----------------------------------
+    7.4X hair fall reduction        "Hair fall reduced drastically"
+    Up to 28,200 new hair in 84 d   "visible difference in two weeks"
+    72-hour humidity-resistant hold "lasts upto 8+ hours"
+    Good science, Y100, mitochondria "free from hard chemicals"
+    Hair & Scalp Science Co.        "affordable and actually works"
+
+
+
+
+The bottle speaks in study numbers. The customer speaks in bathroom-floor time. Neither is wrong.
+The research job is to find the bridge sentence, the one that a customer would repeat to a friend, and
+we do not have it yet.
+
+WATERING HOLES FOR ARATA'S BUYER
+Arata's buyer is a consumer, 22 to 40, urban, creator-influenced and comfortable with quick
+commerce. That buyer does not congregate on G2. Here is where the signal lives, and what each
+place gives us.
+ WATERING HOLE                                               WHAT TO PULL                           WHY IT MATTERS FOR ARATA
+
+ r/IndianSkincareAddicts, r/IndianHaircare,                  Threads on hair fall after moving      Raw male hair-fall language and
+ r/tressless                                                 cities, hard water, minoxidil fear,    the full alternative set (Mintop,
+                                                             "what actually worked" lists           Traya, derms, oiling)
+ r/bangalore, r/pune, r/hyderabad, r/mumbai                  "Hair fall since I moved here"         The hard-water and new-city
+                                                             threads                                trigger in local words; feeds city
+                                                                                                    pages and ads
+ YouTube comments under Traya reviews,                       "Does this work for…", "I tried this   People in active consideration;
+ minoxidil explainers and "best hair fall                    but…", "what about…"                   the exact objections before a first
+ shampoo India" roundups                                                                            purchase
+ Instagram comments on Arata, Traya, Pilgrim                 Jokes, scepticism, price shock,        Public objections in the brand's
+ and Minimalist ads                                          "does it work for women"               own feed; tone calibration
+ Nykaa and Amazon 3-star reviews on Pilgrim,                 "Good but…", "no change after 2        Competitor weaknesses at the
+ Minimalist, Bare Anatomy and Traya                          months", "sticky", doctor-call         ₹550 to ₹1,800 band;
+                                                             fatigue                                MitoActive's pull message
+ Facebook and WhatsApp groups for new                        Post-partum shedding threads;          Ritika's and Rahul's triggers in
+ mothers; Blind and Grapevine                                "did you start losing hair after       their own vocabulary
+                                                             joining?"
+
+
+Search operators we will run, adapted for this category:
+                                                                                                                              DIAGRAM
+    site:reddit.com "hair fall" "hard water" (bangalore OR pune OR hyderabad OR gurgaon)
+    site:reddit.com "traya" ("worth it" OR "scam" OR "review" OR "stopped")
+    site:reddit.com "minoxidil" ("scared" OR "dependency" OR "shedding") india
+    site:reddit.com "arata" (shampoo OR serum OR gel)
+    "pilgrim hair growth serum" review "no difference" OR "didn't work"
+    "hair fall" "after delivery" OR "post partum" (shampoo OR serum) india
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · VOICE OF CUSTOMER SYSTEM FOR ARATA                                                                       4
+COMPETITOR REVIEW MINING, PRE-FILLED FROM THE BRIEF
+For each competitor we will read the 4-star reviews first, because they come from buyers who like the
+product and still have a complaint. The table below is our starting hypothesis set, built from what the
+brief says each competitor falls short on. Every cell is a hypothesis until the reviews are read.
+                         JOB                                                                     SWITCHING
+                         CUSTOMERS                                      LIKELY TOP               CONTEXT TO          UNMET NEED
+ COMPETITOR              HIRE IT FOR            LIKELY TOP PRAISE       COMPLAINT                LISTEN FOR          TO LISTEN FOR
+
+ Traya (₹1,400 to        A medically            Someone is finally Cost per month,               "Stopped after      A product that
+ ₹1,800 per              supervised plan        taking it seriously; supplements, time           month 3             works without
+ month, 5 to 9           for hair fall          a doctor is involved commitment, minoxidil       because…"           the doctor and
+ months)                                                             in the kit, money-back                          the pills
+                                                                     disputes
+ Pilgrim (Redensyl       A well-known           Smell, texture,         "No visible change",     "Tried Pilgrim      A number, not
+ 3% + Anagain            serum from             brand familiarity       generic story            first, then…"       an ingredient
+ 4%, ₹595 to             Nykaa or                                                                                    list
+ ₹699)                   Amazon
+ Minimalist (18%         An ingredient-         Transparency,           Cold, needs ingredient   "Loved the          A guided
+ actives, ₹699)          honest serum           fragrance-free          knowledge, no routine    honesty, didn't     routine
+                                                                                                 know what to
+                                                                                                 pair it with"
+ Mintop / minoxidil The strongest               It works                Shedding first,         "Got scared of       A course with
+ 5% (₹600 to        evidence                                            dependency, side        the shed and         an end, not a
+ ₹900)                                                                  effects, needs a doctor stopped"             life sentence
+
+
+The pattern is the one Arata already senses: the ₹550 to ₹1,100 actives band is commoditised on
+ingredients, and the clinical band is exhausting. The research tells us which words customers use for
+the exhaustion and the commoditisation.
+
+RESEARCH GAP ANALYSIS
+ WHAT WE DO NOT KNOW                                       WHY IT MATTERS                   HOW WE FIND OUT
+
+ Why a first-time hair-fall buyer does or                  Repeat is the key conversion     10 calls split between repeat buyers
+ does not reorder at day 45                                action and there is no           and one-time buyers; Day 45 pulse
+                                                           subscription                     survey
+ Whether "science" reassures or alienates                  The rebrand depends on it        Disconfirmation questions in calls; A/B
+ the clean-seeking base                                                                     of two survey framings
+ What a MitoActive buyer looks like                        Zero reviews; ₹1,499 price       Proxy-source persona (below), then
+                                                           point; biggest launch            first 50 structured reviews
+ Which claim customers repeat to friends                   Picks the headline for ads and   "How would you describe Arata to a
+ unprompted                                                PDPs                             friend?" in survey, open text
+ Whether marketplace buyers know they                      68% of revenue; brand recall is Blinkit and Nykaa review language scan;
+ bought Arata, or bought "the shampoo on                   the founders' stated objective "where did you first hear of us"
+ offer on Blinkit"                                                                         question
+
+
+Sample bias we correct for: Loox reviews are prompted and skew happy, so we read 3-star first.
+Reddit skews male and minoxidil-literate, so it over-represents Rahul and under-represents Divya and
+Ritika. Support tickets tell us about leaks, not results. Language mining uses open text only. Anything
+older than 12 months gets light weight, because the 2022 curl-care era is a different brand from the
+2026 science brand.
+
+
+BREW DEPLOYMENT TEAM × ARATA · VOICE OF CUSTOMER SYSTEM FOR ARATA                                                                   5
+THE PLAN
+The system runs in three modes, in order. Mine what exists, then listen in public, then ask. The
+sequence matters: mining first tells us what to ask and in whose words.
+                                                                                                                     DIAGRAM
+    MODE 1: MINE OWN ASSETS                MODE 2: LISTEN IN PUBLIC         MODE 3: ASK
+    (weeks 1 to 2)                         (weeks 2 to 3)                   (weeks 3 to 4, then always on)
+
+    2,248 Loox reviews      ─┐           Reddit threads       ─┐         10 WhatsApp/video calls ─┐
+    Nykaa + Amazon           ├─ code ──> YouTube comments      ├─ code ─> 84-day pulse survey     ├─> VOC BANK
+    Q-commerce ratings       │ + tag     Instagram comments    │ + tag    MitoActive review asks    │   (tagged,
+    Support tickets         ─┘           Competitor 3/4-star  ─┘         Founder-led calls       ─┘     weighted,
+                                                                                                         quoted)
+                                                                                                            │
+                              ┌────────────────────────────────────────────────────────────────────────────┤
+                              ▼                  ▼                 ▼                 ▼                   ▼
+                          Ads hooks        PDP + rebrand copy   Personas (6)    Reorder triggers     Claim framing
+
+
+
+
+PHASE 1 (WEEKS 1 TO 2): CODE WHAT ARATA ALREADY OWNS
+What: export all 2,248 Loox reviews, the Nykaa and Amazon reviews for the top eight SKUs, quick-
+commerce ratings where text exists, and the last 90 days of support and WhatsApp tickets. Code
+every entry with one tag from the scheme below and one theme. Read in this order: 3-star, then 1-star,
+then 5-star, then 4-star.
+Why: cheapest, highest-volume, first-party. It sets the baseline frequencies everything else is
+measured against.
+Expected effect: a theme table with real counts in place of the six-theme sketch above; a separate ops
+table so packaging complaints stop polluting product sentiment; a first cut of the quote bank, by SKU.
+Tag scheme (one per entry, plus a theme and a SKU):
+ TAG                   MEANING FOR ARATA
+
+ pain                  What was wrong before Arata (flakes, drain, crown, crunch)
+ trigger               What started the search (new city, post-partum, wedding, winter)
+ outcome               What success looked like, in time units ("two weeks", "drastically")
+ language              A phrase worth lifting into copy
+ alternative           What they used before or alongside (onion shampoo, Mintop, oiling, Traya)
+ objection             Price, "is 30 ml enough", "will it work for women"
+ competitor            Any named brand
+ ops                   Seal, leak, box, delivery. Kept out of product sentiment
+
+
+PHASE 2 (WEEKS 2 TO 3): LISTEN IN PUBLIC
+What: run the operator list above across Reddit, YouTube and Instagram, and read the 3-star and 4-
+star reviews of Pilgrim, Minimalist, Bare Anatomy, Traya and Mintop on Amazon and Nykaa. Target 150
+to 200 coded entries. Capture source, date, verbatim, context, sentiment, tag and any profile signal
+
+
+BREW DEPLOYMENT TEAM × ARATA · VOICE OF CUSTOMER SYSTEM FOR ARATA                                                            6
+(city, gender, age hint).
+Why: these are people who are not yet Arata customers, speaking unprompted. Category objections
+and competitor switching triggers live here.
+Expected effect: a competitor summary in customer words; the top ten pre-purchase objections
+ranked by frequency; a trigger map by city and life stage for ads and programmatic pages.
+
+PHASE 3 (WEEKS 3 TO 4): ASK
+What: ten 30-minute calls, split five and five. Five repeat buyers of the Anti-Hair Fall Shampoo or the
+Hair Growth Intensive Serum who have bought three or more times (the customers Arata wants more
+of). Five one-time buyers of the same SKUs who did not reorder within 60 days. Recruit from the
+Shopify order history. Close every call with "who else should we talk to?". Keep it casual: a chat about
+hair, never a "research study".
+Why: calls are the only source that ladders past the first answer. Repeat buyers give us the passion
+point behind retention. One-time buyers give us the day-45 pain the reminder and subscription flows
+have to solve.
+Expected effect: five-why ladders on why people reorder and why they stop, a validated trigger list,
+and the bridge sentence between the study claims and the customer's own proof.
+
+PHASE 3B (FROM WEEK 3, ALWAYS ON): THE 84-DAY PULSE
+What: a three-touch survey on WhatsApp and email, timed to the product's own promise. Day 14 (first
+visible sign), Day 45 (reorder window), Day 84 (claim window). Each touch has at most four questions.
+The Day 84 touch carries the product/market-fit question: "How would you feel if you could no longer
+buy Arata?". The benchmark is 40% "very disappointed". Every answer is segmented by that cohort
+versus the rest.
+Why: it turns the 84-day claim into a measurement loop, and it seeds reviews for MitoActive by asking
+at the moment the customer can answer.
+Expected effect: a monthly PMF score by SKU and segment; open-text verbatims timed to real
+experience; a review request that lands when the customer has something to say.
+
+PERSONA REBUILD, WITH PROVISIONAL STATUS FOR MITOACTIVE
+The brief's six personas are hypotheses built from the differentiator and the market, not from five or
+more data points per segment. We keep them as working labels and rebuild each one when its
+segment hits ten coded entries. MitoActive has no first-party data, so its persona is built by walking
+outward through proxy sources in order: the differentiator, then Traya and minoxidil reviews, then
+Amazon reviews for comparable ₹1,000+ serums, then adjacent brands this buyer also purchases. The
+worked example below shows the result, with a proxy tag on every line.
+
+DISCONFIRMATION LIST
+Research exists to prove us wrong. These are the five assumptions behind the current brief and
+rebrand that we will actively try to break. If none of our questions can return an answer we do not
+want, the questions get rewritten.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · VOICE OF CUSTOMER SYSTEM FOR ARATA                                        7
+ ASSUMPTION                                           WHAT WOULD BREAK IT                                  WHERE WE TEST IT
+
+ Customers buy because of the number                  Repeat buyers never mention a number; they           Calls, Loox 5-star
+ on the pack                                          mention feel, smell, price or "it worked"            coding
+ "Good science" is a step up from "no                 Clean language dominates 5-star reviews and          Loox coding, Day 14
+ hard chemicals" for the existing base                "science" words never appear unprompted              open text
+ ₹1,499 is the objection for MitoActive               Proxy reviews show Traya buyers happily paying       Traya review mining,
+                                                      ₹1,800 a month; the objection is trust, not price    Kavya-segment calls
+ Customers stop reordering because they One-time buyers say they stopped because                           One-time buyer calls
+ forget                                 nothing changed by week 4
+ 84 days is a credible promise                        Customers quit at 3 to 4 weeks and describe 84       Day 45 survey, YouTube
+                                                      days as "too long to wait"                           comments
+
+
+CADENCE AFTER DAY 30
+Weekly: 20 new public entries coded, support tickets categorised. Monthly: PMF pulse read by SKU,
+quote bank refreshed, top-ten objections re-ranked. Quarterly: personas revisited, two founder-led
+calls.
+
+
+
+WORKED EXAMPLES
+EXAMPLE 1: THE CODED REVIEW SHEET, STARTED ON ARATA'S OWN VERBATIMS
+This is the actual format every entry takes in the bank. We have populated it with the quotes already in
+hand so the team sees the finished shape, not a template.
+ SOURCE            DATE     VERBATIM                                  TAG       THEME              SKU                CONFIDENCE
+
+ arata.in          2026 "Arata is amazing cz its affordable           language Works and           Shampoo            High
+ (Loox)                 and actually works"                                    affordable
+ arata.in          2026 "Hair fall reduced drastically"               outcome Works and            Anti-Hair Fall     High
+ (Loox)                                                                       affordable           Shampoo
+ arata.in          2026 "I can see a visible difference in            outcome Early proof          Hair Growth        Medium
+ (Loox)                 two weeks"                                                                 Intensive Serum
+ arata.in          2026 "no chemical harm to the hair"                language Clean               Shampoo            Medium-
+ (Loox)                                                                        reassurance                            high
+ Nykaa             2026 "Finally I got a shampoo free from            language Clean               Super Shampoo      Medium-
+                        hard chemicals"                                        reassurance         (legacy)           high
+ arata.in          2026 "without any sticky residue or                outcome Styling feel         Hair Gel           High
+ (Loox)                 stiffness"
+ arata.in          2026 "lasts upto 8+ hours"                         outcome Styling hold         Hair Gel           High
+ (Loox)
+ arata.in /        2026 "the shampoo bottle was leaking"              ops       Packaging          Shampoo            Medium-
+ Amazon                                                                                                               high
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · VOICE OF CUSTOMER SYSTEM FOR ARATA                                                                 8
+ SOURCE            DATE     VERBATIM                                  TAG       THEME          SKU        CONFIDENCE
+
+ Nykaa             2026 "on pricier side for a teenager like          objection Price, young   Shampoo    Medium
+                        me"                                                     buyer
+ Reviews           2026 "hair thinning", "itching problem",           pain      Problem        Multiple   High
+ (various)              "frizzy and dry", "dull dry curly                       vocabulary
+                        hair"
+
+
+Reading rule for the bank: a phrase that appears in three unrelated sources is a headline candidate.
+"Actually works" already qualifies. "Free from hard chemicals" qualifies, and it is the one the rebrand
+has to decide what to do with.
+
+EXAMPLE 2: THE OUTREACH MESSAGE FOR CALLS
+Sent on WhatsApp from a named person on the Arata team, to a repeat buyer. Email version follows
+the same shape. The incentive is ₹1,000 as an Amazon gift card or ₹1,500 in Arata credit, their choice
+(assumption: we have set this at the Indian equivalent of the standard per-call incentive; Arata can
+adjust).
+WhatsApp version:
+                                                                                                             DIAGRAM
+    Hi Rahul, this is Meera from Arata.
+
+    You've ordered the Anti-Hair Fall Shampoo three times, which makes
+    you exactly the person I want to hear from.
+
+    Could I steal 30 minutes this week to hear how it's actually going?
+    What's working, what's annoying, what you wish we'd change. No pitch.
+    No survey forms. Just a chat about hair.
+
+    As a thank you: ₹1,000 Amazon gift card, or ₹1,500 Arata credit,
+    whichever you prefer.
+
+    Does Thursday 7pm or Saturday 11am work? Reply with one and I'll
+    send a Meet link.
+
+    Thanks either way,
+    Meera
+
+
+
+
+Email subject line: Quick favour, 30 minutes, on us
+For one-time buyers the second paragraph changes to: "You ordered the Hair Growth Intensive Serum
+in July and haven't been back. That's useful for us to understand, honestly. I'd rather hear why from
+you than guess."
+
+EXAMPLE 3: THE CALL GUIDE, WITH TWO WORKED FIVE-WHY LADDERS
+The guide is twelve questions. The interviewer follows the thread, never the list. Every question is
+written so it can return an answer we do not want.
+Opening (5 minutes) 1. Tell me about your hair right now. What is it doing that you wish it wasn't? 2.
+When did you first notice? What was happening in your life around then?
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · VOICE OF CUSTOMER SYSTEM FOR ARATA                                                    9
+Before Arata (8 minutes) 3. What had you already tried before you found us? Walk me through it in
+order. 4. What made you stop each of those? 5. How did you first come across Arata? What did you
+see or read? 6. What nearly stopped you from buying?
+With Arata (10 minutes) 7. When did you first think "something is happening"? What did you actually
+see? 8. If you had to describe Arata to a friend with hair fall, what would you say in one line? 9. What
+annoys you about the product or the experience? Anything from the bottle to the delivery. 10. Have
+you told anyone about it? What did you say?
+Reorder (5 minutes) 11. For repeat buyers: what makes you reorder, and what would make you stop?
+For one-time buyers: what happened around the time you would have reordered? 12. Who else should
+we talk to?
+Worked ladder A, a repeat buyer of the Anti-Hair Fall Intensive Shampoo (illustrative of how the
+laddering runs; the answers are the kind we expect, not a transcript):
+                                                                                                 DIAGRAM
+    Q: Why do you keep reordering?
+       "It works and it's not expensive."
+    Why does "not expensive" matter when it works?
+       "Because I've wasted money before. Two onion shampoos, a biotin thing."
+    Why did those feel like waste?
+       "Nothing changed in a month and I had no way to know if it would."
+    Why did Arata feel different at a month?
+       "The drain. Less hair in the drain by week two or three."
+    Why does that keep you buying rather than trying the next thing?
+       "Because I don't want to start the clock again. If I switch and it
+        gets worse, I've lost three months."
+
+
+
+
+The surface answer was price. The root is a fear of restarting the clock. That is a retention message
+("don't restart the clock") and a subscription message, and it tells us the reorder nudge should land
+before the bottle runs out, not after.
+Worked ladder B, a one-time buyer of the Hair Growth Intensive Serum:
+                                                                                                 DIAGRAM
+    Q: Why didn't you order again?
+       "I didn't see anything."
+    How long did you use it?
+       "About three weeks, most days."
+    Why did you stop at three weeks?
+       "The bottle says 84 days but I couldn't tell if anything was happening
+        and ₹571 felt like a lot to keep going on faith."
+    What would have kept you going?
+       "Someone telling me what week two and week four are supposed to look like."
+    Why does that matter more than the 28,200 number?
+       "The number is about other people. I needed to know about me."
+
+
+
+
+The surface answer was "no result". The root is a missing week-by-week expectation. That is a post-
+purchase onboarding fix and a claim-framing fix, and it costs nothing in product.
+
+EXAMPLE 4: THE 84-DAY PULSE SURVEY
+Three touches, on WhatsApp first, email as fallback. Incentive: ₹100 Arata credit on completion of
+each touch, delivered on submit (assumption). Open text wherever we want language. Every answer
+stored against SKU and order count.
+
+
+BREW DEPLOYMENT TEAM × ARATA · VOICE OF CUSTOMER SYSTEM FOR ARATA                                        10
+Day 14 (subject: Two weeks in. Anything yet?) 1. Have you noticed anything change in the last two
+weeks? (Yes, clearly / Maybe / Nothing yet) 2. If yes or maybe: what exactly did you notice? (open
+text) 3. How many days a week have you used it? (Daily / 4 to 6 / 1 to 3 / Stopped) 4. Anything about
+the bottle, the texture or the delivery you'd change? (open text)
+Day 45 (subject: Halfway. Honest check-in.) 1. Are you still using it? (Yes / Stopped / Ran out) 2. If
+stopped or ran out: what happened? (open text) 3. If you had to explain Arata to a friend with the same
+problem, what would you say? (open text) 4. What would make it easier to keep going for the full 84
+days? (open text)
+Day 84 (subject: 84 days. The question we really want answered.) 1. How would you feel if you could
+no longer buy this Arata product? (Very disappointed / Somewhat disappointed / Not disappointed / I
+no longer use it) 2. What is the main benefit you got from it? (open text) 3. What type of person do you
+think it works best for? (open text) 4. How can we make it better for you? (open text) 5. Would you
+leave a short review with a before and after? (Yes → link to review page with photo upload)
+Reading rules: segment everything by the "very disappointed" cohort. Their question 2 is the
+positioning in customer words. Their question 3 is the ICP. Question 4 from the "somewhat
+disappointed" cohort is the roadmap. Question 5 gives MitoActive its first reviews with the one thing
+that sells a ₹1,499 serum: a photo at day 84.
+
+EXAMPLE 5: THE PROVISIONAL MITOACTIVE PERSONA, BUILT FROM PROXY SOURCES
+Every line carries its proxy source. Nothing here is first-party yet. Replace line by line as MitoActive
+reviews and Day 84 surveys come in.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · VOICE OF CUSTOMER SYSTEM FOR ARATA                                        11
+                                                                                                                         DIAGRAM
+    CLINICAL KAVYA, THE DERM-RESPECTABLE BUYER (PROVISIONAL)
+
+    Profile
+    - Age 30 to 40, metro, has seen a dermatologist at least once      [proxy: differentiator]
+    - Already spent ₹5,000 or more on hair fall across 3 to 5 products [proxy: brief, problem cost]
+    - Skews female on the website, male on Reddit                       [proxy: Reddit bias, Loox skew]
+
+    Primary job to be done
+    - Get a result a dermatologist would respect, without minoxidil
+      and without a monthly plan that runs her life                         [proxy: Traya and Mintop complaints]
+
+    Trigger events
+    - A derm visit that ended in a minoxidil prescription she doesn't want to start        [proxy: Mintop reviews]
+    - Month 3 or 4 of a Traya kit, when the calls and the supplements wear thin            [proxy: Traya churn hypothesis]
+    - A partner or parent noticing the crown                                               [proxy: brief, secondary influencer]
+
+    Top pains
+    1. "I don't want to be on something forever"                             [proxy: minoxidil dependency language]
+    2. "Everything at ₹600 is the same three ingredients"                    [proxy: actives-band commoditisation]
+    3. "I'm tired of being treated like a patient"                           [proxy: Traya medicalisation]
+
+    Desired outcomes
+    - Visible density at the crown in a photo by day 84                      [proxy: Y100 study endpoints]
+    - Shedding down enough that the drain stops being a daily check          [proxy: Loox hair-fall outcome language]
+    - A course with an end and a maintenance plan                            [proxy: brief objection table]
+
+    Objections and fears
+    - "₹1,499 for 30 ml": needs the ₹50 a day framing and the Traya comparison
+    - "Is Y100 real or just a new word for Redensyl": needs the mechanism in one sentence
+    - "Will it shed first like minoxidil": needs an explicit answer on the page
+
+    Alternatives she considers
+    - Traya, Mintop 5%, a second derm opinion, doing nothing and buying a cap
+
+    Key vocabulary (to be replaced with first-party)
+    - "crown", "density", "derm", "dependency", "shed", "course", "worth it"
+
+    How to reach her
+    - YouTube comments under minoxidil explainers, r/tressless, derm clinic waiting rooms (detailing)
+    - Content: the Y100 mechanism explained in two minutes, Lab Notes, before-and-after at day 84
+
+
+
+
+EXAMPLE 6: THE VOC QUOTE BANK, ORGANISED FOR THE REST OF THE TEAM
+The bank's job is to be used. Each theme carries the quotes, a confidence label and the discipline that
+should pick it up.
+ THEME                 QUOTES (VERBATIM)                     CONFIDENCE   WHO USES IT AND HOW
+
+ Works and             "affordable and actually              High         Ads: hook line. PDP: review strip under the claim.
+ affordable            works", "Hair fall reduced
+                       drastically"
+ Early proof           "visible difference in two            Medium       Post-purchase email Day 14. Claim framing: "first
+                       weeks"                                             signs by week 2, full result by day 84".
+ Clean                 "no chemical harm to the              Medium-      Rebrand copy: keep a reassurance line ("no sulphates
+ reassurance           hair", "free from hard                high         or parabens in shampoos, every active there for a
+                       chemicals"                                         measured reason").
+ Styling feel          "without any sticky residue or        High         Styling PDPs and quick-commerce listing bullets. Test
+                       stiffness", "lasts upto 8+                         "8+ hours" against "72-hour" in the first bullet.
+                       hours"
+ Packaging             "the seal was broken", "the           Medium-      Ops fix. Post-purchase: a no-questions replacement
+                       shampoo bottle was leaking"           high         line. Never in ads.
+ Problem               "hairfall", "hair thinning",          High         SEO and programmatic pages: use the customer
+ vocabulary            "itching problem", "frizzy and                     spelling "hairfall" alongside "hair fall".
+                       dry"
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · VOICE OF CUSTOMER SYSTEM FOR ARATA                                                               12
+30-DAY DEPLOYMENT
+ WEEK BREW SHIPS                                                     ARATA PROVIDES                     LIVE BY END OF WEEK
+
+ 1         Review exports from Loox, Nykaa, Amazon and                 Loox export, marketplace           Coded sheet with first
+           quick commerce; tag scheme and coding sheet;                seller-portal access, support      frequency counts; ops
+           support tickets categorised for the last 90 days;           inbox export, Shopify order        table separated from
+           first 500 reviews coded (3-star and 1-star first)           history with repeat counts         product sentiment
+ 2         Remaining reviews coded; public listening across            Incentive approved (₹1,000 gift    150+ public entries
+           Reddit, YouTube and Instagram; competitor 3 and             card or ₹1,500 credit); a named    coded; competitor
+           4-star reviews read; 20 repeat and 20 one-time              sender; Instagram comment          summary in customer
+           buyers shortlisted; outreach sent                           access                             words; 10 calls booked
+ 3         Calls 1 to 6 run and laddered; Day 14, 45 and 84            Brand manager joins two calls      Pulse survey live for all
+           pulse survey built on WhatsApp and email with               as listener; WhatsApp business     new hair-fall and
+           ₹100 credit on submit; MitoActive Day 84 review             number and email flow access;      dandruff orders; six call
+           request with photo upload wired                             credit mechanics in Shopify        summaries with ladders
+ 4         Calls 7 to 10 run; synthesis: theme table with real         Founders attend the readout;       Voice-of-customer bank
+           counts, contradictions, top-ten objections, six             decision on rebrand language;      v1 published; weekly
+           personas (MitoActive provisional), quote bank by            ops owner for packaging fixes      coding loop running; first
+           discipline, disconfirmation results; handover to ads,                                          Day 14 responses in
+           copy, CRO and product
+
+
+Owners: Brew research lead (coding, synthesis, calls), Brew lifecycle lead (survey and credit
+mechanics), Arata brand manager (approvals, call listener, rebrand decision), Arata ops lead
+(packaging), Arata founders (readout, two calls a quarter).
+
+
+
+HOW WE MEASURE
+ METRIC                           BASELINE                  90-DAY TARGET                    WHY IT MATTERS
+
+ Coded entries in the             0                         2,248 own reviews plus 500       Nothing is a theme until it has a count
+ bank                                                       public and competitor entries
+ Themes at high                   0 (six at low to          10 or more, each with 3+         Only high-confidence themes go into
+ confidence                       medium from the           independent sources              ads and the rebrand
+                                  brief)
+ Customer calls                   0                         10 in month 1, then 4 a month    Calls are the only source that ladders
+ completed
+ Pulse survey response            To be instrumented        25% on Day 14, 15% on Day        Below that the open-text stream is
+ rate                                                       45, 10% on Day 84                too thin to read monthly (assumption
+                                                                                             on targets; adjust after month 1)
+ "Very disappointed"              To be instrumented        Read it honestly; 40% is the     Tells the founders whether the hair-
+ share at Day 84, by SKU                                    benchmark                        fall routine has fit, SKU by SKU
+ MitoActive reviews               0                         50 structured reviews, 15 with   A ₹1,499 serum with zero reviews
+                                                            a Day 84 photo                   cannot scale on paid
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · VOICE OF CUSTOMER SYSTEM FOR ARATA                                                                    13
+ METRIC                           BASELINE                  90-DAY TARGET                    WHY IT MATTERS
+
+ Downstream: ads and              0%                        Every new hair-fall ad and the   The research only matters if the team
+ PDP copy drawn from                                        MitoActive PDP carry at least    uses it
+ the bank                                                   one bank verbatim
+
+
+Decision rules:
+    If the Day 84 "very disappointed" share for the Anti-Hair Fall Shampoo or the Hair Growth Intensive
+    Serum is at or above 40%, that SKU anchors the subscription launch and the routine builder. We
+    double down on the words that cohort uses and build the reorder flow around them.
+    If it is below 40%, we read the "somewhat disappointed" answers to question 4 first, fix the top
+    improvement, and rerun before touching subscription.
+    If "science" vocabulary appears unprompted in fewer than 1 in 10 five-star reviews after coding, the
+    rebrand copy keeps an explicit reassurance line in the clean register, and we test "good science" as
+    the second line rather than the headline.
+    If one-time buyers ladder to "nothing happened by week 3" more often than to price, the fix is a
+    week-by-week expectation guide in the post-purchase flow, and we hold the price work.
+    If the Traya review mining shows the objection to a ₹1,400 to ₹1,800 monthly kit is time and
+    medicalisation rather than cost, MitoActive's page leads with "one serum, no doctor visits" and the
+    ₹50 a day framing moves to second position.
+    If survey response rates sit below half the targets after 30 days, we move the touches to WhatsApp
+    only and cut each to two questions.
+
+
+
+APPENDIX
+SOURCE LIST
+    arata.in reviews (Loox), 2,248; Nykaa listing ratings, 2,435 on the Super Shampoo; Amazon.in and
+    quick-commerce reviews, volume to be confirmed on export
+    Public: Reddit (r/IndianSkincareAddicts, r/IndianHaircare, r/tressless, city subs), YouTube
+    comments, Instagram comments, Quora India, Blind and Grapevine, Facebook groups for new
+    mothers
+    Competitor reviews: Pilgrim, Minimalist, Bare Anatomy, ThriveCo, Traya, Mintop on Amazon.in and
+    Nykaa
+    First-party: 10 calls, 84-day pulse survey, support and WhatsApp tickets
+
+CALL CHECKLIST
+    Frame it as a chat about hair. Never say research study.
+    Offer the incentive in the first message. Two time slots and a link.
+    Record with consent; transcribe; code within 24 hours.
+    Ladder every "it works" and every "it's expensive" at least three levels.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · VOICE OF CUSTOMER SYSTEM FOR ARATA                                                                  14
+    Close with "who else should we talk to?"
+    Repeat buyers and one-time buyers in separate sheets; never average them.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · VOICE OF CUSTOMER SYSTEM FOR ARATA             15
+CUSTOMER RESEARCH
+
+
+DAY 30
+AT ARATA
+   WHAT IS LIVE
+
+   By day 30 Arata has a tagged voice-of-customer bank built from its own 2,248
+   reviews plus competitor reviews, ten repeat-buyer calls on record, a three-touch
+   84-day pulse survey live in the post-purchase flow, and MitoActive's first
+   structured review requests out the door.
+
+
+
+
+ NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+ BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+ CONFIRM".
+
+
+ EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+ BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                 DEPLOYMENT TEAM
+                                                                              BREW
+

@@ -1,0 +1,774 @@
+      Brew                                    PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+COMPETITOR AND ALTERNATIVE PAGES · MOVE 17 OF 50
+
+
+
+COMPARISON
+PAGES THAT
+WIN THE
+SWITCH
+  A SET OF HONEST, DATED, SEARCH-READY PAGES THAT
+  CATCH PEOPLE COMPARING ARATA TO TRAYA, PILGRIM
+  AND MINOXIDIL, AND GIVE THEM A REASON TO PICK
+  ARATA.
+
+
+
+
+12 pages
+COMPARISON PAGES IN 90 DAYS
+
+
+
+
+BREW × ARATA                   OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                 V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                               WHAT THIS GIVES ARATA
+                                                               A set of honest, dated, search-ready pages that
+                                                               catch people comparing Arata to Traya, Pilgrim and
+                                                               minoxidil, and give them a reason to pick Arata.
+        12 pages
+        COMPARISON PAGES IN 90 DAYS
+                                                               LIVE 30 DAYS AFTER WE START
+                                                               Arata vs Traya, Minoxidil alternative and Arata vs
+                                                               Pilgrim are live on arata.in under /compare, with a
+                                                               hub page, footer links, FAQ schema and a dated
+                                                               competitor fact file behind them.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+For a shampoo and serum brand, "alternative pages" and "vs pages" are the pages a person reads at
+11pm after their third failed product, typing "traya vs arata" or "minoxidil alternative" into Google. The
+SaaS version compares software tiers. The D2C version compares regimens: price per month, time to
+a visible result, what you have to commit to, and what the number on the bottle actually comes from.
+Arata has no such pages today. The brief lists arata.in's homepage, collections and product pages.
+There is no /compare, no "Arata vs Traya", no "minoxidil alternative". Meanwhile the brand's whole
+pitch is a comparison. "A derm-respectable product without a doctor, a monthly plan or a ₹2,000 kit"
+is a sentence about Traya. "Claims from tests, not ingredient percentages" is a sentence about Pilgrim
+and Minimalist. The positioning already lives in competitor terms. The pages do not exist to carry it.
+That costs real traffic and real conversions. Traya spends ₹138 Cr a year on marketing and has 450K
+active customers. A share of those people search for a way out every month: cheaper, less medical,
+no supplements. Pilgrim sells a ₹595 to ₹699 Redensyl serum to a buyer who, by the brief's own
+analysis, cannot tell it apart from Minimalist, Bare Anatomy or ThriveCo. Minoxidil 5% has the
+strongest evidence in the category and the highest fear. Every one of those searchers lands on a
+Traya blog, a Pilgrim listing or a Reddit thread today. None of them lands on Arata.
+The opportunity is sharper than most categories because Arata has something to say in every
+comparison. ₹571 for a serum with a 28,200-new-hairs claim against ₹1,400 to ₹1,800 a month for a
+Traya kit. A number from a study against a percentage of an ingredient. A 30 ml serum you can stop
+after 84 days against a drug you cannot. These are the three comparisons that matter, and they map
+to three search intents and three personas from the brief: Hair-fall Rahul (Pilgrim), Clinical Kavya
+(Traya) and the minoxidil-scared buyer who sits between them.
+One rule governs everything below. Every claim about a competitor is dated, sourced and survivable if
+Traya's own team reads it. Comparative claims in India also sit under ASCI's code, which asks that
+they be factual, verifiable and not disparaging. Honest pages rank better, convert better and do not
+generate legal letters.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · COMPARISON PAGES THAT WIN THE SWITCH                                                1
+WHAT WE FOUND
+WHERE COMPARISON INTENT SITS TODAY
+We mapped the brief's competitive landscape to the four page formats in our method and to the
+persona each one serves. Search volume figures are directional estimates (assumption) until we pull
+Search Console and keyword tool data in week 1.
+                                                                                                                        DIAGRAM
+                      HIGH SEARCH INTENT
+                             |
+       Minoxidil alternative | Arata vs Traya
+       (fear-driven, broad) | (price and commitment driven)
+       Format: Alternative   | Format: You vs Competitor
+                             |
+     LOW PRICE -------------+------------- HIGH PRICE
+     COMPETITOR              |              COMPETITOR
+                             |
+       Arata vs Pilgrim      | Traya vs Man Matters
+       Arata vs Minimalist   | (third-option play)
+       Format: You vs Comp. | Format: Comp. vs Comp.
+                             |
+                      LOW SEARCH INTENT
+
+
+
+
+Top-right is where we start. Traya is the biggest brand in the problem space, the most expensive, and
+the one with the most public commitment friction (5 consecutive months, doctor calls, supplements).
+That is the richest "why people look for alternatives" story in Indian haircare.
+
+THE COMPETITOR SET, SCORED FOR PAGE PRIORITY
+We scored each competitor on five things that predict whether a comparison page earns traffic and
+converts. Scores are 1 to 5.
+                        SEARCHER          PRICE GAP IN                                                 RISK OF A
+                        VOLUME            ARATA'S               CLAIM GAP IN        SWITCH PAIN WE     WEAK
+ COMPETITOR             (EST.)            FAVOUR                ARATA'S FAVOUR      CAN SPEAK TO       PAGE         PRIORITY
+
+ Traya                  5                 5 (₹1,400 to   3 (they have a             5 (cost, 5-month 2              1
+                                          ₹1,800/mo vs   1,200-man study;           lock, supplements,
+                                          ₹571 one-time) we have 84-day             minoxidil)
+                                                         numbers)
+ Minoxidil 5%           5                 2 (₹600 to            1 (minoxidil has the 5 (shedding,      3 (medical   2
+ (Mintop and                              ₹900, similar)        strongest evidence; dependency,        claims
+ generics)                                                      we say so)           needs a doctor)   need care)
+ Pilgrim                4                 1 (₹595 to            5 (study number vs 3 (no routine,      2            3
+                                          ₹699 vs ₹571,         ingredient         "same as
+                                          near parity)          percentage)        everyone")
+ Minimalist             3                 1 (₹699)              5                   3 (ingredient      2            4
+                                                                                    literacy, cold
+                                                                                    brand)
+ Man Matters            3                 4                     3                   4 (pharma feel,    3            5
+                                                                                    finasteride)
+ Bare Anatomy           2                 1                     4                   2                  2            6
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · COMPARISON PAGES THAT WIN THE SWITCH                                                             2
+                        SEARCHER           PRICE GAP IN                                                      RISK OF A
+                        VOLUME             ARATA'S              CLAIM GAP IN          SWITCH PAIN WE         WEAK
+ COMPETITOR             (EST.)             FAVOUR               ARATA'S FAVOUR        CAN SPEAK TO           PAGE          PRIORITY
+
+ ThriveCo               2                  4 (₹1,099)           2 (they claim 150% 2                         3             7
+                                                                in 8 weeks)
+ Mamaearth /            4                  0 (they are          5                     2 (people leave        1             8 (as plural
+ Indulekha                                 cheaper)                                   for lack of results,                 page only)
+                                                                                      not for price)
+
+
+The ranking gives us the 30-day set: Traya, minoxidil, Pilgrim. Minimalist and Man Matters follow in
+days 31 to 60. Bare Anatomy, ThriveCo and the FMCG set live inside the plural "best hair growth
+serums in India" page rather than getting their own pages.
+
+WHAT ARATA CAN AND CANNOT SAY ABOUT EACH
+This is the evidence audit. We took every competitor claim in the brand brief and marked it the way we
+would mark a public page: Current, Unverifiable or Overclaimed. Pages inherit only the Current rows.
+The rest get softened wording or get cut.
+ CLAIM IN BRIEF               COMPETITOR        STATUS (CHECKED OCT 2026)                    WORDING WE WILL USE ON PAGES
+
+ Kits ₹1,400 to               Traya             Current. Traya's own cost page lists         "₹1,400 to ₹1,800 a month on Traya's
+ ₹1,800 per month                               ₹1,800 for 1 month, ₹1,600/mo for 3,         published plan table (as of Oct 2026);
+                                                ₹1,400/mo for 6; its disclaimer says         some plans start higher"
+                                                plans start at ₹1,699 to ₹2,000/mo
+ Money-back after 5           Traya             Current. "100% money back if you see         Quote the condition. The condition is
+ months                                         no results after five months of              the story.
+                                                consistent use", conditional on 5
+                                                consecutive monthly orders
+ Includes                     Traya             Partly current. Kits "can include       "Kits can include supplements and, for
+ supplements and                                supplements, serums, shampoo";          some stages, minoxidil (per Traya's own
+ minoxidil                                      minoxidil appears in a published sample sample plan)"
+                                                kit, not stated as universal
+ 5 to 9 months                Traya             Current. Their page: "5 to 9 months          Use verbatim with date
+                                                depending on your hair concerns"
+ ₹138 Cr marketing            Traya             Current per public filings cited in brief,   Keep off the page. Keep in the internal
+ spend, ₹23 Cr net                              but not useful to a buyer                    fact file.
+ loss
+ "No clinical number" Pilgrim                   Unverifiable from a product page alone       "Pilgrim's product page lists ingredient
+                                                                                             percentages (Redensyl 3%, Anagain
+                                                                                             4%); we did not find a study-based
+                                                                                             result claim on it (as of Oct 2026)"
+ "Generic Korean              Pilgrim           Overclaimed (interpretation)                 Cut
+ story"
+ "Cold brand"                 Minimalist        Overclaimed (opinion)                        Cut. Say "fragrance-free,
+                                                                                             concentration-disclosed" and let the
+                                                                                             reader decide.
+ "Personalisation is          Bare              Overclaimed                                  Cut. Say "quiz-led; recommends from
+ cosmetic"                    Anatomy                                                        the same Redensyl-class actives"
+ "150% better growth ThriveCo                   Current as a quoted claim                    Quote it as their claim, with date
+ in 8 weeks"
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · COMPARISON PAGES THAT WIN THE SWITCH                                                                     3
+ CLAIM IN BRIEF               COMPETITOR        STATUS (CHECKED OCT 2026)                     WORDING WE WILL USE ON PAGES
+
+ Dependency,                  Minoxidil         Current (well-documented, on the              State plainly, link to "talk to your
+ shedding, side                                 drug's own labelling)                         doctor". Never call minoxidil unsafe.
+ effects
+
+
+Three claims cut, four softened. That is a normal ratio. It is also the difference between a page Traya's
+legal team ignores and one they do not.
+
+ARATA'S OWN HONEST ROW
+Comparison pages fail when the home team hides its weaknesses. Arata's are known and in the brief.
+We will put them on the page before a competitor can.
+ ARATA WEAKNESS                             HOW THE PAGE HANDLES IT
+
+ MitoActive has zero reviews                Lead the serum comparison with the Hair Growth Intensive Serum (474 reviews),
+ (soft-launched Aug 2026)                   position MitoActive as the next tier
+ "Up to 28,200 new hairs" reads             Show the study window (84 days), the "up to", and link to Lab Notes. Give the median,
+ like hype                                  not only the best responder, once the study summary is cleared for publication.
+ No doctor, no diagnosis                    Say it. "If you want a doctor in the loop, Traya is built for that."
+ Packaging and leak complaints              Mention the replacement promise in the "Switching to Arata" section
+ in reviews
+ No subscription                            State one-time pricing as a strength (no lock-in) and note that a reorder reminder is
+                                            available on WhatsApp
+
+
+CENTRALISED COMPETITOR FACT FILE
+Every page pulls from one file per competitor, so a price change gets fixed once. Here is the Traya file.
+The Pilgrim and minoxidil files follow the same shape and sit in the appendix.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · COMPARISON PAGES THAT WIN THE SWITCH                                                                 4
+                                                                                                                  CODE
+    name: Traya
+    website: traya.health
+    positioning: "Diagnosis-led, Ayurveda + allopathy + nutrition hair kits"
+    target_audience: "Men and women with stage 1 to 5 hair loss, 70% tier-2/3"
+    last_verified: 2026-10-10
+    sources:
+      pricing: traya.health/blogs/traya-talk/how-much-does-traya-cost
+      model: public results report (Feb 2026), Entrepreneur India feature
+    pricing:
+      one_month: "₹1,800"
+      three_month: "₹1,600/month (₹4,800)"
+      six_month: "₹1,400/month (₹8,400)"
+      disclaimer_floor: "plans start at ₹1,699 to ₹2,000/month by age and stage"
+      guarantee: "100% money back after 5 consecutive months, kit valid 30 days each"
+    kit_contents: "varies; supplements, serums, shampoo, scalp oil, nasal drops; minoxidil in some plans"
+    duration: "5 to 9 months (their words)"
+    strengths:
+      - Free online hair test and assigned hair coach
+      - Clinical study on 1,200 men, stages 1 to 4
+      - High repeat rate reported publicly
+      - Covers nutrition and gut, which a serum cannot
+    weaknesses:
+      - ₹8,400 minimum spend before the guarantee applies
+      - Daily multi-product routine with supplements
+      - Minoxidil in some kits, with its known shedding phase
+      - Monthly re-purchase is required to stay eligible
+    best_for:
+      - Stage 3 to 5 hair loss that needs diagnosis
+      - People who want a coach and a diet plan
+    not_ideal_for:
+      - Early thinning that wants one product, one price
+      - People who refuse minoxidil or supplements
+      - Budgets under ₹1,000 a month
+    common_complaints_themes: "cost over months, routine fatigue, refund conditions"
+    switch_notes: "No data to migrate. Finish current kit; start Arata shampoo + serum; set 84-day check-in."
+
+
+
+
+THE PLAN
+ARCHITECTURE
+One hub, three URL patterns, one fact file per competitor, footer links from every page. Arata runs on
+Shopify, so these ship as pages under a "Compare" collection with a metafield-driven table block, so
+brand marketing can update a price without touching copy.
+                                                                                                                DIAGRAM
+    arata.in/compare                         (hub: "Compare Arata")
+       |
+       +-- /compare/arata-vs-traya           (Format 3: You vs Competitor)
+       +-- /compare/arata-vs-pilgrim         (Format 3)
+       +-- /compare/arata-vs-minimalist      (Format 3, day 31+)
+       +-- /compare/traya-vs-man-matters     (Format 4: A vs B, day 61+)
+       |
+    arata.in/alternatives                    (hub: "Arata as an alternative")
+       |
+       +-- /alternatives/minoxidil           (Format 1: singular)
+       +-- /alternatives/traya               (Format 1, day 31+)
+       +-- /alternatives/best-hair-growth-serums-india   (Format 2: plural)
+       +-- /alternatives/head-and-shoulders (Format 1, dandruff line, day 61+)
+
+    Footer, every page:
+       Compare: vs Traya | vs Pilgrim | vs Minimalist | View all
+       Alternatives: Minoxidil | Traya | Best serums | View all
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · COMPARISON PAGES THAT WIN THE SWITCH                                                     5
+Why hubs matter here: arata.in gets ~650K visits a month. Footer links from product pages pass that
+authority to the comparison pages from day one, which is how a new page ranks for "traya vs arata"
+inside weeks rather than months.
+
+PHASING
+ PHASE         PAGES                                                    FORMAT     WHY THIS ORDER
+
+ Days 1        Arata vs Traya; Minoxidil alternative; Arata vs          3, 1, 3    Highest intent, widest price gap, cleanest
+ to 30         Pilgrim; both hubs                                                  claim gap
+ Days 31       Traya alternative; Arata vs Minimalist; Best hair        1, 3, 2    Plural page captures early-journey research
+ to 60         growth serums in India (plural)                                     and names 6 real options
+ Days 61       Traya vs Man Matters; Head & Shoulders                   4, 1, 3, 3, Third-option plays and the dandruff line,
+ to 90         alternative (Anti-Dandruff line); Arata vs Bare          4           where Arata has a 95%-in-one-wash claim
+               Anatomy; Arata vs ThriveCo; Mintop vs Traya                          and nobody at ₹404 has a number
+
+
+Twelve pages by day 90. Each page carries an "as of" date in the pricing table and a "last verified"
+line at the foot.
+
+WHAT GOES ON EVERY PAGE
+Each page follows the method's structure and adds three Arata-specific blocks:
+1. TL;DR in three sentences. Who each option is for, and the one number that decides it.
+2. Cost over 84 days. Every comparison is normalised to 84 days, Arata's study window. This is the
+   fairest unit in the category: Traya quotes months, Pilgrim quotes bottles, minoxidil quotes forever.
+   84 days puts them on one line.
+3. Commitment ladder. A small diagram showing what each option asks of the buyer: doctor,
+   supplements, daily application, monthly re-order, lifetime use.
+4. Who should pick them. A real paragraph. Traya for stage 4 and up with a coach. Minoxidil for a
+   derm-supervised plan. Pilgrim for people who want a lighter fragrance and a 50 ml bottle.
+5. Switching to Arata. No data moves in D2C, so this section covers what to do with the half-used
+   bottle, when to start, the 84-day check-in on WhatsApp, and the replacement promise if the bottle
+   leaks.
+6. Reviews from switchers, pulled from Loox and Nykaa with the competitor named only where the
+   reviewer named it.
+7. FAQ block with schema: "Is Arata better than Traya?", "Can I use Arata instead of minoxidil?",
+   "Arata vs Pilgrim serum, which has Redensyl?"
+
+EXPECTED EFFECT
+    Traffic: comparison and alternative terms are a new keyword set for arata.in. We expect 15K to 30K
+    incremental monthly sessions by day 90 (assumption; refined after week-1 keyword pull).
+    Conversion: comparison pages convert 2 to 3 times the site average because the reader has
+    already decided to buy something. On a site doing ~7 to 8% visit-to-order including returning, a
+    comparison page should land at 4 to 6% for new visitors (assumption, to be instrumented).
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · COMPARISON PAGES THAT WIN THE SWITCH                                                            6
+    Positioning: the rebrand to "Hair & Scalp Science Co." gets twelve pages that say, in competitor
+    terms, what the science means for the buyer.
+    Reuse: the same tables feed Amazon A+ "compare" modules, Nykaa listing copy and the sales
+    deck for quick-commerce category managers. One fact file, four surfaces.
+
+
+
+WORKED EXAMPLES
+EXAMPLE 1: /COMPARE/ARATA-VS-TRAYA
+Meta title: Arata vs Traya: price, commitment and what the numbers mean (2026) Meta description:
+Traya kits cost ₹1,400 to ₹1,800 a month for 5 to 9 months. Arata's hair growth serum is ₹571, one
+bottle, 84 days. Here is the honest comparison.
+
+
+
+Arata vs Traya
+TL;DR. Traya is a diagnosis-led kit: a hair test, a coach, supplements, sometimes minoxidil, and a 5 to
+9 month plan at ₹1,400 to ₹1,800 a month. Arata is a serum and shampoo you buy once, use for 84
+days and judge by a number. Pick Traya if you want a doctor and a diet plan in the loop. Pick Arata if
+you have early thinning, want one product that shows a result, and do not want a monthly kit.
+At a glance (prices as of Oct 2026)
+                      TRAYA                                             ARATA
+
+ What you buy         Customised kit, re-ordered monthly                Hair Growth Intensive Serum 30 ml (₹571) plus
+                                                                        Anti-Hair Fall Shampoo 200 ml (₹359); combo
+                                                                        ₹838
+ Price                ₹1,800 for 1 month; ₹1,600/mo for 3; ₹1,400/mo    ₹571 per serum bottle, one-time. ₹999 for a pack
+                      for 6 (Traya's plan table). Some plans start at   of 3
+                      ₹1,699 to ₹2,000/mo
+ Cost over 84         ₹4,800 (3-month plan)                             ₹999 (serum pack of 3) or ₹1,716 with shampoo
+ days                                                                   each month
+ Time to judge        5 months minimum before the guarantee applies     84 days, which is the study window on the bottle
+ Diagnosis            Free online hair test, assigned coach             None. Choose by concern on arata.in
+ Supplements          Yes, part of most kits                            None
+ Minoxidil            In some plans (Traya's own sample plan lists      None
+                      Minoxidil 2%)
+ Result claim         "93% saw results" (internal study, Dec 2022);     "Up to +28,200 new hairs within 84 days"
+                      clinical study on 1,200 men                       (consumer study); MitoActive: 87% saw
+                                                                        increased growth in 84 days
+ Guarantee            100% money back after 5 consecutive months of     No-questions replacement for damaged or
+                      complete use                                      leaking bottles
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · COMPARISON PAGES THAT WIN THE SWITCH                                                      7
+                      TRAYA                                             ARATA
+
+ Where to buy         traya.health                                      arata.in, Amazon, Nykaa, Flipkart, Blinkit, Zepto,
+                                                                        Instamart
+
+
+Price, explained. Traya's own page says the kit "ranges monthly from 1800rs to 3000rs" depending
+on your hair condition. Over the three months it suggests for mild hair loss, that is ₹4,800 before you
+know whether it worked. Over the six months it suggests for severe hair loss, ₹8,400. Arata's serum is
+₹571 a bottle or ₹999 for three, which covers 84 days. If you add the shampoo every month, the 84-
+day total is ₹1,716. The gap is about ₹3,000 over the first three months. That gap is the cost of the
+diagnosis, the coach, the supplements and the oils. Whether that is worth it depends on your stage.
+Commitment, explained. This is the part most comparisons skip.
+                                                                                                                   DIAGRAM
+    What each asks of you, per day and per month
+
+    Traya:      hair test -> kit arrives -> supplements AM/PM -> scalp oil ->
+                shampoo -> serum (minoxidil for some) -> coach check-in ->
+                re-order every 30 days -> repeat for 5 to 9 months
+                                          |
+                              guarantee only if every month is bought
+
+    Arata:      pick concern -> serum twice a day -> shampoo 2 to 3x a week
+                -> check at 84 days -> continue, pause, or step up to MitoActive
+
+
+
+
+Traya's money-back guarantee is real and it is also conditional: five consecutive monthly kits, each
+valid 30 days, with regularity checked against order dates. If life gets in the way in month three, the
+guarantee lapses. Arata asks for twice-daily serum and a wash routine. That is the whole plan.
+Results, explained. Traya has the bigger study: 1,200 men, stages 1 to 4. We are not going to pretend
+an 84-day consumer study is bigger than that. What Arata has is a number on every bottle from a test
+of that bottle, and a mechanism in MitoActive (Y100, mitochondrial function, 5+ clinical studies on the
+ingredient) that no kit in India uses. If you are stage 1 to 2 and want to see whether your hair responds
+to a single product before you spend ₹8,400, Arata is the cheaper experiment.
+Who should choose Traya. You are at stage 3 to 5. You want someone to look at your scalp photos
+and tell you what to do. You are fine with supplements and a daily routine of five or six products. You
+can commit ₹1,400 to ₹1,800 a month for at least five months. You want a diet plan and a coach. That
+is a good product for that person, and we would rather you buy it than buy Arata and expect a kit.
+Who should choose Arata. You noticed the crown or the hairline in the last year. You have tried an
+onion shampoo or biotin gummies and nothing showed a number. You do not want minoxidil and you
+do not want a doctor's call. You would rather spend ₹571 and check at 84 days. You want the same
+thing on Blinkit when you run out.
+What switchers say. "Arata is amazing cz its affordable and actually works." "Hair fall reduced
+drastically." "I can see a visible difference in two weeks." (Loox and Nykaa reviews, 2,248 on-site,
+Nykaa 4.2 from 2,435 ratings.)
+Switching from Traya to Arata. Finish the kit you have paid for; stopping mid-month forfeits nothing
+but the guarantee you were likely not going to claim. Start the Anti-Hair Fall Shampoo first, then the
+serum twice a day. Take a crown photo on day 1. We will message you on WhatsApp at day 28, 56 and
+
+
+BREW DEPLOYMENT TEAM × ARATA · COMPARISON PAGES THAT WIN THE SWITCH                                                        8
+84 to compare. If the bottle arrives leaking or with a broken seal, we replace it without questions.
+FAQ - Is Arata better than Traya? Different jobs. Traya is a diagnosed kit; Arata is a single serum and
+shampoo with a result claim. For early thinning, Arata is the cheaper first step. For stage 4 and up,
+Traya's diagnosis may be worth the money. - Does Arata use minoxidil? No. The Intensive Serum uses
+a growth-active blend; MitoActive uses Y100. - Can I use Arata while on Traya? Ask your Traya coach.
+Most people choose one.
+CTA: Start with the shampoo + serum combo, ₹838. Free shipping above ₹299. Check your crown at
+84 days.
+Prices and plan terms for Traya from traya.health, verified 10 Oct 2026. Tell us if something changed.
+
+
+
+EXAMPLE 2: /ALTERNATIVES/MINOXIDIL
+Meta title: Minoxidil alternative: a hair growth serum without the dependency (India, 2026) Meta
+description: Minoxidil works and it has three catches: shedding, lifetime use and side effects. Arata's
+serums give you a number to judge in 84 days, with none of the three.
+
+
+
+Looking for a minoxidil alternative? Start here.
+Why people look. Minoxidil 5% is the most studied hair growth product on the market. Mintop and
+generics cost ₹600 to ₹900 a month. If you are reading this page, you probably already know the
+three catches, because they are the reason you searched.
+1. The shed. Many users lose more hair in the first weeks before new growth comes in.
+2. The dependency. Stop minoxidil and the hair it grew tends to go with it. It is a maintenance drug.
+3. The side effects and the doctor. Scalp irritation, unwanted facial hair in some women, and a product
+   that should be started under medical advice.
+None of that makes minoxidil bad. It makes it a commitment. This page is for the person who wants to
+try something they can stop.
+What to look for in an alternative. A fair checklist, whoever you buy from: - A result claim from a
+study of the finished product, with a time window - A clear mechanism you can read about - A price
+you can afford to keep using for 3 months - No prescription, and no shedding phase in the label -
+Available where you shop, including quick commerce
+Arata as the alternative. Two serums, two tiers.
+                      MINOXIDIL 5% (MINTOP            ARATA HAIR GROWTH
+                      AND GENERICS)                   INTENSIVE SERUM                ARATA MITOACTIVE
+
+ Price                ₹600 to ₹900 per month ₹571 (30 ml); ₹999 pack of 3 ₹1,499 (30 ml)
+                      (as of Oct 2026)
+ Mechanism            Vasodilator; extends            Growth-active blend; targets   Y100, licensed from Yuva Biosciences;
+                      anagen phase                    follicle                       targets mitochondrial function and the
+                                                                                     anagen/telogen ratio
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · COMPARISON PAGES THAT WIN THE SWITCH                                                         9
+                      MINOXIDIL 5% (MINTOP            ARATA HAIR GROWTH
+                      AND GENERICS)                   INTENSIVE SERUM             ARATA MITOACTIVE
+
+ Evidence             Decades of trials;              "Up to +28,200 new hairs    87% saw increased growth in 84 days; up to
+                      strongest in the                within 84 days" (consumer   95% reduction in hair fall; 5+ clinical studies
+                      category                        study)                      on Y100
+ Shedding             Common in the first             Not reported in the study   Not reported in the study
+ phase                weeks
+ Stop and keep        Gains typically reverse         Positioned as a 3-month     Same
+ gains?               after stopping                  course plus maintenance
+ Doctor needed Recommended                            No                          No; dermatologically tested
+ Cost over 84         ₹1,800 to ₹2,700                ₹999                        ₹4,497 (3 bottles) or ₹1,499 for a first-
+ days                                                                             month trial
+
+
+Honesty first. If a dermatologist has told you to use minoxidil, use minoxidil. If you are stage 5 or
+beyond, no serum is the answer and we would be wasting your money. If you are at the "pillow and
+drain" stage, where you see fall but no bald patch, that is where a serum with a number earns its keep.
+Which Arata serum. Start with the Intensive Serum at ₹571 if you want the proven, reviewed product
+(474 reviews). Step up to MitoActive at ₹1,499 if you want the new mechanism and are willing to pay
+₹50 a day for a month to see it. ₹50 a day is less than a Traya kit and roughly the same as a Mintop
+refill, for a serum you can stop.
+Switching from minoxidil. Talk to your doctor before you stop; some people taper. Expect that
+minoxidil gains may thin as you come off it; that is the drug, not the serum. Start Arata the same week.
+Day-1 photo, 84-day check-in on WhatsApp.
+FAQ - Is there a minoxidil alternative that works? Nothing matches minoxidil's trial history. Arata's
+serums give you a studied number in 84 days with no shedding phase in the label and no lifetime
+requirement. - Can I use Arata with minoxidil? Many people do. Ask your doctor; apply at different
+times of day. - Is MitoActive minoxidil? No. It uses Y100, a mitochondrial active, exclusive to Arata in
+India.
+CTA: Try the Intensive Serum pack of 3, ₹999, 84 days. Or start MitoActive for ₹1,499.
+Minoxidil facts from product labelling and public literature. We do not sell minoxidil. Prices verified 10
+Oct 2026.
+
+
+
+EXAMPLE 3: /COMPARE/ARATA-VS-PILGRIM
+Meta title: Arata vs Pilgrim hair growth serum: ingredient percentages vs a studied number Meta
+description: Pilgrim's serum lists Redensyl 3% and Anagain 4%. Arata's lists up to 28,200 new hairs
+in 84 days. Same price band. Different ways of proving it.
+
+
+
+Arata vs Pilgrim
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · COMPARISON PAGES THAT WIN THE SWITCH                                                               10
+TL;DR. Pilgrim and Arata sell hair growth serums in the same ₹550 to ₹700 band. Pilgrim tells you
+what is in the bottle: Redensyl 3%, Anagain 4%, a 12-ingredient list. Arata tells you what the bottle did
+in a study: up to 28,200 new hairs in 84 days, 7.4X hair fall reduction with the shampoo. Choose
+Pilgrim if you read ingredient labels and want a 50 ml bottle. Choose Arata if you want a result claim
+and a routine built for Indian hair and water.
+At a glance (as of Oct 2026)
+                         PILGRIM REDENSYL 3% + ANAGAIN 4% SERUM           ARATA HAIR GROWTH INTENSIVE SERUM
+
+ Price                   ₹595 to ₹699 (50 ml)                             ₹649 MRP, ₹571 sale (30 ml); ₹999 pack of 3
+ Price per ml            ₹12 to ₹14                                       ₹19 (₹11 on the pack of 3)
+ How it is sold          Ingredient concentrations, 12-ingredient story   Study-based result claim with an 84-day window
+ Result claim on         We did not find a study-based result claim on    "Up to +28,200 new hairs within 84 days"
+ product page            the product page (as of Oct 2026); claims are
+                         ingredient-level
+ Routine                 Serum sold standalone; shampoo available         Named system: Anti-Hair Fall Shampoo (7.4X
+                         separately                                       claim, ₹359) + serum + Anti-Breakage Conditioner
+                                                                          (₹359); combo ₹838
+ Indian-                 Not stated on product page (as of Oct 2026)      "Made for Indian hair, tested for Indian weather":
+ conditions claim                                                         hard water, humidity, heat
+ Next tier               None listed                                      MitoActive, ₹1,499, Y100 mitochondrial active
+ Reviews                 Strong Nykaa and Amazon presence                 474 on arata.in (serum), Nykaa 4.2 on 2,435
+                                                                          ratings (shampoo)
+
+
+Proof, explained. Here is the honest difference. Redensyl and Anagain are real actives with supplier
+studies behind them. Pilgrim, Minimalist, Bare Anatomy and ThriveCo all use that class of active at
+similar concentrations. When four brands sell the same actives, the percentage stops telling you which
+one to buy. Arata's approach is to test the finished product and put that number on the bottle. You can
+argue about the size of a consumer study. You cannot get a number like it from an ingredient
+percentage.
+Value, explained. Per ml, Pilgrim is cheaper: 50 ml for ₹595 to ₹699 against Arata's 30 ml for ₹571.
+Per 84-day course, Arata's pack of 3 at ₹999 is the cheaper buy, and the 30 ml bottle is a 1-month
+supply at twice-daily use. If "is 30 ml enough" is your worry, the answer is one bottle a month, three
+for the course.
+Who should choose Pilgrim. You like reading ingredient lists and comparing percentages. You want a
+bigger bottle. You already use other Pilgrim products and want one brand on the shelf.
+Who should choose Arata. You have tried an actives serum and want a number you can hold the
+product to. You want shampoo, serum and conditioner to work as one system. You wash in hard water
+in Bangalore, Delhi or Hyderabad and want a formulation that says so. You want a step-up (MitoActive)
+if the first tier is not enough.
+Switching from Pilgrim. Nothing to taper. Finish the bottle or switch the same day. Start the Anti-Hair
+Fall Shampoo with the serum so the 7.4X claim and the 28,200 claim work together. Day-1 photo, 84-
+day check-in.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · COMPARISON PAGES THAT WIN THE SWITCH                                                          11
+FAQ - Does Arata use Redensyl? The Intensive Serum uses a growth-active blend; MitoActive uses
+Y100, a different mechanism. - Which is better, Arata or Pilgrim? Same price band, different proof.
+Pilgrim discloses concentrations; Arata publishes a studied result. Pick the proof you trust.
+CTA: Shampoo + Growth Serum combo, ₹838. Free gift above ₹999.
+Pilgrim price range from the brand's listings, verified 10 Oct 2026. If we have something wrong, write
+to us and we will fix it within 48 hours.
+
+
+
+EXAMPLE 4: /ALTERNATIVES/BEST-HAIR-GROWTH-SERUMS-INDIA (PLURAL, OUTLINE WITH WRITTEN
+INTRO)
+Meta title: Best hair growth serums in India (2026): Traya, Pilgrim, Minimalist, Arata and more,
+compared
+Written intro. Most hair growth serums in India sell one of three things: an ingredient percentage, a
+diagnosis, or a drug. This list covers seven real options, says who each is for, and puts them on one
+table normalised to 84 days of use. Arata is on it; so are the brands we compete with. Prices as of Oct
+2026.
+Criteria block: result claim with a window; mechanism; price per 84 days; commitment (doctor,
+supplements, lifetime); availability on quick commerce.
+The seven: Arata Hair Growth Intensive Serum (₹571); Arata MitoActive (₹1,499); Pilgrim Redensyl +
+Anagain (₹595 to ₹699); Minimalist 18% Hair Growth Actives (₹699); Bare Anatomy quiz-led serum
+(₹649); ThriveCo Regendil (₹1,099, "150% better growth in 8 weeks" is their claim); Traya kit (₹1,400 to
+₹1,800/mo); Minoxidil 5% (₹600 to ₹900/mo).
+Recommendation by use case: first serum ever → Arata Intensive; label reader → Minimalist; wants a
+quiz → Bare Anatomy; stage 4+ → Traya; derm-supervised → minoxidil; wants a new mechanism →
+MitoActive.
+Note on AI answers. This page will get cited by AI assistants for "best hair growth serum India".
+Whether they recommend Arata from it depends on reviews and forum consensus outside arata.in.
+The page earns the citation; the review programme earns the recommendation.
+
+
+
+30-DAY DEPLOYMENT
+                                                                                                OWNER
+ WEEK BREW SHIPS                                             ARATA PROVIDES                   (BREW)       OWNER (ARATA)
+
+ 1         Keyword pull from Search Console and                Search Console access; Lab       Brew SEO     Arata brand
+           keyword tools for all competitor terms;             Notes study summaries for the    lead, Brew   manager, Arata
+           final page-set priority; competitor fact            28,200 and 7.4X claims;          content lead   legal
+           files for Traya, Pilgrim, minoxidil with            approval of the softened claim
+           verification dates; claim audit sign-off;           wording; legal sign-off on
+           Shopify "Compare" template with                     comparative claims (ASCI)
+           metafield table block
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · COMPARISON PAGES THAT WIN THE SWITCH                                                           12
+                                                                                                  OWNER
+ WEEK BREW SHIPS                                             ARATA PROVIDES                     (BREW)           OWNER (ARATA)
+
+ 2         Full copy for Arata vs Traya and Minoxidil          Review export from Loox;           Brew             Arata CX lead
+           alternative; FAQ schema; switcher review            confirmation of the replacement    content lead,
+           mining from Loox and Nykaa; 84-day                  promise wording; WhatsApp          Brew CRO
+           cost tables                                         check-in flow owner                lead
+ 3         Arata vs Pilgrim copy; /compare and                 Product page edits merged;         Brew SEO         Arata brand
+           /alternatives hubs; footer columns;                 footer change approved;            lead, Brew       manager, Arata
+           internal links from the Hair Growth                 MitoActive study summary           analytics lead     web developer
+           collection and the two serum PDPs;                  cleared for the serum table
+           page-level event tracking (view, table
+           scroll, CTA click, add to cart)
+ 4         All three pages live; hubs live; sitemap            Final QA on mobile; publish        Brew             Arata brand
+           submitted; first A+ "compare" module                approval; Amazon Brand             deployment         manager, Arata
+           draft for the Amazon serum listing from             Registry access for the A+         lead               marketplace
+           the same fact file; quarterly re-                   module                                                manager
+           verification calendar set
+
+
+Live by day 30: three comparison pages, two hubs, footer links on every page, FAQ schema, tracking,
+a dated fact file per competitor, and the reusable table in Amazon A+ draft.
+
+
+
+HOW WE MEASURE
+ METRIC                                               BASELINE            90-DAY TARGET                                   SOURCE
+
+ Organic sessions on /compare and                     0 (pages do not     15K to 30K per month (assumption, refined       GA4
+ /alternatives                                        exist)              week 1)
+ Rankings for "traya vs arata", "arata vs             Unranked            Position 1 to 3                                 Search
+ traya", "arata vs pilgrim"                                                                                               Console
+ Rankings for "minoxidil alternative",                Unranked            Page 1                                          Search
+ "traya alternative"                                                                                                      Console
+ Add-to-cart rate from comparison                     To be               8 to 12% of page sessions                       GA4 events
+ pages                                                instrumented
+ Order conversion from comparison                     To be               4 to 6% (site average ~7 to 8% incl.            Shopify +
+ pages (new visitors)                                 instrumented        returning)                                      GA4
+ Revenue attributed (last-click) to the               0                   ₹25 to ₹40 lakh per month by day 90             Shopify
+ page set                                                                 (assumption: 20K sessions × 5% × ₹900
+                                                                          AOV, scaled)
+ Claim accuracy incidents (competitor                 n/a                 0, with any report fixed within 48 hours        Inbox log
+ complaint, ASCI notice, factual error
+ reported)
+ Fact file freshness                                  n/a                 Every competitor re-verified every 90 days, Review
+                                                                          dated on page                               calendar
+
+
+Decision rule at day 90.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · COMPARISON PAGES THAT WIN THE SWITCH                                                                 13
+    If the three launch pages hold page-1 rankings and convert at or above 4%: expand to the full 12-
+    page set, build the Head & Shoulders and Mamaearth dandruff pages, and port the tables into
+    Nykaa and Blinkit listing copy.
+    If rankings land but conversion is under 2%: the pages are attracting researchers, not buyers. Add
+    the routine builder CTA and a first-order offer to the page, and move the switcher reviews above
+    the table.
+    If rankings do not land within 90 days: audit internal linking and the hub structure first, then check
+    whether the competitor term volume was overestimated. Keep the Traya and minoxidil pages
+    regardless; they feed paid search landing pages and WhatsApp replies even without organic rank.
+    If a competitor disputes a claim: fix the fact file, republish all affected pages the same day, and log
+    the change in the page footer.
+
+
+
+APPENDIX
+PILGRIM AND MINOXIDIL FACT FILES (ABRIDGED)
+                                                                                                             CODE
+    name: Pilgrim
+    last_verified: 2026-10-10
+    pricing: "Redensyl 3% + Anagain 4% serum ₹595 to ₹699, 50 ml"
+    claim_style: "ingredient concentrations; 12-ingredient story"
+    result_claim_on_pdp: "not found (as of Oct 2026)"
+    strengths: [large bottle, broad Nykaa and Amazon distribution, ₹200 Cr+ scale]
+    weaknesses: [same actives class as 3 other D2C brands, no named routine on PDP]
+    best_for: [label readers, existing Pilgrim users]
+    ---
+    name: Minoxidil 5% (Mintop and generics)
+    last_verified: 2026-10-10
+    pricing: "₹600 to ₹900 per month"
+    evidence: "strongest in category; decades of trials"
+    known_tradeoffs: [initial shedding, gains reverse on stopping, irritation, medical advice recommended]
+    best_for: [derm-supervised plans, stage 3+]
+    page_rule: "never call it unsafe; always link to a doctor"
+
+
+
+
+PRE-PUBLISH CHECKLIST FOR EVERY COMPARISON PAGE
+    Every competitor price has an "as of" month and a source URL in the fact file
+    No ✗ or "not available" without a documented check; "not listed (as of date)" otherwise
+    No motive attributed to a competitor
+    Competitor's "best for" paragraph is one a fair reader would accept
+    Arata's own weaknesses appear before the competitor's
+    Medical language cleared: no "cure", "regrow 100%", "clinical-strength"
+    FAQ schema validated; hub and footer links added; sitemap updated
+    84-day cost table present and arithmetic checked
+    Switcher reviews quoted verbatim, with source
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · COMPARISON PAGES THAT WIN THE SWITCH                                           14
+REUSE MAP
+ ASSET                                                          PULLS FROM               SURFACE
+
+ Amazon A+ comparison module                                    Arata vs Pilgrim table   Amazon.in serum listing
+ Nykaa listing "why Arata" block                                Plural page criteria     Nykaa PDP
+ WhatsApp reply template "Is this like Traya?"                  Arata vs Traya TL;DR     CX inbox
+ Quick-commerce buyer deck slide                                84-day cost tables       Blinkit, Zepto, Instamart category managers
+ Paid search landing page for "traya alternative"               /alternatives/traya      Google Ads
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · COMPARISON PAGES THAT WIN THE SWITCH                                                                  15
+COMPETITOR AND ALTERNATIVE PAGES
+
+
+DAY 30
+AT ARATA
+    WHAT IS LIVE
+
+    Arata vs Traya, Minoxidil alternative and Arata vs Pilgrim are live on arata.in
+    under /compare, with a hub page, footer links, FAQ schema and a dated
+    competitor fact file behind them.
+
+
+
+
+  NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+  BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+  CONFIRM".
+
+
+  EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+  BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                      DEPLOYMENT TEAM
+                                                                                   BREW
+

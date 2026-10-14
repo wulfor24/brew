@@ -1,0 +1,767 @@
+      Brew                                   PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+UPSELL AND SUBSCRIPTION MOMENTS · MOVE 36 OF 50
+
+
+
+UPGRADE
+MOMENTS
+FROM CART
+TO DAY 84
+  SIX PLACES ON ARATA.IN AND WHATSAPP WHERE ONE
+  BOTTLE BECOMES A ROUTINE, A COURSE, A
+  SUBSCRIPTION OR MITOACTIVE, EACH ASKED ONLY
+  AFTER THE CUSTOMER HAS SEEN THE PRODUCT WORK.
+
+
+
+
+6 moments
+UPGRADE ASKS, CART TO DAY 84
+
+
+
+
+BREW × ARATA                  OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                              WHAT THIS GIVES ARATA
+                                                              Six places on arata.in and WhatsApp where one
+                                                              bottle becomes a routine, a course, a subscription or
+                                                              MitoActive, each asked only after the customer has
+                                                              seen the product work.
+
+        6 moments
+        UPGRADE ASKS, CART TO DAY 84
+                                                              LIVE 30 DAYS AFTER WE START
+                                                              Routine on Repeat is selectable on every hair growth
+                                                              and dandruff PDP, the cart drawer offers the routine
+                                                              once and only once, prepaid orders see a one-click
+                                                              shampoo add, and day-25 and day-56 WhatsApp
+                                                              messages move serum buyers to Repeat and to
+                                                              MitoActive, all instrumented per moment.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+In software this discipline is the paywall: the screen that asks a free user to pay, shown after they have
+felt the product work. For Arata the same discipline is the upgrade moment: the PDP toggle that turns
+one bottle into Routine on Repeat, the cart drawer that turns a serum into a routine, the day-25
+message that turns a finished bottle into a course, and the day-56 message that turns an Intensive
+Serum customer into a MitoActive customer. Same rule applies. Ask after value. Make the next step
+obvious. Leave the door open.
+Arata has the ladder and no stairs. The catalogue runs from a ₹199 scalp massager to a ₹1,499
+MitoActive serum, with combos saving 7% to 49%, free shipping above ₹299 and a free gift above
+₹999. Those are five upgrade offers. None of them is presented as a moment. The customer finds the
+pack of 3 if they scroll, finds the free-gift threshold if they read the shipping bar, and never finds a
+subscription because there is none. With 50,000 D2C orders a month and an AOV near ₹900 to
+₹1,000, every missing moment is a few rupees of AOV multiplied by 50,000.
+The one upgrade ask Arata does push hard is the wrong one at the wrong time. The Hair Growth
+Intensive Serum Pack of 3 at ₹999 is the deepest discount in the catalogue, 49% off MRP, and it is
+offered to a first-time visitor who has never used the serum. That is the paywall shown before the aha
+moment. It converts some (388 reviews), but it converts by discount rather than by proof, it kills the
+reorder for 90 days, and it trains the buyer that ₹333 is the real price. The customers who would
+happily pay for a course are the ones who have finished one bottle and seen less hair on the pillow.
+Nobody asks them.
+The second gap is MitoActive. It launched in August 2026 at ₹1,499 with zero reviews, and the only
+path to it is a combo at ₹1,803 to ₹2,278 on a collection page. Arata has 474 reviews on the ₹571
+Intensive Serum and a built-in audience of people who have done 56 or 84 days with it. That audience
+is the tier-upgrade moment. It is not being asked.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · UPGRADE MOMENTS FROM CART TO DAY 84                                                  1
+The third gap is the one the brief states outright: no subscription. Beauty repeat rates sit near 26%
+and routine-led models exceed 40%. Arata's own conversion goal is a repeat within 45 days. Today
+that repeat depends on memory. A subscribe-and-save option, offered at the right moments and never
+pre-ticked, is how a 45-day repeat becomes a default rather than a hope.
+
+
+
+WHAT WE FOUND
+THE UPGRADE LADDER ARATA ALREADY OWNS
+Every rung exists in the catalogue. The ladder reads bottom to top as commitment rises.
+                                                                                                                    DIAGRAM
+        ₹/day     Rung                              Exists today?   Offered as a moment?
+        ─────     ────                              ─────────────   ────────────────────
+        ₹50       MitoActive (30 ml, ₹1,499)        yes, Aug 2026   no (collection page only)
+        ₹48       MitoActive 84-day course          no              no
+        ₹38       Hair Growth System (S + C + serum) yes, as "Trio" no (7% off, buried)
+        ₹18       Serum on Repeat (subscription)    no              no
+        ₹14       Intensive 84-day course           yes, as "Pack of 3" yes, but to first-time buyers
+        ₹20       Intensive Serum (30 ml)           yes             the default
+        ₹8        Anti-Hair Fall Shampoo (200 ml)   yes             no attach ask
+        ₹0        Free gift above ₹999              yes             shipping bar only
+        ₹0        Free shipping above ₹299          yes             shipping bar only
+
+
+
+
+Per-day figures use 30 days for a 30 ml serum and 45 days for a 200 ml shampoo (assumption: 15
+washes). The ₹/day column is the single most useful number in this document. It is the frame that
+makes a ₹1,499 serum read as ₹50 a day, and a ₹3,999 course read as cheaper per day than a single
+MitoActive bottle.
+
+SCORING TODAY'S UPGRADE MOMENTS AGAINST THE FOUR PRINCIPLES
+We score each moment on the four rules of a good paywall: value before ask, show the upgrade,
+friction-free path, respect the no. Scores are 0 to 2 per rule, 8 is a clean moment.
+                            VALUE
+ MOMENT ON                  BEFORE          SHOWS THE                   ESCAPE   SCORE
+ ARATA.IN TODAY             ASK             UPGRADE            FRICTION HATCH    /8        WHAT IS WRONG
+
+ Pack of 3 on PDP,          0               1                  2       2         5         90-day commitment asked
+ first visit                                                                               before the first bottle is opened
+ Hair Growth Trio at        1               0                  1       2         4         7% saving, below the single-
+ ₹1,201                                                                                    SKU pack discount, not framed
+                                                                                           as a routine
+ MitoActive combos          0               0                  1       2         3         Four combos, zero reviews, no
+ ₹1,803 to ₹2,278                                                                          bridge from the ₹571 serum
+ Free shipping              2               1                  2       2         7         Works, but a ₹359 shampoo
+ above ₹299                                                                                already clears it; no lift
+ Free gift above            1               0                  1       2         4         Gift is unnamed, the gap to ₹999
+ ₹999                                                                                      is never shown as a product
+ Subscribe and save n/a                     n/a                n/a     n/a       0         Does not exist
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · UPGRADE MOMENTS FROM CART TO DAY 84                                                           2
+                             VALUE
+ MOMENT ON                   BEFORE          SHOWS THE                  ESCAPE                SCORE
+ ARATA.IN TODAY              ASK             UPGRADE           FRICTION HATCH                 /8          WHAT IS WRONG
+
+ Post-purchase add           n/a             n/a               n/a              n/a           0           Does not exist
+ Day-25 reorder ask n/a                      n/a               n/a              n/a           0           Does not exist; repeat relies on
+                                                                                                          memory
+ Day-56 MitoActive           n/a             n/a               n/a              n/a           0           Does not exist
+ step-up
+
+
+Assumption: this audit is built from the public site structure in the brief. The cart drawer and checkout
+have not been instrumented yet; week 1 of deployment does that.
+
+WHEN THE AHA MOMENT ACTUALLY LANDS, BY CONCERN
+A paywall shown before the aha moment is a discount. Shown after, it is a next step. Arata's aha
+moment moves by concern, and the review language tells us where it sits.
+                                                                                         WHEN (FROM
+                                                                                         REVIEWS AND                 EARLIEST HONEST
+ CONCERN        HERO SKU                  WHAT THE CUSTOMER NOTICES                      CLAIMS)                     UPGRADE ASK
+
+ Dandruff       Anti-Dandruff             Less flaking, itch relief ("36-hour            Wash 1 to wash 3, day Day 7: add conditioner
+                Shampoo ₹404              itch relief")                                  1 to 7                and leave-on serum
+ Hair fall      Intensive Serum           Fewer strands on the pillow and in             Week 2 to 4                 Day 25: Repeat or 84-
+                ₹571                      the drain ("visible difference in two                                      day course
+                                          weeks")
+ Hair           Intensive Serum,          Baby hair at the hairline, density             Day 56 to 84 (the           Day 56: MitoActive tier
+ growth         then MitoActive                                                          claims are 84-day
+                                                                                         claims)
+ Grey           Anti-Grey Serum           Fewer new greys                                Month 2 to 3 ("over 3       Day 30: 3-month
+                ₹449                                                                     months")                    course
+ Styling        Hair Gel ₹269 to          Hold survives the metro                        Day 1                       Cart: add the second
+                ₹699                                                                                                 format
+
+
+This table drives the whole plan. Dandruff can be upgraded in the cart because the aha lands on the
+first wash. Hair fall cannot. Hair fall gets the subscription offer in the cart (low commitment,
+cancellable) and the course offer at day 25 (high commitment, after proof).
+
+WHAT THE CUSTOMER IS AFRAID OF AT EACH ASK
+The brief lists four anxieties: "Will I waste another ₹600?", "Will it make hair fall worse first?", "Is 30 ml
+enough?", "Will the bottle leak?". Each upgrade screen answers the one that applies.
+                                                                                                                                      DIAGRAM
+    Ask                            Fear it triggers                    Line that answers it
+    ───                            ────────────────                    ────────────────────
+    Repeat toggle on PDP           "Locked in, waste another ₹600"     Skip or cancel from WhatsApp. No login.
+    Routine in cart drawer         "Is 30 ml enough?"                  30 ml is 30 days. The shampoo is 45.
+    Course at day 25               "Worse first?"                      Shedding settles by week 3. Day 84 is the number.
+    MitoActive at day 56           "₹1,499 for 30 ml"                  ₹50 a day. Traya is ₹1,400 to ₹1,800 a month, plus a doctor.
+    Any ask                        "Bottle leaked"                     Replaced, no questions, from the WhatsApp line.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · UPGRADE MOMENTS FROM CART TO DAY 84                                                                            3
+THE PLAN
+PRICE LADDER USED IN THIS DOCUMENT
+The prices below follow the ladder from our pricing deliverable for Arata. If Arata keeps today's prices,
+swap the numbers; the screens do not change.
+ RUNG                                                                  PRICE               ₹/DAY      NOTE
+
+ Hair Growth Intensive Serum, 30 ml                                    ₹599 (today         ₹20        single
+                                                                       ₹571)
+ Serum on Repeat                                                       ₹539 every 30       ₹18        10% off, free shipping, cancel from
+                                                                       days                           WhatsApp
+ Hair Growth System (shampoo + conditioner + serum                     ₹1,149              ₹38        replaces the ₹1,201 Trio
+ + scalp massager)
+ System on Repeat                                                      ₹1,039 every 30     ₹35
+                                                                       days
+ Intensive 84-day Course (3 serums)                                    ₹1,199              ₹14        replaces the ₹999 Pack of 3
+ MitoActive, 30 ml                                                     ₹1,499              ₹50        holds
+ MitoActive on Repeat                                                  ₹1,349 every 30     ₹45
+                                                                       days
+ MitoActive 84-day Course (3 MitoActive + AHF                          ₹3,999              ₹48        carries the 84-day promise
+ shampoo)
+ Anti-Dandruff System (shampoo + conditioner +                         ₹999                           lands on the free-gift line
+ leave-on serum)
+ Anti-Hair Fall Shampoo single / on Repeat                             ₹359 / ₹319         ₹8 /
+                                                                                           ₹7
+
+
+THE SIX MOMENTS
+                                                                                                                                    DIAGRAM
+                        BROWSE             CART              PAY               DAY 7-25           DAY 56        DAY 84
+                        ──────             ────              ───               ────────           ──────        ──────
+     Surface            PDP                Drawer + cart     Post-             WhatsApp           WhatsApp      WhatsApp +
+                                                             purchase                                           web page
+     Ask                One-time or        Complete the      One-click         Bottle is          Step up to    Course done.
+                        Repeat?            routine           shampoo add       running low:       MitoActive    Maintain or
+                                                                               Repeat / course                  step up
+     Commitment         low                low               low               medium             high          medium
+     Proof so far       none               none              none              2 to 3 weeks       8 weeks       12 weeks
+     Default            one-time           single            decline           one bottle         stay          Repeat
+     Escape hatch       "Just once"        "Just the         "No thanks"       reply ONE          reply STAY    reply DONE
+                                           serum"
+     Moment number      1                  2                 3                 4                  5             6
+
+
+
+
+Each moment, what it is, why, and the expected effect:
+Moment 1. PDP purchase selector: one-time or Routine on Repeat. Two radio options of equal size
+on every hair growth, dandruff and anti-grey PDP. One-time is pre-selected. Repeat shows the price,
+the per-day price, the cadence and the three words that matter: skip, pause, cancel. Why here: the
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · UPGRADE MOMENTS FROM CART TO DAY 84                                                                          4
+subscription is low commitment and cancellable, so it is honest to offer before proof. Expected effect:
+Repeat share of PDP add-to-carts at 8% to 12% in 90 days (assumption, D2C beauty benchmark for a
+non-pre-ticked toggle).
+Moment 2. Cart drawer: complete the routine. When a single serum or shampoo is added, the
+drawer shows one card: the routine that goes with it, the price difference, and "Just the serum" as a
+visible button. Dandruff gets the full system ask (aha lands on wash 1). Hair fall gets the shampoo
+attach, with the 84-day course held back for day 25. The cart page itself carries a passive progress
+bar to ₹999 with the gift named. Why: this is the feature-gate equivalent, the customer has just chosen
+a concern and the routine is the obvious next step. Expected effect: routine attach on hair growth
+orders from an estimated 10% to 20%; AOV up ₹80 to ₹120 on affected orders (assumption).
+Moment 3. Post-purchase one-click add. After payment on prepaid orders, Shopify's post-purchase
+page offers one item with one tap and no re-entry of payment: the Anti-Hair Fall Shampoo for serum
+buyers, the Anti-Dandruff Conditioner for dandruff shampoo buyers. Shopify's post-purchase page
+does not fire on cash-on-delivery orders or on most manual gateways, so COD orders get the same
+add as a one-tap reply in the order-confirmation WhatsApp. Why: the ask comes after commitment,
+the risk is near zero, and it never touches checkout. Expected effect: 4% to 7% take rate on prepaid
+orders (assumption).
+Moment 4. Day 25 WhatsApp: the bottle is running low. The usage-limit screen, in message form.
+Sent 25 days after delivery of a 30 ml serum (day 38 for a 200 ml shampoo). Three replies: REPEAT,
+COURSE, ONE. The course is offered here, after proof, at ₹14 a day, instead of to strangers on the
+PDP. Expected effect: repeat within 45 days from an estimated 26% to 35% on serum buyers; this is
+the moment that carries most of the revenue in this plan.
+Moment 5. Day 56 WhatsApp: step up to MitoActive. Sent to Intensive Serum customers on their
+second bottle or on Repeat. The tier-upgrade screen. Summarises what they have done (56 days, two
+bottles), says what MitoActive adds (a different mechanism, Y100, mitochondrial), prices it per day,
+compares to Traya, and offers STAY as the first reply. Expected effect: 8% to 12% of day-56 recipients
+take MitoActive on Repeat or the course (assumption). This is also where MitoActive's first 100
+reviews come from.
+Moment 6. Day 84: course complete. The trial-expiration screen, inverted. For course and Repeat
+customers who reach day 84: a recap of what they did, the day-0 and day-84 photo if they uploaded
+one, and two paths: maintain on Repeat, or step up to the MitoActive course. The default is the
+cheaper one. Expected effect: course-to-maintenance conversion of 40% or better (assumption), and
+the review ask lands on the same message.
+
+FREQUENCY AND DISMISSAL RULES
+The anti-patterns in this discipline are well known: hidden close buttons, pre-ticked subscriptions,
+guilt copy, stacked modals. Arata's rules, written down so every app and every developer follows
+them:
+    One ask per surface. The drawer shows one card. The cart page shows one bar. The post-
+    purchase page shows one item. Checkout shows nothing.
+    Dismissed means dismissed. "Just the serum" in the drawer suppresses the routine ask on the cart
+    page for that session and for 14 days.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · UPGRADE MOMENTS FROM CART TO DAY 84                                      5
+    Repeat is never pre-ticked. The one-time price is always visible at the same size as the Repeat
+    price.
+    WhatsApp carries at most one upgrade message per 14 days per customer. LATER means 10 days
+    of silence. STOP ends promotional messages and keeps order messages.
+    No countdowns, no "only 3 left", no "others are viewing this". The brand line is "Zero guesswork".
+    Pressure contradicts it.
+    The replacement promise (leaks, broken seals) sits inside the Repeat terms, because that is the
+    fear that stops a subscription.
+
+WHERE MARKETPLACE AND QUICK-COMMERCE BUYERS ENTER THE LADDER
+68% of revenue arrives from Amazon, Nykaa, Flipkart, Blinkit, Zepto and Instamart. Those customers
+never see a PDP toggle. Their first upgrade moment is the box. A card in every marketplace and quick-
+commerce order carries a QR to a Repeat landing page with the per-day price and the WhatsApp opt-
+in. The Repeat price is website only, which gives the marketplace buyer a reason to move. Expected
+effect: this is slow and small at first, 1% to 2% of marketplace orders scanning in 90 days
+(assumption), but it is the only lever that moves revenue off rented land without cutting marketplace
+price parity.
+
+TEST BACKLOG, IN PRIORITY ORDER
+ # TEST                       VARIANT A                   VARIANT B                   DECIDES
+
+ 1 Price frame on PDP ₹539 every 30 days                  ₹18 a day, billed ₹539      Whether per-day framing lifts Repeat share
+   selector
+ 2 Order of options           One-time listed first       Repeat listed first (one-   Position effect without pre-ticking
+                                                          time still pre-selected)
+ 3 Drawer ask for             Add shampoo                 Upgrade to System           Small attach vs routine upgrade
+   serum buyers               (₹359)                      (₹1,149)
+ 4 Cart bar                   Progress to ₹999            No bar                      Whether the threshold bar moves AOV or
+                              with gift named                                         just clutters
+ 5 Post-purchase              AHF Shampoo ₹359            Scalp massager ₹199         Take rate vs revenue per impression
+   item
+ 6 Day-25 send time           Day 21                      Day 25                      Reorder conversion vs annoyance (STOP
+                                                                                      rate)
+ 7 Day-56 MitoActive ₹50 a day vs Traya                   87% saw growth in 84        Price frame vs science frame on a zero-
+   frame                                                  days, Y100 explained        review product
+ 8 Day-84 framing             What you keep               What stops if you stop      Maintenance conversion; loss framing is
+                              (gain)                      (loss)                      only kept if STOP rate does not rise
+
+
+One test per moment at a time. Minimum 5,000 impressions or 4 weeks, whichever comes later,
+before a call.
+
+
+
+WORKED EXAMPLES
+
+BREW DEPLOYMENT TEAM × ARATA · UPGRADE MOMENTS FROM CART TO DAY 84                                                               6
+EXAMPLE 1. PDP PURCHASE SELECTOR, HAIR GROWTH INTENSIVE SERUM
+Sits directly under the price, above Add to Cart. Two radio cards, same size. One-time pre-selected.
+                                                                                                DIAGRAM
+    ┌──────────────────────────────────────────────────────────────┐
+    │ (●) Buy once                                          ₹599   │
+    │     30 ml · 30 days · ₹20 a day                              │
+    ├──────────────────────────────────────────────────────────────┤
+    │ ( ) Routine on Repeat                                 ₹539   │
+    │     Delivered every 30 days · ₹18 a day · free shipping      │
+    │     Skip, pause or cancel with one WhatsApp reply.           │
+    │     Scalp massager free with your third delivery.            │
+    └──────────────────────────────────────────────────────────────┘
+
+                    [ Add to cart ]
+
+        Up to 28,200 new hairs in 84 days. That is three bottles.
+        Repeat gets you there without remembering to reorder.
+
+
+
+
+Microcopy below the selector, shown only when Repeat is selected:
+
+   YOU WILL GET A WHATSAPP MESSAGE 5 DAYS BEFORE EVERY DELIVERY.
+   REPLY SKIP TO SKIP ONE, PAUSE TO PAUSE, OR CANCEL TO STOP. NO
+   LOGIN, NO CALL. IF A BOTTLE EVER ARRIVES LEAKING OR WITH A BROKEN
+   SEAL, REPLY LEAK AND WE REPLACE IT.
+
+
+What this does: it answers the "locked in" fear in the same breath as the ask, it names the free gift so
+the ₹999 threshold has a face, and it ties the subscription to the 84-day claim the customer came for.
+Nothing is pre-ticked. The one-time price is the first thing the eye lands on.
+
+EXAMPLE 2. CART DRAWER, COMPLETE THE ROUTINE
+Two versions, because the aha moment differs by concern.
+2a. Customer adds Anti-Dandruff Shampoo (₹404). Dandruff proof lands on wash 1, so the full
+system is fair to ask now.
+                                                                                                DIAGRAM
+    ┌──────────────────────────────────────────────────────────────┐
+    │ Added to cart                                                │
+    │ Anti-Dandruff Shampoo · 200 ml                        ₹404   │
+    ├──────────────────────────────────────────────────────────────┤
+    │ Make it the full Anti-Dandruff System                        │
+    │                                                              │
+    │ Shampoo clears the fungus. Conditioner stops the dryness     │
+    │ that Head & Shoulders left you with. The leave-on serum      │
+    │ handles the itch between washes, up to 36 hours.             │
+    │                                                              │
+    │ Shampoo + Conditioner + Leave-on Serum           ₹999        │
+    │ You add ₹595 and clear the free-gift line.                   │
+    │                                                              │
+    │ [ Add the System for ₹999 ]        [ Just the shampoo ]      │
+    └──────────────────────────────────────────────────────────────┘
+
+
+
+
+2b. Customer adds Hair Growth Intensive Serum (₹599). Hair fall proof takes two to four weeks, so
+the course waits for day 25. The drawer asks only for the wash.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · UPGRADE MOMENTS FROM CART TO DAY 84                                       7
+                                                                                                DIAGRAM
+    ┌──────────────────────────────────────────────────────────────┐
+    │ Added to cart                                                │
+    │ Hair Growth Intensive Serum · 30 ml                   ₹599   │
+    ├──────────────────────────────────────────────────────────────┤
+    │ Pair it with the wash it was tested with                     │
+    │                                                              │
+    │ Anti-Hair Fall Intensive Shampoo · 200 ml · 45 days   ₹359   │
+    │ 7.4X less hair fall in the wash. The serum works on the      │
+    │ roots. The shampoo stops you losing what is growing.         │
+    │                                                              │
+    │ Cart would be ₹958. ₹41 more gets the free gift.             │
+    │                                                              │
+    │ [ Add shampoo for ₹359 ]           [ Just the serum ]        │
+    └──────────────────────────────────────────────────────────────┘
+
+
+
+
+Cart page bar, passive, under the line items:
+                                                                                                DIAGRAM
+    ₹958 ──────────────────────────────────────────○──── ₹999
+    Free shipping: done. ₹41 to go for a free scalp massager (₹199).
+    [ Add scalp massager ₹199 ]   [ Upgrade to Hair Growth System ₹1,149, massager included ]
+
+
+
+
+What this does: in 2a the copy sells the conditioner by naming the exact complaint in the brief (mass
+anti-dandruff dries hair out) and the leave-on by its claim. In 2b the shampoo is sold as the partner of
+the serum, with its own number, and the course is deliberately absent. The bar names the gift. "Just
+the serum" is a real button, same row, same weight.
+
+EXAMPLE 3. POST-PURCHASE ONE-CLICK ADD
+Prepaid orders, Shopify post-purchase page, shown once after payment. Serum buyer version.
+                                                                                                DIAGRAM
+    Order placed. One more thing, same box, no extra shipping.
+
+    Anti-Hair Fall Intensive Shampoo · 200 ml                ₹359
+    7.4X hair fall reduction. Tested with the serum you just bought.
+    Arrives in the same parcel. Nothing to re-enter.
+
+    [ Add for ₹359 ]                                      [ No thanks ]
+
+
+
+
+Same offer for COD orders, delivered as the order-confirmation WhatsApp:
+
+   ORDER CONFIRMED: HAIR GROWTH INTENSIVE SERUM, 30 ML. ARRIVES IN
+   2 TO 4 DAYS.
+
+   WANT THE SHAMPOO IT WAS TESTED WITH IN THE SAME BOX? ANTI-
+   HAIR FALL INTENSIVE SHAMPOO, 200 ML, ₹359, 7.4X LESS HAIR FALL IN
+   THE WASH. REPLY ADD AND WE PUT IT IN. REPLY ANYTHING ELSE AND
+   WE LEAVE YOUR ORDER AS IT IS.
+
+
+One offer, one tap, one line of proof, and a decline that costs nothing.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · UPGRADE MOMENTS FROM CART TO DAY 84                                       8
+EXAMPLE 4. DAY 25 WHATSAPP: THE BOTTLE IS RUNNING LOW
+Sent 25 days after delivery of a single Intensive Serum. The usage-limit screen.
+
+   HI RAHUL. YOUR HAIR GROWTH INTENSIVE SERUM IS ABOUT 5 DAYS
+   FROM EMPTY.
+
+   YOU ARE 25 DAYS INTO AN 84-DAY CLAIM. MOST PEOPLE SEE FEWER
+   STRANDS ON THE PILLOW BY NOW. THE NEW HAIR SHOWS UP IN MONTH
+   2 AND 3, WHICH IS WHY THE STUDY RAN 84 DAYS.                           THREE WAYS TO KEEP GOING:
+
+   REPEAT: A BOTTLE EVERY 30 DAYS AT ₹539, FREE SHIPPING, ₹18 A DAY.
+   SKIP OR CANCEL ANY TIME BY REPLY. COURSE: THE NEXT 84 DAYS IN
+   ONE GO. 3 BOTTLES FOR ₹1,199, ₹14 A DAY, SHIPPED TOGETHER. ONE: ONE
+   MORE BOTTLE AT ₹599.
+
+   REPLY WITH THE WORD. REPLY LATER AND WE WILL CHECK IN NEXT
+   WEEK.
+
+
+If no reply by day 30:
+
+   RAHUL, THE BOTTLE RUNS OUT ABOUT TODAY. STOPPING NOW RESETS
+   THE 84-DAY CLOCK. REPLY REPEAT, COURSE OR ONE AND IT SHIPS
+   TODAY. REPLY STOP AND WE WILL NOT MESSAGE ABOUT THIS AGAIN.
+
+
+What this does: it moves the deepest discount in the catalogue from the PDP (before proof) to day 25
+(after proof). The course becomes a reward for finishing a bottle. REPEAT is listed first because it is
+the default we want; ONE is still there because an escape hatch keeps the trust that makes day 56
+possible.
+
+EXAMPLE 5. DAY 56 WHATSAPP: STEP UP TO MITOACTIVE
+Sent to Intensive Serum customers on their second bottle or second Repeat delivery. The tier-upgrade
+screen.
+
+   HI RAHUL. 56 DAYS. TWO BOTTLES. YOU HAVE DONE THE PART MOST
+   PEOPLE QUIT AT.
+
+   HERE IS WHAT IS NEXT. MITOACTIVE IS ARATA'S NEW HAIR GROWTH
+   SERUM. IT WORKS ON A DIFFERENT SYSTEM FROM THE INTENSIVE
+   SERUM. Y100, ITS ACTIVE, IMPROVES HOW YOUR FOLLICLE CELLS MAKE
+   ENERGY (MITOCHONDRIA), WHICH SHIFTS MORE HAIRS INTO THE
+   GROWING PHASE. IN THE 84-DAY STUDY, 87% SAW INCREASED GROWTH.
+   IT IS EXCLUSIVE TO ARATA IN INDIA.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · UPGRADE MOMENTS FROM CART TO DAY 84                                      9
+   ₹1,499 FOR 30 DAYS, ₹50 A DAY. TRAYA IS ₹1,400 TO ₹1,800 A MONTH,
+   PLUS A DOCTOR AND A SUPPLEMENT BOX.
+
+   STAY: KEEP THE INTENSIVE SERUM ON REPEAT AT ₹539. IT IS WORKING
+   FOR YOU, AND THAT IS FINE. STEP: SWITCH YOUR REPEAT TO
+   MITOACTIVE AT ₹1,349 EVERY 30 DAYS. COURSE: MITOACTIVE 84 DAYS, 3
+   BOTTLES PLUS THE ANTI-HAIR FALL SHAMPOO, ₹3,999. SEND US A
+   CROWN PHOTO ON DAY 0 AND DAY 84; IF YOU SEE NO CHANGE, THE
+   THIRD BOTTLE IS REFUNDED.                                                                     REPLY WITH THE WORD.
+
+
+Companion web section on the MitoActive PDP, reached from the STEP link, for the customer who
+wants to compare before replying:
+                                                                                                                    DIAGRAM
+                               Intensive Serum              MitoActive
+                               ───────────────              ──────────
+    Mechanism                  Actives on the scalp         Y100 on the follicle's mitochondria
+    Study result               Up to 28,200 new hairs       87% saw increased growth
+                               in 84 days                   in 84 days
+    Reviews                    474                          new (Aug 2026). Yours would be among the first.
+    Per day on Repeat          ₹18                          ₹45
+    84-day course              ₹1,199                       ₹3,999, with the 84-day promise
+    Who it is for              First 84 days                Day 56 onward, or anyone who wants the
+                                                            strongest option without minoxidil
+
+    [ Switch Repeat to MitoActive ]               [ Stay on Intensive Serum ]
+
+
+
+
+What this does: STAY comes first and is written as a real option with its own reason. The science is
+explained in one sentence a non-chemist can repeat to a friend. The price is framed per day and
+against Traya, which is the comparison Kavya and Rahul are already making. The zero-review problem
+is turned into a line ("yours would be among the first") instead of hidden.
+
+EXAMPLE 6. DAY 84: COURSE COMPLETE
+Sent to anyone who has completed three serum bottles (course or Repeat). The trial-expiration screen,
+written as a milestone.
+
+   84 DAYS, RAHUL. THREE BOTTLES. THAT IS THE FULL STUDY WINDOW.
+
+   IF YOU SENT A DAY-0 PHOTO, HERE IT IS NEXT TO TODAY'S. [DAY 0] [DAY
+   84]
+
+   WHAT YOU DID: 84 DAYS OF TWICE-DAILY SERUM, AROUND 2,500
+   APPLICATIONS. WHAT THE STUDY SAW AT THIS POINT: UP TO 28,200
+   NEW HAIRS. WHAT STOPS IF YOU STOP: THE NEW GROWTH NEEDS THE
+   ROUTINE TO HOLD.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · UPGRADE MOMENTS FROM CART TO DAY 84                                                      10
+     KEEP: INTENSIVE SERUM ON REPEAT, ₹539 EVERY 30 DAYS.
+     MAINTENANCE MODE. YOU CAN MOVE TO EVERY 45 DAYS BY REPLY.
+     STEP: MITOACTIVE ON REPEAT, ₹1,349 EVERY 30 DAYS, FOR DENSITY
+     BEYOND WHERE YOU ARE NOW. DONE: WE STOP MESSAGES. YOUR HAIR,
+     YOUR CALL.
+
+     REPLY WITH THE WORD. AND IF YOU HAVE 30 SECONDS, REPLY WITH A
+     STAR RATING 1 TO 5 AND A LINE. IT GOES ON THE PRODUCT PAGE AS IT
+     IS.
+
+
+The review ask rides on the milestone message because this is the day the customer has the most to
+say and the most proof to say it with. MitoActive course finishers get the identical message with the
+MitoActive names, and those replies are MitoActive's first reviews.
+
+
+
+30-DAY DEPLOYMENT
+                                                                                                      OWNER          OWNER
+ WEEK BREW SHIPS                                                     ARATA PROVIDES                 (BREW)       (ARATA)
+
+ 1        Instrumentation on every moment: PDP selector                Shopify admin and theme        Growth lead,   Brand
+          impressions and selection, drawer impressions and            access, WhatsApp               Shopify        manager,
+          take, cart bar, post-purchase take, WhatsApp reply           Business API access,           engineer       ops lead
+          rates. Baseline capture for AOV, attach rate, repeat-        approval of the price
+          within-45-days. Subscription app configured with             ladder and the frequency
+          30-day and 45-day cadences and WhatsApp reply                rules, current combo list to
+          controls. Frequency rules written into the app               retire
+          settings.
+ 2        Moment 1 live: PDP selector on Intensive Serum,              Sign-off on drawer and         Creative      Brand
+          MitoActive, Anti-Dandruff Shampoo, Anti-Grey                 selector copy,                 lead, Shopify manager,
+          Serum, Anti-Hair Fall Shampoo, Hair Growth System.           confirmation of the free-      engineer      warehouse
+          Repeat microcopy and the LEAK replacement                    gift SKU (scalp massager),                   lead
+          promise. Moment 2 live: drawer cards for the hair            warehouse ready to fulfil
+          growth and dandruff SKUs, cart bar with the gift             Repeat orders
+          named. Old Pack of 3 PDP redirected to the 84-day
+          Course.
+ 3        Moment 3 live: post-purchase page on prepaid                 COD share of orders (to        Growth lead, Customer
+          orders, WhatsApp ADD on COD orders. Moment 4                 size moment 3), customer       lifecycle lead service lead,
+          live: day-25 and day-30 serum messages, day-38               service rules for LATER                       ops lead
+          shampoo message, with REPEAT / COURSE / ONE /                and STOP, approval of the
+          LATER / STOP handling. Marketplace box insert                insert
+          designed and sent to print with the Repeat QR
+          landing page live.
+ 4        Moment 5 live: day-56 MitoActive message and the             Sign-off on MitoActive         Lifecycle      Brand
+          comparison section on the MitoActive PDP, with               copy and the Y100 one-         lead, creative manager,
+          STAY / STEP / COURSE handling and the 84-day                 sentence explainer, refund     lead, growth finance lead
+          promise photo flow. Moment 6 live: day-84                    policy for the 84-day          lead
+          milestone message with the review capture to the             promise confirmed
+          product page. Test 1 (per-day price frame) started.
+          Dashboard per moment handed over.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · UPGRADE MOMENTS FROM CART TO DAY 84                                                                 11
+Live by day 30: all six moments on the site and on WhatsApp, one test running, every moment
+reporting impressions, take rate and revenue per impression. Day-56 and day-84 messages will not
+fire to anyone until weeks 8 and 12, since the cohort has to age into them; the queues are built and
+tested by day 30.
+
+
+
+HOW WE MEASURE
+ METRIC                                       BASELINE                            90-DAY TARGET            SOURCE
+
+ Repeat share of PDP add-to-carts             0% (no subscription)                8% to 12%                Subscription app
+ (moment 1)
+ Routine on Repeat share of D2C               0%                                  12%                      Subscription app
+ orders
+ Drawer take rate (moment 2)                  to be instrumented                  10% on dandruff, 6%      Theme events
+                                                                                  on hair growth
+ Hair growth orders with shampoo              to be instrumented (assumption:     20%                      Shopify order
+ or system attached                           ~10%)                                                        lines
+ Post-purchase take rate on                   0% (does not exist)                 4% to 7%                 Shopify post-
+ prepaid orders (moment 3)                                                                                 purchase
+ Day-25 reply rate and reorder                0% (does not exist)                 40% reply, 15% order     WhatsApp
+ conversion (moment 4)                                                            within 7 days            provider
+ Repeat purchase within 45 days,              ~26% (industry figure from the brief, 35%                    Shopify cohorts
+ serum buyers                                 assumption for Arata)
+ Day-56 MitoActive take rate                  0%                                  8% to 12% of             WhatsApp
+ (moment 5)                                                                       recipients               provider
+ MitoActive reviews on arata.in               0                                   100, mostly from day-    Loox
+                                                                                  84 replies
+ D2C AOV                                      ~₹900 to ₹1,000                     +8% to +12%              Shopify
+ Subscription cancellations before            n/a                                 under 25%                Subscription app
+ delivery 2
+ WhatsApp STOP rate on upgrade                n/a                                 under 1.5% per send      WhatsApp
+ messages                                                                                                  provider
+ Cart-to-checkout rate (guard rail)           to be instrumented                  no drop below baseline   Theme events
+
+
+DECISION RULES
+    A moment with a take rate under 3% after 5,000 impressions or 4 weeks gets a new offer. The
+    discount stays where it is. First swap: the item (shampoo to massager, system to single attach).
+    Second swap: the copy frame (per-day to claim-led). Only then do we revisit price, and that goes
+    back through the pricing rulebook.
+    If cart-to-checkout drops more than 2 points after moment 2 goes live, the drawer card is pulled
+    and the ask moves to the cart page bar only.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · UPGRADE MOMENTS FROM CART TO DAY 84                                                          12
+    If Repeat cancellations before delivery 2 exceed 30%, the PDP toggle is asking too early for this
+    audience. We keep the toggle, remove the gift mention from it, and make day 25 the main Repeat
+    ask.
+    If the day-25 STOP rate goes above 1.5%, the send moves to day 28 and the follow-up at day 30 is
+    dropped.
+    If moment 5 converts above 12%, MitoActive on Repeat becomes the recommended option on the
+    MitoActive PDP and the day-56 send moves to day 42 for a test. If it converts under 5%, the
+    science frame (test 7, variant B) replaces the price frame before anything else changes.
+    If moments 1, 2 and 4 together lift D2C AOV by 8% or more and repeat-within-45-days by 5 points
+    or more at day 90, the same selector and drawer logic rolls out to the styling, face and body
+    ranges, and the box insert program extends to every marketplace order.
+
+
+
+APPENDIX
+PRE-LAUNCH CHECKLIST FOR EVERY UPGRADE SCREEN
+    One-time price visible, same size as Repeat.
+    Nothing pre-ticked.
+    Per-day price shown next to every rung above ₹500.
+    Decline button in the same row as the accept button.
+    The fear this screen triggers is answered on the screen (see the fear table).
+    One claim, one number, and the number is on the pack.
+    No countdowns, stock counters or "others are viewing".
+    Dismissal is logged and suppresses the ask for 14 days.
+    Screen works at phone width with the decline visible without scrolling.
+    Copy uses the brand words (scalp, roots, 84 days, routine, system, Y100 explained) and none of
+    the avoid list (chemical-free, miracle, cure, clinical-strength).
+
+WHATSAPP KEYWORD MAP
+ REPLY                           MEANING                               ACTION
+
+ REPEAT                          Start or continue Routine on Repeat   Create subscription at Repeat price, confirm cadence
+ COURSE                          Buy the 84-day course                 Create order, confirm ship date
+ ONE                             One more bottle, one-time             Create order at single price
+ STAY                            Keep current product on Repeat        No change, suppress step-up for 60 days
+ STEP                            Switch Repeat to MitoActive           Swap subscription line, confirm next ship date
+ KEEP                            Continue Repeat after day 84          No change, offer 45-day cadence
+ SKIP / PAUSE / CANCEL           Subscription controls                 Apply, confirm, no retention script on first use
+ LATER                           Not now                               10-day silence, one follow-up, then stop
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · UPGRADE MOMENTS FROM CART TO DAY 84                                                          13
+ REPLY                           MEANING                                   ACTION
+
+ ADD                             Post-purchase add on COD                  Append line to open order
+ LEAK                            Replacement request                       Ship replacement, no questions, log the batch
+ DONE / STOP                     End upgrade messages                      Promotional opt-out, order messages continue
+
+
+MOMENT-BY-MOMENT SPEC
+ MOMENT SURFACE                           TRIGGER                           SHOWN TO                   NOT SHOWN WHEN
+
+ 1            PDP                         Page load                         Everyone, on 6 SKUs        Marketplace price-parity
+                                                                                                       pages
+ 2            Cart drawer and cart        Single hair growth or dandruff    Carts without the          Dismissed in last 14 days;
+              page                        SKU added                         routine                    routine already in cart
+ 3            Post-purchase page Payment confirmed                          Prepaid: page. COD:        Order already contains the
+              or WhatsApp                                                   WhatsApp                   add item
+ 4            WhatsApp                    Day 25 after delivery of a        One-time buyers            Customer is on Repeat;
+                                          single serum; day 38 for a                                   opted out
+                                          wash
+ 5            WhatsApp and                Day 56 of Intensive Serum use     Second-bottle and          Already on MitoActive; STAY
+              MitoActive PDP                                                Repeat customers           in last 60 days
+ 6            WhatsApp                    Third bottle delivered + 28       Course and Repeat          Opted out
+                                          days                              customers
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · UPGRADE MOMENTS FROM CART TO DAY 84                                                                14
+UPSELL AND SUBSCRIPTION MOMENTS
+
+
+DAY 30
+AT ARATA
+   WHAT IS LIVE
+
+   Routine on Repeat is selectable on every hair growth and dandruff PDP, the cart
+   drawer offers the routine once and only once, prepaid orders see a one-click
+   shampoo add, and day-25 and day-56 WhatsApp messages move serum buyers
+   to Repeat and to MitoActive, all instrumented per moment.
+
+
+
+
+ NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+ BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+ CONFIRM".
+
+
+ EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+ BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                 DEPLOYMENT TEAM
+                                                                              BREW
+

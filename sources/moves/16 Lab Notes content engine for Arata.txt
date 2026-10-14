@@ -1,0 +1,884 @@
+      Brew                                        PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+CONTENT STRATEGY · MOVE 16 OF 50
+
+
+
+LAB NOTES
+CONTENT
+ENGINE
+FOR ARATA
+  A FIVE-PILLAR CONTENT SYSTEM THAT TURNS THE
+  NUMBER ON EVERY ARATA BOTTLE INTO PAGES PEOPLE
+  SEARCH FOR, JOURNEYS PEOPLE SHARE, AND A WEEKLY
+  CADENCE THAT STOPS LAB NOTES ARRIVING IN BURSTS.
+
+
+
+
+5 pillars
+THAT OWN HAIR FALL SEARCH IN INDIA
+
+
+
+
+BREW × ARATA                       OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                     V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                               WHAT THIS GIVES ARATA
+                                                               A five-pillar content system that turns the number on
+                                                               every Arata bottle into pages people search for,
+                                                               journeys people share, and a weekly cadence that
+
+        5 pillars
+        THAT OWN HAIR FALL SEARCH IN
+                                                               stops Lab Notes arriving in bursts.
+                                                               LIVE 30 DAYS AFTER WE START
+                                                               Lab Notes publishes three pieces a week on a fixed
+        INDIA
+                                                               cadence, the Hair Fall hub and its first six spokes are
+                                                               live, the India hair fall statistics page is live and
+                                                               being pitched for links, and the first MitoActive 84-
+                                                               day journal has started on day 0.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+One line on translation first. In D2C the content playbook maps like this: template libraries become
+routine pages (the shampoo plus serum plus conditioner cart), lead generation becomes first
+purchase and WhatsApp or email opt-in, and case studies become 84-day hair journeys with a real
+face and a dated photo.
+Arata has the raw material most haircare brands would pay for. A number on every bottle: 7.4X,
+28,200, 95%, 86%, 87%. An in-house lab in Delhi. A new mechanism in MitoActive and Y100 that
+nobody else in India can sell. Verbatim customers saying "it actually works and it is affordable". That is
+a content library waiting to be written. Today almost none of it exists as a page you can find on
+Google, send to a friend, or read before you decide to spend ₹1,499.
+Here is what the brief shows. Lab Notes posts cluster in bursts (seven in March 2026, then quiet). The
+hair growth collection mixes claims with no routine builder. MitoActive launched in August 2026 with
+zero reviews. Naming is inconsistent across channels. And 68% of revenue sits on Amazon, Nykaa,
+Blinkit, Zepto and Instamart, where Arata rents the shelf and never meets the customer. Content is the
+cheapest way to pull that customer onto arata.in, which already does 32% of sales and ~650K visits a
+month.
+The cost of the gap is specific. The "28,200 hairs? Sounds too good" objection in the brief has no
+page answering it, so the claim does the opposite of what it should: it raises suspicion instead of trust.
+"Is this just another Redensyl serum?" has no page. "Do I have to use it forever?" has no page.
+Meanwhile Traya has built a hair-health blog with dermatologist bylines and a whole "hair stories"
+series about people whose hair fall started when they moved to Bengaluru. They are writing the
+Indian-hair-and-water story that belongs to Arata, and pointing every reader at a ₹1,400-a-month hair
+test.
+The opportunity is to own three things in search and in the feed. First, hair fall for Indian hair, Indian
+water and Indian weather, which nobody in the ₹400 to ₹700 band owns. Second, "the number,
+explained": the only brand that can show the study behind the claim. Third, 84 days as a public clock.
+
+
+BREW DEPLOYMENT TEAM × ARATA · LAB NOTES CONTENT ENGINE FOR ARATA                                                      1
+Arata already sells the window. Content makes the window visible.
+The system below does that with five pillars, three pieces a week, and a rule that every piece ships
+with its own distribution kit. Traffic and ranking baselines are not in the brief, so they are marked "to
+be instrumented".
+
+
+
+WHAT WE FOUND
+CONTENT AUDIT: WHAT ARATA HAS TODAY
+                                                                                SCORE
+ ASSET                       WHERE IT LIVES          SEARCHABLE       SHAREABLE (1 TO 5)          WHAT IS WRONG WITH IT
+
+ Lab Notes blog              arata.in                Partly           No              2           Bursty cadence (seven posts in
+                                                                                                  March 2026). No hub structure.
+                                                                                                  Not written to a keyword.
+ Numeric claims              Product pages           No               No              2           A claim without an explainer reads
+ (7.4X, 28,200, 95%,         only                                                                 as marketing. No study-design
+ 86%, 87%)                                                                                        page exists.
+ Y100 and MitoActive Launch press                    No               Partly          2           Lives in trade press. No owned
+ story               (Aug 2026)                                                                   explainer, no FAQ, no reviews.
+ 2,248 Loox reviews          Review widgets          No               No              3           Rich customer language ("hair fall
+ and 2,435 Nykaa                                                                                  reduced drastically", "no sticky
+ ratings                                                                                          residue") that never becomes a
+                                                                                                  headline.
+ Founder Q&A and             YouTube                 Partly           Partly          3           Good proof format, no transcript,
+ feedback videos                                                                                  no written cut, no spokes.
+ Samay Raina mock            Rented                  No               Yes             4           Built brand recall. No owned page
+ podcast (Feb 2026)          (Instagram,                                                          to land on afterwards.
+                             YouTube)
+ Legacy curl-care            Marketplaces            Yes (wrong       No              1           Muddies the science positioning.
+ and onion/biotin                                    intent)                                      Pulls "onion shampoo" traffic the
+ content                                                                                          brand no longer wants.
+
+
+Two patterns. Everything shareable Arata has made was rented. Everything searchable Arata has is a
+product page. Nothing in the middle.
+
+THE QUESTIONS CUSTOMERS ASK BEFORE BUYING
+The brief's objections and verbatim language give us the content list before we look at a single
+keyword tool. Each row below is a page that does not exist today.
+ WHAT THE CUSTOMER ASKS (FROM
+ BRIEF)                                              BUYER STAGE               PAGE THAT SHOULD ANSWER IT
+
+ "28,200 new hairs? Sounds too good"                 Consideration             What 28,200 new hairs actually means: the study, the
+                                                                               "up to", the 84 days
+ "Is this just another Redensyl serum?"              Consideration             Redensyl vs Y100: two different jobs in the follicle
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LAB NOTES CONTENT ENGINE FOR ARATA                                                                    2
+ WHAT THE CUSTOMER ASKS (FROM
+ BRIEF)                                              BUYER STAGE            PAGE THAT SHOULD ANSWER IT
+
+ "₹1,499 for 30 ml is a lot"                         Decision               MitoActive cost per day vs Traya vs a derm visit (₹50
+                                                                            a day at twice-daily use)
+ "Do I have to use it forever?"                      Decision               The 84-day course and what maintenance looks like
+                                                                            after
+ "Will it make hair fall worse first?"               Decision /             Shedding in week 2 to 4: why it happens and when to
+                                                     Implementation         worry
+ "Is 30 ml enough?"                                  Implementation         How many drops, how many days: the 30 ml maths
+ "Is it chemical-free?"                              Consideration          Why we stopped saying chemical-free (and what we
+                                                                            say instead)
+ "hair fall after moving to a new city"              Awareness              Hard water and hair fall by Indian city
+ (entry point in brief)
+ "post-partum hair fall" (Routine Ritika)            Awareness              Post-partum shedding: the 3 to 6 month timeline and
+                                                                            a routine that fits
+ "dandruff in winter / monsoon"                      Awareness              Why dandruff gets worse in October and July
+ (Dandruff Divya)
+ "the seal was broken", "bottle was                  Post-purchase          Packaging, the fix, and the no-questions replacement
+ leaking"                                                                   promise
+
+
+COMPETITOR CONTENT AUDIT
+We read what the direct and secondary competitors publish. One lookup was spent on Traya's hard-
+water piece to see the standard we have to beat.
+                                                                      WHERE IT IS
+ COMPETITOR            WHAT THEY PUBLISH                              STRONG                 WHERE IT IS WEAK (OUR OPENING)
+
+ Traya                 Derm-reviewed "hair health" articles           Bylines, FAQ           Every piece funnels to a ₹1,400+
+                       (1,100 to 1,200 words, 6-question FAQ,         structure, journey     monthly plan. Their hard-water
+                       two references) plus "hair stories" of         storytelling, update   article gives no city water data, no
+                       named customers, several about moving          dates                  prices, no product testing. Tone is
+                       cities                                                                medical.
+ Pilgrim               Ingredient and "Korean beauty" listicles,      Volume,                No clinical numbers to explain. No
+                       Nykaa-adjacent                                 marketplace            Indian water or weather angle.
+                                                                      presence
+ Minimalist            Ingredient literacy: percentages, pH,          Trust with             Cold. No routine. No journeys.
+                       what each active does                          ingredient-savvy       Assumes the reader already knows
+                                                                      readers                what Procapil is.
+ Bare Anatomy          Quiz-led, personalisation framing              Quiz as an entry       Personalisation is cosmetic; content
+                                                                      point                  does not show results over time.
+ Mamaearth /           "Natural" and "ayurvedic" how-tos,             Huge volume, shelf     No proof. This is the content Hair-fall
+ WOW /                 home remedy content                            defaults               Rahul has already read and stopped
+ Indulekha                                                                                   trusting.
+
+
+The gap is clean. Nobody is writing proof-led content for Indian hair at a ₹359 to ₹571 price point.
+Traya does proof but sells a diagnosis. Minimalist does ingredients but not results. Arata is the only
+one that can write "here is the study, here is the number, here is the ₹571 bottle".
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LAB NOTES CONTENT ENGINE FOR ARATA                                                                    3
+KEYWORD MAP BY BUYER STAGE
+Volumes are tiered, not exact (assumption: tiers are from category experience and will be replaced
+with Search Console and keyword tool data in week 1).
+ KEYWORD OR QUESTION                     TIER                   STAGE            INTENT        ARATA PAGE
+
+ hair fall shampoo                       Very high              Decision         Commercial    Anti-Hair Fall Intensive Shampoo
+                                                                                               page plus hub link
+ hair growth serum                       Very high              Decision         Commercial    Serum comparison: Intensive
+                                                                                               Serum ₹571 vs MitoActive
+                                                                                               ₹1,499
+ anti dandruff shampoo                   Very high              Decision         Commercial    Anti-Dandruff Shampoo page
+                                                                                               plus scalp hub
+ hair fall reasons / why is my           Very high              Awareness        Informational Hair Fall hub
+ hair falling
+ hard water hair fall                    High                   Awareness        Informational Indian water spoke
+ post partum hair fall                   High                   Awareness        Informational Post-partum spoke
+ minoxidil side effects /                High                   Consideration    Commercial    Minoxidil alternative page
+ minoxidil alternative                                                                         (shares with the competitors
+                                                                                               discipline)
+ how to stop hair fall in                Medium                 Awareness        Informational Weather spoke, published June
+ monsoon                                 (seasonal)
+ Redensyl vs minoxidil /                 Medium                 Consideration    Informational Actives explainer
+ Redensyl side effects
+ hair growth serum how to use            Medium                 Implementation   Informational 30 ml maths page
+ / how many drops
+ mitochondrial hair growth /             Low today,             Consideration    Informational Y100 explainer. We create this
+ Y100 hair                               Arata-owned                                           demand.
+ hair fall statistics India              Low volume,            Awareness        Informational Stats page
+                                         high link value
+ anti grey hair serum /                  Medium                 Awareness /      Mixed         Grey spoke
+ premature greying                                              Decision
+ hair gel for humid weather /            Medium                 Decision         Commercial    Styling spoke
+ hair gel without white flakes
+
+
+SCORING THE FIRST 14 IDEAS
+Weights follow the standard method: customer impact 40%, content-market fit 30%, search potential
+20%, resource requirement 10% (10 means cheap to make). Scores 1 to 10.
+                                                                      IMPACT     FIT      SEARCH         RESOURCE
+ #     IDEA                                                           (40)       (30)     (20)           (10)            TOTAL
+
+ 1     Hair fall in India: the complete guide (hub)                   9          9        9              5               8.6
+ 2     Hard water and hair fall by Indian city                        9          8        8              6               8.2
+ 3     What 28,200 new hairs actually means                           8          10       5              9               8.1
+ 4     Hair fall in India: 25 statistics (stats page)                 6          8        6              9               6.9
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LAB NOTES CONTENT ENGINE FOR ARATA                                                               4
+                                                                        IMPACT          FIT       SEARCH          RESOURCE
+ #     IDEA                                                             (40)            (30)      (20)            (10)                TOTAL
+
+ 5     Minoxidil alternative: what works without                        9               8         8               6                   8.2
+       dependency
+ 6     Redensyl vs Y100: what each does in the follicle                 7               10        5               8                   7.6
+ 7     MitoActive 84-day journal (3 people, weekly)                     9               10        3               4                   7.6
+ 8     Post-partum hair fall: timeline and routine                      8               7         7               7                   7.5
+ 9     Why dandruff gets worse in October and July                      7               8         6               8                   7.2
+ 10 Shedding in week 2 to 4: why and when to worry                      8               9         4               9                   7.6
+ 11 Why we stopped saying chemical-free                                 6               9         3               9                   6.6
+ 12 How to read a haircare claim (the "up to" guide)                    7               9         4               8                   7.1
+ 13 Hair gel for Delhi humidity: the 72-hour test                       6               7         6               7                   6.4
+ 14 Early greys at 29: what MelanoGray does and does                    6               7         5               8                   6.3
+    not do
+
+
+Ranked: 1, 2, 5, 3, 6, 7, 10, 8, 9, 12, 4, 11, 13, 14. The stats page (4) jumps the queue anyway because it
+is cheap and it earns links for everything above it.
+
+THE INFORMATION-GAIN GATE, APPLIED
+Before any searchable piece gets written, we write one sentence on what it adds that the top results
+do not. For the top five:
+                     WHAT THE CURRENT TOP RESULTS
+ PIECE               HAVE                                             WHAT ARATA ADDS
+
+ Hair fall hub       Generic "10 reasons for hair fall" lists Indian causes first (hard water, pollution, monsoon, oiling habits),
+                     from Healthline-style sites and          a self-check, and an honest 84-day timeline tied to a study
+                     FMCG blogs
+ Hard water by Traya's derm article with no city data                 A city table (Delhi, Bengaluru, Chennai, Hyderabad, Pune,
+ city                                                                 Mumbai) with hardness ranges and what to do, plus how our
+                                                                      shampoo was tested in hard water
+ Minoxidil           Pharma pages and Traya funnelling                A plain comparison of mechanisms, the dependency question
+ alternative         to a plan                                        answered straight, and a ₹571 option with a number
+ 28,200              Nothing. Nobody explains their own               The study design, the per-sq-cm maths, who it was tested on,
+ explained           claim                                            and why "up to" is the honest word
+ Stats page          Scattered reports behind paywalls                25 one-line citable Indian hair fall statistics with sources,
+                                                                      updated quarterly
+
+
+Every one passes. The 28,200 piece passes by default because no competitor has the courage to
+write it.
+
+
+
+THE PLAN
+
+BREW DEPLOYMENT TEAM × ARATA · LAB NOTES CONTENT ENGINE FOR ARATA                                                                           5
+FIVE PILLARS
+                                                                                                                  DIAGRAM
+     ARATA LAB NOTES
+     |
+     +-- 1. HAIR FALL (hub: /hair-fall/)
+     |     +-- reasons: hard water, stress, post-partum, post-illness, new city
+     |     +-- the 84-day timeline and what to expect each week
+     |     +-- minoxidil alternative, Redensyl vs Y100
+     |     +-- serum ladder: Intensive Serum (Rs 571) -> MitoActive (Rs 1,499)
+     |
+     +-- 2. SCALP (dandruff, itch, oil)
+     |     +-- why dandruff peaks in Oct and July
+     |     +-- 95% fungus reduction: what the in-vitro test did
+     |     +-- itch at 2am: the 36-hour leave-on serum
+     |     +-- black t-shirt test
+     |
+     +-- 3. INDIAN WATER, WEATHER, CITY
+     |     +-- hard water by city
+     |     +-- monsoon hair fall, winter dandruff, summer scalp oil
+     |     +-- pollution and the Delhi scalp
+     |     +-- hair gel that survives the metro (72-hour hold)
+     |
+     +-- 4. INSIDE THE LAB (claims explained)
+     |     +-- 28,200 explained, 7.4X explained, 87% explained
+     |     +-- how to read "up to"
+     |     +-- Y100 and mitochondria in plain words
+     |     +-- why we stopped saying chemical-free
+     |     +-- India hair fall statistics page
+     |
+     +-- 5. ROUTINES AND JOURNEYS (implementation + proof)
+           +-- the 3-product hair fall routine (Rs 1,201 trio)
+           +-- 30 ml maths: drops, days, reorder date
+           +-- MitoActive 84-day journals (3 people)
+           +-- Day 0 / Day 28 / Day 56 / Day 84 photo protocol
+
+
+
+
+Why these five. Pillars 1 and 2 are product-led and carry the search volume. Pillar 3 is the Indian angle
+nobody owns and the one Traya is drifting into. Pillar 4 is the claim explainer layer that converts
+suspicion into trust and feeds every ad, PDP and email with a link. Pillar 5 is where the 84-day proof
+gets made in public and where repeat purchase is taught.
+Each pillar links to the others. A hard-water spoke (pillar 3) links to the hub (1), to the 7.4X explainer
+(4), and to the routine page (5). The hub sits at /hair-fall/ because it is the one topic with enough depth
+for a dedicated URL. Everything else lives under /lab-notes/.
+
+CALENDAR SPLIT AND CADENCE
+The standard split is 60% searchable, 30% shareable, 10% experimental. For Arata we hold that ratio
+and give it three fixed slots a week.
+ SLOT DAY               TYPE              WHAT GOES HERE
+
+ A        Tuesday       Searchable        Hub or spoke written to a keyword and a buyer stage
+ B        Thursday Searchable             Claim explainer or implementation piece (30 ml maths, shedding week)
+ C        Saturday      Shareable         Journey entry, stats page update, founder note, honest-claim essay
+ D        Monthly       Experimental Hinglish version of the top post, a WhatsApp-first note, a YouTube long-form Lab Notes
+                                     episode, a Blinkit product-page copy test
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LAB NOTES CONTENT ENGINE FOR ARATA                                                           6
+Three pieces a week for 12 weeks is 36 published pieces, roughly 22 searchable, 11 shareable, 3
+experimental. That is five times the output of March 2026, and it arrives on a clock instead of in a
+burst.
+
+PHASING OVER 90 DAYS
+                                                                                                   DIAGRAM
+    WEEKS 1-4       FOUNDATION
+                    Hub live (/hair-fall/). Stats page live. Three claim explainers
+                    (28,200, 7.4X, 87%). Journey Day 0 for three MitoActive users.
+                    Search Console and keyword baseline captured.
+
+    WEEKS 5-8       SPOKES
+                    Hard water by city. Minoxidil alternative. Post-partum. Monsoon
+                    and October dandruff (seasonal, timed). Redensyl vs Y100. Journey
+                    Day 28 photos published.
+
+    WEEKS 9-12      PROOF AND LINKS
+                    Journey Day 56 entries. Stats page link pitch to 40 Indian
+                    health and beauty publishers. First founder meta note ("why we
+                    dropped chemical-free"). Hinglish cut of the hub. First YouTube
+                    long-form Lab Notes episode with transcript as a spoke.
+
+    DAY 84+         The first three journals close. Day 84 Reel, Day 84 page, and
+                    the first real MitoActive reviews land on the PDP.
+
+
+
+
+CREATE ONCE, DISTRIBUTE TWICE
+Every flagship ships with a kit. Writing the piece is half the job. The kit is designed before drafting so
+the subheads work as captions and the stats work as graphics.
+                                                                                                   DIAGRAM
+    FLAGSHIP (Lab Notes page, owned)
+       |
+       +--> OWNED    arata.in PDP link block, email to list, WhatsApp broadcast,
+       |             Loox review prompt that links the relevant explainer
+       |
+       +--> RENTED   Instagram carousel (5 slides from 5 subheads), 1 Reel,
+       |             YouTube Short, LinkedIn post from the founder, X thread,
+       |             Amazon A+ and Nykaa description lines lifted from the page
+       |
+       +--> BORROWED Derm and trichologist creators quoting the stats page,
+                     press pitch of the city water table, podcast segment
+       |
+       v
+       BACK TO OWNED: every cut links to the page; every page captures
+       WhatsApp or email opt-in with the 84-day reminder
+
+
+
+
+Own, rent, borrow, in that order of priority for the destination, reverse order for reach. The quick-
+commerce and marketplace listings are rented land too. The fix for the "68% on rented land" problem
+is to make the Lab Notes page the thing the Blinkit buyer Googles after the bottle arrives, and to put a
+QR to it on the pack insert.
+Atomization checklist per flagship, Arata version:
+    3 to 5 Instagram captions lifted from subheads
+    1 carousel (Instagram) or 1 thread (X) of the core argument
+    2 short clips if the source has a video cut (journeys always do)
+    1 to 2 stat graphics in the lab-blue system
+
+
+BREW DEPLOYMENT TEAM × ARATA · LAB NOTES CONTENT ENGINE FOR ARATA                                          7
+    1 email to the list and 1 WhatsApp broadcast
+    1 line each for the Amazon and Nykaa product descriptions
+    A reshare on day 7, day 30 and day 90
+
+CONTENT MODEL
+Arata is on Shopify. The native blog is enough for the first 90 days; no headless CMS is needed. What
+matters is treating content as types, not posts, so claims and studies are written once and reused
+everywhere.
+ TYPE               FIELDS                                                                     REUSED ON
+
+ Lab Note           title, slug, pillar, stage, keyword, body, author, reviewed_by, published, Blog, email, social cuts
+                    updated, FAQ[], related SKUs[]
+ Claim Card         claim text, SKU, study type (in-vitro / consumer), n, duration, "up to"    PDP, ads, carousels, Amazon A+
+                    note, explainer link
+ Study              design, participants, duration, endpoint, result, limitation               Claim explainers, press, derm
+ Summary                                                                                       outreach
+ Journey            person (first name, city, age), day number, photo, hair count or note,     Journey pages, Stories, Day 84
+ Entry              SKU, next check-in                                                         Reel, reviews
+ Routine            name, SKUs, price, days of supply, reorder day                             Routine pages, cart, WhatsApp
+                                                                                               reminder
+ FAQ                question, answer, pillar                                                   Spokes, PDPs, schema
+
+
+Every page-level type carries meta title (50 to 60 characters), meta description (150 to 160), slug,
+canonical and an OG image. A one-page editor guideline fixes the naming mess: it is "Hair Growth
+Intensive Serum", never "tonic"; it is "Anti-Hair Fall Intensive Shampoo", never "onion shampoo".
+
+PER-FORMAT DISCIPLINE
+    Blog post: 10 title options before drafting, pick one, five editing passes (structure, clarity, evidence,
+    line edit, headline and SEO).
+    Hub guide: table of contents, every spoke linked, updated quarterly with an "updated" date on the
+    page.
+    Journey: hook scripted first (Day 0 face, Day 0 count), filmed knowing it becomes 12 Stories, 4
+    Reels and one page.
+    Email: one idea per send, subject written five ways.
+    Stats page: one line per stat, source under each, updated every quarter so writers keep citing it.
+
+
+
+WORKED EXAMPLES
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LAB NOTES CONTENT ENGINE FOR ARATA                                                             8
+ EXAMPLE 1: THE HUB, "HAIR FALL IN INDIA: THE COMPLETE GUIDE"
+ URL: arata.in/hair-fall/ Target keyword: hair fall reasons, why is my hair falling, hair fall solution Stage:
+ Awareness, leading to consideration Reviewed by: Arata in-house R&D lead (role, named on page)
+ Ten title options we wrote before choosing:
+ 1. Hair fall in India: the complete guide
+ 2. Why your hair is falling (and what actually stops it)
+ 3. Hair fall explained for Indian hair, Indian water and Indian weather
+ 4. The honest guide to hair fall: causes, timelines, what works
+ 5. Losing more than 100 hairs a day? Start here
+ 6. Hair fall: an 84-day plan that shows you a number
+ 7. Everything we know about hair fall, from our lab in Delhi
+ 8. Hair fall in India is different. Here is why, and what to do
+ 9. The hair fall guide that tells you when to worry
+10. Hair fall, start to finish: causes, fixes, proof
+ We picked 1 for the URL and title tag and 8 as the H1. Option 1 matches the query. Option 8 earns the
+ read.
+ Outline:
+                                                                                                      DIAGRAM
+     H1   Hair fall in India is different. Here is why, and what to do.
+          (120 words: 82 million urban Indians have hair loss. Most of them
+          have tried onion, oiling and a mass shampoo. This guide explains
+          the causes that are specific to India, how to check your own hair
+          fall, and what a result looks like at day 84.)
+
+     H2   First, is it hair fall or hair breakage?
+          The pillow test, the drain test, the pull test. Broken ends vs
+          whole hairs with a bulb.
+
+     H2   The six causes we see most in Indian hair
+          1. Hard water (link: hard water by city)
+          2. Stress and sleep (the IT-city pattern)
+          3. Post-partum and post-illness shedding (link)
+          4. Pollution and scalp build-up
+          5. Heat, humidity and the monsoon cycle (link)
+          6. Genetics, and when to see a dermatologist
+
+     H2   What "normal" looks like: 50 to 100 hairs a day
+          When the number is a problem. When it is not.
+
+     H2   The 84-day timeline
+          Week 1 to 2: nothing visible. Week 2 to 4: possible shedding,
+          why (link: shedding week). Week 6 to 8: fewer hairs on the
+          pillow. Week 12: new growth at the hairline and crown.
+
+     H2   What works, ranked by evidence
+          Minoxidil (strongest, dependency, side effects).
+          Actives serums (Redensyl class, Rs 550 to 1,100, percentages).
+          Y100 / MitoActive (mitochondrial, 87% saw growth in 84 days).
+          Shampoo with Hairdian AP and rosemary-caffeine (7.4X reduction).
+          Home remedies (free, unproven).
+          Supplements (only if deficient).
+
+     H2   A routine that fits one cart
+          Anti-Hair Fall Intensive Shampoo Rs 359 + Hair Growth Intensive
+          Serum Rs 571 + Anti-Breakage Conditioner Rs 359.
+          Hair Growth Trio Rs 1,201. 84 days, one reorder.
+
+
+
+
+ BREW DEPLOYMENT TEAM × ARATA · LAB NOTES CONTENT ENGINE FOR ARATA                                             9
+    H2    When to go to a dermatologist instead
+          Patchy loss, sudden loss, scalp pain, Norwood 5+. We say so plainly.
+
+    H2    FAQ (8 questions, from the objections table)
+
+    CTA    "Start the 84-day routine" -> Trio page
+           "Get the 84-day reminders on WhatsApp" -> opt-in
+
+
+
+
+Opening section, written:
+Hair fall in India is different. Here is why, and what to do.
+About 82 million urban Indians have hair loss. That is 38% of everyone living in a city. Most of them
+have already tried the same three things: an onion shampoo, Sunday oiling, and whatever was on offer
+on Blinkit. If you are here, those did not work, and you want to know what will.
+This guide is written by the team that runs Arata's lab in Delhi. It covers the causes we see most in
+Indian hair, how to check whether your hair fall is actually a problem, what a real result looks like at
+day 84, and when to stop reading and see a dermatologist. Where we mention our own products we
+show the study behind the number. Where something has no evidence we say that too.
+Start with the simplest check. Tomorrow morning, count the hairs on your pillow before you get up. Do
+it for seven mornings. Under 15 a morning with a normal wash routine is usual. Over 30, every
+morning, for a month, is worth acting on. Write the number down. You will want it at day 84.
+
+EXAMPLE 2: THE SPOKE, "HARD WATER AND HAIR FALL: WHAT DELHI, BENGALURU AND CHENNAI
+WATER DOES TO YOUR SCALP"
+URL: arata.in/lab-notes/hard-water-hair-fall-india Target keyword: hard water hair fall, hard water hair
+loss, borewell water hair fall Stage: Awareness Information gain: a city table and what we did about it
+in the lab. Traya's piece on the same query has neither.
+Outline and key sections, written:
+Hard water and hair fall: what Delhi, Bengaluru and Chennai water does to your scalp
+If your hair fall started within three months of moving cities, read this first. We hear it in reviews and
+support messages every week: "shifted to Bangalore for work, hair fall started", "Gurgaon flat,
+borewell supply, hair feels like straw". It is one of the five entry points we see most, and it is the one
+with the clearest fix.
+What hard water does
+Hard water carries calcium and magnesium. On hair those minerals leave a film that makes strands
+rough, stops conditioner working, and makes the hair snap when you comb. On the scalp they
+combine with shampoo to leave a residue that clogs follicles and dries skin, which shows up as itch
+and flakes. Most of what people call "hard water hair fall" is breakage, and breakage you can fix in a
+few washes.
+Where it is worst
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LAB NOTES CONTENT ENGINE FOR ARATA                                          10
+                                                                      HARDNESS
+ CITY                         TYPICAL SUPPLY                          (DIRECTIONAL)           WHAT WE SEE
+
+ Delhi NCR (Gurgaon,          Groundwater and tanker in many          Hard to very hard       Breakage, dry scalp, dull colour
+ Noida)                       societies
+ Bengaluru                    Borewell in most apartments,            Hard in borewell zones The "moved for work, hair fall
+                              Cauvery in older areas                                         started" pattern
+ Chennai                      Mixed, metro water plus tanker          Moderate to hard        Breakage plus humidity frizz
+ Hyderabad                    Mixed                                   Moderate to hard        Dryness and flakes
+ Pune                         Municipal, generally softer             Soft to moderate        Fewer complaints
+ Mumbai                       Lake supply, soft                       Soft                    Humidity and oil, not minerals
+
+
+Assumption: the hardness column is directional and will be replaced with published municipal and
+groundwater board ranges before publishing. The page will carry a "how to test your own water" box
+(a ₹150 TDS meter, or the soap-lather test).
+What we did about it in the lab
+Our Anti-Hair Fall Intensive Shampoo was tested for tensile strength on hair, which is the strength test
+that matters when breakage is the problem. The result was a 7.4X reduction in hair fall in that study.
+The formula uses Hairdian AP with rosemary and caffeine, no sulphates, no parabens. We formulate
+and test in Delhi, where the water is as hard as it gets. Read how the 7.4X number was measured (link
+to explainer).
+What to do this week
+1. Check your water. TDS above 300 and a soap that will not lather means hard water.
+2. Switch to a shampoo tested for strength, and use less of it. Hard water needs a second rinse, not
+   more shampoo.
+3. Condition every wash. The Anti-Breakage Intensive Conditioner showed 78% stronger hair in one
+   wash in our in-vitro test.
+4. If you can, fit a shower filter. It helps with minerals, it does nothing for hair fall caused by stress or
+   genetics.
+5. Count your pillow hairs for seven days before you change anything, and again at day 28.
+If the number does not move
+Then the water was never the cause. Go to the hair fall guide (link to hub) and work through the other
+five.
+FAQ (six questions): Does hard water cause permanent hair loss? Will a shower filter stop hair fall?
+Why does my hair feel sticky after washing in Bengaluru? Does boiling water make it soft? Is borewell
+water worse than tanker water? Which shampoo works in hard water?
+CTA: Anti-Hair Fall S+C combo, ₹638.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LAB NOTES CONTENT ENGINE FOR ARATA                                                              11
+EXAMPLE 3: THE CLAIM EXPLAINER, "WHAT 28,200 NEW HAIRS ACTUALLY MEANS"
+URL: arata.in/lab-notes/28200-new-hairs-explained Pillar: Inside the Lab Searchable and shareable.
+Nobody searches this yet. Everybody who sees the claim wants to.
+Written in full:
+What 28,200 new hairs actually means
+The front of our Hair Growth Intensive Serum says "up to +28,200 new hair within 84 days". We know
+how that reads. It reads like a number someone made up. So here is where it comes from, what it does
+and does not promise, and why we chose to print it anyway.
+Where the number comes from
+The claim is from a consumer study on the serum over 84 days. Hair density was measured on a fixed
+area of scalp at day 0 and day 84, and the change was multiplied across the scalp area used in the
+study. The best result in the study, scaled that way, is 28,200 new hairs. That is the "up to".
+What "up to" means
+It means the best responder. It does not mean you. In every hair study a few people respond strongly,
+most respond moderately, and some barely respond. We print the top because that is what the rules
+allow and what every brand does. We are writing this page because we think you should see the
+middle too. When the full dataset is cleared for publication we will put the median on this page. Until
+then: the typical responder sees fewer hairs on the pillow by week six and visible new growth at the
+hairline by week twelve. That is the result we design for.
+Why 84 days
+A hair follicle has a cycle. The growth phase is long, the resting phase is around three months, and the
+shedding phase is short. Any product that claims a result in two weeks is talking about breakage or
+shine, not growth. Twelve weeks is the shortest window in which new growth can be measured
+honestly. That is why every number we print is tied to 84 days, and why our routine is sold as an 84-
+day course.
+What this serum is and is not
+It is an actives serum. The same class as the ₹550 to ₹1,100 serums from the other D2C brands, with
+the difference that ours comes with a measured result instead of a percentage on the label. It is not
+minoxidil. It will not create dependency and it does not need a prescription. It is also not MitoActive,
+which works on the follicle's energy supply through Y100 and is the next tier up at ₹1,499 (read:
+Redensyl vs Y100).
+What you should do with this
+Count your pillow hairs for a week. Start the serum. Take a photo of your crown and hairline in the
+same light on day 0. Take it again at day 28, 56 and 84. If at day 84 you see nothing, write to us with
+the photos. We would rather know.
+The bottle is ₹571 for 30 ml, or ₹999 for the pack of three, which is exactly one 84-day course.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LAB NOTES CONTENT ENGINE FOR ARATA                                        12
+(Pull quotes for the distribution kit: "It reads like a number someone made up." "Up to means the best
+responder. It does not mean you." "Any product that claims growth in two weeks is talking about
+shine.")
+
+EXAMPLE 4: THE STATISTICS PAGE, "HAIR FALL IN INDIA: 25 STATISTICS"
+URL: arata.in/lab-notes/hair-fall-statistics-india Pillar: Inside the Lab Purpose: links and AI citations.
+Statistics roundups earn several times the backlinks of their share of pages, and a one-line stat is
+what writers and AI assistants lift. Updated every quarter with the date on the page.
+Format: every statistic is one sentence, with its source under it, so it can be copied as is. The first ten,
+from the brief and its sources:
+ 1. About 82 million urban Indians, 38% of the urban population, experience hair loss.
+ 2. Of those, 59 million use home remedies as their first response.
+ 3. 16 million use basic retail haircare products for hair loss.
+ 4. 5 million use medicated over-the-counter products.
+ 5. Only 1 million seek clinical treatment.
+ 6. India's alopecia-driven hair growth market was about $267 million in 2023 and is expected to
+    double by 2028.
+ 7. India's overall haircare market is about $4 billion.
+ 8. Beauty category repeat purchase rates in India average about 26%; routine-led models exceed
+    40%.
+ 9. In a consumer study on the Hair Growth Intensive Serum, the best responder gained up to 28,200
+    new hairs in 84 days.
+10. In the MitoActive 84-day study, 87% of participants saw increased hair growth, with up to 95%
+    reduction in hair fall.
+Statistics 11 to 25 will be filled from Arata's own review and order data (assumption: with Arata's sign-
+off), for example share of hair fall orders by city, average reorder gap, share of customers who report
+hair fall starting after a city move, and month of peak dandruff orders. Arata is sitting on 50,000 orders
+a month and 2,248 reviews. Those become the only original Indian hair fall data in the category, and
+this page is where it is published.
+Link pitch, 60 words, to send to 40 Indian health, beauty and personal finance publishers:
+Subject: Indian hair fall numbers in one place
+Hi [name], we maintain a page of Indian hair fall statistics with sources: 82 million urban Indians
+affected, 59 million on home remedies, city-level order data from 50,000 monthly orders. It is updated
+quarterly. If you cover hair, scalp or men's grooming it may save you a search. Link: [URL]. Happy to
+share the underlying data.
+
+EXAMPLE 5: THE MITOACTIVE 84-DAY JOURNAL, DAY 0 ENTRY
+URL: arata.in/lab-notes/journal/rahul-day-0 (one page per person, entries appended) Pillar: Routines
+and Journeys Purpose: the proof MitoActive does not have. Three people, three cities, weekly entries,
+same light, same angle. Converts to Stories, Reels and, at day 84, the first reviews on a page with zero
+
+
+BREW DEPLOYMENT TEAM × ARATA · LAB NOTES CONTENT ENGINE FOR ARATA                                          13
+today.
+Entry template (Journey Entry type): first name, city, age, day, photo (crown, hairline, pillow), hair
+count, note in their words, what they used, next check-in date.
+Day 0 entry, written as the format:
+Rahul, 28, Bengaluru. Day 0.
+Pillow count, seven mornings: 34, 41, 29, 38, 44, 31, 36. Average 36. Photos: crown, hairline, in
+bathroom light at 8am. (Three images.) In his words: "Noticed the crown in a wedding photo in June.
+Tried an onion shampoo and biotin gummies. The gummies did nothing and the shampoo smelled. I do
+not want to start minoxidil because my cousin stopped and lost everything he gained. I am giving this
+84 days. If it does nothing I will say so." Routine: MitoActive, 1 ml morning and night on the crown.
+Anti-Hair Fall Intensive Shampoo three times a week. Next check-in: Day 7 (pillow count only). Photos
+at Day 28.
+Rules on the page: no retouching, no new lighting, entries published whether good or bad, a
+dermatologist comment at Day 28 and Day 84. Readers can follow all three journals on WhatsApp
+(opt-in link), and that list becomes the first MitoActive reorder audience at day 84.
+
+EXAMPLE 6: THE DISTRIBUTION KIT FOR THE HUB
+Written at the same time as the hub, not after.
+Instagram captions from subheads (three of five):
+    "Losing 50 to 100 hairs a day is normal. Here is when it stops being normal." (link in bio: hub)
+    "Hair fall after moving to Bengaluru is a real pattern. It is usually the water, and it is usually
+    breakage, which is fixable." (link: hard water spoke)
+    "Week 2 to 4 on a hair growth serum can mean more shedding, not less. That is the old hairs
+    leaving. Here is how to tell the difference." (link: shedding spoke)
+Carousel, five slides: Is it fall or breakage? / The six Indian causes / What normal looks like / The 84-
+day timeline / What works, ranked.
+Email, subject options: "Count your pillow tomorrow morning" / "The six reasons Indian hair falls" /
+"What day 84 looks like" / "Hair fall after a city move" / "We wrote the guide we wish existed". Pick the
+first. One idea: the pillow test, linking to the hub.
+WhatsApp broadcast (under 300 characters): "New on Lab Notes: the full hair fall guide for Indian hair,
+water and weather. Start with the 7-day pillow count. If you are over 30 a morning, read the rest. [link]
+Reply STOP to opt out."
+Amazon and Nykaa line for the Anti-Hair Fall Intensive Shampoo: "Tested for hair strength in hard
+water. 7.4X reduction in hair fall in a tensile strength study. Read the study at arata.in/lab-notes."
+Founder LinkedIn post: "We printed 28,200 on a bottle and then realised nobody could find out what it
+meant. So we wrote it down. Study design, the maths, and what 'up to' actually means. Link in
+comments. More of this coming every Thursday."
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LAB NOTES CONTENT ENGINE FOR ARATA                                         14
+Reshare: day 7 (Stories), day 30 (carousel repost with a new first slide), day 90 (updated page, new
+email).
+
+
+
+30-DAY DEPLOYMENT
+ WEEK BREW SHIPS                                                    ARATA PROVIDES                      LIVE BY END OF WEEK
+
+ 1         Search Console and GA4 baseline for Lab                    Access to Search Console,           Editorial calendar for 12
+           Notes; keyword map with real volumes;                      Shopify blog, Loox export; study    weeks with owners; naming
+           content model and naming guide; 10-title                   documents for 28,200, 7.4X and      guide adopted on arata.in
+           sheets for the first six pieces; Loox review               87%; R&D lead as named
+           mining into a customer-language sheet                      reviewer
+ 2         Hub draft (/hair-fall/) with 8 FAQs; "28,200   Review of the hub by R&D lead;                  Hub live; 28,200 explainer
+           explained" final; stats page v1 with the first three MitoActive journal                        live; stats page live; Day 0
+           10 stats; journey protocol and consent forms participants recruited from                       entries filmed
+                                                          existing customers; consent to
+                                                          publish order-data stats
+ 3         "7.4X explained" and "87% explained"                       Photos and lab shots from Delhi;    Three explainers live; hard-
+           finals; hard water by city spoke with                      approval on the city water table;   water spoke live; first
+           municipal data; distribution kits for the three            WhatsApp business account           carousels and email sent;
+           pieces; WhatsApp opt-in page for the 84-                   access                              opt-in live
+           day reminders
+ 4         Minoxidil alternative spoke; shedding-week                 Marketplace content manager to      Six spokes plus hub live;
+           spoke; Day 7 journal entries; link pitch sent              push the new lines; founder time    three pieces a week on
+           to 40 publishers; Amazon and Nykaa                         for one LinkedIn post a week        cadence; 40 link pitches out;
+           description lines updated with explainer                                                       Day 7 entries published;
+           links; month-one report                                                                        dashboard shared
+
+
+Owners: Brew content lead (strategy, calendar, editing), Brew writer (drafts), Brew designer
+(carousels, stat graphics), Brew analyst (baseline, dashboard), Arata brand manager (approvals,
+voice), Arata R&D lead (claims review and byline), Arata marketplace manager (listing lines), Arata CX
+lead (review mining, journal participants).
+
+
+
+HOW WE MEASURE
+ METRIC                           BASELINE                                    90-DAY TARGET                      HOW
+
+ Lab Notes organic                To be instrumented (assumption:             3X the week-1 baseline             GA4, landing page =
+ sessions per month               under 5% of the ~650K monthly                                                  /lab-notes/ or /hair-
+                                  visits)                                                                        fall/
+ Pages ranking top 10 for To be instrumented                                  8 of the 14 mapped keywords in Search Console,
+ mapped keywords                                                              top 10, hub in top 5 for "hair fall weekly rank check
+                                                                              reasons"
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LAB NOTES CONTENT ENGINE FOR ARATA                                                                       15
+ METRIC                           BASELINE                                  90-DAY TARGET                     HOW
+
+ Assisted D2C orders              To be instrumented                        4% of D2C orders touch a Lab      GA4 assisted
+ from content                                                               Notes page in the 7 days before   conversion path
+                                                                            purchase
+ WhatsApp and email               0                                         2,500 opt-ins                     Opt-in form source tag
+ opt-ins from content
+ pages
+ Referring domains to             0                                         25                                Backlink tool, monthly
+ the stats page
+ MitoActive reviews on            0                                         30, including three Day 84        Loox
+ arata.in                                                                   journal reviews
+ Cadence kept                     Bursty (7 in March 2026)                  36 pieces in 12 weeks, zero       Calendar
+                                                                            missed slots
+ Journey completion               n/a                                       3 of 3 reach Day 84 and publish   Journal pages
+
+
+Decision rule at day 90:
+     If organic sessions are up 3X and at least 2% of D2C orders are content-assisted, we scale to five
+     pieces a week, add the Scalp hub as a dedicated URL, and begin the Hinglish mirror of the top ten
+     pages.
+     If sessions are up but assisted orders are flat, the pages are ranking without converting. We rebuild
+     the CTA blocks and routine modules on the top ten pages before adding any new ones.
+     If sessions are flat after 90 days with 36 pieces live, the problem is technical or the keyword map
+     was wrong. We pause new writing for two weeks, run a crawl and index audit, re-pull the keyword
+     data, and restart with the corrected map.
+     The journals run to Day 84 regardless. They are the only MitoActive proof in existence and the cost
+     is three serums and a camera.
+
+
+
+APPENDIX
+12-WEEK EDITORIAL CALENDAR
+ WEEK TUE (SEARCHABLE)                                     THU (SEARCHABLE)                  SAT (SHAREABLE)
+
+ 1         Hub: Hair fall in India                         28,200 explained                  Stats page v1
+ 2         Hard water by city                              7.4X explained                    Journal Day 0 (three people)
+ 3         Minoxidil alternative                           Shedding in week 2 to 4           Founder note: why we print numbers
+ 4         Post-partum hair fall                           30 ml maths                       Journal Day 7 counts
+ 5         Why dandruff peaks in October                   95% fungus reduction              Journal Day 28 photos
+                                                           explained
+ 6         Redensyl vs Y100                                How to read "up to"               Why we stopped saying chemical-free
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LAB NOTES CONTENT ENGINE FOR ARATA                                                                    16
+ WEEK TUE (SEARCHABLE)                                     THU (SEARCHABLE)              SAT (SHAREABLE)
+
+ 7         Pollution and the Delhi scalp                   87% explained (MitoActive     Stats page: order-data update
+                                                           study)
+ 8         Hair gel for Delhi humidity                     MitoActive cost per day       Journal Day 56 photos
+ 9         Early greys at 29                               Anti-grey 86% explained       Founder note: what we got wrong on
+                                                                                         packaging
+ 10        Itch at 2am: the 36-hour serum                  The 3-product routine         Hinglish cut of the hub (experimental)
+ 11        Monsoon hair fall (pre-written for              Is 30 ml enough?              YouTube Lab Notes episode 1 plus
+           June)                                                                         transcript
+ 12        Hair fall after illness (dengue, typhoid,       When to see a dermatologist   Journal Day 84 preview; quarter review
+           Covid)
+
+
+EDITOR CHECKLIST PER PIECE
+     Keyword in title, H1, first paragraph, URL
+     One sentence of information gain written and kept at the top of the draft
+     Every claim links to its explainer page; every explainer names the study type
+     SKU names match the naming guide
+     No "chemical-free", "miracle", "cure", "clinical-strength"
+     FAQ block with at least five questions
+     Reviewed by R&D lead where a claim appears
+     Distribution kit attached before publish
+     Reshare dates in the calendar
+
+SOURCES
+Arata brand brief (Brew, v1, 10 Oct 2026), arata.in catalogue and prices, Traya hair-health blog
+(hard water article, reviewed 30 Jul 2026, updated 15 Sep 2026), Redseer India hair growth report
+figures as quoted in the brief, Loox and Nykaa review language as quoted in the brief.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LAB NOTES CONTENT ENGINE FOR ARATA                                                               17
+CONTENT STRATEGY
+
+
+DAY 30
+AT ARATA
+   WHAT IS LIVE
+
+   Lab Notes publishes three pieces a week on a fixed cadence, the Hair Fall hub
+   and its first six spokes are live, the India hair fall statistics page is live and being
+   pitched for links, and the first MitoActive 84-day journal has started on day 0.
+
+
+
+
+ NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+ BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+ CONFIRM".
+
+
+ EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+ BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                         DEPLOYMENT TEAM
+                                                                                      BREW
+

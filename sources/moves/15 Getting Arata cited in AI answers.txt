@@ -1,0 +1,911 @@
+      Brew                                     PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+AI SEARCH OPTIMISATION · MOVE 15 OF 50
+
+
+
+GETTING
+ARATA
+CITED IN
+AI ANSWERS
+  WHEN SOMEONE ASKS CHATGPT, GEMINI, PERPLEXITY OR
+  GOOGLE AI MODE WHAT TO USE FOR HAIR FALL IN INDIA,
+  ARATA GETS NAMED, DESCRIBED CORRECTLY AND
+  LINKED.
+
+
+
+
+100M
+WEEKLY CHATGPT USERS IN INDIA
+
+
+
+
+BREW × ARATA                    OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                  V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                                 WHAT THIS GIVES ARATA
+                                                                 When someone asks ChatGPT, Gemini, Perplexity or
+                                                                 Google AI Mode what to use for hair fall in India,
+                                                                 Arata gets named, described correctly and linked.
+
+
+         100M
+         WEEKLY CHATGPT USERS IN INDIA
+                                                                 LIVE 30 DAYS AFTER WE START
+                                                                 arata.in is agent-readable (robots stance, llms.txt,
+                                                                 catalogue.md, Organization and Product schema),
+                                                                 the MitoActive and Hair Growth Serum pages carry
+                                                                 extractable answer blocks and a public Claims
+                                                                 Ledger, and a 20-prompt baseline across four
+                                                                 engines is logged with n=5 per prompt.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+Translation for a shampoo brand: in software, AI SEO means getting a SaaS product cited when
+someone asks a chatbot for "best CRM for startups". For Arata it means that when Hair-fall Rahul
+types "best hair fall serum in India that is not minoxidil" into ChatGPT, Gemini or Google's AI Mode, the
+answer names Arata, quotes the 84-day number correctly, links arata.in, and does not send him to
+Traya. Pricing pages become the catalogue. G2 reviews become Nykaa, Amazon and Reddit. Docs
+become Lab Notes and the product page.
+The buyer has moved. OpenAI said in February 2026 that India has 100 million weekly ChatGPT users,
+its second-largest market. Gemini ships on every Android phone, which is most of India. Airtel bundled
+Perplexity Pro for its subscribers in 2025. Google AI Overviews sit on roughly 45% of tracked queries.
+Arata's customer is 22 to 40, internet-native and "creator-influenced". That customer now asks a
+chatbot the question she used to type into Google, and she asks it in the exact words the brief lists:
+"hair fall", "hair thinning", "dandruff", "itching problem". The answer she gets is assembled from
+whoever the model trusts. Today that is unlikely to be Arata.
+Here is what we see. Arata does ~650K monthly visits and 50,000+ D2C orders a month, with 68% of
+revenue on marketplaces and quick commerce. Lab Notes posts arrive in bursts (seven in March
+2026) rather than on a cadence, and freshness is weighted heavily by every engine. MitoActive, the
+₹1,499 hero, has zero reviews two months after launch, so there is nothing for a model to corroborate.
+Naming is inconsistent across channels (onion vs biotin, serum vs tonic, Super Shampoo on Nykaa,
+Intensive Shampoo on arata.in), and models look for consensus across profiles before they commit to
+a description. The brand is mid-rebrand from "zero chemicals" to "Hair & Scalp Science Co.", which is
+exactly the moment a brand can go quiet in AI answers: the old association fades before the new one
+is corroborated.
+What it costs. Traya spent ₹138 Cr on marketing in FY25 and has 450K active customers and a free
+"hair test" that every model has read about. Pilgrim owns the Nykaa and Amazon shelf. When a model
+answers "what should I use for hair fall", the consensus it reads says Traya for diagnosis, Pilgrim or
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · GETTING ARATA CITED IN AI ANSWERS                                                      1
+Minimalist for actives, Mintop for minoxidil. Arata's strongest asset, a number on every bottle from a
+study, is precisely the kind of content AI engines reward (published research on generative engines
+found adding statistics and cited sources lifts citation likelihood by 30 to 40%), and it is sitting on
+product pages that are built for a human scrolling on a phone, not for a model extracting a passage.
+The opportunity. Arata is the only brand in the ₹400 to ₹700 band with a measured claim on every
+SKU, an in-house lab, and a genuinely new mechanism (Y100, mitochondrial). That is the raw material
+for the "official, primary source" class of page that ChatGPT's August 2026 retrieval update started
+favouring over listicles and comparison aggregators, and that already makes up around 60% of
+Gemini citations. The job is to make those facts readable, sourced, dated, consistent across every
+surface, and corroborated by third parties. Thirty days of work gets the site agent-ready and the hero
+pages extractable. Ninety days gets Arata mentioned. Recommendation follows consensus, and we
+build that in parallel.
+
+
+
+WHAT WE FOUND
+THE 20 PROMPTS THAT WOULD CHANGE REVENUE
+We track prompts the way we track keywords: one core prompt per intent, wording variants collapsed,
+each run five times per engine in a fresh session. The list below is the revenue set. "Expected winner
+today" is our read of the landscape, labelled assumption until the week 1 baseline replaces it.
+       CORE PROMPT (AS                                REVENUE        EXPECTED WINNER TODAY               ARATA PAGE THAT
+ #     TYPED)                           STAGE         WEIGHT         (ASSUMPTION)                        SHOULD ANSWER IT
+
+ 1     best shampoo for hair            Problem       High           Nykaa/Amazon category pages,        Anti-Hair Fall Intensive
+       fall in India                                                 Traya blog, YouTube derm creators   Shampoo (₹359)
+ 2     how to stop hair fall            Problem       High           Traya, Man Matters blog,            Lab Notes: "Hair fall
+       without minoxidil                                             Healthline-type sites               without minoxidil" guide
+ 3     does hard water cause            Problem       Med            Generic health sites, Reddit        Lab Notes: hard water and
+       hair fall, which shampoo                                                                          Indian cities
+       helps
+ 4     best anti dandruff               Problem       High           Head & Shoulders, Nykaa, derm       Anti-Dandruff Shampoo
+       shampoo for dry itchy                                         creators                            (₹404) + Serum (₹299)
+       scalp India
+ 5     hair gel that holds in           Problem       Med            Reddit, Amazon listings             Hair Gel page (72-hr
+       humidity without white                                                                            humidity-resistant hold)
+       flakes
+ 6     post partum hair fall            Problem       Med            Mom forums, derm sites, Traya       Routine page for Routine
+       what serum should I use                                       women                               Ritika
+ 7     best hair growth serum           Solution      High           Pilgrim, Minimalist, Nykaa best-    Hair Growth Intensive
+       in India 2026                                                 sellers, YouTube                    Serum (₹571)
+ 8     redensyl vs minoxidil            Solution      High           Derm blogs, Minimalist, Man         Lab Notes comparison
+       which is better                                               Matters                             block
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · GETTING ARATA CITED IN AI ANSWERS                                                                   2
+       CORE PROMPT (AS                                REVENUE        EXPECTED WINNER TODAY              ARATA PAGE THAT
+ #     TYPED)                           STAGE         WEIGHT         (ASSUMPTION)                       SHOULD ANSWER IT
+
+ 9     what is a mitochondrial          Solution      Med            Yuva Biosciences, press coverage   MitoActive explainer
+       hair growth serum /                                           of MitoActive                      "What is Y100"
+       what is Y100
+ 10 does anti grey serum                Solution      Low            Generic health sites               Anti-Grey Hair Serum
+    actually work                                                                                       (₹449) + claims ledger
+ 11 Traya vs Pilgrim vs                 Solution      High           Reddit r/IndianSkincareAddicts,    Honest comparison page
+    Minimalist for hair                                              YouTube                            (Arata named after the
+    growth                                                                                              leader)
+ 12 hair growth serum with              Solution      High           ThriveCo ("150% in 8 weeks"),      Claims Ledger
+    proof that works in 3                                            Traya
+    months
+ 13 Arata vs Traya                      Product       High           Traya blog, Reddit                 Arata vs Traya page
+ 14 Arata hair growth serum             Product       High           Nykaa reviews, YouTube, Amazon     Serum page with
+    review, does it work                                                                                AggregateRating + review
+                                                                                                        summary
+ 15 is Arata MitoActive                 Product       High           Nothing yet (zero reviews)         MitoActive FAQ block, cost
+    worth ₹1,499                                                                                        per day
+ 16 Arata anti dandruff                 Product       Med            Head & Shoulders, Nykaa            Dandruff comparison
+    shampoo vs Head and                                                                                 block
+    Shoulders
+ 17 is Arata shampoo                    Product       Med            Nykaa, Amazon listing text         Ingredient block on each
+    sulphate free, what is in                                                                           shampoo page
+    it
+ 18 Arata MitoActive price              Most          Med            arata.in, Nykaa                    /catalogue.md + product
+                                        aware                                                           page
+ 19 how to use Arata hair               Most          Med            arata.in                           HowTo block on serum
+    growth serum and how                aware                                                           page
+    long
+ 20 where to buy Arata,                 Most          Low            Blinkit, Amazon                    Where-to-buy block,
+    Blinkit or Amazon                   aware                                                           Organization schema
+                                                                                                        sameAs
+
+
+HOW THE ENGINES FAN OUT A HAIR FALL PROMPT
+Google AI Mode and ChatGPT do not answer the one question typed. They run five to ten background
+searches and synthesise. A page that only answers the head prompt is retrievable for one of them. A
+site that covers the cluster is retrievable for all of them. This is what we expect prompt 1 to fan out to,
+built from the brief's customer language and entry points:
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · GETTING ARATA CITED IN AI ANSWERS                                                                   3
+                                                                                                                            DIAGRAM
+    "best shampoo for hair fall in India"
+            |
+            +-- hair fall shampoo ingredients that work (caffeine, rosemary, Hairdian AP)
+            +-- sulphate free hair fall shampoo
+            +-- hair fall shampoo for hard water
+            +-- hair fall shampoo for men / for women
+            +-- hair fall shampoo clinically tested
+            +-- site:nykaa.com hair fall shampoo        <- third-party profile
+            +-- site:amazon.in anti hair fall shampoo   <- third-party profile
+            +-- official arata hair fall shampoo        <- post-Aug-2026 "official" pattern
+            +-- hair fall shampoo reviews reddit india
+
+
+
+
+Three things follow. The Anti-Hair Fall Intensive Shampoo page has to answer six of these on one
+page (ingredients, sulphate status, hard water, men and women, test design, where to buy). The
+Nykaa and Amazon listings are fan-out targets in their own right, so their copy must match arata.in
+word for word on name, claim and mechanism. And the "official" pattern means the arata.in page itself
+is now a citable class, provided a crawler can read it.
+
+EXTRACTABILITY CHECK ON THE FIVE PAGES THAT MATTER
+Scored against the skill's checklist. "Verify" means we could not confirm from public sources and it
+goes on the week 1 worklist.
+                                                                                   ANTI-HAIR       ANTI-
+                                                    HAIR GROWTH                    FALL            DANDRUFF
+                                                    INTENSIVE SERUM                SHAMPOO         SHAMPOO
+ CHECK                          MITOACTIVE (₹1,499) (₹571)                         (₹359)          (₹404)         LAB NOTES
+
+ Clear definition in first Partial: "India's first            Fail: leads with    Partial          Partial        Verify
+ paragraph                 mitochondrial hair                 "+28,200 new hair"
+                           growth treatment" is               without saying
+                           a tagline, not a                   what the product is
+                           definition
+ Self-contained                 Fail                          Fail                 Fail            Fail           Verify
+ answer blocks (work
+ without the page)
+ Statistics present             Pass: 87%, 95%                Pass: 28,200, 84     Pass: 7.4X      Pass: 95% in   Partial
+                                                              days                                 1 wash
+ Statistics sourced             Fail (assumption: no          Fail (assumption)    Fail: "tensile  Fail: in-vitro Fail
+ (study design, n,              public study                                       strength study" not explained
+ duration, date)                summary)                                           named but not
+                                                                                   described
+ Comparison table for           Fail                          Fail                 Fail            Fail           Fail
+ "vs" prompts
+ FAQ block in natural           Verify                        Verify               Verify          Verify         n/a
+ questions
+ Schema (Product,               Product likely via            Same                 Same            Same           Article verify
+ AggregateRating,               Shopify theme; FAQ
+ FAQPage, Article)              verify
+ Expert attribution             Fail                          Fail                 Fail            Fail           Fail: posts
+ (named formulator,                                                                                               unsigned
+ trichologist,                                                                                                    (assumption)
+ credentials)
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · GETTING ARATA CITED IN AI ANSWERS                                                                    4
+                                                                                   ANTI-HAIR         ANTI-
+                                                    HAIR GROWTH                    FALL              DANDRUFF
+                                                    INTENSIVE SERUM                SHAMPOO           SHAMPOO
+ CHECK                          MITOACTIVE (₹1,499) (₹571)                         (₹359)            (₹404)           LAB NOTES
+
+ Updated within 6               Pass (Aug 2026                Verify               Verify            Verify           Fail: bursts,
+ months, date visible           launch), date not                                                                     seven posts in
+                                shown                                                                                 March 2026
+ Heading structure              Fail                          Fail                 Fail              Fail             Verify
+ matches query
+ phrasing
+ Reviews a model can            Fail: 0                       Pass: 474            Pass: 222         Pass: ~300       n/a
+ corroborate
+
+
+The pattern is the same on every page. The numbers are there. The context that makes a model trust
+and quote the numbers is missing: who ran the test, on how many people, for how long, and what "up
+to" means. That is also the single most common objection in the brief ("Claims sound too good,
+28,200 hairs?"). One fix serves both.
+
+AGENT READINESS: CAN A BOT REACH ARATA.IN AT ALL
+arata.in runs on Shopify. That sets most of the answers.
+ LAYER                      STATUS                          NOTE
+
+ Core content in the Pass (Shopify renders                  Verify that the theme does not inject the claim block or FAQ via
+ initial HTML        product and collection                 JavaScript after load
+                     pages server-side)
+ robots.txt AI              Verify                          Shopify's default robots.txt does not block GPTBot, OAI-SearchBot,
+ stance                                                     PerplexityBot, ClaudeBot or Claude-SearchBot. A block only exists if
+                                                            someone added robots.txt.liquid . Either way there is no explicit,
+                                                            purpose-specific stance today (assumption)
+ WAF / bot          Verify                                  Shopify edge protection can challenge unknown bots; test each user
+ challenge on                                               agent with a header fetch
+ discovery crawlers
+ Sitemap loads and          Pass (Shopify auto-
+ parses                     generates)
+  /llms.txt                 Absent (assumption)             Shopify cannot serve arbitrary root files; needs a small app or app proxy
+  /llms-full.txt            Absent                          Same
+ Machine-readable           Partial                          /products.json already exists (we used it for the brief). It has prices
+ catalogue                                                  and variants but no claims, no routine, no "who it is for"
+ Structured data            Product likely present;
+                            Organization, FAQPage,
+                            Article: verify
+ Markdown content Not available on Shopify Skip; llms-full.txt covers it
+ negotiation / Link without an app
+ header
+ Bing Webmaster             Verify                          Copilot and part of ChatGPT retrieval run on Bing's index. Most Indian
+ Tools + IndexNow                                           D2C brands only submit to Google
+ Brave Search               Verify                          Claude searches Brave; check arata hair growth serum at
+ presence                                                   search.brave.com
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · GETTING ARATA CITED IN AI ANSWERS                                                                      5
+We run both free agent-readiness scorers in week 1 ( npx is-agentic arata.in and the Frase checker)
+to get a shareable before score. Our expectation (assumption): 55 to 70 on the Frase scale, which
+means "solid with gaps", with the gaps being discovery files and structured data rather than access.
+
+WHERE ARATA SITS ON THE VISIBILITY LADDER
+                                                                                                                      DIAGRAM
+      Rung 4    RECOMMENDED "A good option is Arata's serum"    <- governed by web consensus
+                            (Nykaa/Amazon reviews, Reddit, YouTube, press, derms)
+      Rung 3 MENTIONED      "Brands like Traya, Pilgrim, Arata"
+      Rung 2 CITED          arata.in appears as a source
+      Rung 1 RETRIEVED      model read the page, did not cite it
+      -----------------------------------------------------------------
+      Arata today (assumption, pending baseline):
+        Rung 1-2 on prompts 13-20 (branded)      Rung 0-1 on prompts 1-12 (category)
+      Traya today: Rung 4 on prompts 1, 2, 11, 13. Pilgrim: Rung 3-4 on 7, 11.
+
+
+
+
+Two risks sit on this ladder that content alone will not fix.
+Recommended against. Models now name products to avoid, with sources. Arata's public review
+record has a repeating complaint: "the seal was broken", "the shampoo bottle was leaking", "it doesn't
+have the box". If a model is asked "is Arata reliable", that is the con it will find. Positioning work says:
+answer a repeated weakness in public, with specifics, from a real person. The fix is operational first
+(packaging), then a public page that states the replacement promise and the packaging change with a
+date.
+Positioning drift during the rebrand. The web still describes Arata three ways: flaxseed hair gel and
+"zero chemicals" (2018 to 2021), Advanced Curl Care with Taapsee Pannu (2022), and now Hair &
+Scalp Science Co. (2026). The Nykaa listing still sells "Super Shampoo with onion and biotin" at ₹764.
+Brands that rewrite their own site before the off-site profiles catch up tend to lose the old association
+before earning the new one. For Arata the sequence must be: align every third-party profile and listing
+to the science positioning first, then let the on-site rebrand land.
+
+PLATFORM PRIORITY FOR AN INDIAN D2C HAIRCARE BRAND
+                                                                                                                  OUR
+ ENGINE                   WHY IT MATTERS FOR ARATA                       WHAT IT REWARDS                          PRIORITY
+
+ Google AI                Largest reach in India; sits on core Search    People-first pages, E-E-A-T, cited       1
+ Overviews / AI           rankings Arata already earns                   sources, Merchant Center feed
+ Mode
+ Gemini                   Default on Android, which is most of Arata's   Owned "official" pages with clean        2
+                          customers; ~60% of its citations are           structure; barely cites LinkedIn
+                          business-owned sites
+ ChatGPT                  100M weekly Indian users; Bing index;          Pages written the way ChatGPT            3
+                          freshness (content updated in 30 days cited    answers; demotes listicles and "vs"
+                          ~3x more); content-answer fit                  aggregators since Aug 2026
+ Perplexity               Research-minded buyers (Clinical Kavya);       FAQPage schema, public PDFs,             4
+                          Airtel bundle widened reach                    publishing velocity, atomic paragraphs
+ Copilot / Claude         Small share of Arata's buyers                  Bing index + LinkedIn; Brave index +     Hygiene
+                                                                         factual density                          only
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · GETTING ARATA CITED IN AI ANSWERS                                                              6
+THE PLAN
+Three pillars, in order. Structure first because nothing else counts if the page is not extractable.
+Authority second because Arata's numbers are only an asset once they are sourced. Presence third
+because recommendation is a consensus signal and consensus lives off-site.
+                                                                                                            DIAGRAM
+     PILLAR 1 STRUCTURE (wk 1-2)            PILLAR 2 AUTHORITY (wk 2-4)    PILLAR 3 PRESENCE (wk 3-12)
+     ---------------------------            ---------------------------    ---------------------------
+     robots.txt.liquid stance                Claims Ledger (one page,       Nykaa / Amazon / Flipkart
+     llms.txt + llms-full.txt                 every number, every study)    listing copy aligned
+     /catalogue.md                           Named author + credentials     Inc42 / Tracxn / Crunchbase /
+     Org + Product + FAQ schema              on every Lab Note               LinkedIn page say "Hair &
+     Answer blocks on 5 hero pages           Weekly Lab Notes cadence        Scalp Science Co."
+     Naming reconciled                       "What is Y100" explainer       YouTube text layer on every
+     Bing WMT + IndexNow                     Arata vs Traya (honest)         Lab Notes video
+     Baseline: 20 prompts x 4                Packaging promise page         Reddit, derm quotes, PR
+       engines x n=5                                                        MitoActive review seeding
+
+
+
+
+PILLAR 1: MAKE ARATA.IN READABLE AND EXTRACTABLE
+1. Set an explicit crawler stance in robots.txt.liquid . What: allow Googlebot, Bingbot, OAI-
+SearchBot, PerplexityBot and Claude-SearchBot for discovery; make a separate, deliberate decision
+on GPTBot, ClaudeBot and Google-Extended (training and grounding). Why: today the stance is
+whatever Shopify's default happens to be, and nobody at Arata decided it. Effect: discovery crawlers
+are guaranteed in; training is a documented choice rather than an accident.
+2. Ship /llms.txt , /llms-full.txt and /catalogue.md . What: a signpost file, a full-site text file, and
+the D2C equivalent of a pricing file with every SKU, size, MRP, sale price, claim, mechanism and
+routine role. Why: /products.json already exposes prices to agents but says nothing about who each
+product is for or what it claims; an agent asked "cheapest Arata routine for hair fall" cannot assemble
+it. Effect: non-Google engines and shopping agents read the catalogue in one request. Google does
+not need these files and they do not hurt it.
+3. Rebuild the five hero pages around answer blocks. What: on MitoActive, Hair Growth Intensive
+Serum, Anti-Hair Fall Shampoo, Anti-Dandruff Shampoo and the Hair Growth collection, add a
+definition block (what it is, who it is for, what it claims, in 40 to 60 words), a "How to use and how
+long" numbered block, a comparison block against the obvious alternative, and a six-question FAQ in
+the words customers type. Why: models extract passages, not pages, and none of the current pages
+has a passage that stands on its own. Effect: the same page converts humans and is citable; no
+separate "AI content", which Google's spam policy would punish.
+4. Reconcile naming across every surface. What: one canonical name, size and claim per SKU,
+applied on arata.in, Nykaa, Amazon, Flipkart, Blinkit, Zepto, Instamart. Retire "Super Shampoo with
+onion/biotin" copy or map it explicitly to the current SKU. Why: models build a brand description from
+consensus; four names for one shampoo reads as four weak entities. Effect: one entity, one claim,
+repeated everywhere.
+5. Schema. What: Organization with sameAs to every marketplace and social profile; Product with
+AggregateRating on every SKU with reviews; FAQPage on the hero pages; Article with author,
+datePublished and dateModified on every Lab Note. Why: Perplexity cites FAQ-marked pages
+
+
+BREW DEPLOYMENT TEAM × ARATA · GETTING ARATA CITED IN AI ANSWERS                                                    7
+noticeably more; Product and Organization feed Gemini and Google's entity understanding. Effect:
+structured context without changing what humans see.
+
+PILLAR 2: MAKE THE NUMBERS CITABLE
+6. Publish the Claims Ledger. What: one page at arata.in/pages/claims that lists every number on
+every pack (7.4X, 28,200, 95%, 86%, 87%, 94%, 36-hour, 72-hour) with the test type (in-vitro,
+consumer study, tensile strength), participants, duration, the exact "up to" framing, the date, and who
+reviewed it. Why: this is the single most valuable page we can add to the site. It answers the "too good
+to be true" objection, it gives a model a primary source to quote, and it turns every product page claim
+into a sourced statistic. Health content gets cited when it shows study details and limitations. Effect:
+"According to Arata's published study summary, 87% of participants saw increased growth in 84
+days" is a sentence a model can write. Today it cannot.
+7. Put a name and a credential on Lab Notes. What: every post carries an author (Head of R&D, in-
+house trichology lead, or an external dermatologist reviewer), a "medically reviewed by" line, a
+published date and a last-reviewed date. Why: E-E-A-T for health topics is weighted heavily by
+Google, and undated, unsigned posts lose to dated, signed ones on every engine. Effect: Lab Notes
+becomes the cluster that makes arata.in retrievable for the fan-out, not just the head prompt.
+8. Move Lab Notes from bursts to a weekly cadence. What: one post a week, each targeting one fan-
+out query from the list above, 800 to 1,500 words, one definition block, one statistic block with a
+named source, one FAQ. Why: ChatGPT cites content updated in the last 30 days about three times
+more often; Perplexity weights publishing velocity over keyword targeting. Seven posts in March and
+silence after is the worst possible shape. Effect: a fresh, retrievable page every week in the category.
+9. Write the "What is Y100" explainer and the honest Arata vs Traya page. What: a definition page
+for mitochondrial hair growth and Y100 (6+ years of research, 5+ clinical studies, Indian-participant
+study showing reduced shedding and an improved anagen/telogen ratio), and a comparison page that
+names Traya first, says fairly what it does well (diagnosis, doctor access, money-back after 5 months),
+and then shows where Arata differs (no doctor, no supplements, no minoxidil, ₹359 to ₹1,499 one-off,
+84-day course). Why: Arata owns the Y100 term in India, so this is a prompt it can win outright. For
+"Arata vs Traya", ranking yourself first reads as biased and models now filter for fairness. Effect:
+citation on prompts 9 and 13 within the quarter.
+10. Publish the packaging promise. What: a short page and FAQ entry stating the leak fix, the date,
+and the no-questions replacement policy. Why: this is the con the web repeats about Arata and the
+model will too, unless a primary source answers it. Effect: neutralises the "recommended against" risk
+on reliability prompts.
+
+PILLAR 3: BE WHERE THE MODELS LOOK
+11. Align every third-party profile. What: Nykaa, Amazon, Flipkart brand store, Blinkit, Zepto,
+Instamart, Inc42, Tracxn, Crunchbase, LinkedIn company page, Instagram bio, YouTube About: all say
+"Hair & Scalp Science Co., clinically tested haircare made for Indian hair, Delhi R&D lab, Y100 exclusive
+in India". Why: cheapest consensus move available, an afternoon of edits. Effect: when a fan-out runs
+ site:nykaa.com arata , the listing says the same thing as the About page.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · GETTING ARATA CITED IN AI ANSWERS                                       8
+12. Give every video a text layer. What: Lab Notes videos and Samay Raina-style content get
+question-shaped titles, corrected captions with product names spelled right, chapters titled by sub-
+question, a description that restates the answer in bullets, and a pinned comment with the summary.
+Why: models do not watch video; they read the text around it. Google AI Overviews cite YouTube
+heavily, and the citation bar is low: fresh, well-labelled videos on head terms get picked up within
+days. Effect: a second citable surface for every prompt.
+13. Earn the consensus signals. What: MitoActive review seeding through the post-purchase flow
+(84-day check-in with a review ask at day 30 and day 84); dermatologist or trichologist quotes in Lab
+Notes; genuine participation in r/IndianSkincareAddicts and r/IndianHaircare when the brand is asked
+about, in the brand's name; press that repeats the science positioning (the Inc42, BeautyMatter and
+Storyboard18 coverage already exists; the next round should carry the Y100 study). Why:
+recommendation is governed by what the rest of the web says, and the test is "if a model ignored
+everything on arata.in, would the web still shortlist us?" Today the answer is no. Effect: rung 3 to rung
+4 over two to three quarters, with Reddit treated as one surface in a portfolio since its citation share
+was nearly wiped from ChatGPT in August 2026.
+14. Attribution for the blind spot. What: a "How did you hear about us?" field at checkout with an "AI
+assistant (ChatGPT, Gemini, Perplexity)" option and a follow-up "What did you ask it?". Why: only
+about 9% of post-recommendation visits arrive as visible AI referrals; the rest look like branded search
+and direct. Effect: real prompts from real buyers feed the tracking list.
+
+
+
+WORKED EXAMPLES
+EXAMPLE 1: /LLMS.TXT FOR ARATA.IN
+                                                                                                            DIAGRAM
+    # Arata
+
+    > Arata is a Delhi-based Hair & Scalp Science Co. (Slick Organics Private Limited,
+    > founded 2018). It sells clinically tested haircare for Indian hair, scalp and
+    > weather: hair fall, hair growth, dandruff, damage, greying and styling.
+    > Every hero product carries a measured claim from a study. Sold on arata.in,
+    > Amazon.in, Nykaa, Flipkart, Blinkit, Zepto and Swiggy Instamart. No prescription,
+    > no doctor consultation, no minoxidil.
+
+    Prices are in Indian rupees (₹) and include GST. Free shipping above ₹299.
+    Last updated: 2026-10-10.
+
+    ## Products
+
+    - [MitoActive Mitochondrial Hair Growth Serum, 30 ml, ₹1,499](https://arata.in/products/mitoactive):
+      India's first hair growth serum built on Y100, a mitochondrial active licensed
+      exclusively from Yuva Biosciences. 87% of study participants saw increased growth
+      in 84 days. Used twice daily; one bottle is about one month.
+    - [Hair Growth Intensive Serum, 30 ml, ₹571](https://arata.in/products/hair-growth-serum):
+      Actives-based leave-on serum. Up to 28,200 new hairs within 84 days in a consumer study.
+    - [Anti-Hair Fall Intensive Shampoo, 200 ml, ₹359](https://arata.in/products/anti-hair-fall-shampoo):
+      Hairdian AP, rosemary and caffeine. 7.4X hair fall reduction in a tensile strength study.
+      Sulphate-free, paraben-free.
+    - [Anti-Dandruff Shampoo, 200 ml, ₹404](https://arata.in/products/anti-dandruff-shampoo):
+      Up to 95% reduction in dandruff-causing fungus in one wash (in-vitro).
+    - [Anti-Grey Hair Serum, 30 ml, ₹449](https://arata.in/products/anti-grey-serum):
+      MelanoGray and vegan keratin. Up to 86% reduction in greys over 3 months in best responders.
+    - [Hair Gel, ₹269 to ₹699](https://arata.in/collections/styling): 72-hour humidity-resistant hold.
+
+    ## Routines
+
+    - [Hair fall routine](https://arata.in/collections/hair-growth): Anti-Hair Fall Shampoo +
+      Hair Growth Intensive Serum, ₹838 as a combo; MitoActive + shampoo combos ₹1,803 to ₹2,278.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · GETTING ARATA CITED IN AI ANSWERS                                                    9
+    - [Dandruff routine](https://arata.in/collections/anti-dandruff): Shampoo + Conditioner ₹866;
+      add the leave-on Anti-Dandruff Serum (₹299) for up to 36-hour itch relief.
+
+    ## Evidence
+
+    - [Claims Ledger](https://arata.in/pages/claims): every number on every pack, with test type,
+      participants, duration and date.
+    - [What is Y100](https://arata.in/pages/y100): the mitochondrial mechanism explained.
+    - [Lab Notes](https://arata.in/blogs/lab-notes): weekly, authored and dated.
+
+    ## Machine-readable
+
+    - [Catalogue](https://arata.in/catalogue.md): every SKU, size, MRP, sale price, claim, routine role.
+    - [Full site text](https://arata.in/llms-full.txt)
+    - [Product feed](https://arata.in/products.json)
+
+    ## Company
+
+    - [About](https://arata.in/pages/about): founders Dhruv Madhok and Dhruv Bhasin; in-house
+      R&D and QC lab in Delhi; investors include Unilever Ventures and L'Oréal BOLD.
+    - [Packaging and replacement promise](https://arata.in/pages/packaging-promise)
+    - Reviews: 2,248 on arata.in; Nykaa 4.2 stars from 2,435 ratings (Oct 2026).
+
+
+
+
+URL slugs are placeholders until mapped to the live handles. Shopify cannot serve a root file natively;
+we ship this through an llms.txt app or an app-proxy route, and link it from the footer and the sitemap.
+
+EXAMPLE 2: /CATALOGUE.MD (THE D2C PRICING FILE), HAIR GROWTH SECTION
+                                                                                                           DIAGRAM
+    # Catalogue: Arata hair growth range
+    Prices in ₹ incl. GST, arata.in, as of 2026-10-10. Free shipping above ₹299. Free gift above ₹999.
+
+    ## MitoActive Mitochondrial Hair Growth Serum
+    - Price: ₹1,499 (30 ml). No sale price.
+    - Cost per day at twice-daily use: about ₹50.
+    - Active: Y100 (Yuva Biosciences), mitochondrial. Exclusive to Arata in India.
+    - Claim: 87% of participants saw increased growth in 84 days; up to 95% reduction in hair fall.
+      Study summary: arata.in/pages/claims#mitoactive
+    - For: hair fall or thinning where the buyer wants a non-minoxidil, non-prescription option
+      with the strongest evidence in the range. Men and women.
+    - Course: 84 days, then maintenance. Not a dependency product.
+    - Reviews: 0 (launched Aug 2026).
+
+    ## Hair Growth Intensive Serum
+    - Price: ₹649 MRP, ₹571 sale (30 ml). Pack of 3: ₹1,947 MRP, ₹999 sale (49% off).
+    - Claim: up to 28,200 new hairs within 84 days. Study summary: arata.in/pages/claims#serum
+    - For: early hair fall; first serum in the range; the actives tier below MitoActive.
+    - Reviews: 474 (single), 388 (pack of 3).
+
+    ## Anti-Hair Fall Intensive Shampoo
+    - Price: ₹399 MRP, ₹359 sale (200 ml).
+    - Actives: Hairdian AP, rosemary, caffeine. Sulphate-free, paraben-free, vegan.
+    - Claim: 7.4X hair fall reduction (tensile strength study). Summary: arata.in/pages/claims#shampoo
+    - Reviews: 222.
+
+    ## Anti-Breakage Intensive Conditioner
+    - Price: ₹399 MRP, ₹359 sale (200 ml). Claim: 78% stronger hair in 1 wash (in-vitro). Reviews: 30.
+
+    ## Combos
+    - Anti-Hair Fall Shampoo + Conditioner: ₹638
+    - Shampoo + Hair Growth Intensive Serum: ₹838
+    - Hair Growth Trio (shampoo + conditioner + serum): ₹1,201
+    - MitoActive + shampoo combos: ₹1,803 to ₹2,278
+
+    ## Where to buy
+    arata.in | amazon.in | nykaa.com | flipkart.com | Blinkit | Zepto | Swiggy Instamart
+    Same SKU names and claims on every channel.
+
+
+
+
+Dandruff, damage, anti-grey, styling, body, face and tools follow in the same format. The file is
+regenerated from /products.json plus a claims table on every price change, so it never goes stale.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · GETTING ARATA CITED IN AI ANSWERS                                               10
+EXAMPLE 3: MITOACTIVE PRODUCT PAGE, THE EXTRACTABLE LAYER
+These blocks sit on the existing page, above the fold and below the add-to-cart. Humans read them.
+Models quote them.
+Definition block (H2: What is MitoActive?)
+MitoActive is a leave-on hair growth serum from Arata built on Y100, a mitochondrial active licensed
+exclusively in India from Yuva Biosciences. It targets the energy supply of the hair follicle to shift hair
+from the resting (telogen) phase into the growth (anagen) phase. In Arata's 84-day study, 87% of
+participants saw increased hair growth. ₹1,499 for 30 ml, about one month at twice-daily use.
+How to use (H2: How to use MitoActive and how long it takes)
+1. Apply twice a day to a dry or towel-dried scalp, 1 ml per application, on the thinning areas.
+2. Massage for 60 seconds with fingertips or the Arata scalp massager (₹199).
+3. Do not rinse. Style as usual.
+4. Wash with Anti-Hair Fall Intensive Shampoo two to three times a week.
+5. Expect reduced shedding first (weeks 2 to 6) and visible new growth by day 84.
+One bottle lasts about 30 days. The study window was 84 days, so plan for three bottles, then
+maintenance.
+Comparison block (H2: MitoActive vs Hair Growth Intensive Serum vs minoxidil 5%)
+                                                                     HAIR GROWTH INTENSIVE
+                      MITOACTIVE                                     SERUM                           MINOXIDIL 5% (E.G. MINTOP)
+
+ Mechanism            Mitochondrial (Y100),                          Actives stack for follicle      Vasodilation, prolongs anagen
+                      anagen/telogen ratio                           stimulation
+ Evidence             87% saw growth in 84 days (Arata               Up to 28,200 new hairs in 84    Decades of clinical trials;
+                      study); 5+ studies on Y100                     days (consumer study)           strongest evidence
+ Price per            ₹1,499                                         ₹571 (₹333 in pack of 3)        ₹600 to ₹900
+ month
+ Needs a              No                                             No                              Recommended
+ doctor
+ Known                New ingredient, fewer years of data            Same actives class as most      Initial shedding, scalp irritation,
+ downsides                                                           D2C serums                      dependency
+ Best for             Buyers who want the strongest non-             First serum, early hair fall,   Diagnosed androgenetic
+                      minoxidil option                               budget                          alopecia under a doctor
+
+
+Bottom line: start with the Intensive Serum for early hair fall; move to MitoActive if you want a
+stronger, non-minoxidil treatment; see a dermatologist for advanced thinning (Norwood 5 and above),
+which no serum will fix.
+FAQ block (H2: Questions people ask about MitoActive)
+Is MitoActive worth ₹1,499? It costs about ₹50 a day for the 84-day course. Traya's kits run ₹1,400 to
+₹1,800 a month for five months or more with doctor calls and supplements. MitoActive is a one-bottle-
+a-month serum with a published study and no consultation.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · GETTING ARATA CITED IN AI ANSWERS                                                                     11
+Is MitoActive just another Redensyl serum? No. Y100 works on the follicle's mitochondria. Redensyl,
+Anagain and Procapil serums, including Arata's own Intensive Serum, work through a different actives
+pathway. Y100 is licensed exclusively to Arata in India.
+Will my hair fall get worse first? The Y100 Indian-participant study recorded reduced shedding and
+an improved anagen/telogen ratio. Initial shedding is a known effect of minoxidil, which MitoActive
+does not contain.
+Do I have to use it forever? Use it for 84 days, then move to maintenance (once daily or alternate
+days). It is a course, not a dependency.
+Is it safe with hard water and sweat? Yes. It is a leave-on and is formulated and tested for Indian
+scalp conditions: hard water, humidity and heat.
+Does it work for women and post-partum hair fall? The study included men and women. For post-
+partum shedding, start after the fourth month and pair with the Anti-Hair Fall Shampoo.
+The FAQ is marked up as FAQPage, the steps as HowTo, and the page carries Product schema with
+price, availability and, once reviews land, AggregateRating.
+
+EXAMPLE 4: CLAIMS LEDGER ENTRY FOR "UP TO 28,200 NEW HAIRS"
+                                                                                               DIAGRAM
+    ## Hair Growth Intensive Serum: "Up to +28,200 new hair within 84 days"
+
+    **What was measured:** change in hair count across the scalp, phototrichogram method.
+    **Study type:** consumer study, single arm. [Verify: add n, gender split, age range]
+    **Duration:** 84 days, twice-daily application.
+    **Result:** mean increase of [X] hairs; best responder +28,200. The pack claim is the
+    best-responder figure, hence "up to".
+    **Date:** [Month YYYY]. **Reviewed by:** [Name], [credential], [date].
+    **What this does not show:** results beyond 84 days; results in advanced thinning.
+    **Full summary:** [PDF link, public, no form]
+
+
+
+
+Every bracket is filled from the R&D lab's files in week 2. The PDF is public because Perplexity
+prioritises open PDFs and a gated study is invisible to every engine. Same format for 7.4X, 95%, 86%,
+87%, 94%, 36-hour and 72-hour.
+
+EXAMPLE 5: LAB NOTES POST, THE FIRST 180 WORDS
+Title: Does hard water cause hair fall? What Delhi, Bangalore and Chennai tap water does to your
+scalp Author: [Name], Head of R&D, Arata. Reviewed by [Name], Dermatologist, [date]. Published
+2026-10-20. Last updated 2026-10-20.
+Hard water does not cause hair fall on its own. It makes existing hair fall worse. Calcium and
+magnesium in hard water leave a mineral film on the strand and scalp. The film roughens the cuticle,
+so hair tangles and snaps during washing, and it blocks cleansers from reaching the scalp, so build-up
+and itch rise. Most Indian metros run between 200 and 500 mg/L of hardness; anything above 120
+mg/L counts as hard under standard water classifications. [Source: BIS drinking water standard IS
+10500, verify figure.]
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · GETTING ARATA CITED IN AI ANSWERS                                    12
+What helps: a chelating or clarifying wash once a week, a shampoo that cleans in hard water without
+sulphates, and a leave-on treatment that does not rely on rinse-off actives. In Arata's tensile strength
+study, the Anti-Hair Fall Intensive Shampoo reduced breakage-related hair fall 7.4X (Claims Ledger
+entry). We test every shampoo at 300 mg/L hardness because that is what our customers wash with.
+Then: a definition block for "what is hard water", a city table, a six-step routine, an FAQ. One post, one
+fan-out query, one named author, one sourced statistic, one dated claim.
+
+EXAMPLE 6: YOUTUBE TEXT LAYER FOR THE MITOACTIVE EXPLAINER
+Title: What is a mitochondrial hair growth serum? Y100 and MitoActive explained by Arata's lab
+Chapters: 0:00 What hair follicle mitochondria do | 1:10 Why hair stops growing (telogen) | 2:30 What
+Y100 is and where it comes from | 3:45 The 84-day study, 87% result | 5:00 How to use MitoActive |
+6:15 MitoActive vs minoxidil | 7:20 Who should not use it Description, first lines: A mitochondrial hair
+growth serum targets the energy supply of the hair follicle so more hairs stay in the growth phase.
+MitoActive is Arata's serum built on Y100, exclusive in India, ₹1,499 for 30 ml. In an 84-day study, 87%
+of participants saw increased growth. Covered in this video: (bullets restating each chapter) and links
+to the Claims Ledger, the product page and the catalogue. Pinned comment: the five how-to steps,
+the price, the 84-day timeline, and the link to arata.in/pages/claims. Captions: uploaded and
+corrected so "Y100", "MitoActive" and "Arata" are spelled right every time they are spoken.
+
+EXAMPLE 7: ROBOTS.TXT.LIQUID ADDITIONS
+                                                                                                     CODE
+    {{ ... Shopify default rules remain above ... }}
+
+    # Search discovery: allowed
+    User-agent: OAI-SearchBot
+    User-agent: PerplexityBot
+    User-agent: Claude-SearchBot
+    Allow: /
+    Disallow: /cart
+    Disallow: /checkout
+    Disallow: /account
+
+    # Model training: decision recorded 2026-10, review quarterly
+    User-agent: GPTBot
+    User-agent: ClaudeBot
+    Allow: /blogs/
+    Allow: /pages/
+    Allow: /products/
+    Disallow: /cart
+    Disallow: /checkout
+
+    # Gemini training and grounding (does not affect Google Search)
+    User-agent: Google-Extended
+    Allow: /
+
+    Sitemap: https://arata.in/sitemap.xml
+
+
+
+
+Our recommendation is to allow training crawlers on public content: Arata benefits when the next
+model generation knows what Y100 is. That is Arata's call, and the file records whichever choice is
+made. Shopify's default template already disallows cart, checkout and account paths for all bots; the
+additions above only name the AI agents explicitly.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · GETTING ARATA CITED IN AI ANSWERS                                         13
+30-DAY DEPLOYMENT
+ WEEK BREW SHIPS                                                                  ARATA PROVIDES            LIVE BY END OF WEEK
+
+ 1         20-prompt baseline across Google AI Mode, Gemini,                        Shopify theme and         Baseline sheet; robots
+           ChatGPT, Perplexity, n=5 each, logged with framing                       admin access; the         stance; Bing submitted;
+           (recommended / neutral / hedged / against). Agent-                       current channel listing   naming reconciliation
+           readiness scores (two tools). Crawler header test per user               copy; a decision on       list approved by Arata
+           agent. robots.txt.liquid stance. Bing Webmaster Tools                    training crawlers         brand manager
+           + IndexNow. Brave index check. Naming audit across seven
+           channels
+ 2         Claims Ledger page drafted from R&D files. /catalogue.md                 R&D lab files for every   Claims Ledger live;
+           v1 generated from /products.json plus claims table.                      claim (test type, n,      catalogue.md live;
+           Organization schema with sameAs ; Product +                              duration, date);          Organization and
+           AggregateRating on all reviewed SKUs. Packaging promise                  reviewer credential;      Product schema
+           page                                                                     packaging fix date and    validated
+                                                                                    replacement policy
+ 3         Answer blocks (definition, how-to, comparison, FAQ) on                   Sign-off on medical       Five hero pages
+           MitoActive, Hair Growth Intensive Serum, Anti-Hair Fall                  phrasing; Y100 study      extractable; Y100 page
+           Shampoo, Anti-Dandruff Shampoo, Hair Growth collection.                  summary from Yuva         live; llms files resolving
+           FAQPage + HowTo schema. "What is Y100" explainer.                        Biosciences licence       at the root
+            /llms.txt and /llms-full.txt via app proxy                              materials
+ 4         Arata vs Traya page (Traya named first, fair). First two weekly          Author and reviewer       Comparison page, two
+           Lab Notes with named author, reviewer, dates, Article                    names and bios;           Lab Notes, one video
+           schema. YouTube text-layer template applied to the                       marketplace account       with full text layer,
+           MitoActive explainer. Third-party profile copy pack (Nykaa,              manager time to push      profiles updated,
+           Amazon, Flipkart, Blinkit, Zepto, Instamart, Inc42, Tracxn,              listing copy; YouTube     attribution field live,
+           Crunchbase, LinkedIn). Checkout "How did you hear about                  channel access            after score logged
+           us?" field with AI option. Second agent-readiness score
+
+
+Owners: Brew AI-search lead (audit, files, schema, measurement), Brew content lead (Claims
+Ledger, Lab Notes, answer blocks, video text layer), Brew marketplace lead (listing and profile
+alignment), Arata brand manager (approvals, naming decisions), Arata R&D lead (claims data, review
+credential), Arata marketplace manager (channel pushes).
+
+
+
+HOW WE MEASURE
+We report the ladder, never a single "AI visibility" number. A rising citation count with a flat
+recommendation rate is a specific diagnosis: the web does not yet corroborate the site.
+                                                                                        90-DAY TARGET
+ METRIC                        WHAT IT TELLS US                      BASELINE           (ASSUMPTION)                   HOW
+
+ Agent-readiness               Can a bot reach and parse             To be              85+                            Two free
+ score                         arata.in                              instrumented,                                     scorers, before
+                                                                     week 1 (expected                                  and after
+                                                                     55 to 70)
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · GETTING ARATA CITED IN AI ANSWERS                                                                         14
+                                                                                         90-DAY TARGET
+ METRIC                        WHAT IT TELLS US                      BASELINE            (ASSUMPTION)                 HOW
+
+ Citation rate,      arata.in appears as a source Week 1 baseline,                       4/5 or better on all four    Monthly manual
+ branded prompts (13                              n=5 per prompt                         engines                      run, logged with
+ to 20)                                           per engine                                                          sample size
+ Citation rate,                Arata's pages are useful              Week 1 baseline     2/5 on Google AI Mode        Same
+ category prompts (1           enough to consult                     (expected 0 to 1 of and Gemini for prompts 1,
+ to 12)                                                              5)                  2, 7, 9
+ Mention rate,                 Arata is named in the                 Week 1 baseline     2/5 on prompts 1, 7, 9, 11   Same, plus a
+ category prompts              answer                                                                                 monitoring tool
+                                                                                                                      if budget allows
+ Recommendation                Arata is on the shortlist;            Week 1 baseline     Prompt 9 (Y100)              Framing logged
+ rate and framing              favourable vs hedged vs                                   recommended 3/5; zero        per run
+                               against                                                   "recommended against"
+                                                                                         on reliability prompts
+ Accuracy of brand             Does the model say "Hair &            Week 1 baseline     4/5 runs describe the        Free-text
+ description                   Scalp Science Co." or                                     science positioning and      prompt "what is
+                               "flaxseed gel brand"                                      name Y100                    Arata"
+ AI referral sessions          Visible traffic from                  GA4, to be          3x week 1 level              GA4 referrer
+                               chatgpt.com, perplexity.ai,           instrumented                                     report
+                               gemini.google.com, copilot
+ "Heard about us via           The 90% of AI-influenced              0 (field does not   3% of D2C orders select it; Checkout field
+ AI" at checkout               visits that arrive as branded         exist)              100+ real prompts           + follow-up
+                               search or direct                                          captured                    question
+ Branded search                Proxy for AI influence                Search Console,     +25% with no campaign        Search
+ volume                        without a matching                    current             uplift                       Console,
+                               campaign                                                                               monthly
+ Lab Notes cadence             Freshness signal                      7 posts in March,   12 posts in 12 weeks, all    Editorial log
+                                                                     bursts              authored and dated
+ MitoActive reviews            Corroboration a model can             0                   100+ on arata.in, 50+ on     Post-purchase
+                               read                                                      Nykaa                        30/84-day
+                                                                                                                      asks
+
+
+Decision rules at day 90.
+If branded citation is at target and category mention is rising: double Lab Notes to two a week, expand
+the Claims Ledger to the body and face range, build concern pages for post-partum, hard water by
+city and monsoon dandruff, and start the Wikipedia notability review (only if independent press
+coverage meets the bar; we never fabricate it).
+If branded citation is at target but category mention is flat: the site is readable and the web does not
+corroborate it. Shift budget from on-site content to presence: review velocity on Nykaa and Amazon,
+derm and trichologist quotes, creator videos with the text layer, press that carries the Y100 study. Hold
+the content cadence steady.
+If branded citation is below target: it is a technical or comprehension problem, not a trust problem. Re-
+run the crawler tests, check Bing and Brave indexing, check for JavaScript-injected blocks, and
+rewrite the definition blocks until "what is Arata" comes back correct 4 of 5 times. Nothing else moves
+until this does.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · GETTING ARATA CITED IN AI ANSWERS                                                                       15
+ If a model recommends against Arata on reliability prompts in any run: escalate to operations the same
+ week, trace the cited source, and update the packaging promise page with the specific fix and date.
+
+
+
+ APPENDIX
+ CRAWLER DECISIONS, ONE LINE EACH
+  USER AGENT                                 PURPOSE                             OUR RECOMMENDATION
+
+  Googlebot, Bingbot                         Search and AI Overviews / Copilot   Allow
+  OAI-SearchBot                              ChatGPT search discovery            Allow
+  PerplexityBot                              Perplexity discovery                Allow
+  Claude-SearchBot                           Claude search discovery             Allow
+  ChatGPT-User, Claude-User,                 User-triggered fetch; vendors say   Do not rely on robots to control; leave open
+  Perplexity-User                            robots rules may not apply
+  GPTBot, ClaudeBot                          Potential model training            Arata's call; we recommend allow on /blogs,
+                                                                                 /pages, /products
+  Google-Extended                            Gemini training and grounding; no   Allow
+                                             Search effect
+
+
+ WEEKLY LAB NOTES QUEUE, FIRST TWELVE
+ 1. Does hard water cause hair fall? (prompt 3)
+ 2. How to stop hair fall without minoxidil: an 84-day plan (prompt 2)
+ 3. What is Y100 and how does a mitochondrial serum work (prompt 9)
+ 4. Redensyl vs minoxidil vs Y100: evidence, price, side effects (prompt 8)
+ 5. Post-partum hair fall: when to start, what to use (prompt 6)
+ 6. Why anti-dandruff shampoo dries your hair, and what to do instead (prompt 4)
+ 7. What "up to 28,200 new hairs" means: reading our study (prompt 12)
+ 8. Hair gel in Mumbai humidity: why gels flake and how 72-hour hold is tested (prompt 5)
+ 9. Early greys at 28: what reduces them without dye (prompt 10)
+10. Sulphate-free shampoo for hair fall: what sulphates do to a thinning scalp (prompt 17)
+11. Monsoon dandruff: why it flares and a four-week routine
+12. Traya vs Arata vs Pilgrim: which approach fits which hair fall (prompt 11, fair, leader first)
+
+ SOURCES USED FOR THIS DOCUMENT
+ Arata brand brief (Brew, Oct 2026); OpenAI's February 2026 statement on Indian weekly users;
+ Shopify robots.txt default behaviour as documented by Shopify app vendors (mid-2026, verify against
+ Shopify's own docs); AI engine format and source shifts observed August to October 2026, treated as
+ dated snapshots to be re-verified against Arata's own monitoring.
+
+
+
+ BREW DEPLOYMENT TEAM × ARATA · GETTING ARATA CITED IN AI ANSWERS                                                             16
+AI SEARCH OPTIMISATION
+
+
+DAY 30
+AT ARATA
+    WHAT IS LIVE
+
+    arata.in is agent-readable (robots stance, llms.txt, catalogue.md, Organization
+    and Product schema), the MitoActive and Hair Growth Serum pages carry
+    extractable answer blocks and a public Claims Ledger, and a 20-prompt
+    baseline across four engines is logged with n=5 per prompt.
+
+
+
+
+  NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+  BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+  CONFIRM".
+
+
+  EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+  BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                    DEPLOYMENT TEAM
+                                                                                 BREW
+

@@ -1,0 +1,213 @@
+{
+ "v": 1,
+ "note": "The jam's left side is a stack of these blocks. A family names its defaults; the AI composes the rest from the same list. New moves add data, never code.",
+ "blocks": {
+  "creative": "An ad, post, Story, carousel, video or static, with the real draft",
+  "message": "A WhatsApp, SMS, email or push message on a phone or inbox",
+  "page": "A site section, landing page, popup or form",
+  "listing": "A marketplace listing",
+  "change": "Before → after on an account: budgets, bids, status, prices, settings",
+  "offer": "A code, discount, bundle or subscription offer",
+  "audience": "Who gets it: the segment, its rule and size, the holdout",
+  "tasks": "People work with owners and dates",
+  "doc": "A one-page plan or decision",
+  "table": "Data: prospects, keywords, numbers",
+  "file": "A deck, PDF or file from the moves",
+  "event": "An on-ground event, sampling or retail",
+  "measure": "How we'll know: the number, the comparison, the grade"
+ },
+ "families": {
+  "paid_ads": [
+   "creative",
+   "change",
+   "measure"
+  ],
+  "site": [
+   "page",
+   "measure"
+  ],
+  "messages": [
+   "message",
+   "audience",
+   "measure"
+  ],
+  "pricing": [
+   "offer",
+   "page",
+   "measure"
+  ],
+  "listings": [
+   "listing",
+   "measure"
+  ],
+  "search": [
+   "page",
+   "measure"
+  ],
+  "content": [
+   "creative",
+   "measure"
+  ],
+  "partners": [
+   "doc",
+   "tasks",
+   "measure"
+  ],
+  "offline": [
+   "event",
+   "tasks",
+   "measure"
+  ],
+  "foundations": [
+   "doc"
+  ],
+  "strategy": [
+   "doc"
+  ],
+  "research": [
+   "table",
+   "doc"
+  ],
+  "other": [
+   "doc",
+   "tasks"
+  ],
+  "community": [
+   "doc",
+   "table",
+   "measure"
+  ],
+  "creators": [
+   "table",
+   "message",
+   "tasks",
+   "measure"
+  ],
+  "ai_search": [
+   "page",
+   "table",
+   "measure"
+  ],
+  "complaint_fix": [
+   "page",
+   "message",
+   "tasks",
+   "measure"
+  ],
+  "seasonal": [
+   "creative",
+   "offer",
+   "measure"
+  ],
+  "automation": [
+   "audience",
+   "measure"
+  ]
+ },
+ "fallback": [
+  "doc",
+  "tasks"
+ ],
+ "turns": {
+  "paid_ads": [
+   "A sharper hook",
+   "Aim at a new audience",
+   "Make it 9:16"
+  ],
+  "site": [
+   "Lead with the proof",
+   "Shorter",
+   "A stronger button"
+  ],
+  "messages": [
+   "Warmer tone",
+   "Add an offer",
+   "Send it later"
+  ],
+  "pricing": [
+   "A smaller discount",
+   "Make it a bundle",
+   "Only for new buyers"
+  ],
+  "listings": [
+   "A clearer title",
+   "Lead with the benefit",
+   "Shorter bullets"
+  ],
+  "search": [
+   "Answer the question first",
+   "Add a comparison",
+   "Shorter"
+  ],
+  "content": [
+   "A sharper hook",
+   "Make it a carousel",
+   "More proof"
+  ],
+  "partners": [
+   "Who first",
+   "What we offer them",
+   "Tighter ask"
+  ],
+  "offline": [
+   "Smaller first",
+   "Which cities",
+   "Who runs it"
+  ],
+  "foundations": [
+   "What we need first",
+   "Simplest version",
+   "Who owns it"
+  ],
+  "strategy": [
+   "The one-line version",
+   "What we stop doing",
+   "What it costs"
+  ],
+  "research": [
+   "What it tells us",
+   "What to do next",
+   "Who to ask"
+  ],
+  "other": [
+   "Simpler",
+   "What's the first step",
+   "Who owns it"
+  ],
+  "change": [
+   "A smaller step first",
+   "Start it tomorrow at 7 am",
+   "Add a stop rule"
+  ],
+  "community": [
+   "A shorter question",
+   "Another community",
+   "Lower the threshold"
+  ],
+  "creators": [
+   "Gift only first",
+   "Smaller creators",
+   "Tighter brief"
+  ],
+  "ai_search": [
+   "Answer the question first",
+   "Add a comparison",
+   "Add the facts table"
+  ],
+  "complaint_fix": [
+   "Say what changed",
+   "Fix the page first",
+   "Reply in the thread"
+  ],
+  "seasonal": [
+   "Start a week earlier",
+   "No discount, a bundle",
+   "Smaller budget first"
+  ],
+  "automation": [
+   "A smaller cap",
+   "Add a hold-out",
+   "Fewer triggers"
+  ]
+ }
+}

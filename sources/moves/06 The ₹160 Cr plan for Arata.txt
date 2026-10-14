@@ -1,0 +1,750 @@
+      Brew                                     PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+THE ₹160
+MARKETING PLAN · MOVE 06 OF 50
+
+
+
+
+CR PLAN
+FOR ARATA
+  ONE PLAN THAT SEQUENCES EVERY BREW
+  WORKSTREAM, FROM PAID ADS TO RETENTION, AGAINST
+  ARATA'S ₹160 CR RUN-RATE GOAL, WITH THE BUDGET
+  MATH, THE OWNERS AND THE MONDAY SCOREBOARD.
+
+
+
+
+₹13.3 Cr/mo
+MONTHLY RUN-RATE BEHIND ₹160 CR
+
+
+
+
+BREW × ARATA                    OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                  V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                               WHAT THIS GIVES ARATA
+                                                               One plan that sequences every Brew workstream,
+                                                               from paid ads to retention, against Arata's ₹160 Cr
+                                                               run-rate goal, with the budget math, the owners and
+
+         ₹13.3 Cr/mo
+         MONTHLY RUN-RATE BEHIND ₹160
+                                                               the Monday scoreboard.
+                                                               LIVE 30 DAYS AFTER WE START
+         CR
+                                                               Arata has a reconciled revenue baseline, one
+                                                               scoreboard every workstream reports into, the first
+                                                               four workstreams live (lifecycle, offers, paid, CRO),
+                                                               and Diwali week run on a single plan with a weekly
+                                                               kill-or-scale decision.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+Written for a D2C brand: in this plan, activation means the first purchase of a routine on arata.in or
+quick commerce, retention means the reorder inside 45 days and finishing the 84 days, and referral
+means the friend who notices the hair fall stopped.
+Arata grew 192% to ₹61.1 Cr in FY25 and is forecasting ₹75 Cr for FY26. The stated goal is a ₹160 Cr
+revenue run-rate with profitability. In plain numbers: ₹75 Cr is ₹6.25 Cr a month on average, and ₹160
+Cr is ₹13.3 Cr a month. The business has to roughly double its monthly run-rate, and do it without
+Traya's cost structure (₹138 Cr of marketing to make ₹343 Cr, and a ₹23 Cr loss).
+The growth so far has been bought one bottle at a time. 68% of revenue sits on Amazon, Nykaa,
+Flipkart, Blinkit, Zepto and Instamart, where the next sale depends on whoever is running the deeper
+offer that week. There is no subscription. There is no quiz or routine builder. There is no 84-day
+onboarding after the order, even though 84 days is the number on the bottle. MitoActive launched at
+₹1,499 in August with zero reviews and still has zero. The pack-of-3 serum is 49% off while the actual
+routine combo is 7% off, which trains the customer to stock up on one SKU instead of buying the
+system. Beauty repeat rates run around 26%; routine-led models exceed 40%. Arata is selling a
+routine and getting paid like a single-SKU brand.
+That gap is expensive. At a 26% repeat rate, every rupee of acquisition has to be spent again for the
+next order. At 40%+, the same ad budget produces a fifth more revenue over a year because the
+second and third orders arrive without a CPO attached. Add the review-visible problems (leaking
+bottles, broken seals, onion vs biotin and serum vs tonic naming across channels) and part of the paid
+spend is re-acquiring customers the product experience lost.
+The pieces already exist. A number on every bottle, an exclusive mechanism in Y100, an in-house lab,
+2,248 site reviews, a 4.2 star Nykaa listing on 2,435 ratings, and a team that pulled off the Samay
+Raina mock podcast. What is missing is the system that connects them in order. This plan runs the
+workstreams in one sequence: fix the leak first (routine, reorder, proof), then pour (paid, creators,
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · THE ₹ 160 CR PLAN FOR ARATA                                                           1
+search), then compound (community, referral, B2B). Every workstream has its own document in this
+series. This one says which runs when, what each owes the others, and what number proves it is
+working.
+
+
+
+WHAT WE FOUND
+THE MARKET GATE: LARGE PROBLEM, FELT DAILY
+Before planning how to market, we checked what is being marketed. Hair fall is the best quadrant
+there is: emotionally large (fear of balding, "is it too late") and felt every morning on the pillow.
+Dandruff is the same in winter and monsoon. Styling is daily but small. Greys are large but infrequent.
+                                                                                                                       DIAGRAM
+                              LOW FREQUENCY            HIGH FREQUENCY
+                           +-----------------------+-----------------------+
+       LARGE PROBLEM       | Anti-grey (₹449)      | HAIR FALL / GROWTH    |
+                           | winnable, needs       | Intensive Serum ₹571 |
+                           | retargeting to stay | MitoActive ₹1,499       |
+                           | top of mind           | Anti-dandruff ₹404    |
+                           |                       | >>> build here <<<    |
+                           +-----------------------+-----------------------+
+       SMALL PROBLEM       | Body, face, tools     | Styling (₹269-699)    |
+                           | range extensions      | habit, price-churny |
+                           | only                  | good entry, bad hero |
+                           +-----------------------+-----------------------+
+
+
+
+
+Sizing check: 82M urban Indians have hair loss; 16M use basic retail products and 5M medicated OTC.
+The hair growth market was about $267M (₹2,200 Cr) in 2023, doubling by 2028. ₹160 Cr is roughly
+7% of that segment before counting dandruff, damage and styling. Pilgrim is past ₹200 Cr on the
+same Redensyl stack and Traya did ₹343 Cr on diagnosis. The market is big enough. Plan around the
+full target.
+
+THE ₹160 CR BRIDGE
+                                   FY25        IMPLIED TODAY   MONTH-12
+ CHANNEL                           MIX         (₹75 CR ÷ 12)   EXIT TARGET   WHAT MOVES IT
+
+ arata.in (D2C)                    32%         ₹2.0 Cr/mo      ₹4.8 Cr/mo    Paid first orders at ≤ ₹450 CPO, CRO on the hair
+                                                               (36%)         growth funnel, 84-day lifecycle, subscription,
+                                                                             routine pricing
+ Marketplaces (Amazon,             38%         ₹2.4 Cr/mo      ₹4.7 Cr/mo    Locked SKU naming, review velocity (MitoActive
+ Nykaa, Flipkart)                                              (35%)         0 → 300), listing rewrites from the claims ledger,
+                                                                             marketplace ads
+ Quick commerce                    30%         ₹1.9 Cr/mo      ₹3.8 Cr/mo    Assortment by city and season, in-box bridge to
+ (Blinkit, Zepto,                                              (29%)         arata.in, dandruff SKUs in winter and monsoon
+ Instamart)
+ Total                             100%        ₹6.25 Cr/mo     ₹13.3 Cr/mo
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · THE ₹ 160 CR PLAN FOR ARATA                                                                      2
+Two things to say plainly. First, the owned channel does the heaviest lifting: it has to grow 2.4x while
+the others grow about 2x, because it is the only channel where repeat, subscription and proof
+compound for Arata instead of for the platform. Second, the brief's numbers do not reconcile.
+50,000+ D2C orders a month at ₹900 to ₹1,000 AOV implies ₹4.5 to ₹5 Cr a month on arata.in, far
+above 32% of a ₹75 Cr year. This is open decision #1 and the first thing we fix in week 1, because
+every target here is a ratio off that baseline.
+
+WHERE THE FUNNEL LEAKS
+                                                                                                                            DIAGRAM
+       ACQUISITION        ~650K visits/mo to arata.in (+42% MoM), marketplace + QC search
+            |              Working. Rented. Paid structure unknown to us.
+            v
+       ACTIVATION         ~7-8% visit-to-order incl. returning; first order ₹900-1,000
+            |              Working on volume, leaking on shape: single bottles, 49% pack-of-3,
+            |              no picker, MitoActive page with no proof, leak/seal complaints
+            v
+       RETENTION          ~26% category repeat (assumption for Arata: to be instrumented)
+            |              ABSENT as a system: no 84-day onboarding, no 45-day reorder flow,
+            |              no subscription, no community
+            v
+       REFERRAL           Nothing structured. 2,248 reviews prove people talk. No mechanism.
+            |
+            v
+       REVENUE            AOV ~₹950. Combos 7-49% off with no rulebook. ₹1,499 MitoActive
+                          has no ladder below it and no course above it.
+
+
+
+
+The binding constraint is Retention and Revenue together: the routine. Activation on arata.in is second.
+Acquisition is the stage Arata is best at and the one we restructure rather than rebuild: paid keeps
+running from day 1, and gets its new structure in week 3 once the funnel it feeds is fixed.
+
+CURRENT STATE, SCORED FROM PUBLIC MATERIALS
+Scored 0 to 5 against the 17-section rubric. Arata's team can push back on any row where it has better
+data.
+ #     SECTION                            SCORE       NOTE
+
+ 1     Positioning                        3           "Hair & Scalp Science Co." is clear. Rebrand mid-flight; curl-care and "zero
+                                                      chemicals" history still on marketplaces
+ 2     Customer research                  2           Reviews are rich; no voice-of-customer loop, no quiz data
+ 3     Homepage                           3           Converts at volume; claims from different studies with no hierarchy
+ 4     Product pages                      3           Every hero PDP carries a number. MitoActive PDP has no social proof at
+                                                      ₹1,499
+ 5     Conversion pages                   1           No routine, concern or science pages that sell
+ 6     Competitor comparison              0           Traya, Pilgrim and Minoxidil searches go unanswered
+ 7     Resources and content              2           Lab Notes: seven posts in March 2026, then silence
+ 8     Onboarding (post-                  1           No 84-day program behind the 84-day claim
+       purchase)
+ 9     Email lifecycle                    2           Assumed default Shopify flows; audited in week 1
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · THE ₹ 160 CR PLAN FOR ARATA                                                                          3
+ #     SECTION                            SCORE       NOTE
+
+ 10 Sales material (B2B, retail, 2                    2 lakh B2B units a month means something exists; unseen
+    QC)
+ 11 Messaging                             3           Voice strong and young; naming inconsistent across channels
+ 12 Pricing                               2           49% vs 7% discount incoherence; no subscription; no ladder
+ 13 CRO                                   1           No evidence of a testing program
+ 14 GTM launches                          3           Samay Raina was a real launch; MitoActive was a press release
+ 15 Paid ads                              3           Running at scale; structure and CPO unknown to us
+ 16 SEO                                   2           Growth likely brand and paid led; no concern or comparison clusters
+ 17 Internationalization                  0           India only. Correct for the stage; no penalty
+       Total                              34 /
+                                          85
+
+
+Shape: strong recent revenue, weak compounding. High on acquisition, launches and voice; low on
+everything after the order (onboarding 1, lifecycle 2, CRO 1, comparison 0, conversion pages 1). That is
+the gap the plan closes, and why retention and revenue ship first.
+
+WHAT ARATA HAS ALREADY BUILT
+ ASSET                                                                 WHAT WE DO WITH IT
+
+ Claims library: 7.4X, 28,200, 95%, 86%, 87%                           Becomes the claims ledger every channel writes from
+ Y100 exclusivity, 6+ years research, 5+ studies                       The MitoActive story; the reason a derm can respect the
+                                                                       brand
+ In-house R&D and QC lab, Delhi                                        Lab Notes cadence, packaging fix, creator lab visits
+ Samay Raina and Archana Puran Singh mock podcast                      Cutdowns become partnership ads; the format becomes a
+ (Feb 2026)                                                            repeatable cultural moment
+ 2,248 site reviews, Nykaa 4.2 on 2,435 ratings                        Mined weekly for ad hooks, page copy and objection scripts
+ In flight: rebrand, Biosciences serum line. Stuck:                    Rebrand gets a dated go-live and a redirect map; the stuck
+ MitoActive 0 reviews, naming, leaks, Lab Notes bursts                 items are unblocked in weeks 1 to 4 with named owners
+
+
+
+
+THE PLAN
+THREE BETS, IN ORDER OF IMPACT
+Bet 1: Make the routine the product. The 84-day window is already on the bottle. We build the
+business around it: an 84-Day Hair Fall Plan at ₹1,199 billed monthly, a MitoActive 84-day course at
+₹3,999, Routine on Repeat subscriptions on six SKUs, a discount rulebook, and a 24-email lifecycle
+from day 0 to day 84 and the reorder. Expected effect: repeat share of arata.in revenue from roughly
+30% (assumption) to 45% by month 12. This is the largest lever in the plan because it changes what
+every rupee of acquisition is worth.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · THE ₹ 160 CR PLAN FOR ARATA                                                                        4
+Bet 2: Buy first orders on arata.in at a known cost, and prove the claim inside the ad. Paid is
+restructured into protected Meta scaling and testing budgets, Google brand split from non-brand,
+YouTube judged on new-customer CPO, with ₹450 as the target CPO and 2.1x first-order ROAS as the
+scale rule. Creative ships 40 concepts in 30 days, every one traced to a review or a claim. CRO
+rebuilds the MitoActive page, the hair growth collection and the cart around proof and routine.
+Expected effect: arata.in from 32% to 36% of revenue, and a CPO the founders can read on Monday
+morning.
+Bet 3: Build the compounding layer while paid runs. Comparison and concern pages for search
+(Arata vs Traya, Minoxidil alternative, hard-water cities), 12 social pieces a week with three public 84-
+day journeys, creators briefed on the routine, PR built on the lab and Y100, a hair-journey community,
+and refer-a-friend paid in product. Expected effect: 30% of new customers from non-paid sources by
+month 12, which is what keeps the ₹160 Cr profitable rather than rented.
+
+THE SYSTEM
+                                                                                                                         DIAGRAM
+                              ONE SCOREBOARD (Monday, 30 min)
+                                         ^
+         +----------------+--------------+--------------+----------------+
+         |                 |             |              |                |
+      ACQUISITION      ACTIVATION     RETENTION      REFERRAL         REVENUE
+      Paid ads         CRO            Lifecycle      Influencers      Pricing
+      Ad creative      Copywriting    Retention      Community        Offers
+      SEO              Launch         Launch (84-Day Cohort)          Launch (rebrand)
+      Social           Offers         Social (journeys)
+      PR               Product mktg   Product mktg (claims ledger)
+        |                 |              |              |                |
+        +----------------+--------------+--------------+----------------+
+                                         |
+                         PRODUCT MARKETING: positioning doc, claims ledger,
+                         locked SKU naming table. Every workstream writes from it.
+
+
+
+
+Product marketing sits underneath everything: the positioning statement, the messaging house and
+the claims ledger are what stop eleven workstreams from producing eleven versions of Arata.
+
+THE WORKSTREAMS
+Each row is its own document in this series; the "what ships" column is lifted from it so the plan and
+the workstream agree.
+ #     WORKSTREAM             STAGE                WHAT SHIPS                                                ANCHOR      WAVE
+
+ 1     Product                Cross-cutting        Positioning doc, messaging house, claims ledger, locked 1 doc, 3      Week 1
+       marketing                                   SKU naming table                                        pillars
+ 2     Pricing                Revenue              Hair growth ladder (Intensive Serum ₹599, 84-day          49% vs 3% Weeks 1
+                                                   course ₹1,199, MitoActive course ₹3,999), Routine on      fixed     to 4
+                                                   Repeat on six SKUs, discount rulebook
+ 3     Offers                 Activation,          84-Day Hair Fall Plan, MitoActive Founding 500,           ₹19/day     Weeks 2
+                              Revenue              Dandruff Reset, written guarantee, in-box bridge for QC               to 4
+                                                   buyers
+ 4     Email and              Retention            6 flows, 24 emails: welcome, cart recovery, 84-day        24 emails   Weeks 1
+       lifecycle                                   post-purchase, 45-day reorder, win-back, Day 30                       to 4
+                                                   review ask
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · THE ₹ 160 CR PLAN FOR ARATA                                                                       5
+ #     WORKSTREAM             STAGE                WHAT SHIPS                                                    ANCHOR       WAVE
+
+ 5     Retention              Retention            WhatsApp 84-day check-ins, pause instead of cancel,           45-day       Weeks 3
+                                                   replacement promise for leaks, reorder window ops             reorder      to 8
+ 6     CRO                    Activation           MitoActive page, hair growth collection and cart rebuilt      +0.5 pt      Weeks 1
+                                                   around proof and routine; 3-question picker; first A/B        CVR          to 4
+                                                   tests
+ 7     Copywriting            Activation           Homepage, MitoActive page, Intensive Serum page, hair         4 pages      Weeks 2
+                                                   fall routine landing page; house copy rules                                to 4
+ 8     Paid ads               Acquisition          Tracking rebuilt, two Meta CBOs, four Google         ₹450 CPO              Weeks 1
+                                                   campaigns, YouTube Demand Gen, weekly kill-or-scale;                       to 4
+                                                   ₹30 lakh month 1 → ₹60 lakh by day 90 if ROAS ≥ 2.1x
+ 9     Ad creative            Acquisition          40 concepts in 30 days, hook diagnostic weekly,               40 ads       Weeks 2
+                                                   monthly retro                                                              to 8
+ 10 Launch                    Acquisition,         MitoActive 84-Day Cohort (500 enrolled, day-0 photos          0 → 300      Weeks 1
+                              Activation           on WhatsApp), reviews 0 → 300, rebrand go-live with           reviews      to 12
+                                                   redirect map
+ 11 Social                    Acquisition          Five-pillar calendar, 12 pieces a week, three public 84-      84-day       Weeks 2
+                                                   day journeys, daily listening loop                            journeys     to 12
+ 12 SEO                       Acquisition          Arata vs Traya, vs Pilgrim, Minoxidil alternative; concern, 20 pages       Weeks 5
+                                                   ingredient and hard-water city pages; Lab Notes weekly by Q2               to 12
+ 13 Influencers               Acquisition,         Creators on the 84-day routine with day-0 and day-84          20-creator   Weeks 5
+                              Referral             posts, trichologist voices for MitoActive, whitelisting for   cohort       to 12
+                                                   paid
+ 14 PR                        Acquisition          Y100 and the Delhi lab as the story, founder bylines, the     Rebrand      Weeks 9
+                                                   rebrand moment                                                press day    to 16
+
+
+Owners by role: the Brew deployment lead runs the scoreboard and the sequence; the
+performance lead owns 8 and 9, the lifecycle lead 4 and 5, the creative lead 7 and 11, the content lead
+12 and 14, the commercial lead 2, 3 and 13. On the Arata side the CBO is accountable, the brand
+manager owns 1, 7, 10 and 11, the e-commerce manager 2, 3, 6 and 8, the R&D lead the claims ledger
+and packaging.
+
+THE SEQUENCE: FOUR WAVES, THEN FOUR QUARTERS
+The 90 days run in four waves.
+                                                                                                                              DIAGRAM
+       WEEKS 1-2              WEEKS 3-4                WEEKS 5-8            WEEKS 9-12
+       UNBLOCK                FOUNDATION               VELOCITY             COMPOUND
+       baseline               offers live              creative cadence     SEO pages live
+       tracking               lifecycle live           paid scaling         creators at day 84
+       naming table           pricing ladder           cohort day 30        community open
+       claims ledger          CRO rebuild              social 12/wk         rebrand go-live
+       MitoActive             paid restructure         retention ops        referral mechanic
+       reviews ask            Diwali 8 Nov             SEO build            90-day review
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · THE ₹ 160 CR PLAN FOR ARATA                                                                            6
+ WAVE                 MOVES                                                         STAGE            OWNER
+
+ Weeks 1 to 2:        Reconcile the revenue and order baseline. Rebuild         Cross-               Brew deployment and
+ Unblock              tracking. Lock the SKU naming table. Publish the claims   cutting,             analytics leads; Arata e-
+                      ledger. Email August MitoActive buyers for reviews. Audit Revenue              commerce manager
+                      existing flows. Interim rule on the 49% vs 7% discount
+                      gap
+ Weeks 3 to 4:        Plan, Founding 500, price ladder and subscription live.       All five         Brew lifecycle,
+ Foundation           84-day, reorder and cart flows live. MitoActive page and                       performance and creative
+                      collection rebuilt. Meta CBOs and Google split live at ₹30                     leads; Arata brand and e-
+                      lakh. First 12 statics. Diwali week (8 Nov) run on the new                     commerce managers
+                      structure
+ Weeks 5 to 8:        12 new statics a fortnight; scaling CBO +20% every 5          Acquisition,     Brew performance,
+ Velocity             days while CPO ≤ ₹450. Social at 12 a week; journeys at       Retention        creative, lifecycle and
+                      day 30. WhatsApp check-ins and win-back live. SEO                              content leads
+                      pages drafted. Creator cohort briefed
+ Weeks 9 to           20 SEO pages live. Rebrand go-live with redirect map.         Acquisition,     Brew content and
+ 12:                  Community open. Refer-a-friend live (product credit           Referral         commercial leads; Arata
+ Compound             both sides). Creator day-84 posts. Rebrand PR moment.                          brand manager; founders
+                      90-day review
+
+
+The quarters after that. Arata is a Series A company (Tier 4: $4M led by Unilever Ventures, Dec 2024).
+Nothing in Q1 to Q3 assumes a new round.
+ QUARTER          FOCUS                     OUTCOMES BY QUARTER END          KPI TARGETS                CURVE POSITION
+
+ Q1: Oct to       Fix the leak; run         Routine offers, lifecycle,       CPO ≤ ₹450; first ₹9 Cr    Paid restructured.
+ Dec 2026         Diwali and winter         ladder, CRO rebuild, paid        month (Nov or Jan);        Routine starting. SEO,
+                  dandruff on the           restructure, 40 ads, cohort      repeat share               creators staged
+                  new system                enrolled, MitoActive 100+        instrumented and ≥ 32%;
+                                            reviews                          site CVR +0.3 pt
+ Q2: Jan to       Validate the              Subscription 10% of D2C          Run-rate ₹10 Cr/mo; paid Paid scaling. Routine
+ Mar 2027         routine economics;        orders, 20 SEO pages ranking,    ₹60 lakh/mo at ROAS ≥    growing. SEO, creators
+                  Feb 2027                  creator day-84 results in ads,   2.1x; repeat share 35%;  ramping
+                  checkpoint                rebrand live everywhere,         D2C 34%
+                                            MitoActive 300 reviews
+ Q3: Apr to       Scale what                Non-paid 20% of new           Run-rate ₹11.5 Cr/mo;         Paid mature. SEO
+ Jun 2027         validated;                customers, Dandruff Reset as LTV/CAC ≥ 2.5; repeat          compounding. B2B
+                  monsoon dandruff;         monsoon hero, derm and salon share 40%                      experimental
+                  B2B pilot                 pilot in Delhi and Bangalore,
+                                            MitoActive 500 reviews
+ Q4: Jul to       Compound; the             Referral 10% of new              Run-rate ₹13.3 Cr/mo;      Paid on plateau watch.
+ Sep 2027         ₹160 Cr exit              customers, community 10K,        D2C 36%; repeat share      Routine, SEO, referral
+                  month                     second cultural campaign,        45%; non-paid 30%;         carrying growth. Next
+                                            B2B 5% of revenue                LTV/CAC ≥ 3                curve staged: GCC test
+
+
+On the date: the ₹160 Cr goal was set in February 2026 with a 12-month horizon, which lands in
+February 2027, four months from now. The plan we will sign is ₹13.3 Cr in a month by September 2027,
+the first ₹9 Cr month by Diwali or January, and February 2027 as a formal checkpoint. If the founders
+need ₹160 Cr annualised by February, the only lever is paid spend well past 2.1x ROAS discipline, and
+that is the Traya path. This is open decision #2.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · THE ₹ 160 CR PLAN FOR ARATA                                                                     7
+BUDGET: REVERSE-ENGINEERED FROM THE TARGET
+Method: goal-based. Start from the exit run-rate and work back through the unit economics. Every
+assumption is replaced with Arata's actual number in week 1.
+1. Exit run-rate ₹13.3 Cr/mo; arata.in at 36% → ₹4.8 Cr/mo on the owned site.
+2. Repeat share of arata.in revenue at month 12: 45% (from ~30% today, assumption) → ₹2.16 Cr/mo
+   from existing customers via lifecycle and subscription, ₹2.64 Cr/mo from new customers.
+3. New customers needed at month 12: ₹2.64 Cr ÷ ₹950 first-order AOV → about 27,800 a month.
+4. Non-paid share of new customers at month 12: 30% (SEO, social, creators, referral, community) →
+   paid has to deliver about 19,500 a month.
+5. Paid prospecting at ₹450 CPO → ₹88 lakh/mo, plus brand and retargeting at roughly 20% → about
+   ₹1.05 Cr/mo on arata.in paid in month 12. The ramp is ₹30 lakh in month 1, ₹60 lakh by day 90 if
+   ROAS holds, ₹1 Cr by month 9.
+6. Blended CAC including creative, tools and the deployment team: about ₹600 (assumption). At a 12-
+   month customer value of ₹1,800 (1.9 orders at ₹950, tied to the 45% repeat target), blended
+   LTV/CAC is 3.0. That is the guardrail.
+ LINE (12 MONTHS)                                              AMOUNT BASIS
+
+ arata.in paid (Meta, Google, YouTube)                         ₹8.5 Cr   Ramp above; assumption
+ Marketplace and quick-commerce ads                            ₹7.0 Cr   8% of ~₹85 Cr channel revenue; assumption
+ Creators, PR, content and journeys                            ₹4.0 Cr   84-day creator cohort, derm voices, Lab Notes
+ Cultural campaign (two moments, Samay Raina                   ₹4.0 Cr   The rebrand is moment one
+ format)
+ Tools, data, deployment team                                  ₹3.0 Cr   Tracking, lifecycle, WhatsApp, subscription app,
+                                                                         Brew
+ Experimental buffer (15% on paid lines)                       ₹2.3 Cr   Absorbs a worse CPO without missing the goal
+ Total                                                         ₹28.8 Cr 18% of ₹160 Cr. Traya ran at 40%.
+
+
+70/20/10 split: 70% protects what works today (Meta and Google on arata.in, marketplace and QC ads,
+seasonality). 20% builds the next curve (subscription, the cohort, SEO clusters, creators, community).
+10% is experiments with kill rules (derm and salon detailing, a hair fall score tool, a GCC test in Q4).
+The 20% is never cut to feed the 70% in a bad CPO week; that is what the buffer is for.
+If a growth round closes inside the plan, it would add television and OOH on the cultural campaign
+(held today: no attribution path), offline retail through salons and modern trade (held: margin and ops),
+and a GCC launch via Dubai quick commerce (held: one market at a time). None of these are in the
+₹28.8 Cr.
+
+TEAM MODEL AND RACI
+Strategy stays in Arata's house: positioning, claims, pricing authority, the founders' cultural instincts.
+Brew runs execution across every workstream, with the scoreboard as the contract. If Arata makes
+one internal hire inside this plan, it should be a Growth and Lifecycle Lead who owns retention and
+subscription economics day to day. Titled Lead, not Head.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · THE ₹ 160 CR PLAN FOR ARATA                                                                8
+ DOMAIN                             RESPONSIBLE                       ACCOUNTABLE            CONSULTED
+
+ The plan and the                   Brew deployment lead            Arata CBO              Founders; investors informed monthly
+ scoreboard
+ Positioning, claims                Arata brand manager               Arata CBO              Arata R&D lead, Brew content lead
+ ledger, naming
+ Pricing, offers,                   Brew commercial lead            Arata e-commerce       Finance, founders
+ subscription                                                         manager
+ Paid, creative, CRO, copy Brew performance and                     Arata e-commerce       Arata brand manager, R&D (claims)
+                           creative leads                             manager
+ Lifecycle, retention,              Brew lifecycle lead             Arata e-commerce       Support lead, Arata R&D lead, warehouse
+ packaging promise                                                    manager
+ Launch, social, SEO,               Brew content lead               Arata brand manager Founders on cultural moments;
+ creators, PR                                                                             marketplace and QC managers on
+                                                                                          naming
+
+
+WHAT WE ARE NOT DOING, AND WHY
+ IDEA                                                          STATUS REASON
+
+ Lifetime or "forever" deals                                   Skip      Destroys the routine economics the whole plan is built on
+ Giveaway contests on X or Instagram                           Skip      Attracts the ₹99 sachet buyer, the anti-persona
+ Television and OOH                                            Hold      No attribution path at today's tracking; revisit with a round
+ Own app                                                       Hold      WhatsApp does the 84-day job with zero install friction
+ Ayurvedic or oiling extensions, medicated                     Skip      Off-lane and regulatory; the positioning is "proof without a
+ minoxidil line                                                          prescription"
+ Offline retail at scale, international                        Q4+       Salon pilot and a GCC quick-commerce test only, each
+                                                                         inside the 10%
+ Diagnosis-led doctor calls (Traya model)                      Skip      Medicalised, high churn, high cost; the 3-question picker
+                                                                         does the job
+
+
+
+
+WORKED EXAMPLES
+EXAMPLE 1: THE BOARD UPDATE, READY TO SEND
+To the founders, the CBO and the board. Pastes as-is.
+Subject line: The ₹160 Cr plan: what changes in the next 90 days
+We closed FY25 at ₹61.1 Cr and are tracking ₹75 Cr for FY26. The ₹160 Cr goal needs ₹13.3 Cr in a
+month. Today we average ₹6.25 Cr.
+What we have learned: our growth has been bought one bottle at a time. 68% of revenue sits on
+platforms we do not own. We have no subscription, no routine builder and no program for the 84 days
+we print on the pack. MitoActive has been live since August with zero reviews. Our deepest discount
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · THE ₹ 160 CR PLAN FOR ARATA                                                                             9
+(49% on a pack of three serums) teaches customers to stock one SKU instead of buying the routine.
+Category repeat is about 26%; routine brands run above 40%. That gap is the cheapest growth
+available to us.
+Three bets, in order:
+1. Make the routine the product. An 84-Day Hair Fall Plan at ₹1,199 with monthly billing, a MitoActive
+   84-day course at ₹3,999, subscriptions on six SKUs, and a 24-email lifecycle from day 0 to the
+   reorder. Target: repeat share of arata.in revenue from about 30% to 45% in 12 months.
+2. Buy first orders on arata.in at a known cost. Paid restructured with a ₹450 target cost per new
+   customer and a 2.1x first-order ROAS rule to scale. Forty ad concepts in 30 days, every one built
+   from a real review or a study claim. Target: arata.in from 32% to 36% of revenue.
+3. Build the layer that compounds. Comparison and concern pages for search, 12 social pieces a
+   week with three public MitoActive journeys, creators briefed on day-0 and day-84 results, a hair-
+   journey community, and refer-a-friend paid in product. Target: 30% of new customers from non-
+   paid sources by month 12.
+Budget: ₹28.8 Cr over 12 months, 18% of the ₹160 Cr target, including a 15% buffer on paid if cost per
+order runs worse than planned. Traya spent 40% of revenue for its growth. We will not.
+Timing, said plainly: the February 2027 date from the original goal is four months away. We will hit the
+first ₹9 Cr month by Diwali or January and treat February as a checkpoint. The ₹13.3 Cr month is a
+September 2027 commitment.
+What we need from the board this month: sign-off on the price ladder and subscription, the packaging
+fix budget, and the decision in the appendix on the February date.
+Next update: 10 November, after Diwali week.
+
+EXAMPLE 2: THE MONDAY SCOREBOARD, VERSION 1
+Thirty minutes, every Monday, Brew deployment lead and Arata CBO. Rolling 7-day and 28-day
+columns. Baselines filled in week 1; targets are Q1.
+ METRIC                             SOURCE                     Q1 TARGET     RED              RED ACTION
+
+ Revenue run-rate (28-              Shopify + marketplace +    ₹9 Cr month   15% under plan   Recalibrate the quarter, never
+ day × 13)                          QC exports                 by Jan        for 4 weeks      the goal
+ arata.in share of revenue          Same                       33%           < 29%            Check QC cannibalisation of
+                                                                                              routine SKUs
+ New-customer CPO,                  Meta + Google + Shopify ≤ ₹450           > ₹675 for 2     Hold budget flat; run creative
+ prospecting                        new vs returning                         weeks            and page tests harder
+ First-order ROAS, non-             Same                       ≥ 2.1x        < 1.8x           No scaling step until two green
+ brand                                                                                        weeks
+ Proven ads in rotation             Ad account                 6             <4               Testing CBO gets the next 12
+                                                                                              statics early
+ Site CVR, new visitors             GA4 + Shopify              +0.3 pt vs    Negative         Roll back the losing A/B variant
+                                                               baseline
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · THE ₹ 160 CR PLAN FOR ARATA                                                                   10
+ METRIC                             SOURCE                     Q1 TARGET      RED                 RED ACTION
+
+ Routine share of arata.in          Shopify                    35%            < 25%               Picker and PDP ladder review
+ orders
+ Subscription share of              Subscription app           5% by Dec      < 2%                Re-test the ₹19/day framing
+ D2C orders                                                                                       and first-box bonus
+ 45-day reorder rate                Shopify cohort             +5 pt vs       Negative            Reorder flow timing and
+                                                               baseline                           WhatsApp check-in audit
+ MitoActive reviews                 Loox, Amazon, Nykaa        100 by Dec     < 30                Day 30 ask moves to
+                                                                                                  WhatsApp with a photo prompt
+ Leak and seal complaints Support tags                         Down 50%       Up                  Packaging line stop;
+ per 1,000 orders                                                                                 replacement promise triggered
+ Non-paid share of new              GA4 + referral codes       12%            < 5%                SEO and creator timelines
+ customers                                                                                        pulled forward
+
+
+Plateau alerts (any two on the same channel in a month shift weight to the 20% bucket): new
+customers flat at equal spend; CPO rising three weeks running; frequency above 3 on the scaling
+CBO; content effort up, output flat.
+
+EXAMPLE 3: THE "84 DAYS" INTEGRATED CAMPAIGN BRIEF
+The campaign every workstream plugs into for Q1. One brief, one promise, fourteen hands.
+Campaign: 84 Days. Promise: Start today, and in 84 days you will know. We will be with you every
+week of it. Why 84: It is the window on the pack (up to 28,200 new hairs within 84 days; 87% saw
+growth with MitoActive in 84 days). It is also the time from first order to third order on a monthly plan.
+The campaign sells the timeline, and the timeline sells the routine. Audience: Hair-fall Rahul (28,
+Bangalore, tried onion shampoo and biotin, wants a number) and Routine Ritika (32, Mumbai, post-
+partum, wants one cart). Clinical Kavya for the MitoActive tier. Hero offer: 84-Day Hair Fall Plan, ₹1,199
+(₹19/day), billed monthly, with the written guarantee. MitoActive Founding 500 at the top of the ladder.
+Dates: Enrolment opens week 3 (26 Oct). Diwali week is the first push. Day 84 for the first cohort
+lands in late January, when the journeys and reviews become the Q2 ads.
+ WORKSTREAM             DELIVERABLE INSIDE 84 DAYS                                                          DUE
+
+ Offers                 The plan, the guarantee, the first-box bonus (scalp massager ₹199), the in-box      Week 3
+                        card for Blinkit buyers
+ Pricing                ₹1,199 plan between the ₹599 serum and the ₹3,999 course; pack-of-3 to 35% Week 3
+                        off so the plan is the better deal
+ Email and              84-day flow: day 0 how to apply, day 7 what shedding means, day 14 photo            Week 4
+ lifecycle              prompt, day 30 review ask, day 45 reorder, day 60 look back, day 84 result and
+                        next step
+ Retention              WhatsApp check-ins at day 3, 21, 42, 70; pause instead of cancel; leak              Week 6
+                        replacement in 48 hours
+ CRO and copy           Hair fall routine landing page on the 84-day timeline; the picker routes to the     Week 4
+                        plan
+ Paid and               "Day 0 / Day 84" hook family; day-35 reorder audience; 12 statics on the            Week 4, then
+ creative               timeline, UGC after week 6                                                          fortnightly
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · THE ₹ 160 CR PLAN FOR ARATA                                                                     11
+ WORKSTREAM             DELIVERABLE INSIDE 84 DAYS                                                           DUE
+
+ Launch                 MitoActive 84-Day Cohort: 500 enrolled, day-0 photos on WhatsApp, Day 30             Enrol week 2,
+                        review ask, Day 84 results page                                                      results week 12
+ Social                 Three public journeys in Stories, weekly "what week are you on" prompt,              Week 2 onward
+                        listening replies with the plan link
+ Influencers            20 creators on the plan with day-0 and day-84 posts; two trichologists on the        Brief week 5, posts
+                        MitoActive mechanism; whitelisting in every contract                                 late January
+ SEO                    "Does hair fall stop in 3 months", "84 days hair growth serum results", "Arata vs    Weeks 7 to 12
+                        Traya", all linking to the plan
+ PR                     Founder byline: why we put a date on the bottle; Lab Notes weekly on each week       Week 8
+                        of the 84
+ Product                Claims grammar for every 84-day sentence ("up to", "in 84 days", study type          Week 1
+ marketing              named)
+
+
+Success: 5,000 plans sold by day 84 of the campaign (assumption, set against the week-1 baseline);
+100 MitoActive reviews by December; 45-day reorder rate up 5 points; the first cohort's day-84 results
+become the Q2 creative.
+
+
+
+30-DAY DEPLOYMENT
+Day 1 is Monday 12 October 2026. Day 30 is 10 November, two days after Diwali.
+ WEEK            BREW SHIPS                                          ARATA PROVIDES                  LIVE BY END OF WEEK
+
+ Week 1          Baseline reconciled across Shopify, marketplaces      Platform access; 12 months      Baseline agreed in
+ (12 to 18       and QC; tracking rebuilt (purchase, new vs            of orders by channel; current   writing; scoreboard
+ Oct)            returning, channel); email flows audited;             paid spend and CPO; study       running; claims ledger
+                 positioning doc, claims ledger, SKU naming table;     documents; packaging            v1; first MitoActive
+                 MitoActive review email to August buyers; interim     complaint tags                  reviews requested
+                 discount rule; scoreboard v1
+ Week 2          Price ladder and rulebook signed; plan and            Price approvals; warehouse      Ladder, plan and
+ (19 to 25       Founding 500 built in Shopify; subscription on six    confirmation on plan boxes      subscription staged; paid
+ Oct)            SKUs; MitoActive page and collection rebuilt; four    and the in-box card; copy       structure ready; cohort
+                 pages of copy; Meta CBOs and Google split built;      sign-off; Samay Raina usage     enrolment open; social at
+                 first 12 statics; cohort enrolment page; social       rights                          6 a week
+                 calendar
+ Week 3     Offers live with the guarantee; 84-day, reorder            Support trained on the          Plans selling; every new
+ (26 Oct to and cart flows live; paid live at ₹30 lakh pace; first     replacement promise; R&D        order enters the lifecycle;
+ 1 Nov)     A/B tests; picker live; journeys recruited;                sign-off on the packaging       first paid read on
+            WhatsApp templates approved                                timeline; founder time for      Monday 2 Nov
+                                                                       one byline
+ Week 4          First kill-or-scale decision; second batch of 12      Diwali inventory on plan        Diwali run on the new
+ (2 to 8         statics; Diwali creative on the plan and the          SKUs; naming table live on      structure; 24 statics in
+ Nov,            MitoActive course; social at 12 a week; three         Amazon and Nykaa; QC            rotation; 500 enrolled;
+ Diwali          journeys at day 0; creator brief; SEO cluster map     category managers briefed       30-day review on 10
+ week)           and four comparison drafts                            on the in-box bridge            Nov
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · THE ₹ 160 CR PLAN FOR ARATA                                                                       12
+By day 30: the baseline is reconciled, the scoreboard is the Monday ritual, lifecycle, offers, paid and
+CRO are live with copy and pricing underneath them, the cohort is enrolled, social is at cadence, and
+SEO, creators, PR, community and referral have dated starts in weeks 5 to 12.
+
+
+
+HOW WE MEASURE
+North star: 90-day revenue per new customer on arata.in. First order plus every reorder inside 90
+days, by acquisition cohort. It captures the whole thesis in one number: it rises when the routine sells
+(offers, pricing), when people finish it (lifecycle, retention), and when proof makes the first order
+bigger (CRO, launch). It is slow enough to be a compass and it cannot be gamed by spending more on
+ads. Baseline: to be instrumented in week 1 (today it is likely close to a single order, about ₹950,
+assumption). 90-day target: ₹1,250. 12-month target: ₹1,500.
+Guardrails: new-customer CPO ≤ ₹450 on prospecting lines; blended LTV/CAC ≥ 3 by Q4; leak and
+seal complaints below 2 per 1,000 orders; no claim published without its study type and "up to".
+ STAGE            LEADING INDICATOR                    BASELINE                  90-DAY TARGET                  SOURCE
+
+ Acquisition New customers per month                   To be instrumented        +40% new customers; CPO ≤ Shopify, Meta,
+             on arata.in; CPO; non-paid                                          ₹450; non-paid 12%        Google, GA4
+             share
+ Activation       Site CVR (new visitors);             ~7 to 8% visit-to-order   +0.3 pt CVR; routine share GA4, Shopify
+                  routine share of orders;             (all visitors); routine   35%; picker 60% completion
+                  picker completion                    share unknown
+ Retention        45-day reorder rate;       Category ~26% repeat;               +5 pt reorder; 5%              Shopify cohorts,
+                  subscription share; 84-day 0% subscription                     subscription; flow open rate   lifecycle platform,
+                  flow engagement                                                ≥ 40%                          WhatsApp
+ Referral         Referral-code orders;                0; untracked; to be       3% of orders; 20 creators      Referral app,
+                  creator-attributed orders;           measured                  live; MitoActive 100 reviews   creator codes,
+                  reviews per 100 orders                                                                        Loox
+ Revenue          AOV; plan and course mix;            AOV ~₹950; discounts 7    AOV ₹1,050; pack-of-3 at       Shopify
+                  discount depth                       to 49%                    35% off; MitoActive course
+                                                                                 10% of MitoActive units
+
+
+Review cadence. Weekly: the Monday scoreboard, 30 minutes. Monthly: 90 minutes with founders
+against quarter targets, plus the 70/20/10 check on what graduates or gets cut. Quarterly: a half-day
+recalibration and this plan reissued as v2, v3, v4 off actuals.
+Decision rules. North star at or above ₹1,250 by day 90 with CPO at or below ₹450: paid steps to ₹60
+lakh a month and the 20% bucket gets its Q2 budget in full. North star moving but CPO between ₹450
+and ₹675: budget holds flat, creative and page tests run harder, scaling waits for two green weeks.
+North star under ₹1,050 at day 90: the routine is wrong, so we stop the paid ramp, rerun the offer and
+the 84-day flow in the cohort's own words, and reissue the plan. Repeat share past 40% before Q3:
+referral and community move forward a quarter, because retained customers are the cheapest source
+of new ones.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · THE ₹ 160 CR PLAN FOR ARATA                                                                          13
+APPENDIX
+OPEN DECISIONS, RANKED BY IMPACT
+1. Reconcile the baseline. 50K+ D2C orders a month at ₹900 to ₹1,000 AOV does not match 32% of a
+   ₹75 Cr year. Every target here is a ratio off the real number. Owner: Arata e-commerce manager,
+   week 1.
+2. The February 2027 date. Keep it as a checkpoint (our recommendation) or chase the annualised
+   number by then with Traya-level spend. Owner: founders, before 2 Nov.
+3. Current paid spend and CPO. Unknown to us. Sets the month-one ₹30 lakh assumption and the
+   blended CAC. Owner: Arata e-commerce manager, week 1.
+4. Price ladder sign-off. Intensive Serum ₹599, 84-day plan ₹1,199, MitoActive course ₹3,999, pack-
+   of-3 to 35% off. Blocks offers, lifecycle and CRO. Owner: founders and finance, week 2.
+5. Packaging fix timeline. The replacement promise covers the gap but does not close it. Owner:
+   Arata R&D lead, week 3.
+6. Rebrand go-live date and Samay Raina usage rights for paid. Owner: Arata brand manager,
+   weeks 2 to 4.
+7. B2B scope. 2 lakh B2B units a month exist and we have not seen the material or the margin. Owner:
+   Arata CBO, Q1 review.
+
+ACCESS LIST FOR WEEK 1
+Shopify admin and subscription app; Meta Business Manager and Google Ads; GA4; Amazon, Nykaa
+and Flipkart seller portals; Blinkit, Zepto and Instamart exports; Loox; six months of support ticket
+tags; the email platform; WhatsApp Business API; the study documents behind every pack claim; the
+rebrand files.
+
+SOURCES
+Arata brand brief (Brew deployment team, v1, 10 Oct 2026) for all company facts, prices, claims,
+personas, reviews, competitor and market data. The companion workstream documents in this series
+for every "what ships" line. Diwali 2026 falls on 8 November.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · THE ₹ 160 CR PLAN FOR ARATA                                            14
+MARKETING PLAN
+
+
+DAY 30
+AT ARATA
+   WHAT IS LIVE
+
+   Arata has a reconciled revenue baseline, one scoreboard every workstream
+   reports into, the first four workstreams live (lifecycle, offers, paid, CRO), and
+   Diwali week run on a single plan with a weekly kill-or-scale decision.
+
+
+
+
+ NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+ BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+ CONFIRM".
+
+
+ EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+ BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                      DEPLOYMENT TEAM
+                                                                                   BREW
+

@@ -1,0 +1,789 @@
+      Brew                                     PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+A/B TESTING AND EXPERIMENTATION · MOVE 37 OF 50
+
+
+
+AN
+EXPERIMENT
+ENGINE FOR
+ARATA.IN
+  A SCORED BACKLOG, SAMPLE-SIZE MATHS ON ARATA'S
+  REAL TRAFFIC, AND FOUR FULLY WRITTEN TEST PLANS
+  SO EVERY CHANGE TO ARATA.IN GETS DECIDED BY
+  CUSTOMERS INSTEAD OF BY OPINION.
+
+
+
+
+12 tests
+DECIDED IN 90 DAYS
+
+
+
+
+BREW × ARATA                    OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                  V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                                WHAT THIS GIVES ARATA
+                                                                A scored backlog, sample-size maths on Arata's real
+                                                                traffic, and four fully written test plans so every
+                                                                change to arata.in gets decided by customers
+                                                                instead of by opinion.
+         12 tests
+         DECIDED IN 90 DAYS
+                                                                LIVE 30 DAYS AFTER WE START
+                                                                Every funnel step on arata.in is instrumented with a
+                                                                baseline, the first three tests (cart threshold bar,
+                                                                serum claim framing, hair growth picker) are running
+                                                                50/50, and a 20-hypothesis backlog is ICE-scored
+                                                                and queued.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+This is a D2C read of experimentation. The "signup" is an add to cart, the "plan selection" is a first
+order of a hair fall or dandruff routine, and the "retention" metric is a reorder inside 45 days. The test
+surfaces are arata.in product pages, the collection page, the cart, checkout, and the WhatsApp and
+email messages that follow an order.
+Arata is in the middle of three big changes at once: a full rebrand to "Hair & Scalp Science Co.", a new
+₹1,499 hero in MitoActive with zero reviews, and traffic growing about 42% month on month to
+roughly 650K visits. Each change touches the pages that produce 50,000+ D2C orders a month. As
+far as we can tell from the outside, none of it is being split-tested (assumption). Every rebrand we
+have seen ship without a holdout has cost the brand a conversion point it did not notice for a quarter.
+The cost of guessing is large and invisible. The website is 32% of ₹61.1 Cr FY25 revenue, so roughly
+₹19.5 Cr, and closer to ₹24 Cr on the ₹75 Cr FY26 forecast. A rebrand that quietly drops conversion by
+5% costs ₹1.2 Cr a year and shows up in the dashboard as "traffic mix". A price block on MitoActive
+that reads as expensive costs the hero its launch. You find these by running old and new side by side
+and counting.
+The opportunity is that Arata has enough traffic to decide most questions in two weeks. 650K visits a
+month is about 21,700 sessions a day. A cart test reaches its sample in under a week, a product page
+test in eight to fourteen days, and only MitoActive, as a new page, needs four weeks. Arata can run
+four to six tests a month without the tests fighting for traffic.
+The plan below instruments the funnel so there is a baseline, builds a backlog from the gaps already in
+the brief (no routine builder, no cost-per-day framing, no leak-proof promise, no reorder nudge, no
+subscription), scores it, and ships twelve tests in 90 days. Each has a written hypothesis, a pre-
+committed sample size and a decision rule, so winners go into a playbook and losers teach us
+something before the next one.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · AN EXPERIMENT ENGINE FOR ARATA.IN                                                     1
+WHAT WE FOUND
+THE TRAFFIC BUDGET
+Every test costs traffic, so before scoring ideas we worked out how much each surface has to spend.
+Daily sessions are estimated from the 650K monthly total and a typical Shopify beauty funnel shape.
+Baselines come from the brief's implied 7 to 8% blended visit-to-order rate. All of it is an assumption
+until week 1 instrumentation replaces it.
+                                                                                                              SMALLEST LIFT
+                             EST.                                                                             DECIDABLE IN 14
+ SURFACE                     SESSIONS/DAY           PRIMARY METRIC       BASELINE                             DAYS
+
+ All of arata.in             ~21,700                Session → order      ~7.5% (assumption)                   8% relative (7.5% →
+                                                    (blended)                                                 8.1%)
+ Homepage                    ~7,500                 Homepage →           ~35% (assumption)                    5% relative
+                                                    product page
+                                                    click
+ Hair Growth                 ~3,000                 Collection → add     ~8% (assumption)                     15% relative
+ collection                                         to cart
+ Hair Growth                 ~1,700                 Add to cart          ~10% (assumption)                    15% relative
+ Intensive Serum
+ PDP (₹571)
+ Anti-Dandruff               ~1,300                 Add to cart          ~11% (assumption)                    20% relative
+ Shampoo PDP
+ (₹404)
+ MitoActive PDP              ~600                   Add to cart          ~5% (assumption)                     30% relative in 14
+ (₹1,499)                                                                                                     days; 20% in 28
+                                                                                                              days
+ Cart                        ~6,500                 Cart → checkout      ~45% (assumption)                    5% relative
+ Checkout                    ~3,000                 Checkout → order ~55% (assumption)                        8% relative
+ Post-purchase               ~1,670                 Reorder within 60 To be instrumented (beauty repeat       15% relative
+ WhatsApp / email            orders/day             days              ~26% per market data; routine
+                                                                      brands 40%+)
+
+
+Two things fall out of this table. The cart and the serum page are where Arata can learn fastest, so the
+first tests go there. MitoActive is the page the brand cares most about and the one with the least
+traffic, so its tests need big swings (a different price frame rather than a different button colour), four-
+week runs, or an upstream surface like the collection tile where the volume is.
+
+WHERE WE CAN AND CANNOT SPLIT-TEST
+                            SHARE OF                CAN WE
+ CHANNEL                    REVENUE                 RANDOMISE?            HOW WE TEST THERE
+
+ arata.in                   32%                     Yes, by session or    A/B on the Shopify theme: server-side for price and
+                                                    customer              offer, client-side for copy
+ WhatsApp, email,           Reorders within         Yes, by customer      Randomise at the order, hold out a control, read at day
+ SMS                        the 32%                                       60
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · AN EXPERIMENT ENGINE FOR ARATA.IN                                                                  2
+                            SHARE OF                CAN WE
+ CHANNEL                    REVENUE                 RANDOMISE?           HOW WE TEST THERE
+
+ Meta, Google,              Drives all              Yes, in-platform     Creative and landing page splits; handed to the paid
+ YouTube ads                channels                                     media plan
+ Amazon, Nykaa,             38%                     No                   Before/after with a matched control SKU; Amazon's own
+ Flipkart                                                                listing experiments where Arata qualifies
+ Blinkit, Zepto,            30%                     No                   City switch tests: change the listing in two cities, hold
+ Instamart                                                               two
+
+
+This document covers the first two rows, where Arata owns the page and the customer. The 68% on
+rented land gets a lighter method in the appendix.
+
+HYPOTHESIS BANK
+Every hypothesis traces to something in the brief: a known gap, a review theme, an objection or a
+competitor move.
+ ID      SURFACE             OBSERVATION (SOURCE)                              HYPOTHESIS
+
+ H1      Cart                Free shipping above ₹299 and free gift above A progress bar to each threshold raises cart →
+                             ₹999 are not shown in the cart (CRO audit)   checkout and AOV
+ H2      Serum PDP           "Claims sound too good (28,200 hairs?)" is a A one-line study framing under the claim raises
+                             listed objection; the headline shows the     add to cart
+                             number alone
+ H3      Hair Growth         Four SKUs at ₹359, ₹571, ₹999, ₹1,499 and         A 3-question picker above the grid raises
+         collection          no routine builder (known gap)                    collection → add to cart and 2+ item carts
+ H4      PDP and cart        "Seal was broken", "bottle was leaking" are       A "leak-proof packed, replaced free if not" line
+                             the top complaint theme                           near the buy button raises add to cart without
+                                                                               raising replacement requests
+ H5      MitoActive          ₹1,499 for 30 ml is the first objection; cost     Showing ₹50/day and the Traya comparison raises
+         PDP                 per day is ₹50; Traya is ₹1,400 to ₹1,800 a       add to cart
+                             month
+ H6      MitoActive          Zero reviews on a ₹1,499 product                  A Y100 study panel (5+ clinical studies, 87% saw
+         PDP                                                                   growth in 84 days) where reviews would sit raises
+                                                                               add to cart
+ H7      Serum PDP           Pack of 3 at ₹999 (49% off) is a separate         Pack of 3 as a selectable option on the single PDP
+                             page, so the ₹571 single is the default           raises revenue per visitor
+ H8      Post-               No reorder nudge; a 200 ml shampoo lasts          A WhatsApp reorder message at day 30 raises
+         purchase            about 5 to 6 weeks at a wash every second         60-day repeat rate, and day 30 beats day 38
+                             day (assumption)
+ H9      Checkout            Prepaid vs COD split unknown; COD carries         A ₹30 prepaid discount raises prepaid share
+                             return-to-origin cost                             without lowering completion
+ H10 Homepage                "Hair & Scalp Science Co." is a positioning      A problem-led hero ("Hair fall? Here is the
+                             line and gives a cold visitor no reason to click number.") raises homepage → PDP click
+                             (CRO audit)
+ H11 Anti-Dandruff           "Dryness after Head & Shoulders" is the           A one-tap conditioner add-on (₹866 pair) raises
+     PDP                     persona pain                                      revenue per visitor
+ H12 Cart                    No routine upsell in cart                         A "complete the routine" row showing the
+                                                                               matching serum or conditioner raises AOV
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · AN EXPERIMENT ENGINE FOR ARATA.IN                                                                   3
+ ID      SURFACE             OBSERVATION (SOURCE)                                 HYPOTHESIS
+
+ H13 Post-                   No community, no 84-day check-in                     An 84-day WhatsApp journey (day 7, 28, 56, 84
+     purchase                                                                     check-ins) raises repeat and review rate
+ H14 All PDPs                Naming is inconsistent across channels               An "Also sold as ... on Nykaa" line under the title
+                             (onion vs biotin, serum vs tonic)                    raises conversion for marketplace-referred visitors
+ H15 Serum PDP               No subscription today; beauty repeat ~26%,           "Subscribe and save 10%" raises 90-day revenue
+                             routine-led 40%+                                     per customer without lowering first-order
+                                                                                  conversion
+ H16 Collection              Legacy curl-care range muddies the science Hiding legacy curl and onion SKUs from the hair
+                             positioning                                growth collection raises collection → add to cart
+ H17 MitoActive              "Do I have to use it forever?" objection             "A 3-month course, then maintenance" with an
+     PDP                                                                          84-day pack at ₹3,999 (assumption) raises add to
+                                                                                  cart and AOV
+ H18 Checkout                No WhatsApp order-update opt-in                      A pre-ticked WhatsApp updates opt-in raises opt-
+                             (assumption)                                         in rate without lowering completion
+ H19 Serum PDP               "I can see a visible difference in two weeks"        Pinning that review above the fold raises add to
+                             is a verbatim review                                 cart
+ H20 Homepage                1.5M+ customers and the Unilever Ventures            A proof strip under the hero raises homepage →
+                             backing sit below the fold (assumption)              PDP click
+
+
+ICE SCORES
+Impact is how much the primary metric moves if the test wins, weighted by the surface's share of
+revenue. Confidence is the evidence behind the hypothesis. Ease covers build effort and how fast the
+surface reaches sample. Scores are 1 to 10.
+ ID         TEST                                                     IMPACT   CONFIDENCE              EASE       ICE     PHASE
+
+ H1         Cart threshold bar                                       8        9                       9          8.7     1
+ H2         Serum claim framing                                      7        8                       9          8.0     1
+ H3         Hair growth picker                                       9        7                       6          7.3     1
+ H4         Leak-proof promise                                       6        8                       9          7.7     1
+ H8         Reorder WhatsApp timing                                  9        7                       7          7.7     2
+ H5         MitoActive ₹50/day                                       8        7                       7          7.3     2
+ H7         Pack of 3 on single PDP                                  7        7                       7          7.0     2
+ H12        Cart routine row                                         7        6                       8          7.0     2
+ H6         MitoActive study panel                                   7        6                       7          6.7     2
+ H10        Problem-led homepage hero                                6        6                       8          6.7     3
+ H9         Prepaid ₹30 incentive                                    6        6                       7          6.3     3
+ H15        Subscribe and save                                       9        5                       4          6.0     3
+ H19        Pinned two-week review                                   5        6                       9          6.7     3
+ H11        Dandruff conditioner add-on                              5        6                       8          6.3     3
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · AN EXPERIMENT ENGINE FOR ARATA.IN                                                                      4
+ ID         TEST                                                     IMPACT   CONFIDENCE            EASE        ICE     PHASE
+
+ H17        MitoActive 84-day course                                 7        5                     5           5.7     3
+ H13        84-day WhatsApp journey                                  8        5                     3           5.3     Backlog
+ H16        Hide legacy SKUs                                         4        6                     9           6.3     Backlog
+ H14        Cross-channel naming line                                3        5                     9           5.7     Backlog
+ H18        WhatsApp opt-in default                                  4        7                     8           6.3     Backlog
+ H20        Homepage proof strip                                     4        5                     8           5.7     Backlog
+
+
+We re-score on the first Monday of every month. A test that wins on the serum page gets re-scored
+for the dandruff page.
+
+THE LOOP WE ARE INSTALLING
+                                                                                                                            DIAGRAM
+       Sources                                 Backlog             Running (max 1 per surface)
+       ---------------                         -----------         ---------------------------
+       Loox / Nykaa reviews         ---+                           Cart        [H1 ] ===== read
+       Support tickets              ---+--> 20 hypotheses -----> Serum PDP     [H2 ] ===== read
+       CRO audit findings           ---+    ICE scored             Collection [H3 ] ========= read
+       Lost tests                   ---+    re-scored monthly      WhatsApp    [H8 ] ==== (60-day wait)
+       Competitor moves             ---+                                  |
+                                                                          v
+                                           Playbook <----------- Decide: ship / keep control / re-test
+                                           (reusable patterns)          |
+                                               |                         v
+                                               +------------------> New hypotheses from the result
+
+
+
+
+THE PLAN
+PHASE 0, WEEK 1: INSTRUMENT BEFORE WE TEST
+No test runs until these events fire and a 7-day baseline exists. They go on the Shopify theme and
+route to a product analytics tool with experiment support (PostHog or equivalent) and to GA4.
+ EVENT                                                     WHERE              PROPERTIES WE NEED
+
+  page_view                                                All                page type, SKU handle, device, traffic source, new
+                                                                              vs returning, city
+  picker_start , picker_complete                           Hair growth picker answers, SKU recommended
+                                                           (H3)
+  add_to_cart                                              PDP, collection,   SKU, price, variant (single / pack of 3), position on
+                                                           cart row           page
+  cart_view                                                Cart               subtotal, item count, threshold state (below ₹299 /
+                                                                              ₹299 to ₹999 / above ₹999)
+  checkout_start , checkout_complete                       Checkout           payment method (prepaid / COD), WhatsApp opt-in,
+                                                                              discount code
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · AN EXPERIMENT ENGINE FOR ARATA.IN                                                                    5
+ EVENT                                                     WHERE                   PROPERTIES WE NEED
+
+  order_placed                                             Server-side             order value, SKUs, first vs repeat, days since last
+                                                           webhook                 order
+  reorder_message_sent ,                                   WhatsApp / email        template id, day offset
+  reorder_message_clicked                                  tool
+  replacement_requested                                    Support tool            reason (leak / seal / other)
+
+
+Every event carries the experiment key and the variant, so segments can be read without a join.
+
+PHASE 1, WEEKS 2 TO 6: THE FOUR FAST TESTS
+These sit on high-traffic surfaces, each reaches sample inside 14 days, and they are on different
+pages so they run in parallel.
+                                                                             SAMPLE PER           DAYS TO
+ TEST                      SURFACE                PRIMARY METRIC             ARM                  SAMPLE           PLANNED RUN
+
+ H1 Cart threshold         Cart                   Cart → checkout            3,015                1                14 days (two
+ bar                                              (45%, MDE 8%)                                                    weekends, one salary
+                                                                                                                   week)
+ H2 Serum claim            Intensive Serum        Add to cart (10%,          6,693 × 1.5 for      18               21 days
+ framing (A/B/C)           PDP                    MDE 15%)                   three arms
+ H3 Hair growth            Hair Growth            Collection → add to        8,568                6                14 days
+ picker                    collection             cart (8%, MDE 15%)
+ H4 Leak-proof             All hair PDPs          Add to cart (10%,          14,751               7                14 days
+ promise                   (combined)             MDE 10%)
+
+
+If all four win at their MDE, the compounded effect is 10% to 15% more D2C orders from the same
+traffic. We will not get four wins. A 25% to 35% win rate is normal, so the realistic read is one or two
+winners and two lessons.
+
+PHASE 2, WEEKS 6 TO 10: MITOACTIVE AND THE REORDER
+                                                                                         SAMPLE PER          DAYS TO
+ TEST                             SURFACE                       PRIMARY METRIC           ARM                 SAMPLE      PLANNED RUN
+
+ H5 MitoActive ₹50/day            MitoActive PDP                Add to cart (5%,         8,158               27          28 days
+ frame                                                          MDE 20%)
+ H6 MitoActive study              MitoActive PDP, runs          Add to cart (5%,         8,158               27          28 days
+ panel                            after H5                      MDE 20%)
+ H7 Pack of 3 on single           Intensive Serum PDP           Revenue per visitor;     ~6,700              8           14 days
+ serum PDP                                                      guardrail add to cart
+ H8 Reorder WhatsApp              Orders of 200 ml              Reorder within 60        2,602 per           5 days of   Enrol 7 days,
+ day 30 vs day 38 vs              shampoo or 30 ml              days (MDE 15%)           arm, 3 arms         orders      read at day 67
+ none                             serum
+ H12 Cart routine row             Cart                          AOV; guardrail cart      ~6,500              2           14 days
+                                                                → checkout
+
+
+H5 and H6 cannot share 600 sessions a day, so H6 waits. If the rebrand pushes MitoActive traffic
+above 1,500 a day, both run in the same window and finish in 11 days.
+
+
+BREW DEPLOYMENT TEAM × ARATA · AN EXPERIMENT ENGINE FOR ARATA.IN                                                                        6
+PHASE 3, WEEKS 10 TO 13: OFFERS AND PRICE
+ TEST                         SURFACE                 PRIMARY METRIC                    NOTES
+
+ H9 Prepaid ₹30               Checkout                Prepaid share (40% assumption,    Guardrail: checkout → order. Needs
+ incentive                                            MDE 10%): 2,389 per arm, 2 days   RTO rate by payment method to value
+                                                                                        the win
+ H10 Problem-led              Homepage                Homepage → PDP click (35%,        Run 14 days; read session → order as
+ homepage hero                                        MDE 5%): 11,791 per arm, 4 days   secondary
+ H15 Subscribe and            Serum and               90-day revenue per new customer Server-side, sticky by customer; read at
+ save 10%                     shampoo PDPs                                            day 90
+ H17 MitoActive 84-           MitoActive PDP          Add to cart and AOV               Runs only after H5 has a result, since
+ day course pack                                                                        both touch the price block
+
+
+CALENDAR
+                                                                                                                        DIAGRAM
+    Week    1    2     3    4    5     6    7    8    9    10    11   12   13
+            |----|----|----|----|----|----|----|----|----|----|----|----|----|
+    Instr ####
+    Cart         [H1 ======]             [H12 =====]        [H9 ====]
+    Serum        [H2 ===========]        [H7 ======]        [H15 ==================>
+    Collect      [H3 ======]
+    PDPs(all)    [H4 ======]
+    Mito                         [H5 ===================][H6 ==================]
+    WhatsApp                     [H8 enrol][...60-day wait...........][read]
+    Home                                                    [H10 =====]
+    Decide           ^    ^    ^     ^    ^    ^    ^    ^     ^    ^    ^    ^
+                     every second Thursday: close finished tests, launch next
+
+
+
+
+Twelve tests reach a decision inside 90 days (H1 to H10, H12, H15 reads at day 90). H6 and H17 close
+in the following month.
+
+RUNNING RULES
+1. One test per surface at a time. A cart test and a PDP test can overlap; two tests on the same page
+   cannot.
+2. 50/50 split, assigned once per visitor in a first-party cookie plus the customer ID when logged in.
+   Price and offer tests (H7, H9, H15, H17) are assigned by customer and rendered server-side so no
+   one sees two prices.
+3. Minimum run is 14 days and must include the 1st to 3rd of a month, because salaried buyers cluster
+   there and weekends spike. A test that reaches sample on day 3 still runs to day 14.
+4. Maximum run is 28 days for a page test and 90 days for a lifecycle read. Not at sample by day 28:
+   stop and report the interval.
+5. No peeking. The weekly review looks at guardrails and data quality only. A guardrail breach stops
+   the test; a good-looking primary metric does not.
+6. No changes and no new traffic sources mid-test. If the rebrand must touch a page under test, the
+   test restarts. A Samay Raina-style spike or a new Meta campaign landing on the serum page gets
+   logged and read as its own segment.
+7. Sale periods (Big Billion Days, Nykaa Pink Friday, Diwali) are blackout windows.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · AN EXPERIMENT ENGINE FOR ARATA.IN                                                                7
+GUARDRAILS THAT APPLY TO EVERY TEST
+ GUARDRAIL                                 WHY IT IS THERE                                    STOP RULE
+
+ Checkout → order                          A cart or PDP change should never make             Significant drop at any weekly look
+                                           paying harder
+ AOV                                       A conversion win that pulls AOV down can           Report alongside the primary; a win must
+                                           be a revenue loss                                  hold revenue per visitor flat or up
+ Replacement and refund                    The leak-proof promise (H4) and claim              Rise of more than 20% relative at any
+ requests per 1,000 orders                 framing (H2) must not raise complaints             weekly look
+ Review submission rate and                Claim framing must not set expectations the Read at day 45 after test close
+ average rating                            product cannot meet
+
+
+THE PLAYBOOK
+A winner is a pattern. The page is only where we found it. When H2 wins on the serum page, the entry
+says "study framing under a numeric claim lifts add to cart" and lists the dandruff shampoo (95%), the
+anti-grey serum (86%) and the conditioner (78%) as the next places to apply it. Each entry carries:
+date, hypothesis, sample per arm, result with interval and p-value, guardrails, segment deltas (device,
+new vs returning, metro vs tier-2, marketplace-referred vs direct), why it worked, the pattern, where to
+apply it next, and status.
+
+CADENCE
+ WHEN                            WHO                                 WHAT
+
+ Every Tuesday, 30 min           Brew growth lead, Arata Guardrails, data quality, traffic mix changes. No winner calls
+                                 brand manager
+ Every second                    Same plus Brew                    Close finished tests, write playbook entries, launch the next from
+ Thursday, 60 min                creative lead                       the backlog
+ First Monday of the             Same plus Arata founder or Velocity, win rate, cumulative lift, re-score ICE, add 5 new
+ month, 60 min                   CBO                        hypotheses from reviews and support
+ End of quarter                  Same                                Which patterns are applied everywhere they can be, which funnel
+                                                                     steps are untested, what the rebrand changed
+
+
+
+
+WORKED EXAMPLES
+EXAMPLE 1: TEST PLAN ARA-01, CART THRESHOLD BAR (H1)
+Page: arata.in cart drawer and cart page Planned dates: Week 2 to week 4, 14 days, must include the
+1st of the month Type: A/B, client-side, 50/50 by visitor
+Hypothesis. Because arata.in offers free shipping above ₹299 and a free gift above ₹999 but the cart
+does not show how far a visitor is from either, we believe a threshold progress bar at the top of the
+cart will raise cart → checkout for all visitors and raise AOV for carts between ₹300 and ₹999. We will
+know it is true when cart → checkout rises at least 8% relative and AOV holds or rises.
+Control (A). Current cart: line items, subtotal, checkout button.
+
+
+BREW DEPLOYMENT TEAM × ARATA · AN EXPERIMENT ENGINE FOR ARATA.IN                                                                        8
+Variant (B). A single bar above the line items with three copy states:
+    Subtotal below ₹299: "Add ₹[amount] more and shipping is on us."
+    Subtotal ₹299 to ₹998: "Free shipping is in. ₹[amount] more gets you a free gift." with the gift
+    named and shown as a small image.
+    Subtotal ₹999 and above: "Free shipping and your free gift are in. Nice."
+The bar animates once when the state changes. No other change to the cart.
+Metrics.
+ ROLE            METRIC                                              BASELINE               MDE
+
+ Primary         Cart → checkout start                               ~45% (assumption,      8% relative
+                                                                     instrumented week 1)
+ Secondary AOV; share of carts crossing ₹999; add-to-cart            Instrumented week 1    Report only
+           events fired from the cart
+ Guardrail       Checkout → order; cart abandonment after adding a   Instrumented week 1    Stop on significant
+                 filler item                                                                drop
+
+
+Sample. 3,015 per arm at 45% baseline, 8% MDE, 95% confidence, 80% power. Cart sees about
+6,500 sessions a day, so sample lands on day 1. We run 14 days anyway.
+Segments planned in advance. Mobile vs desktop. New vs returning. Carts that started on MitoActive
+(₹1,499 already crosses both thresholds, so only the third state shows).
+Decision rule. Win: ship to 100%, write the playbook entry, queue the same bar for the mini cart on
+PDPs. Lose: keep control and test the gift threshold at ₹799 instead. Inconclusive: report the interval; if
+it excludes a loss, ship and move on.
+
+EXAMPLE 2: TEST PLAN ARA-02, SERUM CLAIM FRAMING (H2)
+Page: Hair Growth Intensive Serum PDP, ₹649 → ₹571, 474 reviews Planned dates: Week 2 to week 5,
+21 days Type: A/B/C, client-side, equal thirds by visitor
+Hypothesis. Because "claims sound too good (28,200 hairs?)" is a documented objection and the
+page shows the number with no study context, we believe adding a one-line framing under the claim
+will raise add to cart for new visitors. We will know it is true when add to cart rises at least 15% relative
+on the winning variant with no rise in refund requests.
+Control (A). Headline block as today:
+
+   UP TO +28,200 NEW HAIR WITHIN 84 DAYS
+
+
+Variant (B), study framing. Same headline, with one line under it:
+
+   UP TO +28,200 NEW HAIR WITHIN 84 DAYS MEASURED IN AN 84-DAY
+   CONSUMER STUDY ON INDIAN HAIR. MOST PEOPLE NOTICE LESS HAIR
+   FALL FIRST, THEN NEW GROWTH FROM WEEK 8. READ THE STUDY →
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · AN EXPERIMENT ENGINE FOR ARATA.IN                                                9
+Variant (C), plain outcome. The number stays in the page, but the headline leads with what the
+customer will see:
+
+   LESS HAIR ON THE PILLOW BY WEEK 4. NEW GROWTH BY DAY 84. UP TO
+   +28,200 NEW HAIR IN OUR 84-DAY STUDY. READ THE STUDY →
+
+
+The "Read the study" link opens the Lab Notes explainer in a drawer in both variants. Nothing else on
+the page changes.
+Metrics.
+ ROLE            METRIC                                                          BASELINE                 MDE
+
+ Primary         Add to cart rate                                                ~10% (assumption)        15% relative
+ Secondary Click on "Read the study"; scroll depth to reviews; add to cart       Instrumented week 1      Report only
+           of pack of 3 vs single
+ Guardrail       Refund and replacement requests per 1,000 orders of this        2,248 reviews on site    Stop on 20%
+                 SKU, read at day 45; average review rating on orders from the   give a stable baseline   relative rise
+                 test window
+
+
+Sample. 6,693 per arm at 10% baseline and 15% MDE, times 1.5 for three arms, so about 10,000 per
+arm. The page sees about 1,700 sessions a day, so 18 days to sample. We run 21.
+Segments planned in advance. New vs returning (the objection is a first-visit problem). Mobile vs
+desktop. Meta ad traffic vs organic, since ad-clickers already saw a claim.
+Decision rule. If B or C wins: ship it, write the pattern as "study framing under a numeric claim", and
+queue the same framing for the Anti-Hair Fall Shampoo (7.4X), the Anti-Dandruff Shampoo (95%) and
+the Anti-Grey Serum (86%). If C wins over B, the pattern is "outcome first, number second" and it
+rewrites the rebrand's headline rules. If control wins: the number alone is doing its job, and we test
+proof placement (H19) instead.
+
+EXAMPLE 3: TEST PLAN ARA-05, MITOACTIVE ₹50 A DAY (H5)
+Page: MitoActive Mitochondrial Hair Growth Serum PDP, ₹1,499, 30 ml, 0 reviews Planned dates:
+Week 6 to week 10, 28 days Type: A/B, server-side (price block), 50/50 by customer
+Hypothesis. Because "₹1,499 for 30 ml is a lot" is the first listed objection, the product is a one-month
+supply at twice-daily use, and the nearest clinical alternative (Traya) costs ₹1,400 to ₹1,800 a month
+for five or more months, we believe reframing the price as ₹50 a day with that comparison will raise
+add to cart for new visitors. We will know it is true when add to cart rises at least 20% relative over 28
+days.
+Control (A). Price block as today: "₹1,499" and the add to cart button.
+Variant (B). The price block becomes:
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · AN EXPERIMENT ENGINE FOR ARATA.IN                                                        10
+   ₹1,499 · 30 ML · ABOUT ONE MONTH THAT IS ₹50 A DAY. A DIAGNOSIS-
+   LED HAIR KIT RUNS ₹1,400 TO ₹1,800 EVERY MONTH FOR FIVE MONTHS
+   OR MORE, WITH DOCTOR CALLS AND TABLETS. MITOACTIVE IS A SERUM
+   YOU USE TWICE A DAY, DERMATOLOGICALLY TESTED, THE ONLY Y100
+   TREATMENT IN INDIA. [ADD TO CART · ₹1,499]
+
+
+Under the button, one line: "Most people see results in 84 days. Three bottles cover the course."
+The page describes the competitor without naming it. Nothing else changes. The study panel (H6)
+waits for its own test so we can attribute the effect.
+Metrics.
+ ROLE            METRIC                                               BASELINE               MDE
+
+ Primary         Add to cart rate                                     ~5% (assumption,       20% relative
+                                                                      instrumented week 1)
+ Secondary Add to cart of the MitoActive + shampoo combos             Instrumented           Report only
+           (₹1,803 to ₹2,278); scroll depth past the price block;
+           time on page
+ Guardrail       Checkout → order on MitoActive carts; refund requests Instrumented          Stop on significant drop
+                 on MitoActive orders at day 45; support tickets                             or 20% rise in tickets
+                 mentioning price
+
+
+Sample. 8,158 per arm at 5% baseline, 20% MDE. At about 600 sessions a day the test needs 27
+days, so we run 28 and accept that a 10% lift will read as inconclusive. A 10% read needs 32,600 per
+arm and 2,300 sessions a day, which the rebrand launch and hero ad spend could deliver. Any
+extension to a second 28-day window is decided and written down at day 7.
+Fallback if traffic is short. Run the same ₹50/day line on the MitoActive tile in the Hair Growth
+collection (3,000 sessions a day) with tile click-through as the primary metric. That reads in 10 days
+and tells us whether the frame pulls.
+Decision rule. Win: ship, then run H6 (study panel) and H17 (84-day course pack) in sequence on the
+new price block. Lose: the per-day frame reads as cheap for a bioscience product; test the premium
+frame instead ("One treatment. One month. Six years of mitochondrial research."). Inconclusive at 28
+days: ship B if the interval excludes a loss, since the copy answers a documented objection and costs
+nothing to keep.
+
+EXAMPLE 4: TEST PLAN ARA-08, REORDER MESSAGE TIMING (H8)
+Surface: WhatsApp (with email fallback for customers without opt-in) Population: First-time buyers of
+a 200 ml shampoo or a 30 ml serum, enrolled over 7 days in week 6, about 11,000 customers
+(assumption from 1,670 orders a day) Type: Three-arm, randomised at order placement, read at day
+67
+Hypothesis. Because Arata has no reorder nudge, the key conversion is a repeat inside 45 days, and
+a 200 ml shampoo runs out at roughly five to six weeks, we believe a single WhatsApp message timed
+to the empty bottle will raise 60-day repeat rate, and that day 30 beats day 38 because it lands before
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · AN EXPERIMENT ENGINE FOR ARATA.IN                                                      11
+the customer buys whatever is on offer on Blinkit. We will know it is true when 60-day repeat rate rises
+at least 15% relative in the best arm.
+Arms.
+    Control: no message (the current state).
+    Arm B: one message at day 30.
+    Arm C: one message at day 38.
+Message, day 30 (Arm B), shampoo buyer:
+
+   HI [FIRST NAME]. YOUR ANTI-HAIR FALL INTENSIVE SHAMPOO REACHED
+   YOU 30 DAYS AGO. AT A WASH EVERY SECOND DAY, A 200 ML BOTTLE IS
+   ABOUT TO RUN OUT.
+
+   REPLY 1 AND WE SHIP THE NEXT BOTTLE TODAY AT ₹359, FREE DELIVERY.
+   REPLY 2 TO ADD THE HAIR GROWTH INTENSIVE SERUM AND MAKE IT A
+   ROUTINE (₹838 FOR BOTH, YOU SAVE ₹172).
+
+   MOST PEOPLE SEE HAIR FALL DROP IN THE FIRST MONTH AND NEW
+   GROWTH FROM WEEK 8. KEEP GOING. ARATA
+
+
+Message, day 38 (Arm C), shampoo buyer:
+
+   HI [FIRST NAME]. YOU ARE PROBABLY DOWN TO THE LAST FEW WASHES
+   OF YOUR ANTI-HAIR FALL INTENSIVE SHAMPOO.
+
+   REPLY 1 AND THE NEXT BOTTLE SHIPS TODAY AT ₹359, FREE DELIVERY.
+   REPLY 2 TO ADD THE HAIR GROWTH INTENSIVE SERUM AND MAKE IT A
+   ROUTINE (₹838 FOR BOTH, YOU SAVE ₹172).
+
+   HAIR FALL DROPS FIRST, GROWTH FOLLOWS FROM WEEK 8. DO NOT STOP
+   AT WEEK 5. ARATA
+
+
+Serum buyers get the same structure with the Pack of 3 at ₹999 as option 2 ("three months for ₹999,
+you save ₹948").
+Metrics.
+ ROLE            METRIC                                              BASELINE                           MDE
+
+ Primary         Second order within 60 days of first order          To be instrumented (beauty average 15% relative
+                                                                     ~26%; we plan at 22%)
+ Secondary Reply rate; share of reorders that are a 2+ item New                                         Report only
+           routine; days from message to order
+ Guardrail       WhatsApp opt-out rate; spam reports; order          New                                Stop on opt-out
+                 cancellation rate on reorders                                                          above 1% of sends
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · AN EXPERIMENT ENGINE FOR ARATA.IN                                                          12
+Sample. 2,602 per arm at 22% baseline and 15% MDE, three arms, so about 7,800 customers, which 7
+days of enrolment covers with margin. We read at day 67 (7 days enrolment plus 60-day window).
+Decision rule. If B or C beats control: the message ships to all first-time buyers at the winning day,
+and the next test is two messages (day 30 and day 45) versus one. If B and C tie: pick day 30 and test
+the offer (₹359 vs ₹359 with the ₹199 scalp massager free). If neither beats control: the reminder
+alone does not move people, so we test the 84-day journey (H13), which works on belief in the
+product rather than memory of the bottle.
+
+
+
+30-DAY DEPLOYMENT
+ WEEK BREW SHIPS                                                   ARATA PROVIDES                       LIVE BY END OF WEEK
+
+ 1         Event spec on the Shopify theme and order                 Shopify and analytics access; 90-    Every funnel step
+           webhook; experiment tool with sticky assignment;          day support ticket export for leak   reports a 7-day
+           baseline dashboard (session → order, add to cart          and price themes; WhatsApp           baseline; backlog
+           by PDP, cart → checkout, checkout → order, AOV,           provider access                      approved
+           60-day repeat); hypothesis bank of 20 scored
+           with ICE
+ 2         ARA-01 cart bar built and QA'd; ARA-02 three              Brand manager sign-off on the four   ARA-01, ARA-02,
+           headline variants with the Lab Notes drawer; ARA-         variants; ops confirmation that a    ARA-03 running at
+           03 picker (concern, hair type, budget) mapped to          no-questions replacement can be      50/50 from Thursday;
+           the four hair growth SKUs; ARA-04 leak-proof line         honoured; the study summary for      ARA-04 queued
+           and replacement promise copy                              the serum drawer
+ 3         First guardrail review; ARA-04 launched on all hair       Traffic calendar for the month (ad   Four tests running;
+           PDPs; ARA-05 price block built server-side; ARA-          launches, creator posts, sale        MitoActive and
+           08 WhatsApp templates submitted; test log                 dates); WhatsApp template            WhatsApp tests ready
+           opened                                                    approval                             to launch
+ 4         ARA-01 and ARA-03 closed at day 14 with                   Founder or CBO at the monthly        Two tests decided,
+           playbook entries; ARA-12 cart routine row and             review; decision on shipping         four running, ARA-05
+           ARA-07 pack of 3 launched; first monthly review           winners to 100%                      and ARA-08 launched
+           with velocity, win rate and re-scored ICE                                                      on the first of the
+                                                                                                          month
+
+
+Owners: Brew growth lead owns the backlog, test plans and analysis. Brew creative lead owns
+variant copy and design. Brew engineer owns instrumentation and server-side splits. Arata brand
+manager owns sign-off and voice. Arata ops lead owns the replacement promise and WhatsApp
+sends.
+
+
+
+HOW WE MEASURE
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · AN EXPERIMENT ENGINE FOR ARATA.IN                                                               13
+TEST-LEVEL METRICS
+Each test is decided on the primary metric, baseline and MDE written in its plan. Secondary metrics
+explain the result; they do not overturn it. Unplanned segment findings are labelled exploratory and
+get their own test before anyone acts on them.
+
+PROGRAM-LEVEL METRICS
+ METRIC                     BASELINE TODAY                90-DAY TARGET             HOW WE READ IT
+
+ Tests launched per         0 (assumption)                4 to 6                    Counted at launch; decided tests are the row
+ month                                                                              below
+ Tests decided in 90 0                                    12                        Winner, loser or inconclusive with a written
+ days                                                                               entry
+ Win rate                   n/a                           25% to 35%                Above 50% means hypotheses are too safe;
+                                                                                    below 15% means instrumentation or MDE is
+                                                                                    wrong
+ Average days to            n/a                           14 to 21 for page tests   Longer means tests are stacked on low-traffic
+ decision                                                                           pages
+ Backlog depth              20                            20+ at all times          Replenished monthly from reviews, tickets and
+                                                                                    lost tests
+ Cumulative lift,           ~7.5% blended (to be          +0.5 point blended,       Sum of shipped winners' effects, confirmed by
+ session → order            instrumented)                 matching the CRO          the blended rate month on month
+                                                          target
+ 60-day repeat rate         To be instrumented            +15% relative on          From ARA-08 and its follow-ups
+                                                          nudged cohorts
+ MitoActive add to          To be instrumented            +20% relative             From ARA-05 and ARA-06
+ cart
+ Guardrail breaches         n/a                           0 shipped winners with    Any breach stops the test and is logged
+                                                          a breached guardrail
+
+
+WHAT HALF A POINT IS WORTH
+At 650K visits and ₹900 to ₹1,000 AOV, half a point of blended conversion is about 3,250 orders and
+roughly ₹30 lakh a month. A 15% relative lift on a 22% repeat rate across 50,000 orders a month is
+about 1,650 extra second orders, close to ₹15 lakh a month, and those are the customers who go on to
+buy the routine.
+
+DECISION RULES AT THE PROGRAM LEVEL
+    Phase 1 produces at least one shipped winner: keep the cadence and extend testing to the dandruff
+    and anti-grey pages and to email.
+    Phase 1 produces zero decisions because sample was not reached: the traffic assumptions were
+    wrong. Re-base the traffic table from measured data, raise MDEs, and test upstream (collection,
+    homepage) before touching PDPs again.
+    A winner's lift does not show in the blended monthly conversion rate within 30 days of shipping: re-
+    run it as a 90/10 holdback before it enters the playbook as a pattern.
+    A guardrail breaches on a shipped winner: roll back within a day and log it as a loser.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · AN EXPERIMENT ENGINE FOR ARATA.IN                                                                  14
+    MitoActive traffic stays below 600 a day through week 8: MitoActive tests move to the collection tile
+    and to ad-level landing page splits until the rebrand brings volume.
+
+
+
+APPENDIX
+TESTING ON RENTED LAND
+For the 68% of revenue on marketplaces and quick commerce where Arata cannot randomise visitors:
+ PLATFORM              METHOD                                                          WHAT TO TEST FIRST
+
+ Amazon.in             Manage Your Experiments (title, main image, A+ content)         Title with the number ("7.4X hair fall
+                       where the listing qualifies; otherwise matched-SKU              reduction") vs title with the ingredient
+                       before/after                                                    ("rosemary caffeine")
+ Nykaa, Flipkart       Before/after over two matching 14-day windows with a            Consistent naming with arata.in (serum vs
+                       control SKU that did not change                                 tonic) and the same hero claim
+ Blinkit, Zepto,       City switch: change the listing image and first line in two     First image with the number on the pack vs
+ Instamart             cities, hold two comparable cities, read conversion per         lifestyle image
+                       impression for 14 days
+
+
+These reads are weaker than a randomised test. We report them as directional and never enter them in
+the playbook without a confirming test on arata.in.
+
+SAMPLE SIZE REFERENCE FOR ARATA'S BASELINES
+ METRIC AND BASELINE                                 5% LIFT         10% LIFT        15% LIFT       20% LIFT          30% LIFT
+
+ Session → order, 7.5%                               79,216          20,245          ~9,200         5,332             ~2,400
+ Add to cart, 10%                                    ~57,000         14,751          6,693          3,841             ~1,750
+ Add to cart, 5%                                     ~115,000        ~29,000         ~13,000        8,158             3,780
+ Cart → checkout, 45%                                7,704           1,931           ~870           ~500              ~230
+ Repeat within 60 days, 22%                          ~22,000         5,760           2,602          1,486             ~680
+
+
+Per arm, two-sided, 95% confidence, 80% power. Multiply by 1.5 for three arms and 2 for four.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · AN EXPERIMENT ENGINE FOR ARATA.IN                                                                 15
+A/B TESTING AND EXPERIMENTATION
+
+
+DAY 30
+AT ARATA
+    WHAT IS LIVE
+
+    Every funnel step on arata.in is instrumented with a baseline, the first three tests
+    (cart threshold bar, serum claim framing, hair growth picker) are running 50/50,
+    and a 20-hypothesis backlog is ICE-scored and queued.
+
+
+
+
+  NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+  BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+  CONFIRM".
+
+
+  EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+  BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                      DEPLOYMENT TEAM
+                                                                                   BREW
+

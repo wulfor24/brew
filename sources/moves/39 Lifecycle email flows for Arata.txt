@@ -1,0 +1,793 @@
+     Brew                                     PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+     DEPLOYMENT TEAM
+
+
+
+
+EMAIL AND LIFECYCLE MARKETING · MOVE 39 OF 50
+
+
+
+LIFECYCLE
+EMAIL
+FLOWS
+FOR ARATA
+  SIX AUTOMATED EMAIL FLOWS THAT WALK EVERY ARATA
+  CUSTOMER FROM FIRST OPT-IN TO THE 84-DAY RESULT
+  AND THE REORDER, SO REPEAT PURCHASE STOPS
+  DEPENDING ON THE NEXT BLINKIT OFFER.
+
+
+
+
+24 emails
+ACROSS 6 AUTOMATED FLOWS
+
+
+
+
+BREW × ARATA                   OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                 V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                                   WHAT THIS GIVES ARATA
+                                                                   Six automated email flows that walk every Arata
+                                                                   customer from first opt-in to the 84-day result and
+                                                                   the reorder, so repeat purchase stops depending on
+                                                                   the next Blinkit offer.
+        24 emails
+         ACROSS 6 AUTOMATED FLOWS
+                                                                   LIVE 30 DAYS AFTER WE START
+                                                                   The 84-day post-purchase routine flow, the 45-day
+                                                                   reorder flow and the cart recovery flow are live on
+                                                                   arata.in, every new order enters them automatically,
+                                                                   and MitoActive has its first batch of on-site reviews
+                                                                   coming in from the Day 30 ask.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+Arata is a D2C brand, so the lifecycle moves differently from a software product. Here is the
+translation we use throughout: "signup" means an email or WhatsApp opt-in before the first order;
+"onboarding" means the first 84 days of using the product; "upgrade" means moving from the ₹571
+Intensive Serum to MitoActive at ₹1,499, or from a single bottle to the Pack of 3; "renewal" means the
+reorder inside the 45-day window; "churn" means a customer who has not bought again by day 90.
+Arata ships 50,000+ D2C orders a month and 1.5M customers a year walk through the brand. The brief
+lists no subscription, no quiz, no community and no reminder to reorder. That means the moment a
+customer finishes a 30 ml serum, nothing from Arata reaches them at the exact point of decision. They
+go back to Blinkit and buy whatever is on offer. The brief says it plainly: habit is "buying whatever is on
+offer on Blinkit". Email is the cheapest tool Arata owns to break that habit, and it owns the channel
+outright. Marketplaces and quick commerce are 68% of revenue on rented land. The email list is the
+one asset that does not pay a platform margin.
+The product itself asks for a lifecycle program. Every hero claim is time-bound: 28,200 new hairs
+within 84 days, 87% saw growth in 84 days, 86% fewer greys over 3 months. A customer who buys
+one bottle and stops at day 30 never reaches the number on the pack. They conclude it "did not
+work", write a lukewarm review, and go try Pilgrim. The 84-day window is a retention program already
+written into the claims. Arata just has not sent the emails.
+There are three more specific gaps email fixes faster than anything else. MitoActive has zero reviews
+two months after launch at ₹1,499. A Day 30 review ask to every MitoActive buyer solves that in one
+cycle. Packaging complaints ("the seal was broken", "the shampoo bottle was leaking") sit in public
+reviews because nobody asked the customer privately first. A Day 2 delivery email with a no-
+questions replacement promise moves those complaints into a support inbox. And the hair-fall buyer's
+biggest fear ("will it make hair fall worse first?") is best answered on day 7, before they quit.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LIFECYCLE EMAIL FLOWS FOR ARATA                                                           1
+The business target is ₹160 Cr with profitability. Beauty repeat rates sit around 26%, and routine-led
+models exceed 40%. Moving Arata's repeat rate toward the routine-led band on a 50,000-order base
+is the single largest lever in this plan, and it costs sending infrastructure and copy, not media.
+
+
+
+WHAT WE FOUND
+LIFECYCLE AUDIT
+We audited Arata's lifecycle against the standard email program checklist, translated to D2C. We have
+not seen inside Arata's email platform, so the "today" column is our read from public signals (site
+behaviour, review patterns, the brief's known gaps) and is labelled an assumption. Week 1 of
+deployment confirms it.
+ LIFECYCLE EMAIL            D2C TRANSLATION FOR ARATA              TODAY (ASSUMPTION)               GAP COST
+
+ Welcome series             Opt-in from popup or footer, before    Likely a single discount email   Opt-ins cool off before
+                            first order                            or none                          buying; no concern
+                                                                                                    segmentation
+ New customer               Day 0 to 84 of using the product       Shopify order and shipping       Customers quit at day 30,
+ onboarding                                                        notifications only               never reach the 84-day
+                                                                                                    claim
+ Key step reminder          "Did you start?" and "are you using it None                             Adherence falls, results fall,
+                            twice a day?"                                                           reviews fall
+ Upgrade to higher          Intensive Serum → MitoActive; single None (only on-site combos)         ₹928 of upgrade value per
+ tier                       → Pack of 3                                                             serum buyer left on the
+                                                                                                    table
+ Ask for review             Day 30 on-site, Day 45 Nykaa or        Loox default ask (2,248 site     MitoActive still at zero
+                            Amazon                                 reviews suggest it exists)       reviews
+ Proactive support          Leak or seal check after delivery      None                             Complaints go public first
+ Usage report /             Day 14, 30, 60, 84 progress check      None                             No proof the product is
+ milestone                  with photo                                                              working, so the claim is
+                                                                                                    never "felt"
+ Renewal reminder           45-day reorder nudge timed to          None                             The reorder goes to Blinkit,
+                            bottle run-out                                                          or to a competitor
+ Failed payment             COD confirmation and RTO               Unknown                          Likely handled by ops,
+                            prevention                                                              outside this doc
+ Win-back                   90, 120, 150 days without a repeat     None                             Lapsed buyers only hear
+                            order                                                                   from Arata during sales
+ Referral                   Day 60 "give a friend the routine"     None                             Covered in the referrals
+                                                                                                    document
+ Cart and browse            Standard Shopify flows                 Possibly default, likely one     Each extra email on cart
+ abandonment                                                       email                            recovers 1 to 2% more
+                                                                                                    carts
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LIFECYCLE EMAIL FLOWS FOR ARATA                                                                     2
+ LIFECYCLE EMAIL            D2C TRANSLATION FOR ARATA                 TODAY (ASSUMPTION)           GAP COST
+
+ Newsletter                 Lab Notes digest                          Lab Notes posts in bursts    Content exists, distribution
+                                                                      (seven in March 2026), no    does not
+                                                                      cadence
+ Seasonal                   Monsoon dandruff, winter dryness, Likely ad hoc blasts                 Fine, but blasts cannot
+ campaigns                  wedding season, Nykaa and Amazon                                       carry the routine
+                            sale weeks
+
+
+Fourteen lifecycle moments. We count two that likely exist in a usable form. Twelve are open.
+
+CONSUMPTION TIMING DRIVES EVERYTHING
+The timing of every email in this plan comes from how fast the bottle empties. These are our estimates
+from stated use directions, labelled as assumptions until Arata's R&D confirms them.
+                                                                                        RUNS OUT         REORDER EMAIL
+ SKU                                  SIZE           USE                                AROUND           WINDOW
+
+ MitoActive                           30 ml          Twice daily (brand states 1-month Day 30            Day 22 to 30
+                                                     supply)
+ Hair Growth Intensive                30 ml          Once daily, assumption             Day 35 to 45     Day 30 to 42
+ Serum
+ Anti-Hair Fall Intensive             200 ml         3 washes a week, ~8 to 10 ml       Day 45 to 55     Day 40 to 50
+ Shampoo                                             each
+ Anti-Dandruff Shampoo                200 ml         Same                               Day 45 to 55     Day 40 to 50
+ Anti-Dandruff Serum                  30 ml          Daily on flare, assumption         Day 30 to 40     Day 28 to 36
+ (leave-on)
+ Anti-Grey Hair Serum                 30 ml          Daily                              Day 30 to 40     Day 28 to 36
+ Hair Gel / Styling                   50 to 100      Daily styling                      Day 45 to 60     Day 40 to 55
+                                      ml
+
+
+The brief's own conversion target is "repeat within 45 days". The table says why that number is right:
+almost every hero SKU empties between day 30 and day 50. The reorder email needs to arrive just
+before the bottle empties, when the customer can still see results and has not yet improvised with a
+replacement.
+                                                                                                                       DIAGRAM
+    Day   0      7     14     22    30     45     60         84
+          |------|------|------|-----|------|------|----------|
+    Serum ████████████████████████▓▓▓▓░░░░                      (30 ml, runs out ~day 30-45)
+    Shampoo ███████████████████████████████████▓▓▓░░              (200 ml, runs out ~day 45-55)
+    Claim "84 days" -----------------------------------------> result window closes here
+    Email W0     W1    W2     R1    R2+Rev R3     Upgrade    Result+Next
+
+
+
+
+W = routine emails, R = reorder emails, Rev = review ask.
+
+SEGMENTS THE FLOWS BRANCH ON
+Arata's catalogue is problem-led, so the lifecycle is too. Every email flow branches on the first thing
+we learn about the customer: their concern.
+
+
+BREW DEPLOYMENT TEAM × ARATA · LIFECYCLE EMAIL FLOWS FOR ARATA                                                                  3
+ CONCERN                                                                                                      PERSONA FROM
+ BRANCH                HOW WE LEARN IT                        HERO SKU IN FLOW                                BRIEF
+
+ Hair fall /           Opt-in question, cart                  Intensive Serum ₹571, Anti-Hair Fall Shampoo    Hair-fall Rahul,
+ growth                contents, order SKU                    ₹359, Pack of 3 ₹999                            Routine Ritika
+ Hair fall, clinical Ordered MitoActive                       MitoActive ₹1,499                               Clinical Kavya
+ tier
+ Dandruff              Same                                   Anti-Dandruff Shampoo ₹404, Conditioner         Dandruff Divya
+                                                              ₹449, Serum ₹299
+ Grey                  Same                                   Anti-Grey Serum ₹449                            Grey-early Gaurav
+ Styling               Same                                   Hair Gel, Texturising Spray ₹269 to ₹699        Styling Sahil
+ Unknown               Footer opt-in with no                  Ask in Welcome 1, default to hair fall
+                       concern answered
+
+
+Styling buyers get a lighter version of the routine flow (no 84-day arc, since there is no clinical claim
+to walk them to) and a faster reorder nudge.
+
+PRIORITISATION
+We scored every flow on ICE (impact on repeat revenue, confidence from the data we have, ease to
+ship inside 30 days).
+ FLOW                                                                IMPACT        CONFIDENCE          EASE   SCORE           PHASE
+
+ 84-day post-purchase routine                                        10            9                   7      26              1
+ 45-day reorder                                                      9             9                   8      26              1
+ Cart and browse abandonment                                         7             9                   9      25              1
+ Welcome (concern-branched)                                          7             7                   8      22              2
+ MitoActive review and upgrade track                                 8             7                   7      22              2
+ Win-back 90 to 150 days                                             5             7                   8      20              2
+ Lab Notes monthly and seasonal calendar                             4             6                   9      19              3
+
+
+Two flows tie at the top, and they should ship together. The routine flow keeps the customer using the
+product. The reorder flow catches them when the bottle runs out. One without the other leaks.
+
+
+
+THE PLAN
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LIFECYCLE EMAIL FLOWS FOR ARATA                                                                      4
+ARCHITECTURE
+                                                                                                                   DIAGRAM
+                      ┌──────────────┐
+        Popup / quiz │ WELCOME       │ 5 emails, 10 days, branch on concern
+        footer opt-in │ (no order) │ exits on first order ──────────────┐
+                      └──────┬───────┘                                    │
+                             │ browses / adds to cart                     │
+                      ┌──────▼───────┐                                    │
+                      │ CART +       │ 3 cart emails over 48h             │
+                      │ BROWSE       │ 2 browse emails over 72h           │
+                      └──────┬───────┘ exits on order ────────────────────┤
+                             │                                            │
+                             ▼ first order on arata.in                    ▼
+                      ┌──────────────────────────────────────────────────────┐
+                      │ 84-DAY ROUTINE (8 emails: D0 D2 D7 D14 D30 D60 D84)│
+                      │ branches: hair fall | MitoActive | dandruff | grey │
+                      │ styling gets the short version (D0 D2 D14)           │
+                      └──────────────┬─────────────────────┬─────────────────┘
+                                     │ no repeat by D40    │ repeat order
+                            ┌────────▼────────┐            │ resets reorder
+                            │ 45-DAY REORDER │ 3 emails    │ clock, stays
+                            │ D40 D45 D55     │            │ in routine flow
+                            └────────┬────────┘            │
+                                     │ no repeat by D90    │
+                            ┌────────▼────────┐            │
+                            │ WIN-BACK        │ 3 emails   │
+                            │ D90 D120 D150 │              │
+                            └────────┬────────┘            │
+                                     │ no action by D165   │
+                                     ▼                     ▼
+                              suppress from campaigns   LAB NOTES monthly
+                              keep transactional        + seasonal calendar
+
+
+
+
+Rules that hold across the whole system:
+    One flow owns the customer at a time. A customer in the 84-day routine does not also receive cart
+    emails for the same SKU.
+    Any new order resets the reorder clock and re-enters the routine flow at Day 0 for the new SKU, but
+    skips the emails already received (seal check, shedding explainer).
+    Campaign emails are suppressed for anyone who received a flow email in the last 48 hours.
+    Every email has one primary button. Secondary links go to Lab Notes, never to a second product.
+    WhatsApp carries a short version of the Day 2, Day 45 and reorder messages for opted-in
+    customers. Email carries the long-form. The WhatsApp copy is in the SMS document.
+
+FLOW 1: 84-DAY ROUTINE (POST-PURCHASE)
+                                                                                                                   DIAGRAM
+    Sequence Name: 84-Day Routine
+    Trigger: First order delivered on arata.in (delivery event from Shopify, fallback: order + 4 days)
+    Goal: Customer uses the product daily for 84 days, reorders inside 45 days, leaves a review at Day 30
+    Length: 8 emails (hair fall, MitoActive, dandruff, grey branches); 3 emails for styling
+    Timing: D0, D2, D7, D14, D30, D45, D60, D84
+    Exit Conditions: Unsubscribe; refund or replacement opened (pause 7 days); styling-only order (short branch)
+
+
+
+
+ EMAIL                                DAY JOB                                                PRIMARY CTA
+
+ 1. Order shipped, routine            0       Set the 84-day expectation, show the routine   Open your routine page
+ starts
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LIFECYCLE EMAIL FLOWS FOR ARATA                                                             5
+ EMAIL                                DAY JOB                                                        PRIMARY CTA
+
+ 2. Delivered, check your             2       Catch leaks privately, show first use                  Report a problem (secondary:
+ seal                                                                                                how to apply)
+ 3. Week one and the                  7       Answer "will hair fall get worse first", keep them     Log week 1
+ shedding question                            going
+ 4. Two weeks: take the               14      Create the before photo they forgot to take            Upload your photo
+ photo
+ 5. Day 30: how is it going +         30      On-site review, progress check                         Leave a review
+ review
+ 6. Day 45: the second                45      Reorder before the result window closes (overrides Reorder your routine
+ bottle                                       reorder flow if no repeat)
+ 7. Day 60: what the number 60                Explain the study behind the claim, hold adherence Read the Lab Note
+ means
+ 8. Day 84: your 84 days              84      Compare photos, ask for the result, offer next step    Share your result
+                                              (MitoActive or Pack of 3)
+
+
+Why this works for Arata: the claims are 84-day claims. The flow turns that into a shared calendar
+between brand and customer. Expected effect, labelled assumption: 45-day repeat rate moves 6 to 10
+points above baseline within one quarter, driven mostly by emails 3, 5 and 6.
+
+FLOW 2: 45-DAY REORDER
+                                                                                                                           DIAGRAM
+    Sequence Name: Reorder
+    Trigger: Days since last order of a hero SKU reaches 40 and no new order
+    Goal: Repeat order of the same SKU or its combo before the bottle runs out
+    Length: 3 emails
+    Timing: D40, D45, D55 (MitoActive: D22, D27, D34)
+    Exit Conditions: Any order; unsubscribe
+
+
+
+
+ EMAIL                                DAY JOB                                         OFFER LOGIC
+
+ 1. Your bottle is about to           40      Timing, convenience, one-click          Free shipping above ₹299, already true
+ run out                                      reorder
+ 2. Switch to the Pack of 3           45      Upgrade the unit, save 49%              Pack of 3 at ₹999 vs 3 singles at ₹1,713
+ 3. Last call before day 84           55      Tie the reorder to the result           Free scalp massager (₹199) above ₹999,
+                                              window                                  already true
+
+
+No new discounts. Arata already runs sale prices, a 49% Pack of 3 and a gift above ₹999. The reorder
+flow sells timing and the existing offers. Adding a code here trains customers to wait for one.
+
+FLOW 3: CART AND BROWSE ABANDONMENT
+                                                                                                                           DIAGRAM
+    Sequence Name: Cart Recovery
+    Trigger: Cart with value above ₹299 abandoned for 1 hour
+    Goal: Complete the order
+    Length: 3 cart emails; 2 browse emails (product page viewed twice, no cart)
+    Timing: Cart: +1h, +20h, +44h. Browse: +2h, +48h
+    Exit Conditions: Order placed; cart emptied
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LIFECYCLE EMAIL FLOWS FOR ARATA                                                                     6
+Each cart email answers one of the anxieties from the brief in order: "Will I waste another ₹600?"
+(email 1, the claim and the review count), "Is 30 ml enough?" (email 2, the consumption maths), "Will
+the bottle leak?" (email 3, the replacement promise). Email 3 adds the free gift threshold if the cart is
+between ₹800 and ₹999, since the gift moves them above it.
+
+FLOW 4: WELCOME (OPT-IN, NO ORDER YET)
+                                                                                                                                 DIAGRAM
+    Sequence Name: Welcome
+    Trigger: Email opt-in via popup, footer, or quiz without an order
+    Goal: First order within 10 days; learn their concern
+    Length: 5 emails
+    Timing: Immediate, D1, D3, D6, D10
+    Exit Conditions: First order (moves to 84-Day Routine); unsubscribe
+
+
+
+
+ EMAIL                                                  DAY        JOB                                                     BRANCH
+
+ 1. Which hair problem are you here for?                0          Deliver the opt-in promise, one-tap concern selection   All
+ 2. The number on the bottle                            1          Explain the claim for their concern                     By concern
+ 3. Why Indian hair needs its own formula               3          Hard water, humidity, heat; the lab in Delhi            All
+ 4. "It actually works and it is affordable"            6          Reviews, Nykaa 4.2★ on 2,435 ratings                    By concern
+ 5. Your routine, one cart                              10         Combo for their concern, free gift above ₹999           By concern
+
+
+The welcome opt-in offer should be the free scalp massager on the first order above ₹999 or free
+shipping on the first order of any size, rather than a percentage code. This keeps the welcome flow
+consistent with the no-new-discounts rule and uses what Arata already gives.
+
+FLOW 5: MITOACTIVE TRACK
+MitoActive buyers get the 84-Day Routine with a different script. The product is ₹1,499, twice daily, a
+30-day supply, and has a mechanism nobody else in India sells. The emails explain mitochondria in
+plain words, show ₹50 a day against Traya's ₹1,400 to ₹1,800 a month, and ask for the review at Day
+30 with a photo. The reorder clock runs at Day 22, 27 and 34. Email 8 at Day 84 asks for the result and
+introduces the MitoActive + Anti-Hair Fall Shampoo combo at ₹1,803.
+Intensive Serum buyers who reach Day 84 get the upgrade email: "You have done the 84 days. Here is
+the next tier." MitoActive at ₹1,499, framed as the clinical step after the actives step, exactly as the
+brief positions it.
+
+FLOW 6: WIN-BACK
+                                                                                                                                 DIAGRAM
+    Sequence Name: Win-back
+    Trigger: 90 days since last order, no open support ticket
+    Goal: One order, or a clean unsubscribe
+    Length: 3 emails
+    Timing: D90, D120, D150
+    Exit Conditions: Order; unsubscribe; no open on all three (suppress from campaigns)
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LIFECYCLE EMAIL FLOWS FOR ARATA                                                                           7
+Email 1 asks what happened and offers three one-tap answers (it worked and I stopped, it did not
+work, I moved to something else). Email 2 shows what changed since they left (MitoActive, rebrand,
+new Lab Notes). Email 3 offers the Pack of 3 at ₹999 as the return path and says this is the last email
+unless they click.
+
+CAMPAIGN LAYER
+Lab Notes becomes a monthly digest, first Thursday of the month, three posts and one product. The
+seasonal calendar for the next two quarters: monsoon dandruff (June to September), post-Diwali
+damage and wedding season styling (October to December), winter dryness and flaking (December to
+February), and the Nykaa and Amazon sale weeks where Arata already discounts. Campaigns only
+ever go to customers outside an active flow in the last 48 hours.
+
+
+
+WORKED EXAMPLES
+All examples follow the brand voice in the brief: short declaratives, a number in the headline, warm but
+clinical. First name falls back to "there". Prices are arata.in sale prices as of October 2026.
+
+EXAMPLE 1: 84-DAY ROUTINE, EMAIL 3 (DAY 7, HAIR FALL BRANCH)
+                                                                                                                DIAGRAM
+    Email 3: Week one and the shedding question
+    Send: Day 7 after delivery
+    Subject: Hair fall in week one. Here is what is normal
+    Preview: Some people see more strands in the first 10 days. The reason is in the follicle, and it passes.
+    Segment: Ordered Intensive Serum or Anti-Hair Fall Shampoo, no refund opened
+
+
+
+
+Body:
+Hi {{first_name | there}},
+You are seven days into your routine. This is the week most people write to us about.
+Some customers see a few more strands on the pillow in the first 10 to 14 days. It worries them. It
+should not.
+Here is what is happening. Hair grows in cycles. A follicle in the resting (telogen) phase holds a strand
+that was going to fall anyway. When the follicle is pushed back toward the growth (anagen) phase, it
+releases that old strand to make room for a new one. The strand you see in the drain was already
+finished. The one replacing it is the point.
+This settles by week three for most people. The study behind the Intensive Serum measured new hair
+at 84 days, and that is the window we are walking through together.
+Three things to keep doing this week:
+    Apply the serum to a dry or towel-dried scalp, at the roots, once a day. Same time each day makes
+    it easier to keep.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LIFECYCLE EMAIL FLOWS FOR ARATA                                                          8
+    Wash with the Anti-Hair Fall Shampoo three times a week. Daily washing dries the scalp in Indian
+    hard water.
+    Skip the oil on serum days. Oil sits on top and blocks it.
+If the shedding is heavy and goes past three weeks, reply to this email. A member of our lab team
+reads every one.
+Week one done. Eleven to go.
+Arata
+CTA: Log week 1 → arata.in/routine (checklist page, assumption: Brew builds it) Secondary link:
+"Why hair sheds before it grows" → Lab Notes
+
+EXAMPLE 2: REORDER, EMAIL 2 (DAY 45, HAIR FALL BRANCH)
+                                                                                                      DIAGRAM
+    Email 2: Switch to the Pack of 3
+    Send: Day 45 since last serum order, no new order
+    Subject: Your serum ran out around day 40. Day 84 is the goal
+    Preview: One bottle gets you a third of the way. The Pack of 3 covers the full 84 days at ₹999.
+    Segment: Last order included 1× Hair Growth Intensive Serum; no order since
+
+
+
+
+Body:
+Hi {{first_name | there}},
+A 30 ml bottle of the Intensive Serum lasts about five to six weeks at one application a day. If you
+ordered on {{last_order_date}}, you are running out about now.
+The claim on the bottle is up to 28,200 new hairs within 84 days. That is three bottles, used back to
+back.
+The Pack of 3 is ₹999. Three single bottles at ₹571 each would be ₹1,713. You save ₹714 and you do
+not have to think about this again until Day 84.
+Orders above ₹999 also get the free scalp massager, which takes the serum deeper at the roots and
+makes the two minutes a day feel like something.
+If you stopped using it, tell us why. Reply with one word: "worse", "same", or "busy". We will answer
+each one honestly.
+Arata
+CTA: Get the Pack of 3 at ₹999 → cart pre-filled with Hair Growth Intensive Serum Pack of 3
+Secondary link: "Reorder a single bottle at ₹571"
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LIFECYCLE EMAIL FLOWS FOR ARATA                                                9
+EXAMPLE 3: CART RECOVERY, EMAIL 1 (+1 HOUR)
+                                                                                                                    DIAGRAM
+    Email 1: The number is from a study
+    Send: 1 hour after cart abandoned, cart value above ₹299
+    Subject: Your Arata cart, and the study behind the number
+    Preview: 474 people have reviewed the serum in your cart. Here is what they said.
+    Segment: Cart contains any Hair Growth SKU (variants exist for Dandruff, Grey, Styling)
+
+
+
+
+Body:
+Hi {{first_name | there}},
+You left this in your cart:
+{{cart_items_with_prices}}
+If you are weighing whether this will be another ₹600 that does nothing, that is fair. Most of our
+customers tried onion shampoo or biotin before they found us.
+So here is what is different. The Hair Growth Intensive Serum carries a number: up to 28,200 new
+hairs within 84 days. It comes from a consumer study, with the "up to" and the 84-day window stated
+on the pack. The Anti-Hair Fall Shampoo's 7.4X figure comes from a tensile strength test on the
+Hairdian AP and rosemary-caffeine formula.
+474 customers have reviewed the serum on our site. The phrase that comes up most is "actually
+works and it is affordable".
+Shipping is free above ₹299. Your cart is already there.
+Arata
+CTA: Complete your order → checkout Secondary link: "Read the Lab Note on the 84-day study"
+
+EXAMPLE 4: 84-DAY ROUTINE, EMAIL 2 (DAY 2, ALL BRANCHES)
+                                                                                                                    DIAGRAM
+    Email 2: Delivered. Check the seal before anything else
+    Send: Delivery confirmed (fallback: order + 4 days)
+    Subject: Your Arata order is here. Check the seal first
+    Preview: If anything leaked or the seal is open, reply with your order number and we replace it the same day.
+    Segment: All first orders
+
+
+
+
+Body:
+Hi {{first_name | there}},
+Your order was delivered today. Before you open it, look at the seal on each bottle.
+If a seal is broken or anything has leaked in transit, reply to this email with your order number
+{{order_number}}. We send a replacement the same day. You keep the original.
+Once the seal is fine, here is day one:
+{{dynamic_block_by_sku}}
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LIFECYCLE EMAIL FLOWS FOR ARATA                                                          10
+Hair Growth Intensive Serum → 4 to 5 drops on the scalp, roots only, once a day. Massage for 60
+seconds. Do not rinse. Anti-Hair Fall Intensive Shampoo → Three washes a week. Lather at the scalp,
+leave for 60 seconds, rinse. Anti-Dandruff Shampoo → Two to three washes a week. Leave on for two
+minutes before rinsing, that is where the 95% fungus reduction comes from. MitoActive → 1 ml at the
+crown and hairline, morning and night. The dropper is marked. Anti-Grey Serum → Daily on dry hair at
+the roots. Three months is the measured window.
+Take one photo of your crown and hairline today, in daylight, with the phone held by someone else.
+You will want it at Day 84.
+Arata
+CTA: Report a problem with my order → support form pre-filled with order number Secondary link:
+"How to apply, 40-second video"
+
+EXAMPLE 5: MITOACTIVE TRACK, EMAIL 5 (DAY 30)
+                                                                                                           DIAGRAM
+    Email 5: 30 days of MitoActive. Tell us what you see
+    Send: Day 30 after delivery of MitoActive
+    Subject: 30 days on MitoActive. What changed?
+    Preview: You are one of the first people in India using Y100. Your review decides who tries it next.
+    Segment: Ordered MitoActive; no refund opened
+
+
+
+
+Body:
+Hi {{first_name | there}},
+You have used MitoActive morning and night for 30 days. That is one full bottle and one third of the
+84-day study window.
+You are also one of the first people in India to use Y100. The study behind it followed Indian
+participants and measured reduced shedding, a better growth-to-rest ratio in the follicle, and higher
+density. The number on the pack, 87% saw increased growth in 84 days, came from that work.
+What it cannot tell the next person is what it felt like for you. Right now the MitoActive page has no
+reviews. Yours would be the first.
+Two minutes, three questions:
+1. What did you notice first, and in which week?
+2. Did the shedding change?
+3. Would you tell a friend who is scared of minoxidil?
+Add your Day 1 and Day 30 photos if you have them. We will never post a photo without asking you.
+Your second bottle is ₹1,499, which works out to ₹50 a day. The MitoActive + Anti-Hair Fall Shampoo
+combo is ₹1,803 if you want the wash to match.
+Arata
+CTA: Write the first MitoActive review → Loox review form for MitoActive Secondary link: "Reorder
+MitoActive"
+
+
+BREW DEPLOYMENT TEAM × ARATA · LIFECYCLE EMAIL FLOWS FOR ARATA                                                     11
+EXAMPLE 6: WIN-BACK, EMAIL 1 (DAY 90)
+                                                                                                                      DIAGRAM
+    Email 1: What happened after the first bottle?
+    Send: 90 days since last order, no open ticket
+    Subject: Your last Arata order was 90 days ago. One question
+    Preview: Tap one answer. It takes two seconds and we will reply properly.
+    Segment: Any customer, no order in 90 days
+
+
+
+
+Body:
+Hi {{first_name | there}},
+Your last order was {{last_order_sku}} on {{last_order_date}}. We have not seen you since.
+We would rather know why than guess. Tap one:
+[ It worked and I stopped ] [ It did not work for me ] [ I switched to something else ] [ Too expensive ]
+Each answer gets a real reply, from a person on our lab team, within a day.
+If it worked and you stopped: most of our customers see hair fall come back within six to eight weeks
+of stopping. A maintenance routine is one wash a week with the Anti-Hair Fall Shampoo and the serum
+three times a week. The Pack of 3 at ₹999 covers about four months at that pace.
+If it did not work: the 84-day claim needs 84 days. If you stopped at 30, we want to know what week it
+was and what you saw.
+If you switched: fair. Tell us to whom. It helps the next formula.
+Arata
+CTA: Tap your answer → one-click survey, each option deep-links to a tailored reply page Secondary
+link: none
+
+SUBJECT LINE BANK (FIRST TEN, BY FLOW)
+ FLOW AND EMAIL            SUBJECT                                   PREVIEW
+
+ Welcome 1                 Which hair problem are you here for?      Tap one and we send only what fits. Hair fall, dandruff,
+                                                                     greys or hold.
+ Welcome 2 (hair           7.4X and 28,200. What the numbers on      A tensile strength test, a consumer study, and the "up
+ fall)                     the bottle mean                           to" we keep on the label.
+ Welcome 3                 Delhi hard water, Mumbai humidity,        Why the lab tests every formula on Indian hair in Indian
+                           Chennai heat                              weather.
+ Welcome 5                 Your anti-dandruff routine in one cart,   Shampoo, conditioner, leave-on serum. Free scalp
+ (dandruff)                ₹866                                      massager above ₹999.
+ Routine 1                 Your 84 days start when the box lands     The routine, the calendar and the one photo to take
+                                                                     today.
+ Routine 4                 Two weeks in. Take the photo now          Same light, same angle, crown and hairline. Future you
+                                                                     will want it.
+ Routine 7                 What 28,200 new hairs actually            The study, the sample, the counting method, in plain
+                           measures                                  words.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LIFECYCLE EMAIL FLOWS FOR ARATA                                                                12
+ FLOW AND EMAIL            SUBJECT                                       PREVIEW
+
+ Routine 8                 84 days. Put the two photos side by side      Then tell us what you see. The next step depends on
+                                                                         your answer.
+ Reorder 1                 Day 22. Your MitoActive runs out this         Twice daily, 30 ml, one month. The next bottle is ₹50 a
+ (MitoActive)              week                                          day.
+ Win-back 3                Last email from us, unless you click          The Pack of 3 at ₹999 is the simplest way back. Or tell
+                                                                         us to stop.
+
+
+
+
+30-DAY DEPLOYMENT
+ WEEK      BREW SHIPS                                            ARATA PROVIDES                          LIVE BY END OF WEEK
+
+ Week Audit of current Shopify and email platform                  Platform access (Klaviyo or             Audit report; event
+ 1    flows (Brew lifecycle lead); event map                     equivalent, Shopify, Loox); R&D         schema; 11 emails in
+      (delivery, SKU, days since order);                           confirms use directions and run-out     draft
+      consumption-timing sign-off; copy drafts for                 days (Arata brand manager);
+      84-Day Routine and Reorder flows                             replacement policy for leaks (Arata
+                                                                   ops lead)
+ Week 84-Day Routine built (hair fall, dandruff, grey              Rebrand assets and fonts; product       Routine and Reorder
+ 2    branches, styling short branch); Reorder flow                photography for each hero SKU; Lab      flows live for all new
+      built; routine checklist page and photo upload               Notes links for study explainers        orders from Day 8;
+      page (Brew web lead); email design template                (Arata content lead)                    checklist page live
+      in the rebrand visual system (Brew creative
+      lead)
+ Week Cart and Browse flows rebuilt (3 + 2 emails);                Approval on MitoActive copy and         Cart recovery live;
+ 3    MitoActive track written and built; Day 30                   Y100 claim wording (Arata               MitoActive track live;
+      review ask wired to Loox for MitoActive; QA on               regulatory or founder sign-off); Loox   first Day 30 review asks
+      every branch with test orders                                configuration access                    scheduled for buyers
+                                                                                                           from Week 2
+ Week Welcome flow with concern branching and                      Opt-in offer decision (free massager All 6 flows live;
+ 4    popup copy; Win-back flow; campaign                          above ₹999 or free shipping); list   dashboard shared; first
+      suppression rules; Lab Notes digest template;                hygiene export for win-back cohort Lab Notes digest
+      reporting dashboard (flow revenue, repeat rate                                                    scheduled for first
+      by cohort, review count)                                                                          Thursday of month 2
+
+
+By day 30: 24 emails across 6 flows are live, every new arata.in order enters the routine flow
+automatically, and the first MitoActive reviews from the Day 30 ask have been requested. The first full
+84-day cohort completes around day 95.
+
+
+
+HOW WE MEASURE
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LIFECYCLE EMAIL FLOWS FOR ARATA                                                                    13
+ METRIC                              BASELINE                      90-DAY TARGET                            SOURCE
+
+ Automated flow revenue              To be instrumented in         15%                                      Email platform
+ as share of D2C revenue             week 1 (assumption:                                                    attributed revenue,
+                                     under 5% today)                                                        5-day click window
+ 45-day repeat rate,                 To be instrumented            +8 points over baseline                  Shopify cohort report
+ arata.in first-time buyers          (category benchmark
+                                     ~26%)
+ 84-day completion                   0 (no flow exists)            25% of routine-flow entrants             Checklist page and
+ (customer still ordering or                                                                                order data
+ logging at day 84)
+ MitoActive on-site                  0                             150, average 4.3★ or higher              Loox
+ reviews
+ Cart recovery placed-               To be instrumented            4% of abandoned carts (industry          Email platform
+ order rate                                                        benchmark for beauty flows sits in the
+                                                                   3 to 5% band)
+ Routine flow open and               To be instrumented            45% open, 6% click (automated flows      Email platform
+ click rates                                                       benchmark above campaign averages
+                                                                   of 20 to 40% open and 2 to 5% click)
+ Leak and seal complaints            Count from last 90 days       Down 70%; complaints redirected to       Review mining,
+ reaching public reviews             of Loox and Nykaa             Day 2 reply                              support inbox
+                                     reviews
+ Unsubscribe rate across             To be instrumented            Under 0.4% per send                      Email platform
+ flows
+ Win-back reactivation               0                             3% of 90-day lapsed cohort place an      Shopify
+                                                                   order
+
+
+DECISION RULES
+    If the 45-day repeat rate is up 5 points or more by day 90, we extend the routine flow to Nykaa and
+    Amazon buyers via a post-purchase insert with a QR code into the same flow, and we build
+    subscribe-and-save on top of the Reorder flow (covered in the pricing and churn documents).
+    If repeat rate moves less than 3 points, we hold the structure and test the two emails with the most
+    upside: Day 7 (shedding) and Day 45 (reorder). Subject lines first, then send-day, then the offer in
+    Reorder email 2.
+    If MitoActive reaches 50 reviews by day 60, the Day 30 ask stays as written. If it is under 20, we
+    add a Day 21 WhatsApp nudge and test a ₹200 credit on the next MitoActive order for a review with
+    photos.
+    If cart recovery is below 2.5% after 30 days, we move email 1 from +1 hour to +30 minutes and test
+    adding the review count in the subject line.
+    If any flow's unsubscribe rate passes 0.6% on two consecutive weeks, we cut one email from that
+    flow before touching copy. Fewer, better emails hold the list.
+
+
+
+APPENDIX
+
+BREW DEPLOYMENT TEAM × ARATA · LIFECYCLE EMAIL FLOWS FOR ARATA                                                                  14
+PRE-LAUNCH CHECKLIST FOR EVERY FLOW
+    Sender name "Arata" with reply-to monitored by a named support inbox; no no-reply address
+    Every merge field has a fallback ({{first_name | there}}, {{last_order_date | your last order}})
+    Each email has exactly one button; secondary links are text
+    Mobile preview checked at 375 px width; subject under 60 characters; preview text 90 to 140
+    characters
+    Claim wording matches the pack and the Lab Note ("up to", "84 days", "in best responders")
+    Suppression: refund or replacement open pauses the flow 7 days; campaign suppression 48 hours
+    after any flow send
+    Unsubscribe link in footer, plus a "fewer emails" option that drops the customer to reorder and
+    transactional only
+    Test orders placed for each branch (hair fall, MitoActive, dandruff, grey, styling) before go-live
+
+DYNAMIC BLOCKS NEEDED FROM THE DATA TEAM
+ BLOCK                                                             SOURCE                                   USED IN
+
+ last_order_sku, last_order_date                                   Shopify                                  Reorder, Win-back
+ days_since_delivery                                               Shopify fulfilment event                 Routine flow timing
+ concern (hair fall, dandruff, grey, styling,                      Opt-in question or inferred from first   All branches
+ unknown)                                                          SKU
+ cart_items_with_prices                                            Shopify cart                             Cart flow
+ review_submitted (boolean)                                        Loox                                     Suppresses Day 30
+                                                                                                            ask
+ photo_uploaded_day_1, _14, _84                                    Checklist page                           Routine Day 14 and 84
+
+
+SOURCES
+Arata brand brief v1 (arata.in prices and claims, Loox and Nykaa review counts, channel mix, order
+volume, known gaps); standard email benchmark ranges for automated flows and campaigns (open,
+click, unsubscribe, cart recovery placed-order rate), applied as approximate bands and labelled as
+such in the measurement table.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LIFECYCLE EMAIL FLOWS FOR ARATA                                                                    15
+EMAIL AND LIFECYCLE MARKETING
+
+
+DAY 30
+AT ARATA
+    WHAT IS LIVE
+
+    The 84-day post-purchase routine flow, the 45-day reorder flow and the cart
+    recovery flow are live on arata.in, every new order enters them automatically,
+    and MitoActive has its first batch of on-site reviews coming in from the Day 30
+    ask.
+
+
+
+
+  NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+  BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+  CONFIRM".
+
+
+  EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+  BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                   DEPLOYMENT TEAM
+                                                                                BREW
+

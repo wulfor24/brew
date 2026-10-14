@@ -1,0 +1,49 @@
+// Tenant persistence: version history wiped on restart defeats the point.
+// Each tenant is one JSON file on local disk (.tenants/<id>.json) and, on Cloud Run, a copy in GCS (tenants/<id>.json),
+// written a moment after any change. Maps and Sets round-trip through tagged objects.
+import fs from 'node:fs';
+import path from 'node:path';
+import { wiping, retireReady } from './retire.js'; // a workspace on a brand being reset is neither saved nor loaded
+import { brewText, onceEscaped } from './brew-name.js'; // workspaces saved before the rename say ShopOS
+
+const enc = (k, v) => (v instanceof Map ? { __m: [...v.entries()] } : v instanceof Set ? { __s: [...v] } : v);
+const dec = (k, v) => (v && typeof v === 'object' && v.__m ? new Map(v.__m) : v && typeof v === 'object' && v.__s ? new Set(v.__s) : v);
+
+export function createStore({ dir, bucket, gToken, log = console }) {
+  fs.mkdirSync(dir, { recursive: true });
+  const remote = !!(process.env.K_SERVICE && bucket && gToken);
+  const timers = new Map();
+  const file = (id) => path.join(dir, String(id).replace(/[^a-z0-9_]/gi, '') + '.json');
+  const gcs = async (method, id, body) => {
+    const name = `tenants/${String(id).replace(/[^a-z0-9_]/gi, '')}.json`; const tk = await gToken();
+    const url = method === 'PUT' ? `https://storage.googleapis.com/upload/storage/v1/b/${bucket}/o?uploadType=media&name=${encodeURIComponent(name)}` : `https://storage.googleapis.com/storage/v1/b/${bucket}/o/${encodeURIComponent(name)}?alt=media`;
+    const r = await fetch(url, { method: method === 'PUT' ? 'POST' : 'GET', headers: { authorization: `Bearer ${tk}`, ...(body ? { 'content-type': 'application/json' } : {}) }, body, signal: AbortSignal.timeout(20e3) });
+    if (!r.ok) throw new Error(`gcs ${method} ${name} ${r.status}`);
+    return method === 'PUT' ? true : r.text();
+  };
+  const write = (t) => {
+    if (wiping(t?.brandId)) return;
+    let s; try { s = JSON.stringify(t, enc); } catch (e) { log.warn('[store] serialise', e.message); return; }
+    try { fs.writeFileSync(file(t.id), s); } catch (e) { log.warn('[store] disk', e.message); }
+    if (remote) gcs('PUT', t.id, s).catch((e) => log.warn('[store] gcs', e.message));
+  };
+  // debounced: many requests in a burst become one write
+  const save = (t, ms = 1500) => { if (!t?.id) return; clearTimeout(timers.get(t.id)); timers.set(t.id, setTimeout(() => { timers.delete(t.id); write(t); }, ms)); };
+  const load = async (id) => { await retireReady(); const t = await load0(id); return t && wiping(t.brandId) ? null : t; };
+  const load0 = async (id) => {
+    if (!id || !/^t_[a-f0-9]+$/.test(id)) return null;
+    try { if (fs.existsSync(file(id))) return JSON.parse(brewText(onceEscaped(fs.readFileSync(file(id), 'utf8'))), dec); } catch (e) { log.warn('[store] read', e.message); }
+    if (remote) { try { const s = await gcs('GET', id); fs.writeFileSync(file(id), s); return JSON.parse(brewText(onceEscaped(s)), dec); } catch (e) { if (!/404/.test(e.message)) log.warn('[store] gcs read', e.message); } }
+    return null;
+  };
+  /* every workspace file and when it last changed (the bucket's on Cloud Run, this disk locally), and one read fresh from it:
+     the weekly history (history.js) reads each brand's workspaces, whichever instance saved them */
+  const scan = async () => { if (!remote) return fs.readdirSync(dir).filter((f) => /^t_[a-f0-9]+\.json$/.test(f)).map((f) => ({ id: f.slice(0, -5), updated: fs.statSync(path.join(dir, f)).mtimeMs }));
+    const tk = await gToken(), out = []; let pt = '';
+    do { const r = await fetch(`https://storage.googleapis.com/storage/v1/b/${bucket}/o?prefix=tenants/&fields=items(name,updated),nextPageToken${pt ? '&pageToken=' + pt : ''}`, { headers: { authorization: `Bearer ${tk}` }, signal: AbortSignal.timeout(20e3) });
+      if (!r.ok) throw new Error(`gcs list tenants ${r.status}`); const j = await r.json(); for (const x of j.items || []) { const m = /^tenants\/(t_[a-f0-9]+)\.json$/.exec(x.name); if (m) out.push({ id: m[1], updated: x.updated }); } pt = j.nextPageToken || ''; } while (pt);
+    return out; };
+  const readFresh = async (id) => { if (!remote) return load0(id); if (!/^t_[a-f0-9]+$/.test(id || '')) return null; return JSON.parse(brewText(onceEscaped(await gcs('GET', id))), dec); };
+  const flush = () => { for (const [id, tm] of timers) clearTimeout(tm); timers.clear(); };
+  return { save, load, write, flush, scan, readFresh };
+}

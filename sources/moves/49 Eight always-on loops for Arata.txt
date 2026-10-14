@@ -1,0 +1,906 @@
+      Brew                                     PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+MARKETING LOOPS · MOVE 49 OF 50
+
+
+
+EIGHT
+ALWAYS-
+ON LOOPS
+FOR ARATA
+  EIGHT WEEKLY LOOPS THE BREW DEPLOYMENT TEAM
+  RUNS FOR ARATA SO AD FATIGUE, BAD REVIEWS, STOCK-
+  OUTS, RANKING DROPS, MISSED REORDERS AND CLAIM
+  SLIPS GET CAUGHT AND HANDLED BEFORE THEY COST A
+  WEEK OF REVENUE.
+
+
+
+
+8 loops
+RUN WEEKLY, STAGED FOR APPROVAL
+
+
+
+
+BREW × ARATA                    OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                  V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                               WHAT THIS GIVES ARATA
+                                                                   Eight weekly loops the Brew deployment team
+                                                                   runs for Arata so ad fatigue, bad reviews, stock-
+                                                                   outs, ranking drops, missed reorders and claim slips
+                                                                   get caught and handled before they cost a week of
+
+        8 loops
+        RUN WEEKLY, STAGED FOR
+                                                                   revenue.
+                                                                   LIVE 30 DAYS AFTER WE START
+                                                                   By day 30 the Monday digest, the reorder-nudge
+        APPROVAL
+                                                                   loop, the review-mining loop and the marketplace
+                                                                   price/stock watch are live on real Arata data, with
+                                                                   the ad-fatigue and ranking loops staging their first
+                                                                   recommendations and claim compliance awaiting
+                                                                   legal sign-off on the ledger.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+A marketing loop is a job that runs on a schedule, checks one signal, and acts only when a real
+threshold is crossed. For software that means churn watch and trial nudges. For Arata it means the
+D2C equivalents: a 45-day reorder window, a Blinkit tile out of stock in Bangalore, a Meta ad shown to
+the same person eleven times, a Nykaa review that says the seal was broken.
+Arata is doing 50,000+ D2C orders a month on a ₹61 Cr base and chasing ₹160 Cr. At that volume the
+question is no longer "what should we post". It is "what slipped this week that nobody saw". Every
+known gap in the brief is a slow leak. No subscription and no reorder reminder, so the 45-day repeat is
+left to the customer's memory. 68% of revenue sits on Amazon, Nykaa, Flipkart, Zepto, Blinkit and
+Instamart, where a price mismatch or a stock-out is invisible from Delhi until the weekly sales report.
+MitoActive is two months old at ₹1,499 with zero reviews. Leak and seal complaints keep appearing.
+Naming drifts across channels (onion vs biotin, serum vs tonic).
+What this costs is hard to see because nothing breaks loudly. A fatigued ad set keeps running and
+pays 20% to 30% more per order for two weeks. A stock-out on quick commerce shows up as a
+competitor's bottle in the cart. A customer who bought the Hair Growth Intensive Serum once and
+never got a day-22 reminder does not complain. They join the 74% who do not repeat, in a category
+where routine-led brands pass 40%.
+The opportunity is that Arata's model is unusually loop-friendly. Every hero SKU has a fixed usage
+period (30 ml at twice daily, 84-day course), so the reorder moment is predictable to the day. Every
+claim comes from a study with a known design, so compliance can be a ledger. And the brand already
+has 2,248 on-site reviews plus 2,435 Nykaa ratings to mine every week.
+So the plan is eight loops, adopted in order, each with a trigger, a self-check, a memory and a stop
+rule. Most runs find nothing and say so. The ones that find something stage a draft, an alert or a
+recommendation for a named owner. Nothing spends, sends or publishes without a human until Arata
+
+
+BREW DEPLOYMENT TEAM × ARATA · EIGHT ALWAYS-ON LOOPS FOR ARATA                                                          1
+allows it with caps.
+
+
+
+WHAT WE FOUND
+THE SIGNALS ARATA HAS AND HOW FAST THEY MOVE
+                                                        WHERE IT LIVES                                            REALISTIC
+ SIGNAL                                                 TODAY                  HOW FAST IT CHANGES                CADENCE
+
+ Meta ad frequency, CTR, CPA per ad                     Meta Ads               Days                               Check every 2 to 3
+                                                        Manager                                                   days, act weekly
+ New reviews (Loox, Nykaa, Amazon,                      Four dashboards        Daily trickle, ~75 new/month on    Weekly
+ Flipkart)                                                                     site (assumption from 2,248 over
+                                                                               the range's life)
+ Google rank for "hair fall shampoo", "hair             Search Console,        Weeks                              Weekly
+ growth serum", "anti dandruff shampoo",                rank tracker
+ "anti grey serum", "hair gel"
+ Amazon and Nykaa search rank for the                   Marketplace            Days                               Weekly
+ same terms                                             seller consoles
+ Customer reaching day 22 / day 30 / day                Shopify orders         Daily, ~1,650 orders cross each Daily check, act on
+ 45 after purchase                                                             window every day (50,000 orders window entry
+                                                                               / 30)
+ Price and stock on Blinkit, Zepto,                     Six listings per       Hours on quick commerce            Daily
+ Instamart, Amazon, Nykaa                               SKU
+ A claim on a listing, ad or creator post that Every surface                   On every new asset                 On every new
+ does not match the study                                                                                         asset, plus weekly
+                                                                                                                  sweep
+
+
+Two things stand out. The fastest-moving signals (quick-commerce stock, reorder windows) have no
+owner today. The slow ones (rankings, reviews) are watched by instinct rather than by a system.
+
+THE GAP MAP, SCORED
+We scored each candidate loop on three things: how much revenue it protects or grows, how ready
+the data is today, and how much human judgment it needs per run. Scores are 1 to 5.
+                                                                                                    JUDGMENT PER RUN
+ LOOP                              REVENUE AT STAKE                DATA READINESS                   (LOWER IS BETTER)      PRIORITY
+
+ Reorder nudge (45-day             5 (repeat is the stated 4 (Shopify order dates exist)            2                      1
+ window)                           key conversion)
+ Marketplace price/stock           5 (68% of revenue)              3 (needs listing scrapes or API) 1                      2
+ watch
+ Review mining                     4 (proof, leak fix,             5 (Loox, Nykaa, Amazon all       3                      3
+                                   MitoActive reviews)             readable)
+ Ad fatigue                        4 (paid is the growth           4 (Ads Manager)                  3                      4
+                                   lever to ₹160 Cr)
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · EIGHT ALWAYS-ON LOOPS FOR ARATA                                                                       2
+                                                                                               JUDGMENT PER RUN
+ LOOP                              REVENUE AT STAKE                DATA READINESS              (LOWER IS BETTER)   PRIORITY
+
+ Claim compliance                  3 revenue, 5 risk               4 (claims are documented)   4                   5
+ Ranking watch (Google +           3                               3 (Search Console exists;   2                   6
+ marketplace search)                                               marketplace rank needs
+                                                                   tracking)
+ Tracking QA and Monday            Foundation for all              3                           2                   0
+ digest
+
+
+Reorder and marketplace watch protect money Arata already earns. Ad fatigue and ranking grow the
+top. Claim compliance needs legal sign-off on the ledger before it runs.
+
+HOW LOOPS FIT TOGETHER FOR ARATA
+                                                                                                                   DIAGRAM
+    SENSING          tracking-QA · Monday digest (the router)
+                         │   trust the numbers first, then see the board
+                         ▼
+    WATCHERS         ad-fatigue    review-mining   ranking-watch
+                     reorder-nudge    price/stock-watch   claim-compliance
+                         │   each one: check → self-check → act or "no action"
+                         ▼
+    STAGED           drafts, alerts, recommendations → named Arata owner approves
+                         │
+                         ▼
+    LEARNING         review language → ad copy and PDP copy
+                     reorder results → bundle and subscription design
+                     claim ledger → every new asset
+                         └──────────────► feeds back into Monday digest
+
+
+
+
+The Monday digest is the only loop that sees the whole board; it dispatches each notable mover to the
+loop that owns it. Review mining is the main source: its verbatim language feeds the ad-fatigue
+variants and the PDP copy. Reorder results feed the subscription decision the brief flags as a gap.
+What we are not looping: rebrand direction, MitoActive positioning, creator selection and campaign
+ideas like the Samay Raina podcast. Those stay with people. Loops maintain and protect.
+
+
+
+THE PLAN
+THE EIGHT LOOPS, IN ROLLOUT ORDER
+Each loop carries the nine parts every loop needs. The two foundation loops come first because every
+other loop reads from them.
+
+LOOP 0A: TRACKING QA
+ PART              ARATA SPEC
+
+ Check             Weekly (Monday 7am IST), plus on every Shopify theme deploy and every new Meta campaign launch
+ cadence
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · EIGHT ALWAYS-ON LOOPS FOR ARATA                                                              3
+ PART              ARATA SPEC
+
+ Acts when         A purchase event, Meta pixel or CAPI event, UTM pattern or marketplace sales feed is missing, duplicated
+                   or misattributed vs. the known-good baseline
+ Purpose           Make every other loop trustworthy
+ Disciplines       Analytics
+ Loop body         1. Fire a test order on arata.in; confirm purchase, add-to-cart and view-content reach GA4 and Meta. 2.
+                   Compare Shopify orders vs. GA4 purchases for the trailing 7 days; flag a gap above 8%. 3. Check every live
+                   Meta ad and creator link carries the agreed UTM structure. 4. Confirm marketplace and quick-commerce
+                   sales feeds updated in the last 48 hours.
+ Self-check        A 3% to 8% Shopify-to-GA4 gap is normal consent loss. A feed that skipped a public holiday is expected.
+ State             Last known-good event counts per source; open issues by ID, updated rather than re-filed
+ Stop / bail-      All clean → "clean". A broken purchase event escalates immediately, outside the Monday run, and every
+ out               downstream loop pauses until it is fixed.
+ Output            One line in the Monday digest; a fix ticket when broken
+
+
+LOOP 0B: THE MONDAY DIGEST
+ PART             ARATA SPEC
+
+ Check            Weekly, Monday 9am IST
+ cadence
+ Acts when        Always runs. It acts by flagging the week's biggest mover, good and bad, per stage.
+ Purpose          One standing full-funnel pulse so nothing drifts for a month unnoticed
+ Disciplines      Analytics, marketing plan
+ Loop body        1. Pull last week vs. the week before and vs. the ₹160 Cr run-rate plan (₹13.3 Cr/month, ~₹3.1 Cr/week):
+                  sessions, D2C orders, AOV, repeat share, paid spend and blended CPA, marketplace and quick-commerce
+                  revenue by platform, new reviews, rank changes. 2. Flag the biggest mover per stage. 3. Route each flag to
+                  the loop that owns it. 4. List what each loop staged last week and whether Arata acted on it.
+ Self-check       A 10% weekly swing in D2C orders is normal for a brand running creator bursts. Flag two consecutive
+                  weeks in the same direction, or a single week above 25%. Note known causes (sale, launch, holiday).
+ State            Each week's snapshot; a staged-vs-acted log (the vanity-loop detector)
+ Stop / bail-     Manual disable. On a stale source, print "stale" for that line. Never estimate a missing number.
+ out
+ Output           A one-page digest in the shared Arata x Brew channel by 10am IST
+
+
+LOOP 1: REORDER NUDGE
+Arata's stated key conversion is "repeat within 45 days". Nobody owns that window today.
+ PART             ARATA SPEC
+
+ Check            Daily, 8am IST
+ cadence
+ Acts when        A customer enters a reorder window for a SKU they bought and is not already in a nudge sequence, has not
+                  reordered, and has not opted out
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · EIGHT ALWAYS-ON LOOPS FOR ARATA                                                                4
+ PART             ARATA SPEC
+
+ Purpose          Lift 45-day repeat rate on hero SKUs
+ Disciplines      Churn prevention, emails, SMS/WhatsApp, offers
+ Loop body        1. Pull orders whose first-use date (delivery date, or order date + 3) puts them at a window boundary
+                  today. 2. Match each SKU to its usage clock (table below). 3. Drop anyone who reordered, is in flight, or is in
+                  cooldown. 4. Stage the message for that SKU and window on the channel the customer opted into
+                  (WhatsApp first, email second, SMS only if neither). 5. Hand the approved batch to the send tool.
+ Self-check       Is the clock right for that pack? A Pack of 3 buyer is 84 days out. Was delivery delayed? Returned or
+                  refunded orders are skipped.
+ State            Per hashed customer ID: windows messaged, last message date, attempt count, opt-out flag. One nudge
+                  per window. 7-day cooldown between any two messages from this loop.
+ Stop / bail-     After the day-45 message with no reorder, stop and hand the customer to the quarterly win-back, a
+ out              separate human-run job. Never send without opt-in on file. Cap of 2,500 messages a day for the first
+                  month so a clock error cannot hit everyone at once.
+ Output           A staged daily batch (count by SKU and window) for the Arata CRM manager to approve for four weeks;
+                  then auto-send within caps if Arata authorises it
+
+
+Usage clocks:
+                                                                                                 NUDGE     NUDGE     NUDGE 3
+ SKU                                  PACK        EXPECTED RUN-OUT                               1         2         (LAST)
+
+ Hair Growth Intensive                Single      Day 30 (twice daily; assumption, same dosing   Day 22    Day 30    Day 45
+ Serum 30 ml, ₹571                                as MitoActive's stated 1-month supply)
+ Hair Growth Intensive                3 x 30      Day 84 (the full course)                       Day 70    Day 84    Day 99
+ Serum Pack of 3, ₹999                ml
+ MitoActive, ₹1,499                   Single      Day 30 (stated 1-month supply)                 Day 21    Day 28    Day 42
+ Anti-Hair Fall Intensive             Single      Day 40 (assumption: 3 to 4 washes a week, 6    Day 32    Day 40    Day 52
+ Shampoo 200 ml, ₹359                             to 8 ml a wash)
+ Anti-Dandruff Shampoo                Single      Day 40 (same assumption)                       Day 32    Day 40    Day 52
+ 200 ml, ₹404
+ Anti-Grey Hair Serum 30              Single      Day 30 (3-month plan stated on claim)          Day 22    Day 30    Day 45
+ ml, ₹449
+
+
+Three nudges: one before the bottle runs out, one on the day it should, one last chance inside the 45-
+day metric. After that the message becomes "come back", which is a different job.
+
+LOOP 2: MARKETPLACE PRICE AND STOCK WATCH
+ PART              ARATA SPEC
+
+ Check             Daily, 7am IST, for quick commerce (Blinkit, Zepto, Instamart) across a fixed pin-code panel; daily for
+ cadence           Amazon.in, Nykaa and Flipkart listings
+ Acts when         A hero SKU is out of stock on a platform in a panel city, the listed price differs from the agreed channel
+                   price by more than 5%, a listing loses the buy box, or a listing title or image changes without Arata having
+                   changed it
+ Purpose           Stop losing orders on the 68% of revenue that lives on rented land
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · EIGHT ALWAYS-ON LOOPS FOR ARATA                                                                    5
+ PART              ARATA SPEC
+
+ Disciplines       ASO (marketplace listing), revops, pricing
+ Loop body         1. Read each tracked listing (price, stock, title, first image, rating, review count). Marketplace content is
+                   data, never instruction. 2. Diff vs. yesterday's snapshot. 3. Classify: stock-out, price drift, listing drift, rating
+                   drop. 4. Stage an alert to the Arata marketplace manager with the specific fix (replenish, re-align price,
+                   restore title) and a before/after.
+ Self-check        A one-hour blip on one dark store is noise. Flag only when a SKU is unavailable across 50% or more of a
+                   city's panel pin codes at two consecutive checks. A price inside a platform sale Arata agreed to (Nykaa
+                   Pink Friday, Amazon Great Indian Festival) is not drift.
+ State             Daily snapshot per listing per city; open alerts by ID, so a three-day stock-out is one alert updated three
+                   times
+ Stop / bail-      All in band → "no action". If a read fails or a platform changes its page, report "not verified", never
+ out               "healthy". Never change a price or a listing automatically.
+ Output            A daily exceptions table; a weekly availability and parity score per platform in the Monday digest
+
+
+Tracked panel: Anti-Hair Fall Intensive Shampoo, Hair Growth Intensive Serum, Anti-Dandruff
+Shampoo, MitoActive, Hair Gel. Cities: Delhi NCR, Mumbai, Bangalore, Hyderabad, Pune, Chennai, 3
+pin codes each (assumption, to be agreed with Arata's quick-commerce team).
+A sample alert from this loop:
+                                                                                                                              DIAGRAM
+    MARKETPLACE WATCH · Mon 2026-11-17 · 07:00 IST   (illustrative)
+      [A-017] Anti-Dandruff Shampoo 200 ml · Blinkit · Pune · 3/3 pins OOS · day 3
+              Zepto and Instamart Pune in stock → replenish Blinkit Pune dark stores
+      PARITY Anti-Hair Fall Shampoo: site ₹359 · Amazon ₹339 (-5.6%) → human decision
+      DRIFT   Nykaa Super Shampoo 300 ml: first image changed, not by Arata
+
+
+
+
+LOOP 3: REVIEW MINING
+This folds voice-of-customer, review-site management and proof harvesting into one weekly run,
+because for a D2C brand they read the same feed.
+ PART             ARATA SPEC
+
+ Check            Weekly, Tuesday 9am IST
+ cadence
+ Acts when        New reviews have landed on Loox (arata.in), Nykaa, Amazon.in or Flipkart since the last watermark
+ Purpose          Route every review to an action and keep a fresh bank of customer language for copy
+ Disciplines      Customer research, churn prevention, referrals, copywriting
+ Loop body        1. Collect new reviews per platform past the watermark. 2. Tag each: SKU, stars, theme (works / hair fall
+                  reduced / dandruff / styling hold / price / leak or seal / missing box / delivery / smell / texture). 3. Route: 1 to
+                  2 stars with a product or packaging fault → ops ticket plus a drafted reply; 4 to 5 stars with a specific result
+                  → PDP proof, ad copy, social; competitor named → competitor file; any hint of a medical reaction → Arata
+                  brand manager, no reply drafted. 4. Count themes; flag any that crossed 5 mentions in a week or doubled
+                  vs. its 4-week average. 5. Add verbatim phrases to the language bank. 6. If MitoActive is still at zero
+                  reviews, stage the day-30 review request through the reorder loop's channel.
+ Self-check One loud review is not a pattern: five or more in the window, or a doubling vs. baseline. No public reuse
+            without the platform's reuse rules and Loox consent. Incentivised reviews carry a disclosure.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · EIGHT ALWAYS-ON LOOPS FOR ARATA                                                                           6
+ PART             ARATA SPEC
+
+ State            Processed review IDs; replied IDs (never twice); language bank with first-seen date; theme counts by week
+ Stop / bail- No new reviews → skip. Negative replies are approved by the Arata CX lead before posting. Legal or medical
+ out          → human only, no draft.
+ Output           A weekly digest: counts, themes, routed actions, drafted replies, 5 new proof lines
+
+
+LOOP 4: AD FATIGUE
+ PART             ARATA SPEC
+
+ Check            Every Monday and Thursday, 10am IST. Acts at most once a week per ad set.
+ cadence
+ Acts when        An ad past its learning phase shows frequency above 3.5 over the trailing 7 days (assumption, to be
+                  calibrated against Arata's account), CTR down 25% or more vs. its first 14-day baseline, and CPA up 20%
+                  or more, with at least 50 purchases in the window so CPA is readable past the 7-day attribution window
+ Purpose          Refresh creative before CPA drifts up and blended CAC eats the margin that funds the ₹160 Cr push
+ Disciplines      Ads, ad creative, analytics
+ Loop body        1. Pull per-ad spend, impressions, frequency, CTR, CPA, ROAS and purchases, trailing 7 and 14 days, by
+                  campaign (hair fall, dandruff, MitoActive, styling). 2. Flag fatiguing ads and clear winners (bottom and top
+                  CPA quartile with enough volume). 3. For each winning angle, draft 3 to 5 variants: new hook, same claim;
+                  new format (static → UGC-style, testimonial → claim-led); new proof from the review-mining language
+                  bank. 4. Stage the variants with a recommended budget move (fatigued → winner) capped at 20% of
+                  campaign budget per run.
+ Self-check Rising frequency with thin conversions means wait. A CPA jump the day a sale or a creator post ends is
+            seasonality. Compare each ad to its own first-14-day baseline, never to another ad. Skip ads in Meta's
+            learning phase.
+ State            Per ad: last-refresh date, baseline CTR and CPA, variants drafted. 14-day cooldown after a refresh. Weekly
+                  spend ceiling checked every run.
+ Stop / bail- Nothing crosses all three thresholds → "no action". The media buyer approves every variant and budget
+ out          move for 8 weeks. Daily spend above the cap halts the loop and alerts the Brew paid lead. Never auto-
+              publish creative.
+ Output           Variants staged as paused ads in the account, plus a one-line budget recommendation in the Monday
+                  digest
+
+
+LOOP 5: CLAIM COMPLIANCE
+For a brand whose story is numbers on a bottle, the study is the source of truth and every surface
+must match it.
+ PART             ARATA SPEC
+
+ Check            On every new asset (ad, creator brief, listing update, PDP edit, WhatsApp template) and a weekly full sweep
+ cadence          on Wednesday
+ Acts when        A customer-facing statement does not match the claims ledger: wrong number, missing qualifier ("up to",
+                  "in-vitro", "best responders", "84 days"), a banned word ("chemical-free", "cure", "miracle", "clinical-
+                  strength", "regrow 100%"), or a SKU name that differs from the master name
+ Purpose          Keep every number on every surface defensible and consistent across arata.in, Amazon, Nykaa, Flipkart,
+                  quick commerce, Meta, YouTube and creators
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · EIGHT ALWAYS-ON LOOPS FOR ARATA                                                                 7
+ PART             ARATA SPEC
+
+ Disciplines      Product marketing, copy editing, pricing
+ Loop body        1. Read new assets since the watermark, and the full surface list weekly. 2. Extract every claim and SKU
+                  name. 3. Match against the ledger (Example 4). 4. Stage corrections by surface with the exact replacement
+                  text. 5. Flag for Arata's legal counsel any claim that could read as a drug claim rather than a cosmetic one,
+                  or that needs substantiation under the ASCI Code.
+ Self-check       Only correct live surfaces, never unpublished drafts. Check whether the "error" is an approved short form
+                  (a 9:16 tile saying "7.4X less hair fall" with the qualifier on the PDP); short forms live in the ledger too.
+ State            The ledger itself (claim, source, qualifiers, approved short forms, surfaces) plus the last-processed asset
+                  ID
+ Stop / bail-     No mismatches → "no action". Pricing, health or legal wording goes to the Arata brand manager and legal
+ out              before publishing. Never edit a live listing automatically.
+ Output           A corrections list by surface; a quarterly ledger review with legal
+
+
+LOOP 6: RANKING WATCH
+ PART             ARATA SPEC
+
+ Check            Weekly, Wednesday 9am IST
+ cadence
+ Acts when        A priority query drops 3 or more positions on Google vs. its 4-week average, or a hero SKU drops out of the
+                  top 10 organic results for its head term on Amazon.in or Nykaa search, or an AI search answer (ChatGPT,
+                  Gemini, Perplexity) stops naming Arata for a tracked question across three runs
+ Purpose          Catch regressions on the queries that bring the 650K monthly visits and the marketplace discovery before
+                  they compound
+ Disciplines      SEO audit, ASO (marketplace search), AI SEO, analytics
+ Loop body        1. Pull positions for the priority set on Google, Amazon.in and Nykaa. 2. Diff vs. the 4-week average. 3. For
+                  each material drop, diff what changed: page content, a competitor's new page, a SERP layout change, a
+                  listing title or price change, a rating dip. 4. Propose the smallest fix. 5. Run the AI question panel (10
+                  questions such as "best hair fall shampoo for Indian hair", "is Arata hair growth serum good", "MitoActive vs
+                  minoxidil") on two AI search tools, three runs each; record mention, description, cited sources.
+ Self-check       Rule out a SERP feature change (new shopping module, AI overview) before calling a loss. A marketplace
+                  dip during a competitor's sponsored push is temporary. One AI run is noise; three agreeing is a signal.
+ State            Weekly position snapshots; open regressions by query; AI results per run
+ Stop / bail- No material drop → "stable". Suspected algorithm update → escalate to the Brew SEO lead; never mass-
+ out          edit pages.
+ Output           A regression report with fixes; the AI visibility diff goes into the Monday digest once a month
+
+
+Priority query set, first version: hair fall shampoo, hair growth serum, anti dandruff shampoo, anti grey
+serum, hair gel, hair fall shampoo for men, best hair growth serum india, arata hair growth serum, arata
+shampoo, mitoactive, minoxidil alternative, arata vs traya, arata vs pilgrim.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · EIGHT ALWAYS-ON LOOPS FOR ARATA                                                                  8
+GUARDRAILS, AS APPLIED TO ARATA
+ ACTION A LOOP COULD
+ TAKE                              TIER                RULE FOR ARATA
+
+ Read, diff, score, draft,         1,                  Always allowed
+ stage                             autonomous
+ Send a reorder                    2, gated            Human-approved batches for 4 weeks; then auto-send within a 2,500/day
+ WhatsApp or email                                     cap and opt-in check, if Arata signs off
+ Reply to a review                 2                   Always human-approved. Negative or medical: human only.
+ Publish an ad or move             2                   Human-approved for 8 weeks; budget moves capped at 20% per run; daily
+ budget                                                spend ceiling as a hard halt
+ Change a price or listing         2                   Human only, always
+ Edit a live page for a            2                   Human-approved; legal sign-off for health, pricing or legal wording
+ claim fix
+ Contact a large audience          Escalate            Never from a loop
+ at once
+
+
+Kill switch: every loop checks one shared flag before running. The Brew deployment lead and the
+Arata growth manager can both set it, and it stops all eight loops within one cycle. Each loop also has
+its own off switch in the scheduler. Loop state and logs hold hashed customer IDs only; drafts with
+names stay in the send tool.
+
+WHERE THE LOOPS REMEMBER THINGS
+                                                                                                                             DIAGRAM
+    loops/
+      reorder-nudge.json                per customer hash: windows messaged, cooldown, attempts
+      marketplace-watch.json            daily listing snapshots by city, open alerts
+      review-mining.json                processed IDs, replied IDs, theme counts, language bank
+      ad-fatigue.json                   per ad: baseline, last refresh, spend ceiling
+      claims-ledger.md                  the ledger itself, shared with legal
+      ranking-watch.json                weekly positions, open regressions, AI runs
+      monday-digest.json                weekly snapshots, staged-vs-acted log
+      *.log                             one line per run
+
+
+
+
+Every run appends one log line, acted or not:
+                                                                                                                             DIAGRAM
+    2026-11-03T02:30Z      reorder-nudge     checked=1,644    acted=412   note="day22 serum 180, day30 serum 95, day32 shampoo 137"
+    2026-11-03T04:30Z      ad-fatigue        checked=38       acted=0     note="no ad crossed all 3 thresholds"
+
+
+
+
+The log answers two questions a month: is any loop a vanity loop (acts every run, or never, and
+nobody misses it), and did anything double-act.
+
+
+
+WORKED EXAMPLES
+
+
+BREW DEPLOYMENT TEAM × ARATA · EIGHT ALWAYS-ON LOOPS FOR ARATA                                                                       9
+EXAMPLE 1: THE REORDER NUDGE SEQUENCE FOR A HAIR GROWTH INTENSIVE SERUM BUYER
+One 30 ml Hair Growth Intensive Serum at ₹571, bought on arata.in, WhatsApp opt-in at checkout. The
+loop stages three messages. Names are placeholders.
+Day 22, WhatsApp
+
+   HI RAHUL, YOUR ARATA HAIR GROWTH SERUM HAS ABOUT A WEEK LEFT
+   IN IT.
+
+   THE STUDY BEHIND THE 28,200 NEW HAIRS NUMBER RAN FOR 84 DAYS.
+   MOST PEOPLE SEE THE FIRST CHANGE BETWEEN WEEK 6 AND WEEK 8,
+   SO THE SECOND BOTTLE IS WHERE IT STARTS TO SHOW.
+
+   REORDER THE SINGLE BOTTLE AT ₹571, OR SWITCH TO THE PACK OF 3 AT
+   ₹999 (THAT IS THE FULL 84-DAY COURSE, ₹333 A BOTTLE).
+
+   REPLY 1 FOR THE SINGLE BOTTLE. REPLY 3 FOR THE PACK. FREE SHIPPING
+   EITHER WAY.
+
+   P.S. IF THE BOTTLE LEAKED OR THE SEAL WAS OFF, REPLY LEAK AND WE
+   REPLACE IT, NO QUESTIONS.
+
+
+Day 30, email
+Subject: Your serum runs out today
+
+                    YOU STARTED THE HAIR GROWTH INTENSIVE SERUM 30 DAYS AGO. IF
+                    YOU USED IT TWICE A DAY AS THE LABEL SAYS, TODAY IS THE DAY IT
+   RAHUL,           RUNS OUT.
+
+   HERE IS WHAT MATTERS: THE 84-DAY WINDOW IS WHERE THE NUMBER
+   COMES FROM. STOPPING AT DAY 30 IS THE MOST COMMON REASON
+   PEOPLE SAY A SERUM "DID NOTHING".
+
+   PACK OF 3 AT ₹999 COVERS THE REMAINING 54 DAYS PLUS ONE SPARE.
+   SINGLE BOTTLE AT ₹571 IF YOU WANT TO KEEP GOING A MONTH AT A
+   TIME.                                                                       [REORDER NOW]
+
+   ONE MORE THING. TAKE A PHOTO OF YOUR CROWN OR HAIRLINE TODAY
+   UNDER THE SAME LIGHT YOU WILL USE IN DECEMBER. THAT PHOTO IS
+   HOW YOU WILL KNOW.                                                          THE ARATA LAB TEAM
+
+
+Day 45, WhatsApp (last)
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · EIGHT ALWAYS-ON LOOPS FOR ARATA                                    10
+   RAHUL, IT HAS BEEN 45 DAYS SINCE YOUR FIRST SERUM.
+
+   IF IT DID NOT WORK FOR YOU, TELL US WHY. REPLY WITH ONE WORD:
+   PRICE, RESULT, TEXTURE, LEAK OR OTHER. WE READ EVERY ONE.
+
+   IF YOU JUST FORGOT, THE PACK OF 3 IS STILL ₹999 AND SHIPS FREE
+   TODAY.
+
+   THIS IS OUR LAST REMINDER ON THIS ORDER.
+
+
+Before each send the loop checks: no reorder, no refund, opt-in on file, no message from this loop in 7
+days, this window not already messaged. After day 45 the customer leaves the loop.
+
+EXAMPLE 2: ONE RUN OF THE AD-FATIGUE LOOP, WITH THE STAGED VARIANTS
+Illustrative run; numbers are placeholders. Thresholds get calibrated in week 2.
+                                                                                                    DIAGRAM
+    AD FATIGUE RUN · Thu 2026-11-06 · Meta · trailing 7d
+    ----------------------------------------------------------------
+    Flagged (all 3 thresholds crossed, > 50 purchases, out of learning):
+      HF-UGC-07 "pillow test"       freq 4.1 CTR -31% vs base CPA +26%
+      HF-STAT-02 "7.4X on white"    freq 3.8 CTR -27% vs base CPA +22%
+
+    Winners (top quartile CPA, > 50 purchases):
+      HF-TESTI-04 "two weeks" (review-led, Anti-Hair Fall Shampoo)
+      MITO-EXPL-01 "mitochondria, explained in 20 seconds"
+
+    Recommended move: shift 20% of HF campaign budget from HF-UGC-07 and
+    HF-STAT-02 to HF-TESTI-04. Human approval required.
+
+    Staged: 3 variants off HF-TESTI-04, paused, in ad set "HF-TESTI-refresh".
+    ----------------------------------------------------------------
+
+
+
+
+The three staged variants, written off the winning angle (a review-led hook) using phrases from the
+language bank:
+Variant A, static, review-led Headline: "I can see a visible difference in two weeks." Primary text:
+That line is from a real Arata review. The product is the Anti-Hair Fall Intensive Shampoo, ₹359, with a
+7.4X hair fall reduction in a tensile strength study. Made for Indian hard water and humidity. Free
+shipping above ₹299. CTA: Shop the shampoo
+Variant B, static, objection-led Headline: "You have tried onion. You have tried biotin." Primary text:
+Both are stories. Arata's Anti-Hair Fall Shampoo carries a number from a study: 7.4X hair fall reduction.
+Pair it with the Hair Growth Intensive Serum (up to 28,200 new hairs in 84 days) for ₹838 as a combo.
+CTA: See the study
+Variant C, UGC-style script, 20 seconds 0 to 3s: hand pulling hair out of a shower drain. "This was
+every morning." 3 to 10s: bottle on a bathroom shelf. "Anti-Hair Fall Shampoo. ₹359. The number on
+the bottle is 7.4X and it comes from a lab test." 10 to 17s: same drain, visibly less hair. "Week three." 17
+to 20s: "Arata. Good science for great hair." End card with price and the combo.
+Every claim in these three passed the ledger before staging.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · EIGHT ALWAYS-ON LOOPS FOR ARATA                                           11
+EXAMPLE 3: ONE WEEK'S REVIEW-MINING DIGEST WITH DRAFTED REPLIES
+Illustrative week. Review texts are the verbatim themes from the brief; counts are placeholders.
+                                                                                                            DIAGRAM
+    REVIEW DIGEST · week of 2026-11-10
+    ----------------------------------------------------------------
+    New reviews: 71   (Loox 38 · Nykaa 19 · Amazon 11 · Flipkart 3)
+    Avg rating: 4.3   MitoActive reviews: 0 → review-request batch staged (day-30 buyers: 212)
+
+    Themes (≥5 mentions):
+      works / hair fall reduced              24   → 6 new proof lines added to bank
+      price / expensive                      9    → objection copy, see note
+      leak / seal broken                     7    ↑ vs 4-wk avg of 4 → OPS TICKET #L-09 (Delhi warehouse)
+      no outer box                           5    → ops, same ticket
+      styling hold / no residue              11   → styling proof lines
+
+    Routed:
+      2 x 1-star (leak)       → reply drafted below, replacement issued
+      1 x mentions Traya      → competitor file
+      0 x medical              → none
+    ----------------------------------------------------------------
+
+
+
+
+Drafted reply to a 1-star Nykaa review: "the shampoo bottle was leaking"
+
+   WE ARE SORRY ABOUT THIS. A LEAKING BOTTLE IS ON US. WE HAVE
+   RAISED IT WITH OUR WAREHOUSE TEAM TODAY AND ARE SENDING YOU A
+   REPLACEMENT ANTI-HAIR FALL SHAMPOO AT NO COST. PLEASE
+   MESSAGE US ON WHATSAPP AT [NUMBER] WITH YOUR ORDER NUMBER
+   AND WE WILL SHIP IT WITHIN 24 HOURS. THANK YOU FOR TELLING US. IT
+   HELPS US FIX THE CAP.
+
+
+Five proof lines added to the language bank this week, for PDP and ads (used only with Loox
+consent and with the reviewer's first name or initials):
+1. "Hair fall reduced drastically"
+2. "I can see a visible difference in two weeks"
+3. "Arata is amazing cz its affordable and actually works"
+4. "Foams well and cleans my scalp off dirt and excess oil"
+5. "without any sticky residue or stiffness" (styling)
+The MitoActive review request, staged to day-30 buyers through the reorder channel:
+
+   HI KAVYA, YOU HAVE BEEN ON MITOACTIVE FOR A MONTH. IN THE
+   STUDY, 87% SAW GROWTH BY DAY 84, SO YOU ARE A THIRD OF THE WAY
+   IN.
+
+   WOULD YOU LEAVE A SHORT REVIEW ON WHAT YOU HAVE NOTICED SO
+   FAR? EVEN "TOO EARLY TO TELL" HELPS THE NEXT PERSON DECIDE.
+   [LEAVE A REVIEW]
+
+   YOUR SECOND BOTTLE IS ₹1,499, OR ₹1,803 WITH THE ANTI-HAIR FALL
+   SHAMPOO. WE WILL REMIND YOU AGAIN AT DAY 56.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · EIGHT ALWAYS-ON LOOPS FOR ARATA                                                  12
+EXAMPLE 4: THE CLAIMS LEDGER, FIRST VERSION
+The file the claim-compliance loop reads every run. Arata's legal counsel owns the status column.
+                                                                                       APPROVED        SURFACES
+                                                                   REQUIRED            SHORT FORM      THAT STATE
+ CLAIM AS APPROVED            SKU              SOURCE              QUALIFIERS          (TILES, 9:16)   IT              STATUS
+
+ 7.4X hair fall               Anti-Hair        Tensile             "in a tensile       "7.4X less      PDP, Amazon     Approved
+ reduction                    Fall             strength study      strength study"     hair fall"      A+, Nykaa,
+                              Intensive        (Hairdian AP,       on PDP and A+                       Meta, Blinkit
+                              Shampoo          rosemary-                                               tile
+                                               caffeine)
+ Up to 28,200 new             Hair Growth      Consumer            "up to", "84        "28,200 new     PDP, Amazon, Approved
+ hair within 84 days          Intensive        study               days"               hairs in 84     Meta, creators
+                              Serum                                                    days*" with
+                                                                                       asterisk to
+                                                                                       PDP
+ 87% saw increased            MitoActive       Y100 Indian-        "84 days", "up      "87% saw        PDP, PR, Meta Approved
+ growth in 84 days;                            participant         to"                 growth in 84
+ up to 95% reduction                           study                                   days"
+ in hair fall
+ Up to 95% reduction          Anti-            In-vitro            "in-vitro", "up     "95% less       PDP, Nykaa,     Approved
+ in dandruff-causing          Dandruff                             to", "dandruff-     dandruff-       quick
+ fungus in 1 wash             Shampoo                              causing fungus"     causing         commerce
+                                                                   (never              fungus*"
+                                                                   "dandruff")
+ Up to 86% reduction          Anti-Grey        3-month             "up to", "in best   "up to 86%     PDP, Meta        Approved,
+ in greys                     Hair Serum       consumer            responders",        fewer greys in                  qualifier
+                                               study, best         "over 3 months"     3 months*"                      mandatory
+                                               responders
+ Dermatologically             All              Certificates on     none                same            All             Approved
+ tested; vegan;                                file
+ cruelty-free
+ "Chemical-free",             Any              Legacy              Banned              Banned          Legacy          Remove on
+ "zero chemicals"                              positioning                                             marketplace     sight
+                                                                                                       listings
+ "Clinical-strength",         Any              None                Banned              Banned          None allowed    Remove on
+ "cure", "miracle",                                                                                                    sight
+ "regrow 100%"
+
+
+Master SKU names, with any deviation flagged: Anti-Hair Fall Intensive Shampoo; Hair Growth
+Intensive Serum; MitoActive Mitochondrial Hair Growth Serum; Anti-Dandruff Shampoo; Anti-Grey Hair
+Serum. "Super Shampoo with onion", "biotin shampoo" and "hair tonic" are legacy names, flagged
+wherever they appear, starting with the Nykaa 300 ml listing.
+A sample flag from the weekly sweep:
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · EIGHT ALWAYS-ON LOOPS FOR ARATA                                                                   13
+                                                                                                                        DIAGRAM
+    CLAIM SWEEP · Wed 2026-11-12
+      [C-014] Nykaa listing "Arata Super Shampoo Onion & Biotin 300ml"
+              → name not in master list; bullet 2 says "chemical-free"
+              → staged: rename to master name or retire listing; replace bullet with
+                "No sulphates or parabens. Every active is there for a measured reason."
+              → owner: Arata marketplace manager; legal not required (no health claim)
+      [C-015] Creator brief draft, @handle, line 4: "clinically proven to regrow hair"
+              → "clinically proven" + "regrow" not approved; replace with
+                "up to 28,200 new hairs in 84 days, in a consumer study"
+              → owner: Arata brand manager; blocked until fixed
+
+
+
+
+EXAMPLE 5: THE MONDAY DIGEST, FILLED
+                                                                                                                        DIAGRAM
+    ARATA · MONDAY DIGEST · 2026-11-17
+    ----------------------------------------------------------------
+    Plan line: ₹3.1 Cr/week needed for ₹160 Cr run-rate
+    Tracking: clean (Shopify vs GA4 purchase gap 4.1%)
+
+    Biggest movers (numbers illustrative until connected)
+      D2C orders       ▲ +9% WoW     creator burst, expected
+      Repeat ≤45d      ▲ reorder loop week 2: 412 staged/day, 11% reorder on day-22 batch
+      Blended CPA      ▼ flat        2 ads refreshed Thu, read next week
+      Quick commerce   ▼ Pune Blinkit OOS 3 days on Anti-Dandruff → #A-017
+      Reviews          ▲ 71 new, leak theme up (7) → ops ticket #L-09
+      Rankings         ─ stable; "hair growth serum" Google p6 → p5
+      MitoActive       ─ reviews still 0; 212 review requests staged
+
+    Staged last week: 9 items. Acted on: 7. Open: Amazon price gap, Nykaa rename.
+    Need from Arata this week (max 3):
+      1. Approve reorder auto-send within caps (4-week review done)
+      2. Decide Amazon ₹339 shampoo price
+      3. Legal sign-off on ledger rows C-006 (anti-grey qualifier)
+    ----------------------------------------------------------------
+
+
+
+
+30-DAY DEPLOYMENT
+ WEEK      WHAT BREW SHIPS                             WHAT ARATA PROVIDES           LIVE BY END OF WEEK
+
+ Week Tracking QA on arata.in (purchase,                 Read access to Shopify,       Tracking QA weekly; first Monday digest,
+ 1    add-to-cart, pixel, CAPI, UTMs);                   GA4, Meta Ads Manager,        "stale" where a source is not yet
+      Monday digest template; state folder               Loox, Nykaa and Amazon        connected
+      and kill switch; claims ledger v1                  seller consoles; study
+      from the brief                                     summaries; WhatsApp and
+                                                         email opt-in fields confirmed
+ Week Reorder-nudge loop in dry-run                      Sign-off on clocks and copy; Review mining weekly; reorder dry-run log
+ 2    (logs who it would message, sends                  CX lead named as reply       reviewed together
+      nothing); usage clocks per SKU;                    approver; WhatsApp
+      message copy for serum, shampoo,                   templates submitted
+      MitoActive, anti-grey; review-
+      mining loop live
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · EIGHT ALWAYS-ON LOOPS FOR ARATA                                                                  14
+ WEEK      WHAT BREW SHIPS                             WHAT ARATA PROVIDES                LIVE BY END OF WEEK
+
+ Week Reorder loop live with human-                      Channel price list per             Reorder nudges sending; marketplace
+ 3    approved daily batches and a                       platform; quick-commerce           alerts daily; first claim corrections staged
+      2,500/day cap; marketplace                         city priorities; legal review of
+      price/stock watch on the 6-city                    ledger rows; marketplace
+      panel; claim-compliance sweep in                   manager named as alert
+      dry-run with first corrections list                owner
+ Week Ad-fatigue loop in staged mode,                    Media buyer named as               All 8 loops running: tracking QA, digest,
+ 4    thresholds calibrated on 2 weeks of                variant and budget approver;       reorder, review mining and marketplace
+      account data; ranking watch with                   rank tracker access; decision      watch live; ad fatigue and ranking watch
+      the priority query set and AI                      on which loops may move to         staging recommendations; claims pending
+      question panel; first MitoActive                   auto within caps                   legal on specific rows; digest shows
+      review-request batch; vanity-loop                                                     staged-vs-acted per loop
+      review of all logs
+
+
+Owners: Brew deployment lead (overall, kill switch), Brew analytics lead (tracking QA, digest),
+Brew CRM lead (reorder, review mining), Brew paid lead (ad fatigue), Brew SEO lead (ranking
+watch), Brew marketplace lead (price/stock watch, claim sweep). On Arata's side: growth manager
+(approvals, kill switch), CX lead (review replies), marketplace manager (alerts, listings), brand
+manager and legal counsel (claims ledger).
+
+
+
+HOW WE MEASURE
+ LOOP               METRIC                         BASELINE                 90-DAY TARGET           DECISION RULE
+
+ Reorder            45-day repeat rate on          To be                    +8 points on the        Works → turn the day-30 message
+ nudge              hero SKUs (D2C)                instrumented;            nudged cohort vs.       into a subscribe-and-save offer
+                                                   category ~26%,           a 10% un-nudged         and scope the subscription the brief
+                                                   routine-led brands       holdout                 flags as missing. Under +3 points →
+                                                   above 40% (brief)                                change the offer (Pack of 3 anchor)
+                                                                                                    before the cadence; still flat after a
+                                                                                                    second cycle → cut to two
+                                                                                                    messages
+ Marketplace        Hero-SKU availability          To be instrumented       97% quick-              Alerts acted on within 24 hours →
+ watch              on the 6-city panel;           in week 3                commerce                keep. Ignored two weeks running →
+                    parity exceptions per                                   availability in panel   drop that platform or change the
+                    week                                                    cities; exceptions      owner
+                                                                            resolved within 48
+                                                                            hours
+ Review             Leak/seal theme count          Leak theme               Leak theme halved; MitoActive under 20 reviews at day
+ mining             per week; MitoActive           present; MitoActive      MitoActive at 50+  90 → move the ask to day 21 and
+                    review count; proof            0; Nykaa 4.2★ on         reviews; 20 proof  add a disclosed incentive
+                    lines in use                   2,435                    lines live on PDPs
+                                                                            and ads
+ Ad fatigue         Blended CPA on hair fall From Ads Manager               Fatigued spend          Variants beat the fatigued ad on
+                    and MitoActive           in week 1                      under 10% of            CPA in 2 of 3 refreshes → authorise
+                    campaigns; share of                                     weekly spend; CPA       auto-pause within caps. They do
+                    spend on fatigued ads                                   flat or down while      not → the angle is tired; run a
+                                                                            spend scales            creative retro
+                                                                            30%+
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · EIGHT ALWAYS-ON LOOPS FOR ARATA                                                                           15
+ LOOP               METRIC                         BASELINE             90-DAY TARGET         DECISION RULE
+
+ Claim              Open mismatches on    Naming drift and              Zero open             Zero for a month → monthly sweep
+ compliance         live surfaces; legacy legacy "chemical-             mismatches on         plus on-asset checks. New assets
+                    names on marketplaces free" wording                 hero SKUs; legacy     keep failing → put the ledger check
+                                          present (brief)               names retired or      inside the creative brief template
+                                                                        renamed
+ Ranking            Priority queries in            To be instrumented   No priority query     Two fixes on one query with no
+ watch              Google top 10; hero                                 loses 3+ positions    movement → authority or intent
+                    SKUs in Amazon and                                  without a fix filed   problem; hand to SEO work outside
+                    Nykaa top 10; AI                                    within a week; AI     this loop
+                    answer mention rate on                              mention rate up
+                    the question panel
+ Monday             Staged-vs-acted ratio          New                  Above 70% of          Any loop under 40% for a month →
+ digest             across loops                                        staged items acted    retire it or change its owner. This is
+                                                                        on within the week    how the system stays small
+
+
+Two rules sit above the metrics. Judge paid changes on ROAS and revenue, never CTR alone. And no
+number in a digest is estimated: an unconnected source reads "stale" until it is connected.
+
+
+
+APPENDIX
+PRE-LAUNCH CHECKLIST (APPLIED TO EVERY LOOP BEFORE IT LEAVES DRY-RUN)
+    All nine parts filled: cadence, acts-when, purpose, disciplines, body, self-check, state, stop, output
+    Cadence matches signal speed; designed so most runs do nothing
+    Every send, spend, publish or price action is Tier 2: human-approved or inside explicit caps
+    Opt-in and suppression checked before every reorder message; no raw PII in state or logs
+    Always-escalate cases (negative or medical reviews, revenue or spend anomalies, pricing) route to
+    a human
+    Kill switch documented and tested
+    First run sets the watermark to "now" so no loop blasts history; backfills are dry-run first
+
+SOURCES USED
+Arata brand brief (Brew deployment team, v1, 10 Oct 2026) for every Arata number, price, claim,
+review quote and gap. The ASCI Code and the Drugs and Magic Remedies (Objectionable
+Advertisements) Act, 1954 frame the claims ledger; rows touching hair growth claims are flagged for
+Arata's legal counsel rather than decided here. Thresholds marked "assumption" (Meta frequency 3.5,
+shampoo 40-day run-out, 6-city panel, 2,500/day send cap) are starting points, calibrated in the first
+two weeks on Arata's own data.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · EIGHT ALWAYS-ON LOOPS FOR ARATA                                                                       16
+MARKETING LOOPS
+
+
+DAY 30
+AT ARATA
+   WHAT IS LIVE
+
+   By day 30 the Monday digest, the reorder-nudge loop, the review-mining loop
+   and the marketplace price/stock watch are live on real Arata data, with the ad-
+   fatigue and ranking loops staging their first recommendations and claim
+   compliance awaiting legal sign-off on the ledger.
+
+
+
+
+ NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+ BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+ CONFIRM".
+
+
+ EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+ BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                  DEPLOYMENT TEAM
+                                                                               BREW
+

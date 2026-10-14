@@ -1,0 +1,880 @@
+      Brew                                     PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+SIGNUP AND ACCOUNT CREATION · MOVE 32 OF 50
+
+
+
+PHONE-FIRST
+CHECKOUT
+AND OPT-
+IN FOR
+ARATA.IN
+  A REBUILT FIRST-PURCHASE PATH ON ARATA.IN WHERE A
+  PHONE NUMBER DOES ALL THE WORK: GUEST CHECKOUT
+  BY DEFAULT, WHATSAPP AND EMAIL OPT-IN IN ONE TAP,
+  AND AN ACCOUNT THAT CREATES ITSELF AFTER THE
+  ORDER.
+
+
+
+
+0 passwords
+NEEDED TO BUY OR LOG IN
+
+
+
+
+BREW × ARATA                    OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                  V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                                WHAT THIS GIVES ARATA
+                                                                A rebuilt first-purchase path on arata.in where a
+                                                                phone number does all the work: guest checkout by
+                                                                default, WhatsApp and email opt-in in one tap, and
+                                                                an account that creates itself after the order.
+         0 passwords                                             LIVE 30 DAYS AFTER WE START
+         NEEDED TO BUY OR LOG IN                                 Guest checkout is the default on arata.in, login is a
+                                                                 phone OTP, address and payment are prefilled for
+                                                                 returning shoppers, WhatsApp opt-in sits inside
+                                                                 checkout with a stated reason, and every first order
+                                                                 creates an account with an 84-day plan attached.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+This is a D2C read of signup. Arata has no free trial and no software to register for. "Signup" here is
+three moments: the point where a visitor gives you a phone number or email before they buy, the
+identity and address step inside checkout, and the account that exists after the first order. Treat all
+three as one flow and the job becomes clear: get the first order with as few fields as possible, and
+leave behind a contact you are allowed to message when the 45-day reorder window opens.
+The numbers make this worth the effort. arata.in gets about 650K visits a month and ships 50,000+
+D2C orders a month. Own website is 32% of FY25 revenue, and the brief's stated primary conversion
+is a first purchase of a hair fall or dandruff routine on arata.in, then a repeat inside 45 days. Every
+field, every forced account, every OTP that fails on a slow Jio connection in Pune takes a slice of that.
+Checkout abandonment on Indian D2C stores sits around 70% (industry benchmark, assumption). If
+Arata's checkout holds at that level, roughly 1.2 lakh carts a month start and do not finish. Recovering
+five percentage points of that is about 6,000 orders, close to ₹55 lakh a month at the implied ₹900 to
+₹1,000 AOV.
+The second cost is quieter. Arata has no subscription, no quiz, no community and no app. The only
+way the brand can reach a first-time buyer on day 40 and say "your serum is about to run out" is a
+phone number with WhatsApp consent, or an email with opt-in. The brief says beauty repeat rates sit
+near 26% and routine-led models pass 40%. A shopper who checks out as a guest and never opts in
+is a one-time customer by design. The opt-in is the bridge between a ₹571 serum sale and the 84-day
+routine the product claims need to prove themselves.
+The third cost is trust at the exact wrong moment. The top negative review theme is "the seal was
+broken" and "the shampoo bottle was leaking". The brief lists the shopper's anxieties as "Will I waste
+another ₹600?", "Is 30 ml enough?" and "Will the bottle leak?". Those questions arrive at checkout,
+and today checkout does not answer them. A ₹1,499 MitoActive buyer with zero reviews to lean on is
+deciding with a payment screen in front of her and nothing on it that says "if it leaks we replace it".
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · PHONE-FIRST CHECKOUT AND OPT-IN FOR ARATA.IN                                            1
+The opportunity is that India already solved identity for commerce. The phone number is the account.
+UPI is the password. Shoppers on Blinkit and Zepto never type an address twice, and 30% of Arata's
+revenue comes from exactly those shoppers. The plan below makes arata.in behave the way those
+apps do: one phone number, one OTP, a prefilled address, UPI or COD, done. Then the account builds
+itself from the order, and the opt-in is asked with a reason the shopper actually wants.
+
+
+
+WHAT WE FOUND
+We audited the first-purchase path as a mobile shopper who landed from a Meta ad on the Hair
+Growth Intensive Serum (₹571) and tried to buy it plus the Anti-Hair Fall Intensive Shampoo (₹359).
+Where the observation comes from the brief we cite it. Where it comes from the standard Shopify
+India setup, we mark it "assumption", because the brief does not say which checkout layer Arata runs.
+
+THE FLOW TODAY, WITH THE LEAKS
+                                                                                             DIAGRAM
+       Meta ad / Google / Nykaa browser
+                  |
+                  v
+       +--------------------------+
+       | PDP: Growth Serum ₹571   |   Leak 1: popup asks for email with no reason.
+       | popup appears on load    |   Shopper closes it. Contact lost before cart.
+       +------------+-------------+
+                    |
+                    v
+       +--------------------------+
+       | Cart                     |   Leak 2: free shipping above ₹299 and free gift
+       | ₹571 + ₹359 = ₹930       |   above ₹999 are not shown as a progress bar.
+       +------------+-------------+   ₹69 away from a gift and the cart does not say so.
+                    |
+                    v
+       +--------------------------+
+       | Checkout: contact        |   Leak 3: email asked first. Indian shoppers
+       | email, then phone        |   think in phone numbers. Two identity fields
+       +------------+-------------+   where one would do. (assumption: stock Shopify)
+                    |
+                    v
+       +--------------------------+
+       | Checkout: address        |   Leak 4: 7 typed fields on a phone keyboard.
+       | name, address 1, 2,      |   No pincode-first autofill of city and state.
+       | city, state, pincode,    |   No prefill for the 165M+ shoppers already
+       | phone                    |   known to checkout networks.
+       +------------+-------------+
+                    |
+                    v
+       +--------------------------+
+       | Payment                  |   Leak 5: COD hidden or surcharge unexplained.
+       | UPI / cards / COD        |   No leak-replacement promise. No "84 days"
+       +------------+-------------+   framing for the ₹1,499 decision.
+                    |
+                    v
+       +--------------------------+
+       | Thank you page           |   Leak 6: "Create an account" with a password.
+       | "Create account?"        |   WhatsApp opt-in never asked. Shopper leaves
+       +--------------------------+   with no plan and no reason to come back day 40.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · PHONE-FIRST CHECKOUT AND OPT-IN FOR ARATA.IN                          2
+AUDIT FINDINGS
+ #     ISSUE                          IMPACT                                          FIX                                   PRIORITY
+
+ 1     Email is the first identity The shopper's phone is the thing they              Phone first, OTP to verify, email     High
+       field at checkout           know by heart. Email first adds a typing           optional and asked after payment.
+       (assumption: stock          step and a typo risk on a 5-inch screen.
+       Shopify order)
+ 2     No returning-shopper           Every shopper who has bought from any           Install a phone-keyed checkout        High
+       prefill                        Indian D2C brand on a checkout network          layer (GoKwik or Shiprocket
+                                      still types a full address. GoKwik alone        Checkout) so address and
+                                      reports a 165M+ shopper network and a           payment prefill from the OTP.
+                                      10% conversion uplift for Honasa after
+                                      switching.
+ 3     WhatsApp opt-in is             Arata cannot message a first-time buyer         One checkbox inside checkout,         High
+       never asked                    at day 40. Zero reorder nudges by design.       default on where legally allowed,
+                                      45-day repeat target is unreachable for         with a stated reason. Confirmed
+                                      guest buyers.                                   by a first WhatsApp message
+                                                                                      within 2 minutes of the order.
+ 4     Account creation asks          Passwords are the field with the highest Shopify new customer accounts:               High
+       for a password                 abandonment in any flow. Nobody wants a login by one-time code, no
+                                      password for shampoo.                    password anywhere. Account
+                                                                               auto-created from the order.
+ 5     Pre-purchase popup             Email popup on load converts at 1 to 3%         Replace with a "hair fall score" or   Medium
+       asks for email with no         on cold traffic (benchmark, assumption).        routine-picker capture that asks
+       exchange                       Phone-led popups with a reason convert          for a WhatsApp number after
+                                      higher.                                         showing value.
+ 6     Address block is 7             Each typed field on mobile costs                Pincode first, auto-fill city and     Medium
+       typed fields                   completion. City and state are derivable        state, landmark optional, Google
+                                      from pincode. Address line 2 is optional        Places autocomplete on address
+                                      and should look it.                             line 1.
+ 7     No objection handling          The leak complaint, the "is 30 ml enough"       Three trust lines above the pay       Medium
+       at payment                     question and the ₹1,499 price sit               button, SKU-aware.
+                                      unanswered at the exact decision point.
+ 8     Free shipping (₹299)           ₹930 carts stop ₹69 short of the gift.          Threshold progress bar in cart        Medium
+       and free gift (₹999)           Nothing tells them.                             and checkout header.
+       thresholds are invisible
+       in the cart
+ 9     Naming inconsistency           A shopper who saw "Super Shampoo" on            Out of scope for this doc; flagged    Low
+       between Nykaa and              Nykaa may not find it at checkout and           for the product-marketing and
+       arata.in (onion vs             abandon to the marketplace.                     site-architecture work.
+       biotin, serum vs tonic)
+ 10 COD handling unclear              Tier-2 shoppers default to COD. If it is        Show COD, explain the surcharge       Low
+    (assumption)                      hidden or surcharged without a reason,          if any, offer ₹ off for prepaid as
+                                      they go to Amazon.                              the carrot.
+
+
+FIELD INVENTORY: WHAT CHECKOUT ASKS VS WHAT IT NEEDS
+                            ASKED TODAY                    NEEDED TO SHIP       NEEDED TO
+ FIELD                      (ASSUMPTION)                   THE ORDER            MESSAGE LATER        KEEP, DEFER OR REMOVE
+
+ Phone                      Yes, second                    Yes                  Yes                  Keep, move to first, verify by
+                                                                                                     OTP
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · PHONE-FIRST CHECKOUT AND OPT-IN FOR ARATA.IN                                                          3
+                            ASKED TODAY                    NEEDED TO SHIP       NEEDED TO
+ FIELD                      (ASSUMPTION)                   THE ORDER            MESSAGE LATER          KEEP, DEFER OR REMOVE
+
+ Email                      Yes, first                     No                   Useful                 Defer to post-payment,
+                                                                                                       optional
+ Password                   On account creation            No                   No                     Remove entirely
+ Full name                  Yes                            Yes (courier label) Yes                     Keep, single field
+ Address line 1             Yes                            Yes                  No                     Keep, autocomplete
+ Address line 2             Yes                            No                   No                     Keep as "Landmark (optional)"
+ City                       Yes                            Yes                  No                     Auto-fill from pincode
+ State                      Yes                            Yes                  No                     Auto-fill from pincode
+ Pincode                    Yes, last                      Yes                  No                     Move before address, drives
+                                                                                                       serviceability check
+ Country                    Yes                            No (India only)      No                     Hide
+ WhatsApp consent           No                             No                   Yes                    Add, one tap
+ "How did you hear          No                             No                   Useful                 Ask on thank-you page,
+ about us"                                                                                             optional
+
+
+Twelve fields today, four of them typed for no reason the shopper benefits from. The target is one
+field before the OTP (phone), four typed fields for a new address (name, pincode, address line 1,
+landmark), zero for a returning shopper.
+
+OPT-IN AUDIT
+                        WHAT IT DOES TODAY
+ SURFACE                (ASSUMPTION)                         WHAT IT SHOULD DO
+
+ Entry popup            Email capture, discount-led,         Appears after 40% scroll or on exit intent. Asks for WhatsApp number in
+                        appears on load                      exchange for a routine recommendation. Email as a second option.
+ Cart drawer            No capture                           No capture. Keep the cart clean. Show thresholds instead.
+ Checkout               Phone and email, no consent Phone with OTP. One consent line: "Send my order updates and 84-day
+ contact step           language                    routine on WhatsApp".
+ Thank-you              "Create an account"                  "Your account is ready. We sent a login link." Plus the optional email
+ page                                                        field and the one-question survey.
+ Order                  Possibly transactional only          First message confirms opt-in, states what will come and how to stop.
+ WhatsApp
+
+
+MOBILE REALITY
+The brief does not give a device split. For an Indian D2C beauty brand with creator-led traffic we
+assume 85%+ of visits are on mobile, mostly Android. That changes the audit: every field is a
+keyboard switch, OTP auto-read matters, 44px touch targets matter, and the pay button must be
+sticky. Nothing in this document is designed desktop-first.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · PHONE-FIRST CHECKOUT AND OPT-IN FOR ARATA.IN                                                          4
+THE PLAN
+The flow is rebuilt around one principle: the phone number is the account. Everything else is derived
+from it or asked after money has changed hands.
+
+TARGET ARCHITECTURE
+                                                                                                                     DIAGRAM
+                       VALUE FIRST                       IDENTITY                    ORDER                    ACCOUNT
+        +------------------------+      +-------------------------+      +------------------+     +-----------------------+
+        | PDP / collection       |      | Checkout step 1          |     | Payment          |     | Thank-you page        |
+        | routine picker (3 Qs) | --> | Phone number               | --> | UPI / cards / COD| --> | "Account ready"       |
+        | threshold bar in cart |       | OTP (auto-read)          |     | 3 trust lines    |     | login link, no pwd    |
+        |                        |      | [x] WhatsApp updates     |     | sticky pay button|     | optional email        |
+        +------------------------+      +-----------+-------------+      +------------------+     | 1-question survey     |
+                                                      |                                            +-----------+-----------+
+                                          known number?                                                       |
+                                           /        \                                                         v
+                                      yes            no                                             +-----------------------+
+                                        |              |                                            | WhatsApp, 2 min later |
+                          +------------+--+     +-----+----------------+                            | opt-in confirmed,     |
+                          | address and     |   | pincode -> city/state|                            | 84-day plan starts,   |
+                          | payment         |   | name, address 1,     |                            | day-40 reorder nudge |
+                          | prefilled       |   | landmark (optional) |                             | scheduled             |
+                          +---------------+     +----------------------+                            +-----------------------+
+
+
+
+
+LAYER 1: VALUE BEFORE THE ASK
+The skill's second principle is to show value before asking for commitment. For Arata that means the
+opt-in popup stops being a coupon box and becomes the first step of the routine. A three-question
+picker (what is bothering you, how long, hair type) returns a named routine with a price: "Hair fall
+starter: Anti-Hair Fall Shampoo ₹359 + Growth Serum ₹571". The WhatsApp number is asked after the
+result, framed as "send me this routine and my 84-day plan". The shopper gets something they
+wanted before giving anything.
+Expected effect: a phone-led capture with a reason runs well above an email coupon popup. We target
+a 6% capture rate on cold traffic against the 1 to 3% benchmark for coupon popups (assumption).
+Cart thresholds are the second value-first fix. The ₹299 free shipping and ₹999 free gift thresholds
+already exist. A progress bar in the cart drawer ("Add ₹69 for your free gift") moves ₹930 carts to
+₹999+ and lifts AOV without a new offer.
+
+LAYER 2: PHONE-FIRST IDENTITY
+Checkout opens with one field: a 10-digit phone number, tel keyboard, +91 fixed. OTP arrives by SMS
+with WhatsApp as the fallback channel, and auto-reads on Android. Under the OTP field sits a single
+pre-ticked consent line for WhatsApp order updates and routine messages. The consent is specific,
+revocable in one reply, and the first message confirms it. That is the Meta business messaging
+requirement and it is also what makes the day-40 nudge possible.
+If the number is known to the checkout network, name, address and last payment method prefill. The
+shopper is three taps from done. If the number is new, the address block is pincode first (which fills
+city and state and checks serviceability), then name, address line 1 with autocomplete, landmark
+optional.
+
+
+BREW DEPLOYMENT TEAM × ARATA · PHONE-FIRST CHECKOUT AND OPT-IN FOR ARATA.IN                                                   5
+Why a checkout layer rather than stock Shopify: Shop Pay is not available to Indian stores, so the
+prefill that Shopify stores elsewhere get for free has to come from an Indian network. GoKwik reports
+165M+ shoppers on its network and a 10% conversion uplift with Honasa. Shiprocket Checkout is the
+alternative. We do not pick for Arata; we run the install on whichever Arata's ops team already has a
+relationship with and measure.
+Expected effect: a 4 to 6 point lift in checkout completion from prefill and field reduction combined
+(assumption, based on the published partner numbers and the field count going from 12 to 4).
+
+LAYER 3: THE ACCOUNT BUILDS ITSELF
+Shopify's new customer accounts log in with a one-time code sent to email or phone. There is no
+password anywhere in the system. Every order creates the account; the thank-you page says so and
+the first email carries a login link. The shopper never fills a registration form, and the account still
+exists for order tracking, reorder and, when it launches, subscription management.
+Expected effect: account creation rate moves from whatever the password form gets today
+(benchmark 10 to 20% of orders, assumption) to 100% of orders, with the login step deferred to the
+first time it is useful.
+
+LAYER 4: OBJECTIONS AT THE PAY BUTTON
+Three trust lines above the pay button, chosen by what is in the cart:
+ CART CONTAINS                LINE 1                                       LINE 2                           LINE 3
+
+ Any shampoo or               Leaked or seal broken? We                    Free shipping on this order.     Dermatologically tested.
+ conditioner                  replace it, no questions.                                                     Vegan.
+ Growth Serum ₹571            30 ml lasts 30 days at twice-daily           Up to 28,200 new hairs in 84    Leaked or seal broken?
+ or Pack of 3 ₹999            use.                                         days. Your 84-day plan comes on We replace it.
+                                                                           WhatsApp.
+ MitoActive ₹1,499            ₹50 a day for 30 days. Compare               87% saw increased growth in 84   Leaked or seal broken?
+                              ₹1,400 to ₹1,800 a month on a                days.                            We replace it.
+                              diagnosis kit.
+
+
+Expected effect: small on its own, measurable on the MitoActive cart where nothing else carries the
+₹1,499 decision.
+
+PRIORITISED CHANGE LIST
+Quick wins (same day)
+1. Reorder checkout contact fields: phone before email, email optional.
+2. Hide the country field. Relabel address line 2 as "Landmark (optional)".
+3. Add the threshold progress bar to the cart drawer.
+4. Add the three trust lines above the pay button, static version first.
+5. Switch popup trigger from on-load to 40% scroll or exit intent.
+High-impact changes (week-level)
+6. Enable Shopify new customer accounts with one-time code login. Remove the password form.
+
+
+BREW DEPLOYMENT TEAM × ARATA · PHONE-FIRST CHECKOUT AND OPT-IN FOR ARATA.IN                                                          6
+ 7. Install the phone-keyed checkout layer with OTP, prefill and pincode-first address.
+ 8. Add the WhatsApp consent line inside checkout and wire the confirmation message.
+ 9. Rebuild the thank-you page: account ready, login link, optional email, one-question survey.
+10. Replace the coupon popup with the three-question routine picker and WhatsApp capture.
+Test hypotheses (A/B after instrumentation)
+11. Consent pre-ticked vs unticked: measure opt-in rate and complaint rate.
+12. Picker popup vs ₹ off popup: capture rate and 30-day order rate per lead.
+13. Prepaid incentive (₹ off for UPI) vs none: COD share and RTO rate.
+14. Trust lines SKU-aware vs static: MitoActive checkout completion.
+15. OTP via SMS first vs WhatsApp first: OTP success rate and time to verify.
+
+
+
+WORKED EXAMPLES
+Five finished assets. Copy follows Arata's voice: short declaratives, numbers in headlines, warm and
+clinical.
+
+EXAMPLE 1: THE CHECKOUT SCREEN, FIELD BY FIELD
+Step 1 of 2. Header shows the threshold bar and the two steps.
+                                                                                                                   DIAGRAM
+       +------------------------------------------------------+
+       | arata.                        Step 1 of 2 Contact      |
+       | ████████████████░░░░ ₹69 more for your free gift       |
+       +------------------------------------------------------+
+       |                                                      |
+       | Your phone number                                    |
+       | +91 | 98765 43210                                    |
+       | We send a code here. No password, ever.              |
+       |                                                      |
+       | [x] Send my order updates and 84-day hair routine    |
+       |      on WhatsApp. Reply STOP any time.               |
+       |                                                      |
+       | +------------------------------------------------+ |
+       | |             Continue →                          | |
+       | +------------------------------------------------+ |
+       |                                                      |
+       | Already ordered from us or 10,000+ Indian brands?    |
+       | Your address will fill itself.                       |
+       +------------------------------------------------------+
+
+
+
+
+Field spec:
+ ELEMENT          COPY                                                          BEHAVIOUR
+
+ Label            Your phone number                                             Visible label, never placeholder only
+ Placeholder 98765 43210                                                        Example, greyed, disappears on focus
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · PHONE-FIRST CHECKOUT AND OPT-IN FOR ARATA.IN                                                7
+ ELEMENT          COPY                                                                       BEHAVIOUR
+
+ Input            +91 fixed prefix, tel keyboard, 10 digits                                  Formats as 5+5 while typing. Submit
+                                                                                             enabled at 10 digits
+ Help text        We send a code here. No password, ever.                                    Sits directly under the field
+ Consent          Send my order updates and 84-day hair routine on                           Pre-ticked in test arm A, unticked in arm B
+                  WhatsApp. Reply STOP any time.
+ Button           Continue →                                                                 Full width, 52px tall, sticky at bottom on
+                                                                                             mobile
+ Prefill note     Already ordered from us or 10,000+ Indian brands? Your                     Only shown when the checkout layer is live
+                  address will fill itself.
+
+
+OTP screen:
+ ELEMENT                              COPY
+
+ Heading                              Enter the 4-digit code
+ Sub                                  Sent to +91 98765 43210. Change number
+ Input                                Four boxes, auto-advance, auto-read on Android
+ Resend                               Resend in 0:20 → Resend code → Send on WhatsApp instead
+ Error, wrong code                    That code did not match. Check the latest SMS and try again.
+ Error, expired                       That code has expired. We sent a new one.
+
+
+Step 2, new shopper:
+ FIELD          LABEL                PLACEHOLDER                     BEHAVIOUR
+
+ Pincode        Pincode              560034                          Numeric keyboard. On 6 digits: fills city and state, shows
+                                                                     "Delivers in 2 to 4 days to Bengaluru" or "We do not deliver here
+                                                                     yet".
+ Name           Full name            Priya Sharma                    Single field. Text keyboard, capitalised.
+ Address        Flat, building,      302, Sunrise                    Google Places autocomplete, India only.
+ 1              street               Apartments, 5th Cross
+ Landmark Landmark                   Near Koramangala BDA            Optional, visibly so.
+          (optional)                 complex
+ City,          Auto-filled,                                         Collapsed into one line: "Bengaluru, Karnataka. Edit"
+ State          editable
+
+
+Step 2, returning shopper: name, address and last payment method shown as cards with "Use this"
+and "Add new". One tap to payment.
+Error set for the whole flow:
+ CONDITION                            MESSAGE
+
+ Phone fewer than 10 digits           Enter all 10 digits of your mobile number.
+ Phone starts with 0 to 5             That does not look like an Indian mobile number. Check and try again.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · PHONE-FIRST CHECKOUT AND OPT-IN FOR ARATA.IN                                                              8
+ CONDITION                            MESSAGE
+
+ Pincode not serviceable              We do not deliver to 744101 yet. Try another address, or find us on Amazon and Nykaa.
+ Email typo (gmial.com)               Did you mean priya@gmail.com? Yes / Keep as typed
+ Payment failed                       Payment did not go through. Nothing was charged. Try UPI again or pick cash on delivery.
+ OTP not received after 60s           Still no code? Send it on WhatsApp instead.
+
+
+Payment screen, MitoActive in cart:
+                                                                                                                       DIAGRAM
+       +------------------------------------------------------+
+       | Step 2 of 2 Pay                                        |
+       |                                                      |
+       | MitoActive Hair Growth Serum 30 ml         ₹1,499    |
+       | Shipping                                    Free     |
+       | Total                                      ₹1,499    |
+       |                                                      |
+       | ₹50 a day for 30 days. A diagnosis kit costs         |
+       | ₹1,400 to ₹1,800 a month, for 5 months or more.      |
+       | 87% saw increased growth in 84 days.                 |
+       | Leaked or seal broken? We replace it, no questions. |
+       |                                                      |
+       | ( ) UPI Google Pay, PhonePe, Paytm                   |
+       | ( ) Card                                             |
+       | ( ) Cash on delivery                                 |
+       |                                                      |
+       | +------------------------------------------------+ |
+       | |             Pay ₹1,499                          | |
+       | +------------------------------------------------+ |
+       +------------------------------------------------------+
+
+
+
+
+The button says the amount. "Pay ₹1,499" beats "Place order" because the shopper has already
+decided and wants to see the number they agreed to.
+
+EXAMPLE 2: THE WHATSAPP OPT-IN CONFIRMATION AND FIRST 84-DAY MESSAGE
+Sent within 2 minutes of order confirmation, from the Arata business number, as a utility template. This
+is the message that turns consent into a relationship.
+Template: order_confirm_routine_v1
+                                                                                                                       DIAGRAM
+    Hi Priya, your Arata order is in.             🙂
+    Order #A-184522
+    Hair Growth Intensive Serum 30 ml
+    Anti-Hair Fall Intensive Shampoo 200 ml
+    Arrives in 2 to 4 days to Koramangala.
+
+    You asked for your 84-day hair routine here. Here is day 1:
+
+    Shampoo: every alternate wash, 2 minutes on the scalp.
+    Serum: 1 ml on a dry scalp, morning and night. Do not rinse.
+    What to expect: less hair in the drain by week 3. New hair you can feel by week 8.
+
+    We will message you on day 7, day 21 and day 40. That is it. Reply STOP to turn these off.
+
+    Track order → arata.in/track/A-184522
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · PHONE-FIRST CHECKOUT AND OPT-IN FOR ARATA.IN                                                    9
+Why this works: it confirms the opt-in in the message itself (the shopper sees exactly what was
+agreed), it states the cadence, it gives the stop instruction, and it delivers value in the first message.
+The day-40 message is the reorder nudge, scheduled from this moment.
+Template: day40_reorder_v1 (for reference, the message the opt-in exists for)
+                                                                                                   DIAGRAM
+    Priya, you are on day 40 of 84. Your serum runs out around day 30 to 35 at twice-daily use.
+
+    Reorder the same routine, prefilled, one tap:
+    Growth Serum + Anti-Hair Fall Shampoo ₹930 → arata.in/reorder/A-184522
+
+    Or move to the Pack of 3 for the rest of the 84 days. ₹999 for 3 serums, 49% off.
+
+    Reply STOP to turn these off.
+
+
+
+
+EXAMPLE 3: THE THANK-YOU PAGE AND THE ACCOUNT-READY EMAIL
+Thank-you page
+                                                                                                   DIAGRAM
+       +------------------------------------------------------+
+       | Order placed. Thank you, Priya.                       |
+       |                                                       |
+       | Order #A-184522 arrives Tue 14 to Thu 16 Oct.         |
+       | Updates are on their way to your WhatsApp.            |
+       |                                                       |
+       | Your account is ready.                                |
+       | Nothing to set up. Next time, your number logs you |
+       | in and your address is already there.                 |
+       |                                                       |
+       | Want order emails too?                                |
+       | [ priya@gmail.com                  ] [ Add email ] |
+       |                                                       |
+       | One quick question: where did you first hear        |
+       | about Arata?                                         |
+       | ( ) Instagram ( ) YouTube ( ) A friend               |
+       | ( ) Blinkit / Zepto ( ) Nykaa / Amazon ( ) Other |
+       |                                                      |
+       | Day 1 of your routine starts when the box arrives. |
+       | Read how to use the serum → Lab Notes                |
+       +------------------------------------------------------+
+
+
+
+
+Email is asked here, after money, as an addition. The one-question survey is self-reported attribution
+and feeds the attribution work in its own document.
+Account-ready email (sent only if email is added; otherwise the login link rides on the WhatsApp
+track message)
+Subject: Your Arata account is ready. No password needed.
+Preview: Order #A-184522 is packed. Here is how to log in next time.
+Body:
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · PHONE-FIRST CHECKOUT AND OPT-IN FOR ARATA.IN                                10
+                                                                                                                               DIAGRAM
+    Hi Priya,
+
+    Your order is packed and leaves our Delhi warehouse today.
+
+    We created an account for you from this order. There is no password to remember. When you come back, enter your number, we send a code,
+
+    Log in now → arata.in/account (one-time code, 10 seconds)
+
+    What is in your account:
+    • Track order #A-184522
+    • Reorder the same routine in one tap
+    • Your 84-day routine, day by day
+
+    One thing to know before the box arrives. If a bottle has leaked or the seal is broken, reply to this email with a photo. We send a rep
+
+    Arata
+    Hair & Scalp Science Co.
+
+
+
+
+EXAMPLE 4: THE ROUTINE-PICKER CAPTURE THAT REPLACES THE COUPON POPUP
+Triggered at 40% scroll on any PDP or collection page, or on exit intent. Three taps, then one field.
+                                                                                                                               DIAGRAM
+       Screen 1
+       +------------------------------------------------------+
+       | Which one is for you? 3 taps.                        |
+       |                                                      |
+       | What is bothering you most?                          |
+       | [ Hair fall ] [ Dandruff ] [ Damage ] [ Greys ]      |
+       +------------------------------------------------------+
+
+       Screen 2 (hair fall path)
+       +------------------------------------------------------+
+       | How long has it been going on?                       |
+       | [ A few weeks ] [ A few months ] [ Over a year ]     |
+       +------------------------------------------------------+
+
+       Screen 3
+       +------------------------------------------------------+
+       | Have you tried a serum before?                       |
+       | [ No ] [ Yes, onion or biotin ] [ Yes, minoxidil ] |
+       +------------------------------------------------------+
+
+       Result
+       +------------------------------------------------------+
+       | Your routine: Hair fall starter                      |
+       |                                                      |
+       | Anti-Hair Fall Intensive Shampoo 200 ml     ₹359     |
+       | 7.4X hair fall reduction                             |
+       | Hair Growth Intensive Serum 30 ml           ₹571     |
+       | Up to 28,200 new hairs in 84 days                    |
+       |                                                      |
+       | Together ₹930. Free shipping.                        |
+       |                                                      |
+       | [ Add both to cart ]                                 |
+       |                                                      |
+       | Send me this routine and the 84-day plan             |
+       | +91 | 98765 43210             [ Send on WhatsApp ]   |
+       | Or by email instead                                  |
+       +------------------------------------------------------+
+
+
+
+
+Routing rules for the result screen:
+ ANSWERS                             ROUTINE SHOWN                               PRICE
+
+ Hair fall, any duration, no         Anti-Hair Fall Shampoo + Growth             ₹930
+ serum before                        Serum
+ Hair fall, over a year, tried       Growth Serum Pack of 3 + Anti-Hair          ₹1,358
+ onion or biotin                     Fall Shampoo
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · PHONE-FIRST CHECKOUT AND OPT-IN FOR ARATA.IN                                                            11
+ ANSWERS                             ROUTINE SHOWN                                   PRICE
+
+ Hair fall, over a year, tried       MitoActive + Anti-Hair Fall Shampoo             ₹1,858 (combo pricing from the ₹1,803 to
+ minoxidil                                                                           ₹2,278 range to be confirmed by Arata)
+ Dandruff, any                       Anti-Dandruff Shampoo + Anti-                   ₹703
+                                     Dandruff Serum
+ Damage, any                         Damage Defence Super Shampoo +                  ₹754
+                                     Anti-Breakage Conditioner
+ Greys, any                          Anti-Grey Hair Serum + Anti-Hair Fall           ₹808
+                                     Shampoo
+
+
+The lead who sends the routine to WhatsApp and does not buy gets the routine as a message with a
+one-tap cart link, then one follow-up on day 3. Nothing more until they buy.
+
+EXAMPLE 5: CONSENT LANGUAGE AND THE STOP HANDLING
+Consent copy is short but it has to be exact, because the WhatsApp channel is the whole point.
+ PLACEMENT                         COPY
+
+ Checkout consent line             Send my order updates and 84-day hair routine on WhatsApp. Reply STOP any time.
+ Picker capture button             Send on WhatsApp
+ First message, last line          We will message you on day 7, day 21 and day 40. That is it. Reply STOP to turn these off.
+ STOP reply                        Done. No more routine messages from us. You will still get order updates for #A-184522.
+                                   Reply START if you change your mind.
+ Privacy line under                Your number is for your order and your routine. We do not sell it.
+ phone field
+
+
+Three message touches between order and day 40, stated upfront. The shopper who knows the
+cadence does not block the number.
+
+
+
+30-DAY DEPLOYMENT
+                                                                                                                 LIVE BY END OF
+ WEEK      BREW SHIPS                                                         ARATA PROVIDES                   WEEK
+
+ Week Checkout audit on live store with field-level                             Shopify admin access. Current    Baseline dashboard
+ 1    instrumentation (focus, blur, error, step events). Quick                  popup and WhatsApp tool          reading. Five quick
+      wins 1 to 5: field reorder, country hidden, landmark                      logins. Confirmation of which    wins live. Checkout
+      relabel, threshold bar, static trust lines, popup trigger                 checkout layer, if any, is       layer chosen.
+      change. Decision memo on GoKwik vs Shiprocket                             installed. Replacement policy
+      Checkout.                                                                 sign-off for the leak line.
+ Week New customer accounts enabled, password form                              WhatsApp Business API            Passwordless
+ 2    removed, thank-you page rebuilt with account-ready                        account or access to the         accounts live. Thank-
+      copy, optional email and survey. Account-ready email                      existing provider. Brand sign-   you page live.
+      built. WhatsApp templates (order_confirm_routine_v1,                      off on the five templates.       Templates in
+      day40_reorder_v1, STOP/START handling) submitted for                      Courier SLA by region for the    approval.
+      Meta approval.                                                            pincode message.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · PHONE-FIRST CHECKOUT AND OPT-IN FOR ARATA.IN                                                          12
+                                                                                                                  LIVE BY END OF
+ WEEK      BREW SHIPS                                                         ARATA PROVIDES                    WEEK
+
+ Week Checkout layer installed and configured: phone-first,                     Combo pricing confirmation        Phone-first checkout
+ 3    OTP with WhatsApp fallback, pincode-first address,                        for MitoActive + shampoo. QA      live at 50% of traffic.
+      prefill, consent line, SKU-aware trust lines. Routine                     on three devices (Android         Picker live on PDPs
+      picker built with the six routing rules and WhatsApp                      low-end, Android mid,             and collections.
+      send.                                                                     iPhone). Ops confirmation that
+                                                                                COD is on and surcharge rules.
+ Week Checkout layer to 100%. A/B tests 11 (consent pre-                        Weekly review slot. Decision      Full flow live. Two
+ 4    ticked vs unticked) and 12 (picker vs coupon popup)                       on prepaid incentive amount       tests running. First
+      launched. Day-40 reorder message scheduled for                            for test 13.                      day-40 messages
+      every week-1 to week-4 order with consent. Handover                                                         scheduled for mid-
+      doc for Arata's growth team.                                                                                November.
+
+
+Owners: Brew growth engineer (checkout layer, accounts, instrumentation), Brew lifecycle lead
+(WhatsApp templates, picker logic, email), Brew creative lead (copy, trust lines, picker screens),
+Arata brand manager (sign-offs, policy), Arata ops lead (courier SLAs, COD rules, replacement
+process).
+
+
+
+HOW WE MEASURE
+Everything below is instrumented in week 1 before any change goes live, so the baseline is real and
+the arms are comparable.
+ METRIC                  DEFINITION                      BASELINE                    90-DAY TARGET               WHY IT MATTERS
+
+ Checkout start          Cart → checkout step 1          To be instrumented          +3 pts                      Threshold bar and
+ rate                    loaded                                                                                  picker effect on intent
+ Phone step              Phone entered → OTP             To be instrumented          92%+                        The single identity field
+ completion              verified                                                                                has to work on every
+                                                                                                                 network
+ OTP success             OTP verified / OTP sent,        To be instrumented          88%+ SMS, 95%+ with Failed OTPs are lost
+ rate                    first attempt                                               WhatsApp fallback   orders
+ Checkout                Step 1 loaded → order           To be instrumented          +5 pts absolute             The headline money
+ completion              placed                          (benchmark ~30%,                                        metric
+                                                         assumption)
+ Prefill rate            Orders where address            0%                          35%+                        Shows the network is
+                         prefilled / total orders                                                                doing its job
+ Fields typed per        Median count                    ~12 (assumption)            4 new shopper, 0            Direct friction measure
+ order                                                                               returning
+ WhatsApp opt-           Orders with consent /           0% (not asked)              70%+ pre-ticked arm,        Feeds the 45-day
+ in rate                 total orders                                                45%+ unticked arm           reorder window
+ Opt-out rate            STOP replies / opted-in         n/a                         Under 3% in 30 days         Checks the consent is
+                                                                                                                 honest
+ Account                 Orders with an account / ~10 to 20%                         100%                        Passwordless auto-
+ creation rate           orders                   (assumption)                                                   creation
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · PHONE-FIRST CHECKOUT AND OPT-IN FOR ARATA.IN                                                                13
+ METRIC                  DEFINITION                      BASELINE               90-DAY TARGET             WHY IT MATTERS
+
+ Return login            Returning shoppers who n/a                             95%+                      Proves no-password
+ success                 log in by code without                                                           works
+                         support ticket
+ Picker capture          WhatsApp numbers                n/a                    25%+                      Replaces the coupon
+ rate                    captured / picker                                                                popup
+                         completions
+ Picker-to-order         Orders within 7 days /          n/a                    15%+                      Lead quality check
+ rate                    numbers captured
+ Day-40 reorder          Reorders by day 45 /            Unknown (beauty        35%+                      The reason the whole
+ rate                    opted-in first orders           benchmark 26%)                                   flow exists
+ COD share and           COD orders / total; RTO / To be instrumented           COD share down 5 pts      Prefilled, verified
+ RTO                     COD orders                                             with prepaid incentive;   addresses reduce RTO
+                                                                                RTO under 15%
+ Mobile vs               Completion rate                 To be instrumented     Under 5 pts               Mobile-first design
+ desktop                 difference                                                                       check
+ completion gap
+
+
+DECISION RULES
+If checkout completion lifts 3 points or more by day 45: keep the layer at 100%, move the prepaid
+incentive test live, and extend prefill to the quick-commerce-style "reorder in one tap" page. Start the
+subscription work on top of the account, since every shopper now has one.
+If checkout completion lifts under 3 points: hold the quick wins (they cost nothing), split the data by
+step. If the phone step is losing people, test OTP via WhatsApp first. If the address step is losing
+people, check the pincode serviceability copy and the autocomplete quality. If payment is losing
+people, the trust lines and COD rules are the suspects. Re-read at day 75.
+If WhatsApp opt-in is under 40% in the pre-ticked arm: the consent copy is reading as spam.
+Rewrite with the cadence stated inside the consent line itself and test again.
+If STOP rate passes 5%: the day-7 or day-21 message is over-selling. Cut to order updates plus day
+40 only.
+If day-40 reorder rate on opted-in orders passes 35% by day 90: the opt-in is worth more than the
+order. Move the picker to the homepage hero and make the WhatsApp send the primary CTA on the
+result screen, ahead of add to cart.
+
+
+
+APPENDIX
+PRE-LAUNCH CHECKLIST FOR THE CHECKOUT LAYER
+    Phone field uses type="tel" , autocomplete="tel" , +91 fixed, 10-digit mask
+    OTP input uses autocomplete="one-time-code" and Android SMS Retriever
+    Pincode field uses inputmode="numeric" , triggers city and state fill on 6 digits
+
+
+BREW DEPLOYMENT TEAM × ARATA · PHONE-FIRST CHECKOUT AND OPT-IN FOR ARATA.IN                                                    14
+    Address line 1 uses Google Places with India country restriction
+    All inputs 44px or taller, 16px font to stop iOS zoom
+    Pay button sticky on mobile, label includes the ₹ amount
+    Consent line visible without scrolling on a 360px-wide screen
+    Error messages inline, field focused, form never cleared
+    Paste allowed in every field
+    Country field hidden, defaults to India
+    Email field optional and visually marked optional wherever it appears
+    Serviceability message tested with three non-serviceable pincodes
+    Three device QA pass: Android low-end on 4G, Android mid on WiFi, iPhone on 4G
+
+WHATSAPP TEMPLATE REGISTER
+ TEMPLATE NAME                          CATEGORY          TRIGGER                             CADENCE
+
+ order_confirm_routine_v1               Utility           Order placed with consent           Once, within 2 min
+ shipped_v1                             Utility           Courier pickup                      Once
+ delivered_day1_v1                      Utility           Delivered                           Once, with day-1 routine
+ day7_checkin_v1                        Marketing         Delivered + 7 days                  Once
+ day21_checkin_v1                       Marketing         Delivered + 21 days                 Once
+ day40_reorder_v1                       Marketing         Delivered + 40 days                 Once, with reorder link
+ picker_routine_v1                      Marketing         Picker send without purchase        Once, plus one follow-up at day 3
+ stop_ack_v1                            Utility           STOP reply                          Immediate
+
+
+EVENT TRACKING PLAN FOR THE FLOW
+ EVENT                                        PROPERTIES
+
+ checkout_started                             cart_value, sku_list, device, source
+ phone_entered                                digits_valid
+ otp_sent                                     channel (sms, whatsapp)
+ otp_verified                                 attempt_number, seconds_to_verify
+ otp_failed                                   reason
+ consent_given                                arm (preticked, unticked), value
+ address_prefilled                            network_match (true, false)
+ field_error                                  field_name, error_type
+ payment_selected                             method
+ order_placed                                 order_id, cart_value, cod, prefilled, consent
+ account_login                                method (code_sms, code_email), success
+ picker_completed                             concern, duration, tried_before, routine_shown
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · PHONE-FIRST CHECKOUT AND OPT-IN FOR ARATA.IN                                                     15
+ EVENT                                        PROPERTIES
+
+ picker_sent                                  channel
+
+
+SOURCES
+Arata brand brief v1 (arata.in catalogue, BeautyMatter, Inc42, Loox and Nykaa reviews). GoKwik
+partner announcements on network size (165M+ shoppers) and the Honasa conversion uplift (10%).
+Shopify help centre on new customer accounts and one-time code login. Checkout abandonment and
+popup capture benchmarks are industry figures and are labelled as assumptions where used.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · PHONE-FIRST CHECKOUT AND OPT-IN FOR ARATA.IN                16
+SIGNUP AND ACCOUNT CREATION
+
+
+DAY 30
+AT ARATA
+   WHAT IS LIVE
+
+   Guest checkout is the default on arata.in, login is a phone OTP, address and
+   payment are prefilled for returning shoppers, WhatsApp opt-in sits inside
+   checkout with a stated reason, and every first order creates an account with an
+   84-day plan attached.
+
+
+
+
+ NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+ BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+ CONFIRM".
+
+
+ EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+ BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                  DEPLOYMENT TEAM
+                                                                               BREW
+

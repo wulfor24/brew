@@ -1,0 +1,748 @@
+      Brew                                     PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+DIRECTORY SUBMISSIONS · MOVE 18 OF 50
+
+
+
+EVERY
+LIST ARATA
+SHOULD
+BE ON
+  A RANKED LIST OF THE 60 MARKETPLACE, REVIEW,
+  CLINICAL, PRESS AND AI-CITATION LISTINGS ARATA
+  NEEDS, WITH THE COPY FOR EACH, SO THE BRAND
+  SHOWS UP WHEREVER A BUYER OR A CHATBOT ASKS
+  ABOUT HAIR FALL.
+
+
+
+
+60 listings
+ACROSS 8 TIERS, 0 PAID
+
+
+
+
+BREW × ARATA                    OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                  V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                                 WHAT THIS GIVES ARATA
+                                                                 A ranked list of the 60 marketplace, review, clinical,
+                                                                 press and AI-citation listings Arata needs, with the
+                                                                 copy for each, so the brand shows up wherever a
+                                                                 buyer or a chatbot asks about hair fall.
+         60 listings                                             LIVE 30 DAYS AFTER WE START
+         ACROSS 8 TIERS, 0 PAID                                  MitoActive has reviews on every channel, Arata's
+                                                                 name and claims read the same on 12 shopping
+                                                                 surfaces, 4 clinical and ingredient directories carry
+                                                                 the Y100 story, and 3 entity records feed the AI
+                                                                 engines the right facts.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+For a SaaS company, directory submissions mean Product Hunt, G2 and AI tool lists. For Arata they
+mean something closer to home: the marketplaces and quick-commerce apps where 68% of revenue
+already happens, the review surfaces that decide whether a ₹1,499 serum gets bought, the pharmacy
+and ingredient directories a cautious buyer checks before trusting a claim, the beauty awards and
+listicles that editors and chatbots quote, and the entity records (Wikidata, Crunchbase, product feeds)
+that AI engines read when someone asks "best hair growth serum in India that is not minoxidil". Same
+discipline, different list.
+Here is what we see today. Arata sells on Amazon, Nykaa, Flipkart, Zepto, Blinkit and Instamart, and
+the brief flags that naming is inconsistent across them (onion vs biotin, serum vs tonic, Super
+Shampoo at 300 ml on Nykaa next to the 200 ml science range on arata.in). A buyer who sees "Anti-
+Hair Fall Intensive Shampoo, 7.4X" on Instagram and then finds "Arata Onion Shampoo" on Blinkit does
+not know it is the same product. Neither does Perplexity.
+MitoActive launched in August 2026 at ₹1,499 and has zero reviews. Every other hero SKU has
+hundreds (Intensive Serum 474, Anti-Hair Fall Shampoo 222). Zero reviews on the most expensive
+product in the range is the single most expensive gap in this document. The product is the rebrand;
+the rebrand has no social proof yet.
+The brand has strong raw material for listings and almost none of it is placed. Unilever Ventures and
+L'Oréal BOLD as investors. An exclusive Indian licence for Y100. An in-house lab in Delhi. 1.5M
+customers a year. A 7.4X and a 28,200 and an 87%. Those facts sit on arata.in and in two trade
+articles. They are not on Wikidata, not in a Crunchbase record the AI engines read, not on Tata 1mg
+where a Chennai customer who just left a dermatologist is searching, and not in a single "best hair fall
+serum in India 2026" listicle that we could find in the brief's source list.
+The opportunity is cheap and compounding. Almost every listing in this plan is free. Each one is a link,
+an entity mention, or a review surface that keeps working after the ad budget stops. The ₹160 Cr goal
+needs the 32% that is arata.in to grow faster than paid alone can push it. Listings are how the non-
+
+
+BREW DEPLOYMENT TEAM × ARATA · EVERY LIST ARATA SHOULD BE ON                                                            1
+paid share grows.
+
+
+
+WHAT WE FOUND
+READINESS ASSESSMENT
+The skill's gate: do not submit until the thing the listing points at is ready. Adapted to a Shopify beauty
+brand with a rebrand in progress.
+ # READINESS CHECK (D2C VERSION)                                 ARATA TODAY                                     STATUS
+
+ 1 Product pages public and indexable                            Yes, arata.in is live with 2,248 Loox reviews   Pass
+ 2 Price and name consistent across channels                     No. Legacy names (onion, biotin, tonic, Super Hard block for
+                                                                 Shampoo 300 ml) coexist with the 3.0          marketplace tier
+                                                                 science names
+ 3 Privacy, terms, return policy, CDSCO licence                  Shopify defaults exist; licence display on      Soft block
+   number on pack and page                                       PDPs to be checked
+ 4 Logo and identity locked                                      Rebrand underway. New identity not final        Hard block for press,
+                                                                                                                 awards, Wikidata
+ 5 5 to 8 pack shots per SKU at marketplace                      Partial; MitoActive has launch imagery,         Soft block
+   spec, plus one 60 to 90 second product                        legacy SKUs do not match the 3.0 look
+   video per hero
+ 6 Destination pages with one H1, FAQ schema,                    Product schema comes from Shopify and           Soft block
+   Product schema with ratings                                   Loox; FAQ schema absent; no claim explainer
+                                                                 pages
+ 7 At least 3 comparison pages (vs Traya, vs                     None exist                                      Hard block for listicle
+   Pilgrim, minoxidil alternative) live                                                                          and AI tiers
+ 8 A routine gallery (the D2C version of a                       No quiz, no routine builder, no routine pages   Soft block
+   template gallery)
+ 9 20 customers who can review MitoActive this                   50,000 D2C orders a month; MitoActive           Pass, needs a trigger
+   month                                                         buyers since August are reachable by
+                                                                 WhatsApp and email
+
+
+Reading: two of the hard blocks (2 and 7) are things we build in the first two weeks. The third (4,
+rebrand) decides sequencing. Anything that prints the logo into a permanent record waits for the
+identity lock. Anything that is a name, a claim, a price or a review goes now. The skill's rule is "submit
+once, check quarterly". We do not want to amend 60 listings twice.
+
+TIER MAP FOR AN INDIAN HAIR-CARE BRAND
+The skill's 13 SaaS tiers collapse into 8 that matter for Arata. Scored on reach, intent, link or citation
+value, and effort. 5 is best.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · EVERY LIST ARATA SHOULD BE ON                                                                             2
+                                                                                 CITATION
+ TIER                   WHAT IT IS FOR ARATA                        REACH INTENT VALUE          EFFORT     PRIORITY
+
+ 1. Shopping            Amazon.in, Flipkart, Nykaa, Myntra, Tira,   5     5        4            3          Now
+ surfaces               Purplle, Blinkit, Zepto, Instamart, Shop
+                        app, Google Merchant Center, Instagram
+                        Shop
+ 2. Review              Loox on-site, Amazon reviews and Vine,      4     5        5            3          Now
+ surfaces               Nykaa reviews, Flipkart reviews, Google
+                        Business Profile, Smytten trials,
+                        MouthShut
+ 3. Clinical and        Tata 1mg, Apollo 24/7, PharmEasy,           3     5        4            3          Week 2
+ ingredient             Netmeds, INCIDecoder, SkinSort,
+ directories            DERMACON exhibitor list
+ 4. Entity and          Wikidata, Crunchbase, LinkedIn, Tracxn,     2     3        5            2          Week 2 (post
+ AI-citation            Inc42 profile, Startup India, llms.txt,                                            identity lock
+ records                OpenAI product feed, Bing Merchant                                                 for logo fields)
+                        Center
+ 5. Press and           Elle, Cosmopolitan, Vogue, Nykaa            4     2        5            4          Week 3
+ awards                 Femina, Grazia, Harper's Bazaar beauty                                             onward
+                        awards; PRLog and trade press for
+                        milestones
+ 6. Listicles and       NDTV Shopping, HT Shop Now, TOI Most        4     4        5            3          Week 3 rolling
+ comparison             Searched Products, Mint, Indian Express,
+ content                Healthshots, Pinkvilla, Be Beautiful,
+                        Nykaa Beauty Book, Purplle blog
+ 7. Communities         r/IndianSkincareAddicts, r/IndianHaircare, 3      4        4            4         Week 2,
+                        Quora                                                                   (ongoing) participate
+                                                                                                          first
+ 8. B2B and local IndiaMART, TradeIndia, JustDial, Sulekha          2     3        2            1          Week 4
+
+
+Tiers we cut: AI tool directories, MCP registries, no-code lists, dev platforms, US local directories.
+None fit a shampoo. Forcing them burns moderator goodwill and dilutes the link profile.
+
+WHERE THE EQUITY LANDS
+Listings are sources. They need destinations that convert. Today every external link points at the
+homepage or a PDP. That wastes the equity. The pages that must exist before tiers 4 to 7 go live:
+                                                                                                                 DIAGRAM
+    SOURCES (60 listings)                      DESTINATIONS (arata.in)
+    ───────────────────────                    ──────────────────────────────────
+    Shopping surfaces ─────────────────┐       /products/mitoactive (+FAQ schema)
+    Review surfaces ───────────────────┼──────▶/products/hair-growth-intensive-serum
+    Clinical & ingredient directories ─┼──┐    /products/anti-hair-fall-shampoo
+    Entity records (Wikidata, CB) ─────┤ │
+    Press & awards ────────────────────┤ ├───▶/compare/arata-vs-traya
+    Listicles ─────────────────────────┤ ├───▶/compare/arata-vs-pilgrim
+    Communities ───────────────────────┤ ├───▶/compare/minoxidil-alternative
+    B2B & local ───────────────────────┘ │
+                                          ├───▶/routines/hair-fall   (shampoo+serum, ₹838)
+                                          ├───▶/routines/dandruff    (S+C+serum)
+                                          ├───▶/routines/postpartum-hair-fall
+                                          │
+                                          ├───▶/science/y100          (what it is, 5 studies)
+                                          ├───▶/science/84-days       (how the claims were measured)
+                                          └───▶/lab-notes/best-hair-growth-serums-india-2026
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · EVERY LIST ARATA SHOULD BE ON                                                                3
+Three comparison pages, three routine pages, two science pages, one honest category roundup. Nine
+pages. Each with one H1, a "what this is" paragraph in the first 100 words, a comparison table, and
+FAQ schema. This is the foundation the skill insists on, and it is the part most brands skip.
+
+THE MITOACTIVE REVIEW GAP, QUANTIFIED
+                                                 ON-SITE
+ SKU                                  PRICE      REVIEWS            NYKAA                                       AMAZON
+
+ MitoActive                           ₹1,499 0                      0 (assumption: not yet listed or newly      0
+                                                                    listed)
+ Hair Growth Intensive                ₹571       474                to be instrumented                          to be
+ Serum                                                                                                          instrumented
+ Anti-Hair Fall Shampoo               ₹359       222                to be instrumented                          to be
+                                                                                                                instrumented
+ Super Shampoo (legacy)               ₹764       n/a                4.2 stars, 2,435 ratings                    to be
+                                                                                                                instrumented
+
+
+The best-reviewed Arata product on Nykaa is a legacy 300 ml onion shampoo the rebrand wants to
+retire. The new hero has nothing. Any listing we place for MitoActive this month will land a buyer on an
+empty review wall. Reviews come first in the sequence for a reason.
+
+CHANNEL NAMING AUDIT
+The brief lists the inconsistencies. We turn them into one canonical name table that every listing
+copies from.
+                                                                                      PRICE (MRP
+ CANONICAL NAME (3.0)                        LEGACY NAMES SEEN                SIZE    → SALE)        CLAIM LINE, EXACT
+
+ Arata MitoActive Mitochondrial              none                             30      ₹1,499         87% saw increased growth
+ Hair Growth Serum with Y100                                                  ml                     in 84 days
+ Arata Hair Growth Intensive                 Hair Growth Tonic, Hair Growth   30      ₹649 →         Up to 28,200 new hairs in 84
+ Serum                                       Serum                            ml      ₹571           days
+ Arata Anti-Hair Fall Intensive              Onion Shampoo, Biotin            200     ₹399 →         7.4X hair fall reduction
+ Shampoo                                     Shampoo, Hair Fall Control       ml      ₹359
+                                             Shampoo
+ Arata Anti-Dandruff Shampoo                 Dandruff Control Shampoo         200     ₹449 →         Up to 95% reduction in
+                                                                              ml      ₹404           dandruff-causing fungus in 1
+                                                                                                     wash
+ Arata Anti-Grey Hair Serum with Grey Reverse Serum                           30      ₹449           Up to 86% reduction in greys
+ MelanoGray                                                                   ml                     over 3 months
+ Arata Damage Defence Super                  Super Shampoo (300 ml            200     ₹449 →         94% keratin retention
+ Shampoo                                     onion/biotin)                    ml      ₹395
+
+
+Legacy names in the second column become hidden search terms on the marketplaces, never titles.
+Customers who search "arata onion shampoo" still find the product. The product they find carries the
+3.0 name.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · EVERY LIST ARATA SHOULD BE ON                                                                      4
+THE PLAN
+PRINCIPLES
+1. Reviews before reach. No new listing for MitoActive until it has 25 on-site reviews. Two weeks.
+2. Names before links. The canonical name table ships to every channel in week 1. Links that point at
+   a messy catalogue reinforce the mess.
+3. Facts before logos. Entity records (Wikidata, Crunchbase, llms.txt) go live with text now and get the
+   new logo after the identity lock. Awards and press wait for the identity lock because they print it.
+4. One description per surface. Each tier gets its own opening sentence and emphasis. AI engines
+   cross-reference and down-weight copies.
+5. Free only. No paid directory packages, no paid review schemes. Amazon Vine is the one paid-ish
+   exception because it is Amazon's own programme and reviews are marked as such.
+
+PHASING
+                                                                                                   DIAGRAM
+    WEEK 1                     WEEK 2                WEEK 3                WEEK 4
+    Foundation                 Clinical + entity     Press + listicles     B2B + verify
+    ──────────                 ─────────────────     ──────────────────    ─────────────
+    Canonical names            Tata 1mg, Apollo,     Award calendar and    IndiaMART, TradeIndia
+    to 12 surfaces             PharmEasy, Netmeds    entries (post lock)   JustDial, Sulekha
+                               INCIDecoder, SkinSort
+    MitoActive review          Wikidata, Crunchbase, Listicle outreach:    Backlink + citation
+    protocol live              Tracxn, LinkedIn,     10 editors            verification pass
+    (waves 1 and 2)            Startup India
+                                                     Reddit: first posts   Tracker handover
+    9 destination              llms.txt, OpenAI      after 2 weeks of      and quarterly
+    pages drafted              feed, Bing Merchant   answering             re-check cadence
+                               Center
+    Amazon Vine on             DERMACON exhibitor    Lab Notes roundup
+    MitoActive                 application           published
+
+
+
+
+TIER 1: SHOPPING SURFACES (12 LISTINGS)
+What: one listing pass per channel using the canonical name table, 3.0 imagery, the exact claim line,
+and the hidden search terms. Amazon.in gets Brand Registry (if not already held), a Brand Store with a
+"Hair Growth" shelf that ranks MitoActive above the Intensive Serum, A+ content on the three hero
+SKUs, and a 60-second brand video. Nykaa gets the brand page rewritten with the "Hair & Scalp
+Science Co." line and MitoActive pinned. Quick commerce gets a 40-character product name that puts
+the concern first ("Arata Anti-Hair Fall Shampoo 7.4X 200ml") because the card truncates (assumption
+on exact truncation length; we test per app). Shop app (Shopify's own channel, free, high domain
+authority) gets switched on with the full catalogue. Google Merchant Center and Instagram Shop get
+the same feed.
+Why: 68% of revenue is here, and these pages are what AI shopping engines cite most. Perplexity and
+ChatGPT shopping answers quote Amazon and Nykaa product pages with their star ratings. If the
+name differs per channel, the engines treat them as different products and split the signal.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · EVERY LIST ARATA SHOULD BE ON                                               5
+Expected effect: one product entity per SKU across the web. Marketplace search for legacy terms still
+converts. Brand Store and A+ typically lift marketplace conversion; we instrument the before and after
+rather than quote a benchmark.
+
+TIER 2: REVIEW SURFACES (7 LISTINGS)
+What: the MitoActive two-wave review protocol (below), Amazon Vine enrolment for the MitoActive
+parent ASIN, Amazon's "Request a Review" button on every MitoActive order, Nykaa's post-delivery
+review prompt, a Google Business Profile for Slick Organics in Delhi with the product catalogue
+attached, a Smytten trial listing for the Anti-Dandruff Serum (₹299, easiest to sample), and a claimed
+MouthShut brand page so the brand controls the response to the leak complaints that already exist
+there (assumption: complaints exist; we check).
+Why: a listing with no reviews is a dead listing. The skill's G2 rule (10 reviews to appear on the grid)
+has a beauty equivalent: Nykaa and Amazon sort and badge by rating count, and a buyer at ₹1,499
+reads reviews before anything else. Indian rules matter here. The BIS online review standard (IS
+19000:2022) and the Consumer Protection Act guidelines prohibit paid or undisclosed reviews.
+Amazon bans incentivised reviews outside Vine. So the protocol asks every buyer, offers nothing on
+Amazon and Nykaa, and on arata.in offers a small disclosed thank-you (₹100 store credit on the next
+order) that does not depend on the rating.
+Expected effect: MitoActive at 25 on-site reviews by day 14, 50 by day 30, and 15 to 20 Vine reviews
+on Amazon by day 30 (Vine typically returns reviews on 60 to 80% of units enrolled; assumption).
+
+TIER 3: CLINICAL AND INGREDIENT DIRECTORIES (7 LISTINGS)
+What: list the Hair Growth range and MitoActive on Tata 1mg, Apollo 24/7, PharmEasy and Netmeds as
+cosmetic (non-drug) products in the hair-loss category. Submit every hero SKU's full INCI list to
+INCIDecoder and SkinSort. Apply for an exhibitor listing at the next IADVL DERMACON and the Cuticon
+state conferences, which publishes Arata in the exhibitor directory dermatologists use.
+Why: this is Arata's version of the MCP registry: a niche surface where competitors in the ₹400 to
+₹700 actives band do not show up and where the buyer has the highest intent. Clinical Kavya in
+Chennai searches 1mg after her derm visit. Hair-fall Rahul checks INCIDecoder because he has been
+burned by claims. Pharmacy marketplaces sit next to Mintop in search, which is the exact comparison
+the "minoxidil alternative" positioning wants.
+Expected effect: a new channel with a clinical frame, four new referring domains with strong authority,
+and the Y100 ingredient page on INCIDecoder, which becomes the page AI engines cite when asked
+"what is Y100".
+
+TIER 4: ENTITY AND AI-CITATION RECORDS (9 LISTINGS)
+What: create or claim Wikidata (Arata the brand, Slick Organics the company, Y100 the ingredient with
+its licence relationship to Yuva Biosciences), Crunchbase (funding rounds, investors, founders),
+LinkedIn company page (with product pages for MitoActive), Tracxn and Inc42 profiles (already exist;
+update the one-liner to "Hair & Scalp Science Co."), Startup India/DPIIT recognition, an /llms.txt on
+arata.in, a product feed submitted to OpenAI's merchant programme for ChatGPT shopping, and a
+Bing Merchant Center feed (ChatGPT's web answers lean on Bing's index).
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · EVERY LIST ARATA SHOULD BE ON                                             6
+Why: when someone asks ChatGPT, Gemini or Perplexity about hair growth serums in India, the
+engine assembles an answer from entity records, product feeds, high-authority product pages and
+community threads. Right now the records say "plant-based hair gel brand from Delhi" or nothing. The
+brand has moved; the records have not.
+Expected effect: Arata appears in AI answers for "hair growth serum India" and "minoxidil alternative
+India" within 90 days, measured by a monthly manual check across four engines.
+
+TIER 5: PRESS AND AWARDS (8 LISTINGS)
+What: an awards calendar for the six Indian beauty awards that matter (Elle, Cosmopolitan, Vogue,
+Nykaa Femina, Grazia, Harper's Bazaar), with MitoActive entered in "hair growth / scalp treatment"
+categories and the Anti-Dandruff Shampoo in "anti-dandruff". One press release per milestone on
+PRLog (free) plus a trade pitch to BeautyMatter, Inc42 and BW Retail World, who already cover the
+brand.
+Why: award badges are the beauty industry's "Users Love Us" badge. They print on packs, A+
+content and Nykaa tiles, and the award pages themselves are high-authority listicles that editors and
+AI engines quote for years. Entry windows are fixed (most open between November and March; we
+confirm each date in the calendar); missing one means waiting a year.
+Expected effect: 2 shortlists in the first cycle, 1 win. Badge on the MitoActive PDP and Amazon A+ by
+Q2 2027.
+
+TIER 6: LISTICLES AND COMPARISON CONTENT (10 INCLUSIONS)
+What: outreach to the commerce desks that run "best hair fall shampoo in India" and "best hair growth
+serum in India" roundups (NDTV Shopping, HT Shop Now, TOI Most Searched Products, Mint, Indian
+Express, Healthshots, Pinkvilla), the two retailer content hubs (Nykaa Beauty Book, Purplle blog), and
+Be Beautiful, Unilever's own beauty content site, which is a natural fit given Unilever Ventures is on the
+cap table. Plus one roundup Arata writes itself in Lab Notes, covering Pilgrim, Minimalist, ThriveCo,
+Mintop and Traya honestly.
+Why: the skill calls these the highest-value links because they combine authority, buyer traffic and AI
+citation weight. Indian commerce desks run on Amazon affiliate links, so the pitch is easy: a product
+with a number, a ₹571 price point, and a ready Amazon link they earn on.
+Expected effect: 10 inclusions in 60 days, each a link to a comparison or routine page rather than the
+homepage.
+
+TIER 7: COMMUNITIES (3 SURFACES)
+What: two team members answer hair-fall and dandruff questions on r/IndianSkincareAddicts,
+r/IndianHaircare and Quora for two weeks before any Arata mention. Then one honest post per month
+with data ("we measured hair fall in 84 days; here is what the study did and did not show"). 90% help,
+10% brand.
+Why: Claude, Perplexity and Google AI Overviews index Reddit heavily. An honest thread about the
+28,200 claim, written by the brand's R&D lead under a flaired account, becomes the page the engines
+quote when a sceptic asks "is Arata legit".
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · EVERY LIST ARATA SHOULD BE ON                                            7
+Expected effect: 3 threads that rank for "arata review reddit" by day 90, owned by honest brand
+voices rather than drive-by complaints.
+
+TIER 8: B2B AND LOCAL (4 LISTINGS)
+What: IndiaMART and TradeIndia supplier profiles for salon and bulk orders (2 lakh B2B units a month
+already move), JustDial and Sulekha business listings for the Delhi HQ.
+Why: cheap, high-authority Indian domains, and they catch the salon owner in Jaipur searching "hair
+fall shampoo wholesale".
+Expected effect: 4 referring domains, a trickle of B2B leads routed to the existing B2B desk.
+
+
+
+WORKED EXAMPLES
+EXAMPLE 1: MITOACTIVE ON AMAZON.IN, THE FULL LISTING
+Title (under 200 characters): Arata MitoActive Mitochondrial Hair Growth Serum with Y100 | 87%
+Saw Increased Hair Growth in 84 Days | Up to 95% Reduction in Hair Fall | Dermatologically Tested,
+Vegan | For Men & Women | 30 ml
+Bullets: - INDIA'S FIRST MITOCHONDRIAL HAIR GROWTH SERUM: Powered by Y100, an active with
+6+ years of research and 5+ clinical studies, licensed exclusively to Arata in India. It works on the
+energy supply of the follicle, a different mechanism from Redensyl, Anagain or minoxidil. - 87% SAW
+INCREASED GROWTH IN 84 DAYS: In a consumer study on Indian participants, users saw reduced
+shedding, an improved anagen/telogen ratio and increased density. Hair fall reduction of up to 95%.
+Results vary; 84 days of twice-daily use is the study window. - A 3-MONTH COURSE, NOT A
+LIFELONG DEPENDENCY: Apply 1 ml to the scalp twice a day. One 30 ml bottle is roughly one month at
+₹50 a day. Pair with Arata Anti-Hair Fall Intensive Shampoo (7.4X hair fall reduction) for the full routine.
+- MADE FOR INDIAN HAIR, TESTED FOR INDIAN WEATHER: Lightweight, non-sticky, no residue,
+formulated and quality-checked in Arata's own lab in Delhi for hard water, humidity and heat. -
+DERMATOLOGICALLY TESTED, VEGAN, CRUELTY-FREE: No sulphates, no parabens, no silicones.
+Leak-proof pump bottle with tamper seal. If your bottle arrives damaged, Arata replaces it, no
+questions asked.
+Hidden search terms: hair growth serum for men, hair growth serum for women, hair regrowth serum,
+minoxidil alternative, redensyl serum alternative, hair thinning serum, scalp serum hair fall, y100
+serum, arata hair serum, hair fall solution
+A+ content outline (6 modules): 1. Hero: the bottle, the line "Good science for great hair", the three
+numbers (87%, 95%, 84 days). 2. How Y100 works: a three-panel diagram (follicle energy → anagen
+phase longer → telogen shedding lower). Plain words. 3. The study: participants, duration, what was
+measured, the "up to" explained. 4. Routine: MitoActive + Anti-Hair Fall Shampoo + Anti-Breakage
+Conditioner, with the combo price (₹1,803). 5. Comparison table: MitoActive vs the Intensive Serum vs
+minoxidil 5% (mechanism, price per month, dependency, needs a doctor). 6. The lab: Delhi R&D and
+QC, dermatologically tested, vegan. Investors named (Unilever Ventures, L'Oréal BOLD).
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · EVERY LIST ARATA SHOULD BE ON                                             8
+Brand video (60 seconds, script beats): 0 to 5s pillow with hair on it; 5 to 15s "hair fall has one cause
+people never talk about: the follicle runs out of energy"; 15 to 35s Y100 explained with the diagram; 35
+to 50s the 84-day study numbers on screen; 50 to 60s routine, price per day, "Zero guesswork".
+
+EXAMPLE 2: ONE PRODUCT, FIVE DESCRIPTIONS
+The same SKU, written differently for each surface. Nothing is copy-pasted.
+Quick commerce card (Blinkit, Zepto, Instamart), 40 characters: Arata Anti-Hair Fall Shampoo 7.4X
+200ml
+Quick commerce description, 60 words: Reduces hair fall 7.4X. Arata's Anti-Hair Fall Intensive
+Shampoo uses Hairdian AP with rosemary and caffeine to strengthen strands at the root, tested on
+Indian hair in Indian water. Sulphate-free, foams well, cleans the scalp without drying it. Pairs with the
+Anti-Breakage Conditioner. ₹359 for 200 ml. Delivered in minutes.
+Tata 1mg / Apollo 24/7 (clinical surface), 120 words: Arata Anti-Hair Fall Intensive Shampoo is a
+cosmetic, non-medicated cleanser for people experiencing hair fall from stress, post-illness shedding,
+post-partum shedding, hard water or pollution. Its active, Hairdian AP, combined with rosemary and
+caffeine, showed a 7.4X reduction in hair fall in a tensile-strength study. The formula is free of
+sulphates and parabens, dermatologically tested, vegan, and suitable for daily use alongside topical
+treatments. It does not contain minoxidil or finasteride and does not require a prescription. 200 ml.
+Manufactured by Slick Organics Pvt Ltd, New Delhi, in an in-house R&D and QC facility. For
+androgenetic alopecia beyond early stages, consult a dermatologist; this shampoo supports a routine
+and does not replace clinical treatment.
+Nykaa brand page (beauty surface), 90 words: Arata is India's Hair & Scalp Science Co. Every bottle
+carries a number from a study: 7.4X less hair fall from the Anti-Hair Fall Intensive Shampoo, up to
+28,200 new hairs in 84 days from the Hair Growth Intensive Serum, 95% fewer dandruff-causing fungi
+in one wash. Formulated in our own lab in Delhi for Indian hair, hard water and humidity. Vegan,
+cruelty-free, dermatologically tested. New: MitoActive, India's first mitochondrial hair growth serum
+with Y100. Systems, not symptoms.
+Wikidata / Crunchbase (entity surface), 50 words: Arata is an Indian hair and scalp care brand
+owned by Slick Organics Private Limited, New Delhi, founded in 2018 by Dhruv Madhok and Dhruv
+Bhasin. Products carry clinically measured claims. In 2026 it launched MitoActive, a hair growth serum
+using Y100, licensed from Yuva Biosciences. Investors include Unilever Ventures and L'Oréal BOLD.
+Listicle editor pitch (the "alternative" surface), 70 words: For your hair fall serum roundup: Arata's
+Hair Growth Intensive Serum is the one in the ₹500 to ₹700 band with a study number on the pack (up
+to 28,200 new hairs in 84 days) rather than an ingredient percentage. ₹571 on Amazon, 474 reviews
+on site. If the piece covers minoxidil alternatives, MitoActive (₹1,499, Y100, a mitochondrial
+mechanism) is the first of its kind in India.
+
+EXAMPLE 3: THE MITOACTIVE TWO-WAVE REVIEW PROTOCOL
+The skill's 10-in-30 protocol, rebuilt for an 84-day product. One ask is wrong for MitoActive: at day 5
+the customer cannot see growth, and at day 84 they have forgotten to review. So two waves, each
+asking about what the customer can see.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · EVERY LIST ARATA SHOULD BE ON                                               9
+                                                                                                DIAGRAM
+    Order ──▶ Day 0        Day 14              Day 42             Day 84
+              Delivered    WAVE 1              Nudge              WAVE 2
+              WhatsApp     "First impressions" (no review ask)    "84-day results"
+              welcome +    review ask                             review ask +
+              how to apply ▲                                      photo request
+                           │                                      ▲
+                           └── 1 follow-up at day 19 ─────────────┴── 1 follow-up at day 90
+                               Never a third.                         Never a third.
+
+
+
+
+Wave 1, day 14, WhatsApp (arata.in buyers):
+Hi {first name}. You are two weeks into MitoActive. Growth takes 84 days, but you can already tell us
+three things: how it feels on the scalp, whether it is sticky, and whether the pump works. 40 seconds,
+honest, any star rating. {direct Loox review link}
+As a thank you we add ₹100 to your Arata wallet when the review posts, whatever the rating.
+Mentioned here so you know, and we show the same note on the review.
+Wave 1 follow-up, day 19, email subject lines (pick one, test both): - Two weeks in. How does
+MitoActive feel? - Your first-impressions review for MitoActive (40 seconds)
+Wave 2, day 84, WhatsApp:
+Hi {first name}. Today is day 84 of MitoActive, the end of the study window. In the trial, 87% saw
+increased growth by now. Did you? Tell everyone what happened, including if it did not work. A before
+and after photo helps the next person decide. {direct Loox review link with photo upload}
+If it did not work for you, reply here and a person from our lab will read it.
+Amazon and Nykaa buyers: no incentive, no off-platform ask. Amazon: "Request a Review" button on
+every order between day 5 and day 30, plus Vine enrolment of 30 units on the MitoActive parent ASIN
+(fee per enrolled ASIN; confirm in Seller Central). Nykaa: the platform's own post-delivery prompt, and
+a pack insert with a QR that opens the Nykaa review page for logged-in buyers.
+Pack insert (all channels), 30 words: Day 84 is the day it counts. Set a reminder. Then tell us what
+happened, good or bad. Scan to review on the app you bought from.
+Targets: 25 on-site reviews by day 14 (wave 1 from the August and September cohorts, who are
+already past day 14), 50 by day 30, first wave 2 reviews with photos from the August cohort by mid-
+November.
+
+EXAMPLE 4: AWARD ENTRY, ELLE INDIA BEAUTY AWARDS, "BEST HAIR GROWTH TREATMENT"
+Product: Arata MitoActive Mitochondrial Hair Growth Serum, ₹1,499, 30 ml.
+Entry statement (150 words): Hair growth serums in India have converged on the same three actives
+at different percentages. MitoActive takes a different route. It is built on Y100, an active developed
+over six years and tested in five clinical studies, which works on the mitochondria of the hair follicle:
+the energy supply that decides whether a follicle stays in its growth phase or drops the hair early.
+Arata holds the exclusive licence for Y100 in India. In a consumer study with Indian participants, 87%
+saw increased growth within 84 days, with reduced shedding and an improved anagen/telogen ratio. It
+is dermatologically tested, vegan, non-sticky and formulated in Arata's own Delhi lab for hard water
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · EVERY LIST ARATA SHOULD BE ON                                           10
+and humidity. It needs no prescription and no lifelong dependency: a three-month course, then
+maintenance. MitoActive is the first product in Arata's bioscience hair growth line and the first
+mitochondrial hair growth treatment sold in India.
+Supporting material to attach: study summary (participants, duration, measures), INCI list,
+dermatological test certificate, three pack shots on white, one texture shot, one before/after pair from
+wave 2 reviews (with consent).
+The same entry, with the first sentence rewritten and the emphasis shifted to "science you can explain
+to a friend", goes to Cosmopolitan. The Vogue version leads with the Delhi lab. No two juries read the
+same paragraph.
+
+EXAMPLE 5: LLMS.TXT FOR ARATA.IN
+                                                                                                     DIAGRAM
+    # Arata
+
+    > Arata is an Indian hair and scalp science brand (Slick Organics Pvt Ltd,
+    > New Delhi, est. 2018). Every hero product carries a measured claim from an
+    > in-vitro or consumer study. Sold on arata.in, Amazon.in, Nykaa, Flipkart,
+    > Blinkit, Zepto and Swiggy Instamart. Investors: Unilever Ventures, L'Oréal BOLD.
+
+    ## Products
+    - [MitoActive Hair Growth Serum](https://arata.in/products/mitoactive): ₹1,499, 30 ml,
+      Y100 mitochondrial active, 87% saw increased growth in 84 days.
+    - [Hair Growth Intensive Serum](https://arata.in/products/hair-growth-intensive-serum):
+      ₹571, 30 ml, up to 28,200 new hairs in 84 days.
+    - [Anti-Hair Fall Intensive Shampoo](https://arata.in/products/anti-hair-fall-shampoo):
+      ₹359, 200 ml, 7.4X hair fall reduction (Hairdian AP, rosemary, caffeine).
+    - [Anti-Dandruff Shampoo](https://arata.in/products/anti-dandruff-shampoo): ₹404, 200 ml,
+      up to 95% reduction in dandruff-causing fungus in one wash.
+    - [Anti-Grey Hair Serum](https://arata.in/products/anti-grey-serum): ₹449, MelanoGray,
+      up to 86% reduction in greys over 3 months.
+
+    ## Science
+    - [What is Y100](https://arata.in/science/y100): mechanism, licence, 5 studies.
+    - [How we measure 84 days](https://arata.in/science/84-days): study design, "up to" explained.
+
+    ## Comparisons
+    - [Arata vs Traya](https://arata.in/compare/arata-vs-traya)
+    - [Arata vs Pilgrim](https://arata.in/compare/arata-vs-pilgrim)
+    - [Minoxidil alternatives in India](https://arata.in/compare/minoxidil-alternative)
+
+    ## Routines
+    - [Hair fall routine](https://arata.in/routines/hair-fall): shampoo + serum, ₹838.
+    - [Dandruff routine](https://arata.in/routines/dandruff): shampoo + conditioner + serum.
+
+    ## Company
+    - Founders: Dhruv Madhok, Dhruv Bhasin. CBO: Samriddh Dasgupta.
+    - In-house R&D and QC lab, Delhi. Dermatologically tested, vegan, cruelty-free.
+    - FY25 revenue ₹61.1 Cr. 1.5M+ customers served annually.
+
+
+
+
+Paths are the proposed destination pages; they go live before the file does.
+
+EXAMPLE 6: LISTICLE OUTREACH, NDTV SHOPPING COMMERCE DESK
+Subject: Hair fall serum with a study number for your next roundup
+Hi {name},
+Your "best hair growth serums in India" piece from {month} lists six products and five of them are
+Redensyl or Anagain at a different percentage. One worth adding: Arata's Hair Growth Intensive
+Serum. It is the only one in the ₹500 to ₹700 band with a consumer-study number on the pack (up to
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · EVERY LIST ARATA SHOULD BE ON                                             11
+28,200 new hairs in 84 days). ₹571 on Amazon, 474 reviews on the brand site, free shipping over
+₹299.
+If you are updating the piece for 2026, Arata also launched MitoActive in August: ₹1,499, a
+mitochondrial active called Y100 that is new to India, aimed at people who want a minoxidil alternative.
+Zero other brand has it.
+Happy to send samples of both to the desk, plus the study summaries so your writer can quote the
+design, not just the number. Amazon links below are ready for your affiliate tags.
+{Amazon link, MitoActive} {Amazon link, Intensive Serum} {arata.in/science/84-days}
+No worries if it is not a fit this cycle.
+{Brew PR lead, on behalf of Arata}
+
+
+
+30-DAY DEPLOYMENT
+                                                                                                               LIVE BY END OF
+ WEEK BREW SHIPS                                                         ARATA PROVIDES                      WEEK
+
+ 1         Canonical name and claim table; listing rewrites for            Seller Central and Nykaa vendor     12 shopping
+           Amazon.in (title, bullets, search terms, A+ outline),           access, Brand Registry status,      surfaces carry the
+           Nykaa, Flipkart, Blinkit, Zepto, Instamart; Shop app and        3.0 pack shots for every SKU,       same names and
+           Google Merchant Center switched on; MitoActive                  INCI lists, study summaries,        claims; 25
+           review protocol built in the WhatsApp and email tools;          CDSCO licence numbers, sign-        MitoActive reviews
+           wave 1 sent to August and September MitoActive                  off on the ₹100 review thank-       on site; Vine enrolled
+           cohorts; Amazon Vine enrolment request; drafts of the           you
+           9 destination pages; tracker set up with all 60 rows
+ 2         Tata 1mg, Apollo 24/7, PharmEasy and Netmeds                    Dermatological test certificate,    4 pharmacy listings
+           listings submitted with the clinical variant; INCIDecoder       Yuva Biosciences licence            in review; 2
+           and SkinSort submissions; DERMACON exhibitor                    confirmation for the Wikidata       ingredient directory
+           application; Wikidata, Crunchbase, Tracxn, Inc42,               relation, founder bios, DPIIT       pages live; 6 entity
+           LinkedIn and Startup India records created or corrected         paperwork, two named team           records corrected;
+           (text only, logo field left for the identity lock); llms.txt,   members for community (R&D          llms.txt live; 9 pages
+           OpenAI product feed and Bing Merchant Center feed               lead and a brand manager)           indexed
+           live; 9 destination pages published with FAQ schema;
+           community accounts begin answering
+ 3         Awards calendar with confirmed entry windows; Elle,             Identity lock date, sample stock    10 pitches out; 3
+           Cosmo and Vogue entries drafted (submitted once the             for 10 desks, legal review of the   award entries ready;
+           identity is locked); PRLog release on MitoActive and the        award entries, R&D lead's time      roundup live;
+           rebrand; listicle outreach to 10 commerce desks with            for the Reddit thread (2 hours)     MitoActive at 50 on-
+           samples dispatched; Lab Notes roundup published; first                                              site reviews; first
+           Reddit post after two weeks of participation                                                        Vine reviews posting
+ 4         IndiaMART, TradeIndia, JustDial, Sulekha listings;              B2B desk contact for IndiaMART      60 rows in the
+           verification pass on every live listing (fetch the page,        leads; brand manager                tracker with status;
+           find the anchor, record the rel attribute, timestamp);          onboarding to the tracker (1        40+ live; backlinks
+           first AI citation check across ChatGPT, Gemini,                 hour)                               verified; citation
+           Perplexity and Google AI Overviews; tracker handed to                                               baseline logged; day
+           Arata brand manager with the quarterly re-check                                                     30 report
+           cadence
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · EVERY LIST ARATA SHOULD BE ON                                                                          12
+Owners: Brew listings lead (tiers 1, 3, 8), Brew retention lead (tier 2), Brew SEO lead (tier 4
+and destination pages), Brew PR lead (tiers 5, 6), Brew community lead (tier 7). Arata brand
+manager owns approvals and the tracker after day 30. Every outward-facing submission gets Arata
+sign-off before the button is pressed.
+
+
+
+HOW WE MEASURE
+ METRIC                               BASELINE                        90-DAY TARGET                  HOW
+
+ Listings live (of 60)                0 tracked                       55                             Tracker, verified anchors
+ Referring domains to                 To be instrumented (Ahrefs or   +35                            Monthly backlink export
+ arata.in                             Semrush snapshot on day 1)
+ MitoActive reviews, on site 0                                        150, with 30+ photo reviews Loox
+                                                                      from wave 2
+ MitoActive reviews,                  0                               60 (Vine plus organic), 4.2+   Seller Central
+ Amazon.in                                                            stars
+ MitoActive reviews, Nykaa            0                               40                             Nykaa vendor panel
+ Channel naming                       6 SKUs with legacy names        0                              Quarterly audit against
+ consistency                                                                                         the canonical table
+ Pharmacy marketplace                 ₹0                              To be instrumented; report     1mg, Apollo, PharmEasy,
+ revenue                                                              as a new channel line          Netmeds panels
+ Listicle inclusions                  0 known                         10                             Tracker
+ Award shortlists                     0                               2                              Tracker
+ AI citation score (4                 To be instrumented, day 1       Arata named in 8 of 20         Monthly manual check,
+ engines × 5 prompts)                                                 answers                        logged
+ Traffic to comparison and            0 (pages do not exist)          25,000 sessions a month,       GA4
+ routine pages                                                        5% add-to-cart
+ Share of arata.in orders             To be instrumented              +3 points                      GA4 channel grouping
+ from non-paid referral
+
+
+The five AI prompts we log every month: "best hair growth serum in India", "minoxidil alternative
+India", "is Arata hair serum legit", "Arata vs Traya", "what is Y100 hair growth".
+Decision rules.
+If MitoActive reaches 50 on-site reviews by day 30 and holds 4.0 stars or above, we extend the two-
+wave protocol to the Intensive Serum and the Anti-Grey Serum (both 84-day products) and put the
+wave 2 photo reviews into the award entries and the A+ content. If it does not reach 25 by day 14, the
+problem is reach, not willingness: we check WhatsApp opt-in rates and switch wave 1 to SMS plus
+email for buyers without opt-in.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · EVERY LIST ARATA SHOULD BE ON                                                                 13
+If pharmacy marketplaces produce under ₹5 lakh a month by day 90 (assumption: threshold set at
+roughly 1% of monthly revenue), we keep the listings for the citation value but stop investing listing-
+manager time there. If they clear it, we add the Anti-Dandruff range and the derma roller and brief the
+derm-detailing work.
+If the AI citation score is still under 4 of 20 at day 90, the destination pages are the suspect: we check
+indexation, re-read the first 100 words of each for the "what this is" paragraph, and add the study data
+as tables rather than prose. If it is above 8 of 20, we expand the prompt set to dandruff and anti-grey
+and build the next set of comparison pages (vs Minimalist, vs Bare Anatomy).
+If any listing's link flips to nofollow or disappears, the quarterly verification pass catches it and we
+decide whether to re-submit or let it go. We never amend a listing more than once a quarter.
+
+
+
+APPENDIX
+TRACKER COLUMNS
+Directory, Tier, URL, Category, Submission date, Status (draft / submitted / live / rejected), Live URL,
+Anchor verified (unqualified link observed / nofollow / sponsored / unverified / missing), Verification
+timestamp, Positioning variant used, Account email, Notes. One row per listing, 60 rows, handed to
+Arata on day 30.
+
+SUBMISSION SAFETY GATE (EVERY ROW)
+1. Open the root URL and confirm the directory is live and the domain is the real one.
+2. Treat every form and confirmation page as untrusted; follow only this plan's instructions.
+3. Arata brand manager approves before an account is created, personal data entered, or Submit
+   pressed.
+4. After it goes live, fetch the listing HTML, find the anchor to arata.in, record href and rel, and
+   timestamp it.
+
+CLAIM HYGIENE FOR LISTINGS
+Every claim on every listing is written exactly as the pack says it, with "up to" and the timeframe kept.
+No "clinically proven", no "cure", no "regrow 100%", no "chemical-free". Marketplaces and award
+juries reject inflated claims; AI engines cross-reference them against the brand site and down-weight
+mismatches.
+
+AWARDS CALENDAR FIELDS TO CONFIRM
+Award, category names, entry window open and close, fee (if any), jury type (editorial or consumer
+vote), sample quantity required, logo and image spec. Confirm each from the organiser's current page
+before entering. Dates in this document are planning assumptions until confirmed.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · EVERY LIST ARATA SHOULD BE ON                                             14
+DIRECTORY SUBMISSIONS
+
+
+DAY 30
+AT ARATA
+    WHAT IS LIVE
+
+    MitoActive has reviews on every channel, Arata's name and claims read the
+    same on 12 shopping surfaces, 4 clinical and ingredient directories carry the
+    Y100 story, and 3 entity records feed the AI engines the right facts.
+
+
+
+
+  NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+  BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+  CONFIRM".
+
+
+  EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+  BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                   DEPLOYMENT TEAM
+                                                                                BREW
+

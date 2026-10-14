@@ -1,0 +1,21 @@
+{
+ "host": "acme.com", "slug": "acme-com", "name": "Acme", "tagline": "Acme | Trail shoes for city feet", "descriptor": "Trail shoes for city feet",
+ "category": "Footwear", "subcategory": "Trail sneakers", "currency": "USD", "platform": "shopify",
+ "identity": { "colors": ["#1f3d2b", "#f4efe6"], "fonts": { "heading": "Inter", "body": "Lora" } },
+ "catalog": { "count": 3, "order": "the \"Bestsellers\" collection", "hero": ["trail-runner-moss"],
+  "products": [
+   { "title": "Trail Runner Moss", "type": "Shoes", "price": 120, "mrp": null, "currency": "USD" },
+   { "title": "City Slip-on", "type": "Shoes", "price": 80, "mrp": 100, "currency": "USD" },
+   { "title": "Wool Socks", "type": "Socks", "price": 40, "mrp": null, "currency": "USD" } ] },
+ "reviews": { "total": 412, "app": "judge.me", "platforms": [{}], "quotes": [ { "text": "Comfy from day one", "rating": 5, "product": "Trail Runner Moss", "src": "Judge.me" } ] },
+ "socials": { "instagram": { "handle": "acme", "posts": [
+   { "caption": "Muddy Sunday, clean Monday.", "likes": 900, "comments": 12, "at": "2026-09-28", "kind": "reel", "img": "/b/acme-com/a/ig-1.jpg" },
+   { "caption": "New moss colourway", "likes": 300, "comments": 4, "at": "2026-09-20", "kind": "carousel" } ] } },
+ "ads": { "at": "2026-10-01", "own": { "page": "acme", "live": 3, "items": [
+   { "id": "1", "hook": "$120 | Trail Runner Moss", "body": "Built for mud, made for Mondays.", "cta": "Shop now", "format": "video", "days": 30, "poster": "/b/acme-com/a/ad-1.jpg" },
+   { "id": "2", "hook": "From $80. Slip on and go.", "body": "City Slip-on.", "cta": "Shop now", "format": "image", "days": 4 },
+   { "id": "3", "hook": "Your weekend shoe", "body": "Trail Runner, on feet.", "cta": "Learn more", "format": "video", "days": 12 } ] } },
+ "site": { "tech": { "klaviyo": true, "metaPixel": true, "ga4": false, "shopify": true, "chat": "email", "checkoutApp": null } },
+ "about": "Acme makes trail shoes for people who walk to work.",
+ "meta": { "readAt": "2026-10-01T10:00:00.000Z" }
+}

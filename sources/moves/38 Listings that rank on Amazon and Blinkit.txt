@@ -1,0 +1,783 @@
+      Brew                                     PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+MARKETPLACE AND QUICK-COMMERCE LISTING OPTIMISATION · MOVE 38 OF 50
+
+
+
+LISTINGS
+THAT RANK
+ON AMAZON
+AND BLINKIT
+  A REBUILT LISTING SYSTEM FOR ARATA'S HERO SKUS ON
+  AMAZON, NYKAA, FLIPKART, BLINKIT, ZEPTO AND
+  INSTAMART, SO THE 68% OF REVENUE THAT COMES
+  FROM RENTED SHELVES STOPS LEAKING AT THE SEARCH
+  TILE.
+
+
+
+
+68%
+OF REVENUE ON RENTED SHELVES
+
+
+
+
+BREW × ARATA                    OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                  V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                                 WHAT THIS GIVES ARATA
+                                                                 A rebuilt listing system for Arata's hero SKUs on
+                                                                 Amazon, Nykaa, Flipkart, Blinkit, Zepto and
+                                                                 Instamart, so the 68% of revenue that comes from
+
+
+         68%
+                                                                 rented shelves stops leaking at the search tile.
+                                                                 LIVE 30 DAYS AFTER WE START
+                                                                 Five hero SKUs carry one canonical name, a claim-
+         OF REVENUE ON RENTED SHELVES
+                                                                 led title, a seven-image stack and keyword-mapped
+                                                                 bullets on every marketplace, MitoActive has its first
+                                                                 50 verified reviews in motion, and a weekly search-
+                                                                 term loop is running.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+Arata has no app, so this discipline translates directly: app store listing optimisation becomes product
+page optimisation on Amazon.in, Nykaa, Flipkart, Blinkit, Zepto and Swiggy Instamart. Same job. A
+shopper types a problem into a search bar, sees a grid of tiles, taps one, reads for six seconds, and
+buys or leaves. The title, the first image, the rating and the price do the selling before the page even
+loads.
+This is where most of Arata's money already lives. Marketplaces were 38% of FY25 revenue and
+quick commerce was 30%. That is 68% of ₹61.1 Cr, roughly ₹41 Cr, earned on shelves Arata does not
+own and cannot redesign. The only lever Arata controls on those shelves is the listing itself.
+Today the listings do not carry the brand's strongest asset. Arata's edge is a number on every bottle:
+7.4X, 28,200, 95%, 86%, 87%. On arata.in those numbers sit in the headline. On marketplaces the
+naming is still inconsistent across channels (onion versus biotin, serum versus tonic). A legacy listing
+we found on Purplle still calls the hero shampoo "Arata Natural Regenerating Anti-Hairfall Super Onion
+Shampoo with Apple Cider Vinegar and Argan Oil". That is the 2021 brand talking, with "natural" and
+"onion" doing the work that "7.4X hair fall reduction" should be doing. Nykaa's best-reviewed Arata
+SKU is the legacy Super Shampoo (4.2★, 2,435 ratings) at ₹899, which the rebrand is moving away
+from.
+The cost is twofold. First, search. On Amazon and quick commerce, the title is the strongest ranking
+signal, and a title built around "onion" ranks for onion-shampoo searches where Mamaearth and WOW
+own the shelf at ₹250 to ₹350. It does not rank for "hair fall shampoo", which is the brief's own
+customer language. Second, conversion. A shopper comparing Arata at ₹359 against Pilgrim and
+Mamaearth sees "natural" on all three tiles and picks on price. A shopper who sees "7.4X hair fall
+reduction" on one tile has a reason to pay more.
+Then there is MitoActive. A ₹1,499 serum launched in August 2026 with zero reviews is invisible on
+marketplace search and unconvincing on the page. On a 30 ml SKU priced at three times the
+category, the review count is the listing. The opportunity is to use the review and search machinery of
+
+
+BREW DEPLOYMENT TEAM × ARATA · LISTINGS THAT RANK ON AMAZON AND BLINKIT                                                 1
+each platform deliberately, in the first 90 days, instead of waiting for reviews to arrive.
+
+
+
+WHAT WE FOUND
+THE MATURITY TIER SETS THE STANDARD WE SCORE AGAINST
+On its own site Arata is an established brand with 2,248 reviews and 650K monthly visits. On a
+marketplace search page it is a challenger. Shoppers type "hair fall shampoo", not "arata shampoo".
+Pilgrim (₹200 Cr+) and Mamaearth own the generic shelf. That means every character in the title,
+every image, and every review count against textbook standards. No credit for deliberate minimalism.
+ TIER             WHO ON THE HAIR SHELF                         WHAT IT MEANS FOR THE LISTING
+
+ Dominant         Head & Shoulders, Dove                        Brand name is the keyword. Shoppers search "head and shoulders".
+ Established Mamaearth, Pilgrim, Minimalist,                    Brand-first titles work, generic keyword still needed
+             Traya
+ Challenger       Arata, ThriveCo, Bare Anatomy                 Generic keyword first, claim second, brand third. Every field earns its
+                                                                place.
+
+
+HOW THE SIX LISTING DIMENSIONS TRANSLATE
+ APP STORE
+ DIMENSION                WEIGHT MARKETPLACE EQUIVALENT                                     QUICK-COMMERCE EQUIVALENT
+
+ Title and subtitle       20%          Amazon title (200 chars, first ~80 shown on          Tile name (first ~40 chars visible;
+                                       mobile), Nykaa product name                          assumption), weight line
+ Description              15%          5 bullets, product description, A+ content,          2 to 4 line description, "key features" field
+                                       backend search terms
+ Visual assets            25%          7 images plus video, A+ modules                      Tile image, 3 to 5 swipe images
+ Ratings and              20%          Star rating, review count, Q&A, seller               Star rating and count where surfaced
+ reviews                               responses                                            (Zepto, Blinkit)
+ Metadata and             10%          Browse node, attributes, variations, in-stock        Category placement, dark-store
+ freshness                             rate, Buy Box                                        availability by pin code, pack variants
+ Conversion               10%          Price, deal badge, Prime, coupon, bestseller         Price, strike-through, delivery ETA,
+ signals                               badge                                                "routine" bundle
+
+
+DESK AUDIT SCORE CARD
+These scores are our desk estimate from the brief, public listings and review data. We confirm them in
+week 1 against Seller Central, Nykaa brand dashboard and quick-commerce partner reports.
+Listing 1: Anti-Hair Fall Intensive Shampoo 200 ml on Amazon.in and Nykaa
+ DIMENSION                  SCORE       KEY ISSUE
+
+ Title and subtitle         4/10        Legacy "onion / natural / super" naming on at least one channel; 7.4X claim absent from
+                                        title; keyword "hair fall shampoo" not leading
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LISTINGS THAT RANK ON AMAZON AND BLINKIT                                                                   2
+ DIMENSION                  SCORE       KEY ISSUE
+
+ Description                5/10        Bullets exist but do not carry the study, the Indian-water angle or the 84-day routine; no
+                                        A+ claim substantiation
+ Visual assets              5/10        Pack shot leads; no number tile, no before/after, no routine image, no video (to verify)
+ Ratings and                7/10        4.2★ on 2,435 Nykaa ratings is healthy, but on the legacy SKU; leak and seal complaints
+ reviews                                visible and unanswered
+ Metadata and               4/10        Three names for the same product across channels; legacy and 3.0 SKUs compete with
+ freshness                              each other in search
+ Conversion signals         6/10        ₹359 sits well against Pilgrim ₹595 and Minimalist ₹699, but the price advantage is
+                                        invisible without a claim to justify the compare
+ Weighted                   52/100 Grade C: big gaps, each fix has visible effect
+
+
+Working: (4×0.20)+(5×0.15)+(5×0.25)+(7×0.20)+(4×0.10)+(6×0.10) = 0.8+0.75+1.25+1.4+0.4+0.6 =
+5.2 → 52.
+Listing 2: MitoActive Mitochondrial Hair Growth Serum 30 ml, all channels
+ DIMENSION                    SCORE       KEY ISSUE
+
+ Title and subtitle           5/10        "Mitochondrial" means nothing to a searcher; title needs "hair growth serum" and
+                                          "87%" before the science word
+ Description                  6/10        Y100 story is strong; cost-per-day (₹50) and "not minoxidil" positioning missing
+ Visual assets                4/10        No explainer image for the mechanism; no comparison tile against the ₹571 Intensive
+                                          Serum
+ Ratings and reviews          0/10        Zero reviews, two months after launch
+ Metadata and                 5/10        Launched Aug 2026 so fresh, but no variation link to the Intensive Serum or combos
+ freshness
+ Conversion signals           4/10        ₹1,499 with no review count, no badge, no combo on the tile
+ Weighted                     39/100 Grade D: reviews are the whole problem
+
+
+Listing 3: Hair Growth Intensive Serum 30 ml on Blinkit, Zepto, Instamart
+ DIMENSION                      SCORE       KEY ISSUE
+
+ Tile name                      5/10        "Intensive" and "Serum" visible; "28,200" not in the first 40 chars (assumption)
+ Description                    5/10        Two-line description does not state the 84-day window or how to apply
+ Visual assets                  5/10        Clean pack shot works on a white grid; no second image with the number; no routine
+                                            image
+ Ratings and reviews            6/10        474 site reviews exist, but quick-commerce surfaces only on-platform ratings
+                                            (assumption: thin)
+ Metadata and                   4/10        Pack of 3 at ₹999 not listed as a routine SKU; availability by dark store unverified
+ freshness
+ Conversion signals             6/10        ₹571 against ₹649 MRP shows a strike-through; no "shampoo + serum" cart
+                                            suggestion
+ Weighted                       51/100 Grade C
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LISTINGS THAT RANK ON AMAZON AND BLINKIT                                                            3
+KEYWORD MAP
+Without Amazon Brand Analytics data we cannot give search volumes. Arata is brand-registered
+(assumption) and can pull the Search Query Performance report in week 1 to validate. The map below
+is built from the brief's customer language, competitor titles and category logic.
+ SEARCH TERM                      WHO TYPES IT               HERO SKU                        PLACE IT IN                      PRIORITY
+
+ hair fall shampoo                Rahul, Ritika              Anti-Hair Fall Intensive        Title, first 3 words             High
+                                                             Shampoo
+ hairfall shampoo (one            Verbatim in reviews        Same                            Backend search terms, bullet     High
+ word)                                                                                       1
+ hair growth serum                Rahul                      Hair Growth Intensive           Title                            High
+                                                             Serum, MitoActive
+ anti dandruff shampoo            Divya                      Anti-Dandruff Shampoo           Title                            High
+ dandruff shampoo for             Divya                      Anti-Dandruff Shampoo +         Bullet 2, A+                     Medium
+ dry hair                                                    Conditioner
+ hair fall control serum          Rahul, Ritika              Intensive Serum                 Bullet 1                         Medium
+ minoxidil alternative            Kavya, Rahul               MitoActive                      Bullet 1, Q&A, A+ comparison     High
+ hair serum for hair              Rahul                      Intensive Serum                 Backend terms                    Medium
+ growth for men
+ post partum hair fall            Ritika                     Intensive Serum, shampoo        Bullet 3, A+                     Medium
+                                                             combo
+ anti grey hair serum             Gaurav                     Anti-Grey Hair Serum            Title                            High
+ hair gel for men strong          Sahil                      Hair Gel                        Title                            High
+ hold
+ hard water hair fall             Rahul (Bangalore,          Shampoo                         Bullet 2, A+                     Medium
+                                  Chennai)
+ rosemary shampoo                 Trend searchers            Shampoo                         Backend terms only; do not       Low
+                                                                                             lead with it
+ onion shampoo                    Legacy buyers              Legacy Super Shampoo            Keep on legacy listing; remove Low
+                                                             only                            from 3.0 titles
+
+
+Rule we apply from the platform side: Amazon indexes each word once across title, bullets and
+backend terms, so we never spend backend bytes on a word already in the title. Quick-commerce
+search is mostly a name match, so the tile name must contain the exact search phrase.
+
+NAMING AUDIT
+ WHERE             CURRENT NAME (OBSERVED OR PER BRIEF)                                 PROBLEM
+
+ arata.in          Anti-Hair Fall Intensive Shampoo                                     Correct, canonical
+ Purplle           Arata Natural Regenerating Anti-Hairfall Super Onion                 2021 identity; "onion" and "natural" pull search
+ (legacy)          Shampoo with Apple Cider Vinegar and Argan Oil for                   toward the ₹250 shelf
+                   Men and Women
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LISTINGS THAT RANK ON AMAZON AND BLINKIT                                                                  4
+ WHERE             CURRENT NAME (OBSERVED OR PER BRIEF)                                PROBLEM
+
+ Nykaa             Arata Super Shampoo (onion/biotin, 300 ml, ₹899 →                   Best-rated Arata listing on Nykaa is the legacy
+                   ₹764)                                                               SKU; 3.0 shampoo has to start reviews from
+                                                                                       zero or inherit
+ Multiple          Serum vs tonic                                                      Two words for one product split search and
+ channels                                                                              reviews
+
+
+Decision: one canonical name per SKU, used verbatim on every channel, with channel-specific
+suffixes only (size, pack count). The legacy Super Shampoo stays listed while stock lasts, with its title
+left alone so its 2,435 ratings keep working, and its page gets a "new formula" cross-link to the 3.0
+shampoo.
+
+COMPETITOR SHELF, HAIR FALL SHAMPOO AND GROWTH SERUM
+ SIGNAL              ARATA                                                  PILGRIM               MINIMALIST           MAMAEARTH
+
+ Serum price         ₹571 (MRP ₹649); MitoActive ₹1,499                     ₹595 to ₹699          ₹699                 Shampoo-led
+ Claim in title      Absent today                                           Redensyl 3% +         18% actives          "Onion",
+                                                                            Anagain 4%                                 "natural"
+ Proof type          Study number (28,200; 7.4X)                            Ingredient            Ingredient           Ingredient story
+                                                                            percentage            percentage
+ Tile story          Pack shot                                              Ingredient callout    Concentration        Ingredient
+                                                                                                  callout              callout
+ Gap Arata           The only tile with a result number instead of
+ can own             a percentage of an ingredient
+
+
+Every competitor tile says what is inside. Nobody's tile says what happened. That is the whole
+positioning move for the listing: results in the title, ingredients in bullet 2.
+
+REVIEW THEMES THAT SHAPE THE LISTING
+From the brief's verbatim review data:
+    Positive: "Arata is amazing cz its affordable and actually works", "Hair fall reduced drastically", "I
+    can see a visible difference in two weeks", "Foams well and cleans my scalp off dirt and excess
+    oil", "without any sticky residue or stiffness".
+    Negative: "the seal was broken", "the shampoo bottle was leaking", "it doesn't have the box", "a bit
+    expensive in comparison to other competitive haircare lines".
+Three listing consequences. One, "visible difference in two weeks" and "two to three months" need to
+be in the bullets and images as the expected timeline, so a week-one buyer does not leave a 2★
+review. Two, leak and seal complaints need a public seller response template and a packaging image
+showing the seal, because an unanswered leak review costs more than the refund. Three, the price
+objection gets answered on the page with the compare: ₹359 against ₹595 to ₹699 for the same
+category.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LISTINGS THAT RANK ON AMAZON AND BLINKIT                                                                 5
+QUICK-COMMERCE TILE ANATOMY
+                                                                                                  DIAGRAM
+      BLINKIT / ZEPTO SEARCH: "hair fall shampoo"
+      +--------------------+ +--------------------+ +--------------------+
+      |   [ pack image ]   | |    [ pack image ]   | |    [ pack image ]    |
+      |                    | |                     | |                      |
+      | Arata Anti-Hair    | | Mamaearth Onion     | | Pilgrim Redensyl     |
+      | Fall Shampoo 7.4X..| | Hair Fall Shampoo..| | Hair Growth Sham.. |
+      | 200 ml             | | 250 ml              | | 200 ml               |
+      | ₹359 ₹399    10%   | | ₹259 ₹349     26%   | | ₹395 ₹425      7%    |
+      |      [ ADD ]       | |       [ ADD ]       | |       [ ADD ]        |
+      +--------------------+ +--------------------+ +--------------------+
+        ^ image     ^ first 2 lines of name     ^ weight     ^ price + strike
+        Everything the shopper sees before deciding. 2 seconds. No bullets.
+
+
+
+
+On quick commerce there is no A+ content and almost no description reading. The image and the first
+two lines of the name are the listing. That is why the number has to be inside the first 40 characters
+and on the tile image itself.
+
+
+
+THE PLAN
+WHERE EACH LEVER ACTS IN THE FUNNEL
+                                                                                                  DIAGRAM
+       SEARCH RESULTS                     PRODUCT PAGE                      CART / REPEAT
+       ---------------                    --------------                    --------------
+       Title keywords ----->              Image stack (7)         ----->    Pack-of-3 variation
+       First image     ----->             Bullets (5)             ----->    Routine bundle
+       Rating + count ----->              A+ claim proof          ----->    Subscribe (Amazon)
+       Price + badge   ----->             Reviews + Q&A           ----->    QC reorder
+       In-stock (QC)                      Seller responses
+
+       Measured as:        impressions → click rate → unit session % → repeat
+
+
+
+
+PHASE 1 (WEEK 1 TO 2): ONE NAME, ONE TITLE FORMULA, EVERY CHANNEL
+What: a canonical name register for 12 live SKUs and a title formula per platform. Legacy SKUs keep
+their names. All 3.0 SKUs get rewritten titles.
+Title formula, Amazon.in and Flipkart:
+                                                                                                  DIAGRAM
+    [Brand] [Search phrase] | [Result number] | [Key actives] | [Hygiene claims] | [Size]
+    Arata   Anti-Hair Fall    7.4X Hair Fall    Rosemary &      Sulphate Free,    200 ml
+            Shampoo           Reduction         Caffeine        Derm Tested
+
+
+
+
+Title formula, quick commerce (first 40 characters do the work):
+                                                                                                  DIAGRAM
+    [Brand] [Search phrase] [Number] ([Size])
+    Arata Hair Fall Shampoo 7.4X Less Fall (200 ml)
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LISTINGS THAT RANK ON AMAZON AND BLINKIT                                   6
+Why: title is the strongest ranking signal on Amazon and the near-only one on quick commerce.
+Putting the search phrase first and the result number second gives Arata the one thing no competitor
+tile has.
+Expected effect: ranking for "hair fall shampoo" and "hair growth serum" instead of "onion shampoo";
+a visible reason to pay ₹359 over ₹259 on the tile.
+
+PHASE 2 (WEEK 2 TO 3): IMAGE STACKS THAT SELL IN SIX SECONDS
+What: a seven-image stack per hero SKU for Amazon and Nykaa, a five-image stack for quick
+commerce, built from one template so every SKU looks like one brand.
+Image sequence (Amazon):
+                                                                                                   DIAGRAM
+      1   Pack shot, white background, size and claim badge on pack (platform rule: pack only)
+      2   THE NUMBER: "7.4X hair fall reduction" with "tensile strength study, 84 days" footnote
+      3   WHO IT IS FOR: hard water, humidity, heat; "made for Indian hair and scalp"
+      4   WHAT IS INSIDE: Hairdian AP, rosemary, caffeine, each with one line of why
+      5   THE ROUTINE: shampoo + serum + conditioner, 84-day timeline bar
+      6   PROOF: review count, 4.2★, Loox screenshots, "1.5M+ customers served"
+      7   HYGIENE + SEAL: sulphate free, vegan, derm tested, tamper seal shown
+
+
+
+
+The first three images get 90% of attention; the number goes on image 2 so it shows in the thumbnail
+strip.
+Why: well-captioned image stacks lift conversion 20 to 35% in listing tests. Arata's pack shot alone
+cannot say 7.4X.
+Expected effect: unit session percentage up on the hero shampoo and serum; fewer "is this natural?"
+and "does it work?" questions.
+
+PHASE 3 (WEEK 2 TO 4): BULLETS, A+ AND BACKEND TERMS AS ONE KEYWORD SYSTEM
+What: five bullets per SKU, each opening with the keyword it targets, each under 200 characters so it
+reads on mobile. One A+ page template with four modules: the number and its study, the Indian-hair
+angle, the routine, the compare table (Intensive Serum vs MitoActive vs minoxidil). Backend search
+terms filled to the 250-byte limit with words not already in the title.
+Why: Amazon indexes bullets and backend terms. A+ content answers the price objection with the
+compare table and lifts conversion on considered purchases.
+Expected effect: ranking on long-tail terms like "post partum hair fall" and "minoxidil alternative" that
+competitors do not target.
+
+PHASE 4 (WEEK 1 TO 8): THE MITOACTIVE REVIEW ENGINE
+What: get MitoActive from zero to 50 verified reviews in 60 days and to 150 in 90, using only platform-
+compliant routes.
+1. Amazon Vine enrolment (where available to brand-registered sellers in India) for up to 30 units.
+2. Amazon "Request a Review" button on every MitoActive order, pressed on day 14 (not day 3), when
+   the first visible change shows.
+
+
+BREW DEPLOYMENT TEAM × ARATA · LISTINGS THAT RANK ON AMAZON AND BLINKIT                                    7
+3. D2C customers who bought MitoActive on arata.in get a day-21 WhatsApp asking for an honest
+   review on the platform they prefer; no incentive, no filtering.
+4. Seed ten Q&A entries with the questions sales and support hear most, answered by the brand
+   account.
+5. Reply to every review under 4★ within 48 hours with the template in Worked examples.
+Why: a ₹1,499 SKU with zero reviews does not convert, and does not rank. Review velocity is a
+ranking input.
+Expected effect: MitoActive reaches 4.3★ plus on 50 reviews by day 60, which is the threshold where
+the listing starts converting at category rate.
+
+PHASE 5 (WEEK 3 TO 6): QUICK-COMMERCE ROUTINE SKUS AND AVAILABILITY
+What: list the Pack of 3 serum (₹999) and the Anti-Hair Fall S+C combo (₹638) as quick-commerce
+SKUs under names that read as routines ("Arata 84-Day Hair Fall Routine"). Audit dark-store
+availability for the top 12 pin codes in Bangalore, Mumbai, Delhi, Hyderabad, Pune and Chennai
+weekly.
+Why: quick-commerce ranking depends on in-stock rate at the dark store serving the pin code, and
+the ₹999 pack lifts AOV from a ₹571 single. 30% of revenue comes from this channel; out-of-stock in a
+Koramangala dark store is a lost sale and a rank hit.
+Expected effect: higher AOV on quick commerce and fewer stockout days on hero SKUs.
+
+PHASE 6 (ONGOING FROM WEEK 4): THE WEEKLY SEARCH-TERM LOOP
+What: every Monday, pull the Sponsored Products search-term report and the Search Query
+Performance report. Promote any term with purchases and no title presence into bullets; demote any
+backend term with zero impressions; flag any new competitor title claim.
+Why: listings decay. Competitor titles change, Amazon's index changes, seasonal terms move
+(dandruff in winter and monsoon, styling before wedding season). Top listings update visuals two to
+four times a year; the words get touched monthly.
+Expected effect: ranking holds instead of drifting, and copy follows what shoppers actually type.
+
+PRIORITY ORDER
+ ORDER       ACTION                                                         IMPACT   EFFORT
+
+ 1           Rewrite 12 titles with the formula, push to all channels       High     Days
+ 2           MitoActive review engine live                                  High     Days to start, 60 days to land
+ 3           Hero shampoo and serum image stacks                            High     2 weeks
+ 4           Bullets, backend terms, A+ for five hero SKUs                  High     2 weeks
+ 5           Quick-commerce routine SKUs + pin-code audit                   Medium   2 weeks
+ 6           Seller response templates and 48-hour SLA                      Medium   1 day
+ 7           Weekly search-term loop                                        Medium   Ongoing
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LISTINGS THAT RANK ON AMAZON AND BLINKIT                                             8
+ ORDER       ACTION                                                         IMPACT   EFFORT
+
+ 8           Remaining 20 SKUs (styling, body, face) on the same template   Medium   Month 2 to 3
+
+
+
+
+WORKED EXAMPLES
+EXAMPLE 1: AMAZON.IN LISTING FOR ANTI-HAIR FALL INTENSIVE SHAMPOO 200 ML
+Title (140 characters):
+Arata Anti-Hair Fall Shampoo | 7.4X Hair Fall Reduction | Rosemary, Caffeine & Hairdian AP | Sulphate
+Free, Dermatologically Tested | 200 ml
+Mobile search shows roughly the first 80 characters: "Arata Anti-Hair Fall Shampoo | 7.4X Hair Fall
+Reduction | Rosemary, Caffeine & H". The search phrase, the brand and the number all survive the cut.
+Bullets:
+1. HAIR FALL SHAMPOO WITH A NUMBER: 7.4X reduction in hair fall measured in a tensile strength
+   study on Indian hair. Most hairfall shampoos tell you what is inside. This one tells you what
+   happened.
+2. MADE FOR INDIAN WATER AND WEATHER: formulated and tested in our Delhi lab for hard water,
+   humidity, heat and pollution. Cleans scalp build-up without stripping, so hair feels soft after one
+   wash.
+3. WHAT IS INSIDE AND WHY: Hairdian AP strengthens the root, rosemary and caffeine support the
+   follicle. No sulphates, no parabens. Vegan and cruelty-free.
+4. THE 84-DAY ROUTINE: wash 3 times a week with this shampoo, apply Arata Hair Growth Intensive
+   Serum nightly, condition with Anti-Breakage Conditioner. Most customers report a visible difference
+   in 2 to 3 weeks and the full result by 84 days.
+5. FOR MEN AND WOMEN, 22 TO 40: post-partum shedding, stress hair fall, new-city hard water,
+   early thinning. Not a medicine, not minoxidil, no doctor needed. If the seal arrives broken, message
+   us for a replacement, no questions.
+Backend search terms (words not already in the title, under 250 bytes):
+hairfall control thinning men women post partum shedding hard water scalp strengthening paraben
+free vegan growth routine 84 days minoxidil alternative onion biotin
+A+ content outline (four modules):
+     Module 1, hero banner: "Good science for great hair." Pack on a white lab bench, 7.4X large, study
+     footnote small.
+     Module 2, three-column: Hard water → Humidity → Pollution, each with one line on what the
+     formula does for it.
+     Module 3, routine timeline: Week 1 (less fall in the drain), Week 3 (visible difference, per reviews),
+     Day 84 (study window). Cross-sell tiles for Intensive Serum ₹571 and the Shampoo + Serum combo
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LISTINGS THAT RANK ON AMAZON AND BLINKIT                                 9
+    ₹838.
+    Module 4, compare table: Arata Anti-Hair Fall Shampoo ₹359 | Pilgrim ₹595 serum route |
+    Minimalist ₹699 | Traya ₹1,400 to ₹1,800 per month. Rows: result number shown, Indian-hair tested,
+    needs a doctor, monthly cost.
+Image captions (seven images):
+1. Pack, white background (no overlay text, platform rule)
+2. "7.4X less hair fall. Measured, not promised."
+3. "Built for Indian hard water, humidity and heat."
+4. "Hairdian AP. Rosemary. Caffeine. Each one earns its place."
+5. "The 84-day routine: wash, treat, condition."
+6. "2,000+ reviews. 4.2★. 1.5M+ customers a year."
+7. "Sealed in Delhi. Vegan, sulphate free, derm tested."
+
+EXAMPLE 2: BLINKIT, ZEPTO AND INSTAMART LISTING FOR HAIR GROWTH INTENSIVE SERUM 30 ML
+Tile name (47 characters; number inside the first 40):
+Arata Hair Growth Serum 28,200 New Hair (30 ml)
+Alternate for platforms that cap shorter (39 characters):
+Arata Hair Growth Serum 84 Days (30 ml)
+Two-line description:
+Up to 28,200 new hair in 84 days. Apply 1 ml on the scalp every night, massage for 30 seconds, do
+not rinse. Pairs with Arata Anti-Hair Fall Shampoo for the full routine.
+Key features field (platforms with bullets):
+    Up to 28,200 new hair in 84 days (consumer study)
+    Nightly leave-on, no rinse, no stickiness
+    Not minoxidil; no prescription needed
+    Vegan, dermatologically tested, made for Indian scalp
+Five-image stack (1:1, white background, mobile-first):
+1. Pack shot with "28,200" badge sitting on the bottle label (if platform allows the badge on the pack;
+   otherwise clean pack)
+2. "Up to 28,200 new hair in 84 days." Big number, 30 ml bottle beside it for scale
+3. "1 ml every night. Massage 30 seconds. Sleep." Three-step strip
+4. "Part of the Arata hair fall routine": serum + shampoo + conditioner on one tile with ₹838 combo
+   price
+5. "474 reviews on arata.in. 'Hair fall reduced drastically.'"
+Routine SKU to list alongside (name, 47 characters):
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LISTINGS THAT RANK ON AMAZON AND BLINKIT                             10
+Arata 84-Day Hair Fall Routine, Serum Pack of 3
+Price ₹999 against ₹1,947 MRP, 49% strike-through. Tile image: three bottles in a row with "84 days =
+3 bottles" overlay on image 2. This is the AOV move on quick commerce: the shopper who was about
+to buy one ₹571 bottle sees that three months costs ₹999.
+
+EXAMPLE 3: MITOACTIVE ON AMAZON.IN, LISTING PLUS THE FIRST 50 REVIEWS
+Title (146 characters):
+Arata MitoActive Hair Growth Serum | 87% Saw New Growth in 84 Days | Y100 Mitochondrial Active,
+India's First | Not Minoxidil, Derm Tested | 30 ml
+The first 80 characters on mobile: "Arata MitoActive Hair Growth Serum | 87% Saw New Growth in 84
+Days | Y100 Mitoch". Search phrase, number, and the new word "Y100" all land.
+Bullets:
+1. THE NEXT TIER OF HAIR GROWTH SERUM: 87% of participants saw increased growth in 84 days,
+   with up to 95% reduction in hair fall. Built on Y100, a mitochondrial active with 6+ years of research
+   and 5+ clinical studies, exclusive to Arata in India.
+2. A DIFFERENT MECHANISM, NOT ANOTHER REDENSYL: Y100 works on the mitochondria in the
+   follicle, improving the ratio of growing to resting hair. Studied on Indian participants: less shedding,
+   more density.
+3. ₹50 A DAY, NO DOCTOR: one 30 ml bottle is a month at twice-daily use. Compare with ₹1,400 to
+   ₹1,800 a month for diagnosis kits with supplements and minoxidil. No dependency: a 3-month
+   course, then maintenance.
+4. HOW TO USE: 0.5 ml morning and night on dry scalp, massage in, do not rinse. Use with Arata
+   Anti-Hair Fall Shampoo (₹359) for the routine. Visible change typically from week 3; study window
+   84 days.
+5. WHO IT IS FOR: men and women with thinning, crown or hairline loss, post-illness or stress
+   shedding, who want something a dermatologist would respect without a prescription.
+   Dermatologically tested, vegan, cruelty-free.
+Backend search terms:
+hair fall serum thinning crown hairline regrowth men women minoxidil alternative rogaine mintop
+redensyl upgrade clinical longevity scalp treatment density shedding
+Seven-image stack:
+1. Pack shot, white, lab-blue cap
+2. "87% saw new growth in 84 days." Study footnote: n, duration, Indian participants
+3. "Mitochondria. The power supply of the follicle." Simple line diagram: follicle → mitochondria →
+   anagen phase
+4. "₹50 a day." Bottle beside a coffee cup; compare line: diagnosis kits ₹1,400 to ₹1,800 a month
+5. "Intensive Serum ₹571 → MitoActive ₹1,499": side-by-side, when to choose which
+6. "Not minoxidil. No shedding phase, no dependency." Three ticks
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LISTINGS THAT RANK ON AMAZON AND BLINKIT                                 11
+7. "Routine: MitoActive + Anti-Hair Fall Shampoo, ₹1,803 combo"
+Ten seeded Q&A entries (brand account answers):
+ QUESTION                              ANSWER
+
+ Is this the same as                   No. Minoxidil widens blood vessels and creates dependency. Y100 works on follicle
+ minoxidil?                            mitochondria. No shedding phase reported in the studies.
+ Is 30 ml enough?                      Yes, for one month at 0.5 ml twice a day. The study window is 84 days, so three bottles is
+                                       a course.
+ How is this different from            The Intensive Serum uses growth actives. MitoActive uses Y100, a different mechanism,
+ the ₹571 Intensive Serum?             and is the next tier. Start with Intensive if budget matters; move up if you want the
+                                       strongest option.
+ When will I see results?              Reviews on our other serum report change in 2 to 3 weeks. The study measured at 84
+                                       days.
+ Can women use it?                     Yes. The Indian participant study included men and women.
+ Does it leave hair greasy?            No. Leave-on, absorbs in under a minute, no residue.
+ Do I need a doctor?                   No. Dermatologically tested, over the counter. Norwood stage 5 and above should see a
+                                       dermatologist.
+ Does it work on grey hair?            No. For greys use Arata Anti-Grey Hair Serum ₹449.
+ What is Y100?                         A mitochondrial active from Yuva Biosciences, licensed exclusively to Arata in India, with
+                                       6+ years of research behind it.
+ What if the seal is broken?           Message us on the order page. Replacement shipped, no questions.
+
+
+Review engine, 60-day sequence:
+                                                                                                                          DIAGRAM
+      Day 0       Order ships (Amazon, Nykaa, arata.in)
+      Day 14      Amazon "Request a Review" pressed (first visible change window)
+      Day 21      arata.in buyers: WhatsApp "How is week 3 going?" with a link
+                  to leave an honest review on the platform they bought from
+      Day 30      Vine units (up to 30) have had 4 weeks of use; reviews land
+      Day 45      Reorder nudge; second review ask only to those who did not act
+      Day 60      Target: 50 verified reviews, 4.3★ or above
+      Day 90      Target: 150 reviews; MitoActive ranks top 20 for "hair growth serum"
+
+
+
+
+EXAMPLE 4: SELLER RESPONSE TEMPLATE FOR THE LEAK AND SEAL THEME
+Posted under any review mentioning leak, seal or missing box, within 48 hours, from the Arata brand
+account:
+
+   THANK YOU FOR TELLING US, AND SORRY. A BROKEN SEAL OR A LEAKING
+   BOTTLE IS ON US, NOT YOU. WE HAVE SENT YOU A REPLACEMENT FROM
+   OUR DELHI WAREHOUSE AT NO COST; PLEASE CHECK YOUR MESSAGES
+   FOR THE TRACKING. WE CHANGED THE OUTER CARTON ON THIS SKU IN
+   [MONTH] TO STOP THIS HAPPENING IN TRANSIT. IF THE REPLACEMENT IS
+   NOT RIGHT EITHER, REPLY HERE AND A HUMAN WILL FIX IT THE SAME
+   DAY. ARATA TEAM.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LISTINGS THAT RANK ON AMAZON AND BLINKIT                                                           12
+Why this exact shape: it names the fault, fixes it publicly, gives the next shopper a reason to trust the
+packaging, and the "[month]" line should be real, tied to the operations fix the brief says is underway.
+Do not post it until the carton change is live.
+
+EXAMPLE 5: NYKAA HANDLING FOR THE LEGACY SUPER SHAMPOO
+The 4.2★ on 2,435 ratings is Arata's biggest review asset on Nykaa. We do not touch the title,
+because a rename resets search history. We add one line at the top of the description and one image
+at position 2:
+Description line: "Looking for our new Anti-Hair Fall Intensive Shampoo with 7.4X hair fall reduction?
+Find it under Arata Anti-Hair Fall Shampoo. This listing is the original Super Shampoo, 300 ml."
+Image 2 caption: "New from Arata: Anti-Hair Fall Shampoo, 7.4X less hair fall, ₹359."
+That keeps the legacy listing earning while it routes the 3.0 buyer to the right page, and it keeps the
+two SKUs from fighting over the same keyword with split reviews.
+
+
+
+30-DAY DEPLOYMENT
+ WEEK BREW SHIPS                                                 ARATA PROVIDES                LIVE BY END OF WEEK
+
+ 1         Canonical name register (12 SKUs); title                Seller Central and brand      12 rewritten titles submitted on
+           formula per channel; Seller Central, Nykaa,             dashboard access; study       Amazon and Flipkart; MitoActive
+           Flipkart and quick-commerce listing export;             summaries for every number    Vine enrolment requested;
+           baseline report (rank, CTR, unit session %,             claim; current pack artwork   "Request a Review" cadence set to
+           review counts)                                          files; carton change date     day 14
+ 2         Hero shampoo and Intensive Serum image                  Pack shots on white; approval New titles live; MitoActive full
+           stacks (7 Amazon, 5 QC); MitoActive                     on claim footnotes; brand     listing live; Q&A seeded; response
+           bullets, backend terms and 10 Q&A entries;              account logins for Q&A        SLA running (Brew marketplace
+           seller response templates with 48-hour                                                lead responds, Arata brand
+           SLA                                                                                   manager approves escalations)
+ 3         MitoActive image stack; A+ page template                Quick-commerce partner        Image stacks live on Amazon and
+           and first two A+ pages (shampoo,                        contacts; combo SKU codes     Nykaa; A+ live on two SKUs;
+           MitoActive); quick-commerce routine SKUs                and stock allocation; Loox    routine SKUs submitted to Blinkit,
+           (Pack of 3, S+C combo) with names and                   review export for proof       Zepto, Instamart
+           tiles; pin-code availability audit for 6 cities         images
+ 4         Remaining three hero SKUs (Anti-Dandruff                Sign-off on legacy listing    Five hero SKUs fully rebuilt on
+           Shampoo, Anti-Grey Serum, Hair Gel) on                  changes; WhatsApp sender      every channel; MitoActive first
+           the same template; Nykaa legacy cross-                  approval                      reviews landing; weekly loop on
+           link; first weekly search-term loop run;                                              the calendar; 30-day read-out
+           day-21 WhatsApp review ask live on                                                    against baseline
+           arata.in orders
+
+
+Owners: Brew marketplace lead (titles, bullets, backend, loop), Brew creative lead (image
+stacks, A+), Brew lifecycle lead (review asks, response SLA), Arata brand manager (claims
+approval, access), Arata operations lead (stock, carton fix, quick-commerce allocation).
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LISTINGS THAT RANK ON AMAZON AND BLINKIT                                                             13
+HOW WE MEASURE
+ METRIC                                       BASELINE                      90-DAY TARGET                SOURCE
+
+ Organic rank, Amazon.in, "hair               To be instrumented in         Top 10                       Search Query
+ fall shampoo" (hero shampoo)                 week 1                                                     Performance, manual
+                                                                                                         weekly check
+ Organic rank, Amazon.in, "hair               To be instrumented            Top 10 (Intensive), top 20   Same
+ growth serum" (Intensive Serum,                                            (MitoActive)
+ MitoActive)
+ Search click-through rate, hero              To be instrumented            +25% on rebuilt titles vs    Search Query
+ SKUs                                                                       baseline                     Performance
+ Unit session percentage, hero                To be instrumented            +20% vs baseline             Seller Central Business
+ shampoo and serum                                                                                       Reports
+ MitoActive reviews                           0                             150 at 4.3★ or above         Platform listing
+ Hero shampoo rating (3.0 SKU)                To be instrumented       4.3★ or above with 500+           Platform listing
+                                              (Nykaa legacy SKU 4.2★ / ratings across Amazon and
+                                              2,435)                   Nykaa
+ Reviews under 4★ answered                    0% (assumption, none          100%                         Seller Central, Nykaa
+ within 48 hours                              observed)
+ Quick-commerce in-stock rate,                To be instrumented            95%                          Partner dashboards,
+ hero SKUs, top 12 pin codes                                                                             weekly manual check
+ Quick-commerce AOV                           To be instrumented            +15% via routine SKUs        Partner reports
+ Marketplace + quick-commerce                 68% of ₹61.1 Cr FY25          Hold share while D2C         Finance
+ revenue share growth                                                       grows; revenue per listing
+                                                                            +30%
+
+
+Decision rules:
+    If search CTR on a rebuilt title is up 10% or more after 14 days, lock it and move to A/B testing
+    image 2 (Amazon Manage Your Experiments, 7-day minimum per test, one test at a time per SKU).
+    If CTR moves under 2%, treat it as noise and swap the number for the next claim (shampoo: "78%
+    stronger hair" from the conditioner study is not transferable; use "visible difference in 2 to 3
+    weeks" from reviews instead) and retest.
+    If MitoActive reaches 50 reviews by day 60 at 4.3★ or above, extend the review engine to all five
+    hero SKUs and scale Sponsored Products on MitoActive. If it reaches 50 reviews under 4.0★,
+    pause paid, read every review, and fix the product-expectation gap in bullet 4 before spending
+    again.
+    If quick-commerce in-stock drops under 90% in any of the six cities for two consecutive weeks,
+    that becomes an operations escalation to the Arata operations lead, because no listing work
+    recovers a rank lost to stockouts.
+    If a competitor adds a result number to its title, we respond within the week with the study footnote
+    on image 2, because the number plus the source beats the number alone.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LISTINGS THAT RANK ON AMAZON AND BLINKIT                                                          14
+What this programme cannot measure without platform data: exact search volume per term,
+competitor unit sales, Buy Box share history and quick-commerce search rank by pin code. Week 1
+access to Seller Central Brand Analytics, Nykaa brand dashboard and the quick-commerce partner
+portals closes most of these gaps.
+
+
+
+APPENDIX
+LISTING SPEC REFERENCE (VERIFY ON EACH PLATFORM AT LAUNCH)
+                                                                                                        BLINKIT / ZEPTO /
+ FIELD                 AMAZON.IN                                NYKAA               FLIPKART            INSTAMART
+
+ Title                 200 chars max; keep key                  Product name,       Up to ~200 chars,   Short name; first ~40 chars
+                       words in first 80                        brand prefixed      category rules      visible on tile (assumption)
+ Bullets               5, under 200 chars each                  Key features list   Highlights          2 to 5 key features where
+                       recommended                                                                      available
+ Description           Plain text or A+                         Description +       Description         2 to 4 lines
+                                                                how to use
+ Images                Up to 7 plus video; image 1              Multiple, pack      Multiple            1 tile + 3 to 5 swipe; 1:1
+                       pure white background, pack              first
+                       only
+ Backend               250 bytes, no words from title           Tags where          Keywords field      Platform-managed
+ search terms                                                   offered
+ Review tools          Request a Review, Vine (where            Ratings and         Ratings             Ratings surfaced on some
+                       available), Q&A                          reviews                                 platforms
+ Testing               Manage Your Experiments                  None public         None public         None public
+                       (image, title, A+)
+
+
+PRE-PUBLISH CHECKLIST PER SKU
+    Canonical name matches the register exactly
+    Search phrase in the first five words of the title
+    Result number in the title and on image 2
+    Every number has a study footnote on the image where it appears
+    No "chemical-free", "miracle", "cure", "clinical-strength", "best", "#1"
+    Bullet 4 states the expected timeline (2 to 3 weeks visible, 84-day window)
+    Bullet 5 or Q&A carries the seal replacement promise
+    Backend terms contain no word already in the title
+    Routine cross-sell to shampoo or serum present on image 5 and in A+
+    Size and pack count correct for the channel variant
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LISTINGS THAT RANK ON AMAZON AND BLINKIT                                                              15
+SOURCES USED
+Arata brand brief (Brew, 10 Oct 2026); public Arata listings on Purplle, Nykaa and Loox;
+marketplace listing conversion benchmarks (image stack and rating lift ranges); platform listing rules
+for Amazon.in, Nykaa, Flipkart and quick-commerce partners as published at time of writing.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LISTINGS THAT RANK ON AMAZON AND BLINKIT                                16
+MARKETPLACE AND QUICK-COMMERCE LISTING OPTIMISATION
+
+
+DAY 30
+AT ARATA
+    WHAT IS LIVE
+
+    Five hero SKUs carry one canonical name, a claim-led title, a seven-image stack
+    and keyword-mapped bullets on every marketplace, MitoActive has its first 50
+    verified reviews in motion, and a weekly search-term loop is running.
+
+
+
+
+  NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+  BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+  CONFIRM".
+
+
+  EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+  BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                  DEPLOYMENT TEAM
+                                                                               BREW
+

@@ -1,0 +1,823 @@
+      Brew                                      PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+PRODUCT MARKETING · MOVE 01 OF 50
+
+
+
+ARATA
+POSITIONING
+AND
+MESSAGING
+HOUSE
+  ONE POSITIONING STATEMENT, ONE MESSAGING HOUSE
+  AND ONE CLAIMS LEDGER THAT EVERY ARATA PAGE,
+  LISTING, AD AND REPLY IS WRITTEN FROM.
+
+
+
+
+1 doc, 3 pillars
+SOURCE OF TRUTH FOR ALL CHANNELS
+
+
+
+
+BREW × ARATA                     OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                   V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                               WHAT THIS GIVES ARATA
+                                                               One positioning statement, one messaging house
+                                                               and one claims ledger that every Arata page, listing,
+                                                               ad and reply is written from.
+        1 doc, 3 pillars                                       LIVE 30 DAYS AFTER WE START
+        SOURCE OF TRUTH FOR ALL                                Arata has a versioned positioning doc, a locked SKU
+        CHANNELS
+                                                               naming table and a claims ledger, with the
+                                                               MitoActive PDP, the Amazon hair growth listings and
+                                                               the WhatsApp objection scripts rewritten from it.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+In a software company this discipline produces the product marketing context document: the file
+every other marketing task reads before it writes anything. For Arata, the same file is the brand
+positioning and messaging house. Same job. It makes sure the shampoo bottle on Blinkit, the serum
+PDP on arata.in, the Amazon bullets and the WhatsApp reply all say the same thing, in the same
+words, with the same proof.
+Arata is mid-rebrand. The brand started in 2017 as a flaxseed hair gel with a "zero chemicals" identity.
+In 2026 it calls itself the "Hair & Scalp Science Co." and ships MitoActive, a ₹1,499 mitochondrial
+serum licensed from Yuva Biosciences. That is a big move and the right one. The problem is that the
+old brand is still live on the shelves. Nykaa still lists the Super Shampoo with onion and biotin.
+Marketplaces still carry the Advanced Curl Care range from the Taapsee Pannu era. The same serum
+is called a "serum" in one place and a "tonic" in another. Three brand lines ("systems, not symptoms",
+"Good science for great hair", "Zero guesswork") are in circulation at once. A customer who meets
+Arata on Amazon, then on Instagram, then on Zepto, meets three slightly different brands.
+That costs real money. 68% of FY25 revenue came through marketplaces and quick commerce,
+where listing copy is written by whoever is closest to the account manager that week. The 32% on
+arata.in has 2,248 reviews and a clear science story, but the hero of the rebrand, MitoActive, launched
+in August with zero reviews and a price that is 2.6X the next serum, with no written answer to "why is
+this ₹1,499 when the Intensive Serum is ₹571?" Every new ad, listing and PDP is positioned from
+scratch, and the claims drift: "7.4X hair fall reduction" is a tensile-strength number, "78% stronger in 1
+wash" is in-vitro, "28,200 new hairs" is an "up to" figure. Used loosely, those numbers become the
+next "onion shampoo" in the customer's mind. Meanwhile Traya spends ₹138 Cr a year telling India
+that hair fall needs a diagnosis, a kit and a doctor.
+The opportunity is that nobody in the ₹350 to ₹700 band owns "proof on the pack without the
+commitment". Pilgrim and Minimalist sell ingredient percentages. Traya and Man Matters sell diagnosis
+and dependency. Minoxidil sells evidence with side effects. Arata already has the product truth to sit
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA POSITIONING AND MESSAGING HOUSE                                                 1
+alone in the top corner of that map: a number from a study on every hero SKU, a routine instead of a
+kit, and a ₹359 entry price. What is missing is the document that says it once, says it precisely, and
+gets versioned every time the brand learns something.
+This deliverable is that document, refined from the brief into a positioning statement, a messaging
+house, a persona message map, a claims ledger and a naming standard. Every other discipline in this
+showcase writes from it.
+
+
+
+WHAT WE FOUND
+MESSAGES CURRENTLY IN CIRCULATION
+We pulled every brand-level line and claim visible across arata.in, marketplace listings and recent
+campaigns. The pattern: strong raw material, no hierarchy.
+ LINE OR CLAIM                  WHERE IT APPEARS                         WHAT IT DOES WELL          PROBLEM
+
+ "Hair & Scalp Science          Site masthead, rebrand                   Category claim,            Not yet carried onto marketplace
+ Co."                                                                    ownable                    titles or quick commerce
+ "Systems, not                  Brand line                               Explains the routine       Abstract on its own; no SKU tells the
+ symptoms"                                                               logic                      customer which system
+ "Good science for              Brand line                               Warm, simple               Interchangeable with Minimalist or
+ great hair"                                                                                        Pilgrim
+ "Zero guesswork"               Brand line                               Speaks to decision         Contradicted by a hair growth
+                                                                         fatigue                    collection with no routine builder
+ "Zero chemicals",              Legacy packaging, old                    Customers still quote it   Directly conflicts with the science
+ plant-based                    reviews ("free from hard                                            positioning
+                                chemicals")
+ "Up to +28,200 new             Intensive Serum PDP                      The most concrete      Reads as too good without the study
+ hair within 84 days"                                                    number in the category framing beside it
+ "7.4X hair fall                Anti-Hair Fall Shampoo                   Big, memorable             It is a tensile-strength result; said as
+ reduction"                                                                                         "hair fall" it over-promises
+ "87% saw increased             MitoActive                               Consumer-study             Sits on a page with zero reviews and
+ growth in 84 days"                                                      framing, honest            no comparison to the ₹571 serum
+ Onion / biotin /               Nykaa, Amazon legacy SKUs                Still sell                 Pull the brand back to 2022
+ CurlFriend
+
+
+THE POSITIONING MAP
+The customer's real choice set is defined by two things: how much proof is on the pack, and how
+much commitment the product asks for (money per month, doctor calls, supplements, dependency).
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA POSITIONING AND MESSAGING HOUSE                                                                         2
+                                                                                                                           DIAGRAM
+                       HIGH PROOF ON THE PACK
+                                |
+        ARATA (target)          |        Minoxidil 5% (Mintop)
+        number from a study     |        strongest evidence,
+        one bottle, ₹359-1,499 |         dependency + shedding
+        no doctor, 84-day plan |         ₹600-900 + derm visit
+                                |
+        LOW ---------------------------------------- HIGH
+        COMMITMENT              |                     COMMITMENT
+                                |
+        Mass FMCG               |        Traya / Man Matters
+        Dove, H&S, Mamaearth    |        ₹1,400-1,800 per month,
+        no number, ₹150-400     |        5-9 months, doctor calls,
+                                |        supplements, kits
+        Actives D2C             |
+        Pilgrim, Minimalist,    |
+        Bare Anatomy: % of      |
+        actives, no number      |
+                      LOW PROOF ON THE PACK
+
+
+
+
+The top-left quadrant is empty except for Arata. Actives D2C brands sit bottom-left with ingredient
+percentages (Redensyl 3%, 18% actives) that are inputs, not results. Traya sits top-right with real
+protocols and real commitment. Arata is the only brand that can say "a result from a study, in one
+bottle, with no doctor". That sentence is the positioning. Everything else in this document supports it.
+
+WHAT EACH ALTERNATIVE REALLY COSTS THE CUSTOMER
+Positioning only works if it is framed against what the customer would otherwise do. We costed the
+alternatives in the customer's terms.
+                                                                         WHAT THE
+                                                                         CUSTOMER HAS TO
+ ALTERNATIVE                             MONEY PER MONTH                 DO                         WHAT THEY GET FOR PROOF
+
+ Home remedies (onion juice,             ₹0 to ₹200                      Weekly mess, months        None; the customer has usually
+ rosemary water, Sunday                                                  of waiting                 already tried this
+ oiling)
+ Mass shampoo (Dove, Head &              ₹150 to ₹400                    Nothing                    None; "natural" or "global"
+ Shoulders, Indulekha)                                                                              story
+ Actives D2C serum (Pilgrim              ₹600 to ₹1,100 with a           Learn what Redensyl        Ingredient percentages
+ ₹595 to ₹699, Minimalist                shampoo                         and Anagain are
+ ₹699)
+ Arata Hair Growth routine   ₹692 for the duo; ₹333 per                  Wash, apply, repeat        7.4X (tensile), up to 28,200
+ (shampoo ₹359 + serum ₹571; serum when bought as Pack                   for 84 days                new hairs in 84 days
+ Pack of 3 serum at ₹999)    of 3
+ Arata MitoActive                        ₹1,499 (₹50 per day,            Apply twice daily for      87% saw growth in 84 days;
+                                         assumption: one 30 ml bottle    84 days                    up to 95% hair fall reduction;
+                                         per month at twice-daily                                   Y100 with 5+ clinical studies
+                                         use)
+ Traya kit                               ₹1,400 to ₹1,800                Hair test, doctor calls,   Protocol plus money-back
+                                                                         supplements, 5 to 9        after 5 months
+                                                                         months
+ Minoxidil 5%                            ₹600 to ₹900                    Derm visit, lifelong       Strongest clinical evidence
+                                                                         use, initial shedding
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA POSITIONING AND MESSAGING HOUSE                                                               3
+Two things fall out of this table. First, MitoActive is priced at Traya's monthly level but asks for none of
+Traya's commitment. That is the whole MitoActive price argument and it is nowhere on the page today.
+Second, the Intensive Serum Pack of 3 at ₹999 is an 84-day course at ₹333 a month, which is cheaper
+than any actives D2C competitor. It is sold today as a "49% off" discount. It should be sold as the 84-
+day course.
+
+CLAIMS LEDGER AUDIT
+Every hero number was checked for study type and for the gap between what the number measures
+and what the headline implies.
+                                                                              GAP BETWEEN
+                                                         STUDY TYPE (FROM     NUMBER AND
+ CLAIM                             SKU                   THE BRIEF)           HEADLINE                 RISK
+
+ Up to +28,200 new hair            Hair Growth     Consumer / density         Headline drops "up to"   Medium: sounds
+ within 84 days                    Intensive Serum study, "up to"             in ads                   inflated, invites the "too
+                                                                                                       good" objection
+ 7.4X hair fall reduction          Anti-Hair Fall        Tensile strength     Measures breakage        High: a customer
+                                   Shampoo               (Hairdian AP,        resistance, headline     counting hairs on the
+                                                         rosemary-caffeine)   says hair fall           pillow will not see 7.4X
+ 78% stronger hair in 1            Anti-Breakage         In-vitro             Lab result implied as    Medium
+ wash                              Conditioner                                felt result
+ Up to 95% reduction in            Anti-Dandruff         In-vitro             Fungus count vs visible Low if "fungus" is kept
+ dandruff-causing fungus           Shampoo                                    flakes                  in the line
+ in 1 wash
+ Up to 36-hour itch relief         Anti-Dandruff         Not specified        None                     Low
+                                   Serum
+ Up to 86% reduction in            Anti-Grey             Consumer, best       "Best responders" is     Medium
+ greys over 3 months               Serum                 responders           dropped in short copy
+ 87% saw increased                 MitoActive            Y100 consumer        None, if both halves are Low
+ growth in 84 days; up to                                study, Indian        kept
+ 95% hair fall reduction                                 participants
+ 72-hour humidity-                 Hair Gel              Not specified        None                     Low
+ resistant hold
+
+
+The fix is phrasing, not retreat. Each claim gets a long form (with study type and window), a short form
+(for ads and listings) and a banned form. That ledger is in The plan.
+
+THE FOUR FORCES, TWO SEGMENTS
+Push, pull, habit and anxiety, mapped for the two purchases that matter most: the first hair fall routine
+and the upgrade to MitoActive.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA POSITIONING AND MESSAGING HOUSE                                                              4
+                                                                                                                      DIAGRAM
+    FIRST HAIR FALL ROUTINE (Rahul, Ritika)
+
+       PUSH (away from today)                        PULL (toward Arata)
+       mass shampoo did nothing                      a number on the pack
+       onion/biotin was a gimmick                    "made for Indian hair"
+       Traya is ₹1,700/month + calls                 ₹692 duo, on Blinkit tonight
+       minoxidil scares me                           84-day plan, then maintain
+                 \                                       /
+                   \    SWITCH DECISION                /
+                   /                                   \
+                 /                                      \
+       HABIT (keeps them stuck)                    ANXIETY (about switching)
+       Sunday oiling                               "will I waste another ₹600?"
+       whatever is on offer on Blinkit             "will hair fall get worse first?"
+       the family shampoo                          "is 30 ml enough?"
+                                                   "will the bottle leak?"
+
+
+
+
+                                                                                                                      DIAGRAM
+    UPGRADE TO MITOACTIVE (Kavya, and Rahul at month 3)
+
+       PUSH                                           PULL
+       Intensive Serum plateaued                      a new mechanism (mitochondria)
+       derm suggested minoxidil                       5+ studies, Indian participants
+       prescription routine fatigue                   ₹50/day, no doctor, no dependency
+                 \                                        /
+                   \    SWITCH DECISION                 /
+                   /                                    \
+                 /                                       \
+       HABIT                                          ANXIETY
+       "the ₹571 serum works fine"                    "₹1,499 for 30 ml?"
+       reorder on autopilot                           "is this just Redensyl again?"
+                                                      "zero reviews, is it real?"
+
+
+
+
+Each anxiety line maps to a message that must appear on the page: replacement promise (leak), "30
+ml is a one-month supply" (quantity), "Y100 is a different mechanism from Redensyl" (sameness),
+"first 1,000 reviewers" programme (zero reviews, see launch discipline).
+
+MESSAGE-MARKET FIT BY PERSONA
+Scored 0 to 2 on each column. 2 means it exists and is good, 1 means it exists but is weak or
+inconsistent, 0 means missing.
+                                               MESSAGE          PROOF                                OBJECTION         SCORE
+ PERSONA          ENTRY SKU                    EXISTS           ATTACHED          DEDICATED PAGE     ANSWERED          /8
+
+ Hair-fall        Anti-Hair Fall       2                        1 (7.4X needs     1 (collection mixes 1                5
+ Rahul            Shampoo ₹359 +                                reframing)        claims)
+                  Intensive Serum ₹571
+ Dandruff         Anti-Dandruff                2                2                 1                  1 ("dries my hair" 6
+ Divya            Shampoo ₹404 +                                                                     not addressed)
+                  Serum ₹299
+ Styling          Hair Gel ₹269+               1                1 (72-hr hold,    1                  2 (most-          5
+ Sahil                                                          no study cited)                      reviewed
+                                                                                                     combos)
+ Routine          Hair Growth Trio             1                1                 0 (no routine      0                 2
+ Ritika           ₹1,201                                                          builder, no
+                                                                                  reorder)
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA POSITIONING AND MESSAGING HOUSE                                                          5
+                                               MESSAGE          PROOF                            OBJECTION   SCORE
+ PERSONA          ENTRY SKU                    EXISTS           ATTACHED      DEDICATED PAGE     ANSWERED    /8
+
+ Grey-early       Anti-Grey Serum              1                1 ("best      1                  0           3
+ Gaurav           ₹449                                          responders"
+                                                                dropped)
+ Clinical         MitoActive ₹1,499            1                2             1 (zero reviews,   0           4
+ Kavya                                                                        no tier
+                                                                              comparison)
+
+
+Ritika and Kavya are the two personas with the highest AOV and the weakest messaging. They are
+where this document does the most work.
+
+
+
+THE PLAN
+THE POSITIONING STATEMENT
+This is the sentence every asset is tested against.
+For urban Indians, 22 to 40, who are losing hair or fighting their scalp and have already been burned
+by a shampoo that promised and did nothing, Arata is the hair and scalp science brand that puts a
+result from a study on every bottle and builds it into a routine you can finish in 84 days. Unlike mass
+brands with no proof, actives brands that sell ingredient percentages, and diagnosis platforms that
+need a doctor, a kit and ₹1,700 a month, Arata gives you the number and the routine for ₹359 to
+₹1,499 because it formulates and tests in its own Delhi lab, for Indian hair, water and weather.
+Three lengths for daily use:
+    7 words: Proof on the bottle. Built for Indian hair.
+    25 words: Arata is the Hair & Scalp Science Co. Every hero product carries a number from a study.
+    One routine, 84 days, no doctor, from ₹359.
+    80 words: Arata makes hair fall, dandruff, damage and grey products for Indian hair and Indian
+    weather. Every hero product shows a result from a study: 7.4X stronger against breakage, up to
+    28,200 new hairs in 84 days, 95% of dandruff-causing fungus gone in one wash. In 2026 Arata
+    launched MitoActive, India's first mitochondrial hair growth serum, built on Y100. Wash, treat, style,
+    in one routine, delivered to your door or your Blinkit cart. Good science. No guesswork. No doctor
+    needed.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA POSITIONING AND MESSAGING HOUSE                                               6
+THE MESSAGING HOUSE
+                                                                                                                          DIAGRAM
+     ROOF (the promise)
+     +------------------------------------------------------------------+
+     |   PROOF ON THE BOTTLE. BUILT FOR INDIAN HAIR. NO DOCTOR NEEDED. |
+     +------------------------------------------------------------------+
+       PILLAR 1               PILLAR 2                PILLAR 3
+     +-----------------+   +------------------+   +--------------------+
+     | A NUMBER, FROM |    | MADE FOR INDIAN |    | A ROUTINE YOU CAN |
+     | A STUDY         |   | HAIR AND WEATHER |   | FINISH             |
+     |                 |   |                  |   |                    |
+     | 7.4X, 28,200,   |   | hard water,      |   | wash + treat +     |
+     | 95%, 86%, 87%   |   | humidity, heat, |    | leave-on + style   |
+     | "up to", 84-day |   | pollution;       |   | 84-day course,     |
+     | window, study   |   | Y100 tested on   |   | then maintain;     |
+     | type always     |   | Indian           |   | Pack of 3 = the    |
+     | shown           |   | participants     |   | course, ₹333/month |
+     +-----------------+   +------------------+   +--------------------+
+     FOUNDATION (why believe it)
+     +------------------------------------------------------------------+
+     | In-house R&D and QC lab, Delhi | Y100: 6+ yrs research, 5+ studies|
+     | 1.5M+ customers a year | 2,248 site reviews, Nykaa 4.2 on 2,435 |
+     | Unilever Ventures and L'Oréal BOLD investors | derm tested, vegan |
+     +------------------------------------------------------------------+
+
+
+
+
+Why these three pillars and not the brand lines already in use: "systems, not symptoms" becomes
+Pillar 3 in plain words. "Good science for great hair" becomes Pillar 1 with the numbers attached. "Zero
+guesswork" becomes the roof's last clause. The lines are kept as campaign lines; the pillars are what
+the copy is built from.
+Each pillar also answers one of the three competitor sets:
+ PILLAR                            BEATS                                 HOW THE CUSTOMER HEARS IT
+
+ A number, from a study            Pilgrim, Minimalist, Bare Anatomy,    "They tell me the result, not the recipe"
+                                   mass FMCG
+ Made for Indian hair and          Global FMCG, "Korean" stories,        "Tested on hair like mine, in water like mine"
+ weather                           imported actives
+ A routine you can finish          Traya, Man Matters, minoxidil         "84 days, then I'm done. Nobody calls me and
+                                                                         nothing to stay on for life"
+
+
+PORTFOLIO ARCHITECTURE: THE HAIR GROWTH LADDER
+MitoActive only makes sense as the top rung of a visible ladder. Today the hair growth collection is a
+flat list. We restructure it as three tiers with one sentence each, and that sentence is reused on every
+channel.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA POSITIONING AND MESSAGING HOUSE                                                              7
+                                                                                                                           DIAGRAM
+      RUNG 3     MitoActive Mitochondrial Hair Growth Serum      ₹1,499 / 30 ml
+                 "For when you want the strongest science short of a prescription."
+                 Y100, mitochondrial mechanism, 87% saw growth in 84 days.
+                 Who: Kavya, Rahul at month 3 if plateaued, anyone off minoxidil.
+                                     ^
+                                     | upgrade when: plateau, derm-level concern, budget
+     RUNG 2      Hair Growth Intensive Serum                     ₹571 / 30 ml
+                 Pack of 3 (the 84-day course)                   ₹999 (₹333/month)
+                 "The proven actives serum. Up to 28,200 new hairs in 84 days."
+                 Who: Rahul, Ritika. Default recommendation.
+                                     ^
+                                     | add when: hair fall is the concern, not just dandruff
+     RUNG 1      Anti-Hair Fall Intensive Shampoo + Conditioner ₹359 + ₹359 (duo ₹638)
+                 "Stronger strands from the first wash. 7.4X more resistant to breakage."
+                 Who: every hair fall entry. The Blinkit basket.
+
+
+
+
+Rules of the ladder:
+    Each rung has one sentence and one number. The sentence travels unchanged to Amazon, Nykaa,
+    Blinkit, Zepto, Instamart and arata.in.
+    Rung 2 and Rung 3 are never on the same page without the "when to upgrade" line. The absence
+    of that line is why the ₹1,499 looks arbitrary today.
+    Pack of 3 is renamed in copy as "the 84-day course". The 49% discount stays, but the lead
+    message is the course.
+    MitoActive combos (₹1,803 to ₹2,278) are sold as "MitoActive routine", never as a discount bundle.
+
+SKU NAMING STANDARD
+One name per product, everywhere. The rule: Range + Concern + Form + Hero active in brackets
+where it helps search.
+                                                                                                              SEARCH TERMS IT
+ CURRENT NAMES IN CIRCULATION                LOCKED NAME (ALL CHANNELS)                                       MUST CONTAIN
+
+ Hair Growth Intensive Serum /               Arata Hair Growth Intensive Serum                                hair growth serum,
+ Hair Growth Tonic / Intensive                                                                                hair fall
+ Serum
+ Super Shampoo onion / biotin                Retire into Arata Anti-Hair Fall Intensive Shampoo (200 ml) or   hair fall shampoo
+ (Nykaa 300 ml)                              relabel as Arata Super Shampoo 300 ml with the new claim; no
+                                             onion/biotin in the title
+ MitoActive / Mitochondrial Serum Arata MitoActive Hair Growth Serum (Y100)                                   hair growth serum,
+ / Y100 serum                                                                                                 hair regrowth
+ Anti-Dandruff Shampoo /                     Arata Anti-Dandruff Shampoo                                      anti dandruff
+ Dandruff Control                                                                                             shampoo
+ Advanced Curl Care range                    Sunset from the science storefront; keep on marketplaces as      curly hair
+                                             "Arata Curl Care" until stock clears, with no new creative
+
+
+The naming table lives inside this document and is versioned with it. Any new SKU is named here
+before it gets a listing.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA POSITIONING AND MESSAGING HOUSE                                                               8
+CLAIMS LEDGER: THREE FORMS PER CLAIM
+                                                                             SHORT FORM (ADS,
+                     LONG FORM (PDP, LAB NOTES, DERM ONE-                    LISTING BULLETS, QUICK
+ CLAIM               PAGER)                                                  COMMERCE)                    BANNED FORM
+
+ 28,200              "Up to 28,200 new hairs within 84 days, in a            "Up to 28,200 new hairs      "28,200 new hairs" with no
+                     consumer study of twice-daily use. Results              in 84 days"                  "up to" or window; "regrow
+                     vary; most users see visibly less fall by week                                       your hair"
+                     6."
+ 7.4X                "Strands 7.4X more resistant to breakage after "7.4X stronger against                "7.4X less hair fall"; "stops
+                     use, measured by tensile strength with         breakage"                             hair fall"
+                     Hairdian AP and rosemary-caffeine."
+ 78%                 "78% stronger hair after one wash in lab (in-           "Stronger from the first     "78% less breakage"
+                     vitro) testing"                                         wash"
+ 95% fungus          "Up to 95% reduction in dandruff-causing                "95% of dandruff-            "95% less dandruff"
+                     fungus after one wash, in lab testing"                  causing fungus gone in
+                                                                             one wash"
+ 86% greys           "Up to 86% fewer greys in best responders               "Up to 86% fewer greys       "reverses grey hair"; "86%
+                     over 3 months of daily use, with MelanoGray             in 3 months"                 reduction" without "up to"
+                     and vegan keratin"
+ 87% / 95%           "In a consumer study with Indian participants,          "87% saw new growth in "cures hair loss"; "clinical-
+ MitoActive          87% saw increased growth in 84 days and                 84 days"               strength" (regulatory);
+                     hair fall reduced by up to 95%"                                                "better than minoxidil"
+
+
+Two words are added to the brand's "use" list because of the ledger: "breakage" (so 7.4X and 78%
+can be told honestly) and "course" (so 84 days reads as a finish line).
+
+WORDS TO USE AND WORDS TO AVOID, REFINED
+ USE                                                     AVOID                                     WHY
+
+ scalp, roots, follicle, new hair, breakage              chemical-free, zero chemicals,            Legacy identity; contradicts the lab
+                                                         natural
+ 84 days, course, routine, then maintain                 forever, daily for life                   Separates Arata from minoxidil
+                                                                                                   dependency
+ proven, tested, in a study, up to                       clinical-strength, miracle, cure,         Regulatory and trust
+                                                         regrow 100%
+ Indian hair, hard water, humidity, monsoon              Korean, Japanese, global formula          Pillar 2
+ Y100, mitochondria (always with one                     mitochondrial longevity therapy           Explained once, then plain
+ explaining line)
+ no doctor needed (one phrase, chosen for                strings of three "no" phrases in a        Say the single most relevant one
+ the surface)                                            headline
+ ₹50 a day (MitoActive)                                  49% off (as the lead for Pack of 3)       Value framing beats discount
+                                                                                                   framing
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA POSITIONING AND MESSAGING HOUSE                                                                    9
+ROLLOUT PHASES
+ PHASE           DAYS      WHAT HAPPENS                                                                EXPECTED EFFECT
+
+ 1. Lock         1 to      Positioning statement, messaging house, ladder, naming table    One answer to "what does Arata
+                 10        and claims ledger signed off by Arata founders and CBO. Doc set say"; stops claim drift at the
+                           to v2 with changelog.                                           source
+ 2. Rewrite      11 to     MitoActive PDP, hair growth collection page, Amazon and Nykaa               Highest-traffic surfaces say the
+                 24        hair growth listings, Blinkit/Zepto/Instamart titles and first bullet,      same thing; MitoActive gets its
+                           WhatsApp and support objection scripts                                      "why ₹1,499" answer
+ 3. Test         25 to     Two headline tests per pillar on Meta; PDP A/B on MitoActive                Pillars ranked by evidence; v3 of
+ and             90        (ladder visible vs hidden); review mining every two weeks feeds             the doc by day 90
+ version                   verbatim language back into the doc
+
+
+
+
+WORKED EXAMPLES
+EXAMPLE 1: PERSONA MESSAGE MAP
+The map a creative, listing or support writer opens before writing for any one person. Each row is
+complete: headline, support line, proof, SKU, objection to pre-empt, call to action.
+                   HEADLINE
+                   (SPOKEN, FULL                                                      SKU AND           OBJECTION TO
+ PERSONA           SENTENCE)             SUPPORT LINE                PROOF            PRICE             PRE-EMPT            CTA
+
+ Hair-fall         Your onion            Strands 7.4X stronger Tensile study;         Anti-Hair Fall    "Is this            Start the
+ Rahul, 28,        shampoo had           against breakage      consumer               Shampoo           minoxidil?" →       84-day
+ Bangalore         no number. This       from the first wash,  study, 84 days         ₹359 +            No. An 84-day       course
+                   one does.             and up to 28,200 new                         Intensive         course, then
+                                         hairs in 84 days with                        Serum ₹571        maintain.
+                                         the serum.                                   (duo ₹838)
+ Dandruff          Clear the flakes      95% of dandruff-            In-vitro         Anti-Dandruff     "Head &             Get the
+ Divya, 24,        without drying        causing fungus gone         fungus study;    Shampoo           Shoulders dried     anti-
+ Pune              your hair out.        in one wash, with a         itch relief      ₹404 +            my hair" → built    dandruff
+                                         conditioner and a           claim            Serum ₹299        as a three-step     routine
+                                         leave-on serum that                                            system, not a
+                                         keep hair soft and                                             medicated wash
+                                         stop the itch for up to
+                                         36 hours.
+ Styling           Hold that             72-hour humidity-           Hold claim;      Hair Gel from     "Premium gels       Pick your
+ Sahil, 22,        survives the          resistant hold, no          most-            ₹269              cost ₹900" →        hold
+ Delhi             metro, with           crunch, no flakes,          reviewed                           ₹269 to ₹699
+                   nothing white in      with niacinamide and        combos on
+                   your hair.            panthenol.                  Loox
+ Routine           One cart, 84          Shampoo, serum and          Combined         Hair Growth       "I don't have       Get the
+ Ritika, 32,       days, and a           conditioner in one          claims; review   Trio ₹1,201       time to figure      routine
+ Mumbai            reminder when         routine with one            theme "visible                     this out" → the
+                   it is time to         price. Most people          difference in                      routine is
+                   reorder.              see less fall by week       two weeks"                         already built
+                                         6.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA POSITIONING AND MESSAGING HOUSE                                                                  10
+                   HEADLINE
+                   (SPOKEN, FULL                                                    SKU AND      OBJECTION TO
+ PERSONA           SENTENCE)             SUPPORT LINE                PROOF          PRICE        PRE-EMPT           CTA
+
+ Grey-early        Fewer greys in        Up to 86% fewer             Consumer       Anti-Grey    "Will it stain or Start the
+ Gaurav, 29,       three months,         greys in best               study, best    Serum ₹449   feel oily?" → a   3-month
+ Hyderabad         without dye.          responders over 3           responders                  serum, not a dye plan
+                                         months, with
+                                         MelanoGray and
+                                         vegan keratin.
+ Clinical          The strongest         Y100 works on the           Y100: 6+       MitoActive   "₹1,499 for 30     Start
+ Kavya, 35,        hair growth           mitochondria in the         years          ₹1,499       ml" → one          MitoActive
+ Chennai           science you can       follicle. 87% saw new       research, 5+                month, ₹50 a
+                   buy without a         growth in 84 days in a      studies                     day, less than a
+                   prescription.         study with Indian                                       Traya kit, no
+                                         participants. ₹50 a                                     calls
+                                         day, no doctor, no
+                                         dependency.
+
+
+EXAMPLE 2: MITOACTIVE PDP, ABOVE THE FOLD AND THE OBJECTION BLOCK
+Written to be pasted into the Shopify PDP. Replaces the current page's headline and first screen.
+Title: Arata MitoActive Hair Growth Serum (Y100) · 30 ml · ₹1,499
+Headline: India's first mitochondrial hair growth serum. 87% saw new growth in 84 days.
+Subhead: Most hair growth serums feed the follicle. MitoActive powers it. Y100 works on the
+mitochondria inside the follicle, shifting more hairs into the growth phase. It is a different mechanism
+from Redensyl, Anagain or minoxidil, and it is exclusive to Arata in India.
+Three proof lines: - In a consumer study with Indian participants: 87% saw increased growth in 84
+days, and hair fall reduced by up to 95%. - Y100 has 6+ years of research and 5+ clinical studies
+behind it, licensed from Yuva Biosciences. - Formulated and quality-tested in Arata's own lab in Delhi.
+Dermatologically tested. Vegan.
+The price, said plainly: One bottle is one month at twice-daily use. That is ₹50 a day. A Traya kit is
+₹1,400 to ₹1,800 a month for five months or more, with doctor calls and supplements. A derm visit is
+more, before the prescription. MitoActive is the course without the clinic.
+Where it sits (the ladder, shown on page): - Anti-Hair Fall Shampoo ₹359: stronger strands from the
+first wash. Start here if hair fall is new. - Hair Growth Intensive Serum ₹571 (84-day course ₹999): the
+proven actives serum. Our default for most people. - MitoActive ₹1,499: the strongest science short of
+a prescription. Choose this if the Intensive Serum has plateaued, if a dermatologist has raised the
+concern, or if you are moving off minoxidil.
+Objection block (accordion):
+    Is this just another Redensyl serum? No. Redensyl and Anagain are plant actives that signal the
+    follicle. Y100 works on the mitochondria that power it. Different target, different research base, and
+    only Arata has it in India.
+    Do I have to use it forever? Use it twice a day for 84 days. Then move to once a day, or to the
+    Intensive Serum, to maintain. Unlike minoxidil, stopping does not undo the course.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA POSITIONING AND MESSAGING HOUSE                                                           11
+    Will my hair fall get worse first? Y100 does not cause the early shedding people report with
+    minoxidil. Most people notice less fall first, then new growth from week 8.
+    Why are there no reviews yet? MitoActive launched in August 2026. The first 1,000 buyers are in a
+    tracked 84-day programme and their photos and reviews go up as they come in, unedited.
+    What if the bottle leaks or the seal is broken? We replace it, no questions, within 48 hours of your
+    message on WhatsApp.
+CTA: Start MitoActive · ₹1,499 · Free shipping
+
+EXAMPLE 3: MARKETPLACE AND QUICK COMMERCE LISTING STANDARD, HAIR GROWTH INTENSIVE
+SERUM
+The same product, written once for Amazon.in and once for Blinkit, from the same ledger line. This is
+the template every SKU follows.
+Amazon.in title (under 200 characters): Arata Hair Growth Intensive Serum for Hair Fall | Up to
+28,200 New Hairs in 84 Days | Made for Indian Hair | Dermatologically Tested, Vegan | 30 ml
+Amazon bullets: 1. A NUMBER, FROM A STUDY: Up to 28,200 new hairs within 84 days in a consumer
+study of twice-daily use. Most users see visibly less fall by week 6. 2. MADE FOR INDIAN HAIR AND
+WEATHER: Formulated and tested in Arata's Delhi lab for hard water, humidity, heat and pollution. 3.
+PART OF A ROUTINE YOU CAN FINISH: Pair with Arata Anti-Hair Fall Intensive Shampoo (7.4X stronger
+against breakage). Use for 84 days, then maintain. No doctor needed, and nothing you have to stay on
+for life. 4. HOW TO USE: 1 ml on a clean, dry scalp, morning and night. Massage into the roots. Do not
+rinse. One bottle lasts about a month. 5. FROM THE HAIR & SCALP SCIENCE CO.: 1.5M+ customers a
+year, 4.2 stars on Nykaa, backed by Unilever Ventures and L'Oréal BOLD. Vegan, cruelty-free,
+dermatologically tested.
+Blinkit / Zepto / Instamart title (under 60 characters): Arata Hair Growth Serum, 28,200 New Hairs in
+84 Days, 30ml
+Quick commerce first line (the only line most people read): Up to 28,200 new hairs in 84 days.
+Made for Indian hair. Pair with Arata Anti-Hair Fall Shampoo.
+Nykaa title (keeps the Super Shampoo lineage without onion/biotin): Arata Hair Growth Intensive
+Serum for Hair Fall and Thinning, Up to 28,200 New Hairs in 84 Days (30 ml)
+
+EXAMPLE 4: WHATSAPP AND SUPPORT OBJECTION SCRIPTS
+Four replies the support team sends from the ledger. Each is under 60 words, written to be sent as-is.
+"₹1,499 for a 30 ml bottle is too much." Fair question. One bottle is one month, so it is ₹50 a day. A
+Traya kit is ₹1,400 to ₹1,800 a month for five months plus doctor calls. MitoActive is the course without
+the clinic. If you want to start lower, the Intensive Serum 84-day course is ₹999.
+"Is this the same as Pilgrim's Redensyl serum?" No. Pilgrim's serum uses Redensyl 3% and Anagain
+4%, which signal the follicle. Our Intensive Serum is the actives tier too, at ₹571 with a study behind it.
+MitoActive is different: Y100 works on the mitochondria that power the follicle. Only Arata has it in
+India.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA POSITIONING AND MESSAGING HOUSE                                     12
+"The 28,200 number sounds fake." We get that. It is an "up to" figure from a consumer study at 84
+days, twice daily. Not everyone hits it. What most people see first is less hair on the pillow by week 6.
+Our Lab Notes post on the study design is here: [link]. We would rather you know the exact framing
+than be surprised.
+"My bottle arrived leaking." Sorry, that should never happen. Send a photo here and we will ship a
+replacement within 48 hours, no return needed. We are also moving serum packaging to a new seal;
+your order number helps us track the batch.
+
+EXAMPLE 5: LAB NOTES EXPLAINER, "WHAT 84 DAYS MEANS"
+A 180-word Lab Notes post that becomes the link behind every "84 days" claim across channels.
+Why every Arata hair growth claim says 84 days
+Hair grows in cycles. A follicle spends years in the growth phase (anagen), a few weeks winding
+down, then a few months resting (telogen) before it sheds and restarts. Hair fall you can see is usually
+too many follicles sitting in telogen at once.
+Anything that works on that cycle needs time to show. The earliest you can honestly measure a
+change in the growth-to-rest ratio is around 12 weeks. That is 84 days. It is why our Intensive Serum
+study ran to 84 days, why the MitoActive study with Indian participants reported at 84 days, and why
+we call the Pack of 3 an 84-day course.
+What to expect along the way: less hair in the drain by week 4 to 6, baby hairs at the hairline around
+week 8, visible density at week 12. Take a photo on day 1 and day 84 in the same light. If you do not
+see a difference, message us.
+
+
+
+30-DAY DEPLOYMENT
+                                                                                              OWNER
+ WEEK BREW SHIPS                                             ARATA PROVIDES                 (BREW)          OWNER (ARATA)
+
+ 1         Positioning statement, messaging house,             Study summaries for each        Product          Brand manager,
+           ladder and naming table as v2 of the                claim (design, n, window, study marketing lead   R&D lead
+           context document; claims ledger with                type); sign-off on retiring
+           long, short and banned forms for 8 hero             onion/biotin and curl-care
+           claims                                              creative
+ 2         Persona message map (6 personas);                   Loox review export for         Product           Brand manager,
+           MitoActive PDP copy; hair growth                    verbatim mining; PDP access;   marketing lead,   e-commerce
+           collection page restructured as the ladder;         founder review of the          content lead      lead
+           Lab Notes "84 days" and "Y100                       MitoActive price paragraph
+           explained" posts
+ 3         Amazon, Nykaa and Flipkart titles and               Marketplace account manager    Marketplace       E-commerce
+           bullets for 6 hair growth and anti-dandruff         contacts; approval for title   lead, CRM lead    lead, support
+           SKUs; Blinkit, Zepto and Instamart titles           changes; support team                            lead
+           and first lines; WhatsApp and support               walkthrough
+           scripts for 8 objections
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA POSITIONING AND MESSAGING HOUSE                                                           13
+                                                                                                   OWNER
+ WEEK BREW SHIPS                                             ARATA PROVIDES                      (BREW)            OWNER (ARATA)
+
+ 4         Meta headline test plan (2 per pillar, 6            Ad account access; agreement Paid lead,                 Brand manager,
+           total); PDP A/B spec (ladder visible vs             on review cadence (fortnightly) product                 performance
+           hidden); one-page "write from this"                                                 marketing lead          lead
+           checklist for every new asset; v2.1 of the
+           doc with changelog
+
+
+Live by day 30: one versioned source of truth, the MitoActive PDP rewritten with the ladder and the
+₹50 a day argument, hair growth listings on all three marketplaces and all three quick commerce apps
+carrying the same sentence and the same claim form, support answering the top eight objections from
+one script, and six headline tests running on Meta.
+
+
+
+HOW WE MEASURE
+ METRIC                             BASELINE                       90-DAY TARGET                       DECISION RULE
+
+ Naming consistency (SKU            Inconsistent (serum vs 100% of hair growth and anti-               Any new SKU is blocked from
+ names identical across             tonic, onion vs biotin); dandruff SKUs                             listing until named in the doc
+ arata.in, Amazon, Nykaa,           score to be
+ Flipkart, Blinkit, Zepto,          instrumented at week 1
+ Instamart)
+ Claim form compliance              Not measured; banned           95% compliance on a                 Below 90%: the ledger is
+ (sampled ads, listings,            forms present on at            fortnightly sample of 40 assets     unclear; rewrite the ledger, not
+ support replies using long         least the 7.4X headline                                            the assets
+ or short form, never
+ banned form)
+ MitoActive PDP                     To be instrumented             +25% vs the pre-rewrite 4-          If flat after 6 weeks with 2,000+
+ conversion rate                    (page-level, Shopify)          week average (assumption:           sessions per variant: the price
+                                                                   ladder plus price argument lifts    argument is wrong, test
+                                                                   a page that currently has no        "MitoActive routine" bundle-led
+                                                                   "why ₹1,499" answer)                page instead
+ MitoActive share of hair           Near zero (launched            20% of serum revenue, with          If Intensive Serum cannibalises
+ growth serum revenue on            Aug 2026, 0 reviews)           Intensive Serum revenue not         beyond 5%: strengthen the
+ arata.in                                                          falling more than 5%                "when to upgrade" line and
+                                                                                                       move MitoActive below the fold
+                                                                                                       on the collection page
+ Pillar headline CTR on             To be instrumented             Clear ranking of the three pillars Winning pillar leads the
+ Meta (best headline per                                           with at least one pillar 20%       homepage hero and the next
+ pillar)                                                           above the others                   version of the doc; losing pillar
+                                                                                                      moves to support copy
+ "Too good / fake claim"            To be instrumented             Down 50% from week-4                If unchanged: the short forms
+ objection rate in support          from WhatsApp and              baseline                            are still over-promising; tighten
+ and comments                       Meta comment tags                                                  "up to" and add study type to
+                                                                                                       short forms
+ MitoActive reviews on              0                              150 reviews, with 84-day            Tracked under the launch
+ arata.in                                                          photos on at least 30               discipline; this doc owns the
+                                                                                                       review-request copy
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA POSITIONING AND MESSAGING HOUSE                                                                     14
+ METRIC                             BASELINE                       90-DAY TARGET                  DECISION RULE
+
+ Document version                   v1 (10 Oct 2026)               v3 with at least 6 changelog   Every substantive learning gets
+                                                                   entries                        a dated entry; a doc that has
+                                                                                                  not moved in 30 days is stale
+
+
+How we read success: the brand sounds the same everywhere, the claims hold up when a sceptical
+customer pushes, and MitoActive earns its price on the page. If the pillar tests show that "Made for
+Indian hair" wins decisively over "A number, from a study", we reorder the house and say so in the
+changelog. If MitoActive does not reach 20% of serum revenue by day 90 after the PDP change, the
+positioning is right but the price ladder needs a middle rung, and we take that to the pricing discipline.
+
+
+
+APPENDIX
+THE "WRITE FROM THIS" CHECKLIST
+Every new ad, listing, PDP, email, script or post passes these eight checks before it ships.
+1. Which pillar is this asset built on? Name it.
+2. Which persona is it for? Use that row of the message map.
+3. Which SKU and which price? Use the locked name.
+4. Which claim? Use the long or short form from the ledger. Never the banned form.
+5. Does "up to" and the time window appear wherever the number appears?
+6. Is the next rung of the ladder visible when a serum is shown?
+7. Is the most relevant anxiety answered on the surface (leak, quantity, sameness, forever)?
+8. Does it avoid the "avoid" list: chemical-free, miracle, cure, clinical-strength, Korean?
+
+VERSIONING PROTOCOL
+    The document carries a version number and a changelog, newest first, one line per revision: what
+    changed and why.
+    Every substantive change bumps the version. Typo fixes do not.
+    Sources of change, in priority: a claim or study update from R&D; a pillar test result; review mining
+    (fortnightly verbatim pull from Loox, Nykaa and Amazon); a new SKU; a competitor move that
+    changes the map.
+    Proposed first entry: v2 (date of sign-off): Repositioned around three pillars; added hair growth
+    ladder, SKU naming standard and claims ledger; retired "zero chemicals", onion/biotin and curl-
+    care from new creative.
+
+SOURCES
+Arata brand brief (arata.in catalogue and prices, BeautyMatter Series A coverage, StopDown results
+report Feb 2026, BW Retail World MitoActive launch Aug 2026, Storyboard18 founder interview, Inc42
+and Tracxn profiles, Loox and Nykaa reviews, Redseer hair growth report, Traya public pricing).
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA POSITIONING AND MESSAGING HOUSE                                                              15
+External: public US listings show Y100 is also used in BosleyMD's Revive+ densifying foam, which
+supports the "established active, exclusive to Arata in India" framing.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA POSITIONING AND MESSAGING HOUSE                             16
+PRODUCT MARKETING
+
+
+DAY 30
+AT ARATA
+   WHAT IS LIVE
+
+   Arata has a versioned positioning doc, a locked SKU naming table and a claims
+   ledger, with the MitoActive PDP, the Amazon hair growth listings and the
+   WhatsApp objection scripts rewritten from it.
+
+
+
+
+ NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+ BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+ CONFIRM".
+
+
+ EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+ BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                DEPLOYMENT TEAM
+                                                                             BREW
+

@@ -1,0 +1,759 @@
+      Brew                                     PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+MARKETING IDEAS · MOVE 50 OF 50
+
+
+
+TWELVE
+GROWTH
+IDEAS
+RANKED
+FOR ARATA
+  WE SCREENED 139 PROVEN GROWTH IDEAS AGAINST
+  ARATA'S NUMBERS, KEPT THE TWELVE THAT FIT, AND
+  BUILT THE FIRST FIVE OUT SO THEY CAN SHIP THIS
+  MONTH.
+
+
+
+
+12 of 139
+IDEAS THAT FIT ARATA NOW
+
+
+
+
+BREW × ARATA                    OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                  V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                              WHAT THIS GIVES ARATA
+                                                              We screened 139 proven growth ideas against
+                                                              Arata's numbers, kept the twelve that fit, and built
+                                                              the first five out so they can ship this month.
+
+        12 of 139
+        IDEAS THAT FIT ARATA NOW
+                                                               LIVE 30 DAYS AFTER WE START
+                                                               The Hair Fall Score quiz, the Arata vs Traya page,
+                                                               the MitoActive 84-Day cohort and the founder
+                                                               welcome email are live on arata.in, and the first 200
+                                                               cohort members are inside the 84-day journey on
+                                                               WhatsApp.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+This playbook was written for software companies. We translated it before applying it: a free tool
+becomes a Hair Fall Score quiz, onboarding becomes the 84 days after first purchase, a viral loop
+becomes a before-and-after photo, a review site becomes Nykaa and Amazon, a trial becomes a ₹359
+shampoo, and churn becomes a customer who does not reorder in 45 days.
+Arata has already done the hard part. You have a number on every bottle, in-house R&D in Delhi, ₹61
+Cr in FY25 at 192% growth, 650K monthly visits, 50,000 D2C orders a month and a culture play (the
+Samay Raina mock podcast) that most science brands cannot pull off. That is a stronger starting
+position than Pilgrim, Minimalist or Bare Anatomy had at the same stage.
+What you do not have yet is a system that turns that attention into repeat behaviour. The brief lists the
+gaps plainly: no subscription, no quiz or regimen builder, MitoActive at zero reviews two months after
+launch, no community, Lab Notes published in bursts (seven posts in March 2026, then quiet), and
+68% of revenue on marketplaces and quick commerce where you rent the customer relationship. Your
+marketing today is campaign-shaped. The ₹160 Cr target needs it to be loop-shaped.
+The cost of that shape is visible in the numbers. Beauty repeat rates in India sit around 26%. Routine-
+led models exceed 40%. At 50,000 orders a month, every 5 points of repeat rate is roughly 2,500
+extra orders a month at a ₹900 to ₹1,000 AOV, or about ₹2.5 Cr a year, before a rupee of new
+acquisition spend. MitoActive at ₹1,499 with no reviews is a hero product that cannot yet convert a
+sceptic. And the hair-fall customer who buys a ₹571 serum once and never hears from you again is the
+exact customer Traya spends ₹138 Cr a year to go and find.
+So this document does one job. It takes the full library of 139 marketing ideas, scores each against
+Arata's stage, budget and gaps, and keeps twelve. Five are built out below as finished assets. The rest
+are sequenced across 90 days. Every idea here is chosen because it feeds the same loop: find the
+hair-fall customer, give them a routine, walk them through 84 days, collect the proof, and use that
+proof to find the next one.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TWELVE GROWTH IDEAS RANKED FOR ARATA                                                  1
+WHAT WE FOUND
+WHERE ARATA ALREADY IS ON THE MAP
+We mapped what Arata already runs against the library first, because the fastest wins extend things
+that already work.
+ LIBRARY IDEA               WHAT ARATA ALREADY DOES                                    VERDICT
+
+ Humour marketing           Samay Raina and Archana Puran Singh mock                   Working. Keep. Feed it into the loop below
+ (#122)                     podcast, Feb 2026; brand name hidden on props              instead of letting it sit as a one-off.
+ Influencer                 Taapsee Pannu "CurlFriend" (2022), creator                 Working for reach. The curl-care legacy range
+ partnerships (#55)         seeding                                                    it sold now muddies the science positioning.
+ Content marketing          Lab Notes blog                                             Exists but publishes in bursts. Needs a
+ (#5, #8)                                                                              cadence and a reason to exist beyond SEO.
+ In-app upsells             Combos at 7% to 49% off, free gift above ₹999,             Working on AOV. Missing the subscription
+ (#91)                      free shipping above ₹299                                   rung.
+ Review sites (#129) 2,248 Loox reviews on site; 4.2 stars on Nykaa                    Strong for legacy SKUs. Zero on the hero.
+                     from 2,435 ratings
+ Fundraising PR             Series A coverage, BeautyMatter, Inc42, BW                 Done. Diminishing returns until the next round.
+ (#75)                      Retail
+ Platforms (#125)           Amazon, Nykaa, Flipkart, Blinkit, Zepto, Instamart         68% of revenue. Rented land.
+
+
+Arata is a growth-stage company by the library's own staging. The playbook for growth stage is paid
+acquisition, partnerships and events. Arata already does paid acquisition. What is missing from the
+growth-stage set is the product-led layer (#87 to #96) and the proof layer (#129, #139, #112), which is
+where the twelve ideas concentrate.
+
+THE FUNNEL TODAY
+                                                                                                                             DIAGRAM
+      ATTENTION             CONSIDER              FIRST BUY               84 DAYS             PROOF
+      ─────────             ────────              ─────────               ───────             ─────
+      Samay Raina    →     arata.in         →   ₹359 shampoo      →     ???           →   ???
+      Creators             650K visits           ₹571 serum               no check-in        MitoActive: 0 reviews
+      Quick commerce       7-8% convert          ₹1,499 Mito              no reorder nudge Loox: legacy SKUs only
+      Marketplaces                               AOV ~₹950                no community       no photos
+                                                                          no subscription
+
+      STRONG               STRONG                 STRONG                EMPTY              EMPTY
+
+
+
+
+Everything to the left of the first purchase is good. Everything to the right is empty. The ideas we kept
+all live on the right side, or they connect the right side back to the left.
+
+SCREENING THE 139
+We ran every category through three filters: does it address a named gap in the brief, can it ship inside
+90 days with a Shopify store and a Delhi team, and does it feed the 84-day loop. The result:
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TWELVE GROWTH IDEAS RANKED FOR ARATA                                                                    2
+                                IDEAS
+ CATEGORY                       SCREENED           KEPT                         WHY THE REST WERE CUT
+
+ Content and SEO (1 to          10                 2 (#6 proprietary data, #8   Programmatic SEO has its own deployment doc
+ 10)                                               refresh cadence)
+ Competitor (11 to 13)          3                  2 (#11 comparison pages,     Ad research already runs inside paid
+                                                   #12 jiu-jitsu)
+ Free tools (14 to 22)          9                  1 (#17 quiz)                 Extensions, APIs and scanners do not apply
+ Paid ads (23 to 34)            12                 0                            Already running; owned by the ads doc
+ Social and community           10                 1 (#38 Reddit)               Instagram and short-form already live; LinkedIn
+ (35 to 44)                                                                     and X are not where Rahul buys haircare
+ Email (45 to 53)               9                  1 (#47 founder welcome)      Sequences have their own doc; the founder
+                                                                                email is the one piece that shapes the brand
+ Partnerships (54 to 64) 11                        0                            Covered in the referrals and influencer docs
+ Events (65 to 72)              8                  0                            Not a 90-day lever at Arata's stage
+ PR (73 to 76)                  4                  0 (folded into #6)           The data report is the next press hook
+ Launches (77 to 86)            10                 1 (#81 early-access cohort) Product Hunt and lifetime deals do not apply
+ Product-led (87 to 96)         10                 2 (#93 viral loop, #96       Migrations and buyouts are SaaS mechanics
+                                                   onboarding)
+ Content formats (97 to         13                 1 (#101 interviews, as 84-   Books, courses, podcasts are year-two plays
+ 109)                                              day diaries)
+ Unconventional (110 to 13                         2 (#111 challenge, #121      Awards and OOH are later or expensive
+ 122)                                              guerrilla)
+ Platforms (123 to 130)         8                  1 (#129 review engine)       Listing optimisation has its own doc
+ Everything else (131 to 9                         1 (#139 customer language,   International and developer do not apply
+ 139)                                              applied throughout)
+
+
+Twelve kept. Fourteen if you count #139 and #96 as practices rather than ideas, which is how we treat
+them below.
+
+ICE SCORES FOR THE TWELVE
+Impact is scored against the ₹160 Cr goal and the repeat-rate gap. Confidence is how sure we are it
+works for Indian D2C haircare specifically. Ease is how fast Brew can ship it with what Arata has
+(Shopify, WhatsApp, Loox, a Delhi lab, an in-house creative team). Scores are 1 to 10.
+ #     IDEA (LIBRARY REF)               WHAT IT IS FOR ARATA                               IMPACT CONFIDENCE EASE ICE
+
+ 1     Hair Fall Score quiz (#17) A 9-question diagnostic that ends in a named             9          9                8       26
+                                  routine and a cart
+ 2     MitoActive 84-Day                200 early buyers walked through 84 days on       9            8                8       25
+       cohort (#81 + #101 +             WhatsApp, producing the first reviews and photos
+       #129)
+ 3     Arata vs Traya and               Capture the comparison search and the switcher     8          9                8       25
+       Minoxidil alternative
+       pages (#11)
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TWELVE GROWTH IDEAS RANKED FOR ARATA                                                               3
+ #     IDEA (LIBRARY REF)               WHAT IT IS FOR ARATA                                  IMPACT CONFIDENCE EASE ICE
+
+ 4     Founder welcome email            Dhruv's note after first order sets the 84-day        6      9          10   25
+       (#47)                            expectation
+ 5     India Hair Fall Index (#6)       A quarterly report from 50,000 orders a month, by 8          7          6    21
+                                        city and season
+ 6     Before/after photo loop          Every 84-day finisher gets a shareable card and a 8          7          6    21
+       (#93)                            ₹200 credit
+ 7     Marketing jiu-jitsu on           Every time Traya's price or commitment comes          7      8          7    22
+       Traya (#12)                      up, Arata answers with ₹50 a day and no doctor
+                                        call
+ 8     Reddit presence (#38)            r/IndianSkincareAddicts, r/india, r/bangalore hair-   6      7          8    21
+                                        fall threads answered by the lab, not the brand
+ 9     Derm pillow kit (#121)           A direct-mail kit to 50 named trichologists and       6      6          7    19
+                                        dermatologists in 5 cities
+ 10 The Drain Count                     A 14-day public challenge: count the hairs in your 7         5          7    19
+    challenge (#111)                    drain before and after
+ 11 Lab Notes cadence and               One post a week, every Tuesday, half of them          5      8          9    22
+    refresh (#8)                        refreshes of the March burst
+ 12 Review engine for the               Automated review and photo requests at day 28,        8      8          8    24
+    hero (#129)                         56 and 84, routed to Loox, Nykaa and Amazon
+
+
+Ideas 1, 2, 3, 4 and 12 ship in the first 30 days. Ideas 5, 6, 7, 11 ship in days 31 to 60. Ideas 8, 9, 10 are
+tested small in days 61 to 90 and scaled only if the test earns a response.
+The quiz scores highest because it is the largest single gap: six personas, 30-plus SKUs, and today
+the customer lands on a collection page and has to work out alone whether she is a ₹359 shampoo
+person or a ₹1,499 MitoActive person. Traya's free hair test is its biggest acquisition asset. Arata has
+the clinical numbers to make a quiz mean something and does not have one.
+
+
+
+THE PLAN
+THE LOOP WE ARE BUILDING
+Every idea below is a part of one machine. The machine takes attention Arata already generates and
+turns it into proof Arata does not yet have.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TWELVE GROWTH IDEAS RANKED FOR ARATA                                                      4
+                                                                                                   DIAGRAM
+                         ┌──────────────────────────────────────────────┐
+                         │                                              │
+                         ▼                                              │
+       Samay Raina ──► Hair Fall ──► Named routine ──► 84-day journey ──► Review + photo
+       Creators         Score quiz    in one cart       on WhatsApp       at day 28/56/84
+       Reddit answers   (idea 1)      (idea 1)          (ideas 2, 4, 12) (ideas 6, 12)
+       Comparison pages                                                        │
+       (ideas 3, 7)                                                            │
+       Hair Fall Index                                                         ▼
+       (idea 5) ◄────────────────────────────────────────────── Shareable card,
+                                                                  ₹200 credit,
+                                                                  Nykaa/Amazon review,
+                                                                  data for the Index
+
+
+
+
+The loop closes in two places. The finisher's photo and review feed the comparison pages, the
+MitoActive product page and the ads. The finisher's data (city, hair-fall score at day 0 and day 84,
+water type) feeds the India Hair Fall Index, which earns press and search traffic that feeds the quiz.
+
+PHASE 1, DAYS 1 TO 30: PROOF AND ROUTING
+Idea 1. Hair Fall Score quiz. What: a 9-question quiz at arata.in/hair-fall-score that scores the
+customer 0 to 100, names their routine, and loads the cart. Why: no routing exists today; 650K visits a
+month hit collection pages that mix claims. How to start: Brew builds it on the existing Shopify
+theme with a lightweight quiz app, maps the six personas to six routines, writes the result pages.
+Expected effect: a quiz-to-cart rate of 25% to 35% on quiz completers (assumption based on D2C
+beauty quiz benchmarks; to be instrumented), and a routine AOV of ₹900 to ₹1,200 versus the ₹571
+single-serum order. Resources: 2 weeks Brew build, Arata brand manager approves copy, Arata lab
+validates the scoring logic.
+Idea 2. MitoActive 84-Day cohort. What: the first 200 MitoActive buyers after launch day are invited
+into a named cohort on WhatsApp, with check-ins at day 0, 14, 28, 56 and 84, a photo protocol, and a
+review request at the end. Why: MitoActive has zero reviews at ₹1,499. The claim is "87% saw growth
+in 84 days", so the proof needs 84 days of structured follow-up. Nobody has done this publicly in
+Indian haircare. How to start: Brew writes the journey, Arata CX runs the WhatsApp line, Arata lab
+answers the science questions in the group. Expected effect: 100-plus reviews with photos on
+MitoActive by day 90, and the first 20 before/after stories for ads and the product page. Resources:
+one CX owner at Arata for 30 minutes a day, ₹200 credit per finisher (₹40,000 total if all 200 finish,
+which they will not).
+Idea 3. Comparison pages. What: three pages: Arata vs Traya, Arata vs Pilgrim, and "Minoxidil
+alternative". Why: these are the searches the switcher types, and Traya spends ₹138 Cr a year to make
+people type its name. How to start: Brew drafts all three, Arata legal reviews the claims. Expected
+effect: 5,000 to 15,000 organic visits a month across the three within 90 days (assumption; depends
+on indexation speed), converting at the site average or better because intent is high. Resources:
+Brew copy and build, 1 week.
+Idea 4. Founder welcome email. What: a plain-text email from Dhruv Madhok that goes out 2 hours
+after every first order, sets the 84-day expectation, and asks one question. Why: the biggest anxiety in
+the brief is "will I waste another ₹600?". A founder setting a realistic timeline before the bottle arrives
+defuses it. Also the cheapest idea on the list. How to start: Brew writes it, Dhruv edits it in his voice,
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TWELVE GROWTH IDEAS RANKED FOR ARATA                                        5
+it goes live in Klaviyo or whatever Arata runs. Expected effect: reply rate of 2% to 4% (assumption),
+which is 1,000 to 2,000 customer replies a month, each one a research interview. Resources: one
+afternoon.
+Idea 12. Review engine for the hero. What: an automated sequence that asks for a review and a photo
+at day 28 (shampoo and serum), day 56 and day 84 (MitoActive), with the ask routed to Loox for site
+buyers and to Nykaa or Amazon links for marketplace buyers via the WhatsApp opt-in. Why: 2,248
+reviews exist for legacy SKUs; the hero has none; and the day-14 "any difference yet?" ask that most
+brands send is too early for a hair product. How to start: Brew configures the timing, writes the
+three asks, builds the photo upload. Expected effect: review velocity on MitoActive from 0 to 30-plus a
+month by day 60. Resources: 3 days.
+
+PHASE 2, DAYS 31 TO 60: COMPOUNDING
+Idea 5. India Hair Fall Index. What: a quarterly report built from Arata's own order and quiz data: hair-
+fall score by city, by season, by water hardness, by age band. Why: 50,000 D2C orders a month plus
+quiz data is a dataset no competitor can replicate, and Indian press loves a city ranking. Redseer's
+82M number is the only public figure; Arata can own the next one. How to start: quiz data starts
+accumulating in Phase 1; Brew builds the report template and pitches 5 outlets. Expected effect: 10
+to 20 press mentions per edition, backlinks to the quiz, and a reason for Lab Notes to exist. Resources:
+Brew analyst 1 week per quarter, Arata lab reviews the method.
+Idea 6. Before/after photo loop. What: every 84-day finisher gets a generated card (their day 0 and
+day 84 photo, their score change, their routine) and a ₹200 credit for posting it or sharing it to a friend.
+Why: hair growth is visible, and visible results are the only ad creative that beats a celebrity. How to
+start: the cohort from idea 2 produces the first cards. Expected effect: 20% of finishers share
+(assumption), each share worth a free impression with a real result. Resources: Brew builds the
+card generator, Arata approves the template.
+Idea 7. Marketing jiu-jitsu on Traya. What: a standing content and ad line that answers Traya's model
+with Arata's: ₹50 a day, 30 ml, no doctor call, no supplements, no 5-month lock-in. Why: Traya is the
+category's biggest spender at a ₹23 Cr net loss. Every rupee it spends teaching Indians that hair fall is
+treatable is a rupee Arata can borrow, if Arata is the obvious cheaper, simpler next click. How to start:
+Brew writes the line and the three ad variants; the comparison page from idea 3 is the landing
+page. Expected effect: lower CPA on hair-fall retargeting (to be measured against the current
+baseline). Resources: included in the ads deployment.
+Idea 11. Lab Notes cadence. What: one post every Tuesday. Half new, half refreshes of the seven
+March posts with the cohort's data added. Why: bursts do not rank and do not build a habit. A
+refreshed post with real customer numbers outranks a new generic one. How to start: Brew builds
+a 12-week calendar from quiz questions, cohort FAQs and comparison-page gaps. Resources: one
+writer-day a week.
+
+PHASE 3, DAYS 61 TO 90: TEST SMALL, THEN SCALE
+Idea 8. Reddit presence. What: a named Arata lab account (the formulator, not the brand) answering
+hair-fall threads on r/IndianSkincareAddicts, r/india, r/bangalore, r/mumbai and r/delhi with the actual
+science, the Lab Notes link, and no coupon. Why: the hair-fall customer has already tried onion and
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TWELVE GROWTH IDEAS RANKED FOR ARATA                                      6
+biotin and is sceptical. A lab voice that explains why rosemary water is slow earns trust the brand
+account cannot. How to start: 10 answers a week for 4 weeks, measure referral traffic and sentiment,
+then decide. Resources: Arata lab 2 hours a week, Brew drafts.
+Idea 9. Derm pillow kit. What: a physical kit mailed to 50 named trichologists and dermatologists in
+Delhi, Mumbai, Bangalore, Chennai and Hyderabad. The kit is a white pillowcase printed with a hair-
+count grid, a MitoActive bottle, the Y100 study summary, and a handwritten note. Why: Clinical Kavya
+wants a product a derm would respect. Derms do not read cold email. The kit passes the three rules:
+relevant (the pillow is where the customer sees the problem), relationship-first (a gift and a study, no
+pitch), and precision-targeted (50 named doctors, not a list). The deal size holds: one derm who
+recommends MitoActive to 10 patients a month is ₹15,000 a month in revenue against a ₹1,200 kit.
+How to start: send 10, measure replies and recommendation intent over 3 weeks, then send 40.
+Resources: ₹60,000 for 50 kits (assumption on unit cost), one Brew coordinator.
+Idea 10. The Drain Count challenge. What: a 14-day public challenge where participants count the
+hairs in their shower drain on day 1 and day 14 using the Anti-Hair Fall Intensive Shampoo, post the
+two numbers, and tag Arata. Why: the shampoo claims 7.4X hair-fall reduction. A customer-generated
+count makes the number real. It is also the kind of slightly gross, very shareable thing the Samay Raina
+audience will do. How to start: 50 creators and 500 customers from the WhatsApp list, a counting
+card, a hashtag-free tag mechanic (just tag @arata). Measure participation, then decide if it becomes
+a quarterly fixture. Resources: ₹2 lakh in product and creator seeding (assumption).
+
+WHAT WE DELIBERATELY DID NOT INCLUDE
+Events, conferences, a podcast, a book, awards, OOH and a Product Hunt launch all scored under 15:
+year-two plays, expensive for an uncertain return, or wrong for a shampoo brand. Subscription is the
+biggest commercial lever on the list and has its own pricing and retention deployment. This document
+builds the 84-day habit that makes a subscription worth buying, then hands the mechanic over.
+
+
+
+WORKED EXAMPLES
+EXAMPLE 1. THE HAIR FALL SCORE QUIZ
+URL: arata.in/hair-fall-score Entry copy (hero):
+
+   HOW BAD IS YOUR HAIR FALL, REALLY? NINE QUESTIONS. NINETY
+   SECONDS. YOU GET A SCORE OUT OF 100 AND THE ROUTINE OUR LAB
+   WOULD PUT YOU ON. NO EMAIL NEEDED TO SEE THE RESULT. [START THE
+   TEST]
+
+
+Questions and scoring. Each answer carries points. The total maps to a band and a persona.
+ # QUESTION                              ANSWERS (POINTS)
+
+ 1 Where do you notice hair              Pillow and drain (15) / Comb only (8) / Visible thinning at crown or hairline (20) / I don't,
+   fall most?                            I'm here for something else (0)
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TWELVE GROWTH IDEAS RANKED FOR ARATA                                                                    7
+ # QUESTION                              ANSWERS (POINTS)
+
+ 2 How long has it been going            Under 1 month (5) / 1 to 3 months (10) / 3 to 12 months (15) / Over a year (20)
+   on?
+ 3 Anything change recently?             New city (5) / Post-illness or post-partum (10) / High stress or poor sleep (5) / Nothing
+   (pick all)                            I can think of (0)
+ 4 What is your water like?              Hard, leaves white marks on taps (10) / Soft or filtered (0) / Not sure (5)
+ 5 Scalp today:                          Flaky or itchy (route to dandruff) / Oily by evening (5) / Dry and tight (5) / Fine (0)
+ 6 What have you tried? (pick            Onion or biotin products (5) / Oiling (0) / Minoxidil (route to MitoActive) / Dermatologist
+   all)                                  (route to MitoActive) / Nothing yet (0)
+ 7 Greys?                                A few in the last year (route to anti-grey add-on) / None (0) / Plenty, I'm fine with it (0)
+ 8 How much time do you have 2 minutes, wash days only (routine: shampoo + conditioner) / 5 minutes a day (routine:
+   for a routine?            adds serum) / Whatever it takes (routine: adds MitoActive)
+ 9 Budget for 3 months?                  Under ₹1,500 / ₹1,500 to ₹3,000 / Above ₹3,000
+
+
+Bands and routines.
+ SCORE                             BAND         ROUTINE NAME            SKUS                                     84-DAY PRICE
+
+ 0 to 25                           Watch        The Maintenance         Anti-Hair Fall Intensive Shampoo +       ₹638 (combo)
+                                                Wash                    Anti-Breakage Conditioner
+ 26 to 50                          Act now      The Hair Fall           Shampoo + Hair Growth Intensive          ₹838 (combo)
+                                                Routine                 Serum
+ 51 to 75                          Intensive The 84-Day                 Shampoo + Serum Pack of 3 + Scalp        ₹999 + ₹359 +
+                                             Growth Plan                Massager                                 ₹199 = ₹1,557
+ 76 to 100, or                     Clinical     The MitoActive          MitoActive + Shampoo                     ₹1,803 (combo)
+ minoxidil/derm history                         Plan
+
+
+Dandruff answers in Q5 override the band and route to the Anti-Dandruff Shampoo + Conditioner
+combo at ₹866 with the leave-on serum (₹299) offered as an add-on. Greys in Q7 add the Anti-Grey
+Serum (₹449) as a one-tap add-on on the result page.
+Result page copy, band "Act now" (score 42):
+
+   YOUR HAIR FALL SCORE: 42 / 100 YOU ARE IN THE "ACT NOW" BAND. HAIR
+   FALL AT THIS LEVEL USUALLY RESPONDS WITHIN 84 DAYS IF YOU TREAT
+   THE SCALP AND THE STRAND TOGETHER. LATER THAN THIS AND IT
+   TAKES LONGER.
+
+   YOUR ROUTINE: THE HAIR FALL ROUTINE ANTI-HAIR FALL INTENSIVE
+   SHAMPOO, 200 ML. TENSILE-STRENGTH TESTED, 7.4X HAIR FALL
+   REDUCTION. HAIR GROWTH INTENSIVE SERUM, 30 ML. UP TO 28,200 NEW
+   HAIRS WITHIN 84 DAYS. ₹838 FOR BOTH. THAT IS ₹10 A DAY FOR 84 DAYS.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TWELVE GROWTH IDEAS RANKED FOR ARATA                                                                   8
+   WHAT TO EXPECT: LESS HAIR ON THE PILLOW IN 3 TO 4 WEEKS. NEW
+   GROWTH AT THE HAIRLINE AND CROWN FROM WEEK 8. TAKE A PHOTO
+   TODAY. WE WILL REMIND YOU TO TAKE ONE AT DAY 84.
+
+   [ADD THE ROUTINE TO CART, ₹838] [SEND MY SCORE AND ROUTINE ON
+   WHATSAPP]
+
+
+The WhatsApp button captures the opt-in that the 84-day journey needs. The score is stored against
+the customer so day 84 can show the change.
+
+EXAMPLE 2. THE MITOACTIVE 84-DAY COHORT
+Offer page copy (arata.in/84-days):
+
+   THE FIRST 200 PEOPLE TO FINISH 84 DAYS ON MITOACTIVE. MITOACTIVE
+   IS NEW. IT HAS 5 CLINICAL STUDIES BEHIND THE INGREDIENT AND 0
+   REVIEWS ON OUR SITE. WE WANT TO CHANGE THE SECOND NUMBER
+   WITH PEOPLE WHO ACTUALLY USED IT FOR THE FULL COURSE, AND WE
+   WILL PAY YOU TO BE HONEST.
+
+   WHAT YOU GET: MITOACTIVE (₹1,499), THE ANTI-HAIR FALL SHAMPOO
+   (₹359) AND A SCALP MASSAGER (₹199) FOR ₹1,803, THE NORMAL COMBO
+   PRICE. PLUS A WHATSAPP LINE TO THE LAB THAT MADE IT, A PHOTO
+   PROTOCOL SO YOUR BEFORE AND AFTER MEAN SOMETHING, AND ₹200
+   IN ARATA CREDIT WHEN YOU POST YOUR DAY-84 REVIEW, GOOD OR BAD.
+
+   WHAT WE ASK: USE IT TWICE A DAY FOR 84 DAYS. TAKE 3 PHOTOS ON
+   DAY 0, 28 AND 84 THE WAY WE SHOW YOU. TELL US THE TRUTH AT THE
+   END.
+
+   200 SPOTS. [JOIN THE COHORT]
+
+
+The 84-day WhatsApp journey. Five scheduled messages plus a live group.
+ DAY                 MESSAGE
+
+ 0 (order            "You're in. Cohort #1, spot {n} of 200. Before the bottle arrives, take your day-0 photos: crown from
+ confirmed)          above in daylight, hairline straight on, and your part line. Same spot, same light, every time. Here is the
+                     guide: {link}. Reply with a thumbs up when done."
+ 3 (delivered)       "Bottle arrived? Check the seal and the dropper before you open it. If anything is leaking or broken, send
+                     a photo here and we replace it the same week, no questions. Apply 1 ml to a dry scalp morning and night,
+                     massage 60 seconds. That's the whole routine."
+ 14                  "Two weeks in. If you are seeing a little extra shedding this week, that is the anagen phase pushing out
+                     old hairs. It settles by week 4. If you are seeing nothing at all, that is also normal at day 14. Keep going.
+                     Question for the lab? Reply here."
+ 28                  "Day 28. Photo day. Same three angles, same light. Compare with day 0 side by side. Most people see
+                     less hair on the pillow by now, and nothing else yet. Reply with your photos and the lab will tell you what
+                     they see."
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TWELVE GROWTH IDEAS RANKED FOR ARATA                                                                9
+ DAY                 MESSAGE
+
+ 56                  "Day 56. Photo day. This is usually where the hairline and crown start to show baby hairs. Second bottle
+                     time: reorder here {link} and it ships today. If it is not working for you, tell us why. We would rather know."
+ 84                  "Day 84. Final photos. Then the review: here is the link {Loox link}. Write what happened, upload your day
+                     0 and day 84 side by side, and your ₹200 credit lands within 24 hours. Honest reviews only. A 2-star
+                     review with photos is worth more to us than a 5-star without."
+
+
+Day 84 review prompt (on the Loox form):
+
+   THREE THINGS THAT HELP THE NEXT PERSON: WHAT YOUR HAIR FALL
+   WAS LIKE AT DAY 0, WHAT CHANGED AND WHEN, AND WHETHER YOU
+   WOULD START A SECOND COURSE. PHOTOS MATTER MORE THAN
+   WORDS.
+
+
+EXAMPLE 3. ARATA VS TRAYA PAGE
+URL: arata.in/compare/arata-vs-traya Title tag: Arata vs Traya: hair fall treatment compared on price,
+time and commitment Hero:
+
+   TRAYA OR ARATA FOR HAIR FALL? BOTH WORK ON HAIR FALL. THEY ASK
+   VERY DIFFERENT THINGS OF YOU. HERE IS THE HONEST COMPARISON.
+
+
+Comparison table:
+                          ARATA MITOACTIVE PLAN                                              TRAYA HAIR KIT
+
+ Monthly cost             ₹1,803 for MitoActive + shampoo (₹60 a day)                        ₹1,400 to ₹1,800 per month
+ Minimum                  84 days, one course                                                5 to 9 months
+ commitment
+ What is in it            A serum and a shampoo                                              Serum, supplements, shampoo, oils,
+                                                                                             often minoxidil
+ Doctor                   None required. Dermatologically tested.                            Hair test plus doctor calls
+ involvement
+ Mechanism                Y100, mitochondrial function in the follicle. Exclusive to         Ayurveda + allopathy + nutrition
+                          Arata in India.
+ Proof                    87% saw increased growth in 84 days; up to 95% reduction           Money-back after 5 months
+                          in hair fall (84-day study)
+ Dependency               3-month course then maintenance                                    Ongoing, and minoxidil needs
+                                                                                             continued use
+ Where to buy             arata.in, Amazon, Nykaa, Blinkit, Zepto, Instamart                 traya.health and app
+
+
+Body copy:
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TWELVE GROWTH IDEAS RANKED FOR ARATA                                                                  10
+   TRAYA IS A GOOD CHOICE IF YOU WANT A DOCTOR INVOLVED AND ARE
+   READY FOR A 5-MONTH PROGRAMME WITH SUPPLEMENTS. IT IS BUILT
+   FOR THAT. AROUND 70% OF ITS CUSTOMERS ARE IN TIER-2 AND TIER-3
+   CITIES AND VALUE THE HAND-HOLDING.
+
+   ARATA IS BUILT FOR THE PERSON WHO WANTS THE STRONGEST NON-
+   PRESCRIPTION MECHANISM AVAILABLE, ONE BOTTLE, TWO MINUTES A
+   DAY, AND A NUMBER THEY CAN CHECK AT 84 DAYS. IF YOU HAVE
+   ALREADY SEEN A DERMATOLOGIST AND WANT SOMETHING THAT IS NOT
+   MINOXIDIL, MITOACTIVE IS THE PRODUCT WE WOULD START YOU ON. IF
+   YOUR HAIR FALL IS EARLIER STAGE, THE HAIR GROWTH INTENSIVE SERUM
+   AT ₹571 IS THE STARTING POINT AND THE SHAMPOO AT ₹359 GOES WITH
+   IT.
+
+   NOT SURE WHICH BAND YOU ARE IN? [TAKE THE HAIR FALL SCORE TEST]
+
+
+FAQ (two of six):
+
+   IS MITOACTIVE JUST ANOTHER REDENSYL SERUM? NO. REDENSYL,
+   ANAGAIN AND PROCAPIL SERUMS (OURS INCLUDED, AT ₹571) WORK ON
+   FOLLICLE SIGNALLING. Y100 WORKS ON THE MITOCHONDRIA INSIDE THE
+   FOLLICLE CELL, WHICH IS THE ENERGY SUPPLY THE GROWTH PHASE
+   RUNS ON. DIFFERENT TARGET, DIFFERENT STUDY.
+
+   WHY IS TRAYA SO MUCH MORE EXPENSIVE OVER A YEAR? THE KIT
+   INCLUDES SUPPLEMENTS, OILS AND DOCTOR TIME. OVER 9 MONTHS AT
+   ₹1,600 THAT IS ₹14,400. AN 84-DAY MITOACTIVE COURSE FOLLOWED BY
+   SHAMPOO-ONLY MAINTENANCE IS ₹1,803 PLUS ₹359 A MONTH AFTER.
+
+
+EXAMPLE 4. FOUNDER WELCOME EMAIL
+Send: 2 hours after first order confirmation, every first-time customer, all SKUs. Plain text, no images,
+no buttons. From: Dhruv Madhok, Arata Subject: What to expect in the next 84 days
+
+                                DHRUV HERE, ONE OF THE TWO FOUNDERS. YOUR ORDER IS PACKED AND
+   HI {FIRST NAME},             LEAVES OUR WAREHOUSE IN DELHI TONIGHT.
+
+   ONE THING BEFORE IT ARRIVES. HAIR TAKES TIME. THE SHAMPOO WILL
+   FEEL DIFFERENT FROM THE FIRST WASH, AND MOST PEOPLE SEE LESS
+   HAIR ON THE PILLOW IN 3 TO 4 WEEKS. NEW GROWTH FROM THE SERUM
+   SHOWS UP FROM WEEK 8. THE STUDY BEHIND THE 28,200 NUMBER RAN
+   FOR 84 DAYS. SO GIVE IT 84 DAYS, AND TAKE A PHOTO OF YOUR CROWN
+   TODAY SO YOU HAVE SOMETHING TO COMPARE AGAINST.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TWELVE GROWTH IDEAS RANKED FOR ARATA                                   11
+   IF THE BOTTLE ARRIVES LEAKING OR THE SEAL IS BROKEN, REPLY TO
+   THIS EMAIL WITH A PHOTO. WE REPLACE IT THAT WEEK. WE HAD A
+   PACKAGING PROBLEM EARLIER THIS YEAR AND WE ARE STILL CLEANING
+   IT UP.
+
+   AND ONE QUESTION, IF YOU HAVE A MINUTE: WHAT DID YOU TRY BEFORE
+   US, AND WHAT HAPPENED? I READ EVERY REPLY.                                                 DHRUV ARATA, DELHI
+
+
+Reply handling: every reply with a product-before-us answer is tagged in the CRM by competitor
+named (onion, biotin, Traya, minoxidil, derm, oiling). This is the raw data for ideas 5 and 7.
+
+EXAMPLE 5. DERM PILLOW KIT
+Target list criteria (50 names): dermatologists and trichologists with an active Instagram or Practo
+profile, 500-plus reviews or 10K-plus followers, in Delhi NCR, Mumbai, Bangalore, Chennai,
+Hyderabad. 10 per city. Hand-qualified by Brew, approved by Arata's CBO.
+The three-rule check:
+ RULE                  HOW THE KIT PASSES
+
+ Relevance             The pillowcase is where the patient first sees the problem. The printed grid turns it into a count the
+                       derm can ask patients to do.
+ Relationship-         The kit contains the Y100 study summary, the Indian-participant data, and one bottle. There is no
+ first                 discount code, no pitch deck, no rep follow-up for 2 weeks.
+ Precision             50 named doctors. Each one who recommends MitoActive to 10 patients a month is ₹15,000 a month
+                       in revenue against a ₹1,200 kit.
+
+
+Contents: white cotton pillowcase with a faint printed 10x10 grid and the line "Count what the pillow
+catches"; one MitoActive 30 ml; a 4-page Y100 study summary (mechanism, Indian study design,
+anagen/telogen result, safety data); a handwritten note.
+The note:
+
+                              WE MAKE MITOACTIVE, A HAIR GROWTH SERUM BUILT ON Y100, A
+                              MITOCHONDRIAL ACTIVE WITH 5 CLINICAL STUDIES AND AN INDIAN-
+                              PARTICIPANT TRIAL BEHIND IT. IT IS THE FIRST TIME THIS MECHANISM
+                              HAS BEEN AVAILABLE IN INDIA, AND WE WOULD RATHER YOU FORM YOUR
+   DR {SURNAME},              OWN VIEW THAN READ OUR ADS.
+
+   THE STUDY SUMMARY IS IN THE BOX. THE PILLOWCASE IS A SMALL JOKE
+   THAT YOUR PATIENTS MAY FIND USEFUL: A GRID TO COUNT WHAT THEY
+   LOSE OVERNIGHT, BEFORE AND AFTER.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TWELVE GROWTH IDEAS RANKED FOR ARATA                                                           12
+     IF YOU HAVE QUESTIONS ABOUT THE DATA, MY NUMBER IS BELOW. IF
+     YOU WOULD LIKE A FEW BOTTLES FOR PATIENTS YOU THINK IT SUITS,
+     SAME NUMBER. NO OBLIGATION EITHER WAY.
+
+     {NAME}, HEAD OF R&D, ARATA, NEW DELHI
+
+
+Test plan: 10 kits in week 9, each with a unique reply number. Measure replies within 3 weeks and
+requests for patient samples. Send the other 40 only if at least 3 of 10 reply.
+
+
+
+30-DAY DEPLOYMENT
+ WEEK BREW SHIPS                                            ARATA PROVIDES                           LIVE BY END OF WEEK
+
+ 1        Hair Fall Score quiz: question logic,               Brand manager signs off routines and     Founder welcome email live
+          scoring, six routine mappings, result page          prices. Lab validates the scoring        for all first orders. Review
+          copy. Founder welcome email draft.                  bands. Founder edits the welcome         engine live for all new
+          Review engine timing and copy (day                  email in his voice. Access to Shopify,   orders.
+          28/56/84).                                          Loox, WhatsApp and email platforms.
+ 2        Quiz built and QA'd on the Shopify theme.           CX lead assigned to the cohort           Quiz live at arata.in/hair-
+          WhatsApp opt-in wired to the quiz result.           WhatsApp line (30 minutes a day).        fall-score, linked from the
+          84-Day cohort offer page and five                   Photo protocol approved by the lab.      homepage hero and every
+          journey messages.                                   200 cohort combo SKUs set up at          hair growth product page.
+                                                              ₹1,803.
+ 3        Arata vs Traya, Arata vs Pilgrim and       Legal reviews comparison claims.                  Three comparison pages
+          Minoxidil alternative pages drafted, built CBO approves the Traya framing.                   live. Cohort #1 open, first 50
+          and submitted for indexing. Cohort opens. Creative team supplies product                     spots filled through the
+                                                     photography for the pages.                        welcome email and quiz
+                                                                                                       result page.
+ 4        Lab Notes 12-week calendar. Quiz and                Lab commits to one Tuesday post a        Cohort at 200. First Lab
+          cohort dashboards (completions, quiz-               week. CBO reviews the derm list          Notes post on the new
+          to-cart, cohort day-0 photo rate). India            criteria.                                cadence. Dashboards
+          Hair Fall Index data schema set up                                                           reviewed in the weekly org
+          against quiz fields. Derm list of 50                                                         review.
+          started.
+
+
+Owners: Brew deployment lead (overall), Brew creative lead (copy, pages, journey), Brew
+analyst (dashboards, Index schema), Arata brand manager (approvals), Arata CX lead (cohort line),
+Arata head of R&D (science review, Reddit voice from week 9).
+
+
+
+HOW WE MEASURE
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TWELVE GROWTH IDEAS RANKED FOR ARATA                                                                 13
+ METRIC                        BASELINE                                 90-DAY TARGET         DECISION RULE
+
+ Quiz completions per          0 (no quiz)                              25,000 (about 4% of   Under 10,000 by day 60: move the
+ month                                                                  650K visits;          quiz entry to the homepage hero and
+                                                                        assumption)           run it as a Meta lead objective.
+ Quiz-to-cart rate             To be instrumented                       25%                   Under 15%: rewrite result pages, test
+                                                                                              a ₹100 first-routine credit.
+ Routine AOV (quiz             Site AOV ~₹950 (implied)                 Quiz AOV ₹1,100 or    Below site AOV: the routing is pushing
+ orders) vs site AOV                                                    above                 single SKUs; fix the band thresholds.
+ MitoActive reviews on         0                                        100 with photos       Under 40 by day 90: raise the finisher
+ site                                                                                         credit to ₹300 and open cohort #2 at
+                                                                                              500.
+ MitoActive Nykaa and          0                                        50 combined           Under 20: route the day-84 ask to
+ Amazon reviews                                                                               marketplace links first for marketplace
+                                                                                              buyers.
+ Cohort day-84                 n/a                                      50% of 200            Under 30%: shorten the gap between
+ completion                                                                                   messages and add a day-42 touch.
+ Founder email reply           n/a                                      2%                    Under 1%: test a shorter version with
+ rate                                                                                         the question in the subject line.
+ Comparison page               0                                        8,000 across three    Under 2,000 by day 90: add the
+ organic visits per                                                     pages (assumption)    pages to Google Ads on competitor
+ month                                                                                        terms and rebuild the on-page
+                                                                                              structure.
+ Repeat purchase               ~26% (category benchmark in              34%                   Flat after 90 days: the 84-day journey
+ within 45 days (hair          the brief; Arata's own number                                  is not driving reorders; test the day-
+ growth buyers)                to be instrumented)                                            56 reorder message with a 10%
+                                                                                              credit.
+ Derm kit reply rate           n/a                                      3 of 10               Under 3: stop. Over 3: send the
+ (test of 10)                                                                                 remaining 40 and add a sample
+                                                                                              programme.
+
+
+If the loop works, the 90-day review hands three things to the next deployments: the quiz data to the
+India Hair Fall Index and the programmatic SEO team, the cohort's before/after assets to the ads team,
+and the 84-day habit to the subscription launch. If it does not, the quiz and the founder email stay
+(they are near-free), and we revisit the cohort structure before spending on ideas 9 and 10.
+
+
+
+APPENDIX
+QUIZ ROUTING SUMMARY
+                                                                                                                            DIAGRAM
+    Q5 flaky/itchy ──────────────► Anti-Dandruff S+C ₹866 (+ leave-on serum ₹299)
+    Q6 minoxidil or derm ─────────► MitoActive Plan ₹1,803
+    Score 0-25 ──────────────────► Maintenance Wash ₹638
+    Score 26-50 ─────────────────► Hair Fall Routine ₹838
+    Score 51-75 ─────────────────► 84-Day Growth Plan ₹1,557
+    Score 76-100 ────────────────► MitoActive Plan ₹1,803
+    Q7 a few greys ──────────────► + Anti-Grey Serum ₹449 add-on on any result
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TWELVE GROWTH IDEAS RANKED FOR ARATA                                                                  14
+SOURCES
+Arata brand brief (arata.in catalogue and prices as of October 2026, StopDown results report February
+2026, BW Retail World MitoActive launch August 2026, Storyboard18 founder interview February
+2026, Inc42 and Tracxn profiles, Loox and Nykaa reviews, Redseer India hair growth report, Traya
+public pricing pages). Quiz benchmarks, cohort completion rates, derm kit unit cost and comparison
+page traffic are assumptions and are labelled as such in the text.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TWELVE GROWTH IDEAS RANKED FOR ARATA                              15
+MARKETING IDEAS
+
+
+DAY 30
+AT ARATA
+    WHAT IS LIVE
+
+    The Hair Fall Score quiz, the Arata vs Traya page, the MitoActive 84-Day cohort
+    and the founder welcome email are live on arata.in, and the first 200 cohort
+    members are inside the 84-day journey on WhatsApp.
+
+
+
+
+  NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+  BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+  CONFIRM".
+
+
+  EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+  BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                  DEPLOYMENT TEAM
+                                                                               BREW
+

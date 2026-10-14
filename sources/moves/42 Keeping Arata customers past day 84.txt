@@ -1,0 +1,939 @@
+      Brew                                   PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+RETENTION AND CHURN PREVENTION · MOVE 42 OF 50
+
+
+
+KEEPING
+ARATA
+CUSTOMERS
+PAST DAY 84
+  A REORDER, SUBSCRIPTION AND FAILED-DELIVERY
+  RECOVERY SYSTEM SO THE CUSTOMER WHO BUYS ONE
+  BOTTLE OF ARATA ACTUALLY BUYS THE SECOND AND
+  THIRD.
+
+
+
+
+26% → 40%
+90-DAY REPEAT RATE TARGET
+
+
+
+
+BREW × ARATA                  OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                                WHAT THIS GIVES ARATA
+                                                                A reorder, subscription and failed-delivery recovery
+                                                                system so the customer who buys one bottle of
+
+        26% →                                                   Arata actually buys the second and third.
+                                                                LIVE 30 DAYS AFTER WE START
+
+        40%
+         90-DAY REPEAT RATE TARGET
+                                                                A WhatsApp reorder sequence, a reason-based
+                                                                save flow, a routine subscription with a proper
+                                                                cancel flow and a payment and delivery recovery
+                                                                loop are live on arata.in for every hair fall and
+                                                                dandruff buyer.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+In SaaS, churn means a subscriber cancels. For Arata, churn means a customer finishes the bottle and
+does not buy the next one. We treat the 45-day reorder window as the billing cycle, the "not
+reordered" customer as the cancellation, and leaked bottles, failed UPI mandates and COD returns as
+the failed payments. Everything below is built on that translation.
+Here is the diagnosis. Arata sells results that take 84 days. The Hair Growth Intensive Serum promises
+"up to +28,200 new hair within 84 days". MitoActive promises "87% saw increased growth in 84
+days". A 30 ml bottle is 30 days of supply at once-daily use, and MitoActive is a one-month supply at
+twice-daily use by your own framing. So the product cannot deliver its headline claim unless the
+customer buys at least three times. Today, nothing on arata.in makes that happen. There is no
+subscription, no routine builder, no reorder reminder, no 84-day check-in. The customer is left to
+remember on her own, and Blinkit is one thumb away with a Pilgrim serum on offer.
+The cost is large. Arata processes 50,000+ D2C orders a month at an implied AOV of ₹900 to ₹1,000.
+Beauty repeat rates sit around 26%; routine-led models exceed 40%. If roughly 30,000 of those
+monthly orders are first orders (assumption), every point of repeat rate is about 300 extra orders a
+month, or ₹2.8 lakh a month at ₹950 AOV. Fourteen points, the gap between a category-average
+beauty brand and a routine brand, is roughly ₹40 lakh a month, close to ₹5 Cr a year, from customers
+you have already paid to acquire. That is the retention gap, and it sits inside the ₹160 Cr goal.
+There is a second, quieter leak. The reviews say "the seal was broken", "the shampoo bottle was
+leaking", "it doesn't have the box". A customer who gets a leaking bottle has paid and received
+nothing usable. In our model that is a failed payment, and like a failed payment it is the most
+recoverable churn you have, because the customer still wants the product. Nobody at Arata is
+currently running a recovery loop on it.
+The opportunity is that Arata already has the two things most brands lack: a reason to come back (a
+dated claim with a number on it) and a routine to sell (shampoo + serum + conditioner, "systems, not
+symptoms"). We only need to build the machinery around them. This document is that machinery.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · KEEPING ARATA CUSTOMERS PAST DAY 84                                                   1
+WHAT WE FOUND
+THE CHURN MAP, SKU BY SKU
+We started with days of supply, because in D2C the "billing date" is the day the bottle runs out. These
+are our usage assumptions; we will replace them with observed reorder intervals from Shopify within
+the first two weeks.
+                                          SALE          USE PATTERN           DAYS OF    REORDER NUDGE   "CHURNED" IF NO
+ SKU                           SIZE       PRICE         (ASSUMPTION)          SUPPLY     SHOULD START    REORDER BY
+
+ Hair Growth Intensive 30 ml              ₹571          1 ml once daily       30         Day 21          Day 45
+ Serum
+ MitoActive Hair               30 ml      ₹1,499        twice daily           30         Day 21          Day 45
+ Growth Serum
+ Anti-Hair Fall                200 ml ₹359              10 ml, 3 to 4         35 to 45   Day 30          Day 60
+ Intensive Shampoo                                      washes a week
+ Anti-Dandruff                 200 ml ₹404              10 ml, 3 to 4         35 to 45   Day 30          Day 60
+ Shampoo                                                washes a week
+ Anti-Dandruff Serum           30 ml      ₹299          once daily            30         Day 21          Day 45
+ (leave-on)
+ Anti-Grey Hair Serum 30 ml               ₹449          once daily, 3-month 30           Day 21          Day 45
+                                                        plan
+ Conditioners (both            200 ml ₹359 to           3 washes a week       50 to 60   Day 42          Day 75
+ ranges)                              ₹449
+ Hair Gel / Styling            50 to  ₹269 to           daily, small amount   60 to 90   Day 55          Day 100
+ Cream                         100 ml ₹699
+ Hair Growth Intensive 3 × 30             ₹999          1 ml once daily       90         Day 75          Day 110
+ Serum Pack of 3       ml
+
+
+Two things fall out of this table.
+First, the 45-day reorder window in Arata's own goal is right for shampoo and slightly late for serum. A
+serum buyer who has not reordered by day 45 has already had an empty bottle for two weeks. The
+serum clock has to start at day 21.
+Second, the Pack of 3 at ₹999 is already the 84-day course. It is the single best retention product
+Arata owns, and today it is sold as a 49% discount instead of as "the full course". Reframing it is free.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · KEEPING ARATA CUSTOMERS PAST DAY 84                                                       2
+WHERE CUSTOMERS FALL OUT
+                                                                                                                              DIAGRAM
+       First order         Bottle ends        Claim window ends
+       (day 0)             (day 30)           (day 84)
+         |                    |                   |
+         | honeymoon          | the gap           | the verdict
+         | "I can see a       | no bottle, no     | "did it work?"
+         |   difference in    | reminder, no      | no photo, no
+         |   two weeks"       | routine           | check-in
+         |                    |                   |
+         v                    v                   v
+       ~100% -----------> ~26% reorder ----> ~?% third order
+                              (category avg)      (to be instrumented)
+
+       Churn moment 1: day 30 to 45. Customer forgets, or buys on Blinkit, or
+                       decides "not enough" after one bottle.
+       Churn moment 2: day 84 to 90. Customer judges the result with no
+                       baseline photo and no one to talk to.
+       Churn moment 3: delivery. Leak, broken seal, missing box, COD refused.
+
+
+
+
+WHY THEY DO NOT REORDER: THE D2C EXIT-REASON SET
+We mapped the SaaS cancel reasons to what an Arata customer would actually say. The ordering
+comes from review language in the brief and from what we see across Indian haircare D2C; we will re-
+rank from survey data every month.
+                         ARATA REASON (SURVEY
+ SAAS REASON             WORDING)                                 WHAT IT TELLS US                    FIXABLE?
+
+ Not using it            "I still have product left"              Our days-of-supply estimate is      Yes: shift the clock, send a
+ enough                                                           off, or usage is irregular          routine reminder
+ Missing a               "I did not see a difference yet"         They stopped before day 84;         Yes: the 84-day framing, photo
+ feature                                                          expectation gap                     baseline, check-ins
+ Too expensive           "A bit expensive compared to             Price sensitivity, mostly serum     Partly: pack/course pricing,
+                         other brands" (verbatim)                 and MitoActive                      swap down a tier
+ Switching to            "I switched to another brand"            Lost on proof or on Blinkit shelf   Partly: the number on the bottle,
+ competitor              (Pilgrim, Minimalist, Traya)                                                 comparison
+ Technical issues "The bottle leaked / seal was                   Delivery failure, not product       Yes, fully: replace, no questions
+                  broken" (verbatim)                              rejection
+ Temporary need          "My hair fall has stopped"               Success churn. They think they      Yes: maintenance routine, lower
+                                                                  are done                            frequency
+ Business closed         "I bought it somewhere else"             Not churn. Channel shift to         Partly: subscription price and
+                         (Blinkit, Amazon, Nykaa)                 rented land                         convenience on arata.in
+ Other                   "Something else" + free text             Catch-all                           Read weekly
+
+
+INVOLUNTARY CHURN, THE D2C VERSION
+                                                                CURRENT HANDLING
+ SAAS FAILURE          ARATA EQUIVALENT                         (FROM THE BRIEF)         OUR ESTIMATE OF LOSS
+
+ Card declined         UPI AutoPay or card mandate              No subscription          Will matter from week 3
+                       fails on subscription renewal            exists yet, so none
+ Card expired          Mandate paused by the                    None                     Low, ₹1,499 sits well under the ₹15,000 e-
+                       customer's bank app, or cap hit                                   mandate limit
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · KEEPING ARATA CUSTOMERS PAST DAY 84                                                                      3
+                                                                CURRENT HANDLING
+ SAAS FAILURE          ARATA EQUIVALENT                         (FROM THE BRIEF)      OUR ESTIMATE OF LOSS
+
+ Payment never COD order refused or RTO'd at                    Unknown               COD RTO in Indian D2C commonly runs 20
+ attempted     the door                                                               to 30% against 3 to 5% on prepaid
+                                                                                      (assumption, industry range)
+ Product not           Leaked bottle, broken seal,              Reactive support      A recurring review theme, so a real share of
+ delivered             missing box                                                    first orders
+ Service outage SKU out of stock on Blinkit or                  Not monitored for     Pushes repeat buyers to Pilgrim on the same
+                Zepto when the customer tries                   retention             shelf
+                to reorder
+
+
+REORDER-PROPENSITY SCORE
+We rebuilt the SaaS health score on signals Shopify, the WhatsApp provider and the support desk
+already have. No app, no login data needed.
+                                                                                                                          DIAGRAM
+    Reorder score (0 to 100) =
+        Supply timing        x 0.30              days since order vs days of supply
+      + Routine depth        x 0.25              1 SKU = low, S+C = mid, S+C+serum = high
+      + Engagement           x 0.15              WhatsApp opt-in, replies, photo uploaded
+      + Delivery health      x 0.15              no ticket = full; leak/RTO = zero until fixed
+      + Review sentiment     x 0.15              5 star = full; 1 to 2 star = zero
+
+
+
+
+ SCORE              STATUS                          WHAT WE DO
+
+ 80 to 100          Routine customer                Offer subscription, offer MitoActive upgrade
+ 60 to 79           Needs a nudge                   Reorder sequence on schedule, 84-day check-in
+ 40 to 59           At risk                         Earlier nudge, course framing, small course offer
+ 0 to 39            Critical                        Human reply on WhatsApp within 24 hours; fix delivery first
+
+
+Who sits where today, from the catalogue and review patterns (assumption, to be confirmed from the
+first cohort pull):
+    Single shampoo buyers on sale: the largest group, mostly 40 to 59.
+    Pack of 3 serum buyers (388 reviews): 80 to 100. They have already bought the course.
+    Styling-only buyers (the most reviewed combos on Loox): 60 to 79, long cadence, low urgency.
+    Different rhythm, and we keep them out of the hair-fall messaging.
+    Any order with a leak ticket: 0 to 39 regardless of everything else.
+
+
+
+THE PLAN
+Five systems, in the order we would switch them on. Each one is a retention loop on its own; together
+they cover the three churn moments and the delivery leak.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · KEEPING ARATA CUSTOMERS PAST DAY 84                                                                 4
+                                                                                                                      DIAGRAM
+                                 ARATA RETENTION SYSTEM
+
+       Order placed on arata.in
+               |
+               v
+       [1] Post-purchase 84-day track ------------------------------+
+           day 0 photo, day 7, day 21 nudge, day 30 reorder,        |
+           day 60 reorder, day 84 verdict                           |
+               |                                                     |
+               | no reorder by day 45 (serum) / 60 (shampoo)         |
+               v                                                     |
+       [2] "Not reordering?" save flow                               |
+           1-question survey -> reason-matched offer -> let go       |
+               |                                                     |
+               | accepted the routine                                |
+               v                                                     |
+       [3] Routine subscription + cancel flow                        |
+           course every 84 days / shampoo every 45 days              |
+           skip, swap, pause, cancel with survey and offer           |
+               |                                                     |
+               | mandate fails / COD refused / bottle leaks            |
+               v                                                     |
+       [4] Recovery loop (dunning)                                   |
+           retry, WhatsApp + email, replace, grace, let go           |
+               |                                                     |
+               v                                                     |
+       [5] Reorder-propensity score + weekly cohort review ----------+
+           feeds timing and offers back into 1 to 4
+
+
+
+
+1. THE 84-DAY TRACK (REPLACES "DO NOTHING AFTER THE ORDER")
+What: a WhatsApp-first sequence (email as backup) tied to the SKU's days of supply, with the 84-day
+claim as its spine. Day 0 asks for a baseline photo. Day 21 to 30 sells the second bottle as "month 2 of
+3". Day 84 asks for the verdict photo and a review.
+Why: the claim is dated. Using the date as the retention frame turns a reminder into a plan. It also fixes
+MitoActive's zero reviews, because the day 84 message is where reviews come from.
+Expected effect: 45-day reorder rate for serum buyers moves from category baseline toward 40%,
+and MitoActive collects its first 100 reviews inside a quarter.
+
+2. THE SAVE FLOW FOR SILENT CHURN
+What: when the clock runs out with no reorder, one WhatsApp message with a single-tap survey. The
+answer picks the offer. We use the SaaS mapping, translated.
+ REASON
+ TAPPED                 PRIMARY OFFER                                  FALLBACK                            NEVER DO
+
+ Still have             Push the next nudge by 14 days; ask how        Nothing. Respect it                 Discount
+ product left           often they use it
+ Did not see a          "You are at day 45 of 84" + the study          Swap to MitoActive with ₹200 off    Argue
+ difference yet         design + Pack of 3 at ₹999 (course             first bottle
+                        framing, no extra discount)
+ Too expensive          20% off next 2 bottles (₹571 → ₹457 on         Swap down: MitoActive → Intensive   Exceed 30%
+                        serum; ₹1,499 → ₹1,199 on MitoActive)          Serum ₹571; serum → shampoo-
+                                                                       only routine ₹359
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · KEEPING ARATA CUSTOMERS PAST DAY 84                                                            5
+ REASON
+ TAPPED                 PRIMARY OFFER                                         FALLBACK                               NEVER DO
+
+ Switched to            Ask which one (optional). Reply with the              Feedback reply from the team, read     Trash the
+ another brand          number: 7.4X, 28,200, 87% in 84 days,                 by a human                             competitor
+                        and a 20% comeback offer
+ Bottle leaked /        Replacement shipped, no questions, before ₹100 credit on next order                          Ask for photos
+ seal broken            anything else                                                                                first
+ Hair fall has          Maintenance routine: shampoo +                        Subscription at 60-day cadence         Sell the full course
+ stopped                conditioner ₹638, serum 3 times a week                                                       again
+ Bought it on           Thank them. Offer the subscription price on Nothing                                          Discount against
+ Blinkit /              arata.in with free shipping and the free gift                                                your own channel
+ Amazon                 above ₹999
+
+
+Why: a blanket "10% off, come back" treats the leak customer and the price customer the same, and
+neither is served. Reason-matched offers are where SaaS cancel flows get their 25 to 35% save rate.
+Expected effect: 20 to 30% of silent churners re-engage; the leak group converts near 70% because
+the cause is removed.
+
+3. THE ROUTINE SUBSCRIPTION WITH A CANCEL FLOW BUILT IN
+What: a subscription on arata.in through the Shopify subscription app and the payment gateway's UPI
+AutoPay and card e-mandates. Two cadences, matched to supply:
+                                                                                   PRICE PER CYCLE (ASSUMPTION, PRICING           PER
+ ROUTINE              CONTENTS                                     CADENCE         TEAM TO CONFIRM)                               DAY
+
+ Hair Fall            Intensive Serum Pack of 3                    every 84        ₹999 (same as today's pack price)              ₹12
+ Course                                                            days
+ Hair Fall Wash       Anti-Hair Fall Shampoo + Anti-               every 45        ₹638 (today's combo price)                     ₹14
+                      Breakage Conditioner                         days
+ MitoActive           MitoActive 30 ml                             every 30        ₹1,499, 3rd bottle free shipping + free gift   ₹50
+ Course                                                            days
+ Dandruff             Anti-Dandruff Shampoo +                      every 45        ₹1,165 at today's prices; subscriber           ₹23
+ Routine              Conditioner + Serum                          days            ₹1,049 (10% off)
+
+
+The ₹15,000 e-mandate threshold means every one of these runs without an OTP on each charge. The
+gateway will send the regulator-required pre-debit notification 24 hours before each charge; we add
+our own WhatsApp the day before with a "skip this one" button, which doubles as the pre-dunning
+step.
+Cancel flow, following the standard structure: Trigger → Survey → Dynamic offer → Confirmation →
+Post-cancel. Skip and "push by 2 weeks" sit before cancel, pause is capped at 2 cycles, and
+"continue cancelling" is visible on every screen. Cancel is as easy as subscribe; a customer who has
+to call to cancel leaves a 1-star review.
+Why: subscription takes the reorder decision off the customer. In the brief's own words, Routine Ritika
+wants "one cart that handles it" and "a reminder to reorder". That is a subscription.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · KEEPING ARATA CUSTOMERS PAST DAY 84                                                                        6
+Expected effect: 15% of routine buyers on subscription within 90 days (assumption); subscribers
+reorder at 3X the rate of one-off buyers.
+
+4. THE RECOVERY LOOP
+What: four recovery tracks that run automatically.
+    Mandate failure: retry on day 1, day 3, day 5 and day 7; WhatsApp on day 0, 3 and 7; email on day 0
+    and 7; grace period of 10 days with the next shipment held; then pause the subscription, never
+    delete it.
+    COD confirmation: WhatsApp confirm within 10 minutes of a COD order, ₹30 off to switch to
+    prepaid, address check on the second attempt, and a hold on repeat COD for any customer with a
+    prior RTO.
+    Leak and seal: any ticket or review mentioning leak, seal, broken or box triggers a replacement
+    order within 24 hours and a WhatsApp from a named support person. This sits above every other
+    message in priority.
+    Quick-commerce stock-out: when a hero SKU is out of stock on Blinkit or Zepto in a metro
+    (assumption: monitored by the ops team weekly), the reorder nudge for customers in that city
+    routes to arata.in with same-week delivery and free shipping.
+Why: failed payments and failed deliveries are the most recoverable churn there is. The customer still
+wants the product.
+Expected effect: 50 to 60% of failed mandates recovered; COD RTO down by a third on nudged
+orders; leak complaints in reviews fall to near zero within a quarter.
+
+5. THE SCORE AND THE WEEKLY REVIEW
+What: the reorder-propensity score computed nightly from Shopify, the WhatsApp provider and the
+support desk, and a weekly cohort table cut by first SKU, channel of acquisition, city and month.
+Why: everything above has timing assumptions in it. The score and the cohort table are how we
+replace assumptions with Arata's real intervals, and how we see which first SKU produces the best
+third order.
+Expected effect: by week 8 the nudge timings are observed, not assumed, and we know which entry
+product deserves the acquisition budget.
+
+
+
+WORKED EXAMPLES
+All copy is for WhatsApp unless marked. Brand voice: short, confident, warm, a number where it
+helps. Names and dates are merge fields.
+
+EXAMPLE 1: THE 84-DAY TRACK FOR A HAIR GROWTH INTENSIVE SERUM BUYER
+Trigger: first order containing Intensive Serum (single bottle, ₹571). Day 0 = delivery date.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · KEEPING ARATA CUSTOMERS PAST DAY 84                                     7
+Day 0, on delivery
+
+   HI RAHUL, YOUR ARATA HAIR GROWTH INTENSIVE SERUM HAS REACHED
+   YOU.
+
+   ONE THING BEFORE YOU START. TAKE A PHOTO OF YOUR CROWN AND
+   HAIRLINE TODAY IN THE SAME LIGHT YOU WILL USE AT DAY 84. YOU WILL
+   WANT THE BEFORE.
+
+   USE 1 ML ON A DRY SCALP EVERY NIGHT. MASSAGE 60 SECONDS. THAT IS
+   THE WHOLE ROUTINE.
+
+   REPLY PHOTO TO SAVE YOUR DAY-0 PICTURE HERE. WE KEEP IT PRIVATE.
+
+   [SAVE MY DAY-0 PHOTO] [HOW DO I APPLY IT?]
+
+
+Day 7
+
+   ONE WEEK IN. NOTHING VISIBLE YET, AND THAT IS NORMAL. THE SERUM
+   WORKS ON THE FOLLICLE FIRST AND THE HAIR YOU CAN SEE COMES
+   LATER.
+
+   WHAT MOST PEOPLE NOTICE FIRST, AROUND WEEK 3: LESS ON THE
+   PILLOW, LESS IN THE DRAIN. KEEP GOING.
+
+   [REPLY IF ANYTHING FEELS OFF]
+
+
+Day 21 (the reorder nudge, month 2 of 3)
+
+   RAHUL, YOU ARE THREE WEEKS INTO AN 84-DAY COURSE. THE BOTTLE
+   YOU HAVE RUNS OUT AROUND DAY 30.
+
+   THE STUDY BEHIND "UP TO 28,200 NEW HAIR" RAN FOR 84 DAYS. ONE
+   BOTTLE GETS YOU A THIRD OF THE WAY. THREE BOTTLES IS THE FULL
+   COURSE.
+
+   PACK OF 3 IS ₹999 INSTEAD OF ₹1,713. SHIPS FREE, ARRIVES BEFORE
+   YOUR BOTTLE ENDS.
+
+   [GET THE FULL COURSE, ₹999] [JUST ONE MORE BOTTLE, ₹571] [REMIND
+   ME IN A WEEK]
+
+
+Day 30, only if no reorder
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · KEEPING ARATA CUSTOMERS PAST DAY 84   8
+   YOUR BOTTLE SHOULD BE CLOSE TO EMPTY TODAY. A GAP OF EVEN TWO
+   WEEKS RESETS SOME OF THE PROGRESS, SO THIS IS THE ONE MESSAGE
+   WHERE WE WILL NUDGE YOU PROPERLY.
+
+   REORDER IN TWO TAPS. SAME PRODUCT, SAME PRICE, NO ACCOUNT
+   NEEDED.
+
+   [REORDER SERUM, ₹571] [I STILL HAVE SOME LEFT]
+
+
+Day 45, only if no reorder: hand-off to the save flow (Example 2)
+Day 60 (reorder nudge for bottle 3, if bottle 2 was bought)
+
+   MONTH 3 STARTS AROUND NOW. THIS IS THE STRETCH WHERE THE
+   COUNT GOES UP, SO IT IS THE ONE NOT TO SKIP.
+
+   [REORDER SERUM, ₹571] [SWITCH TO THE COURSE AND SAVE]
+
+
+Day 84 (the verdict)
+
+   DAY 84, RAHUL. THIS IS THE DATE ON THE BOTTLE.
+
+   TAKE THE SAME PHOTO, SAME LIGHT, SAME ANGLE. PUT IT NEXT TO
+   YOUR DAY-0 PICTURE.
+
+   IF YOU SEE MORE HAIR, TELL US. A REVIEW FROM YOU IS WHAT THE NEXT
+   PERSON WITH HAIR FALL READS BEFORE BUYING.
+
+   IF YOU DO NOT SEE ENOUGH, TELL US THAT TOO. WE WILL LOOK AT
+   YOUR ROUTINE AND SUGGEST WHAT TO CHANGE, INCLUDING WHETHER
+   MITOACTIVE IS THE RIGHT NEXT STEP.
+
+   [UPLOAD MY DAY-84 PHOTO] [LEAVE A REVIEW] [NOT ENOUGH, HELP ME]
+
+
+Email backup runs on day 21 and day 84 only, same copy, subject lines: "Month 2 of 3 starts in 9
+days" and "Day 84. Time for the photo."
+
+EXAMPLE 2: THE SILENT-CHURN SAVE FLOW
+Trigger: serum buyer, day 45, no second order, no subscription. One message, one question, then the
+matched branch.
+The survey
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · KEEPING ARATA CUSTOMERS PAST DAY 84                                  9
+   HI RAHUL. IT HAS BEEN 45 DAYS SINCE YOUR SERUM ARRIVED AND WE
+   HAVE NOT SEEN A REORDER. NO PRESSURE. WE WOULD LIKE TO KNOW
+   WHAT HAPPENED SO WE CAN DO BETTER. ONE TAP:
+
+   [STILL HAVE SOME LEFT] [DID NOT SEE A DIFFERENCE] [TOO EXPENSIVE]
+   [SWITCHED TO ANOTHER BRAND] [BOTTLE LEAKED OR SEAL WAS
+   BROKEN] [HAIR FALL HAS STOPPED] [BOUGHT IT ON BLINKIT / AMAZON]
+   [SOMETHING ELSE]
+
+
+Branch: "Did not see a difference"
+
+   FAIR. HERE IS THE HONEST VERSION.
+
+   THE 28,200 NUMBER COMES FROM AN 84-DAY STUDY. AT DAY 45 WITH
+   ONE BOTTLE, MOST PEOPLE ARE AT THE "LESS ON THE PILLOW" STAGE,
+   NOT THE "VISIBLE NEW HAIR" STAGE. VISIBLE DENSITY IS A MONTH 3
+   THING.
+
+   IF YOU WANT TO FINISH THE COURSE, THE PACK OF 3 IS ₹999 AND
+   COVERS ALL 84 DAYS. IF YOU WOULD RATHER TRY THE STRONGER
+   SERUM, MITOACTIVE IS ₹1,499 AND WE WILL TAKE ₹200 OFF YOUR FIRST
+   BOTTLE BECAUSE YOU HAVE ALREADY PUT 45 DAYS IN.
+
+   IF YOU WOULD RATHER STOP, THAT IS FINE, AND THANK YOU FOR
+   TRYING US.
+
+   [FINISH THE COURSE, ₹999] [TRY MITOACTIVE, ₹1,299] [I'LL STOP HERE]
+
+
+Branch: "Too expensive"
+
+   UNDERSTOOD. TWO OPTIONS, PICK WHAT FITS.
+
+   20% OFF YOUR NEXT 2 BOTTLES: ₹457 EACH INSTEAD OF ₹571. THAT IS
+   THE SERUM AT ₹15 A DAY. OFFER STAYS OPEN FOR 48 HOURS.
+
+   OR KEEP THE WASH AND DROP THE SERUM: ANTI-HAIR FALL SHAMPOO +
+   CONDITIONER AT ₹638 FOR ABOUT 45 DAYS. LESS THAN THE SERUM
+   ALONE PER MONTH, AND THE SHAMPOO CARRIES THE 7.4X HAIR FALL
+   REDUCTION CLAIM ON ITS OWN.
+
+   [20% OFF, 2 BOTTLES] [SHAMPOO + CONDITIONER, ₹638] [NO THANKS]
+
+
+Branch: "Bottle leaked or seal was broken"
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · KEEPING ARATA CUSTOMERS PAST DAY 84     10
+   THAT SHOULD NOT HAVE HAPPENED AND WE ARE SORRY. WE ARE
+   SENDING A REPLACEMENT TODAY, NO PHOTOS, NO FORM. YOU WILL GET
+   A TRACKING LINK HERE WITHIN 24 HOURS.
+
+   WHEN IT LANDS, CHECK THE SEAL AND REPLY OK. IF ANYTHING IS OFF
+   AGAIN, REPLY HERE AND A PERSON WILL HANDLE IT, NOT A BOT.
+
+   [CONFIRM MY ADDRESS] [TALK TO A PERSON]
+
+
+Branch: "Hair fall has stopped"
+
+   THAT IS THE RESULT WE WANTED. GOOD.
+
+   MOST PEOPLE WHO STOP EVERYTHING SEE THE FALL COME BACK IN 2 TO
+   3 MONTHS. THE MAINTENANCE ROUTINE IS LIGHTER: SHAMPOO AND
+   CONDITIONER ON WASH DAYS, SERUM 3 NIGHTS A WEEK. ONE SERUM
+   BOTTLE LASTS 10 WEEKS THAT WAY.
+
+   [MAINTENANCE ROUTINE, ₹638 + SERUM] [REMIND ME IN A MONTH] [I'M
+   DONE, THANKS]
+
+
+Branch: "Bought it on Blinkit / Amazon"
+
+   THANKS FOR STICKING WITH ARATA. ONE THING YOU MAY NOT KNOW:
+   ON ARATA.IN THE COURSE SUBSCRIPTION IS ₹999 EVERY 84 DAYS,
+   SHIPPING IS FREE, AND ABOVE ₹999 THERE IS A FREE GIFT IN THE BOX.
+   BLINKIT IS GREAT FOR EMERGENCIES; THIS IS FOR THE ROUTINE.
+
+   [SEE THE SUBSCRIPTION] [I'M FINE ON BLINKIT]
+
+
+Post-flow, any branch that ends in "stop"
+
+   NO PROBLEM, RAHUL. WE WILL NOT MESSAGE YOU ABOUT REORDERS
+   AGAIN. IF YOU EVER WANT TO PICK THE ROUTINE BACK UP, YOUR DAY-0
+   PHOTO IS SAVED HERE AND THE COURSE WILL BE WAITING.
+
+   [KEEP ME ON THE LAB NOTES LIST ONLY]
+
+
+Then: nothing on day 46. A one-question "how was the overall experience" on day 52. A "what is
+new" message (MitoActive explainer, new reviews) on day 75. A final comeback offer at day 105, 20%
+off the course, and then the customer leaves the retention list for good.
+
+EXAMPLE 3: THE SUBSCRIPTION CANCEL FLOW ON ARATA.IN
+Surface: account page → "Manage routine" → "Cancel routine". Mobile-first. Three screens maximum.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · KEEPING ARATA CUSTOMERS PAST DAY 84                             11
+                                                                                             DIAGRAM
+    ┌──────────────────────────────────────────────┐
+    │ Hair Fall Course · ₹999 every 84 days         │
+    │ Next delivery: 14 Nov · Day 61 of your course│
+    │                                                │
+    │ Before you cancel, two lighter options:        │
+    │                                                │
+    │ [Skip the next delivery]                       │
+    │ [Push it back 2 weeks]                         │
+    │                                                │
+    │ Or tell us why you are cancelling              │
+    │ (one tap, helps us fix it):                    │
+    │                                                │
+    │ ○ I still have product left                    │
+    │ ○ I did not see a difference                   │
+    │ ○ Too expensive                                │
+    │ ○ Switching to another brand                   │
+    │ ○ Delivery or packaging problem                │
+    │ ○ My hair fall has stopped                     │
+    │ ○ Something else [__________________]          │
+    │                                                │
+    │ [Continue]            [Keep my routine]        │
+    └──────────────────────────────────────────────┘
+                       ↓ "Too expensive"
+    ┌──────────────────────────────────────────────┐
+    │ We can make this lighter                       │
+    │                                                │
+    │ ┌──────────────────────────────────────────┐ │
+    │ │ 20% off your next 2 deliveries             │ │
+    │ │ ₹799 instead of ₹999. You save ₹400.       │ │
+    │ │ Price returns to ₹999 after that.          │ │
+    │ │                                            │ │
+    │ │ [Take 20% off]                             │ │
+    │ └──────────────────────────────────────────┘ │
+    │                                                │
+    │ Or move to the Hair Fall Wash routine:         │
+    │ shampoo + conditioner, ₹638 every 45 days.     │
+    │ ✓ Keep: 7.4X hair fall reduction shampoo,      │
+    │          free shipping, 84-day check-ins       │
+    │ ✗ Lose: the growth serum and the 28,200 claim │
+    │ [Switch to Wash routine]                       │
+    │                                                │
+    │ [No thanks, continue cancelling]               │
+    └──────────────────────────────────────────────┘
+                       ↓ "continue"
+    ┌──────────────────────────────────────────────┐
+    │ Your routine is cancelled.                     │
+    │                                                │
+    │ • No further charges. Your UPI mandate is      │
+    │    revoked; you will get a confirmation from   │
+    │    your bank app.                              │
+    │ • Anything already shipped still arrives.      │
+    │ • Your day-0 photo and order history stay      │
+    │    in your account.                            │
+    │ • Restart any time from this page.             │
+    │                                                │
+    │ [Restart my routine]                           │
+    │                                                │
+    │ Thank you for trying Arata. We read every      │
+    │ reason and we will keep fixing things.         │
+    └──────────────────────────────────────────────┘
+
+
+
+
+Offer rules we hard-code:
+    Maximum two discount offers per cancel session, never above 30%, never more than 2 cycles.
+    A customer who took the 20% save and cancels again at full price does not see the discount again.
+    They see skip, swap or the exit.
+    Pause is 1 or 2 cycles only. Auto-resume with a WhatsApp 7 days before.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · KEEPING ARATA CUSTOMERS PAST DAY 84                                12
+    "Delivery or packaging problem" skips every offer and opens a replacement ticket on the spot.
+    For MitoActive subscribers (₹1,499 a month, the top of the ladder), "Too expensive" shows the
+    swap to Intensive Serum first and the discount second, and a human follows up on WhatsApp
+    within a day. These are the highest-value customers on the list.
+
+EXAMPLE 4: THE RECOVERY SEQUENCE FOR A FAILED UPI AUTOPAY CHARGE
+Subscriber: MitoActive Course, ₹1,499 every 30 days. Charge fails on the mandate date (balance,
+bank-side decline or the customer paused the mandate in their UPI app).
+Retries run on day 1, 3, 5 and 7, morning, avoiding Sundays. Shipment is held. Messages:
+Day 0, WhatsApp
+
+   HI KAVYA, YOUR MITOACTIVE RENEWAL OF ₹1,499 DID NOT GO THROUGH
+   TODAY. THIS USUALLY MEANS THE UPI MANDATE NEEDS A QUICK
+   APPROVAL IN YOUR BANK APP, OR THE BALANCE WAS LOW AT THE TIME.
+
+   NOTHING IS CANCELLED. WE WILL TRY AGAIN TOMORROW, AND YOUR
+   NEXT BOTTLE SHIPS THE MOMENT IT CLEARS.
+
+   IF YOU WANT TO FIX IT NOW: [PAY ₹1,499 NOW] [UPDATE PAYMENT
+   METHOD]
+
+   REPLY HERE IF YOU NEED A HAND.
+
+
+Day 0, email (plain text, subject: "Your MitoActive renewal needs a quick check")
+
+                       WE TRIED TO CHARGE ₹1,499 FOR YOUR MITOACTIVE COURSE TODAY
+   HI KAVYA,           AND IT DID NOT GO THROUGH.
+
+   PAY ONCE NOW, OR UPDATE YOUR MANDATE, AND YOUR BOTTLE SHIPS
+   THE SAME DAY:
+
+   [PAY NOW] [UPDATE PAYMENT METHOD]
+
+   WE WILL KEEP RETRYING AUTOMATICALLY OVER THE NEXT WEEK. YOUR
+   ROUTINE STAYS ACTIVE AND YOUR DAY-0 PHOTO AND HISTORY ARE
+   UNTOUCHED.
+
+   REPLY TO THIS EMAIL IF ANYTHING IS CONFUSING.                       ARATA SUPPORT
+
+
+Day 3, WhatsApp
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · KEEPING ARATA CUSTOMERS PAST DAY 84                                13
+   QUICK ONE, KAVYA. THE ₹1,499 RENEWAL STILL HAS NOT CLEARED. YOUR
+   BOTTLE IS PACKED AND WAITING; WE JUST NEED THE PAYMENT TO
+   RELEASE IT.
+
+   DAY 3 OF A MISSED MONTH IS WHERE THE FOLLICLE CYCLE STARTS TO
+   SLIP, SO WE WOULD RATHER NOT WAIT.
+
+   [PAY ₹1,499 NOW] [SWITCH TO COD FOR THIS ONE]
+
+
+Day 7, WhatsApp and email
+
+   KAVYA, WE HAVE TRIED FOUR TIMES AND THE RENEWAL KEEPS FAILING.
+   IF IT DOES NOT CLEAR BY [DATE, DAY 10], WE WILL PAUSE YOUR
+   MITOACTIVE COURSE SO YOU ARE NOT CHARGED BY SURPRISE.
+
+   PAUSING MEANS: NO CHARGES, NO SHIPMENTS, YOUR COURSE HISTORY
+   IS SAVED, AND ONE TAP RESTARTS IT.
+
+   IF YOU MEANT TO STOP, YOU DO NOT NEED TO DO ANYTHING.
+
+   [PAY ₹1,499 NOW] [PAUSE MY COURSE] [TALK TO A PERSON]
+
+
+Day 10, grace ends
+
+   YOUR MITOACTIVE COURSE IS PAUSED. NO FURTHER CHARGES. YOUR
+   DAY-0 PHOTO AND YOUR ORDER HISTORY ARE SAVED.
+
+   RESTART ANY TIME: [RESTART MY COURSE]
+
+
+Day 17 and day 40
+
+   YOUR COURSE IS STILL PAUSED AND YOUR PHOTOS ARE STILL HERE. IF
+   THE PRICE WAS THE ISSUE, THE INTENSIVE SERUM COURSE IS ₹999 FOR
+   84 DAYS. IF IT WAS SOMETHING ELSE, TELL US.
+
+   [RESTART MITOACTIVE] [SWITCH TO THE ₹999 COURSE] [SOMETHING
+   ELSE]
+
+
+After day 40 the subscriber moves to the general win-back list and the paused subscription is kept,
+never deleted.
+
+EXAMPLE 5: THE COD CONFIRMATION MESSAGE
+Sent within 10 minutes of any COD order on arata.in.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · KEEPING ARATA CUSTOMERS PAST DAY 84                                  14
+   HI SAHIL, THANKS FOR YOUR ORDER: HAIR GEL (100 ML), ₹449, CASH ON
+   DELIVERY TO [ADDRESS, PINCODE].
+
+   TAP TO CONFIRM AND WE PACK IT TODAY: [CONFIRM MY ORDER]
+
+   PREFER TO PAY NOW AND SKIP THE CASH AT THE DOOR? PAY ₹419 ON
+   UPI, ₹30 OFF: [PAY ₹419 NOW]
+
+   WRONG ADDRESS? [EDIT ADDRESS]
+
+
+No confirmation within 6 hours → one reminder. No confirmation within 24 hours → a call from support
+for orders above ₹999, and the order is held for everything else. A customer with one prior RTO sees
+prepaid only on the next order, with the ₹30 shown as a thank-you rather than a condition.
+
+
+
+30-DAY DEPLOYMENT
+ WEEK      BREW SHIPS                                                ARATA PROVIDES                      LIVE BY END OF WEEK
+
+ Week Cohort pull from Shopify: repeat rate, days-to-                  Shopify and WhatsApp Business       Baseline numbers. Leak
+ 1    second-order and third-order rate by first SKU,                  API access, support desk access,    replacement promise
+      channel and city. Days-of-supply table                           a named support owner for           running. WhatsApp opt-
+      confirmed against observed intervals. WhatsApp                   replacements, confirmation of       in collecting.
+      opt-in at checkout and on the order-                             usage directions per SKU from the
+      confirmation page. Leak/seal replacement rule                    R&D lab.
+      and support macro.
+ Week The 84-day track (Example 1) for Intensive                       Brand manager sign-off on copy.     Reorder sequence live
+ 2    Serum, MitoActive, Anti-Dandruff and Anti-Grey                   Study summaries for the "did not    for every new hair-fall
+      buyers. Shampoo and conditioner nudges at day                    see a difference" branch. Three     and dandruff order.
+      30 and 42. Day-0 photo capture. Day 84 review                    real before/after photos with
+      request wired to Loox.                                           consent for the day-84 message.
+ Week Routine subscription on arata.in (Shopify                        Pricing team confirmation of        Subscription purchasable
+ 3    subscription app + gateway UPI AutoPay and                       subscriber prices. Legal check on   on the Hair Growth and
+      card e-mandates). Four routines priced per the                   mandate copy and pre-debit          Anti-Dandruff collection
+      table. Cancel flow (Example 3) with skip, push,                  notice wording. Warehouse SLA       pages and inside the
+      pause, swap and the discount ladder. Pre-debit                   for subscription dispatch.          day-21 nudge.
+      WhatsApp with skip button.
+ Week Silent-churn save flow (Example 2) at day 45                     Ops team to flag quick-commerce Full system live. First
+ 4    and 60. Recovery loop (Example 4 and 5):                         stock-outs by city weekly. One  weekly review held with
+      mandate retries, COD confirmation, RTO hold                      Arata owner on the weekly       4 weeks of data.
+      rule. Reorder-propensity score computed                          retention review (30 minutes).
+      nightly. Weekly cohort dashboard.
+
+
+Owners: Brew retention lead (system design, copy, weekly review), Brew lifecycle engineer
+(Shopify, subscription app, WhatsApp flows, score), Brew creative lead (photo capture UX, day-84
+creative), Arata brand manager (copy and claims sign-off), Arata ops lead (replacements, dispatch
+SLA, stock-out flags), Arata support owner (human replies on the critical score band).
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · KEEPING ARATA CUSTOMERS PAST DAY 84                                                                 15
+HOW WE MEASURE
+                                                                                                 90-DAY           WHO
+ METRIC                          FORMULA                               BASELINE                  TARGET           READS IT
+
+ 45-day reorder rate,            second order within 45 days / first   To be instrumented        40%              Weekly
+ serum buyers                    serum orders                          (category ~26%)                            review
+ 60-day reorder rate,            second order within 60 days / first   To be instrumented        35%              Weekly
+ shampoo buyers                  shampoo orders                                                                   review
+ Third-order rate                third order by day 100 / first serum To be instrumented         20%              Monthly
+ (course completion)             orders
+ Routine attach                  orders with shampoo + serum or        To be instrumented        +10 points       Monthly
+                                 S+C / all orders
+ Subscription share              active subscribers / 90-day repeat 0                            15%              Weekly
+                                 buyers
+ Save rate, silent-churn         re-engaged (order or subscription     None                      25%              Weekly
+ flow                            within 14 days) / survey sent
+ Save rate, cancel flow          kept, skipped, swapped or paused      None                      30%              Weekly
+                                 / cancel sessions started
+ Offer acceptance                accepted / shown, by reason           None                      15 to 25%        Weekly
+ Pause reactivation              resumed / paused                      None                      60%              Monthly
+ Mandate recovery rate           recovered / failed charges            None                      55%              Weekly
+ COD RTO on nudged               RTO / COD orders that received        To be instrumented        down one third   Weekly
+ orders                          confirmation flow
+ Leak and seal mentions reviews and tickets mentioning                 To be instrumented from   under 0.5% of    Weekly
+                        leak, seal, broken, box / all                  Loox and Nykaa            orders
+ MitoActive reviews              count on arata.in                     0                         100+             Monthly
+ Saved-customer LTV              60-day reorder rate of saved          None                      within 10 points Monthly
+ check                           customers vs organic repeaters                                  of organic
+
+
+The last row matters. A customer "saved" by a 20% discount who never buys at full price was not
+saved, and we will see that in the cohort table.
+Decision rules:
+    If 45-day serum reorder passes 35% by day 60, we move acquisition messaging to lead with the
+    course (Pack of 3 and the subscription) instead of the single bottle, and we extend the 84-day
+    track to styling buyers on a 60-day clock.
+    If it sits under 30% by day 60, we hold the offer ladder, read the survey reasons, and fix the top
+    reason first. In our experience the top reason is usually "did not see a difference yet", and the fix is
+    the day-0 photo and the expectation copy at day 7 and 21, not a bigger discount.
+    If "bottle leaked" is above 2% of survey answers in any week, the retention review escalates to ops
+    and we pause spend on the affected SKU's acquisition until the packaging fix is confirmed.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · KEEPING ARATA CUSTOMERS PAST DAY 84                                                         16
+    If subscription share is under 8% at day 90, the price or the cadence is wrong, and the pricing team
+    retests the per-cycle price before we touch the copy.
+    If the discount branch is more than half of all saves, we are training customers to wait for the offer.
+    We cut the ladder to one offer at 15%.
+    If mandate recovery is under 40%, the gateway's retry schedule is the suspect, and we move
+    retries to post-salary dates (the 1st to 3rd and the 15th to 17th).
+
+
+
+APPENDIX
+MESSAGE PRIORITY RULES
+When two messages collide on the same day, the higher one wins and the other waits 48 hours.
+1. Replacement and delivery messages
+2. Payment recovery
+3. Pre-debit notice and skip
+4. Reorder nudges
+5. Day 84 verdict and review
+6. Save flow surveys
+7. Lab Notes and content
+
+FREQUENCY CAPS
+    Maximum 2 retention messages a week per customer on WhatsApp, 1 a week on email.
+    No reorder nudge within 7 days of a delivery.
+    A customer who replies "stop" or taps "I'm done" leaves every retention list and stays on the
+    content list only if they opted in.
+    Styling-only and body/face buyers are excluded from hair-fall sequences entirely.
+
+SURVEY WORDING, ALTERNATE SET FOR DANDRUFF BUYERS
+
+   [STILL HAVE SOME LEFT] [FLAKES CAME BACK] [DRIED MY HAIR OUT]
+   [TOO EXPENSIVE] [SWITCHED BRANDS] [BOTTLE LEAKED] [DANDRUFF IS
+   GONE] [BOUGHT ELSEWHERE]
+
+
+The "dried my hair out" branch sends the conditioner and leave-on serum at the ₹866 S+C combo
+framing; the "dandruff is gone" branch sends the once-a-week maintenance wash.
+
+PRE-LAUNCH CHECKLIST
+    Mandate copy and pre-debit notice reviewed against the e-mandate rules (24-hour notice, ₹15,000
+    threshold) by Arata legal.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · KEEPING ARATA CUSTOMERS PAST DAY 84                                     17
+    Cancel path tested on a phone in under 60 seconds from the account page.
+    Replacement macro tested end to end with a real reshipment.
+    Day-0 photo stored with consent text and deletable on request.
+    Survey reason order reviewed after the first 200 responses and again monthly.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · KEEPING ARATA CUSTOMERS PAST DAY 84                18
+RETENTION AND CHURN PREVENTION
+
+
+DAY 30
+AT ARATA
+   WHAT IS LIVE
+
+   A WhatsApp reorder sequence, a reason-based save flow, a routine
+   subscription with a proper cancel flow and a payment and delivery recovery
+   loop are live on arata.in for every hair fall and dandruff buyer.
+
+
+
+
+ NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+ BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+ CONFIRM".
+
+
+ EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+ BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                DEPLOYMENT TEAM
+                                                                             BREW
+

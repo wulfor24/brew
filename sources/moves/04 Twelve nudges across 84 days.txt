@@ -1,0 +1,773 @@
+      Brew                                    PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+MARKETING PSYCHOLOGY · MOVE 04 OF 50
+
+
+
+TWELVE
+NUDGES
+ACROSS
+84 DAYS
+  A MAP OF WHAT THE ARATA CUSTOMER BELIEVES AT
+  EVERY STEP FROM FIRST AD TO THIRD BOTTLE, AND
+  TWELVE SMALL DESIGN CHANGES THAT MOVE THOSE
+  BELIEFS IN THE RIGHT DIRECTION.
+
+
+
+
+12 nudges
+FROM FIRST AD TO THIRD BOTTLE
+
+
+
+
+BREW × ARATA                   OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                 V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                                WHAT THIS GIVES ARATA
+                                                                A map of what the Arata customer believes at every
+                                                                step from first ad to third bottle, and twelve small
+                                                                design changes that move those beliefs in the right
+                                                                direction.
+
+        12 nudges
+        FROM FIRST AD TO THIRD BOTTLE
+                                                                LIVE 30 DAYS AFTER WE START
+                                                                The hair growth PDPs carry an honest proof block, a
+                                                                three-card routine chooser with a default, a per-day
+                                                                price frame, and a WhatsApp check-in opt-in at
+                                                                checkout; every D2C box ships with a Day 0 card
+                                                                and the leak promise; the day 21, 42, 63 and 70
+                                                                messages are live.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+This discipline was written for software. For Arata it means the beliefs a person holds before, during
+and after buying a ₹571 serum, and the small design choices on the ad, the product page, the cart, the
+box and the WhatsApp message that move those beliefs. Nothing here needs a new product. It needs
+the existing product presented in the order a worried human actually thinks.
+Arata's customer arrives already burned. The brief is clear on this: by the time Hair-fall Rahul lands on
+arata.in he has spent ₹2,000 to ₹5,000 on three to five products that did nothing, including onion
+shampoo and biotin gummies. He is afraid of minoxidil. He finds Traya expensive and exhausting. His
+operating belief is "claims are lies" and his operating fear is "it is too late". That is the mind every Arata
+asset is talking to.
+Arata's answer to that mind is a number on every bottle: 7.4X, 28,200, 95%, 86%, 87%. This is the
+right instinct. Specific numbers from studies are the strongest trust signal in the ₹400 to ₹700 band,
+and nobody else there does it. But a number read by a sceptic can backfire. "Up to 28,200 new hairs"
+sits in the same slot in his head as "100% regrowth guaranteed" unless the page does the work of
+making it believable. The brief already lists "claims sound too good" as an objection. Today the page
+states the number and moves on.
+The second problem is what happens after the first order. Every hero claim is measured at 84 days. A
+single 30 ml bottle lasts about a month (assumption). So the product only proves itself to customers
+who buy three times, and nothing in the current journey makes that happen: no subscription, no
+routine builder, no reorder prompt, no expectation set for the slow weeks. The industry repeat rate for
+beauty is about 26%. Routine-led models pass 40%. The 14-point gap is almost entirely psychology:
+defaults, commitment, progress and timing.
+The third problem is the box. Reviews say "the seal was broken", "the shampoo bottle was leaking".
+People judge an experience by its peak and its end. For a D2C order the end is the box opening. A leak
+at that moment erases the number on the bottle. The fix is partly operations and partly a promise the
+
+
+BREW DEPLOYMENT TEAM × ARATA · TWELVE NUDGES ACROSS 84 DAYS                                                          1
+customer reads before the leak would matter.
+So the opportunity is this: the same catalogue, the same prices, the same claims, presented through
+twelve deliberate nudges placed where the customer's belief is weakest. The expected effect is a
+higher share of routine purchases on the first order, a higher repeat rate within 45 days, and a
+MitoActive page that earns its first reviews instead of waiting for them.
+
+
+
+WHAT WE FOUND
+THE BELIEF LEDGER
+We wrote down what each persona believes before meeting Arata, what they need to believe to buy,
+and what they need to believe to buy again. The lever column names the psychological mechanism
+that does the moving.
+                                                        MUST BELIEVE TO BUY         MUST BELIEVE TO BUY
+ PERSONA               BELIEVES TODAY                   ONCE                        THREE TIMES                   LEVER
+
+ Hair-fall Rahul,      "Everything I tried lied.        "This number came from      "Day 30 with nothing          Specificity plus
+ 28, Bangalore         Minoxidil is the only real       a test, and the brand is    visible is normal. Day 84     admitted limits;
+                       thing and it scares me."         honest about its limits."   is the finish line."          goal gradient
+ Routine Ritika,       "I do not have the               "Someone has chosen         "It reorders itself. I only   Default effect;
+ 32, Mumbai            bandwidth to pick                for me and it fits in one   say no."                      paradox of choice
+                       between five serums."            cart."
+ Clinical Kavya,       "If a derm would not             "Y100 is a different        "I am part of the first       Authority; unity;
+ 35, Chennai           respect it, it is a toy."        mechanism with real         group proving it in India."   commitment
+                                                        studies behind it."
+ Dandruff Divya,       "Anti-dandruff means             "This one kills the fungus "The itch is gone and I do Loss aversion (after
+ 24, Pune              dry hair."                       and the conditioner        not want it back."         relief)
+                                                        keeps hair soft."
+ Grey-early            "Only dye works. Serums "86% in best responders, "Three months is one                      Framing; mental
+ Gaurav, 29,           are hope."              three months, no dye."   course, then                              accounting
+ Hyderabad                                                              maintenance."
+
+
+The pattern across all five: the first purchase is a trust problem, the third purchase is a time problem.
+Those need different tools.
+
+THE BOTTLENECK
+Every funnel has one constraint. We looked for Arata's.
+                                                                                                                             DIAGRAM
+       Traffic            Order             Second bottle     Third bottle (day 84)
+       ~650K/mo     -->   ~50K/mo     -->   ~26% (assumed) --> unknown, likely <15%
+          |                  |                   |                    |
+       growing            healthy            INDUSTRY AVG         THE PROOF GAP
+       42% MoM            7-8%              no mechanism         claim is measured here
+                                            pulls it up          reviews are earned here
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TWELVE NUDGES ACROSS 84 DAYS                                                                          2
+Traffic is growing 42% month on month. Visit-to-order is 7 to 8% including returners, which is healthy
+for Indian beauty D2C. The constraint sits after the first order. The claim is measured at 84 days. The
+review that convinces the next Rahul is written at 84 days. MitoActive has zero reviews two months
+after launch because nobody has reached its day 84 yet, and nothing in the journey is designed to
+carry them there.
+Optimising the ad or the homepage further is a local optimum. The global one is the second and third
+bottle. Most of the twelve nudges therefore sit at the product page, the cart, the box and the 84 days
+after.
+
+THE PSYCHOLOGY SCORECARD
+We walked the journey as Rahul and scored each moment on how well Arata handles the bias in play.
+0 means the bias works against Arata unaddressed. 3 means it is used deliberately.
+ MOMENT             BIAS IN PLAY                     WHAT ARATA DOES TODAY              SCORE FIX
+
+ Meta ad, first Confirmation bias (he                Leads with the number              1     Lead with what he already
+ view           believes claims lie);                                                         tried, then the number
+                contrast effect
+ PDP headline Specificity builds trust;              "Up to +28,200 new hair within 84 1      Proof block: study design,
+ claim        "up to" reads as a dodge               days" with no study context nearby       panel size, "up to" explained,
+                                                                                              in that order
+ PDP social         Bandwagon; availability          474 reviews on the serum, 2,248    2     One proof line above the fold,
+ proof              heuristic                        site-wide, 1.5M customers; not           reviews filtered to "day 60+"
+                                                     surfaced together
+ MitoActive         Social proof void;               Zero reviews; Y100 studies         0     Authority first (5+ studies,
+ PDP                authority                        mentioned but not shown                  Indian panel), founding cohort
+                                                                                              instead of reviews
+ Choosing a         Paradox of choice;               Five ways to buy hair growth: ₹571, 0    Three-card chooser, middle
+ product            default effect                   ₹999, ₹838, ₹1,201, ₹1,499; none         card pre-selected
+                                                     marked as the default
+ Price              Anchoring; mental                Price shown alone; MRP strike-     1     Traya anchor, per-day frame
+                    accounting                       through only
+ Discount           Rule of 100 (show the            "49% off" on Pack of 3             2     "Save ₹948" (948 looks bigger
+ display            bigger number)                                                            than 49)
+ Free gift          Zero-price effect                Gift is unnamed                    1     Name it (scalp massager
+ above ₹999                                                                                   ₹199)
+ Fear at            Regret aversion; "will it        Unanswered                         0     One line in cart: what happens
+ checkout           get worse first?"                                                         in week 1 to 3
+ Checkout           Commitment and                   Standard marketing opt-in          1     "Send me my day
+ opt-in             consistency; foot in the                                                  21/42/63/84 check-ins" as
+                    door                                                                      the opt-in
+ Box opening        Peak-end rule;                   Plain box; leak complaints in      0     Day 0 card, leak promise,
+                    endowment                        reviews                                  photo prompt
+ Days 1 to 84       Goal gradient; Zeigarnik;        Silence                            0     Four check-ins with expected
+                    present bias                                                              timeline
+ Reorder            Loss aversion; status quo No reminder; no subscription              0     Day 70 message, subscription
+                    bias; default effect                                                      default on routine SKUs
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TWELVE NUDGES ACROSS 84 DAYS                                                                  3
+ MOMENT             BIAS IN PLAY                     WHAT ARATA DOES TODAY   SCORE FIX
+
+ Permanent          Second-order effect              Always on               1     Keep the price, change the
+ 49% off            (trains waiting)                                               frame to a plan price
+
+
+Total: 10 out of 42. The gaps cluster after the add-to-cart button.
+
+SECOND-ORDER TRAPS ALREADY IN THE SYSTEM
+Three things that work today and will cost Arata later.
+Permanent discounts. The Pack of 3 is always 49% off. The customer learns that ₹1,947 is fiction and
+₹999 is the price. Once learned, any future "offer" has nothing to push against. The fix is to stop
+calling ₹999 a discount and start calling it the plan price for 84 days.
+Celebrity recall without product recall. The Samay Raina podcast built brand recall, which the founders
+say was the goal. The second-order risk is that the recalled brand is "the funny one", and a funny
+brand asks the sceptic to re-verify the science. The science assets (proof block, Lab Notes, Y100
+studies) must be one click from every culture asset.
+"Up to" claims. "Up to 95% reduction" is legally careful and psychologically expensive. A sceptic
+reads "up to" as "probably not me". Left alone, it lowers belief. Explained, it raises it, because an
+honest limit is the strongest signal that the rest is true.
+
+INVERSION: WHAT WOULD GUARANTEE FAILURE
+If we wanted Arata's hair growth line to fail for a sceptical 28-year-old, we would: show the biggest
+number first with no study beside it; give him five ways to buy the same outcome; show the price with
+no comparison; say nothing about the first three weeks; ship a box with no card; stay silent for 84
+days; let the bottle run out without a message; and make the discount permanent so the next one
+means nothing. Arata does six of these eight today. The plan removes all eight.
+
+
+
+THE PLAN
+THREE PRINCIPLES
+One unit of time. 84 days is already on the pack. Every nudge, price frame, message and progress bar
+uses it. The customer should never think in bottles. They think in days.
+One default. Every concern collection gets one pre-selected routine. Choice stays available. The
+decision is removed.
+Proof before promise. On every surface the order is: what the customer already knows → the study →
+the reviews → the number. Never the number first.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TWELVE NUDGES ACROSS 84 DAYS                                                   4
+THE NUDGE MAP
+                                                                                                                               DIAGRAM
+     FIRST TOUCH            PRODUCT PAGE             CART / CHECKOUT       BOX (DAY 0)              DAYS 1 - 84
+     ------------           -------------            ---------------       -----------              ------------
+     [1] "You tried         [3] Proof block          [7] Rupee saving      [9] Day 0 card           [11] Check-ins
+         onion" hook            study > reviews          + named gift           + shed-count              day 21/42/63
+                                > number                                        ritual
+     [2] Number with        [4] Routine chooser      [8] Opt-in to         [10] Leak promise        [12] Day 70
+         its limits             3 cards, default         day 21/42/63/84        on the lid                reorder +
+                                                         check-ins                                        default sub
+                            [5] ₹/day frame
+                                + Traya anchor
+                            [6] "Week 1 to 3"
+                                fear line
+            |                      |                        |                      |                     |
+         trust                 decide                    commit              own                    finish
+
+
+
+
+THE TWELVE NUDGES
+ #     NUDGE                                 MODEL                  WHY FOR ARATA                      EXPECTED EFFECT          PHASE
+
+ 1     Open ads and PDP with what            Confirmation bias;     He believes claims lie.            Higher ad CTR            Week 1
+       the customer already tried            contrast effect        Agreeing with him first            among cold hair-fall
+       (onion, biotin, oiling, Head &                               earns the right to show a          audiences; lower
+       Shoulders) before the Arata                                  number                             bounce on PDP
+       number
+ 2     Show every number with its            Pratfall effect;       An admitted limit is the only      Fewer "claims too        Week 1
+       limit: "up to", the panel, the 84     specificity            thing that makes 28,200            good" objections in
+       days, and one sentence on                                    believable to a sceptic            support; higher PDP
+       who it did not work for                                                                         conversion
+ 3     Proof block on each hero PDP          Authority then         Authority makes the number PDP conversion                   Week 1
+       ordered study → review count          social proof           credible; the crowd makes it
+       → number                                                     safe
+ 4     Three-card routine chooser            Paradox of choice;     Five ways to buy one               Routine share of hair    Week 2
+       on the hair growth collection         default effect;        outcome is the biggest leak        growth orders from
+       with the 84-day routine pre-          good-better-best       on the page                        unknown to 45%
+       selected
+ 5     Per-day price under every             Mental accounting;     ₹1,499 alone is a big              MitoActive               Week 2
+       price plus a Traya anchor on          anchoring              number. ₹50 a day next to          conversion; fewer
+       MitoActive                                                   Traya's ₹1,400 to ₹1,800 a         price objections
+                                                                    month is a small one
+ 6     One line in the cart on what          Regret aversion;       "Will it make hair fall worse      Cart-to-order            Week 2
+       weeks 1 to 3 feel like                expectation setting    first?" is a stated anxiety.
+                                                                    Unanswered, it stops the
+                                                                    order
+ 7     Show the rupee saving instead Rule of 100; zero-             ₹948 reads bigger than             Cart value               Week 2
+       of the percentage; name the   price effect                   49%. A named ₹199
+       free gift                                                    massager beats "free gift"
+ 8     Checkout opt-in reworded as           Commitment and       A person who asked for day Opt-in above 60%;                  Week 2
+       "send me my day 21, 42, 63            consistency; foot in 84 has told themselves they sets up nudges 11
+       and 84 check-ins"                     the door             will reach it               and 12
+ 9     Day 0 card in the box: date,          IKEA effect;           Counting hairs and taking a        Higher day 21            Week 3
+       the 84-day calendar, the              endowment; peak        photo turns a bottle into a        message open rate;
+       shed-count ritual, a photo                                   project the customer owns          more before/after
+       prompt                                                                                          reviews
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TWELVE NUDGES ACROSS 84 DAYS                                                                            5
+ #     NUDGE                                 MODEL              WHY FOR ARATA                 EXPECTED EFFECT         PHASE
+
+ 10 Leak promise printed on the              Peak-end rule;     The box is the end of the     Lower 1-star share;     Week 3
+    card and sent at delivery                regret aversion    purchase experience. A        fewer refund tickets
+                                                                promise read before a leak
+                                                                beats an apology after
+ 11 WhatsApp check-ins at day                Goal gradient;     The claim is measured at 84 Second-bottle rate        Week 3
+    21, 42, 63 with the expected             Zeigarnik effect   days. Nobody reaches a                                to 4
+    state at each point                                         finish line they cannot see
+ 12 Day 70 reorder message with              Loss aversion;     The routine stops working     Repeat within 45        Week 4
+    honest loss framing, and                 default effect;    when the routine stops.       days from ~26%
+    subscription pre-selected on             status quo bias    Make continuing the default   toward 35%
+    routine SKUs                                                and stopping the action
+
+
+PRICE PSYCHOLOGY ON THE HAIR GROWTH LADDER
+The current catalogue already forms a ladder. It is just not displayed as one.
+                                                                                                                     DIAGRAM
+        GOOD                  BETTER (default)              BEST
+        Intensive Serum       84-Day Routine                MitoActive 84-Day
+        1 bottle, 28 days     Serum Pack of 3               (assumption: 3 bottles)
+        ₹571                  ₹999                          ₹1,499 per bottle
+        ₹20/day               ₹12/day                       ₹50/day
+        "try it"              "finish the claim"            "the new mechanism"
+             \                      |                             /
+              \ anchor below         | pre-selected              / anchor above
+               \                     |                         /
+                ------------- customer lands here ------------
+                                                                     vs Traya: ₹1,400 to ₹1,800
+                                                                     a month for 5+ months
+
+
+
+
+Per-day arithmetic (assumption: one 30 ml bottle lasts 28 days at the stated usage): ₹571 ÷ 28 = ₹20 a
+day. ₹999 ÷ 84 = ₹12 a day. ₹1,499 ÷ 30 = ₹50 a day.
+The single bottle is the decoy. At ₹20 a day for a claim that needs 84 days, it exists to make the ₹12-a-
+day routine the obvious choice. MitoActive sits above as the premium anchor, which also makes ₹999
+feel modest. For MitoActive itself, the anchor is external: Traya's monthly kit. Put that comparison on
+the page.
+On the ₹1,499 sticker: a 9-ending pulls a product toward "value" in the reader's mind, and MitoActive's
+story is longevity science. We do not recommend changing the sticker, because marketplaces price-
+compare on it. The per-day frame does the premium work instead.
+On discounts: in rupees, the absolute saving is almost always the bigger-looking number. "Save ₹948"
+replaces "49% off" on the Pack of 3. "Save ₹480" replaces "20% off" where it applies. The exception
+is combos that save under ₹100, where neither number impresses and the discount should become a
+named bonus instead.
+
+WHERE TO BE BOLD AND WHERE TO BE SAFE
+Apply a barbell. Keep the claims side extremely safe: every number with its study, its panel and its
+limit, nothing a derm could quarrel with. Spend the risk budget on culture: the Samay Raina style of
+media, the mischievous tone, the mock podcast. The two must link. A culture asset with no science
+one click away wastes the recall it built. A science page with no personality reads like Minimalist.
+
+
+BREW DEPLOYMENT TEAM × ARATA · TWELVE NUDGES ACROSS 84 DAYS                                                                  6
+WORKED EXAMPLES
+EXAMPLE 1: THE PROOF BLOCK FOR THE HAIR GROWTH INTENSIVE SERUM PDP
+Replaces the headline claim area above the fold. Order: what they tried → study → reviews → number
+with limit.
+                                                                                                DIAGRAM
+    You have tried the onion shampoo. The biotin gummies.
+    Rosemary water from a Reel. We know, because our
+    customers tell us that is where they started.
+
+    Here is what is different about this bottle.
+
+    THE TEST
+    84 days. Twice-daily use on the scalp. Hair count
+    measured before and after on a fixed area, by a lab,
+    not by the user. [Read the study design in Lab Notes]
+
+    THE RESULT
+    Up to 28,200 new hairs in 84 days.
+    "Up to" is the best responder. The average responder
+    saw less. A small group saw no measurable change, and
+    we tell you that so the rest of this page is easier
+    to believe.
+
+    THE PEOPLE
+    474 reviews on this serum. 2,248 across Arata.
+    1.5 million customers a year.
+    [Show me reviews from day 60 and later]
+
+    THE HONEST BIT
+    Weeks 1 to 3: you may see no change. Some people see
+    slightly more shedding as old hairs make room. That
+    is normal and it settles. Week 6 onwards is where most
+    people first notice less hair on the pillow.
+
+
+
+
+Why it works: the opening sentence agrees with his belief instead of fighting it. The limit ("a small
+group saw no measurable change") is the pratfall that makes "28,200" land. The reviews filter to the
+period where the claim is actually testable. The last paragraph removes the stated anxiety before
+checkout.
+
+EXAMPLE 2: THE ROUTINE CHOOSER FOR THE HAIR GROWTH COLLECTION
+Sits at the top of the Hair Growth collection page, above the product grid. The middle card is pre-
+selected on load.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TWELVE NUDGES ACROSS 84 DAYS                                             7
+                                                                                                  DIAGRAM
+    +-------------------------+-------------------------+-------------------------+
+    | TRY IT                  | FINISH THE 84 DAYS ✓ | THE NEW MECHANISM          |
+    |                         | Most chosen             |                         |
+    | Hair Growth Intensive | Hair Growth Intensive | MitoActive                  |
+    | Serum, 1 bottle         | Serum, 3 bottles        | Mitochondrial Serum     |
+    |                         | + Anti-Hair Fall        | + Anti-Hair Fall        |
+    |                         |    Shampoo              |    Shampoo              |
+    | 28 days                 | 84 days                 | 30 days                 |
+    | ₹571                    | ₹1,358 Save ₹948        | ₹1,803                  |
+    | ₹20 a day               | ₹12 a day on serum      | ₹50 a day on serum      |
+    |                         | Free scalp massager     | Free scalp massager     |
+    |                         | (₹199)                  | (₹199)                  |
+    | For: "I want to see     | For: "I want the        | For: "I want the        |
+    | if I like it"           | number on the box"      | strongest thing you     |
+    |                         |                         | have, without a doctor"|
+    | [Add to cart]           | [Start my 84 days]      | [Start MitoActive]      |
+    +-------------------------+-------------------------+-------------------------+
+      The claim on the serum is measured at 84 days. One bottle is 28.
+
+
+
+
+Combo pricing shown is the Pack of 3 (₹999) plus Anti-Hair Fall Shampoo (₹359) at current sale
+prices; the MitoActive combo uses the listed ₹1,803. The free massager uses the existing "free gift
+above ₹999" rule, now named.
+Why it works: three choices instead of five. One is marked and pre-selected. The single bottle is
+positioned as the trial, which makes it a decoy for the routine rather than a competitor to it. The footer
+line turns the 84-day claim into the reason for the default.
+
+EXAMPLE 3: THE MITOACTIVE PRICE FRAME AND THE ZERO-REVIEW BRIDGE
+Two sections for the MitoActive PDP, replacing the bare ₹1,499 and the empty review area.
+Price frame:
+                                                                                                  DIAGRAM
+    ₹1,499 for 30 days. That is ₹50 a day.
+
+    What ₹50 a day replaces
+      Traya kit             ₹1,400 to ₹1,800 a month, 5 months
+                            minimum, doctor calls, supplements
+      Dermatologist visit   ₹800 to ₹2,000 per visit (assumption),
+                            plus the prescription
+      Minoxidil 5%          ₹600 to ₹900 a month, for life, with
+                            the shedding when you stop
+
+    MitoActive is 84 days of twice-daily use, then
+    maintenance. No prescription. No subscription required.
+
+
+
+
+Zero-review bridge (replaces the empty star block until reviews exist):
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TWELVE NUDGES ACROSS 84 DAYS                                                8
+                                                                                                  DIAGRAM
+    No reviews yet. Here is why, and what we are doing about it.
+
+    MitoActive launched in August 2026. The claim (87% saw
+    increased growth) is measured at 84 days. The first
+    customers reach day 84 in November. We would rather
+    show you nothing than show you a day 10 review.
+
+    What you can read today
+      - 5+ clinical studies on Y100, the active, including
+        one on Indian participants: reduced shedding, better
+        anagen/telogen ratio, more density [Read them]
+      - 6+ years of research behind the ingredient
+      - Dermatologically tested
+
+    What you can join
+      The first 84-day group. Every MitoActive buyer this
+      quarter gets the day 21, 42, 63 and 84 check-ins and
+      a request to post their day 84 photo. Those photos
+      become this section.
+
+
+
+
+Why it works: authority (five studies, Indian panel) carries the trust that social proof cannot yet carry.
+Admitting the empty review block is a pratfall that increases credibility. "The first 84-day group" uses
+unity and commitment: Clinical Kavya is invited to be part of the proof rather than asked to trust it.
+
+EXAMPLE 4: THE DAY 0 CARD AND THE LEAK PROMISE
+Printed card, A6, in every D2C hair growth box. Front side:
+                                                                                                  DIAGRAM
+    DAY 0.     ____ / ____ / 2026
+
+    This serum is tested at 84 days. Your day 84 is:
+    ____ / ____ / 2026. Write it here. Put it in your phone.
+
+    The two-minute ritual, tonight
+      1. Count the hairs on your pillow or in the drain.
+         Write the number: ____
+      2. Take one photo of your crown under the bathroom
+         light. Same light, same angle, every 21 days.
+      3. Apply. Twice a day. Scalp, not strands.
+
+    We will message you on day 21, 42, 63 and 84 with what
+    to expect and what to count.
+
+
+
+
+Back side:
+                                                                                                  DIAGRAM
+    IF ANYTHING IN THIS BOX LEAKED, ARRIVED OPEN, OR LOOKS WRONG
+
+    Message us a photo on WhatsApp: [number]
+    A replacement ships the same day. No form. No questions.
+    No need to send the old one back.
+
+    We would rather lose a bottle than your first impression.
+
+
+
+
+Why it works: the date and the count are the customer's own effort, which raises how much they value
+the bottle. The photo creates the before that every later review needs. The leak promise is read at the
+peak moment, before any leak is discovered, so a leak becomes a kept promise instead of a broken
+box.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TWELVE NUDGES ACROSS 84 DAYS                                                9
+EXAMPLE 5: THE 84-DAY WHATSAPP CHECK-INS
+Four messages, triggered from the delivery date. Opted into at checkout via nudge 8.
+Day 21:
+                                                                                       DIAGRAM
+    Day 21 with Arata. Quick check-in.
+
+    Honest status for most people at this point: not much
+    visible yet. Some see a little extra shedding in weeks
+    2 and 3. That is old hair leaving. It settles.
+
+    Tonight: count the pillow hairs again and compare with
+    your day 0 number. Reply with both numbers if you like.
+    We read every one.
+
+    Keep going. Day 42 is where the pillow count usually
+    starts dropping.
+
+
+
+
+Day 42:
+                                                                                       DIAGRAM
+    Halfway. Day 42.
+
+    Take your second photo. Same light, same angle as day 0.
+    Put them side by side. Most people see the first
+    difference in shedding here, not yet in density. Density
+    comes later. That is how the follicle cycle works.
+
+    Your second bottle should be opening about now. If it
+    has not arrived, reply "bottle" and we will sort it.
+
+
+
+
+Day 63:
+                                                                                       DIAGRAM
+    Day 63. Three weeks to go.
+
+    Photo three today. This is the window where new growth
+    starts to show at the hairline and crown for people who
+    respond. Short, fine hairs. Easy to miss. Look for them.
+
+    You are 75% through. Most people who stop, stop around
+    here, right before it shows. Please do not.
+
+
+
+
+Day 70 (reorder, before the third bottle runs out):
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TWELVE NUDGES ACROSS 84 DAYS                                10
+                                                                                                  DIAGRAM
+    Day 70. Your third bottle runs out around day 84.
+
+    Here is the thing nobody tells you about a routine: it
+    works while you do it. Stop at day 84 and the follicles
+    you spent 12 weeks waking up drift back to where they
+    were. Not overnight. But they do.
+
+    Two options:
+      Keep going on maintenance (once a day), delivered every
+      45 days. ₹571 a bottle, pause any time. [Set it up]
+      Or just a single bottle. [Order one]
+
+    Either way, on day 84: photo four. Send it to us. If you
+    are happy, tell the next person who is where you were on
+    day 0. [Leave a review]
+
+
+
+
+Why it works: each message sets the expectation for the next stretch, which is what carries someone
+through weeks where nothing is visible. The progress percentage and "most people stop right here"
+use the goal gradient at the exact point of highest drop-off. Day 70 frames stopping as a loss, states it
+honestly, and makes continuing the first option with a pause built in.
+
+EXAMPLE 6: THE COLD AD FOR HAIR FALL AUDIENCES
+Meta, static or 15-second talking head. Uses nudges 1 and 2.
+                                                                                                  DIAGRAM
+    Headline:       You already tried onion shampoo.
+    Primary:        And biotin. And oiling on Sundays. And the
+                    rosemary water thing. We know, because that is
+                    what Arata customers tell us they did first.
+
+                    Our serum was tested for 84 days with hair
+                    counted by a lab. Best responders: up to 28,200
+                    new hairs. Average responders: less. A few: no
+                    change. We put that on the page because you
+                    have read enough "miracle" ads.
+
+                    ₹12 a day for the 84-day routine. Made for
+                    Indian scalps, Indian water, Indian heat.
+
+    CTA:            See the study, then decide
+
+
+
+
+Why it works: it opens inside his belief, lists the failures he already paid for (contrast), and offers the
+limit of the claim before the claim. The CTA asks for a small step (read the study), which is a foot in the
+door, instead of asking for the purchase.
+
+
+
+30-DAY DEPLOYMENT
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TWELVE NUDGES ACROSS 84 DAYS                                            11
+ WEEK BREW SHIPS                                                  ARATA PROVIDES                         LIVE BY END OF WEEK
+
+ 1        Belief ledger and scorecard finalised with                Study design summaries for each        Proof blocks on four PDPs.
+          Arata's own review and support data. Proof                claim (panel size, duration,           Cold ad set in learning.
+          block copy for Hair Growth Intensive Serum,               measurement method). Support
+          Anti-Hair Fall Shampoo, Anti-Dandruff                     ticket export for objection themes.
+          Shampoo, MitoActive. Cold ad set (3 hooks ×               Access to Shopify theme and Meta
+          2 formats) using nudges 1 and 2.                          ad account.
+ 2        Routine chooser on the hair growth collection             Sign-off on combo composition          Chooser live. Price frames
+          with default. Per-day price line on all serum             and prices for the three cards.        live. Opt-in live and
+          PDPs. Traya anchor on MitoActive. Rupee-                  Confirmation that the scalp            capturing delivery date.
+          saving display replacing percentage. Named                massager can be the named gift
+          free gift. Cart "weeks 1 to 3" line. Checkout             above ₹999.
+          opt-in reworded to check-ins.
+ 3        Day 0 card designed and sent to print. Leak               Warehouse process to insert the        Cards in every D2C hair
+          promise copy and WhatsApp replacement                     card. WhatsApp Business number         growth box. Replacement
+          flow (photo in, replacement out, no form).                and same-day replacement SLA           flow answered within 2
+          MitoActive zero-review bridge section.                    agreed with ops. Y100 study links.     hours in working hours.
+                                                                                                           Bridge section live.
+ 4        Day 21, 42, 63 and 70 WhatsApp sequence                   Subscription app enabled on            Full 84-day sequence
+          built and triggered from delivery date.                   Shopify. Approval of message copy.     running for every opted-in
+          Subscription option on serum SKUs with                    Customer service briefed on reply      order from week 2
+          maintenance cadence (45 days) pre-                        handling for counts and photos.        onwards. First day 21
+          selected on the day 70 message. Dashboard                                                        messages sent.
+          for the measures below.
+
+
+Owners: Brew creative lead (copy, ads, card), Brew lifecycle lead (WhatsApp sequence, opt-in,
+subscription), Brew web lead (chooser, price frames, proof blocks), Arata brand manager (claims
+sign-off, study material), Arata ops lead (card insertion, replacement SLA).
+
+
+
+HOW WE MEASURE
+ METRIC                         BASELINE                        90-DAY TARGET              DECISION RULE
+
+ Hair growth PDP                To be instrumented              +15% relative on PDPs      Works: roll proof blocks to dandruff, anti-
+ conversion (visit to           (site-wide visit-to-            carrying the proof block   grey, damage. Fails: test number-first vs
+ add-to-cart)                   order ~7 to 8%)                                            tried-first ordering before removing
+ Routine share of hair          To be instrumented              45% of hair growth         Works: make the chooser the collection
+ growth orders (3-                                              orders                     template for every concern. Fails: change
+ bottle or combo vs                                                                        the default card, test again for 2 weeks
+ single)
+ Check-in opt-in at             New                             60% of D2C hair growth     Works: extend to dandruff with a 36-hour
+ checkout                                                       orders                     itch check-in. Fails: move the opt-in to the
+                                                                                           order confirmation page
+ Day 21 message reply           New                             25%                        Works: keep. Fails: shorten message, lead
+ or click rate                                                                             with the count prompt
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TWELVE NUDGES ACROSS 84 DAYS                                                                            12
+ METRIC                         BASELINE                        90-DAY TARGET             DECISION RULE
+
+ Repeat purchase                ~26% (industry,                 35%                       Works: subscription becomes the default
+ within 45 days (hair           assumption)                                               on the chooser's middle card. Fails:
+ growth buyers)                                                                           inspect day 42 to 70 drop-off and move
+                                                                                          the reorder message earlier
+ MitoActive reviews             0                               150, with at least 40     Works: photos replace the bridge section.
+                                                                carrying a day 84 photo   Fails: direct outreach to every day 84
+                                                                (assumption on volume)    MitoActive buyer by WhatsApp
+ 1-star reviews citing          To be instrumented              Halved                    Works: keep the promise on the card. Fails:
+ leak or seal                   from Loox and Nykaa                                       the problem is packaging, escalate to ops,
+                                                                                          the promise still stands
+ Support tickets with     To be instrumented                    Down 30%                  Works: keep. Fails: add the study PDF
+ "too good to be true"                                                                    directly on the PDP
+ or "does it really work"
+
+
+Reading rule: we judge nudges 1 to 7 at 30 days on conversion and order composition. We judge
+nudges 8 to 12 at 90 days on repeat, because that is the first moment a customer who entered in week
+2 reaches day 84. Nothing in the retention set is killed before day 90.
+
+
+
+APPENDIX
+QUICK REFERENCE: ARATA CHALLENGE TO MODEL
+ ARATA CHALLENGE                                        MODELS USED                                                       NUDGE
+
+ Sceptic does not believe 28,200                        Confirmation bias, contrast, pratfall, specificity                1, 2, 3
+ MitoActive has zero reviews                            Authority, unity, commitment                                      3, 8
+ Five ways to buy one outcome                           Paradox of choice, default effect, decoy                          4
+ ₹1,499 feels expensive                                 Anchoring, mental accounting                                      5
+ "Will it get worse first?"                             Regret aversion, expectation setting                              6, 11
+ 49% off trains waiting                                 Second-order thinking, rule of 100                                7
+ Box leaks                                              Peak-end rule                                                     10
+ Nobody reaches day 84                                  Goal gradient, Zeigarnik, present bias                            9, 11
+ No repeat mechanism                                    Loss aversion, default effect, status quo bias                    12
+
+
+COPY RULES FOR EVERY NUDGE
+    Agree with what the customer believes before correcting it.
+    Every number travels with its test, its panel and its limit.
+    Show the rupee saving, not the percentage, unless the saving is under ₹100.
+    Show cost per day under every serum price.
+    Say what weeks 1 to 3 feel like before anyone asks.
+
+
+BREW DEPLOYMENT TEAM × ARATA · TWELVE NUDGES ACROSS 84 DAYS                                                                         13
+    Make the routine the pre-selected option. Keep the single bottle visible.
+    Frame stopping as a loss only when it is true, and say why it is true.
+    Never use: miracle, cure, regrow 100%, chemical-free, clinical-strength.
+
+ASSUMPTIONS FLAGGED
+    One 30 ml serum bottle lasts 28 days at twice-daily use. Per-day prices depend on this.
+    Industry repeat rate of ~26% is used as Arata's baseline until instrumented.
+    Dermatologist visit cost range in Example 3 is an estimate and should be replaced with Arata's own
+    market data.
+    MitoActive 84-day pack composition and the 150-review target are proposals, not current
+    catalogue items.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TWELVE NUDGES ACROSS 84 DAYS                                        14
+MARKETING PSYCHOLOGY
+
+
+DAY 30
+AT ARATA
+   WHAT IS LIVE
+
+   The hair growth PDPs carry an honest proof block, a three-card routine chooser
+   with a default, a per-day price frame, and a WhatsApp check-in opt-in at
+   checkout; every D2C box ships with a Day 0 card and the leak promise; the day
+   21, 42, 63 and 70 messages are live.
+
+
+
+
+ NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+ BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+ CONFIRM".
+
+
+ EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+ BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                DEPLOYMENT TEAM
+                                                                             BREW
+

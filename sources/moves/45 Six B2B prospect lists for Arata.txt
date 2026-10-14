@@ -1,0 +1,804 @@
+      Brew                                           PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+B2B PROSPECTING · MOVE 45 OF 50
+
+
+
+SIX B2B
+PROSPECT
+LISTS FOR
+ARATA
+  SIX VERIFIED, SCORED AND TIERED LISTS OF CLINICS,
+  SALONS, GYMS, HOSTELS, WELLNESS BUYERS AND
+  CATEGORY MANAGERS THAT ARATA'S B2B TEAM CAN
+  START WORKING IN WEEK ONE.
+
+
+
+
+540 accounts
+VERIFIED, SCORED, ACROSS SIX SEGMENTS
+
+
+
+
+BREW × ARATA                          OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                        V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                                WHAT THIS GIVES ARATA
+                                                                Six verified, scored and tiered lists of clinics, salons,
+                                                                gyms, hostels, wellness buyers and category managers
+                                                                that Arata's B2B team can start working in week one.
+        540 accounts                                            LIVE 30 DAYS AFTER WE START
+        VERIFIED, SCORED, ACROSS SIX                            Arata has one B2B account sheet with 540 verified
+        SEGMENTS
+                                                                accounts, 40 Tier 1 account briefs, a weekly signal
+                                                                sweep that adds 30 to 50 fresh accounts, and the first
+                                                                120 accounts already handed to outbound.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+Prospecting is a SaaS word. For Arata it means one thing: building the account lists that feed B2B outbound.
+The six segments are dermatologists and trichologists, salons, corporate wellness buyers, gyms, hostels and
+co-living operators, and the category managers at quick-commerce and marketplace platforms. This
+document builds those lists. The outbound copy, the sequences and the reply handling sit in the cold-email
+document.
+Arata already moves about 2 lakh B2B units a month against 50,000 D2C orders. That is a real number, and it
+tells us the brand knows how to ship cases, not just parcels. What we cannot see in any public source is a
+named-account B2B motion: no clinic programme, no salon programme, no corporate gifting page, no "for
+professionals" page on arata.in. Assumption: today's B2B volume is mostly bulk orders from marketplace and
+quick-commerce partners and distributors, not accounts that recommend or retail Arata to a patient, a client
+or a member.
+That gap costs Arata in two places. The first is revenue on rented land. Marketplaces and quick commerce
+are 68% of FY25 revenue. Every clinic, salon, gym and hostel account is a channel Arata owns, with a
+reorder rhythm (a 200 ml Anti-Hair Fall Intensive Shampoo lasts a salon's backbar roughly a week, a
+MitoActive counter pack at a clinic turns monthly) and no platform taking a margin on the relationship. The
+second is proof. MitoActive launched at ₹1,499 with zero reviews. "Clinical Kavya", 35, Chennai, has seen a
+dermatologist and wants something a derm would respect. The fastest way to earn that respect at scale is
+for 200 dermatologists to have MitoActive on the counter and the Y100 study summary in the drawer. A derm
+who dispenses it is worth more to the D2C conversion rate than any ad.
+The opportunity is sized by the market the brief already describes: 82 million urban Indians with hair loss, 5
+million using medicated OTC, 1 million in clinical care. The clinical and near-clinical layer is exactly where
+derm and tricho clinics sit. Salons and gyms touch the 16 million on basic retail products. Hostels and
+corporate wellness reach the 22 to 40 cohort at the moment the trigger fires: a new city, hard water, a
+stressful quarter.
+One rule before any list gets built. A list without a buying signal is a phone book. Every account on these
+sheets carries a signal, a date and a source URL, or it drops to Tier 3 where the segment definition does the
+work.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SIX B2B PROSPECT LISTS FOR ARATA                                                           1
+WHAT WE FOUND
+THE BRANCH FOR EACH SEGMENT
+The method forks at intake depending on who you sell to. Arata's six segments span three branches, so each
+list gets built and scored differently.
+ SEGMENT                       BRANCH            WHAT "QUALIFIED" MEANS FOR ARATA                   PRIMARY DISCOVERY SOURCES (INDIA)
+
+ Dermatologists and            Local SMB         Active clinic, hair-fall patient flow (PRP, GFC,   IADVL find-a-dermatologist listing,
+ trichologists                 with a B2B        transplant consults), retails or dispenses         Practo, Google Maps (assisted, by
+                               overlay           products, named doctor reachable through           hand), clinic websites, Instagram clinic
+                                                 the clinic                                         pages
+ Salons                        Local SMB         Active unisex or premium salon, offers hair        Google Maps (assisted), salon chain
+                                                 spa or scalp treatments, already retails a         outlet pages, Instagram, Nykaa Pro and
+                                                 professional brand, owner replies to reviews       Urban Company partner pages,
+                                                                                                    JustDial as cross-check
+ Gyms and fitness              Local SMB         Active centre with showers, retail counter or      Google Maps (assisted), Cult.fit, Gold's
+ studios                                         protein shelf, 200+ reviews, franchisee with       Gym and Anytime Fitness centre
+                                                 local buying authority                             locators, franchisee pages
+ Hostels and co-living         B2B               Operator with 500+ beds in metro clusters, a Operator websites and property pages,
+                                                 procurement or operations head, a welcome- LinkedIn Sales Navigator (research
+                                                 kit or housekeeping supply line              only), news on new building launches,
+                                                                                              college hostel tenders
+ Corporate wellness            B2B               Company with 1,000+ employees in a metro,          LinkedIn Sales Navigator (research
+                                                 an HR or wellness owner, a wellness-week           only), licensed contact database, HR
+                                                 calendar or a gifting budget; or a wellness        event speaker lists, wellness platform
+                                                 platform that aggregates them                      partner pages
+ Quick-commerce and            B2B, Tier 1       Named person who owns beauty or personal           LinkedIn Sales Navigator (research
+ marketplace category          only              care assortment at a platform Arata is on, or      only), licensed contact database,
+ managers                                        wants to be on                                     platform job posts, platform press
+
+
+The branch matters because scoring differs. A salon is scored on activity, retail readiness and proximity to a
+sales rep's route. A category manager is scored on role, platform and a signal like a new city launch or an
+open "Category Manager, Beauty" role. Mixing the rubrics is the most common prospecting mistake, so each
+segment gets its own.
+
+ICP STATEMENTS AND PASS/FAIL CHECKLISTS
+Each ICP is one paragraph plus a checklist. Nothing moves to discovery without it.
+1. Dermatologists and trichologists. A dermatologist or trichologist in Bangalore, Hyderabad, Chennai,
+Pune, Mumbai or Delhi NCR who sees hair-fall patients weekly, offers at least one procedural hair service
+(PRP, GFC, microneedling, transplant consult), and either retails products at reception or writes product
+recommendations on the prescription pad. The buyer is the doctor. The gatekeeper is the clinic manager.
+Chains with 5+ clinics are Tier 1 because one decision covers many counters.
+    Pass: listed on IADVL or Practo with an active profile
+    Pass: hair-fall or hair-growth service visible on website, Practo or Instagram
+    Pass: clinic phone and email published on its own site or Practo
+    Pass: at least one Google review in the last 6 months
+    Fail: homeopathy, ayurvedic or wellness-only clinics (off positioning)
+
+
+BREW DEPLOYMENT TEAM × ARATA · SIX B2B PROSPECT LISTS FOR ARATA                                                                              2
+    Fail: transplant-only centres with no medical management (they sell surgery, not routines)
+2. Salons. A unisex or women's salon in a metro with a hair spa or scalp treatment on the menu, a visible
+retail shelf (any professional brand counts), 100+ Google reviews and an owner or manager who replies to
+reviews. Chains with 10+ outlets go to Tier 1 for a central listing conversation. Independents go to Tier 2 and
+Tier 3 by city.
+    Pass: active Google Business Profile with photos in the last 6 months
+    Pass: hair spa, scalp treatment or keratin on the published menu
+    Pass: retail shelf visible in photos or a brand named on the site
+    Pass: published phone or WhatsApp Business number
+    Fail: barbershops under ₹200 a haircut (price band mismatch with a ₹359 shampoo)
+    Fail: closed, "temporarily closed" or no review in 12 months
+3. Gyms and fitness studios. A gym or studio in a metro with showers, a retail or supplement counter, 200+
+reviews and a membership base skewing 22 to 40. Chains are Tier 1 through a central partnerships or
+merchandising head. Franchisee-run outlets are Tier 2 because the franchisee usually controls local tie-ups.
+    Pass: showers or changing rooms mentioned in listing or reviews
+    Pass: a retail counter, supplement shelf or café (proof they sell things to members)
+    Pass: active social page with posts in the last 30 days
+    Fail: no shower facility (no sampling moment)
+    Fail: chains in known financial distress (decay signal; skip)
+4. Hostels and co-living. An operator with 500+ beds across metro clusters, a central procurement or
+operations function, and a welcome kit, housekeeping supply contract or in-house store. Also college hostels
+with a warden-level buyer and a published tender process. The buyer is the head of procurement, operations
+or resident experience.
+    Pass: bed count published or reported in press in the last 12 months
+    Pass: a procurement, operations or supply chain role visible on the company page
+    Pass: new property launched in the last 90 days (strongest signal)
+    Fail: operators with fewer than 200 beds (too small for a kit programme)
+    Fail: PG aggregators that do not operate properties
+5. Corporate wellness. Two sub-ICPs. Direct: a company with 1,000+ employees in Bangalore, Hyderabad,
+Pune, Gurugram or Mumbai with a named HR, people operations or wellness owner and a wellness calendar
+or a Diwali gifting budget. Partner: a corporate wellness platform that bundles employee benefits and runs
+wellness weeks for many clients at once.
+    Pass: 1,000+ employees (licensed database figure, cross-checked with the careers page)
+    Pass: a wellness, benefits or employee experience role exists
+    Pass: a wellness event, gifting post or new CHRO in the last 90 days
+    Fail: companies with fewer than 300 employees (handled by platforms instead)
+6. Quick-commerce and marketplace category managers. The named owner of beauty, personal care or
+hair care assortment at Blinkit, Zepto, Swiggy Instamart, Amazon.in, Flipkart and Flipkart Minutes, Nykaa,
+Myntra Beauty, Tira, Purplle, BigBasket Now and JioMart. The goal is a person-level map of every platform
+Arata sells on and every platform Arata should be on, with MitoActive placement as the first ask.
+
+
+BREW DEPLOYMENT TEAM × ARATA · SIX B2B PROSPECT LISTS FOR ARATA                                                 3
+    Pass: title contains category, assortment, merchandising or vendor management, with beauty or personal
+    care in scope
+    Pass: confirmed in role on LinkedIn within the last 30 days (checked by hand)
+    Pass: work email found through a licensed database and verified
+    Fail: platform-level generic inboxes only (keep them as a backup channel, never as the primary contact)
+
+SEGMENT SIZING AND PRIORITISATION
+Sizing is approximate and labelled. The point is to pick the order, not to claim a census.
+                                                           TARGET POOL     ACCOUNT VALUE PER         PROOF VALUE FOR        SALES
+ SEGMENT               UNIVERSE (ASSUMPTION)               FOR 90 DAYS     YEAR (ASSUMPTION)         D2C                    CYCLE
+
+ Derm and tricho       ~15,000 IADVL-listed                300 clinics,    ₹60,000 to ₹3 lakh per    Very high: answers     3 to 6
+ clinics               dermatologists; a few               15 chains       clinic (MitoActive        "would a derm          weeks
+                       hundred dedicated hair                              counter packs plus        respect this"
+                       clinics; ~3,000 in the six                          shampoo)
+                       metros
+ Salons                6 lakh+ salons in India,            400 salons,     ₹40,000 to ₹1.5 lakh      Medium: retail         2 to 4
+                       under 10% organised;                10 chains       per salon (backbar plus   visibility, stylist    weeks
+                       ~5,000 premium unisex                               retail shelf)             recommendation
+                       salons in six metros
+ Gyms                  Tens of thousands; ~1,500           150 centres, 6 ₹25,000 to ₹80,000 per Medium: male hair-         2 to 6
+                       chain and premium centres           chains         centre (sampling plus  fall cohort at the right   weeks
+                       in six metros                                      member offer)          moment
+ Hostels and co-       ~10 operators with 10,000+ 15 operators,            ₹5 lakh to ₹50 lakh per   Medium: first-brand- 6 to 12
+ living                beds; hundreds of college  40 college               operator (welcome kits,   in-a-new-city effect weeks
+                       hostels                    hostels                  in-house store)
+ Corporate             ~2,000 companies with               120           ₹2 lakh to ₹20 lakh per     Low to medium          6 to 10
+ wellness              1,000+ employees in five            companies, 10 account (gifting,                                  weeks,
+                       metros; ~15 wellness                platforms     wellness weeks)                                    seasonal
+                       platforms
+ QC and                ~12 platforms, 2 to 4 people 35 people              Indirect: already 68% of Very high for           2 to 8
+ marketplace           each                                                revenue                  MitoActive              weeks
+ category                                                                                           distribution
+ managers
+
+
+Two numbers drive the order. Derms have the highest proof value and a short cycle. Category managers
+move the most revenue because the channel already exists. Both are Tier 1 from day one.
+                                                                                                                              DIAGRAM
+                PROOF VALUE FOR D2C
+                     high
+                      |
+       Derm/tricho    |   QC & marketplace
+       clinics        |   category managers
+       (Tier 1 + 2)   |   (Tier 1 only)
+                      |
+     low ------------------------------- high ACCOUNT VALUE / VOLUME
+                      |
+       Gyms           |   Hostels & co-living
+       Salons         |   Corporate wellness
+       (Tier 2 + 3)   |   (Tier 1 chains, Tier 2 rest)
+                      |
+                     low
+
+
+
+
+SIGNALS THAT MAKE AN ACCOUNT "NOW"
+Signals are ranked by closeness to Arata. The closer, the better it converts.
+
+
+BREW DEPLOYMENT TEAM × ARATA · SIX B2B PROSPECT LISTS FOR ARATA                                                                       4
+ RANK SIGNAL FOR ARATA                                                     WHERE IT SHOWS UP                   ACT WITHIN
+
+ 1        A clinic, salon or gym already buying Arata through a            Arata's own order data, GST         Same week
+          distributor or in bulk on a marketplace (existing B2B units)     invoices with a business name
+ 2        A business address or ".clinic" email in the D2C order file      Shopify orders, filtered by email   7 days
+          (a derm or salon buying retail for their own use)                domain and shipping address type
+ 3        A derm or stylist tagging Arata, Y100 or "mitochondrial   Instagram mentions, comment                7 days
+          hair growth" on Instagram, or commenting on Arata's posts monitoring
+ 4        New clinic branch, new salon outlet, new gym centre, new         Google Maps "recently opened",      60 days
+          co-living building                                               Instagram launch posts, press
+ 5        Job post for a category manager (beauty) at a platform, or       Platform careers pages, LinkedIn    While open, then first
+          for a wellness lead at a company                                 Jobs (by hand)                      90 days of the hire
+ 6        A clinic adding PRP or GFC to its menu, a salon adding a         Website menu changes, Practo        90 days
+          scalp treatment                                                  service list, Instagram
+ 7        Corporate Diwali gifting and wellness-week season                HR posts, gifting RFQs, event       Seasonal
+          (September to early November)                                    listings
+ 8        Platform entering a new city or launching a premium              Platform press, app changes         30 days
+          beauty section
+
+
+Signals 1 and 2 are the ones nobody else can see. Arata's own order file is the best prospecting database it
+has. We filter 12 months of D2C orders for business email domains, shipping addresses containing "clinic",
+"salon", "studio", "gym", "hostel" or "PG", and repeat orders of 5+ units of one SKU. Assumption: this yields
+300 to 600 accounts before any external sourcing.
+
+LEAD SCORING RUBRIC
+ SCORE DEFINITION FOR ARATA
+
+ Hot       ICP checklist passed, a ranked signal inside its freshness window, a named decision-maker, a verified business email or
+           published phone, two independent sources
+ Warm      ICP passed, signal older than the window or softer (active but no recent change), contact verifiable
+ Cold      Loose fit or no signal or contact unverified
+ Skip      Disqualifier hit: closed, off-positioning, under size, duplicate, chain in distress
+
+
+Target ratio across the 540: about 20% Hot (110), 30% Warm (160), the rest Cold or held for a later sweep. A
+Hot label without a signal is a quality failure and gets sent back.
+
+COMPLIANCE FOR INDIA, READ BEFORE SOURCING
+     The Digital Personal Data Protection Act applies to named people. Business contact details collected from
+     a business's own published pages for a business purpose are the low-risk path. We record source URL
+     and collection date for every contact and honour any deletion request within 7 days.
+     TRAI rules on promotional calls and SMS. We call published business lines only. No cold SMS to mobiles.
+     WhatsApp outreach goes to published WhatsApp Business numbers, from a verified Arata business
+     account, and stops on the first "stop".
+     Doctors cannot endorse products publicly under the medical council's professional conduct rules. The
+     derm play is counter dispensing, in-clinic recommendation and study education. We never ask a doctor
+     for a testimonial, a quote or a video. That shapes which contacts we collect: clinic manager for
+     commercial, doctor for science.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SIX B2B PROSPECT LISTS FOR ARATA                                                                       5
+    No bulk scraping of Google Maps, Practo, JustDial or LinkedIn. Google Maps is used by hand to find a
+    business, and the data we keep comes from the business's own site. LinkedIn Sales Navigator defines the
+    audience; contacts come from a licensed database.
+    Every email is verified before it reaches a sequence and again within 7 days of the send if the list sat.
+    Bounce cap 2% per campaign, pause above it.
+
+
+
+THE PLAN
+THE SYSTEM, END TO END
+                                                                                                        DIAGRAM
+     Arata order file          External discovery            Licensed data
+     (Shopify, GST, QC)        (Maps by hand, Practo,        (Apollo / Lusha /
+     business-domain filter    IADVL, chain locators,        RocketReach, one
+            |                  press, Instagram)             waterfall)
+            |                         |                            |
+            v                         v                            v
+       +------------------------------------------------------------------+
+       | Candidate pool (target 2 to 3x final: ~1,400 candidates)           |
+       +------------------------------------------------------------------+
+                                      |
+                                      v
+       +------------------------------------------------------------------+
+       | Qualify: ICP pass/fail per segment, 2 sources, signal + date        |
+       +------------------------------------------------------------------+
+                                      |
+                                      v
+       +------------------------------------------------------------------+
+       | Enrich + verify: role contact, email, published phone, WhatsApp |
+       | Business number, Truelist / ZeroBounce verify, catch-all policy     |
+       +------------------------------------------------------------------+
+                                      |
+                                      v
+       +------------------------------------------------------------------+
+       | Score (Hot/Warm/Cold/Skip) and tier (1 / 2 / 3)                     |
+       +------------------------------------------------------------------+
+                |                     |                        |
+                v                     v                        v
+          Tier 1: 40 briefs     Tier 2: 8 segments        Tier 3: 2 segments
+          1:1, human-reviewed   1:few, one personal line 1:many, segment copy
+                |                     |                        |
+                +----------+----------+------------------------+
+                           v
+                   Hand off to cold-email → CRM → weekly signal sweep
+
+
+
+
+PHASE 1 (WEEK 1): MINE WHAT ARATA ALREADY HAS
+What: filter 12 months of D2C orders and all B2B invoices for business signals. Business email domains
+(anything not gmail, yahoo, outlook, hotmail, rediff). Shipping addresses with clinic, salon, studio, gym,
+hostel, PG, "hospital", "academy". Repeat buyers of 5+ units of one SKU in one order. Loox and Nykaa
+reviewers who describe themselves as stylists or doctors.
+Why: these accounts already chose Arata. Reply rates on existing-usage signals run multiples of cold lists. It
+also seeds the lookalike step: once we know 40 salons that already buy, we find the salons that look like
+them.
+Expected effect: 300 to 600 pre-warmed accounts before external sourcing (assumption), and a clean
+suppression list of current B2B customers so outbound never cold-emails an existing account.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SIX B2B PROSPECT LISTS FOR ARATA                                                 6
+PHASE 2 (WEEKS 1 TO 3): EXTERNAL DISCOVERY PER SEGMENT
+Source 2 to 3 times more candidates than the final list. Each segment has its own route.
+ SEGMENT             DISCOVERY ROUTE                                    CROSS-CHECK                CONTACT RULE
+
+ Derm and            IADVL public listing by city → Practo profile      Google Maps listing by     Clinic email and phone from the clinic's
+ tricho              → clinic website                                   hand (reviews, photos,     own site or Practo. Doctor name
+                                                                        hours)                     recorded; doctor contacted through the
+                                                                                                   clinic.
+ Salons              Google Maps by hand, "unisex salon" and            Instagram page             Published salon phone or WhatsApp
+                     "hair spa" per locality; chain outlet pages        activity, Urban            Business. Owner name only if the salon
+                                                                        Company or Nykaa Pro       publishes it.
+                                                                        listing
+ Gyms                Chain centre locators (Cult.fit, Gold's Gym,       Reviews mention            Published centre phone. Chain
+                     Anytime Fitness); Google Maps by hand for          showers; retail counter    partnerships head through licensed
+                     premium independents                               in photos                  database.
+ Hostels and         Operator property pages; press on new              Bed counts in two          Procurement or operations head
+ co-living           launches; college hostel tender notices            sources                    through licensed database; general
+                                                                                                   enquiry email as backup.
+ Corporate           Sales Navigator search (1,000+ employees,          Careers page               Work email from licensed database;
+ wellness            five metros, titles: HR head, people ops,          headcount; recent HR       verified.
+                     wellness, benefits); wellness platform client      post
+                     pages
+ QC and              Sales Navigator search by platform and title;      Role confirmed by hand Work email from licensed database;
+ marketplace         platform job posts; press                          on LinkedIn within 30  verified; mobile only for Tier 1 with a
+                                                                        days                   human review.
+
+
+PHASE 3 (WEEKS 2 TO 4): ENRICHMENT WATERFALL AND VERIFICATION
+What: one waterfall, run in order, stopping at the first accepted result. For Indian B2B contacts the order we
+recommend is Apollo → Lusha → RocketReach → manual lookup on the business's own site. Mobile numbers
+are pulled for Tier 1 only. Every email goes through a verifier that resolves catch-alls (Truelist or
+ZeroBounce). Role addresses (info@, contact@) are kept for salons, gyms and clinics that publish them as
+the main contact, and excluded from person-level sequences everywhere else.
+Why: no single provider finds everyone, and the ones that find the most also return more wrong data. A
+bake-off on 100 known-correct contacts from Arata's existing B2B accounts tells us which provider to put
+first for this ICP. We log which provider filled each field and the cost per accepted contact.
+Expected effect: a bounce rate under 2% on the first campaign, and a cost per verified contact we can
+report (assumption: ₹40 to ₹120 per contact depending on segment).
+ VERIFICATION RESULT                                      ACTION
+
+ Valid                                                    Send
+ Invalid, disposable, spam trap                           Suppress permanently
+ Role address                                             Keep for Local SMB segments only
+ Catch-all, resolved valid                                Send from the secondary, lower-volume inbox
+ Catch-all, unresolved                                    Tier 1 only, watched inbox
+ Unknown                                                  Retry once in 48 hours; if still unknown, do not send
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SIX B2B PROSPECT LISTS FOR ARATA                                                                             7
+PHASE 4 (WEEK 3 ONWARDS): TIERING AND RESEARCH DEPTH
+                                                                    COUNT BY
+ TIER           WHO                                                 DAY 30        RESEARCH                    CHANNELS
+
+ Tier 1         All QC and marketplace category managers;       40 accounts       Full account brief,         Email, LinkedIn by
+ (1:1)          derm and hair clinic chains; salon chains; gym                    human-reviewed, mobile      hand, phone, in-
+                chains; co-living operators; wellness platforms                   number where lawful         person sample drop
+ Tier 2         Independent derms per city (6 segments);            8 segments    Segment brief plus one      Email or WhatsApp
+ (1:few)        premium independent salons per city (2              of 20 to 60   sourced personal line per   Business, LinkedIn for
+                segments to start)                                                account                     doctors
+ Tier 3         Independent gyms; college hostels                   2 segments    Segment brief only          Email, then field rep
+ (1:many)
+
+
+Campaigns stay small. Fifty recipients or fewer per send, per segment. Reply rates fall as sends grow.
+
+PHASE 5 (WEEK 4 ONWARDS): THE WEEKLY SIGNAL SWEEP
+Every Monday the sweep adds fresh accounts and re-scores old ones:
+    Arata order file: new business-domain or multi-unit orders in the last 7 days
+    Instagram: mentions of Arata, MitoActive or Y100 by accounts whose bio says clinic, derm, trichologist,
+    salon or stylist
+    Google Maps by hand, per metro: "recently opened" derm clinics, salons and gyms
+    Platform careers pages: open category roles in beauty
+    Press: new co-living buildings, gym centre openings, HR wellness announcements
+    Re-verify any contact older than 30 days before it is used
+Expected effect: 30 to 50 new scored accounts a week, and no stale signal ever reaching a sequence.
+
+
+
+WORKED EXAMPLES
+EXAMPLE 1: THE SEGMENT BRIEF FOR INDEPENDENT DERMATOLOGISTS, BANGALORE
+This is the Tier 2 brief as it ships to the outbound team. Everything in it comes from public sources and the
+brand brief.
+Segment: Independent dermatologists and trichologists in Bangalore (Koramangala, Indiranagar, HSR,
+Jayanagar, Whitefield, JP Nagar, Malleshwaram) with a hair-fall procedural service on the menu and a retail
+counter. Target count: 60 clinics. Expected Hot: 12.
+What they have in common: They see hair-fall patients every day and have two tools: minoxidil, which
+patients fear and abandon, and PRP or GFC, which patients cannot afford to repeat. Between those two sits
+an empty shelf. Patients ask "is there something that is not minoxidil". The doctor usually names a Redensyl
+serum from memory and the patient buys it on Blinkit without the clinic earning anything or controlling the
+routine.
+The pain in their words (public examples to collect during research): reviews on Practo and Google that
+mention "stopped minoxidil", "shedding got worse", "too expensive to continue PRP", and clinic Instagram
+captions promoting "non-surgical hair fall treatment". Three sourced examples per city go in the brief; none
+are invented.
+
+
+BREW DEPLOYMENT TEAM × ARATA · SIX B2B PROSPECT LISTS FOR ARATA                                                                      8
+What Arata offers this segment: MitoActive, ₹1,499, 30 ml, Y100 mitochondrial active, 87% saw increased
+growth in 84 days, up to 95% reduction in hair fall, Indian-participant study showing reduced shedding and
+improved anagen/telogen ratio. The Anti-Hair Fall Intensive Shampoo at ₹399 MRP as the wash step.
+Dermatologically tested, in-house Delhi lab, exclusive Y100 licence in India. A 3-month course framing
+instead of lifelong dependency.
+The one-line opener every contact gets: "Your hair-fall patients who will not stay on minoxidil and cannot
+repeat PRP every month need a middle step, and we have one with an 84-day Indian study behind it."
+Per-contact slot (filled from research, 2 to 3 minutes each): the procedural service they offer (PRP, GFC,
+microneedling), or the retail brand already on their counter, or a recent clinic post about hair fall.
+Proof to use: the Y100 study summary (5+ clinical studies, 6+ years of research), the 7.4X hair fall reduction
+tensile study for the shampoo, the 2,248 on-site reviews.
+Do not mention: any doctor testimonial ask. Any claim beyond the "up to" framing on the pack. Any review
+of the clinic that sounds like surveillance.
+Hook found: required per account. If 3 minutes of research finds nothing, the account drops to the segment
+message. "No hook found" is a valid result.
+
+EXAMPLE 2: A TIER 1 ACCOUNT BRIEF, CO-LIVING OPERATOR
+Facts marked "to confirm" get a source URL and a date before the brief is approved. The angle must map to
+an Arata value proposition; it does here.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SIX B2B PROSPECT LISTS FOR ARATA                                                9
+                                                                                                         DIAGRAM
+    ## Stanza Living: account brief
+
+    Fit: Co-living and student housing operator, multi-city, metro clusters.
+         Bed count reported in the tens of thousands (to confirm: latest press,
+         with date). Central operations and procurement function (to confirm on
+         company page). Passes the 500+ bed threshold by a wide margin.
+
+    Signal: New property launches and city expansion announcements in the last
+         90 days (to confirm: press link and date). Student intake season
+         (June to August, and January) is when welcome kits are assembled.
+
+    Likely priority: Resident experience at move-in, standardised housekeeping
+         and welcome supplies, partnerships that add perceived value at low
+         cost per bed.
+
+    Evidence (collect 2 to 4, each with URL + date):
+         1. Property launch post or press item, last 90 days.
+         2. Company page listing a procurement, supply chain or resident
+            experience role.
+         3. Any published welcome-kit, amenities or partner-brand mention.
+         4. Bed count figure from a second source.
+
+    Who owns it: Head of procurement or supply chain (commercial owner).
+         Second thread: head of resident experience or marketing (perceived
+         value owner). Names from licensed database, roles confirmed by hand
+         on LinkedIn within 30 days.
+
+    Angle: Students moving to a new city on hard water lose hair in the first
+         90 days and blame the water. A move-in kit with a 50 ml Anti-Hair Fall
+         Intensive Shampoo sachet pack and the ₹199 scalp massager makes the
+         operator the brand that noticed. Arata already ships ~2 lakh B2B units
+         a month, so kit volume is routine.
+
+    Proof to use: 7.4X hair fall reduction claim; "made for Indian hair and
+         tested for Indian weather" (hard water, humidity); 1.5M+ customers a
+         year; Unilever Ventures and L'Oréal BOLD on the cap table (credibility
+         for a procurement committee).
+
+    Don't mention: any resident's personal data; anything about the company's
+         funding or finances; the word "chemical-free".
+
+    Hook found: pending research (required before first send).
+
+
+
+
+EXAMPLE 3: THE SALES NAVIGATOR FILTER SPEC AND LICENSED PULL FOR CATEGORY MANAGERS
+This is the finished spec the research lead runs. Sales Navigator defines the audience. The contacts come
+from the licensed database with the same filters. Nothing is exported from LinkedIn.
+Sales Navigator (research only)
+    Current company: Blinkit, Zepto, Swiggy (Instamart), Amazon (India), Flipkart, Nykaa, Myntra, Tira
+    (Reliance Retail), Purplle, BigBasket, JioMart
+    Current title keywords: "Category Manager", "Senior Category Manager", "Category Head", "Assortment",
+    "Merchandising", "Vendor Manager", "Business Development" with any of "Beauty", "Personal Care",
+    "BPC", "Hair", "Grooming"
+    Geography: India
+    Seniority: Manager, Senior, Director
+    Changed jobs in last 90 days: flag as the first-90-days play
+    Posted on LinkedIn in last 30 days: flag for a by-hand read before any outreach
+Licensed database pull (Apollo or equivalent)
+    Same company list, same title keywords, India
+    Fields: name, title, company, work email, LinkedIn URL, last updated date
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SIX B2B PROSPECT LISTS FOR ARATA                                              10
+    Export, then verify every email; mark catch-alls and route them per the policy table
+    Record provider name and pull date as the source for each row
+Expected yield: 25 to 40 named people across 11 platforms (assumption). All Tier 1. Each gets an account
+brief and a human-reviewed first message.
+The play per signal:
+ SIGNAL                              PLAY               OPENING ANGLE
+
+ New category manager in             First 90 days What a new BPC category owner usually fixes first on hair fall: the assortment is
+ role under 90 days                                ten Redensyl serums that look the same. One SKU with a clinical number and a
+                                                   different mechanism changes the shelf.
+ Platform launched a                 Assortment         Arata's city-level hair fall demand data from its own D2C orders (assumption:
+ premium beauty section or           gap                Arata can share aggregated city demand), offered as a one-page teardown.
+ a new city
+ Open "Category Manager,             Bridge the         What the hire will inherit: a MitoActive listing request with content, reviews plan and
+ Beauty" role                        gap                a promo calendar already prepared.
+
+
+EXAMPLE 4: THE LEAD SHEET, SALONS, BANGALORE AND MUMBAI (SEED ROWS)
+This is the sheet format with seed accounts. The chain rows are real companies that pass the ICP on public
+information and sit in Tier 1 for a central conversation. Contact and email fields stay "to verify" until the
+waterfall and verifier have run; no contact ships unverified.
+                                                                                                              WHY IT IS
+                                                           WEBSITE SIGNAL                              EMAIL  A
+ SCORE BUSINESS              CATEGORY CITY                 STATUS (DATE)              CONTACT          STATUS PROSPECT           CONFIDENCE
+
+ Warm      Lakmé Salon Salon                Multi-city Has site        Chain retail   Central       To            Largest        Medium
+           (chain HQ)  chain                                           programme      merchandising verify        organised
+                                                                       exists (to     or                          salon
+                                                                       date)          partnerships                network;
+                                                                                      role, to find               one listing
+                                                                                                                  decision
+                                                                                                                  covers
+                                                                                                                  hundreds
+                                                                                                                  of outlets
+ Warm      Naturals          Salon          Multi-         Has site    Franchise      Franchise        To         South India    Medium
+                             chain          city,                      expansion      supply head,     verify     density
+                                            strong in                  posts (to      to find                     matches
+                                            South                      date)                                      Arata's
+                                                                                                                  Chennai
+                                                                                                                  and
+                                                                                                                  Bangalore
+                                                                                                                  personas
+ Warm      Enrich            Salon          Mumbai, Has site           Retail-led Buying or            To         Already      Medium
+                             chain          Bangalore                  positioning, category role,     verify     sells retail
+                                                                       products     to find                       at scale;
+                                                                       on site (to                                Arata fits
+                                                                       date)                                      the ₹359 to
+                                                                                                                  ₹571 shelf
+ Warm      Toni&Guy          Salon          Multi-city Has site        Retail shelf Partnerships       To         Premium     Medium
+           India             chain                                     standard in role, to find       verify     stylists
+                                                                       outlets (to                                recommend
+                                                                       date)                                      products by
+                                                                                                                  name
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SIX B2B PROSPECT LISTS FOR ARATA                                                                             11
+                                                                                                         WHY IT IS
+                                                          WEBSITE SIGNAL                          EMAIL  A
+ SCORE BUSINESS              CATEGORY CITY                STATUS (DATE)           CONTACT         STATUS PROSPECT        CONFIDENCE
+
+ Warm      Looks Salon       Salon          Delhi         Has site   New outlet   Central ops     To       Delhi base    Medium
+                             chain          NCR,                     openings     role, to find   verify   matches
+                                            North                    (to date)                             Arata's HQ
+                                                                                                           for sample
+                                                                                                           drops
+ Warm      BBlunt            Salon          Mumbai, Has site         Own          Partnerships    To       Product-     Low (own
+                             chain          multi-city               product      role, to find   verify   literate     brand may
+                                                                     line on                               salon; a     block)
+                                                                     shelf (to                             "treat" step
+                                                                     date)                                 partner,
+                                                                                                           since
+                                                                                                           BBlunt sells
+                                                                                                           wash and
+                                                                                                           style
+ Cold      Independent Salons               Bangalore Mixed          Maps by    Published         To       Dense        Low until
+           salons,                                                   hand, week phone             verify   cluster, one walked
+           Koramangala                                               2                                     rep route
+           cluster                                                                                         covers 30
+                                                                                                           salons
+ Cold      Independent Salons               Mumbai        Mixed      Maps by    Published         To       Premium       Low until
+           salons,                                                   hand, week phone             verify   price band,   walked
+           Bandra and                                                2                                     high hair
+           Andheri                                                                                         spa
+           cluster                                                                                         demand
+
+
+Top outreach targets (once contacts verify): Enrich first, because its retail-led model means a product
+listing decision is routine. Naturals second, for South India density where Arata's dandruff and damage
+personas sit. Lakmé Salon third, the longest cycle and the largest prize.
+Search parameters: branch Local SMB; ICP salon checklist above; cities Bangalore and Mumbai; target 120
+independent plus 10 chains; generated October 2026.
+Open questions: whether any chain has an exclusive retail agreement with a professional brand; whether
+Arata's distributor already serves any of these chains (check the order file first).
+
+EXAMPLE 5: THE 60-SECOND PHONE VERIFICATION SCRIPT FOR SALONS AND GYMS
+Phone verification is a prospecting step, not a sales call. The goal is three facts: the right decision-maker,
+whether they retail, and the published WhatsApp number. The rep calls the published business line only.
+
+   "HI, THIS IS [NAME] FROM ARATA, THE HAIR AND SCALP SCIENCE BRAND.
+   QUICK ONE, I AM NOT SELLING ANYTHING ON THIS CALL. COULD YOU
+   TELL ME WHO LOOKS AFTER THE PRODUCTS YOU RETAIL AT THE FRONT
+   DESK? [RECORD ROLE AND FIRST NAME IF OFFERED.] DO YOU CURRENTLY
+   STOCK ANY HAIR CARE BRAND FOR CLIENTS TO BUY? [RECORD BRAND.]
+   AND IS THIS THE BEST WHATSAPP NUMBER FOR THE SALON? [CONFIRM
+   OR RECORD.] THANK YOU, THAT IS ALL I NEEDED."
+
+
+Rules: under 60 seconds. If the person says they do not retail, score Cold, do not pitch. If they ask what
+Arata is, give one line ("the ₹359 anti-hair fall shampoo with the 7.4X claim on the pack") and offer to send a
+sample, then hand to outbound. Log the call date as the verification date.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SIX B2B PROSPECT LISTS FOR ARATA                                                                    12
+EXAMPLE 6: THE TIER 2 OPENER SLOTS, FILLED, FOR A GYM SEGMENT
+Segment: franchisee-run gym centres in Hyderabad (Gachibowli, Madhapur, Kondapur, Banjara Hills) with
+showers and a supplement counter. The one-line opener plus three example per-contact slots, written from
+the kind of facts research finds in 2 to 3 minutes.
+    Opener (every contact): "Your 22 to 35 male members are the exact people losing hair to stress and
+    sweat, and the shower is the only place a sample gets used the same day."
+    Slot, example A: "You mention your 'post-workout shower lounge' on the Maps listing."
+    Slot, example B: "Your supplement counter already sells to members, so a ₹359 shampoo on the same
+    shelf is a routine add."
+    Slot, example C: "Your centre opened in the last 60 days, and we like being the first brand in a new
+    changing room."
+If none of these is true for an account after a 3-minute check, the account gets the opener alone and moves
+to Tier 3.
+
+
+
+30-DAY DEPLOYMENT
+ WEEK     BREW SHIPS                                              ARATA PROVIDES                     LIVE BY END OF WEEK
+
+ Week Six ICP cards and checklists signed off. Order-file           Shopify order export, B2B          300 to 600 pre-warmed
+ 1    mining script run on 12 months of D2C and B2B                 invoice list with business         accounts from Arata's own data
+      data. Suppression list of current B2B customers.              names, distributor list, access    (assumption), suppression list
+      Provider bake-off on 100 known contacts.                      to a licensed contact database     synced to the outbound tool,
+                                                                    (or we provision one)              waterfall order chosen
+ Week External discovery for Tier 1: all 11 platforms               One Arata B2B owner to review      40 Tier 1 accounts identified
+ 2    mapped person by person; derm, salon and gym                  Tier 1 names, confirm any          with roles; 200 Tier 2
+      chains; co-living operators; wellness platforms.              existing relationships, and flag   candidates in the pool; first
+      Sales Navigator specs run. Maps-by-hand walk of               accounts to skip                   enrichment batch run and
+      two derm clusters (Bangalore, Delhi NCR) and two                                                 verified
+      salon clusters (Bangalore, Mumbai).
+ Week 40 Tier 1 account briefs written, each with dated             Arata brand manager reviews        40 briefs approved; 8 segment
+ 3    evidence and a hook found or declared missing.                the Tier 1 briefs and the          briefs approved; 350 verified
+      Eight Tier 2 segment briefs. Phone verification calls         segment openers for claims         accounts on the sheet
+      on 150 salons and gyms. Second enrichment batch.              accuracy (every number traced
+                                                                    to the pack or the study)
+ Week Final sheet of 540 scored and tiered accounts in              Arata B2B owner confirms the       540 accounts live, 110 Hot, 160
+ 4    CSV and in the CRM. Weekly signal sweep set up                handoff order; Arata ops           Warm; sweep running every
+      and run once. Handoff of the first 120 accounts (all          confirms sample kit availability   Monday; first outbound sends in
+      Tier 1 plus two Tier 2 segments) to outbound.                 for Tier 1 drops                   progress
+      Compliance audit checklist signed.
+
+
+Owners: Brew research lead (sourcing, scoring, briefs), Brew data lead (order-file mining, waterfall,
+verification), Brew compliance reviewer (audit checklist), Arata B2B owner (relationship checks, handoff
+order), Arata brand manager (claims review), Arata ops lead (sample kits).
+
+
+
+HOW WE MEASURE
+
+BREW DEPLOYMENT TEAM × ARATA · SIX B2B PROSPECT LISTS FOR ARATA                                                                       13
+ METRIC                       BASELINE                  90-DAY TARGET                           DECISION RULE
+
+ Verified accounts on         0 named-account           540 by day 30; 900 by day 90            Below 400 by day 30: cut the salon
+ the sheet                    list (assumption)                                                 independent pool and protect Tier 1
+ Hot share                    To be instrumented        20% (110 of 540)                        Above 30%: scoring is loose, re-audit
+                                                                                                signals. Below 12%: the ICP is too wide,
+                                                                                                tighten
+ Accounts from Arata's To be instrumented               300 to 600 (assumption)                 If under 100, the order data lacks business
+ own order file                                                                                 fields; add a "business purchase" checkbox
+                                                                                                at checkout
+ Email verification pass To be instrumented             85%+ valid or resolved                  Below 70%: change the first provider in the
+ rate                                                                                           waterfall
+ Bounce rate on first         To be instrumented        Under 2%, best 1%                       Above 2%: pause, re-verify the whole
+ campaign                                                                                       batch, move catch-alls to the secondary
+                                                                                                inbox
+ Cost per verified            To be instrumented        ₹40 to ₹120 by segment                  Above ₹200 in any segment: that segment
+ contact                                                (assumption)                            goes to field sourcing instead
+ Hook-found rate on           To be instrumented        70%+                                    Below 50%: the research time per account
+ Tier 1                                                                                         rises from 10 to 20 minutes, or the account
+                                                                                                moves to Tier 2
+ Reply rate by segment To be instrumented               Derm 8%+, category managers             A segment under half its target after 2
+ (handed to cold-                                       15%+, salons 5%+                        sends: rebuild its ICP before adding volume
+ email)
+ First B2B orders from        0                         60 accounts ordering by day 90;         Under 30 orders: the lists are fine and the
+ the sheet                                              20 derm clinics with MitoActive on      offer is the problem; hand to the sales-
+                                                        the counter                             enablement and offers work
+ Weekly sweep yield           0                         30 to 50 scored accounts a week         Under 15 for three weeks: add a sourcing
+                                                                                                channel (Instagram monitoring, field reps)
+
+
+If it works: by day 90 the derm list is the proof engine for MitoActive, the category manager map is the
+standing channel for every new SKU, and the sweep runs as a permanent loop. We then extend to tier-2
+cities where Traya's 70% tier-2/3 customer base shows demand exists.
+If it does not: we keep the two segments that convert, drop the rest to a Tier 3 drip, and move the research
+hours to deepening account briefs on the accounts that replied.
+
+
+
+APPENDIX
+CSV COLUMNS FOR THE ARATA B2B SHEET
+                                                                                                                                        DIAGRAM
+    tier,score,segment,business,domain,city,pincode,website_status,signal,signal_date,signal_source_url,decision_maker_role,contact_name,contact_tit
+
+
+
+
+COMPLIANCE AUDIT CHECKLIST BEFORE HANDOFF
+    Every contact has a source URL and a collection date
+    No contact sourced from scraped LinkedIn, Maps, Practo or JustDial data
+    Doctor contacts routed through the clinic; no testimonial asks anywhere in the briefs
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SIX B2B PROSPECT LISTS FOR ARATA                                                                                14
+    Published business phone numbers only; no cold SMS to mobiles
+    Every email verified; catch-alls routed per policy; bounce cap set to 2% with auto-pause
+    Personal email domains flagged and excluded from sequences
+    Suppression list synced: current B2B customers, distributors, opt-outs, hard bounces
+    Retention plan: unresolved and Cold rows deleted after 180 days without a signal refresh
+
+SOURCES USED
+Arata brand brief (Brew deployment team, v1, 10 Oct 2026) for all brand facts, prices, claims, personas
+and channel mix. IADVL public association pages for the existence of a member directory. Co-living operator
+press coverage for the segment definition. Segment universe figures are labelled assumptions and should be
+replaced with a counted number after the week 2 walk.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · SIX B2B PROSPECT LISTS FOR ARATA                                        15
+B2B PROSPECTING
+
+
+DAY 30
+AT ARATA
+    WHAT IS LIVE
+
+    Arata has one B2B account sheet with 540 verified accounts, 40 Tier 1 account
+    briefs, a weekly signal sweep that adds 30 to 50 fresh accounts, and the first
+    120 accounts already handed to outbound.
+
+
+
+
+  NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+  BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+  CONFIRM".
+
+
+  EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+  BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                  DEPLOYMENT TEAM
+                                                                               BREW
+

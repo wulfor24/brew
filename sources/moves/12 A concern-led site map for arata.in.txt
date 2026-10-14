@@ -1,0 +1,982 @@
+      Brew                                       PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+SITE ARCHITECTURE · MOVE 12 OF 50
+
+
+
+A CONCERN-
+LED SITE
+MAP FOR
+ARATA.IN
+  A PAGE HIERARCHY, NAVIGATION, URL AND INTERNAL
+  LINKING PLAN THAT TURNS ARATA.IN FROM A LIST OF
+  RANGES INTO A SITE WHERE EVERY VISITOR LANDS ON
+  THEIR PROBLEM AND LEAVES WITH A ROUTINE.
+
+
+
+
+3 clicks
+FROM HOME TO A ROUTINE IN CART
+
+
+
+
+BREW × ARATA                      OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                    V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                                 WHAT THIS GIVES ARATA
+                                                                 A page hierarchy, navigation, URL and internal
+                                                                 linking plan that turns arata.in from a list of ranges
+                                                                 into a site where every visitor lands on their problem
+                                                                 and leaves with a routine.
+         3 clicks
+         FROM HOME TO A ROUTINE IN CART
+                                                                 LIVE 30 DAYS AFTER WE START
+                                                                 Five concern hubs, a new header, breadcrumbs, a
+                                                                 redirect map and a routine-first Hair Fall section are
+                                                                 live on arata.in, every SKU is reachable in three
+                                                                 clicks, and Lab Notes links to the products it writes
+                                                                 about.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+arata.in is the one channel Arata owns. It carries 32% of revenue, about 650K visits a month, and
+50,000+ D2C orders a month. The other 68% sits on Amazon, Nykaa, Flipkart, Zepto, Blinkit and
+Instamart, where Arata rents a listing and competes on a sort order it does not control. Every structural
+gain on the owned site compounds. Every structural flaw costs orders at 650K visits a month.
+Today the site is organised the way the catalogue is organised: by range. Hair Growth, Anti-Dandruff,
+Damage Defence, Anti-Grey, Styling, Body, Face, Tools, Combos. That works for a warehouse. It does
+not work for Hair-fall Rahul, who typed "hair fall shampoo" into Google, landed on a collection that
+mixes a ₹359 shampoo with a 7.4X claim, a ₹571 serum with a 28,200 claim, a ₹1,499 MitoActive with
+an 87% claim and a conditioner with a 78% claim, and now has to work out which number is his. The
+brief names this: the hair growth collection mixes claims and has no routine builder. There is no quiz.
+There is no regimen builder. There is no subscription. The customer has to assemble a routine by
+reading.
+The brand line is "systems, not symptoms". The site sells symptoms one bottle at a time. That gap
+between what the brand says and what the site does is the whole opportunity. A routine-led structure
+is also the structure that lifts AOV: the brief implies ₹900 to ₹1,000 AOV against a ₹359 shampoo, so
+routines and packs are already doing the work. The site should make the routine the default landing
+point, with the single bottle as the step-down.
+Three more things are structural and belong in this document. Lab Notes posts arrive in bursts (seven
+in March 2026) and sit beside the shop instead of inside it, so they rank for nothing and sell nothing.
+Naming is inconsistent across channels (onion vs biotin, serum vs tonic), which means URL handles,
+titles, breadcrumbs and marketplace listings all disagree, and search engines see three products
+where there is one. And the legacy Advanced Curl Care and Super Shampoo pages are still live and
+indexed, pulling the site back to the "zero chemicals" era while the rebrand pushes it toward
+bioscience.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · A CONCERN-LED SITE MAP FOR ARATA.IN                                                      1
+The rebrand is underway. That is the moment to fix architecture. A rebrand that redesigns every page
+but keeps the same page map ships the same confusion in a new colour. We propose doing the map
+first, so the design has something to hang on.
+
+
+
+WHAT WE FOUND
+THE CURRENT STRUCTURE, AS A VISITOR MEETS IT
+Arata runs on Shopify. That fixes the first URL segment: collections live at /collections/ , products at
+/products/ , static pages at /pages/ , the blog at /blogs/lab-notes/ . Everything in this plan is
+designed inside those rails, so nothing here needs a replatform.
+The current page map, reconstructed from the brief's catalogue and collection structure (assumption:
+the header follows the range names below, which is what the collections are called):
+                                                                                                                   DIAGRAM
+    Today: range-led
+    Home (/)
+    ├── Hair Growth (/collections/hair-growth)
+    │   ├── MitoActive serum ₹1,499 ........ "87% saw growth"
+    │   ├── Hair Growth Intensive Serum ₹571 "28,200 new hair"
+    │   ├── Intensive Serum Pack of 3 ₹999 .. same claim
+    │   ├── Anti-Hair Fall Shampoo ₹359 ..... "7.4X reduction"
+    │   └── Anti-Breakage Conditioner ₹359 .. "78% stronger"
+    ├── Anti-Dandruff (/collections/anti-dandruff)
+    ├── Damage Defence (/collections/damage-defence)
+    ├── Anti-Grey (/collections/anti-grey)
+    ├── Styling (/collections/styling)
+    ├── Body / Face / Tools
+    ├── Combos (/collections/combos)
+    ├── Lab Notes (/blogs/lab-notes)         ← seven posts in March, then quiet
+    └── Legacy, still indexed
+        ├── Advanced Curl Care (2022, Taapsee "CurlFriend")
+        └── Super Shampoo onion / biotin (naming differs by channel)
+
+
+
+
+Four claims on one collection page is the single most expensive page in this map. It is also the page
+most of the paid and organic hair-fall traffic lands on.
+
+PERSONA PATH AUDIT
+We walked each persona from the brief through the site as it stands. "Clicks to right SKU" counts from
+the homepage. "Routine shown" asks whether the site ever proposes shampoo + serum + conditioner
+as one thing to buy.
+                                                                       CLICKS TO
+                       WHAT THEY                WHERE THEY             THE RIGHT      ROUTINE
+ PERSONA               SEARCH                   LAND TODAY             SKU            SHOWN     WHAT GOES WRONG
+
+ Hair-fall             "hair fall               Hair Growth            2, but must    No        Cannot tell whether he needs
+ Rahul, 28,            shampoo", "hair          collection             choose                   the ₹571 serum or the ₹1,499
+ Bangalore             growth serum"                                   between 4                MitoActive. Leaves to
+                                                                       claims first             compare on Amazon
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · A CONCERN-LED SITE MAP FOR ARATA.IN                                                           2
+                                                                       CLICKS TO
+                       WHAT THEY                WHERE THEY             THE RIGHT       ROUTINE
+ PERSONA               SEARCH                   LAND TODAY             SKU             SHOWN          WHAT GOES WRONG
+
+ Dandruff              "anti dandruff           Anti-Dandruff          2               Partly (S+C Leave-on serum (₹299, 36-
+ Divya, 24,            shampoo"                 collection                             combo ₹866 hour itch relief) is the
+ Pune                                                                                  exists)     differentiator and sits third in
+                                                                                                   the grid
+ Styling Sahil,        "hair gel", "hair        Styling collection     2               Not needed     Works. Styling combos are
+ 22, Delhi             wax"                                                                           the most-reviewed on Loox.
+                                                                                                      Keep this section as is
+ Routine Ritika,       "post partum hair        Lab Notes post, if     3+              No             No single cart. No reorder
+ 32, Mumbai            fall"                    one exists, or the                                    path. She is the subscription
+                                                Hair Growth                                           customer the site cannot
+                                                collection                                            serve
+ Grey-early            "anti grey serum"        Anti-Grey              2               No             One-product collection. No
+ Gaurav, 29,                                    collection with                                       3-month plan page, no
+ Hyderabad                                      one SKU                                               pairing with shampoo
+ Clinical Kavya, "mitochondrial hair MitoActive                        1 to 2          No             Zero reviews, no study page
+ 35, Chennai     growth", "Y100"     product page                                                     to link to, no Lab Notes
+                                                                                                      explainer in the path. The
+                                                                                                      ₹1,499 ask has no supporting
+                                                                                                      pages
+
+
+Five of six personas reach a product in two clicks. That is fine. The failure is what happens on arrival:
+the site offers a grid when the customer needs a decision.
+
+PAGE VALUE AGAINST DEPTH
+We scored the pages that matter by business value (revenue, differentiation, search demand) and by
+where they sit in the current map.
+                                                                                   INBOUND INTERNAL
+ PAGE                       BUSINESS VALUE                   CURRENT DEPTH         LINKS (ASSUMPTION)      VERDICT
+
+ MitoActive PDP             Highest: hero of the             L2, inside Hair       Collection grid,        Under-linked for a hero.
+                            rebrand, ₹1,499, ₹1,803          Growth                homepage banner         Needs its own hub
+                            to ₹2,278 combos
+ Hair Growth                High: 474 + 388                  L2                    Collection grid         Fine depth, wrong
+ Intensive Serum            reviews, the volume                                                            neighbours
+ (and Pack of 3)            serum
+ Anti-Hair Fall             High: entry SKU, 222             L2                    Collection grid         Should be Step 1 of a
+ Shampoo ₹359               reviews                                                                        routine. Today it sits as a
+                                                                                                           sibling of the serum
+ Anti-Dandruff              Medium-high: unique              L2                    Collection grid         Buried behind shampoo
+ Serum ₹299                 leave-on                                                                       and conditioner
+ Combos                     High: carry AOV                  L1, generic           Header                  Combos belong inside
+                                                             "Combos"                                      each concern, named as
+                                                             collection                                    routines
+ Lab Notes                  High potential: the only         L1                    Header or footer        Orphaned from products.
+                            place "Y100" and "84                                                           No post links to a buy
+                            days" can be explained                                                         button
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · A CONCERN-LED SITE MAP FOR ARATA.IN                                                                     3
+                                                                                 INBOUND INTERNAL
+ PAGE                       BUSINESS VALUE                   CURRENT DEPTH       LINKS (ASSUMPTION)      VERDICT
+
+ Science / Lab /            Medium: proof for the            Unknown;            Footer                  No page exists that a
+ About                      ₹1,499 ask                       assumption: a                               sceptic can be sent to
+                                                             single About page
+ Advanced Curl              Low and falling                  L1/L2               Marketplace back-       Still indexed. Dilutes the
+ Care, Super                                                                     links, old campaign     science position
+ Shampoo (onion)                                                                 links
+ Body, Face, Tools          Low                              L1                  Header                  Taking header slots that
+                                                                                                         hair concerns should
+                                                                                                         have
+
+
+NAMING AUDIT
+One SKU, several names, several URLs. This is what search engines and the customer see today, from
+the brief:
+ WHAT IT IS                NAME ON ARATA.IN           NAME ON MARKETPLACES                       RISK
+
+ The actives               Hair Growth                "tonic" on some listings                   Two names for one product splits
+ growth serum              Intensive Serum                                                       reviews, search and recall
+ The onion/biotin          Super Shampoo              "onion" on one channel, "biotin" on        Legacy name in the science era
+ shampoo                   (legacy)                   another; Nykaa ₹899 → ₹764, 300 ml
+ The hair-fall             Anti-Hair Fall             Varies                                     Fine on site; needs to be the only
+ shampoo                   Intensive Shampoo                                                     name everywhere
+
+
+Fixing this is architecture work, because the product handle becomes the URL, the breadcrumb, the
+title tag and the marketplace listing title. One canonical name per SKU, set once, used everywhere.
+
+WHAT IS MISSING FROM THE MAP ENTIRELY
+    A routine page per concern (one price, one add-to-cart, one 84-day story)
+    A science hub a derm-literate buyer can read: the Y100 mechanism, the study designs behind 7.4X,
+    28,200 and 87%, the Delhi lab
+    A "find my routine" entry point (brief: no quiz or regimen builder today)
+    Comparison pages for the searches the brand already loses: "Arata vs Traya", "minoxidil
+    alternative", "Arata vs Pilgrim"
+    A help section that answers the four anxieties in the brief: will I waste ₹600, will it shed first, is 30
+    ml enough, will the bottle leak
+    Breadcrumbs. Without them the concern hub gets no structural link from the product page back up
+
+
+
+THE PLAN
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · A CONCERN-LED SITE MAP FOR ARATA.IN                                                                  4
+THE SHIFT IN ONE PICTURE
+                                                                                                                       DIAGRAM
+                 BEFORE                                        AFTER
+        organised by range                            organised by concern → routine → product
+
+        Home                                          Home
+         ├── Hair Growth (5 SKUs, 4 claims)            ├── Hair Fall ─────┬── The 84-day routine (one cart)
+         ├── Anti-Dandruff                             │                   ├── Step 1 shampoo ₹359
+         ├── Damage Defence                            │                   ├── Step 2 serum ₹571 / MitoActive ₹1,499
+         ├── Anti-Grey                                 │                   └── Step 3 conditioner ₹359
+         ├── Styling                                   ├── Dandruff ──────┬── routine + 3 SKUs
+         ├── Combos                                    ├── Damage & Frizz ┬── routine + SKUs
+         ├── Body / Face / Tools                       ├── Greys ─────────┬── 3-month plan + serum
+         └── Lab Notes (beside the shop)               ├── Styling ───────┬── unchanged, it works
+                                                       ├── MitoActive (its own hub)
+                                                       ├── Science (lab, Y100, studies)
+                                                       ├── Lab Notes (inside the concern hubs)
+                                                       └── Help, Compare, Body & Face (footer)
+
+
+
+
+The concern is the hub. The routine is the first thing on the hub. Single bottles are the spokes. Lab
+Notes articles are spokes too, each one pointing back to the hub and down to the SKU it talks about.
+
+DESIGN RULES WE APPLIED
+1. Three levels. Home → concern → product. The routine is a product (a Shopify bundle), so it sits at
+   the same level as a bottle.
+2. The header carries concerns. Ranges go. Six items plus one call to action. Body, Face and Tools
+   move to the footer and the mega menu; they are under 10% of the story (assumption based on
+   catalogue size and review counts).
+3. One name per SKU. The product handle is the name, lowercased with hyphens, and it never
+   changes after the rebrand.
+4. Every page has a parent and a breadcrumb. No orphans, including every Lab Notes post.
+5. Legacy pages redirect, they do not linger.
+6. Shopify rails only. The current platform works and the problem is structure, so there is no reverse
+   proxy, subdomain or replatform in this plan.
+
+THE PAGE HIERARCHY
+                                                                                                                       DIAGRAM
+    Home (/)
+    ├── Hair Fall (/collections/hair-fall)                         [header]
+    │   ├── The 84-Day Hair Fall Routine (/products/hair-fall-routine)      ← bundle, one price
+    │   ├── Anti-Hair Fall Intensive Shampoo (/products/anti-hair-fall-shampoo)
+    │   ├── Hair Growth Intensive Serum (/products/hair-growth-serum)
+    │   ├── Hair Growth Serum Pack of 3 (/products/hair-growth-serum-pack-of-3)
+    │   ├── Anti-Breakage Intensive Conditioner (/products/anti-breakage-conditioner)
+    │   ├── Scalp Massager (/products/scalp-massager)
+    │   └── Hair fall reading (/blogs/lab-notes/tagged/hair-fall)
+    ├── MitoActive (/collections/mitoactive)                      [header]
+    │   ├── MitoActive Serum 30 ml (/products/mitoactive-serum)
+    │   ├── MitoActive + Shampoo routine (/products/mitoactive-routine)
+    │   ├── How Y100 works (/pages/y100)
+    │   └── The 84-day study (/pages/mitoactive-study)
+    ├── Dandruff (/collections/dandruff)                          [header]
+    │   ├── The Dandruff Routine (/products/dandruff-routine)
+    │   ├── Anti-Dandruff Shampoo (/products/anti-dandruff-shampoo)
+    │   ├── Anti-Dandruff Conditioner (/products/anti-dandruff-conditioner)
+    │   ├── Anti-Dandruff Serum (/products/anti-dandruff-serum)
+    │   └── Dandruff reading (/blogs/lab-notes/tagged/dandruff)
+    ├── Damage & Frizz (/collections/damage-frizz)                [mega menu]
+    │   ├── Damage Defence Super Shampoo (/products/damage-defence-shampoo)
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · A CONCERN-LED SITE MAP FOR ARATA.IN                                                             5
+    │   ├── Damage Repair routine (/products/damage-repair-routine)
+    │   └── Curl care, retired range (301 → this hub)
+    ├── Greys (/collections/greys)                                [mega menu]
+    │   ├── Anti-Grey Hair Serum (/products/anti-grey-serum)
+    │   └── The 3-month grey plan (/pages/grey-plan)
+    ├── Styling (/collections/styling)                            [header]
+    │   ├── Hair Gel (/products/hair-gel)
+    │   ├── Styling Cream (/products/styling-cream)
+    │   ├── Texturising Spray (/products/texturising-spray)
+    │   ├── Styling Stick (/products/styling-stick)
+    │   └── Styling combos (existing handles kept)
+    ├── Science (/pages/science)                                  [header]
+    │   ├── Our lab in Delhi (/pages/lab)
+    │   ├── Our claims, explained (/pages/claims)
+    │   ├── How Y100 works (/pages/y100)                          ← shared with MitoActive hub
+    │   └── Lab Notes (/blogs/lab-notes)
+    │       ├── /blogs/lab-notes/tagged/hair-fall
+    │       ├── /blogs/lab-notes/tagged/dandruff
+    │       ├── /blogs/lab-notes/tagged/mitoactive
+    │       └── /blogs/lab-notes/{article}
+    ├── Find my routine (/pages/find-my-routine)                  [header CTA]
+    ├── Compare (/pages/compare)                                  [footer]
+    │   ├── Arata vs Traya (/pages/arata-vs-traya)
+    │   ├── Arata vs Pilgrim (/pages/arata-vs-pilgrim)
+    │   └── Minoxidil alternative (/pages/minoxidil-alternative)
+    ├── Body & Face (/collections/body-face)                      [footer, mega menu]
+    ├── Help (/pages/help)                                        [footer]
+    │   ├── Shipping (/pages/shipping)          free above ₹299, gift above ₹999
+    │   ├── Leaks and replacements (/pages/replacement-promise)
+    │   ├── How to use (/pages/how-to-use)
+    │   └── Contact (/pages/contact)
+    ├── About (/pages/about)                                      [footer]
+    ├── Cart (/cart), Account (/account), Search (/search)
+    └── Privacy, Terms, Returns (/policies/...)
+
+
+
+
+Twenty-one new or renamed pages. Everything a customer can buy is at most three clicks from home,
+and the routine for every concern is two.
+
+VISUAL SITEMAP WITH NAVIGATION ZONES
+                                                                                                 DIAGRAM
+    ┌─ HEADER ─────────────────────────────────────────────────────────────────┐
+    │ [Arata] Hair Fall Dandruff MitoActive Styling Shop by concern ▾
+                                                                              🛒
+                                                                                 │
+    │          Science                                    [Find my routine] ⌕      │
+    └───┬─────────┬──────────┬──────────┬──────────────┬───────────────┬────────┘
+        │         │          │          │               │                │
+        ▼         ▼          ▼          ▼               ▼                ▼
+     Hair Fall Dandruff MitoActive Styling      mega menu:        /pages/find-my-routine
+      hub        hub        hub        hub      Hair Fall          3 questions → lands on
+        │         │          │                  Dandruff           a routine PDP
+        │         │          │                  Damage & Frizz
+        ▼         ▼          ▼                  Greys
+     Routine   Routine    Serum PDP             Styling
+      PDP       PDP          │                  Body & Face
+        │         │          ▼                  Tools
+        ▼         ▼        /pages/y100 ◄──────── Science hub ──► Lab Notes
+     Step SKUs Step SKUs /pages/mitoactive-study                       │
+        ▲         ▲                                                    │
+        └─────────┴──────── contextual links from articles ◄─────────┘
+
+    ┌─ FOOTER ─────────────────────────────────────────────────────────────────┐
+    │ Concerns        Products          Science         Help          Compare │
+    │ Hair Fall       MitoActive        Our lab         Shipping      vs Traya │
+    │ Dandruff        Growth Serum      Our claims      Replacements vs Pilgrim│
+    │ Damage & Frizz Hair Fall Shampoo Y100             How to use    Minoxidil │
+    │ Greys           Anti-Dandruff     Lab Notes       Contact       alternative│
+    │ Styling         Hair Gel          About                                    │
+    │ Body & Face                                                                │
+    └──────────────────────────────────────────────────────────────────────────┘
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · A CONCERN-LED SITE MAP FOR ARATA.IN                                       6
+URL MAP
+ PAGE                             URL                                     PARENT      NAV LOCATION        PRIORITY
+
+ Home                              /                                      none        Logo                Critical
+ Hair Fall hub                     /collections/hair-fall                 Home        Header              Critical
+ 84-Day Hair Fall                  /products/hair-fall-routine            Hair Fall   Hub, first tile     Critical
+ Routine
+ Anti-Hair Fall Shampoo            /products/anti-hair-fall-shampoo       Hair Fall   Hub, mega menu      High
+ Hair Growth Serum                 /products/hair-growth-serum            Hair Fall   Hub, mega menu      High
+ Hair Growth Serum                 /products/hair-growth-serum-pack-of-   Hair Fall   Hub                 High
+ Pack of 3                        3
+
+ Anti-Breakage                     /products/anti-breakage-conditioner    Hair Fall   Hub                 Medium
+ Conditioner
+ MitoActive hub                    /collections/mitoactive                Home        Header              Critical
+ MitoActive Serum                  /products/mitoactive-serum             MitoActive Hub, mega menu,      Critical
+                                                                                     footer
+ MitoActive routine                /products/mitoactive-routine           MitoActive Hub                  High
+ How Y100 works                    /pages/y100                            Science     MitoActive hub,     High
+                                                                                      Science hub
+ The 84-day study                  /pages/mitoactive-study                MitoActive MitoActive PDP       High
+ Dandruff hub                      /collections/dandruff                  Home        Header              Critical
+ Dandruff Routine                  /products/dandruff-routine             Dandruff    Hub, first tile     High
+ Anti-Dandruff Shampoo             /products/anti-dandruff-               Dandruff    Hub                 High
+ / Conditioner / Serum            {shampoo,conditioner,serum}
+
+ Damage & Frizz hub                /collections/damage-frizz              Home        Mega menu, footer   Medium
+ Greys hub                         /collections/greys                     Home        Mega menu, footer   Medium
+ Anti-Grey Serum                   /products/anti-grey-serum              Greys       Hub                 Medium
+ Styling hub                       /collections/styling                   Home        Header              High
+ Science hub                       /pages/science                         Home        Header              High
+ Our lab                           /pages/lab                             Science     Science hub,        Medium
+                                                                                      footer
+ Our claims, explained             /pages/claims                          Science     Science hub, every High
+                                                                                      PDP claim badge
+ Lab Notes                         /blogs/lab-notes                       Science     Science hub,        High
+                                                                                      footer
+ Lab Notes by concern              /blogs/lab-notes/tagged/{concern}      Lab Notes Concern hubs          Medium
+ Find my routine                   /pages/find-my-routine                 Home        Header CTA          Critical
+ Compare index                     /pages/compare                         Home        Footer              Medium
+ Arata vs Traya                    /pages/arata-vs-traya                  Compare     Footer, Hair Fall   High
+                                                                                      hub                 (search)
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · A CONCERN-LED SITE MAP FOR ARATA.IN                                                 7
+ PAGE                             URL                                  PARENT        NAV LOCATION         PRIORITY
+
+ Minoxidil alternative             /pages/minoxidil-alternative        Compare       Footer, MitoActive   High
+                                                                                     hub                  (search)
+ Body & Face                       /collections/body-face              Home          Mega menu, footer    Low
+ Help, Shipping,                   /pages/help , /pages/shipping ,     Home          Footer, cart, PDP    Medium
+ Replacement promise               /pages/replacement-promise
+
+
+
+Shopify note on handles: /collections/hair-fall/products/hair-growth-serum renders the product with
+the collection in the URL. We use that path for breadcrumbs and hub links and leave Shopify's default
+canonical pointing to /products/hair-growth-serum . One product, one canonical, one set of reviews.
+
+NAVIGATION SPEC
+Header, left to right: Hair Fall · Dandruff · MitoActive · Styling · Shop by concern ▾ · Science · [Find
+my routine], then search and cart icons.
+    Hair Fall and Dandruff are first because they are the two biggest search entries in the brief ("hair
+    fall shampoo", "anti dandruff shampoo") and the two concerns with routines.
+    MitoActive gets a header slot for the rebrand period. It is the hero; it needs the strongest internal
+    link on the site. Revisit at day 90.
+    Styling stays in the header because it works (most-reviewed combos) and it pulls the young, male,
+    Delhi-college traffic that the science pages do not.
+    "Shop by concern" is the one dropdown. Three columns, no nesting.
+    Science is a single page with no dropdown. It is where "is this real?" gets answered.
+    The call to action is "Find my routine", filled button, rightmost. Today it can route to a three-
+    question page; later it becomes the quiz.
+Mobile: hamburger with the same six items as accordions, "Find my routine" visible without opening
+the menu, search in the menu header. The cart icon stays sticky.
+Breadcrumbs on every page below home, using the collection path so the concern hub gets the link:
+                                                                                                           DIAGRAM
+    Home > Hair Fall > The 84-Day Hair Fall Routine
+    Home > Hair Fall > Hair Growth Intensive Serum
+    Home > MitoActive > MitoActive Serum
+    Home > Science > Lab Notes > Hair fall after a new city: hard water, explained
+    Home > Compare > Arata vs Traya
+
+
+
+
+Separator > , every segment linked except the current page, BreadcrumbList JSON-LD on all of them.
+
+INTERNAL LINKING PLAN
+Hub and spoke, one cluster per concern. Each hub links to every spoke. Each spoke links back to its
+hub in the breadcrumb and in a "Part of the Hair Fall routine" block. Spokes link sideways where the
+routine says so (shampoo → serum → conditioner).
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · A CONCERN-LED SITE MAP FOR ARATA.IN                                                 8
+                                                                                                                         DIAGRAM
+    HUB /collections/hair-fall
+     ├──► /products/hair-fall-routine         (first tile, "Start here")
+     ├──► /products/anti-hair-fall-shampoo    (Step 1)
+     ├──► /products/hair-growth-serum         (Step 2)
+     ├──► /products/mitoactive-serum          (Step 2, upgrade)
+     ├──► /products/anti-breakage-conditioner (Step 3)
+     ├──► /pages/claims#7-4x /pages/claims#28200   (claim badges)
+     ├──► /blogs/lab-notes/tagged/hair-fall   (3 latest articles, inline)
+     └──► /pages/arata-vs-traya               ("Thinking about Traya?")
+
+    SPOKE /blogs/lab-notes/{article tagged hair-fall}
+     ├──► hub (breadcrumb + "Back to Hair Fall")
+     ├──► the one SKU the article is about (product card inside the article)
+     ├──► /products/hair-fall-routine (end-of-article card)
+     └──► 2 related articles in the same tag
+
+
+
+
+Cross-section links that do not exist today and should:
+ FROM                       TO                                         ANCHOR TEXT                WHY
+
+ Every PDP claim             /pages/claims#anchor                      "How we tested this"       Turns the biggest objection in
+ badge ("7.4X",                                                                                   the brief into a link
+ "28,200", "87%")
+ MitoActive PDP              /pages/y100 , /pages/mitoactive-          "What Y100 does",          A ₹1,499 product with zero
+                            study , /pages/minoxidil-                  "The 84-day study",        reviews needs three proof
+                            alternative                                "Compared to               pages one click away
+                                                                       minoxidil"
+ Hair Growth Serum           /products/mitoactive-serum                "Want the next tier?       The brief positions MitoActive
+ PDP                                                                   MitoActive"                as the next tier; the site should
+                                                                                                  say so where the ₹571 buyer is
+                                                                                                  deciding
+ Cart                        /pages/replacement-promise ,              "Leak or broken seal?      Addresses the top complaint
+                             /pages/shipping                           Replaced, no               theme before checkout
+                                                                       questions"
+ Lab Notes article          the SKU it names                           product name as            Today no post sells anything
+                                                                       anchor
+ Styling hub                 /collections/hair-fall                    "Styling hides thinning.   Sahil becomes Rahul in four
+                                                                       Here's what stops it."     years; link the path
+ Home                       all five hubs + MitoActive + Find my       concern names              Home links to seven concern-
+                            routine                                                               level pages instead of 30 SKUs
+
+
+Link density rule for Lab Notes: 5 to 8 internal links per 1,000 words, at least one to a product, one to
+the hub, one to the Science hub.
+
+LEGACY AND REDIRECT POLICY
+ OLD URL (ASSUMPTION: CURRENT
+ HANDLES)                                             ACTION                                  NEW URL
+
+  /collections/hair-growth                            301                                     /collections/hair-fall
+
+  /collections/anti-dandruff                          301                                     /collections/dandruff
+
+  /collections/damage-defence                         301                                     /collections/damage-frizz
+
+  /collections/anti-grey                              301                                     /collections/greys
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · A CONCERN-LED SITE MAP FOR ARATA.IN                                                                  9
+ OLD URL (ASSUMPTION: CURRENT
+ HANDLES)                                             ACTION                                   NEW URL
+
+  /collections/combos                                 301                                      /pages/find-my-routine
+
+  /collections/advanced-curl-care                     301                                      /collections/damage-frizz
+
+  /products/super-shampoo                             301 while stock lasts on marketplaces,    /products/anti-hair-fall-
+ (onion/biotin)                                       then retire                              shampoo
+
+  /products/hair-growth-intensive-                    301 if handle changes                    /products/hair-growth-serum
+ serum
+
+ Any product handle with "tonic"                      301                                      the "serum" handle
+
+
+Rule: no redirect lands on the homepage. Every old URL goes to its closest living equivalent. Curl care
+stays purchasable on marketplaces if Arata wants; on the owned site it folds into Damage & Frizz so
+the science position is clean.
+
+PLATFORM
+Stay on Shopify. The architecture above fits native collections, products, pages, blog tags, bundles
+and URL redirects. Routines ship as Shopify bundle products so they have their own URL, their own
+reviews and their own place in the hub. The quiz lands as a page first and an app later. We would only
+reopen the platform question if Arata wanted hundreds of programmatic city or ingredient pages, and
+even then a subpath on Shopify pages handles the first hundred.
+
+
+
+WORKED EXAMPLES
+EXAMPLE 1: THE HEADER AND "SHOP BY CONCERN" MEGA MENU, EXACT LABELS AND LINKS
+                                                                                                                        DIAGRAM
+    ┌──────────────────────────────────────────────────────────────────────────────┐
+    │ ARATA   Hair Fall
+                                                                                                      🛒│
+                          Dandruff   MitoActive   Styling   Shop by concern ▾     │
+    │                                                       Science   [Find my routine]           ⌕
+    └──────────────────────────────────────────────────────────────────────────────┘
+
+    "Shop by concern" opens:
+
+    ┌──────────────────────────────────────────────────────────────────────────────┐
+    │ BY CONCERN                  BY STEP                    NEW                   │
+    │ ───────────                 ───────                    ───                   │
+    │ Hair fall & thinning        Shampoos                   MitoActive ₹1,499     │
+    │ Dandruff & itch             Serums & leave-ons         India's first         │
+    │ Damage & frizz              Conditioners               mitochondrial         │
+    │ Early greys                 Styling                    hair growth serum     │
+    │ Styling & hold              Tools                      [See the study →]     │
+    │ Body & face                                                                  │
+    │                                                                              │
+    │ Not sure? Find my routine →                                                  │
+    └──────────────────────────────────────────────────────────────────────────────┘
+
+
+
+
+Link targets, in order:
+ LABEL                             TARGET
+
+ Hair fall & thinning               /collections/hair-fall
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · A CONCERN-LED SITE MAP FOR ARATA.IN                                                          10
+ LABEL                             TARGET
+
+ Dandruff & itch                    /collections/dandruff
+
+ Damage & frizz                     /collections/damage-frizz
+
+ Early greys                        /collections/greys
+
+ Styling & hold                     /collections/styling
+
+ Body & face                        /collections/body-face
+
+ Shampoos                           /collections/shampoos (tag-driven collection, product type = shampoo)
+
+ Serums & leave-ons                 /collections/serums
+
+ Conditioners                       /collections/conditioners
+
+ Styling                            /collections/styling
+
+ Tools                              /collections/tools
+
+ MitoActive tile                    /collections/mitoactive
+
+ See the study →                    /pages/mitoactive-study
+
+ Find my routine →                  /pages/find-my-routine
+
+
+
+"By step" exists for the customer who already knows she wants a shampoo. It is three tag collections,
+auto-built from product type, so there is nothing to maintain.
+
+EXAMPLE 2: THE HAIR FALL HUB, SECTION BY SECTION ( /COLLECTIONS/HAIR-FALL )
+This is a collection page with content blocks above and below the grid. Copy is final.
+Section 1, hero
+Headline: Hair fall has a number. So does the fix. Sub: 7.4X less hair fall from the shampoo. Up to
+28,200 new hairs in 84 days from the serum. Made and tested in our Delhi lab for Indian hair, hard
+water and heat. Buttons: [Start the 84-day routine, ₹1,201] [See each step]
+Section 2, the routine tile (first product card, full width)
+The 84-Day Hair Fall Routine Step 1 Anti-Hair Fall Intensive Shampoo 200 ml → Step 2 Hair Growth
+Intensive Serum 30 ml → Step 3 Anti-Breakage Intensive Conditioner 200 ml One cart. One price.
+₹1,201 (saves on the three bought separately). Free shipping. Free gift above ₹999, so this qualifies.
+[Add routine to cart] Small line under the button: Want the stronger serum? Swap Step 2 for MitoActive
+→ /products/mitoactive-routine
+Section 3, the three steps as a grid
+Three cards in routine order, each with one claim and one link: - Step 1 · Anti-Hair Fall Intensive
+Shampoo · ₹359 · 7.4X hair fall reduction · [How we tested this] → /pages/claims#7-4x - Step 2 · Hair
+Growth Intensive Serum · ₹571 · Up to 28,200 new hairs in 84 days · 474 reviews · [How we tested
+this] → /pages/claims#28200 - Step 3 · Anti-Breakage Intensive Conditioner · ₹359 · 78% stronger hair
+in one wash
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · A CONCERN-LED SITE MAP FOR ARATA.IN                                        11
+Then a fourth row: Pack of 3 serum ₹999, Scalp Massager ₹199, MitoActive ₹1,499 (labelled "Next
+tier").
+Section 4, "Which serum is mine?"
+A two-column block, since this is the decision the old collection forced without help.
+ HAIR GROWTH INTENSIVE SERUM ₹571                                  MITOACTIVE ₹1,499
+
+ Actives serum. 28,200 new hairs claim over 84                     Mitochondrial serum on Y100. 87% saw increased growth in 84
+ days.                                                             days.
+ First serum, early thinning, budget ₹600                          Tried actives before, wants the next mechanism, has seen a derm
+ 474 reviews                                                       New in India, exclusive to Arata
+ → /products/hair-growth-serum                                     → /collections/mitoactive
+
+
+Section 5, three Lab Notes articles tagged hair-fall, inline cards, each with a product link inside. Link:
+"All hair fall reading" → /blogs/lab-notes/tagged/hair-fall .
+Section 6, "Thinking about Traya?"
+Two lines and a link. Traya is ₹1,400 to ₹1,800 a month for five months or more, with doctor calls,
+supplements and minoxidil. The Arata routine is ₹1,201 for 84 days, without a prescription and without
+dependency. [See the full comparison] → /pages/arata-vs-traya
+Section 7, reviews pulled from the three step SKUs (222 + 474 + 30), filtered to the "hair fall reduced"
+theme.
+Section 8, FAQ with the four anxieties from the brief: Will it make hair fall worse first? Is 30 ml enough
+for 84 days? What if the bottle leaks? Do I have to use it forever? Each answer links to /pages/how-to-
+use or /pages/replacement-promise .
+
+
+Breadcrumb: Home > Hair Fall. H1 is the headline. Meta title: Hair Fall Shampoo, Serum & Routine for
+Indian Hair | Arata.
+
+EXAMPLE 3: MITOACTIVE PROOF CLUSTER, THE THREE PAGES AND HOW THEY LINK
+MitoActive has zero reviews and a ₹1,499 price. Until reviews arrive, structure has to do the
+convincing. Three pages, each one click from the PDP.
+/pages/y100       , "How Y100 works"
+Outline: 1. One-sentence answer: Y100 helps hair follicle cells make energy, so more follicles stay in
+the growing phase and fewer drop into the resting phase. 2. The mitochondria explainer in four short
+paragraphs, plain words, one diagram (anagen vs telogen, before and after). 3. Where it comes from:
+licensed from Yuva Biosciences, 6+ years of research, 5+ clinical studies, exclusive to Arata in India.
+4. What it is not: minoxidil, or another Redensyl stack. The page carries no dependency framing. 5.
+Links: [See the 84-day study] → /pages/mitoactive-study , [Buy MitoActive] → /products/mitoactive-
+serum , [Compared to minoxidil] → /pages/minoxidil-alternative Breadcrumb: Home > Science > How
+
+Y100 works.
+/pages/mitoactive-study             , "The 84-day study"
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · A CONCERN-LED SITE MAP FOR ARATA.IN                                                                 12
+Outline: 1. The headline numbers: 87% saw increased growth in 84 days; up to 95% reduction in hair
+fall. 2. Study design as a table: participants (Indian), duration (84 days), use (twice daily), measures
+(shedding, anagen/telogen ratio, density). 3. What "up to" means, in one honest paragraph. The brief
+says honest framing beats inflated framing; this is where it lives. 4. Week-by-week expectation: weeks
+1 to 4, less shedding; weeks 5 to 8, early density; weeks 9 to 12, visible growth. 5. Links: [How Y100
+works], [Buy MitoActive ₹1,499 → ₹50 a day], [MitoActive + Shampoo routine ₹1,803] Breadcrumb:
+Home > MitoActive > The 84-day study.
+/pages/minoxidil-alternative               , "A minoxidil alternative that does not need a doctor"
+Outline: 1. Who this page is for: people who were offered minoxidil and did not want the shedding, the
+dependency or the prescription. 2. Side-by-side: Minoxidil 5% (₹600 to ₹900, strongest evidence,
+dependency, side effects, needs a doctor) vs MitoActive (₹1,499, mitochondrial mechanism, 84-day
+course then maintenance, dermatologically tested, no prescription). 3. Who should still see a derm:
+Norwood 5+, sudden patchy loss. Say it plainly; it builds trust and matches the anti-persona. 4. Links:
+[The 84-day study], [Buy MitoActive], [The ₹1,201 routine if you are earlier in the journey] →
+ /products/hair-fall-routine Breadcrumb: Home > Compare > Minoxidil alternative.
+
+
+On the MitoActive PDP itself, a fixed proof strip under the price:
+                                                                                                                             DIAGRAM
+    ₹1,499 · 30 ml · about ₹50 a day at twice-daily use
+    [How Y100 works] [The 84-day study] [Compared to minoxidil]                     [Our Delhi lab]
+
+
+
+
+Four links, four pages, all within one click. When reviews arrive, the strip stays and reviews sit below
+it.
+
+EXAMPLE 4: CANONICAL SKU NAMES AND HANDLES
+One name per SKU, used on arata.in, Amazon, Nykaa, Flipkart, Zepto, Blinkit and Instamart. Handle
+equals name. This table is the deliverable the marketplace team needs.
+ CANONICAL NAME                       HANDLE                           SIZE     PRICE      RETIRE THESE NAMES
+
+ MitoActive Mitochondrial              mitoactive-serum                30 ml    ₹1,499     none
+ Hair Growth Serum
+ Hair Growth Intensive                 hair-growth-serum               30 ml    ₹649 →     "hair growth tonic", "intensive hair tonic"
+ Serum                                                                          ₹571
+ Hair Growth Intensive                 hair-growth-serum-              3 × 30   ₹1,947 →   "trio", "3-pack"
+ Serum, Pack of 3                     pack-of-3                        ml       ₹999
+ Anti-Hair Fall Intensive              anti-hair-fall-                 200 ml   ₹399 →     "hair fall control shampoo", "Super
+ Shampoo                              shampoo                                   ₹359       Shampoo onion", "Super Shampoo biotin"
+ Anti-Breakage Intensive               anti-breakage-                  200 ml   ₹399 →     none
+ Conditioner                          conditioner                               ₹359
+ Anti-Dandruff Shampoo                 anti-dandruff-                  200 ml   ₹449 →     none
+                                      shampoo                                   ₹404
+ Anti-Dandruff Conditioner             anti-dandruff-                  200 ml   ₹449       none
+                                      conditioner
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · A CONCERN-LED SITE MAP FOR ARATA.IN                                                                     13
+ CANONICAL NAME                       HANDLE                           SIZE       PRICE        RETIRE THESE NAMES
+
+ Anti-Dandruff Serum                   anti-dandruff-                  30 ml      ₹299         "scalp serum", "leave-in"
+                                      serum
+
+ Damage Defence Super                  damage-defence-                 200 ml     ₹449 →       "damage repair shampoo"
+ Shampoo                              shampoo                                     ₹395
+ Anti-Grey Hair Serum                  anti-grey-serum                 30 ml      ₹449         "grey reverse", "MelanoGray serum" as
+                                                                                               product name
+ The 84-Day Hair Fall                  hair-fall-routine               bundle     ₹1,201       "Hair Growth Trio"
+ Routine
+ The Dandruff Routine                  dandruff-routine                bundle     ₹866         "Anti-Dandruff S+C"
+ MitoActive + Shampoo                  mitoactive-                     bundle     ₹1,803       the ₹1,803 to ₹2,278 combo names,
+ Routine                              routine                                                  consolidated to two
+
+
+Rule for marketplaces: listing title = canonical name + size + the one claim ("Arata Anti-Hair Fall
+Intensive Shampoo 200 ml, 7.4X hair fall reduction"). Same words everywhere, so a customer who
+sees it on Blinkit finds the same thing on arata.in.
+
+EXAMPLE 5: LAB NOTES CLUSTER FOR HAIR FALL, WITH THE ARTICLE-TO-PRODUCT LINKS
+Lab Notes moves from a burst publishing habit to one cluster per concern. The hair fall cluster, with
+the pillar and six spokes, each tagged hair-fall so it surfaces on the hub:
+                                                                                                                               DIAGRAM
+    PILLAR    /blogs/lab-notes/hair-fall-84-day-plan
+              "Hair fall in India: the 84-day plan"
+              links ► /products/hair-fall-routine, /pages/claims, all six spokes
+     │
+     ├── /blogs/lab-notes/hard-water-hair-fall
+     │   "Moved cities and losing hair? Hard water, explained."                 ► anti-hair-fall-shampoo
+     ├── /blogs/lab-notes/post-partum-hair-fall
+     │   "Post-partum shedding: what is normal, what to do"                      ► hair-fall-routine
+     ├── /blogs/lab-notes/how-we-measured-28200
+     │   "How we counted 28,200 new hairs"                                       ► hair-growth-serum, /pages/claims#28200
+     ├── /blogs/lab-notes/what-7-4x-means
+     │   "What 7.4X hair fall reduction means on your pillow"                    ► anti-hair-fall-shampoo
+     ├── /blogs/lab-notes/serum-vs-mitoactive
+     │   "Actives serum or MitoActive: which one first"                         ► both serums, /pages/y100
+     └── /blogs/lab-notes/minoxidil-shedding
+         "Why minoxidil sheds first, and what does not"                         ► /pages/minoxidil-alternative, mitoactive-serum
+
+
+
+
+Every spoke carries: breadcrumb Home > Science > Lab Notes > title, a product card for the SKU
+named, an end-of-article card for the routine, and two related articles from the same tag. Cadence:
+one spoke a fortnight per concern, so the hub's "latest reading" block changes every two weeks
+instead of once a quarter.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · A CONCERN-LED SITE MAP FOR ARATA.IN                                                                   14
+EXAMPLE 6: FOOTER, FINAL
+                                                                                                                            DIAGRAM
+     ┌──────────────────────────────────────────────────────────────────────────────┐
+     │ CONCERNS          PRODUCTS                SCIENCE            HELP            │
+     │ Hair fall         MitoActive Serum        Our lab in Delhi   Shipping        │
+     │ Dandruff          Hair Growth Serum       Our claims         Leaks & replace │
+     │ Damage & frizz    Anti-Hair Fall Shampoo How Y100 works      How to use      │
+     │ Early greys       Anti-Dandruff Shampoo   Lab Notes          Contact         │
+     │ Styling           Hair Gel                About Arata        Track order     │
+     │ Body & face       Scalp Massager                                             │
+     │                                                                              │
+     │ COMPARE: Arata vs Traya · Arata vs Pilgrim · Minoxidil alternative           │
+     │                                                                              │
+     │ ARATA Hair & Scalp Science Co. · Slick Organics Pvt Ltd, New Delhi           │
+     │ Privacy · Terms · Returns · Instagram · YouTube · WhatsApp                   │
+     └──────────────────────────────────────────────────────────────────────────────┘
+
+
+
+
+Twenty-eight links, grouped, nothing orphaned, the compare pages linked site-wide so they can rank.
+
+
+
+30-DAY DEPLOYMENT
+                                                                                                    OWNER             OWNER
+ WEEK BREW SHIPS                                                     ARATA PROVIDES               (BREW)          (ARATA)
+
+ 1         Full crawl of arata.in; export of every URL, title,         Shopify admin access,        Site architect    Brand manager,
+           canonical, status; Search Console top-200                   Search Console access,                         e-commerce
+           pages; final URL map; canonical name table                  confirmation of which                          manager
+           signed off; redirect map drafted                            legacy SKUs stay on
+                                                                       marketplaces
+ 2         Five concern collections built with new                     Bundle pricing approval;     Shopify           E-commerce
+           handles; three routine bundles created (hair fall           product copy for the three   developer, site   manager
+           ₹1,201, dandruff ₹866, MitoActive ₹1,803);                  routines; lab photography    architect
+           product handles renamed; redirects loaded;                  for Science pages
+           breadcrumbs with JSON-LD added to the
+           theme
+ 3         New header and mega menu live; footer live;                 Study design facts for the   Site architect,   R&D lead, brand
+           Science hub, Our lab, Our claims, Y100, 84-                 claims page; sign-off on     content lead,     manager
+           day study, Minoxidil alternative pages                      claim wording; one R&D       Shopify
+           published; Hair Fall hub content blocks live; v1            lead for a 45-minute         developer
+           "Find my routine" page (three questions, routes             interview
+           to a routine PDP)
+ 4         Dandruff, Damage & Frizz, Greys hubs with                   Review of Lab Notes drafts; Content lead,      Marketplace
+           content blocks; Lab Notes re-tagged by                      marketplace team begins     site architect     manager, brand
+           concern; hair fall pillar article plus two spokes           renaming listings to                           manager
+           published; orphan audit at zero; Search                     canonical names
+           Console sitemap resubmitted; 404 watch daily
+
+
+Live by day 30: the full page map above except Arata vs Pilgrim and the remaining Lab Notes spokes,
+which land in weeks 5 to 8.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · A CONCERN-LED SITE MAP FOR ARATA.IN                                                                   15
+HOW WE MEASURE
+ METRIC                                 BASELINE                       90-DAY TARGET                 HOW WE READ IT
+
+ Products reachable in ≤ 3              To be instrumented in week     100%                          Structural, measured by
+ clicks from home                       1 crawl                                                      crawl
+ Orphan pages (zero inbound             To be instrumented             0                             Structural
+ internal links)
+ Hub → routine PDP click-               New, no baseline               25% of hub sessions           Tells us whether the
+ through                                                                                             routine tile is doing its job
+ Routine share of D2C orders            To be instrumented (combos 30% of orders include a           The AOV lever
+                                        exist, share unknown)      routine bundle
+ D2C AOV                                ₹900 to ₹1,000 (implied        ₹1,050 or more                Routine attach shows up
+                                        from brief)                                                  here
+ Visit-to-order rate, own site          ~7 to 8% including returning   +0.5 pt                       Shared target with the
+                                        (brief)                                                      conversion work
+ Organic landings on concern New pages, zero                           10% of organic sessions       Tells us the hubs rank
+ hubs and compare pages                                                landing on a hub or compare
+                                                                       page
+ MitoActive PDP: proof-page             New                            40% of PDP sessions open at   Structure doing the work
+ clicks per session                                                    least one proof page          of reviews
+ Lab Notes sessions that                Assumption: under 5% today 20%                               Content finally linked to
+ reach a PDP                                                                                         product
+ 404s after redirect launch             0 expected                     Under 20 unique per week by   Migration hygiene
+                                                                       week 2, then zero
+
+
+Decision rules:
+    If routine share passes 30% and AOV lifts, we extend the pattern: Greys and Damage & Frizz get
+    full routines, subscription enters the routine PDPs, and the quiz becomes an app.
+    If hub → routine click-through stays under 15% after 60 days, the routine tile is wrong and the
+    structure is fine. We test the tile (price framing, the swap-to-MitoActive line, reviews above the
+    button) before touching the map.
+    If organic landings on hubs stay flat at 90 days, we check titles and the breadcrumb schema first,
+    then internal link counts to the hubs. We do not add pages until the existing ones rank.
+    If MitoActive proof-page clicks are high but PDP conversion stays low, the pages are being read
+    and not believed. That moves to reviews and sampling, outside this document.
+    If Search Console shows sustained drops on specific old URLs, a redirect is missing. Fix the map;
+    never redirect to home.
+
+
+
+APPENDIX
+
+BREW DEPLOYMENT TEAM × ARATA · A CONCERN-LED SITE MAP FOR ARATA.IN                                                             16
+LINK AUDIT CHECKLIST, RUN AT DAY 30 AND DAY 90
+    Every page has at least one inbound internal link
+    No broken internal links
+    Every claim badge on every PDP links to /pages/claims
+    Every Lab Notes article links to one product and one hub
+    Breadcrumbs with BreadcrumbList JSON-LD on every page below home
+    Hubs have the most inbound links after home and MitoActive
+    Legacy handles return 301, never 200 or 404
+    Canonical on /collections/x/products/y points to /products/y
+
+SHOPIFY IMPLEMENTATION NOTES
+    Routines are bundle products, so they get a /products/ URL, their own reviews and a tile in the
+    hub.
+    "By step" collections are automated collections on product type; no manual upkeep.
+    Breadcrumbs read the collection from the URL path when present, else from the product's primary
+    concern tag, so a direct /products/ landing still shows Home > Hair Fall > product.
+    Redirects go in Online Store > Navigation > URL redirects. Load them the same minute the handles
+    change.
+    Lab Notes tags are the concern handles ( hair-fall , dandruff , damage-frizz , greys , mitoactive )
+    so the hub's "latest reading" block pulls by one tag.
+
+ASSUMPTIONS FLAGGED IN THIS DOCUMENT
+    Current collection handles and header labels are inferred from the catalogue's range names in the
+    brief.
+    Current inbound link counts and Lab Notes-to-PDP rate are assumptions until the week 1 crawl.
+    The ₹1,201 hair fall routine price is the existing Hair Growth Trio price from the brief, reused for the
+    three-step bundle.
+    Body, Face and Tools share of revenue is assumed small from catalogue size and review counts;
+    the week 1 analytics pull will confirm.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · A CONCERN-LED SITE MAP FOR ARATA.IN                                           17
+SITE ARCHITECTURE
+
+
+DAY 30
+AT ARATA
+    WHAT IS LIVE
+
+    Five concern hubs, a new header, breadcrumbs, a redirect map and a routine-
+    first Hair Fall section are live on arata.in, every SKU is reachable in three clicks,
+    and Lab Notes links to the products it writes about.
+
+
+
+
+  NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+  BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+  CONFIRM".
+
+
+  EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+  BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                        DEPLOYMENT TEAM
+                                                                                     BREW
+

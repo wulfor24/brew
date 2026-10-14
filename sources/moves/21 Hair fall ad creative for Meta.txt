@@ -1,0 +1,786 @@
+       Brew                                    PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+       DEPLOYMENT TEAM
+
+
+
+
+AD CREATIVE · MOVE 21 OF 50
+
+
+
+HAIR FALL
+AD CREATIVE
+FOR META
+  A GROUNDED CREATIVE SYSTEM FOR ARATA: WHICH ADS
+  TO MAKE, IN WHAT ORDER, WITH FINISHED COPY AND
+  SCRIPTS FOR THE HAIR FALL CORE AND THE MITOACTIVE
+  LAUNCH.
+
+
+
+
+40 ads
+LIVE IN THE FIRST 30 DAYS
+
+
+
+
+BREW × ARATA                    OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                  V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                                  WHAT THIS GIVES ARATA
+                                                                  A grounded creative system for Arata: which ads to
+                                                                  make, in what order, with finished copy and scripts
+                                                                  for the hair fall core and the MitoActive launch.
+
+         40 ads
+         LIVE IN THE FIRST 30 DAYS
+                                                                  LIVE 30 DAYS AFTER WE START
+                                                                  Arata has a 40-concept creative portfolio live on
+                                                                  Meta, Google and YouTube, every concept traced to
+                                                                  a real review or claim, with a hook-level diagnostic
+                                                                  running weekly and a monthly retro feeding the next
+                                                                  slate.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+Arata is the only brand in the ₹400 to ₹700 hair fall band that puts a study number on every bottle.
+7.4X. 28,200. 95%. 86%. 87%. That is a creative asset most D2C haircare brands would pay a lot to
+own. Today it lives on the pack and on the product page. It does not yet run the ad account.
+What we see in the brand's paid creative is a split personality. The culture work is strong: the Samay
+Raina mock podcast was built for recall, and the founders say so plainly. But recall ads do not sell a
+₹571 serum to a 28-year-old in Bangalore who has already burned ₹3,000 on onion shampoo and
+biotin gummies. He needs a number, a timeline and a reason to believe. The brief tells us he is
+"sceptical from being burned by claims". The ad has to do the convincing before the landing page
+gets a chance.
+The gap costs Arata in three places. First, MitoActive launched in August at ₹1,499 with zero reviews.
+A product with a new mechanism (mitochondrial function, Y100) needs education before it sells, and
+nothing in the current creative mix teaches it. Second, 68% of revenue sits on marketplaces and quick
+commerce, where Arata pays rent on every order. The ad account is the main lever to grow the 32%
+that runs through arata.in. Third, with ~650K monthly visits growing 42% month on month, creative
+fatigue is the next wall. A brand growing that fast burns through audiences and needs a creative
+pipeline, with a retro loop, rather than a campaign at a time.
+The opportunity is simple to state. Arata has 2,248 on-site reviews and 2,435 Nykaa ratings full of
+verbatim customer language, six claims that are defensible, and two founders with a real origin story.
+That is a complete grounded inputs corpus. Most brands have to go and build one. Arata only has to
+use it.
+This document gives Arata the creative strategy loop, the format portfolio, the hook matrix and the
+first month of finished assets.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · HAIR FALL AD CREATIVE FOR META                                                          1
+WHAT WE FOUND
+THE THREE SIGNALS, READ FOR ARATA
+Creative direction comes from three independent sources. Here is what each one says about Arata
+today.
+ SIGNAL                WHAT WE FOUND                                                               SOURCE              CONFIDENCE
+
+ Account               No creative-level data shared yet. We treat the core hair fall lane as      Brief; assumption Medium
+ performance           scaling state (the Intensive Serum has 474 reviews and a 49%-off
+                       pack of 3, which tells us it already sells) and MitoActive as
+                       exploration state (zero reviews, no proven angle).
+ Customer              Reviews use "hair fall" and "hairfall" far more than "hair loss". The       Loox and Nykaa      High
+ language              praise clusters on three ideas: it works, it is affordable, and there is    verbatims in the
+                       no residue or stiffness. The complaints cluster on packaging (leaks,        brief
+                       broken seals, missing box) and price for younger buyers.
+ External              Competitor creative is ingredient-led (Pilgrim's Redensyl 3% +              Brief competitive   High
+ organic               Anagain 4%, Minimalist's 18% actives) or diagnosis-led (Traya's             section
+                       free hair test, 5-month money-back). Nobody in the ₹400 to ₹700
+                       band leads with a study outcome and a day count.
+
+
+The verbatim bank we will build creative from:
+ THEME                  VERBATIM                                                               USE IN
+
+ Works +                "Arata is amazing cz its affordable and actually works"                Headline Statement, Review Card
+ affordable                                                                                    (the one golden nugget)
+ Visible result         "Hair fall reduced drastically" / "I can see a visible difference in   Hook spoken lines, WhatsApp chat
+                        two weeks"                                                             reveal
+ Styling                "without any sticky residue or stiffness" / "lasts upto 8+ hours"      Styling lane callouts
+ Scalp clean            "Foams well and cleans my scalp off dirt and excess oil"               Shampoo FAQ card
+ Price objection        "a bit expensive in comparison to other competitive haircare           FAQ card, ₹50 a day math
+                        lines" / "on pricier side for a teenager like me"
+ Packaging              "the seal was broken" / "the shampoo bottle was leaking"               FAQ card with replacement promise
+ objection
+ Problem words          "hair fall", "hairfall", "hair thinning", "itching problem", "frizzy   Captions and Google headlines
+                        and dry"
+
+
+FORMAT TIER MAP, APPLIED TO ARATA
+The format taxonomy ranks ad formats on one question: does this format open cold, net-new
+audiences (a unicorn scaler) or does it convert people already mid-funnel (supporting cast)? Here is
+where Arata's options land.
+ FORMAT                      TIER ROLE                    ARATA FIT                                                    VERDICT
+
+ Founder content             S        Cold scaler         Two college friends, a flaxseed gel in 2017, a move from     Make first
+                                                          "zero chemicals" to a Delhi lab with a number on every
+                                                          bottle. A real story with a real turn.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · HAIR FALL AD CREATIVE FOR META                                                                     2
+ FORMAT                      TIER ROLE                    ARATA FIT                                                       VERDICT
+
+ Partnership ads             S        Cold scaler         Arata already works with creators. Running ads from             Make in week
+ (creator                                                 creator handles reaches hair fall personas natively.            2
+ whitelisting)
+ VSL                         S        Cold scaler,        MitoActive needs the mechanism explained before ₹1,499          Make in week
+                                      educates            feels fair. The 60 to 90 second video is the whole              2
+                                                          MitoActive launch ad.
+ Authority (derm or          A        Cold scaler         Trust-gated category. "Dermatologically tested" is on the       Make in week
+ trichologist)                                            pack. A real trichologist explaining anagen/telogen ratio       3
+                                                          gives Clinical Kavya her permission.
+ Grid static (multi-         A        Cold scaler         The Hair Growth Trio at ₹1,201 and the Anti-Dandruff S+C Make in week
+ SKU)                                                     at ₹866 are grid-ready. Lets cold viewers self-select their 1
+                                                          concern.
+ Amateur                     A        Cold scaler         A creator tests "does a hair fall serum with a number beat      Icebox,
+ investigation                                            the onion shampoo I already own". Arata wins on                 month 2
+                                                          comparison.
+ FAQ card (objection         B        Supporting          Four objections with real answers: ₹1,499, "another             Make in week
+ handling)                            cast                Redensyl serum", "forever use", leaks.                          1
+ Us vs them                  B        Supporting          Traya's ₹1,400 to ₹1,800 a month, doctor calls and              Make in week
+                                      cast                minoxidil, against one ₹571 serum.                              1
+ Educational                 B        Supporting          "What 84 days means" and "why anagen/telogen ratio              Make in week
+ infographic                          cast                matters" as teaching frames.                                    2
+ Callout / Ingredient        B        Supporting          MitoActive bottle with Y100, 87%, 84 days,                      Make in week
+ Spotlight                            cast                dermatologically tested, 30 ml callouts.                        1
+ Before / after              B        Supporting          Meta's personal health policy restricts before/after            Restricted,
+                                      cast                imagery that implies unexpected results. We do                  text only
+                                                          progression framing with text, never crown photos.
+ Celebrity (Samay            C        Situational         Great for recall. Weak as a direct-response scaler. Keep as Retargeting
+ Raina cut-downs)                                         a retargeting warm-up only.                                 only
+ Review card /               E        Decayed             One golden nugget exists ("affordable and actually              One card
+ testimonial stack                                        works"). Use it once, in one card.
+ Notes-app and               F        Skip                Everyone stops, nobody qualifies.                               Skip
+ fake-native UI
+ Press logo wall             F        Skip                Rights exposure, no lift.                                       Skip
+
+
+EVIDENCE-RANKED CONCEPT ICEBOX
+A concept is one testable hypothesis: segment × motivation × angle × format, with its evidence
+attached. Ranked by evidence tier (1 is strongest, 6 is a hunch).
+                                                                               EVIDENCE
+ #       CONCEPT                                      SEGMENT                  TIER           SOURCE
+
+ C1      "84 days, one number" Intensive              Hair-fall Rahul          2              474 reviews on the serum; "hair fall
+         Serum routine static + video                                                         reduced drastically"
+ C2      Founder message: from flaxseed               All hair fall cold       2              Founding story in brief; S-tier format
+         gel to a lab with numbers
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · HAIR FALL AD CREATIVE FOR META                                                                          3
+                                                                                EVIDENCE
+ #       CONCEPT                                      SEGMENT                   TIER          SOURCE
+
+ C3      MitoActive VSL: why hair follicles           Clinical Kavya, Rahul 3                 Y100 study claims; competitor VSLs in
+         slow down and what Y100 does                 upgrade                                 health categories run long
+ C4      FAQ: "₹1,499 for 30 ml?"                     MitoActive                2             Price objection verbatim; Traya pricing
+         answered with ₹50 a day vs Traya             considerers
+ C5      Us vs them: Traya kit vs one                 Switchers from            2             "Traya is expensive and exhausting"
+         serum                                        diagnosis platforms                     push language
+ C6      WhatsApp chat reveal: pack of 3,             Rahul, 22 to 30           4             Chat reveal format performing on Meta in
+         day 84 done                                                                          other categories; adapted to the Indian
+                                                                                              surface
+ C7      Grid: Hair Growth Trio ₹1,201 and            Routine Ritika            2             "Build a simple routine I can repeat
+         the full system                                                                      monthly" JTBD
+ C8      Dandruff: "flakes on black clothes" Dandruff Divya                     2             95% fungus claim; "itching problem"
+         one-wash static                                                                      verbatim
+ C9      Authority: trichologist on                   Clinical Kavya            3             Derm-respectable positioning; A-tier
+         anagen/telogen ratio                                                                 format
+ C10 Styling: "survives the metro" 72-                Styling Sahil             2             "without any sticky residue", "lasts upto
+     hour hold                                                                                8+ hours"
+ C11 Creator investigation: serum with a Rahul                                  4             Push language on onion products; A-tier
+     number vs my onion shampoo                                                               format
+ C12 Post-partum shedding routine                     Routine Ritika            5             Use case in brief, no verbatim yet
+
+
+HOOK MATRIX
+A hook is three components that must never repeat each other: what is on screen, what is said, and
+what the caption reads. Eight cells across the matrix, so coverage is visible.
+                         MOTIVATION                                   VISUAL ACTION (0
+ #     SEGMENT           (SOURCE)                  FORMAT             TO 3S)                SPOKEN LINE               CAPTION
+
+ H1 Rahul, 28,           "Will I waste             Founder to         Dhruv holding the     "We sold a hair gel for   from "zero
+    crown                another ₹600?"            camera             2017 flaxseed gel     five years before we      chemicals" to
+    thinning             (anxiety, brief)                             next to the 2026      put a number on           28,200
+                                                                      serum                 anything."
+ H2 Rahul                "hair fall reduced        Creator            Creator picks a       "Day 84. This is the      the 84-day
+                         drastically"              yapper,            single hair off a     morning count."           serum, ₹571
+                         (review)                  bathroom           white pillow, holds
+                                                                      it up
+ H3 Traya                "expensive and     Text-on-                  Two columns: a        (none, static)            ₹1,500 a month
+    switcher             exhausting" (push, screen static             monthly kit box vs                              for 5 months, or
+                         brief)                                       one 30 ml bottle                                ₹571 once
+ H4 Clinical             "Is this just             Authority,         Trichologist draws    "Every serum you've      Y100. India's first
+    Kavya                another Redensyl          trichologist       a hair cycle on a     tried works on the       mitochondrial
+                         serum?"                                      whiteboard            follicle. This one works serum.
+                         (objection)                                                        on the cell that powers
+                                                                                            it."
+ H5 Divya,               "flakes on black   Creator,                  Brushing shoulders "One wash. I checked 95% of the
+    dandruff             clothes" (persona) office mirror             of a black kurta   the shoulders at 6pm." fungus in one
+                                                                      before a meeting                          wash
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · HAIR FALL AD CREATIVE FOR META                                                                            4
+                         MOTIVATION                               VISUAL ACTION (0
+ #     SEGMENT           (SOURCE)                  FORMAT         TO 3S)                SPOKEN LINE            CAPTION
+
+ H6 Ritika, new          "one cart that            Grid static    Three bottles in a    (none)                 Shampoo, serum,
+    mom                  handles it"                              row, one price                               conditioner.
+                         (persona)                                                                             ₹1,201. Done.
+ H7 Sahil, 22            "lasts upto 8+            Reaction +     Creator steps out     "Rajiv Chowk to Hauz   72-hour hold,
+                         hours" (review)           demo hard      of a Delhi metro at   Khas. Zero crunch."    ₹300
+                                                   cut            7pm, hair still set
+ H8 Rahul,               "on pricier side for FAQ static          Calculator on a       (none)                 ₹50 a day. One
+    price-               a teenager like                          phone showing                                month. Twice a
+    sensitive            me" (review)                             1499 ÷ 30                                    day.
+
+
+COMPLIANCE GUARDRAILS FOR HAIR CLAIMS
+Hair growth is a regulated claim space in India and a restricted one on Meta. Three rules apply to
+every concept in this document.
+1. Every number carries its qualifier. "Up to 28,200 new hairs within 84 days" always includes "up to"
+   and "84 days". "87% saw increased growth" includes "in 84 days". The words "regrow", "cure" and
+   "100%" do not appear anywhere.
+2. No before/after scalp photos in paid. Meta's personal health and appearance policy restricts
+   imagery that implies unexpected results or triggers negative self-perception. We use text-based
+   progression ("day 1 → day 84"), bottle counts and pillow shots. Crown close-ups and bald-patch
+   zooms stay out.
+3. Advertising standards complaints against hair growth ads are upheld often. We keep the study
+   design one tap away (Lab Notes explainer) and mirror the pack language exactly, so the ad never
+   claims more than the bottle does.
+
+
+
+THE PLAN
+THE PORTFOLIO
+                                                                                                                         DIAGRAM
+                      COLD (net-new reach)              WARM / MID-FUNNEL (convert)
+                 ┌──────────────────────────┐      ┌──────────────────────────────┐
+       Lane A    │ Founder message (S)      │      │ FAQ cards x4 (B)             │
+       Hair fall │ Creator partnership (S) │ ───> │ Us vs them: Traya (B)         │
+       core      │ Grid: the routine (A)    │      │ WhatsApp chat reveal         │
+       ₹359/₹571 │ Yapper: day 84 (A)       │      │ Review card: golden nugget   │
+                 └──────────────────────────┘      └──────────────────────────────┘
+                 ┌──────────────────────────┐      ┌──────────────────────────────┐
+       Lane B    │ VSL: the mechanism (S)   │      │ Callout: the bottle (B)      │
+       MitoActive│ Authority: trichologist │ ───> │ FAQ: ₹1,499 → ₹50 a day (B) │
+       ₹1,499    │ Educational infographic │       │ Upgrade from Intensive Serum │
+                 └──────────────────────────┘      └──────────────────────────────┘
+                 ┌──────────────────────────┐      ┌──────────────────────────────┐
+       Lane C    │ Creator: one wash (A)    │      │ Dandruff S+C combo ₹866      │
+       Dandruff │ Metro hold demo (A)       │ ───> │ Styling: 8+ hours callout    │
+       + Styling │                          │      │                              │
+                 └──────────────────────────┘      └──────────────────────────────┘
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · HAIR FALL AD CREATIVE FOR META                                                                    5
+Three lanes, two funnel roles each. The cold column is where the money goes to find new people. The
+warm column is where the objections get answered. We never ask a supporting-cast format to scale
+cold, and we never judge a cold scaler by its retargeting ROAS.
+
+LANE PRIORITIES AND ACCOUNT STATE
+ LANE                                  ACCOUNT STATE              CREATIVE MIX                         WHY
+
+ A: Hair fall core (Intensive          Scaling            60% winner-led variations of the             Go deep while the window is
+ Serum ₹571, Anti-Hair Fall            (assumption: these "84 days, one number" concept,               open. Visually distinct
+ Shampoo ₹359, Pack of 3               already sell)      25% remix (new tone, same                    variations, never near-
+ ₹999)                                                    message), 15% exploration                    duplicates.
+ B: MitoActive (₹1,499)                Exploration                80% net-new concepts across          Nothing is proven yet. Wide
+                                                                  mechanism, price math, authority,    beats deep. A hold-rate lift on
+                                                                  upgrade path. 20% iteration on any   one VSL cut is a win worth
+                                                                  single-metric hit.                   pulling on.
+ C: Dandruff and styling               Scaling light              50/50 proven routine statics and     Styling combos are the most-
+                                                                  creator demos                        reviewed on Loox. Dandruff
+                                                                                                       has the cleanest one-wash
+                                                                                                       claim.
+
+
+Budget split by lane is an assumption until Arata shares the account: 55% Lane A, 30% Lane B, 15%
+Lane C in month 1, then re-split at the retro.
+
+PRODUCTION TIERS AND CAPACITY
+We roadmap to capacity, by evidence rank. Month 1 slate: 40 concepts.
+                              MONTH 1
+ TIER              COST       COUNT             WHAT
+
+ T1 Iteration      Hours      16                New hook, crop or caption on an existing asset (Samay cut-downs, existing
+                                                product photography, re-captioned creator clips)
+ T2 Remix          Days       18                Statics from the template library using Arata's own product photography; faceless
+                                                motion explainer for MitoActive; WhatsApp chat reveal; infographic
+ T3                Weeks 6                      Founder shoot (one day, three structures), trichologist authority shoot, two creator
+ Production                                     partnership videos, one amateur investigation
+
+
+The fidelity ladder runs one way. The chat reveal and the "₹50 a day" math ship as cheap statics first.
+If either shows a thumbstop or hold-rate signal, it earns a creator version in month 2. The founder
+shoot is the exception: founder content is the most reliable first winner at any production level, so it
+goes straight to T3.
+
+PLATFORM CASCADE
+We write the tightest version first and expand outward.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · HAIR FALL AD CREATIVE FOR META                                                                          6
+                                                                                                                           DIAGRAM
+    Google RSA headline (30 chars)               "Up to 28,200 New Hairs"
+            │
+            ▼
+    Meta headline (40 chars)                     "Up to 28,200 new hairs in 84 days"
+            │
+            ▼
+    Meta primary text (125 visible)              "Hair fall is a 2 to 3 month problem. So we
+                                                  measured ours over 84 days. Up to 28,200 new
+                                                  hairs, in a consumer study. ₹571."
+            │
+            ▼
+    YouTube Shorts / Reels caption              Same claim, 720×1200 safe band, white fill +
+                                                 black stroke, static captions
+
+
+
+
+THE GROUNDED INPUTS CORPUS FOR ARATA
+Every concept traces to a source. Week 1 sets up the corpus so the pipeline never runs on guesses.
+                                                                                                                           DIAGRAM
+    inputs/
+      winning-ads/         Top 10 to 20 Arata ads from the last 90 days (Arata to export)
+      reviews/             100 reviews: 50 Loox (arata.in), 30 Nykaa, 20 Amazon.in
+      comments/            Every comment under Arata's last 30 paid posts, tagged
+                           objection / praise / question
+    brand/                 Rebrand palette, lab-blue, logo SVG, pack shots per SKU, claims
+                           sheet with study design per number
+    outputs/               Dated batch folders with INDEX.md per batch
+    roadmap.md             Icebox, this quarter, this month
+    retros/                One file per month
+
+
+
+
+The comments folder is the one most brands skip and the one that matters most. The "is this just
+another Redensyl serum?" objection will show up there before it shows up in a survey.
+
+THE MONTHLY LOOP
+                                                                                                                           DIAGRAM
+    Week 1   Monthly deep dive (90 min): account + reviews + organic → icebox update
+    Week 1   Slate: 40 concepts, evidence rank, production tier, owner
+    Weeks 1-4 Produce → ship → read the diagnostic funnel per concept
+    Every Monday 20-min refresh: new winners, new losers, new review themes
+    Day 30   Retro: winners (why), losers (where in the funnel), metric wins,
+             learnings → icebox, kills, next slate draft
+
+
+
+
+HOW WE READ AN UNDERPERFORMER
+We never scrap a whole ad. We read the funnel and fix one component.
+ STAGE        METRIC               IF WEAK, FIX           ARATA EXAMPLE
+
+ Stop         3-second view The visual                    Swap the bottle shot for the pillow shot, keep everything else
+              rate          opening
+ Stay         Hold rate 3s →       The on-ramp            The VSL hook promises "why follicles slow down"; seconds 3 to 15 must
+              15s                                         start explaining, never cut to the bottle
+ Click        CTR                  Offer clarity          Add the ₹999 pack-of-3 price to the caption
+ Convert CVR post-click Page                              An ad that says 84 days must land on a page that says 84 days, with the
+                        congruence                        study one tap away
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · HAIR FALL AD CREATIVE FOR META                                                                      7
+WORKED EXAMPLES
+Six finished assets. Every claim is from the brief. Where a line is a dramatization, it is labelled.
+
+EXAMPLE 1: FOUNDER MESSAGE STATIC (S-TIER, LANE A COLD)
+Template: Founder Message, note-style, no product glamour shot. Dhruv Madhok's photo, plain type,
+lab-blue rule at the bottom.
+Headline: We sold a hair gel for five years before we put a number on anything.
+Body:
+
+   I'M DHRUV. MY COLLEGE FRIEND DHRUV AND I STARTED ARATA IN 2017
+   WITH A FLAXSEED HAIR GEL AND THE WORDS "ZERO CHEMICALS" ON
+   THE LABEL.
+
+   IT SOLD. BUT EVERY TIME SOMEONE ASKED "DOES YOUR HAIR FALL
+   SHAMPOO ACTUALLY WORK?" WE HAD A STORY AND NO ANSWER.
+
+   SO WE BUILT AN R&D AND QC LAB IN DELHI AND STARTED TESTING. NOW
+   EVERY BOTTLE CARRIES A NUMBER FROM A STUDY. 7.4X LESS HAIR FALL.
+   UP TO 28,200 NEW HAIRS IN 84 DAYS. 95% OF DANDRUFF FUNGUS GONE
+   IN ONE WASH.
+
+   GOOD SCIENCE FOR GREAT HAIR. ZERO GUESSWORK.                   DHRUV
+
+
+Visual: Off-white ground, the note in a plain serif, Dhruv's portrait top-left at passport size, the two
+bottles (2017 gel, 2026 serum) small at the bottom-right. Headline occupies 55% of the frame.
+Checked at mobile feed size.
+Meta headline: From "zero chemicals" to 28,200 (32) Meta description: Tested in our Delhi lab (23)
+CTA: Shop the hair fall routine
+Grounded in: Founding story and brand lines in the brief. Draft for founder sign-off; every sentence
+gets checked against the real timeline before it runs. The format collapses if any line is invented.
+
+EXAMPLE 2: META AD SET, HAIR GROWTH INTENSIVE SERUM (LANE A, THREE ANGLES)
+Angle A: Outcome with a timeline
+Primary text (hook in the first 125 characters):
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · HAIR FALL AD CREATIVE FOR META                                            8
+     HAIR FALL IS A 2 TO 3 MONTH PROBLEM. SO WE MEASURED OURS OVER
+     84 DAYS. UP TO 28,200 NEW HAIRS, IN A CONSUMER STUDY. ₹571.
+
+     THE HAIR GROWTH INTENSIVE SERUM GOES ON THE SCALP, WHERE THE
+     FOLLICLE IS. MADE FOR INDIAN HAIR, TESTED FOR INDIAN WATER AND
+     HEAT. 474 REVIEWS ON ARATA.IN.
+
+     PACK OF 3 COVERS THE FULL 84 DAYS FOR ₹999.
+
+
+Headline: Up to 28,200 new hairs in 84 days (33) Description: Consumer study, 84 days (23)
+Angle B: Comparison with the diagnosis platforms
+Primary text:
+
+     A HAIR TEST, A DOCTOR CALL, SUPPLEMENTS, MINOXIDIL AND ₹1,500 A
+     MONTH FOR FIVE MONTHS. OR ONE SERUM FOR ₹571 AND A DATE ON THE
+     CALENDAR 84 DAYS OUT.
+
+     UP TO 28,200 NEW HAIRS WITHIN 84 DAYS, IN A CONSUMER STUDY.
+     WORKS WITHOUT MINOXIDIL. DERMATOLOGICALLY TESTED.
+
+
+Headline: The 84-day hair fall routine (28) Description: Free shipping above ₹299 (24)
+Angle C: The verbatim
+Primary text:
+
+     "ARATA IS AMAZING CZ ITS AFFORDABLE AND ACTUALLY WORKS."
+
+     THAT IS A REAL REVIEW, SPELLING AND ALL. THE PRODUCT IS THE HAIR
+     GROWTH INTENSIVE SERUM. UP TO 28,200 NEW HAIRS WITHIN 84 DAYS,
+     ₹571 FOR 30 ML, OR 3 FOR ₹999.
+
+
+Headline: Hair fall serum, ₹571 (21) Description: Pack of 3, 49% off (18)
+Grounded in: Serum claim, price, review count, pack-of-3 pricing and the verbatim review from the
+brief. Traya pricing from the brief's competitive section. The Angle C review runs only with the
+reviewer's permission.
+
+EXAMPLE 3: GOOGLE RSA, "HAIR FALL SHAMPOO" AND "HAIR GROWTH SERUM" AD GROUP (LANE A
+SEARCH)
+15 headlines, 30 characters max. Any three can show together, so each stands alone.
+ #        HEADLINE                                                CHARS   TYPE
+
+ 1        Hair Fall Shampoo, 7.4X Proven                          30      Keyword
+ 2        Hair Growth Serum, 84 Days                              26      Keyword
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · HAIR FALL AD CREATIVE FOR META                                     9
+ #         HEADLINE                                               CHARS         TYPE
+
+ 3         Up to 28,200 New Hairs                                 22            Benefit
+ 4         Made for Indian Hair & Water                           28            Differentiator
+ 5         Anti-Hair Fall Shampoo ₹359                            27            Keyword + price
+ 6         Tested in Our Delhi Lab                                23            Proof
+ 7         2,000+ Verified Reviews                                23            Social proof
+ 8         Free Shipping Above ₹299                               24            Offer
+ 9         Shop the Hair Fall Routine                             26            CTA
+ 10        Start Your 84-Day Plan                                 22            CTA
+ 11        Serum + Shampoo Combo ₹838                             26            Offer
+ 12        Works Without Minoxidil                                23            Differentiator
+ 13        Arata Hair & Scalp Science                             26            Brand (pin position 1 if required)
+ 14        Pack of 3 Serums at ₹999                               24            Offer
+ 15        Dermatologically Tested                                23            Proof
+
+
+4 descriptions, 90 characters max.
+ #      DESCRIPTION                                                                                                       CHARS
+
+ 1      Hair Growth Intensive Serum: up to 28,200 new hairs in 84 days in a consumer study. ₹571.                         89
+ 2      Anti-Hair Fall Shampoo with Hairdian AP. 7.4X less hair fall in a strength study. ₹359.                           87
+ 3      2,000+ reviews on arata.in. Vegan and cruelty-free. Free shipping on orders above ₹299.                           87
+ 4      Hair fall is a 2 to 3 month problem. 84 days, one serum, one number. Serum + Shampoo ₹838.                        90
+
+
+Display paths: arata.in/hair-fall/serum. Final URL: the hair growth collection page, once the routine
+builder gap is fixed so the page matches the "routine" headlines.
+Grounded in: Catalogue prices and claims, review count, shipping threshold, all from the brief.
+
+EXAMPLE 4: MITOACTIVE VSL SCRIPT (S-TIER, LANE B COLD)
+75 seconds, 9:16, trichologist or founder on camera with B-roll. Captions throughout, inside the
+720×1200 safe band. The on-ramp extends the hook's promise; the bottle does not appear until
+second 35.
+ TIME       BEAT               SPOKEN LINE                                                ON SCREEN            CAPTION
+
+ 0 to       Hook               "Every hair fall serum you've tried works on the follicle. Presenter, plain     the cell that powers
+ 3                             This one works on the cell that powers it."                lab-blue wall,       the follicle
+                                                                                          holds nothing
+ 3 to       On-ramp: the       "Each follicle runs on mitochondria. When they slow        Simple two-state     growing : resting
+ 15         mechanism          down, more hairs sit in the resting phase and fewer in     hair cycle
+                               the growing phase. That ratio is what you see on the       diagram,
+                               pillow."                                                   animated
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · HAIR FALL AD CREATIVE FOR META                                                                    10
+ TIME      BEAT                SPOKEN LINE                                                ON SCREEN            CAPTION
+
+ 15 to The turn                "Y100 is an active built over six years, with five clinical Study cards slide   6 years · 5 studies ·
+ 28                            studies, to support mitochondrial function. In a study      in one at a time    Indian participants
+                               with Indian participants, it reduced shedding, improved
+                               the growing-to-resting ratio and increased density."
+ 28 to Why it's new            "It is licensed exclusively to one brand in India."        Presenter            India's first
+ 35                                                                                                            mitochondrial hair
+                                                                                                               growth serum
+ 35 to The product             "MitoActive. Twice a day on the scalp, for 84 days. In     Bottle reveal, 30    87% saw growth in
+ 48                            the consumer study, 87% saw increased growth in 84         ml, callouts         84 days
+                               days, and hair fall reduced by up to 95%."
+ 48 to The price               "It is ₹1,499 for a month. That is ₹50 a day. A            Calculator           ₹50 a day
+ 60    objection               diagnosis kit is ₹1,400 to ₹1,800 a month for five         overlay: 1499 ÷
+                               months, with doctor calls and supplements."                30 = 50
+ 60 to The honest              "It is a 3-month course, then maintenance. The study       Lab Notes page       read the study first
+ 70    frame                   design is on our Lab Notes page. Read it before you        screenshot
+                               buy."
+ 70 to CTA                     "MitoActive. arata.in."                                    End card, static,    MitoActive · ₹1,499
+ 75                                                                                       logo SVG, price      · arata.in
+
+
+Cut-downs: 30-second version (beats 1, 2, 5, 8) for Reels; 15-second version (beats 1, 5, 8) for
+retargeting.
+Grounded in: Every Y100 and MitoActive claim from the brief's proof points and objections table. ₹50
+a day is ₹1,499 ÷ 30. "Twice a day" per the objections table. Route through legal before the authority
+version runs.
+
+EXAMPLE 5: WHATSAPP CHAT REVEAL (LANE A WARM, T2)
+The iMessage reveal format, built on the surface Indian customers actually use. 9:16, WhatsApp dark
+theme in a phone frame over a bathroom-shelf photo. 11 bubbles, about 19 seconds, then a 3-second
+static end card. Dramatized conversation, labelled "Sponsored" by placement. The brand appears
+once, late.
+                                                                                                                           DIAGRAM
+    [Aman]      (photo: three empty 30 ml serum bottles lined up on a shelf)
+    [Aman]      day 84 done
+    [Karan]     3 bottles??
+    [Aman]      pack of 3. ₹999
+    [Karan]     and?
+    [Aman]      pillow is clean in the morning. that's all i wanted
+    [Karan]     is it the minoxidil type
+    [Aman]      nope. it's a serum, goes on the scalp
+    [Karan]     which one
+    [Aman]      arata. hair growth intensive serum. the pack of 3
+    [Karan]     ordering
+                → 300ms crossfade → end card
+
+
+
+
+End card: Hair Growth Intensive Serum, Pack of 3, ₹999. "Up to 28,200 new hairs within 84 days, in a
+consumer study." Logo SVG, static, no drift.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · HAIR FALL AD CREATIVE FOR META                                                                       11
+Pacing: reactions 300 to 400ms apart, sentence replies get 700ms of air, typing indicator (silent)
+before "pillow is clean" and before "arata.". 600ms of silence before "ordering". WhatsApp send and
+receive tones, music bed at 30% with a fade before the brand bubble.
+Grounded in: Pack of 3 price and claim from the catalogue. "Pillow is clean" dramatizes the review
+theme "hair fall reduced drastically" and the JTBD "stop the hair fall I see on the pillow". No real
+customer is named. If Arata approves a code (assumption: ARATA84), it goes inside the "arata."
+bubble, link-underlined, and on the end card.
+
+EXAMPLE 6: FAQ CARD SET (B-TIER, LANE B WARM, FOUR STATICS)
+Each card: the objection in the customer's words at the top (60% of frame), the answer in two lines,
+the bottle small at the bottom. Lab-blue type on white.
+Card 1 Q: "₹1,499 for 30 ml is a lot." A: It is one month, twice a day. ₹50 a day. A diagnosis kit runs
+₹1,400 to ₹1,800 a month for five months.
+Card 2 Q: "Is this just another Redensyl serum?" A: Those work on the follicle. Y100 works on the
+mitochondria that power it. Licensed exclusively to Arata in India.
+Card 3 Q: "Do I have to use it forever?" A: A 3-month course, then maintenance. Minoxidil is a
+dependency. This is a plan with an end date.
+Card 4 Q: "What if the bottle leaks?" A: Replaced, no questions. Reply to your order message and a
+new one ships.
+Grounded in: The objections table in the brief, verbatim. Card 4 depends on Arata confirming the
+replacement promise (listed as an operations fix in the brief). It does not run until the policy is live.
+
+EXAMPLE 7: FACELESS MOTION EXPLAINER, "84 DAYS" (T2, LANE A COLD, MONOLINE EDITORIAL
+STYLE)
+Four beats, 28 seconds, calm voice, one idea per beat. Brand slots: FIELD off-white, INK charcoal,
+ACCENT lab-blue, TYPE FEEL clean modern grotesque.
+ BEAT VO                                                          POSTER STILL                             LABEL
+
+ 1        "A hair takes about three months to show you            Monoline calendar with 84 squares, one   84 DAYS
+          whether anything changed."                              accent square at the end
+ 2        "Most products ask you to trust them for a week."       Monoline bottle with a tiny 7-day tick   7 DAYS?
+ 3        "We measured ours for 84. Up to 28,200 new hairs, Monoline follicle cluster, accent arc sweep    UP TO
+          in a consumer study."                                                                            28,200
+ 4        "Hair Growth Intensive Serum. ₹571. arata.in."          Bottle outline, accent underline         ₹571
+
+
+Motion: lines extend, the accent sweep draws itself, nothing else moves. QC the final two seconds of
+each clip for drift.
+
+
+
+30-DAY DEPLOYMENT
+
+BREW DEPLOYMENT TEAM × ARATA · HAIR FALL AD CREATIVE FOR META                                                      12
+                                                                                                               LIVE BY END OF
+ WEEK BREW SHIPS                                                     ARATA PROVIDES                          WEEK
+
+ 1         Grounded inputs corpus (100 reviews, comments               Export of last 90 days of ad            12 statics and the
+           tagged, claims sheet with study design per number).         performance and top ads. Pack           RSA live. Diagnostic
+           Roadmap with icebox and the 40-concept slate. 12            shots per SKU. Logo SVG and             funnel columns set
+           T1/T2 statics: founder message draft, 4 FAQ cards,          rebrand palette. Founder sign-off       up in the reporting
+           Us vs them, Grid trio, 2 callouts, dandruff one-wash,       on the message copy. Leak-              sheet.
+           2 Headline Statements. Google RSA ad group.                 replacement policy confirmed.
+ 2         Founder shoot (one day, three story structures,             Founder's day. Creator shortlist and    20 concepts live.
+           three-capture system). VSL script locked and shot           whitelisting access on Meta. Lab        VSL 75s and 30s
+           (founder version). WhatsApp chat reveal rendered.           Notes page for the MitoActive           cuts live in Lane B.
+           Faceless motion explainer. 6 more statics. Creator          study.
+           partnership brief sent to 3 creators.
+ 3         Trichologist authority shoot. Two creator partnership Trichologist contact and legal                32 concepts live.
+           videos delivered and whitelisted. Samay cut-downs review of the authority script.                   First kills and first
+           re-captioned as retargeting (T1 ×4). First Monday     Approval on creator edits.                    iterations.
+           refresh: hook-level reads on week 1 and 2 ads. 6
+           statics from the comments folder (new objections).
+ 4         Amateur investigation video. Remaining T1 iterations Attend the retro. Approve month 2              40 concepts live.
+           on any single-metric hits. INDEX.md for the month,   slate.                                         Retro written. Month
+           creative review page for Arata's approval of month 2                                                2 slate ranked.
+           slate. Month 1 retro.
+
+
+Owners: Brew creative lead (slate, briefs, retro), Brew performance lead (funnel reads, kills),
+Brew producer (shoots, edits, renders), Arata brand manager (assets, approvals, founder time),
+Arata ops lead (replacement policy, Lab Notes page).
+
+
+
+HOW WE MEASURE
+ METRIC                        BASELINE                           90-DAY TARGET                            READ
+
+ 3-second view rate            To be instrumented                 Top quartile of concepts above 30%       Visual opening
+ (thumbstop)                                                      (assumption)
+ Hold rate, 3s to 15s          To be instrumented                 VSL above 40% hold at 15s                On-ramp
+                                                                  (assumption)
+ CTR, cold                     To be instrumented                 1.2% on cold statics, 1.8% on creator    Offer clarity
+                                                                  video (assumption)
+ CVR post-click,               ~7 to 8% visit-to-order            Paid cold CVR instrumented               Page congruence
+ arata.in                      blended (brief, includes           separately; target 2.5% (assumption)
+                               returning)
+ New-customer CPA,             To be instrumented                 Under ₹450 on a ₹571 serum first         Lane health
+ Lane A                                                           order, under ₹600 on ₹999 pack
+                                                                  (assumption)
+ MitoActive first              0 reviews, launch state            500 first orders, 100 reviews            Lane B exit from
+ orders from paid                                                 requested at day 30 post-purchase        exploration
+                                                                  (assumption)
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · HAIR FALL AD CREATIVE FOR META                                                                        13
+ METRIC                        BASELINE                           90-DAY TARGET                          READ
+
+ Rolling reach, month          To be instrumented                 Flat or up while spend holds           Fatigue; deploy
+ on month                                                                                                partnership ads when it
+                                                                                                         drops
+ Share of concepts             0 (no corpus)                      100%                                   Grounding discipline
+ with a source cited
+
+
+Decision rules
+    No verdict before 1,000 impressions per concept. A two-day read is a coin flip.
+    Judge concepts, not ads. Three executions of "84 days, one number" failing means the concept is
+    wrong. One failing means the execution was.
+    A full-funnel loser with one strong metric is a lead. It goes back to the icebox as an iteration, with
+    the weak stage named.
+    If Lane A winners hold for 30 days: shift to 60% winner-led variations, keep 15% exploration alive,
+    raise Lane A budget share by 10 points.
+    If Lane B shows no single-metric hit in 30 days: the VSL mechanism framing is wrong, so we test
+    the price-math hook and the upgrade-from-Intensive-Serum hook before touching production
+    budget again.
+    If rolling reach drops two weeks in a row: deploy the next creator partnership ad before adding any
+    more statics.
+    If CTR is strong and CVR is weak on any concept: fix the landing page before iterating the ad.
+
+
+
+APPENDIX
+STATIC BATCH DISTRIBUTION, MONTH 1 (24 STATICS)
+ TEMPLATE                                                                           TIER         COUNT             LANE
+
+ Founder Message                                                                    S            2                 A
+ Grid Static                                                                        A            2                 A, C
+ FAQ Card                                                                           B            6                 A, B
+ Us vs Them                                                                         B            2                 A
+ Callout / Ingredient Spotlight                                                     B            3                 B
+ Headline Statement                                                                 B            3                 A, C
+ Educational Infographic                                                            B            2                 B
+ Problem / Solution                                                                 B            2                 C
+ Challenging Your Beliefs                                                           B            1                 A
+ Review Card (golden nugget only)                                                   E            1                 A
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · HAIR FALL AD CREATIVE FOR META                                                                    14
+PRE-FLIGHT CHECKLIST PER CONCEPT
+    Template, tier and funnel role recorded
+    Headline, body, visual description and grounding source present
+    Every number carries its "up to" and its day window
+    Before/after scalp imagery and crown close-ups are absent
+    Copy is free of contrast reveals, stacked negations and em dashes
+    Character counts checked against platform limits
+    Captions inside the 720×1200 safe band, white fill with black stroke, static
+    End cards use the real logo SVG, never styled text
+    Review quotes run with permission
+    Landing page says what the ad says
+
+SOURCES
+Arata brand brief (arata.in catalogue and prices, Loox and Nykaa reviews, BeautyMatter, BW Retail
+World, Storyboard18, Inc42, Traya public pricing). Meta advertising policies on personal health and
+appearance. Platform character limits for Google RSA and Meta as of October 2026.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · HAIR FALL AD CREATIVE FOR META                                       15
+AD CREATIVE
+
+
+DAY 30
+AT ARATA
+    WHAT IS LIVE
+
+    Arata has a 40-concept creative portfolio live on Meta, Google and YouTube,
+    every concept traced to a real review or claim, with a hook-level diagnostic
+    running weekly and a monthly retro feeding the next slate.
+
+
+
+
+  NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+  BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+  CONFIRM".
+
+
+  EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+  BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                  DEPLOYMENT TEAM
+                                                                               BREW
+

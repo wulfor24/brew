@@ -1,0 +1,960 @@
+      Brew                                          PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+REVENUE OPERATIONS · MOVE 48 OF 50
+
+
+
+ONE
+CUSTOMER
+RECORD, ONE
+REORDER
+CLOCK
+  THE LIFECYCLE STAGES, SCORING RULES, ROUTING TREE,
+  B2B PIPELINE AND DASHBOARDS THAT TURN ARATA'S
+  THREE DISCONNECTED SALES CHANNELS INTO ONE
+  REVENUE SYSTEM WITH A WORKING 45-DAY REORDER
+  WINDOW.
+
+
+
+
+Day 45
+THE REORDER WINDOW, MADE OPERATIONAL
+
+
+
+
+BREW × ARATA                         OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                       V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                             WHAT THIS GIVES ARATA
+                                                             The lifecycle stages, scoring rules, routing tree, B2B
+                                                             pipeline and dashboards that turn Arata's three
+                                                             disconnected sales channels into one revenue
+
+
+        Day 45
+                                                             system with a working 45-day reorder window.
+                                                             LIVE 30 DAYS AFTER WE START
+                                                             Every D2C customer sits in one record with a
+        THE REORDER WINDOW, MADE                             lifecycle stage and a reorder date, complaints block
+        OPERATIONAL
+                                                             marketing and trigger a 48-hour replacement, the
+                                                             Day 30 and Day 42 WhatsApp nudges are live, and
+                                                             the first B2B pipeline exists with stages, owners and
+                                                             SLAs.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+In software, revenue operations means the plumbing between marketing, sales and customer success:
+who owns a lead, when it moves stage, how fast someone follows up. For Arata the same plumbing
+connects four things: the Shopify store, the marketplaces, the quick-commerce platforms and the
+small B2B motion. The lead is a customer. The handoff is from first order to second order. The sales
+rep is a WhatsApp message, a support agent, or a category manager relationship. Same discipline,
+different nouns.
+Arata today runs three revenue systems that do not talk to each other. The website is 32% of revenue
+and produces a customer record with a phone number. Marketplaces are 38% and produce an order
+with no usable identity. Quick commerce is 30% and produces a purchase order and a fill rate. Two
+lakh B2B units a month flow through POs with no pipeline behind them. The stated key conversion
+action in the brand brief is "first purchase, then repeat within 45 days." There is no system that knows
+which customer is on Day 30, which SKU they bought, or whether they have a leaking bottle sitting in a
+complaint queue.
+That gap has a price. The brief puts beauty repeat rates around 26% and routine-led models above
+40%. Arata sells 84-day courses and calls itself "systems, not symptoms", but with no subscription,
+no quiz, no reorder clock and no single customer record, it is operating like a 26% brand. On 50,000
+D2C orders a month at an implied AOV of ₹900 to ₹1,000, every one-point lift in 45-day repeat rate is
+roughly 500 extra orders a month, or about ₹4.75 lakh in revenue (assumption: ₹950 AOV, repeat
+measured on the monthly cohort). Ten points is ₹5.7 Cr a year from customers Arata already paid to
+acquire.
+Two smaller leaks compound it. Leak and broken-seal complaints are a known review theme ("the seal
+was broken", "the shampoo bottle was leaking"). A complaint with no SLA and no link to the customer
+record means a Day 30 reorder nudge can land on someone who is still waiting for a replacement. And
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE CUSTOMER RECORD, ONE REORDER CLOCK                                               1
+SKU naming is inconsistent across channels (onion vs biotin, serum vs tonic), so channel data cannot
+be joined at the SKU level. You cannot run a reorder clock on a product that has three names.
+The opportunity is that most of this is definition work, not software. Stage definitions, a scoring rule, a
+routing tree, a B2B pipeline with required fields and five automations. This document is that
+specification, written so Arata's ops and CX teams can implement it directly.
+
+
+
+WHAT WE FOUND
+THE REVENUE SYSTEM AS IT RUNS TODAY
+                                                                                                         DIAGRAM
+                          ARATA REVENUE SYSTEM, OCT 2026 (as observed)
+
+      Meta / YouTube / Google / creators / Samay Raina campaign
+                         │
+         ┌───────────────┼──────────────────────┐
+         ▼               ▼                      ▼
+     arata.in        Amazon / Nykaa /      Blinkit / Zepto /
+     (Shopify)       Flipkart               Instamart
+      32% rev          38% rev                30% rev
+         │               │                      │
+     customer       order + SKU,          PO + fill rate,
+     phone, email, masked buyer,          zero customer
+     address, SKU   platform reviews      identity
+         │               │                      │
+         ▼               ▼                      ▼
+     Shopify         Seller Central /     Account manager
+     Customers       Nykaa / Flipkart     email + sheet
+     (no stages)     dashboards           (assumption)
+         │
+         ▼
+     Email / WhatsApp broadcasts (assumption: campaign-led, not stage-led)
+
+     B2B: ~2 lakh units/month on POs. No pipeline, no owner field, no stage.
+     Support: complaints via email / IG DM / WhatsApp. No SLA. No link to lifecycle.
+
+
+
+
+Three facts drive the design. First, only 32% of revenue produces a customer identity. Second, that
+identity is phone-first (Indian checkouts and WhatsApp both key on the mobile number), so the master
+key is the phone, with email second. Third, the only way to bring a Blinkit or Nykaa buyer into an
+owned record is through the pack itself or the box, which means the "lead capture" surface for 68% of
+revenue is a QR code and a WhatsApp first message.
+
+LIFECYCLE AUDIT: WHAT EXISTS PER STAGE
+ STAGE A ROUTINE BRAND
+ NEEDS                                 EXISTS AT ARATA TODAY                 OWNER TODAY   MEASURED TODAY
+
+ Anonymous visitor                     Yes                                   Marketing     Visits, visit-to-order
+ (650K/month)
+ Identified lead (phone or             Partly: checkout only. No quiz, no    Nobody        Not measured
+ email, opted in)                      WhatsApp opt-in surface, no pack QR
+ First order (Day 0 to 14)             Yes, as an order                      Ops           Dispatch, delivery
+                                                                                           (assumption)
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE CUSTOMER RECORD, ONE REORDER CLOCK                                             2
+ STAGE A ROUTINE BRAND
+ NEEDS                                 EXISTS AT ARATA TODAY                              OWNER TODAY         MEASURED TODAY
+
+ In course (Day 15 to 29)              No stage                                           Nobody              No
+ Reorder window (Day 30 to             No stage, no clock                                 Nobody              No
+ 45)
+ Repeat customer                       Implicit in Shopify "orders count"                 Nobody              Possibly a Shopify
+                                                                                                              report
+ Routine customer (3+ orders           No subscription exists                             Nobody              No
+ or subscription)
+ At risk / lapsed                      No stage                                           Nobody              No
+ Advocate (review, referral)           Loox reviews exist (2,248)                         Marketing           Review count only
+ Complaint open (blocks                No link between support and marketing              CX                  No
+ marketing)
+ B2B account stages                    None                                               CBO's team          PO volume only
+                                                                                          (assumption)
+
+
+Nine of eleven stages have no owner. That is the diagnosis in one table.
+
+THE SIX HANDOFFS, SCORED FOR LEAK RISK
+We score each handoff on how likely revenue leaks there (1 low to 5 high) and the monthly revenue it
+touches.
+                                                        LEAK
+ HANDOFF                       FROM → TO                RISK        REVENUE TOUCHED             WHY IT LEAKS
+
+ H1 Visitor → Identified       Site → owned             4           All D2C                     No opt-in surface before checkout;
+                               record                                                           ~92% of visits leave without identity
+ H2 Order → Delivered          Shopify →                3           ₹4.5 to 5 Cr/month D2C      Leak and seal complaints trace to
+                               warehouse →                                                      packing and transit; no SLA
+                               courier
+ H3 Delivered →                Customer →               5           The gap between 26%         No reorder clock, no SKU days-of-
+ Reorder                       second order                         and 40% repeat              supply, no nudge
+ H4 Complaint →                CX → ops →               4           Small direct, large         No SLA, no replacement promise, no
+ Resolution                    customer                             indirect (reviews,          marketing suppression
+                                                                    repeat)
+ H5 Marketplace buyer          Pack → WhatsApp          5           68% of revenue              No bridge exists
+ → Owned record
+ H6 B2B reply → Order          Inbound enquiry →        4           2 lakh units/month and      No pipeline, no owner, no response
+                               owner → PO                           growth                      SLA
+
+
+H3 and H5 are the two fives. H3 is the 45-day window. H5 is the pack-to-profile bridge. Everything in
+the plan serves those two first.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE CUSTOMER RECORD, ONE REORDER CLOCK                                                                 3
+DATA HYGIENE: IDENTITY AND SKU NAMING
+Identity. Shopify stores phone and email per customer, but the same person can exist as three
+records: a guest checkout with phone, an account with email, and a WhatsApp contact from a
+campaign reply. Dedup today is manual or absent (assumption). The rule we set: phone in E.164 format
+is the primary key; email is the secondary key; a match on either merges, with the most recent address
+and the earliest first-order date surviving.
+SKU naming. The brief notes "onion vs biotin, serum vs tonic" and the Super Shampoo listed on Nykaa
+at 300 ml / ₹899 against the 200 ml site range. A reorder clock needs one SKU ID per product per size
+and one days-of-supply value per SKU. Today that table does not exist. The appendix carries the
+master SKU map we build in week 1.
+Attribution. UTM discipline is unknown (assumption: campaign-level only). For revenue operations we
+need one field on every order: acquisition_channel with a closed list (site_paid, site_organic,
+site_creator, site_whatsapp, amazon, nykaa, flipkart, blinkit, zepto, instamart, b2b_derm, b2b_salon,
+b2b_corporate, b2b_distributor). The attribution document in this series handles the model; this
+document handles the field.
+
+STACK ASSUMPTIONS
+Shopify is confirmed. Everything else is an assumption we will verify in week 1: a WhatsApp Business
+API provider (Interakt, Wati, Zoko or similar), an email tool (Klaviyo or similar), an order management
+layer for marketplace orders (Unicommerce or EasyEcom or similar), and no CRM for B2B. We do not
+recommend replacing any of it. We recommend making Shopify Customers the consumer system of
+record, a lightweight CRM (HubSpot Starter or Zoho CRM, both priced for Indian teams) the B2B
+system of record, and a warehouse table in the OMS or a sheet the channel order ledger for
+marketplace and quick-commerce aggregates.
+WhatsApp cost is small enough to treat as free at this scale. Marketing messages in India cost roughly
+₹0.78 per message and utility messages roughly ₹0.12 (assumption: Meta's per-message pricing
+effective July 2025; confirm current rate with the provider). A Day 30 nudge to a month's 50,000
+customers is about ₹39,000.
+
+
+
+THE PLAN
+The plan has three layers. Define the record and the stages. Automate the handoffs. Open the B2B
+pipeline. In that order, because automating an undefined stage produces broken results faster.
+
+LAYER 1: ONE CUSTOMER RECORD AND THE PACK-TO-PROFILE BRIDGE
+What. Shopify Customers becomes the system of record for every consumer. Every other tool writes
+to it or reads from it. We add six custom fields: lifecycle_stage , primary_concern (hair fall, dandruff,
+damage, grey, styling, body, face), last_sku_id , last_sku_days_of_supply , reorder_due_date ,
+ complaint_open (true/false). The WhatsApp provider and email tool sync stage and reorder date back
+to the record daily.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE CUSTOMER RECORD, ONE REORDER CLOCK                                     4
+The bridge. Every pack and every in-box card carries a QR that opens WhatsApp with a prefilled
+message: "Hi Arata, I bought [SKU] on [channel]". The customer sends it, we capture phone, SKU and
+channel, and start their reorder clock even though they bought on Blinkit. The reward for sending it is
+the replacement promise ("if the bottle leaked or the seal was broken, reply LEAK and a new one ships
+in 48 hours") plus the 84-day routine guide. This is the only way to get identity from 68% of revenue.
+Why. Without one record there is no stage, no clock, no suppression and no repeat metric. Without
+the bridge, the reorder system only works on a third of the business.
+Expected effect. Identity capture on marketplace and quick-commerce orders goes from zero to a
+measurable number (target 8% of units in 90 days, assumption based on scan rates for packaging QR
+with a clear reward).
+                                                                                                    DIAGRAM
+       Blinkit order ──► pack QR ──► WhatsApp "Hi Arata, I bought
+                                     Anti-Hair Fall Shampoo on Blinkit"
+                                             │
+                                             ▼
+                                  phone + SKU + channel captured
+                                             │
+                                             ▼
+                        Shopify Customer record created or merged (phone key)
+                        lifecycle_stage = First order
+                        reorder_due_date = today + 35 days (shampoo supply)
+
+
+
+
+LAYER 2: THE CONSUMER LIFECYCLE, STAGE BY STAGE
+The stage clock is keyed to days of supply per SKU, not to a fixed 30 days. A 200 ml shampoo used
+three to four times a week lasts about 35 days; a 30 ml serum at twice-daily use lasts about 30 days
+(assumption, to be checked against Arata's own usage guidance and reorder data). MitoActive is a
+one-month supply by the brand's own framing.
+                                                                                                    DIAGRAM
+       Visitor ─► Identified ─► First order ─► In course ─► Reorder window ─► Repeat ─► Routine
+        (S0)        (S1)        (S2, D0-14)   (S3, D15-29) (S4, D30-45)       (S5)       (S6)
+                                     │                            │
+                                     │ complaint ─► Fix-first     │ no order by D46
+                                     │ (S8, blocks all marketing)│
+                                     ▼                            ▼
+                                  Advocate (S9)             At risk (S7, D46-90) ─► Lapsed (D90+)
+
+
+
+
+The full stage document with entry, exit, owner, SLA and system actions is worked example A.
+Why these stages. They map to the product's own timeline. The 84-day claim window means a
+customer needs three bottles of serum to see the result on the pack. Stage S4 is the equivalent of an
+MQL: the customer is "reorder-ready" and the question is how hard to push and through which
+channel. Stage S8 (fix-first) is the rule the skill calls negative scoring: an open complaint removes a
+customer from every marketing flow until ops closes it.
+Expected effect. Repeat rate becomes a stage conversion you can read weekly (S2 → S5), and the
+team sees where it dies.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE CUSTOMER RECORD, ONE REORDER CLOCK                                       5
+LAYER 3: REORDER-READINESS SCORE (THE MQL RULE)
+Fit is what they bought. Engagement is what they did since. Negative signals block. A score of 60 or
+more routes to a human WhatsApp conversation from CX. 35 to 59 gets the automated nudge
+sequence. Under 35 gets nothing until the clock advances. Any open complaint overrides everything.
+The full specification with three scored customers is worked example B.
+Why. A ₹1,499 MitoActive customer on Day 30 who has visited the MitoActive page twice deserves a
+person, not a template. A ₹269 styling cream buyer does not need a nudge at all. Scoring tells the
+team where the human minutes go.
+
+LAYER 4: INBOUND ROUTING AND HANDOFF SLAS
+Every inbound message (WhatsApp, email, Instagram DM, site chat) is classified and routed within
+minutes. Most specific match first, then fallback, with a queue owner so nothing goes cold.
+                                                                                                                    DIAGRAM
+      Inbound message arrives (WhatsApp / email / IG DM / site form)
+      │
+      ├─ Contains order number or "where is my order"?
+      │    └─ YES → Order status bot answers from Shopify + courier; human only if delayed >48h
+      │
+      ├─ Keywords: leak, leaking, seal, broken, damaged, empty, missing?
+      │    └─ YES → Complaint queue. complaint_open = true. First human reply ≤ 2 business hours.
+      │              Replacement dispatched ≤ 48 hours. No proof photo required under ₹500.
+      │
+      ├─ Sender is a known B2B contact, or message mentions clinic, salon, bulk,
+      │ wholesale, distributor, corporate, "for my patients", "list on"?
+      │    └─ YES → B2B queue. Human reply ≤ 4 business hours. Create CRM contact + stage.
+      │
+      ├─ Mentions MitoActive, Y100, minoxidil, derm, or "does it work"?
+      │    └─ YES → Product advisor queue (trained CX). Reply ≤ 4 business hours.
+      │              If customer is S4/S7 → tag reorder conversation.
+      │
+      ├─ Mentions collab, creator, PR, press, sponsorship?
+      │    └─ YES → Marketing queue. Reply ≤ 1 business day.
+      │
+      └─ Default → General CX queue. Reply ≤ 4 business hours. Escalate at 8 hours to CX lead.
+
+
+
+
+Handoff SLAs we set.
+ HANDOFF                                 SLA                                    ESCALATION                     OWNER
+
+ Order placed → dispatched               24 hours (assumption for an 11K sq ft Ops lead alert at 36 hours      Arata ops lead
+                                         automated warehouse)
+ Complaint received → first              2 business hours                       CX lead at 4 hours             Arata CX lead
+ human reply
+ Leak or seal complaint →                48 hours                               Ops lead at 60 hours;          Arata ops lead
+ replacement dispatched                                                         founder digest weekly
+ Complaint closed → marketing            Same day, automated                    Weekly audit of stuck flags    Brew
+ re-enabled                                                                                                    revops lead
+ Reorder due date reached →              Same day, automated                    Weekly audit of missed         Brew
+ first nudge                                                                    sends                          revops lead
+ S4 customer scores ≥ 60 →               4 business hours                       CX lead at 8 hours             Arata CX lead
+ human WhatsApp
+ B2B inbound → human reply               4 business hours                       CBO office at 1 business day   Arata B2B
+                                                                                                               owner
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE CUSTOMER RECORD, ONE REORDER CLOCK                                                         6
+ HANDOFF                                 SLA                                      ESCALATION                       OWNER
+
+ B2B positive reply → sample or          2 business days                          Weekly pipeline review flag      Arata B2B
+ price sheet sent                                                                                                  owner
+
+
+LAYER 5: THE B2B PIPELINE
+B2B contacts get their own stages because they never "convert" on a checkout. Four segments
+(dermatologists and trichologists, salons, corporate wellness, quick-commerce and marketplace
+category managers) share one pipeline with a segment field. The required fields, stages and discount
+approval tiers are worked example D.
+Why. Two lakh units a month is already a business. Making it a pipeline is how it becomes a growing
+one, and how the outbound document in this series has somewhere to put replies.
+
+LAYER 6: DASHBOARDS
+Three views, one source each.
+                WHO READS
+ VIEW           IT                METRICS                                                                     SOURCE
+
+ Marketing Growth lead,           New vs returning orders, identified-lead rate (S1/visitors), bridge         Shopify + ad
+           weekly                 scans by channel, cost per first order by acquisition_channel               platforms +
+                                                                                                              WhatsApp provider
+ Ops and        Ops lead, CX      Dispatch time, complaint rate per 1,000 orders, leak complaints per         OMS + helpdesk
+ CX             lead, daily       SKU per batch, replacement SLA hit rate, inbound reply time by queue
+ Executive      Founders,         Revenue by channel vs the ₹160 Cr run-rate, 45-day repeat rate              All of the above,
+                CBO, weekly       (S2→S5), routine customers (S6) count, MitoActive attach rate, B2B          one sheet
+                                  pipeline value by stage, contribution margin by channel after platform
+                                  fees
+
+
+PHASING
+ PHASE         WEEKS         WHAT SHIPS
+
+ Define        1 to 2        Master SKU map, identity rule, stage definitions, scoring spec, routing tree, SLA table. All on
+                             paper, signed by Arata ops, CX and marketing leads
+ Plumb         2 to 3        Custom fields in Shopify, WhatsApp provider sync, helpdesk tags, complaint flag, pack QR
+                             artwork, B2B CRM with stages
+ Automate 3 to 4             Five automations live (worked example C), dashboards v1
+ Open          4             Pipeline populated from existing PO relationships, inbound B2B routing live, outbound sequences
+ B2B           onwards       from the cold-email document land here
+
+
+
+
+WORKED EXAMPLES
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE CUSTOMER RECORD, ONE REORDER CLOCK                                                           7
+A. CONSUMER LIFECYCLE STAGE DOCUMENT
+This is the document Arata's CX, ops and marketing leads sign in week 1. One row per stage. Owner
+means the role accountable for moving the customer out of the stage.
+ STAGE            ENTRY CRITERIA                   EXIT CRITERIA          OWNER          SYSTEM ACTIONS ON ENTRY
+
+ S0 Visitor       Any session on arata.in          Provides phone         Marketing      Pixel and GA4 events only
+                                                   or email with
+                                                   opt-in
+ S1               Phone or email captured          First order      Marketing            Create or merge Shopify customer on phone
+ Identified       with consent: checkout,          placed, or 60                         key. Set primary_concern from source
+                  abandoned checkout,              days without                          (quiz answer, SKU viewed, QR SKU). Enrol in
+                  WhatsApp opt-in, quiz,           order (→ archive                      concern-specific welcome flow
+                  pack QR scan                     from flows, keep
+                                                   record)
+ S2 First         First paid order, or pack        Day 15 reached         Ops            Set last_sku_id ,
+ order (Day       QR scan with SKU from            with no open                          last_sku_days_of_supply ,
+ 0 to 14)         any channel                      complaint                             reorder_due_date = delivery date + days
+                                                                                         of supply − 5. Send order confirmation
+                                                                                         (utility). Day 3 after delivery: "first wash"
+                                                                                         check-in with the replacement promise.
+                                                                                         Suppress all promotional sends until Day 15
+ S3 In       Day 15 after delivery                 Reorder due            Marketing      One education message tied to the SKU
+ course (Day                                       date reached                          claim window (serum: "what Day 28 looks
+ 15 to 29)                                                                               like"). Review request at Day 21 for shampoo
+                                                                                         and conditioner, Day 45 for serums. Start
+                                                                                         engagement scoring
+ S4 Reorder        reorder_due_date                Second order           CX for         Compute reorder-readiness score. Route by
+ window           reached, no open                 (→ S5), or Day         scored ≥       score: ≥ 60 human WhatsApp within 4
+ (Day 30 to       complaint, no order since        46 with no order       60;            business hours; 35 to 59 automated nudge
+ 45, keyed        S2                               (→ S7)                 Marketing      sequence (Day 30, Day 37, Day 42); < 35
+ to supply)                                                               for the rest   one Day 37 message only
+ S5 Repeat        Second paid order within         Third order            Marketing      Reset reorder clock on the new SKU. Offer
+                  60 days of first delivery        within 180 days                       the pack-of-3 or combo on the next nudge
+                                                   (→ S6), or 90                         (Hair Growth Intensive Serum Pack of 3 at
+                                                   days without                          ₹999 vs 3 × ₹571). Invite referral
+                                                   order (→ S7)
+ S6 Routine       3+ orders in 180 days, or        Subscription           CX             Move to lower-frequency "routine" cadence.
+                  active subscription once         cancelled or 90                       MitoActive upgrade eligibility check. Priority
+                  launched                         days without                          support tag. Ask for a before-and-after with
+                                                   order                                 consent
+ S7 At risk       No order by Day 46 of the        Order placed (→ Marketing             Win-back sequence: Day 50 "what
+ (Day 46 to       reorder window, or 90            S5), or Day 90                        happened" one-question survey, Day 60
+ 90)              days since last order for        (→ Lapsed)                            offer on the same SKU, Day 80 switch
+                  S5/S6                                                                  suggestion (if shampoo, suggest serum; if
+                                                                                         serum, suggest combo)
+ S7b Lapsed 90 days with no order                  Any order              Marketing      Quarterly re-engagement only. Exclude from
+ (Day 90+)  after S7                                                                     all other sends. Keep for retargeting
+                                                                                         suppression
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE CUSTOMER RECORD, ONE REORDER CLOCK                                                                   8
+ STAGE            ENTRY CRITERIA                   EXIT CRITERIA          OWNER       SYSTEM ACTIONS ON ENTRY
+
+ S8 Fix-first      complaint_open = true           CX closes the          CX          Pause every marketing flow immediately.
+                  from any source                  ticket with a                      Replacement or refund SLA timer starts. On
+                                                   resolution code                    close: 7-day cooling period, then resume
+                                                                                      the stage the customer was in, with the
+                                                                                      reorder clock reset to the replacement
+                                                                                      delivery date
+ S9               Review with 4 or 5 stars,        Ongoing                Marketing   Add to advocate list. First look at new
+ Advocate         or a referral that                                                  launches. Referral link in every message
+                  converted, or consented                                             footer
+                  before-and-after
+
+
+SLA summary for the stage document: S2 → dispatch 24 hours. S8 → first reply 2 hours, replacement
+48 hours. S4 scored ≥ 60 → human contact 4 business hours. Every stage transition is written to the
+customer record with a timestamp so the weekly dashboard can compute time in stage.
+
+B. REORDER-READINESS SCORE SPECIFICATION
+Scale 0 to 100. Recomputed nightly for every customer in S3, S4 and S7. Weight is 45% fit, 55%
+engagement, because what the customer bought tells us the size of the reorder and what they did
+since tells us the timing.
+Fit (what they bought, maximum 45)
+ ATTRIBUTE                                                                                                   POINTS
+
+ Last SKU is a hero concern product: Hair Growth Intensive Serum, Anti-Hair Fall Intensive                   +20
+ Shampoo, Anti-Dandruff Shampoo, Anti-Grey Serum
+ Last SKU is MitoActive (₹1,499)                                                                             +25 (replaces the
+                                                                                                             +20 above)
+ Last order was a combo or pack (Anti-Hair Fall S+C ₹638, Shampoo + Growth Serum ₹838,                       +10
+ Hair Growth Trio ₹1,201, Pack of 3 ₹999)
+ Last SKU is styling only                                                                                    +5
+ Last SKU is body or face only                                                                               0
+ First-order value ≥ ₹999 (free gift threshold)                                                              +10
+  primary_concern is hair fall or dandruff (the chronic concerns)                                            +5
+
+
+Engagement (what they did since delivery, maximum 55)
+ SIGNAL                                                                                     POINTS       DECAY
+
+ Visited the PDP of the SKU they bought, or its collection page                             +15          −5 per week
+ Added to cart, did not check out                                                           +20          −10 after 7 days
+ Opened a Day 30 or later nudge                                                             +5           none within window
+ Clicked a nudge                                                                            +10          none within window
+ Replied on WhatsApp (any text)                                                             +15          none within window
+ Left a review                                                                              +10          none
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE CUSTOMER RECORD, ONE REORDER CLOCK                                                            9
+ SIGNAL                                                                                          POINTS       DECAY
+
+ Completed the hair fall quiz or routine builder (once it exists)                                +10          none
+ Scanned the pack QR                                                                             +5           none
+
+
+Negative (blocks or reduces)
+ SIGNAL                                                                   POINTS
+
+  complaint_open = true                                                   Blocks all outreach regardless of score
+ Refund or return in the last 90 days                                     −30
+ Opted out of WhatsApp or email                                           −100 on that channel (use the other if consented)
+ Delivered fewer than 15 days ago                                         −25 (too early; the product is still in the bottle)
+ Two nudges sent in the last 10 days with no open                         −15
+
+
+Routing by score
+ SCORE       ROUTE                                                        MESSAGE
+
+ ≥ 60        Human WhatsApp from CX within 4 business                     Conversational, by name, references the SKU and the day
+             hours                                                        count
+ 35 to       Automated nudge sequence: Day 30, Day 37,                    Templates in worked example C
+ 59          Day 42
+ < 35        One Day 37 message only                                      Plain reminder with the combo link
+
+
+Three customers scored on Day 31
+ CUSTOMER (PERSONA)                             FIT       ENGAGEMENT NEGATIVE SCORE                    ROUTE
+
+ Hair-fall Rahul, 28, Bangalore. Bought         20 +      15 + 5 = 20         0             55         Automated, but flagged: one
+ Shampoo + Growth Serum combo                   10 +                                                   more click moves him to a
+ ₹838. Visited the Hair Growth                  5=                                                     human
+ collection twice this week and                 35
+ opened the Day 30 message
+ Routine Ritika, 32, Mumbai. Bought             20 +      20 + 15 = 35        0             80         Human WhatsApp within 4
+ Hair Growth Trio ₹1,201. Replied               10 +                                                   hours. Suggested close: Pack of
+ "thank you" to the first-wash check-           10 +                                                   3 at ₹999
+ in. Added Pack of 3 to cart yesterday          5=
+                                                45
+ Styling Sahil, 22, Delhi. Bought Hair          5         0                   0             5          Day 37 reminder only. Mention
+ Gel ₹269. No activity                                                                                 Texturising Spray in the same
+                                                                                                       message
+ Dandruff Divya, 24, Pune. Bought               20 +      0                   Blocked       Blocked Nothing until the replacement is
+ Anti-Dandruff S+C ₹866. Raised a               10 +                                                delivered and the ticket closes.
+ leaking-bottle complaint on Day 4,             5=                                                  Her reorder clock restarts from
+ still open                                     35                                                  the replacement delivery date
+
+
+Calibration: after 60 days of data, pull every S4 customer, compare score at Day 31 against whether
+they reordered by Day 45, and move the thresholds so that 80% of actual reorders scored at or above
+the human-contact line. Recalibrate monthly for the first quarter, then quarterly.
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE CUSTOMER RECORD, ONE REORDER CLOCK                                                                10
+C. FIVE AUTOMATIONS, WITH THE MESSAGE COPY
+Written as trigger, actions, outcome, so the team can build them in the WhatsApp provider and Shopify
+Flow without interpretation. Message templates are WhatsApp utility or marketing category as marked.
+Each stays under the provider's template length and uses one variable per line.
+Automation 1: Reorder clock set on delivery
+Trigger: Shopify order fulfilment status becomes "delivered" (courier webhook), or a pack QR
+message is received with a recognised SKU. Actions: 1. Look up days_of_supply for last_sku_id in the
+master SKU map. 2. Set reorder_due_date = delivery date + days_of_supply − 5. 3. Set
+ lifecycle_stage = S2. 4. Schedule the Day 3 first-wash message (utility). 5. Schedule the Day 21 or
+Day 45 review request by SKU type. Outcome: every identified customer has a reorder date the day
+they receive the product.
+Day 3 first-wash message (utility):
+
+   HI {{NAME}}, YOUR {{SKU_NAME}} SHOULD HAVE REACHED YOU. TWO
+   THINGS BEFORE YOUR FIRST WASH. USE IT {{USAGE_LINE}} FOR THE
+   BEST RESULT IN 84 DAYS. IF THE BOTTLE LEAKED OR THE SEAL WAS
+   BROKEN, REPLY LEAK. A NEW ONE SHIPS IN 48 HOURS, NO QUESTIONS.
+
+
+Where usage_line is per SKU: "three to four times a week" for shampoo, "twice a day on a dry scalp,
+1 ml each time" for serums.
+Automation 2: Reorder nudge sequence (score 35 to 59)
+Trigger: reorder_due_date reached, lifecycle_stage = S4, score 35 to 59, complaint_open = false.
+Actions: send Day 30, then Day 37 if no order, then Day 42 if no order. Stop on any order. Hand to
+human on any reply. Outcome: a three-touch reminder tied to the bottle running out, with the combo
+as the upgrade.
+Day 30 (marketing):
+
+   {{NAME}}, YOUR {{SKU_NAME}} IS ABOUT A WEEK FROM RUNNING OUT.
+   DAY 30 IS WHERE MOST PEOPLE SEE THE FIRST DIFFERENCE. DAY 84 IS
+   WHERE THE NUMBER ON THE PACK COMES FROM. REORDER NOW AND IT
+   REACHES YOU BEFORE THE BOTTLE DOES: {{REORDER_LINK}}
+
+
+Day 37 (marketing):
+
+   QUICK ONE. THE 84-DAY RESULT NEEDS THREE BOTTLES OF SERUM. THE
+   PACK OF 3 IS ₹999 INSTEAD OF ₹1,713. THAT IS ₹333 A BOTTLE.
+   {{PACK_LINK}} REPLY SKIP IF YOU STILL HAVE ENOUGH AND WE WILL
+   CHECK BACK IN TWO WEEKS.
+
+
+Day 42 (marketing):
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE CUSTOMER RECORD, ONE REORDER CLOCK                               11
+   LAST REMINDER FROM US ON THIS BOTTLE, {{NAME}}. IF SOMETHING DID
+   NOT WORK, REPLY AND TELL US WHAT. WE READ EVERY MESSAGE AND
+   WE WOULD RATHER FIX IT THAN SELL YOU ANOTHER ONE.
+   {{REORDER_LINK}}
+
+
+Pricing in the Day 37 message uses the sale price: 3 × ₹571 = ₹1,713 against ₹999 for the pack. For
+shampoo buyers, substitute the Anti-Hair Fall S+C combo at ₹638 against ₹359 + ₹359 = ₹718.
+Automation 3: Complaint to replacement (fix-first)
+Trigger: inbound message classified as complaint, or a reply containing LEAK, SEAL, BROKEN,
+DAMAGED, EMPTY, MISSING. Actions: 1. Set complaint_open = true. Pause every marketing flow for
+this customer. 2. Create helpdesk ticket with order number, SKU, batch (from order), channel, photo if
+attached. 3. Auto-reply (utility) within 1 minute acknowledging and asking for one thing only: the
+delivery address confirmation. 4. Create task for ops: "Replacement for {{order_no}}" due in 48 hours.
+5. On dispatch, send tracking (utility). On delivery, close ticket with resolution code, set
+ complaint_open = false, start 7-day cooling period, reset reorder clock. 6. Weekly: ops lead receives a
+leak report by SKU and batch. Outcome: the most common negative review theme becomes a 48-hour
+promise, and no nudge ever lands on an unhappy customer.
+Acknowledgement (utility):
+
+   WE ARE SORRY ABOUT THAT, {{NAME}}. A REPLACEMENT {{SKU_NAME}}
+   IS ON US. CONFIRM THE DELIVERY ADDRESS IS STILL {{ADDRESS_LINE}}
+   AND WE WILL SHIP WITHIN 48 HOURS. REPLY YES OR SEND THE NEW
+   ADDRESS.
+
+
+Automation 4: High-score handoff to human
+Trigger: nightly score ≥ 60 and lifecycle_stage = S4 or S7. Actions: 1. Assign to the next available CX
+agent (round-robin, skip agents off shift). 2. Create task "Reorder conversation: {{name}},
+{{sku_name}}, Day {{day_count}}, score {{score}}" due in 4 business hours. 3. Post context card to the
+CX channel: last SKU, order value, pages visited, last reply text, suggested next product (combo for
+single-SKU buyers, Pack of 3 for serum repeaters, MitoActive for S6 customers on the Intensive
+Serum). 4. If no activity logged in 4 hours, alert CX lead. If none in 8 hours, reassign. Outcome: the
+customers most likely to reorder get a person, and the person has the context.
+Suggested opening for the agent (edited per customer, never sent as a template):
+
+   HI RITIKA, THIS IS PRIYA FROM ARATA. YOU ARE ON DAY 31 WITH THE
+   HAIR GROWTH TRIO. I SAW YOU WERE LOOKING AT THE PACK OF 3. WANT
+   ME TO SEND YOU THE LINK, OR DO YOU HAVE A QUESTION ABOUT THE
+   SERUM FIRST?
+
+
+Automation 5: Pack QR bridge
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE CUSTOMER RECORD, ONE REORDER CLOCK                               12
+Trigger: WhatsApp message received matching "Hi Arata, I bought {{sku}} on {{channel}}". Actions: 1.
+Find or create Shopify customer on the phone key. Do not create a duplicate if the phone exists. 2. Set
+ acquisition_channel to the stated channel if the record is new; keep the original if it exists. 3. Set
+ last_sku_id and run Automation 1 with delivery date = today. 4. Reply (utility) with the routine guide
+link and the replacement promise. 5. Tag the record bridge_scan for the marketing dashboard.
+Outcome: a Nykaa or Zepto buyer becomes an owned customer with a reorder date, at the cost of one
+printed QR.
+Reply (utility):
+
+   WELCOME TO ARATA, {{NAME}}. YOU ARE SET UP FOR {{SKU_NAME}}.
+   HERE IS THE 84-DAY ROUTINE FOR IT: {{GUIDE_LINK}} IF THE SEAL WAS
+   BROKEN OR THE BOTTLE LEAKED, REPLY LEAK AND WE REPLACE IT IN 48
+   HOURS.
+
+
+D. B2B PIPELINE CONFIGURATION
+One pipeline, four segments, in the B2B CRM. Stages follow the outbound shape because most B2B
+contacts never fill a form.
+ STAGE               ENTRY                               EXIT                     OWNER    REQUIRED FIELDS TO ADVANCE
+
+ Targeted            Added to a list with segment, Enrolled in a sequence or B2B           segment, city, contact role,
+                     city, verified email or phone skipped                   owner         source list, signal (what put them
+                                                                                           on the list)
+ In sequence         First touch sent                    Any reply, sequence      B2B      sequence name, channel
+                                                         finished, or opt-out     owner
+ Replied             Any human reply                     Classified within 1      B2B      reply type (positive, question, not
+                                                         business day             owner    now, no, referral)
+ Positive            Reply shows interest or asks        Sample or price sheet    B2B      what they asked for
+                     for prices or samples               sent within 2 business   owner
+                                                         days
+ Sample sent         Sample kit or price sheet           First PO, or 21 days     B2B      sample contents, dispatch date,
+                     dispatched                          silent (→ Not now)       owner    follow-up date
+ First order         PO received                         Delivered and invoiced   Ops      PO value, SKUs, trade price,
+                                                                                           payment terms, credit approval if
+                                                                                           any
+ Reordering          Second PO within 90 days            120 days without a PO    B2B      reorder cadence, monthly units
+ account                                                 (→ At risk)              owner
+ Not now             Asked to be contacted later         Reminder date reached    B2B      reminder date, reason
+                                                         (→ Targeted)             owner
+ Suppressed          Opted out, bounced,                 Never unless they opt    System   reason
+                     competitor, hostile                 back in
+
+
+Segment-specific notes. Dermatologists: the "sample sent" stage is the MitoActive sample kit plus the
+Y100 study summary; the first order is often a counter stock of 6 to 12 units (assumption). Salons: first
+order is usually the Anti-Hair Fall and Anti-Dandruff shampoos at trade price for retail shelf and
+backbar. Corporate: the "sample" is a wellness session; the order is an employee kit. Quick-commerce
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE CUSTOMER RECORD, ONE REORDER CLOCK                                                          13
+category managers: the pipeline tracks listings and placements (new city, hero tile, monsoon dandruff
+push), with "First order" meaning the listing or placement went live and "Reordering account" meaning
+a sustained PO cadence.
+Trade discount and terms approval tiers (assumptions on standard trade margins for Indian
+professional haircare; Arata finance confirms the numbers in week 1):
+ REQUEST                                                                              APPROVAL
+
+ Standard trade price, up to 30% off MRP, payment on delivery                         Auto-approved by B2B owner
+ 30% to 40% off MRP, or 15-day credit                                                 CBO
+ Above 40% off MRP, or credit beyond 30 days, or exclusivity in a city                Founder plus finance, documented with
+                                                                                      reason
+ Marketplace or quick-commerce funded promotions (Nykaa sale events,                  Finance signs the funded discount amount
+ Amazon festive events, platform-led discount days)                                   before the brand opts in
+ Free stock beyond sample kits                                                        CBO, logged against the account
+
+
+Every exception is logged with the reason. If three accounts in a quarter ask for the same exception, it
+becomes the standard.
+Pipeline hygiene rules: a deal that sits in "Positive" for 14 days, "Sample sent" for 21 days, or "First
+order" for 30 days is flagged stale and appears in the Monday digest. Stage skips (Targeted straight to
+First order) are allowed for inbound POs but flagged so the source is recorded.
+
+E. MONDAY REVENUE OPERATIONS DIGEST
+Sent 8 a.m. Monday to founders, CBO, ops lead, CX lead and the Brew deployment lead. One
+screen. Numbers filled from the dashboard; this is the template with the baseline placeholders.
+                                                                                                                        DIAGRAM
+    ARATA REVOPS DIGEST, week of {{date}}
+
+    REVENUE BY CHANNEL (week, ₹ lakh, vs prior week)
+      Website ........ {{n}} ({{+/-}}%)      Marketplaces ... {{n}} ({{+/-}}%)
+      Quick commerce . {{n}} ({{+/-}}%)      B2B ............ {{n}} units
+      Run-rate vs ₹160 Cr target: {{n}}%
+
+    LIFECYCLE (identified customers)
+      New S1 identified this week ........ {{n}}                (bridge scans: {{n}}, of which q-com {{n}})
+      Entered S4 reorder window .......... {{n}}
+      S4 → S5 repeat within 45 days ...... {{n}}%              (baseline: to be instrumented; target 36%)
+      Routine customers (S6) total ....... {{n}}
+      Fell to S7 at risk ................. {{n}}
+
+    HANDOFF SLAs
+      Dispatch ≤ 24h ..................... {{n}}%                Complaint first reply ≤ 2h ...... {{n}}%
+      Replacement ≤ 48h .................. {{n}}%                Score ≥ 60 human contact ≤ 4h ... {{n}}%
+      Leak complaints per 1,000 orders ... {{n}}                 Worst SKU/batch: {{sku}} / {{batch}}
+
+    B2B PIPELINE
+      Positive: {{n}}    Sample sent: {{n}}   First order: {{n}}   Reordering: {{n}}
+      Stale deals: {{n}}    New derm accounts: {{n}}   Q-com placements won: {{n}}
+
+    THREE THINGS TO DECIDE THIS WEEK
+      1. {{...}}
+      2. {{...}}
+      3. {{...}}
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE CUSTOMER RECORD, ONE REORDER CLOCK                                                       14
+30-DAY DEPLOYMENT
+ WEEK BREW SHIPS                                                  ARATA PROVIDES                         LIVE BY END OF WEEK
+
+ 1        Master SKU map with days of supply; identity              Access to Shopify admin,          The definitions document,
+          and dedup rule; stage definitions (worked                 WhatsApp provider, helpdesk and signed. Nothing
+          example A) signed; scoring spec (B) drafted;              OMS; one hour each with ops lead, automated yet, by design
+          routing tree and SLA table; stack audit of the            CX lead and marketing lead;
+          WhatsApp provider, email tool, OMS and                    finance confirms trade margin
+          helpdesk                                                  tiers; batch-to-order mapping
+                                                                    from the warehouse
+ 2        Six custom fields on Shopify Customers; nightly           Approval of QR placement on pack       One customer record with
+          sync job between Shopify, WhatsApp provider               and in-box card; existing B2B          stage and reorder date for
+          and email tool; helpdesk tags and complaint               contacts and PO history exported       every historical D2C
+          flag; dedup pass on the existing customer base            to the CRM; CX team briefed on         customer. B2B pipeline
+          (phone key); B2B CRM set up with pipeline                 the routing queues                     populated with existing
+          stages and required fields (D); pack QR artwork                                                  accounts
+          and WhatsApp prefilled message spec
+ 3        Automations 1, 3 and 5 live (reorder clock,               WhatsApp template approvals; ops       Every new delivery sets a
+          complaint fix-first, QR bridge); message                  lead owns the 48-hour                  reorder date. Every
+          templates submitted for WhatsApp approval;                replacement task queue; in-box         complaint pauses
+          inbound routing live in the helpdesk;                     card goes to print                     marketing and starts a
+          dashboards v1 (ops view and executive view)                                                      48-hour timer. Inbound
+                                                                                                           messages route by queue
+                                                                                                           with SLAs
+ 4        Automations 2 and 4 live (nudge sequence,                 CX agents trained on the context       Day 30, 37 and 42
+          human handoff); scoring job running nightly;              card and the opening script; B2B       nudges live. High-score
+          marketing dashboard view; first Monday digest             owner named and working the            customers reach a human
+          (E) sent; B2B discount tiers enforced in the              stale-deal list; founders attend the   within 4 business hours.
+          CRM; calibration plan for day 60                          first digest review                    Monday digest running
+
+
+Day 30 state: one record, one clock, five automations, one pipeline, one digest. The pack QR reaches
+customers as new print runs ship, so the bridge ramps over the following quarter.
+
+
+
+HOW WE MEASURE
+ METRIC                       BASELINE                           90-DAY TARGET             DECISION RULE
+
+ 45-day repeat rate           To be instrumented in week         +6 points over baseline Works: extend nudges to S7 win-back
+ (S2 → S5) on                 2 from historical Shopify                                  and launch subscribe-and-save on the
+ identified customers         data (brief benchmark:                                     Pack of 3. Does not: audit message
+                              ~26% category, 40%+                                        timing against actual bottle-empty dates
+                              routine-led)                                               from CX replies, then re-set days of
+                                                                                         supply per SKU
+ Identified-lead rate    ~8% implied (50K orders                 12% with quiz and         Works: keep. Does not: the capture
+ (S1 / monthly visitors) on 650K visits, counting                WhatsApp opt-in           surfaces are the problem, not the record
+                         checkout only)                          surfaces from the
+                                                                 other documents in
+                                                                 this series
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE CUSTOMER RECORD, ONE REORDER CLOCK                                                                15
+ METRIC                       BASELINE                           90-DAY TARGET           DECISION RULE
+
+ Bridge scans per             0                                  80 (8%) once QR is on   Works: add a second reward (first-
+ 1,000 marketplace                                               pack and card           reorder discount via the bridge). Does
+ and q-com units                                                                         not: test card copy and QR placement;
+                                                                                         move the reward above the fold of the
+                                                                                         card
+ Score ≥ 60 customers None today                                 90%                     Works: raise the human line to 55 to
+ reaching a human                                                                        widen the net. Does not: add a CX shift
+ within 4 business                                                                       or lower the line to 70
+ hours
+ Reorder rate for             None                               Human cohort at least   Works: prove the CX minutes pay; hire
+ human-contacted vs                                              1.5x automated          for it. Does not: the score is mis-
+ automated S4                                                                            weighted; recalibrate on day 60
+ customers
+ Complaint first reply        None                               90% and 95%             Works: publish the 48-hour promise on
+ ≤ 2 hours;                                                                              PDPs and packs. Does not: ops capacity
+ replacement ≤ 48                                                                        or courier choice is the limit; fix before
+ hours                                                                                   publishing
+ Leak complaints per          To be instrumented from            Down 50% from           Works: keep the batch report weekly.
+ 1,000 orders, by SKU         helpdesk history                   baseline                Does not: the packaging document in
+ and batch                                                                               this series takes over; revops keeps
+                                                                                         measuring
+ Duplicate customer           To be measured in the week Under 1%                        Works: monthly dedup. Does not: find
+ records (same phone,         2 dedup pass                                               the tool writing duplicates and fix the
+ two records)                                                                            sync
+ B2B pipeline: positive       None                               25% (assumption for     Works: scale list building. Does not:
+ reply → first order                                             sample-led derm and     sample kit or trade price is wrong;
+ conversion                                                      salon motions)          review the exception log
+ B2B stale deals as     None                                     Under 15%               Works: keep. Does not: the owner has
+ share of open pipeline                                                                  too many accounts; split by segment
+ Executive: revenue     To be instrumented                       +8 points               This is the number that says whether the
+ from identified repeat                                                                  system moved the business
+ customers as share of
+ D2C revenue
+
+
+The one decision rule above all others: if 45-day repeat on identified customers has not moved by at
+least 3 points at day 90, the stages and automations stay (they cost almost nothing to run) and the
+effort shifts entirely to the two capture surfaces, the bridge and the opt-in, because a reorder system
+can only act on customers it can see.
+
+
+
+APPENDIX
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE CUSTOMER RECORD, ONE REORDER CLOCK                                                               16
+MASTER SKU MAP (WEEK 1 DELIVERABLE, STARTING ROWS)
+                                                    SITE           MARKETPLACE NAMES            DAYS_OF_SUPPLY
+ SKU_ID       CANONICAL NAME               SIZE     PRICE          SEEN                         (ASSUMPTION)            CONCERN
+
+ HG-          MitoActive                   30 ml ₹1,499            MitoActive                   30                      hair fall
+ MITO-        Mitochondrial Hair
+ 30           Growth Serum
+ HG-          Hair Growth Intensive        30 ml ₹571              "hair growth serum", "hair   30                      hair fall
+ SER-30       Serum                                                growth tonic"
+ HG-          Hair Growth Intensive        3×    ₹999                                           90                      hair fall
+ SER-3X       Serum Pack of 3              30 ml
+ HG-          Anti-Hair Fall               200      ₹359           "anti hair fall shampoo",    35                      hair fall
+ SHP-         Intensive Shampoo            ml                      "onion shampoo" (legacy)
+ 200
+ HG-          Anti-Breakage                200      ₹359                                        40                      hair fall
+ CND-         Intensive Conditioner        ml
+ 200
+ AD-          Anti-Dandruff                200      ₹404                                        35                      dandruff
+ SHP-         Shampoo                      ml
+ 200
+ AD-          Anti-Dandruff                200      ₹449                                        40                      dandruff
+ CND-         Conditioner                  ml
+ 200
+ AD-          Anti-Dandruff Serum          30 ml ₹299                                           30                      dandruff
+ SER-30       (leave-on)
+ DD-          Damage Defence               200      ₹395           "Super Shampoo" 300 ml       35                      damage
+ SHP-         Super Shampoo                ml                      ₹764 on Nykaa (legacy,
+ 200                                                               biotin)
+ AG-          Anti-Grey Hair Serum         30 ml ₹449                                           30                      grey
+ SER-30
+ ST-GEL- Hair Gel                          100      ₹269 to                                     60                      styling
+ 100                                       ml       ₹699
+                                                    range
+ TL-    Scalp massager                              ₹199                                        n/a (no clock)          tool
+ MSG-01
+
+
+Legacy Curl Care SKUs get IDs with a LEG- prefix and no reorder clock, so they stop appearing in the
+science-positioned flows.
+
+COMPLAINT RESOLUTION CODES
+ CODE           MEANING                                     ACTION ON CLOSE
+
+ LEAK-01        Bottle leaked in transit                    Replacement shipped; batch logged
+ SEAL-01        Seal broken or missing                      Replacement shipped; batch logged
+ BOX-01         Outer box missing or damaged                Apology plus voucher if product intact
+ MISS-01        Item missing from order                     Replacement shipped
+ EFF-01         "Did not work" after full course            Human conversation; route to product advisor; refund per policy
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE CUSTOMER RECORD, ONE REORDER CLOCK                                                             17
+ CODE           MEANING                                    ACTION ON CLOSE
+
+ DEL-01         Delivery delayed beyond 7 days             Courier escalation; voucher
+
+
+SOURCES USED BEYOND THE BRAND BRIEF
+Meta WhatsApp Business per-message pricing for India (marketing and utility categories, effective
+July 2025), as summarised by provider documentation. Rates stated in this document are approximate
+and should be confirmed with Arata's WhatsApp provider.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE CUSTOMER RECORD, ONE REORDER CLOCK                          18
+REVENUE OPERATIONS
+
+
+DAY 30
+AT ARATA
+   WHAT IS LIVE
+
+   Every D2C customer sits in one record with a lifecycle stage and a reorder date,
+   complaints block marketing and trigger a 48-hour replacement, the Day 30 and
+   Day 42 WhatsApp nudges are live, and the first B2B pipeline exists with stages,
+   owners and SLAs.
+
+
+
+
+ NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+ BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+ CONFIRM".
+
+
+ EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+ BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                  DEPLOYMENT TEAM
+                                                                               BREW
+

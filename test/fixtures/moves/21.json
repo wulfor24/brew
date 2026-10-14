@@ -1,0 +1,1341 @@
+{
+  "n": 21,
+  "group": "reach",
+  "skill": "ad-creative",
+  "kicker": "AD CREATIVE",
+  "title": "Hair fall ad creative for Meta",
+  "stat": "40 ads",
+  "statLabel": "Live in the first 30 days",
+  "gives": "A grounded creative system for Arata: which ads to make, in what order, with finished copy and scripts for the hair fall core and the MitoActive launch.",
+  "live": "Arata has a 40-concept creative portfolio live on Meta, Google and YouTube, every concept traced to a real review or claim, with a hook-level diagnostic running weekly and a monthly retro feeding the next slate.",
+  "sections": [
+    {
+      "h": "Why this matters for Arata",
+      "kind": "why",
+      "blocks": [
+        {
+          "t": "p",
+          "text": "Arata is the only brand in the ₹400 to ₹700 hair fall band that puts a study number on every bottle. 7.4X. 28,200. 95%. 86%. 87%. That is a creative asset most D2C haircare brands would pay a lot to own. Today it lives on the pack and on the product page. It does not yet run the ad account."
+        },
+        {
+          "t": "p",
+          "text": "What we see in the brand's paid creative is a split personality. The culture work is strong: the Samay Raina mock podcast was built for recall, and the founders say so plainly. But recall ads do not sell a ₹571 serum to a 28-year-old in Bangalore who has already burned ₹3,000 on onion shampoo and biotin gummies. He needs a number, a timeline and a reason to believe. The brief tells us he is \"sceptical from being burned by claims\". The ad has to do the convincing before the landing page gets a chance."
+        },
+        {
+          "t": "p",
+          "text": "The gap costs Arata in three places. First, MitoActive launched in August at ₹1,499 with zero reviews. A product with a new mechanism (mitochondrial function, Y100) needs education before it sells, and nothing in the current creative mix teaches it. Second, 68% of revenue sits on marketplaces and quick commerce, where Arata pays rent on every order. The ad account is the main lever to grow the 32% that runs through arata.in. Third, with ~650K monthly visits growing 42% month on month, creative fatigue is the next wall. A brand growing that fast burns through audiences and needs a creative pipeline, with a retro loop, rather than a campaign at a time."
+        },
+        {
+          "t": "p",
+          "text": "The opportunity is simple to state. Arata has 2,248 on-site reviews and 2,435 Nykaa ratings full of verbatim customer language, six claims that are defensible, and two founders with a real origin story. That is a complete grounded inputs corpus. Most brands have to go and build one. Arata only has to use it."
+        },
+        {
+          "t": "p",
+          "text": "This document gives Arata the creative strategy loop, the format portfolio, the hook matrix and the first month of finished assets."
+        }
+      ]
+    },
+    {
+      "h": "What we found",
+      "kind": "found",
+      "blocks": [
+        {
+          "t": "h3",
+          "text": "The three signals, read for Arata"
+        },
+        {
+          "t": "p",
+          "text": "Creative direction comes from three independent sources. Here is what each one says about Arata today."
+        },
+        {
+          "t": "table",
+          "head": [
+            "Signal",
+            "What we found",
+            "Source",
+            "Confidence"
+          ],
+          "rows": [
+            [
+              "Account performance",
+              "No creative-level data shared yet. We treat the core hair fall lane as scaling state (the Intensive Serum has 474 reviews and a 49%-off pack of 3, which tells us it already sells) and MitoActive as exploration state (zero reviews, no proven angle).",
+              "Brief; assumption",
+              "Medium"
+            ],
+            [
+              "Customer language",
+              "Reviews use \"hair fall\" and \"hairfall\" far more than \"hair loss\". The praise clusters on three ideas: it works, it is affordable, and there is no residue or stiffness. The complaints cluster on packaging (leaks, broken seals, missing box) and price for younger buyers.",
+              "Loox and Nykaa verbatims in the brief",
+              "High"
+            ],
+            [
+              "External organic",
+              "Competitor creative is ingredient-led (Pilgrim's Redensyl 3% + Anagain 4%, Minimalist's 18% actives) or diagnosis-led (Traya's free hair test, 5-month money-back). Nobody in the ₹400 to ₹700 band leads with a study outcome and a day count.",
+              "Brief competitive section",
+              "High"
+            ]
+          ]
+        },
+        {
+          "t": "p",
+          "text": "The verbatim bank we will build creative from:"
+        },
+        {
+          "t": "table",
+          "head": [
+            "Theme",
+            "Verbatim",
+            "Use in"
+          ],
+          "rows": [
+            [
+              "Works + affordable",
+              "\"Arata is amazing cz its affordable and actually works\"",
+              "Headline Statement, Review Card (the one golden nugget)"
+            ],
+            [
+              "Visible result",
+              "\"Hair fall reduced drastically\" / \"I can see a visible difference in two weeks\"",
+              "Hook spoken lines, WhatsApp chat reveal"
+            ],
+            [
+              "Styling",
+              "\"without any sticky residue or stiffness\" / \"lasts upto 8+ hours\"",
+              "Styling lane callouts"
+            ],
+            [
+              "Scalp clean",
+              "\"Foams well and cleans my scalp off dirt and excess oil\"",
+              "Shampoo FAQ card"
+            ],
+            [
+              "Price objection",
+              "\"a bit expensive in comparison to other competitive haircare lines\" / \"on pricier side for a teenager like me\"",
+              "FAQ card, ₹50 a day math"
+            ],
+            [
+              "Packaging objection",
+              "\"the seal was broken\" / \"the shampoo bottle was leaking\"",
+              "FAQ card with replacement promise"
+            ],
+            [
+              "Problem words",
+              "\"hair fall\", \"hairfall\", \"hair thinning\", \"itching problem\", \"frizzy and dry\"",
+              "Captions and Google headlines"
+            ]
+          ]
+        },
+        {
+          "t": "h3",
+          "text": "Format tier map, applied to Arata"
+        },
+        {
+          "t": "p",
+          "text": "The format taxonomy ranks ad formats on one question: does this format open cold, net-new audiences (a unicorn scaler) or does it convert people already mid-funnel (supporting cast)? Here is where Arata's options land."
+        },
+        {
+          "t": "table",
+          "head": [
+            "Format",
+            "Tier",
+            "Role",
+            "Arata fit",
+            "Verdict"
+          ],
+          "rows": [
+            [
+              "Founder content",
+              "S",
+              "Cold scaler",
+              "Two college friends, a flaxseed gel in 2017, a move from \"zero chemicals\" to a Delhi lab with a number on every bottle. A real story with a real turn.",
+              "Make first"
+            ],
+            [
+              "Partnership ads (creator whitelisting)",
+              "S",
+              "Cold scaler",
+              "Arata already works with creators. Running ads from creator handles reaches hair fall personas natively.",
+              "Make in week 2"
+            ],
+            [
+              "VSL",
+              "S",
+              "Cold scaler, educates",
+              "MitoActive needs the mechanism explained before ₹1,499 feels fair. The 60 to 90 second video is the whole MitoActive launch ad.",
+              "Make in week 2"
+            ],
+            [
+              "Authority (derm or trichologist)",
+              "A",
+              "Cold scaler",
+              "Trust-gated category. \"Dermatologically tested\" is on the pack. A real trichologist explaining anagen/telogen ratio gives Clinical Kavya her permission.",
+              "Make in week 3"
+            ],
+            [
+              "Grid static (multi-SKU)",
+              "A",
+              "Cold scaler",
+              "The Hair Growth Trio at ₹1,201 and the Anti-Dandruff S+C at ₹866 are grid-ready. Lets cold viewers self-select their concern.",
+              "Make in week 1"
+            ],
+            [
+              "Amateur investigation",
+              "A",
+              "Cold scaler",
+              "A creator tests \"does a hair fall serum with a number beat the onion shampoo I already own\". Arata wins on comparison.",
+              "Icebox, month 2"
+            ],
+            [
+              "FAQ card (objection handling)",
+              "B",
+              "Supporting cast",
+              "Four objections with real answers: ₹1,499, \"another Redensyl serum\", \"forever use\", leaks.",
+              "Make in week 1"
+            ],
+            [
+              "Us vs them",
+              "B",
+              "Supporting cast",
+              "Traya's ₹1,400 to ₹1,800 a month, doctor calls and minoxidil, against one ₹571 serum.",
+              "Make in week 1"
+            ],
+            [
+              "Educational infographic",
+              "B",
+              "Supporting cast",
+              "\"What 84 days means\" and \"why anagen/telogen ratio matters\" as teaching frames.",
+              "Make in week 2"
+            ],
+            [
+              "Callout / Ingredient Spotlight",
+              "B",
+              "Supporting cast",
+              "MitoActive bottle with Y100, 87%, 84 days, dermatologically tested, 30 ml callouts.",
+              "Make in week 1"
+            ],
+            [
+              "Before / after",
+              "B",
+              "Supporting cast",
+              "Meta's personal health policy restricts before/after imagery that implies unexpected results. We do progression framing with text, never crown photos.",
+              "Restricted, text only"
+            ],
+            [
+              "Celebrity (Samay Raina cut-downs)",
+              "C",
+              "Situational",
+              "Great for recall. Weak as a direct-response scaler. Keep as a retargeting warm-up only.",
+              "Retargeting only"
+            ],
+            [
+              "Review card / testimonial stack",
+              "E",
+              "Decayed",
+              "One golden nugget exists (\"affordable and actually works\"). Use it once, in one card.",
+              "One card"
+            ],
+            [
+              "Notes-app and fake-native UI",
+              "F",
+              "Skip",
+              "Everyone stops, nobody qualifies.",
+              "Skip"
+            ],
+            [
+              "Press logo wall",
+              "F",
+              "Skip",
+              "Rights exposure, no lift.",
+              "Skip"
+            ]
+          ]
+        },
+        {
+          "t": "h3",
+          "text": "Evidence-ranked concept icebox"
+        },
+        {
+          "t": "p",
+          "text": "A concept is one testable hypothesis: segment × motivation × angle × format, with its evidence attached. Ranked by evidence tier (1 is strongest, 6 is a hunch)."
+        },
+        {
+          "t": "table",
+          "head": [
+            "#",
+            "Concept",
+            "Segment",
+            "Evidence tier",
+            "Source"
+          ],
+          "rows": [
+            [
+              "C1",
+              "\"84 days, one number\" Intensive Serum routine static + video",
+              "Hair-fall Rahul",
+              "2",
+              "474 reviews on the serum; \"hair fall reduced drastically\""
+            ],
+            [
+              "C2",
+              "Founder message: from flaxseed gel to a lab with numbers",
+              "All hair fall cold",
+              "2",
+              "Founding story in brief; S-tier format"
+            ],
+            [
+              "C3",
+              "MitoActive VSL: why hair follicles slow down and what Y100 does",
+              "Clinical Kavya, Rahul upgrade",
+              "3",
+              "Y100 study claims; competitor VSLs in health categories run long"
+            ],
+            [
+              "C4",
+              "FAQ: \"₹1,499 for 30 ml?\" answered with ₹50 a day vs Traya",
+              "MitoActive considerers",
+              "2",
+              "Price objection verbatim; Traya pricing"
+            ],
+            [
+              "C5",
+              "Us vs them: Traya kit vs one serum",
+              "Switchers from diagnosis platforms",
+              "2",
+              "\"Traya is expensive and exhausting\" push language"
+            ],
+            [
+              "C6",
+              "WhatsApp chat reveal: pack of 3, day 84 done",
+              "Rahul, 22 to 30",
+              "4",
+              "Chat reveal format performing on Meta in other categories; adapted to the Indian surface"
+            ],
+            [
+              "C7",
+              "Grid: Hair Growth Trio ₹1,201 and the full system",
+              "Routine Ritika",
+              "2",
+              "\"Build a simple routine I can repeat monthly\" JTBD"
+            ],
+            [
+              "C8",
+              "Dandruff: \"flakes on black clothes\" one-wash static",
+              "Dandruff Divya",
+              "2",
+              "95% fungus claim; \"itching problem\" verbatim"
+            ],
+            [
+              "C9",
+              "Authority: trichologist on anagen/telogen ratio",
+              "Clinical Kavya",
+              "3",
+              "Derm-respectable positioning; A-tier format"
+            ],
+            [
+              "C10",
+              "Styling: \"survives the metro\" 72-hour hold",
+              "Styling Sahil",
+              "2",
+              "\"without any sticky residue\", \"lasts upto 8+ hours\""
+            ],
+            [
+              "C11",
+              "Creator investigation: serum with a number vs my onion shampoo",
+              "Rahul",
+              "4",
+              "Push language on onion products; A-tier format"
+            ],
+            [
+              "C12",
+              "Post-partum shedding routine",
+              "Routine Ritika",
+              "5",
+              "Use case in brief, no verbatim yet"
+            ]
+          ]
+        },
+        {
+          "t": "h3",
+          "text": "Hook matrix"
+        },
+        {
+          "t": "p",
+          "text": "A hook is three components that must never repeat each other: what is on screen, what is said, and what the caption reads. Eight cells across the matrix, so coverage is visible."
+        },
+        {
+          "t": "table",
+          "head": [
+            "#",
+            "Segment",
+            "Motivation (source)",
+            "Format",
+            "Visual action (0 to 3s)",
+            "Spoken line",
+            "Caption"
+          ],
+          "rows": [
+            [
+              "H1",
+              "Rahul, 28, crown thinning",
+              "\"Will I waste another ₹600?\" (anxiety, brief)",
+              "Founder to camera",
+              "Dhruv holding the 2017 flaxseed gel next to the 2026 serum",
+              "\"We sold a hair gel for five years before we put a number on anything.\"",
+              "from \"zero chemicals\" to 28,200"
+            ],
+            [
+              "H2",
+              "Rahul",
+              "\"hair fall reduced drastically\" (review)",
+              "Creator yapper, bathroom",
+              "Creator picks a single hair off a white pillow, holds it up",
+              "\"Day 84. This is the morning count.\"",
+              "the 84-day serum, ₹571"
+            ],
+            [
+              "H3",
+              "Traya switcher",
+              "\"expensive and exhausting\" (push, brief)",
+              "Text-on-screen static",
+              "Two columns: a monthly kit box vs one 30 ml bottle",
+              "(none, static)",
+              "₹1,500 a month for 5 months, or ₹571 once"
+            ],
+            [
+              "H4",
+              "Clinical Kavya",
+              "\"Is this just another Redensyl serum?\" (objection)",
+              "Authority, trichologist",
+              "Trichologist draws a hair cycle on a whiteboard",
+              "\"Every serum you've tried works on the follicle. This one works on the cell that powers it.\"",
+              "Y100. India's first mitochondrial serum."
+            ],
+            [
+              "H5",
+              "Divya, dandruff",
+              "\"flakes on black clothes\" (persona)",
+              "Creator, office mirror",
+              "Brushing shoulders of a black kurta before a meeting",
+              "\"One wash. I checked the shoulders at 6pm.\"",
+              "95% of the fungus in one wash"
+            ],
+            [
+              "H6",
+              "Ritika, new mom",
+              "\"one cart that handles it\" (persona)",
+              "Grid static",
+              "Three bottles in a row, one price",
+              "(none)",
+              "Shampoo, serum, conditioner. ₹1,201. Done."
+            ],
+            [
+              "H7",
+              "Sahil, 22",
+              "\"lasts upto 8+ hours\" (review)",
+              "Reaction + demo hard cut",
+              "Creator steps out of a Delhi metro at 7pm, hair still set",
+              "\"Rajiv Chowk to Hauz Khas. Zero crunch.\"",
+              "72-hour hold, ₹300"
+            ],
+            [
+              "H8",
+              "Rahul, price-sensitive",
+              "\"on pricier side for a teenager like me\" (review)",
+              "FAQ static",
+              "Calculator on a phone showing 1499 ÷ 30",
+              "(none)",
+              "₹50 a day. One month. Twice a day."
+            ]
+          ]
+        },
+        {
+          "t": "h3",
+          "text": "Compliance guardrails for hair claims"
+        },
+        {
+          "t": "p",
+          "text": "Hair growth is a regulated claim space in India and a restricted one on Meta. Three rules apply to every concept in this document."
+        },
+        {
+          "t": "list",
+          "items": [
+            "Every number carries its qualifier. \"Up to 28,200 new hairs within 84 days\" always includes \"up to\" and \"84 days\". \"87% saw increased growth\" includes \"in 84 days\". The words \"regrow\", \"cure\" and \"100%\" do not appear anywhere.",
+            "No before/after scalp photos in paid. Meta's personal health and appearance policy restricts imagery that implies unexpected results or triggers negative self-perception. We use text-based progression (\"day 1 → day 84\"), bottle counts and pillow shots. Crown close-ups and bald-patch zooms stay out.",
+            "Advertising standards complaints against hair growth ads are upheld often. We keep the study design one tap away (Lab Notes explainer) and mirror the pack language exactly, so the ad never claims more than the bottle does."
+          ],
+          "ordered": true
+        }
+      ]
+    },
+    {
+      "h": "The plan",
+      "kind": "plan",
+      "blocks": [
+        {
+          "t": "h3",
+          "text": "The portfolio"
+        },
+        {
+          "t": "diagram",
+          "text": "               COLD (net-new reach)              WARM / MID-FUNNEL (convert)\n          ┌──────────────────────────┐      ┌──────────────────────────────┐\nLane A    │ Founder message (S)      │      │ FAQ cards x4 (B)             │\nHair fall │ Creator partnership (S) │ ───> │ Us vs them: Traya (B)         │\ncore      │ Grid: the routine (A)    │      │ WhatsApp chat reveal         │\n₹359/₹571 │ Yapper: day 84 (A)       │      │ Review card: golden nugget   │\n          └──────────────────────────┘      └──────────────────────────────┘\n          ┌──────────────────────────┐      ┌──────────────────────────────┐\nLane B    │ VSL: the mechanism (S)   │      │ Callout: the bottle (B)      │\nMitoActive│ Authority: trichologist │ ───> │ FAQ: ₹1,499 → ₹50 a day (B) │\n₹1,499    │ Educational infographic │       │ Upgrade from Intensive Serum │\n          └──────────────────────────┘      └──────────────────────────────┘\n          ┌──────────────────────────┐      ┌──────────────────────────────┐\nLane C    │ Creator: one wash (A)    │      │ Dandruff S+C combo ₹866      │\nDandruff │ Metro hold demo (A)       │ ───> │ Styling: 8+ hours callout    │\n+ Styling │                          │      │                              │\n          └──────────────────────────┘      └──────────────────────────────┘"
+        },
+        {
+          "t": "p",
+          "text": "Three lanes, two funnel roles each. The cold column is where the money goes to find new people. The warm column is where the objections get answered. We never ask a supporting-cast format to scale cold, and we never judge a cold scaler by its retargeting ROAS."
+        },
+        {
+          "t": "h3",
+          "text": "Lane priorities and account state"
+        },
+        {
+          "t": "table",
+          "head": [
+            "Lane",
+            "Account state",
+            "Creative mix",
+            "Why"
+          ],
+          "rows": [
+            [
+              "A: Hair fall core (Intensive Serum ₹571, Anti-Hair Fall Shampoo ₹359, Pack of 3 ₹999)",
+              "Scaling (assumption: these already sell)",
+              "60% winner-led variations of the \"84 days, one number\" concept, 25% remix (new tone, same message), 15% exploration",
+              "Go deep while the window is open. Visually distinct variations, never near-duplicates."
+            ],
+            [
+              "B: MitoActive (₹1,499)",
+              "Exploration",
+              "80% net-new concepts across mechanism, price math, authority, upgrade path. 20% iteration on any single-metric hit.",
+              "Nothing is proven yet. Wide beats deep. A hold-rate lift on one VSL cut is a win worth pulling on."
+            ],
+            [
+              "C: Dandruff and styling",
+              "Scaling light",
+              "50/50 proven routine statics and creator demos",
+              "Styling combos are the most-reviewed on Loox. Dandruff has the cleanest one-wash claim."
+            ]
+          ]
+        },
+        {
+          "t": "p",
+          "text": "Budget split by lane is an assumption until Arata shares the account: 55% Lane A, 30% Lane B, 15% Lane C in month 1, then re-split at the retro."
+        },
+        {
+          "t": "h3",
+          "text": "Production tiers and capacity"
+        },
+        {
+          "t": "p",
+          "text": "We roadmap to capacity, by evidence rank. Month 1 slate: 40 concepts."
+        },
+        {
+          "t": "table",
+          "head": [
+            "Tier",
+            "Cost",
+            "Month 1 count",
+            "What"
+          ],
+          "rows": [
+            [
+              "T1 Iteration",
+              "Hours",
+              "16",
+              "New hook, crop or caption on an existing asset (Samay cut-downs, existing product photography, re-captioned creator clips)"
+            ],
+            [
+              "T2 Remix",
+              "Days",
+              "18",
+              "Statics from the template library using Arata's own product photography; faceless motion explainer for MitoActive; WhatsApp chat reveal; infographic"
+            ],
+            [
+              "T3 Production",
+              "Weeks",
+              "6",
+              "Founder shoot (one day, three structures), trichologist authority shoot, two creator partnership videos, one amateur investigation"
+            ]
+          ]
+        },
+        {
+          "t": "p",
+          "text": "The fidelity ladder runs one way. The chat reveal and the \"₹50 a day\" math ship as cheap statics first. If either shows a thumbstop or hold-rate signal, it earns a creator version in month 2. The founder shoot is the exception: founder content is the most reliable first winner at any production level, so it goes straight to T3."
+        },
+        {
+          "t": "h3",
+          "text": "Platform cascade"
+        },
+        {
+          "t": "p",
+          "text": "We write the tightest version first and expand outward."
+        },
+        {
+          "t": "diagram",
+          "text": "Google RSA headline (30 chars)               \"Up to 28,200 New Hairs\"\n        │\n        ▼\nMeta headline (40 chars)                     \"Up to 28,200 new hairs in 84 days\"\n        │\n        ▼\nMeta primary text (125 visible)              \"Hair fall is a 2 to 3 month problem. So we\n                                              measured ours over 84 days. Up to 28,200 new\n                                              hairs, in a consumer study. ₹571.\"\n        │\n        ▼\nYouTube Shorts / Reels caption              Same claim, 720×1200 safe band, white fill +\n                                             black stroke, static captions"
+        },
+        {
+          "t": "h3",
+          "text": "The grounded inputs corpus for Arata"
+        },
+        {
+          "t": "p",
+          "text": "Every concept traces to a source. Week 1 sets up the corpus so the pipeline never runs on guesses."
+        },
+        {
+          "t": "diagram",
+          "text": "inputs/\n  winning-ads/         Top 10 to 20 Arata ads from the last 90 days (Arata to export)\n  reviews/             100 reviews: 50 Loox (arata.in), 30 Nykaa, 20 Amazon.in\n  comments/            Every comment under Arata's last 30 paid posts, tagged\n                       objection / praise / question\nbrand/                 Rebrand palette, lab-blue, logo SVG, pack shots per SKU, claims\n                       sheet with study design per number\noutputs/               Dated batch folders with INDEX.md per batch\nroadmap.md             Icebox, this quarter, this month\nretros/                One file per month"
+        },
+        {
+          "t": "p",
+          "text": "The comments folder is the one most brands skip and the one that matters most. The \"is this just another Redensyl serum?\" objection will show up there before it shows up in a survey."
+        },
+        {
+          "t": "h3",
+          "text": "The monthly loop"
+        },
+        {
+          "t": "diagram",
+          "text": "Week 1   Monthly deep dive (90 min): account + reviews + organic → icebox update\nWeek 1   Slate: 40 concepts, evidence rank, production tier, owner\nWeeks 1-4 Produce → ship → read the diagnostic funnel per concept\nEvery Monday 20-min refresh: new winners, new losers, new review themes\nDay 30   Retro: winners (why), losers (where in the funnel), metric wins,\n         learnings → icebox, kills, next slate draft"
+        },
+        {
+          "t": "h3",
+          "text": "How we read an underperformer"
+        },
+        {
+          "t": "p",
+          "text": "We never scrap a whole ad. We read the funnel and fix one component."
+        },
+        {
+          "t": "table",
+          "head": [
+            "Stage",
+            "Metric",
+            "If weak, fix",
+            "Arata example"
+          ],
+          "rows": [
+            [
+              "Stop",
+              "3-second view rate",
+              "The visual opening",
+              "Swap the bottle shot for the pillow shot, keep everything else"
+            ],
+            [
+              "Stay",
+              "Hold rate 3s → 15s",
+              "The on-ramp",
+              "The VSL hook promises \"why follicles slow down\"; seconds 3 to 15 must start explaining, never cut to the bottle"
+            ],
+            [
+              "Click",
+              "CTR",
+              "Offer clarity",
+              "Add the ₹999 pack-of-3 price to the caption"
+            ],
+            [
+              "Convert",
+              "CVR post-click",
+              "Page congruence",
+              "An ad that says 84 days must land on a page that says 84 days, with the study one tap away"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "h": "Worked examples",
+      "kind": "examples",
+      "blocks": [
+        {
+          "t": "p",
+          "text": "Six finished assets. Every claim is from the brief. Where a line is a dramatization, it is labelled."
+        },
+        {
+          "t": "h3",
+          "text": "Example 1: Founder message static (S-tier, Lane A cold)"
+        },
+        {
+          "t": "p",
+          "text": "**Template:** Founder Message, note-style, no product glamour shot. Dhruv Madhok's photo, plain type, lab-blue rule at the bottom."
+        },
+        {
+          "t": "p",
+          "text": "**Headline:** We sold a hair gel for five years before we put a number on anything."
+        },
+        {
+          "t": "p",
+          "text": "**Body:**"
+        },
+        {
+          "t": "example",
+          "body": "I'M DHRUV. MY COLLEGE FRIEND DHRUV AND I STARTED ARATA IN 2017 WITH A FLAXSEED HAIR GEL AND THE WORDS \"ZERO CHEMICALS\" ON THE LABEL.\n\nIT SOLD. BUT EVERY TIME SOMEONE ASKED \"DOES YOUR HAIR FALL SHAMPOO ACTUALLY WORK?\" WE HAD A STORY AND NO ANSWER.\n\nSO WE BUILT AN R&D AND QC LAB IN DELHI AND STARTED TESTING. NOW EVERY BOTTLE CARRIES A NUMBER FROM A STUDY. 7.4X LESS HAIR FALL. UP TO 28,200 NEW HAIRS IN 84 DAYS. 95% OF DANDRUFF FUNGUS GONE IN ONE WASH.\n\nGOOD SCIENCE FOR GREAT HAIR. ZERO GUESSWORK.\n\nDHRUV"
+        },
+        {
+          "t": "p",
+          "text": "**Visual:** Off-white ground, the note in a plain serif, Dhruv's portrait top-left at passport size, the two bottles (2017 gel, 2026 serum) small at the bottom-right. Headline occupies 55% of the frame. Checked at mobile feed size."
+        },
+        {
+          "t": "p",
+          "text": "**Meta headline:** From \"zero chemicals\" to 28,200 (32) **Meta description:** Tested in our Delhi lab (23)\n**CTA:** Shop the hair fall routine"
+        },
+        {
+          "t": "p",
+          "text": "**Grounded in:** Founding story and brand lines in the brief. Draft for founder sign-off; every sentence gets checked against the real timeline before it runs. The format collapses if any line is invented."
+        },
+        {
+          "t": "h3",
+          "text": "Example 2: Meta ad set, Hair Growth Intensive Serum (Lane A, three angles)"
+        },
+        {
+          "t": "p",
+          "text": "**Angle A: Outcome with a timeline**"
+        },
+        {
+          "t": "p",
+          "text": "Primary text (hook in the first 125 characters):"
+        },
+        {
+          "t": "example",
+          "body": "HAIR FALL IS A 2 TO 3 MONTH PROBLEM. SO WE MEASURED OURS OVER 84 DAYS. UP TO 28,200 NEW HAIRS, IN A CONSUMER STUDY. ₹571.\n\nTHE HAIR GROWTH INTENSIVE SERUM GOES ON THE SCALP, WHERE THE FOLLICLE IS. MADE FOR INDIAN HAIR, TESTED FOR INDIAN WATER AND HEAT. 474 REVIEWS ON ARATA.IN.\n\nPACK OF 3 COVERS THE FULL 84 DAYS FOR ₹999."
+        },
+        {
+          "t": "p",
+          "text": "Headline: Up to 28,200 new hairs in 84 days (33) Description: Consumer study, 84 days (23)"
+        },
+        {
+          "t": "p",
+          "text": "**Angle B: Comparison with the diagnosis platforms**"
+        },
+        {
+          "t": "p",
+          "text": "Primary text:"
+        },
+        {
+          "t": "example",
+          "body": "A HAIR TEST, A DOCTOR CALL, SUPPLEMENTS, MINOXIDIL AND ₹1,500 A MONTH FOR FIVE MONTHS. OR ONE SERUM FOR ₹571 AND A DATE ON THE CALENDAR 84 DAYS OUT.\n\nUP TO 28,200 NEW HAIRS WITHIN 84 DAYS, IN A CONSUMER STUDY. WORKS WITHOUT MINOXIDIL. DERMATOLOGICALLY TESTED."
+        },
+        {
+          "t": "p",
+          "text": "Headline: The 84-day hair fall routine (28) Description: Free shipping above ₹299 (24)"
+        },
+        {
+          "t": "p",
+          "text": "**Angle C: The verbatim**"
+        },
+        {
+          "t": "p",
+          "text": "Primary text:"
+        },
+        {
+          "t": "example",
+          "body": "\"ARATA IS AMAZING CZ ITS AFFORDABLE AND ACTUALLY WORKS.\"\n\nTHAT IS A REAL REVIEW, SPELLING AND ALL. THE PRODUCT IS THE HAIR GROWTH INTENSIVE SERUM. UP TO 28,200 NEW HAIRS WITHIN 84 DAYS, ₹571 FOR 30 ML, OR 3 FOR ₹999."
+        },
+        {
+          "t": "p",
+          "text": "Headline: Hair fall serum, ₹571 (21) Description: Pack of 3, 49% off (18)"
+        },
+        {
+          "t": "p",
+          "text": "**Grounded in:** Serum claim, price, review count, pack-of-3 pricing and the verbatim review from the brief. Traya pricing from the brief's competitive section. The Angle C review runs only with the reviewer's permission."
+        },
+        {
+          "t": "h3",
+          "text": "Example 3: Google RSA, \"hair fall shampoo\" and \"hair growth serum\" ad group (Lane A search)"
+        },
+        {
+          "t": "p",
+          "text": "15 headlines, 30 characters max. Any three can show together, so each stands alone."
+        },
+        {
+          "t": "table",
+          "head": [
+            "#",
+            "Headline",
+            "Chars",
+            "Type"
+          ],
+          "rows": [
+            [
+              "1",
+              "Hair Fall Shampoo, 7.4X Proven",
+              "30",
+              "Keyword"
+            ],
+            [
+              "2",
+              "Hair Growth Serum, 84 Days",
+              "26",
+              "Keyword"
+            ],
+            [
+              "3",
+              "Up to 28,200 New Hairs",
+              "22",
+              "Benefit"
+            ],
+            [
+              "4",
+              "Made for Indian Hair & Water",
+              "28",
+              "Differentiator"
+            ],
+            [
+              "5",
+              "Anti-Hair Fall Shampoo ₹359",
+              "27",
+              "Keyword + price"
+            ],
+            [
+              "6",
+              "Tested in Our Delhi Lab",
+              "23",
+              "Proof"
+            ],
+            [
+              "7",
+              "2,000+ Verified Reviews",
+              "23",
+              "Social proof"
+            ],
+            [
+              "8",
+              "Free Shipping Above ₹299",
+              "24",
+              "Offer"
+            ],
+            [
+              "9",
+              "Shop the Hair Fall Routine",
+              "26",
+              "CTA"
+            ],
+            [
+              "10",
+              "Start Your 84-Day Plan",
+              "22",
+              "CTA"
+            ],
+            [
+              "11",
+              "Serum + Shampoo Combo ₹838",
+              "26",
+              "Offer"
+            ],
+            [
+              "12",
+              "Works Without Minoxidil",
+              "23",
+              "Differentiator"
+            ],
+            [
+              "13",
+              "Arata Hair & Scalp Science",
+              "26",
+              "Brand (pin position 1 if required)"
+            ],
+            [
+              "14",
+              "Pack of 3 Serums at ₹999",
+              "24",
+              "Offer"
+            ],
+            [
+              "15",
+              "Dermatologically Tested",
+              "23",
+              "Proof"
+            ]
+          ]
+        },
+        {
+          "t": "p",
+          "text": "4 descriptions, 90 characters max."
+        },
+        {
+          "t": "table",
+          "head": [
+            "#",
+            "Description",
+            "Chars"
+          ],
+          "rows": [
+            [
+              "1",
+              "Hair Growth Intensive Serum: up to 28,200 new hairs in 84 days in a consumer study. ₹571.",
+              "89"
+            ],
+            [
+              "2",
+              "Anti-Hair Fall Shampoo with Hairdian AP. 7.4X less hair fall in a strength study. ₹359.",
+              "87"
+            ],
+            [
+              "3",
+              "2,000+ reviews on arata.in. Vegan and cruelty-free. Free shipping on orders above ₹299.",
+              "87"
+            ],
+            [
+              "4",
+              "Hair fall is a 2 to 3 month problem. 84 days, one serum, one number. Serum + Shampoo ₹838.",
+              "90"
+            ]
+          ]
+        },
+        {
+          "t": "p",
+          "text": "**Display paths:** arata.in/hair-fall/serum. **Final URL:** the hair growth collection page, once the routine builder gap is fixed so the page matches the \"routine\" headlines."
+        },
+        {
+          "t": "p",
+          "text": "**Grounded in:** Catalogue prices and claims, review count, shipping threshold, all from the brief."
+        },
+        {
+          "t": "h3",
+          "text": "Example 4: MitoActive VSL script (S-tier, Lane B cold)"
+        },
+        {
+          "t": "p",
+          "text": "75 seconds, 9:16, trichologist or founder on camera with B-roll. Captions throughout, inside the 720×1200 safe band. The on-ramp extends the hook's promise; the bottle does not appear until second 35."
+        },
+        {
+          "t": "table",
+          "head": [
+            "Time",
+            "Beat",
+            "Spoken line",
+            "On screen",
+            "Caption"
+          ],
+          "rows": [
+            [
+              "0 to 3",
+              "Hook",
+              "\"Every hair fall serum you've tried works on the follicle. This one works on the cell that powers it.\"",
+              "Presenter, plain lab-blue wall, holds nothing",
+              "the cell that powers the follicle"
+            ],
+            [
+              "3 to 15",
+              "On-ramp: the mechanism",
+              "\"Each follicle runs on mitochondria. When they slow down, more hairs sit in the resting phase and fewer in the growing phase. That ratio is what you see on the pillow.\"",
+              "Simple two-state hair cycle diagram, animated",
+              "growing : resting"
+            ],
+            [
+              "15 to 28",
+              "The turn",
+              "\"Y100 is an active built over six years, with five clinical studies, to support mitochondrial function. In a study with Indian participants, it reduced shedding, improved the growing-to-resting ratio and increased density.\"",
+              "Study cards slide in one at a time",
+              "6 years · 5 studies · Indian participants"
+            ],
+            [
+              "28 to 35",
+              "Why it's new",
+              "\"It is licensed exclusively to one brand in India.\"",
+              "Presenter",
+              "India's first mitochondrial hair growth serum"
+            ],
+            [
+              "35 to 48",
+              "The product",
+              "\"MitoActive. Twice a day on the scalp, for 84 days. In the consumer study, 87% saw increased growth in 84 days, and hair fall reduced by up to 95%.\"",
+              "Bottle reveal, 30 ml, callouts",
+              "87% saw growth in 84 days"
+            ],
+            [
+              "48 to 60",
+              "The price objection",
+              "\"It is ₹1,499 for a month. That is ₹50 a day. A diagnosis kit is ₹1,400 to ₹1,800 a month for five months, with doctor calls and supplements.\"",
+              "Calculator overlay: 1499 ÷ 30 = 50",
+              "₹50 a day"
+            ],
+            [
+              "60 to 70",
+              "The honest frame",
+              "\"It is a 3-month course, then maintenance. The study design is on our Lab Notes page. Read it before you buy.\"",
+              "Lab Notes page screenshot",
+              "read the study first"
+            ],
+            [
+              "70 to 75",
+              "CTA",
+              "\"MitoActive. arata.in.\"",
+              "End card, static, logo SVG, price",
+              "MitoActive · ₹1,499 · arata.in"
+            ]
+          ]
+        },
+        {
+          "t": "p",
+          "text": "**Cut-downs:** 30-second version (beats 1, 2, 5, 8) for Reels; 15-second version (beats 1, 5, 8) for retargeting."
+        },
+        {
+          "t": "p",
+          "text": "**Grounded in:** Every Y100 and MitoActive claim from the brief's proof points and objections table. ₹50 a day is ₹1,499 ÷ 30. \"Twice a day\" per the objections table. Route through legal before the authority version runs."
+        },
+        {
+          "t": "h3",
+          "text": "Example 5: WhatsApp chat reveal (Lane A warm, T2)"
+        },
+        {
+          "t": "p",
+          "text": "The iMessage reveal format, built on the surface Indian customers actually use. 9:16, WhatsApp dark theme in a phone frame over a bathroom-shelf photo. 11 bubbles, about 19 seconds, then a 3-second static end card. Dramatized conversation, labelled \"Sponsored\" by placement. The brand appears once, late."
+        },
+        {
+          "t": "diagram",
+          "text": "[Aman]      (photo: three empty 30 ml serum bottles lined up on a shelf)\n[Aman]      day 84 done\n[Karan]     3 bottles??\n[Aman]      pack of 3. ₹999\n[Karan]     and?\n[Aman]      pillow is clean in the morning. that's all i wanted\n[Karan]     is it the minoxidil type\n[Aman]      nope. it's a serum, goes on the scalp\n[Karan]     which one\n[Aman]      arata. hair growth intensive serum. the pack of 3\n[Karan]     ordering\n            → 300ms crossfade → end card"
+        },
+        {
+          "t": "p",
+          "text": "**End card:** Hair Growth Intensive Serum, Pack of 3, ₹999. \"Up to 28,200 new hairs within 84 days, in a consumer study.\" Logo SVG, static, no drift."
+        },
+        {
+          "t": "p",
+          "text": "**Pacing:** reactions 300 to 400ms apart, sentence replies get 700ms of air, typing indicator (silent) before \"pillow is clean\" and before \"arata.\". 600ms of silence before \"ordering\". WhatsApp send and receive tones, music bed at 30% with a fade before the brand bubble."
+        },
+        {
+          "t": "p",
+          "text": "**Grounded in:** Pack of 3 price and claim from the catalogue. \"Pillow is clean\" dramatizes the review theme \"hair fall reduced drastically\" and the JTBD \"stop the hair fall I see on the pillow\". No real customer is named. If Arata approves a code (assumption: ARATA84), it goes inside the \"arata.\" bubble, link-underlined, and on the end card."
+        },
+        {
+          "t": "h3",
+          "text": "Example 6: FAQ card set (B-tier, Lane B warm, four statics)"
+        },
+        {
+          "t": "p",
+          "text": "Each card: the objection in the customer's words at the top (60% of frame), the answer in two lines, the bottle small at the bottom. Lab-blue type on white."
+        },
+        {
+          "t": "p",
+          "text": "**Card 1** **Q:** \"₹1,499 for 30 ml is a lot.\" **A:** It is one month, twice a day. ₹50 a day. A diagnosis kit runs ₹1,400 to ₹1,800 a month for five months."
+        },
+        {
+          "t": "p",
+          "text": "**Card 2** **Q:** \"Is this just another Redensyl serum?\" **A:** Those work on the follicle. Y100 works on the mitochondria that power it. Licensed exclusively to Arata in India."
+        },
+        {
+          "t": "p",
+          "text": "**Card 3** **Q:** \"Do I have to use it forever?\" **A:** A 3-month course, then maintenance. Minoxidil is a dependency. This is a plan with an end date."
+        },
+        {
+          "t": "p",
+          "text": "**Card 4** **Q:** \"What if the bottle leaks?\" **A:** Replaced, no questions. Reply to your order message and a new one ships."
+        },
+        {
+          "t": "p",
+          "text": "**Grounded in:** The objections table in the brief, verbatim. Card 4 depends on Arata confirming the replacement promise (listed as an operations fix in the brief). It does not run until the policy is live."
+        },
+        {
+          "t": "h3",
+          "text": "Example 7: Faceless motion explainer, \"84 days\" (T2, Lane A cold, monoline editorial style)"
+        },
+        {
+          "t": "p",
+          "text": "Four beats, 28 seconds, calm voice, one idea per beat. Brand slots: FIELD off-white, INK charcoal, ACCENT lab-blue, TYPE FEEL clean modern grotesque."
+        },
+        {
+          "t": "table",
+          "head": [
+            "Beat",
+            "VO",
+            "Poster still",
+            "Label"
+          ],
+          "rows": [
+            [
+              "1",
+              "\"A hair takes about three months to show you whether anything changed.\"",
+              "Monoline calendar with 84 squares, one accent square at the end",
+              "84 DAYS"
+            ],
+            [
+              "2",
+              "\"Most products ask you to trust them for a week.\"",
+              "Monoline bottle with a tiny 7-day tick",
+              "7 DAYS?"
+            ],
+            [
+              "3",
+              "\"We measured ours for 84. Up to 28,200 new hairs, in a consumer study.\"",
+              "Monoline follicle cluster, accent arc sweep",
+              "UP TO 28,200"
+            ],
+            [
+              "4",
+              "\"Hair Growth Intensive Serum. ₹571. arata.in.\"",
+              "Bottle outline, accent underline",
+              "₹571"
+            ]
+          ]
+        },
+        {
+          "t": "p",
+          "text": "**Motion:** lines extend, the accent sweep draws itself, nothing else moves. QC the final two seconds of each clip for drift."
+        }
+      ]
+    },
+    {
+      "h": "30-day deployment",
+      "kind": "plan",
+      "blocks": [
+        {
+          "t": "table",
+          "head": [
+            "Week",
+            "Brew ships",
+            "Arata provides",
+            "Live by end of week"
+          ],
+          "rows": [
+            [
+              "1",
+              "Grounded inputs corpus (100 reviews, comments tagged, claims sheet with study design per number). Roadmap with icebox and the 40-concept slate. 12 T1/T2 statics: founder message draft, 4 FAQ cards, Us vs them, Grid trio, 2 callouts, dandruff one-wash, 2 Headline Statements. Google RSA ad group.",
+              "Export of last 90 days of ad performance and top ads. Pack shots per SKU. Logo SVG and rebrand palette. Founder sign-off on the message copy. Leak-replacement policy confirmed.",
+              "12 statics and the RSA live. Diagnostic funnel columns set up in the reporting sheet."
+            ],
+            [
+              "2",
+              "Founder shoot (one day, three story structures, three-capture system). VSL script locked and shot (founder version). WhatsApp chat reveal rendered. Faceless motion explainer. 6 more statics. Creator partnership brief sent to 3 creators.",
+              "Founder's day. Creator shortlist and whitelisting access on Meta. Lab Notes page for the MitoActive study.",
+              "20 concepts live. VSL 75s and 30s cuts live in Lane B."
+            ],
+            [
+              "3",
+              "Trichologist authority shoot. Two creator partnership videos delivered and whitelisted. Samay cut-downs re-captioned as retargeting (T1 ×4). First Monday refresh: hook-level reads on week 1 and 2 ads. 6 statics from the comments folder (new objections).",
+              "Trichologist contact and legal review of the authority script. Approval on creator edits.",
+              "32 concepts live. First kills and first iterations."
+            ],
+            [
+              "4",
+              "Amateur investigation video. Remaining T1 iterations on any single-metric hits. INDEX.md for the month, creative review page for Arata's approval of month 2 slate. Month 1 retro.",
+              "Attend the retro. Approve month 2 slate.",
+              "40 concepts live. Retro written. Month 2 slate ranked."
+            ]
+          ]
+        },
+        {
+          "t": "p",
+          "text": "Owners: Brew creative lead (slate, briefs, retro), Brew performance lead (funnel reads, kills), Brew producer (shoots, edits, renders), Arata brand manager (assets, approvals, founder time), Arata ops lead (replacement policy, Lab Notes page)."
+        }
+      ]
+    },
+    {
+      "h": "How we measure",
+      "kind": "measure",
+      "blocks": [
+        {
+          "t": "table",
+          "head": [
+            "Metric",
+            "Baseline",
+            "90-day target",
+            "Read"
+          ],
+          "rows": [
+            [
+              "3-second view rate (thumbstop)",
+              "To be instrumented",
+              "Top quartile of concepts above 30% (assumption)",
+              "Visual opening"
+            ],
+            [
+              "Hold rate, 3s to 15s",
+              "To be instrumented",
+              "VSL above 40% hold at 15s (assumption)",
+              "On-ramp"
+            ],
+            [
+              "CTR, cold",
+              "To be instrumented",
+              "1.2% on cold statics, 1.8% on creator video (assumption)",
+              "Offer clarity"
+            ],
+            [
+              "CVR post-click, arata.in",
+              "~7 to 8% visit-to-order blended (brief, includes returning)",
+              "Paid cold CVR instrumented separately; target 2.5% (assumption)",
+              "Page congruence"
+            ],
+            [
+              "New-customer CPA, Lane A",
+              "To be instrumented",
+              "Under ₹450 on a ₹571 serum first order, under ₹600 on ₹999 pack (assumption)",
+              "Lane health"
+            ],
+            [
+              "MitoActive first orders from paid",
+              "0 reviews, launch state",
+              "500 first orders, 100 reviews requested at day 30 post-purchase (assumption)",
+              "Lane B exit from exploration"
+            ],
+            [
+              "Rolling reach, month on month",
+              "To be instrumented",
+              "Flat or up while spend holds",
+              "Fatigue; deploy partnership ads when it drops"
+            ],
+            [
+              "Share of concepts with a source cited",
+              "0 (no corpus)",
+              "100%",
+              "Grounding discipline"
+            ]
+          ]
+        },
+        {
+          "t": "p",
+          "text": "**Decision rules**"
+        },
+        {
+          "t": "list",
+          "items": [
+            "No verdict before 1,000 impressions per concept. A two-day read is a coin flip.",
+            "Judge concepts, not ads. Three executions of \"84 days, one number\" failing means the concept is wrong. One failing means the execution was.",
+            "A full-funnel loser with one strong metric is a lead. It goes back to the icebox as an iteration, with the weak stage named.",
+            "If Lane A winners hold for 30 days: shift to 60% winner-led variations, keep 15% exploration alive, raise Lane A budget share by 10 points.",
+            "If Lane B shows no single-metric hit in 30 days: the VSL mechanism framing is wrong, so we test the price-math hook and the upgrade-from-Intensive-Serum hook before touching production budget again.",
+            "If rolling reach drops two weeks in a row: deploy the next creator partnership ad before adding any more statics.",
+            "If CTR is strong and CVR is weak on any concept: fix the landing page before iterating the ad."
+          ],
+          "ordered": false
+        }
+      ]
+    },
+    {
+      "h": "Appendix",
+      "kind": "appendix",
+      "blocks": [
+        {
+          "t": "h3",
+          "text": "Static batch distribution, month 1 (24 statics)"
+        },
+        {
+          "t": "table",
+          "head": [
+            "Template",
+            "Tier",
+            "Count",
+            "Lane"
+          ],
+          "rows": [
+            [
+              "Founder Message",
+              "S",
+              "2",
+              "A"
+            ],
+            [
+              "Grid Static",
+              "A",
+              "2",
+              "A, C"
+            ],
+            [
+              "FAQ Card",
+              "B",
+              "6",
+              "A, B"
+            ],
+            [
+              "Us vs Them",
+              "B",
+              "2",
+              "A"
+            ],
+            [
+              "Callout / Ingredient Spotlight",
+              "B",
+              "3",
+              "B"
+            ],
+            [
+              "Headline Statement",
+              "B",
+              "3",
+              "A, C"
+            ],
+            [
+              "Educational Infographic",
+              "B",
+              "2",
+              "B"
+            ],
+            [
+              "Problem / Solution",
+              "B",
+              "2",
+              "C"
+            ],
+            [
+              "Challenging Your Beliefs",
+              "B",
+              "1",
+              "A"
+            ],
+            [
+              "Review Card (golden nugget only)",
+              "E",
+              "1",
+              "A"
+            ]
+          ]
+        },
+        {
+          "t": "h3",
+          "text": "Pre-flight checklist per concept"
+        },
+        {
+          "t": "list",
+          "items": [
+            "Template, tier and funnel role recorded",
+            "Headline, body, visual description and grounding source present",
+            "Every number carries its \"up to\" and its day window",
+            "Before/after scalp imagery and crown close-ups are absent",
+            "Copy is free of contrast reveals, stacked negations and em dashes",
+            "Character counts checked against platform limits",
+            "Captions inside the 720×1200 safe band, white fill with black stroke, static",
+            "End cards use the real logo SVG, never styled text",
+            "Review quotes run with permission",
+            "Landing page says what the ad says"
+          ],
+          "ordered": false
+        }
+      ]
+    },
+    {
+      "h": "Sources",
+      "kind": "sources",
+      "blocks": [
+        {
+          "t": "p",
+          "text": "Arata brand brief (arata.in catalogue and prices, Loox and Nykaa reviews, BeautyMatter, BW Retail World, Storyboard18, Inc42, Traya public pricing). Meta advertising policies on personal health and appearance. Platform character limits for Google RSA and Meta as of October 2026."
+        }
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "label": "Arata brand brief (arata.in catalogue and prices, Loox and Nykaa reviews, BeautyMatter, BW Retail World, Storyboard18, Inc42, Traya public pricing)",
+      "url": "",
+      "at": "2026-10-10"
+    },
+    {
+      "label": "Meta advertising policies on personal health and appearance",
+      "at": "2026-10"
+    },
+    {
+      "label": "Platform character limits for Google RSA and Meta",
+      "url": "",
+      "at": "2026-10"
+    }
+  ],
+  "factsUsed": [],
+  "toConfirm": [],
+  "meta": {
+    "model": "hand-converted fixture",
+    "at": "2026-10-13",
+    "usd": 0,
+    "verified": true,
+    "issues": []
+  }
+}

@@ -1,0 +1,687 @@
+      Brew                                      PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+CONVERSION RATE OPTIMISATION · MOVE 31 OF 50
+
+
+
+TURNING
+ARATA.IN
+VISITS
+INTO FIRST
+ORDERS
+  A PAGE-BY-PAGE FIX LIST FOR ARATA.IN SO MORE OF THE
+  650K MONTHLY VISITORS BUY A ROUTINE ON THE FIRST
+  VISIT, WITH MITOACTIVE CARRYING ITS OWN WEIGHT.
+
+
+
+
++0.5 pt
+SITE CONVERSION RATE, 90 DAYS
+
+
+
+
+BREW × ARATA                     OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                   V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                                  WHAT THIS GIVES ARATA
+                                                                  A page-by-page fix list for arata.in so more of the
+                                                                  650K monthly visitors buy a routine on the first visit,
+                                                                  with MitoActive carrying its own weight.
+         +0.5 pt
+         SITE CONVERSION RATE, 90 DAYS
+                                                                  LIVE 30 DAYS AFTER WE START
+                                                                  The MitoActive page, the hair growth collection and
+                                                                  the cart are rebuilt around proof and routine, a 3-
+                                                                  question picker is live, and the first two A/B tests are
+                                                                  running with instrumented baselines.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+This is a D2C read of CRO. The pages are product pages, collection pages and the cart, and the
+conversion is a first order of a hair fall or dandruff routine on arata.in, then a reorder inside 45 days.
+Arata gets about 650K visits a month and ships 50,000+ D2C orders a month. On paper that is 7.7
+visits per order. That number includes repeat buyers coming straight to the cart, so the real first-visit
+conversion rate is lower and nobody has it instrumented yet. Our working assumption, based on
+Shopify beauty benchmarks and the catalogue's price band, is a new-visitor rate between 2% and
+3%. That is already above the Shopify median, which is roughly 1.4%. It is also well short of what a
+brand with a number on every bottle should get.
+The maths on the gap is simple. Half a point of conversion on 650K visits is 3,250 extra orders a
+month. At the implied ₹900 to ₹1,000 AOV that is close to ₹31 lakh a month, or around ₹3.7 Cr a year,
+from the same traffic and the same ad spend. Traffic is growing about 42% month on month, so every
+point we fix now compounds.
+The site has a specific set of leaks and the brief names them. The hair growth collection mixes a
+₹1,499 serum, a ₹571 serum, a ₹359 shampoo and a ₹999 pack of 3 with no routine builder, so a visitor
+with hair fall has to decide between four claims on their own. MitoActive is the hero of the rebrand and
+has zero reviews, which on a ₹1,499 product is a conversion wall. Leak and broken-seal complaints
+are the top negative review theme and no page answers them. Naming is inconsistent across channels
+(onion vs biotin, serum vs tonic), so a visitor who saw the product on Nykaa may not recognise it on
+arata.in. There is no quiz, no subscription, and no "which one is for me" path.
+The opportunity is that Arata already has the hardest CRO asset to build: proof. 7.4X, 28,200, 95%,
+86%, 87% in 84 days, 2,248 on-site reviews, a Nykaa 4.2★ on 2,435 ratings, Unilever Ventures and
+L'Oréal BOLD on the cap table, an in-house lab. Most of it is scattered or buried. The work is
+arrangement and sequencing, not invention. We put the right number next to the right button for the
+right persona, remove the four or five friction points that cost orders every day, and test the rest.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TURNING ARATA.IN VISITS INTO FIRST ORDERS                                                   1
+WHAT WE FOUND
+We audited six surfaces against the seven CRO dimensions: value proposition clarity, headline, CTA
+hierarchy, visual hierarchy, trust and social proof, objection handling, friction. Scores are 1 to 5. Where
+the observation comes from the brief we cite it. Where it comes from our read of the catalogue
+structure we mark it as an assumption.
+
+PAGE SCORECARD
+                                    VALUE                                                              TOTAL
+ SURFACE                            PROP           HEADLINE CTA SCANNABILITY TRUST OBJECTIONS FRICTION /35
+
+ Homepage                           3              3              2          3   3   1        3        18
+ Hair Growth collection             2              2              2          2   3   1        2        14
+ MitoActive PDP (₹1,499)            3              4              3          3   1   2        3        19
+ Hair Growth Intensive              4              4              3          3   4   2        3        23
+ Serum PDP (₹571)
+ Anti-Dandruff Shampoo              4              4              3          3   4   2        3        24
+ PDP (₹404)
+ Cart and checkout                  3              2              3          3   2   1        2        16
+
+
+The pattern is clear. The single-product pages with hundreds of reviews score fine. The pages where
+a visitor has to choose (collection, cart) and the page where the brand needs the most trust
+(MitoActive) score worst. Those three are where the money is.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TURNING ARATA.IN VISITS INTO FIRST ORDERS                                     2
+WHERE VISITORS LEAK
+                                                                                                  DIAGRAM
+       650K visits / month
+             |
+             v
+     +---------------------+
+     | Homepage / Ad LP    | Leak 1: cold visitor, "Hair & Scalp Science Co."
+     |                     | is a positioning line, not a reason to click
+     +----------+----------+
+                |
+                v
+     +---------------------+
+     | Hair Growth         | Leak 2: four SKUs, four claims, no picker.
+     | collection          | ₹359 / ₹571 / ₹999 / ₹1,499 with no ladder
+     +----------+----------+
+                |
+         +------+------+
+         v             v
+     +--------+   +-----------+
+     | ₹571   |   | MitoActive| Leak 3: 0 reviews at ₹1,499,
+     | Serum |    | ₹1,499    | "Y100" unexplained, no cost per day
+     | 474 rv |   | 0 reviews |
+     +---+----+   +-----+-----+
+         |              |
+         v              v
+     +---------------------+
+     | Cart                | Leak 4: ₹299 free shipping and ₹999 free gift
+     |                     | thresholds not shown as a progress bar;
+     |                     | no routine upsell; no leak-proof promise
+     +----------+----------+
+                |
+                v
+     +---------------------+
+     | Checkout            | Leak 5: COD vs prepaid, address entry, no
+     |                     | WhatsApp order updates opt-in (assumption)
+     +----------+----------+
+                |
+                v
+          50K orders / month
+
+
+
+
+DIMENSION-BY-DIMENSION FINDINGS
+1. Value proposition clarity. The brand line "Good science for great hair" and "Hair & Scalp Science
+Co." describe the company. They do not tell Hair-fall Rahul in 5 seconds what happens to his hair. The
+strongest first-visit line Arata owns is already in the catalogue: "Up to 28,200 new hair in 84 days."
+The homepage should lead with the outcome, the timeline and the price, in that order. The MitoActive
+line "India's first mitochondrial hair growth treatment" is a category claim. It needs the 87% in 84 days
+number beside it or it reads as jargon.
+2. Headline effectiveness. Single PDPs are good because the claim is the headline. The collection
+page is weak because it has no headline that sorts the visitor. "Hair Growth" is a category label. A
+sorting headline reads: "Hair fall? Start here. Pick your stage, we pick your routine."
+3. CTA hierarchy. Every PDP has one job: add to cart. Today the combos (Shampoo + Growth Serum
+₹838, Hair Growth Trio ₹1,201) live as separate products, so the upsell happens before the decision
+instead of after it. Assumption: there is no sticky add-to-cart on mobile. For a site where most traffic is
+mobile and creator-driven, that alone is worth a test.
+4. Scannability. The claims are the scan path. "7.4X", "28,200", "95%", "86%" should appear as a
+four-tile proof strip on the homepage and the collection, each tile linking to its SKU. Today the
+numbers appear one per PDP, so a scanning visitor never sees the pattern that makes Arata different:
+a number on every bottle.
+
+
+BREW DEPLOYMENT TEAM × ARATA · TURNING ARATA.IN VISITS INTO FIRST ORDERS                                  3
+5. Trust and social proof. 2,248 Loox reviews is a real asset and it is spread thin. The MitoActive PDP
+has none. The fix has two parts. Short term, borrow trust: show the Y100 study facts (6+ years, 5+
+clinical studies, Indian-participant study), the investor names, the Delhi lab, and the Intensive Serum's
+474 reviews as "from the same lab". Medium term, seed reviews through a post-purchase flow aimed
+at the first 500 MitoActive buyers, with a day-28 and day-84 photo prompt.
+6. Objection handling. The brief lists six objections. We checked which page answers each one.
+                                        WHERE IT SHOULD BE
+ OBJECTION                              ANSWERED                             ANSWERED TODAY
+
+ "₹1,499 for 30 ml is a lot"            MitoActive PDP, under price          No. No cost-per-day, no Traya comparison
+ "Is this just another                  MitoActive PDP, Hair Growth          No. Y100 vs actives serum is not laddered
+ Redensyl serum?"                       collection
+ "28,200 hairs? Really?"                Intensive Serum PDP, Lab             Partly. Study design exists in Lab Notes but is not linked
+                                        Notes                                near the claim (assumption)
+ "Do I have to use it                   Every hair growth PDP, FAQ           No
+ forever?"
+ "Is it chemical-free /                 PDP ingredients block                Partly. Legacy "zero chemicals" copy still visible on
+ natural?"                                                                   marketplaces
+ "Will the bottle leak?"                Cart, PDP shipping block             No. This is the top complaint theme and no page mentions
+                                                                             packaging
+
+
+Four of six objections go unanswered on the page where the decision is made. Each of those is a
+quick win.
+7. Friction. Ranked by expected order loss:
+ FRICTION POINT                     EVIDENCE                                                 COST
+
+ No picker or routine               Brief: "no quiz or regimen builder"                      Visitors bounce between four hair growth
+ builder                                                                                     SKUs; highest leak
+ Thresholds not visible in          Free shipping ₹299, free gift ₹999 exist but are         Lost AOV and lost orders at ₹359 single-
+ cart                               not shown as progress (assumption)                       shampoo carts
+ Naming mismatch across Brief: onion vs biotin, serum vs tonic                               Marketplace visitors fail to find the product
+ channels                                                                                    they saw
+ Leak anxiety at checkout           Verbatim: "the shampoo bottle was leaking",              Drop at payment for first-time buyers
+                                    "the seal was broken"
+ Legacy curl-care range             Brief: muddies the science positioning                   Dilutes the "number on every bottle" scan
+ in navigation
+ No account or WhatsApp Brief: no subscription, no community                                 Reorder at day 45 depends on retargeting
+ opt-in at order                                                                             spend instead of owned channels
+
+
+THE PRICING LADDER PROBLEM
+Arata has an accidental pricing page. The Hair Growth collection presents four price points with no
+recommended tier and no explanation of why ₹1,499 exists above ₹571.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TURNING ARATA.IN VISITS INTO FIRST ORDERS                                                                   4
+                                                                                                                                  DIAGRAM
+      Today (as the visitor sees it)                   Proposed ladder
+
+      ₹359 Anti-Hair Fall Shampoo                      STEP 1    Wash        ₹359 Anti-Hair Fall Shampoo (7.4X)
+      ₹571 Intensive Serum                             STEP 2    Treat       ₹571 Intensive Serum (28,200 in 84 days)
+      ₹999 Serum Pack of 3                                                   ₹999 84-day pack of 3 (recommended)
+      ₹1,499 MitoActive                                 STEP 3    Upgrade     ₹1,499 MitoActive (87% saw growth, Y100)
+      ₹838 Shampoo + Serum combo                       ROUTINE               ₹838 Wash + Treat
+      ₹1,201 Hair Growth Trio                                                ₹1,201 Wash + Treat + Condition
+                                                                             ₹1,803+ Wash + MitoActive
+
+
+
+
+The right-hand version answers "which plan is right for me", flags a recommended tier (the ₹999
+pack, because 84 days is the claim window and three bottles cover it), and makes MitoActive the
+upgrade instead of a confusing sibling.
+
+
+
+THE PLAN
+We sequence by expected impact divided by effort. Quick wins ship in week 1 and 2 without a test
+because the downside is near zero. High-impact changes ship in week 2 to 4 and the two biggest get
+tested. Everything else goes into the test backlog in the appendix.
+
+QUICK WINS (SHIP NOW, NO TEST)
+ CHANGE                                                                  PAGE             WHY                        EXPECTED EFFECT
+
+ Add cost-per-day line under MitoActive price: "₹50 a                    MitoActive       Answers the top            Lift in add-to-cart on
+ day. One bottle is one month at twice-daily use."                       PDP              objection where it         the page with the
+                                                                                          happens                    lowest trust score
+ Add a "Leak-proof promise" line in cart and on every All PDPs, cart                      Top complaint theme,       Fewer payment-step
+ PDP shipping block: "Sealed in our Delhi warehouse. If                                   zero page coverage         drops for first-time
+ it arrives leaking or unsealed, we replace it, no                                                                   buyers
+ questions, no photos needed."
+ Free shipping and free gift progress bar in cart ("Add                  Cart             Thresholds exist and       AOV lift, more ₹359
+ ₹40 for free shipping", "Add ₹160 for your free gift")                                   are invisible              carts become ₹638
+                                                                                                                     routine carts
+ Four-tile proof strip (7.4X, 28,200, 95%, 86%) on                       Homepage,        Makes "a number on         Better click-through
+ homepage and collection header, each tile links to its                  collections      every bottle" visible in   into PDPs
+ SKU                                                                                      one scan
+ Rename marketplace-facing SKUs on site to match                         PDPs             Naming inconsistency       Fewer "I can't find it"
+ the listing names visitors already saw, and add "Also                                    across channels            exits from Nykaa and
+ known as" line where needed                                                                                         Amazon traffic
+ Sticky add-to-cart bar on mobile PDPs with price and All PDPs                            Creator traffic lands      Add-to-cart rate on
+ claim                                                                                    mid-page and scrolls       mobile
+ Move the Advanced Curl Care range out of main                           Navigation       Brief: it muddies the      Cleaner scan, less
+ navigation into a "More" or legacy collection                                            science positioning        choice load
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TURNING ARATA.IN VISITS INTO FIRST ORDERS                                                                     5
+HIGH-IMPACT CHANGES (BUILD IN WEEKS 2 TO 4)
+1. The 3-question picker on the Hair Growth collection. A visitor answers stage, hair type and
+budget, gets one recommended routine and one upgrade. Three questions, no email required, result
+on the same page. Logic in Worked examples. Expected effect: this is the biggest single lift because it
+turns the weakest page into a guided sale. Our estimate is a 15 to 25% increase in collection-to-cart
+rate for visitors who use it.
+2. Rebuild the MitoActive PDP as a proof page. Hero with the 87% number, Y100 explained in one
+line, cost per day, Traya and derm-visit comparison, study block, "from the lab that made the 28,200
+serum" trust bridge, 84-day plan with reorder reminder, FAQ with all six objections. Full copy in
+Worked examples. Expected effect: conversion on the page moves from "new product with no
+reviews" to parity with the Intensive Serum page over 90 days.
+3. Routine-first cart. When a single shampoo is in the cart, show the matching serum with the combo
+saving ("Complete the routine: add Intensive Serum, save ₹92"). When the Intensive Serum is in the
+cart, show the pack of 3 ("84 days is the claim window. Get all three for ₹999, save 49%"). When
+MitoActive is in the cart, show the shampoo at the combo price. Expected effect: AOV up 8 to 12%
+(assumption, based on the combo discounts already on offer).
+4. Hair fall landing page for paid and creator traffic. Message-matched, navigation removed, one
+routine, one CTA, complete argument on one page. Full outline in Worked examples. Expected effect:
+paid traffic conversion above the homepage rate because the page says what the ad said.
+5. WhatsApp opt-in at order confirmation. One tap: "Get your 84-day plan on WhatsApp." This feeds
+the reorder window at day 45 without retargeting spend. Not a page change but it is the cheapest
+conversion lever for the second order, so it ships in this cycle.
+
+TEST IDEAS (RUN, DO NOT ASSUME)
+ TEST                                          HYPOTHESIS                                PRIMARY METRIC        MINIMUM RUN
+
+ Homepage hero: outcome line vs                "Up to 28,200 new hair in 84 days. From   Hero CTA click-       2 weeks or 20K
+ brand line                                    ₹359." beats "Good science for great      through, then order   visitors per arm
+                                               hair" for cold visitors                   rate
+ Collection default: picker open vs Showing the picker first increases cart              Collection to cart    2 weeks
+ picker collapsed                   adds despite adding a step                           rate
+ MitoActive price anchor: Traya                Naming Traya's ₹1,400 to ₹1,800 a         PDP add-to-cart       3 weeks (low
+ comparison block vs cost-per-                 month lifts conversion more than ₹50 a                          traffic page)
+ day only                                      day alone
+ Recommended tier: ₹999 pack of                Badge moves single-serum buyers to the    Share of serum        2 weeks
+ 3 badged "Most chosen" vs no                  84-day pack                               orders that are
+ badge                                                                                   packs; AOV
+ Cart upsell copy: saving in rupees "Save ₹92" beats "Save 7%" at this price             Upsell take rate      2 weeks
+ vs saving in percent               band
+ Reviews placement on PDPs: strip A three-review strip with photos under                 Add-to-cart           2 weeks
+ under price vs section below fold the price lifts add-to-cart
+
+
+COPY ALTERNATIVES FOR THE THREE ELEMENTS THAT MATTER MOST
+Homepage hero headline
+
+
+BREW DEPLOYMENT TEAM × ARATA · TURNING ARATA.IN VISITS INTO FIRST ORDERS                                                        6
+1. "Up to 28,200 new hair in 84 days. Tested on Indian hair. From ₹359." Rationale: outcome, timeline,
+   proof frame, price. Leads with the biggest number the brand owns.
+2. "Hair fall has a number. Ours is 7.4X lower." Rationale: shorter, works for the shampoo-first buyer,
+   sets up the proof strip.
+3. "Hair fall, dandruff and greys. One lab in Delhi. A number on every bottle." Rationale: for returning
+   or researching visitors; sells the system.
+MitoActive primary CTA
+1. "Start my 84 days" Rationale: frames the purchase as a course, answers "forever?".
+2. "Add to cart · ₹50 a day" Rationale: keeps the action familiar and carries the reframe into the button.
+3. "Get MitoActive" Rationale: control. Use as baseline in the test.
+Collection picker CTA
+1. "Find my routine in 30 seconds" Rationale: states effort and outcome.
+2. "Which one is for me?" Rationale: matches the question in the visitor's head.
+3. "Pick my hair fall stage" Rationale: for the hair growth collection specifically.
+
+
+
+WORKED EXAMPLES
+EXAMPLE 1: MITOACTIVE PDP, FULL PAGE COPY
+This is the page as we would ship it. Sections run top to bottom. Mobile first.
+Above the fold
+Eyebrow: Biosciences Hair Growth Serum · 30 ml · 1-month supply
+H1: 87% saw new hair growth in 84 days.
+Sub: MitoActive is India's first mitochondrial hair growth serum. It works on the energy inside the
+follicle, powered by Y100, exclusive to Arata in India.
+Price block: ₹1,499 · ₹50 a day Free shipping. Free gift included above ₹999. Sealed in our Delhi lab,
+replaced free if it arrives leaking.
+CTA: Start my 84 days
+Trust strip under the CTA: From the lab behind the Intensive Serum (474 reviews, 4.5★ on site) ·
+Dermatologically tested · Vegan · Backed by Unilever Ventures and L'Oréal BOLD
+Section 2: What Y100 does, in one scroll
+H2: Your follicles run on energy. Y100 gives it back.
+Three cards: 1. Hair grows in cycles. Fall happens when too many follicles sit in the resting phase. 2.
+Y100 improves mitochondrial function in the follicle, which shifts more hair into the growth phase. 3. In
+an Indian-participant study, that meant less shedding, a better growth-to-rest ratio and more density.
+
+
+BREW DEPLOYMENT TEAM × ARATA · TURNING ARATA.IN VISITS INTO FIRST ORDERS                                 7
+Line under cards: 6+ years of research. 5+ clinical studies. One active, licensed exclusively to Arata in
+India.
+Section 3: The honest comparison
+H2: What ₹1,499 buys, compared.
+                            MITOACTIVE                      DIAGNOSIS-LED KITS     MINOXIDIL 5%     DERMATOLOGIST
+
+ Monthly cost               ₹1,499 (₹50 a day)              ₹1,400 to ₹1,800 a     ₹600 to ₹900     Consultation plus
+                                                            month, 5 to 9 months                    prescription
+ Doctor calls,              None                            Yes                    Needs a doctor   Yes
+ supplements
+ Dependency                 3-month course, then            Ongoing                Stops working    Varies
+                            maintenance                                            when you stop
+ Mechanism                  Mitochondrial function          Minoxidil plus         Vasodilation     Varies
+                            (Y100)                          supplements
+
+
+Line under table: Prices for other options are their public prices as of October 2026.
+Section 4: Is this just another serum?
+H2: Two serums. Two jobs.
+Left: Hair Growth Intensive Serum, ₹571. Actives-based. Up to 28,200 new hair in 84 days. 474
+reviews. Start here if this is your first serum. Right: MitoActive, ₹1,499. Mitochondrial. 87% saw growth
+in 84 days. Start here if actives serums did not do enough, or you want the strongest thing we make.
+Inline CTA under right: Start my 84 days
+Section 5: The 84-day plan
+Day 1 to 28: Apply twice daily to a dry scalp. Shedding may stay the same. This is normal. Day 29 to
+56: Shedding drops for most users. Take your second photo. Day 57 to 84: New growth is visible at
+the hairline and crown for most users. Take your third photo. After 84: Maintenance at once daily.
+Line: We remind you on WhatsApp at day 28, 56 and 84, with a reorder link at day 45.
+Section 6: Reviews
+Until MitoActive has its own reviews: "MitoActive launched in August 2026. The first 84-day results
+from Indian users land here in November. Until then, here is what the same lab's Intensive Serum did."
+Then three Intensive Serum reviews with the verbatim "Hair fall reduced drastically" and "I can see a
+visible difference in two weeks" themes, attributed with first name and city.
+Section 7: FAQ
+    Is ₹1,499 a lot for 30 ml? It is one month at ₹50 a day. Diagnosis-led kits cost ₹1,400 to ₹1,800 a
+    month and ask for 5 months minimum.
+    Will my hair fall get worse first? Some users see no change in the first 4 weeks. We have not
+    designed MitoActive to cause a shed phase, unlike minoxidil.
+    Do I have to use it forever? Use it twice daily for 84 days, then once daily to maintain.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TURNING ARATA.IN VISITS INTO FIRST ORDERS                                              8
+      Is it natural? It is vegan, cruelty-free and dermatologically tested. Every active is there for a
+      measured reason.
+      What if the bottle leaks? We replace it. Reply to your order message on WhatsApp with the order
+      number.
+      Can I use it with the Anti-Hair Fall Shampoo? Yes, and the combo saves you money. See the routine
+      below.
+Section 8: Complete the routine
+Wash + Upgrade: Anti-Hair Fall Intensive Shampoo + MitoActive, ₹1,803. One card, one CTA: Add the
+routine.
+Sticky bar (mobile): MitoActive · ₹1,499 · ₹50 a day · [Start my 84 days]
+
+EXAMPLE 2: THE 3-QUESTION PICKER FOR THE HAIR GROWTH COLLECTION
+Sits at the top of the collection page, above the product grid. No email. Result renders inline.
+Header: Hair fall? Start here. Three questions, one routine.
+Question 1: What are you seeing? - More hair on the pillow and in the drain than before - Thinning at
+the crown or a widening parting - A receding hairline or visible scalp - Hair fall after illness, pregnancy
+or a move to a new city
+Question 2: What have you tried? - Nothing yet - Onion, biotin or "natural" products - An actives
+serum (Redensyl, Anagain, Procapil) - Minoxidil or a diagnosis-led kit
+Question 3: How much are you ready to spend a month? - Under ₹500 - ₹500 to ₹1,000 - More than
+₹1,000. I want the strongest thing you make.
+Routing logic
+ Q1                          Q2              Q3             RECOMMENDED ROUTINE                            SHOWN UPGRADE
+
+ Pillow / drain              Nothing or      Under          Anti-Hair Fall Shampoo ₹359                    Shampoo + Serum
+                             natural         ₹500                                                          ₹838
+ Pillow / drain              Nothing or      ₹500 to        Shampoo + Intensive Serum ₹838                 Hair Growth Trio
+                             natural         ₹1,000                                                        ₹1,201
+ Crown / parting             Any             ₹500 to        Intensive Serum Pack of 3 ₹999 (84-day pack)   Shampoo +
+                                             ₹1,000                                                        MitoActive ₹1,803
+ Crown / parting or          Actives         Any            MitoActive ₹1,499                              Shampoo +
+ hairline                    serum                                                                         MitoActive ₹1,803
+ Any                         Minoxidil       More           MitoActive ₹1,499                              MitoActive +
+                             or kit          than                                                          Shampoo +
+                                             ₹1,000                                                        Conditioner (up to
+                                                                                                           ₹2,278)
+ Post-illness /              Any             Any            Shampoo + Intensive Serum ₹838 with the line   Hair Growth Trio
+ post-partum                                                "Post-partum shedding usually settles. This    ₹1,201
+                                                            routine supports regrowth while it does."
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TURNING ARATA.IN VISITS INTO FIRST ORDERS                                                      9
+ Q1                          Q2              Q3             RECOMMENDED ROUTINE                                 SHOWN UPGRADE
+
+ Hairline, "tried            Minoxidil       Under          Intensive Serum ₹571 with an honest line: "If you   None
+ everything", any            or kit          ₹500           are at an advanced stage, see a dermatologist.
+ budget                                                     Our serums work best at early and mid stage."
+
+
+Result card copy (example, crown / parting, actives tried, any budget):
+Your routine: MitoActive. You have already tried an actives serum. MitoActive works on a different
+mechanism: the energy inside the follicle. 87% saw new growth in 84 days. ₹1,499, which is ₹50 a day.
+[Start my 84 days] [See how Y100 works] Add the wash step: Anti-Hair Fall Shampoo, 7.4X hair fall
+reduction. Routine price ₹1,803.
+Why this shape. Three questions is the limit before completion drops. Each answer maps to a
+persona the brief already defines: Rahul (crown, actives tried), Ritika (post-partum, wants one cart),
+Kavya (minoxidil tried, price-insensitive). The last row protects the brand from the anti-persona and
+builds trust by sending advanced cases to a dermatologist.
+
+EXAMPLE 3: HAIR FALL LANDING PAGE FOR META AND CREATOR TRAFFIC
+Used for any ad or creator link whose hook is hair fall. Navigation removed except the logo. One CTA
+repeated four times.
+Hero H1: Hair fall has a number. Here is ours. Sub: Up to 28,200 new hair in 84 days with the Intensive
+Serum. 7.4X less hair fall with the shampoo. Tested on Indian hair, for Indian water and weather. Visual:
+the two bottles, the two numbers. CTA: Get the routine · ₹838 Under CTA: Free shipping · Sealed and
+leak-checked in Delhi · 2,248 reviews on site
+Block 2: Why the last three things did not work Short list, spoken: - Onion and biotin shampoos clean
+your hair. They do not touch the follicle. - Oiling on Sunday feels good. It has no number behind it. -
+Minoxidil works, and it stops working when you stop. It also sheds first. Line: You have probably spent
+₹2,000 to ₹5,000 finding that out. This routine is ₹838 and it comes with a timeline.
+Block 3: The routine Two cards, side by side on desktop, stacked on mobile. Wash: Anti-Hair Fall
+Intensive Shampoo, 200 ml. 7.4X hair fall reduction. Hairdian AP, rosemary and caffeine. ₹359. Treat:
+Hair Growth Intensive Serum, 30 ml. Up to 28,200 new hair in 84 days. ₹571. Together: ₹838. [Get the
+routine]
+Block 4: Proof Three reviews with photos, first name and city. Lead with "Arata is amazing cz its
+affordable and actually works" verbatim, then "Hair fall reduced drastically", then "I can see a visible
+difference in two weeks". Then the strip: 2,248 site reviews · Nykaa 4.2★ on 2,435 ratings · 1.5M+
+customers a year.
+Block 5: What 84 days looks like Same three-phase timeline as the MitoActive page, with the
+WhatsApp reminder line.
+Block 6: Four questions people ask before buying - Will it work for my hair type? Formulated and
+tested for Indian hair, hard water and humidity. - Is 30 ml enough? One month at twice daily. The pack
+of 3 covers the full 84 days for ₹999. - What if the bottle leaks? We replace it. One WhatsApp
+message. - Do I need a doctor? No. If you are at an advanced stage, we will tell you to see one.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TURNING ARATA.IN VISITS INTO FIRST ORDERS                                                      10
+Block 7: Final CTA H2: Start the routine today. Take your first photo tonight. CTA: Get the routine ·
+₹838 Secondary text link: Already use a serum? See MitoActive, our strongest.
+Message match rule. The ad hook and the H1 must share at least one number. If the ad says "7.4X",
+the page leads with 7.4X. If the creator says "28,200", the page leads with 28,200. We build two H1
+variants and route by UTM.
+
+EXAMPLE 4: CART AND CHECKOUT MICROCOPY
+Progress bar states - Empty cart: "Free shipping above ₹299. Free gift above ₹999." - Cart at ₹359:
+"You're ₹0 away from free shipping. Add ₹640 for your free gift." - Cart at ₹838: "Free shipping is in.
+Add ₹161 for your free gift: try the Anti-Breakage Conditioner." - Cart at ₹999 and above: "Free
+shipping and your free gift are in. Choose your gift below."
+Routine upsell cards - Shampoo only in cart: "Complete the routine. Add the Intensive Serum for ₹479
+instead of ₹571. Routine price ₹838." [Add serum] - Intensive Serum only in cart: "84 days is the claim
+window. Get all three months for ₹999 instead of ₹1,713. Save ₹714." [Switch to pack of 3] - MitoActive
+only in cart: "Add the wash step. Anti-Hair Fall Shampoo at ₹304 with MitoActive. Routine price
+₹1,803." [Add shampoo]
+Trust block above the checkout button Sealed and leak-checked in our Delhi warehouse. If anything
+arrives damaged or unsealed, reply to your order message and we replace it. 1.5M+ customers served
+last year.
+Checkout button Control: "Pay now" Variant: "Place order · arrives in 2 to 4 days" (assumption on
+delivery window; use the real metro SLA)
+Order confirmation page H1: Done. Take your first photo tonight. Line: Your 84 days start when the
+box lands. We will send the plan, reminders and your reorder link on WhatsApp. CTA: Get my 84-day
+plan on WhatsApp Secondary: Add a scalp massager, ₹199, to your next order.
+
+EXAMPLE 5: HOMEPAGE ABOVE THE FOLD, TWO VARIANTS FOR THE HERO TEST
+Variant A (outcome) H1: Up to 28,200 new hair in 84 days. Sub: Hair fall, dandruff and greys, with a
+number on every bottle. Tested on Indian hair. From ₹359. Primary CTA: Find my routine in 30 seconds
+Secondary: Shop hair fall Proof strip: 7.4X hair fall reduction · 28,200 new hair in 84 days · 95%
+dandruff fungus gone in 1 wash · 86% fewer greys
+Variant B (control, brand) H1: Good science for great hair. Sub: Hair & Scalp Science Co. Clinically
+tested, made for Indian hair. Primary CTA: Shop now Proof strip: same
+We expect A to win on first-visit order rate. B stays in the test so the result is clean.
+
+
+
+30-DAY DEPLOYMENT
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TURNING ARATA.IN VISITS INTO FIRST ORDERS                                11
+                                                                                                                     LIVE BY END OF
+ WEEK BREW SHIPS                                                               ARATA PROVIDES                      WEEK
+
+ 1         Instrumentation: new vs returning visitor conversion,                 Shopify admin and theme             Baseline
+           funnel events (collection view, PDP view, add to cart,                access, Loox access, delivery       dashboard; four
+           checkout start, order), field-level checkout drop-off,                SLA by city, replacement policy     quick wins live on
+           device split. Quick wins batch 1: cost-per-day line, leak-            sign-off. Owner: Arata brand        all PDPs and cart
+           proof promise on PDPs and cart, shipping and gift                     manager, Arata ops lead.
+           progress bar, sticky mobile add-to-cart. Owner: Brew
+           CRO lead, Brew Shopify developer.
+ 2         Quick wins batch 2: proof strip on homepage and                       Y100 study summary and any          MitoActive proof
+           collections, SKU naming alignment with marketplace                    derm sign-off on claim wording,     page live; hero
+           listings, curl-care moved out of main nav. MitoActive                 approved list of marketplace SKU    test running; proof
+           PDP rebuilt (Example 1). Hero A/B test starts (Example                names, three reviewer photos        strip live
+           5). Owner: Brew CRO lead, Brew copy lead,                         with consent. Owner: Arata R&D
+           Brew designer.                                                      lead, Arata brand manager.
+ 3         3-question picker built and live on Hair Growth collection            WhatsApp Business API access,       Picker live; cart
+           (Example 2). Routine-first cart upsell logic (Example 4).             combo pricing confirmation          upsell live;
+           WhatsApp opt-in on order confirmation wired to the 84-                (₹838, ₹999, ₹1,803), gift SKU      WhatsApp opt-in
+           day plan flow. Owner: Brew Shopify developer,                       for the ₹999 threshold. Owner:      live
+           Brew lifecycle lead.                                                Arata ecommerce manager.
+ 4         Hair fall landing page (Example 3) with two H1 variants               Current Meta and creator ad         Landing page
+           routed by UTM. Picker open vs collapsed test starts.                  hooks so the page can               receiving paid
+           Recommended-tier badge test on the pack of 3. Week-4                  message-match, paid traffic         traffic; three tests
+           readout with first test results and the 90-day backlog.               routed to the new page. Owner:      running; readout
+           Owner: Brew CRO lead, Brew paid media lead.                       Arata performance marketing         delivered
+                                                                                 lead.
+
+
+By day 30: seven quick wins live, three rebuilt surfaces (MitoActive PDP, Hair Growth collection with
+picker, cart), one new landing page, three A/B tests running, instrumented baselines for every metric
+below.
+
+
+
+HOW WE MEASURE
+ METRIC                         BASELINE                              90-DAY TARGET                           SOURCE
+
+ New-visitor order              To be instrumented in week            +0.5 pt absolute                        Shopify analytics with
+ rate (site-wide)               1; assumption 2% to 3%                                                        new vs returning split
+ Hair Growth collection To be instrumented                            +20% relative for picker users; +10%    Funnel events
+ → add to cart                                                        overall
+ MitoActive PDP add-            To be instrumented                    Parity with Intensive Serum PDP rate    Funnel events
+ to-cart rate                   (currently 0 reviews)
+ MitoActive reviews on 0                                              50+ with at least 15 photo reviews      Loox
+ site
+ AOV (D2C)                      ₹900 to ₹1,000 implied                +8%                                     Shopify
+ Share of serum orders To be instrumented                             +10 pt                                  Order data
+ that are pack of 3
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TURNING ARATA.IN VISITS INTO FIRST ORDERS                                                                  12
+ METRIC                         BASELINE                              90-DAY TARGET                              SOURCE
+
+ Checkout start →               To be instrumented                    +5 pt                                      Funnel events
+ order (mobile)
+ WhatsApp opt-in at             0                                     40% of orders                              Order confirmation
+ order                                                                                                           events
+ Leak or seal                   To be pulled from support             Down 30% (ops fix) and 100% of             Support tags
+ complaints per 1,000                                                 complaints answered by the
+ orders                                                               replacement promise
+ Hero test                      None                                  Significant winner at 95% confidence       A/B tool
+
+
+Decision rules
+    If new-visitor order rate moves at least +0.3 pt by day 60, we extend the same treatment (proof
+    strip, picker, routine cart) to the Anti-Dandruff and Damage Defence collections in days 60 to 90.
+    If the picker wins its test, it becomes the default on every collection and the homepage primary
+    CTA points to it. If it loses, we keep it collapsed as a secondary path and test a simpler two-
+    question version.
+    If the MitoActive page does not reach parity with the Intensive Serum page by day 90, we test
+    moving MitoActive out of the collection grid and selling it only as an upgrade from the Intensive
+    Serum page and the picker.
+    If the hero outcome line loses to the brand line, we keep the brand line and move the 28,200
+    number into the sub-headline, then test again with the 7.4X line.
+    If the cart upsell take rate is below 10%, we switch from rupee savings to a single "Most chosen
+    routine" card and test again.
+    Every test that wins ships to 100% within 48 hours of the readout. Every test that loses is logged
+    with the result so it is not re-run for six months.
+
+
+
+APPENDIX
+90-DAY TEST BACKLOG, ICE SCORED
+ TEST                                                                            IMPACT CONFIDENCE EASE ICE WINDOW
+
+ Homepage hero: outcome vs brand                                                 5         4                 5      14      Weeks 2 to 4
+ Picker open vs collapsed                                                        5         3                 4      12      Weeks 4 to 6
+ Pack of 3 "Most chosen" badge                                                   4         4                 5      13      Weeks 4 to 6
+ MitoActive: comparison table vs cost-per-day only                               4         3                 4      11      Weeks 5 to 8
+ Cart upsell: rupees vs percent                                                  3         4                 5      12      Weeks 5 to 7
+ Review strip under price vs below fold                                          4         3                 4      11      Weeks 6 to 8
+ Checkout button: "Pay now" vs delivery window                                   3         3                 5      11      Weeks 6 to 8
+ Landing page: short (hero + proof + CTA) vs full argument                       3         3                 3      9       Weeks 8 to 10
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TURNING ARATA.IN VISITS INTO FIRST ORDERS                                                                  13
+ TEST                                                                        IMPACT CONFIDENCE EASE ICE WINDOW
+
+ Anti-Dandruff PDP: "95% in 1 wash" vs "36-hour itch relief"                 3      3         4    10   Weeks 8 to 10
+ as H1
+ Exit intent on PDP: picker vs 10% first-order code                          3      2         4    9    Weeks 10 to
+                                                                                                        12
+
+
+INSTRUMENTATION CHECKLIST (WEEK 1)
+    Events: collection_view, pdp_view, add_to_cart, checkout_start, shipping_step, payment_step,
+    order_complete, picker_start, picker_complete, upsell_view, upsell_add, whatsapp_optin
+    Dimensions on every event: new vs returning, device, traffic source and UTM, landing page, SKU
+    Checkout field drop-off by field, mobile and desktop separately
+    Review count and rating per SKU pulled daily
+    Support tags for leak, seal, missing box, counted per 1,000 orders
+
+CLAIM WORDING GUARDRAILS FOR EVERY PAGE
+    Use "up to" wherever the study says it. Keep the 84-day window on every growth claim.
+    Say "dermatologically tested", never "clinical-strength".
+    Say "vegan, cruelty-free, no sulphates or parabens in shampoos". Retire "chemical-free" on every
+    surface we touch.
+    Name the study type beside the number when space allows: in-vitro for 78% stronger and 95%
+    fungus; consumer study for 87% and 28,200.
+    Other brands' prices stay as public prices with a date.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · TURNING ARATA.IN VISITS INTO FIRST ORDERS                                              14
+CONVERSION RATE OPTIMISATION
+
+
+DAY 30
+AT ARATA
+    WHAT IS LIVE
+
+    The MitoActive page, the hair growth collection and the cart are rebuilt around
+    proof and routine, a 3-question picker is live, and the first two A/B tests are
+    running with instrumented baselines.
+
+
+
+
+  NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+  BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+  CONFIRM".
+
+
+  EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+  BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                    DEPLOYMENT TEAM
+                                                                                 BREW
+

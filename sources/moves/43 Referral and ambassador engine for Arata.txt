@@ -1,0 +1,735 @@
+      Brew                                     PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+REFERRALS, AFFILIATES AND REVIEWS · MOVE 43 OF 50
+
+
+
+REFERRAL
+AND
+AMBASSADOR
+ENGINE FOR
+ARATA
+  A GIVE ₹150, GET ₹150 REFER-A-FRIEND LOOP ON
+  ARATA.IN, A CREATOR AFFILIATE TIER, AN 84-DAY
+  AMBASSADOR COHORT, AND A REVIEW ENGINE THAT
+  GETS MITOACTIVE ITS FIRST 100 REVIEWS.
+
+
+
+
+₹150 + ₹150
+GIVE ONE, GET ONE
+
+
+
+
+BREW × ARATA                    OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                  V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                              WHAT THIS GIVES ARATA
+                                                              A give ₹150, get ₹150 refer-a-friend loop on arata.in,
+                                                              a creator affiliate tier, an 84-day ambassador cohort,
+                                                              and a review engine that gets MitoActive its first 100
+        ₹150 + ₹150
+        GIVE ONE, GET ONE
+                                                              reviews.
+                                                               LIVE 30 DAYS AFTER WE START
+                                                               Refer-a-friend is live on arata.in with WhatsApp
+                                                               sharing at day 14 and day 84, the first 25 affiliates
+                                                               have tracked codes, and every MitoActive buyer
+                                                               past day 30 has received a review request.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+For a shampoo and serum brand, "referrals" means three things: a refer-a-friend loop for customers,
+an affiliate tier for creators and coupon partners, and an ambassador cohort that documents results in
+public. We treat reviews as the fourth leg, because a review is a referral to a stranger.
+Arata serves 1.5 million customers a year and ships 50,000 D2C orders a month. Not one of those
+customers has a way to bring in a friend. A customer who writes "Hair fall reduced drastically" on
+Loox gets a thank-you and nothing else. There is no referral link, no credit wallet, no pre-written
+WhatsApp message, no reason to forward. The brand built its proof into the pack (7.4X, 28,200, 87%)
+and then left the most believable proof, a friend saying "it worked for me", on the table.
+This category spreads by mouth more than most. Hair fall is first noticed by a partner or a parent. The
+job the customer hires Arata for is "show me it is working within 2 to 3 months". A sceptic who has
+burned ₹2,000 to ₹5,000 on three to five failed products does not believe a claim. They believe their
+flatmate. Referral is the mechanism that turns a satisfied Rahul in Bangalore into a first order from his
+colleague.
+The cost of not having one shows up in two of the brief's known gaps. First, 68% of revenue sits on
+marketplaces and quick commerce. A referral only tracks on arata.in, so every referred order is an
+order pulled onto owned land, with the customer's phone number and email attached. Second, there is
+no subscription. Referral credit that expires in 90 days is the cheapest repeat trigger available, and it
+lands squarely inside the 45-day reorder window Arata already targets.
+Competitors are moving. Traya runs affiliate programs through networks like Cuelinks, and in April
+2026 ran #ProofHaiBoss, pairing creators one-to-one with verified customers to film transformation
+Reels for a ₹25 lakh prize pool. Arata has better numbers on the pack, a younger brand, and the
+Samay Raina cultural capital. It also has MitoActive, a ₹1,499 serum with zero reviews two months
+after launch. Nobody forwards a ₹1,499 product with no reviews. The engine below fixes both.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · REFERRAL AND AMBASSADOR ENGINE FOR ARATA                                              1
+WHAT WE FOUND
+WHERE ARATA SITS ON THE VIRAL POTENTIAL SPECTRUM
+Haircare has no product output that non-users see. There is no "Powered by Arata" badge on a scalp.
+So product-embedded virality is limited, and the growth has to come from referral, affiliates and
+reviews. But the picture changes by concern. Some problems are hidden and shared privately. Some
+are visible and shared in public.
+                               IS THE RESULT VISIBLE            HOW CUSTOMERS              NATURAL SHARE
+ CONCERN AND SKU               TO OTHERS?                       SHARE TODAY                CHANNEL              VIRAL POTENTIAL
+
+ Hair fall: Anti-Hair Fall     Yes, but the problem is          Quiet one-to-one:          WhatsApp DM to a Medium. High trust, low
+ Shampoo ₹359,                 private. People hide             "try this, it worked       sibling, partner, volume. One referral
+ Intensive Serum ₹571          thinning.                        for me"                    colleague         each.
+ MitoActive ₹1,499             Yes. Using "mitochondrial Early adopters want               WhatsApp,            Medium-high. Works
+                               longevity science" is a   to be seen as first               Instagram story,     like a status loop.
+                               status signal.                                              Reddit threads
+ Dandruff: Anti-               Flakes are visible, the fix      "Finally no flakes on WhatsApp, office          Medium.
+ Dandruff Shampoo              is private                       my black shirt"       chat                      Embarrassment limits
+ ₹404, Serum ₹299                                                                                               public sharing.
+ Styling: Hair Gel,            Fully public. The hair is        Reels, "what gel do        Instagram, college   High. This is the one
+ Texturising Spray             the output.                      you use" comments          groups               range that spreads in
+ ₹269 to ₹699                                                                                                   public.
+ Anti-Grey Serum ₹449 Private                                   Rarely shared              WhatsApp only        Low. Do not push.
+
+
+Implication: the customer referral loop runs on WhatsApp and lands on arata.in. The public, creator-
+driven loops (affiliates and ambassadors) run on Instagram and YouTube and use styling and
+MitoActive as the visible hooks.
+
+CURRENT STATE AUDIT
+                                                                                       SCORE (0
+ ELEMENT                           ARATA TODAY                                         TO 5)         WHAT IS MISSING
+
+ Refer-a-friend program            None on arata.in                                    0             Link, code, wallet, landing page
+ Trigger moments                   None. Post-purchase ends at delivery.               0             Day 14 and day 84 asks
+ Share mechanism                   None                                                0             Pre-written WhatsApp message
+ Credit wallet                     None. Discounts only via combos (7% to              0             Store credit that expires in 90
+                                   49%).                                                             days
+ Affiliate program                 No public program page found. Coupon                1             Terms, codes, tiers, hold period
+                                   aggregators list Arata codes.
+ Ambassador or creator-            Celebrity campaigns (Taapsee 2022,                  1             84-day documented journeys
+ customer cohort                   Samay Raina 2026), no customer cohort
+ Review engine                     2,248 Loox reviews on-site, Nykaa 4.2 on            2             Timed neutral requests per SKU,
+                                   2,435 ratings, MitoActive 0                                       public response playbook
+ Fraud controls                    Not applicable yet                                  0             Needed before launch
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · REFERRAL AND AMBASSADOR ENGINE FOR ARATA                                                               2
+TRIGGER MOMENTS ON THE 84-DAY JOURNEY
+Arata's own number is 84 days. That gives us a built-in calendar. The two best moments to ask for a
+referral are when the customer first sees a change and when they finish the course. One verbatim
+review says "I can see a visible difference in two weeks". That is the first ask.
+                                                                                                                             DIAGRAM
+    Day 0          Day 7           Day 14               Day 30              Day 45           Day 84
+    order        delivered       "visible             review ask          reorder          course done
+                                  difference"         (shampoo)           window           milestone
+      |              |               |                   |                   |                 |
+      v              v               v                   v                   v                 v
+    [no ask]     [no ask]      REFERRAL ASK 1       [review only]      [credit nudge]   REFERRAL ASK 2
+                               WhatsApp, light                         "your ₹150 is      email + WhatsApp
+                               "know someone?"                          waiting"           "84 days done.
+                                                                                           who's next?"
+
+    Also-ask moments (event driven, not calendar):
+      • After a leak or broken-seal complaint is replaced               → "we fixed it, here's ₹150 for a friend too"
+      • Right after a 4 or 5 star Loox review is submitted               → "thank you. want to pass it on?"
+      • Second order placed (proven repeat customer)                     → tier reminder "2 more friends for a free serum"
+
+
+
+
+We never ask at checkout or on the order confirmation. The customer has not felt anything yet. Asking
+then trains them to ignore the prompt.
+
+ECONOMICS WORKSHEET
+The brief gives AOV, order volume and prices. Margin and paid CAC are not public, so we state
+assumptions and the program should be re-run with Arata's real numbers in week 1.
+ INPUT                                     VALUE                            SOURCE
+
+ D2C AOV                                   ₹950                             Brief (₹900 to ₹1,000 implied)
+ D2C orders per month                      50,000                           Brief
+ Share of D2C orders from new              55% (~27,500 new                 Assumption
+ customers                                 customers a month)
+ Gross margin after COGS,                  60%                              Assumption, typical for D2C haircare at this scale
+ shipping, payment fees
+ Blended paid CAC on arata.in              ₹750                             Assumption; to be replaced with Arata's Meta and
+                                                                            Google numbers
+ 12-month revenue per                      ₹1,900 (2 orders)                Assumption using the brief's ~26% beauty repeat
+ customer                                                                   benchmark, rising with routine-led models
+ 12-month gross profit per                 ₹1,140                           Derived
+ customer
+
+
+Reward sizing follows the rule: total reward cost must sit inside target CAC minus other program costs.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · REFERRAL AND AMBASSADOR ENGINE FOR ARATA                                                              3
+                                                                                                      DIAGRAM
+    Target referral CAC                   ₹450     (60% of the ₹750 paid CAC assumption)
+    Other program cost per
+    referred customer                     ₹60      (Shopify referral app, WhatsApp sends, ops time)
+                                          ----
+    Max total reward budget               ₹390
+
+    Proposed:
+      Friend gets                ₹150 off first order of ₹499 or more
+      Referrer gets              ₹150 store credit, 90-day expiry
+      Breakage on referrer credit ~30% (unused)    → effective cost ₹105
+                                 ----
+    Effective reward cost        ₹255 per referred customer
+    Total referral CAC           ₹255 + ₹60 = ₹315    (vs ₹750 paid)
+    Payback                      first order (₹499 minimum × 60% margin = ₹299 gross profit)
+
+
+
+
+Why ₹150 and not 15%: under roughly ₹8,000 of product value, the rupee number feels bigger than
+the percentage. "₹150 off" on a ₹359 shampoo reads as a real gift. "15% off" reads like every Blinkit
+banner. The ₹499 minimum nudges the friend from a single shampoo to the Anti-Hair Fall Shampoo +
+Conditioner (₹638) or Shampoo + Growth Serum (₹838), which starts them on a routine instead of a
+bottle.
+
+WHAT THE REFERRAL SCAN FOUND ON COMPETITORS
+    Traya: affiliate program listed on Cuelinks and affi.io; codes circulate on Desidime, Zoutons and
+    CashKaro; #ProofHaiBoss (April 2026) paired creators with verified customers, Reels judged on
+    engagement over 15 days, ₹25 lakh prize pool. Their model is money-heavy and campaign-shaped,
+    matching a ₹138 Cr marketing budget.
+    Pilgrim, Minimalist, Bare Anatomy: no public referral program details we could verify. Treat as
+    unknown rather than absent.
+    Arata: codes already leak to coupon aggregators (this is the "unauthorised coupon distribution"
+    fraud pattern). Any affiliate program needs personal codes and a published rule against posting
+    them to aggregator sites.
+The gap is clear. Traya pays for proof in a burst. Arata can collect proof continuously, at a fraction of
+the cost, because its 84-day structure makes the journey a natural content format.
+
+
+
+THE PLAN
+Four layers, launched in this order. Each later layer feeds the earlier ones.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · REFERRAL AND AMBASSADOR ENGINE FOR ARATA                                       4
+                                                                                                                         DIAGRAM
+                          ┌───────────────────────────────────────────────┐
+                          │ LAYER 4: 84 DAYS ON RECORD (ambassadors)        │
+                          │ 50 customers document MitoActive publicly       │
+                          │ → UGC for ads, reviews, affiliate recruits      │
+                          └──────────────────────┬────────────────────────┘
+                                                 │ graduates become affiliates
+                          ┌──────────────────────▼────────────────────────┐
+                          │ LAYER 3: CREATOR AFFILIATES                     │
+                          │ 12% to 20% commission, personal codes,          │
+                          │ 7-day cookie, 20 super-promoters                │
+                          └──────────────────────┬────────────────────────┘
+                                                 │ drive first orders to arata.in
+      ┌──────────────────┐ ┌─────────────────────▼─────────────────────────┐
+      │ LAYER 2: REVIEWS │ │ LAYER 1: REFER-A-FRIEND (customers)             │
+      │ neutral asks at │◄┤ Give ₹150, get ₹150. WhatsApp share.             │
+      │ day 30 / day 84 │ │ Asks at day 14 and day 84. Tiers at 3/5/10.      │
+      │ MitoActive first │ │ Credit expires in 90 days → feeds reorder       │
+      └──────────────────┘ └───────────────────────────────────────────────┘
+                                                 │
+                                                 ▼
+                                every loop lands on arata.in, owned data
+
+
+
+
+LAYER 1: REFER-A-FRIEND (PRIORITY 1, WEEKS 1 TO 2)
+What: a double-sided program on arata.in. Every customer gets a personal link and code after
+delivery. Friend gets ₹150 off a first order of ₹499 or more. Referrer gets ₹150 store credit once the
+friend's order is delivered and past a 7-day return window. Credit expires in 90 days.
+Why double-sided: the referrer needs a generous reason to send the message. "Here's ₹150 off for
+you" is not selfish. Single-sided programs read as the customer earning off their friends.
+Tiers on top of the per-referral credit (physical product, which is shareable and cheap for Arata at
+cost):
+ FRIENDS WHO                                                   MRP
+ ORDERED                    REWARD                             VALUE        WHY THIS SKU
+
+ 3                          Scalp Massager free                ₹199         Low cost, encourages routine, photographs well
+ 5                          Hair Growth Intensive              ₹649         Moves a shampoo buyer up to the serum
+                            Serum free
+ 10                         MitoActive free                    ₹1,499       Seeds the hero SKU with the most loyal customers, who
+                                                                            then review it
+
+
+Cap: 20 rewarded referrals per customer per year. Credit cannot be cashed out. Credit cannot be used
+on gift cards.
+Share mechanism ranked for India:
+1. WhatsApp button with a pre-written message and the link already inside. One tap.
+2. Copy link.
+3. Instagram story card (styling customers only, auto-generated with their code).
+4. Plain code, for people who type it on a friend's phone.
+Expected effect: 8% of new arata.in customers from referral by day 90 (about 2,200 a month on the
+assumption above), at a referral CAC near ₹315. Credit redemption adds an estimated 1,500 repeat
+orders a month that would not otherwise have happened inside 90 days (assumption, to be measured
+
+
+BREW DEPLOYMENT TEAM × ARATA · REFERRAL AND AMBASSADOR ENGINE FOR ARATA                                                           5
+with a holdout).
+
+LAYER 2: REVIEWS (PRIORITY 2, WEEKS 1 TO 3)
+What: a timed, neutral review request per SKU, sent to every buyer who reaches the milestone,
+whatever their sentiment. Shampoo and conditioner at day 30. Serums, including MitoActive, at day
+84, with a lighter "how is it going" check at day 28 that does not ask for a review. Loox is the on-site
+channel. Nykaa and Amazon buyers get no incentive and no sentiment filter, in line with marketplace
+rules.
+Why: MitoActive is Arata's flagship and has zero reviews. The referral loop cannot carry a product that
+looks unproven. A customer forwarding a ₹1,499 link wants to see 50 reviews before they do it.
+Rules we hold to: the same cohort rule for happy and unhappy customers. No reward for reviewing.
+Complaints (leaks, broken seals) go to a service recovery flow that runs separately from the review
+ask.
+Expected effect: MitoActive at 100+ Loox reviews within 90 days of the first day-84 cohort. On a
+50,000-order base, a 3% review rate on delivered invitations produces far more than that; the
+constraint is only the 84-day lag.
+
+LAYER 3: CREATOR AFFILIATES (PRIORITY 3, WEEKS 3 TO 6)
+What: a tracked program for hair-journey creators, regional YouTubers, trichology explainers and
+selected coupon partners. Personal codes, 12% commission on a new customer's first arata.in order,
+rising to 15% past 25 orders and 20% past 75 orders in a quarter. 7-day cookie, code wins over
+cookie. 15-day hold for returns, monthly UPI payout above ₹1,000.
+Why the power law matters: around 20% of affiliates will produce 80% of orders. We will recruit 100
+and then spend the relationship effort on 20. Those 20 get MitoActive early, custom landing pages
+("Priya's hair fall routine") and a direct WhatsApp line to the Brew partnerships lead.
+Channel policy written before day one: no bidding on "Arata" or "MitoActive" keywords, no posting
+codes to coupon aggregators, no claims beyond the pack (the 28,200 number is "up to", in 84 days;
+creators say that or nothing).
+Expected effect: 3% of new arata.in customers from affiliates by day 90, growing to 6% to 8% by
+month 6 as the super-promoters compound.
+
+LAYER 4: 84 DAYS ON RECORD (PRIORITY 4, WEEKS 4 TO 16)
+What: 50 real customers, selected from the referral tiers, review submitters and affiliate applicants,
+receive a MitoActive + Anti-Hair Fall Shampoo kit and document 84 days with crown photos on day 0,
+28, 56 and 84. Each ambassador gets a 20% affiliate code from day 1. On day 84 the 10 most-followed
+journeys get a ₹25,000 bonus (assumption on budget; total ₹2.5 lakh plus ₹93,000 in product at MRP).
+Why: this is Arata's answer to #ProofHaiBoss at a tenth of the prize money. Traya buys one burst of
+Reels. Arata builds a standing library of 84-day evidence, which is the exact proof the Clinical Kavya
+persona wants and the exact UGC the paid team needs.
+Expected effect: 50 long-form proof assets, 50 MitoActive reviews from people who used it for the full
+course, and a pipeline of affiliates who already have results to show.
+
+
+BREW DEPLOYMENT TEAM × ARATA · REFERRAL AND AMBASSADOR ENGINE FOR ARATA                                  6
+A NOTE ON DERMATOLOGISTS AND SALONS
+Trichologist and salon referral codes belong in this engine, with a flat ₹100 per new customer paid to
+the clinic and a printed card at the counter. We list it here so the code structure is reserved for it. The
+outreach and the detailing one-pager live in the B2B outbound and sales enablement documents.
+
+FRAUD RULES, WRITTEN BEFORE LAUNCH
+ RISK                           RULE
+
+ Self-referral                  Friend reward blocked when phone, email, device fingerprint or delivery address matches the
+                                referrer's account
+ Referral rings                 Manual review when 3+ referrals share a pincode and payment method within 7 days
+ Coupon leak to                 Codes are personal, not generic. A code found on Desidime, Zoutons or CashKaro is void and
+ aggregators                    the account is paused with a notice
+ Refund abuse                   Referrer credit issued only after delivery plus 7 days. Clawback on refund or RTO
+ Freebie seeking                ₹499 minimum on friend order. Credit cannot be used on gift cards or combined with another
+                                code
+ Volume abuse                   20 rewarded referrals a year per customer; affiliates reviewed monthly against refund rate
+
+
+
+
+WORKED EXAMPLES
+EXAMPLE 1: THE REFERRAL PAGE, ARATA.IN/REFER
+Hero
+Headline: Hair that worked for you. Pass it on.
+Subhead: Give a friend ₹150 off their first Arata order. Get ₹150 in your wallet when it arrives.
+Button: Share on WhatsApp
+Secondary: Copy my link
+How it works (three steps, one line each)
+1. Send your link. We wrote the message for you.
+2. Your friend orders ₹499 or more and saves ₹150.
+3. ₹150 lands in your wallet 7 days after delivery. Spend it on your next shampoo.
+Progress strip (logged in)
+                                                                                                                       DIAGRAM
+    Friends who ordered: 2 of 3        ████████░░░░ 1 more for a free Scalp Massager
+    Wallet: ₹300   expires 14 Jan 2027
+    Next tiers: 5 friends → Hair Growth Intensive Serum free   10 friends → MitoActive free
+
+
+
+
+Proof row (quotes already on Loox, permission to be logged before publishing)
+
+
+BREW DEPLOYMENT TEAM × ARATA · REFERRAL AND AMBASSADOR ENGINE FOR ARATA                                                        7
+"Arata is amazing cz its affordable and actually works." "I can see a visible difference in two weeks."
+Small print
+Friend's ₹150 applies to a first order of ₹499 or more on arata.in, one per new customer. Your ₹150
+credit is added 7 days after your friend's order is delivered and expires 90 days later. Credit is store
+credit, has no cash value and cannot be used on gift cards. Up to 20 rewarded referrals a year. Codes
+posted on coupon sites are cancelled. Full terms at arata.in/refer/terms.
+
+EXAMPLE 2: THE MESSAGES CUSTOMERS ACTUALLY SEND AND RECEIVE
+2a. The pre-written WhatsApp share message (what the customer's friend sees)
+
+   HEY, I'VE BEEN USING ARATA FOR MY HAIR FALL FOR A FEW WEEKS AND
+   IT'S ACTUALLY WORKING. THEY GAVE ME A LINK SO YOU GET ₹150 OFF
+   YOUR FIRST ORDER. TRY THE ANTI-HAIR FALL SHAMPOO + SERUM,
+   THAT'S WHAT I USE. ARATA.IN/R/RAHUL150
+
+
+Short, first person, names the routine. The customer can edit it before sending.
+2b. Day 14 referral ask, WhatsApp (ask 1)
+
+   HI RAHUL. TWO WEEKS ON THE ANTI-HAIR FALL INTENSIVE SHAMPOO.
+   MOST PEOPLE NOTICE LESS HAIR IN THE DRAIN AROUND NOW.
+
+   IF SOMEONE IN YOUR LIFE KEEPS MENTIONING THEIR HAIR FALL, SEND
+   THEM THIS. THEY GET ₹150 OFF, YOU GET ₹150 IN YOUR WALLET WHEN
+   THEIR ORDER LANDS.
+
+   SHARE: ARATA.IN/R/RAHUL150
+
+   NOT SEEING A CHANGE YET? REPLY "HELP" AND OUR LAB TEAM WILL
+   LOOK AT YOUR ROUTINE.
+
+
+2c. Day 84 referral ask, email (ask 2)
+Subject: 84 days. That was the whole course.
+Preview text: Your ₹150 is waiting, and so is your next bottle.
+
+                    YOU STARTED THE HAIR GROWTH INTENSIVE SERUM ON 18 JULY. TODAY
+                    IS DAY 84. THAT IS THE WINDOW OUR STUDY MEASURED: UP TO 28,200
+   RAHUL,           NEW HAIRS FOR THE PEOPLE WHO USED IT THE WAY YOU DID.               TWO THINGS.
+
+   FIRST, YOU HAVE ₹150 IN YOUR WALLET FROM ADITYA'S ORDER. IT
+   EXPIRES IN 90 DAYS. YOUR SERUM REFILL IS ₹571, OR ₹999 FOR THE PACK
+   OF 3 THAT COVERS THE NEXT 84 DAYS.                                       [USE MY ₹150]
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · REFERRAL AND AMBASSADOR ENGINE FOR ARATA                                  8
+   SECOND, YOU HAVE DONE THE COURSE. YOU KNOW WHAT IT DID AND
+   WHAT IT DID NOT. IF YOU KNOW SOMEONE WHO IS WHERE YOU WERE IN
+   JULY, SEND THEM YOUR LINK. ₹150 OFF FOR THEM, ₹150 FOR YOU.                               [SHARE ON WHATSAPP]
+
+   ONE MORE FRIEND AND THE SCALP MASSAGER IS ON US.                         TEAM ARATA
+
+
+2d. After a replaced leak, WhatsApp (event ask)
+
+   HI DIVYA. YOUR REPLACEMENT ANTI-DANDRUFF SHAMPOO IS OUT FOR
+   DELIVERY TODAY. THE LEAK SHOULD NOT HAVE HAPPENED AND WE HAVE
+   FLAGGED THE BATCH TO THE WAREHOUSE.
+
+   AS A THANK-YOU FOR YOUR PATIENCE, WE HAVE ADDED ₹150 TO YOUR
+   WALLET. AND IF A FRIEND WANTS TO TRY ARATA, YOUR LINK GIVES THEM
+   ₹150 OFF TOO: ARATA.IN/R/DIVYA150
+
+
+Service recovery comes first. The referral mention comes last and is optional. We never ask for a
+review in this message.
+
+EXAMPLE 3: AFFILIATE TERMS AND THE FIRST CREATOR OUTREACH
+3a. Terms decision table (for Arata to approve, not legal boilerplate)
+ DECISION             ARATA AFFILIATE PROGRAM
+
+ Attribution          Personal code beats cookie. 7-day last-click cookie on arata.in. No credit for marketplace or quick-
+                      commerce orders. Cross-device gaps accepted and stated.
+ Eligible             New customer's first order on arata.in, delivered, not refunded or RTO within 15 days. Existing
+ conversion           customers using an affiliate code earn the affiliate nothing.
+ Commission           12% of order value excluding GST and shipping. 15% once 25 eligible orders in a quarter, 20% once
+                      75. Tier resets each quarter. Rounded down to the rupee.
+ Channel policy No paid search on brand terms. No codes on coupon aggregators. No email blasts to purchased lists. No
+                sub-affiliates. No claims beyond the pack. Disclosure near the link: "I earn a commission if you buy
+                through this link."
+ Payout               15-day hold. Monthly UPI payout on the 10th, minimum ₹1,000, carried forward below that. Disputes to
+                      partners@ within 30 days with the order ID.
+ Changes and          30-day notice on rate changes. Accrued commissions paid at the old rate. Either side can exit with 15
+ exit                 days' notice.
+
+
+3b. Outreach DM to a hair-journey creator (Instagram, 40K followers, posts weekly about post-
+partum hair fall)
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · REFERRAL AND AMBASSADOR ENGINE FOR ARATA                                                     9
+   HI NEHA, I'M FROM ARATA'S PARTNERSHIPS TEAM. YOUR "4 MONTHS
+   POST-PARTUM, HAIR UPDATE" SERIES IS THE MOST HONEST HAIR-FALL
+   CONTENT I HAVE SEEN THIS YEAR, ESPECIALLY THE DRAIN PHOTOS.
+
+   WE MAKE THE HAIR GROWTH INTENSIVE SERUM (₹571, STUDY SHOWS UP
+   TO 28,200 NEW HAIRS IN 84 DAYS) AND MITOACTIVE, A ₹1,499 SERUM ON
+   A MITOCHONDRIAL ACTIVE THAT IS ONLY AVAILABLE IN INDIA THROUGH
+   US.
+
+   OFFER: A FULL 84-DAY KIT FREE, A PERSONAL CODE THAT GIVES YOUR
+   AUDIENCE ₹150 OFF, AND 12% ON EVERY FIRST ORDER IT BRINGS, RISING
+   TO 20%. PAID MONTHLY BY UPI. YOU SAY WHAT YOU SEE, ON YOUR
+   TIMELINE. IF IT DOES NOT WORK FOR YOU, YOU SAY THAT TOO.
+
+   WANT ME TO SEND THE KIT THIS WEEK?
+
+
+No claims are put in her mouth. The disclosure line is in the welcome pack.
+
+EXAMPLE 4: THE "84 DAYS ON RECORD" AMBASSADOR BRIEF
+Program name: 84 Days On Record
+Who: 50 Arata customers who have bought a hair-growth SKU in the last 6 months, applied through
+arata.in/84days, and are willing to show their crown on camera. Mix: 30 men, 20 women, at least 15
+from Tamil, Telugu, Kannada or Marathi content spaces, at least 10 from tier-2 cities.
+What they get: MitoActive (₹1,499) + Anti-Hair Fall Intensive Shampoo (₹359) kit at day 0, a refill at
+day 42, a personal 20% affiliate code from day 1, a Lab Notes feature for every completed journey,
+and a ₹25,000 bonus for the 10 journeys with the highest audience engagement at day 84 (budget
+assumption).
+What they do: Four crown photos in the same light and angle on days 0, 28, 56 and 84, uploaded to a
+private form. One public post at each milestone on the platform of their choice. One honest sentence
+at day 84: did it work, and how much.
+What they do not do: Promise results. Quote any number other than the pack ("87% saw increased
+growth in 84 days", "up to 95% reduction in hair fall"). Hide the relationship. Every post carries "Arata
+sent me this kit and I earn on my code."
+Timeline:
+                                                                                                 DIAGRAM
+    Week 4        applications open, 300 target, 50 selected by week 5
+    Week 6        kits shipped, day 0 photos in, cohort WhatsApp group opens
+    Week 10       day 28 photos, first public posts, mid-course check by the lab team
+    Week 14       day 56 photos
+    Week 18       day 84 photos, final posts, 10 bonuses paid, Lab Notes series published
+    Week 19       graduates offered the standard affiliate tier at 15%
+
+
+
+
+Outputs Brew harvests: 200 crown photos with consent for ads and the MitoActive page, 50
+reviews written by people who completed the full course, 50 affiliates with proof already in hand.
+
+
+BREW DEPLOYMENT TEAM × ARATA · REFERRAL AND AMBASSADOR ENGINE FOR ARATA                                10
+EXAMPLE 5: THE REVIEW REQUESTS AND THE LEAK REPLY
+5a. MitoActive day-84 review request, email
+Subject: Your 84 days with MitoActive
+
+                    YOU ORDERED MITOACTIVE ON 2 AUGUST. IF YOU HAVE USED IT MOST
+                    DAYS SINCE, TODAY IS AROUND DAY 84, THE POINT OUR STUDY
+   KAVYA,           MEASURED.
+
+   IF YOU WOULD LIKE TO, PLEASE WRITE AN HONEST REVIEW HERE: [LOOX
+   REVIEW LINK]. POSITIVE, MIXED AND CRITICAL REVIEWS ALL HELP THE
+   NEXT PERSON DECIDE, AND THEY HELP OUR LAB. IT TAKES TWO MINUTES
+   AND YOU CAN ADD A PHOTO.
+
+   IF SOMETHING WENT WRONG WITH THE BOTTLE, THE DELIVERY OR THE
+   PRODUCT, REPLY TO THIS EMAIL INSTEAD AND A PERSON WILL SORT IT
+   OUT.                                                                                    TEAM ARATA
+
+
+One reminder at day 98 with the same text. Then stop. Sent to every buyer who reaches day 84, with
+no sentiment filter.
+5b. Shampoo day-30 WhatsApp review request
+
+   HI DIVYA, IT HAS BEEN A MONTH SINCE YOUR ANTI-DANDRUFF SHAMPOO
+   ARRIVED. IF YOU HAVE A MINUTE, AN HONEST REVIEW HELPS OTHER
+   PEOPLE DECIDE: [LOOX LINK]. GOOD, BAD OR IN BETWEEN, ALL OF IT IS
+   USEFUL. IF SOMETHING WAS WRONG WITH THE ORDER, REPLY HERE AND
+   WE WILL FIX IT.
+
+
+5c. Public reply to a "the bottle was leaking" review on Nykaa or Loox
+
+   THANK YOU FOR TELLING US. A LEAKING BOTTLE IS A PACKAGING
+   FAILURE ON OUR SIDE AND WE WANT TO REPLACE IT. PLEASE MESSAGE
+   US AT CARE@ARATA.IN OR ON WHATSAPP AT [NUMBER] WITH YOUR
+   ORDER ID AND WE WILL SEND A NEW ONE, NO QUESTIONS ASKED. WE
+   HAVE PASSED THE BATCH DETAILS TO OUR WAREHOUSE TEAM IN DELHI.
+
+
+We do not ask them to change the review. The replacement happens whether or not they do.
+5d. Quote permission entry (for reusing a review in ads or on the referral page)
+                                                                                                        DIAGRAM
+    Quote:          "Arata is amazing cz its affordable and actually works"
+    Source:         Loox, arata.in, [date], Anti-Hair Fall Intensive Shampoo
+    Claim limit:    supports "affordable" and general satisfaction; does not support a growth number
+    Permission:     requested by email on [date]; status: pending
+    Channels:       referral page, Meta ads (once approved)
+    Attribution:    first name and city, as approved by the customer
+    Disclosure:     none needed (no incentive given)
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · REFERRAL AND AMBASSADOR ENGINE FOR ARATA                                     11
+30-DAY DEPLOYMENT
+ WEEK BREW SHIPS                                                   ARATA PROVIDES                         LIVE BY END OF WEEK
+
+ 1        Economics re-run with real margin and CAC.                 Gross margin, paid CAC, Loox and       Referral program in test
+          Referral app configured on Shopify                         WhatsApp (Interakt or Wati)            mode. Day-30 and day-
+          (ReferralCandy-class or equivalent). Fraud                 access, legal sign-off on terms,       84 review flows drafted.
+          rules set. arata.in/refer page copy and design.            batch and complaint data for the
+          Terms page. Review request cohorts defined                 leak flow. Owner: Arata brand
+          per SKU.                                                   manager and Arata ops lead.
+ 2        End-to-end test with 50 staff and friends-                 Customer list segments, brand          Refer-a-friend live for all
+          and-family orders. Day 14 and day 84                       sign-off on copy. Owner: Arata         arata.in customers.
+          WhatsApp and email flows built in Shopify Flow             brand manager.                         Review requests live for
+          plus the WhatsApp tool. Wallet and tier logic                                                     every delivered order
+          tested. Launch email and WhatsApp to the last                                                     reaching day 30.
+          90 days of customers.
+ 3        Affiliate program page (arata.in/partners),                Partnerships inbox, GST and            25 affiliates activated with
+          terms, personal codes, UPI payout process.                 payout details, approval of the        tested codes and kits
+          Shortlist of 100 creators with evidence of hair-           creator shortlist. Owner: Brew       shipped. Support replying
+          fall or styling audience. First 40 outreach DMs            partnerships lead, Arata finance.      to every leak and seal
+          sent. Public review response playbook handed                                                      review within 48 hours.
+          to support.
+ 4        84 Days On Record application page and                     MitoActive stock allocation for 50     Applications open. First
+          selection rubric. Weekly referral dashboard.               kits plus refills. Owner: Arata ops    month's referral, affiliate
+          First funnel review: share rate, friend                    lead.                                  and review numbers
+          conversion, credit redemption, fraud flags. Fix                                                   reported with baselines
+          the two biggest friction points.                                                                  set.
+
+
+Roles: Brew growth lead (program design and dashboard), Brew creative lead (page, messages,
+ambassador assets), Brew partnerships lead (affiliates and ambassadors), Arata brand manager
+(approvals and voice), Arata ops lead (stock, warehouse, replacements), Arata support lead (review
+responses).
+
+
+
+HOW WE MEASURE
+ METRIC                                                        BASELINE           90-DAY TARGET                    OWNER
+
+ Referral rate (customers who shared at least                  0%                 12%                              Brew growth
+ once / customers delivered in period)                                                                             lead
+ Share-to-order conversion (friend orders / links              n/a                15%                              Brew growth
+ sent)                                                                                                             lead
+ K-factor (shares per customer × conversion)                   0                  0.15 (amplified, not viral;      Brew growth
+                                                                                  honest for haircare)             lead
+ Referred customers as % of new arata.in                       0%                 8%                               Brew growth
+ customers                                                                                                         lead
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · REFERRAL AND AMBASSADOR ENGINE FOR ARATA                                                                 12
+ METRIC                                                        BASELINE       90-DAY TARGET             OWNER
+
+ Referral CAC (rewards + tool + ops per referred               n/a            under ₹350                Arata finance
+ customer)
+ Referred-customer 90-day repeat rate vs non-                  to be          +20% relative             Brew growth
+ referred                                                      instrumented                             lead
+ Credit redemption rate within 90 days                         n/a            60%                       Brew growth
+                                                                                                        lead
+ Active affiliates (one eligible order in last 30              0              20                        Brew
+ days)                                                                                                  partnerships lead
+ Affiliate share of new arata.in customers                     0%             3%                        Brew
+                                                                                                        partnerships lead
+ Affiliate refund and RTO rate vs site average                 to be          within 2 points of site   Arata finance
+                                                               instrumented   average
+ MitoActive reviews on arata.in                                0              100                       Arata support lead
+ Review requests: published reviews / delivered                to be          3%                        Arata support lead
+ invitations                                                   instrumented
+ Leak and seal reviews answered within 48 hours                to be          100%                      Arata support lead
+                                                               instrumented
+ Fraud flags as % of referral rewards                          n/a            under 3%                  Brew growth
+                                                                                                        lead
+
+
+Attribution rule: referral and affiliate credit are assigned by code or link, which tells us who got paid,
+not what would have happened without them. For the referral credit nudge we run a 10% holdout of
+referrers who receive the credit silently without the day-45 message, and compare repeat rate. For
+affiliates we compare referred-customer retention against paid-social cohorts from the same month.
+Decision rules at day 90:
+    If referral share of new customers is at or above 6% and referral CAC is below paid CAC: raise the
+    friend reward test to ₹200 on orders above ₹699, and open the Instagram story card to all
+    customers.
+    If share rate is under 5%: the ask is the problem. Move ask 1 earlier for shampoo buyers (day 10),
+    rewrite the WhatsApp message with the top three Loox verbatims, and add the prompt to the order
+    tracking page.
+    If share rate is fine but conversion is under 8%: the landing is the problem. Build a dedicated
+    referred-friend page that shows the referrer's first name, the routine they bought, and the ₹150
+    applied in the cart.
+    If fraud flags exceed 5%: raise the friend minimum to ₹699 and move referrer credit to 14 days
+    post-delivery.
+    If affiliate refund rate is more than 5 points above site average for any partner: pause the partner,
+    review the placements, and remove if the pattern holds.
+    If MitoActive crosses 100 reviews with an average above 4.0: put the review count and three quotes
+    on the referral page and move MitoActive into the 5-friend tier in place of the Intensive Serum.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · REFERRAL AND AMBASSADOR ENGINE FOR ARATA                                                    13
+    If it does not work on any measure after the fixes above: keep the review engine, keep the top 20
+    affiliates, shut the referral credit, and move the budget to the ambassador cohort, whose UGC has
+    value even without a referral loop.
+
+
+
+APPENDIX
+PRE-LAUNCH CHECKLIST
+    [ ] Economics re-run with Arata's real margin and CAC
+    [ ] Referral app installed, wallet and expiry tested
+    [ ] arata.in/refer and arata.in/refer/terms live
+    [ ] Pre-written WhatsApp message approved in Hindi and English (Tamil and Telugu in month 2)
+    [ ] Day 14, day 45 and day 84 flows tested on a real order
+    [ ] Fraud rules configured; manual review queue owner named
+    [ ] Support briefed on wallet questions and the leak reply
+    [ ] Review request cohorts set with no sentiment filter
+    [ ] Affiliate terms approved by Arata finance and legal
+    [ ] Disclosure line in every affiliate and ambassador welcome pack
+
+ALTERNATIVE REFERRAL HEADLINES TO TEST
+1. Hair that worked for you. Pass it on.
+2. Your friend's hair fall is your problem now. ₹150 for both of you.
+3. We proved it in the lab. You proved it at home. Send it on.
+4. ₹150 for them. ₹150 for you. Zero guesswork.
+
+SHARE MESSAGE VARIANTS
+Dandruff: "Remember my flakes situation? This is the shampoo that fixed it. ₹150 off with my link."
+Styling: "The gel that survived the metro in June. ₹150 off, link below."
+MitoActive: "I'm on the mitochondrial serum thing. Day 40, less fall, will report at 84. ₹150 off if you
+want in."
+
+SOURCES USED BEYOND THE BRAND BRIEF
+    Traya affiliate listings on Cuelinks and affi.io; Traya codes on Desidime, Zoutons and CashKaro
+    Impact (April 2026): Traya #ProofHaiBoss campaign, ₹25 lakh prize pool, creator-customer pairing,
+    15-day evaluation
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · REFERRAL AND AMBASSADOR ENGINE FOR ARATA                                  14
+REFERRALS, AFFILIATES AND REVIEWS
+
+
+DAY 30
+AT ARATA
+    WHAT IS LIVE
+
+    Refer-a-friend is live on arata.in with WhatsApp sharing at day 14 and day 84,
+    the first 25 affiliates have tracked codes, and every MitoActive buyer past day
+    30 has received a review request.
+
+
+
+
+  NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+  BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+  CONFIRM".
+
+
+  EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+  BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                    DEPLOYMENT TEAM
+                                                                                 BREW
+

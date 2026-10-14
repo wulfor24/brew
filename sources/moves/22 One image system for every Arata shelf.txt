@@ -1,0 +1,915 @@
+      Brew                                      PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+MARKETING IMAGES · MOVE 22 OF 50
+
+
+
+ONE IMAGE
+SYSTEM
+FOR EVERY
+ARATA SHELF
+  A SINGLE IMAGE SYSTEM FOR ARATA THAT TURNS ONE
+  PACKSHOT LIBRARY INTO EVERY SLOT THE BRAND SELLS
+  THROUGH: PRODUCT PAGES, AMAZON AND NYKAA
+  LISTINGS, QUICK-COMMERCE TILES, META STATICS AND
+  LINK PREVIEWS.
+
+
+
+
+7 slots
+PER SKU, ON EVERY CHANNEL
+
+
+
+
+BREW × ARATA                     OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                   V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                               WHAT THIS GIVES ARATA
+                                                               A single image system for Arata that turns one
+                                                               packshot library into every slot the brand sells
+                                                               through: product pages, Amazon and Nykaa listings,
+                                                               quick-commerce tiles, Meta statics and link
+                                                               previews.
+        7 slots
+        PER SKU, ON EVERY CHANNEL
+                                                               LIVE 30 DAYS AFTER WE START
+                                                               MitoActive, the Intensive Serum and the Anti-Hair
+                                                               Fall Shampoo each have a complete 7-image stack
+                                                               live on arata.in, Amazon.in and Nykaa, matching
+                                                               quick-commerce tiles on Blinkit and Zepto, a 12-
+                                                               static Meta set, and automatic OG images on every
+                                                               page.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+Arata sells on six shelves: arata.in, Amazon.in, Nykaa, Flipkart, Blinkit, Zepto and Instamart. On five of
+them the image is the store. There is no sales page, no Lab Notes explainer, no Samay Raina podcast.
+There is a 1:1 thumbnail, maybe 150 pixels wide on a phone, next to Pilgrim, Minimalist and Mamaearth.
+68% of Arata's revenue is decided in that square.
+The brand's single best asset is the number on the bottle: 7.4X, 28,200, 95%, 86%, 87%. Today that
+number lives on the pack and in the product page copy. On a Blinkit tile it is unreadable. On Amazon
+the secondary image slots, the A+ modules and the Brand Story carousel are where that number
+should do its work, and they are the slots most Indian D2C brands fill last and worst. We have not
+audited Arata's live listings image by image (that is week 1), but the brief tells us enough: naming is
+inconsistent across channels, the legacy curl-care and onion-biotin lines are still visible on
+marketplaces, and the rebrand to "Hair & Scalp Science Co." is mid-flight. That means at least two
+visual languages are live at once. A customer who sees the lab-blue 3.0 serum on arata.in and a 2022
+Super Shampoo on Nykaa does not see one brand.
+Two product facts make images urgent. MitoActive launched in August at ₹1,499 with zero reviews.
+With no social proof, the image stack has to carry the whole argument: what Y100 is, why
+mitochondria matter, what 87% in 84 days means, and why ₹1,499 is ₹50 a day. The second fact is the
+complaint theme in the reviews: "the seal was broken", "the shampoo bottle was leaking", "it doesn't
+have the box". Those are operations problems, but a shot of the sealed cap and the carton in slot 4 of
+the listing answers the anxiety before it becomes a one-star review.
+The cost of leaving this alone is quiet. Marketplace conversion a point or two below what the claim
+deserves. Meta statics rebuilt from scratch per campaign. Rebrand assets that reach arata.in and
+never reach Zepto. Lab Notes posts shared on WhatsApp with no preview image, which reads as
+broken.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE IMAGE SYSTEM FOR EVERY ARATA SHELF                                             1
+The opportunity is one image system. Photograph the hero SKUs once, properly. Build one 7-slot
+template that works for every SKU on every shelf. Use image generation only where it is safe (scenes,
+textures, backgrounds) and never for the bottle, the label or the claim. Then resize, overlay and ship.
+One shoot, one template, roughly 200 finished assets by day 30.
+
+
+
+WHAT WE FOUND
+WHERE ARATA'S IMAGES HAVE TO WORK
+Every placement with its spec and what the image has to do there. Sizes are platform specs as of
+October 2026; the status column is our read from the brief and will be confirmed in the week 1 audit.
+ SURFACE              SLOT                  SPEC                          JOB OF THE IMAGE             STATUS (BRIEF)
+
+ arata.in PDP         Gallery (6 to 8       2000x2000, 1:1, WebP, under   Sell the claim, show the     Live; gallery depth
+                      images)               200KB each                    routine, kill objections     unknown
+ arata.in             Card thumbnail        1000x1000                     Make the SKU readable at     Mixed claims on hair
+ collection                                                               180px                        growth collection
+ arata.in OG          Link preview          1200x630                      Make a WhatsApp share        To be instrumented
+                                                                          look like a brand, not a
+                                                                          broken link
+ Lab Notes            Post hero and         1200x630                      Make the science look like   Posts cluster in
+                      OG                                                  science                      bursts; heroes likely
+                                                                                                       inconsistent
+ Amazon.in            Main image            2000x2000, pure white,        Win the search thumbnail     Present
+                                            product fills 85% of frame
+ Amazon.in            Secondary             2000x2000                     Claim, ingredients, how-to, Depth unknown
+                      images (up to 6                                     routine, seal and carton,
+                      more)                                               comparison
+ Amazon.in            A+ content            Module-specific (970x600      Educate and cross-sell       To be audited
+                                            text overlay, 300x300 four-
+                                            image, 150x300 comparison)
+ Amazon.in            Brand Story           1464x625 background,          Carry the rebrand and the    To be audited
+                                            362x453 cards                 lab
+ Nykaa                Gallery               1:1, minimum 1000px, white    Same as Amazon; Nykaa        Super Shampoo 4.2★
+                                            background for image 1        buyer skews female:          on 2,435 ratings
+                                                                          dandruff, damage, styling
+ Flipkart             Gallery               1:1, minimum 1000px           Same                         Legacy SKUs visible
+ Blinkit, Zepto,      Tile                  1:1, white or brand           Be recognised in 0.5         30% of revenue; tile
+ Instamart                                  background, read at 120 to    seconds                      quality unknown
+                                            150px
+ Meta feed and Static                       1080x1080 and 1080x1350       Stop the scroll, state the   Rebuilt per campaign
+ Reels cover                                                              number
+ Meta Stories         Static                1080x1920                     Same, with safe zone         Same
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE IMAGE SYSTEM FOR EVERY ARATA SHELF                                                        2
+ SURFACE              SLOT                  SPEC                                 JOB OF THE IMAGE               STATUS (BRIEF)
+
+ Google               Feed image            1:1 white background, no             Match Amazon main image Assumption: not
+ Shopping                                   overlay text                                                 optimised
+ WhatsApp             Inline image          1080x1080                            Reorder nudges, routine        No community today
+ broadcast                                                                       reminders
+
+
+Seven slots per SKU, six channels, and the same seven images serve all of them with crops and
+overlays. That is the whole design principle of this document.
+
+WHICH IMAGES MAY BE GENERATED AND WHICH MAY NOT
+The decision that matters most for a regulated haircare brand is where image generation is allowed.
+Arata carries numeric claims on every pack. An image model will redraw a label, invent a percentage,
+add a leaf to a bottle that says "good science", or render a seal that does not match the real one. For a
+brand repositioning from "zero chemicals" to bioscience, a hallucinated bottle is a credibility problem
+and potentially an ASCI complaint.
+                                                                                                                              DIAGRAM
+    Is the bottle, label, cap, carton or claim text in the frame?
+    ├── Yes → Real photography. Packshot library. No generation of the product itself.
+    │         Scenes around a real packshot: allowed, with the packshot as a locked reference.
+    └── No ↓
+    Is there a number, a claim, or the brand name in the image?
+    ├── Yes → Design tool (Figma) with text layers. Never ask a model to render "7.4X".
+    └── No ↓
+    Is it a human scalp, hair or skin result?
+    ├── Yes → Real consumer or study photography only. No generated before/after. Ever.
+    └── No ↓
+    Generate freely: backgrounds, water, lab textures, humidity, pillow, drain, metro, ingredient macros.
+
+
+
+
+Applied to Arata's asset classes:
+ ASSET CLASS                             APPROACH                         TOOL                             WHY
+
+ Packshots (every SKU, 5                 Studio photography, one          Camera, white sweep,             The bottle and label must
+ angles)                                 day, tethered                    2000x2000 crops                  be exact. This library is the
+                                                                                                           reference for everything
+                                                                                                           else.
+ Scene around a packshot                 Generated scene with             Flux Kontext or Gemini       Keeps the real bottle,
+ (bathroom shelf, gym bag,               locked product reference         editing with the packshot as generates the context.
+ Blinkit paper bag)                                                       input; Figma composite as    Check the label every time.
+                                                                          fallback
+ Ingredient and mechanism        Generated                                Flux Pro 1.1 for photoreal;      Abstract science visuals
+ macros (mitochondria, follicle,                                          Recraft V3 for the Lab           are safe to generate and
+ Hairdian AP, rosemary-                                                   Notes illustration style         hard to photograph.
+ caffeine)
+ Claim cards ("7.4X hair fall            Designed                         Figma template with locked       Text accuracy and study
+ reduction", "87% saw growth                                              type and footnote layer          footnotes are mandatory.
+ in 84 days")
+ Before/after and consumer               Real study or customer           Camera                           A generated result photo is
+ results                                 photos only, with consent                                         a false claim.
+ Routine and how-to (hands,              Photography with a model, Camera first; Flux Kontext              Hands and droppers
+ dropper, scalp application)             or generated hands with the as fallback                           generate well; the bottle
+                                         real packshot                                                     must still be real.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE IMAGE SYSTEM FOR EVERY ARATA SHELF                                                                    3
+ ASSET CLASS                             APPROACH                         TOOL                         WHY
+
+ OG images                               Designed, generated              Figma master, Satori or      Hundreds of pages, one
+                                         programmatically                 Vercel OG per page           template.
+ Meta statics                            Generated background plus        Flux or Gemini for the       Text in post, always.
+                                         designed overlay                 background, Figma for type
+ Logo, wordmark, pack icons              Design only                      Figma, vector                Never generated.
+
+
+THE VISUAL SYSTEM WE ARE BUILDING ON
+The brief gives us "clean white and lab-blue packaging in the 3.0 range" and a rebrand underway. We
+do not have the rebrand file. So the image system is built to carry whatever the rebrand lands on,
+through tokens rather than fixed colours. The tokens below are our working assumptions until Arata's
+brand manager supplies the rebrand sheet in week 1.
+ TOKEN               WORKING VALUE (ASSUMPTION)                                                        WHERE IT SHOWS
+
+ Surface white Pure white #FFFFFF for marketplace image 1; off-white #F5F7FA for brand                 Main images, PDP gallery
+               surfaces
+ Lab blue            #1B4DD8 range                                                                     Claim numbers, rule lines,
+                                                                                                       OG background
+ Ink                 #0B1220                                                                           Body type on light
+                                                                                                       surfaces
+ Result green        Used once per image, only on the headline number                                  "7.4X", "87%"
+ Type                A geometric sans for numbers, a humanist sans for body; both from the             Every overlay
+                     rebrand sheet
+ Number style        Large numeral, small unit, one-line study footnote in 4% of frame height          Every claim card
+ Photography         High key, soft directional from the left, white or pale blue sweep, without       Packshots and scenes
+                     props that read "natural" or "ayurvedic" (leaves, wooden bowls, onions are
+                     all out)
+ Science             Macro water, micro-bubbles, clean glass, cool light. Mitochondria drawn as        Macros, A+ backgrounds,
+ texture             soft bean shapes with inner folds, never as glowing sci-fi                        OG
+
+
+Two rules that come straight from the brief. First, the word list: use scalp, roots, follicle, 84 days, new
+hair, tested, Indian hair, humidity, routine, system, lab. Never render "chemical-free", "miracle" or
+"clinical-strength" in any image. Second, the number on every image follows the pack: "up to" where
+the study says "up to", "84 days" where the study says 84 days, and a footnote naming the study type
+(in-vitro, consumer study, tensile strength study).
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE IMAGE SYSTEM FOR EVERY ARATA SHELF                                                             4
+THE PIPELINE
+                                                                                                             DIAGRAM
+       Day 1 shoot                Master library                Templates                  Channels
+    ┌───────────────┐        ┌──────────────────┐       ┌────────────────────┐      ┌──────────────┐
+    │ 10 SKUs       │        │ /packshots       │       │ 7-slot PDP stack   │ ───▶ │ arata.in     │
+    │ 5 angles each │ ─────▶ │ /textures (gen) │ ─────▶ │ A+ module set      │ ───▶ │ Amazon.in    │
+    │ caps, cartons │        │ /hands + routine │       │ Q-commerce tile    │ ───▶ │ Nykaa, Flip │
+    │ hands, dropper│        │ /claim cards     │       │ Meta static grid   │ ───▶ │ Blinkit,Zepto│
+    └───────────────┘        │ /brand (logo,    │       │ OG template        │ ───▶ │ Meta         │
+                             │ rebrand tokens) │        └────────────────────┘      │ WhatsApp     │
+                             └──────────────────┘                │                  └──────────────┘
+                                                                 ▼
+                                                     Export: WebP + JPEG fallback,
+                                                     2000px master, 1080, 1000, 600 crops
+
+
+
+
+Everything downstream of the shoot is a template. Change a price, change a claim footnote, add the
+rebrand colour: one edit, every channel.
+
+
+
+THE PLAN
+PHASE 1 (WEEK 1): AUDIT AND MASTER LIBRARY
+What: Screenshot every live listing image on Amazon.in, Nykaa, Flipkart, Blinkit and Zepto for the ten
+hero SKUs. Score each on four checks: readable at 150px, claim visible, matches 3.0 visual language,
+shows seal or carton. Then shoot the master library in one studio day in Delhi: MitoActive, Hair Growth
+Intensive Serum, Anti-Hair Fall Shampoo, Anti-Breakage Conditioner, Anti-Dandruff Shampoo, Anti-
+Dandruff Conditioner, Anti-Dandruff Serum, Damage Defence Super Shampoo, Anti-Grey Serum, Hair
+Gel. Five angles each (front, three-quarter, back label, cap and seal close-up, carton), plus the Hair
+Growth Trio and Anti-Dandruff S+C as grouped shots, plus hands, dropper and scalp-application
+sequences.
+Why: Every other asset references this library. Without a real packshot the generated scenes will drift.
+Expected effect: A single source of truth that ends the onion-vs-biotin, serum-vs-tonic drift across
+channels. The legacy curl-care and Super Shampoo images stay as they are until Arata decides
+whether those SKUs survive the rebrand; we do not reshoot what might be retired.
+
+PHASE 2 (WEEKS 1 TO 2): THE 7-SLOT STACK
+What: One template, seven slots, every SKU. The order is fixed because it mirrors how a shopper
+scrolls a marketplace gallery.
+                                                                                                             DIAGRAM
+    Slot 1    MAIN        Packshot on pure white. 85% fill. No text. (Amazon, Google Shopping rule)
+    Slot 2    THE NUMBER Claim card. One number, one unit, one footnote. "7.4X hair fall reduction*"
+    Slot 3    HOW IT WORKS Mechanism macro + 3 labelled actives. Y100 / Hairdian AP / rosemary-caffeine
+    Slot 4    IN HAND     Real hands, dropper or pump, scale of the bottle. Answers "is 30 ml enough?"
+    Slot 5    THE ROUTINE The SKU in its system: shampoo → serum → conditioner, with the 84-day marker
+    Slot 6    SEAL + BOX Cap, tamper seal, carton. Answers the leak and "no box" reviews
+    Slot 7    REAL PEOPLE Verbatim review on a card, star count, platform. "Hair fall reduced drastically"
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE IMAGE SYSTEM FOR EVERY ARATA SHELF                                                5
+Why: Slots 2, 6 and 7 address the three things the brief says the shopper is worried about: will it work,
+will it leak, is anyone else saying it worked. Slot 5 does the job Arata's site does not yet do: it shows
+the routine, so the shopper adds the shampoo to the serum.
+Expected effect: Higher add-to-cart from the gallery and a lift in combo attach on marketplaces. Also a
+template Arata's team can run themselves for every new SKU.
+
+PHASE 3 (WEEK 2): QUICK-COMMERCE TILES
+What: A tile variant of slot 1 for Blinkit, Zepto and Instamart. Same packshot, cropped tighter (product
+fills 92% of frame), with the concern word set large in the brand colour band at the bottom where the
+platform allows a non-white background: "HAIR FALL", "DANDRUFF", "GROWTH". Where the platform
+requires pure white, the pack's own front-label number has to be legible, so we supply a packshot
+shot straight on with the label face lit evenly.
+Why: Quick commerce is 30% of revenue and the tile is the only creative. At 150px, "Arata Anti-Hair
+Fall Intensive Shampoo 200 ml" is unreadable; "HAIR FALL" and a blue bottle are not.
+Expected effect: Recognition on the shelf against Mamaearth and Dove, which is the actual fight on
+Blinkit.
+
+PHASE 4 (WEEKS 2 TO 3): AMAZON A+ AND BRAND STORY
+What: A+ for the three hair-fall SKUs and the Anti-Dandruff Shampoo first, in this module order:
+header image with text (the routine), four-image and text (the actives), comparison chart (the Arata
+hair growth ladder: Intensive Serum ₹571 → Pack of 3 ₹999 → MitoActive ₹1,499), single image and
+dark text overlay (seal and lab). Then a Brand Story carousel that carries the rebrand: the Delhi lab,
+"systems, not symptoms", the Y100 licence, the founders.
+Why: Amazon is the largest single channel inside the 38% marketplace share. A+ is free real estate
+below the fold that Pilgrim and Minimalist already use well. The comparison chart is the only place on
+Amazon where Arata can upsell its own ladder on a competitor's page view.
+Expected effect: Cross-sell inside Amazon without ad spend; a Brand Story that stops the Super
+Shampoo listing from looking like a different company.
+
+PHASE 5 (WEEK 3): META STATIC SYSTEM
+What: Twelve statics built from the format map in Arata's ad creative plan, using the library: three
+claim statements, three "us vs them" (Traya monthly kit vs one serum; onion shampoo vs a number;
+minoxidil dependency vs a 3-month course), three review cards, three FAQ cards (₹1,499, "another
+Redensyl serum?", "do I use it forever?"). Backgrounds generated, type in Figma, exported 1080x1080,
+1080x1350 and 1080x1920.
+Why: Statics are the cheapest creative to iterate and the easiest to keep on-brand when the type lives
+in a template.
+Expected effect: A reusable static set that the ad account can refresh weekly by swapping a
+background or a verbatim rather than rebuilding.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE IMAGE SYSTEM FOR EVERY ARATA SHELF                                    6
+PHASE 6 (WEEK 4): OG IMAGES AND SITE OPTIMISATION
+What: One OG template for arata.in with three variants: product (packshot, name, number, price), Lab
+Notes (title, science texture, "Lab Notes" tag), and collection (three packshots, concern word).
+Generated at request time with Satori so every page, including future programmatic ingredient and
+concern pages, gets a correct preview. Alongside it, an optimisation pass on the PDP gallery: WebP
+with JPEG fallback, 2000px masters served at display size, lazy load below the fold, explicit width and
+height on every image tag.
+Why: 650K monthly visits, growing 42% month on month, on a Shopify store with a gallery of large
+product images. Image weight is the usual page-speed problem on Shopify stores, and page speed is
+a conversion lever on mobile data in tier-2 cities. The OG template makes every WhatsApp share of a
+Lab Notes post look like Arata.
+Expected effect: Faster PDPs, measurable on Core Web Vitals; shared links that carry the number.
+
+PRIORITY
+ DELIVERABLE                                                              REVENUE REACH             EFFORT     ORDER
+
+ Packshot library                                                         All channels              1 studio   1
+                                                                                                    day
+ 7-slot stack, MitoActive + Intensive Serum + Anti-Hair Fall              Hair fall, the core       3 days     2
+ Shampoo
+ Quick-commerce tiles, all hero SKUs                                      30% of revenue            1 day      3
+ 7-slot stack, remaining 7 SKUs                                           Dandruff, damage, grey,   3 days     4
+                                                                          styling
+ Amazon A+ x4 + Brand Story                                               Largest marketplace       3 days     5
+ Meta static set x12                                                      Paid                      2 days     6
+ OG template + site optimisation                                          Owned                     2 days     7
+
+
+
+
+WORKED EXAMPLES
+Each example is a finished spec sheet: what the asset is, the exact size, the generation prompt where
+generation is allowed, the overlay copy with footnotes, the alt text, and the QA check. Prompts are 40
+to 80 words, in the Subject + Setting + Style + Lighting + Composition + Technical order. The
+packshot reference is always the real studio file, named by its library path.
+
+EXAMPLE 1: MITOACTIVE 7-SLOT PDP AND MARKETPLACE STACK
+Product: MitoActive Mitochondrial Hair Growth Serum, 30 ml, ₹1,499. Zero reviews, so slot 7 is
+adapted. Master size 2000x2000 for every slot. Export: 2000 (Amazon, Nykaa), 1080 (arata.in
+gallery), 600 (thumbnail). WebP quality 82 plus JPEG fallback.
+Slot 1: Main image
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE IMAGE SYSTEM FOR EVERY ARATA SHELF                                                7
+    Source: /packshots/mitoactive/front_01.tif , white sweep, product fills 85% of frame, centred, no
+    shadow heavier than 8% grey.
+    Text, badges and generation are all off for this slot.
+    Alt text: "Arata MitoActive mitochondrial hair growth serum 30 ml bottle, front view"
+    QA: Pure white corners (255,255,255). Label fully legible at 150px. Dropper cap vertical.
+Slot 2: The number
+    Layout: Left 55% of frame, the packshot three-quarter angle ( /packshots/mitoactive/tq_02.tif ).
+    Right 45%, the claim.
+    Background prompt (Flux Pro 1.1, then composite in Figma):
+                                                                                                  DIAGRAM
+    Soft pale blue studio backdrop with a gentle horizontal gradient from white
+    at the top to cool light blue at the bottom, faint macro water droplets on
+    clean glass in the lower third, empty of objects and text, high key soft directional
+    lighting from the left, calm clinical skincare photography style, 1:1, 2000x2000
+
+
+
+
+    Overlay copy (Figma text layers):
+    Headline numeral: 87%
+    Line 1: saw increased hair growth in 84 days
+    Line 2: up to 95% reduction in hair fall
+    Footnote (4% of frame height, ink at 70%): Consumer study on Indian participants, 84 days, twice-
+    daily use. Individual results vary.
+    Alt text: "87% of users saw increased hair growth in 84 days with Arata MitoActive"
+    QA: Numeral readable at 300px. Footnote present. "Up to" present on the 95% line.
+Slot 3: How it works
+    Concept: a mitochondrion, drawn like a clean biology illustration rather than a sci-fi render, next to
+    a hair follicle, with three callouts.
+    Generation prompt (Recraft V3, illustration mode, or Flux Pro with the style words):
+                                                                                                  DIAGRAM
+    Scientific illustration of a single hair follicle in cross-section beside a
+    mitochondrion with soft inner folds, clean white background, thin lab-blue line
+    work with pale blue fills, flat medical textbook style, even flat lighting,
+    centred composition with empty space on the right third for labels, without text,
+    1:1, 2000x2000
+
+
+
+
+    Overlay copy:
+    Title: How Y100 works
+    Callout 1: Supports mitochondrial function in the follicle
+    Callout 2: Shifts more hairs into the growth (anagen) phase
+    Callout 3: Increased density in the Indian-participant study
+    Footer: Y100, licensed exclusively in India. 6+ years of research, 5+ clinical studies.
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE IMAGE SYSTEM FOR EVERY ARATA SHELF                                      8
+    Alt text: "Diagram of how Y100 in Arata MitoActive supports mitochondrial function in the hair
+    follicle"
+    QA: Reject any glow, neon or DNA helix. Line weight matches the Lab Notes illustration style once
+    the rebrand sheet lands.
+Slot 4: In hand
+    Source: /hands/mitoactive/dropper_03.tif (real hand, real bottle, real dropper, shot on the studio
+    day). Fallback if the shot fails: Flux Kontext with /packshots/mitoactive/front_01.tif locked as
+    reference and this prompt:
+                                                                                                DIAGRAM
+    A woman's hand with short natural nails holding the reference serum bottle at
+    chest height, other hand lifting the glass dropper with one clear drop forming,
+    plain white bathroom tile background softly out of focus, natural morning light
+    from a window on the left, medium close-up, realistic skincare photography,
+    keep the bottle label exactly as the reference, 1:1, 2000x2000
+
+
+
+
+    Overlay copy: "30 ml. One month at twice-daily use. ₹50 a day."
+    Alt text: "Hand holding Arata MitoActive 30 ml serum with dropper, one month supply"
+    QA: Compare generated label to reference pixel by pixel on the wordmark and the "Y100" mark.
+    Reject on any drift.
+Slot 5: The routine
+    Layout: Three packshots in a row with arrows: Anti-Hair Fall Intensive Shampoo → MitoActive →
+    Anti-Breakage Intensive Conditioner. Day markers below.
+    Background: Flat off-white #F5F7FA, no generation.
+    Overlay copy:
+    Title: The hair growth system
+    Under shampoo: Wash. 7.4X hair fall reduction*
+    Under MitoActive: Treat. Morning and night on a dry scalp
+    Under conditioner: Protect. 78% stronger hair in 1 wash*
+    Timeline bar: Day 1 → Day 28 → Day 56 → Day 84 (results window)
+    Footnote: *Tensile strength study; in-vitro study. See product pages.
+    Alt text: "Arata hair growth routine: anti-hair fall shampoo, MitoActive serum and anti-breakage
+    conditioner over 84 days"
+    QA: The combo price shown matches the live MitoActive + shampoo combo (₹1,803 to ₹2,278 band
+    on arata.in) on the day of export. Price layer is a variable in the template.
+Slot 6: Seal and box
+    Source: /packshots/mitoactive/seal_04.tif and /packshots/mitoactive/carton_05.tif , composited:
+    carton standing at the left, bottle in front, a macro inset of the tamper seal top right.
+    Overlay copy: "Sealed. Boxed. Replaced free if it arrives otherwise."
+    Alt text: "Arata MitoActive bottle with tamper seal and outer carton"
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE IMAGE SYSTEM FOR EVERY ARATA SHELF                                   9
+    QA: The replacement promise line only ships once Arata's ops lead confirms the policy wording.
+    Until then the line reads "Tamper-sealed cap. Outer carton included."
+Slot 7: Real people (adapted for zero reviews)
+    MitoActive has no reviews yet. Running a review card with a borrowed Intensive Serum review
+    would be misleading. Instead, slot 7 carries the study card.
+    Layout: Pale blue background from the slot 2 prompt. A single large verbatim-style line, but from
+    the study rather than a customer.
+    Overlay copy:
+    Quote mark, then: "Reduced shedding. Improved anagen-to-telogen ratio. Increased density."
+    Attribution: Indian-participant study on Y100
+    Small: Rated by the first 100 MitoActive customers soon. Leave yours at arata.in.
+    Swap rule: the moment MitoActive has 25 reviews at 4★ or above, slot 7 becomes a real review
+    card using the same template as the Intensive Serum stack below.
+
+EXAMPLE 2: HAIR GROWTH INTENSIVE SERUM, SLOTS 2 AND 7 (THE TEMPLATE IN USE ON A REVIEWED
+SKU)
+Product: Hair Growth Intensive Serum 30 ml, ₹649 → ₹571, 474 reviews. Pack of 3 ₹1,947 → ₹999.
+Slot 2 overlay copy
+    Headline numeral: +28,200
+    Line 1: new hairs, up to, within 84 days
+    Line 2: ₹571 a bottle. ₹999 for three.
+    Footnote: Consumer study, 84 days. "Up to" reflects best responders. Individual results vary.
+Same background prompt as MitoActive slot 2, with one change for visual separation on the collection
+page: "gradient from white at the top to pale mint-blue at the bottom". The rebrand sheet will decide
+whether sub-ranges get their own tint.
+Slot 7 overlay copy (review card)
+    Verbatim: "Hair fall reduced drastically"
+    Stars: five, rendered as vector icons, lab blue
+    Attribution: Verified buyer, arata.in. 474 reviews.
+    Second verbatim, smaller: "I can see a visible difference in two weeks"
+    Footnote: Reviews collected via Loox. Results vary.
+QA for every review card: the verbatim is copied exactly from the review platform, including the
+customer's spelling. Never tidy "hairfall" into "hair fall" on a quote. Never combine two reviews into
+one sentence.
+
+EXAMPLE 3: META STATIC SET, THREE FINISHED STATICS
+All three export at 1080x1080 (feed), 1080x1350 (feed tall) and 1080x1920 (Stories, with the top
+250px and bottom 340px kept clear of type). Backgrounds generated once and reused. Type in Figma.
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE IMAGE SYSTEM FOR EVERY ARATA SHELF                                  10
+Static A: Headline statement, Anti-Hair Fall Intensive Shampoo
+    Background prompt (Flux Pro 1.1):
+                                                                                                                    DIAGRAM
+    A single clean white bathroom shelf against a pale blue tiled wall, empty except
+    for a small puddle of water catching light, early morning sunlight from the
+    left casting one soft shadow, minimal Indian apartment bathroom, realistic
+    product photography backdrop, space in the centre for a bottle, 4:5, high resolution
+
+
+
+
+    Composite: /packshots/antihairfall_shampoo/front_01.tif placed on the shelf, shadow matched.
+    Overlay copy:
+    Top: 7.4X less hair fall.
+    Below, smaller: Tested on Indian hair, for Indian water.
+    Bottom band: ₹359. Free shipping above ₹299.
+    Footnote: *Tensile strength study. Results vary.
+    Alt text (for the ad's accessibility field): "Arata Anti-Hair Fall Intensive Shampoo on a bathroom
+    shelf, 7.4X hair fall reduction"
+    QA: Headline under six words. Price matches the live sale price on the export day.
+Static B: Us vs them, MitoActive against a monthly kit
+    Background: Flat off-white, no generation. This static is a table, and tables read better flat.
+    Layout: Two columns. Left column header "A monthly kit". Right column header "MitoActive". Five
+    rows.
+    Overlay copy:
+                        A MONTHLY KIT                                     MITOACTIVE
+
+ Price                  ₹1,400 to ₹1,800 a month                          ₹1,499, one bottle
+ Commitment             5 to 9 months, doctor calls, supplements          84 days, morning and night
+ Mechanism              Minoxidil and supplements                         Y100, mitochondrial, exclusive in India
+ Dependency             Ongoing                                           3-month course, then maintain
+ Where                  Prescription-style                                arata.in, Blinkit, Amazon
+
+
+    Footer: Compare for yourself. The numbers are from public price pages.
+    We do not name Traya in the image. The ad copy can; the image stays generic to keep the asset
+    usable across markets and to avoid a comparative-advertising complaint on a static with no room
+    for substantiation.
+    Alt text: "Comparison of a monthly hair kit against Arata MitoActive on price, commitment,
+    mechanism and dependency"
+Static C: FAQ card, "₹1,499 for 30 ml?"
+    Background prompt (Gemini Image, for the editing pass later):
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE IMAGE SYSTEM FOR EVERY ARATA SHELF                                                       11
+                                                                                                                 DIAGRAM
+     Close-up of a glass dropper releasing a single clear drop onto a white ceramic
+     surface, tiny ripple forming, cool pale blue tone, macro skincare photography,
+     soft studio lighting with a highlight on the drop, centred, negative space in
+     the upper half for a headline, 1:1, 2000x2000
+
+
+
+
+     Overlay copy:
+     Top, as a question in a chat bubble: "₹1,499 for 30 ml?"
+     Answer bubble: "Twice a day for 30 days. ₹50 a day. Less than the auto to the derm."
+     Bottom: MitoActive. Powered by Y100. arata.in
+     Alt text: "Arata MitoActive costs ₹50 a day at twice-daily use for 30 days"
+     QA: The ₹50 figure is ₹1,499 divided by 30, rounded. Keep "₹50 a day" rather than "₹49.97".
+
+EXAMPLE 4: AMAZON A+ CONTENT, ANTI-HAIR FALL INTENSIVE SHAMPOO
+Product: Anti-Hair Fall Intensive Shampoo 200 ml, ₹399 → ₹359, 222 reviews. Module sizes follow
+Amazon's standard A+ specs; confirm in Seller Central on upload day since Amazon revises them.
+Module 1: Standard Image Header with Text (970x600)
+     Image: The routine shot from slot 5, recomposed wide. Shampoo at left, serum centre, conditioner
+     right, on the pale blue gradient.
+     Headline: The anti-hair fall system
+     Body: Wash with Hairdian AP and rosemary-caffeine. Treat with the Intensive Serum. Protect with
+     the Anti-Breakage Conditioner. Built for Indian hair, hard water and humidity.
+     Alt text: "Arata anti-hair fall shampoo, serum and conditioner routine"
+Module 2: Standard Four Image and Text (220x220 each, upload at 300x300)
+ TILE    IMAGE                                                                CAPTION
+
+ 1       Macro of rosemary leaf and coffee cherry, generated (prompt below)   Rosemary-caffeine. Stimulates the scalp.
+ 2       Hairdian AP rendered as a clean molecule line drawing, generated     Hairdian AP. The anti-hair fall active.
+ 3       Packshot back label crop, real                                       Sulphate-free. Paraben-free. Vegan.
+ 4       Seal and carton, real                                                Sealed cap. Boxed.
+
+
+     Tile 1 prompt (Flux Pro 1.1):
+                                                                                                                 DIAGRAM
+     Macro photograph of a fresh rosemary sprig and two coffee cherries on a clean
+     white surface, water droplets on the leaves, cool daylight from the left,
+     shallow depth of field, clinical botanical photography, centred, without text,
+     1:1, 1000x1000
+
+
+
+
+     Tile 2 prompt (Recraft V3):
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE IMAGE SYSTEM FOR EVERY ARATA SHELF                                                  12
+                                                                                                                  DIAGRAM
+    Minimal line drawing of an abstract organic molecule, thin lab-blue strokes on
+    white, flat vector illustration, even lighting, centred with generous margin,
+    without text, 1:1, 1000x1000
+
+
+
+
+Module 3: Standard Comparison Chart (150x300 per column)
+              ANTI-HAIR FALL                HAIR GROWTH INTENSIVE         INTENSIVE SERUM PACK
+              SHAMPOO                       SERUM                         OF 3                    MITOACTIVE
+
+ Price        ₹359                          ₹571                          ₹999                    ₹1,499
+ Claim        7.4X hair fall                Up to +28,200 new hairs in 84 Same, 3-month course    87% saw growth in 84
+              reduction*                    days*                                                 days*
+ Use          Every wash                    Twice daily                   Twice daily, 84 days    Twice daily, 30 days a
+                                                                                                  bottle
+ Best for Starting out                      Visible thinning              Committing to 84 days   The next tier
+ Reviews 222                                474                           388                     New
+
+
+    Footnote under the chart: *Study details on each product page. Individual results vary.
+    Why this chart: it is the only module on Amazon that walks a ₹359 shopper up Arata's own ladder to
+    ₹999 and ₹1,499.
+Module 4: Standard Single Image and Dark Text Overlay (970x600)
+    Image: The Delhi lab. Real photo of the R&D and QC bench if Arata can supply one; otherwise a
+    generated lab backdrop with no people and no readable equipment labels:
+                                                                                                                  DIAGRAM
+    A clean modern laboratory bench with glass beakers and a white microscope,
+    cool blue-white light, shallow depth of field, empty of people, without readable text on any
+    equipment, realistic pharmaceutical facility photography, wide shot with the
+    left third in soft shadow for a text overlay, 16:10, 1940x1200
+
+
+
+
+    Overlay text (dark overlay, white type): Formulated and tested in our own lab in Delhi. Every number
+    on the bottle comes from a study.
+    Alt text: "Arata in-house research and quality control lab in Delhi"
+Brand Story (1464x625 background, 362x453 cards)
+    Background: Wide crop of the lab image above with the brand tint.
+    Card 1: "Hair & Scalp Science Co." with the wordmark.
+    Card 2: Founders photo (real), caption "Two college friends. A flaxseed gel in 2017. A lab in Delhi
+    today."
+    Card 3: "Systems, not symptoms", with the three-product routine.
+    Card 4: "Y100, exclusive to Arata in India", with the MitoActive packshot.
+    Each card links to the relevant ASIN or brand store page.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE IMAGE SYSTEM FOR EVERY ARATA SHELF                                                    13
+EXAMPLE 5: OG IMAGE TEMPLATE FOR ARATA.IN AND LAB NOTES
+Size 1200x630, served as JPEG at quality 85 (OG previews often ignore WebP), under 300KB. Built as
+a Satori template so the Shopify theme or a small edge function fills it per page.
+Product variant, fields: name , number , unit , price , packshot_url
+                                                                                                   DIAGRAM
+    ┌──────────────────────────────────────────────────────────────┐
+    │ arata.                                             Lab tested │
+    │                                                              │
+    │   7.4X                                        ┌──────────┐   │
+    │   hair fall reduction*                        │          │   │
+    │                                               │ packshot │   │
+    │   Anti-Hair Fall Intensive Shampoo            │ (real) │     │
+    │   ₹359                                        └──────────┘   │
+    │                                                              │
+    │ *Tensile strength study             arata.in                 │
+    └──────────────────────────────────────────────────────────────┘
+
+
+
+
+    Background: lab blue, with the slot 2 water texture at 12% opacity.
+    Number: 160px numeral, white. Unit line: 36px. Name: 40px. Price: 40px, result green.
+    Footnote: 20px, white at 70%.
+    Packshot: front_01 transparent PNG, right third, 40px margin.
+Lab Notes variant, fields: title , read_time , texture_id
+    Background: one of six generated science textures, picked by hashing the post slug so the same
+    post always gets the same texture. Texture prompt (Flux Pro 1.1, generate six, keep the best):
+                                                                                                   DIAGRAM
+    Abstract macro photograph of clean water droplets on frosted glass with soft
+    lab-blue light from the left, cool and calm, empty of objects and text, subtle
+    depth, clinical skincare mood, 1.91:1, 1200x630
+
+
+
+
+    Overlay: "Lab Notes" tag top left, title up to two lines at 56px, read time bottom left, wordmark
+    bottom right.
+    Example: title "Why your hair fall gets worse in Bangalore's hard water", read time "4 min".
+Collection variant, fields: concern , packshot_urls[3]
+    Three packshots in a row, concern word above: "HAIR FALL", "DANDRUFF", "GREY".
+Required tags on every page, set in the theme:
+                                                                                                        CODE
+    <meta property="og:image" content="https://arata.in/og/{handle}.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://arata.in/og/{handle}.jpg" />
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE IMAGE SYSTEM FOR EVERY ARATA SHELF                                    14
+EXAMPLE 6: QUICK-COMMERCE TILE, ANTI-DANDRUFF SHAMPOO
+Product: Anti-Dandruff Shampoo 200 ml, ₹449 → ₹404. Blinkit, Zepto and Instamart each accept a 1:1
+image; backgrounds and overlay rules differ by platform and by category manager, so we build two
+versions and let the account manager pick.
+     Version W (white, platform-safe): /packshots/antidandruff_shampoo/front_01.tif , product fills 92%
+     of frame, label face lit flat so "95%" on the pack is readable. No overlay.
+     Version B (brand band, where allowed): Same packshot on white, with a 14% height band at the
+     bottom in lab blue carrying one word in white, 120px: DANDRUFF. Below it, 48px: "95% fungus
+     reduction, 1 wash*".
+     Export: 1000x1000 PNG and WebP.
+     QA: Open both at 150px on a phone. If the word "DANDRUFF" is not readable in version B at that
+     size, increase to 140px and drop the second line.
+The same two versions ship for every hero SKU with the concern word swapped: HAIR FALL,
+GROWTH, DANDRUFF, DAMAGE, GREY, HOLD.
+
+
+
+30-DAY DEPLOYMENT
+ WEEK BREW SHIPS                                                 ARATA PROVIDES                          LIVE BY END OF WEEK
+
+ 1         Image audit of every live listing on Amazon.in,         Rebrand sheet (colours, type,           Packshot library
+           Nykaa, Flipkart, Blinkit, Zepto (scored sheet).         wordmark). Physical product, sealed,    delivered. Audit scores
+           Studio day in Delhi: 10 SKUs x 5 angles,                with cartons. Study footnote wording    shared. Template
+           group shots, hands and dropper sequences.               per claim, approved by the regulatory   approved.
+           Token sheet drafted. Figma master file with             owner. Loox and Nykaa review export.
+           the 7-slot template, claim card, review card            Replacement policy wording from the
+           and OG template.                                        ops lead.
+ 2         7-slot stacks for MitoActive, Intensive Serum,          Marketplace and quick-commerce          Three hair-fall stacks
+           Anti-Hair Fall Shampoo. Generated                       account access or upload contact.       live on arata.in,
+           backgrounds and macros (slot 2, 3). Quick-              Confirmation of which legacy SKUs       Amazon.in and Nykaa.
+           commerce tiles for all 10 hero SKUs, versions           stay live.                              Tiles submitted to
+           W and B.                                                                                        Blinkit, Zepto, Instamart
+                                                                                                           category managers.
+ 3         7-slot stacks for the remaining 7 SKUs.                 Founders photo for the Brand Story.     Ten complete stacks
+           Amazon A+ for 4 SKUs and the Brand Story.               Lab photo if available. Amazon Brand    live. A+ submitted for
+           12 Meta statics in three sizes.                         Registry access for A+ upload.          Amazon review. Statics
+                                                                                                           handed to the ad
+                                                                                                           account.
+ 4         OG template deployed (product, Lab Notes,               Theme access or a developer contact     OG images on every
+           collection variants). PDP image optimisation            for the OG function. Sign-off on the    page. PDP image weight
+           on the Shopify theme: WebP with fallback,               handover kit.                           down. Arata's brand
+           sized images, lazy load, explicit dimensions.                                                   manager can produce a
+           Handover kit: Figma file, naming convention,                                                    new SKU stack in a day
+           prompt bank, QA checklist.                                                                      without us.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE IMAGE SYSTEM FOR EVERY ARATA SHELF                                                                15
+Owners: Brew creative lead runs the shoot and the Figma master. Brew marketplace specialist
+owns the uploads and A+ submissions. Brew web engineer owns OG and optimisation. Arata brand
+manager owns the rebrand sheet and approvals. Arata regulatory owner signs every claim footnote.
+Arata marketplace manager owns Brand Registry and category-manager contacts.
+
+
+
+HOW WE MEASURE
+ METRIC                                                  BASELINE                    90-DAY TARGET            WHERE
+
+ Listing image completeness (slots filled of             To be instrumented in the   7 of 7 on all 10 hero    Audit sheet
+ 7, per SKU, per marketplace)                            week 1 audit                SKUs on Amazon.in
+                                                                                     and Nykaa
+ Amazon detail page conversion (unit                     To be instrumented from     +15% relative vs the 4   Seller Central
+ session %) for the 3 hair-fall ASINs                    Seller Central              weeks before the new     business reports
+                                                                                     stack
+ Amazon combo and ladder attach (Pack of                 To be instrumented          Measurable lift after    Seller Central,
+ 3 and MitoActive orders from sessions that                                          the comparison chart     Brand Analytics
+ landed on the ₹359 shampoo)                                                         goes live
+ Quick-commerce tile click-through on                    To be requested from        Above the category       Platform reports
+ search                                                  category managers           median on Blinkit and
+                                                                                     Zepto
+ arata.in PDP add-to-cart rate on the 3                  To be instrumented in       +10% relative            Shopify
+ hair-fall SKUs                                          Shopify analytics
+ PDP Largest Contentful Paint on mobile                  To be measured with         Under 2.5 seconds        PageSpeed
+                                                         PageSpeed Insights on the                            Insights, Search
+                                                         MitoActive page                                      Console
+ OG coverage                                             0 pages with a designed     100% of product,         Crawl
+                                                         preview (assumption)        collection and Lab
+                                                                                     Notes pages
+ Meta static CTR vs the current statics                  Current account statics     +20% relative on the     Ads Manager
+                                                                                     best three
+ MitoActive review count (slot 7 swap                    0                           25 reviews at 4★ or      Loox
+ trigger)                                                                            above
+ Time for Arata to produce a new SKU stack               Days of agency back-and-    One working day, in-     Handover
+                                                         forth                       house, from the
+                                                                                     template
+
+
+Decision rule. At day 90 we read the three Amazon hair-fall ASINs first. If detail page conversion is up
+15% or more against the pre-stack window, we roll the same stack to every remaining SKU including
+body and face, and build the Nykaa and Flipkart A+ equivalents. If conversion is flat, we hold the stack
+(it is still the right hygiene) and move the budget to the two variables most likely to be wrong: the slot
+order and the slot 2 claim framing, tested as two listing variants through Amazon's Manage Your
+Experiments. If quick-commerce tile click-through is below the category median, we accept that the
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE IMAGE SYSTEM FOR EVERY ARATA SHELF                                                          16
+platform wants pure white and retire version B. If the OG template and image optimisation move mobile
+LCP under 2.5 seconds, we extend the same pipeline to the programmatic ingredient and concern
+pages as they launch.
+
+
+
+APPENDIX
+SPEC SHEET: EVERY SIZE WE EXPORT
+ ASSET                                PIXELS                        RATIO   FORMAT                     MAX WEIGHT
+
+ Packshot master                      2000x2000                     1:1     TIFF master, PNG with      n/a
+                                                                            transparency
+ Marketplace gallery                  2000x2000                     1:1     JPEG q85                   1MB
+ arata.in gallery                     1080x1080                     1:1     WebP q82 + JPEG fallback   200KB
+ Collection thumbnail                 1000x1000                     1:1     WebP q80                   80KB
+ Quick-commerce tile                  1000x1000                     1:1     PNG and WebP               500KB
+ Amazon A+ header                     970x600                       1.62:1 JPEG                        2MB
+ Amazon A+ four-image tile            300x300 (shown at             1:1     JPEG                       2MB
+                                      220)
+ Amazon A+ comparison                 150x300                       1:2     JPEG                       2MB
+ column
+ Amazon Brand Story                   1464x625                      2.34:1 JPEG                        2MB
+ background
+ Amazon Brand Story card              362x453                       4:5     JPEG                       2MB
+ Meta feed                            1080x1080                     1:1     PNG or JPEG                30MB limit, keep under
+                                                                                                       1MB
+ Meta feed tall                       1080x1350                     4:5     PNG or JPEG                same
+ Meta Stories                         1080x1920                     9:16    PNG or JPEG                same
+ OG and Lab Notes hero                1200x630                      1.91:1 JPEG q85                    300KB
+ WhatsApp broadcast                   1080x1080                     1:1     JPEG                       500KB
+
+
+CLAIM AND IMAGE QA CHECKLIST (RUN BEFORE EVERY UPLOAD)
+1. Is the bottle real? Compare wordmark, Y100 mark and claim text to the packshot library.
+2. Does the number match the pack? "7.4X", "+28,200", "95%", "86%", "87%", "78%", "94%".
+3. Is "up to" present wherever the study says "up to"?
+4. Is the footnote present and does it name the study type?
+5. Is the price the live sale price on the export day?
+6. Is any word from the avoid list in the image? (chemical-free, miracle, cure, regrow 100%, ayurvedic,
+   clinical-strength)
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE IMAGE SYSTEM FOR EVERY ARATA SHELF                                                         17
+ 7. Is the review verbatim exact, with platform and count?
+ 8. Is slot 1 pure white with no text?
+ 9. Does the tile read at 150px on a phone?
+10. Is the alt text written, descriptive and under 125 characters?
+
+OPTIMISATION COMMANDS FOR THE SHOPIFY EXPORT
+                                                                                            DIAGRAM
+    # WebP at quality 82 for the gallery
+    cwebp -q 82 slot2_mitoactive_1080.png -o slot2_mitoactive_1080.webp
+
+    # Batch the whole folder
+    mogrify -format webp -quality 82 *.png
+
+    # JPEG fallback and OG, stripped
+    jpegoptim --max=85 --strip-all *.jpg
+
+
+
+
+PROMPT BANK NAMING
+ /prompts/{sku}/{slot}_{tool}_{version}.txt , with the winning prompt from each batch saved as
+ _final . Backgrounds and textures are reused across SKUs: generate once, crop many.
+
+
+
+SOURCES
+Arata brand brief v1 (Brew deployment team, 10 Oct 2026). Amazon A+ module and image specs as
+published in Seller Central and summarised by Soona, Titan Network and Goat Consulting; confirm on
+upload day. Meta and OG sizes from platform documentation. Quick-commerce tile rules vary by
+category manager and are marked as assumptions.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE IMAGE SYSTEM FOR EVERY ARATA SHELF                           18
+MARKETING IMAGES
+
+
+DAY 30
+AT ARATA
+   WHAT IS LIVE
+
+   MitoActive, the Intensive Serum and the Anti-Hair Fall Shampoo each have a
+   complete 7-image stack live on arata.in, Amazon.in and Nykaa, matching quick-
+   commerce tiles on Blinkit and Zepto, a 12-static Meta set, and automatic OG
+   images on every page.
+
+
+
+
+ NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+ BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+ CONFIRM".
+
+
+ EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+ BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                DEPLOYMENT TEAM
+                                                                             BREW
+

@@ -1,0 +1,441 @@
+{
+  "n": 0,
+  "group": "know",
+  "skill": "playbook-index",
+  "kicker": "THE PLAYBOOK",
+  "title": "Fifty moves for Arata",
+  "stat": "50",
+  "statLabel": "Moves, one brand",
+  "gives": "Fifty working documents from the Brew deployment team, one per marketing discipline, every one built on Arata's real catalogue, prices, claims, customers and competitors. Read this index, then open the move you want to see.",
+  "howTo": "The six groups follow a customer from first search to third bottle. Each document ends with a 30-day deployment table and the metric we are held to.",
+  "subtitle": "Every marketing discipline, run for one brand, end to end, by one team.",
+  "live": "The first ten moves are live: positioning, pricing ladder, offers, measurement, and the MitoActive proof relaunch are in market.",
+  "sections": [
+    {
+      "h": "The end to end",
+      "kind": "other",
+      "blocks": [
+        {
+          "t": "diagram",
+          "text": "KNOW THE BRAND        BE FOUND          REACH PEOPLE         CONVERT THE VISIT     KEEP THE CUSTOMER      EXPAND & OPERATE\n┌──────────────┐     ┌────────────┐    ┌──────────────┐     ┌────────────────┐    ┌────────────────┐     ┌────────────────┐\n│ positioning │      │ SEO + site │    │ Meta, Google │     │ copy + CRO     │    │ 84-day journey │     │ derms, salons, │\n│ pricing      │ ──> │ AI search │ ──> │ creators     │ ──> │ quiz + popups │ ──> │ WhatsApp, email│ ──> │ q-com buyers    │\n│ offers       │     │ Lab Notes │     │ launch       │     │ bundles, tests │    │ referrals      │     │ ops + loops     │\n│ measurement │      │ PR         │    │ video, image │     │ listings       │    │ community      │     │ ideas backlog │\n└──────────────┘     └────────────┘    └──────────────┘     └────────────────┘    └────────────────┘     └────────────────┘\n      10 moves            9 moves            9 moves              10 moves              6 moves                6 moves\n\n One number runs through all 50: 84 days. Every claim on an Arata bottle resolves inside that window. So does every move here."
+        },
+        {
+          "t": "p",
+          "text": "Arata today: ₹61 Cr FY25, 192% growth, 1.5M customers a year, 68% of revenue on marketplaces and quick commerce, a ₹1,499 hero serum with zero reviews, no subscription, no routine builder, and a ₹160 Cr goal. That is a brand with proof and no system. The fifty moves below are the system."
+        }
+      ]
+    }
+  ],
+  "index": [
+    {
+      "n": 1,
+      "group": "know",
+      "title": "Arata positioning and messaging house",
+      "gives": "One positioning statement, one messaging house and one claims ledger that every Arata page, listing, ad and reply is written from.",
+      "stat": "1 doc, 3 pillars",
+      "statLabel": "Source of truth for all channels"
+    },
+    {
+      "n": 2,
+      "group": "know",
+      "title": "Voice of customer system for Arata",
+      "gives": "A working research system that tells Arata what hair-fall and dandruff buyers say, fear and want, in their own words, before any rupee goes into copy, ads or the rebrand.",
+      "stat": "4,683",
+      "statLabel": "Reviews and ratings already unmined"
+    },
+    {
+      "n": 3,
+      "group": "know",
+      "title": "Five competitor dossiers for Arata",
+      "gives": "Dated, sourced profiles of Traya, Pilgrim, Minimalist, Bare Anatomy and Mamaearth, built so every ad, comparison page and buyer pitch argues against what those brands actually say and charge today.",
+      "stat": "₹47 vs ₹50",
+      "statLabel": "Traya's cheapest day vs mitoactive"
+    },
+    {
+      "n": 4,
+      "group": "know",
+      "title": "Twelve nudges across 84 days",
+      "gives": "A map of what the Arata customer believes at every step from first ad to third bottle, and twelve small design changes that move those beliefs in the right direction.",
+      "stat": "12 nudges",
+      "statLabel": "From first ad to third bottle"
+    },
+    {
+      "n": 5,
+      "group": "know",
+      "title": "Should MitoActive be the face",
+      "gives": "Five marketing lenses argue out whether Arata should lead with the ₹1,499 MitoActive or the ₹571 Intensive Serum, and we give you the call.",
+      "stat": "₹1,499/₹571",
+      "statLabel": "Face price vs hero price"
+    },
+    {
+      "n": 6,
+      "group": "know",
+      "title": "The ₹160 Cr plan for Arata",
+      "gives": "One plan that sequences every Brew workstream, from paid ads to retention, against Arata's ₹160 Cr run-rate goal, with the budget math, the owners and the Monday scoreboard.",
+      "stat": "₹13.3 Cr/mo",
+      "statLabel": "Monthly run-rate behind ₹160 cr"
+    },
+    {
+      "n": 7,
+      "group": "know",
+      "title": "Arata price ladder and subscription",
+      "gives": "A hair growth price ladder, a bundle rulebook and a subscription that turn single bottles into 84- day routines, priced by the day.",
+      "stat": "49% vs 3%",
+      "statLabel": "Pack-of-3 discount vs routine discount"
+    },
+    {
+      "n": 8,
+      "group": "know",
+      "title": "Offers built around 84 days",
+      "gives": "Three named, guaranteed offers that turn Arata's single bottles and percent-off combos into plans people finish, review and reorder.",
+      "stat": "₹19/day",
+      "statLabel": "Hair fall plan, per day"
+    },
+    {
+      "n": 9,
+      "group": "know",
+      "title": "One tracking plan for every Arata channel",
+      "gives": "A single tracking plan, data layer and weekly scorecard so Arata can see which concern, SKU, creative and channel actually drives first orders and 45-day reorders.",
+      "stat": "68%",
+      "statLabel": "Of revenue with no event data"
+    },
+    {
+      "n": 10,
+      "group": "know",
+      "title": "One order ledger for every rupee",
+      "gives": "A way to know which marketing actually causes Arata's orders when two out of three orders happen on Blinkit, Amazon and Nykaa where no pixel can see them.",
+      "stat": "68%",
+      "statLabel": "Of revenue your pixels cannot see"
+    },
+    {
+      "n": 11,
+      "group": "found",
+      "title": "SEO audit for arata.in",
+      "gives": "A page-by-page audit of arata.in with the fixes, titles and new pages that turn problem searches like hair fall shampoo into unpaid orders on your own site.",
+      "stat": "14 pages",
+      "statLabel": "That decide organic revenue"
+    },
+    {
+      "n": 12,
+      "group": "found",
+      "title": "A concern-led site map for arata.in",
+      "gives": "A page hierarchy, navigation, URL and internal linking plan that turns arata.in from a list of ranges into a site where every visitor lands on their problem and leaves with a routine.",
+      "stat": "3 clicks",
+      "statLabel": "From home to a routine in cart"
+    },
+    {
+      "n": 13,
+      "group": "found",
+      "title": "Structured data for every Arata page",
+      "gives": "One JSON-LD system across arata.in so Google and AI assistants read the right price, the right stars, the right claim and the right brand on every page.",
+      "stat": "6 rich results",
+      "statLabel": "Google appearances arata can earn"
+    },
+    {
+      "n": 14,
+      "group": "found",
+      "title": "Ingredient, concern and city pages at scale",
+      "gives": "A system of 160 templated pages on arata.in that catch the searches a hair-fall customer makes before they know Arata exists, built from Arata's own study data, reviews and order history.",
+      "stat": "160 pages",
+      "statLabel": "Across 5 page sets"
+    },
+    {
+      "n": 15,
+      "group": "found",
+      "title": "Getting Arata cited in AI answers",
+      "gives": "When someone asks ChatGPT, Gemini, Perplexity or Google AI Mode what to use for hair fall in India, Arata gets named, described correctly and linked.",
+      "stat": "100M",
+      "statLabel": "Weekly chatgpt users in india"
+    },
+    {
+      "n": 16,
+      "group": "found",
+      "title": "Lab Notes content engine for Arata",
+      "gives": "A five-pillar content system that turns the number on every Arata bottle into pages people search for, journeys people share, and a weekly cadence that stops Lab Notes arriving in bursts.",
+      "stat": "5 pillars",
+      "statLabel": "That own hair fall search in india"
+    },
+    {
+      "n": 17,
+      "group": "found",
+      "title": "Comparison pages that win the switch",
+      "gives": "A set of honest, dated, search-ready pages that catch people comparing Arata to Traya, Pilgrim and minoxidil, and give them a reason to pick Arata.",
+      "stat": "12 pages",
+      "statLabel": "Comparison pages in 90 days"
+    },
+    {
+      "n": 18,
+      "group": "found",
+      "title": "Every list Arata should be on",
+      "gives": "A ranked list of the 60 marketplace, review, clinical, press and AI-citation listings Arata needs, with the copy for each, so the brand shows up wherever a buyer or a chatbot asks about hair fall.",
+      "stat": "60 listings",
+      "statLabel": "Across 8 tiers, 0 paid"
+    },
+    {
+      "n": 19,
+      "group": "found",
+      "title": "Earned media engine for Arata",
+      "gives": "A press, podcast and crisis system that turns Arata's customer data, its claims and the MitoActive science into stories journalists want to run, without a wire service or a retainer.",
+      "stat": "1.5M",
+      "statLabel": "Customers become the story"
+    },
+    {
+      "n": 20,
+      "group": "reach",
+      "title": "Paid media system for arata.in",
+      "gives": "A Meta and Google system that buys first orders on arata.in at a known cost, proves the 84-day claim in the ad itself, and feeds reorders at day 35.",
+      "stat": "₹450",
+      "statLabel": "Target cost per new customer"
+    },
+    {
+      "n": 21,
+      "group": "reach",
+      "title": "Hair fall ad creative for Meta",
+      "gives": "A grounded creative system for Arata: which ads to make, in what order, with finished copy and scripts for the hair fall core and the MitoActive launch.",
+      "stat": "40 ads",
+      "statLabel": "Live in the first 30 days"
+    },
+    {
+      "n": 22,
+      "group": "reach",
+      "title": "One image system for every Arata shelf",
+      "gives": "A single image system for Arata that turns one packshot library into every slot the brand sells through: product pages, Amazon and Nykaa listings, quick-commerce tiles, Meta statics and link previews.",
+      "stat": "7 slots",
+      "statLabel": "Per sku, on every channel"
+    },
+    {
+      "n": 23,
+      "group": "reach",
+      "title": "A video system for Arata",
+      "gives": "One master shoot, one template system and a B-roll library that turn every Arata claim into PDP videos, Meta and YouTube ads, Reels and Amazon listing videos, with the scripts already written.",
+      "stat": "26 videos",
+      "statLabel": "Live across 5 surfaces by day 30"
+    },
+    {
+      "n": 24,
+      "group": "reach",
+      "title": "Social content system for Arata",
+      "gives": "A five-pillar social system for Arata that turns the number on every bottle into Reels, carousels, Stories and comments people send to a friend with hair fall.",
+      "stat": "84 days",
+      "statLabel": "Public hair journeys, filmed live"
+    },
+    {
+      "n": 25,
+      "group": "reach",
+      "title": "Creator proof engine for the 84-day claim",
+      "gives": "A four-layer creator system that puts Arata's 84-day results on camera, seeds the catalogue at volume, gets qualified doctors talking about Y100, and turns every creator video into an ad we own.",
+      "stat": "84 days",
+      "statLabel": "One cohort, filmed start to finish"
+    },
+    {
+      "n": 26,
+      "group": "reach",
+      "title": "Partner brands that share the bathroom shelf",
+      "gives": "A scored list of brands whose customers are about to have hair fall, and the joint kits, swaps and content that put Arata in front of them without buying the reach.",
+      "stat": "5 partners",
+      "statLabel": "Scored, sequenced, first kit live"
+    },
+    {
+      "n": 27,
+      "group": "reach",
+      "title": "Field events built on a scalp check",
+      "gives": "A 12-month event portfolio for Arata where every pop-up, derm dinner, college fest and live session runs through one 90-second scalp check that produces a WhatsApp opt-in, a routine recommendation and a review 84 days later.",
+      "stat": "90 seconds",
+      "statLabel": "The scalp check at every event"
+    },
+    {
+      "n": 28,
+      "group": "reach",
+      "title": "MitoActive relaunch and rebrand go-live",
+      "gives": "A phased plan that turns MitoActive from a press release with zero reviews into a proven hero, then ships the rebrand without breaking the website that does a third of your revenue.",
+      "stat": "0 → 300",
+      "statLabel": "Mitoactive reviews in 90 days"
+    },
+    {
+      "n": 29,
+      "group": "convert",
+      "title": "Website copy for the hair fall funnel",
+      "gives": "Finished, paste-ready copy for the four pages where Arata wins or loses the hair fall customer, plus the house rules that keep every future page sounding like Arata.",
+      "stat": "4 pages",
+      "statLabel": "Rewritten and ready to paste"
+    },
+    {
+      "n": 30,
+      "group": "convert",
+      "title": "Seven-sweep copy edit across every Arata surface",
+      "gives": "We take the lines Arata already shows customers on arata.in, Amazon, Nykaa and quick commerce, run each one through seven editing passes, and hand back the before and after plus one claims sheet so every channel says the same thing.",
+      "stat": "34 lines",
+      "statLabel": "Edited, before and after"
+    },
+    {
+      "n": 31,
+      "group": "convert",
+      "title": "Turning arata.in visits into first orders",
+      "gives": "A page-by-page fix list for arata.in so more of the 650K monthly visitors buy a routine on the first visit, with MitoActive carrying its own weight.",
+      "stat": "+0.5 pt",
+      "statLabel": "Site conversion rate, 90 days"
+    },
+    {
+      "n": 32,
+      "group": "convert",
+      "title": "Phone-first checkout and opt-in for arata.in",
+      "gives": "A rebuilt first-purchase path on arata.in where a phone number does all the work: guest checkout by default, WhatsApp and email opt-in in one tap, and an account that creates itself after the order.",
+      "stat": "0 passwords",
+      "statLabel": "Needed to buy or log in"
+    },
+    {
+      "n": 33,
+      "group": "convert",
+      "title": "Popups that capture by concern, not discount",
+      "gives": "A six-popup system for arata.in that turns the 92% of visitors who leave without buying into named contacts with a hair concern and an 84-day plan, without training them to wait for a coupon.",
+      "stat": "16,000",
+      "statLabel": "New contacts a month, projected"
+    },
+    {
+      "n": 34,
+      "group": "convert",
+      "title": "Lead magnets for the hair fall journey",
+      "gives": "Four things worth a WhatsApp number, built from Arata's own studies and reviews, so the 600K people a month who leave arata.in without buying become people you can talk to.",
+      "stat": "600K/month",
+      "statLabel": "Visits that leave with nothing"
+    },
+    {
+      "n": 35,
+      "group": "convert",
+      "title": "Hair Fall Score and two more free tools",
+      "gives": "Three small tools on arata.in that tell a visitor how bad their hair fall is, what it costs them, and which routine to buy, before they have bought anything.",
+      "stat": "60 sec",
+      "statLabel": "From landing to a hair fall score"
+    },
+    {
+      "n": 36,
+      "group": "convert",
+      "title": "Upgrade moments from cart to day 84",
+      "gives": "Six places on arata.in and WhatsApp where one bottle becomes a routine, a course, a subscription or MitoActive, each asked only after the customer has seen the product work.",
+      "stat": "6 moments",
+      "statLabel": "Upgrade asks, cart to day 84"
+    },
+    {
+      "n": 37,
+      "group": "convert",
+      "title": "An experiment engine for arata.in",
+      "gives": "A scored backlog, sample-size maths on Arata's real traffic, and four fully written test plans so every change to arata.in gets decided by customers instead of by opinion.",
+      "stat": "12 tests",
+      "statLabel": "Decided in 90 days"
+    },
+    {
+      "n": 38,
+      "group": "convert",
+      "title": "Listings that rank on Amazon and Blinkit",
+      "gives": "A rebuilt listing system for Arata's hero SKUs on Amazon, Nykaa, Flipkart, Blinkit, Zepto and Instamart, so the 68% of revenue that comes from rented shelves stops leaking at the search tile.",
+      "stat": "68%",
+      "statLabel": "Of revenue on rented shelves"
+    },
+    {
+      "n": 39,
+      "group": "keep",
+      "title": "Lifecycle email flows for Arata",
+      "gives": "Six automated email flows that walk every Arata customer from first opt-in to the 84-day result and the reorder, so repeat purchase stops depending on the next Blinkit offer.",
+      "stat": "24 emails",
+      "statLabel": "Across 6 automated flows"
+    },
+    {
+      "n": 40,
+      "group": "keep",
+      "title": "WhatsApp and SMS for the 84-day routine",
+      "gives": "A WhatsApp-first messaging system that walks every Arata customer through the 84 days the claims are built on, brings them back for the second bottle, and uses DLT-compliant SMS only where SMS still wins.",
+      "stat": "84 days",
+      "statLabel": "One routine journey on whatsapp"
+    },
+    {
+      "n": 41,
+      "group": "keep",
+      "title": "The first 84 days with Arata",
+      "gives": "A system that gets every first-time buyer to use the product correctly, see the difference by week two, and reach day 84 with a second and third bottle already in hand.",
+      "stat": "7 of 7 days",
+      "statLabel": "Week-one adherence as the activation gate"
+    },
+    {
+      "n": 42,
+      "group": "keep",
+      "title": "Keeping Arata customers past day 84",
+      "gives": "A reorder, subscription and failed-delivery recovery system so the customer who buys one bottle of Arata actually buys the second and third.",
+      "stat": "26% → 40%",
+      "statLabel": "90-day repeat rate target"
+    },
+    {
+      "n": 43,
+      "group": "keep",
+      "title": "Referral and ambassador engine for Arata",
+      "gives": "A give ₹150, get ₹150 refer-a-friend loop on arata.in, a creator affiliate tier, an 84-day ambassador cohort, and a review engine that gets MitoActive its first 100 reviews.",
+      "stat": "₹150 + ₹150",
+      "statLabel": "Give one, get one"
+    },
+    {
+      "n": 44,
+      "group": "keep",
+      "title": "The 84 Club: Arata's hair journey community",
+      "gives": "A WhatsApp-first hair journey community that walks every Arata buyer through the 84 days the claim on the bottle needs, with four check-ins, one Sunday ritual and a graduate ambassador track.",
+      "stat": "84 days",
+      "statLabel": "One cohort, four check-ins"
+    },
+    {
+      "n": 45,
+      "group": "expand",
+      "title": "Six B2B prospect lists for Arata",
+      "gives": "Six verified, scored and tiered lists of clinics, salons, gyms, hostels, wellness buyers and category managers that Arata's B2B team can start working in week one.",
+      "stat": "540 accounts",
+      "statLabel": "Verified, scored, across six segments"
+    },
+    {
+      "n": 46,
+      "group": "expand",
+      "title": "B2B outbound for derms, salons and q-com",
+      "gives": "A four-segment outbound engine that gets MitoActive into dermatologist clinics, Arata onto salon shelves, into office wellness programmes and higher up the quick-commerce category list, without spending a rupee on ads.",
+      "stat": "4 plays",
+      "statLabel": "One per b2b segment"
+    },
+    {
+      "n": 47,
+      "group": "expand",
+      "title": "Buyer decks and derm detailing kit",
+      "gives": "Four finished sales kits so Arata's team walks into a Blinkit category review, a Nykaa quarterly, a dermatologist's clinic or a salon with the right page in hand.",
+      "stat": "68%",
+      "statLabel": "Of revenue goes through a buyer"
+    },
+    {
+      "n": 48,
+      "group": "expand",
+      "title": "One customer record, one reorder clock",
+      "gives": "The lifecycle stages, scoring rules, routing tree, B2B pipeline and dashboards that turn Arata's three disconnected sales channels into one revenue system with a working 45-day reorder window.",
+      "stat": "Day 45",
+      "statLabel": "The reorder window, made operational"
+    },
+    {
+      "n": 49,
+      "group": "expand",
+      "title": "Eight always-on loops for Arata",
+      "gives": "Eight weekly loops the Brew deployment team runs for Arata so ad fatigue, bad reviews, stock-outs, ranking drops, missed reorders and claim slips get caught and handled before they cost a week of revenue.",
+      "stat": "8 loops",
+      "statLabel": "Run weekly, staged for approval"
+    },
+    {
+      "n": 50,
+      "group": "expand",
+      "title": "Twelve growth ideas ranked for Arata",
+      "gives": "We screened 139 proven growth ideas against Arata's numbers, kept the twelve that fit, and built the first five out so they can ship this month.",
+      "stat": "12 of 139",
+      "statLabel": "Ideas that fit arata now"
+    }
+  ],
+  "sources": [],
+  "factsUsed": [],
+  "toConfirm": [],
+  "meta": {
+    "model": "hand-converted fixture",
+    "at": "2026-10-13",
+    "usd": 0,
+    "verified": true,
+    "issues": []
+  }
+}

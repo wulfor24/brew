@@ -1,0 +1,790 @@
+      Brew                                    PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+LEAD MAGNETS AND OPT-IN CONTENT · MOVE 34 OF 50
+
+
+
+LEAD
+MAGNETS
+FOR THE
+HAIR FALL
+JOURNEY
+  FOUR THINGS WORTH A WHATSAPP NUMBER, BUILT
+  FROM ARATA'S OWN STUDIES AND REVIEWS, SO THE
+  600K PEOPLE A MONTH WHO LEAVE ARATA.IN WITHOUT
+  BUYING BECOME PEOPLE YOU CAN TALK TO.
+
+
+
+
+600K/month
+VISITS THAT LEAVE WITH NOTHING
+
+
+
+
+BREW × ARATA                   OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                 V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                                WHAT THIS GIVES ARATA
+                                                                Four things worth a WhatsApp number, built from
+                                                                Arata's own studies and reviews, so the 600K
+                                                                people a month who leave arata.in without buying
+        600K/month                                              become people you can talk to.
+                                                                LIVE 30 DAYS AFTER WE START
+        VISITS THAT LEAVE WITH NOTHING
+                                                                Four opt-in assets live on arata.in, on Lab Notes and
+                                                                inside every shipped box, delivered on WhatsApp
+                                                                with a 5-message course that ends on the ₹838 hair
+                                                                fall routine.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+One line of translation first. In software a lead magnet buys an email. For Arata it buys a WhatsApp
+number (email as backup), the "lead" is a person with hair fall or dandruff who has not bought yet, the
+nurture runs on WhatsApp and email, and "product adoption" means a first routine purchase on
+arata.in and a reorder inside 45 days.
+Here is the diagnosis. arata.in gets about 650K visits a month and ships about 50K D2C orders. Even
+allowing for returning buyers, roughly 600K visits a month end with nothing: no order, no number, no
+name (assumption: derived from the two figures in the brief). Those people came in with a problem.
+Rahul typed "hair fall serum" and landed on a ₹571 PDP. Divya read a Lab Notes post about flakes.
+Then they left, and the only way to reach them again is to pay Meta or Google for the same person a
+second time.
+The brand has no quiz, no regimen builder, no community and no subscription. Lab Notes posts arrive
+in bursts (seven in March 2026) with nothing to download at the end of them. Meanwhile the biggest
+player in the category runs its entire acquisition on a lead magnet: Traya's free hair test feeds 450K
+active customers and justifies ₹138 Cr of marketing. Bare Anatomy gates a quiz. Arata, the brand with
+a number on every bottle, has nothing to hand a nervous 28-year-old except a buy button.
+It also costs you on the rented land. 68% of revenue runs through Amazon, Nykaa, Flipkart, Blinkit,
+Zepto and Instamart, and none of those channels gives you the customer's contact. Two lakh B2B
+units and 50K D2C boxes ship every month. Each box is a chance to turn a marketplace buyer into a
+first-party contact, and today that chance is empty.
+The opportunity is specific. Arata already owns the raw material: an 84-day study window, a 7.4X
+shampoo claim, an in-house lab, 2,248 reviews full of customer language, and a hero serum
+(MitoActive, ₹1,499) with zero reviews that needs a cohort of people tracking results. The right lead
+magnets capture the contact, teach the 84-day habit, and build the MitoActive review base at the
+same time.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LEAD MAGNETS FOR THE HAIR FALL JOURNEY                                                 1
+WHAT WE FOUND
+CURRENT CAPTURE POINTS ON ARATA.IN
+ SURFACE                                     WHAT EXISTS TODAY                                         VERDICT
+
+ Homepage and collections                    Buy-led. No concern-first entry.                          No capture
+ Hair Growth collection                      Mixes 28,200 and 87% claims, no routine builder           Confusing for first-timers, no
+                                                                                                       capture
+ PDPs (serum ₹571, shampoo                   Claims, reviews, combos                                   Nothing for the person who is
+ ₹359, MitoActive ₹1,499)                                                                              not ready
+ Lab Notes blog                              Bursty posts, no downloads, no inline CTA                 Readers leave as anonymous
+ Footer and welcome popup                    Assumption: standard Shopify newsletter box and a         Discount-only capture
+                                             discount popup. We verify in week 1.                      attracts bargain hunters
+ Shipped box (D2C and B2B)                   No insert, no QR, no reason to scan                       2 lakh+ monthly units with no
+                                                                                                       capture
+ WhatsApp                                    Order updates only (assumption)                           No opt-in list, no content
+
+
+WHAT ARATA CAN PACKAGE WITHOUT NEW RESEARCH
+ ASSET ARATA ALREADY OWNS                                                                     LEAD MAGNET IT BECOMES
+
+ 84-day study windows on the serum and MitoActive                                             The 84-Day Hair Fall Journal
+ 7.4X, 28,200, 87%, 95%, 86% claims plus the honest "up to" framing                           The "How to read a hair claim" lesson
+ Knowledge of minoxidil, Traya, Redensyl stacks (the brief's objection table)                 The Minoxidil Decision Sheet
+ "Made for Indian hair, hard water, humidity, heat"                                           City water and scalp cheat sheet
+ 2,248 reviews, verbatim language ("pillow", "drain", "itching problem")                      Journal prompts and quiz wording
+ In-house R&D and QC lab, Lab Notes                                                           The 5-day WhatsApp course
+ Scalp massager ₹199, derma roller                                                            Physical add-on for the journal (later)
+
+
+BUYER STAGE MAP FOR THE HAIR FALL CUSTOMER
+                                                                                                                             DIAGRAM
+    Stage         What they ask                                           Magnet that answers it
+    ------------  ------------------------------------                    ---------------------------------
+    Awareness     "Is this much hair fall normal?"                        Hair Fall Score (7 questions)
+                  "Is it the water in Bangalore?"                         City water + scalp cheat sheet
+    Consideration "Minoxidil, Traya, or a serum?"                         Minoxidil Decision Sheet
+                  "Do those 28,200 hairs claims hold?"                    5-day WhatsApp course
+    Decision      "Which routine, and how do I know                        84-Day Hair Fall Journal
+                   it is working?"                                        + routine card with prices
+    Repeat        "Is it time to reorder?"                                Journal day 28 / 56 / 84 nudges
+
+
+
+
+Most Arata buyers arrive at consideration already burned by onion shampoo and biotin gummies. So
+the magnets that matter most sit in the middle and bottom of this map.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LEAD MAGNETS FOR THE HAIR FALL JOURNEY                                                                 2
+SCORING THE CANDIDATES
+ICE scoring, 1 to 5 each. Impact = how directly it moves a first purchase of a hair fall or dandruff
+routine. Confidence = how sure we are it converts, from the format benchmarks and the category.
+Ease = build time with Arata's existing material.
+ #     CANDIDATE                          STAGE                   FORMAT                      I   C E    SCORE CALL
+
+ 1     84-Day Hair Fall Journal           Decision                Printable PDF +             5 4 4 80            Ship, hero
+                                                                  WhatsApp check-ins
+ 2     Hair Fall Score, results           Awareness               7-question quiz             5 4 3 60            Ship, front door
+       gated
+ 3     Minoxidil Decision Sheet           Consideration           One-page cheat sheet        4 4 5 80            Ship
+ 4     "Why your hair is falling"         Aware →                 WhatsApp mini-course        4 4 4 64            Ship
+       5-day course                       Consider
+ 5     City water + scalp cheat           Awareness               One-pager                   3 3 4 36            Month 2
+       sheet
+ 6     Monsoon dandruff                   Awareness,              Checklist                   3 4 5 60            June, as content
+       checklist                          seasonal                                                                upgrade
+ 7     Wedding-week hold guide            Decision, styling       Cheat sheet                 2 3 5 30            Nov wedding
+       (men)                                                                                                      season
+ 8     Post-partum shedding               Consideration           Guide                       3 3 3 27            Month 3
+       guide
+ 9     Grey-early 90-day plan             Consideration           Guide                       2 3 4 24            Later
+ 10 ₹99 trial sachet pack for a           Decision                Product sample              4 3 2 24            Needs ops; see
+    number                                                                                                        offers doc
+ 11 Lab Notes resource library            All                     Ungated hub                 2 3 3 18            Later, ungated
+
+
+Four ship in the first 30 days: the Journal, the Score, the Decision Sheet and the WhatsApp course.
+They cover the map from "is this normal" to "it is day 84 and I can see it". The Score's interactive build
+(logic, scoring engine) sits in the free-tools deliverable; here we define its questions, result segments
+and what each segment receives.
+
+WHAT THE CAPTURE SHOULD ASK FOR
+ FIELD                             KEEP?                          WHY
+
+ WhatsApp number                   Yes, required                  Open rates on WhatsApp in India run far above email (assumption:
+                                                                  70%+ vs 20 to 30% for email). It is also where the Journal check-
+                                                                  ins live.
+ First name                        Yes, optional                  Used in the WhatsApp templates. Does not block submit.
+ Email                             Optional, shown after          PDF copy and a backup channel if the number opts out.
+                                   submit
+ Concern (hair fall /              Pre-filled from the            One tap, drives the routine shown on the thank-you page.
+ dandruff / damage /               page or the Score
+ grey)                             result
+ Gender, city, age                 No                             Every extra field costs 5 to 10% of conversions. The Score already
+                                                                  asks what matters.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LEAD MAGNETS FOR THE HAIR FALL JOURNEY                                                                3
+Consent copy on every form: "We send the Journal and a few lab notes on WhatsApp. Reply STOP any
+time."
+
+
+
+THE PLAN
+ARCHITECTURE
+                                                                                                             DIAGRAM
+    ENTRY                      CAPTURE               DELIVERY                 NURTURE → PURCHASE
+    --------------------       --------------------- ----------------------- -----------------------------
+    Meta lead ad ─────┐        Hair Fall Score       Result on screen         Day 0 result + routine card
+    Instagram bio ────┤        (7 Qs, ungated)       (free, no number)        Day 1-5 WhatsApp course
+    Samay Raina tail ─┤            │                      │                   Day 7 Decision Sheet
+    Google "hair fall"┤            ▼                      ▼                   Day 10 "start your 84 days"
+    PDP exit-intent ──┼─→      Number for the ──→   Thank-you page       ──→ Routine: shampoo ₹359
+    Lab Notes upgrade ┤        full routine +        + WhatsApp message           + serum ₹571 → ₹838
+    Box insert QR ────┘        Journal               with PDF link              or MitoActive ₹1,499
+                                                                                    │
+                                                                               84-Day Journal
+                                                                               day 28 / 56 / 84 check-ins
+                                                                                    │
+                                                                               Reorder at day 28 to 45
+                                                                               MitoActive review at day 84
+
+
+
+
+Every entry point lands on one of two capture moments: the Score for people who do not know what
+they need, or a direct opt-in for a named asset for people on a PDP or a Lab Notes post who already
+know their concern. Both deliver on screen and again on WhatsApp, and both drop the contact into
+the same 5-day course, segmented by concern.
+
+THE FOUR MAGNETS
+1. The 84-Day Hair Fall Journal (hero, decision stage). A 6-page printable PDF plus a WhatsApp
+check-in on days 7, 28, 56 and 84. Why: Arata's claims are all 84-day claims. The customer's biggest
+anxiety is "will I waste another ₹600". A journal turns the wait into a habit with a date on it, and it gives
+Arata the cohort that produces before-and-after photos and MitoActive reviews. Expected effect:
+higher first-purchase conversion from captured leads (they have committed to a timeline), and a
+reorder trigger at day 28 that lands inside the 45-day window. Partial gate: page 1 (how to count) is
+visible on the landing page; the full journal needs a number.
+2. The Hair Fall Score (front door, awareness). Seven questions, score shown free, full routine and
+Journal sent on WhatsApp. Why: the quiz format converts at 30 to 50% of completers and segments
+every lead by concern on day zero. Expected effect: the largest volume source of contacts and the
+data that tells us which persona each lead is.
+3. The Minoxidil Decision Sheet (consideration). One page comparing minoxidil, Traya-style kits,
+actives serums and Arata's two serums on cost, commitment, timeline and what happens when you
+stop. Why: this is the question Rahul and Kavya actually have, and nobody in the ₹400 to ₹700 band
+answers it honestly. Expected effect: a high-intent lead, lower volume, and the asset our Google
+search traffic for "minoxidil alternative" lands on.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LEAD MAGNETS FOR THE HAIR FALL JOURNEY                                                4
+4. "Why your hair is falling": 5 messages over 5 days on WhatsApp. Built from Lab Notes. Why: one
+lesson a day teaches the customer how to judge a claim, then shows them Arata's. The last message
+is the routine with prices. Expected effect: the nurture that moves a Score lead to the ₹838 combo.
+
+GATING AND DELIVERY RULES
+ RULE               DECISION
+
+ Gate level         Partial. Score result and Journal page 1 are free. Full assets need a number.
+ Delivery           Thank-you page shows the routine instantly; WhatsApp message with PDF link arrives inside 60 seconds;
+                    email copy if given.
+ Thank-you          Routine card with real prices and one add-to-cart button. Below it: "Day 0 starts when the bottle arrives.
+ page               Order today, start Sunday."
+ Discount           None on the magnet itself. The welcome offer, if any, appears in the day 5 message, after the course.
+                    Discount-first capture fills the list with people who wanted 10% off and nothing else.
+ Opt-out            STOP on WhatsApp, one-click on email. Honour both within the hour.
+
+
+DISTRIBUTION: WHERE EACH MAGNET GOES
+ CHANNEL                                                   MAGNET                            PLACEMENT
+
+ PDP exit-intent, Hair Growth Intensive                    Journal                           Triggers on exit or 60% scroll without
+ Serum and MitoActive                                                                        add-to-cart
+ PDP exit-intent, Anti-Dandruff Shampoo                    Monsoon checklist (month 2);      Same trigger
+ ₹404                                                      until then the Score
+ Lab Notes posts on hair fall                              Journal or Decision Sheet as      After the second H2 and at the end
+                                                           inline content upgrade
+ Lab Notes posts on claims and studies                     5-day course                      Inline
+ Google search landing for "minoxidil                      Decision Sheet                    Dedicated page
+ alternative", "minoxidil side effects"
+ Meta lead ads, Instant Forms with WhatsApp Score                                            Cold and retargeting; see the paid ads
+                                                                                             deliverable for structure
+ Instagram bio, Samay Raina content tail                   Score                             "Get your hair fall score" link
+ Every shipped D2C box                                     Journal via QR                    Insert card, 2 lakh+ units a month
+                                                                                             across channels
+ Nykaa and Amazon buyers (no contact                       Journal via the same insert       This is the only way these 38%
+ available)                                                                                  become first-party
+ Quick-commerce buyers (Blinkit, Zepto,                    Insert plus a shorter "scan for   Same card, printed for the single-SKU
+ Instamart)                                                your 84-day plan"                 buyer
+
+
+The box insert is the single highest-volume placement. A 2% scan-to-opt-in rate on 2 lakh monthly
+units is 4,000 first-party contacts a month from channels that otherwise give Arata nothing
+(assumption on scan rate).
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LEAD MAGNETS FOR THE HAIR FALL JOURNEY                                                               5
+CONTENT UPGRADE MAP FOR LAB NOTES
+Lab Notes needs a cadence (the content strategy deliverable covers that). For capture, every post
+gets one of three upgrades by topic:
+                                                                                             DIAGRAM
+    Post topic                               → Upgrade offered inline
+    Hair fall causes, stress,                → 84-Day Journal
+    post-partum, hard water
+    Serum ingredients, Y100,                 → 5-day course ("learn to read a claim")
+    study explainers, Lab Notes
+    Minoxidil, Traya, derm visits            → Decision Sheet
+    Dandruff, monsoon, itch                  → Score (until the dandruff checklist ships)
+
+
+
+
+WORKED EXAMPLES
+EXAMPLE 1: THE 84-DAY HAIR FALL JOURNAL (FULL CONTENT)
+Format: 6-page PDF, A4 and phone-size, printable. Clean white, lab blue. One WhatsApp message per
+milestone.
+Cover
+
+   THE 84-DAY HAIR FALL JOURNAL COUNT IT. PHOTOGRAPH IT. KNOW BY
+   DAY 84. FROM THE ARATA LAB. MADE FOR INDIAN HAIR, HARD WATER
+   AND HUMID DAYS.
+
+
+Page 1: Why 84 days
+
+   HAIR GROWS IN CYCLES. A FOLLICLE RESTS FOR WEEKS BEFORE IT
+   PUSHES A NEW STRAND. THAT IS WHY EVERY SERIOUS HAIR FALL STUDY,
+   INCLUDING OURS, MEASURES AT 84 DAYS. ANYTHING SHORTER IS A
+   GUESS.
+
+   THIS JOURNAL GIVES YOU THREE NUMBERS TO TRACK AND FOUR DATES
+   TO CHECK THEM. YOU DO NOT NEED TO BELIEVE US. YOU NEED TO
+   COUNT.
+
+   NORMAL SHEDDING IS 50 TO 100 HAIRS A DAY. ABOVE THAT FOR WEEKS,
+   WITH THINNING YOU CAN SEE, IS WHEN A ROUTINE EARNS ITS PLACE.
+
+
+Page 2: How to count (your baseline, day 0)
+
+   DO THESE THREE COUNTS FOR 3 MORNINGS BEFORE YOU START ANY
+   PRODUCT. WRITE THE AVERAGE IN THE BOX.
+
+1. Pillow count. Count the hairs on your pillow when you wake up. Dark pillowcase helps.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LEAD MAGNETS FOR THE HAIR FALL JOURNEY                                6
+2. Drain count. After your wash, collect what is on the drain cover. Count.
+3. Comb count. Comb dry hair 20 strokes over a white sheet of paper. Count.
+
+       BASELINE: PILLOW _ DRAIN COMB _ DATE
+
+     PHOTO DAY 0: SAME BATHROOM, SAME LIGHT, PHONE AT ARM'S LENGTH.
+     ONE SHOT OF THE CROWN FROM ABOVE, ONE OF THE HAIRLINE, ONE OF
+     THE PARTING. SAVE THEM IN AN ALBUM CALLED "DAY 0". YOU WILL
+     THANK YOURSELF ON DAY 84.
+
+
+Page 3: Your routine
+
+       PICK ONE. TICK IT. KEEP IT FOR 84 DAYS.
+
+     [ ] THE ROUTINE: ANTI-HAIR FALL INTENSIVE SHAMPOO (₹359) 3 TIMES A
+     WEEK + HAIR GROWTH INTENSIVE SERUM (₹571) EVERY NIGHT ON A DRY
+     SCALP. COMBO ₹838. [ ] THE NEXT TIER: MITOACTIVE MITOCHONDRIAL
+     HAIR GROWTH SERUM (₹1,499) TWICE A DAY + THE SAME SHAMPOO.
+     ABOUT ₹50 A DAY. [ ] SOMETHING ELSE. THAT IS FINE. THE JOURNAL
+     WORKS WITH ANY ROUTINE.
+
+       SUNDAY IS ALREADY YOUR HAIR DAY. MAKE IT YOUR COUNT DAY.
+
+
+Page 4: The weekly grid (12 rows)
+ WEEK                            PILLOW                DRAIN              COMB   ITCH (0 TO 5)   NOTES
+
+ 0 (baseline)
+ 1
+ 2
+ ...
+ 12 (day 84)
+
+
+Page 5: The four milestones
+
+     DAY 7. NOTHING SHOULD HAVE CHANGED IN THE COUNT. THE SCALP
+     MAY FEEL CALMER. IF THERE IS BURNING OR A RASH, STOP AND
+     MESSAGE US. DAY 28. COMPARE THE COUNT TO YOUR BASELINE. TAKE
+     THE SECOND SET OF PHOTOS. HAIR FALL NUMBERS ARE WHAT MOVE
+     FIRST. DAY 56. PHOTOS AGAIN. LOOK AT THE PARTING WIDTH IN THE DAY
+     0 PHOTO NEXT TO TODAY'S. DAY 84. FINAL COUNT, FINAL PHOTOS. PUT
+     DAY 0 AND DAY 84 SIDE BY SIDE. THIS IS YOUR NUMBER. OUR STUDY'S
+     NUMBER WAS UP TO 28,200 NEW HAIRS IN 84 DAYS ON THE INTENSIVE
+     SERUM AND 87% OF PARTICIPANTS SEEING INCREASED GROWTH ON
+     MITOACTIVE. YOURS IS THE ONE THAT MATTERS.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LEAD MAGNETS FOR THE HAIR FALL JOURNEY                                  7
+Page 6: What to do with your number
+
+   IF THE COUNT DROPPED: KEEP THE ROUTINE AS MAINTENANCE, AND
+   TELL SOMEONE. WE READ EVERY PHOTO SENT TO US. IF IT DID NOT:
+   MESSAGE US THE JOURNAL. A TRICHOLOGIST ON OUR TEAM READS IT
+   AND TELLS YOU HONESTLY WHETHER THE NEXT TIER OR A
+   DERMATOLOGIST IS THE RIGHT NEXT STEP. OUR SERUMS ARE NOT FOR
+   EVERYONE, AND WE WOULD RATHER SAY SO. REORDER REMINDER: A 30
+   ML SERUM LASTS ABOUT 28 TO 30 DAYS AT ONCE-DAILY USE. YOUR DAY
+   28 MESSAGE CARRIES A REORDER LINK.
+
+
+The four WhatsApp milestone messages
+Day 7: "Week 1 done, {name}. Don't judge the count yet. Scalp calmer? Reply 1 for yes, 2 for no, 3 for
+itch or burning (we'll call you)."
+Day 28: "Day 28. Count day. Pillow, drain, comb, then photos. Reply with your three numbers and we'll
+compare them to your baseline for you. Your serum runs out around now: {reorder link}."
+Day 56: "Day 56. Halfway photos. Open your Day 0 album and look at the parting. Reply with both
+photos if you want a second pair of eyes."
+Day 84: "Day 84, {name}. You did the whole thing. Send us day 0 and day 84 and your counts. If it
+worked, a 2-line review on the product page helps the next person who is where you were in week 0.
+If it didn't, tell us that too. We'll read it and reply honestly."
+
+EXAMPLE 2: THE MINOXIDIL DECISION SHEET (FULL ONE-PAGER)
+Title: Minoxidil, a kit, or a serum? The one-page honest comparison.
+Intro (3 lines):
+
+   YOU HAVE HAIR FALL. YOU HAVE HEARD FOUR ANSWERS. HERE IS WHAT
+   EACH ONE COSTS, HOW LONG IT TAKES, AND WHAT HAPPENS WHEN YOU
+   STOP. WE SELL TWO OF THE FIVE. WE HAVE TRIED TO BE FAIR TO THE
+   OTHER THREE.
+
+
+                                                                          ACTIVES
+                                                                          SERUMS
+                    MINOXIDIL 5%                                          (REDENSYL,       ARATA HAIR
+                    (MINTOP AND              DIAGNOSIS KITS               ANAGAIN,         GROWTH
+                    SIMILAR)                 (TRAYA-STYLE)                PROCAPIL)        INTENSIVE SERUM      ARATA MITOACTIVE
+
+ What it is         Topical drug,            Monthly kit:       Plant-derived              Actives serum with   Y100 mitochondrial
+                    prescription-style       shampoo, oils,     actives at a               a consumer study     active, first in India
+                    use                      supplements, often stated %                   behind it
+                                             minoxidil, doctor
+                                             calls
+ Monthly cost       ₹600 to ₹900             ₹1,400 to ₹1,800             ₹550 to ₹1,100   ₹571 (₹999 for a     ₹1,499, about ₹50 a
+                                                                                           pack of 3, so ₹333 a day
+                                                                                           month)
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LEAD MAGNETS FOR THE HAIR FALL JOURNEY                                                                  8
+                                                                          ACTIVES
+                                                                          SERUMS
+                    MINOXIDIL 5%                                          (REDENSYL,          ARATA HAIR
+                    (MINTOP AND              DIAGNOSIS KITS               ANAGAIN,            GROWTH
+                    SIMILAR)                 (TRAYA-STYLE)                PROCAPIL)           INTENSIVE SERUM      ARATA MITOACTIVE
+
+ Commitment         Daily, indefinitely      5 to 9 months, with Daily                        Daily for 84 days,   Twice daily for 84
+                                             supplements and                                  then maintenance     days, then
+                                             calls                                                                 maintenance
+ Evidence           Strongest in the  Program-level                       Ingredient-level    Up to 28,200 new     87% saw increased
+                    category, decades results; money-                     claims, usually a   hairs in 84 days     growth in 84 days;
+                    of trials         back after 5                        % on the label      (consumer study)     5+ studies on Y100
+                                      months
+ Side effects       Initial shedding,        Routine fatigue,             Usually mild        Dermatologically     Dermatologically
+ to know            scalp irritation,        cost, medicalised                                tested; vegan        tested; vegan
+                    dependency;              feel
+                    needs a doctor
+ When you           Gains typically          Gains can reverse            Varies              Positioned as a      Positioned as a
+ stop               reverse                  if minoxidil was in                              course plus          course plus
+                                             the kit                                          maintenance          maintenance
+ Right for you      You have seen a          You want a        You read         You want a number                  You want the newest
+ if                 dermatologist and        doctor-led        ingredient lists and a 3-month                      mechanism and are
+                    accept the trade-        program and can   and want control timeline at ₹571                   price-insensitive
+                    offs                     commit the budget
+ Wrong for          You want                 You want simple              You want proof,     You are at an      You want the
+ you if             something you                                         not percentages     advanced stage and cheapest option
+                    can stop                                                                  need a clinician
+
+
+Footer:
+
+   TWO HONEST LINES. IF YOU ARE AT NORWOOD STAGE 5 OR BEYOND, SEE
+   A DERMATOLOGIST BEFORE BUYING ANYTHING ON THIS SHEET,
+   INCLUDING OURS. AND WHATEVER YOU PICK, COUNT YOUR HAIR FALL
+   FOR 84 DAYS WITH THE JOURNAL; IT IS THE ONLY WAY TO KNOW.
+
+   GET THE 84-DAY JOURNAL ON WHATSAPP → ARATA.IN/JOURNAL
+
+
+EXAMPLE 3: THE HAIR FALL SCORE, CAPTURE PAGE AND THANK-YOU PAGE
+The seven questions (multiple choice, progress bar "3 of 7"):
+1. Where do you notice it most? Pillow / Drain / Comb / Parting or crown looks wider / All of these
+2. For how long? Under a month / 1 to 3 months / 3 to 12 months / Over a year
+3. What changed recently? Illness or fever / Had a baby / New city or new water / Stress or sleep /
+   Nothing I can think of
+4. Your scalp right now: Itchy or flaky / Oily by evening / Dry and tight / Normal
+5. What have you tried? Onion or biotin products / Oiling and home remedies / Minoxidil / A derm visit
+   / Nothing yet
+6. Your wash water: Hard (white marks on taps) / Soft / Don't know
+7. What do you want in 84 days? Less on the pillow / Thicker parting / Both / Just stop it getting worse
+
+
+BREW DEPLOYMENT TEAM × ARATA · LEAD MAGNETS FOR THE HAIR FALL JOURNEY                                                                  9
+Four results:
+ RESULT            WHO                                   WHAT THEY GET ON SCREEN                       WHAT GOES TO WHATSAPP
+
+ Shedding          Recent trigger (illness, baby,        "This looks like a shedding phase. These      Journal + the ₹838 routine
+ spike             city), under 3 months                 usually pass. A routine shortens the wait."
+ Scalp first       Itch or flakes plus hair fall         "Fix the scalp before you fix the fall."      Journal + Anti-Dandruff
+                                                                                                       S+C ₹866 + serum
+ Early             Over 3 months, wider parting, "This is the stage our studies were built             Decision Sheet + Journal +
+ thinning          tried minoxidil or derm       for."                                                 MitoActive ₹1,499
+ Styling           Breakage, heat, product               "This is breakage. The fix is different."     Anti-Breakage Conditioner
+ damage            build-up                                                                            ₹359 + styling guide
+
+
+Capture step (after the score, before the full routine):
+
+   YOUR SCORE: 71. SHEDDING SPIKE. HERE IS THE ONE-LINE READ: {RESULT
+   DESCRIPTION}. YOUR FULL 84-DAY ROUTINE, WITH PRICES, AND THE
+   JOURNAL TO TRACK IT ARE READY. WHERE SHOULD WE SEND THEM?
+
+   WHATSAPP NUMBER [_] FIRST NAME (OPTIONAL) [_____] [ SEND MY
+   ROUTINE ] WE SEND THE ROUTINE, THE JOURNAL AND A FEW LAB NOTES.
+   REPLY STOP ANY TIME. NO SPAM, EVER. 2,248 PEOPLE HAVE REVIEWED
+   THE PRODUCTS IN THIS ROUTINE.
+
+
+Landing page for direct traffic (ads, bio, insert) at arata.in/score
+    Headline: "How bad is your hair fall, really? Get your score in 90 seconds."
+    Subhead: "Seven questions from the Arata lab. Your score, your likely cause, and the 84-day
+    routine built for it."
+    Preview: a screenshot of the result card with the score dial.
+    What's inside: "Your hair fall score out of 100. The most likely cause from your answers. A routine
+    with real prices. The 84-Day Journal to prove it to yourself."
+    Proof: "Built from the studies behind 7.4X hair fall reduction and up to 28,200 new hairs in 84 days.
+    1.5M+ customers a year."
+    CTA: "Get my score"
+    FAQ: "Is it free? Yes. Do I have to buy anything? No. Do I need to give my number? Only for the full
+    routine and Journal. The score is free on screen."
+Thank-you page
+
+   SENT. CHECK WHATSAPP. YOUR ROUTINE FOR A SHEDDING SPIKE: ANTI-
+   HAIR FALL INTENSIVE SHAMPOO 200 ML ₹359 + HAIR GROWTH INTENSIVE
+   SERUM 30 ML ₹571 → TOGETHER ₹838, FREE SHIPPING. [ ADD THE
+   ROUTINE TO CART ] DAY 0 STARTS WHEN THE BOTTLE ARRIVES. ORDER
+   TODAY, COUNT SUNDAY. ALREADY BOUGHT ON BLINKIT OR NYKAA?
+   YOUR JOURNAL STILL WORKS. START YOUR BASELINE TONIGHT.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LEAD MAGNETS FOR THE HAIR FALL JOURNEY                                                             10
+EXAMPLE 4: "WHY YOUR HAIR IS FALLING", THE 5-DAY WHATSAPP COURSE
+All five messages, sent at 8 pm IST. Each under 120 words. Each links one Lab Notes post. Variables in
+braces.
+Day 1 (sent 1 day after capture): the cycle
+
+   HI {NAME}. LESSON 1 OF 5 FROM THE ARATA LAB. EVERY HAIR ON YOUR
+   HEAD IS IN ONE OF THREE PHASES: GROWING, RESTING, OR FALLING.
+   LOSING 50 TO 100 A DAY IS THE FALLING PHASE DOING ITS JOB. HAIR
+   FALL BECOMES A PROBLEM WHEN MORE FOLLICLES SIT IN "RESTING"
+   THAN THEY SHOULD. THAT IS WHAT THE WORDS "ANAGEN" AND
+   "TELOGEN" ON OUR MITOACTIVE PACK MEAN: GROWING VS RESTING.
+   OUR STUDY ON Y100 MEASURED THAT RATIO SHIFTING BACK TOWARD
+   GROWING. TOMORROW: THE FOUR INDIAN TRIGGERS THAT PUSH
+   FOLLICLES INTO RESTING. READ THE FULL NOTE: {LINK}
+
+
+Day 2: the four Indian triggers
+
+   LESSON 2. FOUR THINGS PUSH INDIAN SCALPS INTO SHEDDING THAT
+   GLOBAL BRANDS DO NOT FORMULATE FOR. 1. HARD WATER. MINERAL
+   BUILD-UP ON THE SCALP. COMMON IN DELHI, BANGALORE, CHENNAI,
+   HYDERABAD. 2. HUMIDITY AND SWEAT. OIL PLUS SWEAT PLUS
+   POLLUTION CLOGS FOLLICLES. 3. HEAT AND SUN. DRIES THE STRAND,
+   WEAKENS IT AT THE ROOT. 4. THE SHOCK: FEVER, A BABY, A NEW CITY,
+   EXAMS, A BREAK-UP. SHEDDING SHOWS UP 2 TO 3 MONTHS LATER,
+   WHICH IS WHY IT FEELS RANDOM. WHICH ONE IS YOURS? REPLY 1 TO 4
+   AND WE'LL SEND THE RIGHT NOTE. {LINK}
+
+
+Day 3: what you have already tried
+
+   LESSON 3. YOU HAVE PROBABLY TRIED ONION, BIOTIN, ROSEMARY
+   WATER OR SUNDAY OILING. HERE IS WHAT EACH ONE DOES AND DOES
+   NOT DO. ONION: SULPHUR, MILD ANTIMICROBIAL. NO GROWTH STUDY
+   WORTH THE NAME. BIOTIN: HELPS ONLY IF YOU ARE DEFICIENT. MOST
+   PEOPLE ARE NOT. ROSEMARY: ONE SMALL STUDY VS MINOXIDIL. OUR
+   SHAMPOO USES ROSEMARY-CAFFEINE FOR A REASON, BUT ON ITS OWN
+   IT IS SLOW. OILING: CONDITIONS THE STRAND, DOES NOTHING FOR THE
+   FOLLICLE. NONE OF THESE ARE A WASTE. NONE OF THEM WILL SHOW
+   YOU A NUMBER IN 84 DAYS EITHER. {LINK}
+
+
+Day 4: how to read a hair claim
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LEAD MAGNETS FOR THE HAIR FALL JOURNEY                             11
+   LESSON 4. EVERY HAIR PRODUCT HAS A NUMBER. HERE IS HOW TO READ
+   ONE, INCLUDING OURS. "UP TO" MEANS THE BEST RESPONDERS, NOT
+   THE AVERAGE. WE WRITE IT ON OUR PACKS BECAUSE IT IS TRUE. "IN-
+   VITRO" MEANS TESTED ON HAIR FIBRES IN A LAB, LIKE OUR "78%
+   STRONGER HAIR IN 1 WASH". GOOD FOR STRENGTH CLAIMS,
+   MEANINGLESS FOR GROWTH. "CONSUMER STUDY, 84 DAYS" MEANS
+   REAL PEOPLE COUNTED. THAT IS WHERE "UP TO 28,200 NEW HAIRS" AND
+   "87% SAW GROWTH" COME FROM. IF A BRAND'S NUMBER HAS NO STUDY
+   TYPE AND NO TIMELINE, IT IS A PERCENTAGE ON A LABEL. {LINK TO THE
+   LAB NOTES EXPLAINER}
+
+
+Day 5: your 84 days
+
+   LAST LESSON, {NAME}. YOU NOW KNOW MORE ABOUT HAIR FALL THAN
+   MOST PEOPLE SELLING YOU PRODUCTS FOR IT. HERE IS THE ROUTINE
+   FOR A {SEGMENT}: {ROUTINE LINE WITH PRICES, E.G. "ANTI-HAIR FALL
+   INTENSIVE SHAMPOO ₹359 + HAIR GROWTH INTENSIVE SERUM ₹571 →
+   ₹838"} YOUR JOURNAL IS ALREADY ON YOUR PHONE. DAY 0 IS THE DAY
+   THE BOTTLE ARRIVES. {ADD-TO-CART LINK} ONE MORE THING. IF THE
+   COUNT DOES NOT DROP BY DAY 84, SEND US THE JOURNAL AND WE
+   TELL YOU STRAIGHT WHETHER TO GO UP A TIER OR SEE A
+   DERMATOLOGIST.
+
+
+EXAMPLE 5: THE THREE PLACEMENTS THAT FEED THE FUNNEL
+PDP exit-intent popup, Hair Growth Intensive Serum (₹571)
+
+   NOT SURE YET? COUNT FIRST. THE 84-DAY HAIR FALL JOURNAL: THREE
+   COUNTS, FOUR PHOTO DAYS, ONE HONEST ANSWER BY DAY 84. WORKS
+   WITH ANY PRODUCT, INCLUDING THE ONES YOU ALREADY OWN.
+   WHATSAPP NUMBER [__] [ SEND ME THE JOURNAL ] REPLY STOP ANY
+   TIME.
+
+
+Meta lead ad, Instant Form opening on WhatsApp
+Primary text: "Pillow. Drain. Comb. If you are counting, get a number back. Seven questions from the
+Arata lab give you a hair fall score and the 84-day routine built for it. Free, 90 seconds, no kit."
+Headline: "What is your hair fall score?" Description: "From the brand behind 7.4X hair fall reduction."
+CTA button: Get quote → relabelled "Get my score"
+Box insert card, 10 cm x 7 cm, both sides, in every D2C and B2B carton
+Front: "You bought the bottle. Now prove it to yourself. Scan for the 84-Day Hair Fall Journal: count it,
+photograph it, know by day 84. [QR]" Back: "Three counts. Pillow, drain, comb. Four photo days: 0, 28,
+56, 84. We'll remind you on WhatsApp. Day 0 is tonight." Small print: "Scan opens WhatsApp. Reply
+STOP any time. Leaked bottle or broken seal? Same QR, reply LEAK, replaced without questions."
+That last line routes a known complaint ("the seal was broken", "the shampoo bottle was leaking") to
+the same number. It raises scan rates and gives ops a signal.
+
+
+BREW DEPLOYMENT TEAM × ARATA · LEAD MAGNETS FOR THE HAIR FALL JOURNEY                                    12
+30-DAY DEPLOYMENT
+                                                                                                                         OWNER (BREW
+ WEEK BREW SHIPS                                                        ARATA PROVIDES                                 / ARATA)
+
+ 1         Capture audit of arata.in (popup, footer,                      Study summaries for the serum,                 Brew lifecycle
+           WhatsApp opt-in status). Journal copy final.                   MitoActive and shampoo (design, n,             lead / Arata R&D
+           Decision Sheet copy final. WhatsApp Business                   timeline, "up to" definitions). Trichologist   lead
+           API templates drafted (4 milestone + 5 course +                sign-off on the Journal milestone copy.
+           delivery) and submitted for approval.                          Sunday count permission for "trichologist
+                                                                          reads your journal" promise.
+ 2         Journal designed (A4 + phone), Decision Sheet                  Brand 3.0 design files (rebrand colours,       Brew
+           designed, Score questions and four result cards                type). Approval of the routine prices          designer,
+           written. Landing pages built: /journal, /score,                shown on thank-you pages.                      Brew growth
+           /minoxidil-vs. Thank-you pages with routine                                                                   engineer / Arata
+           cards and add-to-cart.                                                                                        brand manager
+ 3         Exit-intent on the two serum PDPs and the Anti-                Print vendor and insert slot in the            Brew growth
+           Dandruff Shampoo PDP. Inline content upgrades                  warehouse packing line (11K sq ft,             engineer,
+           on the ten highest-traffic Lab Notes posts. 5-day              automated). Decision on B2B carton             Brew creative
+           course loaded in the WhatsApp tool with segment                inserts. List of top Lab Notes posts by        lead / Arata ops
+           branching. Box insert artwork to print. Meta lead              traffic.                                       lead
+           ad set (3 creatives) in draft.
+ 4         Everything live. Inserts in the packing line. Meta             Someone on the Arata side to answer            Brew lifecycle
+           lead ads on at ₹5,000/day test budget.                         Journal replies (itch, LEAK, photos) inside    lead / Arata
+           Dashboard: captures by source, segment mix,                    24 hours.                                      brand manager
+           lead-to-order. First weekly review.
+
+
+Live by day 30: /score, /journal and /minoxidil-vs, exit-intent on three PDPs, upgrades on ten Lab
+Notes posts, inserts in every box, the 5-day course and four milestone messages on WhatsApp, and a
+dashboard. Month 2 adds the city water cheat sheet and the monsoon dandruff checklist. Month 3
+adds the post-partum guide and ties the day 84 reply flow to the MitoActive review request.
+
+
+
+HOW WE MEASURE
+ METRIC                              BASELINE                    90-DAY TARGET          WHY THIS NUMBER
+
+ New WhatsApp contacts               0 (assumption: no           15,000 to              2 to 4% of 650K visits plus inserts
+ per month (all sources)             opt-in list today)          25,000
+ Score completion rate               To be instrumented          60% of starts          Quiz benchmark 30 to 50% of visitors convert;
+                                                                                        completion runs higher
+ Score → number given                To be instrumented          45%                    Results-gated quiz benchmark 30 to 50%
+ /journal and /minoxidil-vs          To be instrumented          20%                    E-commerce dedicated page benchmark 10 to
+ opt-in rate (warm traffic)                                                             20%; cheat sheet 25 to 40%
+ PDP exit-intent opt-in              To be instrumented          3% of exits            Exit-intent benchmark 2 to 5%
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LEAD MAGNETS FOR THE HAIR FALL JOURNEY                                                                     13
+ METRIC                              BASELINE                    90-DAY TARGET    WHY THIS NUMBER
+
+ Lab Notes content                   To be instrumented          4% of readers    Benchmark 3 to 8% of post readers
+ upgrade
+ Box insert scan → opt-in            0                           2% of units      Assumption, no benchmark; measure from week
+                                                                                  4
+ Meta lead ad cost per               To be instrumented          Under ₹40        Benchmark $3 to $15 B2C; India runs lower
+ contact
+ WhatsApp course: day 1              To be instrumented          70% read, 12%    WhatsApp reads run far above the 30 to 50%
+ read rate, day 5 click rate                                     click            email open benchmark (assumption)
+ Lead → first order within           To be instrumented          8%               D2C benchmark is wide; 8% is our floor for a
+ 45 days                                                                          warm, segmented list
+ Journal day 28 reply rate           0                           25% of Journal   Habit signal; feeds reorder
+                                                                 recipients
+ MitoActive reviews from             0 today                     50 reviews by    The hero has zero reviews; this is the fix
+ Journal day 84                                                  day 120
+ Revenue attributed to               0                           ₹40 lakh a       20K contacts × 8% × ~₹900 AOV (assumption
+ captured contacts                                               month by month   on AOV from brief) ≈ ₹14 lakh per cohort,
+                                                                 3                stacking monthly
+
+
+Decision rules
+    If the Score converts at 45% or better and lead-to-order clears 8% by day 60: double the Meta
+    lead budget, add the Score to every Lab Notes post, and build the dandruff version of the Score.
+    If opt-in is fine but lead-to-order is under 4%: the course is the problem. Rewrite day 5, move the
+    routine card to day 3, test a ₹100 off the ₹838 combo in day 5 only.
+    If opt-in is under 10% on /journal: the gate is too tight. Ungate pages 1 to 3, gate the WhatsApp
+    check-ins only, and retest for 2 weeks.
+    If insert scans are under 0.5% by day 60: the card is being thrown away with the packing. Move the
+    QR to the bottle hangtag on the serum SKUs and retest.
+    If WhatsApp opt-out exceeds 3% per message: cut the course to 3 messages and drop the day 7
+    milestone.
+First A/B tests, in order: Score headline ("How bad is your hair fall, really?" vs "Get your 84-day hair
+plan"), Journal gate level (full vs partial), CTA copy ("Send my routine" vs "Get my plan"), form fields
+(number only vs number + name), day 5 with and without the ₹100 offer.
+
+
+
+APPENDIX
+PRE-LAUNCH CHECKLIST
+    [ ] WhatsApp Business API verified; all 10 marketing templates approved
+    [ ] Opt-in language on every form; STOP and one-click email unsubscribe automated
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LEAD MAGNETS FOR THE HAIR FALL JOURNEY                                                          14
+    [ ] Every number in the Journal and Decision Sheet matches a study and carries its "up to" and
+    timeline; competitor rows checked by Arata R&D
+    [ ] No "chemical-free", "miracle", "cure" or "clinical-strength" anywhere
+    [ ] Journal PDF under 3 MB, opens on a phone, prints on A4
+    [ ] Insert QR opens WhatsApp with a pre-filled "JOURNAL" message, UTM-tagged web fallback;
+    LEAK replies route to ops with the order number
+    [ ] Dashboard events: score_start, score_complete, optin_submit (source, segment), wa_read,
+    course_click, journal_reply_d28, order_from_contact
+
+LATER MAGNETS, ONE LINE EACH
+    City water and scalp cheat sheet: water hardness by metro (public groundwater data, verified
+    before print), what it does to the scalp, the two-step fix.
+    Monsoon dandruff checklist, June to September: 12 items ending on the 95%-in-1-wash shampoo
+    and the ₹299 leave-on serum. Exit-intent on the dandruff PDP.
+    Wedding-week hold guide for men, October to February: 72-hour hold through a baraat without
+    white flakes. Styling combos are the most-reviewed SKUs on Loox, so there is review material to
+    quote.
+    Post-partum shedding guide: why month 3 is the worst month, what is normal, what is safe. Routine
+    Ritika's entry point.
+
+SOURCES USED
+Arata brand brief (arata.in catalogue and prices, review language, channel mix, traffic and order
+figures, competitor pricing); the lead magnet format and benchmark references used by the Brew
+deployment team; public dermatology guidance on normal daily shedding (50 to 100 hairs). All
+assumptions are labelled inline.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · LEAD MAGNETS FOR THE HAIR FALL JOURNEY                               15
+LEAD MAGNETS AND OPT-IN CONTENT
+
+
+DAY 30
+AT ARATA
+    WHAT IS LIVE
+
+    Four opt-in assets live on arata.in, on Lab Notes and inside every shipped box,
+    delivered on WhatsApp with a 5-message course that ends on the ₹838 hair fall
+    routine.
+
+
+
+
+  NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+  BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+  CONFIRM".
+
+
+  EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+  BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                  DEPLOYMENT TEAM
+                                                                               BREW
+

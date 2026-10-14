@@ -1,0 +1,4 @@
+{ "name": "Acme", "language": ["comfy", "built for mud"], "praise": ["Comfort from the first wear."], "complaints": ["Runs half a size small."],
+  "personas": [ { "name": "The walking commuter", "who": "Walks to work in all weather.", "job": "One shoe for trail and office.", "objections": "Price.", "basedOn": "Reviews" } ],
+  "claims": [ { "product": "Brand", "claim": "Trail shoes for city feet", "basis": "Homepage tagline" } ],
+  "channels": [ { "channel": "Own Shopify store", "evidence": "Store on Shopify." } ] }

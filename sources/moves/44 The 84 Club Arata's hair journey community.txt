@@ -1,0 +1,794 @@
+      Brew                                   PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+COMMUNITY MARKETING · MOVE 44 OF 50
+
+
+
+THE 84 CLUB:
+ARATA'S
+HAIR
+JOURNEY
+COMMUNITY
+  A WHATSAPP-FIRST HAIR JOURNEY COMMUNITY THAT
+  WALKS EVERY ARATA BUYER THROUGH THE 84 DAYS THE
+  CLAIM ON THE BOTTLE NEEDS, WITH FOUR CHECK-INS,
+  ONE SUNDAY RITUAL AND A GRADUATE AMBASSADOR
+  TRACK.
+
+
+
+
+84 days
+ONE COHORT, FOUR CHECK-INS
+
+
+
+
+BREW × ARATA                  OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                                WHAT THIS GIVES ARATA
+                                                                 A WhatsApp-first hair journey community that walks
+                                                                 every Arata buyer through the 84 days the claim on
+                                                                 the bottle needs, with four check-ins, one Sunday
+                                                                 ritual and a graduate ambassador track.
+
+         84 days
+         ONE COHORT, FOUR CHECK-INS
+                                                                 LIVE 30 DAYS AFTER WE START
+                                                                 The first two 84 Club cohorts (hair fall and
+                                                                 MitoActive) are live on WhatsApp with 300+
+                                                                 founding members, the Day 0 and Day 14 check-ins
+                                                                 have run, the Sunday Scalp Check has happened
+                                                                 four times, and the Instagram broadcast channel is
+                                                                 open.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+Arata is a D2C haircare brand, so we translate the community playbook before we use it. "Community"
+here means a hair journey community: WhatsApp cohort groups, an Instagram broadcast channel, and
+a graduate ambassador track, all built around the 84-day window every Arata claim already promises.
+"Activation" means the customer actually uses the serum twice a day. "Churn" means no second
+order by day 90. "Support deflection" means fewer "is this shedding normal?" and "my bottle leaked"
+messages reaching the support inbox.
+The brief lists "no community" as a known gap. We see it as the biggest missing piece in the retention
+story, because the product is already shaped like a community program. Every hero claim is time-
+bound. Up to 28,200 new hairs within 84 days. 87% saw growth with MitoActive in 84 days. 86% grey
+reduction over 3 months. A customer who buys one 30 ml bottle, uses it for three weeks, hits the
+normal week-two shedding, and quits, never reaches the number on the pack. That customer writes
+"didn't work for me" on Nykaa and moves to Pilgrim at ₹595. The product did not fail. The 84 days did
+not happen.
+The cost shows up in the repeat rate. Beauty repeat rates sit around 26%; routine-led models exceed
+40%. Arata ships 50,000+ D2C orders a month at an AOV around ₹900 to ₹1,000 with no subscription,
+no reminder and no place for a customer to say "I'm on day 23 and I'm not sure." The habit the brief
+describes is "buying whatever is on offer on Blinkit." A community that holds a customer for 84 days is
+the cheapest way we know to break that habit, and it runs on a channel Arata owns outright.
+Marketplaces and quick commerce take 68% of revenue on rented land. A WhatsApp community is
+Arata's own land.
+Two more specific problems get fixed on the way. MitoActive has zero reviews two months after a
+₹1,499 launch. A founding cohort of 100 MitoActive buyers who check in at day 30 and day 84
+produces the first 100 honest reviews, with photos, in one cycle. And the packaging complaints ("the
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · THE 84 CLUB: ARATA'S HAIR JOURNEY COMMUNITY                                          1
+seal was broken", "the shampoo bottle was leaking") currently surface in public reviews because the
+customer had nowhere private to say it first. In a cohort group, the community manager hears it on
+day 2 and replaces the bottle before anyone opens Loox.
+The opportunity is bigger than retention. Arata's founders say the goal is "real estate in people's
+minds." Nothing holds real estate like a group where a 28-year-old in Bangalore posts his day-60
+crown photo and three strangers reply "bro, visible." Traya spends ₹138 Cr on marketing to buy that
+kind of trust. Arata can earn it from the 1.5M customers it already has.
+
+
+
+WHAT WE FOUND
+WHERE ARATA'S COMMUNITY LIFE LIVES TODAY
+We audited every place an Arata customer can currently talk to another Arata customer or to the brand
+outside a checkout.
+                                                                                                    WHO
+ SURFACE                                              WHAT EXISTS TODAY                             OWNS IT     VERDICT
+
+ Loox on-site reviews (2,248)                         One-way. Customer posts, nobody replies,      Arata       Proof, not
+                                                      no follow-up at day 84                                    conversation
+ Nykaa reviews (4.2★, 2,435 ratings on                One-way, legacy SKU, legacy naming            Nykaa       Rented, out of date
+ Super Shampoo)
+ Instagram                                            Entertainment-led (Samay Raina mock           Arata       Reach without
+                                                      podcast), no broadcast channel, no routine                retention
+                                                      content
+ Lab Notes blog                                       Seven posts in March 2026, then quiet         Arata       Bursty, no cadence
+ WhatsApp                                             Order and shipping messages                   Arata       The channel is
+                                                      (assumption), no groups, no community                     open, unused
+ Reddit (r/IndianSkincareAddicts,                     Customers compare Arata to Pilgrim,           Nobody      Listening post,
+ r/IndianHaircare style threads)                      Minimalist, Traya unprompted                              never ownable
+ Dermatologists, salons                               Trusted, sporadic                             Nobody      Out of scope for
+                                                                                                                this doc
+
+
+The pattern: Arata has proof (reviews, claims, studies) and reach (650K monthly visits, creator
+campaigns), and nothing in between. There is no room where a customer stays after the order.
+
+WHICH COMMUNITY MODEL FITS
+We ran the four models against Arata's primary goal, which is repeat purchase inside the 45-day
+window and the 84-day result.
+                                                                                                                          SCORE (1
+ MODEL                   FIT TEST                                 ARATA READ                                              TO 5)
+
+ Education /             Product has a learning curve;            Yes. Twice-daily serum, 84 days, week-two shedding,     5
+ Enablement              results depend on members                routine layering (shampoo, serum, conditioner). Most
+                         getting good at it                       quits are adherence quits
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · THE 84 CLUB: ARATA'S HAIR JOURNEY COMMUNITY                                                          2
+                                                                                                                            SCORE (1
+ MODEL                   FIT TEST                                 ARATA READ                                                TO 5)
+
+ Support-Driven          Support volume is high and               Partly. "Is shedding normal?", "30 ml enough?", "serum    4
+                         questions repeat                         on wet or dry hair?", "bottle leaked" repeat constantly
+ Founder-Led             Founder's voice is the brand;            Partly. Dhruv Madhok is a visible founder; the in-house   3
+                         early stage                              R&D lab is a credible voice. Useful to seed, wrong to
+                                                                  depend on at 50K orders a month
+ Product-                Users are technical and shape            Low. Customers can name concerns, not formulations.       2
+ Development             the roadmap                              Useful for the Biosciences line beta only
+
+
+Decision: Education-led, Support borrowed, Founder-seeded. The community teaches members to
+finish 84 days. Peers answer the repeat questions. The founders and the lab show up once a month,
+then hand the room to graduates.
+
+THE IDENTITY WE BUILD AROUND
+The skill's first rule is to build around who members are, and we agree. Nobody wants to be "an Arata
+customer." People do want to be someone who takes their hair seriously enough to track it. Our
+identity statement:
+"I'm on a hair journey and I'm tracking it like a lab would."
+The member's handle inside the community is their day number. "Day 23 here." "Day 84, done." It
+turns the claim on the bottle into something the member says about themselves. Hair-fall Rahul, who
+has tried onion shampoo and biotin gummies and has never seen a number, finally has his own
+number.
+We call the community The 84 Club. Graduates are "84s." The word already sits on every Arata
+product page, so the name costs nothing to explain.
+
+PLATFORM CHOICE
+ PLATFORM                                   FOR ARATA                                                        DECISION
+
+ WhatsApp Communities (groups Where every Indian customer already is. Supports cohort                        Primary. Cohort groups
+ of up to 1,024, up to 2,000  groups under one umbrella, admin announcements, polls,                         live here
+ members per community)       voice notes, photos. Free to run from a Business app
+                              number
+ WhatsApp Channel                           One-to-many broadcast with no member cap and no                  Secondary. Lab Notes,
+                                            replies                                                          graduation walls, offers
+ Instagram broadcast channel                Free, one-to-many, sits where the creator-influenced 22          Secondary. Public face
+                                            to 30 audience already follows Arata                             of the club, feeds the
+                                                                                                             WhatsApp funnel
+ Discord                                    Right for gaming and developer audiences; onboarding             No
+                                            friction for a 32-year-old new mom in Mumbai
+ Facebook Groups                            Declining reach, older skew, wrong for the 22 to 40 core         No
+ Reddit                                     Can't be owned; moderation is hard; valuable as a listening Monitor weekly, never
+                                            post                                                        host
+ On-site "My Journey" page                  A logged-in page with day counter and photo uploads              Phase 3, once cohorts
+ (Shopify)                                                                                                   prove the loop
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · THE 84 CLUB: ARATA'S HAIR JOURNEY COMMUNITY                                                            3
+The 1,024-per-group cap is a feature here. It forces cohorts, and cohorts are exactly what an 84-day
+program needs.
+
+SIZING (ASSUMPTIONS LABELLED)
+ INPUT                                             VALUE                                                                      SOURCE
+
+ D2C orders per month                              50,000+                                                                    Brief
+ Hair fall, growth, dandruff and grey              60% (assumption; styling and body excluded as they have no 84-             Assumption
+ share of D2C orders                               day journey)
+ Opt-in rate from a post-delivery                  4% in month one, 7% by month three (assumption; benchmark for              Assumption
+ WhatsApp invite                                   opt-in from a transactional message)
+ New members per month                             ~1,200 in month one, rising to ~2,100                                      Derived
+ Cohort groups opened per month                    2 to 3 (hair fall, dandruff, MitoActive; grey folds into hair fall until   Plan
+                                                   volume justifies its own)
+ Community manager time                            1 full-time Brew community lead for 90 days, then 0.5 plus               Plan
+                                                   graduate moderators
+
+
+At these rates The 84 Club passes 1,000 members inside month one. The skill's scaling-phase rule
+says that means we must build systems from week two, while still welcoming every member by name
+in week one.
+
+
+
+THE PLAN
+ARCHITECTURE
+                                                                                                                                DIAGRAM
+                              THE 84 CLUB (WhatsApp Community)
+                              ================================
+       Announcements (admins only): Lab Notes, graduation wall, check-in bells
+             |
+             +-- Cohort: Hair Fall Oct '26 (Rahul, Ritika, Gaurav)      <= 1,024
+             +-- Cohort: Hair Fall Nov '26                                <= 1,024
+             +-- Cohort: Dandruff Oct '26 (Divya)                         <= 1,024
+             +-- Cohort: MitoActive Lab Cohort 01 (Kavya) ................ 100 cap
+             +-- 84s Lounge: graduates only, ambassadors recruited here
+             +-- Help Desk: "bottle leaked", "serum on wet or dry?" answered < 2 hrs
+
+       WhatsApp Channel "Arata Lab Notes" .......... broadcast, no cap, no replies
+       Instagram broadcast channel "The 84 Club" ... public face, drives opt-in
+       Reddit listening (weekly) ................... never hosted, always read
+
+
+
+
+Each cohort group is born on the first of the month, runs for 84 days plus a 14-day graduation window,
+then archives. A member who buys again joins the next cohort as a "second lap" with a different
+badge. This keeps every group at the same stage, so a Day 14 shedding message lands when the
+whole room is on day 14.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · THE 84 CLUB: ARATA'S HAIR JOURNEY COMMUNITY                                                               4
+THE CORE LOOP
+The skill asks for one weekly action, easy to do and rewarded in public. Ours piggybacks on a habit
+the brief already names: oiling on Sundays.
+                                                                                                                         DIAGRAM
+        Sunday Scalp Check (weekly)
+        ---------------------------
+        Member posts: "Day 21. Shedding down a bit. Serum twice daily, missed 2."
+                      (+ optional photo, or a private photo to the community lead)
+               |
+               v
+        Community lead replies to every post by name (weeks 1 to 4)
+        Peers reply (week 3 onwards; graduates moderate from month 3)
+               |
+               v
+        Four milestone bells: Day 0, 14, 30, 60, 84 (photos requested, private by default)
+               |
+               v
+        Day 84 wall in Announcements + Instagram. Graduate gets the "84" badge,
+        a review ask, and an invitation to the 84s Lounge
+               |
+               v
+        84s refer, host, and seed the next cohort ---> new members discover the club
+
+
+
+
+The flywheel from the skill, filled in for Arata:
+                                                                                                                         DIAGRAM
+        Buy a routine --> join cohort --> check in on Sundays --> reach Day 84
+             ^                                                          |
+             |                                                          v
+        Friend buys <-- graduate shares wall post / referral code <-- posts result
+
+
+
+
+WHY THE FOUR BELLS ARE WHERE THEY ARE
+     WHAT IS HAPPENING TO THE
+ DAY MEMBER                                      WHAT THE BELL DOES                               BUSINESS EFFECT
+
+ 0       Bottle just arrived. Excited,           Checks the seal, sets the routine (serum twice   Leak complaints go private;
+         slightly sceptical, worried             daily on dry scalp, shampoo 3x a week), asks     usage starts correctly
+         about leaks                             for a baseline photo
+ 14      Shedding may increase. This is Explains the telogen release in plain words,              The single largest adherence
+         the quit point                 shows three graduates who went through it                 save
+ 30      First visible change for some;          Progress photo, first review ask, Pack of 3      Reorder inside the 45-day
+         serum bottle is close to empty          (₹999) and MitoActive (₹1,499) offered as the    window; MitoActive gets reviews
+                                                 next bottle
+ 60      Momentum or plateau                     Side-by-side photo prompt, lab Q&A               Keeps the member to the finish
+                                                                                                  line
+ 84      The number on the pack                  Graduation wall, "84" badge, on-site review      Reviews with before and after;
+                                                 with photo, 84s Lounge invite                    ambassadors; second lap
+                                                                                                  purchase
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · THE 84 CLUB: ARATA'S HAIR JOURNEY COMMUNITY                                                        5
+PHASING
+                                        OUR ROLE (PER THE
+ PHASE                  MEMBERS         SCALING MODEL)             WHAT WE DO
+
+ Foundation             0 to 300        Community                  Hand-recruit 100 founding members from recent five-star
+ (weeks 1 to 4)                         architect                  reviewers and 100 MitoActive buyers. Reply to every post.
+                                                                   Welcome by name. Seed 10 posts per group before invites go out
+ Systems         300 to                 Community                  Auto-invite from post-delivery WhatsApp. Cohort template, bell
+ (weeks 5 to 12) 3,000                  manager                    scripts, moderation rules, Help Desk SLA, weekly health report
+ Scale (month 4         3,000+          Community enabler 84s become cohort hosts. Ambassador track with referral codes.
+ onwards)                                                 Instagram takeovers by graduates. On-site "My Journey" page
+
+
+THE AMBASSADOR TRACK: THE 84S
+Candidates are found where the skill says to look: people who already recommend Arata unprompted.
+The brief has them in its own verbatim list ("Arata is amazing cz its affordable and actually works").
+The entry rule is simple and public.
+To become an 84: finish a cohort, post at least four Sunday check-ins, post a Day 84 review on
+arata.in with a photo. No application form.
+What an 84 gets:
+    A Pack of 3 Hair Growth Intensive Serum (₹999 value) for the second lap, free
+    First access to every Biosciences line launch after MitoActive, 30 days before the site
+    Their first name, city and day-84 line on the "Real people. Honest results." wall on arata.in and the
+    Instagram channel
+    A personal referral code worth ₹200 off for the friend and ₹200 store credit for them (mechanics in
+    the referrals doc; the community is where the code gets used)
+    Host badge and the right to run the Sunday Scalp Check in a new cohort, with the community lead
+    backing them
+What an 84 gives: one hosted cohort per quarter, honest answers in the Help Desk, and the right to tell
+us when something is wrong. We measure referral orders and hosted-cohort completion rates per 84
+and keep the top 20 close.
+
+RITUALS CALENDAR
+ RITUAL                 CADENCE                       WHERE                           WHAT HAPPENS
+
+ Sunday Scalp           Weekly, Sunday 7 pm           Every cohort group              Community lead posts the prompt; members
+ Check                                                                                post day number and one line
+ Shedding Week Day 14 of each cohort                  Cohort group                    Pinned explainer, graduate voice notes, lead
+                                                                                      stays online for two hours
+ Lab Notes Live         Monthly, second               Announcements plus              45-minute voice Q&A with the Delhi R&D lab;
+                        Wednesday, 8 pm               WhatsApp Channel                questions collected in a poll the week before
+ Before/After           Weekly, Friday                Instagram broadcast             One graduate's day 0 and day 84 photo, with
+ Friday                                               channel                         consent, with the routine they used
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · THE 84 CLUB: ARATA'S HAIR JOURNEY COMMUNITY                                                          6
+ RITUAL                 CADENCE                       WHERE                        WHAT HAPPENS
+
+ Graduation Wall Monthly, first Monday                Announcements, Instagram, Every 84 from the cohort that just closed, first
+                                                      arata.in                  name and city
+ Founder                Quarterly                     Announcements                A founder answers the ten most-upvoted
+ Thursday                                                                          questions
+ Reddit Read            Weekly, Monday                Internal                     Lead reads the hair threads, brings three real
+                                                                                   questions into the Help Desk FAQ
+
+
+GUARDRAILS SPECIFIC TO INDIAN HAIRCARE
+    Photos are private by default. Scalp and crown photos go to the community lead by DM. A member
+    chooses to share in the group. Embarrassment is the emotional core of this category and the room
+    must be safe for Divya's flakes and Gaurav's greys.
+    No medical advice. The lab can explain the mechanism of Y100 and the telogen shed. It cannot
+    diagnose. Members at Norwood 5+ (the brief's anti-persona) get a kind message pointing them to
+    a dermatologist, and we mean it.
+    Claims stay as written on the pack. "Up to 28,200" stays "up to." Graduates say what happened to
+    them; we never edit a result upward.
+    No discount bombing. One offer per cohort, at Day 30, for the next bottle. The room is for the
+    journey, not the sale.
+    Hindi and Hinglish are welcome. The lead replies in the language the member used.
+
+
+
+WORKED EXAMPLES
+EXAMPLE 1: THE POST-DELIVERY INVITE AND THE WELCOME SEQUENCE
+This is the new member journey, written out. It starts in the order-delivered WhatsApp message and
+ends with the member's first post.
+Message 1, sent 24 hours after delivery (WhatsApp utility template):
+
+   YOUR ARATA HAIR GROWTH INTENSIVE SERUM IS HOME. BEFORE YOU
+   OPEN IT: CHECK THE SEAL. IF IT IS BROKEN OR THE BOTTLE LEAKED,
+   REPLY LEAK AND WE REPLACE IT, NO QUESTIONS.
+
+   ONE MORE THING. THE 28,200 ON THE PACK IS AN 84-DAY NUMBER.
+   MOST PEOPLE QUIT AT DAY 20. WE BUILT A PLACE TO MAKE SURE YOU
+   DON'T.
+
+   THE 84 CLUB IS A WHATSAPP GROUP OF PEOPLE WHO STARTED THIS
+   MONTH, WITH OUR LAB ON CALL. FOUR CHECK-INS, ONE SUNDAY
+   MESSAGE A WEEK, ZERO SPAM. REPLY JOIN AND YOU'RE IN THE
+   OCTOBER COHORT.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · THE 84 CLUB: ARATA'S HAIR JOURNEY COMMUNITY                                                        7
+Message 2, on JOIN (group invite link plus a 1:1 note from the community lead):
+
+   HI RAHUL, I'M MEERA, I RUN THE 84 CLUB. YOU'RE IN HAIR FALL OCT '26
+   WITH 240 PEOPLE WHO STARTED THE SAME WEEK AS YOU.
+
+   THREE THINGS BEFORE YOU SAY HI IN THE GROUP: 1. YOUR NAME IN THE
+   CLUB IS YOUR DAY NUMBER. TODAY IS DAY 0. 2. TAKE ONE PHOTO OF
+   YOUR CROWN UNDER BATHROOM LIGHT TODAY. SEND IT TO ME HERE,
+   NOT THE GROUP. YOU'LL THANK YOURSELF ON DAY 84. 3. SUNDAYS AT 7
+   PM I POST THE SCALP CHECK. REPLY WITH YOUR DAY NUMBER AND ONE
+   LINE. THAT'S THE WHOLE JOB.
+
+   ROUTINE FOR YOUR BOTTLE: SERUM ON A DRY SCALP, MORNING AND
+   NIGHT, 4 TO 5 DROPS ALONG THE PARTING AND CROWN. SHAMPOO
+   THREE TIMES A WEEK. THAT'S IT.
+
+
+Pinned welcome post in the cohort group:
+
+   WELCOME TO HAIR FALL OCT '26.
+
+   THIS IS A ROOM FOR PEOPLE DOING THE FULL 84 DAYS. HERE IS HOW WE
+   DO THINGS:
+
+   SAY YOUR DAY NUMBER WHEN YOU POST. "DAY 12, STILL SHEDDING,
+   SERUM TWICE DAILY" IS A PERFECT MESSAGE. NOBODY HAS TO POST A
+   PHOTO. PHOTOS GO TO MEERA BY DM UNLESS YOU WANT THEM HERE.
+   DAY 14 WILL FEEL BAD FOR SOME OF YOU. WE WILL TALK ABOUT IT THAT
+   WEEK. DO NOT QUIT ON DAY 14. ASK ANYTHING ABOUT THE ROUTINE.
+   OUR DELHI LAB ANSWERS THE HARD ONES ON THE SECOND WEDNESDAY
+   OF THE MONTH. NO DOCTORS HERE, SO NO DIAGNOSIS. IF SOMETHING
+   LOOKS LIKE IT NEEDS A DERMATOLOGIST, WE'LL SAY SO. BOTTLE
+   PROBLEMS GO TO THE HELP DESK GROUP. THEY GET FIXED IN TWO
+   HOURS.
+
+   FIRST POST BELOW. TELL US YOUR DAY NUMBER AND THE ONE THING
+   YOU WANT TO BE DIFFERENT BY DAY 84.
+
+
+First-week prompts (one per day, from the lead, to model the behaviour):
+                                                                 ✅             😅
+    Day 1: "Who applied this morning? Drop a . Who forgot? Drop a . Both are fine, it's Day 1."
+    Day 3: "Wet scalp or dry scalp? Dry. Here is why, in two lines." (Mini explainer from the lab)
+    Day 5: "What did you try before this? Onion, biotin, rosemary water, Traya? No judgement. We've all
+    been there."
+    Day 7: "First Sunday Scalp Check tonight at 7. Day number plus one line. See you there."
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · THE 84 CLUB: ARATA'S HAIR JOURNEY COMMUNITY                          8
+EXAMPLE 2: THE DAY 14 SHEDDING WEEK SCRIPT
+This is the message that saves the most customers. It is posted at 9 am on day 14 of every hair fall and
+MitoActive cohort, pinned, and followed by two graduate voice notes.
+
+   DAY 14. LET'S TALK ABOUT THE THING NOBODY WARNS YOU ABOUT.
+
+   SOME OF YOU ARE SEEING MORE HAIR IN THE DRAIN THIS WEEK THAN
+   YOU DID ON DAY 1. THAT IS THE OPPOSITE OF WHAT YOU PAID ₹571 FOR,
+   AND IT IS SCARY. HERE IS WHAT IS HAPPENING.
+
+   YOUR FOLLICLES HAVE THREE PHASES: GROWING, RESTING, SHEDDING. A
+   LOT OF YOUR HAIR WAS SITTING IN THE RESTING PHASE, ALREADY DEAD
+   AT THE ROOT, WAITING TO FALL. WHEN A FOLLICLE GETS PUSHED BACK
+   INTO THE GROWING PHASE, IT PUSHES THAT RESTING HAIR OUT FIRST
+   TO MAKE ROOM. THE SHED YOU SEE THIS WEEK IS HAIR THAT WAS
+   GOING TO FALL ANYWAY. IT IS LEAVING A LITTLE EARLY BECAUSE
+   SOMETHING NEW IS COMING UP BEHIND IT.
+
+   FOR MOST PEOPLE THIS SETTLES BETWEEN DAY 21 AND DAY 28. IF IT IS
+   STILL HEAVY AT DAY 35, MESSAGE ME PRIVATELY AND WE'LL LOOK AT
+   YOUR PHOTOS TOGETHER.
+
+   WHAT TO DO THIS WEEK: NOTHING DIFFERENT. SERUM TWICE A DAY. DO
+   NOT DOUBLE THE DOSE. DO NOT ADD MINOXIDIL ON TOP. DO NOT STOP.
+
+   BELOW ARE TWO VOICE NOTES FROM PRIYANKA (DAY 84, PUNE) AND
+   ARJUN (DAY 84, HYDERABAD) ABOUT THEIR DAY 14. LISTEN BEFORE YOU
+   DECIDE ANYTHING.
+
+   WHO IS ON DAY 14 TODAY? DROP YOUR DAY NUMBER. I'M HERE TILL 11.
+
+
+Follow-up at 7 pm the same day:
+
+   41 OF YOU CHECKED IN TODAY. 9 SAID THE SHED IS HEAVIER, 22 SAID
+   ABOUT THE SAME, 10 SAID ALREADY LOWER. ALL THREE ARE NORMAL AT
+   DAY 14. DAY 21 CHECK-IN NEXT SUNDAY. HOLD THE LINE.
+
+
+EXAMPLE 3: THE DAY 30 BELL, WITH THE REVIEW ASK AND THE NEXT-BOTTLE OFFER
+Sent to each member individually by the lead, as a 1:1 WhatsApp, not in the group, because it carries
+the offer.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · THE 84 CLUB: ARATA'S HAIR JOURNEY COMMUNITY                            9
+   DAY 30, RAHUL. YOU'RE A THIRD OF THE WAY.                           TWO ASKS AND ONE OFFER.
+
+   ASK 1: TAKE THE SAME CROWN PHOTO YOU TOOK ON DAY 0, SAME
+   BATHROOM LIGHT, AND SEND IT HERE. I'LL PUT THE TWO SIDE BY SIDE
+   AND SEND THEM BACK TO YOU. YOU WILL SEE THINGS YOU CAN'T SEE IN
+   THE MIRROR.
+
+   ASK 2: IF YOU HAVE 60 SECONDS, LEAVE A REVIEW ON ARATA.IN. WRITE
+   WHAT IS TRUE. "SHEDDING WENT UP THEN DOWN" IS A BETTER REVIEW
+   THAN "AMAZING PRODUCT" BECAUSE THE NEXT RAHUL WILL TRUST IT.
+
+   THE OFFER: YOUR 30 ML BOTTLE IS ABOUT DONE. TWO WAYS TO FINISH
+   THE 84: → PACK OF 3 INTENSIVE SERUM, ₹999 INSTEAD OF ₹1,947.
+   COVERS DAY 30 TO 120. → MITOACTIVE, ₹1,499 FOR THE MONTH.
+   DIFFERENT MECHANISM (IT WORKS ON THE FOLLICLE'S ENERGY SUPPLY,
+   THE LAB EXPLAINS IT ON WEDNESDAY). 87% SAW GROWTH IN 84 DAYS.
+   ₹50 A DAY.
+
+   CODE DAY30 GETS FREE SHIPPING AND THE SCALP MASSAGER (₹199) ON
+   EITHER. VALID TILL DAY 37. NO PRESSURE ON WHICH. JUST DON'T GO
+   BACK TO THE FAMILY SHAMPOO.
+
+
+EXAMPLE 4: THE MITOACTIVE LAB COHORT 01 FOUNDING INVITE
+MitoActive has zero reviews. The first cohort is capped at 100, invited by hand from the first
+MitoActive buyers, with the lab in the room. This is the 1:1 message from the community lead.
+
+   HI KAVYA. YOU BOUGHT MITOACTIVE IN THE FIRST EIGHT WEEKS IT
+   EXISTED. THERE ARE FEWER THAN A THOUSAND OF YOU IN THE
+   COUNTRY.
+
+   WE'RE OPENING SOMETHING SMALL: MITOACTIVE LAB COHORT 01, 100
+   PEOPLE, 84 DAYS, WITH THE TWO SCIENTISTS FROM OUR DELHI LAB
+   WHO WORKED ON THE Y100 FORMULATION INSIDE THE GROUP. YOU ASK,
+   THEY ANSWER. YOU POST YOUR DAY 0, 30, 60 AND 84 PHOTOS
+   PRIVATELY TO ME, AND AT DAY 84 WE SEND YOU THE SIDE-BY-SIDE.
+
+   WHAT WE ASK: FOUR CHECK-INS, HONEST ONES. IF IT WORKS, SAY SO. IF
+   IT DOESN'T, SAY THAT TOO, AND THE LAB WANTS TO KNOW WHY.
+
+   WHAT YOU GET: A SECOND MONTH OF MITOACTIVE FREE AT DAY 84 IF
+   YOU COMPLETE ALL FOUR CHECK-INS, YOUR NAME ON THE FOUNDING
+   WALL, AND FIRST LOOK AT THE NEXT BIOSCIENCES SERUM BEFORE
+   ANYONE ELSE.
+
+   REPLY LAB01 AND I'LL ADD YOU. THE GROUP OPENS MONDAY.
+
+
+Seed posts the lead places in Lab Cohort 01 before anyone joins (five of ten):
+
+
+BREW DEPLOYMENT TEAM × ARATA · THE 84 CLUB: ARATA'S HAIR JOURNEY COMMUNITY                     10
+1. "Y100 in three lines: your follicle cells have mitochondria. Mitochondria make the energy a follicle
+   needs to stay in its growing phase. Y100 is designed to support that energy supply so more follicles
+   stay in growth and fewer slip into rest. That's the whole idea. The lab will take it apart on
+   Wednesday."
+2. "Why 30 ml at ₹1,499: 4 to 5 drops, twice a day, is 30 days. ₹50 a day. Traya is ₹1,400 to ₹1,800 a
+   month for 5 months plus supplements. A derm visit in Chennai is ₹1,000 before any product. We
+   think the number is fair. Tell us if you don't."
+3. "Poll: what did your dermatologist put you on before this? Minoxidil 5% / Finasteride / Supplements
+   / Nothing, I never went."
+4. "Serum order for people using both: shampoo, towel dry, Intensive Serum on the parting, wait 5
+   minutes, MitoActive on the crown. Or one in the morning, one at night. Both are fine. Don't mix them
+   in your palm."
+5. "This group's job is 100 honest reviews on arata.in by January. Right now there are zero. The next
+   Kavya deserves to read what you found."
+
+EXAMPLE 5: AMBASSADOR OUTREACH TO AN EXISTING REVIEWER
+Sent before the club opens, to 100 people pulled from Loox five-star reviews on the Hair Growth
+Intensive Serum (474 reviews) and the Anti-Hair Fall Shampoo (222 reviews). Personal, one at a time,
+from the lead's named Business number.
+
+   HI SNEHA. YOU WROTE ON ARATA.IN IN JULY: "HAIR FALL REDUCED
+   DRASTICALLY, I CAN SEE A VISIBLE DIFFERENCE IN TWO WEEKS." I READ
+   EVERY REVIEW AND YOURS IS THE ONE I SENT TO OUR LAB.
+
+   WE'RE STARTING THE 84 CLUB, A WHATSAPP GROUP WHERE PEOPLE
+   DOING THE 84-DAY SERUM ROUTINE CHECK IN ONCE A WEEK AND DON'T
+   QUIT AT DAY 20. I'M INVITING 100 FOUNDING MEMBERS BY HAND, AND I'D
+   LIKE YOU TO BE ONE OF THEM.
+
+   WHY YOU: YOU FINISHED THE ROUTINE, YOU WROTE HONESTLY, AND
+   YOU SAID "TWO WEEKS" WHEN EVERYONE ELSE SAYS "OVERNIGHT."
+   THAT IS THE VOICE THIS ROOM NEEDS ON DAY 14 WHEN PEOPLE PANIC.
+
+   WHAT IT INVOLVES: ONE SUNDAY MESSAGE A WEEK, AND ONCE IN A
+   WHILE ANSWERING "DID IT GET WORSE FIRST FOR YOU?" WITH THE
+   TRUTH. THAT'S ALL. A PACK OF 3 (₹999) IS ON US AS A THANK-YOU,
+   SHIPPED THIS WEEK.
+
+   REPLY YES AND I'LL SEND THE LINK. IF YOU'D RATHER NOT, NO HARD
+   FEELINGS, AND THANK YOU FOR THE REVIEW EITHER WAY.
+
+
+EXAMPLE 6: THE INSTAGRAM BROADCAST CHANNEL, FIRST SEVEN POSTS
+The channel is the public door. It shows what happens inside without exposing anyone, and ends
+every post with the way in.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · THE 84 CLUB: ARATA'S HAIR JOURNEY COMMUNITY                           11
+ DAY POST
+
+ 1       "We opened a club for people who finish the 84 days. 240 people started this week. Here's what Day 0 looks like."
+         (Photo: a row of serum bottles with handwritten Day 0 tags, no faces.) "Want in? Reply 84 to your delivery
+         message."
+ 2       "The question we got 31 times on Day 3: wet scalp or dry scalp? Dry. The serum needs to sit on skin, not slide on
+         water."
+ 3       "Day 14 is next week for the October cohort. If you've ever quit a hair serum around week two, this one is for you."
+         (Carousel: the shedding explainer in four frames.)
+ 4       "Before/After Friday: Arjun, Hyderabad, Day 0 and Day 84, Intensive Serum twice daily, missed 6 days total. Shared
+         with his permission. Not edited."
+ 5       "Lab Notes Live is Wednesday 8 pm. Top question so far: 'Is Y100 just caffeine with a new name?' The lab has a 4-
+         minute answer. We'll post it after."
+ 6       "Graduation wall, September cohort: 88 people reached Day 84. 61 posted a review. 54 reordered. Names and
+         cities inside. Next cohort opens 1 November."
+
+
+EXAMPLE 7: LAB NOTES LIVE RUN SHEET
+Monthly, second Wednesday, 8 pm, 45 minutes, voice in the Announcements group, recorded and cut
+into the WhatsApp Channel and Lab Notes blog the next day. This turns seven posts in March into a
+predictable monthly cadence.
+                                                                                                                                  DIAGRAM
+      8:00    Lead opens. Three numbers from the month: members, Day 84s, reviews.
+      8:03    Lab scientist, 5 min: one mechanism explained in plain words
+              (Oct: the telogen shed. Nov: what Y100 does. Dec: hard water and the 7.4X study)
+      8:08    Top 10 questions from the week-before poll, 3 min each
+              Standing questions we expect every month:
+                "Is 28,200 real?" -> study design, the "up to", the 84 days
+                "Can I use this with minoxidil?" -> no medical advice; what the lab knows
+                "Is 30 ml enough?" -> drops per day maths
+                "Why did my bottle leak?" -> what ops changed, replacement promise
+      8:38    One graduate, 5 min, their 84 in their own words
+      8:43    Lead closes with next month's topic and the Day 30 code for that cohort
+
+
+
+
+30-DAY DEPLOYMENT
+ WEEK BREW SHIPS                                                ARATA PROVIDES                             LIVE BY END OF WEEK
+
+ 1         Community lead onboarded. WhatsApp                     Loox export of five-star reviewers         Hair Fall Oct '26 and
+           Business number and Community set up.                  with consent flags. MitoActive buyer       MitoActive Lab Cohort 01
+           Cohort template (pinned post, bells, Help              list (first 8 weeks). Two lab scientists   open with 150+ members.
+           Desk). 100 founding reviewers invited 1:1              named for Lab Notes Live. Pack of 3        Day 0 bell run
+           (Example 5). 10 seed posts per group                   stock for 100 founding gifts
+           written
+ 2         Post-delivery invite template (Example 1)              Approval of the invite template and        Auto-invite live on all hair
+           submitted and approved. Instagram                      photo-consent language. Ops owner          fall, dandruff, growth and
+           broadcast channel opened with the 7-post               for leak replacements inside the Help      grey orders. 300+
+           run. Help Desk SLA (2 hours, 9 am to 11                Desk                                       members. Two Sunday
+           pm) staffed. First Sunday Scalp Check                                                             checks done
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · THE 84 CLUB: ARATA'S HAIR JOURNEY COMMUNITY                                                                12
+ WEEK BREW SHIPS                                                ARATA PROVIDES                        LIVE BY END OF WEEK
+
+ 3         Day 14 Shedding Week (Example 2) run in                Two graduate volunteers for voice     Day 14 adherence save
+           both cohorts with graduate voice notes.                notes (from founding reviewers).      measured for the first time.
+           Dandruff Oct '26 cohort opened. Reddit                 Lab's answer bank for the ten         Three cohorts live
+           Read started. Weekly health report, first              standing questions
+           edition
+ 4         Lab Notes Live 01 run and cut into the                 Founder slot booked for the quarterly 400+ members across three
+           Channel and blog. Day 30 bell (Example 3)              Founder Thursday. DAY30 code set      cohorts, four Sunday
+           scripted and tested on the founding                    up in Shopify with massager add-on checks, first Lab Notes Live,
+           reviewers. Ambassador rules published in                                                     Day 30 offer ready for the
+           the 84s Lounge. Health audit and go/no-                                                      October cohort's day 30
+           go for month two
+
+
+Owners: Brew community lead runs the rooms and the calendar. Brew creative lead cuts the
+Instagram and Channel content. Arata brand manager approves templates, consent language and
+offers. Arata ops lead owns Help Desk replacements. Arata R&D lead owns Lab Notes Live.
+
+
+
+HOW WE MEASURE
+We track the skill's health signals, translated for a cohort community, next to the business numbers
+the community exists to move.
+ METRIC                  DEFINITION                  BASELINE TODAY                    90-DAY TARGET       WHY IT MATTERS
+
+ Members                 Total active across         0                                 3,000               Volume feeds everything
+                         cohorts                                                                           below
+ Opt-in rate             JOIN replies / post-        To be instrumented                7%                  The top of the funnel
+                         delivery invites
+ Sunday check-           Members posting in          n/a                               45% in weeks 1 to Stickiness
+ in rate (our            a given Sunday /                                              4, 30% at week
+ DAU/MAU)                cohort members                                                12
+ New member              Members posting             n/a                               60%                 Leaky-stage detector
+ post rate               within 7 days of
+                         joining
+ Reply rate              Member questions            n/a                               95%, with 60%       Support deflection and
+                         answered within 24                                            answered by         health
+                         hours                                                         peers by month
+                                                                                       three
+ Member-                 Posts not from              n/a                               70% by week 12      The warning sign the skill
+ generated share         Brew or Arata                                                                   names: if staff writes
+                         staff                                                                             most posts, the room is
+                                                                                                           dead
+ Day 14 survival         Members still               n/a                               75%                 The adherence save
+                         posting at Day 21 /
+                         members at Day 7
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · THE 84 CLUB: ARATA'S HAIR JOURNEY COMMUNITY                                                           13
+ METRIC                  DEFINITION                  BASELINE TODAY                 90-DAY TARGET   WHY IT MATTERS
+
+ Day 84                  Members who post            n/a                            35%             The number on the pack,
+ completion              the Day 84 bell /                                                          felt
+                         cohort starters
+ Member repeat           Members with a              ~26% for the base (industry    45%             The business case
+ rate                    second order inside         assumption; Arata's own
+                         90 days                     number to be instrumented in
+                                                     week 1)
+ MitoActive              On-site reviews with 0                                     150             Fixes the hero's biggest
+ reviews                 photo                                                                      gap
+ Leak complaints         New public reviews          To be counted from Loox and    Down 50%        Complaints move private
+ surfacing               mentioning seal or          Nykaa                                          and get fixed
+ publicly                leak
+ Referral orders         Orders with an 84's         0                              400 in month    Word of mouth with
+ from 84s                code                                                       three           receipts
+
+
+Weekly, the community lead sends a one-page health report with these twelve lines, the three best
+member posts, and the three worst questions we could not answer.
+
+DECISION RULES
+If it works (Day 84 completion above 30% and member repeat rate at least 12 points above the base
+by day 90): open a grey cohort, hand two cohorts a month to graduate hosts, build the on-site "My
+Journey" page, and move the Day 30 offer into a subscribe-and-save option for members first.
+If it half works (check-in rates healthy, repeat rate flat): the loop is social but the offer is wrong. We
+test the Day 30 bell against a Day 25 and a Day 40 version, and test Pack of 3 against MitoActive as
+the default next bottle, before touching the community design.
+If it does not work (check-in rate under 15% by week 6, staff writing more than 60% of posts): we stop
+opening new cohorts, keep the MitoActive Lab Cohort alive for its reviews, fold the bells into the
+lifecycle WhatsApp and email flows as 1:1 messages, and keep the Instagram channel as a content
+surface. Arata loses one community lead's time, nothing else.
+
+
+
+APPENDIX
+HELP DESK PINNED FAQ (FIRST SIX)
+1. Seal broken or bottle leaked: reply LEAK with a photo; replacement ships within 48 hours.
+2. Wet or dry scalp for the serum: dry. 4 to 5 drops along the parting and crown, twice a day. One 30
+   ml bottle is roughly 30 days.
+3. Shedding increased in week two: read the Day 14 pinned post; message the lead if still heavy at
+   Day 35.
+4. Intensive Serum and MitoActive together: yes, one morning, one night, or 5 minutes apart.
+5. Pregnant or breastfeeding: ask your doctor; we won't advise.
+
+
+BREW DEPLOYMENT TEAM × ARATA · THE 84 CLUB: ARATA'S HAIR JOURNEY COMMUNITY                                                   14
+6. Can I see the studies: yes, links are in Announcements, and the "up to" matters.
+
+CONSENT AND PRIVACY CHECKLIST
+    Photo consent captured in the 1:1 before any public use, with the specific post shown to the
+    member first
+    First name and city only on the graduation wall; no surnames, no handles unless the member asks
+    Members can leave any group in one tap and are removed from bells the same day
+    Group admins are the Brew lead, the Arata brand manager, and (from month three) named 84s
+Cohort naming: Hair Fall MMM 'YY, Dandruff MMM 'YY, MitoActive Lab Cohort NN. Styling, body and
+face buyers get the Instagram and WhatsApp Channels, no cohort, because there is no 84-day
+journey to walk.
+
+SOURCES
+Arata brand brief (Brew deployment team, Oct 2026) for all product, price, claim, persona, review
+and channel facts. WhatsApp group and community member limits from WhatsApp's published feature
+limits (1,024 per group; communities of up to 2,000 members). All opt-in rates, concern-share of
+orders and base repeat rate are assumptions, labelled above, and get replaced with Arata's own
+numbers in week one.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · THE 84 CLUB: ARATA'S HAIR JOURNEY COMMUNITY                          15
+COMMUNITY MARKETING
+
+
+DAY 30
+AT ARATA
+   WHAT IS LIVE
+
+   The first two 84 Club cohorts (hair fall and MitoActive) are live on WhatsApp
+   with 300+ founding members, the Day 0 and Day 14 check-ins have run, the
+   Sunday Scalp Check has happened four times, and the Instagram broadcast
+   channel is open.
+
+
+
+
+ NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+ BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+ CONFIRM".
+
+
+ EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+ BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                   DEPLOYMENT TEAM
+                                                                                BREW
+

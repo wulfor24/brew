@@ -1,0 +1,1066 @@
+import { B, BN, BH, CTRY, FESTN, FESTD, live } from './brand-ctx.js';
+// The studio: a card → versioned change packages (the thing being made: an ad, a page section, a message…) → the jam.
+// A change says what it touches, before and after, whether it spends money, how to roll it back and which checks pass.
+// Its verdict says what is left before the brief is ready: a fix, the team's own checks, or a plan in the jam.
+// The jam is a versioned plan (goal, the changes, open questions with owners, readiness). It ends with Share the brief:
+// nothing is run from Brew. Learning reads every step (learn.js).
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { saveGen, genFile } from './gen-store.js';
+import { versionLabel } from './text-fit.js';
+import { withSteps } from './card-plan.js';
+import { familyOf, FAMILY_NAME, fieldsFor, knobsFor, suggestFor, fitChip, GRADES, pkgSchema, fieldsBrief, kvSchema, allKeys, fromKV, toKV, cleanPkg, publicText, missing, afterFromPkg, mockPkg, RATIO, leaks, isMulti, ACTION_SPEC, ACTION_GUARD, productFor, ideaAction, ideaPkg, chipsFor, chipRelates, chipCtx } from './studio.js';
+import { addV, versionsOf, versionById, signal, answered, autoCheck, outcome, ruleChecks, promptBlock, orderIntents, pickScore, takeNew, trustOf, summary, L, DETECTORS } from './learn.js';
+
+/* ---------- what each agent can change, live ---------- */
+export const ACTIONS = {
+  performance: {
+    search_ad: { label: 'Launch a Google Search ad group', target: { conn: 'google', object: 'Search ad group' }, money: true, rollback: 'Pause the ad group', scope: [[1, 'One ad group']], preview: 'search' },
+    tracking_fix: { label: 'Fix tracking', target: { conn: 'google', object: 'Conversion tracking' }, money: false, rollback: 'Switch the server events off', scope: [[1, 'Meta and Google']], preview: 'setup' },
+    pause_losers: { label: 'Pause the losers', target: { conn: 'meta', object: 'Ad set' }, money: false, rollback: 'Turn the same ads back on', scope: [[1, 'This ad set'], [3, 'The 3 weakest ad sets'], [12, 'Every ad set over target']], preview: 'numbers', settings: [['Pause', 'Ad sets over the stop line'], ['Keep', 'Winners untouched'], ['Spend', 'Goes down, never up']] },
+    stop_rule: { label: 'Set a stop-or-scale rule', target: { conn: 'meta', object: 'Automated rule' }, money: false, rollback: 'Switch the rule off', scope: [[1, 'This campaign'], [3, '3 campaigns'], [12, 'Every campaign']], preview: 'numbers', settings: [['Check', 'Every morning at 9'], ['Stop', 'Over the stop line for 48 hours'], ['Scale', 'Asks you first']] },
+    swap_copy: { label: 'Swap the copy in a live ad', target: { conn: 'meta', object: 'Live ad' }, money: false, rollback: 'Restore the old copy', scope: [[1, 'This ad'], [12, '12 ads with the same hook'], [40, 'All 40 live ads']], preview: 'image', settings: [['Budget', 'Unchanged'], ['Learning', 'Copy only, learning keeps']] },
+    scale_budget: { label: 'Scale the budget', target: { conn: 'meta', object: 'Campaign budget' }, money: true, rollback: 'Return to the old daily budget', scope: [[1, 'This campaign']], preview: 'numbers', settings: [['Step', '+20% a day'], ['Where', 'The winning ad set'], ['Stop if', 'Cost per order passes the stop line']] },
+    shift_budget: { label: 'Shift budget', target: { conn: 'meta', object: 'Campaign budgets' }, money: true, rollback: 'Move the budget back', scope: [[1, 'Two campaigns']], preview: 'numbers', settings: [['From', 'The weakest campaign'], ['To', 'The best cost per order'], ['Total spend', 'Same, just moved']] },
+    /* store events (stock, price, removed pages) acted on in the ad account: the rows are the products the card names */
+    pause_pointing: { label: 'Pause ads on sold-out products', target: { conn: 'meta', object: 'Ads on sold-out products' }, money: false, rollback: 'Turn the same ads back on', scope: [[1, 'The ads on these products']], preview: 'numbers', settings: [['Pause', 'Every ad that sends people to a sold-out product'], ['Restart', 'When it is back in stock'], ['Spend', 'Goes down, never up']] },
+    restart_paused: { label: 'Restart the paused ads', target: { conn: 'meta', object: 'Ads paused for stock' }, money: true, rollback: 'Pause them again', scope: [[1, 'The ads on these products']], preview: 'numbers', settings: [['Restart', 'Only ads paused because the product sold out'], ['Budget', 'As it was before the pause']] },
+    price_in_ads: { label: 'Update the price in ads', target: { conn: 'meta', object: 'Ads that quote the price' }, money: false, rollback: 'Restore the old copy', scope: [[1, 'The ads that quote it']], preview: 'numbers', settings: [['Changes', 'The price the ad copy quotes'], ['Budget', 'Unchanged']] },
+    new_test: { label: 'Launch a test', target: { conn: 'meta', object: 'New ad set' }, money: true, rollback: 'Pause the test ad set', scope: [[1, 'One ad set']], preview: 'image', settings: [['Budget', 'Test budget, 7 days'], ['Audience', 'Broad, your market'], ['Read after', '7 days']] }
+  },
+  creative: {
+    add_variants: { label: 'Add to the live test', target: { conn: 'meta', object: 'Test ad' }, money: false, rollback: 'Pause the new ads', scope: [[1, 'One ad'], [3, '3 ads'], [12, '12 ads']], preview: 'image', settings: [['Ad set', 'META_Test_CBO'], ['Budget', 'The test budget you approved'], ['Read after', '7 days']] },
+    swap_creative: { label: 'Swap a tired creative', target: { conn: 'meta', object: 'Live ad' }, money: false, rollback: 'Put the old creative back', scope: [[1, 'This ad'], [3, '3 tired ads'], [12, 'Every ad over frequency 3.5']], preview: 'image', settings: [['Replaces', 'The ad with the highest frequency'], ['Budget', 'Unchanged']] },
+    whatsapp_ad: { label: 'WhatsApp chat ad', target: { conn: 'meta', object: 'Click-to-WhatsApp ad' }, money: false, rollback: 'Pause the ad', scope: [[1, 'One ad'], [3, '3 ads']], preview: 'chat', settings: [['Opens', 'A WhatsApp chat'], ['Budget', 'The test budget you approved']] },
+    carousel_ad: { label: 'Carousel ad', target: { conn: 'meta', object: 'Carousel ad' }, money: false, rollback: 'Pause the ad', scope: [[1, 'One carousel'], [3, '3 carousels']], preview: 'image', settings: [['Cards', 'Swipe in order'], ['Budget', 'Inside the live test']] },
+    collection_ad: { label: 'Collection ad', target: { conn: 'meta', object: 'Collection ad' }, money: false, rollback: 'Pause the ad', scope: [[1, 'One ad']], preview: 'image', settings: [['Shows', 'A cover and the catalog'], ['Opens', 'A full-screen page']] },
+    catalog_ad: { label: 'Catalog ad', target: { conn: 'meta', object: 'Advantage+ catalog ad' }, money: true, rollback: 'Pause the catalog campaign', scope: [[1, 'One product set']], preview: 'image', settings: [['Shows', 'Each person the products they looked at'], ['Needs', 'The catalog connected to Meta']] },
+    ig_post: { label: 'Instagram post', target: { conn: 'meta', object: 'Instagram post' }, money: false, irreversible: 'People may see it before it comes down', rollback: 'Archive the post', scope: [[1, 'One post'], [3, 'A week of posts']], preview: 'image' },
+    ig_carousel: { label: 'Instagram carousel', target: { conn: 'meta', object: 'Instagram carousel' }, money: false, irreversible: 'People may see it before it comes down', rollback: 'Archive the post', scope: [[1, 'One carousel'], [3, 'A week of carousels']], preview: 'image' },
+    ig_story: { label: 'Instagram Stories', target: { conn: 'meta', object: 'Story sequence' }, money: false, rollback: 'Delete the stories', scope: [[1, 'One sequence']], preview: 'image' },
+    film_brief: { label: 'Brief a film', target: { conn: null, object: 'Shoot brief' }, money: false, jam: 'Needs a shoot', rollback: 'Nothing ships until the shoot', scope: [[1, 'One film']], preview: 'script' },
+    creative_brief: { label: 'Brief the next creatives', target: { conn: null, object: 'Creative brief' }, money: false, jam: 'A brief needs a person to plan it', rollback: 'Nothing ships yet', scope: [[1, 'One brief']], preview: 'checklist' },
+    /* posts on other platforms (the ideas stream): Brew writes them and opens the place; a person posts them (never auto-posted into communities) */
+    x_post: { label: 'Post on X', target: { conn: null, object: 'X post', name: 'X' }, money: false, rollback: 'Delete the post', scope: [[1, 'One post']], preview: 'copy', manual: true },
+    linkedin_post: { label: 'Post on LinkedIn', target: { conn: null, object: 'LinkedIn post', name: 'LinkedIn' }, money: false, rollback: 'Delete the post', scope: [[1, 'One post']], preview: 'copy', manual: true },
+    reddit_post: { label: 'Reply on Reddit', target: { conn: null, object: 'Reddit reply', name: 'Reddit' }, money: false, rollback: 'Delete the reply', scope: [[1, 'One thread']], preview: 'copy', manual: true },
+    quora_answer: { label: 'Answer on Quora', target: { conn: null, object: 'Quora answer', name: 'Quora' }, money: false, rollback: 'Delete the answer', scope: [[1, 'One answer']], preview: 'copy', manual: true },
+    fb_group_post: { label: 'Post in a Facebook group', target: { conn: null, object: 'Group post', name: 'Facebook groups' }, money: false, rollback: 'Delete the post', scope: [[1, 'One group']], preview: 'copy', manual: true },
+    pinterest_pin: { label: 'Pin on Pinterest', target: { conn: null, object: 'Pin', name: 'Pinterest' }, money: false, rollback: 'Delete the pin', scope: [[1, 'One pin']], preview: 'copy', manual: true },
+    comment_reply: { label: 'Reply in the comments', target: { conn: null, object: 'Comment reply', name: 'YouTube' }, money: false, rollback: 'Delete the reply', scope: [[1, 'One comment']], preview: 'copy', manual: true },
+    short_video: { label: 'Make the short video', target: { conn: null, object: 'Short video', name: 'Shorts and Reels' }, money: false, rollback: 'Take the video down', scope: [[1, 'One video']], preview: 'script', manual: true }
+  },
+  storefront: {
+    fix_links: { label: 'Fix the dead links', target: { conn: 'shopify', object: 'URL redirects' }, money: false, rollback: 'Remove the redirects', scope: [[1, 'Every dead link']], preview: 'setup' },
+    store_setting: { label: 'Change a store setting', target: { conn: 'shopify', object: 'Store setting' }, money: false, rollback: 'Switch the setting back', scope: [[1, 'The whole store']], preview: 'setup' },
+    buyer_deck: { label: 'Draft a buyer deck', target: { conn: null, object: 'Buyer deck' }, money: false, jam: 'A deck goes to a buyer through a person', rollback: 'Nothing ships until it is sent', scope: [[1, 'One deck']], preview: 'checklist' },
+    listing_titles: { label: 'Rewrite marketplace titles', target: { conn: 'marketplaces', object: 'Listing titles' }, money: false, rollback: 'Restore the old titles on each marketplace', scope: [[1, 'One listing to start'], [5, 'The top 5 listings'], [12, 'Every listing']], preview: 'listing' },
+    listing_content: { label: 'Rewrite listing content', target: { conn: 'marketplaces', object: 'Bullets, description and images' }, money: false, rollback: 'Restore the old content', scope: [[1, 'One listing to start'], [5, 'The top 5 listings'], [12, 'Every listing']], preview: 'listing' },
+    takedown: { label: 'Request a takedown', target: { conn: 'marketplaces', object: 'Seller listing' }, money: false, irreversible: 'A filed takedown can’t be pulled back', rollback: 'None once filed', scope: [[1, 'One listing']], preview: 'listing' },
+    page_copy: { label: 'Change page copy', target: { conn: 'shopify', object: 'Product description' }, money: false, rollback: 'Take Brew’s section out in one click (your own edits stay)', scope: [[1, 'This product'], [4, '4 hero products'], [12, 'All 12 product pages']], preview: 'copy', settings: [['Where', 'Added to the product description, in your theme’s own style'], ['Before it runs', 'Shown on your live product page and checked against your theme']] },
+    pdp_block: { label: 'Add a proof block', target: { conn: 'shopify', object: 'Product page' }, money: false, rollback: 'Hide the block', scope: [[1, 'This product'], [4, '4 hero products'], [12, 'All 12 product pages']], preview: 'copy', settings: [['Where', 'Under the add-to-cart button']] },
+    new_section: { label: 'New page or layout', target: { conn: 'shopify', object: 'Theme layout' }, money: false, jam: 'A layout change needs design and mobile QA', rollback: 'Revert the theme', scope: [[1, 'One page']], preview: 'checklist' },
+    price_change: { label: 'Change a price', target: { conn: 'shopify', object: 'Product price' }, money: true, irreversible: 'Orders placed at the new price stay at that price', rollback: 'Put the old price back', scope: [[1, 'One product']], preview: 'numbers', settings: [['Changes', 'The price customers pay'], ['Where', 'Store and checkout']] },
+    bundle_offer: { label: 'Bundle or offer tile', target: { conn: 'shopify', object: 'Offer and price' }, money: true, rollback: 'Remove the offer', scope: [[1, 'One offer']], preview: 'numbers', settings: [['Changes', 'What a bundle costs'], ['Where', 'Product page and cart']] }
+  },
+  visibility: {
+    blog_post: { label: 'Publish a blog post', target: { conn: 'shopify', object: 'Blog post' }, money: false, rollback: 'Unpublish the post', scope: [[1, 'One post']], preview: 'copy' },
+    faq_entry: { label: 'Publish an FAQ answer', target: { conn: 'shopify', object: 'FAQ page' }, money: false, rollback: 'Unpublish the entry', scope: [[1, 'One question'], [5, '5 questions'], [20, 'All 20 tracked questions']], preview: 'answer', settings: [['Where', 'The site’s FAQ page, with the “as of” date'], ['Re-check', 'Next weekly AI read']] },
+    llms_txt: { label: 'Update llms.txt and the claims list', target: { conn: 'shopify', object: 'llms.txt' }, money: false, rollback: 'Restore the previous file', scope: [[1, 'One file']], preview: 'checklist', settings: [['File', 'llms.txt on your site'], ['Re-check', 'Next weekly AI read']] },
+    schema_fix: { label: 'Fix product markup', target: { conn: 'shopify', object: 'Product markup' }, money: false, rollback: 'Restore the old markup', scope: [[1, 'One product'], [12, 'All 12 products']], preview: 'checklist', settings: [['Adds', 'Price, rating and study facts'], ['Re-check', 'Next weekly AI read']] },
+    new_claim: { label: 'Publish a new claim', target: { conn: 'shopify', object: 'Claims page' }, money: false, jam: 'A new claim needs a source and legal', rollback: 'Unpublish', scope: [[1, 'One page']], preview: 'copy' }
+  },
+  crm: {
+    print_insert: { label: 'Print a box insert', target: { conn: null, object: 'Printed card in every box' }, money: true, irreversible: 'Printed cards can’t be changed once printed', rollback: 'Stop putting them in boxes', scope: [[1, 'One print run']], preview: 'print' },
+    flow_copy: { label: 'Rewrite a flow message', target: { conn: 'klaviyo', object: 'Flow step' }, money: false, rollback: 'Restore the old message', scope: [[1, 'One step'], [3, 'All 3 steps']], preview: 'chat', settings: [['Audience', 'Same as today'], ['Holdout', '10% get nothing']] },
+    flow_timing: { label: 'Change when it sends', target: { conn: 'klaviyo', object: 'Flow timing' }, money: false, rollback: 'Restore the old timing', scope: [[1, 'One flow'], [3, '3 flows']], preview: 'numbers', settings: [['Sends', 'On the reorder day'], ['At most', 'One message in 7 days']] },
+    review_ask: { label: 'Ask for reviews', target: { conn: 'loox', object: 'Review request' }, money: false, irreversible: 'Messages to customers can’t be unsent', rollback: 'Stop the request', scope: [[1, 'One request']], preview: 'chat', settings: [['Sends', 'Day 21 after delivery'], ['To', 'Customers who reordered']] },
+    new_segment: { label: 'New segment', target: { conn: 'klaviyo', object: 'Segment' }, money: false, jam: 'A new audience needs its size and exclusions checked', rollback: 'Delete the segment', scope: [[1, 'One segment']], preview: 'numbers' },
+    paid_broadcast: { label: 'WhatsApp broadcast', target: { conn: 'whatsapp', object: 'Broadcast' }, money: true, irreversible: 'A broadcast can’t be unsent once it goes out', rollback: 'Cancel before it sends', scope: [[1, 'One send']], preview: 'chat', settings: [['Cost', 'Paid per message'], ['To', 'Opted-in customers']] },
+    discount_offer: { label: 'Retention offer', target: { conn: 'shopify', object: 'Discount code' }, money: true, irreversible: 'Orders already placed with the code keep the discount', rollback: 'Expire the code', scope: [[1, 'One code']], preview: 'numbers', settings: [['Changes', 'What a returning customer pays'], ['Expires', 'In 7 days']] }
+  },
+  brew: {
+    plan: { label: 'Save it as the team plan', target: { conn: null, object: 'Team plan', name: 'the Work board' }, money: false, rollback: 'Reopen the plan', scope: [[1, 'One plan']], preview: 'checklist' },
+    resolution: { label: 'Settle it', target: { conn: null, object: 'Decision' }, money: false, jam: 'People disagree, so a person decides', rollback: 'Nothing ships until it is decided', scope: [[1, 'One decision']], preview: 'checklist' }
+  }
+};
+// what the card's own button asks for, as a remix action
+const CTA_ACTION = {
+  'Push 5 titles': 'storefront.listing_titles', 'Draft the listing': 'storefront.listing_content', 'Request takedown': 'storefront.takedown', 'Generate the sets': 'storefront.listing_content', 'Apply 34 edits': 'storefront.listing_titles',
+  'Approve the ladder': 'storefront.bundle_offer', 'Approve the 3 offers': 'storefront.bundle_offer', 'Update landing page': 'storefront.page_copy', 'Apply Update': 'storefront.page_copy', 'Publish the page': 'storefront.page_copy', 'Approve 6 popups': 'storefront.new_section', 'Start the tests': 'storefront.page_copy',
+  'Shift budget': 'performance.shift_budget', 'Rotate creative': 'creative.swap_creative', 'Publish Campaign': 'performance.new_test', 'Run Monday decisions': 'performance.stop_rule', 'Apply the plan': 'performance.scale_budget', 'Pause those ads': 'performance.pause_losers', 'Draft the switcher ad': 'creative.add_variants', 'Lock the Diwali set': 'creative.add_variants',
+  'Queue the 12': 'creative.add_variants', 'Make the carousel ad': 'creative.carousel_ad', 'Build the collection ad': 'creative.collection_ad', 'Build the catalog ad': 'creative.catalog_ad', 'Draft the post': 'creative.ig_post', 'Draft the carousel post': 'creative.ig_carousel', 'Draft the stories': 'creative.ig_story', 'Queue the ads': 'creative.add_variants', 'Generate versions': 'creative.add_variants', 'Make the video': 'creative.film_brief', 'Brief the shoot': 'creative.film_brief', 'Plan the shoot': 'creative.film_brief', 'Shortlist creators': 'creative.creative_brief', 'Swap the images': 'creative.swap_creative',
+  'Turn on the journey': 'crm.flow_copy', 'Approve the flows': 'crm.flow_copy', 'Send on WhatsApp': 'crm.paid_broadcast', 'Send the review ask': 'crm.review_ask', 'Approve the box insert': 'crm.print_insert', 'Open the club': 'crm.new_segment',
+  'Fix tracking': 'performance.tracking_fix', 'Draft the buyer deck': 'storefront.buyer_deck', 'Build the score': 'storefront.new_section', 'Approve all': 'storefront.new_section', 'Open report': null, 'Agree with the call': 'brew.plan', 'Open the scoreboard': 'brew.plan', 'Ship the five': 'brew.plan',
+  'Make our version': 'creative.add_variants', 'Turn into an idea': 'creative.add_variants', 'Start this': 'creative.add_variants', 'Turn on guest checkout': 'storefront.store_setting', 'Launch the ad group': 'performance.search_ad',
+  'Reply as the brand': 'creative.reddit_post', 'Answer it on the product page': 'storefront.pdp_block', 'Use their words in a post': 'creative.ig_post',
+  'Publish the claims ledger': 'visibility.llms_txt', 'Fix the markup': 'visibility.schema_fix', 'Review draft': 'visibility.faq_entry', 'Set the watch': 'visibility.faq_entry',
+  // the buttons every brand's cards carry (seed-template CTA, live store events in feed-service liveCard)
+  'Push the titles': 'storefront.listing_titles', 'Approve the offers': 'storefront.bundle_offer', 'Draft the page': 'visibility.faq_entry', 'Open the moves': null,
+  'Pause what points there': 'performance.pause_pointing', 'Restart what was paused': 'performance.restart_paused', 'Update the prices': 'performance.price_in_ads', 'Fix the links': 'storefront.fix_links',
+  'Plan the launch': 'performance.new_test', 'Add photos': 'storefront.listing_content'
+};
+/* buttons that say "go ahead" without naming a job: the card's planned format or the tool it names decides the package.
+   Every other known button names its job, and that job wins over the tool (Param, 2026-10-14: "Pause what points there"
+   opened as "Launch a test on Meta Ads" because the named tool beat the button) */
+const GENERIC_CTA = new Set(['Agree with the call', 'Open the scoreboard', 'Ship the five', 'Apply the plan', 'Approve all', 'Start this', 'Turn into an idea', 'Make our version', 'Generate versions', 'Start the tests', 'Apply Update', 'Review draft', 'Set the watch', 'Open report', 'Publish Campaign', 'Publish the page']);
+// the same button means different things in different places
+const CTA_IN_SECTOR = {
+  'creatives:Publish Campaign': 'creative.add_variants', 'storefront:Draft the listing': 'storefront.page_copy', 'signals:Draft the listing': 'storefront.page_copy', 'creatives:Draft the listing': 'storefront.page_copy', 'visibility:Draft the listing': 'visibility.faq_entry', 'ads:Draft the listing': 'storefront.page_copy', 'catalog:Swap the images': 'storefront.listing_content', 'visibility:Publish the page': 'visibility.faq_entry', 'visibility:Open report': 'visibility.faq_entry',
+  // "make the next version" on a measured result repeats what worked, where it worked
+  'creatives:Generate versions': 'creative.add_variants', 'ads:Generate versions': 'creative.add_variants', 'storefront:Generate versions': 'storefront.page_copy', 'signals:Generate versions': 'crm.flow_copy', 'visibility:Generate versions': 'visibility.faq_entry', 'catalog:Generate versions': 'storefront.listing_titles'
+};
+/* the tool the AI named for the card (measure-families): a "go ahead" button opens on that tool */
+const TOOL_PRIMARY = { meta: 'performance.new_test', google: 'performance.search_ad', shopify: 'storefront.page_copy', marketplaces: 'storefront.listing_content', klaviyo: 'crm.flow_copy', whatsapp: 'crm.flow_copy', reviews: 'crm.review_ask' };
+const toolOf = (key) => { const [a, k] = String(key || '').split('.'); return ACTIONS[a]?.[k]?.target?.conn ?? null; };
+// the format a card asks to be made (cards-gen make.format) is the package
+const MAKE_ACTION = { 'single image ad': 'creative.add_variants', 'carousel ad': 'creative.carousel_ad', 'collection ad': 'creative.collection_ad', 'catalog ad': 'creative.catalog_ad', 'video ad': 'creative.film_brief', reel: 'creative.short_video', 'instagram post': 'creative.ig_post', 'instagram carousel': 'creative.ig_carousel', 'instagram stories': 'creative.ig_story', 'whatsapp message': 'crm.flow_copy', email: 'crm.flow_copy', 'page section': 'storefront.page_copy' };
+const TRACKING = /\b(tracking|pixel|conversions? api|capi|ga4|utms?)\b/i;
+const DECIDE_CTA = new Set(['Agree with the call', 'Open the scoreboard', 'Ship the five', 'Apply the plan']); // a decision stays a decision
+const MAKING = new Set(['Generate versions', 'Make the carousel ad', 'Build the collection ad', 'Build the catalog ad', 'Make the video', 'Draft the post', 'Draft the carousel post', 'Draft the stories', 'Approve the flows', 'Update landing page']);
+const STOCK = /\b(out of stock|sold[ -]?out|stock-?outs?|no stock)\b/i;
+const stockCard = (c) => STOCK.test(`${c.title || ''} ${c.badge?.[0] || ''}`) || (c.liveSrc?.kind === 'catalog' && /stock/i.test(c.badge?.[0] || ''));
+/* a button we have never seen (cards written by the AI): what its verb asks for, in order. Each rule names one job */
+const VERB_RULES = [
+  [/\b(restart|resume|unpause|turn (them |it )?back on|switch (them |it )?back on)\b/i, () => 'performance.restart_paused'],
+  [/\b(pause|stop|switch off|turn off|kill)\b/i, (c) => (stockCard(c) ? 'performance.pause_pointing' : 'performance.pause_losers')],
+  [/\b(fix|redirect|repair)\b.*\blinks?\b|\bredirects?\b/i, () => 'storefront.fix_links'],
+  [/\b(update|fix|correct)\b.*\bprices?\b/i, () => 'performance.price_in_ads'],
+  [/\b(change|raise|lower|cut)\b.*\bprices?\b|\breprice\b/i, () => 'storefront.price_change'],
+  [/\b(tracking|pixel|conversions? api|capi)\b/i, () => 'performance.tracking_fix'],
+  [/\b(shift|move)\b.*\bbudget\b/i, () => 'performance.shift_budget'],
+  [/\bbudget\b|\bscale\b/i, () => 'performance.scale_budget'],
+  [/\bstop[- ]rule\b|\brules?\b/i, () => 'performance.stop_rule'],
+  [/\bsearch ads?\b|\bad group\b|\bkeywords?\b/i, () => 'performance.search_ad'],
+  [/\btitles?\b/i, () => 'storefront.listing_titles'],
+  [/\blistings?\b|\bphotos?\b|\bimages?\b/i, (c) => (c.sector === 'catalog' ? 'storefront.listing_content' : null)],
+  [/\btakedown\b/i, () => 'storefront.takedown'],
+  [/\bmarkup\b|\bschema\b/i, () => 'visibility.schema_fix'],
+  [/\bllms\.txt\b|\bclaims (list|ledger)\b/i, () => 'visibility.llms_txt'],
+  [/\bfaq\b|\banswer page\b/i, () => 'visibility.faq_entry'],
+  [/\breviews?\b.*\b(ask|request)\b|\b(ask|request)\b.*\breviews?\b/i, () => 'crm.review_ask'],
+  [/\bbroadcast\b/i, () => 'crm.paid_broadcast'],
+  [/\bsegment\b/i, () => 'crm.new_segment'],
+  [/\b(flows?|journey|emails?|whatsapp message|sms)\b/i, () => 'crm.flow_copy'],
+  [/\b(discount|code)\b/i, () => 'crm.discount_offer'],
+  [/\b(offers?|bundles?|ladder)\b/i, () => 'storefront.bundle_offer'],
+  [/\bproof block\b|\bproduct page\b/i, () => 'storefront.pdp_block'],
+  [/\b(landing page|page copy|page|section|banner)\b/i, () => 'storefront.page_copy'],
+  [/\binsert\b|\bprint\b/i, () => 'crm.print_insert'],
+  [/\bcarousel ad\b/i, () => 'creative.carousel_ad'],
+  [/\bcollection ad\b/i, () => 'creative.collection_ad'],
+  [/\bcatalog ad\b/i, () => 'creative.catalog_ad'],
+  [/\bstor(y|ies)\b/i, () => 'creative.ig_story'],
+  [/\bcarousel\b/i, () => 'creative.ig_carousel'],
+  [/\b(shoot|film)\b/i, () => 'creative.film_brief'],
+  [/\b(reel|short video|video)\b/i, () => 'creative.short_video'],
+  [/\bcreators?\b|\bbrief\b/i, () => 'creative.creative_brief'],
+  [/\b(post|instagram)\b/i, () => 'creative.ig_post'],
+  [/\b(swap|rotate|refresh)\b/i, () => 'creative.swap_creative'],
+  [/\b(test|launch)\b/i, () => 'performance.new_test'],
+  [/\b(ads?|creatives?|hooks?)\b/i, () => 'creative.add_variants'],
+  [/\b(decide|agree|settle|plan)\b/i, () => 'brew.plan']
+];
+export const verbAction = (label, c = {}) => { for (const [re, f] of VERB_RULES) if (re.test(label || '')) { const k = f(c); if (k) return k; } return null; };
+/* the same job, sharpened by the card's case: pausing "the losers" on a sold-out card is pausing what points at it */
+const refine = (k, c) => (k === 'performance.pause_losers' && stockCard(c) ? 'performance.pause_pointing' : k === 'creative.film_brief' && /\b(reels?|shorts?|tiktok)\b/i.test(c.title || '') ? 'creative.short_video' : k);
+const primaryOf = (c) => {
+  if (c.post?.platform) return ideaAction(c.post); // an idea from the stream opens as the post it is, on its own platform
+  if (c.kind === 'chat') return 'creative.whatsapp_ad';
+  const label = String(c.cta?.label || '').trim(), byLabel = CTA_IN_SECTOR[`${c.sector}:${label}`] ?? CTA_ACTION[label];
+  if (label && !(label in CTA_ACTION) && !CTA_IN_SECTOR[`${c.sector}:${label}`]) { const v = verbAction(label, c); if (v) return refine(v, c); } // a button we don't know: its verb
+  if (MAKE_ACTION[c.make?.format] && MAKING.has(label)) return MAKE_ACTION[c.make.format]; // a making button follows the format the card plans (cards-gen keeps them in step)
+  if (byLabel && !GENERIC_CTA.has(label)) return refine(byLabel, c); // a button that names its job: that job, whatever tool the AI named
+  if (byLabel === null && !GENERIC_CTA.has(label)) return null; // a button that only navigates (Open the moves)
+  const made = MAKE_ACTION[c.make?.format]; if (made) return made;
+  const ai = c.mf?.by === 'ai' ? c.mf.tool : null;
+  if (ai && TOOL_PRIMARY[ai] && toolOf(byLabel) !== ai) return TOOL_PRIMARY[ai];
+  if (/lab notes|new post|blog/i.test(`${c.title} ${c.campaign || ''}`) && c.sector === 'visibility') return 'visibility.blog_post';
+  if (!DECIDE_CTA.has(label) && TRACKING.test(c.title || '')) return 'performance.tracking_fix'; // "go ahead" on a tracking card is the tracking fix (titles are too loose for the other verbs)
+  return byLabel ? refine(byLabel, c) : null;
+};
+/* what a change is called on the jam page, from the card it came from: a Reddit thread of its own is a post, not a
+   reply; a comment reply says where it goes */
+export const labelFor = (key, c = {}) => { const [a, k] = String(key).split('.'); const act = ACTIONS[a]?.[k]; if (!act) return null;
+  const PLN = { youtube: 'YouTube', tiktok: 'TikTok', instagram: 'Instagram', x: 'X', reddit: 'Reddit', linkedin: 'LinkedIn', facebook: 'Facebook' }, raw = String(c.post?.platform || '').toLowerCase();
+  const pl = PLN[raw] || (/^[a-z]/.test(c.post?.platformLabel || '') ? '' : c.post?.platformLabel) || (raw ? raw[0].toUpperCase() + raw.slice(1) : '');
+  if (k === 'reddit_post' && c.post && !/reply|comment/i.test(c.post.format || '')) return { label: 'Post on Reddit', target: { ...act.target, object: 'Reddit post' } };
+  if (k === 'comment_reply' && pl) return { label: `Reply on ${pl}`, target: { ...act.target, name: pl } };
+  return { label: act.label, target: act.target }; };
+// the card's area decides which actions make sense, not which agent posted it
+const SECTOR_AGENT = { catalog: 'storefront', ads: 'performance', creatives: 'creative', storefront: 'storefront', visibility: 'visibility', signals: 'crm' };
+const SECTOR_ACTIONS = { catalog: ['listing_titles', 'listing_content', 'page_copy'] };
+const CROSS = ['performance.pause_losers', 'performance.scale_budget', 'creative.add_variants', 'storefront.page_copy', 'storefront.pdp_block', 'visibility.faq_entry', 'crm.flow_timing', 'crm.flow_copy'];
+// when a card names its action, every package is that action (different cuts of it), plus at most these
+// close alternatives that reach the same goal. Nothing from another job (Param, 2026-10-12: "Push 5 titles"
+// must never offer budget rules).
+const SAME_GOAL = {
+  listing_titles: ['storefront.listing_content'], listing_content: ['storefront.listing_titles'], takedown: [], buyer_deck: [],
+  bundle_offer: [], price_change: ['storefront.bundle_offer'], page_copy: ['storefront.pdp_block'], pdp_block: ['storefront.page_copy'], new_section: ['storefront.pdp_block'], store_setting: [], blog_post: ['visibility.faq_entry'],
+  shift_budget: ['performance.scale_budget'], scale_budget: ['performance.shift_budget'], pause_losers: ['performance.stop_rule'], stop_rule: ['performance.pause_losers'],
+  pause_pointing: ['performance.price_in_ads'], restart_paused: [], price_in_ads: ['creative.swap_copy'], fix_links: ['performance.pause_pointing'], comment_reply: [],
+  new_test: ['creative.add_variants'], swap_copy: ['creative.swap_creative'], search_ad: [], tracking_fix: [],
+  add_variants: ['creative.swap_creative', 'creative.carousel_ad'], swap_creative: ['creative.add_variants'], whatsapp_ad: ['creative.add_variants'],
+  carousel_ad: ['creative.add_variants', 'creative.ig_carousel'], collection_ad: ['creative.carousel_ad', 'creative.catalog_ad'], catalog_ad: ['creative.collection_ad'], ig_post: ['creative.ig_carousel'], ig_carousel: ['creative.carousel_ad', 'creative.ig_story'], ig_story: ['creative.ig_carousel'], film_brief: [], creative_brief: ['creative.film_brief'],
+  faq_entry: ['visibility.llms_txt'], llms_txt: ['visibility.faq_entry'], schema_fix: [], new_claim: ['visibility.faq_entry'],
+  flow_copy: ['crm.flow_timing'], flow_timing: ['crm.flow_copy'], review_ask: [], new_segment: ['crm.flow_copy'], paid_broadcast: ['crm.flow_copy'], print_insert: [], discount_offer: [],
+  x_post: ['creative.linkedin_post'], linkedin_post: ['creative.x_post'], reddit_post: [], quora_answer: [], fb_group_post: [], pinterest_pin: [], short_video: ['creative.film_brief'],
+  plan: [], resolution: []
+};
+// the chips under the card: ways to cut THIS action, not generic ones
+const ACTION_INTENTS = {
+  listing_titles: ['Start with one listing', 'Claim first, short'], listing_content: ['Same images everywhere', 'Bullets only'], takedown: ['Firm but polite', 'With evidence'], buyer_deck: ['Shorter deck', 'Lead with the numbers'],
+  bundle_offer: ['Two tiles, not three', 'Lead with the routine'], price_change: ['Smaller step', 'Explain the why'], page_copy: ['Shorter', 'Number first'], pdp_block: ['Reviews first', 'Study first'], new_section: ['One moment to start', 'Mobile first'], store_setting: ['Test on one product'], blog_post: ['Shorter', 'More sources'],
+  shift_budget: ['Smaller shift', 'Winners only'], scale_budget: ['+20% step', 'One ad set first'], pause_losers: ['Worst three only', 'Pause for 48 hours'], stop_rule: ['Stricter line', 'Looser line'],
+  pause_pointing: ['Only the sold-out products', 'Restart when back in stock'], restart_paused: ['Only what was paused for stock', 'Lower budget first'], price_in_ads: ['Every ad that quotes it', 'New price first'], fix_links: ['Closest product', 'The collection page'], comment_reply: ['Answer in one line', 'Friendlier'],
+  new_test: ['Smaller budget', 'New audience'], swap_copy: ['Shorter', 'Number first'], search_ad: ['Exact match only', 'Add negatives'], tracking_fix: ['Meta first', 'Google first'],
+  add_variants: ['Three cuts', 'Hindi version'], carousel_ad: ['Five cards', 'One product per card'], collection_ad: ['Best sellers only', 'New arrivals'], catalog_ad: ['Price on the frame', 'Rating on the frame'], ig_post: ['Number first', 'Real review'], ig_carousel: ['Seven slides', 'Myth vs fact'], ig_story: ['Add a poll', 'Three stories'], swap_creative: ['New hook', 'New look'], whatsapp_ad: ['Shorter chat', 'Hinglish'], film_brief: ['Shorter film', 'Phone-shot version'], creative_brief: ['Five angles', 'From real reviews'],
+  faq_entry: ['Tighter answer', 'Add the source'], llms_txt: ['Fewer lines', 'Add dates'], schema_fix: ['Price and rating only'], new_claim: ['Softer claim', 'With the study'],
+  flow_copy: ['Softer tone', 'Hinglish'], flow_timing: ['Later send', 'Fewer messages'], review_ask: ['Ask for a photo', 'Shorter ask'], new_segment: ['Tighter segment', 'Leave out new buyers'], paid_broadcast: ['Smaller list first', 'Hinglish'], print_insert: ['Fewer words', 'Bigger QR'], discount_offer: ['Smaller offer', 'Shorter expiry'],
+  x_post: ['Shorter', 'As a thread'], linkedin_post: ['Shorter', 'More personal'], reddit_post: ['Answer first', 'Add an honest downside'], quora_answer: ['Shorter', 'Add a comparison'], fb_group_post: ['Warmer', 'Ask the group'], pinterest_pin: ['More search words'], short_video: ['Shorter', 'Hook in 1 second'],
+  plan: ['Owners and dates', 'First step only'], resolution: []
+};
+// every card type × agent: the intent chips and the actions a remix may produce
+export const RECIPES = {
+  performance: {
+    decision: { intents: ['Go as planned', 'Smaller first step', 'Cut waste'], actions: ['pause_losers', 'stop_rule', 'scale_budget', 'shift_budget'] },
+    idea: { intents: ['Launch as a test', 'Swap copy in a live ad', 'New audience'], actions: ['new_test', 'swap_copy', 'stop_rule'] },
+    report: { intents: ['What moves this', 'Cut waste', 'Scale what works'], actions: ['pause_losers', 'scale_budget', 'stop_rule', 'swap_copy'], levers: true },
+    competitor: { intents: ['Counter ad', 'Our proof point', 'Steal the format'], actions: ['swap_copy', 'new_test'] }
+  },
+  creative: {
+    decision: { intents: ['Ship it', 'Three cuts', 'As a carousel'], actions: ['add_variants', 'swap_creative', 'carousel_ad'] },
+    idea: { intents: ['New hook', 'New format', 'Carousel', 'Organic post'], actions: ['add_variants', 'carousel_ad', 'ig_carousel', 'swap_creative', 'whatsapp_ad', 'film_brief', 'collection_ad', 'ig_story', 'ig_post'] },
+    report: { intents: ['Brief the next five', 'Refresh tired ads', 'What worked'], actions: ['creative_brief', 'swap_creative', 'add_variants'], levers: true },
+    competitor: { intents: ['Our version', 'Counter-angle', 'Steal the format'], actions: ['add_variants', 'carousel_ad', 'swap_creative', 'ig_carousel'] }
+  },
+  storefront: {
+    decision: { intents: ['Do it', 'Copy only', 'Smaller test'], actions: ['page_copy', 'pdp_block', 'bundle_offer', 'price_change', 'new_section'] },
+    idea: { intents: ['Copy change', 'Proof block', 'New offer tile'], actions: ['page_copy', 'pdp_block', 'bundle_offer', 'new_section'] },
+    report: { intents: ['Fix the biggest leak', 'What moves this', 'Quick wins'], actions: ['page_copy', 'pdp_block', 'bundle_offer'], levers: true },
+    competitor: { intents: ['Proof block', 'Answer their claim', 'Our number first'], actions: ['pdp_block', 'page_copy', 'new_section'] }
+  },
+  visibility: {
+    decision: { intents: ['Publish it', 'Tighter answer', 'Add the source'], actions: ['faq_entry', 'llms_txt', 'schema_fix'] },
+    idea: { intents: ['FAQ answer', 'llms.txt line', 'Markup fix'], actions: ['faq_entry', 'llms_txt', 'schema_fix'] },
+    report: { intents: ['Get us named', 'Fix the markup', 'What moves this'], actions: ['faq_entry', 'llms_txt', 'schema_fix'], levers: true },
+    competitor: { intents: ['Counter with our numbers', 'Dated comparison', 'New claim'], actions: ['faq_entry', 'new_claim'] }
+  },
+  crm: {
+    decision: { intents: ['Apply it', 'Softer tone', 'Better timing'], actions: ['flow_copy', 'flow_timing', 'review_ask', 'paid_broadcast'] },
+    idea: { intents: ['New message', 'Review ask', 'WhatsApp version'], actions: ['flow_copy', 'review_ask', 'new_segment', 'paid_broadcast'] },
+    report: { intents: ['Fix the drop-off', 'Better timing', 'Win back'], actions: ['flow_timing', 'flow_copy', 'discount_offer'], levers: true },
+    competitor: { intents: ['Beat their lock-in', 'Loyalty message', 'Retention offer'], actions: ['flow_copy', 'discount_offer'] }
+  },
+  brew: {
+    decision: { intents: ['Find a middle ground', 'Go with our pick', 'Smaller first step'], actions: ['resolution'], alwaysJam: true },
+    idea: { intents: ['Plan it'], actions: ['resolution'], alwaysJam: true },
+    report: { intents: ['What moves this', 'Biggest lever', 'Quick wins'], cross: true, levers: true },
+    competitor: { intents: ['Turn it into an idea', 'Our angle', 'Page change'], cross: true }
+  }
+};
+const PREVIEW_OF_KIND = { chat: 'chat', answer: 'answer', film: 'script', kit: 'checklist', howto: 'checklist', quotes: 'chat', trend: 'levers' };
+
+/* ---------- jam templates: what has to be true before the brief is shared ---------- */
+const JAM_TPL = {
+  performance: [['budget_owner', 'Who owns this budget and has said yes?', 'perf'], ['tracking', 'Is purchase tracking verified for this campaign?', 'perf'], ['stop_rule', 'What stops it if cost per order climbs?', 'ai']],
+  creative: [['claims', 'Does every claim match what we can prove, with its time window?', 'brandm'], ['rights', 'Do we have the rights to every face, review and photo?', 'brandm'], ['sizes', 'Are the 1:1, 4:5 and 9:16 sizes ready?', 'ai']],
+  storefront: [['mobile_qa', 'Has it been checked on mobile?', 'ops'], ['stock', 'Is there stock for the traffic this sends?', 'ops'], ['legal', 'Are the page claims cleared?', 'brandm'], ['rollback', 'How do we roll it back if conversion drops?', 'ai']],
+  visibility: [['source', 'Which claims-list row backs each line?', 'ai'], ['dated', 'Is the “as of” date in the first line?', 'brandm']],
+  crm: [['segment', 'How big is the segment, and who is left out?', 'growth'], ['window', 'When does it send, and how often at most?', 'ai'], ['compliance', 'Are opt-out and the WhatsApp template approved?', 'growth']],
+  brew: [['owner', 'Who makes the final call?', 'growth'], ['moves', 'Which moves change if we pick this?', 'ai']]
+};
+const ANSWERS = {
+  budget_owner: 'Yes, from this month’s budget. Keep steps at +20% so Meta’s learning doesn’t reset.',
+  tracking: 'Verified this morning. Meta purchases match Shopify orders.',
+  stop_rule: 'Pause any ad set over the stop line for 48 hours, and tell us in the feed.',
+  claims: 'Checked. Every number matches a claim we can prove.',
+  get rights() { return 'Yes. The photos are ours, and review quotes are used with consent.'; },
+  sizes: 'All three sizes are exported: 1:1, 4:5 and 9:16.',
+  mobile_qa: 'Checked on an iPhone and a budget Android. It loads fast and nothing jumps.',
+  get stock() { return 'Enough stock for the extra traffic. No stock-out risk this month.'; },
+  get legal() { return 'Cleared. Every claim on it is one our site already makes.'; },
+  rollback: 'Shopify keeps the old version. One click puts it back if the watch rule trips.',
+  source: 'Every line maps to a row in the public claims list.',
+  dated: 'Added. The “as of” date is in line one.',
+  segment: 'Opted-in buyers only. COD returns and anyone who ordered this week are left out.',
+  window: 'Between 7 and 9 pm, at most one message in 7 days.',
+  compliance: 'The template is approved and opt-out works.',
+  owner: 'The founder makes the call. Brand and growth agree with our pick.',
+  moves: 'The moves listed on the card, and the cards that follow from them.',
+  budget_ok: 'Approved by the growth lead, inside this week’s limit.',
+  scope_ok: 'Yes, run it on all of them. Each one can be rolled back.',
+  why_jam: 'Planned. The owner has it and it fits this week.'
+};
+const SECTOR_OF = { listing: 'catalog', performance: 'ads', creative: 'creatives', storefront: 'storefront', visibility: 'visibility', crm: 'signals' };
+const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+
+const actKey = (key) => { const [a, k] = String(key).split('.'); return ACTIONS[a]?.[k] ? { agent: a, key, ...ACTIONS[a][k] } : null; };
+// which actions a card can become, with the card's own recommendation first. Pure, so every card can be audited.
+/* a card whose label we don't know: order the general packages by what the card talks about, so a naming card
+   never opens as an ads change (pause_losers used to come first for every such card) */
+const CROSS_WORDS = {
+  'performance.pause_losers': /\b(pause|losers?|cpa|cost per|wasted? spend|ad ?sets?|underperform)/g,
+  'performance.scale_budget': /\b(scale|budget|winners?|roas|spend more|top ?up)/g,
+  'creative.add_variants': /\b(ads?|creatives?|hooks?|videos?|reels?|statics?|carousels?|ugc|thumb-?stop)\b/g,
+  'storefront.page_copy': /\b(page|homepage|site|copy|headline|landing|collection|section|banner)\b/g,
+  'storefront.pdp_block': /\b(product page|pdp|size|fit|reviews? on|trust|shipping line|returns)\b/g,
+  'storefront.listing_titles': /\b(titles?|names?|naming|catalog(ue)?|listings?|silhouettes?|untitled|seo titles?)\b/g,
+  'visibility.faq_entry': /\b(ai answers?|chatgpt|gemini|perplexity|faq|search|seo|google|named)\b/g,
+  'crm.flow_timing': /\b(timing|send time|wait|day \d|cadence|reminder)\b/g,
+  'crm.flow_copy': /\b(email|whatsapp|sms|flow|win-?back|abandon|cart|customers|subscribers|repeat)\b/g,
+};
+const byText = (c, keys) => { const txt = `${c.title || ''} ${c.title || ''} ${c.sub || ''} ${c.src || ''} ${c.cta?.label || ''}`.toLowerCase();
+  const sc = (k) => (txt.match(CROSS_WORDS[k] || /$^/g) || []).length; return keys.map((k, i) => [k, sc(k), i]).sort((a, b) => b[1] - a[1] || a[2] - b[2]).map((x) => x[0]); };
+export const recipeOfCard = (c) => {
+  const agent = c.kind === 'conflict' || c.agent === 'brew' ? 'brew' : SECTOR_AGENT[c.sector] || (RECIPES[c.agent] ? c.agent : 'creative');
+  const type = RECIPES[agent][c.type] ? c.type : 'idea';
+  let r = RECIPES[agent][type];
+  if (c.kind === 'conflict') r = { ...RECIPES.brew.decision, conflict: true };
+  else if (agent === 'brew' && (type === 'decision' || type === 'idea')) r = { ...RECIPES.brew.report };
+  if (agent === 'creative' && c.kind === 'film') r = { ...r, actions: ['film_brief', 'add_variants'] };
+  if (agent === 'creative' && c.kind === 'chat') r = { ...r, actions: ['whatsapp_ad', ...r.actions.filter((x) => x !== 'whatsapp_ad')] };
+  if (SECTOR_ACTIONS[c.sector] && !r.conflict && !r.alwaysJam) r = { ...r, actions: SECTOR_ACTIONS[c.sector], cross: false };
+  let actions = r.cross ? byText(c, [...CROSS, 'storefront.listing_titles'].filter((k) => actKey(k))) : r.actions.map((k) => `${agent}.${k}`);
+  const pk = primaryOf(c); const primary = pk && actKey(pk) ? pk : null;
+  const pkey = primary && primary.split('.').pop();
+  if (primary && !r.conflict) actions = [primary, ...(SAME_GOAL[pkey] || []).filter((k) => actKey(k) && k !== primary)];
+  const intents = primary && !r.conflict && c.cta?.label ? [`Do it: ${c.cta.label.toLowerCase()}`, ...(ACTION_INTENTS[pkey] || r.intents.filter((x) => !/^do it/i.test(x))).map((x) => fitChip(x, B())).filter(Boolean)].slice(0, 3) : r.intents;
+  return { ...r, agent, type, key: `${agent}.${type}`, actionKeys: actions, primary, intents };
+};
+
+export function createRemix(o) {
+  const { claudeTool, geminiImage, PUB, LANE_PHOTO, FACTS = {}, unbackedNums = () => [], MOVES = null, photoFile = (rel) => path.join(PUB, rel) } = o;
+  const catalogOf = o.catalogOf || (() => null);
+  /* what a package keeps when its words are rewritten: the picture, the knobs and the look, and a first draft's own media
+     (its video, its slides), so the draft the card showed stays v0 and every version made from it keeps it */
+  const keepMedia = (p = {}, all = false) => { const d = p.draft && (all || !p.draft.text) ? p.draft : undefined; /* a text draft (an email or page shown as a picture) is only v0: new words replace it */
+    return { image: p.image, knobs: p.knobs, grade: p.grade, ...(p.video ? { video: p.video, poster: p.poster || null } : {}), draft: d, ...(d && p.cardImages ? { cardImages: p.cardImages } : {}) }; };
+  /* photos on a post: community platforms (Reddit, Quora, Facebook groups) take real photos only, never an AI image */
+  const realOnly = (ch) => ch.family === 'post' && /reddit|quora|facebook|fb_group|comment_reply/i.test(`${ch.action} ${ch.pkg?.platform || ''}`);
+  const PHOTO_ASK = /\b(change|swap|replace|new|different|another|other|better|redo|fresh)\b[^.?!]{0,40}\b(photos?|images?|pictures?|pics?|visuals?|creatives?|shots?)\b|\b(photos?|images?|pictures?|pics?|visuals?)\b[^.?!]{0,20}\b(change|swap|replace|redo)\b/i;
+  // what the card's own moves say, so packages follow the plan they came from
+  const movePassages = (c, extra = '', k = 4) => (MOVES ? MOVES.passages(c, k, extra) : []);
+  const moveTag = (x) => MOVES?.tag ? MOVES.tag(x.n, x.h) : `Move ${String(x.n).padStart(2, '0')} · ${x.h}`;
+  const productLine = (c) => { const P = productFor(c, FACTS); return `THE PRODUCT: every public field is about ${P.name} (page ${P.page}${P.price ? `, ${P.price}` : ''}${P.claim ? `; claim: ${P.claim}` : ''}). Stay on this product unless the person asks for another one.`; };
+  const specOf = (key) => ACTION_SPEC[String(key).split('.').pop()] || '';
+  const { SEED, AGENT, claudeJSON, cardBrief, seatLine, qaCheck, mechanicalFix, clean, BANNED, isMock, spend, uid, now, clone, inr, on, newWork, addVersion, say, move, notify, later, setState, weekKey, curV, log = console } = o;
+  const colName = (id) => SEED.colleagues.find((c) => c.id === id)?.name || 'A colleague';
+  const changes = (t) => (t.changes ||= {});
+  const actOf = (key) => { const [a, k] = key.split('.'); return ACTIONS[a]?.[k] ? { agent: a, key, ...ACTIONS[a][k] } : null; };
+  const recipeFor = recipeOfCard;
+  const cardSnap = (c) => ({ title: c.title, sub: c.sub, rows: c.rows || null, images: c.images || null, q: c.q || null, a: c.a || null, chat: c.chat || null, options: c.options ? c.options.map((x) => x.name) : null });
+  const ensureCardVersion = (t, c) => { const vs = versionsOf(t, c.id); if (vs.length) return vs[vs.length - 1]; return addV(t, 'card', c.id, cardSnap(c), { author: `ai:${c.agent}`, reason: 'The original card', at: c.createdAt || now(t) }); };
+  // how the after-state renders: the action decides first, then the card's own kind
+  const previewOf = (c, act) => {
+    if (['numbers', 'checklist', 'script', 'chat', 'answer'].includes(act.preview)) return act.preview === 'answer' || (c.kind === 'answer' && act.agent === 'visibility') ? 'answer' : act.preview;
+    if (c.kind === 'answer' && act.agent === 'visibility') return 'answer';
+    if (act.preview === 'image') return c.images ? 'image' : PREVIEW_OF_KIND[c.kind] === 'chat' ? 'chat' : 'copy';
+    return PREVIEW_OF_KIND[c.kind] && PREVIEW_OF_KIND[c.kind] !== 'levers' ? PREVIEW_OF_KIND[c.kind] : act.preview;
+  };
+
+  /* ---------- checks + verdict ---------- */
+  const evaluate = (t, ch) => {
+    const card = t.cards.get(ch.cardId) || {}; const act = actOf(ch.action); const r = recipeFor(card);
+    const pubT = ch.pkg ? publicText(ch.family, ch.action, ch.pkg) : [];
+    const copy = { ...card, type: ch.family === 'post' ? 'post' : 'idea', research: null, title: ch.after.title, sub: ch.after.sub, rows: [], detail: { why: [...(ch.after.bullets || []), ...((ch.after.chat || []).map((x) => x[1])), ch.after.a || '', ...pubT].filter(Boolean) } };
+    /* a number quoted from the card's own evidence (a real review, a thread's reply count) is backed, not invented */
+    /* a connected-account card (live-*) was written from the account's own numbers: they are backed too */
+    const evTxt = JSON.stringify([card.post?.evidence || [], card.post?.where || [], card.evidence || [], ...(card.liveOnly || /^live-/.test(card.id || '') ? [card.title, card.sub, card.rows, card.detail, card.liveNums] : [])]).replace(/,(?=\d{3})/g, '');
+    const raw = [...new Set(unbackedNums([ch.after.title, ch.after.sub, ...pubT].join(' \n ')))], nums = raw.filter((n) => !evTxt.includes(String(n).replace(/[^\d.%]/g, '').replace(/^\./, '')));
+    const qa = qaCheck(copy).filter((x) => x.k !== 'Short title, point first').map((x) => (x.k.startsWith('Every ₹') && nums.length ? { ...x, ok: false, k: `Numbers not in the fact sheet: ${nums.join(', ')} (use a number from the facts or drop it)` } : x.k.startsWith('Every ₹') && !x.ok && raw.length && !nums.length ? { ...x, ok: true, fix: false } : x));
+    const checks = qa.map((x) => (x.k === 'Names a number' ? { ...x, soft: true } : { ...x, fix: true }));
+    const trust = trustOf(t, act.agent);
+    if (ch.pkg) {
+      const miss = missing(ch.family, ch.action, ch.pkg); checks.unshift({ k: miss.length ? `Missing: ${miss.join(', ')}` : `${FAMILY_NAME[ch.family]} package complete`, ok: !miss.length, pkg: true, fix: true });
+      const guard = ACTION_GUARD[String(ch.action).split('.').pop()]?.(ch.pkg); if (guard) checks.unshift({ k: guard, ok: false, fix: true });
+      const lk = leaks(ch.family, ch.action, ch.pkg); checks.splice(1, 0, { k: lk.length ? `Reads like an internal note, not to customers (“${lk.slice(0, 3).join('”, “')}”)` : 'Written for customers, not the team', ok: !lk.length, fix: true, leak: true });
+    }
+    if (ch.imagePending) checks.push({ k: 'The new creative is still rendering', ok: false, soft: true });
+    checks.push(act.irreversible ? { k: `Can’t be undone: ${act.irreversible}. The ShopOS team ships it from a brief.`, ok: true, team: true } : { k: `Can be undone: ${act.rollback}`, ok: !!act.rollback && !/^nothing|^—/i.test(act.rollback), soft: true });
+    if (act.target.conn) checks.push({ k: `${SEED.connectors[act.target.conn]?.name || act.target.conn} connected`, ok: !!t.conn[act.target.conn], soft: true, conn: act.target.conn });
+    if (act.money) checks.push({ k: `${ch.amount > 0 ? `Spends about ${inr(ch.amount)} a week` : 'Costs money'}: the brief carries it, the team that runs it sets the budget`, ok: true, money: true });
+    checks.push(...ruleChecks(t, act.agent, ch.after));
+    L(t).autoChecks.filter((a) => a.on && (JAM_TPL[act.agent] || []).some(([k]) => k === a.k)).forEach((a) => checks.push({ k: `Learned check: ${a.q}`, ok: true, learned: true, auto: true }));
+    const reasons = [];
+    if (r.alwaysJam || r.conflict) reasons.push(act.jam || 'A person decides this');
+    else if (act.jam) reasons.push(act.jam);
+    checks.filter((x) => !x.ok && !x.soft && !x.fix).forEach((x) => reasons.push(x.learned ? `Breaks what you taught: ${x.k.replace(/^Learned: /, '')}` : x.k));
+    // fixable package problems (missing fields, internal wording, claims) are fixed in the studio, not in a jam
+    ch.fixes = checks.filter((x) => !x.ok && !x.soft && x.fix).map((x) => x.k);
+    ch.checks = checks; ch.reasons = [...new Set(reasons)];
+    // ships directly only when it can be undone and costs nothing; anything else goes to the ShopOS team with a brief
+    ch.irreversible = act.irreversible || null; ch.teamWhy = act.money && act.irreversible ? `${act.irreversible}, and it spends money` : act.money ? 'It spends money' : act.irreversible || null;
+    // your own checks: ticked by you, never by the AI
+    (ch.myChecks || []).forEach((m) => checks.push({ k: m.text, ok: !!m.done, mine: true, soft: true, id: m.id }));
+    ch.confirm = (ch.myChecks || []).filter((m) => !m.done).map((m) => m.text);
+    ch.verdict = ch.reasons.length ? 'jam' : ch.fixes.length ? 'fix' : ch.confirm.length ? 'confirm' : ch.teamWhy ? 'deploy' : 'live';
+    ch.score = pickScore(t, act.agent, ch);
+    return ch;
+  };
+
+  /* ---------- making options ---------- */
+  const applyRulesMock = (t, agent, a) => {
+    // the mock path still honours what the team taught, so the next remix visibly respects it
+    const on = new Set(ruleChecks(t, agent, a).filter((x) => x.learned && (!x.soft || x.taste)).map((x) => x.k.replace(/^Learned: /, '')));
+    const has = (k) => on.has(DETECTORS.find((d) => d.k === k)?.text);
+    const strip = (s) => String(s || '').replace(/(\d+\s*%\s*off|\bflat ₹\d+ off)/gi, '').replace(/\b(discount\w*|sale|cheaper)\b/gi, '').replace(/\s{2,}/g, ' ').replace(/\s+([,.])/g, '$1').trim();
+    const x = { ...a };
+    if (has('no-discount')) { x.title = strip(x.title); x.sub = strip(x.sub); }
+    if (has('no-exclaim')) { x.title = x.title.replace(/!/g, '.').replace(/\.$/, ''); x.sub = String(x.sub).replace(/!/g, '.'); }
+    if (has('short-title') && x.title.length > 48) x.title = x.title.slice(0, 46).replace(/\s+\S*$/, '').replace(/[,:;]$/, '');
+    if (has('number-first')) {
+      // move the clause that carries the number to the front: "MitoActive needs 300 reviews in 90 days" → "300 reviews in 90 days: MitoActive needs them"
+      const m = x.title.match(/(up to\s+)?₹?\d[\d,.]*/i);
+      if (m && m.index > 3) { const tail = x.title.slice(m.index).replace(/[.]$/, ''), head = x.title.slice(0, m.index).trim().replace(/[,:;]$/, ''); if (tail.split(/\s+/).length >= 3) x.title = `${tail[0].toUpperCase()}${tail.slice(1)}: ${head}`.slice(0, 64); }
+    }
+    return x;
+  };
+  // the field each family leads with, so learned rules reshape the right words
+  const TITLE_F = { meta_ad: 'headline', store: 'heading', meta_ops: 'summary', crm: 'subject', brief: 'title', decision: 'decision' };
+  const SUB_F = { meta_ad: 'primaryText', store: 'body', crm: 'message', decision: 'why', meta_ops: 'rule' };
+  const rulePkg = (t, agent, family, pkg) => {
+    const tf = TITLE_F[family], sf = SUB_F[family]; if (!tf || !pkg[tf]) return pkg;
+    const x = applyRulesMock(t, agent, { title: pkg[tf], sub: pkg[sf] || '' });
+    return { ...pkg, [tf]: x.title, ...(sf && pkg[sf] ? { [sf]: x.sub } : {}) };
+  };
+  const mockOptions = (t, c, r, intent, n = 3, offset = 0) => {
+    const why = c.detail?.why || [];
+    const angles = [intent || r.intents[0], ...r.intents.filter((x) => x !== intent), 'Sharper', 'Smaller step'];
+    const mv = movePassages(c, intent || '', n);
+    return Array.from({ length: n }, (_, j) => {
+      const i = j + offset; const key = r.actionKeys[i % r.actionKeys.length]; const fam = familyOf(key);
+      return { action: key, angle: angles[i % angles.length], from: mv[j] ? moveTag(mv[j]) : null, why: why[i % Math.max(1, why.length)] || '', pkg: mockPkg(fam, key, c, i, angles[i % angles.length], FACTS), fromCard: i === 0 && !!r.primary && key === r.primary };
+    });
+  };
+  const factsLine = `WHO READS WHAT: the card above is an internal note for the ${BN()} team (business numbers, goals, plans, moves). Never copy its wording or its numbers into the package. Fields marked public are read by shoppers and customers: write to them about what they're buying, the product, the result, the price, the offer, in ${BN()}'s voice. No revenue, crore, goals, tracks, funnels, repeat rate, ROAS, cost per order, "the team" or plans. Internal fields (ad sets, segments, rules, budgets) use real operational names, e.g. "Intensive Serum | Broad | 22-45 | Reels", never business metrics. Copy rules: plain words, only numbers from the facts above, "up to" and the day window on every result claim, never name a rival, no before/after scalp claims.`;
+  const liveOptions = async (t, c, r, intent, prompt, n = 3, like = null) => {
+    const fams = [...new Set(r.actionKeys.map(familyOf))];
+    const acts = r.actionKeys.map((k) => { const a = actOf(k); return `- ${k}: ${a.label} on ${SEED.connectors[a.target.conn]?.name || 'a person'} (${a.target.object})${a.money ? ', spends money' : ''}${a.jam ? `, needs a person: ${a.jam}` : ''}. What it is: ${specOf(k)}\n  Package fields:\n${fieldsBrief(familyOf(k), k)}`; }).join('\n');
+    const learned = promptBlock(t, c.agent === 'brew' ? 'creative' : c.agent);
+    const mv = like ? [] : movePassages(c, [intent, prompt].join(' '));
+    const moveBlock = mv.length ? `\nWHAT THE CARD'S MOVES SAY (the Brew plan this card came from). Build the packages from these, using their specifics (steps, wording, timing, examples), and set "from" to the passage each option follows:\n${mv.map((x) => `[${moveTag(x)}] ${x.text}`).join('\n')}\n` : '';
+    const rec = `WHAT THE CARD RECOMMENDS: "${c.title}". ${c.sub || ''}${c.cta?.label ? ` The card's action: "${c.cta.label}".` : ''}${c.detail?.why?.length ? `\nWhy: ${c.detail.why.join(' ')}` : ''}${c.detail?.how?.length ? `\nHow: ${c.detail.how.join(' ')}` : ''}${o.planOf?.(t, c)?.draft ? '\nOption 1 starts from the first draft the card shows (above): keep its words and its product wherever they fit the fields.' : ''}`;
+    const ask = like ? `Make ONE more option: a different cut of this package (action ${like.action}): ${JSON.stringify(toKV(like.family, like.action, like.pkg))}` : `${rec}\n\nRemix this card into ${n} complete packages that could be commissioned today. ${r.primary ? `Option 1 MUST be exactly what the card recommends, with action ${r.primary}, built from the card's own how-steps and numbers. Options 2 and 3 are different cuts of the same thing the card asks for (another angle, a smaller first step, a different scope), using the same action unless another listed action clearly does the same job. Never propose a different kind of job than the card's.` : 'Every option must serve the goal the card names; do not drift to unrelated levers.'}`;
+    const schema = { type: 'object', required: ['line', 'options'], properties: { line: { type: 'string', description: 'Under 18 words: what you made' },
+      options: { type: 'array', items: { type: 'object', required: ['action', 'angle', 'why', 'pkg'], properties: { action: { type: 'string', enum: r.actionKeys }, angle: { type: 'string', description: '2-3 words' }, from: { type: 'string', description: 'The move passage it follows, exactly as in the brackets, or empty' }, why: { type: 'string', description: 'Under 16 words: why this moves the number' }, next: { type: 'array', items: { type: 'string' }, description: 'Exactly 4 follow-up asks the person might tap to reshape THIS package, each 2 to 6 words, in their voice, about the card’s own action and case (the products, ads, pages or people it names), never a generic writing tip' }, pkg: kvSchema(allKeys(fams)) } } } } };
+    const j = await claudeTool(`${cardBrief(c, seatLine(t.viewer))}\n\nYou are the ${AGENT[c.agent] || 'agent'} agent. ${ask}\n${moveBlock}What the reader wants: "${[intent, prompt].filter(Boolean).join('. ') || r.intents[0]}".\nActions you may use, with the fields each package needs:\n${acts}\n${learned ? '\n' + learned + '\n' : ''}\n${productLine(c)}\nWrite every package exactly as it ships: real copy, real settings, nothing left as a placeholder. Each package must do what its action says it is, nothing else. ${factsLine}`, schema, 4000, 'remix_options');
+    const ok = new Set(r.actionKeys);
+    const opts = (j.options || []).slice(0, n).map((x, i) => { const action = ok.has(x.action) ? x.action : r.actionKeys[0]; const src = mv.find((m) => x.from && (x.from.includes(m.h) || moveTag(m) === x.from)); return { action, angle: clean(x.angle || 'Version'), why: clean(x.why || ''), next: Array.isArray(x.next) ? x.next.map((y) => clean(String(y)).replace(/[.]$/, '')).filter((y) => y && y.length <= 48) : null, from: src ? moveTag(src) : null, pkg: fromKV(familyOf(action), action, x.pkg), fromCard: !like && i === 0 && !!r.primary && action === r.primary }; })
+      .filter((x) => !BANNED.test(publicText(familyOf(x.action), x.action, x.pkg).join(' ')));
+    return { line: clean(j.line || ''), opts };
+  };
+  const amountOf = (act, family, pkg, c) => {
+    if (!act.money) return 0;
+    if (family === 'meta_ad' && pkg.dailyBudget) return Math.max(1000, pkg.dailyBudget * 7);
+    if (family === 'meta_ops' && pkg.spendChangeWeek > 0) return pkg.spendChangeWeek;
+    if (family === 'search' && pkg.dailyBudget) return Math.max(1000, pkg.dailyBudget * 7);
+    if (family === 'meta_ad' || family === 'meta_ops') return 90000; // an estimate for the brief; the team sets the real budget
+    return 0; // one-off costs (print, price, codes, sends): the ShopOS team confirms them
+  };
+  // package → the card-sized "after", the money, the checks
+  const sync = (t, ch, c) => {
+    const act = actOf(ch.action); c ||= t.cards.get(ch.cardId) || {};
+    ch.after = afterFromPkg(ch.family, ch.pkg, { images: ['meta_ad', 'social'].includes(ch.family) && c.images ? [ch.batchKey ? ch.pkg.image : c.images[0]] : null });
+    ch.after.publicText = publicText(ch.family, ch.action, ch.pkg);
+    ch.amount = amountOf(act, ch.family, ch.pkg, c);
+    ch.costLabel = !act.money ? 'No spend' : ch.amount > 0 ? `About ${inr(ch.amount)} a week` : 'A one-off cost the ShopOS team confirms';
+    return evaluate(t, ch);
+  };
+  const snapOf = (ch) => ({ ...ch.pkg, title: ch.after.title, sub: ch.after.sub, action: ch.action, amount: ch.amount });
+  const headOf = (t, ch) => (ch.headVersionId && versionsOf(t, ch.id).find((v) => v.id === ch.headVersionId)) || versionsOf(t, ch.id).slice(-1)[0];
+  const version = (t, ch, author, reason, label) => { const v = addV(t, 'change', ch.id, snapOf(ch), { author, reason, parent: headOf(t, ch)?.id }); v.label = cleanLabel(label) || versionLabel(reason, { first: v.n === 1 }); ch.headVersionId = v.id; return v; };
+  // a version's name in the strip and History: the AI's 2-4 words when it gave them, else the rule-based name
+  const cleanLabel = (x) => { const s = String(x || '').replace(/[."“”]/g, '').trim(); const n = s.split(/\s+/).length; return s && n <= 5 && s.length <= 32 ? s[0].toUpperCase() + s.slice(1) : ''; };
+  const build = (t, c, cv, r, x, { intent, prompt }) => {
+    const act = actOf(x.action); const family = familyOf(x.action);
+    const lf = labelFor(x.action, c) || act; /* what this change is called follows the card it came from (a thread of its own, a video's comments) */
+    const ch = { id: uid('ch'), fromCard: !!x.fromCard, cardId: c.id, cardVersionId: cv.id, agent: act.agent, cardAgent: c.agent, type: r.type, kind: c.kind, recipe: r.key, action: x.action, actionLabel: lf.label, family, angle: x.angle || 'Version', intent: intent || null, prompt: prompt || '',
+      target: { conn: lf.target.conn, name: lf.target.name || (lf.target.conn ? SEED.connectors[lf.target.conn]?.name : 'A person'), object: lf.target.object }, preview: previewOf(c, act), money: !!act.money, rollback: act.rollback,
+      scope: act.scope.map(([n, label]) => ({ n, label })), why: x.why || '', from: x.from || null, before: cardSnap(c), state: 'draft', thread: [], createdAt: now(t) };
+    ch.pkg = rulePkg(t, act.agent, family, cleanPkg(family, x.action, x.pkg || mockPkg(family, x.action, c, 0, '', FACTS), clean));
+    ch.pkg.knobs ||= {}; ch.chips = chipsFor(x.action, c, B()); /* the composer's chips, made once per change so they never flicker */
+    { const ctx = chipCtx(x.action, ch.actionLabel, c), nx = (x.next || []).filter((y) => chipRelates(y, ctx)); if (nx.length >= 2) ch.next = nx.slice(0, 4); } /* the AI's chips for this case, when they talk about it */
+    ch.myChecks = (L(t).myChecks?.[family] || []).map((m) => ({ id: uid('mc'), text: m.text, done: false, always: true, at: now(t) })); ch.notes = [];
+    sync(t, ch, c);
+    version(t, ch, `ai:${ch.agent}`, `Remix: ${intent || 'three options'}${prompt ? ` · “${prompt.slice(0, 60)}”` : ''}`);
+    changes(t)[ch.id] = ch; return ch;
+  };
+  /* the card's first draft (drafts-bg.js) is v0 on the jam's stage: exactly the asset the feed card showed, never an
+     unrelated picture. Its pictures, slides or clip become the package's own; a text draft (an email, a chat, a page) shows
+     as its picture until new words replace it. Jams opened before this heal while they still hold only their first version */
+  const TEXT_DRAFT = /^(email|whatsapp|page|text|catalog)$/;
+  const seedV0 = (t, c, ch) => {
+    if (!ch || !c || ch.batchKey || ch.v0) return false; ch.v0 = 'none';
+    const pl = o.planOf?.(t, c); if (pl && !ch.plan) ch.plan = pl;
+    const d = pl?.draft; if (!d || !(d.images?.length || d.video) || versionsOf(t, ch.id).length > 1) return false;
+    const imgs = d.images || [], text = TEXT_DRAFT.test(d.as || '') && !d.video;
+    ch.pkg = { ...ch.pkg, draft: { as: d.as, images: imgs, video: d.video || null, poster: d.poster || null, ratio: d.ratio || null, title: d.title || '', text } };
+    if (!text) { if (imgs[0]) ch.pkg.image = imgs[0]; if (imgs.length > 1) ch.pkg.cardImages = imgs; if (d.video) { ch.pkg.video = d.video; ch.pkg.poster = d.poster || imgs[0] || null; } if (d.ratio && RATIO[d.ratio] && ['meta_ad', 'social'].includes(ch.family)) ch.pkg.format = d.ratio; }
+    ch.v0 = 'draft'; sync(t, ch, c);
+    const v0 = versionsOf(t, ch.id)[0]; if (v0) { v0.snapshot = snapOf(ch); v0.reason = 'The first draft on the card'; v0.label = 'First draft'; }
+    return true;
+  };
+  // old changes (made before packages) get one built from their copy
+  const ensurePkg = (t, ch) => { if (ch.pkg) return ch; const c = t.cards.get(ch.cardId) || {}; ch.family = familyOf(ch.action); ch.pkg = cleanPkg(ch.family, ch.action, mockPkg(ch.family, ch.action, c, 0, ch.angle, FACTS), clean); ch.pkg.knobs = {}; ch.thread ||= []; return sync(t, ch, c); };
+  const pubChange = (t, ch) => {
+    ensurePkg(t, ch); const tr = trustOf(t, ch.agent);
+    if (!ch.v0 && !ch.batchKey && (ch.fromCard || (t.work || []).some((w) => w.changeId === ch.id))) seedV0(t, t.cards.get(ch.cardId), ch);
+    return { ...ch, plan: ch.plan || o.planOf?.(t, t.cards.get(ch.cardId)) || null, copyPending: !!ch.copyPending && Date.now() - ch.copyPending < 90e3, trust: { level: tr.level, name: tr.name, objects: tr.objects, toNext: tr.toNext }, scope: ch.scope.map((s) => ({ ...s, locked: s.n > tr.objects })),
+      familyName: FAMILY_NAME[ch.family], fields: fieldsFor(ch.family, ch.action).map(({ k, label, type, opts, cols, req, pub, hint }) => ({ k, label, type, opts, cols, req, pub, hint })),
+      knobs: knobsFor(ch.family, B()), suggest: suggestOf(t, ch), gradeF: GRADES[ch.pkg.grade] || 'none', missing: missing(ch.family, ch.action, ch.pkg),
+      head: headOf(t, ch)?.id || null, versions: versionsOf(t, ch.id).map((v) => ({ id: v.id, n: v.n, author: v.author, reason: v.reason, label: v.label || versionLabel(v.reason, { first: v.n === 1 }), at: v.at, parent: v.parentVersionId, diff: v.diff, snapshot: v.snapshot })), live: ch.liveVersionId || null };
+  };
+
+  /* ---------- the studio: iterate, knobs, variations, the creative ---------- */
+  // the creative: one photo, or (carousels, slides) one per card. all=false makes the first only; the rest on request
+  const genImage = (t, ch, why, { all = false } = {}) => {
+    if (!['meta_ad', 'social', 'post'].includes(ch.family) || realOnly(ch) || isMock() || !geminiImage) return false;
+    const c = t.cards.get(ch.cardId) || {}; const p = ch.pkg; const scene = p.knobs?.scene; const rows = p.cards || p.slides || [];
+    const what = ch.family === 'social' ? 'an Instagram post' : ch.family === 'post' ? `a ${p.platform || 'social'} post` : 'a Meta ad';
+    const briefOf = (i) => (rows.length ? rows[i]?.imageBrief : p.imageBrief) || p.imageBrief || 'The product on a clean surface, soft daylight.';
+    const slots = rows.length ? rows.map((_, i) => i).filter((i) => (all ? !(p.cardImages || [])[i] : i === 0)).slice(0, 10) : [0];
+    if (!slots.length) return false;
+    if (!spend('image')) return false;
+    const promptOf = (i) => `Create a new photograph for ${what}${rows.length > 1 ? ` (picture ${i + 1} of ${rows.length}, same look and light as the others)` : ''}. ${briefOf(i)}${scene ? ` Scene: ${scene}.` : ''}${p.knobs?.audience ? ` It should feel right for ${p.knobs.audience}.` : ''} ${`Keep the ${BN()} ${B().config.product?.noun || 'product'} and its label exactly as in the reference`} photo; do not invent new text on the pack. Nothing else carries writing: no signs, notes, calendars, screens or other packaging. No logos, no people's scalps, no before/after. Leave calm space where a short headline can sit. Photographic, natural light.`;
+    ch.imagePending = true;
+    (async () => {
+      try {
+        /* a product photo the team picked is the reference, then the card's, the lane's and the brand's lead product: the first one that can be read
+           (a store URL that refuses, or a photo only in the bucket, no longer ends the picture with ENOENT) */
+        const cands = [...(p.photos || []).filter((u) => !/^gen\//.test(u)), ...(c.images || []).filter((u) => !/^gen\//.test(u)), LANE_PHOTO[c.lane], ...Object.values(LANE_PHOTO || {}), o.catalogOf?.(t)?.[0]?.img].filter((x) => x && typeof x === 'string');
+        let src = null; for (const rel of [...new Set(cands)]) { src = (o.photoAsync ? await o.photoAsync(rel).catch(() => null) : null) || (fs.existsSync(photoFile(rel)) && fs.statSync(photoFile(rel)).isFile() ? photoFile(rel) : null); if (src) break; }
+        if (!src) throw new Error('no product photo could be read for this picture');
+        const one = async (i) => { const prompt = promptOf(i); const key = crypto.createHash('sha1').update(prompt + (p.format || '4:5')).digest('hex').slice(0, 16);
+          if (!(await genFile(`${key}.png`))) { if (i !== slots[0] && !spend('image')) return null; saveGen(`${key}.png`, await geminiImage({ srcFile: src, prompt, ratio: RATIO[p.format] || '4:5' })); }
+          return `gen/${key}.png`; };
+        const made = [];
+        for (let k = 0; k < slots.length; k += 3) made.push(...(await Promise.all(slots.slice(k, k + 3).map((i) => one(i).catch((e) => { log.warn('[studio image]', e.message); return null; })))));
+        const imgs = [...(ch.pkg.cardImages || [])]; slots.forEach((i, k) => { if (made[k]) imgs[i] = made[k]; });
+        const first = rows.length ? imgs[0] : made[0];
+        if (!first && !made.some(Boolean)) throw new Error('no image came back');
+        ch.pkg = { ...ch.pkg, ...(first ? { image: first } : {}), ...(rows.length ? { cardImages: imgs } : {}) }; ch.imagePending = false; sync(t, ch);
+        version(t, ch, `ai:${ch.agent}`, all && rows.length ? `Photos for ${made.filter(Boolean).length} ${ch.family === 'social' ? 'slides' : 'cards'}` : `New creative: ${why}`);
+      } catch (e) { ch.imagePending = false; ch.imageError = String(e.message).slice(0, 160); log.warn('[studio image]', e.message); sync(t, ch); }
+    })();
+    return true;
+  };
+
+  // studio chips: the AI's next steps for this version, else the family's defaults minus what was already asked
+  const suggestOf = (t, ch) => { const asked = new Set((ch.thread || []).filter((m) => m.from === 'you').map((m) => String(m.text).toLowerCase().trim()));
+    ch.chips ||= chipsFor(ch.action, t.cards.get(ch.cardId) || {}, B()); /* older changes: worked out once from the action, then kept */
+    const pool = [...(ch.next || []), ...ch.chips, ...(ch.chips.length >= 3 ? [] : suggestFor(ch.family, B()))]; return pool.filter((x, i) => !asked.has(x.toLowerCase()) && pool.findIndex((y) => y.toLowerCase() === x.toLowerCase()) === i).slice(0, 4); };
+  const iterate = async (t, ch, message, { knob, quiet, show } = {}) => {
+    const c = t.cards.get(ch.cardId) || {};
+    if (!quiet) ch.thread.push({ from: 'you', text: show || message, at: now(t) });
+    let out = null;
+    if (!isMock() && spend('text')) {
+      try {
+        const schema = { type: 'object', required: ['reply', 'pkg', 'newImage', 'next'], properties: { plan: { type: 'array', items: { type: 'string' }, description: 'Only when the person asks to change the plan itself (its steps): the whole updated list of steps, 3 to 6, each under 14 words, ending with the step that makes it ready to deploy or hand to the team; never a step called decided. Otherwise an empty list.' }, reply: { type: 'string', description: 'Under 30 words: what you changed, plainly' }, label: { type: 'string', description: 'A name for this new version in a version list: 2 to 4 words, sentence case, what is different about it (e.g. "As a thread", "Shorter hook", "Price up front"). Not the request repeated.' }, next: { type: 'array', items: { type: 'string' }, description: 'Exactly 4 follow-up requests the person might tap next, each 2 to 6 words, in their voice (e.g. "Shorter, for WhatsApp"). Each one a way to cut THIS change (the card’s own action, named in the prompt), using its words: never a generic writing tip that would fit any widget. Specific to this updated package and this conversation; never repeat something already asked or already true of the package.' }, pkg: kvSchema(allKeys([ch.family])), newImage: { type: 'boolean', description: 'True only if the photo itself should change (scene, mood, subject, ratio)' } } };
+        out = await claudeTool(`${cardBrief(c, seatLine(t.viewer))}\n\nYou are the ${AGENT[ch.agent]} agent in the remix studio, iterating a ${FAMILY_NAME[ch.family]} (${ch.actionLabel} on ${ch.target.name}).${c.cta?.label ? ` The card's own action: "${c.cta.label}"; this package is that action and nothing else.` : ''}\n${promptBlock(t, ch.agent === 'brew' ? 'creative' : ch.agent)}\nIt must stay commission-ready and stay exactly this kind of change: ${specOf(ch.action)}\n${productLine(c)}\nFields:\n${fieldsBrief(ch.family, ch.action)}\nCurrent package (field: value):\n${toKV(ch.family, ch.action, ch.pkg).map((e) => `${e.k}: ${e.v}`).join('\n')}\nKnobs set: ${JSON.stringify(ch.pkg.knobs || {})}\nThe conversation so far:\n${ch.thread.slice(-7, -1).map((m) => `${m.from === 'you' ? 'Person' : 'You'}: ${m.text}`).join('\n') || '(none)'}\n${promptBlock(t, ch.agent)}${(ch.notes || []).length ? `\nThe person's notes on this package (respect them):\n${ch.notes.map((n) => `- ${n.text}`).join('\n')}` : ''}\n\nThe person now asks: "${message}"\nReturn the WHOLE updated package (every field, changed or not). ${factsLine}`, schema, 3000, 'studio_iterate');
+      } catch (e) { log.warn('[studio iterate]', e.message); }
+    }
+    const before = { ...ch.after };
+    if (Array.isArray(out?.plan) && out.plan.length >= 3) { const pl = withSteps(ch.plan || o.planOf?.(t, c), out.plan.map((x) => clean(String(x)))); if (pl) { ch.plan = pl; const w = (t.work || []).find((x) => x.changeId === ch.id); if (w) w.cardPlan = { ...pl, made: w.cardPlan?.made || null }; } } /* the plan, refined in the chat */
+    if (out?.pkg) {
+      ch.pkg = { ...ch.pkg, ...cleanPkg(ch.family, ch.action, fromKV(ch.family, ch.action, out.pkg), clean), ...keepMedia(ch.pkg) };
+      if (BANNED.test(publicText(ch.family, ch.action, ch.pkg).join(' '))) ch.pkg = rulePkg(t, ch.agent, ch.family, ch.pkg);
+      sync(t, ch, c); version(t, ch, `ai:${ch.agent}`, message.slice(0, 90), out.label);
+      if (!quiet) ch.thread.push({ from: 'ai', text: clean(out.reply || 'Updated.'), at: now(t), v: versionsOf(t, ch.id).length });
+      // the chips follow the conversation: what to try next on this version
+      if (Array.isArray(out.next)) { const ctx = chipCtx(ch.action, ch.actionLabel, c); const nx = out.next.map((x) => clean(String(x)).replace(/[.]$/, '')).filter((x) => x && x.length <= 48 && chipRelates(x, ctx)); if (nx.length >= 2) ch.next = nx.slice(0, 4); } /* only chips about this change's action */
+      if (out.newImage || knob?.kind === 'image') genImage(t, ch, message);
+    } else {
+      // offline: apply what can be applied without AI, and say so
+      if (knob?.kind === 'image' && knob.k === 'format') ch.pkg.format = knob.v;
+      sync(t, ch, c); version(t, ch, 'system', `${message} (AI offline)`);
+      if (!quiet) ch.thread.push({ from: 'ai', text: 'AI is offline right now, so I saved your setting but could not rewrite the package. Edit the fields directly, or try again.', at: now(t), offline: true });
+    }
+    signal(t, 'edit', { before, after: ch.after, agent: ch.agent, changeId: ch.id, by: 'ai-asked' }, now(t));
+    return ch;
+  };
+  const learnedOut = (t) => takeNew(t);
+
+  /* ---------- jam plan ---------- */
+  const qOf = (t, k, q, owner) => { const ac = autoCheck(t, k); return { id: uid('q'), k, q, owner, answer: ac ? ac.answer : null, by: ac ? 'learned' : null, auto: !!ac, at: ac ? now(t) : null, asked: false }; };
+  const makePlan = (t, c, ch) => {
+    const agent = ch?.agent || (JAM_TPL[c.agent] ? c.agent : 'creative');
+    const qs = [];
+    (ch?.fixes || []).forEach((r) => qs.push(qOf(t, 'fix:' + slug(r), `Still to fix: ${r}. How do we want it?`, 'ai')));
+    (ch?.reasons || []).forEach((r) => qs.push(qOf(t, 'why:' + slug(r), `${r}. What’s the plan?`, ch.verdict === 'jam' && /shoot|brief|person/i.test(r) ? 'brew' : 'growth')));
+    if (ch?.money) qs.push(qOf(t, 'budget_ok', `${ch.amount > 0 ? `It spends about ${inr(ch.amount)} a week` : 'It costs money'}. Who signs off?`, 'growth'));
+    (JAM_TPL[c.kind === 'conflict' ? 'brew' : agent] || []).forEach(([k, q, owner]) => qs.push(qOf(t, k, q, owner)));
+    return { goal: ch ? `${ch.actionLabel}: ${ch.after.title}` : c.title, changeId: ch?.id || null, agent, questions: qs, createdAt: now(t) };
+  };
+  const planReady = (p) => p && p.questions.every((q) => q.answer);
+  const planSnap = (p) => ({ goal: p.goal, questions: p.questions.map((q) => ({ q: q.q, answer: q.answer, by: q.by })) });
+  const ensurePlan = (t, w) => {
+    if (w.plan || w.auto) return w.plan || null;
+    const c = t.cards.get(w.cardId) || { title: w.title, agent: w.agent, kind: null };
+    w.plan = makePlan(t, c, w.changeId ? changes(t)[w.changeId] : null);
+    if (!['drafting', 'team', 'brew', 'needs_you'].includes(w.stage)) w.plan.questions.forEach((q) => { q.answer ||= 'Settled before this was tracked.'; q.by ||= 'earlier'; });
+    addV(t, 'jam', w.id, planSnap(w.plan), { author: 'system', reason: 'Jam opened' });
+    return w.plan;
+  };
+  const answerQ = (t, w, q, answer, by) => {
+    q.answer = String(answer).slice(0, 400); q.by = by; q.at = now(t); q.asked = false;
+    addV(t, 'jam', w.id, planSnap(w.plan), { author: by, reason: `Answered: ${q.q}` });
+    const ac = answered(t, q, q.answer, by);
+    if (planReady(w.plan)) notify(t, w, `Jam on “${w.title}” is ready to share. Every question has an answer.`, 'ready');
+    return ac;
+  };
+  // jam answers are written live, grounded in the card, the package and the facts; the canned table is only for offline
+  const jamContext = (t, w) => { const c = t.cards.get(w.cardId) || {}; const ch = w.changeId && changes(t)[w.changeId]; return { c, ch, brief: `${cardBrief({ ...c, ...curV(w), agent: w.agent }, seatLine(t.viewer))}${ch ? `\n\nThe package being planned (${ch.actionLabel} on ${ch.target.name}):\n${JSON.stringify({ ...ch.pkg, knobs: undefined })}` : ''}\nOther answers so far: ${(w.plan?.questions || []).filter((x) => x.answer).map((x) => `${x.q} → ${x.answer}`).join(' | ') || 'none'}` }; };
+  const liveAnswer = async (t, w, q, persona) => {
+    if (isMock() || !spend('text')) return null;
+    try {
+      const { brief } = jamContext(t, w);
+      const j = await claudeTool(`${brief}\n\n${promptBlock(t, w.agent === 'brew' ? 'creative' : w.agent)}\nYou are ${persona} in a planning jam at ${BN()}. Answer this open question so the work can ship, in your own voice, specific to this package (names, numbers from the facts, dates). If something is a real blocker, say what it would take.\nQuestion: "${q.q}"`, { type: 'object', required: ['answer'], properties: { answer: { type: 'string', description: 'Under 40 words, lead with the answer' } } }, 600, 'jam_answer');
+      return j.answer ? clean(j.answer) : null;
+    } catch (e) { log.warn('[jam answer]', e.message); return null; }
+  };
+  const aiAnswer = async (t, w, q) => {
+    const a = await liveAnswer(t, w, q, `the ${AGENT[w.agent] || 'AI'} agent`); if (a) return a;
+    const c = t.cards.get(w.cardId) || {};
+    if (q.k === 'moves' && c.affects?.length) return `It changes: ${c.affects.join(', ')}.`;
+    return ANSWERS[q.k] || ANSWERS[q.k.split(':')[0] === 'why' ? 'why_jam' : q.k] || 'Done. It fits the plan and the claims list.';
+  };
+
+
+  /* ---------- a change package becomes the jam's work item ---------- */
+  const workFromChange = (t, ch, stage = 'drafting') => {
+    const c = t.cards.get(ch.cardId); const w = newWork(t, c);
+    w.changeId = ch.id; w.agent = ch.agent; w.cta = ch.actionLabel;
+    const vs = versionsOf(t, ch.id), head = headOf(t, ch);
+    w.versions = vs.map((v) => ({ n: v.n, title: v.snapshot?.title || ch.after.title, sub: v.snapshot?.sub || ch.after.sub, images: v.snapshot?.image ? [v.snapshot.image] : ch.after.images, by: v.author === 'you' ? 'you' : v.author?.startsWith('ai:') ? 'ai' : v.author === 'deploy-team' ? 'brew' : 'agent', who: v.author?.startsWith('ai:') ? AGENT[ch.agent] : v.author, note: v.reason, at: v.at, changeVersionId: v.id }));
+    w.current = head?.n || w.versions.length; w.title = ch.after.title; if (ch.pkg?.image) w.img = ch.pkg.image;
+    w.plan = null; ch.workId = w.id; w.chg = brief(ch);
+    // measured where the change lands, not where the idea came from (a Meta change from a scoreboard is read on Meta)
+    w.measureSector = (ch.family === 'listing' ? 'catalog' : SECTOR_OF[ch.agent]) || null; if (w.measureSector) w.sector = w.measureSector;
+    if (stage !== 'drafting') move(t, w, stage, null);
+    return w;
+  };
+  const brief = (ch) => ({ id: ch.id, team: !!(ch.money || ch.irreversible), teamWhy: ch.teamWhy || null, costLabel: ch.costLabel || null, actionLabel: ch.actionLabel, target: `${ch.target.name}${ch.target.conn ? ' · ' + ch.target.object : ''}`, money: ch.money, amount: ch.amount, scope: ch.scope.map((s) => ({ n: s.n, label: s.label })) });
+  const objectsFor = (ch, n) => n === 1 ? [ch.target.object] : Array.from({ length: n }, (_, i) => `${ch.target.object} ${i + 1}`);
+  // the brief the ShopOS team works from: what, where, exactly what ships, what it costs, what can't be undone, who agreed
+  // everything the team needs to act without asking: files, references, links, copy to paste, and what is still to be made
+  const assetsFor = (t, ch) => {
+    const c = t.cards.get(ch.cardId) || {}, p = ch.pkg || {}, out = [];
+    if (p.image) out.push({ kind: 'image', label: `Creative, ${p.format || '4:5'}${p.grade && p.grade !== 'Original' ? `, ${p.grade} grade` : ''}`, url: p.image });
+    else if (ch.family === 'meta_ad' || ch.family === 'social') out.push({ kind: 'todo', label: `Creative still to be made (${p.format || '4:5'})`, text: p.imageBrief || 'See the image brief' });
+    if (ch.family === 'meta_ad' && p.overlay) out.push({ kind: 'copy', label: 'Text to set on the creative', text: p.overlay });
+    if (LANE_PHOTO[c.lane]) out.push({ kind: 'image', label: 'Product photo (reference, keep the label exact)', url: LANE_PHOTO[c.lane] });
+    (c.images || []).filter((u) => !/mito[23]/.test(u)).slice(0, 2).forEach((u, i) => out.push({ kind: 'image', label: i ? 'More from the card' : 'The card this came from', url: u }));
+    const urls = [p.utm, p.pages, p.file].filter((x) => x && (String(x).includes(BH()) || /utm_/.test(x)));
+    urls.forEach((u) => out.push({ kind: 'link', label: /utm_/.test(u) ? 'Landing page with tracking' : 'Page', url: (/^https?:/.test(u) ? u : 'https://' + u.replace(/^\/*/, '').replace(/\s.*$/, '')) }));
+    if (ch.family === 'crm' && p.message) out.push({ kind: 'copy', label: `${p.channel || 'Message'} template, variables in {curly braces}`, text: [p.subject && `Subject: ${p.subject}`, p.message, (p.buttons || []).length && `Buttons: ${p.buttons.join(' | ')}`].filter(Boolean).join('\n\n') });
+    const rows = p.cards || p.slides || [], unit = p.cards ? 'Card' : p.format === '9:16' ? 'Story' : 'Slide';
+    rows.forEach((r, i) => { const img = (p.cardImages || [])[i]; if (i && img) out.push({ kind: 'image', label: `${unit} ${i + 1} photo`, url: img }); else if (i && !img) out.push({ kind: 'todo', label: `${unit} ${i + 1} photo still to be made`, text: r.imageBrief || '' }); });
+    if (rows.length) out.push({ kind: 'copy', label: `${unit}s, in order`, text: rows.map((r, i) => `${i + 1}. ${[r.headline, r.text, r.onSlide].filter(Boolean).join(' — ')}${r.link ? `\n   Opens ${r.link}` : ''}`).join('\n') });
+    if (p.products?.length) out.push({ kind: 'copy', label: 'Products in the grid', text: p.products.join('\n') + (p.instantPage ? `\nOpens to: ${p.instantPage}` : '') });
+    if (p.productSet) out.push({ kind: 'copy', label: 'Catalog set and frame', text: `Product set: ${p.productSet}${p.frame ? `\nFrame on every photo: ${p.frame}` : ''}` });
+    if (ch.family === 'social' && p.caption) out.push({ kind: 'copy', label: `Caption for ${p.account || 'Instagram'}`, text: [p.caption, (p.hashtags || []).join(' '), p.stickers && `Sticker: ${p.stickers}`].filter(Boolean).join('\n\n') });
+    if (ch.family === 'meta_ad' && p.chat?.length) out.push({ kind: 'copy', label: 'WhatsApp chat flow', text: p.chat.map((m) => `${m.from === 'in' ? 'Customer' : `${BN()}`}: ${m.text}`).join('\n') });
+    if (ch.family === 'vis') out.push({ kind: 'copy', label: `Text for ${p.file || 'the page'}`, text: (p.entries || []).map((e) => `Q: ${e.q}\nA: ${e.a}${e.source ? `\nSource: ${e.source}` : ''}`).join('\n\n') });
+    if (ch.family === 'store') out.push({ kind: 'copy', label: `Section for ${p.section || 'the page'}`, text: [p.heading, p.body, ...(p.bullets || []).map((b) => `• ${b}`), p.button && `[${p.button}]`].filter(Boolean).join('\n') });
+    if (ch.family === 'brief') { (p.deliverables || []).forEach((d) => out.push({ kind: 'todo', label: 'Deliverable', text: d })); out.push({ kind: 'copy', label: 'Shot list', text: (p.scenes || []).map((x, i) => `${i + 1}. ${x.shot}: ${x.line}`).join('\n') }); }
+    if (ch.family === 'post') { if (p.copy) out.push({ kind: 'copy', label: `${p.platform || 'Post'}, ready to paste`, text: [p.title && `Title: ${p.title}`, p.copy, (p.hashtags || []).join(' ')].filter(Boolean).join('\n\n') });
+      (p.script || []).length && out.push({ kind: 'copy', label: 'Script', text: p.script.map((x, i) => `${i + 1}. ${x.beat ? x.beat + ': ' : ''}${x.shot} · ${x.line}`).join('\n') });
+      if (p.media) out.push({ kind: 'todo', label: 'Picture or video to make', text: p.media });
+      (p.where || []).filter((w) => /^https?:/.test(w.url || '')).forEach((w) => out.push({ kind: 'link', label: `Post in ${w.name}${w.rule ? ` (rule: ${String(w.rule).slice(0, 80)})` : ''}`, url: w.url })); }
+    if (ch.family === 'meta_ops') out.push({ kind: 'copy', label: 'Changes to make in Ads Manager', text: (p.items || []).map((r) => `${r.name}: ${r.now} → ${r.next}`).join('\n') + (p.rule ? `\nRule: ${p.rule}` : '') });
+    return out;
+  };
+  // the whole package as the handoff carries it: every filled field, its assets, the studio chat and notes
+  const packageOf = (t, ch) => { if (!ch) return null; ensurePkg(t, ch); const head = headOf(t, ch);
+    const fields = fieldsFor(ch.family, ch.action).filter((f) => ch.pkg[f.k] != null && ch.pkg[f.k] !== '' && !(Array.isArray(ch.pkg[f.k]) && !ch.pkg[f.k].length)).map((f) => { const v = ch.pkg[f.k];
+      return { label: f.label, pub: !!f.pub, value: f.type === 'rows' ? v.map((r) => f.cols.map((c) => r[c]).filter(Boolean).join(' · ')).join('\n') : Array.isArray(v) ? v.map((x) => typeof x === 'object' ? Object.values(x).filter(Boolean).join(' · ') : x).join('\n') : typeof v === 'object' ? Object.entries(v).map(([k, x]) => `${k}: ${x}`).join(', ') : f.type === 'number' && /₹/.test(f.label) ? inr(v) : String(v) }; });
+    return { id: ch.id, family: FAMILY_NAME[ch.family], action: ch.actionLabel, target: `${ch.target.name}${ch.target.object ? ' · ' + ch.target.object : ''}`, version: head?.n || 1, versions: versionsOf(t, ch.id).length,
+      money: ch.money ? `About ${inr(ch.amount)} a week` : 'No spend', undo: ch.irreversible ? `Can’t be undone: ${ch.irreversible}` : `Rollback: ${ch.rollback}`, angle: ch.angle || '',
+      fields, assets: assetsFor(t, ch), thread: (ch.thread || []).map((m) => ({ who: m.from === 'you' ? 'You' : `${AGENT[ch.agent] || 'AI'} (studio)`, text: m.text, at: m.at, v: m.v || null })),
+      notes: (ch.notes || []).map((n) => n.text), checks: (ch.myChecks || []).map((m) => ({ text: m.text, done: !!m.done })), studio: `#remix=${ch.cardId}/${ch.id}` }; };
+  const briefFor = (t, ch, w, wf, m) => {
+    const fields = fieldsFor(ch.family, ch.action).filter((f) => ch.pkg[f.k] != null && ch.pkg[f.k] !== '').map((f) => {
+      const v = ch.pkg[f.k]; return { label: f.label, pub: !!f.pub, value: f.type === 'rows' ? v.map((r) => f.cols.map((c) => r[c]).filter(Boolean).join(' · ')).join('\n') : Array.isArray(v) ? v.join('\n') : f.type === 'number' && /₹/.test(f.label) ? inr(v) : String(v) }; });
+    return {
+      title: `${ch.actionLabel} · ${ch.target.conn ? ch.target.name : ch.target.object}`, version: headOf(t, ch)?.n, why: ch.teamWhy, from: ch.before?.title,
+      what: ch.after.title, where: `${ch.target.name} · ${ch.target.object} · ${wf.scope.label}`, when: wf.schedule === 'now' ? 'As soon as it’s approved' : wf.schedule,
+      cost: ch.costLabel || (ch.money ? `About ${inr(ch.amount)} a week` : 'No spend'), undo: ch.irreversible ? `Can’t be undone: ${ch.irreversible}.` : `Rollback: ${ch.rollback}.`,
+      watch: wf.watch, fields, checks: ch.checks.filter((x) => x.ok && !x.soft).map((x) => x.k),
+      agreed: (w.plan?.questions || []).filter((q) => q.answer).map((q) => ({ q: q.q, a: q.answer, by: q.by })),
+      handoff: o.handoffPath && t.id ? `${o.handoffPath(t, w)}?full=1` : null, /* the read-only page; the bare /h/ link opens the jam */
+      jam: w.jamBrief || (w.doc ? { md: w.doc.md, missing: w.doc.missing } : null),
+      notes: (ch.notes || []).map((n) => n.text), myChecks: (ch.myChecks || []).map((m) => ({ text: m.text, done: !!m.done })),
+      assets: assetsFor(t, ch), studio: `#remix=${ch.cardId}/${ch.id}`,
+      steps: [`Check the brief against v${headOf(t, ch)?.n} in the studio`, ch.irreversible ? 'Confirm the audience and the send window one last time' : `Set up ${ch.target.object.toLowerCase()} on ${ch.target.name}`, ch.money ? 'Confirm the spend fits this week’s limit' : 'Ship it', `Turn on the watch rule: ${wf.watch.toLowerCase()}`, o.engine?.on(t) ? 'Report back in Brew: what went live, when, and anything that changed' : 'Mark it live in Brew'],
+      at: now(t)
+    };
+  };
+
+  /* hooks from the feed service */
+  const onWorkVersion = (t, w, v) => {
+    // jam edits of a change are versions of that change too, and your own edits are learning signals
+    const ch = w.changeId && changes(t)[w.changeId]; if (!ch || v.fromChange) return; ensurePkg(t, ch);
+    const before = { ...ch.after }; const tf = TITLE_F[ch.family], sf = SUB_F[ch.family];
+    ch.pkg = { ...ch.pkg, ...(tf ? { [tf]: v.title } : {}), ...(sf ? { [sf]: v.sub } : {}), ...(v.images?.[0] && /^gen\//.test(v.images[0]) ? { image: v.images[0] } : {}) };
+    sync(t, ch); version(t, ch, v.by === 'you' ? 'you' : v.by === 'brew' ? 'brew' : v.by === 'colleague' ? 'teammate' : `ai:${ch.agent}`, v.note || 'Jam version');
+    if (v.by === 'you') signal(t, 'edit', { before, after: ch.after, agent: ch.agent, changeId: ch.id, by: 'you' }, now(t));
+  };
+
+  // move the head to a version: its package becomes the current one. No copy is made.
+  const useVersion = (t, ch, v) => { const { action, amount, title, sub, state, ...pkg } = v.snapshot; ch.pkg = { ...cleanPkg(ch.family, ch.action, pkg, clean), ...keepMedia({ ...pkg, image: pkg.image || null, knobs: pkg.knobs || {} }, true) }; ch.headVersionId = v.id; sync(t, ch); };
+  /* ---------- routes ---------- */
+  const C = (t, id) => changes(t)[id];
+  on('GET', '/api/cards/:cid/remix', async (b, t, p) => {
+    const c = t.cards.get(p.cid); if (!c) return { error: 'not found' };
+    const r = recipeFor(c); const cv = ensureCardVersion(t, c); const owner = c.agent === 'brew' && !r.conflict ? 'creative' : r.agent;
+    const fits = new Set(r.actionKeys);
+    const mine = Object.values(changes(t)).filter((x) => x.cardId === c.id && !x.discarded && !x.batchKey && (fits.has(x.action) || ['running', 'live', 'deploy_team', 'result'].includes(x.state))).sort((a, b) => b.createdAt - a.createdAt).slice(0, 6).map((x) => pubChange(t, evaluate(t, x)));
+    const seen = new Set(), moveIntents = movePassages(c, '', 8).filter((x) => !seen.has(x.n + x.h) && seen.add(x.n + x.h)).slice(0, 2).map((x) => `Follow ${moveTag(x)}`);
+    return { recipe: { key: r.key, agent: r.agent, type: r.type, intents: [...orderIntents(t, owner, r.intents), ...moveIntents], levers: !!r.levers, actions: r.actionKeys.map((k) => ({ key: k, label: actOf(k).label, money: actOf(k).money, jam: actOf(k).jam || null })) },
+      cardVersion: { id: cv.id, n: versionsOf(t, c.id).length }, learned: summaryShort(t, owner), changes: mine };
+  });
+  /* ---------- batch cards: a card that already holds N finished ads ("Queue the 12") ----------
+     Each ad becomes its own change you can keep, drop or remix in the studio; the kept ones queue together. */
+  const STATIC_TEXT = live((b) => b.staticText); // exact on-image text of the brand's statics
+  const isBatch = (c) => (c?.images || []).length >= 3 && c.images.every((x) => /^(assets\/statics\/|\/?b\/[a-z0-9-]+\/statics\/)/.test(x));
+  const batchItems = (t, c) => {
+    const cv = ensureCardVersion(t, c), r = recipeFor(c), all = changes(t);
+    return c.images.map((img, i) => {
+      const key = path.basename(img, path.extname(img));
+      let ch = Object.values(all).find((x) => x.cardId === c.id && x.batchKey === key);
+      if (!ch) {
+        const tx = STATIC_TEXT[key] || {};
+        const base = mockPkg('meta_ad', 'creative.add_variants', c, 0, '', FACTS);
+        ch = build(t, c, cv, r, { action: 'creative.add_variants', fromCard: true, angle: `Ad ${i + 1}`, why: tx.small || '', pkg: { ...base, headline: String(tx.headline || base.headline).slice(0, 240), primaryText: [tx.headline, tx.small].filter(Boolean).join('\n') || base.primaryText, overlay: '', format: '4:5' } }, { intent: '', prompt: '' });
+        Object.assign(ch, { batchKey: key, batchIndex: i, pick: 'keep' });
+        ch.pkg.image = img; sync(t, ch, c);
+        const v0 = versionsOf(t, ch.id)[0]; if (v0) { v0.snapshot = snapOf(ch); v0.reason = 'The ad as the card made it'; }
+      }
+      // ads queued together share the lead ad's state
+      const lead = ch.batchLead && all[ch.batchLead];
+      return lead && lead.id !== ch.id ? { ...ch, state: lead.state } : ch;
+    });
+  };
+  const pubBatch = (t, c) => { const items = batchItems(t, c).map((x) => { const ch = changes(t)[x.id]; evaluate(t, ch); return { ...pubChange(t, ch), state: x.state }; }); return { items, kept: items.filter((x) => x.pick !== 'drop').length }; };
+  on('GET', '/api/cards/:cid/batch', async (b, t, p) => {
+    const c = t.cards.get(p.cid); if (!c) return { error: 'not found' }; if (!isBatch(c)) return { batch: false };
+    return { batch: true, ...pubBatch(t, c) };
+  });
+  on('POST', '/api/changes/:chid/pick', async (b, t, p) => {
+    const ch = C(t, p.chid); if (!ch?.batchKey) return { error: 'not found' };
+    ch.pick = b.pick === 'drop' ? 'drop' : 'keep';
+    signal(t, 'pick', { agent: ch.agent, angle: ch.batchKey, action: ch.action, changeId: ch.id, dropped: ch.pick === 'drop' }, now(t));
+    return { change: pubChange(t, evaluate(t, ch)) };
+  });
+  on('POST', '/api/cards/:cid/batch/queue', async (b, t, p) => {
+    const c = t.cards.get(p.cid); if (!c || !isBatch(c)) return { error: 'not found' };
+    const kept = batchItems(t, c).filter((x) => x.pick !== 'drop' && !['running', 'live', 'deploy_team', 'result'].includes(x.state)).map((x) => changes(t)[x.id]);
+    if (!kept.length) return { error: 'Keep at least one ad first' };
+    kept.forEach((x) => evaluate(t, x));
+    const blocked = kept.filter((x) => x.verdict !== 'live');
+    if (blocked.length) return { blocked: blocked.map((x) => ({ id: x.id, n: x.batchIndex + 1, why: (x.fixes || x.reasons || [])[0] || 'Needs a fix' })) };
+    /* the kept ads become one jam: it ends with Share the brief (nothing is launched from Brew) */
+    const lead = kept[0], w = workFromChange(t, lead); w.title = `${kept.length} ads for the Meta test`;
+    kept.forEach((x) => { x.batchLead = lead.id; });
+    lead.batchLead = lead.id;
+    signal(t, 'pick', { agent: lead.agent, action: lead.action, changeId: lead.id }, now(t));
+    t.acted.add(c.id);
+    return { ...pubBatch(t, c), work: w, learned: learnedOut(t) };
+  });
+  const summaryShort = (t, agent) => { const s = summary(t); return { rules: s.rules.filter((r) => r.on && (!r.scope || r.scope === agent)).map((r) => r.text), autoChecks: s.autoChecks.filter((a) => a.on).map((a) => a.q), trust: s.trust[agent], exemplars: s.exemplars.filter((x) => x.agent === agent).length }; };
+  /* the lead package's real copy, written after the jam opened: it replaces the starting package as version 1, unless
+     someone already changed it (a new version or a message), in which case their work stands */
+  const fillLater = (t, c, ch, write) => {
+    ch.copyPending = Date.now(); // a time, so a fill lost to a restart stops showing after a minute and a half
+    (async () => {
+      try { const x = await write(); const touched = versionsOf(t, ch.id).length > 1 || (ch.thread || []).length;
+        if (x && Object.keys(x.pkg || {}).length && !touched && ch.action === x.action) { ch.pkg = { ...rulePkg(t, ch.agent, ch.family, cleanPkg(ch.family, ch.action, x.pkg, clean)), ...keepMedia({ ...ch.pkg, knobs: ch.pkg.knobs || {} }, true) };
+          if (x.angle) ch.angle = x.angle; if (x.why) ch.why = x.why; if (x.from) ch.from = x.from; sync(t, ch, c); const v0 = versionsOf(t, ch.id)[0]; if (v0) v0.snapshot = snapOf(ch); } }
+      catch (e) { log.warn('[remix later]', e.message); }
+      finally { ch.copyPending = false; o.save?.(t); }
+    })();
+  };
+  on('POST', '/api/cards/:cid/remix', async (b, t, p) => {
+    const c = t.cards.get(p.cid); if (!c) return { error: 'not found' };
+    const r = recipeFor(c); const cv = ensureCardVersion(t, c);
+    const intent = String(b.intent || '').slice(0, 60), prompt = String(b.prompt || '').slice(0, 300);
+    /* fast (opening a jam): the package is built at once from the card itself and the AI writes the lead option in the
+       background (copyPending; the studio polls and shows "Writing the first draft…"), so a jam opens in well under a second */
+    const fast = !!b.fast && !isMock();
+    let opts = null, line = '', live = false, writeLater = null;
+    /* an idea from the stream is already written (ideas.js): it opens as itself, with its copy and where to post. A heard
+       thread has no reply yet: the writer drafts one when AI is on; offline it starts from a plain opener */
+    if (c.post?.platform && r.primary) { const pkg = ideaPkg(c.post, r.primary.split('.').pop(), c);
+      if (!c.post.copy && fast && spend('text')) writeLater = async () => { const x = await liveOptions(t, c, { ...r, actionKeys: [r.primary] }, intent, `${prompt} Write the reply for this thread: ${c.post.where?.[0]?.url || ''}. Answer what they asked using only facts you have; say you work at ${BN()}.`, 1); return x.opts[0] ? { ...x.opts[0], pkg: { ...pkg, ...x.opts[0].pkg, where: pkg.where } } : null; };
+      else if (!c.post.copy && !isMock() && spend('text')) { try { const x = await liveOptions(t, c, { ...r, actionKeys: [r.primary] }, intent, `${prompt} Write the reply for this thread: ${c.post.where?.[0]?.url || ''}. Answer what they asked using only facts you have; say you work at ${BN()}.`, 1); if (x.opts[0]) { opts = [{ ...x.opts[0], pkg: { ...pkg, ...x.opts[0].pkg, where: pkg.where }, fromCard: true }]; line = x.line; live = true; } } catch (e) { log.warn('[remix idea]', e.message); } }
+      opts ||= [{ action: r.primary, angle: 'As written', why: String(c.post.why || '').slice(0, 160), from: null, pkg, fromCard: true }]; line ||= c.post.copy ? 'The post, ready to go, and where it goes.' : 'A reply to start from, and the thread it goes in.'; }
+    if (!opts && fast && spend('text')) writeLater = async () => (await liveOptions(t, c, r, intent, prompt, 1)).opts[0] || null;
+    else if (!opts && !isMock() && spend('text')) { try { const x = await liveOptions(t, c, r, intent, prompt); if (x.opts.length) { opts = x.opts; line = x.line; live = true; } } catch (e) { log.warn('[remix]', e.message); } }
+    if (!opts) { opts = mockOptions(t, c, r, intent); line = r.conflict ? 'Three ways to settle it. A person decides, so each one opens a jam.' : 'Three changes from this card. Each says where it goes and who ships it.'; }
+    // the card's own suggestion always leads; the rest are ranked by what this team tends to pick
+    const made = opts.map((x) => build(t, c, cv, r, x, { intent, prompt })).sort((a, b) => (b.fromCard - a.fromCard) || (b.score - a.score));
+    if (intent) signal(t, 'pick', { agent: made[0]?.agent, intent }, now(t));
+    t.acted.add(c.id);
+    if (made[0]) seedV0(t, c, made[0]); /* the jam's package opens on the card's own first draft */
+    if (writeLater && made[0]) fillLater(t, c, made[0], writeLater);
+    return { line, live, changes: made.map((x) => pubChange(t, x)), learned: learnedOut(t) };
+  });
+  // the Library's "My remixes": every change you opened, edited, picked or sent; batches fold into one row per card
+  on('POST', '/api/changes/:chid/open', async (b, t, p) => { const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ch.openedAt = now(t); return { ok: true }; });
+  on('GET', '/api/tenants/:id/remixes', async (b, t) => {
+    const touched = (ch) => ch.discarded || ch.state !== 'draft' || ch.openedAt || versionsOf(t, ch.id).length > 1 || (ch.thread || []).length || (ch.batchKey && ch.pick === 'drop');
+    const atOf = (ch) => Math.max(ch.createdAt || 0, ch.openedAt || 0, ch.liveAt || 0, ...versionsOf(t, ch.id).map((v) => v.at || 0));
+    const rows = [], batches = {};
+    for (const ch of Object.values(changes(t))) {
+      const c = t.cards.get(ch.cardId) || {};
+      if (ch.batchKey) { (batches[ch.cardId] ||= { c, items: [] }).items.push(ch); continue; }
+      if (!touched(ch)) continue;
+      const vs = versionsOf(t, ch.id), head = headOf(t, ch);
+      rows.push({ id: ch.id, cardId: ch.cardId, cardTitle: c.title || '', title: ch.after?.title || ch.actionLabel, action: ch.actionLabel, family: FAMILY_NAME[ch.family] || '', fam: ch.family, agent: ch.agent, state: ch.state,
+        versions: vs.length, head: head?.n || vs.length, image: ch.pkg?.image || ch.after?.images?.[0] || c.images?.[0] || null, money: !!ch.money, at: atOf(ch), discarded: !!ch.discarded });
+    }
+    for (const [cardId, { c, items }] of Object.entries(batches)) {
+      if (!items.some(touched)) continue;
+      const kept = items.filter((x) => x.pick !== 'drop').length, live = items.find((x) => x.state !== 'draft');
+      rows.push({ id: items[0].id, batch: true, cardId, cardTitle: c.title || '', title: c.title || 'Ad batch', action: `${items.length} ads · ${kept} kept`, family: FAMILY_NAME[items[0].family] || '', fam: items[0].family, agent: items[0].agent, state: live?.state || 'draft',
+        versions: items.reduce((n, x) => n + versionsOf(t, x.id).length, 0), head: null, image: items[0].pkg?.image || c.images?.[0] || null, money: items.some((x) => x.money), at: Math.max(...items.map(atOf)), discarded: items.every((x) => x.discarded) });
+    }
+    return { remixes: rows.sort((a, b) => b.at - a.at) };
+  });
+  on('GET', '/api/changes/:chid', async (b, t, p) => { const ch = C(t, p.chid); return ch ? { change: pubChange(t, evaluate(t, ch)) } : { error: 'not found' }; });
+  const editable = (ch) => (['running', 'live', 'deploy_team'].includes(ch.state) ? 'It is live. Undo it first, or open a jam for the next version.' : null);
+  // another version: a different cut of the same package
+  on('POST', '/api/changes/:chid/more', async (b, t, p) => {
+    const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); const c = t.cards.get(ch.cardId); const r = recipeFor(c);
+    let x = null; if (!isMock() && spend('text')) { try { x = (await liveOptions(t, c, { ...r, actionKeys: [ch.action] }, ch.intent, b.prompt || '', 1, ch)).opts[0]; } catch (e) { log.warn('[more]', e.message); } }
+    if (!x) { const i = (versionsOf(t, ch.id).length + 1) % 3; x = mockOptions(t, c, { ...r, actionKeys: [ch.action] }, ch.intent, 1, i)[0]; }
+    ch.pkg = { ...rulePkg(t, ch.agent, ch.family, cleanPkg(ch.family, ch.action, x.pkg, clean)), ...keepMedia(ch.pkg) };
+    sync(t, ch, c); version(t, ch, `ai:${ch.agent}`, `Another version${x.angle ? `: ${x.angle}` : ''}`);
+    signal(t, 'pick', { agent: ch.agent, angle: ch.angle, action: ch.action, changeId: ch.id }, now(t));
+    return { change: pubChange(t, ch), learned: learnedOut(t) };
+  });
+  // three variations at once: each one a version you can pick
+  /* n finished cuts of this package, each a version you can pick (Make 3 variations, and the plan's make step) */
+  const makeCuts = async (t, ch, n, prompt, reasonOf) => {
+    const c = t.cards.get(ch.cardId) || {}; const r = recipeFor(c);
+    let xs = null; if (!isMock() && spend('text')) { try { xs = (await liveOptions(t, c, { ...r, actionKeys: [ch.action] }, ch.intent, `${n > 1 ? `${n === 3 ? 'Three' : n} distinct cuts` : 'The finished version, ready to deploy'} of this exact package: ${toKV(ch.family, ch.action, ch.pkg).map((e) => `${e.k}: ${e.v}`).join(' · ')}${prompt ? '. ' + prompt : ''}`, n)).opts; } catch (e) { log.warn('[variants]', e.message); } }
+    if (!xs?.length) xs = mockOptions(t, c, { ...r, actionKeys: [ch.action] }, ch.intent, n, 1);
+    const base = headOf(t, ch); const made = []; const keep = { ...ch.pkg };
+    xs.slice(0, n).forEach((x, i) => {
+      ch.pkg = { ...rulePkg(t, ch.agent, ch.family, cleanPkg(ch.family, ch.action, x.pkg, clean)), ...keepMedia(ch.pkg) }; sync(t, ch, c);
+      made.push(addV(t, 'change', ch.id, snapOf(ch), { author: `ai:${ch.agent}`, reason: reasonOf(x, i), parent: base?.id }));
+      ch.pkg = { ...keep }; // the cuts sit beside the version you are on; you pick one
+    });
+    if (made.length) useVersion(t, ch, made[made.length - 1]); else sync(t, ch, c);
+    return made;
+  };
+  // three variations at once: each one a version you can pick
+  on('POST', '/api/changes/:chid/variants', async (b, t, p) => {
+    const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };
+    const made = await makeCuts(t, ch, 3, b.prompt || '', (x, i) => `Variation ${'ABC'[i]}: ${x.angle || 'a different cut'}`);
+    ch.thread.push({ from: 'ai', text: `Made ${made.length} variations: ${made.map((v) => 'v' + v.n).join(', ')}. You’re looking at the last one. Switch between them on the timeline above the preview.`, at: now(t), vs: made.map((v) => v.id) });
+    return { change: pubChange(t, ch), learned: learnedOut(t) };
+  });
+  /* the card's action, pressed in the jam: the plan's make step puts what the last step needs on the stage (card-plan.js).
+     Nothing ships here: each version is iterated on the stage, then Share the brief */
+  on('POST', '/api/changes/:chid/plan', async (b, t, p) => {
+    const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };
+    const c = t.cards.get(ch.cardId) || {}; const pl = ch.plan || o.planOf?.(t, c) || null; if (pl) ch.plan = pl;
+    if (pl?.batch || ch.batchKey) return { change: pubChange(t, ch) }; /* a batch card's ads are already made: keep or drop them */
+    const n = Math.max(1, pl?.n || 1), steps = (pl?.steps || []).filter((x) => ['gather', 'write', 'make', 'step'].includes(x.k)).map((x) => x.t);
+    const made = await makeCuts(t, ch, n, [steps.length ? `Follow the plan: ${steps.join('; ')}` : '', b.prompt].filter(Boolean).join('. '), (x, i) => (n > 1 ? `Version ${'ABCDEFGH'[i]}: ${x.angle || 'a different cut'}` : `${pl?.cta || 'Made'}: ready to review`));
+    ch.planRun = { at: now(t), n: made.length, versions: made.map((v) => v.id) };
+    const w = (t.work || []).find((x) => x.changeId === ch.id); if (w) w.cardPlan = { ...(w.cardPlan || pl || {}), ...(pl || {}), made: now(t) };
+    ch.thread.push({ from: 'ai', text: made.length > 1 ? `Made ${made.length} ${pl?.make?.what || 'versions'}: ${made.map((v) => 'v' + v.n).join(', ')}. Change any of them here, then share the brief.` : `Made it: v${made[0]?.n}. Change anything here, then share the brief.`, at: now(t), vs: made.map((v) => v.id) });
+    return { change: pubChange(t, ch), learned: learnedOut(t) };
+  });
+  // your checks and notes: kept on the package, read by the AI, sent in the brief
+  on('POST', '/api/changes/:chid/checks', async (b, t, p) => {
+    const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); ch.myChecks ||= [];
+    if (b.id) { const m = ch.myChecks.find((x) => x.id === b.id); if (!m) return { error: 'no check' }; if (b.remove) ch.myChecks = ch.myChecks.filter((x) => x !== m); else { m.done = !!b.done; m.doneAt = now(t); } }
+    else { const text = clean(String(b.text || '')).slice(0, 160); if (!text) return { error: 'empty' }; ch.myChecks.push({ id: uid('mc'), text, done: false, always: !!b.always, at: now(t) });
+      if (b.always) { const l = L(t); l.myChecks ||= {}; const list = (l.myChecks[ch.family] ||= []); if (!list.some((x) => x.text === text)) list.push({ text, at: now(t) }); l.newRules.push({ id: uid('mc'), text: `Your check on every ${FAMILY_NAME[ch.family].toLowerCase()}: ${text}`, at: now(t) }); } }
+    sync(t, ch); return { change: pubChange(t, ch), learned: learnedOut(t) };
+  });
+  on('POST', '/api/changes/:chid/notes', async (b, t, p) => {
+    const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ch.notes ||= [];
+    if (b.id && b.remove) ch.notes = ch.notes.filter((x) => x.id !== b.id);
+    else { const text = clean(String(b.text || '')).slice(0, 600); if (!text) return { error: 'empty' }; ch.notes.push({ id: uid('nt'), text, at: now(t) }); }
+    return { change: pubChange(t, ch) };
+  });
+  on('POST', '/api/changes/:chid/iterate', async (b, t, p) => {
+    const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };
+    const msg = clean(String(b.message || '')).slice(0, 400); if (!msg) return { error: 'empty' };
+    /* "change the photo": a new photo, not a rewrite of the words. AI makes one where the platform allows it; the picker opens either way */
+    if (!b.fix && PHOTO_ASK.test(msg) && ['meta_ad', 'social', 'post'].includes(ch.family)) {
+      ch.thread.push({ from: 'you', text: msg, at: now(t) });
+      const started = !realOnly(ch) && !ch.imagePending ? (() => { ch.pkg.imageBrief = clean(`${ch.pkg.imageBrief || ''} The team asked: ${msg}`).slice(-600); return genImage(t, ch, msg); })() : false;
+      ch.thread.push({ from: 'ai', text: started ? 'Making a new photo now. It lands as a new version in a minute. Rather use one of your own product photos, or upload one? The photo picker is open.' : realOnly(ch) ? `${ch.pkg.platform || 'This community'} wants real photos, not AI ones. Pick one of your product photos or upload your own: the photo picker is open.` : 'Pick one of your product photos or upload your own: the photo picker is open. Want a new one made instead? Describe it there.', at: now(t) });
+      return { change: pubChange(t, ch), pickPhotos: true, image: started };
+    }
+    await iterate(t, ch, msg, { show: b.show ? clean(String(b.show)).slice(0, 300) : null });
+    // fixing: re-check, and if anything is still wrong, try again with the exact problems (twice at most)
+    for (let i = 0; b.fix && i < 2 && ch.fixes?.length && !isMock(); i++) await iterate(t, ch, `Still not fixed: ${ch.fixes.join('; ')}. Fix exactly these and change nothing else.`, { quiet: true });
+    if (b.fix && ch.fixes?.length) ch.thread.push({ from: 'ai', text: `I couldn’t fix everything: ${ch.fixes.join('; ')}. Edit it in Details, or tell me how you want it.`, at: now(t) });
+    return { change: pubChange(t, ch), learned: learnedOut(t) };
+  });
+  // a knob: instant for a look, a new creative for the image, AI for the words
+  on('POST', '/api/changes/:chid/knob', async (b, t, p) => {
+    const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };
+    const knob = knobsFor(ch.family, B()).find((k) => k.k === b.k); if (!knob) return { error: 'no knob' };
+    // several values on a copy knob: one version per value, side by side. You stay on the version you were on.
+    if (Array.isArray(b.v)) {
+      const vals = b.v.filter((x) => knob.opts.includes(x)); if (!vals.length) return { error: 'no value' };
+      if (vals.length === 1 || !isMulti(knob)) b.v = vals[0];
+      else {
+        const base = headOf(t, ch), keep = { ...ch.pkg, knobs: { ...(ch.pkg.knobs || {}) } }, made = [];
+        ch.thread.push({ from: 'you', text: `${knob.label}: ${vals.join(' + ')}`, at: now(t) });
+        for (const val of vals) { ch.pkg = { ...keep, knobs: { ...keep.knobs, [knob.k]: val } }; ch.headVersionId = base?.id; await iterate(t, ch, `${knob.label}: ${val}`, { knob: { ...knob, v: val }, quiet: true }); made.push(ch.headVersionId); signal(t, 'pick', { agent: ch.agent, intent: `${knob.label}: ${val}`, changeId: ch.id }, now(t)); }
+        // the canvas always shows the newest one; the timeline switches between them
+        const last = made.length && versionById(t, ch.id, made[made.length - 1]); if (last) useVersion(t, ch, last); else { ch.pkg = keep; ch.headVersionId = base?.id; sync(t, ch); }
+        ch.thread.push({ from: 'ai', text: `Made ${vals.length} versions, one for each ${knob.label.toLowerCase()}: ${vals.join(', ')}. You’re looking at the last one. Switch between them on the timeline above the preview.`, at: now(t), vs: made });
+        return { change: pubChange(t, ch), learned: learnedOut(t) };
+      }
+    }
+    if (!knob.opts.includes(b.v)) return { error: 'no value' };
+    ch.pkg.knobs = { ...(ch.pkg.knobs || {}), [knob.k]: b.v };
+    signal(t, 'pick', { agent: ch.agent, intent: `${knob.label}: ${b.v}`, changeId: ch.id }, now(t));
+    if (knob.kind === 'look') { ch.pkg.grade = b.v; sync(t, ch); version(t, ch, 'you', `${knob.label}: ${b.v}`); return { change: pubChange(t, ch) }; }
+    if (knob.kind === 'image') { if (knob.k === 'format') ch.pkg.format = b.v; sync(t, ch); version(t, ch, 'you', `${knob.label}: ${b.v}`); const started = genImage(t, ch, `${knob.label}: ${b.v}`); return { change: pubChange(t, ch), image: started }; }
+    await iterate(t, ch, `${knob.label}: ${b.v}`, { knob: { ...knob, v: b.v } }); return { change: pubChange(t, ch), learned: learnedOut(t) };
+  });
+  on('POST', '/api/changes/:chid/image', async (b, t, p) => {
+    const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch);
+    if (b.brief) { ch.pkg.imageBrief = clean(String(b.brief)).slice(0, 600); sync(t, ch); version(t, ch, 'you', 'New image brief'); }
+    const started = genImage(t, ch, b.brief ? 'your brief' : 'a new take', { all: !!b.all });
+    return { change: pubChange(t, ch), image: started, why: started ? null : isMock() ? 'Images are off while AI is offline' : 'No image budget left today' };
+  });
+  /* the photo picker: the brand's own product photos, the current ones, and whether AI may make one here */
+  on('GET', '/api/changes/:chid/photos', async (b, t, p) => {
+    const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch);
+    const cat = (catalogOf(t) || []).filter((x) => x.img).sort((a, b) => (a.out ? 1 : 0) - (b.out ? 1 : 0)).slice(0, 60).map((x) => ({ t: x.t, img: x.img, ...(x.out ? { out: true } : {}) }));
+    const ai = ['meta_ad', 'social', 'post'].includes(ch.family) && !realOnly(ch) && !!geminiImage && !isMock();
+    return { photos: cat, current: ch.pkg.photos || (ch.pkg.image ? [ch.pkg.image] : []), max: ch.family === 'post' ? 4 : 1, ai, aiWhy: ai ? null : realOnly(ch) ? `${ch.pkg.platform || 'This community'} wants real photos, not AI ones.` : isMock() ? 'AI is offline here.' : 'AI photos aren’t available for this one.', pending: !!ch.imagePending };
+  });
+  on('POST', '/api/changes/:chid/photo', async (b, t, p) => {
+    const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };
+    if (b.ai) { if (b.brief) ch.pkg.imageBrief = clean(String(b.brief)).slice(0, 600); const started = genImage(t, ch, b.brief ? 'your brief' : 'a new take');
+      if (!started) return { error: realOnly(ch) ? 'This community wants real photos: pick or upload one.' : ch.imagePending ? 'A photo is already being made.' : isMock() ? 'Images are off while AI is offline.' : 'No image budget left today.' };
+      ch.thread.push({ from: 'ai', text: 'Making a new photo now. It lands as a new version in a minute.', at: now(t) }); return { change: pubChange(t, ch), image: true }; }
+    let urls = Array.isArray(b.urls) ? b.urls.map(String).filter((u) => /^(https:\/\/|gen\/|b\/|assets\/)/.test(u)).slice(0, ch.family === 'post' ? 4 : 1) : [];
+    if (b.upload) { const m = /^data:(image\/(png|jpe?g|webp));base64,(.+)$/.exec(String(b.upload)); if (!m) return { error: 'Add a PNG, JPG or WebP photo.' };
+      const buf = Buffer.from(m[3], 'base64'); if (buf.length > 8e6) return { error: 'That photo is over 8 MB.' };
+      const name = `up-${crypto.createHash('sha1').update(buf).digest('hex').slice(0, 16)}.${m[2] === 'jpeg' ? 'jpg' : m[2]}`; saveGen(name, buf); urls = [`gen/${name}`]; }
+    if (!urls.length) return { error: 'Pick a photo first.' };
+    ch.pkg = { ...ch.pkg, image: urls[0], photos: urls }; ch.imageError = null; sync(t, ch);
+    const why = b.upload ? 'Your photo' : urls.length > 1 ? `${urls.length} product photos` : 'Product photo'; const nv = version(t, ch, 'you', why);
+    ch.thread.push({ from: 'ai', text: `${why} in: that’s v${nv.n} on the left. The words stay the same.`, at: now(t) });
+    signal(t, 'edit', { agent: ch.agent, changeId: ch.id, by: 'you', intent: 'photo' }, now(t));
+    return { change: pubChange(t, ch) };
+  });
+  on('POST', '/api/changes/:chid/edit', async (b, t, p) => {
+    const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };
+    const before = { ...ch.after };
+    if (b.pkg) ch.pkg = { ...ch.pkg, ...cleanPkg(ch.family, ch.action, { ...ch.pkg, ...b.pkg }, clean), ...keepMedia(ch.pkg) };
+    sync(t, ch); version(t, ch, 'you', b.reason || 'Your edit');
+    signal(t, 'edit', { before, after: ch.after, agent: ch.agent, changeId: ch.id, by: 'you' }, now(t));
+    return { change: pubChange(t, ch), learned: learnedOut(t) };
+  });
+  // use a version: move the pointer to it. No copy is made; your next change branches from it.
+  on('POST', '/api/changes/:chid/restore', async (b, t, p) => {
+    const ch = C(t, p.chid); if (!ch) return { error: 'not found' };
+    if (!b.versionId) { (ch.batchKey ? Object.values(changes(t)).filter((x) => x.cardId === ch.cardId && x.batchKey) : [ch]).forEach((x) => delete x.discarded); return { ok: true }; } /* no version: bring a discarded remix back */
+    ensurePkg(t, ch); const v = versionById(t, ch.id, b.versionId); if (!v) return { error: 'no version' };
+    if (editable(ch)) return { error: 'It is live. Undo it first.' };
+    useVersion(t, ch, v);
+    return { change: pubChange(t, ch) };
+  });
+  // discard a remix (kept under Discarded, can be restored). Live or with Brew has to be undone or withdrawn first.
+  const LIVEISH = ['running', 'live', 'deploy_team'];
+  on('POST', '/api/changes/:chid/discard', async (b, t, p) => {
+    const ch = C(t, p.chid); if (!ch) return { error: 'not found' };
+    const set = ch.batchKey ? Object.values(changes(t)).filter((x) => x.cardId === ch.cardId && x.batchKey) : [ch];
+    if (set.some((x) => LIVEISH.includes(x.state))) return { error: set.length > 1 ? 'Some of these ads are live. Undo them first.' : ch.state === 'deploy_team' ? 'It’s with the ShopOS team. Withdraw it first.' : 'It’s live. Undo it first, then discard it.' };
+    set.forEach((x) => (x.discarded = now(t))); return { ok: true, n: set.length };
+  });
+  on('POST', '/api/changes/:chid/jam', async (b, t, p) => {
+    const ch = C(t, p.chid); if (!ch) return { error: 'not found' };
+    if (ch.workId) { const w0 = t.work.find((x) => x.id === ch.workId); if (w0 && !['result'].includes(w0.stage)) return { work: w0 }; }
+    evaluate(t, ch); const c = t.cards.get(ch.cardId);
+    const w = workFromChange(t, ch); w.plan = makePlan(t, c, ch); if (b.scope) w.plan.scope = +b.scope;
+    if (b.scope && +b.scope > 1) w.plan.questions.unshift(qOf(t, 'scope_ok', `Run it on ${ch.scope.find((s) => s.n === +b.scope)?.label.toLowerCase()} at once?`, 'growth'));
+    o.seedJam?.(t, w); // the Jam Room's living brief starts from this package
+    addV(t, 'jam', w.id, planSnap(w.plan), { author: 'you', reason: `Jam opened from a remix${ch.reasons.length ? ': ' + ch.reasons[0] : ''}` });
+    say(t, w, { from: 'system', body: `Jam opened. Goal: ${w.plan.goal}. ${w.plan.questions.filter((q) => !q.answer).length} open questions before it ships.` });
+    ch.state = 'jam';
+    signal(t, 'jam', { agent: ch.agent, action: ch.action, angle: ch.angle, intent: ch.intent, changeId: ch.id }, now(t));
+    return { change: pubChange(t, ch), work: w, learned: learnedOut(t) };
+  });
+  // money, packaged as is: straight to the ShopOS team after your OK
+  on('GET', '/api/tenants/:id/versions/:oid', async (b, t, p) => ({ versions: versionsOf(t, decodeURIComponent(p.oid)) }));
+  on('GET', '/api/tenants/:id/learning', async (b, t) => ({ ...summary(t), recent: learnedOut(t) }));
+  on('PUT', '/api/tenants/:id/learning/lessons/:lid', async (b, t, p) => {
+    const l = L(t), x = l.lessons.find((y) => y.id === p.lid); if (!x) return { error: 'not found' };
+    if (b.forget) { l.lessons = l.lessons.filter((y) => y !== x); return { ok: true }; }
+    if (typeof b.on === 'boolean') x.on = b.on; if (typeof b.text === 'string' && clean(b.text).length >= 6) x.text = clean(b.text).slice(0, 200); return { ok: true, lesson: x };
+  });
+  on('POST', '/api/tenants/:id/learning/rules', async (b, t) => {
+    const text = clean(String(b.text || '')).slice(0, 140); if (!text) return { error: 'empty' };
+    const l = L(t); const r = { id: uid('rule'), k: 'you:' + slug(text), text, n: 1, evidence: [{ by: 'you', before: 'Taught directly', at: now(t) }], on: true, scope: b.agent || null, source: 'you', createdAt: now(t) };
+    l.rules.unshift(r); addV(t, 'rule', r.id, { text, on: true }, { author: 'you', reason: 'Taught directly' }); return { rule: r };
+  });
+  on('PUT', '/api/tenants/:id/learning/rules/:rid', async (b, t, p) => {
+    const l = L(t); const r = l.rules.find((x) => x.id === p.rid) || l.autoChecks.find((x) => x.id === p.rid); if (!r) return { error: 'not found' };
+    if (b.forget) { l.rules = l.rules.filter((x) => x !== r); l.autoChecks = l.autoChecks.filter((x) => x !== r); if (r.k) { delete l.tags[r.k]; if (l.questions[r.k]) l.questions[r.k].n = 0; } addV(t, 'rule', r.id, { text: r.text || r.q, on: false, forgotten: true }, { author: 'you', reason: 'Forgotten' }); return { ok: true }; }
+    if (typeof b.on === 'boolean') r.on = b.on; if (typeof b.text === 'string' && clean(b.text) && r.text != null) r.text = clean(b.text).slice(0, 140);
+    addV(t, 'rule', r.id, { text: r.text || r.q, on: r.on }, { author: 'you', reason: typeof b.on === 'boolean' ? (b.on ? 'Turned on' : 'Turned off') : 'Edited' }); return { rule: r };
+  });
+
+  // jam plan
+  const W = (t, id) => t.work.find((w) => w.id === id);
+  on('POST', '/api/work/:wid/plan/answer', async (b, t, p) => {
+    const w = W(t, p.wid); if (!w) return { error: 'not found' }; ensurePlan(t, w);
+    const q = w.plan.questions.find((x) => x.id === b.qid); if (!q) return { error: 'no question' };
+    answerQ(t, w, q, b.answer || 'Yes.', 'you'); return { work: w, learned: learnedOut(t) };
+  });
+  on('POST', '/api/work/:wid/plan/add', async (b, t, p) => {
+    const w = W(t, p.wid); if (!w) return { error: 'not found' }; ensurePlan(t, w); const text = clean(String(b.q || '')).slice(0, 160); if (!text) return { error: 'empty' };
+    w.plan.questions.push({ id: uid('q'), k: 'you:' + slug(text), q: text, owner: b.owner || 'ai', answer: null, by: null, auto: false, at: null, asked: false });
+    addV(t, 'jam', w.id, planSnap(w.plan), { author: 'you', reason: `Asked: ${text}` }); return { work: w };
+  });
+  const ask = async (t, w, q) => {
+    if (q.answer || q.asked) return; q.asked = true;
+    if (q.owner === 'ai') { const a = await aiAnswer(t, w, q); answerQ(t, w, q, a, `ai:${w.agent}`); say(t, w, { from: 'ai', who: AGENT[w.agent], body: `${q.q} ${a}` }); return; }
+    const who = q.owner === 'brew' ? 'ShopOS team' : colName(q.owner);
+    say(t, w, { from: 'me', body: `@${who} ${q.q}`, to: who });
+    const role = q.owner === 'brew' ? 'the Deploy lead on the ShopOS team' : `the ${who} at ${BN()}`;
+    const draft = liveAnswer(t, w, q, role); // written now, delivered after a human-ish pause
+    later(q.owner === 'brew' ? 9e3 : 4e3 + Math.random() * 3e3, async () => {
+      if (q.answer) return; const k = q.k.startsWith('why:') ? 'why_jam' : q.k; const a = (await draft) || ANSWERS[k] || 'Yes, all set from my side.';
+      answerQ(t, w, q, a, q.owner === 'brew' ? 'brew' : `teammate:${who}`);
+      say(t, w, { from: q.owner === 'brew' ? 'brew' : 'colleague', who: q.owner === 'brew' ? 'Deploy lead' : who, body: a });
+      notify(t, w, `${who} answered: ${q.q}`, 'update');
+    });
+  };
+  on('POST', '/api/work/:wid/plan/ask', async (b, t, p) => {
+    const w = W(t, p.wid); if (!w) return { error: 'not found' }; ensurePlan(t, w);
+    const qs = b.all ? w.plan.questions.filter((x) => !x.answer) : w.plan.questions.filter((x) => x.id === b.qid);
+    for (const q of qs) await ask(t, w, q);
+    return { work: w, learned: learnedOut(t) };
+  });
+
+  const iterateFromJam = async (t, w, body) => {
+    const ch = w.changeId && changes(t)[w.changeId]; if (!ch) return null; ensurePkg(t, ch);
+    if (editable(ch)) return { error: editable(ch) };
+    await iterate(t, ch, body);
+    const v = headOf(t, ch);
+    w.versions.push({ n: v.n, title: ch.after.title, sub: ch.after.sub, images: ch.pkg.image ? [ch.pkg.image] : ch.after.images, by: 'ai', who: AGENT[ch.agent], note: body.slice(0, 80), at: now(t), changeVersionId: v.id, fromChange: true });
+    w.current = v.n; w.title = ch.after.title; w.updatedAt = now(t);
+    return { change: pubChange(t, ch) };
+  };
+  // picking a version in the jam moves the same pointer the studio uses
+  const pickFromJam = (t, w, n) => { const ch = w.changeId && changes(t)[w.changeId]; if (!ch) return; const v = versionsOf(t, ch.id).find((x) => x.n === n); if (!v || editable(ch)) return; const { action, amount, title, sub, state, ...pkg } = v.snapshot; ch.pkg = { ...cleanPkg(ch.family, ch.action, pkg, clean), ...keepMedia({ ...pkg, image: pkg.image || null, knobs: pkg.knobs || {} }, true) }; ch.headVersionId = v.id; sync(t, ch); };
+  return { iterateFromJam, pickFromJam, makePlan, ensurePlan, planReady, onWorkVersion, pubChange, changes, packageOf };
+}

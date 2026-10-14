@@ -1,0 +1,12 @@
+.git/
+node_modules/
+.brands/
+.tenants/
+.research/
+public/gen/
+public/research/
+assets-orig/
+data.orig.js
+tools/
+test/
+.claude/

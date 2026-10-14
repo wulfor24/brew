@@ -1,0 +1,751 @@
+      Brew                                        PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+PRICING · MOVE 07 OF 50
+
+
+
+ARATA PRICE
+LADDER AND
+SUBSCRIPTION
+  A HAIR GROWTH PRICE LADDER, A BUNDLE RULEBOOK
+  AND A SUBSCRIPTION THAT TURN SINGLE BOTTLES INTO
+  84-DAY ROUTINES, PRICED BY THE DAY.
+
+
+
+
+49% vs 3%
+PACK-OF-3 DISCOUNT VS ROUTINE DISCOUNT
+
+
+
+
+BREW × ARATA                       OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                     V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                                WHAT THIS GIVES ARATA
+                                                                A hair growth price ladder, a bundle rulebook and a
+                                                                subscription that turn single bottles into 84-day
+                                                                routines, priced by the day.
+        49% vs 3%
+        PACK-OF-3 DISCOUNT VS ROUTINE
+                                                                LIVE 30 DAYS AFTER WE START
+                                                                A three-rung Hair Growth ladder is live on arata.in
+        DISCOUNT                                                with the Intensive Serum at ₹599, the 84-day course
+                                                                at ₹1,199, the MitoActive 84-day course at ₹3,999,
+                                                                Routine on Repeat subscriptions on six SKUs, and a
+                                                                written discount rulebook every channel follows.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+In SaaS this discipline means tiers, value metrics and willingness-to-pay research. For Arata it means
+SKU prices, the bundle architecture, subscription pricing and the MitoActive price ladder. Same
+method, different unit: the thing Arata charges for is a day of routine.
+Arata's brand line is "systems, not symptoms". The price list says the opposite. The Hair Growth
+Intensive Serum Pack of 3 sells at ₹999, which is 49% off MRP and 42% below three bottles at the
+₹571 sale price. The Hair Growth Trio (shampoo, conditioner, serum) sells at ₹1,201, which is 7% below
+the same three bottles bought one by one. The MitoActive plus shampoo combo saves 3%. The Anti-
+Dandruff shampoo plus conditioner combo is listed at ₹866 while the two bottles at their sale prices
+add up to ₹853. By the brief's numbers, the customer who buys the system pays more than the
+customer who buys the pieces. The customer who buys one product three times gets the deepest
+discount in the catalogue.
+That ₹333 per-bottle price does three things. It trains every repeat buyer to never pay ₹571 for the
+serum again. It halves the serum's perceived value against Pilgrim at ₹595 to ₹699, Minimalist at ₹699
+and Bare Anatomy at ₹649, on a product that carries a stronger claim than all of them. And it breaks
+the reorder loop for 90 days, because the customer now has three bottles on the shelf and no reason
+to come back. With AOV at roughly ₹900 to ₹1,000 and 50,000 D2C orders a month, a discount
+structure that points customers away from routines is a revenue leak on the 32% of sales that Arata
+owns outright.
+The second problem is the MitoActive gap. The ladder runs ₹359, ₹404, ₹449, ₹571, then jumps to
+₹1,499. Nothing sits between ₹571 and ₹1,499. A Rahul who has used the Intensive Serum for two
+months and wants the next step is asked to pay 2.6 times more for a product with zero reviews. There
+is no rung, no course, no "this is what 84 days costs" framing, even though the headline claim (87%
+saw growth in 84 days) is itself an 84-day claim.
+Third, there is no subscription. The brief says beauty repeat rates sit near 26% and routine-led models
+exceed 40%. Arata's stated conversion goal is a repeat purchase within 45 days. Today that repeat
+depends on the customer remembering. A subscription priced correctly, with a 30-day serum
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA PRICE LADDER AND SUBSCRIPTION                                                  1
+cadence and a 45-day wash cadence, is the cheapest retention tool available to the brand and it does
+not exist yet.
+The opportunity: hold the single-bottle prices roughly where they are, reorder the discounts so the
+routine is always the best deal, express every price as rupees per day, and build MitoActive a ladder
+that a ₹571 customer can climb. None of this needs a new product. It needs a rulebook and six weeks.
+
+
+
+WHAT WE FOUND
+THE CURRENT LADDER, BY THE BRIEF'S NUMBERS
+                                                                                                     ₹ PER
+ SKU                                                SIZE         MRP    SALE   DAYS OF USE           DAY     REVIEWS
+
+ Scalp massager                                                  ₹199   ₹199
+ Anti-Dandruff Serum (leave-on)                     30 ml        ₹299   ₹299   30                    ₹10
+ Anti-Hair Fall Intensive Shampoo                   200 ml       ₹399   ₹359   ~45 (assumption: 15   ₹8      222
+                                                                               washes)
+ Anti-Breakage Intensive Conditioner                200 ml       ₹399   ₹359   ~45                   ₹8      30
+ Damage Defence Super Shampoo                       200 ml       ₹449   ₹395   ~45                   ₹9
+ Anti-Dandruff Shampoo                              200 ml       ₹449   ₹404   ~45                   ₹9      ~300
+ Anti-Dandruff Conditioner                          200 ml       ₹449   ₹449   ~45                   ₹10
+ Anti-Grey Hair Serum                               30 ml        ₹449   ₹449   30                    ₹15
+ Hair Growth Intensive Serum                        30 ml        ₹649   ₹571   30                    ₹19     474
+ Hair Growth Intensive Serum Pack of 3 3 × 30                    ₹1,947 ₹999   90                    ₹11     388
+                                       ml
+ MitoActive Mitochondrial Hair Growth               30 ml        ₹1,499 ₹1,499 30                    ₹50     0
+ Serum
+
+
+Days-of-use for the 200 ml wash products is our assumption (15 washes at 13 ml, washing every third
+day). Everything else is from the brief.
+
+THE DISCOUNT MAP
+Discounts measured against buying the same bottles one at a time at sale price, which is the
+comparison the customer actually makes in the cart.
+                                                                                                             DIAGRAM
+    Bundle                               Saving vs singles at sale price
+    ─────────────────────────────────────────────────────────────────────
+    Intensive Serum Pack of 3 ₹999       ████████████████████████████ 42%
+    Anti-Hair Fall S + C       ₹638      ███████                       11%
+    Shampoo + Growth Serum     ₹838      ██████                        10%
+    Hair Growth Trio           ₹1,201    █████                          7%
+    MitoActive + Shampoo       ₹1,803    ██                             3%
+    Anti-Dandruff S + C        ₹866      (costs ₹13 more than singles) -2%
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA PRICE LADDER AND SUBSCRIPTION                                                   2
+The pattern: discount depth is inversely related to how much of a routine the bundle contains. The
+brand gives the most away where it gains the least (one SKU, bought in bulk, reorder loop paused for
+three months) and gives the least away where it gains the most (three SKUs, a full routine, a habit).
+
+THE MITOACTIVE GAP
+                                                                                                                              DIAGRAM
+    ₹1,499 ─ MitoActive (0 reviews)
+           │
+           │   ← nothing here: no course, no system, no bridge
+           │
+      ₹571 ─ Intensive Serum (474 reviews)
+      ₹449 ─ Anti-Grey Serum, AD Conditioner
+      ₹404 ─ AD Shampoo
+      ₹359 ─ AHF Shampoo, Conditioner
+      ₹299 ─ AD leave-on Serum
+      ₹199 ─ Scalp massager
+
+
+
+
+The step from ₹571 to ₹1,499 is 2.6x. Everywhere else on the ladder the steps are 10% to 30%. The
+brief's objection table already has the right answer (₹50 a day; compare to Traya; bundle with
+shampoo) but the catalogue does not sell it that way. The only MitoActive bundles are combos at 3%
+off, which is a discount too small to notice and too small to change behaviour.
+
+WHERE ARATA SITS AGAINST THE ALTERNATIVES, PER DAY
+ ALTERNATIVE                      WHAT YOU PAY                         ₹ PER DAY                     WHAT YOU GET
+
+ Traya kit                        ₹1,400 to ₹1,800 per                 ₹47 to ₹60                    Doctor call, supplements,
+                                  month, 5 to 9 months                                               minoxidil, hair test
+ Minoxidil 5% (Mintop)            ₹600 to ₹900 per bottle              ₹20 to ₹30 (assumption: one   Strongest evidence,
+                                                                       bottle a month)               dependency, needs a doctor
+ ThriveCo Regendil                ₹1,099                               ₹37                           Actives serum, heavy claim
+ Minimalist 18% Actives           ₹699                                 ₹23                           Actives serum, no routine
+ Pilgrim Redensyl +               ₹595 to ₹699                         ₹20 to ₹23                    Actives serum, 12-ingredient
+ Anagain                                                                                             story
+ Bare Anatomy                     ₹649                                 ₹22                           Quiz-led, same actives
+ Arata Intensive Serum            ₹571                                 ₹19                           28,200-hair claim, Indian-hair
+ (single)                                                                                            tested
+ Arata Intensive Serum            ₹999                                 ₹11                           Same
+ (pack of 3)
+ Arata MitoActive                 ₹1,499                               ₹50                           Y100, new mechanism, 87%
+                                                                                                     claim
+
+
+Two readings. First, Arata's actives serum is the cheapest clinical-claim serum in the band, and the
+pack of 3 makes it half the price of the category. That is the low-price trap: a price below every
+alternative signals "lesser" to the exact buyer (Rahul) who is looking for proof. Second, MitoActive at
+₹50 a day sits exactly where Traya sits per day, with no doctor, no supplements and no minoxidil. That
+is a strong position, but only if the comparison is made on the page. Today it is not.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA PRICE LADDER AND SUBSCRIPTION                                                                    3
+THE COLLECTION PAGE AS A PRICING PAGE: TEARDOWN
+For a D2C brand the Hair Growth collection and the two serum PDPs are the pricing page. We scored
+them on the ten-dimension rubric, using the brief's description of the site and its products.json feed.
+ #     DIMENSION                VERDICT NOTE
+
+ 1     Value-prop clarity       Partial       Numbers on the pack are strong. The collection does not say what a routine costs or
+                                              how long it takes.
+ 2     Plan differentiation Gap               No ladder. Intensive Serum vs MitoActive is explained nowhere on the price axis.
+                                              "Hair growth collection mixes claims" (brief).
+ 3     Cognitive load           Gap           Singles, pack of 3, four combos and MitoActive combos all compete on one page
+                                              with discounts from 3% to 49%.
+ 4     Trust signals            Partial       474 and 388 reviews on the serum. MitoActive has zero. Leak and seal complaints
+                                              unanswered near the buy button.
+ 5     Pricing                  Gap           No recommended option. The highest price is not used as an anchor. Strike-through
+       psychology                             MRP is the only device.
+ 6     Transparency             Pass          MRP and sale shown. Free shipping above ₹299 and gift above ₹999 are stated.
+ 7     Machine-readable Pass                  Shopify products.json exposes every price in text.
+       pricing
+ 8     FAQ and objection        Partial       Objections are documented internally (brief) but the PDP FAQ for "how long does 30
+       coverage                               ml last", "do I need all three", "what happens after 84 days" is to be confirmed.
+ 9     Per-bundle depth         Partial       Combos are named by contents, but not by days of use or per-day cost.
+       in text
+ 10 Structured data             Partial       Shopify themes ship Product and Offer JSON-LD by default; naming inconsistency
+                                              across channels (onion vs biotin, serum vs tonic) means an agent quoting Nykaa and
+                                              arata.in will get two different products.
+
+
+Human buyer experience: 1 of 6 passing. Machine readiness: 1 of 4 passing. The machine side is
+cheap to fix and mostly a naming job. The human side is the work of this document.
+
+WHAT THE CATALOGUE ALREADY TELLS US ABOUT WILLINGNESS TO PAY
+Review counts are a free demand signal. The Intensive Serum has 474 reviews at ₹571 and the pack of
+3 has 388 at ₹999. Styling combos are the most-reviewed items on Loox. Reviews cluster on the
+serum and on bundles, which says customers buy multiples and routines when offered. Verbatim
+complaints include "a bit expensive in comparison to other competitive haircare lines" and "on pricier
+side for a teenager like me". Verbatim praise includes "affordable and actually works". Price is a live
+objection but a minority one, and it comes from the anti-persona (the ₹99-sachet buyer) more than the
+core buyer.
+What we cannot read from public data: the single-to-pack ratio, repeat rate by SKU, blended discount
+rate, and MitoActive's first 60 days of sales. These get instrumented in week 1.
+
+
+
+THE PLAN
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA PRICE LADDER AND SUBSCRIPTION                                                                4
+THE VALUE METRIC: A DAY OF ROUTINE
+Arata should price and present everything in days. A 30 ml serum is 30 days. A 200 ml shampoo is
+about 45 days. An 84-day course is the unit the clinical claims are written in. When every price on the
+site reads "₹599 · 30 days · ₹20/day", three things happen: MitoActive stops looking expensive and
+starts looking like Traya without the doctor, the pack of 3 stops looking like a bargain bin and starts
+looking like a course, and the subscription becomes the obvious way to buy days.
+
+THE PRICING MODEL: FLAT SINGLES, PREPAID COURSES, RECURRING ROUTINES
+Today Arata is flat-rate per SKU with ad hoc bundles. We move to a deliberate hybrid:
+ LAYER                          WHAT IT IS                             WHO IT IS FOR                   DISCOUNT RULE
+
+ Single (30 or 45 days)         One bottle at sale price               First-time buyer, quick-        0% to 12% off MRP, never
+                                                                       commerce top-up                 more
+ System (30 days)               Shampoo + conditioner +                Ritika, Divya: "one cart that   12% to 15% off singles, free
+                                serum for one concern                  handles it"                     gift included
+ Course (84 days)               Three serums, shipped                  Rahul, Gaurav, Kavya: "show     25% to 33% off singles,
+                                together or monthly                    me it works in 3 months"        prepaid
+ Routine on Repeat              Any single or system, auto-            Anyone past first purchase      10% off singles, free shipping
+ (subscription)                 delivered                                                              always, gift on delivery 3
+
+
+The rule that makes this coherent: the deeper the discount, the longer the commitment. Singles get
+the least. Courses get the most because the customer has prepaid 84 days. Subscriptions sit in
+between because they are cancellable.
+
+THE HAIR GROWTH LADDER (GOOD, BETTER, BEST)
+                                                                                                                             DIAGRAM
+                            GOOD                      BETTER (recommended)                BEST
+                            ────                      ────────────────────                ────
+    30-day      Intensive Serum ₹599            Hair Growth System ₹1,149             MitoActive System ₹1,999
+                ₹20/day                         shampoo + cond + serum                 shampoo + cond + MitoActive
+                                                ₹38/day · gift included                ₹67/day · gift included
+
+    84-day      Intensive Course ₹1,199 (System on Repeat ₹1,039/mo)                   MitoActive Course ₹3,999
+                3 serums · ₹14/day                                                     3 MitoActive + AHF shampoo
+                                                                                       ₹48/day · 84-day promise
+
+    Repeat      Serum ₹539/mo                   System ₹1,039/mo                       MitoActive ₹1,349/mo
+
+
+
+
+What changes and why:
+1. Intensive Serum sale price ₹571 → ₹599. MRP stays ₹649. A 5% move that keeps the serum the
+   cheapest clinical-claim serum in the band but stops it looking like a markdown. Rolled out to new
+   visitors first (see rollout below). Expected effect: revenue neutral at a 4.7% unit drop, which we do
+   not expect at a ₹28 move.
+2. Pack of 3 ₹999 → Intensive 84-day Course ₹1,199. Same three bottles, renamed to match the 84-
+   day claim, repriced to ₹400 a bottle. Still 33% below three singles and still below every
+   competitor's single bottle. This is the biggest move in the plan and the one that gets its own test.
+   Assumption: landed cost plus fulfilment of ₹300 per pack, so contribution rises from ₹699 to ₹899
+   per pack and units can fall 22% before contribution falls.
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA PRICE LADDER AND SUBSCRIPTION                                                                    5
+3. Hair Growth Trio ₹1,201 → Hair Growth System ₹1,149, with the scalp massager (₹199) inside the
+   box. Price goes down by ₹52 while the serum inside it goes up by ₹28, so the system's saving
+   moves from 7% to 13%. It becomes the recommended option on the collection page. Expected
+   effect: system share of hair growth orders up, AOV up.
+4. MitoActive single holds at ₹1,499. We have zero reviews and zero demand data. Hold the price,
+   build the rungs around it, and run the willingness-to-pay survey before touching it.
+5. MitoActive System ₹1,999 (MitoActive + Anti-Hair Fall shampoo + conditioner). Replaces the ₹1,803
+   to ₹2,278 combos with one number under ₹2,000, 10% off singles. One MitoActive bundle, not four.
+6. MitoActive 84-day Course ₹3,999 (three MitoActive + one Anti-Hair Fall shampoo, delivered
+   monthly). 11% off three bottles alone, 18% off including the shampoo. This is the product that
+   matches the claim: 87% saw growth in 84 days. It carries the 84-day promise (below) and it is the
+   course that generates MitoActive's first 100 reviews via day-28, day-56 and day-84 check-ins.
+   Comparison on the page: Traya at ₹7,000 to ₹9,000 for five months.
+
+ANTI-DANDRUFF AND ANTI-GREY LADDERS
+ RUNG                                                 TODAY PROPOSED       NOTE
+
+ AD Shampoo single                                    ₹404       ₹404      Hold
+ AD Conditioner single                                ₹449       ₹404      Same MRP as the shampoo, should carry the same
+                                                                           sale price
+ AD Shampoo + Conditioner                             ₹866       ₹729      10% off ₹808. Fixes the combo that costs more than
+                                                                           singles
+ Anti-Dandruff System (S + C + leave-on none                     ₹999      10% off ₹1,107, lands exactly on the free-gift
+ serum)                                                                    threshold
+ AD System on Repeat                                  none       ₹899/45   10% off
+                                                                 days
+ Anti-Grey Serum single                               ₹449       ₹449      Hold
+ Anti-Grey 84-day Course                              none       ₹1,099    18% off ₹1,347. The claim is "over 3 months", so
+                                                                           sell 3 months
+
+
+Styling, body and face prices stay as they are. They are the entry rungs of the brand (₹269 upward)
+and they are not where the ladder is broken.
+
+ROUTINE ON REPEAT: THE SUBSCRIPTION
+Design rules, in order of importance:
+    10% off the sale price, every delivery, no first-order-only trick. ₹9 endings: serum ₹539, MitoActive
+    ₹1,349, AHF shampoo ₹319, conditioner ₹319, AD shampoo ₹359, Hair Growth System ₹1,039.
+    Free shipping on every subscription order regardless of the ₹299 threshold.
+    Cadence set by the product: 30 days for serums, 45 days for washes, 30 days for systems (the
+    serum runs out first).
+    Skip, pause, swap or cancel from a WhatsApp reply. No login needed. This is what turns the 45-
+    day repeat goal into a default.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA PRICE LADDER AND SUBSCRIPTION                                                            6
+    Delivery 3 ships with the scalp massager. Delivery 6 ships with a derma roller. Rewards land at the
+    two points where subscription churn usually spikes.
+    Subscription is a website-only price. Quick commerce and marketplaces never see it.
+Why 10% and not 15% or 20%: the subscription has to sit above the course per-bottle price (₹400)
+and below the single (₹599) with daylight on both sides. ₹539 does that. Subscription discounts above
+15% in D2C beauty attract the discount-asker, who churns at roughly twice the rate of the full-price
+buyer. 10% plus free shipping plus the gift is the right shape.
+
+CHANNEL PRICING: WHAT LIVES WHERE
+                                                                                                            DIAGRAM
+                     arata.in                     Amazon / Nykaa / Flipkart   Blinkit / Zepto / Instamart
+                     ────────                     ─────────────────────────   ───────────────────────────
+    Singles          sale price                   sale price (parity)         sale price (parity)
+    Systems          yes                          yes                         Hair Growth System only
+    Courses          yes                          no                          no
+    Routine on Repeat yes                         no                          no
+    Per-day pricing on every PDP                  in A+ content               in listing title
+
+
+
+
+68% of revenue is on rented land. The way to earn it back is to make the deepest per-day price
+available only on arata.in, while keeping single-bottle parity everywhere so marketplace buy-box and
+quick-commerce trust are not disturbed. Assumption: marketplace prices today roughly match the
+site; this gets audited in week 1.
+
+THE 84-DAY PROMISE
+The pricing page checklist asks for a guarantee near the CTA. MitoActive at ₹3,999 prepaid needs
+one. The promise: buy the MitoActive 84-day Course, upload a crown and hairline photo at day 0 and
+day 84 through the WhatsApp check-ins, and if you see no change, the third bottle is refunded.
+Traya's money-back lives at five months; ours lives at 84 days because the study does. Assumption:
+refund rate under 8% of course buyers, which at ₹1,333 per refund is a cost of roughly ₹107 per
+course sold, less than the discount we would otherwise need to move a zero-review product.
+
+ROLLOUT, IN ORDER
+1. Week 1 to 2: instrument, fix the negative-discount combo, launch subscription on existing prices.
+   Nothing visible changes for the customer except a new option.
+2. Week 3: new visitors see the Intensive Serum at ₹599 and the renamed course at ₹1,199. Returning
+   visitors keep seeing ₹571 and ₹999 for two more weeks, and get the "lock ₹539 on Repeat before
+   the price moves" message.
+3. Week 4: the ladder goes live for everyone. The old pack of 3 is retired. The MitoActive System and
+   Course go live.
+4. Day 45 onward: the MitoActive willingness-to-pay survey closes and we decide whether the single
+   moves.
+The customer journey the ladder is built for:
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA PRICE LADDER AND SUBSCRIPTION                                                  7
+                                                                                                                                DIAGRAM
+    Blinkit / Meta ad                      arata.in                     WhatsApp
+          │                                    │                            │
+     buys AHF Shampoo ₹359       ──► "finish the routine": System ₹1,149 ──► day 25: "serum runs out in 5 days.
+                                               │                               Put it on Repeat at ₹539?"
+                                               ▼                                        │
+                                   day 60: "two months in. The 84-day           ──────┘
+                                   course is ₹14/day. Or step up to
+                                   MitoActive, ₹48/day on the course."
+
+
+
+
+WORKED EXAMPLES
+EXAMPLE 1: THE HAIR GROWTH COLLECTION PAGE, REWRITTEN AS A LADDER
+Section order and copy, top to bottom. Prices in text, never in images.
+Hero band
+
+   PICK HOW FAR YOU WANT TO GO. EVERY ARATA HAIR GROWTH PRODUCT
+   IS TESTED ON INDIAN HAIR OVER 84 DAYS. PRICES BELOW ARE PER DAY,
+   BECAUSE THAT IS HOW THE RESULTS ARE MEASURED.
+
+
+Three cards, MitoActive first (anchor), System in the middle (recommended badge), Serum last
+                 MITOACTIVE SYSTEM                                     HAIR GROWTH SYSTEM                          INTENSIVE SERUM
+
+ Badge           New. Y100 mitochondrial science                       Most chosen                                 Start here
+ Price           ₹1,999 · 30 days · ₹67/day                            ₹1,149 · 30 days · ₹38/day                  ₹599 · 30 days ·
+                                                                                                                   ₹20/day
+ Inside          MitoActive 30 ml, Anti-Hair Fall Shampoo Intensive Serum 30 ml, Anti-Hair Fall                    Intensive Serum 30
+                 200 ml, Anti-Breakage Conditioner 200 Shampoo 200 ml, Anti-Breakage                               ml
+                 ml, scalp massager                       Conditioner 200 ml, scalp massager
+ The             87% saw increased growth in 84 days                   Up to 28,200 new hair in 84 days. 7.4X      Up to 28,200 new
+ number                                                                less hair fall                              hair in 84 days
+ Who it is       You have tried actives serums. You want               Hair fall is new or getting worse. You want You want to try the
+ for             the next mechanism                                    one cart                                    serum before the
+                                                                                                                   routine
+ Button          Add ₹1,999                                            Add ₹1,149                                  Add ₹599
+ Under the       Or the 84-day course: ₹3,999, ₹48/day,                Or on Repeat: ₹1,039 a month, cancel on     Or the 84-day
+ button          84-day promise                                        WhatsApp                                    course: ₹1,199,
+                                                                                                                   ₹14/day
+
+
+Below the cards: the per-day comparison
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA PRICE LADDER AND SUBSCRIPTION                                                                      8
+   WHAT 84 DAYS COSTS TRAYA KIT: ₹4,200 TO ₹5,400 FOR 3 MONTHS,
+   PLUS DOCTOR CALLS, SUPPLEMENTS AND MINOXIDIL. MINOXIDIL 5%
+   ALONE: ₹1,800 TO ₹2,700 FOR 3 MONTHS, PLUS THE DERMATOLOGIST.
+   ARATA INTENSIVE 84-DAY COURSE: ₹1,199. ARATA MITOACTIVE 84-DAY
+   COURSE: ₹3,999. NO PRESCRIPTION, NO SUPPLEMENTS, NOTHING YOU
+   HAVE TO KEEP USING FOREVER.
+
+
+FAQ (written so an answer engine can quote it)
+
+   HOW LONG DOES 30 ML LAST? 30 DAYS AT TWICE-DAILY USE, 1 ML A
+   DAY. DO I NEED THE SHAMPOO AND CONDITIONER? THE SERUM WORKS
+   ALONE. THE SYSTEM REDUCES HAIR FALL AT THE WASH STEP (7.4X)
+   WHILE THE SERUM WORKS AT THE ROOT, WHICH IS WHY THE 28,200
+   FIGURE COMES FROM PEOPLE USING THE ROUTINE. WHAT IS THE
+   DIFFERENCE BETWEEN THE INTENSIVE SERUM AND MITOACTIVE? THE
+   INTENSIVE SERUM IS AN ACTIVES SERUM. MITOACTIVE USES Y100,
+   WHICH WORKS ON THE MITOCHONDRIA IN THE FOLLICLE. DIFFERENT
+   MECHANISM, EXCLUSIVE TO ARATA IN INDIA. MOST PEOPLE START WITH
+   THE INTENSIVE SERUM AND STEP UP. WHAT HAPPENS AFTER 84 DAYS?
+   MOVE TO MAINTENANCE: ONE SERUM A MONTH ON REPEAT AT ₹539.
+   UNLIKE MINOXIDIL, STOPPING DOES NOT UNDO THE RESULT. CAN I
+   CANCEL REPEAT? YES, BY REPLYING TO THE WHATSAPP REMINDER. NO
+   LOGIN.
+
+
+EXAMPLE 2: THE MITOACTIVE 84-DAY COURSE PDP
+Title: MitoActive 84-Day Course
+Price line: ₹3,999 · 84 days · ₹48/day · delivered monthly
+Strike line: Three bottles bought separately: ₹4,497. Plus the Anti-Hair Fall Shampoo we include: ₹359.
+You save ₹857.
+Body copy:
+
+   THE STUDY BEHIND MITOACTIVE RAN FOR 84 DAYS. 87% OF
+   PARTICIPANTS SAW INCREASED GROWTH. SO WE SELL IT IN 84 DAYS.
+
+   MONTH 1: MITOACTIVE 30 ML AND THE ANTI-HAIR FALL INTENSIVE
+   SHAMPOO. MONTH 2: MITOACTIVE 30 ML. MONTH 3: MITOACTIVE 30 ML.
+   EACH BOTTLE ARRIVES BEFORE THE LAST ONE RUNS OUT.
+
+   ₹48 A DAY. TRAYA COSTS ₹47 TO ₹60 A DAY AND COMES WITH A
+   DOCTOR, SUPPLEMENTS AND MINOXIDIL. MITOACTIVE COMES WITH
+   Y100, A MITOCHONDRIAL ACTIVE WITH 5+ CLINICAL STUDIES BEHIND IT,
+   LICENSED EXCLUSIVELY TO ARATA IN INDIA.
+
+
+The 84-day promise (box, next to the button):
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA PRICE LADDER AND SUBSCRIPTION                                  9
+   TAKE A PHOTO OF YOUR CROWN AND HAIRLINE ON DAY 0. WE WILL
+   REMIND YOU ON DAY 28, DAY 56 AND DAY 84. IF YOUR DAY-84 PHOTO
+   SHOWS NO CHANGE, REPLY "REFUND" AND WE RETURN THE PRICE OF
+   YOUR THIRD BOTTLE, ₹1,333. NO FORM, NO QUESTIONS.
+
+
+Button: Start the course · ₹3,999
+Under the button: Or one bottle to begin: ₹1,499. Or MitoActive on Repeat: ₹1,349 a month.
+Day-84 WhatsApp message (this is how the course earns reviews):
+
+   DAY 84. THIS IS THE DAY THE STUDY MEASURED. SEND US YOUR CROWN
+   PHOTO AND WE WILL PUT IT NEXT TO YOUR DAY-0 ONE. IF YOU SEE THE
+   DIFFERENCE, A ONE-LINE REVIEW HELPS THE NEXT PERSON DECIDE. IF
+   YOU DO NOT, REPLY "REFUND" AND WE WILL SORT THE THIRD BOTTLE
+   TODAY.
+
+
+EXAMPLE 3: ROUTINE ON REPEAT, CART UPSELL AND REORDER NUDGE
+Cart drawer, shown when a single serum or shampoo is in the cart:
+
+   PUT IT ON REPEAT AND PAY ₹539 INSTEAD OF ₹599. FREE SHIPPING
+   EVERY TIME. NEXT DELIVERY IN 30 DAYS. SKIP OR CANCEL BY REPLYING
+   TO A WHATSAPP. [ ] ONE TIME ₹599 [X] REPEAT ₹539 / 30 DAYS
+
+
+Order confirmation line (subscription orders):
+
+   YOUR SERUM ARRIVES EVERY 30 DAYS AT ₹539. DELIVERY 3 COMES WITH
+   A SCALP MASSAGER. REPLY PAUSE TO THIS NUMBER ANY TIME.
+
+
+Day 25 WhatsApp (one-time buyers, serum):
+
+   FIVE DAYS OF SERUM LEFT. REORDER AT ₹599, OR PUT IT ON REPEAT AT
+   ₹539 WITH FREE SHIPPING. REPLY 1 FOR ONE BOTTLE, 2 FOR REPEAT, OR
+   3 FOR THE 84-DAY COURSE AT ₹1,199 (₹14 A DAY).
+
+
+Day 40 WhatsApp (one-time buyers, shampoo only):
+
+   YOUR ANTI-HAIR FALL SHAMPOO IS NEARLY DONE. MOST PEOPLE PAIR IT
+   WITH THE INTENSIVE SERUM: THE SHAMPOO CUTS HAIR FALL AT THE
+   WASH, THE SERUM WORKS AT THE ROOT. THE HAIR GROWTH SYSTEM IS
+   ₹1,149 FOR BOTH PLUS THE CONDITIONER AND A SCALP MASSAGER.
+   REPLY 1 TO ADD IT, 2 TO REORDER JUST THE SHAMPOO AT ₹359.
+
+
+Subscription cancel reply (the save offer, kept honest):
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA PRICE LADDER AND SUBSCRIPTION                         10
+   DONE, REPEAT IS PAUSED. IF THE SERUM RAN OUT EARLY, WE CAN MOVE
+   YOU TO A 21-DAY CADENCE AT THE SAME ₹539. IF IT IS PRICE, THE 84-
+   DAY COURSE WORKS OUT TO ₹400 A BOTTLE. REPLY CADENCE OR
+   COURSE, OR IGNORE THIS AND NOTHING MORE SHIPS.
+
+
+EXAMPLE 4: THE MITOACTIVE WILLINGNESS-TO-PAY SURVEY
+Sent in week 2 to past Intensive Serum buyers (the 474 and 388 reviewers imply a base of several
+thousand). Target 300 completes, segmented by two questions up front: "Have you seen a
+dermatologist for hair fall?" (yes = Kavya segment) and "Have you used minoxidil?" Incentive: ₹200 off
+the next order.
+Product description shown before the questions, in the words a customer would read:
+
+   MITOACTIVE IS A 30 ML HAIR GROWTH SERUM, USED TWICE A DAY FOR
+   30 DAYS. IT USES Y100, AN ACTIVE THAT WORKS ON THE MITOCHONDRIA
+   IN THE HAIR FOLLICLE. IN AN 84-DAY STUDY ON INDIAN PARTICIPANTS,
+   87% SAW INCREASED GROWTH AND HAIR FALL REDUCED BY UP TO 95%.
+   IT IS DERMATOLOGICALLY TESTED AND DOES NOT CONTAIN MINOXIDIL.
+
+
+The four questions, asked for the 30 ml bottle:
+1. At what price would MitoActive be so expensive that you would not consider buying it?
+2. At what price would MitoActive be so cheap that you would doubt it works?
+3. At what price would MitoActive start to feel expensive, but you would still consider it?
+4. At what price would MitoActive feel like a very good deal?
+Then one purchase-intent question, with price rotated across respondents at ₹999, ₹1,299, ₹1,499,
+₹1,799 and ₹1,999: "Would you buy MitoActive at this price today?" Yes or no. And the same for the
+84-day course at ₹3,499, ₹3,999 and ₹4,499.
+How we read it: the four questions give the acceptable range and two candidate prices. They do not
+tell us demand. The rotated yes/no question does. We decide on the ₹1,499 single only if the
+acceptable range excludes it or if the yes rate at ₹1,799 is within 5 points of the rate at ₹1,499 (in
+which case the single moves up and the course follows). If the Kavya segment's range sits well above
+Rahul's, MitoActive gets a derm-referral landing page at the higher price and the public price holds.
+
+EXAMPLE 5: THE DISCOUNT RULEBOOK (ONE PAGE, EVERY CHANNEL)
+ RULE                                                NUMBER
+
+ Single SKU markdown from MRP                        0% to 12%. Never deeper, on any channel
+ System (3 SKUs, one concern) vs                     12% to 15%, gift included
+ singles
+ 84-day course vs singles                            25% to 33%, prepaid, website only
+ Routine on Repeat vs single sale price              10%, free shipping, website only
+ Same-SKU multipack                                  Does not exist. Multipacks are courses, named in days
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA PRICE LADDER AND SUBSCRIPTION                                         11
+ RULE                                                NUMBER
+
+ Combo that costs more than its parts                Never. Checked weekly by the ranking-watch loop
+ Festive and sale events                             Stack on singles only, max 20% off MRP. Courses and Repeat do not discount
+                                                     further
+ Marketplace and quick-commerce                      Parity with arata.in sale price, within ₹10
+ singles
+ Price endings                                       ₹9 for singles and Repeat. ₹999, ₹1,999, ₹3,999 for systems and courses
+ Free shipping threshold                             ₹299, unchanged. Free gift at ₹999 becomes the massager inside every
+                                                     system
+
+
+
+
+30-DAY DEPLOYMENT
+ WEEK BREW SHIPS                                                           ARATA PROVIDES                   LIVE BY END OF WEEK
+
+ 1         Pricing instrumentation on Shopify: single-to-pack                Shopify and WhatsApp             Baselines captured.
+           ratio, repeat-within-45-days, blended discount rate,              access, landed cost per SKU,     Negative-discount
+           AOV by bundle. Marketplace and quick-commerce                     current marketplace price        combo gone. Routine on
+           price parity audit. Anti-Dandruff combo repriced to               sheet, approval of the           Repeat live on six SKUs
+           ₹729 and AD Conditioner sale to ₹404. Subscription                discount rulebook (Arata         at 10% off
+           app configured with cadences and WhatsApp controls                brand manager, Arata ops
+           (Brew growth lead, Brew Shopify engineer)                     lead)
+ 2         Willingness-to-pay survey built and sent to past serum            Customer list segments,          Survey in field. Existing
+           buyers. Collection-page ladder designed and copy                  Y100 study summary for the       customers notified of
+           written (Example 1). MitoActive Course and System                 FAQ, legal sign-off on the       the serum price move
+           PDPs written (Example 2). "Lock ₹539 on Repeat" email             84-day promise wording           and the Repeat lock.
+           and WhatsApp to existing customers (Brew creative               (Arata brand manager, Arata      300 survey completes
+           lead, Brew lifecycle lead)                                      regulatory contact)              targeted by day 21
+ 3         Split test on new visitors: Intensive Serum ₹599 and              Marketplace listing edit         Test running with at
+           Course ₹1,199 vs ₹571 and ₹999. Ladder collection                 access, approval of naming       least 2,000 sessions
+           page live for the test arm. Day-25 and day-40                     map (Arata marketplace           per arm. Reorder
+           WhatsApp reorder flows live (Example 3). Product                  manager)                         nudges firing. Names
+           naming aligned across arata.in, Amazon, Nykaa and                                                  consistent on all
+           Blinkit listings (Brew growth lead, Brew                                                       channels
+           marketplace lead)
+ 4         Test read and decision. Ladder live for all traffic. Pack         Scalp massager stock for         Three-rung ladder live.
+           of 3 retired, 84-day Course replaces it. MitoActive               systems and Repeat delivery      Six SKUs on Repeat.
+           System ₹1,999 and MitoActive 84-day Course ₹3,999                 3, derma roller stock for        Two MitoActive bundles
+           live with day-0, 28, 56, 84 photo check-ins. Rulebook             delivery 6, courier set-up for   replacing four. Survey
+           published to every channel owner (Brew growth                   monthly course shipments         closed and read
+           lead, Brew lifecycle lead)                                      (Arata ops lead)
+
+
+
+
+HOW WE MEASURE
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA PRICE LADDER AND SUBSCRIPTION                                                                      12
+ METRIC                                        BASELINE                 90-DAY TARGET                        SOURCE
+
+ D2C AOV                                       ₹900 to ₹1,000 (brief,   ₹1,100                               Shopify
+                                               implied)
+ Blended discount rate (discounts ÷ To be instrumented in               Down 5 points from baseline          Shopify
+ gross D2C sales)                   week 1
+ System share of hair growth orders To be instrumented                  35%                                  Shopify
+ Routine on Repeat share of D2C                0%                       12%                                  Subscription
+ orders                                                                                                      app
+ Repeat purchase within 45 days                To be instrumented       Up 5 points from baseline            Shopify +
+                                                                                                             WhatsApp
+ Intensive Serum single units at               Test arms, week 3        Unit drop under 5%                   Split test
+ ₹599 vs ₹571
+ 84-day Course units vs old pack               Test arms, week 3        Unit drop under 20% (contribution-   Split test
+ of 3                                                                   neutral at 22%, assumption)
+ MitoActive units per month                    To be instrumented       2x the Aug to Oct monthly average    Shopify
+                                               (launched Aug 2026)
+ MitoActive Course attach (courses             0%                       25%                                  Shopify
+ ÷ all MitoActive first orders)
+ MitoActive reviews                            0                        100, via day-84 check-ins            Loox
+ 84-day promise refund rate                    n/a                      Under 8% of course buyers            WhatsApp +
+                                                                        (assumption)                         Shopify
+ Marketplace price parity breaches             Audit in week 1          Zero open breaches at any weekly     Parity audit
+                                                                        check
+
+
+Decision rules:
+    Intensive Serum at ₹599: if units in the ₹599 arm are within 5% of the ₹571 arm after 14 days and
+    2,000 sessions per arm, ₹599 stays and MRP ₹649 is reviewed for a ₹699 move in Q1. If units fall
+    more than 8%, revert to ₹571 and keep the ladder changes.
+    84-day Course at ₹1,199: if units fall less than 20% against the ₹999 pack, hold ₹1,199 and test
+    ₹1,299 after day 90. If units fall more than 20%, drop to ₹1,099 (₹366 a bottle, still 39% off singles)
+    and hold.
+    Routine on Repeat: if subscription share is under 6% at day 60, the problem is placement. We move
+    the Repeat toggle above the one-time price on every PDP and add it to the day-25 WhatsApp as the
+    default reply. We do not deepen the discount.
+    MitoActive single: moves only on survey evidence. If the yes rate at ₹1,799 is within 5 points of
+    ₹1,499, the single goes to ₹1,799 for new visitors and the course to ₹4,499. If the acceptable range
+    tops out below ₹1,499, we hold the single and lead with the System at ₹1,999 as the way in.
+    84-day promise: if refunds exceed 8% of course buyers in any month, we add a day-28 adherence
+    check (photo of the bottle level) as a condition before touching the promise itself.
+    If the whole ladder lifts AOV past ₹1,100 and blended discount rate falls, the next pricing move is the
+    Anti-Dandruff and Damage Defence ladders in the same shape, then a Styling System for Sahil.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA PRICE LADDER AND SUBSCRIPTION                                                        13
+APPENDIX
+PROPOSED PRICE SHEET (ALL CHANNELS)
+ SKU OR BUNDLE                                        MRP          ARATA.IN           MARKETPLACE   QUICK COMMERCE
+
+ Intensive Serum 30 ml                                ₹649         ₹599               ₹599          ₹599
+ Intensive Serum on Repeat                                         ₹539 / 30 days
+ Intensive 84-day Course                              ₹1,947       ₹1,199
+ Anti-Hair Fall Shampoo 200 ml                        ₹399         ₹359               ₹359          ₹359
+ Anti-Breakage Conditioner 200 ml                     ₹399         ₹359               ₹359          ₹359
+ Hair Growth System                                   ₹1,646       ₹1,149             ₹1,149        ₹1,149
+ Hair Growth System on Repeat                                      ₹1,039 / 30 days
+ MitoActive 30 ml                                     ₹1,499       ₹1,499             ₹1,499        ₹1,499
+ MitoActive on Repeat                                              ₹1,349 / 30 days
+ MitoActive System                                    ₹2,297       ₹1,999             ₹1,999
+ MitoActive 84-day Course                             ₹4,896       ₹3,999
+ Anti-Dandruff Shampoo 200 ml                         ₹449         ₹404               ₹404          ₹404
+ Anti-Dandruff Conditioner 200 ml                     ₹449         ₹404               ₹404          ₹404
+ Anti-Dandruff S + C                                  ₹898         ₹729               ₹729
+ Anti-Dandruff System                                 ₹1,197       ₹999               ₹999
+ Anti-Grey Serum 30 ml                                ₹449         ₹449               ₹449          ₹449
+ Anti-Grey 84-day Course                              ₹1,347       ₹1,099
+
+
+PRE-LAUNCH CHECKLIST
+    [ ] Landed cost per SKU confirmed so the contribution thresholds in the decision rules use real
+    numbers instead of the ₹300 assumption
+    [ ] Every price on arata.in appears in text and in the Offer JSON-LD, including course and Repeat
+    prices
+    [ ] One product name per SKU across arata.in, Amazon, Nykaa, Flipkart, Blinkit, Zepto and Instamart
+    [ ] 84-day promise wording cleared by Arata's regulatory contact
+    [ ] Pack of 3 redirects to the 84-day Course URL so the 388 reviews carry over
+    [ ] Courier can ship a three-delivery course without three separate orders in Shopify
+    [ ] Marketplace price-parity check scheduled weekly
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA PRICE LADDER AND SUBSCRIPTION                                                 14
+SOURCES
+Arata brand brief (arata.in catalogue, prices and reviews as of October 2026; Traya, Pilgrim,
+Minimalist, Bare Anatomy, ThriveCo and Mintop public prices as recorded there). Days-of-use, landed
+cost, refund rate and marketplace parity figures are labelled as assumptions where used.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ARATA PRICE LADDER AND SUBSCRIPTION                              15
+PRICING
+
+
+DAY 30
+AT ARATA
+    WHAT IS LIVE
+
+    A three-rung Hair Growth ladder is live on arata.in with the Intensive Serum at
+    ₹599, the 84-day course at ₹1,199, the MitoActive 84-day course at ₹3,999,
+    Routine on Repeat subscriptions on six SKUs, and a written discount rulebook
+    every channel follows.
+
+
+
+
+  NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+  BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+  CONFIRM".
+
+
+  EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+  BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                    DEPLOYMENT TEAM
+                                                                                 BREW
+

@@ -1,0 +1,11 @@
+public/gen/
+.env
+node_modules/
+.brands/
+.tenants/
+.research/
+public/research/
+test/out/
+tools/raw/
+.claude/
+node_modules

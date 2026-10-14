@@ -1,0 +1,859 @@
+      Brew                                   PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+ANALYTICS AND MEASUREMENT · MOVE 09 OF 50
+
+
+
+ONE
+TRACKING
+PLAN FOR
+EVERY
+ARATA
+CHANNEL
+  A SINGLE TRACKING PLAN, DATA LAYER AND WEEKLY
+  SCORECARD SO ARATA CAN SEE WHICH CONCERN, SKU,
+  CREATIVE AND CHANNEL ACTUALLY DRIVES FIRST
+  ORDERS AND 45-DAY REORDERS.
+
+
+
+68%
+OF REVENUE WITH NO EVENT DATA
+
+
+
+
+BREW × ARATA                  OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                                      WHAT THIS GIVES ARATA
+                                                                      A single tracking plan, data layer and weekly scorecard so Arata can see which
+                                                                      concern, SKU, creative and channel actually drives first orders and 45-day
+
+
+      68%
+                                                                      reorders.
+                                                                      LIVE 30 DAYS AFTER WE START
+                                                                      GA4 and GTM rebuilt on a documented data layer with checkout events from
+      OF REVENUE WITH NO EVENT DATA                                   Shopify Customer Events, 31 events live and QA'd, one UTM standard in use
+                                                                      across Meta, YouTube, creators and WhatsApp, and a weekly scorecard that
+                                                                      puts website, marketplace and quick-commerce numbers on one page.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+This discipline applies to Arata directly. Where the playbook says "signup", read account creation and WhatsApp or email opt-in. Where it says
+"subscription", read the 45-day reorder. Where it says "onboarding", read the first 84 days of using the serum.
+Arata does about ₹61 Cr a year, 50,000+ D2C orders a month and ~650K monthly web visits. Only 32% of that revenue runs through arata.in, the
+one surface where the brand can see what a customer did before buying. The other 68% sits on Amazon, Nykaa, Flipkart, Blinkit, Zepto and
+Instamart, where the brand gets order counts and a seller dashboard but no funnel. So when the ₹160 Cr plan asks "which concern, which SKU,
+which creative and which channel should get the next rupee", the honest answer today is: we can see a third of the picture.
+The website side is probably measured the way most Shopify stores are measured (assumption, since we have not seen the tag container): the
+Google & YouTube app sending default GA4 ecommerce, a Meta pixel from the Shopify Meta app, Loox for reviews, and maybe an older GTM
+container from before Shopify locked the checkout. That setup gives sessions, add-to-carts and purchases. It does not tell you whether a visitor
+came in for hair fall or dandruff, whether they opened the 7.4X study, whether they looked at MitoActive and then bought the ₹571 Intensive
+Serum instead, or whether a buyer came back inside 45 days.
+That is expensive. The Samay Raina mock podcast was judged on recall, because recall was the only thing anyone could read. MitoActive went
+live at ₹1,499 with zero reviews and nobody can say what share of PDP viewers bounce to the cheaper serum. The 45-day repeat, the number
+that decides whether Arata behaves like a 26% beauty brand or a 40%+ routine brand, is not a number anyone looks at weekly. And with COD
+orders that cancel or return, the "revenue" GA4 reports is gross, so the Meta and Google algorithms are being fed inflated purchase values.
+The opportunity is to build the measurement layer once, properly, before the rebrand, the quiz, subscription and the MitoActive push all land on
+top of it. Every one of those initiatives needs the same four things: a clean data layer, a concern-level view of the catalogue, a new-vs-repeat
+split, and one weekly page that puts all three channels side by side. We build those four things in 30 days. Everything else the deployment team
+ships for Arata reads its score off this.
+
+
+
+WHAT WE FOUND
+THE QUESTIONS THE DATA HAS TO ANSWER
+We start with decisions, then work back to events. These are the eight decisions Arata's leadership and growth team make every month that
+currently run on instinct.
+# DECISION                                                           METRIC NEEDED                                       CAN ARATA READ IT TODAY
+
+1 Which concern gets the next ₹10 lakh of Meta spend (hair fall vs   Revenue, CVR and CAC by concern                     No. Catalogue is not tagged by concern in
+  dandruff vs grey)                                                                                                      analytics
+2 Is MitoActive cannibalising the Intensive Serum or growing the     PDP view → purchase by SKU, cross-view rate,        No
+  category                                                           downgrade rate
+3 Do claim explainers (7.4X, 28,200, 87%) move conversion            PDP CVR split by "viewed study" vs not              No. Nothing fires when the proof is opened
+4 Is the routine story working                                       Attach rate of combos vs single SKUs, AOV by entry Partly, from order exports only
+                                                                     SKU
+5 Are buyers coming back inside 45 days                              Cohort repeat rate at day 45 and day 90             No weekly view
+6 Which creator or campaign drives real orders, not recall           UTM-tagged sessions and purchases by campaign       Partly. UTMs are inconsistent (assumption from
+                                                                     and creative                                        public links)
+7 How much web demand leaks to Blinkit and Amazon                    Clicks on marketplace links from arata.in; QC       No
+                                                                     revenue by city
+8 What is true net revenue after COD cancellations and RTO           Purchase minus refund, by channel                   No. GA4 sees gross only
+
+
+Eight decisions, zero fully answerable. That is the diagnosis in one line.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE TRACKING PLAN FOR EVERY ARATA CHANNEL                                                                                                1
+MEASUREMENT AUDIT BY SURFACE
+Scored 0 to 3 per surface: 0 means nothing, 3 means decision-grade.
+SURFACE                  WHAT LIKELY EXISTS TODAY (ASSUMPTION)                   WHAT IS MISSING                                                                    SCORE
+
+arata.in storefront      GA4 pageviews, view_item, add_to_cart via Shopify       Concern taxonomy, claim views, routine views, marketplace link clicks, opt-ins,    1
+                         app                                                     scroll on Lab Notes
+arata.in checkout        Shopify-native purchase to GA4 and Meta                 begin_checkout and add_payment_info with items, coupon_applied, payment            1
+                                                                                 method, COD flag, dedupe with GTM
+Post-purchase            Shopify order emails, Loox review requests              review_submitted, refund/cancel sync, reorder nudge clicks, customer_type and      0
+                                                                                 order_count properties
+Campaign tagging         Ad-hoc UTMs                                             One UTM standard across Meta, Google, YouTube, creators, WhatsApp, email           0
+Amazon, Nykaa,           Seller Central and Brand Analytics dashboards,          Weekly import into one table beside web numbers; search term and share data        1
+Flipkart                 Nykaa partner reports
+Blinkit, Zepto,          Partner dashboards with units and city splits           Weekly import; city-level revenue by SKU; ad spend by platform                     1
+Instamart
+B2B (~2 lakh             Order sheets                                            Out of scope for this doc; handled in the revops deliverable                       0
+units/month)
+Privacy                  Possibly no consent layer                               Consent Mode defaults and a light DPDP-compliant notice                            0
+
+
+Average score: 0.5 out of 3. The website scores a 1 because the Shopify defaults do work; they just do not answer Arata's questions.
+
+THE THREE BLIND SPOTS, DRAWN
+                                                                                                                                                                   DIAGRAM
+                         WHAT ARATA CAN SEE TODAY
+
+     arata.in (32%)           Marketplaces (38%)          Quick commerce (30%)
+     ┌──────────────┐         ┌──────────────┐            ┌──────────────┐
+     │ sessions      │        │              │            │               │
+     │ view_item     │        │   orders     │            │   units       │
+     │ add_to_cart │          │   (weekly    │            │   (by city, │
+     │ purchase      │        │    export)   │            │    monthly) │
+     │ (gross)       │        │              │            │               │
+     └──────────────┘         └──────────────┘            └──────────────┘
+           │                         │                           │
+           ▼                         ▼                           ▼
+      no concern tag            no funnel                  no funnel
+      no new/repeat             no creative link           no creative link
+      no 45-day cohort          no net revenue             no net revenue
+      no claim views
+      no leak to QC
+
+                         WHAT WE BUILD
+
+     ┌────────────────────────────────────────────────────────────┐
+     │ One data layer + one UTM standard + one weekly scorecard     │
+     │ Web events (31) ─┐                                           │
+     │ Shopify orders ──┼──► BigQuery ──► Scorecard (Mon 9am)       │
+     │ Marketplace CSV ─┤                                           │
+     │ QC partner CSV ──┘                                           │
+     └────────────────────────────────────────────────────────────┘
+
+
+
+
+FUNNEL RECONSTRUCTION FROM THE BRIEF
+We can only anchor two numbers: ~650K visits and ~50K D2C orders a month. Everything between them is "to be instrumented". The ranges
+below are assumptions from Indian D2C beauty stores at similar scale and are here only so the team knows what a healthy baseline looks like
+when the data lands.
+                                                                                                                                                                   DIAGRAM
+     Visits ................ 650,000  (brief)
+        │ PDP view rate ~55 to 65%          assumption
+     PDP views ............. ~390,000  to be instrumented
+        │ add-to-cart ~9 to 12%             assumption
+     Add to cart ........... ~40,000   to be instrumented
+        │ begin_checkout ~45 to 55%         assumption
+     Checkout started ...... ~20,000   to be instrumented
+        │ checkout CVR incl. COD ~45 to 55% assumption
+     Orders ................ 50,000    (brief; includes repeat and
+                                        direct reorders, so the web
+                                        funnel above understates it)
+
+
+
+
+The 7 to 8% visit-to-order rate in the brief is high for a cold-traffic store, which tells us a large share of those 50K orders are returning customers
+landing straight on a PDP or cart from WhatsApp and email. That is exactly the split we cannot see today, and exactly the split that decides spend
+allocation.
+
+SHOPIFY CONSTRAINT WE HAVE TO DESIGN AROUND
+Shopify removed script access to checkout in 2024. GTM in the theme can no longer see checkout steps or the thank-you page. Any tracking
+plan for Arata that puts begin_checkout, add_payment_info and purchase inside a theme GTM container will fail silently. The correct pattern:
+theme GTM handles storefront events; a Shopify Customer Events custom pixel handles checkout and purchase; both push to the same GA4
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE TRACKING PLAN FOR EVERY ARATA CHANNEL                                                                                                   2
+property with the same parameter names; the Google & YouTube app's GA4 connection is switched off so purchase is sent once. Most Shopify
+stores at Arata's size have purchase firing twice (app plus pixel) and nobody notices until ROAS looks 1.6X better in GA4 than in Shopify. We
+check for this on day 1.
+
+WHAT THE CATALOGUE LOOKS LIKE TO ANALYTICS TODAY
+Arata's catalogue has a clear concern structure on the site (Hair Growth, Anti-Dandruff, Damage Defence, Anti-Grey, Styling, Body, Face, Tools).
+That structure does not exist in the item parameters GA4 receives. Shopify sends item_name and a product_type that is often blank or
+inconsistent ("serum" vs "tonic", "onion" vs "biotin" across channels, per the brief). So the first fix is a controlled vocabulary we attach at the
+data layer, not in Shopify's product_type field.
+PARAMETER                             ALLOWED VALUES
+
+item_category (concern)               hair_fall, dandruff, damage, grey, styling, body, face, tools, legacy_curl
+item_category2 (form)                 shampoo, conditioner, serum, leave_on, gel, cream, spray, stick, lotion, wash, tool
+item_category3 (tier)                 core, intensive, mitoactive
+item_variant (pack)                   single, pack_of_3, combo_sc, combo_trio, combo_mito
+claim_value                           7.4x, 28200, 95pct, 86pct, 87pct, 94pct, 36hr, 72hr
+
+
+Every product gets mapped once in a sheet. The theme reads it from a metafield. That sheet is the single most useful 40 minutes of work in this
+document.
+
+
+
+THE PLAN
+Three phases. Foundation first, Arata-specific events second, the channel layer third. Each phase ships something leadership can read.
+
+PHASE 1 (DAYS 1 TO 10): FOUNDATION AND HYGIENE
+What: New GTM container, GA4 property audit, Shopify Customer Events pixel for checkout, consent defaults, internal traffic filter, purchase
+deduplication, 14-month retention, Google Ads and Merchant Center links.
+Why: Nothing built on top is trustworthy until purchase fires once with the right value and items, and until checkout steps exist.
+Expected effect: Purchase count in GA4 within 3% of Shopify orders for the same day. begin_checkout and add_payment_info populated. One
+source of truth for Meta and Google bidding signals.
+Decisions we make in this phase:
+   GA4 purchase counting method: every event. Value: order subtotal after discounts, before shipping, in INR.
+   COD orders fire purchase at order placement (same as prepaid) with payment_type: cod . Cancellations and RTO come back as refund events
+   via a Shopify webhook to the GA4 Measurement Protocol in Phase 2. Until then, the scorecard shows gross web revenue with a COD share
+   column so nobody reads it as net.
+   Consent: Consent Mode v2 with defaults set to denied for ad_storage until the visitor interacts with a single-line notice; analytics_storage
+   granted by default with IP anonymisation. This is the pragmatic reading of the DPDP Act for a cosmetics store with no EU traffic. Arata's legal
+   counsel confirms the default before go-live.
+   Google Signals on, so cross-device audiences can export to Google Ads.
+
+PHASE 2 (DAYS 8 TO 20): ARATA-SPECIFIC EVENTS AND PROPERTIES
+What: The 31-event tracking plan in Worked example 1, the concern vocabulary, user properties for customer type and order count, marketplace
+link clicks, claim proof views, routine views, opt-ins, review submission, refund sync.
+Why: This is where the eight decisions become readable. Concern-level CVR, MitoActive cross-shopping, claim lift and 45-day cohorts all come
+from these events.
+Expected effect: Within two weeks of data, the growth team can split every Meta campaign by concern and by new vs repeat, and can see the
+MitoActive → Intensive Serum downgrade rate.
+The event design follows one rule: GA4 recommended names stay as they are (view_item, add_to_cart, begin_checkout, purchase, refund,
+sign_up, search, select_promotion). Everything Arata-specific uses object_action in lowercase with context in parameters, never in the event
+name. So claim_proof_viewed with claim_value: 7.4x , not claim_7x_viewed .
+
+PHASE 3 (DAYS 15 TO 30): CHANNEL LAYER AND THE WEEKLY SCORECARD
+What: GA4 BigQuery export on; weekly CSV imports from Amazon Seller Central, Nykaa, Flipkart, Blinkit, Zepto and Instamart into the same
+BigQuery project; one Looker Studio scorecard refreshed Monday 9am IST; UTM standard enforced through a shared link builder sheet.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE TRACKING PLAN FOR EVERY ARATA CHANNEL                                                                            3
+Why: 68% of revenue needs to sit beside the 32% on one page, with the same SKU vocabulary, or the concern-level decisions only apply to a
+third of the business.
+Expected effect: One page answers "what happened last week" across all three channels, by concern and by SKU. Marketplace numbers are
+still order-level, not funnel-level, and we say so on the page. Full attribution across channels (incrementality, MMM) is a separate deliverable; this
+doc gets the inputs clean.
+
+ARCHITECTURE
+                                                                                                                                                            DIAGRAM
+       STOREFRONT (theme)                    CHECKOUT (Shopify sandbox)
+       ┌─────────────────────────┐           ┌──────────────────────────┐
+       │ Liquid renders          │           │ Customer Events pixel    │
+       │ dataLayer.push({...})   │           │ analytics.subscribe(...) │
+       │   view_item             │           │   begin_checkout         │
+       │   add_to_cart           │           │   add_shipping_info      │
+       │   claim_proof_viewed    │           │   add_payment_info       │
+       │   routine_viewed        │           │   purchase               │
+       │   marketplace_link_clk │            │                          │
+       │ GTM container (web)     │           │ GTM container (same ID) │
+       └───────────┬─────────────┘           └────────────┬─────────────┘
+                   │                                      │
+                   ▼                                      ▼
+             ┌──────────────────────────────────────────────────┐
+             │ GA4 property (one web stream, INR, 14-mo retain) │
+             │ Meta pixel + CAPI via Shopify Meta app (event_id) │
+             │ Google Ads conversions imported from GA4           │
+             └───────────────────────────┬──────────────────────┘
+                                         │ daily export
+       Shopify webhooks ──► refund via MP ┤
+       Amazon / Nykaa / Flipkart CSV ─────┤
+       Blinkit / Zepto / Instamart CSV ───┤
+                                         ▼
+                              ┌──────────────────────┐
+                              │ BigQuery (arata_core)│
+                              │ fact_web_events      │
+                              │ fact_orders_all      │
+                              │ dim_sku (concern)    │
+                              │ dim_campaign (utm) │
+                              └──────────┬───────────┘
+                                         ▼
+                              ┌──────────────────────┐
+                              │ Weekly scorecard     │
+                              │ Looker Studio, Mon   │
+                              └──────────────────────┘
+
+
+
+
+UTM STANDARD FOR ARATA
+Lowercase, underscores, no spaces, no brand name in campaign (it is always Arata). Five parameters, all of them documented in one sheet that
+doubles as the link builder.
+PARAMETER            RULE                                   ARATA EXAMPLES
+
+utm_source           The platform, exact                    meta, google, youtube, whatsapp, email, instagram_bio, creator, blinkit, amazon, loox
+utm_medium           The payment or delivery type           cpc, paid_social, paid_video, organic_social, crm, creator_paid, creator_gifted, referral, qr
+utm_campaign         concern_objective_period               hairfall_mito_launch_oct26, dandruff_monsoon_sep26, grey_serum_evergreen, routine_reorder_d45
+utm_content          creative or placement identifier       ugc_rahul_crown_15s, static_7x_blue, podcast_samay_ep1, carousel_routine_trio
+utm_term             audience or keyword                    hair_fall_shampoo, lal_mintop_alt, retarget_pdp_7d, lookalike_serum_buyers
+
+
+Three rules the whole team signs: every paid link carries all five; every WhatsApp and email link carries source, medium and campaign at
+minimum; creators get their links pre-built, never typed. A GTM lookup table maps common misspellings (Facebook, FB, fb_ads → meta) for the
+first 60 days while habits settle.
+
+CUSTOM DIMENSIONS AND USER PROPERTIES
+NAME                              SCOPE          PARAMETER                         WHY ARATA NEEDS IT
+
+Concern                           Item           item_category                     Revenue and CVR by hair fall, dandruff, grey, damage, styling
+Tier                              Item           item_category3                    MitoActive vs Intensive vs core
+Claim value                       Event          claim_value                       Which numbers get opened and whether they lift CVR
+Customer type                     User           customer_type                     new, returning, repeat_45
+Order count bucket                User           order_count_bucket                0, 1, 2_3, 4_plus
+Primary concern                   User           primary_concern                   First concern purchased; drives cross-sell reporting
+Payment type                      Event          payment_type                      cod vs prepaid, for net revenue and RTO modelling
+Routine size                      Event          routine_size                      Items in cart grouped by concern, 1 to 4
+Marketplace target                Event          marketplace                       blinkit, zepto, instamart, amazon, nykaa, flipkart
+Content group                     Event          content_group                     pdp, collection, lab_notes, routine, compare, home
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE TRACKING PLAN FOR EVERY ARATA CHANNEL                                                                                            4
+No names, emails, phone numbers or order IDs that can be reversed into a person. Shopify customer IDs are hashed before they reach GA4's
+user_id.
+
+AUDIENCES WE BUILD ON DAY ONE (EXPORT TO GOOGLE ADS AND MIRROR IN META)
+AUDIENCE                        DEFINITION                                                               USED FOR
+
+MitoActive considerers          view_item for MitoActive, no purchase, last 14 days                      Retarget with the ₹50 per day framing and the study
+Downgraders                     Viewed MitoActive, bought Intensive Serum                                Day 60 upgrade message
+Serum buyers day 30 to 45       purchase with item_category2 = serum, 30 to 45 days ago, no repeat Reorder nudge; the 45-day window from the brief
+Shampoo-only hair fall buyers purchase with item_category = hair_fall and routine_size = 1               Serum cross-sell
+Claim openers                   claim_proof_viewed, no purchase, 7 days                                  High-intent retarget
+QC leakers                      marketplace_link_clicked, no web purchase                                Learn where web demand goes; exclude from web acquisition spend
+
+
+DATA QUALITY RULES
+    Purchase fires once. The Google & YouTube app GA4 toggle is off. The custom pixel sends purchase with transaction_id = Shopify order
+    name. GTM has a trigger exception if the same transaction_id was seen this session.
+    Internal traffic: Delhi HQ and warehouse IPs, plus any session with ?qa=1 , filtered from the reporting view.
+    Test orders tagged test_order: true in the data layer and excluded.
+    Value is read from the Shopify checkout object in major units (rupees), never parsed from rendered price text.
+    Every Monday the scorecard shows GA4 purchases vs Shopify orders for the prior week. Drift above 3% opens a ticket.
+
+
+
+WORKED EXAMPLES
+WORKED EXAMPLE 1: THE ARATA TRACKING PLAN (31 EVENTS)
+This is the document the engineer, the growth team and the agency work from. Trigger column says where it fires. The "Decision" column ties
+each event to one of the eight decisions above; an event without a decision did not make the list.
+#     EVENT NAME              TRIGGER                                                      KEY PARAMETERS                                                            DECISION
+
+1     page_view               Every page (enhanced)                                        content_group, page_location                                              all
+2     view_item_list          Collection page render                                       item_list_name (hair_growth, anti_dandruff...), items[]                   1
+3     select_item             Product card click in a list                                 item_list_name, items[]                                                   1
+4     view_item               PDP render                                                   items[] with concern, form, tier, pack, claim_value, price                1, 2
+5     concern_selected        Click on concern nav, homepage tile or collection filter     concern, location (nav, home, filter)                                     1
+6     claim_proof_viewed      Open the study modal or "how we tested" accordion on         claim_value, sku_id, concern                                              3
+                              PDP
+7     pdp_section_viewed      50% visibility of ingredients, how-to-use, reviews,          section, sku_id                                                           3
+                              lab_notes sections
+8     compare_viewed          MitoActive vs Intensive Serum compare block visible or       from_sku, to_sku                                                          2
+                              opened
+9     routine_viewed          Combo or routine PDP render, or "complete the routine"       routine_name, routine_size, concern                                       4
+                              block visible
+10 routine_item_added         Add-on toggled inside a routine block                        routine_name, sku_id                                                      4
+11 add_to_cart                Any add to cart                                              items[], routine_size, location (pdp, collection, routine, cart_upsell)   1, 2, 4
+12 remove_from_cart           Remove from cart drawer                                      items[]                                                                   4
+13 view_cart                  Cart drawer or page open                                     value, items[], routine_size, free_ship_gap                               4
+14 cart_upsell_viewed         Upsell block rendered in cart (pack of 3, add conditioner)   offer_name, sku_id                                                        4
+15 begin_checkout             Customer Events checkout_started                             value, items[], coupon                                                    funnel
+16 add_shipping_info          Customer Events checkout_address_info_submitted              shipping_tier, pincode_prefix (first 2 digits only)                       funnel
+17 add_payment_info           Customer Events payment_info_submitted                       payment_type (cod, upi, card, wallet, bnpl)                               8
+18 coupon_applied             Discount code applied in checkout                            coupon, discount_value                                                    4, 6
+19 purchase                   Customer Events checkout_completed                           transaction_id, value, currency INR, items[], payment_type,               1 to 8
+                                                                                           customer_type, order_count_bucket, primary_concern, routine_size
+20 refund                     Shopify webhook: order cancelled, refunded or RTO            transaction_id, value, items[], reason (cancel, rto, return)              8
+21 search                     Site search submit                                           search_term, results_count                                                1
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE TRACKING PLAN FOR EVERY ARATA CHANNEL                                                                                                      5
+#     EVENT NAME                    TRIGGER                                                             KEY PARAMETERS                      DECISION
+
+22 view_search_results              Search results page                                                 search_term                         1
+23 marketplace_link_clicked Click on any "Buy on Blinkit / Zepto / Amazon" link                         marketplace, sku_id, location       7
+24 whatsapp_optin                   WhatsApp opt-in confirmed (popup, checkout box,                     location, incentive                 5
+                                    footer)
+25 email_optin                      Email capture confirmed                                             location, incentive                 5
+26 sign_up                          Account created                                                     method (email, phone_otp, google)   5
+27 login                            Account login                                                       method                              5
+28 review_submitted                 Loox review form completed                                          sku_id, rating, has_photo           2, 3
+29 lab_notes_read                   75% scroll on a Lab Notes article                                   article_slug, concern               3
+30 reorder_link_clicked             Click on a reorder link from WhatsApp or email (via                 days_since_last_order, sku_id       5
+                                    utm_campaign = routine_reorder_*)
+31 quiz_step_completed              Reserved for the hair-fall quiz when it ships                       step_number, step_name, answer      1 (future)
+
+
+Conversions marked in GA4: purchase (every event), whatsapp_optin (once per session), sign_up (once per session), review_submitted (every
+event). Google Ads imports purchase only, with value.
+
+WORKED EXAMPLE 2: DATA LAYER CODE FOR THE ARATA PDP AND CHECKOUT
+Two snippets, both finished. The first lives in the theme's product template. The second is the Shopify Customer Events custom pixel.
+Storefront: view_item with the concern vocabulary (product.liquid)
+                                                                                                                                                   CODE
+    // Rendered by Liquid. Metafields hold the controlled vocabulary.
+    window.dataLayer = window.dataLayer || [];
+    dataLayer.push({ ecommerce: null });
+    dataLayer.push({
+      event: 'view_item',
+      content_group: 'pdp',
+      ecommerce: {
+        currency: 'INR',
+        value: {{ product.selected_or_first_available_variant.price | divided_by: 100.0 }},
+        items: [{
+          item_id: '{{ product.selected_or_first_available_variant.sku }}',
+          item_name: '{{ product.title | escape }}',
+          item_category: '{{ product.metafields.arata.concern }}',      // hair_fall
+          item_category2: '{{ product.metafields.arata.form }}',        // serum
+          item_category3: '{{ product.metafields.arata.tier }}',        // mitoactive
+          item_variant: '{{ product.metafields.arata.pack }}',          // single
+          claim_value: '{{ product.metafields.arata.claim_value }}',    // 87pct
+          price: {{ product.selected_or_first_available_variant.price | divided_by: 100.0 }},
+          compare_at_price: {{ product.selected_or_first_available_variant.compare_at_price | default: 0 | divided_by: 100.0 }},
+          quantity: 1
+        }]
+      }
+    });
+
+    // Claim proof: fires when the study accordion opens.
+    document.querySelectorAll('[data-claim-proof]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        dataLayer.push({
+          event: 'claim_proof_viewed',
+          claim_value: el.getAttribute('data-claim-proof'),   // "7.4x"
+          sku_id: '{{ product.selected_or_first_available_variant.sku }}',
+          concern: '{{ product.metafields.arata.concern }}'
+        });
+      });
+    });
+
+    // Marketplace leak: every "Buy on ..." link carries data-marketplace.
+    document.querySelectorAll('[data-marketplace]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        dataLayer.push({
+          event: 'marketplace_link_clicked',
+          marketplace: el.getAttribute('data-marketplace'),   // "blinkit"
+          sku_id: '{{ product.selected_or_first_available_variant.sku }}',
+          location: 'pdp'
+        });
+      });
+    });
+
+
+
+
+Checkout: Shopify Customer Events custom pixel (Settings → Customer events → Add custom pixel)
+                                                                                                                                                   CODE
+    // Loads GTM inside Shopify's checkout sandbox and forwards checkout events.
+    (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});
+    var f=d.getElementsByTagName(s)[0],j=d.createElement(s);j.async=true;
+    j.src='https://www.googletagmanager.com/gtm.js?id='+i;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-ARATA01');
+
+    function mapItems(lineItems) {
+      return lineItems.map(function (li) {
+        var v = li.variant || {};
+        var p = v.product || {};
+        return {
+          item_id: v.sku || v.id,
+          item_name: p.title,
+          item_variant: v.title,
+          price: v.price ? Number(v.price.amount) : null,
+          quantity: li.quantity
+        };
+      });
+    }
+
+    function paymentType(checkout) {
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE TRACKING PLAN FOR EVERY ARATA CHANNEL                                                                                6
+       var t = (checkout.transactions && checkout.transactions[0]) || {};
+       var g = (t.gateway || '').toLowerCase();
+       if (g.indexOf('cash') > -1 || g.indexOf('cod') > -1) return 'cod';
+       if (g.indexOf('upi') > -1) return 'upi';
+       return g || 'unknown';
+   }
+
+   analytics.subscribe('checkout_started', function (e) {
+     var c = e.data.checkout;
+     window.dataLayer.push({ ecommerce: null });
+     window.dataLayer.push({
+       event: 'begin_checkout',
+       ecommerce: {
+         currency: c.currencyCode,
+         value: Number(c.subtotalPrice.amount),
+         coupon: (c.discountApplications[0] || {}).title || undefined,
+         items: mapItems(c.lineItems)
+       }
+     });
+   });
+
+   analytics.subscribe('payment_info_submitted', function (e) {
+     var c = e.data.checkout;
+     window.dataLayer.push({
+       event: 'add_payment_info',
+       payment_type: paymentType(c),
+       value: Number(c.subtotalPrice.amount),
+       currency: c.currencyCode
+     });
+   });
+
+   analytics.subscribe('checkout_completed', function (e) {
+     var c = e.data.checkout;
+     var orderCount = (c.order && c.order.customer && c.order.customer.ordersCount) || 1;
+     window.dataLayer.push({ ecommerce: null });
+     window.dataLayer.push({
+       event: 'purchase',
+       customer_type: orderCount > 1 ? 'returning' : 'new',
+       order_count_bucket: orderCount === 1 ? '1' : orderCount <= 3 ? '2_3' : '4_plus',
+       payment_type: paymentType(c),
+       routine_size: c.lineItems.length,
+       ecommerce: {
+         transaction_id: c.order.id,
+         currency: c.currencyCode,
+         value: Number(c.subtotalPrice.amount),
+         shipping: Number(c.shippingLine ? c.shippingLine.price.amount : 0),
+         coupon: (c.discountApplications[0] || {}).title || undefined,
+         items: mapItems(c.lineItems)
+       }
+     });
+   });
+
+
+
+
+The checkout pixel cannot read Arata's concern metafields, so concern, tier and claim_value on purchase items are joined in BigQuery from
+dim_sku using item_id. The engineer does not need to fight the sandbox for that.
+
+
+WORKED EXAMPLE 3: THE GTM CONTAINER SPEC
+Named so anyone can open the container cold and understand it. Same container ID in theme and pixel; the pixel's triggers are scoped with a
+{{Page Path}} contains /checkouts/ condition so storefront tags never fire there.
+
+
+Tags
+TAG NAME                                                    TYPE                                           TRIGGER
+
+GA4 - Config - Arata Web                                    Google tag                                     All Pages
+GA4 - Event - view_item                                     GA4 event                                      Custom - view_item
+GA4 - Event - add_to_cart                                   GA4 event                                      Custom - add_to_cart
+GA4 - Event - begin_checkout                                GA4 event                                      Custom - begin_checkout
+GA4 - Event - add_payment_info                              GA4 event                                      Custom - add_payment_info
+GA4 - Event - purchase                                      GA4 event                                      Custom - purchase (exception: Dedup - txn seen)
+GA4 - Event - claim_proof_viewed                            GA4 event                                      Custom - claim_proof_viewed
+GA4 - Event - compare_viewed                                GA4 event                                      Visibility - Compare block
+GA4 - Event - routine_viewed                                GA4 event                                      Custom - routine_viewed
+GA4 - Event - marketplace_link_clicked                      GA4 event                                      Custom - marketplace_link_clicked
+GA4 - Event - whatsapp_optin                                GA4 event                                      Custom - whatsapp_optin
+GA4 - Event - review_submitted                              GA4 event                                      Custom - review_submitted
+GA4 - Event - lab_notes_read                                GA4 event                                      Scroll - 75% on /blogs/lab-notes
+GA4 - Event - generic DL forwarder                          GA4 event, name = {{DL - event}}               Custom - regex (concern_selected
+
+
+Meta pixel and CAPI stay in the Shopify Meta app, which handles event_id deduplication. We do not add a second Meta pixel in GTM.
+Variables
+VARIABLE NAME                                                  TYPE                         NOTES
+
+DL - ecommerce                                                 Data layer, v2               Full object for GA4 event tags
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE TRACKING PLAN FOR EVERY ARATA CHANNEL                                                                                   7
+VARIABLE NAME                                            TYPE                    NOTES
+
+DL - claim_value                                         Data layer
+DL - marketplace                                         Data layer
+DL - payment_type                                        Data layer
+DL - customer_type                                       Data layer              Set as GA4 user property on purchase
+JS - transaction seen                                    Custom JS               Reads sessionStorage list of transaction_ids
+LT - utm_source normaliser                               Lookup table            facebook, fb, FB → meta; ig → instagram
+Const - GA4 Measurement ID                               Constant                G-XXXXXXXXXX
+
+
+Triggers
+TRIGGER NAME                                 TYPE                             CONDITION
+
+Custom - purchase                            Custom event                     event equals purchase
+Dedup - txn seen                             Custom event (exception)         JS - transaction seen equals true
+Visibility - Compare block                   Element visibility               CSS selector [data-compare="mitoactive"], 50%, once per page
+Scroll - 75% on /blogs/lab-notes             Scroll depth                     75% vertical, Page Path contains /blogs/lab-notes
+Internal - qa flag                           Page view (exception)            Query string contains qa=1
+
+
+WORKED EXAMPLE 4: THE FIRST TEN UTM LINKS
+Built in the shared sheet, ready to paste. All land on live arata.in paths.
+USE           FINAL URL (PATH + UTMS)
+
+Meta,      /products/mitoactive-mitochondrial-hair-growth-serum?
+MitoActive utm_source=meta&utm_medium=paid_social&utm_campaign=hairfall_mito_launch_oct26&utm_content=ugc_rahul_crown_15s&utm_term=retarget_pdp_7d
+launch,
+UGC
+crown
+video
+Meta,      /products/mitoactive-mitochondrial-hair-growth-serum?
+MitoActive utm_source=meta&utm_medium=paid_social&utm_campaign=hairfall_mito_launch_oct26&utm_content=static_50perday_blue&utm_term=lookalike_serum_buyers
+launch,
+static
+₹50/day
+Google        /products/anti-hair-fall-intensive-shampoo?
+Search,       utm_source=google&utm_medium=cpc&utm_campaign=hairfall_shampoo_evergreen&utm_content=rsa_7x&utm_term=hair_fall_shampoo
+hair fall
+shampoo
+YouTube,      /collections/hair-growth?
+podcast       utm_source=youtube&utm_medium=paid_video&utm_campaign=brand_podcast_q4_26&utm_content=podcast_ep1_pre_roll&utm_term=male_22_35_metro
+format,
+episode 1
+Creator       /products/anti-dandruff-shampoo?
+paid,         utm_source=creator&utm_medium=creator_paid&utm_campaign=dandruff_monsoon_sep26&utm_content=creator_divya_reel_1&utm_term=female_22_30
+dandruff,
+monsoon
+WhatsApp, /products/hair-growth-intensive-serum-pack-of-3?
+day-40    utm_source=whatsapp&utm_medium=crm&utm_campaign=routine_reorder_d45&utm_content=serum_pack3_999
+serum
+reorder
+WhatsApp, /products/mitoactive-mitochondrial-hair-growth-serum?
+day-60     utm_source=whatsapp&utm_medium=crm&utm_campaign=mito_upgrade_d60&utm_content=downgrader_study
+MitoActive
+upgrade
+Email,        /blogs/lab-notes/why-84-days?utm_source=email&utm_medium=crm&utm_campaign=onboarding_84d&utm_content=day7_science
+post-
+purchase
+Lab Notes
+Instagram     /?utm_source=instagram_bio&utm_medium=organic_social&utm_campaign=bio_evergreen
+bio
+Pack          /pages/routine?utm_source=pack_insert&utm_medium=qr&utm_campaign=routine_onboard_q4_26&utm_content=serum_box
+insert QR
+
+
+WORKED EXAMPLE 5: THE MONDAY SCORECARD
+One page, one screen, refreshed before the 10am Monday review. Numbers shown are the layout, not Arata's actuals; every cell reads "to be
+instrumented" until week 3.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE TRACKING PLAN FOR EVERY ARATA CHANNEL                                                                               8
+                                                                                                                                                                               DIAGRAM
+     ARATA WEEKLY SCORECARD          Week of 13 Oct 2026    vs prior wk   vs 4-wk avg
+     ─────────────────────────────────────────────────────────────────────────────
+     REVENUE (gross, ₹)       Web        Marketplace    Quick commerce    Total
+                              ──────     ───────────    ──────────────    ─────
+     Revenue                  ...        ...            ...               ...
+     Orders / units           ...        ...            ...               ...
+     COD share (web)          ...%       n/a            n/a
+     Refund + RTO (web, net) -...        to come        to come
+
+     WEB FUNNEL                Sessions   PDP   ATC   Checkout Purchase            CVR
+                               ...        ...   ...   ...      ...                 ...%
+     New vs repeat purchases   new ...%   repeat ...% repeat_45 ...%
+
+     BY CONCERN (web)         Sessions    CVR      Revenue   AOV     Claim-open lift
+     hair_fall                ...         ...%     ...       ...     +...pts
+     dandruff                 ...         ...%     ...       ...     +...pts
+     grey                     ...         ...%     ...       ...     +...pts
+     damage / styling / other ...         ...%     ...       ...     +...pts
+
+     MITOACTIVE                PDP views ... CVR ...% Compare→Intensive ...%
+                               Reviews this wk ... Total reviews ...
+
+     ROUTINE                   Combo attach ...%     Avg routine_size ...          Free-ship gap hits ...
+
+     CAMPAIGNS (top 5 by rev) utm_campaign / content        Sessions Purch CVR Rev
+                              hairfall_mito_launch_oct26 / ugc_rahul_crown_15s ...
+
+     LEAK                      marketplace_link_clicked ...        → blinkit ...    zepto ...   amazon ...
+
+     DATA HEALTH               GA4 purchases vs Shopify orders: ...% drift (alert > 3%)
+                               Untagged paid sessions: ...% (alert > 5%)
+
+
+
+
+The "Claim-open lift" column is the one that pays for the project. It is PDP conversion for sessions that fired claim_proof_viewed minus PDP
+conversion for those that did not, by concern. If the 7.4X study lifts the shampoo PDP by 2 points and the 28,200 study does nothing, the creative
+team knows which number to put on the next 20 ads.
+
+WORKED EXAMPLE 6: THE QA SCRIPT WE RUN BEFORE PUBLISH
+Run on Chrome desktop, Chrome Android and Safari iOS, with GA4 DebugView open and GTM Preview connected.
+ 1. Land on /collections/hair-growth from a tagged Meta link. Confirm view_item_list with item_list_name = hair_growth and the five UTMs in the
+    session source.
+ 2. Open the Anti-Hair Fall Intensive Shampoo PDP. Confirm view_item: item_category = hair_fall, item_category2 = shampoo, item_category3 =
+    core, claim_value = 7.4x, price = 359.
+ 3. Open the "how we tested" accordion. Confirm claim_proof_viewed with claim_value = 7.4x. Close and reopen: fires again (every event,
+    intended).
+ 4. Scroll to the MitoActive compare block. Confirm compare_viewed fires once per page.
+ 5. Add to cart. Confirm add_to_cart with location = pdp and routine_size = 1. Add the conditioner from the cart upsell. Confirm location =
+    cart_upsell and routine_size = 2.
+ 6. Click "Buy on Blinkit". Confirm marketplace_link_clicked with marketplace = blinkit. Confirm the outbound click does not also fire a GA4
+    enhanced-measurement click with the wrong label.
+ 7. Begin checkout. Confirm begin_checkout from the pixel with 2 items and value = 718 (₹359 × 2). Confirm no storefront tag fired on
+    /checkouts/.
+ 8. Choose COD. Confirm add_payment_info with payment_type = cod.
+ 9. Place a ₹1 test order with the qa=1 flag. Confirm purchase fires exactly once with transaction_id = order name. Reload the thank-you page.
+    Confirm purchase does not fire again.
+10. Cancel the test order in Shopify admin. Confirm refund arrives in GA4 via Measurement Protocol within 10 minutes with the same
+    transaction_id.
+11. Check the Shopify Google & YouTube app: GA4 connection shows disconnected. Check Shopify Meta app: pixel and CAPI both on, with
+    deduplication enabled.
+12. Next morning, compare GA4 purchases to Shopify orders for the prior day. Pass if within 3%.
+
+
+
+30-DAY DEPLOYMENT
+ WEEK BREW SHIPS                                                                           ARATA PROVIDES                                     LIVE BY END OF WEEK
+
+ 1      Tag audit of current theme, apps and GA4 property; duplicate-purchase                Shopify collaborator access, GA4 and Google        Owner: Brew analytics lead with
+        check; new GTM container; GA4 settings (INR, retention 14 months,                    Ads admin, Meta Business admin, list of HQ and     Arata brand manager. Clean GA4
+        Signals, internal traffic); Consent Mode defaults; SKU-to-concern                    warehouse IPs, sign-off from legal on the          property, dedupe confirmed, mapping
+        mapping sheet; UTM standard and link builder sheet                                   consent default                                    sheet approved
+ 2      Theme data layer (view_item, add_to_cart, claim_proof_viewed,                        Theme developer access or a 2-hour pairing         Owner: Brew implementation
+        compare_viewed, routine_viewed, marketplace_link_clicked, opt-ins);                  slot with Arata's Shopify developer; metafields    engineer with Arata Shopify developer.
+        Customer Events pixel for checkout and purchase; GTM tags, triggers,                 populated from the mapping sheet; data-            Events 1 to 19 and 21 to 27 live in GA4
+        variables; custom dimensions created; QA script run 1                                attributes added to the "Buy on" links and claim   DebugView and production
+                                                                                             accordions
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE TRACKING PLAN FOR EVERY ARATA CHANNEL                                                                                                                9
+WEEK BREW SHIPS                                                                 ARATA PROVIDES                                    LIVE BY END OF WEEK
+
+3        Refund sync via Shopify webhook to Measurement Protocol; Loox            Weekly exports from Amazon Seller Central,        Owner: Brew data engineer with
+         review_submitted hook; Lab Notes scroll event; audiences built and       Nykaa, Flipkart, Blinkit, Zepto, Instamart (one   Arata ecommerce manager. All 30 live
+         exported to Google Ads; GA4 to BigQuery export on; first marketplace     owner on the Arata side); Loox admin access       events, refund flowing, BigQuery filling,
+         and QC CSV templates; QA script run 2 across devices                                                                       audiences live
+4        Looker Studio scorecard on BigQuery; data-health alerts (purchase drift, 45-minute slot with growth, CRM and creative      Owner: Brew analytics lead with
+         untagged paid sessions); UTM lookup normaliser; team training (45        teams; agency contacts briefed to use the link    Arata head of growth. Monday
+         minutes) on the link builder and the scorecard; handover doc with every builder only                                       scorecard live with first full week of
+         event, parameter and owner                                                                                                 data; every paid link tagged to standard
+
+
+What is live on day 30: 30 production events plus one reserved (quiz), one GTM container serving storefront and checkout, purchase matching
+Shopify within 3%, net web revenue after refunds, concern-level and new-vs-repeat reporting, six exported audiences, a UTM standard with a
+link builder in daily use, and one scorecard covering web, marketplace and quick commerce.
+
+
+
+HOW WE MEASURE
+This is a measurement project, so it is measured on two things: is the data right, and does anyone use it.
+METRIC                                     BASELINE                               90-DAY TARGET                                                      READ FROM
+
+GA4 purchases vs Shopify orders            Unknown; likely double-counted         Within 3% every week                                               Scorecard data health
+(weekly drift)                             (assumption)                                                                                              row
+Share of paid sessions with full UTM       To be instrumented; assumed under      Above 95%                                                          GA4 session source
+set                                        50%                                                                                                       report
+Events with a mapped concern on            0%                                     100% of SKUs excluding legacy curl                                 BigQuery dim_sku join
+purchase items
+Net web revenue available (after           Not available                          Weekly, with COD and RTO split                                     Scorecard revenue
+refund/RTO)                                                                                                                                          block
+45-day repeat rate (web cohort)            Not reported; beauty average 26%       Reported weekly by concern; target set after 2 cohorts land        GA4 exploration +
+                                           (brief)                                                                                                   BigQuery
+Claim-open lift, by concern                Not measurable                         Measured for 7.4X, 28,200, 87%, 95%, 86% with at least 2,000 Scorecard concern
+                                                                                  PDP sessions each                                            block
+MitoActive compare → Intensive             Not measurable                         Measured; feeds the pricing and launch deliverables                MitoActive block
+downgrade rate
+Marketplace link clicks as % of PDP        Not measurable                         Measured by marketplace and SKU                                    Leak block
+views
+Monday review runs on the scorecard        0 of 4 weeks                           12 of 13 weeks                                                     Attendance and
+                                                                                                                                                     decisions log
+
+
+Decision rules at day 90:
+    If purchase drift stays under 3% and the scorecard is used 10+ of 13 weeks, we extend into the attribution deliverable (incrementality tests on
+    Meta by concern, and a lightweight media mix across web, marketplace and QC spend).
+    If drift is above 3% for two consecutive weeks, we stop adding events and fix the pipe. Nothing new ships until the base number is trusted.
+    If claim-open lift is under 1 point for every claim after 2,000 sessions each, the creative deliverable stops leading with the study and tests
+    routine and Indian-weather framings instead. If it is above 2 points on any claim, that claim becomes the lead on every ad for that concern.
+    If the 45-day repeat rate on serum buyers lands under 30%, the churn-prevention deliverable gets priority over acquisition, and the reorder
+    WhatsApp flow moves to day 35.
+    If marketplace link clicks exceed 15% of PDP views for any SKU, that SKU's web ads shift from "Shop now" to a QC-aware format and Blinkit
+    spend gets its own line in the scorecard.
+
+
+
+APPENDIX
+GA4 PROPERTY SETTINGS CHECKLIST
+    Currency: INR. Time zone: Asia/Kolkata.
+    Data retention: 14 months. Reset on new activity: on.
+    Enhanced measurement: page_view, scroll, outbound click (exclude marketplace domains so marketplace_link_clicked owns that click), site
+    search with parameter q , file download off, video off.
+    Google Signals: on. Internal traffic rule: HQ and warehouse IPs, plus qa=1 .
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE TRACKING PLAN FOR EVERY ARATA CHANNEL                                                                                                      10
+  Conversions: purchase, whatsapp_optin, sign_up, review_submitted.
+  Custom definitions: the ten in the plan, created before events go live so no data is lost to "(not set)".
+  Product links: Google Ads (auto-tagging on), Merchant Center, BigQuery daily export.
+  Referral exclusions: razorpay.com, payu.in, cashfree.com, paytm.com, phonepe.com and any other gateway domain Arata uses, so a prepaid
+  order is not attributed to the payment gateway.
+
+SHOPIFY APP SETTINGS TO CHANGE ON DAY 1
+APP                              SETTING                                                          WHY
+
+Google & YouTube                 GA4 connection: off (keep Merchant Center feed)                  Prevent double purchase
+Meta                             Pixel + Conversions API: on, maximum data sharing, dedupe on     Keep Meta's signal clean without a second GTM pixel
+Loox                             Webhook or JS hook on review submit                              review_submitted event
+Any WhatsApp marketing app       Opt-in callback exposed to dataLayer                             whatsapp_optin event
+
+
+SOURCES
+Arata brand brief (Brew deployment team, v1, 10 Oct 2026) for all revenue, order, traffic, channel-mix, catalogue, price and claim figures.
+Shopify documentation for Customer Events and checkout extensibility constraints. Google documentation for GA4 recommended events,
+enhanced measurement and Consent Mode. Funnel stage rates and current-state tag assumptions are labelled as assumptions throughout and
+will be replaced with measured values in week 3.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · ONE TRACKING PLAN FOR EVERY ARATA CHANNEL                                                                              11
+ANALYTICS AND MEASUREMENT
+
+
+DAY 30
+AT ARATA
+   WHAT IS LIVE
+
+   GA4 and GTM rebuilt on a documented data layer with checkout events from
+   Shopify Customer Events, 31 events live and QA'd, one UTM standard in use
+   across Meta, YouTube, creators and WhatsApp, and a weekly scorecard that
+   puts website, marketplace and quick-commerce numbers on one page.
+
+
+
+
+ NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+ BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+ CONFIRM".
+
+
+ EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+ BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                               DEPLOYMENT TEAM
+                                                                            BREW
+

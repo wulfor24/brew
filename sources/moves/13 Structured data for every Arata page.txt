@@ -1,0 +1,845 @@
+     Brew                                        PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+     DEPLOYMENT TEAM
+
+
+
+
+SCHEMA MARKUP AND STRUCTURED DATA · MOVE 13 OF 50
+
+
+
+STRUCTURED
+DATA FOR
+EVERY
+ARATA PAGE
+  ONE JSON-LD SYSTEM ACROSS ARATA.IN SO GOOGLE
+  AND AI ASSISTANTS READ THE RIGHT PRICE, THE RIGHT
+  STARS, THE RIGHT CLAIM AND THE RIGHT BRAND ON
+  EVERY PAGE.
+
+
+
+
+6 rich results
+GOOGLE APPEARANCES ARATA CAN EARN
+
+
+
+
+BREW × ARATA                      OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                    V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                               WHAT THIS GIVES ARATA
+                                                               One JSON-LD system across arata.in so Google and
+                                                               AI assistants read the right price, the right stars, the
+                                                               right claim and the right brand on every page.
+        6 rich results                                         LIVE 30 DAYS AFTER WE START
+                                                               Every live product page, collection page, Lab Notes
+        GOOGLE APPEARANCES ARATA
+        CAN EARN                                               post and the homepage carries validated JSON-LD
+                                                               from one snippet, with duplicate Loox and theme
+                                                               markup removed and Search Console reporting zero
+                                                               errors.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+This playbook was written for websites in general, including SaaS. The D2C translation is simple:
+Arata's "app page" is a Shopify product page, its "feature page" is a collection page, its "docs" are
+Lab Notes, and its "pricing table" is the MRP, sale price, free shipping above ₹299 and free gift above
+₹999 that Google reads straight off the page through structured data.
+Arata gets about 650K visits a month and 32% of revenue from arata.in. Most of those visits start on
+Google with a query like "hair fall shampoo", "hair growth serum" or "anti dandruff shampoo". On that
+results page, Arata sits next to Pilgrim, Minimalist, Traya and Amazon listings of Arata's own products.
+The listing that shows a price, a star rating, stock status and a clean brand name wins the click. Today
+that listing is not under Arata's control. It is whatever Shopify's theme and the Loox review app emit by
+default, and those two often disagree.
+The brand's whole positioning is "a number on every bottle". Structured data is how that number
+reaches a search engine. 7.4X, 28,200, 87% in 84 days: none of it is machine-readable right now.
+Google reads a product name and a price. An AI assistant asked "which Indian hair growth serum has
+a clinical study" has no structured way to find that Arata's Hair Growth Intensive Serum claims up to
+28,200 new hairs in 84 days, so it answers with Pilgrim or Minimalist, whose pages are at least
+consistent.
+Three gaps in the brief make this urgent. MitoActive, the ₹1,499 hero, has zero reviews, which means
+review apps will emit an empty or zero rating that can trigger a Search Console error on the most
+important page on the site. Naming is inconsistent across channels (onion versus biotin, serum versus
+tonic), so Google's product knowledge graph sees several half-matching entities instead of one brand.
+And 68% of revenue sits on marketplaces and quick commerce, so when a customer searches a
+product name, Amazon and Nykaa listings often outrank arata.in for Arata's own SKUs. A Brand entity,
+product identifiers and merchant listing data give arata.in the strongest claim to its own products.
+The opportunity is cheap and permanent. One Liquid snippet, deployed once, covers every current
+and future SKU. There is no media cost. The effect compounds with every page the content team
+publishes and every review Loox collects.
+
+
+BREW DEPLOYMENT TEAM × ARATA · STRUCTURED DATA FOR EVERY ARATA PAGE                                                     1
+WHAT WE FOUND
+We could not crawl arata.in directly, so the current-state column below is what Shopify stores on a
+Dawn-family theme with Loox installed emit by default. We will confirm each line in week 1 with the
+Rich Results Test and the Schema.org validator. Where we assume, we say so.
+
+PAGE TYPE AUDIT
+                                                          LIKELY CURRENT MARKUP                  RICH RESULT AT
+ PAGE                EXAMPLE URL                          (ASSUMPTION)                           STAKE                       PRIORITY
+
+ Homepage            arata.in                             Theme WebSite only, no                 Site name, logo,            P1
+                                                           Organization , no sameAs              knowledge panel
+ Product page        /products/mitoactive-                Theme Product plus a second            Product snippet             P1
+                     mitochondrial-hair-growth-           Loox Product with                      (price, stars, stock),
+                     serum                                 aggregateRating ; two entities for    merchant listing
+                                                          one product
+ Product page, MitoActive                                 Loox may emit ratingValue of 0 or Error in Search                  P1
+ zero reviews                                              reviewCount of 0                 Console on the hero
+                                                                                            page
+ Combo page          Hair Growth Trio ₹1,201               Product with no link to the three     Product snippet with        P2
+                                                          component SKUs                         correct bundle price
+ Collection          /collections/hair-growth             None, or a bare CollectionPage         Breadcrumbs, item list P2
+ page                                                                                            understanding
+ Lab Notes           /blogs/lab-notes/...                 Theme Article without author or        Article result,             P2
+ post                                                     publisher logo, or none                Discover eligibility
+ Lab Notes           Reels and YouTube embeds             None                                   Video result                P3
+ video (if
+ hosted)
+ About /             /pages/about,                        None                                   Organization context        P2
+ Science page        /pages/science
+ Legacy              Curl Care, Super Shampoo             Same theme markup as live range,       Nothing to gain; risk       P3
+ products on         onion/biotin                         confusing the entity graph             of mismatch
+ site
+
+
+RICH RESULT ELIGIBILITY: WHAT GOOGLE STILL SHOWS IN 2026
+                                SUPPORTED           ARATA PAGES THAT
+ APPEARANCE                     NOW                 QUALIFY                     WHAT IT NEEDS
+
+ Product snippet (price,        Yes                 Every PDP with at least      Product with offers , aggregateRating from
+ rating, availability)                              one review                  real reviews
+ Merchant listing               Yes                 Every PDP                    Offer with price, currency, availability,
+ (Shopping tab, free                                                             shippingDetails ,
+ listing)                                                                        hasMerchantReturnPolicy
+
+ Product variants               Yes                 Styling SKUs with sizes;     ProductGroup with hasVariant
+                                                    any SKU with a size
+                                                    option
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · STRUCTURED DATA FOR EVERY ARATA PAGE                                                                   2
+                                SUPPORTED           ARATA PAGES THAT
+ APPEARANCE                     NOW                 QUALIFY                  WHAT IT NEEDS
+
+ Review snippet                 Yes                 PDPs with reviews; Lab    aggregateRating from a review system, never
+                                                    Notes with reviewed      self-serving on the Organization
+                                                    products
+ Breadcrumb                     Yes                 All PDPs, collections,   BreadcrumbList
+                                                    posts
+ Article                        Yes                 Lab Notes                Article with headline, image, date, author,
+                                                                             publisher
+ Organization / logo /          Yes                 Homepage                 Organization and WebSite
+ site name
+ Video                          Yes                 Pages with an embedded   VideoObject with thumbnail, upload date
+                                                    Arata video
+ FAQ rich result                Retired May         None for Google           FAQPage only as plain semantic markup for AI
+                                2026                                         assistants, low priority
+ HowTo rich result              Retired Sept        None                     Do not build routine pages for this appearance
+                                2023
+ Sitelinks search box           Retired Nov         None                     WebSite kept for site name only
+                                2024
+
+
+So the six appearances Arata can realistically earn: product snippets, merchant listings, product
+variants, breadcrumbs, articles and the organization logo and site name. Video is a seventh if Lab
+Notes starts hosting video on-page.
+
+THE ENTITY GRAPH ARATA NEEDS
+                                                                                                                      DIAGRAM
+                       +---------------------------+
+                       | Organization               |
+                       | Slick Organics Pvt Ltd     |
+                       | @id: arata.in/#org         |
+                       | sameAs: IG, YT, Amazon,    |
+                       |          Nykaa, Flipkart   |
+                       +------------+--------------+
+                                     |
+                   +---------------+---------------+
+                   |                                  |
+        +----------v-----------+          +----------v-----------+
+        | Brand: Arata          |         | WebSite: arata.in     |
+        | @id: arata.in/#brand |          | @id: arata.in/#site |
+        +----------+-----------+          +----------------------+
+                   |
+        +----------v------------------------------------------+
+        | Product (one per SKU, brand -> #brand)                |
+        | MitoActive ₹1,499       | Growth Serum ₹571           |
+        | Anti-Hair Fall ₹359 | Anti-Dandruff ₹404 ...          |
+        | offers / shipping / returns / rating (if reviews) |
+        +----------+------------------------------------------+
+                   |
+        +----------v-----------+         +-----------------------+
+        | ProductGroup          |        | Combo Product         |
+        | sizes (Gel 50/100ml) |         | isRelatedTo -> SKUs   |
+        +----------------------+         +-----------------------+
+
+        Lab Notes Article --- about --> Product (e.g. Y100 explainer -> MitoActive)
+        BreadcrumbList on every page: Home > Collection > Product
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · STRUCTURED DATA FOR EVERY ARATA PAGE                                                           3
+Every node gets a stable @id . The Brand node is the fix for the naming problem: whatever a
+marketplace calls the product, arata.in declares one brand, one product name, one GTIN per SKU, and
+Google can reconcile the rest.
+
+HAZARDS SPECIFIC TO ARATA
+ HAZARD                   WHERE                            WHAT GOES WRONG                    FIX
+
+ Two Product              Every PDP (theme +               Google picks one at random;        Disable theme product JSON-LD;
+ entities per page        Loox)                            stars appear and disappear         render one Product from our snippet
+                                                                                              and pull the Loox rating into it
+ Zero-review              MitoActive, Anti-Dandruff ratingValue: 0 or                         Guard: emit aggregateRating only
+ rating                   Conditioner, Anti-Grey     reviewCount: 0 is an error;              when review count is 1 or more
+                          Serum, most Body and      the hero page loses eligibility
+                          Face SKUs
+ Claim language in All hero SKUs                           "Up to 28,200 new hair" in      description copies the on-page
+  description                                              schema without the "up to" and claim sentence verbatim, qualifier
+                                                           "84 days" qualifier mismatches included
+                                                           the page
+ Sale versus MRP          ₹649 → ₹571, ₹1,947 →            Schema shows MRP while page price is the current selling price;
+                          ₹999                             shows sale; Merchant Center    MRP goes in priceSpecification
+                                                           flags a mismatch and drops the as list price
+                                                           listing
+ Free shipping            Orders above ₹299                Merchant listing shows a            shippingDetails with a ₹0 rate for
+ threshold                                                 shipping fee on a ₹359             orders over ₹299, a flat rate below
+                                                           shampoo                            (rate to be confirmed by Arata)
+ Combos as single Hair Growth Trio,                        Google cannot tell a ₹1,201 trio   isRelatedTo to each component,
+ products         MitoActive + shampoo                     from a ₹571 serum                  description listing the three SKUs
+                  ₹1,803 to ₹2,278
+ Legacy range still       Curl Care, Super                 Dilutes the science positioning    Keep markup accurate but set
+ indexed                  Shampoo                          in the knowledge graph              availability honestly; noindex if
+                                                                                              being retired
+ Product name             "serum" versus "tonic",          Separate entities on Google        One canonical name per SKU in the
+ drift                    "onion" versus "biotin"          Shopping                           snippet, GTIN/MPN on every variant
+
+
+
+
+THE PLAN
+The whole system is one Liquid snippet ( arata-schema.liquid ) rendered in theme.liquid , with a small
+JSON settings file for brand constants and a metafield per product for the claim sentence. Nothing is
+hand-pasted per page. Four phases, in priority order.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · STRUCTURED DATA FOR EVERY ARATA PAGE                                                               4
+                                                                                                DIAGRAM
+    Phase 1     Foundation           Organization + Brand + WebSite in @graph on every page
+       |                             BreadcrumbList on every page
+       v
+    Phase 2     Product pages        Single Product entity per PDP
+       |                             offers with sale price, MRP, shipping, returns
+       |                             aggregateRating guarded by review count
+       |                             ProductGroup for sized SKUs, isRelatedTo for combos
+       v
+    Phase 3     Collections          CollectionPage + ItemList of products
+       |        and Lab Notes        Article with author, publisher, about -> Product
+       v
+    Phase 4     Semantic layer       VideoObject on video posts
+                                     FAQPage as plain semantics for AI assistants
+                                     Monitoring loop in Search Console
+
+
+
+
+PHASE 1: FOUNDATION (WEEK 1)
+What: an @graph with Organization , Brand and WebSite on every page, plus BreadcrumbList built
+from the Shopify collection and product handles.
+Why: Google and AI assistants need one authoritative node that says "Arata is a brand, owned by Slick
+Organics Private Limited, New Delhi, here are its official profiles and store listings". The sameAs array
+points at the Amazon brand store, Nykaa brand page, Flipkart, Instagram and YouTube so the
+marketplace listings get linked to the brand instead of competing with it.
+Effect: site name and logo in branded results, a cleaner knowledge panel over time, breadcrumbs
+replacing the raw URL on every product result. Breadcrumbs alone turn arata.in › products › anti-
+hair-fall-intensive-shampoo into Arata › Hair Growth › Anti-Hair Fall Intensive Shampoo .
+
+
+
+PHASE 2: PRODUCT PAGES (WEEKS 1 TO 2)
+What: one Product node per PDP, built from Shopify's product object. Price from the selected variant,
+MRP as ListPrice , InStock or OutOfStock from inventory, GTIN from the variant barcode field, brand
+pointing to the Brand node, shippingDetails and hasMerchantReturnPolicy from the settings file.
+ aggregateRating reads the Loox metafield and emits only when the count is above zero. Sized SKUs
+(Hair Gel 50 ml and 100 ml, styling range) become a ProductGroup with each size as a hasVariant
+Product. Combos add isRelatedTo for their components.
+Why: this is where the revenue is. Product snippets and merchant listings are the two appearances
+that put price and stars under "hair fall shampoo" queries. The guard protects MitoActive from an error
+until it has reviews, and the day it crosses one review the stars switch on without a deploy.
+Effect: 100% of PDPs eligible for product snippets; PDPs with reviews (Growth Serum 474, Pack of 3
+388, Anti-Hair Fall Shampoo 222, Anti-Dandruff Shampoo ~300) show stars within one to two crawl
+cycles. Free listings in the Shopping tab for every SKU with correct ₹ pricing.
+
+PHASE 3: COLLECTIONS AND LAB NOTES (WEEKS 2 TO 3)
+What: CollectionPage with an ItemList of the products in display order on /collections/hair-growth,
+/collections/anti-dandruff and so on. Article on every Lab Notes post with a named author (the in-
+house R&D lead or a trichologist, as the content team decides), the Organization as publisher,
+ dateModified kept current, and about linking to the Product the post explains.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · STRUCTURED DATA FOR EVERY ARATA PAGE                                     5
+Why: the collection markup tells Google that "hair growth" at Arata means these six SKUs in this order,
+which supports the collection page ranking for the category query rather than a single PDP. The
+Article markup gives the seven-posts-in-March burst a chance at Article results and Discover, and
+about ties the Y100 explainer to MitoActive so the claim context travels with the product.
+
+
+Effect: collection pages become the landing page for category queries; Lab Notes posts carry an
+author and date in results, which matters for a science claim.
+
+PHASE 4: SEMANTIC LAYER AND MONITORING (WEEKS 3 TO 4)
+What: VideoObject on any post or PDP with a self-hosted or YouTube video (the Samay Raina podcast
+cut, routine explainers). FAQPage on PDP FAQ sections, declared for AI assistants and the Schema.org
+validator only, with a note in the settings file that it earns no Google appearance. A weekly Search
+Console check of the Product snippets, Merchant listings, Breadcrumbs and Article reports, with any
+error or warning spike triggering a fix within 48 hours.
+Why: the video and FAQ markup cost nothing once the snippet exists and give AI answer engines
+clean question and answer pairs to quote ("Is MitoActive a minoxidil alternative?"). Monitoring is what
+keeps the system honest when a price changes or a review app updates.
+Effect: zero Search Console errors held as a standing state; AI assistants quoting Arata's own answers
+instead of a marketplace listing.
+
+IMPLEMENTATION RULES ON SHOPIFY
+1. Disable the theme's built-in product JSON-LD (in Dawn it lives in main-product.liquid under a
+    structured_data block). One source only.
+
+2. Turn off "inject rich snippets" in the Loox app settings so it stops emitting its own Product . Keep
+   Loox for review collection and read its loox.avg_rating and loox.num_reviews metafields into our
+   node.
+3. Escape every < as < in the rendered JSON so a product description containing a tag cannot break
+   the script element.
+4. Shopify's /products.json is the canonical list of SKUs for QA. We diff it against the pages carrying
+    Product markup each week; any SKU missing markup is a bug.
+
+5. The claim sentence per SKU lives in a product metafield ( arata.claim_sentence ) so it is written
+   once, shown on the page, and copied into description . Marketing changes it in one place.
+6. Prices in schema always match Merchant Center. If Arata runs a sale on arata.in, the snippet picks
+   it up from the variant price automatically; nobody edits schema for a sale.
+
+
+
+WORKED EXAMPLES
+All four examples validate against Schema.org and the Rich Results Test as written. Values marked
+(assumption) are placeholders Arata confirms in week 1. Image URLs use the Shopify CDN pattern and
+will be replaced by the live asset paths.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · STRUCTURED DATA FOR EVERY ARATA PAGE                                     6
+EXAMPLE 1: SITE-WIDE FOUNDATION GRAPH (RENDERED ON EVERY PAGE)
+                                                                                                  CODE
+    {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://arata.in/#organization",
+            "name": "Arata",
+            "legalName": "Slick Organics Private Limited",
+            "alternateName": "Arata Hair & Scalp Science Co.",
+            "url": "https://arata.in/",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://arata.in/cdn/shop/files/arata-logo.png",
+              "width": 600,
+              "height": 600
+            },
+            "foundingDate": "2018",
+            "founder": [
+              { "@type": "Person", "name": "Dhruv Madhok" },
+              { "@type": "Person", "name": "Dhruv Bhasin" }
+            ],
+            "address": {
+              "@type": "PostalAddress",
+              "addressLocality": "New Delhi",
+              "addressCountry": "IN"
+            },
+            "contactPoint": {
+              "@type": "ContactPoint",
+              "contactType": "customer service",
+              "email": "care@arata.in",
+              "availableLanguage": ["en", "hi"]
+            },
+            "sameAs": [
+              "https://www.instagram.com/arata.in",
+              "https://www.youtube.com/@arata",
+              "https://www.amazon.in/stores/Arata",
+              "https://www.nykaa.com/brands/arata",
+              "https://www.flipkart.com/arata-store",
+              "https://www.linkedin.com/company/arata-in"
+            ],
+            "brand": { "@id": "https://arata.in/#brand" }
+          },
+          {
+            "@type": "Brand",
+            "@id": "https://arata.in/#brand",
+            "name": "Arata",
+            "slogan": "Good science for great hair",
+            "url": "https://arata.in/",
+            "logo": "https://arata.in/cdn/shop/files/arata-logo.png"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://arata.in/#website",
+            "name": "Arata",
+            "url": "https://arata.in/",
+            "inLanguage": "en-IN",
+            "publisher": { "@id": "https://arata.in/#organization" }
+          }
+        ]
+    }
+
+
+
+
+Notes on this block. The contact email, social handles and marketplace store URLs are assumptions
+until Arata confirms them. sameAs deliberately includes the marketplace brand stores: this is the line
+that tells Google the Amazon and Nykaa listings belong to the same brand entity as arata.in. There is
+no aggregateRating on the Organization; Google treats a self-serving rating on a brand node as a
+violation and it would put the product stars at risk.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · STRUCTURED DATA FOR EVERY ARATA PAGE                                    7
+EXAMPLE 2: MITOACTIVE PRODUCT PAGE (ZERO REVIEWS, SO NO RATING)
+This is the hero page and the one most at risk today. The node carries the full merchant listing set and
+leaves out aggregateRating entirely until Loox reports at least one review.
+                                                                                                                                     CODE
+    {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        "@id": "https://arata.in/products/mitoactive-mitochondrial-hair-growth-serum#product",
+        "name": "MitoActive Mitochondrial Hair Growth Serum",
+        "image": [
+          "https://arata.in/cdn/shop/files/mitoactive-30ml-front.jpg",
+          "https://arata.in/cdn/shop/files/mitoactive-30ml-texture.jpg",
+          "https://arata.in/cdn/shop/files/mitoactive-30ml-lab.jpg"
+        ],
+        "description": "India's first mitochondrial hair growth treatment, powered by Y100. In an 84-day consumer study, 87% of participants
+        "sku": "ARA-MITO-30",
+        "mpn": "ARA-MITO-30",
+        "gtin13": "8900000000001",
+        "brand": { "@id": "https://arata.in/#brand" },
+        "manufacturer": { "@id": "https://arata.in/#organization" },
+        "category": "Hair Care > Hair Growth Serum",
+        "size": "30 ml",
+        "material": "Y100 mitochondrial active",
+        "audience": {
+          "@type": "PeopleAudience",
+          "suggestedGender": "unisex",
+          "suggestedMinAge": 18
+        },
+        "offers": {
+          "@type": "Offer",
+          "url": "https://arata.in/products/mitoactive-mitochondrial-hair-growth-serum",
+          "priceCurrency": "INR",
+          "price": "1499.00",
+          "priceValidUntil": "2027-03-31",
+          "itemCondition": "https://schema.org/NewCondition",
+          "availability": "https://schema.org/InStock",
+          "seller": { "@id": "https://arata.in/#organization" },
+          "shippingDetails": {
+            "@type": "OfferShippingDetails",
+            "shippingRate": {
+              "@type": "MonetaryAmount",
+              "value": "0",
+              "currency": "INR"
+            },
+            "shippingDestination": {
+              "@type": "DefinedRegion",
+              "addressCountry": "IN"
+            },
+            "deliveryTime": {
+              "@type": "ShippingDeliveryTime",
+              "handlingTime": {
+                "@type": "QuantitativeValue",
+                "minValue": 0,
+                "maxValue": 1,
+                "unitCode": "DAY"
+              },
+              "transitTime": {
+                "@type": "QuantitativeValue",
+                "minValue": 2,
+                "maxValue": 6,
+                "unitCode": "DAY"
+              }
+            }
+          },
+          "hasMerchantReturnPolicy": {
+            "@type": "MerchantReturnPolicy",
+            "applicableCountry": "IN",
+            "returnPolicyCategory": "https://schema.org/MerchantReturnFiniteReturnWindow",
+            "merchantReturnDays": 7,
+            "returnMethod": "https://schema.org/ReturnByMail",
+            "returnFees": "https://schema.org/FreeReturn",
+            "refundType": "https://schema.org/FullRefund"
+          }
+        },
+        "isRelatedTo": [
+          { "@id": "https://arata.in/products/anti-hair-fall-intensive-shampoo#product" },
+          { "@id": "https://arata.in/products/hair-growth-intensive-serum#product" }
+        ]
+    }
+
+
+
+
+What to check with Arata before this goes live: the GTIN (the barcode on the carton; the value above is
+a placeholder), the SKU code, the transit window of 2 to 6 days (assumption from the Delhi
+warehouse), the return window of 7 days and free return (assumption; the brief notes leak and
+
+
+BREW DEPLOYMENT TEAM × ARATA · STRUCTURED DATA FOR EVERY ARATA PAGE                                                                       8
+broken-seal complaints, so a stated replacement policy belongs here and on the page). The
+ description repeats the on-page claim with "up to", "87%" and "84 days" intact. Nothing in schema
+says more than the page does.
+The day Loox records the first MitoActive review, the snippet adds this block automatically:
+                                                                                                                                 CODE
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "4.8",
+      "reviewCount": "12",
+      "bestRating": "5",
+      "worstRating": "1"
+    }
+
+
+
+
+EXAMPLE 3: THE LIQUID SNIPPET FOR EVERY PRODUCT PAGE
+This is the actual deployment asset. It renders Example 2 for any SKU, with the rating guard, MRP as
+list price, variant handling and the < escape.
+                                                                                                                                 CODE
+    {%- comment -%} snippets/arata-schema-product.liquid {%- endcomment -%}
+    {%- assign v = product.selected_or_first_available_variant -%}
+    {%- assign review_count = product.metafields.loox.num_reviews | default: 0 | plus: 0 -%}
+    {%- assign review_avg = product.metafields.loox.avg_rating | default: 0 -%}
+    {%- assign claim = product.metafields.arata.claim_sentence | default: product.description | strip_html | truncate: 300 -%}
+    {%- assign price_valid = 'now' | date: '%s' | plus: 7776000 | date: '%Y-%m-%d' -%}
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      "@id": "{{ shop.url }}{{ product.url }}#product",
+      "name": {{ product.title | json }},
+      "image": [{%- for img in product.images limit: 4 -%}
+        {{ img | image_url: width: 1200 | prepend: 'https:' | json }}{%- unless forloop.last -%},{%- endunless -%}
+      {%- endfor -%}],
+      "description": {{ claim | json }},
+      "sku": {{ v.sku | json }},
+      {%- if v.barcode != blank -%}"gtin13": {{ v.barcode | json }},{%- endif -%}
+      "brand": { "@id": "{{ shop.url }}/#brand" },
+      "category": {{ product.type | json }},
+      {%- if review_count > 0 -%}
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": {{ review_avg | json }},
+        "reviewCount": {{ review_count | json }},
+        "bestRating": "5",
+        "worstRating": "1"
+      },
+      {%- endif -%}
+      "offers": {
+        "@type": "Offer",
+        "url": "{{ shop.url }}{{ product.url }}",
+        "priceCurrency": "INR",
+        "price": "{{ v.price | divided_by: 100.0 }}",
+        "priceValidUntil": "{{ price_valid }}",
+        {%- if v.compare_at_price > v.price -%}
+        "priceSpecification": {
+          "@type": "PriceSpecification",
+          "priceType": "https://schema.org/ListPrice",
+          "price": "{{ v.compare_at_price | divided_by: 100.0 }}",
+          "priceCurrency": "INR"
+        },
+        {%- endif -%}
+        "itemCondition": "https://schema.org/NewCondition",
+        "availability": "{% if v.available %}https://schema.org/InStock{% else %}https://schema.org/OutOfStock{% endif %}",
+        "seller": { "@id": "{{ shop.url }}/#organization" },
+        "shippingDetails": {% render 'arata-schema-shipping', price: v.price %},
+        "hasMerchantReturnPolicy": {% render 'arata-schema-returns' %}
+      }
+    }
+    </script>
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · STRUCTURED DATA FOR EVERY ARATA PAGE                                                                   9
+The shipping partial returns a ₹0 rate when the variant price is at or above ₹29,900 paise (₹299) and
+the flat rate below it. The | json filter escapes quotes; a final replace: '<', '<' on the whole block
+is applied in theme.liquid where the snippet is captured and output. The rating guard is the single
+most important line: {%- if review_count > 0 -%} .
+For Hair Growth Intensive Serum this renders price: 571.00 with a ListPrice of 649.00 and
+ reviewCount: 474 . For the Pack of 3 it renders price: 999.00 against a list price of 1947.00. For Anti-
+Hair Fall Intensive Shampoo, price: 359.00 , list 399.00, 222 reviews. No one edits these by hand
+again.
+
+EXAMPLE 4: LAB NOTES ARTICLE WITH BREADCRUMBS, TIED TO THE PRODUCT IT EXPLAINS
+For the Y100 explainer post, which is the page that should rank for "what is Y100 hair" and support the
+₹1,499 price.
+                                                                                                                                      CODE
+    {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+             "@type": "Article",
+             "@id": "https://arata.in/blogs/lab-notes/what-is-y100#article",
+             "headline": "What is Y100, and why does mitochondrial function matter for hair growth?",
+             "description": "The science behind MitoActive: how Y100 acts on follicle mitochondria, what the 84-day Indian-participant study m
+             "image": "https://arata.in/cdn/shop/articles/y100-lab-notes-hero.jpg",
+             "datePublished": "2026-08-12T09:00:00+05:30",
+             "dateModified": "2026-10-01T09:00:00+05:30",
+             "author": {
+                "@type": "Person",
+                "name": "Arata R&D Lab",
+                "url": "https://arata.in/pages/our-lab",
+                "worksFor": { "@id": "https://arata.in/#organization" }
+             },
+             "publisher": { "@id": "https://arata.in/#organization" },
+             "inLanguage": "en-IN",
+             "isPartOf": { "@id": "https://arata.in/#website" },
+             "mainEntityOfPage": "https://arata.in/blogs/lab-notes/what-is-y100",
+             "about": { "@id": "https://arata.in/products/mitoactive-mitochondrial-hair-growth-serum#product" },
+             "mentions": [
+               { "@type": "Thing", "name": "Y100" },
+               { "@type": "Thing", "name": "anagen/telogen ratio" },
+               { "@type": "Thing", "name": "mitochondrial function" }
+             ]
+          },
+          {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+               { "@type": "ListItem", "position": 1, "name": "Arata", "item": "https://arata.in/" },
+               { "@type": "ListItem", "position": 2, "name": "Lab Notes", "item": "https://arata.in/blogs/lab-notes" },
+               { "@type": "ListItem", "position": 3, "name": "What is Y100?", "item": "https://arata.in/blogs/lab-notes/what-is-y100" }
+            ]
+          }
+        ]
+    }
+
+
+
+
+The author should be a named person wherever Arata is comfortable with it (a formulation scientist or
+the trichologist who advises the brand). A named author with a profile page carries more weight for a
+health-adjacent claim than a lab byline. The post date and handle are assumptions; the content team
+supplies the real ones.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · STRUCTURED DATA FOR EVERY ARATA PAGE                                                                      10
+EXAMPLE 5: HAIR GROWTH COLLECTION PAGE
+                                                                                                                                      CODE
+     {
+         "@context": "https://schema.org",
+         "@type": "CollectionPage",
+         "@id": "https://arata.in/collections/hair-growth#page",
+         "name": "Hair Growth",
+         "description": "Arata's hair growth system: shampoo, serum and conditioner with a tested number on every bottle. Up to 7.4X hair fall
+         "url": "https://arata.in/collections/hair-growth",
+         "isPartOf": { "@id": "https://arata.in/#website" },
+         "mainEntity": {
+           "@type": "ItemList",
+           "itemListOrder": "https://schema.org/ItemListOrderAscending",
+           "numberOfItems": 6,
+           "itemListElement": [
+             { "@type": "ListItem", "position": 1, "url": "https://arata.in/products/mitoactive-mitochondrial-hair-growth-serum" },
+             { "@type": "ListItem", "position": 2, "url": "https://arata.in/products/hair-growth-intensive-serum" },
+             { "@type": "ListItem", "position": 3, "url": "https://arata.in/products/hair-growth-intensive-serum-pack-of-3" },
+             { "@type": "ListItem", "position": 4, "url": "https://arata.in/products/anti-hair-fall-intensive-shampoo" },
+             { "@type": "ListItem", "position": 5, "url": "https://arata.in/products/anti-breakage-intensive-conditioner" },
+             { "@type": "ListItem", "position": 6, "url": "https://arata.in/products/hair-growth-trio" }
+           ]
+         }
+     }
+
+
+
+
+The list carries URLs only, on purpose. Google's guidance for category pages is a summary list that
+points at the PDPs, each of which holds its own full Product node. Putting full product nodes with
+prices on the collection page creates a second copy of every offer and invites mismatch.
+
+
+
+30-DAY DEPLOYMENT
+ WEEK BREW SHIPS                                                      ARATA PROVIDES                           LIVE BY END OF WEEK
+
+ 1           Full crawl of arata.in with the Rich Results Test          Theme access, Loox admin                 Current-state report;
+             and Schema.org validator; current-state report             access, confirmed brand                  foundation graph and
+             page by page; arata-schema snippet set                     constants (social URLs,                  breadcrumbs validated
+             (foundation graph, breadcrumbs, product,                   marketplace store URLs, support          on the duplicate theme
+             shipping and returns partials) on a theme                  email), shipping rate below ₹299,
+             duplicate; Loox injection switched off on the              return and replacement policy,
+             duplicate                                                  GTINs for all live SKUs
+ 2           Product node live on all PDPs on the duplicate;            Sign-off on claim sentences              Duplicate theme
+              claim_sentence metafield created and filled               (Brew drafts, Arata brand              published to production;
+             for the 12 hero SKUs from the brief's claims;              manager approves); barcode fields        theme product JSON-
+             combo isRelatedTo mapping; ProductGroup                    filled in Shopify for any SKU            LD disabled; one
+             on sized styling SKUs; QA diff against                     missing them                             Product entity per page
+              /products.json
+
+ 3           Article markup on all Lab Notes posts;                     Author decision for Lab Notes            Articles, collections and
+             CollectionPage and ItemList on every collection;           (named scientist or lab byline);         breadcrumbs valid
+             author profile page template; Search Console               confirmation of which legacy SKUs        across the site;
+             enhancement reports baselined; Merchant Center             (Curl Care, Super Shampoo) are           Merchant Center shows
+             feed cross-checked against on-page prices                  being retired                            zero price mismatches
+ 4           VideoObject on video-bearing pages; FAQPage                Review of the monitoring                 Every live page carries
+             semantics on PDP FAQ blocks; weekly monitoring             dashboard; agreement on the 48-          validated JSON-LD;
+             loop set up (Search Console export, error alert,           hour fix rule                            zero errors in Search
+              /products.json diff); handover doc for the                                                         Console; monitoring
+             Arata content and dev team                                                                          loop running
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · STRUCTURED DATA FOR EVERY ARATA PAGE                                                                        11
+Owners: Brew technical SEO lead (snippets, validation, monitoring), Brew content lead (claim
+sentences, author setup), Arata brand manager (approvals, policy facts), Arata Shopify developer or
+Brew developer (theme publish), Arata ops lead (shipping and return facts).
+
+
+
+HOW WE MEASURE
+ METRIC                             BASELINE                        90-DAY TARGET                       SOURCE
+
+ Pages with valid, non-             To be instrumented in           100% of live product,               Validator crawl, weekly diff
+ duplicate JSON-LD                  week 1 (assumption:             collection, article and             against /products.json
+                                    most PDPs carry two             homepage URLs
+                                    Product entities)
+ Search Console errors              To be instrumented              0 errors, warnings reviewed         Search Console enhancement
+ across Product snippets,                                           weekly                              reports
+ Merchant listings,
+ Breadcrumbs, Article
+ PDPs showing star ratings To be instrumented                       Every PDP with 1 or more Loox       Search Console Product
+ in Google results                                                  reviews showing stars;              snippets report, manual SERP
+                                                                    MitoActive stars live once it has   checks on top 20 product
+                                                                    reviews                             queries
+ Organic CTR on product             To be pulled from               +15% to +25% relative on            Search Console performance,
+ and brand queries                  Search Console (last 90         queries where a rich result         filtered by Product snippet
+                                    days)                           appears (assumption based on appearance
+                                                                    typical uplift for price and rating
+                                                                    snippets)
+ Free merchant listing              To be instrumented              All live SKUs eligible;             Search Console Merchant
+ impressions (Shopping                                              impressions growing month on        listings report, Merchant
+ tab)                                                               month                               Center
+ arata.in ranking above             To be instrumented              arata.in in position 1 for 15 of    Weekly rank check
+ marketplace listings for           across 20 SKU names             20
+ branded SKU queries
+ Organic revenue share on           32% of revenue is own- Organic share of own-site    Shopify analytics with landing
+ arata.in                           site (all channels of  orders up, measured against  page and source
+                                    traffic)               the 90-day pre-deploy window
+
+
+Decision rule. At day 90 we look at three things: zero errors held, stars visible on reviewed PDPs, and
+CTR on rich-result queries. If all three hold, the system is done and moves to the weekly monitoring
+loop, and we extend it to ingredient and comparison pages as those launch. If stars are visible but CTR
+has not moved, the issue is the snippet text, and we rewrite titles and meta descriptions on the top 20
+PDPs, which is a different discipline, with the schema left as is. If errors recur, the cause is almost
+always a theme or app update re-injecting markup, and the fix is to lock the snippet in the theme and
+re-audit app settings; we do not remove supported markup to make a report go quiet.
+What does not count as a failure: FAQ or HowTo markup not appearing in the Rich Results Test. Those
+appearances are retired, the markup is there for AI assistants, and the Schema.org validator is the test
+for it.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · STRUCTURED DATA FOR EVERY ARATA PAGE                                                                  12
+APPENDIX
+CLAIM SENTENCES FOR THE ARATA.CLAIM_SENTENCE METAFIELD (DRAFT FOR APPROVAL)
+
+ SKU                                           CLAIM SENTENCE FOR SCHEMA DESCRIPTION
+
+ MitoActive Mitochondrial Hair                 India's first mitochondrial hair growth treatment, powered by Y100. In an 84-day
+ Growth Serum, 30 ml, ₹1,499                   study, 87% saw increased hair growth and hair fall reduced by up to 95%.
+ Hair Growth Intensive Serum, 30               Hair growth serum for Indian hair with up to 28,200 new hairs within 84 days in a
+ ml, ₹571                                      consumer study. Apply to the scalp daily.
+ Hair Growth Intensive Serum Pack              Three-month supply of the Hair Growth Intensive Serum, up to 28,200 new hairs
+ of 3, ₹999                                    within 84 days. 49% saving on the single bottle price.
+ Anti-Hair Fall Intensive Shampoo,             Sulphate-free shampoo with Hairdian AP, rosemary and caffeine. Up to 7.4X hair
+ 200 ml, ₹359                                  fall reduction in a tensile strength study.
+ Anti-Breakage Intensive                       Conditioner tested in-vitro to leave hair 78% stronger after one wash.
+ Conditioner, 200 ml, ₹359
+ Anti-Dandruff Shampoo, 200 ml,                Up to 95% reduction in dandruff-causing fungus in one wash, tested in-vitro.
+ ₹404                                          Made for Indian scalps and humidity.
+ Anti-Dandruff Serum, 30 ml, ₹299              Leave-on scalp serum with up to 36-hour itch relief.
+ Damage Defence Super Shampoo,                 94% keratin retention and 95% moisture boost for damaged hair.
+ 200 ml, ₹395
+ Anti-Grey Hair Serum, 30 ml, ₹449             MelanoGray and vegan keratin serum. Up to 86% reduction in greys over three
+                                               months among best responders.
+ Hair Gel, 50 to 100 ml, ₹269 to               72-hour humidity-resistant hold with no white flakes or stiffness.
+ ₹699
+
+
+Every sentence keeps the "up to", the study type and the time window from the page. Nothing in
+schema is stronger than the pack.
+
+PRE-LAUNCH CHECKLIST
+    Requested appearance is supported by Google today, or the markup is declared as semantic-only
+    One Product entity per PDP; theme and Loox injection confirmed off
+    aggregateRating absent on every zero-review SKU (MitoActive checked by hand)
+
+     price equals the visible selling price; MRP in ListPrice only
+     priceCurrency is INR on every offer; no stray USD from a theme default
+
+     shippingDetails returns ₹0 above ₹299
+
+    GTIN present on every live variant; placeholder values removed
+    description matches the on-page claim sentence word for word
+
+    Every < escaped as < in rendered output
+    Schema.org validator clean; Rich Results Test clean for Product, Breadcrumb, Article, Organization
+    Search Console enhancement reports baselined before publish
+    Merchant Center feed prices match on-page prices for all SKUs
+
+
+BREW DEPLOYMENT TEAM × ARATA · STRUCTURED DATA FOR EVERY ARATA PAGE                                                              13
+SOURCE FOR VARIANT MARKUP
+Google's product variants documentation (ProductGroup and Product):
+https://developers.google.com/search/docs/appearance/structured-data/product-variants
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · STRUCTURED DATA FOR EVERY ARATA PAGE                   14
+SCHEMA MARKUP AND STRUCTURED DATA
+
+
+DAY 30
+AT ARATA
+   WHAT IS LIVE
+
+   Every live product page, collection page, Lab Notes post and the homepage
+   carries validated JSON-LD from one snippet, with duplicate Loox and theme
+   markup removed and Search Console reporting zero errors.
+
+
+
+
+ NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+ BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+ CONFIRM".
+
+
+ EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+ BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                               DEPLOYMENT TEAM
+                                                                            BREW
+

@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Brew · Live demo</title>
+<meta name="description" content="See Brew run a real brand: 51 moves, connected accounts, and a feed that acts on the brand's own stack.">
+<link rel="icon" href="/assets/brew-mark.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0a0a;--bg-2:#111;--card:#151515;--card-2:#1b1b1b;--line:rgba(255,255,255,.08);--line-2:rgba(255,255,255,.14);
+  --fg:#fafafa;--fg-2:#a3a3a3;--fg-3:#6f6f6f;--on-fg:#0a0a0a;--ok:#4ade80;--glow:rgba(255,255,255,.06);
+  --shadow:0 1px 0 rgba(255,255,255,.04) inset,0 30px 60px -30px rgba(0,0,0,.8);
+  --r:22px;
+}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){
+  --bg:#f6f5f2;--bg-2:#efeee9;--card:#fff;--card-2:#fafaf8;--line:rgba(0,0,0,.07);--line-2:rgba(0,0,0,.12);
+  --fg:#0a0a0a;--fg-2:#565656;--fg-3:#8a8a8a;--on-fg:#fafafa;--ok:#16a34a;--glow:rgba(0,0,0,.035);
+  --shadow:0 1px 2px rgba(0,0,0,.04),0 24px 48px -28px rgba(0,0,0,.22);
+}}
+*{box-sizing:border-box;margin:0}
+html{background:var(--bg)}
+body{min-height:100vh;background:var(--bg);color:var(--fg);font:15px/1.5 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;letter-spacing:-.006em;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+.aura{position:fixed;inset:-20vh -10vw auto;height:80vh;pointer-events:none;z-index:0;
+  background:radial-gradient(40% 50% at 22% 30%,color-mix(in srgb,#5b6cff 22%,transparent),transparent 70%),radial-gradient(35% 45% at 78% 18%,color-mix(in srgb,#ff7a45 16%,transparent),transparent 70%);filter:blur(30px);opacity:.75}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]) .aura{opacity:.5}}
+.wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:0 28px}
+
+/* top bar */
+.top{display:flex;align-items:center;justify-content:space-between;height:76px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:600;font-size:16px;letter-spacing:-.01em}
+.logo img{width:26px;height:26px;border-radius:7px}
+.live{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 12px;border-radius:999px;border:1px solid var(--line-2);color:var(--fg-2);font-size:12.5px;font-weight:500}
+.live i{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 60%,transparent);animation:pulse 2.4s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 7px transparent}100%{box-shadow:0 0 0 0 transparent}}
+
+/* hero */
+.hero{padding:56px 0 40px;max-width:760px}
+h1{font-size:clamp(38px,5.6vw,64px);line-height:1.04;letter-spacing:-.045em;font-weight:600}
+h1 em{font-style:normal;color:var(--fg-3)}
+.lede{margin-top:20px;font-size:18px;line-height:1.55;color:var(--fg-2);max-width:620px}
+.gets{list-style:none;padding:0;margin-top:34px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border-top:1px solid var(--line)}
+.gets li{padding:16px 18px 0 0}
+.gets li+li{padding-left:18px;border-left:1px solid var(--line)}
+.gets b{display:block;font-size:15px;font-weight:600;letter-spacing:-.01em}
+.gets span{display:block;margin-top:3px;font-size:13.5px;line-height:1.45;color:var(--fg-3)}
+.pick{margin:28px 0 16px;font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--fg-3)}
+@media (max-width:760px){.gets{grid-template-columns:1fr 1fr;row-gap:18px}.gets li:nth-child(3){padding-left:0;border-left:0}}
+
+/* brands */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,440px),1fr));gap:22px;padding-bottom:28px}
+.card{position:relative;display:flex;flex-direction:column;border-radius:var(--r);background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);overflow:hidden;transition:transform .5s cubic-bezier(.2,.8,.2,1),border-color .3s}
+.card:hover{transform:translateY(-4px);border-color:var(--line-2)}
+.stage{position:relative;height:clamp(300px,26vw,360px);overflow:hidden;background:var(--w1,#222);isolation:isolate}
+.stage::before{content:"";position:absolute;inset:0;background:radial-gradient(120% 90% at 0% 0%,var(--w2,#444) 0%,transparent 60%),radial-gradient(90% 90% at 100% 100%,var(--w3,#333) 0%,transparent 65%);opacity:.95;z-index:-1}
+.stage::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 55%,rgba(0,0,0,.28));z-index:2;pointer-events:none}
+.shots{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.shot{position:absolute;height:72%;aspect-ratio:1;border-radius:18px;background:#fff;box-shadow:0 18px 40px -12px rgba(0,0,0,.45);overflow:hidden;transition:transform .7s cubic-bezier(.2,.8,.2,1)}
+.shot img{width:100%;height:100%;object-fit:contain;padding:10%}
+.shot.cover img{object-fit:cover;padding:0}
+.shot:nth-child(1){transform:translate(-66%,10%) rotate(-7deg) scale(.84);z-index:1}
+.shot:nth-child(2){transform:translate(0,4%) rotate(0) scale(1);z-index:3}
+.shot:nth-child(3){transform:translate(66%,12%) rotate(7deg) scale(.84);z-index:2}
+.card:hover .shot:nth-child(1){transform:translate(-74%,6%) rotate(-10deg) scale(.88)}
+.card:hover .shot:nth-child(2){transform:translate(0,1%) scale(1.03)}
+.card:hover .shot:nth-child(3){transform:translate(74%,8%) rotate(10deg) scale(.88)}
+.badge{position:absolute;left:18px;top:18px;z-index:4;display:flex;align-items:center;gap:10px;padding:6px 12px 6px 6px;border-radius:999px;background:rgba(255,255,255,.92);backdrop-filter:blur(10px);color:#0a0a0a;font-weight:600;font-size:13px;box-shadow:0 6px 20px -8px rgba(0,0,0,.35)}
+.badge .lg{width:30px;height:30px;border-radius:50%;background:#fff;display:grid;place-items:center;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
+.badge .lg img{max-width:78%;max-height:78%}
+.badge .lg.dark{background:#0a0a0a}
+.ready{position:absolute;right:18px;top:18px;z-index:4;display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:999px;background:rgba(10,10,10,.55);backdrop-filter:blur(10px);color:#fff;font-size:12px;font-weight:500}
+.ready i{width:6px;height:6px;border-radius:50%;background:#4ade80}
+.body{display:flex;flex-direction:column;gap:18px;padding:24px 26px 26px}
+.name{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.name h2{font-size:26px;letter-spacing:-.03em;font-weight:600;line-height:1.1}
+.name a{font-size:13px;color:var(--fg-3);white-space:nowrap}
+.name a:hover{color:var(--fg)}
+.tag{margin-top:6px;color:var(--fg-2);font-size:14.5px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.stat{padding:12px 14px;background:var(--card-2)}
+.stat+.stat{border-left:1px solid var(--line)}
+.stat b{display:block;font-size:19px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.stat span{display:block;margin-top:1px;font-size:12px;color:var(--fg-3)}
+.acts{display:flex;gap:10px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:46px;padding:0 20px;border-radius:12px;font-weight:600;font-size:14.5px;transition:transform .15s,background .2s,box-shadow .2s}
+.btn:active{transform:scale(.98)}
+.btn svg{width:16px;height:16px;transition:transform .2s}
+.btn:hover svg{transform:translateX(2px)}
+.pri{flex:1 1 220px;background:var(--fg);color:var(--on-fg)}
+.pri:hover{box-shadow:0 8px 24px -10px color-mix(in srgb,var(--fg) 45%,transparent)}
+.sec{flex:0 1 auto;background:transparent;border:1px solid var(--line-2)}
+.sec:hover{background:var(--glow)}
+.btn[disabled]{opacity:.55;pointer-events:none}
+.hint{font-size:12.5px;color:var(--fg-3);margin-top:-6px}
+
+/* skeleton + footer */
+.sk{height:520px;border-radius:var(--r);background:linear-gradient(100deg,var(--card) 30%,var(--card-2) 50%,var(--card) 70%);background-size:300% 100%;animation:sk 1.4s infinite;border:1px solid var(--line)}
+@keyframes sk{to{background-position:-150% 0}}
+.foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:30px 0 60px;border-top:1px solid var(--line);margin-top:30px;color:var(--fg-3);font-size:13.5px}
+.foot b{color:var(--fg);font-weight:500}
+.admin{margin-top:8px;padding:22px;border-radius:var(--r);border:1px dashed var(--line-2);display:flex;flex-direction:column;gap:12px}
+.admin form{display:flex;gap:10px;flex-wrap:wrap}
+.admin input{flex:1;min-width:240px;height:46px;padding:0 14px;border-radius:12px;border:1px solid var(--line-2);background:var(--card);color:var(--fg);font:inherit}
+.chk{display:flex;flex-wrap:wrap;gap:6px}
+.chk i{font-style:normal;font-size:11.5px;padding:3px 9px;border-radius:999px;border:1px solid var(--line);color:var(--fg-3)}
+.chk i.ok{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 35%,transparent)}
+.rise{animation:rise .8s cubic-bezier(.2,.8,.2,1) both}
+@keyframes rise{from{transform:translateY(14px)}to{transform:none}} /* motion only: the page reads even where animations never run */
+@media (max-width:640px){.acts .btn{flex:1 1 100%}.wrap{padding:0 16px}.hero{padding:28px 0 28px}.lede{font-size:16px}.stage{height:240px}.body{padding:20px}.name h2{font-size:22px}.stat b{font-size:17px}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.rise{transform:none}}
+</style>
+</head>
+<body>
+<div class="aura" aria-hidden="true"></div>
+<div class="wrap">
+  <header class="top">
+    <a class="logo" href="/"><img src="/assets/brew-mark.svg" alt="">Brew</a>
+    <span class="live"><i></i>Demo</span>
+  </header>
+
+  <section class="hero">
+    <h1 class="rise">Know what to do next.<br><em>Do it in one tap.</em></h1>
+    <p class="lede rise" style="animation-delay:.06s">A feed of growth moves made for your brand: one memory across your team, every rival move as it happens, and a jam where you and your team shape the strategy together. Pick a brand below and try it.</p>
+    <ul class="gets rise" style="animation-delay:.12s">
+      <li><b>Infinite Possibilities</b><span>for your store, ads and customers</span></li>
+      <li><b>Ready to ship</b><span>ads, emails and page changes, drafted</span></li>
+      <li><b>One tap</b><span>to put it live on Shopify, Meta or Klaviyo</span></li>
+      <li><b>The result</b><span>what it moved, in your own numbers</span></li>
+    </ul>
+  </section>
+  <h2 class="pick rise" style="animation-delay:.16s">Pick a brand</h2>
+  <main class="grid" id="grid"><div class="sk"></div><div class="sk"></div></main>
+  <div id="adm"></div>
+
+  <footer class="foot">
+    <span>Want this for your brand? <b>Talk to the Brew team.</b></span>
+  </footer>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const src = (u) => (/^https?:/.test(u || '') ? u : '/' + String(u || '').replace(/^\//, ''));
+const big = (n) => (!n ? '—' : n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M' : n >= 1e4 ? Math.round(n / 1e3) + 'k' : n >= 1e3 ? (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'k' : String(n));
+const COUNTRY = { US: 'United States', IN: 'India', GB: 'United Kingdom', CA: 'Canada', AU: 'Australia', AE: 'UAE', SG: 'Singapore', DE: 'Germany', FR: 'France' };
+const arrow = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 8h10M9 4l4 4-4 4"/></svg>';
+const clear = (slug) => { try { Object.keys(localStorage).filter((k) => k.startsWith(slug + '-')).forEach((k) => localStorage.removeItem(k)); } catch {} };
+async function go(slug, from, btn) {
+  btn.disabled = true; btn.innerHTML = '<span>Opening…</span>';
+  clear(slug);
+  await fetch('/api/demo/' + slug + '/start?d=new', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ from, connect: from === 'feed' ? 'all' : null }) }).catch(() => {});
+  if (from === 'feed') try { localStorage.setItem(slug + '-demo-v1', JSON.stringify({ onboarded: true })); } catch {}
+  location.href = '/' + slug;
+}
+function card(b, i, admin) {
+  const L = b.look || {}, w = [...(L.wash || []), ...(L.colors || [])].filter(Boolean);
+  const shots = (L.images || []).slice(0, 3);
+  while (shots.length && shots.length < 3) shots.push(shots[shots.length - 1]);
+  const meta = [L.category, COUNTRY[L.country] || L.country].filter(Boolean).join(' · ');
+  return `<article class="card rise" style="animation-delay:${0.24 + i * 0.08}s">
+    <div class="stage" style="--w1:${esc(w[1] || '#1d1d1d')};--w2:${esc(w[2] || w[0] || '#333')};--w3:${esc(w[0] || '#2a2a2a')}">
+      <div class="badge"><span class="lg">${L.mark || L.logo ? `<img src="${esc(src(L.mark || L.logo))}" alt="">` : ''}</span>${esc(b.name)}</div>
+      <span class="ready"><i></i>Fully loaded</span>
+      <div class="shots">${shots.map((u) => `<div class="shot${/\/b\//.test(u) && !/\.png/i.test(u) ? ' cover' : ''}"><img src="${esc(src(u))}" alt="" loading="lazy"></div>`).join('')}</div>
+    </div>
+    <div class="body">
+      <div>
+        <div class="name"><h2>${esc(b.name)}</h2><a href="https://${esc(b.host)}" target="_blank" rel="noopener">${esc(b.host)} ↗</a></div>
+        <p class="tag">${esc(L.tagline || meta)}</p>
+      </div>
+      <div class="stats">
+        ${L.ads ? `<div class="stat"><b>${big(L.ads)}</b><span>live ads watched</span></div>` : `<div class="stat"><b>${big(L.pages)}</b><span>pages read</span></div>`}
+        <div class="stat"><b>${big(L.reviews)}</b><span>reviews read</span></div>
+        <div class="stat"><b>${big(L.products)}</b><span>products</span></div>
+      </div>
+      <div class="acts">
+        <button class="btn pri" data-go="${esc(b.slug)}" data-from="onboarding">Start the tour ${arrow}</button>
+        <button class="btn sec" data-go="${esc(b.slug)}" data-from="feed">Jump to the feed</button>
+      </div>
+      <p class="hint">From the first screen: Brew reads the store live, you check what it found, the moves are ready. About 4 minutes.</p>
+      ${admin ? `<div class="chk">${b.checks.map((c) => `<i class="${c.ok ? 'ok' : ''}">${c.ok ? '✓ ' : ''}${esc(c.t)}</i>`).join('')}${b.prep?.running ? '<i>Preparing…</i>' : ''}<button class="btn sec" style="height:28px;padding:0 10px;font-size:12px" data-prep="${esc(b.slug)}">Prepare</button></div>` : ''}
+    </div>
+  </article>`;
+}
+async function load() {
+  const r = await fetch('/api/demo/brands').then((x) => x.json()).catch(() => ({ brands: [] }));
+  $('#grid').innerHTML = r.brands.length ? r.brands.map((b, i) => card(b, i, r.admin)).join('') : '<p class="lede">No brands are ready yet. Check back soon.</p>';
+  /* a white mark on a white disc vanishes: read the mark's own brightness and give it a dark disc when it is light */
+  document.querySelectorAll('.badge img').forEach((im) => { const fit = () => { try { const c = document.createElement('canvas'); c.width = c.height = 24; const x = c.getContext('2d'); x.drawImage(im, 0, 0, 24, 24);
+    const d = x.getImageData(0, 0, 24, 24).data; let l = 0, a = 0; for (let i = 0; i < d.length; i += 4) { const w = d[i + 3] / 255; l += w * (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) / 255; a += w; }
+    if (a && l / a > 0.72) im.parentElement.classList.add('dark'); } catch {} }; im.complete ? fit() : (im.onload = fit); });
+  document.querySelectorAll('[data-go]').forEach((x) => (x.onclick = () => go(x.dataset.go, x.dataset.from, x)));
+  document.querySelectorAll('[data-prep]').forEach((x) => (x.onclick = async () => { x.disabled = true; x.textContent = 'Preparing…'; await fetch('/api/demo/' + x.dataset.prep + '/prepare', { method: 'POST' }); setTimeout(load, 4000); }));
+  $('#adm').innerHTML = r.admin ? `<section class="admin"><b>Add a brand</b><form id="nb"><input name="u" placeholder="The brand's website" inputmode="url"><button class="btn pri" style="flex:0 0 auto">Read and build</button></form><span class="hint" style="margin:0">Admins only. A full build is about $80 and 2 hours; check what was read, then press Prepare.</span></section>` : '';
+  const f = $('#nb'); if (f) f.onsubmit = async (e) => { e.preventDefault(); const u = f.u.value.trim(); if (!u || !confirm('Build ' + u + '? A full build costs about $80.')) return;
+    const j = await fetch('/api/brands', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: u }) }).then((x) => x.json()); if (j.slug) location.href = '/' + j.slug; else alert(j.error || 'Could not start'); };
+  if (r.brands.some((b) => b.prep?.running)) setTimeout(load, 8000);
+}
+load();
+</script>
+</body>
+</html>

@@ -1,0 +1,227 @@
+<title>Brew Listening Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; each loop stage is a section with a signal table (signal · treg endpoint · $/call · cadence · what it feeds) */
+:root{
+  --bg:#F4F6F4; --surface:#FFFFFF; --fg:#16211D; --muted:#5B6A64; --line:#DCE3DF;
+  --accent:#0E7A5B; --accent-soft:#E2F1EB; --have:#0E7A5B; --add:#9A5B00; --add-soft:#FBF0DE; --gap:#B23A3A; --gap-soft:#F9E5E5;
+  --display:"Schibsted Grotesk",ui-sans-serif,system-ui,sans-serif;
+  --body:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1513; --surface:#161E1B; --fg:#E4ECE8; --muted:#97A7A0; --line:#2A3631;
+  --accent:#4CC79E; --accent-soft:#16352A; --have:#4CC79E; --add:#E8B55A; --add-soft:#3A2D14; --gap:#F08A8A; --gap-soft:#3D1D1D; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1513; --surface:#161E1B; --fg:#E4ECE8; --muted:#97A7A0; --line:#2A3631;
+  --accent:#4CC79E; --accent-soft:#16352A; --have:#4CC79E; --add:#E8B55A; --add-soft:#3A2D14; --gap:#F08A8A; --gap-soft:#3D1D1D; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font:15px/1.6 var(--body);padding:48px 20px 80px}
+.wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:48px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:clamp(30px,5vw,44px);letter-spacing:-.02em}
+h2{font-size:24px;letter-spacing:-.01em}
+h3{font-size:16px}
+p{margin:0;max-width:68ch}
+.eyebrow{font:500 12px var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--accent)}
+.lede{font-size:18px;color:var(--muted)}
+header{display:flex;flex-direction:column;gap:14px}
+.meta{font:13px var(--mono);color:var(--muted)}
+code,.id{font-family:var(--mono);font-size:12.5px}
+.id{color:var(--fg);word-break:break-all}
+/* the loop */
+.loop{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;list-style:none;margin:0;padding:0;counter-reset:s}
+.loop li{counter-increment:s;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.loop li::before{content:counter(s);font:500 12px var(--mono);color:var(--accent)}
+.loop b{font-family:var(--display);font-size:15px}
+.loop span{font-size:13px;color:var(--muted);line-height:1.4}
+section{display:flex;flex-direction:column;gap:16px}
+.sechead{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:20px}
+.tbl{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
+th{font:500 11px var(--mono);text-transform:uppercase;letter-spacing:.07em;color:var(--muted);text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--bg)}
+td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+td:first-child{font-weight:600;width:20%}
+.pill{display:inline-block;font:500 11px var(--mono);padding:2px 7px;border-radius:99px;white-space:nowrap}
+.have{background:var(--accent-soft);color:var(--have)}
+.add{background:var(--add-soft);color:var(--add)}
+.gapp{background:var(--gap-soft);color:var(--gap)}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px 18px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.box ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+.note{font-size:13.5px;color:var(--muted)}
+.callout{background:var(--accent-soft);border-radius:8px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.budget td.num{text-align:right}
+.budget tfoot td{font-weight:600;border-top:1px solid var(--line)}
+ol.build{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:10px;max-width:72ch}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">Brew · treg catalog audit · 14 Oct 2026</div>
+  <h1>Listening everywhere, measured in numbers</h1>
+  <p class="lede">Where treg plugs into each step of the Brew loop, so every move in the feed comes with counts (how many people, how much search, how much money) and quotes (what they actually said, with links).</p>
+  <p class="meta">Prices are treg list prices per call on 14 Oct. "Works" rates are treg's measured success across real calls. No paid calls were made for this audit.</p>
+</header>
+
+<section>
+  <div class="sechead"><div class="eyebrow">The loop</div><h2>Every stage gets its own data</h2></div>
+  <ol class="loop">
+    <li><b>Gather</b><span>Listen everywhere + quant sizing, on a cadence</span></li>
+    <li><b>Moves</b><span>Skills turn evidence into move docs</span></li>
+    <li><b>Rank → feed</b><span>Size × proof × fit × past lift</span></li>
+    <li><b>Jam</b><span>Hooks, creators, drafts, assets</span></li>
+    <li><b>Execute</b><span>Do it now, or brief to the team</span></li>
+    <li><b>Monitor</b><span>Re-run the same probes after launch</span></li>
+    <li><b>Measure</b><span>Delta vs baseline, graded A–D</span></li>
+    <li><b>Learn</b><span>Lift per move family feeds ranking</span></li>
+  </ol>
+  <div class="callout">
+    <h3>Where we stand today</h3>
+    <p>The generic feed (<code>listen-watch.js</code>) listens on 5 sources: Reddit, YouTube (only with our own API key), Judge.me site reviews, X and Amazon. X and Amazon are off unless <code>LISTEN_PAID=1</code>. The Arata build in your screenshot went further (Nykaa, Flipkart, Instagram). treg already powers AI-answer checks, Google Trends, Meta ad library and Amazon in research and the reader. The rest of this page is what to add.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sechead"><div class="eyebrow">Stage 1a · Qual</div><h2>Listen: every place people talk about the brand, its rivals and the category</h2>
+  <p>Three query sets per brand, built once by Claude and cached: <b>brand</b> (name, products, handles), <b>rivals</b> (top 5), <b>category</b> (problems, use cases, "best X for Y"). Each source runs all three, so we hear the category conversation even when nobody names the brand yet.</p></div>
+  <div class="tbl"><table>
+    <thead><tr><th>Source</th><th>treg endpoint</th><th>$/call</th><th>Status</th><th>What it adds</th></tr></thead>
+    <tbody>
+      <tr><td>TikTok search + comments</td><td><span class="id">tikhub.tiktok.search.videos</span><br><span class="id">tikhub.tiktok.video.comments</span></td><td class="num">0.001<br>0.001</td><td><span class="pill add">add</span></td><td>Biggest missing voice for D2C. Top videos for brand/rival/category terms, then their comments (works 99.99%, 16k samples).</td></tr>
+      <tr><td>TikTok comment keywords</td><td><span class="id">tikhub.x.tiktok-analytics-fetch-comment-keywords</span></td><td class="num">0.001</td><td><span class="pill add">add</span></td><td>Cheap pre-summary of what a viral video's comments are about.</td></tr>
+      <tr><td>Instagram reels + comments</td><td><span class="id">anyapi.instagram.search.reels</span><br><span class="id">anyapi.instagram.post.comments</span></td><td class="num">0.0015<br>0.0014</td><td><span class="pill add">add</span></td><td>Category reels and what people ask under them. Brand's own posts are free via <span class="id">instagram.instagram.post.comments</span> once connected.</td></tr>
+      <tr><td>Instagram hashtags</td><td><span class="id">tikhub.x.instagram-v1-fetch-hashtag-posts</span></td><td class="num">0.001</td><td><span class="pill add">add</span></td><td>UGC already posted with the brand or category tag; seeds the creator list.</td></tr>
+      <tr><td>YouTube comments + transcripts</td><td><span class="id">crawl4ai.youtube.video.comments</span><br><span class="id">scrapecreators.x.v1-youtube-video-transcript</span></td><td class="num">0.0009<br>0.0019</td><td><span class="pill add">swap</span></td><td>Removes the need for a YouTube key. Transcripts give us what reviewers say about the product, not only the comments.</td></tr>
+      <tr><td>Reddit posts + comments</td><td><span class="id">tikhub.x.reddit-app-fetch-dynamic-search</span></td><td class="num">0.001</td><td><span class="pill have">have</span></td><td>Free path stays first. This one also returns comments and communities, half the price of today's fallback.</td></tr>
+      <tr><td>X posts</td><td><span class="id">anyapi.x.search.posts</span></td><td class="num">~0.002</td><td><span class="pill have">have (off)</span></td><td>Turn on by default under the brand cap.</td></tr>
+      <tr><td>Threads, LinkedIn, Pinterest</td><td><span class="id">scrapecreators.x.v1-threads-search</span><br><span class="id">anyapi.linkedin.search.posts</span><br><span class="id">scrapecreators.x.v1-pinterest-search</span></td><td class="num">0.0019<br>0.002<br>0.0019</td><td><span class="pill add">add</span></td><td>The rest of the ideas-stream platforms. Pinterest doubles as a demand signal for visual categories (home, fashion, beauty).</td></tr>
+      <tr><td>Facebook post comments</td><td><span class="id">scrapecreators.x.v1-facebook-post-comments</span></td><td class="num">0.0019</td><td><span class="pill add">add</span></td><td>Comments on rival ads and pages; that is where objections show up. Use this one directly (the routed one only works 26% of the time).</td></tr>
+      <tr><td>Amazon reviews</td><td><span class="id">crawl4ai.amazon.product.reviews</span></td><td class="num">0.0014</td><td><span class="pill have">have (off)</span></td><td>Run on the brand's and rivals' top ASINs. Rival 1–3★ reviews are the best source for "switch to us" moves.</td></tr>
+      <tr><td>Trustpilot, Google reviews</td><td><span class="id">crawl4ai.trustpilot.business.reviews</span><br><span class="id">crawl4ai.google.maps.reviews</span></td><td class="num">0.0014<br>0.0002</td><td><span class="pill add">add</span></td><td>Brand and rivals. Maps matters for any brand with stores.</td></tr>
+      <tr><td>News, blogs, forums, Quora</td><td><span class="id">tinyfish.web.search.news</span><br><span class="id">treg.web.search</span></td><td class="num">0<br>~0.002</td><td><span class="pill add">add</span></td><td>Press, listicles ("best X in 2026"), Quora and niche forums via <code>site:</code> queries. News is free.</td></tr>
+      <tr><td>Nykaa, Flipkart, Myntra</td><td><span class="id">treg.web.extract.structured</span> (fallback)</td><td class="num">0.01</td><td><span class="pill gapp">gap</span></td><td>No dedicated endpoint. I filed request #1171 with treg. Until then, extract reviews from known product URLs at $0.01 a page, weekly.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div class="sechead"><div class="eyebrow">Stage 1b · Quant</div><h2>Size it: demand, share, money</h2>
+  <p>Listening tells us what people say. These tell us how big it is, so a move can say "18,100 searches a month at ₹14 CPC, you rank #23" instead of "people are interested".</p></div>
+  <div class="tbl"><table>
+    <thead><tr><th>Signal</th><th>treg endpoint</th><th>$/call</th><th>Cadence</th><th>Turns into</th></tr></thead>
+    <tbody>
+      <tr><td>Search demand + CPC</td><td><span class="id">dataforseo.google.keywords.volume</span></td><td class="num">0.09 / 1,000 kw</td><td>Monthly</td><td>Rupee value of every theme heard in listening (volume × CPC). Free with <span class="id">google-ads.google.keywords.volume</span> if the brand connects Ads.</td></tr>
+      <tr><td>Rising terms</td><td><span class="id">dataforseo.x.keywords-data-dataforseo-trends-explore-live</span></td><td class="num">0.0012</td><td>Weekly</td><td>Timing: which themes are growing now. 12× cheaper than the SerpApi trends call we use today.</td></tr>
+      <tr><td>Questions people type</td><td><span class="id">serper.google.serp.autocomplete</span></td><td class="num">0.001</td><td>Monthly</td><td>FAQ, PDP copy and content moves; the exact words buyers use.</td></tr>
+      <tr><td>Rival traffic + ad budget</td><td><span class="id">spyfu.google.domain.overview</span></td><td class="num">0.001</td><td>Monthly</td><td>Share of search vs rivals; how much they spend on Google.</td></tr>
+      <tr><td>Who we really compete with</td><td><span class="id">serpstat.google.domain.competitors</span><br><span class="id">spyfu.google.domain.ppc_competitors</span></td><td class="num">0.0005<br>0.0002</td><td>Monthly</td><td>Corrects the rival list from data, not guesses.</td></tr>
+      <tr><td>Keyword gaps</td><td><span class="id">dataforseo.x.dataforseo-labs-google-domain-intersection-live</span></td><td class="num">0.012</td><td>Monthly</td><td>Terms rivals rank for and the brand does not: SEO and collection-page moves.</td></tr>
+      <tr><td>AI answers</td><td><span class="id">dataforseo.x.ai-optimization-chat-gpt-llm-scraper-live-advanced</span> (+ Gemini, Perplexity)</td><td class="num">0.004</td><td>Weekly</td><td>Already used. Run a fixed set of 20 buyer questions every week so it becomes a trend line.</td></tr>
+      <tr><td>AI share of voice</td><td><span class="id">dataforseo.x.ai-optimization-llm-mentions-target-metrics-live</span></td><td class="num">0.10</td><td>Monthly</td><td>Brand vs rivals mention share across LLMs; the baseline for AI-SEO moves.</td></tr>
+      <tr><td>Rival ads</td><td>Meta (have) · <span class="id">tikhub.x.tiktok-ads-search-ads</span> · <span class="id">adyntel.google.ads.transparency</span></td><td class="num">0.002 · 0.001 · 0.011</td><td>Weekly</td><td>What rivals are scaling (ads running 30+ days), their hooks and offers, on all three ad platforms.</td></tr>
+      <tr><td>Top ads in category</td><td><span class="id">tikhub.x.tiktok-ads-get-top-ads-spotlight</span></td><td class="num">0.001</td><td>Weekly</td><td>Proven hooks for jam drafts.</td></tr>
+      <tr><td>Price position</td><td><span class="id">serper.google.serp.shopping</span><br><span class="id">crawl4ai.amazon.product.detail</span></td><td class="num">0.002<br>0.0014</td><td>Weekly</td><td>Where the brand sits on price, rating and offer vs rivals for its hero terms.</td></tr>
+      <tr><td>What sells in the category</td><td><span class="id">brightdata.x.amazon-best-sellers</span><br><span class="id">tikhub.x.tiktok-shop-web-fetch-hot-selling-products-list</span></td><td class="num">0.0015<br>0.001</td><td>Monthly</td><td>Product, bundle and launch moves backed by what is actually selling.</td></tr>
+      <tr><td>PR and links</td><td><span class="id">seranking.web.linking_domains.list</span></td><td class="num">0.0002</td><td>Monthly</td><td>Sites that link to rivals but not the brand: outreach and PR moves.</td></tr>
+      <tr><td>Rival stack</td><td><span class="id">tomba.companies.tech_stack</span></td><td class="num">0.009</td><td>Quarterly</td><td>Which reviews, loyalty, quiz or subscription apps rivals run.</td></tr>
+      <tr><td>Brand's own data</td><td>GA4, Search Console, Business Profile via treg connected accounts</td><td class="num">0</td><td>Daily</td><td>The baseline every measurement needs. Free once the brand connects.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div class="sechead"><div class="eyebrow">Stages 2–3</div><h2>From evidence to ranked moves</h2></div>
+  <div class="cols">
+    <div class="box"><h3>Move families and the data behind each</h3>
+      <ul>
+        <li><b>Listening:</b> themes with counts across sources → reply, FAQ, PDP and ad-angle moves (<code>customer-research</code>, <code>copywriting</code>).</li>
+        <li><b>Rival weakness:</b> rival 1–3★ reviews + rival ad comments → comparison and "switch" moves (<code>competitors</code>, <code>ad-creative</code>).</li>
+        <li><b>Demand:</b> volume × CPC × gap → SEO, collection and AI-SEO moves (<code>seo-audit</code>, <code>ai-seo</code>, <code>programmatic-seo</code>).</li>
+        <li><b>Creative:</b> top ads + viral videos + transcripts → hook and UGC moves (<code>ad-creative</code>, <code>video</code>).</li>
+        <li><b>Community:</b> live threads and questions → post and reply moves (<code>community-marketing</code>, <code>social</code>).</li>
+        <li><b>Creators:</b> people already posting about the category → seeding moves (<code>influencer-marketing</code>).</li>
+        <li><b>Price and offer:</b> Shopping + Amazon position → offer moves (<code>offers</code>, <code>pricing</code>).</li>
+      </ul></div>
+    <div class="box"><h3>Rank score, all from real inputs</h3>
+      <ul>
+        <li><b>Size:</b> people reached (mentions, search volume) and money at stake (volume × CPC, or AOV × orders affected).</li>
+        <li><b>Proof:</b> number of independent sources, recency, and whether the quant and the qual agree.</li>
+        <li><b>Timing:</b> trend slope from weekly Trends and mention counts.</li>
+        <li><b>Fit:</b> can it run on the brand's connected stack today.</li>
+        <li><b>Past lift:</b> this family's graded results for this brand, then across all brands.</li>
+      </ul>
+      <p class="note">Every move doc shows its numbers and at least two linked quotes. A move with no evidence never reaches the feed.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="sechead"><div class="eyebrow">Stages 4–5</div><h2>Jam and execute</h2></div>
+  <div class="cols">
+    <div class="box"><h3>In the jam</h3>
+      <ul>
+        <li>Hooks from the category's top TikToks and reels, with view counts, shown next to the draft.</li>
+        <li>Creators: <span class="id">influencersclub.creators.search</span> ($0.006) for a shortlist; full audience analytics ($0.48) only after the brand picks someone.</li>
+        <li>Assets: Seedance, Veo, Gemini Image, GPT Image and voice are all in treg (the <code>make-ugc</code> skill already chains them).</li>
+        <li>Quotes from listening inserted as proof lines in copy, linked to the source.</li>
+      </ul></div>
+    <div class="box"><h3>Do it now / brief to team</h3>
+      <ul>
+        <li>Execution stays on the brand's own connectors (Meta, Shopify, Klaviyo, email/WhatsApp via Brew).</li>
+        <li>treg does not post into communities, and neither does Brew. Community moves stay copy + open thread.</li>
+        <li>At launch Brew saves a baseline snapshot of every probe tied to the move, so measuring has a "before".</li>
+      </ul></div>
+  </div>
+</section>
+
+<section>
+  <div class="sechead"><div class="eyebrow">Stages 6–8</div><h2>Monitor, measure, learn: re-run the same probes</h2>
+  <p>Each move family gets a fixed probe that ran at launch and runs again on a schedule. The difference is the result. This fills the families in <code>measure-families.js</code> with outside evidence, not only store numbers.</p></div>
+  <div class="tbl"><table>
+    <thead><tr><th>Move family</th><th>Probe re-run</th><th>Check after</th><th>What counts as a win</th></tr></thead>
+    <tbody>
+      <tr><td>SEO / collection page</td><td>Search Console (free) or ranked keywords</td><td class="num">14, 28, 56 days</td><td>Position and clicks up on the target terms</td></tr>
+      <tr><td>AI-SEO</td><td>The same 20 buyer questions in ChatGPT, Gemini, Perplexity</td><td class="num">weekly</td><td>Brand named or cited in more answers</td></tr>
+      <tr><td>Community reply / post</td><td>Thread re-fetch (upvotes, replies), referral sessions in GA4</td><td class="num">1, 3, 7 days</td><td>Engagement plus tracked visits</td></tr>
+      <tr><td>Ad creative</td><td>Meta results + comments on the ad; rival ad library</td><td class="num">3, 7, 14 days</td><td>CTR/CPA vs control; objections falling in comments</td></tr>
+      <tr><td>FAQ / PDP fix from a complaint theme</td><td>Listening theme count and sentiment; site reviews</td><td class="num">30 days</td><td>Theme mentions down, conversion up</td></tr>
+      <tr><td>Price / offer</td><td>Shopping + Amazon position</td><td class="num">weekly</td><td>Position held, margin kept, orders up</td></tr>
+      <tr><td>Creator seeding</td><td>The creator's post stats and comments</td><td class="num">3, 14 days</td><td>Views, saves, code redemptions</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div class="sechead"><div class="eyebrow">Cost</div><h2>About $10 a brand a month for all of it</h2>
+  <p>Estimated from list prices at a sensible depth. Generation (video, images) is extra and is spent only in the jam, when the brand asks.</p></div>
+  <div class="tbl budget"><table>
+    <thead><tr><th>Block</th><th>Calls</th><th>Cadence</th><th>$/month</th></tr></thead>
+    <tbody>
+      <tr><td>Listening, all sources × 3 query sets</td><td>~120 a run</td><td>Daily</td><td class="num">4.50</td></tr>
+      <tr><td>Indian marketplace pages (fallback)</td><td>~20 pages</td><td>Weekly</td><td class="num">0.80</td></tr>
+      <tr><td>AI answers, 20 questions × 3 engines</td><td>60</td><td>Weekly</td><td class="num">1.00</td></tr>
+      <tr><td>Rival ads, Shopping, trends</td><td>~50</td><td>Weekly</td><td class="num">1.20</td></tr>
+      <tr><td>Demand, gaps, domains, links, AI share of voice</td><td>~25</td><td>Monthly</td><td class="num">0.60</td></tr>
+      <tr><td>Post-launch probes (about 10 live moves)</td><td>~150</td><td>Per schedule</td><td class="num">1.50</td></tr>
+    </tbody>
+    <tfoot><tr><td>Total</td><td></td><td></td><td class="num">≈ 9.60</td></tr></tfoot>
+  </table></div>
+  <p class="note">Today's caps (<code>SOCIAL_DAY_CAP_USD</code> $2 per brand per day, <code>TREG_DAY_CAP_USD</code> $25) already cover this. The team balance needs topping up before turning paid listening on for all brands.</p>
+</section>
+
+<section>
+  <div class="sechead"><div class="eyebrow">Build order</div><h2>What I would build first</h2></div>
+  <ol class="build">
+    <li><b>Listening sources:</b> add TikTok, Instagram, Threads, LinkedIn, Pinterest, Facebook comments, Trustpilot, Google reviews and news to <code>listen-watch.js</code>. Move YouTube to treg. Turn X and Amazon on by default under the cap. Each source shows on the Where list with its count, as in your screenshot.</li>
+    <li><b>Quant layer:</b> a new <code>market-pulse.js</code> that sizes each listening theme (volume × CPC, trend slope) and stores it in the pack, so every move and card can quote it.</li>
+    <li><b>Evidence-based rank:</b> rank score from size × proof × timing × fit × past lift, replacing the model's guess.</li>
+    <li><b>Baseline at launch + probes:</b> snapshot on Do it now / report back; scheduled re-runs per family; deltas into the measuring engine and <em>What Brew learned</em>.</li>
+    <li><b>Jam inputs:</b> hooks from top videos and ads, creator shortlist, proof quotes.</li>
+    <li><b>Indian marketplaces:</b> structured extract until treg adds a native endpoint (request #1171).</li>
+  </ol>
+</section>
+</div>

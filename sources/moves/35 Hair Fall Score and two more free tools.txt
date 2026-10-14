@@ -1,0 +1,757 @@
+      Brew                                       PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+FREE TOOLS (ENGINEERING AS MARKETING) · MOVE 35 OF 50
+
+
+
+HAIR FALL
+SCORE AND
+TWO MORE
+FREE TOOLS
+  THREE SMALL TOOLS ON ARATA.IN THAT TELL A VISITOR
+  HOW BAD THEIR HAIR FALL IS, WHAT IT COSTS THEM,
+  AND WHICH ROUTINE TO BUY, BEFORE THEY HAVE
+  BOUGHT ANYTHING.
+
+
+
+
+60 sec
+FROM LANDING TO A HAIR FALL SCORE
+
+
+
+
+BREW × ARATA                      OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                    V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                               WHAT THIS GIVES ARATA
+                                                               Three small tools on arata.in that tell a visitor how bad
+                                                               their hair fall is, what it costs them, and which routine to
+
+
+        60 sec
+                                                               buy, before they have bought anything.
+                                                               LIVE 30 DAYS AFTER WE START
+                                                               The Hair Fall Score is live at arata.in/score with
+        FROM LANDING TO A HAIR FALL                            WhatsApp capture and a routine recommendation that
+        SCORE
+                                                               drops straight into the cart, the Hair Fall Calculator page
+                                                               is indexed, and the first creator Reels using the score
+                                                               are running.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+This is the D2C version of engineering as marketing. Where a software company would ship a website
+grader or an ROI calculator, Arata ships a hair fall score, a hair fall calculator and a routine builder. Same
+logic: give away something useful, let it do the diagnosis, and let the product be the obvious next step.
+The brief lists two gaps that this discipline closes in one move: Arata has no quiz and no regimen builder.
+Today a visitor with hair fall lands on the Hair Growth collection and sees a ₹1,499 serum, a ₹571 serum, a
+₹999 pack of 3 and a ₹359 shampoo, each with its own number, and has to work out the answer alone.
+Traya built a ₹343 Cr business on the opposite experience: a free hair test first, a kit second. Bare Anatomy
+runs a quiz. Arata, the brand with a number on every bottle, has no tool that puts a number on the customer.
+That matters because the customer's job is "stop the hair fall I see on the pillow and in the drain, and show
+me it is working within 2 to 3 months". The first half of that sentence is a measurement problem. Every
+persona in the brief starts with a question they cannot answer: Rahul does not know if crown thinning is
+normal, Ritika does not know if post-partum shedding will stop on its own, Kavya wants something a derm
+would respect but cannot tell where she sits on the scale. The brand's core promise is zero guesswork. The
+site currently asks for a lot of guessing.
+The economics are simple. Arata gets about 650K visits a month and converts roughly 7 to 8% of visits to
+orders including repeat buyers. A tool that even a fifth of new visitors touch, and that captures a WhatsApp
+number from a third of those, builds a first-party list of tens of thousands of named, scored, segmented hair
+fall prospects every month. Right now 68% of revenue sits on marketplaces and quick commerce where
+Arata does not own the customer. A score with a phone number attached is the cheapest way we know to
+move people onto land Arata owns.
+The tools also solve two other listed problems as a side effect. MitoActive has zero reviews; a score taken at
+day 0 and again at day 84 is the most natural review request a brand can send. And the collection page
+mixes claims with no routine; the routine builder gives every score band one named cart with one price,
+which is what Routine Ritika asked for.
+
+
+
+WHAT WE FOUND
+
+BREW DEPLOYMENT TEAM × ARATA · HAIR FALL SCORE AND TWO MORE FREE TOOLS                                                      1
+WHERE THE AUDIENCE IS ALREADY ASKING FOR A TOOL
+The ideation method starts with four questions. We answered each with Arata's own customer language
+and the search entry points in the brief.
+ QUESTION                             WHAT ARATA'S AUDIENCE DOES TODAY                                         TOOL SHAPE
+
+ What do they Google?                 "how much hair fall is normal", "hair fall test", "am I going bald",     Calculator, analyzer
+                                      "dandruff or dry scalp", "hair fall shampoo"
+ What manual process is               Counting strands in the drain and on the comb, comparing with a          Calculator
+ tedious?                             friend, scrolling Reels for an answer
+ What do they need before             Which of four hair growth SKUs is for me; is my hair fall bad enough     Analyzer plus generator
+ buying?                              for ₹1,499                                                               (routine)
+ What information do they             Whether their water, stress, post-partum or new city is the cause;       Analyzer, tester
+ wish they had?                       what 84 days looks like
+
+
+The brief's objection list is also a tool spec in disguise. "₹1,499 for 30 ml is a lot" is answered by a cost-per-
+day calculator. "Do I have to use it forever?" is answered by an 84-day plan with a date on it. "Will I waste
+another ₹600?" is answered by a score that tells some people not to buy yet.
+
+WHAT COMPETITORS HAVE BUILT
+ BRAND               TOOL                   WHAT IT DOES WELL                         WHERE IT LEAVES ROOM
+
+ Traya               Free hair test         Long questionnaire, doctor-style          Output is always a kit of ₹1,400 to ₹1,800 a
+                                            output, strong commitment device; it      month; medicalised; slow; the test feels like an
+                                            is the front door of a ₹343 Cr            intake form (assumption on length and tone from
+                                            business                                  public descriptions)
+ Bare Anatomy        Quiz-led               Fast, cosmetic, feeds a custom-label      Same actives underneath; no measurement, no
+                     personalisation        product                                   score, nothing to share
+ Man Matters         Hair assessment        Routes to finasteride and minoxidil       Pharma feel; excludes women
+                                            bundles
+ Pilgrim,            None of note                                                     Open field in the ₹400 to ₹700 band
+ Minimalist,
+ mCaffeine
+ Arata               None                                                             The brand with the most numbers has no number
+                                                                                      for the customer
+
+
+The pattern: the only serious tool in the category belongs to the most expensive, most medicalised
+competitor. Nobody in Arata's price band owns "how bad is my hair fall, honestly". That is the gap.
+
+CANDIDATE TOOLS, SCORED
+We scored seven ideas on the eight-factor scorecard, 1 to 5 each. 25 or more is a strong candidate, 15 to 24
+is promising, under 15 we drop.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · HAIR FALL SCORE AND TWO MORE FREE TOOLS                                                                 2
+               SEARCH AUDIENCE            PATH TO BUILD       LOW         LINK      SHARE-
+ TOOL          DEMAND MATCH    UNIQUENESS PRODUCT FEASIBILITY MAINTENANCE POTENTIAL WORTHY TOTAL
+
+ Hair Fall     4            5             4                 5              5   5     4           5         37
+ Score
+ (60-
+ second
+ analyzer,
+ 0 to 100)
+ Hair Fall  5               4             4                 4              5   5     5           4         36
+ Calculator
+ ("is my
+ hair fall
+ normal?")
+ Routine       3            5             2                 5              5   4     2           2         28
+ Builder
+ (concern
+ × hair
+ type ×
+ budget →
+ one cart)
+ Hard          3            4             5                 3              3   2     5           5         30
+ Water
+ Checker
+ by city or
+ pincode
+ Dandruff      4            4             3                 4              5   5     3           3         31
+ or Dry
+ Scalp
+ checker
+ Hair Fall  2               4             3                 4              5   5     2           3         28
+ Cost
+ Calculator
+ (what you
+ have
+ spent on
+ failed
+ products
+ vs a plan)
+ 84-Day        2            5             3                 5              2   2     2           3         24
+ Photo
+ Tracker
+
+
+Three decisions fall out of the scores.
+1. The Hair Fall Score is the hero. It is the analyzer pattern, the one that converts best and qualifies as it
+   goes, because the answers tell us who is a buyer and who should see a dermatologist.
+2. The Hair Fall Calculator is the reach tool. It targets the highest-volume query in the category and
+   produces a number people will screenshot.
+3. The Routine Builder does not need its own page. It becomes the output layer of the score. A tool that
+   gives you a number and then a cart is worth more than two tools.
+The Hard Water Checker scores well but depends on a city-level water hardness dataset that has to be
+sourced and maintained, so it goes to phase 2 with a brief in the appendix. The Dandruff or Dry Scalp
+checker is a 5-question variant of the score for the Divya persona and ships in phase 2 using the same
+engine. The Photo Tracker needs accounts and storage, which the MVP rule says to skip.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · HAIR FALL SCORE AND TWO MORE FREE TOOLS                                         3
+HOW THE THREE TOOLS FIT THE FUNNEL
+                                                                                                        DIAGRAM
+      SEARCH / REELS / PACK QR                    SITE VISITOR              BUYER
+      ─────────────────────────                   ────────────              ─────
+      "how much hair fall                         Collection page           Day 0 score
+       is normal" ──────┐                         "Not sure which           saved to order
+                        ▼                          one? Get your score"
+              HAIR FALL CALCULATOR          ───┐          │                     │
+              (ungated, shareable)             │          ▼                     ▼
+                                               └──► HAIR FALL SCORE ───►   ROUTINE BUILDER
+                                                      0 to 100, band        one cart, one price
+                                                           │                     │
+                                                    WhatsApp / email        Add routine ──► Checkout
+                                                    "save my score"              │
+                                                           │                     ▼
+                                                           ▼               Day 84 re-score
+                                                    84-day plan sequence   ──► review request
+                                                    (3 messages)               (MitoActive reviews)
+
+
+
+
+Each box does one job. The calculator earns traffic and links. The score captures and qualifies. The builder
+converts. The re-score closes the loop and feeds reviews and reorders.
+
+
+
+THE PLAN
+PHASE 1 (DAYS 1 TO 30): THE HAIR FALL SCORE WITH THE ROUTINE BUILDER INSIDE IT
+What: a 10-question, 60-second assessment at arata.in/score. Output is a score from 0 to 100, one of four
+bands, a plain-language reason, and one recommended routine with one price and one button. The full 84-
+day plan and a saved score card are released against a WhatsApp number or email.
+Why: it is the analyzer pattern, the closest match to the one case in this discipline that produced hundreds
+of thousands of leads with near-total auto-qualification. The questions double as segmentation. We learn
+trigger (post-partum, illness, stress, new city), scalp state (flaky, oily, dry), history (tried onion, biotin,
+minoxidil, a derm) and family pattern before the customer has spent a rupee. That data decides which
+routine we show and which messages follow.
+Expected effect: a named, scored list that grows every day from existing traffic; a higher add-to-cart rate
+from the Hair Growth collection because the choice is made for the visitor; a day-0 baseline that makes the
+day-84 review request natural.
+Gating decision: partially gated. The score and the band are shown to everyone, instantly. The full plan, the
+saved score card and the day-84 reminder need a phone number or email. Reason: a fully gated tool kills
+usage and share, a fully ungated one leaves no list. Showing the number first and asking for the phone
+second is the honest order.
+
+PHASE 1 (DAYS 15 TO 30): THE HAIR FALL CALCULATOR
+What: a single page at arata.in/hair-fall-calculator. Four inputs (strands on the pillow, strands on the comb,
+strands in the shower, washes per week). Output: estimated daily shed, where it sits against the 50 to 100
+strands a day that dermatologists treat as normal, and the 84-day picture. Ungated. One link to the score.
+Why: "how much hair fall is normal" is the largest single question in the category and nobody in India
+answers it with a tool. Calculators skew to reach and share. A shareable result card ("I lose about 140
+strands a day") is the kind of thing that travels on Instagram and gets quoted in articles, which is where the
+
+
+BREW DEPLOYMENT TEAM × ARATA · HAIR FALL SCORE AND TWO MORE FREE TOOLS                                          4
+links come from.
+Expected effect: an organic page that ranks for a cluster of "normal hair fall" queries and sends a steady
+stream of warm, pre-educated visitors into the score.
+
+PHASE 2 (DAYS 31 TO 90): SAME ENGINE, MORE DOORS
+    Dandruff or Dry Scalp checker at arata.in/scalp-check: 5 questions, same engine, routes to the Anti-
+    Dandruff shampoo (₹404), conditioner and leave-on serum (₹299) or to the Damage Defence Super
+    Shampoo (₹395) when it is dryness.
+    Hard Water Checker at arata.in/hard-water: city or pincode in, a hardness read and "what it does to
+    Indian hair" out. Brief in the appendix.
+    Score-on-pack: a QR on the Hair Growth and MitoActive cartons and in the quick-commerce parcel that
+    opens the score with the SKU pre-selected. This is the bridge from Blinkit and Zepto buyers, who Arata
+    cannot otherwise contact, to the WhatsApp list.
+    Day-84 re-score: the same 10 questions, sent automatically 84 days after the first score. The result page
+    compares day 0 to day 84 and asks for a review on the SKU the customer bought.
+
+BUILD DECISION
+Build custom, inside the Shopify theme as a self-contained page with a small scoring script. Reasons: the
+routine output has to add real products to the real cart, the question logic is Arata's own, and the design has
+to carry the 3.0 lab-blue identity. A no-code quiz tool would get a version live in three days, but it would live
+on a subdomain, it would not write to the cart, and the lead data would sit in a third party. The scoring
+engine is a lookup table, so the custom build is two weeks of one front-end developer plus our creative
+lead.
+What we leave out of the MVP, by the rule: accounts, photo upload, saved results beyond the WhatsApp
+card, a PDF report, and a "compare with friends" feature. If the day-30 numbers justify it, the day-84 re-
+score comes next.
+
+DISTRIBUTION PLAN FOR THE TOOLS
+A tool nobody sees is a project, not marketing. These are the eight doors, in order of effort.
+ DOOR                              WHAT GOES LIVE                                                                     OWNER
+
+ Hair Growth collection            A strip above the grid: "Four products. One is for you. Get your hair fall score   Brew creative
+ page                              in 60 seconds."                                                                    lead
+ Every hair growth PDP             A line under the price: "Not sure this is the right tier? Score first."            Brew creative
+                                                                                                                      lead
+ Homepage hero                     Secondary button: "Get your hair fall score"                                       Arata brand
+                                                                                                                      manager
+ Existing email and                One send: "We built something. Find out how bad it actually is."                   Brew lifecycle
+ WhatsApp list                                                                                                        lead
+ Meta and YouTube ads              A score-first ad set for cold traffic (hair fall interest), optimised to tool      Brew paid lead
+                                   completion, not purchase
+ Creators                          6 creators film themselves taking the score live; the band is the hook             Brew creator
+                                                                                                                      lead
+ Lab Notes                         Two articles: "How much hair fall is normal (with the maths)" and "What your       Brew content
+                                   hair fall score means"                                                             lead
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · HAIR FALL SCORE AND TWO MORE FREE TOOLS                                                                 5
+ DOOR                              WHAT GOES LIVE                                                                      OWNER
+
+ Pack and parcel                   QR on the carton and parcel insert (phase 2)                                        Arata ops lead
+
+
+
+
+WORKED EXAMPLES
+EXAMPLE 1: THE HAIR FALL SCORE, COMPLETE
+Entry page copy (arata.in/score):
+
+     HOW BAD IS YOUR HAIR FALL, HONESTLY? 10 QUESTIONS. 60 SECONDS.
+     A SCORE FROM 0 TO 100 AND THE ONE ROUTINE THAT FITS IT. NO LOGIN.
+     WE WILL TELL YOU IF YOU DO NOT NEED TO BUY ANYTHING YET. [START
+     MY SCORE]
+
+
+The questions, options and weights. Weights are points toward the score. Flags change the output without
+changing the score.
+ #     QUESTION                                      OPTIONS → POINTS                                           FLAG
+
+ 1     On a normal day, how many strands do Under 50 → 0; 50 to 100 → 2; 100 to 150 → 6; 150 or
+       you notice on your pillow, comb and in more → 10; I stopped counting → 10
+       the drain, roughly?
+ 2     Where do you notice it most?                  Evenly all over → 2; Temples → 6; Crown → 6; Parting       Patches → DERM flag
+                                                     looks wider → 6; Patches or bald spots → 4
+ 3     How long has it been like this?               Under a month → 2; 1 to 3 months → 4; 3 to 12 months
+                                                     → 8; Over a year → 10
+ 4     Anything in the last 6 months? (pick          Illness or fever → 3; Childbirth → 3; A rough stretch of   Childbirth → PARTUM
+       all)                                          stress or sleep → 3; Moved city or changed water → 2;      flag; Moved city →
+                                                     Crash diet → 2; None → 0 (cap 6)                           WATER flag
+ 5     How does your scalp feel most days?           Itchy or flaky → 5; Oily by evening → 3; Dry and tight → Itchy or flaky →
+                                                     3; Fine → 0                                              DANDRUFF flag
+ 6     Is there a white crust on your taps or        Yes → 4; No → 0; Not sure → 2                              Yes → WATER flag
+       shower head?
+ 7     What have you tried? (pick all)               Onion or biotin shampoo → 2; Oils → 1; Minoxidil → 6;      Minoxidil or derm →
+                                                     A dermatologist → 6; Nothing yet → 0 (cap 10)              CLINICAL flag
+ 8     Did a parent or sibling thin out before       Yes → 10; No → 0; Not sure → 4
+       40?
+ 9     Does your scalp show more in photos           Yes → 10; No → 0; Not sure → 4
+       than a year ago?
+ 10 Age and gender (for comparison only)             No points                                                  Sets the comparison line
+
+
+Maximum is 80 points. Score shown = points × 1.25, rounded, so it reads 0 to 100.
+The four bands and what each one shows:
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · HAIR FALL SCORE AND TWO MORE FREE TOOLS                                                                   6
+ SCORE      BAND            WHAT WE SAY                                    ROUTINE SHOWN                         PRICE
+
+ 0 to 25    Normal          "This is within the 50 to 100 strands a        Anti-Hair Fall Intensive Shampoo      ₹359
+            shed            day that is normal. Keep it that way."
+ 26 to      Early signs     "Something has changed in the last few    Anti-Hair Fall Shampoo + Anti-             ₹638
+ 50                         months. This is the stage where a routine Breakage Conditioner
+                            does the most."
+ 51 to      Active hair     "This has been going on for a while and it Anti-Hair Fall Shampoo + Hair Growth      ₹838 (Pack of 3 at
+ 75         fall            shows. You need a treatment step, not      Intensive Serum, 84-day plan with the     ₹999 for the full 84
+                            just a wash."                              Pack of 3 offered                         days)
+ 76 to      Advanced        "This is pattern hair fall with history        MitoActive + Anti-Hair Fall Shampoo   ₹1,803
+ 100                        behind it. The strongest thing we make is
+                            the right place to start."
+
+
+Flags change the page:
+    DERM flag (patches): whatever the score, the page leads with "Patchy loss can be a medical condition.
+    See a dermatologist first. Our products can sit alongside what they prescribe, but they are not the first
+    step." No routine is pushed above that line. This is the anti-persona filter from the brief, and it is also the
+    single most trust-building sentence a haircare brand can show.
+    DANDRUFF flag: the routine adds the Anti-Dandruff Serum (₹299) with one line: "Itch and flakes are
+    usually a separate problem. Fix both or the scalp keeps fighting you."
+    WATER flag: adds a one-line explainer and a link to the hard water page in phase 2.
+    PARTUM flag: changes the Early and Active copy to "Post-partum shedding usually peaks around month
+    3 to 4 and settles. A routine now protects the hair that is coming back." and defaults to the ₹638 routine
+    rather than the serum.
+    CLINICAL flag: Advanced band swaps the headline to "You have done the medical route. MitoActive
+    works on a different mechanism (mitochondrial function, not blood flow) and does not create
+    dependency." and shows the Kavya objection answers inline.
+Result page copy, Active band, no flags:
+
+   YOUR HAIR FALL SCORE: 64 / 100 ACTIVE HAIR FALL. MOST PEOPLE YOUR
+   AGE WHO TAKE THIS LAND BETWEEN 30 AND 45. YOURS IS HIGHER
+   BECAUSE IT HAS BEEN GOING ON FOR OVER THREE MONTHS AND YOU
+   SEE IT AT THE CROWN.
+
+   WHAT THIS MEANS. SHEDDING AT THIS LEVEL FOR THIS LONG MEANS
+   MORE FOLLICLES ARE RESTING THAN GROWING. A SHAMPOO ALONE
+   WILL NOT SHIFT THAT. A LEAVE-ON SERUM APPLIED TO THE SCALP DAILY
+   CAN.
+
+   YOUR ROUTINE ANTI-HAIR FALL INTENSIVE SHAMPOO (200 ML) + HAIR
+   GROWTH INTENSIVE SERUM (30 ML) ₹838 TOGETHER. SHAMPOO THREE
+   TIMES A WEEK, SERUM EVERY NIGHT ON A DRY SCALP. THE SHAMPOO IS
+   TESTED AT 7.4X HAIR FALL REDUCTION. THE SERUM SHOWED UP TO
+   28,200 NEW HAIRS IN 84 DAYS IN ITS CONSUMER STUDY. [ADD THIS
+   ROUTINE TO CART]
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · HAIR FALL SCORE AND TWO MORE FREE TOOLS                                                                7
+   IF YOU WANT TO DO THE FULL 84 DAYS IN ONE GO: HAIR GROWTH
+   INTENSIVE SERUM PACK OF 3 AT ₹999 (49% OFF ₹1,947). THREE
+   BOTTLES, THREE MONTHS, DONE. [MAKE IT 84 DAYS]
+
+   SAVE THIS SCORE. WE WILL SEND YOU THE DAY-BY-DAY PLAN ON
+   WHATSAPP AND REMIND YOU TO RE-SCORE ON DAY 84 SO YOU CAN SEE
+   THE CHANGE IN A NUMBER, NOT A MIRROR. [+91 ______] [SEND MY PLAN]
+   ONE MESSAGE NOW, ONE AT THE START OF EACH MONTH, ONE ON DAY
+   84. NOTHING ELSE.
+
+
+Result page copy, Normal band:
+
+   YOUR HAIR FALL SCORE: 18 / 100 NORMAL SHED. YOU LOSE HAIR EVERY
+   DAY. EVERYONE DOES. AROUND 50 TO 100 STRANDS IS THE RANGE
+   DERMATOLOGISTS CALL NORMAL, AND YOUR ANSWERS PUT YOU INSIDE
+   IT.
+
+   YOU DO NOT NEED A TREATMENT SERUM. IF YOU WANT TO KEEP YOUR
+   SCALP WHERE IT IS, A SHAMPOO BUILT FOR HARD WATER AND HEAT IS
+   ENOUGH. ANTI-HAIR FALL INTENSIVE SHAMPOO, ₹359. [ADD TO CART] OR
+   JUST COME BACK IN 3 MONTHS AND RE-SCORE. [REMIND ME ON
+   WHATSAPP]
+
+
+Telling a quarter of visitors they do not need to buy is the point. It is what makes the other three bands
+believable.
+
+EXAMPLE 2: THE HAIR FALL CALCULATOR PAGE, COMPLETE
+URL: arata.in/hair-fall-calculator Title tag: Hair Fall Calculator: Is Your Hair Fall Normal? | Arata H1: How
+much hair fall is normal? Count yours.
+Intro copy:
+
+   DERMATOLOGISTS PUT NORMAL SHEDDING AT 50 TO 100 STRANDS A
+   DAY. ALMOST NOBODY KNOWS THEIR OWN NUMBER. COUNT FOR ONE
+   DAY, ENTER IT BELOW, AND WE WILL TELL YOU WHERE YOU SIT AND
+   WHAT 84 DAYS LOOKS LIKE AT YOUR RATE.
+
+
+Inputs:
+ FIELD                                           HELP TEXT                                                               DEFAULT
+
+ Strands on your pillow this morning             Count what is on the pillowcase. Long hair is easier; for short hair,   10
+                                                 estimate.
+ Strands on your comb or brush today             After one full comb-through.                                            20
+ Strands in the drain after your last            Wash days are higher. That is normal; we adjust for it.                 60
+ wash
+ How many times a week do you wash                                                                                       3
+
+
+Formula, shown on the page in plain words:
+
+
+BREW DEPLOYMENT TEAM × ARATA · HAIR FALL SCORE AND TWO MORE FREE TOOLS                                                           8
+                                                                                                        DIAGRAM
+    daily shed     =    pillow       +   comb   +   (drain × washes per week ÷ 7)
+
+    example:           10        +       20     +   (60 × 3 ÷ 7)   =   56 strands a day
+
+
+
+
+Output copy, three states:
+    Under 50: "About 42 strands a day. That is below the normal range. Your hair is in a healthy growth
+    cycle. Nothing to fix. If you want to see a bigger number on the hair you are growing, score your scalp
+    anyway."
+    50 to 100: "About 72 strands a day. Normal. Over 84 days that is roughly 6,000 strands, and a healthy
+    scalp replaces all of them. If the number has gone up recently, take the 60-second score to see why."
+    Over 100: "About 140 strands a day. That is above the normal range. Over 84 days it adds up to around
+    11,800 strands, more than a healthy scalp replaces. The next step is to find out which kind of hair fall this
+    is: your score does that in 60 seconds."
+Below the output, one card the visitor can save or share:
+                                                                                                        DIAGRAM
+    ┌──────────────────────────────────────────┐
+    │ MY HAIR FALL                             │
+    │ about 140 strands a day                  │
+    │ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░ normal: 50 to 100 │
+    │ 84 days at this rate: ~11,800 strands    │
+    │ arata.in/hair-fall-calculator            │
+    └──────────────────────────────────────────┘
+
+
+
+
+The 84-day framing is deliberate. It makes "up to 28,200 new hairs within 84 days" legible for the first time.
+A visitor who has just seen that normal shedding is 4,200 to 8,400 strands over 84 days understands what
+the serum claim is measured against. We keep the "up to" and link the study design in the Lab Notes article,
+as the brief's objection handling requires.
+FAQ block for search, six questions, each answered in under 60 words:
+1. How much hair fall is normal per day? (50 to 100; more on wash days; more in autumn and after illness)
+2. Why do I lose more hair when I wash it? (resting hairs that were already loose come out together; the
+   weekly total is what matters)
+3. Is 200 strands a day normal? (no; sustained above 100 for more than 6 weeks is worth acting on)
+4. Does hard water cause hair fall? (it leaves mineral deposits that weaken the strand and irritate the scalp;
+   common in Delhi, Bangalore, Hyderabad and Chennai)
+5. How long before a hair fall routine shows results? (a full hair cycle is about 84 days; judge nothing before
+   that)
+6. When should I see a dermatologist? (patches, sudden loss, scalp pain, or hair fall with other symptoms)
+
+EXAMPLE 3: THE ROUTINE BUILDER LOOKUP TABLE
+This is the engine behind the score's output and behind the "which one is for me" picker on the collection
+page. Concern comes from the score band or the visitor's pick; hair type and budget are two optional
+follow-ups.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · HAIR FALL SCORE AND TWO MORE FREE TOOLS                                          9
+                    HAIR
+ CONCERN            TYPE       BUDGET        ROUTINE                         PRICE     ONE-LINE REASON
+
+ Hair fall, early   Any        Under         Anti-Hair Fall Shampoo +        ₹638      "Stop the breakage first. 7.4X on the wash,
+                               ₹700          Anti-Breakage Conditioner                 78% stronger in one conditioning."
+ Hair fall,         Any        Under         Anti-Hair Fall Shampoo +        ₹838      "Wash plus a nightly serum on the scalp. This
+ active                        ₹1,000        Hair Growth Intensive Serum               is the standard 84-day routine."
+ Hair fall,         Any        Full 84       Hair Growth Intensive Serum     ₹999 +    "Three months of serum, bought once, 49%
+ active                        days          Pack of 3 + shampoo             ₹359      off."
+ Hair fall,         Any        No ceiling MitoActive + Anti-Hair Fall        ₹1,803    "Y100 works on the follicle's energy supply.
+ advanced                                 Shampoo                                      ₹50 a day for the month."
+ Hair fall +        Any        Any           Add Anti-Dandruff Serum         +₹299     "36-hour itch relief so the scalp stops
+ dandruff                                    (leave-on)                                fighting the routine."
+ Dandruff only      Oily       Any           Anti-Dandruff Shampoo +         ₹866      "95% fungus reduction in one wash, and the
+                    scalp                    Conditioner                     (combo)   conditioner stops the dryness Head &
+                                                                                       Shoulders left you with."
+ Dandruff only      Dry        Under         Anti-Dandruff Shampoo           ₹404      "Twice a week is enough. Over-washing a
+                    scalp      ₹500          alone, wash twice a week                  dry scalp makes flakes worse."
+ Damage,        Any            Any           Damage Defence Super            ₹754      "94% keratin retention. Rebuild before you
+ colour or heat                              Shampoo + Anti-Breakage                   treat."
+                                             Conditioner
+ Greys, early       Any        Any           Anti-Grey Hair Serum +          ₹808      "A 3-month plan, no dye. 86% reduction in
+                                             Anti-Hair Fall Shampoo                    best responders."
+ Styling, humid Any            Under         Hair Gel or Texturising Spray   ₹269 to   "72-hour humidity-resistant hold without the
+ city                          ₹700                                          ₹699      crunch."
+
+
+Rules the table follows: one routine per row, never more than three products, every row has a price the
+visitor can say out loud, every row has one claim with a number. Combo prices above come from the brief;
+where two single SKUs are summed we show the sum and let the cart apply any combo discount.
+Collection page strip copy (sits above the Hair Growth grid):
+
+   FOUR PRODUCTS. ONE IS FOR YOU. EARLY SIGNS → SHAMPOO AND
+   CONDITIONER, ₹638. ACTIVE HAIR FALL → ADD THE SERUM, ₹838. BEEN A
+   WHILE, RUNS IN THE FAMILY → MITOACTIVE, ₹1,803. NOT SURE? [GET
+   YOUR HAIR FALL SCORE IN 60 SECONDS]
+
+
+EXAMPLE 4: THE THREE MESSAGES AFTER CAPTURE
+Sent on WhatsApp (email mirrors them). The score, band and routine are merged in.
+Message 1, immediately:
+
+   HI RAHUL. YOUR HAIR FALL SCORE IS 64, WHICH WE CALL ACTIVE HAIR
+   FALL. YOUR 84-DAY PLAN: SHAMPOO 3X A WEEK. SERUM EVERY NIGHT, 4
+   TO 5 DROPS, ON A DRY SCALP, FINGERTIPS NOT PALMS. WEEK 1 TO 3: NO
+   VISIBLE CHANGE. THIS IS NORMAL, THE CYCLE IS 84 DAYS. WEEK 4 TO 8:
+   LESS IN THE DRAIN. COUNT IT. WEEK 9 TO 12: NEW SHORT HAIRS AT THE
+   HAIRLINE AND CROWN. YOUR ROUTINE: ARATA.IN/ROUTINE/ACTIVE
+   (₹838, OR ₹999 FOR THE FULL 3 MONTHS OF SERUM) WE WILL MESSAGE
+   YOU ON DAY 30, DAY 60 AND DAY 84. REPLY STOP ANY TIME.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · HAIR FALL SCORE AND TWO MORE FREE TOOLS                                                              10
+Message 2, day 30:
+
+     ONE MONTH IN. QUICK CHECK: IS THE DRAIN COUNT LOWER THAN WHEN
+     YOU SCORED? REPLY WITH A NUMBER IF YOU HAVE ONE. IF YOU HAVE
+     NOT STARTED THE ROUTINE YET, IT IS HERE: ARATA.IN/ROUTINE/ACTIVE
+     MOST PEOPLE SEE THE FIRST DIFFERENCE BETWEEN DAY 28 AND DAY 56.
+     KEEP GOING.
+
+
+Message 3, day 84:
+
+     DAY 84. TIME TO RE-SCORE. SAME 10 QUESTIONS, 60 SECONDS:
+     ARATA.IN/SCORE?RESCORE=1 WE WILL SHOW YOU DAY 0 NEXT TO DAY
+     84. IF THE NUMBER MOVED, TELL THE NEXT PERSON WHO IS WHERE YOU
+     WERE: A REVIEW TAKES 30 SECONDS AND WE WILL ADD ₹100 TO YOUR
+     NEXT ORDER.
+
+
+The day-84 message is the one that fixes MitoActive's review problem. The customer is asked to review on
+the day the brand said they would see results, with their own numbers in front of them.
+
+
+
+30-DAY DEPLOYMENT
+ WEEK BREW SHIPS                                                   ARATA PROVIDES                            LIVE BY END OF WEEK
+
+ 1        Final question set and weights; band thresholds            R&D sign-off on band copy and claim       Signed-off scoring
+          and flag logic; all result-page copy in the four           wording (Brew claims lead walks         model and copy deck
+          bands and five flags; wireframes in the 3.0 lab-           through "up to" and study framing with
+          blue system; analytics event plan (start, each             Arata R&D); Shopify theme access;
+          question, complete, capture, add-to-cart)                  WhatsApp business platform access;
+                                                                     brand assets
+ 2        Score page built in the theme with cart integration; Test orders on staging; a 50-person             arata.in/score live to
+          WhatsApp and email capture wired to Arata's          internal and friends test with scores           10% of traffic
+          CRM; routine lookup table live; mobile QA on         recorded
+          Android Chrome first; collection strip and PDP line
+          placed; Lab Notes article "What your hair fall
+          score means" drafted
+ 3        Hair Fall Calculator page built with FAQ schema;           Ad account access and a test budget       Score at 100% of
+          share card generation; Lab Notes article "How              (assumption: ₹1 lakh for the first 2      traffic; calculator
+          much hair fall is normal (with the maths)"                 weeks); approval of the six FAQ answers   indexed; sequence
+          published; 3 message WhatsApp sequence live;                                                         running
+          score-first Meta ad set built (3 creatives,
+          optimised to completion)
+ 4        Creator brief to 6 creators (take the score on             Creator contracts and product seeding;    Everything above live;
+          camera, react to the band); one send to the                list send approval; packaging team        first 4 weeks of data in
+          existing list; homepage secondary button; link             briefed for the phase-2 QR                one dashboard; phase
+          outreach to 20 Indian health and beauty                                                              2 scoped
+          publishers with the calculator; first weekly tool
+          report
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · HAIR FALL SCORE AND TWO MORE FREE TOOLS                                                                  11
+Owners: Brew creative lead (copy and design), Brew front-end developer (build), Brew lifecycle
+lead (capture and sequence), Brew paid lead (ad set), Brew content lead (Lab Notes and outreach),
+Arata brand manager (approvals and assets), Arata R&D lead (claim sign-off), Arata ops lead (packaging
+QR).
+
+
+
+HOW WE MEASURE
+The pitfall in this discipline is counting visitors and calling it a result. We report the tool on leads,
+qualification and orders, in that order.
+ METRIC                         BASELINE           90-DAY TARGET              WHY THIS NUMBER
+
+ Score starts as a share        To be              15%                        Collection strip plus homepage button plus ads;
+ of new site visitors           instrumented                                  conservative against the share of visitors who come
+                                                                              for hair fall
+ Score completion rate          To be              70%                        10 questions, 60 seconds, no login; below 60% means
+                                instrumented                                  a question is losing people and we cut it
+ Capture rate (phone or         To be              35%                        Partial gating with the number shown first; public
+ email) among                   instrumented                                  calculator cases sit around 12% signup and graders
+ completers                                                                   higher, so 35% on a phone-first Indian flow is a
+                                                                              stretch target, flagged as assumption
+ Qualified share of             To be              70%                        The questions do the qualification; this is the number
+ captures (any band             instrumented                                  that tells us the list is worth messaging
+ above Normal, no DERM
+ flag)
+ Add-to-cart rate from          To be              25%                        One routine, one price, one button
+ the result page                instrumented
+ Tool-assisted orders           0                  8% of monthly D2C          Assumption, built on the collection page carrying the
+ (score taken within 30                            orders, about 4,000        hair fall traffic and the score sitting in front of it
+ days before the order)                            orders a month at the
+                                                   current 50K run-rate
+ MitoActive reviews             0                  150 from the day-84 re-    Each review arrives with a day-0 and day-84 score
+                                                   score
+ Calculator organic             0                  20,000 a month             Ranking in the top 5 for "how much hair fall is normal"
+ sessions                                                                     and related queries in India; assumption
+ Referring domains to the 0                        25                         20 outreach targets plus creator and press pickup
+ calculator
+ Day-84 re-score                0                  30% of captured contacts   The re-score is the reorder and review moment
+ completion
+
+
+Decision rules at day 90:
+    If tool-assisted orders clear 5% of D2C orders and capture rate clears 25%: fund phase 2 in full (scalp
+    checker, hard water checker, pack QR, re-score automation), and move the score to the first screen of all
+    cold hair fall ad traffic.
+    If completion is strong but capture is under 15%: the value exchange is wrong. We test a stronger gate
+    (saved score card as an image, the plan only on WhatsApp) and a weaker one (capture after add-to-cart)
+    for two weeks each.
+
+
+BREW DEPLOYMENT TEAM × ARATA · HAIR FALL SCORE AND TWO MORE FREE TOOLS                                                                12
+    If starts are under 8% of new visitors: the tool is invisible. We fix placement before touching the tool,
+    starting with the collection strip and the homepage hero.
+    If add-to-cart from the result page is under 12%: the routine table is wrong, usually on price. We test the
+    ₹638 routine as the default for the Active band and the Pack of 3 as a second step.
+    If the calculator earns traffic but under 10% of its visitors click through to the score: we move the score's
+    first three questions onto the calculator page itself.
+    If none of the above move by day 90: we keep the calculator as an organic asset (it costs nothing to run)
+    and fold the score into the collection picker as a 3-question version.
+What we instrument in week 1 so these numbers exist: a start event on the first question, an event per
+question with the answer value, a complete event with the score and band, a capture event with the
+channel, an add-to-cart event with the routine ID, and the score ID written to the Shopify order as a note
+attribute so tool-assisted orders can be counted without guesswork.
+
+
+
+APPENDIX
+PHASE-2 BRIEF: HARD WATER CHECKER
+    URL: arata.in/hard-water. Input: city, or pincode. Output: a hardness read (soft, moderate, hard, very
+    hard), what that does to hair (mineral build-up, dull strands, scalp irritation, more breakage), and a
+    routine adjustment (clarifying wash frequency, conditioner on the lengths, the Anti-Hair Fall shampoo's
+    hard-water framing).
+    Data: a city-level table built from public groundwater and municipal water quality reports for the top 50
+    Indian cities, labelled with the source and year on the page. Pincode-level is phase 3 if the city version
+    earns links.
+    Why phase 2: data sourcing and a maintenance commitment (annual refresh). The share-worthiness is
+    high ("Bangalore water is this hard?") and so is the link potential from city publications.
+    Gating: none. Link to the score at the bottom.
+
+PHASE-2 BRIEF: DANDRUFF OR DRY SCALP CHECKER
+    5 questions on the same engine: flake size and colour, itch timing, oiliness, response to washing more
+    often, season.
+    Output: dandruff (fungal, oily) → Anti-Dandruff Shampoo + Conditioner ₹866 or shampoo alone ₹404;
+    dry scalp → Damage Defence Super Shampoo ₹395 and wash less; both → add the Anti-Dandruff Serum
+    ₹299.
+    Target query cluster: "dandruff or dry scalp", "dandruff vs dry scalp", "why does my scalp itch after
+    washing".
+
+PRE-LAUNCH CHECKLIST FOR THE SCORE
+    Every result page shows a price and one button above the fold on a 360 px Android screen.
+    The DERM flag copy is reviewed by Arata R&D and reads as advice to see a dermatologist, with no
+    product above it.
+    Every claim on a result page uses the "up to" and the study window exactly as the brief states them.
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · HAIR FALL SCORE AND TWO MORE FREE TOOLS                                         13
+    Every result page is checked against the brief's words-to-avoid list (chemical-free, miracle, cure,
+    clinical-strength and the rest).
+    The WhatsApp opt-in line states the message count and the STOP instruction.
+    Score ID is attached to the cart before checkout, and survives a guest checkout.
+    The calculator page carries FAQ schema and the two Lab Notes articles link to it with the exact anchor
+    "hair fall calculator".
+    The tool pages load in under 2 seconds on a 4G connection; no third-party quiz script.
+
+SOURCE LIST
+    Arata brand brief, Brew deployment team, v1, 10 Oct 2026 (all SKUs, prices, claims, personas,
+    objections, competitor facts and company metrics)
+    Public descriptions of the Traya free hair test and Bare Anatomy quiz (competitor tool shape; length and
+    tone marked as assumptions)
+    Public engineering-as-marketing benchmarks for grader, calculator and generator tools (conversion
+    ranges used to set targets)
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · HAIR FALL SCORE AND TWO MORE FREE TOOLS                                     14
+FREE TOOLS (ENGINEERING AS MARKETING)
+
+
+DAY 30
+AT ARATA
+    WHAT IS LIVE
+
+    The Hair Fall Score is live at arata.in/score with WhatsApp capture and a routine
+    recommendation that drops straight into the cart, the Hair Fall Calculator page is
+    indexed, and the first creator Reels using the score are running.
+
+
+
+
+  NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+  BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+  CONFIRM".
+
+
+  EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+  BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                    DEPLOYMENT TEAM
+                                                                                 BREW
+

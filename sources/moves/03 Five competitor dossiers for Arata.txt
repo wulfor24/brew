@@ -1,0 +1,942 @@
+      Brew                                        PREPARED FOR ARATA · HAIR & SCALP SCIENCE CO.
+      DEPLOYMENT TEAM
+
+
+
+
+COMPETITIVE INTELLIGENCE · MOVE 03 OF 50
+
+
+
+FIVE
+COMPETITOR
+DOSSIERS
+FOR ARATA
+  DATED, SOURCED PROFILES OF TRAYA, PILGRIM,
+  MINIMALIST, BARE ANATOMY AND MAMAEARTH, BUILT SO
+  EVERY AD, COMPARISON PAGE AND BUYER PITCH ARGUES
+  AGAINST WHAT THOSE BRANDS ACTUALLY SAY AND
+  CHARGE TODAY.
+
+
+
+
+₹47 vs ₹50
+TRAYA'S CHEAPEST DAY VS MITOACTIVE
+
+
+
+
+BREW × ARATA                       OCTOBER 2026                           CONFIDENTIAL
+WORKING DOCUMENT                     V1 · FOR DISCUSSION                    ARATA LEADERSHIP ONLY
+                                                               WHAT THIS GIVES ARATA
+                                                               Dated, sourced profiles of Traya, Pilgrim, Minimalist,
+                                                               Bare Anatomy and Mamaearth, built so every ad,
+                                                               comparison page and buyer pitch argues against
+                                                               what those brands actually say and charge today.
+        ₹47 vs ₹50
+        TRAYA'S CHEAPEST DAY VS
+                                                                LIVE 30 DAYS AFTER WE START
+                                                                Five competitor profiles and a cross-competitor
+        MITOACTIVE                                              summary are live in a shared folder, a dated raw-
+                                                                data archive sits behind them, a monthly re-profile
+                                                                runs on a calendar, and the Arata vs Traya page, the
+                                                                MitoActive ads and the quick-commerce pitch all
+                                                                cite verified competitor prices and claims.
+
+
+
+
+WHY THIS MATTERS FOR ARATA
+In SaaS this discipline means scraping rival pricing pages and pulling domain-authority data. For Arata
+it means profiling the five brands that sit next to it on a Blinkit search, a Nykaa listing, an Amazon.in
+"customers also viewed" row and a Meta feed: Traya, Pilgrim, Minimalist, Bare Anatomy and
+Mamaearth. The pages we read are product pages and hair-test funnels. The "reviews" are Nykaa and
+Amazon ratings. The method is the same. Facts first, inference labelled, implications framed as
+choices.
+Today Arata's view of its competitors is a paragraph. The brand brief carries one line per rival: Pilgrim
+has "no clinical number", Minimalist is a "cold brand", Traya is "expensive, slow, medicalised". Those
+lines are probably right. None of them is dated, sourced or specific enough to put in an ad. The
+objection script for "₹1,499 for 30 ml is a lot" says to compare MitoActive to Traya at ₹1,400 to ₹1,800
+a month. Traya's own cost page, read this week, puts the six-month plan at ₹1,400 a month, which is
+₹47 a day. MitoActive at ₹1,499 for a 30-day bottle is ₹50 a day. The comparison Arata planned to
+make on price is a comparison it loses by ₹3. The comparison it wins is on commitment: one bottle
+versus a five-month lock-in with minoxidil, supplements and a refund that only pays out if you never
+miss a month. That is the kind of detail a dossier catches and a paragraph does not.
+The cost of running without profiles shows up in three places. The planned "Arata vs Traya" and
+"Arata vs Pilgrim" pages will quote prices that drift within a quarter. The MitoActive launch, which
+already has zero reviews, will be argued against the wrong rival (Pilgrim's ₹699 serum) when the
+customer paying ₹1,499 is actually weighing Traya and minoxidil. And the quick-commerce category
+pitch, where 30% of revenue lives, needs a clean answer to "why you and not Mamaearth on the
+shelf" that is grounded in what Mamaearth's listing says today.
+The opportunity is bigger than defence. Arata is the only brand in the ₹350 to ₹700 band that prints a
+study number on every bottle. Minimalist prints a percentage of actives. Pilgrim prints an ingredient
+list. Bare Anatomy prints a quiz result. Mamaearth prints "goodness". Traya prints a number, but
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · FIVE COMPETITOR DOSSIERS FOR ARATA                                                     1
+behind a doctor, a kit and ₹8,400. The profiles below show that gap in a table, which is where it
+becomes a positioning decision rather than a belief.
+What follows: five profiles built from the brief and three dated public lookups, a side-by-side
+comparison, a positioning map, the system that keeps the profiles current, and four finished assets
+Arata can use the week this lands.
+
+
+
+WHAT WE FOUND
+HOW THE PROFILES ARE BUILT
+Every profile keeps three layers apart, and the labels travel with the fact when it is reused in an ad or a
+page.
+ LAYER           MEANING                                     EXAMPLE
+
+ Observed        What a source says, with the                "Traya 6-month plan: ₹1,400/month, ₹8,400 total" (traya.health cost
+                 source and date                             page, 10 Oct 2026)
+ Inferred        Our reading of the observation,             "Traya's pricing table is built to push the 6-month plan" (high
+                 with a confidence note                      confidence: it is the only tier with the lowest monthly rate)
+ Implication What it could mean for Arata,                   "Should MitoActive be sold as a 3-bottle 84-day course at a per-day
+             framed as an option                             price below ₹47?"
+
+
+Two rules apply throughout. Not observed is not absent: if a competitor's page did not show a feature,
+the profile says "not observed on [pages checked], as of [date]" and the gap is confirmed before it
+goes into a public comparison. And we never state motive. We record that Minimalist sells at ₹699 and
+that Pilgrim lists a 12-ingredient story. We do not claim why.
+Source status for this snapshot, dated 10 October 2026:
+    Brand brief (arata.in, BeautyMatter, Storyboard18, Inc42, Tracxn, Redseer, Nykaa and Loox reviews,
+    Traya pricing pages): primary source for every competitor fact below unless marked otherwise.
+    Three public lookups made this week: Traya's cost page (traya.health), marketplace listing titles for
+    Minimalist, Bare Anatomy and Pilgrim serums (1mg, Nykaa, PharmEasy, Flipkart, Amazon.in result
+    titles).
+    SEO data (domain rank, organic traffic, referring domains, ranked keywords): no SEO data source
+    was connected for this snapshot. Those fields are marked unavailable in every profile. We do not
+    estimate them.
+    Review ratings for competitors: not pulled for this snapshot. Marked "to be pulled" with the source
+    named.
+Raw data for each profile is archived at competitor-profiles/raw/<slug>/2026-10-10/ with scrapes/ ,
+seo/ and reviews/ sub-folders, so the next run can diff against this one.
+
+
+
+PROFILE 1: TRAYA (TRAYA.HEALTH)
+Depth: deep profile. Priority: 1. This is the brand a ₹1,499 MitoActive buyer is actually weighing.
+
+
+BREW DEPLOYMENT TEAM × ARATA · FIVE COMPETITOR DOSSIERS FOR ARATA                                                                2
+ AT A GLANCE                                      VALUE                                        SOURCE
+
+ Tagline                                          "Get the Best Hair loss Treatment &          Homepage title, 10 Oct 2026
+                                                  Diagnosis"
+ Headquarters                                     Mumbai                                       Public record (verify at re-
+                                                                                               profile)
+ FY25 revenue                                     ₹343 Cr                                      Brief
+ Active customers                                 450K; 70% tier-2/3                           Brief
+ Marketing spend                                  ₹138 Cr                                      Brief
+ Net result                                       ₹23 Cr loss                                  Brief
+ Free test takers                                 "2 lakh+ Indians"                            Cost page, 10 Oct 2026
+ Expert claim                                     "Trusted by 100+ Hair Experts"               Cost page, 10 Oct 2026
+ Domain rank, traffic, referring                  Unavailable (no SEO source connected)
+ domains
+
+
+Positioning. Diagnosis first, then a customised kit. The funnel opens with a "FREE 2-minute hair test"
+that reads "20+ factors like genetics, scalp health, and lifestyle", asks for a scalp photo, and returns a
+plan in about five minutes. The product is the plan. The copy frames the purchase as "an investment in
+your hair's healthy future". Target audience signals: men and women with staged hair loss (the site
+uses Norwood-style stages 1 to 5), heavy tier-2/3 skew per the brief.
+Pricing (observed, traya.health cost page, 10 Oct 2026).
+ PLAN                      PER MONTH                      TOTAL           POSITIONED FOR                   ₹ PER DAY
+
+ 1 month                   ₹1,800                         ₹1,800          Trial or mild loss               ₹60
+ 3 months                  ₹1,600                         ₹4,800          Mild loss                        ₹53
+ 6 months                  ₹1,400                         ₹8,400          Severe loss                      ₹47
+
+
+The same page states a monthly range of ₹1,800 to ₹3,000, and a disclaimer shows starting prices of
+₹1,699 and ₹2,000 per month for two sample 23 to 25-year-old male profiles. These three figures do
+not reconcile. We record the inconsistency rather than pick one. A worked example on the page prices
+a Stage 5 kit at ₹2,050 for six products: Minoxidil 2% (₹430), a nasal drop (₹150), a gut supplement
+(₹200), scalp oil (₹450), anti-dandruff shampoo (₹300) and an oral "hair ras" (₹520). Each kit is valid
+for 30 days.
+Guarantee and claims (observed). "100% Money back guarantee if you see no results after five
+months of consistent use." Conditions: the full customised plan, five consecutive months, consistency
+checked against order dates, exclusions for autoimmune conditions and cancer. Results claims: "93%
+saw results" from an internal study dated December 2022; "3X better hair density" versus minoxidil
+5% alone from a study of 1,200 men aged 21 to 40 at Stages 1 to 4. Stated treatment window: 5 to 9
+months.
+Inferred (high confidence). The pricing table is built to move customers to the 6-month plan. The
+guarantee is structured so the refund requires five paid months in sequence, which means the
+minimum spend to qualify is ₹7,000 to ₹9,000. The kit mixes a regulated active (minoxidil), ingestibles
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · FIVE COMPETITOR DOSSIERS FOR ARATA                                                           3
+and topicals, which is why the brand needs doctors in the loop.
+Strengths. Largest revenue in the set. A diagnosis step that makes the customer feel seen. A
+guarantee that reads strong in an ad. A number (93%) and a comparison to minoxidil. Deep tier-2/3
+reach that Arata, at 38% marketplace and 30% quick commerce, does not yet have.
+Weaknesses. Price inconsistency on its own cost page. A five-month lock to earn the refund.
+Minoxidil in the kit, with the shedding and dependency anxiety the brief records in Arata's own
+customers. ₹138 Cr of marketing against ₹343 Cr of revenue and a net loss. The 93% claim rests on a
+2022 internal study.
+Implications for Arata. Where Traya is strong versus Arata: diagnosis, guarantee, scale, tier-2/3
+distribution. Where Arata is strong (hypothesis until win/loss data exists): no doctor, no minoxidil, no
+supplements, a single 30-day bottle, a study number per SKU, half the per-month outlay on the
+Intensive Serum (₹571 versus ₹1,400 to ₹1,800). Opportunity: the Traya drop-out. Anyone who
+abandoned a kit before month five has spent ₹3,000 to ₹7,000, earned no refund, and still has the
+problem. Threat: Traya moves down-market with a single-product entry SKU, or adds a non-minoxidil
+serum at ₹600 to ₹900.
+
+PROFILE 2: PILGRIM
+Depth: quick scan. Priority: 2. The serum price-band leader on Nykaa and Amazon.
+ AT A GLANCE                               VALUE                                                SOURCE
+
+ Positioning line                          Ingredient-led; "12-ingredient" hair growth story;   Brief
+                                           Korean-beauty framing
+ Headquarters                              Mumbai                                               Public record (verify)
+ Revenue                                   ₹200 Cr+                                             Brief
+ Hero serum                                Redensyl 3% + Anagain 4%                             Brief; Nykaa listing title,
+                                                                                                Oct 2026
+ Hero serum price                          ₹595 to ₹699                                         Brief
+ Channel strength                          Nykaa and Amazon                                     Brief
+ Clinical number on pack                   Not observed on pages checked, as of 10 Oct 2026     Brief
+ Domain rank, traffic, referring           Unavailable
+ domains
+
+
+Positioning. Pilgrim sells the ingredient. The hero serum headline is the actives and their percentages.
+The brand story is sourcing (Korean, and in other ranges, French and Australian). The audience is
+young, female-skewed, Nykaa-native, buying by ingredient recognition. Per the brief, it "falls short" on
+a clinical number and on a story that is generic to the category.
+Pricing. ₹595 to ₹699 for the 30 ml hero serum, per the brief. Bundles, subscriptions and multi-packs:
+not observed in this snapshot, to be checked at the first deep profile.
+Strengths. The largest actives-led brand in the set by revenue. Strong marketplace ratings presence
+(counts to be pulled from Nykaa and Amazon at re-profile). A wide catalogue that lets a customer buy
+a full routine in one brand, which the brief lists as something Arata also offers but has not productised
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · FIVE COMPETITOR DOSSIERS FOR ARATA                                                           4
+with a routine builder.
+Weaknesses. Same Redensyl + Anagain stack as Minimalist, Bare Anatomy and ThriveCo.
+Differentiation by ingredient story alone. No study number on the serum as observed.
+Implications. Pilgrim is the brand Arata's ₹571 Intensive Serum is compared against on a Nykaa
+results page. Arata is ₹24 to ₹128 cheaper and carries a number (up to 28,200 new hairs in 84 days)
+where Pilgrim carries a percentage of actives. The ad line writes itself once the price is confirmed on
+the day the ad runs. Threat: Pilgrim adds a consumer-study number to its serum. It has the revenue to
+fund one.
+
+PROFILE 3: MINIMALIST
+Depth: quick scan. Priority: 3. The concentration-disclosure benchmark.
+ AT A GLANCE                       VALUE                                                        SOURCE
+
+ Positioning line                  Concentration-disclosed actives; fragrance-free              Brief
+ Headquarters                      Jaipur                                                       Public record (verify)
+ Ownership                         Majority acquired by Hindustan Unilever, announced January   Public record (verify)
+                                   2025
+ Hero serum                        "Hair Growth Actives 18%"                                    Brief; 1mg and PharmEasy
+                                                                                                listing titles, Oct 2026
+ Hero serum price                  ₹699                                                         Brief
+ Naming across channels            Listed as "Hair Growth Actives 18%" on Indian pharmacies     Listing titles, Oct 2026
+                                   and "Hair Density Serum 18%" on an overseas retailer
+ Clinical number on pack           Not observed on pages checked, as of 10 Oct 2026             Brief
+ Domain rank, traffic,             Unavailable
+ referring domains
+
+
+Positioning. Minimalist sells transparency. The number on the pack is the percentage of actives, and
+the brand's authority comes from disclosing it. The tone is clinical and plain. The brief calls the brand
+"cold" and notes that it requires ingredient literacy and offers no routine.
+Inferred (medium confidence). With Unilever as majority owner, Minimalist now has access to retail
+distribution and research budgets that the other actives-led brands do not. This is worth watching
+because Unilever Ventures also sits on Arata's cap table, which may shape how aggressively either
+side runs direct comparison.
+Strengths. Trust from disclosure. Fragrance-free appeals to the sensitive-scalp buyer Arata's
+Dandruff Divya persona resembles. Deep pockets post-acquisition.
+Weaknesses. No routine. No warmth. The 18% is an input number, and the customer cannot feel 18%.
+The naming drift across listings (Actives versus Density) mirrors Arata's own onion/biotin and
+serum/tonic inconsistency, so this is a weakness Arata should fix in itself before pointing at it.
+Implications. Minimalist is the comparison for Clinical Kavya at the ₹700 tier. Arata's answer is an
+output number (28,200 new hairs; 7.4X) versus an input number (18%). The cleanest line in the
+category: "They tell you what is in the bottle. We tell you what it did." Threat: Unilever-funded
+
+
+BREW DEPLOYMENT TEAM × ARATA · FIVE COMPETITOR DOSSIERS FOR ARATA                                                        5
+consumer studies that put an output number on Minimalist's pack within a year.
+
+PROFILE 4: BARE ANATOMY (INNOVIST)
+Depth: quick scan. Priority: 4. The only rival with a quiz, which is on Arata's known-gaps list.
+ AT A GLANCE                              VALUE                                                             SOURCE
+
+ Positioning line                         Quiz-led, personalised haircare                                   Brief
+ Parent                                   Innovist (also owns other D2C personal-care brands)               Public record (verify)
+ Headquarters                             Gurugram                                                          Public record (verify)
+ Hero serum                               "Advanced Hair Growth Serum: 3% Redensyl + 4% Anagain +           Nykaa listing title, Oct
+                                          Rosemary + Rice Water"                                            2026
+ Hero serum price                         ₹649                                                              Brief
+ Clinical number on pack                  Not observed on pages checked, as of 10 Oct 2026                  Brief
+ Domain rank, traffic, referring          Unavailable
+ domains
+
+
+Positioning. "Made for you" personalisation through a quiz that outputs a routine. The brief's reading
+is that the personalisation is cosmetic: the actives behind the quiz are the same Redensyl + Anagain
+stack at the same ₹649 price point.
+Strengths. The quiz. It converts the customer's anxiety ("which one is for me?") into a cart, which is
+exactly the job Arata's Routine Ritika persona needs done. It also captures first-party data at the top of
+the funnel.
+Weaknesses. Same actives as three other brands. Personalisation that does not change the formula.
+Smaller than Pilgrim and Minimalist by revenue (per the brief's ordering; figures to be pulled).
+Implications. Bare Anatomy proves the quiz mechanic works in this category. Arata has no quiz and
+no routine builder (brief, known gaps). The opportunity is to ship a quiz that routes to a study-backed
+routine rather than a personalised label. The threat is small on product and real on funnel: a quiz brand
+will out-convert a catalogue brand on cold traffic until Arata has one.
+
+PROFILE 5: MAMAEARTH (HONASA CONSUMER)
+Depth: quick scan. Priority: 5 for messaging, 1 for quick-commerce shelf watch.
+ AT A GLANCE                      VALUE                                                         SOURCE
+
+ Positioning line                 "Natural", toxin-free, family-safe; onion hair range          Brief ("shelf and quick-
+                                                                                                commerce default", "no proof,
+                                                                                                generic")
+ Parent                           Honasa Consumer Ltd, publicly listed                          Public record (verify)
+ Headquarters                     Gurugram                                                      Public record (verify)
+ Hero haircare                    Onion shampoo and onion oil range                             Brief
+ Price band                       Mass; assumption: ₹249 to ₹499 for hero shampoo and oil Assumption
+                                  SKUs (to be confirmed on Blinkit and Amazon.in at re-
+                                  profile)
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · FIVE COMPETITOR DOSSIERS FOR ARATA                                                                    6
+ AT A GLANCE                      VALUE                                                             SOURCE
+
+ Clinical number on pack Not observed on pages checked, as of 10 Oct 2026                           Brief
+ Domain rank, traffic,            Unavailable
+ referring domains
+
+
+Positioning. Mamaearth sells reassurance at scale. The story is ingredient safety and nature, the hero
+is onion, and the channel is everywhere: general trade, modern trade, every marketplace and every
+quick-commerce app. Arata's own customers have usually already tried an onion product (brief: "has
+tried onion shampoo and biotin gummies; nothing showed a number").
+Strengths. Distribution and recall. Default status on quick commerce. A listed-company balance
+sheet. The price point a teenager can afford, which Arata's reviews say Arata is not ("on pricier side
+for a teenager like me").
+Weaknesses. No proof. A "natural" story the category has moved past, which is the same story Arata
+itself left behind when it dropped "zero chemicals". Onion as an active has no study number the brief
+could find.
+Implications. Mamaearth is the "before" in Arata's customer story. The push in the brief's switching
+dynamics ("mass shampoo did nothing; onion/biotin products were a gimmick") is a Mamaearth
+customer talking. For quick commerce, the pitch to a Blinkit category manager is that Arata is the
+trade-up SKU for the customer Mamaearth has already acquired. Threat: Mamaearth adds a clinically-
+tested sub-line at ₹399 to ₹499 with a number on the pack, on a shelf it already owns.
+
+SIDE-BY-SIDE COMPARISON
+ DIMENSION            ARATA                 TRAYA                     PILGRIM         MINIMALIST    BARE ANATOMY    MAMAEARTH
+
+ Model                Problem-led     Diagnosis plus                  Ingredient-     Actives-      Quiz-led        Mass natural
+                      regimens,       monthly kit                     led catalogue   disclosed     catalogue       catalogue
+                      single SKUs and                                                 catalogue
+                      combos
+ Hero hair-           Intensive Serum Customised kit                  Redensyl 3%     Hair Growth   3% Redensyl +   Onion oil and
+ growth               ₹571;                                           + Anagain       Actives 18%   4% Anagain      shampoo
+ product              MitoActive                                      4% serum                      serum
+                      ₹1,499
+ Hero price           ₹571 (serum);         ₹1,400 to                 ₹595 to ₹699 ₹699             ₹649            Mass
+                      ₹1,499                ₹1,800/month                                                            (assumption
+                      (MitoActive)                                                                                  ₹249 to ₹499)
+ ₹ per day, hero ₹19 (serum);               ₹47 to ₹60                ₹20 to ₹23      ₹23           ₹22             Under ₹10
+                 ₹50                                                                                                (assumption)
+                 (MitoActive);
+                 ₹11 (pack of 3)
+ Number on            Yes, per SKU,         Yes, at plan level        Not observed Actives %        Not observed    Not observed
+ pack                 from a study          (93% saw                               only
+                      (7.4X, 28,200,        results; 3X
+                      87%, 95%,             density)
+                      86%)
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · FIVE COMPETITOR DOSSIERS FOR ARATA                                                                 7
+ DIMENSION            ARATA                 TRAYA                     PILGRIM        MINIMALIST     BARE ANATOMY      MAMAEARTH
+
+ Commitment           One bottle; 84-       5 to 9 months;            One bottle     One bottle     Quiz, then one    One bottle
+ required             day course            doctor; refund                                          bottle
+                      suggested             needs 5
+                                            consecutive
+                                            months
+ Minoxidil in         No                    Yes (2%                   No             No             No                No
+ the offer                                  observed in
+                                            sample kit)
+ Quiz or              None (known           Free 2-minute             Not observed Not observed Yes                   Not observed
+ diagnosis            gap)                  test, scalp photo
+ Subscription         None (known           Monthly kit by            Not observed Not observed Not observed          Not observed
+                      gap)                  design
+ Guarantee            None observed         100% money                Not observed Not observed Not observed          Not observed
+                                            back after 5
+                                            months,
+                                            conditional
+ Scale                ₹61 Cr FY25           ₹343 Cr FY25              ₹200 Cr+       Not pulled     Not pulled        Listed parent,
+ (revenue)                                                                                                            not pulled
+ Review rating        Nykaa 4.2★,           To be pulled              To be pulled   To be pulled   To be pulled      To be pulled
+ (marketplace)        2,435 ratings
+                      (Super
+                      Shampoo)
+ Key strength         Output number         Diagnosis and             Marketplace    Trust from     Quiz funnel       Shelf default
+                      at an actives         guarantee                 reach          disclosure
+                      price
+ Key weakness         No quiz, no           Price, lock-in,           No proof       No routine,    Cosmetic          No proof
+                      subscription,         minoxidil                 number         no warmth      personalisation
+                      MitoActive at 0
+                      reviews
+
+
+"Not observed" means not seen on the pages checked for this snapshot. Each one is confirmed on the
+competitor's own product page before it is used in a public comparison.
+
+POSITIONING MAP
+Axes: commitment the customer must make (one bottle → multi-month medical programme) against
+the kind of proof on the pack (none → an outcome number from a study).
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · FIVE COMPETITOR DOSSIERS FOR ARATA                                                                    8
+                                                                                                                          DIAGRAM
+                              Outcome number on the pack
+                                         │
+                                         │
+               [Arata]                   │
+               Intensive Serum ₹571      │              [Traya]
+               MitoActive ₹1,499         │              ₹1,400 to ₹1,800/mo
+                                         │              93%, 3X, 5-month lock
+                                         │
+         ────────────────────────────────┼────────────────────────────────
+         One bottle                      │             5 to 9 month programme
+                                         │
+               [Minimalist] 18% actives │
+               [Pilgrim] ingredient list│
+               [Bare Anatomy] quiz       │
+               [Mamaearth] "natural"     │
+                                         │
+                              No outcome number / input number only
+
+
+
+
+Interpretation. The top-left quadrant has one brand in it. Four competitors sit in the bottom-left: one
+bottle, no outcome number. One sits top-right: an outcome number you can only reach through a five-
+month medical kit. Arata's position is low commitment with a study number, and nobody else occupies
+it. The whitespace is also the risk: it is empty because it is hard to hold. The number has to survive
+scrutiny, and the brand has to keep making new numbers (MitoActive's 87% is the first in the new
+line).
+
+THE CLAIMS LEDGER
+Every numeric claim in the set, so Arata's copy never argues against a claim that has moved.
+ BRAND             CLAIM                                         BASIS STATED                   WHERE SEEN               DATE
+
+ Arata             Up to +28,200 new hair in 84 days             Study (design to be surfaced   arata.in                 Oct 2026
+                                                                 in Lab Notes)
+ Arata             7.4X hair fall reduction                      Tensile strength study;        arata.in                 Oct 2026
+                                                                 Hairdian AP
+ Arata             87% saw increased growth in 84                Y100 studies, Indian-          arata.in, MitoActive     Aug to Oct
+                   days; up to 95% hair fall reduction           participant study              launch coverage          2026
+ Arata             95% dandruff-causing fungus                   In-vitro                       arata.in                 Oct 2026
+                   reduction in 1 wash
+ Traya             93% saw results                               Internal study, Dec 2022, 5    traya.health cost page   10 Oct
+                                                                 months consistent use                                   2026
+ Traya             3X better hair density vs minoxidil           1,200 men, 21 to 40, Stages    traya.health cost page   10 Oct
+                   5% alone                                      1 to 4                                                  2026
+ Minimalist        18% actives                                   Formulation disclosure         Listing titles           Oct 2026
+ Pilgrim           Redensyl 3% + Anagain 4%                      Formulation disclosure         Brief, listing title     Oct 2026
+ Bare              3% Redensyl + 4% Anagain                      Formulation disclosure         Nykaa listing title      Oct 2026
+ Anatomy
+ Mamaearth         None observed                                                                                         Oct 2026
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · FIVE COMPETITOR DOSSIERS FOR ARATA                                                                   9
+Inferred (high confidence): three of the four actives-led brands carry the identical 3% Redensyl + 4%
+Anagain stack. The category below ₹700 has commoditised on inputs. Arata's Intensive Serum is the
+only product in that band that claims an output.
+
+KEY TAKEAWAYS
+1. MitoActive's real competitor is Traya, and the honest comparison is on commitment and
+   composition. On price, per day the two are within ₹3 of each other at Traya's cheapest tier.
+2. The Intensive Serum at ₹571 is the cheapest hair-growth serum among the actives-led brands and
+   the only one with an outcome number. That is a lead Arata is under-using while the pack-of-3 at
+   ₹999 trains customers to wait for 49% off.
+3. Two competitor mechanics are missing at Arata and sit on its own known-gaps list: a quiz (Bare
+   Anatomy, Traya) and a monthly cadence (Traya). Both are funnel features, and both are buildable
+   without a new formula.
+4. Mamaearth is the brand Arata's customers come from. The right posture is trade-up, and the right
+   venue is the quick-commerce shelf.
+5. Every "not observed" in the comparison table stays a question until it is checked on the
+   competitor's own page. Only then does it become a line Arata can use.
+
+
+
+THE PLAN
+THE SYSTEM
+Profiles decay. Pricing pages move within a quarter, claims move with every campaign, and a single
+snapshot cannot support "they still do not have X". So the deliverable is a loop, with owners and dates,
+and a folder layout that lets the next run diff against this one.
+                                                                                                                            DIAGRAM
+       SOURCES                     RAW ARCHIVE                    PROFILES                       CONSUMERS
+       ───────                     ───────────                    ────────                       ─────────
+       Competitor product pages ─┐                               traya.md ──────┐               Arata vs Traya page
+       Hair-test funnels          ├─► raw/<slug>/<date>/         pilgrim.md     │               Arata vs Pilgrim page
+       Nykaa / Amazon listings    │     scrapes/ seo/ reviews/ minimalist.md ├──────►           MitoActive ad counters
+       Blinkit / Zepto listings   │                              bare-anatomy.md│               Quick-commerce buyer deck
+       Press, filings, investor ──┘         │                    mamaearth.md   │               Pricing rulebook
+       reports                              ▼                    _summary.md ───┘               Objection scripts
+                                     diff vs prior date ──► Change Log in each profile
+
+
+
+
+Three cadences, each with a defined scope.
+ CADENCE            SCOPE                                             OUTPUT                                OWNER
+
+ Weekly             Hero SKU price on each competitor's own           One row per competitor in a price     Brew growth
+ price watch        site, Nykaa, Amazon.in and Blinkit; Traya         log; alert if any hero price moves    analyst
+                    plan table                                        more than 10%
+ Monthly            Homepage headline, hero product page,             Updated At a Glance and Change        Brew growth
+ quick scan         any new launch, any new claim;                    Log in each profile; refreshed        analyst, reviewed by
+                    marketplace rating and count                      _summary.md                           Brew strategy lead
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · FIVE COMPETITOR DOSSIERS FOR ARATA                                                                10
+ CADENCE            SCOPE                                             OUTPUT                               OWNER
+
+ Quarterly          Full template: all key pages, review mining       Rewritten profile with dated raw     Brew strategy lead
+ deep profile       on Nykaa and Amazon, press and filings,           folder; SWOT refreshed;              with Arata brand
+                    SEO pull if a data source is connected            implications re-decided with Arata   manager
+
+
+PRIORITY ORDER AND WHY
+1. Traya, deep profile now. It defines the MitoActive buyer's alternative and has the most moving
+   parts (three price figures on one page, a conditional guarantee, a kit whose contents vary by
+   stage). Every MitoActive asset depends on this profile being current.
+2. Pilgrim, quick scan now, deep profile at day 60. Owns the Nykaa serum comparison. The Arata vs
+   Pilgrim page needs its hero price verified on publish day and again each month.
+3. Minimalist, quick scan now. Watch for an outcome study after the Unilever acquisition. Add an
+   alert on any Minimalist press release containing "clinical" or "study".
+4. Bare Anatomy, quick scan now, funnel walk-through at day 30. Someone on the Brew team
+   takes the quiz, records every screen, and we build Arata's quiz brief from what works and what
+   does not.
+5. Mamaearth, shelf watch weekly. Not a messaging rival. A quick-commerce rival. Track its onion
+   SKUs' placement, price and offer on Blinkit, Zepto and Instamart in Delhi, Mumbai and Bangalore.
+
+WHAT THE PROFILES CHANGE AT ARATA
+Each recommendation names the profile it comes from, what to do, and the effect we expect.
+From Traya: reframe the MitoActive objection script. Replace "compare to Traya at ₹1,400 to ₹1,800
+a month" with a commitment comparison: one ₹1,499 bottle, no doctor, no minoxidil, no five-month
+lock, no order-date audit to get a refund. Expected effect: the ₹1,499 objection stops being a price
+argument Arata loses by ₹3 a day and becomes a composition argument it wins outright. Label: the
+per-day parity is observed; the win is a hypothesis until the MitoActive page converts against it.
+From Traya: price MitoActive as a course. Traya's table rewards the six-month commitment with the
+lowest per-day price. MitoActive's own headline claim is an 84-day claim. A three-bottle 84-day
+course priced so the per-day figure lands under ₹47 would undercut Traya's cheapest day with a
+single, non-medical product. The exact price is a pricing-discipline decision; the profile supplies the
+ceiling.
+From Pilgrim, Minimalist, Bare Anatomy: one line for the ₹571 serum. The three brands disclose
+inputs. Arata discloses an output. Every Intensive Serum asset should carry the contrast: what it did, in
+84 days, in a study. Expected effect: a reason to choose Arata on the Nykaa results page that does not
+depend on being ₹24 cheaper.
+From Bare Anatomy and Traya: build the quiz. Both convert anxiety into a routine before the
+customer compares serums. Arata's quiz should route by concern (hair fall, dandruff, grey, damage,
+style) to a named routine with one price and the study number for that routine. Expected effect: higher
+first-purchase conversion on cold traffic and a first-party data layer for reorder nudges. This closes a
+gap on the brand's own list.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · FIVE COMPETITOR DOSSIERS FOR ARATA                                                               11
+From Mamaearth: a trade-up pitch for quick commerce. The Blinkit and Zepto category pitch says:
+the onion customer is already in your app and already dissatisfied (brief, verbatim customer
+language). Arata is the ₹359 to ₹571 step up with a number on the pack. Expected effect: better
+placement in the hair-fall search results on quick commerce, where 30% of Arata's revenue already
+comes from.
+From all five: fix the naming drift first. The profiles caught Minimalist's "Actives" versus "Density"
+naming across channels. Arata has the same problem (onion versus biotin, serum versus tonic). Before
+any comparison page points at a rival's inconsistency, Arata's own listings are reconciled. This is a
+credibility rule, and it costs nothing.
+
+WATCH TRIGGERS
+Standing alerts that convert the monthly scan into a same-week response.
+ TRIGGER                                                              RESPONSE WITHIN THE WEEK
+
+ Traya changes any plan price or guarantee term                       Update the Arata vs Traya page and the MitoActive objection
+                                                                      script
+ Any actives-led rival publishes an outcome number                    Re-run the claims ledger; review whether Arata's number still
+ (percentage of users, hair count, density)                           leads; brief Lab Notes on a response post
+ Pilgrim or Minimalist launches a product above ₹900                  Re-check MitoActive's price ladder position
+ Mamaearth launches a "clinically tested" hair SKU                    Refresh the quick-commerce buyer deck's shelf argument
+ Any competitor adds a subscription or a quiz                         Move Arata's equivalent up the roadmap; note the date in the
+                                                                      Change Log
+
+
+
+
+WORKED EXAMPLES
+Four finished assets. The first is the Traya profile in the full template, ready to file. The second is the
+cross-competitor summary document. The third is a SWOT that turns the Pilgrim profile into decisions.
+The fourth is the verification sheet that gates which competitor facts can appear in public Arata
+assets.
+
+EXAMPLE 1: TRAYA DEEP PROFILE, FILED AS COMPETITOR-PROFILES/TRAYA.MD
+                                                                                                                          DIAGRAM
+    # Traya: Competitor Profile
+
+    URL: https://traya.health
+    Generated: 2026-10-10
+    Depth: deep profile
+    Built from: competitor-profiles/raw/traya/2026-10-10/
+
+    ## At a Glance
+    | Metric | Value | Source |
+    | Tagline | "Get the Best Hair loss Treatment & Diagnosis" | homepage title |
+    | Headquarters | Mumbai | public record, verify |
+    | FY25 revenue | ₹343 Cr | brief |
+    | Active customers | 450K, 70% tier-2/3 | brief |
+    | Marketing spend FY25 | ₹138 Cr | brief |
+    | Net result FY25 | ₹23 Cr loss | brief |
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · FIVE COMPETITOR DOSSIERS FOR ARATA                                                                  12
+    | Free hair test takers | "2 lakh+ Indians" | cost page |
+    | Domain rank / traffic / referring domains | unavailable, no SEO source |
+
+    ## Positioning and Messaging
+    Primary value proposition: a free 2-minute diagnosis ("20+ factors") that
+    returns a customised monthly kit; "an investment in your hair's healthy future".
+    Target audience: men and women with staged hair loss, heavy tier-2/3 skew.
+    Positioning angle: medical programme, personalised, outcome-guaranteed.
+    Messaging themes:
+    - Diagnosis before product (hair test is the homepage CTA)
+    - Proof by programme: "93% saw results", "3X better hair density" vs minoxidil 5%
+    - Risk reversal: "100% Money back guarantee" after five months
+
+    ## Product
+    Core: a monthly kit assembled per test result. Sample Stage 5 kit observed:
+    Minoxidil 2% ₹430, nasal drop ₹150, gut supplement ₹200, scalp oil ₹450,
+    anti-dandruff shampoo ₹300, oral hair ras ₹520. Total ₹2,050. Kit valid 30 days.
+    Differentiators they emphasise: doctor-backed plan, "100+ Hair Experts",
+    combination of topical, oral and lifestyle inputs.
+    Direction signals: none observed this snapshot (no changelog page found).
+
+    ## Pricing (cost page, 10 Oct 2026)
+    | Plan | Per month | Total | For |
+    | 1 month | ₹1,800 | ₹1,800 | trial / mild |
+    | 3 months | ₹1,600 | ₹4,800 | mild |
+    | 6 months | ₹1,400 | ₹8,400 | severe |
+    Also on page: "from 1800rs - 3000rs" monthly range; disclaimer starting
+    prices "Rs 1699 pm" and "Rs 2000 pm" for sample male profiles.
+    Inconsistent. Recorded as observed; not reconciled.
+    Guarantee: full refund if no results after 5 consecutive months on the
+    complete plan; consistency checked against order dates; exclusions for
+    autoimmune disease and cancer.
+
+    ## Customers and Social Proof
+    Named customers: none observed. Review ratings: to be pulled (Amazon.in
+    Traya Hair Growth Kit listing; Flipkart Hair Regrowth Kit listing).
+    Case-study theme: stage-based before/after.
+
+    ## SEO and Content
+    Organic metrics: unavailable, no SEO source connected.
+    Content signals: a large "Traya Talk" blog with cost-comparison posts
+    targeting "how much does Traya cost" and "Traya vs other treatments".
+    Inferred (high confidence): the brand is capturing its own price-objection
+    searches with owned content.
+
+    ## Strengths
+    - Scale: ₹343 Cr, 450K active customers (brief)
+    - Diagnosis funnel with a 2-minute test and scalp photo (cost page)
+    - Guarantee that reads strong in ads (cost page)
+    - Two outcome claims, one against minoxidil 5% (cost page)
+
+    ## Weaknesses
+    - Three non-reconciling monthly prices on one page (cost page)
+    - Refund requires five consecutive paid months (cost page)
+    - Minoxidil and ingestibles in the kit (sample kit)
+    - ₹138 Cr marketing against ₹343 Cr revenue; net loss (brief)
+    - "93%" rests on an internal study dated December 2022 (cost page)
+
+    ## Competitive Implications for Arata
+    Where Traya is strong vs us: diagnosis, guarantee, scale, tier-2/3 reach.
+    Where we are strong vs them (hypothesis until win/loss data): no doctor,
+    no minoxidil, one 30-day bottle, per-SKU study numbers, ₹571 serum vs
+    ₹1,400+ per month.
+    Opportunities: the kit drop-out before month five; the customer who fears
+    minoxidil (brief, anxiety list); the ₹8,400 commitment objection.
+    Threats: a Traya single-SKU entry product; a non-minoxidil serum at
+    ₹600 to ₹900; price cuts funded by the marketing budget.
+
+    ## Raw Data Sources
+    - Cost page scraped: 2026-10-10
+    - Homepage title captured: 2026-10-10
+    - SEO data: not pulled (no source)
+    - Reviews: not pulled; sources identified (Amazon.in, Flipkart)
+
+    ## Change Log
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · FIVE COMPETITOR DOSSIERS FOR ARATA                     13
+    | Date | What changed | Source |
+    | 2026-10-10 | Profile created | first snapshot |
+
+
+
+
+EXAMPLE 2: COMPETITOR-PROFILES/_SUMMARY.MD
+                                                                                                 DIAGRAM
+    # Competitive Landscape Summary: Arata
+
+    Generated: 2026-10-10
+    Competitors profiled: 5 (Traya deep; Pilgrim, Minimalist, Bare Anatomy,
+    Mamaearth quick scan)
+
+    ## Landscape in one paragraph
+    Indian online haircare for hair fall splits into three shapes. A medical
+    programme (Traya) with a diagnosis, a monthly kit, minoxidil and a
+    conditional guarantee at ₹1,400 to ₹1,800 a month. An actives-led shelf
+    (Pilgrim, Minimalist, Bare Anatomy) where three brands sell the same
+    3% Redensyl + 4% Anagain stack at ₹595 to ₹699 and differ by story:
+    ingredient origin, disclosed concentration, or a quiz. A mass-natural
+    default (Mamaearth) that owns distribution and carries no proof. Arata
+    sits in a fourth position: one bottle, an actives-band price, and an
+    outcome number from a study on every SKU, with MitoActive at ₹1,499
+    reaching into the programme band without the programme.
+
+    ## Side-by-side
+    (table as in "What we found")
+
+    ## Positioning map
+    (map as in "What we found": commitment vs proof type)
+
+    ## Key takeaways
+    1. MitoActive competes with Traya on commitment and composition; per day the prices match.
+    2. The ₹571 serum is the cheapest and the only one with an outcome number.
+    3. Quiz and monthly cadence are the two rival mechanics Arata lacks.
+    4. Mamaearth is the source of Arata's customers, so the posture is trade-up.
+    5. "Not observed" is a question until checked on the rival's page.
+
+    ## Gaps and opportunities
+    - No actives-led brand offers an 84-day course with a per-day price.
+    - No brand below ₹700 offers a guarantee; Traya's needs five months.
+    - No brand in the set markets to the Traya drop-out.
+    - No brand pairs a quiz with a study-backed routine.
+
+    ## Next re-profile: 2026-11-10 (monthly quick scan, all five)
+
+
+
+
+EXAMPLE 3: SWOT, PILGRIM VERSUS ARATA
+Strengths (theirs versus ours). Revenue above ₹200 Cr against Arata's ₹61 Cr. Established Nykaa
+and Amazon rankings in the hair growth serum results. A wider catalogue across hair, skin and body
+under one ingredient-story umbrella.
+Weaknesses (theirs versus ours). The hero serum's headline is 3% Redensyl + 4% Anagain, the
+same stack Bare Anatomy lists. No outcome number observed on the serum (pages checked 10 Oct
+2026). Priced ₹24 to ₹128 above Arata's Intensive Serum.
+Opportunities (for Arata). The Nykaa results page, where a ₹571 serum with "up to +28,200 new hair
+in 84 days" sits beside a ₹699 serum with an ingredient list. The customer who has already bought
+Redensyl once and wants a reason the second bottle will be different. The "Arata vs Pilgrim" page,
+which should lead with the output-versus-input contrast and show both prices with the date they were
+checked.
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · FIVE COMPETITOR DOSSIERS FOR ARATA                                    14
+Threats (from Pilgrim). A consumer study on the hero serum, which Pilgrim can afford. A price move
+to ₹549 that erases Arata's price edge, which is why the weekly price watch exists. Deeper quick-
+commerce placement that takes the default slot Arata is competing with Mamaearth for.
+Decisions this SWOT asks Arata to make. Publish the Arata vs Pilgrim page in the next 30 days with
+dated prices. Stop discounting the Intensive Serum below Pilgrim's floor through the pack-of-3,
+because the price edge is already there at ₹571. Fund the Lab Notes explainer for the 28,200 study
+design, because the output claim is the entire edge and it has to be legible.
+
+EXAMPLE 4: THE PUBLIC-USE VERIFICATION SHEET
+A competitor fact goes into an Arata ad, page or deck only when the row is marked Confirmed.
+"Observed in a listing title" is enough for an internal profile. It is not enough for a page that says
+"Pilgrim does not publish a clinical number".
+ FACT WE WANT TO USE PUBLICLY STATUS TODAY                             WHAT CONFIRMS IT                  OWNER      DUE
+
+ Traya 6-month plan is                      Confirmed (traya.health,   Re-check on publish day           Brew     Publish
+ ₹1,400/month (₹8,400 total)                10 Oct 2026)                                                 growth     day
+                                                                                                         analyst
+ Traya refund requires 5                    Confirmed (traya.health,   Screenshot of policy page         Brew     Done
+ consecutive months on the full             10 Oct 2026)               archived in raw folder            growth
+ plan                                                                                                    analyst
+ Traya kits can include Minoxidil           Confirmed for the sample Walk the hair test for two profiles Brew     Day 14
+ 2%                                         kit shown; not confirmed and record kit contents             growth
+                                            for all stages                                               analyst
+ Pilgrim hero serum has no                  Not observed;              Read the Pilgrim product page,    Brew     Day 10
+ outcome number on pack                     unconfirmed                pack back panel on Nykaa          strategy
+                                                                       images, and any linked study      lead
+ Minimalist hero serum has no               Not observed;              Same as above, plus Minimalist's Brew      Day 10
+ outcome number on pack                     unconfirmed                own product page                 strategy
+                                                                                                        lead
+ Bare Anatomy's quiz does not               Inferred from brief;       Take the quiz with three different Brew    Day 21
+ change the serum formula                   unconfirmed                answer sets and compare the        growth
+                                                                       recommended serum SKU              analyst
+ Mamaearth hero hair SKUs carry Not observed;                          Read Blinkit and Amazon.in        Brew     Day 10
+ no study number                unconfirmed                            listings for onion shampoo and    growth
+                                                                       oil                               analyst
+ Arata's ₹571 serum is the                  Confirmed against brief    Weekly price log                  Brew     Weekly
+ cheapest actives-band hair                 prices; re-check weekly                                      growth
+ growth serum among these                                                                                analyst
+ brands
+
+
+Rule for the copy team: a row that is Unconfirmed can be written as "we could not find a study number
+on their product page as of [date]". It cannot be written as "they have no study". The first sentence is
+true and dated. The second is a claim Arata cannot defend.
+
+
+
+30-DAY DEPLOYMENT
+
+BREW DEPLOYMENT TEAM × ARATA · FIVE COMPETITOR DOSSIERS FOR ARATA                                                           15
+ WEEK BREW SHIPS                                                      ARATA PROVIDES                 LIVE BY END OF WEEK
+
+ 1         Raw archive folders for all five; Traya deep profile         Access to a shared folder;     Five dated profiles and
+           (Example 1); four quick-scan profiles;                       the current MitoActive         summary readable by Arata
+            _summary.md (Example 2); weekly price log                   objection script; list of      brand, growth and content
+           started                                                      Arata listing names across     teams
+                                                                        channels
+ 2         Verification sheet (Example 4) worked to          Arata brand manager                       Rewritten MitoActive objection
+           Confirmed or Unconfirmed on every row; Traya hair signs off which Confirmed                 script using the commitment
+           test walked for two profiles with kit contents    facts can appear publicly                 comparison; verified claims list
+           recorded; Bare Anatomy quiz walked with three                                               handed to copy and ads
+           answer sets
+ 3         Pilgrim SWOT (Example 3) turned into the Arata vs            Arata content lead reviews     Two comparison page outlines
+           Pilgrim page outline and the Arata vs Traya page             outlines; Arata ops            approved with every
+           outline, with dated price blocks; watch triggers             confirms the reconciled        competitor fact linked to its
+           configured as calendar tasks                                 SKU names across               profile row
+                                                                        channels
+ 4         First monthly quick scan (re-check all hero prices,          Arata quick-commerce           Monthly cadence proven once;
+           headlines, new launches, marketplace ratings                 lead shares current Blinkit,   first Change Log entries filed;
+           pulled for the first time); Change Logs updated;             Zepto and Instamart            buyer deck shelf argument
+           quick-commerce trade-up argument drafted from                placement for Arata hair-      ready for the sales-
+           the Mamaearth profile for the buyer deck                     fall SKUs                      enablement team
+
+
+Owners throughout: Brew growth analyst (archive, price log, scans), Brew strategy lead
+(profiles, implications, verification sign-off), Arata brand manager (public-use approval), Arata content
+lead (comparison pages).
+
+
+
+HOW WE MEASURE
+We measure this work two ways: whether the system runs, and whether the assets it feeds perform
+better than the ones written without it.
+ METRIC                          BASELINE                 90-DAY TARGET                   DECISION RULE
+
+ Profile freshness (days         No profiles exist        Under 31 days for all five,     If any profile passes 45 days, the monthly
+ since last verified price                                under 8 days for hero prices    scan moves to a fixed calendar slot with a
+ per competitor)                                                                          named backup owner
+ Public-use facts in             0                        100% of competitor facts on If an Unconfirmed fact reaches a live
+ Confirmed status                                         live Arata pages and ads are asset, the asset is pulled the same day and
+                                                          Confirmed and dated          the verification sheet gets a sign-off gate
+ Watch triggers caught           To be                    4 of 5 competitor changes       If two consecutive changes are missed,
+ within a week of the            instrumented             caught within 7 days            the weekly price watch expands to a daily
+ change                                                                                   automated check on hero product pages
+ MitoActive page                 To be                    Measurable lift over the        If the commitment framing wins, it
+ conversion with the             instrumented             price-based script in a split   becomes the default across ads and
+ commitment-based                (page launched           test                            WhatsApp; if it loses, we test the 84-day
+ objection script                Aug 2026)                                                course framing next
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · FIVE COMPETITOR DOSSIERS FOR ARATA                                                                    16
+ METRIC                          BASELINE                 90-DAY TARGET                  DECISION RULE
+
+ Arata vs Traya and              Do not exist             Both live, each with dated     If either page drives first purchases at a
+ Arata vs Pilgrim pages                                   prices, each ranking for its   lower cost than the hair-fall collection
+                                                          brand-comparison query         page, build the Minimalist and Bare
+                                                          (ranking data requires an      Anatomy pages next; if not, keep the
+                                                          SEO source)                    pages as sales collateral and stop
+                                                                                         expanding
+ Share of Intensive              0                        All serum ads and the serum    If click-through does not beat the current
+ Serum assets carrying                                    product page                   serum creative within 30 days, the
+ the output-versus-                                                                      contrast moves from headline to body
+ input contrast                                                                          copy and we test again
+
+
+What we do if it works: the monthly scan continues, the comparison page set expands to five, and the
+profiles feed the pricing rulebook and the quick-commerce buyer deck every quarter. What we do if it
+does not: we keep the weekly price watch (it costs an hour a week and protects every price claim
+Arata makes) and reduce profiles to a quarterly refresh.
+
+
+
+APPENDIX
+MONTHLY QUICK-SCAN CHECKLIST, PER COMPETITOR
+1. Homepage headline and primary CTA: changed since last snapshot?
+2. Hero hair-growth product page: price, size, claim, study reference.
+3. Nykaa and Amazon.in listing: price, rating, rating count, listing title.
+4. Blinkit, Zepto, Instamart (Delhi, Mumbai, Bangalore): listed, price, offer, position in "hair fall
+   shampoo" and "hair growth serum" search.
+5. New launches in the last 30 days.
+6. Any new numeric claim: add to the claims ledger with source and date.
+7. Press or filings: funding, acquisition, leadership, revenue.
+8. File a Change Log row for anything that moved; file "no change observed" with the date if nothing
+   did.
+
+SOURCES USED FOR THIS SNAPSHOT
+    Arata brand brief, v1, 10 Oct 2026 (all Arata facts, all competitor facts unless otherwise marked)
+    traya.health, "Traya Hair Kit Price: Full Treatment Cost Breakdown Explained", read 10 Oct 2026
+    (plan table, guarantee terms, sample kit, results claims, test description)
+    Marketplace listing titles surfaced 10 Oct 2026: 1mg and PharmEasy (Minimalist Hair Growth
+    Actives 18%), Nykaa (Bare Anatomy Advanced Hair Growth Serum, 3% Redensyl + 4% Anagain),
+    Flipkart and Amazon.in (Traya kit listings, identified for review pulls)
+    Items marked "public record (verify)" are widely reported company facts not re-checked for this
+    snapshot; they are confirmed at the first quarterly deep profile
+
+
+
+
+BREW DEPLOYMENT TEAM × ARATA · FIVE COMPETITOR DOSSIERS FOR ARATA                                                                   17
+COMPETITIVE INTELLIGENCE
+
+
+DAY 30
+AT ARATA
+    WHAT IS LIVE
+
+    Five competitor profiles and a cross-competitor summary are live in a shared
+    folder, a dated raw-data archive sits behind them, a monthly re-profile runs on a
+    calendar, and the Arata vs Traya page, the MitoActive ads and the quick-
+    commerce pitch all cite verified competitor prices and claims.
+
+
+
+
+  NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE
+  BUILD PLAN, YOU BRING THE DATA WE FLAGGED AS "TO
+  CONFIRM".
+
+
+  EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE
+  BREW DEPLOYMENT TEAM. ARATA APPROVES, WE SHIP.
+
+
+
+
+Brew                                                                    DEPLOYMENT TEAM
+                                                                                 BREW
+
