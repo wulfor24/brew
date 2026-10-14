@@ -3242,10 +3242,11 @@
     const m = $('.am-media', ad) || $('.as-swipe, .pm-media, .sv-phone', ad); ad.style.width = ''; if (!m || ad.querySelector('.am-chat')) return;
     const im = $('img', m); if (im && !im.complete) im.addEventListener('load', fitAd, { once: true });
     const cs = getComputedStyle(box), roomH = box.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - 4, roomW = box.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const floor = Math.min(roomW, 480); /* the ad reads at a real width; on a short window the stage scrolls instead of shrinking it */
     if (ad.matches('.as-meta.lg') && m.matches('.am-media')) { const ar = (im?.naturalWidth && im.naturalWidth / im.naturalHeight) || parseFloat(getComputedStyle(ad).getPropertyValue('--ar')) || .8;
-      for (let i = 0; i < 2; i++) { const rest = ad.offsetHeight - m.offsetHeight; ad.style.width = Math.round(Math.max(320, Math.min(roomW, (roomH - rest) * ar))) + 'px'; } return; }
+      for (let i = 0; i < 2; i++) { const rest = ad.offsetHeight - m.offsetHeight; ad.style.width = Math.round(Math.max(floor, Math.min(roomW, (roomH - rest) * ar))) + 'px'; } return; }
     for (let i = 0; i < 2 && ad.offsetHeight > roomH && m.offsetHeight > 0; i++) { const rest = ad.offsetHeight - m.offsetHeight, k = (roomH - rest) / m.offsetHeight; if (k >= 1 || k <= 0) break;
-      ad.style.width = Math.round(Math.max(320, Math.min(roomW, ad.offsetWidth * k))) + 'px'; } };
+      ad.style.width = Math.round(Math.max(floor, Math.min(roomW, ad.offsetWidth * k))) + 'px'; } };
   addEventListener('resize', () => { if (view === 'remix') fitAd(); });
   const paintStudio = () => {
     const pg = $('#view .std'); const ch = RX.ch; if (!pg || !ch) return;

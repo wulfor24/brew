@@ -2268,7 +2268,7 @@ body:has(#dp.dp-full) .rail{position:fixed;top:0;left:0;bottom:0;height:auto;wid
 .st-asset .as-multi.lg,.st-asset .as-coll.lg,.st-asset .as-ig.lg{width:min(100%,520px);margin:0 auto}
 .std .st-asset > .as-meta.lg.as-multi{width:min(100%,480px)}
 .std .st-asset > .as-meta.lg.as-multi .am-card{flex-basis:min(68%,300px)}
-.std .st-asset > .as-ig.lg{width:min(100%,400px);flex:0 0 auto}
+.std .st-asset > .as-ig.lg{width:min(100%,480px);flex:0 0 auto}
 .std .st-asset > .as-ig.lg.is-story{width:min(100%,480px)}
 .ig-n{top:auto;bottom:10px}
 .mk-chip{display:block}
