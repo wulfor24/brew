@@ -2267,8 +2267,8 @@
         if (x === 'all' || x === 'none') return demoConnect('all', x === 'all');
         closeModal();
         if (x === 'j-setup') { await ensureTenant(true); return setup(); } if (x === 'j-check') { await ensureTenant(true); return checkRead(); } if (x === 'j-wait') return waitMoves({ stay: true });
-        if (x === 'j-feed') { S.onboarded = true; save(); if (!$('#view')) appShell(); return renderFeed(); }
-        if (x === 'j-moves' || x === 'j-cx') { const v = x === 'j-moves' ? 'moves' : 'connectors'; S.onboarded = true; save(); $$('.ready').forEach((r) => r.remove()); if (!$('#view')) appShell(); history.pushState({ a: 'view', v }, '', `#v=${v}`); VIEWS()[v](); window.scrollTo(0, 0); return; }
+        if (x === 'j-feed') { S.onboarded = true; save(); $$('.ready').forEach((r) => r.remove()); if (!$('#view')) appShell(); if (location.hash) nav(location.pathname, true, 'view', 'feed'); return renderFeed(); }
+        if (x === 'j-moves' || x === 'j-cx') { const v = x === 'j-moves' ? 'moves' : 'connectors'; S.onboarded = true; save(); $$('.ready').forEach((r) => r.remove()); if (!$('#view')) appShell(); nav(`#v=${v}`, true, 'view', v); VIEWS()[v](); window.scrollTo(0, 0); return; }
         const more = (r) => (r?.pending ? '. The creative agent is writing one more' : '');
         if (x === 'day' || x === 'week') { toast(`<span class="spin"></span>Skipping ${x === 'day' ? 'a day' : 'a week'}`); const r = await tapi('POST', '/api/tenants/:t/clock', { days: x === 'day' ? 1 : 7 }); toast(`${ic('clock', 's16')}${x === 'day' ? 'A day' : 'A week'} later: ${r.made || 0} new cards${more(r)}`); if ($('#view')) renderView(); return; }
         if (x === 'run') { toast('<span class="spin"></span>Running every watcher'); const r = await tapi('POST', '/api/tenants/:t/watchers/run-all'); toast(`${ic('check', 's16')}${r.made || 0} cards proposed by the watchers${more(r)}`); if (view === 'feed') renderFeed(); return; }
@@ -2542,7 +2542,7 @@
     libShell('Connectors <span class="dummy-tag" title="Connected accounts are simulated in this prototype">Dummy</span>', LC?.intro() || `Every source Brew reads for ${B.brand.name}. Connected accounts are simulated in this prototype (Dummy): connecting shows what would change, and nothing touches a real account.`,
       `<div class="cn-sum"><div class="cn-sum-n"><b>${on.length}</b><span>of ${list.length} connected</span></div><div class="cn-bar"><i style="width:${pct}%"></i></div><div class="cn-logos">${list.map(([id]) => `<span class="${conn(id) ? '' : 'is-off'}" title="${esc(B.connectors[id].name)}">${glyph(id, 28)}</span>`).join('')}</div></div>
        ${sec('Not connected yet', 'Connect these to unlock the cards that need them', need)}${sec('Connected', '', on)}${sec('Optional', 'Nice to have', opt)}`);
-    $('#col')?.classList.add('lib-col', 'cn-col'); if (LC && $('#col')) { LC.bindPage(document.getElementById('view') || $('#col')); LC.changes($('#col')); }
+    $('#col')?.classList.add('lib-col', 'cn-col'); if (LC && $('#col')) { LC.bindPage(document.getElementById('view') || $('#col')); }
     $$('[data-unlink]').forEach((b) => b.onclick = () => { S.conn[b.dataset.unlink] = false; save(); toast(`${esc(B.connectors[b.dataset.unlink].name)} disconnected`); renderConnectors(); refreshAfterConnect(); });
   };
 
