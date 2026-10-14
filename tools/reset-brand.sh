@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Start brands over from nothing on feed.joinsquareup.com, to test the flow from the first read.
+# Start brands over from nothing on brew.joinsquareup.com, to test the flow from the first read.
 #   tools/reset-brand.sh everaw-in [arata-in ...]
 # 1. stop: control/live.json gets a "stop" that hides these brands (retire.js). Every running instance exits within ~15s;
 #    Cloud Run starts a fresh one that never reads, writes or builds them.
@@ -9,7 +9,7 @@
 # Instances running code from before retire.js ignore the stop; they only end when Cloud Run reaps them.
 set -euo pipefail
 [ $# -ge 1 ] || { echo "usage: $0 <slug> [<slug> ...]"; exit 1; }
-SVC=shopos-feed; REGION=asia-south1; B=gs://brew-prototype; URL=https://feed.joinsquareup.com
+SVC=shopos-feed; REGION=asia-south1; B=gs://brew-prototype; URL=https://brew.joinsquareup.com
 ARCH=$B/_deleted/$(date -u +%Y%m%dT%H%M%SZ); TMP=$(mktemp -d)
 LIVE=$(gcloud run services describe $SVC --region=$REGION --format='value(status.latestReadyRevisionName)')
 N=$(echo "$LIVE" | sed -E 's/.*-0*([0-9]+)-[a-z0-9]+$/\1/')

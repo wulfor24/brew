@@ -20,7 +20,7 @@ Brew is a **realistic prototype** that the engineering team picks up and continu
 
 Two sites, one codebase:
 
-- **feed.joinsquareup.com:** the prototype.
+- **brew.joinsquareup.com:** the prototype.
 - **demo.joinsquareup.com:** the same code with `DEMO_MODE=1`, a read-only showcase.
 
 ## Cut (deliberately not built)

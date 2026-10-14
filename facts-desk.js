@@ -9,7 +9,7 @@ import { moneyFmt } from './brand-pack.js';
 
 const D = 864e5, today = () => new Date().toISOString().slice(0, 10);
 const NOT_PRODUCT = /gift ?wrap|gift ?card|e-?gift|shipping protection|route protection|insurance|sample|tester|donation/i;
-const UA = { 'user-agent': 'Mozilla/5.0 (compatible; Brew-facts-check/1; +https://feed.joinsquareup.com)' };
+const UA = { 'user-agent': 'Mozilla/5.0 (compatible; Brew-facts-check/1; +https://brew.joinsquareup.com)' };
 const hostOf = (u) => { try { return new URL(/^https?:/.test(u) ? u : 'https://' + u).hostname.replace(/^www\./, ''); } catch { return ''; } };
 const same = (a, b) => String(a ?? '').replace(/\s+/g, ' ').trim().toLowerCase() === String(b ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
 const numOf = (f) => (Number.isFinite(f?.n) ? f.n : (() => { const m = String(f?.v ?? '').replace(/,/g, '').match(/-?\d+(\.\d+)?/); return m ? +m[0] : null; })());

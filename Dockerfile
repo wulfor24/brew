@@ -1,4 +1,4 @@
-# Brew prototype (feed.joinsquareup.com). Chromium is here for the reader's checkout walk and the move PDFs.
+# Brew prototype (brew.joinsquareup.com). Chromium is here for the reader's checkout walk and the move PDFs.
 FROM node:22-bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg chromium fonts-liberation fonts-noto-core fonts-noto-color-emoji ca-certificates \
   && rm -rf /var/lib/apt/lists/*

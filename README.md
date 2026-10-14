@@ -29,7 +29,7 @@ The suite is free: no AI, no network. `test/*-probe.mjs` are real, paid probes; 
 
 ## Deploy
 
-- `./deploy.sh` deploys to Cloud Run `shopos-feed` → https://feed.joinsquareup.com, with data in `gs://brew-prototype`. It refuses to deploy uncommitted code or failing tests.
+- `./deploy.sh` deploys to Cloud Run `shopos-feed` → https://brew.joinsquareup.com, with data in `gs://brew-prototype`. It refuses to deploy uncommitted code or failing tests.
 - `tools/deploy-demo.sh` deploys the demo site, Cloud Run `brew-demo` → https://demo.joinsquareup.com, with data in `gs://brew-prototype-demo`. `tools/demo-sync.sh <slug…>` copies prepared brands to it.
 - Keys come from Secret Manager. One instance, CPU always on: the build runs in the server process. Old revisions are deleted on every deploy, so none keeps background work alive.
 

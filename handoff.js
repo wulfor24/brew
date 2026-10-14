@@ -33,7 +33,7 @@ const KIND = { report: 'Report', idea: 'Idea', decision: 'Decision', competitor:
 const clipLines = (s, n) => { const out = []; let len = 0; for (const l of String(s || '').split('\n')) { if (!l.trim()) continue; if (len + l.length > n) { out.push('…'); break; } out.push(l); len += l.length + 1; } return out.join('\n'); };
 const clip = (s, n) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
 
-export function createHandoff({ RMX, pageOf, fillCard, AGENT = {}, SEED = {}, base = process.env.PUBLIC_URL || 'https://feed.joinsquareup.com' }) {
+export function createHandoff({ RMX, pageOf, fillCard, AGENT = {}, SEED = {}, base = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com' }) {
   const abs = (u, b = base) => !u ? '' : /^https?:/.test(u) ? u : `${b.replace(/\/$/, '')}/${String(u).replace(/^\/+/, '')}`;
 
   const build = async (t, w, opts = {}) => {

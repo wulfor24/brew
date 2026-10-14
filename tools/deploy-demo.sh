@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Deploy the Brew demo site (DEMO_MODE=1) as Cloud Run brew-demo → https://demo.joinsquareup.com
-# Same code as feed.joinsquareup.com; every visitor owns a throwaway session of a prepared brand, every connector is a
+# Same code as brew.joinsquareup.com; every visitor owns a throwaway session of a prepared brand, every connector is a
 # demo account built from the brand's real read, and nothing can write to a real account or send a message.
 # Its own bucket (gs://brew-prototype-demo); brands come in with tools/demo-sync.sh. Deploy from a clean, committed tree.
 # The tour ends where the prototype does: the jam and Share the brief. Connectors are simulated (DUMMY).

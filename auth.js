@@ -103,7 +103,7 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
   const btn = (href, label) => `<a href="${href}" style="background:#111;color:#fff;text-decoration:none;padding:11px 18px;border-radius:10px;font-weight:600">${esc(label)}</a>`;
   const wrap = (title, body) => `<div style="font:15px/1.55 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#111;max-width:520px"><p style="font-size:18px;font-weight:600;margin:0 0 12px">${esc(title)}</p>${body}</div>`;
   async function joinedMail(slug, u) {
-    const m = await getM(slug), name = await brandName(slug), base = process.env.PUBLIC_URL || 'https://feed.joinsquareup.com', link = `${base}/${slug}#team`;
+    const m = await getM(slug), name = await brandName(slug), base = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', link = `${base}/${slug}#team`;
     const subject = `${u.name || u.email} joined ${name} on Brew`;
     for (const o of owners(m)) await mail(o, subject, wrap(subject, `<p>They signed in with a company email, so they're on the team. They see nothing yet: pick which views they get.</p><p style="margin:22px 0">${btn(link, 'Pick their views')}</p>`), `${subject}\n\nThey see nothing until you pick their views: ${link}`);
   }
@@ -180,7 +180,7 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
     });
     if (err) return { error: err };
     if (act === 'make_owner' || act === 'step_down') {
-      const name = await brandName(slug), base = process.env.PUBLIC_URL || 'https://feed.joinsquareup.com', subject = act === 'make_owner' ? `You're now an admin of ${name} on Brew` : `You're no longer an admin of ${name} on Brew`;
+      const name = await brandName(slug), base = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', subject = act === 'make_owner' ? `You're now an admin of ${name} on Brew` : `You're no longer an admin of ${name} on Brew`;
       if (email !== me.email) mail(email, subject, wrap(subject, `<p>${esc(me.name || me.email)} made the change. ${act === 'make_owner' ? 'You can invite people, pick their views and connect accounts.' : `Your views: ${esc(await seatWords(slug, cleanSeats(b.seats ?? [])))}.`}</p><p style="margin:22px 0">${btn(`${base}/${slug}`, `Open ${name}`)}</p>`), subject).catch(() => {});
     }
     return { ok: true };
