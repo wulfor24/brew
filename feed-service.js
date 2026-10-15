@@ -15,7 +15,7 @@ import { createRemix } from './remix.js';
 import { saveGen } from './gen-store.js';
 import { createJamBrief } from './jam-brief.js';
 import { shipLine } from './text-fit.js';
-import { createDrafts } from './drafts.js';
+import { createDrafts, fakeMakers } from './drafts.js';
 import { seedDrafts, draftFor, draftView } from './drafts-bg.js';
 import { planFor, planPrompt } from './card-plan.js';
 import { createMoves } from './moves.js';
@@ -1394,7 +1394,9 @@ export function createFeedService(o) {
   on('GET', '/api/cards/:cid/page', async (b, t, p) => { const raw = t.cards.get(p.cid); if (!raw) return { error: 'not found' }; const c = fillCard(raw, t); return { page: await pageOf(t, c) }; });
   // a card's source moves: what each one says, and the passages that speak to this card
   on('GET', '/api/cards/:cid/moves', async (b, t, p) => { const c = t.cards.get(p.cid); if (!c) return { error: 'not found' }; return { moves: MOVES.numsOf(c.src).map((n) => ({ ...MOVES.summary(n), passages: MOVES.passages({ ...c, src: `Move ${n}` }, 4) })) }; });
-  RMX = createRemix({ planOf: (t, c) => (c ? planOfCard(c) : null), save: (t) => store?.save(t), catalogOf: (t) => (t ? brandOfT(t)?.catalog : null), photoAsync: o.photoAsync, photoFile, handoffPath, MOVES, seedJam: (t, w) => JB?.seed(t, w), claudeTool, geminiImage, PUB, LANE_PHOTO, FACTS, unbackedNums: (text) => unbacked({ text: String(text).replace(/\b(?:Rs\.?|INR)\s?(?=\d)/gi, '₹') }, FACT_OK).map((x) => x.n), SEED, AGENT, claudeJSON, cardBrief, seatLine, qaCheck, mechanicalFix, clean, BANNED, isMock, spend, uid, now, clone, inr, on, newWork, addVersion, say, move, notify, later, setState, weekKey, curV, measureOf, log  });
+  /* MEDIA_FAKE=1 on a local server: the jam's short video runs end to end for free (drafts.js fakeMakers) */
+  const FAKE = process.env.MEDIA_FAKE === '1' && !process.env.K_SERVICE ? fakeMakers() : null;
+  RMX = createRemix({ ...(FAKE ? { makers: FAKE.makers, videoImage: FAKE.image, mediaFake: true } : {}), planOf: (t, c) => (c ? planOfCard(c) : null), save: (t) => store?.save(t), catalogOf: (t) => (t ? brandOfT(t)?.catalog : null), photoAsync: o.photoAsync, photoFile, handoffPath, MOVES, seedJam: (t, w) => JB?.seed(t, w), claudeTool, geminiImage, PUB, LANE_PHOTO, FACTS, unbackedNums: (text) => unbacked({ text: String(text).replace(/\b(?:Rs\.?|INR)\s?(?=\d)/gi, '₹') }, FACT_OK).map((x) => x.n), SEED, AGENT, claudeJSON, cardBrief, seatLine, qaCheck, mechanicalFix, clean, BANNED, isMock, spend, uid, now, clone, inr, on, newWork, addVersion, say, move, notify, later, setState, weekKey, curV, measureOf, log  });
   // tenants survive restarts (store.js); a tenant not in memory is read back from disk or GCS before we give up on it
   const getTenant = async (id) => {
     let t = tenants.get(id); if (t || !store || !id) return t;

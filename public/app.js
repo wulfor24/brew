@@ -2799,7 +2799,11 @@
         <footer class="pin-f">${pmAv()}<b>${esc(name)}</b><span class="pin-go">Visit</span></footer></div></div>`;
     } else if (kind === 'short_video') {
       const sc = p.script || [], hook = sc[0]?.line || p.title || String(p.copy || '').split('\n')[0];
-      body = `<div class="pm pm-sv"><div class="sv-phone">${pmMedia(ch, p, lg, { ratio: '9/16', video: true }) || '<div class="pm-media is-slot" style="aspect-ratio:9/16"></div>'}<p class="sv-hook">${esc(hook || '')}</p>
+      /* the clip itself: made on the stage (a first frame of the real product, animated, the hook read over it) */
+      const hk = String(hook || '').split(/\s+/).slice(0, 14).join(' '), stale = p.video && p.videoHook && p.videoHook.trim() !== hk.trim();
+      const make = lg && view === 'remix' && !ch.batchKey ? (ch.videoPending ? `<div class="sv-make is-busy"><span class="spin"></span>${esc(ch.videoStep || 'Making the video')}…</div>`
+        : !p.video || stale ? `<div class="sv-make">${ch.videoError ? `<small>${esc(ch.videoError)}</small>` : ''}<button class="btn btn-primary sm" data-rx="video">${ic('vid', 's14')}${stale ? 'Remake the video for this hook' : ch.videoError ? 'Make it again' : 'Make the video'}</button></div>` : '') : '';
+      body = `<div class="pm pm-sv"><div class="sv-phone">${pmMedia(ch, p, lg, { ratio: '9/16', video: true }) || '<div class="pm-media is-slot" style="aspect-ratio:9/16"></div>'}${p.video ? '' : `<p class="sv-hook">${esc(hook || '')}</p>`}${make}
           <div class="sv-side">${pmI('like')}${pmI('reply')}${pmI('share')}</div><div class="sv-cap"><b>@${esc(h)}</b><span>${esc(p.title || String(p.copy || '').split('\n')[0] || '')}</span>${tags.length ? `<span class="pm-tag">${esc(tags.slice(0, 4).join(' '))}</span>` : ''}</div></div>
         ${lg && sc.length ? `<ol class="sv-beats">${sc.map((x, i) => `<li><small>${esc(x.beat || `Beat ${i + 1}`)}</small><b>${esc(x.line || '')}</b><span>${esc(x.shot || '')}</span></li>`).join('')}</ol>` : ''}</div>`;
     } else {
@@ -3164,13 +3168,13 @@
   // every version in order, one tap to switch. The canvas shows the one you're on (the newest, unless you switch).
   /* in the action row with Share: the photos on the version (made, picked, or the product photos the post's brief names) and its words */
   const REF_RX = /https?:\/\/[^\s,)]+?\.(?:jpe?g|png|webp)(?:\?[^\s,)]*)?/gi;
-  const dlAssets = (p) => [...new Set([p.image, ...(p.photos || []), ...(p.cardImages || []), ...(p.image || (p.photos || []).length ? [] : String(p.media || '').match(REF_RX) || [])].filter((u) => u && typeof u === 'string'))];
+  const dlAssets = (p) => [...new Set([p.video, p.image, ...(p.photos || []), ...(p.cardImages || []), ...(p.image || (p.photos || []).length ? [] : String(p.media || '').match(REF_RX) || [])].filter((u) => u && typeof u === 'string'))];
   const dlCopy = (ch, p) => { const val = (v) => Array.isArray(v) ? v.map((x) => (typeof x === 'object' ? Object.values(x).filter(Boolean).join(' · ') : x)).join('\n') : v ?? '';
     const fields = (ch.fields || []).length ? ch.fields : [{ k: 'title', label: 'Title' }, { k: 'copy', label: 'Post' }, { k: 'hashtags', label: 'Hashtags' }];
     return fields.filter((f) => !/^(imageBrief|media|format|knobs|utm)$/.test(f.k)).map((f) => [f.label || f.k, String(val(p?.[f.k])).trim()]).filter(([, v]) => v).map(([k, v]) => `${k}\n${v}`).join('\n\n'); };
   const dlTool = (ch, pkgCh) => { if (pkgCh.imagePending || ch.imagePending) return ''; const p = pkgCh.pkg || {}, k = dlAssets(p).length, words = !!dlCopy(ch, p); if (!k && !words) return '';
     /* says exactly what you get: "Download photo + text (zip)"; a quiet line under Ready, never a third big button */
-    const what = `${k ? `${k > 1 ? `${k} photos` : 'photo'}${words ? ' + text' : ''}` : 'text'}`, zip = k + (words ? 1 : 0) > 1;
+    const what = `${k ? `${p.video ? (k > 1 ? 'video + photo' : 'video') : k > 1 ? `${k} photos` : 'photo'}${words ? ' + text' : ''}` : 'text'}`, zip = k + (words ? 1 : 0) > 1;
     return `<button class="st-dl" data-st-dl title="Download this version’s ${what}${zip ? ' as one zip' : ''}">${ic('down', 's14')}<span>Download ${what}${zip ? ' <small>(zip)</small>' : ''}</span></button>`; };
   const downloadVersion = async (ch, pkgCh, btn) => {
     const p = pkgCh.pkg || {}, urls = dlAssets(p), copy = dlCopy(ch, p), n = pkgCh === ch ? curN(ch) : (ch.versions.find((v) => v.id === RX.viewing)?.n || curN(ch));
@@ -3178,7 +3182,7 @@
     if (!urls.length && !copy) return toast('Nothing to download yet.');
     btn?.classList.add('is-busy');
     try {
-      const got = await Promise.all(urls.map(async (u, i) => { const r = await fetch(cdnSized(u, 2048)); if (!r.ok) throw new Error(r.status); const b = await r.blob(); return { blob: b, name: `${base}-photo${urls.length > 1 ? '-' + String(i + 1).padStart(2, '0') : ''}.${extOf(b.type, u)}` }; }));
+      const got = await Promise.all(urls.map(async (u, i) => { const r = await fetch(cdnSized(u, 2048)); if (!r.ok) throw new Error(r.status); const b = await r.blob(); return { blob: b, name: `${base}-${/^video\//.test(b.type) ? 'video' : 'photo'}${urls.length > 1 ? '-' + String(i + 1).padStart(2, '0') : ''}.${extOf(b.type, u)}` }; }));
       if (got.length + (copy ? 1 : 0) === 1) return got.length ? saveBlob(got[0].blob, got[0].name) : saveBlob(new Blob([copy + '\n'], { type: 'text/plain;charset=utf-8' }), `${base}-text.txt`);
       const files = await Promise.all(got.map(async (g) => ({ name: g.name, data: new Uint8Array(await g.blob.arrayBuffer()) })));
       if (copy) files.push({ name: `${base}-text.txt`, data: new TextEncoder().encode(copy + '\n') });
@@ -3275,7 +3279,7 @@
     fitAd();
     const pb = $('.st-panel-b'); if (tab === 'iterate') pb.scrollTop = (ch.thread || []).length || RX.sending ? pb.scrollHeight : 0; /* the case stays first in the chat and scrolls up as it grows; a fresh chat is read from its top */ else if (logScroll && !RX.resetScroll) pb.scrollTop = logScroll; RX.resetScroll = false;
     clearTimeout(RX.pollT);
-    if (ch.copyPending || ch.imagePending) RX.pollT = setTimeout(async () => { if (view !== 'remix' || RX.ch?.id !== ch.id) return; const q = await tapi('GET', `/api/changes/${ch.id}`); if (q.change) { RX.ch = q.change; putCh(q.change); } paintStudio(); if (ch.copyPending && q.change && !q.change.copyPending) autoImage(q.change); }, ch.copyPending ? 1500 : 3000);
+    if (ch.copyPending || ch.imagePending || ch.videoPending) RX.pollT = setTimeout(async () => { if (view !== 'remix' || RX.ch?.id !== ch.id) return; const q = await tapi('GET', `/api/changes/${ch.id}`); if (q.change) { RX.ch = q.change; putCh(q.change); } paintStudio(); if (ch.copyPending && q.change && !q.change.copyPending) autoImage(q.change); }, ch.copyPending ? 1500 : 3000);
   };
   /* copy inside the tap: the old copy command runs at once; the clipboard API is the fallback, and never waits forever
      (it can hang on a permission prompt, and the button then looked dead: no copy, no toast) */
@@ -3423,6 +3427,7 @@
       const after = RX.ch; if (after && after.verdict !== 'fix') toast(`${ic('check', 's16')}Fixed. ${esc((RXROUTE[after.verdict] || RXROUTE.jam).tag)}: v${curN(after)}`); else toast('Some of it still needs you. Edit it, try again, or jam with your team.');
       return paintStudio();
     }
+    if (act === 'video') { const r = await tapi('POST', `/api/changes/${id}/video`, {}); if (r.change) { RX.ch = r.change; putCh(r.change); } if (!r.video) toast(esc(r.error || 'No video right now')); return paintStudio(); }
     if (act === 'images-all') { const r = await tapi('POST', `/api/changes/${id}/image`, { all: true }); if (r.change) { RX.ch = r.change; putCh(r.change); } if (!r.image) toast(esc(r.why || 'No images right now')); return paintStudio(); }
     if (act === 'image') { const r = await tapi('POST', `/api/changes/${id}/image`, {}); if (r.change) { RX.ch = r.change; putCh(r.change); } if (!r.image) toast(esc(r.why || 'No image right now')); return paintStudio(); }
     if (btn) { btn.disabled = true; btn.classList.add('is-busy'); }

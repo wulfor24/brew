@@ -128,6 +128,9 @@ export function createDrafts({ claudeTool, geminiImage, treg, launchBrowser, zip
   const heal = (w) => { (w?.drafts || []).forEach((d) => { if (d.state === 'making' && !inflight.has(d.id) && Date.now() - (d.startedReal || 0) > 5000) Object.assign(d, { state: 'failed', step: null, err: 'This draft was interrupted. Try again.' }); }); return w; };
   const start = (t, w, as, ask) => {
     w.drafts ||= [];
+    /* the plan's own button says the form: "Make the video" makes a video, never a still the AI picked instead */
+    if (as === 'auto') { const pl = w.cardPlan || cardOf(t, w.cardId)?.plan, cta = `${pl?.cta || ''} ${pl?.make?.what || ''}`;
+      as = /\b(videos?|reels?|clips?|shorts)\b/i.test(cta) ? 'video' : /\bcarousels?\b/i.test(cta) ? 'carousel' : 'auto'; }
     const d = { id: uid('dr'), as, asked: as, state: 'making', step: 'Reading the brief', at: now(t), startedReal: Date.now(), by: t.viewer?.name || null };
     w.drafts.unshift(d); w.drafts.splice(MAX_KEEP); inflight.add(d.id);
     (async () => {
@@ -235,4 +238,20 @@ export function createMakers({ geminiImage, treg, launchBrowser, zipBuffer, save
   const render = async (html, ratio = '4:5', key = html) => { const browser = await launchBrowser();
     try { const buf = await shoot(browser, html, W[ratio] || W['4:5']); const name = keyOf('mock' + key) + '.jpg'; save(name, buf); return 'gen/' + name; } finally { await browser.close().catch(() => {}); } };
   return { carousel, voice, video, mux, render, setType, shoot, SIZES: W };
+}
+
+/* local tests only (MEDIA_FAKE=1, never on Cloud Run): the same video path at no cost. The "frame" is the reference photo
+   itself, the "clip" is that frame held for 6 seconds and the "voice" a tone, all made by ffmpeg, then muxed for real */
+export function fakeMakers({ save = saveGen, file = genFile } = {}) {
+  const keyOf = (s) => crypto.createHash('sha1').update(String(s)).digest('hex').slice(0, 16);
+  const ff = (args) => new Promise((res, rej) => execFile('ffmpeg', ['-y', '-v', 'error', ...args], { timeout: 60e3 }, (e) => (e ? rej(e) : res())));
+  const real = createMakers({ geminiImage: null, save, file });
+  const image = async ({ srcFile }) => fs.readFileSync(srcFile);
+  const video = async (frameName, motion, { onStep = () => {} } = {}) => { const f = await file(frameName); if (!f) throw new Error('the first frame is missing'); onStep('Animating it (fake)');
+    const out = path.join(os.tmpdir(), keyOf('fake' + frameName + motion) + '.mp4');
+    await ff(['-loop', '1', '-i', f, '-t', '6', '-vf', 'scale=540:960:force_original_aspect_ratio=increase,crop=540:960,format=yuv420p', '-c:v', 'libx264', '-r', '24', out]);
+    const name = path.basename(out); save(name, fs.readFileSync(out)); fs.rmSync(out, { force: true }); return name; };
+  const voice = async (text) => { const out = path.join(os.tmpdir(), keyOf('fakev' + text) + '.wav'); await ff(['-f', 'lavfi', '-i', 'sine=frequency=440:duration=3', out]);
+    const name = path.basename(out); save(name, fs.readFileSync(out)); fs.rmSync(out, { force: true }); return name; };
+  return { image, makers: { ...real, video, voice } };
 }

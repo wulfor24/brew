@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { saveGen, genFile } from './gen-store.js';
+import { createMakers } from './drafts.js';
 import { versionLabel } from './text-fit.js';
 import { withSteps } from './card-plan.js';
 import { familyOf, FAMILY_NAME, fieldsFor, knobsFor, suggestFor, fitChip, GRADES, pkgSchema, fieldsBrief, kvSchema, allKeys, fromKV, toKV, cleanPkg, publicText, missing, afterFromPkg, mockPkg, RATIO, leaks, isMulti, ACTION_SPEC, ACTION_GUARD, productFor, ideaAction, ideaPkg, chipsFor, chipRelates, chipCtx } from './studio.js';
@@ -336,7 +337,7 @@ export function createRemix(o) {
   /* what a package keeps when its words are rewritten: the picture, the knobs and the look, and a first draft's own media
      (its video, its slides), so the draft the card showed stays v0 and every version made from it keeps it */
   const keepMedia = (p = {}, all = false) => { const d = p.draft && (all || !p.draft.text) ? p.draft : undefined; /* a text draft (an email or page shown as a picture) is only v0: new words replace it */
-    return { image: p.image, knobs: p.knobs, grade: p.grade, ...(p.video ? { video: p.video, poster: p.poster || null } : {}), draft: d, ...(d && p.cardImages ? { cardImages: p.cardImages } : {}) }; };
+    return { image: p.image, knobs: p.knobs, grade: p.grade, ...(p.video ? { video: p.video, poster: p.poster || null, ...(p.videoHook ? { videoHook: p.videoHook } : {}) } : {}), draft: d, ...(d && p.cardImages ? { cardImages: p.cardImages } : {}) }; };
   /* photos on a post: community platforms (Reddit, Quora, Facebook groups) take real photos only, never an AI image */
   const realOnly = (ch) => ch.family === 'post' && /reddit|quora|facebook|fb_group|comment_reply/i.test(`${ch.action} ${ch.pkg?.platform || ''}`);
   const PHOTO_ASK = /\b(change|swap|replace|new|different|another|other|better|redo|fresh)\b[^.?!]{0,40}\b(photos?|images?|pictures?|pics?|visuals?|creatives?|shots?)\b|\b(photos?|images?|pictures?|pics?|visuals?)\b[^.?!]{0,20}\b(change|swap|replace|redo)\b/i;
@@ -548,6 +549,55 @@ export function createRemix(o) {
     return true;
   };
 
+  /* ---------- the short video itself: a first frame of the real product (Gemini, 9:16), animated for 6 seconds by Veo on our
+     Vertex account, with the hook line read over it. The script alone is not a video: "Make the short video" makes one.
+     It lands on the version it was made for (patched into that version, no new version), within DAILY_VIDEO_CAP. ---------- */
+  const isVideoPost = (ch) => ch.family === 'post' && /short_video$/.test(String(ch.action || ''));
+  const hookOf = (p = {}) => clean(String((p.script || [])[0]?.line || p.title || String(p.copy || '').split('\n')[0] || '')).split(/\s+/).slice(0, 14).join(' ');
+  let MK = null; const makers = () => (MK ||= o.makers || createMakers({ geminiImage, log }));
+  const VID_JOBS = new Set();
+  const srcPhoto = async (t, ch) => { const c = t.cards.get(ch.cardId) || {}, p = ch.pkg || {};
+    const cands = [...(p.photos || []).filter((u) => !/^gen\//.test(u)), ...(c.images || []).filter((u) => !/^gen\//.test(u) && !/statics\//.test(u)), LANE_PHOTO[c.lane], ...Object.values(LANE_PHOTO || {}), o.catalogOf?.(t)?.[0]?.img].filter((x) => x && typeof x === 'string');
+    for (const rel of [...new Set(cands)]) { const f = (o.photoAsync ? await o.photoAsync(rel).catch(() => null) : null) || (fs.existsSync(photoFile(rel)) && fs.statSync(photoFile(rel)).isFile() ? photoFile(rel) : null); if (f) return f; }
+    return null; };
+  const genVideo = (t, ch, why = 'the script') => {
+    if (!isVideoPost(ch) || (isMock() && !o.mediaFake) || !geminiImage || ch.videoPending) return false;
+    if (!spend('video')) return false;
+    const target = headOf(t, ch)?.id || null, p = { ...ch.pkg }, sc = p.script || [], hook = hookOf(p);
+    ch.videoPending = Date.now(); ch.videoError = null; ch.videoStep = 'Making the first frame'; VID_JOBS.add(ch.id);
+    (async () => {
+      try {
+        const M = makers();
+        /* the first frame: a photo already made for this post, else a new 9:16 one of the real product */
+        let frame = /^gen\//.test(p.image || '') && (await genFile(p.image.slice(4))) ? p.image.slice(4) : null;
+        if (!frame) {
+          const src = await srcPhoto(t, ch); if (!src) throw new Error('no product photo could be read for the first frame');
+          const shot = sc[0]?.shot || p.imageBrief || String(p.media || '').replace(/https?:\/\/\S+/g, '').slice(0, 400) || 'The product on a clean surface, soft daylight.';
+          const prompt = `Create the opening frame of a vertical 9:16 ${p.platform || 'short'} video for ${BN()}. ${shot} Keep the ${BN()} ${B().config.product?.noun || 'product'} and its label exactly as in the reference photo; do not invent new text on the pack. Nothing else carries writing: no signs, notes, screens or other packaging. No before/after. Photographic, natural light, the product clearly in frame.`;
+          const key = crypto.createHash('sha1').update(prompt + '9:16').digest('hex').slice(0, 16) + '.png';
+          if (!(await genFile(key))) saveGen(key, await (o.videoImage || geminiImage)({ srcFile: src, prompt, ratio: '9:16' }));
+          frame = key;
+        }
+        ch.videoStep = 'Animating it, about a minute';
+        const motion = clean(sc.slice(0, 3).map((x) => x.shot).filter(Boolean).join(' Then ')).slice(0, 360) || 'The camera slowly pushes in on the product.';
+        let name = await M.video(frame, `Over 6 seconds: ${motion}`, { ratio: '9:16', onStep: (s) => { ch.videoStep = s; } });
+        let voiced = false;
+        if (hook && spend('voice')) { ch.videoStep = 'Adding the voiceover';
+          const au = await M.voice(hook, 'warm and natural, like a creator talking to camera', 'Kore').catch((e) => { log.warn('[short video voice]', e.message); return null; });
+          const both = au ? await M.mux(name, au).catch((e) => { log.warn('[short video mux]', e.message); return null; }) : null; if (both) { name = both; voiced = true; } }
+        const media = { video: 'gen/' + name, poster: 'gen/' + frame, image: 'gen/' + frame, videoHook: hook };
+        const v = versionsOf(t, ch.id).find((x) => x.id === target); if (v) v.snapshot = { ...v.snapshot, ...media };
+        if (!target || ch.headVersionId === target || headOf(t, ch)?.id === target) ch.pkg = { ...ch.pkg, ...media };
+        ch.videoPending = null; ch.videoStep = null; sync(t, ch);
+        ch.thread.push({ from: 'ai', text: `The video for ${v ? `v${v.n}` : 'this version'} is ready: 6 seconds, vertical${voiced ? ', with the hook read over it' : ''}.`, at: now(t) });
+        o.save?.(t);
+      } catch (e) { ch.videoPending = null; ch.videoStep = null; ch.videoError = `The video didn’t come through (${String(e.message).slice(0, 120)}). Make it again.`; log.warn('[short video]', why, e.message); sync(t, ch); o.save?.(t); }
+      finally { VID_JOBS.delete(ch.id); }
+    })();
+    return true;
+  };
+  const videoWhy = (ch) => (!isVideoPost(ch) ? 'Only a short video post makes a clip.' : ch.videoPending ? 'The video is already being made.' : isMock() ? 'Videos are off while AI is offline.' : 'The video limit for today is used up.');
+
   // studio chips: the AI's next steps for this version, else the family's defaults minus what was already asked
   const suggestOf = (t, ch) => { const asked = new Set((ch.thread || []).filter((m) => m.from === 'you').map((m) => String(m.text).toLowerCase().trim()));
     ch.chips ||= chipsFor(ch.action, t.cards.get(ch.cardId) || {}, B()); /* older changes: worked out once from the action, then kept */
@@ -717,6 +767,7 @@ export function createRemix(o) {
   const IMG_JOBS = new Set();
   const C = (t, id) => { const ch = changes(t)[id];
     if (ch?.imagePending && !IMG_JOBS.has(ch.id)) { ch.imagePending = false; ch.imageError = 'The photo stopped before it finished. Make it again.'; }
+    if (ch?.videoPending && !VID_JOBS.has(ch.id)) { ch.videoPending = null; ch.videoStep = null; ch.videoError = 'The video stopped before it finished. Make it again.'; }
     return ch; };
   on('GET', '/api/cards/:cid/remix', async (b, t, p) => {
     const c = t.cards.get(p.cid); if (!c) return { error: 'not found' };
@@ -879,7 +930,10 @@ export function createRemix(o) {
     const made = await makeCuts(t, ch, n, [steps.length ? `Follow the plan: ${steps.join('; ')}` : '', b.prompt].filter(Boolean).join('. '), (x, i) => (n > 1 ? `Version ${'ABCDEFGH'[i]}: ${x.angle || 'a different cut'}` : `${pl?.cta || 'Made'}: ready to review`));
     ch.planRun = { at: now(t), n: made.length, versions: made.map((v) => v.id) };
     const w = (t.work || []).find((x) => x.changeId === ch.id); if (w) w.cardPlan = { ...(w.cardPlan || pl || {}), ...(pl || {}), made: now(t) };
-    ch.thread.push({ from: 'ai', text: made.length > 1 ? `Made ${made.length} ${pl?.make?.what || 'versions'}: ${made.map((v) => 'v' + v.n).join(', ')}. Change any of them here, then share the brief.` : `Made it: v${made[0]?.n}. Change anything here, then share the brief.`, at: now(t), vs: made.map((v) => v.id) });
+    /* a short video gets its clip, not just its script: the version on screen is filmed now, the others on a tap */
+    const filming = isVideoPost(ch) && made.length ? genVideo(t, ch, 'the plan') : false;
+    const vs = made.map((v) => 'v' + v.n).join(', '), last = made[made.length - 1];
+    ch.thread.push({ from: 'ai', text: isVideoPost(ch) ? `Wrote ${made.length > 1 ? `${made.length} scripts: ${vs}` : `the script: v${made[0]?.n}`}. ${filming ? `Making the video for v${last?.n} now, about two minutes.${made.length > 1 ? ' Open another version and tap Make the video for its clip.' : ''}` : `${videoWhy(ch)} Tap Make the video when you want the clip.`}` : made.length > 1 ? `Made ${made.length} ${pl?.make?.what || 'versions'}: ${vs}. Change any of them here, then share the brief.` : `Made it: v${made[0]?.n}. Change anything here, then share the brief.`, at: now(t), vs: made.map((v) => v.id) });
     return { change: pubChange(t, ch), learned: learnedOut(t) };
   });
   // your checks and notes: kept on the package, read by the AI, sent in the brief
@@ -942,6 +996,11 @@ export function createRemix(o) {
     if (b.brief) { ch.pkg.imageBrief = clean(String(b.brief)).slice(0, 600); sync(t, ch); version(t, ch, 'you', 'New image brief'); }
     const started = genImage(t, ch, b.brief ? 'your brief' : 'a new take', { all: !!b.all });
     return { change: pubChange(t, ch), image: started, why: started ? null : isMock() ? 'Images are off while AI is offline' : 'No image budget left today' };
+  });
+  on('POST', '/api/changes/:chid/video', async (b, t, p) => {
+    const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };
+    const started = genVideo(t, ch, 'a tap'); if (!started) return { error: videoWhy(ch) };
+    return { change: pubChange(t, ch), video: true };
   });
   /* the photo picker: the brand's own product photos, the current ones, and whether AI may make one here */
   on('GET', '/api/changes/:chid/photos', async (b, t, p) => {
