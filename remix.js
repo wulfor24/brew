@@ -1036,7 +1036,11 @@ export function createRemix(o) {
   // use a version: move the pointer to it. No copy is made; your next change branches from it.
   on('POST', '/api/changes/:chid/restore', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' };
-    if (!b.versionId) { (ch.batchKey ? Object.values(changes(t)).filter((x) => x.cardId === ch.cardId && x.batchKey) : [ch]).forEach((x) => delete x.discarded); return { ok: true }; } /* no version: bring a discarded remix back */
+    if (!b.versionId) { (ch.batchKey ? Object.values(changes(t)).filter((x) => x.cardId === ch.cardId && x.batchKey) : [ch]).forEach((x) => delete x.discarded); /* no version: bring a discarded remix back */
+      /* and the jam that went with it, unless the card has an open jam again */
+      const w = (t.work || []).find((x) => x.discarded && x.discardedWith === ch.id);
+      if (w && !(t.work || []).some((x) => x !== w && !x.discarded && x.cardId === w.cardId && !['shared', 'result', 'out'].includes(x.stage))) { delete w.discarded; delete w.discardedWith; w.updatedAt = now(t); }
+      return { ok: true }; }
     ensurePkg(t, ch); const v = versionById(t, ch.id, b.versionId); if (!v) return { error: 'no version' };
     if (editable(ch)) return { error: 'It is live. Undo it first.' };
     useVersion(t, ch, v);
@@ -1048,7 +1052,11 @@ export function createRemix(o) {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' };
     const set = ch.batchKey ? Object.values(changes(t)).filter((x) => x.cardId === ch.cardId && x.batchKey) : [ch];
     if (set.some((x) => LIVEISH.includes(x.state))) return { error: set.length > 1 ? 'Some of these ads are live. Undo them first.' : ch.state === 'deploy_team' ? 'It’s with the ShopOS team. Withdraw it first.' : 'It’s live. Undo it first, then discard it.' };
-    set.forEach((x) => (x.discarded = now(t))); return { ok: true, n: set.length };
+    set.forEach((x) => (x.discarded = now(t)));
+    /* the studio is its jam's package: the jam goes with it, or opening the card reopens the package you just discarded */
+    const ws = (t.work || []).filter((w) => !w.discarded && set.some((x) => x.id === w.changeId) && !['deploying', 'measuring'].includes(w.stage));
+    ws.forEach((w) => { w.discarded = now(t); w.unread = false; w.discardedWith = ch.id; });
+    return { ok: true, n: set.length, work: ws.map((w) => w.id) };
   });
   on('POST', '/api/changes/:chid/jam', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' };

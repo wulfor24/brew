@@ -2478,7 +2478,7 @@
       const r = await tapi('POST', kind === 'jam' ? `/api/work/${id}/discard` : `/api/changes/${id}/discard`, {});
       if (r.error) { toast(esc(r.error)); return false; }
       await Promise.all([pullWork(true), pullRemixes()]);
-      if (!o.quiet) { if (kind === 'jam' && DP && (DP.w?.id === id || DP.p?._work?.id === id)) closeDetail(); if (kind === 'remix' && view === 'remix' && RX.ch?.id === id && RX.p) { RX.ch = null; openRemix(RX.p); }
+      if (!o.quiet) { if (kind === 'jam' && DP && (DP.w?.id === id || DP.p?._work?.id === id)) closeDetail(); if (kind === 'remix' && view === 'remix' && RX.ch?.id === id && RX.p) { RX.ch = null; if (SPLIT) leaveRemix(); else openRemix(RX.p); } /* in the split view the studio is the card's jam: discarded, it leaves (reopening would make a new jam) */
         libRepaint(); toastLong(`${ic('check', 's16')}<span>${kind === 'jam' ? 'Jam' : 'Remix'} discarded. It’s under Discarded.</span> <button class="linkbtn" data-lrestore="${kind}:${id}">Undo</button>`, 6000); }
       return true;
     },
