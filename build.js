@@ -499,9 +499,9 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       products: items,
       rivals: (p.rivals || []).map((r) => ({ name: r.name, host: r.host, how: r.how || r.why || '', logo: r.logo || `https://www.google.com/s2/favicons?domain=${r.host}&sz=64`, prices: (r.prices || []).length, live: (p.ads?.rivals || []).find((x) => x.host === r.host || x.name === r.name)?.live ?? null, url: r.url || `https://${r.host}` })),
       sources: [
-        { key: 'adpage', label: 'Facebook page that runs your ads', v: own.page ? `${own.page} · ${own.live ?? 0} live ads` : 'Not found', url: own.pageId ? `https://www.facebook.com/ads/library/?view_all_page_id=${own.pageId}` : null, hint: 'Paste your Facebook page link if this is wrong', found: !!own.page },
-        { key: 'instagram', label: 'Instagram', v: ig?.handle ? '@' + ig.handle : 'Not found', url: ig?.url || null, hint: 'Paste your Instagram profile link', found: !!ig?.handle },
-        { key: 'reviews', label: 'Reviews', v: rv.total ? `${Number(rv.total).toLocaleString('en-IN')} on ${[...new Set((rv.platforms || []).map((x) => x.label || x.name))].join(', ')}` : 'No reviews found', url: (rv.platforms || [])[0]?.url || null, hint: 'Paste the page where your reviews live (Judge.me, Loox, Amazon…)', found: !!rv.total }
+        { key: 'adpage', label: 'Facebook page that runs your ads', v: own.page ? `${own.page} · ${own.live ?? 0} live ad versions` : own.error ? 'Couldn’t check this time' : 'Not found', url: own.pageId ? `https://www.facebook.com/ads/library/?view_all_page_id=${own.pageId}` : null, hint: 'Paste your Facebook page link if this is wrong', found: !!own.page },
+        { key: 'instagram', label: 'Instagram', v: ig?.handle ? '@' + ig.handle : ig?.error ? 'Couldn’t check this time' : 'Not found', url: ig?.url || null, hint: 'Paste your Instagram profile link', found: !!ig?.handle },
+        { key: 'reviews', label: 'Reviews and ratings', v: (rv.platforms || []).some((x) => x.count) ? (rv.platforms || []).filter((x) => x.count).map((x) => `${Number(x.count).toLocaleString('en-IN')} on ${x.label || x.name}`).join(' · ') : rv.total ? `${Number(rv.total).toLocaleString('en-IN')} reviews and ratings` : rv.error ? 'Couldn’t check this time' : 'No reviews found', url: (rv.platforms || [])[0]?.url || null, hint: 'Paste the page where your reviews live (Judge.me, Loox, Amazon…)', found: !!rv.total }
       ],
       company: [
         { key: 'founders', label: 'Founders', v: (p.company?.founders || []).map((x) => (typeof x === 'string' ? x : x?.name)).filter(Boolean).join(', '), type: 'text', ...srcOf(L, ['company.founders', 'company.founder']) },
@@ -555,7 +555,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         const k = await adCall(treg, 'scrapecreators.x.v1-facebook-adlibrary-company-ads', { query: { pageId, country: p.country || 'ALL', status: 'ACTIVE' }, tag: 'check-adpage-ads' });
         const rows = (k?.results || []); p.ads ||= {}; p.ads.own = { page: rows[0]?.page_name || m[1], pageId, live: k?.searchResultsCount ?? rows.length, items: p.ads.own?.items || [] };
         conf('ads.own.live', `Live Meta ads (${p.country || 'all countries'})`, String(p.ads.own.live), `https://www.facebook.com/ads/library/?view_all_page_id=${pageId}`); } catch (e) { notes.push(`Ad page: ${e.message}`); } }
-    if (src.reviews) { const u = String(src.reviews).trim(); if (/^https?:\/\//.test(u)) { p.reviews ||= {}; p.reviews.brandSource = u; conf('reviews.source.confirmed', 'Where the brand says its reviews live', hostOf(u), u); notes.push('We will read your reviews from that page on the next refresh.'); } }
+    if (src.reviews) { const u = String(src.reviews).trim(); if (/^https?:\/\//.test(u)) { p.reviews ||= {}; p.reviews.brandSource = u; conf('reviews.source.confirmed', 'Where the brand says its reviews live', hostOf(u), u); notes.push('Saved that link for the team. Brew doesn’t read reviews from a pasted page yet.'); } }
     for (const [k, v] of Object.entries(b.company || {})) { const val = String(v || '').trim(); if (!val) continue; p.company ||= {};
       if (k === 'founders') p.company.founders = val.split(/\s*,\s*/).filter(Boolean); if (k === 'founded') p.company.founded = val;
       conf(`company.${k}.confirmed`, `${k} (confirmed by the brand)`, val, (b.companyLinks || {})[k] || null); }
@@ -881,7 +881,10 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       await packs.put(slug, 'private/ops-fresh.json', { ...mk, phase: 'rewrite' }); log.log(`[ops] ${slug}: rewriting ${old.length} older moves: ${old.join(', ')}`);
       await editUpd(slug, (u) => { for (const n of old) u.stale[n] = { n, priority: 'high', why: 'Fresh reload with what the team told us', changes: [], at: Date.now() }; });
       await buildCtx.run(slug, () => rewriteNow(slug, old)).catch((e) => log.error('[ops] rewrite', e.message));
-      setTimeout(tick, 60e3).unref?.(); /* whatever the budget or a restart cut short is picked up next time round */ };
+      /* a pass that rewrote nothing (budget, errors) stops the loop instead of paying again every minute (2026-10-14: about $7 for nothing) */
+      const after = await packs.getJSON(slug, 'moves.json', {}), left = old.filter((n) => Math.max(Date.parse(after[n]?.meta?.rewrittenAt || 0), Date.parse(after[n]?.meta?.at || 0)) < t0);
+      if (left.length >= old.length) { await packs.put(slug, 'private/ops-fresh.json', { ...mk, phase: 'stalled', stalledAt: Date.now(), why: 'a pass rewrote no moves' }); log.warn(`[ops] ${slug}: fresh reload stopped: a pass rewrote no moves`); return; }
+      setTimeout(tick, 60e3).unref?.(); /* whatever a restart cut short is picked up next time round */ };
     setTimeout(tick, 20e3).unref?.();
   }
   async function resumeAll() { for (const sl of String(process.env.OPS_FRESH_RELOAD || '').split(',').map((x) => x.trim()).filter(Boolean)) freshReload(sl).catch((e) => log.error('[ops] fresh', sl, e.message));

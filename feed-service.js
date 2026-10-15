@@ -119,7 +119,7 @@ export function followRead({ builder, slug, loadSeed, send, isOpen = () => true,
     if (e.type === 'reader') { const ev = e.ev, i = STEP_KEYS.indexOf(ev.k);
       if (ev.type === 'step' && ev.state === 'reading') send({ type: 'step', i, state: 'reading', tick: ev.tick || '' });
       if (ev.type === 'finding') send({ type: 'finding', i, finding: ev.finding, say: ev.say });
-      if (ev.type === 'step' && (ev.state === 'done' || ev.state === 'empty')) { send({ type: 'step', i, state: 'done', done: ev.done || (ev.state === 'empty' ? 'Nothing found' : 'Done') }); if (AGENT_OF[ev.k]) send({ type: 'agent', agent: AGENT_OF[ev.k] }); } }
+      if (ev.type === 'step' && (ev.state === 'done' || ev.state === 'empty')) { send({ type: 'step', i, state: 'done', empty: ev.state === 'empty', done: ev.done || (ev.state === 'empty' ? 'Nothing found' : 'Done') }); if (AGENT_OF[ev.k]) send({ type: 'agent', agent: AGENT_OF[ev.k] }); } }
     if (e.type === 'read-done' || (e.type === 'status' && e.status?.stages?.read?.state === 'done')) { doneSeen = true; if (!hold) ready(); }
     if (e.type === 'status' && e.status?.error && !sentReady) send({ type: 'error', msg: e.status.state });
   };
@@ -133,7 +133,7 @@ export function followRead({ builder, slug, loadSeed, send, isOpen = () => true,
       send({ type: 'step', i, state: 'reading', tick: '/' });
       cards.filter((c) => (c.k || STEP_KEYS[i]) === STEP_KEYS[i]).forEach((c) => send({ type: 'finding', i, finding: c }));
       if (replayMs) await new Promise((r) => setTimeout(r, replayMs));
-      send({ type: 'step', i, state: 'done', done: steps[i].done });
+      send({ type: 'step', i, state: 'done', empty: steps[i].state === 'empty', done: steps[i].done });
     }
     doneSeen = true; release();
   }).catch(() => release());
@@ -867,7 +867,7 @@ export function createFeedService(o) {
     builder.readLive(slug, { signal: ac.signal, onEvent: (ev) => { const i = STEP_KEYS.indexOf(ev.k);
       if (ev.type === 'step' && ev.state === 'reading' && i >= 0) send({ type: 'step', i, state: 'reading', tick: ev.tick || '' }, PACE.step);
       if (ev.type === 'finding') send({ type: 'finding', i, finding: ev.finding, say: ev.say || 'Found it' }, PACE.finding);
-      if (ev.type === 'step' && (ev.state === 'done' || ev.state === 'empty') && i >= 0) { send({ type: 'step', i, state: 'done', done: ev.done || (ev.state === 'empty' ? 'Nothing found' : 'Done') }, PACE.step); if (AGENT_OF[ev.k]) send({ type: 'agent', agent: AGENT_OF[ev.k] }); } } })
+      if (ev.type === 'step' && (ev.state === 'done' || ev.state === 'empty') && i >= 0) { send({ type: 'step', i, state: 'done', empty: ev.state === 'empty', done: ev.done || (ev.state === 'empty' ? 'Nothing found' : 'Done') }, PACE.step); if (AGENT_OF[ev.k]) send({ type: 'agent', agent: AGENT_OF[ev.k] }); } } })
       .then((out) => { if (out?.opened === false) return q.then(fallback); sentReady = true; ready(); })
       .catch((e) => { if (!open) return; log.warn('[demo] live read', slug, e.message); q.then(fallback); });
   };

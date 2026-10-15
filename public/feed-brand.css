@@ -419,6 +419,11 @@ a.ck2-src[href]:hover{color:var(--fg)}
 .rd-kick span{font:600 11.5px/1 var(--font-mono,ui-monospace,monospace);padding:6px 9px;border-radius:8px;background:var(--fg);color:var(--bg);letter-spacing:.02em}
 .rd-kick i{font-style:normal;font-size:13px;color:var(--fg-2);text-transform:capitalize}
 .rd-kick em{font-style:normal;display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;color:var(--ok);padding:4px 10px;border-radius:999px;background:var(--ok-bg)}
+.rd-kick em.rd-review{color:var(--fg-2);background:var(--bg-2,rgba(127,127,127,.12))}
+.rd-claims{margin:0 0 16px;padding:10px 14px;border:1px solid var(--line,rgba(127,127,127,.25));border-radius:10px;font-size:13.5px}
+.rd-claims summary{cursor:pointer;font-weight:600}
+.rd-claims ul{margin:8px 0 6px;padding-left:18px;display:grid;gap:6px}
+.rd-claims p{margin:0;color:var(--fg-2);font-size:12.5px}
 .rd-hero h1{margin:0 0 22px;font-size:clamp(28px,3.4vw,42px);line-height:1.12;font-weight:650;letter-spacing:-.025em;max-width:900px}
 .rd-top{display:grid;grid-template-columns:minmax(0,280px) minmax(0,1fr);gap:16px}
 .rd-stat{display:flex;flex-direction:column;justify-content:center;gap:6px;padding:20px 22px;border-radius:20px;background:var(--fg);color:var(--bg)}

@@ -11,7 +11,7 @@ const NOT_BRANDS = /(^|\.)(amazon|flipkart|nykaa|myntra|ajio|meesho|tatacliq|jio
 const adq = (ctx, id, query, cacheKey) => adCall(ctx.tregOn ? { call: (i, o) => ctx.treg(i, o, cacheKey) } : null, id, { query });
 
 // bump when the ads stage starts reading differently: saved reads with an older version are healed once
-export const ADS_V = 3; // 3: link-preview page titles are not hooks
+export const ADS_V = 4; // 3: link-preview page titles are not hooks; 4: the ledger says how ads and rivals were really found
 
 export async function findRivals(ctx) {
   const { profile, ledger } = ctx;
@@ -83,7 +83,7 @@ export async function findRivals(ctx) {
       await tryAdd([...by.values()].sort((a, b) => b.n - a.n).slice(0, 8).map((x) => ({ ...x, why: `runs ${x.n} live ad${x.n === 1 ? '' : 's'} for "${queries[0]}"` })), 'Ad Library (category search)'); } catch (e) { ctx.log.warn?.('[reader] rivals ad search', e.message); }
   }
   if (profile.rivals.length < 3 && ctx.aiOn) await tryAdd(await ask2('reader-rivals-known', `Which D2C brands compete most directly with ${profile.name} (${profile.host}, ${profile.category || ''}) for the same shoppers in ${profile.country || 'its market'}? Up to 8, the closest first.`, 0), 'suggested by AI, store read live');
-  profile.rivals.forEach((r) => ledger.add({ key: `rival.${r.host.replace(/\./g, '-')}.found`, label: `Rival: ${r.name}`, v: r.host, url: r.source || `https://${r.host}`, method: r.how.includes('web search') ? 'claude:web_search' : 'treg:crawl4ai.google.serp.organic', layer: 'inferred', conf: r.how.includes('+') ? 'high' : 'medium', note: `${r.how}. ${r.why || ''}`.trim() }));
+  profile.rivals.forEach((r) => ledger.add({ key: `rival.${r.host.replace(/\./g, '-')}.found`, label: `Rival: ${r.name}`, v: r.host, url: r.source || `https://${r.host}`, method: /suggested by AI/.test(r.how) ? 'claude:memory' : /Ad Library/i.test(r.how) ? 'adlib:category-search' : /web search/.test(r.how) ? 'claude:web_search' : 'treg:crawl4ai.google.serp.organic', /* how it was really found */ layer: 'inferred', conf: r.how.includes('+') ? 'high' : 'medium', note: `${r.how}. ${r.why || ''}`.trim() }));
 }
 
 async function crawlRival(ctx, r) {
@@ -131,10 +131,10 @@ export async function ads(ctx) {
     const j = await adq(ctx, 'scrapecreators.x.v1-facebook-adlibrary-company-ads', { companyName: name, country: cc, status: 'ACTIVE' }, `${cc}-${name}`);
     let rows = (j?.results || []).filter((a) => matchRe.test(a.page_name || a.snapshot?.page_name || ''));
     // the page reader sees one page of keyword results: read the matched page itself for its full live count
-    if (j?.source === 'adlib' && rows.length && rows[0].page_id) { try { const k = await adLibrary({ pageId: rows[0].page_id, country: cc }); const own = k.results.filter((a) => String(a.page_id) === String(rows[0].page_id)); if (own.length) return { rows: own, live: +k.searchResultsCount || own.length, reported: k.searchResultsCount, page: String(own[0].page_name || '').trim(), pageId: own[0].page_id }; } catch (e) { ctx.log.warn?.('[reader] adlib page', rows[0].page_id, e.message); } }
+    if (j?.source === 'adlib' && rows.length && rows[0].page_id) { try { const k = await adLibrary({ pageId: rows[0].page_id, country: cc }); const own = k.results.filter((a) => String(a.page_id) === String(rows[0].page_id)); if (own.length) return { rows: own, live: +k.searchResultsCount || own.length, reported: k.searchResultsCount, page: String(own[0].page_name || '').trim(), pageId: own[0].page_id, via: 'adlib' }; } catch (e) { ctx.log.warn?.('[reader] adlib page', rows[0].page_id, e.message); } }
     // every ad returned is from this page: the query's own total is the page's live count; else count what matched
     const all = (j?.results || []).length; const live = rows.length && rows.length === all && j?.searchResultsCount > all ? +j.searchResultsCount : rows.length;
-    return { rows, live, reported: j?.searchResultsCount ?? null, page: rows[0]?.page_name || null, pageId: rows[0]?.page_id || null };
+    return { rows, live, reported: j?.searchResultsCount ?? null, page: rows[0]?.page_name || null, pageId: rows[0]?.page_id || null, via: j?.source === 'adlib' ? 'adlib' : 'treg' };
   };
   // page name starts with the brand name, ignoring spaces/punctuation and a short tail ("Yoga Bar" → "Yogabars", "SuperYou India")
   const squash = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
@@ -181,7 +181,7 @@ export async function ads(ctx) {
     if (!r || r.error) continue;
     r.items = r.rows.slice(0, 8).map((a) => toAd(a, r.name));
     const key = r.own ? 'ads.own.live' : `rival.${(r.host || r.name).replace(/\./g, '-')}.ads.live`;
-    ledger.add({ key, label: `${r.name}: live Meta ads in ${country}`, v: String(r.live), n: r.live, unit: 'ads', url: `https://www.facebook.com/ads/library/?active_status=active&country=${country}&q=${encodeURIComponent(r.name)}`, method: 'treg:scrapecreators.x.v1-facebook-adlibrary-company-ads', note: r.page ? `page "${r.page}"; ${r.live === r.rows.length ? 'ads matched on the first result page' : `Ad Library total for the query (${r.rows.length} read)`}` : 'no ads from a page with this name' });
+    ledger.add({ key, label: `${r.name}: live Meta ads in ${country}`, v: String(r.live), n: r.live, unit: 'ads', url: `https://www.facebook.com/ads/library/?active_status=active&country=${country}&q=${encodeURIComponent(r.name)}`, method: r.via === 'adlib' ? 'adlib:page-reader' : 'treg:scrapecreators.x.v1-facebook-adlibrary-company-ads', note: r.page ? `page "${r.page}"; ${r.live === r.rows.length ? 'ads matched on the first result page' : `Ad Library total for the query (${r.rows.length} read)`}` : 'no ads from a page with this name' });
   }
   // download posters: own top 3, each rival's top 2
   const posters = [];

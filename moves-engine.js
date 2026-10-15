@@ -536,6 +536,7 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
 
   // ---------- Move 00 ----------
   async function writeIndex(moves, ctx) {
+    if (ctx.canSpend && !ctx.canSpend()) throw new Error('budget reached, index not started'); // the index is an Opus call too
     const name = ctx.brand?.name || ctx.profile?.name || 'the brand', B = name.toUpperCase();
     const list = [...SPECS.filter((s) => s.n), ...(ctx.dynamicSpecs || DYN)].map((s) => ({ s, m: moves[s.n] })).filter((x) => x.m || (ctx.applicable ? ctx.applicable.includes(x.s.n) : !x.s.needs?.length));
     const N = list.length, Nw = numWord(N);
@@ -626,9 +627,9 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
     };
     const errors = [...await wave(A)];
     const indexWanted = !only?.length || only.includes(0);
-    if (indexWanted && A.length) { const idx = await writeIndex(done, ctx); await ctx.save?.(0, idx); onMove?.(0, idx); }
+    if (indexWanted && A.length) { const idx = await writeIndex(done, ctx).catch((e) => { errors.push({ n: 0, error: e.message }); return null; }); if (idx) { await ctx.save?.(0, idx); onMove?.(0, idx); } }
     errors.push(...await wave(Bw));
-    if (indexWanted) { const idx = await writeIndex(done, ctx); await ctx.save?.(0, idx); onMove?.(0, idx); results[0] = idx; }
+    if (indexWanted) { const idx = await writeIndex(done, ctx).catch((e) => { errors.push({ n: 0, error: e.message }); return null; }); if (idx) { await ctx.save?.(0, idx); onMove?.(0, idx); results[0] = idx; } }
     return { moves: results, errors };
   }
 
