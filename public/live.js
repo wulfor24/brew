@@ -36,6 +36,8 @@
     }
     /* a real account that was disconnected: its switch goes off too, instead of quietly falling back to the demo */
     if (L.conns) for (const id of Object.keys(S.realConn || {})) if (!(L.conns[id]?.state === 'live')) { delete S.realConn[id]; S.conn[id] = false; }
+    /* on the live site a real account is on only when the server says so: an old simulated switch saved in this browser goes off */
+    if (L.avail && L.dummy === false) for (const id of Object.keys(Bd.connectors)) if (L.avail[id] && !L.avail[id].dummy && L.conns?.[id]?.state !== 'live' && S.conn[id]) S.conn[id] = false;
     // the brand's own team sees what each account does in plain words, not the demo's made-up numbers
     if (member()) for (const [id, c] of Object.entries(Bd.connectors)) if (!c.live && !S.conn[id] && c.changedPlain?.length) Bd.connectors[id] = { ...c, changed: c.changedPlain };
   }
