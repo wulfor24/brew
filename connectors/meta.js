@@ -38,20 +38,41 @@ export default {
     return { ok: !!hit, strong: false, account: { id: `act_${c.account}`, name: acc.name || c.accountName || `act_${c.account}`, currency: acc.currency }, why: hit ? `The ad account promotes ${hit.name}` : `None of this ad account’s pages is ${ctx.host}’s page` };
   },
   async sync(c, ctx) {
-    const F = fmt(ctx.profile), m = {}, notes = [], A = `act_${c.account}`;
+    const m = {}, notes = [], A = `act_${c.account}`;
     const acc = await get(A, c.token, { fields: 'name,currency' });
+    /* money in the ad account's own currency (an INR account is never shown in the site's dollars) */
+    const F = fmt({ ...ctx.profile, currency: acc.currency || ctx.profile?.currency, ...(acc.currency === 'INR' ? { country: 'IN', locale: 'en-IN' } : acc.currency && ctx.profile?.country === 'IN' ? { country: 'XX', locale: 'en-US' } : {}) });
     const ins = (params) => all(`${A}/insights`, c.token, { ...params, limit: 200 }, 5);
-    const [tot] = await ins({ date_preset: 'last_30d', fields: 'spend,impressions,clicks,reach,frequency,actions,action_values' });
-    if (tot) { m.spend = +tot.spend || 0; const buys = pick(tot.actions, PURCHASE), value = pick(tot.action_values, PURCHASE);
-      if (buys) { m.purchases = buys; m.cpa = m.spend / buys; } if (value != null && m.spend) m.roas = value / m.spend; m.reach = +tot.reach || null; }
-    const camps = await ins({ date_preset: 'last_7d', level: 'campaign', fields: 'campaign_name,spend,frequency,actions,action_values' }).catch((e) => (notes.push(`Campaigns: ${e.message.slice(0, 100)}`), []));
-    m.camp = camps.map((x) => { const v = pick(x.action_values, PURCHASE), s = +x.spend || 0; return { name: x.campaign_name, spendDay: s / 7, freq: +x.frequency || 0, roas: v != null && s ? v / s : null }; }).filter((x) => x.spendDay > 0).sort((a, b) => b.spendDay - a.spendDay).slice(0, 6);
-    const adsLive = await all(`${A}/ads`, c.token, { fields: 'id', effective_status: JSON.stringify(['ACTIVE']), limit: 200 }, 5).catch(() => null);
-    m.live = adsLive ? adsLive.length : null;
-    const adIns = await ins({ date_preset: 'last_7d', level: 'ad', fields: 'ad_name,frequency,spend,ctr' }).catch(() => []);
-    m.tired = adIns.filter((x) => +x.frequency >= 3.5 && +x.spend > 0).map((x) => ({ name: x.ad_name, freq: +x.frequency }));
+    /* an agency or group ad account runs ads for several Pages: count only the ads that promote this brand's Page */
+    const pages = await get(`${A}/promote_pages`, c.token, { fields: 'id,name,website', limit: 100 }).then((j) => j.data || []).catch(() => []);
+    const own = pages.find((p) => (ctx.pageId && String(p.id) === String(ctx.pageId)) || String(p.website || '').split(/\s+/).some((w) => exactSite(w, ctx.host)));
+    const ads = await all(`${A}/ads`, c.token, { fields: 'id,campaign_id,effective_status,creative{effective_object_story_id,object_story_spec}', limit: 200 }, 10).catch(() => null);
+    const pageOf = (a) => String(a.creative?.object_story_spec?.page_id || String(a.creative?.effective_object_story_id || '').split('_')[0] || '');
+    const adPages = new Set((ads || []).map(pageOf).filter(Boolean));
+    const shared = !!(own && ads && [...adPages].some((pid) => pid !== String(own.id)));
+    const mine = shared ? new Set(ads.filter((a) => pageOf(a) === String(own.id)).map((a) => a.id)) : null;
+    if (shared) notes.push(`This ad account also runs ads for other Pages. Brew counts only the ads for ${own.name}.`);
+    if (!shared) {
+      const [tot] = await ins({ date_preset: 'last_30d', fields: 'spend,impressions,clicks,reach,frequency,actions,action_values' });
+      if (tot) { m.spend = +tot.spend || 0; const buys = pick(tot.actions, PURCHASE), value = pick(tot.action_values, PURCHASE);
+        if (buys) { m.purchases = buys; m.cpa = m.spend / buys; } if (value != null && m.spend) m.roas = value / m.spend; m.reach = +tot.reach || null; }
+    } else {
+      const rows = await ins({ date_preset: 'last_30d', level: 'ad', fields: 'ad_id,spend,actions,action_values' });
+      let spend = 0, buys = 0, value = 0, valued = false;
+      for (const x of rows.filter((r) => mine.has(String(r.ad_id)))) { spend += +x.spend || 0; buys += pick(x.actions, PURCHASE) || 0; const v = pick(x.action_values, PURCHASE); if (v != null) { value += v; valued = true; } }
+      m.spend = spend; if (buys) { m.purchases = buys; m.cpa = spend / buys; } if (valued && spend) m.roas = value / spend;
+    }
+    const keep = (x) => !shared || mine.has(String(x.ad_id));
+    const adWeek = await ins({ date_preset: 'last_7d', level: 'ad', fields: 'ad_id,ad_name,campaign_id,campaign_name,frequency,spend,ctr,actions,action_values' }).catch((e) => (notes.push(`Campaigns: ${e.message.slice(0, 100)}`), []));
+    const byCamp = new Map();
+    for (const x of adWeek.filter(keep)) { const k2 = x.campaign_id || x.campaign_name, c2 = byCamp.get(k2) || { name: x.campaign_name, s: 0, v: 0, valued: false, fw: 0 };
+      const s = +x.spend || 0, v = pick(x.action_values, PURCHASE); c2.s += s; if (v != null) { c2.v += v; c2.valued = true; } c2.fw += s * (+x.frequency || 0); byCamp.set(k2, c2); }
+    /* a campaign's frequency here is its ads' frequency weighted by spend: close to Meta's own, and the same for a shared account */
+    m.camp = [...byCamp.values()].map((c2) => ({ name: c2.name, spendDay: c2.s / 7, freq: c2.s ? c2.fw / c2.s : 0, roas: c2.valued && c2.s ? c2.v / c2.s : null })).filter((x) => x.spendDay > 0).sort((a, b) => b.spendDay - a.spendDay).slice(0, 6);
+    m.live = ads ? ads.filter((a) => a.effective_status === 'ACTIVE' && (!shared || mine.has(a.id))).length : null;
+    m.tired = adWeek.filter(keep).filter((x) => +x.frequency >= 3.5 && +x.spend > 0).map((x) => ({ name: x.ad_name, freq: +x.frequency }));
 
-    const k = 'meta', name = 'Meta Ads', lane = ctx.lane, src = `Meta Ads · ${acc.name || A}`, out = [];
+    const k = 'meta', name = 'Meta Ads', lane = ctx.lane, src = `Meta Ads · ${acc.name || A}${shared ? ` · ${own.name} ads only` : ''}`, out = [];
     const hot = m.camp.filter((x) => x.freq >= 3.5).sort((a, b) => b.freq - a.freq)[0];
     if (hot) out.push(card(k, name, lane, 'freq', { agent: 'performance', sector: 'ads', type: 'decision', roles: ['growth', 'founder', 'brand'], badge: [`Frequency ${hot.freq.toFixed(1)}`, 'warn'], cta: 'Rotate creative',
       title: `${hot.name} showed the same people its ads ${hot.freq.toFixed(1)} times this week`, sub: `${m.tired.length ? `${n0(m.tired.length)} ad${m.tired.length === 1 ? ' is' : 's are'} past 3.5 a week. ` : ''}Above that, clicks fall and cost per order climbs. Fresh versions of the best ads reset it fastest.`,
