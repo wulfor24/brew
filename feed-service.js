@@ -869,7 +869,10 @@ export function createFeedService(o) {
       for (const c of pool) { let n = 0; for (const x of w) if (c.w.has(x)) n++; if (n > top) { top = n; best = c; } }
       return best ? { ...sl, bg: best.img } : sl; };
     /* a ring whose last read failed and has nothing left today says so, never just vanishes as if there was nothing (brew-external-data rule 1) */
-    const failedNote = (k, title, slides) => (slides.length || k === 'brand' ? slides : r0[k]?.lastError
+    const fails = research?.failures?.() || {};
+    const failedNote = (k, title, slides) => (slides.length || k === 'brand' ? slides : !r0[k] && fails[k]
+      ? [{ type: 'note', c: SEED.brand.wash[2], h: `No ${title.toLowerCase()} yet`, p: 'The first read found nothing to show. Brew tries again within the hour.', from: 'Brew', at: fails[k].at }]
+      : r0[k]?.lastError
       ? [{ type: 'note', c: SEED.brand.wash[2], h: `Couldn't refresh ${title} this time`, p: 'The source didn’t answer. Brew tries again within the hour.', from: 'Brew', at: r0[k].lastError.at }]
       : r0[k] ? [{ type: 'note', c: SEED.brand.wash[1], h: `Finding new ${title.toLowerCase()} stories`, p: 'Brew is reading the source again. New ones land here shortly.', from: 'Brew', at: now(t) }] : slides);
     const ring = (k, title, slides, o = {}) => { slides = failedNote(k, title, slides); return { k, title, slides: slides.map(bgFor), ...o, seen: !!o.updatedAt && (t.storySeen[k] || 0) >= o.updatedAt }; };
@@ -890,10 +893,10 @@ export function createFeedService(o) {
     const brandSlides = [...topCards, ...waiting, ...shipped, ...t.batches.slice(0, 3).map((b, i) => ({ type: 'brand', chip: 'Your agents, this week', h: b.t, p: `${b.s}.`, agent: b.team ? 'brew' : b.agent, pct: b.pct, st: b.st, at: batches[i]?.at }))].slice(0, 8);
     return [
       ring('brand', SEED.brand.name.length <= 8 ? `${SEED.brand.name} today` : 'Today', brandSlides, { updatedAt: Math.max(0, ...brandSlides.map((x) => x.at || 0)) || null, cover: topCards.find((x) => x.img)?.img, source: 'Your feed, work and results' }),
-      ring('trends', 'Trends', [...trSlides, ...extra('trends')], { updatedAt: lastAt(tr), source: tr?.source, spark: spark(tr?.items?.[0]?.terms?.[0]), loading: !tr }),
-      ring('ads', 'Popular ads', [...adSlides, ...extra('ads')], { updatedAt: lastAt(ads), source: ads?.source, cover: adSlides[0]?.poster, loading: !ads }),
-      ring('news', 'Industry news', newsSlides.slice(0, 10), { updatedAt: lastAt(nw), source: nw?.source, cover: newsSlides.find((x) => x.img)?.img, loading: !nw }),
-      ring('howto', 'How to', (ht?.items || []).map((x) => ({ type: 'howto', ...x, cardId: t.cards.has('r-' + x.id) ? 'r-' + x.id : null })), { updatedAt: lastAt(ht), source: ht?.source, cover: ht?.items.find((x) => x.img)?.img, loading: !ht })
+      ring('trends', 'Trends', [...trSlides, ...extra('trends')], { updatedAt: lastAt(tr), source: tr?.source, spark: spark(tr?.items?.[0]?.terms?.[0]), loading: !tr && !fails.trends }),
+      ring('ads', 'Popular ads', [...adSlides, ...extra('ads')], { updatedAt: lastAt(ads), source: ads?.source, cover: adSlides[0]?.poster, loading: !ads && !fails.ads }),
+      ring('news', 'Industry news', newsSlides.slice(0, 10), { updatedAt: lastAt(nw), source: nw?.source, cover: newsSlides.find((x) => x.img)?.img, loading: !nw && !fails.news }),
+      ring('howto', 'How to', (ht?.items || []).map((x) => ({ type: 'howto', ...x, cardId: t.cards.has('r-' + x.id) ? 'r-' + x.id : null })), { updatedAt: lastAt(ht), source: ht?.source, cover: ht?.items.find((x) => x.img)?.img, loading: !ht && !fails.howto })
 
     ]; /* all five rings always show: fresh stories, else the best recent ones while new ones are read, else what is happening */
   };

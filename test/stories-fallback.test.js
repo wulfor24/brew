@@ -124,3 +124,19 @@ test('a story may only quote numbers that are in its data; a bare rise reads as 
   assert.equal(pct('up 70%'), 'up 70%');
   assert.equal(pct('up 3 days in a row'), 'up 3 days in a row');
 });
+
+test('AI trend stories that fail the numbers check are topped up from the data, and breakout values are never quoted', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'brew-topup-'));
+  let prompt = '';
+  const reply = JSON.stringify({ items: [{ kind: 'term', terms: ['hair serum'], h: 'Hair serum searches up 190%', p: 'Made up.', card: 'x' }, { kind: 'term', terms: ['hair serum'], h: 'Hair serum up 70%', p: 'Searches rose 70% in 30 days.', card: 'Hair serum up 70%' }] });
+  const anthropic = { beta: { messages: { create: async (p) => { prompt = JSON.stringify(p); return { stop_reason: 'end_turn', content: [{ type: 'text', text: reply }], usage: {} }; } } } };
+  const tc = { meter: { usd: 0 }, call: async (id, { body }) => { if (/trends-explore/.test(id)) { if (body[0].item_types) return { tasks: [{ result: [{ items: [{ type: 'google_trends_queries_list', data: { rising: [{ query: 'asics', value: 841400 }] } }] }] }] }; return trendsReply(body); } throw new Error('402'); } };
+  const brand = { slug: 'tb', name: 'Testo', kind: 'generated', seed: {}, config: { country: 'IN', countryName: 'India', category: 'hair', rivals: [], terms: [['hair serum'], ['flat term']], rising: ['shoes'], festival: { name: 'Diwali', label: '8 Nov' } }, festivalAt: Date.now() + 20 * 864e5 };
+  const R = createResearch({ ROOT: dir, PUB: dir, anthropic, claudeParams: (m) => ({ messages: m }), textOf: (m) => m.content[0].text, geminiImage: async () => {}, gToken: async () => { throw new Error('no gcs'); }, clean: (s) => String(s || ''), brand, tregClient: tc, log: { log() {}, warn() {}, error() {} } });
+  await R.refresh(['trends']);
+  const hs = R.get().trends.items.map((x) => x.h);
+  assert.ok(!hs.some((h) => /190/.test(h)), 'the made-up number is dropped');
+  assert.ok(hs.some((h) => /70%/.test(h)), 'the honest one stays');
+  assert.ok(hs.length >= 3, `topped up to 3: ${hs}`);
+  assert.ok(!/841400/.test(prompt) && /breakout/.test(prompt), 'a breakout is a label in the prompt, not a number');
+});
