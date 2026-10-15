@@ -16,7 +16,7 @@ Brew is a **realistic prototype** that the engineering team picks up and continu
 | **Pro plan** | Plan sheet; no daily card cap. | **Dummy** |
 | **Jam** | Studio: canvas, chat, first drafts (image, text, video, voice, carousel), versions, photos, download, composer, brand memory and learnings. | Real (teammate replies are Dummy) |
 | **Share the brief** | *Share with the ShopOS team* or *Share with my team*. Both freeze the brief (BR-n) and copy it with a link to the full read-only brief. The work board ends at "Brief shared". | Real (copy only, nothing sent) |
-| **Accounts** | Google sign-in, claim with a work email, team and invites, a read-only view for everyone else. | Real |
+| **Accounts** | Google sign-in, claim with a work email, team and invites, a read-only view for everyone else. A shared jam link lets anyone look; signing in makes them a guest of that one jam (never the team). | Real |
 | **Brew's emails to the team** | Sent through Resend from hello@send.joinsquareup.com: invites, "someone joined", view and owner changes (`auth.js` `mail`), and "your moves are ready" / "moves updated" to the people waiting on a read (`build.js` `notify`, list in `notify.json`). The demo site blocks them. | Real |
 
 Two sites, one codebase:

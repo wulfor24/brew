@@ -6,6 +6,55 @@
 
 These P0 items are fixed and covered by `test/honesty.test.js`: **#1** (no canned sign-offs; simulated replies change nothing), **#2** (simulated account rows are never evidence), **#3** (the festival rolls forward from the calendar), **#4** (move kickers lose the drifting total, and the ad and review stats say what they count), **#5** (PDF writes are serialised and retried, and PDFs heal at boot), **#7** (make seats), **#8** (copy), **#9** (AI-gap QA) and **#10** (the told lift). See the commits from `284d127` to `f775c2e`. The table below is kept as the audit found it.
 
+## Fixed for real clients (2026-10-15, evening)
+
+Product decisions:
+- `/notify` stays open.
+- Shared links: anyone can look; signing in makes a person a **guest of that one jam** (chat, brief, drafts), never a team member. Team access comes only from an invite or the brand's work email.
+
+What changed:
+- **Access:**
+  - `/told` and `/memory` are team-only; `/transcribe` needs sign-in.
+  - Facts, asked threads and memory need the team or the brand's work email, so unclaimed brands are no longer open to anonymous writes.
+  - A paid heal needs sign-in.
+  - `HANDOFF_SECRET` is set; old links still verify.
+  - Brew runs as its own service account, `brew-runtime` (9 secrets, 2 buckets, Vertex, logs).
+  - Service-level max instances is pinned to 1.
+- **Broken items:**
+  - Move passages now work.
+  - `tools/write_moves.mjs` is removed.
+- **Cut leftovers:**
+  - Dead routes removed (`/api/jams`, WhatsApp, `/api/slack`, `/api/ai/*`, card versions).
+  - No Live / shipped-by-Brew row.
+  - Measure text says the team watches.
+  - Old onboarding text is brand-neutral.
+- **Read:**
+  - Onboarding handles a store that won't open, and empty steps get a dash.
+  - The check page says "Couldn't check this time" and splits reviews by source.
+  - The ledger records how rivals and ads were really found (`ADS_V` 4).
+- **Moves:**
+  - "Numbers checked · N claims to review", with the flagged lines shown to the team.
+  - The index respects the budget.
+  - The reload loop stops when a pass rewrites nothing.
+- **Jam:**
+  - Shared briefs are frozen, and the page says when they were shared.
+  - BR numbers run per brand.
+  - Both shares carry the read-only link.
+  - The composer's link option is honest.
+- **Feed:**
+  - Each brand's own lanes; the Arata QA rules are gone.
+  - The Creative budget is per brand.
+  - Card pages are kept in the pack.
+  - Heard lists only real failures, and videos aren't questions.
+  - Empty ideas runs are flagged.
+- **Ops:** the day's usage survives deploys.
+
+Still open:
+- The ranking weights (seat vs value) need fixtures from several brands.
+- The read is proven only on Shopify and Arata. Read the client's store first.
+- Opus moves keep their flagged claims until they are rewritten (paid).
+- Long-term debt: file sizes, CI, the single-instance design.
+
 ## P0: fix before the next showcase
 
 | # | Issue | Effect | Ref |

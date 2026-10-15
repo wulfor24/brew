@@ -1,5 +1,9 @@
 # 09 · Security and access
 
+## Update, 2026-10-15 evening
+
+For real clients: N-1, N-3 and N-5 are fixed, and so are S-1 (as jam-only guests), S-2 and S-4. N-4 (`/notify`) stays open by decision. N-2 is partly fixed: the mic, memory and heal need sign-in, but an anonymous read still runs at 1 per IP per hour. See `11-known-issues-and-debt.md`.
+
 ## Context: what matters now and what matters later
 
 Brew is a **showcase prototype**. No brand has connected a real account, and every connector is simulated. The data on the sites is what Brew read from public websites, plus notes the SquareUp team added. Public links and open read routes are therefore **acceptable today** (product decision, 2026-10-15).
