@@ -9,7 +9,7 @@ cd "$(dirname "$0")/.."
 [ -z "$(git status --porcelain)" ] || { echo "uncommitted changes: deploy from a clean worktree"; exit 1; }
 for f in *.js connectors/*.js dummy/*.js public/*.js; do node --check "$f"; done
 OUT=$(gcloud run deploy brew-demo --source . --project=squareup-492617 --region=asia-south1 \
-  --allow-unauthenticated --memory=4Gi --cpu=2 --no-cpu-throttling --min=1 --max-instances=1 --timeout=3600 --concurrency=200 \
+  --allow-unauthenticated --service-account=brew-runtime@squareup-492617.iam.gserviceaccount.com --memory=4Gi --cpu=2 --no-cpu-throttling --min=1 --max=1 --max-instances=1 --timeout=3600 --concurrency=200 \
   --set-env-vars=DEMO_MODE=1,GOOGLE_CLOUD_PROJECT=squareup-492617,GEMINI_IMAGE_MODEL=gemini-3-pro-image,DAILY_TEXT_CAP=1500,DAILY_IMAGE_CAP=120,DAILY_VIDEO_CAP=15,RESEARCH_BUCKET=brew-prototype-demo,TREG_ORG=squareup,TREG_DAY_CAP_USD=15,SOCIAL_DAY_CAP_USD=2,DRAFTS_DAY_CAP_USD=4,BUILD_CAP_USD=120,DAILY_BUILD_CAP_USD=200,PUBLIC_URL=https://demo.joinsquareup.com,MOVES_CONCURRENCY=6,BUILD_BLOCK=wearcomet-in,ADMIN_EMAILS=${ADMIN_EMAILS:-param@joinsquareup.com;hello@joinsquareup.com;darshanaritesh11@gmail.com},BUILD_SIGNIN=1,FEED_SIGNIN=1,TRUSTED_PROXY_HOPS=1,REFRESH_AUTO=0,MOVES_REFRESH_OFF=1 \
   --set-secrets=ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest,OPENAI_API_KEY=OPENAI_API_KEY:latest,TREG_TOKEN=TREG_TOKEN:latest,YOUTUBE_API_KEY=YOUTUBE_API_KEY:latest,FEED_SESSION_SECRET=FEED_SESSION_SECRET:latest,GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest,HANDOFF_SECRET=HANDOFF_SECRET:latest \
   --quiet 2>&1) || true

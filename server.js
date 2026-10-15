@@ -70,7 +70,7 @@ const OPENAI_KEY = process.env.OPENAI_API_KEY || '';
 let MOCK = process.env.AI_MOCK === '1' || !ANTHROPIC_KEY;
 const CAPS = { text: +process.env.DAILY_TEXT_CAP || 400, image: +process.env.DAILY_IMAGE_CAP || 60, video: +process.env.DAILY_VIDEO_CAP || 15, voice: +process.env.DAILY_VOICE_CAP || 60 };
 const used = { day: new Date().toDateString(), text: 0, image: 0, video: 0, voice: 0 };
-const spend = (k) => { const d = new Date().toDateString(); if (used.day !== d) Object.assign(used, { day: d, text: 0, image: 0, video: 0, voice: 0 }); if (used[k] >= CAPS[k]) return false; used[k]++; return true; };
+const spend = (k) => { const d = new Date().toDateString(); if (used.day !== d) Object.assign(used, { day: d, text: 0, image: 0, video: 0, voice: 0 }); if (used[k] >= CAPS[k]) return false; used[k]++; if (USAGE) saveUsage(); return true; };
 // the system prompt is the active brand's brief (the generated brief.md)
 const SYSTEM = () => B()?.system || '';
 
@@ -288,6 +288,13 @@ let feedSvc = null; // made below, once the brand plumbing exists
 const retire = createRetire({ bucket: BUCKET, gToken, log: console });
 const retireInit = retire.init().catch((e) => console.warn('[retire] init', e.message)); // first, before any brand loads: the stores wait on it
 const packs = createPacks({ ROOT, PUB, bucket: BUCKET, gToken });
+/* the day's usage survives a restart or a deploy (it reset on every one): AI calls by kind and treg dollars, kept in the bucket */
+var USAGE = 'usage-day.json', usageT = null; // var: spend() is defined earlier and may run before this line in tests
+function saveUsage() { clearTimeout(usageT); usageT = setTimeout(() => packs.put('_brew', USAGE, { ...used, treg: { day: treg.meter.day, usd: treg.meter.dayUsd } }).catch((e) => console.warn('[usage] save', e.message)), 3000); } // hoisted: spend() may call it
+packs.getJSON('_brew', USAGE, null).then((j) => { if (!j) return; const d = new Date().toDateString();
+  if (j.day === d) for (const k of ['text', 'image', 'video', 'voice']) used[k] = Math.max(used[k], +j[k] || 0);
+  if (j.treg?.day === d && j.treg.day === treg.meter.day) treg.meter.dayUsd = Math.max(treg.meter.dayUsd, +j.treg.usd || 0); }).catch(() => {});
+treg.onCharge(() => saveUsage());
 configureGen({ dir: GEN, researchDir: path.join(PUB, 'research'), bucket: BUCKET, gToken, log: console });
 const store = createStore({ dir: path.join(ROOT, '.tenants'), bucket: BUCKET, gToken });
 // each brand gets its own research (story rings) and live watchers. A generated brand gets them once its read is in
