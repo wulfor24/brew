@@ -28,7 +28,6 @@ import('./treg-map.js').then((m) => { if (typeof m.probeFor === 'function') prob
 const NUMW = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
 const TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
 export const numWord = (n) => (n < 20 ? NUMW[n] : n < 100 ? TENS[Math.floor(n / 10)] + (n % 10 ? '-' + NUMW[n % 10] : '') : String(n));
-const cap1 = (x) => x.charAt(0).toUpperCase() + x.slice(1);
 // the evidence contract: what every move must cite, quote and measure (sits after the house template, and wins over it)
 const CONTRACT = `
 
@@ -156,11 +155,6 @@ const AREA = { catalog: ['catalog.', 'product.'], price: ['price.', 'mrp.'], cla
   rival: ['rival.'], ads: ['ads.'], site: ['site.', 'policy.'], tech: ['site.tech', 'tech.'], checkout: ['site.checkout', 'checkout.'], policies: ['policy.'],
   socials: ['social.', 'socials.'], ai: ['ai.'], search: ['search.'] };
 const ledgerLine = (e) => `${e.key} | ${e.v} | ${e.label}${e.layer === 'inferred' ? ' (inferred)' : ''} | ${e.src || ''} | ${e.at || ''}${e.signal && e.url ? ` | ${e.url}` : ''}`;
-export function ledgerSlice(ledger = [], areas = [], cap = 260) {
-  if (ledger.length <= 160) return ledger;
-  const pre = areas.flatMap((a) => AREA[a] || [a + '.']);
-  return ledger.filter((e) => pre.some((p) => e.key.startsWith(p))).slice(0, cap);
-}
 
 // ---------- signals: listening, market pulse, video reads and the calendar, as ledger lines ----------
 // Same shape as ledger entries ({key, v, label, src, at, n}) plus {url, family, signal: true}, so verify() backs their numbers

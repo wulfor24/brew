@@ -764,16 +764,6 @@ export function createFeedService(o) {
     const hit = ROUTE_RULES.find(([, re]) => re.test(body));
     return hit ? { route: 'team', label: hit[0], reason: `Needs ${hit[0]}`, method: 'keyword rule' } : { route: 'ai', label: 'none', reason: 'An agent can do this', intent: QUESTION.test(body.trim()) ? 'answer' : 'versions', method: 'keyword rule' };
   };
-  const newJam = (t, { cardId, route, label, reason, method, body }) => {
-    const j = { id: uid('jam'), tenantId: t.id, cardId: cardId || null, route, whatsapp: false, label, reason, method, messages: [], status: route === 'team' ? 'In progress' : 'Open', createdAt: now(t), updatedAt: now(t) };
-    if (route === 'team') {
-      j.ticket = nextTicket(t); j.lead = true; leadsAllTenants++;
-      const c = cardId && t.cards.get(cardId);
-      j.attached = { card: c ? { id: c.id, title: c.title, sub: c.sub } : null, note: body, memory: t.memory.slice(0, 6).map((m) => m.fact) };
-      t.batches.unshift({ id: uid('b'), t: (c?.title || body).slice(0, 48), s: `${j.ticket} · with the Brew pod`, pct: 8, st: 'Needs team', tone: 'warn', agent: 'brew', team: true, ticket: j.ticket });
-    }
-    t.jams.unshift(j); return j;
-  };
 
   /* ---------- versions (remix and jam) ---------- */
   const makeVersions = async (t, c, prompt, extra = '') => {
@@ -1005,10 +995,9 @@ export function createFeedService(o) {
     });
   };
   const answerOnly = async (t, w, body) => {
-    if (!isMock() && spend('text')) { try { const j = await claudeTool(`${cardBrief({ ...(t.cards.get(w.cardId) || {}), ...curV(w), agent: w.agent }, seatLine(t.viewer))}\n\nQuestion: "${body}"`, { type: 'object', required: ['answer'], properties: { answer: { type: 'string', description: 'Under 60 words, plain words, lead with the answer' } } }, 600, 'answer'); if (j.answer) return clean(j.answer); } catch (e) { log.warn('[answer]', e.message); } }
-    return 'Short answer: yes, it fits the plan and the claims list. Want me to make three versions so you can compare?';
+    if (!isMock() && spend('text')) { try { const j = await claudeTool(`${cardBrief({ ...(t.cards.get(w.cardId) || {}), ...curV(w), agent: w.agent }, seatLine(t.viewer))}\n\nQuestion: "${body}"`, { type: 'object', required: ['answer'], properties: { answer: { type: 'string', description: 'Under 60 words, plain words, lead with the answer' } } }, 600, 'answer'); if (j.answer) return clean(j.answer); } catch (e) { log.warn('[answer]', e.message); if (e.billing) return 'I can’t answer right now: Brew’s writing is paused for a while. Your question stays here in the jam; ask again later, or tag a teammate.'; } }
+    return 'I couldn’t answer that just now. Your question stays here in the jam; try again in a minute, or tag a teammate.'; /* never a canned yes (DUMMY.md: no canned answers) */
   };
-  const fmtM = (m, v) => v == null || !Number.isFinite(+v) ? 'to be measured' : /^(₹|\$|£|€|[ACS]\$)$/.test(m.unit || '') ? `${m.unit}${Math.round(v)}` : m.unit === '%' ? `${v.toFixed(1)}%` : `${Math.round(v)}${m.unit}`;
   const hashN = (str) => [...String(str)].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) >>> 0, 7);
   // deployment happens off the feed: the item is handed to whoever ships it, then confirmed live
   // the money question, as numbers: the client words it and draws the weekly meter
@@ -1413,7 +1402,6 @@ export function createFeedService(o) {
     const run = (pageLocks.get(slug) || Promise.resolve()).catch(() => {}).then(async () => { const all = await P.getJSON(slug, 'pages.json', {}).catch(() => ({})); all[key] = page; await P.put(slug, 'pages.json', all); }).catch((e) => log.warn('[card page] keep', e.message));
     pageLocks.set(slug, run); };
   const PAGE_FACTS_OF = () => B().pageFacts;
-  const pageOk = (s) => !unbacked({ text: String(s || '') }, FACT_OK).length;
   const building = new Map();
   // what the card page says right now, without waiting on AI (for the first brief)
   const pageNow = (t, c) => { if (!c) return null; const key = c.id + '|' + (c.title || ''); if (PAGES[c.id] && (!PAGES[c.id].title || PAGES[c.id].title === c.title)) return PAGES[c.id]; return PAGES[key] || fallbackPage(c, MOVE_DOCS, MOVES); };

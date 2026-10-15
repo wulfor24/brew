@@ -9,3 +9,4 @@ test/out/
 tools/raw/
 .claude/
 node_modules
+.npm-cache/

@@ -4,6 +4,7 @@
 import { createJamMail } from './jam-mail.js';
 import { configureGen, saveGen, genFile, researchFile } from './gen-store.js';
 import http from 'node:http';
+import { safeFetch } from './reader/util.js'; // photo links reach only the public internet
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -20,7 +21,7 @@ import { createStore } from './store.js';
 import { B, BN, runIn, liveRe, setDefaultBrand, inBrand } from './brand-ctx.js';
 import { createImageGuard } from './image-guard.js';
 import { createPacks, slugOf, DEFAULT } from './brand-pack.js';
-import { createAI } from './ai.js';
+import { createAI, aiPaused, billingError, noteBilling } from './ai.js';
 import { createTreg, gcsCache } from './treg.js';
 import { setApifyCache } from './apify.js';
 import { chain as mediaChain, sloosh, slooshOn, openaiImage as openaiImageRaw } from './media.js';
@@ -92,8 +93,10 @@ const claudeParams = (messages, max) => ({
   betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default'
 });
 const textOf = (msg) => msg.content.filter((b) => b.type === 'text').map((b) => b.text).join('');
+/* the jam's own calls share ai.js's pause: no call while the credit is out, and a billing failure starts the pause */
+const claudeCreate = async (params) => { if (aiPaused()) throw billingError(); try { return await anthropic.beta.messages.create(params); } catch (e) { if (noteBilling(e)) throw billingError(); throw e; } };
 const claudeJSON = async (prompt, max = 2000) => {
-  const msg = await anthropic.beta.messages.create(claudeParams([{ role: 'user', content: prompt + '\n\nReply with JSON only, no prose, no code fences.' }], max));
+  const msg = await claudeCreate(claudeParams([{ role: 'user', content: prompt + '\n\nReply with JSON only, no prose, no code fences.' }], max));
   if (msg.stop_reason === 'refusal') throw new Error('refused: ' + (msg.stop_details?.category || 'unknown'));
   const t = textOf(msg);
   try { return JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)); }
@@ -112,7 +115,7 @@ const strictSchema = (x) => {
   return o;
 };
 const claudeTool = async (prompt, schema, max = 3000, name = 'reply') => {
-  const msg = await anthropic.beta.messages.create({ ...claudeParams([{ role: 'user', content: prompt }], max), output_config: { effort: 'low', format: { type: 'json_schema', schema: strictSchema(schema) } } });
+  const msg = await claudeCreate({ ...claudeParams([{ role: 'user', content: prompt }], max), output_config: { effort: 'low', format: { type: 'json_schema', schema: strictSchema(schema) } } });
   if (msg.stop_reason === 'refusal') throw new Error('refused: ' + (msg.stop_details?.category || 'unknown'));
   if (msg.stop_reason === 'max_tokens') console.warn('[claudeTool]', name, 'hit max_tokens', max);
   const t = textOf(msg);
@@ -158,7 +161,7 @@ async function rawGeminiImage(o) {
 /* every generated picture shows the right product (image-guard.js): the product the words name is the reference,
    and a vision check after each picture regenerates or falls back to the real photo on a mismatch */
 const IMG_MIME = (b) => (b[0] === 0x89 ? 'image/png' : b[0] === 0xff ? 'image/jpeg' : b.slice(0, 4).toString() === 'RIFF' ? 'image/webp' : b.slice(0, 3).toString() === 'GIF' ? 'image/gif' : 'image/jpeg');
-const photoAny = async (u) => { if (!u) return null; if (/^https?:/.test(u)) { const f = path.join(os.tmpdir(), 'brew-ph-' + crypto.createHash('sha1').update(u).digest('hex').slice(0, 16)); if (!fs.existsSync(f)) { const r = await fetch(u, { signal: AbortSignal.timeout(20e3) }); if (!r.ok) return null; fs.writeFileSync(f, Buffer.from(await r.arrayBuffer())); } return f; } return photoAsync(u); };
+const photoAny = async (u) => { if (!u) return null; if (/^https?:/.test(u)) { const f = path.join(os.tmpdir(), 'brew-ph-' + crypto.createHash('sha1').update(u).digest('hex').slice(0, 16)); if (!fs.existsSync(f)) { const r = await safeFetch(u, { signal: AbortSignal.timeout(20e3) }); if (!r.ok) return null; fs.writeFileSync(f, Buffer.from(await r.arrayBuffer())); } return f; } return photoAsync(u); };
 const sameProduct = async (refFile, buf, name) => {
   if (!anthropic || process.env.AI_MOCK === '1' || process.env.IMAGE_CHECK === '0') return { same: true, why: 'check off' };
   const ref = fs.readFileSync(refFile), img = (b) => ({ type: 'image', source: { type: 'base64', media_type: IMG_MIME(b), data: b.toString('base64') } });
@@ -263,7 +266,7 @@ const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (
 const urlPhoto = async (u) => { const f = path.join(os.tmpdir(), 'feed-ph-' + crypto.createHash('sha1').update(u).digest('hex').slice(0, 16) + (String(u).match(/\.(png|webp|jpe?g)(\?|$)/i)?.[0].replace(/\?$/, '') || '.jpg'));
   if (isFile(f)) return f;
   for (let i = 0; i < 2; i++) { /* a store CDN that blinks once is asked again; a browser's user agent, since some CDNs refuse bare fetches */
-    try { const r = await fetch(u, { signal: AbortSignal.timeout(15000), headers: { 'user-agent': UA, accept: 'image/*,*/*' } }); if (!r.ok) { if (r.status < 500 && r.status !== 429) return null; continue; }
+    try { const r = await safeFetch(u, { signal: AbortSignal.timeout(15000), headers: { 'user-agent': UA, accept: 'image/*,*/*' } }); if (!r.ok) { if (r.status < 500 && r.status !== 429) return null; continue; }
       const b = Buffer.from(await r.arrayBuffer()); if (!b.length || b.length > 15e6 || /^\s*</.test(b.slice(0, 64).toString())) return null; fs.writeFileSync(f, b); return f; } catch {} }
   return null; };
 /* any photo reference → a local file, or null (never a directory or a missing path): a store URL, a brand asset, a generated
@@ -273,12 +276,11 @@ const photoAsync = async (rel) => { const r = String(rel || '').trim(); if (!r) 
   const g = /^\/?gen\/([\w.-]+)$/.exec(r); if (g) return genFile(g[1]);
   const rs = /^\/?research\/([\w.-]+)$/.exec(r); if (rs) return researchFile(rs[1]);
   const f = photoFile(r); return isFile(f) ? f : null; };
-const safeAsset = (p) => { const f = path.normalize(photoFile(p)); return (f.startsWith(PUB) || f.startsWith(BRANDS_DIR)) && isFile(f) ? f : null; };
 
 const routes = {
   'GET /api/research': async () => { const r = B().research; return { ...r.get(), running: r.running(), spent: r.spent() }; },
   'POST /api/research/refresh': async (b, req) => { if (!(await genOk(req, B().slug))) return demoErr(); const ok = ['ads', 'trends', 'news', 'howto']; const which = (b.sources || ok).filter((k) => ok.includes(k)); B().research.refresh(which); return { started: which }; },
-  'GET /api/config': async () => ({ ai: MOCK ? 'mock' : 'live', image: !!(GPROJECT || OPENAI_KEY), caps: CAPS, used }),
+  'GET /api/config': async () => ({ ai: MOCK ? 'mock' : 'live', paused: !MOCK && aiPaused(), image: !!(GPROJECT || OPENAI_KEY), caps: CAPS, used }),
   'POST /api/config': async (b, req) => { if (!auth.isAdmin(auth.user(req))) return { error: 'admins only', ai: MOCK ? 'mock' : 'live' }; if (b.ai === 'mock') MOCK = true; if (b.ai === 'live' && ANTHROPIC_KEY) MOCK = false; return { ai: MOCK ? 'mock' : 'live' }; }
 };
 
@@ -529,7 +531,11 @@ const brandRoutes = async (req, res, u) => {
   if (!v.gen && req.method === 'POST' && what !== 'notify') return send(res, 403, { ...demoErr(v.host), error: v.claimed ? 'Demo mode: only this brand’s team changes it. Ask them to invite you.' : `Demo mode: the moves are written once someone signs in with a work email at ${v.host || 'the brand’s domain'}.`, team: true }), true;
   if (what === 'status') return send(res, 200, (await builder.status(slug)) || { error: 'unknown brand' }), true;
   if (what === 'summary') return send(res, 200, await builder.summary(slug)), true;
-  if (what === 'notify' && req.method === 'POST') { const b = await readBody(req); return send(res, 200, await builder.addEmail(slug, b.email)), true; }
+  if (what === 'notify' && req.method === 'POST') { const b = await readBody(req), me = auth.user(req);
+    /* "email me when the moves are in": a signed-in person adds their own address (the team may add a teammate), so nobody turns Brew into a mailer */
+    if (auth.signinOn() && !me) return send(res, 401, { error: 'Sign in to get an email when the moves are in.', signin: true }), true;
+    if (me && !v.member && String(b.email || '').trim().toLowerCase() !== String(me.email).toLowerCase()) return send(res, 403, { error: `We can only email you, at ${me.email}.` }), true;
+    return send(res, 200, await builder.addEmail(slug, b.email)), true; }
   if (what === 'findings') return send(res, 200, (await packs.getJSON(slug, 'findings.json', null)) || { cards: [] }), true;
   /* confirming what was read starts the brief and the moves: a signed-in person only, who becomes the brand's creator if nobody is yet */
   /* an official email confirming the read of a brand nobody has claimed takes it: confirming is the moment it becomes theirs */

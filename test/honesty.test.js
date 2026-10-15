@@ -114,3 +114,19 @@ test('old move text reads honestly: no Brew re-reads, watches, ships, or we paus
   assert.doesNotMatch(out, /Brew re-reads|Brew watches|Brew ships|\bwe (pause|revert)\b|\bWe (pause|revert)\b|Sixty-four/);
   assert.match(out, /^The moves for Arata\./); assert.match(out, /The team ships it\.$/);
 });
+
+test('a failed or paused AI answer says so: never a canned yes, and the pause reaches the jam client and the UI', () => {
+  assert.doesNotMatch(src('feed-service.js'), /Short answer: yes, it fits the plan/);
+  const s = src('server.js');
+  assert.match(s, /const claudeCreate = async/, 'the jam client shares the ai.js pause');
+  assert.doesNotMatch(s.replace(/const claudeCreate[^\n]*\n/, ''), /anthropic\.beta\.messages\.create\(/, 'every jam call goes through claudeCreate');
+  assert.match(s, /paused: !MOCK && aiPaused\(\)/, '/api/config reports the pause');
+});
+
+test('"email me when the moves are in" takes only the signed-in person’s own address', () => {
+  assert.match(src('server.js'), /We can only email you, at \$\{me\.email\}/);
+});
+
+test('photo links are fetched through safeFetch (public internet only)', () => {
+  for (const f of ['server.js', 'drafts.js', 'drafts-bg.js']) assert.doesNotMatch(src(f), /await fetch\((u|rel), \{ signal/, f);
+});

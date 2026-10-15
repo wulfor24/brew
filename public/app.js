@@ -340,7 +340,6 @@
   /* =========================================================
      2. Setup: the store is read, the agents wake up
      ========================================================= */
-  const luma = (hex) => { const n = parseInt(hex.slice(1), 16); return ((n >> 16) * .299 + ((n >> 8) & 255) * .587 + (n & 255) * .114) / 255; };
   // a finding from the read: what we saw, and where (the source chip opens it)
   const srcHref = (src) => { const x = String(src || '').trim(); if (/^https?:\/\//.test(x)) return x; if (/^[a-z0-9.-]+\.[a-z]{2,}(\/|$)/i.test(x)) return 'https://' + x; return null; };
   const srcShort = (src) => { const x = String(src || '').replace(/^https?:\/\//, '').replace(/^www\./, ''); return x.length > 42 ? x.slice(0, 40) + '…' : x; };
@@ -1032,10 +1031,6 @@
   const storiesHtml = () => { const S2 = storySets(); return `<div class="stories">${ROLE().stories.filter((k) => S2[k]).map((k, i) => `<button class="story${S2[k].seen ? ' seen' : ''}${S2[k].loading ? ' loading' : ''}" data-story="${k}" title="${esc(S2[k].title)}"><span class="ring">${ringCover(S2[k])}</span><span class="st-l">${esc(S2[k].title)}</span></button>`).join('')}</div>`; };
 
   /* the end of a free day: a swipeable set of what Pro adds, in Brew's own art, ending on the one button */
-  const PRO_SLIDES = () => [['pro-everything', 'A feed that keeps going', `${LIMIT.locked} more cards are ready today. Pro shows every one.`],
-    ['pro-agents', 'Every agent, all day', 'Creative, ads, storefront, AI answers and retention post the moment they find something.'],
-    ['pro-results', 'Signals: who to talk to next', 'Your customers, read for you, with the next person to reach.'],
-    ['pro-ships', 'The deck', 'One column per kind of work, so nothing waits in a long scroll.']];
   document.addEventListener('click', (e) => { if (e.target.closest('[data-gopro]')) openPlan('feed'); });
 
   /* a brand's first run: until its moves are written, one card says the real feed is on its way, with the time
@@ -1197,23 +1192,6 @@
   // a bar lives on a feed card or on the card page (data-cp-cta), which carries the same data-post
   const barBox = (bar) => bar.closest('.card,[data-cp-cta]');
   // the money question, as a tray under the action: what it spends, the weekly meter, launch or not yet
-  const spendAskHtml = (ask, label) => {
-    if (!ask?.limit) return `<div class="sp-ask" role="dialog" aria-label="Confirm spend"><div class="sp-top"><span class="sp-ic">${ic('zap', 's16')}</span><div><b>${esc(ask?.title || 'This spends money')}</b><p>${esc(ask?.p || 'It stays inside your weekly limit.')}</p></div></div><div class="sp-row"><button class="btn btn-primary sm" data-go>${esc(label)}</button><button class="btn btn-ghost sm" data-no>Not yet</button></div></div>`;
-    const pc = (v) => Math.max(0, Math.min(100, (v / ask.limit) * 100)).toFixed(1);
-    return `<div class="sp-ask" role="dialog" aria-label="Confirm spend"><div class="sp-top"><span class="sp-ic">${ic('zap', 's16')}</span><div><b>${esc(ask.title)}</b><p>${ask.target && ask.target !== 'Brew' ? `Runs on ${esc(ask.target)}. ` : ''}${esc(ask.p)}</p></div></div>
-      <div class="sp-meter" aria-hidden="true"><i class="is-spent" style="width:${pc(ask.spent)}%"></i><i class="is-this" style="width:${pc(ask.amount)}%"></i></div>
-      <div class="sp-legend"><span><i class="is-spent"></i>Spent ${esc(ask.spentLabel)}</span><span><i class="is-this"></i>This ${esc(ask.amountLabel)}</span><span class="sp-left">${esc(ask.afterLabel)} left of ${esc(ask.limitLabel)}</span></div>
-      <div class="sp-row"><button class="btn btn-primary sm" data-go>${esc(label)} · ${esc(ask.amountLabel)}</button><button class="btn btn-ghost sm" data-no>Not yet</button></div></div>`;
-  };
-  const showAsk = (after, ask, label, go) => {
-    $$('.sp-ask').forEach((x) => x.remove());
-    after.insertAdjacentHTML('afterend', spendAskHtml(ask, label)); const a = after.nextElementSibling;
-    const close = () => { a.classList.add('is-out'); setTimeout(() => a.remove(), 160); document.removeEventListener('keydown', esc1); };
-    const esc1 = (e) => { if (e.key === 'Escape') close(); }; document.addEventListener('keydown', esc1);
-    a.querySelector('[data-go]').onclick = () => { S.spendOk = true; save(); close(); go(); };
-    a.querySelector('[data-no]').onclick = close;
-    a.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  };
   /* buttons that are a place to go, not a card's action */
   const NAV_CTA = { 'Open the deck': () => renderDeck(), 'See all with Pro': () => openPlan('feed'), 'See what moves it': () => openJam({ moves: true }), 'Start a new batch': () => openJam({ batch: true, tab: 'team' }), 'Open the moves': () => { renderMoves(); nav('#v=moves', true, 'view', 'moves'); } };
   /* the card's jam, opened on its plan: the same place tapping the card goes */
@@ -1334,17 +1312,6 @@
     if (fresh.length || moved || quiet === 'force') { if (view === 'work') renderWork(); else if (view === 'jams') renderJams(false); const dp = $('#dp'), dw = DP && (DP.p._work?.id || workOfCard(DP.p.id)?.id), nw = dw && WORK.items.find((x) => x.id === dw);
       if (dp && dw && (fresh.some((n) => n.itemId === dw || n.itemId === dp.dataset.work) || (nw && before.get(dw) !== sig({ items: [nw] })))) repaintDetail(); }
   };
-  const measureHtml = (m, w) => {
-    if (!m) return '';
-    const fmt = (v) => /^(₹|\$|£|€|[ACS]\$)$/.test(m.unit || '') ? `${m.unit}${Math.round(v)}` : m.unit === '%' ? `${(+v).toFixed(1)}%` : `${Math.round(v)}${m.unit || ''}`;
-    const reads = w?.measure?.readings || [];
-    const res = w?.result;
-    return `<section class="dp-measure"><h4>How we measure it</h4>
-      <div class="ms-top"><div><small>Metric</small><b>${esc(m.metric)}</b></div><div><small>Baseline</small><b>${m.connected ? fmt(m.baseline) : '—'}</b></div><div><small>Target</small><b>${fmt(m.target)}</b></div><div><small>Read after</small><b>${m.window} days</b></div></div>
-      ${!m.connected ? `<p class="ms-need">${ic('plug', 's14')}Connect ${esc(m.fromName)} to set the baseline from your real numbers. <button class="linkbtn" data-cx="${esc(m.from)}">Connect</button></p>` : ''}
-      <div class="ms-row"><small>What to watch</small><ul class="dp-list">${m.watch.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>
-      <div class="ms-row"><small>How we attribute it</small><p>${esc(m.attribution)}</p></div></section>`;
-  };
   // why this card is here, in words a client reads: what lifted it, what held it back, where it sits today,
   // and a way to say if it was useful (that feedback re-ranks the feed and teaches Brew)
   const reasonsOf = (p, sc) => { const r = [], role = ROLE();
@@ -1436,15 +1403,6 @@
     repaintDetail(); loadLearned(p);
     if (opts.jam || opts.draft) setTimeout(() => { const i = $('#dp-in'); if (!i) return; if (opts.draft) i.value = opts.draft; i.focus(); }, 80);
   };
-  const conflictHtml = (p, c) => { const dec = S.decided?.[p.id], who = colleague(p.owner || colleagueForCard(p).id), pk = c.options.find((o) => o.id === c.pick);
-    return `<section class="cf-full"><h4>The options</h4>${c.options.map((o) => `<div class="cf-card${o.id === dec ? ' is-dec' : o.id === c.pick && !dec ? ' is-pick' : ''}">
-        <div class="cf-top"><b>${esc(o.name)}</b>${o.id === dec ? '<span class="badge ok">Decided</span>' : o.id === c.pick ? '<span class="badge info">Brew pick</span>' : ''}</div>
-        <p>${esc(o.says)}</p><p class="cf-eff"><span>What changes</span>${esc(o.effect)}</p>
-        <div class="cf-foot"><small>${ic('link', 's14')}Moves ${esc(o.moves)}</small>${o.id === dec ? '' : `<button class="btn btn-ghost sm" data-decide="${esc(o.id)}">Go with this</button>`}</div></div>`).join('')}</section>
-      <section class="cf-rec"><h4>Our recommendation</h4><p><b>${esc(pk.name)}.</b> ${esc(c.reason)}</p>
-        ${c.affects?.length ? `<p class="cf-aff">Cards that follow this: ${c.affects.map(esc).join(' · ')}</p>` : ''}
-        ${c.needs ? `<p class="cf-needs">${ic('person', 's14')}Needs ${esc(c.needs)} before anything ships.</p>` : ''}
-        ${DP.w?.with ? '' : `<button class="btn btn-primary" data-pullin>${avatar(who, 22)}Pull in ${esc(who.name)} with every option</button>`}</section>`; };
   /* ---------- the card page: the card, enlarged, laid out like a decision ----------
      hero (the card itself) → the options (one is our pick) → our recommendation → backed by the moves → how we measure.
      The page data comes from /api/cards/:cid/page (prebuilt for seed cards, built once for the rest). */
@@ -1745,22 +1703,9 @@
   const askPick = (q) => { const me = String(ME()?.email || '').toLowerCase(), ppl = (window.LIVE?.access?.team || []).filter((x) => x.email !== me);
     return ppl.length ? `<select class="jq-who" data-jq-person="${q.id}" aria-label="Who to ask"><option value="">Ask someone…</option>${ppl.map((x) => `<option value="${esc(x.email)}">${esc(x.name || x.email)}</option>`).join('')}</select>` : `<small>Invite your team to ask them</small>`; };
   const qBy = (by = '') => by === 'you' ? 'You' : by.startsWith('ai:') ? AGENT[by.slice(3)] || 'AI' : by.startsWith('teammate:') ? by.slice(9) : by === 'brew' ? 'ShopOS team' : by === 'learned' ? 'Learned check' : by === 'earlier' ? 'Earlier' : by;
-  const planHtml = (w) => {
-    const p = w.plan; if (!p) return '';
-    const open = p.questions.filter((q) => !q.answer).length, n = p.questions.length || 1;
-    return `<section class="jam-plan"><div class="jp-head"><h4>${ic('hand', 's14')}Jam plan</h4><span class="badge ${open ? 'warn' : 'ok'}">${open ? `${open} open` : 'Ready to share'}</span></div>
-      <p class="jp-goal"><small>Goal</small>${esc(p.goal)}</p>
-      ${w.chg ? `<p class="jp-chg">${ic(w.chg.team ? 'send' : 'zap', 's14')}<span>${esc(w.chg.actionLabel)} on ${esc(w.chg.target)}${w.chg.team ? `. ${esc(w.chg.teamWhy || 'It needs a person')}, so whoever ships it works from your brief${w.chg.money && w.chg.amount > 0 ? ` (about ${inrS(w.chg.amount)} a week)` : ''}.` : '. Brew drafts it; your team or the ShopOS team ships it from the shared brief.'}</span></p>` : ''}
-      <div class="jp-meter" title="${n - open} of ${n} answered"><i style="width:${Math.round(((n - open) / n) * 100)}%"></i></div>
-      <ol class="jq-list">${p.questions.map((q) => `<li class="jq${q.answer ? ' done' : ''}"><span class="jq-dot">${q.answer ? ic('check', 's14') : ''}</span><div><b>${esc(q.q)}</b>${q.answer ? `<p>${esc(q.answer)}<small>${esc(qBy(q.by))}${q.auto ? ' · answered itself' : ''}</small></p>`
-        : DP.answering === q.id ? `<form class="compose jq-f" data-jqf="${q.id}"><input placeholder="Your answer" autocomplete="off"><button aria-label="Save">${ic('up', 's16')}</button></form>`
-        : `<div class="jq-acts">${ownerChip(q.owner, w, q)}${q.asked ? `<small>Waiting on ${esc(ownerName(q.owner, w, q))}</small>` : REALQ && !['ai', 'brew'].includes(q.owner) ? askPick(q) : `<button class="linkbtn" data-jq-ask="${q.id}">${q.owner === 'ai' ? 'Suggest an answer' : `Ask ${esc(ownerName(q.owner, w, q))}`}</button>`}<button class="linkbtn" data-jq-ans="${q.id}">Answer it</button></div>`}</div></li>`).join('')}</ol>
-      <div class="jp-foot">${open > 1 && !REALQ ? `<button class="btn btn-ghost sm" data-jq-all>${ic('send', 's14')}Ask everyone</button>` : ''}<form class="compose jq-add" id="jq-add"><input placeholder="Add a question" autocomplete="off"><button aria-label="Add">${ic('up', 's16')}</button></form></div></section>`;
-  };
   document.addEventListener('change', async (e) => { const sel = e.target.closest?.('[data-jq-person]'); if (!sel || !sel.value || !DP?.w) return; sel.disabled = true;
     const r = await tapi('POST', `/api/work/${DP.w.id}/plan/ask`, { qid: sel.dataset.jqPerson, email: sel.value }); if (r.error) { sel.disabled = false; return toast(esc(r.error)); }
     putWork(r.work); repaintDetail(); toast(`${ic('send', 's16')}Asked. ${esc(sel.selectedOptions[0]?.textContent || 'They')} will get an email.`); });
-  const addBtn = (text, from) => `<button class="dp-add" data-add="${esc(text)}" data-from="${esc(from)}" title="Add to the brief" aria-label="Add to the brief">${ic('plus', 's14')}</button>`;
   // when the jam changes something on the left (a plan row, the Now band, an option, the measure, the draft preview),
   // that piece glows softly for a moment so you see what moved. Compared block by block, before and after the repaint
   const LEFT_BLOCKS = ['.cp-now-k', '.cp-now h2', '.cp-now-l', '.cp-plan > div', '.stepper', '.cp-t', '.cp-s', '.cp-lead', '.cp-stat', '.cp-tile', '.cp-panel > *', '.cp-rec p', '.cp-follows', '.cp-move', '.cp-measure > summary', '.cp-m-pt', '.cp-m-guard', '.rp-stats > div', '.jb-head', '.jb-pv', '.jb-row', '.jb-plan > *', '.jb-gaps', '.jb-next', '.cp-how-o'];
@@ -2317,7 +2262,10 @@
     location.replace(location.pathname); };
 
   let aiMode = 'mock';
-  api('/api/config').then((c) => { aiMode = c.ai || 'mock'; });
+  api('/api/config').then((c) => { aiMode = c.ai || 'mock';
+    /* the AI credit is out (ai.js pause): say so once per visit, rather than letting chats and drafts fail quietly */
+    let seen = false; try { seen = !!sessionStorage.getItem('brew-paused'); sessionStorage.setItem('brew-paused', c.paused ? '1' : ''); } catch {}
+    if (c.paused && !seen) { setTimeout(() => toastLong(`${ic('info', 's16')}Brew’s writing is paused for a while. Everything here still opens; new replies, drafts and rewrites wait until it’s back.`, 12000), 1500); } }).catch(() => {});
   /* ---------- the demo site (DEMO_MODE): a session per visitor, its accounts are demo accounts the server connects ---------- */
   const DSLUG = () => B.slug || BR;
   const clearLocal = () => { wiping = true; try { Object.keys(localStorage).filter((k) => k.startsWith(LSP())).forEach((k) => ls.del(k)); } catch (e) {} };
@@ -2487,7 +2435,6 @@
     const m = e.target.closest('[data-lmore]'); if (m) { LIB.open.add(m.dataset.lmore); VIEWS()[m.dataset.lmore.split(':')[0]](false); }
   });
 
-  let savedFilter = 'all';
   const renderSaved = () => {
     view = 'saved';
     const list = S.saved.map(byId).filter(Boolean); FEED = [];
@@ -2629,11 +2576,6 @@
     const m = e.target.closest('[data-lmenu]'); if (m) { e.preventDefault(); e.stopImmediatePropagation(); return libMenu(m, m.dataset.lmenu); }
     const u = e.target.closest('[data-lrestore]'); if (u) { e.stopImmediatePropagation(); $('.toast')?.remove(); const [k, id] = u.dataset.lrestore.split(':'); libAct.restore(k, id); }
   }, true);
-  const renderDone = () => {
-    view = 'done';
-    libShell('Briefs shared', 'Every brief shared this week, and who it went to.',
-      `<div class="jam-list">${S.log.map((l) => `<div class="jam-row static"><span class="jr-ph">${ic(l.icon || 'done', 's18')}</span><span class="jr-tx"><b>${esc(l.t)}</b><small>${esc(l.by)} · ${esc(l.when)}</small></span></div>`).join('') || `<div class="empty">${ic('done')}<b>Nothing shipped yet</b><span>Approve a card and it lands here.</span></div>`}</div>`);
-  };
   // Connectors: what's connected at a glance, then every source as a card. Status top right, what it unlocks, one clear action
   const renderConnectors = () => {
     view = 'connectors';
@@ -2667,12 +2609,13 @@
   const COL_MIN = 380, COL_MAX = 900, COL_SNAP = [380, 480, 600, 720, 840];
   let colW = 480, sigUnlocked = false;
   // the day-45 and review signals already arrive as live cards in this column; this is the one only Signals finds
+  /* DUMMY: a sample signal with made-up numbers, shown only with a simulated Shopify (DUMMY.md row 2); tagged Dummy in the card */
   const SIGS = [
-    { h: '642 people whose payment failed or whose order came back', why: 'Recovery messages are drafted, keyed to the reason the order failed.', n: '642', r: '511', ch: B.config?.country === 'IN' || B.sym === '₹' ? 'WhatsApp' : 'Email', when: '3h' }
+    { h: '642 people whose payment failed or whose order came back', why: 'A recovery message to draft in the jam, keyed to the reason the order failed.', n: '642', r: '511', ch: B.config?.country === 'IN' || B.sym === '₹' ? 'WhatsApp' : 'Email', when: '3h' }
   ];
   const SOURCES = ['shopify', 'whatsapp', 'klaviyo'];
   const sigLive = () => conn('shopify');
-  const sigCard = (s) => `<article class="sig-card"><div class="sig-top">${face('crm')}<b>CRM specialist</b><span class="when">· ${s.when}</span></div><hr class="sig-rule">
+  const sigCard = (s) => `<article class="sig-card is-dummy"><div class="sig-top">${face('crm')}<b>CRM specialist</b><span class="when">· ${s.when}</span><span class="dummy-tag" title="A sample signal: the numbers are made up in this prototype">Dummy</span></div><hr class="sig-rule">
       <div class="sig-main"><h3>${esc(s.h)}</h3><p>${esc(s.why)}</p><div class="sig-nums"><div><b>${s.n}</b><span>fit the rules</span></div><div><b>${s.r}</b><span>reachable today</span></div><div><b>${s.ch}</b><span>channel</span></div></div></div>
       <button class="sig-open" data-sig-open>${ic('person', 's16')}Open signal${ic('right', 's16')}</button></article>`;
   const srcRow = (id) => { const s = B.connectors[id]; return conn(id)
@@ -2680,7 +2623,7 @@
     : `<div class="src">${glyph(id, 34)}<span class="src-t"><b>${s.name}${s.optional ? ' <span class="src-opt">optional</span>' : ''}</b><span>${s.kind}</span></span><button class="src-btn" data-cx="${id}">Connect</button></div>`; };
   // one slim strip of sources: what is live, what one tap adds
   const sigStrip = () => { const need = ['shopify', 'whatsapp'].filter((id) => !conn(id)).map((id) => B.connectors[id].name);
-    return `<div class="sig-strip"><p>${need.length ? `${ic('plug', 's14')}Shopify is live. Connect ${need.join(' and ')} to message the people Signals finds.` : `<i class="pulse"></i>Reading Shopify and WhatsApp. New people land here as they qualify.`}</p>
+    return `<div class="sig-strip"><p>${need.length ? `${ic('plug', 's14')}Shopify is live. Connect ${need.join(' and ')} to see more of the people Signals finds.` : `<i class="pulse"></i>Reading Shopify and WhatsApp. New people land here as they qualify.`}</p>
       <div class="sig-pills">${SOURCES.map((id) => { const c = B.connectors[id]; return conn(id) ? `<span class="sig-pill is-on">${glyph(id, 16)}${esc(c.name)}${ic('check', 's14')}</span>` : `<button class="sig-pill" data-cx="${id}">${glyph(id, 16)}${esc(c.name)}${c.optional ? '<small>optional</small>' : ''}</button>`; }).join('')}</div></div>`; };
   const sigBody = () => {
     /* a real Shopify shows only what it really found (those arrive as live cards in this column), never the sample signal */
@@ -2837,7 +2780,6 @@
     fix: { tone: 'warn', icon: 'sparkles', tag: 'Needs a fix', btn: 'Fix it with AI', note: '' },
     confirm: { tone: 'warn', icon: 'check', tag: 'Confirm your checks', btn: 'Review my checks', note: '' }
   };
-  const STATE_TX = { jam: 'In a jam' };
   const authorName = (a = '') => a === 'you' ? 'You' : a.startsWith('ai:') ? AGENT[a.slice(3)] || 'AI' : a === 'deploy-team' ? 'ShopOS team' : a === 'learning' ? 'Learning' : a.startsWith('teammate:') ? a.slice(9) : a === 'brew' ? 'ShopOS team' : 'System';
   const showLearned = (arr) => { (arr || []).forEach((r, i) => setTimeout(() => toastLong(`${ic('sparkles', 's16')}<span><b>Learned:</b> ${esc(r.text)}</span> <button class="linkbtn" data-nav="learned">See it</button>`, 5200), i * 2600)); };
   let toastLT = null;
@@ -3522,15 +3464,6 @@
   };
   /* a post for X, LinkedIn, Reddit, Quora, a Facebook group or Pinterest: Brew copies it and opens the exact place; you post it.
      Nothing is posted into a community on anyone's behalf */
-  const postNow = async (ch, btn) => {
-    const p = ch.pkg || {}, w = (p.where || []).find((x) => /^https?:/.test(x.url || ''));
-    const text = [p.title && !/reply/i.test(p.platform || '') ? p.title : '', p.copy, (p.hashtags || []).join(' ')].filter(Boolean).join('\n\n');
-    let copied = false; try { await navigator.clipboard.writeText(text); copied = true; } catch {}
-    if (!copied) { try { const ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;left:-9999px'; document.body.appendChild(ta); ta.select(); copied = document.execCommand('copy'); ta.remove(); } catch {} }
-    if (w) window.open(w.url, '_blank', 'noopener');
-    toastLong(`${ic(copied ? 'check' : 'copy', 's16')}<span>${copied ? 'Copied.' : 'Copy the post from the studio.'} ${w ? `Paste it in ${esc(String(w.name).split(':')[0])} and post it yourself.` : 'Paste it where it goes and post it yourself.'} Brew never posts in communities for you.</span>`, 9000);
-    if (btn) btn.blur?.();
-  };
   const rxAct = async (act, ch, btn) => {
     const id = ch.id;
     if (act === 'open') { const w = WORK.items.find((x) => x.id === ch.workId) || (await tapi('GET', '/api/tenants/:t/work')).items?.find((x) => x.id === ch.workId); if (w) { putWork(w); openDetail({ ...RX.p, _work: w }, { jam: true }); } return; }
@@ -3737,14 +3670,6 @@
   function fmtDay(t) { return t ? new Date(t).toLocaleDateString([], { day: 'numeric', month: 'short' }) : ''; }
   function fmtWhen(t) { return t ? `${fmtDay(t)}, ${new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''; }
   // a move, read in the product: the same sections as the PDF
-  const mvBlock = (b) => { const t = (x) => esc(x).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
-    if (b.t === 'h3') return `<h4>${t(b.text)}</h4>`;
-    if (b.t === 'list') return `<${b.ordered ? 'ol' : 'ul'}>${(b.items || []).map((x) => `<li>${t(x)}</li>`).join('')}</${b.ordered ? 'ol' : 'ul'}>`;
-    if (b.t === 'table') return `<div class="mv-tw"><table><thead><tr>${(b.head || []).map((h) => `<th>${t(h)}</th>`).join('')}</tr></thead><tbody>${(b.rows || []).map((r) => `<tr>${r.map((c) => `<td>${t(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>${b.caption ? `<small>${t(b.caption)}</small>` : ''}</div>`;
-    if (b.t === 'diagram') return `<pre class="mv-dg">${esc(b.text)}</pre>`;
-    if (b.t === 'example') return `<div class="mv-ex"><small>${t(b.label || 'Worked example')}</small><b>${t(b.title || '')}</b><p>${t(b.body || '').replace(/\n/g, '<br>')}</p></div>`;
-    if (b.t === 'callout') return `<div class="mv-co"><b>${t(b.title || '')}</b><p>${t(b.text || '')}</p></div>`;
-    return `<p>${t(b.text || '')}</p>`; };
   // a move opens as its own page: #v=move&m=NN (back returns to the Moves page)
   const openMove = (n) => { MV.n = n; nav(`#v=move&m=${n}`, true, 'view', 'move'); renderMove(); };
   const renderMove = async () => {
@@ -4039,25 +3964,8 @@
   /* =========================================================
      Jam: one drawer, three tabs. AI · a colleague on Slack · the ShopOS team.
      ========================================================= */
-  const NEEDS_PERSON = /\b(shoot|photograph|model|influencer|creator|price|pricing|discount|contract|legal|call|meeting|new product|launch event|store visit|budget over|person|human|someone|doctor|dermatologist)\b/i;
   const closeJam = () => { $('#jam')?.remove(); $('#jam-scrim')?.remove(); };
   const colleagueFor = (p) => colleague(p?.sector === 'creatives' || p?.sector === 'visibility' ? 'brandm' : p?.sector === 'ads' ? 'perf' : p?.sector === 'storefront' || p?.sector === 'catalog' ? 'ops' : 'growth');
-  const SLACK_PUSH = GEN ? {
-    creatives: 'Love the angle. Is every number on it from our site? Legal will ask before it runs.',
-    ads: 'Numbers look right. Are we moving budget in small steps? Don’t want to reset learning before the sale.',
-    storefront: 'Fine by me. Can it go live on a quiet day so we can read the change cleanly?',
-    catalog: 'Yes. Which listing goes first, and is the stock there for it?',
-    visibility: 'Good. Keep the “as of” date in the first line so the AI tools quote it right.',
-    signals: 'Do it. Make sure people who returned an order are left out of the first send.'
-  } : {
-    creatives: 'Love the angle. Is the number written as “up to” with the 84 days? Legal will ask before it runs.',
-    ads: 'Numbers look right. Are we staying inside the +20% step? Don’t want to reset learning before Diwali.',
-    storefront: 'Fine by me. Does it go live before or after the rebrand redirects? I don’t want two page changes in one week.',
-    catalog: 'Yes. Can we push Amazon first and Blinkit after the stock-out clears?',
-    visibility: 'Good. Keep the “as of” date in the first line.',
-    signals: 'Do it. Make sure COD-returned customers are excluded from the first send.'
-  };
-  const newThread = (route, p) => { const j = { id: 'j' + Date.now(), route, cardId: p?.id || null, t: p ? cardOf(p).title : 'New jam', img: p?.images?.[0] || null, msgs: [], st: 'In progress', tone: 'info', when: 'Just now', last: '' }; S.jams.unshift(j); save(); return j; };
 
   const openJam = (ctx) => window.JamRoom.openFromCtx(ctx); // the jam room (jam-room.js)
 

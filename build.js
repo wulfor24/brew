@@ -291,17 +291,6 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     finally { x.running = false; await packs.put(slug, 'cost.json', { usd: +spentFor(slug).toFixed(3) }).catch(() => {}); setTimeout(() => drain(slug).catch((e) => log.warn('[rewrite] drain', e.message)), 0); /* learnings that arrived mid-build */ }
   }
 
-  async function makeZips(slug, m, profile) {
-    if (!m.pdf?.zipBuffer) return; // the two zips, like the hand-made set: 00-28 and 29-50
-    const st0 = await status(slug), name = String(profile.name || slug).replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '') || slug, zips = [];
-    for (const [lo, hi] of [[0, 28], [29, 50]]) {
-      const entries = [];
-      for (const [n, f] of Object.entries(st0.pdfs || {})) if (+n >= lo && +n <= hi) { const buf = await packs.get(slug, 'pdf/' + f); if (buf) entries.push({ name: f, data: buf }); }
-      if (!entries.length) continue;
-      const z = `${name}-moves-${String(lo).padStart(2, '0')}-${hi}.zip`; await packs.put(slug, 'pdf/' + z, m.pdf.zipBuffer(entries), 'application/zip'); zips.push(z);
-    }
-    await setStatus(slug, { zips });
-  }
   // a read that is already in the pack (a restart, or a brand opened again): play its real findings back, step by step
   async function replayRead(slug, findings) {
     if (!findings?.steps) return;

@@ -677,7 +677,6 @@ export function createRemix(o) {
     return w;
   };
   const brief = (ch) => ({ id: ch.id, team: !!(ch.money || ch.irreversible), teamWhy: ch.teamWhy || null, costLabel: ch.costLabel || null, actionLabel: ch.actionLabel, target: `${ch.target.name}${ch.target.conn ? ' · ' + ch.target.object : ''}`, money: ch.money, amount: ch.amount, scope: ch.scope.map((s) => ({ n: s.n, label: s.label })) });
-  const objectsFor = (ch, n) => n === 1 ? [ch.target.object] : Array.from({ length: n }, (_, i) => `${ch.target.object} ${i + 1}`);
   // the brief the ShopOS team works from: what, where, exactly what ships, what it costs, what can't be undone, who agreed
   // everything the team needs to act without asking: files, references, links, copy to paste, and what is still to be made
   const assetsFor = (t, ch) => {
@@ -715,23 +714,6 @@ export function createRemix(o) {
       money: ch.money ? `About ${inr(ch.amount)} a week` : 'No spend', undo: ch.irreversible ? `Can’t be undone: ${ch.irreversible}` : `Rollback: ${ch.rollback}`, angle: ch.angle || '',
       fields, assets: assetsFor(t, ch), thread: (ch.thread || []).map((m) => ({ who: m.from === 'you' ? 'You' : `${AGENT[ch.agent] || 'AI'} (studio)`, text: m.text, at: m.at, v: m.v || null })),
       notes: (ch.notes || []).map((n) => n.text), checks: (ch.myChecks || []).map((m) => ({ text: m.text, done: !!m.done })), studio: `#remix=${ch.cardId}/${ch.id}` }; };
-  const briefFor = (t, ch, w, wf, m) => {
-    const fields = fieldsFor(ch.family, ch.action).filter((f) => ch.pkg[f.k] != null && ch.pkg[f.k] !== '').map((f) => {
-      const v = ch.pkg[f.k]; return { label: f.label, pub: !!f.pub, value: f.type === 'rows' ? v.map((r) => f.cols.map((c) => r[c]).filter(Boolean).join(' · ')).join('\n') : Array.isArray(v) ? v.join('\n') : f.type === 'number' && /₹/.test(f.label) ? inr(v) : String(v) }; });
-    return {
-      title: `${ch.actionLabel} · ${ch.target.conn ? ch.target.name : ch.target.object}`, version: headOf(t, ch)?.n, why: ch.teamWhy, from: ch.before?.title,
-      what: ch.after.title, where: `${ch.target.name} · ${ch.target.object} · ${wf.scope.label}`, when: wf.schedule === 'now' ? 'As soon as it’s approved' : wf.schedule,
-      cost: ch.costLabel || (ch.money ? `About ${inr(ch.amount)} a week` : 'No spend'), undo: ch.irreversible ? `Can’t be undone: ${ch.irreversible}.` : `Rollback: ${ch.rollback}.`,
-      watch: wf.watch, fields, checks: ch.checks.filter((x) => x.ok && !x.soft).map((x) => x.k),
-      agreed: (w.plan?.questions || []).filter((q) => q.answer).map((q) => ({ q: q.q, a: q.answer, by: q.by })),
-      handoff: o.handoffPath && t.id ? `${o.handoffPath(t, w)}?full=1` : null, /* the read-only page; the bare /h/ link opens the jam */
-      jam: w.jamBrief || (w.doc ? { md: w.doc.md, missing: w.doc.missing } : null),
-      notes: (ch.notes || []).map((n) => n.text), myChecks: (ch.myChecks || []).map((m) => ({ text: m.text, done: !!m.done })),
-      assets: assetsFor(t, ch), studio: `#remix=${ch.cardId}/${ch.id}`,
-      steps: [`Check the brief against v${headOf(t, ch)?.n} in the studio`, ch.irreversible ? 'Confirm the audience and the send window one last time' : `Set up ${ch.target.object.toLowerCase()} on ${ch.target.name}`, ch.money ? 'Confirm the spend fits this week’s limit' : 'Ship it', `Turn on the watch rule: ${wf.watch.toLowerCase()}`, o.engine?.on(t) ? 'Report back in Brew: what went live, when, and anything that changed' : 'Mark it live in Brew'],
-      at: now(t)
-    };
-  };
 
   /* hooks from the feed service */
   const onWorkVersion = (t, w, v) => {

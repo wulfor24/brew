@@ -6,6 +6,7 @@
 import { makeVoice as vertexVoice, makeVideo as vertexVideo } from './media.js'; // Sloosh first once connected, then Vertex, then OpenAI (media.js)
 import { matchProduct } from './product-match.js';
 import crypto from 'node:crypto';
+import { safeFetch } from './reader/util.js'; // photo links reach only the public internet
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -46,7 +47,7 @@ export const DRAFT_RATIOS = RATIOS;
 export function createDrafts({ claudeTool, geminiImage, treg, launchBrowser, zipBuffer, photoAsync, photoFile, photoOf, catalogOf = () => null, brandName = () => '', cardOf, briefOf, cardBrief, seatLine, isMock, spend, clean, now, uid, say, save, AGENT, log = console }) {
   const keyOf = (s) => crypto.createHash('sha1').update(s).digest('hex').slice(0, 16);
   /* a store photo by URL (the catalog's own image), fetched once into tmp */
-  const fetchPhoto = async (u) => { const f = path.join(os.tmpdir(), 'brew-ph-' + keyOf(u) + '.jpg'); if (!fs.existsSync(f)) { const r = await fetch(u, { signal: AbortSignal.timeout(20e3) }); if (!r.ok) return null; fs.writeFileSync(f, Buffer.from(await r.arrayBuffer())); } return f; };
+  const fetchPhoto = async (u) => { const f = path.join(os.tmpdir(), 'brew-ph-' + keyOf(u) + '.jpg'); if (!fs.existsSync(f)) { const r = await safeFetch(u, { signal: AbortSignal.timeout(20e3) }); if (!r.ok) return null; fs.writeFileSync(f, Buffer.from(await r.arrayBuffer())); } return f; };
   const step = (t, w, d, text) => { d.step = text; save(t); };
 
   // what to make, and the words: one forced tool call

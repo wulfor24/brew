@@ -11,3 +11,4 @@ tools/
 test/
 .claude/
 .wt/
+.npm-cache/

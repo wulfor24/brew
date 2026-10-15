@@ -18,8 +18,6 @@ const unb64 = (x) => Buffer.from(String(x), 'base64url').toString('utf8');
 const esc = (x) => String(x ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 export const domainOf = (email) => String(email || '').toLowerCase().split('@')[1] || '';
 export const bareHost = (h) => String(h || '').toLowerCase().replace(/^[a-z]+:\/\//, '').replace(/[/?#].*$/, '').replace(/:\d+$/, '').replace(/^www\./, '');
-// the same organisation: equal, or one a subdomain of the other (shop.brand.com and brand.com)
-export const sameSite = (a, b) => { a = bareHost(a); b = bareHost(b); return !!a && !!b && (a === b || a.endsWith('.' + b) || b.endsWith('.' + a)); };
 export const freeMail = (email) => FREE.test(domainOf(email));
 /* shared platform domains: many brands live under one of these (brand.myshopify.com), so the parent never proves a brand */
 export const PLATFORM = /(^|\.)(myshopify\.com|shopify\.com|shop\.app|wixsite\.com|wix\.com|squarespace\.com|webflow\.io|vercel\.app|netlify\.app|github\.io|gitlab\.io|blogspot\.com|wordpress\.com|carrd\.co|framer\.website|framer\.app|notion\.site|google\.com|instagram\.com|facebook\.com|fb\.com|linktr\.ee|amazon\.[a-z.]+|etsy\.com|herokuapp\.com|pages\.dev|web\.app|firebaseapp\.com|bigcartel\.com|square\.site|ecwid\.com|dukaan\.app|mydukaan\.io|godaddysites\.com|weebly\.com|bio\.link|beacons\.ai)$/;

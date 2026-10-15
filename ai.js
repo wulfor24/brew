@@ -29,6 +29,10 @@ export const wellFormed = (x) => typeof x === 'string' ? (x.isWellFormed() ? x :
 const BILLING = /credit balance is too low|billing|insufficient.{0,20}(credit|funds|balance)/i;
 let billingOffUntil = 0;
 export const aiPaused = () => Date.now() < billingOffUntil;
+/* any Claude client (the jam's own in server.js too) reports a failure here: a billing one pauses every caller, and the
+   paused error is the same one call() throws, so callers and the UI can say so instead of answering with a template */
+export const billingError = () => Object.assign(new Error('AI credit is used up: paused until it is topped up'), { billing: true, mock: true });
+export const noteBilling = (e) => { if (!BILLING.test(String(e?.message || e?.error?.error?.message || ''))) return false; billingOffUntil = Date.now() + 15 * 60e3; return true; };
 export function createAI({ apiKey = process.env.ANTHROPIC_API_KEY, mock = process.env.AI_MOCK === '1', log = console } = {}) {
   const client = apiKey && !mock ? new Anthropic({ apiKey, timeout: 20 * 60e3, maxRetries: 3 }) : null;
   const meter = { usd: 0, calls: 0, byTag: {} };

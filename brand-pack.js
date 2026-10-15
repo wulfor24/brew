@@ -50,7 +50,6 @@ const fxFor = (FACTS) => {
   const fxDeep = (o) => Array.isArray(o) ? o.map(fxDeep) : o && typeof o === 'object' ? Object.fromEntries(Object.entries(o).map(([k, v]) => [k, fxDeep(v)])) : fx(o);
   return { fx, fxDeep };
 };
-const readJSON = (f, d) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return d; } };
 
 // a brand at runtime: what feed-service, research, live-watch, remix and the client read
 function finish(p) {

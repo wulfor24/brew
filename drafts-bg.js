@@ -19,6 +19,7 @@
 // bucket is made again, and a failed draft is retried with backoff instead of waiting a whole day.
 // Every picture a draft names is in the bucket before drafts/cards.json is written (genFlush), so any instance can serve it.
 import crypto from 'node:crypto';
+import { safeFetch } from './reader/util.js'; // photo links reach only the public internet
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -150,7 +151,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
   const photo = async (c, named = null) => {
     for (const rel of [named?.img, ...(c.images || []), c.img, ...(c.post?.media?.product?.images || [])].filter(Boolean)) {
       try {
-        if (/^https?:/.test(rel)) { const f = path.join(os.tmpdir(), 'brew-ph-' + sha(rel) + '.jpg'); if (!fs.existsSync(f)) { const r = await fetch(rel, { signal: AbortSignal.timeout(20e3) }); if (!r.ok) continue; fs.writeFileSync(f, Buffer.from(await r.arrayBuffer())); } return f; }
+        if (/^https?:/.test(rel)) { const f = path.join(os.tmpdir(), 'brew-ph-' + sha(rel) + '.jpg'); if (!fs.existsSync(f)) { const r = await safeFetch(rel, { signal: AbortSignal.timeout(20e3) }); if (!r.ok) continue; fs.writeFileSync(f, Buffer.from(await r.arrayBuffer())); } return f; }
         const f = photoAsync ? await photoAsync(rel) : null; if (f && fs.existsSync(f)) return f;
       } catch {}
     }
