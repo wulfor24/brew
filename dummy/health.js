@@ -14,7 +14,7 @@ export function healthFrom(p = {}) {
   const ring = (k, v, what, parts) => ({ k, v, read: true, what, parts: parts.map(([pk, pv, of]) => ({ k: pk, v: pv, of, note: 'Simulated' })), src: 'Simulated (Dummy)', dummy: true });
   const cr = around(live ? 62 : 38, 12), st = around(prods.length ? 58 : 45, 12) + (reviews ? 6 : 0), an = around(ai.of ? 30 + 40 * ((ai.named || 0) / Math.max(1, ai.of)) : 40, 10);
   const rings = [
-    ring('Creative', clamp(cr), live ? `From your ${live} live ads (simulated score)` : 'Simulated score', [['Volume', Math.round(cr * 0.3), 30], ['Hook variety', Math.round(cr * 0.3), 30], ['Formats', Math.round(cr * 0.25), 25]]),
+    ring('Creative', clamp(cr), live ? `From ${live} live ad versions in the Ad Library (simulated score)` : 'Simulated score', [['Volume', Math.round(cr * 0.3), 30], ['Hook variety', Math.round(cr * 0.3), 30], ['Formats', Math.round(cr * 0.25), 25]]),
     ring('Storefront', clamp(st), `${p.host || 'Your store'}: speed, checkout, photos, reviews (simulated score)`, [['Mobile speed', Math.round(st * 0.35), 35], ['Reaching checkout', Math.round(st * 0.15), 15], ['Photos per product', Math.round(st * 0.15), 15], ['Reviews on the site', Math.round(st * 0.15), 15]]),
     ring('AI answers', clamp(an), ai.of ? `Named in ${ai.named || 0} of ${ai.of} AI answers (score simulated)` : 'Simulated score', [['Unbranded questions', Math.round(an * 0.85), 85], ['Branded questions', Math.round(an * 0.15), 15]]),
   ];

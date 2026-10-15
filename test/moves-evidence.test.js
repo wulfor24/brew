@@ -57,8 +57,8 @@ test('the prompt sends the signal lines with the ledger, the timing and the real
   const L = signalLedger({ ...signals, today: '2026-10-14' });
   const p = eng.buildPrompt(51, { brand: { name: 'Comet' }, brief: { md: 'brief' }, profile: profileIN, ledger: [{ key: 'price.hero', v: '₹2,999', label: 'Hero price' }], signalLines: L, total: 58 });
   assert.match(p, /listen\.theme\.sizing \| 37 mentions/); assert.match(p, /listen\.theme\.sizing\.q1 \| Do these run small.*\| https:\/\/www\.reddit\.com/);
-  assert.match(p, /price\.hero \| ₹2,999/); assert.match(p, /MOVE 51 OF 58/); assert.match(p, /Check timings: Checks every week/);
-  assert.match(p, /Kicker \(fixed\): ANSWERS FROM LISTENING · MOVE 51 OF 58\n/); assert.doesNotMatch(p.split("# Depth and format exemplar")[0] + p.split("</exemplar>")[1], /OF 50\b/);
+  assert.match(p, /price\.hero \| ₹2,999/); assert.match(p, /Write Move 51 of 58 /); assert.match(p, /Check timings: Checks every week/);
+  assert.match(p, /Kicker \(fixed\): ANSWERS FROM LISTENING · MOVE 51\n/); assert.doesNotMatch(p.split("# Depth and format exemplar")[0] + p.split("</exemplar>")[1], /OF 50\b/);
 });
 
 test('new specs write under AI_MOCK with "How we measure" carrying the check timings', async () => {
@@ -70,7 +70,7 @@ test('new specs write under AI_MOCK with "How we measure" carrying the check tim
   for (const n of news) { const m = saved[n]; assert.ok(m, `move ${n} written`);
     const meas = m.sections.find((s) => s.kind === 'measure'), txt = meas.blocks.map((b) => b.text).join(' ');
     assert.ok(txt.includes(`Check timings:`) && txt.includes(timingLine(SPECS[n].timing).slice(0, 30)), `move ${n} timings: ${txt.slice(0, 160)}`);
-    assert.match(txt, /What to watch:/); assert.match(m.kicker, new RegExp(`MOVE ${n} OF \\d+$`)); assert.doesNotMatch(m.kicker, / OF 50$/); }
+    assert.match(txt, /What to watch:/); assert.match(m.kicker, new RegExp(`MOVE ${n}$`)); assert.doesNotMatch(m.kicker, / OF 50$/); }
   assert.match(saved[53].sections.find((s) => s.kind === 'measure').blocks[1].text, /Checks on day 1 and 3; decides on day 7/);
   assert.match(saved[0].title, /^[A-Z][a-z-]+ moves for Comet$/); assert.doesNotMatch(saved[0].title, /Fifty/);
   assert.equal(saved[0].stat, String(saved[0].meta.total));

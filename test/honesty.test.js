@@ -49,3 +49,11 @@ test('the festival is always the next one: it rolls to next year once the day ha
   const us = nextFestival('US', new Date('2026-11-28')); assert.equal(us.name, 'Black Friday'); assert.equal(us.date.slice(0, 10), '2027-11-26');
   assert.match(us.label, /2027$/, 'a date next year says the year');
 });
+
+test('saved moves and seeds read honestly: no "OF N" kicker, no watching promise, no cut-feature welcome', async () => {
+  const { brewFile } = await import('../brew-name.js');
+  const saved = JSON.stringify({ kicker: 'PRICING · MOVE 65 OF 64', body: 'What Brew will watch: listen.x. | WEEK | BREW SHIPS |', h: 'Fifty-one moves, turned into cards.', w: 'Heart it, jam on it, do it.' });
+  const out = brewFile('moves.json', Buffer.from(saved)).toString();
+  assert.match(out, /PRICING · MOVE 65"/); assert.match(out, /What to watch:/); assert.match(out, /BREW DRAFTS/);
+  assert.match(out, /Your moves, turned into cards\./); assert.match(out, /share the brief/); assert.doesNotMatch(out, /OF 64|Brew will watch|do it\./);
+});

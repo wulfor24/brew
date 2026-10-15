@@ -66,7 +66,7 @@ function baseSeed({ slug, host, name, tagline, colors, logo, mark, face, typeNam
     },
     lanes: L, laneImg: laneImg || {},
     intro: [
-      { c: dark, img: art[0] || logo, h: 'Fifty-one moves, turned into cards.' },
+      { c: dark, img: art[0] || logo, h: 'Your moves, turned into cards.' },
       { c: dark, img: art[1] || art[0] || logo, h: 'Each one moves a number.' },
       { c: dark, img: art[2] || art[0] || logo, h: 'Heart it, jam on it, share the brief.' }
     ],
