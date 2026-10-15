@@ -1336,13 +1336,17 @@ export function createFeedService(o) {
   /* a message to the people in the jam. @someone tags them: they join the jam and get an email right away */
   on('POST', '/api/work/:wid/message', async (b, t, p) => {
     const w = W(t, p.wid); if (!w) return { error: 'not found' }; const body = String(b.body || '').trim(); if (!body) return { error: 'Write something first.' };
-    const me0 = meOf(t), tags = (await tagsOf(t, w, b.mentions)).filter((x) => x.email !== me0?.email);
+    const me0 = meOf(t), EM = /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/;
+    /* an email nobody on the team has yet: tagging it invites them (they join on sign-in) and pulls them into this jam */
+    const fresh = [...new Set((Array.isArray(b.invite) ? b.invite : []).map((e) => String(e || '').toLowerCase().trim()).filter((e) => EM.test(e) && e !== me0?.email))].slice(0, 5); const invited = [];
+    if (fresh.length && me0 && o.inviteTo && reqOf(t)?.member) { for (const e of fresh) { if ((await tagsOf(t, w, [e])).length) continue; const r = await o.inviteTo(t.brandId || DEFAULT_BRAND, me0, e).catch((x) => ({ error: x.message })); if (r?.error) return { error: r.error }; invited.push(e); } }
+    const tags = (await tagsOf(t, w, [...(b.mentions || []), ...fresh])).filter((x) => x.email !== me0?.email);
     for (const x of tags) JAMS.join(w, x, 'tagged');
     say(t, w, { from: 'me', body, ...(tags.length ? { to: tags.map((x) => x.email) } : {}) });
     if (tags.length) mailEv(t, w, { kind: 'tagged', to: tags.map((x) => x.email), by: me0, text: body, id: w.thread[w.thread.length - 1].id });
     if (b.shopos) shoposMail(t, w, { why: 'tagged the ShopOS team', text: body });
     if (w.with?.kind === 'team' && process.env.DEMO_MODE === '1') { move(t, w, 'team', null); colleagueReply(t, w); }
-    return { work: jamOut(t, w), tagged: tags.map((x) => x.email) };
+    return { work: jamOut(t, w), tagged: tags.map((x) => x.email), invited };
   });
   /* give the jam to someone, or ask them for their OK on the version now (ask: work | approve); no email = nobody */
   on('POST', '/api/work/:wid/assign', async (b, t, p) => {

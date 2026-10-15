@@ -20,14 +20,16 @@
   const initials = (p) => (p?.name || p?.email || '?').replace(/@.*/, '').split(/[\s._-]+/).filter(Boolean).slice(0, 2).map((x) => x[0].toUpperCase()).join('') || '?';
   const pAv = (p, n = 24) => p?.pic ? `<img class="av av-img" src="${esc(p.pic)}" alt="" referrerpolicy="no-referrer" style="width:${n}px;height:${n}px">` : `<span class="av" style="--ac:hsl(${hue(p?.email)} 38% 42%);width:${n}px;height:${n}px">${esc(initials(p))}</span>`;
   /* everyone this jam can tag: the team, people invited to it, and this jam's guests; never yourself */
-  const realPeople = (w = W()) => { const me = myEmail(), seen = new Map(), add = (x, sub) => { const e = String(x.email || '').toLowerCase(); if (!e || e === me || seen.has(e)) return; seen.set(e, { k: e, email: e, name: x.name || e.replace(/@.*/, ''), sub, pic: x.pic || null, html: pAv({ ...x, email: e }, 20) }); };
+  const realPeople = (w = W()) => { const me = myEmail(), seen = new Map(), inJam = new Set((w?.people || []).map((x) => String(x.email).toLowerCase())),
+      add = (x, sub) => { const e = String(x.email || '').toLowerCase(); if (!e || e === me || seen.has(e)) return; const here = inJam.has(e);
+        seen.set(e, { k: e, email: e, name: x.name || e.replace(/@.*/, ''), sub: here ? `In this jam${sub ? ` · ${sub}` : ''}` : `${sub ? `${sub} · ` : ''}Gets an email to join`, inJam: here, pic: x.pic || null, html: pAv({ ...x, email: e }, 20) }); };
     (window.LIVE?.access?.team || []).forEach((x) => add(x, x.role === 'owner' ? 'Admin' : ''));
     (w?.people || []).forEach((x) => add(x, x.guest || x.how === 'guest' ? 'Guest' : ''));
     (window.LIVE?.access?.invited || []).forEach((e) => add({ email: e }, 'Invited'));
     return [...seen.values()]; };
   /* the people a message tags: every @Name in it that is someone on the list (longest name first) */
   const tagsIn = (text) => { const out = new Set(), list = realPeople().sort((a, b) => b.name.length - a.name.length); const low = ` ${text.toLowerCase()}`;
-    for (const x of list) { const n = `@${x.name.toLowerCase()}`; let i = low.indexOf(n); while (i >= 0) { const after = low[i + n.length]; if ((low[i - 1] === ' ' || low[i - 1] === '\n') && (!after || /[\s,.:;!?]/.test(after))) { out.add(x.email); break; } i = low.indexOf(n, i + 1); } }
+    for (const x of list) { if (low.includes(`@${x.email}`)) { out.add(x.email); continue; } const n = `@${x.name.toLowerCase()}`; let i = low.indexOf(n); while (i >= 0) { const after = low[i + n.length]; if ((low[i - 1] === ' ' || low[i - 1] === '\n') && (!after || /[\s,.:;!?]/.test(after))) { out.add(x.email); break; } i = low.indexOf(n, i + 1); } }
     return [...out]; };
 
   /* ---------- Markdown ⇄ the editable doc ---------- */
@@ -110,9 +112,17 @@
       <ul>${qs.map((q) => `<li class="${q.answer ? 'done' : ''}"><b>${esc(q.q)}</b>${q.answer ? `<p>${esc(q.answer)}</p>` : `<div class="jm-q-a">${q.asked ? `<span><span class="spin"></span>Asked ${esc(owner(q.owner, q))}</span>` : !DEMO && q.owner !== 'ai' ? `<button class="linkbtn" data-jq-who="${esc(q.id)}">Ask someone</button>${JM.askQ === q.id ? `<div class="jm-pick" role="menu">${realPeople(w).filter((x) => x.sub !== 'Invited').map((x) => `<button role="menuitem" data-jq-askp="${esc(q.id)}|${esc(x.email)}">${x.html}<b>${esc(x.name)}</b></button>`).join('') || '<small>Invite your team first: Team and access, in your account menu.</small>'}</div>` : ''}` : `<button class="linkbtn" data-jq-ask="${esc(q.id)}">Ask ${esc(owner(q.owner))}</button>`}<button class="linkbtn" data-jm-answer="${esc(q.id)}">Answer it</button></div>`}</li>`).join('')}</ul></details>`;
   };
   // the people the @ being typed could mean (none once a full name and a space are in)
-  const mentionMatches = () => { if (JM.noMention) return []; const m = JM.draft.match(/(^|\s)@([\w ]*)$/); if (!m) return []; const q = m[2].toLowerCase();
-    if (q.endsWith(' ') && mentionList().some((x) => x.name.toLowerCase() === q.trim())) return []; // already picked
-    return mentionList().filter((x) => x.name.toLowerCase().startsWith(q.trimStart())); };
+  const AT_RE = /(^|\s)@([\w .@+'-]*)$/, EMAIL = /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i;
+  /* the people the @ being typed could mean: by name, any word of a name, or email. A full email nobody on the team has is
+     offered as "invite and tag": they get an email, join the team on sign-in and land in this jam */
+  const atFilter = (q0) => { const q = q0.trimStart().toLowerCase(), all = mentionList();
+    if (q.endsWith(' ') && all.some((x) => x.name.toLowerCase() === q.trim() || x.email === q.trim())) return []; // already picked
+    const hit = all.filter((x) => !q || x.name.toLowerCase().startsWith(q) || x.name.toLowerCase().split(/\s+/).some((wd) => wd.startsWith(q)) || (x.email && x.email.startsWith(q)));
+    if (!DEMO && EMAIL.test(q.trim()) && !all.some((x) => x.email === q.trim())) hit.push({ k: 'new:' + q.trim(), email: q.trim(), name: q.trim(), fresh: true, sub: 'Not on the team yet · invite and tag', html: `<span class="av" style="width:20px;height:20px;border-radius:50%">${ic('plus', 's12')}</span>` });
+    return hit.sort((a, b) => (b.inJam ? 1 : 0) - (a.inJam ? 1 : 0)); };
+  const mentionMatches = () => { if (JM.noMention) return []; const m = JM.draft.match(AT_RE); return m ? atFilter(m[2]) : []; };
+  /* emails typed after @ that aren't anyone on the team yet: invited when the message goes */
+  const freshIn = (text) => { const known = new Set(realPeople().map((x) => x.email)); return [...new Set([...String(text).matchAll(/(^|\s)@([^\s@]+@[^\s@,;:!?]+\.[a-z]{2,})/gi)].map((m) => m[2].toLowerCase()))].filter((e) => !known.has(e) && e !== myEmail()); };
   const SHOPOS = { k: 'brew', name: 'ShopOS team', sub: 'Gets an email to join', html: '<span class="av pod-av" style="width:20px;height:20px">B</span>' };
   const mentionList = () => (DEMO ? [...A.B.colleagues.map((x) => A.colleague(x.id)).map((c) => ({ k: c.id, name: c.name, sub: c.role !== c.name ? c.role : '', html: avatar(c, 20) }))] : [...realPeople(), SHOPOS]);
   const shoposIn = (text) => /(^|\s)@shopos team(?=$|[\s,.:;!?])/i.test(text);
@@ -209,7 +219,7 @@
         ${questions(w)}${A.SPLIT ? draftsHtml(w) : ''}`
       : `<div class="jm-thread" id="jm-thread">${A.SPLIT && caseHtml(p, w) ? `<div class="jm-empty has-case">${caseHtml(p, w)}${msgs.length ? '' : altsHtml(p)}</div>` : ''}${msgs.length ? msgs.map((m) => msgHtml(m, w)).join('') : A.SPLIT && caseHtml(p, w) ? '' : `<div class="jm-empty"><b>What should change?</b><span>Type or talk. ${A.SPLIT ? 'The left side updates as you go.' : 'Everything agreed lands in the brief.'} @ brings in a teammate or the ShopOS team.</span>${altsHtml(p)}</div>`}${typingHtml(w)}${JM.busy ? `<div class="jm-m"><span class="jm-fav">${face(w?.agent || 'creative')}</span><div class="jm-mb"><div class="jm-bub"><span class="jm-typing"><i></i><i></i><i></i></span></div></div></div>` : ''}</div>`}
       </div>
-      <form class="jm-compose" id="jm-f">${(() => { const ms = mentionMatches(); if (!ms.length) return ''; JM.mi = Math.min(JM.mi || 0, ms.length - 1); return `<div class="jm-mentions" role="listbox">${ms.map((x, i) => `<button type="button" role="option" aria-selected="${i === JM.mi}" class="${i === JM.mi ? 'is-on' : ''}" data-jm-mention="${esc(x.name)}">${x.html}<b>${esc(x.name)}</b>${x.sub ? `<small>${esc(x.sub)}</small>` : ''}</button>`).join('')}</div>`; })()}
+      <form class="jm-compose" id="jm-f">${(() => { const ms = mentionMatches(); if (!ms.length) return ''; JM.mi = Math.min(JM.mi || 0, ms.length - 1); return `<div class="jm-mentions" role="listbox">${ms.map((x, i) => `<button type="button" role="option" aria-selected="${i === JM.mi}" class="${i === JM.mi ? 'is-on' : ''}" data-jm-mention="${esc(x.fresh ? x.email : x.name)}">${x.html}<b>${esc(x.name)}</b>${x.sub ? `<small>${esc(x.sub)}</small>` : ''}</button>`).join('')}</div>`; })()}
         <textarea id="jm-in" rows="1"${A.SPLIT ? ' data-nomic' : ''} placeholder="${shipped ? 'Ask for the next version, or @ someone…' : w?.with?.kind === 'team' ? `Reply to ${esc(w.with.name)}, or ask AI…` : A.SPLIT ? 'What should change?' : 'Ask AI to change the brief, or @ someone…'}" aria-label="Message">${esc(JM.draft)}</textarea>${A.SPLIT && window.Composer?.tools ? `<span class="jm-tools">${window.Composer.tools()}<span class="jm-tools-r">${window.Mic?.supported ? `<button type="button" class="jm-mic" data-cmp-talk aria-label="Talk instead of typing">${ic('mic', 's16')}</button>` : ''}<button class="jm-send" aria-label="Send" ${JM.busy ? 'disabled' : ''}>${ic('up', 's16')}</button></span></span>` : `<button class="jm-send" aria-label="Send" ${JM.busy ? 'disabled' : ''}>${ic('up', 's16')}</button>`}</form>
       ${A.SPLIT && window.Composer?.foot ? window.Composer.foot() : ''}${A.SPLIT ? '' : makeHtml(w)}${shipHtml(w, doc)}
     </div>`;
@@ -270,9 +280,10 @@
     const target = text.startsWith('@') ? mentionList().filter((x) => text.slice(1).toLowerCase().startsWith(x.name.toLowerCase()) && /^($|[\s,:])/.test(text.slice(1 + x.name.length))).sort((a, b) => b.name.length - a.name.length)[0] : null;
     JM.draft = ''; JM.tab = 'chat';
     /* a message that tags someone goes to them (and their inbox), not to AI */
-    const tags = DEMO ? [] : tagsIn(text), toShopos = !DEMO && shoposIn(text);
-    if (!DEMO && (tags.length || toShopos)) { JM.busy = 'team'; w.thread = [...(w.thread || []), { id: 'tmp', from: 'me', body: text, by: ME() }]; paint();
-      const r = await A.tapi('POST', `/api/work/${w.id}/message`, { body: text, mentions: tags, shopos: toShopos }); JM.busy = '';
+    const tags = DEMO ? [] : tagsIn(text), toShopos = !DEMO && shoposIn(text), invite = DEMO ? [] : freshIn(text);
+    if (!DEMO && (tags.length || toShopos || invite.length)) { JM.busy = 'team'; w.thread = [...(w.thread || []), { id: 'tmp', from: 'me', body: text, by: ME() }]; paint();
+      const r = await A.tapi('POST', `/api/work/${w.id}/message`, { body: text, mentions: tags, invite, shopos: toShopos }); JM.busy = '';
+      if (r.invited?.length && window.LIVE?.access) window.LIVE.access.invited = [...new Set([...(window.LIVE.access.invited || []), ...r.invited])]; /* they show in the @ list from now on */
       if (r.error) { JM.draft = text; toast(esc(r.error)); return paint(); }
       const names = [...(r.tagged || []).map((e) => realPeople().find((x) => x.email === e)?.name || e), ...(toShopos ? ['The ShopOS team'] : [])];
       if (names.length) toast(`${ic('send', 's16')}${esc(names.join(', '))} will get an email`); return take(r.work); }
@@ -384,7 +395,7 @@
     const qw = t.closest('[data-jq-who]'); if (qw) { JM.askQ = JM.askQ === qw.dataset.jqWho ? null : qw.dataset.jqWho; return paint(); }
     const qp = t.closest('[data-jq-askp]'); if (qp) { const [qid, email] = qp.dataset.jqAskp.split('|'); JM.askQ = null; const w = await ensureWork(); if (!w) return; const r = await A.tapi('POST', `/api/work/${w.id}/plan/ask`, { qid, email }); if (r.error) return toast(esc(r.error)); toast(`${ic('send', 's16')}Asked. ${esc(realPeople().find((x) => x.email === email)?.name || email)} will get an email.`); return take(r.work); }
     const qa = t.closest('[data-jm-answer]'); if (qa) { const q = (W()?.plan?.questions || []).find((x) => x.id === qa.dataset.jmAnswer); JM.answering = q?.id || null; JM.draft = q ? `Answer to “${q.q}”: ` : ''; paint(); const i = $('#jm-in'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); return; }
-    const mn = t.closest('[data-jm-mention]'); if (mn) { JM.draft = JM.draft.replace(/@[\w ]*$/, `@${mn.dataset.jmMention} `); paint(); const i = $('#jm-in'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); return; }
+    const mn = t.closest('[data-jm-mention]'); if (mn) { JM.draft = JM.draft.replace(/@[\w .@+'-]*$/, `@${mn.dataset.jmMention} `); paint(); const i = $('#jm-in'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); return; }
     if (t.closest('[data-jm-pick]')) { JM.pick = true; return paint(); }
     if (t.closest('[data-jm-unpick]')) { JM.pick = false; return paint(); }
     const sh = t.closest('[data-jm-ship]'); if (sh) { sh.disabled = true; return ship(sh.dataset.jmShip === 'team' ? 'team' : 'shopos', sh.hasAttribute('data-force')); }
@@ -398,7 +409,7 @@
     send(v);
   });
   document.addEventListener('input', (e) => {
-    if (e.target.id === 'jm-in') { const had = /(^|\s)@[\w ]*$/.test(JM.draft); JM.draft = e.target.value; JM.mi = 0; JM.noMention = false; grow(e.target); if (had !== /(^|\s)@[\w ]*$/.test(JM.draft) || /(^|\s)@[\w ]*$/.test(JM.draft)) paint(); return; }
+    if (e.target.id === 'jm-in') { const had = AT_RE.test(JM.draft); JM.draft = e.target.value; JM.mi = 0; JM.noMention = false; grow(e.target); if (had !== AT_RE.test(JM.draft) || AT_RE.test(JM.draft)) paint(); return; }
     const d = e.target.closest?.('[data-jm-doc]'); if (d) { clearTimeout(JM.saveT); JM.saveT = setTimeout(() => saveDoc(d), 900); }
   });
   document.addEventListener('keydown', (e) => {
@@ -449,15 +460,14 @@
   /* ---------- @ in every other composer (the jam page's chat #st-in, any textarea[data-at]): the same people as the
      jam pane, in a list that floats above the box (fixed, so no panel clips it). The jam pane's own box keeps its list */
   const AT = { box: null, i: 0 }, AT_BOX = '#st-in, textarea[data-at]';
-  const atQuery = (box) => { const m = box.value.slice(0, box.selectionEnd ?? box.value.length).match(/(^|\s)@([\w ]*)$/); if (!m) return null; const q = m[2].toLowerCase();
-    return q.endsWith(' ') && mentionList().some((x) => x.name.toLowerCase() === q.trim()) ? null : q; }; // a full name and a space: picked
+  const atQuery = (box) => { const m = box.value.slice(0, box.selectionEnd ?? box.value.length).match(AT_RE); return m ? m[2] : null; };
   const atClose = () => { $('.at-pop')?.remove(); AT.box = null; };
-  const atPaint = (box) => { const q = atQuery(box), ms = q == null ? [] : mentionList().filter((x) => x.name.toLowerCase().startsWith(q.trimStart())); if (!ms.length) return atClose();
+  const atPaint = (box) => { const q = atQuery(box), ms = q == null ? [] : atFilter(q); if (!ms.length) return atClose();
     AT.box = box; AT.i = Math.min(AT.i, ms.length - 1); let pop = $('.at-pop'); if (!pop) { pop = document.createElement('div'); pop.className = 'jm-mentions at-pop'; pop.setAttribute('role', 'listbox'); document.body.appendChild(pop); }
-    pop.innerHTML = ms.map((x, i) => `<button type="button" role="option" aria-selected="${i === AT.i}" class="${i === AT.i ? 'is-on' : ''}" data-at-pick="${esc(x.name)}">${x.html}<b>${esc(x.name)}</b>${x.sub ? `<small>${esc(x.sub)}</small>` : ''}</button>`).join('');
+    pop.innerHTML = ms.map((x, i) => `<button type="button" role="option" aria-selected="${i === AT.i}" class="${i === AT.i ? 'is-on' : ''}" data-at-pick="${esc(x.fresh ? x.email : x.name)}">${x.html}<b>${esc(x.name)}</b>${x.sub ? `<small>${esc(x.sub)}</small>` : ''}</button>`).join('');
     const r = (box.closest('.it-row') || box).getBoundingClientRect(), w = Math.min(Math.max(r.width, 220), 360, innerWidth - 16); /* as wide as the composer row */
     Object.assign(pop.style, { left: `${Math.max(8, Math.min(r.left, innerWidth - w - 8))}px`, width: `${w}px`, bottom: `${innerHeight - r.top + 6}px` }); };
-  const atPick = (name) => { const box = AT.box; if (!box) return; const end = box.selectionEnd ?? box.value.length, head = box.value.slice(0, end).replace(/@[\w ]*$/, `@${name} `);
+  const atPick = (name) => { const box = AT.box; if (!box) return; const end = box.selectionEnd ?? box.value.length, head = box.value.slice(0, end).replace(/@[\w .@+'-]*$/, `@${name} `);
     box.value = head + box.value.slice(end); atClose(); box.focus(); box.setSelectionRange(head.length, head.length); box.dispatchEvent(new Event('input', { bubbles: true })); };
   document.addEventListener('input', (e) => { if (e.target.matches?.(AT_BOX)) { AT.i = 0; atPaint(e.target); } });
   document.addEventListener('keydown', (e) => { if (!AT.box || e.target !== AT.box || !$('.at-pop')) return; const opts = $$('.at-pop [data-at-pick]'); // before the box's own Enter-to-send
@@ -492,8 +502,8 @@
   /* a message from the jam page that starts with @someone goes to them (Slack) or the Brew team, on the card's own jam */
   const mentionOf = (text) => (text.startsWith('@') ? mentionList().filter((x) => text.slice(1).toLowerCase().startsWith(x.name.toLowerCase()) && /^($|[\s,:])/.test(text.slice(1 + x.name.length))).sort((a, b) => b.name.length - a.name.length)[0] : null);
   const sendTo = async (p, text) => { text = String(text || '').trim();
-    if (!DEMO) { const tags = tagsIn(text), toShopos = shoposIn(text); if ((!tags.length && !toShopos) || !p) return false; let w = A.workOfCard(p.id); if (!w) { const { _work, _ch, ...card } = p; const r = await A.tapi('POST', '/api/work', { cardId: p.id, card, decided: A.S.decided?.[p.id] || null }); w = r.work; if (w) A.putWork(w); }
-      if (!w) { toast('That didn’t go through. Try again.'); return true; } const r = await A.tapi('POST', `/api/work/${w.id}/message`, { body: text, mentions: tags, shopos: toShopos }); if (r.work) A.putWork(r.work); toast(r.error ? esc(r.error) : `${ic('send', 's16')}Sent. They’ll get an email.`); return true; }
+    if (!DEMO) { const tags = tagsIn(text), toShopos = shoposIn(text), invite = freshIn(text); if ((!tags.length && !toShopos && !invite.length) || !p) return false; let w = A.workOfCard(p.id); if (!w) { const { _work, _ch, ...card } = p; const r = await A.tapi('POST', '/api/work', { cardId: p.id, card, decided: A.S.decided?.[p.id] || null }); w = r.work; if (w) A.putWork(w); }
+      if (!w) { toast('That didn’t go through. Try again.'); return true; } const r = await A.tapi('POST', `/api/work/${w.id}/message`, { body: text, mentions: tags, invite, shopos: toShopos }); if (r.work) A.putWork(r.work); toast(r.error ? esc(r.error) : `${ic('send', 's16')}Sent. They’ll get an email.`); return true; }
     const target = mentionOf(text); if (!target || !p) return false;
     let w = A.workOfCard(p.id); if (!w || ['measuring', 'result'].includes(w.stage)) { const { _work, _ch, ...card } = p; const r = await A.tapi('POST', '/api/work', { cardId: p.id, card, decided: A.S.decided?.[p.id] || null }); w = r.work; if (w) A.putWork(w); }
     if (!w) { toast('That didn’t go through. Try again.'); return true; }

@@ -160,11 +160,12 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
 
   /* ---------- invites: an owner names an email and its views; the link only works for that Google account ---------- */
   const inviteLink = (base, slug, email) => `${base}/join?t=${sign({ slug, email }, INVITE_DAYS * 86400, 'invite')}`;
-  async function invite(slug, by, email, seats, base) {
+  async function invite(slug, by, email, seats, base, quiet = false) { /* quiet: a jam tag invites them; its own email carries the jam link */
     const m = await getM(slug); seats = cleanSeats(seats);
     if (m.members.some((x) => x.email === email)) return { error: `${email} is already on the team.` };
     if (seats !== 'all' && !seats.length) return { error: 'Pick at least one view.' };
     await editM(slug, (mm) => { mm.invites = [...(mm.invites || []).filter((x) => x.email !== email), { email, seats, by: by.email, at: Date.now() }].slice(-50); mm.requests = mm.requests.filter((x) => x.email !== email); });
+    if (quiet) { log.log?.(`[auth] ${slug}: ${by.email} invited ${email} from a jam`); return { ok: true, sent: null, link: inviteLink(base, slug, email) }; }
     const name = await brandName(slug), link = inviteLink(base, slug, email), who = by.name || by.email, views = await seatWords(slug, seats);
     const subject = `${who} invited you to ${name} on Brew`;
     const sent = await mail(email, subject, emailHtml({ title: `${who} invited you to ${name}`, eyebrow: name, preheader: `You'll see ${name}'s feed as ${views}.`, body: para(`You'll see ${esc(name)}'s feed as <b style="color:#111">${esc(views)}</b>: the moves, numbers and work for your part of the business.`), cta: { href: link, label: `Join ${name}` }, after: para(`Sign in with Google as <b style="color:#111">${esc(email)}</b>. The link works for ${INVITE_DAYS} days.`, { muted: true, small: true }) }), `${subject}\n\nViews: ${views}\nJoin: ${link}\n\nSign in with Google as ${email}. The link works for ${INVITE_DAYS} days.`).catch(() => false);
