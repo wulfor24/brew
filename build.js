@@ -476,8 +476,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     } catch (e) { log.warn?.('[build] heal', slug, e.message); return null; }
     finally { healing.delete(slug); }
   }
-  async function checkData(slug) {
-    heal(slug).catch(() => {});
+  async function checkData(slug, { heal: doHeal = true } = {}) {
+    if (doHeal) heal(slug).catch(() => {});
     const p = await packs.getJSON(slug, 'profile.json'), L = await packs.getJSON(slug, 'ledger.json', []); if (!p) return { error: 'not read yet' };
     normalizeProfile(p);
     const prods = (p.catalog?.products || []).filter((x) => !NOT_PRODUCT.test(x.title || ''));

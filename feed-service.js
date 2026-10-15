@@ -1382,7 +1382,7 @@ export function createFeedService(o) {
     if (b.id) t.decided[p.cid] = b.id; else delete t.decided[p.cid]; if (w) w.decided = b.id || null;
     if (b.id) stepLearn(t, w || { id: 'card:' + p.cid, cardId: p.cid, decided: b.id, thread: [], versions: [], current: 1 }, 'decided');
     return { decided: t.decided }; });
-  on('GET', '/api/tenants/:id/share', async (b, t) => ({ token: shareToken(t.id) }));
+  on('GET', '/api/tenants/:id/share', async (b, t, p, q) => ({ token: shareToken(t.id, q?.get?.('wid') || null) }));
   on('GET', '/api/work/:wid/handoff', async (b, t, p, q) => { const w = W(t, p.wid); if (!w) return { error: 'not found' }; const x = await HO.build(t, w, { base: q.get('base') || undefined, changeId: q.get('ch') || undefined }); return { handoff: x, text: HO.text(x, q.get('to') || 'whatsapp') }; });
   /* what Brew has learned that bears on this card's pick: the brand (taste rules from edits, past results)
      and this person (how they decided before, hearts, "fewer", their seat). Short lines, newest evidence first. */
@@ -1423,6 +1423,16 @@ export function createFeedService(o) {
       t.lastSeen = Date.now(); tenants.set(t.id, t); log.log?.(`[store] loaded ${t.id}`); return t;
     });
   };
+  /* jam guests: people who signed in through a shared jam link. They may act on that jam (its work item, the studio change
+     linked to it, its card's remix) and nothing else; they are never members, so private moves, memory and the team stay closed */
+  const guestOk = (t, email, path) => {
+    const g = t.guests?.[String(email).toLowerCase()]; if (!g?.wids?.length) return false;
+    const jams = (t.work || []).filter((w) => g.wids.includes(w.id)), cards = new Set(jams.map((w) => w.cardId).filter(Boolean));
+    let m = path.match(/^\/api\/work\/([^/]+)(\/|$)/); if (m) return g.wids.includes(m[1]);
+    m = path.match(/^\/api\/changes\/([^/]+)(\/|$)/); if (m) { const ch = t.changes?.[m[1]]; return !!ch && (g.wids.includes(ch.workId) || cards.has(ch.cardId)); }
+    m = path.match(/^\/api\/cards\/([^/]+)\/(remix|batch|image|page|moves|learned|brief)(\/|$)/); if (m) return cards.has(decodeURIComponent(m[1]));
+    return false;
+  };
   /* the writes a demo-mode visitor may still make: none of them calls a model or makes an asset */
   const DEMO_OK = /^\/api\/(tenants|work|tenants\/[^/]+\/(ready|clock|events|pin|cards|notes\/(clear|read)|stories\/[^/]+\/seen|deck-layout|state|learning\/.+)|cards\/[^/]+\/(feedback|decided)|work\/[^/]+\/(decided|discard|restore|pick|version|approve|reopen|live|edit|jb\/move|draft\/[^/]+\/drop)|changes\/[^/]+\/(open|discard|restore|pick|notes|edit|undo)|jams\/[^/]+\/whatsapp)$/;
   // every request runs inside its brand: the tenant's brand, or (creating one) the brand the page was opened for
@@ -1430,7 +1440,7 @@ export function createFeedService(o) {
     if (!/^\/(h\/|api\/(share|tenants|cards|jams|work|changes))/.test(u.pathname)) return false;
     let tid = null;
     const hm0 = u.pathname.match(/^\/h\/([\w~-]+)$/), sm0 = u.pathname.match(/^\/api\/share\/([\w~-]+)$/);
-    if (hm0) tid = parseToken(hm0[1])?.tid; else if (sm0) tid = parseShare(sm0[1]); else tid = u.pathname.match(/^\/api\/tenants\/(t_[a-f0-9]+)/)?.[1] || req.headers['x-tenant'];
+    if (hm0) tid = parseToken(hm0[1])?.tid; else if (sm0) tid = parseShare(sm0[1])?.tid; else tid = u.pathname.match(/^\/api\/tenants\/(t_[a-f0-9]+)/)?.[1] || req.headers['x-tenant'];
     const t0 = tid && /^t_[a-f0-9]+$/.test(tid) ? await getTenant(tid) : null;
     const slug = t0?.brandId || (u.pathname === '/api/tenants' ? (u.searchParams.get('brand') || req.headers['x-brand']) : null) || DEFAULT_BRAND;
     const br = await packs.load(slug) || await packs.load(DEFAULT_BRAND);
@@ -1438,7 +1448,14 @@ export function createFeedService(o) {
     const viewer = br.kind === 'generated' ? await viewerOf(req, br.slug).catch(() => null) : null;
     /* demo mode: someone who may not make fresh work here (another domain, not invited) keeps the feed, cards and layout, but no
        route that writes new work runs for them: only the harmless writes below (seen, pinned, feedback, layout, picking a version) */
-    const gen = o.genOk ? await o.genOk(req, br.slug).catch(() => false) : true;
+    let gen = o.genOk ? await o.genOk(req, br.slug).catch(() => false) : true;
+    /* a guest (signed in through a shared jam link) takes part in that jam only: its work item, its studio change, its card */
+    const guestJam = !gen && t0 && viewer?.email && guestOk(t0, viewer.email, u.pathname);
+    if (guestJam) gen = true;
+    // someone looking at a shared jam without signing in: signing in is how they take part
+    if (!gen && req.method !== 'GET' && !viewer?.email && t0 && /^\/api\/work\/([^/]+)\//.test(u.pathname) && (t0.work || []).some((w) => u.pathname.startsWith(`/api/work/${w.id}/`))) { send(res, 401, { error: 'Sign in to take part in this jam.', signin: true, jam: true }); return true; }
+    // a guest of the shared jam changes nothing else in the team's workspace (no new jams, no layout, no feedback)
+    if (!gen && req.method !== 'GET' && viewer?.email && t0?.guests?.[String(viewer.email).toLowerCase()]) { send(res, 403, { error: 'As a guest you can work on the shared jam only. Ask the team to invite you for the rest.', guest: true }); return true; }
     if (!gen && req.method !== 'GET' && !DEMO_OK.test(u.pathname)) { send(res, 403, { error: `Demo mode: sign in with your work email${viewer?.host ? ` at ${viewer.host}` : ''} to make this.`, demo: true, host: viewer?.host || null }); return true; }
     if (gen && t0) t0.lastGen = Date.now();
     if (gen && br.kind === 'generated' && req.method === 'GET' && /\/feed$/.test(u.pathname)) o.onOpen?.(br.slug); // the social scheduler and background drafts spend only on brands their team opens
@@ -1458,11 +1475,12 @@ export function createFeedService(o) {
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' }); res.end(HO.html(x)); return true;
     }
     const sm = u.pathname.match(/^\/api\/share\/([\w~-]+)$/);
-    if (sm && req.method === 'GET') { const tid = parseShare(sm[1]); const t = tid && await getTenant(tid);
+    if (sm && req.method === 'GET') { const tok = parseShare(sm[1]); const t = tok && await getTenant(tok.tid);
       if (!t) { send(res, 404, { error: 'This link has expired.' }); return true; }
-      const j = o.shareJoin ? await o.shareJoin(req, t.brandId).catch(() => ({ ok: true })) : { ok: true };
-      if (j.signin) { send(res, 401, { error: 'Sign in to open this jam.', signin: true }); return true; }
-      send(res, 200, { joined: !!j.joined, tenant: t.id, viewer: t.viewer, conn: t.conn, pro: t.plan === 'pro', decided: t.decided || {} }); return true; }
+      /* anyone with the link can look. Signed in, a person who isn't on the team becomes a guest of that one jam */
+      let guest = false; const email = viewer?.email ? String(viewer.email).toLowerCase() : null;
+      if (email && tok.wid && !viewer?.member && !viewer?.gen && W(t, tok.wid)) { const g = ((t.guests ||= {})[email] ||= { name: viewer.name || null, at: Date.now(), wids: [] }); if (!g.wids.includes(tok.wid)) { g.wids.push(tok.wid); store?.save(t); } guest = true; }
+      send(res, 200, { guest, signedIn: !!email, jam: tok.wid || null, tenant: t.id, viewer: t.viewer, conn: t.conn, pro: t.plan === 'pro', decided: t.decided || {} }); return true; }
     if (!/^\/api\/(tenants|cards|jams|work|changes)/.test(u.pathname)) return false;
     for (const r of ROUTES) {
       if (r.method !== req.method) continue; const m = u.pathname.match(r.re); if (!m) continue;

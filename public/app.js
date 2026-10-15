@@ -176,6 +176,7 @@
     try {
       const r = await fetch(p.replace(':t', TID), { method, headers: { 'content-type': 'application/json', 'x-tenant': TID, ...(window.Composer?.headers() || {}) }, body: body ? JSON.stringify(body) : undefined }); // the jam's model and memory choice
       const j = await r.json().catch(() => ({}));
+      if (j?.signin && j.jam) { toast('Sign in to take part in this jam. Taking you there…'); setTimeout(() => { location.href = `/auth/google?next=${encodeURIComponent(location.pathname + location.search + location.hash)}`; }, 900); return j; }
       if (refused(j)) demoSheet(j.host);
       if (r.status === 404 && j.error === 'unknown tenant' && retry) { await ensureTenant(true); return tapi(method, p, body, false); }
       return j;
@@ -4103,7 +4104,8 @@
     TID = r.tenant; ls.set(`${LSP()}tenant`, TID); SHARE = tok;
     S.onboarded = true; if (r.viewer) S.viewer = { ...S.viewer, ...r.viewer }; S.conn = { ...(r.conn || {}) }; S.pro = !!r.pro; S.spendOk = !!r.spendOk; S.decided = { ...(r.decided || {}) };
     lastSync = stateKey(); ls.set(KEY, JSON.stringify(S));
-    setTimeout(() => toast(`${ic('person', 's16')}You’re in the shared ${B.brand.name} workspace`), 900); };
+    /* anyone can look; signing in makes them a guest of this one jam (never the whole team) */
+    setTimeout(() => toast(r.guest ? `${ic('person', 's16')}You’re in this jam as a guest. You can chat, edit the brief and make drafts.` : r.signedIn ? `${ic('person', 's16')}You’re viewing ${esc(B.brand.name)}’s shared jam` : `${ic('person', 's16')}You’re viewing a shared jam. Sign in to take part.`), 900); };
   // real connected accounts (live.js) replace the demo numbers before anything renders
   if (window.BREW_DEMO && !LANDING) { document.body.insertAdjacentHTML('beforeend', `<button class="demo-pill" type="button" title="Demo controls (press .)">${ic('sliders', 's14')}Demo</button>`); $('.demo-pill').onclick = () => openDemo(); }
   Promise.resolve(window.LIVE_P).catch(() => null).then(() => { window.LiveConn?.overlay(B, S); fitSeat(); save();

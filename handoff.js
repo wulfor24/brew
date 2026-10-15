@@ -8,23 +8,30 @@ import { B } from './brand-ctx.js';
 // - text(ctx): the WhatsApp/Slack message, a full summary plus the link to the page
 import crypto from 'node:crypto';
 
-const SECRET = crypto.createHash('sha256').update('brew-handoff:' + (process.env.HANDOFF_SECRET || process.env.ANTHROPIC_API_KEY || 'local')).digest('hex');
-const sign = (tid, wid) => crypto.createHmac('sha256', SECRET).update(`${tid}/${wid}`).digest('base64url').slice(0, 12);
+/* links are signed with HANDOFF_SECRET; links signed before it was set (with the Anthropic key) still open, so rotating the
+   Anthropic key no longer breaks shared briefs once HANDOFF_SECRET is set */
+const KEYS = [...new Set([process.env.HANDOFF_SECRET, process.env.ANTHROPIC_API_KEY, 'local'].filter(Boolean))].map((k) => crypto.createHash('sha256').update('brew-handoff:' + k).digest('hex'));
+const signWith = (key, tid, wid) => crypto.createHmac('sha256', key).update(`${tid}/${wid}`).digest('base64url').slice(0, 12);
+const sign = (tid, wid) => signWith(KEYS[0], tid, wid);
+const signed = (sig, tid, wid) => typeof sig === 'string' && KEYS.some((k) => { const want = Buffer.from(signWith(k, tid, wid)), got = Buffer.from(sig); return want.length === got.length && crypto.timingSafeEqual(want, got); });
 const optMeasure = (m) => `${m.metric}${m.where ? ` (${m.where})` : ''}, ${m.target || 'target set with you before go-live'}, read on day ${m.window}${m.guard ? `. Stop if: ${m.guard}` : ''}`;
 export const handoffPath = (t, w) => `/h/${t.id}~${w.id}~${sign(t.id, w.id)}`;
 /* the jam itself, as the app routes it: <brand>#remix=<card>/<change> opens this card's studio on this change, the latest
    version and state; the share token opens the same workspace. /h/<token> (the old read-only page) now redirects here */
 export const jamPath = (t, w, chId) => {
-  const slug = t.brandId && t.brandId !== 'brew-sample' ? t.brandId : '', tok = `&s=${shareToken(t.id)}`;
+  const slug = t.brandId && t.brandId !== 'brew-sample' ? t.brandId : '', tok = `&s=${shareToken(t.id, w.id)}`;
   if (!w.cardId || !t.cards?.get?.(w.cardId)) return `/${slug}#jam=${w.id}${tok}`;
   const mine = (c) => c && c.cardId === w.cardId, chs = Object.values(t.changes || {}).filter(mine);
   const ch = [t.changes?.[chId], t.changes?.[w.changeId]].find(mine) || chs.find((c) => c.workId === w.id) || chs.sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0))[0];
   return `/${slug}#remix=${encodeURIComponent(w.cardId)}${ch ? `/${ch.id}` : ''}${tok}`;
 };
-// a workspace share token: opens the same tenant (the same live state) in another browser
-export const shareToken = (tid) => `${tid}~${sign(tid, 'share')}`;
-export const parseShare = (tok) => { const [tid, sig] = String(tok || '').split('~'); return tid && sig && sig === sign(tid, 'share') ? tid : null; };
-export const parseToken = (tok) => { const [tid, wid, sig] = String(tok || '').split('~'); return tid && wid && sig && sig === sign(tid, wid) ? { tid, wid } : null; };
+// a share token opens the same workspace (the same live state) in another browser. Anyone with it can look; signing in
+// lets them take part in that one jam (wid), never the brand's whole team. Old tokens (no jam) only let people look.
+export const shareToken = (tid, wid = null) => wid ? `${tid}~${wid}~${sign(tid, `share:${wid}`)}` : `${tid}~${sign(tid, 'share')}`;
+export const parseShare = (tok) => { const p = String(tok || '').split('~');
+  if (p.length === 3) { const [tid, wid, sig] = p; return tid && wid && signed(sig, tid, `share:${wid}`) ? { tid, wid } : null; }
+  const [tid, sig] = p; return tid && sig && signed(sig, tid, 'share') ? { tid, wid: null } : null; };
+export const parseToken = (tok) => { const [tid, wid, sig] = String(tok || '').split('~'); return tid && wid && sig && signed(sig, tid, wid) ? { tid, wid } : null; };
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const STAGE = { drafting: 'Drafting', team: 'With the team', brew: 'With the ShopOS team', needs_you: 'Needs your yes', ready: 'Ready to ship', deploying: 'Shipping', measuring: 'Live, measuring', result: 'Result in' };

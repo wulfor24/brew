@@ -443,13 +443,9 @@ let connectors = null;
 /* DUMMY: connected accounts are simulated (connectors/sim.js, from the brand's real read). The real build needs OAuth, a token vault and
    per-platform syncs (see DUMMY.md). Connecting only ever touches the simulated account. */
 connectors = createConnectors({ packs, auth, builder, log: console, onLive: (slug) => { MEMO.clear(); feedSvc?.refreshLive(slug).catch(() => {}); } });
-/* a shared jam link works only for someone signed in: they join the brand's team with every view (the link is the invite), so they can chip in.
-   Brew's own people are already in; an unclaimed brand has no team to join yet */
-const shareJoin = async (req, slug) => { const u = auth.user(req); if (!auth.signinOn()) return { ok: true }; if (!u) return { signin: true };
-  if (!slug || auth.isAdmin(u) || await auth.isMember(slug, u)) return { ok: true };
-  const m = await auth.getMembers(slug); if (m.owner) { await auth.addMember(slug, u, 'member', 'Joined from a shared link', 'all'); MEMO.clear(); }
-  return { ok: true, joined: !!m.owner }; };
-feedSvc = createFeedService({ shareJoin, onOpen: (slug) => { social.opened(slug); draftsBg.opened(slug); builder.heal?.(slug).then((ch) => { if (ch?.length) { packs.drop(slug); loadBrand(slug).catch(() => {}); } }).catch(() => {}); }, PUB, claudeJSON,  globalPacks: packs, claudeTool, cardBrief, mockVariants, geminiImage: imageGen, treg, launchBrowser, zipBuffer, photoAsync, isMock: () => MOCK, spend, BANNED, clean, store, packs: brandPacks, builder, photoFile, learnings,
+/* a shared jam link: anyone can look; signing in makes a person a guest of that one jam (feed-service guestOk), never a
+   member of the brand's team. Team access comes only from an owner's invite or the brand's work email (auth.js) */
+feedSvc = createFeedService({ onOpen: (slug) => { social.opened(slug); draftsBg.opened(slug); builder.heal?.(slug).then((ch) => { if (ch?.length) { packs.drop(slug); loadBrand(slug).catch(() => {}); } }).catch(() => {}); }, PUB, claudeJSON,  globalPacks: packs, claudeTool, cardBrief, mockVariants, geminiImage: imageGen, treg, launchBrowser, zipBuffer, photoAsync, isMock: () => MOCK, spend, BANNED, clean, store, packs: brandPacks, builder, photoFile, learnings,
   /* Demo Mode: a tour session reads the store live while the visitor watches (demo-routes.js session flow) */
   liveReadFor: DEMO ? async (slug) => (await packs.getJSON(slug, 'private/demo/session.json', null))?.flow === 'onboarding' : null,
   viewerOf, genOk, liveFor: (slug, member) => connectors.forViewer(slug, member),
@@ -472,6 +468,8 @@ const brandRoutes = async (req, res, u) => {
   // What Brew learned → What your team told Brew: the goals, beliefs and facts read from the calls, notes and emails the team added
   const tm = u.pathname.match(/^\/api\/brands\/([a-z0-9-]+)\/told$/);
   if (tm && req.method === 'GET') { const slug = tm[1]; if (blocked(slug)) return send(res, 404, { error: 'unknown brand' }), true;
+    /* what the team told Brew (pasted call notes, emails): the brand's team only */
+    if (auth.signinOn() && process.env.DEMO_MODE !== '1' && !(await viewerOf(req, slug)).member) return send(res, 200, { told: null, team: true }), true;
     const L = await packs.getJSON(slug, 'learned.json', null).catch(() => null);
     return send(res, 200, { told: L ? { ...briefView(L), sources: (L.sources || []).map(({ label, at, kind }) => ({ label, at, kind })) } : null }), true; }
   // What Brew learned → Heard: what listening counted and quoted, for any brand that has it (empty for the rest)
@@ -488,7 +486,7 @@ const brandRoutes = async (req, res, u) => {
     const W = createListenWatch({ slug, packs, treg, ai, log: console }), qp = (k) => u.searchParams.get(k) || undefined;
     if (what === 'items' && req.method === 'GET') return send(res, 200, await W.itemsView({ src: qp('src'), mode: qp('mode'), theme: qp('theme'), intent: qp('intent'), q: qp('q'), offset: +qp('offset') || 0, limit: +qp('limit') || 60 })), true;
     if (what === 'history' && req.method === 'GET') return send(res, 200, await W.history({ days: +qp('days') || 90 })), true;
-    if (what === 'asked' && req.method === 'POST') { const v = await viewerOf(req, slug); if (v.claimed && !v.member) return send(res, 403, { error: 'Only the brand team can add asked threads.' }), true;
+    if (what === 'asked' && req.method === 'POST') { const v = await viewerOf(req, slug); if (!(v.member || v.gen) || (auth.signinOn() && !v.email)) return send(res, 403, { error: 'Only the brand team can add asked threads.', team: true }), true;
       const b = await readBody(req); const r = await W.addAsked({ moveId: b.moveId, url: b.url, platform: b.platform, postedAt: b.postedAt }); forgetSocial(slug); return send(res, r.error ? 400 : 200, r), true; }
     if (what === 'asked' && req.method === 'GET') return send(res, 200, { asked: (await packs.getJSON(slug, 'listen/asked.json', null).catch(() => null)) || [] }), true;
     return send(res, 405, { error: 'method not allowed' }), true; }
@@ -511,7 +509,7 @@ const brandRoutes = async (req, res, u) => {
   /* the fact sheet: anyone may read the public sheet; members also see their connected facts; on a claimed brand only its team edits */
   const fm = u.pathname.match(/^\/api\/brands\/([a-z0-9-]+)\/facts$/);
   if (fm) { const slug = fm[1]; if (blocked(slug) || !(await packs.getJSON(slug, 'status.json', null))) return send(res, 404, { error: 'unknown brand' }), true;
-    const fv = await viewerOf(req, slug), canEdit = !fv.claimed || fv.member;
+    const fv = await viewerOf(req, slug), canEdit = !!fv.member || (!fv.claimed && !!fv.gen && (!auth.signinOn() || !!fv.email)); // the team, or the brand's own work email before it is claimed
     if (req.method === 'GET') return send(res, 200, await factsDesk.view(slug, { member: fv.member, canEdit })), true;
     if (req.method !== 'POST') return send(res, 405, { error: 'method not allowed' }), true;
     if (!canEdit) return send(res, 403, { error: 'Only this brand’s team can change its facts. Ask them for access.', team: true }), true;
@@ -541,7 +539,7 @@ const brandRoutes = async (req, res, u) => {
     return send(res, 200, r), true; }
   if (what === 'retry' && req.method === 'POST') return send(res, 200, await builder.retry(slug)), true;
   if (what === 'pro' && req.method === 'POST') { const me = auth.user(req); return send(res, 200, await builder.goPro(slug, { by: me?.email || v.email || null })), true; } // the paused build carries on to every move
-  if (what === 'check' && req.method === 'GET') return send(res, 200, await builder.checkData(slug)), true;
+  if (what === 'check' && req.method === 'GET') return send(res, 200, await builder.checkData(slug, { heal: !auth.signinOn() || !!auth.user(req) })), true; // a paid repair of the saved read only for someone signed in
   if (what === 'check' && req.method === 'POST') { const g = await signGate(); if (g) return send(res, 401, g), true; const b = await readBody(req); return send(res, 200, await builder.applyCheck(slug, b)), true; }
   if (what === 'moves') { const p = await loadBrand(slug); const pm = v.member ? await packs.getJSON(slug, 'private/moves.json', {}) : {}, ms = { ...(p?.moveDocs || {}), ...pm };
     const stale = Object.fromEntries(Object.entries((await packs.getJSON(slug, 'updates.json', null))?.stale || {}).filter(([, x]) => v.member || !x.private)), ppdf = v.member ? await packs.getJSON(slug, 'private/pdfs.json', {}) : {};
@@ -650,7 +648,8 @@ async function serve(req, res, u) {
     if (await movesRoutes(req, res, u)) return; // moves on a cadence: refresh, cadence state
     if (await brandRoutes(req, res, u)) return;
     if (await brandFiles(req, res, u)) return;
-    if (req.method === 'POST' && u.pathname === '/api/transcribe') return await transcribe(req, res);
+    /* the mic (OpenAI transcription, paid): signed-in people only */
+    if (req.method === 'POST' && u.pathname === '/api/transcribe') { if (auth.signinOn() && process.env.DEMO_MODE !== '1' && !auth.user(req)) return send(res, 401, { error: 'Sign in to use the mic.', signin: true }), true; return await transcribe(req, res); }
     if (await feedSvc.handle(req, res, u)) return;
     // everything else under /api runs for the brand the page was opened for (x-brand)
     const br = await loadBrand(String(req.headers['x-brand'] || DEFAULT).replace(/[^a-z0-9-]/g, '')) || B();

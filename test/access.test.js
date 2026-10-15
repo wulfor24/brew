@@ -1,0 +1,42 @@
+// Access for a real client (2026-10-15): anyone can open a shared jam link; signing in makes them a guest of that one jam,
+// never a team member; what the team told Brew and the brand memory are the team's only.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { shareToken, parseShare, handoffPath, parseToken } from '../handoff.js';
+import { createMemoryRoutes } from '../memory-routes.js';
+
+const src = (f) => fs.readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
+
+test('a jam link names its jam; an old workspace link only lets people look; a forged one fails', () => {
+  const tok = shareToken('t_ab12cd34', 'wk_9'); assert.deepEqual(parseShare(tok), { tid: 't_ab12cd34', wid: 'wk_9' });
+  assert.deepEqual(parseShare(shareToken('t_ab12cd34')), { tid: 't_ab12cd34', wid: null });
+  assert.equal(parseShare(tok.replace('wk_9', 'wk_8')), null, 'a link for one jam cannot be edited into another');
+  const h = handoffPath({ id: 't_ab12cd34' }, { id: 'wk_9' }).slice(3); assert.deepEqual(parseToken(h), { tid: 't_ab12cd34', wid: 'wk_9' });
+});
+
+test('a shared link never adds anyone to the brand team', () => {
+  assert.doesNotMatch(src('server.js'), /addMember\([^)]*Joined from a shared link/);
+  assert.doesNotMatch(src('feed-service.js'), /addMember/);
+  assert.match(src('feed-service.js'), /const guestOk = /);
+});
+
+const run = async (routes, method, path, viewer) => {
+  let out = null; const res = {}; const send = (r, code, body) => { out = { code, body }; };
+  const R = createMemoryRoutes({ memory: { repo: async () => ({ facts: [{ text: 'secret plan' }] }), add: async () => ({ added: 1, same: [] }) }, viewerOf: async () => viewer, readBody: async () => ({ text: 'a note from someone' }), send, exists: async () => true });
+  await R({ method }, res, new URL('http://x' + path)); return out;
+};
+
+test('brand memory: the team reads and writes it; a visitor or a stranger gets nothing, claimed or not', async () => {
+  const p = '/api/brands/acme-com/memory';
+  assert.equal((await run(null, 'GET', p, { member: false, claimed: false, email: null })).code, 401);
+  assert.equal((await run(null, 'GET', p, { member: false, claimed: true, email: 'x@gmail.com' })).code, 403);
+  assert.equal((await run(null, 'POST', p, { member: false, claimed: false, email: null })).code, 401, 'an unclaimed brand is no longer open to write');
+  const ok = await run(null, 'GET', p, { member: true, claimed: true, email: 'a@acme.com' }); assert.equal(ok.code, 200); assert.equal(ok.body.facts[0].text, 'secret plan');
+});
+
+test('what the team told Brew is team-only, and the mic needs sign-in', () => {
+  const s = src('server.js');
+  assert.match(s, /what the team told Brew \(pasted call notes, emails\): the brand's team only/);
+  assert.match(s, /\/api\/transcribe'\) \{ if \(auth\.signinOn\(\) && process\.env\.DEMO_MODE !== '1' && !auth\.user\(req\)\) return send\(res, 401/);
+});

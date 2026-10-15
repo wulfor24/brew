@@ -5,7 +5,8 @@
 //   DELETE /api/brands/:slug/memory/:id        forget one line
 //   POST   /api/brands/:slug/memory/learn      read what is live (site, ads, posts, reviews) into memory
 //   POST   /api/brands/:slug/memory/consolidate tidy it (merge duplicates, drop stale lines)
-// Same rule as the other brand routes: a claimed brand is changed only by its team.
+// Team-only: brand memory holds what the team told Brew, so only the brand's team (and SquareUp's people) can read or change it.
+// The demo site's visitor owns their own sandbox copy.
 import { memberKey } from './brand-memory.js';
 
 export function createMemoryRoutes({ memory, viewerOf, readBody, send, exists = async () => true, enabled = () => true }) {
@@ -15,7 +16,8 @@ export function createMemoryRoutes({ memory, viewerOf, readBody, send, exists = 
     if (!enabled()) return send(res, 200, { error: 'Brand memory is off here.', off: true }), true;
     if (!(await exists(slug))) return send(res, 404, { error: 'unknown brand' }), true;
     const v = await viewerOf(req, slug), me = memberKey(v.email);
-    const canWrite = !v.claimed || v.member;
+    const team = !!v.member || process.env.DEMO_MODE === '1', canWrite = team;
+    if (!team) return send(res, v.email ? 403 : 401, { error: v.email ? 'Only this brand’s team can see its memory.' : 'Sign in to see this brand’s memory.', team: true, signin: !v.email }), true;
     if (req.method === 'GET' && !sub) {
       const q = u.searchParams.get('q');
       if (q) return send(res, 200, { results: await memory.search(slug, q, { memberId: me, k: Math.min(+u.searchParams.get('k') || 8, 30) }) }), true;
