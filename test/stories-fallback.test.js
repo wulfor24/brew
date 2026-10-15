@@ -97,12 +97,12 @@ test('rival ads already shown give way to ones not shown yet, so the ring does n
     const R = createResearch({ ROOT: dir, PUB: dir, anthropic: { beta: { messages: { create: async () => { throw new Error('AI is down'); } } } }, claudeParams: (m) => ({ messages: m }), textOf: () => '', geminiImage: async () => {}, gToken: async () => { throw new Error('no gcs'); }, clean: (s) => String(s || ''), brand, tregClient: tc, log: { log() {}, warn() {}, error() {} } });
     await R.refresh(['ads']);
     const day1 = R.get().ads.items.map((x) => x.id);
-    assert.equal(day1.length, 2, 'at most 2 per rival');
+    assert.equal(day1.length, 4, 'up to 4 new ads a read');
     // a day and a half later: the same ads come back; the ones shown yesterday must not be the ring again
     const s = R.get().ads; s.items.forEach((x) => (x.firstSeen -= 36 * 3600e3)); Object.keys(s.firstSeenOf).forEach((k) => (s.firstSeenOf[k] -= 36 * 3600e3));
     await R.refresh(['ads']);
     const fresh = R.get().ads.items.filter((x) => Date.now() - x.firstSeen < 24 * 3600e3).map((x) => x.id);
-    assert.equal(fresh.length, 2);
+    assert.equal(fresh.length, 4);
     assert.ok(fresh.every((id) => !day1.includes(id)), `new ads shown on day 2: ${fresh} vs ${day1}`);
     void orig;
   } finally { globalThis.fetch = realFetch; }
@@ -139,4 +139,30 @@ test('AI trend stories that fail the numbers check are topped up from the data, 
   assert.ok(hs.some((h) => /70%/.test(h)), 'the honest one stays');
   assert.ok(hs.length >= 3, `topped up to 3: ${hs}`);
   assert.ok(!/841400/.test(prompt) && /breakout/.test(prompt), 'a breakout is a label in the prompt, not a number');
+});
+
+test('rival ads: loose page names, round-robin over rivals, deeper pages when the unseen run low', async () => {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(Buffer.concat([Buffer.from([0x89, 0x50]), Buffer.alloc(4000)]), { status: 200 });
+  try {
+    const ad = (page, i) => ({ ad_archive_id: `${page}-${i}`, page_name: page, start_date: Date.now() / 1000 - 40 * 86400, collation_count: 1, snapshot: { title: `${page} idea ${i}`, body: { text: `copy ${i}` }, images: [{ original_image_url: `https://img/${page}/${i}.png` }] } });
+    const calls = [];
+    const tc = { meter: { usd: 0 }, call: async (id, { query }) => { calls.push(query); if (!/adlibrary/.test(id)) throw new Error('402');
+      if (/Sheth/.test(query.companyName)) return query.cursor ? { results: [5, 6, 7].map((i) => ad("Dr. Sheth's", i)) } : { results: [0, 1].map((i) => ad("Dr. Sheth's", i)), cursor: 'next', searchResultsCount: 8 };
+      return { results: Array.from({ length: 10 }, (_, i) => ad('Traya Health', i)), searchResultsCount: 300 }; } };
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'brew-rr-'));
+    const brand = { slug: 'rr', name: 'Testo', kind: 'generated', seed: {}, config: { country: 'IN', countryName: 'India', category: 'hair', rivals: ["Dr Sheth's", 'Traya'] } };
+    const R = createResearch({ ROOT: dir, PUB: dir, anthropic: { beta: { messages: { create: async () => { throw new Error('AI is down'); } } } }, claudeParams: (m) => ({ messages: m }), textOf: () => '', geminiImage: async () => {}, gToken: async () => { throw new Error('no gcs'); }, clean: (s) => String(s || ''), brand, tregClient: tc, log: { log() {}, warn() {}, error() {} } });
+    await R.refresh(['ads']);
+    const a = R.get().ads;
+    assert.deepEqual(a.brands.map((b) => b.name).sort(), ["Dr Sheth's", 'Traya'], 'both rivals read, though their pages spell the names differently');
+    assert.equal(a.items.length, 4);
+    assert.deepEqual([...new Set(a.items.map((x) => x.brand))].sort(), ["Dr Sheth's", 'Traya'], 'the read features both rivals');
+    assert.ok(calls.some((q) => q.cursor === 'next'), "Dr Sheth's had too few unseen ads, so its next page was read");
+    assert.ok(calls.some((q) => q.sort_by === 'relevancy_monthly_grouped'), 'newest launches are read too');
+    await R.refresh(['ads']);
+    const ids = R.get().ads.items.map((x) => x.id);
+    assert.equal(new Set(ids).size, ids.length);
+    assert.equal(ids.length, 8, 'the next read adds 4 ads never shown, and keeps the first 4 for their 24 hours');
+  } finally { globalThis.fetch = realFetch; }
 });

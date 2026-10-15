@@ -17,7 +17,7 @@ import { providerNow, GEMINI, GEMINI_PRICE } from './gemini-client.js';
 
 const D = 24 * 3600e3, H = 3600e3;
 // how often each story source is re-read (hours); STORY_EVERY_<KEY> overrides one
-const EVERY = { ads: 6, own: 12, trends: 6, news: 4, howto: 12 };
+const EVERY = { ads: 2, own: 12, trends: 6, news: 4, howto: 12 };
 const every = (k) => (+process.env[`STORY_EVERY_${k.toUpperCase()}`] || EVERY[k] || 24) * H;
 // a story's key across re-reads, so one seen again keeps the time it was first seen
 const KEY = { ads: (x) => `ad:${x.id}`, trends: (x) => `tr:${x.kind}:${[...(x.terms || [])].sort().join('|') || (x.kind === 'rising' && x.risingOf) || String(x.h).toLowerCase()}`, news: (x) => `nw:${String(x.url).replace(/[?#].*$/, '').replace(/\/$/, '')}`, howto: (x) => `ht:${String(x.h).toLowerCase()}` };
@@ -179,36 +179,55 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     const im = (s.images || [])[0]; const ci = cards.find((x) => x.original_image_url || x.resized_image_url);
     return { video: v?.video_sd_url || v?.video_hd_url || null, poster: v?.video_preview_image_url || im?.original_image_url || im?.resized_image_url || ci?.original_image_url || ci?.resized_image_url || null };
   };
+  /* a rival's page matches its name ignoring case, spaces and punctuation ("Dr Sheth's" → "Dr. Sheth's", "Banjaaran Studio" →
+     "BANJAARAN"), the brew-external-data rule; a plain regex on the name missed rivals whose page spells it differently */
+  const squashN = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const pageOk = (name, page) => { const w = squashN(name), g = squashN(page); return !!w && !!g && (g.includes(w) || (w.includes(g) && g.length >= 5)); };
+  /* rivals run hundreds of ads between them, so the ring never needs to repeat: every read takes up to STORY_ADS_PER_READ
+     ads Brew has never shown (top by impressions and newest launches, round-robin across rivals, least recently featured
+     first) and pages deeper into a rival's ads when its unseen ones run low. Reads every 2 hours; treg caches a day */
   async function refreshAds() {
-    const now = Date.now(); const brands = [];
-    const res = await Promise.allSettled(RIVAL_PAGES.map((b) => treg('scrapecreators.x.v1-facebook-adlibrary-company-ads', { query: { companyName: b.name, country: GEO, status: 'ACTIVE' } }).then((j) => ({ b, j }))));
-    let groups = [];
-    for (const r of res) {
-      if (r.status !== 'fulfilled') { log.warn('[research] ads', r.reason?.message); continue; }
-      const { b, j } = r.value; const rows = (j.results || []).filter((a) => b.match.test(a.page_name || a.snapshot?.page_name || ''));
-      if (!rows.length) continue;
-      brands.push({ name: b.name, live: j.searchResultsCount || rows.length, page: rows[0].page_name, pageId: rows[0].page_id, avatar: rows[0].snapshot?.page_profile_picture_url || null });
-      // Meta's order is by impressions; group DCO variants that share copy into one creative idea
-      const g = new Map();
-      rows.forEach((a, rank) => {
-        const cp = adCopy(a); const key = (cp.title + '|' + cp.body.slice(0, 90)).toLowerCase();
-        const m = adMedia(a); if (!m.poster) return;
-        if (!g.has(key)) g.set(key, { brand: b.name, rank, ad: a, copy: cp, media: m, versions: 0, start: Infinity, ids: [] });
-        const x = g.get(key); x.versions += Math.max(1, a.collation_count || 1); x.start = Math.min(x.start, (a.start_date || now / 1000) * 1000); x.ids.push(a.ad_archive_id);
-      });
-      groups.push(...[...g.values()].map((x) => ({ ...x, days: Math.max(1, Math.round((now - x.start) / D)), score: (30 - x.rank) / 3 + Math.log2(1 + x.versions) * 4 + Math.min(x.days || 0, 120) / 10 })));
-    }
-    groups.forEach((x) => (x.score = (30 - x.rank) / 3 + Math.log2(1 + x.versions) * 4 + Math.min(x.days, 120) / 10));
-    if (!groups.length) throw new Error('no ads came back');
-    // top 8, at most 2 per brand, interleaved so the ring is not one advertiser
-    groups.sort((a, b) => b.score - a.score);
-    /* rivals run their best ads for weeks, so the same top 8 came back every read, all first seen days ago: past 24 hours
-       they are not stories, and the ring went empty while the rivals were still advertising. Ads not shown in the last 3 days
-       go first (the next-best real ads); ones already shown only fill what is left */
-    const shown = (x) => !!snap.ads?.firstSeenOf?.[`ad:${x.ad.ad_archive_id}`] && now - snap.ads.firstSeenOf[`ad:${x.ad.ad_archive_id}`] >= D;
-    groups = [...groups.filter((x) => !shown(x)), ...groups.filter(shown)];
-    const per = {}; const pick = [];
-    for (const x of groups) { if ((per[x.brand] || 0) >= 2) continue; per[x.brand] = (per[x.brand] || 0) + 1; pick.push(x); if (pick.length >= 8) break; }
+    const now = Date.now(); const brands = [], NEW = +process.env.STORY_ADS_PER_READ || 4;
+    const seen = snap.ads?.firstSeenOf || {}, isNew = (x) => !x.ids.some((id) => seen[`ad:${id}`]);
+    const deep = { ...(snap.ads?.deep || {}) }; /* per rival: the cursor to the next page of its ads, and how far we went today */
+    const call = (q) => treg('scrapecreators.x.v1-facebook-adlibrary-company-ads', { query: { country: GEO, status: 'ACTIVE', ...q } });
+    const groups = new Map(); let errs = 0, matched = 0;
+    const take = (b, rows, base) => rows.forEach((a, i) => {
+      const cp = adCopy(a); const key = (cp.title + '|' + cp.body.slice(0, 90)).toLowerCase(); const m = adMedia(a); if (!m.poster) return;
+      if (!groups.has(key)) groups.set(key, { brand: b, rank: base + i, ad: a, copy: cp, media: m, versions: 0, start: Infinity, ids: [] });
+      const x = groups.get(key); x.rank = Math.min(x.rank, base + i); if (x.ids.includes(a.ad_archive_id)) return;
+      x.versions += Math.max(1, a.collation_count || 1); x.start = Math.min(x.start, (a.start_date || now / 1000) * 1000); x.ids.push(a.ad_archive_id); });
+    await Promise.all(RIVAL_PAGES.map(async ({ name }) => {
+      const reads = await Promise.allSettled([call({ companyName: name }), call({ companyName: name, sort_by: 'relevancy_monthly_grouped' })]);
+      reads.forEach((r) => r.status === 'rejected' && (errs++, log.warn('[research] ads', name, r.reason?.message)));
+      const [top, recent] = reads.map((r) => (r.status === 'fulfilled' ? r.value : null));
+      const mine = (j) => (j?.results || []).filter((a) => pageOk(name, a.page_name || a.snapshot?.page_name));
+      const t = mine(top), rc = mine(recent); if (!t.length && !rc.length) return; matched++;
+      const first = t[0] || rc[0];
+      brands.push({ name, live: (t.length === (top?.results || []).length && top?.searchResultsCount) || t.length || rc.length, page: first.page_name, pageId: first.page_id, avatar: first.snapshot?.page_profile_picture_url || null });
+      take(name, t, 0); take(name, rc, 0);
+      /* this rival's unseen ideas are running low: read its next page of ads (at most 3 pages deep a day) */
+      const unseenOf = () => [...groups.values()].filter((x) => x.brand === name && isNew(x)).length;
+      const day = new Date(now).toDateString();
+      let cur = deep[name]?.day === day ? deep[name] : { day, cursors: [], next: top?.cursor || null };
+      /* pages read earlier today come back from treg's day cache at no cost, so their unseen ads stay in reach */
+      for (const [k, c] of cur.cursors.entries()) { try { take(name, mine(await call({ companyName: name, cursor: c })), (k + 1) * 30); } catch {} }
+      while (unseenOf() < NEW && cur.next && cur.cursors.length < 2) {
+        try { const c = cur.next, j = await call({ companyName: name, cursor: c }); take(name, mine(j), (cur.cursors.length + 1) * 30); cur = { ...cur, cursors: [...cur.cursors, c], next: j?.cursor || null }; }
+        catch (e) { log.warn('[research] ads page', name, e.message); break; }
+      }
+      deep[name] = cur;
+    }));
+    if (!groups.size) throw new Error(errs ? `rival ads couldn't be read (${errs} failed)` : matched ? 'rivals run no image or video ads right now' : 'no ads came back');
+    const all = [...groups.values()].map((x) => { const days = Math.max(1, Math.round((now - x.start) / D)); return { ...x, days, score: (30 - Math.min(x.rank, 30)) / 3 + Math.log2(1 + x.versions) * 4 + Math.min(days, 120) / 10 + (days <= 14 ? 3 : 0) }; });
+    /* never-shown ads first, round-robin over rivals (the one featured longest ago leads); with none left, the ones shown
+       longest ago come back */
+    const lastFeatured = (b) => Math.max(0, ...(snap.ads?.items || []).filter((x) => x.brand === b).map((x) => x.firstSeen || 0));
+    const order = [...new Set(all.map((x) => x.brand))].sort((a, b) => lastFeatured(a) - lastFeatured(b));
+    const fresh = all.filter(isNew).sort((a, b) => b.score - a.score);
+    const pick = [];
+    for (let added = true; added && pick.length < NEW;) { added = false; for (const b of order) { const x = fresh.find((y) => y.brand === b && !pick.includes(y)); if (x && pick.length < NEW) { pick.push(x); added = true; } } }
+    if (!pick.length) pick.push(...all.filter((x) => now - Math.min(...x.ids.map((id) => seen[`ad:${id}`] || now)) >= D).sort((a, b) => Math.min(...a.ids.map((id) => seen[`ad:${id}`] || now)) - Math.min(...b.ids.map((id) => seen[`ad:${id}`] || now))).slice(0, NEW));
     // media: poster always, video when it is a video ad
     await Promise.all(pick.map(async (x) => {
       try { const b = await fetchBuf(x.media.poster, 6e6); x.posterBuf = b; x.poster = await saveMedia(b, imgExt(b)); } catch (e) { log.warn('[research] poster', e.message); }
@@ -230,7 +249,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
         url: `https://www.facebook.com/ads/library/?id=${x.ad.ad_archive_id}`,
         title: clean(n.title || `${x.brand}: ${x.copy.title}`.slice(0, 60)), hook: clean(n.hook || x.copy.title), angle: clean(n.angle || ''), why: clean(n.why || ''), take: clean(n.take || '') };
     });
-    snap.ads = { fetchedAt: now, ...pool(snap.ads, items, 'ads', now), brands: [...brands, ...(snap.ads?.brands || []).filter((b) => !brands.some((x) => x.name === b.name))], source: `Meta Ad Library · ${CTRY()} · live ads` };
+    snap.ads = { fetchedAt: now, ...pool(snap.ads, items, 'ads', now), deep, brands: [...brands, ...(snap.ads?.brands || []).filter((b) => !brands.some((x) => x.name === b.name))], source: `Meta Ad Library · ${CTRY()} · live ads` };
   }
 
   /* ---------- Trends ---------- */
