@@ -24,7 +24,7 @@ import { createHandoff, parseToken, handoffPath, jamPath, shareToken, parseShare
 import { PAGE_SCHEMA, pagePrompt, moveTextOf, sanitizePage, fallbackPage } from './card-page.js';
 import { withPrefs, prefsOf } from './model-ctx.js';
 import { createMemberCtx } from './member-ctx.js';
-import { parseLearnCommand, learnGate } from './brand-learnings.js'; // /update-brand-learnings in a jam
+import { parseLearnCommand, learnGate, cardUsesLearned } from './brand-learnings.js'; // /update-brand-learnings in a jam
 import { AsyncLocalStorage } from 'node:async_hooks';
 /* this request may make fresh work (the brand's team, SquareUp); false = demo mode. Unset off a request (the background clock) */
 const GEN_CTX = new AsyncLocalStorage();
@@ -291,9 +291,11 @@ export function createFeedService(o) {
     const seen = (t.shown[c.id] || []).length;
     const fatigue = -Math.min(4, agentShown24h(t, c.agent) * 0.08) - (!t.acted.has(c.id) ? Math.min(4, Math.max(0, seen - 2) * 1.2) : 0);
     const fb = -2 * (t.fewer[c.agent] || 0);
-    const extra = (t.boost[c.id] || 0) + (c.onlyWhen && connOn(t, c.onlyWhen) ? 3 : 0) + (c.live && Object.keys(c.live).some((k) => connOn(t, k)) ? 2 : 0) + (c.liveOnly ? 2 : 0);
+    // what the team told Brew comes first: cards of a move that rests on it, or that quote it themselves
+    const told = (c._told ??= cardUsesLearned(`${c.title || ''} ${c.sub || ''} ${(c.detail?.why || []).join(' ')} ${(c.detail?.how || []).join(' ')}`, B()?.learnedTerms) ? 5 : 0) || (B()?.learnedMoves?.has(moveNo(c.id)) ? 2 : 0);
+    const extra = told + (t.boost[c.id] || 0) + (c.onlyWhen && connOn(t, c.onlyWhen) ? 3 : 0) + (c.live && Object.keys(c.live).some((k) => connOn(t, k)) ? 2 : 0) + (c.liveOnly ? 2 : 0);
     const total = val + seat + aff + fresh + fatigue + fb + extra;
-    return { fresh, value: val, impact: +val.toFixed(2), impactNote: valNote, impactV: imp.v, impactPct: imp.pct, isDecision: imp.decision, affinity: +aff.toFixed(2), seat: +seat.toFixed(2), fatigue: +fatigue.toFixed(2), feedback: fb, boost: extra, total: +total.toFixed(2), seen };
+    return { fresh, told, value: val, impact: +val.toFixed(2), impactNote: valNote, impactV: imp.v, impactPct: imp.pct, isDecision: imp.decision, affinity: +aff.toFixed(2), seat: +seat.toFixed(2), fatigue: +fatigue.toFixed(2), feedback: fb, boost: extra, total: +total.toFixed(2), seen };
   };
   const connOn = (t, k) => !!(t.conn?.[k] || t.liveConn?.[k]);
   // live cards are the team's only; a real account hides its demo cards; a move rewritten privately replaces its shared cards

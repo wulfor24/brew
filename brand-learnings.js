@@ -177,6 +177,27 @@ export const withLearned = (md, L, o) => { const base = stripLearned(md), sec = 
 export const briefView = (L) => ({ at: L.at, ...Object.fromEntries(['essence', 'goals', 'beliefs', 'facts'].map((k) => [k, (L[k] || []).slice(0, 12).map(({ text, source, at, quote }) => ({ text, source, at, quote: cut(quote, 200) }))])) });
 const memTopic = (x) => (x.bucket === 'essence' || x.kind === 'essence' ? 'essence' : x.kind === 'goal' ? 'goals' : x.kind === 'belief' ? (x.topic === 'rules' ? 'rules' : 'beliefs') : x.topic || null);
 
+/* ---------- which moves and cards rest on what the team told Brew (the ranker lifts their cards) ---------- */
+// moves quote the team's words as theirs (learnedSection asks for it): "the team says…", "team-reported 2.2%", "Arata team notes"
+export const TEAM_CITE = /\b(?:the )?team(?:'s)? (?:notes|said|says|told|tells|reported|flagged|stated|plans?|wants?|will)\b|\bteam-(?:reported|stated)\b|\bwhat the team told\b/i;
+// a card that itself carries a learning: it quotes the team, or shares three or more telling words with one learning
+const TELL_STOP = new Set('about after again their there these those which while would could should with from into than then they them this that have has will your ours were been more most only also very just over under across before every other same each such what when where using used make made need needs only'.split(' '));
+const telling = (x) => [...new Set(String(x || '').toLowerCase().match(/[a-z0-9][a-z0-9%.-]{3,}/g) || [])].filter((w) => !TELL_STOP.has(w) && !/^\d{1,3}$/.test(w));
+// words common across the brand's own cards ("mitoactive", "serum", "meta") tell nothing: only the rarer ones count
+export const learnedTerms = (L, corpus = []) => {
+  const df = new Map(); for (const t of corpus) for (const w of telling(t)) df.set(w, (df.get(w) || 0) + 1);
+  const common = (w) => corpus.length >= 10 && (df.get(w) || 0) / corpus.length > 0.06;
+  return learnedItems(L).map((x) => telling(x.text).filter((w) => !common(w))).filter((ws) => ws.length >= 3);
+};
+export function cardUsesLearned(text, terms = []) {
+  const s = String(text || ''); if (TEAM_CITE.test(s)) return true; if (!terms.length) return false;
+  const have = new Set(telling(s)); return terms.some((ws) => ws.filter((w) => have.has(w)).length >= 3);
+}
+export function learnedMoveNs(moves = {}, L = null) {
+  if (!learnedItems(L).length) return new Set();
+  return new Set(Object.entries(moves || {}).filter(([n, m]) => +n > 0 && m && TEAM_CITE.test(JSON.stringify([m.title, m.gives, m.sections, m.sources]))).map(([n]) => +n));
+}
+
 /* ---------- moves: which ones the learnings change, without AI (words they share) ---------- */
 export function planLocal(items = [], moves = {}, { max = 50 } = {}) {
   const cand = Object.entries(moves || {}).filter(([n, m]) => +n >= 1 && +n <= 50 && m?.title && !m.meta?.cadence);

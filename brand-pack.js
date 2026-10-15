@@ -14,7 +14,7 @@ import { socialize, readSocial } from './social-feed.js'; // what listening hear
 import { fitCta, fillMake } from './cards-gen.js';
 import { prototypeConnectors } from './seed-template.js'; // DUMMY: connector copy that promises no action
 import { sentenceCase } from './text-fit.js';
-import { withLearned } from './brand-learnings.js'; // what the team told Brew (pasted into a jam): in every prompt's system text
+import { withLearned, learnedMoveNs, learnedTerms } from './brand-learnings.js'; // what the team told Brew (pasted into a jam): in every prompt's system text
 import { sandboxName, virtualFile } from './demo-mode.js'; // Demo Mode: per-session private files
 
 export const slugOf = (url) => {
@@ -213,6 +213,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
       catalog: catalogOf(profile), // the products with a photo each, so a draft's picture shows the product its words name
       personas: briefJ?.personas || [], // who buys: the studio's “Aim at” knob and chips (studio.js knobsFor)
       moveValue, // each move's grade for the ranker (value.js)
+      learnedMoves: learnedMoveNs(moves, learned), learnedTerms: learnedTerms(learned, (seed.posts || []).map((x) => [x.title, x.sub, ...(x.detail?.why || []), ...(x.detail?.how || [])].join(' '))), // moves that rest on what the team told Brew: the ranker lifts their cards (feed-service score)
       notes: notesJ?.notes || {}, // margin notes written for this brand's cards (notes.js)
       firstDrafts, // first drafts made in the background (drafts-bg.js), seeded into a card's jam
       client: { facts: `b/${slug}/facts.js`, seed: `b/${slug}/seed.js` }

@@ -3797,7 +3797,7 @@
     if (st.done) return renderLearned(); const el = $('[data-lx-build]'); if (!el) return; el.textContent = lxBuildLine(st); const bar = $('.lx-bar b'); if (bar) bar.style.width = `${Math.round((Math.min(51, +st.movesDone || 0) / 51) * 100)}%`; lxBuild.t = setTimeout(lxBuildPoll, 15e3); };
   const renderLearned = async () => {
     view = 'learned';
-    const bq = encodeURIComponent(BR), [L, HD, MEM, MVS, CAL, UPS] = await Promise.all([tapi('GET', '/api/tenants/:t/learning'), api(`/api/brands/${bq}/heard`), api(`/api/brands/${bq}/memory`), api(`/api/brands/${mvSlug()}/moves`), api(`/api/brands/${bq}/calendar?days=120`), GEN ? api(`/api/brands/${mvSlug()}/updates`) : null]); if (L.error || view !== 'learned') return;
+    const bq = encodeURIComponent(BR), [L, HD, MEM, MVS, CAL, UPS, TOLD] = await Promise.all([tapi('GET', '/api/tenants/:t/learning'), api(`/api/brands/${bq}/heard`), api(`/api/brands/${bq}/memory`), api(`/api/brands/${mvSlug()}/moves`), api(`/api/brands/${bq}/calendar?days=120`), GEN ? api(`/api/brands/${mvSlug()}/updates`) : null, api(`/api/brands/${bq}/told`)]); if (L.error || view !== 'learned') return;
     const heard = HD?.heard || null, memLines = (MEM?.facts || []).filter((f) => f.scope === 'brand').sort((a, b) => (b.n || 1) - (a.n || 1) || (b.updatedAt || 0) - (a.updatedAt || 0));
     const agents = Object.keys(L.trust), all = L.lessons || [], on = (xs) => xs.filter((x) => x.on).length;
     // measured lessons lead: the loop closed and the number moved (or didn't), so this is the strongest thing it knows
@@ -3853,11 +3853,18 @@
     const mvSt = GEN ? MVS?.status : null, mvBuilding = !!mvSt && !mvSt.done && !mvSt.error && !mvSt.cancelled;
     const movesHtml = mvAll.length || mvBuilding ? `<section class="lx-sec">${lxHead('lx-moves', 'The moves', '', '')}<button class="lx-heard-row" data-nav="moves"><span class="lg-ic">${ic('doc', 's16')}</span><span><b>${mvCore} move${mvCore === 1 ? '' : 's'} for ${esc(B.brand.name)}${mvWk ? `, plus ${mvWk} new this week` : ''}</b>${mvBuilding ? lxBuild(mvSt) : `<small>${mvStale ? `${mvStale} out of date · ` : ''}Every card in your feed comes from one of them</small>`}</span>${ic('right', 's16')}</button>${mvBuilding && mvSt.capped ? `<div class="lx-pro"><button class="btn btn-primary sm" data-mvpro>Continue with Pro</button></div>` : ''}</section>` : '';
     clearTimeout(lxBuild.t); if (mvBuilding) lxBuild.t = setTimeout(lxBuildPoll, 15e3);
-    const anyLearned = moved.length + lessons.length + L.rules.length + L.autoChecks.length;
+    // What your team told Brew (brand-learnings.js, learned.json): goals, beliefs and facts from the calls, notes and emails the team added; about 6 show, the rest fold
+    const told = TOLD?.told, toldRows = told ? [['essence', 'Essence'], ['goals', 'Goals and plans'], ['beliefs', 'Beliefs'], ['facts', 'Facts they stated']].flatMap(([k, h]) => (told[k] || []).map((x) => ({ ...x, h }))) : [];
+    // one heading per group (Goals, Beliefs, Facts), each line plain; with more than one source, each line names its own
+    const oneSrc = (told?.sources || []).length <= 1, toldList = (xs) => xs.map((x, i) => `${i === 0 || xs[i - 1].h !== x.h ? `<h4>${esc(x.h)}</h4>` : ''}<div class="mem-l"><p>${esc(x.text)}</p>${oneSrc || !x.source ? '' : `<small>${esc(x.source)}</small>`}</div>`).join('');
+    const toldHtml = toldRows.length ? `<section class="lx-sec mem-g">${lxHead('lx-told', 'What your team told Brew', toldRows.length, `From ${oneSrc ? esc(told.sources?.[0]?.label || 'your team') : `${told.sources.length} calls, notes and emails`}. The moves follow these.`)}
+      ${toldList(toldRows.slice(0, 6))}${toldRows.length > 6 ? `<details class="q-more"><summary>${toldRows.length - 6} more</summary>${toldList(toldRows.slice(6))}</details>` : ''}</section>` : '';
+    const anyLearned = moved.length + lessons.length + L.rules.length + L.autoChecks.length + toldRows.length;
     libShell('What Brew learned', 'From what you pick, edit and ship. Edit, pause or forget anything.',
       `<div class="lx">
         ${movesHtml}
         ${anyLearned ? '' : `<p class="lx-zero">${ic('sparkles', 's16')}<span>Nothing learned yet. Pick, edit and ship from your cards, and what Brew learns lands here.</span></p>`}
+        ${toldHtml}
         ${moved.length ? `<section class="lx-sec">${lxHead('lx-moved', 'What moved the number', moved.length, '')}${moved.map(movedHtml).join('')}</section>` : ''}
         ${(() => { const you = lessons.filter((x) => x.kind === 'you'), br = lessons.filter((x) => x.kind !== 'you');
           return `${you.length ? `<section class="lx-sec">${lxHead('lx-lessons', 'How you work', you.length, '')}${you.map(lessonHtml).join('')}</section>` : ''}${br.length ? `<section class="lx-sec">${lxHead('lx-lessons-b', `What it learned about ${esc(B.brand.name)}`, br.length, '')}${br.map(lessonHtml).join('')}</section>` : ''}`; })()}

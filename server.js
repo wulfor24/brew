@@ -33,7 +33,7 @@ import { thinkModel, prefs } from './model-ctx.js';
 import { createBrandMemory, vertexEmbedder, memoryHooks } from './brand-memory.js'; // brand memory
 import { createMemoryRoutes } from './memory-routes.js'; // brand memory
 import { createMovesScheduler } from './moves-cadence.js'; // audit, listening and automation moves, weekly
-import { createLearnings } from './brand-learnings.js'; // /update-brand-learnings: a pasted call, notes or emails → brief, memory, moves
+import { createLearnings, briefView } from './brand-learnings.js'; // /update-brand-learnings: a pasted call, notes or emails → brief, memory, moves
 import { createDraftsBg } from './drafts-bg.js'; // first drafts on the top cards, in the background
 import { createCardsGen } from './cards-gen.js';
 import { setMemoryHooks } from './learn.js'; // brand memory
@@ -469,6 +469,11 @@ const brandRoutes = async (req, res, u) => {
   if (req.method === 'GET' && u.pathname === '/api/brands') return send(res, 200, { brands: await builder.list() }), true;
   // the landing's demo brands: the ones the demo site has fully ready; a tap opens a fresh tour of that brand there
   if (req.method === 'GET' && u.pathname === '/api/demo-brands') return send(res, 200, { brands: await demoBrands() }), true;
+  // What Brew learned → What your team told Brew: the goals, beliefs and facts read from the calls, notes and emails the team added
+  const tm = u.pathname.match(/^\/api\/brands\/([a-z0-9-]+)\/told$/);
+  if (tm && req.method === 'GET') { const slug = tm[1]; if (blocked(slug)) return send(res, 404, { error: 'unknown brand' }), true;
+    const L = await packs.getJSON(slug, 'learned.json', null).catch(() => null);
+    return send(res, 200, { told: L ? { ...briefView(L), sources: (L.sources || []).map(({ label, at, kind }) => ({ label, at, kind })) } : null }), true; }
   // What Brew learned → Heard: what listening counted and quoted, for any brand that has it (empty for the rest)
   const hm = u.pathname.match(/^\/api\/brands\/([a-z0-9-]+)\/heard$/);
   if (hm && req.method === 'GET') { const slug = hm[1]; if (blocked(slug)) return send(res, 404, { error: 'unknown brand' }), true;
