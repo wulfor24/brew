@@ -81,13 +81,15 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
   async function roleOf(slug, u) {
     if (!u) return null;
     const m = await getM(slug), me = m.members.find((x) => x.email === u.email);
+    /* the name and picture follow the Google account: copied when they joined, refreshed when they change */
+    if (me && ((u.name && me.name !== u.name) || (u.pic && me.pic !== u.pic)) && !u.demo) editM(slug, (mm) => { const x = mm.members.find((y) => y.email === u.email); if (x) { if (u.name) x.name = u.name; if (u.pic) x.pic = u.pic; } }).catch(() => {});
     if (me) return me.role;
     /* a pending invite for this Google-verified email: they join with the invited views however they arrived (not only through the link) */
     const inv = (m.invites || []).find((x) => x.email === u.email && Date.now() - x.at < INVITE_DAYS * 86400e3);
     if (inv) { await addMember(slug, u, 'member', `Invited by ${inv.by}`, inv.seats); log.log?.(`[auth] ${slug}: ${u.email} joined from an invite (on sign-in)`); return 'member'; }
     if (isAdmin(u)) return 'admin';
     // a claimed brand: a teammate on the owner's company domain joins on their own, with no views until an owner picks them
-    if (m.owner && m.domain && !freeMail(u.email) && domainOf(u.email) === m.domain) { await addMember(slug, u, 'member', 'Same company email', []); joinedMail(slug, u).catch((e) => log.warn('[auth] mail', e.message)); return 'member'; }
+    if (m.owner && m.domain && !freeMail(u.email) && domainOf(u.email) === m.domain) { const added = await addMember(slug, u, 'member', 'Same company email', []); if (added === true) joinedMail(slug, u).catch((e) => log.warn('[auth] mail', e.message)); return 'member'; } /* two requests at once: only the one that added them emails the owners */
     return null;
   }
   /* the views this person may use on the brand: null = every view (owners, Brew admins, members from before views, visitors) */
@@ -110,10 +112,12 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
   const isMember = async (slug, u) => !!(await roleOf(slug, u));
   async function addMember(slug, u, role, via, seats = 'all') {
     return editM(slug, (m) => {
-      if (!m.members.some((x) => x.email === u.email)) m.members.push({ email: u.email, name: u.name || null, role, seats: role === 'owner' ? 'all' : cleanSeats(seats), via, at: Date.now() });
+      const added = !m.members.some((x) => x.email === u.email);
+      if (added) m.members.push({ email: u.email, name: u.name || null, pic: u.pic || null, role, seats: role === 'owner' ? 'all' : cleanSeats(seats), via, at: Date.now() });
       if (role === 'owner' && !m.owner) { m.owner = u.email; m.claimedAt = Date.now(); m.via = via; if (ownDomain(domainOf(u.email), m.host || '')) m.domain = domainOf(u.email); }
       m.requests = m.requests.filter((x) => x.email !== u.email);
       m.invites = (m.invites || []).filter((x) => x.email !== u.email);
+      return added;
     });
   }
   // claim by email domain (instant); a connected account claims through claimWith (connectors/index.js)
@@ -123,11 +127,14 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
     const boss = role === 'owner' || role === 'admin', seats = role ? await seatsOf(slug, u) : null;
     /* eligible: an official email on a brand nobody has claimed yet (they may claim it). gen: may make fresh work here */
     const eligible = !!u && !role && !m.owner && domainOk, gen = DEMO_SITE() || !!role || eligible;
-    return { host, claimed: !!m.owner, role, seats, canClaim: eligible, eligible, gen, full: isAdmin(u), domainOk, pending: false,
+    return { host, claimed: !!m.owner, role, seats, canClaim: eligible, eligible, gen, full: isAdmin(u), domainOk, 
       owner: m.owner ? m.owner.replace(/^(.).*@/, '$1•••@') : null, me: u?.email || null,
       /* the person looking is always on the list: Brew's own people (admins on every brand) show as themselves, first */
       members: boss ? [...(role === 'admin' && !m.members.some((x) => x.email === u.email) ? [{ email: u.email, name: u.name || null, role: 'admin', seats: 'all', via: 'Brew' }] : []),
-        ...m.members.map((x) => ({ email: x.email, name: x.name, role: x.role, seats: x.role === 'owner' ? 'all' : x.seats ?? 'all', via: x.via }))] : undefined,
+        ...m.members.map((x) => ({ email: x.email, name: x.name, pic: x.pic || null, role: x.role, seats: x.role === 'owner' ? 'all' : x.seats ?? 'all', via: x.via }))] : undefined,
+      /* everyone on the team sees who else is on it (to tag them in a jam): names and pictures, never views */
+      team: role ? m.members.map((x) => ({ email: x.email, name: x.name || null, pic: x.pic || null, role: x.role })) : undefined,
+      invited: role ? (m.invites || []).filter((x) => Date.now() - x.at < INVITE_DAYS * 86400e3).map((x) => x.email) : undefined,
       invites: boss ? (m.invites || []).filter((x) => Date.now() - x.at < INVITE_DAYS * 86400e3).map((x) => ({ email: x.email, seats: x.seats, by: x.by, at: x.at })) : undefined };
   }
   /* only an official email (at the brand's own domain) claims; via says how (Claim, connecting an account, confirming the read).
@@ -150,8 +157,6 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
     const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' }, body: JSON.stringify({ from: process.env.NOTIFY_FROM || 'Brew <hello@send.joinsquareup.com>', to: [to], subject, html, text }) });
     if (!r.ok) log.warn('[auth] resend', r.status, (await r.text()).slice(0, 200)); return r.ok;
   }
-  /* joining is by invite only: there is no asking the owner */
-  async function request() { return { error: 'Ask the brand’s team to invite you.', invite: true }; }
 
   /* ---------- invites: an owner names an email and its views; the link only works for that Google account ---------- */
   const inviteLink = (base, slug, email) => `${base}/join?t=${sign({ slug, email }, INVITE_DAYS * 86400, 'invite')}`;
@@ -172,6 +177,8 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
     let err = null;
     await editM(slug, (m) => {
       const x = m.members.find((y) => y.email === email);
+      if (act === 'seats' && !x) { const inv = (m.invites || []).find((y) => y.email === email); if (!inv) return void (err = 'Not on the team.'); const sv = cleanSeats(b.seats); if (sv !== 'all' && !sv.length) return void (err = 'Pick at least one view.'); inv.seats = sv; return; } /* an invite's views change before they join */
+      if (act === 'transfer') { const mine = m.members.find((y) => y.email === me.email); if (!x) return void (err = 'Not on the team.'); if (!mine || mine.role !== 'owner') return void (err = 'Only an admin hands it over.'); x.role = 'owner'; x.seats = 'all'; x.ownerSince = Date.now(); x.madeOwnerBy = me.email; mine.role = 'member'; mine.seats = 'all'; return; } /* in one change: never two admins or none if half of it fails */
       if (act === 'seats') { if (!x) return void (err = 'Not on the team.'); if (x.role === 'owner') return void (err = 'Admins see every view.'); x.seats = cleanSeats(b.seats); }
       else if (act === 'make_owner') { if (!x) return void (err = 'Not on the team.'); x.role = 'owner'; x.seats = 'all'; x.ownerSince = Date.now(); x.madeOwnerBy = me.email; }
       else if (act === 'step_down') { if (!x || x.role !== 'owner') return void (err = 'Not an admin.'); if (owners(m).length < 2) return void (err = 'Make someone else admin first: a brand always has one.'); x.role = 'member'; x.seats = cleanSeats(b.seats ?? []); }
@@ -179,6 +186,7 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
       else if (act === 'revoke') m.invites = (m.invites || []).filter((y) => y.email !== email);
     });
     if (err) return { error: err };
+    if (act === 'transfer') { const name = await brandName(slug), base = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', subject = `You're now the admin of ${name} on Brew`; mail(email, subject, wrap(subject, `<p>${esc(me.name || me.email)} handed it over to you. You can invite people, pick their views and connect accounts.</p><p style="margin:22px 0">${btn(`${base}/${slug}`, `Open ${name}`)}</p>`), subject).catch(() => {}); }
     if (act === 'make_owner' || act === 'step_down') {
       const name = await brandName(slug), base = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', subject = act === 'make_owner' ? `You're now an admin of ${name} on Brew` : `You're no longer an admin of ${name} on Brew`;
       if (email !== me.email) mail(email, subject, wrap(subject, `<p>${esc(me.name || me.email)} made the change. ${act === 'make_owner' ? 'You can invite people, pick their views and connect accounts.' : `Your views: ${esc(await seatWords(slug, cleanSeats(b.seats ?? [])))}.`}</p><p style="margin:22px 0">${btn(`${base}/${slug}`, `Open ${name}`)}</p>`), subject).catch(() => {});
@@ -213,6 +221,12 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
       log.log?.(`[auth] signed in ${me.email}`);
       return redirect(res, st.next || '/'), true;
     }
+    /* local testing only (never on Cloud Run): sign in as anyone, to try a jam as two teammates in two browsers */
+    if (p === '/auth/dev' && req.method === 'GET' && (process.env.DEV_LOGIN === '1' || process.env.DEV_MEMBER === '1') && !process.env.K_SERVICE) {
+      const email = String(u.searchParams.get('email') || '').toLowerCase().trim(); if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(email)) return json(res, 400, { error: 'email=' }), true;
+      setCookie(res, 'fs_s', sign({ email, name: u.searchParams.get('name') || email.replace(/@.*/, ''), pic: null, sub: 'dev' }, 86400, 'session'), 86400);
+      return redirect(res, safeNext(u.searchParams.get('next'))), true;
+    }
     if (p === '/auth/logout') { setCookie(res, 'fs_s', '', 0); if (req.method === 'GET') return redirect(res, safeNext(u.searchParams.get('next'))), true; return json(res, 200, { ok: true }), true; }
     /* old one-tap approve links (asking for access is gone): the owner invites them instead */
     if (p === '/auth/approve' && (req.method === 'GET' || req.method === 'POST')) {
@@ -237,13 +251,12 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
       const me = user(req), slug = String(u.searchParams.get('brand') || '').replace(/[^a-z0-9-]/g, '');
       return json(res, 200, { user: me, signin: !!(CID && SECRET), access: slug && slug !== 'brew-sample' ? await claimInfo(slug, me) : null, full: isAdmin(me) }), true;
     }
-    const m = p.match(/^\/api\/brands\/([a-z0-9-]+)\/(claim|request|team)$/);
+    const m = p.match(/^\/api\/brands\/([a-z0-9-]+)\/(claim|team)$/);
     if (m) {
       const [, slug, what] = m, me = user(req);
       if (!me) return json(res, 401, { error: 'Sign in first.', signin: true }), true;
       if (!(await hostOf(slug))) return json(res, 404, { error: 'unknown brand' }), true;
       if (what === 'claim' && req.method === 'POST') return json(res, 200, await claim(slug, me)), true;
-      if (what === 'request' && req.method === 'POST') { const b = await readBody(req); return json(res, 200, await request(slug, me, baseOf(req), b.name || slug)), true; }
       if (what === 'team') {
         const role = await roleOf(slug, me); if (role !== 'owner' && role !== 'admin') return json(res, 403, { error: 'Only the owner manages the team.' }), true;
         let out = {};
@@ -251,10 +264,11 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
           if (b.action === 'remove' && email === me.email) out = { error: 'You can’t remove yourself.' };
           else if ((b.action === 'invite' || b.action === 'add' || b.action === 'resend') && /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(email)) {
             const prev = b.action === 'resend' ? ((await getM(slug)).invites || []).find((x) => x.email === email) : null;
-            out = await invite(slug, me, email, prev ? prev.seats : b.seats ?? 'all', baseOf(req)); delete out.link; }
-          else if (['seats', 'make_owner', 'step_down', 'remove', 'revoke'].includes(b.action)) out = await teamOp(slug, me, b);
+            if (prev && Date.now() - prev.at < 10 * 60e3) out = { error: 'Sent a few minutes ago. Give it a little while, or copy the link instead.', link: inviteLink(baseOf(req), slug, email) };
+            else { out = await invite(slug, me, email, prev ? prev.seats : b.seats ?? 'all', baseOf(req)); if (out.sent !== false) delete out.link; } } /* the link shows only when the email didn't go, so the admin can send it themselves */
+          else if (['seats', 'make_owner', 'step_down', 'transfer', 'remove', 'revoke'].includes(b.action)) out = await teamOp(slug, me, b);
           else out = { error: 'Unknown team change.' }; }
-        return json(res, 200, { ...(await claimInfo(slug, me)), ...(out.error ? { error: out.error } : {}), ...(out.sent === false ? { warn: 'The invite is saved but the email didn’t send. Use Resend.' } : {}) }), true;
+        return json(res, 200, { ...(await claimInfo(slug, me)), ...(out.error ? { error: out.error } : {}), ...(out.sent === false ? { warn: 'The invite is saved but the email didn’t send. Copy the link and send it yourself.' } : {}), ...(out.link ? { link: out.link } : {}) }), true;
       }
     }
     return false;

@@ -1,6 +1,7 @@
 // Brew prototype server: read → moves → feed → jam → share the brief.
 // Serves public/ and a few /api routes: live Claude text, live Gemini (Vertex) images,
 // dummy Slack. Keys come from an env file (ENV_FILE, default ../ugc-factory/.env) and are never sent to the page.
+import { createJamMail } from './jam-mail.js';
 import { configureGen, saveGen, genFile, researchFile } from './gen-store.js';
 import http from 'node:http';
 import fs from 'node:fs';
@@ -403,21 +404,25 @@ const hostOf = async (slug) => { if (!slug || blocked(slug)) return null; const 
 /* seat key → title for invite emails and the approve page (the brand's own roles; every generated brand shares the template's) */
 const seatNames = async (slug) => { const p = packs.peek(slug) || await packs.load(slug).catch(() => null); return Object.fromEntries(Object.entries(p?.seed?.roles || {}).map(([k, r]) => [k, r.title || r.name || k])); };
 const auth = createAuth({ packs, hostOf, seatNames, onTeamChange: () => MEMO.clear(), log: console });
+/* Brew's emails about jams to the brand's team: tagged, asked, assigned, needs your OK right away; replies batched (jam-mail.js) */
+const jamMail = createJamMail({ mail: (...a) => auth.mail(...a), packs, sign: auth.sign, verify: auth.verify, brandName: (slug) => packs.peek(slug)?.seed?.brand?.name || slug, watching: (wid, email) => !!feedSvc?.jams?.watching?.(wid, email), log: console });
 /* Demo Mode: a visitor with no Google sign-in is the owner of their own demo session (demo-mode.js virtualFile) */
 if (DEMO) { const realUser = auth.user; auth.user = (req) => realUser(req) || (demoSid() ? { email: demoEmail(), name: 'You', demo: true } : null); }
 const memoryRoutes = createMemoryRoutes({ memory, viewerOf: (req, slug) => viewerOf(req, slug), readBody, send, enabled: MEMORY_ON, exists: async (slug) => !blocked(slug) && (!!(await packs.getJSON(slug, 'status.json', null))) }); // brand memory
 const movesRoutes = movesCadence.routes({ viewerOf: (req, slug) => viewerOf(req, slug), readBody, send, exists: async (slug) => !blocked(slug) && slug !== DEFAULT && !!(await packs.getJSON(slug, 'status.json', null)) });
 // is this person on the brand's team, and is the brand claimed (cached a minute: every feed call asks)
 const MEMO = new Map();
-const viewerOf = async (req, slug) => { if (process.env.DEV_MEMBER === '1' && !process.env.K_SERVICE) return { member: true, claimed: true, gen: true, email: 'dev@local', seats: process.env.DEV_SEATS != null ? process.env.DEV_SEATS.split(',').filter(Boolean) : null }; // local testing of team-only paths; never on Cloud Run
+const viewerOf = async (req, slug) => { if (process.env.DEV_MEMBER === '1' && !process.env.K_SERVICE && !auth.user(req)?.sub?.startsWith?.('dev')) return { member: true, claimed: true, gen: true, email: process.env.DEV_EMAIL || 'dev@local', name: process.env.DEV_NAME || 'Dev', seats: process.env.DEV_SEATS != null ? process.env.DEV_SEATS.split(',').filter(Boolean) : null }; // local testing of team-only paths; never on Cloud Run
   const me = auth.user(req), k = `${slug}|${me?.email || ''}`, c = MEMO.get(k); if (c && Date.now() - c.at < (c.v.gen ? 60e3 : 10e3)) return c.v; // a demo verdict is kept only briefly: an invite or claim on another instance shows up within seconds
   /* gen: may make fresh work here (the team, SquareUp, an official email on an unclaimed brand); everyone else sees the demo.
      A server with no sign-in (local) has nobody to tell apart, so it stays open */
   const a = await auth.accessOf(slug, me), member = !!a.role;
-  const v = { member, claimed: a.claimed, eligible: a.eligible, gen: a.gen || !auth.signinOn(), host: a.host || null, email: me?.email || null, name: me?.name || null, seats: member ? a.seats : null }; MEMO.set(k, { at: Date.now(), v }); if (MEMO.size > 5000) MEMO.clear(); return v; };
+  const dev = !process.env.K_SERVICE && String(me?.sub || '').startsWith('dev'); /* a local dev sign-in (/auth/dev) is judged like a real one */
+  const v = { member, claimed: a.claimed, eligible: a.eligible, gen: a.gen || (!auth.signinOn() && !dev), host: a.host || null, email: me?.email || null, name: me?.name || null, pic: me?.pic || null, seats: member ? a.seats : null }; MEMO.set(k, { at: Date.now(), v }); if (MEMO.size > 5000) MEMO.clear(); return v; };
 /* fresh work (AI text, images, video, voice, rewrites) for this brand: the gate every generation route asks. With no brand
    open (the Brew default context), only SquareUp's people make new work */
-const genOk = async (req, slug) => { if (process.env.DEMO_MODE === '1' || !auth.signinOn() || (process.env.DEV_MEMBER === '1' && !process.env.K_SERVICE)) return true;
+const genOk = async (req, slug) => { const dev = !process.env.K_SERVICE && String(auth.user(req)?.sub || '').startsWith('dev');
+  if (process.env.DEMO_MODE === '1' || ((!auth.signinOn() || (process.env.DEV_MEMBER === '1' && !process.env.K_SERVICE)) && !dev)) return true;
   if (!slug || slug === DEFAULT) return auth.isAdmin(auth.user(req)); return !!(await viewerOf(req, slug)).gen; };
 const demoErr = (host) => ({ error: `Demo mode: sign in with your work email${host ? ` at ${host}` : ''} to make this.`, demo: true, host: host || null });
 let connectors = null;
@@ -426,7 +431,7 @@ let connectors = null;
 connectors = createConnectors({ packs, auth, builder, log: console, onLive: (slug) => { MEMO.clear(); feedSvc?.refreshLive(slug).catch(() => {}); } });
 /* a shared jam link: anyone can look; signing in makes a person a guest of that one jam (feed-service guestOk), never a
    member of the brand's team. Team access comes only from an owner's invite or the brand's work email (auth.js) */
-feedSvc = createFeedService({ onOpen: (slug) => { social.opened(slug); draftsBg.opened(slug); builder.heal?.(slug).then((ch) => { if (ch?.length) { packs.drop(slug); loadBrand(slug).catch(() => {}); } }).catch(() => {}); }, PUB, claudeJSON,  globalPacks: packs, claudeTool, cardBrief, mockVariants, geminiImage: imageGen, treg, launchBrowser, zipBuffer, photoAsync, isMock: () => MOCK, spend, BANNED, clean, store, packs: brandPacks, builder, photoFile, learnings,
+feedSvc = createFeedService({ jamMail, isStaff: (email) => auth.isAdmin({ email }), teamOf: (slug) => auth.getMembers(slug), onOpen: (slug) => { social.opened(slug); draftsBg.opened(slug); builder.heal?.(slug).then((ch) => { if (ch?.length) { packs.drop(slug); loadBrand(slug).catch(() => {}); } }).catch(() => {}); }, PUB, claudeJSON,  globalPacks: packs, claudeTool, cardBrief, mockVariants, geminiImage: imageGen, treg, launchBrowser, zipBuffer, photoAsync, isMock: () => MOCK, spend, BANNED, clean, store, packs: brandPacks, builder, photoFile, learnings,
   /* Demo Mode: a tour session reads the store live while the visitor watches (demo-routes.js session flow) */
   liveReadFor: DEMO ? async (slug) => (await packs.getJSON(slug, 'private/demo/session.json', null))?.flow === 'onboarding' : null,
   viewerOf, genOk, liveFor: (slug, member) => connectors.forViewer(slug, member),
@@ -602,10 +607,13 @@ http.createServer(async (req, res) => {
   if (DEMO) { const ses = sessionOf(req, u); if (ses.set) res.setHeader('set-cookie', ses.set); return runDemo(ses.sid, () => serve(req, res, u)); }
   return serve(req, res, u);
 }).listen(PORT, () => console.log(`Brew Feed on http://localhost:${PORT} · AI ${MOCK ? 'mock' : 'live'} · env ${fs.existsSync(envFile) ? envFile : 'none'}${DEMO ? ' · DEMO MODE' : ''}`));
+/* Cloud Run stops an instance with SIGTERM: the team's jams are written before it goes (jams.js saves every few seconds anyway) */
+process.once('SIGTERM', () => { Promise.race([feedSvc?.jams?.flush?.(), new Promise((r) => setTimeout(r, 6000))]).finally(() => process.exit(0)); });
 async function serve(req, res, u) {
   try {
     if (demoRoutes && await demoRoutes(req, res, u)) return;
     if (await auth.handle(req, res, u)) return;
+    if (await jamMail.handle(req, res, u)) return; // the mute / only-tags links in jam emails
     if (await connectors.handle(req, res, u)) return;
     if (await memoryRoutes(req, res, u)) return; // brand memory
     if (await movesRoutes(req, res, u)) return; // moves on a cadence: refresh, cadence state

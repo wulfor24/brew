@@ -264,6 +264,7 @@ export function createJamBrief(o) {
       if (handoff) { try { const x = await handoff.build(t, w, { base: b.base }); w.jamBrief.context = x; share = { url: x.links.page, text: handoff.text(x, to === 'shopos' ? 'brew' : 'whatsapp') }; w.jamBrief.handoff = share; } catch (e) { log.warn('[handoff]', e.message); } }
       say(t, w, { from: 'system', body: `Brief ${w.ticket} copied for ${to === 'team' ? 'your team' : 'the ShopOS team'}: the card, options, plan, assets and both chats${w.jamBrief.missing.length ? `. Still open: ${w.jamBrief.missing.join(', ').toLowerCase()}` : ''}. Paste it where they work.` });
       move(t, w, 'shared', `${w.ticket}: brief shared with ${to === 'team' ? 'your team' : 'the ShopOS team'}`);
+      if (to === 'shopos') o.onShopos?.(t, w, { why: 'shared a brief with the ShopOS team', text: '' }); /* the ShopOS team's inbox hears about it (feed-service) */
       return { work: w, share };
     });
   };

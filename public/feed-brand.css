@@ -722,3 +722,5 @@ body.has-me-cur .me-cur{display:flex}
 .screen.setup .scr.fc{transition:translate .25s var(--ease),scale .25s var(--ease),box-shadow .25s var(--ease)} /* translate/scale, not transform: the rise animation holds transform */
 .screen.setup .scr.fc:hover{translate:0 -6px;scale:1.025;box-shadow:inset 0 0 0 1px var(--line),0 18px 40px rgba(0,0,0,.12);position:relative;z-index:2}
 .screen.setup .scr.fc.fresh:hover{box-shadow:0 0 0 2px var(--fg),0 18px 40px rgba(0,0,0,.14)}
+.tm-av{object-fit:cover}
+.tm-copy{margin-top:8px}
