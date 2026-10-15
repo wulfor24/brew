@@ -2586,3 +2586,30 @@ body.rx-boot #view{visibility:hidden}
 .jm-bub.is-md code{font:inherit;font-weight:600;padding:0 5px;border-radius:5px;background:var(--surface-2)}
 /* the demo site's tour: the address is the brand's and can't be changed */
 .ob2-url input[readonly]{cursor:default;caret-color:transparent;user-select:none}
+
+/* jams: My jams / Team jams, and the real people on a jam tile (2026-10-15) */
+.lib-scope{display:inline-flex;gap:2px;padding:3px;margin:0 0 16px;border-radius:10px;background:var(--surface)}
+.lib-scope button{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 14px;border:0;border-radius:8px;background:transparent;color:var(--fg-2);font:inherit;font-size:13.5px;font-weight:550;cursor:pointer}
+.lib-scope button[aria-selected="true"]{background:var(--card);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line)}
+.lib-scope em{font-style:normal;font-size:11.5px;font-weight:600;color:var(--fg-3)}
+.lt-faces{display:inline-flex;margin-right:2px}
+.lt-faces .av{margin-left:-4px;box-shadow:0 0 0 1.5px var(--card)}
+.lt-faces .av:first-child{margin-left:0}
+
+/* onboarding: Invite your team (2026-10-15) */
+.iv-form{display:flex;gap:8px;flex-wrap:wrap}
+.iv-form input{flex:1 1 220px;min-width:0;height:44px;padding:0 14px;border:0;border-radius:12px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line);color:var(--fg);font:inherit;font-size:15px}
+.iv-form input:focus,.iv-form select:focus{outline:0;box-shadow:inset 0 0 0 1.5px var(--fg)}
+.iv-form select{height:44px;padding:0 12px;border:0;border-radius:12px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line);color:var(--fg);font:inherit;font-size:14px}
+.iv-form .btn{height:44px}
+.iv-msg{margin:-2px 0 0;font-size:13px;color:var(--fg-2)}
+.iv-msg[data-kind="bad"]{color:var(--bad)}
+.iv-note{display:flex;align-items:center;gap:8px;padding:12px 14px;border-radius:12px;background:var(--surface);color:var(--fg-2);font-size:14px}
+.iv-list{display:flex;flex-direction:column;gap:2px;margin:4px 0 0;padding:0;list-style:none}
+.iv-p{display:flex;align-items:center;gap:12px;padding:8px 2px}
+.iv-p > span{display:flex;flex-direction:column;min-width:0}
+.iv-p b{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.iv-p small{font-size:12.5px;color:var(--fg-3)}
+.iv-p .av{border-radius:50%;font-size:11px}
+.iv-ok{display:inline-flex;align-items:center;gap:4px;margin-left:auto;font-style:normal;font-size:12.5px;color:var(--ok)}
+@media (max-width:560px){ .iv-form select,.iv-form .btn{flex:1 1 auto} }

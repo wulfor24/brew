@@ -79,7 +79,7 @@ export function createConnectors({ packs, auth, builder, log = console, onLive =
       out[id] = { state: s.state, at: s.at, lastSync: s.lastSync || null, by: member ? s.by : undefined, account: s.account?.name || null, error: s.error || null, notes: s.notes || [], dummy: true,
         ...(d && !d.gone ? { stats: d.stats, changed: d.changed, cards: d.cards.length } : {}) };
     }
-    return { me, signin: auth.signinOn(), access, conns: out, avail: avail(), dummy: true };
+    return { me, signin: auth.signinOn(), access, full: auth.isAdmin(me), conns: out, avail: avail(), dummy: true };
   }
   // for feed-service: the connector cards and connected ids a viewer of this brand gets (team only, except marketplaces)
   async function forViewer(slug, member) {

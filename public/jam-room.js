@@ -11,6 +11,24 @@
   const JM = { cid: null, tab: 'brief', draft: '', busy: '', previews: {}, moves: {}, flash: [], saveT: null, confirm: null, menu: false, importing: false, focusIn: false };
   const DPx = () => A.currentDetail && A.currentDetail();
   const W = () => { const p = DPx(); return p?._work || null; };
+  /* real people. The demo site keeps the simulated teammates (Dummy); everywhere else @ means a real person on the team */
+  const DEMO = !!window.BREW_DEMO;
+  const ME = () => window.LIVE?.me || window.LIVE?.user || null;
+  const myEmail = () => String(ME()?.email || '').toLowerCase();
+  const shortName = (p) => String(p?.name || p?.email || 'Someone').trim().split(/\s+/)[0].replace(/@.*/, '');
+  const hue = (s) => [...String(s || '')].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7) % 360;
+  const initials = (p) => (p?.name || p?.email || '?').replace(/@.*/, '').split(/[\s._-]+/).filter(Boolean).slice(0, 2).map((x) => x[0].toUpperCase()).join('') || '?';
+  const pAv = (p, n = 24) => p?.pic ? `<img class="av av-img" src="${esc(p.pic)}" alt="" referrerpolicy="no-referrer" style="width:${n}px;height:${n}px">` : `<span class="av" style="--ac:hsl(${hue(p?.email)} 38% 42%);width:${n}px;height:${n}px">${esc(initials(p))}</span>`;
+  /* everyone this jam can tag: the team, people invited to it, and this jam's guests; never yourself */
+  const realPeople = (w = W()) => { const me = myEmail(), seen = new Map(), add = (x, sub) => { const e = String(x.email || '').toLowerCase(); if (!e || e === me || seen.has(e)) return; seen.set(e, { k: e, email: e, name: x.name || e.replace(/@.*/, ''), sub, pic: x.pic || null, html: pAv({ ...x, email: e }, 20) }); };
+    (window.LIVE?.access?.team || []).forEach((x) => add(x, x.role === 'owner' ? 'Admin' : ''));
+    (w?.people || []).forEach((x) => add(x, x.guest || x.how === 'guest' ? 'Guest' : ''));
+    (window.LIVE?.access?.invited || []).forEach((e) => add({ email: e }, 'Invited'));
+    return [...seen.values()]; };
+  /* the people a message tags: every @Name in it that is someone on the list (longest name first) */
+  const tagsIn = (text) => { const out = new Set(), list = realPeople().sort((a, b) => b.name.length - a.name.length); const low = ` ${text.toLowerCase()}`;
+    for (const x of list) { const n = `@${x.name.toLowerCase()}`; let i = low.indexOf(n); while (i >= 0) { const after = low[i + n.length]; if ((low[i - 1] === ' ' || low[i - 1] === '\n') && (!after || /[\s,.:;!?]/.test(after))) { out.add(x.email); break; } i = low.indexOf(n, i + 1); } }
+    return [...out]; };
 
   /* ---------- Markdown ⇄ the editable doc ---------- */
   const inline = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
@@ -60,6 +78,7 @@
   /* ---------- the pane ---------- */
   const people = (w) => {
     const out = [{ html: `<span class="jm-fav">${face(w?.agent && w.agent !== 'brew' ? w.agent : 'creative')}</span>`, t: AGENT[w?.agent] || 'AI' }];
+    if (!DEMO) { const here = new Set((JM.here?.[w?.id] || []).map((x) => x.email)); (w?.people || []).forEach((x) => out.push({ html: `${pAv(x, 24)}${here.has(x.email) ? '<i class="jm-here" title="Here now"></i>' : ''}`, t: `${pName(x)}${x.email === myEmail() ? ' (you)' : ''}${here.has(x.email) ? ' · here now' : ''}` })); return out; }
     const names = new Set(); (w?.thread || []).forEach((m) => { if (m.from === 'colleague' && m.who) names.add(m.who); }); if (w?.with?.kind === 'team') names.add(w.with.name);
     names.forEach((n) => { const c = A.B.colleagues.map((x) => A.colleague(x.id)).find((x) => x.name === n || x.role === n) || { ini: n.slice(0, 2).toUpperCase(), color: '#666' }; out.push({ html: avatar(c, 24), t: n }); });
     if (w?.with?.kind === 'brew' || (w?.thread || []).some((m) => m.from === 'brew')) out.push({ html: '<span class="av pod-av" style="width:24px;height:24px">B</span>', t: 'ShopOS team' });
@@ -78,21 +97,34 @@
   const msgHtml = (m, w) => {
     const edited = m.edited?.length ? `<div class="jm-edited"><button class="jm-ed-k" data-jm-flash="${esc(m.edited.join('|'))}">${ic('check', 's12')}Updated ${m.edited.length} part${m.edited.length > 1 ? 's' : ''} of the brief</button>${m.edited.map((x) => `<button class="jm-ed-c" data-jm-flash="${esc(x)}">${esc(x)}</button>`).join('')}</div>` : '';
     if (m.from === 'system') return `<div class="jm-sys">${esc(m.body)}${edited}</div>`;
-    if (m.from === 'me') return `<div class="jm-m me"><div class="jm-bub">${esc(m.body)}</div>${edited}</div>`;
+    const tagged = (body) => { let h = esc(body); for (const x of [...realPeople(w), ...(DEMO ? [] : [SHOPOS])]) h = h.replace(new RegExp(`(^|\\s)@${x.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=$|[\\s,.:;!?])`, 'gi'), (all, sp) => `${sp}<b class="jm-tag">@${esc(x.name)}</b>`); return h; };
+    if (m.from === 'me' && m.by && m.by.email !== myEmail()) return `<div class="jm-m">${pAv(m.by, 26)}<div class="jm-mb"><small>${esc(pName(m.by))}</small><div class="jm-bub">${tagged(m.body)}</div>${edited}</div></div>`; /* a teammate's message */
+    if (m.from === 'me') return `<div class="jm-m me"><div class="jm-bub">${tagged(m.body)}</div>${edited}</div>`;
     const who = m.from === 'ai' ? `<span class="jm-fav">${face(w.agent && w.agent !== 'brew' ? w.agent : 'creative')}</span>` : m.from === 'colleague' ? avatar(A.B.colleagues.map((x) => A.colleague(x.id)).find((x) => x.name === m.who || x.role === m.who) || { ini: (m.who || '?').slice(0, 2).toUpperCase(), color: '#666' }, 26) : '<span class="av pod-av" style="width:26px;height:26px">B</span>';
     return `<div class="jm-m">${who}<div class="jm-mb"><small>${esc(m.who || (m.from === 'ai' ? AGENT[w.agent] || 'AI' : 'Brew'))}${m.from === 'colleague' && w.with?.channel ? ` · ${esc(w.with.channel)}` : ''}${m.from === 'colleague' ? '<span class="dummy-tag" title="A simulated teammate reply">Dummy</span>' : ''}</small><div class="jm-bub${m.from === 'ai' ? ' is-md' : ''}">${m.from === 'ai' ? mdLite(m.body) : esc(m.body)}</div>${edited}</div></div>`;
   };
   const questions = (w) => {
     const qs = w?.plan?.questions || []; if (!qs.length) return ''; const open = qs.filter((q) => !q.answer);
-    const owner = (o) => (o === 'ai' ? AGENT[w.agent] || 'AI' : o === 'brew' ? 'ShopOS team' : A.colleague(o).name);
+    const owner = (o, q) => (q?.waiting && !DEMO ? q.waiting : o === 'ai' ? AGENT[w.agent] || 'AI' : o === 'brew' ? 'ShopOS team' : DEMO ? A.colleague(o).name : 'someone');
     return `<details class="jm-qs"${open.length ? ' open' : ''}><summary>Open questions <span>${open.length ? `${open.length} open` : 'all answered'}</span></summary>
-      <ul>${qs.map((q) => `<li class="${q.answer ? 'done' : ''}"><b>${esc(q.q)}</b>${q.answer ? `<p>${esc(q.answer)}</p>` : `<div class="jm-q-a">${q.asked ? `<span><span class="spin"></span>Asked ${esc(owner(q.owner))}</span>` : `<button class="linkbtn" data-jq-ask="${esc(q.id)}">Ask ${esc(owner(q.owner))}</button>`}<button class="linkbtn" data-jm-answer="${esc(q.id)}">Answer it</button></div>`}</li>`).join('')}</ul></details>`;
+      <ul>${qs.map((q) => `<li class="${q.answer ? 'done' : ''}"><b>${esc(q.q)}</b>${q.answer ? `<p>${esc(q.answer)}</p>` : `<div class="jm-q-a">${q.asked ? `<span><span class="spin"></span>Asked ${esc(owner(q.owner, q))}</span>` : !DEMO && q.owner !== 'ai' ? `<button class="linkbtn" data-jq-who="${esc(q.id)}">Ask someone</button>${JM.askQ === q.id ? `<div class="jm-pick" role="menu">${realPeople(w).filter((x) => x.sub !== 'Invited').map((x) => `<button role="menuitem" data-jq-askp="${esc(q.id)}|${esc(x.email)}">${x.html}<b>${esc(x.name)}</b></button>`).join('') || '<small>Invite your team first: Team and access, in your account menu.</small>'}</div>` : ''}` : `<button class="linkbtn" data-jq-ask="${esc(q.id)}">Ask ${esc(owner(q.owner))}</button>`}<button class="linkbtn" data-jm-answer="${esc(q.id)}">Answer it</button></div>`}</li>`).join('')}</ul></details>`;
   };
   // the people the @ being typed could mean (none once a full name and a space are in)
   const mentionMatches = () => { if (JM.noMention) return []; const m = JM.draft.match(/(^|\s)@([\w ]*)$/); if (!m) return []; const q = m[2].toLowerCase();
     if (q.endsWith(' ') && mentionList().some((x) => x.name.toLowerCase() === q.trim())) return []; // already picked
     return mentionList().filter((x) => x.name.toLowerCase().startsWith(q.trimStart())); };
-  const mentionList = () => [...A.B.colleagues.map((x) => A.colleague(x.id)).map((c) => ({ k: c.id, name: c.name, sub: c.role !== c.name ? c.role : '', html: avatar(c, 20) }))];
+  const SHOPOS = { k: 'brew', name: 'ShopOS team', sub: 'Gets an email to join', html: '<span class="av pod-av" style="width:20px;height:20px">B</span>' };
+  const mentionList = () => (DEMO ? [...A.B.colleagues.map((x) => A.colleague(x.id)).map((c) => ({ k: c.id, name: c.name, sub: c.role !== c.name ? c.role : '', html: avatar(c, 20) }))] : [...realPeople(), SHOPOS]);
+  const shoposIn = (text) => /(^|\s)@shopos team(?=$|[\s,.:;!?])/i.test(text);
+  const pName = (p) => `${p?.staff ? 'ShopOS team · ' : ''}${p?.name || p?.email || 'Someone'}`; /* a shopos.ai account shows as the ShopOS team */
+  /* who has the jam: give it to someone, or ask someone for their OK on this version (they get an email) */
+  const assignHtml = (w) => { if (DEMO || !w) return ''; const a = w.assignee, ppl = realPeople(w);
+    const label = a ? `${pAv(a, 18)}<span>${a.ask === 'approve' ? `Waiting on ${esc(shortName(a))}’s OK` : `${esc(shortName(a))} has it`}</span>` : `${ic('person', 's14')}<span>Assign</span>`;
+    const pop = JM.assign ? `<div class="jm-menu jm-assign-m" role="menu"><div class="jm-seg" role="group"><button data-jm-amode="work" aria-pressed="${JM.assign !== 'approve'}">Give it to</button><button data-jm-amode="approve" aria-pressed="${JM.assign === 'approve'}">Ask for OK on v${esc(w.current || 1)}</button></div>
+      ${ppl.length ? ppl.map((x) => `<button role="menuitem" data-jm-assignto="${esc(x.email)}">${x.html}<b>${esc(x.name)}</b>${x.sub ? `<small>${esc(x.sub)}</small>` : ''}</button>`).join('') : '<small class="jm-assign-none">Nobody else is on the team yet. Invite them from Team and access.</small>'}
+      ${a ? '<hr><button role="menuitem" data-jm-assignto="">Nobody</button>' : ''}</div>` : '';
+    return `<span class="jm-assign"><button class="jm-assign-b${a ? ' is-on' : ''}" data-jm-assign aria-expanded="${!!JM.assign}">${label}</button>${pop}</span>`; };
+  const typingHtml = (w) => { const ty = (JM.here?.[w?.id] || []).filter((x) => x.typing); return ty.length ? `<div class="jm-sys jm-typing-who">${esc(ty.map(shortName).join(' and '))} ${ty.length > 1 ? 'are' : 'is'} typing<span class="jm-typing"><i></i><i></i><i></i></span></div>` : ''; };
   const shipHtml = (w, doc) => {
     if (w && !EARLY.includes(w.stage)) return JM.later ? `<div class="jm-later">${JM.later}</div>` : '';
     /* the team replied: the answer they need is one tap */
@@ -163,7 +195,7 @@
     const msgs = th.filter((m) => m.from !== 'system' || m.edited?.length || /brief|moved|sent/i.test(m.body || ''));
     return `<div class="jm" data-jm>
       <header class="jm-h"><div class="jm-tabs" role="tablist"><button role="tab" data-jm-tab="chat" aria-selected="${tab === 'chat'}">Chat${msgs.length ? ` <span>${msgs.length}</span>` : ''}</button><button role="tab" data-jm-tab="brief" aria-selected="${tab === 'brief'}">Brief</button></div>
-        <span class="jm-people" title="${esc(ps.map((x) => x.t).join(', '))}">${ps.map((x) => `<span class="jm-pp">${x.html}</span>`).join('')}</span>
+        ${assignHtml(w)}<span class="jm-people" title="${esc(ps.map((x) => x.t).join(', '))}">${ps.map((x) => `<span class="jm-pp">${x.html}</span>`).join('')}</span>
         <button class="icon-btn jm-more" data-jm-menu aria-label="More" aria-expanded="${JM.menu}">${ic('more', 's16')}</button>
         ${JM.menu ? `<div class="jm-menu" role="menu"><button data-jm-move="whatsapp">${ic('chat', 's14')}Take it to WhatsApp</button><button data-jm-move="slack"><span class="slack-ic sm">#</span>Take it to Slack</button><button data-jm-import>${ic('copy', 's14')}Paste a chat back in</button><button data-jm-handoff>${ic('link', 's14')}Copy the full handoff link</button>${W() ? `<hr><button data-jm-fresh>${ic('refresh', 's14')}Start fresh</button><button data-jm-discard class="is-bad">${ic('minus', 's14')}Discard this jam</button>` : ''}</div>` : ''}</header>
       <div class="jm-b">${tab === 'brief' ? `
@@ -175,7 +207,7 @@
         ${doc ? `<article class="jm-doc" contenteditable="${shipped || (w?.jamBrief && !EARLY.includes(w.stage)) ? 'false' : 'true'}" spellcheck="true" data-jm-doc aria-label="The brief. Type to edit.">${toHtml(doc.md, JM.flash)}</article>` : '<div class="sk" style="height:320px;border-radius:12px"></div>'}
         ${shipped ? '' : doc?.missing?.length ? `<p class="jm-missing">Still missing: ${doc.missing.map((x) => `<button class="linkbtn" data-jm-fill="${esc(x)}">${esc(x.toLowerCase())}</button>`).join(', ')}</p>` : doc ? `<p class="jm-missing ok">${ic('check', 's14')}Everything the next team needs is in here.</p>` : ''}
         ${questions(w)}${A.SPLIT ? draftsHtml(w) : ''}`
-      : `<div class="jm-thread" id="jm-thread">${A.SPLIT && caseHtml(p, w) ? `<div class="jm-empty has-case">${caseHtml(p, w)}${msgs.length ? '' : altsHtml(p)}</div>` : ''}${msgs.length ? msgs.map((m) => msgHtml(m, w)).join('') : A.SPLIT && caseHtml(p, w) ? '' : `<div class="jm-empty"><b>What should change?</b><span>Type or talk. ${A.SPLIT ? 'The left side updates as you go.' : 'Everything agreed lands in the brief.'} @ brings in a teammate or the ShopOS team.</span>${altsHtml(p)}</div>`}${JM.busy ? `<div class="jm-m"><span class="jm-fav">${face(w?.agent || 'creative')}</span><div class="jm-mb"><div class="jm-bub"><span class="jm-typing"><i></i><i></i><i></i></span></div></div></div>` : ''}</div>`}
+      : `<div class="jm-thread" id="jm-thread">${A.SPLIT && caseHtml(p, w) ? `<div class="jm-empty has-case">${caseHtml(p, w)}${msgs.length ? '' : altsHtml(p)}</div>` : ''}${msgs.length ? msgs.map((m) => msgHtml(m, w)).join('') : A.SPLIT && caseHtml(p, w) ? '' : `<div class="jm-empty"><b>What should change?</b><span>Type or talk. ${A.SPLIT ? 'The left side updates as you go.' : 'Everything agreed lands in the brief.'} @ brings in a teammate or the ShopOS team.</span>${altsHtml(p)}</div>`}${typingHtml(w)}${JM.busy ? `<div class="jm-m"><span class="jm-fav">${face(w?.agent || 'creative')}</span><div class="jm-mb"><div class="jm-bub"><span class="jm-typing"><i></i><i></i><i></i></span></div></div></div>` : ''}</div>`}
       </div>
       <form class="jm-compose" id="jm-f">${(() => { const ms = mentionMatches(); if (!ms.length) return ''; JM.mi = Math.min(JM.mi || 0, ms.length - 1); return `<div class="jm-mentions" role="listbox">${ms.map((x, i) => `<button type="button" role="option" aria-selected="${i === JM.mi}" class="${i === JM.mi ? 'is-on' : ''}" data-jm-mention="${esc(x.name)}">${x.html}<b>${esc(x.name)}</b>${x.sub ? `<small>${esc(x.sub)}</small>` : ''}</button>`).join('')}</div>`; })()}
         <textarea id="jm-in" rows="1"${A.SPLIT ? ' data-nomic' : ''} placeholder="${shipped ? 'Ask for the next version, or @ someone…' : w?.with?.kind === 'team' ? `Reply to ${esc(w.with.name)}, or ask AI…` : A.SPLIT ? 'What should change?' : 'Ask AI to change the brief, or @ someone…'}" aria-label="Message">${esc(JM.draft)}</textarea>${A.SPLIT && window.Composer?.tools ? `<span class="jm-tools">${window.Composer.tools()}<span class="jm-tools-r">${window.Mic?.supported ? `<button type="button" class="jm-mic" data-cmp-talk aria-label="Talk instead of typing">${ic('mic', 's16')}</button>` : ''}<button class="jm-send" aria-label="Send" ${JM.busy ? 'disabled' : ''}>${ic('up', 's16')}</button></span></span>` : `<button class="jm-send" aria-label="Send" ${JM.busy ? 'disabled' : ''}>${ic('up', 's16')}</button>`}</form>
@@ -237,7 +269,14 @@
     // the longest name that the @ starts with
     const target = text.startsWith('@') ? mentionList().filter((x) => text.slice(1).toLowerCase().startsWith(x.name.toLowerCase()) && /^($|[\s,:])/.test(text.slice(1 + x.name.length))).sort((a, b) => b.name.length - a.name.length)[0] : null;
     JM.draft = ''; JM.tab = 'chat';
-    if (target) {
+    /* a message that tags someone goes to them (and their inbox), not to AI */
+    const tags = DEMO ? [] : tagsIn(text), toShopos = !DEMO && shoposIn(text);
+    if (!DEMO && (tags.length || toShopos)) { JM.busy = 'team'; w.thread = [...(w.thread || []), { id: 'tmp', from: 'me', body: text, by: ME() }]; paint();
+      const r = await A.tapi('POST', `/api/work/${w.id}/message`, { body: text, mentions: tags, shopos: toShopos }); JM.busy = '';
+      if (r.error) { JM.draft = text; toast(esc(r.error)); return paint(); }
+      const names = [...(r.tagged || []).map((e) => realPeople().find((x) => x.email === e)?.name || e), ...(toShopos ? ['The ShopOS team'] : [])];
+      if (names.length) toast(`${ic('send', 's16')}${esc(names.join(', '))} will get an email`); return take(r.work); }
+    if (target && DEMO) {
       if (!A.conn('slack')) { JM.draft = text; return A.openConnect('slack', { then: () => send(text), why: 'Your teammate answers in Slack. Replies land in the jam and the brief.' }); }
       JM.busy = 'team'; paint();
       const r = w.with?.kind === 'team' && w.with.id === target.k ? await A.tapi('POST', `/api/work/${w.id}/message`, { body: text }) : await A.tapi('POST', `/api/work/${w.id}/send`, { to: 'team', note: text, colleague: target.k, name: target.name, names: A.S.slack?.names, channel: A.S.slack?.channel });
@@ -321,12 +360,17 @@
     if (t.closest('[data-jm-view]')) return viewBrief();
     /* drafts are made from the canvas and the + menu too, both outside the pane */
     const mk = t.closest('[data-jm-make]'); if (mk && DPx()) return makeDraft(mk.dataset.jmMake);
-    if (!t.closest('[data-jm]')) { if (JM.menu && !t.closest('[data-jm-menu]')) { JM.menu = false; paint(); } return; }
+    if (!t.closest('[data-jm]')) { if ((JM.menu && !t.closest('[data-jm-menu]')) || JM.assign) { JM.menu = false; JM.assign = null; paint(); } return; }
     const alt = t.closest('[data-jm-alt]'); if (alt) { const box = $('#jm-in'); if (box) { box.value = alt.dataset.jmAlt; box.dispatchEvent(new Event('input', { bubbles: true })); box.focus(); } return; }
     const tb = t.closest('[data-jm-tab]'); if (tb) { JM.tab = tb.dataset.jmTab; return paint(); }
     const dc = t.closest('[data-jm-drcopy]'); if (dc) { const d = (W()?.drafts || []).find((x) => x.id === dc.dataset.jmDrcopy); try { await navigator.clipboard.writeText(d?.copy || ''); } catch (e) {} return toast(`${ic('check', 's16')}Copied`); }
     const dd = t.closest('[data-jm-drop]'); if (dd) { const w = W(); if (!w) return; const r = await A.tapi('POST', `/api/work/${w.id}/draft/${dd.dataset.jmDrop}/drop`, {}); return take(r.work); }
-    if (t.closest('[data-jm-menu]')) { JM.menu = !JM.menu; return paint(); }
+    if (t.closest('[data-jm-menu]')) { JM.menu = !JM.menu; JM.assign = null; return paint(); }
+    if (t.closest('[data-jm-assign]')) { JM.assign = JM.assign ? null : 'work'; JM.menu = false; return paint(); }
+    const am = t.closest('[data-jm-amode]'); if (am) { JM.assign = am.dataset.jmAmode; return paint(); }
+    const at = t.closest('[data-jm-assignto]'); if (at) { const ask = JM.assign === 'approve' ? 'approve' : 'work'; JM.assign = null; const w = await ensureWork(); if (!w) return; const email = at.dataset.jmAssignto;
+      const r = await A.tapi('POST', `/api/work/${w.id}/assign`, { email, ask }); if (r.error) { toast(esc(r.error)); return paint(); }
+      if (email) toast(`${ic('send', 's16')}${esc(realPeople().find((x) => x.email === email)?.name || email)} will get an email`); return take(r.work); }
     if (t.closest('[data-jm-share]')) { JM.share = !JM.share; return paint(); }
     const mo = t.closest('[data-jm-move]'); if (mo) { JM.share = false; return move(mo.dataset.jmMove); }
     if (t.closest('[data-jm-fresh]')) { JM.menu = false; const w = W(); if (w) A.libAct.fresh('jam', w.id); return; }
@@ -337,6 +381,8 @@
     if (t.closest('[data-jm-imp]')) { const v = $('#jm-imp')?.value.trim(); if (!v) return; const w = await ensureWork(); if (!w) return; const b = t.closest('button'); b.disabled = true; b.innerHTML = '<span class="spin"></span>Reading the chat…'; const r = await A.tapi('POST', `/api/work/${w.id}/jb/import`, { text: v }); JM.importing = false; if (r.error) { toast(esc(r.error)); return paint(); } return take(r.work, r.changed); }
     const fl = t.closest('[data-jm-flash]'); if (fl) { JM.tab = 'brief'; JM.flash = fl.dataset.jmFlash.split('|'); return paint(); }
     const fi = t.closest('[data-jm-fill]'); if (fi) { JM.draft = `Add ${fi.dataset.jmFill.toLowerCase()}: `; paint(); const i = $('#jm-in'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); return; }
+    const qw = t.closest('[data-jq-who]'); if (qw) { JM.askQ = JM.askQ === qw.dataset.jqWho ? null : qw.dataset.jqWho; return paint(); }
+    const qp = t.closest('[data-jq-askp]'); if (qp) { const [qid, email] = qp.dataset.jqAskp.split('|'); JM.askQ = null; const w = await ensureWork(); if (!w) return; const r = await A.tapi('POST', `/api/work/${w.id}/plan/ask`, { qid, email }); if (r.error) return toast(esc(r.error)); toast(`${ic('send', 's16')}Asked. ${esc(realPeople().find((x) => x.email === email)?.name || email)} will get an email.`); return take(r.work); }
     const qa = t.closest('[data-jm-answer]'); if (qa) { const q = (W()?.plan?.questions || []).find((x) => x.id === qa.dataset.jmAnswer); JM.answering = q?.id || null; JM.draft = q ? `Answer to “${q.q}”: ` : ''; paint(); const i = $('#jm-in'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); return; }
     const mn = t.closest('[data-jm-mention]'); if (mn) { JM.draft = JM.draft.replace(/@[\w ]*$/, `@${mn.dataset.jmMention} `); paint(); const i = $('#jm-in'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); return; }
     if (t.closest('[data-jm-pick]')) { JM.pick = true; return paint(); }
@@ -371,7 +417,7 @@
   /* ---------- entry points: every jam opens on its card ---------- */
   const open = (p, opts = {}) => {
     const tab = opts.mode === 'team' || opts.draft ? 'chat' : 'brief';
-    const draft = opts.draft || (opts.mode === 'team' ? `@${A.colleagueForCard(p).name} ` : '');
+    const draft = opts.draft || (opts.mode === 'team' ? (DEMO ? `@${A.colleagueForCard(p).name} ` : '@') : '');
     JM.cid = null; A.openDetail(p, { jamTab: tab, draft });
     if (opts.starter) setTimeout(() => send(opts.starter), 50);
     setTimeout(() => { const i = $('#jm-in'); if (i && draft) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 120);
@@ -445,7 +491,10 @@
   addEventListener('resize', atClose); addEventListener('scroll', (e) => { if (AT.box && !e.target?.closest?.('.at-pop')) atClose(); }, true);
   /* a message from the jam page that starts with @someone goes to them (Slack) or the Brew team, on the card's own jam */
   const mentionOf = (text) => (text.startsWith('@') ? mentionList().filter((x) => text.slice(1).toLowerCase().startsWith(x.name.toLowerCase()) && /^($|[\s,:])/.test(text.slice(1 + x.name.length))).sort((a, b) => b.name.length - a.name.length)[0] : null);
-  const sendTo = async (p, text) => { text = String(text || '').trim(); const target = mentionOf(text); if (!target || !p) return false;
+  const sendTo = async (p, text) => { text = String(text || '').trim();
+    if (!DEMO) { const tags = tagsIn(text), toShopos = shoposIn(text); if ((!tags.length && !toShopos) || !p) return false; let w = A.workOfCard(p.id); if (!w) { const { _work, _ch, ...card } = p; const r = await A.tapi('POST', '/api/work', { cardId: p.id, card, decided: A.S.decided?.[p.id] || null }); w = r.work; if (w) A.putWork(w); }
+      if (!w) { toast('That didn’t go through. Try again.'); return true; } const r = await A.tapi('POST', `/api/work/${w.id}/message`, { body: text, mentions: tags, shopos: toShopos }); if (r.work) A.putWork(r.work); toast(r.error ? esc(r.error) : `${ic('send', 's16')}Sent. They’ll get an email.`); return true; }
+    const target = mentionOf(text); if (!target || !p) return false;
     let w = A.workOfCard(p.id); if (!w || ['measuring', 'result'].includes(w.stage)) { const { _work, _ch, ...card } = p; const r = await A.tapi('POST', '/api/work', { cardId: p.id, card, decided: A.S.decided?.[p.id] || null }); w = r.work; if (w) A.putWork(w); }
     if (!w) { toast('That didn’t go through. Try again.'); return true; }
     if (target.k === 'brew') { const r = w.with?.kind === 'brew' ? await A.tapi('POST', `/api/work/${w.id}/message`, { body: text }) : await A.tapi('POST', `/api/work/${w.id}/send`, { to: 'brew', note: text.replace(/^@[\w ]*?Brew team[\s,:]*/i, '') || text }); if (r.work) A.putWork(r.work); toast(`${ic('send', 's16')}Sent to the Brew team`); return true; }
@@ -453,5 +502,7 @@
     const r = w.with?.kind === 'team' && w.with.id === target.k ? await A.tapi('POST', `/api/work/${w.id}/message`, { body: text }) : await A.tapi('POST', `/api/work/${w.id}/send`, { to: 'team', note: text, colleague: target.k, name: target.name, names: A.S.slack?.names, channel: A.S.slack?.channel });
     if (r.work) A.putWork(r.work); toast(`Simulated: nothing is sent. ${esc(target.name)} answers here as a Dummy.`); return true; };
 
-  window.JamRoom = { open, openFromCtx, close: () => {}, decorateDetail, fromHash, isOpen: () => false, isEditing, paint, addToBrief, send, sendTo, mentionOf, toHtml: (md) => toHtml(md) };
+  /* who has this jam open (from the open jam's poll): true when it changed, so the strip repaints */
+  const setHere = (wid, list) => { const k = (list || []).map((x) => `${x.email}:${x.typing ? 1 : 0}`).sort().join(','), was = (JM.hereK ||= {})[wid]; JM.hereK[wid] = k; (JM.here ||= {})[wid] = list || []; return was !== undefined ? was !== k : !!list?.length; };
+  window.JamRoom = { setHere, open, openFromCtx, close: () => {}, decorateDetail, fromHash, isOpen: () => false, isEditing, paint, addToBrief, send, sendTo, mentionOf, toHtml: (md) => toHtml(md) };
 })();

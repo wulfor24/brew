@@ -96,8 +96,8 @@ test('changing the admin: promote, transfer, and never zero admins', async () =>
 
 test('another domain joins only by invite: asking is refused, an invite lets them in with its views', async () => {
   const { auth } = await owned();
-  const res = resOf(); await auth.handle(reqOf('POST', { cookie: cookieFor(auth, 'raj@gmail.com'), body: '{}' }), res, new URL('http://x.test/api/brands/cozy/request'));
-  assert.match(JSON.parse(res.body).error, /invite/); assert.equal(await auth.roleOf('cozy', { email: 'raj@gmail.com' }), null);
+  const res = resOf(); assert.equal(await auth.handle(reqOf('POST', { cookie: cookieFor(auth, 'raj@gmail.com'), body: '{}' }), res, new URL('http://x.test/api/brands/cozy/request')), false, 'there is no asking route');
+  assert.equal(await auth.roleOf('cozy', { email: 'raj@gmail.com' }), null);
   await team(auth, 'ana@cozysnugglet.shop', { action: 'invite', email: 'raj@gmail.com', seats: ['brand'] });
   assert.equal(await auth.roleOf('cozy', { email: 'raj@gmail.com' }), 'member');
   const a = await auth.accessOf('cozy', { email: 'raj@gmail.com' }); assert.equal(a.gen, true); assert.deepEqual(a.seats, ['brand']);
@@ -140,4 +140,27 @@ test('Brew’s own people make work on every brand, with every view, even where 
   assert.equal(b.gen, true); assert.equal(b.seats, null, 'a Brew admin is never limited to some views');
   const c = await auth.claimInfo('cozy', { email: 'raj@gmail.com' });
   assert.equal(c.gen, false, 'a stranger still sees the demo');
+});
+
+test('the admin hands over in one change, an invite’s views can change before they join, and a failed email gives the link', async () => {
+  const { auth } = await owned();
+  let r = await team(auth, 'ana@cozysnugglet.shop', { action: 'invite', email: 'raj@gmail.com', seats: ['brand'] });
+  assert.ok(r.link, 'no email key in tests, so the admin gets the link to send'); assert.match(r.warn, /Copy the link/);
+  r = await team(auth, 'ana@cozysnugglet.shop', { action: 'seats', email: 'raj@gmail.com', seats: ['growth'] });
+  assert.deepEqual(r.invites.find((x) => x.email === 'raj@gmail.com').seats, ['growth']);
+  r = await team(auth, 'ana@cozysnugglet.shop', { action: 'resend', email: 'raj@gmail.com' }); assert.match(r.error, /few minutes/);
+  await auth.roleOf('cozy', { email: 'raj@gmail.com', name: 'Raj' });
+  r = await team(auth, 'ana@cozysnugglet.shop', { action: 'transfer', email: 'raj@gmail.com' }); assert.equal(r.error, undefined);
+  const m = await auth.getMembers('cozy');
+  assert.equal(m.members.find((x) => x.email === 'raj@gmail.com').role, 'owner'); assert.equal(m.members.find((x) => x.email === 'ana@cozysnugglet.shop').role, 'member');
+  assert.equal(m.owner, 'raj@gmail.com');
+});
+
+test('a member’s name and picture follow their Google account, and everyone on the team sees who else is on it', async () => {
+  const { auth } = await owned();
+  await team(auth, 'ana@cozysnugglet.shop', { action: 'invite', email: 'raj@gmail.com', seats: ['brand'] });
+  await auth.roleOf('cozy', { email: 'raj@gmail.com', name: 'Raj', pic: 'https://x/p1.jpg' });
+  await auth.roleOf('cozy', { email: 'raj@gmail.com', name: 'Raj Kumar', pic: 'https://x/p2.jpg' }); await new Promise((r) => setTimeout(r, 20));
+  const x = (await auth.getMembers('cozy')).members.find((y) => y.email === 'raj@gmail.com'); assert.equal(x.name, 'Raj Kumar'); assert.equal(x.pic, 'https://x/p2.jpg');
+  const a = await auth.accessOf('cozy', { email: 'raj@gmail.com' }); assert.ok(a.team.some((y) => y.email === 'ana@cozysnugglet.shop')); assert.equal(a.members, undefined, 'views stay with admins');
 });
