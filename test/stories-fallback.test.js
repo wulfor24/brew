@@ -114,3 +114,13 @@ test('a ring with nothing fresh reads its source again, at most once every 2 hou
   assert.equal(r.need('trends'), false, 'not again while it runs or within 2 hours');
   assert.equal(r.need('nope'), false);
 });
+
+test('a story may only quote numbers that are in its data; a bare rise reads as a percent', async () => {
+  const { honest, pct } = await import('../research.js');
+  assert.equal(honest(['Thickness searches up 190%'], 'change 110%'), false);
+  assert.equal(honest(['Up 110%: make a 9:16 static and run it for 14 days'], 'change 110%'), true);
+  assert.equal(honest(['Serum at ₹1,299 has 474 reviews'], 'price ₹1299, 474 reviews'), true);
+  assert.equal(pct('bare anatomy up 70'), 'bare anatomy up 70%');
+  assert.equal(pct('up 70%'), 'up 70%');
+  assert.equal(pct('up 3 days in a row'), 'up 3 days in a row');
+});

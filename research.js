@@ -46,6 +46,11 @@ export function pool(prev, items, k, now = Date.now()) {
   const archive = [...gone, ...(prev?.archive || [])].filter((x, i, a) => !live.has(key(x)) && a.findIndex((y) => key(y) === key(x)) === i && now - (x.firstSeen || 0) < 30 * D).slice(0, 80);
   return { items: [...fresh, ...kept], firstSeenOf, archive };
 }
+/* every number a story quotes must be in the data it was written from: the AI wrote "up 190%" for a term the data had at 110% */
+const numsIn = (t) => (String(t || '').replace(/(\d),(?=\d)/g, '$1').replace(/\b\d+:\d+\b/g, ' ').replace(/\b\d+\s?(?:days?|hours?|hrs?|weeks?|minutes?|mins?|seconds?|secs?|am|pm|steps?|versions?)\b/gi, ' ').match(/\d+(?:\.\d+)?/g) || []).map((n) => String(+n));
+export const honest = (texts, source) => { const ok = new Set(numsIn(source)); return texts.every((t) => numsIn(t).every((n) => ok.has(n) || +n <= 10)); };
+/* "up 70" with no unit reads as nothing: a rise or fall in a trend is a percent */
+export const pct = (t) => String(t || '').replace(/\b(up|down|rose|fell|surged?|jumped|climbed|dropped)( by)? (\d+)(?![\d%.])(?! (?:days?|points?|from|to)\b)/gi, '$1$2 $3%');
 export const noPaise = (s) => String(s ?? '').replace(/((?:₹|\bRs\.?|\bINR)\s?)(\d[\d,]*)\.(\d{1,2})\b/g, (m, c, n, p) => c + Math.round(+n.replace(/,/g, '') + +p.padEnd(2, '0') / 100).toLocaleString('en-IN'));
 const BUCKET = process.env.RESEARCH_BUCKET || 'brew-prototype';
 // One research instance per brand (server.js makes it when the brand pack loads). Its snapshot lives at
@@ -271,15 +276,19 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     } catch (e) { log.warn('[research] trends claude', e.message); }
     /* no AI (down, out of credit, or it picked nothing): the stories are written from the numbers themselves, so the ring
        still gets today's real movers; nothing is invented, every line is a number from the read above */
-    if (!(out.items || []).some((x) => x.h)) out = { items: trendsFromData(series, rising, days, solid) };
+    const src = `${data}\n${ris}\n${days}`;
+    out.items = (out.items || []).filter((x) => x.h && honest([x.h, x.p, x.card], src));
+    if (!out.items.length) out = { items: trendsFromData(series, rising, days, solid) };
     const seenKey = new Set();
     const items = (out.items || []).slice(0, 6).map((x) => { const risingOf = x.kind === 'rising' ? (rising[x.rising] ? x.rising : Object.keys(rising)[0] || null) : null;
-      return { kind: x.kind, h: clean(x.h), p: clean(x.p), card: clean(x.card || x.h), terms: (x.terms || []).filter((t) => series[t]).slice(0, 3), risingOf, rising: risingOf ? (rising[risingOf] || []).slice(0, 6) : null, ...(x.by ? { by: x.by } : {}) }; })
+      return { kind: x.kind, h: pct(clean(x.h)), p: pct(clean(x.p)), card: pct(clean(x.card || x.h)), terms: (x.terms || []).filter((t) => series[t]).slice(0, 3), risingOf, rising: risingOf ? (rising[risingOf] || []).slice(0, 6) : null, ...(x.by ? { by: x.by } : {}) }; })
       // one story per rising list and per chart: two stories over the same data would be two cards with one widget
       .filter((x) => { const k = KEY.trends(x); if (seenKey.has(k)) return false; seenKey.add(k); return true; })
       // the id comes from what the story is about, so a later read the same day never reuses another story's id
       .map((x) => ({ id: 'tr-' + crypto.createHash('sha1').update(KEY.trends(x)).digest('hex').slice(0, 10), ...x }));
     snap.trends = { fetchedAt: now, ...pool(snap.trends, items.filter((x) => x.h), 'trends', now), series: { ...(snap.trends?.series || {}), ...series }, rising, source: `Google Trends · ${CTRY()} · last 90 days` };
+    /* stories kept from earlier reads meet the same bar: one quoting a number today's data does not have leaves the ring */
+    snap.trends.items = snap.trends.items.filter((x) => items.includes(x) || items.some((y) => y.id === x.id) || honest([x.h, x.p, x.card], src)).map((x) => ({ ...x, h: pct(x.h), p: pct(x.p), card: pct(x.card) }));
   }
 
   function trendsFromData(series, rising, days, solid) {
@@ -343,7 +352,9 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     let out = { items: [] };
     try { out = parseJSON((await claude(`${factBrief()}\n\nYou are Brew, writing this week's "How to" stories for ${BN()}'s marketing team. They are short playbooks a person can act on today, built from this week's real research:\nPopular rival ads in ${CTRY()}:\n${ads || '(none yet)'}\nSearch trends in ${CTRY()}:\n${tr || '(none yet)'}\nWrite 3 playbooks. Each one turns one finding into a concrete thing ${BN()} can make or change this week, using only ${BN()}'s facts listed above, with their exact numbers. Plain, simple words. Point first.\nJSON: {"items":[{"h":"How to ... (under 48 chars)","p":"one sentence under 22 words: the finding it comes from","steps":["3 or 4 steps, each under 14 words"],"card":"a card title under 70 chars naming a number","lane":"${Object.keys(brand.seed?.lanes || {}).join('|') || 'core'}","scene":"one sentence: a product photo to illustrate it, no text, no people"}]}`, { max: 3000 })).text); } catch (e) { log.warn('[research] howto claude', e.message); }
     /* no AI: playbooks built from the week's top rival ad and top trend, in fixed steps, so the ring keeps its how-tos */
-    if (!(out.items || []).some((x) => x.h)) out = { items: howtoFromData() };
+    const src = `${factBrief()}\n${ads}\n${tr}`;
+    out.items = (out.items || []).filter((x) => x.h && honest([x.h, x.p, x.card, ...(x.steps || [])], src));
+    if (!out.items.length) out = { items: howtoFromData() };
     if (!out.items.length) throw new Error('no ads or trends to write how-tos from yet');
     const items = out.items.slice(0, 3).map((x, i) => ({ id: `ht-${new Date(now).toISOString().slice(0, 10)}-${i}`, h: clean(x.h), p: clean(x.p), steps: (x.steps || []).map(clean).slice(0, 4), card: clean(x.card || x.h), lane: LANES.includes(x.lane) ? x.lane : lane0, scene: x.scene, img: null, ...(x.by ? { by: x.by } : {}) }));
     await Promise.all(items.map(async (x) => {
@@ -354,6 +365,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
       } catch (e) { log.warn('[research] howto image', e.message); }
     }));
     snap.howto = { fetchedAt: now, ...pool(snap.howto, items.filter((x) => x.h), 'howto', now), source: 'Written from this week’s research' };
+    snap.howto.items = snap.howto.items.filter((x) => items.some((y) => y.id === x.id) || honest([x.h, x.p, x.card, ...(x.steps || [])], src));
   }
 
   function howtoFromData() {
