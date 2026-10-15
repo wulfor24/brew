@@ -2597,11 +2597,20 @@ body.rx-boot #view{visibility:hidden}
 .lt-faces .av:first-child{margin-left:0}
 
 /* onboarding: Invite your team (2026-10-15) */
-.iv-form{display:flex;gap:8px;flex-wrap:wrap}
-.iv-form input{flex:1 1 220px;min-width:0;height:44px;padding:0 14px;border:0;border-radius:12px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line);color:var(--fg);font:inherit;font-size:15px}
-.iv-form input:focus,.iv-form select:focus{outline:0;box-shadow:inset 0 0 0 1.5px var(--fg)}
-.iv-form select{height:44px;padding:0 12px;border:0;border-radius:12px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line);color:var(--fg);font:inherit;font-size:14px}
-.iv-form .btn{height:44px}
+.iv-form{display:flex;flex-direction:column;gap:10px}
+.iv-rows{display:flex;flex-direction:column;gap:8px}
+.iv-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,200px);gap:8px;align-items:center}
+.iv-row input,.iv-row select{width:100%;min-width:0;height:46px;padding:0 14px;border:0;border-radius:12px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line);color:var(--fg);font:inherit;font-size:15px}
+.iv-row select{padding:0 10px;font-size:14px;color:var(--fg-2);text-overflow:ellipsis}
+.iv-row input:focus,.iv-row select:focus{outline:0;box-shadow:inset 0 0 0 1.5px var(--fg)}
+.iv-rows.many .iv-row{grid-template-columns:minmax(0,1fr) minmax(0,200px) 36px}
+.iv-row.is-bad input{box-shadow:inset 0 0 0 1.5px var(--bad)}
+.iv-x{display:grid;place-items:center;width:36px;height:36px;border:0;border-radius:10px;background:none;color:var(--fg-3);cursor:pointer}
+.iv-x:hover{background:var(--surface);color:var(--fg)}
+.iv-act{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.iv-add{display:inline-flex;align-items:center;gap:6px;padding:8px 4px;border:0;background:none;color:var(--fg-2);font:inherit;font-size:14px;font-weight:500;cursor:pointer}
+.iv-add:hover{color:var(--fg)}
+.iv-act .btn{height:44px;padding:0 18px;border-radius:12px}
 .iv-msg{margin:-2px 0 0;font-size:13px;color:var(--fg-2)}
 .iv-msg[data-kind="bad"]{color:var(--bad)}
 .iv-note{display:flex;align-items:center;gap:8px;padding:12px 14px;border-radius:12px;background:var(--surface);color:var(--fg-2);font-size:14px}
@@ -2612,4 +2621,4 @@ body.rx-boot #view{visibility:hidden}
 .iv-p small{font-size:12.5px;color:var(--fg-3)}
 .iv-p .av{border-radius:50%;font-size:11px}
 .iv-ok{display:inline-flex;align-items:center;gap:4px;margin-left:auto;font-style:normal;font-size:12.5px;color:var(--ok)}
-@media (max-width:560px){ .iv-form select,.iv-form .btn{flex:1 1 auto} }
+@media (max-width:560px){ .iv-row{grid-template-columns:minmax(0,1fr)} .iv-rows.many .iv-row{grid-template-columns:minmax(0,1fr) auto} .iv-row select{grid-column:1;grid-row:2} .iv-row .iv-x{grid-row:1/3;grid-column:2} }
