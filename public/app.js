@@ -1727,7 +1727,7 @@
     const open = p.questions.filter((q) => !q.answer).length, n = p.questions.length || 1;
     return `<section class="jam-plan"><div class="jp-head"><h4>${ic('hand', 's14')}Jam plan</h4><span class="badge ${open ? 'warn' : 'ok'}">${open ? `${open} open` : 'Ready to share'}</span></div>
       <p class="jp-goal"><small>Goal</small>${esc(p.goal)}</p>
-      ${w.chg ? `<p class="jp-chg">${ic(w.chg.team ? 'send' : 'zap', 's14')}<span>${esc(w.chg.actionLabel)} on ${esc(w.chg.target)}${w.chg.team ? `. ${esc(w.chg.teamWhy || 'It needs a person')}, so the ShopOS team ships it from your brief${w.chg.money && w.chg.amount > 0 ? ` (about ${inrS(w.chg.amount)} a week)` : ''}.` : '. Brew ships it automatically, watches it and can roll it back.'}</span></p>` : ''}
+      ${w.chg ? `<p class="jp-chg">${ic(w.chg.team ? 'send' : 'zap', 's14')}<span>${esc(w.chg.actionLabel)} on ${esc(w.chg.target)}${w.chg.team ? `. ${esc(w.chg.teamWhy || 'It needs a person')}, so whoever ships it works from your brief${w.chg.money && w.chg.amount > 0 ? ` (about ${inrS(w.chg.amount)} a week)` : ''}.` : '. Brew drafts it; your team or the ShopOS team ships it from the shared brief.'}</span></p>` : ''}
       <div class="jp-meter" title="${n - open} of ${n} answered"><i style="width:${Math.round(((n - open) / n) * 100)}%"></i></div>
       <ol class="jq-list">${p.questions.map((q) => `<li class="jq${q.answer ? ' done' : ''}"><span class="jq-dot">${q.answer ? ic('check', 's14') : ''}</span><div><b>${esc(q.q)}</b>${q.answer ? `<p>${esc(q.answer)}<small>${esc(qBy(q.by))}${q.auto ? ' · answered itself' : ''}</small></p>`
         : DP.answering === q.id ? `<form class="compose jq-f" data-jqf="${q.id}"><input placeholder="Your answer" autocomplete="off"><button aria-label="Save">${ic('up', 's16')}</button></form>`
@@ -1794,7 +1794,7 @@
       const open = w?.plan ? w.plan.questions.filter((q) => !q.answer).length : 0;
       const ready = w?.plan ? (open ? `<button class="btn btn-ghost dp-rfs" disabled>${ic('zap', 's14')}Ready to share · ${open} open</button>` : `<button class="btn btn-primary dp-rfs" data-approve>${ic('zap', 's16')}Ready to share</button>`) : `<button class="linkbtn dp-ready" data-approve ${w ? '' : 'hidden'}>${ic('check', 's14')} Looks good, mark ready</button>`;
       if (!w || st === 'drafting') return `${compose}${two}${ready}`;
-      if (st === 'team' || st === 'brew') return `<p class="dp-wait"><span class="spin"></span>${st === 'team' ? `Waiting on ${esc(w.with.name)} in ${esc(w.with.channel)}` : `The ShopOS team has ${esc(w.ticket || 'it')}. Usually 12 to 24 hours.`}</p>${compose}${st === 'brew' ? `<button class="linkbtn" data-wa>${ic('chat', 's14')} Continue on WhatsApp</button>` : ''}`;
+      if (st === 'team' || st === 'brew') return `<p class="dp-wait"><span class="spin"></span>${st === 'team' ? `Waiting on ${esc(w.with.name)} in ${esc(w.with.channel)}` : `Shared with the ShopOS team as ${esc(w.ticket || 'a brief')}.`}</p>${compose}${st === 'brew' ? `<button class="linkbtn" data-wa>${ic('chat', 's14')} Continue on WhatsApp</button>` : ''}`;
       if (st === 'needs_you') return `<div class="dp-ctas"><button class="btn btn-primary" data-approve>${ic('check', 's16')}Approve v${w.current}</button></div>${compose}`;
       if (st === 'ready') return `<div class="dp-ctas"><button class="btn btn-primary" data-cp-ship>${ic('copy', 's16')}Share the brief</button></div><button class="linkbtn" data-reopen>Another round first</button>`;
       return '';
@@ -1843,7 +1843,7 @@
     const r = to === 'ai' ? await tapi('POST', `/api/work/${w.id}/iterate`, { body: text }) : await tapi('POST', `/api/work/${w.id}/message`, { body: text });
     busy(false); if (r.error) return toast('That didn’t go through. Try again.');
     putWork(r.work); DP.scrollThread = true; if (r.change) DP.ch = r.change;
-    if (r.decision?.route === 'team') { DP.to = 'brew'; toast(`${ic('person', 's16')}Needs ${esc(r.decision.label)}. Sent to the ShopOS team.`); }
+    if (r.decision?.route === 'team') { DP.to = 'brew'; toast(`${ic('person', 's16')}Needs ${esc(r.decision.label)}. Finish the jam, then share the brief.`); }
     repaintDetail(); counts();
   };
   // "Tell us why" on the card page: a note for the ShopOS team that Brew also learns from
@@ -3399,8 +3399,8 @@
   window.__paintStudio = () => paintStudio(); /* the composer's menus repaint the studio */
   const openBrief = (b, justSent) => { if (!b) return toast('No brief yet');
     modal(`<div class="sheet brief-sheet"><button class="icon-btn rx-close" data-close aria-label="Close">${ic('x', 's18')}</button>
-      ${justSent ? `<p class="br-sent">${ic('check', 's16')}Sent to the ShopOS team. They check it, ship it, and confirm here.</p>` : ''}
-      <small class="br-k">Brief for the ShopOS team · v${b.version}</small>${b.handoff ? `<a class="linkbtn br-ho" href="${esc(/[?&]full=1/.test(b.handoff) ? b.handoff : `${b.handoff}?full=1`)}" target="_blank" rel="noopener">${ic('link', 's14')}Full handoff: card, chats, every asset ↗</a>` : ''}<h2>${esc(b.title)}</h2><p class="br-why">${esc(b.why || '')}</p>
+      ${justSent ? `<p class="br-sent">${ic('check', 's16')}Shared with the ShopOS team. They get it by email, with the link to the full brief.</p>` : ''}
+      <small class="br-k">Shared brief · v${b.version}</small>${b.handoff ? `<a class="linkbtn br-ho" href="${esc(/[?&]full=1/.test(b.handoff) ? b.handoff : `${b.handoff}?full=1`)}" target="_blank" rel="noopener">${ic('link', 's14')}Full handoff: card, chats, every asset ↗</a>` : ''}<h2>${esc(b.title)}</h2><p class="br-why">${esc(b.why || '')}</p>
       <dl class="br-grid"><div><dt>What ships</dt><dd>${esc(b.what)}</dd></div><div><dt>Where</dt><dd>${esc(b.where)}</dd></div><div><dt>When</dt><dd>${esc(b.when)}</dd></div><div><dt>Cost</dt><dd>${esc(b.cost)}</dd></div><div class="wide"><dt>If it goes wrong</dt><dd>${esc(b.undo)}</dd></div><div class="wide"><dt>Watch rule</dt><dd>${esc(b.watch)}</dd></div></dl>
       ${b.assets?.length ? `<h4>Assets</h4><div class="br-assets">${b.assets.map((a, i) => a.kind === 'image' ? `<figure class="br-img"><img src="${esc(a.url)}" alt=""><figcaption>${esc(a.label)}<a href="${esc(a.url)}" download target="_blank" rel="noopener">Download</a></figcaption></figure>`
         : a.kind === 'link' ? `<a class="br-link" href="${esc(a.url)}" target="_blank" rel="noopener">${ic('link', 's14')}<span><b>${esc(a.label)}</b><small>${esc(a.url)}</small></span></a>`
@@ -3411,7 +3411,7 @@
       ${b.myChecks?.length ? `<h4>Checked by you</h4><ul class="br-list">${b.myChecks.map((m) => `<li>${ic(m.done ? 'check' : 'x', 's14')}${esc(m.text)}</li>`).join('')}</ul>` : ''}
       ${b.agreed?.length ? `<h4>Agreed in the jam</h4><ul class="br-list">${b.agreed.map((a) => `<li><b>${esc(a.q)}</b> ${esc(a.a)}</li>`).join('')}</ul>` : ''}
       <h4>Checks passed</h4><ul class="br-list">${b.checks.map((c) => `<li>${ic('check', 's14')}${esc(c)}</li>`).join('')}</ul>
-      <h4>Steps for the ShopOS team</h4><ol class="br-list">${b.steps.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>
+      <h4>Steps</h4><ol class="br-list">${b.steps.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>
       <div class="br-foot"><button class="btn btn-ghost" data-copy-brief>${ic('copy', 's16')}Copy whole brief</button>${b.studio ? `<a class="btn btn-ghost" href="${esc(b.studio)}" data-close>${ic('sliders', 's16')}Open v${b.version} in the studio</a>` : ''}</div></div>`, (m) => {
       const text = () => [`BRIEF FOR THE BREW TEAM: ${b.title} (v${b.version})`, b.why, `What ships: ${b.what}`, `Where: ${b.where}`, `When: ${b.when}`, `Cost: ${b.cost}`, b.undo, `Watch rule: ${b.watch}`, '', 'PACKAGE', ...b.fields.map((f) => `${f.label}${f.pub ? ' (customers see this)' : ''}: ${f.value}`), '', 'ASSETS', ...(b.assets || []).map((a) => a.kind === 'copy' ? `${a.label}:\n${a.text}` : `${a.label}: ${a.url ? location.origin + '/' + a.url.replace(/^\//, '').replace(/^https?:\/\/[^/]+\//, '') : a.text}`), ...(b.agreed?.length ? ['', 'AGREED IN THE JAM', ...b.agreed.map((a) => `${a.q} ${a.a}`)] : []), '', 'STEPS', ...b.steps.map((x, i) => `${i + 1}. ${x}`)].filter((x) => x != null).join('\n');
       $('[data-copy-brief]', m).onclick = () => { try { navigator.clipboard.writeText(text()); } catch (e) {} toast(`${ic('copy', 's16')}Brief copied`); };
@@ -3654,7 +3654,7 @@
     const stepper = (b) => { const s1 = b.stages, one = (state, t) => `<li class="is-${state}"><i>${state === 'done' ? ic('check', 's14') : state === 'run' ? '<span class="spin"></span>' : ''}</i><span>${t}</span></li>`;
       const d10 = b.core ?? Math.min(b.done, 10);
       return `<ol class="bd-steps">${one(s1.read === 'done' ? 'done' : 'run', 'Read the site')}${one(s1.confirm === 'done' ? 'done' : s1.read === 'done' ? 'run' : 'wait', 'You checked it')}${one(s1.brief === 'done' ? 'done' : s1.confirm === 'done' ? 'run' : 'wait', 'Brand brief')}
-        ${one(d10 >= 10 ? 'done' : s1.brief === 'done' ? 'run' : 'wait', `First 10 · ${d10}/10`)}${one(b.done >= 51 ? 'done' : d10 >= 10 ? 'run' : 'wait', `All 51 · ${b.done}/51`)}${one(b.pdfs >= 50 ? 'done' : b.pdfs ? 'run' : 'wait', `PDFs · ${b.pdfs}`)}${one(b.statics?.state === 'done' ? 'done' : b.statics?.state === 'running' ? 'run' : b.statics?.state === 'failed' ? 'fail' : 'wait', 'Static ads')}</ol>`; };
+        ${one(d10 >= 10 ? 'done' : s1.brief === 'done' ? 'run' : 'wait', `First 10 · ${d10}/10`)}${one(b.done >= 51 ? 'done' : d10 >= 10 ? 'run' : 'wait', `Core moves · ${b.done}/51`)}${one(b.pdfs >= 50 ? 'done' : b.pdfs ? 'run' : 'wait', `PDFs · ${b.pdfs}`)}${one(b.statics?.state === 'done' ? 'done' : b.statics?.state === 'running' ? 'run' : b.statics?.state === 'failed' ? 'fail' : 'wait', 'Static ads')}</ol>`; };
     const buildHtml = !b ? `<div class="bd-empty">${GEN ? 'Build details are not available yet.' : `${poss(B.brand.name)} moves were written by the Brew team by hand, so there is no live build to show.`}</div>` : `
       ${stepper(b)}
       <div class="q-stack">
@@ -3664,7 +3664,7 @@
         ${b.usd > 0 ? `<p class="q-note">Spent $${b.usd.toFixed(2)} of a $${b.cap} cap on Claude, treg and images for this brand.</p>` : ''}
         ${b.events.length ? `<details class="q-more"><summary>Activity</summary><ul class="bd-log">${b.events.map((e) => `<li class="is-${e.type}"><time>${new Date(e.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time><span>${esc(e.text)}</span></li>`).join('')}</ul></details>` : ''}
       </div>`;
-    const upHtml = !U ? `<div class="bd-empty">${GEN ? 'Updates open once the moves are written.' : `${poss(B.brand.name)} moves were written by hand, so they are refreshed by the ShopOS team.`}</div>` : (() => {
+    const upHtml = !U ? `<div class="bd-empty">${GEN ? 'Updates open once the moves are written.' : `${poss(B.brand.name)} moves were written by hand, so Brew doesn’t refresh them.`}</div>` : (() => {
       const lc = U.lastCheck, chk = U.checking, rw = U.rewriting;
       const est = (n) => `about $${Math.max(1, Math.round(n * U.estMove))}`;
       const stale = U.stale.map((x) => `<label class="up-mv is-${x.priority}"><input type="checkbox" data-upn="${x.n}" ${x.priority === 'high' ? 'checked' : ''} ${U.canRewrite ? '' : 'disabled'}><div><div class="up-mvh"><span>${String(x.n).padStart(2, '0')}</span><button class="linkbtn" data-mv="${x.n}">${esc(x.title)}</button>${x.priority === 'high' ? '' : '<em>worth a look</em>'}</div>
@@ -3673,7 +3673,7 @@
         <section class="up-hero"><div class="up-hl"><h3>${chk ? 'Checking now…' : lc ? `Last checked ${fmtWhen(lc.at)}` : 'Not checked yet'}</h3>
           <p>${chk ? `<span class="spin"></span> Reading ${esc(B.brand.name)} again. About 3 minutes.` : lc ? esc(lc.summary || 'Nothing material changed.') : 'Brew re-reads the site, reviews, ads and rivals, then rewrites only the moves that quote what changed.'}</p>
           ${U.lastError && !chk ? `<p class="up-err">The last check stopped: ${esc(U.lastError.msg)}</p>` : ''}</div>
-          <button class="btn btn-ghost" data-upcheck ${chk || !U.canRewrite ? 'disabled' : ''} title="${U.building ? 'Opens once the first 51 are written' : 'About 3 min · about $1'}">${ic('refresh', 's16')}${chk ? 'Checking…' : 'Check now'}</button>
+          <button class="btn btn-ghost" data-upcheck ${chk || !U.canRewrite ? 'disabled' : ''} title="${U.building ? 'Opens once the core moves are written' : 'About 3 min · about $1'}">${ic('refresh', 's16')}${chk ? 'Checking…' : 'Check now'}</button>
           <label class="up-auto"><input type="checkbox" data-upauto ${U.auto ? 'checked' : ''}><span class="up-sw"></span><span><b>Keep them current on their own</b><small>${U.auto ? `Weekly${U.next ? `, next ${fmtDay(U.next)}` : ''}, and the day your catalog changes. Up to 6 rewrites a week.` : 'Off. Nothing is checked or rewritten unless you ask.'}</small></span></label></section>
         ${rw ? `<section class="bd-card"><h3>Rewriting now <small>${rw.length}</small></h3>${rw.map((x) => `<div class="bd-run">${x.done ? `<span class="up-done">${ic('check', 's14')}</span>` : '<span class="spin"></span>'}<div><b>Move ${String(x.n).padStart(2, '0')} · ${esc(x.title)}</b><span>${x.done ? 'Rewritten' : x.secs != null ? `${mins(x.secs)} so far` : 'Waiting its turn'}</span></div></div>`).join('')}</section>` : ''}
         ${nStale ? `<section class="up-out"><h3>Out of date <small>${nStale}</small></h3><div class="up-list">${stale}</div>
@@ -3946,8 +3946,8 @@
       <ul class="hd-cal">${evs.map((e) => { const d = dd(e.date), p = e.planAt ? dd(e.planAt) : null; return `<li><span class="hd-cal-d"><b>${new Date(e.date).toLocaleDateString([], { day: 'numeric' })}</b><small>${new Date(e.date).toLocaleDateString([], { month: 'short' })}</small></span><div><b>${esc(e.name)}</b><small>${d > 0 ? `in ${d} day${d === 1 ? '' : 's'}` : e.end && e.end !== e.date ? `on now, until ${new Date(e.end).toLocaleDateString([], { day: 'numeric', month: 'short' })}` : 'today'}${d > 0 && p != null ? ` · ${p <= 0 ? (e.move ? 'move ready' : 'planning now') : `planning in ${p} day${p === 1 ? '' : 's'}`}` : ''}</small></div>${e.move?.n != null ? `<button class="linkbtn" data-goto-move="${e.move.n}">Open move</button>` : ''}</li>`; }).join('')}</ul></section>` : '';
     /* trust: one line while every agent sits at the same level; the list only once they differ */
     const tl = agents.map((a) => L.trust[a]), same = tl.length && tl.every((t) => t.level === tl[0].level && !t.clean);
-    const trustHtml = !agents.length ? '' : same ? `<p class="q-note">${tl[0].level < tl[0].max ? `Every agent is at ${esc(tl[0].name)}: ${L.cleanToLevelUp} clean launches move one up, an undo moves it down.` : `Every agent is at the top level.`} Money always goes to the ShopOS team.</p>`
-      : `<section class="lx-sec">${lxHead('lx-trust', 'How much it does alone', '', `${L.cleanToLevelUp} clean launches move an agent up. Money always goes to the ShopOS team.`)}<div class="lx-trust">${agents.map((a) => { const t = L.trust[a]; return `<div class="lx-tr">${face(a)}<div><div class="lx-tr-top"><b>${esc(AGENT[a])}</b><span>${esc(t.name)}</span></div>${lxMeter(t.level + 1, L.levels.length)}</div></div>`; }).join('')}</div></section>`;
+    const trustHtml = !agents.length ? '' : same ? `<p class="q-note">${tl[0].level < tl[0].max ? `Every agent is at ${esc(tl[0].name)}: ${L.cleanToLevelUp} clean launches move one up, an undo moves it down.` : `Every agent is at the top level.`}</p>`
+      : `<section class="lx-sec">${lxHead('lx-trust', 'How much it does alone', '', `${L.cleanToLevelUp} clean launches move an agent up.`)}<div class="lx-trust">${agents.map((a) => { const t = L.trust[a]; return `<div class="lx-tr">${face(a)}<div><div class="lx-tr-top"><b>${esc(AGENT[a])}</b><span>${esc(t.name)}</span></div>${lxMeter(t.level + 1, L.levels.length)}</div></div>`; }).join('')}</div></section>`;
     /* the moves: every plan Brew wrote for the brand, one quiet row into the full page */
     const mvAll = MVS?.moves || [], mvCore = mvAll.filter((m) => m.n >= 1 && m.n < 1000).length, mvWk = mvAll.filter((m) => m.n >= 1000).length, mvStale = UPS?.stale?.length || 0;
     /* while the moves are still being written, the row says how far along (one line and a thin bar), from the build status */

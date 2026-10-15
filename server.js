@@ -436,7 +436,7 @@ let connectors = null;
 connectors = createConnectors({ packs, auth, builder, log: console, onLive: (slug) => { MEMO.clear(); feedSvc?.refreshLive(slug).catch(() => {}); } });
 /* a shared jam link: anyone can look; signing in makes a person a guest of that one jam (feed-service guestOk), never a
    member of the brand's team. Team access comes only from an owner's invite or the brand's work email (auth.js) */
-feedSvc = createFeedService({ jamMail, isStaff: (email) => auth.isAdmin({ email }), teamOf: (slug) => auth.getMembers(slug), onOpen: (slug) => { social.opened(slug); draftsBg.opened(slug); builder.heal?.(slug).then((ch) => { if (ch?.length) { packs.drop(slug); loadBrand(slug).catch(() => {}); } }).catch(() => {}); }, PUB, claudeJSON,  globalPacks: packs, claudeTool, cardBrief, mockVariants, geminiImage: imageGen, treg, launchBrowser, zipBuffer, photoAsync, isMock: () => MOCK, spend, BANNED, clean, store, packs: brandPacks, builder, photoFile, learnings,
+feedSvc = createFeedService({ liveTeamOnly: () => auth.signinOn() && process.env.DEMO_MODE !== '1', clientIp, jamMail, isStaff: (email) => auth.isAdmin({ email }), teamOf: (slug) => auth.getMembers(slug), onOpen: (slug) => { social.opened(slug); draftsBg.opened(slug); builder.heal?.(slug).then((ch) => { if (ch?.length) { packs.drop(slug); loadBrand(slug).catch(() => {}); } }).catch(() => {}); }, PUB, claudeJSON,  globalPacks: packs, claudeTool, cardBrief, mockVariants, geminiImage: imageGen, treg, launchBrowser, zipBuffer, photoAsync, isMock: () => MOCK, spend, BANNED, clean, store, packs: brandPacks, builder, photoFile, learnings,
   /* Demo Mode: a tour session reads the store live while the visitor watches (demo-routes.js session flow) */
   liveReadFor: DEMO ? async (slug) => (await packs.getJSON(slug, 'private/demo/session.json', null))?.flow === 'onboarding' : null,
   viewerOf, genOk, liveFor: (slug, member) => connectors.forViewer(slug, member),
@@ -446,6 +446,16 @@ feedSvc.wire(B());
 retireInit.finally(() => { if (!process.env.BUILD_RESUME_OFF) builder.resumeAll().catch((e) => console.error('[build] resumeAll', e.message)); }); // resume off for a local server reading the live bucket
 
 /* ---------- brand routes: start a read, its status and live events, "check what we read", moves and PDFs ---------- */
+/* On live, a brand's moves, PDFs, read, facts, Heard and stories are for its team (members, SquareUp, or the brand's own work
+   email before it is claimed); the demo site stays open to anyone (Param, 2026-10-15). Status and progress stay public, so
+   someone signing in mid-read still sees where it is */
+const teamRead = async (req, slug) => { if (process.env.DEMO_MODE === '1' || !auth.signinOn() || !slug || slug === DEFAULT) return true; const v = await viewerOf(req, slug); return !!(v.member || v.gen); };
+const TEAM_READ = /^\/api\/brands\/([a-z0-9-]+)\/(heard(?:\/(?:items|history|asked))?|moves(?:\/\d+|\/cadence)?|facts|findings|check|build|updates|summary|events)$/;
+const teamGate = async (req, res, u) => {
+  if (req.method !== 'GET') return false;
+  const m = u.pathname.match(TEAM_READ), slug = m ? m[1] : u.pathname === '/api/research' ? req.headers['x-brand'] : null;
+  if (!slug || await teamRead(req, String(slug))) return false;
+  const me = auth.user(req); send(res, me ? 403 : 401, { error: me ? 'This brand’s moves and read are for its team. Ask them to invite you.' : 'Sign in to see this brand.', team: true, signin: !me }); return true; };
 const brandRoutes = async (req, res, u) => {
   const ip = clientIp(req); /* the entry Google's front end appended, not one the client wrote (build.js clientIp) */
   if (req.method === 'POST' && u.pathname === '/api/brands') { const b = await readBody(req), me = auth.user(req);
@@ -454,7 +464,8 @@ const brandRoutes = async (req, res, u) => {
        The demo site answers this route itself (demo-routes.js) */
     if (!me && auth.signinOn() && process.env.BUILD_SIGNIN !== '0') return send(res, 200, { error: b.fresh ? 'Sign in with Google to read this brand again.' : 'Sign in with Google to read your store.', signin: true }), true;
     return send(res, 200, await builder.start(b.url, { ip, user: me, fresh: !!b.fresh && !!me && (await viewerOf(req, slugOf(b.url))).gen })), true; }
-  if (req.method === 'GET' && u.pathname === '/api/brands') return send(res, 200, { brands: await builder.list() }), true;
+  if (req.method === 'GET' && u.pathname === '/api/brands') { const all = await builder.list(), me = auth.user(req); if (process.env.DEMO_MODE === '1' || !auth.signinOn() || auth.isAdmin(me)) return send(res, 200, { brands: all }), true;
+    const mine = []; if (me) for (const b of all) if ((await viewerOf(req, b.slug).catch(() => ({}))).member) mine.push(b); return send(res, 200, { brands: mine }), true; } // the brands this person is on: never other clients or prospects mid-read
   // the landing's demo brands: the ones the demo site has fully ready; a tap opens a fresh tour of that brand there
   if (req.method === 'GET' && u.pathname === '/api/demo-brands') return send(res, 200, { brands: await demoBrands() }), true;
   // What Brew learned → What your team told Brew: the goals, beliefs and facts read from the calls, notes and emails the team added
@@ -546,13 +557,17 @@ const brandRoutes = async (req, res, u) => {
 const brandFiles = async (req, res, u) => {
   const m = u.pathname.match(/^\/b\/([a-z0-9-]+)\/(seed\.js|facts\.js|a\/[\w.-]+|statics\/[\w.-]+|pdf\/[^/]+)$/); if (!m) return false;
   const slug = m[1], what = decodeURIComponent(m[2]);
-  if (what === 'seed.js' || what === 'facts.js') { const p = await loadBrand(slug, { fresh: true, share: true }); if (!p) return send(res, 404, '/* unknown brand */', 'text/javascript'), true;
+  if (what === 'seed.js' || what === 'facts.js') { let p = await loadBrand(slug, { fresh: true, share: true }); if (!p) return send(res, 404, '/* unknown brand */', 'text/javascript'), true;
+    /* outside the team on live: the brand's name, mark and look only (the sign-in page needs them), no cards, moves or facts */
+    if (!(await teamRead(req, slug))) p = { ...p, seed: { ...p.seed, posts: [], scrape: [], steps: [] }, rawSeed: p.rawSeed ? { ...p.rawSeed, posts: [], scrape: [], steps: [] } : undefined, fx: {}, facts: {}, moveDocs: {}, labels: {}, pages: {}, pools: {}, statics: [], staticText: {}, notes: {}, learned: null };
     /* the same pack makes the same script: its ETag lets a reload skip the download (still read fresh, so never stale) */
     const body = what === 'seed.js' ? packs.clientSeed(p) : packs.clientFacts(p), etag = `"${crypto.createHash('sha1').update(body).digest('base64url').slice(0, 16)}"`;
     if (req.headers['if-none-match'] === etag) { res.writeHead(304, { etag, 'cache-control': 'no-cache' }); res.end(); return true; }
     res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-cache', etag }); res.end(body); return true; }
   if (what.startsWith('statics/')) { const b = await packs.get(slug, what); if (!b) return send(res, 404, 'no', 'text/plain'), true; res.writeHead(200, { 'content-type': 'image/jpeg', 'cache-control': 'max-age=300' }); res.end(b); return true; }
   if (what.startsWith('a/')) { const f = await packs.assetFile(slug, what.slice(2)); if (!f) return send(res, 404, 'no', 'text/plain'), true; return serveFile(req, res, f), true; }
+  /* a brand's PDFs (named or drawn on download) are for its team on live */
+  if (!(await teamRead(req, slug))) return send(res, auth.user(req) ? 403 : 401, 'These moves are for the brand’s team. Sign in or ask them to invite you.', 'text/plain'), true;
   /* /b/<slug>/pdf/move-<n>.pdf: the move's PDF, drawn on this first download and kept until the move changes */
   const mn = what.slice(4).match(/^move-(\d{1,4})\.pdf$/i);
   if (mn) { const v = await viewerOf(req, slug), pp = v.member ? (await packs.getJSON(slug, 'private/pdfs.json', null))?.[+mn[1]] : null, pb = pp ? await packs.get(slug, 'private/pdf/' + pp) : null;
@@ -629,6 +644,7 @@ async function serve(req, res, u) {
     if (await auth.handle(req, res, u)) return;
     if (await jamMail.handle(req, res, u)) return; // the mute / only-tags links in jam emails
     if (await connectors.handle(req, res, u)) return;
+    if (await teamGate(req, res, u)) return; // live: moves, PDFs, read and stories are for the brand's team
     if (await memoryRoutes(req, res, u)) return; // brand memory
     if (await movesRoutes(req, res, u)) return; // moves on a cadence: refresh, cadence state
     if (await brandRoutes(req, res, u)) return;
