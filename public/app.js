@@ -91,6 +91,8 @@
     feed: '<rect width="14" height="20" x="5" y="2" rx="2"/><path d="M9 7h6"/><path d="M9 11h6"/>',
     chat: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
     play: '<polygon points="6 3 20 12 6 21 6 3"/>',
+    volOn: '<path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/>',
+    volOff: '<path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/>',
     inf: '<path d="M12 12c-2-2.67-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.33 6-4Zm0 0c2 2.67 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.33-6 4Z"/>',
     grid: '<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>',
     send: '<path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/>',
@@ -2465,6 +2467,7 @@
     };
     paint(); if (fresh || !REMIXES) { await pullRemixes(); paint(); }
   };
+  document.addEventListener('timeupdate', (e) => { const v = e.target; if (!v.classList?.contains('sv-vid') || !v.duration) return; const bar = v.parentElement.querySelector('.sv-pbar i'); if (bar) bar.style.width = `${(v.currentTime / v.duration) * 100}%`; }, true);
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-remix]'); if (!b) return;
     const r = (REMIXES || []).find((x) => x.id === b.dataset.remix); if (!r) return;
@@ -2763,6 +2766,8 @@
   const cdnSized = (u, w) => { try { const x = new URL(u, location.href); if (!(/(^|\.)cdn\.shopify\.com$/.test(x.hostname) || x.pathname.startsWith('/cdn/shop/'))) return u; x.searchParams.set('width', w); return x.toString(); } catch { return u; } };
   const pmMedia = (ch, p, lg, { ratio = '', video = false } = {}) => {
     const made = imgOf(ch); if (!p.media && !made && !(p.photos || []).length) return lg && view === 'remix' ? `<div class="pm-media pm-add"><button class="btn btn-ghost sm" data-ph-open>${ic('pic', 's14')}Add a photo</button></div>` : '';
+    if (video && p.video) return `<div class="pm-media sv-media" style="aspect-ratio:9/16"><video class="sv-vid" src="${esc(p.video)}"${p.poster ? ` poster="${esc(p.poster)}"` : ''} muted autoplay loop playsinline preload="metadata" data-sv-play></video>
+      <button type="button" class="sv-snd" data-sv-sound aria-label="Turn the sound on" title="Sound">${ic('volOff', 's16')}</button><span class="sv-pbar" aria-hidden="true"><i></i></span></div>`;
     const isVid = video || /\b(video|footage|reel|9:16|seconds|clip)\b/i.test(p.media || '');
     if ((p.photos || []).length > 1) return `<div class="pm-media"><div class="pm-refs n${Math.min(p.photos.length, 3)}">${p.photos.slice(0, 4).map((u) => `<img src="${esc(cdnSized(u, 800))}" alt="" loading="lazy" decoding="async">`).join('')}</div></div>`; /* the product photos the team picked */
     if (made) return `<div class="pm-media"${ratio ? ` style="aspect-ratio:${ratio}"` : ''}><img src="${esc(made)}" alt="" style="filter:${esc(ch.gradeF || 'none')}"></div>`;
@@ -2806,11 +2811,11 @@
     } else if (kind === 'short_video') {
       const sc = p.script || [], hook = sc[0]?.line || p.title || String(p.copy || '').split('\n')[0];
       /* the clip itself: made on the stage (a first frame of the real product, animated, the hook read over it) */
-      const hk = String(hook || '').split(/\s+/).slice(0, 14).join(' '), stale = p.video && p.videoHook && p.videoHook.trim() !== hk.trim();
+      const hk = String(hook || '').split(/\s+/).slice(0, 14).join(' '), newHook = p.video && p.videoHook && p.videoHook.trim() !== hk.trim(), newPic = p.video && p.poster && p.image && p.image !== p.poster, stale = newHook || newPic;
       const make = lg && view === 'remix' && !ch.batchKey ? (ch.videoPending ? `<div class="sv-make is-busy"><span class="spin"></span>${esc(ch.videoStep || 'Making the video')}…</div>`
-        : !p.video || stale ? `<div class="sv-make">${ch.videoError ? `<small>${esc(ch.videoError)}</small>` : ''}<button class="btn btn-primary sm" data-rx="video">${ic('vid', 's14')}${stale ? 'Remake the video for this hook' : ch.videoError ? 'Make it again' : 'Make the video'}</button></div>` : '') : '';
+        : !p.video || stale ? `<div class="sv-make">${ch.videoError ? `<small>${esc(ch.videoError)}</small>` : ''}<button class="btn btn-primary sm" data-rx="video">${ic('vid', 's14')}${stale ? (newPic ? 'Remake the video with this photo' : 'Remake the video for this hook') : ch.videoError ? 'Make it again' : 'Make the video'}</button></div>` : '') : '';
       body = `<div class="pm pm-sv"><div class="sv-phone">${pmMedia(ch, p, lg, { ratio: '9/16', video: true }) || '<div class="pm-media is-slot" style="aspect-ratio:9/16"></div>'}${p.video ? '' : `<p class="sv-hook">${esc(hook || '')}</p>`}${make}
-          <div class="sv-side">${pmI('like')}${pmI('reply')}${pmI('share')}</div><div class="sv-cap"><b>@${esc(h)}</b><span>${esc(p.title || String(p.copy || '').split('\n')[0] || '')}</span>${tags.length ? `<span class="pm-tag">${esc(tags.slice(0, 4).join(' '))}</span>` : ''}</div></div>
+          <div class="sv-side">${pmI('like')}${pmI('reply')}${pmI('share')}</div><div class="sv-cap"><b>@${esc(h)}</b><span class="sv-cap-t">${esc(String(p.title || String(p.copy || '').split('\n')[0] || '').replace(/["“”]/g, '').replace(/\s{2,}/g, ' ').trim())}</span>${tags.length ? `<span class="pm-tag sv-cap-tags">${esc(tags.slice(0, 4).join(' '))}</span>` : ''}</div></div>
         ${lg && sc.length ? `<ol class="sv-beats">${sc.map((x, i) => `<li><small>${esc(x.beat || `Beat ${i + 1}`)}</small><b>${esc(x.line || '')}</b><span>${esc(x.shot || '')}</span></li>`).join('')}</ol>` : ''}</div>`;
     } else {
       body = `<div class="pm pm-fb"><header class="fb-h">${pmAv()}<div><b>${esc(name)} team</b><small>${esc(comm ? `in ${comm}` : kind === 'fb_group_post' ? 'Group post' : (p.platform || 'Post'))} · Now</small></div></header>
@@ -2866,7 +2871,7 @@
     let html = assetHtml0(ch, size);
     /* a widget with no picture of its own (a page, a message, a brief) still opens on the card's draft picture */
     if (d && !d.text && !p.video && d.images?.[0] && !['meta_ad', 'social', 'post'].includes(ch.family) /* an ad or a post has its own picture: never a second one stacked above it */ && !html.includes(esc(d.images[0]))) html = `<div class="as as-draft${size === 'lg' ? ' lg' : ''}"><img src="${esc(d.images[0])}" alt="${esc(d.title || 'First draft')}"></div>${html}`;
-    if (!p.video) return html;
+    if (!p.video || html.includes(`src="${esc(p.video)}"`)) return html;
     const vid = `<video class="as-vid" src="${esc(p.video)}"${p.poster ? ` poster="${esc(p.poster)}"` : ''} controls playsinline muted loop preload="metadata"></video>`;
     const pic = p.image || p.poster, re = pic ? new RegExp(`<img\\b[^>]*\\bsrc="${esc(pic).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"[^>]*>`) : null;
     return re && re.test(html) ? html.replace(re, vid) : `<div class="as as-draft${size === 'lg' ? ' lg' : ''}">${vid}</div>${html}`; };
@@ -3487,6 +3492,9 @@
     if (e.target.closest('[data-st-link]')) { if (RX.p) copyJamLink(RX.p); return; }
     if (e.target.closest('[data-st-brief]')) { const w = workOfCard(RX.p?.id); if (!w) return; const r = await tapi('GET', `/api/work/${w.id}/handoff?base=${encodeURIComponent(location.origin)}`); const u = r.handoff?.links?.page; if (u) window.open(u, '_blank', 'noopener'); else toast('The brief isn’t ready yet.'); return; }
     const sp = e.target.closest('[data-st-pick]'); if (sp && RX.ch) { const ch = RX.ch; ch.pick = sp.dataset.stPick; paintStudio(); tapi('POST', `/api/changes/${ch.id}/pick`, { pick: ch.pick }).then((r) => { if (r.change && RX.ch?.id === ch.id) { RX.ch = r.change; paintStudio(); } }); return; }
+    /* the reel on the stage: the speaker turns the sound on and off, a tap on the picture pauses and plays */
+    const snd = e.target.closest('[data-sv-sound]'); if (snd) { const v = snd.parentElement.querySelector('video'); if (v) { v.muted = !v.muted; if (!v.muted) v.play().catch(() => {}); snd.innerHTML = ic(v.muted ? 'volOff' : 'volOn', 's16'); snd.setAttribute('aria-label', v.muted ? 'Turn the sound on' : 'Turn the sound off'); } return; }
+    const pv = e.target.closest('[data-sv-play]'); if (pv) { if (pv.paused) pv.play().catch(() => {}); else pv.pause(); pv.closest('.sv-media')?.classList.toggle('is-paused', pv.paused); return; }
     const a = e.target.closest('[data-rx]'); if (a && RX.ch) rxAct(a.dataset.rx, RX.ch, a);
   });
   // a picture that fails to load is never a broken box showing its alt text (onAssetError, public/asset-fallback.js):
