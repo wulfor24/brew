@@ -195,6 +195,11 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     if (!groups.length) throw new Error('no ads came back');
     // top 8, at most 2 per brand, interleaved so the ring is not one advertiser
     groups.sort((a, b) => b.score - a.score);
+    /* rivals run their best ads for weeks, so the same top 8 came back every read, all first seen days ago: past 24 hours
+       they are not stories, and the ring went empty while the rivals were still advertising. Ads not shown in the last 3 days
+       go first (the next-best real ads); ones already shown only fill what is left */
+    const shown = (x) => !!snap.ads?.firstSeenOf?.[`ad:${x.ad.ad_archive_id}`] && now - snap.ads.firstSeenOf[`ad:${x.ad.ad_archive_id}`] >= D;
+    groups = [...groups.filter((x) => !shown(x)), ...groups.filter(shown)];
     const per = {}; const pick = [];
     for (const x of groups) { if ((per[x.brand] || 0) >= 2) continue; per[x.brand] = (per[x.brand] || 0) + 1; pick.push(x); if (pick.length >= 8) break; }
     // media: poster always, video when it is a video ad

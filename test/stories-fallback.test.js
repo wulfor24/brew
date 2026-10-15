@@ -82,3 +82,28 @@ test('near-duplicates merge on what they are about, not on shared verbs', async 
   assert.equal(n("How to test Traya's doctor angle", "How to test Traya's founder angle"), false);
   assert.equal(n('Target rising hair thickness searches', "Capture rising men's hair fall searches"), false);
 });
+
+test('rival ads already shown give way to ones not shown yet, so the ring does not empty while rivals advertise', async () => {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(Buffer.concat([Buffer.from([0x89, 0x50]), Buffer.alloc(4000)]), { status: 200 });
+  try {
+    const ads = Array.from({ length: 12 }, (_, i) => ({ ad_archive_id: `a${i}`, page_name: 'Rival One', start_date: Date.now() / 1000 - 30 * 86400, collation_count: 1, snapshot: { title: `Idea ${i}`, body: { text: `Copy for idea ${i}` }, images: [{ original_image_url: `https://img/${i}.png` }] } }));
+    const { r } = make();
+    const orig = r.refresh;
+    // the treg stub answers ads through the same client the research uses
+    const tc = { meter: { usd: 0 }, call: async (id) => { if (/adlibrary/.test(id)) return { results: ads, searchResultsCount: 12 }; throw new Error('402'); } };
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'brew-ads-'));
+    const brand = { slug: 'ads-brand', name: 'Testo', kind: 'generated', seed: {}, config: { country: 'IN', countryName: 'India', category: 'hair', rivals: ['Rival One'] } };
+    const R = createResearch({ ROOT: dir, PUB: dir, anthropic: { beta: { messages: { create: async () => { throw new Error('AI is down'); } } } }, claudeParams: (m) => ({ messages: m }), textOf: () => '', geminiImage: async () => {}, gToken: async () => { throw new Error('no gcs'); }, clean: (s) => String(s || ''), brand, tregClient: tc, log: { log() {}, warn() {}, error() {} } });
+    await R.refresh(['ads']);
+    const day1 = R.get().ads.items.map((x) => x.id);
+    assert.equal(day1.length, 2, 'at most 2 per rival');
+    // a day and a half later: the same ads come back; the ones shown yesterday must not be the ring again
+    const s = R.get().ads; s.items.forEach((x) => (x.firstSeen -= 36 * 3600e3)); Object.keys(s.firstSeenOf).forEach((k) => (s.firstSeenOf[k] -= 36 * 3600e3));
+    await R.refresh(['ads']);
+    const fresh = R.get().ads.items.filter((x) => Date.now() - x.firstSeen < 24 * 3600e3).map((x) => x.id);
+    assert.equal(fresh.length, 2);
+    assert.ok(fresh.every((id) => !day1.includes(id)), `new ads shown on day 2: ${fresh} vs ${day1}`);
+    void orig;
+  } finally { globalThis.fetch = realFetch; }
+});
