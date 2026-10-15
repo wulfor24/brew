@@ -235,7 +235,8 @@ test('the draft job caches each draft per card, respects the cap, and the jam op
   P.drop('acme-com'); const p = await P.load('acme-com'); assert.ok(p.firstDrafts['m51-1']);
   const w = { id: 'wk1', cardId: 'm51-1' }; assert.equal(seedDrafts(w, POSTS[1], p.firstDrafts, { uid: () => 'dr1', at: NOW }), true);
   assert.equal(w.drafts[0].state, 'ready'); assert.equal(w.drafts[0].seeded, true); assert.equal(w.drafts[0].image, cache['m51-1'].image); assert.ok(!('key' in w.drafts[0]));
-  const w2 = { id: 'wk2' }; assert.equal(seedDrafts(w2, { ...POSTS[1], title: 'A new title' }, p.firstDrafts), true, 'a card rewritten in the same format keeps its draft');
+  const w2 = { id: 'wk2' }; assert.equal(seedDrafts(w2, { ...POSTS[1], title: `${POSTS[1].title}, now` }, p.firstDrafts), true, 'a card reworded in the same format keeps its draft');
+  const w5 = { id: 'wk5' }; assert.equal(seedDrafts(w5, { ...POSTS[1], title: 'Completely different idea about refunds' }, p.firstDrafts), false, 'a different card on the same id does not get the old draft');
   const w4 = { id: 'wk4' }; assert.equal(seedDrafts(w4, { ...POSTS[1], make: { format: 'email' } }, p.firstDrafts), false, 'a card whose format changed does not get the old draft');
   const w3 = { id: 'wk3', drafts: [{ id: 'x' }] }; assert.equal(seedDrafts(w3, POSTS[1], p.firstDrafts), false, 'a jam with drafts keeps its own');
   // no product photo anywhere: words only, never an invented product

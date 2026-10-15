@@ -75,9 +75,15 @@ const ASK = { email: 'Write it as one email: a first line "Subject: …", then "
 const moveOf = (c) => { const m = /^Move\s+(\d+)/i.exec(c?.src || '') || /^m(\d+)-/.exec(c?.id || ''); return m ? +m[1] : ''; };
 export const draftKey = (c = {}) => `${c.id}|${moveOf(c)}|${draftKind(c)}`;
 // the draft that belongs to this card as it is now, or null
+/* a rewritten move reuses its card ids (m10-1): a draft made for the card that held the id before is not this card's, unless
+   the title is the same idea (most of its telling words carry over) */
+const titleWords = (t) => new Set(String(t || '').toLowerCase().match(/[a-z0-9₹%]{4,}/g) || []);
+export const sameCard = (d, c) => { if (!d?.cardTitle || d.cardTitle === c?.title) return true;
+  const a = titleWords(d.cardTitle), b = titleWords(c?.title); if (!a.size || !b.size) return true;
+  let n = 0; for (const w of a) if (b.has(w)) n++; return n / Math.min(a.size, b.size) >= 0.5; };
 export function draftFor(c, all = {}) {
   const d = c?.id ? all?.[c.id] : null; if (!d || d.failedAt) return null;
-  if (d.k === 2) return d.key === draftKey(c) ? d : null;
+  if (d.k === 2) return d.key === draftKey(c) && sameCard(d, c) ? d : null;
   return d.cardTitle && d.cardTitle === c.title ? d : null; /* a draft made before keys carried the format: only while the title is unchanged */
 }
 /* the wait before try n+1 after n failures: 30 min, 2 h, 8 h, then a day */
@@ -87,7 +93,7 @@ export const MAX_RETRIES = 6;
 export function needsDraft(c, all = {}, now = Date.now()) {
   const d = all?.[c.id]; if (!d) return true;
   if (d.failedAt) return !(d.key === draftKey(c) && now - d.failedAt < retryWait(d.fails || 1));
-  return !(d.k === 2 && d.key === draftKey(c));
+  return !(d.k === 2 && d.key === draftKey(c) && sameCard(d, c));
 }
 // what the card says, as the jam brief would open: the card, its move, its post
 export function cardBriefText(c = {}, { moveDocs = {} } = {}) {
