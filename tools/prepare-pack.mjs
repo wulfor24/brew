@@ -3,7 +3,8 @@
 //   - audit moves are retired (moved to moves/history/, their cards and PDFs leave): the prototype writes no audit moves
 //   - automation moves keep their plan but lose the runnable program (Brew never runs routines): the routine text says the
 //     team runs it from the shared brief
-//   - files of cut features are removed: private/ (accounts, actions, spend), spend/, notify.json, pagespeed.json
+//   - files of cut features are removed: private/ (accounts, actions, spend), spend/, pagespeed.json
+//   - notify.json (who gets the "your moves are ready" email) is kept: Brew's own emails to the brand's team are in scope
 // It only touches the folder it is given. Safe to run twice.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -46,5 +47,5 @@ if (seed?.posts) {
   W('seed.json', seed); if (before !== seed.posts.length) out.push(`cards removed: ${before - seed.posts.length}`);
 }
 for (const x of ['private', 'spend', 'raw']) if (fs.existsSync(path.join(dir, x))) { fs.rmSync(path.join(dir, x), { recursive: true }); out.push(`removed ${x}/`); }
-for (const x of ['notify.json', 'pagespeed.json']) if (fs.existsSync(path.join(dir, x))) { fs.rmSync(path.join(dir, x)); out.push(`removed ${x}`); }
+for (const x of ['pagespeed.json']) if (fs.existsSync(path.join(dir, x))) { fs.rmSync(path.join(dir, x)); out.push(`removed ${x}`); }
 console.log(out.join('\n') || 'nothing to change');

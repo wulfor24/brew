@@ -17,6 +17,7 @@ Brew is a **realistic prototype** that the engineering team picks up and continu
 | **Jam** | Studio: canvas, chat, first drafts (image, text, video, voice, carousel), versions, photos, download, composer, brand memory and learnings. | Real (teammate replies are Dummy) |
 | **Share the brief** | *Share with the ShopOS team* or *Share with my team*. Both freeze the brief (BR-n) and copy it with a link to the full read-only brief. The work board ends at "Brief shared". | Real (copy only, nothing sent) |
 | **Accounts** | Google sign-in, claim with a work email, team and invites, a read-only view for everyone else. | Real |
+| **Brew's emails to the team** | Sent through Resend from hello@send.joinsquareup.com: invites, "someone joined", view and owner changes (`auth.js` `mail`), and "your moves are ready" / "moves updated" to the people waiting on a read (`build.js` `notify`, list in `notify.json`). The demo site blocks them. | Real |
 
 Two sites, one codebase:
 
@@ -29,7 +30,7 @@ Two sites, one codebase:
 |-----|-----------|
 | Do it now | Real actions on accounts, the action tray, the agent runner, the safety policy, programs and routines that run themselves, scheduled starts, the stop rule and auto-undo, the weekly spend limit, "Changes Brew made", undo, task trackers |
 | Real connector code | OAuth, the token vault, account syncs, real API writes, member-only live cards from real accounts, member-only move rewrites from account data |
-| Brew sending | Email and WhatsApp from Brew, contacts, unsubscribe pages, lifecycle flows, holdouts |
+| Brew sending | Marketing email and WhatsApp from Brew to the brand's customers, contacts, unsubscribe pages, lifecycle flows, holdouts |
 | Measurement | The measuring engine, launch records, report back, A–D grades, results, the Out/Live/Result board columns, the week-by-week record, result follow-up cards |
 | Fake team flow | Scripted "ShopOS team" replies, ticket delivery, posting to Slack, the studio's simulated "go live" workflow |
 | Real health scoring | PageSpeed checks and the scorer (now simulated, see `DUMMY.md`) |
@@ -47,4 +48,4 @@ Two sites, one codebase:
 
 ## Data
 
-Brand data lives in `gs://brew-prototype` (demo: `gs://brew-prototype-demo`). The only brand carried over is **Arata** (`arata-in`). It was prepared with `tools/prepare-pack.mjs`, which retires the audit moves, makes automation moves plan-only, and removes `private/`, spend and notify files.
+Brand data lives in `gs://brew-prototype` (demo: `gs://brew-prototype-demo`). The only brand carried over is **Arata** (`arata-in`). It was prepared with `tools/prepare-pack.mjs`, which retires the audit moves, makes automation moves plan-only, and removes `private/` and spend files. It keeps `notify.json`.
