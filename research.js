@@ -19,7 +19,7 @@ const D = 24 * 3600e3, H = 3600e3;
 const EVERY = { ads: 6, own: 12, trends: 6, news: 4, howto: 12 };
 const every = (k) => (+process.env[`STORY_EVERY_${k.toUpperCase()}`] || EVERY[k] || 24) * H;
 // a story's key across re-reads, so one seen again keeps the time it was first seen
-const KEY = { ads: (x) => `ad:${x.id}`, trends: (x) => `tr:${x.kind}:${(x.terms || []).join('|') || String(x.h).toLowerCase()}`, news: (x) => `nw:${String(x.url).replace(/[?#].*$/, '').replace(/\/$/, '')}`, howto: (x) => `ht:${String(x.h).toLowerCase()}` };
+const KEY = { ads: (x) => `ad:${x.id}`, trends: (x) => `tr:${x.kind}:${(x.terms || []).join('|') || (x.kind === 'rising' && x.risingOf) || String(x.h).toLowerCase()}`, news: (x) => `nw:${String(x.url).replace(/[?#].*$/, '').replace(/\/$/, '')}`, howto: (x) => `ht:${String(x.h).toLowerCase()}` };
 /* merge a fresh read into the last one: items seen before keep firstSeen; items not in this read stay while they are under
    24 hours old (a story posted today stays up today); older ones fall off */
 export function pool(prev, items, k, now = Date.now()) {
@@ -238,8 +238,13 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     try {
       out = parseJSON((await claude(`${factBrief()}\n\nYou are the Trends agent for ${BN()} (${B().config.category}). Real Google Trends data for ${CTRY()}, last 90 days (index 0-100, comparable only within a group):\n${data}\n${ris}\nCalendar: ${FESTN()} is ${FESTD()}, ${days} days away.\nPick the 5 findings that matter most to ${BN()} this week. Every finding must quote a real number from the data above. Any ${BN()} price or claim must come from the facts list, exactly. Plain, simple words. Do not invent anything.\nJSON: {"items":[{"kind":"term|rising|calendar","terms":["exact term(s) from the data, for a chart; [] for rising or calendar"],"rising":"the related query list key if kind is rising, else null","h":"headline under 52 chars with the number","p":"two sentences, 25 to 35 words: what we saw with the number, then the move and what it gets ${BN()}; no fonts, design notes or file names","card":"a card title under 70 chars that names a number"}]}`, { max: 3000 })).text);
     } catch (e) { log.warn('[research] trends claude', e.message); }
-    const items = (out.items || []).slice(0, 6).map((x, i) => ({ id: `tr-${new Date(now).toISOString().slice(0, 10)}-${i}`, kind: x.kind, h: clean(x.h), p: clean(x.p), card: clean(x.card || x.h),
-      terms: (x.terms || []).filter((t) => series[t]).slice(0, 3), rising: x.kind === 'rising' ? (rising[x.rising] || Object.values(rising)[0] || []).slice(0, 6) : null }));
+    const seenKey = new Set();
+    const items = (out.items || []).slice(0, 6).map((x) => { const risingOf = x.kind === 'rising' ? (rising[x.rising] ? x.rising : Object.keys(rising)[0] || null) : null;
+      return { kind: x.kind, h: clean(x.h), p: clean(x.p), card: clean(x.card || x.h), terms: (x.terms || []).filter((t) => series[t]).slice(0, 3), risingOf, rising: risingOf ? (rising[risingOf] || []).slice(0, 6) : null }; })
+      // one story per rising list and per chart: two stories over the same data would be two cards with one widget
+      .filter((x) => { const k = KEY.trends(x); if (seenKey.has(k)) return false; seenKey.add(k); return true; })
+      // the id comes from what the story is about, so a later read the same day never reuses another story's id
+      .map((x) => ({ id: 'tr-' + crypto.createHash('sha1').update(KEY.trends(x)).digest('hex').slice(0, 10), ...x }));
     snap.trends = { fetchedAt: now, ...pool(snap.trends, items.filter((x) => x.h), 'trends', now), series: { ...(snap.trends?.series || {}), ...series }, rising, source: `Google Trends · ${CTRY()} · last 90 days` };
   }
 

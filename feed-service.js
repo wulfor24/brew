@@ -304,7 +304,7 @@ export function createFeedService(o) {
   const clampSeat = (t) => { const S = t?.seats; if (S && t.viewer && !S.includes(t.viewer.role) && S.length) t.viewer = { ...t.viewer, role: S[0] }; };
   // a price card saved before the paise fix whose every row is "₹1,850 → ₹1,850" says nothing changed: never shown
   const noChange = (c) => c.liveSrc?.kind === 'catalog' && c.badge?.[0] === 'Price changed' && c.rows?.length && c.rows.every((r) => { const m = /^(.+) → (.+)$/.exec(r?.[1] || ''); return m && m[1] === m[2]; });
-  const visible = (t, c) => seatOk(t, c) && !noChange(c) && ['ready', 'shown', 'approved', 'done'].includes(c.state) && !t.snoozed[c.id] && (!c.onlyWhen || connOn(t, c.onlyWhen))
+  const visible = (t, c) => seatOk(t, c) && !noChange(c) && !(c.origin === 'watcher' && c.type === 'idea' && !titlePricesMatch(c)) && ['ready', 'shown', 'approved', 'done'].includes(c.state) && !t.snoozed[c.id] && (!c.onlyWhen || connOn(t, c.onlyWhen))
     && !(c.liveOnly && !t.member) && !(c.demo && (t.member || t.liveConn?.[c.onlyWhen])) && !(!c.liveOnly && t.privMoves?.includes(moveOfId(c.id)));
   // bring a workspace in line with what this viewer may see: add the live cards, drop the ones they may not have
   const applyLive = async (t, viewer) => {
@@ -322,7 +322,15 @@ export function createFeedService(o) {
   const groupOf = (c) => { const n = moveNo(c.id); if (n != null) return `m${n}`; const ls = c.liveSrc;
     if (ls?.id && ls.kind === 'catalog') return `live:catalog:${String(ls.id).replace(/-q?-?[0-9a-f]{8,}$/, '').replace(/-q$/, '')}`;
     if (ls?.id) return `tpl:${ls.kind}:${String(ls.id).replace(/-\d{4}-\d\d-\d\d$/, '').replace(/-q\d+$/, '').replace(/-[0-9a-f]{8,}$/, '')}`;
-    if (c.research?.kind === 'ad') return `ad:${String(c.title || '').split(':')[0].toLowerCase()}`; if (c.research?.kind) return `res:${c.research.kind}`; return null; };
+    if (c.research?.kind === 'ad') return `ad:${String(c.title || '').split(':')[0].toLowerCase()}`;
+    if (c.research?.kind) return `res:${c.research.kind}`; return null; };
+  /* cards that say the same thing twice: only the newest stays at all */
+  const dupOf = (c) => {
+    // two stories written from one rising-searches list show the same widget: one card is enough
+    if (c.research?.kind === 'trend' && c.rows?.length) return `one:trend:${JSON.stringify(c.rows)}`;
+    // the scheduled Creative agent pitching the brand's festival again: only its newest idea stays
+    const fest = FESTN(); if (c.origin === 'watcher' && c.type === 'idea' && fest && fest !== 'the next sale' && new RegExp(`\\b${fest.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(c.title || '')) return `one:fest`;
+    return null; };
   const rank = (t) => {
     housekeep(t);
     const { a } = affinityMap(t);
@@ -334,9 +342,9 @@ export function createFeedService(o) {
     /* one card per group in the first screen: a move's other cards, a live check's older readings and a second ad from the same
        rival wait until position 12, unless the first was already acted on. A live check that read the same thing again (stock-outs,
        price drift) keeps only its newest reading at all: the older ones are the same news */
-    const newestLive = new Map(); for (const c of sorted0) { const g = groupOf(c); if (g?.startsWith('live:')) { const h = newestLive.get(g); const q = (x) => /-q-/.test(x.liveSrc.id); /* the reading about products our cards sell beats the store-wide one */ if (!h || q(c) > q(h) || (q(c) === q(h) && c.createdAt > h.createdAt)) newestLive.set(g, c); } }
+    const newestLive = new Map(); for (const c of sorted0) { const d = dupOf(c); if (d) { const h = newestLive.get(d); if (!h || c.createdAt > h.createdAt) newestLive.set(d, c); } const g = groupOf(c); if (g?.startsWith('live:')) { const h = newestLive.get(g); const q = (x) => /-q-/.test(x.liveSrc.id); /* the reading about products our cards sell beats the store-wide one */ if (!h || q(c) > q(h) || (q(c) === q(h) && c.createdAt > h.createdAt)) newestLive.set(g, c); } }
     const sorted = []; const later = []; const firstOf = new Map();
-    for (const c of sorted0) { const g = groupOf(c); if (g == null) { sorted.push(c); continue; } if (g.startsWith('live:') && newestLive.get(g) !== c) continue; const f = firstOf.get(g);
+    for (const c of sorted0) { const d = dupOf(c); if (d && newestLive.get(d) !== c) continue; const g = groupOf(c); if (g == null) { sorted.push(c); continue; } if (g.startsWith('live:') && newestLive.get(g) !== c) continue; const f = firstOf.get(g);
       if (!f) { firstOf.set(g, c); sorted.push(c); } else if (t.acted.has(f.id)) sorted.push(c); else later.push(c); }
     for (const c of later) sorted.splice(Math.max(12, sorted.findIndex((x) => scores[x.id].total < scores[c.id].total) >>> 0), 0, c);
     // interleave: no two of a kind together, no agent twice in a row
@@ -414,6 +422,9 @@ export function createFeedService(o) {
     return s.replace(/[^.]*\b(?:Geist(?: Mono)?|typeface|font|kerning|letter-?spacing|#[0-9a-f]{6})\b[^.]*\.\s*/gi, '').replace(/\s{2,}/g, ' ').trim(); };
   /* a member's numbers are checked against the merged sheet: the public facts plus their connected accounts (t.liveLedger, never demo) */
   const factOkFor = (t) => { const xs = t?.member ? Object.values(t.liveLedger || {}).filter((e) => e && !e.demo && e.v != null) : []; if (!xs.length) return FACT_OK; const ok = new Set(FACT_OK); xs.forEach((e) => numbersIn(String(e.v), { strict: true }).forEach((n) => ok.add(n))); return ok; };
+  // an idea's title quotes a price its text doesn't ("the ₹399 + ₹399 pair" over "₹399 shampoo with the ₹642.32 serum"): the AI mixed two items up
+  const titlePricesMatch = (c) => { const money = (x) => numbersIn(x, { strict: true }).filter((n) => /^[^\d]+\d/.test(n)); const have = money([c.sub, ...(c.detail?.why || [])].join(' '));
+    return money(c.title).every((n) => { const i = have.indexOf(n); if (i < 0) return false; have.splice(i, 1); return true; }); };
   const qaCheck = (c, t = null) => {
     const main = [c.title, c.sub, ...(c.rows || []).flat()].join(' ');
     const all = textOfCard(c) + ' ' + (c.detail?.why || []).join(' ');
@@ -425,6 +436,7 @@ export function createFeedService(o) {
       { k: 'Claims keep “up to” and the window', ok: !claim || (/up to/i.test(claim[0]) && /\d+\s*days/i.test(claim[0])) },
       { k: 'No rival named in ad copy', ok: !(c.type === 'idea' && RIVALS.test(c.title + ' ' + c.sub)) },
       { k: 'Short title, point first', ok: String(c.title || '').length <= 76 },
+      { k: 'Title prices match the text', ok: c.type !== 'idea' || titlePricesMatch(c) },
       { k: 'No internal design notes', ok: !LEAK.test(`${c.title} ${c.sub}`) },
       { k: 'Every ₹ and % is in the fact sheet', ok: !unbacked({ title: c.title, sub: c.sub, rows: c.rows, detail: c.detail }, c.research ? researchOK(c) : c.liveNums ? new Set([...factOkFor(t), ...c.liveNums.flatMap((x) => numbersIn(x))]) : factOkFor(t)).length }
     ];
@@ -515,10 +527,11 @@ export function createFeedService(o) {
     t.creativeDay.n++;
     const { hearts } = affinityMap(t);
     const hearted = [...hearts.keys()].map((id) => t.cards.get(id)?.title).filter(Boolean).slice(0, 5);
-    const titles = [...t.cards.values()].filter((c) => c.sector === 'creatives').map((c) => c.title).slice(0, 30);
+    // the newest first: its own recent ideas are the ones it would repeat
+    const titles = [...t.cards.values()].filter((c) => c.sector === 'creatives' || c.type === 'idea').sort((x, y) => (y.createdAt || 0) - (x.createdAt || 0)).map((c) => c.title).slice(0, 40);
     const mem = t.memory.slice(0, 12).map((m) => `- ${m.fact} (${m.source})`).join('\n');
     try {
-      const j = await claudeJSON(`You are the Creative director agent, running on a schedule. Propose ONE new ad idea card for ${BN()}'s feed.\nBrand memory:\n${mem}\nThe person hearted: ${hearted.join(' | ') || 'nothing yet'}\nCalendar: ${FESTN()} is ${FESTD()}${FEST() ? ` (${Math.ceil((FEST() - now(t)) / D)} days away)` : ''}.\nAlready in the feed, do not repeat: ${titles.join(' | ')}\nUse only facts from the claims list, and only these numbers:\n${Object.values(FACTS).filter((f) => f.kind !== 'demo' && f.label).map((f) => `- ${f.label}: ${f.v}`).join('\n')}\nPlain, simple words.\nJSON: {"title":"under 60 chars, point first, one number","sub":"two sentences, 25 to 35 words: what we saw with the number, then the move and what it gets ${BN()}; no fonts, design notes or file names","why":["3 bullets, each under 14 words"],"how":["3 steps, each under 12 words"],"image":"one of: ${STATICS.join(', ')}","lane":"core|mito|dandruff","scene":"one sentence describing a new product photo for this idea"}`, 1200);
+      const j = await claudeJSON(`You are the Creative director agent, running on a schedule. Propose ONE new ad idea card for ${BN()}'s feed.\nBrand memory:\n${mem}\nThe person hearted: ${hearted.join(' | ') || 'nothing yet'}\nCalendar: ${FESTN()} is ${FESTD()}${FEST() ? ` (${Math.ceil((FEST() - now(t)) / D)} days away)` : ''}.\nAlready in the feed, do not repeat: ${titles.join(' | ')}\nIf an idea about ${FESTN()} is already there, pick a different angle. Every price in the title must appear in the sub, for the same product.\nUse only facts from the claims list, and only these numbers:\n${Object.values(FACTS).filter((f) => f.kind !== 'demo' && f.label).map((f) => `- ${f.label}: ${f.v}`).join('\n')}\nPlain, simple words.\nJSON: {"title":"under 60 chars, point first, one number","sub":"two sentences, 25 to 35 words: what we saw with the number, then the move and what it gets ${BN()}; no fonts, design notes or file names","why":["3 bullets, each under 14 words"],"how":["3 steps, each under 12 words"],"image":"one of: ${STATICS.join(', ')}","lane":"core|mito|dandruff","scene":"one sentence describing a new product photo for this idea"}`, 1200);
       const lane = ['core', 'mito', 'dandruff'].includes(j.lane) ? j.lane : 'core';
       const stImg = (id) => `b/${B().slug}/statics/${id}.jpg`;
       const ref = refPhoto(lane);
