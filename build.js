@@ -18,6 +18,7 @@ import { retiredSet, scrubRetired, allowedFrom } from './fact-gate.js';
 import { createCardsGen } from './cards-gen.js';
 import { realRows } from './connectors/common.js'; // DUMMY: simulated account rows are never evidence
 import { healthFrom } from './dummy/health.js'; // DUMMY: simulated health rings
+import { isPlay, playDone, totalOf, numbersFor, healSeedNumbers } from './pack-numbers.js'; // one number, one source
 import { createStatics } from './statics.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { mergeLedger, diffLedgers, candidates, triage, changeLine, CONNECTED_MOVES } from './refresh.js';
@@ -34,9 +35,7 @@ export const isCore = (n) => Number.isInteger(+n) && +n >= 0 && +n <= 50;
 /* the brand's playbook, one count everywhere (status, progress card, Build tab, emails, feed): every move the build writes
    (1-999: core, listening-era specs once their evidence exists, dynamic specs), never the index (00) or cadence moves (1001+).
    Its size is the applicable specs, saved as status.total by the moves engine; 50 until the engine has counted */
-export const isPlay = (n, mv) => Number.isInteger(+n) && +n >= 1 && +n < 1000 && !mv?.meta?.cadence;
-export const playDone = (moves) => Object.entries(moves || {}).filter(([k, mv]) => isPlay(k, mv)).length;
-export const totalOf = (s) => +s?.total || 50;
+export { isPlay, playDone, totalOf }; // one definition, in pack-numbers.js
 /* a value that carries something: not null, not an empty string, array or object of empties */
 export const hasData = (v) => v == null ? false : typeof v === 'string' ? v.trim() !== '' : Array.isArray(v) ? v.some(hasData) : typeof v === 'object' ? Object.values(v).some(hasData) : typeof v === 'number' ? Number.isFinite(v) : true;
 /* keep the old value of every field the fresh read left blank (a stage that failed or found nothing is not a change) */
@@ -314,7 +313,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const extra = { marketplaces: (profile.reviews?.platforms || []).map((x) => x.name).filter((n) => /amazon|flipkart|nykaa|myntra|walmart|target|etsy|ebay|blinkit|zepto|meesho|purplle|tira/i.test(n)) };
     const seed = seedFromProfile(slug, profile, findings, extra);
     seed.posts = (seed0.posts || []).map((c) => (c.lane && !seed.lanes[c.lane] ? { ...c, lane: Object.keys(seed.lanes)[0] } : c)); // cards already written stay, on a lane that still exists
-    seed.health = healthFrom(profile); // DUMMY: simulated health rings (dummy/health.js)
+    const N = await numbersFor(packs.getJSON, slug, { 'profile.json': profile }); healSeedNumbers(seed, N, profile.name); /* the read's steps quote the one count of each */
+    seed.health = healthFrom(profile, N); // DUMMY: simulated health rings (dummy/health.js)
     const ai = seed.health.rings.find((r) => r.k === 'AI answers'); if (ai) seed.geo = { score: ai.v, band: ai.v >= 60 ? 'Good' : ai.v >= 35 ? 'Fair' : 'Low' };
     const facts = factsFromLedger(ledger, { host: profile.host });
     const cfg = configFromProfile(profile, extra);
@@ -487,8 +487,9 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const items = prods.filter((x) => !removed.has(x.handle)).sort((a, b) => (hero.has(b.handle) - hero.has(a.handle))).slice(0, 12)
       .map((x) => ({ handle: x.handle, title: x.title, price: x.priceLabel || '', img: x.img || (x.images || []).find((u) => /^https?:/.test(u)) || null, url: x.url || null, hero: hero.has(x.handle), added: !!x.addedByBrand }));
     const own = p.ads?.own || {}, ig = p.socials?.instagram, rv = p.reviews || {};
+    const N = await numbersFor(packs.getJSON, slug, { 'profile.json': p }); /* the same numbers every other screen shows */
     return {
-      name: p.name, host: p.host, logo: p.identity?.logo || null, count: (p.catalog?.products || []).length,
+      name: p.name, host: p.host, logo: p.identity?.logo || null, count: N.products.n ?? prods.length,
       who: [
         { key: 'name', label: 'Brand name', v: p.name || '', type: 'text', ...srcOf(L, ['brand.name']) },
         { key: 'descriptor', label: 'What you are, in one line', v: p.descriptor || p.tagline || '', type: 'text', ...srcOf(L, ['brand.descriptor', 'brand.tagline']) },
@@ -499,7 +500,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       products: items,
       rivals: (p.rivals || []).map((r) => ({ name: r.name, host: r.host, how: r.how || r.why || '', logo: r.logo || `https://www.google.com/s2/favicons?domain=${r.host}&sz=64`, prices: (r.prices || []).length, live: (p.ads?.rivals || []).find((x) => x.host === r.host || x.name === r.name)?.live ?? null, url: r.url || `https://${r.host}` })),
       sources: [
-        { key: 'adpage', label: 'Facebook page that runs your ads', v: own.page ? `${own.page} · ${own.live ?? 0} live ad versions` : own.error ? 'Couldn’t check this time' : 'Not found', url: own.pageId ? `https://www.facebook.com/ads/library/?view_all_page_id=${own.pageId}` : null, hint: 'Paste your Facebook page link if this is wrong', found: !!own.page },
+        { key: 'adpage', label: 'Facebook page that runs your ads', v: own.page ? `${own.page} · ${(N.ownAds.n ?? 0).toLocaleString('en-IN')} live ads` : own.error ? 'Couldn’t check this time' : 'Not found', url: own.pageId ? `https://www.facebook.com/ads/library/?view_all_page_id=${own.pageId}` : null, hint: 'Paste your Facebook page link if this is wrong', found: !!own.page },
         { key: 'instagram', label: 'Instagram', v: ig?.handle ? '@' + ig.handle : ig?.error ? 'Couldn’t check this time' : 'Not found', url: ig?.url || null, hint: 'Paste your Instagram profile link', found: !!ig?.handle },
         { key: 'reviews', label: 'Reviews and ratings', v: (rv.platforms || []).some((x) => x.count) ? (rv.platforms || []).filter((x) => x.count).map((x) => `${Number(x.count).toLocaleString('en-IN')} on ${x.label || x.name}`).join(' · ') : rv.total ? `${Number(rv.total).toLocaleString('en-IN')} reviews and ratings` : rv.error ? 'Couldn’t check this time' : 'No reviews found', url: (rv.platforms || [])[0]?.url || null, hint: 'Paste the page where your reviews live (Judge.me, Loox, Amazon…)', found: !!rv.total }
       ],

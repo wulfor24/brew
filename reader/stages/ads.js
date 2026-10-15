@@ -3,6 +3,7 @@
 // category queries (treg crawl4ai SERP); each rival homepage + 1–2 product pages are read for prices,
 // claims, offers and guarantee. Ad posters are downloaded because Ad Library URLs expire.
 import { adLibrary, adCall } from '../adlib.js';
+import { numbersOf, adsStepLine } from '../../pack-numbers.js';
 import { meta, titleOf, jsonLd, typeIs, clean, stripTags, pathOf, hostOf, money, pool, registrable, today } from '../util.js';
 
 const NOT_BRANDS = /(^|\.)(amazon|flipkart|nykaa|myntra|ajio|meesho|tatacliq|jiomart|bigbasket|blinkit|zepto|swiggy|purplle|1mg|netmeds|pharmeasy|apollopharmacy|healthkart|walmart|target|ulta|sephora|cvs|walgreens|costco|ebay|etsy|aliexpress|temu|shein|boots|superdrug|lookfantastic|feelunique|cultbeauty|youtube|facebook|instagram|reddit|quora|wikipedia|pinterest|tiktok|twitter|x|linkedin|medium|healthline|webmd|mayoclinic|clevelandclinic|byrdie|allure|vogue|elle|cosmopolitan|refinery29|nytimes|wirecutter|forbes|buzzfeed|economictimes|indiatimes|timesofindia|ndtv|hindustantimes|livemint|news18|thehindu|indianexpress|vogue|femina|nykaa|google|bing|gov|nih|ncbi|sciencedirect|researchgate|practo|lybrate|justdial|indiamart|glamour|goodhousekeeping|harpersbazaar|womenshealthmag|menshealth|gq|businessinsider|cnn|bbc|theguardian|telegraph|dailymail|independent|which|trustpilot|sitejabber|bestproducts|thestrategist|nymag|verywellhealth|everydayhealth|medicalnewstoday|drugs|rxlist|skinkraft|stylecraze|bebeautiful|missmalini|popxo|pinkvilla|scoopwhoop|thebetterindia|yourstory|inc42|entrackr|vccircle|crunchbase|tracxn)\./i;
@@ -21,7 +22,7 @@ function noteRivals(ctx) {
 
 export async function findRivals(ctx) {
   const { profile, ledger } = ctx;
-  if (!ctx.tregOn && !ctx.aiOn) { profile.rivals = []; return; }
+  if (!ctx.tregOn && !ctx.aiOn) { profile.rivals = []; if (ctx.state) ctx.state.rivalsNotChecked = 'paid sources off'; return; }
   const cc = (profile.country || 'US').toLowerCase();
   const queries = (ctx.state.categoryQueries || []).slice(0, 3);
   const serp = [];
@@ -210,19 +211,21 @@ export async function ads(ctx) {
   const copy = rivalAds.map((r) => ({ r, a: r.items.find((a) => a.hook) })).filter((x) => x.a).slice(0, 3).map(({ r, a }) => `${r.name}: "${trim(a.hook, 70)}"`).join(' ');
   const priced = (profile.rivals || []).find((r) => r.prices?.length);
   const foot = priced ? `${priced.name}: ${trim(priced.prices[0].title, 40)} at ${money(priced.prices[0].price, priced.prices[0].currency)} on ${priced.host}, ${fmt(day)}.` : '';
-  const ownLine = profile.ads.own.live != null ? `${profile.name}: ${profile.ads.own.live} live ads.` : '';
-  const rivalsLive = rivalAds.reduce((a, r) => a + r.live, 0);
-  if (lead || copy) ctx.finding('ads', { kind: 'ad', t: 'What rivals run', src: `Meta Ad Library · ${country} · live`, img: lead?.poster || null, copy: copy || `${ownLine} No rival ads found.`, foot: [ownLine, foot].filter(Boolean).join(' ') }, 'Pulled live ads');
-  else {
-    const names = (profile.rivals || []).map((r) => r.name).filter(Boolean);
-    const failed = profile.ads.rivals.filter((r) => r.error).length;
-    // an error is never "no ads": say the check didn't go through, and name the rivals we found
-    const copy = !names.length ? 'No rivals could be identified.'
-      : failed === profile.ads.rivals.length ? `Rivals found: ${names.slice(0, 4).join(', ')}. Their ads couldn't be read this time; the next refresh tries again.`
-      : `Rivals found: ${names.slice(0, 4).join(', ')}. None of them is running Meta ads in ${country} right now.`;
-    ctx.finding('ads', { kind: 'ad', t: 'What rivals run', src: `Meta Ad Library · ${country}`, img: null, copy, foot: ownLine });
-  }
-  ctx.done('ads', `${profile.ads.rivals.length} rivals, ${rivalsLive + (profile.ads.own.live || 0)} live ads`, rivalsLive + (profile.ads.own.live || 0) ? 'done' : 'empty');
+  const N = numbersOf({ profile }); /* the same numbers, and words, every other screen uses (pack-numbers.js) */
+  const ownLine = N.ownAds.n != null ? `${profile.name}: ${N.ownAds.n.toLocaleString('en-IN')} live ads.` : '';
+  const names = (profile.rivals || []).map((r) => r.name).filter(Boolean);
+  const failed = profile.ads.rivals.filter((r) => r.error).length;
+  const notChecked = !names.length && ctx.state?.rivalsNotChecked;
+  /* three ways, never "none" for a check that didn't go through: rivals not identified (why), their ads not read, truly none */
+  const rivalsWhy = notChecked ? `Rivals couldn't be identified this time (${String(notChecked).slice(0, 60)}); the next refresh tries again.`
+    : !names.length ? 'No rivals could be identified.'
+    : failed === profile.ads.rivals.length ? `Rivals found: ${names.slice(0, 4).join(', ')}. Their ads couldn't be read this time; the next refresh tries again.`
+    : `Rivals found: ${names.slice(0, 4).join(', ')}. None of them is running Meta ads in ${country} right now.`;
+  if (copy) ctx.finding('ads', { kind: 'ad', t: 'What rivals run', src: `Meta Ad Library · ${country} · live`, img: lead?.poster || null, copy, foot: [ownLine, foot].filter(Boolean).join(' ') }, 'Pulled live ads');
+  else ctx.finding('ads', { kind: 'ad', t: 'What rivals run', src: `Meta Ad Library · ${country}`, img: lead?.poster || null, copy: rivalsWhy, foot: ownLine });
+  /* the step: yours and the rivals' apart, never one sum; a rival list that couldn't be made or read is a partial step */
+  const partial = !!notChecked || (names.length > 0 && failed === profile.ads.rivals.length) || !!profile.ads.own.error;
+  ctx.done('ads', adsStepLine(N, profile.name), N.ownAds.n || N.rivalAds.n ? 'done' : 'empty', { partial });
 }
 const cleanAd = ({ posterSrc, videoSrc, ...a }) => ({ ...a, poster: a.poster || null, video: null, posterSrc });
 const trim = (s, n) => (String(s || '').length > n ? String(s).slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : String(s || ''));

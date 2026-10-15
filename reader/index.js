@@ -93,7 +93,8 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
       url, slug, http, ledger, profile, state: {}, log, signal, free, tregOn, aiOn, saveAsset, saveRaw, today: today(), prev,
       tick(k, t) { const s = stepOf(k); if (!s) return emit({ type: 'sub', k, tick: t }); if (!s.tick.includes(t) && s.tick.length < 12) s.tick.push(t); if (s.state === 'queued') s.state = 'reading'; emit({ type: 'step', k, i: steps.indexOf(s), state: 'reading', tick: t }); },
       finding(k, f, say) { cards.push({ ...f, k }); emit({ type: 'finding', k, i: steps.findIndex((s) => s.k === k), finding: f, ...(say ? { say } : {}) }); },
-      done(k, text, state = 'done') { const s = stepOf(k); if (!s) return emit({ type: 'sub', k, state, done: text }); s.done = text; s.state = state; emit({ type: 'step', k, i: steps.indexOf(s), state, done: text }); },
+      /* partial: the step found something but part of it couldn't be checked (a live tour then keeps the saved read's step) */
+      done(k, text, state = 'done', { partial = false } = {}) { const s = stepOf(k); if (!s) return emit({ type: 'sub', k, state, done: text }); s.done = text; s.state = state; if (partial) s.partial = true; else delete s.partial; emit({ type: 'step', k, i: steps.indexOf(s), state, done: text, ...(partial ? { partial: true } : {}) }); },
       ...services({ slug, http, tregOn, aiOn, fresh }),
     };
 
@@ -135,7 +136,7 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
     const pReviews = pCatalog.then(() => run('reviews', reviews));
     const pSite = pCatalog.then(() => run('site', site));
     const pRivals = pCategory.then(() => (want('ads') || want('answers') ? run('rivals', findRivals, { step: false }) : null));
-    const pAds = pRivals.then(() => run('ads', ads));
+    const pAds = pRivals.then(() => { if (errors.rivals) ctx.state.rivalsNotChecked = errors.rivals; /* "0 rivals" from a failed search is not "no rivals" */ return run('ads', ads); });
     const pAnswers = pCategory.then(() => run('answers', answers)); /* the AI questions need only the category; socials (Films) runs beside it */
     const pCompany = pCategory.then(() => run('company', company, { step: false }));
     await Promise.all([pBrand, pCatalog, pSocials, pReviews, pSite, pAds, pAnswers, pCompany]);
@@ -166,7 +167,7 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
     const tregOn = !!treg && treg.live !== false, aiOn = !!ai && ai.live !== false;
     const ctx = { url: new URL(profile.url), slug, http, profile, state: { homeUrl: profile.url }, log: lg, tregOn, aiOn, saveAsset, saveRaw, today: today(),
       ledger: { add: (e) => added.push({ layer: 'observed', at: today(), ...e }) },
-      tick() {}, finding: (k, f) => { cards.push({ ...f, k }); }, done: (k, text, state = 'done') => { stepsDone[k] = { done: text, state }; },
+      tick() {}, finding: (k, f) => { cards.push({ ...f, k }); }, done: (k, text, state = 'done', { partial = false } = {}) => { stepsDone[k] = { done: text, state, ...(partial ? { partial: true } : {}) }; },
       ...services({ slug, http, tregOn, aiOn, fresh: false }) };
     const changed = [];
     if (adsBroken) { try { await withTimeout(ads(ctx), LIMIT.ads, 'ads'); changed.push('ads'); } catch (e) { lg.warn?.('[reader] heal ads', slug, e.message); } }
@@ -182,7 +183,7 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
     const ledger = [...L.filter((e) => !keys.has(e.key)), ...added];
     // new cards replace the old cards of the same step and kind; other cards stay where they were
     const fresh = new Set(cards.map((c) => c.k + '|' + c.kind));
-    const f2 = findings ? { ...findings, steps: (findings.steps || []).map((x) => (stepsDone[x.k] ? { ...x, ...stepsDone[x.k] } : x)),
+    const f2 = findings ? { ...findings, steps: (findings.steps || []).map((x) => (stepsDone[x.k] ? (({ partial, ...y }) => ({ ...y, ...stepsDone[x.k] }))(x) : x)),
       cards: cards.length ? [...(findings.cards || []).filter((c) => !fresh.has(c.k + '|' + c.kind)), ...cards] : findings.cards } : findings;
     profile.meta = { ...(profile.meta || {}), healedAt: new Date().toISOString(), healed: changed };
     return { profile, ledger, findings: f2, changed };

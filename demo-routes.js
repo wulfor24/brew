@@ -5,6 +5,7 @@
 import { demoSid } from './demo-mode.js';
 import { SIM_IDS } from './connectors/sim.js';
 import { slugOf } from './brand-pack.js';
+import { numbersFor } from './pack-numbers.js'; // one number, one source: the picker shows what every other screen shows
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -34,21 +35,22 @@ export function createDemoRoutes({ packs, builder, auth, connectors, readBody, s
     const [demo, drafts, research, ideas, listen] = await Promise.all([packs.getJSON(slug, 'demo.json', null), packs.getJSON(slug, 'drafts/cards.json', null), packs.getJSON(slug, 'research.json', null),
       packs.getJSON(slug, 'ideas/ideas.json', null), packs.getJSON(slug, 'listen/themes.json', null)]);
     const nDrafts = Object.keys(drafts || {}).length, pdfs = Object.keys(st.pdfs || {}).length;
-    const N = +st.total || 50; /* PDFs are made on download, so they are not something to prepare */
-    const checks = [['Read', st.stages?.read?.state === 'done'], [`${N} moves`, (st.movesDone || 0) >= N], ['Demo accounts', !!demo?.accounts], ['First drafts', nDrafts >= 6], ['Stories', !!research], ['Listening and ideas', !!(ideas?.items?.length || listen)]];
+    const [seed, profile] = await Promise.all([packs.getJSON(slug, 'seed.json', null), packs.getJSON(slug, 'profile.json', null)]);
+    const num = await numbersFor(packs.getJSON, slug, { 'status.json': st, 'profile.json': profile, 'research.json': research });
+    const N = num.moves.total; /* the playbook (status.total). PDFs are made on download, so they are not something to prepare */
+    const checks = [['Read', st.stages?.read?.state === 'done'], [`${N} moves`, num.moves.written >= N], ['Demo accounts', !!demo?.accounts], ['First drafts', nDrafts >= 6], ['Stories', !!research], ['Listening and ideas', !!(ideas?.items?.length || listen)]];
     const prep = PREP.get(slug) || null;
     /* what the card shows: the brand's own colours, three real product photos, and its real size */
-    const [seed, profile] = await Promise.all([packs.getJSON(slug, 'seed.json', null), packs.getJSON(slug, 'profile.json', null)]);
     const br = seed?.brand || {}, prods = (profile?.catalog?.products || []).filter((x) => x.images?.[0] && x.inStock !== false);
     const pick = [...new Set([...Object.values(seed?.laneImg || {}).filter((x) => !/logo|mark/i.test(x)), ...prods.slice(0, 8).map((x) => x.images[0])])].slice(0, 3);
     const look = { mark: br.mark || null, logo: br.logo || st.logo || null, colors: br.colors || [], wash: br.wash || [], images: pick,
       tagline: (() => { const t = String(profile?.descriptor || br.tagline || ''), n = String(st.name || ''); return (t.toLowerCase().startsWith(n.toLowerCase()) ? t.slice(n.length).replace(/^\s*[:|\-–]\s*/, '') : t).slice(0, 90); })(),
       category: profile?.category || null, country: profile?.country || null, currency: profile?.currency || null,
-      products: +(br.products || profile?.catalog?.total || prods.length) || null, reviews: +(profile?.reviews?.total || 0) || null,
-      /* the market Brew watches for the brand: its own live ads plus its rivals' (the read's ad step); else the pages it read */
-      ads: (+profile?.ads?.own?.live || 0) + (Array.isArray(profile?.ads?.rivals) ? profile.ads.rivals.reduce((a, r) => a + (+r.live || 0), 0) : 0),
+      products: num.products.n || null, reviews: +(profile?.reviews?.total || 0) || null,
+      /* the brand's OWN live ads (never added to the rivals'), the same count as the read, the check page and the rings; else the pages it read */
+      ads: num.ownAds.n || null,
       pages: +(String(((await packs.getJSON(slug, 'findings.json', null))?.steps || []).find((x) => x.k === 'open')?.done || '').replace(/,/g, '').match(/^(\d+) pages/)?.[1] || 0) || null };
-    return { slug, name: st.name, host: st.host, logo: st.logo || null, look, moves: st.movesDone || 0, pdfs, drafts: nDrafts, checks: checks.map(([t, ok]) => ({ t, ok })), ready: checks.every(([, ok]) => ok), loaded: (st.movesDone || 0) >= N, building: !!st.stages && !st.done, prep };
+    return { slug, name: st.name, host: st.host, logo: st.logo || null, look, moves: num.moves.written, pdfs, drafts: nDrafts, checks: checks.map(([t, ok]) => ({ t, ok })), ready: checks.every(([, ok]) => ok), loaded: num.moves.written >= N, building: !!st.stages && !st.done, prep };
   }
 
   /* ---------- Prepare for demo: run what is slow now, so nothing waits in the room ---------- */

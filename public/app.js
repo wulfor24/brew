@@ -265,7 +265,7 @@
     if (r.batches) S.batches = r.batches;
     Object.values(ALL).forEach((c) => { if (c.done && !S.done[c.id]) S.done[c.id] = c.done; });
     if (r.decided) S.decided = { ...r.decided };
-    FEED = r.order.map((id) => ALL[id]).filter(Boolean); return r;
+    FEED = r.order.map((id) => ALL[id]).filter(Boolean); RANKED = FEED.slice(); return r;
   };
   const rank = () => FEED;
   const affinity = () => { const a = { agent: {}, lane: {}, type: {} }; Object.keys(S.hearts).forEach((id) => { const p = byId(id); if (!p) return; a.agent[p.agent] = (a.agent[p.agent] || 0) + 1; a.lane[p.lane] = (a.lane[p.lane] || 0) + 1; a.type[p.type] = (a.type[p.type] || 0) + 1; }); return a; };
@@ -392,7 +392,7 @@
     // the rivals step shows what the Ad Library research really found (research.js), not a canned line
     const res = await fetch('/api/research').then((r) => r.json()).catch(() => null);
     const ra = !GEN && res?.ads?.items?.length ? res.ads : null; // a generated brand's reader already shows its real ads
-    const steps = ra ? B.steps.map((x) => x.k === 'ads' ? { ...x, done: `${ra.brands.length} rivals, ${ra.brands.reduce((n, b) => n + (b.live || 0), 0).toLocaleString('en-IN')} live ads` } : x) : B.steps;
+    const steps = ra ? B.steps.map((x) => x.k === 'ads' ? { ...x, done: `${ra.brands.length} rivals: ${ra.brands.reduce((n, b) => n + (b.live || 0), 0).toLocaleString('en-IN')} live ads` } : x) : B.steps;
     const cards = ra ? B.scrape.map((c) => c.kind === 'ad' ? { ...c, src: `Meta Ad Library · ${B.config?.countryName || 'live'}`, img: ra.items[0].poster, copy: ra.items.slice(0, 3).map((a) => `${a.brand}: ${a.hook}`).join(' · '), foot: `${ra.items[0].brand}'s top ad has run ${ra.items[0].days} days in ${ra.items[0].versions} versions.` } : c) : B.scrape;
     root.innerHTML = `
       <main class="screen setup">
@@ -545,18 +545,19 @@
   let pvSeq = 0, pvLast = '';
   const obPreview = async () => {
     const host = $('#ob-show'); if (!host) return; const seq = ++pvSeq, R = ROLE();
-    const paint = (cards) => { if (seq !== pvSeq || !$('#ob-show')) return;
-      const yes = cards.filter((p) => p.type === 'decision').length;
+    const paint = (cards, all = cards) => { if (seq !== pvSeq || !$('#ob-show')) return;
+      const yes = yesOf(all).length; /* the greeting's own rule, on the same ranked feed: no padded minimum */
       host.innerHTML = `<div class="ob2-wash"></div><div class="pv">
         <p class="pv-cap">Your feed, as ${/^[AEIOU]/.test(R.name) ? 'an' : 'a'} ${esc(R.name.toLowerCase())}</p>
         <div class="pv-win"><div class="pv-bar"><i></i><i></i><i></i><span>${location.host}</span></div>
           <div class="pv-in"><small>Today</small><h3>${dayPart()}${hiName(R)}</h3>
-            <div class="pv-tiles"><span class="hot"><b>${Math.max(yes, 1)}</b>need your yes</span><span><b>${cards.length}</b>new ideas</span><span><b>5</b>agents on it</span></div>
+            <div class="pv-tiles">${yes ? `<span class="hot"><b>${yes}</b>need your yes</span>` : ''}<span><b>${cards.length}</b>new ideas</span><span><b>5</b>agents on it</span></div>
             ${cards.slice(0, 3).map(pvCard).join('')}</div></div></div>`; pvLast = host.innerHTML.replace('class="pv"', 'class="pv still"'); };
     let cards = [];
-    if (TID) { const r = await loadFeed(); if (r && FEED.length) cards = FEED.slice(0, 8); }
-    if (!cards.length) cards = B.posts.filter((p) => !p.onlyWhen && (!p.roles || p.roles.includes(S.viewer.role)) && !p.kind?.startsWith?.('conf')).slice(0, 8);
-    paint(cards);
+    let all = [];
+    if (TID) { const r = await loadFeed(); if (r && RANKED.length) { all = RANKED; cards = RANKED.slice(0, 8); } }
+    if (!cards.length) { all = B.posts.filter((p) => !p.onlyWhen && (!p.roles || p.roles.includes(S.viewer.role)) && !p.kind?.startsWith?.('conf')); cards = all.slice(0, 8); }
+    paint(cards, all);
   };
   const LANE_IMG = B.laneImg || {};
   const obNav = (next, back) => `<div class="ob2-nav">${back ? `<button class="btn btn-ghost lg" id="ob-back">${ic('left', 's18')} Back</button>` : '<span></span>'}<button class="btn btn-primary lg" id="ob-next">${next} ${ic('right', 's18')}</button></div>`;
@@ -810,8 +811,13 @@
       <button class="bar" data-cx="${id}"><span class="lead">${ic('plug', 's16')}Connect ${esc(c.name)}</span>${ic('right', 's16')}</button></article>`; };
 
   /* the three counts on the greeting, and the full pages behind them */
-  const gLists = () => { const vis = FEED.slice(0, 14).filter((p) => !cardOf(p).done);
-    return { yes: vis.filter((p) => p.type === 'decision'), spend: vis.filter((p) => B.spends.includes(p.cta?.label)), board: WORK.items.filter((w) => w.stage === 'needs_you').sort((a, b) => b.updatedAt - a.updatedAt) }; };
+  /* one rule for each count, read from the ranked feed only (loadFeed), never from FEED, which the deck, the lists and
+     the library reuse for their own rows: the greeting tile, the list behind it, its tab and the setup preview agree */
+  const TODAY_N = 14;
+  const todayOf = (ranked) => ranked.slice(0, TODAY_N).filter((p) => !cardOf(p).done);
+  const yesOf = (ranked) => todayOf(ranked).filter((p) => p.type === 'decision');
+  const gLists = () => { const vis = todayOf(RANKED);
+    return { yes: yesOf(RANKED), spend: vis.filter((p) => B.spends.includes(p.cta?.label)), board: WORK.items.filter((w) => w.stage === 'needs_you').sort((a, b) => b.updatedAt - a.updatedAt) }; };
   const QHEAD = {
     yes: ['Need your yes', 'Calls only you can make', 'Calls only you can make. Each opens its jam: the plan, the draft, then your yes.', 'check'],
     spend: ['Spend money', 'Budgets, campaigns and the site', 'These change budgets, campaigns or the site. Each opens its jam; nothing goes live until you approve it there.', 'wallet'],
@@ -830,7 +836,7 @@
       ${tiles.length ? `<div class="g-today" style="--n:${tiles.length}">${tiles.join('')}</div>` : ''}</div>`;
   };
 
-  let FEED = [], GSTAT = { yes: [], spend: [], board: [] }, QTAB = 'yes';
+  let FEED = [], RANKED = [], GSTAT = { yes: [], spend: [], board: [] }, QTAB = 'yes';
   /* full page: one list per count, each row acts in one tap or opens the card */
   /* a calm list: the photo only when there is one, the title, one line, and the one action. The row itself opens the card */
   const qThumb = (p, c) => { const img = (c.images || p.images || [])[0]; return img ? `<span class="q-thumb"><img src="${img}" alt="" loading="lazy"></span>` : ''; };
@@ -3611,7 +3617,7 @@
     const stepper = (b) => { const s1 = b.stages, one = (state, t) => `<li class="is-${state}"><i>${state === 'done' ? ic('check', 's14') : state === 'run' ? '<span class="spin"></span>' : ''}</i><span>${t}</span></li>`;
       const d10 = b.core ?? Math.min(b.done, 10);
       return `<ol class="bd-steps">${one(s1.read === 'done' ? 'done' : 'run', 'Read the site')}${one(s1.confirm === 'done' ? 'done' : s1.read === 'done' ? 'run' : 'wait', 'You checked it')}${one(s1.brief === 'done' ? 'done' : s1.confirm === 'done' ? 'run' : 'wait', 'Brand brief')}
-        ${one(d10 >= 10 ? 'done' : s1.brief === 'done' ? 'run' : 'wait', `First 10 · ${d10}/10`)}${one(b.done >= 51 ? 'done' : d10 >= 10 ? 'run' : 'wait', `Core moves · ${b.done}/51`)}${one(b.pdfs >= 50 ? 'done' : b.pdfs ? 'run' : 'wait', `PDFs · ${b.pdfs}`)}${one(b.statics?.state === 'done' ? 'done' : b.statics?.state === 'running' ? 'run' : b.statics?.state === 'failed' ? 'fail' : 'wait', 'Static ads')}</ol>`; };
+        ${one(d10 >= 10 ? 'done' : s1.brief === 'done' ? 'run' : 'wait', `First 10 · ${d10}/10`)}${one(b.done >= (+b.total || 50) ? 'done' : d10 >= 10 ? 'run' : 'wait', `All moves · ${b.done}/${+b.total || 50}`)}${one(b.pdfs >= (+b.total || 50) ? 'done' : b.pdfs ? 'run' : 'wait', `PDFs · ${b.pdfs}`)}${one(b.statics?.state === 'done' ? 'done' : b.statics?.state === 'running' ? 'run' : b.statics?.state === 'failed' ? 'fail' : 'wait', 'Static ads')}</ol>`; };
     const buildHtml = !b ? `<div class="bd-empty">${GEN ? 'Build details are not available yet.' : `${poss(B.brand.name)} moves were written by the Brew team by hand, so there is no live build to show.`}</div>` : `
       ${stepper(b)}
       <div class="q-stack">
@@ -3644,7 +3650,7 @@
     if (MVT.tab === 'build' && !b && GEN) MVT.tab = 'moves';
     $('#view').innerHTML = `<div class="feedcol lib-col mv2">
       <header class="mv2-head"><button class="rd-back" data-nav="learned">${ic('right', 's16')}<span>What Brew learned</span></button><h2>The moves</h2><p>${(() => { const core = ms.filter((m) => m.n >= 1 && m.n < 1000).length, wk = fam.length; /* one count everywhere: the playbook (status.total), never the index (00) or weekly moves (1001+), which count apart */
-          return building ? `${core} of ${+st.total || 50} moves written for ${esc(B.brand.name)} so far.` : `${core} moves for ${esc(B.brand.name)}${wk ? `, plus ${wk} new this week` : ''}. Every card in your feed comes from one of them.`; })()}</p>
+          return building ? `${core} of ${+st.total || 50} moves written for ${esc(B.brand.name)} so far.` : `${+st.total || core} moves for ${esc(B.brand.name)}${wk ? `, plus ${wk} new this week` : ''}. Every card in your feed comes from one of them.`; })()}</p>
         <div class="mv2-meta">${by[0] ? '<button class="linkbtn" data-mv="0">Read the index</button>' : ''}<button class="linkbtn" data-nav="facts">Fact sheet</button>${!showBuild && b ? '<button class="linkbtn" data-mvt="build">Build log</button>' : ''}</div></header>
       <div class="mv2-seg" role="tablist"><button role="tab" data-mvt="moves" aria-selected="${MVT.tab === 'moves'}">Moves</button>${GEN ? `<button role="tab" data-mvt="updates" aria-selected="${MVT.tab === 'updates'}">Updates${nStale ? `<span class="cnt">${nStale}</span>` : U?.checking || U?.rewriting ? '<span class="dot"></span>' : ''}</button>` : ''}${showBuild ? `<button role="tab" data-mvt="build" aria-selected="${MVT.tab === 'build'}">Build${building ? '<span class="dot"></span>' : ''}</button>` : ''}</div>
       ${nStale && MVT.tab === 'moves' ? `<button class="up-banner" data-mvt="updates"><b>${nStale} move${nStale === 1 ? ' is' : 's are'} out of date</b><i>Review ${ic('right', 's14')}</i></button>` : ''}

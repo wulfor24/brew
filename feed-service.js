@@ -113,6 +113,15 @@ const ROUTE_RULES = [
 const STEP_KEYS = ['open', 'brand', 'catalog', 'reviews', 'ads', 'site', 'answers'];
 const FIRST_LOAD_MS = 3 * 60e3; // watcher posts in the first minutes after setup are the first load, not news
 const AGENT_OF = { catalog: 'storefront', reviews: 'creative', ads: 'performance', site: 'storefront', answers: 'visibility', brand: 'creative', open: 'crm' };
+/* Demo Mode's live tour, one step: the live step stands unless it came back empty or partial (a paid source off, a rival
+   search that failed) while the saved read has that step whole; then the saved step and its findings are shown, marked
+   as carried from the last read. A step the saved read lacks too stays as the live read says, honestly */
+export function tourStep(ev, old, savedCards = [], liveFindings = []) {
+  const worse = (ev.state === 'empty' || !!ev.partial) && !!old?.done && old.state !== 'empty' && !old.partial;
+  if (worse) return { carried: true, empty: false, done: old.done, cards: savedCards.map((c) => ({ finding: { ...c, carried: true }, say: 'From the last read' })) };
+  const empty = ev.state === 'empty';
+  return { carried: false, empty, done: ev.done || (empty ? 'Nothing found' : 'Done'), cards: liveFindings.map((e) => ({ finding: e.finding, say: e.say || 'Found it' })) };
+}
 export function followRead({ builder, slug, loadSeed, send, isOpen = () => true, startedAt = Date.now(), replayMs = 500 }) {
   let sentReady = false, doneSeen = false, hold = !(builder.events(slug) || []).some((e) => e.type === 'reader');
   const ready = () => { if (sentReady || !isOpen()) return; sentReady = true; send({ type: 'ready', ms: Date.now() - startedAt }); };
@@ -878,18 +887,28 @@ export function createFeedService(o) {
   /* Demo Mode's tour (o.liveReadFor): the store is read again, live, while the visitor watches. Events are paced so each
      finding has time to land (the cursor flies to it); if the read cannot run, the stored read is replayed instead */
   const PACE = { finding: 2200, step: 500 };
-  const liveReadOnboarding = (t, req, res, slug) => {
+  const liveReadOnboarding = async (t, req, res, slug) => {
     let open = true, q = Promise.resolve(), sentReady = false; const ac = new AbortController(), t0 = Date.now();
     const write = (x) => open && res.write(`data: ${JSON.stringify(x)}\n\n`);
     const send = (x, gap = 0) => { q = q.then(async () => { write(x); if (gap && open) await new Promise((r) => setTimeout(r, gap)); }); };
     const ready = () => send({ type: 'ready', ms: Date.now() - t0 });
     const fallback = () => { if (sentReady) return; sentReady = true; const stop = followRead({ builder, slug, loadSeed: async () => (await packs.load(slug))?.seed, send: write, isOpen: () => open, startedAt: t0, replayMs: 1200 }); req.on('close', stop); };
     req.on('close', () => { open = false; ac.abort(); });
+    /* the brand's saved read, step by step: a live step that comes back empty or partial (a paid source off, a search
+       that failed) shows the saved step and its findings instead, marked as from the last read. The tour never tells a
+       visitor "0 rivals" or "not asked" about a brand whose read has them; a step the saved read lacks too stays honest */
+    const [pk, fj] = await Promise.all([packs.load(slug).catch(() => null), packs.getJSON(slug, 'findings.json', null).catch(() => null)]);
+    const savedStep = (k) => { const a = (fj?.steps || []).find((x) => x.k === k), b = (pk?.seed?.steps || []).find((x) => x.k === k); if (!a && !b) return null; return { ...(a || {}), ...(b?.done ? { done: b.done } : {}) }; };
+    const savedCards = (k) => { const c = (pk?.seed?.scrape || []).filter((x) => x.k === k); return c.length ? c : (fj?.cards || []).filter((x) => x.k === k); };
+    const held = new Map(); /* each step's live findings wait for the step's verdict */
     builder.readLive(slug, { signal: ac.signal, onEvent: (ev) => { const i = STEP_KEYS.indexOf(ev.k);
       if (ev.type === 'step' && ev.state === 'reading' && i >= 0) send({ type: 'step', i, state: 'reading', tick: ev.tick || '' }, PACE.step);
-      if (ev.type === 'finding') send({ type: 'finding', i, finding: ev.finding, say: ev.say || 'Found it' }, PACE.finding);
-      if (ev.type === 'step' && (ev.state === 'done' || ev.state === 'empty') && i >= 0) { send({ type: 'step', i, state: 'done', empty: ev.state === 'empty', done: ev.done || (ev.state === 'empty' ? 'Nothing found' : 'Done') }, PACE.step); if (AGENT_OF[ev.k]) send({ type: 'agent', agent: AGENT_OF[ev.k] }); } } })
-      .then((out) => { if (out?.opened === false) return q.then(fallback); sentReady = true; ready(); })
+      if (ev.type === 'finding') { if (i >= 0) { if (!held.has(ev.k)) held.set(ev.k, []); held.get(ev.k).push(ev); } else send({ type: 'finding', i, finding: ev.finding, say: ev.say || 'Found it' }, PACE.finding); }
+      if (ev.type === 'step' && (ev.state === 'done' || ev.state === 'empty') && i >= 0) {
+        const v = tourStep(ev, savedStep(ev.k), savedCards(ev.k), held.get(ev.k) || []); held.delete(ev.k);
+        v.cards.forEach((c) => send({ type: 'finding', i, ...c }, PACE.finding));
+        send({ type: 'step', i, state: 'done', empty: v.empty, done: v.done }, PACE.step); if (AGENT_OF[ev.k]) send({ type: 'agent', agent: AGENT_OF[ev.k] }); } } })
+      .then((out) => { if (out?.opened === false) return q.then(fallback); for (const [k, evs] of held) evs.forEach((e) => send({ type: 'finding', i: STEP_KEYS.indexOf(k), finding: e.finding, say: e.say || 'Found it' }, PACE.finding)); held.clear(); sentReady = true; ready(); })
       .catch((e) => { if (!open) return; log.warn('[demo] live read', slug, e.message); q.then(fallback); });
   };
   const liveOnboarding = async (t, req, res, slug) => {
