@@ -171,7 +171,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
   const slugOf = (x) => String(x || '').replace(/[^a-z0-9-]/g, '');
   async function handle(req, res, u) {
     const p = u.pathname;
-    const sm = p.match(/^\/connect\/([a-z]+)\/(start|callback)$/);
+    const sm = p.match(/^\/connect\/([a-z0-9]+)\/(start|callback)$/);
     if (sm && req.method === 'GET') {
       const [, id, step] = sm, me = auth.user(req);
       if (!CONNECTORS[id] || OFF.has(id)) return json(res, 404, { error: 'unknown connector' }), true;
@@ -203,7 +203,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     }
     const lm = p.match(/^\/api\/brands\/([a-z0-9-]+)\/live$/);
     if (lm && req.method === 'GET') return json(res, 200, await liveView(lm[1], auth.user(req))), true;
-    const cm = p.match(/^\/api\/brands\/([a-z0-9-]+)\/connect\/([a-z]+)(\/options)?$/);
+    const cm = p.match(/^\/api\/brands\/([a-z0-9-]+)\/connect\/([a-z0-9]+)(\/options)?$/);
     if (cm) {
       const [, slug, id, opt] = cm, me = auth.user(req);
       if (OFF.has(id)) return json(res, 404, { error: 'Marketplaces are coming soon.' }), true;
