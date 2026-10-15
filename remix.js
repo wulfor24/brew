@@ -359,7 +359,7 @@ export function createRemix(o) {
       const lk = leaks(ch.family, ch.action, ch.pkg); checks.splice(1, 0, { k: lk.length ? `Reads like an internal note, not to customers (“${lk.slice(0, 3).join('”, “')}”)` : 'Written for customers, not the team', ok: !lk.length, fix: true, leak: true });
     }
     if (ch.imagePending) checks.push({ k: 'The new creative is still rendering', ok: false, soft: true });
-    checks.push(act.irreversible ? { k: `Can’t be undone: ${act.irreversible}. The ShopOS team ships it from a brief.`, ok: true, team: true } : { k: `Can be undone: ${act.rollback}`, ok: !!act.rollback && !/^nothing|^—/i.test(act.rollback), soft: true });
+    checks.push(act.irreversible ? { k: `Can’t be undone: ${act.irreversible}. Whoever ships it from the brief should know.`, ok: true, team: true } : { k: `Can be undone: ${act.rollback}`, ok: !!act.rollback && !/^nothing|^—/i.test(act.rollback), soft: true });
     if (act.target.conn) checks.push({ k: `${SEED.connectors[act.target.conn]?.name || act.target.conn} connected`, ok: !!t.conn[act.target.conn], soft: true, conn: act.target.conn });
     if (act.money) checks.push({ k: `${ch.amount > 0 ? `Spends about ${inr(ch.amount)} a week` : 'Costs money'}: the brief carries it, the team that runs it sets the budget`, ok: true, money: true });
     checks.push(...ruleChecks(t, act.agent, ch.after));
@@ -446,7 +446,7 @@ export function createRemix(o) {
     ch.after = afterFromPkg(ch.family, ch.pkg, { images: ['meta_ad', 'social'].includes(ch.family) && c.images ? [ch.batchKey ? ch.pkg.image : c.images[0]] : null });
     ch.after.publicText = publicText(ch.family, ch.action, ch.pkg);
     ch.amount = amountOf(act, ch.family, ch.pkg, c);
-    ch.costLabel = !act.money ? 'No spend' : ch.amount > 0 ? `About ${inr(ch.amount)} a week` : 'A one-off cost the ShopOS team confirms';
+    ch.costLabel = !act.money ? 'No spend' : ch.amount > 0 ? `About ${inr(ch.amount)} a week` : 'A one-off cost to confirm';
     return evaluate(t, ch);
   };
   const snapOf = (ch) => ({ ...ch.pkg, title: ch.after.title, sub: ch.after.sub, action: ch.action, amount: ch.amount });
@@ -1035,7 +1035,7 @@ export function createRemix(o) {
   on('POST', '/api/changes/:chid/discard', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' };
     const set = ch.batchKey ? Object.values(changes(t)).filter((x) => x.cardId === ch.cardId && x.batchKey) : [ch];
-    if (set.some((x) => LIVEISH.includes(x.state))) return { error: set.length > 1 ? 'Some of these ads are live. Undo them first.' : ch.state === 'deploy_team' ? 'It’s with the ShopOS team. Withdraw it first.' : 'It’s live. Undo it first, then discard it.' };
+    if (set.some((x) => LIVEISH.includes(x.state))) return { error: set.length > 1 ? 'Some of these ads are live. Undo them first.' : ch.state === 'deploy_team' ? 'It’s in a shared brief. Share a new version instead.' : 'It’s live. Undo it first, then discard it.' };
     set.forEach((x) => (x.discarded = now(t)));
     /* the studio is its jam's package: the jam goes with it, or opening the card reopens the package you just discarded */
     const ws = (t.work || []).filter((w) => !w.discarded && set.some((x) => x.id === w.changeId) && !['deploying', 'measuring'].includes(w.stage));

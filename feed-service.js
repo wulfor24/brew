@@ -174,7 +174,7 @@ export function createFeedService(o) {
   // the active brand's data (a generated pack, or the Brew default context); see brand-ctx.js
   const SEED = liveView((b) => b.seed);
   // the brand's own product lines (seed lanes): watcher and Creative cards use them, never another brand's lane names
-  const creativeByBrand = new Map();
+  const creativeByBrand = new Map(), newWs = new Map();
   const laneIds = () => Object.keys(SEED.lanes || {}), firstLane = () => laneIds()[0] || 'core';
   const FACTS = liveView((b) => b.facts), fx = (s) => B().fx(s);
   const FACT_OK = { has: (n) => B().factOk.has(n), [Symbol.iterator]: () => B().factOk[Symbol.iterator]() };
@@ -211,7 +211,7 @@ export function createFeedService(o) {
   let ticket = 1041, leadsAllTenants = 0;
 
   /* ---------- small helpers ---------- */
-  const uid = (p) => p + '_' + crypto.randomBytes(4).toString('hex');
+  const uid = (p) => p + '_' + crypto.randomBytes(p === 't' ? 8 : 4).toString('hex'); // a workspace id is a key to it: 64 bits, not 32
   // Brew tickets are numbered per workspace and never reused, even across restarts (the old global counter reset on every deploy)
   const ticketNo = (x) => +(/^(?:BR|SO)-(\d+)$/.exec(x || '')?.[1] || 0); // BR- (Brew); SO- from before the rename still counts
   const nextTicket = (t) => { t.ticketN = Math.max(t.ticketN || 1041, ...t.work.map((w) => ticketNo(w.ticket)), ...(t.jams || []).map((j) => ticketNo(j.ticket))) + 1; return 'BR-' + t.ticketN; };
@@ -520,11 +520,11 @@ export function createFeedService(o) {
   };
   /* ---------- real work in progress (generated brands): no simulated progress, only what is happening ---------- */
   const STAGE_PCT = { drafting: 20, team: 45, brew: 55, needs_you: 70, ready: 85, deploying: 90, measuring: 95, result: 100 };
-  const STAGE_TXT = { drafting: 'Drafting', team: 'With your team', brew: 'With the ShopOS team', needs_you: 'Needs your OK', ready: 'Ready to ship', deploying: 'Shipping', out: 'Out with team', measuring: 'Live, measuring', result: 'Result in' };
+  const STAGE_TXT = { drafting: 'Drafting', team: 'With your team', brew: 'With the ShopOS team', needs_you: 'Needs your OK', ready: 'Ready to share', deploying: 'Brief shared', out: 'Brief shared', measuring: 'Brief shared', result: 'Brief shared' }; // Brew never ships or measures: old stages read as shared
   const realBatches = (t) => {
     const st = builder?.peek?.(B().slug) || {}, out = [];
     const done = st.movesDone || 0, pdfs = Object.keys(st.pdfs || {}).filter((k) => +k <= 50).length; /* the 51 (index + 50); weekly moves (1001+) have their own PDFs and never count here */
-    out.push({ id: 'b-moves', t: `Your moves`, s: done >= 51 ? `All written · ${pdfs} PDFs ready` : `${done} of 51 written · ${pdfs} PDFs ready`, pct: Math.round(100 * done / 51), st: done >= 51 ? 'Done' : 'Running', tone: done >= 51 ? 'ok' : 'info', agent: 'brew', team: true, real: true });
+    out.push({ id: 'b-moves', t: `Your moves`, s: done >= 51 ? `All written · ${pdfs} PDFs ready` : `${done} of 51 core moves written · ${pdfs} PDFs ready`, pct: Math.round(100 * done / 51), st: done >= 51 ? 'Done' : 'Running', tone: done >= 51 ? 'ok' : 'info', agent: 'brew', team: true, real: true });
     if (st.statics) out.push({ id: 'b-statics', t: 'Static ads from Move 21', s: st.statics.state === 'done' ? `${st.statics.n} ads ready for your review` : st.statics.state === 'failed' ? 'Could not be made: ' + (st.statics.err || 'image model error') : 'Making the images from your product photos', pct: st.statics.state === 'done' ? 100 : 40, st: st.statics.state === 'done' ? 'Needs you' : st.statics.state === 'failed' ? 'Stopped' : 'Running', tone: st.statics.state === 'done' ? 'warn' : 'info', agent: 'creative', real: true });
     for (const w of t.work.filter((x) => !x.archived && !x.discarded).sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 6))
       out.push({ id: 'b-' + w.id, t: cutWords(w.title || 'Work', 48), s: `${STAGE_TXT[w.stage] || w.stage}${w.with?.name ? ' · ' + w.with.name : ''}${w.ticket ? ' · ' + w.ticket : ''}`, pct: STAGE_PCT[w.stage] || 30, st: w.stage === 'needs_you' ? 'Needs you' : w.stage === 'result' ? 'Done' : 'Running', tone: w.stage === 'needs_you' ? 'warn' : w.stage === 'result' ? 'ok' : 'info', agent: w.agent, team: w.with?.kind === 'brew', workId: w.id, real: true });
@@ -558,7 +558,7 @@ export function createFeedService(o) {
       b.pct = Math.min(100, b.pct + (b.team ? 23 : 9 + Math.round(Math.random() * 6)));
       if (b.pct >= 100) {
         b.st = b.team ? 'Needs you' : 'Done'; b.tone = b.team ? 'warn' : 'ok';
-        t.storyExtra.news.push({ c: SEED.brand.wash[1], h: b.team ? `${b.ticket}: first draft is ready` : `${b.t} is done`, p: b.team ? 'The ShopOS team posted it in your jam. Have a look.' : b.s, at: now(t) });
+        t.storyExtra.news.push({ c: SEED.brand.wash[1], h: b.team ? `${b.ticket}: first draft is ready` : `${b.t} is done`, p: b.s, at: now(t) });
         if (b.team) { const j = t.jams.find((x) => x.ticket === b.ticket); if (j) { j.messages.push({ from: 'team', agent: 'Creative director', body: 'First draft is ready. It’s attached here and on WhatsApp if you moved the thread.', at: now(t) }); j.status = 'Waiting on you'; j.updatedAt = now(t); } }
         done.push(b);
       }
@@ -871,7 +871,7 @@ export function createFeedService(o) {
     const waiting = t.work.filter((w) => w.stage === 'needs_you').sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 2).map((w) => { const v = w.versions.find((x) => x.n === w.current) || w.versions[w.versions.length - 1];
       return { type: 'brand', chip: 'Waiting on you', h: v?.title || w.title, p: v?.sub || `${w.with?.name || 'Your team'} sent it back for your OK.`, img: w.img, agent: w.agent, workId: w.id, at: w.updatedAt }; });
     const shipped = extra('news').map((x) => ({ ...x, type: 'brand', chip: x.from || 'Your team' }));
-    const brandSlides = [...topCards, ...waiting, ...shipped, ...t.batches.slice(0, 3).map((b, i) => ({ type: 'brand', chip: b.team ? 'ShopOS team, this week' : 'Your agents, this week', h: b.t, p: `${b.s}.`, agent: b.team ? 'brew' : b.agent, pct: b.pct, st: b.st, at: batches[i]?.at }))].slice(0, 8);
+    const brandSlides = [...topCards, ...waiting, ...shipped, ...t.batches.slice(0, 3).map((b, i) => ({ type: 'brand', chip: 'Your agents, this week', h: b.t, p: `${b.s}.`, agent: b.team ? 'brew' : b.agent, pct: b.pct, st: b.st, at: batches[i]?.at }))].slice(0, 8);
     return [
       ring('brand', SEED.brand.name.length <= 8 ? `${SEED.brand.name} today` : 'Today', brandSlides, { updatedAt: Math.max(0, ...brandSlides.map((x) => x.at || 0)) || null, cover: topCards.find((x) => x.img)?.img, source: 'Your feed, work and results' }),
       ring('trends', 'Trends', [...trSlides, ...extra('trends')], { updatedAt: lastAt(tr), source: tr?.source, spark: spark(tr?.items?.[0]?.terms?.[0]), loading: !tr }),
@@ -1523,6 +1523,18 @@ export function createFeedService(o) {
     /* a team's workspace (a member has opened it) takes no writes from someone outside the team, not even the harmless ones */
     if (!gen && req.method !== 'GET' && t0?.teamEmail && !viewer?.member && process.env.DEMO_MODE !== '1') { send(res, viewer?.email ? 403 : 401, { error: viewer?.email ? 'This is the team’s workspace. Ask them to invite you.' : 'Sign in to take part.', signin: !viewer?.email }); return true; }
     if (!gen && req.method !== 'GET' && !DEMO_OK.test(u.pathname)) { send(res, 403, { error: `Demo mode: sign in with your work email${viewer?.host ? ` at ${viewer.host}` : ''} to make this.`, demo: true, host: viewer?.host || null }); return true; }
+    /* on live, a brand's feed, moves and read are for its team (Param, 2026-10-15); the demo site stays open. Someone outside the
+       team sees an empty feed (the page still loads, and a guest still gets their jam), and only their own jam's card */
+    const outside = br.kind === 'generated' && o.liveTeamOnly?.() && !viewer?.member && !viewer?.gen;
+    if (outside && req.method === 'GET') {
+      if (/^\/api\/tenants\/[^/]+\/feed$/.test(u.pathname)) { send(res, 200, { order: [], cards: {}, scores: {}, pinned: [], limit: { plan: 'free', daily: null, locked: 0 }, teamOnly: true }); return true; }
+      if (/^\/api\/tenants\/[^/]+\/stories$/.test(u.pathname)) { send(res, 200, { rings: [], teamOnly: true }); return true; }
+      if (/^\/api\/tenants\/[^/]+\/(deck|pulse|engine|remixes|learning)$/.test(u.pathname)) { send(res, 200, { teamOnly: true }); return true; }
+      const bareCard = /^\/api\/cards\/([^/]+)$/.exec(u.pathname), guestCard = bareCard && viewer?.email && (JAMS.peek(br.slug)?.work || []).some((w) => JAMS.guestWids(br.slug, viewer.email).includes(w.id) && w.cardId === decodeURIComponent(bareCard[1]));
+      if (/^\/api\/cards\//.test(u.pathname) && !guestJam && !guestCard && !(t0 && viewer?.email && guestOk(t0, viewer.email, u.pathname))) { send(res, viewer?.email ? 403 : 401, { error: 'This brand’s cards are for its team.', team: true, signin: !viewer?.email }); return true; }
+    }
+    /* workspaces cost memory (they stay loaded): someone outside a team makes at most 20 an hour from one address */
+    if (req.method === 'POST' && u.pathname === '/api/tenants' && !viewer?.member && !gen) { const k = `${o.clientIp ? o.clientIp(req) : ''}|${Math.floor(Date.now() / 3600e3)}`; const n = (newWs.get(k) || 0) + 1; newWs.set(k, n); if (newWs.size > 5000) newWs.clear(); if (n > 20) { send(res, 429, { error: 'Too many new workspaces from this address. Try again in an hour.' }); return true; } }
     if (gen && t0) t0.lastGen = Date.now();
     if (gen && br.kind === 'generated' && req.method === 'GET' && /\/feed$/.test(u.pathname)) o.onOpen?.(br.slug); // the social scheduler and background drafts spend only on brands their team opens
     /* this request's viewer, checked from the signed-in user (REQ): t.member and t.memberEmail read it. A team member who opens

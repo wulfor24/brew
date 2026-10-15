@@ -35,7 +35,7 @@ export const parseShare = (tok) => { const p = String(tok || '').split('~');
 export const parseToken = (tok) => { const [tid, wid, sig] = String(tok || '').split('~'); return tid && wid && sig && signed(sig, tid, wid) ? { tid, wid } : null; };
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const STAGE = { drafting: 'Drafting', team: 'With the team', brew: 'With the ShopOS team', needs_you: 'Needs your yes', ready: 'Ready to ship', deploying: 'Shipping', measuring: 'Live, measuring', result: 'Result in' };
+const STAGE = { drafting: 'Drafting', team: 'With the team', brew: 'With the ShopOS team', needs_you: 'Needs your yes', ready: 'Ready to share', deploying: 'Brief shared', measuring: 'Brief shared', result: 'Brief shared' };
 const KIND = { report: 'Report', idea: 'Idea', decision: 'Decision', competitor: 'Competitor watch' };
 // keep line breaks, cut at a line end near n characters
 const clipLines = (s, n) => { const out = []; let len = 0; for (const l of String(s || '').split('\n')) { if (!l.trim()) continue; if (len + l.length > n) { out.push('…'); break; } out.push(l); len += l.length + 1; } return out.join('\n'); };
