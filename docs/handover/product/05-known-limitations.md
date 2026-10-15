@@ -1,5 +1,18 @@
 # 05 · Known limitations: what to watch for and what not to claim
 
+> **Update, 2026-10-15 (later the same day):** fixed since the audit:
+> - invented "Ask everyone" sign-offs: asking a teammate now copies the question;
+> - simulated approvals: teammate replies change nothing;
+> - simulated numbers in briefs and moves;
+> - copy promising cut features;
+> - festival dates, which now roll forward each year;
+> - "MOVE 65 OF 64" and the hard-coded 51;
+> - missing PDFs, now redrawn at boot;
+> - rival ads in the "make" seats;
+> - dropped AI-gap cards.
+>
+> The rest of this page still applies.
+
 ## Don't claim these in a demo
 
 | Don't say | Because |

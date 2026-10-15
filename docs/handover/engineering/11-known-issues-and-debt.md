@@ -2,6 +2,10 @@
 
 *Ranked for a **showcase prototype**: first what could embarrass a demo or cost money, then what blocks real brands, then debt. Each item points to its audit section, where the file:line evidence is.*
 
+## Fixed on 2026-10-15, after the audit
+
+These P0 items are fixed and covered by `test/honesty.test.js`: **#1** (no canned sign-offs; simulated replies change nothing), **#2** (simulated account rows are never evidence), **#3** (the festival rolls forward from the calendar), **#4** (move kickers lose the drifting total, and the ad and review stats say what they count), **#5** (PDF writes are serialised and retried, and PDFs heal at boot), **#7** (make seats), **#8** (copy), **#9** (AI-gap QA) and **#10** (the told lift). See the commits from `284d127` to `f775c2e`. The table below is kept as the audit found it.
+
 ## P0: fix before the next showcase
 
 | # | Issue | Effect | Ref |
