@@ -744,7 +744,8 @@
         <div class="tm2-tx"><div class="tm2-top"><b>${esc(b.t)}</b><em>${esc(b.st === 'Running' ? `${b.pct}%` : b.st)}</em></div><span>${esc(b.s)}</span>${b.st === 'Running' ? `<div class="tm2-bar"><i style="width:${Math.max(3, b.pct || 0)}%"></i></div>` : ''}</div></li>`).join('')}</ul></div>
       <button class="tm2-foot" data-nav="${GEN ? 'work' : 'work'}"><span>${GEN ? 'See it all on the Work board' : 'Open the Work board'}</span>${ic('right', 's16')}</button></article>`; };
 
-  const deckCard = () => `<article class="card" data-upsell>${head('brew', 'Pro', null, false)}<div class="inset"><div class="up-tiles">${B.upsell.map(([k, t, s, img]) => `<div class="up-tile"><img src="${img}" alt="" loading="lazy"><b>${esc(t)}</b><span>${esc(s)}</span></div>`).join('')}</div></div>
+  // DUMMY: the Pro plan (DUMMY.md #4). The 10-a-day cap was cut, so saved packs' "A feed that keeps going" tile is dropped.
+  const deckCard = () => `<article class="card is-dummy" data-upsell>${head('brew', 'Pro', null, false)}<div class="inset"><div class="up-tiles">${B.upsell.filter(([k]) => k !== 'more').map(([k, t, s, img]) => `<div class="up-tile"><img src="${img}" alt="" loading="lazy"><b>${esc(t)}</b><span>${esc(s)}</span></div>`).join('')}</div></div>
       <div class="body"><h3>See everything side by side.</h3><p>One column per area: ads, creatives, store and more.</p></div>${barHtml({ label: 'Open the deck' })}</article>`;
 
   const connectCard = (id, why) => { const c = B.connectors[id];

@@ -137,7 +137,9 @@ export async function site(ctx) {
   rows.push(['Payments seen', walk.payments.length ? walk.payments.slice(0, 4).join(', ') : 'none shown yet']);
   rows.push(['Guest checkout', walk.guest == null ? 'unclear' : walk.guest ? 'yes' : 'no, login first']);
   if (walk.popups.length) rows.push(['Popups', String(walk.popups.length)]);
-  const capT = reached && walk.direct ? `Walked with ${clean(hero.title).slice(0, 40)}. Checkout button did not load headless, opened /checkout. Nothing entered.` : reached ? `Walked with ${clean(hero.title).slice(0, 40)}. Stopped at the checkout page, nothing entered.` : `Stopped early: ${walk.steps.find((s) => !s.ok)?.err || walk.steps.find((s) => !s.ok)?.err || 'checkout not reached'}.`;
+  // the product's name cut on a word, never mid-word ("…Hair Growth Se.")
+  const heroName = ((t) => t.length <= 48 ? t : t.slice(0, 47).replace(/\s+\S*$/, '') + '…')(clean(hero.title).replace(/\s+-\s+\d+\s*(ml|g|gm|kg|l)\b.*$/i, ''));
+  const capT = reached && walk.direct ? `Walked with ${heroName}. Checkout button did not load headless, opened /checkout. Nothing entered.` : reached ? `Walked with ${heroName}. Stopped at the checkout page, nothing entered.` : `Stopped early: ${walk.steps.find((s) => !s.ok)?.err || walk.steps.find((s) => !s.ok)?.err || 'checkout not reached'}.`;
   ctx.finding('site', { kind: 'rows', t: 'The path to checkout', src: pathOf(hero?.url || src), rows: rows.slice(0, 6), cap: capT, tech: techRows(tech) }, reached ? 'Timed the checkout' : undefined);
   ctx.done('site', reached ? `${walk.steps.length} steps, checkout timed` : `${walk.steps.filter((s) => s.ok).length} steps, checkout not reached`, reached ? 'done' : 'empty');
 }

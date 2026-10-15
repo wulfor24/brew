@@ -11,7 +11,7 @@ const NOT_BRANDS = /(^|\.)(amazon|flipkart|nykaa|myntra|ajio|meesho|tatacliq|jio
 const adq = (ctx, id, query, cacheKey) => adCall(ctx.tregOn ? { call: (i, o) => ctx.treg(i, o, cacheKey) } : null, id, { query });
 
 // bump when the ads stage starts reading differently: saved reads with an older version are healed once
-export const ADS_V = 2;
+export const ADS_V = 3; // 3: link-preview page titles are not hooks
 
 export async function findRivals(ctx) {
   const { profile, ledger } = ctx;
@@ -145,7 +145,9 @@ export async function ads(ctx) {
     // the hook: the ad's title, unless it is only the brand's or page's name; then the body's first sentence
     const sq = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
     const ttl = strip(s.title || c.title); const named = [brandName, a.page_name].some((n) => sq(n) && sq(ttl) === sq(n));
-    const real = (x) => /[\p{L}\p{N}]{2,}/u.test(x || '') ? x : '';
+    // a link preview's page title ("Brand (@handle) • Instagram photos and videos", "Page | Facebook") is not ad copy
+    const preview = (x) => /•\s*Instagram photos and videos|\bon Instagram:|[|\-–]\s*(Facebook|Instagram|YouTube)\s*$|\(@[\w.]+\)/i.test(x || '');
+    const real = (x) => /[\p{L}\p{N}]{2,}/u.test(x || '') && !preview(x) ? x : '';
     const hook = real(!named && ttl) || real(strip(s.body?.text || c.body).split(/(?<=[.!?])\s|\n/)[0].slice(0, 120)) || real(ttl);
     return { id: a.ad_archive_id, brand: brandName, page: String(a.page_name || '').trim(), hook, body: strip(s.body?.text || c.body).slice(0, 500), cta: s.cta_text || c.cta_text || null, link: s.link_url || c.link_url || null,
       posterSrc: v?.video_preview_image_url || im?.original_image_url || im?.resized_image_url || null, videoSrc: v?.video_sd_url || v?.video_hd_url || null, format: v ? 'video' : 'image',

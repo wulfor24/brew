@@ -144,8 +144,10 @@ const fromAi = (ai, det) => {
 
 // the case in a few sentences: what we saw, why it matters, and the action to press
 export const caseSummary = (c = {}, plan) => {
-  const why = (c.detail?.why || []).find((x) => x && !/^[^:]{2,60}:\s*[₹$€£]?[\d.,]+\s*$/.test(x));
+  const sq = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
   const sub = cut(c.sub, 220);
+  // the first reason that says something new: not a bare "Label: ₹123", not the card's own line again
+  const why = (c.detail?.why || []).find((x) => x && !/^[^:]{2,60}:\s*[₹$€£]?[\d.,]+\s*$/.test(x) && sq(x) !== sq(c.sub) && sq(x) !== sq(c.title));
   return [cut(c.title, 140).replace(/[.!?]?$/, '.'), sub && sub !== c.title ? sub.replace(/[.!?…]?$/, (m) => m || '.') : '', why ? cut(why, 160).replace(/[.!?]?$/, '.') : '',
     plan.n ? `Brew makes ${plan.n} ${plan.make.what} for you to review; nothing ships until you say so.` : 'Nothing ships until you say so.', `Next: ${plan.cta}.`].filter(Boolean).join(' ');
 };

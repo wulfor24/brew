@@ -90,7 +90,7 @@ export function createLiveWatch({ ROOT, anthropic, claudeParams, textOf, gToken,
     const prev = snap.catalog, before = new Map((prev?.items || []).map((x) => [x.handle, x])), by = new Map(items.map((x) => [x.handle, x]));
     const ev = [], day = new Date(now).toISOString().slice(0, 10), add = (e) => ev.push({ ...e, at: now });
     // cards quote these prices: a live price that differs means every card that says the old one is now wrong
-    const drift = quoted.map((q) => ({ ...q, p: by.get(q.handle) })).filter((q) => q.p && Math.round(q.p.price) !== q.n);
+    const drift = quoted.map((q) => ({ ...q, p: by.get(q.handle) })).filter((q) => q.p && Math.round(q.p.price * 100) !== Math.round(q.n * 100) && inr(q.n) !== inr(q.p.price)); // paise count: ₹1,850.40 is not a change from ₹1,850
     if (drift.length) add({ id: 'cat-drift-' + sha(drift.map((q) => q.handle + q.p.price).join()), kind: 'drift', items: drift.map((q) => ({ title: q.p.title, url: q.p.url, was: inr(q.n), now: inr(q.p.price) })) });
     const gone = quoted.map((q) => ({ ...q, p: by.get(q.handle) })).filter((q) => !q.p);
     if (gone.length) add({ id: 'cat-gone-quoted-' + sha(gone.map((q) => q.handle).join()), kind: 'gone', quoted: true, items: gone.map((q) => ({ title: q.key, url: `https://${HOST}/products/${q.handle}` })) });

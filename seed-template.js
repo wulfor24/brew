@@ -93,8 +93,7 @@ function baseSeed({ slug, host, name, tagline, colors, logo, mark, face, typeNam
     upsell: [
       ['deck', 'The deck', 'Every agent gets a column, posting all day.', art[0] || logo],
       ['signals', 'Signals', 'Who is due to reorder, with the message ready.', art[1] || art[0] || logo],
-      ['agents', 'Custom agents', 'Bring your own agent. Give it a column.', art[2] || art[0] || logo],
-      ['more', 'A feed that keeps going', 'More than ten cards a day, as long as you scroll.', art[3] || art[0] || logo]
+      ['agents', 'Custom agents', 'Bring your own agent. Give it a column.', art[2] || art[0] || logo]
     ],
     ctaBusy: Object.fromEntries(Object.entries(CTA).map(([k, v]) => [k, v[0]])), ctaDone: Object.fromEntries(Object.entries(CTA).map(([k, v]) => [k, v[1]])),
     spends: SPENDS, needsPerson: PERSON,
