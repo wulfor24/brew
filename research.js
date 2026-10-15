@@ -13,18 +13,29 @@ import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { adCall } from './reader/adlib.js';
+import { providerNow, GEMINI, GEMINI_PRICE } from './gemini-client.js';
 
 const D = 24 * 3600e3, H = 3600e3;
 // how often each story source is re-read (hours); STORY_EVERY_<KEY> overrides one
 const EVERY = { ads: 6, own: 12, trends: 6, news: 4, howto: 12 };
 const every = (k) => (+process.env[`STORY_EVERY_${k.toUpperCase()}`] || EVERY[k] || 24) * H;
 // a story's key across re-reads, so one seen again keeps the time it was first seen
-const KEY = { ads: (x) => `ad:${x.id}`, trends: (x) => `tr:${x.kind}:${(x.terms || []).join('|') || (x.kind === 'rising' && x.risingOf) || String(x.h).toLowerCase()}`, news: (x) => `nw:${String(x.url).replace(/[?#].*$/, '').replace(/\/$/, '')}`, howto: (x) => `ht:${String(x.h).toLowerCase()}` };
+const KEY = { ads: (x) => `ad:${x.id}`, trends: (x) => `tr:${x.kind}:${[...(x.terms || [])].sort().join('|') || (x.kind === 'rising' && x.risingOf) || String(x.h).toLowerCase()}`, news: (x) => `nw:${String(x.url).replace(/[?#].*$/, '').replace(/\/$/, '')}`, howto: (x) => `ht:${String(x.h).toLowerCase()}` };
 /* merge a fresh read into the last one: items seen before keep firstSeen; items not in this read stay while they are under
    24 hours old (a story posted today stays up today); older ones fall off */
+/* two trend or how-to stories that say nearly the same thing (most of their words shared) are one story: the ids differ by
+   day or wording, so the exact key alone let "How to win hair-fall searches" and "How to win the hair fall search" both show */
+const STOPW = new Set('the a an and or for with your you our its to of in on at by from this that what how why is are was be up down more most than into new now'.split(' '));
+const words = (x) => new Set(String([x.h, ...(x.terms || []), x.risingOf || ''].join(' ')).toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !STOPW.has(w)));
+export const near = (a, b) => { const A = words(a), B = words(b); if (!A.size || !B.size) return false; let n = 0; for (const w of A) if (B.has(w)) n++; return n / Math.min(A.size, B.size) >= 0.7; };
+const NEAR = new Set(['trends', 'howto']);
 export function pool(prev, items, k, now = Date.now()) {
-  const key = KEY[k] || ((x) => x.id), old = new Map((prev?.items || []).map((x) => [key(x), x])), seen = new Set();
-  const fresh = items.map((x) => { const o = old.get(key(x)); seen.add(key(x)); return { ...x, firstSeen: o?.firstSeen || prev?.firstSeenOf?.[key(x)] || now }; });
+  const key = KEY[k] || ((x) => x.id), oldItems = prev?.items || [], seen = new Set();
+  /* a fresh story near an older one takes the older one's key, so it keeps its first-seen time and replaces it, never sits beside it */
+  const twin = (x) => (NEAR.has(k) ? oldItems.find((o) => key(o) !== key(x) && near(o, x)) : null);
+  const old = new Map(oldItems.map((x) => [key(x), x]));
+  items = items.filter((x, i) => items.findIndex((y) => key(y) === key(x)) === i && !(NEAR.has(k) && items.slice(0, i).some((y) => near(x, y))));
+  const fresh = items.map((x) => { const o = old.get(key(x)) || twin(x); seen.add(key(x)); if (o) seen.add(key(o)); return { ...x, firstSeen: o?.firstSeen || prev?.firstSeenOf?.[key(x)] || now }; });
   const kept = [...old.entries()].filter(([kk, x]) => !seen.has(kk) && now - (x.firstSeen || prev?.fetchedAt || 0) < D).map(([, x]) => x);
   /* remember when everything was first seen for 3 days, so an item that drops out and comes back is not new again */
   const firstSeenOf = Object.fromEntries([...Object.entries(prev?.firstSeenOf || {}), ...[...fresh, ...kept].map((x) => [key(x), x.firstSeen])].filter(([, at]) => now - at < 3 * D));
@@ -34,12 +45,15 @@ export function pool(prev, items, k, now = Date.now()) {
   const archive = [...gone, ...(prev?.archive || [])].filter((x, i, a) => !live.has(key(x)) && a.findIndex((y) => key(y) === key(x)) === i && now - (x.firstSeen || 0) < 30 * D).slice(0, 80);
   return { items: [...fresh, ...kept], firstSeenOf, archive };
 }
+export const noPaise = (s) => String(s ?? '').replace(/((?:₹|\bRs\.?|\bINR)\s?)(\d[\d,]*)\.(\d{1,2})\b/g, (m, c, n, p) => c + Math.round(+n.replace(/,/g, '') + +p.padEnd(2, '0') / 100).toLocaleString('en-IN'));
 const BUCKET = process.env.RESEARCH_BUCKET || 'brew-prototype';
 // One research instance per brand (server.js makes it when the brand pack loads). Its snapshot lives at
 // brands/<slug>/research.json; downloaded media is shared by hash at research-media/<file> (served as /research/<file>).
 export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, geminiImage, gToken, clean, factBrief = () => '', brand, photoFile = (rel) => path.join(PUB, rel), tregClient = null, log = console }) {
   const B = () => brand, BN = () => brand.name, BH = () => brand.host, CTRY = () => brand.config.countryName || 'your market', FESTN = () => brand.config.festival?.name || 'the next sale', FESTD = () => brand.config.festival?.label || 'soon';
   const cfg = brand.config, GEO = cfg.country || 'IN', LOC = cfg.locationCode || 2356;
+  /* story text never shows paise: "₹499.00" reads "₹499" (rupee prices are whole; a scraped ".00" is noise) */
+  const tidy = clean; clean = (s) => noPaise(tidy(s));
   const RIVAL_PAGES = (cfg.rivals || []).map((name) => ({ name, match: new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') }));
   const TERMS = cfg.terms || [], RISING = cfg.rising || [], DIWALI = brand.festivalAt || 0, LANE_PHOTO = brand.lanePhoto || {};
   /* the product photo a cover is made from: the lane photo, else the seed's lane image (most generated brands only have these);
@@ -139,7 +153,8 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     for (let turn = 0; turn < 4; turn++) {
       const p = claudeParams(messages, max); if (tools) p.tools = tools;
       const msg = await anthropic.beta.messages.create(p);
-      spent.claude += ((msg.usage?.input_tokens || 0) * 3 + (msg.usage?.output_tokens || 0) * 15) / 1e6;
+      const [pin, pout] = providerNow() === 'anthropic' ? [3, 15] : GEMINI_PRICE[GEMINI.fast] || [0.5, 3]; /* the meter prices the model that ran */
+      spent.claude += ((msg.usage?.input_tokens || 0) * pin + (msg.usage?.output_tokens || 0) * pout) / 1e6;
       if (msg.stop_reason === 'pause_turn') { messages.push({ role: 'assistant', content: msg.content }); continue; }
       if (msg.stop_reason === 'refusal') throw new Error('refused');
       return { msg, text: textOf(msg) };
@@ -149,7 +164,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
 
   /* ---------- Popular ads ---------- */
   const strip = (s) => String(s || '').replace(/\{\{[^}]+\}\}/g, '').replace(/\s+\n/g, '\n').trim();
-  const adCopy = (a) => { const s = a.snapshot || {}; const c = (s.cards || [])[0] || {}; return { body: strip(s.body?.text || c.body), title: strip(s.title || c.title), cta: s.cta_text || c.cta_text || '', link: s.link_url || c.link_url || '', caption: s.caption || '' }; };
+  const adCopy = (a) => { const s = a.snapshot || {}; const c = (s.cards || [])[0] || {}; return { body: noPaise(strip(s.body?.text || c.body)), title: noPaise(strip(s.title || c.title)), cta: s.cta_text || c.cta_text || '', link: s.link_url || c.link_url || '', caption: s.caption || '' }; };
   const adMedia = (a) => {
     const s = a.snapshot || {}; const cards = s.cards || [];
     const v = (s.videos || [])[0] || cards.find((x) => x.video_sd_url || x.video_hd_url);
@@ -240,20 +255,39 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     }));
     if (!Object.keys(series).length) throw new Error('no trend data came back');
     const days = DIWALI ? Math.ceil((DIWALI - now) / D) : null;
-    const data = Object.values(series).map((s) => `- "${s.term}" (group ${s.set + 1}): last 30 days avg ${s.last}, prior 30 ${s.prev}, change ${s.change ?? 'n/a'}%, peak ${s.peakAt}`).join('\n');
+    /* a term searched almost never is noise: "0 to 7" is a 700% jump nobody should act on, so only terms with a real base become stories */
+    const solid = (s) => s.prev >= 5 && s.last >= 10;
+    const data = Object.values(series).filter(solid).map((s) => `- "${s.term}" (group ${s.set + 1}): last 30 days avg ${s.last}, prior 30 ${s.prev}, change ${s.change ?? 'n/a'}%, peak ${s.peakAt}`).join('\n');
     const ris = Object.entries(rising).map(([q, l]) => `Rising searches related to "${q}": ${l.map((x) => `${x.q} (${x.v})`).join('; ')}`).join('\n');
     let out = { items: [] };
     try {
       out = parseJSON((await claude(`${factBrief()}\n\nYou are the Trends agent for ${BN()} (${B().config.category}). Real Google Trends data for ${CTRY()}, last 90 days (index 0-100, comparable only within a group):\n${data}\n${ris}\nCalendar: ${FESTN()} is ${FESTD()}, ${days} days away.\nPick the 5 findings that matter most to ${BN()} this week. Every finding must quote a real number from the data above. Any ${BN()} price or claim must come from the facts list, exactly. Plain, simple words. Do not invent anything.\nJSON: {"items":[{"kind":"term|rising|calendar","terms":["exact term(s) from the data, for a chart; [] for rising or calendar"],"rising":"the related query list key if kind is rising, else null","h":"headline under 52 chars with the number","p":"two sentences, 25 to 35 words: what we saw with the number, then the move and what it gets ${BN()}; no fonts, design notes or file names","card":"a card title under 70 chars that names a number"}]}`, { max: 3000 })).text);
     } catch (e) { log.warn('[research] trends claude', e.message); }
+    /* no AI (down, out of credit, or it picked nothing): the stories are written from the numbers themselves, so the ring
+       still gets today's real movers; nothing is invented, every line is a number from the read above */
+    if (!(out.items || []).some((x) => x.h)) out = { items: trendsFromData(series, rising, days, solid) };
     const seenKey = new Set();
     const items = (out.items || []).slice(0, 6).map((x) => { const risingOf = x.kind === 'rising' ? (rising[x.rising] ? x.rising : Object.keys(rising)[0] || null) : null;
-      return { kind: x.kind, h: clean(x.h), p: clean(x.p), card: clean(x.card || x.h), terms: (x.terms || []).filter((t) => series[t]).slice(0, 3), risingOf, rising: risingOf ? (rising[risingOf] || []).slice(0, 6) : null }; })
+      return { kind: x.kind, h: clean(x.h), p: clean(x.p), card: clean(x.card || x.h), terms: (x.terms || []).filter((t) => series[t]).slice(0, 3), risingOf, rising: risingOf ? (rising[risingOf] || []).slice(0, 6) : null, ...(x.by ? { by: x.by } : {}) }; })
       // one story per rising list and per chart: two stories over the same data would be two cards with one widget
       .filter((x) => { const k = KEY.trends(x); if (seenKey.has(k)) return false; seenKey.add(k); return true; })
       // the id comes from what the story is about, so a later read the same day never reuses another story's id
       .map((x) => ({ id: 'tr-' + crypto.createHash('sha1').update(KEY.trends(x)).digest('hex').slice(0, 10), ...x }));
     snap.trends = { fetchedAt: now, ...pool(snap.trends, items.filter((x) => x.h), 'trends', now), series: { ...(snap.trends?.series || {}), ...series }, rising, source: `Google Trends · ${CTRY()} · last 90 days` };
+  }
+
+  function trendsFromData(series, rising, days, solid) {
+    const movers = Object.values(series).filter((s) => solid(s) && s.change != null && Math.abs(s.change) >= 10).sort((a, b) => Math.abs(b.change) - Math.abs(a.change)).slice(0, 3);
+    const items = movers.map((s) => { const up = s.change > 0;
+      return { kind: 'term', terms: [s.term], h: `"${s.term}" searches ${up ? 'up' : 'down'} ${Math.abs(s.change)}%`.slice(0, 60),
+        p: `Searches for "${s.term}" in ${CTRY()} ${up ? 'rose' : 'fell'} ${Math.abs(s.change)}% over the last 30 days against the 30 before. ${up ? `More people are looking: a good week to put ${BN()} in front of them.` : `Interest is cooling: spend where searches still grow.`}`,
+        card: `"${s.term}" searches ${up ? 'up' : 'down'} ${Math.abs(s.change)}% in 30 days` }; });
+    const [rq, list] = Object.entries(rising).find(([, l]) => l?.length) || [];
+    if (rq) items.push({ kind: 'rising', terms: [], rising: rq, h: `Rising searches around "${rq}"`.slice(0, 60),
+      p: `People searching "${rq}" in ${CTRY()} now also search ${list.slice(0, 3).map((x) => `"${x.q}"`).join(', ')}. Each is a hook ${BN()} can answer in an ad or a page.`,
+      card: `${list.length} rising searches around "${rq}"` });
+    if (days != null && days >= 0 && days <= 45) items.push({ kind: 'calendar', terms: [], h: `${FESTN()} is ${days} days away`, p: `${FESTN()} falls on ${FESTD()}, ${days} days from today. Searches climb in the weeks before, so creative and offers for ${BN()} should be live before then.`, card: `${FESTN()} in ${days} days: get creative live first` });
+    return items.map((x) => ({ ...x, by: 'data' }));
   }
 
   /* ---------- What is new ---------- */
@@ -268,12 +302,30 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
   async function refreshNews() {
     const now = Date.now(); const today = new Date(now).toISOString().slice(0, 10);
     const ask = `Today is ${today}. You are the news scout for ${BN()}, ${cfg.about || 'a D2C brand (' + cfg.category + ')'}. Search the web for 5 to 6 real, dated news items from the last 21 days that ${BN()}'s marketing team should know. Cover a mix of: rival moves in ${CTRY()} (${(cfg.newsRivals || cfg.rivals || []).join(', ')}: launches, funding, pricing, campaigns), ${cfg.marketLine || 'the ' + CTRY() + ' market for ' + cfg.category}, and Meta or Google ad platform changes that affect advertisers in ${CTRY()}. Only include items you found a real article for, with its URL and publish date. Prefer the newest.\nWhen done, reply with only JSON: {"items":[{"h":"headline under 60 chars, plain words","p":"two sentences, 25 to 35 words: what happened, with the number, then why it matters to ${BN()}","source":"publication name","url":"https://...","date":"YYYY-MM-DD"}]}`;
-    const { text } = await claude([{ type: 'text', text: ask }], { max: 6000, tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 8, user_location: { type: 'approximate', country: GEO, ...(cfg.city ? { city: cfg.city } : {}), timezone: cfg.timezone || 'UTC' } }] });
-    const items = (parseJSON(text).items || []).filter((x) => /^https?:\/\//.test(x.url || '') && x.h && !(Date.parse(x.date) < now - 21 * D)).slice(0, 6); /* the same 21 days the scout is asked for; the ring ranks the newest first */
+    const fresh = (xs) => xs.filter((x) => /^https?:\/\//.test(x.url || '') && x.h && !(Date.parse(x.date) < now - 21 * D)).slice(0, 6); /* the same 21 days the scout is asked for; the ring ranks the newest first */
+    let items = [], aiErr = null;
+    try {
+      const { text } = await claude([{ type: 'text', text: ask }], { max: 6000, tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 8, user_location: { type: 'approximate', country: GEO, ...(cfg.city ? { city: cfg.city } : {}), timezone: cfg.timezone || 'UTC' } }] });
+      items = fresh(parseJSON(text).items || []);
+    } catch (e) { aiErr = e; log.warn('[research] news claude', e.message); }
+    /* no AI or it found nothing: the free news search (through the shared treg client, cached a day) reads the same rivals and
+       market; the article's own title and summary are the story, so nothing is written for it */
+    if (!items.length) items = fresh(await newsFromSearch(now).catch((e) => { throw new Error(`news: ${aiErr ? 'AI ' + aiErr.message + '; ' : ''}search ${e.message}`); }));
     if (!items.length) throw new Error('no news items');
     await Promise.all(items.map(async (x) => { x.img = await ogImage(x.url); x.domain = new URL(x.url).hostname.replace(/^www\./, ''); x.h = clean(x.h); x.p = clean(x.p); }));
     items.sort((a, b) => String(b.date).localeCompare(String(a.date)));
     snap.news = { fetchedAt: now, ...pool(snap.news, items, 'news', now), source: 'Web search' };
+  }
+
+  async function newsFromSearch(now) {
+    const qs = [...(cfg.newsRivals || cfg.rivals || []).slice(0, 3), `${cfg.category || BN()} ${CTRY()}`].filter(Boolean);
+    const rows = [], errs = [];
+    for (const q of qs) { try { const j = await treg('tinyfish.web.search.news', { query: { domain_type: 'news', query: q } }); rows.push(...(j?.results || j?.output?.results || [])); } catch (e) { errs.push(e.message); } }
+    if (!rows.length && errs.length) throw new Error(errs[0]);
+    const seen = new Set();
+    return rows.filter((r) => r?.url && r.title && !seen.has(r.url) && seen.add(r.url)).map((r) => { const d = Date.parse(r.date || r.published_at || r.publishedAt || '');
+      return { h: String(r.title).replace(/\s+[-|–]\s+[^-|–]{2,40}$/, '').slice(0, 90), p: String(r.snippet || r.description || '').slice(0, 260), source: r.publisher || r.site_name || r.source || new URL(r.url).hostname.replace(/^www\./, ''), url: r.url, date: isNaN(d) ? null : new Date(d).toISOString().slice(0, 10), by: 'search' }; })
+      .filter((x) => x.date && Date.parse(x.date) <= now).sort((a, b) => b.date.localeCompare(a.date));
   }
 
   /* ---------- How to ---------- */
@@ -281,8 +333,13 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     const now = Date.now();
     const ads = (snap.ads?.items || []).map((a) => `- ${a.brand}, live ${a.days} days, ${a.versions} versions: ${a.title}. Why: ${a.why}`).join('\n');
     const tr = (snap.trends?.items || []).map((t) => `- ${t.h}: ${t.p}`).join('\n');
-    const out = parseJSON((await claude(`${factBrief()}\n\nYou are Brew, writing this week's "How to" stories for ${BN()}'s marketing team. They are short playbooks a person can act on today, built from this week's real research:\nPopular rival ads in ${CTRY()}:\n${ads || '(none yet)'}\nSearch trends in ${CTRY()}:\n${tr || '(none yet)'}\nWrite 3 playbooks. Each one turns one finding into a concrete thing ${BN()} can make or change this week, using only ${BN()}'s facts listed above, with their exact numbers. Plain, simple words. Point first.\nJSON: {"items":[{"h":"How to ... (under 48 chars)","p":"one sentence under 22 words: the finding it comes from","steps":["3 or 4 steps, each under 14 words"],"card":"a card title under 70 chars naming a number","lane":"${Object.keys(brand.seed?.lanes || {}).join('|') || 'core'}","scene":"one sentence: a product photo to illustrate it, no text, no people"}]}`, { max: 3000 })).text);
-    const items = (out.items || []).slice(0, 3).map((x, i) => ({ id: `ht-${new Date(now).toISOString().slice(0, 10)}-${i}`, h: clean(x.h), p: clean(x.p), steps: (x.steps || []).map(clean).slice(0, 4), card: clean(x.card || x.h), lane: ['core', 'mito', 'dandruff'].includes(x.lane) ? x.lane : 'core', scene: x.scene, img: null }));
+    const LANES = Object.keys(brand.seed?.lanes || {}), lane0 = LANES[0] || 'core';
+    let out = { items: [] };
+    try { out = parseJSON((await claude(`${factBrief()}\n\nYou are Brew, writing this week's "How to" stories for ${BN()}'s marketing team. They are short playbooks a person can act on today, built from this week's real research:\nPopular rival ads in ${CTRY()}:\n${ads || '(none yet)'}\nSearch trends in ${CTRY()}:\n${tr || '(none yet)'}\nWrite 3 playbooks. Each one turns one finding into a concrete thing ${BN()} can make or change this week, using only ${BN()}'s facts listed above, with their exact numbers. Plain, simple words. Point first.\nJSON: {"items":[{"h":"How to ... (under 48 chars)","p":"one sentence under 22 words: the finding it comes from","steps":["3 or 4 steps, each under 14 words"],"card":"a card title under 70 chars naming a number","lane":"${Object.keys(brand.seed?.lanes || {}).join('|') || 'core'}","scene":"one sentence: a product photo to illustrate it, no text, no people"}]}`, { max: 3000 })).text); } catch (e) { log.warn('[research] howto claude', e.message); }
+    /* no AI: playbooks built from the week's top rival ad and top trend, in fixed steps, so the ring keeps its how-tos */
+    if (!(out.items || []).some((x) => x.h)) out = { items: howtoFromData() };
+    if (!out.items.length) throw new Error('no ads or trends to write how-tos from yet');
+    const items = out.items.slice(0, 3).map((x, i) => ({ id: `ht-${new Date(now).toISOString().slice(0, 10)}-${i}`, h: clean(x.h), p: clean(x.p), steps: (x.steps || []).map(clean).slice(0, 4), card: clean(x.card || x.h), lane: LANES.includes(x.lane) ? x.lane : lane0, scene: x.scene, img: null, ...(x.by ? { by: x.by } : {}) }));
     await Promise.all(items.map(async (x) => {
       const ref = refPhoto(x.lane); if (!ref) return;
       try {
@@ -291,6 +348,17 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
       } catch (e) { log.warn('[research] howto image', e.message); }
     }));
     snap.howto = { fetchedAt: now, ...pool(snap.howto, items.filter((x) => x.h), 'howto', now), source: 'Written from this week’s research' };
+  }
+
+  function howtoFromData() {
+    const ads = (snap.ads?.items || []).slice().sort((a, b) => (a.rank || 99) - (b.rank || 99)), tr = (snap.trends?.items || []).filter((t) => t.h);
+    const out = [];
+    for (const a of ads.slice(0, 2)) if (a.hook) out.push({ h: `How to test ${a.brand}'s ${a.angle || 'top'} angle`.slice(0, 48), p: `${a.brand}'s ad "${a.hook}" has run ${a.days} days in ${a.versions} versions.`,
+      steps: [`Write one ${BN()} hook on the same idea, in your words`, 'Make it a 9:16 static and a 4:5 static', 'Run both against your current best ad for 5 days', 'Keep the one with the lower cost per order'], card: `${a.brand}'s ad has run ${a.days} days: test the idea for ${BN()}` });
+    const t = tr[0];
+    if (t) out.push({ h: 'How to meet this week\'s search trend', p: t.h,
+      steps: [`Add the phrase from "${t.h}" to one ad headline`, 'Put the same phrase on your top product page', 'Check searches and clicks again next week'], card: t.card || t.h });
+    return out.slice(0, 3).map((x) => ({ ...x, by: 'data' }));
   }
 
   /* ---------- Your own ads: the brand's live ads in the public Meta Ad Library, tracked day by day ---------- */
@@ -352,8 +420,10 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
   const failed = {};
   const failedAt = (k) => Math.max(failed[k] || 0, snap[k]?.lastError?.at || 0);
   const due = () => Object.keys(JOBS).filter((k) => (!snap[k] || Date.now() - snap[k].fetchedAt > every(k)) && !(Date.now() - failedAt(k) < H));
+  /* the first GET after attach waits for the saved snapshot (ready), instead of answering with an all-empty one */
+  let loaded = null;
   const start = async () => {
-    await load();
+    await (loaded = load());
     const tick = () => { const d = due().filter((k) => k !== 'own' || brand.kind === 'generated'); if (d.length && !process.env.RESEARCH_OFF) refresh(d.includes('howto') ? [...d.filter((k) => k !== 'howto'), 'howto'] : d); };
     stopped = false; clearTimeout(timers.t); clearInterval(timers.i);
     timers.t = setTimeout(() => { if (!stopped) tick(); }, 5000); timers.i = setInterval(() => { if (!stopped) tick(); }, 30 * 60e3); timers.i.unref?.();
@@ -362,5 +432,5 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
   let stopped = false; const timers = {};
   const stop = () => { stopped = true; clearTimeout(timers.t); clearInterval(timers.i); };
 
-  return { start, stop, refresh, rollup, mediaFile, due, get: () => snap, onRefresh: (f) => listeners.push(f), running: () => [...running], spent: () => ({ ...spent }) };
+  return { start, ready: () => loaded, stop, refresh, rollup, mediaFile, due, get: () => snap, onRefresh: (f) => listeners.push(f), running: () => [...running], spent: () => ({ ...spent }) };
 }

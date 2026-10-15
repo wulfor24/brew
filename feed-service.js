@@ -856,7 +856,9 @@ export function createFeedService(o) {
     const bgFor = (sl) => { if (sl.img || sl.poster || !pool.length) return sl; const w = words([sl.h, sl.p, ...(sl.steps || [])].join(' ')); let best = null, top = 1;
       for (const c of pool) { let n = 0; for (const x of w) if (c.w.has(x)) n++; if (n > top) { top = n; best = c; } }
       return best ? { ...sl, bg: best.img } : sl; };
-    const ring = (k, title, slides, o = {}) => ({ k, title, slides: slides.map(bgFor), ...o, seen: !!o.updatedAt && (t.storySeen[k] || 0) >= o.updatedAt });
+    /* a ring whose last read failed and has nothing left today says so, never just vanishes as if there was nothing (brew-external-data rule 1) */
+    const failedNote = (k, title, slides) => (slides.length || !r0[k]?.lastError ? slides : [{ type: 'note', c: SEED.brand.wash[2], h: `Couldn't refresh ${title} this time`, p: 'The source didn’t answer. Brew tries again within the hour.', from: 'Brew', at: r0[k].lastError.at }]);
+    const ring = (k, title, slides, o = {}) => { slides = failedNote(k, title, slides); return { k, title, slides: slides.map(bgFor), ...o, seen: !!o.updatedAt && (t.storySeen[k] || 0) >= o.updatedAt }; };
     const extra = (k) => t.storyExtra[k].slice().reverse().map((x) => ({ ...x, type: 'note' }));
     const ads = r.ads, tr = r.trends, nw = r.news, ht = r.howto;
     const adSlides = (ads?.items || []).map((a) => ({ type: 'ad', ...a, total: ads.brands.find((b) => b.name === a.brand)?.live, cardId: t.cards.has('r-ad-' + a.id) ? 'r-ad-' + a.id : null }));
@@ -1159,7 +1161,7 @@ export function createFeedService(o) {
     return { columns: cols, counts: Object.fromEntries(Object.entries(cols).map(([k, v]) => [k, v.length])), layout: t.deck, cards: allCards(t), scores };
   });
   on('PUT', '/api/tenants/:id/deck-layout', async (b, t) => { if (Array.isArray(b.hidden)) t.deck.hidden = b.hidden; if (b.colWidth) t.deck.colWidth = b.colWidth; return t.deck; });
-  on('GET', '/api/tenants/:id/stories', async (b, t) => ({ rings: stories(t) }));
+  on('GET', '/api/tenants/:id/stories', async (b, t) => { await Promise.race([research?.ready?.(), new Promise((r) => setTimeout(r, 8000).unref?.())]).catch(() => {}); return { rings: stories(t) }; });
   on('POST', '/api/tenants/:id/stories/:ring/seen', async (b, t, p) => { t.storySeen[p.ring] = Date.now(); return { ok: true }; });
   // a story slide's button: the matching card, made now if the watcher has not posted it yet
   on('POST', '/api/tenants/:id/research-card', async (b, t) => {
