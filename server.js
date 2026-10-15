@@ -357,7 +357,10 @@ async function evidenceTick() {
   try { const brands = (await builder.list()).filter((b) => b.state === 'Ready' || /moves/.test(b.state || '')), day = new Date().toISOString().slice(0, 10); let n = 0;
     for (const b of brands) { if (n >= 2) break; const st = (await packs.getJSON(b.slug, 'pulse/state.json', null).catch(() => null)) || {};
       if (EV.last[b.slug] === day || String(st.at || '').slice(0, 10) === day) continue; EV.last[b.slug] = day; n++;
-      try { const r = await createPulse({ slug: b.slug, packs, treg, ai, log: console }).run(); console.log('[pulse]', b.slug, r.lines?.length || 0, 'lines', `$${(r.usd || 0).toFixed(3)}`); } catch (e) { console.warn('[pulse]', b.slug, e.message); }
+      try { const r = await createPulse({ slug: b.slug, packs, treg, ai, log: console }).run(); console.log('[pulse]', b.slug, r.lines?.length || 0, 'lines', `$${(r.usd || 0).toFixed(3)}`);
+        /* a rival moved (a price change or a launch on its store): the move it hits hardest is rewritten (at most one a day) */
+        const ev = (r.lines || []).filter((l) => /^catalog\.(price|new)\./.test(l.key) && +l.value > 0).map((l) => ({ kind: l.key.startsWith('catalog.price.') ? 'rival-price' : 'rival-launch', subject: l.subject, items: l.items }));
+        if (ev.length) builder.signal(b.slug, ev).catch((e) => console.warn('[pulse] signal', e.message)); } catch (e) { console.warn('[pulse]', b.slug, e.message); }
       // once a week: read the most-talked-about videos heard for the brand (hooks for the jam and the creative moves)
       const vs = await packs.getJSON(b.slug, 'video/state.json', null).catch(() => null);
       if (!vs || Date.now() - (vs.at || 0) > 7 * 864e5) { try { const it = (await packs.getJSON(b.slug, 'listen/items.json', null))?.items || [];

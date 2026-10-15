@@ -244,7 +244,7 @@ function movesLine(m, name = 'the brand') {
   const parts = [];
   const mins = (k) => (k <= 2 ? '10 to 15 minutes' : k <= 6 ? '15 to 20 minutes' : k <= 18 ? 'about 30 to 45 minutes' : 'about an hour'); /* six at a time */
   if (m.pending?.ns?.length) parts.push(`This is the first time ${name} has shared learnings, so Brew can refresh every move they change: ${m.pending.ns.length} moves (${ns(m.pending.ns)}). \n- Time: ${mins(m.pending.ns.length)}\n- Cost: about $${m.pending.est}\n- After this, new learnings refresh up to ${6} moves at a time\n\nReply “go ahead” to refresh all ${m.pending.ns.length}, or “just the top 6” for the six most affected.`);
-  else if (m.rewrite?.ns?.length) parts.push(`Rewriting ${m.rewrite.ns.length} move${m.rewrite.ns.length === 1 ? '' : 's'} this changes (${ns(m.rewrite.ns)}), ${mins(m.rewrite.ns.length)}.${m.flaggedOnly?.length ? ` ${m.flaggedOnly.length} more ${m.flaggedOnly.length === 1 ? 'is' : 'are'} marked to rewrite on the Moves tab (${ns(m.flaggedOnly)}).` : ''}`);
+  else if (m.rewrite?.ns?.length) parts.push(`${m.rewrite.queued ? 'First in line once the work running now finishes: rewriting' : 'Rewriting'} ${m.rewrite.ns.length} move${m.rewrite.ns.length === 1 ? '' : 's'} this changes (${ns(m.rewrite.ns)}), ${mins(m.rewrite.ns.length)}.${m.flaggedOnly?.length ? ` ${m.flaggedOnly.length} more ${m.flaggedOnly.length === 1 ? 'is' : 'are'} marked to rewrite on the Moves tab (${ns(m.flaggedOnly)}).` : ''}`);
   else if (m.stale?.length) parts.push(`${m.stale.length} move${m.stale.length === 1 ? ' is' : 's are'} out of date with this (${ns(m.stale.map((s) => s.n))}) and marked to rewrite on the Moves tab${m.rewrite?.error ? `, but the rewrite can’t start now: ${m.rewrite.error.replace(/\.$/, '')}.` : m.rewrite?.off ? ` (AI is off on this server, so nothing was rewritten).` : '.'}`);
   if (m.learn?.n) parts.push(`${parts.length ? 'Then ' : ''}${m.learn.n} new move${m.learn.n === 1 ? '' : 's'} from what you told us${m.learn.after ? ', once the rewrite is in' : ', about 5 minutes'}.`);
   else if (m.learn?.why) parts.push(`New moves from this wait: ${capWhy(m.learn.why)}.`);
@@ -379,10 +379,10 @@ export function createLearnings({ ai = null, packs, memory = null, builder = nul
         if (ask && first && pl.stale.length > REWRITE_MAX && live() && builder?.rewrite) {
           /* the first learnings can refresh every move they change: warn first (time and cost), start only on a yes */
           const ns = pl.stale.map((s) => s.n); L.pendingFull = { ns, top: ns.slice(0, REWRITE_MAX), at: t0, label }; await packs.put(slug, 'learned.json', L);
-          moves.pending = { ns, est: Math.round(ns.length * 1.7) };
+          moves.pending = { ns, est: Math.round(ns.length * 0.6) };
         } else if (pl.stale.length && live() && builder?.rewrite && REWRITE_MAX > 0) {
-          const ns = pl.stale.slice(0, REWRITE_MAX).map((s) => s.n), r = await builder.rewrite(slug, ns).catch((e) => ({ error: e.message }));
-          moves.rewrite = r?.error ? { error: r.error } : { ns, est: r?.est }; if (!r?.error) moves.flaggedOnly = pl.stale.slice(REWRITE_MAX).map((s) => s.n);
+          const ns = pl.stale.slice(0, REWRITE_MAX).map((s) => s.n), r = await builder.rewrite(slug, ns, { via: 'learnings' }).catch((e) => ({ error: e.message })); /* first in the queue, never turned away */
+          moves.rewrite = r?.error ? { error: r.error } : { ns, est: r?.est, queued: !!r?.queued }; if (!r?.error) moves.flaggedOnly = pl.stale.slice(REWRITE_MAX).map((s) => s.n);
         } else if (pl.stale.length) moves.rewrite = live() ? { error: 'rewrites are switched off here' } : { off: true };
         if (pl.fresh.length && cadence) {
           const d = await cadence.due(slug, { manual: true, only: ['learn'] }).catch((e) => ({ families: [], why: [e.message] }));
@@ -419,7 +419,7 @@ export function createLearnings({ ai = null, packs, memory = null, builder = nul
     delete L.pendingFull; await packs.put(slug, 'learned.json', L);
     const fresh = pf.fresh || [], newMoves = () => { if (fresh.length && cadence) afterRewrite(slug, fresh); }; /* after the rewrite starts, so they wait for it */
     if (no) { newMoves(); return { reply: 'Okay, no moves are rewritten. The learnings are still in the brief and Brew’s memory, so every new card and jam uses them.' }; }
-    const ns = top ? pf.top : pf.ns, r = builder?.rewrite ? await builder.rewrite(slug, ns).catch((e) => ({ error: e.message })) : { error: 'rewrites are switched off here' };
+    const ns = top ? pf.top : pf.ns, r = builder?.rewrite ? await builder.rewrite(slug, ns, { via: 'learnings' }).catch((e) => ({ error: e.message })) : { error: 'rewrites are switched off here' };
     newMoves();
     if (r?.error) return { reply: `The refresh can’t start now: ${String(r.error).replace(/\.$/, '')}. The moves stay marked to rewrite on the Moves tab.` };
     const k = ns.length, mins = k <= 2 ? '10 to 15 minutes' : k <= 6 ? '15 to 20 minutes' : k <= 18 ? 'about 30 to 45 minutes' : 'about an hour';

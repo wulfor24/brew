@@ -189,13 +189,25 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
   const ipRow = (r) => (Array.isArray(r) && /\(in progress\)$/.test(r[1] || '') ? [r[0], sentenceCase(r[1], [], { force: true }), ...r.slice(2)] : r); // the index's unwritten rows carry skill names
   const fitMoves = (ms, keep) => Object.fromEntries(Object.entries(ms || {}).map(([n, m]) => [n, m && typeof m === 'object' && m.title ? { ...m, title: sentenceCase(m.title, keep),
     ...(Array.isArray(m.sections) ? { sections: m.sections.map((sec) => ({ ...sec, blocks: (sec.blocks || []).map((b) => (b?.rows ? { ...b, rows: b.rows.map(ipRow) } : b)) })) } : {}) } : m]));
+  /* a move card says where its move stands: "Being updated" while the evidence has overtaken the move and its rewrite is
+     queued (the ranker keeps it off the first screen), "Updated" for three days after a rewrite lands. Other badges stay */
+  const moveBadges = (seed, moves = {}, stale = new Set()) => {
+    const at = Date.now();
+    return { ...seed, posts: (seed.posts || []).map((c) => { const m = /^m(\d+)-\d+$/.exec(String(c?.id || '')); if (!m) return c; const n = +m[1], mv = moves?.[n];
+      if (c.badge && !['Being updated', 'Updated'].includes(c.badge[0])) return c;
+      if (stale.has(n)) return { ...c, badge: ['Being updated', 'info'] };
+      const rw = Date.parse(mv?.meta?.rewrittenAt || 0); if (rw && at - rw < 3 * 864e5) return { ...c, badge: ['Updated', 'ok'] };
+      if (c.badge) { const { badge, ...rest } = c; return rest; } return c; }) };
+  };
   async function loadGenerated(slug) {
     const seed = await getJSON(slug, 'seed.json'); if (!seed) return null;
     /* the pack's files are read together, not one after another (each is a bucket read on a fresh instance) */
     const [facts, config, status, moves, pools, profile, statics, brief, labels, pages, briefJ, moveValue, notesJ, firstDrafts, learned] = await Promise.all([
       getJSON(slug, 'facts.json', {}), getJSON(slug, 'config.json', {}), getJSON(slug, 'status.json', {}), getJSON(slug, 'moves.json', {}), getJSON(slug, 'pools.json', {}),
       getJSON(slug, 'profile.json', null), getJSON(slug, 'statics.json', {}), get(slug, 'brief.md'), getJSON(slug, 'labels.json', {}), getJSON(slug, 'pages.json', {}),
-      getJSON(slug, 'brief.json', {}), getJSON(slug, 'move-value.json', {}), getJSON(slug, 'notes.json', null), getFreshJSON(slug, 'drafts/cards.json', {}), getJSON(slug, 'learned.json', null)]); /* first drafts: read from the bucket (any instance may have made them) */
+      getJSON(slug, 'brief.json', {}), getJSON(slug, 'move-value.json', {}), getJSON(slug, 'notes.json', null), getFreshJSON(slug, 'drafts/cards.json', {}), getJSON(slug, 'learned.json', null)]);
+    const updatesJ = await getJSON(slug, 'updates.json', null).catch(() => null);
+    const staleMoves = new Set(Object.keys(updatesJ?.stale || {}).map(Number).filter((n) => moves?.[n])); /* first drafts: read from the bucket (any instance may have made them) */
     /* the health rings are worked out again whenever the scoring changes, for every brand (no rebuild) */
     if (profile && seed.health?.v !== HEALTH_V) { try { seed.health = { ...healthFrom(profile), delta: seed.health?.delta || 0 }; const ai = seed.health.rings.find((r) => r.k === 'AI answers'); if (ai) seed.geo = { score: ai.v, band: ai.v >= 60 ? 'Good' : ai.v >= 35 ? 'Fair' : 'Low' }; await put(slug, 'seed.json', seed).catch(() => {}); } catch (e) { log.warn('[packs] health', slug, e.message); } }
     const { fxDeep } = fxFor(facts);
@@ -206,7 +218,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
     /* listening and the ideas stream (social-feed.js): every brand gets them at load, no rebuild; a brand without them gets nothing */
     const social = process.env.SOCIAL_CARDS === '0' ? null : await readSocial({ getJSON }, slug).catch((e) => { log.warn('[packs] social', slug, e.message); return null; });
     if (seed.connectors) seed.connectors = prototypeConnectors(seed.connectors);
-    const seedD = fitCards(withDemo(fitPhotos(socialize(visualize(seed, { slug, config, staticText: statics, profile }), social), profile), demo), { profile, config, seed });
+    const seedD = moveBadges(fitCards(withDemo(fitPhotos(socialize(visualize(seed, { slug, config, staticText: statics, profile }), social), profile), demo), { profile, config, seed }), moves, staleMoves);
     return finish({
       slug, kind: 'generated', ready: !!status.ready, status, demo,
       seed: fxDeep(seedD), rawSeed: seedD, facts,
@@ -218,6 +230,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
       catalog: catalogOf(profile), // the products with a photo each, so a draft's picture shows the product its words name
       personas: briefJ?.personas || [], // who buys: the studio's “Aim at” knob and chips (studio.js knobsFor)
       moveValue, // each move's grade for the ranker (value.js)
+      staleMoves, // moves the evidence has overtaken, waiting for their rewrite: their cards step back (feed-service score)
       learnedMoves: learnedMoveNs(moves, learned), learnedTerms: learnedTerms(learned, (seed.posts || []).map((x) => [x.title, x.sub, ...(x.detail?.why || []), ...(x.detail?.how || [])].join(' '))), // moves that rest on what the team told Brew: the ranker lifts their cards (feed-service score)
       notes: notesJ?.notes || {}, // margin notes written for this brand's cards (notes.js)
       firstDrafts, // first drafts made in the background (drafts-bg.js), seeded into a card's jam

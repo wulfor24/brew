@@ -286,7 +286,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       await setStatus(slug, { done: true, ready: true, state: 'Ready', usd: +spentFor(slug).toFixed(2), doneAt: Date.now() });
       await notify(slug, 'all').catch((e) => log.warn('[notify]', e.message));
     } catch (e) { if (e.cancelled) return; log.error('[build] failed', slug, e); await setStatus(slug, { state: 'Stopped: ' + e.message, error: e.message }); }
-    finally { x.running = false; await packs.put(slug, 'cost.json', { usd: +spentFor(slug).toFixed(3) }).catch(() => {}); }
+    finally { x.running = false; await packs.put(slug, 'cost.json', { usd: +spentFor(slug).toFixed(3) }).catch(() => {}); setTimeout(() => drain(slug).catch((e) => log.warn('[rewrite] drain', e.message)), 0); /* learnings that arrived mid-build */ }
   }
 
   async function makeZips(slug, m, profile) {
@@ -636,13 +636,13 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   /* ---------- keep the moves current: check for updates, flag the moves a change affects, rewrite them ---------- */
   // updates.json: { auto, checking, lastCheck: { at, changes, summary, flagged, usd }, stale: { n: { why, priority, changes } }, history }
   const REFRESH_DAYS = +process.env.REFRESH_EVERY_DAYS || 7, AUTO_MAX = +process.env.REFRESH_AUTO_MAX || 6;
-  const REFRESH_CAP = +process.env.REFRESH_CAP_USD || 60, AUTO_CAP = +process.env.REFRESH_AUTO_CAP_USD || 14, MOVE_USD = 0.6;
+  const REFRESH_CAP = +process.env.REFRESH_CAP_USD || 60, AUTO_CAP = +process.env.REFRESH_AUTO_CAP_USD || 10, MOVE_USD = 0.6;
   const pad2 = (n) => String(n).padStart(2, '0');
   // DUMMY: flags raised by a simulated account (live) are not real reasons to rewrite: saved flags heal here
   const upd = async (slug) => { const u = { auto: true, stale: {}, history: [], ...(await packs.getJSON(slug, 'updates.json', {})) }; for (const [n, x] of Object.entries(u.stale || {})) if (x?.live && !x.real) delete u.stale[n]; return u; };
   let ulock = Promise.resolve(); // updates.json is read-modify-written from several places
   const editUpd = (slug, f) => (ulock = ulock.then(async () => { const u = await upd(slug); await f(u); await packs.put(slug, 'updates.json', u); return u; }));
-  async function checkUpdates(slug, { auto = false, why = 'You asked for the latest' } = {}) {
+  async function checkUpdates(slug, { auto = false, why = 'You asked for the latest', max = null, via = null } = {}) {
     if (blocked(slug)) return { error: 'This brand is stopped.' };
     const x = st(slug), s0 = await status(slug); if (!s0) return { error: 'unknown brand' };
     if (!(await packs.getJSON(slug, 'brief.json'))) return { error: 'Updates start once the moves are written.' };
@@ -651,11 +651,11 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     await loadDay(); if (dayUsd() >= DAY_CAP) return { error: 'Today’s budget is used up. Try again tomorrow.' };
     x.checking = true; await editUpd(slug, (u) => { u.checking = { at: Date.now(), why }; });
     emit(slug, { type: 'update-start', why });
-    buildCtx.run(slug, () => doCheck(slug, { auto, why })).catch(async (e) => { log.error('[refresh]', slug, e.message); await editUpd(slug, (u) => { u.checking = null; u.lastError = { at: Date.now(), msg: String(e.message).slice(0, 160) }; }); })
-      .finally(() => { x.checking = false; saveSpend(slug); });
+    buildCtx.run(slug, () => doCheck(slug, { auto, why, max, via })).catch(async (e) => { log.error('[refresh]', slug, e.message); await editUpd(slug, (u) => { u.checking = null; u.lastError = { at: Date.now(), msg: String(e.message).slice(0, 160) }; }); })
+      .finally(() => { x.checking = false; saveSpend(slug); setTimeout(() => drain(slug).catch(() => {}), 0); });
     return { ok: true };
   }
-  async function doCheck(slug, { auto, why }) {
+  async function doCheck(slug, { auto, why, max = null, via = null }) {
     const m = await load(); await restoreSpend(slug); const usd0 = spentFor(slug), s0 = await status(slug);
     const old = await packs.getJSON(slug, 'ledger.json', []), oldP = await packs.getJSON(slug, 'profile.json');
     const out = await makeReader(m).read(s0.url, { fresh: true, prev: oldP, onEvent: (e) => { if (e.type === 'step' && e.done) emit(slug, { type: 'update-step', k: e.k, text: e.done }); } });
@@ -685,22 +685,51 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     await publishBase(slug, profile, ledger, await packs.getJSON(slug, 'findings.json')); // facts, health and the seed follow the new read
     emit(slug, { type: 'update-done', changes: changes.length, flagged: tri.moves.length });
     log.log(`[refresh] ${slug}: ${changes.length} changes (${minor} minor), ${tri.moves.length} moves flagged, $${u.lastCheck.usd}`);
-    if (auto && u.auto !== false) { const ns = tri.moves.filter((t) => t.priority === 'high' && t.n >= 1 && t.n <= 50 && !moves[t.n]?.meta?.cadence).map((t) => t.n).slice(0, AUTO_MAX); /* the engine rewrites core moves only, as a manual rewrite does */ if (ns.length) await rewriteNow(slug, ns, { auto: true }); }
+    /* a weekly check rewrites up to AUTO_MAX high-priority moves; a big change (an event) rewrites the one it hits hardest */
+    if (auto && u.auto !== false) { const ok = await rewritable(moves); const ns = tri.moves.filter((t) => t.priority === 'high' && ok(t.n)).map((t) => t.n).slice(0, max ?? AUTO_MAX); if (ns.length) await rewriteNow(slug, ns, { auto: true }); }
+    /* the weekly check also writes the moves whose evidence has appeared since (listening-era specs, a festival at its plan
+       point, a research gap): they become cards like any other. At most NEW_MAX a week, after the rewrites */
+    if (auto && u.auto !== false && max == null) { const add = await newlyApplicable(slug, m, { profile, ledger, moves }).catch((e) => { log.warn('[refresh] new moves', slug, e.message); return []; });
+      if (add.length) { log.log(`[refresh] ${slug}: ${add.length} new moves now have their evidence: ${add.join(', ')}`); await rewriteNow(slug, add, { auto: true }); } }
+  }
+  /* the rewrite queue (updates.json queue): what the team told Brew goes first, then a big change (a rival's price move or
+     launch, our catalog), then the weekly check's stale moves. A rewrite asked for while another runs waits its turn instead of
+     being turned away, and starts the moment the brand is free (drain) */
+  const PRIO = { learnings: 0, event: 1, manual: 1, weekly: 2 };
+  const enqueue = (slug, ns, { via = 'manual', auto = false } = {}) => editUpd(slug, (u) => { const q = (u.queue ||= []);
+    let e = q.find((x) => x.via === via); if (!e) { e = { via, prio: PRIO[via] ?? 1, ns: [], auto, at: Date.now() }; q.push(e); } e.ns = [...new Set([...e.ns, ...ns])]; e.auto = e.auto && auto; });
+  async function drain(slug) {
+    if (st(slug).running || st(slug).checking || blocked(slug)) return;
+    let next = null; await editUpd(slug, (u) => { const q = (u.queue || []).sort((a, b) => a.prio - b.prio || a.at - b.at); next = q.shift() || null; u.queue = q; });
+    const have = await packs.getJSON(slug, 'moves.json', {}), ns = (next?.ns || []).filter((n) => have[n]); if (!ns.length) return next ? drain(slug) : undefined;
+    log.log(`[rewrite] ${slug}: next in the queue (${next.via}): ${ns.join(', ')}`);
+    buildCtx.run(slug, () => rewriteNow(slug, ns, { auto: !!next.auto })).catch((e) => log.error('[rewrite] queue', slug, e.message));
+  }
+  // a move the engine can write again: a written playbook move with a spec (core, listening-era), never a weekly cadence move
+  const rewritable = async (have) => { const specN = new Set(((await load()).moves?.SPECS || []).map((s) => s.n)); return (n) => n >= 1 && specN.has(n) && !!have[n] && !have[n]?.meta?.cadence; };
+  const NEW_MAX = +process.env.REFRESH_NEW_MAX || 4;
+  async function newlyApplicable(slug, m, { profile, ledger, moves }) {
+    if (!m.moves) return [];
+    const eng = m.moves.createMovesEngine({ ai, treg, log }), briefMd = (await packs.get(slug, 'brief.md'))?.toString('utf8') || '';
+    const ctx = await eng.prepare({ profile, ledger, packs, slug, brief: { md: briefMd } });
+    const specs = [...(m.moves.SPECS || []).filter((s) => s.n && s.needs?.length), ...(ctx.dynamicSpecs || [])];
+    return specs.filter((sp) => !moves[sp.n] && eng.needsMet(sp, ctx)).map((sp) => sp.n).slice(0, NEW_MAX);
   }
   async function rewrite(slug, ns, o = {}) {
     if (blocked(slug)) return { error: 'This brand is stopped.' };
     const x = st(slug), s0 = await status(slug); if (!s0) return { error: 'unknown brand' };
-    if (x.running) return { error: x.rewriting ? 'A rewrite is already running.' : 'The moves are still being written. Rewrites open once they are in.' };
-    await loadDay(); if (dayUsd() >= DAY_CAP) return { error: 'Today’s budget is used up. Try again tomorrow.' };
-    const have = await packs.getJSON(slug, 'moves.json', {});
-    ns = [...new Set((ns || []).map(Number))].filter((n) => n >= 1 && n <= 50 && have[n]);
+    const have = await packs.getJSON(slug, 'moves.json', {}), ok = await rewritable(have);
+    ns = [...new Set((ns || []).map(Number))].filter(ok);
     if (!ns.length) return { error: 'Pick a written move.' };
+    if (x.running || x.checking) { if (o.via) { await enqueue(slug, ns, { via: o.via }); return { ok: true, queued: true, n: ns.length, est: Math.round(ns.length * MOVE_USD) }; }
+      return { error: x.rewriting ? 'A rewrite is already running.' : 'The moves are still being written. Rewrites open once they are in.' }; }
+    await loadDay(); if (dayUsd() >= DAY_CAP) return { error: 'Today’s budget is used up. Try again tomorrow.' };
     buildCtx.run(slug, () => rewriteNow(slug, ns, o)).catch((e) => log.error('[rewrite]', slug, e.message));
     return { ok: true, n: ns.length, est: Math.round(ns.length * MOVE_USD) };
   }
   async function rewriteNow(slug, ns, { auto = false } = {}) {
-    ns = [...new Set((ns || []).map(Number))].filter((n) => n >= 1 && n <= 50); if (!ns.length) return;
-    const x = st(slug); if (x.running) return; x.running = true; x.rewriting = new Set(ns);
+    ns = [...new Set((ns || []).map(Number))].filter((n) => n >= 1 && n < 1000); if (!ns.length) return;
+    const x = st(slug); if (x.running) return enqueue(slug, ns, { via: auto ? 'weekly' : 'manual', auto }); x.running = true; x.rewriting = new Set(ns);
     const m = await load(); await restoreSpend(slug); await loadDay(); const usd0 = spentFor(slug), cap = auto ? AUTO_CAP : Math.max(REFRESH_CAP, ns.length * 2.5);
     const written = []; let prevState = null;
     try {
@@ -751,7 +780,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       if (written.length && !priv) notify(slug, 'update', { at, moves: written, because: auto ? 'Your read changed, and these plans quoted what changed.' : '' }).catch((e) => log.warn('[notify]', e.message));
     } catch (e) { log.error('[rewrite] failed', slug, e); /* the brand does not stay on "Rewriting N moves" */
       await setStatus(slug, { state: (await status(slug))?.done ? 'Ready' : prevState || 'Ready' }).catch(() => {}); emit(slug, { type: 'rewrite-done', n: written.length, failed: String(e?.message || e).slice(0, 160) }); }
-    finally { x.running = false; x.rewriting = null; saveSpend(slug); await editUpd(slug, (u) => { delete u.rewriting; }).catch(() => {}); }
+    finally { x.running = false; x.rewriting = null; saveSpend(slug); await editUpd(slug, (u) => { delete u.rewriting; }).catch(() => {}); setTimeout(() => drain(slug).catch((e) => log.warn('[rewrite] drain', e.message)), 0); }
   }
   /* a rewrite cut off by a restart (a deploy): the status goes back to what it was and the moves it had not written yet are
      rewritten now, auto or asked for alike (a move it wrote carries meta.rewrittenAt from after the start) */
@@ -840,11 +869,12 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   const RETRY_MS = +process.env.REFRESH_RETRY_MS || 24 * 3600e3;
   const backingOff = (u) => !!u?.lastError?.at && Date.now() - u.lastError.at < RETRY_MS;
   async function signal(slug, events = []) {
-    const rel = events.filter((e) => ['price', 'new', 'removed', 'gone', 'drift'].includes(e.kind)); if (!rel.length) return;
+    const rel = events.filter((e) => ['price', 'new', 'removed', 'gone', 'drift', 'rival-price', 'rival-launch'].includes(e.kind)); if (!rel.length) return;
     const s0 = await status(slug), u = await upd(slug); if (!s0?.done || u.auto === false || st(slug).running || st(slug).checking) return;
     if (Date.now() - (u.lastCheck?.at || s0.doneAt || 0) < 24 * 3600e3 || backingOff(u)) return; /* at most one event-driven check a day, and a day after a failed one */
-    const say = { price: 'a price changed', new: 'a product launched', removed: 'a product was removed', gone: 'a product we quote is gone', drift: 'a price we quote changed' };
-    checkUpdates(slug, { auto: true, why: `Your catalog changed: ${[...new Set(rel.map((e) => say[e.kind]))].join(', ')}` });
+    const say = { price: 'a price changed', new: 'a product launched', removed: 'a product was removed', gone: 'a product we quote is gone', drift: 'a price we quote changed', 'rival-price': 'a rival changed its prices', 'rival-launch': 'a rival launched a product' };
+    const rival = rel.every((e) => e.kind.startsWith('rival-'));
+    checkUpdates(slug, { auto: true, max: 1, via: 'event', why: `${rival ? 'The market moved' : 'Your catalog changed'}: ${[...new Set(rel.map((e) => say[e.kind]))].join(', ')}` }); /* one move: the one the change hits hardest */
   }
   // the weekly check, for brands someone opened in the last month
   const seenAt = new Map();

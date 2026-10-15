@@ -311,7 +311,8 @@ export function createFeedService(o) {
     // what the team told Brew comes first: cards of a move that rests on it, or that quote it themselves
     const told = toldOf(c) || (B()?.learnedMoves?.has(moveNo(c.id)) ? 2 : 0);
     const extra = told + (t.boost[c.id] || 0) + (c.onlyWhen && connOn(t, c.onlyWhen) ? 3 : 0) + (c.live && Object.keys(c.live).some((k) => connOn(t, k)) ? 2 : 0) + (c.liveOnly ? 2 : 0);
-    const total = val + seat + aff + fresh + fatigue + fb + extra;
+    const behind = B()?.staleMoves?.has(moveNo(c.id)) ? -8 : 0; /* its move is being rewritten: off the first screen until the new card lands */
+    const total = val + seat + aff + fresh + fatigue + fb + extra + behind;
     return { fresh, told, value: val, impact: +val.toFixed(2), impactNote: valNote, impactV: imp.v, impactPct: imp.pct, isDecision: imp.decision, affinity: +aff.toFixed(2), seat: +seat.toFixed(2), fatigue: +fatigue.toFixed(2), feedback: fb, boost: extra, total: +total.toFixed(2), seen };
   };
   const connOn = (t, k) => !!(t.conn?.[k] || t.liveConn?.[k]);
