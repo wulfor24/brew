@@ -928,8 +928,14 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       setTimeout(tick, 60e3).unref?.(); /* whatever a restart cut short is picked up next time round */ };
     setTimeout(tick, 20e3).unref?.();
   }
+  /* a brand finished before the playbook had one count: its total is the moves it has (never the index or weekly moves) */
+  async function healCount(slug) {
+    const s0 = await status(slug); if (!s0?.done || (s0.total && s0.movesDone <= s0.total)) return;
+    const moves = await packs.getJSON(slug, 'moves.json', {}), n = playDone(moves); if (!n) return;
+    await setStatus(slug, { total: Math.max(n, +s0.total || 0), movesDone: n, applicable: Object.keys(moves).map(Number).filter((k) => isPlay(k, moves[k])).sort((a, c) => a - c) });
+  }
   async function resumeAll() { for (const sl of String(process.env.OPS_FRESH_RELOAD || '').split(',').map((x) => x.trim()).filter(Boolean)) freshReload(sl).catch((e) => log.error('[ops] fresh', sl, e.message));
-    for (const x of await packs.list()) { if (!x.status.done && !x.status.error && !x.status.capped) resume(x.slug).catch((e) => log.error('[build] resume', x.slug, e.message)); else { if (x.status.done) { rebase(x.slug).catch((e) => log.warn('[build] rebase', x.slug, e.message)); healPdfs(x.slug); } resumeRewrite(x.slug).catch((e) => log.warn('[rewrite] resume', x.slug, e.message)); } } }
+    for (const x of await packs.list()) { if (!x.status.done && !x.status.error && !x.status.capped) resume(x.slug).catch((e) => log.error('[build] resume', x.slug, e.message)); else { if (x.status.done) { rebase(x.slug).catch((e) => log.warn('[build] rebase', x.slug, e.message)); healPdfs(x.slug); healCount(x.slug).catch((e) => log.warn('[build] count', x.slug, e.message)); } resumeRewrite(x.slug).catch((e) => log.warn('[rewrite] resume', x.slug, e.message)); } } }
   /* Saved PDFs heal: when the PDF text rules change (PDF_V) the saved PDFs are forgotten and each is drawn again on its next
      download (pdfOn); entries for moves that no longer exist leave status.pdfs. Nothing is drawn ahead of time. */
   const PDF_V = 2; // 2: kickers without "OF N", "What to watch", BREW DRAFTS (2026-10-15)

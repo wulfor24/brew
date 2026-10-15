@@ -553,11 +553,14 @@ const brandFiles = async (req, res, u) => {
   if (mn) { const v = await viewerOf(req, slug), pp = v.member ? (await packs.getJSON(slug, 'private/pdfs.json', null))?.[+mn[1]] : null, pb = pp ? await packs.get(slug, 'private/pdf/' + pp) : null;
     let r = pb ? { name: pp, buf: pb } : null; if (!r) try { r = await builder.pdfOn(slug, +mn[1]); } catch (e) { console.warn('[pdf] on demand', slug, mn[1], e.message); return send(res, 503, 'The PDF could not be drawn just now. Try again in a minute.', 'text/plain'), true; }
     if (!r?.buf) return send(res, 404, 'no', 'text/plain'), true;
-    res.writeHead(200, { 'content-type': 'application/pdf', 'content-disposition': `${u.searchParams.has('dl') ? 'attachment' : 'inline'}; filename="${r.name.replace(/"/g, '')}"`, 'cache-control': 'no-cache' }); res.end(r.buf); return true; }
+    res.writeHead(200, { 'content-type': 'application/pdf', 'content-disposition': disposition(r.name, u.searchParams.has('dl')), 'cache-control': 'no-cache' }); res.end(r.buf); return true; }
   const name = what.slice(4); if (!/^[^/\\]+\.(pdf|zip)$/i.test(name) || name.includes('..') || name !== path.basename(name)) return send(res, 404, 'no', 'text/plain'), true; /* a file name only: never a path */
   const v = await viewerOf(req, slug), pb = v.member && !name.endsWith('.zip') ? await packs.get(slug, 'private/pdf/' + name) : null, b = pb || await packs.get(slug, 'pdf/' + name); if (!b) return send(res, 404, 'no', 'text/plain'), true;
-  res.writeHead(200, { 'content-type': name.endsWith('.zip') ? 'application/zip' : 'application/pdf', 'content-disposition': `${u.searchParams.has('dl') ? 'attachment' : 'inline'}; filename="${name.replace(/"/g, '')}"`, 'cache-control': 'no-cache' }); res.end(b); return true;
+  res.writeHead(200, { 'content-type': name.endsWith('.zip') ? 'application/zip' : 'application/pdf', 'content-disposition': disposition(name, u.searchParams.has('dl')), 'cache-control': 'no-cache' }); res.end(b); return true;
 };
+/* a file name in a header: move titles carry ₹, em dashes and accents, which a header cannot; an ASCII name plus the real one (RFC 6266) */
+function disposition(name, dl) { const ascii = String(name).normalize('NFKD').replace(/[^\x20-\x7e]/g, '').replace(/["\\]/g, '').replace(/\s+/g, ' ').trim() || 'move.pdf';
+  return `${dl ? 'attachment' : 'inline'}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(name)}`; }
 // the page: index.html with the brand's seed. "/" is the Brew landing (paste a URL); "/<slug>" is that brand
 const DEMO_URL = (process.env.DEMO_URL || 'https://demo.joinsquareup.com').replace(/\/$/, '');
 let demoCache = { at: 0, brands: [] };
