@@ -29,7 +29,7 @@ prices, rivals and channels. Nothing in it could be pasted into a document for a
 
 Each section has `h` (heading as printed) and `kind`. Use these headings (with the brand's name):
 
-### 1. `Why this matters for <Brand>` (kind `why`), 450 to 750 words, 4 to 6 paragraphs, prose only
+### 1. `Why this matters for <Brand>` (kind `why`), 300 to 450 words, 3 to 5 paragraphs, prose only
 
 1. **Translate the skill first when it was written for software.** If the skill speaks SaaS (signups,
    trials, MRR, churn, G2, app store, paywall), the first paragraph says plainly what each term becomes
@@ -46,7 +46,7 @@ Each section has `h` (heading as printed) and `kind`. Use these headings (with t
    ("What follows: five profiles…, a side-by-side comparison, …, and four finished assets <Brand> can use
    the week this lands.").
 
-### 2. `What we found` (kind `found`), 1,200 to 2,200 words
+### 2. `What we found` (kind `found`), 700 to 1,100 words
 
 Retitle the h3 sub-blocks for the discipline (e.g. "Desk audit of the paid-media foundation",
 "The three signals, read for <Brand>", "Health scorecard", "The belief ledger", "Persona path audit").
@@ -55,7 +55,7 @@ It contains:
   connected for this snapshot. Those fields are marked unavailable. We do not estimate them.", "We have
   no access to <Brand>'s ad accounts yet. Everything below is a desk audit from public surfaces.").
   If coverage is low, say so and do not give a score ("Coverage: 5 of 12 checks verified").
-- **3 to 6 audit tables**, each with short UPPERCASE-style headers and 4 to 12 rows, built from the
+- **3 to 4 audit tables**, each with short UPPERCASE-style headers and 4 to 10 rows, built from the
   evidence: e.g. CHECK | RESULT | EVIDENCE | WHAT WE WOULD NEED; SIGNAL | WHAT WE FOUND | SOURCE |
   CONFIDENCE; a side-by-side comparison with the brand as the first column; a verbatim bank THEME |
   VERBATIM | USE IN. Every row cites where it came from. Unknown cells say "Unknown", "Not observed" or
@@ -66,11 +66,11 @@ It contains:
   journey). Use plain box-drawing characters, max 92 characters wide, monospace-safe.
 - **Key takeaways**: a numbered list of 3 to 6 sentences, each a finding that changes a decision.
 
-### 3. `The plan` (kind `plan`), 1,400 to 2,400 words
+### 3. `The plan` (kind `plan`), 700 to 1,100 words
 
 - Open with **the system** in one short paragraph, then an **ASCII DIAGRAM** of it (lanes, layers,
   loop, architecture or folder tree).
-- Then 4 to 8 h3 sub-blocks: phases, lanes, priorities, cadences, rules. Use **tables** for cadence
+- Then 3 to 6 h3 sub-blocks: phases, lanes, priorities, cadences, rules. Use **tables** for cadence
   (CADENCE | SCOPE | OUTPUT | OWNER), priorities, budgets, channel rules. Owners are roles
   ("Brew growth analyst", "<Brand> brand manager"), never invented names.
 - **Decision rules / watch triggers**: "If X, then Y within the week" (a TRIGGER | RESPONSE table works).
@@ -78,9 +78,9 @@ It contains:
 - Every recommendation names where it comes from in the evidence and the effect expected, and labels
   hypotheses as hypotheses.
 
-### 4. `Worked examples` (kind `examples`), 1,200 to 2,400 words
+### 4. `Worked examples` (kind `examples`), 700 to 1,200 words
 
-Open with one sentence listing the assets. Then **3 to 6 finished, paste-ready assets** as `example`
+Open with one sentence listing the assets. Then **3 to 4 finished, paste-ready assets** as `example`
 blocks: `title` = "EXAMPLE N: <WHAT IT IS, WHERE IT LIVES>", `label` = format line (channel, size,
 length, tier or audience), `body` = the full asset, exactly as it would ship: real ad copy with
 character counts in brackets, a full script as a table of beats, a full profile file, an email with
@@ -116,8 +116,10 @@ guarantee terms)"). Also fill the top-level `sources` array with {label, url, at
 
 ## Length and density
 
-- Body total 5,000 to 7,000 words. Paragraphs 2 to 6 sentences. At least 8 tables across the document,
-  at least 2 diagrams, 3 to 6 examples. Tables carry the analysis; prose carries the argument.
+- Body total 2,800 to 3,800 words. Paragraphs 2 to 5 sentences. At least 6 tables across the document,
+  at least 2 diagrams, 3 to 4 examples. Tables carry the analysis; prose carries the argument.
+- Density over length: never restate a finding, a table or the brief in prose. Every number, table row, decision rule
+  and finished asset stays; repetition, scene-setting and generic advice go.
 - Every section must be specific to this brand: product names, prices, review language, rivals,
   channels, personas from the brief. Generic advice that would fit any brand is cut.
 

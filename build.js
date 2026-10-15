@@ -65,7 +65,7 @@ export const clientIp = (req, hops = +process.env.TRUSTED_PROXY_HOPS || 0) => { 
 const CONFIRM_WAIT = +process.env.BUILD_CONFIRM_WAIT_MS || 15 * 60e3; // the brief waits this long for "Check what we read", then goes with what was read
 
 export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = () => {}, onCards = () => {}, log = console, caps = {}, modules = null, signGate = () => false }) {
-  const BUILD_CAP = +process.env.BUILD_CAP_USD || caps.build || 120; // all 51 moves at Opus high effort cost about $70-90
+  const BUILD_CAP = +process.env.BUILD_CAP_USD || caps.build || 60; // every move at Opus medium effort with the shared brand cache: about $25-35
   const DAY_CAP = +process.env.DAILY_BUILD_CAP_USD || caps.day || 200;
   const PRO_CAP = +process.env.BUILD_CAP_PRO_USD || caps.buildPro || Math.max(150, BUILD_CAP * 2.5); // a Pro brand: every move written
   const IP_GAP = 60 * 60e3;
@@ -269,7 +269,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       };
       const ctx = { brand: { name: profile.name, host: profile.host, descriptor: profile.descriptor }, brief: { md: briefMd, json: brief }, profile, ledger, packs, slug,
         load: (n) => cache[n] || null, save: async (n, move) => { cache[n] = move; await save(n, move); }, canSpend: () => !capHit(slug),
-        effort: process.env.MOVES_EFFORT || 'high', search: +(process.env.MOVES_SEARCH ?? 2),
+        effort: process.env.MOVES_EFFORT || 'medium', search: +(process.env.MOVES_SEARCH ?? 1),
         onTotal: async (N, applicable) => { total = N; await setStatus(slug, { total: N, applicable }); },
         onStart: (n) => { x.inflight.set(n, Date.now()); x.failed.delete(n); emit(slug, { type: 'move-start', n }); },
         onFail: (n, e) => { x.inflight.delete(n); x.failed.set(n, { msg: String(e?.message || e).slice(0, 160), at: Date.now() }); emit(slug, { type: 'move-failed', n, msg: String(e?.message || e).slice(0, 160) }); } };
@@ -636,7 +636,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   /* ---------- keep the moves current: check for updates, flag the moves a change affects, rewrite them ---------- */
   // updates.json: { auto, checking, lastCheck: { at, changes, summary, flagged, usd }, stale: { n: { why, priority, changes } }, history }
   const REFRESH_DAYS = +process.env.REFRESH_EVERY_DAYS || 7, AUTO_MAX = +process.env.REFRESH_AUTO_MAX || 6;
-  const REFRESH_CAP = +process.env.REFRESH_CAP_USD || 60, AUTO_CAP = +process.env.REFRESH_AUTO_CAP_USD || 14, MOVE_USD = 1.7;
+  const REFRESH_CAP = +process.env.REFRESH_CAP_USD || 60, AUTO_CAP = +process.env.REFRESH_AUTO_CAP_USD || 14, MOVE_USD = 0.6;
   const pad2 = (n) => String(n).padStart(2, '0');
   // DUMMY: flags raised by a simulated account (live) are not real reasons to rewrite: saved flags heal here
   const upd = async (slug) => { const u = { auto: true, stale: {}, history: [], ...(await packs.getJSON(slug, 'updates.json', {})) }; for (const [n, x] of Object.entries(u.stale || {})) if (x?.live && !x.real) delete u.stale[n]; return u; };
@@ -737,7 +737,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       const ctx = { brand: { name: profile.name, host: profile.host, descriptor: profile.descriptor }, brief: { md: briefMd, json: brief }, profile, ledger, packs, slug,
         load: (n) => cache[n] || null, save: async (n, move) => { cache[n] = move; await (lock = lock.then(() => saveOne(n, move)).catch((e) => log.warn('[rewrite] save', n, e.message))); },
         canSpend: () => !blocked(slug) && dayUsd() < DAY_CAP && spentFor(slug) - usd0 < cap && !st(slug).cancelled,
-        effort: process.env.MOVES_EFFORT || 'high', search: +(process.env.MOVES_SEARCH ?? 2),
+        effort: process.env.MOVES_EFFORT || 'medium', search: +(process.env.MOVES_SEARCH ?? 1),
         onTotal: async (N, applicable) => { total = N; await setStatus(slug, { total: N, applicable }); },
         onStart: (n) => { x.inflight.set(n, Date.now()); x.failed.delete(n); emit(slug, { type: 'move-start', n }); },
         onFail: (n, e) => { x.inflight.delete(n); x.failed.set(n, { msg: String(e?.message || e).slice(0, 160), at: Date.now() }); emit(slug, { type: 'move-failed', n, msg: String(e?.message || e).slice(0, 160) }); } };

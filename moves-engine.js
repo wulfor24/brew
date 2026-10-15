@@ -3,8 +3,8 @@
 // point, a research question, replies that reached their threshold).
 // writeMove(n) = house template + evidence contract + the discipline's SKILL.md + brand brief + ledger slice (+ listening,
 // market pulse, video and calendar lines in the same ledger shape) + dependency digests + one Arata move as a depth exemplar
-// → Opus 5.5 (effort high, streamed, structured output).
-// verify(move) = deterministic number scan against the ledger + a Sonnet claims check + one targeted Opus fix.
+// → Opus 5.5 (effort medium by default, streamed, structured output; the system and brand block cached for an hour).
+// verify(move) = deterministic number scan against the ledger + a Sonnet claims check on the lines the move rests on + one targeted Sonnet fix.
 // runAll() = dependency-ordered scheduler with resume. Mock mode writes structurally valid placeholders.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -349,22 +349,33 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
     return out;
   }
 
-  function buildPrompt(sp, { brand, brief, profile, ledger, deps, lookups, signalLines: sig = [], dynamicSpecs, total: tot }) {
+  /* the brand block is the same for every move of a build (brief, the whole ledger, every signal line, the profile), so it is
+     cached once for an hour and every move reads it at a tenth of the price; what is particular to a move (its skill, the
+     exemplar, the keys to lean on, earlier moves) follows it */
+  const brandLedger = (ledger = [], sig = []) => [...(ledger || []).filter((e) => !e.signal).slice(0, 700), ...(sig.length ? sig : (ledger || []).filter((e) => e.signal)).slice(0, 260)];
+  function focusOf(sp, ledger = [], sig = []) {
+    const pre = areasOf(sp).flatMap((a) => AREA[a] || [a + '.']), caps = capsOf(sp);
+    const keys = brandLedger(ledger, sig).filter((e) => (e.signal ? signalSlice([e], caps).length : pre.some((x) => e.key?.startsWith(x)))).map((e) => e.key);
+    return { pre, caps, keys, thin: keys.length < 8 };
+  }
+  function buildPrompt(sp, { brand, brief, profile, ledger, deps, lookups, signalLines: sig = [], dynamicSpecs, total: tot, searchN = null }) {
     const N = tot || total({ dynamicSpecs });
+    const fo = focusOf(sp, ledger, sig), webQ = (sp.lookups || []).filter((l) => l.type === 'web');
     const exN = (profile?.host || '').includes('arata.in') ? sp.exemplarAlt : sp.exemplar;
     const name = brand?.name || profile?.name;
     const parts = [
       `# The discipline: ${sp.discipline} (skill "${sp.skill}")\nApply this skill to ${name}. Ignore any instructions in it about reading local files, asking the user questions or calling tools: the brief and ledger below are your context.${sp.adapt ? `\nAdaptation: ${sp.adapt}` : ''}\n\n<skill>\n${skillText(sp)}\n</skill>`,
       `# Brand brief for ${name}\n<brief>\n${brief?.md || '(no brief)'}\n</brief>`,
-      `# Evidence ledger (key | value | label | source | date; listening, pulse, video and calendar lines also end with their link). Every number you print comes from here, from derived arithmetic on it, or from a dated search you run.\n<ledger>\n${[...ledgerSlice((ledger || []).filter((e) => !e.signal), areasOf(sp)), ...signalSlice(sig.length ? sig : (ledger || []).filter((e) => e.signal), capsOf(sp))].map(ledgerLine).join('\n')}\n</ledger>`,
+      `# Evidence ledger (key | value | label | source | date; listening, pulse, video and calendar lines also end with their link). Every number you print comes from here, from derived arithmetic on it, or from a dated search you run.\n<ledger>\n${brandLedger(ledger, sig).map(ledgerLine).join('\n')}\n</ledger>`,
       `# Profile extract (what the reader found on the site)\n<profile>\n${profileSlice(profile)}\n</profile>`,
       deps && Object.keys(deps).length ? `# Earlier moves for ${name} (stay consistent with these decisions and targets; refer to them as "Move NN")\n${Object.entries(deps).map(([k, d]) => `<move n="${pad(k)}">\n${d}\n</move>`).join('\n')}` : '',
       lookups?.length ? `# Live lookups run for this move\n${lookups.map((l) => `<lookup id="${l.id}" for="${l.for}" at="${l.at}">${l.error ? 'ERROR ' + l.error : l.data}</lookup>`).join('\n')}` : '',
-      `# Depth and format exemplar\nThis is Move ${pad(exN)} written by hand for a DIFFERENT brand (Arata, an Indian haircare company). It shows the depth, density, table use, voice and finish we expect. Do not copy its facts, numbers, names, rivals or products into ${name}'s document unless the same fact is in ${name}'s ledger.\n<exemplar>\n${exemplarText(exN)}\n</exemplar>`,
-      `# Your task\nWrite Move ${pad(sp.n)} of ${N} for ${name}${profile?.host ? ` (${profile.host})` : ''}: discipline "${sp.discipline}", group "${sp.group}".\nKicker (fixed): ${sp.kicker} · MOVE ${pad(sp.n)}\n${measureLine(sp).text}\nTitle: write one specific to ${name}'s situation. For scale, the Arata title for this move was "${sp.titleHint}" with the stat "${sp.statHint?.stat}" / "${sp.statHint?.statLabel}". Do not reuse those.\nDate of this snapshot: ${today()}. Country: ${profile?.country || 'unknown'}. Currency: ${profile?.currency || 'unknown'}.\n${(sp.lookups || []).filter((l) => l.type === 'web').map((l) => `Search the web for: ${l.q}. Date each fact you use and list it in newFacts with the exact quote.`).join('\n')}\nFollow the house template section by section. Return the JSON object only.`];
+      `# Depth and format exemplar\nThis is Move ${pad(exN)} written by hand for a DIFFERENT brand (Arata, an Indian haircare company). It shows the depth, density, table use, voice and finish we expect. Do not copy its facts, numbers, names, rivals or products into ${name}'s document unless the same fact is in ${name}'s ledger.\n<exemplar>\n${exemplarText(exN, +process.env.MOVES_EXEMPLAR_CHARS || 20000)}\n</exemplar>`,
+      `# Lines to lean on for this discipline\nStart from these ledger keys${fo.keys.length ? `: ${fo.keys.slice(0, 120).join(', ')}` : ` (none yet: say so in the method note and mark the cells "To be pulled")`}. Use the rest of the ledger only where it changes a decision.`,
+      `# Your task\nWrite Move ${pad(sp.n)} of ${N} for ${name}${profile?.host ? ` (${profile.host})` : ''}: discipline "${sp.discipline}", group "${sp.group}".\nKicker (fixed): ${sp.kicker} · MOVE ${pad(sp.n)}\n${measureLine(sp).text}\nTitle: write one specific to ${name}'s situation. For scale, the Arata title for this move was "${sp.titleHint}" with the stat "${sp.statHint?.stat}" / "${sp.statHint?.statLabel}". Do not reuse those.\nDate of this snapshot: ${today()}. Country: ${profile?.country || 'unknown'}. Currency: ${profile?.currency || 'unknown'}.\n${webQ.map((l) => (searchN ? `Search the web for: ${l.q}. Date each fact you use and list it in newFacts with the exact quote.` : `Answer from the ledger: ${l.q}. Where the ledger does not cover it, write "To be pulled", never a guess.`)).join('\n')}\nFollow the house template section by section. Return the JSON object only.`];
     // three cacheable blocks: brand context (shared by all moves of a brand), discipline material, the task
-    const [skill, briefP, ledgerP, profileP, depsP, lookupsP, exP, task] = parts;
-    return [[briefP, ledgerP, profileP], [skill, exP, depsP, lookupsP], [task]].map((g) => g.filter(Boolean).join('\n\n'));
+    const [skill, briefP, ledgerP, profileP, depsP, lookupsP, exP, focusP, task] = parts;
+    return [[briefP, ledgerP, profileP], [skill, exP, depsP, lookupsP], [focusP, task]].map((g) => g.filter(Boolean).join('\n\n'));
   }
 
   // strip stray reference markers ("… 84 days [35]") the model sometimes leaves inside finished assets
@@ -380,20 +391,21 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
     const t0 = Date.now();
     try {
       const lookups = await runLookups(sp, ctx);
-      const blocks = buildPrompt(sp, { ...ctx, lookups });
-      const prompt = blocks.join('\n\n');
       const webs = (sp.lookups || []).filter((l) => l.type === 'web').length;
-      // search re-bills the whole context on every server-tool turn, so it is capped (ctx.search: number | 0)
-      const searchN = webs ? Math.min(ctx.search ?? 3, 3 + webs) : 0;
-      const cache = { type: 'ephemeral' };
-      const messages = [{ role: 'user', content: blocks.map((text, i) => ({ type: 'text', text, ...(i < 2 ? { cache_control: cache } : {}) })) }];
-      const o = { model: 'opus', effort: ctx.effort || 'high', system: [{ type: 'text', text: SYSTEM, cache_control: cache }], messages, schema: MOVE_SCHEMA, max: 120000, tag: `move${pad(n)}`, // thinking counts toward this; 64k cut some moves off
+      /* search re-bills the whole context on every server-tool turn: it runs only when the stored evidence for this discipline
+         is thin (fewer than 8 ledger and signal lines), at most ctx.search searches (0 turns it off) */
+      const searchN = webs && focusOf(sp, ctx.ledger, ctx.signalLines || []).thin ? Math.min(ctx.search ?? 1, 3 + webs) : 0;
+      const blocks = buildPrompt(sp, { ...ctx, lookups, searchN });
+      const prompt = blocks.join('\n\n');
+      const hour = { type: 'ephemeral', ttl: '1h' }; // the system and the brand block: shared by every move of the build
+      const messages = [{ role: 'user', content: blocks.map((text, i) => ({ type: 'text', text, ...(i === 0 ? { cache_control: hour } : {}) })) }];
+      const o = { model: 'opus', effort: ctx.effort || 'medium', system: [{ type: 'text', text: SYSTEM, cache_control: hour }], messages, schema: MOVE_SCHEMA, max: +process.env.MOVES_MAX_TOKENS || 48000, tag: `move${pad(n)}`, // thinking counts toward this
         ...(searchN ? { search: searchN, location: ctx.profile?.country } : {}) };
       let r;
       try { r = await ai.call(o); }
       catch (e) {
         // ran out of room (max_tokens): once more, a little tighter, rather than losing the move
-        if (/max_tokens/.test(String(e.message))) { log.warn?.(`[moves] ${n}: hit max_tokens, retrying at medium effort`); r = await ai.call({ ...o, effort: 'medium', tag: `move${pad(n)}-retry`, messages: [...o.messages.slice(0, -1), { ...o.messages[o.messages.length - 1], content: [].concat(o.messages[o.messages.length - 1].content, [{ type: 'text', text: 'Keep the body within 7,000 words so the whole document fits in one reply.' }]) }] }); }
+        if (/max_tokens/.test(String(e.message))) { log.warn?.(`[moves] ${n}: hit max_tokens, retrying at low effort`); r = await ai.call({ ...o, effort: 'low', max: Math.max(o.max, 64000), tag: `move${pad(n)}-retry`, messages: [...o.messages.slice(0, -1), { ...o.messages[o.messages.length - 1], content: [].concat(o.messages[o.messages.length - 1].content, [{ type: 'text', text: 'Keep the body within 3,000 words so the whole document fits in one reply.' }]) }] }); }
         else {
         if (e.mock || !/schema|format|400/i.test(String(e.message))) throw e;
         log.warn?.(`[moves] ${n}: structured output rejected (${String(e.message).slice(0, 120)}), retrying as plain JSON`);
@@ -453,7 +465,12 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
 
   const flatText = (move) => [...walk(move)].map((x) => `[${x.at}.${x.field}] ${x.text}`).join('\n');
 
+  // the lines a claim can rest on: the ones the move cites, every quote line, and the discipline's own keys
+  const checkLines = (move, ledger) => { const used = new Set(move.factsUsed || []); const sp = SPECS.find((s) => s.n === move.n); const pre = sp ? areasOf(sp).flatMap((a) => AREA[a] || [a + '.']) : [];
+    const xs = (ledger || []).filter((e) => used.has(e.key) || e.quote || pre.some((p) => e.key?.startsWith(p)) || e.key?.startsWith('brand.') || e.key?.startsWith('company.') || e.key?.startsWith('rival.'));
+    return xs.length >= 10 ? xs : ledger || []; };
   async function claimCheck(move, brief, ledger) {
+    ledger = checkLines(move, ledger);
     const r = await ai.call({ model: 'sonnet', effort: 'low', max: 6000, tag: `verify${pad(move.n)}`,
       system: 'You are the Brew fact checker. You compare a strategy document against the evidence and list only real problems. Be precise and brief.',
       prompt: `Evidence: the brand brief and ledger.\n<brief>\n${brief?.md || ''}\n</brief>\n<ledger>\n${ledger.map(ledgerLine).join('\n')}\n</ledger>\n\nDocument (each line is [address] text):\n<doc>\n${flatText(move).slice(0, 120000)}\n</doc>\n\nList problems of these kinds only:\n- fact: a non-numeric factual claim about the brand or a rival (names, founders, products, features, policies, channels, events) that the evidence does not support and that is not labelled inferred, assumption, hypothesis, proposed or to confirm\n- quote: text presented as a real customer quote or review that is not in the evidence (dramatised scripts that say so are fine)\n- motive: states why a rival does something\n- absent: says a rival lacks something instead of "not observed"\n- disclaimer: an ad asset carrying "illustrative", "AI-generated" or similar labels\nIgnore numbers (checked elsewhere), plans, targets, recommendations and the brand's own proposed copy. Return at most 15 problems, most serious first.`,
@@ -466,7 +483,7 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
       if (at === 'stat') return `[stat] ${move.stat} / ${move.statLabel}`;
       const [, i, j] = at.match(/s(\d+)\.b(\d+)/) || []; return `[${at}] ${JSON.stringify(move.sections?.[i]?.blocks?.[j])}`;
     });
-    const r = await ai.call({ model: 'opus', effort: 'medium', max: 12000, tag: `fix${pad(move.n)}`,
+    const r = await ai.call({ model: 'sonnet', effort: 'medium', max: 12000, tag: `fix${pad(move.n)}`,
       system: 'You fix flagged sentences in a Brew strategy document. Change only what is flagged. Keep the voice. A number that is not backed becomes a labelled target or assumption only if it is a plan number; a fact you cannot back is written "to confirm" (keep the sentence readable). Never add new numbers.',
       prompt: `Flagged problems:\n${issues.map((i) => `- [${i.at}] ${i.raw ? `number "${i.raw}" in: "${i.sentence}"` : `"${i.quote}"`}: ${i.problem || i.why}`).join('\n')}\n\nThe blocks they sit in:\n${blocks.join('\n')}\n\nReturn edits: for each, the block address, the exact text to find (verbatim from the block, short but unique) and its replacement.`,
       schema: { type: 'object', properties: { edits: { type: 'array', items: { type: 'object', properties: { at: S, find: S, replace: S } } } } } });
@@ -535,13 +552,13 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
   }
 
   // ---------- Move 00 ----------
-  async function writeIndex(moves, ctx) {
-    if (ctx.canSpend && !ctx.canSpend()) throw new Error('budget reached, index not started'); // the index is an Opus call too
+  async function writeIndex(moves, ctx, { overview = true } = {}) {
+    if (overview && ctx.canSpend && !ctx.canSpend()) throw new Error('budget reached, index not started'); // the overview is an Opus call
     const name = ctx.brand?.name || ctx.profile?.name || 'the brand', B = name.toUpperCase();
     const list = [...SPECS.filter((s) => s.n), ...(ctx.dynamicSpecs || DYN)].map((s) => ({ s, m: moves[s.n] })).filter((x) => x.m || (ctx.applicable ? ctx.applicable.includes(x.s.n) : !x.s.needs?.length));
     const N = list.length, Nw = numWord(N);
     let ov = null;
-    try {
+    if (overview) try {
       const r = await ai.call({ model: 'opus', effort: 'medium', max: 8000, tag: 'move00', system: SYSTEM,
         prompt: `Write the overview for Move 00, the index of ${Nw} moves for ${name}.\n<brief>\n${ctx.brief?.md || ''}\n</brief>\nThe moves written so far:\n${list.filter((x) => x.m).map((x) => `${pad(x.s.n)} ${x.m.title} | ${x.m.stat} ${x.m.statLabel} | ${x.m.gives}`).join('\n')}\n\nReturn: thread (one or two sentences naming the one idea or number that runs through all the moves for ${name}, from the evidence), today (3 to 4 sentences: "${name} today:" then the sharpest facts from the brief with numbers, ending in what the ${Nw} moves are), live (one sentence: what is live at day 30), boxes (six short 3-4 line labels, one per group, for the end-to-end diagram, each line under 15 characters, specific to ${name}). Only numbers from the brief.`,
         schema: { type: 'object', properties: { thread: S, today: S, live: S, boxes: { type: 'array', items: { type: 'array', items: S } } } } });
@@ -627,7 +644,7 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
     };
     const errors = [...await wave(A)];
     const indexWanted = !only?.length || only.includes(0);
-    if (indexWanted && A.length) { const idx = await writeIndex(done, ctx).catch((e) => { errors.push({ n: 0, error: e.message }); return null; }); if (idx) { await ctx.save?.(0, idx); onMove?.(0, idx); } }
+    if (indexWanted && A.length) { const idx = await writeIndex(done, ctx, { overview: false }).catch((e) => { errors.push({ n: 0, error: e.message }); return null; }); if (idx) { await ctx.save?.(0, idx); onMove?.(0, idx); } }
     errors.push(...await wave(Bw));
     if (indexWanted) { const idx = await writeIndex(done, ctx).catch((e) => { errors.push({ n: 0, error: e.message }); return null; }); if (idx) { await ctx.save?.(0, idx); onMove?.(0, idx); results[0] = idx; } }
     return { moves: results, errors, applicable: all };

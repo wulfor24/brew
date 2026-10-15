@@ -53,7 +53,8 @@ export function createAI({ apiKey = process.env.ANTHROPIC_API_KEY, mock = proces
     const msg = await client.beta.messages.stream(params).finalMessage();
     const u = msg.usage || {}, p = PRICE[model] || PRICE[MODELS.opus];
     const searches = u.server_tool_use?.web_search_requests || 0;
-    const usd = ((u.input_tokens || 0) + (u.cache_creation_input_tokens || 0) * 1.25 + (u.cache_read_input_tokens || 0) * 0.1) * p[0] / 1e6 + (u.output_tokens || 0) * p[1] / 1e6 + searches * SEARCH_PRICE;
+    const w1h = u.cache_creation?.ephemeral_1h_input_tokens || 0, w5m = (u.cache_creation_input_tokens || 0) - w1h; /* an hour-long cache write costs 2x, a 5-minute one 1.25x */
+    const usd = ((u.input_tokens || 0) + w5m * 1.25 + w1h * 2 + (u.cache_read_input_tokens || 0) * 0.1) * p[0] / 1e6 + (u.output_tokens || 0) * p[1] / 1e6 + searches * SEARCH_PRICE;
     charge(o.tag || 'ai', usd);
     if (msg.stop_reason === 'refusal') throw new Error('refused: ' + (msg.stop_details?.category || 'unknown'));
     const text = msg.content.filter((b) => b.type === 'text').map((b) => b.text).join('');
