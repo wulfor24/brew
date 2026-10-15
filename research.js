@@ -434,9 +434,15 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     stopped = false; clearTimeout(timers.t); clearInterval(timers.i);
     timers.t = setTimeout(() => { if (!stopped) tick(); }, 5000); timers.i = setInterval(() => { if (!stopped) tick(); }, 30 * 60e3); timers.i.unref?.();
   };
+  /* a ring with nothing fresh asks for new stories now (feed-service calls this when a ring would otherwise fall back to older
+     ones): that source is re-read at once instead of waiting for its EVERY slot. At most once every 2 hours a source, never
+     while it runs or within the hour after a failure, never with RESEARCH_OFF */
+  const needAt = {};
+  const need = (k) => { if (!JOBS[k] || process.env.RESEARCH_OFF || running.has(k) || Date.now() - failedAt(k) < H || Date.now() - (needAt[k] || 0) < 2 * H) return false;
+    needAt[k] = Date.now(); log.log(`[research] ${brand.slug} ${k}: ring has nothing fresh, reading again`); refresh([k]).catch(() => {}); return true; };
   /* a replaced instance stops its timers */
   let stopped = false; const timers = {};
   const stop = () => { stopped = true; clearTimeout(timers.t); clearInterval(timers.i); };
 
-  return { start, ready: () => loaded, stop, refresh, rollup, mediaFile, due, get: () => snap, onRefresh: (f) => listeners.push(f), running: () => [...running], spent: () => ({ ...spent }) };
+  return { start, ready: () => loaded, need, stop, refresh, rollup, mediaFile, due, get: () => snap, onRefresh: (f) => listeners.push(f), running: () => [...running], spent: () => ({ ...spent }) };
 }

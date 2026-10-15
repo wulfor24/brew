@@ -832,21 +832,32 @@ export function createFeedService(o) {
      score = 0.4 x how fresh (1 at first sight, 0 at 24 h) + 0.6 x how strong (ads: Meta rank, versions and run length against
      the best in the ring; trends: size of the move; news: how recent the story is; how-to: fixed). STORY_CUT sets the bar */
   const STORY_LIFE = 24 * 3600e3, STORY_CUT = () => +process.env.STORY_CUT || 0.45;
-  const storyPick = (items, snapAt, strength, t, max = 8) => { const n = now(t);
-    return (items || []).map((x) => { const at = x.firstSeen || snapAt || 0, age = n - at; if (age >= STORY_LIFE) return null;
-      const score = 0.4 * (1 - age / STORY_LIFE) + 0.6 * Math.max(0, Math.min(1, strength(x))); return score >= STORY_CUT() ? { ...x, firstSeen: at, score: +score.toFixed(3) } : null; })
-      .filter(Boolean).sort((a, b) => b.score - a.score).filter((x, i, a) => !a.slice(0, i).some((y) => near(x, y))).slice(0, max); }; /* two near-identical stories show once */
+  /* every ring always has stories: the fresh ones over the cut-off first; with none, the source is read again now (research.need)
+     and, until that lands, the ring shows its best recent ones (under the cut, then the newest it has, marked older) instead
+     of disappearing */
+  const storyPick = (items, snapAt, strength, t, max = 8, src = null) => { const n = now(t);
+    const scored = (items || []).map((x) => { const at = x.firstSeen || snapAt || 0, age = n - at;
+      const score = 0.4 * Math.max(0, 1 - age / STORY_LIFE) + 0.6 * Math.max(0, Math.min(1, strength(x))); return { ...x, firstSeen: at, age, score: +score.toFixed(3) }; })
+      .sort((a, b) => b.score - a.score).filter((x, i, a) => !a.slice(0, i).some((y) => near(x, y))); /* two near-identical stories show once */
+    const strip = ({ age, ...x }) => x;
+    const fresh = scored.filter((x) => x.age < STORY_LIFE && x.score >= STORY_CUT());
+    if (fresh.length) return fresh.slice(0, max).map(strip);
+    if (src) research?.need?.(src);
+    const today = scored.filter((x) => x.age < STORY_LIFE);
+    if (today.length) return today.slice(0, Math.min(max, 5)).map(strip);
+    return scored.sort((a, b) => b.firstSeen - a.firstSeen).slice(0, Math.min(max, 5)).map((x) => ({ ...strip(x), older: true })); };
   const stories = (t) => {
     const r0 = research?.get() || {};
+    const withArchive = (o) => [...(o.items || []), ...(o.archive || [])]; /* expired stories stay in reach for the older fallback */
     const adTop = Math.max(1, ...(r0.ads?.items || []).map((a) => (30 - (a.rank || 30)) / 3 + Math.log2(1 + (a.versions || 1)) * 4 + Math.min(a.days || 0, 120) / 10));
     const r = {
-      ads: r0.ads && { ...r0.ads, items: storyPick(r0.ads.items, r0.ads.fetchedAt, (a) => ((30 - (a.rank || 30)) / 3 + Math.log2(1 + (a.versions || 1)) * 4 + Math.min(a.days || 0, 120) / 10) / adTop, t) },
-      trends: r0.trends && { ...r0.trends, items: storyPick((r0.trends.items || []).map((x) => ({ ...x, terms: (x.terms || []).filter((term) => r0.trends.series?.[term]) })), r0.trends.fetchedAt,
-        (x) => (x.kind === 'rising' ? 0.8 : Math.max(0.35, ...x.terms.map((term) => Math.abs(r0.trends.series[term]?.change || 0) / 50))), t) },
+      ads: r0.ads && { ...r0.ads, items: storyPick(withArchive(r0.ads), r0.ads.fetchedAt, (a) => ((30 - (a.rank || 30)) / 3 + Math.log2(1 + (a.versions || 1)) * 4 + Math.min(a.days || 0, 120) / 10) / adTop, t, 8, 'ads') },
+      trends: r0.trends && { ...r0.trends, items: storyPick(withArchive(r0.trends).map((x) => ({ ...x, terms: (x.terms || []).filter((term) => r0.trends.series?.[term]) })), r0.trends.fetchedAt,
+        (x) => (x.kind === 'rising' ? 0.8 : Math.max(0.35, ...x.terms.map((term) => Math.abs(r0.trends.series[term]?.change || 0) / 50))), t, 8, 'trends') },
       /* news: anything the scout found in its 21-day window is real and dated, so it starts strong and the newest ranks first; a
          7-day scale scored a niche brand's week-old rival news at zero and hid the whole ring (Comet, 2026-10-14) */
-      news: r0.news && { ...r0.news, items: storyPick(r0.news.items, r0.news.fetchedAt, (x) => { const d = Date.parse(x.date); if (isNaN(d)) return 0.5; const a = Math.max(0, now(t) - d) / (21 * 24 * 3600e3); return a > 1 ? 0 : 0.45 + 0.55 * (1 - a); }, t, 10) },
-      howto: r0.howto && { ...r0.howto, items: storyPick(r0.howto.items, r0.howto.fetchedAt, () => 0.7, t, 4) }
+      news: r0.news && { ...r0.news, items: storyPick(withArchive(r0.news), r0.news.fetchedAt, (x) => { const d = Date.parse(x.date); if (isNaN(d)) return 0.5; const a = Math.max(0, now(t) - d) / (21 * 24 * 3600e3); return a > 1 ? 0 : 0.45 + 0.55 * (1 - a); }, t, 10, 'news') },
+      howto: r0.howto && { ...r0.howto, items: storyPick(withArchive(r0.howto), r0.howto.fetchedAt, () => 0.7, t, 4, 'howto') }
     };
     const lastAt = (o) => Math.max(0, ...(o?.items || []).map((x) => x.firstSeen || 0)) || o?.fetchedAt || null;
     /* a slide with no photo of its own gets the brand's own product photo it talks about (most shared words with a card
@@ -858,7 +869,9 @@ export function createFeedService(o) {
       for (const c of pool) { let n = 0; for (const x of w) if (c.w.has(x)) n++; if (n > top) { top = n; best = c; } }
       return best ? { ...sl, bg: best.img } : sl; };
     /* a ring whose last read failed and has nothing left today says so, never just vanishes as if there was nothing (brew-external-data rule 1) */
-    const failedNote = (k, title, slides) => (slides.length || !r0[k]?.lastError ? slides : [{ type: 'note', c: SEED.brand.wash[2], h: `Couldn't refresh ${title} this time`, p: 'The source didn’t answer. Brew tries again within the hour.', from: 'Brew', at: r0[k].lastError.at }]);
+    const failedNote = (k, title, slides) => (slides.length || k === 'brand' ? slides : r0[k]?.lastError
+      ? [{ type: 'note', c: SEED.brand.wash[2], h: `Couldn't refresh ${title} this time`, p: 'The source didn’t answer. Brew tries again within the hour.', from: 'Brew', at: r0[k].lastError.at }]
+      : r0[k] ? [{ type: 'note', c: SEED.brand.wash[1], h: `Finding new ${title.toLowerCase()} stories`, p: 'Brew is reading the source again. New ones land here shortly.', from: 'Brew', at: now(t) }] : slides);
     const ring = (k, title, slides, o = {}) => { slides = failedNote(k, title, slides); return { k, title, slides: slides.map(bgFor), ...o, seen: !!o.updatedAt && (t.storySeen[k] || 0) >= o.updatedAt }; };
     const extra = (k) => t.storyExtra[k].slice().reverse().map((x) => ({ ...x, type: 'note' }));
     const ads = r.ads, tr = r.trends, nw = r.news, ht = r.howto;
@@ -882,7 +895,7 @@ export function createFeedService(o) {
       ring('news', 'Industry news', newsSlides.slice(0, 10), { updatedAt: lastAt(nw), source: nw?.source, cover: newsSlides.find((x) => x.img)?.img, loading: !nw }),
       ring('howto', 'How to', (ht?.items || []).map((x) => ({ type: 'howto', ...x, cardId: t.cards.has('r-' + x.id) ? 'r-' + x.id : null })), { updatedAt: lastAt(ht), source: ht?.source, cover: ht?.items.find((x) => x.img)?.img, loading: !ht })
 
-    ].filter((x) => x.k === 'brand' || x.loading || x.slides.length); /* a ring with nothing over the cut-off today is hidden, never padded */
+    ]; /* all five rings always show: fresh stories, else the best recent ones while new ones are read, else what is happening */
   };
 
   /* ---------- onboarding stream (SSE) ---------- */

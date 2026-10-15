@@ -107,3 +107,10 @@ test('rival ads already shown give way to ones not shown yet, so the ring does n
     void orig;
   } finally { globalThis.fetch = realFetch; }
 });
+
+test('a ring with nothing fresh reads its source again, at most once every 2 hours', async () => {
+  const { r } = make();
+  assert.equal(r.need('trends'), true, 'reads again now');
+  assert.equal(r.need('trends'), false, 'not again while it runs or within 2 hours');
+  assert.equal(r.need('nope'), false);
+});

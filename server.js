@@ -304,7 +304,7 @@ configureGen({ dir: GEN, researchDir: path.join(PUB, 'research'), bucket: BUCKET
 const store = createStore({ dir: path.join(ROOT, '.tenants'), bucket: BUCKET, gToken });
 // each brand gets its own research (story rings) and live watchers. A generated brand gets them once its read is in
 // (they need its rivals, search terms, questions and country); until then a quiet stand-in answers.
-const STUB = { get: () => ({}), running: () => [], spent: () => ({}), onRefresh: () => {}, refresh: () => [], mediaFile: async () => null, start: async () => {}, ready: async () => {} };
+const STUB = { get: () => ({}), running: () => [], spent: () => ({}), onRefresh: () => {}, refresh: () => [], mediaFile: async () => null, start: async () => {}, ready: async () => {}, need: () => false };
 const INST = new Map(); // slug → { key, research, live }
 const attach = (p) => {
   if (!p) return p;
