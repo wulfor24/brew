@@ -173,6 +173,8 @@
     return true;
   }
   // reading the account: the spinner, then what came back
+  // the accounts as the server sees them now (state, stats, what changed), laid over the brand's connector cards
+  async function refreshLive() { const r = await get(`/api/brands/${slug}/live`); if (!r?.conns) return; Object.assign(L, r, { user: r.me || r.user || null }); overlay(B(), A().S); A().save(); }
   async function run(m, id0, p, opts = {}) {
     const s = (n) => m.querySelector(`[data-s="${n}"]`); s(1).hidden = true; s(2).hidden = false;
     const r = await p, id = r?.moved || id0; /* a Google sign-in that only picked GA4 connected Google Analytics instead */
@@ -180,6 +182,8 @@
     if (!r?.ok) { s(2).hidden = true; s(1).hidden = false; let e = s(1).querySelector('[data-err]') || s(1).querySelector('.lc-err'); if (!e) { e = document.createElement('p'); e.className = 'lc-err'; s(1).querySelector('.cx-head').after(e); } e.hidden = false; e.textContent = r?.error || 'Could not connect.'; e.scrollIntoView({ block: 'nearest' }); return; }
     s(2).hidden = true; s(3).hidden = false; s(3).innerHTML = result(id, r);
     const see = s(3).querySelector('[data-see]'); bindNext(s(3)); L.conns[id] = { ...(L.conns[id] || {}), ...r, state: r.state || 'live' }; overlay(B(), A().S); A().S.conn[id] = true; A().save();
+    /* the page behind the sheet shows the new account at once: the server's view of every account, then the cards and the feed */
+    if (!setupView()) refreshLive().then(() => A().refreshAfterConnect?.(id)).catch(() => {});
     /* during onboarding, stay on the step: a page load would start the onboarding again from the first screen */
     if (setupView()) { A().cxDone?.(id);
       see.textContent = 'Continue'; see.onclick = () => A().closeModal(); return; }
