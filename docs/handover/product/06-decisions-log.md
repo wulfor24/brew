@@ -4,6 +4,7 @@
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-10-15 | **Sign in before a read.** Reading a store needs a Google sign-in; then each person gets 3 new brands a day. Prospects without an account use the demo site. | Each read costs about $6; anonymous reads (1 per IP per hour) could use up the daily cap and block real clients |
 | 2026-10-15 | **Brew's emails to the brand's team stay in scope:** invites, joins, view changes, "your moves are ready" / "updated" | Teams need them to work together. "Sending" now means only marketing email and WhatsApp to customers, which stays cut. |
 | 2026-10-15 | **Public links and open read routes are acceptable for now** | Showcase only; no real account data is connected. Revisit before real brands connect accounts. |
 | 2026-10-15 | **Scope cut: Brew becomes a realistic prototype** that engineering continues. The flow is read → moves → feed → jam → share the brief. | "We are not building the product, we are building a realistic prototype." The product is shaped after brands onboard. |

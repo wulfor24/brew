@@ -51,3 +51,10 @@ test('a pack file never leaves its brand folder: ../ and absolute names read and
   await assert.rejects(() => P.put('acme-com', '../../escape.txt', 'x'));
   assert.match(src('server.js'), /a file name only: never a path/);
 });
+
+test('a read (about $6) starts only for someone signed in; the page signs them in and starts it after', () => {
+  const s = src('server.js'), a = src('public/app.js');
+  assert.match(s, /if \(!me && auth\.signinOn\(\) && process\.env\.BUILD_SIGNIN !== '0'\) return send\(res, 200, \{ error: b\.fresh \? .*signin: true \}\), true;/);
+  assert.match(a, /if \(r\?\.signin\) \{ going\(true, 'Taking you to sign in…'\); location\.href = `\/auth\/google\?next=\$\{encodeURIComponent\('\/\?build='/);
+  assert.match(a, /get\('build'\); if \(bq\)/, 'back from Google, the read starts by itself');
+});

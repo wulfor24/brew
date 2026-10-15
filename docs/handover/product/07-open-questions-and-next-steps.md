@@ -9,7 +9,7 @@
 | 3 | **Which real connector first?** | Shopify (read-only), Meta Ads (read-only), GA4, Klaviyo, Slack | **Shopify read-only.** It backs the most cards and has the simplest approval. Then Meta Ads. Then a Slack app for the teammate loop. |
 | 4 | **Pro / billing:** do we show a plan at all in the showcase? | keep it Dummy; hide it; build billing | Keep it Dummy, but make the moves-page Pro button purely visual (today it raises our spend limit) |
 | 5 | **How many prepared brands for the demo?** | Arata only; 3–5 across categories and markets | **3–5.** It proves "any brand" and finds brand-specific bugs. Cost is about $100–150 per brand, plus background spend. |
-| 6 | **Who may start a read on brew.joinsquareup.com?** | anyone (today: 1 per IP per hour); signed-in only; invite only | **Signed-in only.** Each read costs about $6. |
+| 6 | **Who may start a read on brew.joinsquareup.com?** | anyone; signed-in only; invite only | **Decided 2026-10-15: signed-in only** (live). |
 | 7 | **What counts as "verified" for a move?** | numbers only; numbers plus no claim issues; show "N claims to review" | **Show "Numbers checked · N claims to review".** That is honest and useful. |
 | 8 | **Should shared briefs be frozen?** | frozen with versions; live | **Frozen, with a version history.** That is what "BR-n" implies. |
 | 9 | **Port the unshipped work from the old repo?** | weekly history; a review step for learnings; health-ring fixes | Weekly history and the learnings review are product wins. The ring fixes matter only once the rings are real. |

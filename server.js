@@ -439,9 +439,10 @@ retireInit.finally(() => { if (!process.env.BUILD_RESUME_OFF) builder.resumeAll(
 const brandRoutes = async (req, res, u) => {
   const ip = clientIp(req); /* the entry Google's front end appended, not one the client wrote (build.js clientIp) */
   if (req.method === 'POST' && u.pathname === '/api/brands') { const b = await readBody(req), me = auth.user(req);
-    /* anyone can watch their brand being read (one new brand an hour per network); signing in comes right after the read,
-       and nothing past the read (the brief and the moves, the expensive part) runs until a signed-in person confirms */
-    if (!me && b.fresh && auth.signinOn() && process.env.BUILD_SIGNIN !== '0') return send(res, 200, { error: 'Sign in with Google to read this brand again.', signin: true }), true;
+    /* a read costs about $6 (crawl, Ad Library, AI answers, rivals): it starts only for someone signed in (2026-10-15), who then
+       gets BUILD_PER_USER_DAY new brands a day. The page sends them to Google and starts the read when they come back (?build=).
+       The demo site answers this route itself (demo-routes.js) */
+    if (!me && auth.signinOn() && process.env.BUILD_SIGNIN !== '0') return send(res, 200, { error: b.fresh ? 'Sign in with Google to read this brand again.' : 'Sign in with Google to read your store.', signin: true }), true;
     return send(res, 200, await builder.start(b.url, { ip, user: me, fresh: !!b.fresh && !!me && (await viewerOf(req, slugOf(b.url))).gen })), true; }
   if (req.method === 'GET' && u.pathname === '/api/brands') return send(res, 200, { brands: await builder.list() }), true;
   // the landing's demo brands: the ones the demo site has fully ready; a tap opens a fresh tour of that brand there
