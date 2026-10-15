@@ -4,7 +4,7 @@
 // Nobody gets an email about their own message, about a jam they have open right now, or about lines they've already read.
 // Each email carries one-tap links: mute this jam, only tags, or no jam emails at all (per person, brands/<slug>/private/mail-prefs.json).
 // The demo site never sends (demo-mode.js blocks api.resend.com).
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+import { emailHtml, esc, p as para, quote as mquote, footLink } from './mail-layout.js';
 const lc = (e) => String(e || '').toLowerCase().trim();
 const cut = (s, n) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length <= n ? s : s.slice(0, n).replace(/\s+\S*$/, '') + '…'; };
 const first = (p) => String(p?.name || p?.email || 'Someone').trim().split(/\s+/)[0].replace(/@.*/, '');
@@ -23,10 +23,8 @@ export function createJamMail({ mail, packs, sign, verify, base = () => process.
 
   const link = (slug, wid) => `${base()}/${slug}#jam=${encodeURIComponent(wid)}`;
   const prefLink = (slug, email, set, wid) => `${base()}/mail/pref?t=${encodeURIComponent(sign({ slug, email: lc(email), set, wid: wid || null }, 180 * 86400, 'mailpref'))}`;
-  const footer = (slug, email, wid) => `<p style="color:#888;font-size:12px;margin-top:28px">You’re getting this because you’re in this jam on Brew. <a style="color:#888" href="${prefLink(slug, email, 'mute', wid)}">Mute this jam</a> · <a style="color:#888" href="${prefLink(slug, email, 'tags')}">Only when I’m tagged</a> · <a style="color:#888" href="${prefLink(slug, email, 'off')}">No jam emails</a></p>`;
-  const btn = (href, label) => `<a href="${href}" style="background:#111;color:#fff;text-decoration:none;padding:11px 18px;border-radius:10px;font-weight:600;display:inline-block">${esc(label)}</a>`;
-  const wrap = (title, body) => `<div style="font:15px/1.55 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#111;max-width:540px"><p style="font-size:18px;font-weight:600;margin:0 0 12px">${esc(title)}</p>${body}</div>`;
-  const quote = (who, text) => `<div style="border-left:3px solid #ddd;padding:2px 0 2px 12px;margin:10px 0;color:#333"><b>${esc(who)}</b><br>${esc(cut(text, 280))}</div>`;
+  const footer = (slug, email, wid) => `You’re getting this because you’re in this jam.<br>${footLink(prefLink(slug, email, 'mute', wid), 'Mute this jam')} · ${footLink(prefLink(slug, email, 'tags'), 'Only when I’m tagged')} · ${footLink(prefLink(slug, email, 'off'), 'No jam emails')}`;
+  const quote = (who, text) => mquote(who, cut(text, 280));
 
   const send = async (to, subject, html, text) => { try { const ok = await mail(to, subject, html, text); if (ok) return true; } catch (e) { log.warn?.('[jam-mail] send', e.message); }
     try { return !!(await mail(to, subject, html, text)); } catch (e) { log.warn?.('[jam-mail] retry', e.message); return false; } };
@@ -49,7 +47,7 @@ export function createJamMail({ mail, packs, sign, verify, base = () => process.
         const key = `${w.id}|${e0}|${kind}|${id || text}`; if (sentKeys.has(key)) continue; sentKeys.add(key); if (sentKeys.size > 20000) sentKeys.clear();
         if (watching(w.id, e0) && kind !== 'approve' && kind !== 'asked') continue; // they're looking at it: the jam shows it
         const brand = brandName(slug), [subject, cta] = WHAT[kind](by, w), url = link(slug, w.id);
-        const html = wrap(subject, `${text ? quote(by?.name || by?.email || 'Someone', text) : ''}<p style="color:#555">${esc(brand)} · Brew</p><p style="margin:22px 0">${btn(url, cta)}</p>${footer(slug, e0, w.id)}`);
+        const html = emailHtml({ title: subject, eyebrow: brand, preheader: text ? cut(text, 140) : subject, body: text ? quote(by?.name || by?.email || 'Someone', text) : '', cta: { href: url, label: cta }, footer: footer(slug, e0, w.id), base: base() });
         if (await send(e0, subject, html, `${subject}\n\n${text ? `${by?.name || by?.email}: ${cut(text, 280)}\n\n` : ''}${cta}: ${url}`)) n++;
         // what was said right away is not repeated in the next batched email
         const p = pending.get(`${slug}|${w.id}|${e0}`); if (p && id) p.lines = p.lines.filter((l) => l.id !== id);
@@ -72,7 +70,7 @@ export function createJamMail({ mail, packs, sign, verify, base = () => process.
       const brand = brandName(p.slug), who = [...new Set(lines.map((l) => l.who.split(/\s+/)[0]))], url = link(p.slug, p.wid);
       const subject = `${who.slice(0, 2).join(' and ')}${who.length > 2 ? ` and ${who.length - 2} more` : ''} in “${cut(p.title, 60)}”`;
       const show = lines.slice(-5), more = lines.length - show.length;
-      const html = wrap(subject, `${show.map((l) => quote(l.who, l.text)).join('')}${more > 0 ? `<p style="color:#777">and ${more} more</p>` : ''}<p style="color:#555">${esc(brand)} · Brew</p><p style="margin:22px 0">${btn(url, 'Open the jam')}</p>${footer(p.slug, p.email, p.wid)}`);
+      const html = emailHtml({ title: subject, eyebrow: brand, preheader: `${show[show.length - 1].who}: ${show[show.length - 1].text}`.slice(0, 140), body: show.map((l) => quote(l.who, l.text)).join('') + (more > 0 ? para(`and ${more} more`, { muted: true, small: true }) : ''), cta: { href: url, label: 'Open the jam' }, footer: footer(p.slug, p.email, p.wid), base: base() });
       if (await send(p.email, subject, html, `${subject}\n\n${show.map((l) => `${l.who}: ${l.text}`).join('\n')}\n\nOpen the jam: ${url}`)) { lastSent.set(k, clock()); n++; }
     }
     return n;
@@ -99,7 +97,7 @@ export function createJamMail({ mail, packs, sign, verify, base = () => process.
     const to = process.env.SHOPOS_EMAIL || 'hello@joinsquareup.com', k = `${slug}|${w.id}`;
     if (clock() - (shoposSent.get(k) || 0) < 60 * 60e3) return false; shoposSent.set(k, clock());
     const brand = brandName(slug), subject = `${brand}: ${first(by)} ${why} on “${cut(w.title, 60)}”${ticket ? ` (${ticket})` : ''}`;
-    const html = wrap(subject, `${text ? quote(by?.name || by?.email || 'Someone', text) : ''}<p style="color:#555">${esc(brand)}${ticket ? ` · ${esc(ticket)}` : ''} · ${esc(by?.email || '')}</p><p style="margin:22px 0">${btn(jamUrl || link(slug, w.id), 'Join the jam')}</p>${briefUrl ? `<p><a href="${briefUrl}" style="color:#111">Read the brief</a> (read-only)</p>` : ''}<p style="color:#888;font-size:12px">Sign in with your ShopOS Google account to take part.</p>`);
+    const html = emailHtml({ title: `${first(by)} ${why} on “${cut(w.title, 60)}”`, eyebrow: `${brand}${ticket ? ` · ${ticket}` : ''}`, preheader: text ? cut(text, 140) : subject, body: (text ? quote(by?.name || by?.email || 'Someone', text) : '') + para(`From ${esc(by?.name || '')}${by?.name && by?.email ? ' · ' : ''}${esc(by?.email || '')}`, { muted: true, small: true }), cta: { href: jamUrl || link(slug, w.id), label: 'Join the jam' }, secondary: briefUrl ? { href: briefUrl, label: 'Read the brief (read-only)' } : null, after: para('Sign in with your ShopOS Google account to take part.', { muted: true, small: true }), base: base() });
     const ok = await send(to, subject, html, `${subject}\n\n${text ? `${by?.name || by?.email}: ${cut(text, 400)}\n\n` : ''}Join the jam: ${jamUrl || link(slug, w.id)}${briefUrl ? `\nThe brief (read-only): ${briefUrl}` : ''}`);
     if (!ok) shoposSent.delete(k); return ok;
   };

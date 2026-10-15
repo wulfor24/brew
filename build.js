@@ -3,6 +3,7 @@
 // Every stage writes to the brand pack (brand-pack.js) and to status.json, so a restart resumes where it was.
 // Events are kept per brand and replayed, so the onboarding screen and anyone opening later see the same read.
 import { safeFetch } from './reader/util.js'; // user-pasted links reach only the public internet
+import { emailHtml, esc as mailEsc, p as mailP, list as mailList } from './mail-layout.js';
 import { adCall } from './reader/adlib.js';
 import { ADS_V } from './reader/stages/ads.js';
 import { wiping } from './retire.js';
@@ -595,8 +596,10 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const todo = n.emails.filter((x) => !n.sent[`${sentKey}:${x.email}`]); if (!todo.length) return;
     const subject = kind === 'update' ? `${extra.moves.length} of ${name}’s moves were updated` : kind === 'all' ? `All of ${name}’s moves are ready` : `Your first moves for ${name} are ready`;
     const line = kind === 'update' ? `Something changed for ${name}, so Brew rewrote the plans it affects: ${extra.moves.map((x) => `Move ${String(x.n).padStart(2, '0')} (${x.title})`).join(', ')}. ${extra.because || ''}`.trim() : kind === 'all' ? `Brew has finished all ${totalOf(s0)} moves for ${name}: every plan with its sources, a 30-day rollout and how we measure it. Each one downloads as a PDF, and your feed is built from them.` : `Brew has written the first ten moves for ${name}: positioning, customers, rivals, pricing, offers and measurement. Their ideas are in your feed now, and the other ${Math.max(0, totalOf(s0) - 10)} keep landing over the next hour.`;
-    const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-    const html = `<div style="font:15px/1.55 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#111;max-width:520px"><p style="font-size:18px;font-weight:600;margin:0 0 12px">${esc(subject)}</p><p>${esc(line)}</p><p style="margin:22px 0"><a href="${base}/${slug}" style="background:#111;color:#fff;text-decoration:none;padding:11px 18px;border-radius:10px;font-weight:600">Open the feed</a> &nbsp; <a href="${base}/${slug}#v=moves" style="color:#111">Read the moves</a></p><p style="color:#777;font-size:13px">Every number in them has a source. Anything we could not confirm is marked “to confirm”.<br>Brew · brew.joinsquareup.com</p></div>`;
+    const body = kind === 'update'
+      ? mailP(`Something changed for ${mailEsc(name)}, so Brew rewrote the plans it affects:`) + mailList(extra.moves.map((x) => `Move ${String(x.n).padStart(2, '0')} · ${x.title}`)) + (extra.because ? mailP(mailEsc(extra.because)) : '')
+      : mailP(mailEsc(kind === 'all' ? `Brew has finished all ${totalOf(s0)} moves for ${name}: every plan with its sources, a 30-day rollout and how we measure it.` : `Brew has written the first ten moves for ${name}: positioning, customers, rivals, pricing, offers and measurement.`)) + mailP(mailEsc(kind === 'all' ? 'Each one downloads as a PDF, and your feed is built from them.' : `Their ideas are in your feed now, and the other ${Math.max(0, totalOf(s0) - 10)} keep landing over the next hour.`));
+    const html = emailHtml({ title: subject, eyebrow: name, preheader: line.slice(0, 140), body, cta: { href: `${base}/${slug}`, label: 'Open the feed' }, secondary: { href: `${base}/${slug}#v=moves`, label: 'Read the moves' }, after: mailP('Every number in them has a source. Anything we could not confirm is marked “to confirm”.', { muted: true, small: true }), base });
     for (const x of todo) {
       const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' }, body: JSON.stringify({ from: process.env.NOTIFY_FROM || 'Brew <hello@send.joinsquareup.com>', to: [x.email], subject, html, text: `${subject}\n\n${line}\n\nOpen the feed: ${base}/${slug}\nRead the moves: ${base}/${slug}#v=moves` }) });
       if (r.ok) n.sent[`${sentKey}:${x.email}`] = Date.now(); else log.warn('[notify] resend', r.status, (await r.text()).slice(0, 200));

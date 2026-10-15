@@ -10,6 +10,7 @@
 //      every brand, but never take a brand that isn't theirs
 // The team and SquareUp make fresh work (moves, drafts, images, jams). Everyone else sees the brand in demo mode.
 import crypto from 'node:crypto';
+import { emailHtml, p as para } from './mail-layout.js';
 
 const FREE = /^(gmail|googlemail|yahoo|ymail|outlook|hotmail|live|msn|icloud|me|mac|aol|proton|protonmail|pm|zoho|yandex|gmx|mail|rediffmail|hey|fastmail|tutanota|qq|163|126)\.[a-z.]+$/;
 const b64 = (x) => Buffer.from(x).toString('base64url');
@@ -103,12 +104,10 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
   const owners = (m) => m.members.filter((x) => x.role === 'owner').map((x) => x.email);
   const brandName = async (slug) => packs.peek?.(slug)?.seed?.brand?.name || packs.peek?.(slug)?.name || (await hostOf(slug)) || slug;
   const seatWords = async (slug, seats) => { if (seats === 'all' || seats == null) return 'every view'; const N = await seatNames(slug).catch(() => ({})); return seats.length ? seats.map((k) => N[k] || k).join(', ') : 'no views yet'; };
-  const btn = (href, label) => `<a href="${href}" style="background:#111;color:#fff;text-decoration:none;padding:11px 18px;border-radius:10px;font-weight:600">${esc(label)}</a>`;
-  const wrap = (title, body) => `<div style="font:15px/1.55 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#111;max-width:520px"><p style="font-size:18px;font-weight:600;margin:0 0 12px">${esc(title)}</p>${body}</div>`;
   async function joinedMail(slug, u) {
     const m = await getM(slug), name = await brandName(slug), base = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', link = `${base}/${slug}#team`;
     const subject = `${u.name || u.email} joined ${name} on Brew`;
-    for (const o of owners(m)) await mail(o, subject, wrap(subject, `<p>They signed in with a company email, so they're on the team. They see nothing yet: pick which views they get.</p><p style="margin:22px 0">${btn(link, 'Pick their views')}</p>`), `${subject}\n\nThey see nothing until you pick their views: ${link}`);
+    for (const o of owners(m)) await mail(o, subject, emailHtml({ title: subject, eyebrow: name, preheader: 'They see nothing yet: pick which views they get.', body: para(`${esc(u.name || u.email)}${u.name ? ` (${esc(u.email)})` : ''} signed in with a company email, so they're on the team.`) + para('They see nothing yet. Pick which views they get.'), cta: { href: link, label: 'Pick their views' } }), `${subject}\n\nThey see nothing until you pick their views: ${link}`);
   }
   const isMember = async (slug, u) => !!(await roleOf(slug, u));
   async function addMember(slug, u, role, via, seats = 'all') {
@@ -168,7 +167,7 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
     await editM(slug, (mm) => { mm.invites = [...(mm.invites || []).filter((x) => x.email !== email), { email, seats, by: by.email, at: Date.now() }].slice(-50); mm.requests = mm.requests.filter((x) => x.email !== email); });
     const name = await brandName(slug), link = inviteLink(base, slug, email), who = by.name || by.email, views = await seatWords(slug, seats);
     const subject = `${who} invited you to ${name} on Brew`;
-    const sent = await mail(email, subject, wrap(subject, `<p>You'll see ${esc(name)}'s feed as <b>${esc(views)}</b>: the moves, numbers and work for your part of the business.</p><p style="margin:22px 0">${btn(link, `Join ${name}`)}</p><p style="color:#777;font-size:13px">Sign in with Google as ${esc(email)}. The link works for ${INVITE_DAYS} days.</p>`), `${subject}\n\nViews: ${views}\nJoin: ${link}\n\nSign in with Google as ${email}. The link works for ${INVITE_DAYS} days.`).catch(() => false);
+    const sent = await mail(email, subject, emailHtml({ title: `${who} invited you to ${name}`, eyebrow: name, preheader: `You'll see ${name}'s feed as ${views}.`, body: para(`You'll see ${esc(name)}'s feed as <b style="color:#111">${esc(views)}</b>: the moves, numbers and work for your part of the business.`), cta: { href: link, label: `Join ${name}` }, after: para(`Sign in with Google as <b style="color:#111">${esc(email)}</b>. The link works for ${INVITE_DAYS} days.`, { muted: true, small: true }) }), `${subject}\n\nViews: ${views}\nJoin: ${link}\n\nSign in with Google as ${email}. The link works for ${INVITE_DAYS} days.`).catch(() => false);
     log.log?.(`[auth] ${slug}: ${by.email} invited ${email} (${seats === 'all' ? 'all' : seats.join(',')})`);
     return { ok: true, sent, link };
   }
@@ -187,10 +186,10 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
       else if (act === 'revoke') m.invites = (m.invites || []).filter((y) => y.email !== email);
     });
     if (err) return { error: err };
-    if (act === 'transfer') { const name = await brandName(slug), base = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', subject = `You're now the admin of ${name} on Brew`; mail(email, subject, wrap(subject, `<p>${esc(me.name || me.email)} handed it over to you. You can invite people, pick their views and connect accounts.</p><p style="margin:22px 0">${btn(`${base}/${slug}`, `Open ${name}`)}</p>`), subject).catch(() => {}); }
+    if (act === 'transfer') { const name = await brandName(slug), base = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', subject = `You're now the admin of ${name} on Brew`; mail(email, subject, emailHtml({ title: subject, eyebrow: name, body: para(`${esc(me.name || me.email)} handed it over to you.`) + para('You can invite people, pick their views and connect accounts.'), cta: { href: `${base}/${slug}`, label: `Open ${name}` } }), subject).catch(() => {}); }
     if (act === 'make_owner' || act === 'step_down') {
       const name = await brandName(slug), base = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', subject = act === 'make_owner' ? `You're now an admin of ${name} on Brew` : `You're no longer an admin of ${name} on Brew`;
-      if (email !== me.email) mail(email, subject, wrap(subject, `<p>${esc(me.name || me.email)} made the change. ${act === 'make_owner' ? 'You can invite people, pick their views and connect accounts.' : `Your views: ${esc(await seatWords(slug, cleanSeats(b.seats ?? [])))}.`}</p><p style="margin:22px 0">${btn(`${base}/${slug}`, `Open ${name}`)}</p>`), subject).catch(() => {});
+      if (email !== me.email) mail(email, subject, emailHtml({ title: subject, eyebrow: name, body: para(`${esc(me.name || me.email)} made the change.`) + para(act === 'make_owner' ? 'You can invite people, pick their views and connect accounts.' : `Your views: <b style="color:#111">${esc(await seatWords(slug, cleanSeats(b.seats ?? [])))}</b>.`), cta: { href: `${base}/${slug}`, label: `Open ${name}` } }), subject).catch(() => {});
     }
     return { ok: true };
   }
