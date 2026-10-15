@@ -48,7 +48,7 @@ Every feature a user can see, in plain words, with an honest status.
 | Ad and post seats near the top | Two ads or posts the brand can make, in the first screen | 🟡 Sometimes filled by two ads from the same rival |
 | Heard (listening) | What people say: themes with counts and mood, open questions with "reply as the brand" | 🟡 Review videos sometimes show as "questions" |
 | Ideas | Ready-to-post ideas per platform (Reddit, Quora, Instagram, YouTube Shorts, X, LinkedIn) with where to post | 🟡 A run can make zero ideas without saying so |
-| Stories (24 h rings) | Brand today, Trends, Popular ads, Industry news, How to | ✅ Some near-duplicates |
+| Stories (24 h rings) | Brand today, Trends, Popular ads, Industry news, How to | ✅ Keep coming without AI; no near-duplicates |
 | Watcher cards | Price and stock changes, new products, AI-answer gaps, own-ads changes, a Creative idea | 🟡 Some buttons promise Brew will "pause / restart / tell you". The best AI-gap card can be dropped. |
 | Static ads | Finished ad images made with the real product photo | ✅ Rank low in the feed |
 | Margin notes | A short note on about half the cards | ✅ |

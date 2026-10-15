@@ -97,7 +97,7 @@
 | Social seats (3 and 7) | Working | | | C §2.10 |
 | Heard (listening) | Partial | 1,207 items from 8 sources | Review videos are shown as "questions". Skipped sources are listed as failures. Listening runs 3 times a day for every brand. | C §2.11 |
 | Ideas stream | Partial | 6 ideas on Arata | The last run made 0 ideas for $0.19, and nothing flags it | C §2.12 |
-| Stories (24 h rings) | Working | | Near-duplicates; prices shown with paise | C §2.13 |
+| Stories (24 h rings) | Working | | Fixed 2026-10-16: new stories keep coming without AI (trends, news, how-to from data), near-duplicates merge, no paise, failed rings say so (test/stories-fallback.test.js) | C §2.13 |
 | Research cards | Working | | | C §2.14 |
 | Catalog watcher | Working on Shopify | | Its buttons promise actions Brew doesn't take ("we pause / restart / tell you") | C §2.15 |
 | AI-answers watcher | Partial | | **A gap card is dropped when the shopper's question contains a banned word** | C §2.16 |
