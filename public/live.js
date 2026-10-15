@@ -144,7 +144,7 @@
       const own = x.role === 'owner', none = Array.isArray(x.seats) && !x.seats.length, open = TS.open === x.email, edit = TS.edit === x.email && !own;
       /* the only admin: removing it would leave the brand with none, so the menu says so and offers the hand-over right here */
       const heirs = (ac.members || []).filter((y) => y.role !== 'owner' && !(y.via === 'Brew' && y.role === 'admin'));
-      const menu = own ? (owners.length > 1 ? `<button role="menuitem" data-top="step_down|${esc(x.email)}">${x.email === me ? 'Step down as admin' : 'Remove admin rights'}</button>`
+      const menu = own ? (owners.length > 1 ? `<button role="menuitem" data-top="step_down|${esc(x.email)}">${x.email === me ? 'Step down as admin' : 'Remove admin rights'}</button>${x.email !== me ? `<button role="menuitem" class="is-bad" data-top="remove|${esc(x.email)}">Remove from team</button>` : ''}`
         : `<p class="tm-hint">A brand always has an admin. ${heirs.length ? 'Hand it to someone, or make them admin too, then remove this one.' : 'Invite someone first, then hand it over.'}</p>${x.email === me ? heirs.map((y) => `<button role="menuitem" data-top="transfer|${esc(y.email)}">Hand admin to ${esc(y.name || y.email)}</button>`).join('') : ''}`)
         : `<button role="menuitem" data-top="make_owner|${esc(x.email)}">Make admin too</button>${iAmOwner ? `<button role="menuitem" data-top="transfer|${esc(x.email)}">Make admin instead of me</button>` : ''}<button role="menuitem" class="is-bad" data-top="remove|${esc(x.email)}">Remove from team</button>`;
       return `<li class="tm-p${edit ? ' is-edit' : ''}"><div class="tm-line">${who(x)}

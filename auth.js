@@ -183,7 +183,7 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
       if (act === 'seats') { if (!x) return void (err = 'Not on the team.'); if (x.role === 'owner') return void (err = 'Admins see every view.'); x.seats = cleanSeats(b.seats); }
       else if (act === 'make_owner') { if (!x) return void (err = 'Not on the team.'); x.role = 'owner'; x.seats = 'all'; x.ownerSince = Date.now(); x.madeOwnerBy = me.email; }
       else if (act === 'step_down') { if (!x || x.role !== 'owner') return void (err = 'Not an admin.'); if (owners(m).length < 2) return void (err = 'Make someone else admin first: a brand always has one.'); x.role = 'member'; x.seats = cleanSeats(b.seats ?? []); }
-      else if (act === 'remove') { if (!x) return; if (x.role === 'owner') return void (err = 'Step them down from admin first.'); m.members = m.members.filter((y) => y.email !== email); }
+      else if (act === 'remove') { if (!x) return; if (x.role === 'owner' && owners(m).length < 2) return void (err = 'A brand always has an admin: make someone else admin first.'); m.members = m.members.filter((y) => y.email !== email); } /* an admin removes anyone, other admins too, while one admin stays (yourself: refused by the route) */
       else if (act === 'revoke') m.invites = (m.invites || []).filter((y) => y.email !== email);
     });
     if (err) return { error: err };

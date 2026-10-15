@@ -92,10 +92,13 @@ test('changing the admin: promote, transfer, and never zero admins', async () =>
   // the old owner can no longer manage the team
   const res = resOf(); await auth.handle(reqOf('POST', { cookie: cookieFor(auth, 'ana@cozysnugglet.shop'), body: JSON.stringify({ action: 'remove', email: 'raj@gmail.com' }) }), res, new URL('http://x.test/api/brands/cozy/team'));
   assert.equal(res.code, 403);
-  // an admin can't be removed without stepping down first
+  // an admin removes another admin from the team; the brand keeps at least one admin, and nobody removes themselves
   await auth.addMember('cozy', { email: 'li@gmail.com' }, 'member', 'test', ['brand']);
   await team(auth, 'raj@gmail.com', { action: 'make_owner', email: 'li@gmail.com' });
-  r = await team(auth, 'raj@gmail.com', { action: 'remove', email: 'li@gmail.com' }); assert.match(r.error, /Step them down/);
+  r = await team(auth, 'raj@gmail.com', { action: 'remove', email: 'li@gmail.com' }); assert.equal(r.error, undefined);
+  assert.ok(!(await auth.getMembers('cozy')).members.some((x) => x.email === 'li@gmail.com'));
+  r = await team(auth, 'raj@gmail.com', { action: 'remove', email: 'raj@gmail.com' }); assert.match(r.error, /remove yourself/);
+  assert.equal((await auth.getMembers('cozy')).owner, 'raj@gmail.com');
 });
 
 test('another domain joins only by invite: asking is refused, an invite lets them in with its views', async () => {
