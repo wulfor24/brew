@@ -278,6 +278,10 @@ export function createFeedService(o) {
      seat: role, lane and the types this person picked (x0.6). affinity: hearts lift the same agent, campaign, kind and look;
      "not for me" and "fewer" push them down. fatigue: a card shown again and again without being opened sinks */
   const STREAMY = (c) => !!(c.stream || c.liveOnly || c.live || c.research || c.liveSrc || c.family === 'exception');
+  // the "rests on what the team told Brew" lift, per pack (not saved on the card): new learnings re-rank every card
+  const toldMemo = new WeakMap();
+  const toldOf = (c) => { const terms = B()?.learnedTerms; let m = toldMemo.get(terms || toldMemo); if (!m) { m = new Map(); toldMemo.set(terms || toldMemo, m); }
+    if (!m.has(c.id)) m.set(c.id, cardUsesLearned(`${c.title || ''} ${c.sub || ''} ${(c.detail?.why || []).join(' ')} ${(c.detail?.how || []).join(' ')}`, terms) ? 5 : 0); return m.get(c.id); };
   const score = (t, c, af) => {
     const v = t.viewer, R = SEED.roles[v.role] || SEED.roles.founder;
     const ageH = Math.max(0, (now(t) - c.createdAt) / H);
@@ -293,7 +297,7 @@ export function createFeedService(o) {
     const fatigue = -Math.min(4, agentShown24h(t, c.agent) * 0.08) - (!t.acted.has(c.id) ? Math.min(4, Math.max(0, seen - 2) * 1.2) : 0);
     const fb = -2 * (t.fewer[c.agent] || 0);
     // what the team told Brew comes first: cards of a move that rests on it, or that quote it themselves
-    const told = (c._told ??= cardUsesLearned(`${c.title || ''} ${c.sub || ''} ${(c.detail?.why || []).join(' ')} ${(c.detail?.how || []).join(' ')}`, B()?.learnedTerms) ? 5 : 0) || (B()?.learnedMoves?.has(moveNo(c.id)) ? 2 : 0);
+    const told = toldOf(c) || (B()?.learnedMoves?.has(moveNo(c.id)) ? 2 : 0);
     const extra = told + (t.boost[c.id] || 0) + (c.onlyWhen && connOn(t, c.onlyWhen) ? 3 : 0) + (c.live && Object.keys(c.live).some((k) => connOn(t, k)) ? 2 : 0) + (c.liveOnly ? 2 : 0);
     const total = val + seat + aff + fresh + fatigue + fb + extra;
     return { fresh, told, value: val, impact: +val.toFixed(2), impactNote: valNote, impactV: imp.v, impactPct: imp.pct, isDecision: imp.decision, affinity: +aff.toFixed(2), seat: +seat.toFixed(2), fatigue: +fatigue.toFixed(2), feedback: fb, boost: extra, total: +total.toFixed(2), seen };
@@ -378,9 +382,14 @@ export function createFeedService(o) {
       seated = new Set(soc.map((x) => x[0])); soc.forEach(([c, at]) => { const i = ranked.indexOf(c); if (i > at && at < ranked.length) [ranked[at], ranked[i]] = [ranked[i], ranked[at]]; }); } /* a swap with the card in that seat (same picture/text slot), so the 2:1 rhythm holds */
     /* an ad or a social post to make always has two seats in the first screen: the best two at 2 and 6. Moves mostly plan
        page, email and WhatsApp work, and the ranker leans to decisions, so before this the first ad card sat at 9 to 15 */
-    { const isMake = (c) => !seated.has(c) && (/carousel|collection|catalog|instagram|reel|video|image ad/.test(c?.make?.format || '') || /^(static-|statics-batch$)/.test(c?.id || '') || c?.research?.kind === 'ad');
+    /* the seats are for what the brand can make: a rival's ad is a reading, not a make card; the two come from different
+       groups (never two cards of one move or one rival), and a finished static ad, the strongest picture asset, takes one */
+    { const isMake = (c) => !seated.has(c) && c?.research?.kind !== 'ad' && (/carousel|collection|catalog|instagram|reel|video|image ad/.test(c?.make?.format || '') || /^(static-|statics-batch$)/.test(c?.id || ''));
       const off = top.length + pins.length, at = [1, 5].map((s) => Math.max(0, s - off));
-      ranked.filter(isMake).slice(0, 2).forEach((c, k) => { const i = ranked.indexOf(c); if (i > at[k] && at[k] < ranked.length && !seated.has(ranked[at[k]])) [ranked[at[k]], ranked[i]] = [ranked[i], ranked[at[k]]]; seated.add(c); }); }
+      const picks = []; for (const c of ranked.filter(isMake)) { if (picks.length >= 2) break; const g = groupOf(c); if (!g || !picks.some((x) => groupOf(x) === g)) picks.push(c); }
+      const isStatic = (c) => /^static-/.test(c?.id || ''), st = ranked.find((c) => isMake(c) && isStatic(c));
+      if (st && !picks.some(isStatic)) picks.splice(Math.min(1, picks.length), 1, st);
+      picks.forEach((c, k) => { const i = ranked.indexOf(c); if (i > at[k] && at[k] < ranked.length && !seated.has(ranked[at[k]])) [ranked[at[k]], ranked[i]] = [ranked[i], ranked[at[k]]]; seated.add(c); }); }
     /* no two cards of the same sort in a row (two AI-answer cards back to back reads as a repeat). Runs last, after the
        social seats, and swaps with the next different card of the same visual class (up to 10 ahead), so the
        picture/text rhythm and the seated social cards both stay where they are */
@@ -435,7 +444,9 @@ export function createFeedService(o) {
     return [
       { k: 'Names a number', ok: /\d/.test(main) },
       // a rival ad is quoted as it runs; the banned words apply to what the brand would say
-      { k: 'No banned words', ok: !BANNED.test(c.research?.kind === 'ad' ? [c.title, ...(c.detail?.how || [])].join(' ') : all) },
+      // a rival ad is quoted as it runs, and a shopper's question is quoted as they asked it: the banned words apply to
+      // what the brand would say ("which serum works for hair regrowth?" is the shopper's word, not a claim)
+      { k: 'No banned words', ok: !BANNED.test(c.research?.kind === 'ad' ? [c.title, ...(c.detail?.how || [])].join(' ') : c.q ? all.split(c.q).join(' ').replace(/“[^”]*(”|$)/g, ' ') : all) },
       { k: 'Claims keep “up to” and the window', ok: !claim || (/up to/i.test(claim[0]) && /\d+\s*days/i.test(claim[0])) },
       { k: 'No rival named in ad copy', ok: !(c.type === 'idea' && RIVALS.test(c.title + ' ' + c.sub)) },
       { k: 'Short title, point first', ok: String(c.title || '').length <= 76 },

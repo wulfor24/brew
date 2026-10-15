@@ -189,13 +189,16 @@ export const learnedTerms = (L, corpus = []) => {
   const common = (w) => corpus.length >= 10 && (df.get(w) || 0) / corpus.length > 0.06;
   return learnedItems(L).map((x) => telling(x.text).filter((w) => !common(w))).filter((ws) => ws.length >= 3);
 };
+// with no learnings there is nothing to rest on: "the team says" in AI-written move text is not what the team told Brew
 export function cardUsesLearned(text, terms = []) {
-  const s = String(text || ''); if (TEAM_CITE.test(s)) return true; if (!terms.length) return false;
+  const s = String(text || ''); if (!terms?.length) return false; if (TEAM_CITE.test(s)) return true;
   const have = new Set(telling(s)); return terms.some((ws) => ws.filter((w) => have.has(w)).length >= 3);
 }
 export function learnedMoveNs(moves = {}, L = null) {
   if (!learnedItems(L).length) return new Set();
-  return new Set(Object.entries(moves || {}).filter(([n, m]) => +n > 0 && m && TEAM_CITE.test(JSON.stringify([m.title, m.gives, m.sections, m.sources]))).map(([n]) => +n));
+  // only a move written after the team's words arrived can rest on them (older moves that say "the team" quote the read)
+  const since = Date.parse(L?.at || 0) || +L?.at || 0;
+  return new Set(Object.entries(moves || {}).filter(([n, m]) => +n > 0 && m && (Date.parse(m.meta?.at || 0) || 0) >= since && TEAM_CITE.test(JSON.stringify([m.title, m.gives, m.sections, m.sources]))).map(([n]) => +n));
 }
 
 /* ---------- moves: which ones the learnings change, without AI (words they share) ---------- */

@@ -76,3 +76,12 @@ test('saved PDFs heal: a missing one is drawn (a failed render is tried again), 
   assert.deepEqual(Object.keys(st.pdfs).sort(), ['1', '2']); assert.equal(st.pdfV, 2); assert.ok(st.zips?.length, 'zips rebuilt');
   assert.ok(drawn.every((k) => !/ OF \d/.test(k)), 'PDFs are drawn from the healed kicker');
 });
+
+test('the told lift needs learnings, and only moves written after them count', async () => {
+  const { cardUsesLearned, learnedMoveNs } = await import('../brand-learnings.js');
+  assert.equal(cardUsesLearned('The team says the serum sells best', []), false, 'no learnings, no lift');
+  assert.equal(cardUsesLearned('The team says the serum sells best', [['micro', 'drama', 'buckets']]), true);
+  const L = { at: '2026-10-14T10:00:00Z', goals: [{ text: 'Plan a micro-drama concept document across three age buckets' }] };
+  const moves = { 3: { title: 'Old', meta: { at: '2026-10-01T00:00:00Z' }, sections: ['the team says'] }, 4: { title: 'New', meta: { at: '2026-10-15T00:00:00Z' }, sections: ['the team says'] } };
+  assert.deepEqual([...learnedMoveNs(moves, L)], [4]);
+});

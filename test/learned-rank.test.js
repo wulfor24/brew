@@ -10,7 +10,8 @@ test('a card that shares telling words with a learning uses it; common brand wor
   assert.ok(cardUsesLearned('Set PMax to bid on new customers, retargeting split out', T));
   assert.ok(cardUsesLearned('Tamil copy for Chennai, where Curls already sells', T));
   assert.ok(!cardUsesLearned('MitoActive serum for new customers', T));
-  assert.ok(cardUsesLearned('As the team said on the call, slow down', []));
+  assert.ok(cardUsesLearned('As the team said on the call, slow down', T));
+  assert.ok(!cardUsesLearned('As the team said on the call, slow down', []), 'no learnings: "the team said" in AI text lifts nothing');
 });
 
 test('moves that quote the team are marked only when the brand has learnings', () => {
