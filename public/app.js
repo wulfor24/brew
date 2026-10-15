@@ -616,49 +616,49 @@
       ${conn(id) ? `<span class="cx-on">${ic('check', 's14')} Connected</span>` : `<button class="btn btn-primary sm" data-cx="${id}">Connect</button>`}</div>`; };
   /* the last step: invite the people you'll jam with. They get an email and see only the views you pick. Admins invite;
      a teammate sees who's already here. Nothing about anyone is typed twice: you are who you signed in as */
-  const IV = { sent: [], busy: false, rows: null };
+  const IV = { sent: [], busy: false, chips: [], seat: null, warn: false };
   const teamStep = () => {
     const ac = window.LIVE?.access, boss = ['owner', 'admin'].includes(ac?.role), team = (ac?.team || []).filter((x) => x.email !== ME()?.email);
     if (!GEN || !ME() || !ac?.role) return finishOnboarding(); /* only a brand's own team brings people in */
-    const seats = Object.entries(B.roles || {}), seat0 = seats.find(([k]) => k !== S.viewer.role)?.[0] || seats[0]?.[0];
-    if (!IV.rows?.length) IV.rows = [{ email: '', seat: seat0 }];
-    const row = (x) => `<li class="iv-p">${pAv(x, 30)}<span><b>${esc(x.name || x.email)}</b><small>${esc(x.sub || x.email)}</small></span>${x.ok ? `<em class="iv-ok">${ic('check', 's14')}${esc(x.ok)}</em>` : ''}</li>`;
-    const list = [...IV.sent.map((x) => ({ email: x.email, sub: x.warn || `Invited · ${B.roles[x.seat]?.title || x.seat}`, ok: x.warn ? '' : 'Email sent' })), ...team.map((x) => ({ ...x, sub: x.role === 'owner' ? 'Admin' : 'On the team' }))];
-    /* one row per person: their email and the view they get. Paste a list into any row and it splits into rows */
-    const ivRow = (r, i) => `<div class="iv-row${r.bad ? ' is-bad' : ''}"><input data-iv-email="${i}" type="email" value="${esc(r.email)}" placeholder="name@${esc(B.brand.host || 'brand.com')}" autocomplete="off" aria-label="Email to invite">
-      <select data-iv-seat="${i}" aria-label="What they see">${seats.map(([k, ro]) => `<option value="${k}"${k === r.seat ? ' selected' : ''}>${esc(ro.title)}</option>`).join('')}</select>
-      ${IV.rows.length > 1 ? `<button type="button" class="iv-x" data-iv-x="${i}" aria-label="Remove">${ic('x', 's14')}</button>` : ''}</div>`;
+    const seats = Object.entries(B.roles || {}); IV.seat ||= seats.find(([k]) => k !== S.viewer.role)?.[0] || seats[0]?.[0];
+    const okMail = (e) => /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(e) && e !== ME()?.email;
+    const row = (x) => `<li class="iv-p">${pAv(x, 28)}<b>${esc(x.name || x.email)}</b><small>${esc(x.tag)}</small></li>`;
+    const list = [...IV.sent.map((x) => ({ email: x.email, tag: `Invited · ${B.roles[x.seat]?.title || x.seat}` })), ...team.map((x) => ({ ...x, tag: x.role === 'owner' ? 'Admin' : 'On the team' }))];
+    /* one field for everyone: type or paste emails, each becomes a chip; one view for the batch, one Invite */
+    const chip = (e, i) => `<span class="iv-chip${okMail(e) ? '' : ' bad'}">${esc(e)}<button type="button" data-iv-x="${i}" aria-label="Remove ${esc(e)}">${ic('x', 's12')}</button></span>`;
     window.scrollTo(0, 0); root.innerHTML = shell(`
       <h1 class="ob2-h">Invite your team</h1><p class="ob2-lede">Jam on any card together. When someone tags them or needs their OK, they get an email.</p>
-      ${boss ? `<form class="iv-form" id="iv-f" novalidate><div class="iv-rows${IV.rows.length > 1 ? ' many' : ''}">${IV.rows.map(ivRow).join('')}</div>
-        <div class="iv-act"><button type="button" class="iv-add" id="iv-add">${ic('plus', 's14')}Add another</button><button class="btn btn-primary" id="iv-go">Send ${IV.rows.length > 1 ? 'invites' : 'invite'}</button></div></form>
-        <p class="iv-msg" id="iv-msg" role="status" hidden></p>`
+      ${boss ? `<form class="iv-form" id="iv-f" novalidate>
+        <label class="iv-box" for="iv-email">${IV.chips.map(chip).join('')}<input id="iv-email" type="email" placeholder="${IV.chips.length ? 'Add another' : `name@${esc(B.brand.host || 'brand.com')}, name2@…`}" autocomplete="off" aria-label="Emails to invite"></label>
+        <div class="iv-act"><label class="iv-seat">They see <select id="iv-seat" aria-label="What they see">${seats.map(([k, r]) => `<option value="${k}"${k === IV.seat ? ' selected' : ''}>${esc(r.title)}</option>`).join('')}</select></label>
+          <button class="btn btn-primary" id="iv-go">Invite${IV.chips.length > 1 ? ` ${IV.chips.length}` : ''}</button></div></form>
+        <p class="iv-msg" id="iv-msg" role="status"${IV.warn ? ' data-kind="warn"' : ' hidden'}>${IV.warn ? 'Invites saved, but the emails didn’t send. Copy the links from Team and access.' : ''}</p>`
       : `<p class="iv-note">${ic('person', 's14')}Only an admin invites people. Ask ${esc(team.find((x) => x.role === 'owner')?.name || 'your admin')} to add anyone missing.</p>`}
       ${list.length ? `<ul class="iv-list">${list.map(row).join('')}</ul>` : ''}
       ${obNav(IV.sent.length || team.length ? 'Open my feed' : 'Skip for now', true)}`, 4);
     obPreview();
     const f = $('#iv-f');
     if (f) { const msg = (kind, t) => { const el = $('#iv-msg'); el.hidden = !t; el.dataset.kind = kind; el.textContent = t || ''; };
-      const redraw = (focus) => { teamStep(); if (focus != null) setTimeout(() => $(`[data-iv-email="${focus}"]`)?.focus(), 30); };
-      $$('[data-iv-email]').forEach((el) => { el.oninput = () => { IV.rows[+el.dataset.ivEmail].email = el.value; };
-        el.onpaste = (e) => { const got = (e.clipboardData?.getData('text') || '').split(/[\s,;]+/).filter((x) => x.includes('@')); if (got.length < 2) return; e.preventDefault();
-          const i = +el.dataset.ivEmail, seat = IV.rows[i].seat; IV.rows.splice(i, 1, ...got.map((email) => ({ email, seat }))); redraw(); }; });
-      $$('[data-iv-seat]').forEach((el) => { el.onchange = () => { IV.rows[+el.dataset.ivSeat].seat = el.value; }; });
-      $$('[data-iv-x]').forEach((el) => { el.onclick = () => { IV.rows.splice(+el.dataset.ivX, 1); redraw(); }; });
-      $('#iv-add').onclick = () => { IV.rows.push({ email: '', seat: IV.rows.at(-1)?.seat || seat0 }); redraw(IV.rows.length - 1); };
-      f.onsubmit = async (e) => { e.preventDefault(); if (IV.busy) return;
-        const rows = IV.rows.map((r) => ({ ...r, email: r.email.trim().toLowerCase(), bad: false })).filter((r) => r.email);
-        if (!rows.length) { msg('bad', 'Add an email to invite.'); return $('[data-iv-email]')?.focus(); }
-        rows.forEach((r) => { r.bad = !/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(r.email) || r.email === ME()?.email; });
-        if (rows.some((r) => r.bad)) { IV.rows = rows; redraw(); return msg('bad', rows.some((r) => r.email === ME()?.email) ? 'One of those is you. You’re already on the team.' : 'Check the emails marked in red.'); }
-        IV.busy = true; $('#iv-go').disabled = true; $('#iv-go').textContent = 'Sending…';
+      const inp = $('#iv-email'), redraw = () => { teamStep(); setTimeout(() => $('#iv-email')?.focus(), 20); };
+      const take = (text) => { const got = String(text).split(/[\s,;]+/).map((x) => x.trim().toLowerCase()).filter(Boolean); if (!got.length) return false;
+        IV.chips = [...new Set([...IV.chips, ...got])]; return true; };
+      inp.onkeydown = (e) => { if ([',', ';', ' ', 'Enter', 'Tab'].includes(e.key) && inp.value.trim()) { if (e.key === 'Tab') return; e.preventDefault(); take(inp.value); redraw(); }
+        else if (e.key === 'Backspace' && !inp.value && IV.chips.length) { IV.chips.pop(); redraw(); } };
+      inp.onpaste = (e) => { const t = e.clipboardData?.getData('text') || ''; if (!/[\s,;]/.test(t.trim())) return; e.preventDefault(); take(inp.value + ' ' + t); redraw(); };
+      $$('[data-iv-x]').forEach((el) => { el.onclick = (e) => { e.preventDefault(); IV.chips.splice(+el.dataset.ivX, 1); redraw(); }; });
+      $('#iv-seat').onchange = (e) => { IV.seat = e.target.value; };
+      f.onsubmit = async (e) => { e.preventDefault(); if (IV.busy) return; IV.busy = true; take(inp.value); inp.value = '';
+        const todo = IV.chips.slice();
+        if (!todo.length) { IV.busy = false; msg('bad', 'Add an email to invite.'); return inp.focus(); }
+        if (todo.some((x) => !okMail(x))) { IV.busy = false; teamStep(); return msg('bad', todo.includes(ME()?.email) ? 'One of those is you. You’re already on the team.' : 'Fix or remove the emails in red.'); }
+        $('#iv-go').disabled = true; $('#iv-go').textContent = 'Sending…';
         const left = []; let err = '';
-        for (const r of rows) { const res = await api(`/api/brands/${B.slug || BR}/team`, { action: 'invite', email: r.email, seats: [r.seat] });
-          if (res.error) { left.push({ ...r, bad: true }); err = res.error; continue; }
-          if (res.members && window.LIVE) window.LIVE.access = { ...window.LIVE.access, ...res };
-          IV.sent = [{ email: r.email, seat: r.seat, warn: res.warn ? 'Saved. The email didn’t send: copy the invite link from Team and access.' : null }, ...IV.sent.filter((x) => x.email !== r.email)]; }
-        IV.busy = false; IV.rows = left.length ? left : [{ email: '', seat: rows.at(-1).seat }];
-        redraw(0); if (err) setTimeout(() => msg('bad', left.length === rows.length ? err : `${rows.length - left.length} sent. ${err}`), 40); }; }
+        for (const email of todo) { const r = await api(`/api/brands/${B.slug || BR}/team`, { action: 'invite', email, seats: [IV.seat] });
+          if (r.error) { left.push(email); err = r.error; continue; }
+          if (r.members && window.LIVE) window.LIVE.access = { ...window.LIVE.access, ...r };
+          if (r.warn) IV.warn = true;
+          IV.sent = [{ email, seat: IV.seat }, ...IV.sent.filter((x) => x.email !== email)]; }
+        IV.busy = false; IV.chips = left; redraw(); if (err) msg('bad', err); }; }
     $('#ob-back').onclick = connectWhat; $('#ob-next').onclick = finishOnboarding;
   };
   const finishOnboarding = () => {
