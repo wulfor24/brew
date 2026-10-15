@@ -589,7 +589,7 @@ BREW DEPLOYMENT TEAM × ARATA · ARATA PRICE LADDER AND SUBSCRIPTION            
 
 
 30-DAY DEPLOYMENT
- WEEK BREW SHIPS                                                           ARATA PROVIDES                   LIVE BY END OF WEEK
+ WEEK BREW DRAFTS                                                           ARATA PROVIDES                   LIVE BY END OF WEEK
 
  1         Pricing instrumentation on Shopify: single-to-pack                Shopify and WhatsApp             Baselines captured.
            ratio, repeat-within-45-days, blended discount rate,              access, landed cost per SKU,     Negative-discount

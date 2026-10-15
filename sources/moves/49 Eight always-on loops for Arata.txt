@@ -752,7 +752,7 @@ EXAMPLE 5: THE MONDAY DIGEST, FILLED
 
 
 30-DAY DEPLOYMENT
- WEEK      WHAT BREW SHIPS                             WHAT ARATA PROVIDES           LIVE BY END OF WEEK
+ WEEK      WHAT BREW DRAFTS                             WHAT ARATA PROVIDES           LIVE BY END OF WEEK
 
  Week Tracking QA on arata.in (purchase,                 Read access to Shopify,       Tracking QA weekly; first Monday digest,
  1    add-to-cart, pixel, CAPI, UTMs);                   GA4, Meta Ads Manager,        "stale" where a source is not yet
@@ -771,7 +771,7 @@ EXAMPLE 5: THE MONDAY DIGEST, FILLED
 
 
 BREW DEPLOYMENT TEAM × ARATA · EIGHT ALWAYS-ON LOOPS FOR ARATA                                                                  14
- WEEK      WHAT BREW SHIPS                             WHAT ARATA PROVIDES                LIVE BY END OF WEEK
+ WEEK      WHAT BREW DRAFTS                             WHAT ARATA PROVIDES                LIVE BY END OF WEEK
 
  Week Reorder loop live with human-                      Channel price list per             Reorder nudges sending; marketplace
  3    approved daily batches and a                       platform; quick-commerce           alerts daily; first claim corrections staged

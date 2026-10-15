@@ -3892,7 +3892,7 @@
   const lxTools = (kind, id) => `<span class="lx-tools"><button class="linkbtn" data-lx-edit="${kind}:${id}">Edit</button><button class="linkbtn" data-lx-forget="${kind}:${id}">Forget</button></span>`;
   const lxHead = (id, h, n, hint) => `<header class="lx-h" id="${id}"><h3>${h}${n !== '' ? `<em>${n}</em>` : ''}</h3>${hint ? `<p>${hint}</p>` : ''}</header>`;
   const lxMeter = (n, of) => `<span class="lx-meter" aria-label="${n} of ${of}">${Array.from({ length: of }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</span>`;
-  const lxBuildLine = (st) => { const n = Math.max(0, Math.min(51, +st.movesDone || 0)); return /\bmoves?\b/i.test(st.state || '') ? String(st.state) : `Writing the moves: ${n} of 51`; };
+  const lxBuildLine = (st) => { const N = +st.total || 50, n = Math.max(0, Math.min(N, +st.movesDone || 0)); return /\bmoves?\b/i.test(st.state || '') ? String(st.state) : `Writing the moves: ${n} of ${N}`; };
   const lxBuild = (st) => { const n = Math.max(0, Math.min(51, +st.movesDone || 0)); return `<small class="lx-build" data-lx-build>${esc(lxBuildLine(st))}</small><i class="lx-bar" aria-hidden="true"><b style="width:${Math.round((n / 51) * 100)}%"></b></i>`; };
   const lxBuildPoll = async () => { if (view !== 'learned' || !$('[data-lx-build]')) return; const st = await api(`/api/brands/${mvSlug()}/status`); if (view !== 'learned' || !st || st.error) return;
     if (st.done) return renderLearned(); const el = $('[data-lx-build]'); if (!el) return; el.textContent = lxBuildLine(st); const bar = $('.lx-bar b'); if (bar) bar.style.width = `${Math.round((Math.min(51, +st.movesDone || 0) / 51) * 100)}%`; lxBuild.t = setTimeout(lxBuildPoll, 15e3); };

@@ -609,7 +609,7 @@ become the Q2 creative.
 
 30-DAY DEPLOYMENT
 Day 1 is Monday 12 October 2026. Day 30 is 10 November, two days after Diwali.
- WEEK            BREW SHIPS                                          ARATA PROVIDES                  LIVE BY END OF WEEK
+ WEEK            BREW DRAFTS                                          ARATA PROVIDES                  LIVE BY END OF WEEK
 
  Week 1          Baseline reconciled across Shopify, marketplaces      Platform access; 12 months      Baseline agreed in
  (12 to 18       and QC; tracking rebuilt (purchase, new vs            of orders by channel; current   writing; scoreboard

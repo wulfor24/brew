@@ -638,7 +638,7 @@ BREW DEPLOYMENT TEAM × ARATA · INGREDIENT, CONCERN AND CITY PAGES AT SCALE    
 
 
 30-DAY DEPLOYMENT
- WEEK BREW SHIPS                                                              ARATA PROVIDES                 LIVE BY END OF WEEK
+ WEEK BREW DRAFTS                                                              ARATA PROVIDES                 LIVE BY END OF WEEK
 
  1         Keyword validation (Keyword Planner + Search Console                 Shopify collaborator access;   Definitions and sheet;
            pull for all 160 target queries); master data sheet with             Loox export; order export      nothing public

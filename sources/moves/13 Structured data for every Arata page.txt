@@ -676,7 +676,7 @@ prices on the collection page creates a second copy of every offer and invites m
 
 
 30-DAY DEPLOYMENT
- WEEK BREW SHIPS                                                      ARATA PROVIDES                           LIVE BY END OF WEEK
+ WEEK BREW DRAFTS                                                      ARATA PROVIDES                           LIVE BY END OF WEEK
 
  1           Full crawl of arata.in with the Rich Results Test          Theme access, Loox admin                 Current-state report;
              and Schema.org validator; current-state report             access, confirmed brand                  foundation graph and

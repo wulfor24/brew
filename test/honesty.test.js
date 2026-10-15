@@ -73,7 +73,7 @@ test('PDFs are drawn on download: once per move version (a failed render is trie
   const b = createBuilder({ ROOT, packs: P, ai: { onCharge() {} }, treg: { onCharge() {} }, log: quiet, modules: { reader: null, brief: null, moves: null, pdf } });
   await b.healPdfs(slug);
   let st = await P.getJSON(slug, 'status.json');
-  assert.deepEqual(st.pdfs, {}, 'a rule change forgets the saved PDFs instead of drawing them all'); assert.equal(st.pdfV, 2); assert.deepEqual(drawn, []);
+  assert.deepEqual(st.pdfs, {}, 'a rule change forgets the saved PDFs instead of drawing them all'); assert.equal(st.pdfV, 3); assert.deepEqual(drawn, []);
   const r = await b.pdfOn(slug, 2); assert.equal(r.name, '2 Two.pdf'); assert.ok(r.buf?.length);
   assert.deepEqual(drawn, [2], 'drawn on its first download, after one retry');
   await b.pdfOn(slug, 2); assert.deepEqual(drawn, [2], 'the second download is served from the pack');
@@ -99,4 +99,18 @@ test('card pages and the studio get passages from generated moves (blocks, not p
   const out = runIn({ moveDocs, labels: {} }, () => MV.passages({ src: 'Move 07', title: 'Fix the serum pack price', sub: 'Pack prices and single bottle prices' }));
   assert.ok(out.length >= 1 && /pack/.test(out[0].text));
   assert.equal(runIn({ moveDocs, labels: {} }, () => MV.summary(7)).why, 'Why it matters.');
+});
+
+test('outbound fetches reach only the public internet: private, loopback, metadata and file addresses are refused', async () => {
+  const { privateIp, publicUrl } = await import('../reader/util.js');
+  for (const ip of ['10.1.2.3', '127.0.0.1', '169.254.169.254', '172.20.0.1', '192.168.1.1', '100.64.0.1', '0.0.0.0', '::1', 'fc00::1', 'fe80::1', '::ffff:10.0.0.1']) assert.ok(privateIp(ip), ip);
+  for (const ip of ['8.8.8.8', '151.101.1.1', '2606:4700::1111']) assert.ok(!privateIp(ip), ip);
+  for (const u of ['http://169.254.169.254/computeMetadata/v1/', 'http://localhost:4200/', 'http://metadata.google.internal/', 'file:///etc/passwd', 'http://[::1]/', 'http://10.0.0.1/']) await assert.rejects(() => publicUrl(u), u);
+});
+
+test('old move text reads honestly: no Brew re-reads, watches, ships, or we pause/revert; the index title has no drifting count', async () => {
+  const { brewText } = await import('../brew-name.js');
+  const out = brewText('Sixty-four moves for Arata. Between checks, Brew re-reads listen.x. Brew watches the CPA. We pause it if CPA rises, then we revert. Brew ships it.');
+  assert.doesNotMatch(out, /Brew re-reads|Brew watches|Brew ships|\bwe (pause|revert)\b|\bWe (pause|revert)\b|Sixty-four/);
+  assert.match(out, /^The moves for Arata\./); assert.match(out, /The team ships it\.$/);
 });

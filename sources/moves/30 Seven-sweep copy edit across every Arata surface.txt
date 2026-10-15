@@ -722,7 +722,7 @@ Average 8.3. Publish-ready once the [NEED] markers are filled by the Arata lab.
 
 30-DAY DEPLOYMENT
                                                                                                      OWNER        OWNER
- WEEK BREW SHIPS                                                      ARATA PROVIDES               (BREW)     (ARATA)
+ WEEK BREW DRAFTS                                                      ARATA PROVIDES               (BREW)     (ARATA)
 
  1         Claims sheet v1 for eight hero SKUs (badge,                  Study designs and             Copy lead   Brand
            headline, proof line, canonical name and size).              participant counts for                    manager,
@@ -740,7 +740,7 @@ Average 8.3. Publish-ready once the [NEED] markers are filled by the Arata lab.
 
 BREW DEPLOYMENT TEAM × ARATA · SEVEN-SWEEP COPY EDIT ACROSS EVERY ARATA SURFACE                                             14
                                                                                                         OWNER           OWNER
- WEEK BREW SHIPS                                                      ARATA PROVIDES                  (BREW)        (ARATA)
+ WEEK BREW DRAFTS                                                      ARATA PROVIDES                  (BREW)        (ARATA)
 
  3         Marketplace titles and first bullets for Amazon,             Seller Central, Nykaa and       Marketplace     Marketplace
            Nykaa, Flipkart on eight SKUs. Quick-commerce                Flipkart vendor access, or      copy lead       manager

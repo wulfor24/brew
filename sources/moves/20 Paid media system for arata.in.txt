@@ -709,7 +709,7 @@ The H1 is left blank until the Meta test picks a winning headline, then it mirro
 
 
 BREW DEPLOYMENT TEAM × ARATA · PAID MEDIA SYSTEM FOR ARATA.IN                                         14
- WEEK BREW SHIPS                                                 ARATA PROVIDES              LIVE BY END OF WEEK
+ WEEK BREW DRAFTS                                                 ARATA PROVIDES              LIVE BY END OF WEEK
 
  1         Tracking rebuild (Meta CAPI via Shopify with            Ad account and Business     Tracking verified on a real test
            event dedup, Google Enhanced Conversions, GA4           Manager admin access,       order. Brand and Non-brand

@@ -2,6 +2,7 @@
 // core "Know the brand" set first), turns each move into feed cards as it lands, and renders the Brew PDFs.
 // Every stage writes to the brand pack (brand-pack.js) and to status.json, so a restart resumes where it was.
 // Events are kept per brand and replayed, so the onboarding screen and anyone opening later see the same read.
+import { safeFetch } from './reader/util.js'; // user-pasted links reach only the public internet
 import { adCall } from './reader/adlib.js';
 import { ADS_V } from './reader/stages/ads.js';
 import { wiping } from './retire.js';
@@ -522,22 +523,22 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   async function readProduct(slug, url, p) {
     const u = String(url).split('?')[0].replace(/\/$/, '');
     let t = null, price = null, img = null, cur = p.currency;
-    try { const r = await fetch(u + '.js', { headers: UA, signal: AbortSignal.timeout(20e3) }); if (r.ok) { const j = await r.json(); t = j.title; price = (j.price || 0) / 100; img = j.featured_image || j.images?.[0]; } } catch {}
-    if (!t) { const r = await fetch(u, { headers: UA, signal: AbortSignal.timeout(25e3) }); const h = await r.text();
+    try { const r = await safeFetch(u + '.js', { headers: UA, signal: AbortSignal.timeout(20e3) }); if (r.ok) { const j = await r.json(); t = j.title; price = (j.price || 0) / 100; img = j.featured_image || j.images?.[0]; } } catch {}
+    if (!t) { const r = await safeFetch(u, { headers: UA, signal: AbortSignal.timeout(25e3) }); const h = await r.text();
       for (const m of h.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) { try { const j = [].concat(JSON.parse(m[1])).flatMap((x) => x['@graph'] || [x]).find((x) => String(x['@type']).includes('Product')); if (j) { t = j.name; const o = [].concat(j.offers || [])[0] || {}; price = +o.price || +o.lowPrice || null; cur = o.priceCurrency || cur; img = [].concat(j.image || [])[0]; break; } } catch {} }
       t ||= (h.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)/i) || [])[1]; img ||= (h.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)/i) || [])[1]; }
     if (!t) throw new Error('That page did not show a product.');
     if (img && img.startsWith('//')) img = 'https:' + img;
-    let asset = null; if (img) try { const r = await fetch(img, { headers: UA, signal: AbortSignal.timeout(20e3) }); if (r.ok) { const b = Buffer.from(await r.arrayBuffer()); const n = 'added-' + u.split('/').pop().replace(/[^a-z0-9-]/gi, '').slice(0, 40) + (img.includes('.png') ? '.png' : '.jpg'); await packs.put(slug, 'assets/' + n, b); asset = `/b/${slug}/a/${n}`; } } catch {}
+    let asset = null; if (img) try { const r = await safeFetch(img, { headers: UA, signal: AbortSignal.timeout(20e3) }); if (r.ok) { const b = Buffer.from(await r.arrayBuffer()); const n = 'added-' + u.split('/').pop().replace(/[^a-z0-9-]/gi, '').slice(0, 40) + (img.includes('.png') ? '.png' : '.jpg'); await packs.put(slug, 'assets/' + n, b); asset = `/b/${slug}/a/${n}`; } } catch {}
     return { handle: u.split('/').pop(), title: String(t).trim(), price, currency: cur, img: asset, images: asset ? [asset] : [], url: u, inStock: true, addedByBrand: true, claims: [] };
   }
   // a rival's website → name, logo, a few live prices (Shopify), and its live ads by domain
   async function readRival(url, p) {
     const host = hostOf(url); if (!host) throw new Error('That doesn’t look like a website.');
-    const r = await fetch(`https://${host}/`, { headers: UA, signal: AbortSignal.timeout(25e3) }); const h = await r.text();
+    const r = await safeFetch(`https://${host}/`, { headers: UA, signal: AbortSignal.timeout(25e3) }); const h = await r.text();
     const name = ((h.match(/<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)/i) || [])[1] || (h.match(/<title>([^<|–-]+)/i) || [])[1] || host).trim().slice(0, 40);
     const prices = [];
-    try { const j = await (await fetch(`https://${host}/products.json?limit=12${p.country ? `&country=${p.country}` : ''}`, { headers: UA, signal: AbortSignal.timeout(20e3) })).json(); (j.products || []).filter((x) => !NOT_PRODUCT.test(x.title)).slice(0, 6).forEach((x) => { const v = x.variants?.[0]; if (v?.price) prices.push({ title: x.title, price: +v.price, currency: p.currency, url: `https://${host}/products/${x.handle}` }); }); } catch {}
+    try { const j = await (await safeFetch(`https://${host}/products.json?limit=12${p.country ? `&country=${p.country}` : ''}`, { headers: UA, signal: AbortSignal.timeout(20e3) })).json(); (j.products || []).filter((x) => !NOT_PRODUCT.test(x.title)).slice(0, 6).forEach((x) => { const v = x.variants?.[0]; if (v?.price) prices.push({ title: x.title, price: +v.price, currency: p.currency, url: `https://${host}/products/${x.handle}` }); }); } catch {}
     let live = null; try { const k = await adCall(treg, 'scrapecreators.x.v1-facebook-adlibrary-search-ads', { query: { query: host, country: p.country || 'ALL', status: 'ACTIVE', trim: true }, tag: 'check-rival-ads' }); live = (k?.searchResults || []).filter((a) => String(a.snapshot?.link_url || '').includes(host)).length; } catch {}
     return { name, host, url: `https://${host}`, why: 'Named by the brand', how: 'named by the brand, site read live', prices, claims: [], offers: [], liveAds: live };
   }
@@ -905,7 +906,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
      A marker in the pack (private/ops-fresh.json) makes it run once and carry on across restarts */
   async function freshReload(slug) {
     if (blocked(slug) || !(await status(slug))) return;
-    let mk = await packs.getJSON(slug, 'private/ops-fresh.json', null); if (mk?.phase === 'done') return;
+    let mk = await packs.getJSON(slug, 'private/ops-fresh.json', null); if (mk?.phase === 'done' || mk?.phase === 'stalled') return; /* a stalled run waits for a person: it never starts another paid pass at boot */
     if (!mk) { mk = { startedAt: Date.now(), phase: 'build' }; await packs.put(slug, 'private/ops-fresh.json', mk);
       await editUpd(slug, (u) => { u.stale = {}; delete u.queue; delete u.queueDay; });
       const L = await packs.getJSON(slug, 'learned.json', null); if (L && (L.pendingFull || L.draft)) { delete L.pendingFull; delete L.draft; await packs.put(slug, 'learned.json', L); }
@@ -913,7 +914,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       log.log(`[ops] ${slug}: fresh reload started`); }
     const tick = async () => {
       const x = st(slug), s1 = await status(slug); mk = await packs.getJSON(slug, 'private/ops-fresh.json', mk);
-      if (mk.phase === 'done' || blocked(slug) || s1?.cancelled) return;
+      if (mk.phase === 'done' || mk.phase === 'stalled' || blocked(slug) || s1?.cancelled) return;
       if (x.running) return setTimeout(tick, 60e3).unref?.();
       if (!s1?.done) { if (s1?.capped || s1?.pausedDay) await setStatus(slug, { capped: false, pausedDay: null }); log.log(`[ops] ${slug}: writing the missing moves`); resume(slug).catch((e) => log.error('[ops] resume', e.message)); return setTimeout(tick, 120e3).unref?.(); }
       const moves = await packs.getJSON(slug, 'moves.json', {}), t0 = mk.startedAt;
@@ -938,7 +939,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     for (const x of await packs.list()) { if (!x.status.done && !x.status.error && !x.status.capped) resume(x.slug).catch((e) => log.error('[build] resume', x.slug, e.message)); else { if (x.status.done) { rebase(x.slug).catch((e) => log.warn('[build] rebase', x.slug, e.message)); healPdfs(x.slug); healCount(x.slug).catch((e) => log.warn('[build] count', x.slug, e.message)); } resumeRewrite(x.slug).catch((e) => log.warn('[rewrite] resume', x.slug, e.message)); } } }
   /* Saved PDFs heal: when the PDF text rules change (PDF_V) the saved PDFs are forgotten and each is drawn again on its next
      download (pdfOn); entries for moves that no longer exist leave status.pdfs. Nothing is drawn ahead of time. */
-  const PDF_V = 2; // 2: kickers without "OF N", "What to watch", BREW DRAFTS (2026-10-15)
+  const PDF_V = 3; // 2: kickers without "OF N", "What to watch", BREW DRAFTS; 3: no "Brew re-reads / we pause", index without a count (2026-10-15)
   let pdfHealQ = Promise.resolve();
   const healPdfs = (slug) => (pdfHealQ = pdfHealQ.catch(() => {}).then(async () => {
     if (blocked(slug) || process.env.PDF_HEAL_OFF === '1') return;

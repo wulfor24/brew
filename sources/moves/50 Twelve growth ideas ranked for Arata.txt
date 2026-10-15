@@ -628,7 +628,7 @@ requests for patient samples. Send the other 40 only if at least 3 of 10 reply.
 
 
 30-DAY DEPLOYMENT
- WEEK BREW SHIPS                                            ARATA PROVIDES                           LIVE BY END OF WEEK
+ WEEK BREW DRAFTS                                            ARATA PROVIDES                           LIVE BY END OF WEEK
 
  1        Hair Fall Score quiz: question logic,               Brand manager signs off routines and     Founder welcome email live
           scoring, six routine mappings, result page          prices. Lab validates the scoring        for all first orders. Review

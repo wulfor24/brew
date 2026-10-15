@@ -666,7 +666,7 @@ free shipping above ₹299), and this document's monthly readout.
 
 30-DAY DEPLOYMENT
                                                                                                               LIVE BY END OF
- WEEK BREW SHIPS                                                  ARATA PROVIDES                            WEEK
+ WEEK BREW DRAFTS                                                  ARATA PROVIDES                            WEEK
 
  1        Weekly order ledger (channel × city × week, 8             Shopify export, Amazon/Nykaa/Flipkart     One ledger page;
           weeks back) built from exports; referral                  seller reports, Blinkit/Zepto/Instamart   clean first-touch on

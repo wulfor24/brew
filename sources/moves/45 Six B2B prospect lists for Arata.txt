@@ -670,7 +670,7 @@ to Tier 3.
 
 
 30-DAY DEPLOYMENT
- WEEK     BREW SHIPS                                              ARATA PROVIDES                     LIVE BY END OF WEEK
+ WEEK     BREW DRAFTS                                              ARATA PROVIDES                     LIVE BY END OF WEEK
 
  Week Six ICP cards and checklists signed off. Order-file           Shopify order export, B2B          300 to 600 pre-warmed
  1    mining script run on 12 months of D2C and B2B                 invoice list with business         accounts from Arata's own data

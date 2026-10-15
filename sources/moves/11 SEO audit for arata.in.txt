@@ -648,7 +648,7 @@ buy, a 28-day check. 900 to 1,200 words, three internal links, published Thursda
 
 
 30-DAY DEPLOYMENT
- WEEK BREW SHIPS                                                    ARATA PROVIDES                    LIVE BY END OF WEEK
+ WEEK BREW DRAFTS                                                    ARATA PROVIDES                    LIVE BY END OF WEEK
 
  1         Full JS-rendered crawl, PageSpeed on five                  Search Console, GA4 and           Baseline recorded;
            templates, rendered schema check, backlink export,         Shopify admin access;             findings doc approved;
@@ -666,7 +666,7 @@ buy, a 28-day check. 900 to 1,200 words, three internal links, published Thursda
 
 
 BREW DEPLOYMENT TEAM × ARATA · SEO AUDIT FOR ARATA.IN                                                                            13
- WEEK BREW SHIPS                                                    ARATA PROVIDES                    LIVE BY END OF WEEK
+ WEEK BREW DRAFTS                                                    ARATA PROVIDES                    LIVE BY END OF WEEK
 
  3         On-page rewrite of 14 money pages (titles, meta,           Study summaries for the 7.4X,     All 14 money pages live
            H1/H2, first 100 words, FAQ blocks, verbatim               28,200, 95%, 86%, 87% claims      with new titles; Rich

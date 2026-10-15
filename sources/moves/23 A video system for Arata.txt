@@ -631,7 +631,7 @@ Inputs per render: num , sub , foot , canvas size. One file, every claim, every 
 
 30-DAY DEPLOYMENT
                                                                                                           LIVE BY END OF
- WEEK BREW SHIPS                                          ARATA PROVIDES                                WEEK
+ WEEK BREW DRAFTS                                          ARATA PROVIDES                                WEEK
 
  1         Surface audit confirmed; shot list signed off;   Access to the Delhi lab for one day; packs Shot list and claim
            six customers recruited from Loox and Nykaa      of all hero SKUs including legacy variants; footnotes approved;
@@ -645,7 +645,7 @@ Inputs per render: num , sub , foot , canvas size. One file, every claim, every 
 
 BREW DEPLOYMENT TEAM × ARATA · A VIDEO SYSTEM FOR ARATA                                                                     12
                                                                                                               LIVE BY END OF
- WEEK BREW SHIPS                                                ARATA PROVIDES                              WEEK
+ WEEK BREW DRAFTS                                                ARATA PROVIDES                              WEEK
 
  2         Master shoot day (lab, studio, metro location);        Brand font files and colour tokens for      Library of ~120
            asset library tagged by SKU and claim;                 current and rebrand looks; legal sign-off   clips; PDP video for

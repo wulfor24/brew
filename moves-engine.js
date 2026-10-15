@@ -581,14 +581,14 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
       ...[0, 1, 2, 3].map((r) => GROUPS.map((_, i) => `│ ${box(i, r)} │`).join(r === 1 ? '─>' : '  ')), GROUPS.map(() => '└' + '─'.repeat(W + 2) + '┘').join('  '),
       GROUPS.map((_, i) => `${counts[i]} moves`.padEnd(W + 4)).join(' ')].join('\n');
     const sections = [
-      { h: 'What this is', kind: 'other', blocks: [p(`${cap1(Nw)} working documents from the Brew deployment team, one per marketing discipline or signal, every one built on ${name}'s real catalogue, prices, claims, customers, competitors and what people say about it. New moves are added as Brew hears new things. Read this index, then open the move you want to see.`)] },
+      { h: 'What this is', kind: 'other', blocks: [p(`Working documents from the Brew deployment team, one per marketing discipline or signal, every one built on ${name}'s real catalogue, prices, claims, customers, competitors and what people say about it. New moves are added as Brew hears new things. Read this index, then open the move you want to see.`)] },
       { h: 'How to read it', kind: 'other', blocks: [p(`The six groups follow a customer from first search to repeat order. Each document ends with a 30-day deployment table and the metric we are held to.`)] },
       { h: 'The end to end', kind: 'other', blocks: [{ ...p(''), t: 'diagram', text: diagram }, ...(ov ? [p(ov.thread), p(ov.today)] : [])] },
       ...GROUPS.map(([g, h, sub], gi) => ({ h, kind: 'other', blocks: [p(`**${sub} · ${counts[gi]} MOVES**`), { ...p(''), t: 'table', head: ['#', 'MOVE', 'WHAT IT GIVES', 'STAT'],
         rows: list.filter((x) => x.s.group === g).map((x) => x.m ? [pad(x.s.n), x.m.title, x.m.gives, `${x.m.stat} · ${x.m.statLabel}`] : [pad(x.s.n), `${x.s.discipline} (in progress)`, 'Being written.', '']) }] })),
       { h: 'What is live', kind: 'other', blocks: [{ ...p(''), t: 'callout', title: 'DAY 30', text: ov?.live || `The first ten moves are live for ${name}.` }] }];
     const done = list.filter((x) => x.m).length;
-    return { n: 0, group: 'index', skill: null, kicker: 'THE PLAYBOOK · INDEX', title: `${cap1(Nw)} moves for ${name}`, stat: String(N), statLabel: 'MOVES, ONE BRAND',
+    return { n: 0, group: 'index', skill: null, kicker: 'THE PLAYBOOK · INDEX', title: `The moves for ${name}`, stat: String(done), statLabel: `MOVES WRITTEN BY ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }).toUpperCase()}`, /* no count in the title: the playbook keeps growing (listening, festival and weekly moves) */
       gives: `Every marketing discipline, run for ${name}, end to end, by one team.`, live: ov?.live || '', sections, sources: [], factsUsed: [], toConfirm: [],
       meta: { model: ov ? 'claude-opus-5-5' : 'deterministic', at: new Date().toISOString(), provisional: done < N, written: done, total: N, verified: false, issues: [] } };
   }

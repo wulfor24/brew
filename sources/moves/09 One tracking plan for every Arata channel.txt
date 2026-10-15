@@ -720,7 +720,7 @@ Run on Chrome desktop, Chrome Android and Safari iOS, with GA4 DebugView open an
 
 
 30-DAY DEPLOYMENT
- WEEK BREW SHIPS                                                                           ARATA PROVIDES                                     LIVE BY END OF WEEK
+ WEEK BREW DRAFTS                                                                           ARATA PROVIDES                                     LIVE BY END OF WEEK
 
  1      Tag audit of current theme, apps and GA4 property; duplicate-purchase                Shopify collaborator access, GA4 and Google        Owner: Brew analytics lead with
         check; new GTM container; GA4 settings (INR, retention 14 months,                    Ads admin, Meta Business admin, list of HQ and     Arata brand manager. Clean GA4
@@ -736,7 +736,7 @@ Run on Chrome desktop, Chrome Android and Safari iOS, with GA4 DebugView open an
 
 
 BREW DEPLOYMENT TEAM × ARATA · ONE TRACKING PLAN FOR EVERY ARATA CHANNEL                                                                                                                9
-WEEK BREW SHIPS                                                                 ARATA PROVIDES                                    LIVE BY END OF WEEK
+WEEK BREW DRAFTS                                                                 ARATA PROVIDES                                    LIVE BY END OF WEEK
 
 3        Refund sync via Shopify webhook to Measurement Protocol; Loox            Weekly exports from Amazon Seller Central,        Owner: Brew data engineer with
          review_submitted hook; Lab Notes scroll event; audiences built and       Nykaa, Flipkart, Blinkit, Zepto, Instamart (one   Arata ecommerce manager. All 30 live

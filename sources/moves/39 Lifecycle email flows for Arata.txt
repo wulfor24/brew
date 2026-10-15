@@ -641,7 +641,7 @@ BREW DEPLOYMENT TEAM × ARATA · LIFECYCLE EMAIL FLOWS FOR ARATA                
 
 
 30-DAY DEPLOYMENT
- WEEK      BREW SHIPS                                            ARATA PROVIDES                          LIVE BY END OF WEEK
+ WEEK      BREW DRAFTS                                            ARATA PROVIDES                          LIVE BY END OF WEEK
 
  Week Audit of current Shopify and email platform                  Platform access (Klaviyo or             Audit report; event
  1    flows (Brew lifecycle lead); event map                     equivalent, Shopify, Loox); R&D         schema; 11 emails in

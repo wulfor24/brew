@@ -760,7 +760,7 @@ screen. Numbers filled from the dashboard; this is the template with the baselin
 
 BREW DEPLOYMENT TEAM × ARATA · ONE CUSTOMER RECORD, ONE REORDER CLOCK                                                       14
 30-DAY DEPLOYMENT
- WEEK BREW SHIPS                                                  ARATA PROVIDES                         LIVE BY END OF WEEK
+ WEEK BREW DRAFTS                                                  ARATA PROVIDES                         LIVE BY END OF WEEK
 
  1        Master SKU map with days of supply; identity              Access to Shopify admin,          The definitions document,
           and dedup rule; stage definitions (worked                 WhatsApp provider, helpdesk and signed. Nothing

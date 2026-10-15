@@ -72,8 +72,8 @@ test('new specs write under AI_MOCK with "How we measure" carrying the check tim
     assert.ok(txt.includes(`Check timings:`) && txt.includes(timingLine(SPECS[n].timing).slice(0, 30)), `move ${n} timings: ${txt.slice(0, 160)}`);
     assert.match(txt, /What to watch:/); assert.match(m.kicker, new RegExp(`MOVE ${n}$`)); assert.doesNotMatch(m.kicker, / OF 50$/); }
   assert.match(saved[53].sections.find((s) => s.kind === 'measure').blocks[1].text, /Checks on day 1 and 3; decides on day 7/);
-  assert.match(saved[0].title, /^[A-Z][a-z-]+ moves for Comet$/); assert.doesNotMatch(saved[0].title, /Fifty/);
-  assert.equal(saved[0].stat, String(saved[0].meta.total));
+  assert.equal(saved[0].title, 'The moves for Comet', 'no count in the index title: the playbook keeps growing');
+  assert.equal(saved[0].stat, String(saved[0].meta.written), 'the index stat is the moves actually written');
 });
 
 test('specs wait for their evidence: no listening, no listening moves', async () => {

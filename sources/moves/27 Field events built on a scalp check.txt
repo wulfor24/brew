@@ -605,7 +605,7 @@ transcript, so the session keeps working after the code expires.
 
 30-DAY DEPLOYMENT
                                                                                                          OWNER            OWNER
- WEEK BREW SHIPS                                                     ARATA PROVIDES                    (BREW)         (ARATA)
+ WEEK BREW DRAFTS                                                     ARATA PROVIDES                    (BREW)         (ARATA)
 
  1         Scalp check kit spec and procurement list; score            Approval on claims language       Field            Brand
            card design; staff script; consent form; event              in script; lab sign-off that      marketing        manager,
@@ -629,7 +629,7 @@ transcript, so the session keeps working after the code expires.
 
 BREW DEPLOYMENT TEAM × ARATA · FIELD EVENTS BUILT ON A SCALP CHECK                                                                   12
                                                                                                       OWNER             OWNER
- WEEK BREW SHIPS                                                     ARATA PROVIDES                 (BREW)          (ARATA)
+ WEEK BREW DRAFTS                                                     ARATA PROVIDES                 (BREW)          (ARATA)
 
  4         Pop-up 2 runs; Lab Notes Live 1 airs Wednesday; R&D lead hosts Lab Notes                   Field             R&D lead,
            first cost-per-scalp-check and cost-per-first- Live; approval on derm patient              marketing         brand

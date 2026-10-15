@@ -634,7 +634,7 @@ should pick it up.
 
 BREW DEPLOYMENT TEAM × ARATA · VOICE OF CUSTOMER SYSTEM FOR ARATA                                                               12
 30-DAY DEPLOYMENT
- WEEK BREW SHIPS                                                     ARATA PROVIDES                     LIVE BY END OF WEEK
+ WEEK BREW DRAFTS                                                     ARATA PROVIDES                     LIVE BY END OF WEEK
 
  1         Review exports from Loox, Nykaa, Amazon and                 Loox export, marketplace           Coded sheet with first
            quick commerce; tag scheme and coding sheet;                seller-portal access, support      frequency counts; ops

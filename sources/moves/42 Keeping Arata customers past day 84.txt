@@ -776,7 +776,7 @@ prepaid only on the next order, with the ₹30 shown as a thank-you rather than 
 
 
 30-DAY DEPLOYMENT
- WEEK      BREW SHIPS                                                ARATA PROVIDES                      LIVE BY END OF WEEK
+ WEEK      BREW DRAFTS                                                ARATA PROVIDES                      LIVE BY END OF WEEK
 
  Week Cohort pull from Shopify: repeat rate, days-to-                  Shopify and WhatsApp Business       Baseline numbers. Leak
  1    second-order and third-order rate by first SKU,                  API access, support desk access,    replacement promise
@@ -851,7 +851,7 @@ Decision rules:
     reason first. In our experience the top reason is usually "did not see a difference yet", and the fix is
     the day-0 photo and the expectation copy at day 7 and 21, not a bigger discount.
     If "bottle leaked" is above 2% of survey answers in any week, the retention review escalates to ops
-    and we pause spend on the affected SKU's acquisition until the packaging fix is confirmed.
+    and the team should pause spend on the affected SKU's acquisition until the packaging fix is confirmed.
 
 
 
