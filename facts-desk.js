@@ -6,6 +6,7 @@
 import { keyOf } from './derive.js';
 import { numbersIn, canon } from './fact-gate.js';
 import { moneyFmt } from './brand-pack.js';
+import { simulated } from './connectors/common.js';
 
 const D = 864e5, today = () => new Date().toISOString().slice(0, 10);
 const NOT_PRODUCT = /gift ?wrap|gift ?card|e-?gift|shipping protection|route protection|insurance|sample|tester|donation/i;
@@ -30,7 +31,7 @@ export const PRECEDENCE = { 'meta.ads.live': ['ads.own.live'], 'reviews.judgeme.
 export function connectedFacts(entries = [], publicFacts = {}) {
   const F = {}, byKey = new Map(Object.entries(publicFacts).map(([k, f]) => [f.key || k, [k, f]]));
   for (const e of entries || []) {
-    if (!e || e.demo || e.v == null || e.v === '') continue;
+    if (!e || simulated(e) || e.v == null || e.v === '') continue; // DUMMY: simulated accounts are never the source of truth
     const tool = toolOf(e.key); if (!tool) continue;
     const over = (PRECEDENCE[e.key] || []).map((k) => byKey.get(k)).find(Boolean);
     const k = over ? over[0] : keyOf(e.key);

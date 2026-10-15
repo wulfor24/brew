@@ -44,7 +44,7 @@ test('a session writes private files to its own folder and reads the brand’s u
 test('a simulated account speaks the real connector shape, in the brand’s numbers', async () => {
   const { P, profile } = setup(); await P.put(slug, 'profile.json', profile); await P.put(slug, 'seed.json', { brand: { name: 'Acme' }, lanes: { core: {} } });
   const sim = createSim({ packs: P, log: quiet });
-  for (const id of SIM_IDS) { const d = await sim.sync(slug, id); assert.ok(Array.isArray(d.stats) && d.stats.length, `${id} has stats`); assert.ok(d.ledger.every((e) => !e.demo && e.method === 'connected account'), `${id} ledger reads as connected`);
+  for (const id of SIM_IDS) { const d = await sim.sync(slug, id); assert.ok(Array.isArray(d.stats) && d.stats.length, `${id} has stats`); assert.ok(d.ledger.every((e) => e.demo === true && e.method === 'connected account'), `${id} ledger stays marked simulated`);
     assert.ok(d.cards.every((c) => c.id.startsWith('live-') && c.onlyWhen === id), `${id} cards are live cards`); }
   const shop = await sim.sync(slug, 'shopify'); assert.ok(shop.ledger.some((e) => e.key === 'shopify.orders.30d' && e.n > 0));
   assert.ok(JSON.stringify(shop.cards).includes('$'), 'money in the brand’s currency');

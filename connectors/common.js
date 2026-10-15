@@ -17,3 +17,8 @@ export const card = (k, name, lane, id, o) => ({ id: `live-${k}-${id}`, onlyWhen
 // evidence for the moves (refresh.js reads these keys): observed, with where it came from
 export const L = (key, label, v, n, src) => ({ key, label, v: String(v), ...(n != null && Number.isFinite(+n) ? { n: +(+n).toFixed(2) } : {}), layer: 'observed', src, method: 'connected account', at: new Date().toISOString() });
 
+
+/* DUMMY: every connector in the prototype is simulated (connectors/sim.js). A row is simulated when it says so, or when it
+   came from a connector before the flag was kept (method 'connected account'). Real connectors write method 'account:<id>' (never 'connected account'). */
+export const simulated = (e) => !!(e && (e.demo || e.method === 'connected account'));
+export const realRows = (xs) => (Array.isArray(xs) ? xs : Object.values(xs || {})).filter((e) => e && !simulated(e));

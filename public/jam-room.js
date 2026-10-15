@@ -241,7 +241,7 @@
       if (!A.conn('slack')) { JM.draft = text; return A.openConnect('slack', { then: () => send(text), why: 'Your teammate answers in Slack. Replies land in the jam and the brief.' }); }
       JM.busy = 'team'; paint();
       const r = w.with?.kind === 'team' && w.with.id === target.k ? await A.tapi('POST', `/api/work/${w.id}/message`, { body: text }) : await A.tapi('POST', `/api/work/${w.id}/send`, { to: 'team', note: text, colleague: target.k, name: target.name, names: A.S.slack?.names, channel: A.S.slack?.channel });
-      JM.busy = ''; if (r.work?.with?.channel) toast(`${ic('send', 's16')}Posted to ${esc(r.work.with.channel)} for ${esc(target.name)}`); return take(r.work);
+      JM.busy = ''; if (r.work?.with?.channel) toast(`Simulated: nothing is posted to Slack. ${esc(target.name)} answers here as a Dummy.`); return take(r.work);
     }
     if (w.with?.kind === 'team' && w.stage === 'team' && JM.replyTeam) { const r = await A.tapi('POST', `/api/work/${w.id}/message`, { body: text }); return take(r.work); }
     JM.busy = 'ai'; w.thread = [...(w.thread || []), { id: 'tmp', from: 'me', body: text }]; paint();
@@ -278,7 +278,7 @@
     const r = await A.tapi('POST', `/api/work/${w.id}/jb/move`, { to, channel: A.S.slack?.channel, base: location.origin, decided: A.S.decided?.[DPx()?.id] || null }); if (r.error) { win?.close(); return toast(esc(r.error)); }
     try { await navigator.clipboard?.writeText(r.text); } catch (e) {}
     if (win) win.location.href = 'https://wa.me/?text=' + encodeURIComponent(r.text);
-    toast(to === 'whatsapp' ? `${ic('chat', 's16')}Opened WhatsApp with the full context: card, options, brief, package, assets and both chats, plus a link to all of it. It’s copied too.` : `${ic('send', 's16')}Posted to ${esc(A.S.slack?.channel || '#growth')} with the full context and a link to all of it.`);
+    toast(to === 'whatsapp' ? `${ic('chat', 's16')}Opened WhatsApp with the full context: card, options, brief, package, assets and both chats, plus a link to all of it. It’s copied too.` : `${ic('copy', 's16')}Copied the full context with a link to all of it. Brew doesn’t post to Slack: paste it in ${esc(A.S.slack?.channel || 'your channel')}.`);
     take(r.work);
   };
 
@@ -451,7 +451,7 @@
     if (target.k === 'brew') { const r = w.with?.kind === 'brew' ? await A.tapi('POST', `/api/work/${w.id}/message`, { body: text }) : await A.tapi('POST', `/api/work/${w.id}/send`, { to: 'brew', note: text.replace(/^@[\w ]*?Brew team[\s,:]*/i, '') || text }); if (r.work) A.putWork(r.work); toast(`${ic('send', 's16')}Sent to the Brew team`); return true; }
     if (!A.conn('slack')) { A.openConnect('slack', { then: () => sendTo(p, text), why: 'Your teammate answers in Slack. Replies land in the jam and the brief.' }); return true; }
     const r = w.with?.kind === 'team' && w.with.id === target.k ? await A.tapi('POST', `/api/work/${w.id}/message`, { body: text }) : await A.tapi('POST', `/api/work/${w.id}/send`, { to: 'team', note: text, colleague: target.k, name: target.name, names: A.S.slack?.names, channel: A.S.slack?.channel });
-    if (r.work) A.putWork(r.work); toast(r.work?.with?.channel ? `${ic('send', 's16')}Posted to ${esc(r.work.with.channel)} for ${esc(target.name)}` : `${ic('send', 's16')}Sent to ${esc(target.name)}`); return true; };
+    if (r.work) A.putWork(r.work); toast(`Simulated: nothing is sent. ${esc(target.name)} answers here as a Dummy.`); return true; };
 
   window.JamRoom = { open, openFromCtx, close: () => {}, decorateDetail, fromHash, isOpen: () => false, isEditing, paint, addToBrief, send, sendTo, mentionOf, toHtml: (md) => toHtml(md) };
 })();

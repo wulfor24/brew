@@ -26,9 +26,9 @@ export function createSim({ packs, log = console }) {
     const b = await brandOf(slug), { A, demo, name, F, lane } = b, nm = NAME[id];
     const cards = (demo.cards || []).filter((c) => c.onlyWhen === id)
       .map(({ id: cid, demo: _d, ...c }) => ({ ...c, id: cid.replace(/^demo-/, 'live-'), liveOnly: true, src: `${nm} · live`, time: 'just now' }));
-    const relabel = (e) => ({ ...e, label: String(e.label).replace(/ \(demo account\)$/, ''), src: nm, method: 'connected account', demo: undefined, at: new Date().toISOString() });
+    const relabel = (e) => ({ ...e, label: String(e.label).replace(/ \(demo account\)$/, ''), src: nm, method: 'connected account', demo: true, at: new Date().toISOString() });
     const KEY = { 'meta.cpa.first': 'meta.cpa', 'meta.retargeting.frequency': 'meta.frequency.max' };
-    let ledger = (demo.ledger?.[id] || []).map(relabel).map((e) => ({ ...e, key: KEY[e.key] || e.key })).map(({ demo: _x, ...e }) => e);
+    let ledger = (demo.ledger?.[id] || []).map(relabel).map((e) => ({ ...e, key: KEY[e.key] || e.key }));
     const s = A.shopify, m = A.meta, g = A.google, r = A.reviews, k = A.klaviyo, mk = A.marketplaces;
     if (id === 'shopify') ledger.push(L('shopify.revenue.30d', 'Revenue, last 30 days', F.big(s.revenue), s.revenue, nm), L('shopify.products.active', 'Active products', n0((b.profile.catalog?.products || []).length), (b.profile.catalog?.products || []).length, nm),
       L('shopify.top.30d', 'Best seller, last 30 days', s.top?.[0]?.title || '—', s.top?.[0]?.orders ?? null, nm));
@@ -37,11 +37,11 @@ export function createSim({ packs, log = console }) {
     if (id === 'klaviyo') ledger.push(L('klaviyo.flows.off', 'Email flows not built', '3 of 5', 3, nm));
     if (id === 'reviews') ledger = [L('reviews.judgeme.total', 'Reviews', n0(r.total), r.total, nm), L('reviews.judgeme.rating.recent', 'Average rating, last 90 days', `${r.rating} of 5`, r.rating, nm), L('reviews.judgeme.open', 'Low-star reviews with no reply', n0(r.unanswered), r.unanswered, nm)];
     if (id === 'marketplaces') ledger = [L('market.amazon.listings', 'Amazon listings', n0(mk.listings), mk.listings, nm), L('market.amazon.rating', 'Amazon rating', `${r.rating} of 5`, r.rating, nm)];
-    const extra = id === 'slack' ? { stats: [['Workspace', `${name} team`], ['Channel', '#growth'], ['Approvals from Slack', 'On']], changed: ['New moves post to #growth with an Approve button', 'Approvals in Slack mark the card approved'] }
+    const extra = id === 'slack' ? { stats: [['Workspace', `${name} team`], ['Channel', '#growth'], ['Replies', 'Simulated']], changed: ['Teammate replies in the jam are simulated until Slack is really connected'] }
       : null;
     const acc = A[id] || {};
     return { account: { name: id === 'shopify' ? `${b.profile.host || name}` : id === 'meta' ? `${name} · Ad account` : id === 'google' ? `${name} · Google Ads` : `${name}` },
-      stats: extra?.stats || acc.stats || [], changed: extra?.changed || demo.changed?.[id] || [], cards: id === 'marketplaces' ? cards.map((c) => ({ ...c, liveOnly: false })) : cards, ledger, notes: [] };
+      stats: extra?.stats || acc.stats || [], changed: extra?.changed || demo.changed?.[id] || [], cards: id === 'marketplaces' ? cards.map((c) => ({ ...c, liveOnly: false })) : cards, ledger: ledger.map((e) => ({ ...e, demo: true })), notes: [] }; /* DUMMY: every number stays marked simulated, so it is never evidence */
   }
 
   /* ---------- day by day for one launch (measurement): the launched scope vs the rest of the account ---------- */

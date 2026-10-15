@@ -14,6 +14,7 @@ import { skeletonSeed, seedFromProfile } from './seed-template.js';
 import { factsFromLedger, configFromProfile, laneProducts } from './derive.js';
 import { retiredSet, scrubRetired, allowedFrom } from './fact-gate.js';
 import { createCardsGen } from './cards-gen.js';
+import { realRows } from './connectors/common.js'; // DUMMY: simulated account rows are never evidence
 import { healthFrom } from './dummy/health.js'; // DUMMY: simulated health rings
 import { createStatics } from './statics.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
@@ -619,7 +620,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   const REFRESH_DAYS = +process.env.REFRESH_EVERY_DAYS || 7, AUTO_MAX = +process.env.REFRESH_AUTO_MAX || 6;
   const REFRESH_CAP = +process.env.REFRESH_CAP_USD || 60, AUTO_CAP = +process.env.REFRESH_AUTO_CAP_USD || 14, MOVE_USD = 1.7;
   const pad2 = (n) => String(n).padStart(2, '0');
-  const upd = async (slug) => ({ auto: true, stale: {}, history: [], ...(await packs.getJSON(slug, 'updates.json', {})) });
+  // DUMMY: flags raised by a simulated account (live) are not real reasons to rewrite: saved flags heal here
+  const upd = async (slug) => { const u = { auto: true, stale: {}, history: [], ...(await packs.getJSON(slug, 'updates.json', {})) }; for (const [n, x] of Object.entries(u.stale || {})) if (x?.live && !x.real) delete u.stale[n]; return u; };
   let ulock = Promise.resolve(); // updates.json is read-modify-written from several places
   const editUpd = (slug, f) => (ulock = ulock.then(async () => { const u = await upd(slug); await f(u); await packs.put(slug, 'updates.json', u); return u; }));
   async function checkUpdates(slug, { auto = false, why = 'You asked for the latest' } = {}) {
@@ -685,10 +687,10 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const written = []; let prevState = null;
     try {
       const profile = normalizeProfile(await packs.getJSON(slug, 'profile.json'));
-      // a connected account's numbers (the demo accounts too, labelled as such) are evidence for the rewrite
-      // a real account's numbers are private to the brand's team: a move written from them is saved privately too
-      const privL = await packs.getJSON(slug, 'private/connected-ledger.json', []), priv = privL.length > 0, P = priv ? 'private/' : '';
-      const ledger = mergeLedger(await packs.getJSON(slug, 'ledger.json', []), [], { connected: [...(await packs.getJSON(slug, 'connected-ledger.json', [])).filter((e) => !(priv && e.demo)), ...privL] }).ledger;
+      // a real connected account's numbers are evidence for the rewrite, and private to the brand's team (a move written
+      // from them is saved privately too). Simulated accounts (DUMMY) are never evidence and never make a rewrite private.
+      const privL = realRows(await packs.getJSON(slug, 'private/connected-ledger.json', [])), priv = privL.length > 0, P = priv ? 'private/' : '';
+      const ledger = mergeLedger(await packs.getJSON(slug, 'ledger.json', []), [], { connected: [...realRows(await packs.getJSON(slug, 'connected-ledger.json', [])), ...privL] }).ledger;
       const brief = await packs.getJSON(slug, 'brief.json'), briefMd = (await packs.get(slug, 'brief.md'))?.toString('utf8') || '';
       const cache = { ...(await packs.getJSON(slug, 'moves.json', {})), ...(priv ? await packs.getJSON(slug, 'private/moves.json', {}) : {}) }, olds = Object.fromEntries(ns.map((n) => [n, cache[n]]));
       const stale = (await upd(slug)).stale || {}, stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
@@ -799,12 +801,12 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const moves = await packs.getJSON(slug, 'moves.json', {});
     // only what is new or moved: the first read flags, a daily resync flags only when a number really changed
     const { changes } = diffLedgers(was, on ? add : [], []);
-    const fresh = on ? add.filter((e) => changes.some((c) => c.key === e.key)) : [];
+    const fresh = on ? realRows(add).filter((e) => changes.some((c) => c.key === e.key)) : []; /* a simulated account never marks a move out of date */
     const ns = [...new Set((AREA_LIVE[id] || []).flatMap((a) => CONNECTED_MOVES[a] || []))].filter((n) => moves[n]).slice(0, 6);
     await editUpd(slug, (u) => {
       for (const n of Object.keys(u.stale)) if (u.stale[n].via === id) delete u.stale[n];
       if (fresh.length) for (const n of ns) if (!u.stale[n]) { const rel = relevant(n, fresh);
-        u.stale[n] = { n, priority: 'medium', via: id, live: true, private: !pub, at: Date.now(),
+        u.stale[n] = { n, priority: 'medium', via: id, live: true, real: true, private: !pub, at: Date.now(),
           why: `${NAME_OF[id] || id} is connected. This plan used estimates for ${rel.map((e) => e.label.toLowerCase()).join(' and ')}; it can now use ${rel.map((e) => e.v).join(' and ')}.`,
           changes: rel.map((e) => `New: ${e.label}: ${e.v}`) }; }
       u.connected = { ...(u.connected || {}), [id]: on ? Date.now() : null };

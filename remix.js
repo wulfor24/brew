@@ -272,28 +272,8 @@ const JAM_TPL = {
   crm: [['segment', 'How big is the segment, and who is left out?', 'growth'], ['window', 'When does it send, and how often at most?', 'ai'], ['compliance', 'Are opt-out and the WhatsApp template approved?', 'growth']],
   brew: [['owner', 'Who makes the final call?', 'growth'], ['moves', 'Which moves change if we pick this?', 'ai']]
 };
-const ANSWERS = {
-  budget_owner: 'Yes, from this month’s budget. Keep steps at +20% so Meta’s learning doesn’t reset.',
-  tracking: 'Verified this morning. Meta purchases match Shopify orders.',
-  stop_rule: 'Pause any ad set over the stop line for 48 hours, and tell us in the feed.',
-  claims: 'Checked. Every number matches a claim we can prove.',
-  get rights() { return 'Yes. The photos are ours, and review quotes are used with consent.'; },
-  sizes: 'All three sizes are exported: 1:1, 4:5 and 9:16.',
-  mobile_qa: 'Checked on an iPhone and a budget Android. It loads fast and nothing jumps.',
-  get stock() { return 'Enough stock for the extra traffic. No stock-out risk this month.'; },
-  get legal() { return 'Cleared. Every claim on it is one our site already makes.'; },
-  rollback: 'Shopify keeps the old version. One click puts it back if the watch rule trips.',
-  source: 'Every line maps to a row in the public claims list.',
-  dated: 'Added. The “as of” date is in line one.',
-  segment: 'Opted-in buyers only. COD returns and anyone who ordered this week are left out.',
-  window: 'Between 7 and 9 pm, at most one message in 7 days.',
-  compliance: 'The template is approved and opt-out works.',
-  owner: 'The founder makes the call. Brand and growth agree with our pick.',
-  moves: 'The moves listed on the card, and the cards that follow from them.',
-  budget_ok: 'Approved by the growth lead, inside this week’s limit.',
-  scope_ok: 'Yes, run it on all of them. Each one can be rolled back.',
-  why_jam: 'Planned. The owner has it and it fits this week.'
-};
+/* No canned answers: a readiness question is answered by the person who owns it (Brew copies the question for them)
+   or drafted by AI as a suggestion. Brew never claims a check, an approval or a sign-off happened. */
 const SECTOR_OF = { listing: 'catalog', performance: 'ads', creative: 'creatives', storefront: 'storefront', visibility: 'visibility', crm: 'signals' };
 const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
 
@@ -646,7 +626,11 @@ export function createRemix(o) {
   };
   const planReady = (p) => p && p.questions.every((q) => q.answer);
   const planSnap = (p) => ({ goal: p.goal, questions: p.questions.map((q) => ({ q: q.q, answer: q.answer, by: q.by })) });
+  // answers a simulated teammate or the old scripted "ShopOS team" gave are not answers: they reopen (saved jams heal here)
+  const simulatedBy = (by) => /^teammate:/.test(by || '') || by === 'brew';
+  const healPlan = (w) => { for (const q of w.plan?.questions || []) if (q.answer && simulatedBy(q.by)) { q.answer = null; q.by = null; q.asked = false; } };
   const ensurePlan = (t, w) => {
+    if (w.plan) healPlan(w);
     if (w.plan || w.auto) return w.plan || null;
     const c = t.cards.get(w.cardId) || { title: w.title, agent: w.agent, kind: null };
     w.plan = makePlan(t, c, w.changeId ? changes(t)[w.changeId] : null);
@@ -667,15 +651,15 @@ export function createRemix(o) {
     if (isMock() || !spend('text')) return null;
     try {
       const { brief } = jamContext(t, w);
-      const j = await claudeTool(`${brief}\n\n${promptBlock(t, w.agent === 'brew' ? 'creative' : w.agent)}\nYou are ${persona} in a planning jam at ${BN()}. Answer this open question so the work can ship, in your own voice, specific to this package (names, numbers from the facts, dates). If something is a real blocker, say what it would take.\nQuestion: "${q.q}"`, { type: 'object', required: ['answer'], properties: { answer: { type: 'string', description: 'Under 40 words, lead with the answer' } } }, 600, 'jam_answer');
+      const j = await claudeTool(`${brief}\n\n${promptBlock(t, w.agent === 'brew' ? 'creative' : w.agent)}\nYou are ${persona} in a planning jam at ${BN()}. Suggest an answer to this open question, specific to this package (names, numbers from the facts, dates). It is a suggestion for the team to confirm: never say anything was checked, verified, approved, cleared or done, and name what someone has to confirm.\nQuestion: "${q.q}"`, { type: 'object', required: ['answer'], properties: { answer: { type: 'string', description: 'Under 40 words, lead with the suggestion' } } }, 600, 'jam_answer');
       return j.answer ? clean(j.answer) : null;
     } catch (e) { log.warn('[jam answer]', e.message); return null; }
   };
   const aiAnswer = async (t, w, q) => {
-    const a = await liveAnswer(t, w, q, `the ${AGENT[w.agent] || 'AI'} agent`); if (a) return a;
+    const a = await liveAnswer(t, w, q, `the ${AGENT[w.agent] || 'AI'} agent`); if (a) return `Suggested: ${a}`;
     const c = t.cards.get(w.cardId) || {};
     if (q.k === 'moves' && c.affects?.length) return `It changes: ${c.affects.join(', ')}.`;
-    return ANSWERS[q.k] || ANSWERS[q.k.split(':')[0] === 'why' ? 'why_jam' : q.k] || 'Done. It fits the plan and the claims list.';
+    return null; // no canned answer: the question stays open for the team
   };
 
 
@@ -1103,25 +1087,20 @@ export function createRemix(o) {
     w.plan.questions.push({ id: uid('q'), k: 'you:' + slug(text), q: text, owner: b.owner || 'ai', answer: null, by: null, auto: false, at: null, asked: false });
     addV(t, 'jam', w.id, planSnap(w.plan), { author: 'you', reason: `Asked: ${text}` }); return { work: w };
   });
+  // Asking a person copies the question for them: Brew sends nothing and never answers for a teammate.
   const ask = async (t, w, q) => {
-    if (q.answer || q.asked) return; q.asked = true;
-    if (q.owner === 'ai') { const a = await aiAnswer(t, w, q); answerQ(t, w, q, a, `ai:${w.agent}`); say(t, w, { from: 'ai', who: AGENT[w.agent], body: `${q.q} ${a}` }); return; }
+    if (q.answer || q.asked) return null;
+    if (q.owner === 'ai') { const a = await aiAnswer(t, w, q); if (!a) return null; answerQ(t, w, q, a, `ai:${w.agent}`); say(t, w, { from: 'ai', who: AGENT[w.agent], body: `${q.q} ${a}` }); return null; }
     const who = q.owner === 'brew' ? 'ShopOS team' : colName(q.owner);
-    say(t, w, { from: 'me', body: `@${who} ${q.q}`, to: who });
-    const role = q.owner === 'brew' ? 'the Deploy lead on the ShopOS team' : `the ${who} at ${BN()}`;
-    const draft = liveAnswer(t, w, q, role); // written now, delivered after a human-ish pause
-    later(q.owner === 'brew' ? 9e3 : 4e3 + Math.random() * 3e3, async () => {
-      if (q.answer) return; const k = q.k.startsWith('why:') ? 'why_jam' : q.k; const a = (await draft) || ANSWERS[k] || 'Yes, all set from my side.';
-      answerQ(t, w, q, a, q.owner === 'brew' ? 'brew' : `teammate:${who}`);
-      say(t, w, { from: q.owner === 'brew' ? 'brew' : 'colleague', who: q.owner === 'brew' ? 'Deploy lead' : who, body: a });
-      notify(t, w, `${who} answered: ${q.q}`, 'update');
-    });
+    q.asked = true; q.waiting = who; q.at = now(t);
+    return { who, q: q.q };
   };
   on('POST', '/api/work/:wid/plan/ask', async (b, t, p) => {
     const w = W(t, p.wid); if (!w) return { error: 'not found' }; ensurePlan(t, w);
     const qs = b.all ? w.plan.questions.filter((x) => !x.answer) : w.plan.questions.filter((x) => x.id === b.qid);
-    for (const q of qs) await ask(t, w, q);
-    return { work: w, learned: learnedOut(t) };
+    const asks = []; for (const q of qs) { const a = await ask(t, w, q); if (a) asks.push(a); }
+    const copy = asks.length ? `${w.title}\n\n${asks.map((a) => `@${a.who}: ${a.q}`).join('\n')}` : null;
+    return { work: w, learned: learnedOut(t), copy, asked: asks.map((a) => a.who) };
   });
 
   const iterateFromJam = async (t, w, body) => {

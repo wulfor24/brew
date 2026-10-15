@@ -6,6 +6,7 @@ import { B, BN, BH, CTRY, FESTN, FESTD } from './brand-ctx.js';
    Readiness is a quiet checklist of what's still missing for this kind of work, never a score. */
 
 import { promptBlock } from './learn.js';
+import { realRows } from './connectors/common.js';
 import { planMd } from './card-plan.js';
 import { MEASURE_SCHEMA, MEASURE_ASK, vetMeasure, measureFromMd } from './measure-spec.js';
 
@@ -124,7 +125,7 @@ export function createJamBrief(o) {
   /* the brief is the source of truth for the plan. Every change to it (AI or typed) re-reads these fields
      from the brief's own words, and the card page, the measure and the launch all read them back. */
   /* what the brand's connected accounts say today, so the jam can answer "how did we do" and plan from real numbers */
-  const accountLine = (t) => { const xs = Object.values(t?.liveLedger || {}).filter((e) => e && e.label && e.v != null).slice(0, 24);
+  const accountLine = (t) => { const xs = realRows(t?.liveLedger).filter((e) => e.label && e.v != null).slice(0, 24); // DUMMY: simulated accounts are never quoted as numbers
     return xs.length ? `\n\nNumbers from ${t.member ? 'the brand’s' : 'the'} connected accounts, read today (quote these exactly; never invent others):\n${xs.map((e) => `- ${e.label}: ${e.v}${e.src ? ` (${e.src})` : ''}`).join('\n')}` : ''; };
   const PLAN_KEYS = ['option', 'change', 'audience', 'when', 'budget', 'owner', 'metric', 'target', 'window', 'guard', 'headline', 'body', 'button', 'why'];
   const PLAN_SCHEMA = { type: 'object', required: PLAN_KEYS, properties: { option: { type: 'string', description: 'The id of the option the brief goes with (from the list), or empty' }, change: { type: 'string', description: 'What changes, one line' }, audience: { type: 'string', description: 'Who it is for or where it runs' }, when: { type: 'string', description: 'When it starts or runs' }, budget: { type: 'string', description: 'Spend or budget' }, owner: { type: 'string', description: 'Who owns it' }, metric: { type: 'string', description: 'The number we measure' }, target: { type: 'string', description: 'The target for that number, exactly as the brief writes it' }, window: { type: 'string', description: 'When we read it, as a number of days (digits only)' }, guard: { type: 'string', description: 'When we stop' }, headline: { type: 'string', description: 'The exact headline customers will see, only if the brief contains finished customer-facing copy; never a question, an instruction or an internal note; else empty' }, body: { type: 'string', description: 'The exact customer-facing body or caption, same rule; else empty' }, button: { type: 'string', description: 'The customer-facing button text, if given; else empty' }, why: { type: 'string', description: 'Why we are doing this, one plain line for the team' } } };
@@ -188,7 +189,8 @@ export function createJamBrief(o) {
   // teammates' and the ShopOS team's replies fold into the brief in the background
   const queue = new Map();
   const onSay = (t, w, m) => {
-    if (!w?.doc || !m || !['colleague', 'brew'].includes(m.from)) return;
+    // teammate and ShopOS-team messages are simulated in the prototype (DUMMY.md #5): only a real reply (m.real) may change the brief
+    if (!w?.doc || !m || !m.real || !['colleague', 'brew'].includes(m.from)) return;
     if (/^(the brew team has it|taking so-|noted\.|got the brief)/i.test(m.body || '')) return;
     clearTimeout(queue.get(w.id));
     queue.set(w.id, setTimeout(() => { queue.delete(w.id); edit(t, w, m.body, { who: m.who || (m.from === 'brew' ? 'ShopOS team' : 'A teammate'), mode: 'hear' }).catch((e) => log.warn('[jam doc bg]', e.message)); }, 300));

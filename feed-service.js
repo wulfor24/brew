@@ -3,6 +3,7 @@
 // budget, feedback, action runs behind a weekly spend limit, versions, jam router + deployment
 // workbench, stories, deck layout, always-on watchers with a QA agent, brand memory and metrics.
 // State is in memory per tenant; the client re-creates its tenant from a snapshot after a restart.
+import { realRows } from './connectors/common.js';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
@@ -423,7 +424,7 @@ export function createFeedService(o) {
     // anything still naming a font or a hex colour: drop that sentence
     return s.replace(/[^.]*\b(?:Geist(?: Mono)?|typeface|font|kerning|letter-?spacing|#[0-9a-f]{6})\b[^.]*\.\s*/gi, '').replace(/\s{2,}/g, ' ').trim(); };
   /* a member's numbers are checked against the merged sheet: the public facts plus their connected accounts (t.liveLedger, never demo) */
-  const factOkFor = (t) => { const xs = t?.member ? Object.values(t.liveLedger || {}).filter((e) => e && !e.demo && e.v != null) : []; if (!xs.length) return FACT_OK; const ok = new Set(FACT_OK); xs.forEach((e) => numbersIn(String(e.v), { strict: true }).forEach((n) => ok.add(n))); return ok; };
+  const factOkFor = (t) => { const xs = t?.member ? realRows(t.liveLedger).filter((e) => e.v != null) : []; if (!xs.length) return FACT_OK; const ok = new Set(FACT_OK); xs.forEach((e) => numbersIn(String(e.v), { strict: true }).forEach((n) => ok.add(n))); return ok; };
   // an idea's title quotes a price its text doesn't ("the ₹399 + ₹399 pair" over "₹399 shampoo with the ₹642.32 serum"): the AI mixed two items up
   const titlePricesMatch = (c) => { const money = (x) => numbersIn(x, { strict: true }).filter((n) => /^[^\d]+\d/.test(n)); const have = money([c.sub, ...(c.detail?.why || [])].join(' '));
     return money(c.title).every((n) => { const i = have.indexOf(n); if (i < 0) return false; have.splice(i, 1); return true; }); };
@@ -947,15 +948,14 @@ export function createFeedService(o) {
       }
       if (!r) { // offline: the old rules, but they follow what was asked
         const ask = SIGNOFF.test(last) || !mine.length;
-        r = pushed && ask ? { reply: 'Perfect, that answers it. Approving ✅', verdict: 'approve' }
+        r = pushed && ask ? { reply: 'Thanks, that answers my question.', verdict: 'answer' }
           : ask ? { reply: t.cards.get(w.cardId)?.pushback || PUSHBACK[w.sector] || 'Looks good. Anything I should know before it goes out?', verdict: 'question' }
           : /\?\s*$/.test(last) ? { reply: `From the ${role.toLowerCase()} side: fine as long as it stays inside what the brief says. Ping me when it’s ready for a yes.`, verdict: 'answer' }
           : { reply: 'Got it, thanks. Send it over when you want my yes.', verdict: 'answer' };
       }
-      say(t, w, { from: 'colleague', who, body: r.reply });
-      if (r.verdict.startsWith('approve')) w.signedBy = who, move(t, w, 'ready', `${who} approved v${w.current}. Ready to ship.`, 'ready');
-      else if (r.verdict.startsWith('answer')) notify(t, w, `${who} replied in ${w.with.channel}`);
-      else move(t, w, 'needs_you', `${who} replied in ${w.with.channel}. It needs your answer.`, 'needs_you');
+      // DUMMY: a simulated reply is shown (tagged) but changes nothing: no stage, no approval, no brief, no lesson, no memory
+      say(t, w, { from: 'colleague', who, body: r.reply, dummy: true });
+      notify(t, w, `Simulated reply from ${who}`);
     });
   };
   const answerOnly = async (t, w, body) => {
@@ -979,7 +979,7 @@ export function createFeedService(o) {
     return stage; };
   const stepLearn = (t, w, stage0) => {
     if (!STEP[stage0] || !w?.cardId) return; const stage = stepOf(w, stage0);
-    if (stage === 'needs_you' && w.thread?.slice(-1)[0]?.from !== 'colleague') return; // only a teammate's pushback teaches
+    if (stage === 'needs_you' || stage === 'signed_off') return; // teammate replies are simulated, so they never teach
     if (!stepOnce(t, `${w.id}:${stage}:${w.current}:${stage === 'decided' ? w.decided : ''}`)) return;
     later(1200, () => learnFrom(t, w, stage).catch((e) => log.warn('[learn]', e.message)));
   };
@@ -989,7 +989,7 @@ export function createFeedService(o) {
     const v = curV(w) || {}, have = lessonsFor(t).slice(0, 14);
     let out = null;
     if (!isMock() && spend('text')) {
-      const convo = (w.thread || []).filter((m) => m.body && m.from !== 'system').slice(-14).map((m) => `${m.from === 'me' ? 'Them' : m.who || (m.from === 'ai' ? 'AI' : 'Brew')}: ${String(m.body).slice(0, 300)}`).join('\n');
+      const convo = (w.thread || []).filter((m) => m.body && m.from !== 'system' && !m.dummy && !['colleague', 'brew'].includes(m.from)).slice(-14).map((m) => `${m.from === 'me' ? 'Them' : m.who || (m.from === 'ai' ? 'AI' : 'Brew')}: ${String(m.body).slice(0, 300)}`).join('\n');
       const ctx = [`The card (${AGENT[ag]}): ${c.title}. ${c.sub}`,
         pg?.options?.length ? `The options: ${pg.options.map((o) => `${o.name}${o.pick ? ' (Brew pick)' : ''}`).join(' | ')}` : '',
         chosen ? `They chose: ${chosen.name}${pick && pick.id !== chosen.id ? ` (not Brew’s pick, ${pick.name})` : ''}. What changes: ${chosen.effect || ''}` : '',

@@ -1692,7 +1692,7 @@
       <div class="jp-meter" title="${n - open} of ${n} answered"><i style="width:${Math.round(((n - open) / n) * 100)}%"></i></div>
       <ol class="jq-list">${p.questions.map((q) => `<li class="jq${q.answer ? ' done' : ''}"><span class="jq-dot">${q.answer ? ic('check', 's14') : ''}</span><div><b>${esc(q.q)}</b>${q.answer ? `<p>${esc(q.answer)}<small>${esc(qBy(q.by))}${q.auto ? ' · answered itself' : ''}</small></p>`
         : DP.answering === q.id ? `<form class="compose jq-f" data-jqf="${q.id}"><input placeholder="Your answer" autocomplete="off"><button aria-label="Save">${ic('up', 's16')}</button></form>`
-        : `<div class="jq-acts">${ownerChip(q.owner, w)}${q.asked ? `<span class="spin"></span><small>Asked ${esc(ownerName(q.owner, w))}</small>` : `<button class="linkbtn" data-jq-ask="${q.id}">Ask ${esc(ownerName(q.owner, w))}</button>`}<button class="linkbtn" data-jq-ans="${q.id}">Answer it</button></div>`}</div></li>`).join('')}</ol>
+        : `<div class="jq-acts">${ownerChip(q.owner, w)}${q.asked ? `<small>Waiting on ${esc(ownerName(q.owner, w))}</small>` : `<button class="linkbtn" data-jq-ask="${q.id}">${q.owner === 'ai' ? 'Suggest an answer' : `Ask ${esc(ownerName(q.owner, w))}`}</button>`}<button class="linkbtn" data-jq-ans="${q.id}">Answer it</button></div>`}</div></li>`).join('')}</ol>
       <div class="jp-foot">${open > 1 ? `<button class="btn btn-ghost sm" data-jq-all>${ic('send', 's14')}Ask everyone</button>` : ''}<form class="compose jq-add" id="jq-add"><input placeholder="Add a question" autocomplete="off"><button aria-label="Add">${ic('up', 's16')}</button></form></div></section>`;
   };
   const addBtn = (text, from) => `<button class="dp-add" data-add="${esc(text)}" data-from="${esc(from)}" title="Add to the brief" aria-label="Add to the brief">${ic('plus', 's14')}</button>`;
@@ -1859,8 +1859,8 @@
     if (t.closest('[data-approve]')) { const w = await ensureWork(); const r = await tapi('POST', `/api/work/${w.id}/approve`); putWork(r.work); repaintDetail(); counts(); toast(`${ic('zap', 's16')}Ready. Share the brief when you are.`); return; }
     if (t.closest('[data-reopen]') || t.closest('[data-next]')) { { const r = await tapi('POST', `/api/work/${DP.w.id}/reopen`); putWork(r.work); } DP.to = 'ai'; repaintDetail(); $('#dp-in')?.focus(); return; }
     if (t.closest('[data-dp-brief]')) return openBrief(DP.w?.brief);
-    const ja = t.closest('[data-jq-ask]'); if (ja) { const r = await tapi('POST', `/api/work/${DP.w.id}/plan/ask`, { qid: ja.dataset.jqAsk }); putWork(r.work); repaintDetail(); showLearned(r.learned); return; }
-    if (t.closest('[data-jq-all]')) { const r = await tapi('POST', `/api/work/${DP.w.id}/plan/ask`, { all: true }); putWork(r.work); repaintDetail(); showLearned(r.learned); toast(`${ic('send', 's16')}Asked everyone. Answers land here.`); return; }
+    const ja = t.closest('[data-jq-ask]'); if (ja) { const r = await tapi('POST', `/api/work/${DP.w.id}/plan/ask`, { qid: ja.dataset.jqAsk }); putWork(r.work); repaintDetail(); showLearned(r.learned); askedCopy(r); return; }
+    if (t.closest('[data-jq-all]')) { const r = await tapi('POST', `/api/work/${DP.w.id}/plan/ask`, { all: true }); putWork(r.work); repaintDetail(); showLearned(r.learned); askedCopy(r); return; }
     const jn = t.closest('[data-jq-ans]'); if (jn) { DP.answering = jn.dataset.jqAns; repaintDetail(); $(`[data-jqf="${DP.answering}"] input`)?.focus(); return; }
   });
   document.addEventListener('submit', (e) => {
@@ -2736,6 +2736,12 @@
   const showLearned = (arr) => { (arr || []).forEach((r, i) => setTimeout(() => toastLong(`${ic('sparkles', 's16')}<span><b>Learned:</b> ${esc(r.text)}</span> <button class="linkbtn" data-nav="learned">See it</button>`, 5200), i * 2600)); };
   let toastLT = null;
   const toastLong = (html, ms = 10000) => { $('.toast')?.remove(); clearTimeout(toastT); clearTimeout(toastLT); const t = document.createElement('div'); t.className = 'toast toast-long'; t.setAttribute('role', 'status'); t.innerHTML = html; document.body.appendChild(t); toastLT = setTimeout(() => t.remove(), ms); };
+  /* Asking a teammate copies the question: Brew sends nothing, and their answer is added here by hand. */
+  const askedCopy = (r) => {
+    if (!r?.copy) { toast(r?.work ? 'Brew suggested what it could. The rest is yours to answer.' : 'Couldn’t ask right now.'); return; }
+    const who = [...new Set(r.asked || [])].join(', ');
+    navigator.clipboard?.writeText(r.copy).then(() => toast(`${ic('copy', 's16')}Copied the question for ${esc(who)}. Brew doesn’t send it: paste it to them, then add their answer here.`), () => toast(`Ask ${esc(who)} directly, then add their answer here.`));
+  };
   const imgOf = (ch) => ch.pkg?.image || ch.after?.images?.[0] || null;
   /* until a photo is made for it, the jam shows the card's own product photo (never a static: those carry their own words) */
   const cardPhoto = () => { if (!SPLIT || !RX.p) return null; const im = (RX.p.images || cardOf(RX.p).images || []).find((x) => typeof x === 'string' && !/statics\//.test(x)); return im || null; };

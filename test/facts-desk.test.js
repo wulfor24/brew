@@ -122,7 +122,7 @@ test('connected accounts: private facts beat the site read (was kept), demo neve
   await builder.republish(slug);
   const desk = createFactsDesk({ packs: P, builder, log: quiet }); builder.setHooks({ connected: (s, t) => desk.connected(s, t) });
   await P.put(slug, 'connected-ledger.json', [{ key: 'meta.ads.live', label: 'Live Meta ads', v: '99', n: 99, demo: true, src: 'Meta (demo account)' }]);
-  await builder.liveConnected(slug, 'meta', [{ key: 'meta.ads.live', label: 'Live Meta ads', v: '42', n: 42, layer: 'observed', src: 'Meta Ads · act_1', method: 'connected account', at: new Date().toISOString() }, { key: 'meta.spend.30d', label: 'Meta spend, last 30 days', v: '₹2.1 lakh', n: 210000, src: 'Meta Ads · act_1', at: new Date().toISOString() }], true, { public: false });
+  await builder.liveConnected(slug, 'meta', [{ key: 'meta.ads.live', label: 'Live Meta ads', v: '42', n: 42, layer: 'observed', src: 'Meta Ads · act_1', method: 'account:meta', at: new Date().toISOString() }, { key: 'meta.spend.30d', label: 'Meta spend, last 30 days', v: '₹2.1 lakh', n: 210000, src: 'Meta Ads · act_1', at: new Date().toISOString() }], true, { public: false });
   const pf = (await P.getJSON(slug, 'private/facts.json')).facts;
   assert.equal(pf.ads_own_live.v, '42'); assert.equal(pf.ads_own_live.was.v, '18'); assert.equal(pf.ads_own_live.src, 'Meta Ads (connected)'); assert.equal(pf.meta_spend_30d.connected, 'meta');
   assert.ok(!Object.values(pf).some((f) => f.v === '99'), 'a demo account is never a fact');

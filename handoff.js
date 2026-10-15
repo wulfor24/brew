@@ -56,8 +56,8 @@ export function createHandoff({ RMX, pageOf, fillCard, AGENT = {}, SEED = {}, ba
       decided: decided && page ? page.options.find((o) => o.id === (decided.id || decided)) || null : null,
       brief: w.doc ? { kind: w.doc.kind, md: w.doc.md, missing: w.doc.missing || [] } : null,
       versions: (w.versions || []).map((v) => ({ n: v.n, title: v.title, sub: v.sub, by: v.who || v.by, note: v.note || '', image: v.images?.[0] ? abs(v.images[0], b) : null, current: v.n === w.current })),
-      pkg, jam: (w.thread || []).filter((x) => x.body && x.id !== 'tmp').map((x) => ({ who: who(x), text: x.body, at: x.at, system: x.from === 'system' })),
-      questions: (w.plan?.questions || []).map((q) => ({ q: q.q, a: q.answer || null })),
+      pkg, jam: (w.thread || []).filter((x) => x.body && x.id !== 'tmp' && !x.dummy && !(['colleague', 'brew'].includes(x.from) && !x.real)).map((x) => ({ who: who(x), text: x.body, at: x.at, system: x.from === 'system' })),
+      questions: (w.plan?.questions || []).map((q) => ({ q: q.q, a: q.answer && !/^teammate:/.test(q.by || '') && q.by !== 'brew' ? q.answer : null })),
       measure: m ? { metric: m.metric, baseline: m.connected ? m.baseline : null, target: m.target, unit: m.unit, window: m.window, watch: m.watch || [], attribution: m.attribution || '' } : null,
       now: nowOf(w),
       at: Date.now()
