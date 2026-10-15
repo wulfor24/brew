@@ -166,3 +166,24 @@ test('rival ads: loose page names, round-robin over rivals, deeper pages when th
     assert.equal(ids.length, 8, 'the next read adds 4 ads never shown, and keeps the first 4 for their 24 hours');
   } finally { globalThis.fetch = realFetch; }
 });
+
+test("a rival whose page has another name is found through the brand read's page, then read by its id", async () => {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(Buffer.concat([Buffer.from([0x89, 0x50]), Buffer.alloc(4000)]), { status: 200 });
+  try {
+    const ad = (i) => ({ ad_archive_id: `m-${i}`, page_id: 'p1', page_name: 'Minimalistinc', start_date: Date.now() / 1000 - 9 * 86400, snapshot: { title: `Minimalist idea ${i}`, body: { text: `copy ${i}` }, images: [{ original_image_url: `https://img/m/${i}.png` }] } });
+    const calls = [];
+    const tc = { meter: { usd: 0 }, call: async (id, { query }) => { calls.push(query); if (!/adlibrary/.test(id)) throw new Error('402');
+      if (query.pageId === 'p1') return { results: [0, 1, 2, 3, 4].map(ad), searchResultsCount: 188 };
+      if (query.companyName === 'Minimalistinc') return { results: [ad(0)] };
+      return { results: [], searchResultsCount: 0 }; } };
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'brew-page-'));
+    const brand = { slug: 'pg', name: 'Testo', kind: 'generated', seed: {}, rivalPages: { Minimalist: { page: 'Minimalistinc', host: 'beminimalist.co' } }, config: { country: 'IN', countryName: 'India', category: 'skin', rivals: ['Minimalist'] } };
+    const R = createResearch({ ROOT: dir, PUB: dir, anthropic: { beta: { messages: { create: async () => { throw new Error('AI is down'); } } } }, claudeParams: (m) => ({ messages: m }), textOf: () => '', geminiImage: async () => {}, gToken: async () => { throw new Error('no gcs'); }, clean: (s) => String(s || ''), brand, tregClient: tc, log: { log() {}, warn() {}, error() {} } });
+    await R.refresh(['ads']);
+    const a = R.get().ads;
+    assert.equal(a.brands[0]?.live, 188, 'the page is read by its id, with its own full count');
+    assert.equal(a.items.length, 4);
+    assert.equal(a.pageIds.Minimalist, 'p1', 'the id is kept for the next read');
+  } finally { globalThis.fetch = realFetch; }
+});

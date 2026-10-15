@@ -197,11 +197,26 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
       if (!groups.has(key)) groups.set(key, { brand: b, rank: base + i, ad: a, copy: cp, media: m, versions: 0, start: Infinity, ids: [] });
       const x = groups.get(key); x.rank = Math.min(x.rank, base + i); if (x.ids.includes(a.ad_archive_id)) return;
       x.versions += Math.max(1, a.collation_count || 1); x.start = Math.min(x.start, (a.start_date || now / 1000) * 1000); x.ids.push(a.ad_archive_id); });
+    /* a rival whose page is named differently ("Minimalist" runs as "Minimalistinc"): the page the brand read found, else the
+       page whose ads link to the rival's site, read by its id. Found ids are kept so later reads go straight to the page */
+    const pageIds = { ...(snap.ads?.pageIds || {}) };
+    const findPage = async (name) => {
+      const rp = brand.rivalPages?.[name] || {};
+      if (rp.page && squashN(rp.page) !== squashN(name)) { const j = await call({ companyName: rp.page }); const hit = (j?.results || []).find((a) => pageOk(rp.page, a.page_name)); if (hit?.page_id) return hit.page_id; }
+      if (rp.host) { const host = rp.host.replace(/^www\./, ''); const j = await treg('scrapecreators.x.v1-facebook-adlibrary-search-ads', { query: { query: host, country: GEO, status: 'ACTIVE', trim: true } });
+        const by = new Map(); (j?.searchResults || j?.results || []).filter((a) => String(a.snapshot?.link_url || '').includes(host)).forEach((a) => by.set(a.page_id, (by.get(a.page_id) || 0) + 1));
+        const best = [...by.entries()].sort((a, b) => b[1] - a[1])[0]; if (best) return best[0]; }
+      return null; };
     await Promise.all(RIVAL_PAGES.map(async ({ name }) => {
-      const reads = await Promise.allSettled([call({ companyName: name }), call({ companyName: name, sort_by: 'relevancy_monthly_grouped' })]);
+      let id = pageIds[name] || null, by = id ? { pageId: id } : { companyName: name };
+      let reads = await Promise.allSettled([call(by), call({ ...by, sort_by: 'relevancy_monthly_grouped' })]);
+      if (!id && !reads.some((r) => r.status === 'fulfilled' && (r.value?.results || []).some((a) => pageOk(name, a.page_name || a.snapshot?.page_name)))) {
+        id = await findPage(name).catch((e) => (log.warn('[research] ads page lookup', name, e.message), null));
+        if (id) { pageIds[name] = id; by = { pageId: id }; reads = await Promise.allSettled([call(by), call({ ...by, sort_by: 'relevancy_monthly_grouped' })]); }
+      }
       reads.forEach((r) => r.status === 'rejected' && (errs++, log.warn('[research] ads', name, r.reason?.message)));
       const [top, recent] = reads.map((r) => (r.status === 'fulfilled' ? r.value : null));
-      const mine = (j) => (j?.results || []).filter((a) => pageOk(name, a.page_name || a.snapshot?.page_name));
+      const mine = (j) => (j?.results || []).filter((a) => (id ? String(a.page_id) === String(id) : pageOk(name, a.page_name || a.snapshot?.page_name)));
       const t = mine(top), rc = mine(recent); if (!t.length && !rc.length) return; matched++;
       const first = t[0] || rc[0];
       brands.push({ name, live: (t.length === (top?.results || []).length && top?.searchResultsCount) || t.length || rc.length, page: first.page_name, pageId: first.page_id, avatar: first.snapshot?.page_profile_picture_url || null });
@@ -211,9 +226,9 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
       const day = new Date(now).toDateString();
       let cur = deep[name]?.day === day ? deep[name] : { day, cursors: [], next: top?.cursor || null };
       /* pages read earlier today come back from treg's day cache at no cost, so their unseen ads stay in reach */
-      for (const [k, c] of cur.cursors.entries()) { try { take(name, mine(await call({ companyName: name, cursor: c })), (k + 1) * 30); } catch {} }
+      for (const [k, c] of cur.cursors.entries()) { try { take(name, mine(await call({ ...by, cursor: c })), (k + 1) * 30); } catch {} }
       while (unseenOf() < NEW && cur.next && cur.cursors.length < 2) {
-        try { const c = cur.next, j = await call({ companyName: name, cursor: c }); take(name, mine(j), (cur.cursors.length + 1) * 30); cur = { ...cur, cursors: [...cur.cursors, c], next: j?.cursor || null }; }
+        try { const c = cur.next, j = await call({ ...by, cursor: c }); take(name, mine(j), (cur.cursors.length + 1) * 30); cur = { ...cur, cursors: [...cur.cursors, c], next: j?.cursor || null }; }
         catch (e) { log.warn('[research] ads page', name, e.message); break; }
       }
       deep[name] = cur;
@@ -249,7 +264,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
         url: `https://www.facebook.com/ads/library/?id=${x.ad.ad_archive_id}`,
         title: clean(n.title || `${x.brand}: ${x.copy.title}`.slice(0, 60)), hook: clean(n.hook || x.copy.title), angle: clean(n.angle || ''), why: clean(n.why || ''), take: clean(n.take || '') };
     });
-    snap.ads = { fetchedAt: now, ...pool(snap.ads, items, 'ads', now), deep, brands: [...brands, ...(snap.ads?.brands || []).filter((b) => !brands.some((x) => x.name === b.name))], source: `Meta Ad Library · ${CTRY()} · live ads` };
+    snap.ads = { fetchedAt: now, ...pool(snap.ads, items, 'ads', now), deep, pageIds, brands: [...brands, ...(snap.ads?.brands || []).filter((b) => !brands.some((x) => x.name === b.name))], source: `Meta Ad Library · ${CTRY()} · live ads` };
   }
 
   /* ---------- Trends ---------- */

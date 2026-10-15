@@ -232,6 +232,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
       moveDocs: fitMoves(moves, keepOf({ profile, config, seed })), labels, pages,
       staticText: statics,
       catalog: catalogOf(profile), // the products with a photo each, so a draft's picture shows the product its words name
+      rivalPages: Object.fromEntries((profile?.ads?.rivals || []).filter((r) => r?.name).map((r) => [r.name, { page: r.page || null, host: r.host || null }])), // the Facebook page the read found per rival, for the story rings (research.js)
       personas: briefJ?.personas || [], // who buys: the studio's “Aim at” knob and chips (studio.js knobsFor)
       moveValue, // each move's grade for the ranker (value.js)
       staleMoves, // moves the evidence has overtaken, waiting for their rewrite: their cards step back (feed-service score)
