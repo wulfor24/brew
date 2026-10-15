@@ -54,8 +54,8 @@
 | Reviews | Partial | Judge.me and Amazon.in work | `reviews.total` adds site reviews, store reviews and Amazon *ratings* into one number (79,353). Other review apps are untested. Flipkart and Nykaa are not read. | A §2.6 |
 | Rivals | Partial | Always finds 5 | The ledger stamps every rival as "found by Google SERP", even ones that came from the Ad Library or from Claude's memory | A §2.8 |
 | Meta ads (treg, with a free headless fallback) | Working | 664 own ads and 4,499 rival ads for Arata | "Live" counts ad *versions*, so the number jumped 664 → 1,296. Parsing Ad Library HTML is fragile. | A §2.9, C §2.13 |
-| Checkout walk (headless) | Working | 5 steps | Crashes when there is no product. Adds to cart on the real store. | A §2.10 |
-| AI answers (ChatGPT, Gemini, Perplexity, Claude) | Working | Named in 12 of 32 answers, 0 of 20 unbranded | Detecting the brand name with a regex gives false hits on common-word brand names | A §2.11 |
+| Checkout walk (headless) | Working | Arata: Shopify checkout reached, UPI / Apple Pay / pay later seen. Gullylabs: Razorpay Magic over the cart. Woo store: /checkout/ reached | Adds to cart on the real store. GoKwik's own SDK won't start headless, so GoKwik stores are read at Shopify's checkout and noted | A §2.10 |
+| AI answers (ChatGPT, Gemini, Perplexity, Claude) | Working (questions fall back to a template when the AI fails; heal rewrites them) | Named in 12 of 32 answers, 0 of 20 unbranded | Detecting the brand name with a regex gives false hits on common-word brand names | A §2.11 |
 | Socials / Films card | Partial | | Timed out on Arata, and the Films card is missing with no explanation | A §2.12 |
 | Company facts | Working | | "Cited" means "the URL was in the search results", not that the value was checked on the page | A §2.13 |
 | Ledger and facts | Working | 204 rows | When the brand corrects a value under the same key, the correction loses to the first row | A §2.14 |

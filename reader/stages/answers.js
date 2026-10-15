@@ -66,16 +66,22 @@ export async function answers(ctx) {
      this week (the read, the live watcher, the weekly check) is reused instead of asked again */
   let qs = (ctx.prev?.ai?.questions || []).filter((q) => typeof q === 'string' && q.trim()).slice(0, 8)
     .map((q, i) => ({ q, branded: (ctx.prev.ai.answers || []).find((a) => a.q === q)?.branded ?? i >= 5 }));
-  if (qs.length < 6) qs = [];
+  // template questions from a read whose AI failed are written properly once the AI is back
+  if (qs.length < 6 || (ctx.prev?.ai?.questionsBy === 'template' && ctx.aiOn)) qs = [];
+  let qErr = null, qBy = qs.length ? ctx.prev.ai.questionsBy || 'ai' : 'ai';
   if (!qs.length && ctx.aiOn) {
     try {
       const r = await ctx.ai({ tag: 'reader-questions', model: 'sonnet', max: 900, schema: { type: 'object', properties: { questions: { type: 'array', items: { type: 'object', properties: { q: { type: 'string' }, branded: { type: 'boolean' } } } } } },
         prompt: `Write 8 real questions a shopper in ${cc} would type into ChatGPT before buying ${profile.subcategory || profile.category || 'this kind of product'} (the brand is ${profile.name}, ${profile.host}). 5 unbranded (best X for Y, which X works, X without Y, is ingredient Z safe, X for a specific person), 3 branded (is ${profile.name} good, ${profile.name} vs a well-known rival, a question about ${profile.name}'s best seller "${(profile.catalog?.products || []).find((p) => p.handle === profile.catalog?.hero?.[0])?.title || ''}"). Use the words shoppers in ${cc} use. Short, natural, no brand in the unbranded ones.` });
       qs = (r.json?.questions || []).filter((x) => x.q).slice(0, 8);
-    } catch (e) { ctx.log.warn?.('[reader] questions', e.message); }
+    } catch (e) { ctx.log.warn?.('[reader] questions', e.message); qErr = e.message; }
   }
-  if (!qs.length) { ctx.finding('answers', { kind: 'answer', t: 'Asked ChatGPT', src: 'not asked', q: '', a: 'Could not write the shopper questions (AI off).', cap: '' }); return ctx.done('answers', 'questions not written', 'empty'); }
-  profile.ai = { questions: qs.map((x) => x.q), answers: [], score: null };
+  /* the AI could not write them: shopper questions from a template, so ChatGPT, Gemini and Perplexity (asked through
+     treg, not Brew's AI) are still asked. The error stays on the read, so heal writes real ones next time. */
+  if (!qs.length && ctx.tregOn) { qs = templateQuestions(profile); qBy = 'template'; if (qErr || !ctx.aiOn) profile.meta = { ...(profile.meta || {}), errors: { ...(profile.meta?.errors || {}), answers: qErr || 'AI off: shopper questions written from a template' } }; }
+  if (!qs.length) { ctx.finding('answers', { kind: 'answer', t: 'Asked ChatGPT', src: 'not asked', q: '', a: ctx.aiOn ? "Could not write the shopper questions this time; the next refresh tries again." : 'Could not write the shopper questions (AI off).', cap: '' }); return ctx.done('answers', 'questions not written', 'empty'); }
+  profile.ai = { questions: qs.map((x) => x.q), questionsBy: qBy, answers: [], score: null };
+  if (qBy === 'ai' && profile.meta?.errors?.answers) delete profile.meta.errors.answers;
   const ask = {
     chatgpt: async (q) => { const r = await ctx.dfs('dataforseo.x.ai-optimization-chat-gpt-llm-scraper-live-advanced', [{ keyword: q, location_code: loc, language_code: 'en', force_web_search: true }], `${loc}-${q}`);
       return r && { text: r.markdown || '', sources: (r.sources || []).map((s) => s.url || s.domain).filter(Boolean), brands: (r.brand_entities || []).map((b) => b.title || b.name).filter(Boolean), model: r.model }; },
@@ -109,7 +115,7 @@ export async function answers(ctx) {
   ledger.add({ key: 'ai.named.unbranded', label: `Unbranded AI answers that name ${profile.name}`, v: `${profile.ai.score.unbrandedNamed} of ${unb.length}`, n: profile.ai.score.unbrandedNamed, unit: 'answers', src: tools.join(', '), method: 'treg:dataforseo ai-optimization + claude:web_search' });
   if (!shown) { const a = ok.find((x) => x.tool === 'chatgpt') || ok.find((x) => !x.branded) || ok[0]; if (a) ctx.finding('answers', answerCard(a, profile, cc)); }
   const usedTools = new Set(ok.map((a) => a.tool)).size;
-  ctx.done('answers', ok.length ? `${qs.length} questions, ${usedTools} AI tools` : 'no answers came back', ok.length ? 'done' : 'empty');
+  ctx.done('answers', ok.length ? `${qs.length} questions${qBy === 'template' ? ' (from a template)' : ''}, ${usedTools} AI tools` : 'no answers came back', ok.length ? 'done' : 'empty');
 }
 
 function answerCard(a, profile, cc) {
@@ -118,3 +124,22 @@ function answerCard(a, profile, cc) {
   return { kind: 'answer', t: `Asked ${label}`, src: `${label.toLowerCase()} · asked from ${cc} · ${a.at}`, q: a.q, a: (end > 120 ? cut.slice(0, end + 1) : cut.replace(/\s+\S*$/, '')) + '…', cap: `${profile.name} is ${a.named ? '' : 'not '}named` };
 }
 const count = (xs) => { const m = new Map(); xs.forEach((x) => m.set(x, (m.get(x) || 0) + 1)); return [...m.entries()].sort((a, b) => b[1] - a[1]); };
+
+const COUNTRY = { IN: 'India', US: 'the US', GB: 'the UK', UK: 'the UK', AE: 'the UAE', CA: 'Canada', AU: 'Australia', SG: 'Singapore', DE: 'Germany', FR: 'France' };
+/** 8 shopper questions without an AI: 5 unbranded, 3 branded, from the category, best seller and first rival */
+export function templateQuestions(profile) {
+  const cat = String(profile.subcategory || profile.category || 'products').toLowerCase().replace(/\s+/g, ' ').trim();
+  const where = COUNTRY[profile.country] || COUNTRY.US; const name = profile.name || profile.host;
+  const best = (profile.catalog?.products || []).find((p) => p.handle === profile.catalog?.hero?.[0])?.title;
+  const rival = (profile.rivals || []).map((r) => r.name).find(Boolean);
+  return [
+    { q: `best ${cat} in ${where}`, branded: false },
+    { q: `which ${cat} actually works`, branded: false },
+    { q: `best ${cat} for beginners`, branded: false },
+    { q: `affordable ${cat} worth buying`, branded: false },
+    { q: `what to look for when buying ${cat}`, branded: false },
+    { q: `is ${name} good`, branded: true },
+    { q: rival ? `${name} vs ${rival}` : `${name} reviews`, branded: true },
+    { q: best ? `is ${name} ${String(best).replace(/\s+-\s+.*$/, '').slice(0, 60)} worth it` : `${name} best seller`, branded: true }
+  ];
+}

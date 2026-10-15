@@ -42,3 +42,25 @@ test('heal asks the AI tools again and swaps the step and its cards', async () =
   assert.ok(out.findings.cards.some((c) => c.kind === 'film'), 'the Films card stays');
   assert.ok(!out.findings.cards.some((c) => c.t === 'old'), 'the old answer card is replaced');
 });
+
+test('shopper questions: the AI fails, template questions are still asked through treg, and heal is told to retry', async () => {
+  const { answers, templateQuestions } = await import('../reader/stages/answers.js');
+  const p = blankProfile(new URL('https://acme.com'), 'acme-com');
+  Object.assign(p, { name: 'Acme', country: 'IN', subcategory: 'Wool Sneakers', rivals: [{ name: 'Rival Co' }] });
+  const asked = []; const steps = {};
+  const ctx = { profile: p, ledger: { add() {} }, aiOn: true, tregOn: true, today: '2026-10-16', log: { warn() {} }, tick() {}, finding() {},
+    done: (k, text, state) => { steps[k] = { text, state }; },
+    ai: async () => { throw new Error('quota exhausted'); },
+    dfs: async (_id, body) => { asked.push(body[0].keyword || body[0].user_prompt); return { markdown: 'Try Acme or Rival Co.', sources: [] }; } };
+  await answers(ctx);
+  assert.equal(p.ai.questionsBy, 'template');
+  assert.equal(p.ai.questions.length, 8);
+  assert.ok(p.ai.questions.includes('best wool sneakers in India'));
+  assert.ok(p.ai.questions.includes('Acme vs Rival Co'));
+  assert.ok(asked.length >= 8, 'the treg AI tools were still asked');
+  assert.match(p.meta.errors.answers, /quota/);
+  assert.equal(steps.answers.state, 'done');
+  assert.match(steps.answers.text, /from a template/);
+  assert.equal(answersFailed(p, null), true, 'heal writes real questions later');
+  assert.equal(templateQuestions({ name: 'X', host: 'x.com' }).length, 8);
+});

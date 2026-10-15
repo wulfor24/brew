@@ -209,13 +209,18 @@ Status key: **Working**, **Partial**, **Broken**, **Dummy**, **Cut-but-code-rema
   - With puppeteer-core and the local Chromium (Dockerfile installs `chromium`), it walks home → hero product page → **clicks add to cart on the real store** → cart → checkout entry. Navigational POSTs are blocked except `/cart/add|change|update`.
   - If the checkout button doesn't render headless (one-click apps), it opens `/checkout` directly and says so.
   - Records payments seen, guest checkout (sometimes inferred), OTP and popups. Timings come from one headless run and are labelled `conf: low`.
-- **Status.** Working on Arata ("5 steps, checkout timed"). It went direct, payments `[]`, guest `null`. Untested.
-- **Bugs:**
-  - **It crashes when there is no product to walk with.** site.js:141 runs `clean(hero.title)` unconditionally. If the catalog is empty, `hero` is undefined, so the stage throws a TypeError after the walk, retries (launching Chromium again) and ends "could not finish (Cannot read properties of undefined…)". The checkout data written before the crash is kept, but the finding card is lost.
-  - **Saved findings are not healed.** Live Arata findings still say "Walked with MitoActive™ Mitochondrial Hair Growth **Se.**" (a mid-word cut). Current code cuts on a word boundary, but `heal()` never re-runs `site`.
-  - The site has no stage version, so saved reads never pick up fixes.
-  - Each read, re-read and demo tour adds an item to the real store's cart and opens its checkout. That is harmless, but it does touch production stores.
-  - On Shopify, payments are rarely visible on the entry page. "Payments seen: none shown yet" is the common result.
+- **Status (2026-10-16, SITE_V 2).** Working on Shopify, one-click apps and WooCommerce:
+  - Waits for the network to settle and keeps looking for late checkout buttons (15 s). App buttons (GoKwik, Shopflo, Razorpay Magic, Fastrr) are in the selector list.
+  - A checkout app that opens an iframe or modal over the cart counts as reached, and only the app's own text is read (Gullylabs: Razorpay Magic, "asks for a phone number first").
+  - "Checkout entry" is ok only when the page or frame really is a checkout. `/checkout` sent back home or to the cart is a failure with the reason (the old walk marked Arata ok while it sat on the home page).
+  - If the desktop walk falls short, it walks again as a phone, in its own cookie jar.
+  - WooCommerce add-to-cart posts to the product page; that POST is now allowed.
+  - No in-stock product: no crash, "no in-stock product to walk with".
+  - Payments not on the entry page say where they show ("after the phone step", "after the address step"), and a walk that never reached checkout says "not checked", never "none".
+  - `heal()` re-walks any saved read with an older `SITE_V` or a walk that never reached checkout.
+- **Known limit.** GoKwik's SDK fails to initialise in headless Chrome (`[gokwik-sdk] init failed`), so GoKwik stores fall back to Shopify's own checkout, with a note that shoppers may see GoKwik instead.
+- Each read, re-read and demo tour still adds an item to the real store's cart and opens its checkout.
+- **Tests.** test/site-walk.test.js (local stores: plain, late app iframe, bounce, no product).
 - **Cost.** Free (CPU and Chromium, about 26 s).
 
 ### 2.11 Stage `answers`: AI answers (stages/answers.js:51–99)

@@ -12,7 +12,7 @@ import { brand } from './stages/brand.js';
 import { catalog } from './stages/catalog.js';
 import { reviews } from './stages/reviews.js';
 import { ads, findRivals, ADS_V } from './stages/ads.js';
-import { site } from './stages/site.js';
+import { site, SITE_V } from './stages/site.js';
 import { answers, inferCategory, writeLine } from './stages/answers.js';
 import { socials } from './stages/socials.js';
 import { company } from './stages/company.js';
@@ -28,7 +28,7 @@ export const STEPS = [
   { k: 'answers', t: 'Ask the AI tools', agent: 'visibility' }
 ];
 // per-stage deadlines (ms)
-const LIMIT = { open: 45e3, brand: 40e3, catalog: 60e3, reviews: 75e3, category: 40e3, rivals: 70e3, ads: 240e3, site: 100e3, answers: 170e3, socials: 120e3, company: 150e3 };
+const LIMIT = { open: 45e3, brand: 40e3, catalog: 60e3, reviews: 75e3, category: 40e3, rivals: 70e3, ads: 240e3, site: 200e3, answers: 170e3, socials: 120e3, company: 150e3 };
 
 export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadRaw, log = console, root = ROOT } = {}) {
   const store = defaultStore(root);
@@ -161,7 +161,8 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
     const adsBroken = !!profile.host && (!profile.ads || profile.ads.v !== ADS_V || !!ownAds.error || !ownAds.page || (profile.ads.rivals || []).some((r) => r.error) || (profile.rivals || []).length > (profile.ads.rivals || []).length);
     const lineMissing = profile.descriptorBy !== 'claude' && profile.descriptorBy !== 'brand';
     const answersBroken = answersFailed(profile, findings);
-    if (!adsBroken && !lineMissing && !answersBroken) return null;
+    const siteBroken = siteFailed(profile);
+    if (!adsBroken && !lineMissing && !answersBroken && !siteBroken) return null;
     const added = [], cards = [], stepsDone = {};
     const http = createFetcher({ slug, saveRaw, loadRaw, fresh: false, log: lg });
     const tregOn = !!treg && treg.live !== false, aiOn = !!ai && ai.live !== false;
@@ -175,9 +176,11 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
     // the AI tools step that timed out or failed in the read is asked again (it needs only the saved profile)
     if (answersBroken && (aiOn || tregOn)) {
       try { await withTimeout(answers(ctx), LIMIT.answers, 'answers'); if (profile.rivals?.length && profile.ai?.answers?.length) relabelRivals(profile);
-        if (profile.ai?.answers?.length) { changed.push('answers'); if (profile.meta?.errors) delete profile.meta.errors.answers; } }
+        if (profile.ai?.answers?.length) { changed.push('answers'); if (profile.meta?.errors && profile.ai.questionsBy !== 'template') delete profile.meta.errors.answers; } }
       catch (e) { lg.warn?.('[reader] heal answers', slug, e.message); if (profile.meta) profile.meta.errors = { ...(profile.meta.errors || {}), answers: e.message }; }
     }
+    // the checkout walk from an older walker, or one that never reached checkout, is walked again
+    if (siteBroken) { try { await withTimeout(site(ctx), LIMIT.site, 'site'); changed.push('site'); } catch (e) { lg.warn?.('[reader] heal site', slug, e.message); } }
     if (!changed.length) return null;
     const keys = new Set(added.map((e) => e.key));
     const ledger = [...L.filter((e) => !keys.has(e.key)), ...added];
@@ -192,8 +195,17 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
   return { read, heal, STEPS };
 }
 
+/** the checkout walk is from an older walker, or it has products to walk with and never reached checkout */
+export function siteFailed(profile) {
+  if (!profile.host || !profile.catalog?.products?.length) return false;
+  const co = profile.site?.checkout;
+  if (!co || co.v !== SITE_V) return true;
+  return !(co.walk || []).some((s) => s.step === 'Checkout entry' && s.ok);
+}
+
 /** the read's AI tools step failed or timed out and no answers were saved */
 export function answersFailed(profile, findings) {
+  if (profile.ai?.questionsBy === 'template') return true; // the AI could not write the questions: write them now
   if (profile.ai?.answers?.length) return false;
   if (profile.meta?.errors?.answers) return true;
   const st = (findings?.steps || []).find((x) => x.k === 'answers');
