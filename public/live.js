@@ -19,9 +19,20 @@
   const post = (p, b) => fetch(p, { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b || {}) }).then((r) => r.json()).catch(() => ({ error: 'You look offline. Try again.' }));
   const get = (p) => fetch(p, { credentials: 'same-origin' }).then((r) => r.json()).catch(() => ({}));
   const here = (h = '') => `/${slug}${h}`;
+  /* the platform's sign-in leaves the page: remember the screen it started from, so the way back lands there, not on the first screen */
+  const BACK = `brew-cxback:${slug}`;
+  const leave = (url) => { try { sessionStorage.setItem(BACK, A()?.view || ''); } catch (e) {} location.href = url; };
+  const keepPlace = (m) => m.querySelectorAll('a[href^="/auth/"]').forEach((a) => a.addEventListener('click', () => { try { sessionStorage.setItem(BACK, A()?.view || ''); } catch (e) {} }));
+  const logo = (id) => A()?.glyph?.(id, 52) || `<span class="lc-gl">${esc(nm(id).slice(0, 1))}</span>`;
+  const pair = (id) => `<div class="cx-pair"><span class="cx-so"><img src="/assets/brew-mark.svg" alt=""></span><span class="cx-link" aria-hidden="true"><i></i><i></i><i></i></span>${logo(id)}</div>`;
+  const askAdmin = (id) => `${pair(id)}<header class="cx-head"><h3>${esc(nm(id))} is connected by an admin</h3><p>Only ${esc(B().brand.name)}’s admins connect or disconnect accounts. Ask ${esc(adminName())} to connect it; once it’s on, you can sync it any time.</p></header><div class="cx-btns"><button class="btn btn-primary" data-close>Got it</button></div>`;
+  const setupView = () => ['ob', 'setup', 'check', 'wait', 'start'].includes(A()?.view);
   const signin = (next) => `/auth/google?next=${encodeURIComponent(next || location.pathname + location.search + location.hash)}`;
   const ago = (t) => { if (!t) return ''; const m = Math.round((Date.now() - t) / 60e3); return m < 2 ? 'just now' : m < 60 ? `${m} min ago` : m < 48 * 60 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`; };
   const member = () => !!L.access?.role;
+  /* connecting and disconnecting are for the brand's admins; a teammate syncs what is connected (the server enforces it too) */
+  const boss = () => !L.access?.role || ['owner', 'admin'].includes(L.access.role);
+  const adminName = () => (L.access?.team || []).find((x) => x.role === 'owner')?.name || 'your admin';
   const isLive = (id) => L.conns?.[id]?.state === 'live' && (L.conns[id].stats || []).length > 0;
   const B = () => A()?.B || window.FEED_DATA?.[slug];
   const nm = (id) => B()?.connectors?.[id]?.name || id;
@@ -49,7 +60,7 @@
   function openReal(id, opts = {}) {
     if (!GENB || (!L.signin && !L.me)) return false;
     const av = L.avail[id], x = L.conns?.[id], n = B().brand.name, poss = `${esc(n)}${/s$/i.test(n || '') ? '’' : '’s'}`;
-    const head = (h, p) => `<div class="cx-pair"><span class="cx-so"><img src="/assets/brew-mark.svg" alt=""></span><span class="cx-link" aria-hidden="true"><i></i><i></i><i></i></span><span class="lc-gl">${esc(nm(id).slice(0, 1))}</span></div><header class="cx-head"><h3>${h}</h3><p>${p}</p></header>`;
+    const head = (h, p) => `<div class="cx-pair"><span class="cx-so"><img src="/assets/brew-mark.svg" alt=""></span><span class="cx-link" aria-hidden="true"><i></i><i></i><i></i></span>${logo(id)}</div><header class="cx-head"><h3>${h}</h3><p>${p}</p></header>`;
     const fine = `<small class="cx-fine">${ic('lock', 's14')}<span>Read-only. Keys and tokens are encrypted and never shown. Only ${poss} team sees what comes back.</span></small>`;
     let body;
     if (!L.me) body = `${head(`Connect ${esc(nm(id))}`, `Sign in with Google first, so the numbers stay with ${poss} team.`)}
@@ -57,6 +68,7 @@
     else if (L.access && !L.access.gen) { const h = esc(L.access.host || host());
       body = `${head(L.access.claimed ? `${poss} team connects its accounts` : 'Connect with your work email', L.access.claimed ? `${esc(n)} is on Brew. Ask its team to invite you.` : `You’re signed in as ${esc(L.me.email)}. Sign in with your work email at ${h}: the first person from ${h} to connect an account becomes ${poss} admin.`)}
       <div class="cx-btns"><a class="btn btn-primary" href="/auth/logout?next=${encodeURIComponent(signin(here(`#v=connectors&cx=${id}`)))}">Switch to your work email</a></div>`; }
+    else if (!boss()) body = askAdmin(id);
     else {
       const claimNote = !L.access?.claimed && L.access?.eligible ? `<p class="lc-note">${ic('sparkles', 's14')}<span>You’re the first from ${esc(host())}: connecting makes you ${poss} admin on Brew.</span></p>` : '';
       const err = x?.error ? `<p class="lc-err">${esc(x.error)}</p>` : x?.why ? `<p class="lc-note"><span>${esc(x.why)}</span></p>` : '';
@@ -76,8 +88,8 @@
       body = `${head(`Connect ${esc(nm(id))}`, esc(opts.why || `Brew reads it to put ${n}’s real numbers on the cards.`))}${claimNote}${err}${action}${fine}`;
     }
     A().modal(`<div class="sheet cx-sheet lc-sheet"><div class="cx-step" data-s="1">${body}</div><div class="cx-step" data-s="2" hidden><div class="cx-pair sm"><b>Reading ${esc(nm(id))}</b></div><ol class="cx-log"><li><span class="spin"></span>Connecting and reading the last 30 days</li></ol></div><div class="cx-step" data-s="3" hidden></div></div>`, (m) => {
-      const $ = (q) => m.querySelector(q);
-      $('[data-oauth]')?.addEventListener('click', () => { const shop = $('[data-shop]')?.value?.trim(); if (id === 'shopify' && !shop) { $('[data-shop]').focus(); return; } location.href = `/connect/${id}/start?brand=${slug}${shop ? `&shop=${encodeURIComponent(shop)}` : ''}`; });
+      const $ = (q) => m.querySelector(q); keepPlace(m);
+      $('[data-oauth]')?.addEventListener('click', () => { const shop = $('[data-shop]')?.value?.trim(); if (id === 'shopify' && !shop) { $('[data-shop]').focus(); return; } leave(`/connect/${id}/start?brand=${slug}${shop ? `&shop=${encodeURIComponent(shop)}` : ''}`); });
       $('[data-key]')?.addEventListener('click', () => { const fields = Object.fromEntries([...m.querySelectorAll('[data-k]')].map((i) => [i.dataset.k, i.value.trim()]).filter(([, v]) => v)); run(m, id, post(`/api/brands/${slug}/connect/${id}`, { action: 'key', fields }), opts); });
       $('[data-pub]')?.addEventListener('click', () => run(m, id, post(`/api/brands/${slug}/connect/${id}`, { action: 'sync' }), opts));
     });
@@ -87,7 +99,7 @@
   function openSim(id, opts = {}) {
     if (!GENB || (!L.signin && !L.me)) return false;
     const n = B().brand.name, poss = `${esc(n)}${/s$/i.test(n || '') ? '’' : '’s'}`;
-    const head = (h, p) => `<div class="cx-pair"><span class="cx-so"><img src="/assets/brew-mark.svg" alt=""></span><span class="cx-link" aria-hidden="true"><i></i><i></i><i></i></span><span class="lc-gl">${esc(nm(id).slice(0, 1))}</span></div><header class="cx-head"><h3>${h}</h3><p>${p}</p></header>`;
+    const head = (h, p) => `<div class="cx-pair"><span class="cx-so"><img src="/assets/brew-mark.svg" alt=""></span><span class="cx-link" aria-hidden="true"><i></i><i></i><i></i></span>${logo(id)}</div><header class="cx-head"><h3>${h}</h3><p>${p}</p></header>`;
     const dummy = `<p class="lc-note is-dummy"><span class="dummy-tag">Dummy</span><span>A simulated ${esc(nm(id))} account, built from what Brew read about ${esc(n)}. No real account is connected or changed.</span></p>`;
     let body;
     if (!L.me) body = `${head(`Connect ${esc(nm(id))}`, `Sign in with Google first, so the numbers stay with ${poss} team.`)}${dummy}
@@ -95,12 +107,13 @@
     else if (L.access && !L.access.gen) { const h = esc(L.access.host || host());
       body = `${head(L.access.claimed ? `${poss} team connects its accounts` : 'Connect with your work email', L.access.claimed ? `${esc(n)} is on Brew. Ask its team to invite you; until then you see the demo.` : `You’re signed in as ${esc(L.me.email)}. Sign in with your work email at ${h}: the first person from ${h} to connect an account becomes ${poss} admin.`)}
       <div class="cx-btns"><a class="btn btn-primary" href="/auth/logout?next=${encodeURIComponent(signin(here(`#v=connectors&cx=${id}`)))}">Switch to your work email</a></div>`; }
+    else if (!boss()) body = askAdmin(id);
     else {
       const claimNote = !L.access?.claimed && L.access?.eligible ? `<p class="lc-note">${ic('sparkles', 's14')}<span>You’re the first from ${esc(host())}: connecting makes you ${poss} admin on Brew.</span></p>` : '';
       body = `${head(`Connect ${esc(nm(id))}`, esc(opts.why || `Brew reads it to put ${n}’s numbers on the cards.`))}${dummy}${claimNote}<div class="cx-btns" style="justify-content:center"><button class="btn btn-primary" data-dm>Connect ${esc(nm(id).split(' ')[0])}</button></div>`;
     }
     A().modal(`<div class="sheet cx-sheet lc-sheet"><div class="cx-step" data-s="1">${body}</div><div class="cx-step" data-s="2" hidden><div class="cx-pair sm"><b>Reading ${esc(nm(id))}</b></div><ol class="cx-log"><li><span class="spin"></span>Connecting and reading the last 30 days</li></ol></div><div class="cx-step" data-s="3" hidden></div></div>`, (m) => {
-      m.querySelector('[data-dm]')?.addEventListener('click', () => run(m, id, Promise.all([post(`/api/brands/${slug}/connect/${id}`, { action: 'connect' }), timeout(1600)]).then(([r]) => r), opts));
+      keepPlace(m); m.querySelector('[data-dm]')?.addEventListener('click', () => run(m, id, Promise.all([post(`/api/brands/${slug}/connect/${id}`, { action: 'connect' }), timeout(1600)]).then(([r]) => r), opts));
     });
     return true;
   }
@@ -112,7 +125,7 @@
     s(2).hidden = true; s(3).hidden = false; s(3).innerHTML = result(id, r);
     const see = s(3).querySelector('[data-see]');
     /* during onboarding, stay on the step: a page load would start the onboarding again from the first screen */
-    if (A().view === 'ob') { L.conns[id] = { ...r, state: r.state || 'live' }; overlay(B(), A().S); A().S.conn[id] = true; A().save(); A().cxDone?.(id);
+    if (setupView()) { L.conns[id] = { ...r, state: r.state || 'live' }; overlay(B(), A().S); A().S.conn[id] = true; A().save(); A().cxDone?.(id);
       see.textContent = 'Continue'; see.onclick = () => A().closeModal(); return; }
     see.onclick = () => { A().closeModal(); location.href = here(opts.then ? location.hash : ''); };
   }
@@ -129,18 +142,24 @@
     history.replaceState(history.state, '', location.pathname + '#v=connectors');
     if (hp.cxerr) { A().toastLong(`${ic('info', 's16')}${esc(hp.cxerr)}`, 8000); if (id) setTimeout(() => open(id), 300); return; }
     if (hp.pick) return pick(id);
-    if (hp.done && L.conns[id]) { A().modal(`<div class="sheet cx-sheet lc-sheet"><div class="cx-step">${result(id, { ...L.conns[id], claimed: L.access?.role === 'owner' && L.access?.members?.length === 1 })}</div></div>`, (m) => { m.querySelector('[data-see]').onclick = () => { A().closeModal(); location.href = here(); }; }); return; }
+    if (hp.done && L.conns[id]) { A().modal(`<div class="sheet cx-sheet lc-sheet"><div class="cx-step">${result(id, { ...L.conns[id], claimed: L.access?.role === 'owner' && L.access?.members?.length === 1 })}</div></div>`, (m) => { const see = m.querySelector('[data-see]');
+      if (setupView()) { A().S.conn[id] = true; A().save(); A().cxDone?.(id); see.textContent = 'Continue'; see.onclick = () => A().closeModal(); return; }
+      see.onclick = () => { A().closeModal(); location.href = here(); }; }); return; }
     if (id && !A().conn(id)) setTimeout(() => A().openConnect(id), 300);
   }
   // Meta: which ad account; Google: which GA4 property and which Ads account
   async function pick(id) {
     const n = B().brand.name;
-    A().modal(`<div class="sheet cx-sheet lc-sheet"><div class="cx-step" data-s="1"><header class="cx-head"><h3>Which ${id === 'google' ? 'accounts' : 'ad account'}?</h3><p>Pick the one that is ${esc(n)}${/s$/i.test(n || '') ? '’' : '’s'}.</p></header><div class="lc-opts"><span class="spin"></span></div></div><div class="cx-step" data-s="2" hidden><ol class="cx-log"><li><span class="spin"></span>Reading the last 30 days</li></ol></div><div class="cx-step" data-s="3" hidden></div></div>`, async (m) => {
+    if (!boss()) return A().modal(`<div class="sheet cx-sheet lc-sheet"><div class="cx-step">${askAdmin(id)}</div></div>`);
+    A().modal(`<div class="sheet cx-sheet lc-sheet"><div class="cx-step" data-s="1">${pair(id)}<header class="cx-head"><h3>Which ${id === 'google' ? 'accounts' : 'ad account'}?</h3><p>Pick the one that is ${esc(n)}${/s$/i.test(n || '') ? '’' : '’s'}.</p></header><div class="lc-opts"><span class="spin"></span></div></div><div class="cx-step" data-s="2" hidden><ol class="cx-log"><li><span class="spin"></span>Reading the last 30 days</li></ol></div><div class="cx-step" data-s="3" hidden></div></div>`, async (m) => {
       const r = await get(`/api/brands/${slug}/connect/${id}/options`), box = m.querySelector('.lc-opts'), opts = r.options || [];
-      if (!opts.length) { box.innerHTML = `<p class="lc-err">${esc(r.error || 'No accounts came back for this login.')}</p><div class="cx-btns"><a class="btn btn-primary" href="/connect/${id}/start?brand=${slug}">Try again</a></div>`; return; }
+      if (!opts.length) { box.innerHTML = `<p class="lc-err">${esc(r.error || 'No accounts came back for this login.')}</p><div class="cx-btns"><button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" data-again>Try again</button></div>`; box.querySelector('[data-again]').onclick = () => leave(`/connect/${id}/start?brand=${slug}`); return; }
       const groups = id === 'google' ? [['ga4', 'Google Analytics 4 property'], ['ads', 'Google Ads account']] : [[null, 'Ad account']];
       box.innerHTML = groups.map(([k, label]) => { const xs = opts.filter((o) => !k || o.kind === k); if (!xs.length) return k === 'ads' ? '<p class="lc-note"><span>No Google Ads account on this login. GA4 alone works.</span></p>' : '';
-        return `<fieldset class="lc-pick"><legend>${label}</legend>${xs.map((o, i) => `<label class="cx-acct"><input type="radio" name="${k || 'acct'}" value="${esc(o.id)}" data-name="${esc(o.name)}" ${i === 0 && xs.length === 1 ? 'checked' : ''}><span class="cx-acct-t"><b>${esc(o.name)}</b><small>${esc(o.sub || '')}</small></span><i class="cx-tick">${ic('check', 's14')}</i></label>`).join('')}${k === 'ads' ? '<label class="cx-acct"><input type="radio" name="ads" value=""><span class="cx-acct-t"><b>Skip Google Ads</b></span></label>' : ''}</fieldset>`; }).join('') + '<div class="cx-btns"><button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" data-go>Connect</button></div>';
+        const row = (name, val, nm2, sub, on) => `<label class="cx-acct lc-opt"><input type="radio" name="${name}" value="${esc(val)}" data-name="${esc(nm2)}"${on ? ' checked' : ''}><i class="lc-radio" aria-hidden="true"></i><span class="cx-acct-t"><b>${esc(nm2)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span></label>`;
+        return `<fieldset class="lc-pick"><legend>${label}${xs.length > 1 ? ` <em>${xs.length}</em>` : ''}</legend><div class="lc-list">${xs.map((o) => row(k || 'acct', o.id, o.name, o.sub, xs.length === 1)).join('')}${k === 'ads' ? row('ads', '', 'Skip Google Ads', 'Connect GA4 only', false) : ''}</div></fieldset>`; }).join('') + '<div class="cx-btns lc-bar"><button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" data-go>Connect</button></div>';
+      const go = m.querySelector('[data-go]'), ready = () => { go.disabled = id === 'google' ? !m.querySelector('input[name="ga4"]:checked, input[name="ads"]:checked:not([value=""])') : !m.querySelector('input[name="acct"]:checked'); };
+      ready(); box.addEventListener('change', ready);
       m.querySelector('[data-close]')?.addEventListener('click', () => A().closeModal());
       m.querySelector('[data-go]').onclick = () => { const val = (k) => m.querySelector(`input[name="${k}"]:checked`);
         const choice = id === 'google' ? { ga4: val('ga4')?.value || null, ga4Name: val('ga4')?.dataset.name, ads: val('ads')?.value || null, adsName: val('ads')?.dataset.name } : { account: val('acct')?.value, name: val('acct')?.dataset.name };
@@ -155,9 +174,10 @@
     if (x.state === 'syncing') return `<span class="cn-st is-on"><i></i>Reading…</span>`;
     return `<span class="cn-st is-off"><i></i>Needs attention</span>`; };
   const footer = (id) => { const x = L.conns?.[id]; if (!x || !member() && x.state !== 'live') return null;
-    return `<span class="cn-acct">${ic('check', 's14')}${esc(x.account || nm(id))}${x.lastSync ? ` · ${ago(x.lastSync)}` : ''}</span>${member() || L.avail?.[id]?.modes?.includes('public') ? `<button class="cn-btn is-ghost" data-lsync="${id}">Sync now</button>` : ''}${member() ? `<button class="cn-btn is-ghost" data-lunlink="${id}">Disconnect</button>` : ''}`; };
+    return `<span class="cn-acct">${ic('check', 's14')}${esc(x.account || nm(id))}${x.lastSync ? ` · ${ago(x.lastSync)}` : ''}</span>${member() || L.avail?.[id]?.modes?.includes('public') ? `<button class="cn-btn is-ghost" data-lsync="${id}">Sync now</button>` : ''}${member() && boss() ? `<button class="cn-btn is-ghost" data-lunlink="${id}">Disconnect</button>` : ''}`; };
   const intro = () => { if (!GENB || (!L.signin && !L.me)) return null; const n = B().brand.name;
     if (!L.me) return L.dummy ? `Every source Brew reads for ${n}. <a href="${signin()}">Sign in with Google</a> to connect accounts. Connected accounts are simulated in this demo (Dummy).` : `Every source Brew reads for ${n}. <a href="${signin()}">Sign in with Google</a> to connect ${n}’s real accounts, read-only.`;
+    if (member() && !boss()) return `Every source Brew reads for ${n}. Only ${n}’s admins connect or disconnect accounts; you can sync the connected ones.`;
     if (member()) return L.dummy ? `Every source Brew reads for ${n}. Connected accounts are simulated in this demo (Dummy), built from what Brew read, and only ${n}’s team sees them.` : `Every source Brew reads for ${n}. Connected accounts are read-only, refresh once a day, and only ${n}’s team sees them.`;
     if (L.access?.claimed) return `Every source Brew reads for ${n}. Its team sees the live numbers; here you see the demo. Ask them to invite you.`;
     if (L.access?.eligible) return `Every source Brew reads for ${n}. You’re the first from ${esc(host())}: connect an account and ${n} is yours. <button class="linkish" data-lclaim>Claim it with your email</button>`;
@@ -279,5 +299,5 @@
 
 
 
-  window.LiveConn = { simId, teamSheet, seatWords, open, overlay, resume, status, footer, intro, bindPage, menu, claim, isLive, get L() { return L; }, gen: GENB, signin };
+  window.LiveConn = { boss: () => !L.me || boss(), simId, teamSheet, seatWords, open, overlay, resume, status, footer, intro, bindPage, menu, claim, isLive, get L() { return L; }, gen: GENB, signin };
 })();

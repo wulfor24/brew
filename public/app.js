@@ -605,7 +605,7 @@
   const connectWhat = () => {
     const ids = ROLE().connectors;
     window.scrollTo(0, 0); root.innerHTML = shell(`
-      <h1 class="ob2-h">Connect your tools</h1><p class="ob2-lede">Cards swap targets for your real numbers. Optional, and you can do it later from any card.</p>
+      <h1 class="ob2-h">Connect your tools</h1><p class="ob2-lede">${window.LiveConn?.boss?.() === false ? 'Your admin connects these. Once they’re on, cards swap targets for your real numbers.' : 'Cards swap targets for your real numbers. Optional, and you can do it later from any card.'}</p>
       <div class="ob2-cx">${ids.map((id) => cxRow(id)).join('')}</div>
       <p class="ob2-foot">${ic('lock', 's14')} ${window.LIVE?.dummy === false ? 'Read-only. Brew never changes your accounts.' : 'Demo workspace. No real account is touched.'}</p>
       ${obNav('Next', true)}`, 3);
@@ -614,7 +614,7 @@
   };
   const cxRow = (id) => { const c = B.connectors[id];
     return `<div class="cx-row" data-cxrow="${id}">${glyph(id, 40)}<span class="lg-tx"><b>${esc(c.name)}${c.optional ? ' <span class="src-opt">optional</span>' : ''}</b><span>${esc(c.kind)}</span></span>
-      ${conn(id) ? `<span class="cx-on">${ic('check', 's14')} Connected</span>` : `<button class="btn btn-primary sm" data-cx="${id}">Connect</button>`}</div>`; };
+      ${conn(id) ? `<span class="cx-on">${ic('check', 's14')} Connected</span>` : window.LiveConn?.boss?.() === false ? `<span class="cx-ask">Admin connects</span>` : `<button class="btn btn-primary sm" data-cx="${id}">Connect</button>`}</div>`; };
   /* the last step: invite the people you'll jam with. They get an email and see only the views you pick. Admins invite;
      a teammate sees who's already here. Nothing about anyone is typed twice: you are who you signed in as */
   const IV = { sent: [], busy: false, chips: [], seats: null, warn: false, open: false };
@@ -4111,7 +4111,7 @@
 
   /* ---------- go ---------- */
   // jam-room.js (the Jam Room) works from these
-  window.__BREW = { demoSheet: (h) => demoSheet(h), shareSheet: (p) => shareSheet(p), pageOf: (id) => PAGE[id] || null, studioCard: () => (view === 'remix' ? RX.p : null), studioV: () => (view === 'remix' && RX.ch ? curN(RX.ch) : null) /* the version on the jam's stage, for the sheets */, libAct, cxDone: (id) => $$(`[data-cxrow="${id}"]`).forEach((r) => (r.outerHTML = cxRow(id))), $, $$, esc, wait, ic, face, avatar, podFaces, toast, toastLong, B, AGENT, save, ROLE, colleague, conn, cardOf, byId, tapi, putWork, counts, inrS, openConnect, openDetail, closeDetail, closePop, closeModal, modal, assetHtml, renderView, renderWork, workOfCard, pseudoPost, colleagueForCard,
+  window.__BREW = { glyph: (id, n) => glyph(id, n), demoSheet: (h) => demoSheet(h), shareSheet: (p) => shareSheet(p), pageOf: (id) => PAGE[id] || null, studioCard: () => (view === 'remix' ? RX.p : null), studioV: () => (view === 'remix' && RX.ch ? curN(RX.ch) : null) /* the version on the jam's stage, for the sheets */, libAct, cxDone: (id) => $$(`[data-cxrow="${id}"]`).forEach((r) => (r.outerHTML = cxRow(id))), $, $$, esc, wait, ic, face, avatar, podFaces, toast, toastLong, B, AGENT, save, ROLE, colleague, conn, cardOf, byId, tapi, putWork, counts, inrS, openConnect, openDetail, closeDetail, closePop, closeModal, modal, assetHtml, renderView, renderWork, workOfCard, pseudoPost, colleagueForCard,
     get S() { return S; }, get WORK() { return WORK; }, get view() { return view; }, setChange: (ch) => { if (DP && ch) DP.ch = ch; }, currentDetail: () => DP && (DP.w ? { ...DP.p, _work: DP.w, _ch: DP.ch || null } : DP.p), SPLIT, slotHtml, ago, repaintDetail: () => repaintDetail(true), detailDirty: () => !!DP?.dirty, fitKnobs, fitSuggest };
   // #setup replays onboarding (it only plays once otherwise, because finishing it is saved in this browser)
   const adoptShare = async () => { const tok = hashParams().s; if (!tok) return;
@@ -4133,10 +4133,14 @@
   Promise.resolve(window.LIVE_P).catch(() => null).then(() => { window.LiveConn?.overlay(B, S); fitSeat(); save();
   if (/[?&]joined=1/.test(location.search)) { history.replaceState(null, '', location.pathname + location.hash); setTimeout(() => toast(`${ic('check', 's14')}You’re on ${esc(B.brand.name)}’s team`), 600); }
   if (location.hash === '#team' && ['owner', 'admin'].includes(window.LIVE?.access?.role)) setTimeout(() => window.LiveConn?.teamSheet(), 700);
+  const cxBack = /[#&]cx(err)?=/.test(location.hash) ? (() => { try { const k = `brew-cxback:${window.BRAND}`, v = sessionStorage.getItem(k); sessionStorage.removeItem(k); return v; } catch (e) { return null; } })() : null;
   if (hashParams().s) adoptShare().then(() => { if (S.onboarded) feed(); else start(); });
   else if (LANDING) start(); // the landing is only ever the paste-a-URL page
   else if (GEN && location.hash === '#check') ensureTenant(true).then(checkRead); // reopen "Is this right?"
   else if (GEN && location.hash === '#wait') ensureTenant(true).then(waitMoves);
+  else if (GEN && cxBack === 'ob') ensureTenant(true).then(() => { view = 'ob'; connectWhat(); }); // back from a platform's sign-in: the step it left from
+  else if (GEN && cxBack === 'check') ensureTenant(true).then(checkRead);
+  else if (GEN && cxBack === 'wait') ensureTenant(true).then(waitMoves);
   else if (S.onboarded && location.hash !== '#setup') feed(); else { if (location.hash === '#setup') history.replaceState(null, '', location.pathname); if (GEN && ls.get(`${LSP()}continue`)) { ls.del(`${LSP()}continue`); ensureTenant(true).then(whoFor); } else if (GEN && !(window.BREW_DEMO && location.hash !== '#setup')) ensureTenant(true).then(setup); else start(); } /* the demo site's tour starts on the address screen */
   if (/[#&]cx(err)?=/.test(location.hash)) setTimeout(() => window.LiveConn?.resume(), 900); });
 })();

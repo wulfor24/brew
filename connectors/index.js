@@ -151,6 +151,8 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
   }
 
   /* ---------- routes ---------- */
+  const ADMIN_ONLY = 'Only the brand’s admins connect or disconnect accounts. You can sync the ones that are connected.';
+  const canConnect = (access) => !access.role || access.role === 'owner' || access.role === 'admin';
   const slugOf = (x) => String(x || '').replace(/[^a-z0-9-]/g, '');
   async function handle(req, res, u) {
     const p = u.pathname;
@@ -165,6 +167,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
         const C = REAL[id]; if (!C.modes.includes('oauth')) return json(res, 404, { error: 'This one connects with a key.' }), true;
         const access = await auth.claimInfo(slug, me); if (!access.host) return json(res, 404, { error: 'unknown brand' }), true;
         if (!access.gen) return redirect(res, `/${slug}#v=connectors&cxerr=${encodeURIComponent(noGen(access, access.host))}`), true;
+        if (!canConnect(access)) return redirect(res, `/${slug}#v=connectors&cxerr=${encodeURIComponent(ADMIN_ONLY)}`), true;
         if (!C.ready(deps) || (C.oauthOn && !C.oauthOn())) return redirect(res, `/${slug}#v=connectors&cx=${id}&cxerr=${encodeURIComponent(`Signing in to ${C.name} is not switched on yet. Use the key option instead.`)}`), true;
         const state = auth.sign({ slug, id, email: me.email, n: crypto.randomBytes(9).toString('base64url') }, 900, 'connect');
         try { return redirect(res, C.authorize({ state, redirect: cbUrl(req, id), shop: u.searchParams.get('shop') || (await ctxOf(slug)).shopifyShop })), true; }
@@ -193,11 +196,14 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
       const access = await auth.claimInfo(slug, me); if (!access.host) return json(res, 404, { error: 'unknown brand' }), true;
       if (!access.gen) return json(res, 403, { error: noGen(access, access.host), demo: true, host: access.host }), true;
       const member = !!access.role, C = simOnly(id) ? null : REAL[id];
+      /* connecting, picking the account and disconnecting are for the brand's admins (and the first person claiming it); the team can sync */
+      if (opt && !canConnect(access)) return json(res, 403, { error: ADMIN_ONLY, adminOnly: true }), true;
       if (opt && req.method === 'GET') { if (!C?.options) return json(res, 404, { error: 'unknown connector' }), true;
         const pend = await loadPending(slug, id, me.email); if (!pend) return json(res, 200, { options: [], error: 'Connect again: the sign-in expired.' }), true;
         try { return json(res, 200, { options: await C.options(pend) }), true; } catch (e) { return json(res, 200, { options: [], error: e.message.slice(0, 160) }), true; } }
       if (req.method !== 'POST') return false;
       const b = await body(req);
+      if (b.action !== 'sync' && !canConnect(access)) return json(res, 403, { error: ADMIN_ONLY, adminOnly: true }), true;
       if (b.action === 'sync') {
         if (PUBLIC.has(id)) { const s = (await liveOf(slug, true)).conns[id];
           if (s?.lastSync && s.state === 'live' && Date.now() - s.lastSync < 10 * 60e3) return json(res, 200, { ok: true, state: 'live', note: 'Read a few minutes ago' }), true;

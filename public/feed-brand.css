@@ -725,3 +725,40 @@ body.has-me-cur .me-cur{display:flex}
 .tm-av{object-fit:cover}
 .tm-copy{margin-top:8px}
 .tm-menu .tm-hint{margin:0;padding:8px 10px;max-width:260px;font-size:12.5px;line-height:17px;color:var(--fg-3)}
+
+/* ---------- the connect sheets (live.js): one column, even spacing, one clear action ---------- */
+.cx-sheet.lc-sheet{width:min(440px,100%);max-height:calc(100vh - 32px);overflow:auto}
+.lc-sheet .cx-step{gap:14px}
+.lc-sheet .cx-step > .lc-note,.lc-sheet .cx-step > .lc-err,.lc-sheet .lc-key,.lc-sheet .lc-f,.lc-sheet .lc-opts{margin:0}
+.lc-sheet .cx-head p{max-width:36ch}
+.lc-sheet .cx-btns:has(> :only-child){grid-template-columns:1fr}
+.lc-sheet .lc-f{gap:6px}
+.lc-sheet .lc-f + .lc-f{margin-top:10px}
+.lc-sheet .lc-f small{font-size:12.5px;font-weight:550;color:var(--fg-2)}
+.lc-sheet .lc-f input{height:42px;border-radius:12px;font-size:14px}
+.lc-sheet .lc-f input:focus{outline:none;border-color:var(--fg);box-shadow:0 0 0 3px color-mix(in srgb,var(--fg) 12%,transparent)}
+.lc-sheet .lc-key{padding:12px 14px;border-radius:14px;box-shadow:inset 0 0 0 1px var(--line)}
+.lc-sheet .lc-key summary{list-style:none;display:flex;align-items:center;justify-content:space-between;font-size:13.5px;color:var(--fg)}
+.lc-sheet .lc-key summary::-webkit-details-marker{display:none}
+.lc-sheet .lc-key summary::after{content:"";width:7px;height:7px;border-right:1.5px solid var(--fg-3);border-bottom:1.5px solid var(--fg-3);rotate:45deg;translate:0 -2px;transition:rotate .15s}
+.lc-sheet .lc-key[open] summary{margin-bottom:12px}
+.lc-sheet .lc-key[open] summary::after{rotate:225deg;translate:0 2px}
+.lc-sheet .lc-key .lc-note{margin:0 0 10px}
+.lc-sheet .lc-key .btn{width:100%;height:42px;justify-content:center;margin-top:12px;border-radius:12px}
+/* the account picker: every row looks tappable (a ring and a border), the picked one is filled and outlined */
+.lc-sheet .lc-pick{margin:0 0 4px;gap:8px}
+.lc-sheet .lc-pick + .lc-pick{margin-top:12px}
+.lc-sheet .lc-pick legend{display:flex;align-items:center;gap:6px;padding:0;margin-bottom:8px;font-size:12.5px;font-weight:600;color:var(--fg-2)}
+.lc-sheet .lc-pick legend em{font-style:normal;font-weight:500;color:var(--fg-3)}
+.lc-sheet .lc-list{display:flex;flex-direction:column;gap:8px;max-height:min(44vh,340px);overflow:auto;padding:2px;margin:-2px;overscroll-behavior:contain}
+.cx-sheet .lc-pick .lc-opt{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line);cursor:pointer;transition:box-shadow .12s,background .12s}
+.cx-sheet .lc-pick .lc-opt:hover{box-shadow:inset 0 0 0 1px var(--fg-3)}
+.cx-sheet .lc-pick .lc-opt:has(input:checked){background:var(--surface);box-shadow:inset 0 0 0 1.5px var(--fg)}
+.cx-sheet .lc-pick .lc-opt:has(input:focus-visible){outline:2px solid var(--fg);outline-offset:2px}
+.lc-radio{flex:0 0 auto;width:18px;height:18px;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--fg-3);transition:box-shadow .12s}
+.lc-opt:has(input:checked) .lc-radio{box-shadow:inset 0 0 0 5.5px var(--fg)}
+.lc-sheet .lc-bar{position:sticky;bottom:-20px;margin:0 -24px -20px;padding:12px 24px 20px;background:var(--card);border-top:1px solid var(--line-soft)}
+.lc-sheet .btn[disabled]{opacity:.4;cursor:not-allowed}
+/* the read screen's cursor never sits on top of a sheet */
+body.modal-on .buddy,body.modal-on .su-done{visibility:hidden}
+.cx-ask{font-size:12.5px;color:var(--fg-3);white-space:nowrap}
