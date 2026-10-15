@@ -293,3 +293,8 @@
 .ck2 .ck2-f textarea{width:100%;box-sizing:border-box;font:inherit;font-size:15px;line-height:1.45;color:var(--fg);background:transparent;border:0;border-bottom:1px solid var(--line);border-radius:0;padding:6px 0 8px;resize:none;field-sizing:content;min-height:2.2em}
 .ck2 .ck2-f textarea:hover{border-bottom-color:var(--fg-3)}
 .ck2 .ck2-f textarea:focus{outline:none;border-bottom-color:var(--fg)}
+
+/* a card that rests on what the team told Brew (feed-service pub → told) */
+.told-tag{display:inline-flex;align-items:center;gap:5px;margin:0 0 6px;font-size:12px;line-height:18px;color:var(--fg-2,#6b6b6b)}
+.told-tag svg{opacity:.8}
+.q-body .told-tag{margin:2px 0 4px}

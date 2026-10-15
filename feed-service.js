@@ -282,6 +282,8 @@ export function createFeedService(o) {
   const toldMemo = new WeakMap();
   const toldOf = (c) => { const terms = B()?.learnedTerms; let m = toldMemo.get(terms || toldMemo); if (!m) { m = new Map(); toldMemo.set(terms || toldMemo, m); }
     if (!m.has(c.id)) m.set(c.id, cardUsesLearned(`${c.title || ''} ${c.sub || ''} ${(c.detail?.why || []).join(' ')} ${(c.detail?.how || []).join(' ')}`, terms) ? 5 : 0); return m.get(c.id); };
+  // who may see that a card rests on what the team told Brew: the same people as the told list (server.js /told)
+  const toldSeen = (t) => process.env.DEMO_MODE === '1' || !!t?.member || process.env.FEED_SIGNIN === '0';
   const score = (t, c, af) => {
     const v = t.viewer, R = SEED.roles[v.role] || SEED.roles.founder;
     const ageH = Math.max(0, (now(t) - c.createdAt) / H);
@@ -410,7 +412,7 @@ export function createFeedService(o) {
   const measureOf = (t, c) => { const m = { ...(MEASURE[c?.sector] || MEASURE.creatives), ...(c?.measure || {}) };
     // AI answers: today's number is the latest real run, not a sample
     const vr = live?.get()?.visibility?.runs?.[0]; if (c?.sector === 'visibility' && vr && !c?.measure) Object.assign(m, { unit: ` of ${vr.total}`, baseline: vr.named, target: Math.min(vr.total, vr.named + 4), window: 28, attribution: `The same questions, asked the same way every week from ${CTRY()}. A change in who gets named is the result.` }); m.connected = !m.from || !!t?.conn[m.from]; m.fromName = m.from ? (SEED.connectors[m.from]?.name || m.from) : null; return m; };
-  const pub = (c, t) => { const { history, ...rest } = c; if (!rest.note && B()?.notes?.[c.id]) rest.note = B().notes[c.id]; /* margin notes written after the card landed (notes.js) */ if (LEAK.test(`${rest.title} ${rest.sub}`)) { rest.title = scrubLeak(rest.title); rest.sub = scrubLeak(rest.sub); } const dv = draftView(draftFor(c, B()?.firstDrafts), c); if (dv) rest.draft = dv; /* the first draft Brew made for this card (drafts-bg.js), shown on the feed card */ const pl = planOfCard(c); if (pl) rest.plan = pl; /* its plan: what the jam opens on */ return { ...rest, history: (history || []).slice(-6), measure: measureOf(t, c), decided: t?.decided?.[c.id] || null }; };
+  const pub = (c, t) => { const { history, ...rest } = c; if (!rest.note && B()?.notes?.[c.id]) rest.note = B().notes[c.id]; /* margin notes written after the card landed (notes.js) */ if (LEAK.test(`${rest.title} ${rest.sub}`)) { rest.title = scrubLeak(rest.title); rest.sub = scrubLeak(rest.sub); } const dv = draftView(draftFor(c, B()?.firstDrafts), c); if (dv) rest.draft = dv; /* the first draft Brew made for this card (drafts-bg.js), shown on the feed card */ const pl = planOfCard(c); if (pl) rest.plan = pl; /* its plan: what the jam opens on */ if (toldOf(c) && toldSeen(t)) rest.told = true; /* the card itself rests on what the team told Brew: the feed labels it (team only, like the told list) */ return { ...rest, history: (history || []).slice(-6), measure: measureOf(t, c), decided: t?.decided?.[c.id] || null }; };
   const allCards = (t) => { const o = {}; t.cards.forEach((c, id) => { if (!['dropped'].includes(c.state) && seatOk(t, c)) o[id] = pub(c, t); }); return o; };
 
   /* ---------- QA agent ---------- */

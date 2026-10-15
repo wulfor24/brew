@@ -718,7 +718,7 @@
     const sub = [isNew ? 'Just in' : agoText(c.time), campLine(c)].filter(Boolean).join(' · ');
     const lc = null; /* Do it now was cut: nothing goes live from Brew, so no card shows a Live row */
     const live = lc ? `<button class="live-row" data-livech data-card="${esc(p.id)}" title="${esc(`${lc.label}${lc.scope ? ' · ' + lc.scope : ''} · ${byTeam(lc.by) ? 'shipped by the ShopOS team' : 'shipped by Brew'}. Open the history`)}"><span class="live-pill"><i class="pulse"></i>Live</span><span class="live-tx">${esc(lc.label)}</span><span class="live-v">v${lc.v}</span>${ic('right', 's14')}</button>` : '';
-    const body = `<div class="body">${live || statusRow(p, c)}<h3>${esc(c.title)}</h3><p>${esc(c.sub)}</p>${makeChip(c)}${srcLine(c)}</div>`;
+    const body = `<div class="body">${live || statusRow(p, c)}${p.told ? `<span class="told-tag" title="This card uses what your team told Brew">${ic('book', 's12')}From what your team told Brew</span>` : ''}<h3>${esc(c.title)}</h3><p>${esc(c.sub)}</p>${makeChip(c)}${srcLine(c)}</div>`;
     const fd = ['chat', 'conflict', 'answer'].includes(c.kind) ? '' : draftSlot(c); /* a draft replaces the lane photo; a rows card keeps its rows under the words */
     const media = !!fd || c.kind === 'media' || (c.kind === 'variants' && c.images?.length);
     const dn = doneText(p, c), rows = fd && c.kind === 'rows' && c.rows?.length ? slotHtml(c) : '';
@@ -786,7 +786,7 @@
   const qRow = (p, i) => { const c = cardOf(p);
     return `<article class="card q-card${(c.images || p.images || [])[0] ? '' : ' no-img'}${p.dummy || p.demo || p.onlyWhen || /^live-/.test(p.id) ? ' is-dummy' : ''}" data-post="${i}" data-id="${esc(p.id)}">${qThumb(p, c)}
       <div class="q-body"><div class="q-meta">${face(p.agent)}${c.badge ? `<span class="badge ${c.badge[1]}">${esc(c.badge[0])}</span>` : `<span>${esc(fromLabel(c))}</span>`}</div>
-        <h3>${esc(c.title)}</h3><p>${esc(c.sub)}</p></div>
+        ${p.told ? `<span class="told-tag" title="This card uses what your team told Brew">${ic('book', 's12')}From what your team told Brew</span>` : ''}<h3>${esc(c.title)}</h3><p>${esc(c.sub)}</p></div>
       <div class="q-acts">${barHtml(c.cta || { label: 'Open' }, c.done)}</div></article>`; };
   const wRow = (w) => `<article class="card q-card${w.img ? '' : ' no-img'}">${w.img ? `<span class="q-thumb"><img src="${w.img}" alt=""></span>` : ''}
       <div class="q-body"><div class="q-meta">${w.with?.kind === 'team' ? avatar(colleague(w.with.id), 22) : face(w.agent || 'brew')}<b>${w.with ? `From ${esc(w.with.name)}` : 'From Brew'}</b><span>· ${ago(w.updatedAt)}</span><span class="badge warn">Needs you</span></div>
