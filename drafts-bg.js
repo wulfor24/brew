@@ -2,7 +2,7 @@
 // in the last 3 days, a background job drafts every card that names what to make (card.make, set by cards-gen or
 // back-filled at pack load), plus the top few other cards, in feed order, with the jam's own draft pipeline (drafts.js:
 // the planning prompt, schema, photo prompt and the shared media makers) and brand memory. The format is the card's:
-//   video ad, reel → a still of the real product, animated by Hailuo 2.3 (6 s, about $0.49; DAILY_VIDEO_CAP still holds)
+//   video ad, reel → a still of the real product, animated by Veo 3.1 Fast on Vertex (6 s, about $0.90; DAILY_VIDEO_CAP still holds)
 //   carousel ad, Instagram carousel → a photo per slide with the words set by Chromium; Instagram stories → the same at 9:16
 //   collection ad → a hero picture over a grid of real catalog photos; catalog ad → the catalog grid only (no generation)
 //   single image ad, Instagram post → one picture of the real product in a new scene

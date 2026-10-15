@@ -295,7 +295,7 @@
         <p class="ob2-foot">${LANDING ? `Brew reads the live site, its reviews, rivals and AI answers, then writes its moves. Every number has a source. ${DEMO_LAND ? 'Connected accounts are a demo workspace, and nothing is sent.' : window.LIVE?.me ? `Signed in as ${esc(window.LIVE.me.email)}.` : window.LIVE?.signin ? 'You sign in with Google to start.' : 'Connected accounts are a demo workspace.'}` : `Every idea comes from the Brew × ${esc(B.brand.name)} move documents. Connected numbers are a demo workspace.`}</p>${LANDING && !DEMO_LAND ? '<div class="ob2-recent" id="recent"></div>' : ''}`, 0,
       `<div class="ob2-wash"></div><div class="ob2-collage">${LANDING ? LAND_CARDS.map((c, i) => `<figure class="cl cl${i} cl-txt" style="--clc:${c[3]}">${face(c[0])}<small>${esc(c[1])}</small><b>${esc(c[2])}</b></figure>`).join('') : art.map((src, i) => `<figure class="cl cl${i}"><img src="${src}" alt=""></figure>`).join('')}
         <div class="cl-chip c1">${face('creative')}<span><b>Creative director</b>12 ads ready for this week</span></div>
-        <div class="cl-chip c2">${face('performance')}<span><b>Performance marketer</b>${LANDING ? 'Move budget to the winner?' : `Shift ${(window.BREW_MONEY?.sym || '₹').trim()} to the winner?`}</span><em>Approve</em></div></div>`);
+        <div class="cl-chip c2">${face('performance')}<span><b>Performance marketer</b>Two ad versions, drafted</span><em>Jam</em></div></div>`);
     // the tap shows at once: the button spins and says what is happening until the brand's page opens
     const going = (on, t) => { const b = $('#go'), i = $('#url-in'); if (!b) return; b.disabled = on; if (i) i.readOnly = on; $('#url-form')?.classList.toggle('is-busy', on);
       if (on) { b.dataset.t ??= b.innerHTML; b.innerHTML = `<span class="spin"></span>${esc(t)}`; } else if (b.dataset.t) b.innerHTML = b.dataset.t; };
@@ -608,7 +608,7 @@
       ${conn(id) ? `<span class="cx-on">${ic('check', 's14')} Connected</span>` : `<button class="btn btn-primary sm" data-cx="${id}">Connect</button>`}</div>`; };
   const teamStep = () => {
     window.scrollTo(0, 0); root.innerHTML = shell(`
-      <h1 class="ob2-h">Bring in your team</h1><p class="ob2-lede">Send any card to a colleague on Slack. They approve in the thread and the card updates here.</p>
+      <h1 class="ob2-h">Bring in your team</h1><p class="ob2-lede">Jam on any card together, then share one brief with your team or ours.</p>
       <div class="ob2-cx">${cxRow('slack')}</div>
       <h2 class="ob2-sub">Who sits in each seat? <small>Optional</small></h2>
       <div class="ob2-team">${B.colleagues.map((c) => `<label class="ob-col">${avatar(colleague(c.id), 34)}<span><small>${esc(c.role)}</small><input data-colname="${c.id}" value="${esc(colleague(c.id).name)}" aria-label="${esc(c.role)} name"></span></label>`).join('')}</div>

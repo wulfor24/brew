@@ -114,7 +114,7 @@ events: {type:'step',k,state:'reading',tick} · {type:'finding',k,finding,say} �
 ```
 
 - Inline text may use `**bold**` only.
-- Tables have short header cells. The 30-day table header is `WEEK | BREW SHIPS | <BRAND> PROVIDES | LIVE BY END OF WEEK`.
+- Tables have short header cells. The 30-day table header is `WEEK | BREW DRAFTS | <BRAND> PROVIDES | LIVE BY END OF WEEK`.
 - The measure table header is `METRIC | BASELINE | 90-DAY TARGET | DECISION RULE`.
 
 Brand info for the PDF: `{ name, descriptor, host, hero /* product cutout file path or null */, dateLabel: "OCTOBER 2026", version: "V1 · FOR DISCUSSION" }`.

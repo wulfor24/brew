@@ -37,7 +37,7 @@ const CONTRACT = `
 - Never name the data vendors or tools behind a line (no API, scraper or provider names). Say what was read and where: "Reddit threads", "Amazon reviews", "Google Shopping results", "the weekly AI answers check".
 - Quote real people only from listen quote lines (keys ending .q1, .q2 … or listen.asked.*), word for word, with the link from that line and the platform and date. Never invent, merge or tidy a quote. Anything else in quotation marks is labelled as our draft copy or a dramatised example.
 - Counts from listening are given with their window and split (e.g. "113 mentions: 42 positive, 8 negative, 63 neutral; 2 this week vs 3 the week before"). Do not turn a count of mentions into a share of customers.
-- "How we measure" keeps its table and adds, after it: a paragraph that starts "Check timings:" and names the metric, the probe (where the number is read) and the check schedule of this move's measuring family exactly as the task gives it (check days, decide day, early stops); then one line that starts "What Brew will watch:" naming the listening, pulse and calendar lines Brew re-reads at each check. Nothing is graded before the decide day; early checks only note what moved and can trip an early stop.
+- "How we measure" keeps its table and adds, after it: a paragraph that starts "Check timings:" and names the metric, where the team reads it and the check schedule of this move's measuring family exactly as the task gives it (check days, decide day, early stops). The brand's team runs these checks: Brew does not watch, re-read, grade, pause or stop anything, so never say it does. Then one line that starts "What to watch:" naming the listening, pulse and calendar lines the team should look at each check. Nothing is judged before the decide day.
 - When an evidence family the move needs is missing (no listening yet, no pulse line), say so in the method note and mark the dependent cells "To be pulled", never a guess.`;
 const SYSTEM = HOUSE + CONTRACT;
 const pad = (n) => String(n).padStart(2, '0');
@@ -328,7 +328,7 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
   // where a family's number is read: treg-map's probe when it has one, else the family's own sources and method
   const probeText = (rec, sp) => { let watch = [];
     try { watch = [...new Set(capsOf(sp).flatMap((c) => probeFor?.(c) || []).filter((c) => c.brandSees !== false).map((c) => c.label))].slice(0, 3); } catch {}
-    return `${rec.metric.name}, read from ${(rec.sources || []).join(', ') || 'the brand report'}${rec.best ? ` (${rec.how?.[rec.best] || rec.best})` : ''}${watch.length ? `; between checks Brew re-reads ${watch.join(', ')}` : ''}`; };
+    return `${rec.metric.name}, read from ${(rec.sources || []).join(', ') || 'the brand report'}${rec.best ? ` (${rec.how?.[rec.best] || rec.best})` : ''}${watch.length ? `; between checks, also look at ${watch.join(', ')}` : ''}`; };
   const measureLine = (sp) => { const rec = FAMS.recipeOf(sp.timing || 'other'); return { rec, text: `Measuring family: ${rec.name}. Metric: ${rec.metric.name}. Probe: ${probeText(rec, sp)}. Check timings: ${timingLine(rec.family)}` }; };
 
   async function runLookups(sp, { profile }) {
@@ -420,10 +420,10 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
         { h: 'What we found', kind: 'found', blocks: [p('[MOCK] No findings: AI was off.'), { ...p(''), t: 'diagram', text: '[MOCK]\n┌──────┐\n│ mock │\n└──────┘' }] },
         { h: 'The plan', kind: 'plan', blocks: [p('[MOCK] No plan.')] },
         { h: 'Worked examples', kind: 'examples', blocks: [{ ...p(''), t: 'example', title: 'EXAMPLE 1: [MOCK]', label: 'mock', body: '[MOCK] No asset.' }] },
-        { h: '30-day deployment', kind: 'plan', blocks: [tbl(['WEEK', 'BREW SHIPS', `${B} PROVIDES`, 'LIVE BY END OF WEEK'], [1, 2, 3, 4].map((w) => [String(w), '[MOCK]', '[MOCK]', '[MOCK]']))] },
+        { h: '30-day deployment', kind: 'plan', blocks: [tbl(['WEEK', 'BREW DRAFTS', `${B} PROVIDES`, 'LIVE BY END OF WEEK'], [1, 2, 3, 4].map((w) => [String(w), '[MOCK]', '[MOCK]', '[MOCK]']))] },
         { h: 'How we measure', kind: 'measure', blocks: [tbl(['METRIC', 'BASELINE', '90-DAY TARGET', 'DECISION RULE'], [[ml.rec.metric.name, 'To be instrumented', '[MOCK]', '[MOCK]']]),
           p(`${ml.text.replace(/^.*?Check timings: /, `Check timings: probe ${probeText(ml.rec, sp)}. `)}`),
-          p(`What Brew will watch: ${(ctx.signalLines || []).filter((l) => !l.quote && capsOf(sp).includes(l.family)).slice(0, 4).map((l) => l.key).join(', ') || '[MOCK] the listening and pulse lines for this move, once they exist'}.`)] },
+          p(`What to watch: ${(ctx.signalLines || []).filter((l) => !l.quote && capsOf(sp).includes(l.family)).slice(0, 4).map((l) => l.key).join(', ') || '[MOCK] the listening and pulse lines for this move, once they exist'}.`)] },
         { h: 'Appendix', kind: 'appendix', blocks: [p('[MOCK]')] },
         { h: 'Sources', kind: 'sources', blocks: [{ ...p(''), t: 'list', items: ['[MOCK] none'] }] }],
       sources: [], factsUsed: [], derived: [], newFacts: [], toConfirm: ['Everything: this is a mock move.'] },

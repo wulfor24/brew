@@ -91,8 +91,8 @@ needs before it runs. Dramatised conversations are labelled as dramatised.
 
 ### 5. `30-day deployment` (kind `plan`)
 
-One table, header exactly `WEEK | BREW SHIPS | <BRAND> PROVIDES | LIVE BY END OF WEEK`, rows 1 to 4.
-BREW SHIPS is specific (names the examples and artefacts). <BRAND> PROVIDES is what only the brand can
+One table, header exactly `WEEK | BREW DRAFTS | <BRAND> PROVIDES | LIVE BY END OF WEEK`, rows 1 to 4.
+BREW DRAFTS is specific (names the examples and artefacts Brew drafts in the jam; the brand's team or the ShopOS team ships them from the shared brief). <BRAND> PROVIDES is what only the brand can
 give (access, sign-offs, data, product, time). Then one line naming the owners.
 
 ### 6. `How we measure` (kind `measure`)

@@ -70,7 +70,7 @@ test('new specs write under AI_MOCK with "How we measure" carrying the check tim
   for (const n of news) { const m = saved[n]; assert.ok(m, `move ${n} written`);
     const meas = m.sections.find((s) => s.kind === 'measure'), txt = meas.blocks.map((b) => b.text).join(' ');
     assert.ok(txt.includes(`Check timings:`) && txt.includes(timingLine(SPECS[n].timing).slice(0, 30)), `move ${n} timings: ${txt.slice(0, 160)}`);
-    assert.match(txt, /What Brew will watch:/); assert.match(m.kicker, new RegExp(`MOVE ${n} OF \\d+$`)); assert.doesNotMatch(m.kicker, / OF 50$/); }
+    assert.match(txt, /What to watch:/); assert.match(m.kicker, new RegExp(`MOVE ${n} OF \\d+$`)); assert.doesNotMatch(m.kicker, / OF 50$/); }
   assert.match(saved[53].sections.find((s) => s.kind === 'measure').blocks[1].text, /Checks on day 1 and 3; decides on day 7/);
   assert.match(saved[0].title, /^[A-Z][a-z-]+ moves for Comet$/); assert.doesNotMatch(saved[0].title, /Fifty/);
   assert.equal(saved[0].stat, String(saved[0].meta.total));

@@ -68,7 +68,7 @@ function baseSeed({ slug, host, name, tagline, colors, logo, mark, face, typeNam
     intro: [
       { c: dark, img: art[0] || logo, h: 'Fifty-one moves, turned into cards.' },
       { c: dark, img: art[1] || art[0] || logo, h: 'Each one moves a number.' },
-      { c: dark, img: art[2] || art[0] || logo, h: 'Heart it, jam on it, do it.' }
+      { c: dark, img: art[2] || art[0] || logo, h: 'Heart it, jam on it, share the brief.' }
     ],
     startArt: art.slice(0, 3),
     health: { score: 0, delta: 0, rings: [{ k: 'Creative', v: 0, what: 'How much of the work has a number' }, { k: 'Storefront', v: 0, what: 'How often a visit becomes a first order' }, { k: 'AI answers', v: 0, what: 'How often AI tools name you' }], moves: [] },
