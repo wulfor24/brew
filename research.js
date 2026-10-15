@@ -293,7 +293,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
       .map((x) => ({ id: 'tr-' + crypto.createHash('sha1').update(KEY.trends(x)).digest('hex').slice(0, 10), ...x }));
     snap.trends = { fetchedAt: now, ...pool(snap.trends, items.filter((x) => x.h), 'trends', now), series: { ...(snap.trends?.series || {}), ...series }, rising, source: `Google Trends · ${CTRY()} · last 90 days` };
     /* stories kept from earlier reads meet the same bar: one quoting a number today's data does not have leaves the ring */
-    snap.trends.items = snap.trends.items.filter((x) => items.includes(x) || items.some((y) => y.id === x.id) || (honest([x.h, x.p, x.card], src) && !NOISE.test(`${x.h} ${x.p}`))).map((x) => ({ ...x, h: pct(x.h), p: pct(x.p), card: pct(x.card) }));
+    snap.trends.items = snap.trends.items.filter((x) => items.some((y) => y.h === x.h) || (honest([x.h, x.p, x.card], src) && !NOISE.test(`${x.h} ${x.p}`))).map((x) => ({ ...x, h: pct(x.h), p: pct(x.p), card: pct(x.card) }));
   }
 
   function trendsFromData(series, rising, days, solid) {
@@ -361,7 +361,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     out.items = (out.items || []).filter((x) => x.h && honest([x.h, x.p, x.card, ...(x.steps || [])], src) && !NOISE.test(`${x.h} ${x.p}`));
     if (out.items.length < 3) out.items.push(...howtoFromData().filter((d) => !out.items.some((x) => near(x, d))).slice(0, 3 - out.items.length));
     if (!out.items.length) throw new Error('no ads or trends to write how-tos from yet');
-    const items = out.items.slice(0, 3).map((x, i) => ({ id: `ht-${new Date(now).toISOString().slice(0, 10)}-${i}`, h: clean(x.h), p: clean(x.p), steps: (x.steps || []).map(clean).slice(0, 4), card: clean(x.card || x.h), lane: LANES.includes(x.lane) ? x.lane : lane0, scene: x.scene, img: null, ...(x.by ? { by: x.by } : {}) }));
+    const items = out.items.slice(0, 3).map((x) => ({ id: 'ht-' + crypto.createHash('sha1').update(String(x.h).toLowerCase()).digest('hex').slice(0, 10), /* from what it says: a numbered id was reused by the next read the same day */ h: clean(x.h), p: clean(x.p), steps: (x.steps || []).map(clean).slice(0, 4), card: clean(x.card || x.h), lane: LANES.includes(x.lane) ? x.lane : lane0, scene: x.scene, img: null, ...(x.by ? { by: x.by } : {}) }));
     await Promise.all(items.map(async (x) => {
       const ref = refPhoto(x.lane); if (!ref) return;
       try {
@@ -370,7 +370,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
       } catch (e) { log.warn('[research] howto image', e.message); }
     }));
     snap.howto = { fetchedAt: now, ...pool(snap.howto, items.filter((x) => x.h), 'howto', now), source: 'Written from this week’s research' };
-    snap.howto.items = snap.howto.items.filter((x) => items.some((y) => y.id === x.id) || (honest([x.h, x.p, x.card, ...(x.steps || [])], src) && !NOISE.test(`${x.h} ${x.p}`)));
+    snap.howto.items = snap.howto.items.filter((x) => items.some((y) => y.h === x.h) || (honest([x.h, x.p, x.card, ...(x.steps || [])], src) && !NOISE.test(`${x.h} ${x.p}`)));
   }
 
   function howtoFromData() {
