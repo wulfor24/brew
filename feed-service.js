@@ -173,6 +173,7 @@ export function createFeedService(o) {
   // the active brand's data (a generated pack, or the Brew default context); see brand-ctx.js
   const SEED = liveView((b) => b.seed);
   // the brand's own product lines (seed lanes): watcher and Creative cards use them, never another brand's lane names
+  const creativeByBrand = new Map();
   const laneIds = () => Object.keys(SEED.lanes || {}), firstLane = () => laneIds()[0] || 'core';
   const FACTS = liveView((b) => b.facts), fx = (s) => B().fx(s);
   const FACT_OK = { has: (n) => B().factOk.has(n), [Symbol.iterator]: () => B().factOk[Symbol.iterator]() };
@@ -546,8 +547,9 @@ export function createFeedService(o) {
     return done;
   };
   const creativeIdea = async (t) => {
-    const today = dayKey(now(t)); t.creativeDay ||= { day: today, n: 0 }; if (t.creativeDay.day !== today) t.creativeDay = { day: today, n: 0 };
-    const live = !isMock() && t.creativeDay.n < 3 && spend('text');
+    /* three a day per brand, however many teammates have the feed open (it was per workspace: five teammates, five times the calls) */
+    const today = dayKey(now(t)), bk = `${t.brandId || 'brew'}|${today}`; const cd = (creativeByBrand.get(bk) || { day: today, n: 0 }); creativeByBrand.set(bk, cd); if (creativeByBrand.size > 500) creativeByBrand.clear(); t.creativeDay = cd;
+    const live = !isMock() && cd.n < 3 && spend('text');
     if (!live) return { cards: fromPool(t, 'creative'), how: isMock() ? 'from the mock pool (AI is on mock)' : 'from the pool (daily AI budget used)' };
     t.creativeDay.n++;
     const { hearts } = affinityMap(t);
@@ -1339,6 +1341,11 @@ export function createFeedService(o) {
   // Seed cards are prebuilt (tools/build_card_pages.mjs); any other card is built once on first open.
   // card pages, move documents and the fact list for prompts: the active brand's
   const PAGES = liveView((b) => b.pages), MOVE_DOCS = liveView((b) => b.moveDocs);
+  /* a card page is paid for once: written pages are kept in the brand pack (pages.json), so a reload or a deploy doesn't write them again */
+  const pageLocks = new Map();
+  const keepPage = (key, page) => { const slug = B()?.slug, P = o.globalPacks; if (!slug || !P?.getJSON || B()?.kind !== 'generated') return;
+    const run = (pageLocks.get(slug) || Promise.resolve()).catch(() => {}).then(async () => { const all = await P.getJSON(slug, 'pages.json', {}).catch(() => ({})); all[key] = page; await P.put(slug, 'pages.json', all); }).catch((e) => log.warn('[card page] keep', e.message));
+    pageLocks.set(slug, run); };
   const PAGE_FACTS_OF = () => B().pageFacts;
   const pageOk = (s) => !unbacked({ text: String(s || '') }, FACT_OK).length;
   const building = new Map();
@@ -1354,7 +1361,7 @@ export function createFeedService(o) {
       const measure = measureOf(t, c), mNums = new Set([measure.baseline, measure.target].filter((x) => x != null).flatMap((v) => numbersIn(`₹${v} ${v}% ${v}`)));
       const ok = (s) => unbacked({ text: String(s || '') }, FACT_OK).every((x) => mNums.has(x.n));
       const j = await claudeTool(pagePrompt({ card: c, factBrief: PAGE_FACTS_OF(), moveText, nums, measure }), PAGE_SCHEMA, 3500, 'card_page');
-      return (PAGES[key] = { ...sanitizePage(j, { card: c, M: MOVE_DOCS, nums, ok }), title: c.title });
+      const pg = (PAGES[key] = { ...sanitizePage(j, { card: c, M: MOVE_DOCS, nums, ok }), title: c.title }); keepPage(key, pg); return pg;
     })().catch((e) => { log.warn('[card page]', e.message); return fallbackPage(c, MOVE_DOCS, MOVES); }).finally(() => building.delete(key)));
     return building.get(key);
   };

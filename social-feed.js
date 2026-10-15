@@ -23,6 +23,8 @@ const pct = (a, b) => (b ? Math.round((100 * a) / b) : 0);
 const SENT = { pos: 'mostly positive', neg: 'mostly negative', neutral: 'mostly neutral' };
 // buy/sell boards and deal feeds are not places to reply as a brand
 const NOT_A_PLACE = /marketplace|buysell|buy_sell|deals?\b|coupon|loot/i;
+// a video post (a review, an unboxing) is not a question to answer unless its title asks one
+const asksQ = (t) => t?.intent === 'question' && (/\?/.test(String(t.title || '')) || !/youtube\.com|youtu\.be|tiktok\.com|instagram\.com/i.test(String(t.url || '')));
 
 /* ---------- ideas → cards ---------- */
 export function ideaCards(ideas, seed = {}, { now = Date.now() } = {}) {
@@ -68,7 +70,7 @@ export function heardCards(L, seed = {}, { now = Date.now(), name = seed?.brand?
   const items = new Map((L?.items || []).map((x) => [x.id, x]));
   const at = L?.status?.at || L?.at || now;
   // the questions people asked, where a reply from the brand would help (recent, about the brand or the category)
-  const qs = (L?.threads || []).filter((t) => t?.url && t.intent === 'question' && ['brand', 'category', 'rival'].includes(t.about) && !NOT_A_PLACE.test(`${t.where} ${t.title}`) && now - (t.lastActive || 0) < 120 * DAY)
+  const qs = (L?.threads || []).filter((t) => t?.url && asksQ(t) && ['brand', 'category', 'rival'].includes(t.about) && !NOT_A_PLACE.test(`${t.where} ${t.title}`) && now - (t.lastActive || 0) < 120 * DAY)
     .sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, maxQ);
   for (const t of qs) {
     const n = t.replies || 0, where = t.where || t.platform, q = cut(t.title, 90);
@@ -137,11 +139,14 @@ export function heardView(L, { name = 'the brand', now = Date.now() } = {}) {
   const themes = (L.themes || []).filter((t) => t.n >= 3).slice(0, 4).map((t) => ({ name: t.name, n: t.n, share: t.share, pos: t.pos, neg: t.neg, neutral: t.neutral, brand: t.brand, week: t.wow?.week ?? null, lastWeek: t.wow?.lastWeek ?? null,
     quotes: (t.quoteIds || []).map((id) => quote(items.get(id))).filter(Boolean).slice(0, 2).concat(!(t.quoteIds || []).some((id) => items.has(id)) && t.quote ? [{ text: cut(t.quote, 220), url: t.quoteLink, where: '' }] : []).slice(0, 2) }));
   const communities = (L.communities || []).slice(0, 5).map((c) => ({ name: c.name, url: c.url, posts: c.posts, threads: c.threads, brand: c.brand, questions: c.questions, why: c.why, lastActive: c.lastActive }));
-  const questions = (L.threads || []).filter((t) => t.url && t.intent === 'question' && !NOT_A_PLACE.test(`${t.where} ${t.title}`)).sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 5)
+  const questions = (L.threads || []).filter((t) => t.url && asksQ(t) && !NOT_A_PLACE.test(`${t.where} ${t.title}`)).sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 5)
     .map((t) => ({ title: t.title, url: t.url, where: t.where, replies: t.replies, lastActive: t.lastActive, about: t.about }));
   const st = L.status || {}, okSources = Object.entries(st.sources || {}).filter(([, s]) => s.state === 'ok').map(([, s]) => s.name);
   /* sources the last run could not read, with why: shown as not read, never as "none found" */
-  const failed = Object.values(st.sources || {}).filter((s) => ['error', 'needs'].includes(s.state)).map((s) => ({ name: s.name, why: String(s.error || '').slice(0, 120) }));
+  /* a source skipped on purpose (not sold there, no channel known) is not a failure: only real errors are listed as "couldn't read" */
+  const skippedOnPurpose = (s) => /^skipped:/i.test(String(s.error || ''));
+  const failed = Object.values(st.sources || {}).filter((s) => ['error', 'needs'].includes(s.state) && !skippedOnPurpose(s)).map((s) => ({ name: s.name, why: String(s.error || '').slice(0, 120) }));
+  const skipped = Object.values(st.sources || {}).filter((s) => skippedOnPurpose(s)).map((s) => ({ name: s.name, why: String(s.error || '').replace(/^skipped:\s*/i, '').slice(0, 120) }));
   // everything heard, counted by where it was said (display names only), by how (heard without asking, or replies to a question the brand asked)
   // and by reach (direct: about the brand; indirect: about rivals, the category or a problem it solves)
   const all = L.items || [], cnt = {}; all.forEach((x) => { if (x.platform) cnt[x.platform] = (cnt[x.platform] || 0) + 1; });
@@ -150,7 +155,7 @@ export function heardView(L, { name = 'the brand', now = Date.now() } = {}) {
   const sources = Object.entries(cnt).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ id, name: sourceName(id), n }));
   const byMode = { heard: all.filter((x) => (x.mode || 'heard') === 'heard').length, asked: all.filter((x) => x.mode === 'asked').length };
   const direct = (x) => (x.reach ? x.reach === 'direct' : x.about === 'brand'), byReach = { direct: all.filter(direct).length, indirect: all.filter((x) => !direct(x)).length };
-  return { name, at: st.at || null, items: st.items ?? all.length, total: all.length || st.items || 0, byMode, byReach, tagged: L.total || null, sources: sources.length ? sources : okSources.map((n) => ({ id: n, name: n, n: null })), okSources, failed, themes, communities, questions };
+  return { name, at: st.at || null, items: st.items ?? all.length, total: all.length || st.items || 0, byMode, byReach, tagged: L.total || null, sources: sources.length ? sources : okSources.map((n) => ({ id: n, name: n, n: null })), okSources, failed, skipped, themes, communities, questions };
 }
 
 /* ---------- the background scheduler ---------- */
@@ -220,7 +225,7 @@ export function createSocialScheduler({ packs, ai, treg, memory = null, log = co
     if (due.ideas && cfg.dayCapUsd - spentToday(s, now()) < cfg.ideasEstUsd) { s.ideas = { at: now(), skipped: `daily cap $${cfg.dayCapUsd} reached after listening` }; due = { ...due, ideas: false }; } /* re-check with what listening really spent */
     if (due.ideas) { s.lastIdeas = now(); await save(slug, s);
       const ideas = I(slug);
-      try { const r = await ideas.next({ n: cfg.ideasN }); charge(s, (r?.usd?.ai || 0) + (r?.usd?.treg || 0)); s.ideas = { at: now(), made: r?.ideas?.length || 0, usd: r?.usd || null }; changed = true; }
+      try { const r = await ideas.next({ n: cfg.ideasN }); charge(s, (r?.usd?.ai || 0) + (r?.usd?.treg || 0)); s.ideas = { at: now(), made: r?.ideas?.length || 0, usd: r?.usd || null }; if (!s.ideas.made) { s.ideas.empty = true; log.warn(`[ideas] ${slug}: a paid run made no ideas ($${((r?.usd?.ai || 0) + (r?.usd?.treg || 0)).toFixed(2)})`); } /* an empty paid run is flagged, not silent */ changed = true; }
       catch (e) { charge(s, (ideas.spend?.ai || 0) + (ideas.spend?.treg || 0)); s.ideas = { at: now(), error: e.message }; log.warn?.('[social] ideas', slug, e.message); } }
     await save(slug, s);
     if (changed) await onFresh(slug).catch((e) => log.warn?.('[social] refresh', slug, e.message));
