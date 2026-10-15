@@ -154,3 +154,15 @@ test('Google Analytics and Google Ads are two connectors; an old pack heals into
   const a = gads.select(pend, ch); assert.equal(a.customer, '123'); assert.equal(a.login, '999'); assert.equal(a.property, null);
   const [also] = gads.also(pend, ch); assert.equal(also.id, 'ga4'); assert.equal(also.creds.property, 'properties/5'); assert.equal(also.creds.customer, null);
 });
+
+test('connectors re-read on their own cadence, and new ones get the default', async () => {
+  const { everyOf, due } = await import('../connectors/index.js');
+  const H = 3600e3, now = Date.now();
+  assert.equal(everyOf('shopify'), 6 * H); assert.equal(everyOf('meta'), 6 * H); assert.equal(everyOf('ga4'), 12 * H);
+  assert.equal(everyOf('some-future-connector'), 12 * H);
+  assert.equal(due('shopify', { lastSync: now - 7 * H }, now), true);
+  assert.equal(due('shopify', { lastSync: now - 2 * H }, now), false);
+  assert.equal(due('ga4', { lastSync: now - 7 * H }, now), false);
+  assert.equal(due('shopify', { lastSync: now - 7 * H, error: 'x', errorAt: now - H }, now), false, 'a failed read waits 3 hours');
+  assert.equal(due('shopify', { lastSync: now - 7 * H, error: 'x', errorAt: now - 4 * H }, now), true);
+});

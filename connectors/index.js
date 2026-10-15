@@ -15,6 +15,7 @@ import market from './market.js';
 import { createSim, SIM_IDS, NAME } from './sim.js';
 import { createVault } from '../vault.js';
 import { DEMO, sk } from '../demo-mode.js';
+import { privId } from './common.js';
 
 const REAL = { shopify, meta, ga4, google, klaviyo, reviews, marketplaces: market };
 export const CONNECTORS = Object.fromEntries(SIM_IDS.map((id) => [id, { id, name: NAME[id] }]));
@@ -22,7 +23,14 @@ const PUBLIC = new Set(['marketplaces']); // a marketplace read is public data, 
 // Marketplaces is switched off for now (2026-10-16): no connect, no daily read, and an earlier connection is ignored. The page shows
 // the marketplaces as Coming soon (DUMMY.md row 7). Take it out of OFF to bring the connector back.
 const OFF = new Set(['marketplaces']);
-const SYNC_EVERY = 24 * 3600e3, MARKET_EVERY = 24 * 3600e3;
+/* How often each live account re-reads on its own (the hourly tick below). Reads are free API calls, so the fast-moving
+   accounts go every 6 hours; a connector can set its own `every` (hours) and a new one without it gets 12 hours. A failed
+   read tries again after 3 hours, not every hour. */
+const EVERY_H = { shopify: 6, meta: 6, google: 6, ga4: 12, klaviyo: 12, reviews: 12, marketplaces: 24 /* paid treg read */ };
+const DEFAULT_H = 12, RETRY_H = 3;
+export const everyOf = (id) => (REAL[id]?.every || EVERY_H[id] || DEFAULT_H) * 3600e3;
+export const due = (id, s, now = Date.now()) => now - (s?.lastSync || 0) >= everyOf(id) - 5 * 60e3 /* an hourly tick may land a few minutes early */
+  && !(s?.error && s?.errorAt && now - s.errorAt < RETRY_H * 3600e3);
 // DUMMY: simulated on the demo site, and Slack (no real connector) everywhere
 export const simOnly = (id) => DEMO || !REAL[id];
 
@@ -123,7 +131,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     } catch (e) {
       log.warn('[connect] sync', slug, id, e.message);
       /* an account that read before keeps its last read and says what went wrong; a new one shows the error */
-      await editC(slug, (c) => { c[id] = { ...(c[id] || {}), state: c[id]?.lastSync ? 'live' : 'error', error: e.message.slice(0, 200) }; });
+      await editC(slug, (c) => { c[id] = { ...(c[id] || {}), state: c[id]?.lastSync ? 'live' : 'error', error: e.message.slice(0, 200), errorAt: Date.now() }; });
       cache.delete(sk(slug));
       return { ok: false, error: e.message.slice(0, 200) };
     }
@@ -162,7 +170,13 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     for (const [id, d] of Object.entries(L.live)) { if (d.gone) continue; if (!member && !PUBLIC.has(id)) continue; on[id] = true;
       cards.push(...(d.cards || []).map((c) => ({ ...c, ...(simOnly(id) || d.sim ? { dummy: true } : {}), ...(PUBLIC.has(id) ? { liveOnly: false, publicLive: true } : {}) }))); }
     const ledger = {}; if (member) for (const d of Object.values(L.live)) if (!d.gone) for (const e of d.ledger || []) ledger[e.key] = { v: e.v, n: e.n, at: d.at, label: e.label };
-    return { cards, on, privMoves: [], ledger };
+    /* the moves rewritten from the team's accounts (private/cards.json): members get those cards, and the shared cards of the
+       same moves step aside (privMoves). Cards saved before they had their own id get it here */
+    let privMoves = [];
+    if (member) { const pc = await packs.getJSON(slug, 'private/cards.json', []).catch(() => []);
+      for (const c of Array.isArray(pc) ? pc : []) if (c?.id && c.privateOf != null) cards.push({ ...c, id: privId(c.id), liveOnly: true });
+      privMoves = [...new Set(cards.filter((c) => c.privateOf != null).map((c) => +c.privateOf))]; }
+    return { cards, on, privMoves, ledger };
   }
 
   /* ---------- routes ---------- */
@@ -244,14 +258,15 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     return false;
   }
 
-  /* ---------- keep the real ones fresh: once a day for each connected brand ---------- */
+  /* ---------- keep the real ones fresh: every connected account, on its own cadence (EVERY_H) ---------- */
   async function tick() {
     if (DEMO) return;
     for (const { slug } of await packs.list().catch(() => [])) {
       const cs = await conns(slug).catch(() => ({}));
       for (const [id, s] of Object.entries(cs)) {
-        if (s?.state !== 'live' || simOnly(id) || s.sim || OFF.has(id)) continue;
-        if (Date.now() - (s.lastSync || 0) > (PUBLIC.has(id) ? MARKET_EVERY : SYNC_EVERY)) await sync(slug, id).catch(() => {});
+        const stuck = s?.state === 'syncing' && Date.now() - (s.syncAt || 0) > 30 * 60e3; /* a read cut off by a restart */
+        if ((s?.state !== 'live' && !stuck) || simOnly(id) || s.sim || OFF.has(id)) continue;
+        if (due(id, s)) await sync(slug, id).catch(() => {});
       }
     }
   }

@@ -234,11 +234,15 @@
       if (!opts.length) { m.querySelector('.cxb-opts').remove(); setStat(box0, stat(esc(r.error || 'No accounts came back for this login. Try a login that can see them.'), 'bad', 'info')); go.textContent = 'Try again'; go.onclick = () => leave(`/connect/${id}/start?brand=${slug}`); return; }
       const GOOG = id === 'google' || id === 'ga4', groups = id === 'google' ? [['ads', 'Google Ads'], ['ga4', 'Google Analytics']] : id === 'ga4' ? [['ga4', 'Google Analytics property']] : [[null, 'Ad account']];
       const row = (name, val, nm2, sub, on) => `<label class="cxb-row"><input type="radio" name="${name}" value="${esc(val)}" data-name="${esc(nm2)}"${on ? ' checked' : ''}><span><b>${esc(nm2)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span><i class="cxb-radio" aria-hidden="true"></i></label>`;
-      m.querySelector('.cxb-opts').innerHTML = groups.map(([k, label]) => { const xs = opts.filter((o) => !k || o.kind === k); if (!xs.length) return k === 'ads' ? note('No Google Ads account on this login. You can still connect Google Analytics.', 'info') : '';
-        return kick(`${label}${xs.length > 1 ? ` · ${xs.length}` : ''}`) + `<div class="cxb-rows" role="radiogroup">${xs.map((o) => row(k || 'acct', o.id, o.name, o.sub, xs.length === 1)).join('')}${k === 'ga4' && id === 'google' ? row('ga4', '', 'Not now', 'Connect Google Ads only', false) : ''}</div>`; }).join('');
+      /* Google Ads sign-in with no Ads account on that login: Ads can't connect, so the sheet offers Google Analytics alone
+         (no "Connect Google Ads only" row) and a way back to sign in with the login that runs the ads */
+      const noAds = id === 'google' && !opts.some((o) => o.kind === 'ads');
+      m.querySelector('.cxb-opts').innerHTML = groups.map(([k, label]) => { const xs = opts.filter((o) => !k || o.kind === k); if (!xs.length) return k === 'ads' ? note('There’s no Google Ads account on this Google login, so Google Ads can’t connect with it. Pick a property to connect Google Analytics, or use the login that runs your ads.', 'info') : '';
+        return kick(`${label}${xs.length > 1 ? ` · ${xs.length}` : ''}`) + `<div class="cxb-rows" role="radiogroup">${xs.map((o) => row(k || 'acct', o.id, o.name, o.sub, xs.length === 1)).join('')}${k === 'ga4' && id === 'google' && !noAds ? row('ga4', '', 'Not now', 'Connect Google Ads only', false) : ''}</div>`; }).join('');
+      if (noAds) { go.textContent = 'Connect Google Analytics'; const gh = m.querySelector('.cxb-gh'); if (gh) { gh.textContent = 'Use another login'; gh.removeAttribute('data-close'); gh.onclick = () => leave(`/connect/${id}/start?brand=${slug}`); } }
       go.onclick = () => { const val = (k) => m.querySelector(`input[name="${k}"]:checked`);
         const choice = GOOG ? { ga4: val('ga4')?.value || null, ga4Name: val('ga4')?.dataset.name, ads: val('ads')?.value || null, adsName: val('ads')?.dataset.name } : { account: val('acct')?.value, name: val('acct')?.dataset.name };
-        if (!GOOG && !choice.account) return setStat(box0, stat('Pick an ad account first.', 'bad', 'info')); if (GOOG && !choice.ga4 && !choice.ads) return setStat(box0, stat(id === 'ga4' ? 'Pick a property first.' : 'Pick an Ads account or a property first.', 'bad', 'info'));
+        if (!GOOG && !choice.account) return setStat(box0, stat('Pick an ad account first.', 'bad', 'info')); if (GOOG && !choice.ga4 && !choice.ads) return setStat(box0, stat(id === 'ga4' || noAds ? 'Pick a property first.' : 'Pick an Ads account or a property first.', 'bad', 'info'));
         run(m, id, post(`/api/brands/${slug}/connect/${id}`, { action: 'select', choice })); };
     });
   }
