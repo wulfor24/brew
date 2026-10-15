@@ -2606,9 +2606,20 @@ body.rx-boot #view{visibility:hidden}
 .iv-chip button{display:grid;place-items:center;width:22px;height:22px;border:0;border-radius:50%;background:none;color:var(--fg-3);cursor:pointer}
 .iv-chip button:hover{background:var(--line);color:var(--fg)}
 .iv-act{display:flex;justify-content:space-between;align-items:center;gap:12px}
-.iv-seat{position:relative;display:inline-flex;align-items:center;gap:6px;font-size:14px;color:var(--fg-3)}
-.iv-seat select{appearance:none;-webkit-appearance:none;border:0;background:none;padding:6px 20px 6px 0;color:var(--fg);font:inherit;font-size:14px;font-weight:500;cursor:pointer;outline:0}
-.iv-seat::after{content:'';position:absolute;right:4px;top:50%;width:6px;height:6px;margin-top:-5px;border:solid var(--fg-3);border-width:0 1.5px 1.5px 0;transform:rotate(45deg);pointer-events:none}
+.iv-seat{position:relative;font-size:14px;color:var(--fg-3)}
+.iv-seat summary{display:inline-flex;align-items:center;gap:6px;padding:6px 18px 6px 0;list-style:none;cursor:pointer;position:relative}
+.iv-seat summary::-webkit-details-marker{display:none}
+.iv-seat summary b{color:var(--fg);font-weight:500;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.iv-seat summary::after{content:'';position:absolute;right:4px;top:50%;width:6px;height:6px;margin-top:-5px;border:solid var(--fg-3);border-width:0 1.5px 1.5px 0;transform:rotate(45deg)}
+.iv-seat[open] summary::after{margin-top:-1px;transform:rotate(-135deg)}
+.iv-menu{position:absolute;left:0;top:calc(100% + 6px);z-index:20;min-width:250px;padding:6px;border-radius:14px;background:var(--card);box-shadow:0 0 0 1px var(--line),0 12px 32px rgba(0,0,0,.18)}
+.iv-opt{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;color:var(--fg);font-size:14px;cursor:pointer}
+.iv-opt:hover{background:var(--surface)}
+.iv-opt input{position:absolute;opacity:0;pointer-events:none}
+.iv-opt span{flex:1}
+.iv-opt i{display:grid;place-items:center;width:18px;height:18px;border-radius:5px;box-shadow:inset 0 0 0 1.5px var(--line);color:transparent}
+.iv-opt input:checked ~ i{background:var(--fg);box-shadow:none;color:var(--bg)}
+.iv-opt input:focus-visible ~ span{text-decoration:underline}
 .iv-act .btn{height:44px;padding:0 22px;border-radius:12px}
 .iv-msg{margin:-4px 0 0;font-size:13px;color:var(--fg-3)}
 .iv-msg[data-kind="bad"]{color:var(--bad)}

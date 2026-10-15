@@ -616,21 +616,23 @@
       ${conn(id) ? `<span class="cx-on">${ic('check', 's14')} Connected</span>` : `<button class="btn btn-primary sm" data-cx="${id}">Connect</button>`}</div>`; };
   /* the last step: invite the people you'll jam with. They get an email and see only the views you pick. Admins invite;
      a teammate sees who's already here. Nothing about anyone is typed twice: you are who you signed in as */
-  const IV = { sent: [], busy: false, chips: [], seat: null, warn: false };
+  const IV = { sent: [], busy: false, chips: [], seats: null, warn: false, open: false };
   const teamStep = () => {
     const ac = window.LIVE?.access, boss = ['owner', 'admin'].includes(ac?.role), team = (ac?.team || []).filter((x) => x.email !== ME()?.email);
     if (!GEN || !ME() || !ac?.role) return finishOnboarding(); /* only a brand's own team brings people in */
-    const seats = Object.entries(B.roles || {}); IV.seat ||= seats.find(([k]) => k !== S.viewer.role)?.[0] || seats[0]?.[0];
+    const seats = Object.entries(B.roles || {}); if (!IV.seats?.length) IV.seats = [seats.find(([k]) => k !== S.viewer.role)?.[0] || seats[0]?.[0]];
+    const seatWords = (ks) => ks.length >= seats.length ? 'Everything' : ks.map((k) => B.roles[k]?.title || k).join(', ');
     const okMail = (e) => /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(e) && e !== ME()?.email;
     const row = (x) => `<li class="iv-p">${pAv(x, 28)}<b>${esc(x.name || x.email)}</b><small>${esc(x.tag)}</small></li>`;
-    const list = [...IV.sent.map((x) => ({ email: x.email, tag: `Invited · ${B.roles[x.seat]?.title || x.seat}` })), ...team.map((x) => ({ ...x, tag: x.role === 'owner' ? 'Admin' : 'On the team' }))];
+    const list = [...IV.sent.map((x) => ({ email: x.email, tag: `Invited · ${seatWords(x.seats || [])}` })), ...team.map((x) => ({ ...x, tag: x.role === 'owner' ? 'Admin' : 'On the team' }))];
     /* one field for everyone: type or paste emails, each becomes a chip; one view for the batch, one Invite */
     const chip = (e, i) => `<span class="iv-chip${okMail(e) ? '' : ' bad'}">${esc(e)}<button type="button" data-iv-x="${i}" aria-label="Remove ${esc(e)}">${ic('x', 's12')}</button></span>`;
     window.scrollTo(0, 0); root.innerHTML = shell(`
       <h1 class="ob2-h">Invite your team</h1><p class="ob2-lede">Jam on any card together. When someone tags them or needs their OK, they get an email.</p>
       ${boss ? `<form class="iv-form" id="iv-f" novalidate>
         <label class="iv-box" for="iv-email">${IV.chips.map(chip).join('')}<input id="iv-email" type="email" placeholder="${IV.chips.length ? 'Add another' : `name@${esc(B.brand.host || 'brand.com')}, name2@…`}" autocomplete="off" aria-label="Emails to invite"></label>
-        <div class="iv-act"><label class="iv-seat">They see <select id="iv-seat" aria-label="What they see">${seats.map(([k, r]) => `<option value="${k}"${k === IV.seat ? ' selected' : ''}>${esc(r.title)}</option>`).join('')}</select></label>
+        <div class="iv-act"><details class="iv-seat" id="iv-seat"${IV.open ? ' open' : ''}><summary>They see <b>${esc(seatWords(IV.seats))}</b></summary>
+            <div class="iv-menu" role="group" aria-label="What they see">${seats.map(([k, r]) => `<label class="iv-opt"><input type="checkbox" data-iv-seat="${k}"${IV.seats.includes(k) ? ' checked' : ''}><span>${esc(r.title)}</span><i>${ic('check', 's14')}</i></label>`).join('')}</div></details>
           <button class="btn btn-primary" id="iv-go">Invite${IV.chips.length > 1 ? ` ${IV.chips.length}` : ''}</button></div></form>
         <p class="iv-msg" id="iv-msg" role="status"${IV.warn ? ' data-kind="warn"' : ' hidden'}>${IV.warn ? 'Invites saved, but the emails didn’t send. Copy the links from Team and access.' : ''}</p>`
       : `<p class="iv-note">${ic('person', 's14')}Only an admin invites people. Ask ${esc(team.find((x) => x.role === 'owner')?.name || 'your admin')} to add anyone missing.</p>`}
@@ -646,19 +648,25 @@
         else if (e.key === 'Backspace' && !inp.value && IV.chips.length) { IV.chips.pop(); redraw(); } };
       inp.onpaste = (e) => { const t = e.clipboardData?.getData('text') || ''; if (!/[\s,;]/.test(t.trim())) return; e.preventDefault(); take(inp.value + ' ' + t); redraw(); };
       $$('[data-iv-x]').forEach((el) => { el.onclick = (e) => { e.preventDefault(); IV.chips.splice(+el.dataset.ivX, 1); redraw(); }; });
-      $('#iv-seat').onchange = (e) => { IV.seat = e.target.value; };
+      const menu = $('#iv-seat'); menu.ontoggle = () => { IV.open = menu.open; };
+      $$('[data-iv-seat]').forEach((el) => { el.onchange = () => { const k = el.dataset.ivSeat, on = el.checked;
+        IV.seats = on ? [...new Set([...IV.seats, k])] : IV.seats.filter((x) => x !== k);
+        if (!IV.seats.length) { IV.seats = [k]; el.checked = true; } /* at least one view */
+        menu.querySelector('summary b').textContent = seatWords(IV.seats); }; });
+      const shut = (e) => { if (!menu.isConnected) return document.removeEventListener('click', shut); if (menu.open && !menu.contains(e.target)) { menu.open = false; IV.open = false; } };
+      document.addEventListener('click', shut);
       f.onsubmit = async (e) => { e.preventDefault(); if (IV.busy) return; IV.busy = true; take(inp.value); inp.value = '';
         const todo = IV.chips.slice();
         if (!todo.length) { IV.busy = false; msg('bad', 'Add an email to invite.'); return inp.focus(); }
         if (todo.some((x) => !okMail(x))) { IV.busy = false; teamStep(); return msg('bad', todo.includes(ME()?.email) ? 'One of those is you. You’re already on the team.' : 'Fix or remove the emails in red.'); }
         $('#iv-go').disabled = true; $('#iv-go').textContent = 'Sending…';
         const left = []; let err = '';
-        for (const email of todo) { const r = await api(`/api/brands/${B.slug || BR}/team`, { action: 'invite', email, seats: [IV.seat] });
+        for (const email of todo) { const r = await api(`/api/brands/${B.slug || BR}/team`, { action: 'invite', email, seats: IV.seats });
           if (r.error) { left.push(email); err = r.error; continue; }
           if (r.members && window.LIVE) window.LIVE.access = { ...window.LIVE.access, ...r };
           if (r.warn) IV.warn = true;
-          IV.sent = [{ email, seat: IV.seat }, ...IV.sent.filter((x) => x.email !== email)]; }
-        IV.busy = false; IV.chips = left; redraw(); if (err) msg('bad', err); }; }
+          IV.sent = [{ email, seats: IV.seats.slice() }, ...IV.sent.filter((x) => x.email !== email)]; }
+        IV.busy = false; IV.open = false; IV.chips = left; redraw(); if (err) msg('bad', err); }; }
     $('#ob-back').onclick = connectWhat; $('#ob-next').onclick = finishOnboarding;
   };
   const finishOnboarding = () => {
