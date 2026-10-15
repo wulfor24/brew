@@ -607,7 +607,7 @@
     window.scrollTo(0, 0); root.innerHTML = shell(`
       <h1 class="ob2-h">Connect your tools</h1><p class="ob2-lede">Cards swap targets for your real numbers. Optional, and you can do it later from any card.</p>
       <div class="ob2-cx">${ids.map((id) => cxRow(id)).join('')}</div>
-      <p class="ob2-foot">${ic('lock', 's14')} Demo workspace. No real account is touched.</p>
+      <p class="ob2-foot">${ic('lock', 's14')} ${window.LIVE?.dummy === false ? 'Read-only. Brew never changes your accounts.' : 'Demo workspace. No real account is touched.'}</p>
       ${obNav('Next', true)}`, 3);
     obPreview();
     $('#ob-back').onclick = wantWhat; $('#ob-next').onclick = teamStep;
