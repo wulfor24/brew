@@ -302,7 +302,9 @@ export function createFeedService(o) {
   const seatOk = (t, c) => { const S = t.seats; return !S || !c.roles?.length || c.roles.some((r) => S.includes(r)); };
   /* a limited member can only view as one of their seats */
   const clampSeat = (t) => { const S = t?.seats; if (S && t.viewer && !S.includes(t.viewer.role) && S.length) t.viewer = { ...t.viewer, role: S[0] }; };
-  const visible = (t, c) => seatOk(t, c) && ['ready', 'shown', 'approved', 'done'].includes(c.state) && !t.snoozed[c.id] && (!c.onlyWhen || connOn(t, c.onlyWhen))
+  // a price card saved before the paise fix whose every row is "₹1,850 → ₹1,850" says nothing changed: never shown
+  const noChange = (c) => c.liveSrc?.kind === 'catalog' && c.badge?.[0] === 'Price changed' && c.rows?.length && c.rows.every((r) => { const m = /^(.+) → (.+)$/.exec(r?.[1] || ''); return m && m[1] === m[2]; });
+  const visible = (t, c) => seatOk(t, c) && !noChange(c) && ['ready', 'shown', 'approved', 'done'].includes(c.state) && !t.snoozed[c.id] && (!c.onlyWhen || connOn(t, c.onlyWhen))
     && !(c.liveOnly && !t.member) && !(c.demo && (t.member || t.liveConn?.[c.onlyWhen])) && !(!c.liveOnly && t.privMoves?.includes(moveOfId(c.id)));
   // bring a workspace in line with what this viewer may see: add the live cards, drop the ones they may not have
   const applyLive = async (t, viewer) => {
