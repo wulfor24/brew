@@ -209,12 +209,13 @@ Status key: **Working**, **Partial**, **Broken**, **Dummy**, **Cut-but-code-rema
   - With puppeteer-core and the local Chromium (Dockerfile installs `chromium`), it walks home → hero product page → **clicks add to cart on the real store** → cart → checkout entry. Navigational POSTs are blocked except `/cart/add|change|update`.
   - If the checkout button doesn't render headless (one-click apps), it opens `/checkout` directly and says so.
   - Records payments seen, guest checkout (sometimes inferred), OTP and popups. Timings come from one headless run and are labelled `conf: low`.
-- **Status (2026-10-16, SITE_V 2).** Working on Shopify, one-click apps and WooCommerce:
+- **Status (2026-10-16, SITE_V 3).** Working on Shopify, one-click apps and WooCommerce:
   - Waits for the network to settle and keeps looking for late checkout buttons (15 s). App buttons (GoKwik, Shopflo, Razorpay Magic, Fastrr) are in the selector list.
   - A checkout app that opens an iframe or modal over the cart counts as reached, and only the app's own text is read (Gullylabs: Razorpay Magic, "asks for a phone number first").
   - "Checkout entry" is ok only when the page or frame really is a checkout. `/checkout` sent back home or to the cart is a failure with the reason (the old walk marked Arata ok while it sat on the home page).
   - If the desktop walk falls short, it walks again as a phone, in its own cookie jar.
   - WooCommerce add-to-cart posts to the product page; that POST is now allowed.
+  - On Shopify the walk checks `/cart.js` after the click. If the cart is empty (seen on Cloud Run for Arata: the form posted before the theme's script was ready, and an empty cart's /checkout goes home), it adds the product through `/cart/add.js` and says so.
   - No in-stock product: no crash, "no in-stock product to walk with".
   - Payments not on the entry page say where they show ("after the phone step", "after the address step"), and a walk that never reached checkout says "not checked", never "none".
   - `heal()` re-walks any saved read with an older `SITE_V` or a walk that never reached checkout.

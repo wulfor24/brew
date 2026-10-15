@@ -12,22 +12,25 @@ const page = (body) => `<!doctype html><html><body>${body}</body></html>`;
 const product = page('<h1>Wool Sneaker</h1><form action="/cart/add" method="post"><input name="id" value="1"><button type="submit" name="add">Add to cart</button></form>');
 
 function store(kind) {
+  let items = kind === 'empty' ? 0 : 1;
   return http.createServer((rq, rs) => {
     const u = new URL(rq.url, 'http://x');
     const send = (b, code = 200, h = {}) => { rs.writeHead(code, { 'content-type': 'text/html', ...h }); rs.end(b); };
     if (u.pathname === '/') return send(page('<a href="/products/sneaker">Shop</a>'));
     if (u.pathname === '/products/sneaker') return send(product);
     if (u.pathname === '/cart/add') return send('', 302, { location: '/cart' });
-    if (u.pathname === '/cart.js') return send('{"item_count":1}', 200, { 'content-type': 'application/json' });
+    if (u.pathname === '/cart.js') return send(JSON.stringify({ item_count: items }), 200, { 'content-type': 'application/json' });
+    if (u.pathname === '/products/sneaker.js') return send('{"variants":[{"id":7,"available":true}]}', 200, { 'content-type': 'application/json' });
+    if (u.pathname === '/cart/add.js') { items = 1; return send('{}', 200, { 'content-type': 'application/json' }); }
     if (u.pathname === '/cart') {
-      if (kind === 'plain') return send(page('<a href="/checkouts/abc">Check out</a>'));
+      if (kind === 'plain' || kind === 'empty') return send(page('<a href="/checkouts/abc">Check out</a>'));
       if (kind === 'app') return send(page(`<div id="gk"></div><script>setTimeout(() => { const b = document.createElement('button'); b.className = 'gokwik-checkout'; b.textContent = 'Checkout';
         b.onclick = () => { const f = document.createElement('iframe'); f.src = 'http://gokwik.localhost:${rs.socket.localPort}/app'; f.style = 'width:400px;height:600px'; document.body.appendChild(f); }; document.getElementById('gk').appendChild(b); }, 2500);</script>`));
       return send(page('<p>Your cart</p>'));
     }
     if (u.pathname === '/app') return send(page('<p>Enter your mobile number</p><p>Pay with UPI or Cash on delivery</p>'));
     if (u.pathname.startsWith('/checkout')) {
-      if (kind === 'bounce') return send('', 302, { location: '/' });
+      if (kind === 'bounce' || !items) return send('', 302, { location: '/' });
       return send(page('<p>Contact: email or phone</p><p>Credit card</p>'));
     }
     send('no', 404);
@@ -77,6 +80,14 @@ test('walk: /checkout sent back home is not reached, with the reason', { skip: !
   assert.match(st.err, /went back to \//);
   assert.equal(done.state, 'empty');
   assert.ok(cards[0].rows.some(([k, v]) => k === 'Payments seen' && v === 'not checked'));
+});
+
+test('walk: the click leaves the cart empty, the cart API fills it, checkout is reached', { skip: !chrome, timeout: 120e3 }, async () => {
+  const { co, done } = await walk('empty');
+  assert.equal(co.cartItems, 1);
+  assert.ok(co.notes.some((n) => /cart API/.test(n)));
+  assert.ok(co.walk.find((s) => s.step === 'Checkout entry')?.ok);
+  assert.equal(done.state, 'done');
 });
 
 test('walk: no product does not crash', { skip: !chrome, timeout: 60e3 }, async () => {

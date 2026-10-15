@@ -30,7 +30,7 @@ export function detectTech(html) {
 
 const CHROME = () => process.env.CHROME_PATH || ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser'].find((p) => fs.existsSync(p));
 /** bump when the walk starts reading differently: heal() re-walks every saved read with an older version */
-export const SITE_V = 2;
+export const SITE_V = 3;
 // one-click checkout apps open on their own host, usually in an iframe over the cart (GoKwik, Razorpay Magic, Shopflo…)
 const APP_HOST = /gokwik|shopflo|razorpay|fastrr|shiprocket|getsimpl|simpl\.in|snapmint/i;
 const APP_SEL = ['[id*="gokwik" i] button', 'button[class*="gokwik" i]', '[class*="gokwik" i] button', '[class*="shopflo" i] button', 'button[class*="shopflo" i]', '[class*="magic-checkout" i]', 'button[class*="razorpay" i]', '[class*="fastrr" i] button', 'button[class*="fastrr" i]'];
@@ -72,7 +72,7 @@ export async function site(ctx) {
   const toCart = walk.steps.filter((s) => ['Product page', 'Add to cart', 'Cart', 'Cart drawer'].includes(s.step)).reduce((a, s) => a + s.ms, 0);
   const reached = walk.reached;
   const app = walk.direct ? tech.checkoutApp || null : walk.checkoutApp || tech.checkoutApp || null;
-  profile.site.checkout = { v: SITE_V, steps: walk.steps.length, clicks: walk.clicks, msToCart: toCart || null, msToCheckout: reached ? walk.steps.reduce((a, s) => a + s.ms, 0) : null, payments: walk.payments, paymentsAfter: walk.paymentsAfter || null, cod: walk.cod, guest: walk.guest, popups: walk.popups, checkoutApp: app, direct: !!walk.direct, inPage: walk.inPage || null, device: walk.device, otp: walk.otp || null, stoppedAt: walk.stoppedAt, notes: walk.notes, walk: walk.steps, product: hero?.url || null, ...(hero ? {} : { error: 'no in-stock product to walk with' }) };
+  profile.site.checkout = { v: SITE_V, steps: walk.steps.length, clicks: walk.clicks, msToCart: toCart || null, msToCheckout: reached ? walk.steps.reduce((a, s) => a + s.ms, 0) : null, payments: walk.payments, paymentsAfter: walk.paymentsAfter || null, cod: walk.cod, guest: walk.guest, popups: walk.popups, checkoutApp: app, direct: !!walk.direct, inPage: walk.inPage || null, device: walk.device, cartItems: walk.cartItems ?? null, otp: walk.otp || null, stoppedAt: walk.stoppedAt, notes: walk.notes, walk: walk.steps, product: hero?.url || null, ...(hero ? {} : { error: 'no in-stock product to walk with' }) };
   const src = state.homeUrl;
   ledger.add({ key: 'checkout.reached', label: 'Checkout entry page reached in a headless walk', v: reached ? 'yes' : 'no', url: src, method: 'crawl', note: walk.steps.map((s) => `${s.step} ${s.ok ? 'ok' : 'failed'} ${s.ms} ms`).join('; ') + (walk.device === 'mobile' ? ' (walked as a phone)' : '') });
   if (reached) ledger.add({ key: 'checkout.clicks', label: 'Clicks from product page to checkout', v: String(walk.clicks), n: walk.clicks, unit: 'clicks', url: hero.url, method: 'crawl' });
@@ -149,7 +149,20 @@ async function walkOnce(ctx, browser, hero, tech, device) {
     let atCart;
     if (!drawerCheckout) atCart = await t('Cart', openCart);
     else { walk.steps.push({ step: 'Cart drawer', ms: 0, ok: true, url: bare(page.url()) }); atCart = true; }
-    walk.cartItems = await page.evaluate(() => fetch('/cart.js').then((r) => r.json()).then((j) => j.item_count).catch(() => null)).catch(() => null);
+    const cartCount = () => page.evaluate(() => fetch('/cart.js', { credentials: 'same-origin' }).then((r) => r.json()).then((j) => j.item_count).catch(() => null)).catch(() => null);
+    walk.cartItems = await cartCount();
+    // the click "worked" but the cart is empty (the theme's script wasn't ready, so the form posted without it):
+    // add the product through the store's own cart API, then reload the cart. An empty cart's /checkout goes home.
+    if (profile.platform === 'shopify' && walk.cartItems === 0) {
+      const ok = await page.evaluate(async (handleUrl) => {
+        const p = await fetch(handleUrl.replace(/[?#].*$/, '').replace(/\/$/, '') + '.js').then((r) => r.json()).catch(() => null);
+        const v = (p?.variants || []).find((x) => x.available) || p?.variants?.[0]; if (!v) return false;
+        const r = await fetch('/cart/add.js', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ items: [{ id: v.id, quantity: 1 }] }) });
+        return r.ok; }, hero.url).catch(() => false);
+      walk.cartItems = await cartCount();
+      walk.notes.push(ok && walk.cartItems ? "The add-to-cart click left the cart empty; added the product through the store's cart API instead." : 'The add-to-cart click left the cart empty, and the cart API did not take the product either.');
+      if (walk.cartItems) await openCart().catch(() => {});
+    }
     if (!atCart) return walk;
 
     ctx.tick('site', 'checkout');
@@ -173,7 +186,7 @@ async function walkOnce(ctx, browser, hero, tech, device) {
           await openCart().catch(() => {});
           const r2 = await tryButton(CHECKOUT_SEL, 10e3);
           if (r2 && r2 !== 'clicked') hit = r2;
-          else throw new Error(r || r2 ? `the checkout button did nothing and ${path} went back to ${back}` : `no checkout button found, and ${path} went back to ${back}`);
+          else throw new Error((r || r2 ? `the checkout button did nothing and ${path} went back to ${back}` : `no checkout button found, and ${path} went back to ${back}`) + (walk.cartItems === 0 ? ' (the cart was empty)' : ''));
         }
       }
     });
