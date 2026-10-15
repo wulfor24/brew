@@ -259,7 +259,7 @@ export function createJamBrief(o) {
       if (b.decided !== undefined) w.decided = b.decided || null;
       const to = b.to === 'team' ? 'team' : 'shopos';
       w.jamBrief = finalDoc(t, w); w.doc.shippedAt = now(t); w.jamBrief.sharedAt = now(t); w.jamBrief.to = to;
-      if (!w.ticket) w.ticket = nextTicket(t);
+      if (!w.ticket) w.ticket = await nextTicket(t);
       let share = null;
       if (handoff) { try { const x = await handoff.build(t, w, { base: b.base }); w.jamBrief.context = x; share = { url: x.links.page, text: handoff.text(x, to === 'shopos' ? 'brew' : 'whatsapp') }; w.jamBrief.handoff = share; } catch (e) { log.warn('[handoff]', e.message); } }
       say(t, w, { from: 'system', body: `Brief ${w.ticket} copied for ${to === 'team' ? 'your team' : 'the ShopOS team'}: the card, options, plan, assets and both chats${w.jamBrief.missing.length ? `. Still open: ${w.jamBrief.missing.join(', ').toLowerCase()}` : ''}. Paste it where they work.` });

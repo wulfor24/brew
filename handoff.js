@@ -110,7 +110,7 @@ export function createHandoff({ RMX, pageOf, fillCard, AGENT = {}, SEED = {}, ba
     if (x.measure) L.push('', `*How we measure it:* ${x.measure.metric}, ${x.measure.baseline != null ? `${fmt(x.measure, x.measure.baseline)} → ` : 'target '}${fmt(x.measure, x.measure.target)} in ${x.measure.window} days`);
     /* teammates open the jam itself; the ShopOS team also gets the read-only page with every asset */
     L.push('', `🎛️ *Open the jam (latest version, chat and brief):* ${x.links.jam}`);
-    if (to === 'brew') L.push(`📎 *Everything (card, assets, every message, the package):* ${x.links.page}`);
+    L.push(`📎 *The full brief, read-only (card, assets, every message, the package):* ${x.links.page}`); // both shares carry the read-only page
     L.push(to === 'brew' ? '' : `When we’re done here, paste this chat back into Brew and the brief updates.`);
     return L.filter((l, i, a) => !(l === '' && a[i - 1] === '')).join('\n').trim();
   };
@@ -142,7 +142,7 @@ pre{white-space:pre-wrap;background:var(--bg);border-radius:10px;padding:10px 12
 .vers{display:flex;flex-direction:column;gap:8px}.ver{display:flex;gap:10px;align-items:flex-start}.ver img{width:64px;border-radius:8px}.ver.cur b::after{content:" · current";color:var(--ok);font-weight:500;font-size:12px}
 .miss{color:var(--warn);font-size:13.5px}.foot{font-size:12px;color:var(--fg3);text-align:center}
 </style></head><body><main>
-<header><small>${esc(x.brand)} × Brew · Jam handoff${x.ticket ? ` · ${esc(x.ticket)}` : ''}</small><h1>${esc(x.title)}</h1>
+<header><small>${esc(x.brand)} × Brew · Jam handoff${x.ticket ? ` · ${esc(x.ticket)}` : ''}${x.frozenAt ? ` · shared ${esc(new Date(x.frozenAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }))}, as it was then` : ''}</small><h1>${esc(x.title)}</h1>
 <div class="chips"><span class="chip">${esc(x.card.agent)}${x.card.type ? ' · ' + esc(x.card.type) : ''}</span><span class="chip">${esc(x.stage)}${x.with ? ' · ' + esc(x.with) : ''}</span><a class="chip" href="${esc(x.links.jam)}">Open the jam in Brew ↗</a>${x.links.studio ? `<a class="chip" href="${esc(x.links.studio)}">Open in the studio ↗</a>` : ''}</div></header>
 ${x.now ? sec('Where it is now', `<p class="lead">${esc(x.now.head)}</p>${x.now.line ? `<p class="sub">${esc(x.now.line)}</p>` : ''}${x.now.extra ? `<p class="eff">${esc(x.now.extra)}</p>` : ''}`) : ''}
 ${sec('The card', `<p class="lead">${esc(x.card.title)}</p><p class="sub">${esc(x.card.sub)}</p>${x.card.rows.length ? `<div class="stats">${x.card.rows.map(([k, v]) => `<div class="stat"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join('')}</div>` : ''}${x.card.images.length ? `<div class="imgs">${x.card.images.map((u) => `<figure><img src="${esc(u)}" alt=""><figcaption>Card image <a href="${esc(u)}" download target="_blank">Download</a></figcaption></figure>`).join('')}</div>` : ''}${x.card.src ? `<p class="sub" style="font-size:13px">From ${esc(x.card.src)}</p>` : ''}`)}

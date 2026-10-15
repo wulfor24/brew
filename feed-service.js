@@ -172,6 +172,8 @@ export function createFeedService(o) {
  // the measuring engine (measure-engine.js), behind MEASURE_ENGINE; off = the old simulated loop
   // the active brand's data (a generated pack, or the Brew default context); see brand-ctx.js
   const SEED = liveView((b) => b.seed);
+  // the brand's own product lines (seed lanes): watcher and Creative cards use them, never another brand's lane names
+  const laneIds = () => Object.keys(SEED.lanes || {}), firstLane = () => laneIds()[0] || 'core';
   const FACTS = liveView((b) => b.facts), fx = (s) => B().fx(s);
   const FACT_OK = { has: (n) => B().factOk.has(n), [Symbol.iterator]: () => B().factOk[Symbol.iterator]() };
   const POOLS = liveView((b) => b.pools), STATICS = liveArr((b) => b.statics), LANE_PHOTO = liveView((b) => b.lanePhoto);
@@ -194,6 +196,13 @@ export function createFeedService(o) {
   const ticketNo = (x) => +(/^(?:BR|SO)-(\d+)$/.exec(x || '')?.[1] || 0); // BR- (Brew); SO- from before the rename still counts
   const nextTicket = (t) => { t.ticketN = Math.max(t.ticketN || 1041, ...t.work.map((w) => ticketNo(w.ticket)), ...(t.jams || []).map((j) => ticketNo(j.ticket))) + 1; return 'BR-' + t.ticketN; };
   // workspaces made before that can hold the same ticket on two items: the oldest keeps it, the rest get a fresh one
+  /* BR numbers run per brand, not per workspace: two teammates' first briefs are BR-1042 and BR-1043, never both BR-1042.
+     Kept in the brand pack (tickets.json), one writer at a time (one instance). */
+  const ticketLock = new Map();
+  const nextBrandTicket = (t) => { const slug = t.brandId, P = o.globalPacks; if (!slug || !P?.getJSON) return Promise.resolve(nextTicket(t));
+    const run = (ticketLock.get(slug) || Promise.resolve()).catch(() => {}).then(async () => { const j = await P.getJSON(slug, 'tickets.json', { n: 1041 }).catch(() => ({ n: 1041 }));
+      const n = Math.max(j.n || 1041, t.ticketN || 1041, ...t.work.map((w) => ticketNo(w.ticket))) + 1; await P.put(slug, 'tickets.json', { n, at: Date.now() }); t.ticketN = n; return 'BR-' + n; });
+    ticketLock.set(slug, run); return run; };
   const fixTickets = (t) => { const seen = new Set(); for (const w of [...t.work].sort((a, b) => a.createdAt - b.createdAt)) { if (!w.ticket) continue; if (seen.has(w.ticket)) w.ticket = nextTicket(t); seen.add(w.ticket); } };
   const now = (t) => Date.now() + (t?.clock || 0);
   const dayKey = (ms) => new Date(ms + (B()?.tzMs ?? 5.5 * H)).toISOString().slice(0, 10);
@@ -211,7 +220,7 @@ export function createFeedService(o) {
     const t = {
       id: uid('t'), host: BH(), name: SEED.brand.name, clock: 0,
       plan: snap.pro ? 'pro' : 'free', brandId: B().slug, createdAt: Date.now(), lastSeen: Date.now(),
-      viewer: { role: 'founder', wants: ['decision', 'idea'], lane: 'core', ...(snap.viewer || {}) }, conn: { ...(snap.conn || {}) },
+      viewer: { role: 'founder', wants: ['decision', 'idea'], lane: firstLane(), ...(snap.viewer || {}) }, conn: { ...(snap.conn || {}) },
       cards: new Map(), feedback: [], runs: [], jams: [], versions: [], memory: [], qa: [], router: [], wlog: [], api: {},
       fewer: { ...(snap.fewer || {}) }, snoozed: {}, boost: {}, shown: {}, acted: new Set(), days: new Set(),
       storySeen: {}, storyExtra: { trends: [], ads: [], news: [] }, health: {}, deck: { hidden: [], colWidth: 480 },
@@ -442,7 +451,7 @@ export function createFeedService(o) {
   const qaCheck = (c, t = null) => {
     const main = [c.title, c.sub, ...(c.rows || []).flat()].join(' ');
     const all = textOfCard(c) + ' ' + (c.detail?.why || []).join(' ');
-    const claim = all.match(/[^.]*\b\d[\d,]*\s+new hairs[^.]*/i);
+    const claim = all.match(/[^.]*\b\d[\d,]*%?\s+(?:new|more|fewer|less)\s+[a-z]+\s+in\s+\d+\s*(?:days|weeks)[^.]*/i); // a counted result claim ("30% fewer breakouts in 28 days") keeps "up to" and its window
     return [
       { k: 'Names a number', ok: /\d/.test(main) },
       // a rival ad is quoted as it runs; the banned words apply to what the brand would say
@@ -458,7 +467,7 @@ export function createFeedService(o) {
     ];
   };
   const mechanicalFix = (c) => {
-    const f = (s) => String(s || '').replace(/\bregrow\w*/gi, 'grow').replace(/\bcure[sd]?\b/gi, 'help').replace(/\bmiracle\w*/gi, 'result').replace(/100%/g, 'every').replace(RIVALS, 'other serums').replace(/(^|[^p] )(\d[\d,]*\s+new hairs)/i, '$1up to $2');
+    const f = (s) => String(s || '').replace(/\bregrow\w*/gi, 'grow').replace(/\bcure[sd]?\b/gi, 'help').replace(/\bmiracle\w*/gi, 'result').replace(/100%/g, 'every').replace(RIVALS, 'other brands').replace(/(^|[^p] )(\d[\d,]*%?\s+(?:new|more|fewer|less)\s+[a-z]+\s+in\s+\d+\s*(?:days|weeks))/i, '$1up to $2'); // a counted result claim gets "up to", for any brand
     let title = f(c.title); if (title.length > 72) title = title.slice(0, 70).replace(/\s+\S*$/, '') + '…';
     return { ...c, title: scrubLeak(title), sub: scrubLeak(f(c.sub)) };
   };
@@ -547,8 +556,8 @@ export function createFeedService(o) {
     const titles = [...t.cards.values()].filter((c) => c.sector === 'creatives' || c.type === 'idea').sort((x, y) => (y.createdAt || 0) - (x.createdAt || 0)).map((c) => c.title).slice(0, 40);
     const mem = t.memory.slice(0, 12).map((m) => `- ${m.fact} (${m.source})`).join('\n');
     try {
-      const j = await claudeJSON(`You are the Creative director agent, running on a schedule. Propose ONE new ad idea card for ${BN()}'s feed.\nBrand memory:\n${mem}\nThe person hearted: ${hearted.join(' | ') || 'nothing yet'}\nCalendar: ${FESTN()} is ${FESTD()}${FEST() ? ` (${Math.ceil((FEST() - now(t)) / D)} days away)` : ''}.\nAlready in the feed, do not repeat: ${titles.join(' | ')}\nIf an idea about ${FESTN()} is already there, pick a different angle. Every price in the title must appear in the sub, for the same product.\nUse only facts from the claims list, and only these numbers:\n${Object.values(FACTS).filter((f) => f.kind !== 'demo' && f.label).map((f) => `- ${f.label}: ${f.v}`).join('\n')}\nPlain, simple words.\nJSON: {"title":"under 60 chars, point first, one number","sub":"two sentences, 25 to 35 words: what we saw with the number, then the move and what it gets ${BN()}; no fonts, design notes or file names","why":["3 bullets, each under 14 words"],"how":["3 steps, each under 12 words"],"image":"one of: ${STATICS.join(', ')}","lane":"core|mito|dandruff","scene":"one sentence describing a new product photo for this idea"}`, 1200);
-      const lane = ['core', 'mito', 'dandruff'].includes(j.lane) ? j.lane : 'core';
+      const j = await claudeJSON(`You are the Creative director agent, running on a schedule. Propose ONE new ad idea card for ${BN()}'s feed.\nBrand memory:\n${mem}\nThe person hearted: ${hearted.join(' | ') || 'nothing yet'}\nCalendar: ${FESTN()} is ${FESTD()}${FEST() ? ` (${Math.ceil((FEST() - now(t)) / D)} days away)` : ''}.\nAlready in the feed, do not repeat: ${titles.join(' | ')}\nIf an idea about ${FESTN()} is already there, pick a different angle. Every price in the title must appear in the sub, for the same product.\nUse only facts from the claims list, and only these numbers:\n${Object.values(FACTS).filter((f) => f.kind !== 'demo' && f.label).map((f) => `- ${f.label}: ${f.v}`).join('\n')}\nPlain, simple words.\nJSON: {"title":"under 60 chars, point first, one number","sub":"two sentences, 25 to 35 words: what we saw with the number, then the move and what it gets ${BN()}; no fonts, design notes or file names","why":["3 bullets, each under 14 words"],"how":["3 steps, each under 12 words"],"image":"one of: ${STATICS.join(', ')}","lane":"${laneIds().join('|') || 'core'}","scene":"one sentence describing a new product photo for this idea"}`, 1200);
+      const lane = laneIds().includes(j.lane) ? j.lane : firstLane();
       const stImg = (id) => `b/${B().slug}/statics/${id}.jpg`;
       const ref = refPhoto(lane);
       let img = STATICS.length ? stImg(STATICS.includes(j.image) ? j.image : STATICS[0]) : ref, imgNote = STATICS.length ? 'picked from your statics' : 'your product photo'; /* the brand's own product photo; with none, no picture is made (never the wrong product) */
@@ -564,12 +573,12 @@ export function createFeedService(o) {
   };
   /* ---------- cards from real research (research.js) ---------- */
   const dateIN = (ms) => new Date(ms).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-  const adCard = (a, at) => ({ id: 'r-ad-' + a.id, agent: 'performance', sector: 'ads', type: 'competitor', family: 'learning', lane: 'core', roles: ['founder', 'growth', 'brand'], kind: 'media', images: [a.poster],
+  const adCard = (a, at) => ({ id: 'r-ad-' + a.id, agent: 'performance', sector: 'ads', type: 'competitor', family: 'learning', lane: firstLane(), roles: ['founder', 'growth', 'brand'], kind: 'media', images: [a.poster],
     campaign: 'Popular ads', title: `${a.brand}: live ${a.days} days in ${a.versions} version${a.versions > 1 ? 's' : ''}`, sub: a.why || a.hook,
     rows: [['Hook', a.hook], ['Angle', a.angle], ['Live since', a.since], ['Format', a.format]],
     detail: { why: [a.why, `Hook: ${a.hook}`, `${a.brand} runs it as ${a.versions} version${a.versions > 1 ? 's' : ''}, ranked ${a.rank} by Meta for reach.`].filter(Boolean), how: [a.take, 'The Creative director drafts three versions in your words.', 'You approve one, then it goes to Meta.'].filter(Boolean) },
     cta: { label: 'Make our version' }, link: { label: 'See it in the Ad Library', url: a.url }, src: `Meta Ad Library · ${CTRY()} · ${dateIN(at)}`, research: { kind: 'ad', id: a.id } });
-  const trendCard = (x, at) => ({ id: 'r-' + x.id, agent: 'brew', sector: 'creatives', type: 'competitor', family: 'learning', lane: 'core', roles: ['founder', 'growth', 'brand'], kind: 'rows',
+  const trendCard = (x, at) => ({ id: 'r-' + x.id, agent: 'brew', sector: 'creatives', type: 'competitor', family: 'learning', lane: firstLane(), roles: ['founder', 'growth', 'brand'], kind: 'rows',
     campaign: 'Trends', title: x.card, sub: x.p,
     rows: x.rising ? x.rising.slice(0, 4).map((r) => [r.q.length > 38 ? r.q.slice(0, 36) + '…' : r.q, r.v]) : x.terms.map((term) => { const s = research.get().trends.series[term]; return [term, s.change == null ? `index ${s.last}` : `${s.change > 0 ? '+' : ''}${s.change}% in 30 days`]; }),
     detail: { why: [x.p, x.h], how: ['Brew turns it into an ad idea or a page change.', 'You approve it before anything goes live.'] },
@@ -612,7 +621,7 @@ export function createFeedService(o) {
   const liveCard = (wid, e) => {
     const at = new Date(e.at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
     if (wid === 'catalog') {
-      const x = e.items || [], names = x.map((i) => i.title), base = { id: 'lv-' + e.id, agent: 'storefront', sector: 'catalog', lane: 'core', roles: ['ecom', 'founder', 'growth'], kind: 'rows', src: `${BH()}, checked ${at}`, liveSrc: { kind: 'catalog', id: e.id }, link: x[0]?.url ? { label: `Open on ${BH()}`, url: x[0].url } : undefined, ttlDays: 7 };
+      const x = e.items || [], names = x.map((i) => i.title), base = { id: 'lv-' + e.id, agent: 'storefront', sector: 'catalog', lane: firstLane(), roles: ['ecom', 'founder', 'growth'], kind: 'rows', src: `${BH()}, checked ${at}`, liveSrc: { kind: 'catalog', id: e.id }, link: x[0]?.url ? { label: `Open on ${BH()}`, url: x[0].url } : undefined, ttlDays: 7 };
       const rows = (f) => x.slice(0, 4).map(f);
       if (e.kind === 'oos') return { ...base, type: 'decision', family: 'exception', badge: ['Out of stock', 'warn'],
         title: e.urgent ? `${plural(x.length, 'product our cards sell is', 'products our cards sell are')} out of stock` : `${plural(x.length, 'product is', 'products are')} out of stock on ${BH()}`,
@@ -630,7 +639,7 @@ export function createFeedService(o) {
       if (e.kind === 'thin') return { ...base, type: 'decision', family: 'exception', badge: [plural(x.length, 'listing', 'listings'), 'warn'], title: `${plural(x.length, 'listing has', 'listings have')} one photo or none on ${BH()}`, sub: `${short(andList(names.slice(0, 2)), 170)}${x.length > 2 ? ` and ${x.length - 2} more` : ''} show a single image. Catalog ads and shoppers need more than one angle to trust a combo.`, rows: rows((i) => [short(i.title, 40), `${i.images} photo${i.images === 1 ? '' : 's'}`]), detail: { why: [`Counted on the live ${BH()} catalog.`, 'Listings with one image convert worse and look thin in catalog ads.'], how: ['Brew drafts packshots from the single-product photos.', 'You pick the ones you like.', 'Your team adds them to the listings.'] }, cta: { label: 'Add photos' } };
       return null;
     }
-    const base = { id: 'lv-' + e.id, agent: 'visibility', sector: 'visibility', lane: 'core', roles: ['founder', 'brand', 'ecom'], src: `ChatGPT, Gemini, Perplexity and Claude, asked from ${CTRY()} · ${at}`, liveSrc: { kind: 'visibility', id: e.id }, ttlDays: 7 };
+    const base = { id: 'lv-' + e.id, agent: 'visibility', sector: 'visibility', lane: firstLane(), roles: ['founder', 'brand', 'ecom'], src: `ChatGPT, Gemini, Perplexity and Claude, asked from ${CTRY()} · ${at}`, liveSrc: { kind: 'visibility', id: e.id }, ttlDays: 7 };
     if (e.kind === 'score') { const d = e.was ? e.named - e.was.named : null;
       return { ...base, type: 'report', family: 'result', kind: 'rows', badge: [d == null ? 'This week' : d > 0 ? `+${d}` : d < 0 ? `${d}` : 'No change', d > 0 ? 'ok' : d < 0 ? 'warn' : 'info'], health: d ? { 'AI answers': d } : undefined,
         title: `${BN()} is named in ${e.named} of ${e.total} AI answers this week`, sub: `We asked ${plural(e.total / 4 | 0, 'shopper question', 'shopper questions')} to ChatGPT, Gemini, Perplexity and Claude, from ${CTRY()}.${e.was ? ` Last time it was ${e.was.named} of ${e.was.total}.` : ' This is the first reading; next week shows the change.'}`,
@@ -702,7 +711,7 @@ export function createFeedService(o) {
   const variantOk = (parent, v) => { const ok = new Set(FACT_OK); numbersIn(JSON.stringify({ t: parent.title, s: parent.sub, r: parent.rows, d: parent.detail })).forEach((n) => ok.add(n)); return !unbacked({ text: `${v.title} ${v.sub}` }, ok).length; };
   // heart cards made before that check could carry canned versions with stale prices: rebuild them from their parent
   const repairHeartKids = (t) => { for (const c of t.cards.values()) { if (c.origin !== 'heart' || !c.variants?.length || c._vfix) continue; const parent = t.cards.get(c.parentCardId); if (!parent) continue;
-    const good = c.variants.filter((v) => variantOk(parent, v) && !/one serum, or a five-month kit|affordable and actually works/i.test(v.title)); c.variants = good.length === c.variants.length ? c.variants : [...good, ...mockVariants(parent)].slice(0, 3); c._vfix = 1; } };
+    const good = c.variants.filter((v) => variantOk(parent, v)); c.variants = good.length === c.variants.length ? c.variants : [...good, ...mockVariants(parent)].slice(0, 3); c._vfix = 1; } };
   const heartChild = (t, parent) => {
     const existing = [...t.cards.values()].find((c) => c.parentCardId === parent.id && c.origin === 'heart'); if (existing) return existing;
     const child = { id: uid('more'), parentCardId: parent.id, origin: 'heart', agent: parent.agent === 'brew' ? 'creative' : parent.agent, sector: parent.sector, type: 'idea', family: 'idea', lane: parent.lane, roles: parent.roles, time: 'Just now', campaign: 'More like this', kind: 'variants', loading: true, images: parent.images ? [parent.images[0]] : null, title: 'Three more in the direction you hearted', sub: `Same idea as “${parent.title}”, cut three ways.`, cta: { label: 'Generate versions' }, src: parent.src, createdAt: now(t), history: [] };
@@ -1321,7 +1330,7 @@ export function createFeedService(o) {
     const out = await o.learnings.run(t.brandId || DEFAULT_BRAND, { text: cmd.body, by, byShort, why: cmd.why, workId: w.id });
     return { said, reply: out.reply, n: out.applied?.length ?? null };
   };
-  JB.routes({ on, W, say, move, notify, learn: learnOf, nextTicket: (t) => { leadsAllTenants++; return nextTicket(t); }, handoff: { build: (...a) => HO.build(...a), text: (...a) => HO.text(...a) } });
+  JB.routes({ on, W, say, move, notify, learn: learnOf, nextTicket: (t) => { leadsAllTenants++; return nextBrandTicket(t); }, handoff: { build: (...a) => HO.build(...a), text: (...a) => HO.text(...a) } });
   // first drafts in a jam, one tap away: image, video, voice or text, made only when someone asks (drafts.js)
   DR = createDrafts({ claudeTool, geminiImage, treg: o.treg, launchBrowser: o.launchBrowser, zipBuffer: o.zipBuffer, photoAsync: o.photoAsync, photoFile, catalogOf: (t) => (t ? brandOfT(t)?.catalog : null), brandName: (t) => (t ? brandOfT(t)?.seed?.brand?.name || '' : ''), photoOf: (c) => LANE_PHOTO[c?.lane] || Object.values(LANE_PHOTO || {})[0], cardOf: (t, id) => { const c = t.cards.get(id); return c ? fillCard(c, t) : null; },
     briefOf: (t, w) => JB.seed(t, w)?.md, cardBrief, seatLine, isMock, spend, clean, now, uid, say, save: (t) => store?.save(t), AGENT, log }); DR.routes({ on, W });
@@ -1448,7 +1457,8 @@ export function createFeedService(o) {
       if (!w) { res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }); res.end('This handoff link is not valid.'); return true; }
       /* links shared before the jam link existed open the jam itself (same card, same change, latest state); ?full=1 is the read-only page */
       if (u.searchParams.get('full') !== '1') { res.writeHead(302, { location: jamPath(t, w), 'cache-control': 'no-store' }); res.end(); return true; }
-      const x = await HO.build(t, w, { base: `${req.headers['x-forwarded-proto'] || (req.socket.encrypted ? 'https' : 'http')}://${req.headers.host}` });
+      /* a shared brief is frozen: the page shows what was shared (w.jamBrief.context), not the jam as it is now; sharing again replaces it */
+      const x = w.jamBrief?.context ? { ...w.jamBrief.context, frozenAt: w.jamBrief.sharedAt || null } : await HO.build(t, w, { base: `${req.headers['x-forwarded-proto'] || (req.socket.encrypted ? 'https' : 'http')}://${req.headers.host}` });
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' }); res.end(HO.html(x)); return true;
     }
     const sm = u.pathname.match(/^\/api\/share\/([\w~-]+)$/);

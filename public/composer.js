@@ -29,7 +29,7 @@
   const pop = (k, body) => (UI.open === k ? `<div class="cmp-pop is-${k}" role="dialog">${body}</div>` : '');
   const plusPop = () => pop('plus', `<button type="button" data-cmp-file>${ic('doc', 's16')}<span><b>A CSV or text file</b><small>Numbers, a list, notes. The AI reads it</small></span></button>
     <button type="button" data-cmp-photo>${ic('pic', 's16')}<span><b>A photo of your product</b><small>Drafts use it as the product shot</small></span></button><input type="file" data-cmp-img hidden accept="image/png,image/jpeg,image/webp">
-    <button type="button" data-cmp-link>${ic('link', 's16')}<span><b>A link</b><small>Brew reads the page</small></span></button>
+    <button type="button" data-cmp-link>${ic('link', 's16')}<span><b>A link</b><small>Adds the address to your message (Brew doesn’t open it)</small></span></button>
     <button type="button" data-jm-import>${ic('copy', 's16')}<span><b>Paste a chat</b><small>From WhatsApp or Slack</small></span></button>
     ${inStudio() ? '' : `<button type="button" data-cmp-learn>${ic('sparkles', 's16')}<span><b>Brand learnings</b><small>Paste a call, notes or emails. Brew learns from them</small></span></button>`}
     <input type="file" data-cmp-in hidden accept=".csv,.txt,.md,text/plain,text/csv">
@@ -73,7 +73,7 @@
     if (t.closest('[data-cmp-talk]')) { UI.open = null; repaint(); const box = inBox(); return box && window.Mic?.supported ? window.Mic.talk(box) : null; }
     /* /update-brand-learnings (brand-learnings.js): the command goes in the box, the paste (or a text file from +) follows it */
     if (t.closest('[data-cmp-learn]')) { UI.open = null; const box = inBox(); if (box) { box.value = '/update-brand-learnings\n'; box.dispatchEvent(new Event('input', { bubbles: true })); box.focus(); box.setSelectionRange(box.value.length, box.value.length); } return; }
-    if (t.closest('[data-cmp-link]')) { UI.open = null; const box = inBox(); if (box) { box.value = 'Read this page and use what matters: https://'; box.focus(); } return; }
+    if (t.closest('[data-cmp-link]')) { UI.open = null; const box = inBox(); if (box) { box.value = 'For reference: https://'; box.focus(); } return; }
     // a click anywhere else closes an open popover
     if (UI.open && !t.closest('.cmp-pop') && !t.closest('[data-cmp]')) { UI.open = null; repaint(); }
   });

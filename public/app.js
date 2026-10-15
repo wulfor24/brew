@@ -157,7 +157,7 @@
      ========================================================= */
   const KEY = `${LSP()}demo-v1`;
   const fresh = () => ({
-    onboarded: false, viewer: { role: 'founder', wants: ['decision', 'idea'], lane: 'core', hindi: false, name: '' },
+    onboarded: false, viewer: { role: 'founder', wants: ['decision', 'idea'], lane: Object.keys(B.lanes || {})[0] || 'core', hindi: false, name: '' }, /* the brand's first product line, never a lane it doesn't have */
     hearts: {}, saved: [...B.saved], snoozed: {}, boost: {}, dismissed: {}, fewer: {}, done: {}, conn: {}, pro: false, spendOk: false,
     slack: { channel: '#growth', names: {} }, jams: B.pastJams.map((j) => ({ ...j, msgs: j.msgs.map((m) => [...m]) })),
     log: [],
