@@ -23,12 +23,31 @@ test('the same data call twice in a day is paid once', withFetch(async (calls) =
   assert.equal(calls.length, 2, 'different parameters are a different call');
 }));
 
-test('an answer older than a day is fetched again', withFetch(async (calls) => {
+test('a fast signal (ads) older than a day is fetched again', withFetch(async (calls) => {
+  const c = memCache(); const t = createTreg({ cache: c });
+  await t.call('scrapecreators.x.v1-facebook-adlibrary-company-ads', { query: { pageId: '1' } });
+  for (const [k, v] of c.m) c.m.set(k, { ...v, at: new Date(Date.now() - 25 * 36e5).toISOString() });
+  await t.call('scrapecreators.x.v1-facebook-adlibrary-company-ads', { query: { pageId: '1' } });
+  assert.equal(calls.length, 2);
+}));
+
+test('a slow signal (search, reviews) is kept for a week, unless the caller needs it fresher', withFetch(async (calls) => {
   const c = memCache(); const t = createTreg({ cache: c });
   await t.call('crawl4ai.google.serp.organic', { query: { q: 'protein bar' } });
-  for (const [k, v] of c.m) c.m.set(k, { ...v, at: new Date(Date.now() - 25 * 36e5).toISOString() });
+  for (const [k, v] of c.m) c.m.set(k, { ...v, at: new Date(Date.now() - 3 * 864e5).toISOString() });
   await t.call('crawl4ai.google.serp.organic', { query: { q: 'protein bar' } });
-  assert.equal(calls.length, 2);
+  assert.equal(calls.length, 1, 'three days old: still good');
+  await t.call('crawl4ai.google.serp.organic', { query: { q: 'protein bar' }, maxAgeH: 24 });
+  assert.equal(calls.length, 2, 'a caller that needs a day-old answer pays once');
+  for (const [k, v] of c.m) c.m.set(k, { ...v, at: new Date(Date.now() - 8 * 864e5).toISOString() });
+  await t.call('crawl4ai.google.serp.organic', { query: { q: 'protein bar' } });
+  assert.equal(calls.length, 3, 'past a week: fetched again');
+}));
+
+test('identical calls in flight at once share one paid answer', withFetch(async (calls) => {
+  const t = createTreg({ cache: memCache() });
+  const rs = await Promise.all([1, 2, 3].map(() => t.call('crawl4ai.google.serp.organic', { query: { q: 'same' } })));
+  assert.equal(calls.length, 1); assert.equal(rs.length, 3);
 }));
 
 test('generation and job polling are never cached', withFetch(async (calls) => {

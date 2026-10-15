@@ -658,7 +658,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   async function doCheck(slug, { auto, why }) {
     const m = await load(); await restoreSpend(slug); const usd0 = spentFor(slug), s0 = await status(slug);
     const old = await packs.getJSON(slug, 'ledger.json', []), oldP = await packs.getJSON(slug, 'profile.json');
-    const out = await makeReader(m).read(s0.url, { fresh: true, onEvent: (e) => { if (e.type === 'step' && e.done) emit(slug, { type: 'update-step', k: e.k, text: e.done }); } });
+    const out = await makeReader(m).read(s0.url, { fresh: true, prev: oldP, onEvent: (e) => { if (e.type === 'step' && e.done) emit(slug, { type: 'update-step', k: e.k, text: e.done }); } });
     /* the store did not open today: nothing is compared or overwritten (the error is kept and the next try waits a day) */
     if (!storeOpened(out)) throw new Error('The store did not open, so nothing was compared. Brew tries again tomorrow.');
     const gone = removedKeys(oldP?.catalog?.removed);

@@ -75,7 +75,7 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
     return svc;
   }
 
-  async function read(input, { onEvent = () => {}, signal, only = null, fresh = false, free = false } = {}) {
+  async function read(input, { onEvent = () => {}, signal, only = null, fresh = false, free = false, prev = null } = {}) { // prev: the brand's last profile (a re-read keeps its rivals, searches and questions)
     const url = normalizeUrl(input); const slug = slugOf(url.href);
     const want = (k) => !only || only.includes(k);
     const ledger = createLedger();
@@ -90,7 +90,7 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
     const aiOn = !free && !!ai && ai.live !== false;
 
     const ctx = {
-      url, slug, http, ledger, profile, state: {}, log, signal, free, tregOn, aiOn, saveAsset, saveRaw, today: today(),
+      url, slug, http, ledger, profile, state: {}, log, signal, free, tregOn, aiOn, saveAsset, saveRaw, today: today(), prev,
       tick(k, t) { const s = stepOf(k); if (!s) return emit({ type: 'sub', k, tick: t }); if (!s.tick.includes(t) && s.tick.length < 12) s.tick.push(t); if (s.state === 'queued') s.state = 'reading'; emit({ type: 'step', k, i: steps.indexOf(s), state: 'reading', tick: t }); },
       finding(k, f, say) { cards.push({ ...f, k }); emit({ type: 'finding', k, i: steps.findIndex((s) => s.k === k), finding: f, ...(say ? { say } : {}) }); },
       done(k, text, state = 'done') { const s = stepOf(k); if (!s) return emit({ type: 'sub', k, state, done: text }); s.done = text; s.state = state; emit({ type: 'step', k, i: steps.indexOf(s), state, done: text }); },

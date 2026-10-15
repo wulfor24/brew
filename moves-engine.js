@@ -21,6 +21,8 @@ export const CAPS = ['listening', 'social-posts', 'research', 'rival-weakness', 
 const CAPSET = new Set(CAPS);
 export const capsOf = (sp) => (sp?.evidence || []).filter((x) => CAPSET.has(x));
 const areasOf = (sp) => (sp?.evidence || []).filter((x) => !CAPSET.has(x) || x === 'ads');
+let adCall = null; // reader/adlib.js: the Ad Library through treg, else its free page reader
+import('./reader/adlib.js').then((m) => { adCall = m.adCall || null; }).catch(() => {});
 let probeFor = null; // treg-map.js probeFor(family): where a family's number is read, when that file exists
 import('./treg-map.js').then((m) => { if (typeof m.probeFor === 'function') probeFor = m.probeFor; }).catch(() => {});
 const NUMW = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
@@ -334,14 +336,21 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
   async function runLookups(sp, { profile }) {
     const out = [];
     for (const l of sp.lookups || []) {
-      if (l.type !== 'treg' || !treg?.live) continue;
+      if (l.type !== 'treg') continue;
       const country = profile.country || 'US';
       const vars = l.each === 'categoryQueries'
         ? (profile.search?.terms || []).slice(0, 3).map((q) => ({ q, country: country.toLowerCase() }))
         : [{ name: profile.name, country }, ...(profile.rivals || []).slice(0, 1).map((r) => ({ name: r.name, country }))];
       for (const v of vars) {
+        /* evidence the read already holds is used as it is, never bought again: the category searches (profile.search.serp)
+           and the brand's and its rivals' live ads (profile.ads) */
+        const stored = l.each === 'categoryQueries' ? (profile.search?.serp || []).find((x) => x.q === v.q && x.results?.length)?.results
+          : /adlibrary/.test(l.id) ? (() => { const a = v.name === profile.name ? profile.ads?.own : (profile.ads?.rivals || []).find((r) => r.name === v.name); return a && !a.error && (a.items?.length || a.live != null) ? { live: a.live, page: a.page, items: (a.items || []).slice(0, 12) } : null; })() : null;
+        if (stored) { out.push({ id: l.id, for: v.q || v.name, at: profile.readAt || profile.meta?.readAt || today(), data: compact(stored, 5000), stored: true }); continue; }
         try {
-          const j = await treg.call(l.id, { ...(l.body ? { body: fill(l.body, v) } : {}), ...(l.query ? { query: fill(l.query, v) } : {}), tag: `move${pad(sp.n)}:${l.id}` });
+          if (!treg?.live) { out.push({ id: l.id, for: v.q || v.name, at: today(), error: 'not in the stored evidence, and live lookups are off' }); continue; }
+          const call = /adlibrary/.test(l.id) && adCall ? (id, o) => adCall(treg, id, o) : (id, o) => treg.call(id, o); // the Ad Library falls back to its free page reader
+          const j = await call(l.id, { ...(l.body ? { body: fill(l.body, v) } : {}), ...(l.query ? { query: fill(l.query, v) } : {}), tag: `move${pad(sp.n)}:${l.id}` });
           out.push({ id: l.id, for: v.q || v.name, at: today(), data: compact(j?.results || j?.searchResults || j, 5000) });
         } catch (e) { out.push({ id: l.id, for: v.q || v.name, at: today(), error: String(e.message).slice(0, 160) }); }
       }

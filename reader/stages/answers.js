@@ -30,6 +30,15 @@ export async function writeLine(ctx) {
 
 export async function inferCategory(ctx) {
   const { profile, ledger, state } = ctx;
+  /* a brand read before keeps its category and its category searches (the same searches week to week compare, and are
+     paid for once a week); only a first read asks Claude */
+  const pv = ctx.prev;
+  if (pv?.category && pv.search?.terms?.length) {
+    profile.category = pv.category; profile.subcategory = pv.subcategory || null; state.categoryQueries = pv.search.terms.slice(0, 3);
+    if (pv.descriptorBy === 'claude' || pv.descriptorBy === 'brand') { profile.descriptor = pv.descriptor; profile.descriptorBy = pv.descriptorBy; }
+    ledger.add({ key: 'market.category', label: 'Category', v: `${profile.category}${profile.subcategory ? ' / ' + profile.subcategory : ''}`, layer: 'inferred', url: state.homeUrl, method: 'claude:classify', conf: 'medium', note: 'kept from the first read' });
+    return;
+  }
   const prods = profile.catalog?.products || [];
   const types = count(prods.filter((p) => !p.pack).map((p) => p.type).filter((t) => t && !/^(combo|kit|bundle|set|gift|regimen)s?$/i.test(t)));
   if (ctx.aiOn) {
@@ -52,9 +61,12 @@ export async function answers(ctx) {
   const { profile, ledger } = ctx;
   if (!ctx.aiOn && !ctx.tregOn) { ctx.finding('answers', { kind: 'answer', t: 'Asked ChatGPT', src: 'not asked', q: '', a: 'AI answers were not checked in this read (paid sources off).', cap: '' }); return ctx.done('answers', 'not checked (paid sources off)', 'empty'); }
   const cc = profile.country || 'US'; const loc = LOC[cc] || 2840;
-  // the questions
-  let qs = [];
-  if (ctx.aiOn) {
+  /* the questions: a brand Brew has read before keeps its questions, so weeks compare and every answer already paid for
+     this week (the read, the live watcher, the weekly check) is reused instead of asked again */
+  let qs = (ctx.prev?.ai?.questions || []).filter((q) => typeof q === 'string' && q.trim()).slice(0, 8)
+    .map((q, i) => ({ q, branded: (ctx.prev.ai.answers || []).find((a) => a.q === q)?.branded ?? i >= 5 }));
+  if (qs.length < 6) qs = [];
+  if (!qs.length && ctx.aiOn) {
     try {
       const r = await ctx.ai({ tag: 'reader-questions', model: 'sonnet', max: 900, schema: { type: 'object', properties: { questions: { type: 'array', items: { type: 'object', properties: { q: { type: 'string' }, branded: { type: 'boolean' } } } } } },
         prompt: `Write 8 real questions a shopper in ${cc} would type into ChatGPT before buying ${profile.subcategory || profile.category || 'this kind of product'} (the brand is ${profile.name}, ${profile.host}). 5 unbranded (best X for Y, which X works, X without Y, is ingredient Z safe, X for a specific person), 3 branded (is ${profile.name} good, ${profile.name} vs a well-known rival, a question about ${profile.name}'s best seller "${(profile.catalog?.products || []).find((p) => p.handle === profile.catalog?.hero?.[0])?.title || ''}"). Use the words shoppers in ${cc} use. Short, natural, no brand in the unbranded ones.` });

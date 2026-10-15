@@ -225,6 +225,14 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     }
     const rising = {};
     await Promise.all(RISING.map(async (q) => {
+      /* rising searches come from the same DataForSEO trends read (its queries list), about 12x cheaper than SerpApi; SerpApi
+         is the fallback when that list comes back empty */
+      try {
+        const j = await treg('dataforseo.x.keywords-data-google-trends-explore-live', { body: [{ keywords: [q], location_code: LOC, time_range: 'past_90_days', item_types: ['google_trends_queries_list'] }] });
+        const ql = (j.tasks?.[0]?.result?.[0]?.items || []).find((x) => x.type === 'google_trends_queries_list');
+        const xs = (ql?.data?.rising || []).slice(0, 10).map((x) => ({ q: x.query, v: x.value }));
+        if (xs.length) { rising[q] = xs; return; }
+      } catch (e) { log.warn('[research] rising (dataforseo)', e.message); }
       try {
         const j = await treg('serpapi.x.google-trends', { query: { engine: 'google_trends', q, data_type: 'RELATED_QUERIES', geo: GEO, date: 'today 3-m' } });
         rising[q] = (j.related_queries?.rising || []).slice(0, 10).map((x) => ({ q: x.query, v: x.value }));

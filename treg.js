@@ -8,11 +8,23 @@ import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 
-// Data calls are cached for a day (TREG_CACHE_HOURS): the same endpoint with the same parameters is paid for once a
-// day at most, by any caller, on any instance. Never cached: generation (images, video, voice) and job polling, whose
+// Data calls are cached by signal (TTL_RULES: reviews, search, AI answers and profiles a week, company data a month, ads, news
+// and prices a day, else TREG_CACHE_HOURS): the same endpoint with the same parameters is paid for once per window at most,
+// by any caller, on any instance; identical calls in flight at once share one answer. Never cached: generation (images, video, voice) and job polling, whose
 // answers change or carry one-time URLs. Failed calls are never cached. A caller can opt out with { cache: false }.
 const NO_CACHE = /(image|video|voice|audio|music)-gen|tts|\.task\.|status|result\.retrieve|video_download|video-streams|post\.detail|upload/i;
 const TTL_H = +process.env.TREG_CACHE_HOURS || 24;
+/* how long one paid answer stays good, by what it is (first match wins; else TTL_H). Slow signals are paid for once a week
+   or month by every caller (the read, a refresh check, listening, pulse, moves), fast ones once a day */
+export const TTL_RULES = [
+  [/builtwith|wappalyzer|tech-?stack|whois|company\.(?:enrich|profile)|crunchbase|linkedin\.company/i, 720],
+  [/review|trustpilot|maps\.reviews|product\.reviews/i, 168],
+  [/serp|organic|spyfu|backlink|keyword|trends|autocomplete|search-volume|ranked/i, 168],
+  [/ai-optimization|llm|chat-?gpt|gemini|perplexity|ai-search|ai_mode/i, 168],
+  [/instagram\.user|instagram\.profile|youtube\.channel|tiktok\.user|profile/i, 168],
+  [/adlibrary|ad-library|ads-transparency|ad_library/i, 24],
+  [/news|web\.search|shopping|price|best-?sellers|product\.detail|amazon\.search/i, 24]];
+export const ttlHours = (id) => (TTL_RULES.find(([re]) => re.test(id)) || [null, TTL_H])[1];
 /** cache: { get(key) → { at, data } | null, put(key, { at, data }) } */
 export function gcsCache({ bucket, gToken, prefix = '_cache/treg/', log = console }) {
   const mem = new Map();
@@ -33,15 +45,25 @@ export function createTreg({ client = 'shopos-feed', dayCapUsd = +process.env.TR
   };
   const off = process.env.TREG_OFF === '1';
   const keyOf = (id, query, body) => crypto.createHash('sha256').update(JSON.stringify([id, query || null, body || null])).digest('hex').slice(0, 40);
+  /* the same call already on its way (moves written six at a time, two stages asking at once): every asker waits for that
+     one answer instead of paying again. Holds for uncached calls too, but never for generation or polling */
+  const inflight = new Map();
   async function call(id, o = {}) {
     if (off) throw Object.assign(new Error('treg is off'), { off: true });
-    if (!cache || o.cache === false || NO_CACHE.test(id)) return live(id, o);
+    if (NO_CACHE.test(id) || o.cache === false) return live(id, o);
     const k = keyOf(id, o.query, o.body);
-    const hit = await cache.get(k).catch(() => null);
-    if (hit && Date.now() - Date.parse(hit.at) < TTL_H * 36e5) { meter.hits = (meter.hits || 0) + 1; return hit.data; }
-    const data = await live(id, o);
-    cache.put(k, { at: new Date().toISOString(), id, data }).catch(() => {});
-    return data;
+    if (inflight.has(k)) { meter.shared = (meter.shared || 0) + 1; return inflight.get(k); }
+    const p = (async () => {
+      /* o.maxAgeH: a caller that needs it fresher than the signal's window (a refresh check on ads) says so */
+      const ttl = Math.min(ttlHours(id), o.maxAgeH ?? Infinity);
+      const hit = cache ? await cache.get(k).catch(() => null) : null;
+      if (hit && Date.now() - Date.parse(hit.at) < ttl * 36e5) { meter.hits = (meter.hits || 0) + 1; return hit.data; }
+      const data = await live(id, o);
+      if (cache) cache.put(k, { at: new Date().toISOString(), id, data }).catch(() => {});
+      return data;
+    })();
+    inflight.set(k, p); p.finally(() => inflight.delete(k)).catch(() => {});
+    return p;
   }
   async function live(id, { query, body, timeout = 150e3, tag } = {}) {
     const a = auth(); if (!a?.token) throw new Error('no TREG_TOKEN');

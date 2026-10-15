@@ -13,6 +13,12 @@ const adq = (ctx, id, query, cacheKey) => adCall(ctx.tregOn ? { call: (i, o) => 
 // bump when the ads stage starts reading differently: saved reads with an older version are healed once
 export const ADS_V = 4; // 3: link-preview page titles are not hooks; 4: the ledger says how ads and rivals were really found
 
+// every rival in the ledger, saying how it was really found
+function noteRivals(ctx) {
+  const { profile, ledger } = ctx;
+  profile.rivals.forEach((r) => ledger.add({ key: `rival.${r.host.replace(/\./g, '-')}.found`, label: `Rival: ${r.name}`, v: r.host, url: r.source || `https://${r.host}`, method: /suggested by AI/.test(r.how) ? 'claude:memory' : /Ad Library/i.test(r.how) ? 'adlib:category-search' : /web search/.test(r.how) ? 'claude:web_search' : 'treg:crawl4ai.google.serp.organic', /* how it was really found */ layer: 'inferred', conf: r.how.includes('+') ? 'high' : 'medium', note: `${r.how}. ${r.why || ''}`.trim() }));
+}
+
 export async function findRivals(ctx) {
   const { profile, ledger } = ctx;
   if (!ctx.tregOn && !ctx.aiOn) { profile.rivals = []; return; }
@@ -34,6 +40,14 @@ export async function findRivals(ctx) {
   for (const s of serp) for (const r of s.results) { if (!r.domain || r.domain === own || NOT_BRANDS.test(r.domain + '.')) continue; const f = freq.get(r.domain) || { domain: r.domain, n: 0, best: 99, qs: [] }; f.n++; f.best = Math.min(f.best, r.pos || 99); f.qs.push(s.q); freq.set(r.domain, f); }
   const ownRank = serp.map((s) => ({ q: s.q, pos: s.results.find((r) => r.domain === own)?.pos || null }));
   ownRank.forEach((o) => ledger.add({ key: `search.rank.${o.q.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, label: `Google rank for "${o.q}" (${cc.toUpperCase()})`, v: o.pos ? `#${o.pos}` : 'not in top 20', ...(o.pos ? { n: o.pos } : {}), url: `https://www.google.com/search?q=${encodeURIComponent(o.q)}&gl=${cc}`, method: 'treg:crawl4ai.google.serp.organic' }));
+  /* a re-read of a brand Brew already knows (the weekly check): its rivals stay the brand's list, so there is no paid search
+     for new ones; each known rival's store is read again for today's prices, claims and offers */
+  const known = (ctx.prev?.rivals || []).filter((r) => r?.host && r?.name).slice(0, 5);
+  if (known.length) {
+    const picked = known.map((r) => ({ name: r.name, host: r.host, why: r.why || '', source: r.source || null, how: r.how || 'kept from the first read' }));
+    await pool(picked, 5, (r) => crawlRival(ctx, r));
+    profile.rivals = picked.filter((r) => r.name); noteRivals(ctx); return;
+  }
 
   // Claude web search: named competitors with a source
   let named = [];
@@ -83,7 +97,7 @@ export async function findRivals(ctx) {
       await tryAdd([...by.values()].sort((a, b) => b.n - a.n).slice(0, 8).map((x) => ({ ...x, why: `runs ${x.n} live ad${x.n === 1 ? '' : 's'} for "${queries[0]}"` })), 'Ad Library (category search)'); } catch (e) { ctx.log.warn?.('[reader] rivals ad search', e.message); }
   }
   if (profile.rivals.length < 3 && ctx.aiOn) await tryAdd(await ask2('reader-rivals-known', `Which D2C brands compete most directly with ${profile.name} (${profile.host}, ${profile.category || ''}) for the same shoppers in ${profile.country || 'its market'}? Up to 8, the closest first.`, 0), 'suggested by AI, store read live');
-  profile.rivals.forEach((r) => ledger.add({ key: `rival.${r.host.replace(/\./g, '-')}.found`, label: `Rival: ${r.name}`, v: r.host, url: r.source || `https://${r.host}`, method: /suggested by AI/.test(r.how) ? 'claude:memory' : /Ad Library/i.test(r.how) ? 'adlib:category-search' : /web search/.test(r.how) ? 'claude:web_search' : 'treg:crawl4ai.google.serp.organic', /* how it was really found */ layer: 'inferred', conf: r.how.includes('+') ? 'high' : 'medium', note: `${r.how}. ${r.why || ''}`.trim() }));
+  noteRivals(ctx);
 }
 
 async function crawlRival(ctx, r) {

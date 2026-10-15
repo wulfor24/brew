@@ -21,6 +21,7 @@ import { createImageGuard } from './image-guard.js';
 import { createPacks, slugOf, DEFAULT } from './brand-pack.js';
 import { createAI } from './ai.js';
 import { createTreg, gcsCache } from './treg.js';
+import { setApifyCache } from './apify.js';
 import { createBuilder, blocked, clientIp } from './build.js';
 import { createRetire } from './retire.js'; // older revisions stop and exit; brands being reset are hidden
 import { createFactsDesk } from './facts-desk.js';
@@ -284,6 +285,7 @@ const routes = {
 const BUCKET = process.env.RESEARCH_BUCKET || 'brew-prototype';
 // one treg client for everything (24-hour cache in the bucket); research uses it too, so it exists before any brand loads
 const treg = createTreg({ client: 'shopos-feed', cache: process.env.K_SERVICE && !MOCK ? gcsCache({ bucket: BUCKET, gToken }) : null });
+if (process.env.K_SERVICE && !MOCK) setApifyCache(gcsCache({ bucket: BUCKET, gToken, prefix: '_cache/apify/' })); // Apify runs: same rules as treg
 let feedSvc = null; // made below, once the brand plumbing exists
 const retire = createRetire({ bucket: BUCKET, gToken, log: console });
 const retireInit = retire.init().catch((e) => console.warn('[retire] init', e.message)); // first, before any brand loads: the stores wait on it

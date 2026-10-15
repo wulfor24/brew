@@ -5,15 +5,35 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import crypto from 'node:crypto';
 
 const cliToken = () => { try { return JSON.parse(fs.readFileSync(path.join(os.homedir(), '.apify', 'auth.json'), 'utf8')).token || null; } catch { return null; } };
 
-export function createApify({ token = process.env.APIFY_TOKEN || cliToken(), log = console, fetchImpl = (...a) => fetch(...a) } = {}) {
-  const meter = { usd: 0, runs: 0, byTag: {} }, listeners = [];
+/* one cache for every Apify client (server.js sets it to the bucket on Cloud Run): a run with the same actor and input is
+   paid for once per window (reviews a week, anything else a day), and identical runs in flight share one answer */
+let sharedCache = null;
+export const setApifyCache = (c) => { sharedCache = c; };
+const ttlOf = (actor) => (/review/i.test(actor) ? 168 : +process.env.APIFY_CACHE_HOURS || 24);
+const inflight = new Map();
+export function createApify({ token = process.env.APIFY_TOKEN || cliToken(), log = console, fetchImpl = (...a) => fetch(...a), cache = undefined } = {}) {
+  const meter = { usd: 0, runs: 0, byTag: {}, hits: 0 }, listeners = [];
   const off = process.env.APIFY_OFF === '1';
-  async function run(actor, input = {}, { timeoutSecs = 240, maxItems = 200, startUsd = 0.005, perItemUsd = 0.003, maxUsd = 0.25, tag } = {}) {
+  async function run(actor, input = {}, o = {}) {
     if (off) throw Object.assign(new Error('apify is off'), { off: true });
     if (!token) throw Object.assign(new Error('needs APIFY_TOKEN'), { needs: true });
+    const c = cache === undefined ? sharedCache : cache, k = crypto.createHash('sha256').update(JSON.stringify([actor, input, o.maxItems || 200])).digest('hex').slice(0, 40);
+    if (inflight.has(k)) return inflight.get(k);
+    const p = (async () => {
+      const hit = c && o.cache !== false ? await c.get(k).catch(() => null) : null;
+      if (hit && Date.now() - Date.parse(hit.at) < ttlOf(actor) * 36e5) { meter.hits++; return hit.data; }
+      const items = await runLive(actor, input, o);
+      if (c) c.put(k, { at: new Date().toISOString(), actor, data: items }).catch(() => {});
+      return items;
+    })();
+    inflight.set(k, p); p.finally(() => inflight.delete(k)).catch(() => {});
+    return p;
+  }
+  async function runLive(actor, input = {}, { timeoutSecs = 240, maxItems = 200, startUsd = 0.005, perItemUsd = 0.003, maxUsd = 0.25, tag } = {}) {
     const u = `https://api.apify.com/v2/acts/${String(actor).replace('/', '~')}/run-sync-get-dataset-items?format=json&clean=1&timeout=${timeoutSecs}&maxItems=${maxItems}&maxTotalChargeUsd=${maxUsd}`;
     const r = await fetchImpl(u, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` }, body: JSON.stringify(input), signal: AbortSignal.timeout((timeoutSecs + 30) * 1e3) });
     const t = await r.text(); let j = null; try { j = JSON.parse(t || '[]'); } catch {}
