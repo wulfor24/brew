@@ -27,6 +27,16 @@ export async function launchBrowser() {
   });
 }
 
+/* one browser for every on-demand render: launched on the first download, shared by renders running at once, closed after
+   two quiet minutes (a PDF used to launch and close its own Chromium) */
+let shared = null, idle = null, users = 0;
+export async function withBrowser(fn) {
+  if (!shared) shared = launchBrowser().catch((e) => { shared = null; throw e; });
+  const b = await shared; users++; clearTimeout(idle);
+  try { return await fn(b); }
+  finally { users--; if (!users) { idle = setTimeout(() => { const s = shared; shared = null; s?.then((x) => x.close()).catch(() => {}); }, 120e3); idle.unref?.(); } }
+}
+
 /** Safe file name: "03 Five competitor dossiers for Acme.pdf". */
 export function pdfName(move) {
   const t = String(move.title || 'Move').replace(/[\/\\:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim();
@@ -53,6 +63,7 @@ async function htmlToPdf(browser, html, outFile) {
  * writes the HTML next to the PDF (debug).
  */
 export async function renderMove(move, brand, outFile, opts = {}) {
+  if (!opts.browser && opts.shared !== false) return withBrowser((browser) => renderMove(move, brand, outFile, { ...opts, browser }));
   const t0 = Date.now();
   const own = !opts.browser;
   const browser = opts.browser || (await launchBrowser());

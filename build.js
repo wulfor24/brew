@@ -264,7 +264,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         const done = saved.size, waveA = WAVE_A.every((k) => saved.has(k));
         await setStatus(slug, { movesDone: done, ready: waveA || (await status(slug)).ready, state: done >= total ? `All ${total} moves written` : `Writing the moves: ${done} of ${total}` });
         if (waveA && !firstSent) { firstSent = true; notify(slug, 'first').catch((e) => log.warn('[notify]', e.message)); }
-        if (m.pdf) pdfQueue = pdfQueue.then(() => renderPdf(slug, m.pdf, move, profile)).catch((e) => log.warn('[build] pdf', n, e.message));
+        await unmarkPdf(slug, n); /* PDFs are made when someone opens one (pdfOn), never in the build */
         packs.drop(slug); await onPack(slug); saveSpend(slug);
       };
       const ctx = { brand: { name: profile.name, host: profile.host, descriptor: profile.descriptor }, brief: { md: briefMd, json: brief }, profile, ledger, packs, slug,
@@ -283,8 +283,6 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       if (await budgetPause(slug, saved.size)) return;
       await stage(slug, 'moves', 'done');
       await pdfQueue;
-      /* 5. the two zips, like the hand-made set */
-      await makeZips(slug, m, profile);
       await setStatus(slug, { done: true, ready: true, state: 'Ready', usd: +spentFor(slug).toFixed(2), doneAt: Date.now() });
       await notify(slug, 'all').catch((e) => log.warn('[notify]', e.message));
     } catch (e) { if (e.cancelled) return; log.error('[build] failed', slug, e); await setStatus(slug, { state: 'Stopped: ' + e.message, error: e.message }); }
@@ -400,13 +398,15 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   }
   // status.pdfs is written by the build, rewrites and the weekly moves at once: one writer per brand, so no entry is lost
   const pdfLocks = new Map();
-  const markPdf = (slug, n, file) => { const p = (pdfLocks.get(slug) || Promise.resolve()).catch(() => {}).then(async () => { const cur = (await status(slug))?.pdfs || {}; await setStatus(slug, { pdfs: { ...cur, [n]: file } }); }); pdfLocks.set(slug, p); return p; };
+  const markPdf = (slug, n, file, ver) => { const p = (pdfLocks.get(slug) || Promise.resolve()).catch(() => {}).then(async () => { const s = (await status(slug)) || {}, cur = { ...(s.pdfs || {}) }, cv = { ...(s.pdfVer || {}) };
+    if (file) { cur[n] = file; if (ver) cv[n] = ver; } else { if (!(n in cur)) return; delete cur[n]; delete cv[n]; } await setStatus(slug, { pdfs: cur, pdfVer: cv }); }); pdfLocks.set(slug, p); return p; };
+  const unmarkPdf = (slug, n) => markPdf(slug, n, null); // a move written again: its old PDF no longer matches it
   // a render that fails is tried once more before it is logged (moves 02, 03 and 25 went missing that way)
   async function renderPdf(slug, pdf, move, profile, opts = {}) {
     try { return await renderPdf1(slug, pdf, move, profile, opts); }
     catch (e) { log.warn('[pdf] retry', slug, move?.n, e.message); await new Promise((r) => setTimeout(r, 2000)); return renderPdf1(slug, pdf, move, profile, opts); }
   }
-  async function renderPdf1(slug, pdf, move, profile, { priv = false } = {}) {
+  async function renderPdf1(slug, pdf, move, profile, { priv = false, ver = null } = {}) {
     const brand = { name: profile.name, descriptor: (profile.descriptor || profile.category || '').toUpperCase(), host: profile.host, hero: heroFile(slug, profile), colors: profile.identity?.colors || [], dateLabel: new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }).toUpperCase(), version: 'V1 · FOR DISCUSSION' };
     const out = path.join(packs.dirOf(slug), priv ? 'private/pdf' : 'pdf', pdf.pdfName(move));
     fs.mkdirSync(path.dirname(out), { recursive: true });
@@ -414,7 +414,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     await pdf.renderMove(move, brand, out, { moves });
     if (priv) { await packs.put(slug, 'private/pdf/' + path.basename(out), fs.readFileSync(out), 'application/pdf'); const pp = await packs.getJSON(slug, 'private/pdfs.json', {}); pp[move.n] = path.basename(out); await packs.put(slug, 'private/pdfs.json', pp); emit(slug, { type: 'pdf', n: move.n, private: true }); return; }
     await packs.put(slug, 'pdf/' + path.basename(out), fs.readFileSync(out), 'application/pdf');
-    await markPdf(slug, move.n, path.basename(out));
+    await markPdf(slug, move.n, path.basename(out), ver);
     emit(slug, { type: 'pdf', n: move.n, file: path.basename(out) });
   }
   const heroFile = (slug, p) => { const img = p.catalog?.products?.find((x) => x.img)?.img; const m = img && /^b\/[^/]+\/a\/(.+)$/.exec(String(img).replace(/^\//, '')); const f = m && path.join(packs.dirOf(slug), 'assets', m[1]); return f && fs.existsSync(f) ? f : null; };
@@ -731,7 +731,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         emit(slug, { type: 'move', n, title: move.title, stat: move.stat, gives: move.gives, verified: !!move.meta?.verified, rewritten: true });
         if (n !== 0) { written.push({ n, title: move.title }); await cardsFor(slug, move, profile, { replace: true, priv }).catch((e) => log.warn('[rewrite] cards', n, e.message)); await editUpd(slug, (u) => { delete u.stale[n]; }); }
         if (n === 21 && !priv) staticsJob = makeStatics(slug, move, profile, (fn) => (lock = lock.then(fn).catch((e) => log.warn('[rewrite] statics card', e.message))));
-        if (m.pdf) pdfQ = pdfQ.then(() => renderPdf(slug, m.pdf, move, profile, { priv })).catch((e) => log.warn('[rewrite] pdf', n, e.message));
+        if (m.pdf && priv) pdfQ = pdfQ.then(() => renderPdf(slug, m.pdf, move, profile, { priv })).catch((e) => log.warn('[rewrite] pdf', n, e.message)); /* a member's private rewrite keeps its own PDF */
+        if (!priv) await unmarkPdf(slug, n); /* the public PDF is drawn again on its next download */
         packs.drop(slug); await onPack(slug); saveSpend(slug);
       };
       const ctx = { brand: { name: profile.name, host: profile.host, descriptor: profile.descriptor }, brief: { md: briefMd, json: brief }, profile, ledger, packs, slug,
@@ -743,7 +744,6 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         onFail: (n, e) => { x.inflight.delete(n); x.failed.set(n, { msg: String(e?.message || e).slice(0, 160), at: Date.now() }); emit(slug, { type: 'move-failed', n, msg: String(e?.message || e).slice(0, 160) }); } };
       await eng.runAll(ctx, { only: ns.length >= 3 ? [...ns, 0] : ns, concurrency: Math.min(6, ns.length), waveA: WAVE_A });
       await lock; await staticsJob; await pdfQ;
-      if (!priv) await makeZips(slug, m, profile);
       const usd = +(spentFor(slug) - usd0).toFixed(2), at = Date.now();
       await editUpd(slug, (u) => { u.history = [{ at, auto, moves: written, usd, because: written.map((w) => stale[w.n]?.why).filter(Boolean)[0] || null }, ...(u.history || [])].slice(0, 30); });
       await setStatus(slug, { state: (await status(slug)).done ? 'Ready' : prevState });
@@ -900,8 +900,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   }
   async function resumeAll() { for (const sl of String(process.env.OPS_FRESH_RELOAD || '').split(',').map((x) => x.trim()).filter(Boolean)) freshReload(sl).catch((e) => log.error('[ops] fresh', sl, e.message));
     for (const x of await packs.list()) { if (!x.status.done && !x.status.error && !x.status.capped) resume(x.slug).catch((e) => log.error('[build] resume', x.slug, e.message)); else { if (x.status.done) { rebase(x.slug).catch((e) => log.warn('[build] rebase', x.slug, e.message)); healPdfs(x.slug); } resumeRewrite(x.slug).catch((e) => log.warn('[rewrite] resume', x.slug, e.message)); } } }
-  /* Saved PDFs heal: when the PDF text rules change (PDF_V), or a move has no PDF, every public move is drawn again (free:
-     local Chromium), entries for moves that no longer exist leave status.pdfs, and the zips are rebuilt. One brand at a time. */
+  /* Saved PDFs heal: when the PDF text rules change (PDF_V) the saved PDFs are forgotten and each is drawn again on its next
+     download (pdfOn); entries for moves that no longer exist leave status.pdfs. Nothing is drawn ahead of time. */
   const PDF_V = 2; // 2: kickers without "OF N", "What to watch", BREW DRAFTS (2026-10-15)
   let pdfHealQ = Promise.resolve();
   const healPdfs = (slug) => (pdfHealQ = pdfHealQ.catch(() => {}).then(async () => {
@@ -909,13 +909,11 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const m = await load(); if (!m.pdf) return;
     const s0 = await status(slug), moves = await packs.getJSON(slug, 'moves.json', {}), profile = await packs.getJSON(slug, 'profile.json');
     if (!s0?.done || !profile) return;
-    const have = s0.pdfs || {}, todo = Object.values(moves).filter((x) => x && Number.isFinite(+x.n) && (s0.pdfV !== PDF_V || !have[x.n]));
-    if (!todo.length && Object.keys(have).every((n) => moves[n])) return;
-    log.log(`[pdf] heal ${slug}: ${todo.length} to draw`);
-    let failed = 0; for (const mv of todo) await renderPdf(slug, m.pdf, mv, profile).catch((e) => { failed++; log.warn('[pdf] heal', slug, mv.n, e.message); });
-    const cur = (await status(slug)).pdfs || {}; const keep = Object.fromEntries(Object.entries(cur).filter(([n]) => moves[n]));
-    await setStatus(slug, { pdfs: keep, ...(failed ? {} : { pdfV: PDF_V }) });
-    await makeZips(slug, m, profile);
+    const have = s0.pdfs || {};
+    if (s0.pdfV === PDF_V && Object.keys(have).every((n) => moves[n])) return;
+    const keep = s0.pdfV === PDF_V ? Object.fromEntries(Object.entries(have).filter(([n]) => moves[n])) : {};
+    log.log(`[pdf] heal ${slug}: ${Object.keys(have).length - Object.keys(keep).length} PDFs forgotten, drawn again on their next download`);
+    await setStatus(slug, { pdfs: keep, pdfVer: Object.fromEntries(Object.entries(s0.pdfVer || {}).filter(([n]) => n in keep)), pdfV: PDF_V, zips: [] });
   }).catch((e) => log.warn('[pdf] heal', slug, e.message)));
   // a finished brand whose lanes would come out differently today (the lane rules improved): publish its base again (free)
   async function rebase(slug) {
@@ -930,11 +928,29 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   autoRefresh();
   // a move written outside the build (moves-cadence.js) gets its PDF the same way
   const pdfFor = async (slug, move) => { const m = await load(); if (!m.pdf) return null; const profile = await packs.getJSON(slug, 'profile.json'); if (!profile) return null; return renderPdf(slug, m.pdf, move, profile); };
+  /* a move's PDF, made when someone opens it: drawn once per version of the move (and of the PDF rules), then served from the
+     pack; two people opening it at once wait for the same render. → { name, buf } | null */
+  const pdfJobs = new Map();
+  async function pdfOn(slug, n) {
+    if (blocked(slug)) return null;
+    const moves = await packs.getJSON(slug, 'moves.json', {}), mv = moves?.[n]; if (!mv) return null;
+    const s0 = (await status(slug)) || {}, ver = `${PDF_V}:${mv.meta?.at || ''}`, f = s0.pdfs?.[n];
+    const fresh = f && (s0.pdfVer?.[n] ? s0.pdfVer[n] === ver : s0.pdfV === PDF_V); /* a PDF from before versions counts while the rules have not changed */
+    if (fresh) { const buf = await packs.get(slug, 'pdf/' + f); if (buf) return { name: f, buf }; }
+    const key = `${slug}:${n}:${ver}`;
+    if (!pdfJobs.has(key)) pdfJobs.set(key, (async () => {
+      const m = await load(); if (!m.pdf) throw new Error('PDF renderer not installed');
+      const profile = await packs.getJSON(slug, 'profile.json'); if (!profile) throw new Error('no profile');
+      await renderPdf(slug, m.pdf, mv, profile, { ver }); const name = m.pdf.pdfName(mv);
+      return { name, buf: await packs.get(slug, 'pdf/' + name) };
+    })().finally(() => pdfJobs.delete(key)));
+    return pdfJobs.get(key);
+  }
   /* ---------- for the fact sheet (facts-desk.js) ---------- */
   const hooks = {};
   const republish = async (slug) => { const p = await packs.getJSON(slug, 'profile.json'); if (!p) return; normalizeProfile(p); await publishBase(slug, p, await packs.getJSON(slug, 'ledger.json', []), await packs.getJSON(slug, 'findings.json')); };
   /* moves the fact sheet found quoting a changed fact: out of date, with the reason (kept with an older flag's changes) */
   const flagStale = (slug, list = []) => editUpd(slug, (u) => { for (const x of list) { const o = u.stale[x.n]; u.stale[x.n] = { ...x, at: Date.now(), changes: [...new Set([...(x.changes || []), ...(o?.changes || [])])].slice(0, 6), ...(o && !o.private ? { private: false } : {}) }; } });
   const facts = { republish, flagStale, readProduct: async (slug, url) => readProduct(slug, url, (await packs.getJSON(slug, 'profile.json', {})) || {}), readRival, busy: (slug) => !!(st(slug).running || st(slug).checking), setHooks: (h) => Object.assign(hooks, h) };
-  return { ...facts, readLive, heal, healPdfs, pdfFor, connected, liveConnected, checkUpdates, rewrite, updates, setAuto, signal, seen, buildInfo, retry, goPro, checkData, applyCheck, peek: (slug) => st(slug).status, addEmail, start, resume, resumeAll, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
+  return { ...facts, readLive, heal, healPdfs, pdfFor, pdfOn, connected, liveConnected, checkUpdates, rewrite, updates, setAuto, signal, seen, buildInfo, retry, goPro, checkData, applyCheck, peek: (slug) => st(slug).status, addEmail, start, resume, resumeAll, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
 }

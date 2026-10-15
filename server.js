@@ -371,7 +371,7 @@ setInterval(() => evidenceTick().catch((e) => console.warn('[evidence]', e.messa
 /* ---------- moves on a cadence (moves-cadence.js): audit, listening and automation moves for every built brand, weekly. Cap MOVES_WEEK_CAP_USD (default $3 a brand a week),
    kill switch MOVES_REFRESH_OFF=1; off under AI_MOCK and on local servers unless MOVES_BG=1. Manual: POST /api/brands/:slug/moves/refresh (team-only on claimed brands) ---------- */
 const movesCadence = createMovesScheduler({ packs, ai, memory: MEMORY_ON() ? memory : null, cardsGen: createCardsGen, log: console,
-  onPack: async (slug) => { packs.drop(slug); attach(await packs.load(slug)); }, onCards: (slug, cards) => feedSvc?.addCards(slug, cards), dropCards: (slug, ids) => feedSvc?.dropCards(slug, ids), pdfFor: (slug, move) => builder.pdfFor(slug, move) });
+  onPack: async (slug) => { packs.drop(slug); attach(await packs.load(slug)); }, onCards: (slug, cards) => feedSvc?.addCards(slug, cards), dropCards: (slug, ids) => feedSvc?.dropCards(slug, ids), pdfFor: null /* PDFs are made on download (builder.pdfOn) */ });
 movesCadence.start();
 /* ---------- brand learnings (brand-learnings.js): the team pastes a call transcript, notes or emails into a jam; Brew learns the essence,
    goals, beliefs and facts (each with its source), updates the brief, memory and system prompt, flags and rewrites the moves it changes
@@ -545,6 +545,12 @@ const brandFiles = async (req, res, u) => {
     res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-cache', etag }); res.end(body); return true; }
   if (what.startsWith('statics/')) { const b = await packs.get(slug, what); if (!b) return send(res, 404, 'no', 'text/plain'), true; res.writeHead(200, { 'content-type': 'image/jpeg', 'cache-control': 'max-age=300' }); res.end(b); return true; }
   if (what.startsWith('a/')) { const f = await packs.assetFile(slug, what.slice(2)); if (!f) return send(res, 404, 'no', 'text/plain'), true; return serveFile(req, res, f), true; }
+  /* /b/<slug>/pdf/move-<n>.pdf: the move's PDF, drawn on this first download and kept until the move changes */
+  const mn = what.slice(4).match(/^move-(\d{1,4})\.pdf$/i);
+  if (mn) { const v = await viewerOf(req, slug), pp = v.member ? (await packs.getJSON(slug, 'private/pdfs.json', null))?.[+mn[1]] : null, pb = pp ? await packs.get(slug, 'private/pdf/' + pp) : null;
+    let r = pb ? { name: pp, buf: pb } : null; if (!r) try { r = await builder.pdfOn(slug, +mn[1]); } catch (e) { console.warn('[pdf] on demand', slug, mn[1], e.message); return send(res, 503, 'The PDF could not be drawn just now. Try again in a minute.', 'text/plain'), true; }
+    if (!r?.buf) return send(res, 404, 'no', 'text/plain'), true;
+    res.writeHead(200, { 'content-type': 'application/pdf', 'content-disposition': `${u.searchParams.has('dl') ? 'attachment' : 'inline'}; filename="${r.name.replace(/"/g, '')}"`, 'cache-control': 'no-cache' }); res.end(r.buf); return true; }
   const name = what.slice(4); if (!/^[^/\\]+\.(pdf|zip)$/i.test(name) || name.includes('..') || name !== path.basename(name)) return send(res, 404, 'no', 'text/plain'), true; /* a file name only: never a path */
   const v = await viewerOf(req, slug), pb = v.member && !name.endsWith('.zip') ? await packs.get(slug, 'private/pdf/' + name) : null, b = pb || await packs.get(slug, 'pdf/' + name); if (!b) return send(res, 404, 'no', 'text/plain'), true;
   res.writeHead(200, { 'content-type': name.endsWith('.zip') ? 'application/zip' : 'application/pdf', 'content-disposition': `${u.searchParams.has('dl') ? 'attachment' : 'inline'}; filename="${name.replace(/"/g, '')}"`, 'cache-control': 'no-cache' }); res.end(b); return true;
