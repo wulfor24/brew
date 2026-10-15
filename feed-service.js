@@ -612,7 +612,7 @@ export function createFeedService(o) {
     cta: { label: 'Make our version' }, link: { label: 'See it in the Ad Library', url: a.url }, src: `Meta Ad Library · ${CTRY()} · ${dateIN(at)}`, research: { kind: 'ad', id: a.id } });
   const trendCard = (x, at) => ({ id: 'r-' + x.id, agent: 'brew', sector: 'creatives', type: 'competitor', family: 'learning', lane: firstLane(), roles: ['founder', 'growth', 'brand'], kind: 'rows',
     campaign: 'Trends', title: x.card, sub: x.p,
-    rows: x.rising ? x.rising.slice(0, 4).map((r) => [r.q.length > 38 ? r.q.slice(0, 36) + '…' : r.q, r.v]) : x.terms.map((term) => { const s = research.get().trends.series[term]; return [term, s.change == null ? `index ${s.last}` : `${s.change > 0 ? '+' : ''}${s.change}% in 30 days`]; }),
+    rows: x.rising ? x.rising.slice(0, 4).map((r) => [r.q.length > 38 ? r.q.slice(0, 36) + '…' : r.q, riseLabel(r.v)]) : x.terms.map((term) => { const s = research.get().trends.series[term]; return [term, s.change == null ? `index ${s.last}` : `${s.change > 0 ? '+' : ''}${s.change}% in 30 days`]; }),
     detail: { why: [x.p, x.h], how: ['Brew turns it into an ad idea or a page change.', 'You approve it before anything goes live.'] },
     cta: { label: 'Turn into an idea' }, src: `Google Trends · ${CTRY()} · ${dateIN(at)}`, research: { kind: 'trend', id: x.id } });
   const howtoCard = (x, at) => ({ id: 'r-' + x.id, agent: 'creative', sector: 'creatives', type: 'idea', lane: x.lane, roles: ['founder', 'growth', 'brand'], kind: x.img ? 'media' : 'rows', images: x.img ? [x.img] : undefined,
@@ -831,6 +831,8 @@ export function createFeedService(o) {
   /* a story lives 24 hours from when Brew first saw it (research.js pool), is scored, and only the ones over the cut-off show:
      score = 0.4 x how fresh (1 at first sight, 0 at 24 h) + 0.6 x how strong (ads: Meta rank, versions and run length against
      the best in the ring; trends: size of the move; news: how recent the story is; how-to: fixed). STORY_CUT sets the bar */
+  /* Google's rising value is a percent, and a huge one (841400) marks a breakout: shown as "+200%" or "Breakout", never the raw number */
+  const riseLabel = (v) => (/^\d+$/.test(String(v)) ? (+v >= 5000 ? 'Breakout' : `+${v}%`) : v);
   const STORY_LIFE = 24 * 3600e3, STORY_CUT = () => +process.env.STORY_CUT || 0.45;
   /* every ring always has stories: the fresh ones over the cut-off first; with none, the source is read again now (research.need)
      and, until that lands, the ring shows its best recent ones (under the cut, then the newest it has, marked older) instead
@@ -879,7 +881,7 @@ export function createFeedService(o) {
     const extra = (k) => t.storyExtra[k].slice().reverse().map((x) => ({ ...x, type: 'note' }));
     const ads = r.ads, tr = r.trends, nw = r.news, ht = r.howto;
     const adSlides = (ads?.items || []).map((a) => ({ type: 'ad', ...a, total: ads.brands.find((b) => b.name === a.brand)?.live, cardId: t.cards.has('r-ad-' + a.id) ? 'r-ad-' + a.id : null }));
-    const trSlides = (tr?.items || []).map((x) => ({ type: x.kind === 'rising' ? 'rising' : 'trend', ...x, series: x.terms.map((term) => { const s = tr.series[term]; return { term, values: s.values, change: s.change, last: s.last }; }), dates: tr.series[x.terms[0]]?.dates || Object.values(tr.series)[0]?.dates }));
+    const trSlides = (tr?.items || []).map((x) => ({ type: x.kind === 'rising' ? 'rising' : 'trend', ...x, rising: x.rising ? x.rising.map((r) => ({ ...r, v: riseLabel(r.v) })) : x.rising, series: x.terms.map((term) => { const s = tr.series[term]; return { term, values: s.values, change: s.change, last: s.last }; }), dates: tr.series[x.terms[0]]?.dates || Object.values(tr.series)[0]?.dates }));
     const batches = t.batches.slice(0, 3).map((b) => ({ type: 'note', c: SEED.brand.wash[1], h: b.t, p: `${b.s}. ${b.st === 'Running' ? b.pct + '% done.' : b.st + '.'}`, from: 'Your work' }));
     const newsSlides = (nw?.items || []).map((x) => ({ type: 'news', ...x }));
     const spark = (term) => tr?.series[term]?.values;
