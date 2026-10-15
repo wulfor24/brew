@@ -746,8 +746,10 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
      rewritten now, auto or asked for alike (a move it wrote carries meta.rewrittenAt from after the start) */
   async function resumeRewrite(slug) {
     const u = await upd(slug), r = u.rewriting; if (!r || st(slug).running || blocked(slug)) return;
-    const moves = await packs.getJSON(slug, 'moves.json', {}), s0 = await status(slug);
-    const left = (r.ns || []).filter((n) => moves[n] && !(Date.parse(moves[n]?.meta?.rewrittenAt || 0) >= (r.at || 0)) && (!r.auto || u.stale?.[n]));
+    /* a move this run already wrote counts as done, wherever it was saved (a member's rewrite goes to private/moves.json) */
+    const pub = await packs.getJSON(slug, 'moves.json', {}), priv = await packs.getJSON(slug, 'private/moves.json', {}).catch(() => ({})), s0 = await status(slug);
+    const doneAt = (n) => Math.max(Date.parse(pub[n]?.meta?.rewrittenAt || 0) || 0, Date.parse(priv?.[n]?.meta?.rewrittenAt || 0) || 0), moves = pub;
+    const left = (r.ns || []).filter((n) => moves[n] && !(doneAt(n) >= (r.at || 0)) && (!r.auto || u.stale?.[n]));
     await setStatus(slug, { state: s0?.done ? 'Ready' : r.prev && !/^Rewriting/.test(r.prev) ? r.prev : s0?.state });
     if (!left.length) { await editUpd(slug, (v) => { delete v.rewriting; }); return; }
     log.log(`[rewrite] ${slug}: carrying on after a restart with ${left.join(', ')}`);
