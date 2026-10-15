@@ -40,3 +40,14 @@ test('what the team told Brew is team-only, and the mic needs sign-in', () => {
   assert.match(s, /what the team told Brew \(pasted call notes, emails\): the brand's team only/);
   assert.match(s, /\/api\/transcribe'\) \{ if \(auth\.signinOn\(\) && process\.env\.DEMO_MODE !== '1' && !auth\.user\(req\)\) return send\(res, 401/);
 });
+
+test('a pack file never leaves its brand folder: ../ and absolute names read and write nothing', async () => {
+  const os = await import('node:os'); const path = await import('node:path'); const { createPacks } = await import('../brand-pack.js');
+  const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'brew-trav-')); fs.writeFileSync(path.join(ROOT, 'secret.txt'), 'KEY=1');
+  const P = createPacks({ ROOT, PUB: path.join(ROOT, 'public'), bucket: null, gToken: null, log: { log() {}, warn() {}, error() {} } });
+  await P.put('acme-com', 'pdf/01 One.pdf', Buffer.from('pdf'));
+  assert.equal((await P.get('acme-com', 'pdf/01 One.pdf')).toString(), 'pdf');
+  for (const bad of ['pdf/../../../secret.txt', '../secret.txt', '/etc/passwd', 'pdf/..', 'statics/..']) assert.equal(await P.get('acme-com', bad), null, bad);
+  await assert.rejects(() => P.put('acme-com', '../../escape.txt', 'x'));
+  assert.match(src('server.js'), /a file name only: never a path/);
+});

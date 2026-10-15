@@ -542,7 +542,8 @@ const brandFiles = async (req, res, u) => {
     res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-cache', etag }); res.end(body); return true; }
   if (what.startsWith('statics/')) { const b = await packs.get(slug, what); if (!b) return send(res, 404, 'no', 'text/plain'), true; res.writeHead(200, { 'content-type': 'image/jpeg', 'cache-control': 'max-age=300' }); res.end(b); return true; }
   if (what.startsWith('a/')) { const f = await packs.assetFile(slug, what.slice(2)); if (!f) return send(res, 404, 'no', 'text/plain'), true; return serveFile(req, res, f), true; }
-  const name = what.slice(4), v = await viewerOf(req, slug), pb = v.member && !name.endsWith('.zip') ? await packs.get(slug, 'private/pdf/' + name) : null, b = pb || await packs.get(slug, 'pdf/' + name); if (!b) return send(res, 404, 'no', 'text/plain'), true;
+  const name = what.slice(4); if (!/^[^/\\]+\.(pdf|zip)$/i.test(name) || name.includes('..') || name !== path.basename(name)) return send(res, 404, 'no', 'text/plain'), true; /* a file name only: never a path */
+  const v = await viewerOf(req, slug), pb = v.member && !name.endsWith('.zip') ? await packs.get(slug, 'private/pdf/' + name) : null, b = pb || await packs.get(slug, 'pdf/' + name); if (!b) return send(res, 404, 'no', 'text/plain'), true;
   res.writeHead(200, { 'content-type': name.endsWith('.zip') ? 'application/zip' : 'application/pdf', 'content-disposition': `${u.searchParams.has('dl') ? 'attachment' : 'inline'}; filename="${name.replace(/"/g, '')}"`, 'cache-control': 'no-cache' }); res.end(b); return true;
 };
 // the page: index.html with the brand's seed. "/" is the Brew landing (paste a URL); "/<slug>" is that brand

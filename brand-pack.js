@@ -102,7 +102,9 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
 
   /* ---------- the files of a pack (local first, GCS behind) ---------- */
   const dirOf = (slug) => path.join(DIR, slug);
-  const fileOf = (slug, name) => path.join(dirOf(slug), name);
+  /* a pack file always stays inside its brand's folder: a name with ../ (or an absolute path) is refused, never read or written */
+  const inside = (slug, name) => { if (!/^[a-z0-9_-]+$/i.test(String(slug || '')) || typeof name !== 'string' || !name || name.includes('\0')) return false; const base = path.resolve(dirOf(slug)), f = path.resolve(base, name); return f.startsWith(base + path.sep); };
+  const fileOf = (slug, name) => { if (!inside(slug, name)) throw Object.assign(new Error('bad pack path'), { badPath: true }); return path.join(dirOf(slug), name); };
   const put = async (slug, name0, data, type) => {
     await retireReady(); const name = sandboxName(name0) || name0; /* Demo Mode: a session's private files live in its own folder (demo-mode.js sandboxName); reads fall through to the brand's */
     if (wiping(slug)) return fileOf(slug, name);
@@ -120,6 +122,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
     return getRaw(slug, name);
   };
   const getRaw = async (slug, name) => {
+    if (!inside(slug, name)) return null;
     const f = fileOf(slug, name);
     if (fs.existsSync(f)) return brewFile(name, fs.readFileSync(f));
     if (!remote) return null;
