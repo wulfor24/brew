@@ -107,6 +107,9 @@ const base = {
         const u = Object.fromEntries(ev.map((x) => [x.d[0], x.m[0]])); if (u.session_start && u.view_item) { m.pdp = 100 * u.view_item / u.session_start; if (u.add_to_cart) m.atc = 100 * u.add_to_cart / u.session_start; if (u.begin_checkout) m.checkout = 100 * u.begin_checkout / u.session_start; if (u.purchase) m.buy = 100 * u.purchase / u.session_start; }
         const ch = rows(await report(c, { dimensions: [{ name: 'sessionDefaultChannelGroup' }], metrics: [{ name: 'sessions' }], orderBys: [{ metric: { metricName: 'sessions' }, desc: true }], limit: 6 }));
         if (tot) m.mix = ch.map((x) => [x.d[0], 100 * x.m[0] / tot]);
+        /* where the visits come from: the calendar plans around the brand's real markets (only the codes leave the team's folder) */
+        const co = rows(await report(c, { dimensions: [{ name: 'countryId' }], metrics: [{ name: 'sessions' }], orderBys: [{ metric: { metricName: 'sessions' }, desc: true }], limit: 5 })).filter((x) => /^[A-Z]{2}$/.test(x.d[0]));
+        if (tot && co.length) m.countries = co.map((x) => [x.d[0], 100 * x.m[0] / tot]);
       } catch (e) { notes.push(`GA4: ${e.message.slice(0, 140)}`); }
     }
     if (c.customer) {
@@ -136,6 +139,7 @@ const base = {
     const changed = [has(m.sessions) && `Cards read your ${n0(m.sessions)} sessions from GA4`, (m.sessions || 0) >= 300 && has(m.pdp, m.atc) && `The product-page leak: ${pct(100 - 100 * m.atc / m.pdp)} never add to cart`, has(m.branded) && `${pct(m.branded)} of search clicks are your own name`].filter(Boolean);
     const ledger = [has(m.sessions) && L('ga4.sessions.30d', 'Sessions, last 30 days (GA4)', n0(m.sessions), m.sessions, src), has(m.cr) && L('ga4.conversion', 'Purchases per session, 30 days (GA4)', pct(m.cr, 2), m.cr, src), has(m.mob) && L('ga4.mobile.share', 'Mobile share of sessions', pct(m.mob), m.mob, src),
       has(m.pdp, m.atc) && L('ga4.pdp.to.cart', 'Product page to add-to-cart', pct(100 * m.atc / m.pdp), 100 * m.atc / m.pdp, src), m.mix?.length && L('ga4.channels', 'Sessions by channel, 30 days', m.mix.map(([c2, s]) => `${c2} ${s.toFixed(0)}%`).join('; '), null, src),
+      m.countries?.length && L('ga4.countries', 'Sessions by country, 30 days', m.countries.map(([c2, s]) => `${c2} ${s.toFixed(0)}%`).join('; '), null, src),
       has(m.gspend) && L('gads.spend.30d', 'Google Ads spend, last 30 days', F.big(m.gspend), m.gspend, src), has(m.groas) && L('gads.roas', 'Google Ads conversion value per spend', `${m.groas.toFixed(1)}x`, m.groas, src), has(m.branded) && L('gads.branded.share', 'Branded share of search ad clicks', pct(m.branded), m.branded, src)].filter(Boolean);
     return { metrics: m, stats, changed, cards: out, ledger, notes };
   }

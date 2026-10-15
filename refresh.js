@@ -12,7 +12,7 @@ const AREAS = [['price', ['price.', 'mrp.']], ['catalog', ['catalog.', 'product.
   ['store', ['shopify.', 'store.']], ['paid', ['meta.', 'gads.', 'paid.']], ['analytics', ['ga4.', 'analytics.']], ['email', ['klaviyo.', 'email.']]];
 export const areaOf = (key) => (AREAS.find(([, ps]) => ps.some((p) => key.startsWith(p))) || ['other'])[0];
 // connected-account areas map to the moves that measure or spend on them
-export const CONNECTED_MOVES = { store: [4, 9, 10, 29, 30, 31, 32, 36, 37, 39, 40, 41, 42, 48], paid: [9, 10, 20, 21, 22, 23, 49], analytics: [9, 10, 11, 12, 13, 31, 32, 37], email: [39, 40, 41, 42, 43, 44] };
+export const CONNECTED_MOVES = { store: [4, 9, 10, 29, 30, 31, 32, 36, 37, 39, 40, 41, 42, 48], paid: [9, 10, 20, 21, 22, 23, 49], analytics: [9, 10, 11, 12, 13, 31, 32, 37], email: [39, 40, 41, 42, 43, 44], reviews: [29, 43, 62] };
 // areas where any change matters; elsewhere a number has to move 10% or more
 const ALWAYS = new Set(['price', 'catalog', 'claim', 'rival', 'policies', 'checkout', 'ads', 'company']);
 const brandOwned = (e) => e.method === 'brand-confirmed' || /\.confirmed$|^brand\.confirmed\./.test(e.key) || /added by the brand/.test(e.method || '');

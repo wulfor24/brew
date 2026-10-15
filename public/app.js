@@ -266,7 +266,7 @@
     await syncNow();
     const [r, st] = await Promise.all([tapi('GET', '/api/tenants/:t/feed'), tapi('GET', '/api/tenants/:t/stories')]); if (r.error) return null;
     if (st.rings) RINGS = st.rings;
-    ALL = r.cards; SCORES = r.scores || {}; LIMIT = r.limit; PINNED = new Set(r.pinned || []); SRV.health = r.health || {}; SRV.clock = r.clock;
+    ALL = r.cards; SCORES = r.scores || {}; LIMIT = r.limit; PINNED = new Set(r.pinned || []); SRV.health = r.health || {}; SRV.healthLive = r.healthLive || {}; SRV.clock = r.clock;
     if (r.batches) S.batches = r.batches;
     Object.values(ALL).forEach((c) => { if (c.done && !S.done[c.id]) S.done[c.id] = c.done; });
     if (r.decided) S.decided = { ...r.decided };
@@ -787,7 +787,7 @@
       <button class="nav l" aria-label="Previous">${ic('left', 's16')}</button><button class="nav r" aria-label="Next">${ic('right', 's16')}</button></div>
       <div class="body" style="padding-top:12px"><p>Each card is one idea. Tap it for details. Heart it to see more like it.</p></div></article>`;
 
-  const healthNow = () => { const h = JSON.parse(JSON.stringify(B.health)); Object.entries(B.connectors).forEach(([id, c]) => { if (conn(id)) Object.entries(c.health || {}).forEach(([k, d]) => { const r = h.rings.find((x) => x.k === k); if (r) r.v += d; }); }); Object.entries(SRV.health || {}).forEach(([k, d]) => { const r = h.rings.find((x) => x.k === k); if (r) r.v += d; }); const rd = h.rings.filter((r) => r.read !== false); h.score = rd.length ? Math.round(rd.reduce((a, r) => a + r.v, 0) / rd.length) : 0; return h; };
+  const healthNow = () => { const h = JSON.parse(JSON.stringify(B.health)); Object.entries(B.connectors).forEach(([id, c]) => { if (conn(id)) Object.entries(c.health || {}).forEach(([k, d]) => { const r = h.rings.find((x) => x.k === k); if (r) r.v += d; }); }); Object.entries(SRV.health || {}).forEach(([k, d]) => { const r = h.rings.find((x) => x.k === k); if (r) r.v += d; }); /* the team's own accounts: the ring says what they read (the score stays simulated) */ Object.entries(SRV.healthLive || {}).forEach(([k, x]) => { const r = h.rings.find((y) => y.k === k); if (r && x?.what) { r.what = x.what; r.parts = x.parts; } }); const rd = h.rings.filter((r) => r.read !== false); h.score = rd.length ? Math.round(rd.reduce((a, r) => a + r.v, 0) / rd.length) : 0; return h; };
   const ringSvg = (h) => { const R = [52, 40, 28];
     return `<svg viewBox="0 0 130 130" width="100%" role="img" aria-label="Brand health ${h.score} of 100">${h.rings.map((r, i) => { const c = 2 * Math.PI * R[i]; return `<circle cx="65" cy="65" r="${R[i]}" fill="none" stroke="var(--surface-2)" stroke-width="8"/><circle class="ring-arc" cx="65" cy="65" r="${R[i]}" fill="none" stroke="var(--fg)" stroke-opacity="${1 - i * .3}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${(c * r.v / 100).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 65 65)"/>`; }).join('')}
       <text x="65" y="71" text-anchor="middle" fill="var(--fg)" font-size="20" font-weight="600" font-family="Inter,sans-serif">${h.score}</text></svg>`; };
@@ -3652,6 +3652,10 @@
           ${U.lastError && !chk ? `<p class="up-err">The last check stopped: ${esc(U.lastError.msg)}</p>` : ''}</div>
           <button class="btn btn-ghost" data-upcheck ${chk || !U.canRewrite ? 'disabled' : ''} title="${U.building ? 'Opens once the core moves are written' : 'About 3 min · about $1'}">${ic('refresh', 's16')}${chk ? 'Checking…' : 'Check now'}</button>
           <label class="up-auto"><input type="checkbox" data-upauto ${U.auto ? 'checked' : ''}><span class="up-sw"></span><span><b>Keep them current on their own</b><small>${U.auto ? `Weekly${U.next ? `, next ${fmtDay(U.next)}` : ''}, and the day your catalog changes. Up to 6 rewrites a week.` : 'Off. Nothing is checked or rewritten unless you ask.'}</small></span></label></section>
+        ${U.connect ? `<p class="q-note up-conn">${(() => { const c = U.connect, who = c.names.join(' and ') || 'Your account', are = c.names.length > 1 ? 'are' : 'is';
+          return c.waiting ? `${esc(who)} ${are} connected. Brew rewrites your moves with your real numbers ${c.due && c.due > Date.now() ? `in about ${Math.max(1, Math.round((c.due - Date.now()) / 60e3))} min` : 'shortly'}, in case you connect more.`
+            : c.later ? `${esc(who)} ${are} connected. ${c.written} of ${c.n} moves are rewritten with your real numbers; the rest carry on tomorrow.`
+            : `${esc(who)} ${are} connected. Rewriting ${c.n ? `all ${c.n}` : 'your'} moves with your real numbers.`; })()}</p>` : ''}
         ${rw ? `<section class="bd-card"><h3>Rewriting now <small>${rw.length}</small></h3>${rw.map((x) => `<div class="bd-run">${x.done ? `<span class="up-done">${ic('check', 's14')}</span>` : '<span class="spin"></span>'}<div><b>Move ${String(x.n).padStart(2, '0')} · ${esc(x.title)}</b><span>${x.done ? 'Rewritten' : x.secs != null ? `${mins(x.secs)} so far` : 'Waiting its turn'}</span></div></div>`).join('')}</section>` : ''}
         ${nStale ? `<section class="up-out"><h3>Out of date <small>${nStale}</small></h3><div class="up-list">${stale}</div>
           <footer class="up-foot"><button class="btn btn-primary" data-uprw ${U.canRewrite ? '' : 'disabled'}>Rewrite the ticked moves</button><span data-upest>${est(U.stale.filter((x) => x.priority === 'high').length)}</span></footer></section>` : lc ? '<p class="q-note">Every move matches the latest read.</p>' : ''}

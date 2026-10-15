@@ -15,7 +15,7 @@ import market from './market.js';
 import { createSim, SIM_IDS, NAME } from './sim.js';
 import { createVault } from '../vault.js';
 import { DEMO, sk } from '../demo-mode.js';
-import { privId } from './common.js';
+import { privId, realRows } from './common.js';
 
 const REAL = { shopify, meta, ga4, google, klaviyo, reviews, marketplaces: market };
 export const CONNECTORS = Object.fromEntries(SIM_IDS.map((id) => [id, { id, name: NAME[id] }]));
@@ -169,7 +169,8 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     const L = await liveOf(slug), cards = [], on = {};
     for (const [id, d] of Object.entries(L.live)) { if (d.gone) continue; if (!member && !PUBLIC.has(id)) continue; on[id] = true;
       cards.push(...(d.cards || []).map((c) => ({ ...c, ...(simOnly(id) || d.sim ? { dummy: true } : {}), ...(PUBLIC.has(id) ? { liveOnly: false, publicLive: true } : {}) }))); }
-    const ledger = {}; if (member) for (const d of Object.values(L.live)) if (!d.gone) for (const e of d.ledger || []) ledger[e.key] = { v: e.v, n: e.n, at: d.at, label: e.label };
+    /* DUMMY: a simulated account's rows never reach the team's numbers (they lose their demo flag once copied, so they stay out here) */
+    const ledger = {}; if (member) for (const [id, d] of Object.entries(L.live)) if (!d.gone && !d.sim && !simOnly(id)) for (const e of realRows(d.ledger)) ledger[e.key] = { v: e.v, n: e.n, at: d.at, label: e.label };
     /* the moves rewritten from the team's accounts (private/cards.json): members get those cards, and the shared cards of the
        same moves step aside (privMoves). Cards saved before they had their own id get it here */
     let privMoves = [];

@@ -17,13 +17,15 @@ import { skeletonSeed, seedFromProfile } from './seed-template.js';
 import { factsFromLedger, configFromProfile, laneProducts } from './derive.js';
 import { retiredSet, scrubRetired, allowedFrom } from './fact-gate.js';
 import { createCardsGen } from './cards-gen.js';
-import { realRows } from './connectors/common.js'; // DUMMY: simulated account rows are never evidence
+import { realRows, privId } from './connectors/common.js'; // DUMMY: simulated account rows are never evidence
 import { healthFrom } from './dummy/health.js'; // DUMMY: simulated health rings
 import { isPlay, playDone, totalOf, numbersFor, healSeedNumbers } from './pack-numbers.js'; // one number, one source
 import { createStatics } from './statics.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { mergeLedger, diffLedgers, candidates, triage, changeLine, CONNECTED_MOVES } from './refresh.js';
-import { withLearned, briefView } from './brand-learnings.js'; // what the team told Brew survives a fresh brief
+import { withLearned, briefView } from './brand-learnings.js';
+import { profileLive, withLive } from './on-connect.js'; // what a real connected account corrects in the team's view
+import { briefWithConnected } from './brief.js'; // what the team told Brew survives a fresh brief
 
 const buildCtx = new AsyncLocalStorage(); // which brand's build a paid call belongs to
 // addresses that must never be read or built (wrong links, removals): BUILD_BLOCK=slug;slug (deploy.sh needs ; since its env list is comma-separated)
@@ -288,7 +290,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       await setStatus(slug, { done: true, ready: true, state: 'Ready', usd: +spentFor(slug).toFixed(2), doneAt: Date.now() });
       await notify(slug, 'all').catch((e) => log.warn('[notify]', e.message));
     } catch (e) { if (e.cancelled) return; log.error('[build] failed', slug, e); await setStatus(slug, { state: 'Stopped: ' + e.message, error: e.message }); }
-    finally { x.running = false; await packs.put(slug, 'cost.json', { usd: +spentFor(slug).toFixed(3) }).catch(() => {}); setTimeout(() => drain(slug).catch((e) => log.warn('[rewrite] drain', e.message)), 0); /* learnings that arrived mid-build */ }
+    finally { x.running = false; await packs.put(slug, 'cost.json', { usd: +spentFor(slug).toFixed(3) }).catch(() => {}); setTimeout(() => drain(slug).catch((e) => log.warn('[rewrite] drain', e.message)), 0); /* learnings that arrived mid-build */
+      upd(slug).then((u) => { if (u.connectRun) armConnect(slug, u.connectRun.due || 0); }).catch(() => {}); /* an account connected while the moves were being written */ }
   }
 
   // a read that is already in the pack (a restart, or a brand opened again): play its real findings back, step by step
@@ -367,16 +370,23 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     seed.posts = [c, ...(seed.posts || []).filter((x) => x.id !== c.id)];
     await packs.put(slug, 'seed.json', seed); onCards(slug, [c], { replace: true });
   }
+  /* the read's ledger plus every real connected account's numbers (public marketplaces and the team's private accounts) */
+  async function mergedLedger(slug, base = null) {
+    const conn = [...realRows(await packs.getJSON(slug, 'connected-ledger.json', [])), ...realRows(await packs.getJSON(slug, 'private/connected-ledger.json', []))];
+    return mergeLedger(base || await packs.getJSON(slug, 'ledger.json', []), [], { connected: conn }).ledger;
+  }
   async function cardsFor(slug, move, profile, { replace = false, priv = false } = {}) {
     const p = await packs.load(slug); const specs = mods.moves?.SPECS || {};
-    const ledger = await packs.getJSON(slug, 'ledger.json', []).catch(() => []);
+    const ledger0 = await packs.getJSON(slug, 'ledger.json', []).catch(() => []);
+    /* a member's cards check their numbers against the same evidence the rewrite used: the read plus the real connected accounts */
+    const ledger = priv ? await mergedLedger(slug, ledger0) : ledger0;
     /* a member's rewrite also reads the connected facts (private/facts.json); numbers that stopped being true (facts-edits.json retired) leave the move before it backs a card */
     const facts = priv ? { ...p.facts, ...((await packs.getJSON(slug, 'private/facts.json', null))?.facts || {}) } : p.facts;
     const retired = retiredSet((await packs.getJSON(slug, 'facts-edits.json', null))?.retired, allowedFrom(facts));
     const { cards, label } = await cardsGen.fromMove(scrubRetired(move, retired), { brand: { name: profile.name, host: profile.host }, facts, lanes: p.seed.lanes, laneImg: p.seed.laneImg, spec: Array.isArray(specs) ? specs.find((x) => x.n === move.n) : specs[move.n], ledger: ledger || [] });
     // written from a connected account: the cards go to the team only (private/cards.json), never into the shared seed
     if (priv) { if (!cards.length) return; const own = new RegExp(`^m${String(move.n).padStart(2, '0')}-`), pc = (await packs.getJSON(slug, 'private/cards.json', [])).filter((c) => !own.test(c.id));
-      const add = cards.map((c) => ({ ...c, liveOnly: true, privateOf: move.n })); await packs.put(slug, 'private/cards.json', [...pc, ...add]);
+      const add = cards.map((c) => ({ ...c, id: privId(c.id), liveOnly: true, privateOf: move.n })); /* its own id: the shared card of the same move stays for everyone else */ await packs.put(slug, 'private/cards.json', [...pc, ...add]);
       onCards(slug, add, { replace: true, private: true }); emit(slug, { type: 'cards', n: move.n, private: true, cards: add.map((c) => ({ id: c.id, title: c.title, agent: c.agent })) }); return; }
     const labels = await packs.getJSON(slug, 'labels.json', {}); labels[move.n] = label; await packs.put(slug, 'labels.json', labels);
     if (!cards.length) return;
@@ -584,11 +594,14 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const key = process.env.RESEND_API_KEY; if (!key) return log.warn('[notify] no RESEND_API_KEY');
     const s0 = await status(slug), name = s0?.name || slug, base = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com';
     const sentKey = kind === 'update' ? `update-${extra.at}` : kind;
-    const todo = n.emails.filter((x) => !n.sent[`${sentKey}:${x.email}`]); if (!todo.length) return;
+    /* a rewrite from the team's own accounts goes to the team only: the moves are theirs, the email names no numbers */
+    const team = extra.members ? new Set(((await packs.getJSON(slug, 'private/members.json', {}))?.members || []).map((m) => String(m.email || '').toLowerCase())) : null;
+    const todo = n.emails.filter((x) => !n.sent[`${sentKey}:${x.email}`] && (!team || team.has(String(x.email || '').toLowerCase()))); if (!todo.length) return;
     const subject = kind === 'update' ? `${extra.moves.length} of ${name}’s moves were updated` : kind === 'all' ? `All of ${name}’s moves are ready` : `Your first moves for ${name} are ready`;
-    const line = kind === 'update' ? `Something changed for ${name}, so Brew rewrote the plans it affects: ${extra.moves.map((x) => `Move ${String(x.n).padStart(2, '0')} (${x.title})`).join(', ')}. ${extra.because || ''}`.trim() : kind === 'all' ? `Brew has finished all ${totalOf(s0)} moves for ${name}: every plan with its sources, a 30-day rollout and how we measure it. Each one downloads as a PDF, and your feed is built from them.` : `Brew has written the first ten moves for ${name}: positioning, customers, rivals, pricing, offers and measurement. Their ideas are in your feed now, and the other ${Math.max(0, totalOf(s0) - 10)} keep landing over the next hour.`;
+    const lead = extra.lead || `Something changed for ${name}, so Brew rewrote the plans it affects`;
+    const line = kind === 'update' ? `${lead}: ${extra.moves.map((x) => `Move ${String(x.n).padStart(2, '0')} (${x.title})`).join(', ')}. ${extra.because || ''}`.trim() : kind === 'all' ? `Brew has finished all ${totalOf(s0)} moves for ${name}: every plan with its sources, a 30-day rollout and how we measure it. Each one downloads as a PDF, and your feed is built from them.` : `Brew has written the first ten moves for ${name}: positioning, customers, rivals, pricing, offers and measurement. Their ideas are in your feed now, and the other ${Math.max(0, totalOf(s0) - 10)} keep landing over the next hour.`;
     const body = kind === 'update'
-      ? mailP(`Something changed for ${mailEsc(name)}, so Brew rewrote the plans it affects:`) + mailList(extra.moves.map((x) => `Move ${String(x.n).padStart(2, '0')} · ${x.title}`)) + (extra.because ? mailP(mailEsc(extra.because)) : '')
+      ? mailP(`${mailEsc(lead)}:`) + mailList(extra.moves.slice(0, 12).map((x) => `Move ${String(x.n).padStart(2, '0')} · ${x.title}`)) + (extra.because ? mailP(mailEsc(extra.because)) : '')
       : mailP(mailEsc(kind === 'all' ? `Brew has finished all ${totalOf(s0)} moves for ${name}: every plan with its sources, a 30-day rollout and how we measure it.` : `Brew has written the first ten moves for ${name}: positioning, customers, rivals, pricing, offers and measurement.`)) + mailP(mailEsc(kind === 'all' ? 'Each one downloads as a PDF, and your feed is built from them.' : `Their ideas are in your feed now, and the other ${Math.max(0, totalOf(s0) - 10)} keep landing over the next hour.`));
     const html = emailHtml({ title: subject, eyebrow: name, preheader: line.slice(0, 140), body, cta: { href: `${base}/${slug}`, label: 'Open the feed' }, secondary: { href: `${base}/${slug}#v=moves`, label: 'Read the moves' }, after: mailP('Every number in them has a source. Anything we could not confirm is marked “to confirm”.', { muted: true, small: true }), base });
     for (const x of todo) {
@@ -632,6 +645,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   // updates.json: { auto, checking, lastCheck: { at, changes, summary, flagged, usd }, stale: { n: { why, priority, changes } }, history }
   const REFRESH_DAYS = +process.env.REFRESH_EVERY_DAYS || 7, AUTO_MAX = +process.env.REFRESH_AUTO_MAX || 6;
   const REFRESH_CAP = +process.env.REFRESH_CAP_USD || 60, AUTO_CAP = +process.env.REFRESH_AUTO_CAP_USD || 10, MOVE_USD = 0.6;
+  const CONNECT_CAP = +process.env.CONNECT_CAP_USD || 40, CONNECT_SETTLE = +(process.env.CONNECT_SETTLE_MS ?? 10 * 60e3);
   const pad2 = (n) => String(n).padStart(2, '0');
   // DUMMY: flags raised by a simulated account (live) are not real reasons to rewrite: saved flags heal here
   const upd = async (slug) => { const u = { auto: true, stale: {}, history: [], ...(await packs.getJSON(slug, 'updates.json', {})) }; for (const [n, x] of Object.entries(u.stale || {})) if (x?.live && !x.real) delete u.stale[n]; return u; };
@@ -690,15 +704,21 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   /* the rewrite queue (updates.json queue): what the team told Brew goes first, then a big change (a rival's price move or
      launch, our catalog), then the weekly check's stale moves. A rewrite asked for while another runs waits its turn instead of
      being turned away, and starts the moment the brand is free (drain) */
-  const PRIO = { learnings: 0, event: 1, manual: 1, weekly: 2 };
-  const enqueue = (slug, ns, { via = 'manual', auto = false } = {}) => editUpd(slug, (u) => { const q = (u.queue ||= []);
-    let e = q.find((x) => x.via === via); if (!e) { e = { via, prio: PRIO[via] ?? 1, ns: [], auto, at: Date.now() }; q.push(e); } e.ns = [...new Set([...e.ns, ...ns])]; e.auto = e.auto && auto; });
+  const PRIO = { learnings: 0, event: 1, manual: 1, connected: 1, weekly: 2 };
+  const enqueue = (slug, ns, { via = 'manual', auto = false, notBefore = null, tries = null } = {}) => editUpd(slug, (u) => { const q = (u.queue ||= []);
+    let e = q.find((x) => x.via === via); if (!e) { e = { via, prio: PRIO[via] ?? 1, ns: [], auto, at: Date.now() }; q.push(e); } e.ns = [...new Set([...e.ns, ...ns])]; e.auto = e.auto && auto;
+    if (notBefore) e.notBefore = notBefore; else delete e.notBefore; if (tries != null) e.tries = tries; });
+  /* an entry that waits (notBefore: the rest of a connected run after the day's cap) starts on its own when its time comes */
+  const later = new Map();
+  const armLater = (slug, at) => { clearTimeout(later.get(slug)); const t = setTimeout(() => { later.delete(slug); drain(slug).catch((e) => log.warn('[rewrite] later', e.message)); }, Math.max(1e3, Math.min(at - Date.now(), 2 ** 31 - 1))); t.unref?.(); later.set(slug, t); };
   async function drain(slug) {
     if (st(slug).running || st(slug).checking || blocked(slug)) return;
-    let next = null; await editUpd(slug, (u) => { const q = (u.queue || []).sort((a, b) => a.prio - b.prio || a.at - b.at); next = q.shift() || null; u.queue = q; });
+    let next = null, wait = null; await editUpd(slug, (u) => { const q = (u.queue || []).sort((a, b) => a.prio - b.prio || a.at - b.at), i = q.findIndex((x) => !(x.notBefore > Date.now()));
+      if (i >= 0) next = q.splice(i, 1)[0]; else wait = Math.min(...q.map((x) => x.notBefore).filter(Boolean)); u.queue = q; });
+    if (!next && Number.isFinite(wait)) armLater(slug, wait);
     const have = await packs.getJSON(slug, 'moves.json', {}), ns = (next?.ns || []).filter((n) => have[n]); if (!ns.length) return next ? drain(slug) : undefined;
     log.log(`[rewrite] ${slug}: next in the queue (${next.via}): ${ns.join(', ')}`);
-    buildCtx.run(slug, () => rewriteNow(slug, ns, { auto: !!next.auto })).catch((e) => log.error('[rewrite] queue', slug, e.message));
+    buildCtx.run(slug, () => rewriteNow(slug, ns, { auto: !!next.auto, via: next.via, tries: next.tries || 0 })).catch((e) => log.error('[rewrite] queue', slug, e.message));
   }
   // a move the engine can write again: a written playbook move with a spec (core, listening-era), never a weekly cadence move
   const rewritable = async (have) => { const specN = new Set(((await load()).moves?.SPECS || []).map((s) => s.n)); return (n) => n >= 1 && specN.has(n) && !!have[n] && !have[n]?.meta?.cadence; };
@@ -722,23 +742,26 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     buildCtx.run(slug, () => rewriteNow(slug, ns, o)).catch((e) => log.error('[rewrite]', slug, e.message));
     return { ok: true, n: ns.length, est: Math.round(ns.length * MOVE_USD) };
   }
-  async function rewriteNow(slug, ns, { auto = false } = {}) {
+  async function rewriteNow(slug, ns, { auto = false, via = null, tries = 0 } = {}) {
     ns = [...new Set((ns || []).map(Number))].filter((n) => n >= 1 && n < 1000); if (!ns.length) return;
-    const x = st(slug); if (x.running) return enqueue(slug, ns, { via: auto ? 'weekly' : 'manual', auto }); x.running = true; x.rewriting = new Set(ns);
-    const m = await load(); await restoreSpend(slug); await loadDay(); const usd0 = spentFor(slug), cap = auto ? AUTO_CAP : Math.max(REFRESH_CAP, ns.length * 2.5);
+    const x = st(slug); if (x.running) return enqueue(slug, ns, { via: via || (auto ? 'weekly' : 'manual'), auto }); x.running = true; x.rewriting = new Set(ns);
+    const m = await load(); await restoreSpend(slug); await loadDay(); const usd0 = spentFor(slug), cap = via === 'connected' ? CONNECT_CAP : auto ? AUTO_CAP : Math.max(REFRESH_CAP, ns.length * 2.5);
     const written = []; let prevState = null;
     try {
-      const profile = normalizeProfile(await packs.getJSON(slug, 'profile.json'));
+      const profile0 = normalizeProfile(await packs.getJSON(slug, 'profile.json'));
       // a real connected account's numbers are evidence for the rewrite, and private to the brand's team (a move written
       // from them is saved privately too). Simulated accounts (DUMMY) are never evidence and never make a rewrite private.
       const privL = realRows(await packs.getJSON(slug, 'private/connected-ledger.json', [])), priv = privL.length > 0, P = priv ? 'private/' : '';
-      const ledger = mergeLedger(await packs.getJSON(slug, 'ledger.json', []), [], { connected: [...realRows(await packs.getJSON(slug, 'connected-ledger.json', [])), ...privL] }).ledger;
-      const brief = await packs.getJSON(slug, 'brief.json'), briefMd = (await packs.get(slug, 'brief.md'))?.toString('utf8') || '';
+      const ledger = await mergedLedger(slug);
+      /* the team's rewrite writes from their view of the brand: best sellers as heroes, the brief with the account numbers in it */
+      const profile = priv ? withLive(profile0, await packs.getJSON(slug, 'private/profile-live.json', null)) : profile0;
+      const pb = priv ? await packs.getJSON(slug, 'private/brief.json', null) : null;
+      const brief = pb || await packs.getJSON(slug, 'brief.json'), briefMd = ((pb && await packs.get(slug, 'private/brief.md')) || await packs.get(slug, 'brief.md'))?.toString('utf8') || '';
       const cache = { ...(await packs.getJSON(slug, 'moves.json', {})), ...(priv ? await packs.getJSON(slug, 'private/moves.json', {}) : {}) }, olds = Object.fromEntries(ns.map((n) => [n, cache[n]]));
       const stale = (await upd(slug)).stale || {}, stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
       prevState = (await status(slug)).state;
       /* kept in updates.json while it runs: a restart or deploy mid-rewrite carries on with the moves not yet written (resumeAll) */
-      await editUpd(slug, (u) => { u.rewriting = { ns, auto, at: Date.now(), prev: u.rewriting?.prev || prevState }; });
+      await editUpd(slug, (u) => { u.rewriting = { ns, auto, via, at: Date.now(), prev: u.rewriting?.prev || prevState }; });
       await setStatus(slug, { state: `Rewriting ${ns.length} move${ns.length === 1 ? '' : 's'} with the latest` });
       emit(slug, { type: 'rewrite-start', ns, auto });
       const eng = m.moves.createMovesEngine({ ai, treg, log });
@@ -773,6 +796,13 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       await setStatus(slug, { state: (await status(slug)).done ? 'Ready' : prevState });
       emit(slug, { type: 'rewrite-done', n: written.length, usd });
       if (written.length && !priv) notify(slug, 'update', { at, moves: written, because: auto ? 'Your read changed, and these plans quoted what changed.' : '' }).catch((e) => log.warn('[notify]', e.message));
+      /* a connected run: the team hears once it is in; what the day's budget stopped carries on tomorrow (three days at most) */
+      if (via === 'connected') {
+        const left = ns.filter((n) => !written.some((w) => w.n === n));
+        if (left.length && tries < 3) { await enqueue(slug, left, { via: 'connected', auto: true, notBefore: Date.now() + 20 * 3600e3, tries: tries + 1 }); log.log(`[connect] ${slug}: ${left.length} moves carry on tomorrow`); }
+        if (written.length && priv && !left.length) notify(slug, 'update', { at, moves: written, members: true, lead: `Your accounts are connected, so Brew rewrote ${written.length} of ${(await status(slug))?.name || slug}’s moves with your real numbers`, because: 'Only your team sees these versions.' }).catch((e) => log.warn('[notify]', e.message));
+        await editUpd(slug, (u) => { if (u.connectDone) u.connectDone = { ...u.connectDone, finished: left.length ? null : at, written: (u.connectDone.written || 0) + written.length }; });
+      }
     } catch (e) { log.error('[rewrite] failed', slug, e); /* the brand does not stay on "Rewriting N moves" */
       await setStatus(slug, { state: (await status(slug))?.done ? 'Ready' : prevState || 'Ready' }).catch(() => {}); emit(slug, { type: 'rewrite-done', n: written.length, failed: String(e?.message || e).slice(0, 160) }); }
     finally { x.running = false; x.rewriting = null; saveSpend(slug); await editUpd(slug, (u) => { delete u.rewriting; }).catch(() => {}); setTimeout(() => drain(slug).catch((e) => log.warn('[rewrite] drain', e.message)), 0); }
@@ -788,23 +818,26 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     await setStatus(slug, { state: s0?.done ? 'Ready' : r.prev && !/^Rewriting/.test(r.prev) ? r.prev : s0?.state });
     if (!left.length) { await editUpd(slug, (v) => { delete v.rewriting; }); return; }
     log.log(`[rewrite] ${slug}: carrying on after a restart with ${left.join(', ')}`);
-    buildCtx.run(slug, () => rewriteNow(slug, left, { auto: !!r.auto })).catch((e) => log.error('[rewrite] resume', slug, e.message));
+    buildCtx.run(slug, () => rewriteNow(slug, left, { auto: !!r.auto, via: r.via || null })).catch((e) => log.error('[rewrite] resume', slug, e.message));
   }
   async function updates(slug, { member = true } = {}) {
     const u = await upd(slug), x = st(slug), s0 = await status(slug), moves = await packs.getJSON(slug, 'moves.json', {});
     if (!member) u.stale = Object.fromEntries(Object.entries(u.stale || {}).filter(([, v]) => !v.private));
     const specs = (await load()).moves?.SPECS || [], nm = (n) => (moves[n]?.title ? sentenceCase(moves[n].title) : sentenceCase(specs.find((p) => p.n === +n)?.discipline || '', [], { force: true })) || `Move ${pad2(n)}`;
-    const stale = Object.values(u.stale || {}).filter((s) => moves[s.n]).sort((a, b) => (a.priority === b.priority ? a.n - b.n : a.priority === 'high' ? -1 : 1)).map((s) => ({ ...s, title: nm(s.n) }));
+    const stale = Object.values(u.stale || {}).filter((s) => moves[s.n] && s.via !== 'connected' /* a connected run rewrites them on its own */).sort((a, b) => (a.priority === b.priority ? a.n - b.n : a.priority === 'high' ? -1 : 1)).map((s) => ({ ...s, title: nm(s.n) }));
     const last = u.lastCheck?.at || s0?.doneAt || null;
     return { auto: u.auto !== false, every: REFRESH_DAYS, checking: x.checking ? (u.checking || { at: Date.now() }) : null, lastCheck: u.lastCheck || null, lastError: u.lastError || null, stale,
       next: u.auto !== false && s0?.done ? (last || Date.now()) + REFRESH_DAYS * 864e5 : null, history: (u.history || []).slice(0, 10),
       rewriting: x.rewriting ? [...x.rewriting].map((n) => ({ n, title: nm(n), secs: x.inflight.has(n) ? Math.round((Date.now() - x.inflight.get(n)) / 1e3) : null, done: !x.inflight.has(n) && moves[n]?.meta?.rewrittenAt && Date.parse(moves[n].meta.rewrittenAt) > Date.now() - 3 * 3600e3 })) : null,
+      /* a connected account's run, for the team: waiting for more connects, then rewriting every move with the numbers */
+      connect: member && (u.connectRun || (u.connectDone && !u.connectDone.finished)) ? { names: (u.connectRun?.ids || u.connectDone?.ids || []).map((k) => NAME_OF[k] || k), waiting: !!u.connectRun, due: u.connectRun?.due || null,
+        n: u.connectDone?.n || null, written: u.connectDone?.written || 0, later: (u.queue || []).some((q) => q.via === 'connected' && q.notBefore > Date.now()) } : null,
       canRewrite: !x.running, building: !!x.running && !x.rewriting, estMove: MOVE_USD, estCheck: 1, connected: (await packs.getJSON(slug, 'connected-ledger.json', [])).length > 0 || (member && (await packs.getJSON(slug, 'private/connected-ledger.json', [])).length > 0), accounts: Object.entries(u.connected || {}).filter(([, t]) => t).map(([k]) => NAME_OF[k] || k) };
   }
   // an account was connected (or disconnected): its numbers join the evidence, and the moves that measure or spend
   // on it are flagged to be looked at again. No paid call: the match is the fixed map in refresh.js
-  const AREA_OF = { shopify: ['store'], meta: ['paid'], ga4: ['analytics'], google: ['paid'], klaviyo: ['email'], whatsapp: ['email'] };
-  const NAME_OF = { shopify: 'Shopify', meta: 'Meta Ads', ga4: 'Google Analytics', google: 'Google Ads', klaviyo: 'Klaviyo', whatsapp: 'WhatsApp' };
+  const AREA_OF = { shopify: ['store'], meta: ['paid'], ga4: ['analytics'], google: ['paid'], klaviyo: ['email'], whatsapp: ['email'], reviews: ['reviews'] };
+  const NAME_OF = { shopify: 'Shopify', meta: 'Meta Ads', ga4: 'Google Analytics', google: 'Google Ads', klaviyo: 'Klaviyo', whatsapp: 'WhatsApp', reviews: 'Judge.me' };
   const plain = (e) => e.label.replace(/ \(demo account\)$/, '');
   // the account numbers each kind of move leans on (by move number), so every flag names its own reason
   const WANTS = [[[4, 5, 6, 7, 8], /aov|conversion|repeat|cpa/], [[9, 10, 48, 49], /orders|conversion|sessions|roas|spend/], [[11, 12, 13, 14, 15, 16], /branded|sessions|mobile/],
@@ -858,6 +891,46 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     });
     emit(slug, { type: on ? 'connected' : 'disconnected', ids: [id], live: true });
     if (!pub) await hooks.connected?.(slug, id).catch((e) => log.warn('[facts] connected', e.message)); /* the fact sheet: connected accounts are the source of truth (facts-desk.js) */
+    /* a team account read for the first time (not a resync, not a disconnect, never a simulated one): every move is rewritten with it */
+    if (!pub && on && !was.length && realRows(add).length) await connectSoon(slug, id).catch((e) => log.warn('[connect] run', slug, e.message));
+  }
+
+  /* ---------- a real account connected: Brew rewrites every move with its numbers, and the team's view of the brand follows ----------
+     Connecting three accounts in a row costs one run: the run waits CONNECT_SETTLE after the last connect (kept in updates.json
+     connectRun, so a restart carries it). It runs once the moves are written: a build in progress picks it up when it ends. */
+  const settling = new Map();
+  async function connectSoon(slug, id) {
+    const due = Date.now() + CONNECT_SETTLE;
+    await editUpd(slug, (u) => { u.connectRun = { ids: [...new Set([...(u.connectRun?.ids || []), id])], due }; });
+    armConnect(slug, due); emit(slug, { type: 'connect-run', ids: [id], due });
+  }
+  function armConnect(slug, due) {
+    clearTimeout(settling.get(slug));
+    const t = setTimeout(() => { settling.delete(slug); onConnect(slug).catch((e) => log.error('[connect] run', slug, e.message)); }, Math.max(0, due - Date.now())); t.unref?.(); settling.set(slug, t);
+  }
+  async function onConnect(slug) {
+    if (blocked(slug)) return;
+    const run = (await upd(slug)).connectRun; if (!run?.ids?.length) return;
+    const s0 = await status(slug); if (!s0?.done || st(slug).running && !st(slug).rewriting) return; /* the build's finish picks it up */
+    const rows = realRows(await packs.getJSON(slug, 'private/connected-ledger.json', []));
+    if (!rows.length) { await editUpd(slug, (u) => { delete u.connectRun; }); return; }
+    /* the team's view of the brand: best sellers, the size of the business, the brief with the account numbers (no AI, no spend) */
+    const profile = normalizeProfile(await packs.getJSON(slug, 'profile.json', {})), live = profileLive(rows, profile);
+    await packs.put(slug, 'private/profile-live.json', live);
+    const b = briefWithConnected(await packs.getJSON(slug, 'brief.json', null), rows);
+    if (b) { await packs.put(slug, 'private/brief.json', b.json); await packs.put(slug, 'private/brief.md', b.md); }
+    /* where the brand sells, for the calendar: only the country codes (10% of visits or more), never the shares */
+    if (live.countries?.length) await packs.put(slug, 'ga4/countries.json', live.countries.filter((c) => c.share >= 0.1).map((c) => ({ code: c.code })));
+    const moves = await packs.getJSON(slug, 'moves.json', {}), ok = await rewritable(moves), ns = Object.keys(moves).map(Number).filter(ok).sort((a, z) => a - z);
+    const names = run.ids.map((i) => NAME_OF[i] || i), said = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)} are connected` : `${names[0]} is connected`, at = Date.now();
+    await editUpd(slug, (u) => {
+      for (const n of ns) u.stale[n] = { n, priority: 'medium', via: 'connected', live: true, real: true, private: true, at, why: `${said}: rewritten with your real numbers.`, changes: [] };
+      delete u.connectRun; u.connectDone = { at, ids: run.ids, n: ns.length, finished: null, written: 0 };
+    });
+    await enqueue(slug, ns, { via: 'connected', auto: true, tries: 0 });
+    log.log(`[connect] ${slug}: ${said}, rewriting ${ns.length} moves (cap $${CONNECT_CAP})`);
+    emit(slug, { type: 'connect-rewrite', ids: run.ids, n: ns.length });
+    drain(slug).catch((e) => log.warn('[connect] drain', e.message));
   }
   const setAuto = (slug, on) => editUpd(slug, (u) => { u.auto = !!on; }).then(() => ({ ok: true }));
   // "whenever relevant": the free catalog watch (every 3 hours) saw a price change, a launch or a removal
@@ -930,7 +1003,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     await setStatus(slug, { total: Math.max(n, +s0.total || 0), movesDone: n, applicable: Object.keys(moves).map(Number).filter((k) => isPlay(k, moves[k])).sort((a, c) => a - c) });
   }
   async function resumeAll() { for (const sl of String(process.env.OPS_FRESH_RELOAD || '').split(',').map((x) => x.trim()).filter(Boolean)) freshReload(sl).catch((e) => log.error('[ops] fresh', sl, e.message));
-    for (const x of await packs.list()) { if (!x.status.done && !x.status.error && !x.status.capped) resume(x.slug).catch((e) => log.error('[build] resume', x.slug, e.message)); else { if (x.status.done) { rebase(x.slug).catch((e) => log.warn('[build] rebase', x.slug, e.message)); healPdfs(x.slug); healCount(x.slug).catch((e) => log.warn('[build] count', x.slug, e.message)); } resumeRewrite(x.slug).catch((e) => log.warn('[rewrite] resume', x.slug, e.message)); } } }
+    for (const x of await packs.list()) { if (!x.status.done && !x.status.error && !x.status.capped) resume(x.slug).catch((e) => log.error('[build] resume', x.slug, e.message)); else { if (x.status.done) { rebase(x.slug).catch((e) => log.warn('[build] rebase', x.slug, e.message)); healPdfs(x.slug); healCount(x.slug).catch((e) => log.warn('[build] count', x.slug, e.message)); } resumeRewrite(x.slug).catch((e) => log.warn('[rewrite] resume', x.slug, e.message));
+      upd(x.slug).then((u) => { if (u.connectRun) armConnect(x.slug, u.connectRun.due || 0); if ((u.queue || []).some((q) => q.notBefore)) drain(x.slug).catch(() => {}); }).catch(() => {}); } } }
   /* Saved PDFs heal: when the PDF text rules change (PDF_V) the saved PDFs are forgotten and each is drawn again on its next
      download (pdfOn); entries for moves that no longer exist leave status.pdfs. Nothing is drawn ahead of time. */
   const PDF_V = 4; // 2: kickers without "OF N", "What to watch", BREW DRAFTS; 3: no "Brew re-reads / we pause", index without a count; 4: no source-method narration (brew-name.js unSkill) (2026-10-15)

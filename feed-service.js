@@ -4,6 +4,7 @@
 // workbench, stories, deck layout, always-on watchers with a QA agent, brand memory and metrics.
 // State is in memory per tenant; the client re-creates its tenant from a snapshot after a restart.
 import { realRows } from './connectors/common.js';
+import { baselineOf, healthReadings } from './on-connect.js'; // the team's own account numbers on cards and the health card
 import fs from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
@@ -451,7 +452,7 @@ export function createFeedService(o) {
   };
   const measureOf = (t, c) => { const m = { ...(MEASURE[c?.sector] || MEASURE.creatives), ...(c?.measure || {}) };
     // AI answers: today's number is the latest real run, not a sample
-    const vr = live?.get()?.visibility?.runs?.[0]; if (c?.sector === 'visibility' && vr && !c?.measure) Object.assign(m, { unit: ` of ${vr.total}`, baseline: vr.named, target: Math.min(vr.total, vr.named + 4), window: 28, attribution: `The same questions, asked the same way every week from ${CTRY()}. A change in who gets named is the result.` }); m.connected = !m.from || !!t?.conn[m.from]; m.fromName = m.from ? (SEED.connectors[m.from]?.name || m.from) : null; return m; };
+    const vr = live?.get()?.visibility?.runs?.[0]; if (c?.sector === 'visibility' && vr && !c?.measure) Object.assign(m, { unit: ` of ${vr.total}`, baseline: vr.named, target: Math.min(vr.total, vr.named + 4), window: 28, attribution: `The same questions, asked the same way every week from ${CTRY()}. A change in who gets named is the result.` }); m.connected = !m.from || connOn(t || {}, m.from); /* a team member's own account: the result is read against its number today */ if (t?.member && m.baseline == null) { const b = baselineOf(c?.sector, t.liveLedger); if (b) Object.assign(m, b); } m.fromName = m.from ? (SEED.connectors[m.from]?.name || m.from) : null; return m; };
   const pub = (c, t) => { const { history, ...rest } = c; if (!rest.note && B()?.notes?.[c.id]) rest.note = B().notes[c.id]; /* margin notes written after the card landed (notes.js) */ if (LEAK.test(`${rest.title} ${rest.sub}`)) { rest.title = scrubLeak(rest.title); rest.sub = scrubLeak(rest.sub); } const dv = draftView(draftFor(c, B()?.firstDrafts), c); if (dv) rest.draft = dv; /* the first draft Brew made for this card (drafts-bg.js), shown on the feed card */ const pl = planOfCard(c); if (pl) rest.plan = pl; /* its plan: what the jam opens on */ if (toldOf(c) && toldSeen(t)) rest.told = true; /* the card itself rests on what the team told Brew: the feed labels it (team only, like the told list) */ return { ...rest, history: (history || []).slice(-6), measure: measureOf(t, c), decided: t?.decided?.[c.id] || null }; };
   const allCards = (t) => { const o = {}; t.cards.forEach((c, id) => { if (!['dropped'].includes(c.state) && seatOk(t, c)) o[id] = pub(c, t); }); return o; };
 
@@ -1173,7 +1174,7 @@ export function createFeedService(o) {
     if (typeof b.pro === 'boolean' && b.pro && t.plan !== 'pro') { t.plan = 'pro'; t.proAt = Date.now(); }
     return { ok: true };
   });
-  on('GET', '/api/tenants/:id/feed', async (b, t) => { repairHeartKids(t); syncBatches(t); if (B().kind === 'generated') streamSync(t, SEED.posts); const f = feed(t); return { ...f, cards: allCards(t), batches: t.batches, health: t.health, decided: t.decided || {}, clock: now(t) }; });
+  on('GET', '/api/tenants/:id/feed', async (b, t) => { repairHeartKids(t); syncBatches(t); if (B().kind === 'generated') streamSync(t, SEED.posts); const f = feed(t); return { ...f, cards: allCards(t), batches: t.batches, health: t.health, healthLive: t.member ? healthReadings(t.liveLedger) : {}, decided: t.decided || {}, clock: now(t) }; });
   on('GET', '/api/tenants/:id/deck', async (b, t) => {
     const { top, ranked, scores } = rank(t); const list = withChildren(t, [...top, ...ranked]);
     const cols = {}; ['signals', 'catalog', 'creatives', 'ads', 'storefront', 'visibility'].forEach((k) => (cols[k] = list.filter((c) => c.sector === k).map((c) => c.id)));

@@ -111,3 +111,26 @@ function mockBrief(p, ledger) {
     channels: [], company: [], goal: 'To confirm', goalKeys: '', personas: [], objections: [],
     rivals: (p.rivals || []).map((r) => ({ name: r.name, host: r.host, oneLiner: r.why || '', prices: '', k: "" })), gaps: [], toConfirm: ['[MOCK] everything'] };
 }
+
+/* ---------- the team's private brief: the same brief with the connected accounts' numbers in it ----------
+   No AI call: company facts and channels are filled from the real connected rows (never demo), and the questions those rows
+   answer leave "To confirm". The goal stays the team's to say: numbers don't tell Brew what the brand wants. */
+const CONN = /^(shopify|ga4|gads|meta|klaviyo|reviews\.judgeme)\./;
+const COMPANY = [['shopify.revenue.30d', 'Revenue, last 30 days'], ['shopify.orders.30d', 'Orders, last 30 days'], ['shopify.aov', 'Average order'], ['shopify.repeat.90d', 'Customers with 2+ orders, 90 days'], ['shopify.cod.share', 'Cash on delivery share'], ['ga4.sessions.30d', 'Sessions, last 30 days'], ['ga4.conversion', 'Conversion']];
+const CHANNELS = [['ga4.channels', 'Traffic by channel'], ['meta.spend.30d', 'Meta ads'], ['gads.spend.30d', 'Google search ads'], ['klaviyo.flows.live', 'Email flows'], ['reviews.judgeme.total', 'Reviews (Judge.me)']];
+const ANSWERS = [[/revenue|sales|turnover|orders|order value|aov|basket/i, /^shopify\.(revenue|orders|aov)/], [/repeat|retention|second order|lifetime/i, /^shopify\.repeat/], [/channel|traffic|where.*(buyers|customers|visitors) come/i, /^ga4\.channels/],
+  [/ad spend|paid|meta ads|facebook ads|budget/i, /^(meta|gads)\.spend/], [/email|klaviyo|flows|newsletter/i, /^klaviyo\./], [/cash on delivery|cod/i, /^shopify\.cod/]];
+export function briefWithConnected(brief, rows = []) {
+  const by = Object.fromEntries((rows || []).filter((e) => e?.key && e.v != null && !e.demo).map((e) => [e.key, e]));
+  if (!brief || !Object.keys(by).length) return null;
+  const src = (e) => e.src || 'Connected account';
+  const keep = (xs) => (xs || []).filter((r) => !String(r?.k || '').split(/[,\s]+/).some((k) => CONN.test(k)));
+  const company = [...keep(brief.company), ...COMPANY.filter(([k]) => by[k]).map(([k, fact]) => ({ fact, value: String(by[k].v), src: src(by[k]), k }))];
+  const extra = { 'meta.spend.30d': ['meta.roas', 'meta.cpa'], 'gads.spend.30d': ['gads.roas', 'gads.branded.share'], 'klaviyo.flows.live': ['klaviyo.flows.off', 'klaviyo.list'], 'reviews.judgeme.total': ['reviews.judgeme.rating'] };
+  const channels = [...keep(brief.channels), ...CHANNELS.filter(([k]) => by[k]).map(([k, channel]) => { const ks = [k, ...(extra[k] || []).filter((x) => by[x])];
+    return { channel, evidence: ks.map((x) => `${by[x].label}: ${by[x].v}`).join('; '), k: ks.join(',') }; })];
+  const answered = (q) => ANSWERS.some(([re, kre]) => re.test(q) && Object.keys(by).some((k) => kre.test(k)));
+  const toConfirm = (brief.toConfirm || []).filter((q) => !answered(q));
+  const at = new Date().toISOString().slice(0, 10), json = { ...brief, company, channels, toConfirm, connectedAt: at };
+  return { json, md: render(json, brief.at || at) };
+}

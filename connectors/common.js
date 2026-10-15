@@ -22,6 +22,8 @@ export const L = (key, label, v, n, src) => ({ key, label, v: String(v), ...(n !
    the flag was kept (method 'connected account'). Real connectors write method 'account:<id>' (never 'connected account'). */
 export const simulated = (e) => !!(e && (e.demo || e.method === 'connected account'));
 export const realRows = (xs) => (Array.isArray(xs) ? xs : Object.values(xs || {})).filter((e) => e && !simulated(e));
+// a move card rewritten from the team's connected accounts: its own id next to the shared card (m04-1 → m04-1-p)
+export const privId = (id) => (/-p$/.test(String(id)) ? String(id) : `${id}-p`);
 
 export async function getJSON(url, opts = {}, what = url.split('?')[0]) {
   const r = await fetch(url, { ...opts, redirect: 'manual', signal: AbortSignal.timeout(opts.ms || 30e3) });
