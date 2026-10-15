@@ -50,12 +50,16 @@ test('a cancelled invite no longer works, and a bad token says expired', async (
   assert.equal(await auth.isMember('cozy', { email: 'raj@gmail.com' }), false);
 });
 
-test('only the admin manages invites and views; an invite needs a view', async () => {
+test('only the admin manages views; a teammate invites to their own views only; an invite needs a view', async () => {
   const { auth } = await owned();
   let r = await team(auth, 'ana@cozysnugglet.shop', { action: 'invite', email: 'raj@gmail.com', seats: [] }); assert.match(r.error, /at least one view/);
   await auth.addMember('cozy', { email: 'raj@gmail.com' }, 'member', 'test', ['growth']);
-  const res = resOf(); await auth.handle(reqOf('POST', { cookie: cookieFor(auth, 'raj@gmail.com'), body: JSON.stringify({ action: 'invite', email: 'x@gmail.com', seats: ['growth'] }) }), res, new URL('http://x.test/api/brands/cozy/team'));
-  assert.equal(res.code, 403);
+  let res = resOf(); await auth.handle(reqOf('POST', { cookie: cookieFor(auth, 'raj@gmail.com'), body: JSON.stringify({ action: 'invite', email: 'x@gmail.com', seats: ['brand'] }) }), res, new URL('http://x.test/api/brands/cozy/team'));
+  assert.equal(res.code, 403, 'a teammate can’t hand out a view they don’t have');
+  res = resOf(); await auth.handle(reqOf('POST', { cookie: cookieFor(auth, 'raj@gmail.com'), body: JSON.stringify({ action: 'invite', email: 'x@gmail.com', seats: ['growth'] }) }), res, new URL('http://x.test/api/brands/cozy/team'));
+  assert.equal(res.code, 200); assert.deepEqual((await auth.getMembers('cozy')).invites.find((x) => x.email === 'x@gmail.com').seats, ['growth']);
+  res = resOf(); await auth.handle(reqOf('POST', { cookie: cookieFor(auth, 'raj@gmail.com'), body: JSON.stringify({ action: 'seats', email: 'x@gmail.com', seats: ['growth', 'brand'] }) }), res, new URL('http://x.test/api/brands/cozy/team'));
+  assert.equal(res.code, 403, 'only an admin changes views');
   r = await team(auth, 'ana@cozysnugglet.shop', { action: 'seats', email: 'raj@gmail.com', seats: ['growth', 'brand'] });
   assert.deepEqual(r.members.find((x) => x.email === 'raj@gmail.com').seats, ['growth', 'brand']);
   assert.deepEqual(await auth.seatsOf('cozy', { email: 'raj@gmail.com' }), ['growth', 'brand']);
@@ -131,13 +135,13 @@ test('Switch account comes back to the invite: logout keeps an encoded return ad
   }
 });
 
-test('Brew’s own people make work on every brand, with every view, even where they were invited with fewer', async () => {
+test('Brew’s own people make work on every brand with every view, but once invited onto a team they get the invited views', async () => {
   const { auth } = await owned();
   const a = await auth.claimInfo('cozy', { email: 'hello@joinsquareup.com' });
   assert.equal(a.gen, true); assert.equal(a.full, true); assert.equal(a.role, 'admin');
   await team(auth, 'ana@cozysnugglet.shop', { action: 'invite', email: 'hello@joinsquareup.com', seats: ['growth'] });
   const b = await auth.claimInfo('cozy', { email: 'hello@joinsquareup.com' });
-  assert.equal(b.gen, true); assert.equal(b.seats, null, 'a Brew admin is never limited to some views');
+  assert.equal(b.gen, true); assert.equal(b.role, 'member'); assert.deepEqual(b.seats, ['growth'], 'on the team, the invited views apply to Brew’s own people too');
   const c = await auth.claimInfo('cozy', { email: 'raj@gmail.com' });
   assert.equal(c.gen, false, 'a stranger still sees the demo');
 });

@@ -94,9 +94,10 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
   }
   /* the views this person may use on the brand: null = every view (owners, Brew admins, members from before views, visitors) */
   async function seatsOf(slug, u) {
-    if (!u || isAdmin(u)) return null; // Brew's own people see every view on every brand, even where they were once invited with fewer
-    const me = (await getM(slug)).members.find((x) => x.email === u.email);
-    if (!me) { if (!isAdmin(u)) await roleOf(slug, u); const again = (await getM(slug)).members.find((x) => x.email === u.email); return again && again.role !== 'owner' ? seatList(again.seats) : null; }
+    if (!u) return null;
+    const me = (await getM(slug)).members.find((x) => x.email === u.email); /* on the brand's team: the views they were given, Brew's own people too */
+    if (!me && isAdmin(u)) return null; // Brew's own people, not on this brand's team, see every view
+    if (!me) { await roleOf(slug, u); const again = (await getM(slug)).members.find((x) => x.email === u.email); return again && again.role !== 'owner' ? seatList(again.seats) : null; }
     return me.role === 'owner' ? null : seatList(me.seats);
   }
   const owners = (m) => m.members.filter((x) => x.role === 'owner').map((x) => x.email);
@@ -258,10 +259,15 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
       if (!(await hostOf(slug))) return json(res, 404, { error: 'unknown brand' }), true;
       if (what === 'claim' && req.method === 'POST') return json(res, 200, await claim(slug, me)), true;
       if (what === 'team') {
-        const role = await roleOf(slug, me); if (role !== 'owner' && role !== 'admin') return json(res, 403, { error: 'Only the owner manages the team.' }), true;
+        const role = await roleOf(slug, me); if (!role) return json(res, 403, { error: 'Only the team sees the team.' }), true;
+        const boss = role === 'owner' || role === 'admin', mine = boss ? null : await seatsOf(slug, me);
         let out = {};
         if (req.method === 'POST') { const b = await readBody(req), email = String(b.email || '').toLowerCase().trim();
-          if (b.action === 'remove' && email === me.email) out = { error: 'You can’t remove yourself.' };
+          /* a teammate may invite people, with no more views than their own; everything else is for admins */
+          if (!boss && b.action !== 'invite') return json(res, 403, { error: 'Only an admin changes the team.' }), true;
+          if (!boss && (!Array.isArray(b.seats) || !b.seats.length || (mine && b.seats.some((k) => !mine.includes(k))))) return json(res, 403, { error: 'You can invite people to your own views only.' }), true;
+          if (!boss && (await getM(slug)).invites?.some((x) => x.email === email)) out = { error: `${email} is already invited.` };
+          else if (b.action === 'remove' && email === me.email) out = { error: 'You can’t remove yourself.' };
           else if ((b.action === 'invite' || b.action === 'add' || b.action === 'resend') && /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(email)) {
             const prev = b.action === 'resend' ? ((await getM(slug)).invites || []).find((x) => x.email === email) : null;
             if (prev && Date.now() - prev.at < 10 * 60e3) out = { error: 'Sent a few minutes ago. Give it a little while, or copy the link instead.', link: inviteLink(baseOf(req), slug, email) };

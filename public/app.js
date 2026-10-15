@@ -618,10 +618,10 @@
      a teammate sees who's already here. Nothing about anyone is typed twice: you are who you signed in as */
   const IV = { sent: [], busy: false, chips: [], seats: null, warn: false, open: false };
   const teamStep = () => {
-    const ac = window.LIVE?.access, boss = ['owner', 'admin'].includes(ac?.role), team = (ac?.team || []).filter((x) => x.email !== ME()?.email);
+    const ac = window.LIVE?.access, boss = !!ac?.role /* admins and teammates both invite; a teammate only to their own views */, team = (ac?.team || []).filter((x) => x.email !== ME()?.email);
     if (!GEN || !ME() || !ac?.role) return finishOnboarding(); /* only a brand's own team brings people in */
-    const seats = Object.entries(B.roles || {}); if (!IV.seats?.length) IV.seats = [seats.find(([k]) => k !== S.viewer.role)?.[0] || seats[0]?.[0]];
-    const seatWords = (ks) => ks.length >= seats.length ? 'Everything' : ks.map((k) => B.roles[k]?.title || k).join(', ');
+    const seats = seatEntries(); IV.seats = (IV.seats || []).filter((k) => seats.some(([s0]) => s0 === k)); if (!IV.seats?.length) IV.seats = [seats.find(([k]) => k !== S.viewer.role)?.[0] || seats[0]?.[0]];
+    const seatWords = (ks) => ks.length >= Object.keys(B.roles || {}).length ? 'Everything' : ks.map((k) => B.roles[k]?.title || k).join(', ');
     const okMail = (e) => /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(e) && e !== ME()?.email;
     const row = (x) => `<li class="iv-p">${pAv(x, 28)}<b>${esc(x.name || x.email)}</b><small>${esc(x.tag)}</small></li>`;
     const list = [...IV.sent.map((x) => ({ email: x.email, tag: `Invited · ${seatWords(x.seats || [])}` })), ...team.map((x) => ({ ...x, tag: x.role === 'owner' ? 'Admin' : 'On the team' }))];
@@ -663,7 +663,7 @@
         const left = []; let err = '';
         for (const email of todo) { const r = await api(`/api/brands/${B.slug || BR}/team`, { action: 'invite', email, seats: IV.seats });
           if (r.error) { left.push(email); err = r.error; continue; }
-          if (r.members && window.LIVE) window.LIVE.access = { ...window.LIVE.access, ...r };
+          if ((r.members || r.team) && window.LIVE) window.LIVE.access = { ...window.LIVE.access, ...r };
           if (r.warn) IV.warn = true;
           IV.sent = [{ email, seats: IV.seats.slice() }, ...IV.sent.filter((x) => x.email !== email)]; }
         IV.busy = false; IV.open = false; IV.chips = left; redraw(); if (err) msg('bad', err); }; }
