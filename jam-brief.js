@@ -102,7 +102,11 @@ export function createJamBrief(o) {
   // a card's brief before anyone jams on it (no work item is created just by looking)
   const preview = (t, c, decided) => { const p = profileOf(c); const md = bundleOf(t, c).length ? bundleFrom(t, c) : draftFrom(t, c, null, decided); return { md, rev: 0, kind: KIND[p], profile: p, missing: missingOf(md, p) }; };
 
+  /* briefs saved while the AI was off kept the studio's sync instruction as a note ("Brew: The package is now v2 … Make the brief
+     match it exactly, keep everything else: …"): it was never meant to be read, so it leaves the brief on load */
+  const SYNC_NOTE = /^- (?:Brew: )?The [^\n]{0,80} is now v\d+[^\n]*Make the brief match it exactly, keep everything else:[^\n]*\n?/gm;
   const seed = (t, w) => {
+    if (w.doc?.md && SYNC_NOTE.test(w.doc.md)) { SYNC_NOTE.lastIndex = 0; w.doc.md = w.doc.md.replace(SYNC_NOTE, '').replace(/\n## Notes\n(?=\s*(\n## |$))/, '\n'); }
     if (!w.doc) { const c = cardOf(t, w.cardId) || { title: w.title, sub: '' }; w.doc = { md: bundleOf(t, c).length ? bundleFrom(t, c) : draftFrom(t, c, w), rev: 1, edits: [], at: now(t), planned: 1 }; }
     /* a brief written before cards carried a plan gets it: rewritten when nobody touched it yet, else the plan is added at the end */
     else if (!w.doc.planned) { w.doc.planned = 1; const c = cardOf(t, w.cardId), cp = c && !bundleOf(t, c).length ? (w.cardPlan || o.planOf?.(t, c)) : null;
@@ -166,7 +170,7 @@ export function createJamBrief(o) {
   };
   const SCHEMA = { type: 'object', required: ['reply', 'doc', 'next', 'plan', 'measure'], properties: { plan: PLAN_SCHEMA, measure: MEASURE_SCHEMA, reply: { type: 'string', description: 'Under 40 words, plain: what you changed, or the answer if nothing needed changing' }, next: { type: 'array', items: { type: 'string' }, description: 'Exactly 3 things the person might ask next, each 2 to 7 words, in their voice. Aim at the biggest gaps left in the brief after this edit; never repeat what was already asked or settled.' }, doc: { type: 'string', description: 'The WHOLE brief in Markdown after your edit (# title, ## headings, - bullets, **bold**)' } } };
   const appendNote = (md, who, text) => { const line = `- ${who === 'You' ? '' : who + ': '}${trim(text, 600)}`; return /\n## Notes\n/.test(md) ? md.replace(/(\n## Notes\n(?:- .*\n?)*)/, (m) => m.replace(/\n?$/, '\n') + line + '\n') : `${md}\n\n## Notes\n${line}`; };
-  const edit = async (t, w, text, { who = 'You', mode = 'ask', from = '' } = {}) => {
+  const edit = async (t, w, text, { who = 'You', mode = 'ask', from = '', sync = false } = {}) => {
     seed(t, w); const c = cardOf(t, w.cardId) || { title: w.title, sub: '', agent: w.agent };
     if (!isMock() && spend('text')) {
       try {
@@ -181,6 +185,8 @@ export function createJamBrief(o) {
           if (Array.isArray(j.next)) { const nx = j.next.map((x) => clean(String(x)).replace(/[.]$/, '')).filter((x) => x && x.length <= 56); if (nx.length >= 2) w.doc.next = nx.slice(0, 3); } return { reply: clean(j.reply || ''), changed: changed ? w.doc.edits[0].changed : [] }; }
       } catch (e) { log.warn('[jam doc]', e.message); }
     }
+    /* a quiet sync (the studio's package changed) is an instruction to the AI, never words for the brief: offline, the brief stays as it is */
+    if (sync) return { reply: '', changed: [] };
     if (mode === 'ask' && /\?\s*$/.test(String(text).trim())) return { reply: 'AI is offline right now, so I can’t answer that. Type the answer into the brief, or ask a teammate with @.', changed: [] };
     const changed = setDoc(t, w, appendNote(w.doc.md, who, text), who === 'You' ? 'you' : who, mode); if (changed) applyPlan(t, w, { ...(w.doc.plan || {}), ...Object.fromEntries(Object.entries(planFromMd(w.doc.md)).filter(([, v]) => v)) }, 'read');
     return { reply: mode === 'add' ? 'Added to the brief under Notes.' : 'Noted in the brief under Notes. (AI is offline, so I didn’t rewrite anything.)', changed: changed ? ['Notes'] : [] };
@@ -213,7 +219,7 @@ export function createJamBrief(o) {
     /* the studio changed the package: the brief follows it quietly (no chat message), so it is always the final version */
     on('POST', '/api/work/:wid/doc/sync', async (b, t, p) => {
       const w = get(t, p.wid); if (!w) return { error: 'not found' }; const text = String(b.text || '').trim().slice(0, 3000); if (!text) return { error: 'empty' };
-      const r = await edit(t, w, text, { who: 'Brew', mode: 'ask' }).catch((e) => ({ error: e.message })); return { work: w, changed: r?.changed || [] };
+      const r = await edit(t, w, text, { who: 'Brew', mode: 'ask', sync: true }).catch((e) => ({ error: e.message })); return { work: w, changed: r?.changed || [] };
     });
     on('POST', '/api/work/:wid/doc/ask', async (b, t, p) => {
       const w = get(t, p.wid); if (!w) return { error: 'not found' }; const text = String(b.text || '').trim(); if (!text) return { error: 'empty' };

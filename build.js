@@ -932,7 +932,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     for (const x of await packs.list()) { if (!x.status.done && !x.status.error && !x.status.capped) resume(x.slug).catch((e) => log.error('[build] resume', x.slug, e.message)); else { if (x.status.done) { rebase(x.slug).catch((e) => log.warn('[build] rebase', x.slug, e.message)); healPdfs(x.slug); healCount(x.slug).catch((e) => log.warn('[build] count', x.slug, e.message)); } resumeRewrite(x.slug).catch((e) => log.warn('[rewrite] resume', x.slug, e.message)); } } }
   /* Saved PDFs heal: when the PDF text rules change (PDF_V) the saved PDFs are forgotten and each is drawn again on its next
      download (pdfOn); entries for moves that no longer exist leave status.pdfs. Nothing is drawn ahead of time. */
-  const PDF_V = 3; // 2: kickers without "OF N", "What to watch", BREW DRAFTS; 3: no "Brew re-reads / we pause", index without a count (2026-10-15)
+  const PDF_V = 4; // 2: kickers without "OF N", "What to watch", BREW DRAFTS; 3: no "Brew re-reads / we pause", index without a count; 4: no source-method narration (brew-name.js unSkill) (2026-10-15)
   let pdfHealQ = Promise.resolve();
   const healPdfs = (slug) => (pdfHealQ = pdfHealQ.catch(() => {}).then(async () => {
     if (blocked(slug) || process.env.PDF_HEAL_OFF === '1') return;

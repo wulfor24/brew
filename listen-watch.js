@@ -233,7 +233,14 @@ export function createListenWatch({ slug, packs, treg, ai, apify = undefined, lo
   }
 
   /* ---------- relevance: deterministic, from the cached filter (Claude's tag pass is the second gate) ---------- */
-  const filterOf = (c) => ({ strong: wordsRe(c.filter.strong), weak: wordsRe(c.filter.weak), must: wordsRe(c.filter.must), junk: wordsRe(c.filter.junk), rivals: wordsRe(c.filter.rivals), needs: wordsRe(c.filter.needs) });
+  /* a brand's bare one-word name ("arata", "comet") is also a person, a show or a word: alone it is weak and needs a category
+     word nearby. Only a phrase ("arata serum") or the domain ("arata.in") is strong. Applies to every saved filter on load */
+  /* the brand's own product words count as context too ("arata mitoactive journey"), never its name or a unit */
+  const productWords = (c) => { const nm = new Set(String(c.name || '').toLowerCase().split(/[^a-z0-9]+/)); return [...new Set((c.products || []).flatMap((p) => String(p).toLowerCase().replace(/[™®]/g, '').split(/[^a-z]+/)).filter((w) => w.length >= 4 && !nm.has(w) && !/^(with|from|pack|size|combo|free|new|best)$/.test(w)))]; };
+  const oneWord = (x) => !/[\s.]/.test(String(x).replace(/"/g, '').trim());
+  const filterOf = (c) => ({ strong: wordsRe((c.filter.strong || []).filter((x) => !oneWord(x))), weak: wordsRe([...(c.filter.weak || []), ...(c.filter.strong || []).filter(oneWord)]), must: wordsRe([...(c.filter.must || []), ...productWords(c)]), junk: wordsRe(c.filter.junk), rivals: wordsRe(c.filter.rivals), needs: wordsRe(c.filter.needs) });
+  // an item saved as "about the brand" that today's filter would not keep (a namesake, an anime) leaves on read
+  const onTopic = (F, x) => !F || x.about !== 'brand' || guess(F, x) === 'brand';
   // does a search hit fit what it was searched for: the brand by name, a rival, or the category and its problems
   const fits = (F, kind, t) => (kind === 'rival' ? F.rivals.test(t) : kind === 'brand' ? F.strong.test(t) || (F.weak.test(t) && F.must.test(t)) : F.must.test(t) || F.needs.test(t));
   const guess = (F, x) => {
@@ -248,6 +255,8 @@ export function createListenWatch({ slug, packs, treg, ai, apify = undefined, lo
     if (F.junk.test(t) && !F.strong.test(t)) return null;
     const ctx = F.must.test(t);
     if (F.strong.test(t) || (F.weak.test(t) && ctx)) return 'brand';
+    // a comment under a video or post a brand search found, whose own title names the brand, is about the brand
+    if (x.kind === 'comment' && x.q === 'brand' && (F.strong.test(x.threadTitle || '') || F.weak.test(x.threadTitle || ''))) return 'brand';
     if (F.rivals.test(t) && ctx) return 'rival';
     if (INDIRECT_Q.has(x.q) && (ctx || F.needs.test(t))) return 'category';
     return null;
@@ -255,7 +264,9 @@ export function createListenWatch({ slug, packs, treg, ai, apify = undefined, lo
 
   /* ---------- sources ---------- */
   const queries = (c) => [...c.terms.brand.map((q) => [q, 'brand']), ...c.terms.products.map((q) => [q, 'brand']), ...c.terms.rivals.map((q) => [q, 'rival']), ...c.terms.category.map((q) => [q, 'category']),
-    ...(c.terms.problems || []).map((q) => [q, 'problem']), ...(c.terms.questions || []).map((q) => [q, 'question'])];
+    ...onCat(c, c.terms.problems).map((q) => [q, 'problem']), ...onCat(c, c.terms.questions).map((q) => [q, 'question'])];
+  /* a problem or question search names the category or a need ("does arata die in my happy marriage" names neither) */
+  const onCat = (c, qs) => { if (!c.filter) return qs || []; const F = filterOf(c); return (qs || []).filter((q) => F.must.test(q) || F.needs.test(q) || F.rivals.test(q)); };
   // a bounded slice of the query set for paid sources: the first n brand (and product), rival, category and problem searches
   const pick = (c, n = MIX) => { const k = {}; return queries(c).filter(([q, kind]) => !/^[\w-]+(\.[a-z]{2,})+$/i.test(q) && (k[kind] = (k[kind] || 0) + 1) <= (n[kind] ?? 0)); };
   const bare = (q) => String(q).replace(/"/g, '').trim();
@@ -648,7 +659,7 @@ export function createListenWatch({ slug, packs, treg, ai, apify = undefined, lo
         if (st.partial !== true) delete st.partial; delete st.stop;
         st.ms = now() - s0; st.notes = st.notes.slice(0, 8); }));
       // drop what the filter says isn't about us
-      const map = new Map(prevItems.map((x) => [x.id, x]));
+      const map = new Map(prevItems.filter((x) => onTopic(F, x)).map((x) => [x.id, x]));
       for (const [k, xs] of Object.entries(got)) { let kept = 0;
         for (const x of xs) { if (!x.text) x.text = x.title || ''; if (!enough(x)) continue; const about = guess(F, x); if (!about) continue; mergeInto(map, { ...x, mode: x.mode || 'heard' }, about); kept++; }
         status.sources[k].kept = kept; }
@@ -757,8 +768,9 @@ export function createListenWatch({ slug, packs, treg, ai, apify = undefined, lo
   }
 
   async function read() {
-    const [i, t, th, cm, st] = await Promise.all(['items', 'threads', 'themes', 'communities', 'status'].map((n) => packs.getJSON(slug, P(n), null)));
-    return { items: i?.items || [], threads: t?.threads || [], themes: th?.themes || [], communities: cm?.communities || [], status: st || null, at: i?.at || null };
+    const [i, t, th, cm, st, cf] = await Promise.all(['items', 'threads', 'themes', 'communities', 'status', 'config'].map((n) => packs.getJSON(slug, P(n), null)));
+    const F = cf?.filter ? filterOf(cf) : null;
+    return { items: (i?.items || []).filter((x) => onTopic(F, x)), threads: t?.threads || [], themes: th?.themes || [], communities: cm?.communities || [], status: st || null, at: i?.at || null };
   }
 
   // a faceted slice: text search, source (platform), theme, intent, mode (plus about and sentiment), newest first, paged by offset.

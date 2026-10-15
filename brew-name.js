@@ -20,8 +20,35 @@ export const brewText = (s) => { if (typeof s !== 'string') return s; let t = /s
    Works on JSON text; control characters stay escaped so the JSON still parses. */
 const TWICE = /\\\\u[0-9a-fA-F]{4}/;
 export const onceEscaped = (s) => (TWICE.test(s) ? s.replace(/\\\\u([0-9a-fA-F]{4})/g, (_, h) => parseInt(h, 16) < 32 ? `\\u${h}` : String.fromCharCode(parseInt(h, 16)).replace(/["\\]/g, (c) => `\\${c}`)) : s);
+/* moves written before 2026-10-15 narrated their source method ("This skill was written for software, so three terms need
+   translating… Where it says G2 and Capterra, read …"; "the skill's rollout rule"). The reader is the brand's team: those
+   sentences leave, and "the skill says X" reads as the practice itself. Saved moves heal on read, every brand, no rewrite */
+const SKILL_HINT = /\b(?:the|this|The|This)(?: [a-z]+)? (?:skill|playbook)\b|\bIn SaaS\b|\bapplies to [^.]{1,40} directly\b|\bG2\b|\bCapterra\b/;
+const LEAK_SENT = new RegExp([
+  String.raw`\b(?:skill|playbook|discipline)\b[^.!?]{0,140}\b(?:written (?:for|with)|built for|in mind)\b`,
+  String.raw`\bIn SaaS\b`, String.raw`\bWhere (?:it|the skill|the playbook) \w+`, String.raw`\bneeds? translating\b`,
+  String.raw`\b(?:here is the|first a|so a|Two) translations?\b`, String.raw`\btranslate it first\b`, String.raw`\bread it this way\b`,
+  String.raw`\bapplies to [^.!?]{1,40} directly\b`, String.raw`\b(?:G2|Capterra)\b`].join('|'));
+/* a sentence ends at . ! ? followed by a space and a capital, digit, quote or ₹ (so 'Judge.me' and 'arata.in' stay whole) */
+const SPLIT = /(?<=[.!?]["”’)]*)(\s+)(?=[A-Z“"‘(₹0-9])/;
+export const unSkill = (s) => {
+  if (typeof s !== 'string' || !SKILL_HINT.test(s)) return s;
+  let t = s; if (s.length >= 40) { const parts = s.split(SPLIT), sents = parts.filter((_, k) => k % 2 === 0); /* split keeps the spaces at odd places */
+    const leak = sents.map((x) => (x.trim().length >= 40 || /read it this way/.test(x)) && LEAK_SENT.test(x));
+    const kept = sents.filter((x, k) => !leak[k] && !(k > 0 && leak[k - 1] && /^(They|These|Those)\b/.test(x.trim()))); /* a 'They …' right after a dropped sentence points at nothing */ if (kept.length !== sents.length) t = kept.join(' ').trim(); }
+  t = t.replace(/\b(T|t)he(?: [a-z]+)? (?:skill|playbook)['’]s (?=\S)/g, (m, c) => `${c}he `)
+    .replace(/\b(T|t)he(?: [a-z]+)? (?:skill|playbook) (says|asks|sets|builds|brings|requires|wants|warns|rates|sends|offers|scores|advises|calls|puts|treats|uses|recommends|suggests|lists|names|gives|flags|allows|rules)\b/g, (m, c, v) => `${c === 'T' ? 'Good' : 'good'} practice ${v}`)
+    .replace(/ from the (?:skill|playbook)\b/g, '').replace(/\b(follows|per|under) the (?:skill|playbook)\b/g, '$1 good practice');
+  return t.trim() === '' ? '' : t;
+};
+const unSkillDeep = (o) => Array.isArray(o) ? o.map((x) => [x, unSkillDeep(x)]).filter(([x, y]) => !(y && typeof y === 'object' && y.healed) && !(typeof x === 'string' && x && y === '')).map(([, y]) => y)
+  : o && typeof o === 'object' ? (() => { const r = {}; for (const [k, v] of Object.entries(o)) r[k] = unSkillDeep(v); if (r.t === 'p' && typeof o.text === 'string' && o.text && r.text === '') r.healed = true; return r; })()
+  : unSkill(o);
+export const unSkillJSON = (s) => { if (!SKILL_HINT.test(s)) return s; try { const j = JSON.parse(s), h = unSkillDeep(j); const out = JSON.stringify(h); return out === JSON.stringify(j) ? s : out; } catch { return s; } };
 export const brewFile = (name, buf) => {
   if (!buf || !/\.(json|js|md|txt|html)$/i.test(name) || /(^|\/)(private\/vault|vault)\b/.test(name)) return buf;
-  const s = buf.toString('utf8'), esc = /\.json$/i.test(name) && TWICE.test(s); if (!esc && !/shopos|remix it, jam|jam on it, do it|What Brew will watch|BREW SHIPS|Brew re-reads|Brew watches|Brew ships|\bwe (?:pause|revert|roll back|stop)\b|(?:Fifty|Sixty|Seventy|Eighty)[- ]?\w* moves for|Fifty-one moves|MOVE \d+ OF \d+/i.test(s)) return buf;
-  const t = brewText(esc ? onceEscaped(s) : s); return t === s ? buf : Buffer.from(t, 'utf8');
+  const s = buf.toString('utf8'), esc = /\.json$/i.test(name) && TWICE.test(s);
+  let t = esc || /shopos|remix it, jam|jam on it, do it|What Brew will watch|BREW SHIPS|Brew re-reads|Brew watches|Brew ships|\bwe (?:pause|revert|roll back|stop)\b|(?:Fifty|Sixty|Seventy|Eighty)[- ]?\w* moves for|Fifty-one moves|MOVE \d+ OF \d+/i.test(s) ? brewText(esc ? onceEscaped(s) : s) : s;
+  if (/\.(json|md)$/i.test(name) && /(^|\/)(moves(\.json|\/)|seed\.json$)/.test(name) && SKILL_HINT.test(t)) t = /\.json$/i.test(name) ? unSkillJSON(t) : t.split('\n').map(unSkill).join('\n'); /* moves: no source-method narration */
+  return t === s ? buf : Buffer.from(t, 'utf8');
 };

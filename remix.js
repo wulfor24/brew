@@ -604,9 +604,11 @@ export function createRemix(o) {
       if (out.newImage || knob?.kind === 'image') genImage(t, ch, message);
     } else {
       // offline: apply what can be applied without AI, and say so
+      /* a new version only when something really changed (a setting applied without AI); a failed rewrite adds no "Not rewritten" version */
+      const snap0 = JSON.stringify(snapOf(ch));
       if (knob?.kind === 'image' && knob.k === 'format') ch.pkg.format = knob.v;
-      sync(t, ch, c); version(t, ch, 'system', `${message} (AI offline)`);
-      if (!quiet) ch.thread.push({ from: 'ai', text: 'AI is offline right now, so I saved your setting but could not rewrite the package. Edit the fields directly, or try again.', at: now(t), offline: true });
+      sync(t, ch, c); const changed = JSON.stringify(snapOf(ch)) !== snap0; if (changed) version(t, ch, 'system', `${message} (AI offline)`);
+      if (!quiet) ch.thread.push({ from: 'ai', text: changed ? 'AI is offline right now, so I saved your setting but could not rewrite the package. Edit the fields directly, or try again.' : 'AI is offline right now, so nothing changed. Edit the fields directly, or try again later.', at: now(t), offline: true });
     }
     signal(t, 'edit', { before, after: ch.after, agent: ch.agent, changeId: ch.id, by: 'ai-asked' }, now(t));
     return ch;

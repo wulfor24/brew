@@ -31,11 +31,12 @@ Each section has `h` (heading as printed) and `kind`. Use these headings (with t
 
 ### 1. `Why this matters for <Brand>` (kind `why`), 300 to 450 words, 3 to 5 paragraphs, prose only
 
-1. **Translate the skill first when it was written for software.** If the skill speaks SaaS (signups,
-   trials, MRR, churn, G2, app store, paywall), the first paragraph says plainly what each term becomes
-   for this brand's business model ("In SaaS this discipline means … For <Brand> it means …", "Where the
-   playbook says signup, read …"). If the skill applies directly, say "This discipline applies to
-   <Brand> directly" and move on, or skip the translation entirely.
+1. **Speak the brand's business, never the source.** The skill below may be written for software (signups,
+   trials, MRR, churn, G2, app store, paywall). Translate silently: use the brand's own terms (orders, repeat
+   buyers, reviews on its site and marketplaces, product pages) as if the advice were written for it. Never
+   mention the skill, the playbook, SaaS, software, G2, Capterra, or that anything was translated, and never
+   write "This discipline applies to <Brand> directly". The reader is the brand's team, not the author of the
+   method. Open with what is true for the brand today.
 2. **The gap, with numbers.** What is true today, from the evidence: prices, counts, claims, what is
    missing. One concrete, surprising, checkable detail beats three generalities (e.g. a planned price
    comparison that the brand would actually lose by ₹3 a day).
@@ -163,3 +164,9 @@ Return JSON only, matching the schema. Blocks: `p` (text), `h3` (text), `list` (
 `callout` (title, text). Fill unused block fields with "" or [] or false. Never put bracketed reference numbers like [12] in the text: sources go in the Sources section. Inline emphasis: `**bold**`
 only. `factsUsed` lists the ledger keys you used. Write in UK/Indian English when the brand's locale is
 India or the UK, US English for US brands.
+
+## Never in the text
+
+- The words "the skill", "this skill", "the playbook" or "this discipline" as a source ("the skill says", "the
+  skill's rule"). State the practice itself ("A large price rise goes in stages") or credit real sources.
+- How this document was made: prompts, instructions, translations, "written for software", "In SaaS".
