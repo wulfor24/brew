@@ -17,7 +17,7 @@
   const work = () => A()?.currentDetail?.()?._work || null;
   const ensure = async () => { const a = A(), p = a.currentDetail?.() || a.studioCard?.(); if (!p) return null; let w = p._work || a.workOfCard?.(p.id); if (w) return w;
     const { _work, _ch, ...card } = p; const r = await a.tapi('POST', '/api/work', { cardId: p.id, card, decided: a.S.decided?.[p.id] || null }); if (r.work) a.putWork(r.work); return r.work || null; };
-  /* the connectors the jam can read (DUMMY: simulated accounts, see connectors/index.js) */
+  /* the connectors the jam can read (real on the live site; DUMMY: simulated on the demo site, see connectors/index.js) */
   const loadCat = async () => { await window.LIVE_P; const L = window.LIVE || {}, nm = (id) => A().B?.connectors?.[id]?.name || id, ids = Object.keys(L.avail || {});
     UI.cat = { connected: ids.filter((id) => L.conns?.[id]?.state === 'live').map((id) => ({ id, name: nm(id) })), available: ids.filter((id) => L.conns?.[id]?.state !== 'live').map((id) => ({ id, name: nm(id) })) }; repaint(); };
   const loadMem = async () => { UI.mem = await A().tapi('GET', '/api/tenants/:t/learning'); repaint(); };

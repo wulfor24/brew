@@ -65,14 +65,14 @@ test('another domain never connects or owns a brand, even a simulated account', 
     assert.equal(await packs.getJSON('cozy', 'private/connections.json', null), null, 'the brand’s connections are untouched');
   }
 });
-test('the first official email to connect any account becomes the admin; the account is simulated and marked dummy', async () => {
+test('the first official email to connect any account becomes the admin; a simulated one (Slack) is marked dummy', async () => {
   const { packs, auth, C } = sandbox();
   await packs.put('cozy', 'profile.json', { name: 'Cozy', host: 'cozysnugglet.shop', slug: 'cozy', catalog: { products: [{ title: 'Paw Warmer', price: 39 }] }, reviews: { total: 120 } });
   await packs.put('cozy', 'seed.json', { brand: { name: 'Cozy' }, lanes: { core: {} } });
-  const r = await C.finish('cozy', 'meta', null, { email: 'ana@cozysnugglet.shop' });
+  const r = await C.finish('cozy', 'slack', null, { email: 'ana@cozysnugglet.shop' });
   assert.equal(r.claimed, true); assert.equal(r.dummy, true); const m = await auth.getMembers('cozy'); assert.equal(m.owner, 'ana@cozysnugglet.shop');
   assert.match(m.via, /^Connected /); assert.equal(m.domain, 'cozysnugglet.shop');
-  assert.equal((await packs.getJSON('cozy', 'private/connections.json')).meta.sim, true);
+  assert.equal((await packs.getJSON('cozy', 'private/connections.json')).slack.sim, true);
   assert.ok(![...packs.D.keys()].some((k) => k.includes('vault/')), 'no token vault');
   assert.equal(await auth.roleOf('cozy', { email: 'bo@cozysnugglet.shop' }), 'member');
 });
@@ -99,4 +99,28 @@ test('t.member is per request: a link holder never acts as the team, even while 
   assert.equal(t.teamEmail, 'ana@cozysnugglet.shop'); assert.equal(await MC.bgCheck(t), true); assert.equal(t.member, true); assert.equal(t.memberEmail, 'ana@cozysnugglet.shop');
   team.delete('ana@cozysnugglet.shop'); MC.forget(); assert.equal(await MC.bgCheck(t), false); assert.equal(t.member, false);
   const t2 = MC.guard({ id: 't_2', brandId: 'cozy' }); await MC.run(link, t2, () => {}); assert.equal(await MC.bgCheck(t2), false, 'a visitor never makes a workspace act on its own');
+});
+
+test('a real account (Klaviyo, read-only key): the key is encrypted in the vault and its rows are evidence', async () => {
+  const { packs, C } = sandbox(); const real = globalThis.fetch, seen = [];
+  await packs.put('cozy', 'profile.json', { name: 'Cozy', host: 'cozysnugglet.shop', slug: 'cozy' });
+  await packs.put('cozy', 'seed.json', { brand: { name: 'Cozy' }, lanes: { core: {} } });
+  const key = 'pk_' + 'a'.repeat(30), ok = (j) => new Response(JSON.stringify(j), { status: 200, headers: { 'content-type': 'application/json' } });
+  globalThis.fetch = async (url, o) => { seen.push([String(url), o?.headers?.authorization]); const u = String(url);
+    if (u.includes('/accounts/')) return ok({ data: [{ attributes: { contact_information: { organization_name: 'Cozy', website_url: 'https://cozysnugglet.shop' } } }] });
+    if (/\/lists\/[^?]+\/\?/.test(u)) return ok({ data: { attributes: { profile_count: 4200 } } });
+    if (u.includes('/lists/')) return ok({ data: [{ id: 'L1', attributes: { name: 'Newsletter' } }] });
+    if (u.includes('/flows/')) return ok({ data: [{ attributes: { name: 'Welcome series', status: 'live' } }] });
+    return new Response('{}', { status: 404 }); };
+  try {
+    const { default: klaviyo } = await import('../connectors/klaviyo.js');
+    const r = await C.finish('cozy', 'klaviyo', await klaviyo.fromKey({ key }), { email: 'ana@cozysnugglet.shop' });
+    assert.equal(r.ok, true); assert.ok(!r.dummy, 'a real account is not dummy'); assert.equal(r.verified, true);
+    const vault = [...packs.D.entries()].find(([k]) => k.includes('vault/klaviyo'));
+    assert.ok(vault, 'the key is in the vault'); assert.ok(!JSON.stringify(vault[1]).includes(key), 'never in plain text');
+    const live = await packs.getJSON('cozy', 'private/live/klaviyo.json');
+    assert.ok(live.ledger.length && live.ledger.every((e) => e.method === 'account:klaviyo' && !e.demo), 'real rows, never marked demo');
+    assert.ok(live.ledger.some((e) => e.key === 'klaviyo.list' && e.n === 4200));
+    assert.ok(seen.every(([, a]) => a === `Klaviyo-API-Key ${key}`), 'every call carries the brand’s key');
+  } finally { globalThis.fetch = real; }
 });

@@ -41,7 +41,7 @@ export function createSim({ packs, log = console }) {
       : null;
     const acc = A[id] || {};
     return { account: { name: id === 'shopify' ? `${b.profile.host || name}` : id === 'meta' ? `${name} · Ad account` : id === 'google' ? `${name} · Google Ads` : `${name}` },
-      stats: extra?.stats || acc.stats || [], changed: extra?.changed || demo.changed?.[id] || [], cards: id === 'marketplaces' ? cards.map((c) => ({ ...c, liveOnly: false })) : cards, ledger: ledger.map((e) => ({ ...e, demo: true })), notes: [] }; /* DUMMY: every number stays marked simulated, so it is never evidence */
+      stats: extra?.stats || acc.stats || [], changed: extra?.changed || demo.changed?.[id] || [], cards: id === 'marketplaces' ? cards.map((c) => ({ ...c, liveOnly: false })) : cards, ledger: ledger.map((e) => ({ ...e, method: 'connected account', demo: true })), notes: [] }; /* DUMMY: every number stays marked simulated, so it is never evidence */
   }
 
   /* ---------- day by day for one launch (measurement): the launched scope vs the rest of the account ---------- */

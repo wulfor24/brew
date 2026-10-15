@@ -11,7 +11,7 @@ Brew is a **realistic prototype** that the engineering team picks up and continu
 | **Read** | Paste a URL. Brew reads the store, catalog, reviews, ads (Meta Ad Library), SEO, AI answers, socials and rivals, live on screen, then "Check what we read". | Real: crawl, treg, Claude |
 | **Moves** | 51 strategy moves with PDFs and zips, rewritten when the brand changes. Weekly **listening moves**, from real online talk. Weekly **automation moves**, as plans the team runs from the brief; Brew never runs them. | Real |
 | **Feed** | Ranked cards from the moves, plus ideas, Heard, stories, watcher cards and margin notes. Ad and social-post cards hold two seats in the first screen. | Real |
-| **Connectors** | Connect sheet and connector cards. | **Dummy**: see `DUMMY.md` |
+| **Connectors** | Real, read-only accounts on the live site (since 2026-10-16): Shopify, Meta Ads, Google Ads + GA4, Klaviyo, Judge.me, Marketplaces. Connect by the platform's sign-in where it is switched on, or a pasted read-only key (GA4 by property ID, with Brew's service account added as Viewer). Tokens are encrypted in the brand's vault (`vault.js`, `FEED_VAULT_KEY`), read once a day, and shown only to the brand's team; the numbers beat the site read on the fact sheet. | Real. **Dummy** on the demo site and for Slack: see `DUMMY.md` |
 | **Health rings** | Store health score. | **Dummy** |
 | **Pro plan** | Plan sheet; no daily card cap. | **Dummy** |
 | **Jam** | Studio: canvas, chat, first drafts (image, text, video, voice, carousel), versions, photos, download, composer, brand memory and learnings. **Team jams** (`jams.js`): a brand's jams belong to its team, not to one browser. One jam per card: a second person joins it. The board has My jams and Team jams. @someone tags a real teammate. You can give a jam to someone or ask for their OK. The jam shows who's here and who's typing. Every message and version records who made it. | Real (the simulated teammate lives on the demo site only) |
@@ -29,7 +29,7 @@ Two sites, one codebase:
 | Cut | What went |
 |-----|-----------|
 | Do it now | Real actions on accounts, the action tray, the agent runner, the safety policy, programs and routines that run themselves, scheduled starts, the stop rule and auto-undo, the weekly spend limit, "Changes Brew made", undo, task trackers |
-| Real connector code | OAuth, the token vault, account syncs, real API writes, member-only live cards from real accounts, member-only move rewrites from account data |
+| Writing to accounts | Real API writes to a brand's accounts (connectors are read-only scopes only) |
 | Brew sending | Marketing email and WhatsApp from Brew to the brand's customers, contacts, unsubscribe pages, lifecycle flows, holdouts |
 | Measurement | The measuring engine, launch records, report back, A–D grades, results, the Out/Live/Result board columns, the week-by-week record, result follow-up cards |
 | Fake team flow | Scripted "ShopOS team" replies, ticket delivery, posting to Slack, the studio's simulated "go live" workflow |

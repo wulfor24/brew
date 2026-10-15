@@ -1,0 +1,135 @@
+// Google Ads + GA4 on one Google consent (adwords + analytics.readonly, offline so it keeps working), on SquareUp's
+// Google Ads OAuth client. Google Ads through GAQL searchStream (lifted from SquareUp's tej/ads/google-client.ts);
+// GA4 through the Analytics Data API runReport. The brand picks the Ads account and the GA4 property.
+// It proves the brand's own when the GA4 web stream or the ads' final URLs are the brand's site.
+// GA4 also connects with no Google review at all: the brand adds Brew's service account as a Viewer on its property and
+// pastes the property ID (the 'key' mode). The service account is GA4_SA_KEY (a JSON key) or, on Cloud Run, the service's own.
+// One-click Google sign-in (adwords + analytics.readonly, both sensitive scopes) is on only with GOOGLE_OAUTH=1, once the
+// consent screen and the Ads developer token are set up.
+import crypto from 'node:crypto';
+import { exactSite } from '../auth.js';
+import { card, L, n0, pct, has, fmt, getJSON, form } from './common.js';
+
+const ADS = 'https://googleads.googleapis.com/v21', ADMIN = 'https://analyticsadmin.googleapis.com/v1beta', DATA = 'https://analyticsdata.googleapis.com/v1beta';
+const app = () => ({ id: process.env.GOOGLE_ADS_OAUTH_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || '', secret: process.env.GOOGLE_ADS_OAUTH_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET || '', dev: process.env.GOOGLE_ADS_DEVELOPER_TOKEN || '' });
+const SCOPES = 'https://www.googleapis.com/auth/adwords https://www.googleapis.com/auth/analytics.readonly openid email';
+const tok = (o) => getJSON('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: form(o) }, 'google token');
+const auth = (c) => ({ authorization: `Bearer ${c.token}` });
+async function gaql(c, customer, query) {
+  const h = { ...auth(c), 'developer-token': app().dev, 'content-type': 'application/json', 'login-customer-id': String(c.login || customer) };
+  const j = await getJSON(`${ADS}/customers/${customer}/googleAds:searchStream`, { method: 'POST', headers: h, body: JSON.stringify({ query }) }, 'google ads');
+  return (j || []).flatMap((b) => b.results || []);
+}
+const report = (c, body) => getJSON(`${DATA}/${c.property}:runReport`, { method: 'POST', headers: { ...auth(c), 'content-type': 'application/json' }, body: JSON.stringify({ dateRanges: [{ startDate: '30daysAgo', endDate: 'yesterday' }], ...body }) }, 'ga4 report');
+
+/* the service account: a pasted JSON key, or the Cloud Run service's own identity from the metadata server */
+const SA_SCOPE = 'https://www.googleapis.com/auth/analytics.readonly', MD = 'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/';
+const saKey = () => { try { return JSON.parse(process.env.GA4_SA_KEY || 'null'); } catch { return null; } };
+const saOn = () => !!(saKey()?.private_key || process.env.K_SERVICE);
+let saMail = process.env.GA4_SA_EMAIL || saKey()?.client_email || null;
+export async function saEmail() {
+  if (saMail || !process.env.K_SERVICE) return saMail;
+  try { const r = await fetch(`${MD}email`, { headers: { 'metadata-flavor': 'Google' }, signal: AbortSignal.timeout(3e3) }); if (r.ok) saMail = (await r.text()).trim(); } catch {}
+  return saMail;
+}
+saEmail().catch(() => {});
+async function saToken() {
+  const k = saKey();
+  if (k?.private_key) {
+    const now = Math.floor(Date.now() / 1e3), b = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
+    const un = `${b({ alg: 'RS256', typ: 'JWT' })}.${b({ iss: k.client_email, scope: SA_SCOPE, aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 })}`;
+    const t = await tok({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: `${un}.${crypto.sign('RSA-SHA256', Buffer.from(un), k.private_key).toString('base64url')}` });
+    return { token: t.access_token, exp: Date.now() + (t.expires_in || 3600) * 1e3 };
+  }
+  const j = await getJSON(`${MD}token?scopes=${encodeURIComponent(SA_SCOPE)}`, { headers: { 'metadata-flavor': 'Google' } }, 'ga4 service account');
+  return { token: j.access_token, exp: Date.now() + (j.expires_in || 3600) * 1e3 };
+}
+const propOf = (x) => { const d = String(x || '').trim().replace(/^properties\//, '').replace(/[\s-]/g, ''); return /^\d{5,14}$/.test(d) ? `properties/${d}` : null; };
+const userErr = (m) => Object.assign(new Error(m), { user: true });
+
+const rows = (r) => (r?.rows || []).map((x) => ({ d: (x.dimensionValues || []).map((v) => v.value), m: (x.metricValues || []).map((v) => +v.value) }));
+
+export default {
+  id: 'google', name: 'Google Ads + GA4', modes: ['oauth', 'key'], picks: true,
+  ready: () => saOn() || !!(app().id && app().secret),
+  oauthOn: () => process.env.GOOGLE_OAUTH === '1' && !!(app().id && app().secret),
+  keyFields: [{ k: 'property', label: 'GA4 property ID', hint: 'GA4 → Admin → Property details, a number like 123456789' }],
+  help: () => (saMail ? `In GA4 → Admin → Property access management, add ${saMail} as a Viewer, then paste the property ID. Brew only reads.` : null),
+  helpEmail: () => saMail,
+  async fromKey({ property }) {
+    const p = propOf(property); if (!p) throw userErr('Paste the GA4 property ID: the number in GA4 → Admin → Property details.');
+    if (!saOn()) throw userErr('GA4 by property ID is not set up on this server yet.');
+    const t = await saToken(), c = { sa: true, property: p, ...t, accountName: `GA4 ${p.split('/')[1]}` };
+    try { const j = await getJSON(`${ADMIN}/${p}`, { headers: auth(c) }, 'ga4 property'); c.accountName = `GA4 · ${j.displayName || p.split('/')[1]}`; }
+    catch (e) { if (e.status === 403 || e.status === 404) throw userErr(`Brew can't see property ${p.split('/')[1]} yet. Add ${saMail || 'Brew’s service account'} as a Viewer in GA4 → Admin → Property access management, then try again.`); throw e; }
+    return c;
+  },
+  authorize({ state, redirect }) { return `https://accounts.google.com/o/oauth2/v2/auth?${form({ client_id: app().id, redirect_uri: redirect, response_type: 'code', scope: SCOPES, state, access_type: 'offline', prompt: 'consent', include_granted_scopes: 'true' })}`; },
+  async exchange({ query, redirect }) {
+    const code = query.get('code'); if (!code) throw new Error(`google: ${query.get('error') || 'no code'}`);
+    const t = await tok({ grant_type: 'authorization_code', code, client_id: app().id, client_secret: app().secret, redirect_uri: redirect });
+    return { token: t.access_token, refresh: t.refresh_token || null, exp: Date.now() + (t.expires_in || 3600) * 1e3, scope: t.scope || '' };
+  },
+  async fresh(c) { if (c.sa) return c.exp > Date.now() + 120e3 ? c : { ...c, ...(await saToken()) }; if (c.exp > Date.now() + 120e3 || !c.refresh) return c; const t = await tok({ grant_type: 'refresh_token', refresh_token: c.refresh, client_id: app().id, client_secret: app().secret }); return { ...c, token: t.access_token, exp: Date.now() + (t.expires_in || 3600) * 1e3 }; },
+  async options(c) {
+    const out = [];
+    if (/analytics/.test(c.scope)) { const j = await getJSON(`${ADMIN}/accountSummaries?pageSize=200`, { headers: auth(c) }, 'ga4 accounts').catch(() => ({}));
+      for (const a of j.accountSummaries || []) for (const p of a.propertySummaries || []) out.push({ id: p.property, kind: 'ga4', name: p.displayName, sub: `GA4 · ${a.displayName}` }); }
+    if (/adwords/.test(c.scope) && app().dev) { const j = await getJSON(`${ADS}/customers:listAccessibleCustomers`, { headers: { ...auth(c), 'developer-token': app().dev } }, 'google ads accounts').catch(() => ({}));
+      for (const rn of (j.resourceNames || []).slice(0, 25)) { const id = rn.split('/')[1];
+        const r = await gaql(c, id, 'SELECT customer.id, customer.descriptive_name, customer.currency_code, customer.manager FROM customer LIMIT 1').catch(() => []);
+        const x = r[0]?.customer; if (x?.manager) continue; out.push({ id, kind: 'ads', name: x?.descriptiveName || `Ads account ${id}`, sub: `Google Ads · ${x?.currencyCode || ''} · ${id.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')}` }); } }
+    return out;
+  },
+  select(c, choice) { return { ...c, property: choice.ga4 || null, customer: choice.ads ? String(choice.ads).replace(/\D/g, '') : null, accountName: [choice.ga4Name, choice.adsName].filter(Boolean).join(' + ') || null }; },
+  async owns(c, ctx) {
+    let ok = false, why = '';
+    if (c.property) { const j = await getJSON(`${ADMIN}/${c.property}/dataStreams`, { headers: auth(c) }, 'ga4 streams').catch(() => ({}));
+      const s = (j.dataStreams || []).find((x) => exactSite(x.webStreamData?.defaultUri, ctx.host)); if (s) { ok = true; why = `GA4 stream ${s.displayName} is ${ctx.host}`; } }
+    if (!ok && c.customer) { const r = await gaql(c, c.customer, "SELECT ad_group_ad.ad.final_urls FROM ad_group_ad WHERE ad_group_ad.status = 'ENABLED' LIMIT 50").catch(() => []);
+      if (r.some((x) => (x.adGroupAd?.ad?.finalUrls || []).some((u) => exactSite(u, ctx.host)))) { ok = true; why = `The Google ads point to ${ctx.host}`; } }
+    /* a GA4 stream's URL and an ad's final URL are typed in by whoever owns the property: never strong enough to own the brand */
+    return { ok, strong: false, why: why || `Neither the GA4 stream nor the ads point to ${ctx.host}`, account: { id: [c.property, c.customer].filter(Boolean).join(' '), name: c.accountName || 'Google' } };
+  },
+  async sync(c, ctx) {
+    const F = fmt(ctx.profile), m = {}, notes = [];
+    if (c.property) {
+      try {
+        const dev = rows(await report(c, { dimensions: [{ name: 'deviceCategory' }], metrics: [{ name: 'sessions' }, { name: 'ecommercePurchases' }] }));
+        const tot = dev.reduce((s, x) => s + x.m[0], 0), buys = dev.reduce((s, x) => s + x.m[1], 0), mob = dev.find((x) => x.d[0] === 'mobile'), desk = dev.find((x) => x.d[0] === 'desktop');
+        m.sessions = tot || null; if (tot) { m.cr = 100 * buys / tot; if (mob) { m.mob = 100 * mob.m[0] / tot; m.mobCr = mob.m[0] ? 100 * mob.m[1] / mob.m[0] : null; } if (desk?.m[0]) m.deskCr = 100 * desk.m[1] / desk.m[0]; }
+        const ev = rows(await report(c, { dimensions: [{ name: 'eventName' }], metrics: [{ name: 'totalUsers' }], dimensionFilter: { filter: { fieldName: 'eventName', inListFilter: { values: ['session_start', 'view_item', 'add_to_cart', 'begin_checkout', 'purchase'] } } } }));
+        const u = Object.fromEntries(ev.map((x) => [x.d[0], x.m[0]])); if (u.session_start && u.view_item) { m.pdp = 100 * u.view_item / u.session_start; if (u.add_to_cart) m.atc = 100 * u.add_to_cart / u.session_start; if (u.begin_checkout) m.checkout = 100 * u.begin_checkout / u.session_start; if (u.purchase) m.buy = 100 * u.purchase / u.session_start; }
+        const ch = rows(await report(c, { dimensions: [{ name: 'sessionDefaultChannelGroup' }], metrics: [{ name: 'sessions' }], orderBys: [{ metric: { metricName: 'sessions' }, desc: true }], limit: 6 }));
+        if (tot) m.mix = ch.map((x) => [x.d[0], 100 * x.m[0] / tot]);
+      } catch (e) { notes.push(`GA4: ${e.message.slice(0, 140)}`); }
+    }
+    if (c.customer) {
+      try {
+        const [t] = await gaql(c, c.customer, 'SELECT customer.currency_code, metrics.cost_micros, metrics.clicks, metrics.conversions, metrics.conversions_value FROM customer WHERE segments.date DURING LAST_30_DAYS');
+        if (t) { m.gspend = +t.metrics.costMicros / 1e6; m.gclicks = +t.metrics.clicks || 0; m.gconv = +t.metrics.conversions || 0; m.groas = m.gspend ? +t.metrics.conversionsValue / m.gspend : null; }
+        const st = await gaql(c, c.customer, 'SELECT search_term_view.search_term, metrics.clicks FROM search_term_view WHERE segments.date DURING LAST_30_DAYS ORDER BY metrics.clicks DESC LIMIT 300');
+        const name = String(ctx.profile?.name || '').toLowerCase().replace(/[^a-z0-9 ]/g, ''), words = name.split(/\s+/).filter((w) => w.length >= 3), host = String(ctx.host || '').split('.')[0];
+        const brand = (q) => { q = String(q).toLowerCase(); return (name && q.includes(name)) || (host.length >= 4 && q.includes(host)) || (words.length === 1 && q.split(/\s+/).includes(words[0])); };
+        const clicks = st.reduce((s, x) => s + (+x.metrics.clicks || 0), 0);
+        if (clicks >= 50) { m.branded = 100 * st.filter((x) => brand(x.searchTermView.searchTerm)).reduce((s, x) => s + (+x.metrics.clicks || 0), 0) / clicks; m.terms = st.filter((x) => !brand(x.searchTermView.searchTerm)).slice(0, 4).map((x) => x.searchTermView.searchTerm); }
+      } catch (e) { notes.push(`Google Ads: ${e.message.slice(0, 140)}`); }
+    }
+    const k = 'google', name = 'Google Ads + GA4', lane = ctx.lane, src = 'Google Analytics 4 / Google Ads', out = [];
+    if (has(m.mob, m.mobCr, m.deskCr) && m.deskCr > m.mobCr * 1.3) out.push(card(k, name, lane, 'mobile', { agent: 'storefront', sector: 'storefront', type: 'report', roles: ['ecom', 'founder', 'growth'], badge: ['Mobile', 'warn'], cta: 'Start the tests',
+      title: `Phones bring ${pct(m.mob)} of visits but convert at ${pct(m.mobCr, 1)}`, sub: `Desktop converts at ${pct(m.deskCr, 1)}. Closing part of that gap on phones is worth more than a new campaign, so the first test is the mobile product page.`,
+      rows: [['Mobile visits', pct(m.mob)], ['Mobile conversion', pct(m.mobCr, 1)], ['Desktop conversion', pct(m.deskCr, 1)], ['Sessions, 30 days', n0(m.sessions)]], detail: { why: ['Most visits are on phones.'], how: ['Move price, size and reviews above the fold', 'Test it on half the visitors for 14 days', 'Keep the winner'] } }));
+    if (has(m.pdp, m.atc) && m.pdp > 0) out.push(card(k, name, lane, 'funnel', { agent: 'storefront', sector: 'storefront', type: 'report', roles: ['ecom', 'growth'], badge: ['GA4', 'info'], cta: 'Start the tests',
+      title: `${pct(100 - 100 * m.atc / m.pdp)} of product-page visitors never add to cart`, sub: `In the last 30 days ${pct(m.pdp)} of visitors opened a product page and ${pct(m.atc, 1)} added to cart. The product page is the biggest leak${has(m.checkout) ? ', ahead of checkout' : ''}.`,
+      rows: [['Open a product page', pct(m.pdp)], ['Add to cart', pct(m.atc, 1)], ['Start checkout', has(m.checkout) ? pct(m.checkout, 1) : null], ['Buy', has(m.buy) ? pct(m.buy, 1) : null]], detail: { why: ['Fixes on the product page help every channel at once.'], how: ['Test the first screen of the product page', 'Add size and delivery date near the button', 'Read it after 14 days'] } }));
+    if (has(m.branded) && m.branded >= 40) out.push(card(k, name, lane, 'brand', { agent: 'performance', sector: 'ads', type: 'idea', roles: ['growth', 'founder', 'ecom'], badge: [pct(m.branded), 'info'], cta: 'Launch the ad group',
+      title: `${pct(m.branded)} of your search ad clicks are people typing ${ctx.profile?.name || 'your name'}`, sub: `Those buyers mostly know you already. New buyers search the category${m.terms?.[0] ? `, like “${m.terms[0]}”` : ''}; one category ad group on a small budget tests that.`,
+      rows: [['Clicks on your own name', pct(m.branded)], ['Search spend, 30 days', has(m.gspend) ? F.big(m.gspend) : null], ['Return on search spend', has(m.groas) ? `${m.groas.toFixed(1)}x` : null], ['Term to test', m.terms?.[0]]], detail: { why: ['Branded clicks would mostly come anyway.'], how: ['Start with three category terms', 'Send them to the best-selling product page', 'Read cost per first order after 14 days'] } }));
+    const stats = [has(m.sessions) && ['Sessions, last 30 days', n0(m.sessions)], has(m.cr) && ['Conversion (GA4)', pct(m.cr, 2)], has(m.mob) && ['Mobile share of visits', pct(m.mob)], has(m.gspend) && ['Search spend, 30 days', F.big(m.gspend)], has(m.branded) && ['Search clicks on your name', pct(m.branded)]].filter(Boolean).slice(0, 4);
+    const changed = [has(m.sessions) && `Cards read your ${n0(m.sessions)} sessions from GA4`, has(m.pdp, m.atc) && `The product-page leak: ${pct(100 - 100 * m.atc / m.pdp)} never add to cart`, has(m.branded) && `${pct(m.branded)} of search clicks are your own name`].filter(Boolean);
+    const ledger = [has(m.sessions) && L('ga4.sessions.30d', 'Sessions, last 30 days (GA4)', n0(m.sessions), m.sessions, src), has(m.cr) && L('ga4.conversion', 'Purchases per session, 30 days (GA4)', pct(m.cr, 2), m.cr, src), has(m.mob) && L('ga4.mobile.share', 'Mobile share of sessions', pct(m.mob), m.mob, src),
+      has(m.pdp, m.atc) && L('ga4.pdp.to.cart', 'Product page to add-to-cart', pct(100 * m.atc / m.pdp), 100 * m.atc / m.pdp, src), m.mix?.length && L('ga4.channels', 'Sessions by channel, 30 days', m.mix.map(([c2, s]) => `${c2} ${s.toFixed(0)}%`).join('; '), null, src),
+      has(m.gspend) && L('gads.spend.30d', 'Google Ads spend, last 30 days', F.big(m.gspend), m.gspend, src), has(m.groas) && L('gads.roas', 'Google Ads conversion value per spend', `${m.groas.toFixed(1)}x`, m.groas, src), has(m.branded) && L('gads.branded.share', 'Branded share of search ad clicks', pct(m.branded), m.branded, src)].filter(Boolean);
+    return { metrics: m, stats, changed, cards: out, ledger, notes };
+  }
+};

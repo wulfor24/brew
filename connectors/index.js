@@ -1,21 +1,35 @@
-// DUMMY: connected accounts. Every connector is simulated (connectors/sim.js): connecting is one tap, nothing signs in to a
-// real platform and nothing is read from or written to a real account. The numbers, stats and cards come from the brand's
-// real read (demo-data.js demoFor), so they look like that brand's own accounts.
-// The real build needs, per platform: OAuth (or an API key), a token vault, a proof that the account is the brand's, a
-// daily sync and the platform approvals (Meta Marketing API, Shopify app review, Google verification). See DUMMY.md.
-// What stays real: who may connect (the brand's team, or the first official email on an unclaimed brand, who claims it),
-// and the shape everything downstream reads (live cards, stats, ledger entries for the moves, the connected-facts sheet).
+// Connected accounts. On the live site they are real: connect (OAuth or a pasted key), check the account looks like the
+// brand's, read it, and turn what came back into the stats, cards and evidence the feed and the moves already use.
+// Everything an account returns is private to the brand's team: brands/<slug>/private/ (tokens encrypted in the vault, the
+// read in live/<id>.json, the state in connections.json). The marketplace read is public data and is shown to all.
+// DUMMY: the demo site (DEMO_MODE=1) simulates every account (connectors/sim.js, built from the brand's real read), and
+// Slack is simulated everywhere (Brew sending was cut, SCOPE.md). Those rows are marked demo and are never evidence.
+// Connecting is also the easiest way to claim a brand: the first work email at its domain to connect becomes its admin.
+import crypto from 'node:crypto';
+import shopify from './shopify.js';
+import meta from './meta.js';
+import google from './google.js';
+import klaviyo from './klaviyo.js';
+import reviews from './reviews.js';
+import market from './market.js';
 import { createSim, SIM_IDS, NAME } from './sim.js';
-import { sk } from '../demo-mode.js';
+import { createVault } from '../vault.js';
+import { DEMO, sk } from '../demo-mode.js';
 
+const REAL = { shopify, meta, google, klaviyo, reviews, marketplaces: market };
 export const CONNECTORS = Object.fromEntries(SIM_IDS.map((id) => [id, { id, name: NAME[id] }]));
 const PUBLIC = new Set(['marketplaces']); // a marketplace read is public data, shown to every viewer
+const SYNC_EVERY = 24 * 3600e3, MARKET_EVERY = 24 * 3600e3;
+// DUMMY: simulated on the demo site, and Slack (no real connector) everywhere
+export const simOnly = (id) => DEMO || !REAL[id];
 
-export function createConnectors({ packs, auth, builder, log = console, onLive = () => {} }) {
-  const SIM = createSim({ packs, log });
+export function createConnectors({ packs, auth, builder, treg = null, log = console, onLive = () => {} }) {
+  const SIM = createSim({ packs, log }), vault = createVault(packs), deps = { treg };
   const json = (res, code, body) => { res.writeHead(code, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(JSON.stringify(body)); };
   const redirect = (res, to) => { res.writeHead(302, { location: to, 'cache-control': 'no-store' }); res.end(); };
   const body = (req) => new Promise((r) => { let d = ''; req.on('data', (c) => (d += c)); req.on('end', () => { try { r(JSON.parse(d || '{}')); } catch { r({}); } }); });
+  const base = (req) => process.env.PUBLIC_URL || auth.baseOf(req);
+  const cbUrl = (req, id) => `${base(req)}/connect/${id}/callback`;
 
   /* ---------- per-brand state: brands/<slug>/private/connections.json, the read in [private/]live/<id>.json ---------- */
   const CF = 'private/connections.json';
@@ -30,38 +44,75 @@ export function createConnectors({ packs, auth, builder, log = console, onLive =
     for (const [id, s] of Object.entries(cs)) if (s?.state === 'live') { const d = await packs.getJSON(slug, liveName(id), null); if (d) live[id] = d; }
     const x = { at: Date.now(), live, conns: cs }; cache.set(sk(slug), x); return x;
   }
+  // the brand, as the real connectors need it: its site, the Shopify store and Facebook page the read found, its first lane
+  async function ctxOf(slug) {
+    const profile = (await packs.getJSON(slug, 'profile.json', {})) || {}, ledger = (await packs.getJSON(slug, 'ledger.json', [])) || [], seed = (await packs.getJSON(slug, 'seed.json', {})) || {};
+    const plat = (Array.isArray(ledger) ? ledger : []).find((e) => e.key === 'site.platform'), shop = (String(plat?.note || '').match(/([a-z0-9-]+\.myshopify\.com)/) || [])[1] || null;
+    return { slug, host: profile.host || (await packs.getJSON(slug, 'status.json', {}))?.host, profile, shopifyShop: shop, pageId: profile.ads?.own?.pageId || null, lane: Object.keys(seed.lanes || { core: 1 })[0] };
+  }
 
-  /* ---------- connect (simulated), sync, disconnect ---------- */
-  // DUMMY: the account is "in" the moment it is asked for; the real build proves it belongs to the brand first
-  async function finish(slug, id, _creds, me) {
+  /* ---------- connect, check, read ---------- */
+  // who may connect: the brand's team, or the first official email on an unclaimed brand, who claims it by connecting
+  async function mayUse(slug, id, me) {
     const info = await auth.claimInfo(slug, me);
-    let use = !!info.role, claimed = false;
-    if (!use && info.eligible) { const r = await auth.claim(slug, me, `Connected ${NAME[id]}`); use = claimed = !!r.ok; }
-    if (!use) return { ok: false, state: 'needs_work_email', error: noGen(info, info.host) };
-    await editC(slug, (c) => { c[id] = { state: 'syncing', at: Date.now(), by: me.email, account: null, verified: true, sim: true }; });
+    if (info.role) return { ok: true, claimed: false };
+    if (info.eligible) { const r = await auth.claim(slug, me, `Connected ${NAME[id]}`); if (r.ok) return { ok: true, claimed: true }; }
+    return { ok: false, info };
+  }
+  async function finish(slug, id, creds, me) {
+    const may = await mayUse(slug, id, me);
+    /* nothing is kept for someone who may not use it: no token in the vault, no change to the brand's connections */
+    if (!may.ok) return { ok: false, state: 'needs_work_email', error: noGen(may.info, may.info.host) };
+    if (simOnly(id)) {
+      await editC(slug, (c) => { c[id] = { state: 'syncing', at: Date.now(), by: me.email, account: null, verified: true, sim: true }; });
+      cache.delete(sk(slug));
+      return { ...(await sync(slug, id)), claimed: may.claimed };
+    }
+    const C = REAL[id], ctx = await ctxOf(slug);
+    let proof = { ok: false, why: '' };
+    try { proof = C.owns ? await C.owns(creds, ctx) : { ok: true }; } catch (e) { proof = { ok: false, why: e.message.slice(0, 160) }; }
+    /* proof is a sanity check, shown to the team, never ownership: ownership is the team (or the claim) above */
+    if (!PUBLIC.has(id)) await vault.save(slug, id, creds);
+    await editC(slug, (c) => { c[id] = { state: 'syncing', at: Date.now(), by: me.email, account: proof.account || c[id]?.account || null, verified: !!proof.ok, why: proof.why || '' }; });
     cache.delete(sk(slug));
-    return { ...(await sync(slug, id)), claimed };
+    return { ...(await sync(slug, id)), claimed: may.claimed, verified: !!proof.ok, why: proof.ok ? null : proof.why || null };
   }
   const noGen = (a, host) => (a.claimed ? 'This brand is claimed. Ask its team to invite you.' : `Connect with your work email at ${host}. The first person from ${host} to connect becomes the brand’s admin.`);
+  /* an OAuth sign-in waiting for its account to be picked: one per person (the key carries their email), 30 minutes */
+  const PENDING_MS = 30 * 60e3;
+  const pendKey = (id, email) => `${id}-pending-${crypto.createHash('sha256').update(String(email || '').toLowerCase()).digest('hex').slice(0, 20)}`;
+  const savePending = (slug, id, email, creds) => vault.save(slug, pendKey(id, email), { creds, email: String(email).toLowerCase(), at: Date.now() });
+  const loadPending = async (slug, id, email) => { const x = await vault.load(slug, pendKey(id, email)); return x?.creds && x.email === String(email).toLowerCase() && Date.now() - (+x.at || 0) < PENDING_MS ? x.creds : null; };
+
+  async function read(slug, id) {
+    if (simOnly(id)) return { ...(await SIM.sync(slug, id)), sim: true };
+    const C = REAL[id]; let creds = PUBLIC.has(id) ? {} : await vault.load(slug, id);
+    if (!creds) throw new Error('Not connected: connect it again.');
+    if (C.fresh) { const f = await C.fresh(creds); if (f !== creds) { creds = f; await vault.save(slug, id, creds); } }
+    return C.sync(creds, await ctxOf(slug), deps);
+  }
   async function sync(slug, id) {
     await editC(slug, (c) => { c[id] = { ...(c[id] || {}), state: 'syncing', syncAt: Date.now() }; });
     try {
-      const d = await SIM.sync(slug, id);
-      const data = { at: Date.now(), account: d.account, stats: d.stats, changed: d.changed, cards: d.cards, ledger: d.ledger, notes: d.notes || [], sim: true };
+      const d = await read(slug, id);
+      const data = { at: Date.now(), account: d.account || (await conns(slug))[id]?.account || null, stats: d.stats || [], changed: d.changed || [], cards: d.cards || [], ledger: d.ledger || [], notes: d.notes || [], ...(d.sim ? { sim: true } : {}) };
       await packs.put(slug, liveName(id), data);
-      await editC(slug, (c) => { c[id] = { ...(c[id] || {}), state: 'live', lastSync: data.at, error: null, account: data.account, notes: data.notes }; });
+      await editC(slug, (c) => { c[id] = { ...(c[id] || {}), state: 'live', lastSync: data.at, error: null, account: data.account || c[id]?.account, notes: data.notes }; });
       cache.delete(sk(slug));
       await builder.liveConnected?.(slug, id, data.ledger, true, { public: PUBLIC.has(id) }).catch((e) => log.warn('[connect] moves', e.message));
       onLive(slug);
-      return { ok: true, state: 'live', stats: data.stats, changed: data.changed, cards: data.cards.length, notes: data.notes, account: data.account, dummy: true };
+      log.log?.(`[connect] ${slug} ${id}: ${data.cards.length} cards, ${data.ledger.length} facts${d.sim ? ' (simulated)' : ''}`);
+      return { ok: true, state: 'live', stats: data.stats, changed: data.changed, cards: data.cards.length, notes: data.notes, account: data.account, dummy: simOnly(id) };
     } catch (e) {
       log.warn('[connect] sync', slug, id, e.message);
-      await editC(slug, (c) => { c[id] = { ...(c[id] || {}), state: 'error', error: e.message.slice(0, 200) }; });
+      /* an account that read before keeps its last read and says what went wrong; a new one shows the error */
+      await editC(slug, (c) => { c[id] = { ...(c[id] || {}), state: c[id]?.lastSync ? 'live' : 'error', error: e.message.slice(0, 200) }; });
       cache.delete(sk(slug));
       return { ok: false, error: e.message.slice(0, 200) };
     }
   }
   async function disconnect(slug, id) {
+    if (!simOnly(id) && !PUBLIC.has(id)) await vault.drop(slug, id);
     await editC(slug, (c) => { delete c[id]; });
     await packs.put(slug, liveName(id), { at: Date.now(), gone: true, stats: [], changed: [], cards: [], ledger: [] });
     cache.delete(sk(slug));
@@ -70,54 +121,113 @@ export function createConnectors({ packs, auth, builder, log = console, onLive =
   }
 
   /* ---------- what the page needs ---------- */
-  const avail = () => Object.fromEntries(SIM_IDS.map((id) => [id, { demo: true, dummy: true, modes: ['demo'], ready: true, oauth: false, fields: [], picks: false, proof: false }]));
+  const SIM_AVAIL = { demo: true, dummy: true, modes: ['demo'], ready: true, oauth: false, fields: [], picks: false, proof: false };
+  const avail = () => Object.fromEntries(SIM_IDS.map((id) => {
+    if (simOnly(id)) return [id, SIM_AVAIL];
+    const C = REAL[id];
+    return [id, { modes: C.modes, ready: !!C.ready(deps), oauth: C.modes.includes('oauth') && !!C.ready(deps) && (C.oauthOn ? !!C.oauthOn() : true), picks: !!C.picks, proof: C.proof !== false, help: C.help?.() || null,
+      fields: (C.keyFields || []).map(({ k, label, hint, secret, optional }) => ({ k, label, hint, secret: !!secret, optional: !!optional })) }];
+  }));
   async function liveView(slug, me) {
     const access = await auth.claimInfo(slug, me), member = !!access.role, L = await liveOf(slug), out = {};
     for (const [id, s] of Object.entries(L.conns)) {
       if (!member && !PUBLIC.has(id)) continue;
       const d = L.live[id];
-      out[id] = { state: s.state, at: s.at, lastSync: s.lastSync || null, by: member ? s.by : undefined, account: s.account?.name || null, error: s.error || null, notes: s.notes || [], dummy: true,
-        ...(d && !d.gone ? { stats: d.stats, changed: d.changed, cards: d.cards.length } : {}) };
+      out[id] = { state: s.state, at: s.at, lastSync: s.lastSync || null, by: member ? s.by : undefined, account: s.account?.name || null, error: s.error || null, why: member && !s.verified ? s.why || null : null, notes: s.notes || [], dummy: simOnly(id) || !!d?.sim,
+        ...(d && !d.gone ? { stats: d.stats, changed: d.changed, cards: (d.cards || []).length } : {}) };
     }
-    return { me, signin: auth.signinOn(), access, full: auth.isAdmin(me), conns: out, avail: avail(), dummy: true };
+    const ctx = await ctxOf(slug);
+    return { me, signin: auth.signinOn(), access, full: auth.isAdmin(me), conns: out, avail: avail(), shop: member ? ctx.shopifyShop : null, dummy: DEMO };
   }
   // for feed-service: the connector cards and connected ids a viewer of this brand gets (team only, except marketplaces)
   async function forViewer(slug, member) {
     const L = await liveOf(slug), cards = [], on = {};
-    for (const [id, d] of Object.entries(L.live)) { if (d.gone) continue; if (!member && !PUBLIC.has(id)) continue; on[id] = true; cards.push(...(d.cards || []).map((c) => ({ ...c, dummy: true, ...(PUBLIC.has(id) ? { liveOnly: false, publicLive: true } : {}) }))); }
+    for (const [id, d] of Object.entries(L.live)) { if (d.gone) continue; if (!member && !PUBLIC.has(id)) continue; on[id] = true;
+      cards.push(...(d.cards || []).map((c) => ({ ...c, ...(simOnly(id) || d.sim ? { dummy: true } : {}), ...(PUBLIC.has(id) ? { liveOnly: false, publicLive: true } : {}) }))); }
     const ledger = {}; if (member) for (const d of Object.values(L.live)) if (!d.gone) for (const e of d.ledger || []) ledger[e.key] = { v: e.v, n: e.n, at: d.at, label: e.label };
     return { cards, on, privMoves: [], ledger };
   }
 
   /* ---------- routes ---------- */
+  const slugOf = (x) => String(x || '').replace(/[^a-z0-9-]/g, '');
   async function handle(req, res, u) {
     const p = u.pathname;
-    // the connect button's link: connects the simulated account and returns to the Connectors view
-    const sm = p.match(/^\/connect\/([a-z]+)\/start$/);
+    const sm = p.match(/^\/connect\/([a-z]+)\/(start|callback)$/);
     if (sm && req.method === 'GET') {
-      const id = sm[1], slug = String(u.searchParams.get('brand') || '').replace(/[^a-z0-9-]/g, ''), me = auth.user(req);
+      const [, id, step] = sm, me = auth.user(req);
       if (!CONNECTORS[id]) return json(res, 404, { error: 'unknown connector' }), true;
-      if (!me) return redirect(res, `/auth/google?next=${encodeURIComponent(`/${slug}#v=connectors&cx=${id}`)}`), true;
-      const r = await finish(slug, id, null, me);
-      return redirect(res, `/${slug}#v=connectors&cx=${id}&${r.ok ? 'done=1' : `cxerr=${encodeURIComponent(r.error || 'Could not connect')}`}`), true;
+      if (step === 'start') {
+        const slug = slugOf(u.searchParams.get('brand'));
+        if (!me) return redirect(res, `/auth/google?next=${encodeURIComponent(`/${slug}#v=connectors&cx=${id}`)}`), true;
+        if (simOnly(id)) { const r = await finish(slug, id, null, me); return redirect(res, `/${slug}#v=connectors&cx=${id}&${r.ok ? 'done=1' : `cxerr=${encodeURIComponent(r.error || 'Could not connect')}`}`), true; }
+        const C = REAL[id]; if (!C.modes.includes('oauth')) return json(res, 404, { error: 'This one connects with a key.' }), true;
+        const access = await auth.claimInfo(slug, me); if (!access.host) return json(res, 404, { error: 'unknown brand' }), true;
+        if (!access.gen) return redirect(res, `/${slug}#v=connectors&cxerr=${encodeURIComponent(noGen(access, access.host))}`), true;
+        if (!C.ready(deps) || (C.oauthOn && !C.oauthOn())) return redirect(res, `/${slug}#v=connectors&cx=${id}&cxerr=${encodeURIComponent(`Signing in to ${C.name} is not switched on yet. Use the key option instead.`)}`), true;
+        const state = auth.sign({ slug, id, email: me.email, n: crypto.randomBytes(9).toString('base64url') }, 900, 'connect');
+        try { return redirect(res, C.authorize({ state, redirect: cbUrl(req, id), shop: u.searchParams.get('shop') || (await ctxOf(slug)).shopifyShop })), true; }
+        catch (e) { return redirect(res, `/${slug}#v=connectors&cx=${id}&cxerr=${encodeURIComponent(e.message)}`), true; }
+      }
+      if (simOnly(id)) return json(res, 404, { error: 'unknown connector' }), true;
+      const C = REAL[id], st = auth.verify(u.searchParams.get('state'), 'connect');
+      if (!st || !me || st.email !== me.email || st.id !== id) return redirect(res, '/?signin=failed'), true;
+      const back = (q) => redirect(res, `/${st.slug}#v=connectors&cx=${id}&${q}`);
+      /* the brand may have been claimed since this sign-in started: only its team goes on */
+      const access = await auth.claimInfo(st.slug, me); if (!access.gen) return back(`cxerr=${encodeURIComponent(noGen(access, access.host))}`), true;
+      try {
+        const creds = await C.exchange({ query: u.searchParams, redirect: cbUrl(req, id) });
+        if (C.picks) { await savePending(st.slug, id, me.email, creds); return back('pick=1'), true; }
+        const r = await finish(st.slug, id, creds, me);
+        return back(r.ok ? 'done=1' : `cxerr=${encodeURIComponent(r.error || 'Could not connect')}`), true;
+      } catch (e) { log.warn('[connect] callback', id, e.message); return back(`cxerr=${encodeURIComponent(e.message.slice(0, 160))}`), true; }
     }
     const lm = p.match(/^\/api\/brands\/([a-z0-9-]+)\/live$/);
     if (lm && req.method === 'GET') return json(res, 200, await liveView(lm[1], auth.user(req))), true;
-    const cm = p.match(/^\/api\/brands\/([a-z0-9-]+)\/connect\/([a-z]+)$/);
-    if (cm && req.method === 'POST') {
-      const [, slug, id] = cm, me = auth.user(req);
+    const cm = p.match(/^\/api\/brands\/([a-z0-9-]+)\/connect\/([a-z]+)(\/options)?$/);
+    if (cm) {
+      const [, slug, id, opt] = cm, me = auth.user(req);
       if (!CONNECTORS[id]) return json(res, 404, { error: 'unknown connector' }), true;
       if (!me) return json(res, 401, { error: 'Sign in with Google first.', signin: true }), true;
       const access = await auth.claimInfo(slug, me); if (!access.host) return json(res, 404, { error: 'unknown brand' }), true;
       if (!access.gen) return json(res, 403, { error: noGen(access, access.host), demo: true, host: access.host }), true;
-      const b = await body(req), member = !!access.role;
-      if (['demo', 'key', 'select', 'connect'].includes(b.action)) return json(res, 200, await finish(slug, id, null, me)), true;
-      if (b.action === 'sync') { if (!member && !PUBLIC.has(id)) return json(res, 403, { error: 'Only the brand’s team can sync it.' }), true; return json(res, 200, await sync(slug, id)), true; }
+      const member = !!access.role, C = simOnly(id) ? null : REAL[id];
+      if (opt && req.method === 'GET') { if (!C?.options) return json(res, 404, { error: 'unknown connector' }), true;
+        const pend = await loadPending(slug, id, me.email); if (!pend) return json(res, 200, { options: [], error: 'Connect again: the sign-in expired.' }), true;
+        try { return json(res, 200, { options: await C.options(pend) }), true; } catch (e) { return json(res, 200, { options: [], error: e.message.slice(0, 160) }), true; } }
+      if (req.method !== 'POST') return false;
+      const b = await body(req);
+      if (b.action === 'sync') {
+        if (PUBLIC.has(id)) { const s = (await liveOf(slug, true)).conns[id];
+          if (s?.lastSync && s.state === 'live' && Date.now() - s.lastSync < 10 * 60e3) return json(res, 200, { ok: true, state: 'live', note: 'Read a few minutes ago' }), true;
+          if (C && !C.ready(deps)) return json(res, 200, { ok: false, error: 'The marketplace read is off on this server.' }), true;
+          if (!s) return json(res, 200, await finish(slug, id, {}, me)), true;
+          return json(res, 200, await sync(slug, id)), true; }
+        if (!member) return json(res, 403, { error: 'Only the brand’s team can sync it.' }), true; return json(res, 200, await sync(slug, id)), true; }
       if (b.action === 'disconnect') { if (!member) return json(res, 403, { error: 'Only the brand’s team can disconnect it.' }), true; return json(res, 200, await disconnect(slug, id)), true; }
+      if (!C) { if (['demo', 'key', 'select', 'connect'].includes(b.action)) return json(res, 200, await finish(slug, id, null, me)), true; return json(res, 400, { error: 'unknown action' }), true; }
+      if (b.action === 'key') { if (!C.fromKey) return json(res, 400, { error: 'This one connects by signing in.' }), true;
+        try { return json(res, 200, await finish(slug, id, await C.fromKey(b.fields || {}), me)), true; } catch (e) { return json(res, 200, { ok: false, error: e.user ? e.message : `Could not connect: ${e.message.slice(0, 140)}` }), true; } }
+      if (b.action === 'select') { if (!C.select) return json(res, 400, { error: 'unknown action' }), true;
+        const pend = await loadPending(slug, id, me.email); if (!pend) return json(res, 200, { ok: false, error: 'Connect again: the sign-in expired.' }), true;
+        await vault.drop(slug, pendKey(id, me.email)); return json(res, 200, await finish(slug, id, C.select(pend, b.choice || {}), me)), true; }
+      if (b.action === 'connect' && PUBLIC.has(id)) return json(res, 200, await finish(slug, id, {}, me)), true;
       return json(res, 400, { error: 'unknown action' }), true;
     }
     return false;
   }
 
-  return { handle, sim: SIM, liveOf, forViewer, drop: (slug) => cache.delete(sk(slug)), liveView, sync, disconnect, finish, CONNECTORS };
+  /* ---------- keep the real ones fresh: once a day for each connected brand ---------- */
+  async function tick() {
+    if (DEMO) return;
+    for (const { slug } of await packs.list().catch(() => [])) {
+      const cs = await conns(slug).catch(() => ({}));
+      for (const [id, s] of Object.entries(cs)) {
+        if (s?.state !== 'live' || simOnly(id)) continue;
+        if (Date.now() - (s.lastSync || 0) > (PUBLIC.has(id) ? MARKET_EVERY : SYNC_EVERY)) await sync(slug, id).catch(() => {});
+      }
+    }
+  }
+  if (!DEMO && !process.env.BUILD_RESUME_OFF) { const t = setInterval(() => tick().catch((e) => log.warn('[connect] tick', e.message)), 3600e3); t.unref?.(); setTimeout(() => tick().catch(() => {}), 90e3).unref?.(); }
+
+  return { handle, sim: SIM, liveOf, forViewer, drop: (slug) => cache.delete(sk(slug)), liveView, sync, disconnect, finish, tick, CONNECTORS };
 }

@@ -433,9 +433,8 @@ const genOk = async (req, slug) => { const dev = !process.env.K_SERVICE && Strin
   if (!slug || slug === DEFAULT) return auth.isAdmin(auth.user(req)); return !!(await viewerOf(req, slug)).gen; };
 const demoErr = (host) => ({ error: `Demo mode: sign in with your work email${host ? ` at ${host}` : ''} to make this.`, demo: true, host: host || null });
 let connectors = null;
-/* DUMMY: connected accounts are simulated (connectors/sim.js, from the brand's real read). The real build needs OAuth, a token vault and
-   per-platform syncs (see DUMMY.md). Connecting only ever touches the simulated account. */
-connectors = createConnectors({ packs, auth, builder, log: console, onLive: (slug) => { MEMO.clear(); feedSvc?.refreshLive(slug).catch(() => {}); } });
+/* real connected accounts on the live site (read only, tokens in the vault); DUMMY: simulated on the demo site and for Slack (connectors/index.js simOnly) */
+connectors = createConnectors({ packs, auth, builder, treg, log: console, onLive: (slug) => { MEMO.clear(); feedSvc?.refreshLive(slug).catch(() => {}); } });
 /* a shared jam link: anyone can look; signing in makes a person a guest of that one jam (feed-service guestOk), never a
    member of the brand's team. Team access comes only from an owner's invite or the brand's work email (auth.js) */
 feedSvc = createFeedService({ /* tagging an email in a jam invites them to the team, with the tagger's own views (any teammate may invite to their views) */

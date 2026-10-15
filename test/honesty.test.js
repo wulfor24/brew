@@ -135,3 +135,10 @@ test('outside the team on live, the onboarding stream and the brand status give 
   assert.match(src('feed-service.js'), /\\\/onboarding\$\/\.test\(u\.pathname\)\) \{ res\.writeHead\(200/);
   assert.match(src('server.js'), /const \{ pdfs, zips, statics, usd, proBy, proAt, \.\.\.pub \} = s/);
 });
+
+test('a real connector row is evidence; a simulated one never is', async () => {
+  const { L } = await import('../connectors/common.js');
+  const real = L('shopify.orders.30d', 'Orders, last 30 days', '120', 120, 'Shopify · x.myshopify.com');
+  assert.equal(real.method, 'account:shopify'); assert.equal(simulated(real), false); assert.equal(realRows([real]).length, 1);
+  assert.equal(simulated({ ...real, demo: true }), true); assert.equal(simulated({ ...real, method: 'connected account' }), true);
+});
