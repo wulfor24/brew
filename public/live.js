@@ -35,7 +35,9 @@
   const adminName = () => (L.access?.team || []).find((x) => x.role === 'owner')?.name || 'your admin';
   const isLive = (id) => L.conns?.[id]?.state === 'live' && (L.conns[id].stats || []).length > 0;
   const B = () => A()?.B || window.FEED_DATA?.[slug];
-  const nm = (id) => B()?.connectors?.[id]?.name || id;
+  /* the platform's own name on the sheets (a brand pack may label it "Reviews on judge.me" or "amazon.in") */
+  const PLAT = { shopify: 'Shopify', meta: 'Meta Ads', google: 'Google Ads + GA4', klaviyo: 'Klaviyo', reviews: 'Judge.me' };
+  const nm = (id) => PLAT[id] || B()?.connectors?.[id]?.name || id;
   const host = () => L.access?.host || B()?.brand?.host || '';
 
   /* ---------- at boot: real accounts replace the demo numbers on the connectors ---------- */
@@ -77,23 +79,75 @@
       if (av.modes.includes('public')) action = av.ready ? `<div class="cx-btns"><button class="btn btn-primary" data-pub>Read the listings now</button></div>` : `<p class="lc-err">The marketplace read is off on this server right now.</p>`;
       else if (!oauth && !key) action = `<p class="lc-note"><span>Connecting ${esc(nm(id))} is being switched on. Brew’s team will send you a link to connect it.</span></p>`;
       else {
-        const shopF = id === 'shopify' && oauth ? `<label class="lc-f"><small>Store address</small><input data-shop value="${esc(L.shop || '')}" placeholder="your-store.myshopify.com"></label>` : '';
-        const shopHelp = id === 'shopify' ? `<p class="lc-note"><span>In the Shopify Dev Dashboard, create an app for your store with read_products, read_inventory, read_orders and read_customers, install it, then paste its Client ID and Secret here.</span></p>` : '';
-        const help = av.help ? `<p class="lc-note"><span>${esc(av.help)}</span></p>` : '';
-        const keyForm = key ? `<details class="lc-key"${oauth ? '' : ' open'}><summary>${oauth ? (id === 'shopify' ? 'Or use your own app' : id === 'google' ? 'Or GA4 only, by property ID' : 'Or paste a key') : id === 'google' ? 'Connect GA4' : 'Paste the key'}</summary>${shopHelp}${help}
-          ${av.fields.map((f) => `<label class="lc-f"><small>${esc(f.label)}</small><input data-k="${f.k}" ${f.secret ? 'type="password" autocomplete="off"' : ''} placeholder="${esc(f.hint || '')}" ${f.k === 'shop' ? `value="${esc(L.shop || '')}"` : ''}></label>`).join('')}
-          <button class="btn btn-primary sm" data-key>Connect</button></details>` : '';
-        action = `${oauth ? `${shopF}<div class="cx-btns"><button class="btn btn-primary" data-oauth>Connect with ${esc(nm(id).split(' ')[0])}</button></div>` : ''}${keyForm}`;
+        /* a guided checklist: one step open at a time, each with the one link, copy or paste it needs; the last step connects */
+        const g = guide(id, av, oauth), fieldsHtml = key ? fieldsOf(id, av) : '';
+        const oauthBtn = oauth ? `${id === 'shopify' ? field({ k: 'shop', label: 'Store address', hint: 'your-store.myshopify.com' }, 'data-shop') : ''}<div class="cx-btns"><button class="btn btn-primary" data-oauth>Continue with ${esc(nm(id).split(' ')[0])}${ic('right', 's16')}</button></div>` : '';
+        const steps = g.steps.map((st, i) => `<li class="gd-s${i === 0 ? ' is-open' : ''}" data-gi="${i}"><button type="button" class="gd-h" data-gh="${i}"><span class="gd-n"><b>${i + 1}</b>${ic('check', 's12')}</span><span class="gd-t">${esc(st.t)}</span></button>
+          <div class="gd-b">${st.p ? `<p>${st.p}</p>` : ''}${st.copy ? `<div class="gd-copy"><code>${esc(st.copy).replace(/,/g, ',<wbr>')}</code><button type="button" class="gd-cp" data-copy="${esc(st.copy)}">${ic('copy', 's14')}<span>Copy</span></button></div>` : ''}
+            ${st.last ? `${st.oauth ? oauthBtn : `${fieldsHtml}<p class="lc-err" data-err hidden></p><div class="cx-btns"><button class="btn btn-primary" data-key>Connect ${esc(nm(id).split(' ')[0])}</button></div>`}` : `<div class="gd-acts">${st.go ? `<a class="btn btn-ghost sm gd-go" href="${esc(st.go[1])}" target="_blank" rel="noopener" data-went>${esc(st.go[0])}${ic('external', 's14')}</a>` : ''}<button type="button" class="btn btn-primary sm" data-gnext="${i}">${st.go ? 'Done' : 'Next'}</button></div>`}</div></li>`).join('');
+        action = g.steps.length === 1 && g.steps[0].oauth ? `${g.steps[0].p ? `<p class="gd-solo">${g.steps[0].p}</p>` : ''}${oauthBtn}` : `<div class="gd-meta"><span>${g.steps.length} steps</span><span>${esc(g.time)}</span></div><ol class="gd">${steps}</ol>${oauth && key ? '' : ''}`;
+        if (oauth && key && g.alt) action = `${oauthBtn}<details class="lc-key"><summary>${esc(g.alt)}</summary><div class="gd-meta"><span>${g.steps.length} steps</span><span>${esc(g.time)}</span></div><ol class="gd">${steps}</ol></details>`;
       }
-      body = `${head(`Connect ${esc(nm(id))}`, esc(opts.why || `Brew reads it to put ${n}’s real numbers on the cards.`))}${claimNote}${err}${action}${fine}`;
+      body = `${head(`Connect ${id === 'google' && !(av.oauth) ? 'Google Analytics' : esc(nm(id))}`, esc(opts.why || `Brew reads it to put ${n}’s real numbers on the cards.`))}${claimNote}${err}${action}${fine}`;
     }
     A().modal(`<div class="sheet cx-sheet lc-sheet"><div class="cx-step" data-s="1">${body}</div><div class="cx-step" data-s="2" hidden><div class="cx-pair sm"><b>Reading ${esc(nm(id))}</b></div><ol class="cx-log"><li><span class="spin"></span>Connecting and reading the last 30 days</li></ol></div><div class="cx-step" data-s="3" hidden></div></div>`, (m) => {
       const $ = (q) => m.querySelector(q); keepPlace(m);
       $('[data-oauth]')?.addEventListener('click', () => { const shop = $('[data-shop]')?.value?.trim(); if (id === 'shopify' && !shop) { $('[data-shop]').focus(); return; } leave(`/connect/${id}/start?brand=${slug}${shop ? `&shop=${encodeURIComponent(shop)}` : ''}`); });
-      $('[data-key]')?.addEventListener('click', () => { const fields = Object.fromEntries([...m.querySelectorAll('[data-k]')].map((i) => [i.dataset.k, i.value.trim()]).filter(([, v]) => v)); run(m, id, post(`/api/brands/${slug}/connect/${id}`, { action: 'key', fields }), opts); });
+      bindGuide(m);
+      $('[data-key]')?.addEventListener('click', () => { const ins = [...m.querySelectorAll('[data-k]')], miss = ins.find((i) => i.required && !i.value.trim() && !i.closest('[hidden]'));
+        if (miss) { miss.focus(); miss.closest('.lc-f')?.classList.add('is-miss'); return; }
+        const fields = Object.fromEntries(ins.map((i) => [i.dataset.k, i.value.trim()]).filter(([, v]) => v)); run(m, id, post(`/api/brands/${slug}/connect/${id}`, { action: 'key', fields }), opts); });
       $('[data-pub]')?.addEventListener('click', () => run(m, id, post(`/api/brands/${slug}/connect/${id}`, { action: 'sync' }), opts));
     });
     return true;
+  }
+  /* ---------- the guided connect: what to do on each platform, in order, with the links that land on the right page ---------- */
+  const SHOPIFY_SCOPES = 'read_products,read_inventory,read_locations,read_orders,read_customers';
+  function guide(id, av, oauth) {
+    const shop = L.shop || '', handle = shop.replace(/\.myshopify\.com$/, ''), n = B().brand.name;
+    const last = (t, p) => ({ t, p, last: true });
+    if (id === 'meta') return { time: 'About 1 minute', steps: [{ t: 'Sign in with Facebook', p: `Facebook asks which businesses and ad accounts Brew may read. Tick ${esc(n)}’s, then pick it here.`, last: true, oauth: true }] };
+    if (id === 'shopify') return oauth && !av.fields?.length ? { time: 'About 1 minute', steps: [{ t: 'Sign in with Shopify', last: true, oauth: true }] } : { time: 'About 3 minutes', alt: 'Or use your own app', steps: [
+      { t: 'Create an app called Brew', p: 'In Shopify’s Dev Dashboard, click <b>Create app</b>, then <b>Start from Dev Dashboard</b>, and name it Brew.', go: ['Open the Dev Dashboard', 'https://dev.shopify.com/dashboard'] },
+      { t: 'Give it read-only access', p: 'Open <b>Versions</b> → <b>Create a version</b>. Paste these into <b>Scopes</b>, then <b>Release</b>.', copy: SHOPIFY_SCOPES },
+      { t: `Install it on ${shop ? esc(shop) : 'your store'}`, p: 'Back on the app’s home, click <b>Install app</b> and choose your store.' },
+      last('Paste the app’s keys', 'In the app’s <b>Settings</b>, copy the Client ID and Secret.') ] };
+    if (id === 'google') return { time: 'About 1 minute', alt: 'Or GA4 only, by property ID', steps: [
+      ...(av.email ? [{ t: 'Add Brew to GA4 as a Viewer', p: 'In GA4 open <b>Admin</b> → <b>Property access management</b> → <b>+</b> → <b>Add users</b>. Paste this email, pick <b>Viewer</b>, then <b>Add</b>.', copy: av.email, go: ['Open GA4 Admin', 'https://analytics.google.com/analytics/web/#/admin'] }] : []),
+      last('Paste the property ID', 'It’s under <b>Admin</b> → <b>Property details</b>. The GA4 page’s address works too.') ] };
+    if (id === 'klaviyo') return { time: 'About 1 minute', steps: [
+      { t: 'Create a read-only key', p: 'Click <b>Create Private API Key</b>, name it Brew, choose <b>Read-only key</b>, then <b>Create</b>.', go: ['Open Klaviyo API keys', 'https://www.klaviyo.com/settings/account/api-keys'] },
+      last('Paste the key', 'Klaviyo shows it once. It starts with pk_.') ] };
+    if (id === 'reviews') return { time: 'About 1 minute', steps: [
+      { t: 'Copy your Judge.me API token', p: 'In Judge.me open <b>Settings</b> → <b>Integrations</b> → <b>Developers</b>, then <b>View API token</b>.', go: ['Open Judge.me', handle ? `https://admin.shopify.com/store/${encodeURIComponent(handle)}/apps/judgeme` : 'https://judge.me/login'] },
+      last('Paste it here', '') ] };
+    return { time: 'About 1 minute', steps: [last(`Connect ${esc(nm(id))}`, av.help ? esc(av.help) : '')] };
+  }
+  const canPaste = () => !!navigator.clipboard?.readText;
+  const field = (f, attr = '') => { const v = f.k === 'shop' ? L.shop || '' : '';
+    return `<label class="lc-f${f.alt ? ' is-alt' : ''}"${f.alt ? ' hidden' : ''}><small>${esc(f.label)}</small><span class="lc-in"><input ${attr || `data-k="${f.k}"`} ${f.secret ? 'type="password" autocomplete="off"' : 'autocomplete="off"'} spellcheck="false" placeholder="${esc(f.hint || '')}" value="${esc(v)}"${f.req ? ' required' : ''}>${canPaste() && f.k !== 'shop' ? `<button type="button" class="lc-paste" data-paste>${ic('paste', 's14')}Paste</button>` : ''}</span></label>`; };
+  function fieldsOf(id, av) {
+    let fs = av.fields.map((f) => ({ ...f, req: !f.optional }));
+    if (id === 'shopify') { fs = fs.map((f) => f.k === 'token' ? { ...f, label: 'Admin API access token', alt: true } : { ...f, req: true }).map((f) => f.k === 'clientId' ? { ...f, hint: 'Client ID' } : f.k === 'clientSecret' ? { ...f, hint: 'Client secret' } : f);
+      return fs.map((f) => field(f)).join('') + '<button type="button" class="linkbtn lc-alt" data-alt>I have an Admin API token instead</button>'; }
+    if (id === 'google') fs = fs.map((f) => ({ ...f, label: 'Property ID or GA4 page address', hint: '123456789' }));
+    if (id === 'reviews') fs = fs.map((f) => f.k === 'token' ? { ...f, hint: 'Your private API token' } : f);
+    if (id === 'klaviyo') fs = fs.map((f) => ({ ...f, hint: 'pk_…' }));
+    return fs.map((f) => field(f)).join('');
+  }
+  function bindGuide(m) {
+    const open = (i) => m.querySelectorAll('.gd-s').forEach((li) => li.classList.toggle('is-open', +li.dataset.gi === i));
+    const done = (i) => { m.querySelector(`.gd-s[data-gi="${i}"]`)?.classList.add('is-done'); open(i + 1); m.querySelector(`.gd-s[data-gi="${i + 1}"] input:not([value]), .gd-s[data-gi="${i + 1}"] input[value=""]`)?.focus({ preventScroll: true }); };
+    m.querySelectorAll('[data-gh]').forEach((b) => b.onclick = () => open(+b.dataset.gh));
+    m.querySelectorAll('[data-gnext]').forEach((b) => b.onclick = () => done(+b.dataset.gnext));
+    m.querySelectorAll('[data-went]').forEach((a) => a.addEventListener('click', () => { const nx = a.closest('.gd-acts')?.querySelector('[data-gnext]'); if (nx) { nx.textContent = 'I’ve done this'; nx.classList.add('is-hot'); } }));
+    m.querySelectorAll('[data-copy]').forEach((b) => b.onclick = async () => { try { await navigator.clipboard.writeText(b.dataset.copy); } catch (e) { const r = document.createRange(); r.selectNodeContents(b.previousElementSibling); getSelection().removeAllRanges(); getSelection().addRange(r); }
+      const t = b.querySelector('span'); t.textContent = 'Copied'; b.classList.add('is-ok'); setTimeout(() => { t.textContent = 'Copy'; b.classList.remove('is-ok'); }, 1600); });
+    m.querySelectorAll('[data-paste]').forEach((b) => b.onclick = async () => { const i = b.previousElementSibling; try { i.value = (await navigator.clipboard.readText()).trim(); i.dispatchEvent(new Event('input')); i.closest('.lc-f')?.classList.remove('is-miss'); } catch (e) { i.focus(); } });
+    m.querySelectorAll('.lc-f input').forEach((i) => i.addEventListener('input', () => i.closest('.lc-f')?.classList.remove('is-miss')));
+    m.querySelector('[data-alt]')?.addEventListener('click', (e) => { const alt = m.querySelectorAll('.lc-f.is-alt'), on = alt[0]?.hidden;
+      m.querySelectorAll('.lc-f').forEach((f) => { if (f.querySelector('[data-k="shop"]')) return; f.hidden = f.classList.contains('is-alt') ? !on : on; f.querySelector('input').required = !f.hidden; });
+      e.target.textContent = on ? 'Use the app’s Client ID and Secret instead' : 'I have an Admin API token instead'; });
   }
   // DUMMY: a simulated account (demo site, Slack)
   function openSim(id, opts = {}) {
@@ -121,11 +175,11 @@
   async function run(m, id, p, opts = {}) {
     const s = (n) => m.querySelector(`[data-s="${n}"]`); s(1).hidden = true; s(2).hidden = false;
     const r = await p;
-    if (!r?.ok) { s(2).hidden = true; s(1).hidden = false; let e = s(1).querySelector('.lc-err'); if (!e) { e = document.createElement('p'); e.className = 'lc-err'; s(1).querySelector('.cx-head').after(e); } e.textContent = r?.error || 'Could not connect.'; return; }
+    if (!r?.ok) { s(2).hidden = true; s(1).hidden = false; let e = s(1).querySelector('[data-err]') || s(1).querySelector('.lc-err'); if (!e) { e = document.createElement('p'); e.className = 'lc-err'; s(1).querySelector('.cx-head').after(e); } e.hidden = false; e.textContent = r?.error || 'Could not connect.'; e.scrollIntoView({ block: 'nearest' }); return; }
     s(2).hidden = true; s(3).hidden = false; s(3).innerHTML = result(id, r);
-    const see = s(3).querySelector('[data-see]');
+    const see = s(3).querySelector('[data-see]'); bindNext(s(3)); L.conns[id] = { ...(L.conns[id] || {}), ...r, state: r.state || 'live' }; overlay(B(), A().S); A().S.conn[id] = true; A().save();
     /* during onboarding, stay on the step: a page load would start the onboarding again from the first screen */
-    if (setupView()) { L.conns[id] = { ...r, state: r.state || 'live' }; overlay(B(), A().S); A().S.conn[id] = true; A().save(); A().cxDone?.(id);
+    if (setupView()) { A().cxDone?.(id);
       see.textContent = 'Continue'; see.onclick = () => A().closeModal(); return; }
     see.onclick = () => { A().closeModal(); location.href = here(opts.then ? location.hash : ''); };
   }
@@ -133,7 +187,12 @@
     ${(r.stats || []).length ? `<div class="cx-read"><small>What Brew read ${simId(id) || r.dummy ? '<span class="dummy-tag">Dummy</span>' : '<em class="is-live">Live</em>'}</small><dl>${r.stats.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl></div>` : ''}
     ${(r.changed || []).length ? `<p class="sh-p">Here is what changed in your feed:</p><ul class="cx-changed">${r.changed.map((t) => `<li>${ic('sparkles', 's14')}${esc(t)}</li>`).join('')}</ul>` : ''}
     ${r.why ? `<p class="lc-note"><span>${esc(r.why)}</span></p>` : ''}${(r.notes || []).length ? `<ul class="lc-notes">${r.notes.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
-    <button class="btn btn-primary" data-see>See it in the feed</button>`;
+    ${nextUp(id)}<button class="btn btn-primary" data-see>See it in the feed</button>`;
+  /* after one account, the rest are a tap away: the brand's other accounts that are not connected yet */
+  const others = (id) => Object.keys(B()?.connectors || {}).filter((k) => k !== id && !(A()?.conn?.(k)) && !(L.conns?.[k]?.state === 'live') && (simId(k) ? k !== 'slack' || L.dummy : L.avail?.[k]?.ready !== false));
+  const nextUp = (id) => { const xs = others(id); if (!xs.length || !boss()) return '';
+    return `<div class="cx-next"><small>Connect another</small><div class="cx-next-l">${xs.map((k) => `<button type="button" class="cx-next-i" data-next-cx="${k}">${A()?.glyph?.(k, 28) || ''}<span>${esc(nm(k))}</span>${ic('right', 's14')}</button>`).join('')}</div></div>`; };
+  const bindNext = (m) => m.querySelectorAll('[data-next-cx]').forEach((b) => b.onclick = () => { const k = b.dataset.nextCx; A().closeModal(); setTimeout(() => A().openConnect(k), 60); });
 
   /* ---------- back from the account's own sign-in (#v=connectors&cx=meta&pick=1 | done=1 | cxerr=…) ---------- */
   async function resume() {
@@ -143,7 +202,7 @@
     if (hp.cxerr) { A().toastLong(`${ic('info', 's16')}${esc(hp.cxerr)}`, 8000); if (id) setTimeout(() => open(id), 300); return; }
     if (hp.pick) return pick(id);
     if (hp.done && L.conns[id]) { A().modal(`<div class="sheet cx-sheet lc-sheet"><div class="cx-step">${result(id, { ...L.conns[id], claimed: L.access?.role === 'owner' && L.access?.members?.length === 1 })}</div></div>`, (m) => { const see = m.querySelector('[data-see]');
-      if (setupView()) { A().S.conn[id] = true; A().save(); A().cxDone?.(id); see.textContent = 'Continue'; see.onclick = () => A().closeModal(); return; }
+      bindNext(m); if (setupView()) { A().S.conn[id] = true; A().save(); A().cxDone?.(id); see.textContent = 'Continue'; see.onclick = () => A().closeModal(); return; }
       see.onclick = () => { A().closeModal(); location.href = here(); }; }); return; }
     if (id && !A().conn(id)) setTimeout(() => A().openConnect(id), 300);
   }

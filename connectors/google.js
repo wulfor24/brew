@@ -44,7 +44,8 @@ async function saToken() {
   const j = await getJSON(`${MD}token?scopes=${encodeURIComponent(SA_SCOPE)}`, { headers: { 'metadata-flavor': 'Google' } }, 'ga4 service account');
   return { token: j.access_token, exp: Date.now() + (j.expires_in || 3600) * 1e3 };
 }
-const propOf = (x) => { const d = String(x || '').trim().replace(/^properties\//, '').replace(/[\s-]/g, ''); return /^\d{5,14}$/.test(d) ? `properties/${d}` : null; };
+// the ID, "properties/123", or the GA4 page address (…/#/a12p345678/… or …p345678/…): the property is the number after p
+const propOf = (x) => { const raw = String(x || '').trim(), u = raw.match(/(?:\/|a\d+)p(\d{5,14})(?!\d)/); const d = u ? u[1] : raw.replace(/^properties\//, '').replace(/[\s-]/g, ''); return /^\d{5,14}$/.test(d) ? `properties/${d}` : null; };
 const userErr = (m) => Object.assign(new Error(m), { user: true });
 
 const rows = (r) => (r?.rows || []).map((x) => ({ d: (x.dimensionValues || []).map((v) => v.value), m: (x.metricValues || []).map((v) => +v.value) }));
