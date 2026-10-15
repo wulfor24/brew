@@ -191,6 +191,9 @@
   Object.keys(S.snoozed).forEach((id) => { S.boost[id] = 30; delete S.snoozed[id]; });
   save();
 
+  /* who is signed in: one copy, from Google sign-in (live.js window.LIVE.me); nothing about a person is typed in twice */
+  const ME = () => window.LIVE?.me || window.LIVE?.user || null;
+  const myFirst = () => { const n = ME()?.name; return n ? String(n).trim().split(/\s+/)[0] : null; };
   const ROLE = () => B.roles[S.viewer.role] || B.roles[Object.keys(B.roles)[0]];
   /* the views this person may use: a team member limited by the brand's admin gets only theirs; everyone else every view */
   const mySeats = () => { const s0 = window.LIVE?.access?.role ? window.LIVE.access.seats : null; return Array.isArray(s0) ? s0.filter((k) => B.roles[k]) : null; };
@@ -504,6 +507,7 @@
         ${row(n >= 10 ? 'done' : g.brief?.state === 'done' ? 'run' : 'wait', 'The first 10 moves', `${Math.min(n, 10)} of 10 · positioning, customers, rivals, pricing`)}${row(n >= N ? 'done' : n >= 10 ? 'run' : 'wait', `All ${N} moves`, `${n} of ${N} written`)}</ol>
         <div class="wt2-bar"><i style="width:${Math.max(4, Math.round(100 * Math.min(n, N) / N))}%"></i></div>`; };
     const mailBox = (em) => em ? `<div class="wt2-mailed">${ic('check', 's16')}<span>We’ll email <b>${esc(em)}</b> when they’re ready.</span><button class="linkbtn" id="wt-change">Change</button></div>`
+      : ME()?.email ? `<form class="wt2-mail" id="wt-mail"><input type="hidden" id="wt-email" value="${esc(ME().email)}"><button class="btn btn-primary sm" type="submit">${ic('bell', 's14')}Email me at ${esc(ME().email)} when they’re ready</button></form>` /* signed in: we know the address */
       : `<form class="wt2-mail" id="wt-mail"><label for="wt-email">Get an email when they’re ready</label><div class="wt2-in"><input type="email" id="wt-email" required placeholder="you@${esc(B.brand.host || 'brand.com')}" autocomplete="email"><button class="btn btn-primary sm" type="submit">Notify me</button></div></form>`;
     root.innerHTML = `<main class="screen wt2"><div class="wt2-wrap">
       <aside class="wt2-side"><div class="wt2-panel">
@@ -546,7 +550,7 @@
       host.innerHTML = `<div class="ob2-wash"></div><div class="pv">
         <p class="pv-cap">Your feed, as ${/^[AEIOU]/.test(R.name) ? 'an' : 'a'} ${esc(R.name.toLowerCase())}</p>
         <div class="pv-win"><div class="pv-bar"><i></i><i></i><i></i><span>${location.host}</span></div>
-          <div class="pv-in"><small>Today</small><h3>${dayPart()}, ${esc(S.viewer.name || R.name)}</h3>
+          <div class="pv-in"><small>Today</small><h3>${dayPart()}, ${esc(myFirst() || R.name)}</h3>
             <div class="pv-tiles"><span class="hot"><b>${Math.max(yes, 1)}</b>need your yes</span><span><b>${cards.length}</b>new ideas</span><span><b>5</b>agents on it</span></div>
             ${cards.slice(0, 3).map(pvCard).join('')}</div></div></div>`; pvLast = host.innerHTML.replace('class="pv"', 'class="pv still"'); };
     let cards = [];
@@ -561,13 +565,11 @@
     view = 'ob';
     window.scrollTo(0, 0); root.innerHTML = shell(`
       <h1 class="ob2-h">Who’s this feed for?</h1><p class="ob2-lede">Pick your seat. The feed ranks and words every card for it. You can switch any time.</p>
-      <label class="ob2-field"><span>Your first name</span><input id="ob-name" placeholder="e.g. Kavya" value="${esc(S.viewer.name)}" autocomplete="given-name"></label>
       <div class="ob2-grid">${seatEntries().map(([k, r]) => `<button class="ob2-tile" data-role="${k}" aria-pressed="${S.viewer.role === k}">${face(r.face)}<b>${esc(r.title)}</b><span>${esc(r.line)}</span><i class="ob2-tick">${ic('check', 's14')}</i></button>`).join('')}</div>
       ${obNav('Next')}`, 1);
     obPreview();
-    $('#ob-name').oninput = (e) => { S.viewer.name = e.target.value.trim(); ls.set(KEY, JSON.stringify(S)); const h = $('.pv-in h3'); if (h) h.textContent = `${dayPart()}, ${S.viewer.name || ROLE().name}`; };
     $$('[data-role]').forEach((b) => b.onclick = () => { S.viewer.role = b.dataset.role; if (!S.viewer.wantsTouched) S.viewer.wants = defaultWants(b.dataset.role); $$('[data-role]').forEach((x) => x.setAttribute('aria-pressed', x === b)); save(); obPreview(); });
-    $('#ob-next').onclick = () => { S.viewer.name = $('#ob-name').value.trim(); save(); wantWhat(); };
+    $('#ob-next').onclick = () => { save(); wantWhat(); };
   };
   const defaultWants = (r) => ({ founder: ['decision', 'competitor'], growth: ['decision', 'report'], brand: ['idea', 'competitor'], ecom: ['decision', 'report'], crm: ['decision', 'idea'] }[r]);
   const wantWhat = () => {
@@ -612,15 +614,36 @@
   const cxRow = (id) => { const c = B.connectors[id];
     return `<div class="cx-row" data-cxrow="${id}">${glyph(id, 40)}<span class="lg-tx"><b>${esc(c.name)}${c.optional ? ' <span class="src-opt">optional</span>' : ''}</b><span>${esc(c.kind)}</span></span>
       ${conn(id) ? `<span class="cx-on">${ic('check', 's14')} Connected</span>` : `<button class="btn btn-primary sm" data-cx="${id}">Connect</button>`}</div>`; };
+  /* the last step: invite the people you'll jam with. They get an email and see only the views you pick. Admins invite;
+     a teammate sees who's already here. Nothing about anyone is typed twice: you are who you signed in as */
+  const IV = { sent: [], busy: false, seat: null };
   const teamStep = () => {
+    const ac = window.LIVE?.access, boss = ['owner', 'admin'].includes(ac?.role), team = (ac?.team || []).filter((x) => x.email !== ME()?.email);
+    if (!GEN || !ME() || !ac?.role) return finishOnboarding(); /* only a brand's own team brings people in */
+    const seats = Object.entries(B.roles || {}); IV.seat ||= seats.find(([k]) => k !== S.viewer.role)?.[0] || seats[0]?.[0];
+    const row = (x) => `<li class="iv-p">${pAv(x, 30)}<span><b>${esc(x.name || x.email)}</b><small>${esc(x.sub || x.email)}</small></span>${x.ok ? `<em class="iv-ok">${ic('check', 's14')}${esc(x.ok)}</em>` : ''}</li>`;
+    const list = [...IV.sent.map((x) => ({ email: x.email, sub: x.warn || `Invited · ${B.roles[x.seat]?.title || x.seat}`, ok: x.warn ? '' : 'Email sent' })), ...team.map((x) => ({ ...x, sub: x.role === 'owner' ? 'Admin' : 'On the team' }))];
     window.scrollTo(0, 0); root.innerHTML = shell(`
-      <h1 class="ob2-h">Bring in your team</h1><p class="ob2-lede">Jam on any card together, then share one brief with your team or ours.</p>
-      <div class="ob2-cx">${cxRow('slack')}</div>
-      <h2 class="ob2-sub">Who sits in each seat? <small>Optional</small></h2>
-      <div class="ob2-team">${B.colleagues.map((c) => `<label class="ob-col">${avatar(colleague(c.id), 34)}<span><small>${esc(c.role)}</small><input data-colname="${c.id}" value="${esc(colleague(c.id).name)}" aria-label="${esc(c.role)} name"></span></label>`).join('')}</div>
-      ${obNav('Open my feed', true)}`, 4);
+      <h1 class="ob2-h">Invite your team</h1><p class="ob2-lede">Jam on any card together. When someone tags them or needs their OK, they get an email.</p>
+      ${boss ? `<form class="iv-form" id="iv-f" novalidate><input id="iv-email" type="email" placeholder="name@${esc(B.brand.host || 'brand.com')}" autocomplete="off" aria-label="Email to invite">
+        <select id="iv-seat" aria-label="What they see">${seats.map(([k, r]) => `<option value="${k}"${k === IV.seat ? ' selected' : ''}>Sees ${esc(r.title)}</option>`).join('')}</select>
+        <button class="btn btn-primary" id="iv-go">Invite</button></form><p class="iv-msg" id="iv-msg" role="status" hidden></p>`
+      : `<p class="iv-note">${ic('person', 's14')}Only an admin invites people. Ask ${esc(team.find((x) => x.role === 'owner')?.name || 'your admin')} to add anyone missing.</p>`}
+      ${list.length ? `<ul class="iv-list">${list.map(row).join('')}</ul>` : ''}
+      ${obNav(IV.sent.length || team.length ? 'Open my feed' : 'Skip for now', true)}`, 4);
     obPreview();
-    $$('[data-colname]').forEach((i) => i.oninput = () => { S.slack.names[i.dataset.colname] = i.value.trim() || B.colleagues.find((c) => c.id === i.dataset.colname).name; save(); });
+    const f = $('#iv-f');
+    if (f) { const msg = (kind, t) => { const el = $('#iv-msg'); el.hidden = !t; el.dataset.kind = kind; el.textContent = t || ''; };
+      $('#iv-seat').onchange = (e) => { IV.seat = e.target.value; };
+      f.onsubmit = async (e) => { e.preventDefault(); if (IV.busy) return; const email = $('#iv-email').value.trim().toLowerCase();
+        if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(email)) { msg('bad', 'Enter a full email address.'); return $('#iv-email').focus(); }
+        if (email === ME()?.email) return msg('bad', 'That’s you. You’re already on the team.');
+        IV.busy = true; $('#iv-go').disabled = true; $('#iv-go').textContent = 'Sending…';
+        const r = await api(`/api/brands/${B.slug || BR}/team`, { action: 'invite', email, seats: [IV.seat] }); IV.busy = false;
+        if (r.error) { $('#iv-go').disabled = false; $('#iv-go').textContent = 'Invite'; return msg('bad', r.error); }
+        if (r.members && window.LIVE) window.LIVE.access = { ...window.LIVE.access, ...r };
+        IV.sent = [{ email, seat: IV.seat, warn: r.warn ? 'Saved. The email didn’t send: copy the invite link from Team and access.' : null }, ...IV.sent.filter((x) => x.email !== email)];
+        teamStep(); setTimeout(() => $('#iv-email')?.focus(), 30); }; }
     $('#ob-back').onclick = connectWhat; $('#ob-next').onclick = finishOnboarding;
   };
   const finishOnboarding = () => {
@@ -629,7 +652,7 @@
     const n = rank().length, R = ROLE();
     document.body.insertAdjacentHTML('beforeend', `<div class="ready" id="ready"><div class="ready-card">
       <span class="so-mark" style="width:30px;height:30px">${SO()}</span>
-      <h3>Your feed is ready${S.viewer.name ? ', ' + esc(S.viewer.name) : ''}.</h3>
+      <h3>Your feed is ready${myFirst() ? ', ' + esc(myFirst()) : ''}.</h3>
       <p>${n} ideas, picked for ${/^[AEIOU]/i.test(R.name) ? 'an' : 'a'} ${esc(R.name.toLowerCase())}. Tap any card to see more.</p>
       <div class="counts"><div><b class="tnum">${n}</b>ideas</div><div><b class="tnum">5</b>agents</div><div><b class="tnum">${window.MOVES_WRITTEN ?? 50}</b>moves ${GEN && (window.MOVES_WRITTEN ?? 50) < (+window.MOVES_TOTAL || 50) ? 'written' : 'read'}</div><div><b class="tnum">${Object.keys(S.conn).filter(conn).length}</b>connected</div></div>
       <button class="lm" id="open-feed"><span class="lm-rim"><span class="lm-in">Open my feed ${ic('right', 's18')}</span></span></button>
@@ -699,7 +722,9 @@
   // a card that has work in flight says where it is, in one row, from the same phase model as the card page
   const STATUS = { jamming: (w) => STAGE[w.stage], ready: () => 'Ready to share', shared: (w) => `Brief shared${w.ticket ? ` · ${w.ticket}` : ''}` };
   const statusRow = (p, c) => { const w = workOfCard(p.id), ph = w ? phaseOf(p, w, c) : null; if (!ph || !STATUS[ph]) return '';
-    return `<button class="live-row st-row is-${ph}" data-st-open="${esc(p.id)}"><span class="live-pill">${esc(PHASE[ph])}</span><span class="live-tx">${esc(STATUS[ph](w))}</span>${ic('right', 's14')}</button>`; };
+    /* a team jam says who's in it: tapping the card joins the same jam, never a second one */
+    const ppl = !window.BREW_DEMO ? (w.people || []) : [], faces = ppl.length > 1 ? `<span class="lt-faces">${ppl.slice(0, 3).map((x) => pAv(x, 16)).join('')}</span>` : '';
+    return `<button class="live-row st-row is-${ph}" data-st-open="${esc(p.id)}"><span class="live-pill">${esc(PHASE[ph])}</span>${faces}<span class="live-tx">${esc(ppl.length > 1 && ph === 'jamming' ? `${ppl.length} people · ${STATUS[ph](w)}` : STATUS[ph](w))}</span>${ic('right', 's14')}</button>`; };
   const doneText = (p, c) => c.done || null;
   const paintStatus = () => { if (view !== 'feed' && view !== 'deck') return; $$(view === 'deck' ? '.dcol .card[data-id]' : '#col .card[data-id]').forEach((el) => { const p = byId(el.dataset.id); if (!p || p.liveChange) return; const html = statusRow(p, cardOf(p)), cur = $('.st-row', el);
     if (cur) { if (html) cur.outerHTML = html; else cur.remove(); } else if (html) $('.body', el)?.insertAdjacentHTML('afterbegin', html);
@@ -777,7 +802,7 @@
     const tile = (k) => { const list = GSTAT[k], n = list.length; if (!n) return ''; /* no zero tiles: an empty list says nothing */
       return `<button class="gt${k === 'yes' && n ? ' hot' : ''}" data-gstat="${k}" aria-label="${n} ${QHEAD[k][0]}: open the list"><b class="gt-n">${n}</b><span class="gt-l">${QHEAD[k][0]}</span><span class="gt-s">${QHEAD[k][1]}</span><span class="gt-go">${ic('right', 's14')}</span></button>`; };
     const tiles = ['yes', 'spend', 'board'].map(tile).filter(Boolean);
-    return `<div class="greet"><small class="g-day">${esc(day)}</small><h2>${part}, ${esc(S.viewer.name || R.name)}</h2>
+    return `<div class="greet"><small class="g-day">${esc(day)}</small><h2>${part}, ${esc(myFirst() || R.name)}</h2>
       ${tags.length ? `<p class="g-taste">Tuned to what you like: ${esc(tags.join(' and '))}</p>` : ''}
       ${tiles.length ? `<div class="g-today" style="--n:${tiles.length}">${tiles.join('')}</div>` : ''}</div>`;
   };
@@ -1001,6 +1026,7 @@
       <div class="body"><h3>The magic starts once your moves are in</h3><p>Brew is writing ${+BREW?.total || 50} moves for ${esc(B.brand.name)}. Every card after that comes from them. Wait for it.</p>
         <div class="bw-bar"><i style="width:${Math.max(3, Math.round(100 * Math.min(n, +BREW?.total || 50) / (+BREW?.total || 50)))}%"></i></div><small class="bw-meta">${n} of ${+BREW?.total || 50} written · ${mvLeft(BREW)}</small>
         ${em ? `<p class="bw-mailed">${ic('check', 's14')}<span>We’ll email <b>${esc(em)}</b> when they’re in.</span></p>`
+          : ME()?.email ? `<form class="bw-mail" data-bwmail><input type="hidden" value="${esc(ME().email)}"><button class="btn btn-primary sm" type="submit">Email me at ${esc(ME().email)}</button></form>`
           : `<form class="bw-mail" data-bwmail><input type="email" required placeholder="you@${esc(B.brand.host || 'brand.com')}" autocomplete="email" aria-label="Your email"><button class="btn btn-primary sm" type="submit">Email me</button></form>`}</div>`; };
   const brewingCard = () => GEN && BREW && !BREW.done && (BREW.movesDone || 0) < (+BREW.total || 50) && !BREW.cancelled ? `<article class="card brew-wait" data-brewing>${brewingInner()}</article>` : '';
   const loadMV = async () => { if (!GEN || BREW?.done) return; BREW = await api(`/api/brands/${B.slug || BR}/status`).catch(() => null) || BREW;
@@ -1358,9 +1384,12 @@
   addEventListener('popstate', route);
   /* links carry the workspace: a signed token opens this same tenant, so the card shows exactly where it is now */
   let SHARE = null;
-  const shareTok = async () => SHARE || (SHARE = (await tapi('GET', '/api/tenants/:t/share')).token || null);
+  /* a link carries its jam (wid): signing in from it makes someone a guest of that jam only; without one it only lets them look */
+  const SHARES = {};
+  const shareTok = async (wid) => { if (SHARE && (!wid || SHARE.includes(`~${wid}~`))) return SHARE; const k = wid || '';
+    if (!(k in SHARES)) SHARES[k] = (await tapi('GET', `/api/tenants/:t/share${wid ? `?wid=${encodeURIComponent(wid)}` : ''}`)).token || null; return SHARES[k]; };
   const hashOf = (p, w) => String(p.id).startsWith('work:') || (p._work && !String(p.id).startsWith('jam-') && workOfCard(p.id)?.id !== p._work.id) ? `#work=${encodeURIComponent(w?.id || p._work?.id)}` : String(p.id).startsWith('jam-') && w ? `#jam=${encodeURIComponent(w.id)}` : `#card=${encodeURIComponent(p.id)}`;
-  const linkFor = async (p, w) => { const t = await shareTok(); return `${location.origin}/${hashOf(p, w)}${t ? `&s=${t}` : ''}`; };
+  const linkFor = async (p, w) => { const t = await shareTok(w?.id || p?._work?.id || workOfCard(p?.id)?.id); return `${location.origin}/${hashOf(p, w)}${t ? `&s=${t}` : ''}`; };
   const copyLink = async (p, w) => { const u = await linkFor(p, w); try { await navigator.clipboard.writeText(u); } catch (er) {} toast(`${ic('copy', 's16')}Link copied. It opens this exactly as it is now.`); };
   const hashParams = () => Object.fromEntries(location.hash.replace(/^#/, '').split('&').filter(Boolean).map((kv) => { const i = kv.indexOf('='); return i < 0 ? [kv, ''] : [kv.slice(0, i), decodeURIComponent(kv.slice(i + 1))]; }));
   const closeDetail = (fromHistory) => { document.body.classList.remove('sheet-open'); $('#dp')?.remove(); $('#dp-scrim')?.remove(); DP = null; if (!fromHistory && /^#(card|work|jam)=/.test(location.hash)) history.replaceState({ a: 'view', v: view }, '', location.pathname); };
@@ -1379,7 +1408,7 @@
     // the hand icon opens the jam as a side drawer; opening the card itself is a full page
     const full = !opts.jam && !opts.drawer; $('#dp').classList.toggle('dp-full', full); $('#dp-scrim').hidden = full;
     const rw = $('.rail')?.getBoundingClientRect().width; if (rw) document.documentElement.style.setProperty('--rail-w', rw + 'px');
-    { const h = hashOf(p, w); if (!opts.fromHistory && (!String(p.id).startsWith('jam-') || w)) { nav(h + (SHARE ? `&s=${SHARE}` : ''), !wasOpen, 'dp'); if (!SHARE) shareTok().then((t) => { if (t && DP?.p?.id === p.id && location.hash.startsWith(h)) history.replaceState(history.state, '', location.pathname + `${h}&s=${t}`); }); } }
+    { const h = hashOf(p, w); if (!opts.fromHistory && (!String(p.id).startsWith('jam-') || w)) { nav(h + (SHARE ? `&s=${SHARE}` : ''), !wasOpen, 'dp'); if (!SHARE) shareTok(w?.id).then((t) => { if (t && DP?.p?.id === p.id && location.hash.startsWith(h)) history.replaceState(history.state, '', location.pathname + `${h}&s=${t}`); }); } }
     if (w && w.unread) tapi('POST', '/api/tenants/:t/notes/read', { itemId: w.id }).then(() => { w.unread = false; WORK.notes.forEach((n) => { if (n.itemId === w.id) n.read = true; }); WORK.unread = WORK.notes.filter((n) => !n.read).length; counts(); });
     repaintDetail(); loadLearned(p);
     if (opts.jam || opts.draft) setTimeout(() => { const i = $('#dp-in'); if (!i) return; if (opts.draft) i.value = opts.draft; i.focus(); }, 80);
@@ -1505,7 +1534,7 @@
   const PHASE = { fresh: 'Card', decided: 'Decided', jamming: 'In the jam', ready: 'Ready', shared: 'Brief shared', done: 'Done' };
   const phaseOf = (p, w, c) => { const st = w?.stage;
     if (st === 'shared') return 'shared'; if (st === 'ready') return 'ready';
-    if (['team', 'needs_you'].includes(st)) return 'jamming';
+    if (['team', 'needs_you'].includes(st) || (!window.BREW_DEMO && (w?.people || []).length > 1 && st === 'drafting')) return 'jamming';
     if (!w && c?.done && p.kind !== 'conflict') return 'done';
     if (S.decided?.[p.id] || w?.decided) return 'decided';
     return st === 'drafting' && (w.thread || []).some((m) => m.from === 'me') ? 'jamming' : 'fresh'; };
@@ -1686,8 +1715,12 @@
     for (let i = 0; i < 12; i++) { const s = document.createElement('i'), a = (Math.PI * 2 * i) / 12; s.style.setProperty('--dx', Math.cos(a) * 34 + 'px'); s.style.setProperty('--dy', Math.sin(a) * 34 + 'px'); box.appendChild(s); }
     document.body.appendChild(box); setTimeout(() => box.remove(), 700); };
   /* the jam plan: goal, the change, open questions with owners, readiness. It ends with Share the brief. */
-  const ownerName = (o, w) => o === 'ai' ? AGENT[w.agent] || 'AI' : o === 'brew' ? 'ShopOS team' : colleague(o).name;
-  const ownerChip = (o, w) => o === 'ai' ? face(w.agent || 'creative') : o === 'brew' ? `<span class="av pod-av">B</span>` : avatar(colleague(o), 20);
+  /* a question a person owns goes to a real teammate (the demo site keeps its simulated ones) */
+  const REALQ = !window.BREW_DEMO;
+  const ownerName = (o, w, q) => o === 'ai' ? AGENT[w.agent] || 'AI' : o === 'brew' ? 'ShopOS team' : REALQ ? (q?.waiting || 'someone') : colleague(o).name;
+  const ownerChip = (o, w, q) => o === 'ai' ? face(w.agent || 'creative') : o === 'brew' ? `<span class="av pod-av">B</span>` : REALQ ? (q?.ownerEmail ? pAv({ email: q.ownerEmail, name: q.waiting, pic: (window.LIVE?.access?.team || []).find((x) => x.email === q.ownerEmail)?.pic }, 20) : `<span class="av" style="width:20px;height:20px;border-radius:50%">${ic('person', 's12')}</span>`) : avatar(colleague(o), 20);
+  const askPick = (q) => { const me = String(ME()?.email || '').toLowerCase(), ppl = (window.LIVE?.access?.team || []).filter((x) => x.email !== me);
+    return ppl.length ? `<select class="jq-who" data-jq-person="${q.id}" aria-label="Who to ask"><option value="">Ask someone…</option>${ppl.map((x) => `<option value="${esc(x.email)}">${esc(x.name || x.email)}</option>`).join('')}</select>` : `<small>Invite your team to ask them</small>`; };
   const qBy = (by = '') => by === 'you' ? 'You' : by.startsWith('ai:') ? AGENT[by.slice(3)] || 'AI' : by.startsWith('teammate:') ? by.slice(9) : by === 'brew' ? 'ShopOS team' : by === 'learned' ? 'Learned check' : by === 'earlier' ? 'Earlier' : by;
   const planHtml = (w) => {
     const p = w.plan; if (!p) return '';
@@ -1698,9 +1731,12 @@
       <div class="jp-meter" title="${n - open} of ${n} answered"><i style="width:${Math.round(((n - open) / n) * 100)}%"></i></div>
       <ol class="jq-list">${p.questions.map((q) => `<li class="jq${q.answer ? ' done' : ''}"><span class="jq-dot">${q.answer ? ic('check', 's14') : ''}</span><div><b>${esc(q.q)}</b>${q.answer ? `<p>${esc(q.answer)}<small>${esc(qBy(q.by))}${q.auto ? ' · answered itself' : ''}</small></p>`
         : DP.answering === q.id ? `<form class="compose jq-f" data-jqf="${q.id}"><input placeholder="Your answer" autocomplete="off"><button aria-label="Save">${ic('up', 's16')}</button></form>`
-        : `<div class="jq-acts">${ownerChip(q.owner, w)}${q.asked ? `<small>Waiting on ${esc(ownerName(q.owner, w))}</small>` : `<button class="linkbtn" data-jq-ask="${q.id}">${q.owner === 'ai' ? 'Suggest an answer' : `Ask ${esc(ownerName(q.owner, w))}`}</button>`}<button class="linkbtn" data-jq-ans="${q.id}">Answer it</button></div>`}</div></li>`).join('')}</ol>
-      <div class="jp-foot">${open > 1 ? `<button class="btn btn-ghost sm" data-jq-all>${ic('send', 's14')}Ask everyone</button>` : ''}<form class="compose jq-add" id="jq-add"><input placeholder="Add a question" autocomplete="off"><button aria-label="Add">${ic('up', 's16')}</button></form></div></section>`;
+        : `<div class="jq-acts">${ownerChip(q.owner, w, q)}${q.asked ? `<small>Waiting on ${esc(ownerName(q.owner, w, q))}</small>` : REALQ && !['ai', 'brew'].includes(q.owner) ? askPick(q) : `<button class="linkbtn" data-jq-ask="${q.id}">${q.owner === 'ai' ? 'Suggest an answer' : `Ask ${esc(ownerName(q.owner, w, q))}`}</button>`}<button class="linkbtn" data-jq-ans="${q.id}">Answer it</button></div>`}</div></li>`).join('')}</ol>
+      <div class="jp-foot">${open > 1 && !REALQ ? `<button class="btn btn-ghost sm" data-jq-all>${ic('send', 's14')}Ask everyone</button>` : ''}<form class="compose jq-add" id="jq-add"><input placeholder="Add a question" autocomplete="off"><button aria-label="Add">${ic('up', 's16')}</button></form></div></section>`;
   };
+  document.addEventListener('change', async (e) => { const sel = e.target.closest?.('[data-jq-person]'); if (!sel || !sel.value || !DP?.w) return; sel.disabled = true;
+    const r = await tapi('POST', `/api/work/${DP.w.id}/plan/ask`, { qid: sel.dataset.jqPerson, email: sel.value }); if (r.error) { sel.disabled = false; return toast(esc(r.error)); }
+    putWork(r.work); repaintDetail(); toast(`${ic('send', 's16')}Asked. ${esc(sel.selectedOptions[0]?.textContent || 'They')} will get an email.`); });
   const addBtn = (text, from) => `<button class="dp-add" data-add="${esc(text)}" data-from="${esc(from)}" title="Add to the brief" aria-label="Add to the brief">${ic('plus', 's14')}</button>`;
   // when the jam changes something on the left (a plan row, the Now band, an option, the measure, the draft preview),
   // that piece glows softly for a moment so you see what moved. Compared block by block, before and after the repaint
@@ -1862,10 +1898,10 @@
     const pk = t.closest('[data-pick]'); if (pk) { const [msgId, i] = pk.dataset.pick.split(':'); const r = await tapi('POST', `/api/work/${DP.w.id}/pick`, { msgId, i: +i }); putWork(r.work); DP.scrollThread = true; repaintDetail(); toast(`${ic('check', 's16')}Saved as v${r.work.current}`); return; }
     const ver = t.closest('[data-ver]'); if (ver) { const r = await tapi('POST', `/api/work/${DP.w.id}/version`, { n: +ver.dataset.ver }); putWork(r.work); DP.ch = null; repaintDetail(); return; }
     const js = t.closest('[data-jam-studio]'); if (js) { e.preventDefault(); const card = byId(DP.ch.cardId); closeDetail(true); if (card) openRemix(card, js.dataset.jamStudio); return; }
-    if (t.closest('[data-approve]')) { const w = await ensureWork(); const r = await tapi('POST', `/api/work/${w.id}/approve`); putWork(r.work); repaintDetail(); counts(); toast(`${ic('zap', 's16')}Ready. Share the brief when you are.`); return; }
+    if (t.closest('[data-approve]')) { const w = await ensureWork(); const r = await tapi('POST', `/api/work/${w.id}/approve`, { rev: w.current }); if (r.work) putWork(r.work); repaintDetail(); counts(); toast(r.stale ? `${ic('info', 's16')}${esc(r.error)}` : `${ic('zap', 's16')}Ready. Share the brief when you are.`); return; }
     if (t.closest('[data-reopen]') || t.closest('[data-next]')) { { const r = await tapi('POST', `/api/work/${DP.w.id}/reopen`); putWork(r.work); } DP.to = 'ai'; repaintDetail(); $('#dp-in')?.focus(); return; }
     if (t.closest('[data-dp-brief]')) return openBrief(DP.w?.brief);
-    const ja = t.closest('[data-jq-ask]'); if (ja) { const r = await tapi('POST', `/api/work/${DP.w.id}/plan/ask`, { qid: ja.dataset.jqAsk }); putWork(r.work); repaintDetail(); showLearned(r.learned); askedCopy(r); return; }
+    const ja = t.closest('[data-jq-ask]'); /* data-jq-person (a real teammate) is a select: see the change listener below */ if (ja) { const r = await tapi('POST', `/api/work/${DP.w.id}/plan/ask`, { qid: ja.dataset.jqAsk }); putWork(r.work); repaintDetail(); showLearned(r.learned); askedCopy(r); return; }
     if (t.closest('[data-jq-all]')) { const r = await tapi('POST', `/api/work/${DP.w.id}/plan/ask`, { all: true }); putWork(r.work); repaintDetail(); showLearned(r.learned); askedCopy(r); return; }
     const jn = t.closest('[data-jq-ans]'); if (jn) { DP.answering = jn.dataset.jqAns; repaintDetail(); $(`[data-jqf="${DP.answering}"] input`)?.focus(); return; }
   });
@@ -1997,7 +2033,7 @@
         <p class="side-note">Everything you started, one column per step. Cards move on their own as people reply, until the brief is shared.</p>
         <div class="side-rule"></div>
         <div class="side-nav">${cols.map((c) => `<button data-wbnav="${c.k}"${c.k === 'you' && by(c).length ? ' class="wb-hot"' : ''}><i class="col-dot" style="background:${c.dot}"></i>${c.name}<span class="n">${nOf(c)}</span></button>`).join('')}</div>
-        <div class="side-acts"><button class="side-act" data-wbjam>${ic('hand', 's16')} Start a new jam</button><button class="side-act" data-nav="jams">${ic('book', 's16')} My jams in the Library</button></div></aside>
+        <div class="side-acts"><button class="side-act" data-wbjam>${ic('hand', 's16')} Start a new jam</button><button class="side-act" data-nav="jams">${ic('book', 's16')} Jams in the Library</button></div></aside>
       ${!items.length && !BG.items.length ? `<div class="deck-main wb-zero-main"><div class="wb-zero">${ic('board')}<h2>Nothing in the works yet</h2><p>Open any card and shape it with AI. It lands here as a draft, then moves along on its own: with a teammate, waiting on you, ready, and finally a shared brief.</p>
           <ol class="wb-zero-steps">${cols.filter((x) => x.k !== 'ai').map((x) => `<li><i style="background:${x.dot}"></i>${x.name}</li>`).join('')}</ol><button class="btn btn-primary" data-nav="feed">${ic('feed', 's16')}Open the feed</button></div></div>` : `<div class="deck-main"><div class="wb-tabs" role="tablist">${cols.map((c, i) => `<button role="tab" data-wbnav="${c.k}" aria-current="${i === 0}"><i style="background:${c.dot}"></i>${c.name}<em>${nOf(c)}</em></button>`).join('')}</div><div class="deck" id="wb-deck" style="--col-w:400px">${cols.map((c) => { const list = by(c);
         return `<section class="dcol wb-col" data-bcol="${c.k}" style="--lane:${c.dot}"><div class="col-head"><div class="col-top"><h2><span class="col-emo" aria-hidden="true">${ic(WB_IC[c.k] || 'board', 's16')}</span>${c.name}</h2><span class="col-fill"></span><span class="wb-n">${nOf(c)}</span></div><p class="wb-sub">${c.sub}</p><hr></div>
@@ -2068,8 +2104,23 @@
         if (pill && ids.length) { NEWIDS = ids; pill.hidden = false; pill.innerHTML = `<button data-newcards>${ic('up', 's14')}${ids.length} new card${ids.length > 1 ? 's' : ''} · show</button>`; } }
       if (view === 'engine') renderEngine(true);
     }
-    pulseT = setTimeout(pulse, DP?.w && DP.w.stage === 'team' ? 2500 : 6000);
+    pulseT = setTimeout(pulse, DP?.w && DP.w.stage === 'team' && window.BREW_DEMO ? 2500 : 10e3);
   };
+  /* the open jam: every 3 s it says who's here (and typing) and comes back only when the jam changed, so a teammate's
+     message, edit or new version shows up within seconds (the server marks it read for you) */
+  let jamPollT = 0;
+  const jamPoll = async () => {
+    clearTimeout(jamPollT);
+    const w = DP && (DP.p._work || workOfCard(DP.p.id));
+    if (w?.id && TID && !document.hidden) {
+      const box = $('#jm-in'), typing = document.activeElement === box && !!box?.value.trim();
+      const r = await tapi('GET', `/api/jams/${encodeURIComponent(w.id)}?since=${w.updatedAt || 0}${typing ? '&typing=1' : ''}`).catch(() => null);
+      if (r && !r.error) { const changedHere = window.JamRoom?.setHere?.(w.id, r.here || []);
+        if (r.work) { putWork(r.work); counts(); repaintDetail(); } else if (changedHere) window.JamRoom?.paint?.(); }
+    }
+    jamPollT = setTimeout(jamPoll, document.hidden ? 60e3 : 3000);
+  };
+  setTimeout(jamPoll, 3000);
   document.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-newcards]'); if (!b) return;
     b.disabled = true; await tapi('POST', '/api/tenants/:t/pin', { ids: NEWIDS }); NEWIDS = [];
@@ -2381,8 +2432,8 @@
   let REMIXES = null;
   const pullRemixes = async () => { const r = await tapi('GET', '/api/tenants/:t/remixes'); if (!r.error) REMIXES = r.remixes || []; return REMIXES || []; };
   const JAM_DONE = ['shared'];
-  const LIB = { cat: { saved: 'all', jams: 'all', remixes: 'all' }, open: new Set() };
-  const libTabs = (k) => { const tabs = [['saved', 'Saved', S.saved.length], ['jams', 'My jams', WORK.items.filter((w) => !JAM_DONE.includes(w.stage)).length]];
+  const LIB = { cat: { saved: 'all', jams: 'all', remixes: 'all' }, open: new Set(), scope: null /* jams: mine | team */ };
+  const libTabs = (k) => { const tabs = [['saved', 'Saved', S.saved.length], ['jams', window.BREW_DEMO ? 'My jams' : 'Jams', WORK.items.filter((w) => !JAM_DONE.includes(w.stage)).length]];
     return `<div class="lib-seg" role="tablist">${tabs.map(([v, n, c]) => `<button role="tab" data-nav="${v}" aria-selected="${k === v}">${n}${c !== '' ? `<em>${c}</em>` : ''}</button>`).join('')}</div>`; };
   const libEmpty = (icon, h, s) => `<div class="lib-empty"><span class="le-ic">${ic(icon)}</span><b>${h}</b><span>${s}</span><button class="btn btn-ghost sm" data-nav="feed">Go to the feed</button></div>`;
   // cats: [{ k, name, hint, items: [html], tone }]; the chips filter, "all" shows every category two rows deep
@@ -2431,8 +2482,18 @@
   const htmlEl = (h) => { const d = document.createElement('div'); d.innerHTML = h; return d.firstElementChild; };
   // grouped by where the work is now (same as the Work board), not by who it was with last
   const withKind = (w) => w.stage === 'team' ? 'team' : w.stage === 'shared' ? 'shared' : 'ai';
-  const jamWho = (w) => ({ team: `${ic('send', 's14')}${esc(w.with?.name || 'Your team')} on Slack`, shared: `${ic('copy', 's14')}Brief shared${w.ticket ? ' · ' + esc(w.ticket) : ''}`, ai: `${ic('sparkles', 's14')}You and AI` })[withKind(w)];
-  const jamLast = (w) => { const m = (w.thread || []).filter((x) => x.body).slice(-1)[0]; if (m) return `<i>${m.from === 'me' ? 'You' : esc(m.who || AGENT[m.from] || 'Brew')}:</i> ${esc(plain(m.body))}`; return esc(plain(curV(w)?.sub || '') || 'Brief started'); };
+  /* team jams (not the demo site): the real people in it, and who has it */
+  const pInit = (p) => (p?.name || p?.email || '?').replace(/@.*/, '').split(/[\s._-]+/).filter(Boolean).slice(0, 2).map((x) => x[0].toUpperCase()).join('') || '?';
+  const pHue = (e) => [...String(e || '')].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7) % 360;
+  const pAv = (p, n = 18) => p?.pic ? `<img class="av av-img" src="${esc(p.pic)}" alt="" referrerpolicy="no-referrer" style="width:${n}px;height:${n}px;border-radius:50%">` : `<span class="av" style="--ac:hsl(${pHue(p?.email)} 38% 42%);width:${n}px;height:${n}px;border-radius:50%;font-size:${Math.max(8, Math.round(n * 0.4))}px">${esc(pInit(p))}</span>`;
+  const firstOf = (p) => String(p?.name || p?.email || '').trim().split(/\s+/)[0].replace(/@.*/, '');
+  const realWho = (w) => { const me = String(ME()?.email || '').toLowerCase(), ppl = (w.people || []), others = ppl.filter((x) => x.email !== me);
+    if (w.assignee) return `${pAv(w.assignee)}${w.assignee.email === me ? (w.assignee.ask === 'approve' ? 'Needs your OK' : 'You have it') : esc(firstOf(w.assignee)) + (w.assignee.ask === 'approve' ? '’s OK' : ' has it')}`;
+    if (!others.length) return `${ic('sparkles', 's14')}${ppl.length ? 'You and AI' : 'AI'}`;
+    return `<span class="lt-faces">${others.slice(0, 3).map((x) => pAv(x)).join('')}</span>${esc(others.slice(0, 2).map(firstOf).join(', '))}${others.length > 2 ? ` +${others.length - 2}` : ''}${ppl.some((x) => x.email === me) ? ' and you' : ''}`; };
+  const jamWho = (w) => window.BREW_DEMO ? jamWho0(w) : realWho(w);
+  const jamWho0 = (w) => ({ team: `${ic('send', 's14')}${esc(w.with?.name || 'Your team')} on Slack`, shared: `${ic('copy', 's14')}Brief shared${w.ticket ? ' · ' + esc(w.ticket) : ''}`, ai: `${ic('sparkles', 's14')}You and AI` })[withKind(w)];
+  const jamLast = (w) => { const m = (w.thread || []).filter((x) => x.body).slice(-1)[0]; if (m) return `<i>${m.from === 'me' ? (m.by && m.by.email !== String(ME()?.email || '').toLowerCase() ? esc(firstOf(m.by)) : 'You') : esc(m.who || AGENT[m.from] || 'Brew')}:</i> ${esc(plain(m.body))}`; return esc(plain(curV(w)?.sub || '') || 'Brief started'); };
   const STAGE_PILL = { needs_you: ['Needs you', 'warn'], ready: ['Ready to share', 'ok'], shared: ['Brief shared', 'ok'], team: ['With your team', ''], drafting: ['Drafting', ''] };
   const jamTile = (w) => { const [pt, tone] = STAGE_PILL[w.stage] || [w.stage, ''];
     return tile({ attr: `data-witem="${w.id}"`, img: w.img, agent: w.agent, icon: 'hand', eyebrow: esc(AGENT[w.agent] || 'Brew'), when: ago(w.discarded || w.updatedAt), title: w.title, line: jamLast(w), who: w.discarded ? `${ic('minus', 's14')}Discarded` : jamWho(w), pill: !w.discarded && ['ready', 'shared'].includes(w.stage) ? pillOf(pt, tone) : '', dot: !w.discarded && w.unread, menu: `jam:${w.id}${w.discarded ? ':off' : ''}`, off: !!w.discarded }); };
@@ -2440,7 +2501,21 @@
     view = 'jams';
     const paint = () => {
       if (view !== 'jams') return;
-      const by = (a, b) => b.updatedAt - a.updatedAt, items = [...WORK.items].sort(by);
+      const by = (a, b) => b.updatedAt - a.updatedAt, all = [...WORK.items].sort(by);
+      if (!window.BREW_DEMO && WORK.me) { /* team jams: mine (started, tagged, asked, given, replied) and the whole team's */
+        const me = String(WORK.me.email).toLowerCase(), mine = all.filter((w) => w.mine || w.assignee?.email === me);
+        const scope = LIB.scope || (mine.length ? 'mine' : 'team'), items = scope === 'mine' ? mine : all;
+        const needs = (w) => (w.assignee?.email === me) || (w.stage === 'needs_you' && !w.assignee && w.startedBy?.email === me);
+        const open = items.filter((w) => !JAM_DONE.includes(w.stage) && !needs(w));
+        const cats = [
+          { k: 'you', name: 'Needs you', hint: 'Given to you, or waiting on your OK', tone: 'hot', items: items.filter((w) => !JAM_DONE.includes(w.stage) && needs(w)).map(jamTile) },
+          { k: 'open', name: 'Jamming', hint: scope === 'mine' ? 'Jams you’re in' : 'Every jam on the team', items: open.map(jamTile) },
+          { k: 'shipped', name: 'Brief shared', hint: 'With the ShopOS team or your team', items: items.filter((w) => JAM_DONE.includes(w.stage)).map(jamTile) },
+          { k: 'off', name: 'Discarded', hint: 'Restore any of these from the ··· menu', tone: 'muted', hideInAll: true, items: [...(WORK.discarded || [])].filter((w) => scope === 'team' || w.mine).sort((a, b) => b.discarded - a.discarded).map(jamTile) }];
+        const seg = `<div class="lib-scope" role="tablist"><button role="tab" data-jscope="mine" aria-selected="${scope === 'mine'}">My jams<em>${mine.length}</em></button><button role="tab" data-jscope="team" aria-selected="${scope === 'team'}">Team jams<em>${all.length}</em></button></div>`;
+        return libPage('jams', 'Jams you’re in, and everything your team is jamming on.', seg + libGrid('jams', cats, libEmpty('hand', scope === 'mine' ? 'Nothing for you yet' : 'No jams yet', scope === 'mine' ? 'Jam on any card, or wait for a teammate to tag you. Team jams shows what everyone is on.' : 'Open any card and press Jam. Your team sees it here and can join in.'), `<button class="lib-link" data-nav="work">${ic('board', 's16')}Work board</button>`));
+      }
+      const items = all;
       const open = items.filter((w) => !JAM_DONE.includes(w.stage) && w.stage !== 'needs_you');
       const cats = [
         { k: 'you', name: 'Needs you', hint: 'Answer these to keep them moving', tone: 'hot', items: items.filter((w) => w.stage === 'needs_you').map(jamTile) },
@@ -2459,6 +2534,7 @@
   const remixTile = (r) => { const [pt, tone] = RX_PILL[r.state] || [r.state, ''];
     return tile({ attr: `data-remix="${r.id}"`, img: r.image, agent: r.agent, icon: FAM_IC[r.fam], eyebrow: esc(r.batch ? r.family : r.action || r.family), when: ago(r.at), title: r.title, menu: `remix:${r.id}${r.discarded ? ':off' : ''}`, off: r.discarded,
       line: r.cardTitle && r.cardTitle !== r.title ? `From: ${esc(plain(r.cardTitle))}` : '', who: `${ic('clock', 's14')}${r.batch ? esc(r.action) : `v${r.head}${r.versions > 1 ? ` of ${r.versions}` : ''}`}`, pill: r.discarded ? pillOf('Discarded') : pillOf(pt, tone) }); };
+  document.addEventListener('click', (e) => { const b = e.target.closest('[data-jscope]'); if (!b) return; LIB.scope = b.dataset.jscope; LIB.cat.jams = 'all'; renderJams(false); });
   const renderRemixes = async (fresh = true) => {
     view = 'remixes';
     const paint = () => {
@@ -2520,7 +2596,7 @@
     pop.style.top = (r.bottom + scrollY + 6) + 'px'; pop.style.left = Math.max(12, Math.min(innerWidth - 248, r.right - 236)) + 'px';
     const item = (k, icon, h, sub, cls = '') => `<button data-la="${k}" class="${cls}" role="menuitem"><span class="lp-ic">${ic(icon, 's16')}</span><span class="lp-tx"><b>${h}</b>${sub ? `<small>${sub}</small>` : ''}</span></button>`;
     pop.setAttribute('role', 'menu');
-    pop.innerHTML = off ? item('restore', 'refresh', 'Restore', `Back to ${kind === 'jam' ? 'My jams' : 'My remixes'}`)
+    pop.innerHTML = off ? item('restore', 'refresh', 'Restore', `Back to ${kind === 'jam' ? 'Jams' : 'My remixes'}`)
       : item('fresh', 'refresh', 'Start fresh', `Begin a clean ${kind === 'jam' ? 'jam' : 'remix'} on this card`) + '<hr>' + item('discard', 'minus', 'Discard', 'You can restore it later', 'is-bad');
     document.body.appendChild(pop);
     pop.onclick = (e) => { const b = e.target.closest('[data-la]'); if (!b) return; closePop(); libAct[b.dataset.la](kind, id); };
@@ -3303,7 +3379,7 @@
   const copyText = async (s) => { try { const ta = document.createElement('textarea'); ta.value = s; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;left:-9999px'; document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); ta.remove(); if (ok) return true; } catch (e) {}
     try { return await Promise.race([navigator.clipboard.writeText(s).then(() => true), wait(1500).then(() => false)]); } catch (e) { return false; } };
   /* the jam's own link: this card, this change, the latest version and state, in this workspace (the token opens it for a teammate) */
-  const jamLink = async (p, w) => { const t = await shareTok().catch(() => null), chId = RX.p?.id === p.id && RX.ch?.id ? RX.ch.id : w?.changeId || '';
+  const jamLink = async (p, w) => { const t = await shareTok(w?.id).catch(() => null), chId = RX.p?.id === p.id && RX.ch?.id ? RX.ch.id : w?.changeId || '';
     return `${location.origin}${location.pathname}#remix=${encodeURIComponent(p.id)}${chId ? `/${chId}` : ''}${t ? `&s=${t}` : ''}`; };
   const copyJamLink = async (p) => { const u = await jamLink(p, workOfCard(p.id)); toast(await copyText(u) ? `${ic('link', 's16')}Link copied` : 'Couldn’t copy the link. Try again.'); };
   /* opens at once and fills in place: the full summary can take a while to write, and a sheet that pops up late lands over whatever is open by then */
@@ -4104,6 +4180,8 @@
     const r = await fetch(`/api/share/${encodeURIComponent(tok)}`).then((x) => x.json()).catch(() => ({ error: 'offline' }));
     /* a shared link needs a signed-in person: sign in, then land back on this exact jam */
     if (r.signin) { location.href = `/auth/google?next=${encodeURIComponent(location.pathname + location.search + location.hash)}`; return new Promise(() => {}); }
+    /* a teammate: it is the team's jam already, so it opens in their own workspace */
+    if (r.member && r.jam) { history.replaceState(null, '', `${location.pathname}#jam=${encodeURIComponent(r.jam)}`); return; }
     if (!r.tenant) { toast(esc(r.error || 'That link has expired.')); return; }
     if (TID) ls.set(`${LSP()}tenant-own`, TID);
     TID = r.tenant; ls.set(`${LSP()}tenant`, TID); SHARE = tok;

@@ -118,7 +118,7 @@
         ${GENB && ac?.canClaim ? `<button class="btn btn-primary sm" data-lclaim>Claim ${esc(n)}</button>` : ''}
         ${GENB && ac && !ac.gen ? `<small class="lc-hint">${ac.claimed ? `Ask ${esc(n)}’s team to invite you.` : `Sign in with your work email at ${esc(ac.host || host())} to claim it.`}</small>` : ''}
         ${GENB && ac?.role && ac.role !== 'owner' && ac.role !== 'admin' ? `<div class="lc-views"><small>Your views</small><span>${esc(seatWords(ac.seats))}</span></div>` : ''}
-        ${GENB && (ac?.role === 'owner' || ac?.role === 'admin') ? `<button class="btn btn-ghost sm lc-teambtn" data-lteamsheet>${ic('person', 's14')}Team and access<span>${(ac.members || []).length}${(ac.requests || []).length + (ac.members || []).filter((x) => Array.isArray(x.seats) && !x.seats.length).length ? ' · needs you' : ''}</span></button>` : ''}
+        ${GENB && (ac?.role === 'owner' || ac?.role === 'admin') ? `<button class="btn btn-ghost sm lc-teambtn" data-lteamsheet>${ic('person', 's14')}Team and access<span>${(ac.members || []).length}${(ac.members || []).filter((x) => Array.isArray(x.seats) && !x.seats.length).length ? ' · needs you' : ''}</span></button>` : ''}
         <a class="lc-out" href="/auth/logout?next=${encodeURIComponent(location.pathname)}">Sign out</a>`;
     document.body.appendChild(pop); bindPage(pop);
     pop.querySelector('[data-lteamsheet]')?.addEventListener('click', () => { pop.remove(); teamSheet(); });
@@ -134,7 +134,7 @@
   const TS = { draft: ['growth'], open: null, edit: null, busy: false, msg: null, email: '' };
   function teamHtml() {
     const ac = L.access || {}, me = ac.me || L.me?.email, owners = (ac.members || []).filter((x) => x.role === 'owner'), iAmOwner = owners.some((o) => o.email === me);
-    const av = (x) => `<span class="tm-av" aria-hidden="true">${esc(initials(x))}</span>`;
+    const av = (x) => x.pic ? `<img class="tm-av" src="${esc(x.pic)}" alt="" referrerpolicy="no-referrer">` : `<span class="tm-av" aria-hidden="true">${esc(initials(x))}</span>`;
     const who = (x, sub) => `${av(x)}<span class="tm-who"><b>${esc(x.name || x.email)}${x.email === me ? ' <i>(you)</i>' : ''}</b><small>${esc(sub ?? (x.name ? x.email : ''))}</small></span>`;
     const person = (x) => { if (x.via === 'Brew' && x.role === 'admin') return `<li class="tm-p"><div class="tm-line">${who(x)}<span class="tm-role">Brew admin</span><span class="tm-mw"></span></div></li>`; /* Brew's own people: shown, never edited here */
       const own = x.role === 'owner', none = Array.isArray(x.seats) && !x.seats.length, open = TS.open === x.email, edit = TS.edit === x.email && !own;
@@ -144,7 +144,7 @@
         ${own ? '<span class="tm-role">Admin</span>' : `<button class="tm-views${none ? ' is-wait' : ''}" data-tedit="${esc(x.email)}" aria-expanded="${edit}">${esc(seatShort(x.seats ?? 'all'))}${ic('chev', 's14')}</button>`}
         ${menu ? `<span class="tm-mw"><button class="tm-more" data-tmore="${esc(x.email)}" aria-label="More for ${esc(x.email)}" aria-expanded="${open}">${ic('more', 's16') || '•••'}</button>${open ? `<div class="tm-menu" role="menu">${menu}</div>` : ''}</span>` : '<span class="tm-mw"></span>'}</div>
         ${edit ? `<div class="tm-edit">${chips(x.seats ?? 'all', `data-tseat="${esc(x.email)}" data-k`)}</div>` : ''}</li>`; };
-    const reqs = ac.requests || [], invs = ac.invites || [], mems = ac.members || [];
+    const invs = ac.invites || [], mems = ac.members || [];
     return `<div class="sheet tm-sheet" role="dialog" aria-labelledby="tm-title">
       <header class="tm-head"><div><h3 id="tm-title">Team and access</h3><p>Everyone sees only the cards for the views you give them.</p></div><button class="tm-x" data-close aria-label="Close">${ic('x', 's16')}</button></header>
       <form class="tm-invite" data-tinv novalidate>
@@ -153,9 +153,8 @@
         <p class="tm-msg" role="status" ${TS.msg ? '' : 'hidden'} data-kind="${TS.msg?.kind || ''}">${esc(TS.msg?.text || '')}</p>
       </form>
       <div class="tm-people">
-        ${reqs.length ? `<h4>Asked to join · ${reqs.length}</h4><ul class="tm-list">${reqs.map((q) => `<li class="tm-p is-req"><div class="tm-line">${who(q, 'Asked to join')}<span class="tm-mw"></span></div><div class="tm-edit">${chips(TS['r:' + q.email] || [], `data-treq="${esc(q.email)}" data-k`)}<div class="tm-reqb"><button class="btn btn-ghost sm" data-top="decline|${esc(q.email)}">Decline</button><button class="btn btn-primary sm" data-top="approve|${esc(q.email)}">Let in</button></div></div></li>`).join('')}</ul>` : ''}
         ${mems.length ? `<h4>People · ${mems.length}</h4><ul class="tm-list">${mems.map(person).join('')}</ul>` : ''}
-        ${invs.length ? `<h4>Invited · ${invs.length}</h4><ul class="tm-list">${invs.map((v) => `<li class="tm-p"><div class="tm-line">${who({ email: v.email }, `${seatWords(v.seats)} · sent ${ago(v.at)}`)}<span class="tm-acts"><button class="tm-link" data-top="resend|${esc(v.email)}">Resend</button><button class="tm-link" data-top="revoke|${esc(v.email)}">Cancel</button></span></div></li>`).join('')}</ul>` : ''}
+        ${invs.length ? `<h4>Invited · ${invs.length}</h4><ul class="tm-list">${invs.map((v) => { const edit = TS.edit === 'i:' + v.email; return `<li class="tm-p${edit ? ' is-edit' : ''}"><div class="tm-line">${who({ email: v.email }, `Sent ${ago(v.at)}`)}<button class="tm-views" data-tedit="i:${esc(v.email)}" aria-expanded="${edit}">${esc(seatShort(v.seats ?? 'all'))}${ic('chev', 's14')}</button><span class="tm-acts"><button class="tm-link" data-top="resend|${esc(v.email)}">Resend</button><button class="tm-link" data-top="revoke|${esc(v.email)}">Cancel</button></span></div>${edit ? `<div class="tm-edit">${chips(v.seats ?? 'all', `data-tiseat="${esc(v.email)}" data-k`)}</div>` : ''}</li>`; }).join('')}</ul>` : ''}
       </div></div>`;
   }
   /* only the people list re-renders; the invite form keeps its focus, text and chips */
@@ -179,27 +178,31 @@
       const r = await tmPost({ action: 'invite', email, seats: TS.draft });
       TS.busy = false; send.disabled = false; send.textContent = 'Send invite';
       if (r.error) return tmMsg(m, 'bad', r.error);
-      TS.email = ''; input.value = ''; tmMsg(m, r.warn ? 'warn' : 'ok', r.warn || `Invite sent to ${email}. They’ll see ${seatWords(TS.draft)}.`); teamPeople();
+      TS.email = ''; input.value = ''; TS.link = r.link || null; tmMsg(m, r.warn ? 'warn' : 'ok', r.warn || `Invite sent to ${email}. They’ll see ${seatWords(TS.draft)}.`); teamPeople(); teamLink(m);
     };
     teamBindPeople(m);
   }
   function teamBindPeople(m) {
     const me = L.access?.me || L.me?.email, all = () => SEATS().map(([k]) => k), act = async (b, btn) => { if (btn) btn.disabled = true; const r = await tmPost(b); if (r.error) tmMsg(m, 'bad', r.error); else if (TS.msg?.kind === 'bad') tmMsg(m); teamPeople(); return r; };
     m.querySelectorAll('[data-tedit]').forEach((b) => b.onclick = () => { TS.edit = TS.edit === b.dataset.tedit ? null : b.dataset.tedit; TS.open = null; teamPeople(); });
-    m.querySelectorAll('[data-treq]').forEach((b) => b.onclick = () => { const k = 'r:' + b.dataset.treq; TS[k] = tog(TS[k] || [], b.dataset.k); flip(b, TS[k].includes(b.dataset.k)); });
+    m.querySelectorAll('[data-tiseat]').forEach((b) => b.onclick = async () => { const e = b.dataset.tiseat, v = (L.access.invites || []).find((y) => y.email === e); if (!v) return; const cur = v.seats === 'all' || v.seats == null ? all() : v.seats, next = tog(cur, b.dataset.k);
+      flip(b, next.includes(b.dataset.k)); const r = await tmPost({ action: 'seats', email: e, seats: next }); if (r.error) { flip(b, cur.includes(b.dataset.k)); tmMsg(m, 'bad', r.error); }
+      const btn = m.querySelector(`[data-tedit="i:${CSS.escape(e)}"]`); if (btn && !r.error) btn.firstChild.textContent = seatShort(next); });
     m.querySelectorAll('[data-tseat]').forEach((b) => b.onclick = async () => { const e = b.dataset.tseat, x = (L.access.members || []).find((y) => y.email === e); if (!x) return; const cur = x.seats === 'all' || x.seats == null ? all() : x.seats, next = tog(cur, b.dataset.k);
       flip(b, next.includes(b.dataset.k)); const r = await tmPost({ action: 'seats', email: e, seats: next }); if (r.error) { flip(b, cur.includes(b.dataset.k)); tmMsg(m, 'bad', r.error); }
       const btn = m.querySelector(`[data-tedit="${CSS.escape(e)}"]`); if (btn) { btn.firstChild.textContent = seatShort(next); btn.classList.toggle('is-wait', !next.length); } });
     m.querySelectorAll('[data-tmore]').forEach((b) => b.onclick = (ev) => { ev.stopPropagation(); TS.open = TS.open === b.dataset.tmore ? null : b.dataset.tmore; teamPeople(); });
     m.querySelectorAll('[data-top]').forEach((b) => b.onclick = async () => { const [action, email] = b.dataset.top.split('|'); TS.open = null;
-      if (action === 'approve') return act({ action, email, seats: TS['r:' + email] || [] }, b);
       if (action === 'remove' && !confirm(`Remove ${email} from the team?`)) return teamPeople();
-      if (action === 'transfer') { if (!confirm(`Make ${email} the admin instead of you? You keep every view until they change yours.`)) return teamPeople(); const r = await act({ action: 'make_owner', email }, b); if (!r.error) await act({ action: 'step_down', email: me, seats: all() }); return; }
+      if (action === 'transfer') { if (!confirm(`Make ${email} the admin instead of you? You keep every view until they change yours.`)) return teamPeople(); return act({ action: 'transfer', email }, b); }
       if (action === 'step_down') return act({ action, email, seats: all() }, b);
-      if (action === 'resend') { b.disabled = true; b.textContent = 'Sending…'; const r = await tmPost({ action, email }); return tmMsg(m, r.error ? 'bad' : r.warn ? 'warn' : 'ok', r.error || r.warn || `Sent again to ${email}.`), teamPeople(); }
+      if (action === 'resend') { b.disabled = true; b.textContent = 'Sending…'; const r = await tmPost({ action, email }); TS.link = r.link || null; tmMsg(m, r.error ? 'bad' : r.warn ? 'warn' : 'ok', r.error || r.warn || `Sent again to ${email}.`); teamPeople(); return teamLink(m); }
       act({ action, email }, b); });
   }
-  function teamSheet() { TS.msg = null; TS.open = null; TS.edit = null; A().modal(teamHtml(), (m) => teamBind(m.querySelector('.tm-sheet'))); setTimeout(() => document.querySelector('#tm-email')?.focus(), 50); }
+  /* the invite link, when the email didn't go (or was just sent): the admin sends it themselves */
+  function teamLink(m) { m.querySelector('.tm-copy')?.remove(); if (!TS.link) return; const el = m.querySelector('.tm-msg'); el?.insertAdjacentHTML('afterend', `<button type="button" class="btn btn-ghost sm tm-copy" data-tcopy>${ic('link', 's14')}Copy the invite link</button>`);
+    m.querySelector('[data-tcopy]').onclick = async (e) => { try { await navigator.clipboard.writeText(TS.link); e.currentTarget.textContent = 'Link copied'; } catch { prompt('Copy the invite link', TS.link); } }; }
+  function teamSheet() { TS.link = null; TS.msg = null; TS.open = null; TS.edit = null; A().modal(teamHtml(), (m) => teamBind(m.querySelector('.tm-sheet'))); setTimeout(() => document.querySelector('#tm-email')?.focus(), 50); }
 
 
 

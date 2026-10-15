@@ -25,6 +25,7 @@ import { createHandoff, parseToken, handoffPath, jamPath, shareToken, parseShare
 import { PAGE_SCHEMA, pagePrompt, moveTextOf, sanitizePage, fallbackPage } from './card-page.js';
 import { withPrefs, prefsOf } from './model-ctx.js';
 import { createMemberCtx } from './member-ctx.js';
+import { createJams } from './jams.js';
 import { parseLearnCommand, learnGate, cardUsesLearned } from './brand-learnings.js'; // /update-brand-learnings in a jam
 import { AsyncLocalStorage } from 'node:async_hooks';
 /* this request may make fresh work (the brand's team, SquareUp); false = demo mode. Unset off a request (the background clock) */
@@ -188,7 +189,25 @@ export function createFeedService(o) {
      are that request's signed-in viewer (REQ); on the background clock they are the last team member who opened the
      workspace (t.teamEmail), re-checked against the brand's members before every tick (BG, bgTeam) */
   const MC = createMemberCtx({ isMemberEmail: o.isMemberEmail || null, defaultBrand: DEFAULT_BRAND }), reqOf = MC.reqOf; /* member-ctx.js */
-  const tenants = new (class extends Map { set(k, t) { MC.guard(t); return super.set(k, t); } })();
+  /* team jams (jams.js): a member's t.work and t.changes are the brand's shared jams; a visitor keeps their own */
+  const JAMS = o.jams || createJams({ packs: o.globalPacks || packs, reqOf, bgMember: MC.bgMember, log });
+  /* the person acting in this request ({ email, name, pic }), or null (a visitor, the background clock) */
+  const meOf = (t) => { const r = reqOf(t); if (!r) return null; if (r.member && r.email) return { email: r.email, name: r.name || null, pic: r.pic || null, ...(o.isStaff?.(r.email) ? { staff: true } : {}) }; if (r.guest?.email) return { email: r.guest.email, name: r.guest.name || null, pic: r.guest.pic || null }; return null; };
+  const tenants = new (class extends Map { set(k, t) { MC.guard(t); JAMS.guard(t); return super.set(k, t); } })();
+  /* jam emails to the team (jam-mail.js); the demo site never sends */
+  const mailEv = (t, w, ev) => { if (!o.jamMail || process.env.DEMO_MODE === '1') return; o.jamMail.event(t.brandId || DEFAULT_BRAND, w, ev).catch((e) => log.warn?.('[jam-mail]', e.message)); };
+  const nameOf = (p) => p?.name || p?.email || 'Someone';
+  /* the ShopOS team was tagged: its shared inbox gets the jam link and the read-only brief (jam-mail.js shopos) */
+  const shoposMail = (t, w, { why, text }) => { if (!o.jamMail || process.env.DEMO_MODE === '1') return; const base = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com';
+    o.jamMail.shopos(t.brandId || DEFAULT_BRAND, w, { by: meOf(t), why, text, ticket: w.ticket || null, jamUrl: `${base}${jamPath(t, w)}`, briefUrl: `${base}${handoffPath(t, w)}?full=1` }).catch((e) => log.warn?.('[jam-mail] shopos', e.message)); };
+  /* the people a jam may tag or assign: the brand's team, its pending invites, and the jam's own guests (never a stranger) */
+  const tagsOf = async (t, w, list) => {
+    const want = [...new Set((Array.isArray(list) ? list : [list]).map((e) => String(e || '').toLowerCase().trim()).filter(Boolean))].slice(0, 12); if (!want.length) return [];
+    const m = o.teamOf ? await o.teamOf(t.brandId || DEFAULT_BRAND).catch(() => null) : null, known = new Map();
+    for (const x of m?.members || []) known.set(x.email, { email: x.email, name: x.name || null, pic: x.pic || null });
+    for (const x of m?.invites || []) if (!known.has(x.email)) known.set(x.email, { email: x.email, name: null, pic: null, invited: true });
+    for (const x of w.people || []) if (!known.has(x.email)) known.set(x.email, { email: x.email, name: x.name || null, pic: x.pic || null });
+    return want.map((e) => known.get(e)).filter(Boolean); };
   let ticket = 1041, leadsAllTenants = 0;
 
   /* ---------- small helpers ---------- */
@@ -940,7 +959,7 @@ export function createFeedService(o) {
   const later = (ms, fn) => setTimeout(() => { try { const r = fn(); r?.catch?.((e) => log.warn('[work timer]', e.message)); } catch (e) { log.warn('[work timer]', e.message); } }, ms);
   const notify = (t, w, text, kind = 'update') => { t.notes.unshift({ id: uid('n'), itemId: w.id, cardId: w.cardId, title: w.title, img: w.img, text, kind, at: now(t), read: false }); w.unread = true; w.updatedAt = now(t); };
   const move = (t, w, stage, text, kind) => { if (stage === 'deploying' && w.cardId) decideFromAction(t, t.cards.get(w.cardId), w); const was = w.stage; w.stage = stage; if (was !== stage) stepLearn(t, w, stage); w.history.push([stage, now(t)]); w.updatedAt = now(t); if (text) notify(t, w, text, kind); };
-  const say = (t, w, m) => { const msg = { id: uid('m'), at: now(t), ...m }; w.thread.push(msg); w.updatedAt = now(t); JB?.onSay(t, w, msg); };
+  const say = (t, w, m) => { const msg = { id: uid('m'), at: now(t), ...m }; if (msg.from === 'me' && !msg.by) { const p = meOf(t); if (p) { msg.by = p; JAMS.join(w, p, 'replied'); } } w.thread.push(msg); if (msg.by) mailEv(t, w, { kind: 'reply', to: (w.people || []).map((x) => x.email), by: msg.by, text: msg.body, id: msg.id }); if (msg.by) w.lastBy = msg.by.email; w.updatedAt = now(t); JB?.onSay(t, w, msg); };
   const curV = (w) => w.versions.find((v) => v.n === w.current) || w.versions[w.versions.length - 1];
   const addVersion = (t, w, v) => { const n = w.versions.length + 1; w.versions.push({ n, ...v, at: now(t) }); w.current = n; w.title = v.title; if (v.images?.[0]) w.img = v.images[0]; RMX?.onWorkVersion(t, w, v); return n; };
   const workFor = (t, cardId) => t.work.find((w) => w.cardId === cardId && !w.archived && !w.discarded && !['out', 'measuring', 'result'].includes(w.stage));
@@ -948,6 +967,8 @@ export function createFeedService(o) {
     const w = { id: uid('wk'), cardId: c.id, title: c.title, img: c.images?.[0] || null, agent: c.agent, sector: c.sector, cta: c.cta?.label || null, stage: 'drafting',
       versions: [{ n: 1, title: c.title, sub: c.sub, images: c.images || null, by: 'agent', who: AGENT[c.agent], note: 'The original card', at: now(t) }], current: 1,
       thread: [], with: null, ticket: null, deploy: null, createdAt: now(t), updatedAt: now(t), unread: false, history: [['drafting', now(t)]], ...(c.ctxKey ? { ctxKey: c.ctxKey } : {}), ...(c.bundle?.length ? { bundle: c.bundle } : {}) };
+    const me0 = meOf(t); if (me0) { w.startedBy = me0; JAMS.join(w, me0, 'started'); }
+    w.cardSnap = clone(c); // a teammate's workspace may not hold this card (an idea or story made elsewhere): the jam carries it
     seedDrafts(w, c, B().firstDrafts, { uid, at: now(t) }); // a first draft Brew made before the jam opened (drafts-bg.js)
     w.cardPlan = planOfCard(c); // the card's plan is the jam's input: the case, the brief and the make step read it
     t.work.unshift(w); t.acted.add(c.id); return w;
@@ -1213,6 +1234,7 @@ export function createFeedService(o) {
   });
 
   /* work board endpoints */
+  const teamJam = (t, id) => (JAMS.peek(t.brandId || DEFAULT_BRAND)?.work || []).find((x) => x.id === id) || null; /* a link's jam, whoever opens it */
   const W = (t, id) => { const w = t.work.find((x) => x.id === id); return w && DR ? DR.heal(w) : w; }; /* heal: a draft cut off by a restart stops showing as 'making' */
   // a jam started from scratch is called "New jam" until its brief has a name; then it takes the brief's heading
   const GENERIC = /^(new jam|untitled)$/i;
@@ -1230,8 +1252,14 @@ export function createFeedService(o) {
       for (const w of ws) if (w !== keep && w.stage === 'drafting' && (w.thread || []).filter((m) => m.from === 'me').length <= 1) w.archived = true;
     }
   };
-  const shown = (w) => !w.archived && !w.discarded;
-  const workOut = (t) => (repairHeartKids(t), dedupeShortcuts(t), fixTickets(t), t.work.forEach((w) => { RMX.ensurePlan(t, w); if (w.cardId && !w.cardPlan && t.cards.get(w.cardId)) w.cardPlan = planOfCard(t.cards.get(w.cardId)); /* jams opened before plans heal */ if (!['measuring', 'result'].includes(w.stage)) JB.seed(t, w); titleFromDoc(w); }), { items: t.work.filter(shown), discarded: t.work.filter((w) => !w.archived && w.discarded), notes: t.notes.slice(0, 40), unread: t.notes.filter((n) => !n.read).length, needsYou: t.work.filter((w) => shown(w) && w.stage === 'needs_you').length });
+  const shown0 = (w) => !w.archived && !w.discarded;
+  /* a guest of a jam sees that jam only, never the rest of the team's */
+  const guestSees = (t) => { const g = reqOf(t)?.guest; return g ? (w) => g.wids.includes(w.id) : () => true; };
+  let shown = shown0;
+  /* a jam out to the client: unread is this person's (they haven't opened it since it changed), and who has it open now */
+  const jamOut = (t, w) => { const me0 = meOf(t), seen = me0 ? w.reads?.[me0.email] : null; return { ...w, cardSnap: undefined, unread: me0 ? (w.updatedAt > (seen || 0) && (w.people || []).some((p) => p.email === me0.email) && w.lastBy !== me0.email) : !!w.unread, mine: !!me0 && JAMS.isIn(w, me0.email), here: JAMS.here(w.id).filter((p) => p.email !== me0?.email) }; };
+  const workOut = (t) => { const see = guestSees(t); shown = (w) => shown0(w) && see(w); try { return workOut0(t); } finally { shown = shown0; } };
+  const workOut0 = (t) => (repairHeartKids(t), dedupeShortcuts(t), fixTickets(t), t.work.forEach((w) => { RMX.ensurePlan(t, w); if (w.cardId && !w.cardPlan && t.cards.get(w.cardId)) w.cardPlan = planOfCard(t.cards.get(w.cardId)); /* jams opened before plans heal */ if (!['measuring', 'result'].includes(w.stage)) JB.seed(t, w); titleFromDoc(w); }), { items: t.work.filter(shown).map((w) => jamOut(t, w)), discarded: t.work.filter((w) => !w.archived && w.discarded && guestSees(t)(w)).map((w) => jamOut(t, w)), me: meOf(t), notes: t.notes.slice(0, 40), unread: t.notes.filter((n) => !n.read).length, needsYou: t.work.filter((w) => shown(w) && w.stage === 'needs_you').length });
   on('GET', '/api/tenants/:id/work', async (b, t) => workOut(t));
   // discard a jam (kept under Discarded, can be restored). Something live is undone first, never discarded under people.
   on('POST', '/api/work/:wid/discard', async (b, t, p) => {
@@ -1254,10 +1282,12 @@ export function createFeedService(o) {
     const ctxKey = typeof b.card?.ctxKey === 'string' ? b.card.ctxKey.slice(0, 400) : null;
     const live = (w) => !w.archived && !w.discarded && !['deploying', 'out', 'measuring', 'result'].includes(w.stage);
     const running = ctxKey && (t.work.find((w) => w.ctxKey === ctxKey && live(w)) || t.work.find((w) => !w.ctxKey && live(w) && String(w.cardId).startsWith('jam-') && w.title === b.card.title));
-    if (running) { running.ctxKey ||= ctxKey; JB.seed(t, running); return { work: running }; }
+    if (running) { const me0 = meOf(t); if (me0 && !JAMS.isIn(running, me0.email)) JAMS.join(running, me0, 'joined'); running.ctxKey ||= ctxKey; JB.seed(t, running); return { work: running }; }
     let c = t.cards.get(b.cardId);
     if (!c && b.card?.title) { c = { ...b.card, id: String(b.cardId).replace(/^work:/, 'wc-'), state: 'ready', origin: 'signal', createdAt: now(t), history: [['ready', now(t)]] }; delete c.measure; if (c.bundle != null) c.bundle = Array.isArray(c.bundle) ? [...new Set(c.bundle)].filter((id) => typeof id === 'string' && t.cards.has(id)).slice(0, 12) : null; t.cards.set(c.id, c); }
-    if (!c) return { error: 'not found' }; const w = workFor(t, c.id) || newWork(t, c); if (b.decided && !w.decided) w.decided = b.decided; if (!w.decided && t.decided?.[c.id]) w.decided = t.decided[c.id]; JB.seed(t, w);
+    if (!c) return { error: 'not found' }; const had = workFor(t, c.id), w = had || newWork(t, c);
+    /* one jam per card, the team over: a second person tapping Jam joins the open one */
+    if (had) { const me0 = meOf(t); if (me0 && !JAMS.isIn(had, me0.email)) { JAMS.join(had, me0, 'joined'); say(t, had, { from: 'system', body: `${me0.name || me0.email} joined the jam` }); } } if (b.decided && !w.decided) w.decided = b.decided; if (!w.decided && t.decided?.[c.id]) w.decided = t.decided[c.id]; JB.seed(t, w);
     /* opening a jam: the work and its change package in one round trip (link) */
     if (b.link && linkChange) return linkChange(t, w);
     return { work: w }; });
@@ -1296,24 +1326,55 @@ export function createFeedService(o) {
   on('POST', '/api/work/:wid/send', async (b, t, p) => {
     const w = W(t, p.wid); if (!w) return { error: 'not found' }; const note = String(b.note || '').trim();
     if (b.to !== 'team') return { error: 'Share the brief to send it to the ShopOS team.' };
+    if (process.env.DEMO_MODE !== '1') return { error: 'Tag a teammate with @ in the chat.' }; /* the simulated teammate lives on the demo site only */
     const c = SEED.colleagues.find((x) => x.id === b.colleague) || colleagueFor({ sector: w.sector });
     w.with = { kind: 'team', id: c.id, name: b.name || b.names?.[c.id] || c.name, channel: b.channel || '#growth', dummy: true };
     say(t, w, { from: 'me', body: note || `@${w.with.name} can you look at v${w.current}?`, to: w.with.name });
     move(t, w, 'team', null); colleagueReply(t, w);
     return { work: w };
   });
+  /* a message to the people in the jam. @someone tags them: they join the jam and get an email right away */
   on('POST', '/api/work/:wid/message', async (b, t, p) => {
-    const w = W(t, p.wid); if (!w) return { error: 'not found' }; const body = String(b.body || '').trim();
-    say(t, w, { from: 'me', body });
-    if (w.with?.kind === 'team') { move(t, w, 'team', null); colleagueReply(t, w); }
-    return { work: w };
+    const w = W(t, p.wid); if (!w) return { error: 'not found' }; const body = String(b.body || '').trim(); if (!body) return { error: 'Write something first.' };
+    const me0 = meOf(t), tags = (await tagsOf(t, w, b.mentions)).filter((x) => x.email !== me0?.email);
+    for (const x of tags) JAMS.join(w, x, 'tagged');
+    say(t, w, { from: 'me', body, ...(tags.length ? { to: tags.map((x) => x.email) } : {}) });
+    if (tags.length) mailEv(t, w, { kind: 'tagged', to: tags.map((x) => x.email), by: me0, text: body, id: w.thread[w.thread.length - 1].id });
+    if (b.shopos) shoposMail(t, w, { why: 'tagged the ShopOS team', text: body });
+    if (w.with?.kind === 'team' && process.env.DEMO_MODE === '1') { move(t, w, 'team', null); colleagueReply(t, w); }
+    return { work: jamOut(t, w), tagged: tags.map((x) => x.email) };
   });
-  on('POST', '/api/work/:wid/approve', async (b, t, p) => { const w = W(t, p.wid); if (!w) return { error: 'not found' }; say(t, w, { from: 'system', body: `You approved v${w.current}` }); move(t, w, 'ready', null); return { work: w }; });
+  /* give the jam to someone, or ask them for their OK on the version now (ask: work | approve); no email = nobody */
+  on('POST', '/api/work/:wid/assign', async (b, t, p) => {
+    const w = W(t, p.wid); if (!w) return { error: 'not found' }; const me0 = meOf(t);
+    if (!b.email) { if (w.assignee) say(t, w, { from: 'system', body: `${nameOf(me0)} took ${nameOf(w.assignee)} off this jam` }); w.assignee = null; w.updatedAt = now(t); return { work: jamOut(t, w) }; }
+    const [x] = await tagsOf(t, w, [b.email]); if (!x) return { error: 'They’re not on the team yet. Invite them from Team and access first.' };
+    const ask = b.ask === 'approve' ? 'approve' : 'work';
+    w.assignee = { ...x, ask, by: me0?.email || null, at: now(t) }; JAMS.join(w, x, 'assigned');
+    say(t, w, { from: 'system', body: ask === 'approve' ? `${nameOf(me0)} asked ${nameOf(x)} for their OK on v${w.current}` : `${nameOf(me0)} gave this jam to ${nameOf(x)}` });
+    if (ask === 'approve') move(t, w, 'needs_you', null);
+    mailEv(t, w, { kind: ask === 'approve' ? 'approve' : 'assigned', to: [x.email], by: me0, text: String(b.note || '').slice(0, 400), id: `as_${w.id}_${x.email}_${ask}_${w.current}` });
+    return { work: jamOut(t, w) };
+  });
+  on('POST', '/api/work/:wid/approve', async (b, t, p) => { const w = W(t, p.wid); if (!w) return { error: 'not found' }; const me0 = meOf(t);
+    if (b.rev != null && w.current !== b.rev) return { stale: true, work: jamOut(t, w), error: `It changed to v${w.current} while you looked. Check it, then approve.` };
+    say(t, w, { from: 'system', body: me0 ? `${nameOf(me0)} approved v${w.current}` : `You approved v${w.current}` }); w.approvedBy = me0 ? { ...me0, n: w.current, at: now(t) } : null;
+    const asker = w.assignee?.ask === 'approve' ? w.assignee.by : null; if (w.assignee?.ask === 'approve') w.assignee = null;
+    move(t, w, 'ready', null);
+    if (me0) mailEv(t, w, { kind: 'approved', to: [w.startedBy?.email, asker].filter(Boolean), by: me0, text: '', id: `ap_${w.id}_${w.current}` });
+    return { work: jamOut(t, w) }; });
+  /* the open jam's poll: who's here (and typing), what this person has seen, and the jam itself only when it changed */
+  on('GET', '/api/jams/:wid', async (b, t, p, q) => {
+    const w = W(t, p.wid); if (!w) return { error: 'not found' }; const me0 = meOf(t), see = guestSees(t); if (!see(w)) return { error: 'not found' };
+    if (me0) { JAMS.beat(w.id, me0, q?.get('typing') === '1'); if (JAMS.isIn(w, me0.email) || reqOf(t)?.member) (w.reads ||= {})[me0.email] = Math.max(now(t), w.updatedAt || 0); }
+    const since = +(q?.get('since') || 0), here = JAMS.here(w.id).filter((x) => x.email !== me0?.email);
+    return since && since >= (w.updatedAt || 0) ? { same: true, here, updatedAt: w.updatedAt } : { work: jamOut(t, w), here, updatedAt: w.updatedAt };
+  });
   on('POST', '/api/work/:wid/reopen', async (b, t, p) => { const w = W(t, p.wid); if (!w) return { error: 'not found' }; say(t, w, { from: 'system', body: 'New round started' }); move(t, w, 'drafting', null); return { work: w }; });
 
 
   MOVES ||= createMoves(path.dirname(PUB));
-  JB = createJamBrief({ planOf: (t, c) => planOfCard(c), pageOf: (t, c) => pageNow(t, c), MOVES, cardOf: (t, id) => { const c = t.cards.get(id); return c ? fillCard(c, t) : null; }, measureOf, claudeTool, cardBrief, seatLine, isMock, spend, clean, now, AGENT, SEED, log, changeOf: (t, w) => (w.changeId && t.changes?.[w.changeId]) || null, targetOf: (t, w) => { const tg = deployTarget(w.cta, t.cards.get(w.cardId)); return tg.conn ? tg.name : null; } });
+  JB = createJamBrief({ onShopos: (t, w, x) => shoposMail(t, w, x), planOf: (t, c) => planOfCard(c), pageOf: (t, c) => pageNow(t, c), MOVES, cardOf: (t, id) => { const c = t.cards.get(id); return c ? fillCard(c, t) : null; }, measureOf, claudeTool, cardBrief, seatLine, isMock, spend, clean, now, AGENT, SEED, log, changeOf: (t, w) => (w.changeId && t.changes?.[w.changeId]) || null, targetOf: (t, w) => { const tg = deployTarget(w.cta, t.cards.get(w.cardId)); return tg.conn ? tg.name : null; } });
   /* brand learnings (brand-learnings.js): /update-brand-learnings in any jam, or a pasted transcript / "update my brand learnings"
      in a fresh jam. Only the brand's team or the Brew team (this request's viewer); the demo site gets a polite no */
   const learnOf = async (t, w, text) => {
@@ -1376,8 +1437,12 @@ export function createFeedService(o) {
     if (b.id) t.decided[p.cid] = b.id; else delete t.decided[p.cid]; if (w) w.decided = b.id || null;
     if (b.id) stepLearn(t, w || { id: 'card:' + p.cid, cardId: p.cid, decided: b.id, thread: [], versions: [], current: 1 }, 'decided');
     return { decided: t.decided }; });
-  on('GET', '/api/tenants/:id/share', async (b, t, p, q) => ({ token: shareToken(t.id, q?.get?.('wid') || null) }));
-  on('GET', '/api/work/:wid/handoff', async (b, t, p, q) => { const w = W(t, p.wid); if (!w) return { error: 'not found' }; const x = await HO.build(t, w, { base: q.get('base') || undefined, changeId: q.get('ch') || undefined }); return { handoff: x, text: HO.text(x, q.get('to') || 'whatsapp') }; });
+  /* a jam link is made by someone in that jam (the team, or that jam's guest), never by whoever holds a workspace id */
+  on('GET', '/api/tenants/:id/share', async (b, t, p, q) => { const r = reqOf(t), wid = q?.get?.('wid') || null;
+    if (!(r?.member || (wid && r?.guest?.wids?.includes(wid)))) return { status: 403, error: 'Sign in as part of the team to share this jam.' };
+    if (wid && !W(t, wid)) return { status: 404, error: 'not found' };
+    return { token: shareToken(t.id, wid) }; });
+  on('GET', '/api/work/:wid/handoff', async (b, t, p, q) => { const w = W(t, p.wid); if (!w) return { error: 'not found' }; { const r = reqOf(t); if (!(r?.member || r?.guest?.wids?.includes(w.id)) && process.env.DEMO_MODE !== '1') return { status: 403, error: 'Sign in as part of the team to share this jam.' }; } /* its links carry a jam token: only someone in the jam makes them */ const x = await HO.build(t, w, { base: q.get('base') || undefined, changeId: q.get('ch') || undefined }); return { handoff: x, text: HO.text(x, q.get('to') || 'whatsapp') }; });
   /* what Brew has learned that bears on this card's pick: the brand (taste rules from edits, past results)
      and this person (how they decided before, hearts, "fewer", their seat). Short lines, newest evidence first. */
   const learnedFor = (t, c) => {
@@ -1401,12 +1466,14 @@ export function createFeedService(o) {
   on('GET', '/api/cards/:cid/moves', async (b, t, p) => { const c = t.cards.get(p.cid); if (!c) return { error: 'not found' }; return { moves: MOVES.numsOf(c.src).map((n) => ({ ...MOVES.summary(n), passages: MOVES.passages({ ...c, src: `Move ${n}` }, 4) })) }; });
   /* MEDIA_FAKE=1 on a local server: the jam's short video runs end to end for free (drafts.js fakeMakers) */
   const FAKE = process.env.MEDIA_FAKE === '1' && !process.env.K_SERVICE ? fakeMakers() : null;
-  RMX = createRemix({ ...(FAKE ? { makers: FAKE.makers, videoImage: FAKE.image, mediaFake: true } : {}), planOf: (t, c) => (c ? planOfCard(c) : null), save: (t) => store?.save(t), catalogOf: (t) => (t ? brandOfT(t)?.catalog : null), photoAsync: o.photoAsync, photoFile, handoffPath, MOVES, seedJam: (t, w) => JB?.seed(t, w), claudeTool, geminiImage, PUB, LANE_PHOTO, FACTS, unbackedNums: (text) => unbacked({ text: String(text).replace(/\b(?:Rs\.?|INR)\s?(?=\d)/gi, '₹') }, FACT_OK).map((x) => x.n), SEED, AGENT, claudeJSON, cardBrief, seatLine, qaCheck, mechanicalFix, clean, BANNED, isMock, spend, uid, now, clone, inr, on, newWork, addVersion, say, move, notify, later, setState, weekKey, curV, measureOf, log  });
+  RMX = createRemix({ onShopos: (t, w, x) => shoposMail(t, w, x), askPerson: async (t, w, q, email) => { const [x] = await tagsOf(t, w, [email]); if (!x) return { error: 'They’re not on the team yet. Invite them first.' }; const me0 = meOf(t);
+      JAMS.join(w, x, 'asked'); say(t, w, { from: 'system', body: `${nameOf(me0)} asked ${nameOf(x)}: ${q.q}` }); mailEv(t, w, { kind: 'asked', to: [x.email], by: me0, text: q.q, id: `q_${w.id}_${q.id}` }); return x; }, ...(FAKE ? { makers: FAKE.makers, videoImage: FAKE.image, mediaFake: true } : {}), planOf: (t, c) => (c ? planOfCard(c) : null), save: (t) => store?.save(t), catalogOf: (t) => (t ? brandOfT(t)?.catalog : null), photoAsync: o.photoAsync, photoFile, handoffPath, MOVES, seedJam: (t, w) => JB?.seed(t, w), claudeTool, geminiImage, PUB, LANE_PHOTO, FACTS, unbackedNums: (text) => unbacked({ text: String(text).replace(/\b(?:Rs\.?|INR)\s?(?=\d)/gi, '₹') }, FACT_OK).map((x) => x.n), SEED, AGENT, claudeJSON, cardBrief, seatLine, qaCheck, mechanicalFix, clean, BANNED, isMock, spend, uid, now, clone, inr, on, newWork, addVersion, say, move, notify, later, setState, weekKey, curV, measureOf, log  });
   // tenants survive restarts (store.js); a tenant not in memory is read back from disk or GCS before we give up on it
   const getTenant = async (id) => {
     let t = tenants.get(id); if (t || !store || !id) return t;
     t = await store.load(id); if (!t) return null;
     const br = await packs.load(t.brandId || DEFAULT_BRAND); if (!br) return null;
+    await JAMS.load(br.slug);
     return runIn(br, () => {
       // seed and pool cards follow the current copy (descriptions get rewritten); runtime cards keep their own
       const SRC = new Map([...SEED.posts, ...Object.values(POOLS).flat()].map((x) => [x.id, x]));
@@ -1419,11 +1486,14 @@ export function createFeedService(o) {
   };
   /* jam guests: people who signed in through a shared jam link. They may act on that jam (its work item, the studio change
      linked to it, its card's remix) and nothing else; they are never members, so private moves, memory and the team stay closed */
+  const GUEST_DO = /^(message|iterate|pick|version|edit|reference|canvas|doc|doc\/(ask|add|sync)|jb|jb\/import|draft|draft\/[^/]+\/drop|plan\/(answer|add))$/;
   const guestOk = (t, email, path) => {
-    const g = t.guests?.[String(email).toLowerCase()]; if (!g?.wids?.length) return false;
-    const jams = (t.work || []).filter((w) => g.wids.includes(w.id)), cards = new Set(jams.map((w) => w.cardId).filter(Boolean));
-    let m = path.match(/^\/api\/work\/([^/]+)(\/|$)/); if (m) return g.wids.includes(m[1]);
-    m = path.match(/^\/api\/changes\/([^/]+)(\/|$)/); if (m) { const ch = t.changes?.[m[1]]; return !!ch && (g.wids.includes(ch.workId) || cards.has(ch.cardId)); }
+    const wids = JAMS.guestWids(t.brandId || DEFAULT_BRAND, email), g = { wids }; if (!g.wids.length) return false;
+    const all = JAMS.peek(t.brandId || DEFAULT_BRAND)?.work || [], ch0 = JAMS.peek(t.brandId || DEFAULT_BRAND)?.changes || {};
+    const jams = all.filter((w) => g.wids.includes(w.id)), cards = new Set(jams.map((w) => w.cardId).filter(Boolean));
+    /* a guest chats, edits the brief and makes drafts; sharing the brief, approving, assigning, deciding or discarding stays with the team */
+    let m = path.match(/^\/api\/work\/([^/]+)(\/(.*))?$/); if (m) return g.wids.includes(m[1]) && GUEST_DO.test(m[3] || '');
+    m = path.match(/^\/api\/changes\/([^/]+)(\/|$)/); if (m) { const ch = ch0[m[1]]; return !!ch && (g.wids.includes(ch.workId) || cards.has(ch.cardId)); }
     m = path.match(/^\/api\/cards\/([^/]+)\/(remix|batch|image|page|moves|learned|brief)(\/|$)/); if (m) return cards.has(decodeURIComponent(m[1]));
     return false;
   };
@@ -1440,6 +1510,7 @@ export function createFeedService(o) {
     const br = await packs.load(slug) || await packs.load(DEFAULT_BRAND);
     if (t0 && !t0.brandId) t0.brandId = br.slug;
     const viewer = br.kind === 'generated' ? await viewerOf(req, br.slug).catch(() => null) : null;
+    await JAMS.load(br.slug); /* the team's jams are in memory before anything reads t.work */
     /* demo mode: someone who may not make fresh work here (another domain, not invited) keeps the feed, cards and layout, but no
        route that writes new work runs for them: only the harmless writes below (seen, pinned, feedback, layout, picking a version) */
     let gen = o.genOk ? await o.genOk(req, br.slug).catch(() => false) : true;
@@ -1447,21 +1518,25 @@ export function createFeedService(o) {
     const guestJam = !gen && t0 && viewer?.email && guestOk(t0, viewer.email, u.pathname);
     if (guestJam) gen = true;
     // someone looking at a shared jam without signing in: signing in is how they take part
-    if (!gen && req.method !== 'GET' && !viewer?.email && t0 && /^\/api\/work\/([^/]+)\//.test(u.pathname) && (t0.work || []).some((w) => u.pathname.startsWith(`/api/work/${w.id}/`))) { send(res, 401, { error: 'Sign in to take part in this jam.', signin: true, jam: true }); return true; }
+    if (!gen && req.method !== 'GET' && !viewer?.email && t0 && /^\/api\/work\/([^/]+)\//.test(u.pathname) && (JAMS.peek(br.slug)?.work || []).some((w) => u.pathname.startsWith(`/api/work/${w.id}/`))) { send(res, 401, { error: 'Sign in to take part in this jam.', signin: true, jam: true }); return true; }
     // a guest of the shared jam changes nothing else in the team's workspace (no new jams, no layout, no feedback)
-    if (!gen && req.method !== 'GET' && viewer?.email && t0?.guests?.[String(viewer.email).toLowerCase()]) { send(res, 403, { error: 'As a guest you can work on the shared jam only. Ask the team to invite you for the rest.', guest: true }); return true; }
+    if (!gen && req.method !== 'GET' && viewer?.email && JAMS.guestWids(br.slug, viewer.email).length) { send(res, 403, { error: 'As a guest you can chat, edit the brief and make drafts in this jam. Ask the team to invite you for the rest.', guest: true }); return true; }
+    /* a team's workspace (a member has opened it) takes no writes from someone outside the team, not even the harmless ones */
+    if (!gen && req.method !== 'GET' && t0?.teamEmail && !viewer?.member && process.env.DEMO_MODE !== '1') { send(res, viewer?.email ? 403 : 401, { error: viewer?.email ? 'This is the team’s workspace. Ask them to invite you.' : 'Sign in to take part.', signin: !viewer?.email }); return true; }
     if (!gen && req.method !== 'GET' && !DEMO_OK.test(u.pathname)) { send(res, 403, { error: `Demo mode: sign in with your work email${viewer?.host ? ` at ${viewer.host}` : ''} to make this.`, demo: true, host: viewer?.host || null }); return true; }
     if (gen && t0) t0.lastGen = Date.now();
     if (gen && br.kind === 'generated' && req.method === 'GET' && /\/feed$/.test(u.pathname)) o.onOpen?.(br.slug); // the social scheduler and background drafts spend only on brands their team opens
     /* this request's viewer, checked from the signed-in user (REQ): t.member and t.memberEmail read it. A team member who opens
        the workspace becomes the one the background clock re-checks (teamEmail) */
-    const who = { member: !!viewer?.member, email: viewer?.member ? viewer.email || null : null, name: viewer?.member ? viewer.name || null : null, claimed: !!viewer?.claimed, slug: br.slug, seats: viewer?.member && Array.isArray(viewer.seats) ? viewer.seats : null };
+    const gw = !viewer?.member && viewer?.email ? JAMS.guestWids(br.slug, viewer.email) : [];
+    const who = { member: !!viewer?.member, email: viewer?.member ? viewer.email || null : null, name: viewer?.member ? viewer.name || null : null, pic: viewer?.member ? viewer.pic || null : null, claimed: !!viewer?.claimed, slug: br.slug, seats: viewer?.member && Array.isArray(viewer.seats) ? viewer.seats : null,
+      guest: gw.length ? { email: String(viewer.email).toLowerCase(), name: viewer.name || null, pic: viewer.pic || null, wids: gw } : null };
     return GEN_CTX.run(gen, () => MC.run(who, t0, () => runIn(br, () => withPrefs(prefsOf(req), () => handleIn(req, res, u, viewer))))); // the jam's model and memory choice, for this request
   };
   const handleIn = async (req, res, u, viewer) => {
     const hm = u.pathname.match(/^\/h\/([\w~-]+)$/);
     if (hm && req.method === 'GET') {
-      const tok = parseToken(hm[1]); const t = tok && await getTenant(tok.tid); const w = t && W(t, tok.wid);
+      const tok = parseToken(hm[1]); const t = tok && await getTenant(tok.tid); const w = t && (W(t, tok.wid) || teamJam(t, tok.wid));
       if (!w) { res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }); res.end('This handoff link is not valid.'); return true; }
       /* links shared before the jam link existed open the jam itself (same card, same change, latest state); ?full=1 is the read-only page */
       if (u.searchParams.get('full') !== '1') { res.writeHead(302, { location: jamPath(t, w), 'cache-control': 'no-store' }); res.end(); return true; }
@@ -1473,8 +1548,12 @@ export function createFeedService(o) {
     if (sm && req.method === 'GET') { const tok = parseShare(sm[1]); const t = tok && await getTenant(tok.tid);
       if (!t) { send(res, 404, { error: 'This link has expired.' }); return true; }
       /* anyone with the link can look. Signed in, a person who isn't on the team becomes a guest of that one jam */
-      let guest = false; const email = viewer?.email ? String(viewer.email).toLowerCase() : null;
-      if (email && tok.wid && !viewer?.member && !viewer?.gen && W(t, tok.wid)) { const g = ((t.guests ||= {})[email] ||= { name: viewer.name || null, at: Date.now(), wids: [] }); if (!g.wids.includes(tok.wid)) { g.wids.push(tok.wid); store?.save(t); } guest = true; }
+      let guest = false; const email = viewer?.email ? String(viewer.email).toLowerCase() : null, w = tok.wid ? (W(t, tok.wid) || teamJam(t, tok.wid)) : null;
+      /* a shared jam needs a signed-in person (the team's jams are never open to an anonymous link) */
+      if (!email && tok.wid) { send(res, 200, { signin: true, jam: tok.wid }); return true; }
+      /* a teammate opens it in their own workspace: it is the team's jam already */
+      if (viewer?.member && w) { if (!JAMS.isIn(w, email)) JAMS.join(w, { email, name: viewer.name, pic: viewer.pic }, 'joined'); send(res, 200, { member: true, jam: w.id }); return true; }
+      if (email && w && !viewer?.member && !viewer?.gen) { JAMS.join(w, { email, name: viewer.name, pic: viewer.pic }, 'guest'); guest = true; }
       send(res, 200, { guest, signedIn: !!email, jam: tok.wid || null, tenant: t.id, viewer: t.viewer, conn: t.conn, pro: t.plan === 'pro', decided: t.decided || {} }); return true; }
     if (!/^\/api\/(tenants|cards|jams|work|changes)/.test(u.pathname)) return false;
     for (const r of ROUTES) {
@@ -1483,7 +1562,7 @@ export function createFeedService(o) {
       const tid = params.id || req.headers['x-tenant'];
       const t = r.pattern === '/api/tenants' ? null : await getTenant(tid);
       if (r.pattern !== '/api/tenants' && !t) { send(res, 404, { error: 'unknown tenant' }); return true; }
-      if (t) clampSeat(t);
+      if (t) { clampSeat(t); const me0 = meOf(t); if (reqOf(t)?.member) JAMS.adopt(t, me0); JAMS.hydrate(t); }
       /* a card outside the viewer's views can't be opened, jammed or acted on by id either */
       if (t && params.cid) { const c = t.cards.get(params.cid); if (c && !seatOk(t, c)) { send(res, 404, { error: 'not found' }); return true; } }
       if (t) { touch(t); const k = `${r.method} ${r.pattern.replace('/api', '')}`; t.api[k] = { n: (t.api[k]?.n || 0) + 1, last: Date.now() }; if (viewer) await applyLive(t, viewer); }
@@ -1505,5 +1584,5 @@ export function createFeedService(o) {
   const syncSocial = (slug) => { const br = packs.peek(slug); if (!br) return; runIn(br, () => { for (const t of brandTenants(br)) { streamSync(t, SEED.posts); store?.save(t); } }); };
   // a cadence move was retired (moves-cadence.js): its cards leave every open workspace, unless someone acted on them
   const dropCards = (slug, ids) => { const br = packs.peek(slug); if (!br || !ids?.length) return; runIn(br, () => { for (const t of brandTenants(br)) { for (const id of ids) { const c = t.cards.get(id); if (c && ['ready', 'shown'].includes(c.state) && !t.acted?.has?.(id) && !(t.work || []).some((w) => w.cardId === id)) setState(t, c, 'expired'); } store?.save(t); } }); };
-  return { handle, tenants, addCards, dropCards, refreshLive, syncSocial, save: (t) => store?.save(t), wire: (b) => { wireResearch(b); wireLive(b); } };
+  return { handle, tenants, jams: JAMS, addCards, dropCards, refreshLive, syncSocial, save: (t) => store?.save(t), wire: (b) => { wireResearch(b); wireLive(b); } };
 }

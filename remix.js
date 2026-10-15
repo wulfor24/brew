@@ -1088,9 +1088,13 @@ export function createRemix(o) {
     addV(t, 'jam', w.id, planSnap(w.plan), { author: 'you', reason: `Asked: ${text}` }); return { work: w };
   });
   // Asking a person copies the question for them: Brew sends nothing and never answers for a teammate.
-  const ask = async (t, w, q) => {
+  const ask = async (t, w, q, email) => {
     if (q.answer || q.asked) return null;
+    /* a real person on the team: they join the jam and get an email with the question (feed-service askPerson) */
+    if (email && o.askPerson) { const x = await o.askPerson(t, w, q, email); if (x?.error) return x; if (x) { q.asked = true; q.waiting = x.name || x.email; q.ownerEmail = x.email; q.at = now(t); return { who: q.waiting, q: q.q, email: x.email }; } }
     if (q.owner === 'ai') { const a = await aiAnswer(t, w, q); if (!a) return null; answerQ(t, w, q, a, `ai:${w.agent}`); say(t, w, { from: 'ai', who: AGENT[w.agent], body: `${q.q} ${a}` }); return null; }
+    if (q.owner !== 'brew' && process.env.DEMO_MODE !== '1') return null; /* a teammate's question waits for a real person to be picked: never a made-up colleague */
+    if (q.owner === 'brew') o.onShopos?.(t, w, { why: 'asked the ShopOS team a question', text: q.q }); /* its inbox gets the question and the jam link */
     const who = q.owner === 'brew' ? 'ShopOS team' : colName(q.owner);
     q.asked = true; q.waiting = who; q.at = now(t);
     return { who, q: q.q };
@@ -1098,9 +1102,9 @@ export function createRemix(o) {
   on('POST', '/api/work/:wid/plan/ask', async (b, t, p) => {
     const w = W(t, p.wid); if (!w) return { error: 'not found' }; ensurePlan(t, w);
     const qs = b.all ? w.plan.questions.filter((x) => !x.answer) : w.plan.questions.filter((x) => x.id === b.qid);
-    const asks = []; for (const q of qs) { const a = await ask(t, w, q); if (a) asks.push(a); }
+    const asks = []; for (const q of qs) { const a = await ask(t, w, q, b.email); if (a?.error) return { error: a.error }; if (a) asks.push(a); }
     const copy = asks.length ? `${w.title}\n\n${asks.map((a) => `@${a.who}: ${a.q}`).join('\n')}` : null;
-    return { work: w, learned: learnedOut(t), copy, asked: asks.map((a) => a.who) };
+    return { work: w, learned: learnedOut(t), copy: asks.some((a) => a.email) ? null : copy, asked: asks.map((a) => a.who), emailed: asks.filter((a) => a.email).map((a) => a.email) };
   });
 
   const iterateFromJam = async (t, w, body) => {

@@ -11,7 +11,7 @@ export function createMemberCtx({ isMemberEmail = null, defaultBrand = 'brew-sam
   const REQ = new AsyncLocalStorage(), BG = new WeakMap(), MEMO = new Map();
   const slugOf = (t) => t.brandId || defaultBrand;
   // this request's viewer for this workspace: a viewer of another brand is never a member here
-  const reqOf = (t) => { const r = REQ.getStore(); return r ? (r.member && r.slug === slugOf(t) ? r : { member: false, email: null }) : null; };
+  const reqOf = (t) => { const r = REQ.getStore(); return r ? (r.member && r.slug === slugOf(t) ? r : { member: false, email: null, guest: r.guest && r.slug === slugOf(t) ? r.guest : null }) : null; };
   const guard = (t) => {
     if (!t || typeof t !== 'object' || Object.getOwnPropertyDescriptor(t, 'member')?.get) return t;
     delete t.member; delete t.memberEmail;
@@ -29,5 +29,5 @@ export function createMemberCtx({ isMemberEmail = null, defaultBrand = 'brew-sam
   };
   // a request: who = { member, email, claimed, slug } from the signed-in user; a member who opens it becomes the one bgCheck re-checks
   const run = (who, t, fn) => { if (t && who?.member && who.email && who.slug === slugOf(t) && t.teamEmail !== who.email) t.teamEmail = who.email; return REQ.run(who, fn); };
-  return { REQ, guard, reqOf, bgCheck, run, forget: () => MEMO.clear() };
+  return { REQ, guard, reqOf, bgCheck, run, bgMember: (t) => !!BG.get(t), forget: () => MEMO.clear() };
 }

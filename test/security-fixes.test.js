@@ -39,8 +39,8 @@ test('an old approve link adds no one: joining is by invite only', async () => {
   assert.match(res.body, /by invite/); assert.doesNotMatch(res.body, /<form/);
   res = resOf(); await auth.handle(reqOf('POST', { body: `t=${encodeURIComponent(t)}` }), res, new URL(`http://x.test/auth/approve?t=${encodeURIComponent(t)}`));
   assert.equal((await auth.getMembers('cozy')).members.length, 1, 'nobody added');
-  res = resOf(); await auth.handle(reqOf('POST', { cookie: cookieFor(auth, 'bo@gmail.com'), body: '{}' }), res, new URL('http://x.test/api/brands/cozy/request'));
-  assert.match(JSON.parse(res.body).error, /invite/);
+  res = resOf(); assert.equal(await auth.handle(reqOf('POST', { cookie: cookieFor(auth, 'bo@gmail.com'), body: '{}' }), res, new URL('http://x.test/api/brands/cozy/request')), false, 'there is no asking route at all');
+  assert.equal((await auth.getMembers('cozy')).members.length, 1);
 });
 
 /* ---------- 3. owning a brand needs strong proof ---------- */
