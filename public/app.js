@@ -128,7 +128,7 @@
   const AGENT = { creative: 'Creative director', performance: 'Performance marketer', storefront: 'Storefront manager', visibility: 'AI visibility', crm: 'CRM specialist', brew: 'Brew' };
   const face = (a) => `<span class="face ${a}" aria-hidden="true"><i></i><i></i></span>`;
   // real brand marks: a padded mark on a white tile, or the brand's own full-bleed app icon; marketplaces stack three
-  const LOGOS = { shopify: ['shopify.svg'], meta: ['meta.svg'], google: ['google.svg'], whatsapp: ['whatsapp.svg'], slack: ['slack.svg'], klaviyo: ['klaviyo.png'], loox: ['loox.png', 1], amazon: ['amazon.svg', 1], nykaa: ['nykaa.png', 1], blinkit: ['blinkit.png', 1], flipkart: ['flipkart.svg'], myntra: ['myntra.png', 1], walmart: ['walmart.svg'], target: ['target.svg'], etsy: ['etsy.svg'], ebay: ['ebay.svg'] };
+  const LOGOS = { shopify: ['shopify.svg'], meta: ['meta.svg'], google: ['google.svg'], ga4: ['google-analytics.svg'], whatsapp: ['whatsapp.svg'], slack: ['slack.svg'], klaviyo: ['klaviyo.png'], loox: ['loox.png', 1], amazon: ['amazon.svg', 1], nykaa: ['nykaa.png', 1], blinkit: ['blinkit.png', 1], flipkart: ['flipkart.svg'], myntra: ['myntra.png', 1], walmart: ['walmart.svg'], target: ['target.svg'], etsy: ['etsy.svg'], ebay: ['ebay.svg'] };
   const logoTile = (k, size) => { const [f, full] = LOGOS[k]; return `<span class="cx-logo${full ? ' is-full' : ''}" style="width:${size}px;height:${size}px;border-radius:${Math.round(size * .26)}px"><img src="assets/logos/${f}" alt="" loading="lazy"></span>`; };
   // rival brands: their own site icons, saved in assets/logos/brands
   const RIVALS = B.rivalLogos || [];

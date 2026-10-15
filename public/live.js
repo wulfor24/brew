@@ -36,7 +36,7 @@
   const isLive = (id) => L.conns?.[id]?.state === 'live' && (L.conns[id].stats || []).length > 0;
   const B = () => A()?.B || window.FEED_DATA?.[slug];
   /* the platform's own name on the sheets (a brand pack may label it "Reviews on judge.me" or "amazon.in") */
-  const PLAT = { shopify: 'Shopify', meta: 'Meta Ads', google: 'Google Ads + GA4', klaviyo: 'Klaviyo', reviews: 'Judge.me' };
+  const PLAT = { shopify: 'Shopify', meta: 'Meta Ads', ga4: 'Google Analytics', google: 'Google Ads', klaviyo: 'Klaviyo', reviews: 'Judge.me' };
   const nm = (id) => PLAT[id] || B()?.connectors?.[id]?.name || id;
   const host = () => L.access?.host || B()?.brand?.host || '';
 
@@ -88,7 +88,7 @@
         action = g.steps.length === 1 && g.steps[0].oauth ? `${g.steps[0].p ? `<p class="gd-solo">${g.steps[0].p}</p>` : ''}${oauthBtn}` : `<div class="gd-meta"><span>${g.steps.length} steps</span><span>${esc(g.time)}</span></div><ol class="gd">${steps}</ol>${oauth && key ? '' : ''}`;
         if (oauth && key && g.alt) action = `${oauthBtn}<details class="lc-key"><summary>${esc(g.alt)}</summary><div class="gd-meta"><span>${g.steps.length} steps</span><span>${esc(g.time)}</span></div><ol class="gd">${steps}</ol></details>`;
       }
-      body = `${head(`Connect ${id === 'google' && !(av.oauth) ? 'Google Analytics' : esc(nm(id))}`, esc(opts.why || `Brew reads it to put ${n}’s real numbers on the cards.`))}${claimNote}${err}${action}${fine}`;
+      body = `${head(`Connect ${esc(nm(id))}`, esc(opts.why || `Brew reads it to put ${n}’s real numbers on the cards.`))}${claimNote}${err}${action}${fine}`;
     }
     A().modal(`<div class="sheet cx-sheet lc-sheet"><div class="cx-step" data-s="1">${body}</div><div class="cx-step" data-s="2" hidden><div class="cx-pair sm"><b>Reading ${esc(nm(id))}</b></div><ol class="cx-log"><li><span class="spin"></span>Connecting and reading the last 30 days</li></ol></div><div class="cx-step" data-s="3" hidden></div></div>`, (m) => {
       const $ = (q) => m.querySelector(q); keepPlace(m);
@@ -112,7 +112,8 @@
       { t: 'Give it read-only access', p: 'Open <b>Versions</b> → <b>Create a version</b>. Paste these into <b>Scopes</b>, then <b>Release</b>.', copy: SHOPIFY_SCOPES },
       { t: `Install it on ${shop ? esc(shop) : 'your store'}`, p: 'Back on the app’s home, click <b>Install app</b> and choose your store.' },
       last('Paste the app’s keys', 'In the app’s <b>Settings</b>, copy the Client ID and Secret.') ] };
-    if (id === 'google') return { time: 'About 1 minute', alt: 'Or GA4 only, by property ID', steps: [
+    if (id === 'google') return { time: 'About 1 minute', steps: [{ t: 'Sign in with Google', p: `Pick ${esc(n)}’s Google Ads account. You can connect its Google Analytics property in the same step.`, last: true, oauth: true }] };
+    if (id === 'ga4') return { time: 'About 1 minute', alt: 'Or by property ID, with no sign-in', steps: [
       ...(av.email ? [{ t: 'Add Brew to GA4 as a Viewer', p: 'In GA4 open <b>Admin</b> → <b>Property access management</b> → <b>+</b> → <b>Add users</b>. Paste this email, pick <b>Viewer</b>, then <b>Add</b>.', copy: av.email, go: ['Open GA4 Admin', 'https://analytics.google.com/analytics/web/#/admin'] }] : []),
       last('Paste the property ID', 'It’s under <b>Admin</b> → <b>Property details</b>. The GA4 page’s address works too.') ] };
     if (id === 'klaviyo') return { time: 'About 1 minute', steps: [
@@ -130,7 +131,7 @@
     let fs = av.fields.map((f) => ({ ...f, req: !f.optional }));
     if (id === 'shopify') { fs = fs.map((f) => f.k === 'token' ? { ...f, label: 'Admin API access token', alt: true } : { ...f, req: true }).map((f) => f.k === 'clientId' ? { ...f, hint: 'Client ID' } : f.k === 'clientSecret' ? { ...f, hint: 'Client secret' } : f);
       return fs.map((f) => field(f)).join('') + '<button type="button" class="linkbtn lc-alt" data-alt>I have an Admin API token instead</button>'; }
-    if (id === 'google') fs = fs.map((f) => ({ ...f, label: 'Property ID or GA4 page address', hint: '123456789' }));
+    if (id === 'ga4') fs = fs.map((f) => ({ ...f, label: 'Property ID or GA4 page address', hint: '123456789' }));
     if (id === 'reviews') fs = fs.map((f) => f.k === 'token' ? { ...f, hint: 'Your private API token' } : f);
     if (id === 'klaviyo') fs = fs.map((f) => ({ ...f, hint: 'pk_…' }));
     return fs.map((f) => field(f)).join('');
@@ -172,9 +173,10 @@
     return true;
   }
   // reading the account: the spinner, then what came back
-  async function run(m, id, p, opts = {}) {
+  async function run(m, id0, p, opts = {}) {
     const s = (n) => m.querySelector(`[data-s="${n}"]`); s(1).hidden = true; s(2).hidden = false;
-    const r = await p;
+    const r = await p, id = r?.moved || id0; /* a Google sign-in that only picked GA4 connected Google Analytics instead */
+    for (const [k, x] of Object.entries(r?.also || {})) if (x?.ok && k !== id) { L.conns[k] = { ...(L.conns[k] || {}), ...x, state: x.state || 'live' }; A().S.conn[k] = true; }
     if (!r?.ok) { s(2).hidden = true; s(1).hidden = false; let e = s(1).querySelector('[data-err]') || s(1).querySelector('.lc-err'); if (!e) { e = document.createElement('p'); e.className = 'lc-err'; s(1).querySelector('.cx-head').after(e); } e.hidden = false; e.textContent = r?.error || 'Could not connect.'; e.scrollIntoView({ block: 'nearest' }); return; }
     s(2).hidden = true; s(3).hidden = false; s(3).innerHTML = result(id, r);
     const see = s(3).querySelector('[data-see]'); bindNext(s(3)); L.conns[id] = { ...(L.conns[id] || {}), ...r, state: r.state || 'live' }; overlay(B(), A().S); A().S.conn[id] = true; A().save();
@@ -183,7 +185,7 @@
       see.textContent = 'Continue'; see.onclick = () => A().closeModal(); return; }
     see.onclick = () => { A().closeModal(); location.href = here(opts.then ? location.hash : ''); };
   }
-  const result = (id, r) => `<span class="plan-check">${ic('check')}</span><h3>${esc(nm(id))} is connected</h3>${r.claimed ? `<p class="lc-note">${ic('sparkles', 's14')}<span>You are now ${esc(B().brand.name)}${/s$/i.test(B().brand.name || '') ? '’' : '’s'} owner on Brew. Teammates with the same company email join on their own.</span></p>` : ''}
+  const result = (id, r) => `<span class="plan-check">${ic('check')}</span><h3>${esc(nm(id))}${Object.entries(r.also || {}).some(([k, x]) => x?.ok && k !== id) ? ' and Google Analytics are' : ' is'} connected</h3>${r.claimed ? `<p class="lc-note">${ic('sparkles', 's14')}<span>You are now ${esc(B().brand.name)}${/s$/i.test(B().brand.name || '') ? '’' : '’s'} owner on Brew. Teammates with the same company email join on their own.</span></p>` : ''}
     ${(r.stats || []).length ? `<div class="cx-read"><small>What Brew read ${simId(id) || r.dummy ? '<span class="dummy-tag">Dummy</span>' : '<em class="is-live">Live</em>'}</small><dl>${r.stats.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl></div>` : ''}
     ${(r.changed || []).length ? `<p class="sh-p">Here is what changed in your feed:</p><ul class="cx-changed">${r.changed.map((t) => `<li>${ic('sparkles', 's14')}${esc(t)}</li>`).join('')}</ul>` : ''}
     ${r.why ? `<p class="lc-note"><span>${esc(r.why)}</span></p>` : ''}${(r.notes || []).length ? `<ul class="lc-notes">${r.notes.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
@@ -206,23 +208,23 @@
       see.onclick = () => { A().closeModal(); location.href = here(); }; }); return; }
     if (id && !A().conn(id)) setTimeout(() => A().openConnect(id), 300);
   }
-  // Meta: which ad account; Google: which GA4 property and which Ads account
+  // Meta: which ad account; Google Ads: which Ads account (and, if they like, the GA4 property too); Google Analytics: which property
   async function pick(id) {
     const n = B().brand.name;
     if (!boss()) return A().modal(`<div class="sheet cx-sheet lc-sheet"><div class="cx-step">${askAdmin(id)}</div></div>`);
-    A().modal(`<div class="sheet cx-sheet lc-sheet"><div class="cx-step" data-s="1">${pair(id)}<header class="cx-head"><h3>Which ${id === 'google' ? 'accounts' : 'ad account'}?</h3><p>Pick the one that is ${esc(n)}${/s$/i.test(n || '') ? '’' : '’s'}.</p></header><div class="lc-opts"><span class="spin"></span></div></div><div class="cx-step" data-s="2" hidden><ol class="cx-log"><li><span class="spin"></span>Reading the last 30 days</li></ol></div><div class="cx-step" data-s="3" hidden></div></div>`, async (m) => {
+    A().modal(`<div class="sheet cx-sheet lc-sheet"><div class="cx-step" data-s="1">${pair(id)}<header class="cx-head"><h3>Which ${id === 'google' ? 'accounts' : id === 'ga4' ? 'property' : 'ad account'}?</h3><p>Pick the one that is ${esc(n)}${/s$/i.test(n || '') ? '’' : '’s'}.</p></header><div class="lc-opts"><span class="spin"></span></div></div><div class="cx-step" data-s="2" hidden><ol class="cx-log"><li><span class="spin"></span>Reading the last 30 days</li></ol></div><div class="cx-step" data-s="3" hidden></div></div>`, async (m) => {
       const r = await get(`/api/brands/${slug}/connect/${id}/options`), box = m.querySelector('.lc-opts'), opts = r.options || [];
       if (!opts.length) { box.innerHTML = `<p class="lc-err">${esc(r.error || 'No accounts came back for this login.')}</p><div class="cx-btns"><button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" data-again>Try again</button></div>`; box.querySelector('[data-again]').onclick = () => leave(`/connect/${id}/start?brand=${slug}`); return; }
-      const groups = id === 'google' ? [['ga4', 'Google Analytics 4 property'], ['ads', 'Google Ads account']] : [[null, 'Ad account']];
-      box.innerHTML = groups.map(([k, label]) => { const xs = opts.filter((o) => !k || o.kind === k); if (!xs.length) return k === 'ads' ? '<p class="lc-note"><span>No Google Ads account on this login. GA4 alone works.</span></p>' : '';
+      const GOOG = id === 'google' || id === 'ga4', groups = id === 'google' ? [['ads', 'Google Ads account'], ['ga4', 'Also connect Google Analytics']] : id === 'ga4' ? [['ga4', 'Google Analytics 4 property']] : [[null, 'Ad account']];
+      box.innerHTML = groups.map(([k, label]) => { const xs = opts.filter((o) => !k || o.kind === k); if (!xs.length) return k === 'ads' ? '<p class="lc-note"><span>No Google Ads account on this login. You can still connect Google Analytics below.</span></p>' : '';
         const row = (name, val, nm2, sub, on) => `<label class="cx-acct lc-opt"><input type="radio" name="${name}" value="${esc(val)}" data-name="${esc(nm2)}"${on ? ' checked' : ''}><i class="lc-radio" aria-hidden="true"></i><span class="cx-acct-t"><b>${esc(nm2)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span></label>`;
-        return `<fieldset class="lc-pick"><legend>${label}${xs.length > 1 ? ` <em>${xs.length}</em>` : ''}</legend><div class="lc-list">${xs.map((o) => row(k || 'acct', o.id, o.name, o.sub, xs.length === 1)).join('')}${k === 'ads' ? row('ads', '', 'Skip Google Ads', 'Connect GA4 only', false) : ''}</div></fieldset>`; }).join('') + '<div class="cx-btns lc-bar"><button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" data-go>Connect</button></div>';
-      const go = m.querySelector('[data-go]'), ready = () => { go.disabled = id === 'google' ? !m.querySelector('input[name="ga4"]:checked, input[name="ads"]:checked:not([value=""])') : !m.querySelector('input[name="acct"]:checked'); };
+        return `<fieldset class="lc-pick"><legend>${label}${xs.length > 1 ? ` <em>${xs.length}</em>` : ''}</legend><div class="lc-list">${xs.map((o) => row(k || 'acct', o.id, o.name, o.sub, xs.length === 1)).join('')}${k === 'ga4' && id === 'google' ? row('ga4', '', 'Not now', 'Connect Google Ads only', false) : ''}</div></fieldset>`; }).join('') + '<div class="cx-btns lc-bar"><button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" data-go>Connect</button></div>';
+      const go = m.querySelector('[data-go]'), ready = () => { go.disabled = GOOG ? !m.querySelector('input[name="ga4"]:checked:not([value=""]), input[name="ads"]:checked:not([value=""])') : !m.querySelector('input[name="acct"]:checked'); };
       ready(); box.addEventListener('change', ready);
       m.querySelector('[data-close]')?.addEventListener('click', () => A().closeModal());
       m.querySelector('[data-go]').onclick = () => { const val = (k) => m.querySelector(`input[name="${k}"]:checked`);
-        const choice = id === 'google' ? { ga4: val('ga4')?.value || null, ga4Name: val('ga4')?.dataset.name, ads: val('ads')?.value || null, adsName: val('ads')?.dataset.name } : { account: val('acct')?.value, name: val('acct')?.dataset.name };
-        if (id !== 'google' && !choice.account) return A().toast('Pick an ad account'); if (id === 'google' && !choice.ga4 && !choice.ads) return A().toast('Pick a property or an Ads account');
+        const choice = GOOG ? { ga4: val('ga4')?.value || null, ga4Name: val('ga4')?.dataset.name, ads: val('ads')?.value || null, adsName: val('ads')?.dataset.name } : { account: val('acct')?.value, name: val('acct')?.dataset.name };
+        if (!GOOG && !choice.account) return A().toast('Pick an ad account'); if (GOOG && !choice.ga4 && !choice.ads) return A().toast(id === 'ga4' ? 'Pick a property' : 'Pick an Ads account or a property');
         run(m, id, post(`/api/brands/${slug}/connect/${id}`, { action: 'select', choice })); };
     });
   }

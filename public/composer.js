@@ -11,7 +11,7 @@
   const UI = { open: null, cat: null, mem: null, connOpen: null };
   const THINK = [['auto', 'Auto', 'Brew picks for each step'], ['deep', 'Deep', 'Thinks longer · strategy and plans'], ['fast', 'Fast', 'Answers quickly · short edits']];
   const IMAGE = [['auto', 'Auto', 'The right one for the format'], ['gemini', 'Gemini 3 Pro Image', 'Keeps the product and its label exact'], ['gpt-image', 'GPT Image', 'Edits your product photo']];
-  const LOGO = { shopify: 'S', meta: '∞', google: 'G', klaviyo: 'K', reviews: '★', slack: '#' }; /* one style: a letter or mark on a soft tile, never an emoji */
+  const LOGO = { shopify: 'S', meta: '∞', google: 'G', ga4: 'A', klaviyo: 'K', reviews: '★', slack: '#' }; /* one style: a letter or mark on a soft tile, never an emoji */
 
   const headers = () => ({ 'x-model': P.model, 'x-image-model': P.image, 'x-memory': P.memory ? 'on' : 'off' });
   const work = () => A()?.currentDetail?.()?._work || null;

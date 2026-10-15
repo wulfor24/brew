@@ -803,8 +803,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   }
   // an account was connected (or disconnected): its numbers join the evidence, and the moves that measure or spend
   // on it are flagged to be looked at again. No paid call: the match is the fixed map in refresh.js
-  const AREA_OF = { shopify: ['store'], meta: ['paid'], google: ['analytics', 'paid'], klaviyo: ['email'], whatsapp: ['email'] };
-  const NAME_OF = { shopify: 'Shopify', meta: 'Meta Ads', google: 'Google Ads and GA4', klaviyo: 'Klaviyo', whatsapp: 'WhatsApp' };
+  const AREA_OF = { shopify: ['store'], meta: ['paid'], ga4: ['analytics'], google: ['paid'], klaviyo: ['email'], whatsapp: ['email'] };
+  const NAME_OF = { shopify: 'Shopify', meta: 'Meta Ads', ga4: 'Google Analytics', google: 'Google Ads', klaviyo: 'Klaviyo', whatsapp: 'WhatsApp' };
   const plain = (e) => e.label.replace(/ \(demo account\)$/, '');
   // the account numbers each kind of move leans on (by move number), so every flag names its own reason
   const WANTS = [[[4, 5, 6, 7, 8], /aov|conversion|repeat|cpa/], [[9, 10, 48, 49], /orders|conversion|sessions|roas|spend/], [[11, 12, 13, 14, 15, 16], /branded|sessions|mobile/],
@@ -836,7 +836,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   // brand's private folder and flag privately (only the team sees those flags); the public marketplace read does not.
   const AREA_LIVE = { ...AREA_OF, marketplaces: ['store'] };
   NAME_OF.marketplaces = 'Marketplaces'; NAME_OF.slack = 'Slack';
-  const PREFIX = { shopify: ['shopify.'], meta: ['meta.'], google: ['ga4.', 'gads.'], klaviyo: ['klaviyo.'], marketplaces: ['market.'], reviews: ['reviews.judgeme.'] };
+  const PREFIX = { shopify: ['shopify.'], meta: ['meta.'], ga4: ['ga4.'], google: ['gads.'], klaviyo: ['klaviyo.'], marketplaces: ['market.'], reviews: ['reviews.judgeme.'] };
   async function liveConnected(slug, id, add = [], on = true, { public: pub = false } = {}) {
     const file = pub ? 'connected-ledger.json' : 'private/connected-ledger.json', mine = (e) => !e.demo && (PREFIX[id] || []).some((p) => e.key.startsWith(p));
     const before = await packs.getJSON(slug, file, []), was = before.filter(mine);

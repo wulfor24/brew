@@ -142,3 +142,15 @@ test('a real connector row is evidence; a simulated one never is', async () => {
   assert.equal(real.method, 'account:shopify'); assert.equal(simulated(real), false); assert.equal(realRows([real]).length, 1);
   assert.equal(simulated({ ...real, demo: true }), true); assert.equal(simulated({ ...real, method: 'connected account' }), true);
 });
+
+test('Google Analytics and Google Ads are two connectors; an old pack heals into both', async () => {
+  const { prototypeConnectors } = await import('../seed-template.js');
+  const out = prototypeConnectors({ google: { name: 'Google Ads + GA4', account: 'Acme · Google', kind: 'Search, Shopping and site events', perms: ['Read campaigns and searches', 'Read GA4 events and sales'], changed: ['Tracking card shows the live gap', 'Search cards show real searches'] } });
+  assert.equal(out.google.name, 'Google Ads'); assert.equal(out.ga4.name, 'Google Analytics');
+  assert.ok(!out.google.perms.some((x) => /GA4/.test(x)));
+  const { default: gads, ga4 } = await import('../connectors/google.js');
+  assert.equal(gads.id, 'google'); assert.equal(ga4.id, 'ga4'); assert.deepEqual(gads.modes, ['oauth']); assert.ok(ga4.modes.includes('key'));
+  const pend = { token: 't', scope: 'adwords analytics' }, ch = { ads: '123:999', adsName: 'Acme Ads', ga4: 'properties/5', ga4Name: 'Acme GA4' };
+  const a = gads.select(pend, ch); assert.equal(a.customer, '123'); assert.equal(a.login, '999'); assert.equal(a.property, null);
+  const [also] = gads.also(pend, ch); assert.equal(also.id, 'ga4'); assert.equal(also.creds.property, 'properties/5'); assert.equal(also.creds.customer, null);
+});

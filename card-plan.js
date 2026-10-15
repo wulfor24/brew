@@ -43,7 +43,7 @@ const ASSET = {
   brief: (k) => ({ film_brief: 'film brief', buyer_deck: 'buyer deck', creative_brief: 'creative brief' }[k] || 'brief'),
   decision: () => 'team plan'
 };
-const CONN_NAME = { meta: 'Meta Ads', google: 'Google Ads', shopify: 'Shopify', klaviyo: 'Klaviyo', whatsapp: 'WhatsApp', marketplaces: 'the marketplaces', loox: 'your reviews app', reviews: 'your reviews app' };
+const CONN_NAME = { meta: 'Meta Ads', google: 'Google Ads', ga4: 'Google Analytics', shopify: 'Shopify', klaviyo: 'Klaviyo', whatsapp: 'WhatsApp', marketplaces: 'the marketplaces', loox: 'your reviews app', reviews: 'your reviews app' };
 const WHERE = (target, fam) => target?.name && target.name !== 'A person' ? target.name : CONN_NAME[target?.conn] || (fam === 'post' ? 'where it goes' : 'your stack');
 
 // the deterministic plan for each family: [gather, write, make, review, ready]

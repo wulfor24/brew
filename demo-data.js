@@ -5,7 +5,7 @@
 // Every number made here is labelled as demo data: on the connect sheet, the cards ("demo account") and the ledger.
 import { moneyFmt } from './brand-pack.js';
 
-export const DEMO_V = 3;
+export const DEMO_V = 4; /* 4: Google Analytics and Google Ads are separate accounts */
 const seeded = (s) => { let h = 2166136261; for (const c of String(s)) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) ^ Math.imul(h ^ (h >>> 13), 3266489909), (h >>> 0) / 4294967296)); };
 const round = (x, to = 1) => Math.round(x / to) * to;
 const pct = (x, d = 0) => `${(+x).toFixed(d)}%`;
@@ -44,7 +44,8 @@ export function demoFor(profile, seed = {}) {
   const terms = (p.search?.terms || []).slice(0, 4), branded = j(52, 68), gspend = round(spend * j(0.25, 0.4), india ? 1000 : 10);
   const mix = [['Paid social', j(30, 38)], ['Direct', j(18, 24)], ['Organic search', j(14, 20)], ['Paid search', j(10, 15)], ['Email and WhatsApp', j(4, 8)]];
   const google = { gspend, branded, terms, mix, pdp: j(38, 48), atc, checkout: (started / sessions) * 100,
-    stats: [['Sessions, last 30 days', n0(sessions)], ['Searches that are your own name', pct(branded)], ['Search spend', big(gspend)], ['Mobile share of visits', pct(mob)]] };
+    stats: [['Search spend, 30 days', big(gspend)], ['Searches that are your own name', pct(branded)], ['Paid search share of visits', pct(mix[3][1])]] };
+  const ga4 = { stats: [['Sessions, last 30 days', n0(sessions)], ['Conversion (GA4)', pct(cr, 2)], ['Mobile share of visits', pct(mob)]] };
   // marketplaces: the brand's own catalog, listed where the read saw it sold
   const mkts = (seed.marketplaces?.length ? seed.marketplaces : india ? ['Amazon', 'Flipkart'] : ['Amazon']).slice(0, 3);
   const listings = Math.min(prods.length || 12, 40), thinListings = Math.max(1, round(listings * j(0.2, 0.4)));
@@ -61,7 +62,7 @@ export function demoFor(profile, seed = {}) {
     stats: [['Opted in', n0(optins)], ['Approved templates', n0(tpl)], ['Messages sent this month', '0'], ['Read rate, last campaign', pct(readR)]] };
   const klaviyo = { list, flows: [['Welcome', true], ['Abandoned checkout', true], ['Browse abandonment', false], ['Post-purchase', false], ['Win-back', false]], open: openR,
     stats: [['Email list', n0(list)], ['Flows live', '2 of 5'], ['Open rate', pct(openR)], ['Revenue from email', pct(emailRev)]] };
-  const A = { shopify, meta, google, marketplaces, reviews: reviewsA, whatsapp, klaviyo };
+  const A = { shopify, meta, google, ga4, marketplaces, reviews: reviewsA, whatsapp, klaviyo };
 
   /* the cards each account unlocks (hidden until it is connected: onlyWhen) */
   const D = 'demo account';
@@ -90,7 +91,7 @@ export function demoFor(profile, seed = {}) {
     card('brand', 'google', { agent: 'performance', sector: 'ads', type: 'idea', roles: ['growth', 'founder', 'ecom'], badge: [pct(branded), 'info'], cta: 'Launch the ad group',
       title: `${pct(branded)} of your search clicks are people typing ${name}`, sub: `Searches like ${terms[0] ? `“${terms[0]}”` : 'your category'} bring few clicks, so new buyers who don’t know ${name} yet rarely find you. One category ad group tests it on a small budget.`,
       rows: [['Searches for your name', pct(branded)], ['Category searches', pct(100 - branded)], ['Search spend, 30 days', big(gspend)], ['Term to test', terms[0] || 'your category']], detail: { why: ['Branded clicks would mostly come anyway.', 'Category searches are where new buyers start.'], how: [`Start with ${terms.slice(0, 3).map((t) => `“${t}”`).join(', ') || 'three category terms'}`, 'Send them to the best-selling product page', 'Read cost per first order after 14 days'] } }),
-    card('funnel', 'google', { agent: 'storefront', sector: 'storefront', type: 'report', roles: ['ecom', 'growth'], badge: ['GA4', 'info'], cta: 'Start the tests',
+    card('funnel', 'ga4', { agent: 'storefront', sector: 'storefront', type: 'report', roles: ['ecom', 'growth'], badge: ['GA4', 'info'], cta: 'Start the tests',
       title: `${pct(100 - atc / google.pdp * 100)} of product-page visitors never add to cart`, sub: `GA4 shows ${pct(google.pdp)} of sessions reach a product page and ${pct(atc, 1)} add to cart. The product page is the biggest leak, ahead of checkout.`,
       rows: [['Reach a product page', pct(google.pdp)], ['Add to cart', pct(atc, 1)], ['Start checkout', pct(google.checkout, 1)], ['Buy', pct(cr, 1)]], detail: { why: ['The drop is largest at the product page.', 'Fixes there help every channel at once.'], how: ['Test the first screen of the product page', 'Add size and delivery date near the button', 'Read it after 14 days'] } }),
     card('listings', 'marketplaces', { agent: 'storefront', sector: 'catalog', type: 'decision', roles: ['ecom', 'founder'], badge: [`${n0(thinListings)} thin`, 'warn'], cta: 'Push the titles',
@@ -110,7 +111,8 @@ export function demoFor(profile, seed = {}) {
   const changed = {
     shopify: [`Cards read your ${n0(orders)} orders a month and the ${n0(left)} checkouts left`, `Second orders: ${pct(repeat)} in 90 days, with a flow to lift it`, india ? `Cash on delivery: ${pct(cod)} of orders, ${pct(rto)} returned` : `Phones: ${pct(mob)} of visits at ${pct(mobCr, 1)} conversion`],
     meta: [`Ad cards show live cost per first order (${money(round(cpa, india ? 10 : 1))})`, `${n0(meta.tired)} tired ads flagged for fresh versions`, `Budget moves between your ${camp.length} campaigns`],
-    google: [`${pct(branded)} of search clicks are your own name`, `The product-page leak: ${pct(100 - atc / google.pdp * 100)} never add to cart`, 'Search ads tested on the category terms the read found'],
+    google: [`${pct(branded)} of search clicks are your own name`, 'Search ads tested on the category terms the read found'],
+    ga4: [`Cards read your ${n0(sessions)} sessions from GA4`, `The product-page leak: ${pct(100 - atc / google.pdp * 100)} never add to cart`],
     marketplaces: [`${n0(listings)} listings on ${mkts.join(', ')} read`, `${n0(thinListings)} thin listings get your site photos`],
     reviews: [`${n0(reviewsA.unanswered)} low-star reviews get drafted replies`, 'Review asks timed to delivery'],
     whatsapp: [`${n0(optins)} opt-ins get launch and restock messages`, 'Replies come back into the feed'],
@@ -121,12 +123,13 @@ export function demoFor(profile, seed = {}) {
   const ledger = {
     shopify: [L('shopify.orders.30d', 'Orders, last 30 days', n0(orders), orders), L('shopify.aov', 'Average order value', money(aov), aov), L('shopify.conversion', 'Store conversion rate', pct(cr, 1), cr), L('shopify.repeat.90d', 'Second order within 90 days', pct(repeat), repeat), L('shopify.checkout.left', 'Checkouts started but not finished, 30 days', n0(left), left), ...(india ? [L('shopify.cod.share', 'Cash on delivery share of orders', pct(cod), cod), L('shopify.rto', 'COD orders returned unpaid', pct(rto), rto)] : [])],
     meta: [L('meta.spend.30d', 'Meta spend, last 30 days', big(spend), spend), L('meta.roas', 'Meta return on ad spend', `${roas.toFixed(1)}x`, roas), L('meta.cpa.first', 'Meta cost per first order', money(round(cpa)), cpa), L('meta.retargeting.frequency', 'Retargeting frequency, 7 days', rt.freq.toFixed(1), rt.freq)],
-    google: [L('ga4.sessions.30d', 'Sessions, last 30 days', n0(sessions), sessions), L('ga4.mobile.share', 'Mobile share of sessions', pct(mob), mob), L('ga4.pdp.to.cart', 'Product page to add-to-cart', pct(atc / google.pdp * 100), atc / google.pdp * 100), L('gads.branded.share', 'Branded share of search clicks', pct(branded), branded)],
+    ga4: [L('ga4.sessions.30d', 'Sessions, last 30 days', n0(sessions), sessions), L('ga4.mobile.share', 'Mobile share of sessions', pct(mob), mob), L('ga4.pdp.to.cart', 'Product page to add-to-cart', pct(atc / google.pdp * 100), atc / google.pdp * 100)],
+    google: [L('gads.branded.share', 'Branded share of search clicks', pct(branded), branded)],
     klaviyo: [L('klaviyo.list', 'Email list size', n0(klaviyo.list), klaviyo.list), L('klaviyo.flows.live', 'Email flows live', '2 of 5', 2)]
   };
   return { v: DEMO_V, accounts: A, cards, changed, ledger, at: new Date().toISOString().slice(0, 10) };
 }
-const CONN_NAME = { shopify: 'Shopify', meta: 'Meta Ads', google: 'Google Ads + GA4', marketplaces: 'Marketplaces', reviews: 'Reviews', whatsapp: 'WhatsApp', klaviyo: 'Klaviyo' };
+const CONN_NAME = { shopify: 'Shopify', meta: 'Meta Ads', google: 'Google Ads', ga4: 'Google Analytics', marketplaces: 'Marketplaces', reviews: 'Reviews', whatsapp: 'WhatsApp', klaviyo: 'Klaviyo' };
 
 /* the seed a viewer gets: connectors carry the demo numbers, and the demo cards wait for their account. The modelled
    numbers are never shown as if read from the store: `changed` keeps the seed's number-free lines (what connecting

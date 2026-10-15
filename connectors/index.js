@@ -8,7 +8,7 @@
 import crypto from 'node:crypto';
 import shopify from './shopify.js';
 import meta from './meta.js';
-import google from './google.js';
+import google, { ga4 } from './google.js';
 import klaviyo from './klaviyo.js';
 import reviews from './reviews.js';
 import market from './market.js';
@@ -16,7 +16,7 @@ import { createSim, SIM_IDS, NAME } from './sim.js';
 import { createVault } from '../vault.js';
 import { DEMO, sk } from '../demo-mode.js';
 
-const REAL = { shopify, meta, google, klaviyo, reviews, marketplaces: market };
+const REAL = { shopify, meta, ga4, google, klaviyo, reviews, marketplaces: market };
 export const CONNECTORS = Object.fromEntries(SIM_IDS.map((id) => [id, { id, name: NAME[id] }]));
 const PUBLIC = new Set(['marketplaces']); // a marketplace read is public data, shown to every viewer
 // Marketplaces is switched off for now (2026-10-16): no connect, no daily read, and an earlier connection is ignored. The page shows
@@ -41,8 +41,20 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
   const editC = (slug, f) => (lock = lock.then(async () => { const c = await conns(slug); await f(c); await packs.put(slug, CF, c); return c; }));
   const liveName = (id) => (PUBLIC.has(id) ? `live/${id}.json` : `private/live/${id}.json`);
   const cache = new Map(); // slug → { at, live: { id: data }, conns }
+  /* Google Analytics became its own connector (2026-10-16): a "google" account that only reads GA4 moves to "ga4", once */
+  async function splitGoogle(slug) {
+    if (DEMO) return; const cs = await conns(slug); if (!cs.google || cs.ga4) return;
+    const cr = await vault.load(slug, 'google'); if (!cr || cr.customer || !cr.property) return;
+    await vault.save(slug, 'ga4', cr); await vault.drop(slug, 'google');
+    const d = await packs.getJSON(slug, liveName('google'), null);
+    if (d) { await packs.put(slug, liveName('ga4'), { ...d, cards: (d.cards || []).map((x) => ({ ...x, id: String(x.id).replace(/^live-google-/, 'live-ga4-'), onlyWhen: 'ga4', src: 'Google Analytics · live' })) });
+      await packs.put(slug, liveName('google'), { at: Date.now(), gone: true, stats: [], changed: [], cards: [], ledger: [] }); }
+    await editC(slug, (c) => { if (c.google && !c.ga4) { c.ga4 = c.google; delete c.google; } });
+    log.log?.(`[connect] ${slug}: Google Analytics moved to its own connector`);
+  }
   async function liveOf(slug, fresh = false) {
     const c = cache.get(sk(slug)); if (c && !fresh && Date.now() - c.at < 60e3) return c;
+    await splitGoogle(slug).catch((e) => log.warn('[connect] split google', slug, e.message));
     const cs = {}, live = {};
     /* a simulated account saved before the real connectors came back (2026-10-16) counts as not connected on the live site */
     for (const [id, s] of Object.entries(await conns(slug))) if (!OFF.has(id) && !(s?.sim && !simOnly(id))) cs[id] = s;
@@ -221,7 +233,11 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
         try { return json(res, 200, await finish(slug, id, await C.fromKey(b.fields || {}), me)), true; } catch (e) { return json(res, 200, { ok: false, error: e.user ? e.message : `Could not connect: ${e.message.slice(0, 140)}` }), true; } }
       if (b.action === 'select') { if (!C.select) return json(res, 400, { error: 'unknown action' }), true;
         const pend = await loadPending(slug, id, me.email); if (!pend) return json(res, 200, { ok: false, error: 'Connect again: the sign-in expired.' }), true;
-        await vault.drop(slug, pendKey(id, me.email)); return json(res, 200, await finish(slug, id, C.select(pend, b.choice || {}), me)), true; }
+        await vault.drop(slug, pendKey(id, me.email));
+        /* one Google sign-in for Google Ads can also connect the Google Analytics property picked with it */
+        const more = C.also ? C.also(pend, b.choice || {}) : [], r0 = (C.select(pend, b.choice || {}).customer === null && more.length) ? null : await finish(slug, id, C.select(pend, b.choice || {}), me);
+        const also = {}; for (const x of more) also[x.id] = await finish(slug, x.id, x.creds, me).catch((e) => ({ ok: false, error: e.message.slice(0, 160) }));
+        return json(res, 200, r0 ? { ...r0, also } : { ...(also[more[0].id] || { ok: false }), also, moved: more[0].id }), true; }
       if (b.action === 'connect' && PUBLIC.has(id)) return json(res, 200, await finish(slug, id, {}, me)), true;
       return json(res, 400, { error: 'unknown action' }), true;
     }

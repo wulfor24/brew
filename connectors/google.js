@@ -1,4 +1,4 @@
-// Google Ads + GA4 on one Google consent (adwords + analytics.readonly, offline so it keeps working), on SquareUp's
+// Google Analytics and Google Ads: two connectors on one Google client (offline consent, so it keeps working), on SquareUp's
 // Google Ads OAuth client. Google Ads through GAQL searchStream (lifted from SquareUp's tej/ads/google-client.ts);
 // GA4 through the Analytics Data API runReport. The brand picks the Ads account and the GA4 property.
 // It proves the brand's own when the GA4 web stream or the ads' final URLs are the brand's site.
@@ -50,10 +50,10 @@ const userErr = (m) => Object.assign(new Error(m), { user: true });
 
 const rows = (r) => (r?.rows || []).map((x) => ({ d: (x.dimensionValues || []).map((v) => v.value), m: (x.metricValues || []).map((v) => +v.value) }));
 
-export default {
-  id: 'google', name: 'Google Ads + GA4', modes: ['oauth', 'key'], picks: true,
-  ready: () => saOn() || !!(app().id && app().secret),
-  oauthOn: () => process.env.GOOGLE_OAUTH === '1' && !!(app().id && app().secret),
+/* Google Analytics (ga4) and Google Ads (google) are two connectors on one Google client. They share the reads below;
+   each keeps only its own half. Signing in for Google Ads can also fill Google Analytics in the same step (also()) */
+const base = {
+  picks: true,
   keyFields: [{ k: 'property', label: 'GA4 property ID', hint: 'GA4 → Admin → Property details, a number like 123456789' }],
   help: () => (saMail ? `In GA4 → Admin → Property access management, add ${saMail} as a Viewer, then paste the property ID. Brew only reads.` : null),
   helpEmail: () => saMail,
@@ -65,7 +65,6 @@ export default {
     catch (e) { if (e.status === 403 || e.status === 404) throw userErr(`Brew can't see property ${p.split('/')[1]} yet. Add ${saMail || 'Brew’s service account'} as a Viewer in GA4 → Admin → Property access management, then try again.`); throw e; }
     return c;
   },
-  authorize({ state, redirect }) { return `https://accounts.google.com/o/oauth2/v2/auth?${form({ client_id: app().id, redirect_uri: redirect, response_type: 'code', scope: SCOPES, state, access_type: 'offline', prompt: 'consent', include_granted_scopes: 'true' })}`; },
   async exchange({ query, redirect }) {
     const code = query.get('code'); if (!code) throw new Error(`google: ${query.get('error') || 'no code'}`);
     const t = await tok({ grant_type: 'authorization_code', code, client_id: app().id, client_secret: app().secret, redirect_uri: redirect });
@@ -88,7 +87,6 @@ export default {
         if (!out.some((o) => o.kind === 'ads' && o.id.split(':')[0] === id)) out.push({ id, kind: 'ads', name: x?.descriptiveName || `Ads account ${id}`, sub: `Google Ads · ${x?.currencyCode || ''} · ${dash(id)}` }); } }
     return out;
   },
-  select(c, choice) { return { ...c, property: choice.ga4 || null, customer: choice.ads ? String(choice.ads).split(':')[0].replace(/\D/g, '') : null, login: choice.ads && String(choice.ads).includes(':') ? String(choice.ads).split(':')[1].replace(/\D/g, '') : null, accountName: [choice.ga4Name, choice.adsName].filter(Boolean).join(' + ') || null }; },
   async owns(c, ctx) {
     let ok = false, why = '';
     if (c.property) { const j = await getJSON(`${ADMIN}/${c.property}/dataStreams`, { headers: auth(c) }, 'ga4 streams').catch(() => ({}));
@@ -96,9 +94,9 @@ export default {
     if (!ok && c.customer) { const r = await gaql(c, c.customer, "SELECT ad_group_ad.ad.final_urls FROM ad_group_ad WHERE ad_group_ad.status = 'ENABLED' LIMIT 50").catch(() => []);
       if (r.some((x) => (x.adGroupAd?.ad?.finalUrls || []).some((u) => exactSite(u, ctx.host)))) { ok = true; why = `The Google ads point to ${ctx.host}`; } }
     /* a GA4 stream's URL and an ad's final URL are typed in by whoever owns the property: never strong enough to own the brand */
-    return { ok, strong: false, why: why || `Neither the GA4 stream nor the ads point to ${ctx.host}`, account: { id: [c.property, c.customer].filter(Boolean).join(' '), name: c.accountName || 'Google' } };
+    return { ok, strong: false, why: why || (c.property ? `The GA4 stream doesn’t point to ${ctx.host}` : `The Google ads don’t point to ${ctx.host}`), account: { id: [c.property, c.customer].filter(Boolean).join(' '), name: c.accountName || 'Google' } };
   },
-  async sync(c, ctx) {
+  async sync(c, ctx, _deps, k = c.customer ? 'google' : 'ga4') {
     const F = fmt(ctx.profile), m = {}, notes = [];
     if (c.property) {
       try {
@@ -122,7 +120,7 @@ export default {
         if (clicks >= 50) { m.branded = 100 * st.filter((x) => brand(x.searchTermView.searchTerm)).reduce((s, x) => s + (+x.metrics.clicks || 0), 0) / clicks; m.terms = st.filter((x) => !brand(x.searchTermView.searchTerm)).slice(0, 4).map((x) => x.searchTermView.searchTerm); }
       } catch (e) { notes.push(`Google Ads: ${e.message.slice(0, 140)}`); }
     }
-    const k = 'google', name = 'Google Ads + GA4', lane = ctx.lane, src = 'Google Analytics 4 / Google Ads', out = [];
+    const name = k === 'ga4' ? 'Google Analytics' : 'Google Ads', lane = ctx.lane, src = k === 'ga4' ? 'Google Analytics 4' : 'Google Ads', out = [];
     /* a card only stands on enough data: a few hundred visits and a few purchases, never one order's noise */
     const enough = (m.sessions || 0) >= 500 && (m.buys || 0) >= 5;
     if (enough && has(m.mob, m.mobCr, m.deskCr) && m.deskCr > m.mobCr * 1.3) out.push(card(k, name, lane, 'mobile', { agent: 'storefront', sector: 'storefront', type: 'report', roles: ['ecom', 'founder', 'growth'], badge: ['Mobile', 'warn'], cta: 'Start the tests',
@@ -134,11 +132,37 @@ export default {
     if (has(m.branded) && m.branded >= 40) out.push(card(k, name, lane, 'brand', { agent: 'performance', sector: 'ads', type: 'idea', roles: ['growth', 'founder', 'ecom'], badge: [pct(m.branded), 'info'], cta: 'Launch the ad group',
       title: `${pct(m.branded)} of your search ad clicks are people typing ${ctx.profile?.name || 'your name'}`, sub: `Those buyers mostly know you already. New buyers search the category${m.terms?.[0] ? `, like “${m.terms[0]}”` : ''}; one category ad group on a small budget tests that.`,
       rows: [['Clicks on your own name', pct(m.branded)], ['Search spend, 30 days', has(m.gspend) ? F.big(m.gspend) : null], ['Return on search spend', has(m.groas) ? `${m.groas.toFixed(1)}x` : null], ['Term to test', m.terms?.[0]]], detail: { why: ['Branded clicks would mostly come anyway.'], how: ['Start with three category terms', 'Send them to the best-selling product page', 'Read cost per first order after 14 days'] } }));
-    const stats = [has(m.sessions) && ['Sessions, last 30 days', n0(m.sessions)], has(m.cr) && ['Conversion (GA4)', pct(m.cr, 2)], has(m.mob) && ['Mobile share of visits', pct(m.mob)], has(m.gspend) && ['Search spend, 30 days', F.big(m.gspend)], has(m.branded) && ['Search clicks on your name', pct(m.branded)]].filter(Boolean).slice(0, 4);
+    const stats = [has(m.sessions) && ['Sessions, last 30 days', n0(m.sessions)], has(m.cr) && ['Conversion (GA4)', pct(m.cr, 2)], has(m.mob) && ['Mobile share of visits', pct(m.mob)], has(m.gspend) && ['Search spend, 30 days', F.big(m.gspend)], has(m.groas) && ['Return on search spend', `${m.groas.toFixed(1)}x`], has(m.branded) && ['Search clicks on your name', pct(m.branded)]].filter(Boolean).slice(0, 4);
     const changed = [has(m.sessions) && `Cards read your ${n0(m.sessions)} sessions from GA4`, (m.sessions || 0) >= 300 && has(m.pdp, m.atc) && `The product-page leak: ${pct(100 - 100 * m.atc / m.pdp)} never add to cart`, has(m.branded) && `${pct(m.branded)} of search clicks are your own name`].filter(Boolean);
     const ledger = [has(m.sessions) && L('ga4.sessions.30d', 'Sessions, last 30 days (GA4)', n0(m.sessions), m.sessions, src), has(m.cr) && L('ga4.conversion', 'Purchases per session, 30 days (GA4)', pct(m.cr, 2), m.cr, src), has(m.mob) && L('ga4.mobile.share', 'Mobile share of sessions', pct(m.mob), m.mob, src),
       has(m.pdp, m.atc) && L('ga4.pdp.to.cart', 'Product page to add-to-cart', pct(100 * m.atc / m.pdp), 100 * m.atc / m.pdp, src), m.mix?.length && L('ga4.channels', 'Sessions by channel, 30 days', m.mix.map(([c2, s]) => `${c2} ${s.toFixed(0)}%`).join('; '), null, src),
       has(m.gspend) && L('gads.spend.30d', 'Google Ads spend, last 30 days', F.big(m.gspend), m.gspend, src), has(m.groas) && L('gads.roas', 'Google Ads conversion value per spend', `${m.groas.toFixed(1)}x`, m.groas, src), has(m.branded) && L('gads.branded.share', 'Branded share of search ad clicks', pct(m.branded), m.branded, src)].filter(Boolean);
     return { metrics: m, stats, changed, cards: out, ledger, notes };
   }
+};
+const GA4_SCOPES = 'https://www.googleapis.com/auth/analytics.readonly openid email';
+const authUrl = (scope) => ({ state, redirect }) => `https://accounts.google.com/o/oauth2/v2/auth?${form({ client_id: app().id, redirect_uri: redirect, response_type: 'code', scope, state, access_type: 'offline', prompt: 'consent', include_granted_scopes: 'true' })}`;
+const oauthOn = () => process.env.GOOGLE_OAUTH === '1' && !!(app().id && app().secret);
+const ga4Of = (c, ch) => ({ ...c, property: ch.ga4 || null, customer: null, login: null, accountName: ch.ga4Name || null });
+
+/* Google Analytics: a property ID with Brew's service account as Viewer (no Google review), or a Google sign-in */
+export const ga4 = {
+  ...base, id: 'ga4', name: 'Google Analytics', modes: ['key', 'oauth'],
+  ready: () => saOn() || !!(app().id && app().secret), oauthOn,
+  authorize: authUrl(GA4_SCOPES),
+  async options(c) { return (await base.options(c)).filter((o) => o.kind === 'ga4'); },
+  select: (c, ch) => ga4Of(c, ch),
+  owns: (c, ctx) => base.owns({ ...c, customer: null }, ctx),
+  sync: (c, ctx, deps) => base.sync({ ...c, customer: null }, ctx, deps, 'ga4')
+};
+/* Google Ads: Google sign-in only (the developer token and the adwords scope); the same sign-in may pick a GA4 property too */
+export default {
+  ...base, id: 'google', name: 'Google Ads', modes: ['oauth'],
+  keyFields: undefined, fromKey: undefined, help: () => null, helpEmail: () => null,
+  ready: () => !!(app().id && app().secret && app().dev), oauthOn,
+  authorize: authUrl(SCOPES),
+  select: (c, ch) => ({ ...c, property: null, customer: ch.ads ? String(ch.ads).split(':')[0].replace(/\D/g, '') : null, login: ch.ads && String(ch.ads).includes(':') ? String(ch.ads).split(':')[1].replace(/\D/g, '') : null, accountName: ch.adsName || null }),
+  also: (c, ch) => (ch.ga4 ? [{ id: 'ga4', creds: ga4Of(c, ch) }] : []),
+  owns: (c, ctx) => base.owns({ ...c, property: null }, ctx),
+  sync: (c, ctx, deps) => base.sync({ ...c, property: null }, ctx, deps, 'google')
 };
