@@ -57,3 +57,22 @@ test('saved moves and seeds read honestly: no "OF N" kicker, no watching promise
   assert.match(out, /PRICING · MOVE 65"/); assert.match(out, /What to watch:/); assert.match(out, /BREW DRAFTS/);
   assert.match(out, /Your moves, turned into cards\./); assert.match(out, /share the brief/); assert.doesNotMatch(out, /OF 64|Brew will watch|do it\./);
 });
+
+test('saved PDFs heal: a missing one is drawn (a failed render is tried again), retired moves leave the list, zips rebuild', async () => {
+  const os = await import('node:os'); const path = await import('node:path');
+  const { createPacks } = await import('../brand-pack.js'); const { createBuilder } = await import('../build.js');
+  const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'brew-pdf-')); const quiet = { log() {}, warn() {}, error() {} };
+  const P = createPacks({ ROOT, PUB: path.join(ROOT, 'public'), bucket: null, gToken: null, log: quiet });
+  const slug = 'acme-com';
+  await P.put(slug, 'status.json', { slug, done: true, pdfs: { 1: '1 One.pdf', 1001: '1001 Retired.pdf' } });
+  await P.put(slug, 'profile.json', { name: 'Acme', host: 'acme.com' });
+  await P.put(slug, 'moves.json', { 1: { n: 1, title: 'One', kicker: 'X · MOVE 01 OF 52' }, 2: { n: 2, title: 'Two', kicker: 'X · MOVE 02 OF 64' } });
+  let tries = 0; const drawn = [];
+  const pdf = { pdfName: (m) => `${m.n} ${m.title}.pdf`, zipBuffer: () => Buffer.from('zip'),
+    renderMove: async (m, brand, out) => { if (m.n === 2 && !tries++) throw new Error('chrome hiccup'); drawn.push(m.kicker); fs.mkdirSync(path.dirname(out), { recursive: true }); fs.writeFileSync(out, 'pdf'); } };
+  const b = createBuilder({ ROOT, packs: P, ai: { onCharge() {} }, treg: { onCharge() {} }, log: quiet, modules: { reader: null, brief: null, moves: null, pdf } });
+  await b.healPdfs(slug);
+  const st = await P.getJSON(slug, 'status.json');
+  assert.deepEqual(Object.keys(st.pdfs).sort(), ['1', '2']); assert.equal(st.pdfV, 2); assert.ok(st.zips?.length, 'zips rebuilt');
+  assert.ok(drawn.every((k) => !/ OF \d/.test(k)), 'PDFs are drawn from the healed kicker');
+});

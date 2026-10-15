@@ -389,7 +389,15 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     await packs.put(slug, 'seed.json', seed); packs.drop(slug); await onPack(slug);
     if (add.length) { onCards(slug, add, replace ? { replace: true } : undefined); emit(slug, { type: 'cards', n: move.n, cards: add.map((c) => ({ id: c.id, title: c.title, agent: c.agent })) }); }
   }
-  async function renderPdf(slug, pdf, move, profile, { priv = false } = {}) {
+  // status.pdfs is written by the build, rewrites and the weekly moves at once: one writer per brand, so no entry is lost
+  const pdfLocks = new Map();
+  const markPdf = (slug, n, file) => { const p = (pdfLocks.get(slug) || Promise.resolve()).catch(() => {}).then(async () => { const cur = (await status(slug))?.pdfs || {}; await setStatus(slug, { pdfs: { ...cur, [n]: file } }); }); pdfLocks.set(slug, p); return p; };
+  // a render that fails is tried once more before it is logged (moves 02, 03 and 25 went missing that way)
+  async function renderPdf(slug, pdf, move, profile, opts = {}) {
+    try { return await renderPdf1(slug, pdf, move, profile, opts); }
+    catch (e) { log.warn('[pdf] retry', slug, move?.n, e.message); await new Promise((r) => setTimeout(r, 2000)); return renderPdf1(slug, pdf, move, profile, opts); }
+  }
+  async function renderPdf1(slug, pdf, move, profile, { priv = false } = {}) {
     const brand = { name: profile.name, descriptor: (profile.descriptor || profile.category || '').toUpperCase(), host: profile.host, hero: heroFile(slug, profile), colors: profile.identity?.colors || [], dateLabel: new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }).toUpperCase(), version: 'V1 · FOR DISCUSSION' };
     const out = path.join(packs.dirOf(slug), priv ? 'private/pdf' : 'pdf', pdf.pdfName(move));
     fs.mkdirSync(path.dirname(out), { recursive: true });
@@ -397,7 +405,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     await pdf.renderMove(move, brand, out, { moves });
     if (priv) { await packs.put(slug, 'private/pdf/' + path.basename(out), fs.readFileSync(out), 'application/pdf'); const pp = await packs.getJSON(slug, 'private/pdfs.json', {}); pp[move.n] = path.basename(out); await packs.put(slug, 'private/pdfs.json', pp); emit(slug, { type: 'pdf', n: move.n, private: true }); return; }
     await packs.put(slug, 'pdf/' + path.basename(out), fs.readFileSync(out), 'application/pdf');
-    const cur = (await status(slug))?.pdfs || {}; await setStatus(slug, { pdfs: { ...cur, [move.n]: path.basename(out) } });
+    await markPdf(slug, move.n, path.basename(out));
     emit(slug, { type: 'pdf', n: move.n, file: path.basename(out) });
   }
   const heroFile = (slug, p) => { const img = p.catalog?.products?.find((x) => x.img)?.img; const m = img && /^b\/[^/]+\/a\/(.+)$/.exec(String(img).replace(/^\//, '')); const f = m && path.join(packs.dirOf(slug), 'assets', m[1]); return f && fs.existsSync(f) ? f : null; };
@@ -875,7 +883,24 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     setTimeout(tick, 20e3).unref?.();
   }
   async function resumeAll() { for (const sl of String(process.env.OPS_FRESH_RELOAD || '').split(',').map((x) => x.trim()).filter(Boolean)) freshReload(sl).catch((e) => log.error('[ops] fresh', sl, e.message));
-    for (const x of await packs.list()) { if (!x.status.done && !x.status.error && !x.status.capped) resume(x.slug).catch((e) => log.error('[build] resume', x.slug, e.message)); else { if (x.status.done) rebase(x.slug).catch((e) => log.warn('[build] rebase', x.slug, e.message)); resumeRewrite(x.slug).catch((e) => log.warn('[rewrite] resume', x.slug, e.message)); } } }
+    for (const x of await packs.list()) { if (!x.status.done && !x.status.error && !x.status.capped) resume(x.slug).catch((e) => log.error('[build] resume', x.slug, e.message)); else { if (x.status.done) { rebase(x.slug).catch((e) => log.warn('[build] rebase', x.slug, e.message)); healPdfs(x.slug); } resumeRewrite(x.slug).catch((e) => log.warn('[rewrite] resume', x.slug, e.message)); } } }
+  /* Saved PDFs heal: when the PDF text rules change (PDF_V), or a move has no PDF, every public move is drawn again (free:
+     local Chromium), entries for moves that no longer exist leave status.pdfs, and the zips are rebuilt. One brand at a time. */
+  const PDF_V = 2; // 2: kickers without "OF N", "What to watch", BREW DRAFTS (2026-10-15)
+  let pdfHealQ = Promise.resolve();
+  const healPdfs = (slug) => (pdfHealQ = pdfHealQ.catch(() => {}).then(async () => {
+    if (blocked(slug) || process.env.PDF_HEAL_OFF === '1') return;
+    const m = await load(); if (!m.pdf) return;
+    const s0 = await status(slug), moves = await packs.getJSON(slug, 'moves.json', {}), profile = await packs.getJSON(slug, 'profile.json');
+    if (!s0?.done || !profile) return;
+    const have = s0.pdfs || {}, todo = Object.values(moves).filter((x) => x && Number.isFinite(+x.n) && (s0.pdfV !== PDF_V || !have[x.n]));
+    if (!todo.length && Object.keys(have).every((n) => moves[n])) return;
+    log.log(`[pdf] heal ${slug}: ${todo.length} to draw`);
+    let failed = 0; for (const mv of todo) await renderPdf(slug, m.pdf, mv, profile).catch((e) => { failed++; log.warn('[pdf] heal', slug, mv.n, e.message); });
+    const cur = (await status(slug)).pdfs || {}; const keep = Object.fromEntries(Object.entries(cur).filter(([n]) => moves[n]));
+    await setStatus(slug, { pdfs: keep, ...(failed ? {} : { pdfV: PDF_V }) });
+    await makeZips(slug, m, profile);
+  }).catch((e) => log.warn('[pdf] heal', slug, e.message)));
   // a finished brand whose lanes would come out differently today (the lane rules improved): publish its base again (free)
   async function rebase(slug) {
     if (blocked(slug)) return;
@@ -895,5 +920,5 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   /* moves the fact sheet found quoting a changed fact: out of date, with the reason (kept with an older flag's changes) */
   const flagStale = (slug, list = []) => editUpd(slug, (u) => { for (const x of list) { const o = u.stale[x.n]; u.stale[x.n] = { ...x, at: Date.now(), changes: [...new Set([...(x.changes || []), ...(o?.changes || [])])].slice(0, 6), ...(o && !o.private ? { private: false } : {}) }; } });
   const facts = { republish, flagStale, readProduct: async (slug, url) => readProduct(slug, url, (await packs.getJSON(slug, 'profile.json', {})) || {}), readRival, busy: (slug) => !!(st(slug).running || st(slug).checking), setHooks: (h) => Object.assign(hooks, h) };
-  return { ...facts, readLive, heal, pdfFor, connected, liveConnected, checkUpdates, rewrite, updates, setAuto, signal, seen, buildInfo, retry, goPro, checkData, applyCheck, peek: (slug) => st(slug).status, addEmail, start, resume, resumeAll, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
+  return { ...facts, readLive, heal, healPdfs, pdfFor, connected, liveConnected, checkUpdates, rewrite, updates, setAuto, signal, seen, buildInfo, retry, goPro, checkData, applyCheck, peek: (slug) => st(slug).status, addEmail, start, resume, resumeAll, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
 }
