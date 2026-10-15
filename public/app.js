@@ -390,7 +390,7 @@
     const res = await fetch('/api/research').then((r) => r.json()).catch(() => null);
     const ra = !GEN && res?.ads?.items?.length ? res.ads : null; // a generated brand's reader already shows its real ads
     const steps = ra ? B.steps.map((x) => x.k === 'ads' ? { ...x, done: `${ra.brands.length} rivals, ${ra.brands.reduce((n, b) => n + (b.live || 0), 0).toLocaleString('en-IN')} live ads` } : x) : B.steps;
-    const cards = ra ? B.scrape.map((c) => c.kind === 'ad' ? { ...c, src: 'Meta Ad Library · India · live', img: ra.items[0].poster, copy: ra.items.slice(0, 3).map((a) => `${a.brand}: ${a.hook}`).join(' · '), foot: `${ra.items[0].brand}'s top ad has run ${ra.items[0].days} days in ${ra.items[0].versions} versions.` } : c) : B.scrape;
+    const cards = ra ? B.scrape.map((c) => c.kind === 'ad' ? { ...c, src: `Meta Ad Library · ${B.config?.countryName || 'live'}`, img: ra.items[0].poster, copy: ra.items.slice(0, 3).map((a) => `${a.brand}: ${a.hook}`).join(' · '), foot: `${ra.items[0].brand}'s top ad has run ${ra.items[0].days} days in ${ra.items[0].versions} versions.` } : c) : B.scrape;
     root.innerHTML = `
       <main class="screen setup">
         <aside class="su-rail">
@@ -716,7 +716,7 @@
     const c = cardOf(p);
     const isNew = PINNED.has(p.id);
     const sub = [isNew ? 'Just in' : agoText(c.time), campLine(c)].filter(Boolean).join(' · ');
-    const lc = p.liveChange;
+    const lc = null; /* Do it now was cut: nothing goes live from Brew, so no card shows a Live row */
     const live = lc ? `<button class="live-row" data-livech data-card="${esc(p.id)}" title="${esc(`${lc.label}${lc.scope ? ' · ' + lc.scope : ''} · ${byTeam(lc.by) ? 'shipped by the ShopOS team' : 'shipped by Brew'}. Open the history`)}"><span class="live-pill"><i class="pulse"></i>Live</span><span class="live-tx">${esc(lc.label)}</span><span class="live-v">v${lc.v}</span>${ic('right', 's14')}</button>` : '';
     const body = `<div class="body">${live || statusRow(p, c)}<h3>${esc(c.title)}</h3><p>${esc(c.sub)}</p>${makeChip(c)}${srcLine(c)}</div>`;
     const fd = ['chat', 'conflict', 'answer'].includes(c.kind) ? '' : draftSlot(c); /* a draft replaces the lane photo; a rows card keeps its rows under the words */
@@ -1290,7 +1290,7 @@
     return `<section class="dp-measure"><h4>How we measure it</h4>
       <div class="ms-top"><div><small>Metric</small><b>${esc(m.metric)}</b></div><div><small>Baseline</small><b>${m.connected ? fmt(m.baseline) : '—'}</b></div><div><small>Target</small><b>${fmt(m.target)}</b></div><div><small>Read after</small><b>${m.window} days</b></div></div>
       ${!m.connected ? `<p class="ms-need">${ic('plug', 's14')}Connect ${esc(m.fromName)} to set the baseline from your real numbers. <button class="linkbtn" data-cx="${esc(m.from)}">Connect</button></p>` : ''}
-      <div class="ms-row"><small>What we watch</small><ul class="dp-list">${m.watch.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>
+      <div class="ms-row"><small>What to watch</small><ul class="dp-list">${m.watch.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>
       <div class="ms-row"><small>How we attribute it</small><p>${esc(m.attribution)}</p></div></section>`;
   };
   // why this card is here, in words a client reads: what lifted it, what held it back, where it sits today,
@@ -1407,10 +1407,10 @@
   const cpMeasure = (m, w, f) => { const reads = w?.measure?.readings || [], res = w?.result, has = m.connected && m.baseline != null;
     return `<div class="cp-m">
       ${res ? '' : `<div class="cp-m-track"><div class="cp-m-pt"><small>Today</small><b>${has ? esc(f(m.baseline)) : 'Not set yet'}</b></div>
-        <div class="cp-m-line"><i></i><span>${ic('clock', 's14')}Read on day ${esc(m.window)}</span></div>
+        <div class="cp-m-line"><i></i><span>${ic('clock', 's14')}Check on day ${esc(m.window)}</span></div>
         <div class="cp-m-pt is-goal"><small>Target</small><b>${esc(m.targetLabel || f(m.target))}</b></div></div>`}
       ${!m.connected ? `<div class="cp-m-cx">${ic('plug', 's16')}<span>Connect <b>${esc(m.fromName)}</b> and we set today’s number from your real data.</span><button class="btn btn-ghost sm" data-cx="${esc(m.from)}">Connect</button></div>` : ''}
-      ${m.watch?.length ? `<div class="cp-m-sec"><small>What we watch along the way</small><div class="cp-m-watch">${m.watch.map((x) => `<span><i></i>${esc(x)}</span>`).join('')}</div></div>` : ''}
+      ${m.watch?.length ? `<div class="cp-m-sec"><small>What to watch along the way</small><div class="cp-m-watch">${m.watch.map((x) => `<span><i></i>${esc(x)}</span>`).join('')}</div></div>` : ''}
       ${m.attribution ? `<p class="cp-m-attr">${ic('link', 's14')}<span><b>How we know it was this:</b> ${esc(m.attribution)}</span></p>` : ''}</div>`; };
   // the measure for the option that's open: what we read for THIS path, where, the target, when, and when we stop
   // "Cost per first order on the static" is the same number as "Cost per first order": compare the metric, not where it's read
@@ -1422,7 +1422,7 @@
         <div class="cp-m-line"><i></i><span>${ic('clock', 's14')}Read on day ${esc(om.window)}</span></div>
         <div class="cp-m-pt is-goal${om.target ? '' : ' is-open'}"><small>Target</small><b>${om.target ? esc(om.target) : 'Set with you'}</b></div></div>
       ${om.guard ? `<p class="cp-m-guard">${ic('lock', 's14')}<span><b>We stop if</b> ${esc(om.guard)}</span></p>` : ''}
-      ${om.watch?.length ? `<div class="cp-m-sec"><small>What we watch along the way</small><div class="cp-m-watch">${om.watch.map((x) => `<span><i></i>${esc(x)}</span>`).join('')}</div></div>` : ''}
+      ${om.watch?.length ? `<div class="cp-m-sec"><small>What to watch along the way</small><div class="cp-m-watch">${om.watch.map((x) => `<span><i></i>${esc(x)}</span>`).join('')}</div></div>` : ''}
       ${m && !same ? `<p class="cp-m-north">${ic('trendup', 's14')}<span><b>The goal behind it:</b> ${esc(m.metric)}, ${m.connected && m.baseline != null ? `${esc(f(m.baseline))} → ` : 'target '}${esc(m.targetLabel || f(m.target))}</span></p>` : ''}
       ${m && !m.connected ? `<div class="cp-m-cx">${ic('plug', 's16')}<span>Connect <b>${esc(m.fromName)}</b> and we set today’s numbers from your real data.</span><button class="btn btn-ghost sm" data-cx="${esc(m.from)}">Connect</button></div>` : ''}
       ${m?.attribution ? `<p class="cp-m-attr">${ic('link', 's14')}<span><b>How we know it was this:</b> ${esc(m.attribution)}</span></p>` : ''}</div>`; };
@@ -1437,7 +1437,7 @@
       funnel: (b) => `<div class="cp-m-sec"><small>The path to it</small><div class="cp-m-fun">${b.steps.map((x) => `<span><b>${esc(x.label)}</b>${x.value ? `<em>${esc(x.value)}</em>` : ''}</span>`).join(ic('right', 's14'))}</div></div>`,
       formula: (b) => `<div class="cp-m-sec"><small>How we count it</small><div class="cp-m-frac"><span>${esc(b.top)}</span><i></i><span>${esc(b.bottom)}</span></div>${b.text ? `<p class="cp-m-res">${esc(b.text)}</p>` : ''}</div>`,
       guard: (b) => b.rules.map((r) => `<p class="cp-m-guard">${ic('lock', 's14')}<span><b>We stop if</b> ${esc(r.if)}${r.then ? `<em> → ${esc(r.then)}</em>` : ''}</span></p>`).join(''),
-      watch: (b) => `<div class="cp-m-sec"><small>What we watch along the way</small><div class="cp-m-watch">${b.items.map((x) => `<span><i></i>${esc(x)}</span>`).join('')}</div></div>`,
+      watch: (b) => `<div class="cp-m-sec"><small>What to watch along the way</small><div class="cp-m-watch">${b.items.map((x) => `<span><i></i>${esc(x)}</span>`).join('')}</div></div>`,
       north: (b) => `<p class="cp-m-north">${ic('trendup', 's14')}<span><b>The goal behind it:</b> ${esc(b.text)}</span></p>`,
       attribution: (b) => `<p class="cp-m-attr">${ic('link', 's14')}<span><b>How we know it was this:</b> ${esc(b.text)}</span></p>`,
       open: (b) => `<div class="cp-m-sec cp-m-open"><small>Still open</small><div class="cp-m-qs">${b.items.map((q) => `<button class="chip" data-m-ask="${esc(q)}">${ic('sparkles', 's14')}${esc(q)}</button>`).join('')}</div></div>` };

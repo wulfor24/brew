@@ -16,13 +16,16 @@ export function createMoves(ROOT) {
   const tag = (n, h) => `Move ${String(n).padStart(2, '0')} · ${h ? label(n, h) : short(n)}`;
   // "Moves 01, 04, 08 and 17" or "Move 21 · example 5" → [1, 4, 8, 17] / [21]
   const numsOf = (src) => { const m = String(src || '').match(/^moves?\s+([\d,\sand]+)/i); return m ? [...new Set((m[1].match(/\d+/g) || []).map(Number))].filter((n) => M[n]) : []; };
-  const summary = (n) => { const m = M[n]; return m && { n: m.n, title: m.title, stat: m.stat, statLabel: m.statLabel, gives: m.gives, live: m.live, why: m.why, measure: m.measure, sections: m.sections.map((s) => s.h) }; };
+  // a section's readable text: generated moves keep blocks (p, list items, example bodies, callouts); older ones kept paras
+  const textsOf = (s) => [...(s.paras || []), ...(s.blocks || []).flatMap((b) => b.t === 'p' || b.t === 'h3' ? [b.text] : b.t === 'list' ? (b.items || []).map(String) : b.t === 'example' ? [[b.title, b.body].filter(Boolean).join('. ')] : b.t === 'callout' ? [[b.title, b.text].filter(Boolean).join('. ')] : [])].filter((x) => typeof x === 'string' && x.trim());
+  const firstOf = (m, kind) => { const s = (m.sections || []).find((x) => x.kind === kind); return s ? textsOf(s)[0] || null : null; };
+  const summary = (n) => { const m = M[n]; return m && { n: m.n, title: m.title, stat: m.stat, statLabel: m.statLabel, gives: m.gives, live: m.live, why: m.why || firstOf(m, 'why'), measure: m.measure || firstOf(m, 'measure'), sections: (m.sections || []).map((s) => s.h) }; };
   // the passages across a card's moves that best match what the card is about
   const passages = (c, k = 4, extra = '') => {
     const ns = numsOf(c.src); if (!ns.length) return [];
     const q = words([c.title, c.sub, c.cta?.label, ...(c.detail?.how || []), ...(c.detail?.why || []), extra].join(' '));
     const qs = new Set(q); const out = [];
-    for (const n of ns) for (const s of M[n]?.sections || []) for (const p of s.paras || []) { // a move written in a shorter shape has no paragraphs
+    for (const n of ns) for (const s of M[n]?.sections || []) for (const p of textsOf(s)) {
       const w = words(p); if (w.length < 8) continue;
       let hit = 0; for (const x of new Set(w)) if (qs.has(x)) hit++;
       const head = words(s.h).filter((x) => qs.has(x)).length;

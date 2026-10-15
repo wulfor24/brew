@@ -20,7 +20,7 @@ export const MEASURE_SCHEMA = {
         'funnel: steps from first touch to the outcome (steps) when the brief tracks a chain like sent > read > clicked > reordered.',
         'formula: how the number is worked out (top ÷ bottom) when the metric is a ratio people could count differently.',
         'guard: the stop rules (rules: if / then).',
-        'watch: what we watch along the way (items).',
+        'watch: what the team watches along the way (items). The team runs the checks; Brew does not watch or stop anything.',
         'north: the bigger goal this serves (text), only when it is a different number from the main metric and the brief states it.',
         'attribution: how we know it was this and not something else (text).',
         'open: what the brief has not settled about measuring it yet, as short questions (items), e.g. "Do coupon reorders count?"'].join(' ') },

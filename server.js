@@ -277,33 +277,7 @@ const routes = {
   'GET /api/research': async () => { const r = B().research; return { ...r.get(), running: r.running(), spent: r.spent() }; },
   'POST /api/research/refresh': async (b, req) => { if (!(await genOk(req, B().slug))) return demoErr(); const ok = ['ads', 'trends', 'news', 'howto']; const which = (b.sources || ok).filter((k) => ok.includes(k)); B().research.refresh(which); return { started: which }; },
   'GET /api/config': async () => ({ ai: MOCK ? 'mock' : 'live', image: !!(GPROJECT || OPENAI_KEY), caps: CAPS, used }),
-  'POST /api/config': async (b, req) => { if (!auth.isAdmin(auth.user(req))) return { error: 'admins only', ai: MOCK ? 'mock' : 'live' }; if (b.ai === 'mock') MOCK = true; if (b.ai === 'live' && ANTHROPIC_KEY) MOCK = false; return { ai: MOCK ? 'mock' : 'live' }; },
-
-  // three more in the direction you hearted
-  'POST /api/ai/hearted': async (b) => {
-    if (MOCK || !spend('text')) return { variants: mockVariants(b.card), mock: true };
-    const j = await claudeJSON(`${cardBrief(b.card, b.role)}\n\nThe reader hearted this card. Write three new feed cards in the same direction, each a different cut (for example a different persona, format or hook). JSON: {"variants":[{"angle":"2-3 words","title":"under 60 chars, point first, plain words","sub":"two sentences, 25 to 35 words: what we saw with the number, then the move and what it gets ${BN()}; no fonts, design notes or file names; numbers only from the facts"}]}`);
-    j.variants = (j.variants || []).slice(0, 3).map((v) => ({ ...v, title: clean(v.title), sub: clean(v.sub) })).filter((v) => !BANNED.test(v.title + v.sub));
-    return j;
-  },
-
-  // remix image: edit the card's photo
-  'POST /api/ai/remix-image': async (b) => {
-    const src = safeAsset(b.src);
-    const key = crypto.createHash('sha1').update(JSON.stringify([b.src, b.prompt, b.segment, b.grade, b.ratio, b.n || 0])).digest('hex').slice(0, 16);
-    if (await genFile(key + '.png')) return { url: `gen/${key}.png`, cached: true };
-    if (MOCK || !spend('image')) return { url: null, mock: true };
-    const prompt = `Edit this ${BN()} product photo for a Meta ad. ${`Keep the ${BN()} ${B().config.product?.noun || 'product'}, label and its text exactly as they are`}; do not invent new text on the pack. Change: ${b.prompt || 'a fresh, premium take'}. Focus on: ${b.segment || 'the main subject'}. Colour mood: ${b.grade || 'natural'}. ${B().config.product?.look || 'Clean, premium D2C look, no before/after.'}`;
-    let buf;
-    try { buf = await geminiImage({ srcFile: src, prompt, ratio: b.ratio }); }
-    catch (e) { if (!OPENAI_KEY || !src) throw e; console.warn('[image] gemini failed, trying openai:', e.message); buf = await openaiImage({ srcFile: src, prompt }); }
-    saveGen(key + '.png', buf);
-    return { url: `gen/${key}.png` };
-  },
-
-  // dummy Slack: a canned workspace
-  'GET /api/slack/workspace': async () => ({ team: B().name, channels: ['#growth', '#brand', '#d2c-ops', '#founders'], demo: true }),
-  'POST /api/slack/post': async (b) => ({ ok: true, channel: b.channel || '#growth', ts: Date.now() / 1000, demo: true })
+  'POST /api/config': async (b, req) => { if (!auth.isAdmin(auth.user(req))) return { error: 'admins only', ai: MOCK ? 'mock' : 'live' }; if (b.ai === 'mock') MOCK = true; if (b.ai === 'live' && ANTHROPIC_KEY) MOCK = false; return { ai: MOCK ? 'mock' : 'live' }; }
 };
 
 // brand packs: every brand the build has read (brand-pack.js, build.js), and the Brew default context
@@ -592,26 +566,6 @@ const pageFor = async (seg) => {
     .replace(/name="apple-mobile-web-app-title" content="[^"]*"/, `name="apple-mobile-web-app-title" content="${name.replace(/"/g, '')}"`));
 };
 
-// streamed jam reply (plain text chunks)
-async function jamStream(req, res) {
-  const b = await readBody(req);
-  res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store', 'x-accel-buffering': 'no' });
-  const fallback = () => { res.end(b.card ? `Here is a tighter take: ${String(b.card.sub || '').split('. ')[0]}. Want three versions, or should a person on the ShopOS team take it?` : 'Tell me what to make and I will draft it here, or hand it to the ShopOS team.'); };
-  if (MOCK || !spend('text')) return fallback();
-  try {
-    const history = (b.history || []).slice(-10).map((m) => ({ role: m.from === 'me' ? 'user' : 'assistant', content: String(m.text || '').slice(0, 2000) })).filter((m) => m.content);
-    const ctx = b.card ? cardBrief(b.card, b.role) : `No card is attached. The reader is the ${b.role || 'founder'}.`;
-    const msgs = [...history, { role: 'user', content: `${ctx}\n\nMessage: ${b.message}\n\nReply in under 90 words. Plain text, no markdown headings, at most 3 short bullets.` }];
-    while (msgs.length && msgs[0].role !== 'user') msgs.shift();
-    const merged = msgs.reduce((a, m) => { if (a.length && a[a.length - 1].role === m.role) a[a.length - 1].content += '\n\n' + m.content; else a.push({ ...m }); return a; }, []);
-    const stream = anthropic.beta.messages.stream(claudeParams(merged, 1200));
-    stream.on('text', (t) => res.write(clean(t)));
-    const fin = await stream.finalMessage();
-    if (fin.stop_reason === 'refusal') res.write('\n\nThis one is better with a person. Send it to the ShopOS team?');
-    res.end();
-  } catch (e) { console.error('[jam]', e.message); fallback(); }
-}
-
 /* ---------- talk instead of type: one voice note → text (the mic on every box) ---------- */
 // The browser records (webm/ogg/mp4) and posts the raw audio; gpt-4o-transcribe handles Hindi and English mixed.
 const TX = new Map();
@@ -654,7 +608,6 @@ async function serve(req, res, u) {
     // everything else under /api runs for the brand the page was opened for (x-brand)
     const br = await loadBrand(String(req.headers['x-brand'] || DEFAULT).replace(/[^a-z0-9-]/g, '')) || B();
     if (req.method === 'POST' && /^\/api\/ai\//.test(u.pathname) && !(await genOk(req, br.slug))) return send(res, 403, demoErr(packs.peek(br.slug)?.seed?.brand?.host || null));
-    if (req.method === 'POST' && u.pathname === '/api/ai/jam') return await runIn(br, () => jamStream(req, res));
     const fn = routes[`${req.method} ${u.pathname}`];
     if (fn) {
       const b = req.method === 'POST' ? await readBody(req) : {};

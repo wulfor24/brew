@@ -851,7 +851,7 @@ export function createFeedService(o) {
   };
 
   /* ---------- onboarding stream (SSE) ---------- */
-  const FINDS = ['Found your story, word for word', 'Found your palette and type', 'Found your catalog and prices', 'Found 4,683 reviews nobody has mined', 'Found your packshots', 'Found what rivals run', 'Found what the AI says', 'Found your films'];
+  const FINDS = ['Found your story, word for word', 'Found your palette and type', 'Found your catalog and prices', 'Found your reviews', 'Found your packshots', 'Found what rivals run', 'Found what the AI says', 'Found your films'];
   /* Demo Mode's tour (o.liveReadFor): the store is read again, live, while the visitor watches. Events are paced so each
      finding has time to land (the cursor flies to it); if the read cannot run, the stored read is replayed instead */
   const PACE = { finding: 2200, step: 500 };
@@ -1184,31 +1184,6 @@ export function createFeedService(o) {
     for (const w of t.work) if (w.cardId === c.id) { if (w.img === old) w.img = url; (w.versions || []).forEach((v) => { v.images = swap(v.images); }); }
     return { url, card: pub(c, t) };
   });
-  on('POST', '/api/cards/:cid/versions', async (b, t, p) => {
-    const c = t.cards.get(p.cid); if (!c) return { error: 'not found' };
-    const extra = [b.segment && `Aim at: ${b.segment}.`, b.ratio && `Format: ${b.ratio}.`, b.grade && `Colour mood: ${b.grade}.`].filter(Boolean).join(' ');
-    const r = await makeVersions(t, { ...c, ...(b.base || {}) }, b.prompt, extra);
-    const v = { id: uid('v'), cardId: c.id, src: c.images?.[0] || null, grade: b.grade || null, ratio: b.ratio || null, segment: b.segment || null, prompt: b.prompt || '', by: 'user', at: now(t), versions: r.versions };
-    t.versions.push(v); t.acted.add(c.id);
-    return { ...r, id: v.id };
-  });
-  on('POST', '/api/jams', async (b, t) => {
-    const card = b.cardId ? t.cards.get(b.cardId) : null;
-    const decision = b.route === 'team' ? { route: 'team', label: b.label || 'sent by you', reason: b.reason || 'You sent it to the ShopOS team', method: 'manual' } : await routeJam(t, String(b.body || ''), !!b.manual);
-    t.router.unshift({ id: uid('r'), body: String(b.body || '').slice(0, 140), card: card?.title || null, ...decision, at: now(t) });
-    if (card) t.acted.add(card.id);
-    if (b.dry) return { decision };
-    let j = b.jamId && t.jams.find((x) => x.id === b.jamId);
-    if (!j || (decision.route === 'team' && j.route !== 'team')) j = newJam(t, { cardId: card?.id, ...decision, body: b.body });
-    j.messages.push({ from: 'me', body: b.body, at: now(t) }); j.updatedAt = now(t);
-    if (decision.route === 'team') {
-      j.messages.push({ from: 'team', agent: 'Brew', body: 'The ShopOS team has it. Usually replies in 12 to 24 hours.', at: now(t) });
-      return { decision, jam: j };
-    }
-    if (card && decision.intent !== 'answer') { const r = await makeVersions(t, { ...card, ...(b.base || {}) }, b.body); j.messages.push({ from: 'agent', agent: card.agent, body: r.line, tiles: r.versions, at: now(t) }); t.versions.push({ id: uid('v'), cardId: card.id, prompt: b.body, by: 'agent', at: now(t), versions: r.versions }); return { decision, jam: j, reply: r }; }
-    return { decision, jam: j, stream: true };
-  });
-  on('POST', '/api/jams/:jid/whatsapp', async (b, t, p) => { const j = t.jams.find((x) => x.id === p.jid); if (!j) return { error: 'not found' }; j.whatsapp = true; j.messages.push({ from: 'team', agent: 'Brew', body: 'Thread moved to WhatsApp. The pod replies there and here.', at: now(t) }); return { jam: j }; });
   on('GET', '/api/tenants/:id/engine', async (b, t) => engine(t));
   on('POST', '/api/tenants/:id/watchers/:wid/run', async (b, t, p) => { const w = WATCHERS.find((x) => x.id === p.wid); if (!w) return { error: 'no watcher' }; const made = await runWatcher(t, w, 'manual'); return { made: made.map(pub) }; });
   /* run every watcher now; the creative one writes with the AI (~15 s), so it finishes in the background and its card
@@ -1434,7 +1409,7 @@ export function createFeedService(o) {
     return false;
   };
   /* the writes a demo-mode visitor may still make: none of them calls a model or makes an asset */
-  const DEMO_OK = /^\/api\/(tenants|work|tenants\/[^/]+\/(ready|clock|events|pin|cards|notes\/(clear|read)|stories\/[^/]+\/seen|deck-layout|state|learning\/.+)|cards\/[^/]+\/(feedback|decided)|work\/[^/]+\/(decided|discard|restore|pick|version|approve|reopen|live|edit|jb\/move|draft\/[^/]+\/drop)|changes\/[^/]+\/(open|discard|restore|pick|notes|edit|undo)|jams\/[^/]+\/whatsapp)$/;
+  const DEMO_OK = /^\/api\/(tenants|work|tenants\/[^/]+\/(ready|clock|events|pin|cards|notes\/(clear|read)|stories\/[^/]+\/seen|deck-layout|state|learning\/.+)|cards\/[^/]+\/(feedback|decided)|work\/[^/]+\/(decided|discard|restore|pick|version|approve|reopen|edit|jb\/move|draft\/[^/]+\/drop)|changes\/[^/]+\/(open|discard|restore|pick|notes|edit))$/;
   // every request runs inside its brand: the tenant's brand, or (creating one) the brand the page was opened for
   const handle = async (req, res, u) => {
     if (!/^\/(h\/|api\/(share|tenants|cards|jams|work|changes))/.test(u.pathname)) return false;

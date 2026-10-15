@@ -4,7 +4,7 @@
 //   confidence 0-1  how much of the move rests on facts Brew read versus assumptions
 //   effort     1-4  hours, days, weeks, a month or more
 //   urgency    0-1  a date or event that makes it worth doing now (sale day, stock-out, rival launch); `by` holds the date
-//   now        bool Brew can do it on the brand's own stack today
+//   now        bool the team can do it on the brand's existing tools today (a quick win; Brew itself acts on nothing)
 // Kept in the pack as move-value.json { n: {...grade, v} }; feed-service reads it through cardValue(). MOVE_VALUE_OFF=1 stops grading.
 
 const P = 'move-value.json', D = 864e5;

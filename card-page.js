@@ -19,8 +19,8 @@ export const PAGE_SCHEMA = { type: 'object', additionalProperties: false, requir
       where: { type: 'string', description: 'Where we read it, under 8 words (e.g. "Blinkit, Zepto and Instamart only").' },
       target: { type: 'string', description: 'The target, only with a number from the facts list, the card or the card measure. Empty if none is backed.' },
       window: { type: 'integer', description: 'Days until we read it (7, 14, 21 or 28).' },
-      watch: { type: 'array', items: { type: 'string' }, description: '1 to 3 things we watch along the way, under 9 words each.' },
-      guard: { type: 'string', description: 'When we stop or roll back, under 16 words. Numbers only if backed.' }
+      watch: { type: 'array', items: { type: 'string' }, description: '1 to 3 things the team watches along the way, under 9 words each.' },
+      guard: { type: 'string', description: 'When the team should stop or roll it back, under 16 words. Numbers only if backed. Brew does not watch or stop anything.' }
     } }
   } } },
   reason: { type: 'string', description: 'Our recommendation: why the pick wins, under 40 words, plain.' },

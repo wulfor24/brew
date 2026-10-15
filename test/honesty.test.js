@@ -85,3 +85,12 @@ test('the told lift needs learnings, and only moves written after them count', a
   const moves = { 3: { title: 'Old', meta: { at: '2026-10-01T00:00:00Z' }, sections: ['the team says'] }, 4: { title: 'New', meta: { at: '2026-10-15T00:00:00Z' }, sections: ['the team says'] } };
   assert.deepEqual([...learnedMoveNs(moves, L)], [4]);
 });
+
+test('card pages and the studio get passages from generated moves (blocks, not paras)', async () => {
+  const { runIn } = await import('../brand-ctx.js'); const { createMoves } = await import('../moves.js');
+  const moveDocs = { 7: { n: 7, title: 'Price the pack', gives: 'g', sections: [{ h: 'What we found', kind: 'found', blocks: [{ t: 'p', text: 'The pack of three serum costs more than three single serum bottles bought one by one, so buyers who compare pack prices and single bottle prices leave.' }, { t: 'list', items: ['Fix the pack price before any serum ad names it'] }] }, { h: 'Why', kind: 'why', blocks: [{ t: 'p', text: 'Why it matters.' }] }] } };
+  const MV = createMoves('.');
+  const out = runIn({ moveDocs, labels: {} }, () => MV.passages({ src: 'Move 07', title: 'Fix the serum pack price', sub: 'Pack prices and single bottle prices' }));
+  assert.ok(out.length >= 1 && /pack/.test(out[0].text));
+  assert.equal(runIn({ moveDocs, labels: {} }, () => MV.summary(7)).why, 'Why it matters.');
+});
