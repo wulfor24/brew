@@ -41,3 +41,11 @@ test('the shared brief leaves out simulated chat and simulated answers', async (
   assert.deepEqual(x.jam.map((m) => m.text), ['Can we ship Friday?', 'Suggested: Friday works.']);
   assert.deepEqual(x.questions.map((q) => q.a), [null, 'Suggested: 1:1 and 4:5.', 'Me']);
 });
+
+test('the festival is always the next one: it rolls to next year once the day has passed', async () => {
+  const { nextFestival } = await import('../calendar.js');
+  assert.equal(nextFestival('IN', new Date('2026-10-15')).date.slice(0, 10), '2026-11-08');
+  assert.equal(nextFestival('IN', new Date('2026-11-09')).date.slice(0, 10), '2027-10-29');
+  const us = nextFestival('US', new Date('2026-11-28')); assert.equal(us.name, 'Black Friday'); assert.equal(us.date.slice(0, 10), '2027-11-26');
+  assert.match(us.label, /2027$/, 'a date next year says the year');
+});

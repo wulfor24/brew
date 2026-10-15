@@ -1,15 +1,11 @@
 // Turn what the reader found (profile + ledger) into the pack files the runtime reads: facts.json, config.json.
 // Only observed values become facts the cards may quote; anything inferred stays out of the fact sheet.
+import { nextFestival } from './calendar.js';
 const LOC = { IN: 2356, US: 2840, GB: 2826, CA: 2124, AU: 2036, AE: 2784, SG: 2702, DE: 2276, FR: 2250, NL: 2528, IE: 2372, NZ: 2554, SA: 2682, MY: 2458, ID: 2360, PH: 2608, JP: 2392, ES: 2724, IT: 2380, SE: 2752 };
 const CNAME = { IN: 'India', US: 'the US', GB: 'the UK', CA: 'Canada', AU: 'Australia', AE: 'the UAE', SG: 'Singapore', DE: 'Germany', FR: 'France', NL: 'the Netherlands', IE: 'Ireland', NZ: 'New Zealand', SA: 'Saudi Arabia', MY: 'Malaysia', ID: 'Indonesia', PH: 'the Philippines', JP: 'Japan', ES: 'Spain', IT: 'Italy', SE: 'Sweden' };
 const TZ = { IN: [5.5, 'Asia/Kolkata'], US: [-5, 'America/New_York'], GB: [0, 'Europe/London'], CA: [-5, 'America/Toronto'], AU: [10, 'Australia/Sydney'], AE: [4, 'Asia/Dubai'], SG: [8, 'Asia/Singapore'], DE: [1, 'Europe/Berlin'], FR: [1, 'Europe/Paris'] };
 const LOCALE = { IN: 'en-IN', US: 'en-US', GB: 'en-GB', CA: 'en-CA', AU: 'en-AU', AE: 'en-AE', SG: 'en-SG' };
 const SYM = { INR: '₹', USD: '$', GBP: '£', EUR: '€', AUD: 'A$', CAD: 'C$', SGD: 'S$', AED: 'AED ' };
-// the next big shopping day, per country (dates for the 2026 season)
-const FEST = {
-  IN: { name: 'Diwali', date: '2026-11-08T00:00:00+05:30', label: '8 November' },
-  DEFAULT: { name: 'Black Friday', date: '2026-11-27T00:00:00-05:00', label: '27 November' }
-};
 // claim words regulators and platforms flag, by category; always on: absolute promises
 const BANNED = {
   health: '\\b(cure[sd]?|heal[sd]?|treat(s|ment)?\\b|regrow\\w*|miracle\\w*|guarantee[sd]?|clinical[- ]strength|chemical[- ]free|doctor[- ]recommended)\\b|100%',
@@ -43,7 +39,7 @@ export function configFromProfile(p, extra = {}) {
     tzOffsetH: (TZ[cc] || [0])[0], timezone: (TZ[cc] || [0, 'UTC'])[1], locationCode: LOC[cc] || 2840, lang: 'en',
     category: cat, about: `a ${p.category || 'consumer'} brand selling ${products.slice(0, 3).map((x) => x.title).join(', ') || 'online'}`,
     product: { noun: extra.noun || 'product', style: `Premium ${p.category || 'D2C'} product ad photography`, avoid: kind === 'beauty' || kind === 'health' ? 'No text, no before/after, no body parts shown as results.' : 'No text, no invented claims.', look: `Clean, premium ${p.category || 'D2C'} look, no before/after.` },
-    festival: FEST[cc] || FEST.DEFAULT,
+    festival: nextFestival(cc), // rolls forward every year (calendar.js); brand-pack.js re-picks it at every load
     rivals, rivalsAI: rivals, rivalsSafe: 'other brands', newsRivals: rivals,
     terms: terms.length ? [terms.slice(0, 5), terms.slice(5, 10)].filter((x) => x.length) : [], rising: terms.slice(0, 2), listingTerm: terms[0] || p.category || '',
     questions: q.slice(0, 8),

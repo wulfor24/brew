@@ -39,6 +39,21 @@ export function dateOf(ev, y, all = EVENTS.events, depth = 0) {
     const last = utc(y, r.month + 1, 0), off = (last.getUTCDay() - r.weekday + 7) % 7; return add(last, -off); }
   return null;
 }
+// The brand's next big shopping day (config.festival): Diwali in India, Black Friday elsewhere, always the next one
+// from today, so seasonal cards and prompts roll forward each year instead of going stale. Dates come from
+// data/commerce-events.json (Diwali by year, Black Friday by rule).
+const HEADLINE = { IN: 'diwali' }, HEADLINE_DEFAULT = 'black-friday', HEAD_TZ = { IN: '+05:30' };
+export function nextFestival(country, now = new Date()) {
+  const cc = String(country || 'US').toUpperCase(), ev = EVENTS.events.find((e) => e.id === (HEADLINE[cc] || HEADLINE_DEFAULT));
+  if (!ev) return null;
+  const y0 = now.getUTCFullYear(), dayStart = Date.UTC(y0, now.getUTCMonth(), now.getUTCDate());
+  for (const y of [y0, y0 + 1, y0 + 2]) {
+    const d = dateOf(ev, y); if (!d || d.getTime() < dayStart) continue;
+    const iso = d.toISOString().slice(0, 10), label = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' }) + (y === y0 ? '' : ` ${y}`);
+    return { name: ev.name, date: `${iso}T00:00:00${HEAD_TZ[cc] || '-05:00'}`, label };
+  }
+  return null;
+}
 const planOf = (kind, peak, span = 1) => { const p = EVENTS.plans[kind] || EVENTS.plans.holiday; return Object.fromEntries(POINTS.map((k) => [k, iso(add(peak, k === 'after' ? (span - 1) + p.after : p[k]))])); };
 
 export function createCalendar({ packs, ai, log = console, today = () => new Date() }) {
