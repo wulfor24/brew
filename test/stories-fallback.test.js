@@ -74,3 +74,11 @@ test('the stories route waits for the saved snapshot', async () => {
   const { r } = make();
   assert.equal(r.ready(), null, 'nothing to wait for before start');
 });
+
+test('near-duplicates merge on what they are about, not on shared verbs', async () => {
+  const { near } = await import('../research.js');
+  const n = (a, b) => near({ h: a }, { h: b });
+  assert.equal(n('Launch festive gifting ads for Diwali', 'How to build a Diwali gift combo ad'), true);
+  assert.equal(n("How to test Traya's doctor angle", "How to test Traya's founder angle"), false);
+  assert.equal(n('Target rising hair thickness searches', "Capture rising men's hair fall searches"), false);
+});

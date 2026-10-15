@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { near } from './research.js';
 import { B, live as liveView, liveArr, liveRe, runIn, BN, BH, CTRY, FESTN, FESTD } from './brand-ctx.js';
 import { cardValue, moveNo } from './value.js'; // what a card is worth doing (expected value), for the ranker
 import { moneyParse, safeLocale } from './brand-pack.js';
@@ -834,7 +835,7 @@ export function createFeedService(o) {
   const storyPick = (items, snapAt, strength, t, max = 8) => { const n = now(t);
     return (items || []).map((x) => { const at = x.firstSeen || snapAt || 0, age = n - at; if (age >= STORY_LIFE) return null;
       const score = 0.4 * (1 - age / STORY_LIFE) + 0.6 * Math.max(0, Math.min(1, strength(x))); return score >= STORY_CUT() ? { ...x, firstSeen: at, score: +score.toFixed(3) } : null; })
-      .filter(Boolean).sort((a, b) => b.score - a.score).slice(0, max); };
+      .filter(Boolean).sort((a, b) => b.score - a.score).filter((x, i, a) => !a.slice(0, i).some((y) => near(x, y))).slice(0, max); }; /* two near-identical stories show once */
   const stories = (t) => {
     const r0 = research?.get() || {};
     const adTop = Math.max(1, ...(r0.ads?.items || []).map((a) => (30 - (a.rank || 30)) / 3 + Math.log2(1 + (a.versions || 1)) * 4 + Math.min(a.days || 0, 120) / 10));
