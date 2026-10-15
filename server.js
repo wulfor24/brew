@@ -22,6 +22,7 @@ import { createPacks, slugOf, DEFAULT } from './brand-pack.js';
 import { createAI } from './ai.js';
 import { createTreg, gcsCache } from './treg.js';
 import { setApifyCache } from './apify.js';
+import { chain as mediaChain, sloosh, slooshOn, openaiImage as openaiImageRaw } from './media.js';
 import { createBuilder, blocked, clientIp } from './build.js';
 import { createRetire } from './retire.js'; // older revisions stop and exit; brands being reset are hidden
 import { createFactsDesk } from './facts-desk.js';
@@ -165,17 +166,16 @@ const sameProduct = async (refFile, buf, name) => {
     img(ref), img(buf)] }] });
   const t = (msg.content || []).map((x) => x.text || '').join(' ').trim(); if (!/^\W*(same|different)\b/i.test(t)) throw new Error(`no verdict (${msg.stop_reason})`); return { same: /^\W*same\b/i.test(t), why: t.slice(0, 160) };
 };
-const geminiImage = createImageGuard({ gen: rawGeminiImage, verify: sameProduct, fetchPhoto: photoAny, resolve: (f) => resolveLocal(f), context: inBrand, log: console });
-// the jam's image model chip: GPT Image when picked (it edits a product photo), Gemini otherwise
-const imageGen = createImageGuard({ gen: (o) => (prefs().image === 'gpt-image' && OPENAI_KEY && o.srcFile ? openaiImage(o).catch((e) => { console.warn('[image] gpt-image failed, trying Gemini', e.message.slice(0, 160)); return rawGeminiImage(o); }) : rawGeminiImage(o)), verify: sameProduct, fetchPhoto: photoAny, resolve: (f) => resolveLocal(f), context: inBrand, log: console });
-async function openaiImage({ srcFile, prompt }) {
-  const fd = new FormData();
-  fd.append('model', 'gpt-image-1'); fd.append('prompt', prompt); fd.append('size', '1024x1024');
-  fd.append('image', new Blob([fs.readFileSync(srcFile)], { type: 'image/jpeg' }), 'src.jpg');
-  const r = await fetch('https://api.openai.com/v1/images/edits', { method: 'POST', headers: { authorization: `Bearer ${OPENAI_KEY}` }, body: fd });
-  if (!r.ok) throw new Error(`OpenAI ${r.status}: ${(await r.text()).slice(0, 300)}`);
-  const j = await r.json(); return Buffer.from(j.data[0].b64_json, 'base64');
-}
+/* the image chain (media.js): Sloosh once connected, then Vertex Gemini (both models), then OpenAI gpt-image-1; the jam's
+   image chip puts GPT Image first when it is picked */
+const openaiImage = (o) => openaiImageRaw(o, { readFile: (f) => fs.readFileSync(f) });
+const rawImage = async (o, { gptFirst = false } = {}) => {
+  const steps = [['sloosh', slooshOn() && (() => sloosh('image', { prompt: o.prompt, ratio: o.ratio, src: o.srcFile ? fs.readFileSync(o.srcFile) : null }))], ['gemini', () => rawGeminiImage(o)], ['gpt-image', OPENAI_KEY && (() => openaiImage(o))]];
+  if (gptFirst) steps.splice(1, 0, steps.splice(2, 1)[0]);
+  return (await mediaChain('image', steps, console)).buf;
+};
+const geminiImage = createImageGuard({ gen: (o) => rawImage(o), verify: sameProduct, fetchPhoto: photoAny, resolve: (f) => resolveLocal(f), context: inBrand, log: console });
+const imageGen = createImageGuard({ gen: (o) => rawImage(o, { gptFirst: prefs().image === 'gpt-image' && !!OPENAI_KEY && !!o.srcFile }), verify: sameProduct, fetchPhoto: photoAny, resolve: (f) => resolveLocal(f), context: inBrand, log: console });
 
 // ---------- mock replies (free, used when AI is off or fails) ----------
 // three cuts of the card itself when the writer is off: its own numbers, its reason, a smaller first step.

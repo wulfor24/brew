@@ -759,7 +759,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         const all = await packs.getJSON(slug, `${P}moves.json`, {}); all[n] = move; await packs.put(slug, `${P}moves.json`, all);
         emit(slug, { type: 'move', n, title: move.title, stat: move.stat, gives: move.gives, verified: !!move.meta?.verified, rewritten: true });
         if (n !== 0) { written.push({ n, title: move.title }); await cardsFor(slug, move, profile, { replace: true, priv }).catch((e) => log.warn('[rewrite] cards', n, e.message)); await editUpd(slug, (u) => { delete u.stale[n]; }); }
-        if (n === 21 && !priv) staticsJob = makeStatics(slug, move, profile, (fn) => (lock = lock.then(fn).catch((e) => log.warn('[rewrite] statics card', e.message))));
+        if (n === 21 && !priv && (await status(slug))?.statics?.state !== 'done') staticsJob = makeStatics(slug, move, profile, (fn) => (lock = lock.then(fn).catch((e) => log.warn('[rewrite] statics card', e.message))));
         if (m.pdf && priv) pdfQ = pdfQ.then(() => renderPdf(slug, m.pdf, move, profile, { priv })).catch((e) => log.warn('[rewrite] pdf', n, e.message)); /* a member's private rewrite keeps its own PDF */
         if (!priv) await unmarkPdf(slug, n); /* the public PDF is drawn again on its next download */
         packs.drop(slug); await onPack(slug); saveSpend(slug);

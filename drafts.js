@@ -3,7 +3,7 @@
 // line, or plain text (ad copy, a WhatsApp message, an email, page copy). Nothing is made until someone taps:
 // a draft costs money, so it is never made for a card nobody opened.
 // Each draft lives on the jam (w.drafts), newest first; the client polls the jam while one is being made.
-import { vertexVoice, vertexVideo } from './vertex-media.js';
+import { makeVoice as vertexVoice, makeVideo as vertexVideo } from './media.js'; // Sloosh first once connected, then Vertex, then OpenAI (media.js)
 import { matchProduct } from './product-match.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
