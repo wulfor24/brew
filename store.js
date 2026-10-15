@@ -25,10 +25,11 @@ export function createStore({ dir, bucket, gToken, log = console }) {
     if (wiping(t?.brandId)) return;
     let s; try { s = JSON.stringify(t, enc); } catch (e) { log.warn('[store] serialise', e.message); return; }
     try { fs.writeFileSync(file(t.id), s); } catch (e) { log.warn('[store] disk', e.message); }
-    if (remote) gcs('PUT', t.id, s).catch((e) => log.warn('[store] gcs', e.message));
+    return remote ? gcs('PUT', t.id, s).catch((e) => log.warn('[store] gcs', e.message)) : Promise.resolve();
   };
   // debounced: many requests in a burst become one write
-  const save = (t, ms = 1500) => { if (!t?.id) return; clearTimeout(timers.get(t.id)); timers.set(t.id, setTimeout(() => { timers.delete(t.id); write(t); }, ms)); };
+  const pending = new Map(); // id -> workspace still waiting for its debounced write
+  const save = (t, ms = 1500) => { if (!t?.id) return; clearTimeout(timers.get(t.id)); pending.set(t.id, t); timers.set(t.id, setTimeout(() => { timers.delete(t.id); pending.delete(t.id); write(t); }, ms)); };
   const load = async (id) => { await retireReady(); const t = await load0(id); return t && wiping(t.brandId) ? null : t; };
   const load0 = async (id) => {
     if (!id || !/^t_[a-f0-9]+$/.test(id)) return null;
@@ -44,6 +45,8 @@ export function createStore({ dir, bucket, gToken, log = console }) {
       if (!r.ok) throw new Error(`gcs list tenants ${r.status}`); const j = await r.json(); for (const x of j.items || []) { const m = /^tenants\/(t_[a-f0-9]+)\.json$/.exec(x.name); if (m) out.push({ id: m[1], updated: x.updated }); } pt = j.nextPageToken || ''; } while (pt);
     return out; };
   const readFresh = async (id) => { if (!remote) return load0(id); if (!/^t_[a-f0-9]+$/.test(id || '')) return null; return JSON.parse(brewText(onceEscaped(await gcs('GET', id))), dec); };
-  const flush = () => { for (const [id, tm] of timers) clearTimeout(tm); timers.clear(); };
-  return { save, load, write, flush, scan, readFresh };
+  // drops pending writes (tests, resets); flushPending writes them now and waits for GCS (SIGTERM on Cloud Run)
+  const flush = () => { for (const [id, tm] of timers) clearTimeout(tm); timers.clear(); pending.clear(); };
+  const flushPending = () => { const ts = [...pending.values()]; flush(); return Promise.all(ts.map(write)); };
+  return { save, load, write, flush, flushPending, scan, readFresh };
 }

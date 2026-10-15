@@ -646,8 +646,9 @@ http.createServer(async (req, res) => {
   if (DEMO) { const ses = sessionOf(req, u); if (ses.set) res.setHeader('set-cookie', ses.set); return runDemo(ses.sid, () => serve(req, res, u)); }
   return serve(req, res, u);
 }).listen(PORT, () => console.log(`Brew Feed on http://localhost:${PORT} · AI ${MOCK ? "mock" : `live (${PROVIDER})`} · env ${fs.existsSync(envFile) ? envFile : 'none'}${DEMO ? ' · DEMO MODE' : ''}`));
-/* Cloud Run stops an instance with SIGTERM: the team's jams are written before it goes (jams.js saves every few seconds anyway) */
-process.once('SIGTERM', () => { Promise.race([feedSvc?.jams?.flush?.(), new Promise((r) => setTimeout(r, 6000))]).finally(() => process.exit(0)); });
+/* Cloud Run stops an instance with SIGTERM (deploys, scale to zero): the team's jams and any workspace still inside its
+   1.5 s save debounce are written, to disk and the bucket, before it goes */
+process.once('SIGTERM', () => { Promise.race([Promise.allSettled([feedSvc?.jams?.flush?.(), store.flushPending()]), new Promise((r) => setTimeout(r, 6000))]).finally(() => process.exit(0)); });
 async function serve(req, res, u) {
   try {
     if (demoRoutes && await demoRoutes(req, res, u)) return;
