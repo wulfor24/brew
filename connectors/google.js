@@ -79,10 +79,16 @@ export default {
     if (/adwords/.test(c.scope) && app().dev) { const j = await getJSON(`${ADS}/customers:listAccessibleCustomers`, { headers: { ...auth(c), 'developer-token': app().dev } }, 'google ads accounts').catch(() => ({}));
       for (const rn of (j.resourceNames || []).slice(0, 25)) { const id = rn.split('/')[1];
         const r = await gaql(c, id, 'SELECT customer.id, customer.descriptive_name, customer.currency_code, customer.manager FROM customer LIMIT 1').catch(() => []);
-        const x = r[0]?.customer; if (x?.manager) continue; out.push({ id, kind: 'ads', name: x?.descriptiveName || `Ads account ${id}`, sub: `Google Ads · ${x?.currencyCode || ''} · ${id.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')}` }); } }
+        const x = r[0]?.customer, dash = (n) => String(n).replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+        /* an agency or group signs in with a manager account: list the ad accounts under it, read through the manager */
+        if (x?.manager) { const kids = await gaql(c, id, "SELECT customer_client.id, customer_client.descriptive_name, customer_client.currency_code, customer_client.manager, customer_client.status FROM customer_client WHERE customer_client.level <= 2").catch(() => []);
+          for (const k2 of kids.map((y) => y.customerClient).filter((y) => y && !y.manager && y.status === 'ENABLED' && String(y.id) !== id))
+            if (!out.some((o) => o.kind === 'ads' && o.id.split(':')[0] === String(k2.id))) out.push({ id: `${k2.id}:${id}`, kind: 'ads', name: k2.descriptiveName || `Ads account ${k2.id}`, sub: `Google Ads · ${k2.currencyCode || ''} · ${dash(k2.id)} · via ${x.descriptiveName || dash(id)}` });
+          continue; }
+        if (!out.some((o) => o.kind === 'ads' && o.id.split(':')[0] === id)) out.push({ id, kind: 'ads', name: x?.descriptiveName || `Ads account ${id}`, sub: `Google Ads · ${x?.currencyCode || ''} · ${dash(id)}` }); } }
     return out;
   },
-  select(c, choice) { return { ...c, property: choice.ga4 || null, customer: choice.ads ? String(choice.ads).replace(/\D/g, '') : null, accountName: [choice.ga4Name, choice.adsName].filter(Boolean).join(' + ') || null }; },
+  select(c, choice) { return { ...c, property: choice.ga4 || null, customer: choice.ads ? String(choice.ads).split(':')[0].replace(/\D/g, '') : null, login: choice.ads && String(choice.ads).includes(':') ? String(choice.ads).split(':')[1].replace(/\D/g, '') : null, accountName: [choice.ga4Name, choice.adsName].filter(Boolean).join(' + ') || null }; },
   async owns(c, ctx) {
     let ok = false, why = '';
     if (c.property) { const j = await getJSON(`${ADMIN}/${c.property}/dataStreams`, { headers: auth(c) }, 'ga4 streams').catch(() => ({}));
