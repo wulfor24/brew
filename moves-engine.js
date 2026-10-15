@@ -1,4 +1,4 @@
-// Moves engine: writes the Brew "moves" for any brand at the depth of the hand-made Arata corpus: the 51 core moves,
+// Moves engine: writes the Brew "moves" for any brand at the depth of the hand-made Arata corpus: the 50 core moves,
 // the listening-era moves (51+, written once their evidence exists) and dynamic ones per brand (a festival at its plan
 // point, a research question, replies that reached their threshold).
 // writeMove(n) = house template + evidence contract + the discipline's SKILL.md + brand brief + ledger slice (+ listening,
@@ -591,7 +591,7 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
     const occupied = new Set();
     for (const s of specs) { const m = ctx.load?.(s.n); if (m?.meta?.cadence) { occupied.add(s.n); continue; } if (m && !m.meta?.mock) done[s.n] = m; }
     const all = specs.filter((s) => needsMet(s, ctx) || done[s.n] || only?.includes(s.n)).map((s) => s.n);
-    ctx.applicable = all; ctx.total = all.length;
+    ctx.applicable = all; ctx.total = all.length; await ctx.onTotal?.(all.length, all);
     const want = (only?.length ? only.filter((n) => n !== 0) : all).filter((n) => !occupied.has(n) && (!done[n] || only?.includes(n)));
     const A = want.filter((n) => waveA.includes(n)).sort((a, b) => waveA.indexOf(a) - waveA.indexOf(b));
     const Bw = want.filter((n) => !waveA.includes(n));
@@ -630,7 +630,7 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
     if (indexWanted && A.length) { const idx = await writeIndex(done, ctx).catch((e) => { errors.push({ n: 0, error: e.message }); return null; }); if (idx) { await ctx.save?.(0, idx); onMove?.(0, idx); } }
     errors.push(...await wave(Bw));
     if (indexWanted) { const idx = await writeIndex(done, ctx).catch((e) => { errors.push({ n: 0, error: e.message }); return null; }); if (idx) { await ctx.save?.(0, idx); onMove?.(0, idx); results[0] = idx; } }
-    return { moves: results, errors };
+    return { moves: results, errors, applicable: all };
   }
 
   return { writeMove, verify, digest, writeIndex, runAll, prepare, needsMet, total, checkNumbers: (move, ledger, deps = {}) => scanNumbers(move, allowedFor(move, ledger, deps).allowed), buildPrompt: (n, ctx) => buildPrompt(spec(n, ctx), ctx).join('\n\n'), spec };

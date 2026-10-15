@@ -1,4 +1,4 @@
-// The per-brand build: paste a URL, and this reads the brand, writes the brief, writes all 51 moves (the
+// The per-brand build: paste a URL, and this reads the brand, writes the brief, writes all its moves (the
 // core "Know the brand" set first), turns each move into feed cards as it lands, and renders the Brew PDFs.
 // Every stage writes to the brand pack (brand-pack.js) and to status.json, so a restart resumes where it was.
 // Events are kept per brand and replayed, so the onboarding screen and anyone opening later see the same read.
@@ -29,6 +29,12 @@ const WAVE_A = [1, 2, 3, 9, 10, 4, 5, 6, 7, 8];
 /* the build's own moves: the index (00) and the 50 core moves. Listening-era specs (51-65), dynamic specs (100+) and
    cadence moves (moves-cadence.js) are not counted toward "51 of 51" */
 export const isCore = (n) => Number.isInteger(+n) && +n >= 0 && +n <= 50;
+/* the brand's playbook, one count everywhere (status, progress card, Build tab, emails, feed): every move the build writes
+   (1-999: core, listening-era specs once their evidence exists, dynamic specs), never the index (00) or cadence moves (1001+).
+   Its size is the applicable specs, saved as status.total by the moves engine; 50 until the engine has counted */
+export const isPlay = (n, mv) => Number.isInteger(+n) && +n >= 1 && +n < 1000 && !mv?.meta?.cadence;
+export const playDone = (moves) => Object.entries(moves || {}).filter(([k, mv]) => isPlay(k, mv)).length;
+export const totalOf = (s) => +s?.total || 50;
 /* a value that carries something: not null, not an empty string, array or object of empties */
 export const hasData = (v) => v == null ? false : typeof v === 'string' ? v.trim() !== '' : Array.isArray(v) ? v.some(hasData) : typeof v === 'object' ? Object.values(v).some(hasData) : typeof v === 'number' ? Number.isFinite(v) : true;
 /* keep the old value of every field the fresh read left blank (a stage that failed or found nothing is not a change) */
@@ -173,7 +179,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   async function budgetPause(slug, n) {
     if (blocked(slug) || !capHit(slug) || st(slug).cancelled) return false;
     const own = spentFor(slug) >= capOf(slug);
-    await setStatus(slug, own ? { state: `Paused at the spend cap ($${capOf(slug)}). ${n} of 51 moves written.`, capped: true } : { state: `Paused: today’s reading budget is used up. ${n} of 51 moves written; it carries on tomorrow.`, capped: null, pausedDay: dayKey() });
+    await setStatus(slug, own ? { state: `Paused at the spend cap ($${capOf(slug)}). ${n} of ${totalOf(await status(slug))} moves written.`, capped: true } : { state: `Paused: today’s reading budget is used up. ${n} of ${totalOf(await status(slug))} moves written; it carries on tomorrow.`, capped: null, pausedDay: dayKey() });
     return true;
   }
   /* ---------- the pipeline (idempotent: every stage skips what is already in the pack) ---------- */
@@ -233,14 +239,15 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       }
 
       await halt(slug);
-      /* 4. the 51 moves: wave A (know the brand) first, then the rest; each one becomes cards as it lands */
+      /* 4. the moves: wave A (know the brand) first, then the rest; each one becomes cards as it lands */
       if (!m.moves) throw new Error('moves engine not installed');
       const eng = m.moves.createMovesEngine({ ai, treg, log });
       const pack = () => packs.load(slug);
       const briefMd = (await packs.get(slug, 'brief.md'))?.toString('utf8') || '';
       const cache = await packs.getJSON(slug, 'moves.json', {});
-      await stage(slug, 'moves', 'running'); await setStatus(slug, { state: 'Writing the 51 moves' });
-      const saved = new Set(Object.entries(await packs.getJSON(slug, 'moves.json', {})).filter(([k, mv]) => isCore(k) && !mv?.meta?.cadence).map(([k]) => +k)); /* only 00-50 count toward the 51 */
+      await stage(slug, 'moves', 'running'); await setStatus(slug, { state: 'Writing the moves' });
+      const saved = new Set(Object.entries(await packs.getJSON(slug, 'moves.json', {})).filter(([k, mv]) => isPlay(k, mv)).map(([k]) => +k)); /* the playbook only: not the index, not cadence moves */
+      let total = totalOf(await status(slug));
       let pdfQueue = Promise.resolve(), staticsJob = Promise.resolve(), firstSent = false;
       let lock = Promise.resolve(); // moves finish in parallel; their pack writes go one at a time
       const save = (n, move) => (lock = lock.then(() => saveOne(n, move)).catch((e) => log.warn('[build] save', n, e.message)));
@@ -249,13 +256,13 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         await packs.put(slug, `moves/${String(n).padStart(2, '0')}.json`, move);
         /* the build owns moves 00-50; cadence moves (51+) written meanwhile are kept as they are on disk */
         const cur = await packs.getJSON(slug, 'moves.json', {}), own = (o, keep) => Object.fromEntries(Object.entries(o || {}).filter(([k]) => keep(+k)));
-        const all = { ...own(cur, (k) => k > 50), ...own(cache, (k) => k <= 50), [n]: move }; await packs.put(slug, 'moves.json', all); if (isCore(n)) saved.add(+n);
+        const all = { ...own(cur, (k) => k > 50), ...own(cache, (k) => k <= 50), [n]: move }; await packs.put(slug, 'moves.json', all); if (isPlay(n, move)) saved.add(+n);
         emit(slug, { type: 'move', n, title: move.title, stat: move.stat, gives: move.gives, verified: !!move.meta?.verified });
         if (n !== 0) await cardsFor(slug, move, profile).catch((e) => log.warn('[build] cards', n, e.message));
         if (n === 21) staticsJob = makeStatics(slug, move, profile, (fn) => (lock = lock.then(fn).catch((e) => log.warn('[build] statics card', e.message))));
-        await progressCard(slug, saved.size, move);
+        await progressCard(slug, saved.size, move, total);
         const done = saved.size, waveA = WAVE_A.every((k) => saved.has(k));
-        await setStatus(slug, { movesDone: done, ready: waveA || (await status(slug)).ready, state: done >= 51 ? 'All 51 moves written' : `Writing the moves: ${done} of 51` });
+        await setStatus(slug, { movesDone: done, ready: waveA || (await status(slug)).ready, state: done >= total ? `All ${total} moves written` : `Writing the moves: ${done} of ${total}` });
         if (waveA && !firstSent) { firstSent = true; notify(slug, 'first').catch((e) => log.warn('[notify]', e.message)); }
         if (m.pdf) pdfQueue = pdfQueue.then(() => renderPdf(slug, m.pdf, move, profile)).catch((e) => log.warn('[build] pdf', n, e.message));
         packs.drop(slug); await onPack(slug); saveSpend(slug);
@@ -263,15 +270,16 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       const ctx = { brand: { name: profile.name, host: profile.host, descriptor: profile.descriptor }, brief: { md: briefMd, json: brief }, profile, ledger, packs, slug,
         load: (n) => cache[n] || null, save: async (n, move) => { cache[n] = move; await save(n, move); }, canSpend: () => !capHit(slug),
         effort: process.env.MOVES_EFFORT || 'high', search: +(process.env.MOVES_SEARCH ?? 2),
+        onTotal: async (N, applicable) => { total = N; await setStatus(slug, { total: N, applicable }); },
         onStart: (n) => { x.inflight.set(n, Date.now()); x.failed.delete(n); emit(slug, { type: 'move-start', n }); },
         onFail: (n, e) => { x.inflight.delete(n); x.failed.set(n, { msg: String(e?.message || e).slice(0, 160), at: Date.now() }); emit(slug, { type: 'move-failed', n, msg: String(e?.message || e).slice(0, 160) }); } };
       if (cache[21] && !(await status(slug))?.statics) staticsJob = makeStatics(slug, cache[21], profile, (fn) => (lock = lock.then(fn).catch((e) => log.warn('[build] statics card', e.message))));
       let res = await eng.runAll(ctx, { concurrency: +process.env.MOVES_CONCURRENCY || 6, waveA: WAVE_A });
       // a move that failed gets one more pass once the rest are written (a cut-off reply, a busy model)
-      if (!capHit(slug) && [...Array(51).keys()].some((n) => n && !cache[n])) { await lock; log.warn('[build] second pass for', slug); res = await eng.runAll(ctx, { concurrency: 4, waveA: WAVE_A }); }
+      if (!capHit(slug) && (res.applicable || []).some((n) => !cache[n])) { await lock; log.warn('[build] second pass for', slug); res = await eng.runAll(ctx, { concurrency: 4, waveA: WAVE_A }); }
       await lock; await staticsJob;
       if (res.errors?.length) log.warn('[build] moves with errors', slug, res.errors.map((e) => e.n + ': ' + e.error).join('; '));
-      if (await cancelled(slug)) { await setStatus(slug, { state: `Stopped. ${saved.size} of 51 moves written.`, cancelled: true, error: 'cancelled' }); return; }
+      if (await cancelled(slug)) { await setStatus(slug, { state: `Stopped. ${saved.size} of ${total} moves written.`, cancelled: true, error: 'cancelled' }); return; }
       if (await budgetPause(slug, saved.size)) return;
       await stage(slug, 'moves', 'done');
       await pdfQueue;
@@ -358,13 +366,14 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     seed.posts = [...cards, ...(seed.posts || [])]; await packs.put(slug, 'seed.json', seed); packs.drop(slug); await onPack(slug); onCards(slug, cards);
   }
   // one Brew card that tracks the moves being written, refreshed as each lands
-  async function progressCard(slug, done, last) {
+  async function progressCard(slug, done, last, total) {
+    total ||= totalOf(await status(slug));
     const seed = await packs.getJSON(slug, 'seed.json', {});
     const c = { id: 'build-moves', agent: 'brew', sector: 'signals', type: 'report', lane: Object.keys(seed.lanes || { core: 1 })[0], roles: ['founder', 'growth', 'brand', 'ecom', 'crm'], src: 'Brew deployment team', time: '1 min', kind: 'rows', origin: 'build', boostFor: { founder: 6, growth: 3, brand: 3, ecom: 3, crm: 3 },
-      badge: [done >= 51 ? 'All written' : `${done} of 51 written`, done >= 51 ? 'ok' : 'info'],
-      title: done >= 51 ? `All 51 moves for ${seed.brand?.name} are written` : `Writing your 51 moves: ${done} done`,
-      sub: `Each move is a full plan with sources, a 30-day rollout and how we measure it. ${last?.title ? `The latest: ${last.title}.` : ''} Open the Moves page to read them or download the PDFs.`.slice(0, 240),
-      rows: [['Written', `${done} of 51`], ['Latest', String(last?.title || '').slice(0, 44)]], detail: { why: ['Every card in this feed comes from one of these plans.'], how: ['Open the Moves page.', 'Read any move, or download its PDF.'] }, cta: { label: 'Open the moves' } };
+      badge: [done >= total ? 'All written' : `${done} of ${total} written`, done >= total ? 'ok' : 'info'],
+      title: done >= total ? `All ${total} moves for ${seed.brand?.name} are written` : `Writing your ${total} moves: ${done} done`,
+      sub: `Each move is a full plan with sources, a 30-day rollout and how we measure it. ${last?.title ? `The latest: ${last.title}.` : ''} Open the Moves page to read them; any move downloads as a PDF.`.slice(0, 240),
+      rows: [['Written', `${done} of ${total}`], ['Latest', String(last?.title || '').slice(0, 44)]], detail: { why: ['Every card in this feed comes from one of these plans.'], how: ['Open the Moves page.', 'Read any move, or download its PDF.'] }, cta: { label: 'Open the moves' } };
     seed.posts = [c, ...(seed.posts || []).filter((x) => x.id !== c.id)];
     await packs.put(slug, 'seed.json', seed); onCards(slug, [c], { replace: true });
   }
@@ -584,7 +593,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const sentKey = kind === 'update' ? `update-${extra.at}` : kind;
     const todo = n.emails.filter((x) => !n.sent[`${sentKey}:${x.email}`]); if (!todo.length) return;
     const subject = kind === 'update' ? `${extra.moves.length} of ${name}’s moves were updated` : kind === 'all' ? `All of ${name}’s moves are ready` : `Your first moves for ${name} are ready`;
-    const line = kind === 'update' ? `Something changed for ${name}, so Brew rewrote the plans it affects: ${extra.moves.map((x) => `Move ${String(x.n).padStart(2, '0')} (${x.title})`).join(', ')}. ${extra.because || ''}`.trim() : kind === 'all' ? `Brew has finished all 51 moves for ${name}: every plan with its sources, a 30-day rollout and how we measure it, each one as a PDF. Your feed is built from them.` : `Brew has written the first ten moves for ${name}: positioning, customers, rivals, pricing, offers and measurement. Their ideas are in your feed now, and the other forty-one keep landing over the next hour or two.`;
+    const line = kind === 'update' ? `Something changed for ${name}, so Brew rewrote the plans it affects: ${extra.moves.map((x) => `Move ${String(x.n).padStart(2, '0')} (${x.title})`).join(', ')}. ${extra.because || ''}`.trim() : kind === 'all' ? `Brew has finished all ${totalOf(s0)} moves for ${name}: every plan with its sources, a 30-day rollout and how we measure it. Each one downloads as a PDF, and your feed is built from them.` : `Brew has written the first ten moves for ${name}: positioning, customers, rivals, pricing, offers and measurement. Their ideas are in your feed now, and the other ${Math.max(0, totalOf(s0) - 10)} keep landing over the next hour.`;
     const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const html = `<div style="font:15px/1.55 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#111;max-width:520px"><p style="font-size:18px;font-weight:600;margin:0 0 12px">${esc(subject)}</p><p>${esc(line)}</p><p style="margin:22px 0"><a href="${base}/${slug}" style="background:#111;color:#fff;text-decoration:none;padding:11px 18px;border-radius:10px;font-weight:600">Open the feed</a> &nbsp; <a href="${base}/${slug}#v=moves" style="color:#111">Read the moves</a></p><p style="color:#777;font-size:13px">Every number in them has a source. Anything we could not confirm is marked “to confirm”.<br>Brew · brew.joinsquareup.com</p></div>`;
     for (const x of todo) {
@@ -599,8 +608,9 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const x = st(slug), moves = await packs.getJSON(slug, 'moves.json', {});
     const specs = (await load()).moves?.SPECS || [];
     const nm = (n) => sentenceCase(specs.find((p) => p.n === n)?.discipline || '', [], { force: true }) || String(specs.find((p) => p.n === n)?.kicker || '').toLowerCase().replace(/^./, (c) => c.toUpperCase()) || `Move ${String(n).padStart(2, '0')}`; // skill names are Title Cased
-    const done = Object.keys(moves).map(Number).filter((n) => n <= 50); // the index (00) counts: 51 in all; cadence moves (51+) are not the build's
-    const order = [...WAVE_A, ...[...Array(51).keys()].filter((n) => n && !WAVE_A.includes(n))];
+    const done = Object.entries(moves).filter(([k, mv]) => isPlay(k, mv)); // the playbook: not the index, not cadence moves
+    const app = s0.applicable?.length ? s0.applicable : [...Array(51).keys()].filter(Boolean);
+    const order = [...WAVE_A.filter((n) => app.includes(n)), ...app.filter((n) => !WAVE_A.includes(n))];
     const inflight = [...x.inflight.entries()].map(([n, t]) => ({ n, title: nm(n), secs: Math.round((Date.now() - t) / 1e3) }));
     const queue = order.filter((n) => !moves[n] && !x.inflight.has(n) && !x.failed.has(n)).slice(0, 8).map((n) => ({ n, title: nm(n) }));
     const failed = [...x.failed.entries()].map(([n, f]) => ({ n, title: nm(n), msg: /max_tokens/.test(f.msg) ? 'The reply ran out of room' : /refused/.test(f.msg) ? 'The model declined this one' : /cap|budget/.test(f.msg) ? 'Spend cap reached' : 'It stopped with an error', at: f.at }));
@@ -608,7 +618,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const ev = x.events.filter((e) => ['move', 'move-start', 'move-failed', 'pdf', 'statics', 'cards', 'confirmed', 'read-done'].includes(e.type)).slice(-40).reverse().slice(0, 25)
       .map((e) => ({ at: e.at, type: e.type, text: e.type === 'move' ? `Move ${pad(e.n)} written: ${e.title}` : e.type === 'move-start' ? `Started Move ${pad(e.n)} · ${nm(e.n)}` : e.type === 'move-failed' ? `Move ${pad(e.n)} stopped, it gets another try` : e.type === 'pdf' ? `PDF ready: ${e.file}` : e.type === 'statics' ? `${e.n} static ads made` : e.type === 'cards' ? `${e.cards.length} new card${e.cards.length === 1 ? '' : 's'} from Move ${pad(e.n)}` : e.type === 'confirmed' ? 'You confirmed what we read' : 'Your site was read' }));
     const g = s0.stages || {};
-    return { name: s0.name, running: !!x.running, state: s0.state, done: done.length, core: WAVE_A.filter((n) => moves[n]).length, total: 51, pdfs: Object.keys(s0.pdfs || {}).filter((k) => +k <= 50).length, /* the 51 only; weekly moves' PDFs don't count toward them */ zips: s0.zips || [], statics: s0.statics || null,
+    return { name: s0.name, running: !!x.running, state: s0.state, done: done.length, core: WAVE_A.filter((n) => moves[n]).length, total: totalOf(s0), pdfs: Object.keys(s0.pdfs || {}).filter((k) => isPlay(k)).length, /* PDFs are made on download */ zips: s0.zips || [], statics: s0.statics || null,
       stages: { read: g.read?.state || null, confirm: g.confirm?.state || null, brief: g.brief?.state || null, moves: g.moves?.state || null },
       inflight, queue, failed, events: ev, usd: +spentFor(slug).toFixed(2), cap: capOf(slug), pro: !!s0.pro, capped: !!s0.capped, createdAt: s0.createdAt };
   }
@@ -680,7 +690,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   async function rewrite(slug, ns, o = {}) {
     if (blocked(slug)) return { error: 'This brand is stopped.' };
     const x = st(slug), s0 = await status(slug); if (!s0) return { error: 'unknown brand' };
-    if (x.running) return { error: x.rewriting ? 'A rewrite is already running.' : 'The first 51 are still being written. Rewrites open once they are in.' };
+    if (x.running) return { error: x.rewriting ? 'A rewrite is already running.' : 'The moves are still being written. Rewrites open once they are in.' };
     await loadDay(); if (dayUsd() >= DAY_CAP) return { error: 'Today’s budget is used up. Try again tomorrow.' };
     const have = await packs.getJSON(slug, 'moves.json', {});
     ns = [...new Set((ns || []).map(Number))].filter((n) => n >= 1 && n <= 50 && have[n]);
@@ -728,6 +738,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         load: (n) => cache[n] || null, save: async (n, move) => { cache[n] = move; await (lock = lock.then(() => saveOne(n, move)).catch((e) => log.warn('[rewrite] save', n, e.message))); },
         canSpend: () => !blocked(slug) && dayUsd() < DAY_CAP && spentFor(slug) - usd0 < cap && !st(slug).cancelled,
         effort: process.env.MOVES_EFFORT || 'high', search: +(process.env.MOVES_SEARCH ?? 2),
+        onTotal: async (N, applicable) => { total = N; await setStatus(slug, { total: N, applicable }); },
         onStart: (n) => { x.inflight.set(n, Date.now()); x.failed.delete(n); emit(slug, { type: 'move-start', n }); },
         onFail: (n, e) => { x.inflight.delete(n); x.failed.set(n, { msg: String(e?.message || e).slice(0, 160), at: Date.now() }); emit(slug, { type: 'move-failed', n, msg: String(e?.message || e).slice(0, 160) }); } };
       await eng.runAll(ctx, { only: ns.length >= 3 ? [...ns, 0] : ns, concurrency: Math.min(6, ns.length), waveA: WAVE_A });
@@ -856,7 +867,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   }
   async function list() {
     const all = await packs.list();
-    return all.filter((x) => !blocked(x.slug) && !x.status.cancelled && !x.status.error).sort((a, b) => (b.status.updatedAt || 0) - (a.status.updatedAt || 0)).map((x) => ({ slug: x.slug, name: x.status.name, host: x.status.host, logo: x.status.logo ? (/^https?:\/\//.test(x.status.logo) ? x.status.logo : '/' + String(x.status.logo).replace(/^\/+/, '')) : null, /* one leading slash: '//b/..' would be read as another host */ state: x.status.done ? 'Ready' : x.status.ready ? `${x.status.movesDone || 0} of 51 moves` : 'Reading' }));
+    return all.filter((x) => !blocked(x.slug) && !x.status.cancelled && !x.status.error).sort((a, b) => (b.status.updatedAt || 0) - (a.status.updatedAt || 0)).map((x) => ({ slug: x.slug, name: x.status.name, host: x.status.host, logo: x.status.logo ? (/^https?:\/\//.test(x.status.logo) ? x.status.logo : '/' + String(x.status.logo).replace(/^\/+/, '')) : null, /* one leading slash: '//b/..' would be read as another host */ state: x.status.done ? 'Ready' : x.status.ready ? `${x.status.movesDone || 0} of ${totalOf(x.status)} moves` : 'Reading' }));
   }
   // after a restart: carry on with any brand that wasn't finished
   /* a one-off fresh reload (OPS_FRESH_RELOAD=<slug,...>): the pending updates are dropped, the brand's cap lifts (Pro), the build

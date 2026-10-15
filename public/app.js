@@ -498,11 +498,11 @@
     const [st, f] = await Promise.all([api(`/api/brands/${slug}/status`), api(`/api/brands/${slug}/findings`)]);
     if (st?.done && !o.stay) return continueToFeed();
     const nm = esc(st?.name || B.brand.name), cards = f?.cards || [], mail = ls.get(`${LSP()}mail`);
-    const stages = (s) => { const g = s?.stages || {}, n = s?.movesDone || 0, pdf = Object.keys(s?.pdfs || {}).filter((k) => +k <= 50).length;
+    const stages = (s) => { const g = s?.stages || {}, n = s?.movesDone || 0, N = +s?.total || 50; /* one count: the brand's playbook (status.total) */
       const row = (state, t, sub) => `<li class="is-${state}"><i>${state === 'done' ? ic('check', 's14') : state === 'run' ? '<span class="spin"></span>' : ''}</i><div><b>${t}</b>${sub ? `<span>${sub}</span>` : ''}</div></li>`;
       return `<ol class="wt2-steps">${row('done', 'Read your site', 'Products, reviews, ads, rivals, AI answers')}${row(g.brief?.state === 'done' ? 'done' : g.confirm?.state === 'done' ? 'run' : 'wait', 'Write the brand brief', '')}
-        ${row(n >= 10 ? 'done' : g.brief?.state === 'done' ? 'run' : 'wait', 'The first 10 moves', `${Math.min(n, 10)} of 10 · positioning, customers, rivals, pricing`)}${row(n >= 51 ? 'done' : n >= 10 ? 'run' : 'wait', 'All 51 moves', `${n} of 51 written · ${pdf} PDFs`)}</ol>
-        <div class="wt2-bar"><i style="width:${Math.max(4, Math.round(100 * n / 51))}%"></i></div>`; };
+        ${row(n >= 10 ? 'done' : g.brief?.state === 'done' ? 'run' : 'wait', 'The first 10 moves', `${Math.min(n, 10)} of 10 · positioning, customers, rivals, pricing`)}${row(n >= N ? 'done' : n >= 10 ? 'run' : 'wait', `All ${N} moves`, `${n} of ${N} written`)}</ol>
+        <div class="wt2-bar"><i style="width:${Math.max(4, Math.round(100 * Math.min(n, N) / N))}%"></i></div>`; };
     const mailBox = (em) => em ? `<div class="wt2-mailed">${ic('check', 's16')}<span>We’ll email <b>${esc(em)}</b> when they’re ready.</span><button class="linkbtn" id="wt-change">Change</button></div>`
       : `<form class="wt2-mail" id="wt-mail"><label for="wt-email">Get an email when they’re ready</label><div class="wt2-in"><input type="email" id="wt-email" required placeholder="you@${esc(B.brand.host || 'brand.com')}" autocomplete="email"><button class="btn btn-primary sm" type="submit">Notify me</button></div></form>`;
     root.innerHTML = `<main class="screen wt2"><div class="wt2-wrap">
@@ -524,7 +524,7 @@
     bindMail();
     $('#wt-go').onclick = continueToFeed;
     const poll = async () => { if (view !== 'wait') return; const s2 = await api(`/api/brands/${slug}/status`); const el = $('#wt-stages'); if (el && s2) el.innerHTML = stages(s2);
-      if (s2?.done) { const lv = $('.wt2-live'); if (lv) lv.innerHTML = `${ic('check', 's14')}Ready`; const go = $('#wt-go'); if (go) go.innerHTML = `All 51 moves are ready. Open the feed ${ic('right', 's18')}`; return; } /* every move is written: say so, and stop asking */
+      if (s2?.done) { const lv = $('.wt2-live'); if (lv) lv.innerHTML = `${ic('check', 's14')}Ready`; const go = $('#wt-go'); if (go) go.innerHTML = `All ${+s2.total || 50} moves are ready. Open the feed ${ic('right', 's18')}`; return; } /* every move is written: say so, and stop asking */
       waitMoves.t = setTimeout(poll, 12e3); };
     waitMoves.t = setTimeout(poll, 12e3);
   };
@@ -631,7 +631,7 @@
       <span class="so-mark" style="width:30px;height:30px">${SO()}</span>
       <h3>Your feed is ready${S.viewer.name ? ', ' + esc(S.viewer.name) : ''}.</h3>
       <p>${n} ideas, picked for ${/^[AEIOU]/i.test(R.name) ? 'an' : 'a'} ${esc(R.name.toLowerCase())}. Tap any card to see more.</p>
-      <div class="counts"><div><b class="tnum">${n}</b>ideas</div><div><b class="tnum">5</b>agents</div><div><b class="tnum">${window.MOVES_WRITTEN ?? 51}</b>moves ${GEN && (window.MOVES_WRITTEN ?? 51) < 51 ? 'written' : 'read'}</div><div><b class="tnum">${Object.keys(S.conn).filter(conn).length}</b>connected</div></div>
+      <div class="counts"><div><b class="tnum">${n}</b>ideas</div><div><b class="tnum">5</b>agents</div><div><b class="tnum">${window.MOVES_WRITTEN ?? 50}</b>moves ${GEN && (window.MOVES_WRITTEN ?? 50) < (+window.MOVES_TOTAL || 50) ? 'written' : 'read'}</div><div><b class="tnum">${Object.keys(S.conn).filter(conn).length}</b>connected</div></div>
       <button class="lm" id="open-feed"><span class="lm-rim"><span class="lm-in">Open my feed ${ic('right', 's18')}</span></span></button>
     </div></div>`);
     $('#open-feed').onclick = () => { $$('.ready').forEach((x) => x.remove()); feed(); };
@@ -994,15 +994,15 @@
      left and an email when it is ready (the same notify as the wait screen) */
   let BREW = null, mvT = 0;
   const mvLeft = (s) => { const n = s?.movesDone || 0, m = s?.stages?.moves, t0 = m?.state === 'running' ? m.at : null;
-    const per = n >= 3 && t0 ? (Date.now() - t0) / n : 140e3, ms = Math.max(60e3, (51 - n) * per), min = Math.round(ms / 60e3);
+    const per = n >= 3 && t0 ? (Date.now() - t0) / n : 140e3, ms = Math.max(60e3, ((+s?.total || 50) - n) * per), min = Math.round(ms / 60e3);
     return min < 60 ? `about ${min} min left` : `about ${Math.floor(min / 60)} h${min % 60 >= 10 ? ` ${min % 60} min` : ''} left`; };
   const brewingInner = () => { const n = BREW?.movesDone || 0, em = ls.get(`${LSP()}mail`);
     return `<div class="bw-art"><img src="assets/brew/moves-brewing.jpg" alt="" decoding="async"><span class="bw-k"><span class="dot"></span>Brewing</span></div>
-      <div class="body"><h3>The magic starts once your moves are in</h3><p>Brew is writing 51 moves for ${esc(B.brand.name)}. Every card after that comes from them. Wait for it.</p>
-        <div class="bw-bar"><i style="width:${Math.max(3, Math.round(100 * n / 51))}%"></i></div><small class="bw-meta">${n} of 51 written · ${mvLeft(BREW)}</small>
+      <div class="body"><h3>The magic starts once your moves are in</h3><p>Brew is writing ${+BREW?.total || 50} moves for ${esc(B.brand.name)}. Every card after that comes from them. Wait for it.</p>
+        <div class="bw-bar"><i style="width:${Math.max(3, Math.round(100 * Math.min(n, +BREW?.total || 50) / (+BREW?.total || 50)))}%"></i></div><small class="bw-meta">${n} of ${+BREW?.total || 50} written · ${mvLeft(BREW)}</small>
         ${em ? `<p class="bw-mailed">${ic('check', 's14')}<span>We’ll email <b>${esc(em)}</b> when they’re in.</span></p>`
           : `<form class="bw-mail" data-bwmail><input type="email" required placeholder="you@${esc(B.brand.host || 'brand.com')}" autocomplete="email" aria-label="Your email"><button class="btn btn-primary sm" type="submit">Email me</button></form>`}</div>`; };
-  const brewingCard = () => GEN && BREW && !BREW.done && (BREW.movesDone || 0) < 51 && !BREW.cancelled ? `<article class="card brew-wait" data-brewing>${brewingInner()}</article>` : '';
+  const brewingCard = () => GEN && BREW && !BREW.done && (BREW.movesDone || 0) < (+BREW.total || 50) && !BREW.cancelled ? `<article class="card brew-wait" data-brewing>${brewingInner()}</article>` : '';
   const loadMV = async () => { if (!GEN || BREW?.done) return; BREW = await api(`/api/brands/${B.slug || BR}/status`).catch(() => null) || BREW;
     clearTimeout(mvT); if (BREW && !BREW.done) mvT = setTimeout(async () => { await loadMV(); const el = $('[data-brewing]'); if (el && !el.contains(document.activeElement)) { if (brewingCard()) el.innerHTML = brewingInner(); else el.remove(); } }, 60e3); };
   document.addEventListener('submit', async (e) => { const f = e.target.closest('[data-bwmail]'); if (!f) return; e.preventDefault(); const em = f.querySelector('input').value.trim(), b = f.querySelector('button'); b.disabled = true;
@@ -3543,7 +3543,7 @@
     if (e.target.id === 'st-spec') { e.preventDefault(); const ch = RX.ch; const pkg = readSpec(e.target, ch); document.activeElement?.blur?.(); const r = await tapi('POST', `/api/changes/${ch.id}/edit`, { pkg }); if (r.error) return toast(esc(r.error)); RX.ch = r.change; putCh(r.change); RX.editing = false; paintStudio(); toast(`${ic('check', 's16')}Saved as v${curN(r.change)}`); showLearned(r.learned); }
   });
 
-  /* ---------- The 51 moves: every plan Brew wrote for the brand, as it is written, with the PDFs ---------- */
+  /* ---------- The moves: every plan Brew wrote for the brand, as it is written, with the PDFs ---------- */
   const MV_GROUPS = [['know', 'Know the brand', 1, 10], ['found', 'Be found', 11, 19], ['reach', 'Reach people', 20, 28], ['convert', 'Convert the visit', 29, 38], ['keep', 'Keep the customer', 39, 44], ['expand', 'Expand and operate', 45, 50]];
   const MV = { t: null, open: null };
   const mvSlug = () => B.slug || BR;
@@ -3554,7 +3554,7 @@
     const [r, bd, up, hs] = await Promise.all([api(`/api/brands/${slug}/moves`), GEN ? api(`/api/brands/${slug}/build`) : null, GEN ? api(`/api/brands/${slug}/updates`) : null, GEN ? api(`/api/brands/${slug}/history`) : null]); if (view !== 'moves') return;
     const U = up && !up.error ? up : null, nStale = U?.stale?.length || 0;
     const ms = r?.moves || [], by = Object.fromEntries(ms.map((m) => [m.n, m])), pdfs = r?.pdfs || {}, st = r?.status || {}, b = bd && !bd.error ? bd : null;
-    const done = ms.filter((m) => m.n <= 50).length, extra = ms.length - done, building = !!b && !st.done; // 51 = the index (00) + moves 01 to 50; audit moves (51+) count apart, never "63 / 51"
+    const done = ms.filter((m) => m.n >= 1 && m.n < 1000 && !m.cadence).length, extra = ms.length - done, building = !!b && !st.done; // the playbook (status.total): not the index, not weekly moves (1001+)
     const live = new Map((b?.inflight || []).map((x) => [x.n, x])), failed = new Map((b?.failed || []).map((x) => [x.n, x]));
     const kick = (m) => String(m?.kicker || '').replace(/\s*·\s*move\s+\d+\s+of\s+\d+\s*$/i, '');
     const card = (m) => `<article class="mv2-c" data-mv="${m.n}" tabindex="0"><div class="mv2-k"><span>${String(m.n).padStart(2, '0')}</span>${kick(m) ? `<i>${esc(kick(m).toLowerCase())}</i>` : ''}</div>

@@ -10,7 +10,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const SES = 'private/demo/session.json';
-const MOVE_EVERY_S = 1.8, BRIEF_S = 6; // the replayed build: about 100 seconds from "Looks right" to 51 moves
+const MOVE_EVERY_S = 1.8, BRIEF_S = 6; // the replayed build: about 100 seconds from "Looks right" to the last move
 
 export function createDemoRoutes({ packs, builder, auth, connectors, readBody, send, loadBrand, social = null, draftsBg = null, log = console }) {
   const session = async (slug) => (await packs.getJSON(slug, SES, null)) || { flow: 'ready' };
@@ -21,11 +21,11 @@ export function createDemoRoutes({ packs, builder, auth, connectors, readBody, s
   /* the build as this session sees it: done for a normal session; replayed from "Looks right" for one started from onboarding */
   function simStatus(st, s) {
     if (!st || s?.flow !== 'onboarding') return st;
-    const c = s.confirmedAt, t = c ? (Date.now() - c) / 1000 : -1, n = c ? Math.max(0, Math.min(51, Math.floor((t - BRIEF_S) / MOVE_EVERY_S))) : 0;
+    const N = +st.total || 50, c = s.confirmedAt, t = c ? (Date.now() - c) / 1000 : -1, n = c ? Math.max(0, Math.min(N, Math.floor((t - BRIEF_S) / MOVE_EVERY_S))) : 0;
     const pdfKeys = Object.keys(st.pdfs || {}).sort((a, b) => +a - +b).slice(0, n);
     return { ...st, stages: { ...st.stages, confirm: c ? { state: 'done', at: c } : { state: 'waiting' }, brief: t >= BRIEF_S ? { state: 'done', at: c + BRIEF_S * 1e3 } : { state: c ? 'running' : 'waiting' },
-      moves: n >= 51 ? { state: 'done', at: Date.now() } : { state: c ? 'running' : 'waiting' } }, movesDone: n, pdfs: Object.fromEntries(pdfKeys.map((k) => [k, st.pdfs[k]])),
-      done: n >= 51, ready: n >= 10, state: n >= 51 ? 'Ready' : c ? `Writing the moves: ${n} of 51` : 'Read', zips: n >= 51 ? st.zips : [] };
+      moves: n >= N ? { state: 'done', at: Date.now() } : { state: c ? 'running' : 'waiting' } }, movesDone: n, pdfs: Object.fromEntries(pdfKeys.map((k) => [k, st.pdfs[k]])),
+      done: n >= N, ready: n >= 10, state: n >= N ? 'Ready' : c ? `Writing the moves: ${n} of ${N}` : 'Read', zips: n >= N ? st.zips : [] };
   }
 
   /* how ready a brand is for a demo: everything slow is made ahead */
@@ -34,7 +34,8 @@ export function createDemoRoutes({ packs, builder, auth, connectors, readBody, s
     const [demo, drafts, research, ideas, listen] = await Promise.all([packs.getJSON(slug, 'demo.json', null), packs.getJSON(slug, 'drafts/cards.json', null), packs.getJSON(slug, 'research.json', null),
       packs.getJSON(slug, 'ideas/ideas.json', null), packs.getJSON(slug, 'listen/themes.json', null)]);
     const nDrafts = Object.keys(drafts || {}).length, pdfs = Object.keys(st.pdfs || {}).length;
-    const checks = [['Read', st.stages?.read?.state === 'done'], ['51 moves', (st.movesDone || 0) >= 51], ['PDFs', pdfs >= 51], ['Demo accounts', !!demo?.accounts], ['First drafts', nDrafts >= 6], ['Stories', !!research], ['Listening and ideas', !!(ideas?.items?.length || listen)]];
+    const N = +st.total || 50; /* PDFs are made on download, so they are not something to prepare */
+    const checks = [['Read', st.stages?.read?.state === 'done'], [`${N} moves`, (st.movesDone || 0) >= N], ['Demo accounts', !!demo?.accounts], ['First drafts', nDrafts >= 6], ['Stories', !!research], ['Listening and ideas', !!(ideas?.items?.length || listen)]];
     const prep = PREP.get(slug) || null;
     /* what the card shows: the brand's own colours, three real product photos, and its real size */
     const [seed, profile] = await Promise.all([packs.getJSON(slug, 'seed.json', null), packs.getJSON(slug, 'profile.json', null)]);
@@ -47,7 +48,7 @@ export function createDemoRoutes({ packs, builder, auth, connectors, readBody, s
       /* the market Brew watches for the brand: its own live ads plus its rivals' (the read's ad step); else the pages it read */
       ads: (+profile?.ads?.own?.live || 0) + (Array.isArray(profile?.ads?.rivals) ? profile.ads.rivals.reduce((a, r) => a + (+r.live || 0), 0) : 0),
       pages: +(String(((await packs.getJSON(slug, 'findings.json', null))?.steps || []).find((x) => x.k === 'open')?.done || '').replace(/,/g, '').match(/^(\d+) pages/)?.[1] || 0) || null };
-    return { slug, name: st.name, host: st.host, logo: st.logo || null, look, moves: st.movesDone || 0, pdfs, drafts: nDrafts, checks: checks.map(([t, ok]) => ({ t, ok })), ready: checks.every(([, ok]) => ok), loaded: (st.movesDone || 0) >= 51 && pdfs >= 51, building: !!st.stages && !st.done, prep };
+    return { slug, name: st.name, host: st.host, logo: st.logo || null, look, moves: st.movesDone || 0, pdfs, drafts: nDrafts, checks: checks.map(([t, ok]) => ({ t, ok })), ready: checks.every(([, ok]) => ok), loaded: (st.movesDone || 0) >= N, building: !!st.stages && !st.done, prep };
   }
 
   /* ---------- Prepare for demo: run what is slow now, so nothing waits in the room ---------- */
@@ -78,7 +79,7 @@ export function createDemoRoutes({ packs, builder, auth, connectors, readBody, s
       return send(res, 200, `<!doctype html><meta charset="utf-8"><title>Opening ${r.name.replace(/[<&"]/g, '')}…</title><script>try{Object.keys(localStorage).filter(function(k){return k.indexOf(${JSON.stringify(slug + '-')})===0}).forEach(function(k){localStorage.removeItem(k)})}catch(e){}location.replace(${JSON.stringify('/' + slug)})</script>`, 'text/html; charset=utf-8'), true; }
     if (req.method === 'GET' && p === '/api/demo/brands') {
       const all = await builder.list().catch(() => []), out = [];
-      /* every visitor sees the brands that are fully generated (all 51 moves and their PDFs); admins also see the rest, to prepare them */
+      /* every visitor sees the brands that are fully generated (all their moves); admins also see the rest, to prepare them */
       const admin = isAdmin(req);
       for (const b of all) { const r = await readiness(b.slug).catch(() => null); if (r && (r.loaded || (admin && r.moves > 0))) out.push(r); }
       out.sort((a, b) => (b.loaded - a.loaded) || (b.ready - a.ready) || b.moves - a.moves);
