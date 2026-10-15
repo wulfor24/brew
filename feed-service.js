@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { near } from './research.js';
+import { near, noPaise } from './research.js';
 import { B, live as liveView, liveArr, liveRe, runIn, BN, BH, CTRY, FESTN, FESTD } from './brand-ctx.js';
 import { cardValue, moveNo } from './value.js'; // what a card is worth doing (expected value), for the ranker
 import { moneyParse, safeLocale } from './brand-pack.js';
@@ -1162,7 +1162,7 @@ export function createFeedService(o) {
     return { columns: cols, counts: Object.fromEntries(Object.entries(cols).map(([k, v]) => [k, v.length])), layout: t.deck, cards: allCards(t), scores };
   });
   on('PUT', '/api/tenants/:id/deck-layout', async (b, t) => { if (Array.isArray(b.hidden)) t.deck.hidden = b.hidden; if (b.colWidth) t.deck.colWidth = b.colWidth; return t.deck; });
-  on('GET', '/api/tenants/:id/stories', async (b, t) => { await Promise.race([research?.ready?.(), new Promise((r) => setTimeout(r, 8000).unref?.())]).catch(() => {}); return { rings: stories(t) }; });
+  on('GET', '/api/tenants/:id/stories', async (b, t) => { await Promise.race([research?.ready?.(), new Promise((r) => setTimeout(r, 8000).unref?.())]).catch(() => {}); return { rings: JSON.parse(noPaise(JSON.stringify(stories(t)))) }; }); /* stories saved before the paise fix read clean too */
   on('POST', '/api/tenants/:id/stories/:ring/seen', async (b, t, p) => { t.storySeen[p.ring] = Date.now(); return { ok: true }; });
   // a story slide's button: the matching card, made now if the watcher has not posted it yet
   on('POST', '/api/tenants/:id/research-card', async (b, t) => {

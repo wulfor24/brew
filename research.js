@@ -27,7 +27,7 @@ const KEY = { ads: (x) => `ad:${x.id}`, trends: (x) => `tr:${x.kind}:${[...(x.te
    day or wording, so the exact key alone let "How to win hair-fall searches" and "How to win the hair fall search" both show */
 const STOPW = new Set('the a an and or for with your you our its to of in on at by from this that what how why is are was be up down more most than into new now week this today ad ads test make build launch target capture win run use get try add put search rising rise trend angle idea surge growing grow'.split(' '));
 const stem = (w) => w.replace(/(ing|es|s)$/, '');
-const words = (x) => new Set(String([x.h, ...(x.terms || []), x.risingOf || ''].join(' ')).toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !STOPW.has(w)).map(stem).filter((w) => !STOPW.has(w)));
+const words = (x) => new Set(String([x.h, ...(x.terms || [])].join(' ')).toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !STOPW.has(w)).map(stem).filter((w) => !STOPW.has(w)));
 export const near = (a, b) => { const A = words(a), B = words(b); if (A.size < 2 || B.size < 2) return false; let n = 0; for (const w of A) if (B.has(w)) n++; return n >= 2 && n / Math.min(A.size, B.size) >= 0.6; };
 const NEAR = new Set(['trends', 'howto']);
 export function pool(prev, items, k, now = Date.now()) {
