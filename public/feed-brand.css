@@ -724,3 +724,4 @@ body.has-me-cur .me-cur{display:flex}
 .screen.setup .scr.fc.fresh:hover{box-shadow:0 0 0 2px var(--fg),0 18px 40px rgba(0,0,0,.14)}
 .tm-av{object-fit:cover}
 .tm-copy{margin-top:8px}
+.tm-menu .tm-hint{margin:0;padding:8px 10px;max-width:260px;font-size:12.5px;line-height:17px;color:var(--fg-3)}
