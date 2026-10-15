@@ -184,6 +184,17 @@ test('the scheduler: listen for every built brand, ideas (n=6) only for brands o
   const d2 = await S2.due('big-com'); assert.ok(!d2.listen && !d2.ideas, 'over the daily cap: nothing more today'); assert.match(d2.why.join(), /cap/);
 });
 
+test('an ideas run that makes nothing keeps why each idea was dropped, so a thin stream explains itself', async () => {
+  const packs = memPacks(['thin-com']);
+  const make = { listen: () => ({ run: async () => ({ status: { usd: { total: 0 }, sources: {} }, themes: [] }) }),
+    ideas: () => ({ spend: { ai: 0, treg: 0 }, next: async () => ({ ideas: [], dropped: [{ title: 'A reel', platform: 'instagram', why: ['unbacked numbers: 95%'] }, { title: 'A reply', platform: 'reddit', why: ['already made (title or replied thread)'] }], usd: { ai: 0.17, treg: 0.02 } }) }) };
+  const S = createSocialScheduler({ packs, ai: { live: true }, treg: null, log: quiet, env: { ...LIVE_ENV, LISTEN_OFF: '1' }, now: () => NOW, make });
+  await S.opened('thin-com'); await S.tick();
+  const st = JSON.parse(packs.files.get('thin-com/social/state.json'));
+  assert.equal(st.ideas.made, 0); assert.equal(st.ideas.empty, true);
+  assert.deepEqual(st.ideas.dropped.map((d) => d.why[0]), ['unbacked numbers: 95%', 'already made (title or replied thread)']);
+});
+
 test('kill switches stop the scheduler from calling either job', async () => {
   const calls = [];
   const S = createSocialScheduler({ packs: memPacks(['a-com']), ai: { live: true }, treg: null, log: quiet, env: { ...LIVE_ENV, LISTEN_OFF: '1', IDEAS_OFF: '1' }, now: () => NOW, make: stubs(calls) });
