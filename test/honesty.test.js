@@ -130,3 +130,8 @@ test('"email me when the moves are in" takes only the signed-in person’s own a
 test('photo links are fetched through safeFetch (public internet only)', () => {
   for (const f of ['server.js', 'drafts.js', 'drafts-bg.js']) assert.doesNotMatch(src(f), /await fetch\((u|rel), \{ signal/, f);
 });
+
+test('outside the team on live, the onboarding stream and the brand status give away no findings or move titles', () => {
+  assert.match(src('feed-service.js'), /\\\/onboarding\$\/\.test\(u\.pathname\)\) \{ res\.writeHead\(200/);
+  assert.match(src('server.js'), /const \{ pdfs, zips, statics, usd, proBy, proAt, \.\.\.pub \} = s/);
+});

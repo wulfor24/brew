@@ -1522,6 +1522,8 @@ export function createFeedService(o) {
     if (outside && req.method === 'GET') {
       if (/^\/api\/tenants\/[^/]+\/feed$/.test(u.pathname)) { send(res, 200, { order: [], cards: {}, scores: {}, pinned: [], limit: { plan: 'free', daily: null, locked: 0 }, teamOnly: true }); return true; }
       if (/^\/api\/tenants\/[^/]+\/stories$/.test(u.pathname)) { send(res, 200, { rings: [], teamOnly: true }); return true; }
+      /* the onboarding stream replays the brand's whole read (its findings): outside the team it only says it is ready */
+      if (/^\/api\/tenants\/[^/]+\/onboarding$/.test(u.pathname)) { res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store' }); res.end(`data: ${JSON.stringify({ type: 'ready', teamOnly: true })}\n\n`); return true; }
       if (/^\/api\/tenants\/[^/]+\/(deck|pulse|engine|remixes|learning)$/.test(u.pathname)) { send(res, 200, { teamOnly: true }); return true; }
       const bareCard = /^\/api\/cards\/([^/]+)$/.exec(u.pathname), guestCard = bareCard && viewer?.email && (JAMS.peek(br.slug)?.work || []).some((w) => JAMS.guestWids(br.slug, viewer.email).includes(w.id) && w.cardId === decodeURIComponent(bareCard[1]));
       if (/^\/api\/cards\//.test(u.pathname) && !guestJam && !guestCard && !(t0 && viewer?.email && guestOk(t0, viewer.email, u.pathname))) { send(res, viewer?.email ? 403 : 401, { error: 'This brand’s cards are for its team.', team: true, signin: !viewer?.email }); return true; }

@@ -193,7 +193,8 @@
 
   /* who is signed in: one copy, from Google sign-in (live.js window.LIVE.me); nothing about a person is typed in twice */
   const ME = () => window.LIVE?.me || window.LIVE?.user || null;
-  const myFirst = () => { const n = ME()?.name; return n ? String(n).trim().split(/\s+/)[0] : null; };
+  const myFirst = () => { const n = ME()?.name; const f = n ? String(n).trim().split(/\s+/)[0] : null; return f && !/^you$/i.test(f) ? f : null; }; /* a placeholder 'You' is not a name */
+  const hiName = (R) => { const n = myFirst() || R?.name; return n && !/^you$/i.test(n) ? `, ${esc(n)}` : ''; };
   const ROLE = () => B.roles[S.viewer.role] || B.roles[Object.keys(B.roles)[0]];
   /* the views this person may use: a team member limited by the brand's admin gets only theirs; everyone else every view */
   const mySeats = () => { const s0 = window.LIVE?.access?.role ? window.LIVE.access.seats : null; return Array.isArray(s0) ? s0.filter((k) => B.roles[k]) : null; };
@@ -549,7 +550,7 @@
       host.innerHTML = `<div class="ob2-wash"></div><div class="pv">
         <p class="pv-cap">Your feed, as ${/^[AEIOU]/.test(R.name) ? 'an' : 'a'} ${esc(R.name.toLowerCase())}</p>
         <div class="pv-win"><div class="pv-bar"><i></i><i></i><i></i><span>${location.host}</span></div>
-          <div class="pv-in"><small>Today</small><h3>${dayPart()}, ${esc(myFirst() || R.name)}</h3>
+          <div class="pv-in"><small>Today</small><h3>${dayPart()}${hiName(R)}</h3>
             <div class="pv-tiles"><span class="hot"><b>${Math.max(yes, 1)}</b>need your yes</span><span><b>${cards.length}</b>new ideas</span><span><b>5</b>agents on it</span></div>
             ${cards.slice(0, 3).map(pvCard).join('')}</div></div></div>`; pvLast = host.innerHTML.replace('class="pv"', 'class="pv still"'); };
     let cards = [];
@@ -824,7 +825,7 @@
     const tile = (k) => { const list = GSTAT[k], n = list.length; if (!n) return ''; /* no zero tiles: an empty list says nothing */
       return `<button class="gt${k === 'yes' && n ? ' hot' : ''}" data-gstat="${k}" aria-label="${n} ${QHEAD[k][0]}: open the list"><b class="gt-n">${n}</b><span class="gt-l">${QHEAD[k][0]}</span><span class="gt-s">${QHEAD[k][1]}</span><span class="gt-go">${ic('right', 's14')}</span></button>`; };
     const tiles = ['yes', 'spend', 'board'].map(tile).filter(Boolean);
-    return `<div class="greet"><small class="g-day">${esc(day)}</small><h2>${part}, ${esc(myFirst() || R.name)}</h2>
+    return `<div class="greet"><small class="g-day">${esc(day)}</small><h2>${part}${hiName(R)}</h2>
       ${tags.length ? `<p class="g-taste">Tuned to what you like: ${esc(tags.join(' and '))}</p>` : ''}
       ${tiles.length ? `<div class="g-today" style="--n:${tiles.length}">${tiles.join('')}</div>` : ''}</div>`;
   };
@@ -4121,7 +4122,7 @@
     /* anyone can look; signing in makes them a guest of this one jam (never the whole team) */
     setTimeout(() => toast(r.guest ? `${ic('person', 's16')}You’re in this jam as a guest. You can chat, edit the brief and make drafts.` : r.signedIn ? `${ic('person', 's16')}You’re viewing ${esc(B.brand.name)}’s shared jam` : `${ic('person', 's16')}You’re viewing a shared jam. Sign in to take part.`), 900); };
   // real connected accounts (live.js) replace the demo numbers before anything renders
-  if (window.BREW_DEMO && !LANDING) { document.body.insertAdjacentHTML('beforeend', `<button class="demo-pill" type="button" title="Demo controls (press .)">${ic('sliders', 's14')}Demo</button>`); $('.demo-pill').onclick = () => openDemo(); }
+  if (window.BREW_DEMO && !LANDING) { document.body.insertAdjacentHTML('beforeend', `<button class="demo-pill" type="button" title="Demo controls (press .)" aria-label="Demo controls">${ic('sliders', 's14')}<span>Demo</span></button>`); $('.demo-pill').onclick = () => openDemo(); }
   Promise.resolve(window.LIVE_P).catch(() => null).then(() => { window.LiveConn?.overlay(B, S); fitSeat(); save();
   if (/[?&]joined=1/.test(location.search)) { history.replaceState(null, '', location.pathname + location.hash); setTimeout(() => toast(`${ic('check', 's14')}You’re on ${esc(B.brand.name)}’s team`), 600); }
   if (location.hash === '#team' && ['owner', 'admin'].includes(window.LIVE?.access?.role)) setTimeout(() => window.LiveConn?.teamSheet(), 700);

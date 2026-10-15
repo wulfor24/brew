@@ -529,7 +529,10 @@ const brandRoutes = async (req, res, u) => {
   const v = await viewerOf(req, slug);
   if (!v.gen && req.method === 'POST' && what !== 'notify' && !v.email && auth.signinOn() && process.env.BUILD_SIGNIN !== '0') return send(res, 401, { error: 'Sign in with your work email to continue.', signin: true }), true;
   if (!v.gen && req.method === 'POST' && what !== 'notify') return send(res, 403, { ...demoErr(v.host), error: v.claimed ? 'Demo mode: only this brand’s team changes it. Ask them to invite you.' : `Demo mode: the moves are written once someone signs in with a work email at ${v.host || 'the brand’s domain'}.`, team: true }), true;
-  if (what === 'status') return send(res, 200, (await builder.status(slug)) || { error: 'unknown brand' }), true;
+  if (what === 'status') { const s = (await builder.status(slug)) || { error: 'unknown brand' };
+    /* status stays public (someone signing in mid-read sees where it is), but the move titles, files and spend are the team's */
+    if (!(await teamRead(req, slug))) { const { pdfs, zips, statics, usd, proBy, proAt, ...pub } = s; return send(res, 200, pub), true; }
+    return send(res, 200, s), true; }
   if (what === 'summary') return send(res, 200, await builder.summary(slug)), true;
   if (what === 'notify' && req.method === 'POST') { const b = await readBody(req), me = auth.user(req);
     /* "email me when the moves are in": a signed-in person adds their own address (the team may add a teammate), so nobody turns Brew into a mailer */
