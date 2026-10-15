@@ -415,7 +415,7 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
         r = await ai.call({ ...o, schema: null, json: true, messages: undefined, prompt: prompt + `\n\nReturn one JSON object with this shape:\n${JSON.stringify(MOVE_SCHEMA)}` });
         }
       }
-      const move = finish(sp, r.json, { meta: { model: 'claude-opus-5-5', at: new Date().toISOString(), usd: r.usd, usage: r.msg?.usage, secs: Math.round((Date.now() - t0) / 1e3), stop: r.stop, verified: false, issues: [], cites: r.cites || [], lookups: lookups.map(({ id, for: f, at, error }) => ({ id, for: f, at, error })) } }, ctx);
+      const move = finish(sp, r.json, { meta: { model: r.msg?.model || 'claude-opus-5-5', at: new Date().toISOString(), usd: r.usd, usage: r.msg?.usage, secs: Math.round((Date.now() - t0) / 1e3), stop: r.stop, verified: false, issues: [], cites: r.cites || [], lookups: lookups.map(({ id, for: f, at, error }) => ({ id, for: f, at, error })) } }, ctx);
       return move;
     } catch (e) {
       if (!e.mock) throw e;

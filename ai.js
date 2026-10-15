@@ -1,10 +1,10 @@
-// Shared Claude client for the per-brand build (reader, brief, moves, cards).
+// Shared AI client (Claude, or Gemini on Vertex: gemini-client.js) for the per-brand build (reader, brief, moves, cards).
 // Opus 5.5 writes the long documents; Sonnet 5.5 does short, fast work. Always streams (long outputs),
 // always opts into server-side refusal fallbacks, and meters spend into a cost ledger.
-import Anthropic from '@anthropic-ai/sdk';
+import { makeLLM, PROVIDER, GEMINI_PRICE, GEMINI_SEARCH_PRICE } from './gemini-client.js';
 
 export const MODELS = { opus: 'claude-opus-5-5', sonnet: 'claude-sonnet-5-5' };
-const PRICE = { 'claude-opus-5-5': [4, 20], 'claude-sonnet-5-5': [2, 10] }; // $ per MTok in / out
+const PRICE = { 'claude-opus-5-5': [4, 20], 'claude-sonnet-5-5': [2, 10], ...GEMINI_PRICE }; // $ per MTok in / out
 const SEARCH_PRICE = 0.01; // $ per web search
 
 // structured output wants additionalProperties:false on every object
@@ -34,7 +34,8 @@ export const aiPaused = () => Date.now() < billingOffUntil;
 export const billingError = () => Object.assign(new Error('AI credit is used up: paused until it is topped up'), { billing: true, mock: true });
 export const noteBilling = (e) => { if (!BILLING.test(String(e?.message || e?.error?.error?.message || ''))) return false; billingOffUntil = Date.now() + 15 * 60e3; return true; };
 export function createAI({ apiKey = process.env.ANTHROPIC_API_KEY, mock = process.env.AI_MOCK === '1', log = console } = {}) {
-  const client = apiKey && !mock ? new Anthropic({ apiKey, timeout: 20 * 60e3, maxRetries: 3 }) : null;
+  /* Claude, or Gemini on Vertex while we build (gemini-client.js, AI_PROVIDER): same params, same reply shape */
+  const client = mock ? null : makeLLM({ apiKey, anthropicOpts: { timeout: 20 * 60e3, maxRetries: 3 }, log });
   const meter = { usd: 0, calls: 0, byTag: {} };
   const listeners = [];
   const charge = (tag, usd) => { meter.usd += usd; meter.calls++; meter.byTag[tag] = (meter.byTag[tag] || 0) + usd; listeners.forEach((f) => f(tag, usd, meter)); };
@@ -63,10 +64,10 @@ export function createAI({ apiKey = process.env.ANTHROPIC_API_KEY, mock = proces
     let msg;
     try { msg = await client.beta.messages.stream(params).finalMessage(); }
     catch (e) { if (BILLING.test(String(e?.message || e?.error?.error?.message || ''))) { billingOffUntil = Date.now() + 15 * 60e3; throw Object.assign(new Error('AI credit is used up: paused for 15 minutes'), { billing: true, mock: true }); } throw e; }
-    const u = msg.usage || {}, p = PRICE[model] || PRICE[MODELS.opus];
+    const u = msg.usage || {}, p = PRICE[msg.model] || PRICE[model] || PRICE[MODELS.opus];
     const searches = u.server_tool_use?.web_search_requests || 0;
     const w1h = u.cache_creation?.ephemeral_1h_input_tokens || 0, w5m = (u.cache_creation_input_tokens || 0) - w1h; /* an hour-long cache write costs 2x, a 5-minute one 1.25x */
-    const usd = ((u.input_tokens || 0) + w5m * 1.25 + w1h * 2 + (u.cache_read_input_tokens || 0) * 0.1) * p[0] / 1e6 + (u.output_tokens || 0) * p[1] / 1e6 + searches * SEARCH_PRICE;
+    const usd = ((u.input_tokens || 0) + w5m * 1.25 + w1h * 2 + (u.cache_read_input_tokens || 0) * 0.1) * p[0] / 1e6 + (u.output_tokens || 0) * p[1] / 1e6 + searches * (PROVIDER === 'gemini' ? GEMINI_SEARCH_PRICE : SEARCH_PRICE);
     charge(o.tag || 'ai', usd);
     if (msg.stop_reason === 'refusal') throw new Error('refused: ' + (msg.stop_details?.category || 'unknown'));
     const text = msg.content.filter((b) => b.type === 'text').map((b) => b.text).join('');
@@ -81,7 +82,7 @@ export function createAI({ apiKey = process.env.ANTHROPIC_API_KEY, mock = proces
       if (b.type === 'web_search_tool_result' && Array.isArray(b.content)) b.content.forEach((r) => r.url && cites.push({ url: r.url, title: r.title, age: r.page_age }));
       if (b.type === 'text') (b.citations || []).forEach((c) => c.url && cites.push({ url: c.url, title: c.title, quote: c.cited_text }));
     }
-    log.info?.(`[ai] ${o.tag || ''} ${model} ${((Date.now() - t0) / 1e3).toFixed(1)}s $${usd.toFixed(3)} ${msg.stop_reason}`);
+    log.info?.(`[ai] ${o.tag || ''} ${msg.model || model} ${((Date.now() - t0) / 1e3).toFixed(1)}s $${usd.toFixed(3)} ${msg.stop_reason}`);
     return { text, json, msg, usd, cites, stop: msg.stop_reason };
   }
   return { call, live: !!client, meter, onCharge: (f) => listeners.push(f) };

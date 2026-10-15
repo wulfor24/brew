@@ -13,7 +13,7 @@ import vm from 'node:vm';
 import zlib from 'node:zlib';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import Anthropic from '@anthropic-ai/sdk';
+import { makeLLM, PROVIDER } from './gemini-client.js';
 import { createFeedService } from './feed-service.js';
 import { createResearch } from './research.js';
 import { createLiveWatch } from './live-watch.js';
@@ -71,7 +71,7 @@ const CLAUDE_MODELS = [process.env.FEED_CLAUDE_MODEL || 'claude-sonnet-5-5', 'cl
 const GPROJECT = process.env.GOOGLE_CLOUD_PROJECT || 'squareup-492617';
 const IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-3-pro-image';
 const OPENAI_KEY = process.env.OPENAI_API_KEY || '';
-let MOCK = process.env.AI_MOCK === '1' || !ANTHROPIC_KEY;
+let MOCK = process.env.AI_MOCK === '1' || (PROVIDER === 'anthropic' && !ANTHROPIC_KEY); // Gemini needs only Google sign-in
 const CAPS = { text: +process.env.DAILY_TEXT_CAP || 400, image: +process.env.DAILY_IMAGE_CAP || 60, video: +process.env.DAILY_VIDEO_CAP || 15, voice: +process.env.DAILY_VOICE_CAP || 60 };
 const used = { day: new Date().toDateString(), text: 0, image: 0, video: 0, voice: 0 };
 const spend = (k) => { const d = new Date().toDateString(); if (used.day !== d) Object.assign(used, { day: d, text: 0, image: 0, video: 0, voice: 0 }); if (used[k] >= CAPS[k]) return false; used[k]++; if (USAGE) saveUsage(); return true; };
@@ -86,7 +86,7 @@ const clean = (s) => String(s || '').replace(/—/g, ',').replace(/ ,/g, ',');
 // Sonnet 5.5 for live latency. Thinking off (`between_tools`, valid at effort high or below) and low effort,
 // so short card copy comes back in a few seconds instead of spending max_tokens on reasoning.
 // Refusals fall back server-side (`fallbacks: "default"`).
-const anthropic = ANTHROPIC_KEY ? new Anthropic({ apiKey: ANTHROPIC_KEY }) : null;
+const anthropic = makeLLM({ apiKey: ANTHROPIC_KEY }); // Claude, or Gemini on Vertex while we build (gemini-client.js)
 const claudeParams = (messages, max) => ({
   model: thinkModel(CLAUDE_MODELS[0]), max_tokens: max, system: SYSTEM(), messages, // the jam's model chip (Auto / Deep / Fast)
   thinking: { type: 'between_tools' }, output_config: { effort: 'low' },
@@ -280,8 +280,8 @@ const photoAsync = async (rel) => { const r = String(rel || '').trim(); if (!r) 
 const routes = {
   'GET /api/research': async () => { const r = B().research; return { ...r.get(), running: r.running(), spent: r.spent() }; },
   'POST /api/research/refresh': async (b, req) => { if (!(await genOk(req, B().slug))) return demoErr(); const ok = ['ads', 'trends', 'news', 'howto']; const which = (b.sources || ok).filter((k) => ok.includes(k)); B().research.refresh(which); return { started: which }; },
-  'GET /api/config': async () => ({ ai: MOCK ? 'mock' : 'live', paused: !MOCK && aiPaused(), image: !!(GPROJECT || OPENAI_KEY), caps: CAPS, used }),
-  'POST /api/config': async (b, req) => { if (!auth.isAdmin(auth.user(req))) return { error: 'admins only', ai: MOCK ? 'mock' : 'live' }; if (b.ai === 'mock') MOCK = true; if (b.ai === 'live' && ANTHROPIC_KEY) MOCK = false; return { ai: MOCK ? 'mock' : 'live' }; }
+  'GET /api/config': async () => ({ ai: MOCK ? 'mock' : 'live', provider: PROVIDER, paused: !MOCK && aiPaused(), image: !!(GPROJECT || OPENAI_KEY), caps: CAPS, used }),
+  'POST /api/config': async (b, req) => { if (!auth.isAdmin(auth.user(req))) return { error: 'admins only', ai: MOCK ? 'mock' : 'live' }; if (b.ai === 'mock') MOCK = true; if (b.ai === 'live' && anthropic) MOCK = false; return { ai: MOCK ? 'mock' : 'live' }; }
 };
 
 // brand packs: every brand the build has read (brand-pack.js, build.js), and the Brew default context
@@ -330,7 +330,7 @@ const attach = (p) => {
 const loadBrand = async (slug, o) => blocked(slug) ? null : attach(await packs.load(slug, o));
 const brandPacks = { load: loadBrand, peek: (slug) => packs.peek(slug) };
 setDefaultBrand(await loadBrand(DEFAULT));
-const ai = createAI({ apiKey: ANTHROPIC_KEY, mock: process.env.AI_MOCK === '1' || !ANTHROPIC_KEY });
+const ai = createAI({ apiKey: ANTHROPIC_KEY, mock: process.env.AI_MOCK === '1' || (PROVIDER === 'anthropic' && !ANTHROPIC_KEY) });
 /* margin notes (notes.js): one Sonnet call per brand for cards never considered, about $0.05; on Cloud Run, or locally with NOTES_BG=1 */
 /* move grades for the ranker (value.js): one Sonnet call per 20 moves, once per move version, about $0.10 a brand */
 const valueSvc = createValue({ ai, packs, log: console, allow: () => !MOCK && (!!process.env.K_SERVICE || process.env.NOTES_BG === '1') });
@@ -646,7 +646,7 @@ http.createServer(async (req, res) => {
   retire.claim(); // traffic reaches this revision: it is the live one
   if (DEMO) { const ses = sessionOf(req, u); if (ses.set) res.setHeader('set-cookie', ses.set); return runDemo(ses.sid, () => serve(req, res, u)); }
   return serve(req, res, u);
-}).listen(PORT, () => console.log(`Brew Feed on http://localhost:${PORT} · AI ${MOCK ? 'mock' : 'live'} · env ${fs.existsSync(envFile) ? envFile : 'none'}${DEMO ? ' · DEMO MODE' : ''}`));
+}).listen(PORT, () => console.log(`Brew Feed on http://localhost:${PORT} · AI ${MOCK ? "mock" : `live (${PROVIDER})`} · env ${fs.existsSync(envFile) ? envFile : 'none'}${DEMO ? ' · DEMO MODE' : ''}`));
 /* Cloud Run stops an instance with SIGTERM: the team's jams are written before it goes (jams.js saves every few seconds anyway) */
 process.once('SIGTERM', () => { Promise.race([feedSvc?.jams?.flush?.(), new Promise((r) => setTimeout(r, 6000))]).finally(() => process.exit(0)); });
 async function serve(req, res, u) {

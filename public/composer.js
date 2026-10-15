@@ -9,7 +9,7 @@
   const read = () => { try { return { model: 'auto', image: 'auto', memory: true, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch { return { model: 'auto', image: 'auto', memory: true }; } };
   let P = read(); const save = () => { try { localStorage.setItem(KEY, JSON.stringify(P)); } catch {} };
   const UI = { open: null, cat: null, mem: null, connOpen: null };
-  const THINK = [['auto', 'Auto', 'Brew picks for each step'], ['deep', 'Deep', 'Claude Opus 5.5 · strategy and plans'], ['fast', 'Fast', 'Claude Sonnet 5.5 · quick edits']];
+  const THINK = [['auto', 'Auto', 'Brew picks for each step'], ['deep', 'Deep', 'Thinks longer · strategy and plans'], ['fast', 'Fast', 'Answers quickly · short edits']];
   const IMAGE = [['auto', 'Auto', 'The right one for the format'], ['gemini', 'Gemini 3 Pro Image', 'Keeps the product and its label exact'], ['gpt-image', 'GPT Image', 'Edits your product photo']];
   const LOGO = { shopify: 'S', meta: '∞', google: 'G', klaviyo: 'K', reviews: '★', slack: '#' }; /* one style: a letter or mark on a soft tile, never an emoji */
 

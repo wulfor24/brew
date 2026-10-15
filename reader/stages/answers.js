@@ -3,6 +3,7 @@
 // Claude with web search. Per answer: is the brand named, which rivals are, which sources are cited.
 // Also: inferCategory (category, subcategory, category search terms) used by rivals, ads and company.
 import { clean, hostOf, registrable, pool } from '../util.js';
+import { providerNow } from '../../gemini-client.js';
 
 // DataForSEO location codes
 const LOC = { IN: 2356, US: 2840, GB: 2826, CA: 2124, AU: 2036, AE: 2784, SG: 2702, DE: 2276, FR: 2250, NZ: 2554, JP: 2392, IE: 2372, ZA: 2710 };
@@ -85,7 +86,8 @@ export async function answers(ctx) {
     claude: async (q) => { const r = await ctx.ai({ tag: 'reader-answer', model: 'sonnet', search: 3, location: cc, max: 1800, system: `You are a helpful assistant. The user is in ${cc}.`, prompt: q });
       return { text: r.text, sources: [...new Set((r.cites || []).map((c) => c.url))], model: 'claude-sonnet' }; }
   };
-  const tools = Object.keys(ask).filter((k) => (k === 'claude' ? ctx.aiOn : ctx.tregOn));
+  /* the claude ask runs on Brew's own AI: under Gemini (gemini-client.js) its answer would be Gemini's labelled Claude, so it sits out */
+  const tools = Object.keys(ask).filter((k) => (k === 'claude' ? ctx.aiOn && providerNow() === 'anthropic' : ctx.tregOn));
   const jobs = qs.flatMap((q) => tools.map((t) => [q, t]));
   const own = reName(profile.name); const ownHost = registrable(profile.host);
   let shown = false;

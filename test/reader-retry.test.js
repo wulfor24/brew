@@ -22,6 +22,7 @@ test('answersFailed: an error or a stuck step with no saved answers', () => {
 
 test('heal asks the AI tools again and swaps the step and its cards', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'rt-'));
+  const was = process.env.AI_PROVIDER; process.env.AI_PROVIDER = 'anthropic'; // the Claude ask is the only one here (no treg); it sits out under Gemini
   const reader = createReader({ ai: fakeAi, treg: null, root, log: { warn() {}, info() {} } });
   const p = blankProfile(new URL('https://acme.com'), 'acme-com');
   Object.assign(p, { name: 'Acme', country: 'US', descriptor: 'wool sneakers', descriptorBy: 'claude', ads: { v: 'skip', own: { page: 'Acme' }, rivals: [] },
@@ -31,6 +32,7 @@ test('heal asks the AI tools again and swaps the step and its cards', async () =
   // ads would heal too because of the version; keep it out of this test
   const { ADS_V } = await import('../reader/stages/ads.js'); p.ads.v = ADS_V;
   const out = await reader.heal(p, { findings });
+  if (was === undefined) delete process.env.AI_PROVIDER; else process.env.AI_PROVIDER = was;
   assert.ok(out, 'heal changed something');
   assert.ok(out.changed.includes('answers'));
   assert.ok(out.profile.ai.answers.length > 0);
