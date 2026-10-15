@@ -659,7 +659,7 @@ person on reply duty.
 
 
 30-DAY DEPLOYMENT
- WEEK BREW SHIPS                                                          ARATA PROVIDES                 LIVE BY END OF WEEK
+ WEEK BREW DRAFTS                                                          ARATA PROVIDES                 LIVE BY END OF WEEK
 
  1        Buys and authenticates 3 secondary domains (SPF,                  Names of 6 team members for    Domains warming. ICPs
           DKIM, DMARC p=none with reporting). Creates 6                     mailboxes with photos.         signed off. List build
@@ -681,7 +681,7 @@ person on reply duty.
 
 
 BREW DEPLOYMENT TEAM × ARATA · B2B OUTBOUND FOR DERMS, SALONS AND Q-COM                                                           13
- WEEK BREW SHIPS                                                          ARATA PROVIDES                    LIVE BY END OF WEEK
+ WEEK BREW DRAFTS                                                          ARATA PROVIDES                    LIVE BY END OF WEEK
 
  3        Launches the derm sequence at 5 to 10 sends per                   CBO spends 30 minutes a day       2 sequences live. First
           mailbox per day (about 150 derms in the week).                    on the category play. R&D         derm replies. First 2 to 3

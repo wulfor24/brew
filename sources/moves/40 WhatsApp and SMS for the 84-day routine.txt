@@ -652,7 +652,7 @@ HELP on any channel:
 
 
 30-DAY DEPLOYMENT
- WEEK BREW SHIPS                                                         ARATA PROVIDES                      LIVE BY END OF WEEK
+ WEEK BREW DRAFTS                                                         ARATA PROVIDES                      LIVE BY END OF WEEK
 
  1         BSP and SMS aggregator selected and                             Access to Shopify, Meta Business Templates in review.
            contracted. Meta Business verification check.                   Manager and the existing SMS     Checkout opt-in live on
@@ -755,7 +755,7 @@ Decision rules at day 90
     base.
     If cart recovery runs below 4%, we test a single-touch version with the free-gift threshold line
     moved into C1, before testing any discount.
-    If any marketing template's block rate passes 1% for two weeks, we pause it, read the block
+    If any marketing template's block rate passes 1% for two weeks, the team should pause it, read the block
     reasons, and rewrite. A number that goes yellow pauses all broadcasts until it returns to green;
     journey and utility continue.
     If promotional SMS converts below 1% per send, we stop it and keep SMS for OTP and fallback

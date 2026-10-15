@@ -2,6 +2,7 @@
 // core "Know the brand" set first), turns each move into feed cards as it lands, and renders the Brew PDFs.
 // Every stage writes to the brand pack (brand-pack.js) and to status.json, so a restart resumes where it was.
 // Events are kept per brand and replayed, so the onboarding screen and anyone opening later see the same read.
+import { safeFetch } from './reader/util.js'; // user-pasted links reach only the public internet
 import { adCall } from './reader/adlib.js';
 import { ADS_V } from './reader/stages/ads.js';
 import { wiping } from './retire.js';
@@ -173,7 +174,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   async function budgetPause(slug, n) {
     if (blocked(slug) || !capHit(slug) || st(slug).cancelled) return false;
     const own = spentFor(slug) >= capOf(slug);
-    await setStatus(slug, own ? { state: `Paused at the spend cap ($${capOf(slug)}). ${n} of 51 moves written.`, capped: true } : { state: `Paused: today’s reading budget is used up. ${n} of 51 moves written; it carries on tomorrow.`, capped: null, pausedDay: dayKey() });
+    await setStatus(slug, own ? { state: `Paused at the spend cap ($${capOf(slug)}). ${n} of 51 core moves written.`, capped: true } : { state: `Paused: today’s reading budget is used up. ${n} of 51 moves written; it carries on tomorrow.`, capped: null, pausedDay: dayKey() });
     return true;
   }
   /* ---------- the pipeline (idempotent: every stage skips what is already in the pack) ---------- */
@@ -239,7 +240,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       const pack = () => packs.load(slug);
       const briefMd = (await packs.get(slug, 'brief.md'))?.toString('utf8') || '';
       const cache = await packs.getJSON(slug, 'moves.json', {});
-      await stage(slug, 'moves', 'running'); await setStatus(slug, { state: 'Writing the 51 moves' });
+      await stage(slug, 'moves', 'running'); await setStatus(slug, { state: 'Writing the core moves' });
       const saved = new Set(Object.entries(await packs.getJSON(slug, 'moves.json', {})).filter(([k, mv]) => isCore(k) && !mv?.meta?.cadence).map(([k]) => +k)); /* only 00-50 count toward the 51 */
       let pdfQueue = Promise.resolve(), staticsJob = Promise.resolve(), firstSent = false;
       let lock = Promise.resolve(); // moves finish in parallel; their pack writes go one at a time
@@ -255,7 +256,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         if (n === 21) staticsJob = makeStatics(slug, move, profile, (fn) => (lock = lock.then(fn).catch((e) => log.warn('[build] statics card', e.message))));
         await progressCard(slug, saved.size, move);
         const done = saved.size, waveA = WAVE_A.every((k) => saved.has(k));
-        await setStatus(slug, { movesDone: done, ready: waveA || (await status(slug)).ready, state: done >= 51 ? 'All 51 moves written' : `Writing the moves: ${done} of 51` });
+        await setStatus(slug, { movesDone: done, ready: waveA || (await status(slug)).ready, state: done >= 51 ? 'All core moves written' : `Writing the core moves: ${done} of 51` });
         if (waveA && !firstSent) { firstSent = true; notify(slug, 'first').catch((e) => log.warn('[notify]', e.message)); }
         if (m.pdf) pdfQueue = pdfQueue.then(() => renderPdf(slug, m.pdf, move, profile)).catch((e) => log.warn('[build] pdf', n, e.message));
         packs.drop(slug); await onPack(slug); saveSpend(slug);
@@ -271,7 +272,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       if (!capHit(slug) && [...Array(51).keys()].some((n) => n && !cache[n])) { await lock; log.warn('[build] second pass for', slug); res = await eng.runAll(ctx, { concurrency: 4, waveA: WAVE_A }); }
       await lock; await staticsJob;
       if (res.errors?.length) log.warn('[build] moves with errors', slug, res.errors.map((e) => e.n + ': ' + e.error).join('; '));
-      if (await cancelled(slug)) { await setStatus(slug, { state: `Stopped. ${saved.size} of 51 moves written.`, cancelled: true, error: 'cancelled' }); return; }
+      if (await cancelled(slug)) { await setStatus(slug, { state: `Stopped. ${saved.size} of 51 core moves written.`, cancelled: true, error: 'cancelled' }); return; }
       if (await budgetPause(slug, saved.size)) return;
       await stage(slug, 'moves', 'done');
       await pdfQueue;
@@ -362,7 +363,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const seed = await packs.getJSON(slug, 'seed.json', {});
     const c = { id: 'build-moves', agent: 'brew', sector: 'signals', type: 'report', lane: Object.keys(seed.lanes || { core: 1 })[0], roles: ['founder', 'growth', 'brand', 'ecom', 'crm'], src: 'Brew deployment team', time: '1 min', kind: 'rows', origin: 'build', boostFor: { founder: 6, growth: 3, brand: 3, ecom: 3, crm: 3 },
       badge: [done >= 51 ? 'All written' : `${done} of 51 written`, done >= 51 ? 'ok' : 'info'],
-      title: done >= 51 ? `All 51 moves for ${seed.brand?.name} are written` : `Writing your 51 moves: ${done} done`,
+      title: done >= 51 ? `All core moves for ${seed.brand?.name} are written` : `Writing your core moves: ${done} of 51`,
       sub: `Each move is a full plan with sources, a 30-day rollout and how we measure it. ${last?.title ? `The latest: ${last.title}.` : ''} Open the Moves page to read them or download the PDFs.`.slice(0, 240),
       rows: [['Written', `${done} of 51`], ['Latest', String(last?.title || '').slice(0, 44)]], detail: { why: ['Every card in this feed comes from one of these plans.'], how: ['Open the Moves page.', 'Read any move, or download its PDF.'] }, cta: { label: 'Open the moves' } };
     seed.posts = [c, ...(seed.posts || []).filter((x) => x.id !== c.id)];
@@ -513,22 +514,22 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   async function readProduct(slug, url, p) {
     const u = String(url).split('?')[0].replace(/\/$/, '');
     let t = null, price = null, img = null, cur = p.currency;
-    try { const r = await fetch(u + '.js', { headers: UA, signal: AbortSignal.timeout(20e3) }); if (r.ok) { const j = await r.json(); t = j.title; price = (j.price || 0) / 100; img = j.featured_image || j.images?.[0]; } } catch {}
-    if (!t) { const r = await fetch(u, { headers: UA, signal: AbortSignal.timeout(25e3) }); const h = await r.text();
+    try { const r = await safeFetch(u + '.js', { headers: UA, signal: AbortSignal.timeout(20e3) }); if (r.ok) { const j = await r.json(); t = j.title; price = (j.price || 0) / 100; img = j.featured_image || j.images?.[0]; } } catch {}
+    if (!t) { const r = await safeFetch(u, { headers: UA, signal: AbortSignal.timeout(25e3) }); const h = await r.text();
       for (const m of h.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) { try { const j = [].concat(JSON.parse(m[1])).flatMap((x) => x['@graph'] || [x]).find((x) => String(x['@type']).includes('Product')); if (j) { t = j.name; const o = [].concat(j.offers || [])[0] || {}; price = +o.price || +o.lowPrice || null; cur = o.priceCurrency || cur; img = [].concat(j.image || [])[0]; break; } } catch {} }
       t ||= (h.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)/i) || [])[1]; img ||= (h.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)/i) || [])[1]; }
     if (!t) throw new Error('That page did not show a product.');
     if (img && img.startsWith('//')) img = 'https:' + img;
-    let asset = null; if (img) try { const r = await fetch(img, { headers: UA, signal: AbortSignal.timeout(20e3) }); if (r.ok) { const b = Buffer.from(await r.arrayBuffer()); const n = 'added-' + u.split('/').pop().replace(/[^a-z0-9-]/gi, '').slice(0, 40) + (img.includes('.png') ? '.png' : '.jpg'); await packs.put(slug, 'assets/' + n, b); asset = `/b/${slug}/a/${n}`; } } catch {}
+    let asset = null; if (img) try { const r = await safeFetch(img, { headers: UA, signal: AbortSignal.timeout(20e3) }); if (r.ok) { const b = Buffer.from(await r.arrayBuffer()); const n = 'added-' + u.split('/').pop().replace(/[^a-z0-9-]/gi, '').slice(0, 40) + (img.includes('.png') ? '.png' : '.jpg'); await packs.put(slug, 'assets/' + n, b); asset = `/b/${slug}/a/${n}`; } } catch {}
     return { handle: u.split('/').pop(), title: String(t).trim(), price, currency: cur, img: asset, images: asset ? [asset] : [], url: u, inStock: true, addedByBrand: true, claims: [] };
   }
   // a rival's website → name, logo, a few live prices (Shopify), and its live ads by domain
   async function readRival(url, p) {
     const host = hostOf(url); if (!host) throw new Error('That doesn’t look like a website.');
-    const r = await fetch(`https://${host}/`, { headers: UA, signal: AbortSignal.timeout(25e3) }); const h = await r.text();
+    const r = await safeFetch(`https://${host}/`, { headers: UA, signal: AbortSignal.timeout(25e3) }); const h = await r.text();
     const name = ((h.match(/<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)/i) || [])[1] || (h.match(/<title>([^<|–-]+)/i) || [])[1] || host).trim().slice(0, 40);
     const prices = [];
-    try { const j = await (await fetch(`https://${host}/products.json?limit=12${p.country ? `&country=${p.country}` : ''}`, { headers: UA, signal: AbortSignal.timeout(20e3) })).json(); (j.products || []).filter((x) => !NOT_PRODUCT.test(x.title)).slice(0, 6).forEach((x) => { const v = x.variants?.[0]; if (v?.price) prices.push({ title: x.title, price: +v.price, currency: p.currency, url: `https://${host}/products/${x.handle}` }); }); } catch {}
+    try { const j = await (await safeFetch(`https://${host}/products.json?limit=12${p.country ? `&country=${p.country}` : ''}`, { headers: UA, signal: AbortSignal.timeout(20e3) })).json(); (j.products || []).filter((x) => !NOT_PRODUCT.test(x.title)).slice(0, 6).forEach((x) => { const v = x.variants?.[0]; if (v?.price) prices.push({ title: x.title, price: +v.price, currency: p.currency, url: `https://${host}/products/${x.handle}` }); }); } catch {}
     let live = null; try { const k = await adCall(treg, 'scrapecreators.x.v1-facebook-adlibrary-search-ads', { query: { query: host, country: p.country || 'ALL', status: 'ACTIVE', trim: true }, tag: 'check-rival-ads' }); live = (k?.searchResults || []).filter((a) => String(a.snapshot?.link_url || '').includes(host)).length; } catch {}
     return { name, host, url: `https://${host}`, why: 'Named by the brand', how: 'named by the brand, site read live', prices, claims: [], offers: [], liveAds: live };
   }
@@ -680,7 +681,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   async function rewrite(slug, ns, o = {}) {
     if (blocked(slug)) return { error: 'This brand is stopped.' };
     const x = st(slug), s0 = await status(slug); if (!s0) return { error: 'unknown brand' };
-    if (x.running) return { error: x.rewriting ? 'A rewrite is already running.' : 'The first 51 are still being written. Rewrites open once they are in.' };
+    if (x.running) return { error: x.rewriting ? 'A rewrite is already running.' : 'The core moves are still being written. Rewrites open once they are in.' };
     await loadDay(); if (dayUsd() >= DAY_CAP) return { error: 'Today’s budget is used up. Try again tomorrow.' };
     const have = await packs.getJSON(slug, 'moves.json', {});
     ns = [...new Set((ns || []).map(Number))].filter((n) => n >= 1 && n <= 50 && have[n]);
@@ -864,7 +865,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
      A marker in the pack (private/ops-fresh.json) makes it run once and carry on across restarts */
   async function freshReload(slug) {
     if (blocked(slug) || !(await status(slug))) return;
-    let mk = await packs.getJSON(slug, 'private/ops-fresh.json', null); if (mk?.phase === 'done') return;
+    let mk = await packs.getJSON(slug, 'private/ops-fresh.json', null); if (mk?.phase === 'done' || mk?.phase === 'stalled') return; /* a stalled run waits for a person: it never starts another paid pass at boot */
     if (!mk) { mk = { startedAt: Date.now(), phase: 'build' }; await packs.put(slug, 'private/ops-fresh.json', mk);
       await editUpd(slug, (u) => { u.stale = {}; delete u.queue; delete u.queueDay; });
       const L = await packs.getJSON(slug, 'learned.json', null); if (L && (L.pendingFull || L.draft)) { delete L.pendingFull; delete L.draft; await packs.put(slug, 'learned.json', L); }
@@ -872,7 +873,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       log.log(`[ops] ${slug}: fresh reload started`); }
     const tick = async () => {
       const x = st(slug), s1 = await status(slug); mk = await packs.getJSON(slug, 'private/ops-fresh.json', mk);
-      if (mk.phase === 'done' || blocked(slug) || s1?.cancelled) return;
+      if (mk.phase === 'done' || mk.phase === 'stalled' || blocked(slug) || s1?.cancelled) return;
       if (x.running) return setTimeout(tick, 60e3).unref?.();
       if (!s1?.done) { if (s1?.capped || s1?.pausedDay) await setStatus(slug, { capped: false, pausedDay: null }); log.log(`[ops] ${slug}: writing the missing moves`); resume(slug).catch((e) => log.error('[ops] resume', e.message)); return setTimeout(tick, 120e3).unref?.(); }
       const moves = await packs.getJSON(slug, 'moves.json', {}), t0 = mk.startedAt;
@@ -891,7 +892,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     for (const x of await packs.list()) { if (!x.status.done && !x.status.error && !x.status.capped) resume(x.slug).catch((e) => log.error('[build] resume', x.slug, e.message)); else { if (x.status.done) { rebase(x.slug).catch((e) => log.warn('[build] rebase', x.slug, e.message)); healPdfs(x.slug); } resumeRewrite(x.slug).catch((e) => log.warn('[rewrite] resume', x.slug, e.message)); } } }
   /* Saved PDFs heal: when the PDF text rules change (PDF_V), or a move has no PDF, every public move is drawn again (free:
      local Chromium), entries for moves that no longer exist leave status.pdfs, and the zips are rebuilt. One brand at a time. */
-  const PDF_V = 2; // 2: kickers without "OF N", "What to watch", BREW DRAFTS (2026-10-15)
+  const PDF_V = 3; // 2: kickers without "OF N", "What to watch", BREW DRAFTS; 3: no "Brew re-reads / we pause", index without a count (2026-10-15)
   let pdfHealQ = Promise.resolve();
   const healPdfs = (slug) => (pdfHealQ = pdfHealQ.catch(() => {}).then(async () => {
     if (blocked(slug) || process.env.PDF_HEAL_OFF === '1') return;

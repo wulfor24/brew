@@ -546,7 +546,7 @@ Does not block the text.
 
 
 30-DAY DEPLOYMENT
- WEEK BREW SHIPS                                                ARATA PROVIDES                          LIVE BY END OF WEEK
+ WEEK BREW DRAFTS                                                ARATA PROVIDES                          LIVE BY END OF WEEK
 
  1        Overlay audit of live site and app stack;               Shopify and popup app admin             Cart threshold bar live;
           popup rules document (priority, caps,                   access; WhatsApp Business API           thank-you page offers

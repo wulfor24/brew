@@ -567,7 +567,7 @@ We do not ask them to change the review. The replacement happens whether or not 
 
 BREW DEPLOYMENT TEAM × ARATA · REFERRAL AND AMBASSADOR ENGINE FOR ARATA                                     11
 30-DAY DEPLOYMENT
- WEEK BREW SHIPS                                                   ARATA PROVIDES                         LIVE BY END OF WEEK
+ WEEK BREW DRAFTS                                                   ARATA PROVIDES                         LIVE BY END OF WEEK
 
  1        Economics re-run with real margin and CAC.                 Gross margin, paid CAC, Loox and       Referral program in test
           Referral app configured on Shopify                         WhatsApp (Interakt or Wati)            mode. Day-30 and day-

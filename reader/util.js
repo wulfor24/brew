@@ -4,6 +4,39 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 
+/* ---------- outbound fetches only reach the public internet ----------
+   Every URL a store, a rival or a person gives Brew is fetched through this: http(s) only, and each hop (redirects are
+   followed by hand) must resolve to a public address. Private, loopback, link-local (the cloud metadata server) and other
+   reserved ranges are refused, so a pasted link can't make the server read its own network. */
+import dnsP from 'node:dns/promises';
+import net from 'node:net';
+const v4 = (ip) => ip.split('.').map(Number);
+export const privateIp = (ip) => {
+  if (net.isIPv4(ip)) { const [a, b] = v4(ip); return a === 0 || a === 10 || a === 127 || (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 192 && b === 0) || (a === 198 && (b === 18 || b === 19)) || a >= 224; }
+  if (net.isIPv6(ip)) { const x = ip.toLowerCase(); if (x.startsWith('::ffff:')) return privateIp(x.slice(7)); return x === '::' || x === '::1' || /^f[cd]/.test(x) || /^fe[89ab]/.test(x) || x.startsWith('ff'); }
+  return true;
+};
+export async function publicUrl(u) {
+  let url; try { url = new URL(u); } catch { throw new Error('not a valid address'); }
+  if (!/^https?:$/.test(url.protocol)) throw new Error('only http and https addresses');
+  const host = url.hostname.replace(/^\[|\]$/g, '');
+  if (/^(localhost|metadata(\.google\.internal)?)$/i.test(host) || /\.(internal|local|localhost)$/i.test(host)) throw new Error('not a public address');
+  const ips = net.isIP(host) ? [host] : (await dnsP.lookup(host, { all: true, verbatim: true })).map((x) => x.address);
+  if (!ips.length || ips.some(privateIp)) throw new Error('not a public address');
+  return url;
+}
+export async function safeFetch(u, o = {}, hops = 5) {
+  let url = await publicUrl(u);
+  for (let i = 0; i <= hops; i++) {
+    const r = await fetch(url, { ...o, redirect: 'manual' });
+    if (r.status >= 300 && r.status < 400 && r.headers.get('location')) { url = await publicUrl(new URL(r.headers.get('location'), url).href); continue; }
+    if (i) Object.defineProperty(r, 'url', { value: url.href });
+    return r;
+  }
+  throw new Error('too many redirects');
+}
+
+
 export const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36';
 export const today = () => new Date().toISOString().slice(0, 10);
 export const sha = (s) => crypto.createHash('sha1').update(String(s)).digest('hex').slice(0, 10);
@@ -92,7 +125,7 @@ export function createFetcher({ slug, saveRaw, loadRaw, fresh = false, signal, l
     const sig = signal ? AbortSignal.any([signal, AbortSignal.timeout(o.ms || 20e3)]) : AbortSignal.timeout(o.ms || 20e3);
     let r;
     try {
-      r = await fetch(url, { method: o.body ? 'POST' : 'GET', redirect: 'follow', signal: sig, body: o.body,
+      r = await safeFetch(url, { method: o.body ? 'POST' : 'GET', signal: sig, body: o.body,
         headers: { 'user-agent': UA, 'accept-language': 'en-US,en;q=0.9', accept: as === 'json' ? 'application/json,text/plain,*/*' : as === 'buf' ? '*/*' : 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8', ...(o.headers || {}) } });
     } catch (e) { stats.failed++; if (signal?.aborted) throw e; return { ok: false, status: 0, url, error: e.cause?.code || e.name || e.message, ms: Date.now() - t0 }; }
     const out = { ok: r.ok, status: r.status, url: r.url || url, type: r.headers.get('content-type') || '', ms: Date.now() - t0 };

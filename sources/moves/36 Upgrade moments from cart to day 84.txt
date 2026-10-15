@@ -581,7 +581,7 @@ MitoActive names, and those replies are MitoActive's first reviews.
 
 30-DAY DEPLOYMENT
                                                                                                       OWNER          OWNER
- WEEK BREW SHIPS                                                     ARATA PROVIDES                 (BREW)       (ARATA)
+ WEEK BREW DRAFTS                                                     ARATA PROVIDES                 (BREW)       (ARATA)
 
  1        Instrumentation on every moment: PDP selector                Shopify admin and theme        Growth lead,   Brand
           impressions and selection, drawer impressions and            access, WhatsApp               Shopify        manager,

@@ -728,7 +728,7 @@ email).
 
 
 30-DAY DEPLOYMENT
- WEEK BREW SHIPS                                                    ARATA PROVIDES                      LIVE BY END OF WEEK
+ WEEK BREW DRAFTS                                                    ARATA PROVIDES                      LIVE BY END OF WEEK
 
  1         Search Console and GA4 baseline for Lab                    Access to Search Console,           Editorial calendar for 12
            Notes; keyword map with real volumes;                      Shopify blog, Loox export; study    weeks with owners; naming
@@ -797,7 +797,7 @@ Decision rule at day 90:
      If sessions are up but assisted orders are flat, the pages are ranking without converting. We rebuild
      the CTA blocks and routine modules on the top ten pages before adding any new ones.
      If sessions are flat after 90 days with 36 pieces live, the problem is technical or the keyword map
-     was wrong. We pause new writing for two weeks, run a crawl and index audit, re-pull the keyword
+     was wrong. The team should pause new writing for two weeks, run a crawl and index audit, re-pull the keyword
      data, and restart with the corrected map.
      The journals run to Day 84 regardless. They are the only MitoActive proof in existence and the cost
      is three serums and a camera.

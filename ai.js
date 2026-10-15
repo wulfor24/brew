@@ -24,6 +24,11 @@ export const strictSchema = (x) => {
 export const wellFormed = (x) => typeof x === 'string' ? (x.isWellFormed() ? x : x.toWellFormed()) : Array.isArray(x) ? x.map(wellFormed)
   : x && typeof x === 'object' && !Buffer.isBuffer(x) ? Object.fromEntries(Object.entries(x).map(([k, v]) => [k, wellFormed(v)])) : x;
 
+/* when the Anthropic account runs out of credit every call fails the same way: stop calling for 15 minutes instead of
+   retrying every few seconds (notes and move grades did ~200 calls an hour). mock:true lets callers fall back quietly */
+const BILLING = /credit balance is too low|billing|insufficient.{0,20}(credit|funds|balance)/i;
+let billingOffUntil = 0;
+export const aiPaused = () => Date.now() < billingOffUntil;
 export function createAI({ apiKey = process.env.ANTHROPIC_API_KEY, mock = process.env.AI_MOCK === '1', log = console } = {}) {
   const client = apiKey && !mock ? new Anthropic({ apiKey, timeout: 20 * 60e3, maxRetries: 3 }) : null;
   const meter = { usd: 0, calls: 0, byTag: {} };
@@ -34,6 +39,7 @@ export function createAI({ apiKey = process.env.ANTHROPIC_API_KEY, mock = proces
   // → { text, json, msg, usd }. Throws on refusal or when the AI is off (callers decide the fallback).
   async function call(o) {
     if (!client) throw Object.assign(new Error('AI is off (mock)'), { mock: true });
+    if (Date.now() < billingOffUntil) throw Object.assign(new Error('AI credit is used up: paused until it is topped up'), { billing: true, mock: true });
     const model = MODELS[o.model || 'sonnet'] || o.model;
     const sonnet = model === MODELS.sonnet;
     const messages = wellFormed(o.messages || [{ role: 'user', content: o.prompt }]);
@@ -50,7 +56,9 @@ export function createAI({ apiKey = process.env.ANTHROPIC_API_KEY, mock = proces
       betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default'
     };
     const t0 = Date.now();
-    const msg = await client.beta.messages.stream(params).finalMessage();
+    let msg;
+    try { msg = await client.beta.messages.stream(params).finalMessage(); }
+    catch (e) { if (BILLING.test(String(e?.message || e?.error?.error?.message || ''))) { billingOffUntil = Date.now() + 15 * 60e3; throw Object.assign(new Error('AI credit is used up: paused for 15 minutes'), { billing: true, mock: true }); } throw e; }
     const u = msg.usage || {}, p = PRICE[model] || PRICE[MODELS.opus];
     const searches = u.server_tool_use?.web_search_requests || 0;
     const usd = ((u.input_tokens || 0) + (u.cache_creation_input_tokens || 0) * 1.25 + (u.cache_read_input_tokens || 0) * 0.1) * p[0] / 1e6 + (u.output_tokens || 0) * p[1] / 1e6 + searches * SEARCH_PRICE;

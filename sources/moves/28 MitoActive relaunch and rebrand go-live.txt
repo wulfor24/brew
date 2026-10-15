@@ -584,7 +584,7 @@ Sent with the 84-day kit and a two-page study summary to 50 dermatologists and t
 
 
 30-DAY DEPLOYMENT
- WEEK      BREW SHIPS                                               ARATA PROVIDES                  LIVE BY END OF WEEK
+ WEEK      BREW DRAFTS                                               ARATA PROVIDES                  LIVE BY END OF WEEK
 
  Week Readiness gate sign-off. Cohort offer and kit                   Shopify and WhatsApp           Internal cohort running. Buyer
  1    spec. WhatsApp check-in flow built and tested.                  Business access. Staff         list in hand.
@@ -596,7 +596,7 @@ Sent with the 84-day kit and a two-page study summary to 50 dermatologists and t
 
 
 BREW DEPLOYMENT TEAM × ARATA · MITOACTIVE RELAUNCH AND REBRAND GO-LIVE                                                          12
- WEEK      BREW SHIPS                                               ARATA PROVIDES                    LIVE BY END OF WEEK
+ WEEK      BREW DRAFTS                                               ARATA PROVIDES                    LIVE BY END OF WEEK
 
  Week Alpha outreach to August buyers (email +                        Review and approve copy           Landing page on staging. First
  2    WhatsApp). Loox review timing for MitoActive                    within 48 hours. Legacy name      August buyer stories

@@ -841,7 +841,7 @@ Twenty-eight links, grouped, nothing orphaned, the compare pages linked site-wid
 
 30-DAY DEPLOYMENT
                                                                                                     OWNER             OWNER
- WEEK BREW SHIPS                                                     ARATA PROVIDES               (BREW)          (ARATA)
+ WEEK BREW DRAFTS                                                     ARATA PROVIDES               (BREW)          (ARATA)
 
  1         Full crawl of arata.in; export of every URL, title,         Shopify admin access,        Site architect    Brand manager,
            canonical, status; Search Console top-200                   Search Console access,                         e-commerce

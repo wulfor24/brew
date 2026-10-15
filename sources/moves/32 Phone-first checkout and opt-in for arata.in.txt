@@ -674,7 +674,7 @@ cadence does not block the number.
 
 30-DAY DEPLOYMENT
                                                                                                                  LIVE BY END OF
- WEEK      BREW SHIPS                                                         ARATA PROVIDES                   WEEK
+ WEEK      BREW DRAFTS                                                         ARATA PROVIDES                   WEEK
 
  Week Checkout audit on live store with field-level                             Shopify admin access. Current    Baseline dashboard
  1    instrumentation (focus, blur, error, step events). Quick                  popup and WhatsApp tool          reading. Five quick
@@ -693,7 +693,7 @@ cadence does not block the number.
 
 BREW DEPLOYMENT TEAM × ARATA · PHONE-FIRST CHECKOUT AND OPT-IN FOR ARATA.IN                                                          12
                                                                                                                   LIVE BY END OF
- WEEK      BREW SHIPS                                                         ARATA PROVIDES                    WEEK
+ WEEK      BREW DRAFTS                                                         ARATA PROVIDES                    WEEK
 
  Week Checkout layer installed and configured: phone-first,                     Combo pricing confirmation        Phone-first checkout
  3    OTP with WhatsApp fallback, pincode-first address,                        for MitoActive + shampoo. QA      live at 50% of traffic.

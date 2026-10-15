@@ -733,7 +733,7 @@ additions above only name the AI agents explicitly.
 
 BREW DEPLOYMENT TEAM × ARATA · GETTING ARATA CITED IN AI ANSWERS                                         13
 30-DAY DEPLOYMENT
- WEEK BREW SHIPS                                                                  ARATA PROVIDES            LIVE BY END OF WEEK
+ WEEK BREW DRAFTS                                                                  ARATA PROVIDES            LIVE BY END OF WEEK
 
  1         20-prompt baseline across Google AI Mode, Gemini,                        Shopify theme and         Baseline sheet; robots
            ChatGPT, Perplexity, n=5 each, logged with framing                       admin access; the         stance; Bing submitted;

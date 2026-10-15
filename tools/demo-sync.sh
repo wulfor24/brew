@@ -24,4 +24,9 @@ json.dump(u, open(p, 'w'))
 EOF
     gcloud storage cp ${TMPDIR:-/tmp}/demo-upd.$$ "$DST/$slug/updates.json" --quiet; rm -f ${TMPDIR:-/tmp}/demo-upd.$$
   fi
+  # generated images the pack points at (drafts, statics, studio) live in the bucket's shared gen/ folder: copy the missing ones
+  SRCB="${SRC%/brands}"; DSTB="${DST%/brands}"
+  for g in $(gcloud storage cat "$SRC/$slug/**.json" 2>/dev/null | grep -oE 'gen/[A-Za-z0-9_-]+\.(png|jpg|jpeg|webp|mp4|wav|zip)' | sort -u); do
+    gcloud storage cp -n "$SRCB/$g" "$DSTB/$g" --quiet 2>/dev/null || true
+  done
 done

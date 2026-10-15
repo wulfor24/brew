@@ -529,7 +529,7 @@ We expect A to win on first-visit order rate. B stays in the test so the result 
 
 BREW DEPLOYMENT TEAM × ARATA · TURNING ARATA.IN VISITS INTO FIRST ORDERS                                11
                                                                                                                      LIVE BY END OF
- WEEK BREW SHIPS                                                               ARATA PROVIDES                      WEEK
+ WEEK BREW DRAFTS                                                               ARATA PROVIDES                      WEEK
 
  1         Instrumentation: new vs returning visitor conversion,                 Shopify admin and theme             Baseline
            funnel events (collection view, PDP view, add to cart,                access, Loox access, delivery       dashboard; four

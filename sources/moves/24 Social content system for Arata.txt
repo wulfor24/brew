@@ -544,7 +544,7 @@ Pinned comment: Lab Notes link, Amazon.in link, Blinkit mention.
 
 
 30-DAY DEPLOYMENT
- WEEK BREW SHIPS                                                    ARATA PROVIDES                    LIVE BY END OF WEEK
+ WEEK BREW DRAFTS                                                    ARATA PROVIDES                    LIVE BY END OF WEEK
 
  1         Social audit with instrumented baselines (followers,       Access to Instagram,              Listening loop live, 10
            reach, saves, link clicks per platform). 500-post          YouTube, LinkedIn, X and          comments a day.
