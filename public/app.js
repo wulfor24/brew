@@ -6,6 +6,9 @@
   // the brand this page is for (server.js injects its seed): a generated brand's, or the Brew landing shell
   const BR = window.BRAND || Object.keys(window.FEED_DATA)[0];
   const B = window.FEED_DATA[BR];
+  /* Marketplaces is not a connector for now (2026-10-16): no Connect, no onboarding row; the real marketplaces show as Coming soon on the connectors page */
+  if (B?.connectors?.marketplaces) delete B.connectors.marketplaces;
+  for (const r of Object.values(B?.roles || {})) if (Array.isArray(r.connectors)) r.connectors = r.connectors.filter((k) => k !== 'marketplaces');
   const GEN = !!B.generated, LANDING = BR === 'brew';
   const DEMO_LAND = LANDING && !!window.BREW_DEMO;
   // a review source named after a site ("amazon.com") reads as a second marketplace in Connectors: name it as reviews
@@ -125,7 +128,7 @@
   const AGENT = { creative: 'Creative director', performance: 'Performance marketer', storefront: 'Storefront manager', visibility: 'AI visibility', crm: 'CRM specialist', brew: 'Brew' };
   const face = (a) => `<span class="face ${a}" aria-hidden="true"><i></i><i></i></span>`;
   // real brand marks: a padded mark on a white tile, or the brand's own full-bleed app icon; marketplaces stack three
-  const LOGOS = { shopify: ['shopify.svg'], meta: ['meta.svg'], google: ['google.svg'], whatsapp: ['whatsapp.svg'], slack: ['slack.svg'], klaviyo: ['klaviyo.png'], loox: ['loox.png', 1], amazon: ['amazon.svg', 1], nykaa: ['nykaa.png', 1], blinkit: ['blinkit.png', 1] };
+  const LOGOS = { shopify: ['shopify.svg'], meta: ['meta.svg'], google: ['google.svg'], whatsapp: ['whatsapp.svg'], slack: ['slack.svg'], klaviyo: ['klaviyo.png'], loox: ['loox.png', 1], amazon: ['amazon.svg', 1], nykaa: ['nykaa.png', 1], blinkit: ['blinkit.png', 1], flipkart: ['flipkart.svg'], myntra: ['myntra.png', 1], walmart: ['walmart.svg'], target: ['target.svg'], etsy: ['etsy.svg'], ebay: ['ebay.svg'] };
   const logoTile = (k, size) => { const [f, full] = LOGOS[k]; return `<span class="cx-logo${full ? ' is-full' : ''}" style="width:${size}px;height:${size}px;border-radius:${Math.round(size * .26)}px"><img src="assets/logos/${f}" alt="" loading="lazy"></span>`; };
   // rival brands: their own site icons, saved in assets/logos/brands
   const RIVALS = B.rivalLogos || [];
@@ -2586,6 +2589,14 @@
     const u = e.target.closest('[data-lrestore]'); if (u) { e.stopImmediatePropagation(); $('.toast')?.remove(); const [k, id] = u.dataset.lrestore.split(':'); libAct.restore(k, id); }
   }, true);
   // Connectors: what's connected at a glance, then every source as a card. Status top right, what it unlocks, one clear action
+  /* DUMMY: marketplaces are Coming soon cards, no connect (DUMMY.md row 7). The ones the read saw the brand sell on come first,
+     then the big ones in its country */
+  const MARKETS = { amazon: 'Amazon', flipkart: 'Flipkart', myntra: 'Myntra', nykaa: 'Nykaa', blinkit: 'Blinkit', walmart: 'Walmart', target: 'Target', etsy: 'Etsy', ebay: 'eBay' };
+  const soonMarkets = () => { const india = B.config?.country === 'IN' || B.sym === '₹' || /\.in$/.test(B.brand?.host || '');
+    const own = (B.marketLogos || []).map((k) => String(k).toLowerCase()).filter((k) => MARKETS[k]);
+    return [...new Set([...own, ...(india ? ['amazon', 'flipkart', 'myntra', 'nykaa', 'blinkit'] : ['amazon', 'walmart', 'target', 'etsy', 'ebay'])])].slice(0, 5); };
+  const soonSec = () => { const ks = soonMarkets(); if (!ks.length) return '';
+    return `<section class="cn-sec cn-soon"><h3>Marketplaces<em>${ks.length}</em><small>Listings, ranks, stock and reviews</small></h3><div class="cn-soon-g">${ks.map((k) => `<article class="cn-soon-c">${logoTile(k, 36)}<div class="cn-name"><b>${MARKETS[k]}</b></div><span class="cn-soon-tag">Coming soon</span></article>`).join('')}</div></section>`; };
   const renderConnectors = () => {
     view = 'connectors';
     const list = Object.entries(B.connectors), on = list.filter(([id]) => conn(id)), need = list.filter(([id, c]) => !conn(id) && !c.optional), opt = list.filter(([id, c]) => !conn(id) && c.optional);
@@ -2599,7 +2610,7 @@
     const pct = Math.round(on.length / list.length * 100);
     libShell(`Connectors${LC?.L?.dummy === false ? '' : ' <span class="dummy-tag" title="Connected accounts are simulated in this demo">Dummy</span>'}`, LC?.intro() || (LC?.L?.dummy === false ? `Every source Brew reads for ${B.brand.name}. Connected accounts are read-only and only ${B.brand.name}’s team sees them.` : `Every source Brew reads for ${B.brand.name}. Connected accounts are simulated in this demo (Dummy): connecting shows what would change, and nothing touches a real account.`),
       `<div class="cn-sum"><div class="cn-sum-n"><b>${on.length}</b><span>of ${list.length} connected</span></div><div class="cn-bar"><i style="width:${pct}%"></i></div><div class="cn-logos">${list.map(([id]) => `<span class="${conn(id) ? '' : 'is-off'}" title="${esc(B.connectors[id].name)}">${glyph(id, 28)}</span>`).join('')}</div></div>
-       ${sec('Not connected yet', 'Connect these to unlock the cards that need them', need)}${sec('Connected', '', on)}${sec('Optional', 'Nice to have', opt)}`);
+       ${sec('Not connected yet', 'Connect these to unlock the cards that need them', need)}${sec('Connected', '', on)}${sec('Optional', 'Nice to have', opt)}${soonSec()}`);
     $('#col')?.classList.add('lib-col', 'cn-col'); if (LC && $('#col')) { LC.bindPage(document.getElementById('view') || $('#col')); }
     $$('[data-unlink]').forEach((b) => b.onclick = () => { S.conn[b.dataset.unlink] = false; save(); toast(`${esc(B.connectors[b.dataset.unlink].name)} disconnected`); renderConnectors(); refreshAfterConnect(); });
   };

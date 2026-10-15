@@ -3,7 +3,9 @@
 // A session that starts "from onboarding" sees the real read replayed, "Check what we read", and the moves being
 // written, without touching the brand's pack: confirming only marks the session, and the moves already exist.
 import { demoSid } from './demo-mode.js';
-import { SIM_IDS } from './connectors/sim.js';
+import { SIM_IDS as ALL_SIM_IDS } from './connectors/sim.js';
+// Marketplaces is Coming soon (connectors/index.js OFF): the demo doesn't connect it either
+const SIM_IDS = ALL_SIM_IDS.filter((id) => id !== 'marketplaces');
 import { slugOf } from './brand-pack.js';
 import { numbersFor } from './pack-numbers.js'; // one number, one source: the picker shows what every other screen shows
 import fs from 'node:fs';

@@ -19,6 +19,9 @@ import { DEMO, sk } from '../demo-mode.js';
 const REAL = { shopify, meta, google, klaviyo, reviews, marketplaces: market };
 export const CONNECTORS = Object.fromEntries(SIM_IDS.map((id) => [id, { id, name: NAME[id] }]));
 const PUBLIC = new Set(['marketplaces']); // a marketplace read is public data, shown to every viewer
+// Marketplaces is switched off for now (2026-10-16): no connect, no daily read, and an earlier connection is ignored. The page shows
+// the marketplaces as Coming soon (DUMMY.md row 7). Take it out of OFF to bring the connector back.
+const OFF = new Set(['marketplaces']);
 const SYNC_EVERY = 24 * 3600e3, MARKET_EVERY = 24 * 3600e3;
 // DUMMY: simulated on the demo site, and Slack (no real connector) everywhere
 export const simOnly = (id) => DEMO || !REAL[id];
@@ -42,7 +45,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     const c = cache.get(sk(slug)); if (c && !fresh && Date.now() - c.at < 60e3) return c;
     const cs = {}, live = {};
     /* a simulated account saved before the real connectors came back (2026-10-16) counts as not connected on the live site */
-    for (const [id, s] of Object.entries(await conns(slug))) if (!(s?.sim && !simOnly(id))) cs[id] = s;
+    for (const [id, s] of Object.entries(await conns(slug))) if (!OFF.has(id) && !(s?.sim && !simOnly(id))) cs[id] = s;
     for (const [id, s] of Object.entries(cs)) if (s?.state === 'live') { const d = await packs.getJSON(slug, liveName(id), null); if (d && !(d.sim && !simOnly(id))) live[id] = d; }
     const x = { at: Date.now(), live, conns: cs }; cache.set(sk(slug), x); return x;
   }
@@ -124,7 +127,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
 
   /* ---------- what the page needs ---------- */
   const SIM_AVAIL = { demo: true, dummy: true, modes: ['demo'], ready: true, oauth: false, fields: [], picks: false, proof: false };
-  const avail = () => Object.fromEntries(SIM_IDS.map((id) => {
+  const avail = () => Object.fromEntries(SIM_IDS.filter((id) => !OFF.has(id)).map((id) => {
     if (simOnly(id)) return [id, SIM_AVAIL];
     const C = REAL[id];
     return [id, { modes: C.modes, ready: !!C.ready(deps), oauth: C.modes.includes('oauth') && !!C.ready(deps) && (C.oauthOn ? !!C.oauthOn() : true), picks: !!C.picks, proof: C.proof !== false, help: C.help?.() || null, email: C.helpEmail?.() || null,
@@ -159,7 +162,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     const sm = p.match(/^\/connect\/([a-z]+)\/(start|callback)$/);
     if (sm && req.method === 'GET') {
       const [, id, step] = sm, me = auth.user(req);
-      if (!CONNECTORS[id]) return json(res, 404, { error: 'unknown connector' }), true;
+      if (!CONNECTORS[id] || OFF.has(id)) return json(res, 404, { error: 'unknown connector' }), true;
       if (step === 'start') {
         const slug = slugOf(u.searchParams.get('brand'));
         if (!me) return redirect(res, `/auth/google?next=${encodeURIComponent(`/${slug}#v=connectors&cx=${id}`)}`), true;
@@ -191,6 +194,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     const cm = p.match(/^\/api\/brands\/([a-z0-9-]+)\/connect\/([a-z]+)(\/options)?$/);
     if (cm) {
       const [, slug, id, opt] = cm, me = auth.user(req);
+      if (OFF.has(id)) return json(res, 404, { error: 'Marketplaces are coming soon.' }), true;
       if (!CONNECTORS[id]) return json(res, 404, { error: 'unknown connector' }), true;
       if (!me) return json(res, 401, { error: 'Sign in with Google first.', signin: true }), true;
       const access = await auth.claimInfo(slug, me); if (!access.host) return json(res, 404, { error: 'unknown brand' }), true;
@@ -230,7 +234,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     for (const { slug } of await packs.list().catch(() => [])) {
       const cs = await conns(slug).catch(() => ({}));
       for (const [id, s] of Object.entries(cs)) {
-        if (s?.state !== 'live' || simOnly(id) || s.sim) continue;
+        if (s?.state !== 'live' || simOnly(id) || s.sim || OFF.has(id)) continue;
         if (Date.now() - (s.lastSync || 0) > (PUBLIC.has(id) ? MARKET_EVERY : SYNC_EVERY)) await sync(slug, id).catch(() => {});
       }
     }
