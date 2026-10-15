@@ -40,8 +40,10 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
   const cache = new Map(); // slug → { at, live: { id: data }, conns }
   async function liveOf(slug, fresh = false) {
     const c = cache.get(sk(slug)); if (c && !fresh && Date.now() - c.at < 60e3) return c;
-    const cs = await conns(slug), live = {};
-    for (const [id, s] of Object.entries(cs)) if (s?.state === 'live') { const d = await packs.getJSON(slug, liveName(id), null); if (d) live[id] = d; }
+    const cs = {}, live = {};
+    /* a simulated account saved before the real connectors came back (2026-10-16) counts as not connected on the live site */
+    for (const [id, s] of Object.entries(await conns(slug))) if (!(s?.sim && !simOnly(id))) cs[id] = s;
+    for (const [id, s] of Object.entries(cs)) if (s?.state === 'live') { const d = await packs.getJSON(slug, liveName(id), null); if (d && !(d.sim && !simOnly(id))) live[id] = d; }
     const x = { at: Date.now(), live, conns: cs }; cache.set(sk(slug), x); return x;
   }
   // the brand, as the real connectors need it: its site, the Shopify store and Facebook page the read found, its first lane
@@ -222,7 +224,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     for (const { slug } of await packs.list().catch(() => [])) {
       const cs = await conns(slug).catch(() => ({}));
       for (const [id, s] of Object.entries(cs)) {
-        if (s?.state !== 'live' || simOnly(id)) continue;
+        if (s?.state !== 'live' || simOnly(id) || s.sim) continue;
         if (Date.now() - (s.lastSync || 0) > (PUBLIC.has(id) ? MARKET_EVERY : SYNC_EVERY)) await sync(slug, id).catch(() => {});
       }
     }

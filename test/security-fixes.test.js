@@ -124,3 +124,14 @@ test('a real account (Klaviyo, read-only key): the key is encrypted in the vault
     assert.ok(seen.every(([, a]) => a === `Klaviyo-API-Key ${key}`), 'every call carries the brand’s key');
   } finally { globalThis.fetch = real; }
 });
+
+test('a simulated account saved before the real connectors counts as not connected on the live site', async () => {
+  const { packs, C } = sandbox();
+  await packs.put('cozy', 'private/connections.json', { shopify: { state: 'live', sim: true, by: 'ana@cozysnugglet.shop' }, slack: { state: 'live', sim: true } });
+  await packs.put('cozy', 'private/live/shopify.json', { at: 1, sim: true, stats: [['Orders', '9']], cards: [{ id: 'live-shopify-x' }], ledger: [] });
+  await packs.put('cozy', 'private/live/slack.json', { at: 1, sim: true, stats: [['Channel', '#growth']], cards: [], ledger: [] });
+  const L = await C.liveOf('cozy', true);
+  assert.equal(L.conns.shopify, undefined); assert.equal(L.live.shopify, undefined, 'no simulated Shopify next to real accounts');
+  assert.ok(L.live.slack, 'Slack stays simulated');
+  assert.equal((await C.forViewer('cozy', true)).on.shopify, undefined);
+});
