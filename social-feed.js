@@ -204,7 +204,9 @@ export function createSocialScheduler({ packs, ai, treg, memory = null, log = co
     try { const s = await stateOf(slug); s.lastOpen = t; await save(slug, s); } catch {}
   }
   const W = make.listen || ((slug) => createListenWatch({ slug, packs, treg, ai, log }));
-  const I = make.ideas || ((slug) => createIdeas({ slug, packs, ai, treg: cfg.tregOff ? null : treg, log }));
+  const I = make.ideas || ((slug, o = {}) => createIdeas({ slug, packs, ai, treg: cfg.tregOff ? null : treg, log, member: !!o.member }));
+  /* a brand whose team connected real accounts also gets the team's own ideas (private/ideas/), written with their facts */
+  const hasAccounts = async (slug) => Object.values((await packs.getJSON(slug, 'private/facts.json', null).catch(() => null))?.facts || {}).some((f) => f?.kind === 'connected');
   async function remember(slug, r) {
     if (!memory || !r?.themes?.length) return;
     const src = { kind: 'live', label: `Public listening (${Object.values(r.status?.sources || {}).filter((x) => x.state === 'ok').map((x) => x.name).join(', ') || 'Reddit'}), read ${today(now())}` };
@@ -227,6 +229,12 @@ export function createSocialScheduler({ packs, ai, treg, memory = null, log = co
       const ideas = I(slug);
       try { const r = await ideas.next({ n: cfg.ideasN }); charge(s, (r?.usd?.ai || 0) + (r?.usd?.treg || 0)); s.ideas = { at: now(), made: r?.ideas?.length || 0, usd: r?.usd || null, ...(r?.dropped?.length ? { dropped: r.dropped.slice(0, 12).map((d) => ({ title: cut(d.title, 90), platform: d.platform, why: (d.why || []).slice(0, 2).map((w) => cut(w, 160)) })) } : {}) }; /* why ideas were dropped, so a thin run explains itself */ if (!s.ideas.made) { s.ideas.empty = true; log.warn(`[ideas] ${slug}: a paid run made no ideas ($${((r?.usd?.ai || 0) + (r?.usd?.treg || 0)).toFixed(2)})`); } /* an empty paid run is flagged, not silent */ changed = true; }
       catch (e) { charge(s, (ideas.spend?.ai || 0) + (ideas.spend?.treg || 0)); s.ideas = { at: now(), error: e.message }; log.warn?.('[social] ideas', slug, e.message); } }
+    /* the team's ideas: the same day, under what is left of the same daily cap */
+    if (due.ideas && await hasAccounts(slug)) {
+      if (cfg.dayCapUsd - spentToday(s, now()) < cfg.ideasEstUsd) s.memberIdeas = { at: now(), skipped: `daily cap $${cfg.dayCapUsd} reached` };
+      else { const mi = I(slug, { member: true });
+        try { const r = await mi.next({ n: cfg.ideasN }); charge(s, (r?.usd?.ai || 0) + (r?.usd?.treg || 0)); s.memberIdeas = { at: now(), made: r?.ideas?.length || 0, usd: r?.usd || null }; changed = true; }
+        catch (e) { charge(s, (mi.spend?.ai || 0) + (mi.spend?.treg || 0)); s.memberIdeas = { at: now(), error: e.message }; log.warn?.('[social] member ideas', slug, e.message); } } }
     await save(slug, s);
     if (changed) await onFresh(slug).catch((e) => log.warn?.('[social] refresh', slug, e.message));
     return s;

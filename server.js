@@ -354,7 +354,7 @@ if (MEMORY_ON()) setMemoryHooks(memoryHooks(memory, { slugOf: (t) => t?.brandId 
 /* ---------- social: listening and the ideas stream run in the background (social-feed.js). Caps: SOCIAL_DAY_CAP_USD (default $2 a brand a day),
    LISTEN_OFF / IDEAS_OFF kill switches, paid sources on (LISTEN_PAID=0 turns them off); off under AI_MOCK and on local servers (RESEARCH_OFF / LIVE_OFF) unless SOCIAL_BG=1 ---------- */
 const social = createSocialScheduler({ packs, ai, treg, memory: MEMORY_ON() ? memory : null, log: console,
-  onFresh: async (slug) => { forgetSocial(slug); packs.drop(slug); attach(await packs.load(slug)); feedSvc?.syncSocial(slug); } });
+  onFresh: async (slug) => { forgetSocial(slug); packs.drop(slug); attach(await packs.load(slug)); feedSvc?.syncSocial(slug); connectors?.drop(slug); await feedSvc?.refreshLive(slug).catch(() => {}); /* the team's ideas */ } });
 social.start();
 /* ---------- evidence in the background: market numbers once a day (only the signals that are due run), and a weekly read of the top
    videos people talk about. Same switches as social (SOCIAL_BG / RESEARCH_OFF / LIVE_OFF, off under AI_MOCK); EVIDENCE_OFF=1 stops it ---------- */

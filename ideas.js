@@ -59,7 +59,10 @@ const URLRE = /\bhttps?:\/\/\S+|\bwww\.\S+|\b[a-z0-9-]+\.(?:com|in|co|shop|store
 /* digit runs as written ("5,899" → "5899"), for the no-invented-numbers gate */
 const digitsIn = (s) => (String(s || '').match(/\d[\d,]*(?:\.\d+)?/g) || []).map((x) => x.replace(/,/g, '').replace(/\.0+$/, ''));
 
-export function createIdeas({ slug, packs, ai, treg, log = console, now = () => Date.now() }) {
+/* member: the team's stream (private/ideas/), whose evidence also holds the connected accounts' facts (private/facts.json, real
+   accounts only); the public stream (ideas/) never reads them */
+export function createIdeas({ slug, packs, ai, treg, log = console, now = () => Date.now(), member = false }) {
+  const DIR = member ? 'private/ideas/' : 'ideas/';
   const T = () => (typeof now === 'function' ? now() : +now || Date.now());
   const today = () => new Date(T()).toISOString().slice(0, 10);
   let ctx = null;
@@ -85,6 +88,8 @@ export function createIdeas({ slug, packs, ai, treg, log = console, now = () => 
     if (profile.about) add('About the brand (own site)', profile.about, profile.aboutUrl || profile.url, 'doc');
     if (profile.host) add('Website', profile.host, profile.url, 'doc');
     for (const f of Object.values(facts)) if (f.kind !== 'price' && f.kind !== 'demo' && f.label && !/font|logo|sitemap|platform|currency|shop country|tech on the site|checkout|pages listed/i.test(f.label)) add(f.label, f.v, f.url || f.src, 'fact');
+    const acct = member ? Object.values((await g('private/facts.json', null))?.facts || {}).filter((f) => f?.kind === 'connected' && f.label && f.v != null) : [];
+    for (const f of acct) add(`${f.label} (${f.src || 'connected account'})`, f.v, '', 'account');
     for (const r of (profile.reviews?.recent || profile.reviews?.quotes || [])) if ((r.text || '').length >= 12) add(`Review, ${r.product || name} (${r.src || 'review'}${r.verified ? ', verified' : ''}, ${r.rating || '?'}★, ${r.at || ''})`, r.text, r.url, 'review');
     for (const q of (brief.quotes || [])) add(`Review quote (${q.src})`, q.text, '', 'review');
     for (const c of (brief.claims || [])) add(`Brand claim: ${c.product} (${c.basis})`, c.claim, '', 'claim');
@@ -123,7 +128,7 @@ export function createIdeas({ slug, packs, ai, treg, log = console, now = () => 
       communities: (Array.isArray(lComms) ? lComms : lComms?.communities || []).filter((c) => c?.url).sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 8).map((c) => ({ name: c.name || (c.subreddit ? 'r/' + c.subreddit : c.url), url: c.url, platform: c.platform || (c.subreddit ? 'reddit' : ''), sub: c.subreddit || (c.url.match(/\/r\/([^/]+)/) || [])[1] || '', rules: typeof c.rules === 'string' ? c.rules : Array.isArray(c.rules) ? c.rules.map((r) => r.text || r.name || r).join('\n') : '', weekly: c.weekly || null, why: c.why || '', themes: c.themes || [] }))
     };
     const lanes = Object.keys(seed.lanes || {});
-    ctx = { profile, facts, config, seed, brief, ledger, name, sym, cat, noun, ev, products, movesD, socials, founders, founderRoles, listen, lanes, country: profile.country || config.country || '', countryName: config.countryName || profile.country || '' };
+    ctx = { member, accountFacts: acct.length, profile, facts, config, seed, brief, ledger, name, sym, cat, noun, ev, products, movesD, socials, founders, founderRoles, listen, lanes, country: profile.country || config.country || '', countryName: config.countryName || profile.country || '' };
     // the allowed numbers: anything that appears in the evidence, facts, ledger, product titles or the threads we hand the writer
     ctx.allowNums = new Set(); ctx.allowMoney = new Set();
     const feed = ctx.feed = (s) => { digitsIn(s).forEach((d) => ctx.allowNums.add(d)); numbersIn(s).forEach((n) => ctx.allowMoney.add(n)); };
@@ -430,16 +435,19 @@ For each: title, hook, full copy, cta, hashtags, media (kind; for image/carousel
 
   /* ---------- the stream: fresh batches, stored ---------- */
   async function next({ n = 12, platforms, seed } = {}) {
-    const stored = await packs.getJSON(slug, 'ideas/ideas.json', { items: [] }).catch(() => ({ items: [] }));
-    const seen = await packs.getJSON(slug, 'ideas/seen.json', { titles: [], threads: [] }).catch(() => ({ titles: [], threads: [] }));
+    const stored = await packs.getJSON(slug, `${DIR}ideas.json`, { items: [] }).catch(() => ({ items: [] }));
+    const seen = await packs.getJSON(slug, `${DIR}seen.json`, { titles: [], threads: [] }).catch(() => ({ titles: [], threads: [] }));
     const st = new Set(seen.titles || []), sth = new Set(seen.threads || []);
-    const r = await generate({ n, platforms, seed, avoid: [...(stored.items || []).slice(-60).map((i) => `${i.platformLabel || i.platform}: ${i.title}`), ...[...sth].slice(-30).map((u) => 'replied: ' + u)] });
+    /* the team's stream also steers clear of the public ideas (the team sees both) */
+    const other = member ? ((await packs.getJSON(slug, 'ideas/ideas.json', { items: [] }).catch(() => ({ items: [] })))?.items || []).slice(-40) : [];
+    const r = await generate({ n, platforms, seed, avoid: [...[...other, ...(stored.items || []).slice(-60)].map((i) => `${i.platformLabel || i.platform}: ${i.title}`), ...[...sth].slice(-30).map((u) => 'replied: ' + u)] });
+    if (member) r.ideas.forEach((i) => { i.member = true; });
     const fresh = r.ideas.filter((i) => !st.has(norm(i.title)) && !(i.format === 'reply' && i.where.some((w) => w.kind === 'thread' && sth.has(w.url))));
     r.dropped.push(...r.ideas.filter((i) => !fresh.includes(i)).map((i) => ({ title: i.title, platform: i.platform, why: ['already made (title or replied thread)'] })));
     fresh.forEach((i) => { st.add(norm(i.title)); if (i.format === 'reply') i.where.filter((w) => w.kind === 'thread').forEach((w) => sth.add(w.url)); });
     const items = [...(stored.items || []), ...fresh].slice(-300);
-    await packs.put(slug, 'ideas/ideas.json', { at: new Date(T()).toISOString(), items });
-    await packs.put(slug, 'ideas/seen.json', { titles: [...st].slice(-2000), threads: [...sth].slice(-1000) });
+    await packs.put(slug, `${DIR}ideas.json`, { at: new Date(T()).toISOString(), items });
+    await packs.put(slug, `${DIR}seen.json`, { titles: [...st].slice(-2000), threads: [...sth].slice(-1000) });
     return { ...r, ideas: fresh };
   }
 

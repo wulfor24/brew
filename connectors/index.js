@@ -18,6 +18,7 @@ import { createSim, SIM_IDS, NAME } from './sim.js';
 import { createVault } from '../vault.js';
 import { DEMO, sk } from '../demo-mode.js';
 import { privId, realRows } from './common.js';
+import { ideaCards, pickIdeas } from '../social-feed.js';
 
 const REAL = { shopify, meta, ga4, google, klaviyo, reviews, slack, marketplaces: market };
 export const CONNECTORS = Object.fromEntries(SIM_IDS.map((id) => [id, { id, name: NAME[id] }]));
@@ -183,7 +184,11 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     let privMoves = [];
     if (member) { const pc = await packs.getJSON(slug, 'private/cards.json', []).catch(() => []);
       for (const c of Array.isArray(pc) ? pc : []) if (c?.id && c.privateOf != null) cards.push({ ...c, id: privId(c.id), liveOnly: true });
-      privMoves = [...new Set(cards.filter((c) => c.privateOf != null).map((c) => +c.privateOf))]; }
+      privMoves = [...new Set(cards.filter((c) => c.privateOf != null).map((c) => +c.privateOf))];
+      /* the team's ideas (private/ideas/ideas.json, written with the connected facts): members only, next to the public ones */
+      const mi = await packs.getJSON(slug, 'private/ideas/ideas.json', null).catch(() => null);
+      if (mi?.items?.length) { const seed = (await packs.getJSON(slug, 'seed.json', {}).catch(() => ({}))) || {};
+        cards.push(...ideaCards(pickIdeas(mi.items), seed).map((c) => ({ ...c, id: privId(c.id), liveOnly: true, memberIdea: true }))); } }
     return { cards, on, privMoves, ledger };
   }
 

@@ -147,6 +147,55 @@ test('scorecard route: a member gets the team scorecard (healed from today’s r
   assert.equal((await get({ member: true })).body.scorecard.private, undefined);
 });
 
+/* ---------- 3. ideas ---------- */
+const { createIdeas } = await import('../ideas.js');
+const { connectedFacts } = await import('../facts-desk.js');
+/* a fake writer that always tries to quote the team's order value: the public stream must lose it, the team's may keep it */
+const ideasAI = () => { const calls = [], prompts = []; return { live: true, calls, prompts, call: async (q) => { calls.push(q.tag); prompts.push(q.prompt);
+  const slots = [...q.prompt.matchAll(/^slot (\d+):/gm)].map((m) => +m[1]);
+  const acct = (q.prompt.match(/\[?(E\d+)\]?[^\n]*Average order value[^\n]*/) || [])[1];
+  if (q.tag === 'ideas:slate') return { usd: 0.01, json: { items: [...new Set(slots)].map((slot) => ({ slot, angle: 'Our order value story', evidence: acct ? [acct] : ['E1'], where: [], moves: [], product: '', query: '' })) } };
+  if (q.tag === 'ideas:write') return { usd: 0.01, json: { ideas: [...new Set(slots)].map((slot) => ({ slot, title: `Why people keep coming back ${'abcdefgh'[slot] || 'z'}`, hook: 'Comfort that lasts all day long.',
+    copy: `${/\$623/.test(q.prompt) ? 'Our average order is $623 this month. ' : ''}People buy the Runner for comfort that lasts all day long and they tell their friends about it.`, cta: 'Shop the Runner', hashtags: ['#acme'], media: { kind: 'none' }, where: [], evidence: acct ? [acct] : [] })) } };
+  return { usd: 0.01, json: { checks: [] } }; } }; };
+
+test('ideas: the team’s stream may use the connected facts as evidence; the public stream never reads them', async () => {
+  const { ROOT, P } = mkPacks('ideas'), slug = 'acme-com'; await brand(P, slug);
+  await P.put(slug, 'private/facts.json', { at: NOW, facts: connectedFacts(ROWS, {}) });
+  const pai = ideasAI(), pub = createIdeas({ slug, packs: P, ai: pai, treg: null, log: quiet, now: () => NOW });
+  const team = createIdeas({ slug, packs: P, ai: ideasAI(), treg: null, log: quiet, now: () => NOW, member: true });
+  const cp = await pub.load(), ct = await team.load();
+  assert.equal(cp.ev.filter((e) => e.kind === 'account').length, 0, 'public evidence has no account facts'); assert.ok(!cp.allowNums.has('623'));
+  assert.ok(ct.ev.some((e) => e.kind === 'account' && /Average order value/.test(e.label) && e.value === '$623')); assert.ok(ct.allowNums.has('623'));
+  const rp = await pub.next({ n: 2 }), rt = await team.next({ n: 2 });
+  assert.ok(rp.ideas.length && rt.ideas.length, JSON.stringify([rp.dropped, rt.dropped]).slice(0, 600));
+  assert.ok(pai.prompts.length && pai.prompts.every((x) => !SECRET.test(x)), 'the public writer is never shown the team’s numbers'); assert.ok(rp.ideas.every((i) => !/623/.test(i.copy))); assert.ok(rt.ideas.some((i) => /\$623/.test(i.copy) && i.member));
+  assert.doesNotMatch(JSON.stringify(await P.getJSON(slug, 'ideas/ideas.json')), SECRET);
+  assert.match(JSON.stringify(await P.getJSON(slug, 'private/ideas/ideas.json')), /\$623/);
+  for (const f of publicFiles(ROOT, slug)) assert.doesNotMatch(fs.readFileSync(f, 'utf8'), SECRET, path.relative(ROOT, f));
+  /* the feed: members get the team's idea cards (members only), visitors none of them */
+  const C = createConnectors({ packs: P, auth: { claimInfo: async () => ({}), signinOn: () => true, isAdmin: () => false }, builder: {}, treg: null, log: quiet });
+  const mem = await C.forViewer(slug, true), vis = await C.forViewer(slug, false);
+  const mi = mem.cards.filter((c) => c.memberIdea); assert.ok(mi.length); assert.ok(mi.every((c) => /-p$/.test(c.id) && c.liveOnly && c.stream === 'ideas'));
+  assert.match(JSON.stringify(mi), /\$623/); assert.deepEqual(mem.privMoves, [], 'an idea is not a move');
+  assert.deepEqual(vis.cards, []); assert.doesNotMatch(JSON.stringify(vis), SECRET);
+});
+
+test('ideas scheduler: the team’s stream runs only with real accounts connected, under the same daily cap', async () => {
+  const { social } = { social: await import('../social-feed.js') }, { P } = mkPacks('ideas-sched'), slug = 'acme-com'; await brand(P, slug);
+  const runs = []; const make = { listen: () => ({ run: async () => ({}) }), ideas: (s, o = {}) => ({ spend: {}, next: async () => { runs.push(!!o.member); return { ideas: [{}], usd: { ai: 0.4, treg: 0 } }; } }) };
+  const S = social.createSocialScheduler({ packs: P, ai: { live: true }, treg: null, log: quiet, env: {}, now: () => NOW, make });
+  await S.runOne(slug, { ideas: true, listen: false, left: 3 }); assert.deepEqual(runs, [false], 'no connected facts: public only');
+  await P.put(slug, 'private/facts.json', { at: NOW, facts: connectedFacts(ROWS.map((e) => ({ ...e, demo: true })), {}) });
+  runs.length = 0; await S.runOne(slug, { ideas: true, listen: false, left: 3 }); assert.deepEqual(runs, [false], 'simulated accounts: public only');
+  await P.put(slug, 'private/facts.json', { at: NOW, facts: connectedFacts(ROWS, {}) });
+  runs.length = 0; await S.runOne(slug, { ideas: true, listen: false, left: 3 }); assert.deepEqual(runs, [false, true], 'real accounts: the team’s stream too');
+  const st = await S.stateOf(slug); assert.equal(st.memberIdeas.made, 1);
+  /* the cap: spent up already, the team's run waits */
+  st.spend = { day: new Date(NOW).toISOString().slice(0, 10), usd: 1.7 }; runs.length = 0; await S.runOne(slug, { ideas: true, listen: false, left: 1.3 });
+  assert.deepEqual(runs, [false]); assert.match((await S.stateOf(slug)).memberIdeas.skipped, /cap/);
+});
+
 test('the feed knows a weekly move’s card by its number, so the shared one steps aside for the team’s copy', async () => {
   const { moveOfId } = await import('../feed-service.js');
   assert.equal(moveOfId('m04-1'), 4); assert.equal(moveOfId('m1004-1'), 1004); assert.equal(moveOfId('m1004-2-p'), 1004);
