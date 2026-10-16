@@ -2711,3 +2711,16 @@ body:not(.ui2) .lx-col .lx > .q-note{padding:6px 0 28px;text-align:center;font-s
 .lx[data-m2-drop]{position:relative}
 .lx[data-m2-drop].is-over::after{content:'Drop it here, then choose where it goes';position:absolute;inset:-10px;z-index:5;display:grid;place-items:center;border:2px dashed var(--fg-2);border-radius:22px;background:color-mix(in srgb,var(--bg) 85%,transparent);color:var(--fg);font-size:16px;font-weight:600;pointer-events:none}
 @media (max-width:560px){body:not(.ui2) .lx-col .lib-head{grid-template-columns:1fr}.lx-hacts{grid-column:1;grid-row:auto;margin-top:12px}.lx-ov{grid-template-columns:repeat(2,minmax(0,1fr))}body:not(.ui2) .lx-col .lx > .lx-sec{padding:16px}}
+/* the top bar a size up on desktop (Param 2026-10-16): Feed | Deck, the team pill, Viewing as and the theme switch */
+@media (min-width:701px){
+  .topbar .seg{padding:4px}
+  .topbar .seg button{height:36px;padding:0 16px;gap:8px;font-size:15.5px}
+  .topbar .seg button .ic{width:18px;height:18px}
+  .topbar-r{gap:8px;align-items:center}
+  .topbar-r .viewing{height:42px;gap:9px;padding:0 12px 0 8px;font-size:15.5px}
+  .topbar-r .viewing .face{width:26px;height:26px}
+  .topbar-r .j1-pill{height:42px;gap:9px;margin:0;padding:0 14px 0 12px;font-size:15.5px}
+  .topbar-r .j1-pill .ic,.topbar-r .viewing .ic{width:17px;height:17px}
+  .topbar-r > .icon-btn{width:42px;height:42px}
+  .topbar-r > .icon-btn .ic{width:21px;height:21px}
+}
