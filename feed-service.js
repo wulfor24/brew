@@ -182,7 +182,7 @@ export function createFeedService(o) {
   const isMock = () => !!o.isMock?.() || demoReq(), spend = (k) => !demoReq() && (o.spend ? o.spend(k) : true);
   // real connected accounts (connectors/index.js): who is on the brand's team, and the live cards they get
   const viewerOf = o.viewerOf || (async () => ({ member: false, claimed: false })), liveFor = o.liveFor || (async () => ({ cards: [], on: {}, privMoves: [] }));
-  const photoFile = o.photoFile || ((rel) => path.join(PUB, rel));
+  const photoFile = o.photoFile || ((rel) => { const f = path.resolve(PUB, String(rel || '')); return /\.\./.test(String(rel || '')) || !f.startsWith(PUB + path.sep) ? null : f; });
   // research rings and live watchers run per brand (server.js attaches them to each pack)
   const research = liveView((b) => b.research), live = liveView((b) => b.live);
   const brandTenants = (b) => [...tenants.values()].filter((t) => (t.brandId || DEFAULT_BRAND) === b.slug);
@@ -1673,7 +1673,7 @@ export function createFeedService(o) {
     return guestAllows(path, { wids, changes, cards: new Set(all.filter((w) => wids.includes(w.id)).map((w) => w.cardId).filter(Boolean)) });
   };
   /* the writes a demo-mode visitor may still make: none of them calls a model or makes an asset */
-  const DEMO_OK = /^\/api\/(tenants|work|tenants\/[^/]+\/(ready|clock|events|pin|cards|notes\/(clear|read)|stories\/[^/]+\/seen|deck-layout|state|learning\/.+)|cards\/[^/]+\/(feedback|decided)|work\/[^/]+\/(decided|discard|restore|pick|version|approve|reopen|edit|jb\/move|draft\/[^/]+\/drop)|changes\/[^/]+\/(open|discard|restore|pick|notes|edit))$/;
+  const DEMO_OK = /^\/api\/(tenants|work|brands\/[^/]+\/drop|tenants\/[^/]+\/(ready|clock|events|pin|cards|notes\/(clear|read)|stories\/[^/]+\/seen|deck-layout|state|learning\/.+|ask|tuning(\/.+)?)|cards\/[^/]+\/(feedback|decided)|work\/[^/]+\/(decided|discard|restore|pick|version|approve|reopen|edit|jb\/move|draft\/[^/]+\/drop)|changes\/[^/]+\/(open|discard|restore|pick|notes|edit))$/;
   // every request runs inside its brand: the tenant's brand, or (creating one) the brand the page was opened for
   const handle = async (req, res, u) => {
     if (!/^\/(h\/|api\/(share|tenants|cards|jams|work|changes|brands\/[a-z0-9-]+\/drop$))/.test(u.pathname)) return false;
@@ -1707,7 +1707,7 @@ export function createFeedService(o) {
       if (/^\/api\/tenants\/[^/]+\/stories$/.test(u.pathname)) { send(res, 200, { rings: [], teamOnly: true }); return true; }
       /* the onboarding stream replays the brand's whole read (its findings): outside the team it only says it is ready */
       if (/^\/api\/tenants\/[^/]+\/onboarding$/.test(u.pathname)) { res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store' }); res.end(`data: ${JSON.stringify({ type: 'ready', teamOnly: true })}\n\n`); return true; }
-      if (/^\/api\/tenants\/[^/]+\/(deck|pulse|engine|remixes|learning)$/.test(u.pathname)) { send(res, 200, { teamOnly: true }); return true; }
+      if (/^\/api\/tenants\/[^/]+\/(deck|pulse|engine|remixes|learning|ask|tuning)$/.test(u.pathname)) { send(res, 200, { teamOnly: true }); return true; }
       const bareCard = /^\/api\/cards\/([^/]+)$/.exec(u.pathname), guestCard = bareCard && viewer?.email && (JAMS.peek(br.slug)?.work || []).some((w) => JAMS.guestWids(br.slug, viewer.email).includes(w.id) && w.cardId === decodeURIComponent(bareCard[1]));
       if (/^\/api\/cards\//.test(u.pathname) && !guestJam && !guestCard && !(t0 && viewer?.email && guestOk(t0, viewer.email, u.pathname))) { send(res, viewer?.email ? 403 : 401, { error: 'This brand’s cards are for its team.', team: true, signin: !viewer?.email }); return true; }
     }
@@ -1731,6 +1731,8 @@ export function createFeedService(o) {
       if (u.searchParams.get('full') !== '1') { res.writeHead(302, { location: jamPath(t, w), 'cache-control': 'no-store' }); res.end(); return true; }
       /* a shared brief is frozen: the page shows what was shared (w.jamBrief.context), not the jam as it is now; sharing again replaces it */
       const x = w.jamBrief?.context ? { ...w.jamBrief.context, frozenAt: w.jamBrief.sharedAt || null } : await HO.build(t, w, { base: `${req.headers['x-forwarded-proto'] || (req.socket.encrypted ? 'https' : 'http')}://${req.headers.host}` });
+      /* the content is frozen, the stamp is not: it shows where the brief is now (Received, In progress, Delivered…) */
+      const jb = w.jamBrief; if (jb) x.memo = { ...(x.memo || {}), status: jb.status ? { sent: 'Sent', received: 'Received', in_progress: 'In progress', needs_info: 'Needs info', delivered: 'Delivered' }[jb.status] || null : null, ...(jb.sender && !x.memo?.from ? { from: jb.sender.name || jb.sender.email || null } : {}) };
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' }); res.end(HO.html(x)); return true;
     }
     const sm = u.pathname.match(/^\/api\/share\/([\w~-]+)$/);

@@ -1,6 +1,7 @@
 // Brew prototype server: read → moves → feed → jam → share the brief.
 // Serves public/ and a few /api routes: live Claude text, live Gemini (Vertex) images,
 // dummy Slack. Keys come from an env file (ENV_FILE, default ../ugc-factory/.env) and are never sent to the page.
+import { makePhotoFile } from './safe-path.js';
 import { createJamMail } from './jam-mail.js';
 import { configureGen, saveGen, genFile, researchFile } from './gen-store.js';
 import http from 'node:http';
@@ -252,7 +253,7 @@ const send = (res, code, body, type = 'application/json') => { res.writeHead(cod
 const readBody = (req) => new Promise((res) => { let d = ''; req.on('data', (c) => (d += c)); req.on('end', () => { try { res(JSON.parse(d || '{}')); } catch { res({}); } }); });
 // a page-relative image path → the file: public/… or a brand pack asset (b/<slug>/a/<file>)
 const BRANDS_DIR = path.join(ROOT, '.brands');
-const photoFile = (rel) => { const r = String(rel || '').replace(/^\/+/, '').replace(/[?#].*$/, ''); const m = /^b\/([a-z0-9-]+)\/a\/([\w.-]+)$/.exec(r); return m ? path.join(BRANDS_DIR, m[1], 'assets', m[2]) : path.join(PUB, r); };
+const photoFile = makePhotoFile(PUB, BRANDS_DIR); /* never outside public/ or a brand's assets (safe-path.js) */
 const isFile = (f) => { try { return !!f && fs.statSync(f).isFile(); } catch { return false; } };
 /* a local path this instance lacks (photoFile of a brand asset, a research photo or a generated file that lives only in the
    bucket, or this instance's own empty disk after a restart): the bucket's copy, or null. The image guard calls it */

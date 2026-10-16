@@ -970,7 +970,7 @@
     $$('[data-count="bell"]').forEach((b) => { b.textContent = WORK.unread || ''; b.classList.toggle('hot', !!WORK.unread); });
     const vb = $('[data-viewing]'); if (vb) vb.innerHTML = `${face(ROLE().face)}<span><i class="va">Viewing as </i><b>${esc(ROLE().name)}</b></span>${ic('chev', 's14')}`;
     $$('.rail [data-nav]').forEach((b) => b.classList.toggle('on', b.dataset.nav === (['jams', 'remixes'].includes(view) ? 'saved' : ['move', 'moves'].includes(view) ? 'learned' : view)));
-    if (UI2) { $$('.r2 [data-nav]').forEach((b) => b.classList.toggle('is-on', b.dataset.nav === (['feed', 'deck', 'saved', 'jams', 'work', 'done', 'queue'].includes(view) ? 'feed' : ['learned', 'move', 'moves', 'facts', 'heard'].includes(view) ? 'learned' : view)));
+    if (UI2) { $$('.r2 [data-nav]').forEach((b) => b.classList.toggle('is-on', b.dataset.nav === (['feed', 'deck', 'saved', 'jams', 'work', 'done', 'queue'].includes(view) ? 'feed' : ['learned', 'move', 'moves', 'facts', 'heard', 'rules', 'tune'].includes(view) ? 'learned' : view)));
       const tp = $('[data-team-pill]'), wt = WORK.withTeam || { n: 0 }, n = wt.n || 0; if (tp) { tp.hidden = !n; tp.querySelector('[data-count="team"]').textContent = `${n} with the team`; tp.classList.toggle('is-ask', !!wt.needsInfo); } }
     paintTabbar();
   };
@@ -979,6 +979,7 @@
   /* UI2 phone tabs: Home, Deck, Ask Brew in the middle, Memory, Connectors (Profile and notifications sit in the top bar) */
   const TABS2 = [['feed', 'home', 'Home'], ['deck', 'deck', 'Deck'], ['+', 'sparkles', 'Ask Brew'], ['learned', 'book', 'Memory'], ['connectors', 'plug', 'Connectors']];
   const TITLES = { feed: `${B.brand.name}`, deck: 'Deck', work: 'Work', saved: 'Library', jams: 'Library', remixes: 'Library', learned: 'Learned', moves: 'Moves', move: 'Move', engine: 'How it works', connectors: 'Connectors', queue: `${B.brand.name}`, remix: 'Remix' };
+  if (UI2) Object.assign(TITLES, { learned: 'Memory', moves: 'Memory', facts: 'Memory', heard: 'Memory', rules: 'Memory', tune: 'Memory', saved: 'Shortlisted', jams: 'Jams', work: 'In progress', done: 'Briefs sent', queue: 'Needs your yes', remix: 'Jam' });
   const paintTabbar = () => {
     document.body.dataset.view = BOOT_RX ? 'remix' : view; /* a studio link is the studio from the first paint, even while the feed boots underneath */
     let bar = $('#tabbar');
@@ -1310,7 +1311,7 @@
   const closePop = () => $('#pop')?.remove();
   document.addEventListener('click', (e) => {
     const m = e.target.closest('[data-more]');
-    if (!m) { if (!e.target.closest('#pop')) closePop(); return; }
+    if (!m) { if (!e.target.closest('#pop') && !e.target.closest('[data-team-pill]')) closePop(); return; }
     const card = m.closest('.card'); const p = FEED[+card.dataset.post]; if (!p) return;
     closePop();
     const r = m.getBoundingClientRect();
@@ -1833,7 +1834,7 @@
     const ch = w?.changeId && DP.ch?.id === w.changeId ? DP.ch : null;
     if (w?.changeId && !ch && DP.loadingCh !== w.changeId) { DP.loadingCh = w.changeId; tapi('GET', `/api/changes/${w.changeId}`).then((r) => { if (r.change && DP && DP.w?.changeId === r.change.id) { DP.ch = r.change; repaintDetail(); } }); }
     const m = w?.measure || c.measure || null;
-    const prevScroll = $('.dr-b', dp)?.scrollTop; if ($('.cp-rank', dp)) DP.rankOpen = $('.cp-rank', dp).open;
+    const prevScroll = $('.dr-b', dp)?.scrollTop, pageScroll = $('.dp-page', dp)?.scrollTop; if ($('.cp-rank', dp)) DP.rankOpen = $('.cp-rank', dp).open;
     dp.dataset.work = w?.id || '';
     const rows = c.kind !== 'rows' && c.rows?.length ? `<div class="inset"><div class="rows">${c.rows.map(([k, vv]) => `<div><span>${esc(k)}</span><b>${esc(vv)}</b></div>`).join('')}</div></div>` : '';
     const rel = FEED.filter((x) => x.id !== p.id && !x.parentCardId && (x.lane === p.lane || x.agent === p.agent)).slice(0, 3);
@@ -1872,7 +1873,9 @@
       </div>
       <aside class="dp-side"><div class="dp-side-b">${ch && (ch.thread?.length || w?.thread?.length) ? `<section class="dp-thread"><h4>Conversation <small>studio and jam</small></h4>${mergedThread(w, ch)}</section>` : w?.thread?.length ? `<section class="dp-thread"><h4>Conversation</h4>${threadHtml(w)}</section>` : `<div class="dp-side-empty">${ic('hand')}<b>Jam on this card</b><span>Ask AI to change it, pull in a teammate on Slack, or hand it to the ShopOS team. Everything you say and every version lands here.</span></div>`}</div>
       <div class="dr-f dp-f">${footer}</div></aside></div>`;
+    if (UI2 && pageScroll) { const pg = $('.dp-page', dp); if (pg) pg.scrollTop = pageScroll; } /* UI2: the whole page scrolls; a repaint keeps your place */
     window.JamRoom?.decorateDetail(dp, DP);
+    if (UI2 && window.__jmGrew) { window.__jmGrew = false; const pg = $('.dp-page', dp); if (pg) pg.scrollTop = pg.scrollHeight; } /* a new message: the page ends at the conversation */
     if (before) flashLeft(dp, before);
     jmSheet(dp); dp.classList.toggle('is-fresh', !!SPLIT && !String(p.id).startsWith('jam-') && !jamOn(p, w));
     const body = $('.dr-b', dp), side = $('.dp-side-b', dp); if (prevScroll) body.scrollTop = prevScroll; if (DP.scrollThread) { side.scrollTop = side.scrollHeight; DP.scrollThread = false; } else if (sideScroll) side.scrollTop = sideScroll;
@@ -2282,22 +2285,22 @@
     renderEngine(true);
   });
 
-  const renderView = () => ({ feed: renderFeed, saved: renderSaved, jams: () => renderJams(false), remixes: () => renderJams(false), done: renderWork, work: renderWork, engine: renderEngine, connectors: renderConnectors, deck: renderDeck, learned: renderLearned, heard: () => renderHeard(), facts: () => renderFacts(), moves: renderMoves, move: renderMove, remix: () => (RX.p ? openRemix(RX.p) : renderFeed()), queue: () => renderQueue() }[view] || renderFeed)();
+  const renderView = () => ({ ...(UI2 ? { tune: renderTune, rules: renderRules } : {}), feed: renderFeed, saved: renderSaved, jams: () => renderJams(false), remixes: () => renderJams(false), done: renderWork, work: renderWork, engine: renderEngine, connectors: renderConnectors, deck: renderDeck, learned: renderLearned, heard: () => renderHeard(), facts: () => renderFacts(), moves: renderMoves, move: renderMove, remix: () => (RX.p ? openRemix(RX.p) : renderFeed()), queue: () => renderQueue() }[view] || renderFeed)();
 
   /* ---------- nav ---------- */
   document.addEventListener('click', (e) => {
     const n = e.target.closest('[data-nav]');
-    if (n) { const v = n.dataset.nav; closePop(); closeModal();
+    if (n) { const v = n.dataset.nav; closePop(); closeModal(); if (UI2) { $('.r2.open')?.classList.remove('open'); $('[data-r2-open]')?.setAttribute('aria-expanded', 'false'); }
       if (v === 'deck' && !S.pro && !UI2) return openPlan('deck'); /* the Pro offer opens over where you are; closing it leaves you there, not on a #v=deck that isn't open */
       if (DP) closeDetail(true); $('#rxd')?.remove(); $('#rxd-scrim')?.remove(); RX.ch = null; VIEWS()[v](); const vh = v === 'feed' ? '' : `#v=${v}`; nav(vh || location.pathname, location.hash !== vh, 'view', v); window.scrollTo(0, 0); return; }
     if (e.target.closest('[data-theme-btn]')) { setTheme(curTheme() === 'dark' ? 'light' : 'dark'); return; }
     if (e.target.closest('[data-open-jam]')) { openJam({ tab: 'ai' }); return; }
     /* UI2 shell: open/close the rail, Tune, Ask Brew (the global jam until Ask Brew lands), the brief pill */
     const ro = e.target.closest('[data-r2-open]'); if (ro) { const r = ro.closest('.r2'), o = !r.classList.contains('open'); r.classList.toggle('open', o); ro.setAttribute('aria-expanded', String(o)); return; }
-    if (UI2 && !e.target.closest('.r2')) $('.r2.open')?.classList.remove('open');
-    if (e.target.closest('[data-r2-tune]')) { $('.r2.open')?.classList.remove('open'); whoFor(); return; }
+    if (UI2 && !e.target.closest('.r2') && $('.r2.open')) { $('.r2.open').classList.remove('open'); $('[data-r2-open]')?.setAttribute('aria-expanded', 'false'); }
+    if (e.target.closest('[data-r2-tune]')) { $('.r2.open')?.classList.remove('open'); closePop(); closeModal(); $('#vw-pop')?.remove(); whoFor(); return; }
     const ak = e.target.closest('[data-ask]'); if (ak) { let seed = null; try { seed = ak.dataset.ask ? JSON.parse(ak.dataset.ask) : null; } catch (x) {} openAsk(seed); return; }
-    const fm = e.target.closest('[data-find-more]'); if (fm) { fm.disabled = true; refreshFeed({ force: true }).then(() => { fm.disabled = false; toast('Your agents are on it. New cards land at the top.'); }); return; }
+    const fm = e.target.closest('[data-find-more]'); if (fm) { fm.disabled = true; refreshFeed({ force: true }).then((ok) => { fm.disabled = false; toast(ok ? 'Pulled in the latest. New cards land at the top as your agents finish.' : 'Already refreshing. New cards land at the top.'); }); return; }
     const tpl = e.target.closest('[data-team-pill]'); if (tpl) { e.stopPropagation(); if ($('#pop.t2-pop')) return closePop(); closePop(); const it = WORK.withTeam?.items || [];
       const pop = document.createElement('div'); pop.id = 'pop'; pop.className = 'pop t2-pop'; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Briefs with the ShopOS team');
       pop.innerHTML = `<header><b>With the ShopOS team</b><small>Briefs you sent and where each one is</small></header>${it.map((x) => `<button class="t2-bi" data-witem="${esc(x.wid)}"><span class="t2-bt"><b>${esc(x.title || 'Brief')}</b><small>${esc(x.ticket || '')}${x.at ? ` · ${ago(x.at)}` : ''}</small></span><span class="t2-bs is-${esc(x.status)}">${esc(x.label || x.status)}</span></button>`).join('') || '<p class="t2-empty">Nothing with the team right now.</p>'}<footer><button class="linkbtn" data-nav="done">All briefs ${ic('right', 's14')}</button></footer>`;
@@ -2364,7 +2367,7 @@
       <button class="lg-row" data-m="demo"><span class="lg-ic">${ic('sliders', 's16')}</span><span class="lg-tx"><b>Demo controls</b><span>Press . anywhere</span></span>${ic('right', 's16')}</button>
       <div class="row2"><button class="btn btn-ghost sm" data-m="restart">Start over from the website</button><button class="btn btn-ghost sm" data-m="reset">Reset demo</button></div></div>`, (m) => {
     $('[data-m="view"]', m).onclick = () => { closeModal(); openViewing(); };
-    const ac = $('[data-m="acct"]', m); if (ac) ac.onclick = () => { closeModal(); window.LiveConn?.menu($('.r2-me') || $('[data-phone-menu]') || document.body); };
+    const ac = $('[data-m="acct"]', m); if (ac) ac.onclick = () => { closeModal(); const vis = (el) => el && el.offsetParent !== null ? el : null; window.LiveConn?.menu(vis($('.r2-me')) || vis($('[data-phone-menu]')) || vis($('[data-lacct]')) || document.body); };
     $('[data-m="demo"]', m).onclick = () => { closeModal(); openDemo(); };
     $('[data-m="setup"]', m).onclick = () => { closeModal(); start(); };
     $('[data-m="sound"]', m).onclick = (e) => { SND.on = !SND.on; ls.set(`${LSP()}sound`, SND.on ? 'on' : 'off'); e.currentTarget.querySelector('.sw')?.setAttribute('aria-checked', SND.on); if (SND.on) sound('approve'); };
@@ -2683,7 +2686,7 @@
     const item = (k, icon, h, sub, cls = '') => `<button data-la="${k}" class="${cls}" role="menuitem"><span class="lp-ic">${ic(icon, 's16')}</span><span class="lp-tx"><b>${h}</b>${sub ? `<small>${sub}</small>` : ''}</span></button>`;
     pop.setAttribute('role', 'menu');
     pop.innerHTML = off ? item('restore', 'refresh', 'Restore', `Back to ${kind === 'jam' ? 'Jams' : 'My remixes'}`)
-      : item('fresh', 'refresh', 'Start fresh', `Begin a clean ${kind === 'jam' ? 'jam' : 'remix'} on this card`) + '<hr>' + item('discard', 'minus', 'Discard', 'You can restore it later', 'is-bad');
+      : item('fresh', 'refresh', 'Start fresh', `Begin a clean ${kind === 'jam' || UI2 ? 'jam' : 'remix'} on this card`) + '<hr>' + item('discard', 'minus', 'Discard', 'You can restore it later', 'is-bad');
     document.body.appendChild(pop);
     pop.onclick = (e) => { const b = e.target.closest('[data-la]'); if (!b) return; closePop(); libAct[b.dataset.la](kind, id); };
   };
@@ -2922,6 +2925,7 @@
   const closeModal = () => { $('#modal')?.remove(); document.body.classList.remove('modal-on');
     /* a tray closed with "Not yet" hands the studio's button back; it used to stay disabled until a reload */
     $$('.std .ship [data-rx].is-busy').forEach((b) => { b.disabled = false; b.classList.remove('is-busy'); }); };
+  addEventListener('keydown', (e) => { if (e.key === 'Escape' && UI2) { if ($('#ask2')) { $('#ask2').remove(); document.body.classList.remove('ask-on'); return; } if (view === 'remix' && ['details', 'adjust'].includes(RX.tab)) { RX.tab = 'iterate'; return paintStudio(); } if ($('.r2.open')) { $('.r2.open').classList.remove('open'); $('[data-r2-open]')?.setAttribute('aria-expanded', 'false'); return; } } }, true);
   addEventListener('keydown', (e) => { if (e.key === 'Escape') { if ($('#sv')) closeStory(); else if ($('#modal')) closeModal(); else if ($('#jam')) closeJam(); else closePop(); } });
 
   /* =========================================================
@@ -3338,7 +3342,7 @@
     const msgs = ch.thread || [], vById = (id) => ch.versions.find((v) => v.id === id);
     const log = msgs.map((m) => m.from === 'you' ? `<div class="lgm you"><p>${esc(m.text)}</p></div>` : `<div class="lgm ai">${face(ch.agent)}<div><p>${esc(m.text)}</p>${m.v && ch.versions[m.v - 1] ? madeNote(ch, [ch.versions[m.v - 1]]) : ''}${(m.vs || []).length ? madeNote(ch, m.vs.map(vById).filter(Boolean)) : ''}</div></div>`).join('');
     return `<div class="it-log">${SPLIT && RX.p ? `<div class="it-empty">${face(ch.agent)}${caseBrief(ch)}</div>` : ''}${log || (SPLIT && RX.p ? '' : `<div class="it-empty">${face(ch.agent)}${`<p>${SPLIT ? 'What should change? Each change makes a new version, and you can always go back.' : 'Tell me what to change, in plain words. I’ll rewrite the whole package and save it as a new version. You can always go back.'}</p>`}</div>`)}${UI2 ? j2Extra(ch) : ''}${RX.sending ? `<div class="lgm ai pending">${face(ch.agent)}<p><span class="spin"></span>${esc(RX.sending)}</p></div>` : ''}</div>
-      ${edit ? `<form class="it-ask" id="st-say">${UI2 ? chips2(ch) : `<div class="it-sugg">${PH_FAM.includes(ch.family) ? `<button type="button" class="chip chip-ph" data-ph-open>${ic('pic', 's14')}Change the photo</button>` : ''}${fitSuggest(ch.suggest).slice(0, PH_FAM.includes(ch.family) ? 3 : 4).map((x) => `<button type="button" class="chip" data-say="${esc(x)}">${esc(x)}</button>`).join('')}</div>`}<div class="it-row${SPLIT && window.Composer?.tools ? ' has-cmp' : ''}"><textarea id="st-in" rows="2"${SPLIT ? ' data-nomic' : ''} placeholder="What should change? Or @ someone">${esc(RX.draft || '')}</textarea>${SPLIT && window.Composer?.tools ? `<span class="jm-tools">${window.Composer.tools()}<span class="jm-tools-r">${window.Mic?.supported ? `<button type="button" class="jm-mic" data-cmp-talk aria-label="Talk instead of typing">${ic('mic', 's16')}</button>` : ''}<button class="jm-send" aria-label="Send" ${RX.sending ? 'disabled' : ''}>${ic('up', 's16')}</button></span></span>` : `<button class="btn btn-primary" aria-label="Send" ${RX.sending ? 'disabled' : ''}>${ic('up', 's16')}</button>`}</div></form>${SPLIT && window.Composer?.foot ? window.Composer.foot() : ''}` : `<p class="it-locked">It’s in a jam. Shape it there.</p>`}`;
+      ${edit ? `<form class="it-ask" id="st-say">${UI2 ? chips2(ch) : `<div class="it-sugg">${PH_FAM.includes(ch.family) ? `<button type="button" class="chip chip-ph" data-ph-open>${ic('pic', 's14')}Change the photo</button>` : ''}${fitSuggest(ch.suggest).slice(0, PH_FAM.includes(ch.family) ? 3 : 4).map((x) => `<button type="button" class="chip" data-say="${esc(x)}">${esc(x)}</button>`).join('')}</div>`}<div class="it-row${SPLIT && window.Composer?.tools ? ' has-cmp' : ''}"><textarea id="st-in" rows="2"${SPLIT ? ' data-nomic' : ''} placeholder="What should change? Or @ someone">${esc(RX.draft || '')}</textarea>${SPLIT && window.Composer?.tools ? `<span class="jm-tools">${window.Composer.tools()}<span class="jm-tools-r">${window.Mic?.supported ? `<button type="button" class="jm-mic" data-cmp-talk aria-label="Talk instead of typing">${ic('mic', 's16')}</button>` : ''}<button class="jm-send" aria-label="Send" ${RX.sending ? 'disabled' : ''}>${ic('up', 's16')}</button></span></span>` : `<button class="btn btn-primary" aria-label="Send" ${RX.sending ? 'disabled' : ''}>${ic('up', 's16')}</button>`}</div></form>${SPLIT && window.Composer?.foot ? window.Composer.foot() : ''}` : UI2 ? `<div class="it-ask"><div class="it-sugg j2-chips"><button type="button" class="chip j2-chip is-brief" data-tab="details">${ic('doc', 's14')}View brief</button><button type="button" class="chip j2-chip" data-rx="open">${ic('hand', 's14')}Open the jam</button></div><p class="it-locked">It’s in a jam. Shape it there.</p></div>` : `<p class="it-locked">It’s in a jam. Shape it there.</p>`}`;
   };
   const adjustTab = (ch, edit) => edit ? `<p class="hs-tip">Turn a knob and the package is rewritten to match. Knobs marked “new photo” make a new creative.</p>
       ${fitKnobs(ch.knobs).map((k) => { const multi = k.kind === 'copy', sel = (RX.knobSel || {})[k.k] || [], cur = (ch.pkg.knobs || {})[k.k];
@@ -3497,7 +3501,7 @@
     if (['meta_ad', 'social', 'post'].includes(ch.family) && ch.state !== 'live') { const as = ch.pkg?.draft?.as; if (as !== 'video') out.push(c('data-j2-remake="video"', 'film', 'Make it a reel')); if (as !== 'carousel') out.push(c('data-j2-remake="carousel"', 'layers', 'Make it a carousel')); }
     out.push(c('data-rx="variants"', 'shuffle', 'More like this'));
     if (fitKnobs(ch.knobs).length) out.push(c('data-tab="adjust"', 'sliders', 'Adjust'));
-    if (RX.p) out.push(`<button type="button" class="chip j2-chip" data-ask='${esc(JSON.stringify({ cardId: RX.p.id, label: String(cardOf(RX.p).title || 'This card').slice(0, 60) }))}'>${ic('chat', 's14')}Ask Brew about this</button>`);
+    if (RX.p) out.push(`<button type="button" class="chip j2-chip" data-ask="${esc(JSON.stringify({ cardId: RX.p.id, label: String(cardOf(RX.p).title || 'This card').slice(0, 60) }))}">${ic('chat', 's14')}Ask Brew about this</button>`);
     return `<div class="it-sugg j2-chips">${out.join('')}</div>`; };
   /* the publish pack: read-only, the final files and copy to post yourself. Brew writes to no account */
   const j2PackLabel = (ch) => { const pf = String(ch.pkg?.platform || ch.pkg?.where?.[0]?.name || '').trim();
@@ -3505,20 +3509,23 @@
   const J2 = { imp: {}, pack: {} }; /* per change: the projection and the pack, shown in the chat */
   const j2Sg = (x) => { const v = +x; return Number.isFinite(v) ? `${v > 0 ? '+' : v < 0 ? '−' : ''}${j2Num(Math.abs(v))}` : '—'; };
   const j2Num = (x) => { const v = +x; return Number.isFinite(v) ? (Math.abs(v) >= 100 ? Math.round(v).toLocaleString('en-IN') : String(+v.toFixed(1))) : '—'; };
-  const j2Extra = (ch) => { const im = J2.imp[ch.id], pk = J2.pack[ch.id]; let h = '';
+  const j2Key = (ch) => `${ch.id}:${RX.viewing || ch.head || 'v0'}`;
+  const j2Extra = (ch) => { const im = J2.imp[j2Key(ch)], pk = J2.pack[j2Key(ch)]; let h = '';
     if (pk) h += `<div class="lgm ai">${face(ch.agent)}<div>${pk.busy ? `<p><span class="spin"></span>Putting the files together…</p>` : pk.error ? `<p>${esc(pk.error)}</p>` : `<p>${esc(j2PackLabel(ch))}: your files are ready. The final ${esc((ch.familyName || 'files').toLowerCase())} and its copy, to post yourself. Brew changes nothing in your accounts.</p><div class="j2-pack"><a class="btn btn-ghost sm" href="/${esc(pk.url)}" download="${esc(pk.name)}">${ic('down', 's14')}${esc(pk.name)}</a><small>${(pk.files || []).length} files</small></div>${(pk.todo || []).length ? `<p class="j2-todo">Still to do: ${pk.todo.map(esc).join(' · ')}</p>` : ''}`}</div></div>`;
     if (im) h += `<div class="lgm ai">${face('performance')}<div>${im.busy ? `<p><span class="spin"></span>Reading this card’s results and benchmarks, then handing it to the Performance marketer…</p>` : im.error ? `<p>${esc(im.error)}</p>` : `<p>Here’s the likely lift if this runs. ${esc(im.label || 'A projection, not a promise')}.</p>
         <div class="j2-imp"><b>${j2Sg(im.low)} to ${j2Sg(im.high)}<small> ${esc(im.unit || '')}</small></b><span>${esc(im.metric || '')}${im.windowLabel ? `, ${esc(im.windowLabel)}` : ''}</span><em class="j2-conf is-${esc(im.confidence || 'low')}">${esc(im.confidence || 'low')} confidence</em></div>
         ${(im.basis || []).length ? `<details class="j2-why"><summary>What it’s based on</summary><ul>${im.basis.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>${(im.assumptions || []).length ? `<small>Assumed</small><ul>${im.assumptions.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}${(im.gaps || []).length ? `<small>Couldn’t read</small><ul>${im.gaps.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}</details>` : ''}${im.note ? `<p class="j2-todo">${esc(im.note)}</p>` : ''}`}</div></div>`;
     return h; };
   const j2Run = async (kind, ch, arg) => {
-    if (kind === 'pack') { J2.pack[ch.id] = { busy: true }; paintStudio(); const r = await tapi('GET', `/api/changes/${ch.id}/pack${RX.viewing ? `?v=${encodeURIComponent(RX.viewing)}` : ''}`);
-      J2.pack[ch.id] = r.pack || { error: r.error || 'The files didn’t come together. Try again.' }; paintStudio();
+    const jk = j2Key(ch);
+    if (kind === 'pack') { J2.pack[jk] = { busy: true }; paintStudio(); const r = await tapi('GET', `/api/changes/${ch.id}/pack${RX.viewing ? `?v=${encodeURIComponent(RX.viewing)}` : ''}`);
+      J2.pack[jk] = r.pack || { error: r.error || 'The files didn’t come together. Try again.' }; if (RX.ch?.id === ch.id) paintStudio();
       if (r.pack?.url) { const a = document.createElement('a'); a.href = '/' + r.pack.url; a.download = r.pack.name || 'brew-pack.zip'; document.body.appendChild(a); a.click(); a.remove(); } return; }
-    if (kind === 'impact') { J2.imp[ch.id] = { busy: true }; paintStudio(); const r = await tapi('GET', `/api/changes/${ch.id}/impact`); J2.imp[ch.id] = r.impact || { error: r.error || 'The projection didn’t come back. Try again.' }; return paintStudio(); }
-    if (kind === 'remake') { RX.sending = arg === 'video' ? 'Making it a reel…' : 'Making it a carousel…'; paintStudio(); const r = await tapi('POST', `/api/changes/${ch.id}/remake`, { as: arg }); RX.sending = null;
+    if (kind === 'impact') { J2.imp[jk] = { busy: true }; paintStudio(); const r = await tapi('GET', `/api/changes/${ch.id}/impact`); J2.imp[jk] = r.impact || { error: r.error || 'The projection didn’t come back. Try again.' }; if (RX.ch?.id === ch.id) paintStudio(); return; }
+    if (kind === 'remake') { RX.sending = arg === 'video' ? 'Making it a reel…' : 'Making it a carousel…'; paintStudio(); const r = await tapi('POST', `/api/changes/${ch.id}/remake`, { as: arg }); if (RX.ch?.id === ch.id) RX.sending = null;
+      if (r.change) putCh(r.change); if (view !== 'remix' || RX.ch?.id !== ch.id) return; /* you moved on: the new version waits in its own jam */
       if (r.error || !r.change) { toast(esc(r.error || 'That didn’t work. Try again.')); return paintStudio(); }
-      RX.ch = r.change; putCh(r.change); RX.viewing = null; if (r.making === false && r.why) toast(esc(r.why)); return paintStudio(); } };
+      RX.ch = r.change; RX.viewing = null; if (r.making === false && r.why) toast(esc(r.why)); return paintStudio(); } };
   const j2Brief = (ch, pkgCh, edit) => `<div class="j2-scrim" data-tab="iterate"></div><aside class="j2-sheet j2-brief" role="dialog" aria-label="The brief"><header class="j2-sh-h"><b>${ic('doc', 's16')}The brief</b><button class="icon-btn" data-tab="iterate" aria-label="Back to the chat">${ic('x', 's18')}</button></header>
       <div class="j2-sh-b">${(() => { const w = SPLIT ? workOfCard(RX.p?.id) : null, it = (WORK.withTeam?.items || []).find((x) => x.wid === w?.id), me = ME();
         return `<div class="j2-memo">${it?.label ? `<span class="j2-stamp">${esc(it.label)}</span>` : ''}<dl><div><dt>From</dt><dd>${esc(me?.name || me?.email || `${B.brand.name} team`)}</dd></div><div><dt>To</dt><dd>${w?.jamBrief?.to === 'team' ? 'Your team' : 'ShopOS team'}</dd></div><div><dt>Due</dt><dd>${esc(w?.doc?.plan?.when || 'As agreed')}</dd></div><div><dt>Ref</dt><dd>${esc(w?.ticket || 'On send')}</dd></div></dl><h2>${esc(ch.actionLabel)}</h2></div>`; })()}${detailsTab(ch, pkgCh, edit)}</div>
@@ -3561,7 +3568,9 @@
       if (m) { let box = m; if (m.classList.contains('as-swipe')) { box = document.createElement('div'); box.className = 'as-swipe-box'; m.before(box); box.appendChild(m); }
         box.classList.add('has-chg'); box.appendChild(at); } }
     fitAd();
-    const pb = $('.st-panel-b'); if (tab === 'iterate') pb.scrollTop = (ch.thread || []).length || RX.sending ? pb.scrollHeight : 0; /* the case stays first in the chat and scrolls up as it grows; a fresh chat is read from its top */ else if (logScroll && !RX.resetScroll) pb.scrollTop = logScroll; RX.resetScroll = false;
+    const pb = $('.st-panel-b'); const nT = (ch.thread || []).length + (RX.sending ? 1 : 0) + Object.keys(J2.imp).length + Object.keys(J2.pack).length;
+    if (UI2) { const grew = nT > (RX.j2n || 0) && RX.j2for === ch.id; RX.j2n = nT; const first = RX.j2for !== ch.id; RX.j2for = ch.id; pb.scrollTop = first ? 0 : grew ? pb.scrollHeight : logScroll || 0; RX.resetScroll = false; } /* opening the brief or Adjust never moves the page */
+    else if (tab === 'iterate') pb.scrollTop = (ch.thread || []).length || RX.sending ? pb.scrollHeight : 0; /* the case stays first in the chat and scrolls up as it grows; a fresh chat is read from its top */ else if (logScroll && !RX.resetScroll) pb.scrollTop = logScroll; RX.resetScroll = false;
     clearTimeout(RX.pollT);
     if (ch.copyPending || ch.imagePending || ch.videoPending || ch.remakePending) RX.pollT = setTimeout(async () => { if (view !== 'remix' || RX.ch?.id !== ch.id) return; const q = await tapi('GET', `/api/changes/${ch.id}`); if (q.change) { RX.ch = q.change; putCh(q.change); } paintStudio(); if (ch.copyPending && q.change && !q.change.copyPending) autoImage(q.change); }, ch.copyPending ? 1500 : 3000);
   };
@@ -3907,6 +3916,7 @@
   // a move opens as its own page: #v=move&m=NN (back returns to the Moves page)
   const openMove = (n) => { MV.n = n; nav(`#v=move&m=${n}`, true, 'view', 'move'); renderMove(); };
   const renderMove = async () => {
+    if (UI2) m2Paint('move'); /* the reader is a page of its own: no Memory header over it, whichever way it was opened */
     view = 'move'; counts(); clearTimeout(MV.t); const n = +(hashParams().m ?? MV.n ?? 0), slug = mvSlug(); MV.n = n;
     $('#view').innerHTML = `<div class="rd"><div class="sk" style="height:60vh;border-radius:24px"></div></div>`; window.scrollTo(0, 0);
     const [m, list, up] = await Promise.all([api(`/api/brands/${slug}/moves/${n}`), api(`/api/brands/${slug}/moves`), GEN ? api(`/api/brands/${slug}/updates`) : null]); if (view !== 'move') return;
@@ -4265,7 +4275,7 @@
   const askStarters = () => [`What should I fix first this week, and why?`, `Draft three reel hooks for ${GX.p1}`, `Why are people leaving the checkout?`];
   const askMsg = (m) => m.from === 'brew' ? `<div class="a2m brew">${SO()}<div><div class="a2-body">${rich(m.body || '')}</div>
       ${(m.links || []).length ? `<div class="a2-links">${m.links.map((l) => l.kind === 'move' ? `<button class="chip" data-a2-move="${esc(l.n)}">${ic('doc', 's14')}Move ${String(l.n).padStart(2, '0')}${l.title ? ` · ${esc(String(l.title).slice(0, 40))}` : ''}</button>` : `<button class="chip" data-a2-card="${esc(l.id)}">${l.agent ? face(l.agent) : ''}${esc(String(l.title || 'Open the card').slice(0, 48))}</button>`).join('')}</div>` : ''}
-      ${m.action?.ctx ? `<button class="btn btn-primary sm a2-act" data-a2-act='${esc(JSON.stringify(m.action.ctx))}' data-a2-say="${esc(m.action.say || '')}">${ic(m.action.kind === 'brief' ? 'send' : 'hand', 's14')}${esc(m.action.label || (m.action.kind === 'brief' ? 'Jam, then send the brief' : 'Jam on it'))}</button>` : ''}
+      ${m.action?.ctx ? `<button class="btn btn-primary sm a2-act" data-a2-act="${esc(JSON.stringify(m.action.ctx))}" data-a2-say="${esc(m.action.say || '')}">${ic(m.action.kind === 'brief' ? 'send' : 'hand', 's14')}${esc(m.action.label || (m.action.kind === 'brief' ? 'Jam, then send the brief' : 'Jam on it'))}</button>` : ''}
 </div></div>` : `<div class="a2m me"><p>${esc(m.body || m.text || '')}</p></div>`;
   const paintAsk = () => { const el = $('#ask2'); if (!el) return; const b = $('.a2-thread', el), atEnd = !b || b.scrollHeight - b.scrollTop - b.clientHeight < 60;
     const first = !ASK.msgs.length;
@@ -4274,17 +4284,17 @@
     $('.a2-seed', el).innerHTML = ASK.seed ? `<span class="chip">${ic('link', 's14')}${esc(ASK.seed.label || 'About this')}<button class="linkbtn" data-a2-unseed aria-label="Ask without it">${ic('x', 's14')}</button></span>` : '';
     if (atEnd || ASK.busy) { const t = $('.a2-thread', el); t.scrollTop = t.scrollHeight; } };
   const askSend = async (text) => { text = String(text || '').trim(); if (!text || ASK.busy) return; const seed = ASK.seed ? { ...ASK.seed } : undefined; delete seed?.label;
-    ASK.msgs.push({ from: 'me', body: text }); ASK.busy = true; ASK.seed = null; paintAsk();
+    ASK.msgs.push({ from: 'me', body: text }); ASK.busy = true; ASK.seed = null; ASK.sent = (ASK.sent || 0) + 1; paintAsk();
     const r = await tapi('POST', '/api/tenants/:t/ask', { text, seed }); ASK.busy = false;
     if (r.error) { ASK.msgs.push({ from: 'brew', body: r.status === 403 ? 'Ask Brew is for the brand’s team. Ask in the jam instead.' : String(r.error) }); } else ASK.msgs = r.msgs || ASK.msgs;
     paintAsk(); };
-  const openAsk = async (seed) => { if (seed) ASK.seed = seed;
+  const openAsk = async (seed) => { ASK.seed = seed || null; ASK.gen = (ASK.gen || 0) + 1; const gen = ASK.gen;
     if (!$('#ask2')) { const el = document.createElement('aside'); el.id = 'ask2'; el.className = 'ask2'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Ask Brew');
       el.innerHTML = `<header class="a2-h"><b>${SO()}Ask Brew</b><button class="icon-btn" data-a2-clear title="Start a new thread" aria-label="Start a new thread">${ic('refresh', 's16')}</button><button class="icon-btn" data-a2-x aria-label="Close">${ic('x', 's18')}</button></header>
         <div class="a2-thread"></div><form class="a2-f"><div class="a2-seed"></div><textarea rows="2" placeholder="Ask anything about ${esc(B.brand.name)}" aria-label="Ask Brew"></textarea><button class="jm-send" aria-label="Send">${ic('up', 's16')}</button></form>`;
       document.body.appendChild(el); document.body.classList.add('ask-on');
       $('.a2-f', el).onsubmit = (e) => { e.preventDefault(); const t = $('textarea', el); const v = t.value; t.value = ''; askSend(v); };
-      $('textarea', el).addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('.a2-f', el).requestSubmit(); } });
+      $('textarea', el).addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('.a2-f', el).requestSubmit(); } });
       el.addEventListener('click', async (e) => { const t = e.target;
         if (t.closest('[data-a2-x]')) { el.remove(); document.body.classList.remove('ask-on'); return; }
         if (t.closest('[data-a2-clear]')) { await tapi('POST', '/api/tenants/:t/ask', { clear: true }); ASK.msgs = []; return paintAsk(); }
@@ -4295,7 +4305,7 @@
         const ac = t.closest('[data-a2-act]'); if (ac) { let ctx = null; try { ctx = JSON.parse(ac.dataset.a2Act); } catch (x) {} if (!ctx) return; el.remove(); document.body.classList.remove('ask-on');
           if (ctx.post && byId(ctx.post)) return openDetail(byId(ctx.post)); return openJam({ ...ctx, draft: ac.dataset.a2Say || undefined }); } }); }
     paintAsk(); setTimeout(() => $('#ask2 textarea')?.focus(), 60);
-    const r = await tapi('GET', '/api/tenants/:t/ask'); if (r && !r.error) { ASK.msgs = r.msgs || []; paintAsk(); } };
+    const sent0 = ASK.sent || 0; const r = await tapi('GET', '/api/tenants/:t/ask'); if (r && !r.error && !r.teamOnly && gen === ASK.gen && !ASK.busy && (ASK.sent || 0) === sent0) { ASK.msgs = r.msgs || []; paintAsk(); } };
 
   /* =========================================================
      Stories

@@ -155,3 +155,12 @@ test('on the server: every family’s change packs, projects and remakes; media 
     assert.equal((await j('GET', '/api/changes/ch_nope/pack')).error, 'not found');
   } finally { srv.kill(); }
 });
+
+test('a member’s projection never reaches a guest, and a double tap makes one remake', () => {
+  const rx = fs.readFileSync(new URL('../remix.js', import.meta.url), 'utf8');
+  assert.match(rx, /const \{ impact: _imp, packMeta: _pk, \.\.\.pub \} = ch;/, 'the change payload never carries cached projections');
+  assert.match(rx, /key = `\$\{head\?\.id \|\| 'v0'\}:\$\{mock \|\| !mem \? 'rules' : 'ai'\}:\$\{mem \? 'm' : 'g'\}`/, 'the projection cache is per member or guest');
+  assert.match(rx, /const ai = mem && !mock/, 'only the brand’s team spends AI on a projection');
+  assert.match(rx, /REMAKING\.add\(ch\.id\);/, 'the remake is held before the AI call');
+  assert.match(rx, /if \(ch\.packMeta\[key\] && \(await genFile\(key\)\)\) return/, 'a pack is built once per version');
+});

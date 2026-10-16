@@ -209,3 +209,14 @@ test('a reply whose status is a word (Send brief: sent) is not used as the HTTP 
   assert.doesNotMatch(src, /send\(res, out\?\.status \|\| 200/, 'a word status crashed the reply (Invalid status code: sent)');
   assert.match(src, /Number\.isInteger\(out\?\.status\)/);
 });
+
+test('a double-tapped Send emails once; a copy for your own team keeps the ShopOS status and history', async () => {
+  const s = jbRig({ staff: true }); const ship = (b) => s.R['POST /api/work/:wid/doc/ship']({ force: true, ...b }, s.t, { wid: 'wk_1' });
+  await ship({ to: 'shopos' }); const sent0 = s.calls.sent?.length ?? null;
+  const again = await ship({ to: 'shopos' }); assert.equal(again.already, true, 'the same brief, seconds later, is not sent twice');
+  if (sent0 != null) assert.equal(s.calls.sent.length, sent0);
+  await s.R['POST /api/work/:wid/brief/status']({ status: 'received' }, s.t, { wid: 'wk_1' });
+  await ship({ to: 'team' });
+  assert.equal(s.w.jamBrief.status, 'received', 'sharing with your own team does not wipe the ShopOS status');
+  assert.equal(s.w.jamBrief.to, 'shopos'); assert.ok(s.w.jamBrief.history.length >= 2); assert.ok(s.w.jamBrief.teamCopyAt);
+});

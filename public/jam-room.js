@@ -241,6 +241,8 @@
     const nb = $('.jm-b', side), nt = $('#jm-thread'); const nMsg = nt ? $$('.jm-m', nt).length : 0, grew = nMsg > (JM.nMsg?.[p.id] || 0); JM.nMsg = { ...(JM.nMsg || {}), [p.id]: nMsg };
     /* the case stays first in the chat and scrolls up as messages come: a fresh chat is read from its top, a new message brings the chat down to it */
     if (nt && $('.case', nt)) { if (nb) nb.scrollTop = !nMsg ? 0 : grew ? nb.scrollHeight : bs || nb.scrollHeight; } else if (nt && near) nt.scrollTop = nt.scrollHeight; else if (nb && bs) nb.scrollTop = bs;
+    /* UI2 restacks the card page into one column (ui2.css): the page scrolls, not the thread, so a new message is brought into view there */
+    if (grew && nMsg && document.body.classList.contains('ui2') && innerWidth > 900 && dp.classList.contains('dp-full')) { window.__jmGrew = true; const pg = dp.querySelector('.dp-page'); if (pg) pg.scrollTop = pg.scrollHeight; } /* app.js repaintDetail keeps it there across the repaint that follows */
     const i = $('#jm-in'); grow(i); if (keep) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
     if (JM.flash.length) { const first = $('.jm-doc .is-new'); if (first && JM.tab === 'brief') first.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); setTimeout(() => { JM.flash = []; $$('.jm-doc .is-new').forEach((x) => x.classList.remove('is-new')); }, 2600); }
   };

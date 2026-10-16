@@ -1,3 +1,4 @@
+import { sk } from './demo-mode.js';
 // Your feed, tuned (UI2 Memory → "Your feed"): per member, per brand.
 //   weights  less | normal | more for each agent (creative, performance, storefront, visibility, crm): the ranker adds WEIGHT[w]
 //   topics   up to 12 short topics; a card that mentions one is lifted (two at most count)
@@ -65,12 +66,13 @@ export function withoutIgnored(af, fewer, ignored = []) {
 /* the store: one JSON per brand, cached so the ranker reads it without waiting; writes per brand go one after another */
 export function createTuning({ packs, now = () => Date.now(), log = console }) {
   const cache = new Map(), locks = new Map();
-  const load = async (slug) => { if (cache.has(slug)) return cache.get(slug); const all = (await packs.getJSON(slug, FILE, null).catch(() => null)) || {}; cache.set(slug, all); return all; };
-  const peek = (slug, key) => (key && cache.get(slug)?.[key]) || null;
+  /* keyed per demo session too (sk): on the demo site each visitor's tuning lives in its own sandbox file, like brand-memory.js */
+  const load = async (slug) => { const k = sk(slug); if (cache.has(k)) return cache.get(k); const all = (await packs.getJSON(slug, FILE, null).catch(() => null)) || {}; cache.set(k, all); return all; };
+  const peek = (slug, key) => (key && cache.get(sk(slug))?.[key]) || null;
   const get = async (slug, key) => cleanTuning({}, (await load(slug))[key] || emptyTuning());
-  const write = (slug, key, fn) => { const run = (locks.get(slug) || Promise.resolve()).catch(() => {}).then(async () => {
+  const write = (slug, key, fn) => { const lk = sk(slug); const run = (locks.get(lk) || Promise.resolve()).catch(() => {}).then(async () => {
     const all = await load(slug); const cur = cleanTuning({}, all[key] || emptyTuning()); const next = fn(cur) || cur; next.at = now(); all[key] = next; await packs.put(slug, FILE, all); return next; });
-    locks.set(slug, run); return run; };
+    locks.set(lk, run); return run; };
   const put = (slug, key, patch) => write(slug, key, (cur) => cleanTuning(patch, cur));
   const addNote = (slug, key, text, { source = 'note' } = {}) => write(slug, key, (cur) => { const id = 'pn_' + Math.random().toString(16).slice(2, 10); cur.notes = [{ id, text: str(text, 4000), source: str(source, 140), at: now() }, ...(cur.notes || [])].slice(0, 50); return cur; });
   const dropNote = (slug, key, id) => write(slug, key, (cur) => { cur.notes = (cur.notes || []).filter((n) => n.id !== id); return cur; });

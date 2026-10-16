@@ -275,11 +275,18 @@ export function createJamBrief(o) {
       if (b.decided !== undefined) w.decided = b.decided || null;
       const to = b.to === 'team' ? 'team' : 'shopos', prev = w.jamBrief || null;
       w.jamBrief = finalDoc(t, w); w.doc.shippedAt = now(t); w.jamBrief.sharedAt = now(t); w.jamBrief.to = to; w.jamBrief.spec = w.doc.spec || [];
-      if (to === 'shopos') { w.jamBrief.history = prev?.history || []; startStatus(w.jamBrief, { by: o.meOf?.(t) || null, at: now(t) }); }
+      /* a brief already with the ShopOS team stays theirs: a copy for your own team keeps its status, sender and history */
+      const withShopos = prev?.status && prev.to !== 'team';
+      if (to === 'team' && withShopos) Object.assign(w.jamBrief, { to: 'shopos', status: prev.status, statusAt: prev.statusAt, history: prev.history || [], sender: prev.sender, teamCopyAt: now(t) });
+      /* the same brief sent again within ten minutes, before the team has touched it, is not emailed twice (a double tap, or Send it anyway right after) */
+      const resend = to === 'shopos' && withShopos && prev.status === 'sent' && prev.md === w.jamBrief.md && now(t) - (prev.sharedAt || 0) < 10 * 60e3; /* once the team has moved it on, sending again is a real send */
+      if (to === 'shopos' && resend) Object.assign(w.jamBrief, { status: prev.status, statusAt: prev.statusAt, history: prev.history || [], sender: prev.sender });
+      else if (to === 'shopos') { w.jamBrief.history = prev?.history || []; startStatus(w.jamBrief, { by: o.meOf?.(t) || null, at: now(t) }); }
       if (!w.ticket) w.ticket = await nextTicket(t);
       let share = null;
       if (handoff) { try { const x = await handoff.build(t, w, { base: b.base }); w.jamBrief.context = x; share = { url: x.links.page, text: handoff.text(x, to === 'shopos' ? 'brew' : 'whatsapp') }; w.jamBrief.handoff = share; } catch (e) { log.warn('[handoff]', e.message); } }
       const open = w.jamBrief.missing.length ? `. Still open: ${w.jamBrief.missing.join(', ').toLowerCase()}` : '';
+      if (to === 'shopos' && resend) return { work: w, share, status: w.jamBrief.status || null, already: true };
       if (to === 'shopos') {
         const sent = o.onBriefSent ? await o.onBriefSent(t, w).catch((e) => { log.warn('[brief sent]', e.message); return false; }) : (o.onShopos?.(t, w, { why: 'shared a brief with the ShopOS team', text: '' }), false);
         say(t, w, { from: 'system', body: `Brief ${w.ticket} ${sent ? 'sent to' : 'ready for'} the ShopOS team: the brief, deliverables, assets, rules and when it is done${open}. ${sent ? 'You’ll see each step here as they pick it up.' : 'Paste it where they work.'}` });

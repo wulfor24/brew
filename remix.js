@@ -494,7 +494,8 @@ export function createRemix(o) {
   const pubChange = (t, ch) => {
     ensurePkg(t, ch); const tr = trustOf(t, ch.agent);
     if (!ch.v0 && !ch.batchKey && (ch.fromCard || (t.work || []).some((w) => w.changeId === ch.id))) seedV0(t, t.cards.get(ch.cardId), ch);
-    return { ...ch, plan: ch.plan || o.planOf?.(t, t.cards.get(ch.cardId)) || null, copyPending: !!ch.copyPending && Date.now() - ch.copyPending < 90e3, trust: { level: tr.level, name: tr.name, objects: tr.objects, toNext: tr.toNext }, scope: ch.scope.map((s) => ({ ...s, locked: s.n > tr.objects })),
+    const { impact: _imp, packMeta: _pk, ...pub } = ch; /* projections can hold the brand's private account rows: they go out only through /impact, per caller */
+    return { ...pub, plan: ch.plan || o.planOf?.(t, t.cards.get(ch.cardId)) || null, copyPending: !!ch.copyPending && Date.now() - ch.copyPending < 90e3, trust: { level: tr.level, name: tr.name, objects: tr.objects, toNext: tr.toNext }, scope: ch.scope.map((s) => ({ ...s, locked: s.n > tr.objects })),
       familyName: FAMILY_NAME[ch.family], fields: fieldsFor(ch.family, ch.action).map(({ k, label, type, opts, cols, req, pub, hint }) => ({ k, label, type, opts, cols, req, pub, hint })),
       knobs: knobsFor(ch.family, B()), suggest: suggestOf(t, ch), gradeF: GRADES[ch.pkg.grade] || 'none', missing: missing(ch.family, ch.action, ch.pkg),
       head: headOf(t, ch)?.id || null, versions: versionsOf(t, ch.id).map((v) => ({ id: v.id, n: v.n, author: v.author, reason: v.reason, label: v.label || versionLabel(v.reason, { first: v.n === 1 }), at: v.at, parent: v.parentVersionId, diff: v.diff, snapshot: v.snapshot })), live: ch.liveVersionId || null };
@@ -990,13 +991,17 @@ export function createRemix(o) {
     const v = versionAsked(t, ch, q); if (v === false) return { status: 404, error: 'That version isn’t on this change.' };
     const pkg = pkgOfVersion(t, ch, v), n = v?.n || 1;
     const key = 'pack-' + crypto.createHash('sha1').update(`${PACK_V}|${ch.id}|${v?.id || ''}|${JSON.stringify(pkg)}|${ch.family}|${BN()}`).digest('hex').slice(0, 20) + '.zip';
+    /* built once per version: the zip and what it holds are kept, so a repeat GET runs no ffmpeg or Chrome */
+    ch.packMeta ||= {}; if (ch.packMeta[key] && (await genFile(key))) return { pack: { ...ch.packMeta[key], url: 'gen/' + key } };
     const chV = { ...ch, pkg }; const brand = { name: BN(), host: BH(), colors: B()?.seed?.brand?.colors || [], product: productFor(t.cards.get(ch.cardId) || {}, FACTS)?.name || '' };
     const read = async (rel) => { if (!rel || typeof rel !== 'string') return null; if (/^\/?gen\//.test(rel)) return genFile(rel.replace(/^\/?gen\//, ''));
       const f = (o.photoAsync ? await o.photoAsync(rel).catch(() => null) : null) || photoFile(rel); return f && fs.existsSync(f) && fs.statSync(f).isFile() ? f : null; };
     const renderPdf = ch.family === 'print' && process.env.PACK_PDF !== '0' ? (html) => withBrowser(async (br) => { const pg = await br.newPage(); try { await pg.setContent(html, { waitUntil: 'load' }); return Buffer.from(await pg.pdf({ preferCSSPageSize: true, printBackground: true })); } finally { await pg.close().catch(() => {}); } }) : null;
     const made = await buildPack({ ch: chV, pkg, family: ch.family, version: n, brand, assets: assetsFor(t, chV), read, renderPdf });
     if (!(await genFile(key))) saveGen(key, zipBuffer(made.entries));
-    return { pack: { url: 'gen/' + key, name: made.fileName, version: n, versionId: v?.id || null, family: ch.family, familyName: FAMILY_NAME[ch.family], files: made.entries.map((e) => e.name), todo: made.todo, readme: made.readme, readOnly: true } };
+    const meta = { name: made.fileName, version: n, versionId: v?.id || null, family: ch.family, familyName: FAMILY_NAME[ch.family], files: made.entries.map((e) => e.name), todo: made.todo, readme: made.readme, readOnly: true };
+    ch.packMeta[key] = meta; const pk = Object.keys(ch.packMeta); if (pk.length > 6) delete ch.packMeta[pk[0]];
+    return { pack: { ...meta, url: 'gen/' + key } };
   });
 
   /* the projected impact of the head version (impact.js): an estimate, cached per head version; ?fresh=1 works it out again */
@@ -1007,18 +1012,19 @@ export function createRemix(o) {
   on('GET', '/api/changes/:chid/impact', async (b, t, p, q) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch);
     const head = headOf(t, ch), c = t.cards.get(ch.cardId) || {}, mock = isMock();
-    const key = `${head?.id || 'v0'}:${mock ? 'rules' : 'ai'}`; ch.impact ||= {};
-    if (ch.impact[key] && q?.get?.('fresh') !== '1') return { impact: { ...ch.impact[key], cached: true }, version: head?.n || 1 };
+    /* a member's projection uses the brand's private account rows: never cache it for a guest, never let a guest spend AI or force a rerun */
+    const mem = !!t.member, key = `${head?.id || 'v0'}:${mock || !mem ? 'rules' : 'ai'}:${mem ? 'm' : 'g'}`; ch.impact ||= {};
+    if (ch.impact[key] && (q?.get?.('fresh') !== '1' || !mem)) return { impact: { ...ch.impact[key], cached: true }, version: head?.n || 1 };
     const mv = moveNo(c.id), grade = mv != null ? B()?.moveValue?.[mv] || null : null;
     /* judged where the change lands, as the jam measures it (workFromChange): a Meta ad from a reorders card is read on Meta */
     const sector = (ch.family === 'listing' ? 'catalog' : SECTOR_OF[ch.agent]) || c.sector, cx = { ...c, sector, title: ch.after?.title || c.title, sub: ch.after?.sub || c.sub, cta: { label: ch.actionLabel }, measure: undefined };
     let recipe = null; try { recipe = FAMS.recipeOf(MEASURED_AS[String(ch.action).split('.').pop()] || MEASURED_AS[ch.family] || FAMS.classify(cx).family); } catch (e) { log.warn('[impact] family', e.message); }
     let measure = null; try { measure = o.measureOf?.(t, cx) || null; } catch (e) { log.warn('[impact] measure', e.message); }
     const x = impactInputs({ card: c, ch, grade, recipe, measure, ledger: t.member ? realRows(t.liveLedger) : [], connected: t.liveConn || {} });
-    const ai = !mock && claudeTool && spend('text') ? (prompt, schema) => claudeTool(prompt, schema, 1500, 'impact') : null;
+    const ai = mem && !mock && claudeTool && spend('text') ? (prompt, schema) => claudeTool(prompt, schema, 1500, 'impact') : null;
     const out = await projectImpact(x, { ai, unbacked: unbackedNums, brand: BN(), log });
-    if (!ai && !out.aiError) out.note = mock ? 'Brew’s rule-based range: AI estimates are off here.' : 'Brew’s rule-based range: today’s AI budget is used up.';
-    if (!out.aiError && (ai || mock)) { ch.impact[key] = { ...out, at: now(t) }; const ks = Object.keys(ch.impact); if (ks.length > 6) delete ch.impact[ks[0]]; }
+    if (!ai && !out.aiError) out.note = mock ? 'Brew’s rule-based range: AI estimates are off here.' : !mem ? 'Brew’s rule-based range: the AI estimate is for the brand’s team.' : 'Brew’s rule-based range: today’s AI budget is used up.';
+    if (!out.aiError && (ai || mock || !mem)) { ch.impact[key] = { ...out, at: now(t) }; const ks = Object.keys(ch.impact); if (ks.length > 6) delete ch.impact[ks[0]]; }
     return { impact: out, version: head?.n || 1 };
   });
 
@@ -1100,12 +1106,14 @@ export function createRemix(o) {
     })();
     return true;
   };
+  const REMAKING = new Set();
   on('POST', '/api/changes/:chid/remake', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };
     const as = String(b.as || '').toLowerCase(); if (!REMAKE_AS[as]) return { status: 400, error: 'Remake as a video, a carousel or an image.' };
-    if (ch.remakePending) return { error: 'A remake is already being made.', change: pubChange(t, ch) };
+    if (ch.remakePending || REMAKING.has(ch.id)) return { error: 'A remake is already being made.', change: pubChange(t, ch) };
+    REMAKING.add(ch.id); /* held from before the AI call, so a double tap can't make two versions */
     let plan = null, live = false;
-    if (!isMock() && claudeTool && spend('text')) { try { plan = await remakeLive(t, ch, as); live = !!plan; } catch (e) { log.warn('[remake words]', e.message); } }
+    try { if (!isMock() && claudeTool && spend('text')) { try { plan = await remakeLive(t, ch, as); live = !!plan; } catch (e) { log.warn('[remake words]', e.message); } } } finally { REMAKING.delete(ch.id); }
     plan ||= remakeRules(ch, as, t);
     const draft = { as, title: ch.after?.title || ch.actionLabel, images: [], video: null, poster: null, ratio: as === 'video' ? '9:16' : ch.pkg.format || '4:5', text: false, remade: true, pending: false,
       ...(plan.slides ? { slides: plan.slides.map((x) => ({ text: x.onSlide, visual: x.visual })) } : {}), ...(plan.script ? { script: plan.script } : {}), ...(plan.overlay ? { overlay: plan.overlay } : {}), ...(plan.imageBrief ? { imageBrief: plan.imageBrief } : {}) };
@@ -1127,7 +1135,7 @@ export function createRemix(o) {
     if (b.ai) { if (b.brief) ch.pkg.imageBrief = clean(String(b.brief)).slice(0, 600); const started = genImage(t, ch, b.brief ? 'your brief' : 'a new take');
       if (!started) return { error: realOnly(ch) ? 'This community wants real photos: pick or upload one.' : ch.imagePending ? 'A photo is already being made.' : isMock() ? 'Images are off while AI is offline.' : 'No image budget left today.' };
       ch.thread.push({ from: 'ai', text: 'Making a new photo now. It lands as a new version in a minute.', at: now(t) }); return { change: pubChange(t, ch), image: true }; }
-    let urls = Array.isArray(b.urls) ? b.urls.map(String).filter((u) => /^(https:\/\/|gen\/|b\/|assets\/)/.test(u)).slice(0, ch.family === 'post' ? 4 : 1) : [];
+    let urls = Array.isArray(b.urls) ? b.urls.map(String).filter((u) => /^(https:\/\/|gen\/|b\/|assets\/)/.test(u) && !/\.\.|\\|\0/.test(u)).slice(0, ch.family === 'post' ? 4 : 1) : [];
     if (b.upload) { const m = /^data:(image\/(png|jpe?g|webp));base64,(.+)$/.exec(String(b.upload)); if (!m) return { error: 'Add a PNG, JPG or WebP photo.' };
       const buf = Buffer.from(m[3], 'base64'); if (buf.length > 8e6) return { error: 'That photo is over 8 MB.' };
       const name = `up-${crypto.createHash('sha1').update(buf).digest('hex').slice(0, 16)}.${m[2] === 'jpeg' ? 'jpg' : m[2]}`; saveGen(name, buf); urls = [`gen/${name}`]; }
