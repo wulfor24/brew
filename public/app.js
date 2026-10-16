@@ -940,6 +940,7 @@
           <button class="icon-btn rb" aria-label="Library" title="Library: saved and my jams" data-nav="saved">${ic('bookmark')}<i data-count="saved"></i></button>
           <button class="icon-btn rb" aria-label="Work" title="Work: drafting to results" data-nav="work">${ic('board')}<i data-count="work"></i></button>
           <button class="icon-btn" aria-label="What Brew learned" title="What Brew learned" data-nav="learned">${ic('book')}</button>
+          <button class="icon-btn" aria-label="Your feed" title="Your feed: tune what it shows you" data-nav="tune">${ic('sliders')}</button>
           <button class="icon-btn rb" aria-label="Notifications" title="Notifications" data-bell>${ic('bell')}<i data-count="bell"></i></button>
           <button class="icon-btn" aria-label="Connectors" title="Connectors" data-nav="connectors">${ic('plug')}</button>
           <span class="sp"></span>
@@ -954,7 +955,7 @@
               <button role="tab" aria-selected="true" data-nav="feed">${ic('feed', 's16')}Feed</button>
               <button role="tab" aria-selected="false" data-nav="deck">${ic('deck', 's16')}Deck</button>
             </div>
-            <div class="topbar-r"><button class="icon-btn rb phone-only" aria-label="Notifications" data-bell>${ic('bell')}<i data-count="bell"></i></button>${window.LiveConn && (window.LIVE?.signin || window.LIVE?.me) ? `<button class="icon-btn phone-only lc-acct" aria-label="Your account" data-lacct>${window.LIVE?.me?.pic ? `<img src="${esc(window.LIVE.me.pic)}" alt="" referrerpolicy="no-referrer">` : ic('person')}</button>` : ''}<button class="chip viewing" data-viewing aria-label="Switch the seat you view as">${face(ROLE().face)}<span><i class="va">Viewing as </i><b>${esc(ROLE().name)}</b></span>${ic('chev', 's14')}</button>${themeBtn()}</div>
+            <div class="topbar-r"><button class="chip j1-pill" data-team-pill hidden title="Briefs with the ShopOS team">${ic('send', 's14')}<span data-count="team"></span><i class="t2-live" aria-hidden="true"></i></button><button class="icon-btn rb phone-only" aria-label="Notifications" data-bell>${ic('bell')}<i data-count="bell"></i></button>${window.LiveConn && (window.LIVE?.signin || window.LIVE?.me) ? `<button class="icon-btn phone-only lc-acct" aria-label="Your account" data-lacct>${window.LIVE?.me?.pic ? `<img src="${esc(window.LIVE.me.pic)}" alt="" referrerpolicy="no-referrer">` : ic('person')}</button>` : ''}<button class="chip viewing" data-viewing aria-label="Switch the seat you view as">${face(ROLE().face)}<span><i class="va">Viewing as </i><b>${esc(ROLE().name)}</b></span>${ic('chev', 's14')}</button>${themeBtn()}</div>
           </div>
           <div id="view"></div>
           <div class="stk-layer" id="stk"></div>
@@ -970,15 +971,15 @@
     $$('[data-count="bell"]').forEach((b) => { b.textContent = WORK.unread || ''; b.classList.toggle('hot', !!WORK.unread); });
     const vb = $('[data-viewing]'); if (vb) vb.innerHTML = `${face(ROLE().face)}<span><i class="va">Viewing as </i><b>${esc(ROLE().name)}</b></span>${ic('chev', 's14')}`;
     $$('.rail [data-nav]').forEach((b) => b.classList.toggle('on', b.dataset.nav === (['jams', 'remixes'].includes(view) ? 'saved' : ['move', 'moves'].includes(view) ? 'learned' : view)));
-    if (UI2) { $$('.r2 [data-nav]').forEach((b) => b.classList.toggle('is-on', b.dataset.nav === (['feed', 'deck', 'saved', 'jams', 'work', 'done', 'queue'].includes(view) ? 'feed' : ['learned', 'move', 'moves', 'facts', 'heard', 'rules', 'tune'].includes(view) ? 'learned' : view)));
-      const tp = $('[data-team-pill]'), wt = WORK.withTeam || { n: 0 }, n = wt.n || 0; if (tp) { tp.hidden = !n; tp.querySelector('[data-count="team"]').textContent = `${n} with the team`; tp.classList.toggle('is-ask', !!wt.needsInfo); } }
+    if (UI2) $$('.r2 [data-nav]').forEach((b) => b.classList.toggle('is-on', b.dataset.nav === (['feed', 'deck', 'saved', 'jams', 'work', 'done', 'queue'].includes(view) ? 'feed' : ['learned', 'move', 'moves', 'facts', 'heard', 'rules', 'tune'].includes(view) ? 'learned' : view)));
+    { const tp = $('[data-team-pill]'), wt = WORK.withTeam || { n: 0 }, n = wt.n || 0; if (tp) { tp.hidden = !n; tp.querySelector('[data-count="team"]').textContent = `${n} with the team`; tp.classList.toggle('is-ask', !!wt.needsInfo); } }
     paintTabbar();
   };
   /* phones: a native tab bar like Instagram (Feed, Deck, new jam, Work, Library) and the section's name in the header */
   const TABS = [['feed', 'feed', 'Feed'], ['deck', 'deck', 'Deck'], ['+', 'plus', 'New jam'], ['work', 'board', 'Work'], ['saved', 'bookmark', 'Library']];
   /* UI2 phone tabs: Home, Deck, Ask Brew in the middle, Memory, Connectors (Profile and notifications sit in the top bar) */
   const TABS2 = [['feed', 'home', 'Home'], ['deck', 'deck', 'Deck'], ['+', 'sparkles', 'Ask Brew'], ['learned', 'book', 'Memory'], ['connectors', 'plug', 'Connectors']];
-  const TITLES = { feed: `${B.brand.name}`, deck: 'Deck', work: 'Work', saved: 'Library', jams: 'Library', remixes: 'Library', learned: 'Learned', moves: 'Moves', move: 'Move', engine: 'How it works', connectors: 'Connectors', queue: `${B.brand.name}`, remix: 'Remix' };
+  const TITLES = { feed: `${B.brand.name}`, deck: 'Deck', work: 'Work', saved: 'Library', jams: 'Library', remixes: 'Library', learned: 'Learned', moves: 'Moves', move: 'Move', engine: 'How it works', connectors: 'Connectors', tune: 'Your feed', queue: `${B.brand.name}`, remix: 'Remix' };
   if (UI2) Object.assign(TITLES, { learned: 'Memory', moves: 'Memory', facts: 'Memory', heard: 'Memory', rules: 'Memory', tune: 'Memory', saved: 'Shortlisted', jams: 'Jams', work: 'In progress', done: 'Briefs sent', queue: 'Needs your yes', remix: 'Jam' });
   const paintTabbar = () => {
     document.body.dataset.view = BOOT_RX ? 'remix' : view; /* a studio link is the studio from the first paint, even while the feed boots underneath */
@@ -1150,7 +1151,7 @@
       if (i === 3 && (!GEN || S.batches.length)) parts.push(teamCard()); if (i === 8) parts.push(deckCard());
     });
     if (noSeats()) parts.splice(3, 0, `<article class="card seat-wait"><div class="body"><h3>You’re on ${esc(B.brand.name)}’s team</h3><p>An admin hasn’t picked your views yet, so you only see what the whole team shares. You’ll get your cards as soon as they choose.</p></div></article>`);
-    parts.push(UI2 ? `<div class="feed-end fe2"><b>You’re caught up</b><span>Your agents are still working. Pull in the next few now.</span><button class="btn btn-ghost" data-find-more>${ic('refresh', 's16')}Find more</button></div>` : `<div class="feed-end">You’re caught up. Your agents post as they finish.</div>`);
+    parts.push(`<div class="feed-end fe2"><b>You’re caught up</b><span>Your agents are still working. Pull in the next few now.</span><button class="btn btn-ghost" data-find-more>${ic('refresh', 's16')}Find more</button></div>`);
     if (!$('#view')) return; // the page changed while the feed loaded
     $('#view').innerHTML = `<div class="feedcol${settle ? ' settle' : ''}" id="col">${parts.join('')}</div>`;
     counts(); save(); pulseSince = SRV.clock;
@@ -1445,7 +1446,7 @@
   /* history: the card page, the remix options, a package in the studio and each view are entries of their own,
      so the browser's Back and ours walk the same path. route() makes the screen match the URL. */
   const nav = (hash, push, a, v = view) => { const st = { a, v }; hash = typeof hash === 'string' && hash.startsWith('#') ? location.pathname + hash : hash; if (push) history.pushState(st, '', hash); else history.replaceState(st, '', hash); };
-  const VIEWS = () => { const v = VIEWS0(); if (!UI2) return v; v.rules = renderRules; v.tune = renderTune; return Object.fromEntries(Object.entries(v).map(([k, f]) => [k, (...a) => { m2Paint(k); return f(...a); }])); };
+  const VIEWS = () => { const v = VIEWS0(); v.tune = renderTune; if (!UI2) return v; v.rules = renderRules; return Object.fromEntries(Object.entries(v).map(([k, f]) => [k, (...a) => { m2Paint(k); return f(...a); }])); };
   const VIEWS0 = () => ({ feed: renderFeed, deck: renderDeck, saved: renderSaved, jams: (f) => renderJams(f !== false), remixes: (f) => renderJams(f !== false), done: renderWork, work: renderWork, engine: renderEngine, connectors: renderConnectors, learned: renderLearned, heard: () => renderHeard(), facts: () => renderFacts(), moves: renderMoves, move: renderMove, queue: () => renderQueue() });
   const route = () => {
     const hp = hashParams(), rm = location.hash.match(/^#remix=([^/&]+)(?:\/([^&]+))?/);
@@ -2295,7 +2296,7 @@
     renderEngine(true);
   });
 
-  const renderView = () => ({ ...(UI2 ? { tune: renderTune, rules: renderRules } : {}), feed: renderFeed, saved: renderSaved, jams: () => renderJams(false), remixes: () => renderJams(false), done: renderWork, work: renderWork, engine: renderEngine, connectors: renderConnectors, deck: renderDeck, learned: renderLearned, heard: () => renderHeard(), facts: () => renderFacts(), moves: renderMoves, move: renderMove, remix: () => (RX.p ? openRemix(RX.p) : renderFeed()), queue: () => renderQueue() }[view] || renderFeed)();
+  const renderView = () => ({ tune: renderTune, ...(UI2 ? { rules: renderRules } : {}), feed: renderFeed, saved: renderSaved, jams: () => renderJams(false), remixes: () => renderJams(false), done: renderWork, work: renderWork, engine: renderEngine, connectors: renderConnectors, deck: renderDeck, learned: renderLearned, heard: () => renderHeard(), facts: () => renderFacts(), moves: renderMoves, move: renderMove, remix: () => (RX.p ? openRemix(RX.p) : renderFeed()), queue: () => renderQueue() }[view] || renderFeed)();
 
   /* ---------- nav ---------- */
   document.addEventListener('click', (e) => {
@@ -2356,26 +2357,15 @@
     return `<div class="sheet pick-sheet p2-sheet"><div class="p2-me">${me?.pic ? `<img src="${esc(me.pic)}" alt="" referrerpolicy="no-referrer">` : `<span class="r2-ini">${esc(String(me?.name || me?.email || 'Y')[0].toUpperCase())}</span>`}<span><b>${esc(me?.name || (window.LIVE?.signin ? 'Not signed in' : 'You'))}</b><small>${esc(me?.email || ROLE().title || '')}</small></span><i class="bmark"><img src="${B.brand.mark}" alt="" title="${esc(B.brand.name)}"></i></div>
       ${window.LiveConn && (window.LIVE?.signin || me) ? row('data-m="acct"', ic('person', 's16'), me ? 'Account and team' : 'Sign in', me ? `${esc(B.brand.name)} · invite people, seats, sign out` : 'With Google, to connect and invite') : ''}
       ${row('data-m="view"', face(ROLE().face), `Viewing as ${esc(ROLE().name)}`, 'Switch seat or tune the feed')}
-      ${row('data-nav="deck"', ic('deck', 's16'), 'Deck', `In progress, shortlisted, jams and briefs · ${WORK.items.filter((w) => w.stage === 'needs_you').length} need you`)}
-      ${row('data-nav="learned"', ic('book', 's16'), 'Memory', 'What Brew learned, the moves, rules and the fact sheet')}
+      ${UI2 ? row('data-nav="deck"', ic('deck', 's16'), 'Deck', `In progress, shortlisted, jams and briefs · ${WORK.items.filter((w) => w.stage === 'needs_you').length} need you`) : row('data-nav="saved"', ic('bookmark', 's16'), 'Library', `${S.saved.length} saved · your jams`) + row('data-nav="work"', ic('board', 's16'), 'Work', `${WORK.items.length} items · ${WORK.items.filter((w) => w.stage === 'needs_you').length} need you`)}
+      ${UI2 ? row('data-nav="learned"', ic('book', 's16'), 'Memory', 'What Brew learned, the moves, rules and the fact sheet') : row('data-nav="learned"', ic('book', 's16'), 'What Brew learned', 'The moves, rules and checks, all editable') + row('data-nav="facts"', ic('doc', 's16'), 'Fact sheet', 'Every number Brew quotes, with its source') + row('data-nav="tune"', ic('sliders', 's16'), 'Your feed', 'What it shows you more and less of')}
       ${row('data-nav="connectors"', ic('plug', 's16'), 'Connectors', `${Object.keys(S.conn).filter(conn).length} of ${Object.keys(B.connectors).length} connected`)}
       ${isStandalone() ? '' : row('data-m="install"', ic('phone', 's16'), 'Add to home screen', `Open ${esc(B.brand.name)} like an app`)}
       ${row('data-m="sound"', ic('bell', 's16'), 'Sounds', 'Little cues when things move', `<span class="sw" aria-checked="${SND.on}" aria-hidden="true"><i></i></span>`)}
       ${row('data-m="setup"', ic('refresh', 's16'), 'Watch the setup again', `Or open ${location.host}/#setup`)}
       ${row('data-m="demo"', ic('sliders', 's16'), 'Demo controls', 'Press . anywhere')}
       <div class="row2"><button class="btn btn-ghost sm" data-m="restart">Start over from the website</button><button class="btn btn-ghost sm" data-m="reset">Reset demo</button></div></div>`; };
-  const openMenu = () => modal(UI2 ? menu2Html() : `<div class="sheet pick-sheet"><div class="side-brand" data-nav="feed" role="button" tabindex="0" title="Home: your feed"><i class="bmark"><img src="${B.brand.mark}" alt=""></i><span><b>${B.brand.name}</b><span>${B.brand.host} · ${esc(ROLE().title)}</span></span></div>
-      <button class="lg-row" data-nav="saved"><span class="lg-ic">${ic('bookmark', 's16')}</span><span class="lg-tx"><b>Library</b><span>${S.saved.length} saved · your jams</span></span>${ic('right', 's16')}</button>
-      <button class="lg-row" data-nav="work"><span class="lg-ic">${ic('board', 's16')}</span><span class="lg-tx"><b>Work</b><span>${WORK.items.length} items · ${WORK.items.filter((w) => w.stage === 'needs_you').length} need you</span></span>${ic('right', 's16')}</button>
-      <button class="lg-row" data-nav="facts"><span class="lg-ic">${ic('doc', 's16')}</span><span class="lg-tx"><b>Fact sheet</b><span>Every number Brew quotes, with its source</span></span>${ic('right', 's16')}</button>
-      <button class="lg-row" data-nav="learned"><span class="lg-ic">${ic('book', 's16')}</span><span class="lg-tx"><b>What Brew learned</b><span>The moves, rules and checks, all editable</span></span>${ic('right', 's16')}</button>
-      <button class="lg-row" data-nav="connectors"><span class="lg-ic">${ic('plug', 's16')}</span><span class="lg-tx"><b>Connectors</b><span>${Object.keys(S.conn).filter(conn).length} of ${Object.keys(B.connectors).length} connected</span></span>${ic('right', 's16')}</button>
-      <button class="lg-row" data-m="view"><span class="lg-ic">${face(ROLE().face)}</span><span class="lg-tx"><b>Viewing as ${esc(ROLE().name)}</b><span>Switch seat or tune the feed</span></span>${ic('right', 's16')}</button>
-      ${isStandalone() ? '' : `<button class="lg-row" data-m="install"><span class="lg-ic">${ic('phone', 's16')}</span><span class="lg-tx"><b>Add to home screen</b><span>Open ${B.brand.name} like an app</span></span>${ic('right', 's16')}</button>`}
-      <button class="lg-row" data-m="sound"><span class="lg-ic">${ic('bell', 's16')}</span><span class="lg-tx"><b>Sounds</b><span>Little cues when things move</span></span><span class="sw" aria-checked="${SND.on}" aria-hidden="true"><i></i></span></button>
-      <button class="lg-row" data-m="setup"><span class="lg-ic">${ic('refresh', 's16')}</span><span class="lg-tx"><b>Watch the setup again</b><span>Or open ${location.host}/#setup</span></span>${ic('right', 's16')}</button>
-      <button class="lg-row" data-m="demo"><span class="lg-ic">${ic('sliders', 's16')}</span><span class="lg-tx"><b>Demo controls</b><span>Press . anywhere</span></span>${ic('right', 's16')}</button>
-      <div class="row2"><button class="btn btn-ghost sm" data-m="restart">Start over from the website</button><button class="btn btn-ghost sm" data-m="reset">Reset demo</button></div></div>`, (m) => {
+  const openMenu = () => modal(menu2Html(), (m) => {
     $('[data-m="view"]', m).onclick = () => { closeModal(); openViewing(); };
     const ac = $('[data-m="acct"]', m); if (ac) ac.onclick = () => { closeModal(); const vis = (el) => el && el.offsetParent !== null ? el : null; window.LiveConn?.menu(vis($('.r2-me')) || vis($('[data-phone-menu]')) || vis($('[data-lacct]')) || document.body); };
     $('[data-m="demo"]', m).onclick = () => { closeModal(); openDemo(); };
@@ -2716,15 +2706,9 @@
     return `<section class="cn-sec cn-soon"><h3>Marketplaces<em>${ks.length}</em><small>Listings, ranks, stock and reviews</small></h3><div class="cn-soon-g">${ks.map((k) => `<article class="cn-soon-c">${logoTile(k, 36)}<div class="cn-name"><b>${MARKETS[k]}</b></div><span class="cn-soon-tag">Coming soon</span></article>`).join('')}</div></section>`; };
   const renderConnectors = () => {
     view = 'connectors';
-    const list = Object.entries(B.connectors), on = list.filter(([id]) => conn(id)), need = list.filter(([id, c]) => !conn(id) && !c.optional), opt = list.filter(([id, c]) => !conn(id) && c.optional);
+    const list = Object.entries(B.connectors);
     const LC = window.LiveConn;
-    const card = ([id, c]) => `<article class="cn-card${conn(id) ? ' is-on' : ''}${c.live ? ' is-live' : ''}" data-cn="${id}">
-        <header>${glyph(id, 40)}<div class="cn-name"><b>${esc(c.name)}</b><span>${esc(c.kind)}</span></div>${LC?.status(id) || (conn(id) ? `<span class="cn-st is-on"><i></i>${c.demo ? 'Demo' : 'Connected'}</span>` : c.optional ? '<span class="cn-st">Optional</span>' : '<span class="cn-st is-off"><i></i>Not connected</span>')}</header>
-        ${conn(id) && (c.stats || []).length ? `<dl class="cn-stats">${c.stats.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>${c.demo ? '<small class="cn-demo">Demo account numbers, built from what we read</small>' : ''}` : ''}
-        ${(conn(id) && c.demo && c.changedDemo?.length ? c.changedDemo : c.changed || []).length ? `<div class="cn-will"><small>${conn(id) ? 'What it’s doing' : 'What it unlocks'}</small><ul>${(conn(id) && c.demo && c.changedDemo?.length ? c.changedDemo : c.changed).slice(0, 3).map((t) => `<li>${esc(t)}</li>`).join('')}</ul></div>` : ''}
-        <footer>${LC?.footer(id) || (conn(id) ? `<span class="cn-acct">${ic('check', 's14')}${esc(c.account)}</span><button class="cn-btn is-ghost" data-unlink="${id}">Disconnect</button>` : `<span class="cn-acct is-muted">${ic('lock', 's14')}Read-only access</span><button class="cn-btn" data-cx="${id}">Connect${ic('right', 's14')}</button>`)}</footer></article>`;
-    const sec = (name, hint, items) => items.length ? `<section class="cn-sec"><h3>${name}<em>${items.length}</em>${hint ? `<small>${hint}</small>` : ''}</h3><div class="cn-grid">${items.map(card).join('')}</div></section>` : '';
-    if (UI2) { /* the design's list: search, grouped rows, one tap to connect; what it unlocks folds into the row */
+    { /* the design's list (both designs): search, grouped rows, one tap to connect; what it unlocks folds into the row */
       const STORE = /^(shopify|meta|google|ga4|gads|ads|analytics|amazon|marketplaces|search)/;
       const row = ([id, c]) => `<details class="c2-row${conn(id) ? ' is-on' : ''}" data-cn="${id}" data-c2-name="${esc(`${c.name} ${c.kind}`.toLowerCase())}"><summary>${glyph(id, 32)}<span class="c2-t"><b>${esc(c.name)}</b><small>${esc(c.kind)}</small></span>${LC?.status(id) || (conn(id) ? `<span class="cn-st is-on"><i></i>${c.demo ? 'Demo' : 'Connected'}</span>` : c.optional ? '<span class="cn-st">Optional</span>' : '')}${conn(id) ? ic('chev', 's16') : `<button class="c2-add" data-cx="${id}" aria-label="Connect ${esc(c.name)}">${ic('plus', 's16')}</button>`}</summary>
           <div class="c2-more"><small>${conn(id) ? 'What it’s doing' : 'What it unlocks'}</small><ul>${(conn(id) && c.demo && c.changedDemo?.length ? c.changedDemo : c.changed || []).slice(0, 3).map((t) => `<li>${esc(t)}</li>`).join('')}</ul>
@@ -2737,13 +2721,7 @@
       $('[data-c2-q]')?.addEventListener('input', (e) => { const q = e.target.value.trim().toLowerCase(); $$('.c2-row').forEach((r) => (r.hidden = !!q && !r.dataset.c2Name.includes(q))); $$('.c2-sec').forEach((sc) => (sc.hidden = !$$('.c2-row', sc).some((r) => !r.hidden))); });
       $$('.c2-add').forEach((b) => b.addEventListener('click', (e) => e.preventDefault())); /* the + connects; it never just opens the row */
       $$('[data-unlink]').forEach((b) => b.onclick = () => { S.conn[b.dataset.unlink] = false; save(); toast(`${esc(B.connectors[b.dataset.unlink].name)} disconnected`); renderConnectors(); refreshAfterConnect(); });
-      return; }
-    const pct = Math.round(on.length / list.length * 100);
-    libShell(`Connectors${LC?.L?.dummy === false ? '' : ' <span class="dummy-tag" title="Connected accounts are simulated in this demo">Dummy</span>'}`, LC?.intro() || (LC?.L?.dummy === false ? `Every source Brew reads for ${B.brand.name}. Connected accounts are read-only and only ${B.brand.name}’s team sees them.` : `Every source Brew reads for ${B.brand.name}. Connected accounts are simulated in this demo (Dummy): connecting shows what would change, and nothing touches a real account.`),
-      `<div class="cn-sum"><div class="cn-sum-n"><b>${on.length}</b><span>of ${list.length} connected</span></div><div class="cn-bar"><i style="width:${pct}%"></i></div><div class="cn-logos">${list.map(([id]) => `<span class="${conn(id) ? '' : 'is-off'}" title="${esc(B.connectors[id].name)}">${glyph(id, 28)}</span>`).join('')}</div></div>
-       ${sec('Not connected yet', 'Connect these to unlock the cards that need them', need)}${sec('Connected', '', on)}${sec('Optional', 'Nice to have', opt)}${soonSec()}`);
-    $('#col')?.classList.add('lib-col', 'cn-col'); if (LC && $('#col')) { LC.bindPage(document.getElementById('view') || $('#col')); }
-    $$('[data-unlink]').forEach((b) => b.onclick = () => { S.conn[b.dataset.unlink] = false; save(); toast(`${esc(B.connectors[b.dataset.unlink].name)} disconnected`); renderConnectors(); refreshAfterConnect(); });
+    }
   };
 
   /* =========================================================
@@ -3312,6 +3290,8 @@
     /* sent: the bar says where it is, not how to send it again */
     if (SPLIT && !ch.batchKey) { const w0 = workOfCard(RX.p?.id); if (w0 && w0.stage === 'needs_you') return `<div class="ship warn"><div class="ship-tx"><b>${ic('hand', 's16')}${esc(w0.with?.name || 'The ShopOS team')} needs your OK${w0.ticket ? `: ${esc(w0.ticket)}` : ''}</b><span>They replied in the conversation. Read it, then approve or change it.</span></div><div class="ship-btns"><button class="btn btn-primary" data-st-convo>${ic('chat', 's16')}Open the conversation</button>${lnk}</div></div>`;
       if (w0 && w0.stage === 'team') return `<div class="ship info"><div class="ship-tx"><b>${ic('send', 's16')}With ${esc(w0.with?.name || 'your team')}</b><span>They look at it in the conversation. Share the brief when it’s ready.</span></div><div class="ship-btns"><button class="btn btn-ghost" data-st-convo>${ic('chat', 's16')}Open the conversation</button>${lnk}</div></div>`;
+      if (w0 && w0.stage === 'shared' && w0.jamBrief?.to !== 'team') { const it = (WORK.withTeam?.items || []).find((x) => x.wid === w0.id); /* sent: the ShopOS team has it by email; its status follows in the top bar */
+        return `<div class="ship ok"><div class="ship-tx"><b>${ic('check', 's16')}Sent to the ShopOS team${w0.ticket ? ` · ${esc(w0.ticket)}` : ''}${it?.label ? ` · ${esc(it.label)}` : ''}</b><span>They take it from here. Its status shows in the top bar.</span></div><div class="ship-btns"><button class="btn btn-ghost" data-st-brief>${ic('doc', 's16')}The brief</button>${lnk}</div></div>`; }
       if (w0 && w0.stage === 'shared') return `<div class="ship ok"><div class="ship-tx"><b>${ic('check', 's16')}Brief shared${w0.ticket ? `: ${esc(w0.ticket)}` : ''}</b><span>With ${w0.jamBrief?.to === 'team' ? 'your team' : 'the ShopOS team'}. The jam ends here.</span></div><div class="ship-btns"><button class="btn btn-ghost" data-st-brief>${ic('doc', 's16')}The brief</button><button class="btn btn-ghost" data-rx="share-${w0.jamBrief?.to === 'team' ? 'team' : 'shopos'}">${ic('copy', 's16')}Copy it again</button>${lnk}</div></div>`; }
     /* before the plan's make step has run, the jam's main button is the card's own action: it makes the work, it ships nothing */
     if (SPLIT && !ch.batchKey && ch.state !== 'jam' && !planMade(ch)) { const pl = planOf(ch);
@@ -3320,7 +3300,7 @@
     if (SPLIT && !ch.batchKey && ch.state !== 'jam') { const fix = ch.verdict === 'fix', label = ch.actionLabel || (RX.p ? cardOf(RX.p).cta?.label : ''); /* the package's own action, not the card's generic label */
       const what = ch.family === 'post' ? `${fix ? `Check first: ${(ch.fixes || []).join('; ')}. ` : ''}The brief carries the post and where it goes. You post it yourself; Brew never posts in communities for you.` : fix ? `Before it can ship: ${(ch.fixes || []).join('; ')}.` : ch.verdict === 'confirm' ? `Tick your own checks first: ${(ch.confirm || []).join('; ')}.` : 'Share the brief: the final version, the plan and how we’ll know, for the ShopOS team or your own team to run.';
       return `<div class="ship one ${fix ? 'warn' : 'ok'}"><div class="ship-tx"><b>${ic(fix ? 'x' : 'zap', 's16')}<span class="ship-l">${fix ? `Needs a fix: ${esc((ch.fixes || [])[0] || 'see the checks')}` : `Ready · v${curN(ch)}`}</span>${tipBtn(what)}</b></div>
-        <div class="ship-btns">${fix ? `<button class="btn btn-ghost" data-rx="fix">${ic('sparkles', 's16')}Fix it with AI</button>` : ''}<button class="btn btn-ghost" data-rx="share-team">Share with my team</button><button class="btn btn-primary" data-rx="share-shopos">${ic('copy', 's16')}Share with the ShopOS team</button></div></div>`; }
+        <div class="ship-btns">${fix ? `<button class="btn btn-ghost" data-rx="fix">${ic('sparkles', 's16')}Fix it with AI</button>` : ''}<button class="btn btn-ghost" data-rx="share-team">Share with my team</button><button class="btn btn-primary" data-rx="share-shopos">${ic('send', 's16')}Send brief</button></div></div>`; }
     if (ch.state === 'jam') return `<div class="ship warn"><div class="ship-tx"><b>${ic('hand', 's16')}Being planned in a jam</b><span>Answer the open questions there, then it ships.</span></div><div class="ship-btns"><button class="btn btn-primary" data-rx="open">Open the jam</button></div></div>`;
     const R = RXROUTE[ch.verdict] || RXROUTE.jam, blocks = ch.checks.filter((x) => !x.ok && !x.soft);
     const what = ch.verdict === 'confirm' ? `Tick your own checks first: ${esc((ch.confirm || []).join('; '))}.` : ch.verdict === 'fix' ? `Before it can ship: ${esc((ch.fixes || []).join('; '))}.` : ch.verdict === 'live' ? `Brew updates ${esc(ch.target.object.toLowerCase())} on ${esc(ch.target.name)} automatically, watches the result, and can roll it back.` : ch.verdict === 'deploy' ? `${esc(ch.teamWhy || 'It needs a person')}, so the ShopOS team ships it. You send them a brief with everything they need${ch.money && ch.amount > 0 ? `: about ${inrS(ch.amount)} a week` : ''}.` : esc(blocks[0]?.k || ch.reasons[0] || 'A person needs to plan or decide this first.');
@@ -3358,8 +3338,8 @@
   const chatTab = (ch, edit) => {
     const msgs = ch.thread || [], vById = (id) => ch.versions.find((v) => v.id === id);
     const log = msgs.map((m) => m.from === 'you' ? `<div class="lgm you"><p>${esc(m.text)}</p></div>` : `<div class="lgm ai">${face(ch.agent)}<div><p>${esc(m.text)}</p>${m.v && ch.versions[m.v - 1] ? madeNote(ch, [ch.versions[m.v - 1]]) : ''}${(m.vs || []).length ? madeNote(ch, m.vs.map(vById).filter(Boolean)) : ''}</div></div>`).join('');
-    return `<div class="it-log">${SPLIT && RX.p ? `<div class="it-empty">${face(ch.agent)}${caseBrief(ch)}</div>` : ''}${log || (SPLIT && RX.p ? '' : `<div class="it-empty">${face(ch.agent)}${`<p>${SPLIT ? 'What should change? Each change makes a new version, and you can always go back.' : 'Tell me what to change, in plain words. I’ll rewrite the whole package and save it as a new version. You can always go back.'}</p>`}</div>`)}${UI2 ? j2Extra(ch) : ''}${RX.sending ? `<div class="lgm ai pending">${face(ch.agent)}<p><span class="spin"></span>${esc(RX.sending)}</p></div>` : ''}</div>
-      ${edit ? `<form class="it-ask" id="st-say">${UI2 ? chips2(ch) : `<div class="it-sugg">${PH_FAM.includes(ch.family) ? `<button type="button" class="chip chip-ph" data-ph-open>${ic('pic', 's14')}Change the photo</button>` : ''}${fitSuggest(ch.suggest).slice(0, PH_FAM.includes(ch.family) ? 3 : 4).map((x) => `<button type="button" class="chip" data-say="${esc(x)}">${esc(x)}</button>`).join('')}</div>`}<div class="it-row${SPLIT && window.Composer?.tools ? ' has-cmp' : ''}"><textarea id="st-in" rows="2"${SPLIT ? ' data-nomic' : ''} placeholder="What should change? Or @ someone">${esc(RX.draft || '')}</textarea>${SPLIT && window.Composer?.tools ? `<span class="jm-tools">${window.Composer.tools()}<span class="jm-tools-r">${window.Mic?.supported ? `<button type="button" class="jm-mic" data-cmp-talk aria-label="Talk instead of typing">${ic('mic', 's16')}</button>` : ''}<button class="jm-send" aria-label="Send" ${RX.sending ? 'disabled' : ''}>${ic('up', 's16')}</button></span></span>` : `<button class="btn btn-primary" aria-label="Send" ${RX.sending ? 'disabled' : ''}>${ic('up', 's16')}</button>`}</div></form>${SPLIT && window.Composer?.foot ? window.Composer.foot() : ''}` : UI2 ? `<div class="it-ask"><div class="it-sugg j2-chips"><button type="button" class="chip j2-chip is-brief" data-tab="details">${ic('doc', 's14')}View brief</button><button type="button" class="chip j2-chip" data-rx="open">${ic('hand', 's14')}Open the jam</button></div><p class="it-locked">It’s in a jam. Shape it there.</p></div>` : `<p class="it-locked">It’s in a jam. Shape it there.</p>`}`;
+    return `<div class="it-log">${SPLIT && RX.p ? `<div class="it-empty">${face(ch.agent)}${caseBrief(ch)}</div>` : ''}${log || (SPLIT && RX.p ? '' : `<div class="it-empty">${face(ch.agent)}${`<p>${SPLIT ? 'What should change? Each change makes a new version, and you can always go back.' : 'Tell me what to change, in plain words. I’ll rewrite the whole package and save it as a new version. You can always go back.'}</p>`}</div>`)}${j2Extra(ch)}${RX.sending ? `<div class="lgm ai pending">${face(ch.agent)}<p><span class="spin"></span>${esc(RX.sending)}</p></div>` : ''}</div>
+      ${edit ? `<form class="it-ask" id="st-say">${UI2 ? chips2(ch) : `<div class="it-sugg">${PH_FAM.includes(ch.family) ? `<button type="button" class="chip chip-ph" data-ph-open>${ic('pic', 's14')}Change the photo</button>` : ''}${fitSuggest(ch.suggest).slice(0, PH_FAM.includes(ch.family) ? 3 : 4).map((x) => `<button type="button" class="chip" data-say="${esc(x)}">${esc(x)}</button>`).join('')}${j2Acts(ch, (attr, icon, label, cls = '') => `<button type="button" class="chip j1-chip${cls}" ${attr}${RX.sending ? ' disabled' : ''}>${icon ? ic(icon, 's14') : ''}${esc(label)}</button>`).join('')}</div>`}<div class="it-row${SPLIT && window.Composer?.tools ? ' has-cmp' : ''}"><textarea id="st-in" rows="2"${SPLIT ? ' data-nomic' : ''} placeholder="What should change? Or @ someone">${esc(RX.draft || '')}</textarea>${SPLIT && window.Composer?.tools ? `<span class="jm-tools">${window.Composer.tools()}<span class="jm-tools-r">${window.Mic?.supported ? `<button type="button" class="jm-mic" data-cmp-talk aria-label="Talk instead of typing">${ic('mic', 's16')}</button>` : ''}<button class="jm-send" aria-label="Send" ${RX.sending ? 'disabled' : ''}>${ic('up', 's16')}</button></span></span>` : `<button class="btn btn-primary" aria-label="Send" ${RX.sending ? 'disabled' : ''}>${ic('up', 's16')}</button>`}</div></form>${SPLIT && window.Composer?.foot ? window.Composer.foot() : ''}` : UI2 ? `<div class="it-ask"><div class="it-sugg j2-chips"><button type="button" class="chip j2-chip is-brief" data-tab="details">${ic('doc', 's14')}View brief</button><button type="button" class="chip j2-chip" data-rx="open">${ic('hand', 's14')}Open the jam</button></div><p class="it-locked">It’s in a jam. Shape it there.</p></div>` : `<p class="it-locked">It’s in a jam. Shape it there.</p>`}`;
   };
   const adjustTab = (ch, edit) => edit ? `<p class="hs-tip">Turn a knob and the package is rewritten to match. Knobs marked “new photo” make a new creative.</p>
       ${fitKnobs(ch.knobs).map((k) => { const multi = k.kind === 'copy', sel = (RX.knobSel || {})[k.k] || [], cur = (ch.pkg.knobs || {})[k.k];
@@ -3507,15 +3487,19 @@
     const rows = [['Where', where && esc(where)], ['Post at', when && esc(when)], ['Budget', budget && esc(budget)], ['Backed by', backed.length ? backed.map((m) => `<button class="linkbtn j2-mv" data-j2-move="${m.n}" title="${esc(m.title)}">Move ${String(m.n).padStart(2, '0')}</button>`).join(' ') : ''], ['Measure', measure && esc(measure)]].filter(([, v]) => v);
     return rows.length ? `<dl class="j2-facts">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>` : ''; };
   /* the options under the chat: the card's own next step, the brief, photo, the family's quick asks, more versions, the knobs, the files */
+  /* the files, the projection and the remakes: the same three chips in both designs (ui=1 puts them after its quick asks) */
+  const j2Acts = (ch, c) => { const out = [];
+    out.push(c('data-j2-pack', 'down', j2PackLabel(ch), ' is-pack'));
+    out.push(c('data-j2-impact', 'trendup', 'Projected impact'));
+    if (['meta_ad', 'social', 'post'].includes(ch.family) && ch.state !== 'live') { const as = ch.pkg?.draft?.as || (/carousel/.test(String(ch.action)) ? 'carousel' : /short_video|reel/.test(String(ch.action)) ? 'video' : ''), busyMedia = ch.imagePending || ch.videoPending || ch.remakePending; if (busyMedia) out.push(`<button type="button" class="chip j2-chip" disabled>${ic('clock', 's14')}${ch.remakePending ? esc(ch.remakePending.step || 'Making it…') : 'Making the photo…'}</button>`); else { if (as !== 'video') out.push(c('data-j2-remake="video"', 'film', 'Make it a reel')); if (as !== 'carousel') out.push(c('data-j2-remake="carousel"', 'layers', 'Make it a carousel')); } }
+    return out; };
   const chips2 = (ch) => { const pl = planOf(ch), made = planMade(ch), dis = RX.sending ? ' disabled' : '', c = (attr, icon, label, cls = '') => `<button type="button" class="chip j2-chip${cls}" ${attr}${dis}>${icon ? ic(icon, 's14') : ''}${esc(label)}</button>`;
     const out = [c('data-tab="details"', 'doc', 'View brief', ' is-brief')];
     if (!made && pl) out.push(c('data-rx="plan"', 'sparkles', pl.cta, ' is-go'));
     if (ch.verdict === 'fix') out.push(c('data-rx="fix"', 'sparkles', 'Fix it with AI', ' is-go'));
     if (PH_FAM.includes(ch.family)) out.push(c('data-ph-open', 'pic', 'Swap the image'));
     fitSuggest(ch.suggest).slice(0, 3).forEach((x) => out.push(`<button type="button" class="chip j2-chip" data-say="${esc(x)}"${dis}>${esc(x)}</button>`));
-    out.push(c('data-j2-pack', 'down', j2PackLabel(ch), ' is-pack'));
-    out.push(c('data-j2-impact', 'trendup', 'Projected impact'));
-    if (['meta_ad', 'social', 'post'].includes(ch.family) && ch.state !== 'live') { const as = ch.pkg?.draft?.as || (/carousel/.test(String(ch.action)) ? 'carousel' : /short_video|reel/.test(String(ch.action)) ? 'video' : ''), busyMedia = ch.imagePending || ch.videoPending || ch.remakePending; if (busyMedia) out.push(`<button type="button" class="chip j2-chip" disabled>${ic('clock', 's14')}${ch.remakePending ? esc(ch.remakePending.step || 'Making it…') : 'Making the photo…'}</button>`); else { if (as !== 'video') out.push(c('data-j2-remake="video"', 'film', 'Make it a reel')); if (as !== 'carousel') out.push(c('data-j2-remake="carousel"', 'layers', 'Make it a carousel')); } }
+    out.push(...j2Acts(ch, c));
     out.push(c('data-rx="variants"', 'shuffle', 'More like this'));
     if (fitKnobs(ch.knobs).length) out.push(c('data-tab="adjust"', 'sliders', 'Adjust'));
     if (RX.p) out.push(`<button type="button" class="chip j2-chip" data-ask="${esc(JSON.stringify({ cardId: RX.p.id, label: String(cardOf(RX.p).title || 'This card').slice(0, 60) }))}">${ic('chat', 's14')}Ask Brew about this</button>`);
@@ -3590,7 +3574,7 @@
     fitAd();
     const pb = $('.st-panel-b'); const nT = (ch.thread || []).length + (RX.sending ? 1 : 0) + Object.keys(J2.imp).length + Object.keys(J2.pack).length;
     if (UI2) { const grew = nT > (RX.j2n || 0) && RX.j2for === ch.id; RX.j2n = nT; const first = RX.j2for !== ch.id; RX.j2for = ch.id; pb.scrollTop = first ? 0 : grew ? pb.scrollHeight : logScroll || 0; RX.resetScroll = false; } /* opening the brief or Adjust never moves the page */
-    else if (tab === 'iterate') pb.scrollTop = (ch.thread || []).length || RX.sending ? pb.scrollHeight : 0; /* the case stays first in the chat and scrolls up as it grows; a fresh chat is read from its top */ else if (logScroll && !RX.resetScroll) pb.scrollTop = logScroll; RX.resetScroll = false;
+    else if (tab === 'iterate') pb.scrollTop = (ch.thread || []).length || RX.sending || j2Extra(ch) ? pb.scrollHeight : 0; /* the case stays first in the chat and scrolls up as it grows; a fresh chat is read from its top */ else if (logScroll && !RX.resetScroll) pb.scrollTop = logScroll; RX.resetScroll = false;
     clearTimeout(RX.pollT);
     if (ch.copyPending || ch.imagePending || ch.videoPending || ch.remakePending) RX.pollT = setTimeout(async () => { if (view !== 'remix' || RX.ch?.id !== ch.id) return; const q = await tapi('GET', `/api/changes/${ch.id}`); if (q.change) { RX.ch = q.change; putCh(q.change); } paintStudio(); if (ch.copyPending && q.change && !q.change.copyPending) autoImage(q.change); }, ch.copyPending ? 1500 : 3000);
   };
@@ -4175,7 +4159,7 @@
       ${toldList(toldRows.slice(0, 6))}${toldRows.length > 6 ? `<details class="q-more"><summary>${toldRows.length - 6} more</summary>${toldList(toldRows.slice(6))}</details>` : ''}</section>` : '';
     const anyLearned = moved.length + lessons.length + L.rules.length + L.autoChecks.length + toldRows.length;
     libShell('What Brew learned', 'From what you pick, edit and ship. Edit, pause or forget anything.',
-      `<div class="lx">
+      `<div class="lx">${UI2 ? '' : m2DropHtml()}
         ${movesHtml}
         ${anyLearned ? '' : `<p class="lx-zero">${ic('sparkles', 's16')}<span>Nothing learned yet. Pick, edit and ship from your cards, and what Brew learns lands here.</span></p>`}
         ${toldHtml}
@@ -4203,16 +4187,17 @@
   const renderLearned = async () => { await renderLearned0(); if (!UI2 || view !== 'learned') return;
     if (document.body.dataset.m2 === 'rules' && !$('#fs')) { ($('#col') || $('#view')).insertAdjacentHTML('beforeend', `<section class="lx-sec m2-facts">${lxHead('lx-facts', 'Fact sheet', '', `Every number and name Brew may quote for ${esc(B.brand.name)}, and where it came from. Every agent follows it.`)}<div class="fsx" id="fs"><p class="lx-empty">Opening…</p></div></section>`); renderFacts(true); } };
   const M2TAB = { learned: 'learned', moves: 'learned', move: 'learned', rules: 'rules', facts: 'rules', heard: 'heard', tune: 'tune' };
+  const m2DropHtml = () => `<div class="m2-drop" data-m2-drop><span class="m2-up">${ic('up', 's18')}</span><b>Drop anything here</b><span>Brand guides, past ads, product sheets, screenshots. Brew reads it and every agent works from it.</span><button class="btn btn-ghost sm" data-m2-pick>Upload files</button><input type="file" multiple hidden data-m2-file></div>`;
   const m2Paint = (k) => { const el = $('#m2'); if (!el) return; const t = M2TAB[k]; el.hidden = !t || k === 'move'; document.body.dataset.m2 = t || ''; if (!t || k === 'move') return;
     const tab = (key, nav, label) => `<button role="tab" data-nav="${nav}" aria-selected="${t === key}">${label}</button>`;
     el.innerHTML = `<div class="m2-in"><h1>Memory</h1><p class="m2-sub">What Brew knows and follows for ${esc(B.brand.name)}.</p>
-      <div class="m2-drop" data-m2-drop><span class="m2-up">${ic('up', 's18')}</span><b>Drop anything here</b><span>Brand guides, past ads, product sheets, screenshots. Brew reads it and every agent works from it.</span><button class="btn btn-ghost sm" data-m2-pick>Upload files</button><input type="file" multiple hidden data-m2-file></div>
+      ${m2DropHtml()}
       <nav class="m2-tabs" role="tablist">${tab('learned', 'learned', 'What we learned')}${tab('tune', 'tune', 'Your feed')}${tab('rules', 'rules', 'Rules')}${tab('heard', 'heard', 'Heard')}</nav></div>`; };
   /* Drop anything here: pick or drop files, then say where they go (brand memory / my preferences / just this once) */
   const m2Drop = (files) => { files = [...files].slice(0, 8); if (!files.length) return;
     const dest = (k, icon, t, d) => `<button class="m2-dest" data-m2-dest="${k}">${ic(icon, 's18')}<span><b>${t}</b><small>${d}</small></span></button>`;
     modal(`<div class="sheet m2-sheet"><header class="sh-h"><b class="sh-t">${files.length === 1 ? esc(files[0].name) : `${files.length} files`}</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>
-      <p class="m2-q">Where should this go?</p>${dest('memory', 'book', 'Add to brand memory', 'Every agent works from it from now on.')}${dest('prefs', 'person', 'Save to my preferences', 'Shapes what the feed shows me, not what the brand says.')}${dest('once', 'clock', 'Use it just this once', 'For the next thing I ask Brew, then forget it.')}</div>`, (m) => {
+      <p class="m2-q">Where should this go?</p>${dest('memory', 'book', 'Add to brand memory', 'Every agent works from it from now on.')}${dest('prefs', 'person', 'Save to my preferences', 'Shapes what the feed shows me, not what the brand says.')}${UI2 ? dest('once', 'clock', 'Use it just this once', 'For the next thing I ask Brew, then forget it.') : ''}</div>`, (m) => {
       $$('[data-m2-dest]', m).forEach((b) => (b.onclick = async () => { const d = b.dataset.m2Dest; $$('[data-m2-dest]', m).forEach((x) => (x.disabled = true)); b.classList.add('is-busy');
         const IMG = /^image\/(png|jpeg|webp)$/, TXT = /^text\/|json|csv|markdown/;
         const read = (f, how) => new Promise((ok) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = () => ok(null); r[how](f); });
@@ -4223,8 +4208,8 @@
           r = await tapi('POST', `/api/brands/${encodeURIComponent(mvSlug())}/drop`, { dest: d, name: f.name, ...(img ? { data: v } : { text: v }) }); if (r?.error) break; }
         if (!r && skipped.length) { closeModal(); return toast(`Brew reads photos (PNG, JPG, WebP up to 8 MB) and text files for now. ${esc(skipped.join(', '))} wasn’t added.`); }
         closeModal(); if (!r || r.error) return toast(esc(r?.error || 'That didn’t save. Try again.'));
-        toast(`${ic('check', 's16')}${d === 'memory' ? 'Added to brand memory' : d === 'prefs' ? 'Saved to your preferences' : 'Ready for your next ask'}${skipped.length ? `. Skipped ${esc(skipped.join(', '))}: photos and text files only` : ''}`); if (d === 'prefs' && view === 'tune') renderTune(); if (d === 'once') openAsk(); if (['learned', 'rules'].includes(document.body.dataset.m2)) renderLearned(); })); }); };
-  document.addEventListener('click', (e) => { if (!UI2) return; const pk = e.target.closest('[data-m2-pick]'); if (pk) { pk.closest('.m2-drop')?.querySelector('[data-m2-file]')?.click(); } });
+        toast(`${ic('check', 's16')}${d === 'memory' ? 'Added to brand memory' : d === 'prefs' ? 'Saved to your preferences' : 'Ready for your next ask'}${skipped.length ? `. Skipped ${esc(skipped.join(', '))}: photos and text files only` : ''}`); if (d === 'prefs' && view === 'tune') renderTune(); if (d === 'once') openAsk(); if (['learned', 'rules'].includes(document.body.dataset.m2) || (!UI2 && view === 'learned')) renderLearned(); })); }); };
+  document.addEventListener('click', (e) => { const pk = e.target.closest('[data-m2-pick]'); if (pk) { pk.closest('.m2-drop')?.querySelector('[data-m2-file]')?.click(); } });
   document.addEventListener('change', (e) => { if (e.target.matches?.('[data-m2-file]')) { m2Drop(e.target.files); e.target.value = ''; } });
   ['dragover', 'dragleave', 'drop'].forEach((ev) => document.addEventListener(ev, (e) => { const z = e.target.closest?.('[data-m2-drop]'); if (!z) return; e.preventDefault(); z.classList.toggle('is-over', ev === 'dragover'); if (ev === 'drop') m2Drop(e.dataTransfer?.files || []); }));
   const renderRules = () => { document.body.dataset.m2 = 'rules'; return renderLearned(); };
@@ -4233,18 +4218,19 @@
      your saved preferences, and your seat. /api/tenants/:t/tuning; ranking moves an agent ±4 and a topic +2 */
   const TU = { d: null };
   const renderTune = async () => { view = 'tune'; const R = ROLE();
-    if (!TU.d) libShell('', '', '<p class="lx-empty">Opening…</p>');
-    const r = await tapi('GET', '/api/tenants/:t/tuning'); if (view !== 'tune') return; if (r.error) { libShell('', '', `<p class="lx-empty">${esc(r.error)}</p>`); return $('.lib-head')?.remove(); }
+    const tuT = UI2 ? '' : 'Your feed', tuS = UI2 ? '' : 'What Brew shows you more and less of. Only you see this.';
+    if (!TU.d) libShell(tuT, tuS, '<p class="lx-empty">Opening…</p>');
+    const r = await tapi('GET', '/api/tenants/:t/tuning'); if (view !== 'tune') return; if (r.error) { libShell(tuT, tuS, `<p class="lx-empty">${esc(r.error)}</p>`); return UI2 && $('.lib-head')?.remove(); }
     TU.d = r; const tn = r.tuning || {}, sig = r.signals || [], W = r.weights || ['less', 'normal', 'more'];
     const ign = new Set(tn.ignored || []);
-    libShell('', '', `<section class="lx-sec">${lxHead('lx-picked', 'Picked up from your choices', sig.length || '', sig.length ? 'From your hearts, Not for me and Fewer. Drop any that are wrong.' : 'Heart, save or skip cards; Brew learns what to show you more of.')}
+    libShell(tuT, tuS, `<section class="lx-sec">${lxHead('lx-picked', 'Picked up from your choices', sig.length || '', sig.length ? 'From your hearts, Not for me and Fewer. Drop any that are wrong.' : 'Heart, save or skip cards; Brew learns what to show you more of.')}
         ${sig.map((x) => `<div class="tu-sig${ign.has(x.id) ? ' is-off' : ''}"><span class="tu-k is-${esc(x.kind)}">${ic(x.kind === 'like' ? 'heart' : 'minus', 's14')}</span><span class="tu-t"><b>${esc(x.text)}</b>${x.why ? `<small>${esc(x.why)}</small>` : ''}</span>${ign.has(x.id) ? `<button class="linkbtn" data-tu-sigback="${esc(x.id)}">Use it again</button>` : `<button class="icon-btn" data-tu-sigx="${esc(x.id)}" aria-label="Stop counting this">${ic('x', 's16')}</button>`}</div>`).join('')}</section>
       <section class="lx-sec">${lxHead('lx-topics', 'Topics', (tn.topics || []).length || '', 'Cards about these come first.')}<form class="tu-add" data-tu-topic><input placeholder="Add a topic, e.g. sunscreen" maxlength="40" autocomplete="off"><button class="btn btn-ghost sm">Add</button></form>
         <div class="m2-chips">${(tn.topics || []).map((t) => `<span class="chip">${esc(t)}<button class="linkbtn" data-tu-topicx="${esc(t)}" aria-label="Remove ${esc(t)}">${ic('x', 's14')}</button></span>`).join('')}</div></section>
       <section class="lx-sec">${lxHead('lx-agents', 'Agents', '', 'How much each agent shows up in your feed.')}${(r.agents || []).map((a) => `<div class="tu-ag">${face(a.id)}<span class="tu-t"><b>${esc(a.name || AGENT[a.id])}</b></span><span class="tu-seg" role="radiogroup" aria-label="${esc(a.name)}">${W.map((w) => `<button role="radio" aria-checked="${(a.weight || 'normal') === w}" data-tu-w="${esc(a.id)}:${w}">${w[0].toUpperCase() + w.slice(1)}</button>`).join('')}</span></div>`).join('')}</section>
       ${(tn.notes || []).length ? `<section class="lx-sec">${lxHead('lx-prefs', 'My preferences', tn.notes.length, 'From what you dropped into My preferences.')}${tn.notes.map((n) => `<div class="tu-sig"><span class="tu-t"><b>${esc(n.text || n.name || '')}</b></span><button class="icon-btn" data-tu-notex="${esc(n.id)}" aria-label="Remove">${ic('x', 's16')}</button></div>`).join('')}</section>` : ''}
       <section class="lx-sec">${lxHead('lx-seat', 'Your seat', '', '')}<button class="lx-heard-row" data-r2-tune>${face(R.face)}<span><b>${esc(R.name)}</b><small>Who the feed is for, what comes first and your focus</small></span>${ic('right', 's16')}</button></section>`);
-    $('.lib-head')?.remove(); $('#col')?.classList.add('lib-col', 'tu-col'); };
+    if (UI2) $('.lib-head')?.remove(); $('#col')?.classList.add('lib-col', 'tu-col'); };
   const tuPut = async (body) => { const r = await tapi('PUT', '/api/tenants/:t/tuning', body); if (r.error) return toast(esc(r.error)); TU.d = r; renderTune(); };
   document.addEventListener('click', async (e) => { if (view !== 'tune') return; const t = e.target;
     const w = t.closest('[data-tu-w]'); if (w) { const [id, v] = w.dataset.tuW.split(':'); return tuPut({ weights: { ...(TU.d?.tuning?.weights || {}), [id]: v } }); }

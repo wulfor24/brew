@@ -2643,3 +2643,13 @@ body.rx-boot #view{visibility:hidden}
 .iv-p b{flex:1;min-width:0;font-size:14px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .iv-p small{font-size:13px;color:var(--fg-3);white-space:nowrap}
 .iv-p .av{border-radius:50%;font-size:11px}
+
+/* ui=1 gets the features built for UI2 (2026-10-16): the brief status pill in the top bar, the jam's pack, impact and remake chips,
+   Your feed and Drop anything (their own rules live unscoped in ui2.css) */
+.j1-pill{display:inline-flex;align-items:center;gap:6px;margin-right:6px}
+.j1-pill[hidden]{display:none}
+.j1-pill .t2-live{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px var(--ok-bg)}
+.j1-pill.is-ask .t2-live{background:var(--warn);box-shadow:0 0 0 3px var(--warn-bg)}
+.j1-chip{display:inline-flex;align-items:center;gap:6px}
+.lx .m2-drop{margin-bottom:22px}
+@media (max-width:760px){.j1-pill [data-count="team"]{display:none}}
