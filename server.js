@@ -27,7 +27,7 @@ import { createAlerts, noteVertex } from './alerts.js'; // ops emails: Vertex bi
 import { createBudget } from './budget.js'; // the day's AI budget: a ceiling and a share per brand
 import { createTreg, gcsCache } from './treg.js';
 import { setApifyCache } from './apify.js';
-import { chain as mediaChain, openaiImage as openaiImageRaw } from './media.js';
+import { chain as mediaChain, openaiImage as openaiImageRaw, makeVideo } from './media.js';
 import { createVault } from './vault.js';
 import { createSlooshAuth } from './sloosh-auth.js';
 import { createSloosh } from './sloosh-mcp.js';
@@ -468,7 +468,8 @@ const slooshAuth = createSlooshAuth({ packs, vault: createVault(packs), auth, lo
 const sloosh = createSloosh({ tokenFor: slooshAuth.tokenFor, log: console });
 /* finals (finals.js): the go-live image or video a team asks Sloosh for, quote first, behind a button; records per brand so a
    restart never pays twice (reconcileAll at boot); counted in budget 'credits' and in /api/ops/busy */
-const finals = createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFlush, slugs: async () => (await packs.list()).map((x) => x.slug), log: console, geminiImage: countedImage, photo: photoAny }); /* geminiImage: the fallback until Brew's workspace can pay */
+const finals = createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFlush, slugs: async () => (await packs.list()).map((x) => x.slug), log: console, geminiImage: countedImage, photo: photoAny, /* the Gemini fallback until Brew's workspace can pay: the drafts' own makers, counted in the image/video budget */
+  makeVideo: async (frame, prompt, { ratio = '9:16', seconds = 6, slug } = {}) => { if (!spend('video', slug)) throw Object.assign(new Error(budget.why('video', slug) || 'The video budget for today is used up.'), { soft: true, budget: true }); return makeVideo(frame, prompt, { ratio, seconds }, console); } });
 /* GET /api/ops/sloosh (staff): the connection, the workspace and what Sloosh says about today's limit and credits */
 const slooshStaff = (req) => auth.isAdmin(auth.user(req)) || (!auth.signinOn() && !process.env.K_SERVICE); /* staff, or a local server with sign-in off */
 const slooshOps = async (req) => {

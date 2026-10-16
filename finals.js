@@ -7,9 +7,10 @@
 // DUMMY: the draft's own picture comes back as the final, tagged Dummy (DUMMY.md row 8).
 // Until Brew's Sloosh workspace has credits (a free plan today), an image final falls back to Gemini on Vertex (the same maker as
 // the drafts, with the same brief): the version says so, no Sloosh credit moves, and the moment the workspace can pay the same
-// button goes to Sloosh. Video and Space runs have no fallback: they say Sloosh is needed.
+// button goes to Sloosh. A video final falls back to Veo on a Gemini still (the drafts' own chain); Space runs have no fallback.
+// Every quote and record carries provider: 'sloosh' | 'gemini'.
 import crypto from 'node:crypto';
-import { buildFinal } from './sloosh-prompt.js';
+import { buildFinal, buildDraft } from './sloosh-prompt.js';
 import { formOf, prefill } from './sloosh-spaces.js';
 
 const DIR = 'private/finals/', ASSETS = 'private/sloosh-assets.json', MAX_BYTES = 64 * 1024 * 1024, QUOTE_FRESH_MS = 4 * 60e3;
@@ -30,7 +31,7 @@ export const expiresOf = (o) => { const e = pick(o, 'expiresAt', 'expires_at'); 
 export const budgetOf = (c) => { const b = c?.budget || {}; const k = String(b.unit || 'millicredits') === 'credits' ? 1 : 1000; const n = (v) => (v == null ? null : Math.round((+v / k) * 100) / 100); return { configured: !!b.configured && c?.spendingEnabled !== false, left: n(b.remainingUnits), limit: n(b.dailyLimitUnits), spent: n(b.settledTodayUnits), held: n(b.outstandingUnits), askAbove: n(b.confirmationThresholdUnits), resetsAt: b.resetsAt || null, settingsUrl: c?.settingsUrl || null }; };
 
 export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFlush = async () => {}, publicUrl = process.env.PUBLIC_URL || '', fetchImpl = fetch, slugs = async () => [], log = console, now = Date.now,
-  dummy = () => process.env.DEMO_MODE === '1' || process.env.SLOOSH_DUMMY === '1', readFile = null, geminiImage = null, photo = async () => null } = {}) {
+  dummy = () => process.env.DEMO_MODE === '1' || process.env.SLOOSH_DUMMY === '1', readFile = null, geminiImage = null, makeVideo = null, photo = async () => null } = {}) {
   const inflight = new Map(); /* runKey → promise, this instance */
   let statusMemo = null;
 
@@ -48,9 +49,10 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
     if (!v.ok && geminiImage) v = { ...v, fallback: true, fallbackWhy: v.why, why: null }; /* an image final can still be made, on Gemini, until Sloosh can pay */
     statusMemo = { at: now(), v }; return v;
   }
-  /* the Gemini fallback quote: no credits, the same brief; a video or a Space has none */
-  const geminiQuote = (spec, why) => { if (spec.space || spec.kind === 'video') return { error: `${why} ${spec.space ? 'A Space runs on Sloosh only.' : 'A video final runs on Sloosh only.'}`.trim() };
-    const b = buildFinal(spec); return { quoteId: `gemini-${sha(JSON.stringify([spec.visual, spec.text, spec.refs]))}`, fallback: true, why: `on Gemini for now: ${why}`, fallbackWhy: why, credits: 0, hold: 0, model: 'gemini', label: 'Gemini (Vertex)', prompt: b.prompt, settings: b.settings, space: null, refs: spec.refs || [], expiresAt: now() + 3600e3, at: now() }; };
+  /* the Gemini fallback quote: no credits, the same brief (the Nano Banana rendering is right for Gemini image; a video is Veo on a Gemini still); a Space has none */
+  const geminiQuote = (spec, why) => { if (spec.space) return { error: `${why} A Space runs on Sloosh only.`.trim() }; const vid = spec.kind === 'video'; if (vid && !makeVideo) return { error: `${why} A video final runs on Sloosh only here.`.trim() };
+    const b = buildFinal({ ...spec, kind: 'image' }); const settings = vid ? { aspect_ratio: spec.ratio || '9:16', resolution: '1080p', duration: Math.max(4, Math.min(8, Math.round(spec.seconds || 6))), sound: !!spec.sound } : b.settings;
+    return { quoteId: `gemini-${sha(JSON.stringify([spec.kind, spec.visual, spec.text, spec.refs, spec.motion]))}`, provider: 'gemini', fallback: true, why: `on Gemini for now: ${why}`, fallbackWhy: why, credits: 0, hold: 0, model: vid ? 'veo-3.1-fast' : 'gemini-3-pro-image', label: vid ? 'Veo 3.1 Fast (Vertex)' : 'Gemini 3 Pro Image (Vertex)', prompt: b.prompt, motion: vid ? buildDraft({ ...spec, kind: 'video' }).prompt : null, settings, space: null, refs: spec.refs || [], expiresAt: now() + 3600e3, at: now() }; };
 
   /* ---------- Brew's files as Sloosh assets, imported once ---------- */
   const assetCache = async (slug) => (await packs.getJSON(slug, ASSETS, null)) || {};
@@ -87,6 +89,7 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
     if (warning && geminiImage && !spec.space && spec.kind !== 'video' && /wallet|allocation|credit|limit|short/i.test(warning)) return geminiQuote(spec, `Sloosh says: ${warning}`);
     if (!quoteId) return { error: `Sloosh quoted without a quote id (keys: ${Object.keys(q || {}).join(', ')})` };
     if (st.left != null && hold > st.left) return { error: `This would hold ${hold} credits and Brew’s Sloosh workspace has ${st.left} left today. It resets at midnight UTC.`, credits, hold };
+    out.provider = 'sloosh';
     const over = budget.refusal('credits', slug, Math.ceil(credits)); if (over) return { error: budget.why('credits', slug, spec.brandName, Math.ceil(credits)), credits };
     return { quoteId, credits, hold, warning, expiresAt: expiresOf(q), at: now(), refs: refs.map((r) => ({ ...r, asset: r.asset })), ...out, raw: q };
   }
@@ -102,18 +105,19 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
     const runKey = runKeyOf(slug, target, spec); const prior = await readRec(slug, runKey);
     if (prior?.state === 'done') return prior; if (inflight.has(runKey)) return inflight.get(runKey);
     const p = (async () => {
-      let rec = prior && prior.state !== 'failed' ? prior : { id: 'fn_' + runKey.slice(0, 8), runKey, state: 'starting', kind: spec.kind || 'image', quote: { id: q.quoteId, credits: q.credits, hold: q.hold, model: q.model, space: q.space, expiresAt: q.expiresAt }, credits: q.credits, model: q.model, space: q.space, prompt: q.prompt, settings: q.settings, inputs: q.inputs || null, refs: (q.refs || []).map((r) => ({ id: r.id, job: r.job, label: r.label, keep: r.keep, assetId: r.assetId || null })), target, by, at: now(), dummy: !!q.dummy, revision: spec.revision || 0 };
+      let rec = prior && prior.state !== 'failed' ? prior : { id: 'fn_' + runKey.slice(0, 8), runKey, state: 'starting', provider: q.provider || (q.dummy ? 'dummy' : 'sloosh'), kind: spec.kind || 'image', quote: { id: q.quoteId, credits: q.credits, hold: q.hold, model: q.model, space: q.space, expiresAt: q.expiresAt }, credits: q.credits, model: q.model, space: q.space, prompt: q.prompt, settings: q.settings, inputs: q.inputs || null, refs: (q.refs || []).map((r) => ({ id: r.id, job: r.job, label: r.label, keep: r.keep, assetId: r.assetId || null })), target, by, at: now(), dummy: !!q.dummy, revision: spec.revision || 0 };
       if (rec.state === 'starting') {
         if (q.dummy) { /* DUMMY: the draft's own picture is the "final" (demo site); nothing is paid */
           const from = spec.fromFile || (spec.refs || []).find((r) => r.job === 'product' && r.url)?.url || (spec.refs || [])[0]?.url; if (!from) throw new Error('nothing to show as the final here: pick a photo first');
           rec = { ...rec, state: 'done', file: from, link: null, assetId: null, charged: 0, doneAt: now() }; return writeRec(slug, rec); }
-        if (q.fallback) { /* Gemini for now: the same brief and the product photo, counted in the image budget, no Sloosh credit */
+        if (q.provider === 'gemini' || q.fallback) { /* Gemini for now: the same brief and the product photo, counted in the image/video budget (the makers check it), no Sloosh credit, no quote staleness */
           if (!geminiImage) throw new Error('Gemini is not wired here');
-          const prod = (spec.refs || []).find((r) => r.job === 'product' && (r.url || r.file)) || (spec.refs || [])[0]; const srcFile = prod ? await photo(prod.url || prod.file).catch(() => null) : null;
-          rec = { ...rec, fallback: true, model: 'gemini', credits: 0 }; await writeRec(slug, rec);
-          try { const buf = await geminiImage({ srcFile, prompt: q.prompt, ratio: q.settings?.aspect_ratio || '4:5', slug, productName: spec.product?.name || null });
-            const name = `fin-${sha(buf)}.png`; saveGen(name, buf); await genFlush(); rec = { ...rec, state: 'done', file: 'gen/' + name, link: null, assetId: null, charged: 0, doneAt: now() }; return writeRec(slug, rec); }
-          catch (e) { rec = { ...rec, state: 'failed', error: `Gemini could not make it: ${e.message}`, charged: 0, failedAt: now() }; await writeRec(slug, rec); throw Object.assign(e, { rec }); } }
+          const prod = (spec.refs || []).find((r) => r.job === 'product' && (r.url || r.file)) || (spec.refs || [])[0]; const srcFile = prod ? await photo(prod.url || prod.file).catch(() => null) : null; const vid = spec.kind === 'video';
+          rec = { ...rec, provider: 'gemini', fallback: true, model: q.model || 'gemini', credits: 0 }; await writeRec(slug, rec);
+          try { const still = await geminiImage({ srcFile, prompt: q.prompt, ratio: vid ? '9:16' : q.settings?.aspect_ratio || '4:5', slug, productName: spec.product?.name || null, text: (spec.text || []).map((t) => (typeof t === 'string' ? t : t?.words || '')).filter(Boolean).join(' · ') });
+            const buf = vid ? await makeVideo(still, q.motion || q.prompt, { ratio: q.settings?.aspect_ratio || '9:16', seconds: q.settings?.duration || 6, slug }) : still;
+            const name = `fin-${sha(buf)}.${vid ? 'mp4' : 'png'}`; saveGen(name, buf); await genFlush(); rec = { ...rec, state: 'done', file: 'gen/' + name, link: null, assetId: null, charged: 0, doneAt: now() }; return writeRec(slug, rec); }
+          catch (e) { rec = { ...rec, state: 'failed', error: `${vid ? 'Veo' : 'Gemini'} could not make it: ${e.message}`, charged: 0, failedAt: now() }; await writeRec(slug, rec); throw Object.assign(e, { rec }); } }
         if (now() - (q.at || 0) > QUOTE_FRESH_MS) throw Object.assign(new Error('That quote is more than four minutes old. Ask for a fresh one.'), { stale: true });
         if (!budget.spend('credits', slug, Math.ceil(q.credits || 0) || 1)) throw Object.assign(new Error(budget.why('credits', slug, null, Math.ceil(q.credits || 0) || 1)), { budget: true });
         await writeRec(slug, rec);

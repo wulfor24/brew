@@ -6,7 +6,7 @@ import { createFinals, pick } from '../finals.js';
 import { createBudget } from '../budget.js';
 import { formOf, prefill, matchSpaces, familyOf } from '../sloosh-spaces.js';
 
-function rig({ dummy = false, left = 100, gemini = null, connected = true, warning = null } = {}) {
+function rig({ dummy = false, left = 100, gemini = null, video = null, connected = true, warning = null } = {}) {
   const files = new Map(); const packs = { getJSON: async (s, n, d) => files.get(`${s}/${n}`) ?? d, put: async (s, n, v) => { files.set(`${s}/${n}`, JSON.parse(JSON.stringify(v))); }, listFiles: async (s, sub) => [...files.keys()].filter((k) => k.startsWith(`${s}/${sub}/`)).map((k) => k.split('/').pop()) };
   const calls = []; let polls = 0;
   /* the shapes Sloosh really returns (data/sloosh-tools.json outputSchemas, 2026-10-16) */
@@ -22,7 +22,7 @@ function rig({ dummy = false, left = 100, gemini = null, connected = true, warni
   const slooshAuth = { status: async () => (connected ? { connected: true, workspace: { name: 'Brew' } } : { connected: false }), setWorkspace: async () => {} };
   const budget = createBudget({ env: { DAILY_CREDITS_CAP: '10', BRAND_CREDITS_CAP: '6' } });
   const saved = []; const fetchImpl = async (url) => new Response(Buffer.from('PNGBYTES' + url), { status: 200, headers: { 'content-type': 'image/png', 'content-length': '20' } });
-  const F = createFinals({ sloosh, slooshAuth, packs, budget, saveGen: (n, b) => saved.push([n, b.length]), publicUrl: 'https://brew.test', fetchImpl, slugs: async () => ['cozy'], log: { warn() {}, info() {} }, dummy: () => dummy, geminiImage: gemini, photo: async (u) => `/photos/${u}` });
+  const F = createFinals({ sloosh, slooshAuth, packs, budget, saveGen: (n, b) => saved.push([n, b.length]), publicUrl: 'https://brew.test', fetchImpl, slugs: async () => ['cozy'], log: { warn() {}, info() {} }, dummy: () => dummy, geminiImage: gemini, makeVideo: video, photo: async (u) => `/photos/${u}` });
   return { F, files, calls, saved, budget, sloosh, polls: () => polls };
 }
 const spec = { kind: 'image', title: 'Diwali static', visual: 'The mask on a pillow', refs: [{ job: 'product', label: 'Hush Mask', url: 'b/cozy/a/mask.jpg' }], text: ['Sleep through it'], brand: { name: 'Cozy' }, ratio: '4:5' };
@@ -72,12 +72,18 @@ test('after a restart an open run is finished from its operation id; one with no
 test('until Brew’s workspace can pay, an image final is made on Gemini with the same brief at zero credits; a video has no fallback', async () => {
   const made = []; const gemini = async (o) => { made.push(o); return Buffer.from('GEMINIBYTES'); };
   const R = rig({ connected: false, gemini }); const st = await R.F.status(); assert.equal(st.ok, false); assert.equal(st.fallback, true); assert.match(st.fallbackWhy, /not connected/);
-  const q = await R.F.quote('cozy', spec); assert.equal(q.fallback, true); assert.equal(q.credits, 0); assert.equal(q.model, 'gemini'); assert.match(q.why, /on Gemini for now/); assert.match(q.prompt, /Hush Mask/);
-  const r = await R.F.run('cozy', spec, { quote: q, by: 'Param', target: { chid: 'c' } }); assert.equal(r.state, 'done'); assert.equal(r.fallback, true); assert.equal(r.charged, 0); assert.match(r.file, /^gen\/fin-/);
-  assert.equal(made[0].srcFile, '/photos/b/cozy/a/mask.jpg'); assert.equal(made[0].ratio, '4:5'); assert.equal(R.calls.length, 0); assert.equal(R.budget.left('cozy').credits.used, 0);
-  const v = await R.F.quote('cozy', { ...spec, kind: 'video' }); assert.match(v.error, /video final runs on Sloosh only/);
+  const q = await R.F.quote('cozy', spec); assert.equal(q.provider, 'gemini'); assert.equal(q.credits, 0); assert.equal(q.model, 'gemini-3-pro-image'); assert.match(q.why, /on Gemini for now/); assert.match(q.prompt, /Hush Mask/);
+  const r = await R.F.run('cozy', { ...spec }, { quote: { ...q, at: Date.now() - 3600e3 }, by: 'Param', target: { chid: 'c' } }); assert.equal(r.state, 'done'); assert.equal(r.provider, 'gemini'); assert.equal(r.charged, 0); assert.match(r.file, /^gen\/fin-[0-9a-f]{16}\.png$/); /* no four-minute rule on Gemini */
+  assert.equal(made[0].srcFile, '/photos/b/cozy/a/mask.jpg'); assert.equal(made[0].ratio, '4:5'); assert.equal(made[0].text, 'Sleep through it'); assert.equal(R.calls.length, 0); assert.equal(R.budget.left('cozy').credits.used, 0);
+  const v = await R.F.quote('cozy', { ...spec, kind: 'video' }); assert.match(v.error, /video final runs on Sloosh only here/);
+  /* with a video maker: a Gemini still, then Veo on it */
+  const clips = []; const R3 = rig({ connected: false, gemini, video: async (frame, prompt, o) => { clips.push([frame.toString(), prompt, o]); return Buffer.from('MP4BYTES'); } });
+  const qv = await R3.F.quote('cozy', { ...spec, kind: 'video', motion: 'the camera drifts left', seconds: 6, ratio: '9:16' }); assert.equal(qv.model, 'veo-3.1-fast'); assert.match(qv.motion, /camera drifts left/);
+  const rv = await R3.F.run('cozy', { ...spec, kind: 'video', motion: 'the camera drifts left', seconds: 6, ratio: '9:16' }, { quote: qv, target: { chid: 'v' } }); assert.equal(rv.provider, 'gemini'); assert.match(rv.file, /\.mp4$/); assert.equal(clips[0][0], 'GEMINIBYTES'); assert.equal(clips[0][2].ratio, '9:16');
   /* connected, but Sloosh warns the wallet is short: Gemini again, with Sloosh's words */
-  const R2 = rig({ gemini, warning: 'The wallet has 0 credits; this quote needs 2.5.' }); const q2 = await R2.F.quote('cozy', spec); assert.equal(q2.fallback, true); assert.match(q2.why, /Sloosh says: The wallet has 0 credits/);
+  const R2 = rig({ gemini, warning: 'The wallet has 0 credits; this quote needs 2.5.' }); const q2 = await R2.F.quote('cozy', spec); assert.equal(q2.provider, 'gemini'); assert.match(q2.why, /Sloosh says: The wallet has 0 credits/);
+  /* and with Sloosh ready, the Sloosh path is untouched by the fallback wiring */
+  const R4 = rig({ gemini }); const q4 = await R4.F.quote('cozy', spec); assert.equal(q4.provider, 'sloosh'); assert.equal(q4.quoteId, 'q1'); const r4 = await R4.F.run('cozy', spec, { quote: q4, target: { chid: 'c' } }); assert.equal(r4.provider, 'sloosh'); assert.equal(r4.charged, 2.5); assert.equal(made.length, 2);
 });
 
 test('DUMMY: on the demo site a final is the draft’s own picture at zero credits, nothing is called', async () => {
