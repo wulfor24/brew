@@ -26,6 +26,8 @@ import { mergeLedger, diffLedgers, candidates, triage, changeLine, liveMaterial,
 import { withLearned, briefView } from './brand-learnings.js';
 import { profileLive, withLive } from './on-connect.js'; // what a real connected account corrects in the team's view
 import { briefWithConnected } from './brief.js'; // what the team told Brew survives a fresh brief
+import { providerNow, geminiModel } from './gemini-client.js';
+import { KINDS, flagKind, runKind, potOf, potLeft, potAdd, potFit, perMove, capOf as potCapOf, nextWeek } from './rewrite-pot.js'; // one weekly rewrite budget a brand
 
 const buildCtx = new AsyncLocalStorage(); // which brand's build a paid call belongs to
 // addresses that must never be read or built (wrong links, removals): BUILD_BLOCK=slug;slug (deploy.sh needs ; since its env list is comma-separated)
@@ -675,7 +677,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   /* ---------- keep the moves current: check for updates, flag the moves a change affects, rewrite them ---------- */
   // updates.json: { auto, checking, lastCheck: { at, changes, summary, flagged, usd }, stale: { n: { why, priority, changes } }, history }
   const REFRESH_DAYS = +process.env.REFRESH_EVERY_DAYS || 7, AUTO_MAX = +process.env.REFRESH_AUTO_MAX || 6;
-  const REFRESH_CAP = +process.env.REFRESH_CAP_USD || 60, AUTO_CAP = +process.env.REFRESH_AUTO_CAP_USD || 10, MOVE_USD = 0.6;
+  const REFRESH_CAP = +process.env.REFRESH_CAP_USD || 60, AUTO_CAP = +process.env.REFRESH_AUTO_CAP_USD || 10;
   const CONNECT_CAP = +process.env.CONNECT_CAP_USD || 40, CONNECT_SETTLE = +(process.env.CONNECT_SETTLE_MS ?? 30 * 60e3); /* teams connect several accounts in one sitting: one run for all of them */
   const CONNECT_FRESH_MS = +(process.env.CONNECT_FRESH_MS ?? 24 * 3600e3); /* a later account skips a move rewritten this recently */
   /* connected accounts' re-reads: a number counts once it moved LIVE_MATERIAL (10%) since the move was written; the moves they
@@ -683,6 +685,20 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   const LEARN_CAP = +process.env.LEARN_CAP_USD || 30; /* one learnings upload's own rewrite (brand-learnings.js picks the moves within it); "go ahead" on the first one is learnings-all */
   const LIVE_MATERIAL = +(process.env.LIVE_MATERIAL ?? 0.1), LIVE_CAP = +process.env.LIVE_CAP_USD || 30, LIVE_DAYS = +process.env.LIVE_REWRITE_DAYS || REFRESH_DAYS;
   const pad2 = (n) => String(n).padStart(2, '0');
+  /* the brand's weekly pot (rewrite-pot.js): every automatic rewrite draws from it, best kind first; manual ones stay outside.
+     A move costs what this brand's moves cost on today's model, else the provider's estimate (Flash is about a sixth of Opus) */
+  const moveModel = () => (providerNow() === 'gemini' ? geminiModel('opus') : 'claude-opus-5-5');
+  async function estMove(slug) {
+    const pub = await packs.getJSON(slug, 'moves.json', {}), pm = await packs.getJSON(slug, 'private/moves.json', {}).catch(() => ({}));
+    return perMove({ moves: [...Object.values(pub || {}), ...Object.values(pm || {})], model: moveModel(), provider: providerNow() });
+  }
+  async function potInfo(slug, now = Date.now()) {
+    const pot = potOf(await upd(slug), now), cap = potCapOf(process.env, providerNow()), est = await estMove(slug);
+    return { pot, cap, est, left: Object.fromEntries(KINDS.map((k) => [k, +potLeft(pot, cap, k).toFixed(2)])) };
+  }
+  const potSpend = (slug, kind, usd) => (kind && usd > 0 ? editUpd(slug, (u) => { u.pot = potAdd(potOf(u), kind, usd); }) : Promise.resolve());
+  /* what the pot did not cover this week: it keeps its flag and is listed as waiting until it is rewritten or the week turns */
+  const potWait = (slug, wait = [], go = []) => (wait.length || go.length ? editUpd(slug, (u) => { const p = potOf(u); for (const it of go) delete p.waits[it.n]; for (const it of wait) p.waits[it.n] = it.kind; u.pot = p; }) : Promise.resolve());
   // DUMMY: flags raised by a simulated account (live) are not real reasons to rewrite: saved flags heal here
   const upd = async (slug) => { const u = { auto: true, stale: {}, history: [], ...(await packs.getJSON(slug, 'updates.json', {})) }; for (const [n, x] of Object.entries(u.stale || {})) if (x?.live && !x.real) delete u.stale[n]; return u; };
   let ulock = Promise.resolve(); // updates.json is read-modify-written from several places
@@ -723,7 +739,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const tri = changes.length ? await triage(ai, { name: profile.name, changes, cand: candidates(changes, moves, specs), moves, specs }) : { summary: 'Nothing changed that affects a move.', moves: [] };
     const at = Date.now();
     const u = await editUpd(slug, (u) => {
-      for (const t of tri.moves) { const e = { n: t.n, priority: t.priority, why: t.why, changes: (t.changes || []).map((i) => changes[i]).filter(Boolean).slice(0, 6).map(changeLine), at }, o = u.stale[t.n];
+      for (const t of tri.moves) { const e = { n: t.n, priority: t.priority, why: t.why, changes: (t.changes || []).map((i) => changes[i]).filter(Boolean).slice(0, 6).map(changeLine), at, ...(via === 'event' ? { src: 'event' } : {}) }, o = u.stale[t.n];
         /* an out-of-stock mark stays on top: the check's reason waits under it (stockSignal) */
         u.stale[t.n] = o?.stockWhy ? { ...o, was: { priority: e.priority, why: e.why }, why: [...Object.values(o.stockWhy), e.why].join(' '), changes: [...new Set([...(o.changes || []), ...e.changes])].slice(0, 6) } : e; }
       u.lastCheck = { at, why, auto, changes: changes.slice(0, 80), minor, spotted, summary: tri.summary, flagged: tri.moves.map((t) => t.n), usd: +(spentFor(slug) - usd0).toFixed(2) };
@@ -733,16 +749,21 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     emit(slug, { type: 'update-done', changes: changes.length, flagged: tri.moves.length });
     log.log(`[refresh] ${slug}: ${changes.length} changes (${minor} minor), ${tri.moves.length} moves flagged, $${u.lastCheck.usd}`);
     /* a weekly check rewrites up to AUTO_MAX high-priority moves; a big change (an event) rewrites the one it hits hardest */
-    if (auto && u.auto !== false) { const ok = await rewritable(moves); const ns = tri.moves.filter((t) => t.priority === 'high' && ok(t.n)).map((t) => t.n).slice(0, max ?? AUTO_MAX); if (ns.length) await rewriteNow(slug, ns, { auto: true }); }
+    if (auto && u.auto !== false) { const ok = await rewritable(moves), kind = via === 'event' ? 'event' : 'check', P = await potInfo(slug);
+      const { now: go, wait } = potFit(P.pot, P.cap, P.est, tri.moves.filter((t) => t.priority === 'high' && ok(t.n)).slice(0, max ?? AUTO_MAX).map((t) => ({ n: t.n, kind, at })));
+      await potWait(slug, wait, go); if (wait.length) log.log(`[pot] ${slug}: ${wait.length} ${kind} moves wait for next week's pot (${wait.map((x) => x.n).join(', ')})`);
+      if (go.length) await rewriteNow(slug, go.map((x) => x.n), { auto: true, via: via === 'event' ? 'event' : 'weekly' }); }
     /* the weekly check also writes the moves whose evidence has appeared since (listening-era specs, a festival at its plan
        point, a research gap): they become cards like any other. At most NEW_MAX a week, after the rewrites */
     if (auto && u.auto !== false && max == null) { const add = await newlyApplicable(slug, m, { profile, ledger, moves }).catch((e) => { log.warn('[refresh] new moves', slug, e.message); return []; });
-      if (add.length) { log.log(`[refresh] ${slug}: ${add.length} new moves now have their evidence: ${add.join(', ')}`); await rewriteNow(slug, add, { auto: true }); } }
+      const P = add.length ? await potInfo(slug) : null, { now: go, wait } = P ? potFit(P.pot, P.cap, P.est, add.map((n) => ({ n, kind: 'new' }))) : { now: [], wait: [] };
+      await potWait(slug, wait, go); /* a new move the pot can't cover is found again next week (its evidence is still there) */
+      if (go.length) { log.log(`[refresh] ${slug}: ${go.length} new moves now have their evidence: ${go.map((x) => x.n).join(', ')}${wait.length ? ` (${wait.length} wait for next week's pot)` : ''}`); await rewriteNow(slug, go.map((x) => x.n), { auto: true, via: 'new' }); } }
   }
   /* the rewrite queue (updates.json queue): what the team told Brew goes first, then a big change (a rival's price move or
      launch, our catalog), then the weekly check's stale moves. A rewrite asked for while another runs waits its turn instead of
      being turned away, and starts the moment the brand is free (drain) */
-  const PRIO = { learnings: 0, 'learnings-all': 0, event: 1, manual: 1, connected: 1, weekly: 2, live: 2 };
+  const PRIO = { learnings: 0, 'learnings-all': 0, event: 1, manual: 1, connected: 1, weekly: 2, live: 2, new: 3 };
   const enqueue = (slug, ns, { via = 'manual', auto = false, notBefore = null, tries = null } = {}) => editUpd(slug, (u) => { const q = (u.queue ||= []);
     let e = q.find((x) => x.via === via); if (!e) { e = { via, prio: PRIO[via] ?? 1, ns: [], auto, at: Date.now() }; q.push(e); } e.ns = [...new Set([...e.ns, ...ns])]; e.auto = e.auto && auto;
     if (notBefore) e.notBefore = notBefore; else delete e.notBefore; if (tries != null) e.tries = tries; });
@@ -774,16 +795,25 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const have = await packs.getJSON(slug, 'moves.json', {}), ok = await rewritable(have);
     ns = [...new Set((ns || []).map(Number))].filter(ok);
     if (!ns.length) return { error: 'Pick a written move.' };
-    if (x.running || x.checking) { if (o.via) { await enqueue(slug, ns, { via: o.via }); return { ok: true, queued: true, n: ns.length, est: Math.round(ns.length * MOVE_USD) }; }
+    const est1 = await estMove(slug), est = +(ns.length * est1).toFixed(2);
+    if (x.running || x.checking) { if (o.via) { await enqueue(slug, ns, { via: o.via }); return { ok: true, queued: true, n: ns.length, est }; }
       return { error: x.rewriting ? 'A rewrite is already running.' : 'The moves are still being written. Rewrites open once they are in.' }; }
     await loadDay(); if (dayUsd() >= DAY_CAP) return { error: 'Today’s budget is used up. Try again tomorrow.' };
     buildCtx.run(slug, () => rewriteNow(slug, ns, o)).catch((e) => log.error('[rewrite]', slug, e.message));
-    return { ok: true, n: ns.length, est: Math.round(ns.length * MOVE_USD) };
+    return { ok: true, n: ns.length, est };
   }
   async function rewriteNow(slug, ns, { auto = false, via = null, tries = 0 } = {}) {
     ns = [...new Set((ns || []).map(Number))].filter((n) => n >= 1 && n < 1000); if (!ns.length) return;
     const x = st(slug); if (x.running) return enqueue(slug, ns, { via: via || (auto ? 'weekly' : 'manual'), auto }); x.running = true; x.rewriting = new Set(ns);
-    const m = await load(); await restoreSpend(slug); await loadDay(); const usd0 = spentFor(slug), cap = via === 'connected' ? CONNECT_CAP : via === 'live' ? LIVE_CAP : via === 'learnings' ? LEARN_CAP : auto ? AUTO_CAP : Math.max(REFRESH_CAP, ns.length * 2.5);
+    const m = await load(); await restoreSpend(slug); await loadDay(); const usd0 = spentFor(slug), cap0 = via === 'connected' ? CONNECT_CAP : via === 'live' ? LIVE_CAP : via === 'learnings' ? LEARN_CAP : auto ? AUTO_CAP : Math.max(REFRESH_CAP, ns.length * 2.5);
+    /* an automatic run draws from the brand's weekly pot (a manual one, asked for with its cost shown, does not) */
+    const kind = runKind(via, auto), P = kind ? await potInfo(slug) : null, cap = P ? Math.min(cap0, potLeft(P.pot, P.cap, kind)) : cap0;
+    let booked = usd0; const book = () => { const d = spentFor(slug) - booked; booked += d; return d; };
+    const potOut = async () => !!kind && (await potInfo(slug).then((Q) => potLeft(Q.pot, Q.cap, kind) < Q.est));
+    /* the pot is out for this kind: nothing is written, the flags stay, a connected run starts again with next week's pot */
+    const holdForPot = async (left) => { await potWait(slug, left.map((n) => ({ n, kind }))); log.log(`[pot] ${slug}: ${left.length} ${kind} moves wait for next week's pot (${left.join(', ')})`);
+      if (via === 'connected') await enqueue(slug, left, { via: 'connected', auto: true, notBefore: nextWeek(), tries }); };
+    if (P && cap < P.est) { x.running = false; x.rewriting = null; await holdForPot(ns); setTimeout(() => drain(slug).catch(() => {}), 0); return; }
     const written = []; let prevState = null;
     try {
       const profile0 = normalizeProfile(await packs.getJSON(slug, 'profile.json'));
@@ -819,7 +849,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         await packs.put(slug, `${P}moves/${pad2(n)}.json`, move);
         const all = await packs.getJSON(slug, `${P}moves.json`, {}); all[n] = move; await packs.put(slug, `${P}moves.json`, all);
         emit(slug, { type: 'move', n, title: move.title, stat: move.stat, gives: move.gives, verified: !!move.meta?.verified, rewritten: true });
-        if (n !== 0) { written.push({ n, title: move.title }); await cardsFor(slug, move, profile, { replace: true, priv }).catch((e) => log.warn('[rewrite] cards', n, e.message)); await editUpd(slug, (u) => { delete u.stale[n]; }); }
+        if (n !== 0) { written.push({ n, title: move.title }); await cardsFor(slug, move, profile, { replace: true, priv }).catch((e) => log.warn('[rewrite] cards', n, e.message)); await editUpd(slug, (u) => { delete u.stale[n]; if (kind) { u.pot = potAdd(potOf(u), kind, book()); delete u.pot.waits[n]; } }); }
         if (n === 21 && !priv && (await status(slug))?.statics?.state !== 'done') staticsJob = makeStatics(slug, move, profile, (fn) => (lock = lock.then(fn).catch((e) => log.warn('[rewrite] statics card', e.message))));
         /* the team's rewrite of Move 21 makes the team's own set (once), kept private */
         if (n === 21 && priv && (await packs.getJSON(slug, 'private/statics-state.json', null))?.state !== 'done') staticsJob = makeStatics(slug, move, profile, (fn) => (lock = lock.then(fn).catch((e) => log.warn('[rewrite] team statics card', e.message))), { priv: true });
@@ -837,20 +867,22 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       await eng.runAll(ctx, { only: ns.length >= 3 ? [...ns, 0] : ns, concurrency: Math.min(6, ns.length), waveA: WAVE_A });
       await lock; await staticsJob; await pdfQ;
       const usd = +(spentFor(slug) - usd0).toFixed(2), at = Date.now();
-      await editUpd(slug, (u) => { u.history = [{ at, auto, moves: written, usd, because: written.map((w) => stale[w.n]?.why).filter(Boolean)[0] || null }, ...(u.history || [])].slice(0, 30); });
+      await potSpend(slug, kind, book());
+      await editUpd(slug, (u) => { u.history = [{ at, auto, ...(kind ? { kind } : {}), moves: written, usd, because: written.map((w) => stale[w.n]?.why).filter(Boolean)[0] || null }, ...(u.history || [])].slice(0, 30); });
       await setStatus(slug, { state: (await status(slug)).done ? 'Ready' : prevState });
       emit(slug, { type: 'rewrite-done', n: written.length, usd });
       if (written.length && !priv) notify(slug, 'update', { at, moves: written, because: auto ? 'Your read changed, and these plans quoted what changed.' : '' }).catch((e) => log.warn('[notify]', e.message));
       /* a connected run: the team hears once it is in; what the day's budget stopped carries on tomorrow (three days at most) */
       if (via === 'connected') {
         const left = ns.filter((n) => !written.some((w) => w.n === n));
-        if (left.length && tries < 3) { await enqueue(slug, left, { via: 'connected', auto: true, notBefore: Date.now() + 20 * 3600e3, tries: tries + 1 }); log.log(`[connect] ${slug}: ${left.length} moves carry on tomorrow`); }
-      }
+        if (left.length && await potOut()) await holdForPot(left);
+        else if (left.length && tries < 3) { await enqueue(slug, left, { via: 'connected', auto: true, notBefore: Date.now() + 20 * 3600e3, tries: tries + 1 }); log.log(`[connect] ${slug}: ${left.length} moves carry on tomorrow`); }
+      } else if (kind) { const left = ns.filter((n) => !written.some((w) => w.n === n)); if (left.length && await potOut()) await holdForPot(left); }
     } catch (e) { log.error('[rewrite] failed', slug, e); /* the brand does not stay on "Rewriting N moves" */
       /* a connected run that stopped on an error tries the moves it had not written again in an hour (three tries in all) */
       if (via === 'connected' && tries < 3) { const left = ns.filter((n) => !written.some((w) => w.n === n)); if (left.length) await enqueue(slug, left, { via: 'connected', auto: true, notBefore: Date.now() + 3600e3, tries: tries + 1 }).catch(() => {}); }
       await setStatus(slug, { state: (await status(slug))?.done ? 'Ready' : prevState || 'Ready' }).catch(() => {}); emit(slug, { type: 'rewrite-done', n: written.length, failed: String(e?.message || e).slice(0, 160) }); }
-    finally { x.running = false; x.rewriting = null; saveSpend(slug); await editUpd(slug, (u) => { delete u.rewriting; }).catch(() => {}); setTimeout(() => drain(slug).catch((e) => log.warn('[rewrite] drain', e.message)), 0);
+    finally { x.running = false; x.rewriting = null; saveSpend(slug); await potSpend(slug, kind, book()).catch(() => {}); await editUpd(slug, (u) => { delete u.rewriting; }).catch(() => {}); setTimeout(() => drain(slug).catch((e) => log.warn('[rewrite] drain', e.message)), 0);
       if (via === 'connected') setTimeout(() => settleConnect(slug).catch((e) => log.warn('[connect] settle', e.message)), 50); }
   }
   /* a rewrite cut off by a restart (a deploy): the status goes back to what it was and the moves it had not written yet are
@@ -878,7 +910,10 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       /* a connected account's run, for the team: waiting for more connects, then rewriting every move with the numbers */
       connect: member && (u.connectRun || (u.connectDone && !u.connectDone.finished)) ? { names: (u.connectRun?.ids || u.connectDone?.ids || []).map((k) => NAME_OF[k] || k), waiting: !!u.connectRun, due: u.connectRun?.due || null,
         n: u.connectDone?.n || null, written: u.connectDone?.written || 0, later: (u.queue || []).some((q) => q.via === 'connected' && q.notBefore > Date.now()) } : null,
-      canRewrite: !x.running, building: !!x.running && !x.rewriting, estMove: MOVE_USD, estCheck: 1, connected: (await packs.getJSON(slug, 'connected-ledger.json', [])).length > 0 || (member && (await packs.getJSON(slug, 'private/connected-ledger.json', [])).length > 0), accounts: Object.entries(u.connected || {}).filter(([, t]) => t).map(([k]) => NAME_OF[k] || k) };
+      pot: await (async () => { /* the week's pot, only once something drew from it or waits on it (quiet: never a $0 line) */
+        const P = await potInfo(slug), waits = Object.entries(P.pot.waits || {}).filter(([n, k]) => (k === 'new' ? !moves[n] : !!u.stale?.[n])).length;
+        return P.pot.usd > 0 || waits ? { spent: +P.pot.usd.toFixed(2), cap: P.cap, waiting: waits, est: P.est } : null; })(),
+      canRewrite: !x.running, building: !!x.running && !x.rewriting, estMove: await estMove(slug), estCheck: 1, connected: (await packs.getJSON(slug, 'connected-ledger.json', [])).length > 0 || (member && (await packs.getJSON(slug, 'private/connected-ledger.json', [])).length > 0), accounts: Object.entries(u.connected || {}).filter(([, t]) => t).map(([k]) => NAME_OF[k] || k) };
   }
   // an account was connected (or disconnected): its numbers join the evidence, and the moves that measure or spend
   // on it are flagged to be looked at again. No paid call: the match is the fixed map in refresh.js
@@ -1034,7 +1069,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     notify(slug, 'update', { at: c.at, moves: ns.map((n) => ({ n, title: title(n) })), members: true, lead: `${names} ${(c.ids || []).length > 1 ? 'are' : 'is'} connected, so Brew rewrote ${ns.length} of ${(await status(slug))?.name || slug}’s moves with your real numbers`, because: 'Only your team sees these versions.' }).catch((e) => log.warn('[notify]', e.message));
   }
   /* the weekly rewrite of what connected accounts flagged: once every LIVE_DAYS, the moves their re-reads flagged (real accounts
-     only, never the first-connect run's own flags), oldest flag first, up to LIVE_CAP. A move the cap stopped keeps its flag for
+     only, never the first-connect run's own flags), best kind first, as far as the week's pot goes. A move the pot stopped keeps its flag for
      the next week; a brand whose first-connect run is still going waits for it */
   async function liveWeekly(slug, { now = Date.now() } = {}) {
     if (blocked(slug) || st(slug).running && !st(slug).rewriting) return { skipped: 'busy' };
@@ -1042,13 +1077,18 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (u.connectRun || (u.queue || []).some((q) => q.via === 'connected' || q.via === 'live') || u.rewriting?.via === 'live') return { skipped: 'waiting' };
     if (now - (u.liveRun?.at || 0) < LIVE_DAYS * 864e5) return { skipped: 'this week' };
     const moves = await packs.getJSON(slug, 'moves.json', {}), ok = await rewritable(moves);
-    const ns = Object.values(u.stale || {}).filter((f) => (f?.stock || f?.live && f.real || f?.via === 'learnings') && f.via && f.via !== 'connected' && ok(f.n)).sort((a, b) => (a.at || 0) - (b.at || 0) || a.n - b.n).map((f) => f.n);
-    if (!ns.length) return { skipped: 'nothing flagged' };
+    /* every flag kind waits here (the site check's medium ones, the fact sheet's, a fresh reload's, older ones), never the
+       first-connect run's own (it rewrites them itself) and never a simulated account's; out of stock goes first */
+    const items = Object.values(u.stale || {}).filter((f) => f && f.via !== 'connected' && !f.demo && !(f.live && !f.real) && ok(f.n)).map((f) => ({ n: +f.n, kind: flagKind(f), at: f.at || 0, top: !!(f.stock || f.via === 'stock') }));
+    if (!items.length) return { skipped: 'nothing flagged' };
+    const P = await potInfo(slug, now), { now: go, wait } = potFit(P.pot, P.cap, P.est, items), ns = go.map((x) => x.n);
+    await potWait(slug, wait, go);
+    if (!ns.length) { log.log(`[pot] ${slug}: the weekly run waits for next week's pot ($${P.pot.usd.toFixed(2)} of $${P.cap} spent), ${wait.length} moves flagged`); return { skipped: 'pot', wait: wait.map((x) => x.n) }; }
     await editUpd(slug, (v) => { v.liveRun = { at: now, ns }; });
-    log.log(`[live] ${slug}: weekly rewrite of ${ns.length} moves your accounts moved (${ns.join(', ')}), cap $${LIVE_CAP}`);
+    log.log(`[live] ${slug}: weekly rewrite of ${ns.length} flagged moves (${ns.join(', ')}), about $${(ns.length * P.est).toFixed(2)} of the week's $${P.cap} pot ($${P.pot.usd.toFixed(2)} spent)${wait.length ? `; ${wait.length} wait for next week` : ''}`);
     await enqueue(slug, ns, { via: 'live', auto: true });
     drain(slug).catch((e) => log.warn('[live] drain', e.message));
-    return { ok: true, ns };
+    return { ok: true, ns, wait: wait.map((x) => x.n) };
   }
   const setAuto = (slug, on) => editUpd(slug, (u) => { u.auto = !!on; }).then(() => ({ ok: true }));
   // "whenever relevant": the free catalog watch (every 3 hours) saw a price change, a launch or a removal
@@ -1120,6 +1160,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       if (Date.now() - (s0.seenAt || s0.doneAt || 0) > 30 * 864e5) continue;
       const u = await upd(b.slug); if (u.auto === false) continue;
       await liveWeekly(b.slug).catch((e) => log.warn('[live] weekly', b.slug, e.message)); /* its own week: a failed site check does not hold it */
+      await hooks.newMoves?.(b.slug).catch((e) => log.warn('[pot] new moves', b.slug, e.message)); /* new moves from learnings that waited for the pot */
       if (backingOff(u)) continue; /* a failed check waits a day before the next paid try, not an hour */
       if (Date.now() - (u.lastCheck?.at || s0.doneAt || Date.now()) > REFRESH_DAYS * 864e5) await checkUpdates(b.slug, { auto: true, why: 'Weekly check' });
     } };
@@ -1224,6 +1265,6 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   const flagStale = (slug, list = []) => editUpd(slug, (u) => { for (const x of list) { const o = u.stale[x.n];
     if (o?.stockWhy) { u.stale[x.n] = { ...o, was: { priority: x.priority, why: x.why, via: x.via }, why: [...Object.values(o.stockWhy), x.why].join(' '), changes: [...new Set([...(o.changes || []), ...(x.changes || [])])].slice(0, 6) }; continue; } /* an out-of-stock mark stays on top */
     u.stale[x.n] = { ...x, at: Date.now(), changes: [...new Set([...(x.changes || []), ...(o?.changes || [])])].slice(0, 6), ...(o && !o.private ? { private: false } : {}) }; } });
-  const facts = { republish, flagStale, readProduct: async (slug, url) => readProduct(slug, url, (await packs.getJSON(slug, 'profile.json', {})) || {}), readRival, busy: (slug) => !!(st(slug).running || st(slug).checking), setHooks: (h) => Object.assign(hooks, h) };
+  const facts = { pot: potInfo, potSpend, estMove, republish, flagStale, readProduct: async (slug, url) => readProduct(slug, url, (await packs.getJSON(slug, 'profile.json', {})) || {}), readRival, busy: (slug) => !!(st(slug).running || st(slug).checking), setHooks: (h) => Object.assign(hooks, h) };
   return { ...facts, teamStatics, settleConnect, readLive, heal, healPdfs, pdfFor, pdfOn, connected, liveConnected, checkUpdates, rewrite, updates, setAuto, signal, seen, buildInfo, retry, goPro, checkData, applyCheck, liveWeekly, stockSignal, peek: (slug) => st(slug).status, addEmail, start, resume, resumeAll, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
 }

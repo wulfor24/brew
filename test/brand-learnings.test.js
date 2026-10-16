@@ -269,6 +269,17 @@ test('the setup box (ask: false): the first learnings rewrite the top moves now 
   assert.equal(await L.confirm(slug, 'go ahead'), null, 'nothing waits for a yes');
 });
 
+test('the weekly pot: learnings rewrite what it covers at today’s cost per move; the rest waits, with the reason', async () => {
+  const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'learn-')), { P, builder, slug } = await brand(ROOT); const asked = [];
+  const B = { flagStale: builder.flagStale, rewrite: async (s, ns) => { asked.push(ns); return { ok: true, n: ns.length }; }, busy: () => false, pot: async () => ({ est: 0.1, left: { learnings: 0.15, new: 0 } }), potSpend: async () => {} };
+  const L = createLearnings({ ai: scripted(), packs: P, builder: B, log: quiet, env: {} }); /* the upload's own cap ($30) is roomy: the pot ($0.15) decides */
+  const r = await L.run(slug, { text: CALL, by: 'p@glow.in', byShort: 'p@glow.in', why: 'setup', ask: false });
+  assert.deepEqual(asked, [[3]], 'one move fits the pot');
+  assert.match(r.reply, /about \$0\.1\)/, 'priced at today’s model, not the Opus-era $0.6');
+  assert.match(r.reply, /- In the weekly run: Move 09 \(past this week’s rewrite budget\)\./);
+  assert.equal((await P.getJSON(slug, 'updates.json')).stale[9].via, 'learnings', 'it keeps its flag for the weekly run');
+});
+
 test('the draft: nothing is saved until "save"; drop, change and add edit it; cancel saves nothing; the same paste shows the draft again', async () => {
   const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'learn-')), { P, builder, slug } = await brand(ROOT); const calls = [];
   const L = createLearnings({ ai: scripted(calls), packs: P, builder: { flagStale: builder.flagStale, rewrite: async (s, ns) => ({ ok: true, n: ns.length }), busy: () => false }, log: quiet, env: {} });

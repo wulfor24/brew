@@ -281,7 +281,7 @@ function movesLine(m, name = 'the brand') {
   else if (m.rewrite?.ns?.length) out.push(`- ${m.rewrite.queued ? 'First in line once the work running now finishes: rewriting' : 'Rewriting now'}: ${ns(m.rewrite.ns)} (${m.rewrite.ns.length}, ${mins(m.rewrite.ns.length)}, about $${m.rewrite.est}).`);
   else if (m.rewrite?.error) out.push(`- The rewrite can’t start now: ${m.rewrite.error.replace(/\.$/, '')}. The moves are marked on the Moves tab.`);
   else if (m.rewrite?.off) out.push('- AI is off on this server, so nothing was rewritten. The moves are marked on the Moves tab.');
-  const w = m.weekly || [], why = { low: 'a small change', recent: 'rewritten in the last day', cap: 'past this upload’s budget' };
+  const w = m.weekly || [], why = { low: 'a small change', recent: 'rewritten in the last day', cap: 'past this upload’s budget', pot: 'past this week’s rewrite budget' };
   if (w.length) out.push(`- In the weekly run: ${ns(w.map((x) => x.n))} (${[...new Set(w.map((x) => why[x.wait]))].join(', ')}). Each is marked with what the team said.`);
   if (m.learn?.n) out.push(`- ${m.learn.n} new move${m.learn.n === 1 ? '' : 's'} from what you told us${m.learn.after ? ', once the rewrite is in' : ', about 5 minutes'}.`);
   else if (m.learn?.why?.length) out.push(`- New moves from this wait: ${capWhy(m.learn.why)}.`);
@@ -364,8 +364,20 @@ export function createLearnings({ ai = null, packs, memory = null, builder = nul
     return { stale, fresh: (r.json?.fresh || []).filter((x) => x?.title).slice(0, 3).map((x) => ({ title: cut(x.title, 90), why: cut(x.why, 220) })), cards: vetCardPlan(r.json?.cards, cards, items), usd: r.usd || 0 };
   }
   // the new moves run once the rewrite is in (both write moves.json), in the background
+  /* they draw from the brand's weekly pot as new moves (its last kind): with too little left for two, the ideas wait in
+     learned.json (pendingLearn) and the weekly tick writes them once the week's pot has room (runPendingLearn) */
   const afterRewrite = (slug, hints) => (async () => { for (let i = 0; i < 270 && builder?.busy?.(slug); i++) await wait(20e3);
-    const r = await cadence.runOne(slug, ['learn'], { manual: true, hints }); log.log?.(`[learn] ${slug}: ${r?.written?.length || 0} new moves from learnings, $${r?.usd ?? 0}`); })().catch((e) => log.warn?.('[learn] new moves', slug, e.message));
+    const pot = await builder?.pot?.(slug).catch(() => null);
+    if (pot && pot.left.new < 2 * pot.est) { await serial(slug, async () => { const L = await packs.getJSON(slug, 'learned.json', null); if (L) { L.pendingLearn = { hints, at: now() }; await packs.put(slug, 'learned.json', L); } });
+      log.log?.(`[pot] ${slug}: new moves from learnings wait for next week's pot`); return; }
+    const r = await cadence.runOne(slug, ['learn'], { manual: true, hints }); await builder?.potSpend?.(slug, 'new', r?.usd || 0);
+    log.log?.(`[learn] ${slug}: ${r?.written?.length || 0} new moves from learnings, $${r?.usd ?? 0}`); })().catch((e) => log.warn?.('[learn] new moves', slug, e.message));
+  async function runPendingLearn(slug) {
+    const L = await packs.getJSON(slug, 'learned.json', null), pend = L?.pendingLearn; if (!pend || !cadence) return { skipped: 'nothing waiting' };
+    const pot = await builder?.pot?.(slug).catch(() => null); if (pot && pot.left.new < 2 * pot.est) return { skipped: 'pot' };
+    await serial(slug, async () => { const L2 = await packs.getJSON(slug, 'learned.json', null); if (L2) { delete L2.pendingLearn; await packs.put(slug, 'learned.json', L2); } });
+    afterRewrite(slug, pend.hints || []); return { ok: true };
+  }
 
   /* run(slug, { text, by, byShort, mode, why, workId }) → the reply and what changed */
   async function run(slug, { text, by = 'the team', byShort = '', why = 'command', workId = null, ask = true } = {}) { /* ask false (the setup box): no jam to answer a warning in, so the first learnings rewrite the top moves and mark the rest */
@@ -448,18 +460,21 @@ export function createLearnings({ ai = null, packs, memory = null, builder = nul
            one rewritten in the last day and one past the cap wait for the weekly run (flagged weekly). Never a count limit */
         const at = (n) => Math.max(Date.parse(docs[n]?.meta?.rewrittenAt || 0) || 0, Date.parse(priv?.[n]?.meta?.rewrittenAt || 0) || 0), recent = (n) => t0 - at(n) < FRESH_MS;
         const rank = { high: 0, medium: 1, low: 2 }, sorted = [...pl.stale].sort((x, y) => rank[x.impact] - rank[y.impact]);
-        const want = sorted.filter((s) => s.impact === 'high' || (s.impact === 'medium' && !recent(s.n))), /* a high one is wrong now: it never waits, even if rewritten today (that rewrite didn't know this) */ fit = Math.max(1, Math.floor(LEARN_CAP / EST)), nowL = want.slice(0, fit);
-        const later = sorted.filter((s) => !nowL.includes(s)).map((s) => ({ ...s, wait: s.impact === 'low' ? 'low' : recent(s.n) ? 'recent' : 'cap' }));
+        /* the brand's weekly pot (rewrite-pot.js) comes first for what the team said: an upload rewrites within it and its own
+           cap, at what a move costs on today's model; what neither covers waits for the weekly run */
+        const pot = await builder?.pot?.(slug).catch(() => null), est = pot?.est || EST, room = pot ? Math.min(LEARN_CAP, pot.left.learnings) : LEARN_CAP;
+        const want = sorted.filter((s) => s.impact === 'high' || (s.impact === 'medium' && !recent(s.n))), /* a high one is wrong now: it never waits, even if rewritten today (that rewrite didn't know this) */ fit = pot ? Math.floor(room / est + 1e-9) : Math.max(1, Math.floor(LEARN_CAP / EST)), nowL = want.slice(0, fit);
+        const later = sorted.filter((s) => !nowL.includes(s)).map((s) => ({ ...s, wait: s.impact === 'low' ? 'low' : recent(s.n) ? 'recent' : room < LEARN_CAP ? 'pot' : 'cap' }));
         moves.weekly = later.map((s) => ({ n: s.n, wait: s.wait }));
         if (pl.stale.length && builder?.flagStale) await builder.flagStale(slug, sorted.map((s) => ({ n: s.n, priority: s.impact === 'low' ? 'medium' : 'high', impact: s.impact, weekly: !nowL.includes(s), why: `What the team told us (${label}): ${s.why}`, changes: s.uses.map((i) => `Learned: ${cut(applied[i]?.text, 160)}`).filter((x) => x.length > 9), via: 'learnings' })));
-        const ns = nowL.map((s) => s.n), est = +(ns.length * EST).toFixed(2);
+        const ns = nowL.map((s) => s.n), estAll = +(ns.length * est).toFixed(2);
         if (ask && first && want.length > fit && live() && builder?.rewrite) {
           /* the first learnings, past the cap: say what it costs and start on a yes (the top ones within the cap, or all of them) */
           L.pendingFull = { ns: want.map((s) => s.n), top: ns, at: t0, label }; await packs.put(slug, 'learned.json', L);
-          moves.pending = { ns: want.map((s) => s.n), top: ns, est: +(want.length * EST).toFixed(2), cap: LEARN_CAP };
+          moves.pending = { ns: want.map((s) => s.n), top: ns, est: +(want.length * est).toFixed(2), cap: LEARN_CAP };
         } else if (ns.length && live() && builder?.rewrite) {
           const r = await builder.rewrite(slug, ns, { via: 'learnings' }).catch((e) => ({ error: e.message })); /* first in the queue, never turned away */
-          moves.rewrite = r?.error ? { error: r.error } : { ns, est, queued: !!r?.queued };
+          moves.rewrite = r?.error ? { error: r.error } : { ns, est: estAll, queued: !!r?.queued };
         } else if (ns.length) moves.rewrite = live() ? { error: 'rewrites are switched off here' } : { off: true };
         if (pl.fresh.length && cadence) {
           const d = await cadence.due(slug, { manual: true, only: ['learn'] }).catch((e) => ({ families: [], why: [e.message] }));
@@ -509,5 +524,5 @@ export function createLearnings({ ai = null, packs, memory = null, builder = nul
     const k = ns.length, mins = k <= 2 ? '10 to 15 minutes' : k <= 6 ? '15 to 20 minutes' : k <= 18 ? 'about 30 to 45 minutes' : 'about an hour';
     return { reply: `Refreshing ${k} move${k === 1 ? '' : 's'} with what the team told us, ${mins}. Cards refresh as they land.` };
   }
-  return { run, live, confirm, review };
+  return { run, live, confirm, review, runPendingLearn };
 }

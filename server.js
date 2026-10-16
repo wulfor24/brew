@@ -412,7 +412,7 @@ const learnings = createLearnings({ ai, packs, memory: MEMORY_ON() ? memory : nu
    products.json (brands opened in the last 7 days); connected accounts become the source of truth (members only).
    Kill switch FACTS_DAILY_OFF=1; off under AI_MOCK and on local servers unless FACTS_BG=1 ---------- */
 const factsDesk = createFactsDesk({ packs, builder, ai, log: console, onPack: async (slug) => { packs.drop(slug); attach(await packs.load(slug)); } });
-builder.setHooks({ connected: (slug, tool) => factsDesk.connected(slug, tool) });
+builder.setHooks({ connected: (slug, tool) => factsDesk.connected(slug, tool), newMoves: (slug) => learnings.runPendingLearn(slug) });
 factsDesk.start();
 /* ---------- first drafts on the cards (drafts-bg.js): brands opened in the last 3 days, every card that names a format, in that format
    (video, carousel, stories, collection, image, email / WhatsApp / page mocks). Cap DRAFTS_DAY_CAP_USD (default $4 a brand a day) at real cost,
