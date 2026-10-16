@@ -133,7 +133,7 @@
   const AGENT = { creative: 'Creative director', performance: 'Performance marketer', storefront: 'Storefront manager', visibility: 'AI visibility', crm: 'CRM specialist', brew: 'Brew' };
   const face = (a) => `<span class="face ${a}" aria-hidden="true"><i></i><i></i></span>`;
   // real brand marks: a padded mark on a white tile, or the brand's own full-bleed app icon; marketplaces stack three
-  const LOGOS = { shopify: ['shopify.svg'], meta: ['meta.svg'], google: ['google.svg'], ga4: ['google-analytics.svg'], whatsapp: ['whatsapp.svg'], slack: ['slack.svg'], klaviyo: ['klaviyo.png'], loox: ['loox.png', 1], amazon: ['amazon.svg', 1], nykaa: ['nykaa.png', 1], blinkit: ['blinkit.png', 1], flipkart: ['flipkart.svg'], myntra: ['myntra.png', 1], walmart: ['walmart.svg'], target: ['target.svg'], etsy: ['etsy.svg'], ebay: ['ebay.svg'] };
+  const LOGOS = { shopify: ['shopify.svg'], meta: ['meta.svg'], google: ['google.svg'], ga4: ['google-analytics.svg'], whatsapp: ['whatsapp.svg'], slack: ['slack.svg'], klaviyo: ['klaviyo.png'], loox: ['loox.png', 1], judgeme: ['judgeme.png', 1], amazon: ['amazon.svg', 1], nykaa: ['nykaa.png', 1], blinkit: ['blinkit.png', 1], flipkart: ['flipkart.svg'], myntra: ['myntra.png', 1], walmart: ['walmart.svg'], target: ['target.svg'], etsy: ['etsy.svg'], ebay: ['ebay.svg'] };
   const logoTile = (k, size) => { const [f, full] = LOGOS[k]; return `<span class="cx-logo${full ? ' is-full' : ''}" style="width:${size}px;height:${size}px;border-radius:${Math.round(size * .26)}px"><img src="assets/logos/${f}" alt="" loading="lazy"></span>`; };
   // rival brands: their own site icons, saved in assets/logos/brands
   const RIVALS = B.rivalLogos || [];
@@ -144,6 +144,8 @@
     if (id === 'marketplaces') { const s2 = Math.round(size * .56); const ks = (B.marketLogos || (GEN ? String(c.name).toLowerCase().split(/[^a-z]+/) : ['amazon', 'nykaa', 'blinkit'])).filter((k) => LOGOS[k]); // only the marketplaces this brand sells on
       if (ks.length === 1) return logoTile(ks[0], size).replace('class="cx-logo', `title="${esc(c.name)}" class="cx-logo`); /* one marketplace: its own full-size tile, not a lone corner of a stack */
       if (ks.length) return `<span class="cx-logos" style="width:${size}px;height:${size}px" title="${esc(c.name)}">${ks.map((k) => logoTile(k, s2)).join('')}</span>`; }
+    // the reviews connector is whichever app the brand uses: show that app's own mark
+    const rv = id === 'reviews' && (/judge\.?me/i.test(c.name) ? 'judgeme' : /loox/i.test(c.name) ? 'loox' : null); if (rv) return logoTile(rv, size).replace('class="cx-logo', `title="${esc(c.name)}" class="cx-logo`);
     if (LOGOS[id]) return logoTile(id, size).replace('class="cx-logo', `title="${esc(c.name)}" class="cx-logo`);
     return `<span class="cx-glyph" style="--gc:${c.color};width:${size}px;height:${size}px;font-size:${Math.round(size * .5)}px">${esc(c.glyph)}</span>`; };
   const avatar = (c, s = 28) => `<span class="av" style="--ac:${c.color};width:${s}px;height:${s}px">${esc(c.ini)}</span>`;
