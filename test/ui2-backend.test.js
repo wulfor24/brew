@@ -242,3 +242,11 @@ test('outside the team on live, Ask, Your feed and Drop take no writes; the demo
   for (const w of ['ask|tuning', 'drop', '403', 'teamOnly']) assert.ok(line.includes(w), `no writes from outside the team (${w})`);
   const demo = /const DEMO_OK = (\/.*\/);/.exec(src)[1]; for (const w of ['|ask', 'tuning', 'brands\\/[^/]+\\/drop']) assert.ok(!demo.includes(w), `${w} is not opened to non-makers`);
 });
+
+test('a brief that was not emailed (demo site, mail down) is never marked sent', async () => {
+  const s = jbRig({ staff: true, sendOk: false }); const r = await s.R['POST /api/work/:wid/doc/ship']({ to: 'shopos', force: true }, s.t, { wid: 'wk_1' });
+  assert.equal(r.emailed, false); assert.equal(r.status, null, 'no status without an email'); assert.equal(s.w.jamBrief.status, null);
+  assert.ok(!(s.w.jamBrief.history || []).some((h) => h.s === 'sent'), 'no "sent" line in the history');
+  const ok = jbRig({ staff: true }); const r2 = await ok.R['POST /api/work/:wid/doc/ship']({ to: 'shopos', force: true }, ok.t, { wid: 'wk_1' });
+  assert.equal(r2.emailed, true); assert.equal(r2.status, 'sent');
+});

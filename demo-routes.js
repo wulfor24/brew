@@ -80,7 +80,7 @@ export function createDemoRoutes({ packs, builder, auth, connectors, readBody, s
     if (req.method === 'GET' && tm) { const slug = tm[1], r = await readiness(slug).catch(() => null);
       if (!r?.loaded) return res.writeHead(302, { location: '/' }), res.end(), true;
       await setSession(slug, { flow: 'onboarding', startedAt: Date.now() });
-      return send(res, 200, `<!doctype html><meta charset="utf-8"><title>Opening ${r.name.replace(/[<&"]/g, '')}…</title><script>try{Object.keys(localStorage).filter(function(k){return k.indexOf(${JSON.stringify(slug + '-')})===0}).forEach(function(k){localStorage.removeItem(k)})}catch(e){}location.replace(${JSON.stringify('/' + slug)})</script>`, 'text/html; charset=utf-8'), true; }
+      return send(res, 200, `<!doctype html><meta charset="utf-8"><title>Opening ${r.name.replace(/[<&"]/g, '')}…</title><script>try{Object.keys(localStorage).filter(function(k){return k.indexOf(${JSON.stringify(slug + '-')})===0}).forEach(function(k){localStorage.removeItem(k)})}catch(e){}var u=(location.search.match(/[?&](ui=\\d)/)||[])[1];location.replace(${JSON.stringify('/' + slug)}+(u?'?'+u:''))</script>`, 'text/html; charset=utf-8'), true; }
     if (req.method === 'GET' && p === '/api/demo/brands') {
       const all = await builder.list().catch(() => []), out = [];
       /* every visitor sees the brands that are fully generated (all their moves); admins also see the rest, to prepare them */

@@ -287,17 +287,22 @@ export function createJamBrief(o) {
       let share = null;
       if (handoff) { try { const x = await handoff.build(t, w, { base: b.base }); w.jamBrief.context = x; share = { url: x.links.page, text: handoff.text(x, to === 'shopos' ? 'brew' : 'whatsapp') }; w.jamBrief.handoff = share; } catch (e) { log.warn('[handoff]', e.message); } }
       const open = w.jamBrief.missing.length ? `. Still open: ${w.jamBrief.missing.join(', ').toLowerCase()}` : '';
-      if (to === 'shopos' && resend) return { work: w, share, status: w.jamBrief.status || null, already: true };
+      if (to === 'shopos' && resend) return { work: w, share, status: w.jamBrief.status || null, already: true, emailed: true };
+      let emailed = false;
       if (to === 'shopos') {
         const sent = o.onBriefSent ? await o.onBriefSent(t, w).catch((e) => { log.warn('[brief sent]', e.message); return false; }) : (o.onShopos?.(t, w, { why: 'shared a brief with the ShopOS team', text: '' }), false);
         if (sent) Object.assign(w.jamBrief, { sentMd: w.jamBrief.md, sentAt: now(t) }); /* only what really went out counts as sent for the double-tap check */
+        else { /* nothing went out (the demo site, or the mail failed): it is not "sent", so no status, no stamp, no pill; it stays ready to paste */
+          const h = w.jamBrief.history || []; if (h[0]?.s === 'sent') h.shift();
+          const keep = prev?.status && prev.to !== 'team'; w.jamBrief.status = keep ? prev.status : null; w.jamBrief.statusAt = keep ? prev.statusAt : null; }
+        emailed = !!sent;
         say(t, w, { from: 'system', body: `Brief ${w.ticket} ${sent ? 'sent to' : 'ready for'} the ShopOS team: the brief, deliverables, assets, rules and when it is done${open}. ${sent ? 'You’ll see each step here as they pick it up.' : 'Paste it where they work.'}` });
         move(t, w, 'shared', `${w.ticket}: brief ${sent ? 'sent to' : 'shared with'} the ShopOS team`);
       } else {
         say(t, w, { from: 'system', body: `Brief ${w.ticket} copied for your team: the card, options, plan, assets and both chats${open}. Paste it where they work.` });
         if (teamOfShopos) w.jamBrief = { ...prev, teamCopyAt: now(t) }; else move(t, w, 'shared', `${w.ticket}: brief shared with your team`);
       }
-      return { work: w, share, status: w.jamBrief.status || null };
+      return { work: w, share, status: w.jamBrief.status || null, emailed };
     });
     /* the ShopOS team moves a sent brief on (staff only: SquareUp's people, auth.isAdmin). It writes a line in the jam and the
        person who sent the brief gets an email (never on the demo site) */

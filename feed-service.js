@@ -951,7 +951,7 @@ export function createFeedService(o) {
     /* the brand's saved read, step by step: a live step that comes back empty or partial (a paid source off, a search
        that failed) shows the saved step and its findings instead, marked as from the last read. The tour never tells a
        visitor "0 rivals" or "not asked" about a brand whose read has them; a step the saved read lacks too stays honest */
-    const [pk, fj] = await Promise.all([packs.load(slug).catch(() => null), packs.getJSON(slug, 'findings.json', null).catch(() => null)]);
+    const [pk, fj] = await Promise.all([packs.load(slug).catch(() => null), (o.globalPacks?.getJSON ? o.globalPacks.getJSON(slug, 'findings.json', null) : Promise.resolve(null)).catch(() => null) /* the brand packs here have no getJSON: the demo tour's read threw */]);
     const savedStep = (k) => { const a = (fj?.steps || []).find((x) => x.k === k), b = (pk?.seed?.steps || []).find((x) => x.k === k); if (!a && !b) return null; return { ...(a || {}), ...(b?.done ? { done: b.done } : {}) }; };
     const savedCards = (k) => { const c = (pk?.seed?.scrape || []).filter((x) => x.k === k); return c.length ? c : (fj?.cards || []).filter((x) => x.k === k); };
     const held = new Map(); /* each step's live findings wait for the step's verdict */

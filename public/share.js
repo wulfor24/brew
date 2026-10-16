@@ -22,7 +22,7 @@
     if (r.needs) return ask(p, w, to, r.needs);
     a.closeModal?.(); if (r.error) return a.toast(esc(r.error));
     if (r.work) a.putWork(r.work); a.counts?.(); a.repaintDetail?.(); window.__shareDone?.(r);
-    if (to === 'shopos' && r.status === 'sent') return a.toast(`${ic('send', 's16')}Brief ${esc(r.work?.ticket || '')} sent to the ShopOS team. Its status shows in the top bar.`);
+    if (to === 'shopos' && r.emailed && r.status) return a.toast(`${ic('send', 's16')}Brief ${esc(r.work?.ticket || '')} sent to the ShopOS team. Its status shows in the top bar.`);
     const ok = await copy(r.share?.text || r.work?.jamBrief?.md || '');
     a.toast(ok ? `${ic('copy', 's16')}Brief ${esc(r.work?.ticket || '')} copied. Paste it where ${WHO[to]} works.` : `${ic('info', 's16')}Brief ${esc(r.work?.ticket || '')} is ready. Copy it from View the brief.`);
   };
