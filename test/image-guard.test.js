@@ -29,7 +29,7 @@ test('a different product is regenerated once, then replaced by the real photo',
   const a = rig([false, true]); const b1 = await a.guard({ srcFile: DEFAULT, prompt: 'p', text: 'The Hukum collection', catalog });
   assert.equal(a.calls.length, 2); assert.match(a.calls[1].prompt, /different product/); assert.equal(b1.toString(), 'GEN2'); assert.equal(b1.guard.retried, true);
   const b = rig([false, false]); const b2 = await b.guard({ srcFile: DEFAULT, prompt: 'p', text: 'The Hukum collection', catalog });
-  assert.equal(b2.toString(), 'HUKUM-PHOTO', 'never ships the wrong product'); assert.equal(b2.guard.fallback, true);
+  assert.equal(b2.toString(), 'HUKUM-PHOTO', 'never ships the wrong product'); assert.equal(b2.guard.fallback, true); assert.equal(b2.guard.genFailed, true, 'a stand-in photo is a failure, retried later');
 });
 
 test('when the check itself fails, a named product falls back to its real photo', async () => {

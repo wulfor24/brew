@@ -4,7 +4,7 @@
 // a draft costs money, so it is never made for a card nobody opened.
 // Each draft lives on the jam (w.drafts), newest first; the client polls the jam while one is being made.
 import { makeVoice as vertexVoice, makeVideo as vertexVideo } from './media.js'; // Sloosh first once connected, then Vertex, then OpenAI (media.js)
-import { matchProduct } from './product-match.js';
+import { matchProduct, cardProduct, cardScene, sceneOf } from './product-match.js';
 import crypto from 'node:crypto';
 import { safeFetch } from './reader/util.js'; // photo links reach only the public internet
 import fs from 'node:fs';
@@ -40,7 +40,8 @@ const SCHEMA = {
 
 // the planning prompt and the photo prompt, shared by the jam (one tap) and the background first drafts (drafts-bg.js)
 export const draftPrompt = ({ card, role = 'creative', brief = '', mem = '', as = 'auto', ask = '' }) => `${card}\n\nYou are the ${role} agent, and a team is planning this card in a jam.\n\nTHE JAM BRIEF (what the team agreed so far):\n----\n${String(brief || '').slice(0, 9000)}\n----\n${mem ? `\n${mem}\n` : ''}\nMake the first draft of the asset this brief asks for, ready for the team to react to.${as !== 'auto' ? ` Make it as ${as === 'voice' ? 'a voice recording' : as === 'text' ? 'text' : as === 'carousel' ? 'a carousel of 3 to 8 slides' : 'an ' + (as === 'image' ? 'image' : 'video')}${as === 'video' ? ' (a 6-second clip)' : ''}, even if the brief had something else in mind.` : ' Pick the form the brief needs.'}${ask ? `\nThe person asked: ${ask}` : ''}\nRules: plain words, every number from the brief or the brand facts, no discounts or claims the brief does not make, no disclaimers.`;
-export const imagePrompt = (j, hasSrc) => `Create a new photograph for ${j.title}. ${j.visual || 'The product on a clean surface in soft daylight.'} ${hasSrc ? 'Keep the product and its label exactly as in the reference photo; do not invent new text on it.' : ''} Nothing else in the picture carries writing: no calendars, notes, signs, screens, books or other packaging. No logos, no watermarks. Photographic, natural light, made for a phone screen.`;
+/* c: the card, whose asset line ("1 static image: an office worker at her desk wearing …") is the scene the picture must show */
+export const imagePrompt = (j, hasSrc, c = null) => `Create a new photograph for ${j.title}. ${j.visual || 'The product on a clean surface in soft daylight.'} ${cardScene(c)} ${hasSrc ? 'Keep the product and its label exactly as in the reference photo; do not invent new text on it.' : ''} Nothing else in the picture carries writing: no calendars, notes, signs, screens, books or other packaging. No logos, no watermarks. Photographic, natural light, made for a phone screen.`;
 export const DRAFT_SCHEMA = SCHEMA;
 export const DRAFT_RATIOS = RATIOS;
 
@@ -62,16 +63,17 @@ export function createDrafts({ claudeTool, geminiImage, treg, launchBrowser, zip
   // the real product photo: a brand asset may live only in the bucket, so it is fetched when this instance lacks it
   /* after a jam photo, the product the plan's words name (a Hukum ad shows the Hukum shoe), then the card's own pictures */
   const namedPhoto = (t, j, c) => { const cat = catalogOf(t); if (!cat?.length || !j) return null; const words = [j.title, j.copy, j.headline, j.body, ...(j.slides || []).map((x) => x?.onSlide), c?.title, c?.sub].filter(Boolean).join('. ');
-    return matchProduct(words, cat, { brand: brandName(t) })?.img || null; };
+    return (cardProduct(c, cat, { brand: brandName(t) }) || matchProduct(words, cat, { brand: brandName(t) }))?.img || null; }; /* the card's asset line names the product first */
+  const cardNamed = (t, c) => { const cat = c && catalogOf(t); return cat?.length ? cardProduct(c, cat, { brand: brandName(t) }) : null; }; /* the product the card's asset line names, for the image guard */
   const productPhoto = async (c, j = null, t = null) => { for (const rel of [...(c?.refImages || []), namedPhoto(t, j, c), ...(c?.images || []), photoOf(c), catalogOf(t)?.[0]?.img].filter(Boolean)) { /* a photo added in the jam comes first; the brand's lead product last */ try { const f = /^https?:/.test(rel) ? await fetchPhoto(rel) : photoAsync ? await photoAsync(rel) : photoFile(rel); if (f && fs.existsSync(f)) return f; } catch {} } return null; };
   /* never an invented product: with no real photo there is no picture, and the jam says how to add one */
   const needPhoto = (src) => { if (!src) throw Object.assign(new Error('There is no product photo for this yet. Add one with + (Product photo) and try again.'), { soft: true }); return src; };
 
   const makeImage = async (j, c, ratio, t = null) => {
     const src = needPhoto(await productPhoto(c, j, t));
-    const prompt = imagePrompt(j, true);
+    const prompt = imagePrompt(j, true, c);
     /* the guard tries the model again and the other Gemini model; with no picture at all, the real product photo stands in (failed) */
-    const buf = await geminiImage({ srcFile: src, prompt, ratio, text: [j.title, j.copy, j.headline, c?.title].filter(Boolean).join('. '), fallback: true });
+    const buf = await geminiImage({ srcFile: src, prompt, ratio, named: cardNamed(t, c), text: [c?.make?.pieces, j.title, j.copy, j.headline, c?.title].filter(Boolean).join('. '), fallback: true });
     const failed = !!buf?.guard?.genFailed, name = keyOf(prompt + ratio + (failed ? '|photo' : '')) + (failed ? '.jpg' : '.png');
     saveGen(name, buf);
     return { name, buf: null, failed };
@@ -82,7 +84,7 @@ export function createDrafts({ claudeTool, geminiImage, treg, launchBrowser, zip
   const makeCarousel = async (t, w, d, j, c) => {
     const slides = (j.slides || []).filter((x) => x?.onSlide).slice(0, 8); if (slides.length < 2) throw Object.assign(new Error('The plan came back without slides. Try again.'), { soft: true });
     const src = needPhoto(await productPhoto(c, j, t)), ratio = d.ratio === '9:16' ? '9:16' : d.ratio === '1:1' ? '1:1' : '4:5';
-    const r = await M.carousel({ slides, src, ratio, title: j.title, cardTitle: c?.title, id: d.id, clean, canSpend: (i) => i === 0 || spend('image'), onStep: (text) => step(t, w, d, text) });
+    const r = await M.carousel({ slides, src, ratio, title: j.title, cardTitle: c?.title, scene: sceneOf(c), named: cardNamed(t, c), id: d.id, clean, canSpend: (i) => i === 0 || spend('image'), onStep: (text) => step(t, w, d, text) });
     d.slides = r.slides; d.image = r.image; if (r.zip) d.zip = r.zip; if (r.err) d.err = r.err;
   };
   const makeVoice = (text, style, voice) => M.voice(text, style, voice);
@@ -191,14 +193,14 @@ export function createMakers({ geminiImage, treg, launchBrowser, zipBuffer, save
   };
   // a carousel: one photo per slide (3 at a time), then the words set in exact type by Chromium, never drawn by the model.
   // canSpend(i) says whether slide i may be made; bufs carry the image guard's note (guard.retried) so callers can book real cost
-  const carousel = async ({ slides, src, ratio, title, cardTitle, id, clean = (x) => String(x || ''), canSpend = () => true, onStep = () => {} }) => {
+  const carousel = async ({ slides, src, ratio, title, cardTitle, scene = '', named = null, id, clean = (x) => String(x || ''), canSpend = () => true, onStep = () => {} }) => {
     const raws = [];
     for (let k = 0; k < slides.length; k += 3) {
       onStep(`Making the photos (${Math.min(k + 3, slides.length)} of ${slides.length})`);
       raws.push(...(await Promise.all(slides.slice(k, k + 3).map(async (x, m) => {
         if (!canSpend(k + m)) return null;
-        const prompt = `Create photograph ${k + m + 1} of ${slides.length} for one ${title} carousel; every photo shares the same look, light and colour. ${x.visual} ${src ? 'Keep the product and its label exactly as in the reference photo.' : ''} No writing anywhere except the product's own label: no signs, notes, calendars, screens or other packaging. Keep the top third calm and simple, words will sit there. Photographic, natural light.`;
-        try { return await geminiImage({ srcFile: src, prompt, ratio, text: [x?.onSlide, title, cardTitle].filter(Boolean).join('. '), fallback: true }); } catch (e) { log.warn('[draft slide]', e.message); return null; } /* fallback: a slide with no new photo carries the real product photo under its words */
+        const prompt = `Create photograph ${k + m + 1} of ${slides.length} for one ${title} carousel; every photo shares the same look, light and colour. ${x.visual} ${scene ? `The set as a whole shows what the card promises: ${scene}.` : ''} ${src ? 'Keep the product and its label exactly as in the reference photo.' : ''} No writing anywhere except the product's own label: no signs, notes, calendars, screens or other packaging. Keep the top third calm and simple, words will sit there. Photographic, natural light.`;
+        try { return await geminiImage({ srcFile: src, prompt, ratio, named, text: [x?.onSlide, title, cardTitle].filter(Boolean).join('. '), fallback: true }); } catch (e) { log.warn('[draft slide]', e.message); return null; } /* fallback: a slide with no new photo carries the real product photo under its words */
       }))));
     }
     if (!raws.some(Boolean)) throw new Error('no slide photo came back');

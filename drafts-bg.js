@@ -23,7 +23,7 @@ import { safeFetch } from './reader/util.js'; // photo links reach only the publ
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { matchProduct } from './product-match.js';
+import { matchProduct, cardProduct, sceneOf } from './product-match.js';
 import { draftPrompt, imagePrompt, DRAFT_SCHEMA, DRAFT_RATIOS, createMakers } from './drafts.js';
 import { emailHtml, whatsappHtml, pageHtml, collectionHtml } from './draft-mocks.js';
 import { inferMake } from './cards-gen.js';
@@ -167,8 +167,8 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
   /* the address of the real photo a draft stands on (for the page's fallback), in the order photo() tries them */
   const photoRelOf = (c, named, p) => [named?.img, ...(c.images || []), c.img, ...(c.post?.media?.product?.images || []), p?.catalog?.[0]?.img].find((x) => x && typeof x === 'string' && !/^\/?gen\//.test(x)) || null;
   /* one picture of the real product: the guard tries the model again and, failing that, hands back the real photo (genFailed) */
-  const makeStill = async (slug, c, { src, ip, ratio, text, catalog, brand, retry = false }) => {
-    const buf = await geminiImage({ srcFile: src, prompt: ip, ratio, text, catalog, brand, fallback: !retry });
+  const makeStill = async (slug, c, { src, ip, ratio, text, catalog, brand, named = null, retry = false }) => {
+    const buf = await geminiImage({ srcFile: src, prompt: ip, ratio, text, catalog, brand, named, fallback: !retry });
     const failed = !!buf?.guard?.genFailed, name = sha(`${slug}|${c.id}|${ip}|${ratio}${failed ? '|photo' : ''}`) + (failed ? '.jpg' : '.png');
     saveGen(name, buf); return { rel: 'gen/' + name, failed, retried: !!buf?.guard?.retried, error: buf?.guard?.error || null, buf };
   };
@@ -184,16 +184,17 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
     const fits = (usd) => box.usd + usd <= box.cap + 1e-9, words = (x) => { d.as = 'text'; d.note = cut(`${d.note} ${x}`, 200); };
     const brand = { name: p.seed?.brand?.name || p.name || '', host: p.seed?.brand?.host || '', colors: p.seed?.brand?.colors || [] };
     /* the product the copy names, not the card's default shot (a Hukum ad must show the Hukum shoe) */
-    const named = matchProduct(`${j.title || ''}. ${j.copy || ''}. ${(j.slides || []).map((x) => x?.onSlide).join('. ')}. ${c.title || ''}. ${c.sub || ''}`, p.catalog, { brand: brand.name });
+    /* the card's asset line names the product it promises ("an office worker wearing Toe Toasters"): that one wins over the draft's words */
+    const named = cardProduct(c, p.catalog, { brand: brand.name }) || matchProduct(`${j.title || ''}. ${j.copy || ''}. ${(j.slides || []).map((x) => x?.onSlide).join('. ')}`, p.catalog, { brand: brand.name });
     const src = await photo(c, named) || (p.catalog?.[0]?.img ? await photo({}, p.catalog[0]) : null); /* nothing named and no card photo: the brand's lead product, never an invented one */
     if (named) d.product = named.t; else if (p.catalog?.[0] && !(c.images?.length || c.img)) d.product = p.catalog[0].t;
     d.photo = src ? photoRelOf(c, named, p) : null;
     const still = async () => { /* one picture of the real product in a new scene; null when there is no photo or no budget */
       if (!geminiImage || !saveGen) return null; if (!src) { words('No product photo to stage, so this one is words only.'); return null; }
       if (!fits(cfg.imageUsd)) { words("The picture waits for tomorrow's budget."); return null; }
-      const ip = imagePrompt(j, true), text = `${j.title || ''}. ${j.copy || ''}. ${c.title || ''}`;
+      const ip = imagePrompt(j, true, c), text = `${c.make?.pieces || ''}. ${j.title || ''}. ${j.copy || ''}. ${c.title || ''}`;
       d.ip = ip; d.imgText = cut(text, 600); /* kept so a failed picture can be made again later without asking the AI for new words */
-      try { const r = await makeStill(slug, c, { src, ip, ratio, text, catalog: p.catalog || null, brand: p.seed?.brand?.name || '' });
+      try { const r = await makeStill(slug, c, { src, ip, ratio, text, catalog: p.catalog || null, brand: p.seed?.brand?.name || '', named });
         if (r.failed) { d.photoOnly = true; d.imgRetry = { n: 1, next: now() + retryWait(1), err: cut(r.error || '', 160) }; d.note = cut(`${d.note} For now this is the real product photo; the new picture is being made again.`, 220); log.warn?.('[drafts-bg] image fell back to the real photo', slug, c.id, r.error || ''); }
         else { box.usd += imageCost(r.buf, cfg); if (r.retried) d.retried = true; }
         d.fromPhoto = true; return r.rel; }
@@ -209,7 +210,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
       if (slides.length < 2 || !launchBrowser || !src) { const img = await still(); if (img) { d.image = img; d.as = 'image'; d.note = cut(`${d.note} One picture for now; the slides come with another take.`, 200); } }
       else if (!fits(cfg.imageUsd * 2)) words("The slides wait for tomorrow's budget.");
       else { d.copy = d.copy || slides.map((x, i) => `${i + 1}. ${x.onSlide}`).join('\n'); let made = 0;
-        try { const rr = await M.carousel({ slides, src, ratio, title: j.title, cardTitle: c.title, id: `${slug}|${d.key}`, canSpend: () => { if (!fits(cfg.imageUsd * (made + 1))) return false; made++; return true; } });
+        try { const rr = await M.carousel({ slides, src, ratio, title: j.title, cardTitle: c.title, scene: sceneOf(c), named, id: `${slug}|${d.key}`, canSpend: () => { if (!fits(cfg.imageUsd * (made + 1))) return false; made++; return true; } });
           box.usd += cfg.imageUsd * (rr.made + rr.retried); Object.assign(d, { slides: rr.slides, image: rr.image }); if (rr.zip) d.zip = rr.zip; if (rr.err) d.err = rr.err; }
         catch (e) { box.usd += cfg.imageUsd * made; words('The slides did not come through; the words are here.'); log.warn?.('[drafts-bg] slides', slug, c.id, e.message); } }
     } else if (['email', 'whatsapp', 'page', 'catalog'].includes(kind) && launchBrowser) { /* free: the words laid out where they will live, with a real product photo */
@@ -251,16 +252,30 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
     }
     return n;
   }
+  /* a saved draft whose picture stands on another product than the one the card's asset line names (drafts made before the
+     asset line counted, e.g. "an office worker wearing Toe Toasters" drafted on the hand warmer) is dropped: the feed shows the
+     card's own product photo at once, and the draft is made again in its turn, inside the day's cap. Every brand, every kind */
+  function healWrongProduct(p, cache) {
+    let n = 0; const brand = p.seed?.brand?.name || p.name || '';
+    for (const c of p.seed?.posts || []) {
+      const d = draftFor(c, cache); if (!d || !(d.image || d.render || d.photo || d.slides?.length)) continue;
+      const want = cardProduct(c, p.catalog, { brand, byNameOnly: true }); if (!want || d.product === want.t) continue; /* only a product the card names outright: loose words never throw a draft away */
+      log.log?.('[drafts-bg] draft shows another product than the card names; making it again', c.id, d.product || '(none)', '→', want.t);
+      delete cache[c.id]; n++;
+    }
+    return n;
+  }
   /* pictures that came back as the real photo (or not at all) are made again when due, with backoff; the card heals on its next load */
   async function remakeStills(slug, p, cache, box, made) {
     let tried = 0; const brand = { name: p.seed?.brand?.name || p.name || '', host: p.seed?.brand?.host || '', colors: p.seed?.brand?.colors || [] };
     for (const c of rankCards(p.seed?.posts || [])) {
       const d = draftFor(c, cache); if (!d?.imgRetry || !d.ip || now() < (d.imgRetry.next || 0)) continue;
       if (made.length >= cfg.perRun || box.cap - box.usd < cfg.imageUsd) break;
-      const named = matchProduct(d.imgText || `${d.title}. ${d.copy}`, p.catalog, { brand: brand.name });
+      const named = cardProduct(c, p.catalog, { brand: brand.name }) || matchProduct(d.imgText || `${d.title}. ${d.copy}`, p.catalog, { brand: brand.name });
       const src = await photo(c, named) || (p.catalog?.[0]?.img ? await photo({}, p.catalog[0]) : null); if (!src) continue;
       const t0 = box.usd; tried++;
-      try { const r = await makeStill(slug, c, { src, ip: d.ip, ratio: d.ratio || '4:5', text: d.imgText || '', catalog: p.catalog || null, brand: brand.name, retry: true });
+      try { const r = await makeStill(slug, c, { src, ip: d.ip, ratio: d.ratio || '4:5', text: d.imgText || '', catalog: p.catalog || null, brand: brand.name, named, retry: true });
+        if (r.failed) throw new Error(r.error || 'the picture still showed another product'); /* the real photo again is not a made picture: back off and try later */
         box.usd += imageCost(r.buf, cfg); d.image = r.rel; d.fromPhoto = true; delete d.imgRetry; delete d.photoOnly; delete d.err; d.note = cut(String(d.note || '').replace(/ ?For now this is the real product photo;.*$/, ''), 220);
         if (d.as === 'text') d.as = d.kind === 'collection' ? 'collection' : 'image';
         if (d.kind === 'video' && !d.video) d.wants = 'video';
@@ -284,6 +299,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
       const p = await loadPack(slug); if (!p?.seed?.posts) return { made: [], usd: 0, why: 'no feed yet' };
       const cache = await cacheOf(slug), ranked = rankCards(p.seed.posts), top = new Set(ranked.slice(0, cfg.topN).map((c) => c.id));
       if (await healMissing(slug, cache)) await save(slug, cache).catch(() => {});
+      if (healWrongProduct(p, cache)) await save(slug, cache).catch(() => {});
       /* every card that names a format, and the top few others, in feed order; then stills that still wait for their clip */
       const todo = (only?.length ? ranked.filter((c) => only.includes(c.id)) : ranked.filter((c) => c.make?.format || top.has(c.id))).filter((c) => needsDraft(c, cache, now()));
       const clips = ranked.filter((c) => { const d = draftFor(c, cache); return d?.wants === 'video' && d.image && !d.video && !d.imgRetry && !d.photoOnly && now() >= (d.clipRetry?.next || 0); });

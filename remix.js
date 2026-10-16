@@ -9,6 +9,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { saveGen, genFile } from './gen-store.js';
 import { createMakers } from './drafts.js';
+import { cardProduct } from './product-match.js';
 import { versionLabel } from './text-fit.js';
 import { withSteps } from './card-plan.js';
 import { familyOf, FAMILY_NAME, fieldsFor, knobsFor, suggestFor, fitChip, GRADES, pkgSchema, fieldsBrief, kvSchema, allKeys, fromKV, toKV, cleanPkg, publicText, missing, afterFromPkg, mockPkg, RATIO, leaks, isMulti, ACTION_SPEC, ACTION_GUARD, productFor, ideaAction, ideaPkg, chipsFor, chipRelates, chipCtx } from './studio.js';
@@ -338,6 +339,8 @@ export const amountOf = (act, family, pkg = {}) => {
 export function createRemix(o) {
   const { claudeTool, geminiImage, PUB, LANE_PHOTO, FACTS = {}, unbackedNums = () => [], MOVES = null, photoFile = (rel) => path.join(PUB, rel) } = o;
   const catalogOf = o.catalogOf || (() => null);
+  /* the photo of the product the card's asset line (else its words) names, so the jam's pictures show what the card promises */
+  const cardPhoto = (t, c) => { try { return cardProduct(c, catalogOf(t) || [], { brand: o.SEED?.brand?.name || '' })?.img || null; } catch { return null; } };
   /* what a package keeps when its words are rewritten: the picture, the knobs and the look, and a first draft's own media
      (its video, its slides), so the draft the card showed stays v0 and every version made from it keeps it */
   const keepMedia = (p = {}, all = false) => { const d = p.draft && (all || !p.draft.text) ? p.draft : undefined; /* a text draft (an email or page shown as a picture) is only v0: new words replace it */
@@ -530,7 +533,7 @@ export function createRemix(o) {
       try {
         /* a product photo the team picked is the reference, then the card's, the lane's and the brand's lead product: the first one that can be read
            (a store URL that refuses, or a photo only in the bucket, no longer ends the picture with ENOENT) */
-        const cands = [...(p.photos || []).filter((u) => !/^gen\//.test(u)), ...(c.images || []).filter((u) => !/^gen\//.test(u)), LANE_PHOTO[c.lane], ...Object.values(LANE_PHOTO || {}), o.catalogOf?.(t)?.[0]?.img].filter((x) => x && typeof x === 'string');
+        const cands = [...(p.photos || []).filter((u) => !/^gen\//.test(u)), cardPhoto(t, c), ...(c.images || []).filter((u) => !/^gen\//.test(u)), LANE_PHOTO[c.lane], ...Object.values(LANE_PHOTO || {}), o.catalogOf?.(t)?.[0]?.img].filter((x) => x && typeof x === 'string');
         let src = null; for (const rel of [...new Set(cands)]) { src = (o.photoAsync ? await o.photoAsync(rel).catch(() => null) : null) || (fs.existsSync(photoFile(rel)) && fs.statSync(photoFile(rel)).isFile() ? photoFile(rel) : null); if (src) break; }
         if (!src) throw new Error('no product photo could be read for this picture');
         const one = async (i) => { const prompt = promptOf(i); const key = crypto.createHash('sha1').update(prompt + (p.format || '4:5')).digest('hex').slice(0, 16);
@@ -558,7 +561,7 @@ export function createRemix(o) {
   let MK = null; const makers = () => (MK ||= o.makers || createMakers({ geminiImage, log }));
   const VID_JOBS = new Set();
   const srcPhoto = async (t, ch, lead = null) => { const c = t.cards.get(ch.cardId) || {}, p = ch.pkg || {};
-    const cands = [...(p.photos || []).filter((u) => !/^gen\//.test(u)), lead, ...(c.images || []).filter((u) => !/^gen\//.test(u) && !/statics\//.test(u)), LANE_PHOTO[c.lane], ...Object.values(LANE_PHOTO || {}), o.catalogOf?.(t)?.[0]?.img].filter((x) => x && typeof x === 'string');
+    const cands = [...(p.photos || []).filter((u) => !/^gen\//.test(u)), lead, cardPhoto(t, c), ...(c.images || []).filter((u) => !/^gen\//.test(u) && !/statics\//.test(u)), LANE_PHOTO[c.lane], ...Object.values(LANE_PHOTO || {}), o.catalogOf?.(t)?.[0]?.img].filter((x) => x && typeof x === 'string');
     for (const rel of [...new Set(cands)]) { const f = (o.photoAsync ? await o.photoAsync(rel).catch(() => null) : null) || (fs.existsSync(photoFile(rel)) && fs.statSync(photoFile(rel)).isFile() ? photoFile(rel) : null); if (f) return f; }
     return null; };
   const genVideo = (t, ch, why = 'the script') => {

@@ -33,14 +33,15 @@ export function createImageGuard({ gen, verify = null, fetchPhoto = async () => 
     throw last; };
   return async function guardedImage(o = {}) {
     const b = context(), catalog = o.catalog ?? b?.catalog ?? null, brand = o.brand ?? b?.seed?.brand?.name ?? b?.name ?? '';
-    const named = o.product === false ? null : matchProduct(`${o.text || ''}\n${o.prompt || ''}`, catalog, { brand });
+    /* o.named: the product the caller already knows the picture is about (the card's asset line names it), else the words' */
+    const named = o.product === false ? null : o.named?.img ? o.named : matchProduct(`${o.text || ''}\n${o.prompt || ''}`, catalog, { brand });
     let ref = o.srcFile || null;
     if (ref && !isFile(ref)) ref = (await resolve(ref).catch(() => null)) || null; /* a path this instance lacks: the bucket's copy, or nothing */
     if (named) { const f = await fetchPhoto(named.img).catch(() => null); if (f) ref = f; }
     if (o.srcFile && !ref && catalog?.[0]?.img) ref = (await fetchPhoto(catalog[0].img).catch(() => null)) || null; /* the caller wanted a reference: the brand's lead product, never an invented one */
     if (o.srcFile && !ref) throw new Error('the product photo for this picture could not be found');
     const base = { ...o, srcFile: ref, prompt: ref ? `${o.prompt}\n\n${KEEP(named?.t)}` : o.prompt };
-    delete base.text; delete base.catalog; delete base.brand; delete base.product; delete base.fallback;
+    delete base.text; delete base.catalog; delete base.brand; delete base.product; delete base.fallback; delete base.named;
     const note = { product: named?.t || null, ref: !!ref, checked: false, same: null, retried: false, fallback: false, genFailed: false };
     let buf;
     try { buf = await genRetry(base); }
@@ -56,12 +57,12 @@ export function createImageGuard({ gen, verify = null, fetchPhoto = async () => 
           log.warn?.('[image-guard] product mismatch, retrying', named?.t || '', v?.why || '');
           note.retried = true; buf = await genRetry({ ...base, prompt: `${base.prompt}\n${STRICT}` }).catch((e) => { if (!o.fallback) throw e; return null; }); if (!buf) { buf = fs.readFileSync(ref); note.fallback = true; note.genFailed = true; return Object.assign(buf, { guard: note }); }
           v = await verify(ref, buf, named?.t); note.same = !!v?.same;
-          if (!v?.same) { log.warn?.('[image-guard] still a different product; using the real photo', named?.t || ''); buf = fs.readFileSync(ref); note.fallback = true; }
+          if (!v?.same) { log.warn?.('[image-guard] still a different product; using the real photo', named?.t || ''); buf = fs.readFileSync(ref); note.fallback = true; note.genFailed = true; } /* a stand-in, not the new picture: callers retry it later */
         }
       } catch (e) {
         // the check itself failed: try it once more; a named product that can't be confirmed falls back to its real photo
-        try { const v = await verify(ref, buf, named?.t); note.checked = true; note.same = !!v?.same; if (!v?.same && named) { buf = fs.readFileSync(ref); note.fallback = true; } }
-        catch (e2) { log.warn?.('[image-guard] check unavailable', e2.message); if (named) { buf = fs.readFileSync(ref); note.fallback = true; } }
+        try { const v = await verify(ref, buf, named?.t); note.checked = true; note.same = !!v?.same; if (!v?.same && named) { buf = fs.readFileSync(ref); note.fallback = true; note.genFailed = true; } }
+        catch (e2) { log.warn?.('[image-guard] check unavailable', e2.message); if (named) { buf = fs.readFileSync(ref); note.fallback = true; note.genFailed = true; } }
       }
     }
     return Object.assign(buf, { guard: note });

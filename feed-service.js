@@ -25,6 +25,7 @@ import { createAskBrew, answerAsk, cleanSeed } from './ask-brew.js'; // Ask Brew
 import { parseDrop, DESTS } from './drop.js'; // Drop anything: memory, my preferences, just this once // Send brief: the full email and the "N with the team" pill
 import { shipLine } from './text-fit.js';
 import { createDrafts, fakeMakers } from './drafts.js';
+import { cardProduct, cardScene } from './product-match.js';
 import { seedDrafts, draftFor, draftView } from './drafts-bg.js';
 import { planFor, planPrompt } from './card-plan.js';
 import { createMoves } from './moves.js';
@@ -1452,8 +1453,10 @@ export function createFeedService(o) {
   on('POST', '/api/cards/:cid/image', async (b, t, p) => {
     const c = t.cards.get(p.cid); if (!c) return { error: 'not found' };
     if (isMock() || !spend('image')) return { error: 'Images are paused right now. Try again in a bit.' };
-    const lane = LANE_PHOTO[c.lane] ? c.lane : Object.keys(LANE_PHOTO)[0]; if (!photoFile(LANE_PHOTO[lane] || Object.values(LANE_PHOTO)[0])) return { error: 'There’s no product photo to start from.' };
-    const buf = await geminiImage({ srcFile: photoFile(LANE_PHOTO[lane] || Object.values(LANE_PHOTO)[0]), prompt: `Create a new product photograph for this ad idea: ${c.title}. ${c.scene || ''} ${`Keep the ${BN()} ${B().config.product?.noun || 'product'} and its label exactly as in the reference`}. ${B().config.product?.avoid || 'No text, no before/after.'} ${(B().config.product?.style || 'Premium D2C product ad photography') + '.'}`, ratio: '4:5', model: process.env.WATCHER_IMAGE_MODEL || 'gemini-2.5-flash-image' });
+    /* the product the card's asset line (else its words) names, then the lane photo; the picture shows the scene the card promises */
+    const named = cardProduct(c, brandOfT(t)?.catalog || [], { brand: BN() }), namedFile = named?.img ? (o.photoAsync ? await o.photoAsync(named.img).catch(() => null) : null) || (fs.existsSync(photoFile(named.img)) ? photoFile(named.img) : null) : null;
+    const lane = LANE_PHOTO[c.lane] ? c.lane : Object.keys(LANE_PHOTO)[0], ref = namedFile || photoFile(LANE_PHOTO[lane] || Object.values(LANE_PHOTO)[0]); if (!ref || !fs.existsSync(ref)) return { error: 'There’s no product photo to start from.' };
+    const buf = await geminiImage({ srcFile: ref, prompt: `Create a new product photograph for this ad idea: ${c.title}. ${cardScene(c)} ${c.scene || ''} ${`Keep the ${BN()} ${B().config.product?.noun || 'product'} and its label exactly as in the reference`}. ${B().config.product?.avoid || 'No text, no before/after.'} ${(B().config.product?.style || 'Premium D2C product ad photography') + '.'}`, ratio: '4:5', model: process.env.WATCHER_IMAGE_MODEL || 'gemini-2.5-flash-image' });
     const key = crypto.createHash('sha1').update(c.id + ':' + Date.now()).digest('hex').slice(0, 16), url = `gen/${key}.png`; saveGen(key + '.png', buf);
     const old = String(b.src || '').replace(/^\/+/, '');
     const swap = (arr) => { if (!Array.isArray(arr)) return arr; const i = arr.findIndex((u) => u === old); if (i >= 0) { const n = arr.slice(); n[i] = url; return n; } return arr; };

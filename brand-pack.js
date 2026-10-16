@@ -5,7 +5,7 @@
 import { nextFestival } from './calendar.js';
 import { healthFrom, HEALTH_V, healthKey } from './dummy/health.js'; // DUMMY: simulated health rings
 import { numbersFor, healSeedNumbers } from './pack-numbers.js'; // one number, one source, for every screen
-import { catalogOf, matchProduct, junkPhoto } from './product-match.js';
+import { catalogOf, matchProduct, junkPhoto, cardProduct, cardAssetText } from './product-match.js';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
@@ -84,7 +84,7 @@ export function fitPhotos(seed, profile) {
   const ownerOf = (u) => owner.get(norm(u)) || (/\/a\/pack-/.test(u) ? matchProduct(norm(u).split('/').pop().replace(/^pack-|\.\w+$/g, '').replace(/-/g, ' '), cat, { brand })?.t || null : null);
   for (const c of seed.posts || []) {
     if (c.kind !== 'media' || (c.images || []).length !== 1) continue;
-    const text = `${c.title || ''}. ${c.sub || ''}`, m = matchProduct(text, cat, { brand }); if (!m) continue;
+    const text = cardAssetText(c), m = cardProduct(c, cat, { brand }); if (!m) continue; /* the asset line's product first: it is what the card promises to make */
     const cur = ownerOf(c.images[0]); if (!cur || cur === m.t) continue;
     if (matchProduct(text, [{ t: cur, img: '-' }], { brand })) continue; // the photo is a product the card also names
     c.images = [m.img]; c.photoFit = { was: cur, now: m.t };
@@ -174,7 +174,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
       const hash = (str) => [...str].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7), used = new Map();
       const free = (start) => { for (let k = 0; k < prods.length; k++) { const x = prods[(start + k) % prods.length]; if (!used.has(x.img)) return x; } return prods[start % prods.length]; };
       for (const c of posts) { if (c.kind !== 'media' || (c.images || []).length !== 1 || !(lanePics.has(String(c.images[0]).replace(/^\//, '')) || junkPhoto(c.images[0]))) continue; /* a lane photo, or a screenshot / logo file, gets a real product photo */
-        const m = matchProduct(`${c.title}. ${c.sub || ''}`, prods, { brand: seed.brand?.name || '' }), named = m && prods.find((x) => x.t === m.t); /* the product the card names; else a varied one */
+        const m = cardProduct(c, prods, { brand: seed.brand?.name || '' }), named = m && prods.find((x) => x.t === m.t); /* the product the card's asset line or words name; else a varied one */
         const pick = named || free(hash(c.id) % prods.length); /* a named product always gets its own photo */
         used.set(pick.img, (used.get(pick.img) || 0) + 1); c.images = [pick.img]; } }
     return { ...seed, posts };

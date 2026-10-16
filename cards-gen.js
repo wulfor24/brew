@@ -14,10 +14,13 @@ const MAKE_CTA = { 'single image ad': 'Generate versions', 'carousel ad': 'Make 
    button that mentioned a post, carousel or video, so a page section kept the AI's social-post button. Now a making
    button of another format is replaced by the one for the planned format; a non-making button (a decision, a spend,
    "Publish the page") is the card's own choice and stays. Used when cards are written and when packs load. */
+const OTHER_NETWORK = new Set(['Launch the ad group']);
 const MAKE_LABELS = new Set([...Object.values(MAKE_CTA), 'Draft the post', 'Draft the carousel post', 'Draft the stories', 'Make the video', 'Generate versions']);
 export function fitCta(card) {
   const want = card?.make?.format && MAKE_CTA[card.make.format], cur = card?.cta?.label;
-  if (want && CTA[want] && cur !== want && (!cur || MAKE_LABELS.has(cur))) card.cta = { ...(card.cta || {}), label: want };
+  /* a Google search button ("Launch the ad group") on a card that makes a Meta or social asset promises the wrong thing: the format's own button */
+  const wrongNet = OTHER_NETWORK.has(cur) && MAKES_CREATIVE.test(card?.make?.format || '');
+  if (want && CTA[want] && cur !== want && (!cur || MAKE_LABELS.has(cur) || wrongNet)) card.cta = { ...(card.cta || {}), label: want };
   return card;
 }
 /* a card that names an asset carries what to make. Old packs were written before every such card set "make", so cards
@@ -75,7 +78,7 @@ const SCHEMA = {
       cta: { type: 'string', enum: Object.keys(CTA) },
       make: { type: 'object', description: 'Required when the card asks for something to be made or its title, body or button names an ad, email, reel, video, post, carousel, Stories, WhatsApp message or page: the format and the pieces in it. Omit only for reports and plans that make nothing', properties: {
         format: { type: 'string', enum: MAKE_FORMATS },
-        pieces: { type: 'string', description: 'Under 90 characters, from the move: how many and what, e.g. "6 slides: the fit room, one body type per slide"' } } },
+        pieces: { type: 'string', description: 'Under 90 characters, from the move: how many and what, e.g. "6 slides: the fit room, one body type per slide". Name the product exactly as the store lists it when the asset shows one' } } },
       plan: { type: 'array', items: { type: 'string' }, description: '3 to 5 ground-work steps toward the card’s button, in order, each under 14 words, naming the real ads, products, pages or people from the move (e.g. "Pick the two winning ads: Fit room and Rain test", "Write 3 new hooks per winner", "Make the carousels", "Review them", "Ready to launch on Meta or hand to the team"). The last step is ready to deploy or hand to the team. Never a step that says it is decided or done.' },
       section: { type: 'string', description: 'The move section heading this card comes from' }
     } } }
@@ -115,6 +118,7 @@ Write 1 or 2 cards. Each card is one thing the team can act on now, taken from t
 - Pick the button (cta) that does what the card asks.
 - When the move plans a specific asset (a carousel, a set of Stories, a collection or catalog ad, a reel, a post), say so in "make" with the format and the pieces exactly as the move plans them, and pick the button that makes that format (carousel ad: "Make the carousel ad"; Instagram carousel: "Draft the carousel post"; Stories: "Draft the stories"; single post: "Draft the post"; collection ad: "Build the collection ad"; catalog ad: "Build the catalog ad").
 - Any card whose title, body or button names an ad, an email, a reel or video, a post, a carousel, Stories, a WhatsApp message or a page must set "make" to that format, even a decision; Brew drafts it before anyone opens the card. Only a card that reports on an ad (its spend, a rival's ad, pausing one) leaves "make" out.
+- The card's words and its asset agree: when "make" names a product or a scene, the title or body names that same product, and "pieces" uses the product's name exactly as the store lists it (Brew drafts the asset from it).
 - Also write the move's short label and one-line summary.`;
     let j;
     try { j = (await ai.call({ model: 'sonnet', prompt, schema: SCHEMA, max: 4000, tag: 'cards' })).json; }
