@@ -46,6 +46,26 @@ export function diffLedgers(old = [], next = [], removed = []) {
   for (const e of removed) changes.push({ kind: 'removed', key: e.key, area: areaOf(e.key), label: e.label || e.key, was: String(e.v), src: e.url || e.src || '' });
   return { changes, minor };
 }
+/* a connected account's re-read (every 6 or 12 hours) against the value each move was last written with (`base`), not the
+   previous read: a number counts once it has moved `pct` (10%) or more since then, so slow drift adds up and noise never
+   flags. A list (channels, countries, flows) counts when its names change, not its shares. Returns the material changes and
+   the new base: a key that moved takes its new value (the rewrite will use it), one that didn't keeps its old one. */
+const names = (v) => String(v ?? '').toLowerCase().replace(/[\d.,%$€£₹+\-]+/g, ' ').replace(/\s+/g, ' ').trim();
+export function liveMaterial(base = {}, rows = [], { pct = 0.1 } = {}) {
+  const next = { ...base }, changes = [];
+  for (const e of rows) {
+    const b = base[e.key];
+    if (!b) { next[e.key] = { v: e.v, ...(typeof e.n === 'number' ? { n: e.n } : {}) }; continue; } /* a key seen for the first time is the base */
+    let material, p = null;
+    if (typeof e.n === 'number' && typeof b.n === 'number') { const rel = Math.abs(e.n - b.n) / Math.max(Math.abs(b.n), 1); material = rel >= pct; p = b.n ? Math.round(100 * (e.n - b.n) / Math.abs(b.n)) : null; }
+    else material = names(b.v) !== names(e.v);
+    if (!material) continue;
+    changes.push({ kind: 'changed', key: e.key, label: e.label || e.key, was: String(b.v), now: String(e.v), pct: p });
+    next[e.key] = { v: e.v, ...(typeof e.n === 'number' ? { n: e.n } : {}) };
+  }
+  return { changes, base: next };
+}
+
 export const changeLine = (c) => c.kind === 'new' ? `New: ${c.label}: ${c.now}` : c.kind === 'removed' ? `Gone: ${c.label} (was ${c.was})` : `${c.label}: ${c.was} → ${c.now}${c.pct != null ? ` (${c.pct > 0 ? '+' : ''}${c.pct}%)` : ''}`;
 
 // which moves each change touches: the move quotes the old value or names the thing, or its evidence areas include it

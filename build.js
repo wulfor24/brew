@@ -22,7 +22,7 @@ import { healthFrom } from './dummy/health.js'; // DUMMY: simulated health rings
 import { isPlay, playDone, totalOf, numbersFor, healSeedNumbers } from './pack-numbers.js'; // one number, one source
 import { createStatics } from './statics.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { mergeLedger, diffLedgers, candidates, triage, changeLine, CONNECTED_MOVES } from './refresh.js';
+import { mergeLedger, diffLedgers, candidates, triage, changeLine, liveMaterial, CONNECTED_MOVES } from './refresh.js';
 import { withLearned, briefView } from './brand-learnings.js';
 import { profileLive, withLive } from './on-connect.js'; // what a real connected account corrects in the team's view
 import { briefWithConnected } from './brief.js'; // what the team told Brew survives a fresh brief
@@ -646,6 +646,9 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   const REFRESH_DAYS = +process.env.REFRESH_EVERY_DAYS || 7, AUTO_MAX = +process.env.REFRESH_AUTO_MAX || 6;
   const REFRESH_CAP = +process.env.REFRESH_CAP_USD || 60, AUTO_CAP = +process.env.REFRESH_AUTO_CAP_USD || 10, MOVE_USD = 0.6;
   const CONNECT_CAP = +process.env.CONNECT_CAP_USD || 40, CONNECT_SETTLE = +(process.env.CONNECT_SETTLE_MS ?? 10 * 60e3);
+  /* connected accounts' re-reads: a number counts once it moved LIVE_MATERIAL (10%) since the move was written; the moves they
+     flag are rewritten once a week (LIVE_DAYS), up to LIVE_CAP dollars a brand a run, and what the cap stopped waits for next week */
+  const LIVE_MATERIAL = +(process.env.LIVE_MATERIAL ?? 0.1), LIVE_CAP = +process.env.LIVE_CAP_USD || 30, LIVE_DAYS = +process.env.LIVE_REWRITE_DAYS || REFRESH_DAYS;
   const pad2 = (n) => String(n).padStart(2, '0');
   // DUMMY: flags raised by a simulated account (live) are not real reasons to rewrite: saved flags heal here
   const upd = async (slug) => { const u = { auto: true, stale: {}, history: [], ...(await packs.getJSON(slug, 'updates.json', {})) }; for (const [n, x] of Object.entries(u.stale || {})) if (x?.live && !x.real) delete u.stale[n]; return u; };
@@ -704,7 +707,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   /* the rewrite queue (updates.json queue): what the team told Brew goes first, then a big change (a rival's price move or
      launch, our catalog), then the weekly check's stale moves. A rewrite asked for while another runs waits its turn instead of
      being turned away, and starts the moment the brand is free (drain) */
-  const PRIO = { learnings: 0, event: 1, manual: 1, connected: 1, weekly: 2 };
+  const PRIO = { learnings: 0, event: 1, manual: 1, connected: 1, weekly: 2, live: 2 };
   const enqueue = (slug, ns, { via = 'manual', auto = false, notBefore = null, tries = null } = {}) => editUpd(slug, (u) => { const q = (u.queue ||= []);
     let e = q.find((x) => x.via === via); if (!e) { e = { via, prio: PRIO[via] ?? 1, ns: [], auto, at: Date.now() }; q.push(e); } e.ns = [...new Set([...e.ns, ...ns])]; e.auto = e.auto && auto;
     if (notBefore) e.notBefore = notBefore; else delete e.notBefore; if (tries != null) e.tries = tries; });
@@ -745,7 +748,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   async function rewriteNow(slug, ns, { auto = false, via = null, tries = 0 } = {}) {
     ns = [...new Set((ns || []).map(Number))].filter((n) => n >= 1 && n < 1000); if (!ns.length) return;
     const x = st(slug); if (x.running) return enqueue(slug, ns, { via: via || (auto ? 'weekly' : 'manual'), auto }); x.running = true; x.rewriting = new Set(ns);
-    const m = await load(); await restoreSpend(slug); await loadDay(); const usd0 = spentFor(slug), cap = via === 'connected' ? CONNECT_CAP : auto ? AUTO_CAP : Math.max(REFRESH_CAP, ns.length * 2.5);
+    const m = await load(); await restoreSpend(slug); await loadDay(); const usd0 = spentFor(slug), cap = via === 'connected' ? CONNECT_CAP : via === 'live' ? LIVE_CAP : auto ? AUTO_CAP : Math.max(REFRESH_CAP, ns.length * 2.5);
     const written = []; let prevState = null;
     try {
       const profile0 = normalizeProfile(await packs.getJSON(slug, 'profile.json'));
@@ -853,7 +856,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     for (const id of ids) {
       const add = demo.ledger?.[id] || [], keys = new Set(add.map((e) => e.key));
       L = L.filter((e) => !keys.has(e.key)); if (on) L.push(...add);
-      const ns = [...new Set((AREA_OF[id] || []).flatMap((a) => CONNECTED_MOVES[a] || []))].filter((n) => moves[n]).slice(0, 6);
+      const ns = [...new Set((AREA_OF[id] || []).flatMap((a) => CONNECTED_MOVES[a] || []))].filter((n) => moves[n]);
       await editUpd(slug, (u) => {
         for (const n of Object.keys(u.stale)) if (u.stale[n].via === id) delete u.stale[n];
         if (on && add.length) for (const n of ns) if (!u.stale[n]) { const rel = relevant(n, add);
@@ -879,16 +882,25 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const L = [...before.filter((e) => !mine(e) && !(e.demo && (PREFIX[id] || []).some((p) => e.key.startsWith(p)))), ...(on ? add : [])];
     await packs.put(slug, file, L);
     const moves = await packs.getJSON(slug, 'moves.json', {});
-    // only what is new or moved: the first read flags, a daily resync flags only when a number really changed
-    const { changes } = diffLedgers(was, on ? add : [], []);
-    const fresh = on ? realRows(add).filter((e) => changes.some((c) => c.key === e.key)) : []; /* a simulated account never marks a move out of date */
-    const ns = [...new Set((AREA_LIVE[id] || []).flatMap((a) => CONNECTED_MOVES[a] || []))].filter((n) => moves[n]).slice(0, 6);
+    /* the first read flags with what the account brings; every re-read after it flags only what moved materially since the
+       moves were last written with it (liveMaterial: 10% or more, a list whose names changed), kept in the brand's base file */
+    const rows = on ? realRows(add) : [], baseFile = pub ? 'live-base.json' : 'private/live-base.json'; /* a simulated account never marks a move out of date */
+    const base0 = await packs.getJSON(slug, baseFile, {}), first = !was.length;
+    const { changes, base } = liveMaterial(first ? {} : base0, rows, { pct: LIVE_MATERIAL });
+    if (on) await packs.put(slug, baseFile, { ...base0, ...base });
+    else await packs.put(slug, baseFile, Object.fromEntries(Object.entries(base0).filter(([k]) => !(PREFIX[id] || []).some((p) => k.startsWith(p)))));
+    const fresh = first ? rows : rows.filter((e) => changes.some((c) => c.key === e.key));
+    const ns = [...new Set((AREA_LIVE[id] || []).flatMap((a) => CONNECTED_MOVES[a] || []))].filter((n) => moves[n]); /* every move the account touches */
+    const at = Date.now();
     await editUpd(slug, (u) => {
-      for (const n of Object.keys(u.stale)) if (u.stale[n].via === id) delete u.stale[n];
-      if (fresh.length) for (const n of ns) if (!u.stale[n]) { const rel = relevant(n, fresh);
-        u.stale[n] = { n, priority: 'medium', via: id, live: true, real: true, private: !pub, at: Date.now(),
-          why: `${NAME_OF[id] || id} is connected. This plan used estimates for ${rel.map((e) => e.label.toLowerCase()).join(' and ')}; it can now use ${rel.map((e) => e.v).join(' and ')}.`,
-          changes: rel.map((e) => `New: ${e.label}: ${e.v}`) }; }
+      /* a flag stays until its move is rewritten (the weekly run) or the account is disconnected: a quiet re-read never clears it */
+      if (!on) for (const n of Object.keys(u.stale)) if (u.stale[n].via === id) delete u.stale[n];
+      if (fresh.length) for (const n of ns) { const o = u.stale[n]; if (o && o.via !== id) continue; const rel = relevant(n, fresh);
+        const lines = first ? rel.map((e) => `New: ${e.label}: ${e.v}`) : changes.filter((c) => rel.some((e) => e.key === c.key)).map(changeLine);
+        u.stale[n] = { n, priority: 'medium', via: id, live: true, real: true, private: !pub, at: o?.at || at, seenAt: at,
+          why: first ? `${NAME_OF[id] || id} is connected. This plan used estimates for ${rel.map((e) => e.label.toLowerCase()).join(' and ')}; it can now use ${rel.map((e) => e.v).join(' and ')}.`
+            : `${NAME_OF[id] || id} moved since this plan was written: ${lines.join('; ')}.`,
+          changes: [...new Set([...lines, ...(o?.changes || [])])].slice(0, 6) }; }
       u.connected = { ...(u.connected || {}), [id]: on ? Date.now() : null };
     });
     emit(slug, { type: on ? 'connected' : 'disconnected', ids: [id], live: true });
@@ -934,6 +946,23 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     emit(slug, { type: 'connect-rewrite', ids: run.ids, n: ns.length });
     drain(slug).catch((e) => log.warn('[connect] drain', e.message));
   }
+  /* the weekly rewrite of what connected accounts flagged: once every LIVE_DAYS, the moves their re-reads flagged (real accounts
+     only, never the first-connect run's own flags), oldest flag first, up to LIVE_CAP. A move the cap stopped keeps its flag for
+     the next week; a brand whose first-connect run is still going waits for it */
+  async function liveWeekly(slug, { now = Date.now() } = {}) {
+    if (blocked(slug) || st(slug).running && !st(slug).rewriting) return { skipped: 'busy' };
+    const u = await upd(slug);
+    if (u.connectRun || (u.queue || []).some((q) => q.via === 'connected' || q.via === 'live') || u.rewriting?.via === 'live') return { skipped: 'waiting' };
+    if (now - (u.liveRun?.at || 0) < LIVE_DAYS * 864e5) return { skipped: 'this week' };
+    const moves = await packs.getJSON(slug, 'moves.json', {}), ok = await rewritable(moves);
+    const ns = Object.values(u.stale || {}).filter((f) => f?.live && f.real && f.via && f.via !== 'connected' && ok(f.n)).sort((a, b) => (a.at || 0) - (b.at || 0) || a.n - b.n).map((f) => f.n);
+    if (!ns.length) return { skipped: 'nothing flagged' };
+    await editUpd(slug, (v) => { v.liveRun = { at: now, ns }; });
+    log.log(`[live] ${slug}: weekly rewrite of ${ns.length} moves your accounts moved (${ns.join(', ')}), cap $${LIVE_CAP}`);
+    await enqueue(slug, ns, { via: 'live', auto: true });
+    drain(slug).catch((e) => log.warn('[live] drain', e.message));
+    return { ok: true, ns };
+  }
   const setAuto = (slug, on) => editUpd(slug, (u) => { u.auto = !!on; }).then(() => ({ ok: true }));
   // "whenever relevant": the free catalog watch (every 3 hours) saw a price change, a launch or a removal
   const RETRY_MS = +process.env.REFRESH_RETRY_MS || 24 * 3600e3;
@@ -959,6 +988,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       if (!autoOn || !s0?.done || s0.cancelled || blocked(b.slug)) continue;
       if (Date.now() - (s0.seenAt || s0.doneAt || 0) > 30 * 864e5) continue;
       const u = await upd(b.slug); if (u.auto === false) continue;
+      await liveWeekly(b.slug).catch((e) => log.warn('[live] weekly', b.slug, e.message)); /* its own week: a failed site check does not hold it */
       if (backingOff(u)) continue; /* a failed check waits a day before the next paid try, not an hour */
       if (Date.now() - (u.lastCheck?.at || s0.doneAt || Date.now()) > REFRESH_DAYS * 864e5) await checkUpdates(b.slug, { auto: true, why: 'Weekly check' });
     } };
@@ -1059,5 +1089,5 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   /* moves the fact sheet found quoting a changed fact: out of date, with the reason (kept with an older flag's changes) */
   const flagStale = (slug, list = []) => editUpd(slug, (u) => { for (const x of list) { const o = u.stale[x.n]; u.stale[x.n] = { ...x, at: Date.now(), changes: [...new Set([...(x.changes || []), ...(o?.changes || [])])].slice(0, 6), ...(o && !o.private ? { private: false } : {}) }; } });
   const facts = { republish, flagStale, readProduct: async (slug, url) => readProduct(slug, url, (await packs.getJSON(slug, 'profile.json', {})) || {}), readRival, busy: (slug) => !!(st(slug).running || st(slug).checking), setHooks: (h) => Object.assign(hooks, h) };
-  return { ...facts, readLive, heal, healPdfs, pdfFor, pdfOn, connected, liveConnected, checkUpdates, rewrite, updates, setAuto, signal, seen, buildInfo, retry, goPro, checkData, applyCheck, peek: (slug) => st(slug).status, addEmail, start, resume, resumeAll, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
+  return { ...facts, readLive, heal, healPdfs, pdfFor, pdfOn, connected, liveConnected, checkUpdates, rewrite, updates, setAuto, signal, seen, buildInfo, retry, goPro, checkData, applyCheck, liveWeekly, peek: (slug) => st(slug).status, addEmail, start, resume, resumeAll, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
 }
