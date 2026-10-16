@@ -83,3 +83,22 @@ test('the weekly run waits for the first-connect run and never takes its flags',
   assert.equal((await b.liveWeekly(slug)).skipped, 'nothing flagged');
   assert.equal((await P.getJSON(slug, 'updates.json', {})).liveRun, undefined, 'no week is used up when nothing ran');
 });
+
+test('the first connected account rewrites every move once; a later one only the moves it touches, skipping fresh ones', async () => {
+  process.env.CONNECT_FRESH_MS = '1500';
+  const { b, P, slug, runs } = await brand();
+  delete process.env.CONNECT_FRESH_MS;
+  await b.liveConnected(slug, 'shopify', shop(1000), true, { public: false });
+  await settle();
+  assert.deepEqual([...runs.at(-1)].sort((a, z) => a - z), [0, 1, ...STORE].sort((a, z) => a - z), 'the first connect: every move and the index');
+  assert.ok((await P.getJSON(slug, 'updates.json', {})).connectFull);
+  const n0 = runs.length;
+  await b.liveConnected(slug, 'klaviyo', [row('klaviyo.list', 'List size', '1,200', 1200)], true, { public: false }); /* inside a day of the full run */
+  await settle();
+  assert.equal(runs.length, n0, 'every move it touches was rewritten moments ago: nothing to pay for');
+  await settle(1500); /* the moves are no longer fresh */
+  await b.liveConnected(slug, 'meta', [row('meta.spend.30d', 'Spend, 30 days', '$900', 900)], true, { public: false });
+  await settle();
+  const email = CONNECTED_MOVES.paid.filter((n) => STORE.includes(n));
+  assert.deepEqual([...runs.at(-1)].sort((a, z) => a - z), email.sort((a, z) => a - z), 'a later account: only its own moves, never the whole set');
+});

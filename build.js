@@ -645,7 +645,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   // updates.json: { auto, checking, lastCheck: { at, changes, summary, flagged, usd }, stale: { n: { why, priority, changes } }, history }
   const REFRESH_DAYS = +process.env.REFRESH_EVERY_DAYS || 7, AUTO_MAX = +process.env.REFRESH_AUTO_MAX || 6;
   const REFRESH_CAP = +process.env.REFRESH_CAP_USD || 60, AUTO_CAP = +process.env.REFRESH_AUTO_CAP_USD || 10, MOVE_USD = 0.6;
-  const CONNECT_CAP = +process.env.CONNECT_CAP_USD || 40, CONNECT_SETTLE = +(process.env.CONNECT_SETTLE_MS ?? 10 * 60e3);
+  const CONNECT_CAP = +process.env.CONNECT_CAP_USD || 40, CONNECT_SETTLE = +(process.env.CONNECT_SETTLE_MS ?? 30 * 60e3); /* teams connect several accounts in one sitting: one run for all of them */
+  const CONNECT_FRESH_MS = +(process.env.CONNECT_FRESH_MS ?? 24 * 3600e3); /* a later account skips a move rewritten this recently */
   /* connected accounts' re-reads: a number counts once it moved LIVE_MATERIAL (10%) since the move was written; the moves they
      flag are rewritten once a week (LIVE_DAYS), up to LIVE_CAP dollars a brand a run, and what the cap stopped waits for next week */
   const LIVE_MATERIAL = +(process.env.LIVE_MATERIAL ?? 0.1), LIVE_CAP = +process.env.LIVE_CAP_USD || 30, LIVE_DAYS = +process.env.LIVE_REWRITE_DAYS || REFRESH_DAYS;
@@ -941,14 +942,22 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (b) { await packs.put(slug, 'private/brief.json', b.json); await packs.put(slug, 'private/brief.md', b.md); }
     /* where the brand sells, for the calendar: only the country codes (10% of visits or more), never the shares */
     if (live.countries?.length) await packs.put(slug, 'ga4/countries.json', live.countries.filter((c) => c.share >= 0.1).map((c) => ({ code: c.code })));
-    const moves = await packs.getJSON(slug, 'moves.json', {}), ok = await rewritable(moves), ns = Object.keys(moves).map(Number).filter(ok).sort((a, z) => a - z);
-    const names = run.ids.map((i) => NAME_OF[i] || i), said = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)} are connected` : `${names[0]} is connected`, at = Date.now();
-    await editUpd(slug, (u) => {
+    /* the brand's first connected account rewrites every move, once. An account connected after that rewrites only the moves it
+       touches (CONNECTED_MOVES), skipping one rewritten in the last day; a skipped move keeps its flag for the weekly run */
+    const moves = await packs.getJSON(slug, 'moves.json', {}), ok = await rewritable(moves), all = Object.keys(moves).map(Number).filter(ok).sort((a, z) => a - z);
+    const u1 = await upd(slug), full = !(u1.connectFull || u1.connectDone?.at), at = Date.now();
+    let ns = all;
+    if (!full) { const pm = await packs.getJSON(slug, 'private/moves.json', {}).catch(() => ({})), recent = (n) => at - Math.max(Date.parse(pm?.[n]?.meta?.rewrittenAt || 0) || 0, Date.parse(moves[n]?.meta?.rewrittenAt || 0) || 0) < CONNECT_FRESH_MS;
+      const touch = new Set(run.ids.flatMap((id) => (AREA_LIVE[id] || []).flatMap((a) => CONNECTED_MOVES[a] || [])));
+      ns = all.filter((n) => touch.has(n) && !recent(n)); }
+    const names = run.ids.map((i) => NAME_OF[i] || i), said = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)} are connected` : `${names[0]} is connected`;
+    if (!ns.length) { await editUpd(slug, (u) => { delete u.connectRun; }); log.log(`[connect] ${slug}: ${said}; its moves were rewritten in the last day, nothing to rewrite now`); return; }
+    await editUpd(slug, (u) => { if (full) u.connectFull = at;
       for (const n of ns) u.stale[n] = { n, priority: 'medium', via: 'connected', live: true, real: true, private: true, at, why: `${said}: rewritten with your real numbers.`, changes: [] };
       delete u.connectRun; u.connectDone = { at, ids: run.ids, n: ns.length, finished: null, written: 0 };
     });
     await enqueue(slug, ns, { via: 'connected', auto: true, tries: 0 });
-    log.log(`[connect] ${slug}: ${said}, rewriting ${ns.length} moves (cap $${CONNECT_CAP})`);
+    log.log(`[connect] ${slug}: ${said}, rewriting ${full ? `every move (${ns.length}), the first connect` : `the ${ns.length} moves it touches`} (cap $${CONNECT_CAP})`);
     emit(slug, { type: 'connect-rewrite', ids: run.ids, n: ns.length });
     drain(slug).catch((e) => log.warn('[connect] drain', e.message));
   }
