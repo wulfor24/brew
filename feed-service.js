@@ -68,6 +68,8 @@ export const MEASURE = liveView((b) => measureFor(b));
 
 /* ---------- move cards follow their moves (pure; the feed service and tests use it) ---------- */
 /* the move a card belongs to, for the team's private copies (m04-1, m1004-1, m1004-1-p → 4, 1004); -1 for any other card */
+/* a public static ad card (statics.js): it steps aside for a member whose team has its own set */
+export const isStaticCard = (id) => /^(static-|statics-batch$)/.test(String(id || ''));
 export const moveOfId = (id) => +((/^m(\d+)-/.exec(id) || [])[1] ?? -1);
 export const moveNoOf = (id) => { const m = /^m(\d+)-\d+$/.exec(String(id || '')); return m && +m[1] > 0 ? +m[1] : null; };
 // the version of the move a card was made from: a rewrite stamps meta.rewrittenAt; null when the card is not a move card or its move is gone
@@ -387,12 +389,12 @@ export function createFeedService(o) {
   // a price card saved before the paise fix whose every row is "₹1,850 → ₹1,850" says nothing changed: never shown
   const noChange = (c) => c.liveSrc?.kind === 'catalog' && c.badge?.[0] === 'Price changed' && c.rows?.length && c.rows.every((r) => { const m = /^(.+) → (.+)$/.exec(r?.[1] || ''); return m && m[1] === m[2]; });
   const visible = (t, c) => seatOk(t, c) && !noChange(c) && !(c.origin === 'watcher' && c.type === 'idea' && !titlePricesMatch(c)) && ['ready', 'shown', 'approved', 'done'].includes(c.state) && !t.snoozed[c.id] && (!c.onlyWhen || connOn(t, c.onlyWhen))
-    && !(c.liveOnly && !t.member) && !(c.demo && (t.member || t.liveConn?.[c.onlyWhen])) && !(!c.liveOnly && t.privMoves?.includes(moveOfId(c.id)));
+    && !(c.liveOnly && !t.member) && !(c.demo && (t.member || t.liveConn?.[c.onlyWhen])) && !(!c.liveOnly && t.privMoves?.includes(moveOfId(c.id))) && !(!c.liveOnly && t.privStatics && isStaticCard(c.id));
   // bring a workspace in line with what this viewer may see: add the live cards, drop the ones they may not have
   const applyLive = async (t, viewer) => {
     if (!t) return; t.member = !!viewer?.member; t.claimed = !!viewer?.claimed; t.memberEmail = viewer?.member && viewer?.email ? viewer.email : null; /* a signed-out or non-member viewer no longer carries the last member's name or personal memory */
     const L = await liveFor(t.brandId || DEFAULT_BRAND, t.member).catch(() => ({ cards: [], on: {}, privMoves: [] }));
-    t.liveConn = L.on; t.privMoves = L.privMoves || []; t.liveLedger = L.ledger || {};
+    t.liveConn = L.on; t.privMoves = L.privMoves || []; t.privStatics = !!L.privStatics; t.liveLedger = L.ledger || {};
     L.cards = (L.cards || []).filter((c) => c && c.id); /* one bad card from a connector (undefined) used to throw on every request for the brand */
     const ids = new Set(L.cards.map((c) => c.id)), t0 = now(t);
     for (const [id, c] of t.cards) if ((c.liveOnly || c.publicLive) && !ids.has(id)) t.cards.delete(id);

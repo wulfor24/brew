@@ -15,6 +15,29 @@ const SCHEMA = { type: 'object', properties: { ads: { type: 'array', items: { ty
   small: { type: 'string', description: 'one supporting line under the headline, under 70 characters' }
 } } } } };
 
+/* the team's statics as feed cards (private/cards.json): one batch card and one card per ad, members only, their images on the
+   team route (never b/<slug>/statics/, which anyone may load). privateOf 21: they belong to the team's Move 21 */
+export const teamStaticUrl = (slug, id) => `b/${slug}/team/statics/${id}.jpg`;
+export function teamStaticCards(slug, ids = [], text = {}, { lane = 'core', name = 'the brand' } = {}) {
+  if (!ids.length) return [];
+  const base = { agent: 'creative', sector: 'creatives', type: 'idea', lane, roles: ['brand', 'growth', 'founder'], kind: 'media', origin: 'build', campaign: 'From your ad plan', liveOnly: true, privateOf: 21, teamStatics: true };
+  return [{ ...base, id: 'statics-batch-p', src: 'Move 21 · static ads · your accounts', time: '5 min', images: ids.map((id) => teamStaticUrl(slug, id)),
+    title: `${ids.length} ads from your ad plan, written with your account numbers`, sub: `Each one puts a real ${name} product photo in a new scene, with a headline from your Move 21. Only your team sees these.`,
+    detail: { why: ['Concepts come from your rewrite of the ad-creative move.', 'Every number on them is in your fact sheet or your connected accounts.'], how: ['Open the set and keep or drop each ad.', 'Edit any of them in the studio.', 'Queue the kept ones as one test.'] }, cta: { label: 'Queue the ads' } },
+  ...ids.filter((id) => text[id]?.headline).map((id, i) => ({ ...base, id: `static-${id}-p`, src: 'Move 21 · static ad · your accounts', time: `${12 + i * 17} min`, images: [teamStaticUrl(slug, id)], title: String(text[id].headline).slice(0, 120),
+    sub: `${text[id].small ? `${String(text[id].small).replace(/\.?$/, '.')} ` : ''}Made from your Move 21 with a real ${name} photo. Only your team sees it.`,
+    detail: { why: ['The concept comes from your rewrite of the ad-creative move.', 'Every number on it is in your fact sheet or your connected accounts.'], how: ['Jam on it to change the words or the scene.', 'Share the brief and your team puts it in the ad account.'] }, cta: { label: 'Generate versions' } }))];
+}
+
+/* GET /b/<slug>/team/statics/<id>.jpg: a member of the brand gets the image from private/statics/; anyone else gets 401 (signed
+   out) or 403 (signed in, not on the team), never the image. Never cached by a shared proxy */
+export async function teamStatic(req, res, slug, name, { viewerOf, signedIn, packs, send }) {
+  if (!/^[\w-]+\.jpg$/.test(String(name || ''))) return send(res, 404, 'no', 'text/plain'), true;
+  const v = await viewerOf(req, slug).catch(() => ({})); if (!v?.member) return send(res, signedIn(req) ? 403 : 401, 'These ads are for the brand’s team. Sign in or ask them to invite you.', 'text/plain'), true;
+  const b = await packs.get(slug, 'private/statics/' + name); if (!b) return send(res, 404, 'no', 'text/plain'), true;
+  res.writeHead(200, { 'content-type': 'image/jpeg', 'cache-control': 'private, no-store', vary: 'Cookie' }); res.end(b); return true;
+}
+
 export function createStatics({ ai, image, packs, launchBrowser, log = console }) {
   const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   // the composer: scene image + exact type, rendered by Chromium at 1080×1350 (4:5)
@@ -44,7 +67,10 @@ export function createStatics({ ai, image, packs, launchBrowser, log = console }
     } finally { await page.close().catch(() => {}); }
   };
 
-  async function make(slug, { move, profile, facts, n = 8, onProgress = () => {} }) {
+  /* priv: the team's set, from their private rewrite of Move 21: every file under private/ (private/statics/, private/statics.json),
+     never under statics/, which is served to anyone */
+  async function make(slug, { move, profile, facts, n = 8, onProgress = () => {}, priv = false }) {
+    const pre = priv ? 'private/' : '';
     const prods = (profile.catalog?.products || []).filter((p) => p.img).slice(0, 24);
     if (!prods.length) throw new Error('no product photos to build from');
     const examples = (move.sections || []).flatMap((s) => (s.blocks || []).filter((b) => b.t === 'example' || b.t === 'table').map((b) => b.t === 'example' ? `[${b.title}] ${b.body}` : [b.head, ...(b.rows || [])].map((r) => (r || []).join(' | ')).join('\n'))).join('\n\n').slice(0, 20000);
@@ -66,16 +92,16 @@ export function createStatics({ ai, image, packs, launchBrowser, log = console }
           const tmp = path.join(os.tmpdir(), `st-${slug}-${a.id}.jpg`); fs.writeFileSync(tmp, jpg);
           const scene = await image({ srcFile: tmp, ratio: '4:5', prompt: `Create a new photograph: ${a.scene}. Keep the ${profile.name} product and its label exactly as in the reference photo, including any printed text on the pack. Do not add any other text, captions, logos or watermarks anywhere. No before/after, no bodies shown as results. Premium product ad photography, natural light, clean composition, leave the top third calm for a headline.` });
           fs.rmSync(tmp, { force: true });
-          await packs.put(slug, `statics/raw-${a.id}.png`, scene, 'image/png');
+          await packs.put(slug, `${pre}statics/raw-${a.id}.png`, scene, 'image/png');
           const out = await compose(browser, scene, { headline: a.headline, small: a.small, accent });
-          await packs.put(slug, `statics/${a.id}.jpg`, out, 'image/jpeg');
+          await packs.put(slug, `${pre}statics/${a.id}.jpg`, out, 'image/jpeg');
           text[a.id] = { headline: a.headline, small: a.small, product: a.product };
           done.push(a.id); onProgress(done.length, want.length);
         } catch (e) { log.warn('[statics]', a.id, e.message); }
       }
     } finally { await browser.close().catch(() => {}); }
     if (!done.length) throw new Error('no image was made');
-    await packs.put(slug, 'statics.json', text);
+    await packs.put(slug, `${pre}statics.json`, text);
     return { ids: done, text };
   }
   return { make };

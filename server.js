@@ -39,6 +39,7 @@ import { thinkModel, prefs } from './model-ctx.js';
 import { createBrandMemory, vertexEmbedder, memoryHooks } from './brand-memory.js'; // brand memory
 import { createMemoryRoutes } from './memory-routes.js'; // brand memory
 import { createMovesScheduler } from './moves-cadence.js'; // audit, listening and automation moves, weekly
+import { teamStatic } from './statics.js'; // the team's static ads, members only
 import { createLearnings, briefView } from './brand-learnings.js'; // /update-brand-learnings: a pasted call, notes or emails → brief, memory, moves
 import { createDraftsBg } from './drafts-bg.js'; // first drafts on the top cards, in the background
 import { createCardsGen } from './cards-gen.js';
@@ -572,8 +573,10 @@ const brandRoutes = async (req, res, u) => {
 };
 // a generated brand's files: its client seed and facts, assets, PDFs
 const brandFiles = async (req, res, u) => {
-  const m = u.pathname.match(/^\/b\/([a-z0-9-]+)\/(seed\.js|facts\.js|a\/[\w.-]+|statics\/[\w.-]+|pdf\/[^/]+)$/); if (!m) return false;
+  const m = u.pathname.match(/^\/b\/([a-z0-9-]+)\/(seed\.js|facts\.js|a\/[\w.-]+|statics\/[\w.-]+|team\/statics\/[\w.-]+|pdf\/[^/]+)$/); if (!m) return false;
   const slug = m[1], what = decodeURIComponent(m[2]);
+  /* the team's static ads (private/statics/, made from their private Move 21): signed-in members only, never cached by a proxy */
+  if (what.startsWith('team/statics/')) return teamStatic(req, res, slug, what.slice(13), { viewerOf, signedIn: (r) => !!auth.user(r), packs, send });
   if (what === 'seed.js' || what === 'facts.js') { let p = await loadBrand(slug, { fresh: true, share: true }); if (!p) return send(res, 404, '/* unknown brand */', 'text/javascript'), true;
     /* outside the team on live: the brand's name, mark and look only (the sign-in page needs them), no cards, moves or facts */
     if (!(await teamRead(req, slug))) p = { ...p, seed: { ...p.seed, posts: [], scrape: [], steps: [] }, rawSeed: p.rawSeed ? { ...p.rawSeed, posts: [], scrape: [], steps: [] } : undefined, fx: {}, facts: {}, moveDocs: {}, labels: {}, pages: {}, pools: {}, statics: [], staticText: {}, notes: {}, learned: null };

@@ -52,6 +52,7 @@ Auth legend:
 | GET | /api/brands/:slug/events | public | SSE build stream |
 | GET | /b/:slug/seed.js, /b/:slug/facts.js | public | pack client scripts |
 | GET | /b/:slug/a/:file, /b/:slug/statics/:file | public | brand assets |
+| GET | /b/:slug/team/statics/:file | members only (401 signed out, 403 not on the team) | the team's static ads from their private Move 21 (private/statics/) |
 | GET | /b/:slug/pdf/:name | public (private PDFs for members) | move PDFs/zips |
 | GET | /research/:file, /gen/:file | public | bucket-backed media |
 | GET | /*, /:slug | public | static files / page |
@@ -94,7 +95,7 @@ Note: on an unclaimed brand, an anonymous visitor can add/delete brand memory an
 
 | Method | Path | Auth |
 |---|---|---|
-| GET | /api/brands/:slug/moves/cadence | public |
+| GET | /api/brands/:slug/moves/cadence | team read (members get the private scorecard) |
 | POST | /api/brands/:slug/moves/refresh | gen (weekly $ cap) |
 
 ### 6 feed-service.js + remix.js + jam-brief.js + drafts.js (tenant routes, `on(...)`)

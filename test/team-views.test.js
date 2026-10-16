@@ -201,3 +201,51 @@ test('the feed knows a weekly move’s card by its number, so the shared one ste
   assert.equal(moveOfId('m04-1'), 4); assert.equal(moveOfId('m1004-1'), 1004); assert.equal(moveOfId('m1004-2-p'), 1004);
   assert.equal(moveOfId('statics-batch'), -1); assert.equal(moveOfId('idea-abc-p'), -1);
 });
+
+/* ---------- 4. static ads ---------- */
+const { createStatics, teamStaticCards, teamStatic, teamStaticUrl } = await import('../statics.js');
+const fakeBrowser = async () => ({ close: async () => {}, newPage: async () => ({ setViewport: async () => {}, setContent: async () => {}, close: async () => {},
+  screenshot: async () => Buffer.from('JPEGBYTES'), $: async () => ({ screenshot: async () => Buffer.from('JPEGBYTES') }) }) });
+const staticsAI = { call: async () => ({ json: { ads: [{ id: 'aov', product: 'runner', scene: 'a track at dawn', headline: 'Orders average $623', small: 'Comfort all day' }, { id: 'comfy', product: 'runner', scene: 'a porch', headline: 'Comfort all day', small: '' }] } }) };
+const resOf = () => ({ code: 0, headers: {}, body: null, writeHead(c, h) { this.code = c; Object.assign(this.headers, h || {}); }, end(b) { this.body = b; } });
+
+test('static ads: the team’s set is made under private/ only, its cards point at the team route, and only members load the images', async () => {
+  const { ROOT, P } = mkPacks('statics'), slug = 'acme-com'; await brand(P, slug);
+  await P.put(slug, 'profile.json', { ...PROFILE, catalog: { ...PROFILE.catalog, products: [{ ...PROFILE.catalog.products[0], img: `b/${slug}/a/runner.jpg` }] } });
+  await P.put(slug, 'assets/runner.jpg', Buffer.from('PHOTO'), 'image/jpeg');
+  const S = createStatics({ ai: staticsAI, image: async () => Buffer.from('SCENE'), packs: P, launchBrowser: fakeBrowser, log: quiet });
+  const move = { n: 21, sections: [{ blocks: [{ t: 'example', title: 'Ad', body: 'Headline: orders average $623' }] }] };
+  const facts = { ...(await P.getJSON(slug, 'facts.json', {})), ...connectedFacts(ROWS, {}) };
+  const r = await S.make(slug, { move, profile: await P.getJSON(slug, 'profile.json'), facts, priv: true });
+  assert.deepEqual(r.ids, ['aov-1', 'comfy-2']);
+  assert.ok(fs.existsSync(path.join(ROOT, '.brands', slug, 'private/statics/aov-1.jpg'))); assert.ok(fs.existsSync(path.join(ROOT, '.brands', slug, 'private/statics.json')));
+  assert.ok(!fs.existsSync(path.join(ROOT, '.brands', slug, 'statics')), 'nothing under the public statics/ folder'); assert.equal(await P.getJSON(slug, 'statics.json', null), null);
+  for (const f of publicFiles(ROOT, slug)) assert.doesNotMatch(fs.readFileSync(f, 'utf8'), SECRET, path.relative(ROOT, f));
+  /* the cards: members only, belonging to the team's Move 21, images on the team route */
+  const cards = teamStaticCards(slug, r.ids, r.text, { name: 'Acme' });
+  assert.deepEqual(cards.map((c) => c.id), ['statics-batch-p', 'static-aov-1-p', 'static-comfy-2-p']);
+  assert.ok(cards.every((c) => c.liveOnly && c.privateOf === 21 && c.images.every((u) => u.startsWith(`b/${slug}/team/statics/`) && !u.includes(`b/${slug}/statics/`))));
+  await P.put(slug, 'private/cards.json', cards);
+  const C = createConnectors({ packs: P, auth: { claimInfo: async () => ({}), signinOn: () => true, isAdmin: () => false }, builder: {}, treg: null, log: quiet });
+  const mem = await C.forViewer(slug, true), vis = await C.forViewer(slug, false);
+  assert.equal(mem.privStatics, true); assert.ok(mem.cards.some((c) => c.id === 'static-aov-1-p' && /\$623/.test(c.title)));
+  assert.equal(vis.privStatics, false); assert.deepEqual(vis.cards, []);
+  const { isStaticCard } = await import('../feed-service.js'); assert.ok(isStaticCard('statics-batch') && isStaticCard('static-x-1') && !isStaticCard('statics-batch-p'.replace(/^/, 'm')));
+  /* the team route: a member gets the bytes; a signed-out visitor 401, a signed-in non-member 403; never a path */
+  const send = (res, code, body) => { res.code = code; res.body = body; };
+  const get = async (viewer, signed, name = 'aov-1.jpg') => { const res = resOf(); await teamStatic({}, res, slug, name, { viewerOf: async () => viewer, signedIn: () => signed, packs: P, send }); return res; };
+  const ok = await get({ member: true }, true); assert.equal(ok.code, 200); assert.equal(String(ok.body), 'JPEGBYTES'); assert.match(ok.headers['cache-control'], /private, no-store/);
+  assert.equal((await get({ member: false }, false)).code, 401); assert.equal((await get({ member: false, gen: true }, true)).code, 403);
+  assert.equal((await get({ member: true }, true, '../statics.json')).code, 404); assert.equal((await get({ member: true }, true, 'nope.jpg')).code, 404);
+  assert.equal(teamStaticUrl(slug, 'x'), `b/${slug}/team/statics/x.jpg`);
+});
+
+test('static ads: the public set still goes to statics/ for everyone', async () => {
+  const { ROOT, P } = mkPacks('statics-pub'), slug = 'acme-com'; await brand(P, slug);
+  await P.put(slug, 'profile.json', { ...PROFILE, catalog: { ...PROFILE.catalog, products: [{ ...PROFILE.catalog.products[0], img: `b/${slug}/a/runner.jpg` }] } });
+  await P.put(slug, 'assets/runner.jpg', Buffer.from('PHOTO'), 'image/jpeg');
+  const S = createStatics({ ai: staticsAI, image: async () => Buffer.from('SCENE'), packs: P, launchBrowser: fakeBrowser, log: quiet });
+  const r = await S.make(slug, { move: { n: 21, sections: [] }, profile: await P.getJSON(slug, 'profile.json'), facts: {} });
+  assert.deepEqual(r.ids, ['comfy-1'], 'the public set never carries a number only the team has');
+  assert.ok(fs.existsSync(path.join(ROOT, '.brands', slug, 'statics/comfy-1.jpg'))); assert.ok(!fs.existsSync(path.join(ROOT, '.brands', slug, 'private/statics')));
+});

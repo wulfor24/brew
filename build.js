@@ -20,7 +20,7 @@ import { createCardsGen } from './cards-gen.js';
 import { realRows, privId } from './connectors/common.js'; // DUMMY: simulated account rows are never evidence
 import { healthFrom } from './dummy/health.js'; // DUMMY: simulated health rings
 import { isPlay, playDone, totalOf, numbersFor, healSeedNumbers } from './pack-numbers.js'; // one number, one source
-import { createStatics } from './statics.js';
+import { createStatics, teamStaticCards } from './statics.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { mergeLedger, diffLedgers, candidates, triage, changeLine, liveMaterial, handleOfItem, productNames, movesNaming, CONNECTED_MOVES } from './refresh.js';
 import { withLearned, briefView } from './brand-learnings.js';
@@ -327,8 +327,9 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     packs.drop(slug); await onPack(slug);
   }
   // static ads from Move 21 (statics.js): about 8 images, then one batch card the brand can pick from
-  function makeStatics(slug, move, profile, withLock) {
+  function makeStatics(slug, move, profile, withLock, { priv = false } = {}) {
     if (!image || !mods.pdf?.launchBrowser) return Promise.resolve();
+    if (priv) return makeTeamStatics(slug, move, profile, withLock);
     return (async () => {
       if (capHit(slug)) return;
       await setStatus(slug, { statics: { state: 'running' } });
@@ -348,6 +349,27 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         await setStatus(slug, { statics: { state: 'done', n: ids.length } });
         emit(slug, { type: 'statics', n: ids.length });
       } catch (e) { log.warn('[build] statics', e.message); await setStatus(slug, { statics: { state: 'failed', err: e.message.slice(0, 120) } }); }
+    })();
+  }
+  /* the team's static ads, from their private rewrite of Move 21 (written with the connected accounts): the images and their
+     words stay in private/ and reach members only, as cards in private/cards.json whose images the team route serves
+     (/b/<slug>/team/statics/<id>.jpg, signed-in members only). Made once, like the public set; state in private/statics-state.json */
+  function makeTeamStatics(slug, move, profile, withLock) {
+    return (async () => {
+      if (capHit(slug)) return;
+      await packs.put(slug, 'private/statics-state.json', { state: 'running', at: Date.now(), move: move.meta?.rewrittenAt || move.meta?.at || null });
+      try {
+        const p = await packs.load(slug), facts = { ...p.facts, ...((await packs.getJSON(slug, 'private/facts.json', null))?.facts || {}) };
+        const { ids, text } = await createStatics({ ai, image, packs, launchBrowser: mods.pdf.launchBrowser, log }).make(slug, { move, profile, facts, priv: true });
+        await withLock(async () => {
+          const seed = await packs.getJSON(slug, 'seed.json', {}), lane = Object.keys(seed.lanes || { core: 1 })[0];
+          const cards = teamStaticCards(slug, ids, text, { lane, name: profile.name });
+          const pc = (await packs.getJSON(slug, 'private/cards.json', [])).filter((c) => !/^(static-|statics-batch)/.test(c.id));
+          await packs.put(slug, 'private/cards.json', [...pc, ...cards]); onCards(slug, cards, { replace: true, private: true });
+        });
+        await packs.put(slug, 'private/statics-state.json', { state: 'done', n: ids.length, at: Date.now(), move: move.meta?.rewrittenAt || move.meta?.at || null });
+        emit(slug, { type: 'statics', n: ids.length, private: true });
+      } catch (e) { log.warn('[build] team statics', e.message); await packs.put(slug, 'private/statics-state.json', { state: 'failed', err: e.message.slice(0, 120), at: Date.now() }); }
     })();
   }
   // the feed's first cards, straight from the read (before any move is written): only what was observed
@@ -790,6 +812,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         emit(slug, { type: 'move', n, title: move.title, stat: move.stat, gives: move.gives, verified: !!move.meta?.verified, rewritten: true });
         if (n !== 0) { written.push({ n, title: move.title }); await cardsFor(slug, move, profile, { replace: true, priv }).catch((e) => log.warn('[rewrite] cards', n, e.message)); await editUpd(slug, (u) => { delete u.stale[n]; }); }
         if (n === 21 && !priv && (await status(slug))?.statics?.state !== 'done') staticsJob = makeStatics(slug, move, profile, (fn) => (lock = lock.then(fn).catch((e) => log.warn('[rewrite] statics card', e.message))));
+        /* the team's rewrite of Move 21 makes the team's own set (once), kept private */
+        if (n === 21 && priv && (await packs.getJSON(slug, 'private/statics-state.json', null))?.state !== 'done') staticsJob = makeStatics(slug, move, profile, (fn) => (lock = lock.then(fn).catch((e) => log.warn('[rewrite] team statics card', e.message))), { priv: true });
         if (m.pdf && priv) pdfQ = pdfQ.then(() => renderPdf(slug, m.pdf, move, profile, { priv })).catch((e) => log.warn('[rewrite] pdf', n, e.message)); /* a member's private rewrite keeps its own PDF */
         if (!priv) await unmarkPdf(slug, n); /* the public PDF is drawn again on its next download */
         packs.drop(slug); await onPack(slug); saveSpend(slug);

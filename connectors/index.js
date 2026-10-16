@@ -181,15 +181,15 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     const ledger = {}; if (member) for (const [id, d] of Object.entries(L.live)) if (!d.gone && !d.sim && !simOnly(id)) for (const e of realRows(d.ledger)) ledger[e.key] = { v: e.v, n: e.n, at: d.at, label: e.label };
     /* the moves rewritten from the team's accounts (private/cards.json): members get those cards, and the shared cards of the
        same moves step aside (privMoves). Cards saved before they had their own id get it here */
-    let privMoves = [];
+    let privMoves = [], privStatics = false;
     if (member) { const pc = await packs.getJSON(slug, 'private/cards.json', []).catch(() => []);
       for (const c of Array.isArray(pc) ? pc : []) if (c?.id && c.privateOf != null) cards.push({ ...c, id: privId(c.id), liveOnly: true });
-      privMoves = [...new Set(cards.filter((c) => c.privateOf != null).map((c) => +c.privateOf))];
+      privMoves = [...new Set(cards.filter((c) => c.privateOf != null).map((c) => +c.privateOf))]; privStatics = cards.some((c) => c.teamStatics);
       /* the team's ideas (private/ideas/ideas.json, written with the connected facts): members only, next to the public ones */
       const mi = await packs.getJSON(slug, 'private/ideas/ideas.json', null).catch(() => null);
       if (mi?.items?.length) { const seed = (await packs.getJSON(slug, 'seed.json', {}).catch(() => ({}))) || {};
         cards.push(...ideaCards(pickIdeas(mi.items), seed).map((c) => ({ ...c, id: privId(c.id), liveOnly: true, memberIdea: true }))); } }
-    return { cards, on, privMoves, ledger };
+    return { cards, on, privMoves, privStatics, ledger };
   }
 
   /* ---------- routes ---------- */
