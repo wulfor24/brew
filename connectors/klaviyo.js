@@ -14,7 +14,10 @@ export default {
   ready: () => true,
   keyFields: [{ k: 'key', label: 'Private API key', hint: 'Klaviyo → Settings → API keys → Create private key, with Read-only access. Brew only reads', secret: true }],
   async fromKey({ key }) {
-    const k = String(key || '').trim(); if (!/^pk_[A-Za-z0-9]{20,}$/.test(k)) throw Object.assign(new Error('That does not look like a Klaviyo private key (it starts with pk_).'), { user: true });
+    /* a copied key can carry spaces, quotes or invisible characters; past the pk_ prefix Klaviyo itself is the judge
+       (an over-strict shape check here turned real keys away) */
+    const k = String(key || '').replace(/[\s"'`\u200b-\u200d\u2060\ufeff]/g, '').replace(/^Klaviyo-API-Key/i, '');
+    if (!/^pk_.{10,}$/.test(k)) throw Object.assign(new Error(/^[A-Za-z0-9]{6}$/.test(k) ? 'That’s the public key (6 characters). Paste the private key, which starts with pk_.' : 'That does not look like a Klaviyo private key (it starts with pk_).'), { user: true });
     await get({ key: k }, 'accounts/').catch((e) => { throw Object.assign(new Error(e.status === 401 || e.status === 403 ? 'Klaviyo did not accept that key.' : e.message), { user: true }); });
     return { key: k };
   },

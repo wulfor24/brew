@@ -1,6 +1,6 @@
-// Reviews: Judge.me, with the store's private API token (Judge.me → Settings → Integrations → View API token).
-// Reads the review totals and the 1 and 2 star reviews nobody has answered; the reply action (actions.js) posts
-// the team-approved replies. It proves the brand's own when the token works for the brand's Shopify store.
+// Reviews: Judge.me, by one-click OAuth or the store's private API token (Judge.me → Settings → Integrations → View API token).
+// Read-only: the review total, the recent average and the 1 and 2 star reviews nobody has answered (the team replies in
+// Judge.me). It proves the brand's own when the token's store is the brand's Shopify store.
 import { card, L, n0, has, getJSON, form } from './common.js';
 
 const JM = 'https://judge.me/api/v1';
@@ -44,15 +44,20 @@ export default {
   async sync(c, ctx) {
     const m = {}, notes = [];
     const j = await get(c, 'reviews', { per_page: 100, page: 1 });
-    const rs = j.reviews || []; m.total = +j.total || +j.reviews_count || null; m.recent = rs.length;
+    const rs = j.reviews || []; m.recent = rs.length;
+    /* the list has no total: Judge.me counts on its own endpoint */
+    const n = await get(c, 'reviews/count').catch((e) => { notes.push(`Judge.me count: ${e.message.slice(0, 120)}`); return null; });
+    m.total = n ? (+n.count || +n.total || +n.reviews_count || 0) : (+j.total || null);
     const low = rs.filter((r) => +r.rating <= 2 && !r.hidden), open = low.filter((r) => !(r.reply?.content || r.reply_content || r.replied_at));
     m.low = low.length; m.open = open.length; if (rs.length) m.rating = rs.reduce((a, r) => a + +r.rating, 0) / rs.length; m.photo = rs.length ? 100 * rs.filter((r) => (r.pictures || []).length).length / rs.length : null;
     const src = `Judge.me · ${c.shop}`, out = [];
-    if (open.length) out.push(card('reviews', 'Judge.me reviews', ctx.lane, 'reply', { agent: 'crm', sector: 'signals', type: 'decision', roles: ['crm', 'brand', 'founder'], badge: [`${n0(open.length)} waiting`, 'warn'], cta: 'Send the replies',
-      title: `${n0(open.length)} of the last ${n0(rs.length)} reviews are 1 or 2 stars with no reply`, sub: `“${String(open[0].title || open[0].body || '').slice(0, 90)}” is the latest. A calm reply that names the fix reads better than silence; Brew drafts them and nothing posts without your OK.`,
-      rows: open.slice(0, 4).map((r) => [`${r.rating}★ ${String(r.product_title || '').slice(0, 24)}`, String(r.title || r.body || '').slice(0, 40)]), detail: { why: ['Shoppers read the bad reviews first.'], how: ['Draft a reply for each', 'Approve them in one go', 'They post publicly and the reviewer gets an email'] } }));
-    const stats = [has(m.total) && ['Reviews', n0(m.total)], has(m.rating) && ['Average, last 100', `${m.rating.toFixed(1)} of 5`], ['1 and 2 star, no reply', n0(m.open)], has(m.photo) && ['With a photo', `${m.photo.toFixed(0)}%`]].filter(Boolean);
-    const changed = [`${n0(m.open)} low-star reviews get drafted replies`, has(m.total) && `${n0(m.total)} reviews read`].filter(Boolean);
+    if (open.length) out.push(card('reviews', 'Judge.me reviews', ctx.lane, 'reply', { agent: 'crm', sector: 'signals', type: 'decision', roles: ['crm', 'brand', 'founder'], badge: [`${n0(open.length)} waiting`, 'warn'], cta: 'Reply in Judge.me',
+      title: `${n0(open.length)} of the last ${n0(rs.length)} reviews are 1 or 2 stars with no reply`, sub: `“${String(open[0].title || open[0].body || '').slice(0, 90)}” is the latest. A calm reply that names the fix reads better than silence.`,
+      rows: open.slice(0, 4).map((r) => [`${r.rating}★ ${String(r.product_title || '').slice(0, 24)}`, String(r.title || r.body || '').slice(0, 40)]), detail: { why: ['Shoppers read the bad reviews first.'], how: ['Reply to each one in Judge.me', 'Name the fix, not an excuse', 'The reply shows publicly and the reviewer gets an email'] } }));
+    /* quiet: no zero tiles; a store with no reviews yet says so once */
+    const stats = [m.total > 0 && ['Reviews', n0(m.total)], has(m.rating) && ['Average, last 100', `${m.rating.toFixed(1)} of 5`], m.open > 0 && ['1 and 2 star, no reply', n0(m.open)], m.photo > 0 && ['With a photo', `${m.photo.toFixed(0)}%`]].filter(Boolean);
+    const changed = !rs.length ? ['No reviews in Judge.me yet. Cards use them once they come in.']
+      : [m.total > 0 && `${n0(m.total)} reviews read`, m.open > 0 ? `${n0(m.open)} low-star reviews still need a reply` : 'Every 1 and 2 star review has a reply'].filter(Boolean);
     const ledger = [has(m.total) && L('reviews.judgeme.total', 'Judge.me reviews', n0(m.total), m.total, src), has(m.rating) && L('reviews.judgeme.rating.recent', 'Average rating, last 100 reviews', m.rating.toFixed(2), m.rating, src), L('reviews.judgeme.open', 'Low-star reviews with no reply', n0(m.open), m.open, src)].filter(Boolean);
     return { metrics: m, stats, changed, cards: out, ledger, notes };
   }
