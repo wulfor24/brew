@@ -786,7 +786,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         load: (n) => cache[n] || null, save: async (n, move) => { cache[n] = move; await (lock = lock.then(() => saveOne(n, move)).catch((e) => log.warn('[rewrite] save', n, e.message))); },
         canSpend: () => !blocked(slug) && dayUsd() < DAY_CAP && spentFor(slug) - usd0 < cap && !st(slug).cancelled,
         effort: process.env.MOVES_EFFORT || 'medium', search: +(process.env.MOVES_SEARCH ?? 1),
-        onTotal: async (N, applicable) => { total = N; await setStatus(slug, { total: N, applicable }); },
+        onTotal: async () => {}, /* a rewrite keeps the brand's count: the build sets it (there is no `total` here; it threw on every rewrite of 3+ moves) */
         onStart: (n) => { x.inflight.set(n, Date.now()); x.failed.delete(n); emit(slug, { type: 'move-start', n }); },
         onFail: (n, e) => { x.inflight.delete(n); x.failed.set(n, { msg: String(e?.message || e).slice(0, 160), at: Date.now() }); emit(slug, { type: 'move-failed', n, msg: String(e?.message || e).slice(0, 160) }); } };
       await eng.runAll(ctx, { only: ns.length >= 3 ? [...ns, 0] : ns, concurrency: Math.min(6, ns.length), waveA: WAVE_A });
@@ -804,6 +804,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         await editUpd(slug, (u) => { if (u.connectDone) u.connectDone = { ...u.connectDone, finished: left.length ? null : at, written: (u.connectDone.written || 0) + written.length }; });
       }
     } catch (e) { log.error('[rewrite] failed', slug, e); /* the brand does not stay on "Rewriting N moves" */
+      /* a connected run that stopped on an error tries the moves it had not written again in an hour (three tries in all) */
+      if (via === 'connected' && tries < 3) { const left = ns.filter((n) => !written.some((w) => w.n === n)); if (left.length) await enqueue(slug, left, { via: 'connected', auto: true, notBefore: Date.now() + 3600e3, tries: tries + 1 }).catch(() => {}); }
       await setStatus(slug, { state: (await status(slug))?.done ? 'Ready' : prevState || 'Ready' }).catch(() => {}); emit(slug, { type: 'rewrite-done', n: written.length, failed: String(e?.message || e).slice(0, 160) }); }
     finally { x.running = false; x.rewriting = null; saveSpend(slug); await editUpd(slug, (u) => { delete u.rewriting; }).catch(() => {}); setTimeout(() => drain(slug).catch((e) => log.warn('[rewrite] drain', e.message)), 0); }
   }

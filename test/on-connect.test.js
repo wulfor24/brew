@@ -59,8 +59,8 @@ async function brand(env = {}) {
   await P.put(slug, 'profile.json', { name: 'Acme', host: 'acme.com', catalog: { products, hero: ['serum'] } });
   await P.put(slug, 'ledger.json', [{ key: 'price.serum', label: 'Hair Serum price', v: '₹599' }]);
   await P.put(slug, 'brief.json', { name: 'Acme', catalogue: [], claims: [], platforms: [], quotes: [], channels: [], company: [], personas: [], objections: [], rivals: [], gaps: [], toConfirm: ['Monthly revenue'], goal: 'To confirm', at: '2026-10-01' });
-  await P.put(slug, 'moves.json', { 1: { n: 1, title: 'One', meta: { at: 'a' } }, 2: { n: 2, title: 'Two', meta: { at: 'b' } }, 1001: { n: 1001, title: 'Weekly', meta: { cadence: true } } });
-  const moves = { SPECS: [{ n: 1 }, { n: 2 }], createMovesEngine: () => ({ runAll: async (ctx, { only }) => { runs.push({ only, hero: ctx.profile.catalog.hero, ledger: ctx.ledger.map((e) => e.key), brief: ctx.brief.json });
+  await P.put(slug, 'moves.json', { 1: { n: 1, title: 'One', meta: { at: 'a' } }, 2: { n: 2, title: 'Two', meta: { at: 'b' } }, 3: { n: 3, title: 'Three', meta: { at: 'c' } }, 1001: { n: 1001, title: 'Weekly', meta: { cadence: true } } });
+  const moves = { SPECS: [{ n: 1 }, { n: 2 }, { n: 3 }], createMovesEngine: () => ({ runAll: async (ctx, { only }) => { await ctx.onTotal?.(only.length, only); /* as the real engine does */ runs.push({ only, hero: ctx.profile.catalog.hero, ledger: ctx.ledger.map((e) => e.key), brief: ctx.brief.json });
     for (const n of only) if (n) await ctx.save(n, { n, title: `Rewritten ${n}`, meta: {} }); } }) };
   const b = createBuilder({ ROOT, packs: P, ai: { onCharge() {} }, treg: { onCharge() {} }, log: quiet, modules: { reader: null, brief: null, moves, pdf: null } });
   return { b, P, slug, runs };
@@ -73,7 +73,7 @@ test('a real account connecting rewrites every move with its numbers, privately,
   await b.liveConnected(slug, 'ga4', [row('ga4.conversion', 'Purchases per session', '1.8%', 1.8)], true, { public: false }); /* a second account inside the settle time */
   await settle();
   assert.equal(runs.length, 1, 'two connects, one run');
-  assert.deepEqual(runs[0].only, [1, 2], 'every playbook move, never a weekly cadence move');
+  assert.deepEqual(runs[0].only, [1, 2, 3, 0], 'every playbook move (and the index), never a weekly cadence move');
   assert.deepEqual(runs[0].hero.slice(0, 2), ['rosemary-oil', 'onion-shampoo'], 'the rewrite writes from the best sellers');
   assert.ok(runs[0].ledger.includes('shopify.aov') && runs[0].ledger.includes('ga4.conversion'), 'and from the account numbers');
   assert.ok(runs[0].brief.company.some((c) => c.k === 'shopify.revenue.30d'), 'and from the team’s brief');
