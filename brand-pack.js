@@ -14,6 +14,7 @@ import { demoFor, withDemo, DEMO_V } from './demo-data.js';
 import { brewFile } from './brew-name.js'; // packs written before the rename say ShopOS
 import { socialize, readSocial } from './social-feed.js'; // what listening heard and the ideas stream, as cards
 import { fitCta, fillMake, readSrc } from './cards-gen.js';
+import { cleanBrief, renderBrief } from './brief.js'; // a saved brief's "null" cells heal at load
 import { aboutOf, OLD_ABOUT } from './derive.js'; // a saved config.about written by the old rule heals at load
 import { prototypeConnectors } from './seed-template.js'; // DUMMY: connector copy that promises no action
 import { sentenceCase } from './text-fit.js';
@@ -217,10 +218,14 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
   async function loadGenerated(slug) {
     const seed = await getJSON(slug, 'seed.json'); if (!seed) return null;
     /* the pack's files are read together, not one after another (each is a bucket read on a fresh instance) */
-    const [facts, config, status, moves, pools, profile, statics, brief, labels, pages, briefJ, moveValue, notesJ, firstDrafts, learned] = await Promise.all([
+    let [facts, config, status, moves, pools, profile, statics, brief, labels, pages, briefJ, moveValue, notesJ, firstDrafts, learned] = await Promise.all([
       getJSON(slug, 'facts.json', {}), getJSON(slug, 'config.json', {}), getJSON(slug, 'status.json', {}), getJSON(slug, 'moves.json', {}), getJSON(slug, 'pools.json', {}),
       getJSON(slug, 'profile.json', null), getJSON(slug, 'statics.json', {}), get(slug, 'brief.md'), getJSON(slug, 'labels.json', {}), getJSON(slug, 'pages.json', {}),
       getJSON(slug, 'brief.json', {}), getJSON(slug, 'move-value.json', {}), getJSON(slug, 'notes.json', null), getFreshJSON(slug, 'drafts/cards.json', {}), getJSON(slug, 'learned.json', null)]);
+    /* a brief saved with "null" cells (an empty MRP or note the model wrote out) heals at load, for every brand: the cells go
+       blank and the page (the AI's system prompt for the brand) is drawn again with what the team told Brew */
+    { const { brief: cb, changed } = cleanBrief(briefJ); if (changed) { briefJ = cb; const md = renderBrief(cb, cb.at || new Date().toISOString().slice(0, 10)); brief = Buffer.from(learned ? withLearned(md, learned, { name: profile?.name }) : md);
+      await put(slug, 'brief.json', cb).catch(() => {}); await put(slug, 'brief.md', brief.toString('utf8')).catch(() => {}); } }
     const updatesJ = await getJSON(slug, 'updates.json', null).catch(() => null);
     const staleMoves = new Set(Object.keys(updatesJ?.stale || {}).map(Number).filter((n) => moves?.[n])); /* first drafts: read from the bucket (any instance may have made them) */
     /* the health rings are worked out again whenever the scoring changes, for every brand (no rebuild) */

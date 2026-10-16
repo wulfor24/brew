@@ -1,7 +1,7 @@
 # Brew prototype
 
 Brew is a realistic prototype: read → moves → feed → jam → share the brief. Read `SCOPE.md` before adding anything: Do it now,
-measurement, Brew sending and real connectors were cut on purpose. Anything simulated is marked Dummy in the UI, with a
+measurement and Brew sending were cut on purpose (connectors are real and read-only on the live site since 2026-10-16). Anything simulated is marked Dummy in the UI, with a
 `DUMMY:` comment in the code and a row in `DUMMY.md`. Keep all three in step when you add or remove a dummy.
 
 Before changing anything that reads outside data, load the `brew-external-data` skill and follow it. That covers

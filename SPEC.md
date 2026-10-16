@@ -2,7 +2,7 @@
 
 A person pastes any brand's URL, and Brew:
 
-1. Reads the brand for real (crawl + treg + Claude web search). Nothing is canned.
+1. Reads the brand for real (crawl + treg + AI web search (Gemini grounding by default)). Nothing is canned.
 2. Shows those real findings on the onboarding screens.
 3. Writes all 51 "moves" (Brew strategy documents) at the depth of the hand-made Arata corpus, as Brew PDFs.
 4. Builds the whole feed (cards, card pages, facts, statics) from those moves.
@@ -21,7 +21,7 @@ A person pastes any brand's URL, and Brew:
 
 ## Shared modules (already written; use them, don't fork them)
 
-- `ai.js` → `createAI()` returns `.call({ model: 'opus'|'sonnet', system, prompt|messages, max, effort, schema, search, location, tag })`, which resolves to `{ text, json, cites, usd }`. It throws `{mock:true}` when AI is off (`AI_MOCK=1` or no key). Opus writes long documents; Sonnet does short work. Pass a JSON schema for structured output; `strictSchema` makes every property required.
+- `ai.js` → `createAI()` returns `.call({ model: 'opus'|'sonnet' (aliases: on Gemini they resolve to GEMINI_DEEP_MODEL / GEMINI_FAST_MODEL), system, prompt|messages, max, effort, schema, search, location, tag })`, which resolves to `{ text, json, cites, usd }`. It throws `{mock:true}` when AI is off (`AI_MOCK=1` or no key). Opus writes long documents; Sonnet does short work. Pass a JSON schema for structured output; `strictSchema` makes every property required.
 - `treg.js` → `createTreg()` returns `.call(id, {query, body})` and `.dfs(id, body)` (unwraps DataForSEO). It is metered and day-capped; `TREG_OFF=1` turns it off.
 - Keys load from `../ugc-factory/.env`, the same way `server.js` does it (see its env block). Local treg auth falls back to `~/.treg/config.json`.
 - Known treg endpoint ids already in use (also see `research.js` and `live-watch.js`):
@@ -37,7 +37,7 @@ A person pastes any brand's URL, and Brew:
 
 ## Brand pack layout
 
-Local dir `.brands/<slug>/`, mirrored to `gs://squareup-feed/brands/<slug>/`.
+Local dir `.brands/<slug>/`, mirrored to `gs://brew-prototype/brands/<slug>/` (demo: `gs://brew-prototype-demo`).
 
 ```
 profile.json     reader output (schema below)
