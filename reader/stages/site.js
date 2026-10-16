@@ -4,6 +4,9 @@
 // personal data, never submits a form and never pays.
 import fs from 'node:fs';
 import { pathOf, clean } from '../util.js';
+import { pageSpeed } from '../../health.js';
+/* PageSpeed is a live Google call: it needs PAGESPEED_API_KEY (without one Google answers 429), and is off under node --test */
+export const speedOn = () => !!process.env.PAGESPEED_API_KEY && process.env.PAGESPEED_OFF !== '1' && !process.env.NODE_TEST_CONTEXT;
 
 const TECH = {
   klaviyo: /static\.klaviyo\.com|klaviyo\.js|_learnq/i,
@@ -50,9 +53,11 @@ export async function site(ctx) {
   profile.site = { ...(profile.site || {}), tech };
   if (state.home) for (const [k, v] of Object.entries(tech)) if (v) ledger.add({ key: `site.tech.${k}`, label: `Tech on the site: ${k}`, v: v === true ? 'yes' : v, url: state.homeUrl, method: 'crawl', note: 'found in the home / product page source' });
 
+  /* Google PageSpeed for the health card's Storefront ring, run beside the walk; a failure is kept as { error } */
+  const speed = state.homeUrl && speedOn() ? pageSpeed(state.homeUrl, { log: ctx.log }).then((ps) => { profile.site.pagespeed = ps; }) : Promise.resolve();
   const hero = (profile.catalog?.hero || []).map((h) => (profile.catalog.products || []).find((p) => p.handle === h)).find((p) => p && p.inStock !== false) || profile.catalog?.products?.find((p) => p.inStock);
   const exe = CHROME();
-  if (!exe) { profile.site.checkout = { v: SITE_V, error: 'no Chrome on this machine (set CHROME_PATH)' }; ctx.finding('site', { kind: 'rows', t: 'The path to checkout', src: pathOf(state.homeUrl), rows: techRows(tech), cap: 'Checkout not walked: no browser available.' }); return ctx.done('site', 'tech read, checkout not walked', 'empty'); }
+  if (!exe) { await speed; profile.site.checkout = { v: SITE_V, error: 'no Chrome on this machine (set CHROME_PATH)' }; ctx.finding('site', { kind: 'rows', t: 'The path to checkout', src: pathOf(state.homeUrl), rows: techRows(tech), cap: 'Checkout not walked: no browser available.' }); return ctx.done('site', 'tech read, checkout not walked', 'empty'); }
   const { default: puppeteer } = await import('puppeteer-core');
   const browser = await puppeteer.launch({ executablePath: exe, headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage', '--window-size=1366,900', '--lang=en-US'] });
   const kill = () => browser.close().catch(() => {});
@@ -66,7 +71,7 @@ export async function site(ctx) {
       if (m && score(m) > score(walk)) { m.notes.unshift('The desktop walk fell short; this is the walk as a phone.'); walk = m; }
       else if (m) walk.notes.push('A second walk as a phone did not get further.');
     }
-  } finally { ctx.signal?.removeEventListener?.('abort', onAbort); await kill(); }
+  } finally { ctx.signal?.removeEventListener?.('abort', onAbort); await kill(); await speed; }
 
   const ms = (label) => walk.steps.find((s) => s.step === label)?.ms;
   const toCart = walk.steps.filter((s) => ['Product page', 'Add to cart', 'Cart', 'Cart drawer'].includes(s.step)).reduce((a, s) => a + s.ms, 0);

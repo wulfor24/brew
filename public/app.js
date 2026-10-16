@@ -1,7 +1,7 @@
 /* Brew prototype: read → moves → feed → jam → share the brief.
    Screens: start → setup → who is this for → what do you want → connect → team → feed / deck.
    Every card: heart (more like this), save, jam. The jam ends with Share the brief (share.js, jam-room.js).
-   DUMMY: connected accounts, health rings and the Pro plan are simulated and tagged (see DUMMY.md). */
+   DUMMY: connected accounts and the Pro plan are simulated and tagged (see DUMMY.md). */
 (() => {
   // the brand this page is for (server.js injects its seed): a generated brand's, or the Brew landing shell
   const BR = window.BRAND || Object.keys(window.FEED_DATA)[0];
@@ -806,8 +806,8 @@
     return `<svg viewBox="0 0 130 130" width="100%" role="img" aria-label="Brand health ${h.score} of 100">${h.rings.map((r, i) => { const c = 2 * Math.PI * R[i]; return `<circle cx="65" cy="65" r="${R[i]}" fill="none" stroke="var(--surface-2)" stroke-width="8"/><circle class="ring-arc" cx="65" cy="65" r="${R[i]}" fill="none" stroke="var(--fg)" stroke-opacity="${1 - i * .3}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${(c * r.v / 100).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 65 65)"/>`; }).join('')}
       <text x="65" y="71" text-anchor="middle" fill="var(--fg)" font-size="20" font-weight="600" font-family="Inter,sans-serif">${h.score}</text></svg>`; };
   const healthCard = () => { const h = healthNow(); const focus = h.rings.find((r) => r.k === ROLE().health) || h.rings[0]; const low = [...h.rings].filter((r) => r.read !== false).sort((a, b) => a.v - b.v)[0] || h.rings[0];
-    return `<article class="card is-dummy" data-health>${head('brew', B.health.public ? `From your public site · ${esc(B.health.at || '')}` : `Up ${h.delta + Object.keys(S.conn).filter(conn).length} this week`, null, false)}<div class="inset"><div class="ring-wrap">${ringSvg(h)}<div class="ring-rows">${h.rings.map((r) => `<div class="${r.k === focus.k ? 'focus' : ''}"><b>${esc(r.k)}</b><em>${r.read === false ? '–' : r.v}</em><span>${esc(r.what)}</span></div>`).join('')}</div></div></div>
-      <div class="body"><h3>${B.brand.name} scores ${h.score}. ${esc(low.k)} hold${low.k.endsWith('s') ? '' : 's'} it back.</h3><p>${S.viewer.role === 'founder' ? 'Every card below helps raise it.' : `You can move ${esc(focus.k)} most.`}</p></div>
+    return `<article class="card${B.health.dummy ? ' is-dummy' : ''}" data-health>${head('brew', B.health.public ? `From your public site · ${esc(B.health.at || '')}` : `Up ${h.delta + Object.keys(S.conn).filter(conn).length} this week`, null, false)}<div class="inset"><div class="ring-wrap">${ringSvg(h)}<div class="ring-rows">${h.rings.map((r) => `<div class="${r.k === focus.k ? 'focus' : ''}"><b>${esc(r.k)}</b><em>${r.read === false ? '–' : r.v}</em><span>${esc(r.what)}</span></div>`).join('')}</div></div></div>
+      <div class="body"><h3>${B.brand.name} scores ${h.score}. ${esc(low.k)} hold${low.k.endsWith('s') ? '' : 's'} it back.</h3><p>${(() => { const m = (B.health.moves || []).find((x) => x.k === focus.k) || (B.health.moves || [])[0]; return m ? esc(m.t) : S.viewer.role === 'founder' ? 'Every card below helps raise it.' : `You can move ${esc(focus.k)} most.`; })()}</p></div>
       ${barHtml({ label: 'See what moves it' })}</article>`; };
 
   const teamCard = () => { const bs = S.batches.filter((b) => !b.roles || b.roles.includes(S.viewer.role) || b.team).slice(0, 4); const need = bs.filter((b) => b.st === 'Needs you').length;

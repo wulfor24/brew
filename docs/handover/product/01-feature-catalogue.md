@@ -55,7 +55,7 @@ Every feature a user can see, in plain words, with an honest status.
 | Card page | Options, a recommendation, what happens next | ✅ |
 | Heart / Not for me / Snooze | Shapes the feed; a heart makes three more in that direction | ✅ |
 | Festival ideas | Diwali / Black Friday ideas | 🟡 **Dates are fixed to Nov 2026. They go stale after 27 Nov.** |
-| Health rings (Creative, Storefront, AI answers) | A score out of 100 | 🧪 Simulated, tagged |
+| Health rings (Creative, Storefront, AI answers) | A score out of 100, from the read; unread parts left out | ✅ Real (since 2026-10-16) |
 | Account cards (Shopify checkouts, Meta frequency, GA4 funnel, RTO…) | Numbers from "connected" accounts | 🧪 Simulated, tagged |
 | Pro / the deck | Plan sheet, "Start the trial" | 🧪 Simulated, tagged. **The Pro button on the moves page does raise our real spend limit for that brand.** |
 

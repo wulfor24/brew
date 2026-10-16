@@ -47,7 +47,7 @@
 | **Jam** | Studio: canvas, chat, first drafts (image, text, video, voice, carousel), versions, photos, composer, brand memory and learnings. | `remix.js`, `studio.js`, `drafts.js`, `drafts-bg.js`, `brand-memory.js`, `brand-learnings.js`, `learn.js`, `public/jam-room.js`, `public/canvas.js`, `public/composer.js` |
 | **Share the brief** | Freezes the brief as BR-n and copies its text with a link to the read-only `/h/<token>` page. Nothing is sent. | `jam-brief.js`, `handoff.js`, `public/share.js` |
 | **Accounts** | Google sign-in, claim by work email, team, invites and views (seats). Team email goes through Resend. | `auth.js`, `member-ctx.js` |
-| **Dummy** | Simulated connectors, health rings, Pro, teammate replies, the demo site | `connectors/`, `dummy/health.js`, `demo-data.js`, `demo-mode.js`, `demo-routes.js` |
+| **Dummy** | Simulated connectors, Pro, teammate replies, the demo site | `connectors/`, `demo-data.js`, `demo-mode.js`, `demo-routes.js` |
 
 ## Key concepts
 

@@ -1,4 +1,4 @@
-/* DUMMY: the visible tag on everything simulated in this prototype (connected accounts and their cards, health rings,
+/* DUMMY: the visible tag on everything simulated in this prototype (connected accounts and their cards,
    the Pro plan). See DUMMY.md. One look everywhere: a small dashed pill. */
 .dummy-tag{display:inline-flex;align-items:center;height:18px;padding:0 7px;margin-left:6px;border-radius:999px;border:1px dashed var(--warn,#c47f00);
   color:var(--warn,#c47f00);background:transparent;font:600 11.5px/1 Inter,system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;vertical-align:middle}

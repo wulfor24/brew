@@ -9,7 +9,6 @@ Brew shows what we can do with a brand's **public** presence for real, and **sim
 | What | What the user sees | What's really behind it | To make it real |
 |---|---|---|---|
 | **Connected accounts**: Shopify, Meta Ads, Google Analytics, Google Ads, Klaviyo, Judge.me, Slack, marketplaces | One tap connects. Numbers, "what changed", and account cards (checkouts left, RTO, ad frequency, funnel) | Numbers built from the brand's public read, the same for everyone who views that brand | Sign-in with each platform, secure token storage, daily syncs, and each platform's approval (Meta, Shopify, Google). Weeks per platform. |
-| **Health rings**: Creative, Storefront, AI answers | A score out of 100 | Steady per-brand scores, nudged by a few real facts | A real scorer per ring, with sources |
 | **Pro plan** | Plan sheet, "Start the trial" | Switches Pro on in the browser. No billing. Every card is shown anyway. **The Pro button on the moves page also raises our real spend limit for that brand.** | Billing, if we want plans |
 | **Teammate replies** (@name) | A teammate answers in the jam | AI writes the reply in character from their role | A Slack app or email that brings real replies back |
 | **The demo site** | A full brand to explore | A sandbox per visitor | Nothing; it's a showcase |

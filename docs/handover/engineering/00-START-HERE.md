@@ -19,7 +19,7 @@ A **realistic prototype** that engineering picks up and continues. It is not the
 - **Marketing email and WhatsApp to customers.**
 - **The fake team flow.**
 
-**Simulated and tagged "Dummy":** connected accounts, health rings, the Pro plan, teammate replies, and the demo site.
+**Simulated and tagged "Dummy":** connected accounts, the Pro plan, teammate replies, and the demo site.
 
 **Real and in scope:**
 - Google sign-in and teams.

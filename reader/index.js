@@ -12,7 +12,8 @@ import { brand } from './stages/brand.js';
 import { catalog } from './stages/catalog.js';
 import { reviews } from './stages/reviews.js';
 import { ads, findRivals, ADS_V } from './stages/ads.js';
-import { site, SITE_V } from './stages/site.js';
+import { site, SITE_V, speedOn } from './stages/site.js';
+import { pageSpeed } from '../health.js';
 import { answers, inferCategory, writeLine } from './stages/answers.js';
 import { socials } from './stages/socials.js';
 import { company } from './stages/company.js';
@@ -162,7 +163,9 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
     const lineMissing = profile.descriptorBy !== 'claude' && profile.descriptorBy !== 'brand';
     const answersBroken = answersFailed(profile, findings);
     const siteBroken = siteFailed(profile);
-    if (!adsBroken && !lineMissing && !answersBroken && !siteBroken) return null;
+    /* a read from before the health card's speed part gets PageSpeed; a failed one is kept and tried again a day later */
+    const ps = profile.site?.pagespeed, speedMissing = !!profile.host && !siteBroken && speedOn() && (!ps || (!!ps.error && Date.now() - Date.parse(ps.at || 0) >= 864e5));
+    if (!adsBroken && !lineMissing && !answersBroken && !siteBroken && !speedMissing) return null;
     const added = [], cards = [], stepsDone = {};
     const http = createFetcher({ slug, saveRaw, loadRaw, fresh: false, log: lg });
     const tregOn = !!treg && treg.live !== false, aiOn = !!ai && ai.live !== false;
@@ -181,6 +184,7 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
     }
     // the checkout walk from an older walker, or one that never reached checkout, is walked again
     if (siteBroken) { try { await withTimeout(site(ctx), LIMIT.site, 'site'); changed.push('site'); } catch (e) { lg.warn?.('[reader] heal site', slug, e.message); } }
+    if (speedMissing) { profile.site = { ...(profile.site || {}), pagespeed: await pageSpeed(profile.url, { log: lg }) }; changed.push('pagespeed'); }
     if (!changed.length) return null;
     const keys = new Set(added.map((e) => e.key));
     const ledger = [...L.filter((e) => !keys.has(e.key)), ...added];

@@ -6,7 +6,7 @@ import { safeFetch } from './reader/util.js'; // user-pasted links reach only th
 import { emailHtml, esc as mailEsc, p as mailP, list as mailList } from './mail-layout.js';
 import { adCall } from './reader/adlib.js';
 import { ADS_V } from './reader/stages/ads.js';
-import { SITE_V } from './reader/stages/site.js';
+import { SITE_V, speedOn } from './reader/stages/site.js';
 import { wiping } from './retire.js';
 import { sentenceCase } from './text-fit.js';
 import path from 'node:path';
@@ -19,7 +19,7 @@ import { retiredSet, scrubRetired, allowedFrom } from './fact-gate.js';
 import { createCardsGen } from './cards-gen.js';
 import { marketFor, applyMarket, nameOf } from './market.js'; // the selling market, kept apart from the registered country
 import { realRows, privId } from './connectors/common.js'; // DUMMY: simulated account rows are never evidence
-import { healthFrom } from './dummy/health.js'; // DUMMY: simulated health rings
+import { healthFrom, geoOf } from './health.js';
 import { isPlay, playDone, totalOf, numbersFor, healSeedNumbers } from './pack-numbers.js'; // one number, one source
 import { createStatics, teamStaticCards } from './statics.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
@@ -321,8 +321,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const seed = seedFromProfile(slug, profile, findings, extra);
     seed.posts = (seed0.posts || []).map((c) => (c.lane && !seed.lanes[c.lane] ? { ...c, lane: Object.keys(seed.lanes)[0] } : c)); // cards already written stay, on a lane that still exists
     const N = await numbersFor(packs.getJSON, slug, { 'profile.json': profile }); healSeedNumbers(seed, N, profile.name); /* the read's steps quote the one count of each */
-    seed.health = healthFrom(profile, N); // DUMMY: simulated health rings (dummy/health.js)
-    const ai = seed.health.rings.find((r) => r.k === 'AI answers'); if (ai) seed.geo = { score: ai.v, band: ai.v >= 60 ? 'Good' : ai.v >= 35 ? 'Fair' : 'Low' };
+    seed.health = healthFrom(profile, N); /* the health rings, from what the read found (health.js) */
+    seed.geo = geoOf(seed.health) || { score: 0, band: 'Not read yet' };
     const facts = factsFromLedger(ledger, { host: profile.host });
     const cfg = configFromProfile(profile, extra);
     Object.assign(cfg, laneProducts(seed, profile), { statics: (await packs.getJSON(slug, 'config.json', {}))?.statics || [] }); /* a re-read keeps the finished statics */
@@ -513,7 +513,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       const p = await packs.getJSON(slug, 'profile.json'); if (!p?.host || !p.slug) return null;
       // healed today: wait a day; a heal that still hit errors tries again after an hour; a read from before a
       // stage changed (older ads version) or with no written one-liner heals now
-      const outdated = (p.ads && p.ads.v !== ADS_V) || (p.site?.checkout && p.site.checkout.v !== SITE_V) || !['claude', 'brand'].includes(p.descriptorBy);
+      const outdated = (p.ads && p.ads.v !== ADS_V) || (p.site?.checkout && p.site.checkout.v !== SITE_V) || !['claude', 'brand'].includes(p.descriptorBy) || (!!p.host && !p.site?.pagespeed && speedOn());
       const stillBroken = !!p.ads?.own?.error || (p.ads?.rivals || []).some((r) => r.error) || (!p.ai?.answers?.length && !!p.meta?.errors?.answers); /* the AI tools step failed in the read: ask again hourly */
       if (!outdated && p.meta?.healedAt && Date.now() - Date.parse(p.meta.healedAt) < (stillBroken ? 36e5 : 864e5)) return null;
       const reader = makeReader(await load()); if (!reader.heal) return null;

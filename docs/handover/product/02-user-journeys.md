@@ -47,7 +47,7 @@
   - "Need your yes": calls only this person can make;
   - **story rings**: Arata today, Trends, Popular ads, Industry news, How to.
 - **The cards** are about two pictures for every text card. Each has a source line ("From your store", "From your customers", "New idea for you"), a plan, often a ready **first draft**, and an action ("Make the video", "Publish the page", "Draft the post").
-- **Dummy cards** carry a dashed tag. Examples: the health rings, and account cards such as COD and RTO.
+- **Dummy cards** carry a dashed tag. Examples: account cards such as COD and RTO.
 
   ![Dummy cards](img/5-feed-dummy-cards.jpg)
 

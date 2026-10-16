@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 
 process.env.REFRESH_AUTO = '0'; process.env.DEMO_MODE = process.env.DEMO_MODE || '';
 const N = await import('../pack-numbers.js');
-const { healthFrom, HEALTH_V, healthKey } = await import('../dummy/health.js');
+const { healthFrom, HEALTH_V, healthKey } = await import('../health.js');
 const { createPacks } = await import('../brand-pack.js');
 const { createBuilder } = await import('../build.js');
 const { createFactsDesk } = await import('../facts-desk.js');
@@ -77,9 +77,9 @@ test('AI visibility: the answers to questions that don’t name the brand; all a
   const a = N.ai({ profile: profileOf() });
   assert.equal(a.named, 0); assert.equal(a.of, 20); assert.ok(a.unbranded); assert.deepEqual(a.all, { named: 12, of: 32 });
   const ring = healthFrom(profileOf()).rings.find((r) => r.k === 'AI answers');
-  assert.match(ring.what, /Named in 0 of 20 AI answers to questions that don't name Acme/, 'the ring says the same 0 of 20 the brief says');
+  assert.match(ring.what, /Named in 0 of 20 answers when not asked by name/, 'the ring says the same 0 of 20 the brief says');
   const cr = healthFrom(profileOf()).rings.find((r) => r.k === 'Creative');
-  assert.match(cr.what, /1,143 of your live ads/);
+  assert.match(cr.what, /your 1,143 live ads/);
 });
 
 test('a saved seed heals on load: the read’s ad step, the ads finding, the product count and the rings quote the one count', async () => {
@@ -99,7 +99,7 @@ test('a saved seed heals on load: the read’s ad step, the ads finding, the pro
   assert.equal(seed.steps[0].done, N.adsStepLine(pk.numbers, 'Acme'), 'the step is the shared line');
   assert.equal(seed.scrape[0].foot, 'Acme: 1,143 live ads. Rival A: a serum at ₹854.', 'the finding’s own-ads line, the rest kept');
   assert.equal(seed.brand.products, '3');
-  assert.equal(seed.health.v, HEALTH_V); assert.equal(seed.health.key, healthKey(pk.numbers));
+  assert.equal(seed.health.v, HEALTH_V); assert.equal(seed.health.key, healthKey(pk.numbers, profile));
   assert.match(seed.health.rings.find((r) => r.k === 'AI answers').what, /0 of 20/);
   const js = P.clientSeed(pk);
   assert.match(js, /window\.MOVES_TOTAL = 64;/); assert.match(js, /window\.MOVES_WRITTEN = 64;/);

@@ -156,7 +156,7 @@
 | Demo per-visitor sandbox and send guard | Working | Tested | Only Arata is demo-ready | E §2 |
 | Demo generation | Working | Real AI for every visitor | One script can use up the day's caps | E §2 |
 | Connected accounts | Dummy | Tagged | **The simulated numbers lose their demo flag** and flow into moves, facts and briefs | E §3, B §0.2, D §5 |
-| Health rings | Dummy | Tagged | | E §3 |
+| Health rings | Real (2026-10-16, `health.js`) | No tag | | E §3 |
 | Pro plan | **Dummy, but spends real money** | Tagged | The Pro button raises the brand's real build cap ($60 → $150+) | E §3 |
 | Teammate replies | Dummy | Tagged | (see Jam) | E §3 |
 | Demo site | Dummy (showcase) | | | E §3 |

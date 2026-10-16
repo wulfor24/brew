@@ -36,7 +36,6 @@
 
 - **"Ask everyone"** in a jam. Its answers are invented and not labelled.
 - **"Take it to Slack".** It says "Posted to #growth", but nothing is posted.
-- Dwelling on the **health rings**. They are simulated. Show them only as "what you'll get".
 - **Festival cards after 27 Nov 2026**, when the dates go stale.
 
 ## If something breaks
