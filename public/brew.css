@@ -2743,3 +2743,39 @@ body:not(.ui2) .lx-col .lx > .q-note{padding:6px 0 28px;text-align:center;font-s
 /* the studio's "Choose a photo" already offers Make it with AI, so the second photo button on the ad never shows under it */
 .st-asset:has(.st-atools) .am-newpic{display:none}
 .st-dl small{margin-left:4px;font-size:12.5px;color:var(--fg-3);font-weight:500}
+/* Work board, 2026-10-16 rework: a slim header instead of the side panel, the exact feed card under a stage strip,
+   empty lanes fold to a thin column, the background AI lane runs last and narrow */
+.wb-head{display:flex;align-items:center;gap:10px;padding:14px 20px 12px;border-bottom:1px solid var(--line-soft,var(--line))}
+.wb-head > span{flex:1;min-width:0;display:flex;align-items:baseline;gap:10px}
+.wb-head b{font-size:18px;font-weight:650;letter-spacing:-.01em}
+.wb-head small{font-size:14px;color:var(--fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wb-head .side-act{flex:0 0 auto;width:auto;height:34px;padding:0 12px;border-radius:999px;box-shadow:inset 0 0 0 1px var(--line)}
+.wb-fc{display:flex;flex-direction:column;gap:0;margin-bottom:16px;cursor:pointer}
+.wb-fc > .card{margin:0;border-top-left-radius:0;border-top-right-radius:0}
+.wb-strip{display:flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:18px 18px 0 0;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line-soft,var(--line));font-size:13.5px;color:var(--fg-2)}
+.wb-strip b{flex:1;min-width:0;font-weight:600;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wb-strip span{color:var(--fg-3);font-size:13px}
+.wb-strip .ic{color:var(--fg-3);transition:transform .15s}
+.wb-fc:hover .wb-strip .ic{transform:translateX(2px);color:var(--fg)}
+.wb-strip.is-needs_you{background:var(--warn-bg);color:var(--warn)}.wb-strip.is-needs_you b{color:var(--warn)}
+.wb-strip.is-ready,.wb-strip.is-shared{background:var(--ok-bg)}.wb-strip.is-ready b,.wb-strip.is-shared b{color:var(--ok)}
+.wb-strip.is-team b{color:var(--info)}
+.wb-strip .wb-new{width:7px;height:7px;border-radius:50%;background:var(--warn);flex:0 0 auto}
+.wb-col.is-empty{flex:0 0 210px;width:210px}
+.wb-col.is-empty .wb-sub{display:none}
+.wb-col.is-empty .wb-empty{padding:18px 12px;border:0;font-size:13.5px;line-height:19px;color:var(--fg-3);text-align:left;align-items:flex-start}
+.wb-col.is-ai:not(.is-empty){flex:0 0 330px;width:330px}
+.wb-col.is-ai .col-top h2{font-size:16px}
+@media (max-width:700px){.wb-head{padding:10px 16px}.wb-head small,.wb-head .side-act span{display:none}.wb-col.is-empty,.wb-col.is-ai:not(.is-empty){flex:0 0 100vw;width:100vw}}
+.wb-col.is-empty .col-top{min-width:0;gap:8px}
+.wb-col.is-empty .col-top h2{min-width:0;font-size:15px;line-height:20px;white-space:normal;color:var(--fg-2)}
+.wb-col.is-empty .col-top .col-fill{display:none}
+/* one height for the whole top bar (Param 2026-10-16): Feed | Deck, the team pill, Viewing as and the theme switch all 42px */
+@media (min-width:701px){
+  .topbar .seg{box-sizing:border-box;height:42px;padding:3px;align-items:center}
+  .topbar .seg button{height:36px}
+  .topbar-r .j1-pill,.topbar-r .viewing,.topbar-r > .icon-btn{box-sizing:border-box;height:42px}
+  .topbar-r > .icon-btn{width:42px}
+}
+/* the Work and Deck views: no line under the top bar (Param 2026-10-16) */
+html body.deck-on .topbar{border-bottom:0;box-shadow:none}

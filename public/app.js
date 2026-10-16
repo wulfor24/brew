@@ -2002,7 +2002,7 @@
     if (e.target.id === 'dp-pick') { e.preventDefault(); sendTo('team', $('#dp-note').value.trim() || `@${colleague(DP.picking).name} can you look at this before it goes out?`); }
   });
   document.addEventListener('click', (e) => {
-    const card = e.target.closest('.card[data-post]'); if (!card || card.closest('#dp')) return;
+    const card = e.target.closest('.card[data-post]'); if (!card || card.closest('#dp') || card.closest('[data-witem]')) return;
     if (e.target.closest('button, a, input, textarea, select, label, [data-more], .ask')) return;
     const p = FEED[+card.dataset.post]; if (p) openDetail(p);
   });
@@ -2048,10 +2048,11 @@
   // deploying and measuring share one (the tile says which). The server moves every item between lanes on its own.
   // Work is laid out as a deck: the same sidebar, full-height columns and card anatomy as the Deck, one column per lane.
   // Lanes run in the order work moves; the server moves every item between them on its own.
+  // lanes in the order that matters to you: what waits on you first, the background AI lane last and slim (Param 2026-10-16)
   const WB_COLS = [
+    { k: 'you', name: 'Needs you', sub: 'Someone is waiting on your answer', stages: ['needs_you'], emo: '✋', dot: 'var(--warn)', empty: 'Nothing is waiting on you.' },
     { k: 'drafting', name: 'Drafting', sub: 'You and AI, before anyone else sees it', stages: ['drafting'], emo: '✏️', dot: 'var(--fg-3)', empty: 'Open any card and tell AI what to change.' },
     { k: 'with', name: 'With a teammate', sub: 'A teammate is looking at it', stages: ['team'], emo: '💬', dot: 'var(--info)', empty: 'Ask a teammate from the jam with @their name.' },
-    { k: 'you', name: 'Needs you', sub: 'Someone is waiting on your answer', stages: ['needs_you'], emo: '✋', dot: 'var(--warn)', empty: 'Nothing is waiting on you.' },
     { k: 'ready', name: 'Ready to share', sub: 'Approved; share the brief from the jam', stages: ['ready'], emo: '✅', dot: 'var(--ok)', empty: 'Approve a draft and it lands here.' },
     { k: 'shared', name: 'Brief shared', sub: 'With the ShopOS team or your team; the jam ends here', stages: ['shared'], emo: '📋', dot: '#16a37f', empty: 'Share a brief from a jam and it lands here.' }];
   // a remixed message keeps its copy as the title ("नमस्ते {first_name}, …"). On the board the title is what the work is; the copy goes underneath
@@ -2080,7 +2081,16 @@
       <header class="card-head">${face(w.agent || 'brew')}<div class="who"><b>${esc(AGENT[w.agent] || 'Brew')}</b><span>${ago(w.updatedAt)}</span></div>${wbBadge(w)}</header>
       ${w.img ? `<div class="media portrait"><img src="${esc(w.img)}" alt="" loading="lazy"></div>` : ''}
       <div class="body"><h3>${w.unread ? '<i class="wb-new"></i>' : ''}${esc(wbTitle(w))}</h3>${wbBody(w)}</div>${wbFoot(w)}</article>`;
-  /* ---------- the Work board's first lane: what AI is doing in the background, right now ---------- */
+  const wbStrip = (w) => { const say = w.stage === 'needs_you' ? `Answer ${esc(w.with?.name || 'them')}` : w.stage === 'team' ? `With ${esc(w.with?.name || 'your team')}` : w.stage === 'ready' ? 'Approved · share the brief' : w.stage === 'shared' ? `Brief shared${w.ticket ? ' · ' + esc(w.ticket) : ''}` : w.versions?.length > 1 ? `Draft v${w.current} of ${w.versions.length}` : 'Draft';
+    return `<div class="wb-strip is-${esc(w.stage)}">${w.unread ? '<i class="wb-new"></i>' : ''}<b>${say}</b><span>${ago(w.updatedAt)}</span>${ic('right', 's14')}</div>`; };
+  const workTile = (w) => { const p = w.cardId && byId(w.cardId), i = p ? FEED.indexOf(p) : -1;
+    return i < 0 ? tileHtml(w) : `<div class="wb-fc${w.unread ? ' is-unread' : ''}" data-witem="${w.id}">${wbStrip(w)}${postCard(p, i)}</div>`; };
+  /* the background lane: many moves written at once read as one row, not one row each */
+  const bgGroup = (xs) => { const runs = xs.filter((x) => /^bg-m/.test(x.id)), q = xs.filter((x) => /^bg-q/.test(x.id)), rest = xs.filter((x) => !/^bg-[mq]/.test(x.id));
+    const one = runs.length > 1 ? [{ id: 'bg-mall', kind: 'run', t: `Writing ${runs.length} moves`, s: runs.slice(0, 3).map((x) => x.s).filter(Boolean).join(' · ') + (runs.length > 3 ? ` · ${runs.length - 3} more` : ''), meta: 'Each takes 6 to 9 minutes; they run side by side', pct: Math.round(runs.reduce((a, x) => a + (x.pct || 0), 0) / runs.length) }] : runs;
+    const nx = q.length > 1 ? [{ id: 'bg-qall', kind: 'next', t: `Up next: ${q.length} moves`, s: q.map((x) => x.s).filter(Boolean).join(' · '), meta: 'Start as a slot frees up' }] : q;
+    return [...one, ...rest, ...nx]; };
+  /* ---------- the Work board's last lane: what AI is doing in the background, right now ---------- */
   const WB_IC = { ai: 'cpu', drafting: 'txt', with: 'chat', you: 'hand', ready: 'check', shared: 'copy' };
   const AI_COL0 = { k: 'ai', name: 'AI is working on', sub: 'In the background, right now', stages: [], emo: '⚙️', dot: '#111', empty: 'Nothing is running in the background.' };
   /* the lane says what is really happening: "Working on 1, 2 queued", "3 queued", never "working on 3" when all wait */
@@ -2113,21 +2123,16 @@
     view = 'work'; document.body.classList.add('deck-on'); $('#stk').innerHTML = ''; $('#notes').innerHTML = '';
     $$('.seg [role=tab]').forEach((t) => t.setAttribute('aria-selected', 'false'));
     const items = WORK.items.filter((w) => !w.archived && !w.discarded);
-    const cols = BG.items.length || GEN ? [aiCol(), ...WB_COLS] : WB_COLS;
+    const cols = BG.items.length || GEN ? [...WB_COLS, aiCol()] : WB_COLS;
     const nOf = (c) => c.count ?? by(c).length; /* the AI lane counts what is running, else what waits */
-    const by = (c) => c.k === 'ai' ? BG.items : items.filter((w) => c.stages.includes(w.stage)).sort((a, b) => (b.unread - a.unread) || b.updatedAt - a.updatedAt);
+    const by = (c) => c.k === 'ai' ? bgGroup(BG.items) : items.filter((w) => c.stages.includes(w.stage)).sort((a, b) => (b.unread - a.unread) || b.updatedAt - a.updatedAt);
     // the board redraws on its own as work moves: keep where you were scrolled, sideways and in every column
     const keep = $('#wb-deck') ? { x: $('#wb-deck').scrollLeft, y: Object.fromEntries($$('.wb-col').map((c) => [c.dataset.bcol, $('.col-body', c)?.scrollTop || 0])) } : null;
-    $('#view').innerHTML = `<div class="deck-wrap wb-deck"><aside class="deck-side">
-        <div class="side-brand" data-nav="feed" role="button" tabindex="0" title="Home: your feed"><i class="bmark"><img src="${B.brand.mark}" alt=""></i><span><b>Work</b><span>From first draft to a shared brief</span></span></div>
-        <p class="side-note">Everything you started, one column per step. Cards move on their own as people reply, until the brief is shared.</p>
-        <div class="side-rule"></div>
-        <div class="side-nav">${cols.map((c) => `<button data-wbnav="${c.k}"${c.k === 'you' && by(c).length ? ' class="wb-hot"' : ''}><i class="col-dot" style="background:${c.dot}"></i>${c.name}<span class="n">${nOf(c)}</span></button>`).join('')}</div>
-        <div class="side-acts"><button class="side-act" data-wbjam>${ic('hand', 's16')} Start a new jam</button><button class="side-act" data-nav="jams">${ic('book', 's16')} Jams in the Library</button></div></aside>
+    $('#view').innerHTML = `<div class="deck-wrap wb-deck">
       ${!items.length && !BG.items.length ? `<div class="deck-main wb-zero-main"><div class="wb-zero">${ic('board')}<h2>Nothing in the works yet</h2><p>Open any card and shape it with AI. It lands here as a draft, then moves along on its own: with a teammate, waiting on you, ready, and finally a shared brief.</p>
-          <ol class="wb-zero-steps">${cols.filter((x) => x.k !== 'ai').map((x) => `<li><i style="background:${x.dot}"></i>${x.name}</li>`).join('')}</ol><button class="btn btn-primary" data-nav="feed">${ic('feed', 's16')}Open the feed</button></div></div>` : `<div class="deck-main"><div class="wb-tabs" role="tablist">${cols.map((c, i) => `<button role="tab" data-wbnav="${c.k}" aria-current="${i === 0}"><i style="background:${c.dot}"></i>${c.name}<em>${nOf(c)}</em></button>`).join('')}</div><div class="deck" id="wb-deck" style="--col-w:400px">${cols.map((c) => { const list = by(c);
-        return `<section class="dcol wb-col" data-bcol="${c.k}" style="--lane:${c.dot}"><div class="col-head"><div class="col-top"><h2><span class="col-emo" aria-hidden="true">${ic(WB_IC[c.k] || 'board', 's16')}</span>${c.name}</h2><span class="col-fill"></span><span class="wb-n">${nOf(c)}</span></div><p class="wb-sub">${c.sub}</p><hr></div>
-          <div class="col-body">${list.map(c.k === 'ai' ? bgTile : tileHtml).join('') || `<div class="wb-empty">${c.empty}</div>`}</div></section>`; }).join('')}</div></div>`}</div>`;
+          <ol class="wb-zero-steps">${cols.filter((x) => x.k !== 'ai').map((x) => `<li><i style="background:${x.dot}"></i>${x.name}</li>`).join('')}</ol><button class="btn btn-primary" data-nav="feed">${ic('feed', 's16')}Open the feed</button></div></div>` : `<div class="deck-main"><div class="wb-head"><span><b>Work</b><small>From first draft to a shared brief. Cards move on their own as people reply.</small></span><button class="side-act" data-wbjam>${ic('hand', 's16')} Start a new jam</button><button class="side-act" data-nav="jams">${ic('book', 's16')} Jams in the Library</button></div><div class="wb-tabs" role="tablist">${cols.map((c, i) => `<button role="tab" data-wbnav="${c.k}" aria-current="${i === 0}"><i style="background:${c.dot}"></i>${c.name}<em>${nOf(c)}</em></button>`).join('')}</div><div class="deck" id="wb-deck" style="--col-w:440px">${cols.map((c) => { const list = by(c);
+        return `<section class="dcol wb-col${list.length ? '' : ' is-empty'}${c.k === 'ai' ? ' is-ai' : ''}" data-bcol="${c.k}" style="--lane:${c.dot}"><div class="col-head"><div class="col-top"><h2><span class="col-emo" aria-hidden="true">${ic(WB_IC[c.k] || 'board', 's16')}</span>${c.name}</h2><span class="col-fill"></span><span class="wb-n">${nOf(c)}</span></div><p class="wb-sub">${c.sub}</p><hr></div>
+          <div class="col-body">${list.map(c.k === 'ai' ? bgTile : workTile).join('') || `<div class="wb-empty">${c.empty}</div>`}</div></section>`; }).join('')}</div></div>`}</div>`;
     // phones: the lane tabs follow your swipe
     { const d = $('#wb-deck'); let tm; if (d) d.addEventListener('scroll', () => { clearTimeout(tm); tm = setTimeout(() => { const cols = $$('.wb-col', d), x = d.scrollLeft + 8; const cur = cols.reduce((a, c) => (c.offsetLeft - cols[0].offsetLeft <= x ? c : a), cols[0]); $$('.wb-tabs [data-wbnav]').forEach((b) => { const on = b.dataset.wbnav === cur.dataset.bcol; b.setAttribute('aria-current', on); if (on) b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }); }, 80); }, { passive: true }); }
     if (keep && $('#wb-deck')) { const d = $('#wb-deck'); d.style.scrollBehavior = 'auto'; d.scrollLeft = keep.x; $$('.wb-col').forEach((c) => { const b = $('.col-body', c); if (b) b.scrollTop = keep.y[c.dataset.bcol] || 0; }); d.style.scrollBehavior = ''; }
@@ -2140,6 +2145,7 @@
   document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches?.('.wb-card[data-witem]')) e.target.click(); });
   document.addEventListener('click', (e) => {
     const t = e.target.closest('[data-witem]'); if (!t) return;
+    if (t.classList.contains('wb-fc') && e.target.closest('.card button, .card a, .card input, .card textarea, .card select, .card label, .card [data-more], .card .ask')) return; /* the feed card's own buttons work as in the feed */
     const w = WORK.items.find((x) => x.id === t.dataset.witem); if (!w) return; closePop();
     // the exact item you tapped: one card can have several (one per remix), so never let the card pick its own
     openDetail(w.cardId && byId(w.cardId) ? { ...byId(w.cardId), _work: w } : pseudoPost(w));
