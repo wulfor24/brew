@@ -90,3 +90,75 @@
 .ui2 .a2-now{display:inline-flex;align-items:center;gap:6px;min-width:0;font-size:13px;color:var(--fg-3);white-space:nowrap;overflow:hidden}
 .ui2 .a2-now span{overflow:hidden;text-overflow:ellipsis}
 .ui2 .a2-now .ic{flex:0 0 auto;opacity:.8}
+
+/* ================= jam: one page per card ================= */
+.ui2 .std.j2{display:flex;flex-direction:column;height:100vh;height:100dvh;background:var(--bg)}
+.ui2 .j2-top{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line-soft);background:var(--bg);flex:0 0 auto}
+.ui2 .j2-who{display:flex;align-items:center;gap:8px;min-width:0;margin-right:auto}
+.ui2 .j2-who b{font-size:14px;font-weight:500;white-space:nowrap}
+.ui2 .j2-st{font-size:12px;font-weight:500;padding:3px 9px;border-radius:999px;background:var(--glass-pill);color:var(--fg-2);white-space:nowrap}
+.ui2 .j2-st.ok{background:var(--ok-bg);color:var(--ok)}.ui2 .j2-st.warn{background:var(--warn-bg);color:var(--warn)}.ui2 .j2-st.info{background:var(--info-bg);color:var(--info)}
+.ui2 .j2-body{flex:1 1 auto;min-height:0;display:block}
+.ui2 .j2-panel{height:100%;width:100%;max-width:none;border:0;background:transparent}
+.ui2 .j2-scroll{height:100%;overflow:auto;padding:0 16px;display:flex;flex-direction:column;align-items:center}
+.ui2 .j2-scroll > *{width:min(720px,100%)}
+.ui2 .j2-draft{padding:20px 0 4px;display:flex;flex-direction:column;gap:14px}
+.ui2 .j2-title b{display:block;font-size:20px;line-height:26px;font-weight:600;letter-spacing:-.01em}
+.ui2 .j2-title b span{color:var(--fg-3);font-weight:400}
+.ui2 .j2-title small{display:block;margin-top:4px;font-size:13px;color:var(--fg-3)}
+.ui2 .j2-canvas{background:var(--card);border:1px solid var(--line-soft);border-radius:var(--r-card);padding:16px;display:flex;flex-direction:column;align-items:center;gap:12px;min-height:0;height:auto}
+.ui2 .j2-canvas .st-asset{width:100%;display:flex;justify-content:center;max-height:none;overflow:visible;padding:0}
+.ui2 .j2-canvas .st-tl{width:100%;justify-content:center}
+.ui2 .j2-facts{margin:0;border:1px solid var(--line-soft);border-radius:var(--r-panel);overflow:hidden}
+.ui2 .j2-facts > div{display:flex;gap:16px;padding:11px 14px;font-size:14px}
+.ui2 .j2-facts > div + div{border-top:1px solid var(--line-soft)}
+.ui2 .j2-facts dt{flex:0 0 96px;color:var(--fg-3)}
+.ui2 .j2-facts dd{margin:0;margin-left:auto;text-align:right;color:var(--fg)}
+.ui2 .j2-mv{font-size:14px}
+.ui2 .j2-draft .ship{position:static;margin:0;border-radius:var(--r-panel)}
+.ui2 .j2-scroll .it-log{padding:8px 0 16px}
+.ui2 .j2-scroll .it-ask{position:sticky;bottom:0;padding:10px 0 14px;background:linear-gradient(to bottom,transparent,var(--bg) 18px)}
+.ui2 .j2-chips{display:flex;gap:8px;overflow-x:auto;padding:4px 0 10px;scrollbar-width:none}
+.ui2 .j2-chips::-webkit-scrollbar{display:none}
+.ui2 .j2-chip{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:999px;font-size:13px;white-space:nowrap}
+.ui2 .j2-chip.is-brief{background:var(--fg);color:var(--bg);border-color:transparent}
+.ui2 .j2-chip.is-go{background:var(--ok-bg);color:var(--ok);border-color:transparent}
+/* overlays: the brief (paper) and Adjust */
+.ui2 .j2-scrim{position:fixed;inset:0;background:var(--scrim);z-index:80}
+.ui2 .j2-sheet{position:fixed;z-index:81;left:50%;top:50%;transform:translate(-50%,-50%);width:min(760px,calc(100vw - 32px));max-height:calc(100vh - 48px);display:flex;flex-direction:column;border-radius:20px;box-shadow:var(--sh-raised);overflow:hidden}
+.ui2 .j2-brief{background:#f7f5ef;color:#141414;--fg:#141414;--fg-2:#4a4a46;--fg-3:#7a7a74;--line:#e2ded3;--line-soft:#ebe7dc;--card:#fffdf7;--surface:#efebe0;--surface-2:#e6e1d4;--glass-row:#fffdf7;--glass-row-h:#f2eee4;--glass-pill:rgba(0,0,0,.06)}
+.ui2 .j2-adjust{background:var(--card);width:min(560px,calc(100vw - 32px))}
+.ui2 .j2-sh-h{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.ui2 .j2-sh-h b{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600;margin-right:auto}
+.ui2 .j2-sh-b{flex:1 1 auto;overflow:auto;padding:18px 22px}
+.ui2 .j2-brief .j2-sh-b{font-family:var(--font)}
+.ui2 .j2-sh-f{display:flex;align-items:center;gap:8px;padding:12px 18px;border-top:1px solid var(--line)}
+.ui2 .j2-sh-f .sp{flex:1}
+.ui2 .j2-brief .btn-primary{background:#141414;color:#fff}
+.ui2 .j2-move h3{margin:6px 0 8px;font-size:17px}
+.ui2 .j2-mv-stat b{font-size:20px}
+@media (max-width:760px){
+  .ui2 .j2-top .th-btn{display:none}
+  .ui2 .j2-sheet{left:0;right:0;top:auto;bottom:0;transform:none;width:100%;max-height:92vh;border-radius:20px 20px 0 0}
+}
+
+/* ---- the card drawer jam (cards without a package, and late-stage jams), restacked into the same one-column page:
+   header, the draft (canvas) and its quick turns, then the chat with the composer and the ship bar pinned at the bottom.
+   CSS only: jam-room.js keeps every hook (#jm-thread, #jm-f, #jm-in, .jm-ship). Phones keep their bottom sheet. ---- */
+@media (min-width:901px){
+  .ui2 #dp.dp-full .dp-page{display:block;height:100%;overflow:auto;scroll-behavior:smooth}
+  .ui2 #dp.dp-full .dr-b{width:min(760px,100%);margin:0 auto;padding:0 16px;height:auto;overflow:visible}
+  .ui2 #dp.dp-full .dr-h{position:sticky;top:0;z-index:5;background:var(--bg);box-shadow:0 0 0 100vmax var(--bg);clip-path:inset(0 -100vmax);border-bottom:1px solid var(--line-soft)}
+  .ui2 #dp.dp-full .cv{width:100%;margin:0 auto}
+  .ui2 #dp.dp-full .cv-turns{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .ui2 #dp.dp-full .dp-side{overflow:visible;position:static;width:min(760px,100%);max-width:none;margin:0 auto;padding:0 16px;height:auto;border:0;background:transparent;box-shadow:none}
+  .ui2 #dp.dp-full .dp-side .jm{height:auto;min-height:0;background:transparent;border:0}
+  .ui2 #dp.dp-full .jm-h{position:static;border-top:1px solid var(--line-soft);padding:12px 0}
+  .ui2 #dp.dp-full .jm-b{height:auto;max-height:none;overflow:visible;padding:0}
+  .ui2 #dp.dp-full .jm-thread{max-width:none}
+  .ui2 #dp.dp-full .jm-compose{position:sticky;bottom:134px;z-index:4;margin-top:12px;background:var(--card);box-shadow:0 -24px 24px -8px var(--bg)}
+  .ui2 #dp.dp-full .cmp{position:sticky;bottom:100px;z-index:4;background:var(--bg)}
+  .ui2 #dp.dp-full .jm-ship{position:sticky;bottom:0;z-index:4;background:var(--bg);padding-bottom:12px}
+}
+.ui2 .j2-scroll .it-ask{z-index:6}
+.ui2 .j2 .st-atools{z-index:2}

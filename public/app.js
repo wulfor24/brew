@@ -3274,7 +3274,7 @@
     const msgs = ch.thread || [], vById = (id) => ch.versions.find((v) => v.id === id);
     const log = msgs.map((m) => m.from === 'you' ? `<div class="lgm you"><p>${esc(m.text)}</p></div>` : `<div class="lgm ai">${face(ch.agent)}<div><p>${esc(m.text)}</p>${m.v && ch.versions[m.v - 1] ? madeNote(ch, [ch.versions[m.v - 1]]) : ''}${(m.vs || []).length ? madeNote(ch, m.vs.map(vById).filter(Boolean)) : ''}</div></div>`).join('');
     return `<div class="it-log">${SPLIT && RX.p ? `<div class="it-empty">${face(ch.agent)}${caseBrief(ch)}</div>` : ''}${log || (SPLIT && RX.p ? '' : `<div class="it-empty">${face(ch.agent)}${`<p>${SPLIT ? 'What should change? Each change makes a new version, and you can always go back.' : 'Tell me what to change, in plain words. I’ll rewrite the whole package and save it as a new version. You can always go back.'}</p>`}</div>`)}${RX.sending ? `<div class="lgm ai pending">${face(ch.agent)}<p><span class="spin"></span>${esc(RX.sending)}</p></div>` : ''}</div>
-      ${edit ? `<form class="it-ask" id="st-say"><div class="it-sugg">${PH_FAM.includes(ch.family) ? `<button type="button" class="chip chip-ph" data-ph-open>${ic('pic', 's14')}Change the photo</button>` : ''}${fitSuggest(ch.suggest).slice(0, PH_FAM.includes(ch.family) ? 3 : 4).map((x) => `<button type="button" class="chip" data-say="${esc(x)}">${esc(x)}</button>`).join('')}</div><div class="it-row${SPLIT && window.Composer?.tools ? ' has-cmp' : ''}"><textarea id="st-in" rows="2"${SPLIT ? ' data-nomic' : ''} placeholder="What should change? Or @ someone">${esc(RX.draft || '')}</textarea>${SPLIT && window.Composer?.tools ? `<span class="jm-tools">${window.Composer.tools()}<span class="jm-tools-r">${window.Mic?.supported ? `<button type="button" class="jm-mic" data-cmp-talk aria-label="Talk instead of typing">${ic('mic', 's16')}</button>` : ''}<button class="jm-send" aria-label="Send" ${RX.sending ? 'disabled' : ''}>${ic('up', 's16')}</button></span></span>` : `<button class="btn btn-primary" aria-label="Send" ${RX.sending ? 'disabled' : ''}>${ic('up', 's16')}</button>`}</div></form>${SPLIT && window.Composer?.foot ? window.Composer.foot() : ''}` : `<p class="it-locked">It’s in a jam. Shape it there.</p>`}`;
+      ${edit ? `<form class="it-ask" id="st-say">${UI2 ? chips2(ch) : `<div class="it-sugg">${PH_FAM.includes(ch.family) ? `<button type="button" class="chip chip-ph" data-ph-open>${ic('pic', 's14')}Change the photo</button>` : ''}${fitSuggest(ch.suggest).slice(0, PH_FAM.includes(ch.family) ? 3 : 4).map((x) => `<button type="button" class="chip" data-say="${esc(x)}">${esc(x)}</button>`).join('')}</div>`}<div class="it-row${SPLIT && window.Composer?.tools ? ' has-cmp' : ''}"><textarea id="st-in" rows="2"${SPLIT ? ' data-nomic' : ''} placeholder="What should change? Or @ someone">${esc(RX.draft || '')}</textarea>${SPLIT && window.Composer?.tools ? `<span class="jm-tools">${window.Composer.tools()}<span class="jm-tools-r">${window.Mic?.supported ? `<button type="button" class="jm-mic" data-cmp-talk aria-label="Talk instead of typing">${ic('mic', 's16')}</button>` : ''}<button class="jm-send" aria-label="Send" ${RX.sending ? 'disabled' : ''}>${ic('up', 's16')}</button></span></span>` : `<button class="btn btn-primary" aria-label="Send" ${RX.sending ? 'disabled' : ''}>${ic('up', 's16')}</button>`}</div></form>${SPLIT && window.Composer?.foot ? window.Composer.foot() : ''}` : `<p class="it-locked">It’s in a jam. Shape it there.</p>`}`;
   };
   const adjustTab = (ch, edit) => edit ? `<p class="hs-tip">Turn a knob and the package is rewritten to match. Knobs marked “new photo” make a new creative.</p>
       ${fitKnobs(ch.knobs).map((k) => { const multi = k.kind === 'copy', sel = (RX.knobSel || {})[k.k] || [], cur = (ch.pkg.knobs || {})[k.k];
@@ -3406,6 +3406,36 @@
     for (let i = 0; i < 2 && ad.offsetHeight > roomH && m.offsetHeight > 0; i++) { const rest = ad.offsetHeight - m.offsetHeight, k = (roomH - rest) / m.offsetHeight; if (k >= 1 || k <= 0) break;
       ad.style.width = Math.round(Math.max(320, Math.min(roomW, ad.offsetWidth * k))) + 'px'; } };
   addEventListener('resize', () => { if (view === 'remix') fitAd(); });
+  /* ---------- UI2 jam: one page per card. Header (Back, agent, status), the draft and its versions, the facts
+     (Where / Post at / Backed by / Measure), the chat with option chips, the status band, and the brief and Adjust as overlays.
+     Same RX state, same data-* actions and API calls as the studio; only the layout differs. ---------- */
+  const j2Status = (ch, viewing) => { const w0 = SPLIT ? workOfCard(RX.p?.id) : null;
+    if (viewing) return ['info', `Looking at v${viewing.n}`]; if (RX.sending) return ['info', 'Working…'];
+    if (w0?.stage === 'shared') return ['ok', `Brief sent${w0.ticket ? ' · ' + w0.ticket : ''}`]; if (w0?.stage === 'needs_you') return ['warn', 'Needs your OK'];
+    if (w0?.stage === 'team') return ['info', `With ${w0.with?.name || 'your team'}`]; if (ch.state === 'jam') return ['warn', 'In a jam'];
+    if (ch.verdict === 'fix') return ['warn', 'Needs a fix']; if (!planMade(ch)) return ['', ch.v0 === 'draft' ? 'First draft' : 'Draft']; return ['ok', `Ready · v${curN(ch)}`]; };
+  const j2Facts = (ch, pkgCh) => { const p = pkgCh.pkg || {}, w = SPLIT ? workOfCard(RX.p?.id) : null, bp = w?.doc?.plan || {}, kn = RX.p ? cardOf(RX.p).know : null, one = (v) => Array.isArray(v) ? v.map((x) => (typeof x === 'object' ? x.name || x.label || Object.values(x)[0] : x)).filter(Boolean).join(', ') : typeof v === 'object' && v ? v.name || v.label || '' : v;
+    const where = [ch.target?.name, one(p.where) || one(p.placements) || one(p.channel) || one(p.pages) || one(p.platform) || one(p.account)].filter(Boolean).filter((x, i, a) => a.indexOf(x) === i).join(' · ');
+    const when = one(p.postAt) || one(p.schedule) || one(p.trigger) || one(p.checkAt) || bp.when || '';
+    const backed = (RX.moves || []).slice(0, 3), measure = bp.metric || one(p.measure) || (kn ? kn.metric : '') || '';
+    const budget = one(p.dailyBudget) || bp.budget || '';
+    const rows = [['Where', where && esc(where)], ['Post at', when && esc(when)], ['Budget', budget && esc(budget)], ['Backed by', backed.length ? backed.map((m) => `<button class="linkbtn j2-mv" data-j2-move="${m.n}" title="${esc(m.title)}">Move ${String(m.n).padStart(2, '0')}</button>`).join(' ') : ''], ['Measure', measure && esc(measure)]].filter(([, v]) => v);
+    return rows.length ? `<dl class="j2-facts">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>` : ''; };
+  /* the options under the chat: the card's own next step, the brief, photo, the family's quick asks, more versions, the knobs, the files */
+  const chips2 = (ch) => { const pl = planOf(ch), made = planMade(ch), dis = RX.sending ? ' disabled' : '', c = (attr, icon, label, cls = '') => `<button type="button" class="chip j2-chip${cls}" ${attr}${dis}>${icon ? ic(icon, 's14') : ''}${esc(label)}</button>`;
+    const out = [c('data-tab="details"', 'doc', 'View brief', ' is-brief')];
+    if (!made && pl) out.push(c('data-rx="plan"', 'sparkles', pl.cta, ' is-go'));
+    if (ch.verdict === 'fix') out.push(c('data-rx="fix"', 'sparkles', 'Fix it with AI', ' is-go'));
+    if (PH_FAM.includes(ch.family)) out.push(c('data-ph-open', 'pic', 'Swap the image'));
+    fitSuggest(ch.suggest).slice(0, 3).forEach((x) => out.push(`<button type="button" class="chip j2-chip" data-say="${esc(x)}"${dis}>${esc(x)}</button>`));
+    out.push(c('data-rx="variants"', 'shuffle', 'More like this'));
+    if (fitKnobs(ch.knobs).length) out.push(c('data-tab="adjust"', 'sliders', 'Adjust'));
+    return `<div class="it-sugg j2-chips">${out.join('')}</div>`; };
+  const j2Brief = (ch, pkgCh, edit) => `<div class="j2-scrim" data-tab="iterate"></div><aside class="j2-sheet j2-brief" role="dialog" aria-label="The brief"><header class="j2-sh-h"><b>${ic('doc', 's16')}The brief</b><button class="icon-btn" data-tab="iterate" aria-label="Back to the chat">${ic('x', 's18')}</button></header>
+      <div class="j2-sh-b">${detailsTab(ch, pkgCh, edit)}</div>
+      <footer class="j2-sh-f"><button class="btn btn-ghost" data-tab="iterate">Back to chat</button><span class="sp"></span><button class="btn btn-ghost" data-rx="share-team">Share with my team</button><button class="btn btn-primary" data-rx="share-shopos">${ic('send', 's16')}Send brief</button></footer></aside>`;
+  const j2Adjust = (ch, edit) => `<div class="j2-scrim" data-tab="iterate"></div><aside class="j2-sheet j2-adjust" role="dialog" aria-label="Adjust"><header class="j2-sh-h"><b>${ic('sliders', 's16')}Adjust</b><button class="icon-btn" data-tab="iterate" aria-label="Close">${ic('x', 's18')}</button></header><div class="j2-sh-b">${adjustTab(ch, edit)}</div></aside>`;
+  const j2Moves = async (p) => { if (!p || RX.movesFor === p.id) return; RX.movesFor = p.id; RX.moves = []; const r = await tapi('GET', `/api/cards/${encodeURIComponent(p.id)}/moves`).catch(() => ({})); if (RX.movesFor !== p.id) return; RX.moves = r.moves || []; if (RX.moves.length && view === 'remix') paintStudio(); };
   const paintStudio = () => {
     const pg = $('#view .std'); const ch = RX.ch; if (!pg || !ch) return;
     window.__GR = { Original: 'none', Warm: 'sepia(.25) saturate(1.25) hue-rotate(-8deg)', Quiet: 'saturate(.6) brightness(1.05) contrast(.92)', Vivid: 'saturate(1.6) contrast(1.08)', 'Golden hour': 'sepia(.45) saturate(1.4) brightness(1.05)' };
@@ -3415,6 +3445,18 @@
     const formFocus = document.activeElement?.closest?.('#st-spec');
     if (formFocus || document.activeElement?.id === 'bf-ed') return; // never repaint under someone typing in the spec or the brief
     const logScroll = $('.st-panel-b')?.scrollTop;
+    if (UI2) { j2Moves(RX.p); const [tone, stx] = j2Status(ch, viewing);
+      pg.classList.add('j2');
+      pg.innerHTML = `<header class="st-top j2-top"><button class="q-back" data-st-back>${ic('left', 's16')}${ch.batchKey ? `All ${RX.p?.images?.length || ''} ads` : 'Back'}</button>
+          <div class="j2-who">${face(ch.agent)}<b>${esc(AGENT[ch.agent] || 'Brew')}</b><span class="j2-st ${tone}">${esc(stx)}</span></div>
+          <div class="st-vwrap"><button class="st-vpill${RX.vmenu ? ' is-open' : ''}" data-vmenu aria-haspopup="dialog" aria-expanded="${!!RX.vmenu}" title="Version history">${ic('clock', 's14')}<b class="st-vcount">v${curN(ch)}${ch.versions.length > 1 ? ` of ${ch.versions.length}` : ''}</b>${ic('chev', 's14')}</button>${RX.vmenu ? `<div class="st-vmenu" role="dialog" aria-label="Version history"><div class="st-vmenu-h"><b>Versions</b><small>${ch.versions.length} saved · nothing is ever lost</small></div><div class="st-vmenu-b">${historyTab(ch)}</div></div>` : ''}</div>${themeBtn()}<button class="icon-btn st-more" aria-label="More" data-lmenu="remix:${esc(ch.id)}">${ic('more', 's16')}</button></header>
+        <div class="st-body j2-body"><aside class="st-panel j2-panel"><div class="st-panel-b is-chat j2-scroll">
+          <section class="j2-draft"><div class="j2-title"><b>${esc(ch.actionLabel)}${ch.target.conn && ch.target.name ? ` <span>on ${esc(ch.target.name)}</span>` : ''}</b><small>${esc(ch.familyName)} · from “${esc(String(ch.before.title || '').slice(0, 70))}”</small></div>
+            <main class="st-canvas j2-canvas"><div class="st-asset${ch.copyPending ? ' is-writing' : ''}">${ch.copyPending ? `<p class="st-writing" role="status"><span class="spin"></span>Writing the first draft…</p>` : ''}${assetHtml(pkgCh, 'lg')}</div>${phTools(ch, pkgCh, viewing)}${timeline(ch, viewing)}</main>
+            ${j2Facts(ch, pkgCh)}${shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh))}</section>
+          ${chatTab(ch, edit)}</div></aside></div>
+        ${tab === 'details' ? j2Brief(ch, pkgCh, edit) : tab === 'adjust' ? j2Adjust(ch, edit) : ''}`;
+    } else
     pg.innerHTML = `<header class="st-top"><button class="q-back" data-st-back>${ic('left', 's16')}${ch.batchKey ? `All ${RX.p?.images?.length || ''} ads` : SPLIT ? 'Back' : 'Packages'}</button>
         <div class="st-ttl"><b>${esc(ch.actionLabel)}${ch.target.conn && ch.target.name ? ` <span>on ${esc(ch.target.name)}</span>` : ''}</b><small>${face(ch.agent)}${esc(ch.familyName)} · from “${esc(String(ch.before.title || '').slice(0, 70))}”</small></div>
         <div class="st-vwrap"><button class="st-vpill${RX.vmenu ? ' is-open' : ''}" data-vmenu aria-haspopup="dialog" aria-expanded="${!!RX.vmenu}" title="Version history">${ic('clock', 's14')}<span>History</span><b class="st-vcount">v${curN(ch)}${ch.versions.length > 1 ? ` of ${ch.versions.length}` : ''}</b>${ic('chev', 's14')}</button>${RX.vmenu ? `<div class="st-vmenu" role="dialog" aria-label="Version history"><div class="st-vmenu-h"><b>Versions</b><small>${ch.versions.length} saved · nothing is ever lost</small></div><div class="st-vmenu-b">${historyTab(ch)}</div></div>` : ''}</div>${themeBtn()}<button class="icon-btn st-more" aria-label="More" data-lmenu="remix:${esc(ch.id)}">${ic('more', 's16')}</button></header>
@@ -3583,6 +3625,9 @@
     const lc = e.target.closest('[data-livech]'); if (lc) { e.stopPropagation(); const p = byId(lc.dataset.card); const ch = p?.liveChange?.changeId; if (p) openRemix(p, ch); return; }
     if (view !== 'remix') return;
     if (e.target.closest('[data-vmenu]')) { RX.vmenu = !RX.vmenu; return paintStudio(); }
+    const jm2 = e.target.closest('[data-j2-move]'); if (jm2) { const m = (RX.moves || []).find((x) => x.n === +jm2.dataset.j2Move); if (!m) return;
+      return modal(`<div class="sheet j2-move"><header class="sh-h"><b class="sh-t">Move ${String(m.n).padStart(2, '0')}</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header><h3>${esc(m.title)}</h3>${m.stat ? `<p class="j2-mv-stat"><b>${esc(m.stat)}</b> ${esc(m.statLabel || '')}</p>` : ''}${m.why || m.summary ? `<p>${esc(m.why || m.summary)}</p>` : ''}<div class="cx-btns"><a class="btn btn-ghost" href="${pdfUrl(`move-${m.n}.pdf`)}" target="_blank" rel="noopener">${ic('down', 's16')}PDF</a><button class="btn btn-primary" data-close data-nav-move="${m.n}">Read the move</button></div></div>`); }
+    const nm = e.target.closest('[data-nav-move]'); if (nm) { closeModal(); location.hash = `#v=move&m=${nm.dataset.navMove}`; return; }
     if (e.target.closest('[data-ph-open]')) return openPhotos();
     { const dl = e.target.closest('[data-st-dl]'); if (dl && RX.ch) { const ch = RX.ch, v = RX.viewing && RX.viewing !== ch.head ? ch.versions.find((x) => x.id === RX.viewing) : null; return downloadVersion(ch, asPkg(ch, v), dl); } }
     if (RX.vmenu && !e.target.closest('.st-vmenu')) { RX.vmenu = false; paintStudio(); if (!e.target.closest('[data-tab],[data-rx],[data-st-back]')) return; }
