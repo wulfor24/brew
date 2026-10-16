@@ -275,7 +275,7 @@ export const FAMILY_SCHEMA = { type: 'object', properties: { moves: { type: 'arr
 } } } } };
 
 const blk = (o) => ({ t: 'p', text: '', items: [], ordered: false, head: [], rows: [], caption: '', title: '', label: '', body: '', ...o });
-export function shapeMove(raw, { n, family, ev = [], ledger = [], at = new Date().toISOString(), run = '', usd = 0, model = 'claude-sonnet-5-5' }) {
+export function shapeMove(raw, { n, family, ev = [], ledger = [], at = new Date().toISOString(), run = '', usd = 0, model = 'unknown' }) { /* model: what the AI client reported (Gemini under the shim), never a guessed label */
   const F = FAMILIES[family], byId = new Map(ev.map((e) => [e.id, e]));
   const found = (raw.found || []).map((f) => ({ text: String(f.text || '').trim(), ev: (f.ev || []).map((x) => String(x).trim().replace(/^\[|\]$/g, '')).filter((x) => byId.has(x)) })).filter((f) => f.text && f.ev.length);
   const dropped = (raw.found || []).length - found.length;
@@ -362,7 +362,7 @@ export async function writeFamily(family, { ai, slug, pack, memory = null, log =
     system: 'You are the Brew deployment team writing short, exact strategy documents. Every claim rests on the evidence you are given.' });
   const raws = (r.json?.moves || []).slice(0, F.max), at = new Date(now).toISOString(), run = `${family}-${dayOf(now)}`;
   const nums = numbers(raws.length), moves = [];
-  raws.forEach((raw, i) => { const m = shapeMove({ ...raw, brand: profile?.name }, { n: nums[i], family, ev, ledger, at, run, usd: (r.usd || 0) / Math.max(1, raws.length) }); if (m) moves.push(m); });
+  raws.forEach((raw, i) => { const m = shapeMove({ ...raw, brand: profile?.name }, { n: nums[i], family, ev, ledger, at, run, usd: (r.usd || 0) / Math.max(1, raws.length), model: r.msg?.model || 'unknown' }); if (m) moves.push(m); });
   // numbers a dropped move would have used are given back
   moves.forEach((m, i) => { m.n = nums[i]; });
   log.info?.(`[moves-cadence] ${slug} ${family}: ${moves.length} of ${raws.length} moves kept, $${(r.usd || 0).toFixed(3)}`);
@@ -410,6 +410,9 @@ export function movesDue(st = {}, cfg, { now = Date.now(), aiLive = true, ready 
 const PRIVATE_FAMILIES = ['listen', 'auto']; // the weekly families that get a team-only run when real accounts are connected
 export function createMovesScheduler({ packs, ai, memory = null, cardsGen = null, log = console, env = process.env, now = () => Date.now(), onCards = () => {}, onPack = async () => {}, dropCards = () => {}, pdfFor = null } = {}) {
   const cfg = movesConfig(env), P = 'moves/cadence.json', busy = new Set();
+  /* a deploy or scale-down: SIGTERM (server.js) calls stop(); the family loop ends before the next family, with the state saved
+     after every family, so the next instance's run neither pays a family twice nor leaves a cut run's moves live beside new ones */
+  let stopping = false; const stop = () => { stopping = true; };
   const stateOf = async (slug) => (await packs.getJSON(slug, P, null).catch(() => null)) || {};
   const save = (slug, s) => packs.put(slug, P, s);
   // one meter per run: every Claude call this run makes (moves and their cards) is counted against the brand's week
@@ -478,7 +481,11 @@ export function createMovesScheduler({ packs, ai, memory = null, cardsGen = null
       if (pscore) await packs.put(slug, 'private/audit/scorecard.json', pscore).catch(() => {});
       st.scorecard = { at: scorecard.at, overall: scorecard.overall, areas: scorecard.areas.map((a) => ({ k: a.k, score: a.score, grade: a.grade })) };
       const A = metered(box), gen = cardsGen ? cardsGen({ ai: A, log }) : null, written = [], errors = [];
+      const wk = weekKey(t); if (st.spend?.week !== wk) st.spend = { week: wk, usd: 0 };
+      let booked = 0; /* spend already written into st.spend this run */
+      const book = async () => { st.spend.usd = +((st.spend.usd || 0) + box.usd - booked).toFixed(4); booked = box.usd; await save(slug, st); };
       for (const family of families) {
+        if (stopping) { errors.push({ family, error: 'Brew is restarting; this family runs on the next instance' }); break; }
         if (box.usd >= cfg.weekCapUsd - spentThisWeek(st, t)) { errors.push({ family, error: 'weekly cap reached' }); break; }
         try {
           const have = await packs.getJSON(slug, 'moves.json', {});
@@ -503,8 +510,9 @@ export function createMovesScheduler({ packs, ai, memory = null, cardsGen = null
           if (pdfFor) for (const m of r.moves) await pdfFor(slug, m).catch((e) => log.warn?.('[moves-cadence] pdf', m.n, e.message));
           if (priv && PRIVATE_FAMILIES.includes(family)) await privateRun(slug, family, { A, gen, st, t, pack: { ...priv, scorecard: pscore }, pub: r, written }).catch((e) => { if (e.mock) throw e; errors.push({ family, private: true, error: e.message }); log.warn?.('[moves-cadence] private', slug, family, e.message); });
         } catch (e) { if (e.mock) { errors.push({ family, error: 'AI is on mock' }); break; } errors.push({ family, error: e.message }); log.warn?.('[moves-cadence]', slug, family, e.message); }
+        finally { await book().catch((e) => log.warn?.('[moves-cadence] save', slug, e.message)); } /* live, last and spend land after every family, not only at the end */
       }
-      const wk = weekKey(t); if (st.spend?.week !== wk) st.spend = { week: wk, usd: 0 }; st.spend.usd = +((st.spend.usd || 0) + box.usd).toFixed(4);
+      await book();
       st.runs = [{ at: t, manual, families, written: written.filter((w) => !w.private).map((w) => w.n), privWritten: written.filter((w) => w.private).map((w) => w.n), usd: +box.usd.toFixed(4), errors }, ...(st.runs || [])].slice(0, 20);
       st.runningAt = null; claimed = false; await save(slug, st);
       return { written: written.filter((w) => !w.private), privWritten: written.filter((w) => w.private), usd: +box.usd.toFixed(4), errors, scorecard: st.scorecard };
@@ -573,5 +581,5 @@ export function createMovesScheduler({ packs, ai, memory = null, cardsGen = null
   let timer = null;
   const start = () => { if (timer || cfg.killed || cfg.mock || cfg.local) { log.log?.(`[moves-cadence] weekly moves ${cfg.killed ? 'off (MOVES_REFRESH_OFF)' : cfg.mock ? 'off (AI mock)' : cfg.local ? 'off here (local)' : 'already on'}`); return false; }
     timer = setTimeout(function go() { tick().catch((e) => log.warn?.('[moves-cadence] tick', e.message)).finally(() => { timer = setTimeout(go, cfg.tickMs); timer.unref?.(); }); }, cfg.firstMs); timer.unref?.(); return true; };
-  return { cfg, tick, start, runOne, stateOf, due: dueOf, routes, retire, scorecardFor, busy: () => busy.size };
+  return { cfg, tick, start, stop, runOne, stateOf, due: dueOf, routes, retire, scorecardFor, busy: () => busy.size };
 }

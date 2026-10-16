@@ -27,7 +27,8 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { mergeLedger, diffLedgers, candidates, triage, changeLine, liveMaterial, handleOfItem, productNames, movesNaming, CONNECTED_MOVES } from './refresh.js';
 import { withLearned, briefView } from './brand-learnings.js';
 import { profileLive, withLive, settleWait, connectTargets } from './on-connect.js'; // what a real connected account corrects in the team's view
-import { briefWithConnected } from './brief.js'; // what the team told Brew survives a fresh brief
+import { briefWithConnected, cleanBrief, renderBrief } from './brief.js'; // what the team told Brew survives a fresh brief; a saved brief heals its "null" cells
+import { aiPaused } from './ai.js'; // a billing pause: the build says so and resumes, never writes a mock
 import { providerNow, geminiModel } from './gemini-client.js';
 import { KINDS, flagKind, runKind, potOf, potLeft, potAdd, potFit, perMove, capOf as potCapOf, nextWeek } from './rewrite-pot.js'; // one weekly rewrite budget a brand
 
@@ -71,6 +72,7 @@ export const storeOpened = (out) => out?.opened !== false && (out?.findings?.ste
    TRUSTED_PROXY_HOPS skips that many more trusted entries (1 behind a Google load balancer) */
 export const clientIp = (req, hops = +process.env.TRUSTED_PROXY_HOPS || 0) => { const xs = String(req?.headers?.['x-forwarded-for'] || '').split(',').map((x) => x.trim()).filter(Boolean); return xs.length ? xs[Math.max(0, xs.length - 1 - hops)] : String(req?.socket?.remoteAddress || ''); };
 const CONFIRM_WAIT = +process.env.BUILD_CONFIRM_WAIT_MS || 15 * 60e3; // the brief waits this long for "Check what we read", then goes with what was read
+const RETRY_MAX = +(process.env.BUILD_RETRY_MAX || 6); // tries for moves that failed twice before the brand is Ready without them
 
 export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = () => {}, onCards = () => {}, log = console, caps = {}, modules = null, signGate = () => false }) {
   const BUILD_CAP = +process.env.BUILD_CAP_USD || caps.build || 60; // every move at Opus medium effort with the shared brand cache: about $25-35
@@ -150,7 +152,9 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     /* the starter files go up together: one after another kept the person on the landing for 3-5s */
     await Promise.all([packs.put(slug, 'seed.json', skeletonSeed({ slug, host })), packs.put(slug, 'facts.json', {}), packs.put(slug, 'config.json', { countryName: '', questions: [], rivals: [] }),
       user ? packs.put(slug, 'private/created.json', { by: user.email, at: Date.now() }).catch(() => {}) : null]);
-    await setStatus(slug, { slug, host, url: /^https?:/.test(raw) ? raw : 'https://' + host, name: host, createdAt: Date.now(), stages: {}, ready: false, done: false, state: 'Reading the site', error: null, cancelled: null, freshRead: !!(prev && fresh), ...(prev?.seenAt ? { seenAt: prev.seenAt } : {}) });
+    await setStatus(slug, { slug, host, url: /^https?:/.test(raw) ? raw : 'https://' + host, name: host, createdAt: Date.now(), stages: {}, ready: false, done: false, state: 'Reading the site', error: null, cancelled: null, freshRead: !!(prev && fresh),
+      /* born: the brand's first read on Brew; a re-read keeps it, a wipe ends it, and a browser that saved another born forgets its onboarding */
+      born: prev?.born || Date.now(), ...(prev?.seenAt ? { seenAt: prev.seenAt } : {}) });
     packs.drop(slug); await onPack(slug);
     resume(slug).catch((e) => log.error('[build]', slug, e));
     return { slug, status: await status(slug) };
@@ -206,6 +210,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const m = await load(); await restoreSpend(slug); await loadDay();
     try {
       let s = await status(slug);
+      /* a new run clears the last one's error and retry note (list() hides a brand whose status keeps an error) */
+      if (s?.error || s?.retryMoves || s?.aiPausedAt) s = await setStatus(slug, { error: null, retryMoves: null, retryAt: null, aiPausedAt: null });
       /* 1. read the site */
       let profile = await packs.getJSON(slug, 'profile.json'), ledger = await packs.getJSON(slug, 'ledger.json', []), findings = await packs.getJSON(slug, 'findings.json');
       if (!profile) {
@@ -223,7 +229,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       } else { normalizeProfile(profile); await replayRead(slug, findings); await stage(slug, 'read', 'done', { cached: true }); }
       await publishBase(slug, profile, ledger, findings);
       s = await setStatus(slug, { name: profile.name || s.host, logo: profile.identity?.logo || null, state: 'Waiting for you to check what we read' });
-      instantCards(slug, profile, ledger).catch((e) => log.warn('[build] instant', e.message));
+      const instant = instantCards(slug, profile, ledger).catch((e) => log.warn('[build] instant', e.message)); /* awaited before the moves stage: it writes seed.json like cardsFor does, so the two never cross */
       emit(slug, { type: 'read-done' });
 
       /* 2. "Check what we read": wait for the brand's corrections (or move on) */
@@ -245,6 +251,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       await halt(slug);
       /* 3. the brand brief */
       let brief = await packs.getJSON(slug, 'brief.json');
+      if (brief) brief = await healBrief(slug, brief, profile);
       if (!brief) {
         if (!m.brief) throw new Error('brief writer not installed');
         if (await budgetPause(slug, 0)) return;
@@ -256,7 +263,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         await stage(slug, 'brief', 'done'); packs.drop(slug); await onPack(slug);
       }
 
-      await halt(slug);
+      await halt(slug); await instant;
       /* 4. the moves: wave A (know the brand) first, then the rest; each one becomes cards as it lands */
       if (!m.moves) throw new Error('moves engine not installed');
       const eng = m.moves.createMovesEngine({ ai, treg, log });
@@ -293,7 +300,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         onTotal: async (N, applicable) => { total = N; await setStatus(slug, { total: N, applicable }); },
         onStart: (n) => { x.inflight.set(n, Date.now()); x.failed.delete(n); emit(slug, { type: 'move-start', n }); },
         onFail: (n, e) => { x.inflight.delete(n); x.failed.set(n, { msg: String(e?.message || e).slice(0, 160), at: Date.now() }); emit(slug, { type: 'move-failed', n, msg: String(e?.message || e).slice(0, 160) }); } };
-      if (cache[21] && !(await status(slug))?.statics) staticsJob = makeStatics(slug, cache[21], profile, (fn) => (lock = lock.then(fn).catch((e) => log.warn('[build] statics card', e.message))));
+      if (cache[21] && staticsUnset((await status(slug))?.statics)) staticsJob = makeStatics(slug, cache[21], profile, (fn) => (lock = lock.then(fn).catch((e) => log.warn('[build] statics card', e.message))));
       let res = await eng.runAll(ctx, { concurrency: +process.env.MOVES_CONCURRENCY || 6, waveA: WAVE_A });
       // a move that failed gets one more pass once the rest are written (a cut-off reply, a busy model)
       if (!stopping && !capHit(slug) && (res.applicable || []).some((n) => !cache[n])) { await lock; log.warn('[build] second pass for', slug); res = await eng.runAll(ctx, { concurrency: 4, waveA: WAVE_A }); }
@@ -302,11 +309,27 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       if (await cancelled(slug)) { await setStatus(slug, { state: `Stopped. ${saved.size} of ${total} moves written.`, cancelled: true, error: 'cancelled' }); return; }
       if (stopping && (res.applicable || []).some((n) => !cache[n])) { await setStatus(slug, { state: `Brew is restarting; the rest of the moves carry on in a moment. ${saved.size} of ${total} written.` }); log.warn(`[build] ${slug}: stopping with ${saved.size} of ${total}, the next instance resumes`); return; } /* not done, not capped: resumeAll picks it up */
       if (await budgetPause(slug, saved.size)) return;
+      /* moves that failed twice (a cut-off reply, a busy model, the AI paused for credit) are not "Ready": the brand stays
+         unfinished and the hourly tick (autoRefresh) or the next boot (resumeAll) carries on, bounded by the build cap */
+      const missing = (res.applicable || []).filter((n) => !cache[n]);
+      /* bounded: after RETRY_MAX tries (a move that fails every time, not a busy minute) the brand is Ready with those moves
+         named as not written, instead of retrying all day; a billing pause never counts as a try */
+      const tries = (+(await status(slug))?.retryN || 0) + (aiPaused() ? 0 : 1);
+      if (missing.length && tries > RETRY_MAX) { log.warn(`[build] ${slug}: ${missing.length} moves still missing after ${RETRY_MAX} retries; marking Ready`); await setStatus(slug, { missingMoves: missing, retryN: null }); }
+      else if (missing.length) {
+        const why = aiPaused() ? 'AI is paused (credit); Brew carries on when it is back' : 'Brew retries within the hour';
+        await setStatus(slug, { state: `${missing.length} move${missing.length === 1 ? '' : 's'} still to write; ${why}. ${saved.size} of ${total} written.`, retryMoves: missing.length, retryN: tries, retryAt: Date.now(), error: null, ...(aiPaused() ? { aiPausedAt: Date.now() } : {}) });
+        log.warn(`[build] ${slug}: ${missing.length} moves still to write after two passes`); return;
+      }
       await stage(slug, 'moves', 'done');
       await pdfQueue;
-      await setStatus(slug, { done: true, ready: true, state: 'Ready', usd: +spentFor(slug).toFixed(2), doneAt: Date.now() });
+      await setStatus(slug, { done: true, ready: true, state: 'Ready', usd: +spentFor(slug).toFixed(2), doneAt: Date.now(), error: null, retryMoves: null, retryN: null, retryAt: null, aiPausedAt: null, ...(missing.length ? {} : { missingMoves: null }) });
       await notify(slug, 'all').catch((e) => log.warn('[notify]', e.message));
-    } catch (e) { if (e.cancelled) return; log.error('[build] failed', slug, e); await setStatus(slug, { state: 'Stopped: ' + e.message, error: e.message }); }
+    } catch (e) { if (e.cancelled) return;
+      /* the AI paused for credit (the brief, or anything before the moves): a pause, not a stop. No error (that hides the brand
+         and resumeAll skips it); the hourly tick carries on once the pause lifts */
+      if (e.billing) { log.warn('[build] AI paused', slug, e.message); await setStatus(slug, { state: 'Paused: the AI is paused (credit). Brew carries on when it is back.', aiPausedAt: Date.now(), retryAt: Date.now() }); return; }
+      log.error('[build] failed', slug, e); await setStatus(slug, { state: 'Stopped: ' + e.message, error: e.message }); }
     finally { x.running = false; await packs.put(slug, 'cost.json', { usd: +spentFor(slug).toFixed(3) }).catch(() => {}); setTimeout(() => drain(slug).catch((e) => log.warn('[rewrite] drain', e.message)), 0); /* learnings that arrived mid-build */
       upd(slug).then((u) => { if (u.connectRun) armConnect(slug, u.connectRun.due || 0); }).catch(() => {}); /* an account connected while the moves were being written */ }
   }
@@ -320,6 +343,17 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       for (const c of findings.cards.filter((c) => c.k === st.k)) { emit(slug, { type: 'reader', ev: { type: 'finding', k: st.k, i, finding: c, say: c.say } }); await wait(1400); }
       emit(slug, { type: 'reader', ev: { type: 'step', k: st.k, i, state: st.state === 'empty' ? 'empty' : 'done', done: st.done } }); await wait(300);
     }
+  }
+  /* a saved brief whose rows carry the word "null" (an empty MRP, price or note written by the model) is cleaned and its
+     page drawn again, once; the team's learnings section is laid in again as the build does (brief.js cleanBrief) */
+  async function healBrief(slug, brief, profile) {
+    const { brief: b, changed } = cleanBrief(brief); if (!changed) return brief;
+    try {
+      const told = await packs.getJSON(slug, 'learned.json', null).catch(() => null), md = renderBrief(b, b.at || new Date().toISOString().slice(0, 10));
+      await packs.put(slug, 'brief.json', b); await packs.put(slug, 'brief.md', told ? withLearned(md, told, { name: profile?.name }) : md);
+      packs.drop(slug); log.info?.(`[build] ${slug}: healed the brief's empty cells`);
+    } catch (e) { log.warn('[build] heal brief', slug, e.message); }
+    return b;
   }
   // prices as the brand writes them, on every product
   function normalizeProfile(p) {
@@ -343,13 +377,17 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     await packs.put(slug, 'seed.json', seed); await packs.put(slug, 'facts.json', facts); await packs.put(slug, 'config.json', cfg);
     packs.drop(slug); await onPack(slug);
   }
+  /* the statics job never finished: nothing saved, a failed set, or a "running" older than an hour (the instance that ran it
+     was replaced and the state never resolved) */
+  const STATICS_STALE_MS = 3600e3;
+  const staticsUnset = (s) => !s || s.state === 'failed' || (s.state === 'running' && Date.now() - (+s.at || 0) > STATICS_STALE_MS);
   // static ads from Move 21 (statics.js): about 8 images, then one batch card the brand can pick from
   function makeStatics(slug, move, profile, withLock, { priv = false } = {}) {
     if (!image || !mods.pdf?.launchBrowser) return Promise.resolve();
     if (priv) return makeTeamStatics(slug, move, profile, withLock);
     return held(async () => {
       if (capHit(slug)) return;
-      await setStatus(slug, { statics: { state: 'running' } });
+      await setStatus(slug, { statics: { state: 'running', at: Date.now() } });
       try {
         const p = await packs.load(slug);
         const { ids } = await createStatics({ ai, image, packs, launchBrowser: mods.pdf.launchBrowser, log }).make(slug, { move, profile, facts: p.facts });
@@ -358,8 +396,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
           const seed = await packs.getJSON(slug, 'seed.json', {});
           const card = { id: 'statics-batch', agent: 'creative', sector: 'creatives', type: 'idea', lane: Object.keys(seed.lanes || { core: 1 })[0], roles: ['brand', 'growth', 'founder'], src: 'Move 21 · static ads', time: '5 min', kind: 'media', origin: 'build',
             images: ids.map((id) => `b/${slug}/statics/${id}.jpg`), campaign: 'From your ad plan',
-            title: `${ids.length} ads from your ad plan, ready to review`, sub: `Each one puts a real ${profile.name} product photo in a new scene, with a headline from Move 21. Keep the ones you like and they go out together as one test.`,
-            detail: { why: ['Concepts come from the ad-creative move.', 'Every number on them is in your fact sheet.'], how: ['Open the set and keep or drop each ad.', 'Edit any of them in the studio.', 'Queue the kept ones as one test.'] }, cta: { label: 'Queue the ads' } };
+            title: `${ids.length} ads from your ad plan, ready to review`, sub: `Each one puts a real ${profile.name} product photo in a new scene, with a headline from Move 21. Keep the ones you like, jam on any of them, and download the batch for your team to run.`,
+            detail: { why: ['Concepts come from the ad-creative move.', 'Every number on them is in your fact sheet.'], how: ['Open the batch and keep or drop each ad.', 'Edit any of them in the studio.', 'Download the kept ones for your team to run.'] }, cta: { label: 'Open the batch' } }; /* Brew runs nothing: the batch opens in a jam and downloads for the team */
           seed.posts = [card, ...(seed.posts || []).filter((x) => x.id !== card.id)];
           await packs.put(slug, 'seed.json', seed); packs.drop(slug); await onPack(slug); onCards(slug, [card], { replace: true });
         });
@@ -571,9 +609,9 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       /* the one rival list, each with the freshest count of its live ads (pack-numbers.js rivals): the read and the stories say the same */
       rivals: (p.rivals || []).map((r) => { const x = N.rivals.find((y) => (r.host && y.host === r.host) || y.name === r.name); return { name: r.name, host: r.host, how: r.how || r.why || '', logo: r.logo || `https://www.google.com/s2/favicons?domain=${r.host}&sz=64`, prices: (r.prices || []).length, live: x?.live ?? null, liveAt: x?.at ? new Date(x.at).toISOString().slice(0, 10) : null, url: r.url || `https://${r.host}` }; }),
       sources: [
-        { key: 'adpage', label: 'Facebook page that runs your ads', v: own.page ? `${own.page} · ${(N.ownAds.n ?? 0).toLocaleString('en-IN')} live ads` : own.error ? 'Couldn’t check this time' : 'Not found', url: own.pageId ? `https://www.facebook.com/ads/library/?view_all_page_id=${own.pageId}` : null, hint: 'Paste your Facebook page link if this is wrong', found: !!own.page },
-        { key: 'instagram', label: 'Instagram', v: ig?.handle ? '@' + ig.handle : ig?.error ? 'Couldn’t check this time' : 'Not found', url: ig?.url || null, hint: 'Paste your Instagram profile link', found: !!ig?.handle },
-        { key: 'reviews', label: 'Reviews and ratings', v: reviewsCap(N)?.replace(/\.$/, '') || (N.reviews.n != null ? `${N.reviews.n.toLocaleString('en-IN')} reviews and ratings` : rv.error ? 'Couldn’t check this time' : 'No reviews found'), url: (rv.platforms || [])[0]?.url || null, hint: 'Paste the page where your reviews live (Judge.me, Loox, Amazon…)', found: N.reviews.n != null }
+        { key: 'adpage', label: 'Facebook page that runs your ads', v: own.page ? `${own.page} · ${(N.ownAds.n ?? 0).toLocaleString('en-IN')} live ads` : own.error || N.ownAds.error || p.meta?.errors?.ads ? 'Couldn’t check this time' : 'Not found', /* a failed ads stage is not "Not found" */ url: own.pageId ? `https://www.facebook.com/ads/library/?view_all_page_id=${own.pageId}` : null, hint: 'Paste your Facebook page link if this is wrong', found: !!own.page },
+        { key: 'instagram', label: 'Instagram', v: ig?.handle ? '@' + ig.handle : ig?.error || p.meta?.errors?.socials ? 'Couldn’t check this time' : 'Not found', /* a failed socials stage is not "Not found" */ url: ig?.url || null, hint: 'Paste your Instagram profile link', found: !!ig?.handle },
+        { key: 'reviews', label: 'Reviews and ratings', v: reviewsCap(N)?.replace(/\.$/, '') || (N.reviews.n != null ? `${N.reviews.n.toLocaleString('en-IN')} reviews and ratings` : N.reviews.error ? 'Couldn’t check this time' : 'No reviews found') /* N.reviews.error carries a failed or timed-out reviews stage (pack-numbers.js) */, url: (rv.platforms || [])[0]?.url || null, hint: 'Paste the page where your reviews live (Judge.me, Loox, Amazon…)', found: N.reviews.n != null }
       ],
       company: [
         { key: 'founders', label: 'Founders', v: (p.company?.founders || []).map((x) => (typeof x === 'string' ? x : x?.name)).filter(Boolean).join(', '), type: 'text', ...srcOf(L, ['company.founders', 'company.founder']) },
@@ -883,7 +921,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         const all = await packs.getJSON(slug, `${P}moves.json`, {}); all[n] = move; await packs.put(slug, `${P}moves.json`, all);
         emit(slug, { type: 'move', n, title: move.title, stat: move.stat, gives: move.gives, verified: !!move.meta?.verified, rewritten: true });
         if (n !== 0) { written.push({ n, title: move.title }); await cardsFor(slug, move, profile, { replace: true, priv }).catch((e) => log.warn('[rewrite] cards', n, e.message)); await editUpd(slug, (u) => { delete u.stale[n]; if (kind) { u.pot = potAdd(potOf(u), kind, book()); delete u.pot.waits[n]; } }); }
-        if (n === 21 && !priv && (await status(slug))?.statics?.state !== 'done') staticsJob = makeStatics(slug, move, profile, (fn) => (lock = lock.then(fn).catch((e) => log.warn('[rewrite] statics card', e.message))));
+        if (n === 21 && !priv && staticsUnset((await status(slug))?.statics)) staticsJob = makeStatics(slug, move, profile, (fn) => (lock = lock.then(fn).catch((e) => log.warn('[rewrite] statics card', e.message))));
         /* the team's rewrite of Move 21 makes the team's own set (once), kept private */
         if (n === 21 && priv && staticsDue(await packs.getJSON(slug, 'private/statics-state.json', null))) staticsJob = makeStatics(slug, move, profile, (fn) => (lock = lock.then(fn).catch((e) => log.warn('[rewrite] team statics card', e.message))), { priv: true });
         if (m.pdf && priv) pdfQ = pdfQ.then(() => renderPdf(slug, m.pdf, move, profile, { priv })).catch((e) => log.warn('[rewrite] pdf', n, e.message)); /* a member's private rewrite keeps its own PDF */
@@ -1228,6 +1266,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       const s0 = b.status;
       /* "it carries on tomorrow": a build paused for the day's shared budget picks up the next day, not only at the next restart */
       if (s0 && !s0.done && !s0.error && !s0.capped && !s0.cancelled && s0.pausedDay && s0.pausedDay < dayKey() && !st(b.slug).running && !blocked(b.slug)) { log.log(`[build] ${b.slug}: paused on ${s0.pausedDay} for the day's budget, carrying on`); resume(b.slug).catch((e) => log.error('[build] resume', b.slug, e.message)); continue; }
+      /* "Brew retries within the hour": moves that failed twice are written again on the next tick (not while the AI is paused for credit; the build cap bounds the tries) */
+      if (s0 && !s0.done && !s0.error && !s0.capped && !s0.cancelled && (s0.retryMoves || s0.aiPausedAt) && !aiPaused() && Date.now() - (+s0.retryAt || 0) > 30 * 60e3 && !st(b.slug).running && !blocked(b.slug)) { log.log(`[build] ${b.slug}: ${s0.retryMoves ? `${s0.retryMoves} moves still to write` : 'the AI pause lifted'}, trying again`); resume(b.slug).catch((e) => log.error('[build] resume', b.slug, e.message)); continue; }
       if (!autoOn || !s0?.done || s0.cancelled || blocked(b.slug)) continue;
       if (Date.now() - (s0.seenAt || s0.doneAt || 0) > 30 * 864e5) continue;
       const u = await upd(b.slug); if (u.auto === false) continue;
@@ -1279,11 +1319,20 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     await setStatus(slug, { total: Math.max(n, +s0.total || 0), movesDone: n, applicable: Object.keys(moves).map(Number).filter((k) => isPlay(k, moves[k])).sort((a, c) => a - c) });
   }
   async function resumeAll() { for (const sl of String(process.env.OPS_FRESH_RELOAD || '').split(',').map((x) => x.trim()).filter(Boolean)) freshReload(sl).catch((e) => log.error('[ops] fresh', sl, e.message));
-    for (const x of await packs.list()) { if (!x.status.done && !x.status.error && !x.status.capped) resume(x.slug).catch((e) => log.error('[build] resume', x.slug, e.message)); else { if (x.status.done) { rebase(x.slug).catch((e) => log.warn('[build] rebase', x.slug, e.message)); healPdfs(x.slug); healCount(x.slug).catch((e) => log.warn('[build] count', x.slug, e.message)); } resumeRewrite(x.slug).catch((e) => log.warn('[rewrite] resume', x.slug, e.message));
+    for (const x of await packs.list()) { if (!x.status.done && !x.status.error && !x.status.capped) resume(x.slug).catch((e) => log.error('[build] resume', x.slug, e.message)); else { if (x.status.done) { rebase(x.slug).catch((e) => log.warn('[build] rebase', x.slug, e.message)); healPdfs(x.slug); healCount(x.slug).catch((e) => log.warn('[build] count', x.slug, e.message)); restartStatics(x.slug).catch((e) => log.warn('[build] statics restart', x.slug, e.message)); } resumeRewrite(x.slug).catch((e) => log.warn('[rewrite] resume', x.slug, e.message));
       upd(x.slug).then((u) => { if (u.connectRun) armConnect(x.slug, u.connectRun.due || 0); if ((u.queue || []).some((q) => q.notBefore)) drain(x.slug).catch(() => {});
         if (u.connectDone && !u.connectDone.finished) setTimeout(() => settleConnect(x.slug).catch((e) => log.warn('[connect] settle', e.message)), 90e3); /* after resumeRewrite has had its turn */ }).catch(() => {});
       /* saved team views heal: a brief built from an older read of an account is built again from today's rows (free) */
       packs.getJSON(x.slug, 'private/connected-ledger.json', []).then((L) => realRows(L).length ? teamView(x.slug) : null).catch((e) => log.warn('[connect] team view', x.slug, e.message)); } } }
+  /* a statics job left "running" by an instance that went (older than an hour) is marked failed and started again from the saved Move 21 */
+  async function restartStatics(slug) {
+    if (blocked(slug)) return; const s0 = await status(slug); const sx = s0?.statics;
+    if (!sx || sx.state !== 'running' || Date.now() - (+sx.at || 0) <= STATICS_STALE_MS) return;
+    await setStatus(slug, { statics: { state: 'failed', err: 'cut off by a restart', at: Date.now() } });
+    await load(); const m21 = (await packs.getJSON(slug, 'moves.json', {}))?.[21], profile = await packs.getJSON(slug, 'profile.json', null); if (!m21 || !profile) return;
+    log.log(`[build] ${slug}: statics were cut off by a restart, starting again`);
+    let lock = Promise.resolve(); await makeStatics(slug, m21, normalizeProfile(profile), (fn) => (lock = lock.then(fn).catch((e) => log.warn('[build] statics card', e.message)))); await lock;
+  }
   /* Saved PDFs heal: when the PDF text rules change (PDF_V) the saved PDFs are forgotten and each is drawn again on its next
      download (pdfOn); entries for moves that no longer exist leave status.pdfs. Nothing is drawn ahead of time. */
   const PDF_V = 4; // 2: kickers without "OF N", "What to watch", BREW DRAFTS; 3: no "Brew re-reads / we pause", index without a count; 4: no source-method narration (brew-name.js unSkill) (2026-10-15)

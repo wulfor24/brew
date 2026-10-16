@@ -30,6 +30,8 @@ async function gql(c, query, variables) {
 export default {
   id: 'shopify', name: 'Shopify', modes: ['oauth', 'key'],
   ready: () => !!(app().id && app().secret),
+  /* a dead token (the app uninstalled, the token revoked or run out, a refresh refused): only connecting again fixes it */
+  expired: (e) => e?.status === 401 || /invalid.?(api )?(access )?token|invalid_grant|token (was )?(revoked|expired|has expired)|unauthorized|\[API\] Invalid API key/i.test(String(e?.message || '')),
   // one-click sign-in only once Shopify has reviewed squareup-prod (SHOPIFY_OAUTH=1); until then a brand pastes its own app's key
   oauthOn: () => process.env.SHOPIFY_OAUTH === '1',
   keyFields: [{ k: 'shop', label: 'Store address', hint: 'your-store.myshopify.com' }, { k: 'clientId', label: 'Client ID', hint: 'From your app in the Shopify Dev Dashboard', optional: true }, { k: 'clientSecret', label: 'Client secret', secret: true, optional: true }, { k: 'token', label: 'Or an Admin API access token', hint: 'shpat_…, from a custom app in your Shopify admin', secret: true, optional: true }],

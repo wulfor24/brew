@@ -14,12 +14,14 @@ const fmt = (n) => Number(n).toLocaleString('en-US');
 /* the walk reached the checkout page (siteFailed in reader/index.js reads it the same way) */
 const reachedOf = (co = {}) => !co.error && (co.walk || []).some((s) => s.step === 'Checkout entry' && s.ok);
 const MKT = /amazon|flipkart|nykaa|myntra|walmart|target|etsy|ebay|blinkit|zepto|meesho|purplle|tira|google/i;
+/* the reviews stage failed or timed out and read nothing: its part is left out (never 0 of 15), and the ring says so */
+const reviewsErr = (p = {}) => !(p.reviews?.platforms || []).length && p.reviews?.total == null && (p.reviews?.error || p.meta?.errors?.reviews) || null;
 
 /* the inputs a ring reads: a saved score whose key differs is worked out again at load, so it never quotes an old read */
 export function healthKey(N, p = {}) {
   const co = p.site?.checkout || {}, ps = p.site?.pagespeed || {};
   return [N.ownAds.n ?? (N.ownAds.error ? 'err' : '-'), `${N.rivalAds.n}/${N.rivalAds.read}`, `${N.ai.named ?? '-'}/${N.ai.of ?? '-'}`, N.products.n ?? '-',
-    co.v ? `${reachedOf(co) ? 1 : 0}${co.clicks ?? ''}${co.guest ?? ''}${(co.payments || []).length}` : '-', ps.score ?? (ps.error ? 'err' : '-'), p.reviews?.total ?? '-', p.ads?.at || '-'].join('|');
+    co.v ? `${reachedOf(co) ? 1 : 0}${co.clicks ?? ''}${co.guest ?? ''}${(co.payments || []).length}` : '-', ps.score ?? (ps.error ? 'err' : '-'), p.reviews?.total ?? (reviewsErr(p) ? 'err' : '-'), p.ads?.at || '-'].join('|');
 }
 
 /* Google PageSpeed for the home page, as a phone. Free, but it needs an API key (keyless calls get 429). A failure is kept as { error }, never a score */
@@ -36,7 +38,7 @@ export async function pageSpeed(url, { key = process.env.PAGESPEED_API_KEY, fetc
 
 function creative(p, N, fix) {
   const own = N.ownAds, items = p.ads?.own?.items || [], live = own.n;
-  if (live == null) return { k: 'Creative', v: 0, read: false, what: own.error ? 'Your ads couldn’t be read this time; the next refresh tries again' : 'Not read yet', parts: [], src: 'Meta Ad Library' };
+  if (live == null) return { k: 'Creative', v: 0, read: false, what: own.error || p.meta?.errors?.ads ? 'Your ads couldn’t be read this time; the next refresh tries again' : 'Not read yet', parts: [], src: 'Meta Ad Library' }; /* a whole ads stage that failed is not "not read yet" */
   if (!live) { fix.push(['Creative', `No live ads were found in the Meta Ad Library for ${own.page || p.name || 'this brand'}.`]);
     return { k: 'Creative', v: 0, read: true, what: `No live ads in the Meta Ad Library${own.page ? ` for ${own.page}` : ''}`, parts: [{ k: 'Live ads', v: 0, of: 100, note: '0 live' }], src: 'Meta Ad Library' }; }
   /* public ads show activity, not results: volume against the brand's own rivals, how many different hooks it tests and
@@ -70,11 +72,12 @@ function storefront(p, fix) {
     if (thin) fix.push(['Storefront', `${thin} product${thin === 1 ? ' has' : 's have'} one photo or none. Add angles so shoppers and catalog ads can trust them.`]); }
   /* reviews on the brand's own site only: marketplace reviews are not on the store */
   const pl = p.reviews?.platforms || [], onSite = pl.filter((x) => !MKT.test(x.name || '')), rv = pl.length ? onSite.reduce((a, x) => a + (+x.count || 0), 0) : +p.reviews?.total || 0;
-  if (p.reviews) { sp.push(['Reviews on the site', rv >= 100 ? 15 : rv > 0 ? 8 : 0, 15, rv ? `${fmt(rv)} on the site${pl.some((x) => MKT.test(x.name || '')) ? ' (marketplaces not counted)' : ''}` : 'no reviews on the site']);
+  const rvErr = reviewsErr(p);
+  if (p.reviews && !rvErr) { sp.push(['Reviews on the site', rv >= 100 ? 15 : rv > 0 ? 8 : 0, 15, rv ? `${fmt(rv)} on the site${pl.some((x) => MKT.test(x.name || '')) ? ' (marketplaces not counted)' : ''}` : 'no reviews on the site']);
     if (!rv) fix.push(['Storefront', 'No reviews were found on the site. Ask for one after delivery.']); }
-  if (!sp.length) return { k: 'Storefront', v: 0, read: false, what: 'Not read yet', parts: [], src: 'the site read' };
+  if (!sp.length) return { k: 'Storefront', v: 0, read: false, what: rvErr || p.meta?.errors?.site ? 'The store couldn’t be read this time; the next refresh tries again' : 'Not read yet', parts: [], src: 'the site read' };
   const got = sp.reduce((a, x) => a + x[1], 0), max = sp.reduce((a, x) => a + x[2], 0);
-  return { k: 'Storefront', v: clamp((100 * got) / max), read: true, what: `From ${p.host || 'your store'}: ${sp.map((x) => x[0].toLowerCase()).join(', ')}`,
+  return { k: 'Storefront', v: clamp((100 * got) / max), read: true, what: `From ${p.host || 'your store'}: ${sp.map((x) => x[0].toLowerCase()).join(', ')}${rvErr ? '; reviews couldn’t be read this time, the next refresh tries again' : ''}`,
     parts: sp.map(([k, v, of, note]) => ({ k, v: Math.round(v), of, note })), src: [ps?.score != null && `Google PageSpeed (${ps.at})`, reached && 'the checkout walk', 'the site read'].filter(Boolean).join(', ') };
 }
 

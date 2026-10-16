@@ -60,13 +60,21 @@ export function createSlooshAuth({ packs, vault, auth, log = console, fetchImpl 
     await save({ ...t, client_id: c.client_id, client_secret: c.client_secret || null, redirect, workspace: null, connectedBy: me?.email || 'local', at: Date.now(), refreshedAt: null });
     return memo;
   }
-  /* the MCP client calls this before every request; { force } after a 401 */
+  /* the MCP client calls this before every request; { force } after a 401. One refresh at a time: several calls that find the
+     token short-lived (or that all got a 401 at once) share the same in-flight refresh, so a refresh token is never spent twice. */
+  let refreshing = null;
   async function tokenFor({ force = false } = {}) {
     const c = await load(); if (!c?.token) throw Object.assign(new Error('Brew is not connected to Sloosh yet. Brew staff connect it from the ops page.'), { off: true });
     if (!force && c.exp - Date.now() > 10 * 60e3) return c.token;
+    if (refreshing) return refreshing;
+    if (force && c.refreshedAt && Date.now() - c.refreshedAt < 5e3) return c.token; /* a refresh just landed: the 401 was on the old token */
     if (!c.refresh) throw Object.assign(new Error('Sloosh needs Brew staff to reconnect: the sign-in ran out and there is no refresh token.'), { expired: true });
-    try { const t = await tokenRequest({ grant_type: 'refresh_token', refresh_token: c.refresh, client_id: c.client_id, ...(c.client_secret ? { client_secret: c.client_secret } : {}) }, { fetchImpl }); await save({ ...c, ...t, refreshedAt: Date.now() }); return memo.token; }
-    catch (e) { log.warn('[sloosh] refresh failed', e.message); throw Object.assign(new Error('Sloosh needs Brew staff to reconnect: the refresh was refused.'), { expired: true, cause: e }); }
+    refreshing = (async () => {
+      try { const t = await tokenRequest({ grant_type: 'refresh_token', refresh_token: c.refresh, client_id: c.client_id, ...(c.client_secret ? { client_secret: c.client_secret } : {}) }, { fetchImpl }); await save({ ...c, ...t, refreshedAt: Date.now() }); return memo.token; }
+      catch (e) { log.warn('[sloosh] refresh failed', e.message); throw Object.assign(new Error('Sloosh needs Brew staff to reconnect: the refresh was refused.'), { expired: true, cause: e }); }
+      finally { refreshing = null; }
+    })();
+    return refreshing;
   }
   async function setWorkspace(ws) { const c = await load(); if (c) await save({ ...c, workspace: ws || c.workspace }); }
   async function status() { const c = await load(); return c?.token ? { connected: true, workspace: c.workspace || null, scope: c.scope, connectedBy: c.connectedBy, at: c.at, refreshedAt: c.refreshedAt, exp: c.exp } : { connected: false }; }

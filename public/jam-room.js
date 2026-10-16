@@ -13,6 +13,8 @@
   const W = () => { const p = DPx(); return p?._work || null; };
   /* real people. The demo site keeps the simulated teammates (Dummy); everywhere else @ means a real person on the team */
   const DEMO = !!window.BREW_DEMO;
+  /* Brew's own lines: the Brew mark (the live site has no fictional pod); the demo keeps its letter */
+  const brewMark = (px) => (!DEMO && A.brewAv ? A.brewAv(px) : `<span class="av pod-av" style="width:${px}px;height:${px}px">B</span>`);
   const ME = () => window.LIVE?.me || window.LIVE?.user || null;
   const myEmail = () => String(ME()?.email || '').toLowerCase();
   const shortName = (p) => String(p?.name || p?.email || 'Someone').trim().split(/\s+/)[0].replace(/@.*/, '');
@@ -83,7 +85,7 @@
     if (!DEMO) { const here = new Set((JM.here?.[w?.id] || []).map((x) => x.email)); (w?.people || []).forEach((x) => out.push({ html: `${pAv(x, 24)}${here.has(x.email) ? '<i class="jm-here" title="Here now"></i>' : ''}`, t: `${pName(x)}${x.email === myEmail() ? ' (you)' : ''}${here.has(x.email) ? ' · here now' : ''}` })); return out; }
     const names = new Set(); (w?.thread || []).forEach((m) => { if (m.from === 'colleague' && m.who) names.add(m.who); }); if (w?.with?.kind === 'team') names.add(w.with.name);
     names.forEach((n) => { const c = A.B.colleagues.map((x) => A.colleague(x.id)).find((x) => x.name === n || x.role === n) || { ini: n.slice(0, 2).toUpperCase(), color: '#666' }; out.push({ html: avatar(c, 24), t: n }); });
-    if (w?.with?.kind === 'brew' || (w?.thread || []).some((m) => m.from === 'brew')) out.push({ html: '<span class="av pod-av" style="width:24px;height:24px">B</span>', t: 'ShopOS team' });
+    if (w?.with?.kind === 'brew' || (w?.thread || []).some((m) => m.from === 'brew')) out.push({ html: brewMark(24), t: 'ShopOS team' });
     return out;
   };
   /* Brew's replies read as a short document: **bold**, "## heading" or a lone **line** as a heading, "1." and "-" lists */
@@ -102,7 +104,7 @@
     const tagged = (body) => { let h = esc(body); for (const x of [...realPeople(w), ...(DEMO ? [] : [SHOPOS])]) h = h.replace(new RegExp(`(^|\\s)@${x.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=$|[\\s,.:;!?])`, 'gi'), (all, sp) => `${sp}<b class="jm-tag">@${esc(x.name)}</b>`); return h; };
     if (m.from === 'me' && m.by && m.by.email !== myEmail()) return `<div class="jm-m">${pAv(m.by, 26)}<div class="jm-mb"><small>${esc(pName(m.by))}</small><div class="jm-bub">${tagged(m.body)}</div>${edited}</div></div>`; /* a teammate's message */
     if (m.from === 'me') return `<div class="jm-m me"><div class="jm-bub">${tagged(m.body)}</div>${edited}</div>`;
-    const who = m.from === 'ai' ? `<span class="jm-fav">${face(w.agent && w.agent !== 'brew' ? w.agent : 'creative')}</span>` : m.from === 'colleague' ? avatar(A.B.colleagues.map((x) => A.colleague(x.id)).find((x) => x.name === m.who || x.role === m.who) || { ini: (m.who || '?').slice(0, 2).toUpperCase(), color: '#666' }, 26) : '<span class="av pod-av" style="width:26px;height:26px">B</span>';
+    const who = m.from === 'ai' ? `<span class="jm-fav">${face(w.agent && w.agent !== 'brew' ? w.agent : 'creative')}</span>` : m.from === 'colleague' ? avatar(A.B.colleagues.map((x) => A.colleague(x.id)).find((x) => x.name === m.who || x.role === m.who) || { ini: (m.who || '?').slice(0, 2).toUpperCase(), color: '#666' }, 26) : brewMark(26);
     return `<div class="jm-m">${who}<div class="jm-mb"><small>${esc(m.who || (m.from === 'ai' ? AGENT[w.agent] || 'AI' : 'Brew'))}${m.via === 'slack' ? ` · in Slack${w.slack?.name ? ` ${esc(w.slack.name)}` : ''}` : m.from === 'colleague' && w.with?.channel ? ` · ${esc(w.with.channel)}` : ''}${m.from === 'colleague' && !m.real ? '<span class="dummy-tag" title="A simulated teammate reply">Dummy</span>' : ''}</small><div class="jm-bub${m.from === 'ai' ? ' is-md' : ''}">${m.from === 'ai' ? mdLite(m.body) : esc(m.body)}</div>${edited}${m.pending && w?.pending?.id === m.pending ? `<div class="jm-pending" data-pend="${esc(m.pending)}"><button class="btn btn-primary sm" data-pend-go>${w.pending.kind === 'make' ? 'Make it' : 'Make this change'}</button><button class="btn btn-ghost sm" data-pend-no>Not now</button></div>` : ''}</div></div>`;
   };
   const questions = (w) => {
@@ -123,7 +125,7 @@
   const mentionMatches = () => { if (JM.noMention) return []; const m = JM.draft.match(AT_RE); return m ? atFilter(m[2]) : []; };
   /* emails typed after @ that aren't anyone on the team yet: invited when the message goes */
   const freshIn = (text) => { const known = new Set(realPeople().map((x) => x.email)); return [...new Set([...String(text).matchAll(/(^|\s)@([^\s@]+@[^\s@,;:!?]+\.[a-z]{2,})/gi)].map((m) => m[2].toLowerCase()))].filter((e) => !known.has(e) && e !== myEmail()); };
-  const SHOPOS = { k: 'brew', name: 'ShopOS team', sub: 'Gets an email to join', html: '<span class="av pod-av" style="width:20px;height:20px">B</span>' };
+  const SHOPOS = { k: 'brew', name: 'ShopOS team', sub: 'Gets an email to join', html: brewMark(20) };
   const mentionList = () => (DEMO ? [...A.B.colleagues.map((x) => A.colleague(x.id)).map((c) => ({ k: c.id, name: c.name, sub: c.role !== c.name ? c.role : '', html: avatar(c, 20) }))] : [...realPeople(), SHOPOS]);
   const shoposIn = (text) => /(^|\s)@shopos team(?=$|[\s,.:;!?])/i.test(text);
   const pName = (p) => `${p?.staff ? 'ShopOS team · ' : ''}${p?.name || p?.email || 'Someone'}`; /* a shopos.ai account shows as the ShopOS team */
@@ -167,7 +169,7 @@
   const draftHtml = (d, w = null) => {
     const lab = AS[d.as] || ['sparkles', 'Draft'];
     /* a final (made by Sloosh, or simulated on the demo site) carries its kicker; a ready image or video draft offers Make the final */
-    const fin = d.final ? `<span class="jm-dr-final">Final${d.dummy ? ' · Dummy' : ''}</span>` : '';
+    const fin = d.final ? `<span class="jm-dr-final">Final${d.dummy ? ' · Dummy' : d.provider === 'gemini' ? ' · Gemini' : ''}</span>` : '';
     const mk = w && d.state === 'ready' && !d.failed && ['image', 'video'].includes(d.as) && (d.image || d.video) ? `<button class="linkbtn" data-jm-final="${esc(d.id)}" data-wid="${esc(w.id)}">${ic('sparkles', 's14')}${d.final ? 'Revise the final' : 'Make the final'}</button>` : '';
     const ck = w && d.state === 'checkpoint' ? `<div class="jm-dr-ck"><span>${esc(d.step || 'The Space is waiting for a yes')}</span><button class="btn btn-primary sm" data-jm-fnck="${esc(d.id)}" data-wid="${esc(w.id)}" data-ok="1">Carry on</button><button class="btn btn-ghost sm" data-jm-fnck="${esc(d.id)}" data-wid="${esc(w.id)}" data-ok="0">Stop</button></div>` : '';
     const media = d.state === 'making' ? `<div class="jm-dr-mk"><span class="spin"></span><span>${esc(d.step || 'Making it')}…</span></div>`
@@ -263,7 +265,7 @@
     const p = DPx(), m = (JM.moves[p?.id] || []).find((x) => x.n === +n); if (!m) return;
     const tag = (x) => `Move ${String(m.n).padStart(2, '0')} · ${x}`;
     A.modal(`<div class="sheet mv-sheet"><button class="icon-btn rx-close" data-close aria-label="Close">${ic('x', 's18')}</button>
-      <small class="mv-k">Move ${String(m.n).padStart(2, '0')} of 50 · Brew × ${esc(BNAME())}</small><h2>${esc(m.title)}</h2>
+      <small class="mv-k">Move ${String(m.n).padStart(2, '0')}${(() => { const N = +A.movesTotal?.() || 0; return N && m.n <= N ? ` of ${N}` : ''; })()} · Brew × ${esc(BNAME())}</small><h2>${esc(m.title)}</h2>
       ${m.stat ? `<p class="mv-stat"><b>${esc(m.stat)}</b> ${esc((m.statLabel || '').toLowerCase())}</p>` : ''}
       ${m.gives ? `<section><h4>What it gives ${esc(BNAME())}</h4><p data-sel-from="${esc(tag('What it gives'))}">${esc(m.gives)}</p></section>` : ''}
       ${m.live ? `<section><h4>Live 30 days after we start</h4><p>${esc(m.live)}</p></section>` : ''}
@@ -292,8 +294,10 @@
       const r = await A.tapi('POST', `/api/work/${w.id}/message`, { body: text, mentions: tags, invite, shopos: toShopos }); JM.busy = '';
       if (r.invited?.length && window.LIVE?.access) window.LIVE.access.invited = [...new Set([...(window.LIVE.access.invited || []), ...r.invited])]; /* they show in the @ list from now on */
       if (r.error) { JM.draft = text; toast(esc(r.error)); return paint(); }
-      const names = [...(r.tagged || []).map((e) => realPeople().find((x) => x.email === e)?.name || e), ...(toShopos ? ['The ShopOS team'] : [])];
-      if (names.length) toast(`${ic('send', 's16')}${esc(names.join(', '))} will get an email`); return take(r.work); }
+      const names = (r.tagged || []).map((e) => realPeople().find((x) => x.email === e)?.name || e);
+      /* tagged teammates are emailed right away; the ShopOS team's email is at most once per jam an hour, so only say it's tagged */
+      const said = [names.length ? `${names.join(', ')} will get an email` : '', toShopos ? 'The ShopOS team is tagged' : ''].filter(Boolean);
+      if (said.length) toast(`${ic('send', 's16')}${esc(said.join('. '))}`); return take(r.work); }
     if (target && DEMO) {
       if (!A.conn('slack')) { JM.draft = text; return A.openConnect('slack', { then: () => send(text), why: 'Your teammate answers in Slack. Replies land in the jam and the brief.' }); }
       JM.busy = 'team'; paint();

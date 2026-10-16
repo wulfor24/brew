@@ -11,13 +11,15 @@ const SPACES_TTL = 24 * 3600e3;
 
 /* ---------- shared by the jam and the studio: the sheet's status and a spec from the body ---------- */
 export function createFinalsSheet({ finals, sloosh, references = null, creditsLeft = () => null, brandOfT, log = console, now = () => Date.now() }) {
-  let spacesMemo = null;
-  const spacesList = async () => { if (spacesMemo && now() - spacesMemo.at < SPACES_TTL) return spacesMemo.list; const list = await sloosh.listSpaces().catch((e) => { log.warn('[finals] list_spaces', e.message); return []; }); spacesMemo = { at: now(), list }; return list; };
+  let spacesMemo = null; /* list_spaces gives one page: pageSize 50 (the schema's maximum, through the `limit` alias) so every pinned Space is offered */
+  const spacesList = async () => { if (spacesMemo && now() - spacesMemo.at < SPACES_TTL) return spacesMemo.list; const list = await sloosh.listSpaces({ limit: 50 }).catch((e) => { log.warn('[finals] list_spaces', e.message); return []; }); spacesMemo = { at: now(), list }; return list; };
   const brandFacts = (t) => { const b = brandOfT(t) || {}; const pr = b.config?.product || {}; return { name: b.seed?.brand?.name || b.name || '', noun: pr.noun, style: pr.style, avoid: pr.avoid, editorial: pr.editorial, colors: b.seed?.brand?.colors || b.profile?.identity?.colors || [] }; };
   /* the real photos a final can stand on: the ones given first, the product the card names, the card's own, the catalog lead */
   const photosOf = (t, c, extra = []) => { const b = brandOfT(t) || {}, cat = b.catalog || []; const named = c ? cardProduct(c, cat, { brand: b.seed?.brand?.name || '' }) : null;
     const rels = [...new Set([...extra, named?.img, ...(c?.images || []), c?.img, ...cat.slice(0, 12).map((x) => x.img)].filter((x) => x && typeof x === 'string' && !/^\/?gen\//.test(x) && !/statics\//.test(x)))];
-    return rels.slice(0, 16).map((rel) => { const p = cat.find((x) => x.img === rel); return { url: rel, label: p?.t || p?.title || named?.t || c?.title || 'Product photo', job: 'product', named: rel === named?.img }; }); };
+    /* a rival ad card ("Make our version"): their ad is offered as the look (image 2), never as a product photo */
+    return rels.slice(0, 16).map((rel) => { if (/^\/?research\//.test(rel)) return { url: rel, label: `${String(c?.title || 'The rival').split(':')[0]}'s ad (the look)`, job: 'style', keep: 'copy its layout, crop, light, colours and where the words sit; take nothing else from it', look: true };
+      const p = cat.find((x) => x.img === rel); return { url: rel, label: p?.t || p?.title || named?.t || c?.title || 'Product photo', job: 'product', named: rel === named?.img }; }); };
   async function status(t, { slug, kind = 'image', format = '', photos = [], draft = null, pending = null }) {
     const st = await finals.status(); const fam = familyOf(format, kind);
     const spaces = st.ok && !st.dummy ? matchSpaces(await spacesList(), fam).map((s) => ({ id: s.spaceId || s.id, name: s.title || s.name, about: s.description || '', output: (s.outputTypes || []).join('/') || null, credits: null })) : [];
@@ -26,7 +28,7 @@ export function createFinalsSheet({ finals, sloosh, references = null, creditsLe
   }
   /* base: what the draft or version already says; b: what the sheet sent */
   function spec(t, base, b = {}) { const kind = base.kind === 'video' ? 'video' : 'image';
-    const refs = (Array.isArray(b.refs) ? b.refs : []).filter((r) => r && (r.url || r.file || r.id)).slice(0, 30).map((r) => ({ id: r.id, url: r.url || r.file, job: r.job || 'other', label: String(r.label || '').slice(0, 80), keep: String(r.keep || '').slice(0, 160), kind: r.kind }));
+    const refs = (Array.isArray(b.refs) ? b.refs : []).filter((r) => r && (r.url || r.file || r.id)).slice(0, 20).map((r) => ({ id: r.id, url: r.url || r.file, job: r.job || 'other', label: String(r.label || '').slice(0, 80), keep: String(r.keep || '').slice(0, 160), kind: r.kind }));
     const text = kind === 'image' ? (Array.isArray(b.text) ? b.text : b.text != null ? [b.text] : base.text ? [base.text] : []).map((x) => (typeof x === 'string' ? x : x?.words || '')).map((x) => x.trim()).filter(Boolean).slice(0, 4) : [];
     const brand = brandFacts(t), visual = String(b.visual ?? base.visual ?? '').slice(0, 900);
     return { kind, title: base.title, visual, scene: base.scene || '', text, refs, ratio: base.ratio || (kind === 'video' ? '9:16' : '4:5'), seconds: +b.seconds || base.seconds || 6, sound: !!b.sound, motion: base.motion, beats: base.beats || [],
@@ -64,7 +66,7 @@ export function createFinalsRoutes({ on, W, say, meOf, slugOfT, brandOfT, cardOf
         else { Object.assign(fd, { state: 'ready', step: null, runKey: rec.runKey, [spec.kind === 'video' ? 'video' : 'image']: rec.file, link: rec.link || null, assetId: rec.assetId || null, credits: rec.charged ?? rec.credits, dummy: !!rec.dummy, fallback: !!rec.fallback, provider: rec.provider || 'sloosh', outputs: rec.outputs || null });
           if (spec.kind === 'video' && d.image) fd.image = d.image; /* the draft's still as the poster */
           say(t, w, { from: 'ai', who: 'Brew', body: rec.dummy ? 'The final is here (simulated on this site).' : rec.provider === 'gemini' ? `The final is here, made with Gemini (Sloosh not ready: ${q.fallbackWhy || 'no credits yet'}).` : `The final is here: ${rec.charged ?? rec.credits} credits on ${q.space ? q.space.name || 'the Space' : q.label || q.model}.`, noMirror: true }); onReady(t, w, fd); }
-      } catch (e) { Object.assign(fd, { state: 'ready', err: e.message, step: null, failed: true }); log.warn('[finals] run', slug, e.message); say(t, w, { from: 'ai', who: 'Brew', body: `The final didn’t come through: ${e.message}`, noMirror: true }); }
+      } catch (e) { Object.assign(fd, { state: 'ready', err: e.message, step: null, failed: !e.open, open: !!e.open, runKey: e.rec?.runKey || fd.runKey || null }); log.warn('[finals] run', slug, e.message); say(t, w, { from: 'ai', who: 'Brew', body: e.open ? e.message : `The final didn’t come through: ${e.message}`, noMirror: true }); } /* e.open: Sloosh may still be making it; the record stays running and reconcileAll collects it after the next restart */
       w.updatedAt = now(t); save(t); })();
     return { work: true, draftId: fd.id }; });
 

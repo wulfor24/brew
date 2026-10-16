@@ -113,3 +113,63 @@ test('Spaces are matched to a family by name, best first, at most three', () => 
   assert.deepEqual(matchSpaces(list, 'single image ad').map((s) => s.spaceId), [2, 3, 'sp_d3b3f14d-d7e3-4caf-bdfd-35a1aa979562']); assert.deepEqual(matchSpaces(list, 'ugc').map((s) => s.spaceId), [1]);
   assert.equal(familyOf('single image ad'), 'single image ad'); assert.equal(familyOf('reel'), 'reel'); assert.equal(familyOf('ugc video'), 'ugc'); assert.equal(familyOf('', 'video'), 'reel');
 });
+
+test('an imported asset belongs to the workspace that imported it: another workspace (or an old entry with no ws) imports again', async () => {
+  const R = rig(); await R.F.quote('cozy', spec); assert.equal(R.calls.filter((c) => c[0] === 'import').length, 1);
+  const cache = R.files.get('cozy/private/sloosh-assets.json'); const key = Object.keys(cache)[0]; assert.equal(cache[key].ws, 'org_1');
+  R.files.set('cozy/private/sloosh-assets.json', { [key]: { ...cache[key], ws: 'org_other' } }); R.F.forget(); await R.F.quote('cozy', spec); assert.equal(R.calls.filter((c) => c[0] === 'import').length, 2);
+  R.files.set('cozy/private/sloosh-assets.json', { [key]: { ...cache[key], ws: undefined } }); R.F.forget(); await R.F.quote('cozy', spec); assert.equal(R.calls.filter((c) => c[0] === 'import').length, 3);
+  R.F.forget(); await R.F.quote('cozy', spec); assert.equal(R.calls.filter((c) => c[0] === 'import').length, 3); /* re-imported into org_1: cached again */
+});
+
+test('a Gemini final is never the raw product photo: a guard stand-in fails the run, charges nothing, and no clip is made on it', async () => {
+  const standIn = Object.assign(Buffer.from('REALPHOTO'), { guard: { fallback: true, genFailed: true, product: 'Hush Mask' } });
+  const clips = []; const R = rig({ connected: false, gemini: async () => standIn, video: async () => { clips.push(1); return Buffer.from('MP4'); } });
+  const q = await R.F.quote('cozy', spec); assert.equal(q.provider, 'gemini');
+  await assert.rejects(R.F.run('cozy', spec, { quote: q, target: { chid: 'g' } }), /Gemini could not keep the product as photographed\. Try again, or wait for Sloosh\./);
+  const rec = (await R.F.list('cozy'))[0]; assert.equal(rec.state, 'failed'); assert.equal(rec.charged, 0); assert.equal(rec.provider, 'gemini'); assert.equal(rec.guard.fallback, true); assert.equal(R.saved.length, 0);
+  const qv = await R.F.quote('cozy', { ...spec, kind: 'video' }); await assert.rejects(R.F.run('cozy', { ...spec, kind: 'video' }, { quote: qv, target: { chid: 'gv' } }), /could not keep the product/); assert.equal(clips.length, 0);
+  assert.equal(R.budget.left('cozy').credits.used, 0);
+});
+
+test('a refused generate charges no share and says failed; the same spec again gets a fresh quote and spends once', async () => {
+  const R = rig(); let refuse = true; const gen = R.sloosh.generate; R.sloosh.generate = async (o) => { if (refuse) { refuse = false; R.calls.push(['generate', o]); throw new Error('quote_expired'); } return gen(o); };
+  const q = await R.F.quote('cozy', spec);
+  await assert.rejects(R.F.run('cozy', spec, { quote: q, target: { chid: 'r' } }), /Sloosh did not start this one \(quote_expired\)\. Nothing was charged; ask for a fresh quote\./);
+  const rec = (await R.F.list('cozy'))[0]; assert.equal(rec.state, 'failed'); assert.equal(rec.charged, 0); assert.equal(R.budget.left('cozy').credits.used, 0);
+  const q2 = await R.F.quote('cozy', spec); const r2 = await R.F.run('cozy', spec, { quote: q2, target: { chid: 'r' } }); assert.equal(r2.state, 'done'); assert.equal(r2.runKey, rec.runKey);
+  assert.equal(R.budget.left('cozy').credits.used, 3); assert.equal(R.calls.filter((c) => c[0] === 'generate').length, 2);
+  /* a share already used up is refused before Sloosh is asked, and nothing moves */
+  const R2 = rig(); R2.budget.spend('credits', 'cozy', 5); const q3 = { ...(await R.F.quote('cozy', spec)), at: Date.now() }; await assert.rejects(R2.F.run('cozy', spec, { quote: q3, target: { chid: 'x' } }), (e) => e.budget === true); assert.equal(R2.calls.filter((c) => c[0] === 'generate').length, 0);
+});
+
+test('any Sloosh quote failure on an image ends as a Gemini quote with the reason; a video or a Space keeps Sloosh’s error', async () => {
+  const gemini = async () => Buffer.from('G');
+  const R = rig({ gemini }); R.sloosh.quoteGeneration = async () => { throw new Error('Sloosh quote_generation: insufficient balance (402)'); };
+  const q = await R.F.quote('cozy', spec); assert.equal(q.provider, 'gemini'); assert.match(q.fallbackWhy, /cannot pay for this yet \(.*insufficient balance/);
+  R.sloosh.quoteGeneration = async () => { throw new Error('Sloosh quote_generation: asset not found'); }; assert.match((await R.F.quote('cozy', spec)).fallbackWhy, /cannot pay for this yet/);
+  R.sloosh.quoteGeneration = async () => { throw new Error('Sloosh MCP 503: upstream'); }; const q3 = await R.F.quote('cozy', spec); assert.equal(q3.provider, 'gemini'); assert.match(q3.fallbackWhy, /could not quote this \(Sloosh MCP 503/);
+  R.sloosh.quoteGeneration = async () => ({ credits: 1 }); assert.match((await R.F.quote('cozy', spec)).fallbackWhy, /without a quote id/);
+  const RV = rig({ gemini, video: async () => Buffer.from('V') }); RV.sloosh.quoteGeneration = async () => { throw new Error('Sloosh MCP 503: upstream'); }; await assert.rejects(RV.F.quote('cozy', { ...spec, kind: 'video' }), /503/);
+  /* over the workspace's day: an image goes to Gemini with that reason, with no gemini wired it is the plain refusal */
+  const RL = rig({ gemini, left: 1 }); const ql = await RL.F.quote('cozy', spec); assert.equal(ql.provider, 'gemini'); assert.match(ql.fallbackWhy, /would hold 2.5 credits and Brew’s Sloosh workspace has 1 left today/);
+  const RS = rig({ gemini, left: 1 }); RS.sloosh.getSpaceInputSchema = async () => ({ type: 'object', properties: { headline: { type: 'string' } } }); RS.sloosh.quoteSpace = async () => ({ quoteId: 'qs', credits: 2.5 });
+  const qs = await RS.F.quote('cozy', { ...spec, space: { id: 'sp_1', name: 'Poster', inputs: { headline: 'Hi' }, ctx: {} } }); assert.match(qs.error, /would hold 2.5 credits/);
+});
+
+test('a poll that keeps failing or the wait limit leaves the run open (running, with the reason), reconcileAll collects it and onDone hears of it; a 0 charge is 0', async () => {
+  const heard = []; const R = rig(); const F2 = createFinals({ sloosh: R.sloosh, slooshAuth: { status: async () => ({ connected: true, workspace: { id: 'org_1', name: 'Brew' } }) }, packs: { getJSON: (s, n, d) => R.files.get(`${s}/${n}`) ?? d, put: async (s, n, v) => { R.files.set(`${s}/${n}`, JSON.parse(JSON.stringify(v))); }, listFiles: async (s, sub) => [...R.files.keys()].filter((k) => k.startsWith(`${s}/${sub}/`)).map((k) => k.split('/').pop()) },
+    budget: R.budget, saveGen: () => {}, publicUrl: 'https://brew.test', fetchImpl: async () => new Response(Buffer.from('PNG'), { status: 200, headers: { 'content-type': 'image/png' } }), slugs: async () => ['cozy'], log: { warn() {}, info() {} }, dummy: () => false, onDone: async (slug, rec) => { heard.push([slug, rec.state, rec.target]); } });
+  const realWait = R.sloosh.wait; R.sloosh.wait = async () => { throw Object.assign(new Error('Sloosh could not be read (Sloosh MCP 503)'), { pollError: true }); };
+  const q = await F2.quote('cozy', spec); await assert.rejects(F2.run('cozy', spec, { quote: q, target: { chid: 'p' } }), (e) => e.open === true && /Brew will collect it/.test(e.message));
+  let rec = (await F2.list('cozy'))[0]; assert.equal(rec.state, 'running'); assert.match(rec.lastError, /503/); assert.match(rec.note, /Brew will collect it/); assert.deepEqual(rec.target, { chid: 'p' });
+  R.sloosh.wait = async () => { throw Object.assign(new Error('Sloosh run is still going after the wait limit'), { timeout: true }); };
+  await assert.rejects(F2.run('cozy', spec, { quote: q, target: { chid: 'p' } }), /still going on Sloosh; Brew will collect it/); rec = (await F2.list('cozy'))[0]; assert.equal(rec.state, 'running'); assert.equal(rec.note, 'still going on Sloosh; Brew will collect it');
+  assert.equal(R.calls.filter((c) => c[0] === 'generate').length, 1); /* the run was never paid again */
+  /* the next boot: the poll works, the run is collected, the hook hears of it with its target; Sloosh charged 0 → charged is 0, not the quote */
+  R.sloosh.wait = realWait; R.sloosh.getGeneration = async (id) => ({ operationId: id, state: 'settled', owner: { phase: 'settled', outputs: [{ generationId: 'out1', status: 'completed', url: 'https://cdn.sloosh.test/out1.png' }], chargedCredits: 0 } });
+  assert.equal(await F2.reconcileAll(), 1); await new Promise((r) => setTimeout(r, 40)); rec = (await F2.list('cozy'))[0]; assert.equal(rec.state, 'done'); assert.equal(rec.charged, 0); assert.equal(rec.note, undefined); assert.deepEqual(heard, [['cozy', 'done', { chid: 'p' }]]);
+  /* Sloosh's own terminal state still fails the run */
+  R.sloosh.wait = async () => { throw Object.assign(new Error('Sloosh run rejected'), { terminal: true, final: { owner: { chargedCredits: 0 } } }); };
+  const q2 = await F2.quote('cozy', { ...spec, visual: 'another' }); await assert.rejects(F2.run('cozy', { ...spec, visual: 'another' }, { quote: q2, target: { chid: 't' } }), /rejected/); assert.equal((await F2.list('cozy')).find((r) => r.target.chid === 't').state, 'failed');
+});

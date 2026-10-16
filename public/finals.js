@@ -10,7 +10,7 @@
   const JOBS = [['product', 'Product'], ['scene', 'Place'], ['style', 'Look'], ['person', 'Person'], ['logo', 'Logo'], ['other', 'Other']];
   const pickKey = (x) => x.id || x.url;
   const picked = (x) => F.picks.findIndex((p) => pickKey(p) === pickKey(x));
-  const maxRefs = () => (F.way === 'brief' ? (F.st?.draft?.as === 'video' ? 30 : 14) : 10);
+  const maxRefs = () => (F.way === 'brief' ? (F.st?.draft?.as === 'video' ? 20 : 14) : 10); /* Sloosh takes at most 20 uploaded assets on a quote */
 
   const tile = (x) => { const k = picked(x); return `<button type="button" class="ph-t${k >= 0 ? ' is-on' : ''}" data-fn-pick="${esc(pickKey(x))}" title="${esc(x.label || '')}">${x.kind === 'video' ? `<video src="${esc(x.url)}" muted preload="metadata"></video>` : `<img src="${esc(A.cdnSized ? A.cdnSized(x.url, 300) : x.url)}" alt="" loading="lazy">`}${k >= 0 ? `<i>${k + 1}</i>` : ''}<span>${esc(x.label || '')}${x.job && x.job !== 'product' ? ` · ${esc((JOBS.find((j) => j[0] === x.job) || [])[1] || x.job)}` : ''}</span></button>`; };
   const pickRow = (p, i) => `<li class="fn-pick"><b>${i + 1}</b><span>${esc(p.label || 'Photo')}</span><select data-fn-job="${i}">${JOBS.map(([v, l]) => `<option value="${v}"${p.job === v ? ' selected' : ''}>${l}</option>`).join('')}</select><input data-fn-keep="${i}" value="${esc(p.keep || '')}" placeholder="${p.job === 'product' ? 'keep the label exact' : p.job === 'style' ? 'match this light' : 'what to keep from it'}"><button type="button" class="icon-btn" data-fn-unpick="${i}" aria-label="Remove">${ic('x', 's14')}</button></li>`;
@@ -86,7 +86,7 @@
   const open = async (wid, draftId, base = null) => { if (F.wid) close(); Object.assign(F, { base: base || `/api/work/${wid}/final`, wid, draftId, st: null, picks: [], visual: '', text: '', way: 'brief', space: null, inputs: {}, quote: null, busy: false, err: '', fields: null, missing: null, filled: null, revise: '' });
     A.modal('<div class="sheet ph-m fn-m" role="dialog" aria-label="Make the final"><div class="ph-h"><b>Make the final</b></div><div class="ph-b"><p class="ph-none">One moment…</p></div></div>', () => {}); /* the same sheet as Choose a photo (app.js modal) */
     const st = await api('GET', `${F.base}/status?draftId=${encodeURIComponent(draftId || '')}`).catch((e) => ({ error: e.message })); if (st?.error) { toast(st.error); return close(); }
-    F.st = st; F.visual = st.draft?.visual || ''; F.text = st.draft?.text || ''; const lead = (st.photos || []).find((p) => p.named) || (st.photos || [])[0]; if (lead) F.picks = [{ ...lead, keep: '' }];
+    F.st = st; F.visual = st.draft?.visual || ''; F.text = st.draft?.text || ''; const lead = (st.photos || []).find((p) => p.named) || (st.photos || []).find((p) => !p.look) || null; if (lead) F.picks = [{ ...lead, keep: '' }]; const look = (st.photos || []).find((p) => p.look); if (look) F.picks.push({ ...look }); /* our version of a rival's ad: their ad is image 2, the look */
     if (st.draft?.final) { const prev = { url: st.draft.image || st.draft.video, label: 'The previous final', job: 'other', keep: 'everything that is not the change' }; F.picks = [prev, ...F.picks]; }
     paint(); };
   document.addEventListener('click', (e) => { const b = e.target.closest?.('[data-jm-final]'); if (!b) return; e.preventDefault(); const wid = b.dataset.wid || window.JamRoom?.work?.()?.id || b.closest('[data-wid]')?.dataset.wid; if (!wid) return toast('Open the jam first.'); open(wid, b.dataset.jmFinal); });

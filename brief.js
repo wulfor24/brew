@@ -2,6 +2,7 @@
 // the hand-made moves cite). Opus turns profile + ledger into structured JSON; the markdown is rendered here,
 // so every number carries its ledger key as [k:key] and every unknown says "to confirm".
 import { numbersIn, allowedFromLedger } from './moves-engine.js';
+import { mockAllowed } from './ai.js'; // a [MOCK] brief stands in only on a mock run, never after a billing pause
 
 const S = { type: 'string' }, A = (items) => ({ type: 'array', items });
 const O = (properties) => ({ type: 'object', properties });
@@ -15,6 +16,21 @@ export const COLS = {
 const T = A(A(S));
 export const BRIEF_SCHEMA = O({ name: S, descriptor: S, oneLine: S, businessModel: S, reviewSummary: S, goal: S, goalKeys: S,
   language: A(S), praise: A(S), complaints: A(S), toConfirm: A(S), ...Object.fromEntries(Object.keys(COLS).map((k) => [k, T])) });
+/* the word "null" or "undefined" in a cell is an empty cell: the model writes it for a missing MRP, price or note and it was
+   rendered as "null" on the brief page. Every string field of every table row is cleaned on save and on read (build.js heals
+   a saved brief). Returns { brief, changed } */
+const nullish = (v) => v == null || (typeof v === 'string' && /^\s*(null|undefined)\s*$/i.test(v));
+export function cleanBrief(b) {
+  if (!b || typeof b !== 'object') return { brief: b, changed: false };
+  let changed = false; const o = { ...b };
+  for (const k of Object.keys(COLS)) {
+    if (!Array.isArray(o[k])) continue;
+    o[k] = o[k].map((r) => { if (!r || typeof r !== 'object' || Array.isArray(r)) return r; const row = { ...r };
+      for (const [c, v] of Object.entries(row)) if (nullish(v)) { changed = true; row[c] = ''; }
+      return row; });
+  }
+  return { brief: o, changed };
+}
 const objRows = (b) => { const o = { ...b }; for (const [k, cols] of Object.entries(COLS)) o[k] = (b[k] || []).map((r) => Array.isArray(r) ? Object.fromEntries(cols.map((c, i) => [c, r[i] ?? ''])) : r); return o; };
 
 const SYSTEM = () => `You write the Brew brand brief: the one-page evidence file every strategy document for this brand is written from.
@@ -28,10 +44,12 @@ Rules (absolute):
 - Plain, short sentences. No em dashes.`;
 
 const keys = (k) => (Array.isArray(k) ? k : String(k || '').split(/[,\s]+/)).filter(Boolean).map((x) => `[k:${x}]`).join('');
+export { render as renderBrief }; /* build.js re-renders a healed brief */
 function render(b, at) {
   b = { ...b, reviews: { summary: b.reviewSummary, platforms: b.platforms, quotes: b.quotes, language: b.language || [], praise: b.praise || [], complaints: b.complaints || [] }, goal: { text: b.goal, k: b.goalKeys } };
   const L = [];
-  const row = (cells) => `| ${cells.map((c) => String(c ?? '').replace(/\|/g, '/').replace(/\n/g, ' ')).join(' | ')} |`;
+  const cell = (c) => { const s = String(c ?? '').trim(); return /^(null|undefined)$/i.test(s) ? '' : s; }; /* a saved "null" cell renders empty */
+  const row = (cells) => `| ${cells.map((c) => cell(c).replace(/\|/g, '/').replace(/\n/g, ' ')).join(' | ')} |`;
   L.push(`# ${b.name} brand brief`, '', `${b.descriptor ? `**${b.descriptor.replace(/\.$/, '')}.** ` : ''}${b.oneLine}`, '', `Snapshot: ${at}. Business model: ${b.businessModel}`, '');
   L.push('## Catalogue and prices', '', row(['Product', 'Price', 'MRP', 'Note', 'Source']), row(['---', '---', '---', '---', '---']));
   for (const p of b.catalogue) L.push(row([p.name, p.price, p.mrp, p.note, keys(p.k)]));
@@ -88,12 +106,13 @@ export function createBrief({ ai, log = console } = {}) {
     try {
       const { catalog, identity, ...rest } = profile;
       const r = await ai.call({ model: 'opus', effort: 'high', max: 24000, tag: 'brief', system: SYSTEM(), schema: BRIEF_SCHEMA,
-        prompt: `Profile (what the reader found):\n${JSON.stringify({ ...rest, catalog: { count: catalog?.count, hero: catalog?.hero, products: (catalog?.products || []).slice(0, 60).map((p) => ({ title: p.title, price: p.price, mrp: p.mrp, url: p.url, claims: p.claims, reviews: p.reviews })) } }).slice(0, 60000)}\n\nLedger (key | value | label | source | date):\n${ledger.map((e) => `${e.key} | ${e.v} | ${e.label} | ${e.src || ''} | ${e.at || ''}`).join('\n')}\n\nWrite the brief for ${profile.name}. Catalogue: hero products first, then the rest of what the ledger prices (bundles included), up to 25 rows. Rivals: every rival in the profile. Personas: 3 to 6. Objections: 4 to 8.` });
+        prompt: `Profile (what the reader found):\n${JSON.stringify({ ...rest, catalog: { count: catalog?.count, hero: catalog?.hero, products: (catalog?.products || []).slice(0, 60).map((p) => ({ title: p.title, price: p.price, mrp: p.mrp, url: p.url, claims: p.claims, reviews: p.reviews })) } }).slice(0, 60000)}\n\nLedger (key | value | label | source | date):\n${ledger.map((e) => `${e.key} | ${e.v} | ${e.label} | ${e.src || ''} | ${e.at || ''}`).join('\n')}\n\nWrite the brief for ${profile.name}. Catalogue: hero products first, then the rest of what the ledger prices (bundles included), up to 25 rows. Rivals: every rival in the profile. Personas: 3 to 6. Objections: 4 to 8. A cell with no value (no MRP, no note) is an empty string, never the word null.` });
       b = objRows(r.json);
     } catch (e) {
-      if (!e.mock) throw e;
+      if (!mockAllowed(e)) throw e;
       b = mockBrief(profile, ledger);
     }
+    b = cleanBrief(b).brief; /* no "null" cells: the model writes the word for an empty MRP or note */
     const g = guard(b, profile, ledger);
     if (g.dropped.length || g.bad.length) log.warn?.(`[brief] dropped ${g.dropped.length} unsourced quotes, ${g.bad.length} unbacked numbers`);
     const json = { ...g.brief, at, meta: { dropped: g.dropped, unbacked: g.bad, mock: !!b._mock } };

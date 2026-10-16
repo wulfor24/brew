@@ -15,6 +15,7 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { saveGen, genFile } from './gen-store.js';
 import { memoryBlockAsync } from './learn.js'; // brand memory (brand-memory.js), '' when off
+import { isRivalCard, isResearchImage, readRivalAd, rivalBlock, rivalPicture } from './rival-ad.js'; // a rival's ad remade in its style
 
 export const DRAFT_AS = ['image', 'carousel', 'video', 'voice', 'text'];
 const VOICES = ['Kore', 'Aoede', 'Leda', 'Charon', 'Puck', 'Orus'];
@@ -47,16 +48,20 @@ export const imagePrompt = (j, hasSrc, c = null, brand = null) => buildDraft({ k
 export const DRAFT_SCHEMA = SCHEMA;
 export const DRAFT_RATIOS = RATIOS;
 
-export function createDrafts({ claudeTool, geminiImage, treg, launchBrowser, zipBuffer, photoAsync, photoFile, photoOf, catalogOf = () => null, brandName = () => '', cardOf, briefOf, cardBrief, seatLine, isMock, spend, clean, now, uid, say, save, AGENT, onReady = null, log = console }) {
+export function createDrafts({ rivalAdOf = () => null, claudeTool, geminiImage, treg, launchBrowser, zipBuffer, photoAsync, photoFile, photoOf, catalogOf = () => null, brandName = () => '', cardOf, briefOf, cardBrief, seatLine, isMock, spend, clean, now, uid, say, save, AGENT, onReady = null, log = console }) {
   const keyOf = (s) => crypto.createHash('sha1').update(s).digest('hex').slice(0, 16);
   /* a store photo by URL (the catalog's own image), fetched once into tmp */
   const fetchPhoto = async (u) => { const f = path.join(os.tmpdir(), 'brew-ph-' + keyOf(u) + '.jpg'); if (!fs.existsSync(f)) { const r = await safeFetch(u, { signal: AbortSignal.timeout(20e3) }); if (!r.ok) return null; fs.writeFileSync(f, Buffer.from(await r.arrayBuffer())); } return f; };
   const step = (t, w, d, text) => { d.step = text; save(t); };
+  /* a rival ad card ("Make our version"): the ad and how it is made (rival-ad.js), read once per ad */
+  const fileOfRel = async (rel) => { try { const f = /^https?:/.test(rel) ? await fetchPhoto(rel) : photoAsync ? await photoAsync(rel) : photoFile(rel); return f && fs.existsSync(f) ? f : null; } catch { return null; } };
+  const rivalRead = async (t, c) => { const ad = isRivalCard(c) ? rivalAdOf(t, c) : null; if (!ad) return null; const style = isMock?.() ? null : await readRivalAd(ad, { call: claudeTool, fileOf: fileOfRel, log }).catch(() => null); return { ad, style }; };
 
   // what to make, and the words: one forced tool call
   const plan = async (t, w, c, as, ask) => {
     const mem = await memoryBlockAsync(t, w.agent === 'brew' ? 'creative' : w.agent, `${w.title || ''} ${String(briefOf(t, w) || '').slice(0, 1500)}`); // brand memory: voice, creative style, rules, what works
-    const prompt = draftPrompt({ card: c ? cardBrief(c, seatLine(t.viewer)) : `Jam: ${w.title}`, role: AGENT[w.agent] || 'creative', brief: briefOf(t, w), mem, as, ask });
+    const rv = await rivalRead(t, c).catch(() => null);
+    const prompt = draftPrompt({ card: c ? `${cardBrief(c, seatLine(t.viewer))}${rv ? `\n\n${rivalBlock(rv.ad, rv.style, brandName(t) || 'the brand')}` : ''}` : `Jam: ${w.title}`, role: AGENT[w.agent] || 'creative', brief: briefOf(t, w), mem, as, ask });
     const j = await claudeTool(prompt, SCHEMA, 2500, 'draft');
     if (!DRAFT_AS.includes(j.as) || as !== 'auto') j.as = as === 'auto' ? 'text' : as;
     return j;
@@ -67,15 +72,18 @@ export function createDrafts({ claudeTool, geminiImage, treg, launchBrowser, zip
   const namedPhoto = (t, j, c) => { const cat = catalogOf(t); if (!cat?.length || !j) return null; const words = [j.title, j.copy, j.headline, j.body, ...(j.slides || []).map((x) => x?.onSlide), c?.title, c?.sub].filter(Boolean).join('. ');
     return (cardProduct(c, cat, { brand: brandName(t) }) || matchProduct(words, cat, { brand: brandName(t) }))?.img || null; }; /* the card's asset line names the product first */
   const cardNamed = (t, c) => { const cat = c && catalogOf(t); return cat?.length ? cardProduct(c, cat, { brand: brandName(t) }) : null; }; /* the product the card's asset line names, for the image guard */
-  const productPhoto = async (c, j = null, t = null) => { for (const rel of [...(c?.refImages || []), namedPhoto(t, j, c), ...(c?.images || []), photoOf(c), catalogOf(t)?.[0]?.img].filter(Boolean)) { /* a photo added in the jam comes first; the brand's lead product last */ try { const f = /^https?:/.test(rel) ? await fetchPhoto(rel) : photoAsync ? await photoAsync(rel) : photoFile(rel); if (f && fs.existsSync(f)) return f; } catch {} } return null; };
+  const productPhoto = async (c, j = null, t = null) => { for (const rel of [...(c?.refImages || []), namedPhoto(t, j, c), ...(c?.images || []).filter((u) => !isResearchImage(u)) /* a rival's ad is never our product */, photoOf(c), catalogOf(t)?.[0]?.img].filter(Boolean)) { /* a photo added in the jam comes first; the brand's lead product last */ try { const f = /^https?:/.test(rel) ? await fetchPhoto(rel) : photoAsync ? await photoAsync(rel) : photoFile(rel); if (f && fs.existsSync(f)) return f; } catch {} } return null; };
   /* never an invented product: with no real photo there is no picture, and the jam says how to add one */
   const needPhoto = (src) => { if (!src) throw Object.assign(new Error('There is no product photo for this yet. Add one with + (Product photo) and try again.'), { soft: true }); return src; };
 
   const makeImage = async (j, c, ratio, t = null) => {
     const src = needPhoto(await productPhoto(c, j, t));
-    const prompt = imagePrompt(j, true, c);
+    /* our version of a rival's ad: their ad is image 2, the look only; the words sit where theirs do */
+    const rv = await rivalRead(t, c).catch(() => null), look = rv?.ad?.poster ? await fileOfRel(rv.ad.poster) : null;
+    const pic = rv && look ? rivalPicture(rv.ad, rv.style, { headline: j.headline || j.title }) : null;
+    const prompt = pic ? buildDraft({ kind: 'image', title: j.title, visual: `${j.visual || ''} Same composition and look as image 2: ${pic.visual}`, refs: [{ ...pic.refs[0], label: `${brandName(t) || 'the brand'}'s product` }, pic.refs[1]], text: pic.text, hasSrc: true, ratio }).prompt : imagePrompt(j, true, c);
     /* the guard tries the model again and the other Gemini model; with no picture at all, the real product photo stands in (failed) */
-    const buf = await geminiImage({ srcFile: src, prompt, ratio, named: cardNamed(t, c), text: [c?.make?.pieces, j.title, j.copy, j.headline, c?.title].filter(Boolean).join('. '), fallback: true });
+    const buf = await geminiImage({ srcFile: src, ...(pic ? { refFiles: [look] } : {}), prompt, ratio, named: cardNamed(t, c), text: [c?.make?.pieces, j.title, j.copy, j.headline, c?.title].filter(Boolean).join('. '), fallback: true });
     const failed = !!buf?.guard?.genFailed, name = keyOf(prompt + ratio + (failed ? '|photo' : '')) + (failed ? '.jpg' : '.png');
     saveGen(name, buf);
     return { name, buf: null, failed };

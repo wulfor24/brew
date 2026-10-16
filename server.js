@@ -154,10 +154,11 @@ async function gToken() {
 /* Vertex (Google ADC, never treg): the model asked for, then the other Gemini image model when it fails (an outage, a quota,
    or a reply with no picture in it), so one model's bad minute never costs a draft its picture */
 const IMAGE_FALLBACK = process.env.GEMINI_IMAGE_FALLBACK || 'gemini-3-pro-image';
-async function geminiOnce({ srcFile, prompt, ratio, model }) {
+/* refFiles: more reference pictures after the product photo (image 2, 3…), e.g. a rival's ad as the look for "Make our version" */
+async function geminiOnce({ srcFile, refFiles = [], prompt, ratio, model }) {
   const t = await gToken();
   const parts = [];
-  if (srcFile) { const b = fs.readFileSync(srcFile); parts.push({ inlineData: { mimeType: IMG_MIME(b), data: b.toString('base64') } }); }
+  for (const f of [srcFile, ...refFiles].filter(Boolean)) { const b = fs.readFileSync(f); parts.push({ inlineData: { mimeType: IMG_MIME(b), data: b.toString('base64') } }); }
   parts.push({ text: prompt });
   const url = `https://aiplatform.googleapis.com/v1/projects/${GPROJECT}/locations/global/publishers/google/models/${model}:generateContent`;
   const r = await fetch(url, { method: 'POST', headers: { authorization: `Bearer ${t}`, 'x-goog-user-project': GPROJECT, 'content-type': 'application/json' }, signal: AbortSignal.timeout(120e3),
@@ -300,7 +301,8 @@ const cfgSlug = (req) => { const q = String(new URL(req?.url || '/', 'http://x')
 const routes = {
   'GET /api/research': async () => { const r = B().research; return { ...r.get(), running: r.running(), spent: r.spent() }; },
   'POST /api/research/refresh': async (b, req) => { if (!(await genOk(req, B().slug))) return demoErr(); const ok = ['ads', 'trends', 'news', 'howto']; const which = (b.sources || ok).filter((k) => ok.includes(k)); B().research.refresh(which); return { started: which }; },
-    /* paid work running on this instance now (deploy.sh and tools/deploy-demo.sh wait for it): counts by kind, never brand names */
+    /* paid work running on this instance now: counts by kind, never brand names. Nothing waits on it: deploys go any time
+       (the instance that goes saves what it has, the next resumes it) */
   'GET /api/ops/busy': async () => { const by = { ...(builder?.paidWork?.() || {}), drafts: draftsBg?.busy?.() || 0, cadence: movesCadence?.busy?.() || 0, finals: finals?.busy?.() || 0 };
     return { busy: Object.values(by).reduce((a, n) => a + n, 0), by, rev: process.env.K_REVISION || null }; },
   'GET /api/ops/sloosh': async (b, req) => slooshOps(req),
@@ -371,7 +373,7 @@ const ai = createAI({ apiKey: ANTHROPIC_KEY, mock: process.env.AI_MOCK === '1' |
 /* move grades for the ranker (value.js): one Sonnet call per 20 moves, once per move version, about $0.10 a brand */
 const valueSvc = createValue({ ai, packs, log: console, allow: () => !MOCK && (!!process.env.K_SERVICE || process.env.NOTES_BG === '1') });
 const notesSvc = createNotes({ ai, packs, log: console, allow: () => !MOCK && (!!process.env.K_SERVICE || process.env.NOTES_BG === '1') });
-spendLedger(treg, packs, { log: console });
+const tregLedger = spendLedger(treg, packs, { log: console }); /* flushed on SIGTERM below */
 const calendar = createCalendar({ packs, ai, log: console });
 const builder = createBuilder({ ROOT, packs, ai, treg, image: countedImage, log: console, signGate: () => !!(process.env.GOOGLE_CLIENT_ID && process.env.FEED_SIGNIN !== '0' && process.env.BUILD_SIGNIN !== '0'),
   // a pack changed on disk (new seed, facts, moves): reload it, keep its research/live instances
@@ -463,6 +465,9 @@ const hostOf = async (slug) => { if (!slug || blocked(slug)) return null; const 
 /* seat key → title for invite emails and the approve page (the brand's own roles; every generated brand shares the template's) */
 const seatNames = async (slug) => { const p = packs.peek(slug) || await packs.load(slug).catch(() => null); return Object.fromEntries(Object.entries(p?.seed?.roles || {}).map(([k, r]) => [k, r.title || r.name || k])); };
 const auth = createAuth({ packs, hostOf, seatNames, onTeamChange: () => MEMO.clear(), log: console });
+/* sign-in off on Cloud Run (FEED_SESSION_SECRET or GOOGLE_CLIENT_ID missing) would open every team-only read to everyone: the
+   instance refuses to boot instead. OPEN_SITE=1 says that is meant (a local-style open server) */
+if (process.env.K_SERVICE && !auth.signinOn() && process.env.OPEN_SITE !== '1') throw new Error('[auth] sign-in is not configured (FEED_SESSION_SECRET / GOOGLE_CLIENT_ID): refusing to boot with every team-only read open. Set OPEN_SITE=1 only on purpose.');
 /* Brew's own Sloosh workspace (sloosh-auth.js): staff sign in once; every brand's finals spend from it (finals.js, a later batch) */
 const slooshAuth = createSlooshAuth({ packs, vault: createVault(packs), auth, log: console });
 const sloosh = createSloosh({ tokenFor: slooshAuth.tokenFor, log: console });
@@ -487,11 +492,11 @@ const slooshHandle = async (req, res, u) => {
   if (!slooshStaff(req)) return send(res, 403, { error: 'Brew staff only' }), true;
   if (u.pathname === '/api/ops/sloosh/connect' && req.method === 'GET') { try { return go(await slooshAuth.connectUrl(req, res)); } catch (e) { return send(res, 200, { error: e.message }), true; } }
   if (u.pathname === '/api/ops/sloosh/callback' && req.method === 'GET') {
-    try { await slooshAuth.callback(req, u); sloosh.reset(); const ws = await sloosh.getConnection().then((c) => c?.workspace || null).catch(() => null); if (ws) await slooshAuth.setWorkspace(ws);
+    try { await slooshAuth.callback(req, u); sloosh.reset(); finals.forget(); const ws = await sloosh.getConnection().then((c) => c?.workspace || null).catch(() => null); if (ws) await slooshAuth.setWorkspace(ws);
       return go(`/#ops=sloosh&done=1`); }
     catch (e) { console.warn('[sloosh] callback', e.message); return go(`/#ops=sloosh&err=${encodeURIComponent(e.message)}`); }
   }
-  if (u.pathname === '/api/ops/sloosh/disconnect' && req.method === 'POST') { await slooshAuth.disconnect(); sloosh.reset(); return send(res, 200, { ok: true }), true; }
+  if (u.pathname === '/api/ops/sloosh/disconnect' && req.method === 'POST') { await slooshAuth.disconnect(); sloosh.reset(); finals.forget(); return send(res, 200, { ok: true }), true; }
   return false;
 };
 /* Brew's emails about jams to the brand's team: tagged, asked, assigned, needs your OK right away; replies batched (jam-mail.js) */
@@ -517,7 +522,8 @@ const viewerOf = async (req, slug) => { if (process.env.DEV_MEMBER === '1' && !p
 const genOk = async (req, slug) => { const dev = !process.env.K_SERVICE && String(auth.user(req)?.sub || '').startsWith('dev');
   if (process.env.DEMO_MODE === '1' || ((!auth.signinOn() || (process.env.DEV_MEMBER === '1' && !process.env.K_SERVICE)) && !dev)) return true;
   if (!slug || slug === DEFAULT) return auth.isAdmin(auth.user(req)); return !!(await viewerOf(req, slug)).gen; };
-const demoErr = (host) => ({ error: `Demo mode: sign in with your work email${host ? ` at ${host}` : ''} to make this.`, demo: true, host: host || null });
+/* the gate's words: 'Demo mode' only on the demo site; on live the person is told how to get in */
+const demoErr = (host) => ({ error: DEMO ? `Demo mode: sign in with your work email${host ? ` at ${host}` : ''} to make this.` : `Sign in with the email you used to start this read${host ? ` or a work email at ${host}` : ''}, or ask the owner for an invite.`, demo: true, host: host || null });
 let connectors = null;
 /* real connected accounts on the live site (read only, tokens in the vault; Slack posts what the team sends); DUMMY: simulated on the demo site (connectors/index.js simOnly) */
 connectors = createConnectors({ packs, auth, builder, treg, log: console, onLive: (slug) => { MEMO.clear(); feedSvc?.refreshLive(slug).catch(() => {}); } });
@@ -616,7 +622,7 @@ const brandRoutes = async (req, res, u) => {
   // Everyone else sees the brand in demo mode
   const v = await viewerOf(req, slug);
   if (!v.gen && req.method === 'POST' && what !== 'notify' && !v.email && auth.signinOn() && process.env.BUILD_SIGNIN !== '0') return send(res, 401, { error: 'Sign in with your work email to continue.', signin: true }), true;
-  if (!v.gen && req.method === 'POST' && what !== 'notify') return send(res, 403, { ...demoErr(v.host), error: v.claimed ? 'Demo mode: only this brand’s team changes it. Ask them to invite you.' : `Demo mode: the moves are written once someone signs in with a work email at ${v.host || 'the brand’s domain'}.`, team: true }), true;
+  if (!v.gen && req.method === 'POST' && what !== 'notify') return send(res, 403, { ...demoErr(v.host), error: v.claimed ? 'Only this brand’s team changes it. Sign in with the email you used to start this read, or ask the owner for an invite.' : `Sign in with the email you used to start this read, or with a work email at ${v.host || 'the brand’s domain'}, or ask the owner for an invite.`, team: true }), true;
   if (what === 'status') { let s = (await builder.status(slug)) || { error: 'unknown brand' };
     /* one count: never fewer written than the moves on file (pack-numbers.js), and a time left only from the measured pace */
     const w = packs.peek(slug)?.numbers?.moves?.written; if (!s.error && !s.done && +w > (+s.movesDone || 0)) s = { ...s, movesDone: +w };
@@ -628,7 +634,10 @@ const brandRoutes = async (req, res, u) => {
   if (what === 'notify' && req.method === 'POST') { const b = await readBody(req), me = auth.user(req);
     /* "email me when the moves are in": a signed-in person adds their own address (the team may add a teammate), so nobody turns Brew into a mailer */
     if (auth.signinOn() && !me) return send(res, 401, { error: 'Sign in to get an email when the moves are in.', signin: true }), true;
-    if (me && !v.member && String(b.email || '').trim().toLowerCase() !== String(me.email).toLowerCase()) return send(res, 403, { error: `We can only email you, at ${me.email}.` }), true;
+    const want = String(b.email || '').trim().toLowerCase();
+    if (me && want !== String(me.email).toLowerCase()) { /* a member may add a teammate or someone already invited; nobody adds a stranger */
+      const tm = v.member ? await auth.getMembers(slug).catch(() => null) : null, team = new Set([...(tm?.members || []).map((x) => String(x.email).toLowerCase()), ...(tm?.invites || []).map((x) => String(x.email).toLowerCase())]);
+      if (!team.has(want)) return send(res, 403, { error: v.member ? `We can only email you, at ${me.email}, or someone on ${slug}’s team.` : `We can only email you, at ${me.email}.` }), true; }
     return send(res, 200, await builder.addEmail(slug, b.email)), true; }
   if (what === 'findings') return send(res, 200, (await packs.getJSON(slug, 'findings.json', null)) || { cards: [] }), true;
   /* confirming what was read starts the brief and the moves: a signed-in person only, who becomes the brand's creator if nobody is yet */
@@ -738,7 +747,7 @@ async function transcribe(req, res) {
 }
 
 const demoRoutes = DEMO ? createDemoRoutes({ packs, builder, auth, connectors, readBody, send, loadBrand, social, draftsBg, log: console }) : null;
-http.createServer(async (req, res) => {
+const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://x');
   zipRes(req, res);
   res.once('finish', () => alerts.response(res.statusCode)); /* the 5xx rate for the ops alerts */
@@ -746,9 +755,14 @@ http.createServer(async (req, res) => {
   if (DEMO) { const ses = sessionOf(req, u); if (ses.set) res.setHeader('set-cookie', ses.set); return runDemo(ses.sid, () => serve(req, res, u)); }
   return serve(req, res, u);
 }).listen(PORT, () => console.log(`Brew Feed on http://localhost:${PORT} · AI ${MOCK ? "mock" : `live (${PROVIDER})`} · env ${fs.existsSync(envFile) ? envFile : 'none'}${DEMO ? ' · DEMO MODE' : ''}`));
-/* Cloud Run stops an instance with SIGTERM (deploys, scale to zero): the team's jams and any workspace still inside its
-   1.5 s save debounce are written, to disk and the bucket, before it goes */
-process.once('SIGTERM', () => { builder?.stop?.(); /* no new move starts here; the next instance resumes the build */ Promise.race([Promise.allSettled([feedSvc?.jams?.flush?.(), store.flushPending()]), new Promise((r) => setTimeout(r, 6000))]).finally(() => process.exit(0)); });
+/* Cloud Run stops an instance with SIGTERM (deploys, scale to zero): the team's jams, any workspace still inside its 1.5 s
+   save debounce, the day's budget counters, the treg spend ledger and the batched jam emails are written (or sent) before it
+   goes, and the listener closes so in-flight requests finish, all inside 6 s */
+process.once('SIGTERM', () => { builder?.stop?.(); /* no new move starts here; the next instance resumes the build */
+  movesCadence?.stop?.(); /* the weekly families end before the next one; the next instance carries on */
+  const closed = new Promise((r) => { try { server.close(() => r()); server.closeIdleConnections?.(); } catch { r(); } }); /* in-flight requests finish; idle keep-alives go now */
+  const work = Promise.allSettled([feedSvc?.jams?.flush?.(), store.flushPending(), budget.flush(), tregLedger.flush(), jamMail.drain(), closed]);
+  Promise.race([work, new Promise((r) => setTimeout(r, 6000))]).finally(() => process.exit(0)); });
 async function serve(req, res, u) {
   try {
     if (demoRoutes && await demoRoutes(req, res, u)) return;

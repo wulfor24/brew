@@ -2802,3 +2802,15 @@ html body.deck-on .topbar{border-bottom:0;box-shadow:none}
 .rf-acts{display:flex;gap:6px}
 .rf-up{gap:6px;cursor:pointer}
 .lib-empty .rf-up{margin-top:4px}
+/* ---------- 2026-10-17: Brew's own lines carry the Brew mark (the live site has no fictional pod) ---------- */
+.pod-av.brew-av{display:inline-grid;place-items:center;padding:0;background:none;color:var(--fg);border-radius:28%;overflow:hidden}
+.pod-av.brew-av svg{width:100%;height:100%;display:block}
+/* ---------- Work board: one-line lane headers of one height (the underlines align); an empty lane is its title only;
+   nothing in progress = one calm block in place of the lanes; phones and tablets never show an empty lane ---------- */
+.wb-col .col-top{height:28px;min-width:0}
+.wb-col .col-top h2{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wb-col.is-empty .col-top h2{white-space:nowrap}
+.wb-ai-sub{margin:0;font-size:13.5px;line-height:19px;color:var(--fg-3)}
+.wb-zero-deck .wb-zero-main{flex:1 1 auto;min-width:min(100%,420px);min-height:0;scroll-snap-align:start}
+@media (max-width:1100px){.wb-col.is-empty{display:none}}
+@media (max-width:700px){.wb-zero-deck .wb-zero-main{flex:0 0 100vw;width:100vw;min-width:0}}

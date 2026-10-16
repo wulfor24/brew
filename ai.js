@@ -36,6 +36,9 @@ export const aiPaused = () => Date.now() < billingOffUntil;
 /* any Claude client (the jam's own in server.js too) reports a failure here: a billing one pauses every caller, and the
    paused error is the same one call() throws, so callers and the UI can say so instead of answering with a template */
 export const billingError = () => Object.assign(new Error('AI credit is used up: paused until it is topped up'), { billing: true, mock: true });
+/* a placeholder ("[MOCK]" move, card or brief) may stand in for a failed call only on a mock run (AI_MOCK=1, tests and
+   local work). A billing pause on a live site is a failure to record and resume, never a mock saved into a brand's pack */
+export const mockAllowed = (e) => !!e?.mock && !e?.billing && process.env.AI_MOCK === '1';
 export const noteBilling = (e) => { const m = String(e?.message || e?.error?.error?.message || ''); if (!BILLING.test(m)) return false;
   if (!aiPaused()) noteAlert('ai-pause', m.slice(0, 200)); /* the pause turning on is worth an email (alerts.js, once a day) */
   billingOffUntil = Date.now() + 15 * 60e3; return true; };

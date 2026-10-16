@@ -119,14 +119,19 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
       return added;
     });
   }
+  /* the person who started the read (private/created.json, written on the first confirm or check): while nobody has claimed
+     the brand they count as its own, whatever their email's domain (a founder on Gmail), and may claim it. Brew's own people
+     never do (they see everything already) */
+  const starterOf = async (slug, u) => { if (!u || isAdmin(u)) return false; const c = await packs.getJSON(slug, 'private/created.json', null).catch(() => null); return !!c?.by && String(c.by).toLowerCase() === String(u.email).toLowerCase(); };
   // claim by email domain (instant); a connected account claims through claimWith (connectors/index.js)
   async function claimInfo(slug, u) {
     const host = await hostOf(slug), m = await getM(slug), role = await roleOf(slug, u);
     const domainOk = !!u && !freeMail(u.email) && ownDomain(domainOf(u.email), host);
     const boss = role === 'owner' || role === 'admin', seats = role ? await seatsOf(slug, u) : null;
-    /* eligible: an official email on a brand nobody has claimed yet (they may claim it). gen: may make fresh work here */
-    const eligible = !!u && !role && !m.owner && domainOk, gen = DEMO_SITE() || !!role || eligible;
-    return { host, claimed: !!m.owner, role, seats, canClaim: eligible, eligible, gen, full: isAdmin(u), domainOk, 
+    const starter = !!u && !role && !m.owner && !domainOk && (await starterOf(slug, u));
+    /* eligible: an official email on a brand nobody has claimed yet, or the person who started its read (they may claim it). gen: may make fresh work here */
+    const eligible = !!u && !role && !m.owner && (domainOk || starter), gen = DEMO_SITE() || !!role || eligible;
+    return { host, claimed: !!m.owner, role, seats, canClaim: eligible, eligible, starter, gen, full: isAdmin(u), domainOk, 
       owner: m.owner ? m.owner.replace(/^(.).*@/, '$1•••@') : null, me: u?.email || null,
       /* the person looking is always on the list: Brew's own people (admins on every brand) show as themselves, first */
       members: boss ? [...(role === 'admin' && !m.members.some((x) => x.email === u.email) ? [{ email: u.email, name: u.name || null, role: 'admin', seats: 'all', via: 'Brew' }] : []),
@@ -142,9 +147,9 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
     const host = await hostOf(slug); await editM(slug, (m) => { m.host ||= host; });
     const m = await getM(slug);
     if (m.owner) return (await roleOf(slug, u)) ? { ok: true } : { error: 'This brand is already claimed. Ask its team to invite you.' };
-    const mine = !freeMail(u.email) && ownDomain(domainOf(u.email), host);
+    const mine = (!freeMail(u.email) && ownDomain(domainOf(u.email), host)) || (await starterOf(slug, u)); /* the brand's domain, or the person who started its read */
     if (!mine && isAdmin(u)) return { error: `You have full access as Brew team. Only someone with an email at ${host} can claim it.`, full: true };
-    if (!mine) return { error: `Sign in with your work email at ${host} to claim it.`, needs: 'work_email' };
+    if (!mine) return { error: `Sign in with the email you used to start this read, or with your work email at ${host}, to claim it.`, needs: 'work_email' };
     await addMember(slug, u, 'owner', via || `Email at ${domainOf(u.email)}`);
     log.log?.(`[auth] ${slug} claimed by ${u.email} (${via || 'email domain'})`);
     return { ok: true, role: 'owner' };

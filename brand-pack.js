@@ -13,7 +13,8 @@ import { allowedFrom } from './fact-gate.js';
 import { demoFor, withDemo, DEMO_V } from './demo-data.js';
 import { brewFile } from './brew-name.js'; // packs written before the rename say ShopOS
 import { socialize, readSocial } from './social-feed.js'; // what listening heard and the ideas stream, as cards
-import { fitCta, fillMake } from './cards-gen.js';
+import { fitCta, fillMake, readSrc } from './cards-gen.js';
+import { aboutOf, OLD_ABOUT } from './derive.js'; // a saved config.about written by the old rule heals at load
 import { prototypeConnectors } from './seed-template.js'; // DUMMY: connector copy that promises no action
 import { sentenceCase } from './text-fit.js';
 import { withLearned, learnedMoveNs, learnedTerms } from './brand-learnings.js'; // what the team told Brew (pasted into a jam): in every prompt's system text
@@ -172,7 +173,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
     /* every finished static is its own card (config.statics, or the made ones in statics.json when a re-read reset the list) */
     for (const [i, id] of (config.statics?.length ? config.statics : Object.keys(staticText || {})).entries()) { const t = staticText[id] || {}; if (have.has(`static-${id}`) || !t.headline) continue;
       posts.push({ id: `static-${id}`, agent: 'creative', sector: 'creatives', type: 'idea', lane, roles: ['brand', 'growth', 'founder'], src: 'Move 21 · static ad', time: `${12 + i * 17} min`, kind: 'media', origin: 'build',
-        images: [`b/${slug}/statics/${id}.jpg`], campaign: 'From your ad plan', title: String(t.headline).slice(0, 120), sub: `${t.small ? `${String(t.small).replace(/\.?$/, '.')} ` : ''}Made from Move 21 with a real ${seed.brand?.name || 'product'} photo. Run it as a cold ad, or jam on it first.`,
+        images: [`b/${slug}/statics/${id}.jpg`], campaign: 'From your ad plan', title: String(t.headline).slice(0, 120), sub: `${t.small ? `${String(t.small).replace(/\.?$/, '.')} ` : ''}Made from Move 21 with a real ${seed.brand?.name || 'product'} photo. Jam on it to change it, then download it for your team to run.`,
         detail: { why: ['The concept comes from the ad-creative move.', 'Every number on it is in your fact sheet.'], how: ['Jam on it to change the words or the scene.', 'Share the brief and your team puts it in the ad account.'] }, cta: { label: 'Generate versions' } }); }
     const prods = catalogOf(profile); /* one photo per product, sold-out placeholders skipped */
     if (prods.length) { const lanePics = new Set(Object.values(seed.laneImg || {}).map((x) => String(x).replace(/^\//, '')));
@@ -188,8 +189,17 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
      and each card's button made to match what it asks to be made (cards-gen.js fitCta), after back-filling what it asks to be made (fillMake) */
   const keepOf = ({ profile, config, seed }) => [seed?.brand?.name, profile?.name, ...(profile?.catalog?.products || []).map((x) => x.title), ...Object.values(seed?.lanes || {}).map((l) => l?.name),
     ...(config?.rivals || []).map((r) => (typeof r === 'string' ? r : r?.name)), ...(profile?.rivals || []).map((r) => (typeof r === 'string' ? r : r?.name))].filter(Boolean);
-  const fitCard = (keep) => (c) => (c && typeof c === 'object' ? fitCta(fillMake({ ...c, ...(c.title ? { title: sentenceCase(c.title, keep) } : {}) })) : c); /* fillMake: a card that names an asset but was written without "make" gets one (cards-gen.js inferMake) */
-  const fitCards = (sd, ctx) => { const keep = keepOf(ctx); return { ...sd, posts: (sd.posts || []).map(fitCard(keep)) }; };
+  /* saved copy heals at load, for every brand: a read card's "Read from <host> today" says the day of the read, and the statics
+     batch card says what happens (the batch opens in a jam and downloads for the team; Brew runs nothing) */
+  const OLD_BATCH = /they go out together as one test/;
+  const healCopy = (c, ctx) => {
+    if (c.origin === 'read' && /^Read from \S+ today$/.test(String(c.src || ''))) c = { ...c, src: readSrc(ctx.profile?.host || String(c.src).split(' ')[2], ctx.profile?.meta?.readAt || ctx.status?.stages?.read?.at || null) };
+    if (c.id === 'statics-batch' && (OLD_BATCH.test(String(c.sub || '')) || c.cta?.label === 'Queue the ads')) c = { ...c, sub: String(c.sub || '').replace(OLD_BATCH, 'jam on any of them, and download the batch for your team to run'), cta: { ...(c.cta || {}), label: 'Open the batch' },
+      detail: { ...(c.detail || {}), how: (c.detail?.how || []).map((h) => h.replace(/^Queue the kept ones as one test\.?$/, 'Download the kept ones for your team to run.').replace(/^Open the set\b/, 'Open the batch')) } };
+    return c;
+  };
+  const fitCard = (keep, ctx = {}) => (c) => (c && typeof c === 'object' ? fitCta(fillMake(healCopy({ ...c, ...(c.title ? { title: sentenceCase(c.title, keep) } : {}) }, ctx))) : c); /* fillMake: a card that names an asset but was written without "make" gets one (cards-gen.js inferMake) */
+  const fitCards = (sd, ctx) => { const keep = keepOf(ctx); return { ...sd, posts: (sd.posts || []).map(fitCard(keep, ctx)) }; };
   const fitPools = (pl, keep) => Object.fromEntries(Object.entries(pl).map(([k, v]) => [k, Array.isArray(v) ? v.map(fitCard(keep)) : v]));
   const ipRow = (r) => (Array.isArray(r) && /\(in progress\)$/.test(r[1] || '') ? [r[0], sentenceCase(r[1], [], { force: true }), ...r.slice(2)] : r); // the index's unwritten rows carry skill names
   const fitMoves = (ms, keep) => Object.fromEntries(Object.entries(ms || {}).map(([n, m]) => [n, m && typeof m === 'object' && m.title ? { ...m, title: sentenceCase(m.title, keep),
@@ -223,10 +233,16 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
     if (profile && healSeedNumbers(seed, numbers, seed.brand?.name || profile.name)) await put(slug, 'seed.json', seed).catch(() => {});
     if (profile && (seed.health?.v !== HEALTH_V || seed.health?.key !== healthKey(numbers, profile))) { try { const was = seed.health?.v === HEALTH_V ? seed.health.delta || 0 : 0; seed.health = { ...healthFrom(profile, numbers), delta: was }; seed.geo = geoOf(seed.health) || { score: 0, band: 'Not read yet' }; await put(slug, 'seed.json', seed).catch(() => {}); } catch (e) { log.warn('[packs] health', slug, e.message); } }
     const { fxDeep } = fxFor(facts);
-    // demo connected accounts in this brand's numbers (demo-data.js), made once per read and kept in the pack
-    let demo = await getJSON(slug, 'demo.json', null);
-    if (!demo || demo.v !== DEMO_V || demo.lanes !== Object.keys(seed.lanes || {}).join()) {
-      if (profile) { demo = { ...demoFor({ ...profile, slug }, seed), lanes: Object.keys(seed.lanes || {}).join() }; await put(slug, 'demo.json', demo).catch(() => {}); } }
+    /* DUMMY: the simulated accounts (demo-data.js) exist on the demo site only (DEMO_MODE=1): made once per read and kept as
+       demo.json there (connectors/sim.js makes them again on demand). The live site builds none, appends none of their cards
+       to the feed, and pays for nothing on them (margin notes, drafts) */
+    let demo = null;
+    if (process.env.DEMO_MODE === '1') {
+      demo = await getJSON(slug, 'demo.json', null);
+      if (!demo || demo.v !== DEMO_V || demo.lanes !== Object.keys(seed.lanes || {}).join()) {
+        if (profile) { demo = { ...demoFor({ ...profile, slug }, seed), lanes: Object.keys(seed.lanes || {}).join() }; await put(slug, 'demo.json', demo).catch(() => {}); } } }
+    /* config.about written by the old rule (the first three catalog rows) heals to the brand's own words (derive.js aboutOf) */
+    if (profile && config && (!config.about || OLD_ABOUT.test(config.about))) { const a = aboutOf(profile); if (a && a !== config.about) { config.about = a; await put(slug, 'config.json', config).catch(() => {}); } }
     /* listening and the ideas stream (social-feed.js): every brand gets them at load, no rebuild; a brand without them gets nothing */
     const social = process.env.SOCIAL_CARDS === '0' ? null : await readSocial({ getJSON }, slug).catch((e) => { log.warn('[packs] social', slug, e.message); return null; });
     if (seed.connectors) seed.connectors = prototypeConnectors(seed.connectors);
@@ -235,7 +251,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
     const LC = learned?.cards || {}, upFresh = Object.entries(LC.up || {}).filter(([, x]) => Date.now() - (x.at || 0) < 21 * 864e5), teamName = seed.brand?.name || profile?.name || slug;
     if ((LC.add || []).length) { const have = new Set((seed.posts || []).map((x) => x.id)); seed.posts = [...LC.add.filter((x) => x?.id && !have.has(x.id)), ...(seed.posts || [])]; }
     const toldNotes = Object.fromEntries(upFresh.map(([id, x]) => [id, `From what ${teamName}’s team told us: ${x.why}`]));
-    const seedD = moveBadges(fitCards(withDemo(fitPhotos(socialize(visualize(seed, { slug, config, staticText: statics, profile }), social), profile), demo), { profile, config, seed }), moves, staleMoves);
+    const seedD = moveBadges(fitCards(withDemo(fitPhotos(socialize(visualize(seed, { slug, config, staticText: statics, profile }), social), profile), demo), { profile, config, seed, status }), moves, staleMoves);
     return finish({
       slug, kind: 'generated', ready: !!status.ready, status, demo, numbers,
       seed: fxDeep(seedD), rawSeed: seedD, facts,

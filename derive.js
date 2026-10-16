@@ -15,6 +15,25 @@ const BANNED = {
 };
 const catKind = (c) => /hair|skin|beauty|cosmetic|serum|derma|makeup|fragrance|personal care/i.test(c) ? 'beauty' : /supplement|vitamin|health|wellness|nutrition|pharma|medical|protein/i.test(c) ? 'health' : /food|snack|beverage|coffee|tea|drink/i.test(c) ? 'food' : 'default';
 
+/* "what the brand is", for prompts (research.js's news scout, the listening prompts): the brand's own words when the read has
+   them (about, the one-liner, the tagline), else the category with a fitting article and the hero products, never the first
+   three catalog rows ("a Apparel brand selling Green Laces for Women, Blue Laces…"). Also heals saved configs at load (brand-pack.js) */
+const heroTitles = (p) => {
+  const prods = (p.catalog?.products || []).filter((x) => x?.title && !/gift ?card|gift ?wrap|e-?gift/i.test(x.title));
+  const hero = (p.catalog?.hero || []).map((h) => prods.find((x) => x.handle === h)).filter(Boolean);
+  const best = hero.length ? hero : [...prods].sort((a, b) => (+b.reviews?.count || 0) - (+a.reviews?.count || 0) || (+b.price || 0) - (+a.price || 0));
+  return best.slice(0, 3).map((x) => String(x.title).split(/\s+[–—|:]\s+/)[0].trim()).filter(Boolean);
+};
+export const article = (w) => (/^[aeiou]/i.test(String(w || '').trim()) ? 'an' : 'a');
+export function aboutOf(p = {}) {
+  const own = [p.about, p.descriptor, p.tagline].map((s) => String(s || '').replace(/\s+/g, ' ').trim()).find((s) => s.length >= 12);
+  if (own) return own.slice(0, 220).replace(/[.\s]+$/, '');
+  const cat = String(p.category || '').trim(), names = heroTitles(p);
+  const kind = cat ? `${article(cat)} ${cat} brand` : 'a consumer brand';
+  return names.length ? `${kind} selling ${names.join(', ')}` : `${kind}${p.host ? ` at ${p.host}` : ''}`;
+}
+/* a config.about written by the old rule (the first three catalog rows behind "a <Category> brand selling") */
+export const OLD_ABOUT = /^an? \S+ brand selling /;
 export const keyOf = (k) => String(k).replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '').toLowerCase().slice(0, 60);
 export function factsFromLedger(ledger = [], { host } = {}) {
   const F = {};
@@ -43,7 +62,7 @@ export function configFromProfile(p, extra = {}) {
   return {
     country: cc, countryName: CNAME[cc] || cc, markets: (p.markets || [cc]).filter(Boolean), registeredCountry: p.registeredCountry || null, currency: cur, symbol: SYM[cur] || '', locale: LOCALE[cc] || 'en-US',
     tzOffsetH: (TZ[cc] || [0])[0], timezone: (TZ[cc] || [0, 'UTC'])[1], locationCode: LOC[cc] || 2840, lang: 'en',
-    category: cat, about: `a ${p.category || 'consumer'} brand selling ${products.slice(0, 3).map((x) => x.title).join(', ') || 'online'}`,
+    category: cat, about: aboutOf(p),
     product: { noun: extra.noun || 'product', style: `Premium ${p.category || 'D2C'} product ad photography`, avoid: kind === 'beauty' || kind === 'health' ? 'No text, no before/after, no body parts shown as results.' : 'No text, no invented claims.', look: `Clean, premium ${p.category || 'D2C'} look, no before/after.` },
     festival: nextFestival(cc), // rolls forward every year (calendar.js); brand-pack.js re-picks it at every load
     rivals, rivalsAI: rivals, rivalsSafe: 'other brands', newsRivals: rivals,

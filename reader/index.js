@@ -31,6 +31,8 @@ export const STEPS = [
 // per-stage deadlines (ms)
 const LIMIT = { open: 45e3, brand: 40e3, catalog: 60e3, reviews: 75e3, category: 40e3, rivals: 70e3, ads: 240e3, site: 200e3, answers: 170e3, socials: 120e3, company: 150e3 };
 
+/* stages heal() can run again from a saved profile plus the home page (a failed or timed-out one is recorded in meta.errors) */
+const RERUN = { reviews, socials, company };
 export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadRaw, log = console, root = ROOT } = {}) {
   const store = defaultStore(root);
   saveAsset ||= store.saveAsset; saveRaw ||= store.saveRaw; loadRaw ||= (saveRaw === store.saveRaw ? store.loadRaw : null);
@@ -163,9 +165,13 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
     const lineMissing = profile.descriptorBy !== 'claude' && profile.descriptorBy !== 'brand';
     const answersBroken = answersFailed(profile, findings);
     const siteBroken = siteFailed(profile);
+    /* a stage the read recorded as failed or timed out (meta.errors: reviews, socials, company) is run again from the saved
+       profile and the home page, once a day per stage (meta.healTried), so "No reviews found" never stands for a failed check */
+    const tried = profile.meta?.healTried || {};
+    const failedStages = Object.keys(profile.meta?.errors || {}).filter((k) => RERUN[k] && !!profile.host && (!tried[k] || Date.now() - Date.parse(tried[k]) >= 864e5));
     /* a read from before the health card's speed part gets PageSpeed; a failed one is kept and tried again a day later */
     const ps = profile.site?.pagespeed, speedMissing = !!profile.host && !siteBroken && speedOn() && (!ps || (!!ps.error && Date.now() - Date.parse(ps.at || 0) >= 864e5));
-    if (!adsBroken && !lineMissing && !answersBroken && !siteBroken && !speedMissing) return null;
+    if (!adsBroken && !lineMissing && !answersBroken && !siteBroken && !speedMissing && !failedStages.length) return null;
     const added = [], cards = [], stepsDone = {};
     const http = createFetcher({ slug, saveRaw, loadRaw, fresh: false, log: lg });
     const tregOn = !!treg && treg.live !== false, aiOn = !!ai && ai.live !== false;
@@ -185,6 +191,16 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
     // the checkout walk from an older walker, or one that never reached checkout, is walked again
     if (siteBroken) { try { await withTimeout(site(ctx), LIMIT.site, 'site'); changed.push('site'); } catch (e) { lg.warn?.('[reader] heal site', slug, e.message); } }
     if (speedMissing) { profile.site = { ...(profile.site || {}), pagespeed: await pageSpeed(profile.url, { log: lg }) }; changed.push('pagespeed'); }
+    if (failedStages.length) {
+      /* the stages read the home page (review widget, social links): fetched once here, as the open stage did */
+      try { const r = await http.get(profile.url, { key: 'heal-home' }); if (r.ok) { ctx.state.home = r.text; ctx.state.homeUrl = r.url || profile.url; ctx.state.origin = new URL(ctx.state.homeUrl).origin; } } catch (e) { lg.warn?.('[reader] heal home', slug, e.message); }
+      ctx.state.origin ||= new URL(profile.url).origin; ctx.state.home ||= '';
+      for (const k of failedStages) {
+        profile.meta = { ...(profile.meta || {}), healTried: { ...(profile.meta?.healTried || {}), [k]: new Date().toISOString() } };
+        try { await withTimeout(RERUN[k](ctx), LIMIT[k] || 90e3, k); delete profile.meta.errors[k]; changed.push(k); }
+        catch (e) { lg.warn?.(`[reader] heal ${k}`, slug, e.message); profile.meta.errors = { ...(profile.meta.errors || {}), [k]: e.message }; changed.push(`${k}:failed`); /* the stamp is saved, so the stage waits a day */ }
+      }
+    }
     if (!changed.length) return null;
     const keys = new Set(added.map((e) => e.key));
     const ledger = [...L.filter((e) => !keys.has(e.key)), ...added];

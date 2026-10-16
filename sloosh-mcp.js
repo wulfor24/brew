@@ -105,12 +105,21 @@ export function createSloosh({ url = MCP_URL(), tokenFor, fetchImpl = fetch, log
     return st || String(o?.phase || o?.submissionState || '').toLowerCase(); };
   const pendingCheckpoint = (x) => (x?.owner?.checkpoints || []).find((c) => c?.decisionPending) || null;
   const DONE = /^(settled|completed?|done|succeeded|success|finished|ready)$/, FAILED = /^(failed|error|errored|rejected|cancell?ed|canceled|quarantined|expired)$/;
-  async function wait(getter, { every = 5e3, maxMs = 15 * 60e3, onStep = null } = {}) {
+  /* a poll that failed for a reason that is usually gone a moment later: a 5xx, the 120 s fetch timeout, a dropped connection */
+  const transient = (e) => (e?.status >= 500) || e?.name === 'TimeoutError' || e?.name === 'AbortError' || /timed? ?out|ETIMEDOUT|ECONNRESET|ECONNREFUSED|EAI_AGAIN|ENOTFOUND|EPIPE|fetch failed|socket hang up|network/i.test(String(e?.message || e?.cause?.message || e?.code || ''));
+  /* polling never writes a run off on its own: a terminal state from Sloosh throws { terminal: true }; a poll that keeps failing throws
+     { pollError: true } and the wait limit { timeout: true } — in both the run may still be going (and charging) on Sloosh, so the caller
+     keeps its record open and collects it later (finals.reconcileAll on the next boot) */
+  async function wait(getter, { every = 5e3, maxMs = 15 * 60e3, onStep = null, tries = 3, backoffMs = 2e3, sleep = (ms) => new Promise((r) => setTimeout(r, ms)) } = {}) {
     const t0 = Date.now(); let last = null;
-    for (;;) { last = await getter(); const s = stateOf(last); onStep?.(s, last);
-      if (DONE.test(s)) return last; if (FAILED.test(s)) throw Object.assign(new Error(`Sloosh run ${s}${last?.owner?.errorCode ? ` (${last.owner.errorCode})` : ''}: ${last?.owner?.error || last?.error || last?.message || ''}`.trim()), { final: last });
+    for (;;) {
+      let got = null, err = null;
+      for (let i = 0; i < tries; i++) { try { got = await getter(); err = null; break; } catch (e) { err = e; if (!transient(e) || i === tries - 1) break; log?.warn?.(`[sloosh] poll failed, trying again (${i + 1}/${tries})`, String(e.message).slice(0, 160)); await sleep(backoffMs * (i + 1)); } }
+      if (err) throw Object.assign(new Error(`Sloosh could not be read (${String(err.message).slice(0, 200)}); the run may still be going there`), { pollError: true, cause: err, expired: !!err.expired, status: err.status, final: last });
+      last = got; const s = stateOf(last); onStep?.(s, last);
+      if (DONE.test(s)) return last; if (FAILED.test(s)) throw Object.assign(new Error(`Sloosh run ${s}${last?.owner?.errorCode ? ` (${last.owner.errorCode})` : ''}: ${last?.owner?.error || last?.error || last?.message || ''}`.trim()), { final: last, terminal: true });
       if (Date.now() - t0 > maxMs) throw Object.assign(new Error('Sloosh run is still going after the wait limit'), { timeout: true, final: last });
-      await new Promise((r) => setTimeout(r, every)); }
+      await sleep(every); }
   }
   /* an asset reference: { kind: 'workspace'|'generated', id } (the two id spaces are not interchangeable); a bare id is a workspace one */
   const refOf = (r) => (typeof r === 'string' ? { kind: 'workspace', id: r } : { kind: r?.kind || r?.reference?.kind || 'workspace', id: r?.id || r?.reference?.id || r?.assetId });

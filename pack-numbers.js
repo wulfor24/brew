@@ -37,7 +37,7 @@ export function ownAds({ profile, research } = {}) {
   const read = o.live != null && !o.error ? { n: +o.live, at: ts(profile.ads.at), page: o.page || null, src: 'read' } : null;
   /* the tracker reads the same page; one that found a different page is another brand's count, not a newer one */
   const tracker = r && r.live != null && !r.error && (!o.page || !r.page || squash(r.page) === squash(o.page)) ? { n: +r.live, at: ts(r.fetchedAt), page: r.page || null, src: 'tracker' } : null;
-  return fresher(read, tracker) || { n: null, at: 0, page: o.page || null, error: o.error || r?.error || null };
+  return fresher(read, tracker) || { n: null, at: 0, page: o.page || null, error: o.error || r?.error || profile?.meta?.errors?.ads || null }; /* a whole ads stage that failed (meta.errors.ads) is an error too */
 }
 
 /** the one rival list: [{ name, host, page, live, at, src, error }]. Names come from profile.rivals (what the check page
@@ -76,7 +76,7 @@ export function reviews({ profile, status } = {}) {
   const siteN = site.reduce((a, x) => a + +x.count, 0), siteW = site.reduce((a, x) => a + +x.count * (+x.rating || 0), 0), siteR = site.filter((x) => +x.rating).reduce((a, x) => a + +x.count, 0);
   const n = rv.total != null ? +rv.total || null : ps.length ? ps.reduce((a, x) => a + +x.count, 0) : null;
   return { n, at: n != null ? readDay(profile, status) : 0, platforms: ps.map((x) => ({ name: x.name, label: x.label || x.name, n: +x.count, rating: +x.rating || null })),
-    site: siteN ? { n: siteN, rating: siteR ? siteW / siteR : null } : null, error: n == null ? rv.error || null : null };
+    site: siteN ? { n: siteN, rating: siteR ? siteW / siteR : null } : null, error: n == null ? rv.error || profile?.meta?.errors?.reviews || null : null }; /* a reviews stage that failed or timed out (meta.errors.reviews) is never "no reviews" */
 }
 
 /** marketplace ratings (Amazon and the like): [{ name, n, rating, listings }], from the same read as reviews */

@@ -19,7 +19,7 @@
     const { _work, _ch, ...card } = p; const r = await a.tapi('POST', '/api/work', { cardId: p.id, card, decided: a.S.decided?.[p.id] || null }); if (r.work) a.putWork(r.work); return r.work || null; };
   /* the connectors the jam can read (real on the live site; DUMMY: simulated on the demo site, see connectors/index.js) */
   const loadCat = async () => { await window.LIVE_P; const L = window.LIVE || {}, nm = (id) => A().B?.connectors?.[id]?.name || id, ids = Object.keys(L.avail || {});
-    UI.cat = { connected: ids.filter((id) => L.conns?.[id]?.state === 'live').map((id) => ({ id, name: nm(id) })), available: ids.filter((id) => L.conns?.[id]?.state !== 'live').map((id) => ({ id, name: nm(id) })) }; repaint(); };
+    UI.cat = { connected: ids.filter((id) => L.conns?.[id]?.state === 'live').map((id) => ({ id, name: nm(id), dummy: !!(L.dummy || L.conns[id].dummy) })), /* DUMMY: only a simulated account is tagged */ available: ids.filter((id) => L.conns?.[id]?.state !== 'live').map((id) => ({ id, name: nm(id) })) }; repaint(); };
   const loadMem = async () => { UI.mem = await A().tapi('GET', '/api/tenants/:t/learning'); repaint(); };
 
   /* the jam pane or the studio, whichever is open */
@@ -43,7 +43,7 @@
       ${!m ? '<div class="cmp-load"><span class="spin"></span></div>' : ls.length || rs.length ? `<ul class="cmp-mem${P.memory ? '' : ' is-off'}">${rs.map((r) => `<li><i class="cmp-mk is-rule" title="A rule your team set"></i><span>${esc(r.text)}</span></li>`).join('')}${ls.map((x) => `<li><i class="cmp-mk${x.results?.length ? ' is-res' : ''}" title="${x.results?.length ? 'Backed by a measured result' : 'Learned from your choices'}"></i><span>${esc(x.text)}</span><button class="cmp-forget" data-cmp-forget="${esc(x.id)}" title="Forget this" aria-label="Forget this">${ic('x', 's14')}</button></li>`).join('')}</ul>` : '<p class="cmp-none">Nothing learned yet. It builds as you jam, decide and see results.</p>'}`); };
   const connPop = () => { const c = UI.cat;
     if (!c) return pop('conn', '<div class="cmp-load"><span class="spin"></span>Reading your accounts…</div>');
-    const row = (x) => `<div class="cmp-acc"><button class="cmp-acc-h" data-nav="connectors"><span class="cmp-logo">${esc(LOGO[x.id] || x.name[0])}</span><b>${esc(x.name)}</b><span class="cmp-ok">${ic('check', 's14')}<small class="dummy-tag">Dummy</small></span></button></div>`;
+    const row = (x) => `<div class="cmp-acc"><button class="cmp-acc-h" data-nav="connectors"><span class="cmp-logo">${esc(LOGO[x.id] || x.name[0])}</span><b>${esc(x.name)}</b><span class="cmp-ok">${ic('check', 's14')}${x.dummy ? '<small class="dummy-tag">Dummy</small>' : ''}</span></button></div>`;
     return pop('conn', `<small class="cmp-k">Connected</small>${c.connected.map((x) => row(x)).join('') || '<p class="cmp-none">Nothing connected yet.</p>'}
       ${c.available.length ? `<small class="cmp-k">Available</small>${c.available.map((x) => `<div class="cmp-acc"><button class="cmp-acc-h" data-cx="${esc(x.id)}"><span class="cmp-logo">${esc(LOGO[x.id] || x.name[0])}</span><b>${esc(x.name)}</b>${ic('right', 's14')}</button></div>`).join('')}` : ''}
       <button class="cmp-manage" data-nav="connectors">Manage connectors ${ic('right', 's14')}</button>`); };

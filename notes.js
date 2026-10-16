@@ -36,7 +36,8 @@ export function createNotes({ ai, packs, log = console, allow = () => true } = {
     busy.add(slug);
     try {
       const st = await stateOf(slug); pack.notes = st.notes;
-      const seen = new Set(st.seen), all = (pack.rawSeed?.posts || pack.seed?.posts || []).filter((p) => p?.id && !p.note && p.title && p.kind !== 'conflict');
+      /* simulated-account cards (demo-data.js: demo / onlyWhen) never show on the live site, so they get no paid note there */
+      const seen = new Set(st.seen), all = (pack.rawSeed?.posts || pack.seed?.posts || []).filter((p) => p?.id && !p.note && p.title && p.kind !== 'conflict' && !(process.env.DEMO_MODE !== '1' && (p.demo || p.onlyWhen)));
       let posts = all.filter((p) => !seen.has(p.id));
       /* the feed shows a note every 2 or 3 cards, so a brand needs about one note per three cards: one with fewer (written
          when it was one in three of fewer cards) gets one more pass over its cards without a note, once */

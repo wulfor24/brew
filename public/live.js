@@ -9,9 +9,13 @@
   const slug = window.BRAND, GENB = !!slug && slug !== 'brew';
   const L = (window.LIVE = { me: null, access: null, conns: {}, avail: {}, ready: false });
   const timeout = (ms) => new Promise((r) => setTimeout(r, ms));
+  /* the server's view of who you are and what is connected. It is awaited in full (no 2.5 s race: a slow first load left
+     avail empty and the app fell back to a fake sign-in sheet); a failed call is tried once more. L.ready says it answered */
+  const liveCall = () => fetch(GENB ? `/api/brands/${slug}/live` : '/api/me', { credentials: 'same-origin' }).then((x) => { if (!x.ok) throw new Error(`live ${x.status}`); return x.json(); });
   window.LIVE_P = (async () => {
-    try { const r = await Promise.race([fetch(GENB ? `/api/brands/${slug}/live` : '/api/me', { credentials: 'same-origin' }).then((x) => x.json()), timeout(2500).then(() => null)]); if (r) Object.assign(L, r, { user: r.me || r.user || null }); }
-    catch (e) {} L.me = L.me || L.user || null; L.ready = true; return L;
+    let r = null; for (let i = 0; i < 2 && !r; i++) { try { r = await liveCall(); } catch (e) { if (!i) await timeout(800); } }
+    if (r) { Object.assign(L, r, { user: r.me || r.user || null }); L.ready = true; } else L.failed = true;
+    L.me = L.me || L.user || null; return L;
   })();
   const A = () => window.__BREW;
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -82,12 +86,21 @@
     if (!boss()) return askAdmin(id);
     return null;
   }
+  /* the ownership check (advisory for every connector but GA4 by ID): a miss is said plainly, in the box, not hidden in a note */
+  const notMine = (why, err = false) => stat(err ? `The check didn’t go through: ${esc(why)}` : `This account doesn’t look like ${poss()}: ${esc(why)}. Brew reads it anyway; disconnect it if it’s the wrong one.`, 'bad', 'info');
   const claimNote = () => (!L.access?.claimed && L.access?.eligible ? note(`You’re the first from ${esc(host())}. Connecting makes you ${poss()} admin on Brew.`) : '');
   // DUMMY: the status line on a simulated account
   const DUMMY = (id) => stat(`<span class="dummy-tag">Dummy</span>A simulated ${esc(nm(id))} account, built from what Brew read. Nothing real is connected.`, '', 'info');
 
-  const simId = (id) => !!(L.dummy || L.avail?.[id]?.dummy || !L.avail?.[id]);
-  const open = (id, opts = {}) => (simId(id) ? openSim(id, opts) : openReal(id, opts));
+  const simId = (id) => !!(L.dummy || L.avail?.[id]?.dummy || (L.ready && !L.avail?.[id]));
+  /* false only when the server said this connector isn't available here; while the live call hasn't answered yet the box
+     waits for it (never a fake sheet because of a slow load) */
+  const open = (id, opts = {}) => {
+    if (L.ready) return simId(id) ? openSim(id, opts) : openReal(id, opts);
+    /* still loading: open once it answers. The load failed: ask again now, and say so if Brew still can't be reached */
+    const again = L.failed ? liveCall().then((r) => { Object.assign(L, r, { user: r.me || r.user || null }); L.me = L.me || L.user || null; L.ready = true; L.failed = false; }).catch(() => null) : window.LIVE_P;
+    again.then(() => { if (L.ready) open(id, opts); else A()?.toast?.(`${ic('info', 's16')}Couldn’t reach Brew to connect ${esc(nm(id))}. Check your connection and try again.`); });
+    return true; };
   // a real account: sign in with the platform, or paste a read-only key
   function openReal(id, opts = {}) {
     if (!GENB || (!L.signin && !L.me)) return false;
@@ -96,7 +109,7 @@
       const av = L.avail[id], x = L.conns?.[id], short = esc(nm(id).split(' ')[0]);
       const oauth = av.modes.includes('oauth') && av.oauth, key = av.modes.includes('key') && av.fields?.length;
       const g = guide(id, av, oauth), solo = g.steps.length === 1 && g.steps[0].oauth ? g.steps[0] : null;
-      const status = x?.error ? stat(esc(x.error), 'bad', 'info') : READONLY(id), why = x?.why ? note(esc(x.why), 'info') : '';
+      const status = x?.error ? stat(esc(x.error), 'bad', 'info') : READONLY(id), why = x?.why ? notMine(x.why) : '';
       const line = esc(opts.why || '') || solo?.p || `Puts ${poss()} real numbers on your cards.`;
       if (av.modes.includes('public')) html = box({ id, title: `Connect ${esc(nm(id))}`, line, body: unlocks(id) + why, status: av.ready ? READONLY(id) : stat('The marketplace read is off on this server right now.', 'bad', 'info'), ghost: ghostBtn('Not now'), go: av.ready ? goBtn('Read the listings now', 'data-pub') : '' });
       else if (!oauth && !key) html = box({ id, title: `Connect ${esc(nm(id))}`, line, body: unlocks(id), status: stat(`Connecting ${esc(nm(id))} is being switched on. Brew’s team will send you a link.`, '', 'clock'), go: goBtn('Got it', 'data-close') });
@@ -201,11 +214,13 @@
     const read = (r.stats || []).slice(0, 3).map(([k, v]) => `<b>${esc(v)}</b> <small>${esc(lc1(k))}</small>`), did = read.length ? [] : (r.changed || []).slice(0, 2).map(esc);
     const done = box({ id, title: `${esc(nm(id))}${also ? ' and Google Analytics are' : ' is'} connected`, line: dummy ? 'Your cards now use its simulated numbers.' : 'Your cards now use its numbers.',
       body: (r.claimed ? note(`You’re ${poss()} owner on Brew now. Teammates with the same company email join on their own.`) : '') + (read.length ? kick('What Brew read') + ticks(read) : did.length ? kick('In your feed') + ticks(did) : '')
-        + (r.why ? note(esc(r.why), 'info') : '') + (r.notes || []).slice(0, 2).map((t) => note(esc(t), 'info')).join(''),
+        + (r.proof && !r.proof.ok ? notMine(r.proof.why || r.why || 'no match', !!r.proof.error) : r.why ? notMine(r.why) : '') + accountList(r) + (r.notes || []).slice(0, 2).map((t) => note(esc(t), 'info')).join(''),
       status: dummy ? stat('<span class="dummy-tag">Dummy</span>Connected. Nothing real was read or changed.', 'on', 'check') : stat(`Live. Refreshes every ${L.avail?.[id]?.every || 12} hours.`, 'on', 'check'),
       ghost: others(id).length && boss() ? ghostBtn('Connect another', 'data-swap="next"') : '', go: goBtn(setupView() ? 'Continue' : 'See it in the feed', 'data-see') });
     const xs = others(id), next = xs.length && boss() ? box({ id, title: 'Connect another', line: 'One tap each.', body: `<div class="cxb-rows">${xs.map((k) => `<button type="button" class="cxb-row" data-next-cx="${k}">${A()?.glyph?.(k, 28) || ''}<span><b>${esc(nm(k))}</b></span>${ic('right', 's16')}</button>`).join('')}</div>`, ghost: ghostBtn('Back', 'data-swap="done"') }) : '';
     return pane('done', done, true) + (next ? pane('next', next, false) : ''); };
+  /* several ad accounts read at once (Meta): each one's spend on the done box */
+  const accountList = (r) => { const xs = (r.accounts || []).filter((a) => a && (a.ok !== false)); if (xs.length < 2) return ''; return kick(`${xs.length} ad accounts`) + ticks(xs.map((a) => `${esc(a.name)}${a.spend != null ? ` <small>${esc(a.currency || '')} ${esc(Number(a.spend).toLocaleString())}</small>` : ''}`)); };
   /* after one account, the rest are a tap away: the brand's other accounts that are not connected yet */
   const others = (id) => Object.keys(B()?.connectors || {}).filter((k) => k !== id && !(A()?.conn?.(k)) && !(L.conns?.[k]?.state === 'live') && (simId(k) ? k !== 'slack' || L.dummy : L.avail?.[k]?.ready !== false));
   function bindDone(m, id, opts = {}) {
@@ -230,21 +245,28 @@
   // Meta: which ad account; Google Ads: which Ads account (and, if they like, the GA4 property too); Google Analytics: which property
   async function pick(id) {
     if (!boss()) return A().modal(shell(askAdmin(id)));
-    const what = id === 'google' ? 'accounts' : id === 'ga4' ? 'property' : 'ad account';
-    A().modal(shell(box({ id, title: `Pick the ${what}`, line: `The ${id === 'google' ? 'ones' : 'one'} that ${id === 'google' ? 'are' : 'is'} ${poss()}.`, body: '<div class="cxb-opts"><span class="spin"></span></div>', ghost: ghostBtn('Cancel'), go: goBtn('Connect', 'data-go') })), async (m) => {
+    const what = id === 'google' ? 'accounts' : id === 'ga4' ? 'property' : L.avail?.[id]?.multi ? 'ad accounts' : 'ad account', many = id === 'google' || !!L.avail?.[id]?.multi;
+    A().modal(shell(box({ id, title: `Pick the ${what}`, line: `The ${many ? 'ones' : 'one'} that ${many ? 'are' : 'is'} ${poss()}.`, body: '<div class="cxb-opts"><span class="spin"></span></div>', ghost: ghostBtn('Cancel'), go: goBtn('Connect', 'data-go') })), async (m) => {
       const r = await get(`/api/brands/${slug}/connect/${id}/options`), box0 = m.querySelector('.cxb'), opts = r.options || [], go = m.querySelector('[data-go]');
       if (!opts.length) { m.querySelector('.cxb-opts').remove(); setStat(box0, stat(esc(r.error || 'No accounts came back for this login. Try a login that can see them.'), 'bad', 'info')); go.textContent = 'Try again'; go.onclick = () => leave(`/connect/${id}/start?brand=${slug}`); return; }
       const GOOG = id === 'google' || id === 'ga4', groups = id === 'google' ? [['ads', 'Google Ads'], ['ga4', 'Google Analytics']] : id === 'ga4' ? [['ga4', 'Google Analytics property']] : [[null, 'Ad account']];
-      const row = (name, val, nm2, sub, on) => `<label class="cxb-row"><input type="radio" name="${name}" value="${esc(val)}" data-name="${esc(nm2)}"${on ? ' checked' : ''}><span><b>${esc(nm2)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span><i class="cxb-radio" aria-hidden="true"></i></label>`;
+      /* several accounts at once (Meta): checkboxes, the brand's own ones ticked first (the server checked each for the brand's Page) */
+      const multi = !!(r.multi || L.avail?.[id]?.multi) && !GOOG;
+      const row = (name, val, nm2, sub, on, o = {}) => `<label class="cxb-row"><input type="${multi ? 'checkbox' : 'radio'}" name="${name}" value="${esc(val)}" data-name="${esc(nm2)}"${on ? ' checked' : ''}><span><b>${esc(nm2)}</b>${sub ? `<small>${esc(sub)}${o.own === true ? ` · ${esc(B().brand.name)}’s page` : o.own === false ? ' · another page' : ''}</small>` : ''}</span><i class="cxb-radio" aria-hidden="true"></i></label>`;
       /* Google Ads sign-in with no Ads account on that login: Ads can't connect, so the sheet offers Google Analytics alone
          (no "Connect Google Ads only" row) and a way back to sign in with the login that runs the ads */
       const noAds = id === 'google' && !opts.some((o) => o.kind === 'ads');
       m.querySelector('.cxb-opts').innerHTML = groups.map(([k, label]) => { const xs = opts.filter((o) => !k || o.kind === k); if (!xs.length) return k === 'ads' ? note(r.adsNote ? `${esc(r.adsNote)} You can still connect Google Analytics below.` : 'There’s no Google Ads account on this Google login, so Google Ads can’t connect with it. Pick a property to connect Google Analytics, or use the login that runs your ads.', 'info') : '';
-        return kick(`${label}${xs.length > 1 ? ` · ${xs.length}` : ''}`) + `<div class="cxb-rows" role="radiogroup">${xs.map((o) => row(k || 'acct', o.id, o.name, o.sub, xs.length === 1)).join('')}${k === 'ga4' && id === 'google' && !noAds ? row('ga4', '', 'Not now', 'Connect Google Ads only', false) : ''}</div>`; }).join('');
+        const tick = (o) => (multi ? (xs.some((y) => y.own === true) ? o.own === true : xs.length === 1) : xs.length === 1);
+        return kick(`${label}${xs.length > 1 ? ` · ${xs.length}` : ''}`) + `<div class="cxb-rows" role="${multi ? 'group' : 'radiogroup'}">${xs.map((o) => row(k || 'acct', o.id, o.name, o.sub, tick(o), o)).join('')}${k === 'ga4' && id === 'google' && !noAds ? row('ga4', '', 'Not now', 'Connect Google Ads only', false) : ''}</div>`; }).join('');
+      /* the button says how many: "Use these 3 accounts" */
+      const picked = () => [...m.querySelectorAll('input[name="acct"]:checked')].map((i) => ({ id: i.value, name: i.dataset.name }));
+      const label = () => { if (!multi) return; const n = picked().length; go.textContent = n > 1 ? `Use these ${n} accounts` : n === 1 ? 'Use this account' : 'Pick an ad account'; };
+      if (multi) { label(); m.querySelectorAll('input[name="acct"]').forEach((i) => i.addEventListener('change', label)); }
       if (noAds) { go.textContent = 'Connect Google Analytics'; const gh = m.querySelector('.cxb-gh'); if (gh) { gh.textContent = 'Use another login'; gh.removeAttribute('data-close'); gh.onclick = () => leave(`/connect/${id}/start?brand=${slug}`); } }
       go.onclick = () => { const val = (k) => m.querySelector(`input[name="${k}"]:checked`);
-        const choice = GOOG ? { ga4: val('ga4')?.value || null, ga4Name: val('ga4')?.dataset.name, ads: val('ads')?.value || null, adsName: val('ads')?.dataset.name } : { account: val('acct')?.value, name: val('acct')?.dataset.name };
-        if (!GOOG && !choice.account) return setStat(box0, stat('Pick an ad account first.', 'bad', 'info')); if (GOOG && !choice.ga4 && !choice.ads) return setStat(box0, stat(id === 'ga4' || noAds ? 'Pick a property first.' : 'Pick an Ads account or a property first.', 'bad', 'info'));
+        const choice = GOOG ? { ga4: val('ga4')?.value || null, ga4Name: val('ga4')?.dataset.name, ads: val('ads')?.value || null, adsName: val('ads')?.dataset.name } : multi ? { accounts: picked() } : { account: val('acct')?.value, name: val('acct')?.dataset.name };
+        if (!GOOG && !(multi ? choice.accounts.length : choice.account)) return setStat(box0, stat('Pick an ad account first.', 'bad', 'info')); if (GOOG && !choice.ga4 && !choice.ads) return setStat(box0, stat(id === 'ga4' || noAds ? 'Pick a property first.' : 'Pick an Ads account or a property first.', 'bad', 'info'));
         run(m, id, post(`/api/brands/${slug}/connect/${id}`, { action: 'select', choice })); };
     });
   }
@@ -274,7 +296,8 @@
     if (x.state === 'syncing') return `<span class="cn-st is-on"><i></i>Reading…</span>`;
     return `<span class="cn-st is-off"><i></i>Needs attention</span>`; };
   const footer = (id) => { const x = L.conns?.[id]; if (!x || !member() && x.state !== 'live') return null;
-    return `<span class="cn-acct">${ic('check', 's14')}${esc(x.account || nm(id))}${x.lastSync ? ` · ${ago(x.lastSync)}` : ''}</span>${member() || L.avail?.[id]?.modes?.includes('public') ? `<button class="cn-btn is-ghost" data-lsync="${id}">Sync now</button>` : ''}${member() && boss() ? `<button class="cn-btn is-ghost" data-lunlink="${id}">Disconnect</button>` : ''}`; };
+    const accts = (x.accounts || []).length > 1 ? ` title="${esc(x.accounts.map((a) => a.name || a.id).join(', '))}"` : '';
+    return `<span class="cn-acct"${accts}>${ic('check', 's14')}${esc(x.account || nm(id))}${x.lastSync ? ` · ${ago(x.lastSync)}` : ''}</span>${member() || L.avail?.[id]?.modes?.includes('public') ? `<button class="cn-btn is-ghost" data-lsync="${id}">Sync now</button>` : ''}${member() && boss() ? `<button class="cn-btn is-ghost" data-lunlink="${id}">Disconnect</button>` : ''}`; };
   const intro = () => { if (!GENB || (!L.signin && !L.me)) return null; const n = B().brand.name;
     if (!L.me) return L.dummy ? `Every source Brew reads for ${n}. <a href="${signin()}">Sign in with Google</a> to connect accounts. Connected accounts are simulated in this demo (Dummy).` : `Every source Brew reads for ${n}. <a href="${signin()}">Sign in with Google</a> to connect ${n}’s real accounts, read-only (Slack posts to the channel you pick).`;
     if (member() && !boss()) return `Every source Brew reads for ${n}. Only ${n}’s admins connect or disconnect accounts; you can sync the connected ones.`;
@@ -403,5 +426,5 @@
 
 
 
-  window.LiveConn = { boss: () => !L.me || boss(), simId, teamSheet, seatWords, open, overlay, resume, status, footer, intro, bindPage, menu, claim, isLive, get L() { return L; }, gen: GENB, signin };
+  window.LiveConn = { boss: () => !L.me || boss(), isReady: () => !!L.ready, simId, teamSheet, seatWords, open, overlay, resume, status, footer, intro, bindPage, menu, claim, isLive, get L() { return L; }, gen: GENB, signin };
 })();

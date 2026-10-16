@@ -1,7 +1,8 @@
 // Feed cards from a finished move: 1 or 2 cards in the v1 card shape, plus the move's short labels.
 // Same rules as the first hand-built feed: the title is the point, the sub is two sentences (25-35 words:
 // what we saw with the number, then the move and what it gets the brand), every number is in the fact sheet.
-import { numbersOf } from './pack-numbers.js'; // one number, one source
+import { numbersOf, dayOf } from './pack-numbers.js'; // one number, one source
+import { mockAllowed } from './ai.js'; // a mock card stands in only on a mock run, never after a billing pause
 import { unbacked, allowedFrom, numbersIn, backedNumbers } from './fact-gate.js';
 import { CTA } from './seed-template.js';
 import * as catalog from './creative-catalog.js'; /* what can be made: formats, the prompt block, generic and repeat checks */
@@ -95,6 +96,8 @@ export const ledgerNums = (ledger = []) => { const ok = new Set(); for (const e 
 /* the numbers in what was read: as written, and a bare price ("mrp": 4999) in the currency the read prints */
 export const readNums = (ev) => { const all = numbersIn(ev, { strict: true }), ok = new Set(all), syms = new Set(all.map((n) => (n.match(/^([^\d]+)\d/) || [])[1]).filter(Boolean));
   for (const v of String(ev).match(/(?<=[:\[,]\s?)\d+(?:\.\d+)?(?=[,\]}])/g) || []) { ok.add(String(+v)); for (const sy of syms) ok.add(sy + String(+v)); } return ok; };
+/* the read cards say the day of the read ("Read from acme.in on 16 Oct"), never a frozen "today" */
+export const readSrc = (host, readAt) => `Read from ${host} on ${dayOf(readAt || Date.now())}`;
 export function createCardsGen({ ai, log = console }) {
   // move → { cards, label }; facts is the brand fact sheet (factsFromLedger)
   async function fromMove(move, { brand, facts, lanes, laneImg, spec, ledger = [], profile = null, config = null, learned = null, seen = [] }) { /* profile, learned (learned.json) and seen (cards already in the feed) are optional: callers that pass them get style-, learning- and repeat-aware cards */
@@ -141,7 +144,7 @@ ${catalog.promptBlock({ product: heroName })}
 - Also write the move's short label and one-line summary.`;
     let j;
     try { j = (await ai.call({ model: 'sonnet', prompt, schema: SCHEMA, max: 4000, tag: 'cards' })).json; }
-    catch (e) { if (e.mock) return mockCards(move, { sector0, agent0, lanes, laneImg }); throw e; }
+    catch (e) { if (mockAllowed(e)) return mockCards(move, { sector0, agent0, lanes, laneImg }); throw e; }
     const laneKeys = Object.keys(lanes || {}); const lane = laneKeys[0] || 'core';
     const cards = [];
     (j.cards || []).slice(0, 2).forEach((c, i) => {
@@ -183,12 +186,12 @@ ${catalog.promptBlock({ product: heroName })}
     const SCH = { type: 'object', properties: { cards: { type: 'array', items: SCHEMA.properties.cards.items } } };
     let j;
     try { j = (await ai.call({ model: 'sonnet', schema: SCH, max: 5000, tag: 'cards-read', prompt: `You write the first feed cards for ${brand.name} (${brand.host}), from what Brew just read on its live site, reviews, ads and AI answers.\n\nWHAT WE READ (JSON):\n${ev}\n\nFACTS YOU MAY QUOTE:\n${Object.values(facts).slice(0, 100).map((f) => `- ${f.label}: ${f.v}`).join('\n')}\n\nWrite 4 cards, each a real finding the team can act on today: one about AI answers (named or not, who is named instead), one about rivals' live ads, one about the catalog or checkout, one about what customers say. Only use what is in the JSON above; every number must be in it or in the facts. If a finding is missing from the JSON, skip that card. Plain one-glance words, no em dashes. Pick the button that does what the card asks.\n${catalog.promptBlock({ product: (p.catalog?.products || []).find((x) => x?.title)?.title?.split(/\s+[–—|:-]\s+|,\s/)[0] || null, examples: 1 })}\nWhen a card asks for an asset, "make" names a format from that list and "pieces" reads like its examples (how many, the exact product as the store lists it, the scene, the hook), backed by a line in the JSON; never "a new ad" or "fresh creative", and no two cards share format + product + angle.` })).json; }
-    catch (e) { if (e.mock) return []; throw e; }
+    catch (e) { if (mockAllowed(e)) return []; throw e; }
     const nums = readNums(ev); const lane = Object.keys(lanes || {})[0] || 'core'; const out = [];
     const SEC = (t) => /ai answer|chatgpt|gemini|perplexity|named/i.test(t) ? ['visibility', 'visibility'] : /\bads?\b|meta|rival/i.test(t) ? ['ads', 'performance'] : /review|customer|say/i.test(t) ? ['creatives', 'creative'] : ['storefront', 'storefront'];
     (j.cards || []).slice(0, 4).forEach((c, i) => {
       const [sector, agent] = SEC(`${c.title} ${c.sub}`);
-      const card = { id: `read-${i + 1}`, origin: 'read', agent, sector, type: c.type, lane, roles: ROLES[sector] || ['founder'], src: `Read from ${brand.host} today`, time: `${4 + i * 3} min`,
+      const card = { id: `read-${i + 1}`, origin: 'read', agent, sector, type: c.type, lane, roles: ROLES[sector] || ['founder'], src: readSrc(brand.host, p.meta?.readAt), time: `${4 + i * 3} min`,
         kind: (c.rows || []).filter((r) => r?.length >= 2).length ? 'rows' : 'media', title: String(c.title || '').trim(), sub: String(c.sub || '').trim(), detail: { why: (c.why || []).slice(0, 3), how: (c.how || []).slice(0, 3) }, cta: { label: CTA[c.cta] ? c.cta : 'Generate versions' } };
       const rows = (c.rows || []).filter((r) => r?.length >= 2).slice(0, 5).map((r) => [String(r[0]).slice(0, 40), String(r[1]).slice(0, 48)]);
       const fam = toFamily(c.make?.format);

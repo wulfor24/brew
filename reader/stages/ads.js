@@ -26,13 +26,13 @@ export async function findRivals(ctx) {
   if (!ctx.tregOn && !ctx.aiOn) { profile.rivals = []; if (ctx.state) ctx.state.rivalsNotChecked = 'paid sources off'; return; }
   const cc = (profile.country || 'US').toLowerCase();
   const queries = (ctx.state.categoryQueries || []).slice(0, 3);
-  const serp = [];
+  const serp = []; let serpOk = 0, aiErr = null; /* which rival sources went through: a list that stays empty because both failed is "not checked", never "no rivals" */
   // SERP overlap: which store domains rank for the category's buying queries
   if (ctx.tregOn && queries.length) {
     await pool(queries, 3, async (q) => {
       try { const j = await ctx.treg('crawl4ai.google.serp.organic', { query: { q, country: cc, num: 20 } }, `${cc}-${q}`);
         const results = (j?.results || []).map((r) => ({ pos: r.position, domain: registrable(r.domain || hostOf(r.url)), title: clean(r.title), url: r.url }));
-        serp.push({ q, results }); }
+        serp.push({ q, results }); serpOk++; }
       catch (e) { ctx.log.warn?.('[reader] serp', q, e.message); }
     });
   }
@@ -63,7 +63,7 @@ export async function findRivals(ctx) {
       if (!(r.json?.rivals || []).length) { await new Promise((ok) => setTimeout(ok, 4000)); r = await ask('reader-rivals-retry'); }
       const cites = new Set((r.cites || []).map((c) => c.url));
       named = (r.json?.rivals || []).filter((x) => x.name && x.host).map((x) => ({ ...x, host: registrable(String(x.host).replace(/^https?:\/\//, '').split('/')[0]), sourced: !!x.source && (cites.has(x.source) || [...cites].some((c) => hostOf(c) === hostOf(x.source))) }));
-    } catch (e) { ctx.log.warn?.('[reader] rivals ai', e.message); }
+    } catch (e) { ctx.log.warn?.('[reader] rivals ai', e.message); aiErr = e.message; }
   }
   // merge: web-search rivals first (boosted when they also rank), then strong SERP-only store domains
   const out = [];
@@ -99,6 +99,8 @@ export async function findRivals(ctx) {
       await tryAdd([...by.values()].sort((a, b) => b.n - a.n).slice(0, 8).map((x) => ({ ...x, why: `runs ${x.n} live ad${x.n === 1 ? '' : 's'} for "${queries[0]}"` })), 'Ad Library (category search)'); } catch (e) { ctx.log.warn?.('[reader] rivals ad search', e.message); }
   }
   if (profile.rivals.length < 3 && ctx.aiOn) await tryAdd(await ask2('reader-rivals-known', `Which D2C brands compete most directly with ${profile.name} (${profile.host}, ${profile.category || ''}) for the same shoppers in ${profile.country || 'its market'}? Up to 8, the closest first.`, 0), 'suggested by AI, store read live');
+  /* nothing found because the AI search threw (or was off) and no category search answered: the check didn't go through */
+  if (!profile.rivals.length && (aiErr || !ctx.aiOn) && !serpOk && ctx.state) ctx.state.rivalsNotChecked = aiErr ? `rival search failed: ${String(aiErr).slice(0, 80)}` : 'rival search unavailable (AI off, no category search answered)';
   noteRivals(ctx);
 }
 

@@ -110,6 +110,9 @@ export async function answers(ctx) {
     if (!shown && tool === 'chatgpt' && !q.branded) { shown = true; ctx.finding('answers', answerCard(a, profile, cc), a.named ? `${profile.name} is named` : `${profile.name} is not named`); }
   });
   const ok = profile.ai.answers.filter((a) => !a.error);
+  /* every AI tool errored: that is a failed check, not "0 of 0 answers"; the error stays on the read so the ring says
+     "couldn't be read" and heal asks again (answersFailed in reader/index.js) */
+  if (!ok.length && profile.ai.answers.length) { const first = profile.ai.answers.find((a) => a.error)?.error || 'no AI tool answered'; profile.meta = { ...(profile.meta || {}), errors: { ...(profile.meta?.errors || {}), answers: `AI tools: ${first}` } }; }
   const unb = ok.filter((a) => !a.branded);
   profile.ai.score = { named: ok.filter((a) => a.named).length, of: ok.length, unbrandedNamed: unb.filter((a) => a.named).length, unbrandedOf: unb.length, byTool: Object.fromEntries(tools.map((t) => [t, { named: ok.filter((a) => a.tool === t && a.named).length, of: ok.filter((a) => a.tool === t).length }])) };
   ledger.add({ key: 'ai.named.of', label: `AI answers that name ${profile.name}`, v: `${profile.ai.score.named} of ${ok.length}`, n: profile.ai.score.named, unit: 'answers', url: null, src: tools.join(', '), method: 'treg:dataforseo ai-optimization + claude:web_search', note: `asked from ${cc}; ${unb.length} unbranded answers, ${profile.ai.score.unbrandedNamed} name the brand` });

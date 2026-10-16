@@ -22,7 +22,7 @@ export function createStore({ dir, bucket, gToken, log = console }) {
     return method === 'PUT' ? true : r.text();
   };
   const write = (t) => {
-    if (wiping(t?.brandId)) return;
+    if (wiping(t?.brandId)) return; fromGcs.add(t.id);
     let s; try { s = JSON.stringify(t, enc); } catch (e) { log.warn('[store] serialise', e.message); return; }
     try { fs.writeFileSync(file(t.id), s); } catch (e) { log.warn('[store] disk', e.message); }
     return remote ? gcs('PUT', t.id, s).catch((e) => log.warn('[store] gcs', e.message)) : Promise.resolve();
@@ -31,10 +31,15 @@ export function createStore({ dir, bucket, gToken, log = console }) {
   const pending = new Map(); // id -> workspace still waiting for its debounced write
   const save = (t, ms = 1500) => { if (!t?.id) return; clearTimeout(timers.get(t.id)); pending.set(t.id, t); timers.set(t.id, setTimeout(() => { timers.delete(t.id); pending.delete(t.id); write(t); }, ms)); };
   const load = async (id) => { await retireReady(); const t = await load0(id); return t && wiping(t.brandId) ? null : t; };
+  /* the first load of each workspace after boot reads the bucket, not this disk: for the ~20 s two instances overlap on a
+     deploy the disk copy may be the old one. After that the disk copy (kept in step by write()) serves, as before */
+  const fromGcs = new Set();
+  const parse = (s) => JSON.parse(brewText(onceEscaped(s)), dec);
   const load0 = async (id) => {
     if (!id || !/^t_[a-f0-9]+$/.test(id)) return null;
-    try { if (fs.existsSync(file(id))) return JSON.parse(brewText(onceEscaped(fs.readFileSync(file(id), 'utf8'))), dec); } catch (e) { log.warn('[store] read', e.message); }
-    if (remote) { try { const s = await gcs('GET', id); fs.writeFileSync(file(id), s); return JSON.parse(brewText(onceEscaped(s)), dec); } catch (e) { if (!/404/.test(e.message)) log.warn('[store] gcs read', e.message); } }
+    if (remote && !fromGcs.has(id)) { try { const s = await gcs('GET', id); fromGcs.add(id); fs.writeFileSync(file(id), s); return parse(s); } catch (e) { if (/404/.test(e.message)) { fromGcs.add(id); return null; } log.warn('[store] gcs first read', e.message); } } /* the bucket unreachable: the disk copy below */
+    try { if (fs.existsSync(file(id))) return parse(fs.readFileSync(file(id), 'utf8')); } catch (e) { log.warn('[store] read', e.message); }
+    if (remote) { try { const s = await gcs('GET', id); fromGcs.add(id); fs.writeFileSync(file(id), s); return parse(s); } catch (e) { if (!/404/.test(e.message)) log.warn('[store] gcs read', e.message); } }
     return null;
   };
   /* every workspace file and when it last changed (the bucket's on Cloud Run, this disk locally), and one read fresh from it:
@@ -44,7 +49,7 @@ export function createStore({ dir, bucket, gToken, log = console }) {
     do { const r = await fetch(`https://storage.googleapis.com/storage/v1/b/${bucket}/o?prefix=tenants/&fields=items(name,updated),nextPageToken${pt ? '&pageToken=' + pt : ''}`, { headers: { authorization: `Bearer ${tk}` }, signal: AbortSignal.timeout(20e3) });
       if (!r.ok) throw new Error(`gcs list tenants ${r.status}`); const j = await r.json(); for (const x of j.items || []) { const m = /^tenants\/(t_[a-f0-9]+)\.json$/.exec(x.name); if (m) out.push({ id: m[1], updated: x.updated }); } pt = j.nextPageToken || ''; } while (pt);
     return out; };
-  const readFresh = async (id) => { if (!remote) return load0(id); if (!/^t_[a-f0-9]+$/.test(id || '')) return null; return JSON.parse(brewText(onceEscaped(await gcs('GET', id))), dec); };
+  const readFresh = async (id) => { if (!remote) return load0(id); if (!/^t_[a-f0-9]+$/.test(id || '')) return null; return parse(await gcs('GET', id)); };
   // drops pending writes (tests, resets); flushPending writes them now and waits for GCS (SIGTERM on Cloud Run)
   const flush = () => { for (const [id, tm] of timers) clearTimeout(tm); timers.clear(); pending.clear(); };
   const flushPending = () => { const ts = [...pending.values()]; flush(); return Promise.all(ts.map(write)); };

@@ -11,6 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createFamilies, timingLine } from './measure-families.js';
+import { mockAllowed } from './ai.js'; // a [MOCK] placeholder stands in only on a mock run, never after a billing pause
 import { dateCounts } from './pack-numbers.js'; // counts that move day to day say the day they were read
 import { promptBlock as creativeBlock } from './creative-catalog.js'; // what can be made, for the creative and social-posts disciplines
 
@@ -40,7 +41,7 @@ const CONTRACT = `
 - Every claim about the brand, its buyers, its rivals or its market cites one evidence line: a ledger key, a listening line (listen.*), a market pulse line (pulse.*), a video read (video.*) or a calendar line (cal.*). Say where it comes from in plain words in the text ("113 posts heard on Reddit and YouTube since September", "the forecast for Delhi read 12 Oct") and list every key you used in factsUsed. Numbers come only from those lines or from derived arithmetic on them.
 - Counts that change day to day (live ads, products, reviews, ratings, followers) are given with the day of the ledger line they come from: "664 live ads on 14 Oct", never a bare "664 live ads". A newer count on another screen then reads as newer, not as a contradiction.
 - Never name the data vendors or tools behind a line (no API, scraper or provider names). Say what was read and where: "Reddit threads", "Amazon reviews", "Google Shopping results", "the weekly AI answers check".
-- Quote real people only from listen quote lines (keys ending .q1, .q2 … or listen.asked.*), word for word, with the link from that line and the platform and date. Never invent, merge or tidy a quote. Anything else in quotation marks is labelled as our draft copy or a dramatised example.
+- Quote real people only from listen quote lines (keys ending .q1, .q2 … or listen.asked.*), word for word, with the link from that line and the platform and date. Never invent, merge or tidy a quote, and never write a placeholder in its place ("Quote to confirm", "[quote]"): with no quote line to use, write the point without a quote. Anything else in quotation marks is labelled as our draft copy or a dramatised example.
 - Counts from listening are given with their window and split (e.g. "113 mentions: 42 positive, 8 negative, 63 neutral; 2 this week vs 3 the week before"). Do not turn a count of mentions into a share of customers.
 - "How we measure" keeps its table and adds, after it: a paragraph that starts "Check timings:" and names the metric, where the team reads it and the check schedule of this move's measuring family exactly as the task gives it (check days, decide day, early stops). The brand's team runs these checks: Brew does not watch, re-read, grade, pause or stop anything, so never say it does. Then one line that starts "What to watch:" naming the listening, pulse and calendar lines the team should look at each check. Nothing is judged before the decide day.
 - When an evidence family the move needs is missing (no listening yet, no pulse line), say so in the method note and mark the dependent cells "To be pulled", never a guess.`;
@@ -419,7 +420,7 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
   function buildPrompt(sp, { brand, brief, profile, ledger, deps, lookups, signalLines: sig = [], dynamicSpecs, total: tot, searchN = null }) {
     const N = tot || total({ dynamicSpecs });
     const fo = focusOf(sp, ledger, sig), webQ = (sp.lookups || []).filter((l) => l.type === 'web');
-    const exN = (profile?.host || '').includes('arata.in') ? sp.exemplarAlt : sp.exemplar;
+    const exN = sp.exemplar; /* the same hand-written exemplar for every brand: no brand-specific branch here */
     const name = brand?.name || profile?.name;
     const parts = [
       `# The discipline: ${sp.discipline} (skill "${sp.skill}")\nApply this skill to ${name}. Ignore any instructions in it about reading local files, asking the user questions or calling tools: the brief and ledger below are your context.${sp.adapt ? `\nAdaptation: ${sp.adapt}` : ''}\n\n<skill>\n${skillText(sp)}\n</skill>`,
@@ -473,7 +474,7 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
       const move = finish(sp, r.json, { meta: { model: r.msg?.model || 'claude-opus-5-5', at: new Date().toISOString(), usd: r.usd, usage: r.msg?.usage, secs: Math.round((Date.now() - t0) / 1e3), stop: r.stop, verified: false, issues: [], searched: (r.cites || []).map((c) => ({ ...c, kind: 'web' })), cites: [], lookups: lookups.map(({ id, for: f, at, error }) => ({ id, for: f, at, error })) } }, ctx);
       return dateMove(move, ctx.numbers);
     } catch (e) {
-      if (!e.mock) throw e;
+      if (!mockAllowed(e)) throw e; /* a billing pause or a live failure is recorded as failed (onFail), never saved as a [MOCK] move */
       return dateMove(mockMove(sp, ctx), ctx.numbers);
     }
   }
@@ -538,14 +539,17 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
     return r.json.issues || [];
   }
 
-  async function fixCall(move, issues) {
+  /* the fix sees the evidence the checker used (the brief and the lines the move rests on): a wrong fact is corrected to what
+     the ledger says ("Noida", not "Delhi"), not just softened; an invented quote leaves rather than becoming "Quote to confirm" */
+  async function fixCall(move, issues, { brief = null, ledger = [] } = {}) {
     const blocks = [...new Set(issues.map((i) => i.at))].map((at) => {
       if (at === 'stat') return `[stat] ${move.stat} / ${move.statLabel}`;
       const [, i, j] = at.match(/s(\d+)\.b(\d+)/) || []; return `[${at}] ${JSON.stringify(move.sections?.[i]?.blocks?.[j])}`;
     });
+    const ev = checkLines(move, ledger).slice(0, 220).map(ledgerLine).join('\n');
     const r = await ai.call({ model: 'sonnet', effort: 'medium', max: 12000, tag: `fix${pad(move.n)}`,
-      system: 'You fix flagged sentences in a Brew strategy document. Change only what is flagged. Keep the voice. A number that is not backed becomes a labelled target or assumption only if it is a plan number; a fact you cannot back is written "to confirm" (keep the sentence readable). Never add new numbers.',
-      prompt: `Flagged problems:\n${issues.map((i) => `- [${i.at}] ${i.raw ? `number "${i.raw}" in: "${i.sentence}"` : `"${i.quote}"`}: ${i.problem || i.why}`).join('\n')}\n\nThe blocks they sit in:\n${blocks.join('\n')}\n\nReturn edits: for each, the block address, the exact text to find (verbatim from the block, short but unique) and its replacement.`,
+      system: 'You fix flagged sentences in a Brew strategy document. Change only what is flagged. Keep the voice. Where the evidence below states the right fact (a city, a founder, a product, a policy), write that fact and nothing else. A number that is not backed becomes a labelled target or assumption only if it is a plan number; a fact the evidence cannot back is written "to confirm" (keep the sentence readable). A quote the evidence does not hold is removed or rewritten as our own draft copy, labelled as such; never leave a placeholder such as "Quote to confirm". Never add new numbers.',
+      prompt: `${brief?.md ? `Evidence: the brand brief.\n<brief>\n${String(brief.md).slice(0, 30000)}\n</brief>\n` : ''}${ev ? `Evidence lines (key | value | label | source | date):\n<ledger>\n${ev}\n</ledger>\n\n` : ''}Flagged problems:\n${issues.map((i) => `- [${i.at}] ${i.raw ? `number "${i.raw}" in: "${i.sentence}"` : `"${i.quote}"`}: ${i.problem || i.why}`).join('\n')}\n\nThe blocks they sit in:\n${blocks.join('\n')}\n\nReturn edits: for each, the block address, the exact text to find (verbatim from the block, short but unique) and its replacement.`,
       schema: { type: 'object', properties: { edits: { type: 'array', items: { type: 'object', properties: { at: S, find: S, replace: S } } } } } });
     return r.json.edits || [];
   }
@@ -564,20 +568,25 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
   }
 
   // → { ok, issues, move }
-  async function verify(move, ledger, { brief, deps = {}, fix = true } = {}) {
+  /* fix → re-check runs up to `rounds` times (default 2) while problems remain, the edits land and the budget allows (canSpend):
+     one Sonnet fix and one Sonnet re-check a round, each a fraction of the move's own cost */
+  async function verify(move, ledger, { brief, deps = {}, fix = true, rounds = +(process.env.MOVES_FIX_ROUNDS ?? 2), canSpend = null } = {}) {
     if (move.meta?.mock) return { ok: true, issues: [], move };
     const { allowed, rejected } = allowedFor(move, ledger, deps);
     let numIssues = scanNumbers(move, allowed);
     let claimIssues = [], claimRan = false;
     try { claimIssues = await claimCheck(move, brief, ledger); claimRan = true; } catch (e) { if (!e.mock) log.warn?.(`[verify] claim check failed: ${e.message}`); }
     const found = { numbers: numIssues.length, claims: claimIssues.length, rejectedNewFacts: rejected.length };
-    let edits = 0;
-    if (fix && numIssues.length + claimIssues.length) {
-      try { edits = applyEdits(move, await fixCall(move, [...numIssues, ...claimIssues.map((c) => ({ ...c, problem: `${c.kind}: ${c.problem}` }))])); }
+    let edits = 0, roundsRun = 0;
+    for (let round = 0; fix && round < Math.max(1, rounds) && numIssues.length + claimIssues.length; round++) {
+      if (round > 0 && canSpend && !canSpend()) break;
+      let applied = 0; roundsRun++;
+      try { applied = applyEdits(move, await fixCall(move, [...numIssues, ...claimIssues.map((c) => ({ ...c, problem: `${c.kind}: ${c.problem}` }))], { brief, ledger })); edits += applied; }
       catch (e) { if (!e.mock) log.warn?.(`[verify] fix failed: ${e.message}`); }
       numIssues = scanNumbers(move, allowed);
       /* the fixed text is checked again: a claim problem only counts as solved when the checker no longer finds it */
-      if (claimRan && claimIssues.length && edits) { try { claimIssues = await claimCheck(move, brief, ledger); } catch (e) { claimRan = false; if (!e.mock) log.warn?.(`[verify] claim re-check failed: ${e.message}`); } }
+      if (claimRan && claimIssues.length && applied) { try { claimIssues = await claimCheck(move, brief, ledger); } catch (e) { claimRan = false; if (!e.mock) log.warn?.(`[verify] claim re-check failed: ${e.message}`); } }
+      if (!applied) break; /* nothing landed: another round would ask the same */
     }
     // anything still unbacked becomes "to confirm"
     for (const i of numIssues) {
@@ -594,7 +603,7 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
        evidence (none left "to confirm"), every fact it names is a real ledger line, the claim check ran and found nothing left,
        and the cover stat is backed. A model whose checker is softer can't pass a number the evidence lacks. */
     const verified = claimRan && claimIssues.length === 0 && !statUnbacked && remaining === 0 && unknownKeys.length === 0;
-    move.meta = { ...move.meta, verified, verify: { ...found, claimRan, claimsLeft: claimIssues.length, edits, unresolvedNumbers: remaining, statUnbacked, unknownKeys, at: new Date().toISOString() },
+    move.meta = { ...move.meta, verified, verify: { ...found, claimRan, claimsLeft: claimIssues.length, edits, rounds: roundsRun, unresolvedNumbers: remaining, statUnbacked, unknownKeys, at: new Date().toISOString() },
       issues: [...numIssues.map((i) => `${i.at} ${i.raw}: ${i.why}`), ...claimIssues.map((c) => `${c.at} ${c.kind}: ${c.problem}`), ...unknownKeys.map((k) => `factsUsed ${k}: not a ledger line`)] };
     return { ok: verified && found.numbers === 0, issues: move.meta.issues, move };
   }
@@ -682,7 +691,7 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
       for (const d of sp.deps || []) if (done[d]) deps[d] = digest(done[d]);
       const t0 = Date.now(); ctx.onStart?.(n);
       let move; try { move = await writeMove(n, { ...ctx, deps }); } catch (e) { ctx.onFail?.(n, e); throw e; }
-      if (doVerify) ({ move } = await verify(move, ctx.ledgerAll, { brief: ctx.brief, deps }));
+      if (doVerify) ({ move } = await verify(move, ctx.ledgerAll, { brief: ctx.brief, deps, canSpend: ctx.canSpend || null }));
       citeMove(move, ctx.ledgerAll); /* its citations: the ledger lines and sources it rests on (keys and URLs), for the move page and the PDF */
       move.meta.secs = Math.round((Date.now() - t0) / 1e3); if (sp.eventId) move.meta.eventId = sp.eventId; if (sp.timing) move.meta.timing = sp.timing;
       done[n] = move; results[n] = move; await ctx.save?.(n, move); onMove?.(n, move);

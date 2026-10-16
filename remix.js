@@ -10,6 +10,7 @@ import crypto from 'node:crypto';
 import { saveGen, genFile } from './gen-store.js';
 import { createMakers } from './drafts.js';
 import { cardProduct } from './product-match.js';
+import { isRivalCard, isResearchImage, readRivalAd, rivalBlock, rivalPicture } from './rival-ad.js'; // "Make our version" of a rival's ad: read it, then remake it in its style
 import { createStudioFinals } from './finals-routes.js';
 import { buildDraft } from './sloosh-prompt.js'; // Make the final on a version: Sloosh, quote first, behind a button
 import { versionLabel } from './text-fit.js';
@@ -344,6 +345,10 @@ export function createRemix(o) {
   const catalogOf = o.catalogOf || (() => null);
   /* the photo of the product the card's asset line (else its words) names, so the jam's pictures show what the card promises */
   const cardPhoto = (t, c) => { try { return cardProduct(c, catalogOf(t) || [], { brand: o.SEED?.brand?.name || '' })?.img || null; } catch { return null; } };
+  /* "Make our version" of a rival's ad (rival-ad.js): the ad behind the card and how it is made, read once per ad */
+  const fileOfRel = async (rel) => { const f = (o.photoAsync ? await o.photoAsync(rel).catch(() => null) : null) || photoFile(rel); try { return f && fs.statSync(f).isFile() ? f : null; } catch { return null; } };
+  const rivalRead = async (t, c) => { const ad = isRivalCard(c) ? o.rivalAdOf?.(t, c) || null : null; if (!ad) return null;
+    const style = isMock() ? null : await readRivalAd(ad, { call: claudeTool, fileOf: fileOfRel, log }).catch(() => null); return { ad, style }; };
   /* what a package keeps when its words are rewritten: the picture, the knobs and the look, and a first draft's own media
      (its video, its slides), so the draft the card showed stays v0 and every version made from it keeps it */
   const keepMedia = (p = {}, all = false) => { const d = p.draft && (all || !p.draft.text) ? p.draft : undefined; /* a text draft (an email or page shown as a picture) is only v0: new words replace it */
@@ -453,12 +458,13 @@ export function createRemix(o) {
     const acts = r.actionKeys.map((k) => { const a = actOf(k); return `- ${k}: ${a.label} on ${SEED.connectors[a.target.conn]?.name || 'a person'} (${a.target.object})${a.money ? ', spends money' : ''}${a.jam ? `, needs a person: ${a.jam}` : ''}. What it is: ${specOf(k)}\n  Package fields:\n${fieldsBrief(familyOf(k), k)}`; }).join('\n');
     const learned = promptBlock(t, c.agent === 'brew' ? 'creative' : c.agent);
     const mv = like ? [] : movePassages(c, [intent, prompt].join(' '));
+    const rv = await rivalRead(t, c).catch(() => null), rivalLine = rv ? `\n${rivalBlock(rv.ad, rv.style, BN())}\n` : '';
     const moveBlock = mv.length ? `\nWHAT THE CARD'S MOVES SAY (the Brew plan this card came from). Build the packages from these, using their specifics (steps, wording, timing, examples), and set "from" to the passage each option follows:\n${mv.map((x) => `[${moveTag(x)}] ${x.text}`).join('\n')}\n` : '';
     const rec = `WHAT THE CARD RECOMMENDS: "${c.title}". ${c.sub || ''}${c.cta?.label ? ` The card's action: "${c.cta.label}".` : ''}${c.detail?.why?.length ? `\nWhy: ${c.detail.why.join(' ')}` : ''}${c.detail?.how?.length ? `\nHow: ${c.detail.how.join(' ')}` : ''}${o.planOf?.(t, c)?.draft ? '\nOption 1 starts from the first draft the card shows (above): keep its words and its product wherever they fit the fields.' : ''}`;
     const ask = like ? `Make ONE more option: a different cut of this package (action ${like.action}): ${JSON.stringify(toKV(like.family, like.action, like.pkg))}` : `${rec}\n\nRemix this card into ${n} complete packages that could be commissioned today. ${r.primary ? `Option 1 MUST be exactly what the card recommends, with action ${r.primary}, built from the card's own how-steps and numbers. Options 2 and 3 are different cuts of the same thing the card asks for (another angle, a smaller first step, a different scope), using the same action unless another listed action clearly does the same job. Never propose a different kind of job than the card's.` : 'Every option must serve the goal the card names; do not drift to unrelated levers.'}`;
     const schema = { type: 'object', required: ['line', 'options'], properties: { line: { type: 'string', description: 'Under 18 words: what you made' },
       options: { type: 'array', items: { type: 'object', required: ['action', 'angle', 'why', 'pkg'], properties: { action: { type: 'string', enum: r.actionKeys }, angle: { type: 'string', description: '2-3 words' }, from: { type: 'string', description: 'The move passage it follows, exactly as in the brackets, or empty' }, why: { type: 'string', description: 'Under 16 words: why this moves the number' }, next: { type: 'array', items: { type: 'string' }, description: 'Exactly 4 follow-up asks the person might tap to reshape THIS package, each 2 to 6 words, in their voice, about the card’s own action and case (the products, ads, pages or people it names), never a generic writing tip' }, pkg: kvSchema(allKeys(fams)) } } } } };
-    const j = await claudeTool(`${cardBrief(c, seatLine(t.viewer))}\n\nYou are the ${AGENT[c.agent] || 'agent'} agent. ${ask}\n${moveBlock}What the reader wants: "${[intent, prompt].filter(Boolean).join('. ') || r.intents[0]}".\nActions you may use, with the fields each package needs:\n${acts}\n${learned ? '\n' + learned + '\n' : ''}\n${productLine(c)}\nWrite every package exactly as it ships: real copy, real settings, nothing left as a placeholder. Each package must do what its action says it is, nothing else. ${factsLine}`, schema, 4000, 'remix_options');
+    const j = await claudeTool(`${cardBrief(c, seatLine(t.viewer))}\n\nYou are the ${AGENT[c.agent] || 'agent'} agent. ${ask}\n${moveBlock}${rivalLine}What the reader wants: "${[intent, prompt].filter(Boolean).join('. ') || r.intents[0]}".\nActions you may use, with the fields each package needs:\n${acts}\n${learned ? '\n' + learned + '\n' : ''}\n${productLine(c)}\nWrite every package exactly as it ships: real copy, real settings, nothing left as a placeholder. Each package must do what its action says it is, nothing else. ${factsLine}`, schema, 4000, 'remix_options');
     const ok = new Set(r.actionKeys);
     const opts = (j.options || []).slice(0, n).map((x, i) => { const action = ok.has(x.action) ? x.action : r.actionKeys[0]; const src = mv.find((m) => x.from && (x.from.includes(m.h) || moveTag(m) === x.from)); return { action, angle: clean(x.angle || 'Version'), why: clean(x.why || ''), next: Array.isArray(x.next) ? x.next.map((y) => clean(String(y)).replace(/[.]$/, '')).filter((y) => y && y.length <= 48) : null, from: src ? moveTag(src) : null, pkg: fromKV(familyOf(action), action, x.pkg), fromCard: !like && i === 0 && !!r.primary && action === r.primary }; })
       .filter((x) => !BANNED.test(publicText(familyOf(x.action), x.action, x.pkg).join(' ')));
@@ -467,7 +473,7 @@ export function createRemix(o) {
   // package → the card-sized "after", the money, the checks
   const sync = (t, ch, c) => {
     const act = actOf(ch.action); c ||= t.cards.get(ch.cardId) || {};
-    ch.after = afterFromPkg(ch.family, ch.pkg, { images: ['meta_ad', 'social'].includes(ch.family) && c.images ? [ch.batchKey ? ch.pkg.image : c.images[0]] : null });
+    ch.after = afterFromPkg(ch.family, ch.pkg, { images: ['meta_ad', 'social'].includes(ch.family) && c.images && !isRivalCard(c) ? [ch.batchKey ? ch.pkg.image : c.images[0]] : null });
     ch.after.publicText = publicText(ch.family, ch.action, ch.pkg);
     ch.amount = act.money ? amountOf(act, ch.family, ch.pkg) : 0;
     if (act.money) healCost(ch); else ch.costLabel = 'No spend';
@@ -531,17 +537,21 @@ export function createRemix(o) {
     const slots = rows.length ? rows.map((_, i) => i).filter((i) => (all ? !(p.cardImages || [])[i] : i === 0)).slice(0, 10) : [0];
     if (!slots.length) return false;
     if (!spend('image')) return false;
-    const promptOf = (i) => buildDraft({ kind: 'image', title: what, visual: `${briefOf(i)}${scene ? ` Scene: ${scene}.` : ''}${p.knobs?.audience ? ` It should feel right for ${p.knobs.audience}.` : ''}`, index: rows.length > 1 ? i + 1 : undefined, count: rows.length > 1 ? rows.length : undefined, topSpace: true, hasSrc: true, ratio: RATIO[p.format] || '4:5', product: { name: `${BN()} ${B().config.product?.noun || 'product'}` }, brand: { name: BN(), ...(B().config.product || {}) } }).prompt; /* one brief for drafts and finals (sloosh-prompt.js) */
+    /* pic: a rival ad remade (rival-ad.js): our product is image 1, their ad image 2 (the look only), words where theirs sit */
+    const promptOf = (i, pic = null) => buildDraft({ kind: 'image', title: what, visual: `${briefOf(i)}${pic?.visual ? ` Same composition and look as image 2: ${pic.visual}` : ''}${scene ? ` Scene: ${scene}.` : ''}${p.knobs?.audience ? ` It should feel right for ${p.knobs.audience}.` : ''}`, ...(pic?.refs ? { refs: [{ ...pic.refs[0], label: `${BN()}'s ${B().config.product?.noun || 'product'}` }, pic.refs[1]] } : {}), ...(pic?.text?.length && i === 0 ? { text: pic.text } : {}), index: rows.length > 1 ? i + 1 : undefined, count: rows.length > 1 ? rows.length : undefined, topSpace: !(pic?.text?.length && i === 0), hasSrc: true, ratio: RATIO[p.format] || '4:5', product: { name: `${BN()} ${B().config.product?.noun || 'product'}` }, brand: { name: BN(), ...(B().config.product || {}) } }).prompt; /* one brief for drafts and finals (sloosh-prompt.js) */
     ch.imagePending = true; ch.imageError = null; IMG_JOBS.add(ch.id);
     (async () => {
       try {
         /* a product photo the team picked is the reference, then the card's, the lane's and the brand's lead product: the first one that can be read
            (a store URL that refuses, or a photo only in the bucket, no longer ends the picture with ENOENT) */
-        const cands = [...(p.photos || []).filter((u) => !/^gen\//.test(u)), cardPhoto(t, c), ...(c.images || []).filter((u) => !/^gen\//.test(u)), LANE_PHOTO[c.lane], ...Object.values(LANE_PHOTO || {}), o.catalogOf?.(t)?.[0]?.img].filter((x) => x && typeof x === 'string');
+        const cands = [...(p.photos || []).filter((u) => !/^gen\//.test(u) && !isResearchImage(u)), cardPhoto(t, c), ...(c.images || []).filter((u) => !/^gen\//.test(u) && !isResearchImage(u)), LANE_PHOTO[c.lane], ...Object.values(LANE_PHOTO || {}), o.catalogOf?.(t)?.[0]?.img].filter((x) => x && typeof x === 'string');
         let src = null; for (const rel of [...new Set(cands)]) { src = (o.photoAsync ? await o.photoAsync(rel).catch(() => null) : null) || (fs.existsSync(photoFile(rel)) && fs.statSync(photoFile(rel)).isFile() ? photoFile(rel) : null); if (src) break; }
         if (!src) throw new Error('no product photo could be read for this picture');
-        const one = async (i) => { const prompt = promptOf(i); const key = crypto.createHash('sha1').update(prompt + (p.format || '4:5')).digest('hex').slice(0, 16);
-          if (!(await genFile(`${key}.png`))) { if (i !== slots[0] && !spend('image')) return null; saveGen(`${key}.png`, await geminiImage({ srcFile: src, prompt, ratio: RATIO[p.format] || '4:5' })); }
+        const rv = await rivalRead(t, c).catch(() => null), look = rv?.ad?.poster ? await fileOfRel(rv.ad.poster) : null;
+        const pic = rv ? rivalPicture(rv.ad, rv.style, { headline: p.headline || p.overlay || p.title || '' }) : null; if (pic && !look) pic.refs = null;
+        const one = async (i) => { const prompt = promptOf(i, pic); const key = crypto.createHash('sha1').update(prompt + (p.format || '4:5') + (look || '')).digest('hex').slice(0, 16);
+          if (!(await genFile(`${key}.png`))) { if (i !== slots[0] && !spend('image')) return null; const buf = await geminiImage({ srcFile: src, ...(pic?.refs && look ? { refFiles: [look] } : {}), prompt, ratio: RATIO[p.format] || '4:5' });
+            if (pic && buf?.guard?.genFailed) throw new Error('the remake did not keep your product as photographed; ask for it again'); /* a plain product photo is not our version of their ad */ saveGen(`${key}.png`, buf); }
           return `gen/${key}.png`; };
         const made = [];
         for (let k = 0; k < slots.length; k += 3) made.push(...(await Promise.all(slots.slice(k, k + 3).map((i) => one(i).catch((e) => { log.warn('[studio image]', e.message); return null; })))));
@@ -565,7 +575,7 @@ export function createRemix(o) {
   let MK = null; const makers = () => (MK ||= o.makers || createMakers({ geminiImage, log }));
   const VID_JOBS = new Set();
   const srcPhoto = async (t, ch, lead = null) => { const c = t.cards.get(ch.cardId) || {}, p = ch.pkg || {};
-    const cands = [...(p.photos || []).filter((u) => !/^gen\//.test(u)), lead, cardPhoto(t, c), ...(c.images || []).filter((u) => !/^gen\//.test(u) && !/statics\//.test(u)), LANE_PHOTO[c.lane], ...Object.values(LANE_PHOTO || {}), o.catalogOf?.(t)?.[0]?.img].filter((x) => x && typeof x === 'string');
+    const cands = [...(p.photos || []).filter((u) => !/^gen\//.test(u)), lead, cardPhoto(t, c), ...(c.images || []).filter((u) => !/^gen\//.test(u) && !/statics\//.test(u) && !isResearchImage(u)), LANE_PHOTO[c.lane], ...Object.values(LANE_PHOTO || {}), o.catalogOf?.(t)?.[0]?.img].filter((x) => x && typeof x === 'string');
     for (const rel of [...new Set(cands)]) { const f = (o.photoAsync ? await o.photoAsync(rel).catch(() => null) : null) || (fs.existsSync(photoFile(rel)) && fs.statSync(photoFile(rel)).isFile() ? photoFile(rel) : null); if (f) return f; }
     return null; };
   const genVideo = (t, ch, why = 'the script') => {
@@ -746,7 +756,7 @@ export function createRemix(o) {
     else if (ch.family === 'meta_ad' || ch.family === 'social') out.push({ kind: 'todo', label: `Creative still to be made (${p.format || '4:5'})`, text: p.imageBrief || 'See the image brief' });
     if (ch.family === 'meta_ad' && p.overlay) out.push({ kind: 'copy', label: 'Text to set on the creative', text: p.overlay });
     if (LANE_PHOTO[c.lane]) out.push({ kind: 'image', label: 'Product photo (reference, keep the label exact)', url: LANE_PHOTO[c.lane] });
-    (c.images || []).filter((u) => !/mito[23]/.test(u)).slice(0, 2).forEach((u, i) => out.push({ kind: 'image', label: i ? 'More from the card' : 'The card this came from', url: u }));
+    (c.images || []).slice(0, 2).forEach((u, i) => out.push({ kind: 'image', label: isResearchImage(u) ? 'The rival ad this remakes (their look, not your product)' : i ? 'More from the card' : 'The card this came from', url: u }));
     const urls = [p.utm, p.pages, p.file].filter((x) => x && (String(x).includes(BH()) || /utm_/.test(x)));
     urls.forEach((u) => out.push({ kind: 'link', label: /utm_/.test(u) ? 'Landing page with tracking' : 'Page', url: (/^https?:/.test(u) ? u : 'https://' + u.replace(/^\/*/, '').replace(/\s.*$/, '')) }));
     if (ch.family === 'crm' && p.message) out.push({ kind: 'copy', label: `${p.channel || 'Message'} template, variables in {curly braces}`, text: [p.subject && `Subject: ${p.subject}`, p.message, (p.buttons || []).length && `Buttons: ${p.buttons.join(' | ')}`].filter(Boolean).join('\n\n') });
@@ -857,13 +867,14 @@ export function createRemix(o) {
   const summaryShort = (t, agent) => { const s = summary(t); return { rules: s.rules.filter((r) => r.on && (!r.scope || r.scope === agent)).map((r) => r.text), autoChecks: s.autoChecks.filter((a) => a.on).map((a) => a.q), trust: s.trust[agent], exemplars: s.exemplars.filter((x) => x.agent === agent).length }; };
   /* the lead package's real copy, written after the jam opened: it replaces the starting package as version 1, unless
      someone already changed it (a new version or a message), in which case their work stands */
-  const fillLater = (t, c, ch, write) => {
+  const fillLater = (t, c, ch, write, after = null) => {
     ch.copyPending = Date.now(); // a time, so a fill lost to a restart stops showing after a minute and a half
     (async () => {
       try { const x = await write(); const touched = versionsOf(t, ch.id).length > 1 || (ch.thread || []).length;
         if (x && Object.keys(x.pkg || {}).length && !touched && ch.action === x.action) { ch.pkg = { ...rulePkg(t, ch.agent, ch.family, cleanPkg(ch.family, ch.action, x.pkg, clean)), ...keepMedia({ ...ch.pkg, knobs: ch.pkg.knobs || {} }, true) };
           if (x.angle) ch.angle = x.angle; if (x.why) ch.why = x.why; if (x.from) ch.from = x.from; sync(t, ch, c); const v0 = versionsOf(t, ch.id)[0]; if (v0) v0.snapshot = snapOf(ch); } }
       catch (e) { log.warn('[remix later]', e.message); }
+      try { after?.(); } catch (e) { log.warn('[remix later] after', e.message); }
       finally { ch.copyPending = false; o.save?.(t); }
     })();
   };
@@ -889,7 +900,10 @@ export function createRemix(o) {
     if (intent) signal(t, 'pick', { agent: made[0]?.agent, intent }, now(t));
     t.acted.add(c.id);
     if (made[0]) seedV0(t, c, made[0]); /* the jam's package opens on the card's own first draft */
-    if (writeLater && made[0]) fillLater(t, c, made[0], writeLater);
+    /* "Make our version" of a rival's ad: the person asked for our ad, so its first picture (in the rival's style, our product)
+       is made once the words are written; nothing else opens a paid picture by itself */
+    const firstPic = isRivalCard(c) && made[0] && !/^gen\//.test(made[0].pkg?.image || '') ? () => genImage(t, made[0], 'our version of the rival ad') : null;
+    if (writeLater && made[0]) fillLater(t, c, made[0], writeLater, firstPic); else firstPic?.();
     return { line, live, changes: made.map((x) => pubChange(t, x)), learned: learnedOut(t) };
   });
   // the Library's "My remixes": every change you opened, edited, picked or sent; batches fold into one row per card

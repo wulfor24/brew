@@ -62,10 +62,10 @@ export function createJamMail({ mail, packs, sign, verify, base = () => process.
     return n;
   };
   /* the batched emails: a person's new lines in a jam, once they've settled a minute and at most every 15 minutes */
-  const flush = async () => {
+  const flush = async ({ all = false } = {}) => {
     let n = 0;
     for (const [k, p] of [...pending]) {
-      const t = clock(); if (t - p.first < settleMs || t - (lastSent.get(k) || 0) < batchMs) continue;
+      const t = clock(); if (!all && (t - p.first < settleMs || t - (lastSent.get(k) || 0) < batchMs)) continue;
       pending.delete(k);
       const seen = p.jam?.reads?.[p.email] || 0, lines = p.lines.filter((l) => l.at > seen);
       if (!lines.length || watching(p.wid, p.email)) continue;
@@ -78,6 +78,9 @@ export function createJamMail({ mail, packs, sign, verify, base = () => process.
     }
     return n;
   };
+  /* the instance is going (SIGTERM): every batch still waiting goes now, settled or not, so no line is lost with the process
+     (the same rules: nobody gets their own lines, lines they've read, or a jam they have open) */
+  const drain = () => flush({ all: true });
   const timer = everyMs ? setInterval(() => flush().catch((e) => log.warn?.('[jam-mail] flush', e.message)), everyMs) : null; timer?.unref?.();
 
   /* the one-tap links in the footer */
@@ -136,5 +139,5 @@ export function createJamMail({ mail, packs, sign, verify, base = () => process.
     return send(lc(to), `${ticket ? `${ticket} · ` : ''}${title}`, html, `${title}\n\n${note ? `${by?.name || 'ShopOS team'}: ${note}\n\n` : ''}Open the jam: ${jamUrl || link(slug, w.id)}`);
   };
 
-  return { event, flush, shopos, briefSent, briefStatus, handle, prefsOf, setPref, prefLink, pending, stop: () => timer && clearInterval(timer) };
+  return { event, flush, drain, shopos, briefSent, briefStatus, handle, prefsOf, setPref, prefLink, pending, stop: () => timer && clearInterval(timer) };
 }

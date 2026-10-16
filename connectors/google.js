@@ -7,7 +7,7 @@
 // One-click Google sign-in (adwords + analytics.readonly, both sensitive scopes) is on only with GOOGLE_OAUTH=1, once the
 // consent screen and the Ads developer token are set up.
 import crypto from 'node:crypto';
-import { exactSite } from '../auth.js';
+import { exactSite, bareHost } from '../auth.js';
 import { card, L, n0, pct, has, fmt, getJSON, form } from './common.js';
 
 /* Google retires each Ads API version about a year after release, and a retired one answers 404 to every call (v21 did by
@@ -50,12 +50,19 @@ async function saToken() {
 const propOf = (x) => { const raw = String(x || '').trim(), u = raw.match(/(?:\/|a\d+)p(\d{5,14})(?!\d)/); const d = u ? u[1] : raw.replace(/^properties\//, '').replace(/[\s-]/g, ''); return /^\d{5,14}$/.test(d) ? `properties/${d}` : null; };
 const userErr = (m) => Object.assign(new Error(m), { user: true });
 
+/* a stream's or an ad's URL is the brand's site when its host is the site (www. ignored), the Shopify store, or one of the
+   other hosts the read found for the brand (ctx.hosts: the profile's site hosts and where the site redirects) */
+export const siteMatch = (u, ctx) => { const h = bareHost(u); if (!h) return false;
+  const hosts = [ctx.host, ctx.shopifyShop, ...(Array.isArray(ctx.hosts) ? ctx.hosts : [])].map(bareHost).filter(Boolean);
+  return hosts.some((x) => x === h || exactSite(h, x)); };
 const rows = (r) => (r?.rows || []).map((x) => ({ d: (x.dimensionValues || []).map((v) => v.value), m: (x.metricValues || []).map((v) => +v.value) }));
 
 /* Google Analytics (ga4) and Google Ads (google) are two connectors on one Google client. They share the reads below;
    each keeps only its own half. Signing in for Google Ads can also fill Google Analytics in the same step (also()) */
 const base = {
   picks: true,
+  /* a dead Google token (refresh token revoked, the account's password changed, a 401 on the read): only a new sign-in fixes it */
+  expired: (e) => e?.status === 401 || /invalid_grant|invalid_rapt|invalid_token/i.test(String(e?.message || '')),
   keyFields: [{ k: 'property', label: 'GA4 property ID', hint: 'GA4 → Admin → Property details, a number like 123456789' }],
   help: () => (saMail ? `In GA4 → Admin → Property access management, add ${saMail} as a Viewer, then paste the property ID. Brew only reads.` : null),
   helpEmail: () => saMail,
@@ -97,13 +104,20 @@ const base = {
   },
   async owns(c, ctx) {
     let ok = false, why = '';
-    if (c.property) { const j = await getJSON(`${ADMIN}/${c.property}/dataStreams`, { headers: auth(c) }, 'ga4 streams').catch(() => ({}));
-      const s = (j.dataStreams || []).find((x) => exactSite(x.webStreamData?.defaultUri, ctx.host) || (!!ctx.shopifyShop && exactSite(x.webStreamData?.defaultUri, ctx.shopifyShop))); if (s) { ok = true; why = `GA4 stream ${s.displayName} is ${ctx.host}`; } }
+    if (c.property) {
+      /* a failed read (permission, scope, a 5xx, the service account's token) is an error, never "the stream points elsewhere" */
+      let j; try { j = await getJSON(`${ADMIN}/${c.property}/dataStreams`, { headers: auth(c) }, 'ga4 streams'); }
+      catch (e) { return { ok: false, error: true, strong: false, why: `Couldn’t read the property’s web streams: ${String(e.message || e).slice(0, 140)}`, account: { id: [c.property, c.customer].filter(Boolean).join(' '), name: c.accountName || 'Google' } }; }
+      const streams = j?.dataStreams || [], uris = streams.map((x) => x.webStreamData?.defaultUri).filter(Boolean);
+      const s = streams.find((x) => siteMatch(x.webStreamData?.defaultUri, ctx));
+      if (s) { ok = true; why = `GA4 stream ${s.displayName} is ${ctx.host}`; }
+      else why = `The GA4 stream doesn’t point to ${ctx.host} (streams: ${uris.length ? uris.map(bareHost).join(', ') : 'none with a website'})`;
+    }
     if (!ok && c.customer) { const r = await gaql(c, c.customer, "SELECT ad_group_ad.ad.final_urls FROM ad_group_ad WHERE ad_group_ad.status = 'ENABLED' LIMIT 50").catch(() => []);
-      if (r.some((x) => (x.adGroupAd?.ad?.finalUrls || []).some((u) => exactSite(u, ctx.host)))) { ok = true; why = `The Google ads point to ${ctx.host}`; }
+      if (r.some((x) => (x.adGroupAd?.ad?.finalUrls || []).some((u) => siteMatch(u, ctx)))) { ok = true; why = `The Google ads point to ${ctx.host}`; }
       /* Performance Max has no ad-group ads: its landing pages are on the asset groups */
       if (!ok) { const g = await gaql(c, c.customer, "SELECT asset_group.final_urls FROM asset_group WHERE asset_group.status = 'ENABLED' LIMIT 50").catch(() => []);
-        if (g.some((x) => (x.assetGroup?.finalUrls || []).some((u) => exactSite(u, ctx.host) || (!!ctx.shopifyShop && exactSite(u, ctx.shopifyShop))))) { ok = true; why = `The Google ads point to ${ctx.host}`; } } }
+        if (g.some((x) => (x.assetGroup?.finalUrls || []).some((u) => siteMatch(u, ctx)))) { ok = true; why = `The Google ads point to ${ctx.host}`; } } }
     /* a GA4 stream's URL and an ad's final URL are typed in by whoever owns the property: never strong enough to own the brand */
     return { ok, strong: false, why: why || (c.property ? `The GA4 stream doesn’t point to ${ctx.host}` : `The Google ads don’t point to ${ctx.host}`), account: { id: [c.property, c.customer].filter(Boolean).join(' '), name: c.accountName || 'Google' } };
   },
@@ -165,6 +179,7 @@ const ga4Of = (c, ch) => ({ ...c, property: ch.ga4 || null, customer: null, logi
 /* Google Analytics: a property ID with Brew's service account as Viewer (no Google review), or a Google sign-in */
 export const ga4 = {
   ...base, id: 'ga4', name: 'Google Analytics', modes: ['key', 'oauth'],
+  cbAs: 'google', /* the Google OAuth client only knows /connect/google/callback: the GA4 sign-in comes back there too */
   ready: () => saOn() || !!(app().id && app().secret), oauthOn,
   authorize: authUrl(GA4_SCOPES),
   async options(c) { return (await base.options(c, { ads: false })).filter((o) => o.kind === 'ga4'); },

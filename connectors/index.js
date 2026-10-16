@@ -59,13 +59,20 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
   const redirect = (res, to) => { res.writeHead(302, { location: to, 'cache-control': 'no-store' }); res.end(); };
   const body = (req) => new Promise((r) => { let d = ''; req.on('data', (c) => (d += c)); req.on('end', () => { try { r(JSON.parse(d || '{}')); } catch { r({}); } }); });
   const base = (req) => process.env.PUBLIC_URL || auth.baseOf(req);
-  const cbUrl = (req, id) => `${base(req)}/connect/${id}/callback`;
+  /* a connector may share another's registered callback (google.js ga4 cbAs: 'google'): the OAuth client knows one URL */
+  const cbUrl = (req, id) => `${base(req)}/connect/${REAL[id]?.cbAs || id}/callback`;
 
   /* ---------- per-brand state: brands/<slug>/private/connections.json, the read in [private/]live/<id>.json ---------- */
   const CF = 'private/connections.json';
   let lock = Promise.resolve();
   const conns = async (slug) => (await packs.getJSON(slug, CF, {})) || {};
-  const editC = (slug, f) => (lock = lock.then(async () => { const c = await conns(slug); await f(c); await packs.put(slug, CF, c); return c; }));
+  const editC = (slug, f) => { const run = lock.then(async () => { const c = await conns(slug); await f(c); await packs.put(slug, CF, c); return c; }); lock = run.catch(() => {}); return run; };
+  /* one read per brand at a time: a manual Sync and the hourly tick never run the same brand's read, ledger write and move
+     rewrite (builder.liveConnected) on top of each other. A failure never blocks the next (same shape as editC) */
+  const brandRuns = new Map();
+  const perBrand = (slug, f) => { const k = sk(slug), prev = brandRuns.get(k) || Promise.resolve(), run = prev.then(f); brandRuns.set(k, run.catch(() => {})); run.finally(() => { if (brandRuns.get(k) === run) brandRuns.delete(k); }).catch(() => {}); return run; };
+  /* a Meta connection saved with one `account` reads as `accounts: [account]` (2026-10-17: several ad accounts at once) */
+  const healAccounts = (s) => (!s ? s : Array.isArray(s.accounts) && s.accounts.length ? s : s.account ? { ...s, accounts: [s.account] } : s);
   const liveName = (id) => (PUBLIC.has(id) ? `live/${id}.json` : `private/live/${id}.json`);
   const cache = new Map(); // slug → { at, live: { id: data }, conns }
   /* Google Analytics became its own connector (2026-10-16): a "google" account that only reads GA4 moves to "ga4", once */
@@ -92,7 +99,10 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
   async function ctxOf(slug) {
     const profile = (await packs.getJSON(slug, 'profile.json', {})) || {}, ledger = (await packs.getJSON(slug, 'ledger.json', [])) || [], seed = (await packs.getJSON(slug, 'seed.json', {})) || {};
     const plat = (Array.isArray(ledger) ? ledger : []).find((e) => e.key === 'site.platform'), shop = (String(plat?.note || '').match(/([a-z0-9-]+\.myshopify\.com)/) || [])[1] || null;
-    return { slug, host: profile.host || (await packs.getJSON(slug, 'status.json', {}))?.host, profile, shopifyShop: shop, pageId: profile.ads?.own?.pageId || null, lane: Object.keys(seed.lanes || { core: 1 })[0] };
+    const st = (await packs.getJSON(slug, 'status.json', {})) || {}, hostOf = (u) => { try { return new URL(String(u)).host; } catch { return null; } };
+    /* every host the read found for the site: the profile's, the status', the site URL's, the redirect's (profile shape read as-is) */
+    const hosts = [...new Set([profile.host, st.host, hostOf(st.url), hostOf(profile.url), hostOf(profile.site?.url), profile.site?.host, profile.redirectHost, hostOf(profile.redirect), ...(Array.isArray(profile.site?.hosts) ? profile.site.hosts : []), ...(Array.isArray(profile.hosts) ? profile.hosts : [])].filter(Boolean).map(String))];
+    return { slug, host: profile.host || st.host, hosts, profile, shopifyShop: shop, pageId: profile.ads?.own?.pageId || null, lane: Object.keys(seed.lanes || { core: 1 })[0] };
   }
 
   /* ---------- connect, check, read ---------- */
@@ -123,7 +133,10 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
       try { proof = await REAL[id].owns(creds, ctx); } catch (e) { proof = { ok: false, why: e.message.slice(0, 160) }; }
       const staff = !!auth.isAdmin?.(me);
       if (!proof.ok && !(override && staff)) { log.warn('[connect] ga4 property not the brand’s', slug, creds.property, me.email, proof.why);
-        return { ok: false, state: 'refused', error: `Brew couldn’t match that GA4 property to ${ctx.host || 'this brand’s site'}: ${proof.why || 'its web stream points elsewhere'}. Check the property ID, or sign in with Google instead.`, ...(staff ? { override: true } : {}) }; }
+        /* a check that didn't go through is said as such, never as a fact about the property (the staff override still stands) */
+        const error = proof.error ? `The check on that GA4 property didn’t go through: ${proof.why || 'Google didn’t answer'}. Try again in a minute, or sign in with Google instead.`
+          : `Brew couldn’t match that GA4 property to ${ctx.host || 'this brand’s site'}: ${proof.why || 'its web stream points elsewhere'}. Check the property ID, or sign in with Google instead.`;
+        return { ok: false, state: 'refused', error, proof: { ok: false, error: !!proof.error, why: proof.why || null }, ...(staff ? { override: true } : {}) }; }
       if (!proof.ok) log.warn('[connect] ga4 staff override', slug, creds.property, me.email);
       sa = { proof };
     }
@@ -143,12 +156,13 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     if (id === 'slack') teams.clear(); /* the workspace may have moved to this brand */
     /* a team account connected for the first time: the moves' rewrite waits for its first read (build.js connectPending) */
     if (!PUBLIC.has(id) && id !== 'slack' && !(await conns(slug))[id]?.lastSync) await builder.connectPending?.(slug, id).catch(() => {});
-    await editC(slug, (c) => { c[id] = { state: 'syncing', at: Date.now(), by: me.email, account: proof.account || c[id]?.account || null, verified: !!proof.ok, why: proof.why || '' }; });
+    await editC(slug, (c) => { c[id] = { state: 'syncing', at: Date.now(), by: me.email, account: proof.account || c[id]?.account || null, ...(proof.accounts ? { accounts: proof.accounts } : {}), verified: !!proof.ok, why: proof.why || '' }; });
     cache.delete(sk(slug));
-    return { ...(await sync(slug, id)), claimed: may.claimed, verified: !!proof.ok, why: proof.ok ? null : proof.why || null };
+    /* proof: what the ownership check found, for the sheet to show plainly (advisory for every connector but GA4 by ID) */
+    return { ...(await sync(slug, id)), claimed: may.claimed, verified: !!proof.ok, why: proof.ok ? null : proof.why || null, proof: { ok: !!proof.ok, error: !!proof.error, why: proof.why || null, ...(proof.accounts ? { accounts: proof.accounts.map(({ id: aid, name, ok, why }) => ({ id: aid, name, ok, why })) } : {}) } };
   }
-  const KEY_TRIES = 6, KEY_WINDOW = 15 * 60e3, keyTries = new Map(); // per person: 6 pasted keys every 15 minutes
-  const keyTry = (email, now = Date.now()) => { const k = String(email || '').toLowerCase(), xs = (keyTries.get(k) || []).filter((at) => now - at < KEY_WINDOW);
+  const KEY_TRIES = 6, KEY_WINDOW = 15 * 60e3, keyTries = new Map(); // per person and connector: 6 pasted keys every 15 minutes (an onboarding pastes Shopify, Klaviyo, Judge.me and GA4 in a row)
+  const keyTry = (email, id, now = Date.now()) => { const k = `${String(email || '').toLowerCase()}|${id}`, xs = (keyTries.get(k) || []).filter((at) => now - at < KEY_WINDOW);
     if (keyTries.size > 5000) keyTries.clear(); if (xs.length >= KEY_TRIES) { keyTries.set(k, xs); return false; } xs.push(now); keyTries.set(k, xs); return true; };
   const noGen = (a, host) => (a.claimed ? 'This brand is claimed. Ask its team to invite you.' : `Connect with your work email at ${host}. The first person from ${host} to connect becomes the brand’s admin.`);
   /* an OAuth sign-in waiting for its account to be picked: one per person (the key carries their email), 30 minutes */
@@ -161,28 +175,30 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     if (simOnly(id)) return { ...(await SIM.sync(slug, id)), sim: true };
     const C = REAL[id]; let creds = PUBLIC.has(id) ? {} : await vault.load(slug, id);
     if (!creds) throw new Error('Not connected: connect it again.');
-    if (C.fresh) { const f = await C.fresh(creds); if (f !== creds) { creds = f; await vault.save(slug, id, creds); } }
+    const dead = (e) => { if (C.expired?.(e)) { e.expired = true; e.message = `${C.name || id} sign-in expired: connect it again. (${e.message.slice(0, 120)})`; } throw e; };
+    /* a refresh that Google or Shopify refuses (invalid_grant, 401) is a dead sign-in: the admins are told to connect it again */
+    if (C.fresh) { let f; try { f = await C.fresh(creds); } catch (e) { dead(e); } if (f !== creds) { creds = f; await vault.save(slug, id, creds); } }
     const exp = C.expires ? { expiresAt: +creds.exp || null, refreshedAt: creds.refreshedAt || null } : null; /* when the sign-in runs out (Meta) */
     const ctx = await ctxOf(slug);
     /* an account not yet matched to the brand is checked again on each read: the brand may have fixed its links since */
     if (C.owns && (await conns(slug))[id]?.verified === false) { const p = await C.owns(creds, ctx).catch(() => null);
-      if (p) await editC(slug, (c) => { if (c[id]) c[id] = { ...c[id], verified: !!p.ok, why: p.why || '' }; }); }
-    try { const d = await C.sync(creds, ctx, deps); return exp ? { ...d, exp } : d; }
-    catch (e) { if (C.expired?.(e)) { e.expired = true; e.message = `${C.name || id} sign-in expired: connect it again. (${e.message.slice(0, 120)})`; } throw e; }
+      if (p) await editC(slug, (c) => { if (c[id]) c[id] = { ...c[id], verified: !!p.ok, why: p.why || '', ...(p.accounts ? { accounts: p.accounts } : {}) }; }); }
+    try { const d = await C.sync(creds, ctx, deps); return exp ? { ...d, exp } : d; } catch (e) { dead(e); }
   }
-  async function sync(slug, id) {
+  const sync = (slug, id) => perBrand(slug, () => sync0(slug, id));
+  async function sync0(slug, id) {
     await editC(slug, (c) => { c[id] = { ...(c[id] || {}), state: 'syncing', syncAt: Date.now() }; });
     try {
       const d = await read(slug, id);
-      const data = { at: Date.now(), account: d.account || (await conns(slug))[id]?.account || null, stats: d.stats || [], changed: d.changed || [], cards: d.cards || [], ledger: d.ledger || [], notes: d.notes || [], ...(d.sim ? { sim: true } : {}) };
+      const data = { at: Date.now(), account: d.account || (await conns(slug))[id]?.account || null, ...(Array.isArray(d.accounts) ? { accounts: d.accounts } : {}), stats: d.stats || [], changed: d.changed || [], cards: d.cards || [], ledger: d.ledger || [], notes: d.notes || [], ...(d.sim ? { sim: true } : {}) };
       await packs.put(slug, liveName(id), data);
-      await editC(slug, (c) => { const x = c[id] || {}; c[id] = { ...x, state: 'live', lastSync: data.at, error: null, account: data.account || x.account, notes: data.notes,
+      await editC(slug, (c) => { const x = c[id] || {}; c[id] = { ...x, state: 'live', lastSync: data.at, error: null, account: data.account || x.account, ...(data.accounts ? { accounts: data.accounts.map((a) => ({ ...((x.accounts || []).find((y) => String(y.id) === String(a.id)) || {}), ...a })) } : {}), notes: data.notes,
         fails: 0, retryAt: null, rateLimited: false, stale: false, staleWhy: null, needsReconnect: false, ...(d.exp ? { expiresAt: d.exp.expiresAt, refreshedAt: d.exp.refreshedAt || x.refreshedAt || null, ...(d.exp.expiresAt !== x.expiresAt ? { expiryWarned: null } : {}) } : {}) }; });
       cache.delete(sk(slug));
       await builder.liveConnected?.(slug, id, data.ledger, true, { public: PUBLIC.has(id) }).catch((e) => log.warn('[connect] moves', e.message));
       onLive(slug);
       log.log?.(`[connect] ${slug} ${id}: ${data.cards.length} cards, ${data.ledger.length} facts${d.sim ? ' (simulated)' : ''}`);
-      return { ok: true, state: 'live', stats: data.stats, changed: data.changed, cards: data.cards.length, notes: data.notes, account: data.account, dummy: simOnly(id) };
+      return { ok: true, state: 'live', stats: data.stats, changed: data.changed, cards: data.cards.length, notes: data.notes, account: data.account, ...(data.accounts ? { accounts: data.accounts } : {}), dummy: simOnly(id) };
     } catch (e) {
       log.warn('[connect] sync', slug, id, e.message);
       /* an account that read before keeps its last read and says what went wrong; a new one shows the error */
@@ -195,7 +211,8 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
       return { ok: false, error: e.message.slice(0, 200) };
     }
   }
-  async function disconnect(slug, id) {
+  const disconnect = (slug, id) => perBrand(slug, () => disconnect0(slug, id));
+  async function disconnect0(slug, id) {
     if (!simOnly(id) && !PUBLIC.has(id)) await vault.drop(slug, id);
     await editC(slug, (c) => { delete c[id]; });
     await packs.put(slug, liveName(id), { at: Date.now(), gone: true, stats: [], changed: [], cards: [], ledger: [] });
@@ -209,21 +226,21 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
   const avail = () => Object.fromEntries(SIM_IDS.filter((id) => !OFF.has(id)).map((id) => {
     if (simOnly(id)) return [id, SIM_AVAIL];
     const C = REAL[id];
-    return [id, { modes: C.modes, ready: !!C.ready(deps), oauth: C.modes.includes('oauth') && !!C.ready(deps) && (C.oauthOn ? !!C.oauthOn() : true), picks: !!C.picks, proof: C.proof !== false, every: everyOf(id) / 3600e3, help: C.help?.() || null, email: C.helpEmail?.() || null,
+    return [id, { modes: C.modes, ready: !!C.ready(deps), oauth: C.modes.includes('oauth') && !!C.ready(deps) && (C.oauthOn ? !!C.oauthOn() : true), picks: !!C.picks, multi: !!C.multi, proof: C.proof !== false, every: everyOf(id) / 3600e3, help: C.help?.() || null, email: C.helpEmail?.() || null,
       fields: (C.keyFields || []).map(({ k, label, hint, secret, optional }) => ({ k, label, hint, secret: !!secret, optional: !!optional })) }];
   }));
   async function liveView(slug, me) {
     const access = await auth.claimInfo(slug, me), member = !!access.role, L = await liveOf(slug), out = {};
-    for (const [id, s] of Object.entries(L.conns)) {
+    for (const [id, s0] of Object.entries(L.conns)) {
       if (!member && !PUBLIC.has(id)) continue;
-      const d = L.live[id];
-      out[id] = { state: s.state, at: s.at, lastSync: s.lastSync || null, by: member ? s.by : undefined, account: s.account?.name || null, error: s.error || null, why: member && !s.verified ? s.why || null : null, notes: s.notes || [], dummy: simOnly(id) || !!d?.sim,
+      const d = L.live[id], s = healAccounts(s0), accts = member && Array.isArray(s.accounts) ? s.accounts : null;
+      out[id] = { state: s.state, at: s.at, lastSync: s.lastSync || null, by: member ? s.by : undefined, account: accts && accts.length > 1 ? `${accts.length} ad accounts` : s.account?.name || null, ...(accts ? { accounts: accts } : {}), error: s.error || null, why: member && !s.verified ? s.why || null : null, verified: member ? !!s.verified : undefined, notes: s.notes || [], dummy: simOnly(id) || !!d?.sim,
         stale: !!s.stale, staleWhy: s.stale ? s.staleWhy || null : null, retryAt: s.error ? s.retryAt || null : null, rateLimited: !!s.rateLimited, needsReconnect: !!s.needsReconnect,
         ...(member && s.expiresAt ? { expiresAt: s.expiresAt, daysLeft: daysLeft(s) } : {}),
         ...(d && !d.gone ? { stats: d.stats, changed: d.changed, cards: (d.cards || []).length } : {}) };
     }
-    const ctx = await ctxOf(slug);
-    return { me, signin: auth.signinOn(), access, full: auth.isAdmin(me), conns: out, avail: avail(), shop: member ? ctx.shopifyShop : null, dummy: DEMO };
+    const ctx = await ctxOf(slug), born = (await packs.getJSON(slug, 'status.json', null).catch(() => null))?.born || null;
+    return { me, signin: auth.signinOn(), access, full: auth.isAdmin(me), conns: out, avail: avail(), shop: member ? ctx.shopifyShop : null, dummy: DEMO, born };
   }
   // for feed-service: the connector cards and connected ids a viewer of this brand gets (team only, except marketplaces)
   async function forViewer(slug, member) {
@@ -270,17 +287,19 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
         catch (e) { return redirect(res, `/${slug}#v=connectors&cx=${id}&cxerr=${encodeURIComponent(e.message)}`), true; }
       }
       if (simOnly(id)) return json(res, 404, { error: 'unknown connector' }), true;
-      const C = REAL[id], st = auth.verify(u.searchParams.get('state'), 'connect');
-      if (!st || !me || st.email !== me.email || st.id !== id) return redirect(res, '/?signin=failed'), true;
-      const back = (q) => redirect(res, `/${st.slug}#v=connectors&cx=${id}&${q}`);
+      const st = auth.verify(u.searchParams.get('state'), 'connect');
+      /* the callback may be another connector's (ga4 comes back on /connect/google/callback): the state says which one signed in */
+      if (!st || !me || st.email !== me.email || (st.id !== id && REAL[st.id]?.cbAs !== id)) return redirect(res, '/?signin=failed'), true;
+      const cid = st.id, C = REAL[cid];
+      const back = (q) => redirect(res, `/${st.slug}#v=connectors&cx=${cid}&${q}`);
       /* the brand may have been claimed since this sign-in started: only its team goes on */
       const access = await auth.claimInfo(st.slug, me); if (!access.gen) return back(`cxerr=${encodeURIComponent(noGen(access, access.host))}`), true;
       try {
-        const creds = await C.exchange({ query: u.searchParams, redirect: cbUrl(req, id) });
-        if (C.picks) { await savePending(st.slug, id, me.email, creds); return back('pick=1'), true; }
-        const r = await finish(st.slug, id, creds, me);
+        const creds = await C.exchange({ query: u.searchParams, redirect: cbUrl(req, cid) }); /* the same shared URL the sign-in started with */
+        if (C.picks) { await savePending(st.slug, cid, me.email, creds); return back('pick=1'), true; }
+        const r = await finish(st.slug, cid, creds, me);
         return back(r.ok ? 'done=1' : `cxerr=${encodeURIComponent(r.error || 'Could not connect')}`), true;
-      } catch (e) { log.warn('[connect] callback', id, e.message); return back(`cxerr=${encodeURIComponent(e.message.slice(0, 160))}`), true; }
+      } catch (e) { log.warn('[connect] callback', cid, e.message); return back(`cxerr=${encodeURIComponent(e.message.slice(0, 160))}`), true; }
     }
     const lm = p.match(/^\/api\/brands\/([a-z0-9-]+)\/live$/);
     if (lm && req.method === 'GET') return json(res, 200, await liveView(lm[1], auth.user(req))), true;
@@ -297,7 +316,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
       if (opt && !canConnect(access)) return json(res, 403, { error: ADMIN_ONLY, adminOnly: true }), true;
       if (opt && req.method === 'GET') { if (!C?.options) return json(res, 404, { error: 'unknown connector' }), true;
         const pend = await loadPending(slug, id, me.email); if (!pend) return json(res, 200, { options: [], error: 'Connect again: the sign-in expired.' }), true;
-        try { const os = await C.options(pend); return json(res, 200, { options: os, ...(os.adsNote ? { adsNote: os.adsNote } : {}) }), true; } catch (e) { return json(res, 200, { options: [], error: e.message.slice(0, 160) }), true; } }
+        try { const os = await C.options(pend, { ctx: await ctxOf(slug) }); return json(res, 200, { options: os, multi: !!C.multi, ...(os.adsNote ? { adsNote: os.adsNote } : {}) }), true; } catch (e) { return json(res, 200, { options: [], error: e.message.slice(0, 160) }), true; } }
       if (req.method !== 'POST') return false;
       const b = await body(req);
       if (b.action !== 'sync' && !canConnect(access)) return json(res, 403, { error: ADMIN_ONLY, adminOnly: true }), true;
@@ -312,7 +331,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
       if (!C) { if (['demo', 'key', 'select', 'connect'].includes(b.action)) return json(res, 200, await finish(slug, id, null, me)), true; return json(res, 400, { error: 'unknown action' }), true; }
       if (b.action === 'key') { if (!C.fromKey) return json(res, 400, { error: 'This one connects by signing in.' }), true;
         /* a pasted key or ID asks Google whether Brew can see it: a few tries per person, so nobody walks through IDs */
-        if (!keyTry(me.email)) return json(res, 429, { ok: false, error: 'Too many tries. Wait a few minutes, then paste it again.' }), true;
+        if (!keyTry(me.email, id)) return json(res, 429, { ok: false, error: 'Too many tries. Wait a few minutes, then paste it again.' }), true;
         try { return json(res, 200, await finish(slug, id, await C.fromKey(b.fields || {}), me, { override: b.override === true })), true; } catch (e) { return json(res, 200, { ok: false, error: e.user ? e.message : `Could not connect: ${e.message.slice(0, 140)}` }), true; } }
       if (b.action === 'select') { if (!C.select) return json(res, 400, { error: 'unknown action' }), true;
         const pend = await loadPending(slug, id, me.email); if (!pend) return json(res, 200, { ok: false, error: 'Connect again: the sign-in expired.' }), true;

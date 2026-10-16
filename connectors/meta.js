@@ -1,7 +1,8 @@
 // Meta Ads: Facebook Login for Business on SquareUp's Meta app (config_id grants ads_read + business_management),
 // then the Marketing API, read only (Graph calls lifted from SquareUp's tej/ads/meta-client.ts).
-// The brand picks the ad account. It proves the brand's own when the ad account can promote the brand's Facebook
-// page (the page the Ad Library read found) or a page whose website is the brand's site.
+// The brand picks one or more ad accounts (accounts: [{ id, name, currency }]). Each proves itself the brand's own when it
+// can promote the brand's Facebook page (the page the Ad Library read found) or a page whose website is the brand's site.
+// sync() reads every picked account and sums them; each account's own numbers ride on `accounts` for the connection row.
 import { exactSite } from '../auth.js';
 import { card, L, n0, pct, has, fmt, getJSON, form } from './common.js';
 
@@ -31,8 +32,18 @@ export async function freshMeta(c, { now = Date.now(), getJSONImpl = getJSON } =
   return out;
 }
 
-export default {
-  id: 'meta', name: 'Meta Ads', modes: ['oauth'], picks: true,
+/* the ad accounts a Meta connection reads: `accounts: [{ id, name, currency }]` (one or many, 2026-10-17). A connection saved
+   with one `account` (+ `accountName`) is healed into the list on read, so nothing old breaks */
+export const accountsOf = (c) => { const xs = Array.isArray(c?.accounts) ? c.accounts : c?.account ? [{ id: String(c.account), name: c.accountName || null }] : [];
+  const seen = new Set(); return xs.map((a) => ({ ...a, id: String(a?.id || '').replace(/^act_/, '') })).filter((a) => a.id && !seen.has(a.id) && seen.add(a.id)); };
+const nameKey = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+/* the Page in an ad account that is this brand's: the Page the read found, a Page whose website is the site, or (one match only) a Page named like the brand */
+const ownPage = (pages, ctx) => pages.find((p) => (ctx.pageId && String(p.id) === String(ctx.pageId)) || String(p.website || '').split(/\s+/).some((w) => exactSite(w, ctx.host)))
+  || (() => { const k = nameKey(ctx.profile?.name); const xs = k.length >= 4 ? pages.filter((p) => nameKey(p.name) === k) : []; return xs.length === 1 ? xs[0] : null; })();
+const sumLabel = (xs) => (xs.length === 1 ? xs[0].name || `act_${xs[0].id}` : `${xs.length} ad accounts`);
+
+const META = {
+  id: 'meta', name: 'Meta Ads', modes: ['oauth'], picks: true, multi: true, /* several ad accounts at once */
   expires: true, /* no refresh token: the sign-in itself runs out, so the team is warned before it does */
   fresh: (c) => freshMeta(c),
   /* Graph error 190: the sign-in expired or was taken back. Only a new sign-in fixes it */
@@ -47,74 +58,116 @@ export default {
     const tk = long?.access_token || t.access_token, exp = (long?.expires_in || t.expires_in) ? Date.now() + (long?.expires_in || t.expires_in) * 1e3 : null;
     return { token: tk, exp };
   },
-  async options(c) {
+  /* the ad accounts this login can read; with the brand in hand (ctx) each is checked for the brand's Page, so the picker can
+     tick the brand's own ones first (own: true). A check that fails is left unknown (own: null), never "not the brand's" */
+  async options(c, { ctx = null } = {}) {
     const xs = await all('me/adaccounts', c.token, { fields: 'account_id,name,currency,account_status,amount_spent', limit: 100 });
-    return xs.filter((x) => x.account_status !== 2).map((x) => ({ id: x.account_id, name: x.name || `Ad account ${x.account_id}`, sub: `${x.currency} · act_${x.account_id}` }));
+    const live = xs.filter((x) => x.account_status !== 2);
+    const out = live.map((x) => ({ id: x.account_id, name: x.name || `Ad account ${x.account_id}`, sub: `${x.currency} · act_${x.account_id}`, currency: x.currency || null, own: null }));
+    if (ctx) for (const o of out.slice(0, 25)) { const pages = await get(`act_${o.id}/promote_pages`, c.token, { fields: 'id,name,website', limit: 100 }).then((j) => j.data || []).catch(() => null);
+      if (pages) { const hit = ownPage(pages, ctx); o.own = !!hit; if (hit) o.pageIds = [String(hit.id)]; } }
+    return out;
   },
-  select(c, choice) { return { ...c, account: String(choice.account || '').replace(/^act_/, ''), accountName: choice.name || null }; },
+  /* the pick: { accounts: [{ id, name }] } (one or many), or the old { account, name } */
+  select(c, choice) {
+    const list = Array.isArray(choice?.accounts) ? choice.accounts : choice?.account ? [{ id: choice.account, name: choice.name || null }] : [];
+    const accounts = accountsOf({ accounts: list.map((a) => ({ id: String(a?.id ?? a ?? ''), name: a?.name || null })) });
+    const { account, accountName, ...rest } = c; return { ...rest, accounts, ...(accounts.length ? { account: accounts[0].id, accountName: accounts[0].name || null } : {}) }; /* account/accountName: for code that still reads one */
+  },
+  /* each ad account is checked on its own: the brand owns it when it can promote the brand's Page; the connection is "verified"
+     when every picked account is, and the per-account verdicts ride on `accounts` for the sheet */
   async owns(c, ctx) {
-    if (!c.account) return { ok: false, why: 'Pick an ad account first' };
-    const pages = await get(`act_${c.account}/promote_pages`, c.token, { fields: 'id,name,website,link', limit: 100 }).then((j) => j.data || []).catch(() => []);
-    const hit = pages.find((p) => (ctx.pageId && String(p.id) === String(ctx.pageId)) || String(p.website || '').split(/\s+/).some((w) => exactSite(w, ctx.host)));
-    const acc = await get(`act_${c.account}`, c.token, { fields: 'name,currency,timezone_name' }).catch(() => ({}));
+    const xs = accountsOf(c); if (!xs.length) return { ok: false, why: 'Pick an ad account first' };
+    const accounts = [];
+    for (const a of xs) {
+      const pages = await get(`act_${a.id}/promote_pages`, c.token, { fields: 'id,name,website,link', limit: 100 }).then((j) => j.data || []).catch(() => null);
+      const acc = await get(`act_${a.id}`, c.token, { fields: 'name,currency,timezone_name' }).catch(() => ({}));
+      const hit = pages ? ownPage(pages, ctx) : null;
+      accounts.push({ id: a.id, name: acc.name || a.name || `act_${a.id}`, currency: acc.currency || a.currency || null, ...(hit ? { pageIds: [String(hit.id)] } : {}), ok: !!hit, ...(pages ? {} : { error: true }),
+        why: hit ? `The ad account promotes ${hit.name}` : pages ? `None of this ad account’s pages is ${ctx.host}’s page` : 'Couldn’t read this ad account’s pages' });
+    }
+    const bad = accounts.filter((a) => !a.ok), ok = !bad.length;
     /* a page's website is free text: it shows the account is the brand's, never strong enough to own the brand (strong: false) */
-    return { ok: !!hit, strong: false, account: { id: `act_${c.account}`, name: acc.name || c.accountName || `act_${c.account}`, currency: acc.currency }, why: hit ? `The ad account promotes ${hit.name}` : `None of this ad account’s pages is ${ctx.host}’s page` };
+    return { ok, strong: false, accounts, account: { id: accounts.map((a) => `act_${a.id}`).join(' '), name: sumLabel(accounts), currency: accounts[0].currency },
+      why: ok ? accounts.map((a) => a.why).join('; ') : bad.map((a) => `${a.name}: ${a.why}`).join('; ') };
   },
-  async sync(c, ctx) {
-    const m = {}, notes = [], A = `act_${c.account}`;
+  /* one ad account's last 30 days (and 7-day campaign rows); the account-level numbers go into m, the rest is summed by sync() */
+  async syncOne(c, a, ctx) {
+    const m = { id: a.id }, notes = [], A = `act_${a.id}`;
     const acc = await get(A, c.token, { fields: 'name,currency' });
-    /* money in the ad account's own currency (an INR account is never shown in the site's dollars) */
-    const F = fmt({ ...ctx.profile, currency: acc.currency || ctx.profile?.currency, ...(acc.currency === 'INR' ? { country: 'IN', locale: 'en-IN' } : acc.currency && ctx.profile?.country === 'IN' ? { country: 'XX', locale: 'en-US' } : {}) });
+    m.name = acc.name || a.name || A; m.currency = acc.currency || a.currency || null;
     const ins = (params) => all(`${A}/insights`, c.token, { ...params, limit: 200 }, 5);
     /* an agency or group ad account runs ads for several Pages: count only the ads that promote this brand's Page */
     const pages = await get(`${A}/promote_pages`, c.token, { fields: 'id,name,website', limit: 100 }).then((j) => j.data || []).catch(() => []);
-    const nameKey = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
-    const own = pages.find((p) => (ctx.pageId && String(p.id) === String(ctx.pageId)) || String(p.website || '').split(/\s+/).some((w) => exactSite(w, ctx.host)))
-      /* a Page with no website set: its name is the brand's (one match only, never a guess between two) */
-      || (() => { const k = nameKey(ctx.profile?.name); const xs = k.length >= 4 ? pages.filter((p) => nameKey(p.name) === k) : []; return xs.length === 1 ? xs[0] : null; })();
+    const own = ownPage(pages, ctx);
     const ads = await all(`${A}/ads`, c.token, { fields: 'id,campaign_id,effective_status,creative{effective_object_story_id,object_story_spec}', limit: 200 }, 10).catch(() => null);
-    const pageOf = (a) => String(a.creative?.object_story_spec?.page_id || String(a.creative?.effective_object_story_id || '').split('_')[0] || '');
+    const pageOf = (x) => String(x.creative?.object_story_spec?.page_id || String(x.creative?.effective_object_story_id || '').split('_')[0] || '');
     const adPages = new Set((ads || []).map(pageOf).filter(Boolean));
     const shared = !!(own && ads && [...adPages].some((pid) => pid !== String(own.id)));
-    const mine = shared ? new Set(ads.filter((a) => pageOf(a) === String(own.id)).map((a) => a.id)) : null;
-    if (shared) notes.push(`This ad account also runs ads for other Pages. Brew counts only the ads for ${own.name}.`);
+    const mine = shared ? new Set(ads.filter((x) => pageOf(x) === String(own.id)).map((x) => x.id)) : null;
+    if (shared) notes.push(`${m.name} also runs ads for other Pages. Brew counts only the ads for ${own.name}.`);
     /* ads for several Pages and none of them known to be this brand's: the totals are the whole account's, and say so */
-    const whole = !own && adPages.size > 1;
-    if (whole) notes.push('This ad account runs ads for several Pages and none is linked to this site, so spend is the whole account’s. Add the site to your Facebook Page to count only yours.');
+    m.whole = !own && adPages.size > 1; m.shared = shared; m.ownName = own?.name || null;
+    if (m.whole) notes.push(`${m.name} runs ads for several Pages and none is linked to this site, so its spend is the whole account’s. Add the site to your Facebook Page to count only yours.`);
+    m.spend = 0; m.buys = 0; m.value = 0; m.valued = false; m.reach = null;
     if (!shared) {
       const [tot] = await ins({ date_preset: 'last_30d', fields: 'spend,impressions,clicks,reach,frequency,actions,action_values' });
-      if (tot) { m.spend = +tot.spend || 0; const buys = pick(tot.actions, PURCHASE), value = pick(tot.action_values, PURCHASE);
-        if (buys) { m.purchases = buys; m.cpa = m.spend / buys; } if (value != null && m.spend) m.roas = value / m.spend; m.reach = +tot.reach || null; }
+      if (tot) { m.spend = +tot.spend || 0; m.buys = pick(tot.actions, PURCHASE) || 0; const value = pick(tot.action_values, PURCHASE); if (value != null) { m.value = value; m.valued = true; } m.reach = +tot.reach || null; }
     } else {
       const rows = await ins({ date_preset: 'last_30d', level: 'ad', fields: 'ad_id,spend,actions,action_values' });
-      let spend = 0, buys = 0, value = 0, valued = false;
-      for (const x of rows.filter((r) => mine.has(String(r.ad_id)))) { spend += +x.spend || 0; buys += pick(x.actions, PURCHASE) || 0; const v = pick(x.action_values, PURCHASE); if (v != null) { value += v; valued = true; } }
-      m.spend = spend; if (buys) { m.purchases = buys; m.cpa = spend / buys; } if (valued && spend) m.roas = value / spend;
+      for (const x of rows.filter((r) => mine.has(String(r.ad_id)))) { m.spend += +x.spend || 0; m.buys += pick(x.actions, PURCHASE) || 0; const v = pick(x.action_values, PURCHASE); if (v != null) { m.value += v; m.valued = true; } }
     }
     const keep = (x) => !shared || mine.has(String(x.ad_id));
-    const adWeek = await ins({ date_preset: 'last_7d', level: 'ad', fields: 'ad_id,ad_name,campaign_id,campaign_name,frequency,spend,ctr,actions,action_values' }).catch((e) => (notes.push(`Campaigns: ${e.message.slice(0, 100)}`), []));
+    const adWeek = await ins({ date_preset: 'last_7d', level: 'ad', fields: 'ad_id,ad_name,campaign_id,campaign_name,frequency,spend,ctr,actions,action_values' }).catch((e) => (notes.push(`Campaigns (${m.name}): ${e.message.slice(0, 100)}`), []));
     const byCamp = new Map();
     for (const x of adWeek.filter(keep)) { const k2 = x.campaign_id || x.campaign_name, c2 = byCamp.get(k2) || { name: x.campaign_name, s: 0, v: 0, valued: false, fw: 0 };
       const s = +x.spend || 0, v = pick(x.action_values, PURCHASE); c2.s += s; if (v != null) { c2.v += v; c2.valued = true; } c2.fw += s * (+x.frequency || 0); byCamp.set(k2, c2); }
     /* a campaign's frequency here is its ads' frequency weighted by spend: close to Meta's own, and the same for a shared account */
-    m.camp = [...byCamp.values()].map((c2) => ({ name: c2.name, spendDay: c2.s / 7, freq: c2.s ? c2.fw / c2.s : 0, roas: c2.valued && c2.s ? c2.v / c2.s : null })).filter((x) => x.spendDay > 0).sort((a, b) => b.spendDay - a.spendDay).slice(0, 6);
-    m.live = ads ? ads.filter((a) => a.effective_status === 'ACTIVE' && (!shared || mine.has(a.id))).length : null;
+    m.camp = [...byCamp.values()].map((c2) => ({ name: c2.name, spendDay: c2.s / 7, freq: c2.s ? c2.fw / c2.s : 0, roas: c2.valued && c2.s ? c2.v / c2.s : null, account: m.name })).filter((x) => x.spendDay > 0);
+    m.live = ads ? ads.filter((x) => x.effective_status === 'ACTIVE' && (!shared || mine.has(x.id))).length : null;
     m.tired = adWeek.filter(keep).filter((x) => +x.frequency >= 3.5 && +x.spend > 0).map((x) => ({ name: x.ad_name, freq: +x.frequency }));
+    return { m, notes };
+  },
+  /* every picked ad account is read; the numbers are the sum, with each account's own kept on `accounts` for the row */
+  async sync(c, ctx) {
+    const xs = accountsOf(c); if (!xs.length) throw new Error('No ad account picked: connect Meta Ads again and pick one.');
+    const per = [], notes = [], failed = [];
+    for (const a of xs) { try { const r = await META.syncOne(c, a, ctx); per.push(r.m); notes.push(...r.notes); } catch (e) { if (META.expired(e) || xs.length === 1) throw e; failed.push({ id: a.id, name: a.name || `act_${a.id}`, error: e.message.slice(0, 160) }); } }
+    if (!per.length) throw new Error(`Couldn’t read the ad accounts: ${failed[0]?.error || 'no account read'}`);
+    for (const f of failed) notes.push(`${f.name} couldn’t be read (${f.error}); its numbers are left out until the next refresh.`);
+    /* money is summed per currency: the totals are in the currency most of the spend is in; another currency's accounts are listed on their own */
+    const byCur = new Map(); for (const x of per) byCur.set(x.currency || '?', (byCur.get(x.currency || '?') || 0) + x.spend);
+    const cur = [...byCur.entries()].sort((p, q) => q[1] - p[1])[0][0], inCur = per.filter((x) => (x.currency || '?') === cur), other = per.filter((x) => (x.currency || '?') !== cur);
+    if (other.length) notes.push(`${other.map((x) => x.name).join(', ')} ${other.length === 1 ? 'is' : 'are'} in another currency, so ${other.length === 1 ? 'its' : 'their'} spend is shown per account, not in the total.`);
+    const F = fmt({ ...ctx.profile, currency: cur !== '?' ? cur : ctx.profile?.currency, ...(cur === 'INR' ? { country: 'IN', locale: 'en-IN' } : cur !== '?' && ctx.profile?.country === 'IN' ? { country: 'XX', locale: 'en-US' } : {}) });
+    const m = { spend: inCur.reduce((s, x) => s + x.spend, 0), purchases: null, cpa: null, roas: null, reach: null, live: null, camp: [], tired: [] };
+    const buys = inCur.reduce((s, x) => s + x.buys, 0), value = inCur.reduce((s, x) => s + x.value, 0), valued = inCur.some((x) => x.valued);
+    if (buys) { m.purchases = buys; m.cpa = m.spend / buys; } if (valued && m.spend) m.roas = value / m.spend;
+    if (per.some((x) => x.reach != null)) m.reach = per.reduce((s, x) => s + (x.reach || 0), 0);
+    if (per.some((x) => x.live != null)) m.live = per.reduce((s, x) => s + (x.live || 0), 0);
+    m.camp = inCur.flatMap((x) => x.camp).sort((p, q) => q.spendDay - p.spendDay).slice(0, 6); m.tired = per.flatMap((x) => x.tired);
+    const whole = per.length === inCur.length && per.every((x) => x.whole), many = per.length > 1;
+    const accounts = per.map((x) => ({ id: x.id, name: x.name, currency: x.currency, spend: +x.spend.toFixed(2), purchases: x.buys || null, cpa: x.buys ? +(x.spend / x.buys).toFixed(2) : null, roas: x.valued && x.spend ? +(x.value / x.spend).toFixed(2) : null, live: x.live, whole: !!x.whole, shared: !!x.shared, ok: true }))
+      .concat(failed.map((f) => ({ id: f.id, name: f.name, ok: false, error: f.error })));
+    const account = { id: xs.map((a) => `act_${a.id}`).join(' '), name: sumLabel(accounts.filter((a) => a.ok).length ? accounts : xs), currency: cur !== '?' ? cur : null };
 
-    const k = 'meta', name = 'Meta Ads', lane = ctx.lane, src = `Meta Ads · ${acc.name || A}${shared ? ` · ${own.name} ads only` : ''}`, out = [];
-    const hot = m.camp.filter((x) => x.freq >= 3.5).sort((a, b) => b.freq - a.freq)[0];
+    const k = 'meta', name = 'Meta Ads', lane = ctx.lane, src = `Meta Ads · ${many ? `${per.length} ad accounts` : per[0].name}${!many && per[0].shared ? ` · ${per[0].ownName} ads only` : ''}`, out = [];
+    const hot = m.camp.filter((x) => x.freq >= 3.5).sort((p, q) => q.freq - p.freq)[0];
     if (hot) out.push(card(k, name, lane, 'freq', { agent: 'performance', sector: 'ads', type: 'decision', roles: ['growth', 'founder', 'brand'], badge: [`Frequency ${hot.freq.toFixed(1)}`, 'warn'], cta: 'Rotate creative',
       title: `${hot.name} showed the same people its ads ${hot.freq.toFixed(1)} times this week`, sub: `${m.tired.length ? `${n0(m.tired.length)} ad${m.tired.length === 1 ? ' is' : 's are'} past 3.5 a week. ` : ''}Above that, clicks fall and cost per order climbs. Fresh versions of the best ads reset it fastest.`,
-      rows: [['Campaign', hot.name], ['Frequency, 7 days', hot.freq.toFixed(1)], ['Spend a day', F.money(hot.spendDay)], ['Tired ads', n0(m.tired.length)]], detail: { why: ['Above 3.5 a week, clicks fall and cost rises.'], how: ['Pick the 3 best ads by cost per order', 'Make 2 new versions of each', 'Pause the tired ones as the new ones go live'] } }));
+      rows: [['Campaign', hot.name], ...(many ? [['Ad account', hot.account]] : []), ['Frequency, 7 days', hot.freq.toFixed(1)], ['Spend a day', F.money(hot.spendDay)], ['Tired ads', n0(m.tired.length)]], detail: { why: ['Above 3.5 a week, clicks fall and cost rises.'], how: ['Pick the 3 best ads by cost per order', 'Make 2 new versions of each', 'Pause the tired ones as the new ones go live'] } }));
     const ranked = m.camp.filter((x) => x.roas != null && x.spendDay > 0);
-    if (ranked.length >= 2) { const best = [...ranked].filter((x) => x.freq < 3.5).sort((a, b) => b.roas - a.roas)[0], worst = [...ranked].sort((a, b) => a.roas - b.roas)[0];
+    if (ranked.length >= 2) { const best = [...ranked].filter((x) => x.freq < 3.5).sort((p, q) => q.roas - p.roas)[0], worst = [...ranked].sort((p, q) => p.roas - q.roas)[0];
       if (best && best !== worst && best.roas > worst.roas * 1.3) out.push(card(k, name, lane, 'shift', { agent: 'performance', sector: 'ads', type: 'decision', roles: ['growth', 'founder'], badge: [`${best.roas.toFixed(1)}x`, 'ok'], cta: 'Shift budget',
         title: `Move ${F.money(worst.spendDay * 0.2)} a day to ${best.name}`, sub: `This week ${best.name} returned ${best.roas.toFixed(1)}x and ${worst.name} ${worst.roas.toFixed(1)}x. Moving a fifth of the weaker budget in one step keeps learning intact.`,
-        rows: [['From', `${worst.name} · ${worst.roas.toFixed(1)}x`], ['To', `${best.name} · ${best.roas.toFixed(1)}x`], ['Move a day', F.money(worst.spendDay * 0.2)], ['Cost per purchase, 30 days', has(m.cpa) ? F.money(m.cpa) : null]], detail: { why: ['Returns differ by campaign, so the budget should too.', 'One step of 20% keeps the learning phase.'], how: ['Move the budget tomorrow morning', 'Read it after 7 days', 'Move it back if cost per purchase rises 15%'] } })); }
-    const stats = [has(m.spend) && [whole ? 'Whole ad account spend, 30 days' : 'Spend, last 30 days', F.big(m.spend)], has(m.roas) && ['Return on ad spend', `${m.roas.toFixed(1)}x`], has(m.cpa) && ['Cost per purchase', F.money(m.cpa)], has(m.live) && ['Live ads', n0(m.live)]].filter(Boolean);
-    const changed = [has(m.cpa) && `Ad cards show your live cost per purchase (${F.money(m.cpa)})`, m.tired.length && `${n0(m.tired.length)} tired ads flagged for fresh versions`, m.camp.length && `Budget moves between your ${m.camp.length} active campaigns`].filter(Boolean);
-    const ledger = [has(m.spend) && L('meta.spend.30d', whole ? 'Meta spend, whole ad account (several Pages), last 30 days' : 'Meta spend, last 30 days', F.big(m.spend), m.spend, src), has(m.roas) && L('meta.roas', 'Meta return on ad spend, 30 days', `${m.roas.toFixed(1)}x`, m.roas, src), has(m.cpa) && L('meta.cpa', 'Meta cost per purchase, 30 days', F.money(m.cpa), m.cpa, src),
-      has(m.live) && L('meta.ads.live', 'Live Meta ads', n0(m.live), m.live, src), hot && L('meta.frequency.max', 'Highest campaign frequency, 7 days', hot.freq.toFixed(1), hot.freq, src)].filter(Boolean);
-    return { metrics: m, stats, changed, cards: out, ledger, notes };
+        rows: [['From', `${worst.name} · ${worst.roas.toFixed(1)}x${many && worst.account !== best.account ? ` (${worst.account})` : ''}`], ['To', `${best.name} · ${best.roas.toFixed(1)}x${many && worst.account !== best.account ? ` (${best.account})` : ''}`], ['Move a day', F.money(worst.spendDay * 0.2)], ['Cost per purchase, 30 days', has(m.cpa) ? F.money(m.cpa) : null]], detail: { why: ['Returns differ by campaign, so the budget should too.', 'One step of 20% keeps the learning phase.'], how: ['Move the budget tomorrow morning', 'Read it after 7 days', 'Move it back if cost per purchase rises 15%'] } })); }
+    const spendLabel = whole ? 'Whole ad account spend, 30 days' : many ? `Spend across ${inCur.length} ad accounts, 30 days` : 'Spend, last 30 days';
+    const stats = [has(m.spend) && [spendLabel, F.big(m.spend)], has(m.roas) && ['Return on ad spend', `${m.roas.toFixed(1)}x`], has(m.cpa) && ['Cost per purchase', F.money(m.cpa)], has(m.live) && ['Live ads', n0(m.live)]].filter(Boolean);
+    const changed = [has(m.cpa) && `Ad cards show your live cost per purchase (${F.money(m.cpa)})`, m.tired.length && `${n0(m.tired.length)} tired ads flagged for fresh versions`, m.camp.length && `Budget moves between your ${m.camp.length} active campaigns${many ? ` across ${per.length} ad accounts` : ''}`].filter(Boolean);
+    const ledger = [has(m.spend) && L('meta.spend.30d', whole ? 'Meta spend, whole ad account (several Pages), last 30 days' : many ? `Meta spend, ${inCur.length} ad accounts, last 30 days` : 'Meta spend, last 30 days', F.big(m.spend), m.spend, src), has(m.roas) && L('meta.roas', 'Meta return on ad spend, 30 days', `${m.roas.toFixed(1)}x`, m.roas, src), has(m.cpa) && L('meta.cpa', 'Meta cost per purchase, 30 days', F.money(m.cpa), m.cpa, src),
+      has(m.live) && L('meta.ads.live', 'Live Meta ads', n0(m.live), m.live, src), hot && L('meta.frequency.max', 'Highest campaign frequency, 7 days', hot.freq.toFixed(1), hot.freq, src),
+      many && L('meta.accounts', 'Meta ad accounts read', accounts.filter((a) => a.ok).map((a) => `${a.name} (${a.currency || ''} ${a.spend})`).join('; '), accounts.filter((a) => a.ok).length, src)].filter(Boolean);
+    return { metrics: m, stats, changed, cards: out, ledger, notes, account, accounts };
   }
 };
+export default META;

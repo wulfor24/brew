@@ -118,3 +118,23 @@ test('register, the staff sign-in, a refreshed token and the MCP session end to 
     await A.disconnect(); await assert.rejects(A.tokenFor(), (e) => e.off === true);
   } finally { F.stop(); }
 });
+
+test('wait retries a failing poll (5xx, timeout, network) three times with backoff, then leaves the run open; a terminal state and the wait limit are flagged', async () => {
+  const S = createSloosh({ tokenFor: async () => 't', log: { warn() {} } }); const naps = []; const sleep = async (ms) => { naps.push(ms); };
+  let n = 0; const flaky = async () => { n++; if (n === 1) throw Object.assign(new Error('Sloosh MCP 503: upstream'), { status: 503 }); if (n === 2) throw new TypeError('fetch failed'); return { state: 'settled', owner: { phase: 'settled', outputs: [{ url: 'u' }] } }; };
+  const done = await S.wait(flaky, { every: 1, sleep }); assert.equal(S.stateOf(done), 'settled'); assert.equal(n, 3); assert.deepEqual(naps.slice(0, 2), [2000, 4000]); /* 2 s, 4 s, then the third try (the last of three) went through */
+  let m = 0; const slow = async () => { m++; if (m < 3) throw Object.assign(new Error('The operation was aborted due to timeout'), { name: 'TimeoutError' }); return { state: 'settled', owner: { phase: 'settled', outputs: [{ url: 'u' }] } }; }; await S.wait(slow, { every: 1, sleep }); assert.equal(m, 3);
+  const dead = async () => { throw Object.assign(new Error('Sloosh MCP 502'), { status: 502 }); }; await assert.rejects(S.wait(dead, { every: 1, sleep }), (e) => e.pollError === true && e.terminal !== true && /may still be going/.test(e.message));
+  const expired = async () => { throw Object.assign(new Error('Sloosh needs Brew staff to reconnect'), { expired: true }); }; await assert.rejects(S.wait(expired, { every: 1, sleep }), (e) => e.pollError === true && e.expired === true); /* not retried, still open */
+  await assert.rejects(S.wait(async () => ({ state: 'settled', owner: { phase: 'rejected' } }), { every: 1, sleep }), (e) => e.terminal === true);
+  await assert.rejects(S.wait(async () => ({ state: 'submitted', owner: { phase: 'running' } }), { every: 1, maxMs: -1, sleep }), (e) => e.timeout === true && !e.terminal);
+  const bad = async () => { throw new Error('Sloosh get_generation: no such operation'); }; const before = naps.length; await assert.rejects(S.wait(bad, { every: 1, sleep }), (e) => e.pollError === true); assert.equal(naps.length, before); /* a plain tool error is not retried */
+});
+
+test('several calls that need a refresh at once share one in-flight refresh', async () => {
+  const R = rig(); let refreshes = 0; const fetchImpl = async (u, o) => { if (String(u).endsWith('/oauth/token')) { refreshes++; await new Promise((r) => setTimeout(r, 5)); return new Response(JSON.stringify({ access_token: 'at' + refreshes, refresh_token: 'rt' + refreshes, expires_in: 3600 }), { status: 200, headers: { 'content-type': 'application/json' } }); } throw new Error('unexpected ' + u); };
+  await R.vault.save('_brew', 'sloosh', { token: 'old', refresh: 'rt0', client_id: 'cid', exp: Date.now() + 60e3, refreshedAt: null });
+  const A = createSlooshAuth({ ...R, fetchImpl, log: { warn() {}, info() {} } });
+  const got = await Promise.all([A.tokenFor(), A.tokenFor({ force: true }), A.tokenFor()]); assert.deepEqual(got, ['at1', 'at1', 'at1']); assert.equal(refreshes, 1);
+  assert.equal(await A.tokenFor({ force: true }), 'at1'); assert.equal(refreshes, 1); /* a 401 right after a refresh: the refresh just landed, the token stands */
+});
