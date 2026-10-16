@@ -103,7 +103,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   /* paid jobs that run beside a build or rewrite (the ad statics): counted for paidWork(), which deploy.sh asks before a deploy */
   let statics = 0; const held = (fn) => { statics++; return fn().finally(() => { statics--; }); };
   /* what paid work this instance is doing now (builds, rewrites, update checks, statics), by kind and without brand names */
-  const paidWork = () => { const by = { build: 0, rewrite: 0, check: 0, statics }; for (const x of S.values()) { if (x.running) by[x.rewriting ? 'rewrite' : 'build']++; if (x.checking) by.check++; } return by; };
+  const paidWork = () => { const by = { build: 0, rewrite: 0, check: 0, statics }; for (const x of S.values()) { if (x.running && !x.confirmed) by[x.rewriting ? 'rewrite' : 'build']++; /* a read waiting for the owner's check (x.confirmed is its wake-up) spends nothing: it held every deploy for a day */ if (x.checking) by.check++; } return by; };
   const st = (slug) => { let x = S.get(slug); if (!x) S.set(slug, x = { events: [], listeners: new Set(), status: null, confirmed: null, running: false, inflight: new Map(), failed: new Map() }); return x; };
   const emit = (slug, ev) => { const x = st(slug); const e = { ...ev, at: Date.now() }; x.events.push(e); if (x.events.length > 2000) x.events.shift(); x.listeners.forEach((f) => { try { f(e); } catch {} }); };
   const subscribe = (slug, f, { replay = true } = {}) => { const x = st(slug); if (replay) x.events.forEach(f); x.listeners.add(f); return () => x.listeners.delete(f); };
