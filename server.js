@@ -323,7 +323,10 @@ const attach = (p) => {
     x.research.start().catch((e) => console.error('[research] start', p.slug, e.message)); x.live.start().catch((e) => console.error('[live] start', p.slug, e.message));
     p.research = x.research; p.live = x.live; feedSvc?.wire(p);
     // the catalog watch saw something new: the builder decides if the moves need a fresh look
-    x.live.onRefresh((done) => { if (!done.includes('catalog')) return; try { const c = x.live.get().catalog; builder.signal(p.slug, (c?.events || []).filter((e) => e.at === c.fetchedAt)).catch(() => {}); } catch {} });
+    x.live.onRefresh((done) => { if (!done.includes('catalog')) return; try { const c = x.live.get().catalog; builder.signal(p.slug, (c?.events || []).filter((e) => e.at === c.fetchedAt)).catch(() => {});
+      /* stock is a state, not news: every pass hands over what is out and what is in, so a product that was already out (its
+         event seen before) still marks its moves; stockSignal acts only on what changed since the last pass */
+      const its = c?.items || []; if (its.length) builder.stockSignal?.(p.slug, [{ kind: 'oos', items: its.filter((i) => i.inStock === false) }, { kind: 'back', items: its.filter((i) => i.inStock !== false) }, { kind: 'new', items: its }]).catch(() => {}); } catch {} });
   }
   p.research = x?.research || STUB; p.live = x?.live || STUB;
   return p;

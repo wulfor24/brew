@@ -985,13 +985,13 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const products = (await packs.getJSON(slug, 'profile.json', {}))?.catalog?.products || [];
     const items = new Map(); for (const e of out) for (const it of e.items || []) { const h = handleOfItem(it); if (h && !items.has(h)) items.set(h, { it, kind: e.kind === 'oos' ? 'oos' : 'gone' }); }
     /* back in stock clears an out-of-stock mark; a product back on the site clears a gone one; never one this same pass marks out */
-    const backH = new Map(); for (const e of back) for (const it of e.items || []) { const h = handleOfItem(it); if (h && !items.has(h)) backH.set(h, e.kind === 'back' ? 'oos' : 'gone'); }
+    const backH = new Map(); for (const e of back) for (const it of e.items || []) { const h = handleOfItem(it); if (h && !items.has(h)) backH.set(h, new Set([...(backH.get(h) || []), e.kind === 'back' ? 'oos' : 'gone'])); }
     const at = Date.now(), flagged = new Set();
     const whyOf = (f) => [...Object.values(f.stockWhy || {}), f.was?.why].filter(Boolean).join(' ');
     await editUpd(slug, (u) => {
       const known = (u.stockOut ||= {});
-      for (const [h, kind] of backH) {
-        if (known[h]?.kind !== kind) continue;
+      for (const [h, kinds] of backH) {
+        if (!known[h] || !kinds.has(known[h].kind)) continue;
         delete known[h];
         for (const [n, f] of Object.entries(u.stale)) { if (!f?.stockWhy?.[h]) continue; const sw = { ...f.stockWhy }; delete sw[h];
           if (Object.keys(sw).length) u.stale[n] = { ...f, stockWhy: sw, why: whyOf({ ...f, stockWhy: sw }) };

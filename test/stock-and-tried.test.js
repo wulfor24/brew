@@ -63,6 +63,17 @@ test('out of stock: every move naming the product is out of date at once, kept o
   assert.deepEqual((await P.getJSON(slug, 'updates.json', {})).stockOut, {});
 });
 
+test('stock as a state every pass (what is out, what is in): a product already out still marks its moves, once', async () => {
+  const { b, P, slug } = await brand();
+  const pass = (outOf) => [{ kind: 'oos', items: products.filter((p) => outOf.includes(p.handle)).map((p) => ({ ...p, inStock: false })) },
+    { kind: 'back', items: products.filter((p) => !outOf.includes(p.handle)) }, { kind: 'new', items: products }];
+  assert.deepEqual((await b.stockSignal(slug, pass(['rosemary-oil']))).flagged, [1]);
+  assert.deepEqual((await b.stockSignal(slug, pass(['rosemary-oil']))).flagged, [], 'the next pass, still out: nothing new');
+  assert.equal((await stale(P, slug))[1].priority, 'high');
+  await b.stockSignal(slug, pass([]));
+  assert.equal((await stale(P, slug))[1], undefined, 'back in stock: the mark is gone');
+});
+
 test('a product gone from the site flags its moves; the weekly run rewrites them and the rewrite is told what can not be sold', async () => {
   const { b, P, slug, runs } = await brand();
   await P.put(slug, 'learned.json', { ...emptyLearned(), tried: [{ text: 'They ran influencer posts in 2025 and they did not convert.', source: 'Call, added by Asha' }] });
