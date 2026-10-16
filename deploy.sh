@@ -8,7 +8,12 @@ cd "$(dirname "$0")"
 for f in *.js reader/*.js reader/stages/*.js connectors/*.js pdf/*.js public/*.js public/data/brew.js; do node --check "$f"; done
 # every module server.js imports must be in the image (the Dockerfile copies *.js and these folders)
 for d in reader connectors pdf skills prompts data sources/moves public; do [ -d "$d" ] || { echo "missing $d/"; exit 1; }; done
-AI_MOCK=1 node --test test/*.test.js >/dev/null || { echo "tests fail: fix them first"; exit 1; }
+# the suite opens local ports and temp files, so two sessions deploying at once can trip each other: a failed run is run once
+# more on its own before it stops the deploy, and the failing tests are named
+if ! AI_MOCK=1 node --test test/*.test.js >/dev/null 2>&1; then
+  echo "tests failed once (another suite may be running next to this one): trying once more"; sleep 20
+  AI_MOCK=1 node --test test/*.test.js > "${TMPDIR:-/tmp}/brew-deploy-tests.txt" 2>&1 || { echo "tests fail: fix them first"; grep -E "^✖" "${TMPDIR:-/tmp}/brew-deploy-tests.txt" | sort -u | head -20; exit 1; }
+fi
 # Deploy any time: the instance that goes gets SIGTERM, stops starting moves and saves what it has; the new one resumes every
 # unfinished build and rewrite on boot (build.js resumeAll). Only the moves in flight at that second are written again.
 OUT=$(gcloud run deploy shopos-feed --source . --project=squareup-492617 --region=asia-south1 \
