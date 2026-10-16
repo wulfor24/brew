@@ -9,7 +9,14 @@
 // Numbering starts at 1001 (nextNumbers, CADENCE_BASE) and is never reused: a family's new run retires its last
 // run (moves/history/, cards dropped from the feed), so the Moves tab always shows the current set.
 // Pure helpers (scorecard, digests, numbering, shaping, gating) are exported so tests run them free.
+// A brand with real connected accounts (private/connected-ledger.json) also gets a private run of each weekly family, for its
+// team only: the same families written from the read plus the account numbers (the paid area scored from the Meta account,
+// routines picked from the Klaviyo flows that are on or off). It goes to private/moves.json, private/moves/, private/cards.json
+// (ids ending -p, privateOf the move number) and private/audit/scorecard.json; the public run and its files never change.
 import { allowedFromLedger, scanNumbers } from './moves-engine.js';
+import { realRows, privId } from './connectors/common.js';
+import { mergeLedger } from './refresh.js';
+import { withLive } from './on-connect.js';
 
 const H = 3600e3, DAY = 24 * H;
 const pad = (n) => String(n).padStart(2, '0');
@@ -35,7 +42,10 @@ const SKILLS = ['ai-seo', 'seo-audit', 'schema', 'cro', 'ads', 'ad-creative', 'e
 /* ---------- the audit scorecard: counted from the pack, every part with its source ---------- */
 export const gradeOf = (s) => (s >= 80 ? 'A' : s >= 60 ? 'B' : s >= 40 ? 'C' : 'D');
 const AREAS = [['site', 'Site and product pages'], ['seo', 'Search (SEO)'], ['ai', 'AI answers'], ['ads', 'Paid ads'], ['crm', 'Email and CRM'], ['social', 'Social'], ['reviews', 'Reviews']];
-export function auditScorecard({ profile: p = {}, slug = '', now = Date.now() } = {}) {
+/* the team's connected rows by key (real rows only: a simulated account is never evidence) */
+export const liveOf = (rows) => Object.fromEntries(realRows(rows).filter((e) => e.key && e.v != null).map((e) => [e.key, e]));
+const nOf = (e) => (e?.n != null && Number.isFinite(+e.n) ? +e.n : null);
+export function auditScorecard({ profile: p = {}, slug = '', now = Date.now(), live = null } = {}) {
   const host = p.host || slug, site = `https://${String(host).replace(/^https?:\/\//, '')}`, read = p.meta?.readAt ? dayOf(Date.parse(p.meta.readAt)) : dayOf(now);
   const out = [];
   const area = (k, parts, extra = {}) => {
@@ -89,8 +99,16 @@ export function auditScorecard({ profile: p = {}, slug = '', now = Date.now() } 
   }
   /* paid ads */
   { const own = p.ads?.own || {}, parts = [], items = own.items || [], lib = own.pageId ? `https://www.facebook.com/ads/library/?view_all_page_id=${own.pageId}` : 'https://www.facebook.com/ads/library/';
-    const readAds = own.live != null && !own.error;
-    if (readAds) {
+    const readAds = own.live != null && !own.error, lv = live || {};
+    /* the team's view: the paid area is scored from the connected Meta account (return, frequency, cost per order), not the Ad Library */
+    const roas = nOf(lv['meta.roas']), freq = nOf(lv['meta.frequency.max']), cpa = nOf(lv['meta.cpa']), aov = nOf(lv['shopify.aov']);
+    if (roas != null || freq != null || cpa != null) {
+      const src = 'Meta Ads account (connected)', at = (k) => (lv[k]?.at ? dayOf(Date.parse(lv[k].at) || now) : read);
+      if (roas != null) parts.push(part('Return on ad spend', (Math.min(roas, 4) / 4) * 40, 40, `Meta returned ${lv['meta.roas'].v} on ad spend over the last 30 days`, src, '', at('meta.roas')));
+      if (freq != null) parts.push(part('Ad fatigue', freq <= 2.5 ? 30 : freq >= 5 ? 0 : ((5 - freq) / 2.5) * 30, 30, `the highest campaign frequency over 7 days is ${lv['meta.frequency.max'].v}${freq >= 3.5 ? ' (above 3.5, people tire of the same ads)' : ''}`, src, '', at('meta.frequency.max')));
+      if (cpa != null && aov) { const r = cpa / aov; parts.push(part('Cost per order', r <= 0.25 ? 30 : r >= 1 ? 0 : ((1 - r) / 0.75) * 30, 30, `Meta cost per purchase is ${lv['meta.cpa'].v} against an average order of ${lv['shopify.aov'].v}`, src, '', at('meta.cpa'))); }
+      else if (cpa != null) parts.push(part('Cost per order', 0, 0, `Meta cost per purchase is ${lv['meta.cpa'].v} (no order value is connected to compare it with)`, src, '', at('meta.cpa')));
+    } else if (readAds) {
       const live = own.live || 0, fresh = items.filter((x) => (x.days ?? 999) <= 30).length, vid = items.some((x) => x.format === 'video' || x.video), img = items.some((x) => !(x.format === 'video' || x.video));
       parts.push(part('Live ads', Math.min(live, 20) / 20 * 40, 40, `${live} live ads in the Meta Ad Library${own.page ? ` (page ${own.page})` : ''}`, 'Meta Ad Library', lib));
       if (items.length) parts.push(part('Fresh creative', (fresh / items.length) * 30, 30, `${fresh} of ${items.length} ads read started in the last 30 days`, 'Meta Ad Library', lib));
@@ -100,7 +118,7 @@ export function auditScorecard({ profile: p = {}, slug = '', now = Date.now() } 
     }
     const tech = p.site?.tech || {}; if (p.site?.tech) { const tags = ['metaPixel', 'ga4', 'gtm', 'googleAds', 'tiktokPixel'].filter((k) => tech[k]);
       parts.push(part('Tracking tags seen', tags.length ? 0 : 0, 0, tags.length ? `tags seen on the home page: ${tags.join(', ')}` : 'no Meta pixel, GA4 or Google Ads tag was detected on the home page read (to confirm: they may load later)', `${host} home page`, site)); }
-    area('ads', parts);
+    area('ads', parts, roas != null || freq != null || cpa != null ? { from: 'account' } : {});
   }
   /* email and CRM */
   { const tech = p.site?.tech, parts = [];
@@ -142,7 +160,7 @@ export function auditScorecard({ profile: p = {}, slug = '', now = Date.now() } 
   }
   const done = out.filter((a) => a.read);
   return { at: new Date(now).toISOString(), readAt: p.meta?.readAt || null, brand: p.name || slug, host, overall: done.length ? clamp(done.reduce((a, x) => a + x.score, 0) / done.length) : null,
-    areas: out, weakest: [...done].sort((a, b) => a.score - b.score).slice(0, 3).map((a) => a.k) };
+    areas: out, weakest: [...done].sort((a, b) => a.score - b.score).slice(0, 3).map((a) => a.k), ...(live && Object.keys(live).length ? { private: true, accounts: [...new Set(Object.keys(live).map((k) => k.split('.')[0]))] } : {}) };
 }
 
 /* ---------- listening, as a digest the moves are written from (quant + qual) ---------- */
@@ -162,23 +180,37 @@ export function listenDigest(L, { now = Date.now() } = {}) {
 }
 
 /* ---------- automation: the routines Brew can run, from the stack it can see ---------- */
-export function automationContext({ profile: p = {}, listen = null, scorecard = null } = {}) {
+/* the five key Klaviyo flows the connector checks (connectors/klaviyo.js FLOWS), and the routine each one already covers */
+export const KEY_FLOWS = ['Welcome', 'Abandoned checkout', 'Browse abandonment', 'Post-purchase', 'Win-back'];
+const FLOW_OF = { 'review-ask': 'Post-purchase', 'win-back': 'Win-back' };
+export function automationContext({ profile: p = {}, listen = null, scorecard = null, live = null } = {}) {
   /* routines the brand's team runs on its own tools from the shared brief; Brew never runs them */
-  const tech = p.site?.tech || {}, own = p.ads?.own || {}, out = [];
-  const email = tech.klaviyo ? 'Klaviyo (detected on the site)' : 'their email tool (none was detected on the site)';
+  const tech = p.site?.tech || {}, own = p.ads?.own || {}, out = [], skipped = [], lv = live || {};
+  /* the team's view: Klaviyo connected says which key flows run (skip those) and which are off (fix those) */
+  const klav = !!(lv['klaviyo.flows.live'] || lv['klaviyo.flows.off']);
+  const off = klav ? String(lv['klaviyo.flows.off']?.v ?? '').split(/,\s*/).map((x) => x.trim()).filter((x) => KEY_FLOWS.includes(x)) : null;
+  const flowOn = (k) => klav && FLOW_OF[k] && !off.includes(FLOW_OF[k]);
+  const email = klav ? 'Klaviyo (connected)' : tech.klaviyo ? 'Klaviyo (detected on the site)' : 'their email tool (none was detected on the site)';
   const chat = /whatsapp/i.test(tech.chat || '') ? 'WhatsApp (chat button on the site)' : 'WhatsApp, for customers who said yes';
-  const mail = tech.klaviyo ? 'Klaviyo' : 'their email tool';
+  const mail = klav || tech.klaviyo ? 'Klaviyo' : 'their email tool';
+  const offWhy = (k) => (klav && FLOW_OF[k] && off.includes(FLOW_OF[k]) ? `the ${FLOW_OF[k]} flow is not live in Klaviyo; ` : '');
   if (listen?.questions?.length) out.push({ k: 'reply-sweep', name: 'Weekly reply-to-questions sweep', why: `${listen.questions.length} open public questions were heard${listen.communities[0] ? `; the busiest community is ${listen.communities[0].name}` : ''}`, runs: 'Every Monday the team lists new public questions and posts an honest reply as the brand', tools: ['community replies'] });
-  if (own.live) out.push({ k: 'creative-refresh', name: 'Weekly creative refresh', why: `${own.live} live Meta ads; fresh creative keeps cost per order down`, runs: 'Every Monday the team reads the ads, pauses the ones that fell behind and makes two fresh versions of the winners', tools: ['Meta Ads'] });
-  out.push({ k: 'review-ask', name: 'Review ask after delivery', why: `${fmt(p.reviews?.total || 0)} reviews so far${p.reviews?.app ? ` on ${p.reviews.app}` : ''}`, runs: `A message flow in ${mail} a set number of days after delivery, with a WhatsApp nudge`, tools: [mail, 'WhatsApp'] });
-  out.push({ k: 'win-back', name: 'Win-back for lapsed buyers', why: 'repeat orders without new ad spend', runs: `A segment of buyers with no order in a set window, then a short series in ${mail} and WhatsApp, with a holdout`, tools: [mail, 'WhatsApp'] });
+  if (lv['meta.ads.live'] || lv['meta.frequency.max']) out.push({ k: 'creative-refresh', name: 'Weekly creative refresh', why: [lv['meta.ads.live'] && `${lv['meta.ads.live'].v} live Meta ads in the account`, lv['meta.frequency.max'] && `the highest campaign frequency over 7 days is ${lv['meta.frequency.max'].v}`, lv['meta.cpa'] && `cost per purchase ${lv['meta.cpa'].v}`].filter(Boolean).join('; '), runs: 'Every Monday the team reads the ads, pauses the ones that fell behind and makes two fresh versions of the winners', tools: ['Meta Ads'] });
+  else if (own.live) out.push({ k: 'creative-refresh', name: 'Weekly creative refresh', why: `${own.live} live Meta ads; fresh creative keeps cost per order down`, runs: 'Every Monday the team reads the ads, pauses the ones that fell behind and makes two fresh versions of the winners', tools: ['Meta Ads'] });
+  for (const r of [{ k: 'review-ask', name: 'Review ask after delivery', why: `${fmt(p.reviews?.total || 0)} reviews so far${p.reviews?.app ? ` on ${p.reviews.app}` : ''}`, runs: `A message flow in ${mail} a set number of days after delivery, with a WhatsApp nudge`, tools: [mail, 'WhatsApp'] },
+    { k: 'win-back', name: 'Win-back for lapsed buyers', why: 'repeat orders without new ad spend', runs: `A segment of buyers with no order in a set window, then a short series in ${mail} and WhatsApp, with a holdout`, tools: [mail, 'WhatsApp'] }]) {
+    if (flowOn(r.k)) { skipped.push({ k: r.k, why: `the ${FLOW_OF[r.k]} flow already runs in Klaviyo` }); continue; }
+    out.push({ ...r, why: `${offWhy(r.k)}${r.why}` });
+  }
+  /* the other key flows that are off: each one a routine to fix */
+  if (klav) for (const f of off.filter((x) => !Object.values(FLOW_OF).includes(x))) out.push({ k: `flow-${f.toLowerCase().replace(/[^a-z]+/g, '-')}`, name: `Turn on the ${f} flow`, why: `the ${f} flow is not live in Klaviyo (${lv['klaviyo.flows.live']?.v ?? 'some'} key flows live)`, runs: `Build the ${f} flow in Klaviyo, send it to a slice of the list first, then turn it on for everyone`, tools: ['Klaviyo'] });
   if ((p.catalog?.products || []).some((x) => x.inStock === false)) out.push({ k: 'restock-alert', name: 'Back-in-stock alerts', why: `${p.catalog.products.filter((x) => x.inStock === false).length} of ${p.catalog.products.length} products read are out of stock`, runs: `A sign-up on sold-out pages, then a message in ${mail} the day the product is back`, tools: [mail, 'the store'] });
   if (scorecard?.areas?.find((a) => a.k === 'ai')?.read) out.push({ k: 'ai-answers-watch', name: 'Weekly AI answers check', why: `AI answers score ${scorecard.areas.find((a) => a.k === 'ai').score} of 100`, runs: 'The same category questions asked every week; a new gap becomes a page to publish', tools: ['the store'] });
-  return { email, chat, tools: Object.entries(tech).filter(([, v]) => v).map(([k, v]) => (v === true ? k : `${k}: ${v}`)), routines: out, programKinds: ['action', 'task', 'message', 'check', 'wait'], owners: ['you', 'team'] };
+  return { email, chat, tools: Object.entries(tech).filter(([, v]) => v).map(([k, v]) => (v === true ? k : `${k}: ${v}`)), routines: out, skipped, programKinds: ['action', 'task', 'message', 'check', 'wait'], owners: ['you', 'team'] };
 }
 
 /* ---------- evidence: numbered lines every move must cite ---------- */
-export function evidenceFor(family, { scorecard, listen, auto, profile = {}, ledger = [], brief = null } = {}) {
+export function evidenceFor(family, { scorecard, listen, auto, profile = {}, ledger = [], brief = null, live = null } = {}) {
   const ev = []; const add = (text, src, url = '', at = '') => { if (text) ev.push({ id: `e${ev.length + 1}`, text: cut(text, 400), src: cut(src, 120), url: url || '', at: at || '' }); };
   const host = profile.host ? `https://${profile.host}` : '';
   if (family === 'listen' && listen) {
@@ -194,6 +226,9 @@ export function evidenceFor(family, { scorecard, listen, auto, profile = {}, led
   if (family === 'auto' && auto) {
     add(`Tools seen on the site: ${auto.tools.join(', ') || 'none detected'}`, `${profile.host} home page`, host);
     for (const r of auto.routines) add(`Routine candidate "${r.name}": ${r.why}. How it runs: ${r.runs}. Uses: ${r.tools.join(', ')}`, 'Brew routine ideas', '');
+    for (const s of auto.skipped || []) add(`Not a routine to propose: ${s.why}`, 'Klaviyo (connected)', '');
+    /* the team's run: every number its connected accounts read, as evidence the plans may quote */
+    for (const e of Object.values(live || {}).slice(0, 30)) add(`${e.label || e.key}: ${e.v}`, `${e.src || String(e.key).split('.')[0]} (connected account)`, '', String(e.at || '').slice(0, 10));
     if (listen?.questions?.length) for (const q of listen.questions.slice(0, 3)) add(`Open question in ${q.where}: "${q.title}" (${q.replies} replies)`, q.where, q.url, q.lastActive);
     if (scorecard) for (const a of scorecard.areas.filter((x) => x.read && ['crm', 'reviews', 'ads'].includes(x.k))) for (const x of a.parts) add(`${a.label} · ${x.k}: ${x.note}`, x.src, x.url, x.at);
   }
@@ -306,14 +341,17 @@ Write ${k} moves (at least ${F.min}, at most ${F.max}). Rules:
 }
 
 /* ---------- writing one family for one brand ---------- */
-export async function writeFamily(family, { ai, slug, pack, memory = null, log = console, now = Date.now(), numbers, hints = [] }) {
-  const F = FAMILIES[family]; const { profile, ledger = [], brief, listen } = pack;
+export async function writeFamily(family, { ai, slug, pack, memory = null, log = console, now = Date.now(), numbers, hints = [], unless = null }) {
+  const F = FAMILIES[family]; const { profile, ledger = [], brief, listen, live = null } = pack;
   if (family === 'learn' && !['essence', 'goals', 'beliefs', 'facts', 'tried'].some((k) => brief?.learned?.[k]?.length)) return { moves: [], usd: 0, skipped: 'nothing learned yet' };
-  const scorecard = pack.scorecard || auditScorecard({ profile, slug, now });
+  const scorecard = pack.scorecard || auditScorecard({ profile, slug, now, live });
   const ld = family === 'listen' || family === 'auto' ? listenDigest(listen, { now }) : null;
   if (family === 'listen' && !ld) return { moves: [], usd: 0, skipped: 'nothing heard yet' };
-  const auto = family === 'auto' ? automationContext({ profile, listen: ld, scorecard }) : null;
-  const ev = evidenceFor(family, { scorecard, listen: ld, auto, profile, ledger, brief });
+  const auto = family === 'auto' ? automationContext({ profile, listen: ld, scorecard, live }) : null;
+  const ev = evidenceFor(family, { scorecard, listen: ld, auto, profile, ledger, brief, live });
+  const evKey = ev.map((e) => e.text).join('\n');
+  /* the team's run is written only when the accounts change what the moves rest on (the same evidence would buy the same moves) */
+  if (unless != null && unless === evKey) return { moves: [], usd: 0, skipped: 'the connected accounts add nothing to this family', evKey };
   let mem = ''; try { mem = memory ? await memory.promptBlock(slug, { query: F.label, agent: family === 'auto' ? 'performance' : 'creative', name: profile?.name }) : ''; } catch {}
   const k = family === 'learn' ? Math.min(F.max, Math.max(F.min, hints.length || 2)) : F.max - 1;
   const have = family === 'learn' ? Object.entries(pack.moves || {}).filter(([n, m]) => +n > 0 && m?.title).map(([n, m]) => `${pad(n)} ${m.title}`) : [];
@@ -326,7 +364,7 @@ export async function writeFamily(family, { ai, slug, pack, memory = null, log =
   // numbers a dropped move would have used are given back
   moves.forEach((m, i) => { m.n = nums[i]; });
   log.info?.(`[moves-cadence] ${slug} ${family}: ${moves.length} of ${raws.length} moves kept, $${(r.usd || 0).toFixed(3)}`);
-  return { moves, usd: r.usd || 0, scorecard, evidence: ev.length };
+  return { moves, usd: r.usd || 0, scorecard, evidence: ev.length, evKey };
 }
 
 /* ---------- the move's cards: cards-gen, then the family on the card ---------- */
@@ -367,6 +405,7 @@ export function movesDue(st = {}, cfg, { now = Date.now(), aiLive = true, ready 
 }
 
 /* ---------- the scheduler: weekly per built brand, plus the manual route ---------- */
+const PRIVATE_FAMILIES = ['listen', 'auto']; // the weekly families that get a team-only run when real accounts are connected
 export function createMovesScheduler({ packs, ai, memory = null, cardsGen = null, log = console, env = process.env, now = () => Date.now(), onCards = () => {}, onPack = async () => {}, dropCards = () => {}, pdfFor = null } = {}) {
   const cfg = movesConfig(env), P = 'moves/cadence.json', busy = new Set();
   const stateOf = async (slug) => (await packs.getJSON(slug, P, null).catch(() => null)) || {};
@@ -379,8 +418,18 @@ export function createMovesScheduler({ packs, ai, memory = null, cardsGen = null
     const listen = themes?.themes?.length || threads?.threads?.length ? { themes: themes?.themes || [], total: themes?.total || 0, threads: threads?.threads || [], communities: comms?.communities || [], status: lstatus, items: themes?.themes?.length ? (await g('listen/items.json'))?.items || [] : [] } : null;
     return { profile, ledger, brief, status, listen, moves };
   }
+  /* the team's pack: the same read plus every real connected row (merged into the ledger), the team's brief and profile, and
+     the rows by key (the scorecard's paid area, the Klaviyo flows). null when no real account is connected */
+  async function privPackFor(slug, pack) {
+    const g = (n, d = null) => packs.getJSON(slug, n, d).catch(() => d);
+    const rows = realRows(await g('private/connected-ledger.json', [])); if (!rows.length) return null;
+    const conn = [...realRows(await g('connected-ledger.json', [])), ...rows];
+    return { ...pack, profile: withLive(pack.profile, await g('private/profile-live.json')), ledger: mergeLedger(pack.ledger || [], [], { connected: conn }).ledger,
+      brief: (await g('private/brief.json')) || pack.brief, live: liveOf(rows) };
+  }
   // retire a family's last run: history keeps the documents, the feed drops their cards
-  async function retire(slug, ns, stamp) {
+  async function retire(slug, ns, stamp, privNs = []) {
+    await retirePrivate(slug, [...new Set([...(ns || []), ...(privNs || [])])], stamp);
     if (!ns?.length) return;
     const all = await packs.getJSON(slug, 'moves.json', {}), seed = await packs.getJSON(slug, 'seed.json', {}), labels = await packs.getJSON(slug, 'labels.json', {});
     const own = new RegExp(`^m(${ns.map(pad).join('|')})-`);
@@ -390,9 +439,22 @@ export function createMovesScheduler({ packs, ai, memory = null, cardsGen = null
     await packs.put(slug, 'moves.json', all); await packs.put(slug, 'labels.json', labels); await packs.put(slug, 'seed.json', seed);
     if (gone.length) dropCards(slug, gone);
   }
-  async function cardsOf(slug, move, profile, gen) {
+  /* the team's copies of a retired run go with it: private history keeps the documents, their cards and PDFs leave */
+  async function retirePrivate(slug, ns, stamp) {
+    const pm = (await packs.getJSON(slug, 'private/moves.json', {}).catch(() => ({}))) || {}, hit = ns.filter((n) => pm[n]); if (!hit.length) return;
+    for (const n of hit) { await packs.put(slug, `private/moves/history/${pad(n)}-${stamp}.json`, pm[n]).catch(() => {}); delete pm[n]; }
+    await packs.put(slug, 'private/moves.json', pm);
+    const own = new RegExp(`^m(${hit.map(pad).join('|')})-`), pc = (await packs.getJSON(slug, 'private/cards.json', []).catch(() => [])) || [];
+    const gone = pc.filter((c) => own.test(c.id) || hit.includes(+c.privateOf)).map((c) => privId(c.id));
+    await packs.put(slug, 'private/cards.json', pc.filter((c) => !(own.test(c.id) || hit.includes(+c.privateOf))));
+    const pp = (await packs.getJSON(slug, 'private/pdfs.json', {}).catch(() => ({}))) || {}; if (hit.some((n) => n in pp)) { for (const n of hit) delete pp[n]; await packs.put(slug, 'private/pdfs.json', pp); }
+    if (gone.length) dropCards(slug, gone);
+  }
+  async function cardsOf(slug, move, profile, gen, { priv = false } = {}) {
     const p = await packs.load(slug, { fresh: true }).catch(() => null); if (!p || !gen) return { cards: [], label: null };
-    const { cards, label } = await gen.fromMove(move, { brand: { name: profile.name, host: profile.host }, facts: p.facts, lanes: p.seed?.lanes, laneImg: p.seed?.laneImg, spec: { skill: move.skill, group: AREA_GROUP[move.area] || AREA_GROUP[move.family] || 'know' } });
+    /* the team's cards check their numbers against the connected facts too (private/facts.json) */
+    const facts = priv ? { ...p.facts, ...((await packs.getJSON(slug, 'private/facts.json', null).catch(() => null))?.facts || {}) } : p.facts;
+    const { cards, label } = await gen.fromMove(move, { brand: { name: profile.name, host: profile.host }, facts, lanes: p.seed?.lanes, laneImg: p.seed?.laneImg, spec: { skill: move.skill, group: AREA_GROUP[move.area] || AREA_GROUP[move.family] || 'know' } });
     return { cards: tagCards(cards.filter((c) => !c.mock), move), label };
   }
   // run the families for one brand → { written: [{n, family, title}], usd, scorecard }
@@ -408,6 +470,9 @@ export function createMovesScheduler({ packs, ai, memory = null, cardsGen = null
       st.runningAt = t; await save(slug, st); claimed = true;
       const scorecard = auditScorecard({ profile: pack.profile, slug, now: t });
       await packs.put(slug, 'audit/scorecard.json', scorecard).catch(() => {});
+      /* the team's scorecard and pack, from the read plus its real connected accounts (none connected: no private run) */
+      const priv = await privPackFor(slug, pack), pscore = priv ? auditScorecard({ profile: priv.profile, slug, now: t, live: priv.live }) : null;
+      if (pscore) await packs.put(slug, 'private/audit/scorecard.json', pscore).catch(() => {});
       st.scorecard = { at: scorecard.at, overall: scorecard.overall, areas: scorecard.areas.map((a) => ({ k: a.k, score: a.score, grade: a.grade })) };
       const A = metered(box), gen = cardsGen ? cardsGen({ ai: A, log }) : null, written = [], errors = [];
       for (const family of families) {
@@ -418,7 +483,8 @@ export function createMovesScheduler({ packs, ai, memory = null, cardsGen = null
           if (!r.moves.length) { errors.push({ family, error: r.skipped || 'no move survived the checks' }); continue; }
           /* a family's new run retires its last run; learned moves pile up instead (each paste opens its own), the oldest past LEARN_KEEP retire */
           const prev = st.live?.[family] || [], out = family === 'learn' ? prev.slice(0, Math.max(0, prev.length + r.moves.length - LEARN_KEEP)) : prev;
-          await retire(slug, out, stamp);
+          await retire(slug, out, stamp, family === 'learn' ? [] : st.privLive?.[family] || []);
+          if (family !== 'learn' && st.privLive?.[family]) st.privLive[family] = [];
           const all = await packs.getJSON(slug, 'moves.json', {});
           for (const m of r.moves) { await packs.put(slug, `moves/${pad(m.n)}.json`, m); all[m.n] = m; }
           await packs.put(slug, 'moves.json', all);
@@ -432,13 +498,33 @@ export function createMovesScheduler({ packs, ai, memory = null, cardsGen = null
           await packs.put(slug, 'seed.json', seed); await packs.put(slug, 'labels.json', labels);
           await onPack(slug); if (add.length) onCards(slug, add);
           if (pdfFor) for (const m of r.moves) await pdfFor(slug, m).catch((e) => log.warn?.('[moves-cadence] pdf', m.n, e.message));
+          if (priv && PRIVATE_FAMILIES.includes(family)) await privateRun(slug, family, { A, gen, st, t, pack: { ...priv, scorecard: pscore }, pub: r, written }).catch((e) => { if (e.mock) throw e; errors.push({ family, private: true, error: e.message }); log.warn?.('[moves-cadence] private', slug, family, e.message); });
         } catch (e) { if (e.mock) { errors.push({ family, error: 'AI is on mock' }); break; } errors.push({ family, error: e.message }); log.warn?.('[moves-cadence]', slug, family, e.message); }
       }
       const wk = weekKey(t); if (st.spend?.week !== wk) st.spend = { week: wk, usd: 0 }; st.spend.usd = +((st.spend.usd || 0) + box.usd).toFixed(4);
-      st.runs = [{ at: t, manual, families, written: written.map((w) => w.n), usd: +box.usd.toFixed(4), errors }, ...(st.runs || [])].slice(0, 20);
+      st.runs = [{ at: t, manual, families, written: written.filter((w) => !w.private).map((w) => w.n), privWritten: written.filter((w) => w.private).map((w) => w.n), usd: +box.usd.toFixed(4), errors }, ...(st.runs || [])].slice(0, 20);
       st.runningAt = null; claimed = false; await save(slug, st);
-      return { written, usd: +box.usd.toFixed(4), errors, scorecard: st.scorecard };
+      return { written: written.filter((w) => !w.private), privWritten: written.filter((w) => w.private), usd: +box.usd.toFixed(4), errors, scorecard: st.scorecard };
     } finally { busy.delete(slug); if (claimed) { const s = await stateOf(slug).catch(() => null); if (s?.runningAt === t) { s.runningAt = null; await save(slug, s).catch(() => {}); } } }
+  }
+  /* the team's run of one family: written from the team's pack, numbered like the public run it sits beside (move 1004 for the
+     team takes the place of the shared 1004; any extra move takes a new number), saved privately, cards for members only */
+  async function privateRun(slug, family, { A, gen, st, t, pack, pub, written }) {
+    const pubNs = pub.moves.map((m) => m.n), pm = (await packs.getJSON(slug, 'private/moves.json', {}).catch(() => ({}))) || {};
+    const numbers = (k) => [...pubNs.slice(0, k), ...(k > pubNs.length ? nextNumbers({ ...(pack.moves || {}), ...pm, ...Object.fromEntries(pubNs.map((n) => [n, {}])) }, st, k - pubNs.length) : [])];
+    const have = { ...(await packs.getJSON(slug, 'moves.json', {})), ...pm };
+    const r = await writeFamily(family, { ai: A, slug, pack: { ...pack, moves: have }, memory, log, now: t, numbers, unless: pub.evKey });
+    (st.privLive ||= {})[family] = [];
+    if (!r.moves.length) return;
+    for (const m of r.moves) { m.meta = { ...m.meta, private: true, accounts: pack.scorecard?.accounts || [] }; await packs.put(slug, `private/moves/${pad(m.n)}.json`, m); pm[m.n] = m; }
+    await packs.put(slug, 'private/moves.json', pm);
+    st.privLive[family] = r.moves.map((m) => m.n); st.nextN = Math.max(st.nextN || 0, ...r.moves.map((m) => m.n + 1));
+    written.push(...r.moves.map((m) => ({ n: m.n, family, private: true, title: m.title, sources: m.sources.length, toConfirm: m.toConfirm.length })));
+    const add = [];
+    for (const m of r.moves) { try { const { cards } = await cardsOf(slug, m, pack.profile, gen, { priv: true }); add.push(...cards.map((c) => ({ ...c, id: privId(c.id), liveOnly: true, privateOf: m.n }))); } catch (e) { log.warn?.('[moves-cadence] private cards', slug, m.n, e.message); } }
+    const own = new RegExp(`^m(${r.moves.map((m) => pad(m.n)).join('|')})-`), pc = (await packs.getJSON(slug, 'private/cards.json', []).catch(() => [])) || [];
+    await packs.put(slug, 'private/cards.json', [...pc.filter((c) => !own.test(c.id)), ...add]);
+    if (add.length) onCards(slug, add, { private: true });
   }
   const dueOf = async (slug, o = {}) => { const st = await stateOf(slug); const [s0, th, tr, pr] = await Promise.all([packs.getJSON(slug, 'status.json', {}), packs.getJSON(slug, 'listen/themes.json', null), packs.getJSON(slug, 'listen/threads.json', null), packs.getJSON(slug, 'profile.json', null)]).catch(() => [{}, null, null, null]);
     return movesDue(st, cfg, { now: now(), aiLive: ai?.live !== false, ready: !!s0?.ready, hasListen: !!(th?.themes?.length || tr?.threads?.length), readAt: pr?.meta?.readAt || null, ...o }); };

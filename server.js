@@ -382,7 +382,7 @@ setInterval(() => evidenceTick().catch((e) => console.warn('[evidence]', e.messa
 /* ---------- moves on a cadence (moves-cadence.js): audit, listening and automation moves for every built brand, weekly. Cap MOVES_WEEK_CAP_USD (default $3 a brand a week),
    kill switch MOVES_REFRESH_OFF=1; off under AI_MOCK and on local servers unless MOVES_BG=1. Manual: POST /api/brands/:slug/moves/refresh (team-only on claimed brands) ---------- */
 const movesCadence = createMovesScheduler({ packs, ai, memory: MEMORY_ON() ? memory : null, cardsGen: createCardsGen, log: console,
-  onPack: async (slug) => { packs.drop(slug); attach(await packs.load(slug)); }, onCards: (slug, cards) => feedSvc?.addCards(slug, cards), dropCards: (slug, ids) => feedSvc?.dropCards(slug, ids), pdfFor: null /* PDFs are made on download (builder.pdfOn) */ });
+  onPack: async (slug) => { packs.drop(slug); attach(await packs.load(slug)); }, onCards: (slug, cards, o) => { if (o?.private) connectors?.drop(slug); feedSvc?.addCards(slug, cards, o); } /* the team's run: members only */, dropCards: (slug, ids) => { connectors?.drop(slug); feedSvc?.dropCards(slug, ids); }, pdfFor: null /* PDFs are made on download (builder.pdfOn) */ });
 movesCadence.start();
 /* ---------- brand learnings (brand-learnings.js): the team pastes a call transcript, notes or emails into a jam; Brew learns the essence,
    goals, beliefs and facts (each with its source), updates the brief, memory and system prompt, flags and rewrites the moves it changes
@@ -587,7 +587,11 @@ const brandFiles = async (req, res, u) => {
   if (!(await teamRead(req, slug))) return send(res, auth.user(req) ? 403 : 401, 'These moves are for the brand’s team. Sign in or ask them to invite you.', 'text/plain'), true;
   /* /b/<slug>/pdf/move-<n>.pdf: the move's PDF, drawn on this first download and kept until the move changes */
   const mn = what.slice(4).match(/^move-(\d{1,4})\.pdf$/i);
-  if (mn) { const v = await viewerOf(req, slug), pp = v.member ? (await packs.getJSON(slug, 'private/pdfs.json', null))?.[+mn[1]] : null, pb = pp ? await packs.get(slug, 'private/pdf/' + pp) : null;
+  if (mn) { const v = await viewerOf(req, slug); let pp = v.member ? (await packs.getJSON(slug, 'private/pdfs.json', null))?.[+mn[1]] : null, pb = pp ? await packs.get(slug, 'private/pdf/' + pp) : null;
+    /* a team-only move with no PDF yet (a weekly private run) is drawn now from the team's copy, never the shared one */
+    const pmv = v.member && !pb ? (await packs.getJSON(slug, 'private/moves.json', {}).catch(() => ({})))?.[+mn[1]] : null;
+    if (pmv) { try { await builder.pdfFor(slug, pmv, { priv: true }); pp = (await packs.getJSON(slug, 'private/pdfs.json', null))?.[+mn[1]]; pb = pp ? await packs.get(slug, 'private/pdf/' + pp) : null; } catch (e) { console.warn('[pdf] private', slug, mn[1], e.message); }
+      if (!pb) return send(res, 503, 'The PDF could not be drawn just now. Try again in a minute.', 'text/plain'), true; }
     let r = pb ? { name: pp, buf: pb } : null; if (!r) try { r = await builder.pdfOn(slug, +mn[1]); } catch (e) { console.warn('[pdf] on demand', slug, mn[1], e.message); return send(res, 503, 'The PDF could not be drawn just now. Try again in a minute.', 'text/plain'), true; }
     if (!r?.buf) return send(res, 404, 'no', 'text/plain'), true;
     res.writeHead(200, { 'content-type': 'application/pdf', 'content-disposition': disposition(r.name, u.searchParams.has('dl')), 'cache-control': 'no-cache' }); res.end(r.buf); return true; }

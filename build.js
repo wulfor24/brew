@@ -1159,7 +1159,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
 
   autoRefresh();
   // a move written outside the build (moves-cadence.js) gets its PDF the same way
-  const pdfFor = async (slug, move) => { const m = await load(); if (!m.pdf) return null; const profile = await packs.getJSON(slug, 'profile.json'); if (!profile) return null; return renderPdf(slug, m.pdf, move, profile); };
+  const pdfFor = async (slug, move, o = {}) => { const m = await load(); if (!m.pdf) return null; const profile = await packs.getJSON(slug, 'profile.json'); if (!profile) return null; return renderPdf(slug, m.pdf, move, profile, o); }; /* { priv: true }: the team's copy (private/pdf) */
   /* a move's PDF, made when someone opens it: drawn once per version of the move (and of the PDF rules), then served from the
      pack; two people opening it at once wait for the same render. → { name, buf } | null */
   const pdfJobs = new Map();
