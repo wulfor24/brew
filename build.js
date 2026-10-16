@@ -912,6 +912,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     });
     emit(slug, { type: on ? 'connected' : 'disconnected', ids: [id], live: true });
     if (!pub) await hooks.connected?.(slug, id).catch((e) => log.warn('[facts] connected', e.message)); /* the fact sheet: connected accounts are the source of truth (facts-desk.js) */
+    if (!pub && (changes.length || !on)) await teamView(slug).catch((e) => log.warn('[connect] team view', e.message)); /* the brief and profile follow every changed number */
     /* a team account read for the first time (not a resync, not a disconnect, never a simulated one): every move is rewritten with it */
     if (!pub && on && !was.length && realRows(add).length) await connectSoon(slug, id).catch((e) => log.warn('[connect] run', slug, e.message));
   }
@@ -929,19 +930,26 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     clearTimeout(settling.get(slug));
     const t = setTimeout(() => { settling.delete(slug); onConnect(slug).catch((e) => log.error('[connect] run', slug, e.message)); }, Math.max(0, due - Date.now())); t.unref?.(); settling.set(slug, t);
   }
-  async function onConnect(slug) {
-    if (blocked(slug)) return;
-    const run = (await upd(slug)).connectRun; if (!run?.ids?.length) return;
-    const s0 = await status(slug); if (!s0?.done || st(slug).running && !st(slug).rewriting) return; /* the build's finish picks it up */
-    const rows = realRows(await packs.getJSON(slug, 'private/connected-ledger.json', []));
-    if (!rows.length) { await editUpd(slug, (u) => { delete u.connectRun; }); return; }
-    /* the team's view of the brand: best sellers, the size of the business, the brief with the account numbers (no AI, no spend) */
+  /* the team's view of the brand from the real account rows: best sellers, the size of the business, the brief with the account
+     numbers (no AI, no spend). Built again whenever an account's numbers change, so a corrected read (a currency, the brand's own
+     campaigns) never leaves an old number in the brief the moves are written from. No rows left: the private copies go. */
+  async function teamView(slug, rows = null) {
+    rows ||= realRows(await packs.getJSON(slug, 'private/connected-ledger.json', []));
+    if (!rows.length) { for (const f of ['private/profile-live.json', 'private/brief.json', 'private/brief.md']) await packs.del?.(slug, f).catch(() => {}); return; }
     const profile = normalizeProfile(await packs.getJSON(slug, 'profile.json', {})), live = profileLive(rows, profile);
     await packs.put(slug, 'private/profile-live.json', live);
     const b = briefWithConnected(await packs.getJSON(slug, 'brief.json', null), rows);
     if (b) { await packs.put(slug, 'private/brief.json', b.json); await packs.put(slug, 'private/brief.md', b.md); }
     /* where the brand sells, for the calendar: only the country codes (10% of visits or more), never the shares */
     if (live.countries?.length) await packs.put(slug, 'ga4/countries.json', live.countries.filter((c) => c.share >= 0.1).map((c) => ({ code: c.code })));
+  }
+  async function onConnect(slug) {
+    if (blocked(slug)) return;
+    const run = (await upd(slug)).connectRun; if (!run?.ids?.length) return;
+    const s0 = await status(slug); if (!s0?.done || st(slug).running && !st(slug).rewriting) return; /* the build's finish picks it up */
+    const rows = realRows(await packs.getJSON(slug, 'private/connected-ledger.json', []));
+    if (!rows.length) { await editUpd(slug, (u) => { delete u.connectRun; }); return; }
+    await teamView(slug, rows);
     /* the brand's first connected account rewrites every move, once. An account connected after that rewrites only the moves it
        touches (CONNECTED_MOVES), skipping one rewritten in the last day; a skipped move keeps its flag for the weekly run */
     const moves = await packs.getJSON(slug, 'moves.json', {}), ok = await rewritable(moves), all = Object.keys(moves).map(Number).filter(ok).sort((a, z) => a - z);

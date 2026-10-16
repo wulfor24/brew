@@ -117,3 +117,15 @@ test('a run whose wrap-up was lost to a restart settles from the moves themselve
   assert.equal(u.history.filter((h) => h.connected === start).length, 1, 'one history line for the run');
   await b.settleConnect(slug); assert.equal((await P.getJSON(slug, 'updates.json')).history.filter((h) => h.connected === start).length, 1, 'settling again changes nothing');
 });
+
+test('a corrected account read replaces the old number in the team’s brief (no full rewrite)', async () => {
+  const { b, P, slug, runs } = await brand();
+  const meta = (v, n) => [{ key: 'meta.spend.30d', label: 'Meta spend, last 30 days', v, n, layer: 'observed', src: 'Meta Ads · act_1', method: 'account:meta', at }];
+  await b.liveConnected(slug, 'meta', meta('$26.6K', 26600), true, { public: false }); await settle();
+  assert.match(JSON.stringify(await P.getJSON(slug, 'private/brief.json')), /\$26\.6K/);
+  const n = runs.length;
+  await b.liveConnected(slug, 'meta', meta('₹9,860', 9860), true, { public: false }); /* the next read, in the account's own currency */
+  const brief = JSON.stringify(await P.getJSON(slug, 'private/brief.json'));
+  assert.match(brief, /₹9,860/); assert.doesNotMatch(brief, /26\.6K/, 'the old number is gone from the brief');
+  await settle(); assert.equal(runs.length, n, 'a changed number does not rewrite every move again');
+});
