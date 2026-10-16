@@ -87,7 +87,30 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     if (info.eligible) { const r = await auth.claim(slug, me, `Connected ${NAME[id]}`); if (r.ok) return { ok: true, claimed: true }; }
     return { ok: false, info };
   }
-  async function finish(slug, id, creds, me) {
+  /* a GA4 property read through Brew's shared service account (pasted ID): Brew's account can see every property anyone added it
+     to, so the ID alone proves nothing. It is refused when another brand already has that property, and needs the property's
+     stream to point to the brand's site (owns), unless Brew's own staff override it on purpose */
+  async function propertyElsewhere(slug, property) {
+    if (!property) return null;
+    for (const { slug: s } of await packs.list().catch(() => [])) { if (s === slug) continue;
+      const c = await conns(s).catch(() => ({})); for (const k of ['ga4', 'google']) if (c?.[k] && !c[k].sim && String(c[k].account?.id || '').split(' ').includes(property)) return s; }
+    return null;
+  }
+  async function finish(slug, id, creds, me, { override = false } = {}) {
+    /* a property through Brew's service account is checked before anything is kept, or the brand claimed by this connect */
+    let sa = null;
+    if (creds?.sa && !simOnly(id)) {
+      const pre = await auth.claimInfo(slug, me); if (!pre.role && !pre.eligible) return { ok: false, state: 'needs_work_email', error: noGen(pre, pre.host) };
+      if (await propertyElsewhere(slug, creds.property)) { log.warn('[connect] ga4 property on another brand', slug, creds.property, me.email);
+        return { ok: false, state: 'refused', error: 'That GA4 property is already connected to another brand in Brew. Paste your own property’s ID, or sign in with Google instead.' }; }
+      const ctx = await ctxOf(slug); let proof;
+      try { proof = await REAL[id].owns(creds, ctx); } catch (e) { proof = { ok: false, why: e.message.slice(0, 160) }; }
+      const staff = !!auth.isAdmin?.(me);
+      if (!proof.ok && !(override && staff)) { log.warn('[connect] ga4 property not the brand’s', slug, creds.property, me.email, proof.why);
+        return { ok: false, state: 'refused', error: `Brew couldn’t match that GA4 property to ${ctx.host || 'this brand’s site'}: ${proof.why || 'its web stream points elsewhere'}. Check the property ID, or sign in with Google instead.`, ...(staff ? { override: true } : {}) }; }
+      if (!proof.ok) log.warn('[connect] ga4 staff override', slug, creds.property, me.email);
+      sa = { proof };
+    }
     const may = await mayUse(slug, id, me);
     /* nothing is kept for someone who may not use it: no token in the vault, no change to the brand's connections */
     if (!may.ok) return { ok: false, state: 'needs_work_email', error: noGen(may.info, may.info.host) };
@@ -97,15 +120,18 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
       return { ...(await sync(slug, id)), claimed: may.claimed };
     }
     const C = REAL[id], ctx = await ctxOf(slug);
-    let proof = { ok: false, why: '' };
-    try { proof = C.owns ? await C.owns(creds, ctx) : { ok: true }; } catch (e) { proof = { ok: false, why: e.message.slice(0, 160) }; }
-    /* proof is a sanity check, shown to the team, never ownership: ownership is the team (or the claim) above */
+    let proof = sa ? sa.proof : { ok: false, why: '' };
+    if (!sa) try { proof = C.owns ? await C.owns(creds, ctx) : { ok: true }; } catch (e) { proof = { ok: false, why: e.message.slice(0, 160) }; }
+    /* otherwise proof is a sanity check, shown to the team, never ownership: ownership is the team (or the claim) above */
     if (!PUBLIC.has(id)) await vault.save(slug, id, creds);
     if (id === 'slack') teams.clear(); /* the workspace may have moved to this brand */
     await editC(slug, (c) => { c[id] = { state: 'syncing', at: Date.now(), by: me.email, account: proof.account || c[id]?.account || null, verified: !!proof.ok, why: proof.why || '' }; });
     cache.delete(sk(slug));
     return { ...(await sync(slug, id)), claimed: may.claimed, verified: !!proof.ok, why: proof.ok ? null : proof.why || null };
   }
+  const KEY_TRIES = 6, KEY_WINDOW = 15 * 60e3, keyTries = new Map(); // per person: 6 pasted keys every 15 minutes
+  const keyTry = (email, now = Date.now()) => { const k = String(email || '').toLowerCase(), xs = (keyTries.get(k) || []).filter((at) => now - at < KEY_WINDOW);
+    if (keyTries.size > 5000) keyTries.clear(); if (xs.length >= KEY_TRIES) { keyTries.set(k, xs); return false; } xs.push(now); keyTries.set(k, xs); return true; };
   const noGen = (a, host) => (a.claimed ? 'This brand is claimed. Ask its team to invite you.' : `Connect with your work email at ${host}. The first person from ${host} to connect becomes the brand’s admin.`);
   /* an OAuth sign-in waiting for its account to be picked: one per person (the key carries their email), 30 minutes */
   const PENDING_MS = 30 * 60e3;
@@ -257,7 +283,9 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
       if (b.action === 'disconnect') { if (!member) return json(res, 403, { error: 'Only the brand’s team can disconnect it.' }), true; return json(res, 200, await disconnect(slug, id)), true; }
       if (!C) { if (['demo', 'key', 'select', 'connect'].includes(b.action)) return json(res, 200, await finish(slug, id, null, me)), true; return json(res, 400, { error: 'unknown action' }), true; }
       if (b.action === 'key') { if (!C.fromKey) return json(res, 400, { error: 'This one connects by signing in.' }), true;
-        try { return json(res, 200, await finish(slug, id, await C.fromKey(b.fields || {}), me)), true; } catch (e) { return json(res, 200, { ok: false, error: e.user ? e.message : `Could not connect: ${e.message.slice(0, 140)}` }), true; } }
+        /* a pasted key or ID asks Google whether Brew can see it: a few tries per person, so nobody walks through IDs */
+        if (!keyTry(me.email)) return json(res, 429, { ok: false, error: 'Too many tries. Wait a few minutes, then paste it again.' }), true;
+        try { return json(res, 200, await finish(slug, id, await C.fromKey(b.fields || {}), me, { override: b.override === true })), true; } catch (e) { return json(res, 200, { ok: false, error: e.user ? e.message : `Could not connect: ${e.message.slice(0, 140)}` }), true; } }
       if (b.action === 'select') { if (!C.select) return json(res, 400, { error: 'unknown action' }), true;
         const pend = await loadPending(slug, id, me.email); if (!pend) return json(res, 200, { ok: false, error: 'Connect again: the sign-in expired.' }), true;
         await vault.drop(slug, pendKey(id, me.email));
@@ -302,6 +330,12 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
       return { ts: r.ts, channel: r.channel || ch, team: c.team, channelName: ch === c.channel ? c.channelName : null };
     } catch (e) { log.warn('[slack] post', slug, e.message); if (['invalid_auth', 'token_revoked', 'account_inactive'].includes(e.slack)) await editC(slug, (x) => { if (x.slack) x.slack = { ...x.slack, state: 'error', error: slackWhy(e), errorAt: Date.now() }; }).then(() => cache.delete(sk(slug)));
       return { error: slackWhy(e) }; }
+  }
+  /* a note only one person in the channel sees (chat.postEphemeral), e.g. why their reply didn't reach the jam */
+  async function slackEphemeral(slug, { channel, user, text, thread_ts } = {}) {
+    const c = await slackOf(slug); if (!c || !channel || !user) return { error: 'no slack' };
+    try { await slackApi(c.token, 'chat.postEphemeral', { channel, user, text: String(text || '').slice(0, 3000), ...(thread_ts ? { thread_ts } : {}) }); return { ok: true }; }
+    catch (e) { log.warn('[slack] ephemeral', slug, e.message); return { error: slackWhy(e) }; }
   }
   /* a link that opens a post (or its thread) in Slack */
   async function slackLink(slug, channel, ts) { const c = await slackOf(slug); if (!c) return null;
@@ -350,5 +384,5 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     return false;
   }
 
-  return { handle: async (req, res, u) => (await slackRoutes(req, res, u)) || handle(req, res, u), sim: SIM, slackOf, slackPost, slackLink, slackChannels, slackUser, slackSlug, slackGone, liveOf, forViewer, drop: (slug) => cache.delete(sk(slug)), liveView, sync, disconnect, finish, tick, CONNECTORS };
+  return { handle: async (req, res, u) => (await slackRoutes(req, res, u)) || handle(req, res, u), sim: SIM, slackOf, slackPost, slackEphemeral, slackLink, slackChannels, slackUser, slackSlug, slackGone, liveOf, forViewer, drop: (slug) => cache.delete(sk(slug)), liveView, sync, disconnect, finish, tick, CONNECTORS };
 }
