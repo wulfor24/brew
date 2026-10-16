@@ -206,7 +206,7 @@ export function createJamBrief(o) {
   const waText = (t, w) => `*Jam: ${w.title}*\n\n${seed(t, w).md.replace(/^#{1,3}\s+/gm, '*').replace(/^(\*[^\n*]+)$/gm, '$1*')}\n\nReply here. When we’re done, paste this chat back into Brew and the brief updates. (jam ${w.id})`;
   const finalDoc = (t, w) => { const d = seed(t, w); return { kind: d.kind, md: d.md, missing: d.missing, contributors: [...new Set((d.edits || []).map((e) => e.by).filter(Boolean))], at: now(t) }; };
 
-  const routes = ({ on, W, say, move, notify, nextTicket, handoff, learn = null }) => {
+  const routes = ({ on, W, say, move, notify, nextTicket, handoff, learn = null, toSlack = null }) => {
     const get = (t, id) => { const w = W(t, id); if (w) seed(t, w); return w; };
     on('GET', '/api/cards/:cid/brief', async (b, t, p, q) => { const c = cardOf(t, p.cid); return c ? { doc: preview(t, c, q?.get?.('decided') || null) } : { error: 'not found' }; });
     on('POST', '/api/work/:wid/jb', async (b, t, p) => { const w = get(t, p.wid); return w ? { work: w } : { error: 'not found' }; });
@@ -247,6 +247,14 @@ export function createJamBrief(o) {
       // the full context goes with it: card, options, moves, brief, package and assets, both chats, and a link to all of it
       let text = waText(t, w), page = null;
       if (handoff) { try { const x = await handoff.build(t, w, { base: b.base }); text = handoff.text(x, to); page = x.links.page; } catch (e) { log.warn('[handoff]', e.message); } }
+      /* a really connected Slack: the jam is posted to the channel, and its thread talks to this jam from now on */
+      if (to === 'slack' && toSlack) {
+        const r = await toSlack(t, w, { text, page, channel: b.channelId || null });
+        if (r.error) { w.doc.moved = null; return { error: r.error, connect: !!r.connect }; }
+        w.doc.moved = null; const ch = r.channelName || w.slack?.name || 'the channel';
+        say(t, w, { from: 'system', body: `Posted to Slack (${ch}) with the full context and an Approve button. Replies in the thread land here and in the brief.` });
+        return { work: w, text, page, posted: { channel: ch, ts: r.ts } };
+      }
       say(t, w, { from: 'system', body: (to === 'whatsapp' ? 'The jam moved to WhatsApp' : `The jam moved to Slack${b.channel ? ' (' + b.channel + ')' : ''}`) + ` with the full context${page ? ` (${page})` : ''}. Paste the chat back here when you’re done.` });
       return { work: w, text, page };
     });

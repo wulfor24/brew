@@ -3,7 +3,8 @@
 // Everything an account returns is private to the brand's team: brands/<slug>/private/ (tokens encrypted in the vault, the
 // read in live/<id>.json, the state in connections.json). The marketplace read is public data and is shown to all.
 // DUMMY: the demo site (DEMO_MODE=1) simulates every account (connectors/sim.js, built from the brand's real read), and
-// Slack is simulated everywhere (Brew sending was cut, SCOPE.md). Those rows are marked demo and are never evidence.
+// Slack is real on the live site too (2026-10-16): it posts what the team sends and brings thread replies back; it is never
+// evidence (no cards, no ledger). Simulated rows are marked demo and are never evidence.
 // Connecting is also the easiest way to claim a brand: the first work email at its domain to connect becomes its admin.
 import crypto from 'node:crypto';
 import shopify from './shopify.js';
@@ -12,12 +13,13 @@ import google, { ga4 } from './google.js';
 import klaviyo from './klaviyo.js';
 import reviews from './reviews.js';
 import market from './market.js';
+import slack, { api as slackApi, why as slackWhy } from './slack.js';
 import { createSim, SIM_IDS, NAME } from './sim.js';
 import { createVault } from '../vault.js';
 import { DEMO, sk } from '../demo-mode.js';
 import { privId, realRows } from './common.js';
 
-const REAL = { shopify, meta, ga4, google, klaviyo, reviews, marketplaces: market };
+const REAL = { shopify, meta, ga4, google, klaviyo, reviews, slack, marketplaces: market };
 export const CONNECTORS = Object.fromEntries(SIM_IDS.map((id) => [id, { id, name: NAME[id] }]));
 const PUBLIC = new Set(['marketplaces']); // a marketplace read is public data, shown to every viewer
 // Marketplaces is switched off for now (2026-10-16): no connect, no daily read, and an earlier connection is ignored. The page shows
@@ -31,7 +33,7 @@ const DEFAULT_H = 12, RETRY_H = 3;
 export const everyOf = (id) => (REAL[id]?.every || EVERY_H[id] || DEFAULT_H) * 3600e3;
 export const due = (id, s, now = Date.now()) => now - (s?.lastSync || 0) >= everyOf(id) - 5 * 60e3 /* an hourly tick may land a few minutes early */
   && !(s?.error && s?.errorAt && now - s.errorAt < RETRY_H * 3600e3);
-// DUMMY: simulated on the demo site, and Slack (no real connector) everywhere
+// DUMMY: simulated on the demo site (DEMO_MODE=1)
 export const simOnly = (id) => DEMO || !REAL[id];
 
 export function createConnectors({ packs, auth, builder, treg = null, log = console, onLive = () => {} }) {
@@ -98,6 +100,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     try { proof = C.owns ? await C.owns(creds, ctx) : { ok: true }; } catch (e) { proof = { ok: false, why: e.message.slice(0, 160) }; }
     /* proof is a sanity check, shown to the team, never ownership: ownership is the team (or the claim) above */
     if (!PUBLIC.has(id)) await vault.save(slug, id, creds);
+    if (id === 'slack') teams.clear(); /* the workspace may have moved to this brand */
     await editC(slug, (c) => { c[id] = { state: 'syncing', at: Date.now(), by: me.email, account: proof.account || c[id]?.account || null, verified: !!proof.ok, why: proof.why || '' }; });
     cache.delete(sk(slug));
     return { ...(await sync(slug, id)), claimed: may.claimed, verified: !!proof.ok, why: proof.ok ? null : proof.why || null };
@@ -277,5 +280,64 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
   }
   if (!DEMO && !process.env.BUILD_RESUME_OFF) { const t = setInterval(() => tick().catch((e) => log.warn('[connect] tick', e.message)), 3600e3); t.unref?.(); setTimeout(() => tick().catch(() => {}), 90e3).unref?.(); }
 
-  return { handle, sim: SIM, liveOf, forViewer, drop: (slug) => cache.delete(sk(slug)), liveView, sync, disconnect, finish, tick, CONNECTORS };
+  /* ---------- Slack: post what the team sends, find the brand a Slack event belongs to ---------- */
+  /* the brand's Slack, when it is really connected (live, not simulated): its token and the channel picked on Slack's screen */
+  async function slackOf(slug) {
+    if (simOnly('slack')) return null; const s = (await conns(slug))?.slack; if (!s || s.sim || s.state === 'error') return null;
+    const c = await vault.load(slug, 'slack'); return c?.token ? c : null;
+  }
+  /* post to the brand's channel (or another it picked, or a thread): { ts, channel, team } or { error } in plain words */
+  async function slackPost(slug, { channel, text, blocks, thread_ts, update } = {}) {
+    const c = await slackOf(slug); if (!c) return { error: 'Connect Slack first.', connect: true };
+    const ch = channel || c.channel; if (!ch) return { error: 'Pick a Slack channel: connect Slack again and choose one.' };
+    try { const r = await slackApi(c.token, update ? 'chat.update' : 'chat.postMessage', { channel: ch, text: String(text || '').slice(0, 39000), ...(blocks ? { blocks } : {}), ...(thread_ts ? { thread_ts } : {}), ...(update ? { ts: update } : {}), unfurl_links: false, unfurl_media: false });
+      return { ts: r.ts, channel: r.channel || ch, team: c.team, channelName: ch === c.channel ? c.channelName : null };
+    } catch (e) { log.warn('[slack] post', slug, e.message); if (['invalid_auth', 'token_revoked', 'account_inactive'].includes(e.slack)) await editC(slug, (x) => { if (x.slack) x.slack = { ...x.slack, state: 'error', error: slackWhy(e), errorAt: Date.now() }; }).then(() => cache.delete(sk(slug)));
+      return { error: slackWhy(e) }; }
+  }
+  /* the channels Brew can post to: public ones (chat:write.public) and private ones it was invited to */
+  async function slackChannels(slug) {
+    const c = await slackOf(slug); if (!c) return { error: 'Connect Slack first.', connect: true };
+    try { const out = []; let cursor = '';
+      for (let i = 0; i < 5; i++) { const r = await slackApi(c.token, 'conversations.list', { types: 'public_channel,private_channel', exclude_archived: true, limit: 200, ...(cursor ? { cursor } : {}) }, { get: true });
+        for (const x of r.channels || []) if (!x.is_private || x.is_member) out.push({ id: x.id, name: `#${x.name}`, member: !!x.is_member });
+        cursor = r.response_metadata?.next_cursor; if (!cursor) break; }
+      out.sort((a, b) => (b.id === c.channel) - (a.id === c.channel) || b.member - a.member || a.name.localeCompare(b.name));
+      return { channels: out.slice(0, 300), channel: c.channel, channelName: c.channelName, team: c.teamName };
+    } catch (e) { return { error: slackWhy(e) }; }
+  }
+  /* who wrote in Slack: their name, and their email when Slack shares it (so a teammate is the same person in Brew) */
+  const people = new Map();
+  async function slackUser(slug, user) {
+    const k = `${slug}:${user}`; if (people.has(k)) return people.get(k);
+    const c = await slackOf(slug); let u = { id: user, name: 'Someone in Slack', email: null };
+    if (c) try { const r = await slackApi(c.token, 'users.info', { user }, { get: true }); u = { id: user, name: r.user?.profile?.real_name || r.user?.real_name || r.user?.name || u.name, email: r.user?.profile?.email || null, bot: !!r.user?.is_bot }; } catch {}
+    people.set(k, u); return u;
+  }
+  /* a Slack workspace → the brand that connected it (one workspace may serve one brand; the latest connection wins) */
+  const teams = new Map();
+  async function slackSlug(team) {
+    if (!team) return null; if (teams.has(team)) return teams.get(team);
+    let found = null, at = 0;
+    for (const { slug } of await packs.list().catch(() => [])) { const s = (await conns(slug).catch(() => ({})))?.slack; if (s?.account?.id === team && !s.sim && (s.at || 0) >= at) { found = slug; at = s.at || 0; } }
+    if (found) teams.set(team, found); return found;
+  }
+  /* Slack says the app was removed or its token revoked: the brand's Slack is disconnected */
+  async function slackGone(team) { const slug = await slackSlug(team); teams.delete(team); if (slug) await disconnect(slug, 'slack').catch(() => {}); return slug; }
+  async function slackRoutes(req, res, u) {
+    const m = u.pathname.match(/^\/api\/brands\/([a-z0-9-]+)\/slack\/(channels|post)$/); if (!m) return false;
+    const [, slug, what] = m, me = auth.user(req); if (!me) return json(res, 401, { error: 'Sign in with Google first.', signin: true }), true;
+    const access = await auth.claimInfo(slug, me); if (!access.role) return json(res, 403, { error: 'Only the brand’s team posts to its Slack.' }), true;
+    if (what === 'channels' && req.method === 'GET') return json(res, 200, await slackChannels(slug)), true;
+    if (what === 'post' && req.method === 'POST') { const b = await body(req);
+      const title = String(b.title || '').slice(0, 300), sub = String(b.sub || '').slice(0, 1200), note = String(b.note || '').slice(0, 600), link = /^https:\/\//.test(String(b.url || '')) ? String(b.url) : null;
+      if (!title) return json(res, 400, { error: 'Nothing to post.' }), true;
+      const who = me.name || me.email, text = `${note ? `${note}\n` : ''}*${title}*${sub ? `\n${sub}` : ''}${link ? `\n<${link}|Open it in Brew>` : ''}`;
+      const blocks = [...(note ? [{ type: 'section', text: { type: 'mrkdwn', text: note } }] : []), { type: 'section', text: { type: 'mrkdwn', text: `*${title}*${sub ? `\n${sub}` : ''}` } },
+        { type: 'context', elements: [{ type: 'mrkdwn', text: `Shared from Brew by ${who}` }] }, ...(link ? [{ type: 'actions', elements: [{ type: 'button', text: { type: 'plain_text', text: 'Open in Brew' }, url: link, action_id: 'open' }] }] : [])];
+      return json(res, 200, await slackPost(slug, { channel: b.channel, text, blocks })), true; }
+    return false;
+  }
+
+  return { handle: async (req, res, u) => (await slackRoutes(req, res, u)) || handle(req, res, u), sim: SIM, slackOf, slackPost, slackChannels, slackUser, slackSlug, slackGone, liveOf, forViewer, drop: (slug) => cache.delete(sk(slug)), liveView, sync, disconnect, finish, tick, CONNECTORS };
 }

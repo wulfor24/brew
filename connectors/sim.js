@@ -38,7 +38,7 @@ export function createSim({ packs, log = console }) {
     if (id === 'klaviyo') ledger.push(L('klaviyo.flows.off', 'Email flows not built', '3 of 5', 3, nm));
     if (id === 'reviews') ledger = [L('reviews.judgeme.total', 'Reviews', n0(r.total), r.total, nm), L('reviews.judgeme.rating.recent', 'Average rating, last 90 days', `${r.rating} of 5`, r.rating, nm), L('reviews.judgeme.open', 'Low-star reviews with no reply', n0(r.unanswered), r.unanswered, nm)];
     if (id === 'marketplaces') ledger = [L('market.amazon.listings', 'Amazon listings', n0(mk.listings), mk.listings, nm), L('market.amazon.rating', 'Amazon rating', `${r.rating} of 5`, r.rating, nm)];
-    const extra = id === 'slack' ? { stats: [['Workspace', `${name} team`], ['Channel', '#growth'], ['Replies', 'Simulated']], changed: ['Teammate replies in the jam are simulated until Slack is really connected'] }
+    const extra = id === 'slack' ? { stats: [['Workspace', `${name} team`], ['Channel', '#growth'], ['Replies', 'Simulated']], changed: ['Demo: nothing is posted. On the live site Slack posts for real and thread replies come back to the jam.'] }
       : null;
     const acc = A[id] || {};
     return { account: { name: id === 'shopify' ? `${b.profile.host || name}` : id === 'meta' ? `${name} · Ad account` : id === 'google' ? `${name} · Google Ads` : id === 'ga4' ? `${name} · GA4` : `${name}` },

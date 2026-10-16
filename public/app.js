@@ -1338,10 +1338,30 @@
   });
   // the card's popup follows nothing once its column scrolls, so any scroll closes it
   addEventListener('scroll', (e) => { if ($('#pop') && !e.target.closest?.('#pop')) closePop(); }, { capture: true, passive: true });
+  /* the brand's Slack is really connected (live site): Brew posts it, in the channel picked when Slack was connected or another */
+  const realSlack = () => !window.BREW_DEMO && window.LIVE?.conns?.slack?.state === 'live' && !window.LIVE.conns.slack.dummy;
+  const postSlack = async (c, url) => {
+    const L0 = await fetch(`/api/brands/${window.BRAND}/slack/channels`, { credentials: 'same-origin' }).then((r) => r.json()).catch(() => ({ error: 'You look offline. Try again.' }));
+    if (L0.error) return toast(esc(L0.error));
+    let ch = (L0.channels || []).find((x) => x.id === L0.channel) || (L0.channels || [])[0]; if (!ch) return toast('Brew can’t see any channel in Slack yet. Invite @Brew to one.');
+    const top = (L0.channels || []).slice(0, 8);
+    modal(`<div class="sheet pick-sheet sl-sheet"><header class="sh-h"><b class="sh-t">Post to Slack</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>
+      <div class="sl-chans">${top.map((x) => `<button class="chip" data-sl-id="${esc(x.id)}" aria-pressed="${x.id === ch.id}">${esc(x.name)}</button>`).join('')}</div>
+      <div class="sl-post"><span class="slack-ic">#</span><div><b>Brew <small>APP</small></b><p><b>${esc(c.title)}</b></p><p>${esc(c.sub || '')}</p><div class="sl-unfurl">${face(c.agent)}<span><b>${esc(AGENT[c.agent])}</b><small>${esc(url.replace(/^https?:\/\//, '').slice(0, 46))}…</small></span></div></div></div>
+      <label class="sl-note"><input id="sl-note" placeholder="Add a note (optional)" maxlength="240"></label>
+      <div class="sh-foot"><button class="btn btn-ghost sm" data-close>Cancel</button><button class="btn btn-primary sm" data-sl-go>${ic('send', 's16')}Post to <span data-sl-ch>${esc(ch.name)}</span></button></div></div>`, (m) => {
+      $$('[data-sl-id]', m).forEach((b) => (b.onclick = () => { ch = top.find((x) => x.id === b.dataset.slId) || ch; $$('[data-sl-id]', m).forEach((x) => x.setAttribute('aria-pressed', String(x === b))); $('[data-sl-ch]', m).textContent = ch.name; }));
+      $('[data-sl-go]', m).onclick = async (ev) => { const btn = ev.currentTarget; btn.disabled = true;
+        const r = await fetch(`/api/brands/${window.BRAND}/slack/post`, { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ channel: ch.id, title: c.title, sub: c.sub || '', note: $('#sl-note', m).value.trim(), url }) }).then((x) => x.json()).catch(() => ({ error: 'You look offline. Try again.' }));
+        if (r.error) { btn.disabled = false; return toast(esc(r.error)); }
+        closeModal(); logIt(c.title, `Posted to ${ch.name}`, 'send'); toast(`${ic('check', 's16')}Posted to ${esc(ch.name)} in Slack. The link opens this card.`); };
+    });
+  };
   // Share to Slack: connect once, pick the channel, see the exact post, then post it with a link that opens this card
   const shareSlack = async (p) => {
     if (!conn('slack')) return openConnect('slack', { then: () => shareSlack(p), why: 'Share cards to a channel and approve them from the thread.' });
     const c = cardOf(p), url = await linkFor(p, workOfCard(p.id));
+    if (realSlack()) return postSlack(c, url);
     const chans = ['#growth', '#brand', '#d2c-ops', '#founders'];
     modal(`<div class="sheet pick-sheet sl-sheet"><header class="sh-h"><b class="sh-t">Share to Slack</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>
       <div class="sl-chans">${chans.map((ch) => `<button class="chip" data-sl-chan="${ch}" aria-pressed="${S.slack.channel === ch}">${ch}</button>`).join('')}</div>
@@ -1408,7 +1428,7 @@
     if (m.from === 'system') return `<div class="th-sys">${esc(m.body)}</div>`;
     if (m.from === 'me') return `<div class="msg me"><div class="tx">${esc(m.body)}</div></div>`;
     const who = m.from === 'ai' ? face(w.agent || 'creative') : m.from === 'colleague' ? avatar(B.colleagues.map((c) => colleague(c.id)).find((c) => c.name === m.who || c.role === m.who) || { ini: (m.who || '?').slice(0, 2).toUpperCase(), color: '#555' }, 28) : `<span class="av pod-av">${esc((B.pod.find((x) => x.role === m.who) || { ini: 'SO' }).ini)}</span>`;
-    return `<div class="msg">${who}<div class="tx"><b>${esc(m.who || 'Agent')}${m.from === 'colleague' && w.with?.channel ? ` <small>in ${esc(w.with.channel)}</small>` : ''}</b><span class="tx-b">${esc(m.body)}</span>
+    return `<div class="msg">${who}<div class="tx"><b>${esc(m.who || 'Agent')}${m.via === 'slack' ? ' <small>in Slack</small>' : m.from === 'colleague' && w.with?.channel ? ` <small>in ${esc(w.with.channel)}</small>` : ''}</b><span class="tx-b">${esc(m.body)}</span>
       ${m.tiles ? `<div class="tiles">${m.tiles.map((t, i) => `<button class="tile${m.picked === i ? ' on' : ''}" data-pick="${m.id}:${i}"><span class="chip">${esc(t.angle || 'Version')}</span><b>${esc(t.title)}</b><span>${esc(t.sub)}</span><em>${m.picked === i ? 'Saved as a version' : 'Use this'}</em></button>`).join('')}</div>` : ''}</div></div>`;
   }).join('');
   let DP = null; // { p, w, to, opts }

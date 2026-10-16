@@ -12,6 +12,7 @@ a vendor problem, so Composio, Pipedream and Nango would hit the same approvals.
 | **Judge.me** | Settings → Integrations → View API token, then paste it with the store address. |
 | **Shopify** | The brand creates an app for its own store in the Shopify Dev Dashboard (read_products, read_inventory, read_orders, read_customers), installs it, and pastes the Client ID + Secret. A legacy `shpat_` token still works if they already have one. |
 | **Marketplaces** | Public Amazon read through treg. This needs treg balance. |
+| **Slack** | One click: **Continue with Slack**, pick the channel on Slack's screen. The Brew Slack app (`docs/slack-app-manifest.json`, made with the Slack CLI) needs no review: public distribution lets any workspace install it. App Directory listing is optional. Keys: `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`, `SLACK_SIGNING_SECRET` in Secret Manager. |
 
 ## Needs you, start now (longest first)
 

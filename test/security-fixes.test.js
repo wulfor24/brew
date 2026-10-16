@@ -1,5 +1,5 @@
 // The auth and connector safety rules: who may act, typed tokens, claiming a brand only with an official email.
-// Connectors are simulated (connectors/index.js, DUMMY): connecting still follows who may connect.
+// Connectors are real on the live site and simulated on the demo site (connectors/index.js): connecting follows who may connect.
 // Offline: an in-memory brand store.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -65,15 +65,17 @@ test('another domain never connects or owns a brand, even a simulated account', 
     assert.equal(await packs.getJSON('cozy', 'private/connections.json', null), null, 'the brand’s connections are untouched');
   }
 });
-test('the first official email to connect any account becomes the admin; a simulated one (Slack) is marked dummy', async () => {
+test('the first official email to connect any account becomes the admin; Slack is real and never evidence', async () => {
   const { packs, auth, C } = sandbox();
   await packs.put('cozy', 'profile.json', { name: 'Cozy', host: 'cozysnugglet.shop', slug: 'cozy', catalog: { products: [{ title: 'Paw Warmer', price: 39 }] }, reviews: { total: 120 } });
   await packs.put('cozy', 'seed.json', { brand: { name: 'Cozy' }, lanes: { core: {} } });
-  const r = await C.finish('cozy', 'slack', null, { email: 'ana@cozysnugglet.shop' });
-  assert.equal(r.claimed, true); assert.equal(r.dummy, true); const m = await auth.getMembers('cozy'); assert.equal(m.owner, 'ana@cozysnugglet.shop');
+  const f0 = globalThis.fetch; globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ ok: true, team: 'Cozy HQ' }) });
+  let r; try { r = await C.finish('cozy', 'slack', { token: 'xoxb-1', team: 'T1', teamName: 'Cozy HQ', channel: 'C1', channelName: '#growth' }, { email: 'ana@cozysnugglet.shop' }); } finally { globalThis.fetch = f0; }
+  assert.equal(r.ok, true); assert.equal(r.claimed, true); assert.equal(r.dummy, false); const m = await auth.getMembers('cozy'); assert.equal(m.owner, 'ana@cozysnugglet.shop');
   assert.match(m.via, /^Connected /); assert.equal(m.domain, 'cozysnugglet.shop');
-  assert.equal((await packs.getJSON('cozy', 'private/connections.json')).slack.sim, true);
-  assert.ok(![...packs.D.keys()].some((k) => k.includes('vault/')), 'no token vault');
+  const s = (await packs.getJSON('cozy', 'private/connections.json')).slack; assert.equal(s.sim, undefined); assert.equal(s.account.id, 'T1');
+  const d = await packs.getJSON('cozy', 'private/live/slack.json'); assert.deepEqual(d.ledger, [], 'Slack is never evidence'); assert.deepEqual(d.cards, []);
+  assert.ok([...packs.D.keys()].some((k) => k.includes('vault/')), 'the bot token is in the vault');
   assert.equal(await auth.roleOf('cozy', { email: 'bo@cozysnugglet.shop' }), 'member');
 });
 test('a non-member cannot overwrite a claimed brand’s connection', async () => {
@@ -132,6 +134,6 @@ test('a simulated account saved before the real connectors counts as not connect
   await packs.put('cozy', 'private/live/slack.json', { at: 1, sim: true, stats: [['Channel', '#growth']], cards: [], ledger: [] });
   const L = await C.liveOf('cozy', true);
   assert.equal(L.conns.shopify, undefined); assert.equal(L.live.shopify, undefined, 'no simulated Shopify next to real accounts');
-  assert.ok(L.live.slack, 'Slack stays simulated');
+  assert.equal(L.live.slack, undefined, 'a simulated Slack is not a connected one either');
   assert.equal((await C.forViewer('cozy', true)).on.shopify, undefined);
 });

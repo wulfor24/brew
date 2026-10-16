@@ -1020,7 +1020,7 @@ export function createFeedService(o) {
   const later = (ms, fn) => setTimeout(() => { try { const r = fn(); r?.catch?.((e) => log.warn('[work timer]', e.message)); } catch (e) { log.warn('[work timer]', e.message); } }, ms);
   const notify = (t, w, text, kind = 'update') => { t.notes.unshift({ id: uid('n'), itemId: w.id, cardId: w.cardId, title: w.title, img: w.img, text, kind, at: now(t), read: false }); w.unread = true; w.updatedAt = now(t); };
   const move = (t, w, stage, text, kind) => { if (stage === 'deploying' && w.cardId) decideFromAction(t, t.cards.get(w.cardId), w); const was = w.stage; w.stage = stage; if (was !== stage) stepLearn(t, w, stage); w.history.push([stage, now(t)]); w.updatedAt = now(t); if (text) notify(t, w, text, kind); };
-  const say = (t, w, m) => { const msg = { id: uid('m'), at: now(t), ...m }; if (msg.from === 'me' && !msg.by) { const p = meOf(t); if (p) { msg.by = p; JAMS.join(w, p, 'replied'); } } w.thread.push(msg); if (msg.by) mailEv(t, w, { kind: 'reply', to: (w.people || []).map((x) => x.email), by: msg.by, text: msg.body, id: msg.id }); if (msg.by) w.lastBy = msg.by.email; w.updatedAt = now(t); JB?.onSay(t, w, msg); };
+  const say = (t, w, m) => { const msg = { id: uid('m'), at: now(t), ...m }; if (msg.from === 'me' && !msg.by) { const p = meOf(t); if (p) { msg.by = p; JAMS.join(w, p, 'replied'); } } w.thread.push(msg); if (msg.from === 'me' && w.slack?.ts && o.slack) slackMirror(t, w, msg); if (msg.by) mailEv(t, w, { kind: 'reply', to: (w.people || []).map((x) => x.email), by: msg.by, text: msg.body, id: msg.id }); if (msg.by) w.lastBy = msg.by.email; w.updatedAt = now(t); JB?.onSay(t, w, msg); };
   const curV = (w) => w.versions.find((v) => v.n === w.current) || w.versions[w.versions.length - 1];
   const addVersion = (t, w, v) => { const n = w.versions.length + 1; w.versions.push({ n, ...v, at: now(t) }); w.current = n; w.title = v.title; if (v.images?.[0]) w.img = v.images[0]; RMX?.onWorkVersion(t, w, v); return n; };
   const workFor = (t, cardId) => t.work.find((w) => w.cardId === cardId && !w.archived && !w.discarded && !['out', 'measuring', 'result'].includes(w.stage));
@@ -1033,6 +1033,20 @@ export function createFeedService(o) {
     seedDrafts(w, c, B().firstDrafts, { uid, at: now(t) }); // a first draft Brew made before the jam opened (drafts-bg.js)
     w.cardPlan = planOfCard(c); // the card's plan is the jam's input: the case, the brief and the make step read it
     t.work.unshift(w); t.acted.add(c.id); return w;
+  };
+  /* Slack (connectors/slack.js): a jam taken to Slack is one post in the brand's channel; what the team writes in the jam goes
+     to that thread, and the thread's replies and its Approve button come back here (slackIn, from server.js /slack/events) */
+  const slugOfT = (t) => t.brandId || DEFAULT_BRAND;
+  const slackMirror = (t, w, msg) => { const who = msg.by?.name || msg.by?.email || 'Someone in Brew';
+    o.slack.slackPost(slugOfT(t), { channel: w.slack.channel, thread_ts: w.slack.ts, text: `*${who}* in Brew: ${String(msg.body || '').slice(0, 3000)}` }).then((r) => { if (r?.error) log.warn('[slack] mirror', r.error); }).catch(() => {}); };
+  const slackBlocks = (t, w, text, page) => [{ type: 'section', text: { type: 'mrkdwn', text: String(text).slice(0, 2900) } },
+    { type: 'actions', elements: [{ type: 'button', style: 'primary', text: { type: 'plain_text', text: `Approve v${w.current}` }, action_id: 'approve', value: `${slugOfT(t)}|${w.id}|${w.current}` },
+      ...(page ? [{ type: 'button', text: { type: 'plain_text', text: 'Open in Brew' }, url: page, action_id: 'open' }] : [])] },
+    { type: 'context', elements: [{ type: 'mrkdwn', text: 'Reply in this thread: replies land in the Brew jam and its brief.' }] }];
+  const toSlack = async (t, w, { text, page, channel }) => {
+    if (!o.slack) return { error: 'Slack isn’t on here.' }; if (!reqOf(t)?.member) return { error: 'Only the brand’s team posts to its Slack.' };
+    const r = await o.slack.slackPost(slugOfT(t), { channel, text, blocks: slackBlocks(t, w, text, page) }); if (r.error) return r;
+    w.slack = { ts: r.ts, channel: r.channel, team: r.team, name: r.channelName || null, tid: t.id, at: now(t), page: page || null, n: w.current }; return r;
   };
   /* a teammate in Slack: answers what was actually asked, from their role, then signs off, asks one thing back, or wants a change */
   const SIGNOFF = /approv|ok to|okay to|good to go|sign.?off|go live|ship it|publish|look at|review|before it goes|green.?light|thoughts\?|happy with/i;
@@ -1527,7 +1541,7 @@ export function createFeedService(o) {
     const out = await o.learnings.run(t.brandId || DEFAULT_BRAND, { text: cmd.body, by, byShort, why: cmd.why, workId: w.id });
     return { said, reply: out.reply, n: out.applied?.length ?? null };
   };
-  JB.routes({ on, W, say, move, notify, learn: learnOf, nextTicket: (t) => { leadsAllTenants++; return nextBrandTicket(t); }, handoff: { build: (...a) => HO.build(...a), text: (...a) => HO.text(...a) } });
+  JB.routes({ toSlack: o.slack ? toSlack : null, on, W, say, move, notify, learn: learnOf, nextTicket: (t) => { leadsAllTenants++; return nextBrandTicket(t); }, handoff: { build: (...a) => HO.build(...a), text: (...a) => HO.text(...a) } });
   // first drafts in a jam, one tap away: image, video, voice or text, made only when someone asks (drafts.js)
   DR = createDrafts({ claudeTool, geminiImage, treg: o.treg, launchBrowser: o.launchBrowser, zipBuffer: o.zipBuffer, photoAsync: o.photoAsync, photoFile, catalogOf: (t) => (t ? brandOfT(t)?.catalog : null), brandName: (t) => (t ? brandOfT(t)?.seed?.brand?.name || '' : ''), photoOf: (c) => LANE_PHOTO[c?.lane] || Object.values(LANE_PHOTO || {})[0], cardOf: (t, id) => { const c = t.cards.get(id); return c ? fillCard(c, t) : null; },
     briefOf: (t, w) => JB.seed(t, w)?.md, cardBrief, seatLine, isMock, spend, clean, now, uid, say, save: (t) => store?.save(t), AGENT, log }); DR.routes({ on, W });
@@ -1614,6 +1628,27 @@ export function createFeedService(o) {
       if (br.kind === 'generated') streamSync(t, SEED.posts);
       if (br.kind === 'generated') { followMoves(t, br); const t0 = now(t); for (const p of SEED.posts) if (!t.cards.has(p.id)) t.cards.set(p.id, { ...clone(p), family: p.family || FAMILY[p.type] || 'idea', state: 'ready', origin: 'move', createdAt: t0, expiresAt: null, history: [['ready', t0]], shownCount: 0, ...(mvOf(br, p.id) ? { mv: mvOf(br, p.id) } : {}) }); }
       t.lastSeen = Date.now(); tenants.set(t.id, t); log.log?.(`[store] loaded ${t.id}`); return t;
+    });
+  };
+  /* a reply in a jam's Slack thread, or its Approve button pressed (server.js checked Slack's signature and found the brand) */
+  const slackIn = async ({ slug, kind, thread, ts, user = {}, text = '', n = null }) => {
+    const br = await packs.load(slug); if (!br) return null; await JAMS.load(br.slug);
+    const w = (JAMS.peek(br.slug)?.work || []).find((x) => x.slack?.ts === thread); if (!w) return null;
+    const t = (w.slack.tid && await getTenant(w.slack.tid).catch(() => null)) || brandTenants(br)[0]; if (!t) return null;
+    return runIn(br, () => {
+      if (kind === 'reply') {
+        const seen = (w.slack.seen ||= []); if (seen.includes(ts)) return { dup: true }; seen.push(ts); if (seen.length > 200) seen.splice(0, seen.length - 200);
+        /* a real person's words: they fold into the brief (jam-brief onSay, m.real) */
+        say(t, w, { from: 'colleague', who: user.name || 'Someone in Slack', body: String(text).slice(0, 4000), real: true, via: 'slack', ...(user.email ? { email: user.email } : {}) });
+        notify(t, w, `${user.name || 'Someone'} replied in Slack`);
+      } else if (kind === 'approve') {
+        if (n != null && n !== w.current) return { stale: true, w };
+        if (w.approvedBy?.n === w.current && w.stage === 'ready') return { already: true, w };
+        say(t, w, { from: 'system', body: `${user.name || 'Someone'} approved v${w.current} in Slack` });
+        w.approvedBy = { name: user.name || null, email: user.email || null, n: w.current, at: now(t), via: 'slack' };
+        if (w.assignee?.ask === 'approve') w.assignee = null; move(t, w, 'ready', `${user.name || 'Someone'} approved it in Slack`);
+      }
+      store?.save(t); return { w };
     });
   };
   /* jam guests: what they may do is guestAllows (above), for the jams this email is a guest of */
@@ -1724,5 +1759,5 @@ export function createFeedService(o) {
   const syncSocial = (slug) => { const br = packs.peek(slug); if (!br) return; runIn(br, () => { for (const t of brandTenants(br)) { streamSync(t, SEED.posts); store?.save(t); } }); };
   // a cadence move was retired (moves-cadence.js): its cards leave every open workspace, unless someone acted on them
   const dropCards = (slug, ids) => { const br = packs.peek(slug); if (!br || !ids?.length) return; runIn(br, () => { for (const t of brandTenants(br)) { for (const id of ids) { const c = t.cards.get(id); if (c && ['ready', 'shown'].includes(c.state) && !t.acted?.has?.(id) && !(t.work || []).some((w) => w.cardId === id)) setState(t, c, 'expired'); } store?.save(t); } }); };
-  return { handle, tenants, jams: JAMS, addCards, dropCards, refreshLive, syncSocial, save: (t) => store?.save(t), wire: (b) => { wireResearch(b); wireLive(b); } };
+  return { handle, slackIn, tenants, jams: JAMS, addCards, dropCards, refreshLive, syncSocial, save: (t) => store?.save(t), wire: (b) => { wireResearch(b); wireLive(b); } };
 }

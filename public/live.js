@@ -1,8 +1,8 @@
 // Connected accounts and the brand's team.
 // On the live site connecting is real (connectors/index.js): one-click sign-in where the platform allows it, or a pasted
 // read-only key, then an account picker for Meta and Google. What an account returns is only shown to the brand's team.
-// DUMMY: on the demo site (L.dummy) and for Slack every account is simulated from the brand's public read; the sheet and
-// the cards say so (Dummy tag). See DUMMY.md.
+// DUMMY: on the demo site (L.dummy) every account is simulated from the brand's public read; the sheet and the cards say so
+// (Dummy tag). See DUMMY.md. Slack is real on the live site (connectors/slack.js).
 // Also real: Google sign-in, who may connect (the brand's team, or the first official email, who claims the brand),
 // and the team sheet (views, invites, owners).
 (() => {
@@ -34,7 +34,7 @@
   const isLive = (id) => L.conns?.[id]?.state === 'live' && (L.conns[id].stats || []).length > 0;
   const B = () => A()?.B || window.FEED_DATA?.[slug];
   /* the platform's own name on the sheets (a brand pack may label it "Reviews on judge.me" or "amazon.in") */
-  const PLAT = { shopify: 'Shopify', meta: 'Meta Ads', ga4: 'Google Analytics', google: 'Google Ads', klaviyo: 'Klaviyo', reviews: 'Judge.me' };
+  const PLAT = { shopify: 'Shopify', meta: 'Meta Ads', ga4: 'Google Analytics', google: 'Google Ads', klaviyo: 'Klaviyo', reviews: 'Judge.me', slack: 'Slack' };
   const nm = (id) => PLAT[id] || B()?.connectors?.[id]?.name || id;
   const host = () => L.access?.host || B()?.brand?.host || '';
 
@@ -68,7 +68,7 @@
   const shell = (html) => `<div class="sheet cxb" role="dialog" aria-modal="true">${html}</div>`;
   /* what a connector unlocks, from the brand's own connector card; a plain line per platform when the pack has none */
   const READS = { google: ['Spend, clicks and orders from search', 'Which searches bring buyers'], ga4: ['Sessions, sources and checkouts', 'Where shoppers drop off'], meta: ['Spend, reach and cost per order', 'Which ads are winning'],
-    shopify: ['Orders, customers and carts', 'Products and stock'], klaviyo: ['Flows, campaigns and their revenue', 'How the list grows'], reviews: ['Reviews and ratings', 'What customers praise and complain about'], slack: ['Share any card to a channel'] };
+    shopify: ['Orders, customers and carts', 'Products and stock'], klaviyo: ['Flows, campaigns and their revenue', 'How the list grows'], reviews: ['Reviews and ratings', 'What customers praise and complain about'], slack: ['Post cards and jams to a channel', 'Thread replies land in the jam', 'Approve from Slack'] };
   const unlocks = (id) => { const xs = (B()?.connectors?.[id]?.changed || READS[id] || []).slice(0, 3).map(esc); return xs.length ? kick('What it unlocks') + ticks(xs) : ''; };
   const askAdmin = (id) => box({ id, title: `${esc(nm(id))} is connected by an admin`, line: `Ask ${esc(adminName())} to connect it. Once it’s on, you can sync it any time.`, go: goBtn('Got it', 'data-close') });
   /* the gates before connecting: signed out, or signed in with an email that isn't the brand's */
@@ -129,6 +129,7 @@
       { t: 'Give it read-only access', p: '<b>Versions</b> → <b>Create a version</b>, paste these into <b>Scopes</b>, then <b>Release</b>.', copy: SHOPIFY_SCOPES },
       { t: `Install it on ${shop ? esc(shop) : 'your store'}`, p: 'On the app’s home, click <b>Install app</b>.' },
       last('Paste the app’s keys', 'They’re in the app’s <b>Settings</b>.') ] };
+    if (id === 'slack') return { time: 'About 1 minute', steps: [{ t: 'Sign in with Slack', p: 'Slack asks which channel Brew posts to. Pick the one your team plans in. Replies in Brew’s threads come back to the jam.', last: true, oauth: true }] };
     if (id === 'google') return { time: 'About 1 minute', steps: [{ t: 'Sign in with Google', p: `Pick ${esc(n)}’s Google Ads account. You can add Google Analytics in the same step.`, last: true, oauth: true }] };
     if (id === 'ga4') return { time: 'Takes about a minute', alt: 'Use a property ID', steps: [
       ...(av.email ? [{ t: 'Add Brew to GA4 as a Viewer', p: '<b>Admin</b> → <b>Property access management</b> → <b>Add users</b>. Paste this email and pick <b>Viewer</b>.', copy: av.email, go: ['Open GA4 Admin', 'https://analytics.google.com/analytics/web/#/admin'] }] : []),

@@ -12,7 +12,9 @@ test('no canned sign-offs: nothing claims a check, approval or consent that nobo
   const s = src('remix.js') + src('feed-service.js');
   for (const re of [/Verified this morning/, /Cleared\. Every claim/, /used with consent/, /Approving ✅/, /approved v\$\{w\.current\}\. Ready to ship/, /const ANSWERS = \{/])
     assert.doesNotMatch(s, re, `found ${re}`);
-  assert.doesNotMatch(src('public/jam-room.js'), /Posted to \$\{/, 'no toast says something was posted');
+  /* "Posted to" only after Slack really took it (the server's r.posted, from chat.postMessage) */
+  const jr = src('public/jam-room.js'), posted = [...jr.matchAll(/Posted to \$\{/g)];
+  for (const m of posted) assert.match(jr.slice(Math.max(0, m.index - 120), m.index), /if \(r\.posted\)/, 'no toast says something was posted unless it was');
 });
 
 test('a simulated teammate reply changes no stage and is tagged', () => {

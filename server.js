@@ -30,6 +30,7 @@ import { createRetire } from './retire.js'; // older revisions stop and exit; br
 import { createFactsDesk } from './facts-desk.js';
 import { createAuth } from './auth.js';
 import { createConnectors } from './connectors/index.js';
+import { createSlackRoutes } from './slack-routes.js';
 import { DEMO, demoSid, demoEmail, runDemo, sessionOf, guardFetch } from './demo-mode.js'; // Demo Mode: the demo site (DEMO_MODE=1)
 import { createDemoRoutes } from './demo-routes.js';
 import { launchBrowser, zipBuffer } from './pdf/render.js';
@@ -433,8 +434,9 @@ const genOk = async (req, slug) => { const dev = !process.env.K_SERVICE && Strin
   if (!slug || slug === DEFAULT) return auth.isAdmin(auth.user(req)); return !!(await viewerOf(req, slug)).gen; };
 const demoErr = (host) => ({ error: `Demo mode: sign in with your work email${host ? ` at ${host}` : ''} to make this.`, demo: true, host: host || null });
 let connectors = null;
-/* real connected accounts on the live site (read only, tokens in the vault); DUMMY: simulated on the demo site and for Slack (connectors/index.js simOnly) */
+/* real connected accounts on the live site (read only, tokens in the vault; Slack posts what the team sends); DUMMY: simulated on the demo site (connectors/index.js simOnly) */
 connectors = createConnectors({ packs, auth, builder, treg, log: console, onLive: (slug) => { MEMO.clear(); feedSvc?.refreshLive(slug).catch(() => {}); } });
+const slackRoutes = DEMO ? null : createSlackRoutes({ connectors, feed: () => feedSvc, log: console });
 /* a shared jam link: anyone can look; signing in makes a person a guest of that one jam (feed-service guestOk), never a
    member of the brand's team. Team access comes only from an owner's invite or the brand's work email (auth.js) */
 feedSvc = createFeedService({ /* tagging an email in a jam invites them to the team, with the tagger's own views (any teammate may invite to their views) */
@@ -442,6 +444,7 @@ feedSvc = createFeedService({ /* tagging an email in a jam invites them to the t
     return auth.invite(slug, by, email, seats, process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', true); }, liveTeamOnly: () => auth.signinOn() && process.env.DEMO_MODE !== '1', clientIp, jamMail, memory: MEMORY_ON() ? memory : null, isStaff: (email) => auth.isAdmin({ email }), teamOf: (slug) => auth.getMembers(slug), onOpen: (slug) => { social.opened(slug); draftsBg.opened(slug); builder.heal?.(slug).then((ch) => { if (ch?.length) { packs.drop(slug); loadBrand(slug).catch(() => {}); } }).catch(() => {}); }, PUB, claudeJSON,  globalPacks: packs, claudeTool, cardBrief, mockVariants, geminiImage: imageGen, treg, launchBrowser, zipBuffer, photoAsync, isMock: () => MOCK, spend, BANNED, clean, store, packs: brandPacks, builder, photoFile, learnings,
   /* Demo Mode: a tour session reads the store live while the visitor watches (demo-routes.js session flow) */
   liveReadFor: DEMO ? async (slug) => (await packs.getJSON(slug, 'private/demo/session.json', null))?.flow === 'onboarding' : null,
+  slack: DEMO ? null : connectors, /* a really connected Slack: jams post to it and its thread replies come back (slack-routes.js) */
   viewerOf, genOk, liveFor: (slug, member) => connectors.forViewer(slug, member),
   /* membership checked from the signed-in user on every request and on the background clock (feed-service.js REQ / bgTeam) */
   isMemberEmail: (slug, email) => auth.isMember(slug, { email: String(email || '').toLowerCase() }), roleOf: (slug, email) => auth.roleOf(slug, { email: String(email || '').toLowerCase() }) });
@@ -654,6 +657,7 @@ async function serve(req, res, u) {
     if (demoRoutes && await demoRoutes(req, res, u)) return;
     if (await auth.handle(req, res, u)) return;
     if (await jamMail.handle(req, res, u)) return; // the mute / only-tags links in jam emails
+    if (slackRoutes && await slackRoutes(req, res, u)) return; // what Slack sends: thread replies, Approve (signed)
     if (await connectors.handle(req, res, u)) return;
     if (await teamGate(req, res, u)) return; // live: moves, PDFs, read and stories are for the brand's team
     if (await memoryRoutes(req, res, u)) return; // brand memory

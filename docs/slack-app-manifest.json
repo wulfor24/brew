@@ -1,0 +1,42 @@
+{
+  "_metadata": { "major_version": 2, "minor_version": 1 },
+  "display_information": {
+    "name": "Brew",
+    "description": "Your team's next marketing moves, posted to Slack. Reply in the thread or approve, and the jam in Brew updates.",
+    "background_color": "#1d1a17",
+    "long_description": "Brew by SquareUp reads a brand's own store, ads and email data and shows its team the marketing moves to make next. Connect Slack to share a card or a jam to a channel. Replies in the thread land back in the jam and its brief, and anyone in the channel can approve the plan with one button. Brew only posts where you send it and only reads replies in its own threads."
+  },
+  "features": {
+    "bot_user": { "display_name": "Brew", "always_online": true }
+  },
+  "oauth_config": {
+    "redirect_urls": ["https://brew.joinsquareup.com/connect/slack/callback"],
+    "scopes": {
+      "bot": [
+        "chat:write",
+        "chat:write.public",
+        "incoming-webhook",
+        "channels:read",
+        "groups:read",
+        "channels:history",
+        "groups:history",
+        "users:read",
+        "users:read.email",
+        "team:read"
+      ]
+    }
+  },
+  "settings": {
+    "event_subscriptions": {
+      "request_url": "https://brew.joinsquareup.com/slack/events",
+      "bot_events": ["message.channels", "message.groups", "app_uninstalled", "tokens_revoked"]
+    },
+    "interactivity": {
+      "is_enabled": true,
+      "request_url": "https://brew.joinsquareup.com/slack/actions"
+    },
+    "org_deploy_enabled": false,
+    "socket_mode_enabled": false,
+    "token_rotation_enabled": false
+  }
+}
