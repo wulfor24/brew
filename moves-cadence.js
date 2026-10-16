@@ -456,7 +456,8 @@ export function createMovesScheduler({ packs, ai, memory = null, cardsGen = null
     const p = await packs.load(slug, { fresh: true }).catch(() => null); if (!p || !gen) return { cards: [], label: null };
     /* the team's cards check their numbers against the connected facts too (private/facts.json) */
     const facts = priv ? { ...p.facts, ...((await packs.getJSON(slug, 'private/facts.json', null).catch(() => null))?.facts || {}) } : p.facts;
-    const { cards, label } = await gen.fromMove(move, { brand: { name: profile.name, host: profile.host }, facts, lanes: p.seed?.lanes, laneImg: p.seed?.laneImg, spec: { skill: move.skill, group: AREA_GROUP[move.area] || AREA_GROUP[move.family] || 'know' } });
+    const learnedJ = await packs.getJSON(slug, 'learned.json', null).catch(() => null);
+    const { cards, label } = await gen.fromMove(move, { brand: { name: profile.name, host: profile.host }, profile, config: p.config || null, learned: learnedJ, seen: (p.seed?.posts || []), facts, lanes: p.seed?.lanes, laneImg: p.seed?.laneImg, spec: { skill: move.skill, group: AREA_GROUP[move.area] || AREA_GROUP[move.family] || 'know' } });
     return { cards: tagCards(cards.filter((c) => !c.mock), move), label };
   }
   // run the families for one brand → { written: [{n, family, title}], usd, scorecard }

@@ -434,7 +434,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     /* a member's rewrite also reads the connected facts (private/facts.json); numbers that stopped being true (facts-edits.json retired) leave the move before it backs a card */
     const facts = priv ? { ...p.facts, ...((await packs.getJSON(slug, 'private/facts.json', null))?.facts || {}) } : p.facts;
     const retired = retiredSet((await packs.getJSON(slug, 'facts-edits.json', null))?.retired, allowedFrom(facts));
-    const { cards, label } = await cardsGen.fromMove(scrubRetired(move, retired), { brand: { name: profile.name, host: profile.host }, facts, lanes: p.seed.lanes, laneImg: p.seed.laneImg, spec: Array.isArray(specs) ? specs.find((x) => x.n === move.n) : specs[move.n], ledger: ledger || [] });
+    const learnedJ = await packs.getJSON(slug, 'learned.json', null).catch(() => null); /* the brand's style, the team's learnings and the cards already in the feed make the next cards specific and unrepeated (cards-gen.js) */
+    const { cards, label } = await cardsGen.fromMove(scrubRetired(move, retired), { brand: { name: profile.name, host: profile.host }, profile, config: p.config || null, learned: learnedJ, seen: (p.seed?.posts || []), facts, lanes: p.seed.lanes, laneImg: p.seed.laneImg, spec: Array.isArray(specs) ? specs.find((x) => x.n === move.n) : specs[move.n], ledger: ledger || [] });
     // written from a connected account: the cards go to the team only (private/cards.json), never into the shared seed
     if (priv) { if (!cards.length) return; const own = new RegExp(`^m${String(move.n).padStart(2, '0')}-`), pc = (await packs.getJSON(slug, 'private/cards.json', [])).filter((c) => !own.test(c.id));
       const add = cards.map((c) => ({ ...c, id: privId(c.id), liveOnly: true, privateOf: move.n })); /* its own id: the shared card of the same move stays for everyone else */ await packs.put(slug, 'private/cards.json', [...pc, ...add]);
