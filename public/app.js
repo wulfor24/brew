@@ -3387,9 +3387,18 @@
   document.addEventListener('focusin', (e) => { const el = e.target.closest?.('[data-tip]'); if (el) tipShow(el); });
   document.addEventListener('focusout', (e) => { if (e.target.closest?.('[data-tip]')) tipHide(); });
   addEventListener('scroll', tipHide, true); addEventListener('resize', tipHide);
+  /* while a reply takes its time (about a minute on Flash), the bar says what the studio is doing and for how long: the
+     server's step (change.thinking, remix.js think()) every 3 s, the clock every 1.5 s; never a bare spinner */
+  const thinkLine = () => { const s = Math.round((Date.now() - (RX.thinkT0 || Date.now())) / 1000);
+    const step = RX.think?.step || (RX.fixing ? 'Checking it against the facts, the product and what this change is meant to be' : 'Reading the brief and your note');
+    return `${step} · ${s}s${s >= 35 ? ' · a full answer takes about a minute on this model' : ''}`; };
+  const thinkStop = () => { clearInterval(RX.thinkI); RX.thinkI = null; RX.think = null; RX.thinkT0 = null; };
+  const thinkStart = (id) => { thinkStop(); RX.thinkT0 = Date.now(); let n = 0;
+    RX.thinkI = setInterval(async () => { if (!RX.sending) return thinkStop(); const el = $('#ship-think'); if (++n % 2 === 0) { const q = await tapi('GET', `/api/changes/${id}`).catch(() => null); if (q?.change?.thinking) RX.think = q.change.thinking; } if (el) el.textContent = thinkLine(); }, 1500); };
   const shipBar = (ch, viewing) => {
     if (viewing) return `<div class="ship viewing"><div class="ship-tx"><b>You’re looking at v${viewing.n}</b><span>${esc(viewing.reason || '')} · ${esc(authorName(viewing.author))}</span></div><div class="ship-btns"><button class="btn btn-ghost" data-v-back>Back to v${curN(ch)}</button><button class="btn btn-primary" data-v-use="${viewing.id}">Use v${viewing.n}</button></div></div>`;
-    if (RX.sending) return `<div class="ship busy"><div class="ship-tx"><b><span class="spin"></span>${esc(RX.sending)}</b><span>${RX.fixing ? 'Checking it against the facts, the product and what this change is meant to be.' : 'Every change is saved as a new version.'}</span></div><div class="ship-btns"><button class="btn btn-primary ship-go" disabled>${ic('sparkles', 's16')}Working…</button></div></div>`;
+    if (RX.sending) { if (!RX.thinkI) thinkStart(ch.id); return `<div class="ship busy"><div class="ship-tx"><b><span class="spin"></span>${esc(RX.sending)}</b><span id="ship-think">${esc(thinkLine())}</span></div><div class="ship-btns"><button class="btn btn-primary ship-go" disabled>${ic('sparkles', 's16')}Working…</button></div></div>`; }
+    if (RX.thinkI) thinkStop();
     /* once Share the brief is gone (sent, live), the link can still be copied: a small icon next to what's left */
     const lnk = SPLIT ? `<button class="icon-btn ship-link" data-st-link aria-label="Copy the link to this jam" title="Copy the link">${ic('link', 's16')}</button>` : '';
     if (ch.batchKey && ch.state !== 'jam') {

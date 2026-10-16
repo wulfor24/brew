@@ -82,7 +82,7 @@ guardFetch(console); // Demo Mode only: no write to a real account, no real mess
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || '';
 const CLAUDE_MODELS = [process.env.FEED_CLAUDE_MODEL || 'claude-sonnet-5-5', 'claude-sonnet-5'];
 const GPROJECT = process.env.GOOGLE_CLOUD_PROJECT || 'squareup-492617';
-const IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-3-pro-image';
+const IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image'; /* drafts on the cheap image model; a premium picture is an explicit Make the final (Sloosh, finals.js), never a first draft */
 const OPENAI_KEY = process.env.OPENAI_API_KEY || '';
 let MOCK = process.env.AI_MOCK === '1' || (PROVIDER === 'anthropic' && !ANTHROPIC_KEY); // Gemini needs only Google sign-in
 /* the day's AI budget (budget.js): one ceiling for the server and a share for each brand (DAILY_BRAND_SHARE, BRAND_<KIND>_CAP),
@@ -153,7 +153,7 @@ async function gToken() {
 }
 /* Vertex (Google ADC, never treg): the model asked for, then the other Gemini image model when it fails (an outage, a quota,
    or a reply with no picture in it), so one model's bad minute never costs a draft its picture */
-const IMAGE_FALLBACK = process.env.GEMINI_IMAGE_FALLBACK || 'gemini-2.5-flash-image';
+const IMAGE_FALLBACK = process.env.GEMINI_IMAGE_FALLBACK || 'gemini-3-pro-image';
 async function geminiOnce({ srcFile, prompt, ratio, model }) {
   const t = await gToken();
   const parts = [];
