@@ -298,7 +298,7 @@ test('an upload: moves by impact within the dollar cap (no count limit), the res
   const mv = await P.getJSON(slug, 'moves.json'); mv[12].meta = { rewrittenAt: new Date(Date.now() - 3600e3).toISOString() }; mv[20] = { n: 20, title: 'Reviews', sections: [{ h: 'Why', blocks: [{ t: 'p', text: 'x' }] }] }; await P.put(slug, 'moves.json', mv);
   const ai = scripted(); const call0 = ai.call;
   ai.call = async (o) => o.tag !== 'learn-plan' ? call0(o) : { usd: 0.01, json: {
-    stale: [{ n: 9, impact: 'medium', why: 'The launch comes first.', uses: [1] }, { n: 3, impact: 'high', why: 'Before-and-after photos are ruled out.', uses: [2] }, { n: 12, impact: 'high', why: 'x', uses: [] }, { n: 20, impact: 'low', why: 'A small change.', uses: [] }],
+    stale: [{ n: 9, impact: 'medium', why: 'The launch comes first.', uses: [1] }, { n: 3, impact: 'high', why: 'Before-and-after photos are ruled out.', uses: [2] }, { n: 12, impact: 'medium', why: 'x', uses: [] }, { n: 20, impact: 'low', why: 'A small change.', uses: [] }],
     fresh: [], cards: { up: [{ id: 'm09-1', why: 'The team puts the November launch first.' }], hide: [{ id: 'm03-1', why: 'The team never shows before-and-after photos.' }, { id: 'nope', why: 'not a card' }],
       add: [{ title: 'Line up the Night Repair Serum launch', sub: 'The team plans it for November at ₹899. Start the waitlist now.', why: ['Their goal this quarter'], how: ['Open a waitlist'], sector: 'signals', uses: [1] }] } } };
   const B = { flagStale: builder.flagStale, rewrite: async (s, ns, o) => { asked.push([ns, o.via]); return { ok: true }; }, busy: () => false };
@@ -321,4 +321,44 @@ test('an upload: moves by impact within the dollar cap (no count limit), the res
   assert.match(back.reply, /Back on the feed: “Run before-and-after ads”/);
   assert.equal((await P.load(slug, { fresh: true })).learnedHide.has('m03-1'), false);
   assert.equal(await L.confirm(slug, 'bring back the moon'), null, 'no such card: a normal chat');
+});
+
+test('a high-impact move rewrites now even if it was rewritten today (that rewrite did not know this); a medium one waits', async () => {
+  const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'learn-')), { P, builder, slug } = await brand(ROOT), asked = [];
+  const mv = await P.getJSON(slug, 'moves.json'); for (const n of [3, 9]) mv[n].meta = { rewrittenAt: new Date(Date.now() - 600e3).toISOString() }; await P.put(slug, 'moves.json', mv);
+  const ai = scripted(), call0 = ai.call;
+  ai.call = async (o) => o.tag !== 'learn-plan' ? call0(o) : { usd: 0.01, json: { stale: [{ n: 3, impact: 'high', why: 'Ruled out.', uses: [] }, { n: 9, impact: 'medium', why: 'Goal first.', uses: [] }], fresh: [], cards: {} } };
+  const L = createLearnings({ ai, packs: P, builder: { flagStale: builder.flagStale, busy: () => false, rewrite: async (s, ns) => { asked.push(ns); return { ok: true }; } }, log: quiet, env: {} });
+  const r = await saved(L, slug, { text: CALL, by: 'p@glow.in', byShort: 'Priya' });
+  assert.deepEqual(asked, [[3]]); assert.match(r.reply, /- In the weekly run: Move 09 \(rewritten in the last day\)\./);
+});
+
+test('a card is hidden only on a clear contradiction: a hedged reason keeps it', async () => {
+  const { vetCardPlan } = await import('../brand-learnings.js');
+  const cards = [{ id: 'a', title: 'A' }, { id: 'b', title: 'B' }];
+  const v = vetCardPlan({ hide: [{ id: 'a', why: 'They said gifting got zero orders.' }, { id: 'b', why: 'It might conflict with their price rule.' }] }, cards);
+  assert.deepEqual(v.hide.map((x) => x.id), ['a']);
+});
+
+test('one view of the market: a card hidden for the wrong market means no card naming it is lifted', async () => {
+  const { vetCardPlan } = await import('../brand-learnings.js');
+  const cards = [{ id: 'in', title: 'Switch the store to INR', sub: 'For Indian shoppers' }, { id: 'amz', title: 'Launch the Paw Warmer on Amazon India', sub: '' }, { id: 'pdp', title: 'Add a trust block to the Paw Warmer page', sub: '' }];
+  const v = vetCardPlan({ hide: [{ id: 'in', why: 'It targets India, whereas most buyers are in the US.' }], up: [{ id: 'amz', why: 'Hero product.' }, { id: 'pdp', why: 'Hero product.' }] }, cards);
+  assert.deepEqual(v.up.map((x) => x.id), ['pdp']);
+});
+
+test('the market check never blocks the brand’s own market named in the reason', async () => {
+  const { vetCardPlan } = await import('../brand-learnings.js');
+  const cards = [{ id: 'in', title: 'Switch the store to INR', sub: 'For Indian shoppers' }, { id: 'us', title: 'Run Meta ads to US cat owners', sub: '' }];
+  const v = vetCardPlan({ hide: [{ id: 'in', why: 'It targets India, whereas most buyers are in the US.' }], up: [{ id: 'us', why: 'Their buyers are US cat owners.' }] }, cards);
+  assert.deepEqual(v.up.map((x) => x.id), ['us']);
+});
+
+test('what did not work, card by card: every card repeating it steps off the top with the team’s words', async () => {
+  const { vetCardPlan } = await import('../brand-learnings.js');
+  const cards = [{ id: 'g', title: 'Send gift packs to micro creators' }, { id: 'h', title: 'Seed warmers to pet influencers' }, { id: 'k', title: 'Fix the checkout' }];
+  const items = [{ kind: 'tried', text: 'Influencer gifting to ten pet influencers got zero orders.' }];
+  const v = vetCardPlan({ repeats: [{ uses: 0, ids: ['g', 'h', 'nope'] }], hide: [] }, cards, items);
+  assert.deepEqual(v.hide.map((x) => x.id), ['g', 'h']);
+  assert.equal(v.hide[0].why, 'It repeats what the team said did not work: Influencer gifting to ten pet influencers got zero orders.');
 });
