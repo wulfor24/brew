@@ -6,6 +6,8 @@
   // the brand this page is for (server.js injects its seed): a generated brand's, or the Brew landing shell
   const BR = window.BRAND || Object.keys(window.FEED_DATA)[0];
   const B = window.FEED_DATA[BR];
+  // older seeds named the reviews connector "Reviews on Reviews on judge.me" (the platform label already said "Reviews on")
+  if (B?.connectors?.reviews?.name) B.connectors.reviews.name = B.connectors.reviews.name.replace(/^(reviews on\s+)+/i, 'Reviews on ');
   /* Marketplaces is not a connector for now (2026-10-16): no Connect, no onboarding row; the real marketplaces show as Coming soon on the connectors page */
   if (B?.connectors?.marketplaces) delete B.connectors.marketplaces;
   for (const r of Object.values(B?.roles || {})) if (Array.isArray(r.connectors)) r.connectors = r.connectors.filter((k) => k !== 'marketplaces');
