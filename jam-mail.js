@@ -4,7 +4,9 @@
 // Nobody gets an email about their own message, about a jam they have open right now, or about lines they've already read.
 // Each email carries one-tap links: mute this jam, only tags, or no jam emails at all (per person, brands/<slug>/private/mail-prefs.json).
 // The demo site never sends (demo-mode.js blocks api.resend.com).
-import { emailHtml, esc, p as para, quote as mquote, footLink } from './mail-layout.js';
+import { emailHtml, esc, p as para, quote as mquote, footLink, list } from './mail-layout.js';
+import { mdToEmailHtml } from './brief-status.js';
+const FONT_ = `-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif`;
 const lc = (e) => String(e || '').toLowerCase().trim();
 const cut = (s, n) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length <= n ? s : s.slice(0, n).replace(/\s+\S*$/, '') + '…'; };
 const first = (p) => String(p?.name || p?.email || 'Someone').trim().split(/\s+/)[0].replace(/@.*/, '');
@@ -102,5 +104,36 @@ export function createJamMail({ mail, packs, sign, verify, base = () => process.
     if (!ok) shoposSent.delete(k); return ok;
   };
 
-  return { event, flush, shopos, handle, prefsOf, setPref, prefLink, pending, stop: () => timer && clearInterval(timer) };
+  /* Send brief (UI2): the WHOLE brief to the ShopOS team's inbox, every time it is sent (not throttled like the tag email above):
+     the brief itself, deliverables, assets (images inline, links), rules, done-when and where, plus who sent it. key: one email
+     per send (a retry of the same send is not a second email) */
+  const briefSentKeys = new Set();
+  const briefSent = async (slug, w, { by, md = '', parts = {}, ticket = null, jamUrl, briefUrl, key = null }) => {
+    const to = process.env.SHOPOS_EMAIL || 'hello@joinsquareup.com', k = `${slug}|${w.id}|${key || ''}`;
+    if (key && briefSentKeys.has(k)) return false; briefSentKeys.add(k);
+    const brand = brandName(slug), title = `New brief from ${brand}: “${cut(w.title, 70)}”`, subject = `${ticket ? `${ticket} · ` : ''}${title}`;
+    const sec = (h, items) => (items?.length ? `<h2 style="margin:20px 0 8px;font:700 16px/1.35 ${FONT_};color:#111">${esc(h)}</h2>${list(items)}` : '');
+    const imgs = (parts.assets || []).filter((a) => a.image), links = (parts.assets || []).filter((a) => !a.image);
+    const assetsHtml = imgs.length || links.length ? `<h2 style="margin:20px 0 8px;font:700 16px/1.35 ${FONT_};color:#111">Assets</h2>` +
+      imgs.map((a) => `<p style="margin:0 0 12px"><a href="${esc(a.url)}"><img src="${esc(a.url)}" alt="${esc(a.label)}" width="240" style="display:block;max-width:100%;border:1px solid #E7E5E4;border-radius:10px"></a><span style="font:13px/1.5 ${FONT_};color:#6B6B6B">${esc(a.label)} · <a href="${esc(a.url)}" style="color:#111">Open</a></span></p>`).join('') +
+      links.map((a) => para(`<a href="${esc(a.url)}" style="color:#111">${esc(a.label)}</a>`)).join('') : '';
+    const body = para(`From ${esc(by?.name || '')}${by?.name && by?.email ? ' · ' : ''}${esc(by?.email || '')}`, { muted: true, small: true }) +
+      (parts.where ? para(`<b>Where:</b> ${esc(parts.where)}`) : '') + sec('Deliverables', parts.deliverables) +
+      `<h2 style="margin:20px 0 8px;font:700 16px/1.35 ${FONT_};color:#111">The brief</h2>` + mdToEmailHtml(md, { esc, p: para }) +
+      assetsHtml + sec('Rules', parts.rules) + sec('Done when', parts.doneWhen);
+    const html = emailHtml({ title, eyebrow: `${brand}${ticket ? ` · ${ticket}` : ''}`, preheader: cut(String(md).replace(/^#.*$/m, '').replace(/[#*_-]+/g, ' '), 140), body, cta: { href: jamUrl || link(slug, w.id), label: 'Open the jam' }, secondary: briefUrl ? { href: briefUrl, label: 'Read the brief (read-only)' } : null, after: para('Move it on from the jam: Received, In progress, Needs info or Delivered. The brand sees each step.', { muted: true, small: true }), base: base() });
+    const txt = [subject, '', `From ${by?.name || ''} ${by?.email || ''}`.trim(), parts.where ? `Where: ${parts.where}` : '', parts.deliverables?.length ? `Deliverables:\n${parts.deliverables.map((x) => `- ${x}`).join('\n')}` : '', '', md, '',
+      (parts.assets || []).length ? `Assets:\n${parts.assets.map((a) => `- ${a.label}: ${a.url}`).join('\n')}` : '', parts.rules?.length ? `Rules:\n${parts.rules.map((x) => `- ${x}`).join('\n')}` : '', parts.doneWhen?.length ? `Done when:\n${parts.doneWhen.map((x) => `- ${x}`).join('\n')}` : '',
+      `Open the jam: ${jamUrl || link(slug, w.id)}`, briefUrl ? `The brief (read-only): ${briefUrl}` : ''].filter((x, i, a) => x !== '' || a[i - 1] !== '').join('\n');
+    const ok = await send(to, subject, html, txt); if (!ok) briefSentKeys.delete(k); return ok;
+  };
+  /* the ShopOS team moved a brief on: the person who sent it hears (needs_info quotes what they need) */
+  const briefStatus = async (slug, w, { to, by, label, status, note = '', ticket = null, jamUrl }) => {
+    if (!to || !/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(lc(to))) return false;
+    const brand = brandName(slug), title = status === 'needs_info' ? `The ShopOS team needs something for “${cut(w.title, 60)}”` : `Your brief “${cut(w.title, 60)}” is ${String(label).toLowerCase()}`;
+    const html = emailHtml({ title, eyebrow: `${brand}${ticket ? ` · ${ticket}` : ''}`, preheader: note ? cut(note, 140) : title, body: note ? quote(by?.name || 'ShopOS team', note) : para(`${esc(label)}.`), cta: { href: jamUrl || link(slug, w.id), label: status === 'needs_info' ? 'Answer in the jam' : 'Open the jam' }, base: base() });
+    return send(lc(to), `${ticket ? `${ticket} · ` : ''}${title}`, html, `${title}\n\n${note ? `${by?.name || 'ShopOS team'}: ${note}\n\n` : ''}Open the jam: ${jamUrl || link(slug, w.id)}`);
+  };
+
+  return { event, flush, shopos, briefSent, briefStatus, handle, prefsOf, setPref, prefLink, pending, stop: () => timer && clearInterval(timer) };
 }

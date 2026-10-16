@@ -34,4 +34,4 @@ These are cut, not simulated. The full list is in `SCOPE.md`.
 - **No measurement:** no launch records, readings or grades.
 - **No sending to customers:** no marketing email or WhatsApp from Brew. Brew's own emails to the brand's team (invites, joins, "your moves are ready") are real; see `SCOPE.md`.
 
-The jam ends with **Share the brief**. *Share with the ShopOS team* and *Share with my team* both copy the brief and a link to the full read-only brief. The engineering team adds these flows if and when they are wanted.
+The jam ends with **Share the brief**. *Share with my team* copies the brief and a link to the full read-only brief. *Send brief* emails the whole brief to the ShopOS team and tracks its status, which the ShopOS team sets by hand (real, not simulated; the demo site sends no email).
