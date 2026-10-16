@@ -101,3 +101,17 @@ test('what they tried: its own kind, every one in the brief with the rule, kept 
   const h = heuristicLearnings('We ran influencer campaigns last Diwali and they didn’t convert at all for us.\nOur best ad was the before-after video with the founder.');
   assert.deepEqual(h.map((x) => x.kind), ['tried', 'tried']);
 });
+
+test('a size variant out of stock never marks the moves built on the full-size product; old marks heal once', async () => {
+  const ps = [{ handle: 'shampoo-15ml', title: 'Anti-Hair Fall Shampoo - 15ml' }, { handle: 'shampoo-200ml', title: 'Anti-Hair Fall Shampoo - 200ml' }];
+  assert.deepEqual(productNames({ handle: 'shampoo-15ml' }, ps), ['anti-hair fall shampoo - 15ml'], 'the short name is shared: only the full title');
+  const { b, P, slug } = await brand();
+  await P.put(slug, 'moves.json', { 1: mv(1, 'Lead with the Anti-Hair Fall Shampoo - 200ml'), 2: mv(2, 'Sample the Anti-Hair Fall Shampoo - 15ml in every order'), 3: mv(3, 'x') });
+  /* a mark from before the fix, over a quieter flag */
+  await P.put(slug, 'updates.json', { stockOut: { 'shampoo-15ml': { kind: 'oos' } }, stale: { 1: { n: 1, priority: 'high', via: 'stock', stockWhy: { 'shampoo-15ml': 'old' }, was: { priority: 'medium', why: 'Shopify moved.', via: 'shopify' } }, 3: { n: 3, priority: 'high', via: 'stock', stockWhy: { x: 'old' }, was: null } } });
+  const r = await b.stockSignal(slug, [{ kind: 'oos', items: [{ ...ps[0], inStock: false }] }, { kind: 'back', items: [ps[1]] }, { kind: 'new', items: ps }]);
+  assert.deepEqual(r.flagged, [2], 'only the move that names the 15ml');
+  const st = (await P.getJSON(slug, 'updates.json')).stale;
+  assert.equal(st[1].why, 'Shopify moved.'); assert.equal(st[1].stockWhy, undefined, 'the old mark came off, the flag underneath is back');
+  assert.equal(st[3], undefined);
+});

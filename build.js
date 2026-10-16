@@ -1024,18 +1024,24 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   /* a product a move builds on went out of stock or off the site (the free catalog watch, every 3 hours): every move that names
      it is marked out of date at once (no AI, no spend) with the reason on the move, and rewritten in the weekly run. Back in
      stock (or back on the site) takes the mark off. Only a change counts: updates.json stockOut keeps what is already known */
+  const STOCK_V = 2;
   async function stockSignal(slug, events = []) {
     const out = events.filter((e) => ['oos', 'removed', 'gone'].includes(e.kind)), back = events.filter((e) => e.kind === 'back' || e.kind === 'new');
     if (!out.length && !back.length) return { flagged: [] };
     if (!(await status(slug))?.done) return { flagged: [] };
     const pub = await packs.getJSON(slug, 'moves.json', {}), priv = await packs.getJSON(slug, 'private/moves.json', {}).catch(() => ({}));
-    const products = (await packs.getJSON(slug, 'profile.json', {}))?.catalog?.products || [];
+    const seenP = events.flatMap((e) => e.items || []).filter((x) => x?.handle && x.title), products = [...((await packs.getJSON(slug, 'profile.json', {}))?.catalog?.products || []), ...seenP.filter((x, i, a) => a.findIndex((y) => y.handle === x.handle) === i)];
     const items = new Map(); for (const e of out) for (const it of e.items || []) { const h = handleOfItem(it); if (h && !items.has(h)) items.set(h, { it, kind: e.kind === 'oos' ? 'oos' : 'gone' }); }
     /* back in stock clears an out-of-stock mark; a product back on the site clears a gone one; never one this same pass marks out */
     const backH = new Map(); for (const e of back) for (const it of e.items || []) { const h = handleOfItem(it); if (h && !items.has(h)) backH.set(h, new Set([...(backH.get(h) || []), e.kind === 'back' ? 'oos' : 'gone'])); }
     const at = Date.now(), flagged = new Set();
     const whyOf = (f) => [...Object.values(f.stockWhy || {}), f.was?.why].filter(Boolean).join(' ');
     await editUpd(slug, (u) => {
+      /* STOCK_V 2 (2026-10-16): a 15ml variant out of stock had marked every move naming the 200ml one (54 of Arata's). Once per
+         brand, every stock mark comes off (an earlier flag underneath is restored) and this pass marks again with the fixed names */
+      if ((u.stockV || 1) < STOCK_V) { for (const [n, f] of Object.entries(u.stale || {})) { if (!f?.stockWhy) continue;
+          if (f.was) { const { stockWhy, was, stock, ...rest } = f; u.stale[n] = { ...rest, ...was }; } else delete u.stale[n]; }
+        u.stockOut = {}; u.stockV = STOCK_V; }
       const known = (u.stockOut ||= {});
       for (const [h, kinds] of backH) {
         if (!known[h] || !kinds.has(known[h].kind)) continue;

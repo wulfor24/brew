@@ -72,8 +72,11 @@ export const handleOfItem = (it = {}) => it.handle || (String(it.url || '').matc
 export function productNames(it = {}, products = []) {
   const h = handleOfItem(it), p = products.find((x) => x.handle === h);
   const t = it.title && !/^[a-z]+\.[\w.-]+$/.test(it.title) ? it.title : p?.title || String(h || '').replace(/-/g, ' ');
-  const short = String(t).split(/\s+[-–|:(]\s*/)[0];
-  return [...new Set([t, short].map((s) => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase()).filter((s) => s.length >= 4))];
+  const clean = (x) => String(x || '').replace(/\s+/g, ' ').trim().toLowerCase(), shortOf = (x) => clean(String(x || '').split(/\s+[-–|:(]\s*/)[0]);
+  /* the short name ("Shampoo" for "Shampoo - 15ml") only when no other product shares it: a size or pack variant going out of
+     stock must never mark the moves built on the full-size product */
+  const short = shortOf(t), shared = products.some((x) => x.handle !== h && shortOf(x.title) === short);
+  return [...new Set([clean(t), ...(shared ? [] : [short])])].filter((x) => x.length >= 4);
 }
 export function movesNaming(moves = {}, names = []) {
   if (!names.length) return [];
