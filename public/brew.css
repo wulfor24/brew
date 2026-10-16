@@ -1536,11 +1536,9 @@ body:has(#dp.dp-full) .rail{position:fixed;top:0;left:0;bottom:0;height:auto;wid
 .wb-card:focus-visible{outline:2px solid var(--info);outline-offset:2px}
 .wb-card .card-head .badge{margin-right:4px;max-width:46%;overflow:hidden;text-overflow:ellipsis}
 .wb-card .card-head .badge:not(.ok):not(.warn):not(.info):not(.bad){background:var(--surface);color:var(--fg-2)}
-/* the whole picture, never cropped: product shots are tall, so they sit centred on a soft panel at their own shape */
-.wb-media{position:relative;margin:0 12px;height:168px;border-radius:12px;overflow:hidden;background:var(--surface)}
-.wb-media img{position:absolute;inset:10px;width:calc(100% - 20px);height:calc(100% - 20px);object-fit:contain;display:block}
-.wb-card .body{padding:12px 16px 14px;display:flex;flex-direction:column;gap:8px}
-.wb-card .body h3{margin:0}
+/* Work cards wear the feed card: the same full-width picture (.media.portrait), header, title and words */
+.wb-card .media + .body{padding-top:14px}
+.wb-card .body h3{margin:0 0 6px}
 .wb-card .body p{font-size:14.5px;line-height:20px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .wb-new{display:inline-block;width:8px;height:8px;margin-right:7px;border-radius:50%;background:var(--warn);vertical-align:2px}
 .wb-say{display:flex;gap:10px;padding:10px 12px;border-radius:12px;background:var(--surface)}

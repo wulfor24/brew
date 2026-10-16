@@ -2060,7 +2060,7 @@
     : `<span class="wb-go is-quiet">Open${ic('right', 's16')}</span>`;
   const tileHtml = (w) => `<article class="card wb-card${w.unread ? ' is-unread' : ''}" data-witem="${w.id}" tabindex="0">
       <header class="card-head">${face(w.agent || 'brew')}<div class="who"><b>${esc(AGENT[w.agent] || 'Brew')}</b><span>${ago(w.updatedAt)}</span></div>${wbBadge(w)}</header>
-      ${w.img ? `<div class="wb-media"><img src="${esc(w.img)}" alt="" loading="lazy"></div>` : ''}
+      ${w.img ? `<div class="media portrait"><img src="${esc(w.img)}" alt="" loading="lazy"></div>` : ''}
       <div class="body"><h3>${w.unread ? '<i class="wb-new"></i>' : ''}${esc(wbTitle(w))}</h3>${wbBody(w)}</div>${wbFoot(w)}</article>`;
   /* ---------- the Work board's first lane: what AI is doing in the background, right now ---------- */
   const WB_IC = { ai: 'cpu', drafting: 'txt', with: 'chat', you: 'hand', ready: 'check', shared: 'copy' };
