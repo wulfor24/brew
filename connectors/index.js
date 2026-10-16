@@ -331,12 +331,6 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     } catch (e) { log.warn('[slack] post', slug, e.message); if (['invalid_auth', 'token_revoked', 'account_inactive'].includes(e.slack)) await editC(slug, (x) => { if (x.slack) x.slack = { ...x.slack, state: 'error', error: slackWhy(e), errorAt: Date.now() }; }).then(() => cache.delete(sk(slug)));
       return { error: slackWhy(e) }; }
   }
-  /* a note only one person in the channel sees (chat.postEphemeral), e.g. why their reply didn't reach the jam */
-  async function slackEphemeral(slug, { channel, user, text, thread_ts } = {}) {
-    const c = await slackOf(slug); if (!c || !channel || !user) return { error: 'no slack' };
-    try { await slackApi(c.token, 'chat.postEphemeral', { channel, user, text: String(text || '').slice(0, 3000), ...(thread_ts ? { thread_ts } : {}) }); return { ok: true }; }
-    catch (e) { log.warn('[slack] ephemeral', slug, e.message); return { error: slackWhy(e) }; }
-  }
   /* a link that opens a post (or its thread) in Slack */
   async function slackLink(slug, channel, ts) { const c = await slackOf(slug); if (!c) return null;
     try { return (await slackApi(c.token, 'chat.getPermalink', { channel, message_ts: ts }, { get: true })).permalink || null; } catch { return null; } }
@@ -384,5 +378,5 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     return false;
   }
 
-  return { handle: async (req, res, u) => (await slackRoutes(req, res, u)) || handle(req, res, u), sim: SIM, slackOf, slackPost, slackEphemeral, slackLink, slackChannels, slackUser, slackSlug, slackGone, liveOf, forViewer, drop: (slug) => cache.delete(sk(slug)), liveView, sync, disconnect, finish, tick, CONNECTORS };
+  return { handle: async (req, res, u) => (await slackRoutes(req, res, u)) || handle(req, res, u), sim: SIM, slackOf, slackPost, slackLink, slackChannels, slackUser, slackSlug, slackGone, liveOf, forViewer, drop: (slug) => cache.delete(sk(slug)), liveView, sync, disconnect, finish, tick, CONNECTORS };
 }

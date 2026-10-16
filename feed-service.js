@@ -1744,7 +1744,6 @@ export function createFeedService(o) {
   };
   /* a reply in a jam's Slack thread, or its Approve button pressed (server.js checked Slack's signature and found the brand) */
   const slackIn = async ({ slug, kind, thread, ts, user = {}, text = '', n = null, pid = null, mention = false }) => {
-    if (user.team !== true) return { denied: true }; /* slack-routes checked them against the brand's team (auth teamRole); anyone else changes nothing */
     const br = await packs.load(slug); if (!br) return null; await JAMS.load(br.slug);
     const w = (JAMS.peek(br.slug)?.work || []).find((x) => x.slack?.ts === thread); if (!w) return null;
     const t = (w.slack.tid && await getTenant(w.slack.tid).catch(() => null)) || brandTenants(br)[0]; if (!t) return null;

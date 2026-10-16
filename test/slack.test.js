@@ -66,7 +66,7 @@ test('Slack routes: bad signatures are refused; a reply reaches its jam; a bot n
   const calls = [];
   const connectors = { slackSlug: async (t) => (t === 'T1' ? 'cozy' : null), slackUser: async (_s, u) => (u === 'UB' ? { name: 'Bot', bot: true } : { name: 'Ana', email: 'ana@cozy.shop' }), slackGone: async (t) => calls.push(['gone', t]) };
   const feed = { slackIn: async (x) => { calls.push(['in', x]); return { w: { id: 'wk1' } }; } };
-  const h = createSlackRoutes({ connectors, feed: () => feed, member: async () => 'member', log: { log() {}, warn() {} }, secret: () => 'shh' });
+  const h = createSlackRoutes({ connectors, feed: () => feed, log: { log() {}, warn() {} }, secret: () => 'shh' });
   const go = async (path, raw, headers = sign(raw)) => { const res = resOf(); await h(reqOf(raw, headers), res, new URL(`https://x${path}`)); return res; };
 
   assert.equal((await go('/slack/events', '{}', sign('{}', 'nope'))).code, 401);
@@ -87,16 +87,16 @@ test('Slack routes: bad signatures are refused; a reply reaches its jam; a bot n
 
 test('Slack routes: Approve only counts from the workspace that brand connected', async () => {
   const seen = [];
-  const connectors = { slackSlug: async (t) => (t === 'T1' ? 'cozy' : null), slackUser: async () => ({ name: 'Ana', email: 'ana@cozy.shop' }), slackPost: async (s, o) => seen.push(['post', o]) };
+  const connectors = { slackSlug: async (t) => (t === 'T1' ? 'cozy' : null), slackUser: async () => ({ name: 'Ana' }), slackPost: async (s, o) => seen.push(['post', o]) };
   const feed = { slackIn: async (x) => { seen.push(['in', x]); return { w: { id: 'wk1', current: 3, slack: {} } }; } };
-  const h = createSlackRoutes({ connectors, feed: () => feed, member: async () => 'member', log: { log() {}, warn() {} }, secret: () => 'shh' });
+  const h = createSlackRoutes({ connectors, feed: () => feed, log: { log() {}, warn() {} }, secret: () => 'shh' });
   const f0 = globalThis.fetch; globalThis.fetch = async () => ({ ok: true });
   try {
     const press = async (team) => { const raw = new URLSearchParams({ payload: JSON.stringify({ type: 'block_actions', team: { id: team }, user: { id: 'U1' }, channel: { id: 'C1' }, message: { ts: '1.0', text: 'x', blocks: [{ type: 'section' }, { type: 'actions' }] }, actions: [{ action_id: 'approve', value: 'cozy|wk1|3' }], response_url: 'https://hooks.slack.com/x' }) }).toString();
       const res = resOf(); await h(reqOf(raw, sign(raw)), res, new URL('https://x/slack/actions')); await tick(); return res; };
     await press('T2'); assert.equal(seen.length, 0, 'another workspace changes nothing');
     assert.equal((await press('T1')).code, 200);
-    assert.deepEqual(seen[0][1], { slug: 'cozy', kind: 'approve', thread: '1.0', user: { name: 'Ana', email: 'ana@cozy.shop', team: true }, n: 3 });
+    assert.deepEqual(seen[0][1], { slug: 'cozy', kind: 'approve', thread: '1.0', user: { name: 'Ana' }, n: 3 });
     assert.equal(seen[1][1].update, '1.0');
     seen.length = 0; const raw = new URLSearchParams({ payload: JSON.stringify({ type: 'block_actions', team: { id: 'T1' }, user: { id: 'U1' }, channel: { id: 'C1' }, message: { ts: '2.0', thread_ts: '1.0', text: 'x', blocks: [] }, actions: [{ action_id: 'approve', value: 'cozy|wk1|3' }] }) }).toString();
     await h(reqOf(raw, sign(raw)), resOf(), new URL('https://x/slack/actions')); await tick();
@@ -106,9 +106,9 @@ test('Slack routes: Approve only counts from the workspace that brand connected'
 
 test('Slack routes: Make it / Not now reach the jam once, with the proposal id; @Brew is noticed', async () => {
   const seen = [];
-  const connectors = { slackSlug: async (t) => (t === 'T1' ? 'cozy' : null), slackUser: async () => ({ name: 'Ana', email: 'ana@cozy.shop' }), slackOf: async () => ({ bot: 'UBREW' }) };
+  const connectors = { slackSlug: async (t) => (t === 'T1' ? 'cozy' : null), slackUser: async () => ({ name: 'Ana' }), slackOf: async () => ({ bot: 'UBREW' }) };
   const feed = { slackIn: async (x) => { seen.push(x); return { w: { id: 'wk1' }, ok: true }; } };
-  const h = createSlackRoutes({ connectors, feed: () => feed, member: async () => 'member', log: { log() {}, warn() {} }, secret: () => 'shh' });
+  const h = createSlackRoutes({ connectors, feed: () => feed, log: { log() {}, warn() {} }, secret: () => 'shh' });
   const f0 = globalThis.fetch; globalThis.fetch = async () => ({ ok: true });
   try {
     for (const id of ['apply', 'dismiss']) {

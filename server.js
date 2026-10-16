@@ -459,10 +459,7 @@ const demoErr = (host) => ({ error: `Demo mode: sign in with your work email${ho
 let connectors = null;
 /* real connected accounts on the live site (read only, tokens in the vault; Slack posts what the team sends); DUMMY: simulated on the demo site (connectors/index.js simOnly) */
 connectors = createConnectors({ packs, auth, builder, treg, log: console, onLive: (slug) => { MEMO.clear(); feedSvc?.refreshLive(slug).catch(() => {}); } });
-/* only the brand's team in Brew acts from Slack (approve, Make it, a yes, an @Brew change, words into the brief): matched by the
-   email Slack shares, read only (auth teamRole), so a jam's guests and the rest of the workspace can't */
-const slackRoutes = DEMO ? null : createSlackRoutes({ connectors, feed: () => feedSvc, member: (slug, email) => auth.teamRole(slug, email),
-  brandName: async (slug) => packs.peek?.(slug)?.seed?.brand?.name || packs.peek?.(slug)?.name || slug, log: console });
+const slackRoutes = DEMO ? null : createSlackRoutes({ connectors, feed: () => feedSvc, log: console });
 /* a shared jam link: anyone can look; signing in makes a person a guest of that one jam (feed-service guestOk), never a
    member of the brand's team. Team access comes only from an owner's invite or the brand's work email (auth.js) */
 feedSvc = createFeedService({ /* tagging an email in a jam invites them to the team, with the tagger's own views (any teammate may invite to their views) */

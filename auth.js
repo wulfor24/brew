@@ -109,10 +109,6 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
     for (const o of owners(m)) await mail(o, subject, emailHtml({ title: subject, eyebrow: name, preheader: 'They see nothing yet: pick which views they get.', body: para(`${esc(u.name || u.email)}${u.name ? ` (${esc(u.email)})` : ''} signed in with a company email, so they're on the team.`) + para('They see nothing yet. Pick which views they get.'), cta: { href: link, label: 'Pick their views' } }), `${subject}\n\nThey see nothing until you pick their views: ${link}`);
   }
   const isMember = async (slug, u) => !!(await roleOf(slug, u));
-  /* the role an email already has on the brand's team, read only: no joining from an invite or a company domain on the way
-     (Slack and other outside callers, where the email isn't a Google sign-in). Brew's own people count as admin */
-  const teamRole = async (slug, email) => { email = String(email || '').toLowerCase(); if (!email) return null;
-    const me = (await getM(slug)).members.find((x) => String(x.email).toLowerCase() === email); return me ? me.role : (isAdmin({ email }) ? 'admin' : null); };
   async function addMember(slug, u, role, via, seats = 'all') {
     return editM(slug, (m) => {
       const added = !m.members.some((x) => x.email === u.email);
@@ -284,5 +280,5 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
   }
   const page = (h, p, slug, extra = '') => smallPage(h, p, { extra, link: slug ? { href: `/${slug}`, label: 'Open the brand' } : null });
 
-  return { handle, signinOn: () => !!(CID && SECRET), user, roleOf, seatsOf, isMember, teamRole, isAdmin, claim, claimInfo, accessOf: claimInfo, addMember, invite, teamOp, getMembers: getM, sign, verify, baseOf, setCookie, cookies, mail };
+  return { handle, signinOn: () => !!(CID && SECRET), user, roleOf, seatsOf, isMember, isAdmin, claim, claimInfo, accessOf: claimInfo, addMember, invite, teamOp, getMembers: getM, sign, verify, baseOf, setCookie, cookies, mail };
 }
