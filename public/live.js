@@ -200,7 +200,7 @@
     const done = box({ id, title: `${esc(nm(id))}${also ? ' and Google Analytics are' : ' is'} connected`, line: dummy ? 'Your cards now use its simulated numbers.' : 'Your cards now use its numbers.',
       body: (r.claimed ? note(`You’re ${poss()} owner on Brew now. Teammates with the same company email join on their own.`) : '') + (read.length ? kick('What Brew read') + ticks(read) : did.length ? kick('In your feed') + ticks(did) : '')
         + (r.why ? note(esc(r.why), 'info') : '') + (r.notes || []).slice(0, 2).map((t) => note(esc(t), 'info')).join(''),
-      status: dummy ? stat('<span class="dummy-tag">Dummy</span>Connected. Nothing real was read or changed.', 'on', 'check') : stat('Live. Refreshes once a day.', 'on', 'check'),
+      status: dummy ? stat('<span class="dummy-tag">Dummy</span>Connected. Nothing real was read or changed.', 'on', 'check') : stat(`Live. Refreshes every ${L.avail?.[id]?.every || 12} hours.`, 'on', 'check'),
       ghost: others(id).length && boss() ? ghostBtn('Connect another', 'data-swap="next"') : '', go: goBtn(setupView() ? 'Continue' : 'See it in the feed', 'data-see') });
     const xs = others(id), next = xs.length && boss() ? box({ id, title: 'Connect another', line: 'One tap each.', body: `<div class="cxb-rows">${xs.map((k) => `<button type="button" class="cxb-row" data-next-cx="${k}">${A()?.glyph?.(k, 28) || ''}<span><b>${esc(nm(k))}</b></span>${ic('right', 's16')}</button>`).join('')}</div>`, ghost: ghostBtn('Back', 'data-swap="done"') }) : '';
     return pane('done', done, true) + (next ? pane('next', next, false) : ''); };
@@ -267,7 +267,7 @@
   const intro = () => { if (!GENB || (!L.signin && !L.me)) return null; const n = B().brand.name;
     if (!L.me) return L.dummy ? `Every source Brew reads for ${n}. <a href="${signin()}">Sign in with Google</a> to connect accounts. Connected accounts are simulated in this demo (Dummy).` : `Every source Brew reads for ${n}. <a href="${signin()}">Sign in with Google</a> to connect ${n}’s real accounts, read-only.`;
     if (member() && !boss()) return `Every source Brew reads for ${n}. Only ${n}’s admins connect or disconnect accounts; you can sync the connected ones.`;
-    if (member()) return L.dummy ? `Every source Brew reads for ${n}. Connected accounts are simulated in this demo (Dummy), built from what Brew read, and only ${n}’s team sees them.` : `Every source Brew reads for ${n}. Connected accounts are read-only, refresh once a day, and only ${n}’s team sees them.`;
+    if (member()) return L.dummy ? `Every source Brew reads for ${n}. Connected accounts are simulated in this demo (Dummy), built from what Brew read, and only ${n}’s team sees them.` : `Every source Brew reads for ${n}. Connected accounts are read-only, refresh every few hours, and only ${n}’s team sees them.`;
     if (L.access?.claimed) return `Every source Brew reads for ${n}. Its team sees the live numbers; here you see the demo. Ask them to invite you.`;
     if (L.access?.eligible) return `Every source Brew reads for ${n}. You’re the first from ${esc(host())}: connect an account and ${n} is yours. <button class="linkish" data-lclaim>Claim it with your email</button>`;
     return `Every source Brew reads for ${n}. Here you see the demo: the first person to sign in with a work email at ${esc(host())} and connect an account becomes its admin.`; };

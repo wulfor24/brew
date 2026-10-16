@@ -150,7 +150,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
   const avail = () => Object.fromEntries(SIM_IDS.filter((id) => !OFF.has(id)).map((id) => {
     if (simOnly(id)) return [id, SIM_AVAIL];
     const C = REAL[id];
-    return [id, { modes: C.modes, ready: !!C.ready(deps), oauth: C.modes.includes('oauth') && !!C.ready(deps) && (C.oauthOn ? !!C.oauthOn() : true), picks: !!C.picks, proof: C.proof !== false, help: C.help?.() || null, email: C.helpEmail?.() || null,
+    return [id, { modes: C.modes, ready: !!C.ready(deps), oauth: C.modes.includes('oauth') && !!C.ready(deps) && (C.oauthOn ? !!C.oauthOn() : true), picks: !!C.picks, proof: C.proof !== false, every: everyOf(id) / 3600e3, help: C.help?.() || null, email: C.helpEmail?.() || null,
       fields: (C.keyFields || []).map(({ k, label, hint, secret, optional }) => ({ k, label, hint, secret: !!secret, optional: !!optional })) }];
   }));
   async function liveView(slug, me) {
