@@ -227,3 +227,18 @@ test('a live card without rows or detail never breaks the feed (clone of undefin
   const clone = eval(`(x) => ${m[1]}`); assert.equal(clone(undefined), undefined); assert.deepEqual(clone({ a: [1] }), { a: [1] });
   assert.match(src, /L\.cards = \(L\.cards \|\| \[\]\)\.filter\(\(c\) => c && c\.id\)/);
 });
+
+test('an edited brief sent again does go out, even after a copy for your own team; a team copy never replaces what ShopOS has', async () => {
+  const s = jbRig({ staff: true }); const ship = (b) => s.R['POST /api/work/:wid/doc/ship']({ force: true, ...b }, s.t, { wid: 'wk_1' });
+  await ship({ to: 'shopos' }); const n1 = s.calls.sent.length, md1 = s.w.jamBrief.md, ctx1 = s.w.jamBrief.context;
+  s.w.doc.md = (s.w.doc.md || '') + '\n\nOne more line the team added.';
+  await ship({ to: 'team' }); assert.equal(s.w.jamBrief.md, md1, 'the ShopOS brief stays as it was sent'); assert.equal(s.w.jamBrief.context, ctx1);
+  const r = await ship({ to: 'shopos' }); assert.notEqual(r.already, true, 'a changed brief is a real send'); assert.equal(s.calls.sent.length, n1 + 1);
+});
+
+test('outside the team on live, Ask, Your feed and Drop take no writes; the demo allowance list stays as it was', () => {
+  const src = fs.readFileSync(new URL('../feed-service.js', import.meta.url), 'utf8');
+  const line = src.split('\n').find((l) => l.includes("if (outside && req.method !== 'GET'")) || '';
+  for (const w of ['ask|tuning', 'drop', '403', 'teamOnly']) assert.ok(line.includes(w), `no writes from outside the team (${w})`);
+  const demo = /const DEMO_OK = (\/.*\/);/.exec(src)[1]; for (const w of ['|ask', 'tuning', 'brands\\/[^/]+\\/drop']) assert.ok(!demo.includes(w), `${w} is not opened to non-makers`);
+});

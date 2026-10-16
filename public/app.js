@@ -1987,7 +1987,7 @@
     if (e.target.closest('button, a, input, textarea, select, label, [data-more], .ask')) return;
     const p = FEED[+card.dataset.post]; if (p) openDetail(p);
   });
-  addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('#dp') && !$('#th')) { e.stopImmediatePropagation(); closeDetail(); } }, true);
+  addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('#dp') && !$('#th') && !$('#ask2')) { e.stopImmediatePropagation(); closeDetail(); } }, true);
 
   /* theatre: tap a card's picture to browse every asset full screen. Arrows, keys, swipe, a thumbnail strip, Esc closes */
   const TH = { srcs: [], i: 0, title: '' };
@@ -2933,7 +2933,7 @@
   const closeModal = () => { $('#modal')?.remove(); document.body.classList.remove('modal-on');
     /* a tray closed with "Not yet" hands the studio's button back; it used to stay disabled until a reload */
     $$('.std .ship [data-rx].is-busy').forEach((b) => { b.disabled = false; b.classList.remove('is-busy'); }); };
-  addEventListener('keydown', (e) => { if (e.key === 'Escape' && UI2) { if ($('#ask2')) { $('#ask2').remove(); document.body.classList.remove('ask-on'); return; } if (view === 'remix' && ['details', 'adjust'].includes(RX.tab)) { RX.tab = 'iterate'; return paintStudio(); } if ($('.r2.open')) { $('.r2.open').classList.remove('open'); $('[data-r2-open]')?.setAttribute('aria-expanded', 'false'); return; } } }, true);
+  addEventListener('keydown', (e) => { if (e.key === 'Escape' && UI2) { const done = () => { e.stopImmediatePropagation(); e.preventDefault(); }; if ($('#ask2')) { $('#ask2').remove(); document.body.classList.remove('ask-on'); return done(); } if (view === 'remix' && ['details', 'adjust'].includes(RX.tab)) { RX.tab = 'iterate'; paintStudio(); return done(); } if ($('.r2.open')) { $('.r2.open').classList.remove('open'); $('[data-r2-open]')?.setAttribute('aria-expanded', 'false'); return done(); } } }, true);
   addEventListener('keydown', (e) => { if (e.key === 'Escape') { if ($('#sv')) closeStory(); else if ($('#modal')) closeModal(); else if ($('#jam')) closeJam(); else closePop(); } });
 
   /* =========================================================
@@ -3517,8 +3517,8 @@
   const J2 = { imp: {}, pack: {} }; /* per change: the projection and the pack, shown in the chat */
   const j2Sg = (x) => { const v = +x; return Number.isFinite(v) ? `${v > 0 ? '+' : v < 0 ? '−' : ''}${j2Num(Math.abs(v))}` : '—'; };
   const j2Num = (x) => { const v = +x; return Number.isFinite(v) ? (Math.abs(v) >= 100 ? Math.round(v).toLocaleString('en-IN') : String(+v.toFixed(1))) : '—'; };
-  const j2Key = (ch) => `${ch.id}:${RX.viewing || ch.head || 'v0'}`;
-  const j2Extra = (ch) => { const im = J2.imp[j2Key(ch)], pk = J2.pack[j2Key(ch)]; let h = '';
+  const j2Key = (ch) => `${ch.id}:${RX.viewing || ch.head || 'v0'}`, j2ImpKey = (ch) => `${ch.id}:${ch.head || 'v0'}`; /* a projection is always of the head version */
+  const j2Extra = (ch) => { const im = J2.imp[j2ImpKey(ch)], pk = J2.pack[j2Key(ch)]; let h = '';
     if (pk) h += `<div class="lgm ai">${face(ch.agent)}<div>${pk.busy ? `<p><span class="spin"></span>Putting the files together…</p>` : pk.error ? `<p>${esc(pk.error)}</p>` : `<p>${esc(j2PackLabel(ch))}: your files are ready. The final ${esc((ch.familyName || 'files').toLowerCase())} and its copy, to post yourself. Brew changes nothing in your accounts.</p><div class="j2-pack"><a class="btn btn-ghost sm" href="/${esc(pk.url)}" download="${esc(pk.name)}">${ic('down', 's14')}${esc(pk.name)}</a><small>${(pk.files || []).length} files</small></div>${(pk.todo || []).length ? `<p class="j2-todo">Still to do: ${pk.todo.map(esc).join(' · ')}</p>` : ''}`}</div></div>`;
     if (im) h += `<div class="lgm ai">${face('performance')}<div>${im.busy ? `<p><span class="spin"></span>Reading this card’s results and benchmarks, then handing it to the Performance marketer…</p>` : im.error ? `<p>${esc(im.error)}</p>` : `<p>Here’s the likely lift if this runs. ${esc(im.label || 'A projection, not a promise')}.</p>
         <div class="j2-imp"><b>${j2Sg(im.low)} to ${j2Sg(im.high)}<small> ${esc(im.unit || '')}</small></b><span>${esc(im.metric || '')}${im.windowLabel ? `, ${esc(im.windowLabel)}` : ''}</span><em class="j2-conf is-${esc(im.confidence || 'low')}">${esc(im.confidence || 'low')} confidence</em></div>
@@ -3529,7 +3529,7 @@
     if (kind === 'pack') { J2.pack[jk] = { busy: true }; paintStudio(); const r = await tapi('GET', `/api/changes/${ch.id}/pack${RX.viewing ? `?v=${encodeURIComponent(RX.viewing)}` : ''}`);
       J2.pack[jk] = r.pack || { error: r.error || 'The files didn’t come together. Try again.' }; if (RX.ch?.id === ch.id) paintStudio();
       if (r.pack?.url) { const a = document.createElement('a'); a.href = '/' + r.pack.url; a.download = r.pack.name || 'brew-pack.zip'; document.body.appendChild(a); a.click(); a.remove(); } return; }
-    if (kind === 'impact') { J2.imp[jk] = { busy: true }; paintStudio(); const r = await tapi('GET', `/api/changes/${ch.id}/impact`); J2.imp[jk] = r.impact || { error: r.error || 'The projection didn’t come back. Try again.' }; if (RX.ch?.id === ch.id) paintStudio(); return; }
+    if (kind === 'impact') { const ik = j2ImpKey(ch); J2.imp[ik] = { busy: true }; paintStudio(); const r = await tapi('GET', `/api/changes/${ch.id}/impact`); J2.imp[ik] = r.impact || { error: r.error || 'The projection didn’t come back. Try again.' }; if (RX.ch?.id === ch.id) paintStudio(); return; }
     if (kind === 'remake') { RX.sending = arg === 'video' ? 'Making it a reel…' : 'Making it a carousel…'; paintStudio(); const r = await tapi('POST', `/api/changes/${ch.id}/remake`, { as: arg }); if (RX.ch?.id === ch.id) RX.sending = null;
       if (r.change) putCh(r.change); if (view !== 'remix' || RX.ch?.id !== ch.id) return; /* you moved on: the new version waits in its own jam */
       if (r.error || !r.change) { toast(esc(r.error || 'That didn’t work. Try again.')); return paintStudio(); }
@@ -3641,7 +3641,7 @@
     let ch = findCh(id) || PRE_CH.get(id); PRE_CH.delete(id); if (!ch) { const g = await tapi('GET', `/api/changes/${id}`); ch = g.change; }
     /* a link to a jam this browser can't open (another workspace's, or gone): open the card's own jam, never a blank page */
     if (!ch) { if (RX.p && !o.noFallback) { history.replaceState(history.state, '', `${location.pathname}#remix=${RX.p.id}`); return openRemix(RX.p, null, { fromHistory: true, noFallback: true }); } $('#view').innerHTML = `<div class="rxp"><p class="rx-gone">${ic('info', 's16')}This jam can’t be opened here. <button class="linkbtn" data-nav="feed">Back to the feed</button></p></div>`; return; }
-    Object.assign(RX, { ch, viewing: null, cmp: [], tab: 'iterate', editing: false, draft: '', knobSel: {}, briefEdit: false }); tapi('POST', `/api/changes/${ch.id}/open`, {}); REMIXES = null; if (!o.fromHistory) nav(`#remix=${RX.p.id}/${ch.id}`, !o.replace, o.deep ? 'rx-deep' : 'rx-ch'); /* from the card page it replaces the card: Back goes to the feed, not round again */
+    Object.assign(RX, { ch, viewing: null, cmp: [], tab: 'iterate', editing: false, draft: '', knobSel: {}, briefEdit: false, sending: null }); /* a reply still running in another jam never freezes this one */ tapi('POST', `/api/changes/${ch.id}/open`, {}); REMIXES = null; if (!o.fromHistory) nav(`#remix=${RX.p.id}/${ch.id}`, !o.replace, o.deep ? 'rx-deep' : 'rx-ch'); /* from the card page it replaces the card: Back goes to the feed, not round again */
     $('#view').innerHTML = `<div class="std"></div>`; window.scrollTo(0, 0); paintStudio();
     autoImage(ch);
   };

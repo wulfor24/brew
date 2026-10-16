@@ -277,12 +277,11 @@ export function createJamBrief(o) {
       if (b.decided !== undefined) w.decided = b.decided || null;
       const to = b.to === 'team' ? 'team' : 'shopos', prev = w.jamBrief || null;
       w.jamBrief = finalDoc(t, w); w.doc.shippedAt = now(t); w.jamBrief.sharedAt = now(t); w.jamBrief.to = to; w.jamBrief.spec = w.doc.spec || [];
-      /* a brief already with the ShopOS team stays theirs: a copy for your own team keeps its status, sender and history */
-      const withShopos = prev?.status && prev.to !== 'team';
-      if (to === 'team' && withShopos) Object.assign(w.jamBrief, { to: 'shopos', status: prev.status, statusAt: prev.statusAt, history: prev.history || [], sender: prev.sender, teamCopyAt: now(t) });
-      /* the same brief sent again within ten minutes, before the team has touched it, is not emailed twice (a double tap, or Send it anyway right after) */
-      const resend = to === 'shopos' && withShopos && prev.status === 'sent' && prev.md === w.jamBrief.md && now(t) - (prev.sharedAt || 0) < 10 * 60e3; /* once the team has moved it on, sending again is a real send */
-      if (to === 'shopos' && resend) Object.assign(w.jamBrief, { status: prev.status, statusAt: prev.statusAt, history: prev.history || [], sender: prev.sender });
+      /* a brief already with the ShopOS team stays theirs: a copy for your own team is built and copied, then the ShopOS brief is put back */
+      const teamOfShopos = to === 'team' && prev?.status && prev.to !== 'team';
+      /* the same brief, already emailed in the last ten minutes and not yet touched by the team, is not emailed twice */
+      const resend = to === 'shopos' && prev?.status === 'sent' && prev.to !== 'team' && prev.sentMd && prev.sentMd === w.jamBrief.md && now(t) - (prev.sentAt || 0) < 10 * 60e3;
+      if (to === 'shopos' && resend) Object.assign(w.jamBrief, { status: prev.status, statusAt: prev.statusAt, history: prev.history || [], sender: prev.sender, sentMd: prev.sentMd, sentAt: prev.sentAt });
       else if (to === 'shopos') { w.jamBrief.history = prev?.history || []; startStatus(w.jamBrief, { by: o.meOf?.(t) || null, at: now(t) }); }
       if (!w.ticket) w.ticket = await nextTicket(t);
       let share = null;
@@ -291,11 +290,12 @@ export function createJamBrief(o) {
       if (to === 'shopos' && resend) return { work: w, share, status: w.jamBrief.status || null, already: true };
       if (to === 'shopos') {
         const sent = o.onBriefSent ? await o.onBriefSent(t, w).catch((e) => { log.warn('[brief sent]', e.message); return false; }) : (o.onShopos?.(t, w, { why: 'shared a brief with the ShopOS team', text: '' }), false);
+        if (sent) Object.assign(w.jamBrief, { sentMd: w.jamBrief.md, sentAt: now(t) }); /* only what really went out counts as sent for the double-tap check */
         say(t, w, { from: 'system', body: `Brief ${w.ticket} ${sent ? 'sent to' : 'ready for'} the ShopOS team: the brief, deliverables, assets, rules and when it is done${open}. ${sent ? 'You’ll see each step here as they pick it up.' : 'Paste it where they work.'}` });
         move(t, w, 'shared', `${w.ticket}: brief ${sent ? 'sent to' : 'shared with'} the ShopOS team`);
       } else {
         say(t, w, { from: 'system', body: `Brief ${w.ticket} copied for your team: the card, options, plan, assets and both chats${open}. Paste it where they work.` });
-        move(t, w, 'shared', `${w.ticket}: brief shared with your team`);
+        if (teamOfShopos) w.jamBrief = { ...prev, teamCopyAt: now(t) }; else move(t, w, 'shared', `${w.ticket}: brief shared with your team`);
       }
       return { work: w, share, status: w.jamBrief.status || null };
     });

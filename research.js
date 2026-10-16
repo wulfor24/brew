@@ -397,7 +397,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     if (!out.items.length) throw new Error('no ads or trends to write how-tos from yet');
     const items = out.items.slice(0, 3).map((x) => ({ id: 'ht-' + crypto.createHash('sha1').update(String(x.h).toLowerCase()).digest('hex').slice(0, 10), /* from what it says: a numbered id was reused by the next read the same day */ h: clean(x.h), p: clean(x.p), steps: (x.steps || []).map(clean).slice(0, 4), card: clean(x.card || x.h), lane: LANES.includes(x.lane) ? x.lane : lane0, scene: x.scene, img: null, ...(x.by ? { by: x.by } : {}) }));
     await Promise.all(items.map(async (x) => {
-      const ref = refPhoto(x.lane); if (!ref) return;
+      const ref = refPhoto(x.lane); if (!ref || !photoFile(ref)) return;
       try {
         const buf = await geminiImage({ srcFile: photoFile(ref), prompt: `Create a new vertical product photograph: ${x.scene || 'the product on a clean bathroom shelf, soft morning daylight'}. ${`Keep the ${BN()} ${B().config.product?.noun || 'product'} and its label exactly as in the reference`}. ${B().config.product?.avoid || 'No text, no people.'} ${B().config.product?.editorial || B().config.product?.style || 'Premium D2C editorial product photography'}, calm, lots of empty space at the bottom.`, ratio: '9:16', model: process.env.WATCHER_IMAGE_MODEL || 'gemini-2.5-flash-image' });
         spent.images += 0.04; x.img = await saveMedia(buf, imgExt(buf));

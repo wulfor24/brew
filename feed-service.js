@@ -17,7 +17,7 @@ import { allowedFrom, unbacked, numbersIn } from './fact-gate.js';
 import { createRemix } from './remix.js';
 import { saveGen } from './gen-store.js';
 import { createJamBrief } from './jam-brief.js';
-import { briefParts, withTeam } from './brief-status.js';
+import { briefParts, withTeam, LABEL as BRIEF_LABEL } from './brief-status.js';
 import { createTuning, tuneScore, learnedSignals, withoutIgnored, AGENTS as TUNE_AGENTS, WEIGHT as TUNE_WEIGHT } from './member-tuning.js'; // Your feed: per-member agent weights, topics, learned signals
 import { memberKey } from './brand-memory.js';
 import { createAskBrew, answerAsk, cleanSeed } from './ask-brew.js'; // Ask Brew: one thread per member across feed, moves and facts
@@ -626,7 +626,7 @@ export function createFeedService(o) {
       const stImg = (id) => `b/${B().slug}/statics/${id}.jpg`;
       const ref = refPhoto(lane);
       let img = STATICS.length ? stImg(STATICS.includes(j.image) ? j.image : STATICS[0]) : ref, imgNote = STATICS.length ? 'picked from your statics' : 'your product photo'; /* the brand's own product photo; with none, no picture is made (never the wrong product) */
-      if (ref && spend('image')) {
+      if (ref && photoFile(ref) && spend('image')) {
         try {
           const buf = await geminiImage({ srcFile: photoFile(ref), prompt: `Create a new product photograph: ${j.scene || 'the product on a clean surface, soft daylight'}. ${`Keep the ${BN()} ${B().config.product?.noun || 'product'} and its label exactly as in the reference`}. ${B().config.product?.avoid || 'No text, no before/after.'} ${(B().config.product?.style || 'Premium D2C product ad photography') + '.'}`, ratio: '4:5', model: process.env.WATCHER_IMAGE_MODEL || 'gemini-2.5-flash-image' });
           const key = crypto.createHash('sha1').update(j.title + j.scene).digest('hex').slice(0, 16);
@@ -1440,7 +1440,7 @@ export function createFeedService(o) {
   on('POST', '/api/cards/:cid/image', async (b, t, p) => {
     const c = t.cards.get(p.cid); if (!c) return { error: 'not found' };
     if (isMock() || !spend('image')) return { error: 'Images are paused right now. Try again in a bit.' };
-    const lane = LANE_PHOTO[c.lane] ? c.lane : Object.keys(LANE_PHOTO)[0];
+    const lane = LANE_PHOTO[c.lane] ? c.lane : Object.keys(LANE_PHOTO)[0]; if (!photoFile(LANE_PHOTO[lane] || Object.values(LANE_PHOTO)[0])) return { error: 'There’s no product photo to start from.' };
     const buf = await geminiImage({ srcFile: photoFile(LANE_PHOTO[lane] || Object.values(LANE_PHOTO)[0]), prompt: `Create a new product photograph for this ad idea: ${c.title}. ${c.scene || ''} ${`Keep the ${BN()} ${B().config.product?.noun || 'product'} and its label exactly as in the reference`}. ${B().config.product?.avoid || 'No text, no before/after.'} ${(B().config.product?.style || 'Premium D2C product ad photography') + '.'}`, ratio: '4:5', model: process.env.WATCHER_IMAGE_MODEL || 'gemini-2.5-flash-image' });
     const key = crypto.createHash('sha1').update(c.id + ':' + Date.now()).digest('hex').slice(0, 16), url = `gen/${key}.png`; saveGen(key + '.png', buf);
     const old = String(b.src || '').replace(/^\/+/, '');
@@ -1753,7 +1753,7 @@ export function createFeedService(o) {
     return guestAllows(path, { wids, changes, cards: new Set(all.filter((w) => wids.includes(w.id)).map((w) => w.cardId).filter(Boolean)) });
   };
   /* the writes a demo-mode visitor may still make: none of them calls a model or makes an asset */
-  const DEMO_OK = /^\/api\/(tenants|work|brands\/[^/]+\/drop|tenants\/[^/]+\/(ready|clock|events|pin|cards|notes\/(clear|read)|stories\/[^/]+\/seen|deck-layout|state|learning\/.+|ask|tuning(\/.+)?)|cards\/[^/]+\/(feedback|decided)|work\/[^/]+\/(decided|discard|restore|pick|version|approve|reopen|edit|jb\/move|draft\/[^/]+\/drop)|changes\/[^/]+\/(open|discard|restore|pick|notes|edit))$/;
+  const DEMO_OK = /^\/api\/(tenants|work|tenants\/[^/]+\/(ready|clock|events|pin|cards|notes\/(clear|read)|stories\/[^/]+\/seen|deck-layout|state|learning\/.+)|cards\/[^/]+\/(feedback|decided)|work\/[^/]+\/(decided|discard|restore|pick|version|approve|reopen|edit|jb\/move|draft\/[^/]+\/drop)|changes\/[^/]+\/(open|discard|restore|pick|notes|edit))$/;
   // every request runs inside its brand: the tenant's brand, or (creating one) the brand the page was opened for
   const handle = async (req, res, u) => {
     if (!/^\/(h\/|api\/(share|tenants|cards|jams|work|changes|brands\/[a-z0-9-]+\/drop$))/.test(u.pathname)) return false;
@@ -1782,6 +1782,8 @@ export function createFeedService(o) {
     /* on live, a brand's feed, moves and read are for its team (Param, 2026-10-15); the demo site stays open. Someone outside the
        team sees an empty feed (the page still loads, and a guest still gets their jam), and only their own jam's card */
     const outside = br.kind === 'generated' && o.liveTeamOnly?.() && !viewer?.member && !viewer?.gen;
+    /* Ask, Your feed and Drop are the team's: outside it, on live, no writes either (Ask's answers name the brand's cards) */
+    if (outside && req.method !== 'GET' && /^\/api\/(tenants\/[^/]+\/(ask|tuning)(\/.*)?|brands\/[^/]+\/drop)$/.test(u.pathname)) { send(res, 403, { error: 'This is for the brand’s team.', teamOnly: true }); return true; }
     if (outside && req.method === 'GET') {
       if (/^\/api\/tenants\/[^/]+\/feed$/.test(u.pathname)) { send(res, 200, { order: [], cards: {}, scores: {}, pinned: [], limit: { plan: 'free', daily: null, locked: 0 }, teamOnly: true }); return true; }
       if (/^\/api\/tenants\/[^/]+\/stories$/.test(u.pathname)) { send(res, 200, { rings: [], teamOnly: true }); return true; }
@@ -1812,7 +1814,7 @@ export function createFeedService(o) {
       /* a shared brief is frozen: the page shows what was shared (w.jamBrief.context), not the jam as it is now; sharing again replaces it */
       const x = w.jamBrief?.context ? { ...w.jamBrief.context, frozenAt: w.jamBrief.sharedAt || null } : await HO.build(t, w, { base: `${req.headers['x-forwarded-proto'] || (req.socket.encrypted ? 'https' : 'http')}://${req.headers.host}` });
       /* the content is frozen, the stamp is not: it shows where the brief is now (Received, In progress, Delivered…) */
-      const jb = w.jamBrief; if (jb) x.memo = { ...(x.memo || {}), status: jb.status ? { sent: 'Sent', received: 'Received', in_progress: 'In progress', needs_info: 'Needs info', delivered: 'Delivered' }[jb.status] || null : null, ...(jb.sender && !x.memo?.from ? { from: jb.sender.name || jb.sender.email || null } : {}) };
+      const jb = w.jamBrief; if (jb) x.memo = { ...(x.memo || {}), status: jb.status ? BRIEF_LABEL[jb.status] || null : null, ...(jb.sender && !x.memo?.from ? { from: jb.sender.name || jb.sender.email || null } : {}) };
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' }); res.end(HO.html(x)); return true;
     }
     const sm = u.pathname.match(/^\/api\/share\/([\w~-]+)$/);
