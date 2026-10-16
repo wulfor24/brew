@@ -45,13 +45,19 @@ export default {
     const ins = (params) => all(`${A}/insights`, c.token, { ...params, limit: 200 }, 5);
     /* an agency or group ad account runs ads for several Pages: count only the ads that promote this brand's Page */
     const pages = await get(`${A}/promote_pages`, c.token, { fields: 'id,name,website', limit: 100 }).then((j) => j.data || []).catch(() => []);
-    const own = pages.find((p) => (ctx.pageId && String(p.id) === String(ctx.pageId)) || String(p.website || '').split(/\s+/).some((w) => exactSite(w, ctx.host)));
+    const nameKey = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+    const own = pages.find((p) => (ctx.pageId && String(p.id) === String(ctx.pageId)) || String(p.website || '').split(/\s+/).some((w) => exactSite(w, ctx.host)))
+      /* a Page with no website set: its name is the brand's (one match only, never a guess between two) */
+      || (() => { const k = nameKey(ctx.profile?.name); const xs = k.length >= 4 ? pages.filter((p) => nameKey(p.name) === k) : []; return xs.length === 1 ? xs[0] : null; })();
     const ads = await all(`${A}/ads`, c.token, { fields: 'id,campaign_id,effective_status,creative{effective_object_story_id,object_story_spec}', limit: 200 }, 10).catch(() => null);
     const pageOf = (a) => String(a.creative?.object_story_spec?.page_id || String(a.creative?.effective_object_story_id || '').split('_')[0] || '');
     const adPages = new Set((ads || []).map(pageOf).filter(Boolean));
     const shared = !!(own && ads && [...adPages].some((pid) => pid !== String(own.id)));
     const mine = shared ? new Set(ads.filter((a) => pageOf(a) === String(own.id)).map((a) => a.id)) : null;
     if (shared) notes.push(`This ad account also runs ads for other Pages. Brew counts only the ads for ${own.name}.`);
+    /* ads for several Pages and none of them known to be this brand's: the totals are the whole account's, and say so */
+    const whole = !own && adPages.size > 1;
+    if (whole) notes.push('This ad account runs ads for several Pages and none is linked to this site, so spend is the whole account’s. Add the site to your Facebook Page to count only yours.');
     if (!shared) {
       const [tot] = await ins({ date_preset: 'last_30d', fields: 'spend,impressions,clicks,reach,frequency,actions,action_values' });
       if (tot) { m.spend = +tot.spend || 0; const buys = pick(tot.actions, PURCHASE), value = pick(tot.action_values, PURCHASE);
@@ -82,9 +88,9 @@ export default {
       if (best && best !== worst && best.roas > worst.roas * 1.3) out.push(card(k, name, lane, 'shift', { agent: 'performance', sector: 'ads', type: 'decision', roles: ['growth', 'founder'], badge: [`${best.roas.toFixed(1)}x`, 'ok'], cta: 'Shift budget',
         title: `Move ${F.money(worst.spendDay * 0.2)} a day to ${best.name}`, sub: `This week ${best.name} returned ${best.roas.toFixed(1)}x and ${worst.name} ${worst.roas.toFixed(1)}x. Moving a fifth of the weaker budget in one step keeps learning intact.`,
         rows: [['From', `${worst.name} · ${worst.roas.toFixed(1)}x`], ['To', `${best.name} · ${best.roas.toFixed(1)}x`], ['Move a day', F.money(worst.spendDay * 0.2)], ['Cost per purchase, 30 days', has(m.cpa) ? F.money(m.cpa) : null]], detail: { why: ['Returns differ by campaign, so the budget should too.', 'One step of 20% keeps the learning phase.'], how: ['Move the budget tomorrow morning', 'Read it after 7 days', 'Move it back if cost per purchase rises 15%'] } })); }
-    const stats = [has(m.spend) && ['Spend, last 30 days', F.big(m.spend)], has(m.roas) && ['Return on ad spend', `${m.roas.toFixed(1)}x`], has(m.cpa) && ['Cost per purchase', F.money(m.cpa)], has(m.live) && ['Live ads', n0(m.live)]].filter(Boolean);
+    const stats = [has(m.spend) && [whole ? 'Whole ad account spend, 30 days' : 'Spend, last 30 days', F.big(m.spend)], has(m.roas) && ['Return on ad spend', `${m.roas.toFixed(1)}x`], has(m.cpa) && ['Cost per purchase', F.money(m.cpa)], has(m.live) && ['Live ads', n0(m.live)]].filter(Boolean);
     const changed = [has(m.cpa) && `Ad cards show your live cost per purchase (${F.money(m.cpa)})`, m.tired.length && `${n0(m.tired.length)} tired ads flagged for fresh versions`, m.camp.length && `Budget moves between your ${m.camp.length} active campaigns`].filter(Boolean);
-    const ledger = [has(m.spend) && L('meta.spend.30d', 'Meta spend, last 30 days', F.big(m.spend), m.spend, src), has(m.roas) && L('meta.roas', 'Meta return on ad spend, 30 days', `${m.roas.toFixed(1)}x`, m.roas, src), has(m.cpa) && L('meta.cpa', 'Meta cost per purchase, 30 days', F.money(m.cpa), m.cpa, src),
+    const ledger = [has(m.spend) && L('meta.spend.30d', whole ? 'Meta spend, whole ad account (several Pages), last 30 days' : 'Meta spend, last 30 days', F.big(m.spend), m.spend, src), has(m.roas) && L('meta.roas', 'Meta return on ad spend, 30 days', `${m.roas.toFixed(1)}x`, m.roas, src), has(m.cpa) && L('meta.cpa', 'Meta cost per purchase, 30 days', F.money(m.cpa), m.cpa, src),
       has(m.live) && L('meta.ads.live', 'Live Meta ads', n0(m.live), m.live, src), hot && L('meta.frequency.max', 'Highest campaign frequency, 7 days', hot.freq.toFixed(1), hot.freq, src)].filter(Boolean);
     return { metrics: m, stats, changed, cards: out, ledger, notes };
   }
