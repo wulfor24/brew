@@ -4182,8 +4182,8 @@
         ${L.autoChecks.length || L.questions.length ? `<section class="lx-sec">${lxHead('lx-checks', 'Questions it answers itself', L.autoChecks.length || '', '')}${L.autoChecks.map(checkHtml).join('')}${forming(L.questions, 'On their way')}</section>` : ''}
         ${heardHtml}${calHtml}
         ${L.exemplars.length ? `<section class="lx-sec">${lxHead('lx-wins', 'Winners it learns from', L.exemplars.length, '')}${L.exemplars.map((x) => { const tt = lxCopy(x.title), sb = lxCopy(x.sub); return `<div class="lx-win">${face(x.agent)}<div><b>${esc(tt)}</b>${sb && !sb.startsWith(tt) ? `<span>${esc(sb)}</span>` : ''}<small>${esc(AGENT[x.agent] || '')} · ${ago(x.at)}</small></div></div>`; }).join('')}</section>` : ''}
-        ${trustHtml}${memHtml}
-        ${runs.length ? `<details class="q-more"${LX.all ? ' open' : ''}><summary>What it read lately</summary><ul class="lx-act">${runs.slice(0, 30).map(({ s, n }) => { const tt = s.kind === 'edit' ? lxCopy(s.after?.title) : ''; return `<li><span class="lx-dot k-${esc(s.kind)}"></span><div><b>${esc(lxSig(s))}${n > 1 ? ` <em>×${n}</em>` : ''}</b>${tt ? `<span>${esc(tt.slice(0, 70))}</span>` : ''}<small>${s.agent ? `${esc(AGENT[s.agent] || s.agent)} · ` : ''}${ago(s.at)}</small></div></li>`; }).join('')}</ul></details>` : ''}
+        ${trustHtml}
+        ${'' /* "What Brew knows about <brand>" (memHtml) and "What it read lately" (runs) are hidden (Param, 2026-10-16) */}
       </div>`);
     $('#col')?.classList.add('lib-col', 'lx-col');
     $('[data-hd-open]')?.addEventListener('click', () => openHeard());
