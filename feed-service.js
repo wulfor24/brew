@@ -1022,7 +1022,7 @@ export function createFeedService(o) {
   const move = (t, w, stage, text, kind) => { if (stage === 'deploying' && w.cardId) decideFromAction(t, t.cards.get(w.cardId), w); const was = w.stage; w.stage = stage; if (was !== stage) stepLearn(t, w, stage); w.history.push([stage, now(t)]); w.updatedAt = now(t); if (text) notify(t, w, text, kind); };
   const say = (t, w, m) => { const msg = { id: uid('m'), at: now(t), ...m }; if (msg.from === 'me' && !msg.by) { const p = meOf(t); if (p) { msg.by = p; JAMS.join(w, p, 'replied'); } } w.thread.push(msg); if (msg.from === 'me' && w.slack?.ts && o.slack) slackMirror(t, w, msg); if (msg.by) mailEv(t, w, { kind: 'reply', to: (w.people || []).map((x) => x.email), by: msg.by, text: msg.body, id: msg.id }); if (msg.by) w.lastBy = msg.by.email; w.updatedAt = now(t); JB?.onSay(t, w, msg); };
   const curV = (w) => w.versions.find((v) => v.n === w.current) || w.versions[w.versions.length - 1];
-  const addVersion = (t, w, v) => { const n = w.versions.length + 1; w.versions.push({ n, ...v, at: now(t) }); w.current = n; w.title = v.title; if (v.images?.[0]) w.img = v.images[0]; RMX?.onWorkVersion(t, w, v); return n; };
+  const addVersion = (t, w, v) => { const n = w.versions.length + 1; w.versions.push({ n, ...v, at: now(t) }); w.current = n; w.title = v.title; if (v.images?.[0]) w.img = v.images[0]; RMX?.onWorkVersion(t, w, v); if (v.images?.[0] && v.by !== 'agent') slackAsset(t, w, { title: `v${n}: ${v.title}`, copy: v.sub, image: v.images[0], kind: 'version', note: v.note }); return n; };
   const workFor = (t, cardId) => t.work.find((w) => w.cardId === cardId && !w.archived && !w.discarded && !['out', 'measuring', 'result'].includes(w.stage));
   const newWork = (t, c) => {
     const w = { id: uid('wk'), cardId: c.id, title: c.title, img: c.images?.[0] || null, agent: c.agent, sector: c.sector, cta: c.cta?.label || null, stage: 'drafting',
@@ -1043,6 +1043,21 @@ export function createFeedService(o) {
     { type: 'actions', elements: [{ type: 'button', style: 'primary', text: { type: 'plain_text', text: `Approve v${w.current}` }, action_id: 'approve', value: `${slugOfT(t)}|${w.id}|${w.current}` },
       ...(page ? [{ type: 'button', text: { type: 'plain_text', text: 'Open in Brew' }, url: page, action_id: 'open' }] : [])] },
     { type: 'context', elements: [{ type: 'mrkdwn', text: 'Reply in this thread: replies land in the Brew jam and its brief.' }] }];
+  /* every new asset in a jam that has a Slack thread goes to that thread for review: the picture inline, a video, voice or the
+     slides as a link, and Approve for the jam's current version */
+  const pubUrl = (x) => { const s = String(x || ''); if (!s) return null; if (/^https:\/\//.test(s)) return s; const base = (process.env.PUBLIC_URL || 'https://brew.joinsquareup.com').replace(/\/$/, '');
+    return /^https?:\/\/localhost/.test(base) ? null : `${base}/${s.replace(/^\//, '')}`; };
+  const slackAsset = (t, w, a) => {
+    if (!o.slack || !w?.slack?.ts) return; const img = pubUrl(a.image), what = { image: 'image', video: 'video', voice: 'voiceover', carousel: 'carousel', text: 'copy', version: 'version' }[a.kind] || 'draft';
+    const text = `*New ${what} for review:* ${a.title || w.title}${a.note ? ` (${a.note})` : ''}`;
+    const links = [a.video && ['Watch the video', a.video], a.audio && ['Play the voiceover', a.audio], a.zip && ['Get the slides', a.zip]].filter(Boolean).map(([l, u]) => [l, pubUrl(u)]).filter(([, u]) => u);
+    const blocks = [{ type: 'section', text: { type: 'mrkdwn', text: `${text}${a.copy ? `\n${String(a.copy).slice(0, 2500)}` : ''}` } },
+      ...(img && /\.(png|jpe?g|gif|webp)(\?|$)/i.test(img) ? [{ type: 'image', image_url: img, alt_text: String(a.title || w.title).slice(0, 200) }] : []),
+      { type: 'actions', elements: [{ type: 'button', style: 'primary', text: { type: 'plain_text', text: `Approve v${w.current}` }, action_id: 'approve', value: `${slugOfT(t)}|${w.id}|${w.current}` },
+        ...links.map(([l, u], i) => ({ type: 'button', text: { type: 'plain_text', text: l }, url: u, action_id: `open_${i}` })),
+        ...(w.slack.page ? [{ type: 'button', text: { type: 'plain_text', text: 'Open in Brew' }, url: w.slack.page, action_id: 'open' }] : [])] }];
+    o.slack.slackPost(slugOfT(t), { channel: w.slack.channel, thread_ts: w.slack.ts, text, blocks }).then((r) => { if (r?.error) log.warn('[slack] asset', r.error); }).catch(() => {});
+  };
   const toSlack = async (t, w, { text, page, channel }) => {
     if (!o.slack) return { error: 'Slack isn’t on here.' }; if (!reqOf(t)?.member) return { error: 'Only the brand’s team posts to its Slack.' };
     const r = await o.slack.slackPost(slugOfT(t), { channel, text, blocks: slackBlocks(t, w, text, page) }); if (r.error) return r;
@@ -1544,7 +1559,7 @@ export function createFeedService(o) {
   JB.routes({ toSlack: o.slack ? toSlack : null, on, W, say, move, notify, learn: learnOf, nextTicket: (t) => { leadsAllTenants++; return nextBrandTicket(t); }, handoff: { build: (...a) => HO.build(...a), text: (...a) => HO.text(...a) } });
   // first drafts in a jam, one tap away: image, video, voice or text, made only when someone asks (drafts.js)
   DR = createDrafts({ claudeTool, geminiImage, treg: o.treg, launchBrowser: o.launchBrowser, zipBuffer: o.zipBuffer, photoAsync: o.photoAsync, photoFile, catalogOf: (t) => (t ? brandOfT(t)?.catalog : null), brandName: (t) => (t ? brandOfT(t)?.seed?.brand?.name || '' : ''), photoOf: (c) => LANE_PHOTO[c?.lane] || Object.values(LANE_PHOTO || {})[0], cardOf: (t, id) => { const c = t.cards.get(id); return c ? fillCard(c, t) : null; },
-    briefOf: (t, w) => JB.seed(t, w)?.md, cardBrief, seatLine, isMock, spend, clean, now, uid, say, save: (t) => store?.save(t), AGENT, log }); DR.routes({ on, W });
+    briefOf: (t, w) => JB.seed(t, w)?.md, cardBrief, seatLine, isMock, spend, clean, now, uid, say, save: (t) => store?.save(t), AGENT, onReady: (t, w, d) => slackAsset(t, w, { title: d.title, copy: d.copy, image: d.image, video: d.video, audio: d.audio, zip: d.zip, kind: d.as }), log }); DR.routes({ on, W });
   MOVES ||= createMoves(path.dirname(PUB));
   // the card page: options, our pick, recommendation, what follows, and the move details that matter.
   // Seed cards are prebuilt (tools/build_card_pages.mjs); any other card is built once on first open.

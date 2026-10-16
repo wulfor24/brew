@@ -44,7 +44,7 @@ export const imagePrompt = (j, hasSrc) => `Create a new photograph for ${j.title
 export const DRAFT_SCHEMA = SCHEMA;
 export const DRAFT_RATIOS = RATIOS;
 
-export function createDrafts({ claudeTool, geminiImage, treg, launchBrowser, zipBuffer, photoAsync, photoFile, photoOf, catalogOf = () => null, brandName = () => '', cardOf, briefOf, cardBrief, seatLine, isMock, spend, clean, now, uid, say, save, AGENT, log = console }) {
+export function createDrafts({ claudeTool, geminiImage, treg, launchBrowser, zipBuffer, photoAsync, photoFile, photoOf, catalogOf = () => null, brandName = () => '', cardOf, briefOf, cardBrief, seatLine, isMock, spend, clean, now, uid, say, save, AGENT, onReady = null, log = console }) {
   const keyOf = (s) => crypto.createHash('sha1').update(s).digest('hex').slice(0, 16);
   /* a store photo by URL (the catalog's own image), fetched once into tmp */
   const fetchPhoto = async (u) => { const f = path.join(os.tmpdir(), 'brew-ph-' + keyOf(u) + '.jpg'); if (!fs.existsSync(f)) { const r = await safeFetch(u, { signal: AbortSignal.timeout(20e3) }); if (!r.ok) return null; fs.writeFileSync(f, Buffer.from(await r.arrayBuffer())); } return f; };
@@ -144,6 +144,7 @@ export function createDrafts({ claudeTool, geminiImage, treg, launchBrowser, zip
       }
       inflight.delete(d.id); d.step = null; d.doneAt = now(t);
       if (d.state === 'ready') say(t, w, { from: 'ai', who: AGENT[w.agent] || 'AI', body: `First draft ready: ${d.title}. It’s at the top of the brief.` });
+      if (d.state === 'ready') try { onReady?.(t, w, d); } catch (e) { log.warn('[draft ready]', e.message); } /* e.g. posted to the jam's Slack thread for review */
       save(t);
     })();
     return d;

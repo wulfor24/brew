@@ -97,6 +97,9 @@ test('Slack routes: Approve only counts from the workspace that brand connected'
     await press('T2'); assert.equal(seen.length, 0, 'another workspace changes nothing');
     assert.equal((await press('T1')).code, 200);
     assert.deepEqual(seen[0][1], { slug: 'cozy', kind: 'approve', thread: '1.0', user: { name: 'Ana' }, n: 3 });
-    assert.equal(seen[1][1].update, '1.0'); assert.ok(!seen[1][1].blocks.some((b) => b.type === 'actions'), 'the button gives way to who approved');
+    assert.equal(seen[1][1].update, '1.0');
+    seen.length = 0; const raw = new URLSearchParams({ payload: JSON.stringify({ type: 'block_actions', team: { id: 'T1' }, user: { id: 'U1' }, channel: { id: 'C1' }, message: { ts: '2.0', thread_ts: '1.0', text: 'x', blocks: [] }, actions: [{ action_id: 'approve', value: 'cozy|wk1|3' }] }) }).toString();
+    await h(reqOf(raw, sign(raw)), resOf(), new URL('https://x/slack/actions')); await tick();
+    assert.equal(seen[0][1].thread, '1.0', 'Approve on an asset in the thread finds the jam by its thread'); assert.ok(!seen[1][1].blocks.some((b) => b.type === 'actions'), 'the button gives way to who approved');
   } finally { globalThis.fetch = f0; }
 });

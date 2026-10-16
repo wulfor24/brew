@@ -114,7 +114,7 @@ export function createHandoff({ RMX, pageOf, fillCard, AGENT = {}, SEED = {}, ba
     /* teammates open the jam itself; the ShopOS team also gets the read-only page with every asset */
     L.push('', `🎛️ *Open the jam (latest version, chat and brief):* ${x.links.jam}`);
     L.push(`📎 *The full brief, read-only (card, assets, every message, the package):* ${x.links.page}`); // both shares carry the read-only page
-    L.push(to === 'brew' ? '' : `When we’re done here, paste this chat back into Brew and the brief updates.`);
+    L.push(to === 'brew' ? '' : to === 'slack-live' ? '' : `When we’re done here, paste this chat back into Brew and the brief updates.`); /* a real Slack thread comes back on its own */
     return L.filter((l, i, a) => !(l === '' && a[i - 1] === '')).join('\n').trim();
   };
 

@@ -246,7 +246,7 @@ export function createJamBrief(o) {
       if (b.decided !== undefined) w.decided = b.decided || null;
       // the full context goes with it: card, options, moves, brief, package and assets, both chats, and a link to all of it
       let text = waText(t, w), page = null;
-      if (handoff) { try { const x = await handoff.build(t, w, { base: b.base }); text = handoff.text(x, to); page = x.links.page; } catch (e) { log.warn('[handoff]', e.message); } }
+      if (handoff) { try { const x = await handoff.build(t, w, { base: b.base }); text = handoff.text(x, to === 'slack' && toSlack ? 'slack-live' : to); page = x.links.page; } catch (e) { log.warn('[handoff]', e.message); } }
       /* a really connected Slack: the jam is posted to the channel, and its thread talks to this jam from now on */
       if (to === 'slack' && toSlack) {
         const r = await toSlack(t, w, { text, page, channel: b.channelId || null });

@@ -21,19 +21,19 @@ export function createSlackRoutes({ connectors, feed, log = console, secret = ()
   const out = (res, code, body) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(body == null ? '' : JSON.stringify(body)); };
 
   async function reply(ev, team) {
-    const slug = await connectors.slackSlug(team); if (!slug) return;
+    const slug = await connectors.slackSlug(team); if (!slug) return log.warn('[slack] no brand has workspace', team);
     const user = await connectors.slackUser(slug, ev.user); if (user.bot) return;
     const r = await feed()?.slackIn({ slug, kind: 'reply', thread: ev.thread_ts, ts: ev.ts, user, text: plain(ev.text) });
-    if (r?.w) log.log?.(`[slack] ${slug}: a reply from ${user.name} in jam ${r.w.id}`);
+    log.log?.(r?.w ? `[slack] ${slug}: a reply from ${user.name} in jam ${r.w.id}` : `[slack] ${slug}: no jam has thread ${ev.thread_ts}`);
   }
   async function press(p) {
     const a = (p.actions || [])[0]; if (a?.action_id !== 'approve') return;
-    const [slug, wid, n] = String(a.value || '').split('|'), team = p.team?.id, ts = p.message?.ts;
+    const [slug, wid, n] = String(a.value || '').split('|'), team = p.team?.id, ts = p.message?.ts, root = p.message?.thread_ts || ts; /* pressed on the jam's post or on an asset in its thread */
     const tell = (text) => p.response_url && fetch(p.response_url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ response_type: 'ephemeral', replace_original: false, text }) }).catch(() => {});
     /* the button must come from the workspace this brand connected, on the jam's own post */
     if (!slug || (await connectors.slackSlug(team)) !== slug) return tell('This workspace isn’t connected to that brand in Brew any more.');
     const user = await connectors.slackUser(slug, p.user?.id); if (user.bot) return;
-    const r = await feed()?.slackIn({ slug, kind: 'approve', thread: ts, user, n: +n });
+    const r = await feed()?.slackIn({ slug, kind: 'approve', thread: root, user, n: +n });
     if (!r?.w || r.w.id !== wid) return tell('Brew couldn’t find that jam. Open it in Brew to approve.');
     if (r.stale) return tell(`It changed to v${r.w.current} in Brew since this was posted. Open it in Brew, check it, then approve.`);
     /* the post now says who approved it, in place of the button */
@@ -51,6 +51,7 @@ export function createSlackRoutes({ connectors, feed, log = console, secret = ()
       out(res, 200, null); /* answered: Slack retries anything slower than 3 seconds */
       if (j.type !== 'event_callback' || !once(j.event_id)) return true;
       const ev = j.event || {};
+      log.log?.(`[slack] event ${ev.type}${ev.subtype ? '/' + ev.subtype : ''} from ${j.team_id}${ev.thread_ts ? ' in a thread' : ''}`);
       if (ev.type === 'app_uninstalled' || ev.type === 'tokens_revoked') connectors.slackGone(j.team_id).then((s) => s && log.log?.(`[slack] ${s}: Slack was removed`)).catch(() => {});
       else if (isReply(ev)) reply(ev, j.team_id || ev.team).catch((e) => log.warn('[slack] reply', e.message));
       return true;
