@@ -56,6 +56,10 @@ test('scorecard paid area: from the connected Meta account for the team, from th
   assert.ok(pa.parts.some((p) => p.src === 'Meta Ad Library')); assert.equal(pub.private, undefined); assert.doesNotMatch(JSON.stringify(pub), SECRET);
   assert.equal(ta.from, 'account'); assert.ok(ta.parts.every((p) => p.src !== 'Meta Ad Library'), 'no Ad Library parts in the team view');
   assert.deepEqual(ta.parts.filter((p) => p.of > 0).map((p) => p.k), ['Return on ad spend', 'Ad fatigue', 'Cost per order']);
+  /* Meta connected with nothing live (no return, cost or frequency yet): still the account, never the Ad Library */
+  const idle = auditScorecard({ profile: PROFILE, now: NOW, live: liveOf([row('meta.ads.live', 'Live Meta ads', '0', 0, 'Meta Ads'), row('meta.spend.30d', 'Meta spend, last 30 days', '₹9,861', 9861, 'Meta Ads')]) }).areas.find((a) => a.k === 'ads');
+  assert.equal(idle.from, 'account'); assert.equal(idle.score, 0); assert.match(idle.parts[0].note, /no ads are live in the connected Meta account \(spend over the last 30 days: ₹9,861\)/);
+  assert.ok(!automationContext({ profile: PROFILE, live: liveOf([row('meta.ads.live', 'Live Meta ads', '0', 0, 'Meta Ads')]) }).routines.some((r) => r.k === 'creative-refresh'), 'no ads live: no creative refresh');
   assert.equal(ta.parts[0].pts, Math.round((2.73 / 4) * 40)); assert.equal(ta.parts[1].pts, Math.round(((5 - 4.47) / 2.5) * 30)); assert.equal(ta.parts[2].pts, Math.round(((1 - 317 / 623) / 0.75) * 30));
   assert.equal(team.private, true); assert.deepEqual(team.accounts.sort(), ['klaviyo', 'meta', 'shopify']);
   /* a simulated row is never evidence */
@@ -120,4 +124,31 @@ test('weekly run with only simulated accounts: no private run at all', async () 
   const ai = echoAI(); const S = createMovesScheduler({ packs: P, ai, cardsGen: fakeCardsGen, log: quiet, env: {}, now: () => NOW });
   const r = await S.runOne(slug, ['auto']); assert.deepEqual(r.privWritten, []); assert.equal(ai.calls.filter((c) => c === 'moves-auto').length, 1);
   assert.equal(await P.getJSON(slug, 'private/audit/scorecard.json', null), null); assert.equal(await P.getJSON(slug, 'private/moves.json', null), null);
+});
+
+/* ---------- 2. the scorecard ---------- */
+test('scorecard route: a member gets the team scorecard (healed from today’s rows when missing), a visitor and a non-member the public one', async () => {
+  const { P } = mkPacks('score'), slug = 'acme-com'; await brand(P, slug);
+  const S = createMovesScheduler({ packs: P, ai: echoAI(), cardsGen: fakeCardsGen, log: quiet, env: {}, now: () => NOW });
+  await P.put(slug, 'audit/scorecard.json', auditScorecard({ profile: PROFILE, slug, now: NOW }));
+  await P.put(slug, 'moves/cadence.json', { runs: [{ at: NOW, written: [1001], privWritten: [1001] }], privLive: { auto: [1001] } });
+  const get = async (viewer) => { const out = {}; const h = S.routes({ viewerOf: async () => viewer, readBody: async () => ({}), send: (res, code, body) => Object.assign(out, { code, body }) });
+    await h({ method: 'GET' }, {}, new URL(`http://x/api/brands/${slug}/moves/cadence`)); return out; };
+  for (const viewer of [{ member: false, claimed: true }, { member: false, gen: true }, {}]) {
+    const r = await get(viewer); assert.equal(r.code, 200); assert.equal(r.body.scorecard.private, undefined); assert.equal(r.body.scorecard.areas.find((a) => a.k === 'ads').from, undefined);
+    assert.doesNotMatch(JSON.stringify(r.body), SECRET); assert.equal(r.body.state.privLive, undefined); assert.equal(r.body.state.runs[0].privWritten, undefined); }
+  assert.equal(await P.getJSON(slug, 'private/audit/scorecard.json', null), null, 'nothing saved yet');
+  const m = await get({ member: true, claimed: true });
+  assert.equal(m.body.scorecard.private, true); assert.equal(m.body.scorecard.areas.find((a) => a.k === 'ads').from, 'account'); assert.match(JSON.stringify(m.body.scorecard), /2\.73x/);
+  assert.deepEqual(m.body.state.privLive, { auto: [1001] });
+  assert.ok((await P.getJSON(slug, 'private/audit/scorecard.json')).private, 'healed and kept');
+  /* no real account (only simulated rows): members get the public one too */
+  await P.put(slug, 'private/connected-ledger.json', ROWS.map((e) => ({ ...e, demo: true })));
+  assert.equal((await get({ member: true })).body.scorecard.private, undefined);
+});
+
+test('the feed knows a weekly move’s card by its number, so the shared one steps aside for the team’s copy', async () => {
+  const { moveOfId } = await import('../feed-service.js');
+  assert.equal(moveOfId('m04-1'), 4); assert.equal(moveOfId('m1004-1'), 1004); assert.equal(moveOfId('m1004-2-p'), 1004);
+  assert.equal(moveOfId('statics-batch'), -1); assert.equal(moveOfId('idea-abc-p'), -1);
 });

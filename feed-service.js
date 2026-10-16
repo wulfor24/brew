@@ -67,6 +67,8 @@ const measureFor = (b) => (b._measure ||= genericMeasure(b));
 export const MEASURE = liveView((b) => measureFor(b));
 
 /* ---------- move cards follow their moves (pure; the feed service and tests use it) ---------- */
+/* the move a card belongs to, for the team's private copies (m04-1, m1004-1, m1004-1-p → 4, 1004); -1 for any other card */
+export const moveOfId = (id) => +((/^m(\d+)-/.exec(id) || [])[1] ?? -1);
 export const moveNoOf = (id) => { const m = /^m(\d+)-\d+$/.exec(String(id || '')); return m && +m[1] > 0 ? +m[1] : null; };
 // the version of the move a card was made from: a rewrite stamps meta.rewrittenAt; null when the card is not a move card or its move is gone
 export const moveVersion = (docs, id) => { const n = moveNoOf(id), m = n == null ? null : docs?.[n]; return m ? String(m.meta?.rewrittenAt || m.meta?.version || m.meta?.at || 1) : null; };
@@ -378,7 +380,6 @@ export function createFeedService(o) {
   };
   const connOn = (t, k) => !!(t.conn?.[k] || t.liveConn?.[k]);
   // live cards are the team's only; a real account hides its demo cards; a move rewritten privately replaces its shared cards
-  const moveOfId = (id) => +((/^m(\d\d)-/.exec(id) || [])[1] ?? -1);
   /* views: a member limited to some seats sees only cards meant for one of them; cards with no roles are everyone's */
   const seatOk = (t, c) => { const S = t.seats; return !S || !c.roles?.length || c.roles.some((r) => S.includes(r)); };
   /* a limited member can only view as one of their seats */

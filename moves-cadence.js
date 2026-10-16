@@ -101,9 +101,11 @@ export function auditScorecard({ profile: p = {}, slug = '', now = Date.now(), l
   { const own = p.ads?.own || {}, parts = [], items = own.items || [], lib = own.pageId ? `https://www.facebook.com/ads/library/?view_all_page_id=${own.pageId}` : 'https://www.facebook.com/ads/library/';
     const readAds = own.live != null && !own.error, lv = live || {};
     /* the team's view: the paid area is scored from the connected Meta account (return, frequency, cost per order), not the Ad Library */
-    const roas = nOf(lv['meta.roas']), freq = nOf(lv['meta.frequency.max']), cpa = nOf(lv['meta.cpa']), aov = nOf(lv['shopify.aov']);
-    if (roas != null || freq != null || cpa != null) {
+    const roas = nOf(lv['meta.roas']), freq = nOf(lv['meta.frequency.max']), cpa = nOf(lv['meta.cpa']), aov = nOf(lv['shopify.aov']), liveN = nOf(lv['meta.ads.live']);
+    const acct = roas != null || freq != null || cpa != null || liveN != null;
+    if (acct) {
       const src = 'Meta Ads account (connected)', at = (k) => (lv[k]?.at ? dayOf(Date.parse(lv[k].at) || now) : read);
+      if (liveN != null) parts.push(part('Live ads', (Math.min(liveN, 20) / 20) * 30, 30, `${liveN ? `${lv['meta.ads.live'].v} ads are live` : 'no ads are live'} in the connected Meta account${lv['meta.spend.30d'] ? ` (spend over the last 30 days: ${lv['meta.spend.30d'].v})` : ''}`, src, '', at('meta.ads.live')));
       if (roas != null) parts.push(part('Return on ad spend', (Math.min(roas, 4) / 4) * 40, 40, `Meta returned ${lv['meta.roas'].v} on ad spend over the last 30 days`, src, '', at('meta.roas')));
       if (freq != null) parts.push(part('Ad fatigue', freq <= 2.5 ? 30 : freq >= 5 ? 0 : ((5 - freq) / 2.5) * 30, 30, `the highest campaign frequency over 7 days is ${lv['meta.frequency.max'].v}${freq >= 3.5 ? ' (above 3.5, people tire of the same ads)' : ''}`, src, '', at('meta.frequency.max')));
       if (cpa != null && aov) { const r = cpa / aov; parts.push(part('Cost per order', r <= 0.25 ? 30 : r >= 1 ? 0 : ((1 - r) / 0.75) * 30, 30, `Meta cost per purchase is ${lv['meta.cpa'].v} against an average order of ${lv['shopify.aov'].v}`, src, '', at('meta.cpa'))); }
@@ -118,7 +120,7 @@ export function auditScorecard({ profile: p = {}, slug = '', now = Date.now(), l
     }
     const tech = p.site?.tech || {}; if (p.site?.tech) { const tags = ['metaPixel', 'ga4', 'gtm', 'googleAds', 'tiktokPixel'].filter((k) => tech[k]);
       parts.push(part('Tracking tags seen', tags.length ? 0 : 0, 0, tags.length ? `tags seen on the home page: ${tags.join(', ')}` : 'no Meta pixel, GA4 or Google Ads tag was detected on the home page read (to confirm: they may load later)', `${host} home page`, site)); }
-    area('ads', parts, roas != null || freq != null || cpa != null ? { from: 'account' } : {});
+    area('ads', parts, acct ? { from: 'account' } : {});
   }
   /* email and CRM */
   { const tech = p.site?.tech, parts = [];
@@ -195,8 +197,8 @@ export function automationContext({ profile: p = {}, listen = null, scorecard = 
   const mail = klav || tech.klaviyo ? 'Klaviyo' : 'their email tool';
   const offWhy = (k) => (klav && FLOW_OF[k] && off.includes(FLOW_OF[k]) ? `the ${FLOW_OF[k]} flow is not live in Klaviyo; ` : '');
   if (listen?.questions?.length) out.push({ k: 'reply-sweep', name: 'Weekly reply-to-questions sweep', why: `${listen.questions.length} open public questions were heard${listen.communities[0] ? `; the busiest community is ${listen.communities[0].name}` : ''}`, runs: 'Every Monday the team lists new public questions and posts an honest reply as the brand', tools: ['community replies'] });
-  if (lv['meta.ads.live'] || lv['meta.frequency.max']) out.push({ k: 'creative-refresh', name: 'Weekly creative refresh', why: [lv['meta.ads.live'] && `${lv['meta.ads.live'].v} live Meta ads in the account`, lv['meta.frequency.max'] && `the highest campaign frequency over 7 days is ${lv['meta.frequency.max'].v}`, lv['meta.cpa'] && `cost per purchase ${lv['meta.cpa'].v}`].filter(Boolean).join('; '), runs: 'Every Monday the team reads the ads, pauses the ones that fell behind and makes two fresh versions of the winners', tools: ['Meta Ads'] });
-  else if (own.live) out.push({ k: 'creative-refresh', name: 'Weekly creative refresh', why: `${own.live} live Meta ads; fresh creative keeps cost per order down`, runs: 'Every Monday the team reads the ads, pauses the ones that fell behind and makes two fresh versions of the winners', tools: ['Meta Ads'] });
+  if (nOf(lv['meta.ads.live']) > 0 || lv['meta.frequency.max']) out.push({ k: 'creative-refresh', name: 'Weekly creative refresh', why: [lv['meta.ads.live'] && `${lv['meta.ads.live'].v} live Meta ads in the account`, lv['meta.frequency.max'] && `the highest campaign frequency over 7 days is ${lv['meta.frequency.max'].v}`, lv['meta.cpa'] && `cost per purchase ${lv['meta.cpa'].v}`].filter(Boolean).join('; '), runs: 'Every Monday the team reads the ads, pauses the ones that fell behind and makes two fresh versions of the winners', tools: ['Meta Ads'] });
+  else if (own.live && !lv['meta.ads.live']) out.push({ k: 'creative-refresh', name: 'Weekly creative refresh', why: `${own.live} live Meta ads; fresh creative keeps cost per order down`, runs: 'Every Monday the team reads the ads, pauses the ones that fell behind and makes two fresh versions of the winners', tools: ['Meta Ads'] });
   for (const r of [{ k: 'review-ask', name: 'Review ask after delivery', why: `${fmt(p.reviews?.total || 0)} reviews so far${p.reviews?.app ? ` on ${p.reviews.app}` : ''}`, runs: `A message flow in ${mail} a set number of days after delivery, with a WhatsApp nudge`, tools: [mail, 'WhatsApp'] },
     { k: 'win-back', name: 'Win-back for lapsed buyers', why: 'repeat orders without new ad spend', runs: `A segment of buyers with no order in a set window, then a short series in ${mail} and WhatsApp, with a holdout`, tools: [mail, 'WhatsApp'] }]) {
     if (flowOn(r.k)) { skipped.push({ k: r.k, why: `the ${FLOW_OF[r.k]} flow already runs in Klaviyo` }); continue; }
@@ -526,6 +528,17 @@ export function createMovesScheduler({ packs, ai, memory = null, cardsGen = null
     await packs.put(slug, 'private/cards.json', [...pc.filter((c) => !own.test(c.id)), ...add]);
     if (add.length) onCards(slug, add, { private: true });
   }
+  /* the scorecard a viewer sees: members of a brand with real connected accounts get the team's (private/audit/scorecard.json),
+     scored again from today's rows when it is missing or older than them (free: no AI, no read); everyone else the public one */
+  async function scorecardFor(slug, member) {
+    const pub = () => packs.getJSON(slug, 'audit/scorecard.json', null).catch(() => null);
+    if (!member) return pub();
+    const rows = realRows(await packs.getJSON(slug, 'private/connected-ledger.json', []).catch(() => [])); if (!rows.length) return pub();
+    const saved = await packs.getJSON(slug, 'private/audit/scorecard.json', null).catch(() => null), newest = Math.max(0, ...rows.map((e) => Date.parse(e.at || 0) || 0));
+    if (saved?.private && Date.parse(saved.at || 0) >= newest) return saved;
+    const profile = await packs.getJSON(slug, 'profile.json', null).catch(() => null); if (!profile) return pub();
+    const sc = auditScorecard({ profile, slug, now: now(), live: liveOf(rows) }); await packs.put(slug, 'private/audit/scorecard.json', sc).catch(() => {}); return sc;
+  }
   const dueOf = async (slug, o = {}) => { const st = await stateOf(slug); const [s0, th, tr, pr] = await Promise.all([packs.getJSON(slug, 'status.json', {}), packs.getJSON(slug, 'listen/themes.json', null), packs.getJSON(slug, 'listen/threads.json', null), packs.getJSON(slug, 'profile.json', null)]).catch(() => [{}, null, null, null]);
     return movesDue(st, cfg, { now: now(), aiLive: ai?.live !== false, ready: !!s0?.ready, hasListen: !!(th?.themes?.length || tr?.threads?.length), readAt: pr?.meta?.readAt || null, ...o }); };
   let ticking = false;
@@ -543,7 +556,9 @@ export function createMovesScheduler({ packs, ai, memory = null, cardsGen = null
     const m = u.pathname.match(/^\/api\/brands\/([a-z0-9-]+)\/moves\/(refresh|cadence)$/); if (!m) return false;
     const [, slug, what] = m;
     if (!(await exists(slug))) return send(res, 404, { error: 'unknown brand' }), true;
-    if (what === 'cadence' && req.method === 'GET') { const st = await stateOf(slug); return send(res, 200, { state: { last: st.last || {}, live: st.live || {}, spend: st.spend || null, runs: (st.runs || []).slice(0, 5), nextN: st.nextN || null }, scorecard: await packs.getJSON(slug, 'audit/scorecard.json', null), due: await dueOf(slug), running: busy.has(slug), cap: cfg.weekCapUsd }), true; }
+    if (what === 'cadence' && req.method === 'GET') { const st = await stateOf(slug), v = await viewerOf(req, slug).catch(() => ({}));
+      return send(res, 200, { state: { last: st.last || {}, live: st.live || {}, spend: st.spend || null, runs: (st.runs || []).slice(0, 5).map(({ privWritten, ...r }) => (v.member ? { ...r, privWritten } : r)), nextN: st.nextN || null, ...(v.member ? { privLive: st.privLive || {} } : {}) },
+        scorecard: await scorecardFor(slug, !!v.member), due: await dueOf(slug), running: busy.has(slug), cap: cfg.weekCapUsd }), true; }
     if (what !== 'refresh' || req.method !== 'POST') return send(res, 404, { error: 'not found' }), true;
     const v = await viewerOf(req, slug);
     if (!v.gen) return send(res, 403, { error: `Demo mode: only ${v.host || 'the brand'}’s team makes new moves. Sign in with your work email, or ask them to invite you.`, demo: true, host: v.host || null }), true;
@@ -557,5 +572,5 @@ export function createMovesScheduler({ packs, ai, memory = null, cardsGen = null
   let timer = null;
   const start = () => { if (timer || cfg.killed || cfg.mock || cfg.local) { log.log?.(`[moves-cadence] weekly moves ${cfg.killed ? 'off (MOVES_REFRESH_OFF)' : cfg.mock ? 'off (AI mock)' : cfg.local ? 'off here (local)' : 'already on'}`); return false; }
     timer = setTimeout(function go() { tick().catch((e) => log.warn?.('[moves-cadence] tick', e.message)).finally(() => { timer = setTimeout(go, cfg.tickMs); timer.unref?.(); }); }, cfg.firstMs); timer.unref?.(); return true; };
-  return { cfg, tick, start, runOne, stateOf, due: dueOf, routes, retire };
+  return { cfg, tick, start, runOne, stateOf, due: dueOf, routes, retire, scorecardFor };
 }
