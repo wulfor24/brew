@@ -1,24 +1,12 @@
-// Asset generation, one chain per kind. Sloosh (its MCP, once integrated: SLOOSH_URL set) goes first; the raw model APIs on
-// our own keys are the working fallback, never treg. Each step that fails hands over to the next, and the result says which
-// provider made it, so a draft never loses its picture, clip or voice to one provider's bad minute.
-//   image: Sloosh → Vertex Gemini image (the chosen model, then the other one; server.js rawGeminiImage) → OpenAI gpt-image-1
-//   video: Sloosh → Veo 3.1 fast → Veo 3.1 → (the caller keeps the still)
-//   voice: Sloosh → Gemini TTS → OpenAI TTS
+// Draft asset generation, one chain per kind, on our own keys (never treg). Each step that fails hands over to the next, and
+// the result says which provider made it, so a draft never loses its picture, clip or voice to one provider's bad minute.
+// Sloosh (sloosh.ai) is not a step here: it makes the finals only, quote first and behind a button (sloosh-mcp.js, finals.js).
+//   image: Vertex Gemini image (the chosen model, then the other one; server.js rawGeminiImage) → OpenAI gpt-image-1
+//   video: Veo 3.1 fast → Veo 3.1 → (the caller keeps the still)
+//   voice: Gemini TTS → OpenAI TTS
 import { vertexVoice, vertexVideo, pcmToWav } from './vertex-media.js';
 
 const OPENAI = () => process.env.OPENAI_API_KEY || '';
-export const slooshOn = () => !!process.env.SLOOSH_URL;
-
-/* Sloosh: off until SLOOSH_URL is set. The integration is still to come; this is the one place it plugs in (it returns the
-   asset's bytes, or throws so the chain moves on) */
-export async function sloosh(kind, input, { fetchImpl = fetch } = {}) {
-  if (!slooshOn()) throw Object.assign(new Error('Sloosh is not connected yet'), { off: true });
-  const r = await fetchImpl(`${process.env.SLOOSH_URL.replace(/\/$/, '')}/${kind}`, { method: 'POST', headers: { 'content-type': 'application/json', ...(process.env.SLOOSH_KEY ? { authorization: `Bearer ${process.env.SLOOSH_KEY}` } : {}) },
-    body: JSON.stringify({ ...input, ...(input.frame ? { frame: input.frame.toString('base64') } : {}), ...(input.src ? { src: input.src.toString('base64') } : {}) }), signal: AbortSignal.timeout(kind === 'video' ? 600e3 : 180e3) });
-  if (!r.ok) throw new Error(`Sloosh ${kind} ${r.status}: ${(await r.text()).slice(0, 200)}`);
-  const j = await r.json(); const b64 = j.b64 || j.data || j.asset?.b64; if (!b64) throw new Error(`Sloosh ${kind}: nothing came back`);
-  return Buffer.from(b64, 'base64');
-}
 
 /** run steps [[name, fn]] in order: → { buf, provider, tried: [{ provider, error }] }; throws the last error with every failure */
 export async function chain(kind, steps, log = console) {
@@ -51,7 +39,7 @@ async function openaiVoice(text, { fetchImpl = fetch } = {}) {
 
 /** text → WAV buffer (same shape as vertexVoice); the provider rides along as .provider */
 export async function makeVoice(text, voiceName = 'Kore', o = {}, log = console) {
-  const r = await chain('voice', [['sloosh', slooshOn() && (() => sloosh('voice', { text, voice: voiceName }))], ['gemini-tts', () => vertexVoice(text, voiceName, o)], ['openai-tts', OPENAI() && (() => openaiVoice(text))]], log);
+  const r = await chain('voice', [['gemini-tts', () => vertexVoice(text, voiceName, o)], ['openai-tts', OPENAI() && (() => openaiVoice(text))]], log);
   return Object.assign(r.buf, { provider: r.provider });
 }
 
@@ -59,8 +47,7 @@ export async function makeVoice(text, voiceName = 'Kore', o = {}, log = console)
 export async function makeVideo(frame, prompt, o = {}, log = console) {
   const fast = process.env.VEO_MODEL || 'veo-3.1-fast-generate-001', full = process.env.VEO_FALLBACK_MODEL || 'veo-3.1-generate-001';
   let filtered = false; /* a clip the model filtered is filtered by the stronger one too: only an outage or a quota moves on to it */
-  const r = await chain('video', [['sloosh', slooshOn() && (() => sloosh('video', { frame, prompt, seconds: o.seconds, ratio: o.ratio }))],
-    [fast, () => vertexVideo(frame, prompt, { ...o, model: fast }).catch((e) => { filtered = /filtered|could not make/i.test(e.message); throw e; })],
+  const r = await chain('video', [[fast, () => vertexVideo(frame, prompt, { ...o, model: fast }).catch((e) => { filtered = /filtered|could not make/i.test(e.message); throw e; })],
     [full, full !== fast && (() => (filtered ? Promise.reject(Object.assign(new Error('filtered by the first model'), { off: true })) : vertexVideo(frame, prompt, { ...o, model: full })))]], log);
   return Object.assign(r.buf, { provider: r.provider });
 }

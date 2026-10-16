@@ -466,8 +466,9 @@ const auth = createAuth({ packs, hostOf, seatNames, onTeamChange: () => MEMO.cle
 const slooshAuth = createSlooshAuth({ packs, vault: createVault(packs), auth, log: console });
 const sloosh = createSloosh({ tokenFor: slooshAuth.tokenFor, log: console });
 /* GET /api/ops/sloosh (staff): the connection, the workspace and what Sloosh says about today's limit and credits */
+const slooshStaff = (req) => auth.isAdmin(auth.user(req)) || (!auth.signinOn() && !process.env.K_SERVICE); /* staff, or a local server with sign-in off */
 const slooshOps = async (req) => {
-  if (!auth.isAdmin(auth.user(req))) return { error: 'Brew staff only' };
+  if (!slooshStaff(req)) return { error: 'Brew staff only' };
   const st = await slooshAuth.status(); if (!st.connected) return { ...st, connect: '/api/ops/sloosh/connect' };
   const [conn, acct] = await Promise.all([sloosh.getConnection().catch((e) => ({ error: e.message })), sloosh.getAccount().catch((e) => ({ error: e.message }))]);
   const ws = conn?.workspace || acct?.workspace || null; if (ws && !st.workspace) await slooshAuth.setWorkspace(ws).catch(() => {});
@@ -476,8 +477,8 @@ const slooshOps = async (req) => {
 const slooshHandle = async (req, res, u) => {
   if (!u.pathname.startsWith('/api/ops/sloosh/')) return false;
   const go = (to) => { res.writeHead(302, { location: to, 'cache-control': 'no-store' }); res.end(); return true; };
-  const me = auth.user(req); if (!me) return go(`/auth/google?next=${encodeURIComponent('/api/ops/sloosh/connect')}`);
-  if (!auth.isAdmin(me)) return send(res, 403, { error: 'Brew staff only' }), true;
+  const me = auth.user(req); if (!me && auth.signinOn()) return go(`/auth/google?next=${encodeURIComponent('/api/ops/sloosh/connect')}`);
+  if (!slooshStaff(req)) return send(res, 403, { error: 'Brew staff only' }), true;
   if (u.pathname === '/api/ops/sloosh/connect' && req.method === 'GET') { try { return go(await slooshAuth.connectUrl(req, res)); } catch (e) { return send(res, 200, { error: e.message }), true; } }
   if (u.pathname === '/api/ops/sloosh/callback' && req.method === 'GET') {
     try { await slooshAuth.callback(req, u); sloosh.reset(); const ws = await sloosh.getConnection().then((c) => c?.workspace || null).catch(() => null); if (ws) await slooshAuth.setWorkspace(ws);
