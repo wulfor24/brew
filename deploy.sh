@@ -5,9 +5,9 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 [ -z "$(git status --porcelain)" ] || { echo "uncommitted changes: commit first, then deploy"; exit 1; }
-for f in *.js reader/*.js reader/stages/*.js connectors/*.js dummy/*.js pdf/*.js public/*.js public/data/brew.js; do node --check "$f"; done
+for f in *.js reader/*.js reader/stages/*.js connectors/*.js pdf/*.js public/*.js public/data/brew.js; do node --check "$f"; done
 # every module server.js imports must be in the image (the Dockerfile copies *.js and these folders)
-for d in reader connectors dummy pdf skills prompts data sources/moves public; do [ -d "$d" ] || { echo "missing $d/"; exit 1; }; done
+for d in reader connectors pdf skills prompts data sources/moves public; do [ -d "$d" ] || { echo "missing $d/"; exit 1; }; done
 AI_MOCK=1 node --test test/*.test.js >/dev/null || { echo "tests fail: fix them first"; exit 1; }
 OUT=$(gcloud run deploy shopos-feed --source . --project=squareup-492617 --region=asia-south1 \
   --allow-unauthenticated --service-account=brew-runtime@squareup-492617.iam.gserviceaccount.com --memory=4Gi --cpu=2 --no-cpu-throttling --min=1 --max=1 --max-instances=1 --timeout=3600 --concurrency=200 \

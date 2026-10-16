@@ -10,7 +10,6 @@ RUN npm ci --omit=dev
 COPY *.js ./
 COPY reader ./reader
 COPY connectors ./connectors
-COPY dummy ./dummy
 COPY pdf ./pdf
 COPY skills ./skills
 COPY prompts ./prompts
