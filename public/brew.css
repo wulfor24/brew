@@ -2646,7 +2646,8 @@ body.rx-boot #view{visibility:hidden}
 
 /* ui=1 gets the features built for UI2 (2026-10-16): the brief status pill in the top bar, the jam's pack, impact and remake chips,
    Your feed and Drop anything (their own rules live unscoped in ui2.css) */
-.j1-pill{display:inline-flex;align-items:center;gap:6px;margin-right:6px}
+.j1-pill{display:inline-flex;align-items:center;align-self:center;gap:8px;height:34px;margin:0 6px 0 0;padding:0 12px 0 10px;background:var(--glass-chrome,var(--surface));-webkit-backdrop-filter:blur(22px) saturate(1.8);backdrop-filter:blur(22px) saturate(1.8);box-shadow:inset 0 0 0 1px var(--line);color:var(--fg-2)} /* the same chip as Viewing as, side by side */
+.j1-pill b{font-weight:600;color:var(--fg)}
 .j1-pill[hidden]{display:none}
 .j1-pill .t2-live{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px var(--ok-bg)}
 .j1-pill.is-ask .t2-live{background:var(--warn);box-shadow:0 0 0 3px var(--warn-bg)}
@@ -2654,4 +2655,4 @@ body.rx-boot #view{visibility:hidden}
 .lx .m2-drop{margin-bottom:22px}
 .sheet.m2-sheet{width:min(460px,100%);padding:20px 20px 12px}
 .m2-sheet .sh-h{margin-bottom:6px}
-@media (max-width:760px){.j1-pill [data-count="team"]{display:none}}
+@media (max-width:760px){.j1-pill [data-count="team"]{display:none}.j1-pill{height:36px;padding:0 10px;border-radius:12px;background:var(--surface);box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}}

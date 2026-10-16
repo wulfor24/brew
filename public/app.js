@@ -972,7 +972,7 @@
     const vb = $('[data-viewing]'); if (vb) vb.innerHTML = `${face(ROLE().face)}<span><i class="va">Viewing as </i><b>${esc(ROLE().name)}</b></span>${ic('chev', 's14')}`;
     $$('.rail [data-nav]').forEach((b) => b.classList.toggle('on', b.dataset.nav === (['jams', 'remixes'].includes(view) ? 'saved' : ['move', 'moves'].includes(view) ? 'learned' : view)));
     if (UI2) $$('.r2 [data-nav]').forEach((b) => b.classList.toggle('is-on', b.dataset.nav === (['feed', 'deck', 'saved', 'jams', 'work', 'done', 'queue'].includes(view) ? 'feed' : ['learned', 'move', 'moves', 'facts', 'heard', 'rules', 'tune'].includes(view) ? 'learned' : view)));
-    { const tp = $('[data-team-pill]'), wt = WORK.withTeam || { n: 0 }, n = wt.n || 0; if (tp) { tp.hidden = !n; tp.querySelector('[data-count="team"]').textContent = `${n} with the team`; tp.classList.toggle('is-ask', !!wt.needsInfo); } }
+    { const tp = $('[data-team-pill]'), wt = WORK.withTeam || { n: 0 }, n = wt.n || 0; if (tp) { tp.hidden = !n; tp.querySelector('[data-count="team"]').innerHTML = tp.classList.contains('j1-pill') ? `<b>${n}</b> with the team` : `${n} with the team`; tp.classList.toggle('is-ask', !!wt.needsInfo); } }
     paintTabbar();
   };
   /* phones: a native tab bar like Instagram (Feed, Deck, new jam, Work, Library) and the section's name in the header */
