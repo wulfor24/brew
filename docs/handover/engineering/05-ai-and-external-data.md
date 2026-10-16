@@ -13,6 +13,8 @@
 | Jam (brief edits, chat, plan, knobs, variants) | Sonnet 5.5 (`FEED_CLAUDE_MODEL`); "Deep" in the composer switches to Opus 5.5 | `server.js claudeTool`, `remix.js`, `jam-brief.js` | $0.02–0.05 per edit |
 | Images | Vertex **gemini-3-pro-image**, falling back to gemini-2.5-flash-image. Optional OpenAI **gpt-image-1** edit. | `server.js` | about $0.13–0.24 per image |
 | Right-product check on every image | Claude **Haiku 5.5** vision | `image-guard.js` | about $0.005 |
+| **Finals (go-live images and videos)** | **Sloosh** (sloosh.ai, ShopOS) over its MCP server, from Brew's own workspace: Nano Banana Pro, GPT Image 2.5, Ideogram 4.5, Flux 2 Pro, Seedance 2.5, Kling V3 Omni, Veo 3.1, and published Spaces. Quote first, behind Make the final only; never in a draft chain. | `sloosh-auth.js`, `sloosh-mcp.js`, `sloosh-prompt.js`, `sloosh-spaces.js`, `finals.js`, `finals-routes.js` | Sloosh credits per the quote (about 1–3 an image, 10–50 a video); `DAILY_CREDITS_CAP` 300, `BRAND_CREDITS_CAP` 100 |
+| One brief for every picture (drafts and finals) | pure code, no model | `sloosh-prompt.js` | free |
 | Video | Vertex **Veo 3.1 Fast**, 6 s, 1080p, `us-central1` | `vertex-media.js` | about $0.90 per clip |
 | Voice | Vertex **gemini-2.5-flash-tts** | `vertex-media.js` | about $0.01 |
 | Mic (talk instead of type) | OpenAI **gpt-4o-transcribe** | `server.js /api/transcribe` | about $0.006 per minute |

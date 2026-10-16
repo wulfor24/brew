@@ -1,5 +1,5 @@
 /* Make the final: the Choose-a-photo sheet with a few more rows; white surfaces, hairlines, ink accent, nothing loud */
-.fn-w .ph-m { max-width: 760px; }
+.sheet.ph-m.fn-m { width: min(760px, calc(100vw - 32px)); }
 .fn-b section { margin-top: 18px; }
 .fn-status { display: flex; align-items: center; gap: 8px; margin: 0; padding: 10px 12px; border: 1px solid var(--line, #e6e6e6); border-radius: 10px; font-size: 13px; color: var(--ink-2, #555); background: #fff; }
 .fn-status.is-off { color: var(--ink, #111); background: #fff8e6; border-color: #f0dca0; }

@@ -84,7 +84,7 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
       let rec = prior && prior.state !== 'failed' ? prior : { id: 'fn_' + runKey.slice(0, 8), runKey, state: 'starting', kind: spec.kind || 'image', quote: { id: q.quoteId, credits: q.credits, hold: q.hold, model: q.model, space: q.space, expiresAt: q.expiresAt }, credits: q.credits, model: q.model, space: q.space, prompt: q.prompt, settings: q.settings, inputs: q.inputs || null, refs: (q.refs || []).map((r) => ({ id: r.id, job: r.job, label: r.label, keep: r.keep, assetId: r.assetId || null })), target, by, at: now(), dummy: !!q.dummy, revision: spec.revision || 0 };
       if (rec.state === 'starting') {
         if (q.dummy) { /* DUMMY: the draft's own picture is the "final" (demo site); nothing is paid */
-          const from = spec.fromFile; if (!from) throw new Error('nothing to show as the final here');
+          const from = spec.fromFile || (spec.refs || []).find((r) => r.job === 'product' && r.url)?.url || (spec.refs || [])[0]?.url; if (!from) throw new Error('nothing to show as the final here: pick a photo first');
           rec = { ...rec, state: 'done', file: from, link: null, assetId: null, charged: 0, doneAt: now() }; return writeRec(slug, rec); }
         if (now() - (q.at || 0) > QUOTE_FRESH_MS) throw Object.assign(new Error('That quote is more than four minutes old. Ask for a fresh one.'), { stale: true });
         if (!budget.spend('credits', slug, Math.ceil(q.credits || 0) || 1)) throw Object.assign(new Error(budget.why('credits', slug, null, Math.ceil(q.credits || 0) || 1)), { budget: true });

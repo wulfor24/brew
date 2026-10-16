@@ -26,6 +26,7 @@ What makes that safe (keep it so):
   run leaves its brand unfinished (not done, not capped) with "Brew is restarting; the rest of the moves carry on in a moment".
 - The new instance's `resumeAll()` (server.js boot) resumes every unfinished build, rewrite and connected run from the moves
   already saved; each saved move is a file, so only the moves in flight at that second are written again.
-- `/api/ops/busy` still says what paid work an instance is doing; nothing waits on it.
+- `/api/ops/busy` still says what paid work an instance is doing (finals in flight included); nothing waits on it. A Sloosh final
+  left open by a deploy is finished or failed by `finals.reconcileAll()` on the next boot, never paid twice.
 - Several sessions share this repo: `git pull --rebase` right before deploying, and deploy from a clean, committed tree (a
   detached worktree at HEAD when others have uncommitted edits here).

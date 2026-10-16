@@ -10,6 +10,8 @@ import crypto from 'node:crypto';
 import { saveGen, genFile } from './gen-store.js';
 import { createMakers } from './drafts.js';
 import { cardProduct } from './product-match.js';
+import { createStudioFinals } from './finals-routes.js';
+import { buildDraft } from './sloosh-prompt.js'; // Make the final on a version: Sloosh, quote first, behind a button
 import { versionLabel } from './text-fit.js';
 import { withSteps } from './card-plan.js';
 import { familyOf, FAMILY_NAME, fieldsFor, knobsFor, suggestFor, fitChip, GRADES, pkgSchema, fieldsBrief, kvSchema, allKeys, fromKV, toKV, cleanPkg, publicText, missing, afterFromPkg, mockPkg, RATIO, leaks, isMulti, ACTION_SPEC, ACTION_GUARD, productFor, ideaAction, ideaPkg, chipsFor, chipRelates, chipCtx } from './studio.js';
@@ -516,7 +518,7 @@ export function createRemix(o) {
     return { ...pub, plan: ch.plan || o.planOf?.(t, t.cards.get(ch.cardId)) || null, copyPending: !!ch.copyPending && Date.now() - ch.copyPending < 90e3, trust: { level: tr.level, name: tr.name, objects: tr.objects, toNext: tr.toNext }, scope: ch.scope.map((s) => ({ ...s, locked: s.n > tr.objects })),
       familyName: FAMILY_NAME[ch.family], fields: fieldsFor(ch.family, ch.action).map(({ k, label, type, opts, cols, req, pub, hint }) => ({ k, label, type, opts, cols, req, pub, hint })),
       knobs: knobsFor(ch.family, B()), suggest: suggestOf(t, ch), gradeF: GRADES[ch.pkg.grade] || 'none', missing: missing(ch.family, ch.action, ch.pkg),
-      head: headOf(t, ch)?.id || null, versions: versionsOf(t, ch.id).map((v) => ({ id: v.id, n: v.n, author: v.author, reason: v.reason, label: v.label || versionLabel(v.reason, { first: v.n === 1 }), at: v.at, parent: v.parentVersionId, diff: v.diff, snapshot: v.snapshot })), live: ch.liveVersionId || null };
+      head: headOf(t, ch)?.id || null, versions: versionsOf(t, ch.id).map((v) => ({ id: v.id, n: v.n, author: v.author, reason: v.reason, label: v.label || versionLabel(v.reason, { first: v.n === 1 }), at: v.at, parent: v.parentVersionId, diff: v.diff, snapshot: v.snapshot, ...(v.final ? { final: v.final } : {}) })), live: ch.liveVersionId || null };
   };
 
   /* ---------- the studio: iterate, knobs, variations, the creative ---------- */
@@ -529,7 +531,7 @@ export function createRemix(o) {
     const slots = rows.length ? rows.map((_, i) => i).filter((i) => (all ? !(p.cardImages || [])[i] : i === 0)).slice(0, 10) : [0];
     if (!slots.length) return false;
     if (!spend('image')) return false;
-    const promptOf = (i) => `Create a new photograph for ${what}${rows.length > 1 ? ` (picture ${i + 1} of ${rows.length}, same look and light as the others)` : ''}. ${briefOf(i)}${scene ? ` Scene: ${scene}.` : ''}${p.knobs?.audience ? ` It should feel right for ${p.knobs.audience}.` : ''} ${`Keep the ${BN()} ${B().config.product?.noun || 'product'} and its label exactly as in the reference`} photo; do not invent new text on the pack. Nothing else carries writing: no signs, notes, calendars, screens or other packaging. No logos, no people's scalps, no before/after. Leave calm space where a short headline can sit. Photographic, natural light.`;
+    const promptOf = (i) => buildDraft({ kind: 'image', title: what, visual: `${briefOf(i)}${scene ? ` Scene: ${scene}.` : ''}${p.knobs?.audience ? ` It should feel right for ${p.knobs.audience}.` : ''}`, index: rows.length > 1 ? i + 1 : undefined, count: rows.length > 1 ? rows.length : undefined, topSpace: true, hasSrc: true, ratio: RATIO[p.format] || '4:5', product: { name: `${BN()} ${B().config.product?.noun || 'product'}` }, brand: { name: BN(), ...(B().config.product || {}) } }).prompt; /* one brief for drafts and finals (sloosh-prompt.js) */
     ch.imagePending = true; ch.imageError = null; IMG_JOBS.add(ch.id);
     (async () => {
       try {
@@ -1099,7 +1101,7 @@ export function createRemix(o) {
     slides: { type: 'array', items: { type: 'object', required: ['onSlide', 'visual'], properties: { onSlide: { type: 'string', description: 'Under 12 words; slide 1 the hook, the last says what to do' }, visual: { type: 'string', description: 'The photo behind it, no text in it' } } }, description: 'Carousel only: 3 to 6 slides; otherwise empty' },
     script: { type: 'array', items: { type: 'object', required: ['beat', 'shot', 'line'], properties: { beat: { type: 'string' }, shot: { type: 'string' }, line: { type: 'string', description: 'Under 14 words, said or shown' } } }, description: 'Video only: 4 or 5 beats of a 6-second vertical clip; otherwise empty' },
     overlay: { type: 'string', description: 'Image only: up to 7 words set on the picture; otherwise empty' },
-    imageBrief: { type: 'string', description: 'The photograph: setting, light, who is in it; no text in it' },
+    imageBrief: { type: 'string', description: 'The photograph as things you can see: the surface, the setting, where the light comes from, the props, who is in it and what they do. No mood words (premium, cinematic), no effects (splashes, sparkles, floating, glow), no text in it' },
     motion: { type: 'string', description: 'Video only: how the camera moves over 6 seconds' } } };
   const remakeLive = async (t, ch, as) => {
     const c = t.cards.get(ch.cardId) || {};
@@ -1177,6 +1179,9 @@ export function createRemix(o) {
     if (making) { ch.pkg.draft.pending = true; v.snapshot = { ...v.snapshot, draft: { ...draft, pending: true } }; }
     return { change: pubChange(t, ch), version: { id: v.id, n: v.n }, as, words: live ? 'ai' : 'package', making, why: making ? null : remakeWhy(ch), learned: learnedOut(t) };
   };
+  /* the studio's finals (finals-routes.js createStudioFinals): status, quote, run and a Space checkpoint on this change; the
+     result is the next version, labelled Final. Off when the server has no Sloosh client (tests) */
+  if (o.finals && o.sloosh) createStudioFinals({ on, C, ensurePkg, sync, version, pubChange, cardOf: (t, ch) => t.cards.get(ch.cardId) || null, cardPhoto, catalogOf, jobs: IMG_JOBS, references: (t) => (o.references ? o.references(t) : []), finals: o.finals, sloosh: o.sloosh, creditsLeft: o.creditsLeft, brandOfT: o.brandOfT, slugOfT: o.slugOfT, meOf: o.meOf, onMedia: (t, ch, m) => o.onMedia?.(t, ch, m), isVideo: isVideoPost, RATIO, log });
   on('GET', '/api/changes/:chid/photos', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch);
     const cat = (catalogOf(t) || []).filter((x) => x.img).sort((a, b) => (a.out ? 1 : 0) - (b.out ? 1 : 0)).slice(0, 60).map((x) => ({ t: x.t, img: x.img, ...(x.out ? { out: true } : {}) }));

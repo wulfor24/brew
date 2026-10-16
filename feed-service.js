@@ -26,7 +26,8 @@ import { isQuestion, photoAsk, answerGrounded } from './jam-answer.js'; // jam c
 import { createAskBrew, answerAsk, cleanSeed } from './ask-brew.js'; // Ask Brew: one thread per member across feed, moves and facts
 import { parseDrop, DESTS } from './drop.js';
 import { createReferences } from './references.js';
-import { createFinalsRoutes } from './finals-routes.js'; // Make the final: Sloosh, quote first, behind a button (finals.js) // References: the brand's uploaded photos, past ads, looks and videos, for the generators // Drop anything: memory, my preferences, just this once // Send brief: the full email and the "N with the team" pill
+import { createFinalsRoutes } from './finals-routes.js';
+import { buildDraft } from './sloosh-prompt.js'; // one brief for every draft picture // Make the final: Sloosh, quote first, behind a button (finals.js) // References: the brand's uploaded photos, past ads, looks and videos, for the generators // Drop anything: memory, my preferences, just this once // Send brief: the full email and the "N with the team" pill
 import { shipLine } from './text-fit.js';
 import { createDrafts, fakeMakers } from './drafts.js';
 import { cardProduct, cardScene } from './product-match.js';
@@ -643,7 +644,7 @@ export function createFeedService(o) {
       let img = STATICS.length ? stImg(STATICS.includes(j.image) ? j.image : STATICS[0]) : ref, imgNote = STATICS.length ? 'picked from your statics' : 'your product photo'; /* the brand's own product photo; with none, no picture is made (never the wrong product) */
       if (ref && photoFile(ref) && spend('image')) {
         try {
-          const buf = await geminiImage({ srcFile: photoFile(ref), prompt: `Create a new product photograph: ${j.scene || 'the product on a clean surface, soft daylight'}. ${`Keep the ${BN()} ${B().config.product?.noun || 'product'} and its label exactly as in the reference`}. ${B().config.product?.avoid || 'No text, no before/after.'} ${(B().config.product?.style || 'Premium D2C product ad photography') + '.'}`, ratio: '4:5', model: process.env.WATCHER_IMAGE_MODEL || 'gemini-2.5-flash-image' });
+          const buf = await geminiImage({ srcFile: photoFile(ref), prompt: buildDraft({ kind: 'image', title: 'ad idea', visual: j.scene || 'the product on a clean surface, soft daylight', hasSrc: true, ratio: '4:5', topSpace: true, product: { name: `${BN()} ${B().config.product?.noun || 'product'}` }, brand: { name: BN(), ...(B().config.product || {}) } }).prompt, ratio: '4:5', model: process.env.WATCHER_IMAGE_MODEL || 'gemini-2.5-flash-image' });
           const key = crypto.createHash('sha1').update(j.title + j.scene).digest('hex').slice(0, 16);
           saveGen(key + '.png', buf); img = `gen/${key}.png`; imgNote = 'generated with the cheap image model';
         } catch (e) { log.warn('[creative watcher] image', e.message); }
@@ -1684,7 +1685,7 @@ export function createFeedService(o) {
     briefOf: (t, w) => JB.seed(t, w)?.md, cardBrief, seatLine, isMock, spend, clean, now, uid, say, save: (t) => store?.save(t), AGENT, onReady: (t, w, d) => slackAsset(t, w, { title: d.title, copy: d.copy, image: d.image, video: d.video, audio: d.audio, zip: d.zip, kind: d.as === 'video' && !d.video ? (d.image ? 'image' : 'text') : d.as, note: d.err || null }), /* a video that didn't come through says so, never 'New video' */ log });
   /* the jam's finals (finals-routes.js): the sheet's status, the quote, the run and a Space checkpoint; a final lands as a draft
      card marked final and posts to the thread like every asset. Off when the server has no Sloosh client (tests) */
-  if (o.finals && o.sloosh) createFinalsRoutes({ on, W, say, meOf, slugOfT, brandOfT, cardOfW: (t, w) => (w?.cardId ? t.cards.get(w.cardId) || null : null), references: REFS, finals: o.finals, sloosh: o.sloosh, creditsLeft: (slug) => o.budgetLeft?.(slug) || null,
+  if (o.finals && o.sloosh) createFinalsRoutes({ on, W, say, meOf, slugOfT, brandOfT, cardOfW: (t, w) => (w?.cardId ? t.cards.get(w.cardId) || null : null), references: (t, slug) => REFS.list(slug), finals: o.finals, sloosh: o.sloosh, creditsLeft: (slug) => o.budgetLeft?.(slug) || null,
     onReady: (t, w, d) => slackAsset(t, w, { title: d.title, copy: d.copy, image: d.image, video: d.video, kind: d.as === 'video' && !d.video ? 'image' : d.as, note: d.err || null }), save: (t) => store?.save(t), now: () => Date.now(), uid, log }); DR.routes({ on, W });
   MOVES ||= createMoves(path.dirname(PUB));
   // the card page: options, our pick, recommendation, what follows, and the move details that matter.
@@ -1753,7 +1754,7 @@ export function createFeedService(o) {
   on('GET', '/api/cards/:cid/moves', async (b, t, p) => { const c = t.cards.get(p.cid); if (!c) return { error: 'not found' }; return { moves: MOVES.numsOf(c.src).map((n) => ({ ...MOVES.summary(n), passages: MOVES.passages({ ...c, src: `Move ${n}` }, 4) })) }; });
   /* MEDIA_FAKE=1 on a local server: the jam's short video runs end to end for free (drafts.js fakeMakers) */
   const FAKE = process.env.MEDIA_FAKE === '1' && !process.env.K_SERVICE ? fakeMakers() : null;
-  RMX = createRemix({ references: (t) => REFS.list(t.brandId || DEFAULT_BRAND), onMedia: (t, ch, m) => studioMedia(t, ch, m), onVersion: (t, ch, v, why) => studioVersion(t, ch, v, why), onShopos: (t, w, x) => shoposMail(t, w, x), askPerson: async (t, w, q, email) => { const [x] = await tagsOf(t, w, [email]); if (!x) return { error: 'They’re not on the team yet. Invite them first.' }; const me0 = meOf(t);
+  RMX = createRemix({ references: (t) => REFS.list(t.brandId || DEFAULT_BRAND), finals: o.finals || null, sloosh: o.sloosh || null, creditsLeft: (slug) => o.budgetLeft?.(slug) || null, brandOfT, slugOfT, meOf, onMedia: (t, ch, m) => studioMedia(t, ch, m), onVersion: (t, ch, v, why) => studioVersion(t, ch, v, why), onShopos: (t, w, x) => shoposMail(t, w, x), askPerson: async (t, w, q, email) => { const [x] = await tagsOf(t, w, [email]); if (!x) return { error: 'They’re not on the team yet. Invite them first.' }; const me0 = meOf(t);
       JAMS.join(w, x, 'asked'); say(t, w, { from: 'system', body: `${nameOf(me0)} asked ${nameOf(x)}: ${q.q}` }); mailEv(t, w, { kind: 'asked', to: [x.email], by: me0, text: q.q, id: `q_${w.id}_${q.id}` }); return x; }, ...(FAKE ? { makers: FAKE.makers, videoImage: FAKE.image, mediaFake: true } : {}), planOf: (t, c) => (c ? planOfCard(c) : null), save: (t) => store?.save(t), catalogOf: (t) => (t ? brandOfT(t)?.catalog : null), photoAsync: o.photoAsync, photoFile, handoffPath, MOVES, seedJam: (t, w) => JB?.seed(t, w), claudeTool, geminiImage, PUB, LANE_PHOTO, FACTS, unbackedNums: (text) => unbacked({ text: String(text).replace(/\b(?:Rs\.?|INR)\s?(?=\d)/gi, '₹') }, FACT_OK).map((x) => x.n), SEED, AGENT, claudeJSON, cardBrief, seatLine, qaCheck, mechanicalFix, clean, BANNED, isMock, spend, uid, now, clone, inr, on, newWork, addVersion, say, move, notify, later, setState, weekKey, curV, measureOf, log  });
   // tenants survive restarts (store.js); a tenant not in memory is read back from disk or GCS before we give up on it
   const getTenant = async (id) => {

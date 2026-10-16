@@ -5,7 +5,7 @@
 (() => {
   const A = window.__BREW; if (!A) return;
   const { $, esc, ic, toast } = A;
-  const F = { wid: null, draftId: null, st: null, picks: [], visual: '', text: '', way: 'brief', space: null, inputs: {}, quote: null, busy: false, err: '', fields: null, missing: null, filled: null, revise: '' };
+  const F = { base: null, wid: null, draftId: null, st: null, picks: [], visual: '', text: '', way: 'brief', space: null, inputs: {}, quote: null, busy: false, err: '', fields: null, missing: null, filled: null, revise: '' };
   const api = (m, p, b) => A.tapi(m, p, b);
   const JOBS = [['product', 'Product'], ['scene', 'Place'], ['style', 'Look'], ['person', 'Person'], ['logo', 'Logo'], ['other', 'Other']];
   const pickKey = (x) => x.id || x.url;
@@ -24,7 +24,7 @@
     return `<div class="fn-field${miss ? ' is-missing' : ''}"><label>${esc(f.label)}${f.required ? ' *' : ''}</label>${inp}${from}</div>`; };
 
   const paint = () => {
-    const w = $('.ph-m'); if (!w) return; const st = F.st; const d = st?.draft; const s = st?.status || {}; const credits = st?.credits;
+    const w = $('.ph-m.fn-m'); if (!w) return; const st = F.st; const d = st?.draft; const s = st?.status || {}; const credits = st?.credits;
     const can = !!(s.ok || s.dummy); const whyNot = !can ? s.why || 'Sloosh is not ready.' : credits && credits.left <= 0 ? `This brand’s Sloosh share for today is used up (${credits.cap} credits a day).` : '';
     const left = s.dummy ? 'Simulated on this site: no credits are spent.' : [s.left != null ? `${s.left} credits left on Brew’s workspace today` : '', credits ? `${credits.left} of ${credits.cap} in this brand’s share` : ''].filter(Boolean).join(' · ');
     const q = F.quote; const n = q ? Math.round((q.credits || 0) * 100) / 100 : null;
@@ -74,22 +74,24 @@
     const run = w.querySelector('[data-fn-run]'); if (run) run.onclick = runIt;
   };
   const getQuote = async (soft) => { if (F.busy) return; F.busy = true; F.err = ''; paint();
-    const r = await api('POST', `/api/work/${F.wid}/final/quote`, body()).catch((e) => ({ error: e.message })); F.busy = false;
+    const r = await api('POST', `${F.base}/quote`, body()).catch((e) => ({ error: e.message })); F.busy = false;
     if (r?.fields) { F.fields = r.fields; F.missing = r.missing || null; F.filled = r.filled || null; if (r.inputs) F.inputs = { ...r.inputs, ...F.inputs }; }
     if (r?.error) { F.quote = null; F.err = soft && r.missing ? '' : r.error; } else { F.quote = r.quote; if (r.quote?.fields) { F.fields = r.quote.fields; F.filled = r.quote.filled || null; F.inputs = { ...(r.quote.inputs || {}), ...F.inputs }; } }
     paint(); };
   const runIt = async () => { if (F.busy || !F.quote) return; F.busy = true; paint();
-    const r = await api('POST', `/api/work/${F.wid}/final/run`, { draftId: F.draftId }).catch((e) => ({ error: e.message })); F.busy = false;
-    if (r?.error) { F.err = r.error; paint(); return; } toast(F.quote.dummy ? 'Making the final (simulated here).' : 'Sloosh is making the final. It lands in the jam in a minute or two.'); close(); window.JamRoom?.pull?.(); };
-  const close = () => { $('.ph-w')?.remove(); document.body.classList.remove('ph-open'); F.wid = null; };
+    const r = await api('POST', `${F.base}/run`, { draftId: F.draftId }).catch((e) => ({ error: e.message })); F.busy = false;
+    if (r?.error) { F.err = r.error; paint(); return; } toast(F.quote.dummy ? 'Making the final (simulated here).' : 'Sloosh is making the final. It lands here in a minute or two.'); close(); if (r.change && A.putCh) { A.putCh(r.change); A.paintStudio?.(); } else window.JamRoom?.pull?.(); };
+  const close = () => { if ($('.ph-m.fn-m')) A.closeModal(); F.wid = null; F.base = null; };
   /* open: the draft's photos, references and Spaces come from one call; the draft's own product photo is image 1 */
-  const open = async (wid, draftId) => { if (F.wid) close(); Object.assign(F, { wid, draftId, st: null, picks: [], visual: '', text: '', way: 'brief', space: null, inputs: {}, quote: null, busy: false, err: '', fields: null, missing: null, filled: null, revise: '' });
-    const w = document.createElement('div'); w.className = 'ph-w fn-w'; w.innerHTML = '<div class="ph-m"><div class="ph-h"><b>Make the final</b></div><div class="ph-b"><p class="ph-none">One moment…</p></div></div>'; document.body.appendChild(w); document.body.classList.add('ph-open'); w.onclick = (e) => { if (e.target === w) close(); };
-    const st = await api('GET', `/api/work/${wid}/final/status?draftId=${encodeURIComponent(draftId)}`).catch((e) => ({ error: e.message })); if (st?.error) { toast(st.error); return close(); }
+  const open = async (wid, draftId, base = null) => { if (F.wid) close(); Object.assign(F, { base: base || `/api/work/${wid}/final`, wid, draftId, st: null, picks: [], visual: '', text: '', way: 'brief', space: null, inputs: {}, quote: null, busy: false, err: '', fields: null, missing: null, filled: null, revise: '' });
+    A.modal('<div class="sheet ph-m fn-m" role="dialog" aria-label="Make the final"><div class="ph-h"><b>Make the final</b></div><div class="ph-b"><p class="ph-none">One moment…</p></div></div>', () => {}); /* the same sheet as Choose a photo (app.js modal) */
+    const st = await api('GET', `${F.base}/status?draftId=${encodeURIComponent(draftId || '')}`).catch((e) => ({ error: e.message })); if (st?.error) { toast(st.error); return close(); }
     F.st = st; F.visual = st.draft?.visual || ''; F.text = st.draft?.text || ''; const lead = (st.photos || []).find((p) => p.named) || (st.photos || [])[0]; if (lead) F.picks = [{ ...lead, keep: '' }];
     if (st.draft?.final) { const prev = { url: st.draft.image || st.draft.video, label: 'The previous final', job: 'other', keep: 'everything that is not the change' }; F.picks = [prev, ...F.picks]; }
     paint(); };
   document.addEventListener('click', (e) => { const b = e.target.closest?.('[data-jm-final]'); if (!b) return; e.preventDefault(); const wid = b.dataset.wid || window.JamRoom?.work?.()?.id || b.closest('[data-wid]')?.dataset.wid; if (!wid) return toast('Open the jam first.'); open(wid, b.dataset.jmFinal); });
   document.addEventListener('click', async (e) => { const b = e.target.closest?.('[data-jm-fnck]'); if (!b) return; e.preventDefault(); const wid = b.dataset.wid; const r = await api('POST', `/api/work/${wid}/final/checkpoint`, { draftId: b.dataset.jmFnck, ok: b.dataset.ok === '1' }).catch((x) => ({ error: x.message })); if (r?.error) toast(r.error); else window.JamRoom?.pull?.(); });
+  /* the studio: the same sheet on a change's version */
+  document.addEventListener('click', (e) => { const b = e.target.closest?.('[data-fn-studio]'); if (!b) return; e.preventDefault(); open(null, b.dataset.fnStudio, `/api/changes/${b.dataset.fnStudio}/final`); });
   window.Finals = { open, close };
 })();
