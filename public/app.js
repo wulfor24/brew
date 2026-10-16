@@ -147,7 +147,9 @@
       if (ks.length === 1) return logoTile(ks[0], size).replace('class="cx-logo', `title="${esc(c.name)}" class="cx-logo`); /* one marketplace: its own full-size tile, not a lone corner of a stack */
       if (ks.length) return `<span class="cx-logos" style="width:${size}px;height:${size}px" title="${esc(c.name)}">${ks.map((k) => logoTile(k, s2)).join('')}</span>`; }
     // the reviews connector is whichever app the brand uses: show that app's own mark
-    const rv = id === 'reviews' && (/judge\.?me/i.test(c.name) ? 'judgeme' : /loox/i.test(c.name) ? 'loox' : null); if (rv) return logoTile(rv, size).replace('class="cx-logo', `title="${esc(c.name)}" class="cx-logo`);
+    // (the name is often just "Reviews": the live account line and the read's review platforms say which app it is)
+    const rvTxt = id === 'reviews' ? [c.name, c.account, window.LiveConn?.L?.conns?.[id]?.account, ...(B.reviews?.platforms || []).map((p) => p?.name)].join(' ') : '';
+    const rv = rvTxt && (/judge\.?me/i.test(rvTxt) ? 'judgeme' : /loox/i.test(rvTxt) ? 'loox' : null); if (rv) return logoTile(rv, size).replace('class="cx-logo', `title="${esc(c.name)}" class="cx-logo`);
     if (LOGOS[id]) return logoTile(id, size).replace('class="cx-logo', `title="${esc(c.name)}" class="cx-logo`);
     return `<span class="cx-glyph" style="--gc:${c.color};width:${size}px;height:${size}px;font-size:${Math.round(size * .5)}px">${esc(c.glyph)}</span>`; };
   const avatar = (c, s = 28) => `<span class="av" style="--ac:${c.color};width:${s}px;height:${s}px">${esc(c.ini)}</span>`;
