@@ -268,7 +268,7 @@ export function createFeedService(o) {
   const now = (t) => Date.now() + (t?.clock || 0);
   const dayKey = (ms) => new Date(ms + (B()?.tzMs ?? 5.5 * H)).toISOString().slice(0, 10);
   const weekKey = (ms) => { const d = new Date(ms + (B()?.tzMs ?? 5.5 * H)); const day = (d.getUTCDay() + 6) % 7; return new Date(d - day * D).toISOString().slice(0, 10); };
-  const clone = (x) => JSON.parse(JSON.stringify(x));
+  const clone = (x) => (x === undefined ? undefined : JSON.parse(JSON.stringify(x))); /* a live card with no rows or detail is fine (it threw on every request) */
   const ageOf = (s) => { s = String(s || ''); let m; if ((m = s.match(/(\d+)\s*min/))) return +m[1] * 60e3; if ((m = s.match(/(\d+)\s*(hr|hour)/))) return +m[1] * H; if ((m = s.match(/(\d+)\s*day/))) return +m[1] * D; if (/yesterday/i.test(s)) return 26 * H; return 3 * H; };
   const inr = (v) => B().money(v); // money in the brand's currency (₹ lakh/crore for Indian brands)
   const textOfCard = (c) => [c.title, c.sub, ...(c.rows || []).flat(), c.q, c.a].filter(Boolean).join(' ');
@@ -392,6 +392,7 @@ export function createFeedService(o) {
     if (!t) return; t.member = !!viewer?.member; t.claimed = !!viewer?.claimed; t.memberEmail = viewer?.member && viewer?.email ? viewer.email : null; /* a signed-out or non-member viewer no longer carries the last member's name or personal memory */
     const L = await liveFor(t.brandId || DEFAULT_BRAND, t.member).catch(() => ({ cards: [], on: {}, privMoves: [] }));
     t.liveConn = L.on; t.privMoves = L.privMoves || []; t.liveLedger = L.ledger || {};
+    L.cards = (L.cards || []).filter((c) => c && c.id); /* one bad card from a connector (undefined) used to throw on every request for the brand */
     const ids = new Set(L.cards.map((c) => c.id)), t0 = now(t);
     for (const [id, c] of t.cards) if ((c.liveOnly || c.publicLive) && !ids.has(id)) t.cards.delete(id);
     for (const p of L.cards) { const have = t.cards.get(p.id);

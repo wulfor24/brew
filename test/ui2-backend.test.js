@@ -220,3 +220,10 @@ test('a double-tapped Send emails once; a copy for your own team keeps the ShopO
   assert.equal(s.w.jamBrief.status, 'received', 'sharing with your own team does not wipe the ShopOS status');
   assert.equal(s.w.jamBrief.to, 'shopos'); assert.ok(s.w.jamBrief.history.length >= 2); assert.ok(s.w.jamBrief.teamCopyAt);
 });
+
+test('a live card without rows or detail never breaks the feed (clone of undefined)', () => {
+  const src = fs.readFileSync(new URL('../feed-service.js', import.meta.url), 'utf8');
+  const m = /const clone = \(x\) => ([^;]+);/.exec(src); assert.ok(m, 'clone helper');
+  const clone = eval(`(x) => ${m[1]}`); assert.equal(clone(undefined), undefined); assert.deepEqual(clone({ a: [1] }), { a: [1] });
+  assert.match(src, /L\.cards = \(L\.cards \|\| \[\]\)\.filter\(\(c\) => c && c\.id\)/);
+});
