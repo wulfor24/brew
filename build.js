@@ -1129,7 +1129,9 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   async function resumeAll() { for (const sl of String(process.env.OPS_FRESH_RELOAD || '').split(',').map((x) => x.trim()).filter(Boolean)) freshReload(sl).catch((e) => log.error('[ops] fresh', sl, e.message));
     for (const x of await packs.list()) { if (!x.status.done && !x.status.error && !x.status.capped) resume(x.slug).catch((e) => log.error('[build] resume', x.slug, e.message)); else { if (x.status.done) { rebase(x.slug).catch((e) => log.warn('[build] rebase', x.slug, e.message)); healPdfs(x.slug); healCount(x.slug).catch((e) => log.warn('[build] count', x.slug, e.message)); } resumeRewrite(x.slug).catch((e) => log.warn('[rewrite] resume', x.slug, e.message));
       upd(x.slug).then((u) => { if (u.connectRun) armConnect(x.slug, u.connectRun.due || 0); if ((u.queue || []).some((q) => q.notBefore)) drain(x.slug).catch(() => {});
-        if (u.connectDone && !u.connectDone.finished) setTimeout(() => settleConnect(x.slug).catch((e) => log.warn('[connect] settle', e.message)), 90e3); /* after resumeRewrite has had its turn */ }).catch(() => {}); } } }
+        if (u.connectDone && !u.connectDone.finished) setTimeout(() => settleConnect(x.slug).catch((e) => log.warn('[connect] settle', e.message)), 90e3); /* after resumeRewrite has had its turn */ }).catch(() => {});
+      /* saved team views heal: a brief built from an older read of an account is built again from today's rows (free) */
+      packs.getJSON(x.slug, 'private/connected-ledger.json', []).then((L) => realRows(L).length ? teamView(x.slug) : null).catch((e) => log.warn('[connect] team view', x.slug, e.message)); } } }
   /* Saved PDFs heal: when the PDF text rules change (PDF_V) the saved PDFs are forgotten and each is drawn again on its next
      download (pdfOn); entries for moves that no longer exist leave status.pdfs. Nothing is drawn ahead of time. */
   const PDF_V = 4; // 2: kickers without "OF N", "What to watch", BREW DRAFTS; 3: no "Brew re-reads / we pause", index without a count; 4: no source-method narration (brew-name.js unSkill) (2026-10-15)
