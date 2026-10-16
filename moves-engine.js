@@ -12,6 +12,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createFamilies, timingLine } from './measure-families.js';
 import { dateCounts } from './pack-numbers.js'; // counts that move day to day say the day they were read
+import { promptBlock as creativeBlock } from './creative-catalog.js'; // what can be made, for the creative and social-posts disciplines
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
@@ -407,6 +408,14 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
     const keys = brandLedger(ledger, sig).filter((e) => (e.signal ? signalSlice([e], caps).length : pre.some((x) => e.key?.startsWith(x)))).map((e) => e.key);
     return { pre, caps, keys, thin: keys.length < 8 };
   }
+  /* the creative and social-posts disciplines plan assets: they get the creative catalog and the rule that every asset they
+     plan is specific (format, the exact product, the scene, the hook), makeable, not a repeat, and backed by a named line */
+  const CREATIVE_CAPS = new Set(['creative', 'social-posts']);
+  function creativeLine(sp, profile) {
+    if (!capsOf(sp).some((c) => CREATIVE_CAPS.has(c))) return '';
+    const hero = (profile?.catalog?.products || []).find((x) => x?.title && x.inStock !== false)?.title?.split(/\s+[–—|:-]\s+|,\s/)[0] || null;
+    return `${creativeBlock({ product: hero })}\nEvery asset this move plans (in its plan, its worked examples and its 30-day rollout) is one of those: name the format, the exact product as the store lists it, the scene or angle and the hook, the way the examples read. Never "a new ad", "fresh creative", "some visuals" or a campaign with no named asset. No two assets in this move share format + product + angle; vary the formats. Each asset rests on a named line: a ledger key, a brief line (style, praise, complaint, objection), a team learning or a listening line, and says which.\n`;
+  }
   function buildPrompt(sp, { brand, brief, profile, ledger, deps, lookups, signalLines: sig = [], dynamicSpecs, total: tot, searchN = null }) {
     const N = tot || total({ dynamicSpecs });
     const fo = focusOf(sp, ledger, sig), webQ = (sp.lookups || []).filter((l) => l.type === 'web');
@@ -421,7 +430,7 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
       lookups?.length ? `# Live lookups run for this move\n${lookups.map((l) => `<lookup id="${l.id}" for="${l.for}" at="${l.at}">${l.error ? 'ERROR ' + l.error : l.data}</lookup>`).join('\n')}` : '',
       `# Depth and format exemplar\nThis is Move ${pad(exN)} written by hand for a DIFFERENT brand (Arata, an Indian haircare company). It shows the depth, density, table use, voice and finish we expect. Do not copy its facts, numbers, names, rivals or products into ${name}'s document unless the same fact is in ${name}'s ledger.\n<exemplar>\n${exemplarText(exN, +process.env.MOVES_EXEMPLAR_CHARS || 20000)}\n</exemplar>`,
       `# Lines to lean on for this discipline\nStart from these ledger keys${fo.keys.length ? `: ${fo.keys.slice(0, 120).join(', ')}` : ` (none yet: say so in the method note and mark the cells "To be pulled")`}. Use the rest of the ledger only where it changes a decision.`,
-      `# Your task\nWrite Move ${pad(sp.n)} of ${N} for ${name}${profile?.host ? ` (${profile.host})` : ''}: discipline "${sp.discipline}", group "${sp.group}".\nKicker (fixed): ${sp.kicker} · MOVE ${pad(sp.n)}\n${measureLine(sp).text}\nTitle: write one specific to ${name}'s situation. For scale, the Arata title for this move was "${sp.titleHint}" with the stat "${sp.statHint?.stat}" / "${sp.statHint?.statLabel}". Do not reuse those.\nDate of this snapshot: ${today()}. ${marketLine(profile || {})} Currency: ${profile?.currency || 'unknown'}.\n${webQ.map((l) => (searchN ? `Search the web for: ${l.q}. Date each fact you use and list it in newFacts with the exact quote.` : `Answer from the ledger: ${l.q}. Where the ledger does not cover it, write "To be pulled", never a guess.`)).join('\n')}\nFollow the house template section by section. Return the JSON object only.`];
+      `# Your task\nWrite Move ${pad(sp.n)} of ${N} for ${name}${profile?.host ? ` (${profile.host})` : ''}: discipline "${sp.discipline}", group "${sp.group}".\nKicker (fixed): ${sp.kicker} · MOVE ${pad(sp.n)}\n${measureLine(sp).text}\nTitle: write one specific to ${name}'s situation. For scale, the Arata title for this move was "${sp.titleHint}" with the stat "${sp.statHint?.stat}" / "${sp.statHint?.statLabel}". Do not reuse those.\nDate of this snapshot: ${today()}. ${marketLine(profile || {})} Currency: ${profile?.currency || 'unknown'}.\n${webQ.map((l) => (searchN ? `Search the web for: ${l.q}. Date each fact you use and list it in newFacts with the exact quote.` : `Answer from the ledger: ${l.q}. Where the ledger does not cover it, write "To be pulled", never a guess.`)).join('\n')}\n${creativeLine(sp, profile)}Follow the house template section by section. Return the JSON object only.`];
     // three cacheable blocks: brand context (shared by all moves of a brand), discipline material, the task
     const [skill, briefP, ledgerP, profileP, depsP, lookupsP, exP, focusP, task] = parts;
     return [[briefP, ledgerP, profileP], [skill, exP, depsP, lookupsP], [focusP, task]].map((g) => g.filter(Boolean).join('\n\n'));

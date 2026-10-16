@@ -982,8 +982,8 @@
     if (sv) sv.textContent = S.saved.length || ''; if (wk) { const n = WORK.items.filter((w) => w.stage === 'needs_you').length; wk.textContent = n || ''; wk.classList.toggle('hot', !!n); }
     $$('[data-count="bell"]').forEach((b) => { b.textContent = WORK.unread || ''; b.classList.toggle('hot', !!WORK.unread); });
     const vb = $('[data-viewing]'); if (vb) vb.innerHTML = `${face(ROLE().face)}<span><i class="va">Viewing as </i><b>${esc(ROLE().name)}</b></span>${ic('chev', 's14')}`;
-    $$('.rail [data-nav]').forEach((b) => b.classList.toggle('on', b.dataset.nav === (['jams', 'remixes'].includes(view) ? 'saved' : ['move', 'moves'].includes(view) ? 'learned' : view)));
-    if (UI2) $$('.r2 [data-nav]').forEach((b) => b.classList.toggle('is-on', b.dataset.nav === (['feed', 'deck', 'saved', 'jams', 'work', 'done', 'queue'].includes(view) ? 'feed' : ['learned', 'move', 'moves', 'facts', 'heard', 'rules', 'tune'].includes(view) ? 'learned' : view)));
+    $$('.rail [data-nav]').forEach((b) => b.classList.toggle('on', b.dataset.nav === (['jams', 'remixes', 'refs'].includes(view) ? 'saved' : ['move', 'moves'].includes(view) ? 'learned' : view)));
+    if (UI2) $$('.r2 [data-nav]').forEach((b) => b.classList.toggle('is-on', b.dataset.nav === (['feed', 'deck', 'saved', 'jams', 'refs', 'work', 'done', 'queue'].includes(view) ? 'feed' : ['learned', 'move', 'moves', 'facts', 'heard', 'rules', 'tune'].includes(view) ? 'learned' : view)));
     { const tp = $('[data-team-pill]'), wt = WORK.withTeam || { n: 0 }, n = wt.n || 0; if (tp) { tp.hidden = !n; tp.querySelector('[data-count="team"]').innerHTML = tp.classList.contains('j1-pill') ? `<b>${n}</b><span class="j1-more">&nbsp;with the team</span>` : `${n} with the team`; tp.classList.toggle('is-ask', !!wt.needsInfo); } }
     paintTabbar();
   };
@@ -991,7 +991,7 @@
   const TABS = [['feed', 'feed', 'Feed'], ['deck', 'deck', 'Deck'], ['+', 'plus', 'New jam'], ['work', 'board', 'Work'], ['saved', 'bookmark', 'Library']];
   /* UI2 phone tabs: Home, Deck, Ask Brew in the middle, Memory, Connectors (Profile and notifications sit in the top bar) */
   const TABS2 = [['feed', 'home', 'Home'], ['deck', 'deck', 'Deck'], ['+', 'sparkles', 'Ask Brew'], ['learned', 'book', 'Memory'], ['connectors', 'plug', 'Connectors']];
-  const TITLES = { feed: `${B.brand.name}`, deck: 'Deck', work: 'Work', saved: 'Library', jams: 'Library', remixes: 'Library', learned: 'Learned', moves: 'Moves', move: 'Move', engine: 'How it works', connectors: 'Connectors', tune: 'Your feed', queue: `${B.brand.name}`, remix: 'Remix' };
+  const TITLES = { feed: `${B.brand.name}`, deck: 'Deck', work: 'Work', saved: 'Library', jams: 'Library', remixes: 'Library', refs: 'Library', learned: 'Learned', moves: 'Moves', move: 'Move', engine: 'How it works', connectors: 'Connectors', tune: 'Your feed', queue: `${B.brand.name}`, remix: 'Remix' };
   if (UI2) Object.assign(TITLES, { learned: 'Memory', moves: 'Memory', facts: 'Memory', heard: 'Memory', rules: 'Memory', tune: 'Memory', saved: 'Shortlisted', jams: 'Jams', work: 'In progress', done: 'Briefs sent', queue: 'Needs your yes', remix: 'Jam' });
   const paintTabbar = () => {
     document.body.dataset.view = BOOT_RX ? 'remix' : view; /* a studio link is the studio from the first paint, even while the feed boots underneath */
@@ -1463,7 +1463,7 @@
      so the browser's Back and ours walk the same path. route() makes the screen match the URL. */
   const nav = (hash, push, a, v = view) => { const st = { a, v }; hash = typeof hash === 'string' && hash.startsWith('#') ? location.pathname + hash : hash; if (push) history.pushState(st, '', hash); else history.replaceState(st, '', hash); };
   const VIEWS = () => { const v = VIEWS0(); v.tune = renderTune; if (!UI2) return v; v.rules = renderRules; return Object.fromEntries(Object.entries(v).map(([k, f]) => [k, (...a) => { m2Paint(k); return f(...a); }])); };
-  const VIEWS0 = () => ({ feed: renderFeed, deck: renderDeck, saved: renderSaved, jams: (f) => renderJams(f !== false), remixes: (f) => renderJams(f !== false), done: renderWork, work: renderWork, engine: renderEngine, connectors: renderConnectors, learned: renderLearned, heard: () => renderHeard(), facts: () => renderFacts(), moves: renderMoves, move: renderMove, queue: () => renderQueue() });
+  const VIEWS0 = () => ({ feed: renderFeed, deck: renderDeck, saved: renderSaved, jams: (f) => renderJams(f !== false), remixes: (f) => renderJams(f !== false), refs: (f) => renderReferences(f !== false), done: renderWork, work: renderWork, engine: renderEngine, connectors: renderConnectors, learned: renderLearned, heard: () => renderHeard(), facts: () => renderFacts(), moves: renderMoves, move: renderMove, queue: () => renderQueue() });
   const route = () => {
     const hp = hashParams(), rm = location.hash.match(/^#remix=([^/&]+)(?:\/([^&]+))?/);
     if (rm) { const p = byId(decodeURIComponent(rm[1]));
@@ -2318,7 +2318,7 @@
     renderEngine(true);
   });
 
-  const renderView = () => ({ tune: renderTune, ...(UI2 ? { rules: renderRules } : {}), feed: renderFeed, saved: renderSaved, jams: () => renderJams(false), remixes: () => renderJams(false), done: renderWork, work: renderWork, engine: renderEngine, connectors: renderConnectors, deck: renderDeck, learned: renderLearned, heard: () => renderHeard(), facts: () => renderFacts(), moves: renderMoves, move: renderMove, remix: () => (RX.p ? openRemix(RX.p) : renderFeed()), queue: () => renderQueue() }[view] || renderFeed)();
+  const renderView = () => ({ tune: renderTune, ...(UI2 ? { rules: renderRules } : {}), feed: renderFeed, saved: renderSaved, jams: () => renderJams(false), remixes: () => renderJams(false), refs: () => renderReferences(false), done: renderWork, work: renderWork, engine: renderEngine, connectors: renderConnectors, deck: renderDeck, learned: renderLearned, heard: () => renderHeard(), facts: () => renderFacts(), moves: renderMoves, move: renderMove, remix: () => (RX.p ? openRemix(RX.p) : renderFeed()), queue: () => renderQueue() }[view] || renderFeed)();
 
   /* ---------- nav ---------- */
   document.addEventListener('click', (e) => {
@@ -2565,7 +2565,7 @@
   const pullRemixes = async () => { const r = await tapi('GET', '/api/tenants/:t/remixes'); if (!r.error) REMIXES = r.remixes || []; return REMIXES || []; };
   const JAM_DONE = ['shared'];
   const LIB = { cat: { saved: 'all', jams: 'all', remixes: 'all' }, open: new Set(), scope: null /* jams: mine | team */ };
-  const libTabs = (k) => { const tabs = [['saved', 'Saved', S.saved.length], ['jams', window.BREW_DEMO ? 'My jams' : 'Jams', WORK.items.filter((w) => !JAM_DONE.includes(w.stage)).length]];
+  const libTabs = (k) => { const tabs = [['saved', 'Saved', S.saved.length], ['jams', window.BREW_DEMO ? 'My jams' : 'Jams', WORK.items.filter((w) => !JAM_DONE.includes(w.stage)).length], ['refs', 'References', REFS.items ? REFS.items.length : '']];
     return `<div class="lib-seg" role="tablist">${tabs.map(([v, n, c]) => `<button role="tab" data-nav="${v}" aria-selected="${k === v}">${n}${c !== '' ? `<em>${c}</em>` : ''}</button>`).join('')}</div>`; };
   const libEmpty = (icon, h, s) => `<div class="lib-empty"><span class="le-ic">${ic(icon)}</span><b>${h}</b><span>${s}</span><button class="btn btn-ghost sm" data-nav="feed">Go to the feed</button></div>`;
   // cats: [{ k, name, hint, items: [html], tone }]; the chips filter, "all" shows every category two rows deep
@@ -2678,6 +2678,53 @@
     };
     paint(); if (fresh || !REMIXES) { await pullRemixes(); paint(); }
   };
+  /* References: what the brand uploaded for Brew's generators (references.js). Any image or MP4, each with a label, a job
+     (what it is for) and one line on what to keep. The same tiles as the rest of the Library; the photo picker shows them too */
+  const REFS = { items: null, jobs: ['product', 'scene', 'style', 'person', 'logo', 'other'], edit: null };
+  const REF_JOB = { product: 'Product', scene: 'Scene', style: 'Style', person: 'Person', logo: 'Logo', other: 'Other' };
+  const REF_HINT = { product: 'The exact thing to show', scene: 'Places and settings to put it in', style: 'Light, colour and mood to match', person: 'People and faces to keep', logo: 'Marks that must appear as they are', other: 'Everything else' };
+  const refUrl = (r) => r.url.replace(/^\//, ''); /* the page has <base href="/">: b/<slug>/refs/… like gen/… */
+  const pullRefs = async () => { const r = await tapi('GET', `/api/brands/${encodeURIComponent(mvSlug())}/references`); if (!r.error) { REFS.items = r.items || []; if (r.jobs?.length) REFS.jobs = r.jobs; } return REFS.items || []; };
+  const refTile = (r) => { const ed = REFS.edit === r.id;
+    return `<div class="lt rf-t${ed ? ' is-edit' : ''}" data-rf="${esc(r.id)}">
+      <span class="rf-media">${r.kind === 'video' ? `<video src="${esc(refUrl(r))}" muted playsinline preload="metadata"></video><i>${ic('play', 's14')}</i>` : `<img src="${esc(refUrl(r))}" alt="" loading="lazy">`}</span>
+      ${ed ? `<label class="rf-f"><small>Name</small><input data-rf-label maxlength="80" value="${esc(r.label)}"></label>
+        <label class="rf-f"><small>Job</small><select data-rf-job>${REFS.jobs.map((j) => `<option value="${j}"${j === r.job ? ' selected' : ''}>${REF_JOB[j] || j}</option>`).join('')}</select></label>
+        <label class="rf-f"><small>Keep</small><input data-rf-keep maxlength="160" placeholder="e.g. match its light" value="${esc(r.keep || '')}"></label>
+        <span class="lt-f"><button class="linkbtn" data-rf-remove>${ic('minus', 's14')}Remove</button><span class="rf-acts"><button class="btn btn-ghost sm" data-rf-cancel>Cancel</button><button class="btn btn-primary sm" data-rf-save>Save</button></span></span>`
+      : `<b class="lt-t" title="${esc(r.label)}">${esc(r.label)}</b>${r.keep ? `<span class="lt-l">${esc(r.keep)}</span>` : ''}
+        <span class="lt-f"><span class="lt-who">${esc(REF_JOB[r.job] || r.job)}${r.kind === 'video' ? ' · video' : r.w && r.h ? ` · ${r.w}×${r.h}` : ''}</span><button class="linkbtn" data-rf-edit>Edit</button></span>`}</div>`; };
+  const refUpload = async (files) => { files = [...files].slice(0, 12); if (!files.length) return; const IMG = /^image\/(png|jpeg|webp)$/; const skipped = []; let n = 0;
+    const read = (f) => new Promise((ok) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = () => ok(null); r.readAsDataURL(f); });
+    toast(`${ic('upload', 's16')}Uploading ${files.length === 1 ? esc(files[0].name) : files.length + ' files'}…`);
+    for (const f of files) { const img = IMG.test(f.type), vid = f.type === 'video/mp4'; if (!(img || vid) || (img && f.size > 8e6) || (vid && f.size > 25e6)) { skipped.push(f.name); continue; }
+      const data = await read(f); if (!data) { skipped.push(f.name); continue; }
+      const r = await tapi('POST', `/api/brands/${encodeURIComponent(mvSlug())}/references`, { data, label: f.name.replace(/\.[a-z0-9]+$/i, '').replace(/[-_]+/g, ' ').trim(), job: img ? (REFS.cat && REFS.cat !== 'all' ? REFS.cat : 'other') : 'scene' });
+      if (r.error) { toast(esc(r.error)); break; } n++; if (r.items) REFS.items = r.items; if (view === 'refs') renderReferences(false); }
+    if (n || skipped.length) toast(`${n ? `${ic('check', 's16')}${n} added` : ''}${skipped.length ? `${n ? '. ' : ''}Skipped ${esc(skipped.join(', '))}: PNG, JPG or WebP up to 8 MB, MP4 up to 25 MB` : ''}`); };
+  const renderReferences = async (fresh = true) => {
+    view = 'refs';
+    const paint = () => { if (view !== 'refs') return;
+      const all = REFS.items || [], cur = REFS.cat && all.some((r) => r.job === REFS.cat) ? REFS.cat : 'all', shown = cur === 'all' ? all : all.filter((r) => r.job === cur);
+      const up = `<label class="btn btn-primary sm rf-up">${ic('plus', 's16')}Upload<input type="file" multiple accept="image/png,image/jpeg,image/webp,video/mp4" data-rf-file hidden></label>`;
+      const chips = all.length ? `<div class="lib-cats"><button class="lib-cat" data-rfcat="all" aria-pressed="${cur === 'all'}">All<em>${all.length}</em></button>${REFS.jobs.filter((j) => all.some((r) => r.job === j)).map((j) => `<button class="lib-cat" data-rfcat="${j}" aria-pressed="${cur === j}">${REF_JOB[j] || j}<em>${all.filter((r) => r.job === j).length}</em></button>`).join('')}<span class="lib-acts">${up}</span></div>` : '';
+      const body = !REFS.items ? `<div class="lib-load"><span class="spin"></span></div>`
+        : !all.length ? `<div class="lib-empty"><span class="le-ic">${ic('pic')}</span><b>No references yet</b><span>Upload the photos, past ads and looks you want Brew to work from.</span>${up}</div>`
+        : chips + `<section class="lib-sec"><header><b>${cur === 'all' ? 'All' : esc(REF_JOB[cur])}</b><em>${shown.length}</em>${cur !== 'all' ? `<small>${esc(REF_HINT[cur] || '')}</small>` : ''}</header><div class="lt-grid rf-grid">${shown.map(refTile).join('')}</div></section>`;
+      libPage('refs', 'Photos, past ads, looks, logos and clips Brew works from. Each one says what it is for and what to keep.', body); };
+    paint(); if (fresh || !REFS.items) { await pullRefs(); paint(); }
+  };
+  document.addEventListener('change', (e) => { if (e.target.matches?.('[data-rf-file]')) { refUpload(e.target.files); e.target.value = ''; } });
+  document.addEventListener('click', async (e) => {
+    const c = e.target.closest('[data-rfcat]'); if (c) { REFS.cat = c.dataset.rfcat; return renderReferences(false); }
+    const t = e.target.closest('[data-rf]'); if (!t) return; const id = t.dataset.rf, api = (path, body) => tapi('POST', `/api/brands/${encodeURIComponent(mvSlug())}/references/${encodeURIComponent(id)}${path}`, body);
+    if (e.target.closest('[data-rf-edit]')) { REFS.edit = id; return renderReferences(false); }
+    if (e.target.closest('[data-rf-cancel]')) { REFS.edit = null; return renderReferences(false); }
+    if (e.target.closest('[data-rf-save]')) { const r = await api('', { label: $('[data-rf-label]', t).value, job: $('[data-rf-job]', t).value, keep: $('[data-rf-keep]', t).value }); if (r.error) return toast(esc(r.error)); REFS.items = r.items || REFS.items; REFS.edit = null; return renderReferences(false); }
+    if (e.target.closest('[data-rf-remove]')) { const r = await api('/remove', {}); if (r.error) return toast(esc(r.error)); REFS.items = r.items || (REFS.items || []).filter((x) => x.id !== id); REFS.edit = null; toast(`${ic('check', 's16')}Removed`); return renderReferences(false); }
+    if (e.target.closest('video')) { const v = e.target.closest('video'); v.paused ? v.play().catch(() => {}) : v.pause(); }
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches?.('[data-rf-label],[data-rf-keep]')) { e.preventDefault(); e.target.closest('[data-rf]')?.querySelector('[data-rf-save]')?.click(); } });
   document.addEventListener('timeupdate', (e) => { const v = e.target; if (!v.classList?.contains('sv-vid') || !v.duration) return; const bar = v.parentElement.querySelector('.sv-pbar i'); if (bar) bar.style.width = `${(v.currentTime / v.duration) * 100}%`; }, true);
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-remix]'); if (!b) return;
@@ -2686,7 +2733,7 @@
     openRemix(p, r.batch ? undefined : r.id);
   });
   /* discard, restore and start fresh, for jams and remixes. Discarding never deletes: it moves to Discarded, one tap brings it back */
-  const libRepaint = () => { if (view === 'jams') renderJams(false); else if (view === 'remixes') renderRemixes(false); else if (view === 'saved') $('.lib-seg')?.replaceWith(htmlEl(libTabs('saved'))); counts(); };
+  const libRepaint = () => { if (view === 'jams') renderJams(false); else if (view === 'remixes') renderRemixes(false); else if (view === 'refs') renderReferences(false); else if (view === 'saved') $('.lib-seg')?.replaceWith(htmlEl(libTabs('saved'))); counts(); };
   const libAct = {
     async discard(kind, id, o = {}) {
       const r = await tapi('POST', kind === 'jam' ? `/api/work/${id}/discard` : `/api/changes/${id}/discard`, {});
@@ -3501,6 +3548,8 @@
           <div class="ph-row">${d.ai ? `<button class="btn btn-primary sm" data-ph-ai>${ic('sparkles', 's14')}Make it with AI</button><span>Uses your product photo as the reference${PH.sel.length ? ' (the one you picked below)' : ''}. Lands as a new version in about a minute.</span>` : `<span>${esc(d.aiWhy || '')} Pick one below or upload yours.</span>`}</div></section>
         <section><div class="ph-sh"><small>Your product photos</small><span>${max > 1 ? `Pick up to ${max}` : 'Pick one'}</span></div>
           ${d.photos.length ? `<div class="ph-grid">${d.photos.map((x, i) => { const k = PH.sel.indexOf(x.img); return `<button class="ph-t${k >= 0 ? ' is-on' : ''}" data-ph-pick="${i}" title="${esc(x.t)}"><img src="${esc(cdnSized(x.img, 300))}" alt="" loading="lazy">${k >= 0 ? `<i>${max > 1 ? k + 1 : ic('check', 's14')}</i>` : ''}<span>${esc(x.t)}${x.out ? ' · sold out' : ''}</span></button>`; }).join('')}</div>` : '<p class="ph-none">No product photos read from the store yet.</p>'}</section>
+        ${(d.references || []).some((r) => r.kind === 'image') ? `<section><div class="ph-sh"><small>Your references</small><span>From the Library</span></div>
+          <div class="ph-grid">${d.references.map((r, i) => { if (r.kind !== 'image') return ''; const u = r.url.replace(/^\//, ''), k = PH.sel.indexOf(u); return `<button class="ph-t${k >= 0 ? ' is-on' : ''}" data-ph-ref="${i}" title="${esc(r.label)}"><img src="${esc(u)}" alt="" loading="lazy">${k >= 0 ? `<i>${max > 1 ? k + 1 : ic('check', 's14')}</i>` : ''}<span>${esc(r.label)} · ${esc(r.job)}</span></button>`; }).join('')}</div></section>` : ''}
         <section><div class="ph-sh"><small>Or upload your own</small></div><label class="ph-up">${ic('plus', 's16')}<span>Add a photo (PNG, JPG or WebP, up to 8 MB)</span><input type="file" accept="image/png,image/jpeg,image/webp" data-ph-file hidden></label></section>
       </div>
       <div class="ph-f"><span>${PH.sel.length ? `${PH.sel.length} picked. The words stay the same; it saves as a new version.` : 'Nothing changes until you choose.'}</span><button class="btn btn-ghost" data-ph-x>Cancel</button><button class="btn btn-primary" data-ph-use ${PH.sel.length ? '' : 'disabled'}>Use ${PH.sel.length > 1 ? `these ${PH.sel.length}` : 'this photo'}</button></div>`; };
@@ -3508,14 +3557,14 @@
   const openPhotos = async () => { const ch = RX.ch; if (!ch) return; const bs = [...document.querySelectorAll('[data-ph-open]')]; if (bs.some((x) => x.classList.contains('is-busy'))) return;
     bs.forEach((x) => x.classList.add('is-busy')); /* the picker loads the product photos first: show it's on its way */
     const d = await tapi('GET', `/api/changes/${ch.id}/photos`).catch(() => ({ error: 'Couldn’t load the photos. Try again.' })); bs.forEach((x) => x.classList.remove('is-busy')); if (d.error) return toast(esc(d.error));
-    PH.data = d; PH.sel = (d.current || []).filter((u) => d.photos.some((x) => x.img === u)); PH.brief = '';
+    PH.data = d; PH.sel = (d.current || []).filter((u) => d.photos.some((x) => x.img === u) || (d.references || []).some((r) => r.url.replace(/^\//, '') === u)); PH.brief = '';
     modal(`<div class="sheet ph-m" role="dialog" aria-label="Change the photo"></div>`, (w) => { phPaint(w);
       w.addEventListener('input', (e) => { if (e.target.id === 'ph-brief') PH.brief = e.target.value; });
       w.addEventListener('change', async (e) => { const f = e.target.closest('[data-ph-file]')?.files?.[0]; if (!f) return; if (f.size > 8e6) return toast('That photo is over 8 MB.');
         const data = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(f); }); phDone(await tapi('POST', `/api/changes/${ch.id}/photo`, { upload: data })); });
       w.addEventListener('click', async (e) => { e.stopPropagation();
         if (e.target.closest('[data-ph-x]')) return closeModal();
-        const pk = e.target.closest('[data-ph-pick]'); if (pk) { const u = PH.data.photos[+pk.dataset.phPick].img, max = PH.data.max || 1; PH.sel = PH.sel.includes(u) ? PH.sel.filter((x) => x !== u) : max === 1 ? [u] : [...PH.sel, u].slice(-max); return phPaint(w); }
+        const pk = e.target.closest('[data-ph-pick],[data-ph-ref]'); if (pk) { const u = pk.dataset.phRef != null ? PH.data.references[+pk.dataset.phRef].url.replace(/^\//, '') : PH.data.photos[+pk.dataset.phPick].img, max = PH.data.max || 1; PH.sel = PH.sel.includes(u) ? PH.sel.filter((x) => x !== u) : max === 1 ? [u] : [...PH.sel, u].slice(-max); return phPaint(w); }
         if (e.target.closest('[data-ph-use]')) return phDone(await tapi('POST', `/api/changes/${ch.id}/photo`, { urls: PH.sel }));
         const ai = e.target.closest('[data-ph-ai]'); if (ai) { ai.disabled = true; const brief = [PH.brief.trim(), PH.sel[0] ? `Use this product: ${PH.data.photos.find((x) => x.img === PH.sel[0])?.t || ''}` : ''].filter(Boolean).join('. ');
           if (PH.sel.length) await tapi('POST', `/api/changes/${ch.id}/photo`, { urls: PH.sel.slice(0, 1) }); /* the picked product is the AI's reference */

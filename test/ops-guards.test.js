@@ -51,7 +51,7 @@ test('budget: counters survive a restart and a new day starts empty', async () =
 test('budget: reads the old usage-day.json (totals only) without losing them', async () => {
   const store = memStore({ day: new Date(T0).toDateString(), text: 7, image: 2, video: 0, voice: 1, treg: { usd: 1 } });
   const b = createBudget({ env: {}, store, now: () => T0 }); await b.load();
-  assert.deepEqual(b.state.all, { text: 7, image: 2, video: 0, voice: 1 });
+  assert.deepEqual(b.state.all, { text: 7, image: 2, video: 0, voice: 1, credits: 0 }); /* credits: Sloosh finals, new since the old file */
 });
 
 /* ---------- 2. one rewrite per move when accounts connect ---------- */

@@ -164,21 +164,25 @@
   };
   // first drafts: one tap makes the asset the brief asks for (AI picks the form) or in a form you pick
   const AS = { image: ['pic', 'Image'], carousel: ['grid', 'Carousel'], video: ['vid', 'Video'], voice: ['mic', 'Voice'], text: ['txt', 'Text'], email: ['send', 'Email'], whatsapp: ['chat', 'WhatsApp message'], page: ['doc', 'Page section'], collection: ['grid', 'Collection ad'], catalog: ['grid', 'Catalog ad'] };
-  const draftHtml = (d) => {
+  const draftHtml = (d, w = null) => {
     const lab = AS[d.as] || ['sparkles', 'Draft'];
+    /* a final (made by Sloosh, or simulated on the demo site) carries its kicker; a ready image or video draft offers Make the final */
+    const fin = d.final ? `<span class="jm-dr-final">Final${d.dummy ? ' · Dummy' : ''}</span>` : '';
+    const mk = w && d.state === 'ready' && !d.failed && ['image', 'video'].includes(d.as) && (d.image || d.video) ? `<button class="linkbtn" data-jm-final="${esc(d.id)}" data-wid="${esc(w.id)}">${ic('sparkles', 's14')}${d.final ? 'Revise the final' : 'Make the final'}</button>` : '';
+    const ck = w && d.state === 'checkpoint' ? `<div class="jm-dr-ck"><span>${esc(d.step || 'The Space is waiting for a yes')}</span><button class="btn btn-primary sm" data-jm-fnck="${esc(d.id)}" data-wid="${esc(w.id)}" data-ok="1">Carry on</button><button class="btn btn-ghost sm" data-jm-fnck="${esc(d.id)}" data-wid="${esc(w.id)}" data-ok="0">Stop</button></div>` : '';
     const media = d.state === 'making' ? `<div class="jm-dr-mk"><span class="spin"></span><span>${esc(d.step || 'Making it')}…</span></div>`
       : d.video ? `<video class="jm-dr-m" src="${esc(d.video)}"${d.image ? ` poster="${esc(d.image)}"` : ''} controls playsinline loop preload="metadata" style="aspect-ratio:${esc((d.ratio || '9:16').replace(':', '/'))}"></video>`
       : d.slides?.length ? `<div class="jm-dr-sl" style="--ar:${esc((d.ratio || '4:5').replace(':', '/'))}">${d.slides.map((x, i) => `<a href="${esc(x.image)}" target="_blank" rel="noopener" title="Slide ${i + 1}: ${esc(x.text)}"><img src="${esc(x.image)}" alt="Slide ${i + 1}: ${esc(x.text)}" loading="lazy"></a>`).join('')}</div>`
       : d.render || d.image ? `<img class="jm-dr-m" src="${esc(d.render || d.image)}" alt="${esc(d.title || 'Draft image')}"${d.photo || (d.render && d.image) ? ` data-fb="${esc([d.render ? d.image : null, d.photo].filter(Boolean).join('|'))}"` : ''} style="aspect-ratio:${esc(d.render ? '4/5' : (d.ratio || '4:5').replace(':', '/'))}">` : ''; /* render: an email, chat, page or product-grid mock made before the jam opened */
     const audio = d.audio && d.state !== 'making' ? `<div class="jm-dr-au">${d.video ? '<small>Voiceover</small>' : ''}<audio src="${esc(d.audio)}" controls preload="none"></audio></div>` : '';
     const file = d.zip || d.video || d.render || d.image || d.audio;
-    return `<article class="jm-dr is-${esc(d.state)}">${media}${audio}
-      <div class="jm-dr-b"><small class="jm-dr-k">${ic(lab[0], 's12')}${esc(lab[1])}${d.state === 'making' ? '' : ` · ${esc(d.title || 'First draft')}`}</small>
+    return `<article class="jm-dr is-${esc(d.state)}${d.final ? ' is-final' : ''}${d.dummy ? ' is-dummy' : ''}">${media}${audio}${ck}
+      <div class="jm-dr-b"><small class="jm-dr-k">${ic(lab[0], 's12')}${esc(lab[1])}${d.state === 'making' ? '' : ` · ${esc(d.title || 'First draft')}`}${fin}</small>
         ${d.copy ? `<div class="jm-dr-copy">${toHtml(d.copy)}</div>` : ''}
         ${d.err ? `<p class="jm-dr-note is-err">${esc(d.err)}</p>` : d.note ? `<p class="jm-dr-note">${esc(d.note)}</p>` : ''}
-        ${d.state === 'making' ? '' : `<div class="jm-dr-acts">${file ? `<a class="linkbtn" href="${esc(file)}" download>${ic('down', 's14')}${d.zip ? `Download all ${d.slides?.length || ''} slides` : 'Download'}</a>` : ''}${d.copy ? `<button class="linkbtn" data-jm-drcopy="${esc(d.id)}">${ic('copy', 's14')}Copy the words</button>` : ''}<button class="linkbtn" data-jm-make="${esc(d.asked || 'auto')}">${ic('refresh', 's14')}Another take</button><button class="linkbtn jm-dr-x" data-jm-drop="${esc(d.id)}" aria-label="Remove this draft">${ic('x', 's14')}</button></div>`}</div></article>`;
+        ${d.state === 'making' ? '' : `<div class="jm-dr-acts">${mk}${file ? `<a class="linkbtn" href="${esc(file)}" download>${ic('down', 's14')}${d.zip ? `Download all ${d.slides?.length || ''} slides` : 'Download'}</a>` : ''}${d.copy ? `<button class="linkbtn" data-jm-drcopy="${esc(d.id)}">${ic('copy', 's14')}Copy the words</button>` : ''}<button class="linkbtn" data-jm-make="${esc(d.asked || 'auto')}">${ic('refresh', 's14')}Another take</button><button class="linkbtn jm-dr-x" data-jm-drop="${esc(d.id)}" aria-label="Remove this draft">${ic('x', 's14')}</button></div>`}</div></article>`;
   };
-  const draftsHtml = (w) => (w?.drafts?.length ? `<section class="jm-drafts" aria-label="Drafts">${w.drafts.map(draftHtml).join('')}</section>` : '');
+  const draftsHtml = (w) => (w?.drafts?.length ? `<section class="jm-drafts" aria-label="Drafts">${w.drafts.map((d) => draftHtml(d, w)).join('')}</section>` : '');
   const makeHtml = (w) => {
     if (['deploying', 'measuring', 'result'].includes(w?.stage)) return '';
     const busy = JM.making || (w?.drafts || []).some((d) => d.state === 'making');

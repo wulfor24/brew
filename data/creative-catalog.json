@@ -1,0 +1,978 @@
+{
+  "v": 1,
+  "note": "What Brew can have made, one entry per asset. Families (family: null) are the make.format values cards use and keep every old name so saved packs still map; Sloosh Spaces and models carry family: the format they produce. [product] in an example is replaced by the brand's own product name when the block is rendered. Brand-agnostic.",
+  "avoid": [
+    "a new ad",
+    "new ads",
+    "fresh creative",
+    "fresh creatives",
+    "new creative",
+    "new creatives",
+    "some visuals",
+    "a visual",
+    "new visuals",
+    "a campaign",
+    "a new campaign",
+    "an ad campaign",
+    "a social campaign",
+    "social media content",
+    "some content",
+    "content pieces",
+    "a video",
+    "a new video",
+    "some videos",
+    "a post",
+    "a new post",
+    "some posts",
+    "a banner",
+    "a graphic",
+    "graphics",
+    "engaging content",
+    "eye-catching visuals",
+    "compelling creative",
+    "high-quality images",
+    "a variety of assets",
+    "assets",
+    "creative assets",
+    "marketing materials",
+    "promotional content",
+    "ad creatives",
+    "a set of ads",
+    "ads",
+    "creatives",
+    "visuals",
+    "a photo",
+    "product photos",
+    "lifestyle photos",
+    "lifestyle imagery",
+    "imagery",
+    "a mockup",
+    "a design"
+  ],
+  "formats": [
+    {
+      "format": "single image ad",
+      "family": null,
+      "looks": "One still frame for Meta or Google: the product in a scene or on a clean ground with a headline, made as 3 to 6 hook versions.",
+      "makes": "brew",
+      "with": "Brew statics (Chromium lettering) or Sloosh Product Poster / Ad Creative",
+      "needs": [
+        "product photo",
+        "headline",
+        "logo"
+      ],
+      "ratio": [
+        "4:5",
+        "1:1",
+        "9:16"
+      ],
+      "credits": "1 to 3 per version",
+      "time": "10 min for 3 versions",
+      "examples": [
+        "4:5 static: [product] on the pillow at 6 am, headline in the top third, price line under it",
+        "3 hooks, 1:1: [product] held up to the window light, each headline a different review line",
+        "4:5 static: [product] next to the rival's size on a kitchen scale, one line on the difference"
+      ],
+      "short": "one still, 3-6 hook versions"
+    },
+    {
+      "format": "carousel ad",
+      "family": null,
+      "looks": "A paid Meta carousel of 3 to 6 cards, each card one product, one proof or one step, swiping to a buy card.",
+      "makes": "brew",
+      "with": "Brew carousels or Sloosh 3x3 Product Ad Grid",
+      "needs": [
+        "product photo per card",
+        "one line per card",
+        "logo"
+      ],
+      "ratio": [
+        "1:1",
+        "4:5"
+      ],
+      "credits": "1 per card",
+      "time": "15 min",
+      "examples": [
+        "5 cards: [product] on five body types, same pose, same light, size named on each card",
+        "4 cards: the ingredient, the lab line, the 30-day result quote, the price",
+        "6 cards: one card per colourway of [product], the shade name as the only text"
+      ],
+      "short": "paid swipe of 3-6 cards"
+    },
+    {
+      "format": "collection ad",
+      "family": null,
+      "looks": "A Meta collection ad: one hero image or 8 s clip on top and four catalog products under it, opening full screen.",
+      "makes": "brew",
+      "with": "Brew statics for the hero, Meta catalog for the grid",
+      "needs": [
+        "hero image or clip",
+        "4 catalog products",
+        "catalog connected"
+      ],
+      "ratio": [
+        "1:1",
+        "4:5"
+      ],
+      "credits": "2 to 4",
+      "time": "20 min",
+      "examples": [
+        "Hero: [product] mid-use on the sofa, 4 catalog tiles: the three kits and the refill",
+        "Hero 8 s clip: the box opening on the doormat, grid: the four best sellers under 2,000",
+        "Hero: the winter shelf at home, grid: the four products the reviews name most"
+      ],
+      "short": "hero on top, 4 catalog tiles"
+    },
+    {
+      "format": "catalog ad",
+      "family": null,
+      "looks": "Dynamic product ads from the connected catalog: a frame or overlay design applied to every product card.",
+      "makes": "brew",
+      "with": "Brew frame overlay, Meta catalog",
+      "needs": [
+        "catalog connected",
+        "frame design",
+        "price feed"
+      ],
+      "ratio": [
+        "1:1"
+      ],
+      "credits": "1 for the frame",
+      "time": "20 min",
+      "examples": [
+        "One frame: the price tag in the brand colour on the bottom left, free-shipping line on the top edge",
+        "Two frames to test: review stars under the product vs the 30-day promise under the product",
+        "Retargeting frame: 'still in your cart' in the brand font over the product card"
+      ],
+      "short": "one frame over every catalog card"
+    },
+    {
+      "format": "video ad",
+      "family": null,
+      "looks": "A paid 9:16 or 1:1 clip, 6 to 30 s, with timed beats, captions and an end card; made from product photos, not a shoot.",
+      "makes": "sloosh-model",
+      "with": "Seedance 2.5 (timed beats), Kling V3 Omni, Veo 3.1, or Sloosh Cinematic Ad Sequence / UGC Selfie Video Ad",
+      "needs": [
+        "product photo",
+        "beat list with seconds",
+        "voice line or captions",
+        "end card"
+      ],
+      "ratio": [
+        "9:16",
+        "1:1",
+        "16:9"
+      ],
+      "seconds": [
+        6,
+        30
+      ],
+      "credits": "8 to 20",
+      "time": "30 min",
+      "examples": [
+        "9:16, 12 s: 0-3 s [product] heating up on a desk, 3-8 s the hand sliding in, 8-12 s the price and the 30-day line",
+        "9:16 selfie, 15 s: a buyer reads her own review line to camera holding [product], caption burned in",
+        "1:1, 8 s: [product] in the rival's box size then ours, one line on the difference, end card"
+      ],
+      "short": "paid clip with timed beats and end card"
+    },
+    {
+      "format": "instagram post",
+      "family": null,
+      "looks": "One organic feed image for the brand's own account, in its own photo style, with a caption written natively.",
+      "makes": "brew",
+      "with": "Brew statics or Sloosh Product in Scene + Relight",
+      "needs": [
+        "product photo",
+        "caption",
+        "scene"
+      ],
+      "ratio": [
+        "4:5",
+        "1:1"
+      ],
+      "credits": "1 to 2",
+      "time": "10 min",
+      "examples": [
+        "4:5 post: [product] on the window ledge at golden hour, caption the founder's one-line origin story",
+        "1:1 post: [product] relit on a dark ground, caption a question to the audience about their routine",
+        "4:5 post: the ingredient and [product] side by side, caption the lab line from the site"
+      ],
+      "short": "one organic feed image and caption"
+    },
+    {
+      "format": "instagram carousel",
+      "family": null,
+      "looks": "An organic swipe of 4 to 8 slides on the brand's own account: a how-to, a comparison, a review set or a lookbook.",
+      "makes": "brew",
+      "with": "Brew carousels or Sloosh Instagram Carousel",
+      "needs": [
+        "product photos",
+        "one line per slide",
+        "cover line"
+      ],
+      "ratio": [
+        "4:5",
+        "1:1"
+      ],
+      "credits": "1 per slide",
+      "time": "15 min",
+      "examples": [
+        "6 slides: the fit room, one body type per slide, size named on each",
+        "5 slides: the five questions buyers ask most, one answer per slide, [product] on the last",
+        "7 slides: a week of mornings with [product], one day per slide, the routine as the caption"
+      ],
+      "short": "organic swipe of 4-8 slides"
+    },
+    {
+      "format": "instagram stories",
+      "family": null,
+      "looks": "A set of 3 to 5 vertical frames for Stories: a poll, a swipe-up to a page, a countdown or a behind-the-scenes set.",
+      "makes": "brew",
+      "with": "Brew statics (9:16) or Sloosh Design Recomposer for the resize",
+      "needs": [
+        "product photo",
+        "one line per frame",
+        "link or sticker"
+      ],
+      "ratio": [
+        "9:16"
+      ],
+      "credits": "1 per frame",
+      "time": "10 min",
+      "examples": [
+        "4 frames: [product] in the box, in the hand, in use, the link frame with the price",
+        "3 frames: a poll on which shade of [product] to restock first, the answer frame the next day",
+        "5 frames: the packing table on a Friday, one order per frame, the last frame the review count"
+      ],
+      "short": "3-5 vertical frames"
+    },
+    {
+      "format": "reel",
+      "family": null,
+      "looks": "An organic 9:16 clip of 5 to 20 s for Reels, Shorts or TikTok, built on a 4-beat grid with captions and sound.",
+      "makes": "brew",
+      "with": "Brew reels (Veo) or Sloosh Multishot Product Clips / UGC Unboxing Clip",
+      "needs": [
+        "product photo",
+        "4 beats",
+        "caption lines",
+        "sound"
+      ],
+      "ratio": [
+        "9:16"
+      ],
+      "seconds": [
+        5,
+        20
+      ],
+      "credits": "6 to 12",
+      "time": "30 min",
+      "examples": [
+        "9:16 reel, 8 s: [product] heating up on a desk, then the hand sliding in",
+        "9:16 reel, 12 s: unboxing [product] on the doormat, the card inside read out loud",
+        "9:16 reel, 15 s: three ways to wear [product] cut on the beat, the size on screen each time"
+      ],
+      "short": "organic clip on a 4-beat grid"
+    },
+    {
+      "format": "whatsapp message",
+      "family": null,
+      "looks": "One WhatsApp or SMS message with a product image, under 300 characters, sent to one segment at one moment.",
+      "makes": "brew",
+      "with": "Brew messages",
+      "needs": [
+        "segment",
+        "product photo",
+        "link",
+        "moment"
+      ],
+      "ratio": [
+        "1:1"
+      ],
+      "credits": "0",
+      "time": "5 min",
+      "examples": [
+        "1 message to buyers of [product] 30 days in: the refill with its price and the reorder link",
+        "1 message to cart leavers after 2 hours: the product left behind, the free-shipping line, the cart link",
+        "1 message to the last 90 days' buyers: the restock of [product] in the shade they bought"
+      ],
+      "short": "one message with a product image, one segment"
+    },
+    {
+      "format": "email",
+      "family": null,
+      "looks": "One email or a flow of 2 to 4 emails: subject line, hero image, 60 to 120 words, one button.",
+      "makes": "brew",
+      "with": "Brew emails",
+      "needs": [
+        "segment",
+        "hero image",
+        "subject line",
+        "one link"
+      ],
+      "ratio": [
+        "3:2 hero"
+      ],
+      "credits": "1 per hero",
+      "time": "15 min per email",
+      "examples": [
+        "3-email welcome flow: the founder's line, the three best sellers with prices, the first-order code",
+        "1 email to [product] buyers at day 45: the review ask with the one-click stars",
+        "2-email win-back: 'what changed since you left' with the new [product], then the last-chance code"
+      ],
+      "short": "one email or a 2-4 email flow"
+    },
+    {
+      "format": "page section",
+      "family": null,
+      "looks": "One section on a store page: a review strip, a comparison table, a size guide, an FAQ block or a hero, written for the theme.",
+      "makes": "brew",
+      "with": "Brew page sections or Sloosh Collection Banner",
+      "needs": [
+        "page",
+        "copy",
+        "product photos",
+        "theme access"
+      ],
+      "ratio": [
+        "page width"
+      ],
+      "credits": "0 to 2",
+      "time": "20 min",
+      "examples": [
+        "Review strip under add to cart on the [product] page: 3 quotes, the total count, the stars",
+        "Comparison table on the [product] page: us vs the two rivals the reviews name, 5 rows",
+        "Size guide above add to cart: the fit room photos per size, the measure-at-home steps"
+      ],
+      "short": "one section on a store page"
+    },
+    {
+      "format": "other",
+      "family": null,
+      "looks": "An asset none of the families cover: name it exactly in pieces (what, how many, which product, where it runs).",
+      "makes": "brew",
+      "with": "decided per card",
+      "needs": [
+        "the exact asset named"
+      ],
+      "ratio": [],
+      "credits": "varies",
+      "time": "varies",
+      "examples": [
+        "Amazon listing pack for [product]: 7 gallery images, the A+ module, the title",
+        "Packaging mock of the new [product] box from the dieline, front and side",
+        "360 orbit of [product] for the product page, 24 frames"
+      ],
+      "short": "anything else, named exactly"
+    },
+    {
+      "format": "Product Poster / Ad Creative",
+      "family": "single image ad",
+      "makes": "sloosh-space",
+      "with": "Sloosh Space: Product Poster / Ad Creative",
+      "looks": "A finished 4:5 poster from one product photo: scene, headline, logo lockup.",
+      "needs": [
+        "product photo",
+        "headline",
+        "logo"
+      ],
+      "ratio": [
+        "4:5"
+      ],
+      "credits": "2",
+      "time": "5 min",
+      "examples": [
+        "4:5 poster: [product] on a marble counter, headline across the top third, logo bottom right"
+      ]
+    },
+    {
+      "format": "3x3 Product Ad Grid",
+      "family": "carousel ad",
+      "makes": "sloosh-space",
+      "with": "Sloosh Space: 3x3 Product Ad Grid",
+      "looks": "Nine angles or scenes of one product in one grid, usable as a carousel or a grid post.",
+      "needs": [
+        "product photo"
+      ],
+      "ratio": [
+        "1:1"
+      ],
+      "credits": "6",
+      "time": "10 min",
+      "examples": [
+        "9 tiles of [product]: front, side, in hand, in the box, in use, on the shelf, macro, with the refill, flat lay"
+      ]
+    },
+    {
+      "format": "White Background Product Studio",
+      "family": "single image ad",
+      "makes": "sloosh-space",
+      "with": "Sloosh Space: White Background Product Studio",
+      "looks": "A clean white-ground packshot from any product photo, for catalog, marketplace and catalog ads.",
+      "needs": [
+        "product photo"
+      ],
+      "ratio": [
+        "1:1"
+      ],
+      "credits": "1",
+      "time": "3 min",
+      "examples": [
+        "1 white-ground packshot of [product], front, for the catalog feed"
+      ]
+    },
+    {
+      "format": "Product Multi-Angle Shots",
+      "family": "instagram carousel",
+      "makes": "sloosh-space",
+      "with": "Sloosh Space: Product Multi-Angle Shots",
+      "looks": "Four to six consistent angles of one product from a single photo.",
+      "needs": [
+        "product photo"
+      ],
+      "ratio": [
+        "1:1",
+        "4:5"
+      ],
+      "credits": "4",
+      "time": "5 min",
+      "examples": [
+        "5 angles of [product]: front, three-quarter, back, top, macro of the stitching"
+      ]
+    },
+    {
+      "format": "Product in Scene + Relight",
+      "family": "instagram post",
+      "makes": "sloosh-space",
+      "with": "Sloosh Space: Product in Scene + Relight",
+      "looks": "The product placed into a described room or outdoor scene and relit to match.",
+      "needs": [
+        "product photo",
+        "scene"
+      ],
+      "ratio": [
+        "4:5",
+        "1:1",
+        "16:9"
+      ],
+      "credits": "2",
+      "time": "5 min",
+      "examples": [
+        "4:5: [product] on a rainy balcony table at dusk, warm lamp light from the left"
+      ]
+    },
+    {
+      "format": "Product in Hand (UGC)",
+      "family": "single image ad",
+      "makes": "sloosh-space",
+      "with": "Sloosh Space: Product in Hand (UGC)",
+      "looks": "A phone-shot-looking frame of a hand holding the product, for UGC-style statics.",
+      "needs": [
+        "product photo",
+        "hand or person"
+      ],
+      "ratio": [
+        "4:5",
+        "9:16"
+      ],
+      "credits": "2",
+      "time": "5 min",
+      "examples": [
+        "9:16: [product] held up in a car at a red light, the review line as the caption"
+      ]
+    },
+    {
+      "format": "Swap Product into a Reference Ad",
+      "family": "single image ad",
+      "makes": "sloosh-space",
+      "with": "Sloosh Space: Swap Product into a Reference Ad",
+      "looks": "The brand's product dropped into the layout of a reference ad the team picks (never a rival's claims).",
+      "needs": [
+        "product photo",
+        "reference ad"
+      ],
+      "ratio": [
+        "4:5",
+        "1:1"
+      ],
+      "credits": "3",
+      "time": "5 min",
+      "examples": [
+        "4:5: our [product] in the layout of the saved reference ad, our headline and price"
+      ]
+    },
+    {
+      "format": "Cinematic Ad Sequence",
+      "family": "video ad",
+      "makes": "sloosh-space",
+      "with": "Sloosh Space: Cinematic Ad Sequence",
+      "looks": "A 10 to 30 s cinematic product clip cut from 3 to 5 described shots.",
+      "needs": [
+        "product photo",
+        "shot list"
+      ],
+      "ratio": [
+        "16:9",
+        "9:16"
+      ],
+      "seconds": [
+        10,
+        30
+      ],
+      "credits": "15",
+      "time": "20 min",
+      "examples": [
+        "16:9, 20 s: [product] from the box to the shelf in four slow shots, the tagline on the last"
+      ]
+    },
+    {
+      "format": "Product Placement Video",
+      "family": "video ad",
+      "makes": "sloosh-space",
+      "with": "Sloosh Space: Product Placement Video",
+      "looks": "The product placed into a described moving scene (a kitchen, a gym, a desk).",
+      "needs": [
+        "product photo",
+        "scene"
+      ],
+      "ratio": [
+        "9:16",
+        "16:9"
+      ],
+      "seconds": [
+        5,
+        10
+      ],
+      "credits": "10",
+      "time": "15 min",
+      "examples": [
+        "9:16, 8 s: [product] on the kitchen counter while the kettle boils, steam on the left"
+      ]
+    },
+    {
+      "format": "Multishot Product Clips",
+      "family": "reel",
+      "makes": "sloosh-space",
+      "with": "Sloosh Space: Multishot Product Clips",
+      "looks": "Four to six short clips of one product, each a different shot, for cutting a reel.",
+      "needs": [
+        "product photo",
+        "shot list"
+      ],
+      "ratio": [
+        "9:16"
+      ],
+      "seconds": [
+        3,
+        5
+      ],
+      "credits": "12",
+      "time": "20 min",
+      "examples": [
+        "5 clips of [product]: lid off, pour, close-up of the texture, in the bag, on the desk"
+      ]
+    },
+    {
+      "format": "UGC Selfie Video Ad",
+      "family": "video ad",
+      "makes": "sloosh-space",
+      "with": "Sloosh Space: UGC Selfie Video Ad",
+      "looks": "A selfie-style talking clip, 10 to 20 s, holding the product, with captions.",
+      "needs": [
+        "product photo",
+        "script",
+        "person"
+      ],
+      "ratio": [
+        "9:16"
+      ],
+      "seconds": [
+        10,
+        20
+      ],
+      "credits": "12",
+      "time": "20 min",
+      "examples": [
+        "9:16, 15 s: a buyer holds [product] and reads the top review line to camera, captions on"
+      ]
+    },
+    {
+      "format": "UGC Unboxing Clip",
+      "family": "reel",
+      "makes": "sloosh-space",
+      "with": "Sloosh Space: UGC Unboxing Clip",
+      "looks": "An unboxing from the doormat to the first use, 8 to 15 s, phone-shot look.",
+      "needs": [
+        "product photo",
+        "box photo"
+      ],
+      "ratio": [
+        "9:16"
+      ],
+      "seconds": [
+        8,
+        15
+      ],
+      "credits": "10",
+      "time": "15 min",
+      "examples": [
+        "9:16, 12 s: the [product] box opened on the bed, the thank-you card read out"
+      ]
+    },
+    {
+      "format": "Amazon Listing Pack",
+      "family": "other",
+      "makes": "sloosh-space",
+      "with": "Sloosh Space: Amazon Listing Pack",
+      "looks": "A marketplace gallery: white packshot, 5 to 6 infographic frames, a lifestyle frame.",
+      "needs": [
+        "product photo",
+        "claims",
+        "dimensions"
+      ],
+      "ratio": [
+        "1:1"
+      ],
+      "credits": "8",
+      "time": "20 min",
+      "examples": [
+        "7-image listing for [product]: packshot, size frame, ingredient frame, how-to, in use, the promise, the box"
+      ]
+    },
+    {
+      "format": "Seasonal Ad Refresh",
+      "family": "single image ad",
+      "makes": "sloosh-space",
+      "with": "Sloosh Space: Seasonal Ad Refresh",
+      "looks": "A winning ad re-dressed for a season or festival without changing the product or claim.",
+      "needs": [
+        "winning ad",
+        "season"
+      ],
+      "ratio": [
+        "4:5",
+        "1:1"
+      ],
+      "credits": "2",
+      "time": "5 min",
+      "examples": [
+        "4:5: the winning [product] ad re-dressed for Diwali, diyas on the table, same headline"
+      ]
+    },
+    {
+      "format": "Design Recomposer",
+      "family": "instagram stories",
+      "makes": "sloosh-space",
+      "with": "Sloosh Space: Design Recomposer (resize to formats)",
+      "looks": "One finished design recomposed into every placement size.",
+      "needs": [
+        "finished design"
+      ],
+      "ratio": [
+        "9:16",
+        "1:1",
+        "4:5",
+        "16:9"
+      ],
+      "credits": "1 per size",
+      "time": "3 min",
+      "examples": [
+        "The 4:5 [product] static recomposed to 9:16 for Stories and 1:1 for the grid"
+      ]
+    },
+    {
+      "format": "Instagram Carousel",
+      "family": "instagram carousel",
+      "makes": "sloosh-space",
+      "with": "Sloosh Space: Instagram Carousel",
+      "looks": "A 4 to 8 slide carousel with a cover line and one line per slide, in the brand's type.",
+      "needs": [
+        "product photos",
+        "lines"
+      ],
+      "ratio": [
+        "4:5"
+      ],
+      "credits": "1 per slide",
+      "time": "10 min",
+      "examples": [
+        "6 slides: how to use [product] in the morning, one step per slide"
+      ]
+    },
+    {
+      "format": "Collection Banner",
+      "family": "page section",
+      "makes": "sloosh-space",
+      "with": "Sloosh Space: Collection Banner",
+      "looks": "A wide banner for a collection page with 2 to 4 products and one line.",
+      "needs": [
+        "product photos",
+        "collection name"
+      ],
+      "ratio": [
+        "16:9",
+        "3:1"
+      ],
+      "credits": "2",
+      "time": "5 min",
+      "examples": [
+        "Collection banner: the three winter products on a wool throw, the collection name on the left"
+      ]
+    },
+    {
+      "format": "Virtual Try-On",
+      "family": "single image ad",
+      "makes": "sloosh-space",
+      "with": "Sloosh Space: Virtual Try-On",
+      "looks": "An apparel or accessory product worn by a described model from a flat photo.",
+      "needs": [
+        "product photo",
+        "model description"
+      ],
+      "ratio": [
+        "4:5",
+        "9:16"
+      ],
+      "credits": "3",
+      "time": "5 min",
+      "examples": [
+        "4:5: [product] worn by a model of each of the three sizes the fit room shows"
+      ]
+    },
+    {
+      "format": "Ghost Mannequin",
+      "family": "single image ad",
+      "makes": "sloosh-space",
+      "with": "Sloosh Space: Ghost Mannequin",
+      "looks": "An apparel product shown hollow, as on a mannequin, from a flat or worn photo.",
+      "needs": [
+        "product photo"
+      ],
+      "ratio": [
+        "4:5",
+        "1:1"
+      ],
+      "credits": "1",
+      "time": "3 min",
+      "examples": [
+        "1 ghost-mannequin front of [product] for the product page, white ground"
+      ]
+    },
+    {
+      "format": "360 Product Orbit",
+      "family": "other",
+      "makes": "sloosh-space",
+      "with": "Sloosh Space: 360 Product Orbit",
+      "looks": "A turntable orbit of the product, 24 to 36 frames or a 6 s loop.",
+      "needs": [
+        "product photo"
+      ],
+      "ratio": [
+        "1:1"
+      ],
+      "seconds": [
+        4,
+        8
+      ],
+      "credits": "8",
+      "time": "10 min",
+      "examples": [
+        "6 s orbit of [product] for the product page, white ground"
+      ]
+    },
+    {
+      "format": "Colourway Generator",
+      "family": "carousel ad",
+      "makes": "sloosh-space",
+      "with": "Sloosh Space: Colourway Generator",
+      "looks": "The same product in each colour the store lists, exact hex matched.",
+      "needs": [
+        "product photo",
+        "hex per colour"
+      ],
+      "ratio": [
+        "1:1"
+      ],
+      "credits": "1 per colour",
+      "time": "5 min",
+      "examples": [
+        "5 cards: [product] in each of the five listed shades, the shade name as the only text"
+      ]
+    },
+    {
+      "format": "Packaging from Dieline",
+      "family": "other",
+      "makes": "sloosh-space",
+      "with": "Sloosh Space: Packaging from Dieline",
+      "looks": "A 3D render of the box or pouch from the flat dieline file.",
+      "needs": [
+        "dieline",
+        "artwork"
+      ],
+      "ratio": [
+        "1:1",
+        "4:5"
+      ],
+      "credits": "4",
+      "time": "10 min",
+      "examples": [
+        "Front and side render of the [product] box from the new dieline"
+      ]
+    },
+    {
+      "format": "Nano Banana Pro",
+      "family": "single image ad",
+      "makes": "sloosh-model",
+      "with": "Nano Banana Pro (finished work, text in image)",
+      "looks": "Image model for finished statics with correct lettering.",
+      "needs": [
+        "product photo",
+        "headline"
+      ],
+      "ratio": [
+        "4:5",
+        "1:1",
+        "9:16"
+      ],
+      "credits": "1",
+      "time": "1 min",
+      "examples": [
+        "4:5 static with the headline set inside the image, [product] on a wool throw"
+      ]
+    },
+    {
+      "format": "GPT Image 2.5 Sunburst",
+      "family": "single image ad",
+      "makes": "sloosh-model",
+      "with": "GPT Image 2.5 Sunburst (edits)",
+      "looks": "Image model for edits: swap a ground, remove a prop, change a season.",
+      "needs": [
+        "existing image",
+        "edit note"
+      ],
+      "ratio": [
+        "4:5",
+        "1:1"
+      ],
+      "credits": "1",
+      "time": "1 min",
+      "examples": [
+        "The winning [product] static with the summer ground swapped for a winter one"
+      ]
+    },
+    {
+      "format": "Ideogram 4.5",
+      "family": "single image ad",
+      "makes": "sloosh-model",
+      "with": "Ideogram 4.5 (typography)",
+      "looks": "Image model for type-led statics: big words, exact fonts.",
+      "needs": [
+        "headline",
+        "font"
+      ],
+      "ratio": [
+        "4:5",
+        "1:1"
+      ],
+      "credits": "1",
+      "time": "1 min",
+      "examples": [
+        "1:1 type-led static: the review line in the brand font, [product] small at the foot"
+      ]
+    },
+    {
+      "format": "Flux 2 Pro",
+      "family": "single image ad",
+      "makes": "sloosh-model",
+      "with": "Flux 2 Pro (exact hex colours)",
+      "looks": "Image model when the brand colour must be exact.",
+      "needs": [
+        "product photo",
+        "hex"
+      ],
+      "ratio": [
+        "4:5",
+        "1:1"
+      ],
+      "credits": "1",
+      "time": "1 min",
+      "examples": [
+        "4:5 static on the brand's exact hex ground, [product] centred"
+      ]
+    },
+    {
+      "format": "Seedance 2.5",
+      "family": "video ad",
+      "makes": "sloosh-model",
+      "with": "Seedance 2.5 (4 to 30 s timed beats)",
+      "looks": "Video model that follows a beat list with seconds.",
+      "needs": [
+        "product photo",
+        "beat list"
+      ],
+      "ratio": [
+        "9:16",
+        "16:9",
+        "1:1"
+      ],
+      "seconds": [
+        4,
+        30
+      ],
+      "credits": "8",
+      "time": "5 min",
+      "examples": [
+        "9:16, 10 s: 0-4 s [product] in the box, 4-8 s in the hand, 8-10 s the price card"
+      ]
+    },
+    {
+      "format": "Kling V3 Omni",
+      "family": "video ad",
+      "makes": "sloosh-model",
+      "with": "Kling V3 Omni",
+      "looks": "Video model for people and motion with the product kept exact.",
+      "needs": [
+        "product photo",
+        "scene"
+      ],
+      "ratio": [
+        "9:16",
+        "16:9"
+      ],
+      "seconds": [
+        5,
+        15
+      ],
+      "credits": "8",
+      "time": "5 min",
+      "examples": [
+        "9:16, 8 s: a runner pulls [product] from the bag at the park gate"
+      ]
+    },
+    {
+      "format": "Veo 3.1",
+      "family": "reel",
+      "makes": "sloosh-model",
+      "with": "Veo 3.1 (also Brew's own reels)",
+      "looks": "Video model with sound for reels and short ads.",
+      "needs": [
+        "product photo",
+        "4 beats"
+      ],
+      "ratio": [
+        "9:16",
+        "16:9"
+      ],
+      "seconds": [
+        4,
+        8
+      ],
+      "credits": "6",
+      "time": "5 min",
+      "examples": [
+        "9:16, 8 s: [product] on the desk, the hand slides in, the smile, the price"
+      ]
+    }
+  ]
+}

@@ -96,7 +96,7 @@ export function createDrafts({ claudeTool, geminiImage, treg, launchBrowser, zip
   const make = async (t, w, d, as, ask) => {
     const c = cardOf(t, w.cardId);
     const j = await plan(t, w, c, as, ask);
-    Object.assign(d, { as: j.as, title: clean(j.title || 'First draft').slice(0, 70), copy: clean(j.copy || ''), note: clean(j.note || ''), ratio: RATIOS.includes(j.ratio) ? j.ratio : j.as === 'video' ? '9:16' : '4:5' });
+    Object.assign(d, { as: j.as, title: clean(j.title || 'First draft').slice(0, 70), copy: clean(j.copy || ''), note: clean(j.note || ''), visual: clean(j.visual || '').slice(0, 600), motion: clean(j.motion || '').slice(0, 300), /* kept for the final: the same brief, rerun on the strong model */ ratio: RATIOS.includes(j.ratio) ? j.ratio : j.as === 'video' ? '9:16' : '4:5' });
     if (j.as === 'carousel') {
       if (!launchBrowser) throw Object.assign(new Error('Carousels can’t be made on this server. The words are here.'), { soft: true });
       if (!spend('image')) throw Object.assign(new Error((budgetWhy('image') || 'The image budget for today is used up.') + ' The words are here; try the slides tomorrow.'), { soft: true });

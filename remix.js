@@ -1181,7 +1181,8 @@ export function createRemix(o) {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch);
     const cat = (catalogOf(t) || []).filter((x) => x.img).sort((a, b) => (a.out ? 1 : 0) - (b.out ? 1 : 0)).slice(0, 60).map((x) => ({ t: x.t, img: x.img, ...(x.out ? { out: true } : {}) }));
     const ai = ['meta_ad', 'social', 'post'].includes(ch.family) && !realOnly(ch) && !!geminiImage && !isMock();
-    return { photos: cat, current: ch.pkg.photos || (ch.pkg.image ? [ch.pkg.image] : []), max: ch.family === 'post' ? 4 : 1, ai, aiWhy: ai ? null : realOnly(ch) ? `${ch.pkg.platform || 'This community'} wants real photos, not AI ones.` : isMock() ? 'AI is offline here.' : 'AI photos aren’t available for this one.', pending: !!ch.imagePending };
+    const references = o.references ? await o.references(t).catch(() => []) : []; /* the brand's own References (references.js): same picker, numbered with the product photos */
+    return { photos: cat, references, current: ch.pkg.photos || (ch.pkg.image ? [ch.pkg.image] : []), max: ch.family === 'post' ? 4 : 1, ai, aiWhy: ai ? null : realOnly(ch) ? `${ch.pkg.platform || 'This community'} wants real photos, not AI ones.` : isMock() ? 'AI is offline here.' : 'AI photos aren’t available for this one.', pending: !!ch.imagePending };
   });
   on('POST', '/api/changes/:chid/photo', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };

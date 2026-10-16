@@ -4,12 +4,15 @@
 import { numbersOf } from './pack-numbers.js'; // one number, one source
 import { unbacked, allowedFrom, numbersIn, backedNumbers } from './fact-gate.js';
 import { CTA } from './seed-template.js';
+import * as catalog from './creative-catalog.js'; /* what can be made: formats, the prompt block, generic and repeat checks */
 
 const SECTOR = { know: ['signals', 'brew'], found: ['visibility', 'visibility'], reach: ['creatives', 'creative'], convert: ['storefront', 'storefront'], keep: ['signals', 'crm'], expand: ['signals', 'brew'] };
 const BY_SKILL = { ads: ['ads', 'performance'], analytics: ['ads', 'performance'], attribution: ['ads', 'performance'], 'ab-testing': ['storefront', 'storefront'], aso: ['catalog', 'storefront'], 'seo-audit': ['visibility', 'visibility'], schema: ['visibility', 'visibility'], 'ai-seo': ['visibility', 'visibility'], 'site-architecture': ['storefront', 'storefront'], 'programmatic-seo': ['visibility', 'visibility'], pricing: ['storefront', 'storefront'], offers: ['storefront', 'storefront'], 'competitor-profiling': ['signals', 'brew'], competitors: ['visibility', 'visibility'] };
 const ROLES = { signals: ['founder', 'crm', 'growth'], ads: ['growth', 'founder'], creatives: ['brand', 'growth'], storefront: ['ecom', 'founder'], catalog: ['ecom', 'growth'], visibility: ['brand', 'ecom', 'founder'] };
 // what a card can ask to be made, and the button that makes it in the studio
-const MAKE_FORMATS = ['single image ad', 'carousel ad', 'collection ad', 'catalog ad', 'video ad', 'instagram post', 'instagram carousel', 'instagram stories', 'reel', 'whatsapp message', 'email', 'page section', 'other'];
+const MAKE_FORMATS = catalog.formats(); /* the catalog's families (data/creative-catalog.json): the same 13 names as before, so saved packs still map */
+/* a format the writer names (a family, or a Sloosh Space or model from the catalog) → the family the card carries; null when it is none of them or "other" */
+const toFamily = (f) => { const fam = catalog.familyOf(f); return fam && fam !== 'other' ? fam : null; };
 const MAKE_CTA = { 'single image ad': 'Generate versions', 'carousel ad': 'Make the carousel ad', 'collection ad': 'Build the collection ad', 'catalog ad': 'Build the catalog ad', 'video ad': 'Make the video', reel: 'Make the video', 'instagram post': 'Draft the post', 'instagram carousel': 'Draft the carousel post', 'instagram stories': 'Draft the stories', 'whatsapp message': 'Approve the flows', email: 'Approve the flows', 'page section': 'Update landing page' };
 /* the button follows what the card asks to be made. Cause of "Draft the post" on a page card: the old rule kept any
    button that mentioned a post, carousel or video, so a page section kept the AI's social-post button. Now a making
@@ -53,9 +56,9 @@ const TALKS_ABOUT = /\b(?:pause|stop|kill|cut|turn off|switch off|audit|check|fi
 const formatIn = (text) => { for (const [format, re] of MAKE_RE) { if (!re.test(text)) continue; if (format === 'single image ad' && TALKS_ABOUT.test(text) && !/\b(?:new|write|make|draft|launch)\b/i.test(text)) return null; return format; } return null; };
 export function inferMake(c = {}) {
   if (!c || typeof c !== 'object' || c.make?.format || NO_MAKE.test(String(c.id || '')) || c.liveOnly || c.mock || c.demo || ['report', 'competitor'].includes(c.type) || (c.origin === 'listen' && c.heard)) return null;
-  const cta = c.cta?.label || ''; if (CTA_MAKE[cta]) return { format: formatIn(c.title || '') || CTA_MAKE[cta], pieces: '', inferred: true }; /* the title's own format is more exact than a making button */
+  const cta = c.cta?.label || ''; if (CTA_MAKE[cta]) return { format: toFamily(formatIn(c.title || '')) || CTA_MAKE[cta], pieces: '', inferred: true }; /* the title's own format is more exact than a making button */
   if (NOT_MAKING.has(cta)) return null;
-  const f = formatIn(c.title || '') || (cta in CTA_DEFAULT ? formatIn(c.sub || '') || CTA_DEFAULT[cta] : null); /* the title names it; the body only counts under a button that ships something */
+  const f = toFamily(formatIn(c.title || '') || (cta in CTA_DEFAULT ? formatIn(c.sub || '') || CTA_DEFAULT[cta] : null)); /* the title names it; the body only counts under a button that ships something; only a catalog family is ever set */
   return f ? { format: f, pieces: '', inferred: true } : null;
 }
 /* an ad or a social post reaches every seat that makes or approves creative, the founder included: its roles were set from
@@ -78,8 +81,9 @@ const SCHEMA = {
       rows: { type: 'array', items: { type: 'array', items: { type: 'string' } }, description: '0 to 5 [label, value] pairs from the move, values short; empty when the card is an idea' },
       cta: { type: 'string', enum: Object.keys(CTA) },
       make: { type: 'object', description: 'Required when the card asks for something to be made or its title, body or button names an ad, email, reel, video, post, carousel, Stories, WhatsApp message or page: the format and the pieces in it. Omit only for reports and plans that make nothing', properties: {
-        format: { type: 'string', enum: MAKE_FORMATS },
-        pieces: { type: 'string', description: 'Under 90 characters, from the move: how many and what, e.g. "6 slides: the fit room, one body type per slide". Name the product exactly as the store lists it when the asset shows one' } } },
+        format: { type: 'string', enum: MAKE_FORMATS, description: 'A family from WHAT CAN BE MADE' },
+        pieces: { type: 'string', description: 'Under 90 characters: a concrete asset from the catalog: format, the exact product as the store lists it, the scene or angle, the hook; e.g. "6 slides: the fit room, one body type per slide". Never a generic ad ("a new ad", "fresh creative", "some visuals")' },
+        backedBy: { type: 'string', description: 'Under 60 characters: which of the brand\'s own lines this asset rests on: a fact sheet line, the brand style, a team learning, a ledger line or a listening line, named' } } },
       plan: { type: 'array', items: { type: 'string' }, description: '3 to 5 ground-work steps toward the card’s button, in order, each under 14 words, naming the real ads, products, pages or people from the move (e.g. "Pick the two winning ads: Fit room and Rain test", "Write 3 new hooks per winner", "Make the carousels", "Review them", "Ready to launch on Meta or hand to the team"). The last step is ready to deploy or hand to the team. Never a step that says it is decided or done.' },
       section: { type: 'string', description: 'The move section heading this card comes from' }
     } } }
@@ -93,13 +97,23 @@ export const readNums = (ev) => { const all = numbersIn(ev, { strict: true }), o
   for (const v of String(ev).match(/(?<=[:\[,]\s?)\d+(?:\.\d+)?(?=[,\]}])/g) || []) { ok.add(String(+v)); for (const sy of syms) ok.add(sy + String(+v)); } return ok; };
 export function createCardsGen({ ai, log = console }) {
   // move → { cards, label }; facts is the brand fact sheet (factsFromLedger)
-  async function fromMove(move, { brand, facts, lanes, laneImg, spec, ledger = [] }) {
+  async function fromMove(move, { brand, facts, lanes, laneImg, spec, ledger = [], profile = null, config = null, learned = null, seen = [] }) { /* profile, learned (learned.json) and seen (cards already in the feed) are optional: callers that pass them get style-, learning- and repeat-aware cards */
     const [sector0, agent0] = BY_SKILL[spec?.skill] || SECTOR[spec?.group || move.group] || ['signals', 'brew'];
     const ok = allowedFrom(facts), fromLedger = ledgerNums(ledger);
     /* numbers the move states as observed are allowed too (they carry their own citation in the move); a number the
        move marks "to confirm", or gives as a target, assumption or example, is not (fact-gate.js backedNumbers) */
     const moveNums = backedNumbers(move);
     const factList = Object.values(facts).slice(0, 120).map((f) => `- ${f.label}: ${f.v}`).join('\n');
+    /* the catalog's examples read with the brand's own hero product; the team's style, learnings and listening lines are named so the writer can cite them */
+    const heroName = profile?.catalog?.products?.find((x) => x?.title && x.inStock !== false)?.title?.split(/\s+[–—|:-]\s+|,\s/)[0] || null;
+    const st = config?.product || profile?.config?.product || {}; /* config.json product.style / look / avoid */
+    const styleLine = st.style || st.look ? ` ("${[st.style, st.look].filter(Boolean).join('; ')}"${st.avoid ? `; avoid: ${st.avoid}` : ''})` : '';
+    const learnList = [...(learned?.facts || []), ...(learned?.beliefs || []), ...(learned?.tried || [])].map((l) => l?.text).filter(Boolean).slice(0, 8);
+    const learnLine = learnList.length ? ` (the team told us: ${learnList.map((t) => `"${String(t).slice(0, 120)}"`).join('; ')})` : '';
+    const listenList = (ledger || []).filter((e) => e?.signal && e.v).slice(0, 6).map((e) => String(e.v).slice(0, 100));
+    const listenLine = listenList.length ? ` (heard: ${listenList.map((t) => `"${t}"`).join('; ')})` : '';
+    const seenKeys = (seen || []).filter((c) => c?.make?.format).slice(0, 40).map((c) => `${c.make.format}: ${String(c.make.pieces || c.title || '').slice(0, 70)}`);
+    const seenLine = seenKeys.length ? `already in the feed, do not repeat: ${seenKeys.join(' / ')}.` : 'this move\'s cards differ from each other in format and angle.';
     const text = (move.sections || []).map((s) => `## ${s.h}\n` + (s.blocks || []).map((b) => b.t === 'table' ? [b.head, ...(b.rows || [])].map((r) => (r || []).join(' | ')).join('\n') : b.t === 'list' ? (b.items || []).map((x) => '- ' + x).join('\n') : b.t === 'example' ? `[${b.title}] ${b.body}` : b.text || '').join('\n')).join('\n\n').slice(0, 24000);
     const prompt = `You turn one Brew strategy document ("move") for ${brand.name} (${brand.host}) into feed cards for the brand's team.
 
@@ -120,6 +134,10 @@ Write 1 or 2 cards. Each card is one thing the team can act on now, taken from t
 - When the move plans a specific asset (a carousel, a set of Stories, a collection or catalog ad, a reel, a post), say so in "make" with the format and the pieces exactly as the move plans them, and pick the button that makes that format (carousel ad: "Make the carousel ad"; Instagram carousel: "Draft the carousel post"; Stories: "Draft the stories"; single post: "Draft the post"; collection ad: "Build the collection ad"; catalog ad: "Build the catalog ad").
 - Any card whose title, body or button names an ad, an email, a reel or video, a post, a carousel, Stories, a WhatsApp message or a page must set "make" to that format, even a decision; Brew drafts it before anyone opens the card. Only a card that reports on an ad (its spend, a rival's ad, pausing one) leaves "make" out.
 - The card's words and its asset agree: when "make" names a product or a scene, the title or body names that same product, and "pieces" uses the product's name exactly as the store lists it (Brew drafts the asset from it).
+${catalog.promptBlock({ product: heroName })}
+- Each asset is specific and makeable: pick a format from the list above and write "pieces" the way its examples read (how many, the exact product as the store lists it, the scene or angle, the hook). Never "a new ad", "fresh creative", "some visuals" or any asset with no product and no scene.
+- No repeats: in one feed no two cards may share format + product + angle. Vary formats across the list (a reel after a static, a carousel after an email) and vary the product and the scene; ${seenLine}
+- Each asset is backed by the brand's own context and says which in "backedBy": a fact sheet line above, the brand's own style${styleLine}, a team learning${learnLine}, a ledger line or a listening line${listenLine}. An asset nothing backs is left out.
 - Also write the move's short label and one-line summary.`;
     let j;
     try { j = (await ai.call({ model: 'sonnet', prompt, schema: SCHEMA, max: 4000, tag: 'cards' })).json; }
@@ -138,10 +156,12 @@ Write 1 or 2 cards. Each card is one thing the team can act on now, taken from t
       /* the plan the writer gave (card-plan.js keeps its words, and always the action's own make and last steps) */
       if (Array.isArray(c.plan) && c.plan.filter((x) => typeof x === 'string' && x.trim()).length >= 3) card.plan = { by: 'ai', steps: c.plan.filter((x) => typeof x === 'string' && x.trim()).slice(0, 6).map((x) => x.trim().slice(0, 120)) };
       // a card that names what to make carries it, and its button makes exactly that format
-      if (c.make?.format && MAKE_FORMATS.includes(c.make.format) && c.make.format !== 'other') {
-        card.make = { format: c.make.format, pieces: String(c.make.pieces || '').trim().slice(0, 100) };
+      const fam = toFamily(c.make?.format);
+      if (fam) {
+        card.make = { format: fam, pieces: String(c.make.pieces || '').trim().slice(0, 100), ...(c.make.backedBy ? { backedBy: String(c.make.backedBy).trim().slice(0, 80) } : {}) };
+        if (catalog.isGeneric(card.make.pieces)) log.warn('[cards] generic asset', card.id, JSON.stringify(card.make.pieces)); /* the audit (tools/audit-cards.mjs) counts these per brand */
         fitCta(card);
-        if (MAKES_CREATIVE.test(c.make.format)) { card.sector = 'creatives'; if (card.agent !== 'brew') card.agent = 'creative'; Object.assign(card, fitRoles(card)); }
+        if (MAKES_CREATIVE.test(fam)) { card.sector = 'creatives'; if (card.agent !== 'brew') card.agent = 'creative'; Object.assign(card, fitRoles(card)); }
       }
       else { const m = inferMake(card); if (m) { card.make = { format: m.format, pieces: '' }; fitCta(card); } } /* the model left "make" out but the card names an asset */
       const rows = (c.rows || []).filter((r) => r?.length >= 2).slice(0, 5).map((r) => [String(r[0]).slice(0, 40), String(r[1]).slice(0, 48)]);
@@ -162,7 +182,7 @@ Write 1 or 2 cards. Each card is one thing the team can act on now, taken from t
       ai: { score: p.ai?.score, answers: (p.ai?.answers || []).slice(0, 8).map((a) => ({ tool: a.tool, q: a.q, named: a.named, rivals: a.rivalsNamed })) }, checkout: p.site?.checkout, tech: p.site?.tech }).slice(0, 18000);
     const SCH = { type: 'object', properties: { cards: { type: 'array', items: SCHEMA.properties.cards.items } } };
     let j;
-    try { j = (await ai.call({ model: 'sonnet', schema: SCH, max: 5000, tag: 'cards-read', prompt: `You write the first feed cards for ${brand.name} (${brand.host}), from what Brew just read on its live site, reviews, ads and AI answers.\n\nWHAT WE READ (JSON):\n${ev}\n\nFACTS YOU MAY QUOTE:\n${Object.values(facts).slice(0, 100).map((f) => `- ${f.label}: ${f.v}`).join('\n')}\n\nWrite 4 cards, each a real finding the team can act on today: one about AI answers (named or not, who is named instead), one about rivals' live ads, one about the catalog or checkout, one about what customers say. Only use what is in the JSON above; every number must be in it or in the facts. If a finding is missing from the JSON, skip that card. Plain one-glance words, no em dashes. Pick the button that does what the card asks.` })).json; }
+    try { j = (await ai.call({ model: 'sonnet', schema: SCH, max: 5000, tag: 'cards-read', prompt: `You write the first feed cards for ${brand.name} (${brand.host}), from what Brew just read on its live site, reviews, ads and AI answers.\n\nWHAT WE READ (JSON):\n${ev}\n\nFACTS YOU MAY QUOTE:\n${Object.values(facts).slice(0, 100).map((f) => `- ${f.label}: ${f.v}`).join('\n')}\n\nWrite 4 cards, each a real finding the team can act on today: one about AI answers (named or not, who is named instead), one about rivals' live ads, one about the catalog or checkout, one about what customers say. Only use what is in the JSON above; every number must be in it or in the facts. If a finding is missing from the JSON, skip that card. Plain one-glance words, no em dashes. Pick the button that does what the card asks.\n${catalog.promptBlock({ product: (p.catalog?.products || []).find((x) => x?.title)?.title?.split(/\s+[–—|:-]\s+|,\s/)[0] || null, examples: 1 })}\nWhen a card asks for an asset, "make" names a format from that list and "pieces" reads like its examples (how many, the exact product as the store lists it, the scene, the hook), backed by a line in the JSON; never "a new ad" or "fresh creative", and no two cards share format + product + angle.` })).json; }
     catch (e) { if (e.mock) return []; throw e; }
     const nums = readNums(ev); const lane = Object.keys(lanes || {})[0] || 'core'; const out = [];
     const SEC = (t) => /ai answer|chatgpt|gemini|perplexity|named/i.test(t) ? ['visibility', 'visibility'] : /\bads?\b|meta|rival/i.test(t) ? ['ads', 'performance'] : /review|customer|say/i.test(t) ? ['creatives', 'creative'] : ['storefront', 'storefront'];
@@ -171,7 +191,8 @@ Write 1 or 2 cards. Each card is one thing the team can act on now, taken from t
       const card = { id: `read-${i + 1}`, origin: 'read', agent, sector, type: c.type, lane, roles: ROLES[sector] || ['founder'], src: `Read from ${brand.host} today`, time: `${4 + i * 3} min`,
         kind: (c.rows || []).filter((r) => r?.length >= 2).length ? 'rows' : 'media', title: String(c.title || '').trim(), sub: String(c.sub || '').trim(), detail: { why: (c.why || []).slice(0, 3), how: (c.how || []).slice(0, 3) }, cta: { label: CTA[c.cta] ? c.cta : 'Generate versions' } };
       const rows = (c.rows || []).filter((r) => r?.length >= 2).slice(0, 5).map((r) => [String(r[0]).slice(0, 40), String(r[1]).slice(0, 48)]);
-      if (c.make?.format && MAKE_FORMATS.includes(c.make.format) && c.make.format !== 'other') { card.make = { format: c.make.format, pieces: String(c.make.pieces || '').trim().slice(0, 100) }; fitCta(card); }
+      const fam = toFamily(c.make?.format);
+      if (fam) { card.make = { format: fam, pieces: String(c.make.pieces || '').trim().slice(0, 100) }; fitCta(card); }
       if (card.kind === 'rows') card.rows = rows; else { const img = laneImg?.[lane]; if (img) card.images = [img]; else { card.kind = 'rows'; card.rows = rows; } }
       if (unbacked({ title: card.title, sub: card.sub, rows: card.rows, detail: card.detail, make: card.make }, { has: (n) => ok.has(n) || nums.has(n) }, { strict: true }).length) return;
       if (!card.title || !card.sub || LEAK.test(card.title + card.sub)) return;

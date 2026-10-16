@@ -24,7 +24,9 @@ import { createTuning, tuneScore, learnedSignals, withoutIgnored, AGENTS as TUNE
 import { memberKey } from './brand-memory.js';
 import { isQuestion, photoAsk, answerGrounded } from './jam-answer.js'; // jam chat: questions answered from the evidence, "keep the photo" never makes one
 import { createAskBrew, answerAsk, cleanSeed } from './ask-brew.js'; // Ask Brew: one thread per member across feed, moves and facts
-import { parseDrop, DESTS } from './drop.js'; // Drop anything: memory, my preferences, just this once // Send brief: the full email and the "N with the team" pill
+import { parseDrop, DESTS } from './drop.js';
+import { createReferences } from './references.js';
+import { createFinalsRoutes } from './finals-routes.js'; // Make the final: Sloosh, quote first, behind a button (finals.js) // References: the brand's uploaded photos, past ads, looks and videos, for the generators // Drop anything: memory, my preferences, just this once // Send brief: the full email and the "N with the team" pill
 import { shipLine } from './text-fit.js';
 import { createDrafts, fakeMakers } from './drafts.js';
 import { cardProduct, cardScene } from './product-match.js';
@@ -237,6 +239,7 @@ export function createFeedService(o) {
   const nameOf = (p) => p?.name || p?.email || 'Someone';
   /* Your feed (member-tuning.js): a member's tuning is theirs on every device (keyed by their email); anyone else tunes this workspace */
   const TUNE = o.tuning || createTuning({ packs: o.globalPacks || packs, log });
+  const REFS = o.references || createReferences({ packs: o.globalPacks || packs, log }); /* references.js: brands/<slug>/private/references.json + refs/<sha>.<ext> */
   const tuneKey = (t) => { const r = reqOf(t), e = r?.member ? r.email : r?.guest?.email; return e ? memberKey(e) : `ws_${t.id}`; };
   const tuningOf = (t) => TUNE.peek(t.brandId || DEFAULT_BRAND, tuneKey(t));
   /* the ShopOS team was tagged: its shared inbox gets the jam link and the read-only brief (jam-mail.js shopos) */
@@ -1381,7 +1384,10 @@ export function createFeedService(o) {
   /* Drop anything here (drop.js): memory (the brand's memory), prefs (my preferences), once (this jam, or the next ask) */
   on('POST', '/api/brands/:slug/drop', async (b, t, p) => {
     const slug = t.brandId || DEFAULT_BRAND; if (p.slug !== slug) return { status: 400, error: 'This workspace is for another brand.' };
-    const dest = DESTS.includes(b.dest) ? b.dest : null; if (!dest) return { error: 'Pick where it goes: brand memory, my preferences, or just this once.' };
+    const dest = DESTS.includes(b.dest) ? b.dest : null; if (!dest) return { error: 'Pick where it goes: brand memory, my preferences, just this once, or References.' };
+    /* References: the file itself, for the generators (references.js); label + job + keep ride in the body. The team only */
+    if (dest === 'references') { const r0 = reqOf(t); if (!(r0?.member || process.env.DEMO_MODE === '1')) return { status: r0?.email ? 403 : 401, error: 'Only this brand’s team adds References.', team: true };
+      const x = await REFS.add(slug, { data: b.data, label: b.label || b.name, job: b.job, keep: b.keep, by: meOf(t)?.email || null }); return x.error ? x : { ok: true, dest, item: x.item, same: !!x.same }; }
     const f = parseDrop(b); if (f.error) return f;
     const r = reqOf(t), me0 = meOf(t), mk = r?.member && r.email ? memberKey(r.email) : null;
     const rel = f.kind === 'image' ? (saveGen(f.file, f.buf), `gen/${f.file}`) : null;
@@ -1406,6 +1412,17 @@ export function createFeedService(o) {
     const pending = await ASK.pend(slug, tuneKey(t), f.kind === 'image' ? { kind: 'image', url: rel, name: f.name || null, by: me0?.email || null } : { kind: 'text', text: f.text, by: me0?.email || null });
     return { ok: true, dest, pending, cut: !!f.cut, file: rel };
   });
+  /* References (references.js): what the brand uploaded for the generators. Reading is for the team and a jam's guests (the
+     picker shows them); adding, editing and removing are the team's, with the same member check as a drop into brand memory */
+  const refSlug = (t, p) => { const slug = t.brandId || DEFAULT_BRAND; return p.slug === slug ? slug : null; };
+  const refTeam = (t) => { const r = reqOf(t); return r?.member || process.env.DEMO_MODE === '1' ? null : { status: r?.email ? 403 : 401, error: 'Only this brand’s team changes its References.', team: true }; };
+  on('GET', '/api/brands/:slug/references', async (b, t, p) => { const slug = refSlug(t, p); if (!slug) return { status: 400, error: 'This workspace is for another brand.' }; return { items: await REFS.list(slug), jobs: REFS.JOBS }; });
+  on('POST', '/api/brands/:slug/references', async (b, t, p) => { const slug = refSlug(t, p); if (!slug) return { status: 400, error: 'This workspace is for another brand.' }; const no = refTeam(t); if (no) return no;
+    const x = await REFS.add(slug, { data: b.data, label: b.label || b.name, job: b.job, keep: b.keep, by: meOf(t)?.email || null }); return x.error ? x : { ok: true, item: x.item, same: !!x.same, items: await REFS.list(slug) }; });
+  on('POST', '/api/brands/:slug/references/:rid', async (b, t, p) => { const slug = refSlug(t, p); if (!slug) return { status: 400, error: 'This workspace is for another brand.' }; const no = refTeam(t); if (no) return no;
+    const x = await REFS.update(slug, p.rid, { label: b.label, job: b.job, keep: b.keep }); /* :rid, not :id: the dispatcher reads params.id as the tenant */ return x.error ? x : { ok: true, item: x.item, items: await REFS.list(slug) }; });
+  on('POST', '/api/brands/:slug/references/:rid/remove', async (b, t, p) => { const slug = refSlug(t, p); if (!slug) return { status: 400, error: 'This workspace is for another brand.' }; const no = refTeam(t); if (no) return no;
+    return REFS.remove(slug, p.rid); });
   on('PUT', '/api/tenants/:id/deck-layout', async (b, t) => { if (Array.isArray(b.hidden)) t.deck.hidden = b.hidden; if (b.colWidth) t.deck.colWidth = b.colWidth; return t.deck; });
   on('GET', '/api/tenants/:id/stories', async (b, t) => { await Promise.race([research?.ready?.(), new Promise((r) => setTimeout(r, 8000).unref?.())]).catch(() => {}); return { rings: JSON.parse(noPaise(JSON.stringify(stories(t)))) }; }); /* stories saved before the paise fix read clean too */
   on('POST', '/api/tenants/:id/stories/:ring/seen', async (b, t, p) => { t.storySeen[p.ring] = Date.now(); return { ok: true }; });
@@ -1664,7 +1681,11 @@ export function createFeedService(o) {
   JB.routes({ askMake: (t, w, text) => (makeAsk(text) ? propose(t, w, { kind: 'make', as: asOf(text), text, summary: '', by: nameOf(meOf(t)) }) : null), toSlack: o.slack ? toSlack : null, on, W, say, move, notify, learn: learnOf, nextTicket: (t) => { leadsAllTenants++; return nextBrandTicket(t); }, handoff: { build: (...a) => HO.build(...a), text: (...a) => HO.text(...a) } });
   // first drafts in a jam, one tap away: image, video, voice or text, made only when someone asks (drafts.js)
   DR = createDrafts({ claudeTool, geminiImage, treg: o.treg, launchBrowser: o.launchBrowser, zipBuffer: o.zipBuffer, photoAsync: o.photoAsync, photoFile, catalogOf: (t) => (t ? brandOfT(t)?.catalog : null), brandName: (t) => (t ? brandOfT(t)?.seed?.brand?.name || '' : ''), photoOf: (c) => LANE_PHOTO[c?.lane] || Object.values(LANE_PHOTO || {})[0], cardOf: (t, id) => { const c = t.cards.get(id); return c ? fillCard(c, t) : null; },
-    briefOf: (t, w) => JB.seed(t, w)?.md, cardBrief, seatLine, isMock, spend, clean, now, uid, say, save: (t) => store?.save(t), AGENT, onReady: (t, w, d) => slackAsset(t, w, { title: d.title, copy: d.copy, image: d.image, video: d.video, audio: d.audio, zip: d.zip, kind: d.as === 'video' && !d.video ? (d.image ? 'image' : 'text') : d.as, note: d.err || null }), /* a video that didn't come through says so, never 'New video' */ log }); DR.routes({ on, W });
+    briefOf: (t, w) => JB.seed(t, w)?.md, cardBrief, seatLine, isMock, spend, clean, now, uid, say, save: (t) => store?.save(t), AGENT, onReady: (t, w, d) => slackAsset(t, w, { title: d.title, copy: d.copy, image: d.image, video: d.video, audio: d.audio, zip: d.zip, kind: d.as === 'video' && !d.video ? (d.image ? 'image' : 'text') : d.as, note: d.err || null }), /* a video that didn't come through says so, never 'New video' */ log });
+  /* the jam's finals (finals-routes.js): the sheet's status, the quote, the run and a Space checkpoint; a final lands as a draft
+     card marked final and posts to the thread like every asset. Off when the server has no Sloosh client (tests) */
+  if (o.finals && o.sloosh) createFinalsRoutes({ on, W, say, meOf, slugOfT, brandOfT, cardOfW: (t, w) => (w?.cardId ? t.cards.get(w.cardId) || null : null), references: REFS, finals: o.finals, sloosh: o.sloosh, creditsLeft: (slug) => o.budgetLeft?.(slug) || null,
+    onReady: (t, w, d) => slackAsset(t, w, { title: d.title, copy: d.copy, image: d.image, video: d.video, kind: d.as === 'video' && !d.video ? 'image' : d.as, note: d.err || null }), save: (t) => store?.save(t), now: () => Date.now(), uid, log }); DR.routes({ on, W });
   MOVES ||= createMoves(path.dirname(PUB));
   // the card page: options, our pick, recommendation, what follows, and the move details that matter.
   // Seed cards are prebuilt (tools/build_card_pages.mjs); any other card is built once on first open.
@@ -1732,7 +1753,7 @@ export function createFeedService(o) {
   on('GET', '/api/cards/:cid/moves', async (b, t, p) => { const c = t.cards.get(p.cid); if (!c) return { error: 'not found' }; return { moves: MOVES.numsOf(c.src).map((n) => ({ ...MOVES.summary(n), passages: MOVES.passages({ ...c, src: `Move ${n}` }, 4) })) }; });
   /* MEDIA_FAKE=1 on a local server: the jam's short video runs end to end for free (drafts.js fakeMakers) */
   const FAKE = process.env.MEDIA_FAKE === '1' && !process.env.K_SERVICE ? fakeMakers() : null;
-  RMX = createRemix({ onMedia: (t, ch, m) => studioMedia(t, ch, m), onVersion: (t, ch, v, why) => studioVersion(t, ch, v, why), onShopos: (t, w, x) => shoposMail(t, w, x), askPerson: async (t, w, q, email) => { const [x] = await tagsOf(t, w, [email]); if (!x) return { error: 'They’re not on the team yet. Invite them first.' }; const me0 = meOf(t);
+  RMX = createRemix({ references: (t) => REFS.list(t.brandId || DEFAULT_BRAND), onMedia: (t, ch, m) => studioMedia(t, ch, m), onVersion: (t, ch, v, why) => studioVersion(t, ch, v, why), onShopos: (t, w, x) => shoposMail(t, w, x), askPerson: async (t, w, q, email) => { const [x] = await tagsOf(t, w, [email]); if (!x) return { error: 'They’re not on the team yet. Invite them first.' }; const me0 = meOf(t);
       JAMS.join(w, x, 'asked'); say(t, w, { from: 'system', body: `${nameOf(me0)} asked ${nameOf(x)}: ${q.q}` }); mailEv(t, w, { kind: 'asked', to: [x.email], by: me0, text: q.q, id: `q_${w.id}_${q.id}` }); return x; }, ...(FAKE ? { makers: FAKE.makers, videoImage: FAKE.image, mediaFake: true } : {}), planOf: (t, c) => (c ? planOfCard(c) : null), save: (t) => store?.save(t), catalogOf: (t) => (t ? brandOfT(t)?.catalog : null), photoAsync: o.photoAsync, photoFile, handoffPath, MOVES, seedJam: (t, w) => JB?.seed(t, w), claudeTool, geminiImage, PUB, LANE_PHOTO, FACTS, unbackedNums: (text) => unbacked({ text: String(text).replace(/\b(?:Rs\.?|INR)\s?(?=\d)/gi, '₹') }, FACT_OK).map((x) => x.n), SEED, AGENT, claudeJSON, cardBrief, seatLine, qaCheck, mechanicalFix, clean, BANNED, isMock, spend, uid, now, clone, inr, on, newWork, addVersion, say, move, notify, later, setState, weekKey, curV, measureOf, log  });
   // tenants survive restarts (store.js); a tenant not in memory is read back from disk or GCS before we give up on it
   const getTenant = async (id) => {
@@ -1784,7 +1805,7 @@ export function createFeedService(o) {
   const DEMO_OK = /^\/api\/(tenants|work|tenants\/[^/]+\/(ready|clock|events|pin|cards|notes\/(clear|read)|stories\/[^/]+\/seen|deck-layout|state|learning\/.+)|cards\/[^/]+\/(feedback|decided)|work\/[^/]+\/(decided|discard|restore|pick|version|approve|reopen|edit|jb\/move|draft\/[^/]+\/drop)|changes\/[^/]+\/(open|discard|restore|pick|notes|edit))$/;
   // every request runs inside its brand: the tenant's brand, or (creating one) the brand the page was opened for
   const handle = async (req, res, u) => {
-    if (!/^\/(h\/|api\/(share|tenants|cards|jams|work|changes|brands\/[a-z0-9-]+\/drop$))/.test(u.pathname)) return false;
+    if (!/^\/(h\/|api\/(share|tenants|cards|jams|work|changes|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?)$))/.test(u.pathname)) return false;
     let tid = null;
     const hm0 = u.pathname.match(/^\/h\/([\w~-]+)$/), sm0 = u.pathname.match(/^\/api\/share\/([\w~-]+)$/);
     if (hm0) tid = parseToken(hm0[1])?.tid; else if (sm0) tid = parseShare(sm0[1])?.tid; else tid = u.pathname.match(/^\/api\/tenants\/(t_[a-f0-9]+)/)?.[1] || req.headers['x-tenant'];
@@ -1856,7 +1877,7 @@ export function createFeedService(o) {
       if (viewer?.member && w) { if (!JAMS.isIn(w, email)) JAMS.join(w, { email, name: viewer.name, pic: viewer.pic }, 'joined'); send(res, 200, { member: true, jam: w.id }); return true; }
       if (email && w && !viewer?.member && !viewer?.gen) { JAMS.join(w, { email, name: viewer.name, pic: viewer.pic }, 'guest'); guest = true; }
       send(res, 200, { guest, signedIn: !!email, jam: tok.wid || null, tenant: t.id, viewer: t.viewer, conn: t.conn, pro: t.plan === 'pro', decided: t.decided || {} }); return true; }
-    if (!/^\/api\/(tenants|cards|jams|work|changes|brands\/[a-z0-9-]+\/drop$)/.test(u.pathname)) return false;
+    if (!/^\/api\/(tenants|cards|jams|work|changes|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?)$)/.test(u.pathname)) return false;
     for (const r of ROUTES) {
       if (r.method !== req.method) continue; const m = u.pathname.match(r.re); if (!m) continue;
       const params = m.groups || {};

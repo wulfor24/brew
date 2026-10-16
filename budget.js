@@ -1,16 +1,16 @@
-// The day's AI budget, by kind (text, image, video, voice): one ceiling for the whole server and a share for each brand, so one
+// The day's AI budget, by kind (text, image, video, voice, and Sloosh credits for finals): one ceiling for the whole server and a share for each brand, so one
 // brand (or the Slack workspace that acts for it) can't use the whole day. Counters live in the bucket (_brew/usage-day.json) and
 // are loaded before the server takes its first call (server.js awaits load()), so a restart or a deploy never hands out a fresh day.
 // A brand's share: BRAND_<KIND>_CAP when set, else DAILY_BRAND_SHARE (default a third) of the server's cap, at least one.
 // Calls with no brand (the Brew default context) count only against the ceiling.
 import { B } from './brand-ctx.js';
 
-export const KINDS = ['text', 'image', 'video', 'voice'];
-const NOUN = { text: 'writing', image: 'picture', video: 'video', voice: 'voice' };
+export const KINDS = ['text', 'image', 'video', 'voice', 'credits'];
+const NOUN = { text: 'writing', image: 'picture', video: 'video', voice: 'voice', credits: 'Sloosh credit' };
 const dayOf = (ms = Date.now()) => new Date(ms).toISOString().slice(0, 10); /* UTC: one reset time for every brand */
 
 export function capsFrom(env = process.env) {
-  const all = { text: +env.DAILY_TEXT_CAP || 400, image: +env.DAILY_IMAGE_CAP || 60, video: +env.DAILY_VIDEO_CAP || 15, voice: +env.DAILY_VOICE_CAP || 60 };
+  const all = { text: +env.DAILY_TEXT_CAP || 400, image: +env.DAILY_IMAGE_CAP || 60, video: +env.DAILY_VIDEO_CAP || 15, voice: +env.DAILY_VOICE_CAP || 60, credits: +env.DAILY_CREDITS_CAP || 300 };
   const share = Math.min(1, Math.max(0.01, +(env.DAILY_BRAND_SHARE ?? 1 / 3) || 1 / 3));
   const brand = Object.fromEntries(KINDS.map((k) => [k, Math.max(1, +env[`BRAND_${k.toUpperCase()}_CAP`] || Math.ceil(all[k] * share))]));
   return { all, brand };
@@ -39,18 +39,18 @@ export function createBudget({ env = process.env, store = null, now = () => Date
     } catch (e) { log.warn?.('[budget] load', e.message); }
     loaded = true;
   }
-  /* why a spend would be refused now: null when it can go */
-  function refusal(kind, slug) {
-    roll(); slug = slugNow(slug);
-    if (s.all[kind] >= caps.all[kind]) return 'all';
-    if (slug && mine(slug)[kind] >= caps.brand[kind]) return 'brand';
+  /* why a spend of n units would be refused now: null when it can go (credits are weighted: a final costs what Sloosh quotes) */
+  function refusal(kind, slug, n = 1) {
+    roll(); slug = slugNow(slug); n = Math.max(0, +n || 0) || 1;
+    if (s.all[kind] + n > caps.all[kind]) return 'all';
+    if (slug && mine(slug)[kind] + n > caps.brand[kind]) return 'brand';
     return null;
   }
-  /* one unit of kind for this brand (default: the brand of the request or job in hand): false when its share or the ceiling is used */
-  function spend(kind, slug) {
+  /* n units of kind (default one) for this brand (default: the brand of the request or job in hand): false when its share or the ceiling is used */
+  function spend(kind, slug, n = 1) {
     if (!KINDS.includes(kind)) return true;
-    slug = slugNow(slug); if (refusal(kind, slug)) return false;
-    s.all[kind]++; if (slug) mine(slug)[kind]++; save(); return true;
+    slug = slugNow(slug); n = Math.max(0, +n || 0) || 1; if (refusal(kind, slug, n)) return false;
+    s.all[kind] += n; if (slug) mine(slug)[kind] += n; save(); return true;
   }
   /* what is left today for a brand, for the page and /api/config */
   function left(slug) {
@@ -59,8 +59,8 @@ export function createBudget({ env = process.env, store = null, now = () => Date
       return [k, { used: m ? m[k] : s.all[k], cap: m ? caps.brand[k] : caps.all[k], left: Math.max(0, Math.min(brandLeft, allLeft)), out: brandLeft <= 0 ? 'brand' : allLeft <= 0 ? 'all' : null }]; }));
   }
   /* a plain sentence for the UI when a spend was refused */
-  function why(kind, slug, name = null) {
-    const r = refusal(kind, slug), n = NOUN[kind] || kind;
+  function why(kind, slug, name = null, units = 1) {
+    const r = refusal(kind, slug, units), n = NOUN[kind] || kind;
     if (r === 'brand') return `${name || 'This brand'}’s ${n} share for today is used up (${caps.brand[kind]} a day). It resets at midnight UTC.`;
     if (r === 'all') return `Brew’s ${n} budget for today is used up across all brands. It resets at midnight UTC.`;
     return null;

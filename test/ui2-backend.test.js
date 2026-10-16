@@ -187,7 +187,7 @@ test('a drop takes text up to 4,000 characters or a PNG, JPG or WebP photo up to
   assert.match(parseDrop({ data: 'data:application/pdf;base64,AAAA' }).error, /PNG, JPG or WebP/);
   assert.match(parseDrop({ data: `data:image/png;base64,${Buffer.alloc(8e6 + 1).toString('base64')}` }).error, /over 8 MB/);
   const s = src('feed-service.js');
-  assert.match(s, /on\('POST', '\/api\/brands\/:slug\/drop'/); assert.match(s, /brands\\\/\[a-z0-9-\]\+\\\/drop\$/);
+  assert.match(s, /on\('POST', '\/api\/brands\/:slug\/drop'/); assert.match(s, /brands\\\/\[a-z0-9-\]\+\\\/\(drop\|references/); /* the drop and references routes share the brands gate (references.js) */
   assert.match(s, /if \(!\(r\?\.member \|\| process\.env\.DEMO_MODE === '1'\)\) return \{ status: r\?\.email \? 403 : 401, error: 'Only this brand’s team can add to its memory\.'/);
   assert.match(s, /addReference\(t, w, rel, f\.name\)/, 'once on a jam is the jam’s reference photo');
 });

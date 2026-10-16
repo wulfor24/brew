@@ -3,7 +3,7 @@
 // dummy Slack. Keys come from an env file (ENV_FILE, default ../ugc-factory/.env) and are never sent to the page.
 import { makePhotoFile } from './safe-path.js';
 import { createJamMail } from './jam-mail.js';
-import { configureGen, saveGen, genFile, researchFile } from './gen-store.js';
+import { configureGen, saveGen, genFile, genFlush, researchFile } from './gen-store.js';
 import http from 'node:http';
 import { safeFetch } from './reader/util.js'; // photo links reach only the public internet
 import fs from 'node:fs';
@@ -31,6 +31,7 @@ import { chain as mediaChain, openaiImage as openaiImageRaw } from './media.js';
 import { createVault } from './vault.js';
 import { createSlooshAuth } from './sloosh-auth.js';
 import { createSloosh } from './sloosh-mcp.js';
+import { createFinals } from './finals.js';
 import { createBuilder, blocked, clientIp } from './build.js';
 import { createRetire } from './retire.js'; // older revisions stop and exit; brands being reset are hidden
 import { createFactsDesk } from './facts-desk.js';
@@ -300,7 +301,7 @@ const routes = {
   'GET /api/research': async () => { const r = B().research; return { ...r.get(), running: r.running(), spent: r.spent() }; },
   'POST /api/research/refresh': async (b, req) => { if (!(await genOk(req, B().slug))) return demoErr(); const ok = ['ads', 'trends', 'news', 'howto']; const which = (b.sources || ok).filter((k) => ok.includes(k)); B().research.refresh(which); return { started: which }; },
     /* paid work running on this instance now (deploy.sh and tools/deploy-demo.sh wait for it): counts by kind, never brand names */
-  'GET /api/ops/busy': async () => { const by = { ...(builder?.paidWork?.() || {}), drafts: draftsBg?.busy?.() || 0, cadence: movesCadence?.busy?.() || 0 };
+  'GET /api/ops/busy': async () => { const by = { ...(builder?.paidWork?.() || {}), drafts: draftsBg?.busy?.() || 0, cadence: movesCadence?.busy?.() || 0, finals: finals?.busy?.() || 0 };
     return { busy: Object.values(by).reduce((a, n) => a + n, 0), by, rev: process.env.K_REVISION || null }; },
   'GET /api/ops/sloosh': async (b, req) => slooshOps(req),
   'GET /api/config': async (b, req) => ({ ai: MOCK ? 'mock' : 'live', provider: PROVIDER, paused: !MOCK && aiPaused(), image: !!(GPROJECT || OPENAI_KEY), caps: CAPS, used: budget.state.all, share: budget.left(cfgSlug(req)), brandCaps: budget.caps.brand }),
@@ -465,14 +466,18 @@ const auth = createAuth({ packs, hostOf, seatNames, onTeamChange: () => MEMO.cle
 /* Brew's own Sloosh workspace (sloosh-auth.js): staff sign in once; every brand's finals spend from it (finals.js, a later batch) */
 const slooshAuth = createSlooshAuth({ packs, vault: createVault(packs), auth, log: console });
 const sloosh = createSloosh({ tokenFor: slooshAuth.tokenFor, log: console });
+/* finals (finals.js): the go-live image or video a team asks Sloosh for, quote first, behind a button; records per brand so a
+   restart never pays twice (reconcileAll at boot); counted in budget 'credits' and in /api/ops/busy */
+const finals = createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFlush, slugs: async () => (await packs.list()).map((x) => x.slug), log: console });
 /* GET /api/ops/sloosh (staff): the connection, the workspace and what Sloosh says about today's limit and credits */
 const slooshStaff = (req) => auth.isAdmin(auth.user(req)) || (!auth.signinOn() && !process.env.K_SERVICE); /* staff, or a local server with sign-in off */
 const slooshOps = async (req) => {
   if (!slooshStaff(req)) return { error: 'Brew staff only' };
+  const fin = await finals.status({ fresh: true }).catch((e) => ({ ok: false, why: e.message }));
   const st = await slooshAuth.status(); if (!st.connected) return { ...st, connect: '/api/ops/sloosh/connect' };
   const [conn, acct] = await Promise.all([sloosh.getConnection().catch((e) => ({ error: e.message })), sloosh.getAccount().catch((e) => ({ error: e.message }))]);
   const ws = conn?.workspace || acct?.workspace || null; if (ws && !st.workspace) await slooshAuth.setWorkspace(ws).catch(() => {});
-  return { ...st, workspace: ws || st.workspace, connection: conn, account: acct, reconnect: '/api/ops/sloosh/connect' };
+  return { ...st, workspace: ws || st.workspace, connection: conn, account: acct, finals: fin, credits: budget.left().credits, reconnect: '/api/ops/sloosh/connect' };
 };
 const slooshHandle = async (req, res, u) => {
   if (!u.pathname.startsWith('/api/ops/sloosh/')) return false;
@@ -520,7 +525,7 @@ const slackRoutes = DEMO ? null : createSlackRoutes({ connectors, feed: () => fe
    member of the brand's team. Team access comes only from an owner's invite or the brand's work email (auth.js) */
 feedSvc = createFeedService({ /* tagging an email in a jam invites them to the team, with the tagger's own views (any teammate may invite to their views) */
   inviteTo: async (slug, by, email) => { const role = await auth.roleOf(slug, by); if (!role) return { error: 'Only the team invites people.' }; const seats = role === 'owner' || role === 'admin' ? 'all' : (await auth.seatsOf(slug, by)) ?? 'all';
-    return auth.invite(slug, by, email, seats, process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', true); }, liveTeamOnly: () => auth.signinOn() && process.env.DEMO_MODE !== '1', clientIp, jamMail, memory: MEMORY_ON() ? memory : null, isStaff: (email) => auth.isAdmin({ email }), teamOf: (slug) => auth.getMembers(slug), onOpen: (slug) => { social.opened(slug); draftsBg.opened(slug); builder.heal?.(slug).then((ch) => { if (ch?.length) { packs.drop(slug); loadBrand(slug).catch(() => {}); } }).catch(() => {}); }, PUB, claudeJSON,  globalPacks: packs, claudeTool, cardBrief, mockVariants, geminiImage: imageGen, treg, launchBrowser, zipBuffer, photoAsync, isMock: () => MOCK, spend, BANNED, clean, store, packs: brandPacks, builder, photoFile, learnings,
+    return auth.invite(slug, by, email, seats, process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', true); }, liveTeamOnly: () => auth.signinOn() && process.env.DEMO_MODE !== '1', clientIp, jamMail, memory: MEMORY_ON() ? memory : null, isStaff: (email) => auth.isAdmin({ email }), teamOf: (slug) => auth.getMembers(slug), onOpen: (slug) => { social.opened(slug); draftsBg.opened(slug); builder.heal?.(slug).then((ch) => { if (ch?.length) { packs.drop(slug); loadBrand(slug).catch(() => {}); } }).catch(() => {}); }, PUB, claudeJSON,  finals, sloosh, budgetLeft: (slug) => budget.left(slug).credits, globalPacks: packs, claudeTool, cardBrief, mockVariants, geminiImage: imageGen, treg, launchBrowser, zipBuffer, photoAsync, isMock: () => MOCK, spend, BANNED, clean, store, packs: brandPacks, builder, photoFile, learnings,
   /* Demo Mode: a tour session reads the store live while the visitor watches (demo-routes.js session flow) */
   liveReadFor: DEMO ? async (slug) => (await packs.getJSON(slug, 'private/demo/session.json', null))?.flow === 'onboarding' : null,
   slack: DEMO ? null : connectors, /* a really connected Slack: jams post to it and its thread replies come back (slack-routes.js) */
@@ -528,7 +533,8 @@ feedSvc = createFeedService({ /* tagging an email in a jam invites them to the t
   /* membership checked from the signed-in user on every request and on the background clock (feed-service.js REQ / bgTeam) */
   isMemberEmail: (slug, email) => auth.isMember(slug, { email: String(email || '').toLowerCase() }), roleOf: (slug, email) => auth.roleOf(slug, { email: String(email || '').toLowerCase() }) });
 feedSvc.wire(B());
-retireInit.finally(() => { if (!process.env.BUILD_RESUME_OFF) builder.resumeAll().catch((e) => console.error('[build] resumeAll', e.message)); }); // resume off for a local server reading the live bucket
+retireInit.finally(() => { if (!process.env.BUILD_RESUME_OFF) builder.resumeAll().catch((e) => console.error('[build] resumeAll', e.message)); });
+retireInit.finally(() => { if (!process.env.BUILD_RESUME_OFF) finals.reconcileAll().then((n) => { if (n) console.log(`[finals] ${n} run(s) picked up after the restart`); }).catch((e) => console.error('[finals] reconcileAll', e.message)); }); // resume off for a local server reading the live bucket
 
 /* ---------- brand routes: start a read, its status and live events, "check what we read", moves and PDFs ---------- */
 /* On live, a brand's moves, PDFs, read, facts, Heard and stories are for its team (members, SquareUp, or the brand's own work
@@ -650,7 +656,7 @@ const brandRoutes = async (req, res, u) => {
 };
 // a generated brand's files: its client seed and facts, assets, PDFs
 const brandFiles = async (req, res, u) => {
-  const m = u.pathname.match(/^\/b\/([a-z0-9-]+)\/(seed\.js|facts\.js|a\/[\w.-]+|statics\/[\w.-]+|team\/statics\/[\w.-]+|pdf\/[^/]+)$/); if (!m) return false;
+  const m = u.pathname.match(/^\/b\/([a-z0-9-]+)\/(seed\.js|facts\.js|a\/[\w.-]+|refs\/[\w.-]+|statics\/[\w.-]+|team\/statics\/[\w.-]+|pdf\/[^/]+)$/); if (!m) return false;
   const slug = m[1], what = decodeURIComponent(m[2]);
   /* the team's static ads (private/statics/, made from their private Move 21): signed-in members only, never cached by a proxy */
   if (what.startsWith('team/statics/')) return teamStatic(req, res, slug, what.slice(13), { viewerOf, signedIn: (r) => !!auth.user(r), packs, send });

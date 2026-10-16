@@ -2786,3 +2786,19 @@ html body.deck-on .topbar{border-bottom:0;box-shadow:none}
 .topbar .seg button{height:33px}
 .topbar-r .j1-pill,.topbar-r .viewing,.topbar-r .icon-btn,.topbar .icon-btn{box-sizing:border-box;height:39px}
 .topbar-r .icon-btn,.topbar .icon-btn{width:39px}
+
+/* References (Library tab): the Library's tiles with a media square on top; the edit state is the same card opened up */
+.rf-grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+.rf-t{cursor:default;padding:10px 12px 12px}
+.rf-t:hover{transform:none;box-shadow:inset 0 0 0 1px var(--line)}
+.rf-media{position:relative;display:block;width:100%;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line)}
+.rf-media img,.rf-media video{width:100%;height:100%;object-fit:cover;display:block}
+.rf-media i{position:absolute;right:8px;bottom:8px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--fg);color:var(--on-fg,#fff)}
+.rf-t .lt-f .linkbtn{padding:0}
+.rf-f{display:flex;flex-direction:column;gap:3px}
+.rf-f small{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-3)}
+.rf-f input,.rf-f select{font:inherit;font-size:14.5px;color:var(--fg);background:var(--surface);border:0;border-radius:9px;padding:7px 10px;width:100%;box-sizing:border-box;outline:none}
+.rf-f input:focus,.rf-f select:focus{box-shadow:inset 0 0 0 1.5px var(--fg)}
+.rf-acts{display:flex;gap:6px}
+.rf-up{gap:6px;cursor:pointer}
+.lib-empty .rf-up{margin-top:4px}
