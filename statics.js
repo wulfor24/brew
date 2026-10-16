@@ -6,11 +6,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { numbersIn, allowedFrom } from './fact-gate.js';
+import { buildDraft } from './sloosh-prompt.js';
 
 const SCHEMA = { type: 'object', properties: { ads: { type: 'array', items: { type: 'object', properties: {
   id: { type: 'string', description: 'short kebab-case id, unique' },
   product: { type: 'string', description: 'the handle of the product in the photo, from the list' },
-  scene: { type: 'string', description: 'one sentence: the new photograph around the real product (setting, light, props). No people\'s bodies shown as results, no before/after, no text in the scene' },
+  scene: { type: 'string', description: 'one sentence: the new photograph around the real product as things you can see (the surface, the setting, where the light comes from, the props, who is there). No mood words (premium, cinematic), no effects (splashes, sparkles, floating, glow). No people\'s bodies shown as results, no before/after, no text in the scene' },
   headline: { type: 'string', description: 'the ad headline set on the image, under 60 characters, plain words, from the move' },
   small: { type: 'string', description: 'one supporting line under the headline, under 70 characters' }
 } } } } };
@@ -92,7 +93,7 @@ export function createStatics({ ai, image, packs, launchBrowser, log = console }
           const m = /^\/?b\/[^/]+\/a\/(.+)$/.exec(String(p.img)); const raw = m && (await packs.get(slug, 'assets/' + m[1])); if (!raw) continue;
           const jpg = await toJpeg(browser, raw, /\.png$/i.test(p.img) ? 'image/png' : /\.webp$/i.test(p.img) ? 'image/webp' : 'image/jpeg');
           const tmp = path.join(os.tmpdir(), `st-${slug}-${a.id}.jpg`); fs.writeFileSync(tmp, jpg);
-          const scene = await image({ srcFile: tmp, slug, ratio: '4:5', prompt: `Create a new photograph: ${a.scene}. Keep the ${profile.name} product and its label exactly as in the reference photo, including any printed text on the pack. Do not add any other text, captions, logos or watermarks anywhere. No before/after, no bodies shown as results. Premium product ad photography, natural light, clean composition, leave the top third calm for a headline.` });
+          const scene = await image({ srcFile: tmp, slug, ratio: '4:5', prompt: buildDraft({ kind: 'image', title: `${profile.name} static ad`, visual: a.scene, hasSrc: true, ratio: '4:5', topSpace: true, product: { name: p.title || p.handle }, brand: { name: profile.name, ...(profile.config?.product || {}) } }).prompt });
           fs.rmSync(tmp, { force: true });
           await packs.put(slug, `${pre}statics/raw-${a.id}.png`, scene, 'image/png');
           const out = await compose(browser, scene, { headline: a.headline, small: a.small, accent });

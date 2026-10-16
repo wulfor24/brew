@@ -4,8 +4,9 @@
 // a draft costs money, so it is never made for a card nobody opened.
 // Each draft lives on the jam (w.drafts), newest first; the client polls the jam while one is being made.
 import { budgetWhy } from './budget.js'; // whose daily share ran out, in plain words
-import { makeVoice as vertexVoice, makeVideo as vertexVideo } from './media.js'; // Sloosh first once connected, then Vertex, then OpenAI (media.js)
-import { matchProduct, cardProduct, cardScene, sceneOf } from './product-match.js';
+import { makeVoice as vertexVoice, makeVideo as vertexVideo } from './media.js'; // Vertex, then OpenAI (media.js); Sloosh makes finals only
+import { buildDraft } from './sloosh-prompt.js'; // one brief for drafts and finals
+import { matchProduct, cardProduct, sceneOf } from './product-match.js';
 import crypto from 'node:crypto';
 import { safeFetch } from './reader/util.js'; // photo links reach only the public internet
 import fs from 'node:fs';
@@ -25,8 +26,8 @@ const SCHEMA = {
     as: { type: 'string', enum: DRAFT_AS, description: 'The form the brief needs: image for a single static ad or post, carousel for a swipeable carousel (ad or post) or a set of Stories, video for a reel or video ad, voice for a voice note, voiceover or radio-style spot, text for copy that ships as words (a message, email, page copy, captions, a script to hand over)' },
     title: { type: 'string', description: 'Under 50 characters: what this draft is, e.g. "Instagram ad: office lunch orders"' },
     copy: { type: 'string', description: 'The words of the asset, ready to use, in Markdown. For an ad: the headline, the primary text and the button. For a message or email: the message itself. For voice: the exact words spoken. No placeholders, no brackets to fill in' },
-    visual: { type: 'string', description: 'image and video only: one or two sentences describing the photograph around the real product (setting, light, props, who is there). No writing anywhere except the product\'s own label: no calendars, notes, signs, screens or other packaging' },
-    motion: { type: 'string', description: 'video only: one sentence on what moves and how the camera moves over 6 seconds' },
+    visual: { type: 'string', description: 'image and video only: one or two sentences describing the photograph around the real product as things you can see: the surface, the setting, where the light comes from, the props, who is there and what they do. No mood words (premium, cinematic, aesthetic), no effects (splashes, sparkles, confetti, floating, glow), no keyword lists. No writing anywhere except the product\'s own label: no calendars, notes, signs, screens or other packaging' },
+    motion: { type: 'string', description: 'video only: one sentence on what moves, in order, and the one camera move over 6 seconds (a slow push in, a pan, a static shot), with the pace' },
     ratio: { type: 'string', enum: RATIOS, description: 'image and video only: 4:5 for a feed ad, 9:16 for a reel or story, 1:1 for a square post' },
     script: { type: 'string', description: 'voice: the words spoken, under 60 words. video: an optional voiceover of at most 14 words, so it fits in 6 seconds; empty for a silent video' },
     voiceStyle: { type: 'string', description: 'voice only: how it is said, in a few words, e.g. "warm and unhurried"' },
@@ -42,7 +43,7 @@ const SCHEMA = {
 // the planning prompt and the photo prompt, shared by the jam (one tap) and the background first drafts (drafts-bg.js)
 export const draftPrompt = ({ card, role = 'creative', brief = '', mem = '', as = 'auto', ask = '' }) => `${card}\n\nYou are the ${role} agent, and a team is planning this card in a jam.\n\nTHE JAM BRIEF (what the team agreed so far):\n----\n${String(brief || '').slice(0, 9000)}\n----\n${mem ? `\n${mem}\n` : ''}\nMake the first draft of the asset this brief asks for, ready for the team to react to.${as !== 'auto' ? ` Make it as ${as === 'voice' ? 'a voice recording' : as === 'text' ? 'text' : as === 'carousel' ? 'a carousel of 3 to 8 slides' : 'an ' + (as === 'image' ? 'image' : 'video')}${as === 'video' ? ' (a 6-second clip)' : ''}, even if the brief had something else in mind.` : ' Pick the form the brief needs.'}${ask ? `\nThe person asked: ${ask}` : ''}\nRules: plain words, every number from the brief or the brand facts, no discounts or claims the brief does not make, no disclaimers.`;
 /* c: the card, whose asset line ("1 static image: an office worker at her desk wearing …") is the scene the picture must show */
-export const imagePrompt = (j, hasSrc, c = null) => `Create a new photograph for ${j.title}. ${j.visual || 'The product on a clean surface in soft daylight.'} ${cardScene(c)} ${hasSrc ? 'Keep the product and its label exactly as in the reference photo; do not invent new text on it.' : ''} Nothing else in the picture carries writing: no calendars, notes, signs, screens, books or other packaging. No logos, no watermarks. Photographic, natural light, made for a phone screen.`;
+export const imagePrompt = (j, hasSrc, c = null, brand = null) => buildDraft({ kind: 'image', title: j.title, visual: j.visual, scene: sceneOf(c), hasSrc, ratio: j.ratio, brand: brand || {}, product: brand?.product ? { name: brand.product } : undefined }).prompt; /* one brief for drafts and finals (sloosh-prompt.js) */
 export const DRAFT_SCHEMA = SCHEMA;
 export const DRAFT_RATIOS = RATIOS;
 
@@ -200,7 +201,7 @@ export function createMakers({ geminiImage, treg, launchBrowser, zipBuffer, save
       onStep(`Making the photos (${Math.min(k + 3, slides.length)} of ${slides.length})`);
       raws.push(...(await Promise.all(slides.slice(k, k + 3).map(async (x, m) => {
         if (!canSpend(k + m)) return null;
-        const prompt = `Create photograph ${k + m + 1} of ${slides.length} for one ${title} carousel; every photo shares the same look, light and colour. ${x.visual} ${scene ? `The set as a whole shows what the card promises: ${scene}.` : ''} ${src ? 'Keep the product and its label exactly as in the reference photo.' : ''} No writing anywhere except the product's own label: no signs, notes, calendars, screens or other packaging. Keep the top third calm and simple, words will sit there. Photographic, natural light.`;
+        const prompt = buildDraft({ kind: 'image', title: `${title} carousel`, visual: x.visual, scene: scene ? `The set as a whole shows what the card promises: ${scene}.` : '', index: k + m + 1, count: slides.length, topSpace: true, hasSrc: !!src, ratio }).prompt;
         try { return await geminiImage({ srcFile: src, prompt, ratio, named, slug, text: [x?.onSlide, title, cardTitle].filter(Boolean).join('. '), fallback: true }); } catch (e) { log.warn('[draft slide]', e.message); return null; } /* fallback: a slide with no new photo carries the real product photo under its words */
       }))));
     }
@@ -226,7 +227,7 @@ export function createMakers({ geminiImage, treg, launchBrowser, zipBuffer, save
   // Veo 3.1 Fast, 6 s at 1080p from the first frame: the product stays put, only light and camera move
   const video = async (frameName, motion, { onStep = () => {}, ratio = '9:16' } = {}) => {
     const ff = await file(frameName); if (!ff) throw new Error('the first frame is missing'); const frame = fs.readFileSync(ff);
-    const buf = await vertexVideo(frame, `${motion || 'The camera slowly pushes in.'} The product stays still, upright and in sharp focus, its label unchanged and readable; only the light and the camera move, slowly. No new text appears.`,
+    const buf = await vertexVideo(frame, buildDraft({ kind: 'video', motion, ratio }).prompt,
       { ratio, onWait: () => onStep('Animating it, about a minute more') });
     const name = keyOf(frameName + (motion || '')) + '.mp4'; save(name, buf); return name;
   };

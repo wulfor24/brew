@@ -9,6 +9,7 @@
 // downloaded because Ad Library URLs expire. Snapshot + media persist to GCS so a restart or a deploy
 // refetches nothing; the last good data stays up if a refresh fails.
 import fs from 'node:fs';
+import { buildDraft } from './sloosh-prompt.js';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -399,7 +400,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     await Promise.all(items.map(async (x) => {
       const ref = refPhoto(x.lane); if (!ref || !photoFile(ref)) return;
       try {
-        const buf = await geminiImage({ srcFile: photoFile(ref), slug: B().slug, prompt: `Create a new vertical product photograph: ${x.scene || 'the product on a clean bathroom shelf, soft morning daylight'}. ${`Keep the ${BN()} ${B().config.product?.noun || 'product'} and its label exactly as in the reference`}. ${B().config.product?.avoid || 'No text, no people.'} ${B().config.product?.editorial || B().config.product?.style || 'Premium D2C editorial product photography'}, calm, lots of empty space at the bottom.`, ratio: '9:16', model: process.env.WATCHER_IMAGE_MODEL || 'gemini-2.5-flash-image' });
+        const buf = await geminiImage({ srcFile: photoFile(ref), slug: B().slug, prompt: buildDraft({ kind: 'image', title: 'how-to story', visual: `${x.scene || 'the product on a clean bathroom shelf, soft morning daylight'}, calm, with empty space at the bottom`, hasSrc: true, ratio: '9:16', product: { name: `${BN()} ${B().config.product?.noun || 'product'}` }, brand: { name: BN(), ...(B().config.product || {}) } }).prompt, ratio: '9:16', model: process.env.WATCHER_IMAGE_MODEL || 'gemini-2.5-flash-image' });
         spent.images += 0.04; x.img = await saveMedia(buf, imgExt(buf));
       } catch (e) { log.warn('[research] howto image', e.message); }
     }));

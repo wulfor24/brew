@@ -1,0 +1,105 @@
+// One brief, every picture and clip: the words Brew sends to an image or video model, for a Gemini draft (buildDraft) and for
+// a Sloosh final (buildFinal). Written the way Sloosh's prompt guide and the model makers ask (sloosh.ai/docs/prompt-guide,
+// prompting-nano-banana, prompting-gpt-image, video-prompts, seedance-2-5): a brief in plain sentences (subject, setting, look,
+// use), references named by position with a job and a keep line, text only as exact quoted words with a place and a lettering,
+// aspect ratio in the settings and never in the words, edits as "change only X, keep the rest". No keyword strings, no mood
+// words, none of the stock-photo clichés that make a picture read as AI (SLOP). Pure functions; the tests pin the shape.
+
+/* words that add noise, not detail: stripped from any sentence a model wrote, refused in the standing lines */
+export const SLOP = /\b(?:4\s?k|8\s?k|ultra[- ]?(?:detailed|realistic|hd)|hyper[- ]?realistic|photo[- ]?realistic|trending(?: on \w+)?|award[- ]winning|masterpiece|cinematic|premium(?:-looking| look| feel)?|luxurious|stunning|breathtaking|gorgeous|magical|epic|aesthetic|vibes?|sparkl\w*|glitter\w*|confetti|lens flares?|bokeh balls?|floating(?: in mid[- ]?air| product)?|levitat\w+|swirl\w*|splash\w* of (?:water|milk|cream)|liquid splash\w*|explod\w+|dramatic (?:smoke|fog|lighting)|neon glow|glowing (?:aura|edges?)|light rays?|god rays?|depth of field|dof|octane|unreal engine|8-bit|high quality|best quality|professional photography|studio quality)\b[,.;: ]*/gi;
+export const JOBS = ['product', 'scene', 'style', 'person', 'logo', 'other'];
+/* what a reference of each job tells the model, and what must not change from it */
+const JOB_LINE = {
+  product: (r) => `Image ${r.n} is the product${r.label ? `, ${r.label}` : ''}. Keep its shape, proportions, colours, materials and every printed word on it exactly as shown${r.keep ? `; ${r.keep}` : ''}.`,
+  scene: (r) => `Image ${r.n} is the place${r.label ? `, ${r.label}` : ''}: use it as the setting and background${r.keep ? `; ${r.keep}` : ''}.`,
+  style: (r) => `Image ${r.n} is the look${r.label ? `, ${r.label}` : ''}: match its light, colours, framing and mood, not its subject${r.keep ? `; ${r.keep}` : ''}.`,
+  person: (r) => `Image ${r.n} is ${r.label || 'the person'}: keep their face, hair and build exactly as in that image${r.keep ? `; ${r.keep}` : ''}.`,
+  logo: (r) => `Image ${r.n} is the logo${r.label ? `, ${r.label}` : ''}: reproduce it exactly, once, where the text sits${r.keep ? `; ${r.keep}` : ''}.`,
+  other: (r) => `Image ${r.n}${r.label ? ` is ${r.label}` : ''}${r.keep ? `: ${r.keep}` : ': use it as a reference for what it shows'}.`
+};
+export const USE = { '4:5': 'a feed ad seen on a phone', '1:1': 'a square post seen on a phone', '9:16': 'a vertical story or reel on a phone; keep the top and bottom sixth free of anything that matters, the app draws its own bars there', '16:9': 'a wide banner', '3:4': 'a portrait post', '21:9': 'a wide site banner' };
+
+const one = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+const sentence = (s) => { const t = one(s); return t ? (/[.!?]$/.test(t) ? t : t + '.') : ''; };
+/* a model-written sentence with the noise taken out and the first letter up */
+export const scrub = (s) => { const t = one(String(s || '').replace(SLOP, ' ')).replace(/\s+([,.;:])/g, '$1').replace(/([,.;:])[,;: ]*(?=[,.;:])/g, '$1').replace(/^[,.;: ]+|[,;: ]+$/g, ''); return t ? t[0].toUpperCase() + t.slice(1) : ''; };
+export const hasSlop = (s) => { SLOP.lastIndex = 0; return SLOP.test(String(s || '')); };
+export const refLines = (refs = []) => refs.filter(Boolean).map((r, i) => (JOB_LINE[JOBS.includes(r.job) ? r.job : 'other'])({ ...r, n: r.n || i + 1 })).join(' ');
+/* the standing rules every picture keeps, for the brand (its own avoid line wins over the default one) */
+export const keepLine = ({ brand = {}, text = false, people = true } = {}) => one(`${text ? 'No writing anywhere except the words asked for and the product’s own label' : 'Nothing in the picture carries writing except the product’s own label'}: no calendars, notes, signs, screens, books, posters or other packaging. No logos or watermarks that are not the brand’s own. No before and after, no body shown as a result${people ? '' : ', no people'}. Nothing invented on the product. ${scrub(brand.avoid || '')}`);
+/* "HEADLINE" in bold sans-serif, top third: exact words, a place, a lettering; one line each; rendered once */
+export const textLines = (text = []) => { const xs = (Array.isArray(text) ? text : [text]).map((t) => (typeof t === 'string' ? { words: t } : t)).filter((t) => one(t?.words)); if (!xs.length) return '';
+  return xs.map((t) => `Text: "${one(t.words).replace(/"/g, '”')}" in ${t.style || 'clean bold sans-serif'}, ${t.where || 'in the clear space'}.`).join(' ') + ' Render each line once, spelled exactly, and add no other text.'; };
+/* light, lens and colours as things you can see: the brand's style line when it has one, else a quiet default */
+export const lookOf = (brand = {}, kind = 'image') => scrub(brand.style || brand.editorial || (kind === 'video' ? 'Soft daylight from one side, true colours, a steady phone-camera look' : 'Soft daylight from one side, true colours, a slight shadow under the product, a phone-camera look at eye level'));
+export const useOf = (ratio, topSpace = false) => `${USE[ratio] || USE['4:5']}${topSpace ? '; keep the top third calm and simple, the words sit there' : ''}`;
+
+/* ---------- the normalised brief every renderer reads ---------- */
+export function brief(spec = {}) {
+  const brand = spec.brand || {}; const refs = (spec.refs || []).map((r, i) => ({ n: i + 1, job: JOBS.includes(r?.job) ? r.job : 'other', label: one(r?.label), keep: one(r?.keep), id: r?.id, url: r?.url, file: r?.file }));
+  if (!refs.length && spec.hasSrc) refs.push({ n: 1, job: 'product', label: one(spec.product?.name || `${brand.name || ''} ${brand.noun || ''}`) || '', keep: '' });
+  const subject = scrub(spec.subject || spec.product?.name || [brand.name, brand.noun].filter(Boolean).join(' ') || 'the product');
+  return { kind: spec.kind || 'image', title: one(spec.title), subject, visual: scrub(spec.visual), scene: scrub(spec.scene), look: lookOf(brand, spec.kind), ratio: spec.ratio || '4:5', use: useOf(spec.ratio || '4:5', !!spec.topSpace),
+    refs, text: spec.text || [], brand, motion: scrub(spec.motion), beats: spec.beats || [], seconds: spec.seconds || 6, sound: spec.sound ?? false, index: spec.index, count: spec.count, people: spec.people !== false, revise: spec.revise || null };
+}
+
+/* ---------- image renderers ---------- */
+/* Nano Banana (Gemini image) reads a scene in sentences: style, subject, setting, action, composition, then the words */
+export function nanoScene(b) {
+  const where = [b.visual, b.scene].filter(Boolean).join(' ');
+  const head = b.index ? `Photograph ${b.index} of ${b.count} for one ${b.title || 'carousel'}; every photo in the set shares the same look, light and colours.` : `A photograph${b.title ? ` for ${b.title}` : ''}.`;
+  return one(`${head} ${b.subject ? `The subject is ${b.subject}.` : ''} ${sentence(where) || 'The product on a plain surface in its own setting.'} ${sentence(b.look)} Made for ${b.use}. ${refLines(b.refs)} ${textLines(b.text)} ${keepLine({ brand: b.brand, text: !!(b.text || []).length, people: b.people })}`);
+}
+/* GPT Image reads a spec: one kind of instruction per line */
+export function gptSpec(b) {
+  const lines = [`Result: ${b.title ? `${b.title}, ` : ''}${b.use}.`, `Subject: ${b.subject}. ${[b.visual, b.scene].filter(Boolean).join(' ')}`.trim(), `Setting and light: ${b.look}`, `Camera: at eye level, the product filling about two thirds of the frame, sharp.`];
+  const t = textLines(b.text); if (t) lines.push(t);
+  lines.push(`Keep: ${refLines(b.refs) || 'the product exactly as it is sold.'} ${keepLine({ brand: b.brand, text: !!(b.text || []).length, people: b.people })}`);
+  return lines.map(one).join('\n');
+}
+/* Flux 2 Pro takes exact colours as hex, each tied to an object */
+export function fluxHex(b) { const cs = (b.brand.colors || []).filter((c) => /^#[0-9a-f]{6}$/i.test(String(c))).slice(0, 3); const hex = cs.length ? ` Brand colours, exact: ${cs.map((c, i) => `${c} for ${['the backdrop', 'the accent props', 'the small details'][i]}`).join(', ')}.` : ''; return nanoScene(b) + hex; }
+
+/* ---------- video renderers ---------- */
+/* a draft clip from a still (Veo on Vertex, image to video): one shot, what moves, one camera move, the pace; the product stays */
+export function veoDraft(b) { return one(`${sentence(b.motion) || 'The camera pushes in slowly.'} The product stays still, upright and in sharp focus, its label unchanged and readable; only the light and the camera move, slowly. ${b.sound ? 'Quiet room tone.' : ''} No new text appears, no captions, no logo.`); }
+/* Seedance 2.5: references by job, one summary sentence, then timed beats in whole seconds with no gaps; SFX in <>, lines in quotes */
+export function seedanceBeats(b) {
+  const S = Math.max(4, Math.min(30, Math.round(b.seconds || 6))); const beats = (b.beats || []).filter((x) => one(x?.shot || x?.beat || x)).slice(0, 6);
+  const n = beats.length || 1, cut = (i) => Math.round((S * i) / n);
+  const body = beats.length ? beats.map((x, i) => { const shot = scrub(x.shot || x.beat || x), line = one(x.line); return `${cut(i)}-${cut(i + 1)}s: ${sentence(shot)}${line ? ` "${line.replace(/"/g, '”')}"` : ''}`; }).join('\n') : `0-${S}s: ${sentence(b.motion) || 'The camera pushes in slowly on the product.'}`;
+  return [`${refLines(b.refs)}`.trim(), one(`A ${b.title ? `${b.title}: ` : ''}${b.subject}${b.visual || b.scene ? `, ${[b.visual, b.scene].filter(Boolean).join(' ')}` : ''}. ${b.look} One camera move per beat, slow and steady.`), body, one(`${b.sound ? 'Quiet ambient sound that fits the room.' : 'No music.'} No subtitles, no captions, no logo, no watermark. ${keepLine({ brand: b.brand, people: b.people })}`)].filter(Boolean).join('\n');
+}
+/* Seedance 2.0 reads numbered shots, not timestamps */
+export function seedanceShots(b) { return seedanceBeats(b).replace(/^(\d+)-(\d+)s:/gm, (m, a, c, off, s) => `Shot ${s.slice(0, off).split('\n').filter((l) => /^\d+-\d+s:/.test(l)).length + 1}:`); }
+/* Gemini Omni: one continuous shot with its own Audio line, nothing negative */
+export function omniShot(b) { return one(`A single continuous ${Math.max(3, Math.min(10, b.seconds || 6))}-second shot. ${b.look} ${[b.visual, b.scene].filter(Boolean).join(' ')} The camera ${b.motion ? b.motion.replace(/^the camera\s*/i, '') : 'pushes in slowly'} as ${b.subject} stays in sharp focus. ${refLines(b.refs)}`) + `\nAudio: ${b.sound ? 'quiet room tone, no music.' : 'silence.'}`; }
+/* Veo 3.1: cinematography first, no reference tags; the references are matched by what the words describe */
+export function veoShot(b) { return one(`Slow push in, eye level, 50mm, shallow focus on ${b.subject}. ${[b.visual, b.scene].filter(Boolean).join(' ')} ${b.look} ${sentence(b.motion)} The product stays still with its label readable. ${b.sound ? 'Ambient noise: the quiet of the room.' : ''} No captions, no logo.`); }
+
+/* ---------- a revision keeps everything but the one change ---------- */
+export function reviseBrief(prev = {}, change = '') { const keep = ['the product and every word on its label', 'the framing and the camera', 'the light and the colours', ...(prev.text?.length ? [`the text ${prev.text.map((t) => `"${one(typeof t === 'string' ? t : t.words)}"`).join(', ')}`] : [])];
+  return one(`Image 1 is the previous picture. Change only this: ${scrub(change) || 'nothing'}. Keep everything else exactly as in image 1: ${keep.join('; ')}. ${prev.keepLine || ''}`); }
+
+/* ---------- which model, and why ---------- */
+export const MODELS = { image: 'nano-banana-pro', type: 'ideogram-4.5', hex: 'flux-2-pro', edit: 'gpt-image-2.5-sunburst', video: 'seedance-2.5', videoShots: 'seedance-2.0', omni: 'gemini-omni-1.1-flash', veo: 'veo-3.1' };
+export function pickModel(b) {
+  if (b.revise) return { model: MODELS.edit, why: 'a precise edit of the previous picture' };
+  if (b.kind === 'video') return b.model && Object.values(MODELS).includes(b.model) ? { model: b.model, why: 'as picked' } : { model: MODELS.video, why: 'timed beats, the product kept from its photo' };
+  if (b.model === 'flux-2-pro' || (!(b.text || []).length && (b.brand.colors || []).some((c) => /^#[0-9a-f]{6}$/i.test(c)) && b.brand.exactColors)) return { model: MODELS.hex, why: 'exact brand colours' };
+  if ((b.text || []).length >= 3) return { model: MODELS.type, why: 'several lines of type' };
+  return { model: MODELS.image, why: (b.text || []).length ? 'finished work with the words set in the picture' : 'finished product photography' };
+}
+
+/* ---------- the two entry points ---------- */
+/* a Gemini image or Veo draft: the same brief, rendered as a scene (Gemini image is the Nano Banana family) or a Veo shot */
+export function buildDraft(spec = {}) { const b = brief(spec); return b.kind === 'video' ? { prompt: veoDraft(b), ratio: b.ratio, brief: b } : { prompt: nanoScene(b), ratio: b.ratio, brief: b }; }
+/* a Sloosh final: the model, its prompt and the settings the chips carry (never in the words) */
+export function buildFinal(spec = {}) {
+  const b = brief(spec); const { model, why } = pickModel({ ...b, model: spec.model, revise: spec.revise });
+  const prompt = spec.revise ? reviseBrief({ text: b.text, keepLine: keepLine({ brand: b.brand, text: !!b.text.length, people: b.people }) }, spec.revise.change)
+    : b.kind === 'video' ? (model === MODELS.videoShots ? seedanceShots(b) : model === MODELS.omni ? omniShot(b) : model === MODELS.veo ? veoShot(b) : seedanceBeats(b))
+    : model === MODELS.edit ? gptSpec(b) : model === MODELS.hex ? fluxHex(b) : nanoScene(b);
+  const settings = b.kind === 'video' ? { aspect_ratio: b.ratio, resolution: '1080p', duration: Math.max(4, Math.min(30, Math.round(b.seconds || 6))), sound: !!b.sound } : { aspect_ratio: b.ratio, resolution: spec.resolution || '2K' };
+  return { model, prompt, settings, why, refs: b.refs, brief: b };
+}

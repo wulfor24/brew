@@ -192,7 +192,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
     const still = async () => { /* one picture of the real product in a new scene; null when there is no photo or no budget */
       if (!geminiImage || !saveGen) return null; if (!src) { words('No product photo to stage, so this one is words only.'); return null; }
       if (!fits(cfg.imageUsd)) { words("The picture waits for tomorrow's budget."); return null; }
-      const ip = imagePrompt(j, true, c), text = `${c.make?.pieces || ''}. ${j.title || ''}. ${j.copy || ''}. ${c.title || ''}`;
+      const ip = imagePrompt(j, true, c, { name: brand.name, ...(p.config?.product || {}), product: named?.t || d.product || '' }), text = `${c.make?.pieces || ''}. ${j.title || ''}. ${j.copy || ''}. ${c.title || ''}`;
       d.ip = ip; d.imgText = cut(text, 600); /* kept so a failed picture can be made again later without asking the AI for new words */
       try { const r = await makeStill(slug, c, { src, ip, ratio, text, catalog: p.catalog || null, brand: p.seed?.brand?.name || '', named });
         if (r.failed) { d.photoOnly = true; d.imgRetry = { n: 1, next: now() + retryWait(1), err: cut(r.error || '', 160) }; d.note = cut(`${d.note} For now this is the real product photo; the new picture is being made again.`, 220); log.warn?.('[drafts-bg] image fell back to the real photo', slug, c.id, r.error || ''); }
