@@ -967,14 +967,16 @@
   };
   /* phones: a native tab bar like Instagram (Feed, Deck, new jam, Work, Library) and the section's name in the header */
   const TABS = [['feed', 'feed', 'Feed'], ['deck', 'deck', 'Deck'], ['+', 'plus', 'New jam'], ['work', 'board', 'Work'], ['saved', 'bookmark', 'Library']];
+  /* UI2 phone tabs: Home, Deck, Ask Brew in the middle, Memory, Connectors (Profile and notifications sit in the top bar) */
+  const TABS2 = [['feed', 'home', 'Home'], ['deck', 'deck', 'Deck'], ['+', 'sparkles', 'Ask Brew'], ['learned', 'book', 'Memory'], ['connectors', 'plug', 'Connectors']];
   const TITLES = { feed: `${B.brand.name}`, deck: 'Deck', work: 'Work', saved: 'Library', jams: 'Library', remixes: 'Library', learned: 'Learned', moves: 'Moves', move: 'Move', engine: 'How it works', connectors: 'Connectors', queue: `${B.brand.name}`, remix: 'Remix' };
   const paintTabbar = () => {
     document.body.dataset.view = BOOT_RX ? 'remix' : view; /* a studio link is the studio from the first paint, even while the feed boots underneath */
     let bar = $('#tabbar');
     if (!bar) { bar = document.createElement('nav'); bar.id = 'tabbar'; bar.className = 'tabbar'; bar.setAttribute('aria-label', 'Tabs');
-      bar.innerHTML = TABS.map(([k, icn, n]) => k === '+' ? `<button class="tb-new" data-tbjam aria-label="${n}">${ic(icn, 's18')}</button>` : `<button data-nav="${k}" aria-label="${n}">${ic(icn)}<span>${n}</span>${k === 'work' ? '<i data-count="tbwork"></i>' : ''}</button>`).join('');
-      document.body.appendChild(bar); bar.addEventListener('click', (e) => { if (e.target.closest('[data-tbjam]')) openJam({}); }); }
-    const cur = ['jams', 'remixes'].includes(view) ? 'saved' : view;
+      bar.innerHTML = (UI2 ? TABS2 : TABS).map(([k, icn, n]) => k === '+' ? `<button class="tb-new" data-tbjam aria-label="${n}">${ic(icn, 's18')}</button>` : `<button data-nav="${k}" aria-label="${n}">${ic(icn)}<span>${n}</span>${k === 'work' ? '<i data-count="tbwork"></i>' : ''}</button>`).join('');
+      document.body.appendChild(bar); bar.addEventListener('click', (e) => { if (e.target.closest('[data-tbjam]')) openJam(UI2 ? { tab: 'ai' } : {}); }); }
+    const cur = UI2 ? (['learned', 'moves', 'move', 'facts', 'heard', 'rules', 'tune'].includes(view) ? 'learned' : ['saved', 'jams', 'work', 'done', 'queue'].includes(view) ? 'deck' : view) : ['jams', 'remixes'].includes(view) ? 'saved' : view;
     $$('[data-nav]', bar).forEach((b) => b.setAttribute('aria-current', b.dataset.nav === cur ? 'page' : 'false'));
     const n = WORK.items.filter((w) => w.stage === 'needs_you').length, wb = $('[data-count="tbwork"]', bar); if (wb) { wb.textContent = n || ''; wb.hidden = !n; }
     const tb = $('.topbar'); if (tb && !$('.tb-title', tb)) $('.seg', tb)?.insertAdjacentHTML('afterend', '<button class="tb-title" data-nav="feed" aria-label="Home: your feed"></button>');
