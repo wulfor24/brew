@@ -2660,3 +2660,27 @@ body.rx-boot #view{visibility:hidden}
 .sheet.m2-sheet{width:min(460px,100%);padding:20px 20px 12px}
 .m2-sheet .sh-h{margin-bottom:6px}
 @media (max-width:760px){.j1-pill [data-count="team"]{display:none}.j1-pill{height:36px;padding:0 10px;border-radius:12px;background:var(--surface);box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}}
+
+/* What Brew learned, ui=1 (2026-10-16 audit): a header with Upload, one overview row, every part in the same card,
+   files dropped anywhere on the page. Higher specificity than quiet.css, which flattens these sections */
+body:not(.ui2) .lx-col{max-width:760px}
+body:not(.ui2) .lx-col .lib-head{display:grid;grid-template-columns:1fr auto;column-gap:16px;padding:14px 2px 20px}
+body:not(.ui2) .lx-col .lib-head > h2,body:not(.ui2) .lx-col .lib-head > p{grid-column:1}
+.lx-hacts{grid-column:2;grid-row:1 / span 2;align-self:center}
+.lx-hacts .btn{display:inline-flex;align-items:center;gap:6px}
+.lx-ov{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:0 0 16px}
+.lx-ov-t{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0;padding:16px 16px 14px;border:0;border-radius:16px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line-soft,var(--line));color:var(--fg);font:inherit;text-align:left;cursor:pointer;transition:box-shadow .15s,transform .15s}
+.lx-ov-t:hover{box-shadow:inset 0 0 0 1px var(--line),0 8px 22px rgba(0,0,0,.08);transform:translateY(-1px)}
+.lx-ov-t b{font-size:27px;line-height:31px;font-weight:600;letter-spacing:-.02em}
+.lx-ov-t span{font-size:14.5px;font-weight:550}
+.lx-ov-t small{max-width:100%;font-size:13px;color:var(--fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body:not(.ui2) .lx-col .lx > .lx-sec{margin:0 0 14px;padding:20px 22px;gap:6px;border-radius:18px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line-soft,var(--line))}
+body:not(.ui2) .lx-col .lx-h{margin-bottom:10px}
+body:not(.ui2) .lx-col .lx-h h3{font-size:17px}
+body:not(.ui2) .lx-col .lx-h h3 em{padding:1px 8px;border-radius:999px;background:var(--surface);font-size:13px}
+.lx-none{display:flex;align-items:center;gap:10px;margin:0;color:var(--fg-2);font-size:15px;line-height:21px}
+.lx-fr .lx-fr-n{margin-left:auto}
+body:not(.ui2) .lx-col .lx > .q-note{padding:6px 0 28px;text-align:center;font-size:13.5px}
+.lx[data-m2-drop]{position:relative}
+.lx[data-m2-drop].is-over::after{content:'Drop it here, then choose where it goes';position:absolute;inset:-10px;z-index:5;display:grid;place-items:center;border:2px dashed var(--fg-2);border-radius:22px;background:color-mix(in srgb,var(--bg) 85%,transparent);color:var(--fg);font-size:16px;font-weight:600;pointer-events:none}
+@media (max-width:560px){body:not(.ui2) .lx-col .lib-head{grid-template-columns:1fr}.lx-hacts{grid-column:1;grid-row:auto;margin-top:12px}.lx-ov{grid-template-columns:repeat(2,minmax(0,1fr))}body:not(.ui2) .lx-col .lx > .lx-sec{padding:16px}}

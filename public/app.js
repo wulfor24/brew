@@ -4131,7 +4131,7 @@
         <div class="lx-ctl">${lxSw(r.on, 'data-ln-on', r.id, 'Follow this rule')}${lxTools('rule', r.id)}</div></article>`;
     const checkHtml = (a) => `<article class="lx-item${a.on ? '' : ' off'}"><div class="lx-body"><div class="lx-meta"><span class="lx-tag is-rule">Answered the same in ${a.n} jams</span></div><p class="lx-text">${esc(a.q)}</p><p class="lx-why">${ic('check', 's14')}<span>It answers “${esc(a.answer)}” by itself now</span></p></div>
         <div class="lx-ctl">${lxSw(a.on, 'data-ln-on', a.id, 'Use this check')}<span class="lx-tools"><button class="linkbtn" data-lx-forget="rule:${a.id}">Forget</button></span></div></article>`;
-    const forming = (xs, label) => xs.length ? `<div class="lx-forming"><h5>${label}</h5>${xs.map((f) => `<div class="lx-fr"><span>${esc(f.text || f.q)}</span>${lxMeter(f.n, L.promoteAt)}</div>`).join('')}</div>` : '';
+    const forming = (xs, label) => xs.length ? `<div class="lx-forming"><h5>${label}</h5>${xs.map((f) => `<div class="lx-fr"><span>${esc(f.text || f.q)}</span><small class="lx-fr-n">${f.n} of ${L.promoteAt}</small>${lxMeter(f.n, L.promoteAt)}</div>`).join('')}</div>` : '';
     /* Heard: one quiet row into the full page, with the three biggest topics */
     const srcs = (heard?.sources || []).map((s) => (typeof s === 'string' ? { id: s, name: s, n: null } : s));
     const heardHtml = !heard ? '' : `<section class="lx-sec">${lxHead('lx-heard', 'What people say', '', '')}<button class="lx-heard-row" data-hd-open><span class="hd-stack">${srcs.slice(0, 3).map((s) => srcMark(s.id, s.name)).join('')}</span><span><b>${Number(heard.total ?? heard.items ?? 0).toLocaleString()} things people said</b><small>${srcs.slice(0, 3).map((s) => `${esc(s.name)}${s.n != null ? ` ${Number(s.n).toLocaleString()}` : ''}`).join(' · ')}${heard.at ? ` · read ${ago(heard.at)}` : ''}</small></span>${ic('right', 's16')}</button>
@@ -4165,16 +4165,27 @@
     const told = TOLD?.told, toldRows = told ? [['essence', 'Essence'], ['goals', 'Goals and plans'], ['beliefs', 'Beliefs'], ['tried', 'What they tried'], ['facts', 'Facts they stated']].flatMap(([k, h]) => (told[k] || []).map((x) => ({ ...x, h }))) : [];
     // one heading per group (Goals, Beliefs, Facts), each line plain; with more than one source, each line names its own
     const oneSrc = (told?.sources || []).length <= 1, toldList = (xs) => xs.map((x, i) => `${i === 0 || xs[i - 1].h !== x.h ? `<h4>${esc(x.h)}</h4>` : ''}<div class="mem-l"><p>${esc(x.text)}</p>${oneSrc || !x.source ? '' : `<small>${esc(x.source)}</small>`}</div>`).join('');
+    const TOLD_N = UI2 ? 6 : 4;
     const toldHtml = toldRows.length ? `<section class="lx-sec mem-g">${lxHead('lx-told', 'What your team told Brew', toldRows.length, `From ${oneSrc ? esc(told.sources?.[0]?.label || 'your team') : `${told.sources.length} calls, notes and emails`}. The moves follow these.`)}
-      ${toldList(toldRows.slice(0, 6))}${toldRows.length > 6 ? `<details class="q-more"><summary>${toldRows.length - 6} more</summary>${toldList(toldRows.slice(6))}</details>` : ''}</section>` : '';
+      ${toldList(toldRows.slice(0, TOLD_N))}${toldRows.length > TOLD_N ? `<details class="q-more"><summary>${toldRows.length - TOLD_N} more</summary>${toldList(toldRows.slice(TOLD_N))}</details>` : ''}</section>` : '';
     const anyLearned = moved.length + lessons.length + L.rules.length + L.autoChecks.length + toldRows.length;
-    libShell('What Brew learned', 'From what you pick, edit and ship. Edit, pause or forget anything.',
-      `<div class="lx">${UI2 ? '' : m2DropHtml()}
-        ${movesHtml}
-        ${anyLearned ? '' : `<p class="lx-zero">${ic('sparkles', 's16')}<span>Nothing learned yet. Pick, edit and ship from your cards, and what Brew learns lands here.</span></p>`}
+    /* ui=1: one row of what Brew holds, each tile opens its part; a tile with nothing in it never shows */
+    const lxOverview = () => { const t = (attr, n, k, sub) => `<button class="lx-ov-t" ${attr}><b>${n}</b><span>${k}</span>${sub ? `<small>${sub}</small>` : ''}</button>`;
+      const ppl = heard ? Number(heard.total ?? heard.items ?? 0) : 0, learnedN = moved.length + lessons.length;
+      const tiles = [mvCore && t('data-nav="moves"', mvCore, 'Moves', mvWk ? `+${mvWk} this week` : mvStale ? `${mvStale} out of date` : 'Every card comes from one'),
+        toldRows.length && t('data-lx-jump="lx-told"', toldRows.length, 'Team notes', 'Calls, notes and emails'),
+        learnedN && t('data-lx-jump="lx-lessons"', learnedN, 'Lessons', 'From what you ship'),
+        L.rules.length && t('data-lx-jump="lx-rules"', L.rules.length, L.rules.length === 1 ? 'Rule' : 'Rules', 'Every agent follows'),
+        ppl && t('data-hd-open', ppl.toLocaleString(), 'Things people said', srcs.slice(0, 2).map((x) => x.name).join(', '))].filter(Boolean);
+      return tiles.length ? `<div class="lx-ov">${tiles.join('')}</div>` : ''; };
+    libShell('What Brew learned', UI2 ? 'From what you pick, edit and ship. Edit, pause or forget anything.' : 'From what you pick, edit and ship, and anything you drop on this page. Edit, pause or forget any of it.',
+      `<div class="lx"${UI2 ? '' : ' data-m2-drop'}>${UI2 ? '' : lxOverview()}
+        ${UI2 || mvBuilding ? movesHtml : ''}
+        ${anyLearned ? '' : UI2 ? `<p class="lx-zero">${ic('sparkles', 's16')}<span>Nothing learned yet. Pick, edit and ship from your cards, and what Brew learns lands here.</span></p>` : ''}
         ${toldHtml}
         ${moved.length ? `<section class="lx-sec">${lxHead('lx-moved', 'What moved the number', moved.length, '')}${moved.map(movedHtml).join('')}</section>` : ''}
         ${(() => { const you = lessons.filter((x) => x.kind === 'you'), br = lessons.filter((x) => x.kind !== 'you');
+          if (!UI2 && !you.length && !br.length && !moved.length) return `<section class="lx-sec">${lxHead('lx-lessons', 'Lessons', '', '')}<p class="lx-none">${ic('sparkles', 's16')}<span>Nothing yet. Pick, edit and ship from your cards, and each lesson Brew takes from it lands here.</span></p></section>`;
           return `${you.length ? `<section class="lx-sec">${lxHead('lx-lessons', 'How you work', you.length, '')}${you.map(lessonHtml).join('')}</section>` : ''}${br.length ? `<section class="lx-sec">${lxHead('lx-lessons-b', `What it learned about ${esc(B.brand.name)}`, br.length, '')}${br.map(lessonHtml).join('')}</section>` : ''}`; })()}
         <section class="lx-sec">${lxHead('lx-rules', 'Rules', L.rules.length || '', L.rules.length ? '' : `Teach one, or edit the same way ${L.promoteAt} times and it becomes one.`)}
           ${L.rules.map(ruleHtml).join('')}<form class="lx-teach" id="ln-teach">${ic('plus', 's16')}<input id="ln-in" placeholder="Teach a rule, e.g. never say ‘guaranteed’" autocomplete="off" aria-label="Teach a rule"><button class="btn sm">Add</button></form>${forming(L.forming, 'Forming from your edits')}</section>
@@ -4185,6 +4196,7 @@
         ${'' /* "What Brew knows about <brand>" (memHtml) and "What it read lately" (runs) are hidden (Param, 2026-10-16) */}
       </div>`);
     $('#col')?.classList.add('lib-col', 'lx-col');
+    if (!UI2) $('.lib-head')?.insertAdjacentHTML('beforeend', `<div class="lx-hacts"><button class="btn btn-ghost sm" data-m2-pick>${ic('up', 's16')}Upload files</button><input type="file" multiple hidden data-m2-file></div>`);
     $('[data-hd-open]')?.addEventListener('click', () => openHeard());
     /* paused at the free spend cap: Pro carries the build on to every move */
     $('[data-mvpro]')?.addEventListener('click', (e) => { const b = e.currentTarget, go = async () => { const r = await api(`/api/brands/${mvSlug()}/pro`, {}); if (!r || r.error) { toast(r?.error || 'Pro couldn’t start the moves. Try again.'); return false; } return true; };
@@ -4219,7 +4231,7 @@
         if (!r && skipped.length) { closeModal(); return toast(`Brew reads photos (PNG, JPG, WebP up to 8 MB) and text files for now. ${esc(skipped.join(', '))} wasn’t added.`); }
         closeModal(); if (!r || r.error) return toast(esc(r?.error || 'That didn’t save. Try again.'));
         toast(`${ic('check', 's16')}${d === 'memory' ? 'Added to brand memory' : d === 'prefs' ? 'Saved to your preferences' : 'Ready for your next ask'}${skipped.length ? `. Skipped ${esc(skipped.join(', '))}: photos and text files only` : ''}`); if (d === 'prefs' && view === 'tune') renderTune(); if (d === 'once') openAsk(); if (['learned', 'rules'].includes(document.body.dataset.m2) || (!UI2 && view === 'learned')) renderLearned(); })); }); };
-  document.addEventListener('click', (e) => { const pk = e.target.closest('[data-m2-pick]'); if (pk) { pk.closest('.m2-drop')?.querySelector('[data-m2-file]')?.click(); } });
+  document.addEventListener('click', (e) => { const pk = e.target.closest('[data-m2-pick]'); if (pk) { (pk.closest('.m2-drop') || pk.parentElement)?.querySelector('[data-m2-file]')?.click(); } });
   document.addEventListener('change', (e) => { if (e.target.matches?.('[data-m2-file]')) { m2Drop(e.target.files); e.target.value = ''; } });
   ['dragover', 'dragleave', 'drop'].forEach((ev) => document.addEventListener(ev, (e) => { const z = e.target.closest?.('[data-m2-drop]'); if (!z) return; e.preventDefault(); z.classList.toggle('is-over', ev === 'dragover'); if (ev === 'drop') m2Drop(e.dataTransfer?.files || []); }));
   const renderRules = () => { document.body.dataset.m2 = 'rules'; return renderLearned(); };
