@@ -236,6 +236,9 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
       statics: config.statics || [], lanePhoto: config.lanePhoto || {},
       moveDocs: fitMoves(moves, keepOf({ profile, config, seed })), labels, pages,
       staticText: statics,
+      /* cards that never sat in the seed (the team's private rewrites, private/cards.json; connector cards) get the same fitting
+         at load: the photo of the product they name (title, then asset line), the button of the asset they make */
+      fitLive: (cards) => fitCards(fitPhotos(visualize({ ...seed, posts: cards || [] }, { slug, config, staticText: {}, profile }), profile), { profile, config, seed }).posts,
       catalog: catalogOf(profile), // the products with a photo each, so a draft's picture shows the product its words name
       rivalPages: Object.fromEntries((profile?.ads?.rivals || []).filter((r) => r?.name).map((r) => [r.name, { page: r.page || null, host: r.host || null }])), // the Facebook page the read found per rival, for the story rings (research.js)
       personas: briefJ?.personas || [], // who buys: the studio's “Aim at” knob and chips (studio.js knobsFor)

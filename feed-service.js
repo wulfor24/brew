@@ -398,11 +398,16 @@ export function createFeedService(o) {
     const L = await liveFor(t.brandId || DEFAULT_BRAND, t.member).catch(() => ({ cards: [], on: {}, privMoves: [] }));
     t.liveConn = L.on; t.privMoves = L.privMoves || []; t.privStatics = !!L.privStatics; t.liveLedger = L.ledger || {};
     L.cards = (L.cards || []).filter((c) => c && c.id); /* one bad card from a connector (undefined) used to throw on every request for the brand */
+    const fitLive = packs.peek(t.brandId || DEFAULT_BRAND)?.fitLive; if (fitLive) try { L.cards = fitLive(L.cards).filter((c) => c && c.id); } catch (e) { log.warn?.('[live] fit', e.message); } /* the same photo and button fitting as the shared cards */
     const ids = new Set(L.cards.map((c) => c.id)), t0 = now(t);
     for (const [id, c] of t.cards) if ((c.liveOnly || c.publicLive) && !ids.has(id)) t.cards.delete(id);
     for (const p of L.cards) { const have = t.cards.get(p.id);
       if (!have) t.cards.set(p.id, { ...clone(p), family: p.family || FAMILY[p.type] || 'idea', state: 'ready', origin: 'live', createdAt: t0, expiresAt: null, history: [['ready', t0]], shownCount: 0 });
-      else if (have.title !== p.title || JSON.stringify(have.rows) !== JSON.stringify(p.rows)) Object.assign(have, { title: p.title, sub: p.sub, rows: clone(p.rows), badge: p.badge, detail: clone(p.detail) }); }
+      else if (have.title !== p.title || JSON.stringify(have.rows) !== JSON.stringify(p.rows)) Object.assign(have, { title: p.title, sub: p.sub, rows: clone(p.rows), badge: p.badge, detail: clone(p.detail) });
+      if (have) { /* a saved copy heals: the photo, asset and button as the card's words now call for (never over a picture made in the jam) */
+        if (p.images && !(have.images || []).some((u) => /^\/?gen\//.test(u)) && JSON.stringify(have.images) !== JSON.stringify(p.images)) have.images = clone(p.images);
+        if (p.make && JSON.stringify(have.make) !== JSON.stringify(p.make)) have.make = clone(p.make);
+        if (p.cta?.label && have.cta?.label !== p.cta.label) have.cta = clone(p.cta); } }
   };
   /* cards that read as the same thing: one move's cards; one live check's readings (catalog ones collapse to the newest); one
      template of live card (AI-answer gaps); research from one rival, or one more trend or how-to */
