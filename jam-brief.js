@@ -9,6 +9,7 @@ import { promptBlock } from './learn.js';
 import { realRows } from './connectors/common.js';
 import { planMd } from './card-plan.js';
 import { MEASURE_SCHEMA, MEASURE_ASK, vetMeasure, measureFromMd } from './measure-spec.js';
+import { startStatus, moveStatus, LABEL } from './brief-status.js';
 
 // what a brief for each kind of work must say before someone can act on it: [label, pattern that shows it's covered]
 const NEEDS = {
@@ -257,21 +258,42 @@ export function createJamBrief(o) {
       say(t, w, { from: 'system', body: r.changed.length ? `The chat from ${who} updated the brief: ${r.changed.join(', ')}.` : `Nothing new for the brief in that chat.`, edited: r.changed });
       return { work: w, changed: r.changed };
     });
-    /* Share the brief: the jam's one exit. The brief is frozen and copied (text + a link to the full read-only brief) for the
-       ShopOS team or the brand's own team; nothing is sent from Brew. Missing items ask once (force), never block. */
+    /* Share the brief: the jam's one exit. The brief is frozen. To the brand's own team it is copied (text + a link to the full
+       read-only brief); to the ShopOS team it is SENT: the whole brief goes to their inbox (jam-mail.js briefSent) and gets a
+       tracked status (brief-status.js) the ShopOS team moves on. Missing items ask once (force), never block */
     on('POST', '/api/work/:wid/doc/ship', async (b, t, p) => {
       const w = get(t, p.wid); if (!w) return { error: 'not found' };
       if (w.doc.missing.length && !b.force) return { needs: w.doc.missing, work: w };
       if (b.decided !== undefined) w.decided = b.decided || null;
-      const to = b.to === 'team' ? 'team' : 'shopos';
-      w.jamBrief = finalDoc(t, w); w.doc.shippedAt = now(t); w.jamBrief.sharedAt = now(t); w.jamBrief.to = to;
+      const to = b.to === 'team' ? 'team' : 'shopos', prev = w.jamBrief || null;
+      w.jamBrief = finalDoc(t, w); w.doc.shippedAt = now(t); w.jamBrief.sharedAt = now(t); w.jamBrief.to = to; w.jamBrief.spec = w.doc.spec || [];
+      if (to === 'shopos') { w.jamBrief.history = prev?.history || []; startStatus(w.jamBrief, { by: o.meOf?.(t) || null, at: now(t) }); }
       if (!w.ticket) w.ticket = await nextTicket(t);
       let share = null;
       if (handoff) { try { const x = await handoff.build(t, w, { base: b.base }); w.jamBrief.context = x; share = { url: x.links.page, text: handoff.text(x, to === 'shopos' ? 'brew' : 'whatsapp') }; w.jamBrief.handoff = share; } catch (e) { log.warn('[handoff]', e.message); } }
-      say(t, w, { from: 'system', body: `Brief ${w.ticket} copied for ${to === 'team' ? 'your team' : 'the ShopOS team'}: the card, options, plan, assets and both chats${w.jamBrief.missing.length ? `. Still open: ${w.jamBrief.missing.join(', ').toLowerCase()}` : ''}. Paste it where they work.` });
-      move(t, w, 'shared', `${w.ticket}: brief shared with ${to === 'team' ? 'your team' : 'the ShopOS team'}`);
-      if (to === 'shopos') o.onShopos?.(t, w, { why: 'shared a brief with the ShopOS team', text: '' }); /* the ShopOS team's inbox hears about it (feed-service) */
-      return { work: w, share };
+      const open = w.jamBrief.missing.length ? `. Still open: ${w.jamBrief.missing.join(', ').toLowerCase()}` : '';
+      if (to === 'shopos') {
+        const sent = o.onBriefSent ? await o.onBriefSent(t, w).catch((e) => { log.warn('[brief sent]', e.message); return false; }) : (o.onShopos?.(t, w, { why: 'shared a brief with the ShopOS team', text: '' }), false);
+        say(t, w, { from: 'system', body: `Brief ${w.ticket} ${sent ? 'sent to' : 'ready for'} the ShopOS team: the brief, deliverables, assets, rules and when it is done${open}. ${sent ? 'You’ll see each step here as they pick it up.' : 'Paste it where they work.'}` });
+        move(t, w, 'shared', `${w.ticket}: brief ${sent ? 'sent to' : 'shared with'} the ShopOS team`);
+      } else {
+        say(t, w, { from: 'system', body: `Brief ${w.ticket} copied for your team: the card, options, plan, assets and both chats${open}. Paste it where they work.` });
+        move(t, w, 'shared', `${w.ticket}: brief shared with your team`);
+      }
+      return { work: w, share, status: w.jamBrief.status || null };
+    });
+    /* the ShopOS team moves a sent brief on (staff only: SquareUp's people, auth.isAdmin). It writes a line in the jam and the
+       person who sent the brief gets an email (never on the demo site) */
+    on('POST', '/api/work/:wid/brief/status', async (b, t, p) => {
+      const w = get(t, p.wid); if (!w) return { error: 'not found' };
+      const me = o.staffOf?.(t); if (!me) return { status: 403, error: 'Only the ShopOS team moves a brief on.' };
+      const to = String(b.status || ''), note = String(b.note || '').trim().slice(0, 2000);
+      const r = moveStatus(w.jamBrief, to, { by: me, note, at: now(t) }); if (r.error) return { error: r.error, work: w };
+      /* a status with a note is a real reply (it folds into the brief, jam-brief onSay); a bare status changes nothing in it */
+      say(t, w, { from: 'brew', who: me.name || 'ShopOS team', real: !!note, body: `${LABEL[to]}${note ? `: ${note}` : '.'}`, status: to });
+      notify(t, w, to === 'needs_info' ? `${w.ticket || 'Brief'}: the ShopOS team needs something from you` : `${w.ticket || 'Brief'}: ${LABEL[to].toLowerCase()} by the ShopOS team`, to === 'needs_info' ? 'needs_you' : 'update');
+      o.onBriefStatus?.(t, w, { by: me, status: to, label: LABEL[to], note });
+      return { work: w, status: w.jamBrief.status, history: w.jamBrief.history };
     });
   };
 

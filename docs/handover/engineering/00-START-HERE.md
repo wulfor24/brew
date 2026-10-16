@@ -60,6 +60,7 @@ Read `SCOPE.md` and `DUMMY.md` (repo root) before changing anything.
 | 09 | `09-security-and-access.md` | fix now vs before real brands onboard |
 | 10 | `10-dummy-to-real.md` | see every dummy, its leaks, and the path to real |
 | 11 | `11-known-issues-and-debt.md` | **see the ranked fix list** |
+| 12 | `12-ui2-service-api.md` | the UI2 backend: Send brief status, Ask Brew, Your feed, Drop anything |
 | — | `audits/A–F` | get file:line evidence for everything above. The references are as of `ea6cfd7` and can be a line or two out. |
 
 ## First day: get it running
