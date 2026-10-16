@@ -2337,7 +2337,20 @@
   };
 
   /* ---------- menu: tune, connectors, demo controls, reset ---------- */
-  const openMenu = () => modal(`<div class="sheet pick-sheet"><div class="side-brand" data-nav="feed" role="button" tabindex="0" title="Home: your feed"><i class="bmark"><img src="${B.brand.mark}" alt=""></i><span><b>${B.brand.name}</b><span>${B.brand.host} · ${esc(ROLE().title)}</span></span></div>
+  /* UI2 Profile: you and the brand on top, then account and team, your seat, the places that moved (Deck, Memory), and the same settings */
+  const menu2Html = () => { const me = ME(), row = (attr, icon, b, sp, tail = ic('right', 's16')) => `<button class="lg-row" ${attr}><span class="lg-ic">${icon}</span><span class="lg-tx"><b>${b}</b><span>${sp}</span></span>${tail}</button>`;
+    return `<div class="sheet pick-sheet p2-sheet"><div class="p2-me">${me?.pic ? `<img src="${esc(me.pic)}" alt="" referrerpolicy="no-referrer">` : `<span class="r2-ini">${esc(String(me?.name || me?.email || 'Y')[0].toUpperCase())}</span>`}<span><b>${esc(me?.name || (window.LIVE?.signin ? 'Not signed in' : 'You'))}</b><small>${esc(me?.email || ROLE().title || '')}</small></span><i class="bmark"><img src="${B.brand.mark}" alt="" title="${esc(B.brand.name)}"></i></div>
+      ${window.LiveConn && (window.LIVE?.signin || me) ? row('data-m="acct"', ic('person', 's16'), me ? 'Account and team' : 'Sign in', me ? `${esc(B.brand.name)} · invite people, seats, sign out` : 'With Google, to connect and invite') : ''}
+      ${row('data-m="view"', face(ROLE().face), `Viewing as ${esc(ROLE().name)}`, 'Switch seat or tune the feed')}
+      ${row('data-nav="deck"', ic('deck', 's16'), 'Deck', `In progress, shortlisted, jams and briefs · ${WORK.items.filter((w) => w.stage === 'needs_you').length} need you`)}
+      ${row('data-nav="learned"', ic('book', 's16'), 'Memory', 'What Brew learned, the moves, rules and the fact sheet')}
+      ${row('data-nav="connectors"', ic('plug', 's16'), 'Connectors', `${Object.keys(S.conn).filter(conn).length} of ${Object.keys(B.connectors).length} connected`)}
+      ${isStandalone() ? '' : row('data-m="install"', ic('phone', 's16'), 'Add to home screen', `Open ${esc(B.brand.name)} like an app`)}
+      ${row('data-m="sound"', ic('bell', 's16'), 'Sounds', 'Little cues when things move', `<span class="sw" aria-checked="${SND.on}" aria-hidden="true"><i></i></span>`)}
+      ${row('data-m="setup"', ic('refresh', 's16'), 'Watch the setup again', `Or open ${location.host}/#setup`)}
+      ${row('data-m="demo"', ic('sliders', 's16'), 'Demo controls', 'Press . anywhere')}
+      <div class="row2"><button class="btn btn-ghost sm" data-m="restart">Start over from the website</button><button class="btn btn-ghost sm" data-m="reset">Reset demo</button></div></div>`; };
+  const openMenu = () => modal(UI2 ? menu2Html() : `<div class="sheet pick-sheet"><div class="side-brand" data-nav="feed" role="button" tabindex="0" title="Home: your feed"><i class="bmark"><img src="${B.brand.mark}" alt=""></i><span><b>${B.brand.name}</b><span>${B.brand.host} · ${esc(ROLE().title)}</span></span></div>
       <button class="lg-row" data-nav="saved"><span class="lg-ic">${ic('bookmark', 's16')}</span><span class="lg-tx"><b>Library</b><span>${S.saved.length} saved · your jams</span></span>${ic('right', 's16')}</button>
       <button class="lg-row" data-nav="work"><span class="lg-ic">${ic('board', 's16')}</span><span class="lg-tx"><b>Work</b><span>${WORK.items.length} items · ${WORK.items.filter((w) => w.stage === 'needs_you').length} need you</span></span>${ic('right', 's16')}</button>
       <button class="lg-row" data-nav="facts"><span class="lg-ic">${ic('doc', 's16')}</span><span class="lg-tx"><b>Fact sheet</b><span>Every number Brew quotes, with its source</span></span>${ic('right', 's16')}</button>
@@ -2350,6 +2363,7 @@
       <button class="lg-row" data-m="demo"><span class="lg-ic">${ic('sliders', 's16')}</span><span class="lg-tx"><b>Demo controls</b><span>Press . anywhere</span></span>${ic('right', 's16')}</button>
       <div class="row2"><button class="btn btn-ghost sm" data-m="restart">Start over from the website</button><button class="btn btn-ghost sm" data-m="reset">Reset demo</button></div></div>`, (m) => {
     $('[data-m="view"]', m).onclick = () => { closeModal(); openViewing(); };
+    const ac = $('[data-m="acct"]', m); if (ac) ac.onclick = () => { closeModal(); window.LiveConn?.menu($('.r2-me') || $('[data-phone-menu]') || document.body); };
     $('[data-m="demo"]', m).onclick = () => { closeModal(); openDemo(); };
     $('[data-m="setup"]', m).onclick = () => { closeModal(); start(); };
     $('[data-m="sound"]', m).onclick = (e) => { SND.on = !SND.on; ls.set(`${LSP()}sound`, SND.on ? 'on' : 'off'); e.currentTarget.querySelector('.sw')?.setAttribute('aria-checked', SND.on); if (SND.on) sound('approve'); };
@@ -3505,7 +3519,8 @@
       if (r.error || !r.change) { toast(esc(r.error || 'That didn’t work. Try again.')); return paintStudio(); }
       RX.ch = r.change; putCh(r.change); RX.viewing = null; if (r.making === false && r.why) toast(esc(r.why)); return paintStudio(); } };
   const j2Brief = (ch, pkgCh, edit) => `<div class="j2-scrim" data-tab="iterate"></div><aside class="j2-sheet j2-brief" role="dialog" aria-label="The brief"><header class="j2-sh-h"><b>${ic('doc', 's16')}The brief</b><button class="icon-btn" data-tab="iterate" aria-label="Back to the chat">${ic('x', 's18')}</button></header>
-      <div class="j2-sh-b">${detailsTab(ch, pkgCh, edit)}</div>
+      <div class="j2-sh-b">${(() => { const w = SPLIT ? workOfCard(RX.p?.id) : null, it = (WORK.withTeam?.items || []).find((x) => x.wid === w?.id), me = ME();
+        return `<div class="j2-memo">${it?.label ? `<span class="j2-stamp">${esc(it.label)}</span>` : ''}<dl><div><dt>From</dt><dd>${esc(me?.name || me?.email || `${B.brand.name} team`)}</dd></div><div><dt>To</dt><dd>${w?.jamBrief?.to === 'team' ? 'Your team' : 'ShopOS team'}</dd></div><div><dt>Due</dt><dd>${esc(w?.doc?.plan?.when || 'As agreed')}</dd></div><div><dt>Ref</dt><dd>${esc(w?.ticket || 'On send')}</dd></div></dl><h2>${esc(ch.actionLabel)}</h2></div>`; })()}${detailsTab(ch, pkgCh, edit)}</div>
       <footer class="j2-sh-f"><button class="btn btn-ghost" data-tab="iterate">Back to chat</button><span class="sp"></span>${(() => { const w = SPLIT ? workOfCard(RX.p?.id) : null, jb = w?.jamBrief, it = (WORK.withTeam?.items || []).find((x) => x.wid === w?.id);
         return w?.stage === 'shared' && jb?.to !== 'team' ? `<span class="j2-sent">${ic('check', 's16')}Sent to the ShopOS team${w.ticket ? ` · ${esc(w.ticket)}` : ''}${it?.label ? ` · ${esc(it.label)}` : ''}</span>` : `<button class="btn btn-ghost" data-rx="share-team">Share with my team</button><button class="btn btn-primary" data-rx="share-shopos">${ic('send', 's16')}Send brief</button>`; })()}</footer></aside>`;
   const j2Adjust = (ch, edit) => `<div class="j2-scrim" data-tab="iterate"></div><aside class="j2-sheet j2-adjust" role="dialog" aria-label="Adjust"><header class="j2-sh-h"><b>${ic('sliders', 's16')}Adjust</b><button class="icon-btn" data-tab="iterate" aria-label="Close">${ic('x', 's18')}</button></header><div class="j2-sh-b">${adjustTab(ch, edit)}</div></aside>`;

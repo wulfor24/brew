@@ -55,6 +55,8 @@ export function createHandoff({ RMX, pageOf, fillCard, AGENT = {}, SEED = {}, ba
     const who = (x) => x.from === 'me' ? 'You' : x.from === 'ai' ? (x.who || AGENT[w.agent] || 'AI') : x.from === 'brew' ? (x.who ? `${x.who} (Brew)` : 'ShopOS team') : x.from === 'colleague' ? (x.who || 'Teammate') : 'Brew';
     return {
       id: w.id, title: w.title || c.title, ticket: w.ticket || null, stage: STAGE[w.stage] || w.stage, with: w.with?.name || null,
+      memo: { from: w.jamBrief?.sender?.name || w.jamBrief?.sender?.email || null, to: w.jamBrief?.to === 'team' ? 'Your team' : 'ShopOS team', due: w.doc?.plan?.when || null,
+        status: w.jamBrief?.status ? ({ sent: 'Sent', received: 'Received', in_progress: 'In progress', needs_info: 'Needs info', delivered: 'Delivered' })[w.jamBrief.status] || w.jamBrief.status : null },
       links: { jam: abs(jamPath(t, w, opts.changeId), b), page: abs(`${handoffPath(t, w)}?full=1`, b), studio: pkg ? abs(pkg.studio, b) : null },
       brand: SEED.brand?.name || 'the brand', mark: SEED.brand?.mark || null,
       card: { title: c.title, sub: c.sub, agent: AGENT[c.agent] || 'Brew', type: KIND[c.type] || c.type || '', rows: c.rows || [], src: c.src || '', link: c.link || null,
@@ -121,12 +123,16 @@ export function createHandoff({ RMX, pageOf, fillCard, AGENT = {}, SEED = {}, ba
     const sec = (h, body) => body ? `<section><h2>${h}</h2>${body}</section>` : '';
     const md = (s) => String(s || '').split('\n').map((l) => { const e = esc(l).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>'); return /^#\s/.test(l) ? `<h3>${e.slice(2)}</h3>` : /^#{2,3}\s/.test(l) ? `<h4>${e.replace(/^#+\s/, '')}</h4>` : /^\s*[-*]\s/.test(l) ? `<li>${e.replace(/^\s*[-*]\s/, '')}</li>` : l.trim() ? `<p>${e}</p>` : ''; }).join('').replace(/(<li>.*?<\/li>)+/g, (m) => `<ul>${m}</ul>`);
     const msgs = (arr) => arr.map((m) => m.system ? `<div class="sys">${esc(m.text)}</div>` : `<div class="msg${m.who === 'You' ? ' me' : ''}"><small>${esc(m.who)}${m.at ? ` · ${new Date(m.at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}` : ''}</small><p>${esc(m.text)}</p></div>`).join('');
-    return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(x.title)} · Jam handoff</title>
+    return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(x.title)} · Brief</title>
 <meta name="robots" content="noindex"><link rel="icon" href="/${x.mark || 'assets/brew-mark.svg'}">
 <style>
-:root{--bg:#f6f6f4;--card:#fff;--fg:#0b0b0b;--fg2:#555;--fg3:#8a8a8a;--line:#e7e7e3;--info:#3b5bdb;--info-bg:rgba(59,91,219,.08);--ok:#15803d;--ok-bg:rgba(21,128,61,.09);--warn:#b45309}
-@media (prefers-color-scheme:dark){:root{--bg:#0b0b0b;--card:#171717;--fg:#f5f5f5;--fg2:#a3a3a3;--fg3:#737373;--line:#262626;--info:#7b97f7;--info-bg:rgba(123,151,247,.12);--ok:#4ade80;--ok-bg:rgba(74,222,128,.1);--warn:#e0a63c}}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Inter","Segoe UI",sans-serif}
+:root{--bg:#0a0a0a;--paper:#f7f5ef;--card:#fffdf7;--fg:#141414;--fg2:#4a4a46;--fg3:#7a7a74;--line:#e2ded3;--info:#3b5bdb;--info-bg:rgba(59,91,219,.08);--ok:#1f7a3e;--ok-bg:rgba(31,122,62,.09);--warn:#a8590a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 "SF Pro Text","Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{background:var(--paper);border-radius:22px;margin:24px auto!important;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.memo{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 18px;padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:4px 0 6px}
+.memo div{display:flex;flex-direction:column}.memo dt{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3)}.memo dd{margin:2px 0 0;font-weight:500}
+.stamp{display:inline-block;transform:rotate(-4deg);border:2px solid var(--ok);color:var(--ok);border-radius:8px;padding:2px 10px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+@media (max-width:900px){main{margin:0!important;border-radius:0}}
 main{max-width:860px;margin:0 auto;padding:28px 16px 64px;display:flex;flex-direction:column;gap:18px}
 header small{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--fg3)}h1{font-size:30px;line-height:1.15;letter-spacing:-.02em;margin:6px 0 8px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}.chip{font-size:12.5px;padding:4px 10px;border-radius:999px;background:var(--card);border:1px solid var(--line);color:var(--fg2);text-decoration:none}a.chip{color:var(--info)}
@@ -143,7 +149,8 @@ pre{white-space:pre-wrap;background:var(--bg);border-radius:10px;padding:10px 12
 .vers{display:flex;flex-direction:column;gap:8px}.ver{display:flex;gap:10px;align-items:flex-start}.ver img{width:64px;border-radius:8px}.ver.cur b::after{content:" · current";color:var(--ok);font-weight:500;font-size:12px}
 .miss{color:var(--warn);font-size:13.5px}.foot{font-size:12px;color:var(--fg3);text-align:center}
 </style></head><body><main>
-<header><small>${esc(x.brand)} × Brew · Jam handoff${x.ticket ? ` · ${esc(x.ticket)}` : ''}${x.frozenAt ? ` · shared ${esc(new Date(x.frozenAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }))}, as it was then` : ''}</small><h1>${esc(x.title)}</h1>
+<header>${x.memo?.status ? `<span class="stamp">${esc(x.memo.status)}</span><br>` : ''}<small>${esc(x.brand)} × Brew · Brief${x.ticket ? ` · ${esc(x.ticket)}` : ''}${x.frozenAt ? ` · shared ${esc(new Date(x.frozenAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }))}, as it was then` : ''}</small><h1>${esc(x.title)}</h1>
+<dl class="memo"><div><dt>From</dt><dd>${esc(x.memo?.from ? `${x.memo.from}, ${x.brand}` : `${x.brand} team`)}</dd></div><div><dt>To</dt><dd>${esc(x.memo?.to || 'ShopOS team')}</dd></div><div><dt>Due</dt><dd>${esc(x.memo?.due || 'As agreed')}</dd></div><div><dt>Ref</dt><dd>${esc(x.ticket || '—')}</dd></div></dl>
 <div class="chips"><span class="chip">${esc(x.card.agent)}${x.card.type ? ' · ' + esc(x.card.type) : ''}</span><span class="chip">${esc(x.stage)}${x.with ? ' · ' + esc(x.with) : ''}</span><a class="chip" href="${esc(x.links.jam)}">Open the jam in Brew ↗</a>${x.links.studio ? `<a class="chip" href="${esc(x.links.studio)}">Open in the studio ↗</a>` : ''}</div></header>
 ${x.now ? sec('Where it is now', `<p class="lead">${esc(x.now.head)}</p>${x.now.line ? `<p class="sub">${esc(x.now.line)}</p>` : ''}${x.now.extra ? `<p class="eff">${esc(x.now.extra)}</p>` : ''}`) : ''}
 ${sec('The card', `<p class="lead">${esc(x.card.title)}</p><p class="sub">${esc(x.card.sub)}</p>${x.card.rows.length ? `<div class="stats">${x.card.rows.map(([k, v]) => `<div class="stat"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join('')}</div>` : ''}${x.card.images.length ? `<div class="imgs">${x.card.images.map((u) => `<figure><img src="${esc(u)}" alt=""><figcaption>Card image <a href="${esc(u)}" download target="_blank">Download</a></figcaption></figure>`).join('')}</div>` : ''}${x.card.src ? `<p class="sub" style="font-size:13px">From ${esc(x.card.src)}</p>` : ''}`)}

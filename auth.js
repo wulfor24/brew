@@ -1,3 +1,4 @@
+import { smallPage } from './small-page.js';
 // Google sign-in, brand claiming and the team behind a brand.
 // Sign-in is the Google OAuth code flow with PKCE (lifted from SquareUp's google-auth.ts): a nonce + verifier ride
 // in a short httpOnly cookie, the code is traded server-to-server, and we trust only a Google-verified email.
@@ -277,7 +278,7 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
     }
     return false;
   }
-  const page = (h, p, slug, extra = '') => `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Brew</title><body style="font:16px/1.55 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:480px;margin:18vh auto;padding:0 20px;color:#111;background:#fff"><h1 style="font-size:22px;margin:0 0 8px">${esc(h)}</h1><p style="color:#555">${esc(p)}</p>${extra}${slug ? `<p><a href="/${esc(slug)}" style="color:#111">Open the brand</a></p>` : ''}</body>`;
+  const page = (h, p, slug, extra = '') => smallPage(h, p, { extra, link: slug ? { href: `/${slug}`, label: 'Open the brand' } : null });
 
   return { handle, signinOn: () => !!(CID && SECRET), user, roleOf, seatsOf, isMember, isAdmin, claim, claimInfo, accessOf: claimInfo, addMember, invite, teamOp, getMembers: getM, sign, verify, baseOf, setCookie, cookies, mail };
 }

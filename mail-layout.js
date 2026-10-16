@@ -4,8 +4,10 @@
 // images are off. Callers pass plain text; only `body` and `after` take ready HTML (build it with p(), quote(), list()).
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-const FONT = `-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif`;
-const C = { page: '#F5F5F4', card: '#FFFFFF', ink: '#111111', body: '#333333', muted: '#6B6B6B', faint: '#9A9A9A', line: '#E7E5E4', quote: '#FAFAF9' };
+/* UI2 look (2026-10-16): the app's ink (#0a0a0a), its type stack, 20/12 radii, and a dark band with the mark on top.
+   The card stays light: mail apps invert dark emails unpredictably. */
+const FONT = `'SF Pro Text',Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif`;
+const C = { page: '#F6F6F6', card: '#FFFFFF', ink: '#0A0A0A', body: '#262626', muted: '#5C5C5C', faint: '#8A8A8A', line: '#E6E6E6', quote: '#F6F6F6', band: '#0A0A0A' };
 
 export const p = (html, { muted = false, small = false } = {}) =>
   `<p style="margin:0 0 14px;font:${small ? '13px/1.5' : '15px/1.6'} ${FONT};color:${muted ? C.muted : C.body}">${html}</p>`;
@@ -22,8 +24,8 @@ export const list = (items) =>
     `<tr><td width="18" valign="top" style="font:15px/1.6 ${FONT};color:${C.faint}">•</td><td style="font:15px/1.6 ${FONT};color:${C.body};padding:0 0 4px">${esc(x)}</td></tr>`).join('')}</table>`;
 
 const button = (href, label) =>
-  `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 0"><tr><td bgcolor="${C.ink}" style="border-radius:10px">` +
-  `<a href="${esc(href)}" style="display:inline-block;padding:13px 22px;font:600 15px/1 ${FONT};color:#FFFFFF;text-decoration:none;border-radius:10px">${esc(label)}</a></td></tr></table>`;
+  `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 0"><tr><td bgcolor="${C.ink}" style="border-radius:12px">` +
+  `<a href="${esc(href)}" style="display:inline-block;padding:13px 22px;font:600 15px/1 ${FONT};color:#FFFFFF;text-decoration:none;border-radius:12px">${esc(label)}</a></td></tr></table>`;
 
 /* the whole email.
    title: the big line. eyebrow: the brand it's about. body: HTML. cta: { href, label }. secondary: { href, label }.
@@ -36,13 +38,13 @@ export function emailHtml({ title, eyebrow = '', preheader = '', body = '', cta 
   `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${C.page}" style="background:${C.page}"><tr><td align="center" style="padding:32px 16px 40px">` +
   `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px">` +
   /* logo row */
-  `<tr><td style="padding:0 4px 18px"><a href="${esc(base)}" style="text-decoration:none"><table role="presentation" cellpadding="0" cellspacing="0"><tr>` +
-  `<td valign="middle"><img src="${esc(base)}/icons/icon-192.png" width="28" height="28" alt="" style="display:block;border:0;border-radius:7px"></td>` +
-  `<td valign="middle" style="padding-left:9px;font:700 17px/1 ${FONT};color:${C.ink};letter-spacing:-.01em">Brew</td></tr></table></a></td></tr>` +
+  `<tr><td bgcolor="${C.band}" style="background:${C.band};border-radius:20px 20px 0 0;padding:16px 24px"><a href="${esc(base)}" style="text-decoration:none"><table role="presentation" cellpadding="0" cellspacing="0"><tr>` +
+  `<td valign="middle"><img src="${esc(base)}/icons/icon-192.png" width="26" height="26" alt="" style="display:block;border:0;border-radius:7px"></td>` +
+  `<td valign="middle" style="padding-left:9px;font:600 16px/1 ${FONT};color:#FAFAFA;letter-spacing:-.01em">Brew</td></tr></table></a></td></tr>` +
   /* card */
-  `<tr><td bgcolor="${C.card}" style="background:${C.card};border:1px solid ${C.line};border-radius:16px;padding:32px 32px 30px">` +
+  `<tr><td bgcolor="${C.card}" style="background:${C.card};border:1px solid ${C.line};border-top:0;border-radius:0 0 20px 20px;padding:30px 32px 30px">` +
   (eyebrow ? `<div style="font:600 12px/1 ${FONT};letter-spacing:.06em;text-transform:uppercase;color:${C.muted};margin:0 0 12px">${esc(eyebrow)}</div>` : '') +
-  `<h1 style="margin:0 0 16px;font:700 22px/1.3 ${FONT};color:${C.ink};letter-spacing:-.01em">${esc(title)}</h1>` +
+  `<h1 style="margin:0 0 16px;font:600 22px/1.3 ${FONT};color:${C.ink};letter-spacing:-.015em">${esc(title)}</h1>` +
   body +
   (cta ? button(cta.href, cta.label) : '') +
   (secondary ? `<p style="margin:16px 0 0;font:14px/1.5 ${FONT}"><a href="${esc(secondary.href)}" style="color:${C.ink};text-decoration:underline">${esc(secondary.label)}</a></p>` : '') +

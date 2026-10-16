@@ -283,3 +283,13 @@
 .ui2 .m2-chips .chip{display:inline-flex;align-items:center;gap:4px}
 .ui2 .j2-sent{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;color:#1f7a3e}
 .ui2 .tu-col{width:min(720px,100%)}
+.ui2 .j2-memo{position:relative;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.ui2 .j2-memo dl{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 16px;margin:0 0 12px}
+.ui2 .j2-memo dt{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg-3)}.ui2 .j2-memo dd{margin:2px 0 0;font-size:13.5px;font-weight:500}
+.ui2 .j2-memo h2{margin:0;font-size:22px;line-height:28px;letter-spacing:-.015em}
+.ui2 .j2-stamp{position:absolute;right:0;top:-4px;transform:rotate(-5deg);border:2px solid #1f7a3e;color:#1f7a3e;border-radius:8px;padding:2px 10px;font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+@media (max-width:640px){.ui2 .j2-memo dl{grid-template-columns:1fr 1fr}}
+.ui2 .p2-me{display:flex;align-items:center;gap:12px;padding:6px 6px 14px;margin-bottom:6px;border-bottom:1px solid var(--line-soft)}
+.ui2 .p2-me > img,.ui2 .p2-me > .r2-ini{width:40px;height:40px;border-radius:12px;object-fit:cover;flex:0 0 auto}
+.ui2 .p2-me > span{flex:1;min-width:0;display:flex;flex-direction:column}.ui2 .p2-me b{font-size:15px}.ui2 .p2-me small{font-size:12.5px;color:var(--fg-3);overflow:hidden;text-overflow:ellipsis}
+.ui2 .p2-me .bmark{flex:0 0 auto;width:28px;height:28px;border-radius:8px;overflow:hidden;box-shadow:0 0 0 1px var(--line)}.ui2 .p2-me .bmark img{width:100%;height:100%;display:block}

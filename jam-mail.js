@@ -1,3 +1,4 @@
+import { smallPage } from './small-page.js';
 // Brew's emails about jams, to the brand's own team (never to its customers).
 // Right away: you were tagged (@you), asked a question, assigned the jam, or asked for your OK.
 // Batched: new messages in a jam you're part of, at most one email per jam per person every 15 minutes.
@@ -83,7 +84,7 @@ export function createJamMail({ mail, packs, sign, verify, base = () => process.
   const handle = async (req, res, u) => {
     if (u.pathname !== '/mail/pref' || req.method !== 'GET') return false;
     const t = verify(u.searchParams.get('t') || '', 'mailpref');
-    const page = (h, p) => { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex', 'referrer-policy': 'no-referrer' }); res.end(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Brew</title><body style="font:16px/1.55 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:480px;margin:18vh auto;padding:0 20px;color:#111;background:#fff"><h1 style="font-size:22px;margin:0 0 8px">${esc(h)}</h1><p style="color:#555">${esc(p)}</p>${t?.slug ? `<p><a href="/${esc(t.slug)}" style="color:#111">Open ${esc(brandName(t.slug))}</a></p>` : ''}</body>`); return true; };
+    const page = (h, p) => { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex', 'referrer-policy': 'no-referrer' }); res.end(smallPage(h, p, { link: t?.slug ? { href: `/${t.slug}`, label: `Open ${brandName(t.slug)}` } : null })); return true; };
     if (!t?.slug || !t.email) return page('This link has expired', 'Open Brew to change your email settings.');
     if (t.set === 'mute' && t.wid) { await setPref(t.slug, t.email, { mute: t.wid }); return page('Muted', 'You won’t get emails about this jam unless someone tags you.'); }
     if (t.set === 'tags') { await setPref(t.slug, t.email, { mail: 'tags' }); return page('Only when you’re tagged', 'You’ll get an email when someone tags you, asks you something or gives you a jam.'); }
