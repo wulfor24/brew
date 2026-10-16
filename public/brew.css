@@ -2780,3 +2780,9 @@ body:not(.ui2) .lx-col .lx > .q-note{padding:6px 0 28px;text-align:center;font-s
 }
 /* the Work and Deck views: no line under the top bar (Param 2026-10-16) */
 html body.deck-on .topbar{border-bottom:0;box-shadow:none}
+/* the top bar is 39px at every width and in every view (Param 2026-10-16); Feed | Deck drops its drop shadow so it reads
+   the same size as the pills beside it (same edge, no halo) */
+.topbar .seg,.topbar .seg.glass-chrome{box-sizing:border-box;height:39px;padding:3px;align-items:center;box-shadow:inset 0 0 0 1px var(--line)}
+.topbar .seg button{height:33px}
+.topbar-r .j1-pill,.topbar-r .viewing,.topbar-r .icon-btn,.topbar .icon-btn{box-sizing:border-box;height:39px}
+.topbar-r .icon-btn,.topbar .icon-btn{width:39px}
