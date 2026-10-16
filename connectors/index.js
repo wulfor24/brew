@@ -114,7 +114,11 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     const C = REAL[id]; let creds = PUBLIC.has(id) ? {} : await vault.load(slug, id);
     if (!creds) throw new Error('Not connected: connect it again.');
     if (C.fresh) { const f = await C.fresh(creds); if (f !== creds) { creds = f; await vault.save(slug, id, creds); } }
-    return C.sync(creds, await ctxOf(slug), deps);
+    const ctx = await ctxOf(slug);
+    /* an account not yet matched to the brand is checked again on each read: the brand may have fixed its links since */
+    if (C.owns && (await conns(slug))[id]?.verified === false) { const p = await C.owns(creds, ctx).catch(() => null);
+      if (p) await editC(slug, (c) => { if (c[id]) c[id] = { ...c[id], verified: !!p.ok, why: p.why || '' }; }); }
+    return C.sync(creds, ctx, deps);
   }
   async function sync(slug, id) {
     await editC(slug, (c) => { c[id] = { ...(c[id] || {}), state: 'syncing', syncAt: Date.now() }; });
