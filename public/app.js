@@ -935,16 +935,15 @@
       <div class="app">
         <nav class="rail" aria-label="Main">
           <button class="so-mark so-home" data-nav="feed" aria-label="Home: your feed" title="Home">${SO()}</button>
-          <button class="icon-btn" aria-label="Feed" title="Feed" data-nav="feed">${ic('home')}</button>
-          <button class="icon-btn" aria-label="Deck" title="Deck" data-nav="deck">${ic('deck')}</button>
-          <button class="icon-btn rb" aria-label="Library" title="Library: saved and my jams" data-nav="saved">${ic('bookmark')}<i data-count="saved"></i></button>
-          <button class="icon-btn rb" aria-label="Work" title="Work: drafting to results" data-nav="work">${ic('board')}<i data-count="work"></i></button>
-          <button class="icon-btn" aria-label="What Brew learned" title="What Brew learned" data-nav="learned">${ic('book')}</button>
-          <button class="icon-btn rb" aria-label="Notifications" title="Notifications" data-bell>${ic('bell')}<i data-count="bell"></i></button>
-          <button class="icon-btn" aria-label="Connectors" title="Connectors" data-nav="connectors">${ic('plug')}</button>
-          <span class="sp"></span>
-          ${window.LiveConn && (window.LIVE?.signin || window.LIVE?.me) ? `<button class="icon-btn lc-acct" aria-label="Your account" title="${window.LIVE?.me ? esc(window.LIVE.me.email) : 'Sign in'}" data-lacct>${window.LIVE?.me?.pic ? `<img src="${esc(window.LIVE.me.pic)}" alt="" referrerpolicy="no-referrer">` : ic('person')}</button>` : ''}
-          <button class="badge-brand" aria-label="Menu" data-menu><img src="${B.brand.mark}" alt=""></button>
+          <div class="rl-mid">
+            <button class="icon-btn rb rl" aria-label="Work" title="Work: drafting to results" data-nav="work">${ic('board')}<span class="rl-tx">Work</span><i data-count="work"></i></button>
+            <button class="icon-btn rl" aria-label="What Brew learned" title="What Brew learned" data-nav="learned">${ic('book')}<span class="rl-tx">Learned</span></button>
+            <button class="icon-btn rb rl" aria-label="Notifications" title="Notifications" data-bell>${ic('bell')}<span class="rl-tx">Alerts</span><i data-count="bell"></i></button>
+          </div>
+          <div class="rl-foot">
+            <button class="icon-btn rl" aria-label="Connectors" title="Connectors" data-nav="connectors">${ic('plug')}<span class="rl-tx">Connectors</span></button>
+            <button class="icon-btn rl rl-me" aria-label="Profile and menu" title="${window.LIVE?.me ? esc(window.LIVE.me.email) : 'Profile and menu'}" data-menu>${window.LIVE?.me?.pic ? `<img src="${esc(window.LIVE.me.pic)}" alt="" referrerpolicy="no-referrer">` : `<span class="rl-ini">${esc(String(window.LIVE?.me?.name || window.LIVE?.me?.email || B.brand.name || 'B').trim()[0] || 'B').toUpperCase()}</span>`}<span class="rl-tx">You</span></button>
+          </div>
         </nav>
         <div class="stage" id="stage">
           <div class="wash" aria-hidden="true"></div>
