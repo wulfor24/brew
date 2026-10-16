@@ -3439,21 +3439,25 @@
   // every version in order, one tap to switch. The canvas shows the one you're on (the newest, unless you switch).
   /* in the action row with Share: the photos on the version (made, picked, or the product photos the post's brief names) and its words */
   const REF_RX = /https?:\/\/[^\s,)]+?\.(?:jpe?g|png|webp)(?:\?[^\s,)]*)?/gi;
-  const dlAssets = (p) => [...new Set([p.video, p.image, ...(p.photos || []), ...(p.cardImages || []), ...(p.image || (p.photos || []).length ? [] : String(p.media || '').match(REF_RX) || [])].filter((u) => u && typeof u === 'string'))];
+  const dlAssets = (p) => { const own = [...new Set([p.video, p.image, ...(p.photos || []), ...(p.cardImages || []), ...(p.image || (p.photos || []).length ? [] : String(p.media || '').match(REF_RX) || [])].filter((u) => u && typeof u === 'string'))];
+    return own.length ? own : [cardPhoto()].filter(Boolean); }; /* nothing made yet: the photo the preview shows goes in the download too */
   const dlCopy = (ch, p) => { const val = (v) => Array.isArray(v) ? v.map((x) => (typeof x === 'object' ? Object.values(x).filter(Boolean).join(' · ') : x)).join('\n') : v ?? '';
     const fields = (ch.fields || []).length ? ch.fields : [{ k: 'title', label: 'Title' }, { k: 'copy', label: 'Post' }, { k: 'hashtags', label: 'Hashtags' }];
     return fields.filter((f) => !/^(imageBrief|media|format|knobs|utm)$/.test(f.k)).map((f) => [f.label || f.k, String(val(p?.[f.k])).trim()]).filter(([, v]) => v).map(([k, v]) => `${k}\n${v}`).join('\n\n'); };
   const dlTool = (ch, pkgCh) => { if (pkgCh.imagePending || ch.imagePending) return ''; const p = pkgCh.pkg || {}, k = dlAssets(p).length, words = !!dlCopy(ch, p); if (!k && !words) return '';
     /* says exactly what you get: "Download photo + text (zip)"; a quiet line under Ready, never a third big button */
     const what = `${k ? `${p.video ? (k > 1 ? 'video + photo' : 'video') : k > 1 ? `${k} photos` : 'photo'}${words ? ' + text' : ''}` : 'text'}`, zip = k + (words ? 1 : 0) > 1;
-    return `<button class="st-dl" data-st-dl title="Download this version’s ${what}${zip ? ' as one zip' : ''}">${ic('down', 's14')}<span>Download ${what}${zip ? ' <small>(zip)</small>' : ''}</span></button>`; };
+    return `<button class="st-dl" data-st-dl title="Download this version’s ${what}${zip ? ' as one zip' : ''}">${ic('down', 's14')}<span>${zip ? `Download all <small>${what} · zip</small>` : `Download ${what}`}</span></button>`; };
   const downloadVersion = async (ch, pkgCh, btn) => {
     const p = pkgCh.pkg || {}, urls = dlAssets(p), copy = dlCopy(ch, p), n = pkgCh === ch ? curN(ch) : (ch.versions.find((v) => v.id === RX.viewing)?.n || curN(ch));
     const base = `${String(B.brand?.name || BR).replace(/[^\w-]+/g, '-')}-${String(ch.actionLabel || 'draft').toLowerCase().replace(/[^\w]+/g, '-')}-v${n}`.replace(/-+/g, '-');
     if (!urls.length && !copy) return toast('Nothing to download yet.');
     btn?.classList.add('is-busy');
     try {
-      const got = await Promise.all(urls.map(async (u, i) => { const r = await fetch(cdnSized(u, 2048)); if (!r.ok) throw new Error(r.status); const b = await r.blob(); return { blob: b, name: `${base}-${/^video\//.test(b.type) ? 'video' : 'photo'}${urls.length > 1 ? '-' + String(i + 1).padStart(2, '0') : ''}.${extOf(b.type, u)}` }; }));
+      /* one picture that won't load never sinks the rest: the zip carries what came through, and says if something didn't */
+      const got = (await Promise.all(urls.map(async (u, i) => { try { const r = await fetch(cdnSized(u, 2048)); if (!r.ok) return null; const b = await r.blob(); return { blob: b, name: `${base}-${/^video\//.test(b.type) ? 'video' : 'photo'}${urls.length > 1 ? '-' + String(i + 1).padStart(2, '0') : ''}.${extOf(b.type, u)}` }; } catch { return null; } }))).filter(Boolean);
+      if (got.length < urls.length) toast(`${urls.length - got.length} picture${urls.length - got.length === 1 ? '' : 's'} couldn’t be fetched; the rest is in the download.`);
+      if (!got.length && !copy) throw new Error('nothing');
       if (got.length + (copy ? 1 : 0) === 1) return got.length ? saveBlob(got[0].blob, got[0].name) : saveBlob(new Blob([copy + '\n'], { type: 'text/plain;charset=utf-8' }), `${base}-text.txt`);
       const files = await Promise.all(got.map(async (g) => ({ name: g.name, data: new Uint8Array(await g.blob.arrayBuffer()) })));
       if (copy) files.push({ name: `${base}-text.txt`, data: new TextEncoder().encode(copy + '\n') });
