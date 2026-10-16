@@ -153,6 +153,8 @@ Gate for all: valid tenant; writes need gen unless in `DEMO_OK` (marked ◦). `P
 | GET | /api/changes/:chid, /photos | remix 838, 947 |
 | POST | /api/changes/:chid/more, /variants, /plan, /checks, /iterate, /knob, /image, /photo, /jam | remix 841-994 |
 | POST ◦ | /api/changes/:chid/notes, /edit, /restore, /discard | remix 893, 969, 978, 988 |
+| GET | /api/changes/:chid/pack, /impact | remix (jam chips, read-only; see 13-jam-chip-api.md) |
+| POST | /api/changes/:chid/remake | remix (new version as video, carousel or image; see 13-jam-chip-api.md) |
 | GET | /api/tenants/:id/versions/:oid, /learning | remix 1008, 1009 |
 | PUT ◦ | /api/tenants/:id/learning/lessons/:lid, /learning/rules/:rid | remix 1010, 1020 |
 | POST ◦ | /api/tenants/:id/learning/rules | remix 1015 |

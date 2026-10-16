@@ -12,6 +12,12 @@ import { createMakers } from './drafts.js';
 import { versionLabel } from './text-fit.js';
 import { withSteps } from './card-plan.js';
 import { familyOf, FAMILY_NAME, fieldsFor, knobsFor, suggestFor, fitChip, GRADES, pkgSchema, fieldsBrief, kvSchema, allKeys, fromKV, toKV, cleanPkg, publicText, missing, afterFromPkg, mockPkg, RATIO, leaks, isMulti, ACTION_SPEC, ACTION_GUARD, productFor, ideaAction, ideaPkg, chipsFor, chipRelates, chipCtx } from './studio.js';
+import { buildPack } from './publish-pack.js';
+import { impactInputs, projectImpact } from './impact.js';
+import { realRows } from './connectors/common.js';
+import { moveNo } from './value.js';
+import { createFamilies } from './measure-families.js';
+import { launchBrowser, zipBuffer, withBrowser } from './pdf/render.js';
 import { addV, versionsOf, versionById, signal, answered, autoCheck, outcome, ruleChecks, promptBlock, orderIntents, pickScore, takeNew, trustOf, summary, L, DETECTORS } from './learn.js';
 
 /* ---------- what each agent can change, live ---------- */
@@ -736,6 +742,7 @@ export function createRemix(o) {
   const C = (t, id) => { const ch = changes(t)[id];
     if (ch?.imagePending && !IMG_JOBS.has(ch.id)) { ch.imagePending = false; ch.imageError = 'The photo stopped before it finished. Make it again.'; }
     if (ch?.videoPending && !VID_JOBS.has(ch.id)) { ch.videoPending = null; ch.videoStep = null; ch.videoError = 'The video stopped before it finished. Make it again.'; }
+    if (ch?.remakePending && !REMAKE_JOBS.has(ch.id)) { ch.remakePending = null; ch.remakeError = 'The remake stopped before it finished. Make it again.'; }
     return ch; };
   on('GET', '/api/cards/:cid/remix', async (b, t, p) => {
     const c = t.cards.get(p.cid); if (!c) return { error: 'not found' };
@@ -971,6 +978,144 @@ export function createRemix(o) {
     return { change: pubChange(t, ch), video: true };
   });
   /* the photo picker: the brand's own product photos, the current ones, and whether AI may make one here */
+  /* ---------- the jam's chips: a publish pack, the projected impact, a remake in another format ---------- */
+  /* a version's package as it was then: the snapshot without the change's own keys */
+  const pkgOfVersion = (t, ch, v) => { if (!v) return { ...ch.pkg }; const { action, amount, title, sub, state, ...pkg } = v.snapshot || {}; return pkg; };
+  const versionAsked = (t, ch, q) => { const vq = q?.get?.('v'); if (!vq) return headOf(t, ch) || null; return versionsOf(t, ch.id).find((x) => String(x.n) === vq || x.id === vq) || false; };
+  const PACK_V = 1; // bump when a family's pack starts holding different files: every saved pack is made again
+  /* read-only: the version as files the team posts or applies themselves (publish-pack.js). Brew writes to no account.
+     The zip is saved once per version (gen/pack-….zip) and served from /gen/ like every made file */
+  on('GET', '/api/changes/:chid/pack', async (b, t, p, q) => {
+    const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch);
+    const v = versionAsked(t, ch, q); if (v === false) return { status: 404, error: 'That version isn’t on this change.' };
+    const pkg = pkgOfVersion(t, ch, v), n = v?.n || 1;
+    const key = 'pack-' + crypto.createHash('sha1').update(`${PACK_V}|${ch.id}|${v?.id || ''}|${JSON.stringify(pkg)}|${ch.family}|${BN()}`).digest('hex').slice(0, 20) + '.zip';
+    const chV = { ...ch, pkg }; const brand = { name: BN(), host: BH(), colors: B()?.seed?.brand?.colors || [], product: productFor(t.cards.get(ch.cardId) || {}, FACTS)?.name || '' };
+    const read = async (rel) => { if (!rel || typeof rel !== 'string') return null; if (/^\/?gen\//.test(rel)) return genFile(rel.replace(/^\/?gen\//, ''));
+      const f = (o.photoAsync ? await o.photoAsync(rel).catch(() => null) : null) || photoFile(rel); return f && fs.existsSync(f) && fs.statSync(f).isFile() ? f : null; };
+    const renderPdf = ch.family === 'print' && process.env.PACK_PDF !== '0' ? (html) => withBrowser(async (br) => { const pg = await br.newPage(); try { await pg.setContent(html, { waitUntil: 'load' }); return Buffer.from(await pg.pdf({ preferCSSPageSize: true, printBackground: true })); } finally { await pg.close().catch(() => {}); } }) : null;
+    const made = await buildPack({ ch: chV, pkg, family: ch.family, version: n, brand, assets: assetsFor(t, chV), read, renderPdf });
+    if (!(await genFile(key))) saveGen(key, zipBuffer(made.entries));
+    return { pack: { url: 'gen/' + key, name: made.fileName, version: n, versionId: v?.id || null, family: ch.family, familyName: FAMILY_NAME[ch.family], files: made.entries.map((e) => e.name), todo: made.todo, readme: made.readme, readOnly: true } };
+  });
+
+  /* the projected impact of the head version (impact.js): an estimate, cached per head version; ?fresh=1 works it out again */
+  const FAMS = createFamilies({ log });
+  /* the measure family (data/measure-families.json) a change of each studio family is judged as; a decision is read from its card */
+  const MEASURED_AS = { meta_ad: 'paid_ads', meta_ops: 'paid_ads', search: 'paid_ads', social: 'content', post: 'content', brief: 'content', crm: 'messages', store: 'site', price_change: 'pricing', bundle_offer: 'pricing', discount_offer: 'pricing',
+    vis: 'ai_search', listing: 'listings', setup: 'foundations', print: 'offline', short_video: 'content', blog_post: 'search' };
+  on('GET', '/api/changes/:chid/impact', async (b, t, p, q) => {
+    const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch);
+    const head = headOf(t, ch), c = t.cards.get(ch.cardId) || {}, mock = isMock();
+    const key = `${head?.id || 'v0'}:${mock ? 'rules' : 'ai'}`; ch.impact ||= {};
+    if (ch.impact[key] && q?.get?.('fresh') !== '1') return { impact: { ...ch.impact[key], cached: true }, version: head?.n || 1 };
+    const mv = moveNo(c.id), grade = mv != null ? B()?.moveValue?.[mv] || null : null;
+    /* judged where the change lands, as the jam measures it (workFromChange): a Meta ad from a reorders card is read on Meta */
+    const sector = (ch.family === 'listing' ? 'catalog' : SECTOR_OF[ch.agent]) || c.sector, cx = { ...c, sector, title: ch.after?.title || c.title, sub: ch.after?.sub || c.sub, cta: { label: ch.actionLabel }, measure: undefined };
+    let recipe = null; try { recipe = FAMS.recipeOf(MEASURED_AS[String(ch.action).split('.').pop()] || MEASURED_AS[ch.family] || FAMS.classify(cx).family); } catch (e) { log.warn('[impact] family', e.message); }
+    let measure = null; try { measure = o.measureOf?.(t, cx) || null; } catch (e) { log.warn('[impact] measure', e.message); }
+    const x = impactInputs({ card: c, ch, grade, recipe, measure, ledger: t.member ? realRows(t.liveLedger) : [], connected: t.liveConn || {} });
+    const ai = !mock && claudeTool && spend('text') ? (prompt, schema) => claudeTool(prompt, schema, 1500, 'impact') : null;
+    const out = await projectImpact(x, { ai, unbacked: unbackedNums, brand: BN(), log });
+    if (!ai && !out.aiError) out.note = mock ? 'Brew’s rule-based range: AI estimates are off here.' : 'Brew’s rule-based range: today’s AI budget is used up.';
+    if (!out.aiError && (ai || mock)) { ch.impact[key] = { ...out, at: now(t) }; const ks = Object.keys(ch.impact); if (ks.length > 6) delete ch.impact[ks[0]]; }
+    return { impact: out, version: head?.n || 1 };
+  });
+
+  /* Remake as a video, a carousel or an image, for any family: a new version of the same change whose draft (the media the
+     stage shows, like the card's own first draft in seedV0) is in that format. The words come from the package itself
+     (or the AI, when it may run); the media is made in the background on our own accounts, never in demo mode or offline */
+  const REMAKE_AS = { video: 'a video', carousel: 'a carousel', image: 'an image' };
+  const REMAKE_JOBS = new Set(); let RMK = null;
+  const imgMaker = () => o.videoImage || geminiImage;
+  const slideMakers = () => (RMK ||= createMakers({ geminiImage: imgMaker(), launchBrowser, zipBuffer, log }));
+  const short = (s, n) => { const w = clean(String(s || '')).replace(/\s+/g, ' ').trim().split(' '); return w.length > n ? w.slice(0, n).join(' ') + '…' : w.join(' '); };
+  const sentences = (xs) => xs.flatMap((x) => String(x || '').split(/(?<=[.!?])\s+|\n+/)).map((x) => x.replace(/^[-•*\d.)\s]+/, '').trim()).filter((x) => x.length > 3);
+  /* the remake's words from the package as it stands: nothing new is claimed */
+  const remakeRules = (ch, as, t = null) => {
+    const p = ch.pkg || {}, said = [...new Set(sentences([ch.after?.sub, ...publicText(ch.family, ch.action, p)]))].filter((x) => x !== ch.after?.title);
+    const visual = p.imageBrief || (p.slides || p.cards || [])[0]?.imageBrief || 'The product on a clean surface, soft daylight.';
+    const end = p.cta || p.button || (p.buttons || [])[0] || (BH() ? `Shop at ${BH()}` : 'Shop now');
+    const hook = short(ch.after?.title || said[0] || ch.actionLabel, 10);
+    const P = productFor({ lane: t?.cards?.get?.(ch.cardId)?.lane }, FACTS) || {}; if (said.length < 2) said.push(...[P.claim, P.name !== 'the product' && (P.price ? `${P.name}, ${P.price}` : P.name)].filter((x) => x && !said.includes(x))); /* a short package: the product's own facts fill the middle */
+    if (as === 'carousel') return { slides: [{ onSlide: hook, visual }, ...said.slice(0, 4).map((x) => ({ onSlide: short(x, 12), visual })), { onSlide: short(end, 8), visual }].slice(0, 6) };
+    if (as === 'video') return { script: [{ beat: 'Hook', shot: visual, line: hook }, ...said.slice(0, 3).map((x, i) => ({ beat: ['Show', 'Proof', 'Detail'][i], shot: visual, line: short(x, 14) })), { beat: 'Call to action', shot: visual, line: short(end, 8) }], motion: 'The camera slowly pushes in on the product.' };
+    return { overlay: short(ch.after?.title || said[0], 7), imageBrief: visual };
+  };
+  const REMAKE_SCHEMA = { type: 'object', required: ['label', 'slides', 'script', 'overlay', 'imageBrief', 'motion'], properties: {
+    label: { type: 'string', description: '2 to 4 words naming this version, e.g. "As a carousel"' },
+    slides: { type: 'array', items: { type: 'object', required: ['onSlide', 'visual'], properties: { onSlide: { type: 'string', description: 'Under 12 words; slide 1 the hook, the last says what to do' }, visual: { type: 'string', description: 'The photo behind it, no text in it' } } }, description: 'Carousel only: 3 to 6 slides; otherwise empty' },
+    script: { type: 'array', items: { type: 'object', required: ['beat', 'shot', 'line'], properties: { beat: { type: 'string' }, shot: { type: 'string' }, line: { type: 'string', description: 'Under 14 words, said or shown' } } }, description: 'Video only: 4 or 5 beats of a 6-second vertical clip; otherwise empty' },
+    overlay: { type: 'string', description: 'Image only: up to 7 words set on the picture; otherwise empty' },
+    imageBrief: { type: 'string', description: 'The photograph: setting, light, who is in it; no text in it' },
+    motion: { type: 'string', description: 'Video only: how the camera moves over 6 seconds' } } };
+  const remakeLive = async (t, ch, as) => {
+    const c = t.cards.get(ch.cardId) || {};
+    const j = await claudeTool(`${cardBrief(c, seatLine(t.viewer))}\n\nYou are the ${AGENT[ch.agent] || 'creative'} agent. Remake this ${FAMILY_NAME[ch.family] || 'change'} (${ch.actionLabel}) as ${REMAKE_AS[as]} for ${BN()}'s own channels, keeping its point and its words where they fit.\n${productLine(c)}\nThe package now (field: value):\n${toKV(ch.family, ch.action, ch.pkg).map((e) => `${e.k}: ${e.v}`).join('\n')}\nFill only the part for ${REMAKE_AS[as]}; leave the others empty. ${factsLine}`, REMAKE_SCHEMA, 2000, 'remake');
+    const words = [...(j.slides || []).map((x) => x.onSlide), ...(j.script || []).map((x) => x.line), j.overlay].filter(Boolean).join(' ');
+    if (!words || BANNED.test(words) || unbackedNums(words).length) return null; /* a claim the facts don't back: the package's own words instead */
+    const out = as === 'carousel' ? { slides: (j.slides || []).slice(0, 6).map((x) => ({ onSlide: short(x.onSlide, 12), visual: clean(x.visual || j.imageBrief || '') })) } : as === 'video' ? { script: (j.script || []).slice(0, 5).map((x) => ({ beat: clean(x.beat), shot: clean(x.shot), line: short(x.line, 14) })), motion: clean(j.motion || '') } : { overlay: short(j.overlay, 7), imageBrief: clean(j.imageBrief || '') };
+    if (as === 'carousel' && out.slides.length < 3) return null; if (as === 'video' && out.script.length < 3) return null;
+    return { ...out, label: j.label };
+  };
+  const remakeWhy = (ch) => (ch.remakePending ? 'A remake is already being made.' : isMock() && !o.mediaFake ? 'Pictures and videos are off here, so this version has the words; make the media where AI is on.' : !imgMaker() ? 'This server can’t make pictures.' : 'The picture limit for today is used up. The words are here; make the media tomorrow.');
+  /* the media, in the background: lands on the version it was made for, and on the stage if that version is still the head */
+  const remakeMedia = (t, ch, as, plan, target) => {
+    if ((isMock() && !o.mediaFake) || !imgMaker() || ch.remakePending || !spend('image')) return false;
+    ch.remakePending = { as, at: Date.now(), step: 'Making the first picture' }; ch.remakeError = null; REMAKE_JOBS.add(ch.id);
+    const step = (s) => { if (ch.remakePending) ch.remakePending.step = s; };
+    (async () => {
+      try {
+        const c = t.cards.get(ch.cardId) || {}, src = await srcPhoto(t, ch); if (!src) throw new Error('no product photo could be read for it');
+        const ratio = as === 'video' ? '9:16' : RATIO[ch.pkg.format] && !(as === 'carousel' && ch.pkg.format === '9:16') ? ch.pkg.format : '4:5';
+        let media;
+        if (as === 'carousel') {
+          const r = await slideMakers().carousel({ slides: plan.slides, src, ratio, title: ch.after?.title || ch.actionLabel, cardTitle: c.title, id: ch.id + target, clean, canSpend: (i) => i === 0 || spend('image'), onStep: step });
+          media = { images: r.slides.map((x) => x.image), ...(r.zip ? { zip: r.zip } : {}), ...(r.err ? { err: r.err } : {}) };
+        } else {
+          const brief = as === 'video' ? plan.script?.[0]?.shot || ch.pkg.imageBrief : plan.imageBrief;
+          const prompt = `Create a new ${as === 'video' ? 'opening frame of a vertical 9:16 video' : `${ratio} photograph`} for ${BN()}. ${brief || 'The product on a clean surface, soft daylight.'} Keep the ${BN()} ${B()?.config?.product?.noun || 'product'} and its label exactly as in the reference photo; do not invent new text on the pack. Nothing else carries writing. No before/after. Photographic, natural light, the product clearly in frame.`;
+          const key = crypto.createHash('sha1').update(prompt + ratio).digest('hex').slice(0, 16) + '.png';
+          if (!(await genFile(key))) saveGen(key, await imgMaker()({ srcFile: src, prompt, ratio, text: [plan.overlay, ch.after?.title].filter(Boolean).join('. '), fallback: true }));
+          media = { images: ['gen/' + key] };
+          if (as === 'video') {
+            if (!spend('video')) throw new Error('the video limit for today is used up; the first frame is here');
+            step('Animating it, about a minute');
+            let name = await makers().video(key, `Over 6 seconds: ${plan.motion || 'The camera slowly pushes in on the product.'}`, { ratio: '9:16', onStep: step });
+            const hook = plan.script?.[0]?.line;
+            if (hook && spend('voice')) { step('Adding the voiceover'); const au = await makers().voice(hook, 'warm and natural, like a creator talking to camera', 'Kore').catch((e) => { log.warn('[remake voice]', e.message); return null; });
+              const both = au ? await makers().mux(name, au).catch((e) => { log.warn('[remake mux]', e.message); return null; }) : null; if (both) name = both; }
+            Object.assign(media, { video: 'gen/' + name, poster: 'gen/' + key });
+          }
+        }
+        const v = versionsOf(t, ch.id).find((x) => x.id === target), d = { ...(v?.snapshot?.draft || ch.pkg.draft || {}), ...media, pending: false };
+        if (v) v.snapshot = { ...v.snapshot, draft: d };
+        if (headOf(t, ch)?.id === target) ch.pkg = { ...ch.pkg, draft: d };
+        ch.thread.push({ from: 'ai', text: `${REMAKE_AS[as][0].toUpperCase() + REMAKE_AS[as].slice(1)} for ${v ? `v${v.n}` : 'this version'} is ready${media.err ? `. ${media.err}` : '.'}`, at: now(t) });
+      } catch (e) {
+        ch.remakeError = `The ${as} didn’t come through (${String(e.message).slice(0, 120)}). The words are on the version; make it again.`; log.warn('[remake]', as, e.message);
+        const v = versionsOf(t, ch.id).find((x) => x.id === target); if (v?.snapshot?.draft) v.snapshot = { ...v.snapshot, draft: { ...v.snapshot.draft, pending: false } };
+        if (headOf(t, ch)?.id === target && ch.pkg.draft) ch.pkg = { ...ch.pkg, draft: { ...ch.pkg.draft, pending: false } };
+      } finally { ch.remakePending = null; REMAKE_JOBS.delete(ch.id); o.save?.(t); }
+    })();
+    return true;
+  };
+  on('POST', '/api/changes/:chid/remake', async (b, t, p) => {
+    const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };
+    const as = String(b.as || '').toLowerCase(); if (!REMAKE_AS[as]) return { status: 400, error: 'Remake as a video, a carousel or an image.' };
+    if (ch.remakePending) return { error: 'A remake is already being made.', change: pubChange(t, ch) };
+    let plan = null, live = false;
+    if (!isMock() && claudeTool && spend('text')) { try { plan = await remakeLive(t, ch, as); live = !!plan; } catch (e) { log.warn('[remake words]', e.message); } }
+    plan ||= remakeRules(ch, as, t);
+    const draft = { as, title: ch.after?.title || ch.actionLabel, images: [], video: null, poster: null, ratio: as === 'video' ? '9:16' : ch.pkg.format || '4:5', text: false, remade: true, pending: false,
+      ...(plan.slides ? { slides: plan.slides.map((x) => ({ text: x.onSlide, visual: x.visual })) } : {}), ...(plan.script ? { script: plan.script } : {}), ...(plan.overlay ? { overlay: plan.overlay } : {}), ...(plan.imageBrief ? { imageBrief: plan.imageBrief } : {}) };
+    if (ch.pkg.image && as !== 'carousel') draft.images = [ch.pkg.image]; /* until the new picture lands, the version shows the one it was made from */
+    ch.pkg = { ...ch.pkg, draft }; sync(t, ch);
+    const v = version(t, ch, `ai:${ch.agent}`, `Remade as ${REMAKE_AS[as]}`, plan.label || `As ${REMAKE_AS[as]}`);
+    const making = remakeMedia(t, ch, as, plan, v.id);
+    if (making) { ch.pkg.draft.pending = true; v.snapshot = { ...v.snapshot, draft: { ...draft, pending: true } }; }
+    return { change: pubChange(t, ch), version: { id: v.id, n: v.n }, as, words: live ? 'ai' : 'package', making, why: making ? null : remakeWhy(ch), learned: learnedOut(t) };
+  });
   on('GET', '/api/changes/:chid/photos', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch);
     const cat = (catalogOf(t) || []).filter((x) => x.img).sort((a, b) => (a.out ? 1 : 0) - (b.out ? 1 : 0)).slice(0, 60).map((x) => ({ t: x.t, img: x.img, ...(x.out ? { out: true } : {}) }));
