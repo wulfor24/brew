@@ -79,3 +79,14 @@
 .ui2 .feed-end.fe2 b{font-size:17px;font-weight:500;color:var(--fg)}
 .ui2 .feed-end.fe2 span{font-size:14px;line-height:20px;color:var(--fg-2);max-width:340px;margin-bottom:14px}
 .ui2 .feed-end.fe2 .btn{display:inline-flex;align-items:center;gap:8px}
+
+/* ================= deck: Yours + Areas ================= */
+.ui2 .deck-side .y2-h{margin:18px 10px 6px;font-size:11.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--fg-3)}
+.ui2 .deck-side .side-nav button{display:flex;align-items:center;gap:10px}
+.ui2 .deck-side .y2-i{display:grid;place-items:center;color:var(--fg-2)}
+.ui2 .deck-side .side-nav .n{margin-left:auto;color:var(--fg-3);font-size:12.5px}
+.ui2 .a2col .col-top{align-items:center;gap:12px}
+.ui2 .a2col .col-top h2{font-size:18px;font-weight:600;letter-spacing:-.01em}
+.ui2 .a2-now{display:inline-flex;align-items:center;gap:6px;min-width:0;font-size:13px;color:var(--fg-3);white-space:nowrap;overflow:hidden}
+.ui2 .a2-now span{overflow:hidden;text-overflow:ellipsis}
+.ui2 .a2-now .ic{flex:0 0 auto;opacity:.8}

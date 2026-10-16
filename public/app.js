@@ -2709,6 +2709,25 @@
         <div class="sig-will"><div><i></i>Who reaches day 45, the reorder window</div><div><i></i>Recent buyers to ask for a review</div><div><i></i>Failed payments and returned orders</div></div>
         <button class="sig-unlock" data-sig-unlock>Connect your sources${ic('right', 's16')}</button></div></article>`;
   };
+  /* UI2 Deck: one column per agent area (same /deck cards, grouped by agent), and "Yours" on the side: the lists that used
+     to be Library, Work and the greeting counts. Each Yours row opens the view that already does that job, so nothing is lost. */
+  const AREAS = { creative: { name: 'Brand', dot: '#f0a3c8' }, performance: { name: 'Performance', dot: '#7fb1ff' }, storefront: { name: 'Storefront', dot: '#f3b26b' }, visibility: { name: 'AEO · GEO · SEO', dot: '#a99bff' }, crm: { name: 'CRM', dot: '#6fd6a8' }, brew: { name: 'Your calls', dot: '#d4d4d4' } };
+  const byArea = (k) => FEED.map((p, i) => [p, i]).filter(([p]) => (AREAS[p.agent] ? p.agent : 'brew') === k);
+  const areaNow = (k) => { const w = WORK.items.find((x) => !x.discarded && !x.archived && (x.agent || 'brew') === k && ['ai', 'drafting'].includes(x.stage));
+    if (w) return `Drafting ${esc(curV(w)?.title || w.title || 'a draft')}`; const n = byArea(k).length; return n ? `${n} card${n === 1 ? '' : 's'}` : 'Nothing new yet'; };
+  const areaColHTML = (k) => { const cards = byArea(k);
+    return `<section class="dcol a2col" data-col="${k}">
+        <div class="col-head"><div class="col-top"><h2>${AREAS[k].name}</h2><span class="a2-now">${ic('sparkles', 's14')}<span>${areaNow(k)}</span></span><span class="col-fill"></span></div></div>
+        <div class="col-body">${cards.map(([p, i]) => postCard(p, i)).join('')}${cards.length ? `<p class="col-end">You are caught up on ${AREAS[k].name}.</p>` : `<p class="col-end">Nothing here yet. Your ${esc(AGENT[k] || 'agents')} posts as it finishes.</p>`}</div>
+        <span class="grab" role="separator" aria-orientation="vertical" aria-label="Column width"></span></section>`; };
+  const yoursSide = () => { const live = WORK.items.filter((w) => !w.archived && !w.discarded), yes = gLists().yes.length;
+    const row = (nav, icon, label, n) => `<button data-nav="${nav}"><span class="y2-i">${ic(icon, 's16')}</span>${label}<span class="n">${n || ''}</span></button>`;
+    return `<div class="side-brand" data-nav="feed" role="button" tabindex="0" title="Home: your feed"><i class="bmark"><img src="${B.brand.mark}" alt=""></i><span><b>${esc(B.brand.name)}</b></span></div>
+      <p class="side-note">Every area your agents work in. Open what you started, sent or saved from Yours.</p>
+      <p class="y2-h">Yours</p>
+      <div class="side-nav y2-nav">${row('work', 'refresh', 'In progress', live.filter((w) => !['shared', 'done'].includes(w.stage)).length)}${yes ? row('queue', 'check', 'Needs your yes', yes) : ''}${row('saved', 'bookmark', 'Shortlisted', S.saved.length)}${row('jams', 'hand', 'Jams', live.length)}${row('done', 'send', 'Briefs sent', live.filter((w) => w.stage === 'shared').length)}</div>
+      <p class="y2-h">Areas</p>
+      <div class="side-nav">${Object.keys(AREAS).map((k) => `<button data-colnav="${k}" aria-current="false"><i class="col-dot" style="background:${AREAS[k].dot}"></i>${AREAS[k].name}<span class="n">${byArea(k).length || ''}</span></button>`).join('')}</div>`; };
   const colHTML = (k) => {
     const cards = byCol(k);
     return `<section class="dcol" data-col="${k}">
@@ -2741,10 +2760,10 @@
     if (!layoutLoaded) { layoutLoaded = true; (r.layout.hidden || []).forEach((k) => colState[k] && (colState[k].hidden = true)); colW = r.layout.colWidth || colW; }
     const d = deckEl(); if (!d) return;
     const keep = d.scrollLeft, keepY = Object.fromEntries($$('.dcol', d).map((c) => [c.dataset.col, $('.col-body', c)?.scrollTop || 0])); document.body.classList.add('col-dragging');
-    d.innerHTML = COL_ORDER.filter((k) => !colState[k].hidden).map(colHTML).join('');
+    d.innerHTML = UI2 ? Object.keys(AREAS).filter((k) => k !== 'brew' || byArea(k).length).map(areaColHTML).join('') : COL_ORDER.filter((k) => !colState[k].hidden).map(colHTML).join('');
     d.style.setProperty('--col-w', colW + 'px');
-    $('#deck-side').innerHTML = sideHTML();
-    $('#deck-tabs').innerHTML = $$('.dcol', d).map((c, i) => `<button class="dtab" role="tab" data-i="${i}">${SECTORS[c.dataset.col].name}</button>`).join('');
+    $('#deck-side').innerHTML = UI2 ? yoursSide() : sideHTML();
+    $('#deck-tabs').innerHTML = $$('.dcol', d).map((c, i) => `<button class="dtab" role="tab" data-i="${i}">${(UI2 ? AREAS : SECTORS)[c.dataset.col].name}</button>`).join('');
     $$('.dcol', d).forEach((c) => { const b = $('.col-body', c); if (b && keepY[c.dataset.col]) b.scrollTop = keepY[c.dataset.col]; });
     d.scrollLeft = keep; markTab();
     requestAnimationFrame(() => { d.scrollLeft = keep; document.body.classList.remove('col-dragging'); });
@@ -2758,7 +2777,7 @@
     let i = cols.findIndex((c) => { const b = c.getBoundingClientRect(); return b.left <= mid && b.right > mid; }); if (i < 0) i = d.scrollLeft <= 0 ? 0 : cols.length - 1;
     $$('#deck-tabs .dtab').forEach((t, j) => { t.classList.toggle('on', j === i); t.setAttribute('aria-selected', String(j === i)); }); };
   const renderDeck = () => {
-    if (!S.pro) return openPlan('deck');
+    if (!S.pro && !UI2) return openPlan('deck');
     if (!$('#view')) appShell();
     view = 'deck'; window.scrollTo(0, 0); $('#stk').innerHTML = ''; $('#notes').innerHTML = '';
     document.body.classList.add('deck-on'); colOrder();
@@ -2771,7 +2790,7 @@
   document.addEventListener('click', (e) => {
     if (view !== 'deck') return;
     const t = e.target;
-    const nav = t.closest('[data-colnav]'); if (nav) { const k = nav.dataset.colnav; if (colState[k].hidden) { colState[k].hidden = false; saveLayout(); buildDeck(); toast(`${SECTORS[k].name} is back`); } else scrollToCol(k); return; }
+    const nav = t.closest('[data-colnav]'); if (nav) { const k = nav.dataset.colnav; if (UI2 || !colState[k]) { scrollToCol(k); return; } if (colState[k].hidden) { colState[k].hidden = false; saveLayout(); buildDeck(); toast(`${SECTORS[k].name} is back`); } else scrollToCol(k); return; }
     const tab = t.closest('.dtab'); if (tab) { const c = $$('#deck .dcol')[+tab.dataset.i]; if (c) scrollToCol(c.dataset.col); return; }
     const dots = t.closest('.col-dots'); if (dots) { const pop = dots.nextElementSibling, on = pop.classList.contains('on'); $$('.col-pop').forEach((x) => x.classList.remove('on')); pop.classList.toggle('on', !on); return; }
     const act = t.closest('[data-colact]'); $$('.col-pop').forEach((x) => x.classList.remove('on'));
