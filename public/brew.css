@@ -2652,4 +2652,6 @@ body.rx-boot #view{visibility:hidden}
 .j1-pill.is-ask .t2-live{background:var(--warn);box-shadow:0 0 0 3px var(--warn-bg)}
 .j1-chip{display:inline-flex;align-items:center;gap:6px}
 .lx .m2-drop{margin-bottom:22px}
+.sheet.m2-sheet{width:min(460px,100%);padding:20px 20px 12px}
+.m2-sheet .sh-h{margin-bottom:6px}
 @media (max-width:760px){.j1-pill [data-count="team"]{display:none}}
