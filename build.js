@@ -372,6 +372,15 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       } catch (e) { log.warn('[build] team statics', e.message); await packs.put(slug, 'private/statics-state.json', { state: 'failed', err: e.message.slice(0, 120), at: Date.now() }); }
     })();
   }
+  /* the team's statics from the team's Move 21 as it is saved now (an ops probe, or a brand whose private 21 was written
+     before team statics existed): the same once-only job a private rewrite starts */
+  async function teamStatics(slug) {
+    const m21 = (await packs.getJSON(slug, 'private/moves.json', {}).catch(() => ({})))?.[21]; if (!m21) return { error: 'no team Move 21' };
+    if (!realRows(await packs.getJSON(slug, 'private/connected-ledger.json', [])).length) return { error: 'no real connected account' };
+    const profile = withLive(normalizeProfile(await packs.getJSON(slug, 'profile.json')), await packs.getJSON(slug, 'private/profile-live.json', null));
+    let lock = Promise.resolve(); await makeStatics(slug, m21, profile, (fn) => (lock = lock.then(fn)), { priv: true }); await lock;
+    return (await packs.getJSON(slug, 'private/statics-state.json', null)) || {};
+  }
   // the feed's first cards, straight from the read (before any move is written): only what was observed
   async function instantCards(slug, profile, ledger) {
     const seed = await packs.getJSON(slug, 'seed.json', {}); if ((seed.posts || []).some((c) => c.origin === 'read')) return;
@@ -1216,5 +1225,5 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (o?.stockWhy) { u.stale[x.n] = { ...o, was: { priority: x.priority, why: x.why, via: x.via }, why: [...Object.values(o.stockWhy), x.why].join(' '), changes: [...new Set([...(o.changes || []), ...(x.changes || [])])].slice(0, 6) }; continue; } /* an out-of-stock mark stays on top */
     u.stale[x.n] = { ...x, at: Date.now(), changes: [...new Set([...(x.changes || []), ...(o?.changes || [])])].slice(0, 6), ...(o && !o.private ? { private: false } : {}) }; } });
   const facts = { republish, flagStale, readProduct: async (slug, url) => readProduct(slug, url, (await packs.getJSON(slug, 'profile.json', {})) || {}), readRival, busy: (slug) => !!(st(slug).running || st(slug).checking), setHooks: (h) => Object.assign(hooks, h) };
-  return { ...facts, settleConnect, readLive, heal, healPdfs, pdfFor, pdfOn, connected, liveConnected, checkUpdates, rewrite, updates, setAuto, signal, seen, buildInfo, retry, goPro, checkData, applyCheck, liveWeekly, stockSignal, peek: (slug) => st(slug).status, addEmail, start, resume, resumeAll, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
+  return { ...facts, teamStatics, settleConnect, readLive, heal, healPdfs, pdfFor, pdfOn, connected, liveConnected, checkUpdates, rewrite, updates, setAuto, signal, seen, buildInfo, retry, goPro, checkData, applyCheck, liveWeekly, stockSignal, peek: (slug) => st(slug).status, addEmail, start, resume, resumeAll, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
 }

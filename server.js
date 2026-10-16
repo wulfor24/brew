@@ -40,6 +40,8 @@ import { createBrandMemory, vertexEmbedder, memoryHooks } from './brand-memory.j
 import { createMemoryRoutes } from './memory-routes.js'; // brand memory
 import { createMovesScheduler } from './moves-cadence.js'; // audit, listening and automation moves, weekly
 import { teamStatic } from './statics.js'; // the team's static ads, members only
+import { createIdeas } from './ideas.js'; // OPS_TEAM_PROBE: the team's ideas run
+import { realRows } from './connectors/common.js'; // simulated account rows are never evidence
 import { createLearnings, briefView } from './brand-learnings.js'; // /update-brand-learnings: a pasted call, notes or emails → brief, memory, moves
 import { createDraftsBg } from './drafts-bg.js'; // first drafts on the top cards, in the background
 import { createCardsGen } from './cards-gen.js';
@@ -385,6 +387,22 @@ setInterval(() => evidenceTick().catch((e) => console.warn('[evidence]', e.messa
 const movesCadence = createMovesScheduler({ packs, ai, memory: MEMORY_ON() ? memory : null, cardsGen: createCardsGen, log: console,
   onPack: async (slug) => { packs.drop(slug); attach(await packs.load(slug)); }, onCards: (slug, cards, o) => { if (o?.private) connectors?.drop(slug); feedSvc?.addCards(slug, cards, o); } /* the team's run: members only */, dropCards: (slug, ids) => { connectors?.drop(slug); feedSvc?.dropCards(slug, ids); }, pdfFor: null /* PDFs are made on download (builder.pdfOn) */ });
 movesCadence.start();
+/* ---------- a one-off paid check of the team-only views (OPS_TEAM_PROBE=<slug,...>), for a brand with real accounts connected:
+   one weekly automation run (public and team), one team ideas run and the team's static ads from its Move 21. Once per brand
+   (private/ops-team-probe.json keeps what it made and what it cost); remove the variable after ---------- */
+async function teamProbe(slug) {
+  const M = 'private/ops-team-probe.json'; if (await packs.getJSON(slug, M, null).catch(() => null)) return;
+  if (!realRows(await packs.getJSON(slug, 'private/connected-ledger.json', []).catch(() => [])).length) return console.warn(`[ops] team probe ${slug}: no real connected account`);
+  await packs.put(slug, M, { startedAt: Date.now() });
+  const usd = () => +(ai.meter.usd + (treg?.meter?.usd || 0)).toFixed(4), img = () => used.image, out = { startedAt: Date.now() };
+  const step = async (k, fn) => { const u0 = usd(), i0 = img(); try { out[k] = { ...(await fn()) }; } catch (e) { out[k] = { error: e.message }; } out[k].usd = +(usd() - u0).toFixed(4); out[k].images = img() - i0; console.log(`[ops] team probe ${slug} ${k}:`, JSON.stringify(out[k]).slice(0, 400)); };
+  await step('auto', async () => { const r = await movesCadence.runOne(slug, ['auto'], { manual: true }); return { written: (r.written || []).map((w) => w.n), team: (r.privWritten || []).map((w) => w.n), errors: r.errors }; });
+  await step('ideas', async () => { const r = await createIdeas({ slug, packs, ai, treg, log: console, member: true }).next({ n: 6 }); return { made: r.ideas.length, dropped: r.dropped?.length || 0 }; });
+  await step('statics', () => builder.teamStatics(slug));
+  connectors?.drop(slug); await feedSvc?.refreshLive(slug).catch(() => {});
+  await packs.put(slug, M, { ...out, doneAt: Date.now() });
+}
+if (process.env.OPS_TEAM_PROBE && !MOCK) setTimeout(() => { (async () => { for (const sl of String(process.env.OPS_TEAM_PROBE).split(',').map((x) => x.trim()).filter(Boolean)) await teamProbe(sl).catch((e) => console.error('[ops] team probe', sl, e.message)); })(); }, 120e3).unref?.();
 /* ---------- brand learnings (brand-learnings.js): the team pastes a call transcript, notes or emails into a jam; Brew learns the essence,
    goals, beliefs and facts (each with its source), updates the brief, memory and system prompt, flags and rewrites the moves it changes
    (build.js rewrite caps, LEARN_REWRITE_MAX, default 4) and writes new ones (the cadence "learn" family, under MOVES_WEEK_CAP_USD).
