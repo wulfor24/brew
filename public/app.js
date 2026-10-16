@@ -1097,10 +1097,12 @@
   const smooth7 = (v) => v.map((_, i) => { const w = v.slice(Math.max(0, i - 6), i + 1); return w.reduce((a, b) => a + b, 0) / w.length; }).slice(6);
   const sparkPath = (v, w, h, pad = 2, mx = Math.max(...(v || []), 1), mn = Math.min(...(v || []))) => { if (!v?.length) return ''; return v.map((y, i) => `${i ? 'L' : 'M'}${(pad + (i / (v.length - 1)) * (w - 2 * pad)).toFixed(1)},${(h - pad - ((y - mn) / (mx - mn || 1)) * (h - 2 * pad)).toFixed(1)}`).join(''); };
   // ring covers: one designed disc per ring, same family, so the row reads as a set
-  const RING_ART = { brand: ['mark', 'r-brand'], trends: ['trendup', 'r-trends'], ads: ['megaphone', 'r-ads'], news: ['news', 'r-news'], howto: ['bulb', 'r-howto'] };
+  const RING_ART = { brand: ['mark', 'r-brand'], recap: ['clock', 'r-recap'], trends: ['trendup', 'r-trends'], ads: ['megaphone', 'r-ads'], news: ['news', 'r-news'], howto: ['bulb', 'r-howto'] };
   const ringCover = (r) => { const [icon, cls] = RING_ART[r.k] || ['sparkles', 'r-news'];
     return `<span class="cover ${cls}">${icon === 'mark' ? `<img src="${B.brand.mark}" alt="">` : ic(icon)}</span>`; };
-  const storiesHtml = () => { const S2 = storySets(); return `<div class="stories">${ROLE().stories.filter((k) => S2[k]).map((k, i) => `<button class="story${S2[k].seen ? ' seen' : ''}${S2[k].loading ? ' loading' : ''}" data-story="${k}" title="${esc(S2[k].title)}"><span class="ring">${ringCover(S2[k])}</span><span class="st-l">${esc(S2[k].title)}</span></button>`).join('')}</div>`; };
+  /* Recap (what happened since your last visit) sits right after the brand's own ring, only when the server sent one */
+  const ringKeys = (S2) => { const ks = (ROLE().stories || []).filter((k) => k !== 'recap'); if (S2.recap) ks.splice(ks[0] === 'brand' ? 1 : 0, 0, 'recap'); return ks.filter((k) => S2[k]); };
+  const storiesHtml = () => { const S2 = storySets(); return `<div class="stories">${ringKeys(S2).map((k, i) => `<button class="story${S2[k].seen ? ' seen' : ''}${S2[k].loading ? ' loading' : ''}" data-story="${k}" title="${esc(S2[k].title)}"><span class="ring">${ringCover(S2[k])}</span><span class="st-l">${esc(S2[k].title)}</span></button>`).join('')}</div>`; };
 
   /* the end of a free day: a swipeable set of what Pro adds, in Brew's own art, ending on the one button */
   document.addEventListener('click', (e) => { if (e.target.closest('[data-gopro]')) openPlan('feed'); });
@@ -4394,6 +4396,16 @@
       return `${sl.img ? `<img src="${sl.img}" alt="">` : `${svBack(sl)}${hero}`}
       <div class="sv-tx"><span class="sv-chip">${sl.agent ? face(sl.agent) : ''}${esc(sl.chip)}</span><h3>${esc(sl.h)}</h3><p>${esc(sl.p)}</p>
         ${btn ? `<div class="sv-acts">${btn}</div>` : ''}${src(`${B.brand.name} · from your feed, work and results`)}</div>`; }
+    if (sl.type === 'recap') { /* Recap: one slide per thing that moved since the last visit; every row opens the thing */
+      const row = (r) => { const at = r.workId ? `data-sv-work="${esc(r.workId)}"` : r.cardId ? `data-sv-open="${esc(r.cardId)}"` : r.move != null ? `data-sv-move="${r.move}"` : '';
+        return `<${at ? 'button' : 'div'} class="sv-rc${r.warn ? ' warn' : ''}${r.up === true ? ' up' : r.up === false ? ' down' : ''}" ${at}>${r.img ? `<img src="${esc(r.img)}" alt="">` : ''}<span><b>${esc(r.t)}</b>${r.s ? `<small>${esc(r.s)}</small>` : ''}</span>${at ? ic('right', 's14') : ''}</${at ? 'button' : 'div'}>`; };
+      const body = sl.kind === 'summary' ? `<ul class="sv-tally">${(sl.tally || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`
+        : `${sl.p ? `<p>${esc(sl.p)}</p>` : ''}${(sl.rows || []).length > 1 || sl.conn || !(sl.rows || [])[0] ? `<div class="sv-rcs">${(sl.rows || []).map(row).join('')}</div>` : ''}`;
+      const one = (sl.rows || []).length === 1 && !sl.conn ? sl.rows[0] : null;
+      const btn = sl.conn ? `<button class="sv-btn pri" data-sv-conn>See your accounts ${ic('right', 's14')}</button>` : one?.workId ? `<button class="sv-btn pri" data-sv-work="${esc(one.workId)}">Open the jam ${ic('right', 's14')}</button>` : one?.cardId ? `<button class="sv-btn pri" data-sv-open="${esc(one.cardId)}">Open the card ${ic('right', 's14')}</button>` : one?.move != null ? `<button class="sv-btn pri" data-sv-move="${one.move}">Read the move ${ic('right', 's14')}</button>` : '';
+      return `${sl.img ? `<img src="${esc(sl.img)}" alt="">` : `${svBack(sl)}${sl.big ? `<div class="sv-hero stat"><span><small>${esc(sl.bigLabel || '')}</small><b>${sl.big}</b></span></div>` : ''}`}
+      <div class="sv-tx sv-recap"><span class="sv-chip">${esc(sl.chip)}</span><h3>${esc(sl.h)}</h3>${body}
+        ${btn ? `<div class="sv-acts">${btn}</div>` : ''}${src(`${B.brand.name} · ${s.source || 'since your last visit'}`)}</div>`; }
     if (sl.type === 'howto') return `${sl.img ? `<img src="${sl.img}" alt="">` : svBack(sl)}
       <div class="sv-tx"><span class="sv-chip">How to · this week</span><h3>${esc(sl.h)}</h3><p>${esc(sl.p)}</p>
         <ol class="sv-steps">${sl.steps.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>
@@ -4453,6 +4465,8 @@
       openCardJam(r.card); /* the story's card opens its jam on the card's plan, like every card action */
     });
     $$('[data-sv-open]', w).forEach((b) => b.onclick = () => { const p = byId(b.dataset.svOpen); closeStory(); if (p) openDetail(p); });
+    $$('[data-sv-move]', w).forEach((b) => b.onclick = () => { const n = +b.dataset.svMove; closeStory(); openMove(n); });
+    $$('[data-sv-conn]', w).forEach((b) => b.onclick = () => { closeStory(); renderConnectors(); });
     $$('[data-sv-work]', w).forEach((b) => b.onclick = () => { const id = b.dataset.svWork; closeStory(); renderWork(); setTimeout(() => $(`[data-witem="${id}"]`)?.click(), 400); });
     const v = $('video', w); if (v) v.play?.().catch(() => {});
     run();

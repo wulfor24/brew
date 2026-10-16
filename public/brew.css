@@ -674,6 +674,20 @@ body.modal-on .stk-layer{opacity:0;transition:opacity .15s}
 .cover.r-ads{background:linear-gradient(145deg,#ffb48a,#e2593d)}
 .cover.r-news{background:linear-gradient(145deg,#5d6880,#1f2533)}
 .cover.r-howto{background:linear-gradient(145deg,#5fd1a0,#13805b)}
+.cover.r-recap{background:linear-gradient(145deg,#b7a4ff,#5b43c9)}
+/* Recap ring: rows that open the thing that moved since the last visit */
+.sv-recap .sv-rcs{display:grid;gap:6px;margin-top:12px;pointer-events:auto}
+.sv-recap .sv-rc{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 10px;border-radius:12px;border:0;background:rgba(255,255,255,.09);color:#fff;font:inherit;text-shadow:none}
+.sv-recap button.sv-rc{cursor:pointer}.sv-recap button.sv-rc:hover{background:rgba(255,255,255,.15)}
+.sv-card .sv-recap .sv-rc img{position:static;inset:auto;width:34px;height:34px;border-radius:8px;object-fit:cover;flex:0 0 auto}
+.sv-recap .sv-rc span{flex:1;min-width:0;display:grid;gap:2px}
+.sv-recap .sv-rc b{font-size:13.5px;line-height:18px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sv-recap .sv-rc small{font-size:12px;line-height:16px;opacity:.72;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sv-recap .sv-rc.warn small{color:#ffd28a;opacity:1}.sv-recap .sv-rc.up small{color:#9fd18b;opacity:1}.sv-recap .sv-rc.down small{color:#ffb4a2;opacity:1}
+.sv-recap .sv-rc .ic{width:14px;height:14px;opacity:.6;flex:0 0 auto}
+.sv-recap .sv-tally{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:8px}
+.sv-recap .sv-tally li{font-size:16px;line-height:21px;padding-left:16px;position:relative}
+.sv-recap .sv-tally li::before{content:'';position:absolute;left:0;top:8px;width:6px;height:6px;border-radius:50%;background:#b7a4ff}
 .sv-frame{place-items:end center}
 .sv-card.m-full::after,.sv-card.t-ad.m-full::after,.sv-card.t-news.m-full::after,.sv-card.t-howto.m-full::after{background:linear-gradient(180deg,rgba(0,0,0,.5) 0,transparent 96px,transparent max(96px,calc(100% - var(--txh,220px) - 150px)),rgba(0,0,0,.8) calc(100% - var(--txh,220px) - 24px),rgba(0,0,0,.92) 100%)}
 .sv-card.m-framed::after,.sv-card.t-ad.m-framed::after,.sv-card.t-news.m-framed::after,.sv-card.t-howto.m-framed::after{background:linear-gradient(180deg,rgba(0,0,0,.35),transparent 18%,transparent 55%,rgba(0,0,0,.55))}

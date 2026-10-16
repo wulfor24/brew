@@ -10,6 +10,7 @@ import vm from 'node:vm';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { near, noPaise } from './research.js';
+import { buildRecap, visitTick, sinceLabel } from './recap.js';
 import { B, live as liveView, liveArr, liveRe, runIn, BN, BH, CTRY, FESTN, FESTD } from './brand-ctx.js';
 import { cardValue, moveNo } from './value.js'; // what a card is worth doing (expected value), for the ranker
 import { moneyParse, safeLocale } from './brand-pack.js';
@@ -306,7 +307,7 @@ export function createFeedService(o) {
     tenants.set(t.id, t);
     return t;
   };
-  const touch = (t) => { t.lastSeen = Date.now(); t.days.add(dayKey(now(t))); };
+  const touch = (t) => { t.lastSeen = Date.now(); t.days.add(dayKey(now(t))); visitTick(t, now(t)); }; /* visits feed the Recap ring (recap.js) */
   /* the social stream (social-feed.js): idea and listening cards rotate. A workspace gets today's set; the ones that rotated
      out step back (expired, marked retired) unless this person acted on, liked or jammed them; one rotating back returns */
   const streamSync = (t, posts) => {
@@ -929,8 +930,14 @@ export function createFeedService(o) {
       return { type: 'brand', chip: 'Waiting on you', h: v?.title || w.title, p: v?.sub || `${w.with?.name || 'Your team'} sent it back for your OK.`, img: w.img, agent: w.agent, workId: w.id, at: w.updatedAt }; });
     const shipped = extra('news').map((x) => ({ ...x, type: 'brand', chip: x.from || 'Your team' }));
     const brandSlides = [...topCards, ...waiting, ...shipped, ...t.batches.slice(0, 3).map((b, i) => ({ type: 'brand', chip: 'Your agents, this week', h: b.t, p: `${b.s}.`, agent: b.team ? 'brew' : b.agent, pct: b.pct, st: b.st, at: batches[i]?.at }))].slice(0, 8);
+    /* Recap: what happened since this person was last here (recap.js). No last visit, or nothing since: no ring */
+    const v = t.visit, recapSlides = v?.prev ? buildRecap({ since: v.prev, sinceReal: v.prevReal, when: sinceLabel(v.prev, now(t), B()?.tzMs ?? 5.5 * H), work: t.work, notes: t.notes,
+      cards: ranked.filter((c) => !c.done && !c.loading && !String(c.id).startsWith('r-')), moveDocs: brandOfT(t)?.moveDocs, ledger: t.member ? t.liveLedger : null, base: v.base,
+      moveCard: (n) => ranked.find((c) => moveNo(c.id) === n)?.id || null }) : [];
+    const recapRing = recapSlides.length ? [{ k: 'recap', title: 'Recap', slides: recapSlides, updatedAt: Math.max(...recapSlides.map((x) => x.at || 0)) || null, source: 'Since your last visit', seen: (t.storySeen.recap || 0) >= (v.atReal || v.at || 0) }] : [];
     return [
       ring('brand', SEED.brand.name.length <= 8 ? `${SEED.brand.name} today` : 'Today', brandSlides, { updatedAt: Math.max(0, ...brandSlides.map((x) => x.at || 0)) || null, cover: topCards.find((x) => x.img)?.img, source: 'Your feed, work and results' }),
+      ...recapRing,
       ring('trends', 'Trends', [...trSlides, ...extra('trends')], { updatedAt: lastAt(tr), source: tr?.source, spark: spark(tr?.items?.[0]?.terms?.[0]), loading: !tr && !fails.trends }),
       ring('ads', 'Popular ads', [...adSlides, ...extra('ads')], { updatedAt: lastAt(ads), source: ads?.source, cover: adSlides[0]?.poster, loading: !ads && !fails.ads }),
       ring('news', 'Industry news', newsSlides.slice(0, 10), { updatedAt: lastAt(nw), source: nw?.source, cover: newsSlides.find((x) => x.img)?.img, loading: !nw && !fails.news }),
