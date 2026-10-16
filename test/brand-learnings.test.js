@@ -158,7 +158,7 @@ test('a pasted call updates the brief, memory and system prompt, reports the con
   for (const h of ['\n**Essence**\n', '\n**Goals**\n', '\n**Beliefs**\n', '\n**Facts**\n']) assert.ok(r.reply.includes(h), h);
   assert.match(r.reply, /They are in the brief and Brew’s memory/);
   assert.match(r.reply, /\*\*Not saved: the fact sheet wins on numbers\*\*\n- It says 12 products; Products in the catalog reads 11 from Shopify \(connected\)\. Connected accounts are the source of truth/);
-  assert.match(r.reply, /\*\*Moves\*\*\nRewriting 2 moves this changes \(Move 03 and Move 09\), 10 to 15 minutes\. Then 1 new move from what you told us, once the rewrite is in\. Cards refresh as they land\./);
+  assert.match(r.reply, /\*\*Moves\*\*\n- Rewriting now: Move 03 and Move 09 \(2, 10 to 15 minutes, about \$1\.2\)\.\n- 1 new move from what you told us, once the rewrite is in\./);
   // the same paste again: nothing learned twice, nothing spent
   const n0 = calls.length, again = await L.run(slug, { text: `${CALL}\n`, by: 'Sam' });
   assert.ok(again.dup && again.draft); assert.equal(calls.length, n0, 'no new read'); assert.match(again.reply, /\*\*Already saved on .* by Priya\*\*[\s\S]*1\. A skincare brand[\s\S]*“save”/);
@@ -173,7 +173,7 @@ test('caps: a busy or capped rewrite and a used-up moves budget are said in the 
   const B = { flagStale: builder.flagStale, rewrite: async () => ({ error: 'Today’s budget is used up. Try again tomorrow.' }), busy: () => false };
   const cadence = { due: async () => ({ families: [], why: ['learn: weekly cap $3 (spent $3.00)'] }), runOne: async () => assert.fail('must not run') };
   const r = await saved(createLearnings({ ai: scripted(), packs: P, builder: B, cadence, log: quiet, env: {} }), slug, { text: CALL, by: 'p@glow.in', byShort: 'p@glow.in' });
-  assert.match(r.reply, /2 moves are out of date with this \(Move 03 and Move 09\) and marked to rewrite on the Moves tab, but the rewrite can’t start now: Today’s budget is used up/);
+  assert.match(r.reply, /- The rewrite can’t start now: Today’s budget is used up\. Try again tomorrow\. The moves are marked on the Moves tab\./);
   assert.match(r.reply, /New moves from this wait: this brand's weekly budget for new moves is used up \(\$3 a week\)\./);
   // AI off (mock): the words are read without AI, moves the words point at are flagged, nothing is rewritten or spent
   const ROOT2 = fs.mkdtempSync(path.join(os.tmpdir(), 'learn-')), b2 = await brand(ROOT2); let rewrote = false;
@@ -243,16 +243,16 @@ test('cards follow a rewritten move in an open workspace: replaced, and a card t
   assert.deepEqual(out.replaced, ['m03-1']); assert.deepEqual(expired, ['m03-2']); assert.equal(cards.get('m03-1').title, 'new 1'); assert.equal(cards.get('m09-1').state, 'ready');
 });
 
-test('first learnings: more moves than the usual limit wait for a yes, with a warning; later learnings rewrite up to the limit', async () => {
+test('first learnings: past the upload’s dollar cap they wait for a yes, with the cost; later learnings rewrite within the cap', async () => {
   const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'learn-')), { P, builder, slug } = await brand(ROOT); const asked = [];
   const B = { flagStale: builder.flagStale, rewrite: async (s, ns) => { asked.push(ns); return { ok: true, n: ns.length, est: 2 }; }, busy: () => false };
-  const L = createLearnings({ ai: scripted(), packs: P, builder: B, log: quiet, env: { LEARN_REWRITE_MAX: '1' } }); /* a limit of 1, so the call's 2 moves go over it */
+  const L = createLearnings({ ai: scripted(), packs: P, builder: B, log: quiet, env: { LEARN_CAP_USD: '0.6', LEARN_MOVE_EST_USD: '0.6' } }); /* a cap of one move, so the call's 2 moves go over it */
   const r = await saved(L, slug, { text: CALL, by: 'p@glow.in', byShort: 'p@glow.in' });
   assert.equal(asked.length, 0, 'nothing starts before the yes');
-  assert.match(r.reply, /first time Glow has shared learnings, so Brew can refresh every move they change: 2 moves \(Move 03 and Move 09\)/);
-  assert.match(r.reply, /Reply “go ahead” to refresh all 2, or “just the top 6”/);
+  assert.match(r.reply, /- 2 moves change in a way that matters \(Move 03 and Move 09\)\. Rewriting all of them costs about \$1\.2, over the \$0\.6 an upload spends on its own\./);
+  assert.match(r.reply, /Reply “go ahead” to rewrite all 2 \(10 to 15 minutes\), or “just the top ones” for the 1 that matter most, within \$0\.6\./);
   assert.equal(await L.confirm(slug, 'what about the ads?'), null, 'anything else is a normal chat');
-  const c = await L.confirm(slug, 'just the top 6 please'); assert.deepEqual(asked, [[3]]); assert.match(c.reply, /Refreshing 1 move/);
+  const c = await L.confirm(slug, 'just the top ones please'); assert.deepEqual(asked, [[3]]); assert.match(c.reply, /Refreshing 1 move/);
   assert.equal(await L.confirm(slug, 'go ahead'), null, 'answered once');
   // a second, different paste: not the first any more, so up to the limit rewrites straight away
   const r2 = await saved(L, slug, { text: CALL.replace('12 Oct', '19 Oct') + '\nPriya (founder): We also never discount below 20 percent.', by: 'p@glow.in', byShort: 'p@glow.in' });
@@ -262,10 +262,10 @@ test('first learnings: more moves than the usual limit wait for a yes, with a wa
 test('the setup box (ask: false): the first learnings rewrite the top moves now and mark the rest, with no warning to answer', async () => {
   const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'learn-')), { P, builder, slug } = await brand(ROOT); const asked = [];
   const B = { flagStale: builder.flagStale, rewrite: async (s, ns) => { asked.push(ns); return { ok: true, n: ns.length, est: 2 }; }, busy: () => false };
-  const L = createLearnings({ ai: scripted(), packs: P, builder: B, log: quiet, env: { LEARN_REWRITE_MAX: '1' } });
+  const L = createLearnings({ ai: scripted(), packs: P, builder: B, log: quiet, env: { LEARN_CAP_USD: '0.6', LEARN_MOVE_EST_USD: '0.6' } });
   const r = await L.run(slug, { text: CALL, by: 'p@glow.in', byShort: 'p@glow.in', why: 'setup', ask: false });
   assert.deepEqual(asked, [[3]], 'the most affected move rewrites straight away');
-  assert.ok(!/first time|go ahead/.test(r.reply)); assert.match(r.reply, /marked to rewrite on the Moves tab \(Move 09\)/);
+  assert.ok(!/first time|go ahead/.test(r.reply)); assert.match(r.reply, /- In the weekly run: Move 09 \(past this upload’s budget\)\./);
   assert.equal(await L.confirm(slug, 'go ahead'), null, 'nothing waits for a yes');
 });
 
@@ -286,4 +286,39 @@ test('the draft: nothing is saved until "save"; drop, change and add edit it; ca
   // cancel: a new paste, then cancel, saves nothing
   await L.run(slug, { text: CALL.replace('12 Oct', '21 Oct') + '\nPriya (founder): Our hero is the Clear Gel at ₹499.', by: 'a' });
   const c = await L.review(slug, 'cancel'); assert.match(c.reply, /nothing was saved/); assert.equal((await P.getJSON(slug, 'learned.json')).sources.length, 1);
+});
+
+test('an upload: moves by impact within the dollar cap (no count limit), the rest to the weekly run; the feed changes at once', async () => {
+  const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'learn-')), { P, builder, slug } = await brand(ROOT), asked = [], added = [];
+  const seed = await P.getJSON(slug, 'seed.json');
+  seed.posts = [{ id: 'm03-1', agent: 'brew', sector: 'creatives', type: 'idea', lane: 'core', title: 'Run before-and-after ads', sub: 'Show the skin change in two photos.', detail: { why: ['x'], how: ['y'] } },
+    { id: 'm09-1', agent: 'brew', sector: 'signals', type: 'idea', lane: 'core', title: 'Plan the November serum launch', sub: 'Put the Night Repair Serum first in Q4.', detail: { why: ['x'], how: ['y'] } }];
+  await P.put(slug, 'seed.json', seed);
+  /* move 12 was rewritten an hour ago: it waits for the weekly run instead of paying twice */
+  const mv = await P.getJSON(slug, 'moves.json'); mv[12].meta = { rewrittenAt: new Date(Date.now() - 3600e3).toISOString() }; mv[20] = { n: 20, title: 'Reviews', sections: [{ h: 'Why', blocks: [{ t: 'p', text: 'x' }] }] }; await P.put(slug, 'moves.json', mv);
+  const ai = scripted(); const call0 = ai.call;
+  ai.call = async (o) => o.tag !== 'learn-plan' ? call0(o) : { usd: 0.01, json: {
+    stale: [{ n: 9, impact: 'medium', why: 'The launch comes first.', uses: [1] }, { n: 3, impact: 'high', why: 'Before-and-after photos are ruled out.', uses: [2] }, { n: 12, impact: 'high', why: 'x', uses: [] }, { n: 20, impact: 'low', why: 'A small change.', uses: [] }],
+    fresh: [], cards: { up: [{ id: 'm09-1', why: 'The team puts the November launch first.' }], hide: [{ id: 'm03-1', why: 'The team never shows before-and-after photos.' }, { id: 'nope', why: 'not a card' }],
+      add: [{ title: 'Line up the Night Repair Serum launch', sub: 'The team plans it for November at ₹899. Start the waitlist now.', why: ['Their goal this quarter'], how: ['Open a waitlist'], sector: 'signals', uses: [1] }] } } };
+  const B = { flagStale: builder.flagStale, rewrite: async (s, ns, o) => { asked.push([ns, o.via]); return { ok: true }; }, busy: () => false };
+  const L = createLearnings({ ai, packs: P, builder: B, feed: { addCards: async (s, cs) => added.push(...cs) }, log: quiet, env: {}, onPack: async (s) => P.drop(s) });
+  const r = await saved(L, slug, { text: CALL, by: 'p@glow.in', byShort: 'Priya' });
+  assert.deepEqual(asked, [[[3, 9], 'learnings']], 'high first, then medium; a low one and a fresh one wait');
+  assert.match(r.reply, /- Rewriting now: Move 03 and Move 09 \(2, 10 to 15 minutes, about \$1\.2\)\./);
+  assert.match(r.reply, /- In the weekly run: Move 12 and Move 20 \(rewritten in the last day, a small change\)\./);
+  const st = (await P.getJSON(slug, 'updates.json')).stale;
+  assert.equal(st[20].weekly, true); assert.equal(st[12].weekly, true); assert.equal(st[3].weekly, false); assert.equal(st[20].via, 'learnings');
+  // the feed, at once
+  assert.match(r.reply, /\*\*Your feed, now\*\*\n- New on the feed, from what Glow’s team told us: “Line up the Night Repair Serum launch”\n- Moved up: “Plan the November serum launch”\. The team puts the November launch first\.\n- Off the top of the feed: “Run before-and-after ads”\. The team never shows before-and-after photos\./);
+  assert.equal(added.length, 1); assert.equal(added[0].src, 'From what Glow’s team told us'); assert.match(added[0].id, /^told-/);
+  const b = await P.load(slug, { fresh: true });
+  assert.ok(b.learnedHide.has('m03-1') && b.learnedUp.has('m09-1') && b.teamCards.has(added[0].id));
+  assert.ok(b.seed.posts.some((x) => x.id === added[0].id), 'a new workspace gets the team card too');
+  assert.equal(b.notes['m09-1'], 'From what Glow’s team told us: The team puts the November launch first.');
+  // bring a hidden card back
+  const back = await L.confirm(slug, 'bring back the before-and-after ads card');
+  assert.match(back.reply, /Back on the feed: “Run before-and-after ads”/);
+  assert.equal((await P.load(slug, { fresh: true })).learnedHide.has('m03-1'), false);
+  assert.equal(await L.confirm(slug, 'bring back the moon'), null, 'no such card: a normal chat');
 });

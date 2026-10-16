@@ -102,3 +102,9 @@ test('the first connected account rewrites every move once; a later one only the
   const email = CONNECTED_MOVES.paid.filter((n) => STORE.includes(n));
   assert.deepEqual([...runs.at(-1)].sort((a, z) => a - z), email.sort((a, z) => a - z), 'a later account: only its own moves, never the whole set');
 });
+
+test('the weekly run also takes what learnings flagged for it (a small change, a fresh move, past an upload’s cap)', async () => {
+  const { b, P, slug } = await brand();
+  await P.put(slug, 'updates.json', { stale: { 4: { n: 4, priority: 'medium', via: 'learnings', weekly: true, why: 'What the team told us: a small change.' } } });
+  const r = await b.liveWeekly(slug); assert.deepEqual(r.ns, [4]);
+});

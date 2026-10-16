@@ -172,7 +172,7 @@ test('tuning persists per person per brand; the ranker reads it', async () => {
   assert.equal((await T2.get('acme', 'mb_2')).weights.performance, 'normal'); assert.equal(T2.peek('acme', 'mb_1').weights.performance, 'less');
   await T2.unignore('acme', 'mb_1', 'like:agent:creative'); assert.deepEqual((await T2.get('acme', 'mb_1')).ignored, []);
   const s = src('feed-service.js');
-  assert.match(s, /const total = val \+ seat \+ aff \+ fresh \+ fatigue \+ fb \+ extra \+ behind \+ tune;/);
+  assert.match(s, /const total = val \+ seat \+ aff \+ fresh \+ fatigue \+ fb \+ extra \+ behind \+ tune\b/);
   assert.match(s, /withoutIgnored\(affinityMap\(t\)\.a, t\.fewer, tu\?\.ignored\)/);
   assert.match(s, /on\('PUT', '\/api\/tenants\/:id\/tuning'/); assert.match(s, /on\('DELETE', '\/api\/tenants\/:id\/tuning\/signals\/:sid'/);
 });

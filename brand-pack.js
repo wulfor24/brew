@@ -222,6 +222,11 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
     /* listening and the ideas stream (social-feed.js): every brand gets them at load, no rebuild; a brand without them gets nothing */
     const social = process.env.SOCIAL_CARDS === '0' ? null : await readSocial({ getJSON }, slug).catch((e) => { log.warn('[packs] social', slug, e.message); return null; });
     if (seed.connectors) seed.connectors = prototypeConnectors(seed.connectors);
+    /* what the team told Brew, on the feed (brand-learnings.js): its new cards join the seed, a card it lifts carries the reason as
+       its margin note (for three weeks), and a card it contradicts steps off the top (the ranker reads learnedHide) */
+    const LC = learned?.cards || {}, upFresh = Object.entries(LC.up || {}).filter(([, x]) => Date.now() - (x.at || 0) < 21 * 864e5), teamName = seed.brand?.name || profile?.name || slug;
+    if ((LC.add || []).length) { const have = new Set((seed.posts || []).map((x) => x.id)); seed.posts = [...LC.add.filter((x) => x?.id && !have.has(x.id)), ...(seed.posts || [])]; }
+    const toldNotes = Object.fromEntries(upFresh.map(([id, x]) => [id, `From what ${teamName}’s team told us: ${x.why}`]));
     const seedD = moveBadges(fitCards(withDemo(fitPhotos(socialize(visualize(seed, { slug, config, staticText: statics, profile }), social), profile), demo), { profile, config, seed }), moves, staleMoves);
     return finish({
       slug, kind: 'generated', ready: !!status.ready, status, demo, numbers,
@@ -237,7 +242,8 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
       moveValue, // each move's grade for the ranker (value.js)
       staleMoves, // moves the evidence has overtaken, waiting for their rewrite: their cards step back (feed-service score)
       learnedMoves: learnedMoveNs(moves, learned), learnedTerms: learnedTerms(learned, (seed.posts || []).map((x) => [x.title, x.sub, ...(x.detail?.why || []), ...(x.detail?.how || [])].join(' '))), // moves that rest on what the team told Brew: the ranker lifts their cards (feed-service score)
-      notes: notesJ?.notes || {}, // margin notes written for this brand's cards (notes.js)
+      notes: { ...(notesJ?.notes || {}), ...toldNotes }, // margin notes written for this brand's cards (notes.js), and why the team's words lifted one
+      learnedUp: new Set(upFresh.map(([id]) => id)), learnedHide: new Set(Object.keys(LC.hide || {})), teamCards: new Set((LC.add || []).map((x) => x.id)), // the ranker: lift, step back, and the team's own cards first
       firstDrafts, // first drafts made in the background (drafts-bg.js), seeded into a card's jam
       client: { facts: `b/${slug}/facts.js`, seed: `b/${slug}/seed.js` }
     });

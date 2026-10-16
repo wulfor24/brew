@@ -207,13 +207,30 @@ export function learnedMoveNs(moves = {}, L = null) {
   return new Set(Object.entries(moves || {}).filter(([n, m]) => +n > 0 && m && (Date.parse(m.meta?.at || 0) || 0) >= since && TEAM_CITE.test(JSON.stringify([m.title, m.gives, m.sections, m.sources]))).map(([n]) => +n));
 }
 
+/* ---------- cards: what the plan may do to the feed, checked: only cards that exist, never one both up and hidden ---------- */
+export function vetCardPlan(c = {}, cards = [], items = []) {
+  const have = new Map(cards.map((x) => [x.id, x])), seen = new Set();
+  const pick = (xs, max) => (xs || []).filter((x) => x?.id && have.has(x.id) && !seen.has(x.id) && seen.add(x.id)).slice(0, max).map((x) => ({ id: x.id, title: have.get(x.id).title, why: cut(x.why, 200) }));
+  const hide = pick(c?.hide, 8), up = pick(c?.up, 8);
+  const add = (c?.add || []).filter((x) => x?.title && x?.sub).slice(0, 3).map((x) => ({ title: cut(x.title, 90), sub: cut(x.sub, 320), why: (x.why || []).map((w) => cut(w, 110)).filter(Boolean).slice(0, 3), how: (x.how || []).map((w) => cut(w, 110)).filter(Boolean).slice(0, 3),
+    sector: ['signals', 'creatives', 'storefront', 'visibility', 'ads', 'catalog'].includes(x.sector) ? x.sector : 'signals', uses: (x.uses || []).filter((i) => items[i]).slice(0, 3) }));
+  return { up, hide, add };
+}
+/* the feed cards a learning made, in the shape every card has (a rows card: what the team said, where it came from) */
+export function teamCards(add = [], { name = 'the brand', hash = '', label = '', items = [], at = Date.now() } = {}) {
+  return add.map((x, i) => ({ id: `told-${String(hash).slice(0, 8)}-${i + 1}`, agent: 'brew', sector: x.sector || 'signals', type: 'idea', lane: 'combo', roles: ['founder', 'growth', 'brand', 'ecom', 'crm'], origin: 'told', told: true,
+    src: `From what ${name}’s team told us`, time: '1 min', kind: 'rows', title: x.title, sub: x.sub,
+    rows: [['The team said', cut(items[x.uses?.[0]]?.text || x.why?.[0] || '', 120)], ['From', cut(label, 80)]].filter(([, v]) => v),
+    detail: { why: x.why?.length ? x.why : [cut(x.sub, 110)], how: x.how?.length ? x.how : ['Open a jam on it'] }, cta: { label: 'Work on this' }, at }));
+}
+
 /* ---------- moves: which ones the learnings change, without AI (words they share) ---------- */
 export function planLocal(items = [], moves = {}, { max = 50 } = {}) {
   const cand = Object.entries(moves || {}).filter(([n, m]) => +n >= 1 && +n <= 50 && m?.title && !m.meta?.cadence);
   const scored = cand.map(([n, m]) => { const mt = new Set(words(`${m.title} ${m.gives || ''}`)); let best = 0, uses = [];
     items.forEach((x, i) => { const hit = words(x.text).filter((w) => w.length >= 5 && mt.has(w)).length; if (hit >= 3) { uses.push(i); best = Math.max(best, hit); } });
     return { n: +n, score: best, uses }; }).filter((x) => x.score >= 3).sort((a, b) => b.score - a.score).slice(0, max);
-  return { stale: scored.map((x) => ({ n: x.n, why: `It works on what the team just spoke about: ${cut(items[x.uses[0]].text, 140)}`, uses: x.uses.slice(0, 4) })), fresh: [] };
+  return { cards: { up: [], hide: [], add: [] }, stale: scored.map((x) => ({ n: x.n, impact: x.score >= 5 ? 'high' : 'medium', why: `It works on what the team just spoke about: ${cut(items[x.uses[0]].text, 140)}`, uses: x.uses.slice(0, 4) })), fresh: [] };
 }
 
 /* ---------- the reply ---------- */
@@ -242,20 +259,31 @@ export function replyText(r) {
     out.push('', `**${HEAD[BUCKET[k]]}**`, ...xs.slice(0, 4).map((x) => `- ${x.text}`), ...(xs.length > 4 ? [`- and ${xs.length - 4} more`] : [])); }
   if (r.conflicts.length) { out.push('', '**Not saved: the fact sheet wins on numbers**');
     for (const c of r.conflicts.slice(0, 4)) out.push(`- It says ${cut(c.conflictSays || c.text, 90)}; ${c.fact.label} reads ${c.fact.v} from ${c.fact.src}.${c.fact.connected ? ' Connected accounts are the source of truth for their numbers.' : ' If the new number is right, fix it on the fact sheet with a link.'}`); }
+  const cl = cardsLine(r.cards || {}, r.name); if (cl) out.push('', '**Your feed, now**', cl);
   if (n) out.push('', '**Moves**', movesLine(r.moves || {}, r.name));
   return out.join('\n');
 }
 function movesLine(m, name = 'the brand') {
   const ns = (xs) => listAnd(xs.map((n) => `Move ${pad(n)}`));
-  const parts = [];
   const mins = (k) => (k <= 2 ? '10 to 15 minutes' : k <= 6 ? '15 to 20 minutes' : k <= 18 ? 'about 30 to 45 minutes' : 'about an hour'); /* six at a time */
-  if (m.pending?.ns?.length) parts.push(`This is the first time ${name} has shared learnings, so Brew can refresh every move they change: ${m.pending.ns.length} moves (${ns(m.pending.ns)}). \n- Time: ${mins(m.pending.ns.length)}\n- Cost: about $${m.pending.est}\n- After this, new learnings refresh up to ${6} moves at a time\n\nReply “go ahead” to refresh all ${m.pending.ns.length}, or “just the top 6” for the six most affected.`);
-  else if (m.rewrite?.ns?.length) parts.push(`${m.rewrite.queued ? 'First in line once the work running now finishes: rewriting' : 'Rewriting'} ${m.rewrite.ns.length} move${m.rewrite.ns.length === 1 ? '' : 's'} this changes (${ns(m.rewrite.ns)}), ${mins(m.rewrite.ns.length)}.${m.flaggedOnly?.length ? ` ${m.flaggedOnly.length} more ${m.flaggedOnly.length === 1 ? 'is' : 'are'} marked to rewrite on the Moves tab (${ns(m.flaggedOnly)}).` : ''}`);
-  else if (m.stale?.length) parts.push(`${m.stale.length} move${m.stale.length === 1 ? ' is' : 's are'} out of date with this (${ns(m.stale.map((s) => s.n))}) and marked to rewrite on the Moves tab${m.rewrite?.error ? `, but the rewrite can’t start now: ${m.rewrite.error.replace(/\.$/, '')}.` : m.rewrite?.off ? ` (AI is off on this server, so nothing was rewritten).` : '.'}`);
-  if (m.learn?.n) parts.push(`${parts.length ? 'Then ' : ''}${m.learn.n} new move${m.learn.n === 1 ? '' : 's'} from what you told us${m.learn.after ? ', once the rewrite is in' : ', about 5 minutes'}.`);
-  else if (m.learn?.why) parts.push(`New moves from this wait: ${capWhy(m.learn.why)}.`);
-  if (!parts.length) return 'Nothing in this changes the current moves.';
-  return `${parts.join(' ')}${m.rewrite?.ns?.length || m.learn?.n ? ' Cards refresh as they land.' : ''}`;
+  const out = [];
+  if (m.pending?.ns?.length) out.push(`- ${m.pending.ns.length} moves change in a way that matters (${ns(m.pending.ns)}). Rewriting all of them costs about $${m.pending.est}, over the $${m.pending.cap} an upload spends on its own.`, `- Reply “go ahead” to rewrite all ${m.pending.ns.length} (${mins(m.pending.ns.length)}), or “just the top ones” for the ${m.pending.top.length} that matter most, within $${m.pending.cap}.`);
+  else if (m.rewrite?.ns?.length) out.push(`- ${m.rewrite.queued ? 'First in line once the work running now finishes: rewriting' : 'Rewriting now'}: ${ns(m.rewrite.ns)} (${m.rewrite.ns.length}, ${mins(m.rewrite.ns.length)}, about $${m.rewrite.est}).`);
+  else if (m.rewrite?.error) out.push(`- The rewrite can’t start now: ${m.rewrite.error.replace(/\.$/, '')}. The moves are marked on the Moves tab.`);
+  else if (m.rewrite?.off) out.push('- AI is off on this server, so nothing was rewritten. The moves are marked on the Moves tab.');
+  const w = m.weekly || [], why = { low: 'a small change', recent: 'rewritten in the last day', cap: 'past this upload’s budget' };
+  if (w.length) out.push(`- In the weekly run: ${ns(w.map((x) => x.n))} (${[...new Set(w.map((x) => why[x.wait]))].join(', ')}). Each is marked with what the team said.`);
+  if (m.learn?.n) out.push(`- ${m.learn.n} new move${m.learn.n === 1 ? '' : 's'} from what you told us${m.learn.after ? ', once the rewrite is in' : ', about 5 minutes'}.`);
+  else if (m.learn?.why?.length) out.push(`- New moves from this wait: ${capWhy(m.learn.why)}.`);
+  return out.length ? out.join('\n') : 'Nothing in this changes the current moves.';
+}
+function cardsLine(c = {}, name = 'the brand') {
+  const q = (x) => `“${cut(x.title, 70)}”`, out = [];
+  if (c.add?.length) out.push(`- New on the feed, from what ${name}’s team told us: ${c.add.map(q).join(', ')}`);
+  for (const x of (c.up || []).slice(0, 5)) out.push(`- Moved up: ${q(x)}. ${x.why}`);
+  for (const x of (c.hide || []).slice(0, 5)) out.push(`- Off the top of the feed: ${q(x)}. ${x.why}`);
+  if (c.hide?.length) out.push('- Say “bring back” and the card’s name to put one back.');
+  return out.join('\n');
 }
 
 /* ---------- prompts ---------- */
@@ -283,17 +311,27 @@ INPUT:
 ${chunk}
 """`;
 }
+const IMPACT = { type: 'string', enum: ['high', 'medium', 'low'], description: 'high: the move now recommends something the team ruled out, said did not work, or builds on a wrong product, price or goal. medium: it should use what they said (a winner to build on, a goal to put first) but is not wrong. low: worth folding in next time, nothing urgent' };
+const PICK = { type: 'object', properties: { id: S, why: { type: 'string', description: 'One plain sentence naming what the team said' } } };
 export const PLAN_SCHEMA = { type: 'object', properties: {
-  stale: { type: 'array', description: 'Every move these learnings change, as many as they really touch (none to all of them), the most affected first', items: { type: 'object', properties: { n: { type: 'integer' }, why: { type: 'string', description: 'One plain sentence: what in the learnings changes this move' }, uses: { type: 'array', items: { type: 'integer' }, description: 'the learning numbers it rests on' } } } },
-  fresh: { type: 'array', description: 'New moves the learnings open that no current move covers (0 to 3)', items: { type: 'object', properties: { title: S, why: { type: 'string', description: 'One sentence, naming the learning it comes from' } } } } } };
-export function planPrompt({ name, items, moves }) {
+  stale: { type: 'array', description: 'Every move these learnings change, as many as they really touch (none to all of them), the most affected first', items: { type: 'object', properties: { n: { type: 'integer' }, impact: IMPACT, why: { type: 'string', description: 'One plain sentence: what in the learnings changes this move' }, uses: { type: 'array', items: { type: 'integer' }, description: 'the learning numbers it rests on' } } } },
+  fresh: { type: 'array', description: 'New moves the learnings open that no current move covers (0 to 3)', items: { type: 'object', properties: { title: S, why: { type: 'string', description: 'One sentence, naming the learning it comes from' } } } },
+  cards: { type: 'object', properties: {
+    up: { type: 'array', description: 'Cards (by id, from the list) that build on what the team said and should come first (0 to 8)', items: PICK },
+    hide: { type: 'array', description: 'Cards (by id, from the list) that contradict what the team said: something they said did not work, never do, or a product or goal they ruled out (0 to 8). Only a clear contradiction', items: PICK },
+    add: { type: 'array', description: 'New cards that act on what the team said right now, each resting on one learning (1 to 3; 0 only when nothing in the learnings can be acted on)', items: { type: 'object', properties: {
+      title: { type: 'string', description: 'What to do, under 12 words, in the brand team’s words where possible' }, sub: { type: 'string', description: 'Two plain sentences: what to do and why, quoting what the team said. No number the learnings do not state' },
+      why: { type: 'array', items: S, description: '2 or 3 short reasons, each from the learnings' }, how: { type: 'array', items: S, description: '2 or 3 short steps' },
+      sector: { type: 'string', enum: ['signals', 'creatives', 'storefront', 'visibility', 'ads', 'catalog'] }, uses: { type: 'array', items: { type: 'integer' }, description: 'the learning numbers it rests on' } } } } } } } };
+export function planPrompt({ name, items, moves, cards = [] }) {
   const ms = Object.entries(moves || {}).filter(([n, m]) => +n >= 1 && m?.title).map(([n, m]) => `${n} | ${cut(m.title, 90)} | ${cut(m.gives || m.stat || '', 140)}${m.meta?.cadence ? ' | (weekly move)' : ''}`);
-  return `${name}'s team just told Brew these learnings:\n${items.map((x, i) => `${i}. [${x.kind}] ${x.text}`).join('\n')}\n\nBrew's current moves for ${name} (number | title | what it gives):\n${ms.join('\n')}\n\nDecide:\n- stale: the moves these learnings make out of date: a goal changes what comes first, a belief rules out what the move proposes, a fact changes a product, price, launch or audience the move relies on. Include every move the learnings really change: what works for them, what does not, what they believe, their goals, a product or price, an audience. That can be many or all of them. A move the learnings do not touch stays as it is. Never a weekly move.\n- fresh: what the learnings open that no move covers yet (a goal, a launch, a belief to build on). Empty when the current moves already cover it.\nNever invent anything the learnings do not say.`;
+  const cs = cards.slice(0, 80).map((c) => `${c.id} | ${cut(c.title, 90)} | ${cut(c.sub, 140)}`);
+  return `${name}'s team just told Brew these learnings:\n${items.map((x, i) => `${i}. [${x.kind}] ${x.text}`).join('\n')}\n\nBrew's current moves for ${name} (number | title | what it gives):\n${ms.join('\n')}\n${cs.length ? `\nThe cards on ${name}'s feed now (id | title | what it says):\n${cs.join('\n')}\n` : ''}\nDecide:\n- stale: the moves these learnings make out of date: a goal changes what comes first, a belief rules out what the move proposes, a fact changes a product, price, launch or audience the move relies on, something they tried says the move repeats a failure or should build on a winner. Include every move the learnings really change; that can be many or all of them. Rate each one's impact honestly: high only when the move is now wrong. A move the learnings do not touch stays as it is. Never a weekly move.\n- fresh: what the learnings open that no move covers yet (a goal, a launch, a belief to build on). Empty when the current moves already cover it.\n- cards.up / cards.hide: from the card list only, by id. hide only a clear contradiction.\n- cards.add: 1 to 3 cards the team can act on today from what they said (build on what worked, put their goal first). Each rests on a learning.\nNever invent anything the learnings do not say.`;
 }
 
 /* ---------- the run ---------- */
-export function createLearnings({ ai = null, packs, memory = null, builder = null, cadence = null, onPack = async () => {}, log = console, now = () => Date.now(), env = process.env, wait = (ms) => new Promise((r) => setTimeout(r, ms).unref?.()) } = {}) {
-  const MAX_CHARS = +env.LEARN_MAX_CHARS || 120000, CHUNK = +env.LEARN_CHUNK_CHARS || 14000, REWRITE_MAX = env.LEARN_REWRITE_MAX != null && env.LEARN_REWRITE_MAX !== '' ? +env.LEARN_REWRITE_MAX : 6, /* later learnings rewrite up to 6; the first ones may refresh every move they change, after a warning */ DAY_MAX = +env.LEARN_DAY_MAX || 12;
+export function createLearnings({ ai = null, packs, memory = null, builder = null, cadence = null, feed = null, onPack = async () => {}, log = console, now = () => Date.now(), env = process.env, wait = (ms) => new Promise((r) => setTimeout(r, ms).unref?.()) } = {}) {
+  const MAX_CHARS = +env.LEARN_MAX_CHARS || 120000, CHUNK = +env.LEARN_CHUNK_CHARS || 14000, LEARN_CAP = +env.LEARN_CAP_USD || 30, EST = +env.LEARN_MOVE_EST_USD || 0.6, FRESH_MS = +(env.LEARN_FRESH_MS ?? 24 * 3600e3), /* an upload rewrites every move it really changes, up to LEARN_CAP dollars (EST a move); one rewritten in the last day waits for the weekly run */ DAY_MAX = +env.LEARN_DAY_MAX || 12;
   const locks = new Map(); const serial = (slug, f) => { const p = (locks.get(slug) || Promise.resolve()).then(f, f); locks.set(slug, p.catch(() => {})); return p; };
   const live = () => !!ai?.live;
 
@@ -308,11 +346,11 @@ export function createLearnings({ ai = null, packs, memory = null, builder = nul
     }
     return { items: mergeLearnings(lists), usd: box.usd, parts: parts.length };
   }
-  async function plan({ name, items, moves }) {
-    const r = await ai.call({ model: 'sonnet', tag: 'learn-plan', max: 3000, effort: 'low', schema: PLAN_SCHEMA, prompt: planPrompt({ name, items, moves }) });
+  async function plan({ name, items, moves, cards = [] }) {
+    const r = await ai.call({ model: 'sonnet', tag: 'learn-plan', max: 5000, effort: 'low', schema: PLAN_SCHEMA, prompt: planPrompt({ name, items, moves, cards }) });
     const ok = (n) => +n >= 1 && +n <= 50 && moves[n] && !moves[n].meta?.cadence;
-    const stale = []; for (const s of r.json?.stale || []) if (ok(s.n) && !stale.some((x) => x.n === +s.n)) stale.push({ n: +s.n, why: cut(s.why, 220), uses: (s.uses || []).filter((i) => items[i]).slice(0, 4) });
-    return { stale, fresh: (r.json?.fresh || []).filter((x) => x?.title).slice(0, 3).map((x) => ({ title: cut(x.title, 90), why: cut(x.why, 220) })), usd: r.usd || 0 };
+    const stale = []; for (const s of r.json?.stale || []) if (ok(s.n) && !stale.some((x) => x.n === +s.n)) stale.push({ n: +s.n, impact: ['high', 'medium', 'low'].includes(s.impact) ? s.impact : 'medium', why: cut(s.why, 220), uses: (s.uses || []).filter((i) => items[i]).slice(0, 4) });
+    return { stale, fresh: (r.json?.fresh || []).filter((x) => x?.title).slice(0, 3).map((x) => ({ title: cut(x.title, 90), why: cut(x.why, 220) })), cards: vetCardPlan(r.json?.cards, cards, items), usd: r.usd || 0 };
   }
   // the new moves run once the rewrite is in (both write moves.json), in the background
   const afterRewrite = (slug, hints) => (async () => { for (let i = 0; i < 270 && builder?.busy?.(slug); i++) await wait(20e3);
@@ -374,29 +412,51 @@ export function createLearnings({ ai = null, packs, memory = null, builder = nul
         if (memory?.addFacts) await memory.addFacts(slug, applied.map((x) => ({ text: x.text, topic: memTopic(x), source: { kind: 'team', label, ref: hash } })), { by: 'learnings', infer: live() ? true : 'local' }).catch((e) => log.warn?.('[learn] memory', slug, e.message));
         await onPack(slug);
       }
-      // 3. moves
-      const moves = { stale: [], rewrite: null, flaggedOnly: [], learn: null };
+      // 3. moves and cards: one plan says which moves change (and how much) and what the feed does now
+      const moves = { stale: [], rewrite: null, weekly: [], learn: null }, cards = { up: [], hide: [], add: [] };
       if (applied.length && p?.kind === 'generated') {
-        const docs = await packs.getJSON(slug, 'moves.json', {}).catch(() => ({}));
+        const docs = await packs.getJSON(slug, 'moves.json', {}).catch(() => ({})), priv = await packs.getJSON(slug, 'private/moves.json', {}).catch(() => ({}));
+        const feedCards = (p.rawSeed?.posts || p.seed?.posts || []).filter((c) => c?.id && c.title && !String(c.id).startsWith('told-'));
         let pl = null;
-        if (live() && Object.keys(docs).length) { try { pl = await plan({ name, items: applied, moves: docs }); usd += pl.usd; } catch (e) { if (!e.mock) log.warn?.('[learn] plan', slug, e.message); } }
+        if (live() && Object.keys(docs).length) { try { pl = await plan({ name, items: applied, moves: docs, cards: feedCards }); usd += pl.usd; } catch (e) { if (!e.mock) log.warn?.('[learn] plan', slug, e.message); } }
         pl ||= planLocal(applied, docs);
         moves.stale = pl.stale;
-        if (pl.stale.length && builder?.flagStale) await builder.flagStale(slug, pl.stale.map((s) => ({ n: s.n, priority: 'high', why: `What the team told us (${label}): ${s.why}`, changes: s.uses.map((i) => `Learned: ${cut(applied[i]?.text, 160)}`).filter((x) => x.length > 9), via: 'learnings' }))).catch((e) => log.warn?.('[learn] flag', e.message));
-        if (ask && first && pl.stale.length > REWRITE_MAX && live() && builder?.rewrite) {
-          /* the first learnings can refresh every move they change: warn first (time and cost), start only on a yes */
-          const ns = pl.stale.map((s) => s.n); L.pendingFull = { ns, top: ns.slice(0, REWRITE_MAX), at: t0, label }; await packs.put(slug, 'learned.json', L);
-          moves.pending = { ns, est: Math.round(ns.length * 0.6) };
-        } else if (pl.stale.length && live() && builder?.rewrite && REWRITE_MAX > 0) {
-          const ns = pl.stale.slice(0, REWRITE_MAX).map((s) => s.n), r = await builder.rewrite(slug, ns, { via: 'learnings' }).catch((e) => ({ error: e.message })); /* first in the queue, never turned away */
-          moves.rewrite = r?.error ? { error: r.error } : { ns, est: r?.est, queued: !!r?.queued }; if (!r?.error) moves.flaggedOnly = pl.stale.slice(REWRITE_MAX).map((s) => s.n);
-        } else if (pl.stale.length) moves.rewrite = live() ? { error: 'rewrites are switched off here' } : { off: true };
+        /* the feed, at once: cards that build on it come first, cards it contradicts step off the top (each with its reason), and
+           1-3 new cards act on it today. Kept in learned.json (brand-pack.js and the ranker read it), so every workspace follows */
+        const made = teamCards(pl.cards?.add || [], { name, hash, label, items: applied, at: t0 });
+        if (made.length || pl.cards?.up?.length || pl.cards?.hide?.length) {
+          const C = L.cards || { up: {}, hide: {}, add: [] };
+          for (const x of pl.cards.up || []) { C.up[x.id] = { why: x.why, title: x.title, at: t0, hash }; delete C.hide[x.id]; }
+          for (const x of pl.cards.hide || []) { C.hide[x.id] = { why: x.why, title: x.title, at: t0, hash }; delete C.up[x.id]; }
+          C.add = [...made, ...(C.add || [])].slice(0, 6);
+          L.cards = C; await packs.put(slug, 'learned.json', L); await onPack(slug);
+          if (made.length) await feed?.addCards?.(slug, made);
+          Object.assign(cards, { up: pl.cards.up || [], hide: pl.cards.hide || [], add: made });
+        }
+        /* which moves are rewritten now: every high and medium one, most affected first, up to the upload's dollar cap. A low one,
+           one rewritten in the last day and one past the cap wait for the weekly run (flagged weekly). Never a count limit */
+        const at = (n) => Math.max(Date.parse(docs[n]?.meta?.rewrittenAt || 0) || 0, Date.parse(priv?.[n]?.meta?.rewrittenAt || 0) || 0), recent = (n) => t0 - at(n) < FRESH_MS;
+        const rank = { high: 0, medium: 1, low: 2 }, sorted = [...pl.stale].sort((x, y) => rank[x.impact] - rank[y.impact]);
+        const want = sorted.filter((s) => s.impact !== 'low' && !recent(s.n)), fit = Math.max(1, Math.floor(LEARN_CAP / EST)), nowL = want.slice(0, fit);
+        const later = sorted.filter((s) => !nowL.includes(s)).map((s) => ({ ...s, wait: s.impact === 'low' ? 'low' : recent(s.n) ? 'recent' : 'cap' }));
+        moves.weekly = later.map((s) => ({ n: s.n, wait: s.wait }));
+        if (pl.stale.length && builder?.flagStale) await builder.flagStale(slug, sorted.map((s) => ({ n: s.n, priority: s.impact === 'low' ? 'medium' : 'high', impact: s.impact, weekly: !nowL.includes(s), why: `What the team told us (${label}): ${s.why}`, changes: s.uses.map((i) => `Learned: ${cut(applied[i]?.text, 160)}`).filter((x) => x.length > 9), via: 'learnings' })));
+        const ns = nowL.map((s) => s.n), est = +(ns.length * EST).toFixed(2);
+        if (ask && first && want.length > fit && live() && builder?.rewrite) {
+          /* the first learnings, past the cap: say what it costs and start on a yes (the top ones within the cap, or all of them) */
+          L.pendingFull = { ns: want.map((s) => s.n), top: ns, at: t0, label }; await packs.put(slug, 'learned.json', L);
+          moves.pending = { ns: want.map((s) => s.n), top: ns, est: +(want.length * EST).toFixed(2), cap: LEARN_CAP };
+        } else if (ns.length && live() && builder?.rewrite) {
+          const r = await builder.rewrite(slug, ns, { via: 'learnings' }).catch((e) => ({ error: e.message })); /* first in the queue, never turned away */
+          moves.rewrite = r?.error ? { error: r.error } : { ns, est, queued: !!r?.queued };
+        } else if (ns.length) moves.rewrite = live() ? { error: 'rewrites are switched off here' } : { off: true };
         if (pl.fresh.length && cadence) {
           const d = await cadence.due(slug, { manual: true, only: ['learn'] }).catch((e) => ({ families: [], why: [e.message] }));
-          if (d.families.includes('learn')) { moves.learn = { n: Math.min(3, pl.fresh.length), after: !!moves.rewrite?.ns || !!moves.pending }; if (moves.pending) { L.pendingFull.fresh = pl.fresh; await packs.put(slug, 'learned.json', L); } else afterRewrite(slug, pl.fresh); } /* waiting on the first-time answer: the new moves start after it */ else moves.learn = { why: d.why || [] };
+          if (d.families.includes('learn')) { moves.learn = { n: Math.min(3, pl.fresh.length), after: !!moves.rewrite?.ns || !!moves.pending }; if (moves.pending) { L.pendingFull.fresh = pl.fresh; await packs.put(slug, 'learned.json', L); } else afterRewrite(slug, pl.fresh); } /* waiting on the first-learnings answer */
+          else moves.learn = { why: d.why || [] };
         }
       }
-      const out = { name, kind, label, by, byShort, applied, conflicts, again, clipped, moves, note, usd: +usd.toFixed(4), how, hash };
+      const out = { name, kind, label, by, byShort, applied, conflicts, again, clipped, moves, cards, note, usd: +usd.toFixed(4), how, hash };
       log.log?.(`[learn] ${slug}: ${kind} ${d.chars} chars → ${applied.length} learned (${again} known, ${conflicts.length} conflicts) by ${how}, ${moves.stale.length} moves out of date, rewrite ${moves.rewrite?.ns?.join(',') || moves.rewrite?.error || '-'}, new ${moves.learn?.n || 0}, $${out.usd}`);
       return { ...out, reply: replyText(out) };
   }
@@ -417,16 +477,22 @@ export function createLearnings({ ai = null, packs, memory = null, builder = nul
     return { reply: draftText({ name, d, again: true }) };
   }
 
-  /* the answer to the first-learnings warning: "go ahead" refreshes every move it named, "just the top 6" the six most affected */
+  /* the answer to the first-learnings warning: "go ahead" refreshes every move it named, "just the top ones" the most affected within the cap */
   async function confirm(slug, text) {
-    const L = (await packs.getJSON(slug, 'learned.json', null)) || {}, pf = L.pendingFull; if (!pf?.ns?.length) return null;
-    const t = String(text || '').trim().toLowerCase();
-    const all = /^(yes|yep|go ahead|go|start|confirm|do it|ok(ay)?|refresh (them )?all|all)\b/.test(t), top = /\b(top|just|only)\s*(the\s*)?(6|six)\b/.test(t), no = /^(no|cancel|not now|stop|skip)\b/.test(t);
+    const L = (await packs.getJSON(slug, 'learned.json', null)) || {}, t = String(text || '').trim().toLowerCase();
+    /* "bring back <card>": a card the learnings took off the top goes back to where the ranker puts it */
+    const bb = t.match(/^(?:bring|put)\s+(?:back\s+)?(.{3,})\s*(?:back)?$/), hidden = Object.entries(L.cards?.hide || {});
+    if (bb && /\bback\b/.test(t) && hidden.length) { const q = bb[1].replace(/\bback\b|[“”"']/g, ' ').replace(/\s+/g, ' ').trim();
+      const hit = /^(all|them|everything|every card)$/.test(q) ? hidden : hidden.filter(([, x]) => { const tw = words(String(x.title || '')).filter((w) => w.length >= 4), qw = new Set(words(q)); const hit = tw.filter((w) => qw.has(w)).length; return hit >= Math.min(2, tw.length) && hit >= tw.length / 2; });
+      if (hit.length) { for (const [id] of hit) delete L.cards.hide[id]; await packs.put(slug, 'learned.json', L); await onPack(slug);
+        return { reply: `Back on the feed: ${hit.map(([, x]) => `“${cut(x.title, 70)}”`).join(', ')}.` }; } }
+    const pf = L.pendingFull; if (!pf?.ns?.length) return null;
+    const all = /^(yes|yep|go ahead|go|start|confirm|do it|ok(ay)?|refresh (them )?all|all)\b/.test(t), top = /\b(just|only)\b|\btop\s*(ones|6|six)?\b/.test(t), no = /^(no|cancel|not now|stop|skip)\b/.test(t);
     if (!all && !top && !no) return null;
     delete L.pendingFull; await packs.put(slug, 'learned.json', L);
     const fresh = pf.fresh || [], newMoves = () => { if (fresh.length && cadence) afterRewrite(slug, fresh); }; /* after the rewrite starts, so they wait for it */
     if (no) { newMoves(); return { reply: 'Okay, no moves are rewritten. The learnings are still in the brief and Brew’s memory, so every new card and jam uses them.' }; }
-    const ns = top ? pf.top : pf.ns, r = builder?.rewrite ? await builder.rewrite(slug, ns, { via: 'learnings' }).catch((e) => ({ error: e.message })) : { error: 'rewrites are switched off here' };
+    const ns = top ? pf.top : pf.ns, r = builder?.rewrite ? await builder.rewrite(slug, ns, { via: top ? 'learnings' : 'learnings-all' }).catch((e) => ({ error: e.message })) : { error: 'rewrites are switched off here' };
     newMoves();
     if (r?.error) return { reply: `The refresh can’t start now: ${String(r.error).replace(/\.$/, '')}. The moves stay marked to rewrite on the Moves tab.` };
     const k = ns.length, mins = k <= 2 ? '10 to 15 minutes' : k <= 6 ? '15 to 20 minutes' : k <= 18 ? 'about 30 to 45 minutes' : 'about an hour';

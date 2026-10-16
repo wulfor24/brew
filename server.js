@@ -388,7 +388,7 @@ movesCadence.start();
    goals, beliefs and facts (each with its source), updates the brief, memory and system prompt, flags and rewrites the moves it changes
    (build.js rewrite caps, LEARN_REWRITE_MAX, default 4) and writes new ones (the cadence "learn" family, under MOVES_WEEK_CAP_USD).
    About $0.03 per 14k characters read; LEARN_DAY_MAX sources a brand a day (default 12) ---------- */
-const learnings = createLearnings({ ai, packs, memory: MEMORY_ON() ? memory : null, builder, cadence: movesCadence, log: console, onPack: async (slug) => { packs.drop(slug); attach(await packs.load(slug)); } });
+const learnings = createLearnings({ ai, packs, memory: MEMORY_ON() ? memory : null, builder, cadence: movesCadence, feed: { addCards: (slug, cards) => feedSvc?.addCards(slug, cards) } /* the team's new cards reach every open workspace at once */, log: console, onPack: async (slug) => { packs.drop(slug); attach(await packs.load(slug)); } });
 /* ---------- the fact sheet (facts-desk.js): the team corrects facts any time; a free daily price and stock check against the store's
    products.json (brands opened in the last 7 days); connected accounts become the source of truth (members only).
    Kill switch FACTS_DAILY_OFF=1; off under AI_MOCK and on local servers unless FACTS_BG=1 ---------- */
