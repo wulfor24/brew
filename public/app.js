@@ -6,15 +6,16 @@
   // the brand this page is for (server.js injects its seed): a generated brand's, or the Brew landing shell
   const BR = window.BRAND || Object.keys(window.FEED_DATA)[0];
   const B = window.FEED_DATA[BR];
-  // older seeds named the reviews connector "Reviews on Reviews on judge.me" (the platform label already said "Reviews on")
-  if (B?.connectors?.reviews?.name) B.connectors.reviews.name = B.connectors.reviews.name.replace(/^(reviews on\s+)+/i, 'Reviews on ');
+  // the reviews connector goes by its app's own name when we know it (Judge.me, Loox), from its name, account or the read's review platforms
+  { const rc = B?.connectors?.reviews; if (rc) { const t = [rc.name, rc.account, ...(B.reviews?.platforms || []).map((p) => p?.name)].join(' ');
+    rc.name = /judge\.?me/i.test(t) ? 'Judge.me' : /loox/i.test(t) ? 'Loox' : String(rc.name || 'Reviews').replace(/^(reviews on\s+)+/i, 'Reviews on '); } }
   /* Marketplaces is not a connector for now (2026-10-16): no Connect, no onboarding row; the real marketplaces show as Coming soon on the connectors page */
   if (B?.connectors?.marketplaces) delete B.connectors.marketplaces;
   for (const r of Object.values(B?.roles || {})) if (Array.isArray(r.connectors)) r.connectors = r.connectors.filter((k) => k !== 'marketplaces');
   const GEN = !!B.generated, LANDING = BR === 'brew';
   const DEMO_LAND = LANDING && !!window.BREW_DEMO;
   // a review source named after a site ("amazon.com") reads as a second marketplace in Connectors: name it as reviews
-  { const rc = B.connectors?.reviews; if (rc && /\.[a-z]{2,}$/i.test(String(rc.name || '')) && !/^reviews on /i.test(rc.name)) rc.name = `Reviews on ${rc.name}`; }
+  { const rc = B.connectors?.reviews; if (rc && /\.[a-z]{2,}$/i.test(String(rc.name || '')) && !/^reviews on |^judge\.me$/i.test(rc.name)) rc.name = `Reviews on ${rc.name}`; }
   // a generated brand's own words for the shared screens (products from its lanes, a rival it really has)
   const GX = (() => { const prods = Object.values(B.lanes || {}).flatMap((l) => String(l.line || '').split(' · ').map((x) => x.split(',')[0].trim())).filter(Boolean);
     return { p1: prods[0] || 'your best seller', p2: prods[1] || prods[0] || 'your best seller', rival: (B.rivalLogos || [])[0]?.[0] || 'your top rival', india: (window.BREW_MONEY?.cur || (/₹/.test(JSON.stringify(B.lanes || {})) ? 'INR' : '')) === 'INR' }; })(); // a brand built by the reader + moves engine

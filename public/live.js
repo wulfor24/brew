@@ -43,7 +43,7 @@
     if (!GENB || !Bd?.connectors) return;
     for (const [id, x] of Object.entries(L.conns || {})) {
       const c = Bd.connectors[id]; if (!c) continue;
-      if (x.state === 'live' && x.stats?.length) { Bd.connectors[id] = { ...c, stats: x.stats, changed: x.changed?.length ? x.changed : c.changed, demo: false, live: true, account: x.account || c.account }; S.conn[id] = true; (S.realConn ||= {})[id] = true; }
+      if (x.state === 'live' && x.stats?.length) { Bd.connectors[id] = { ...c, stats: x.stats, changed: x.changed?.length ? x.changed : c.changed, demo: false, live: true, account: x.account || c.account, ...(id === 'reviews' && /judge\.?me/i.test(x.account || '') ? { name: 'Judge.me' } : id === 'reviews' && /loox/i.test(x.account || '') ? { name: 'Loox' } : {}) }; S.conn[id] = true; (S.realConn ||= {})[id] = true; }
     }
     /* a real account that was disconnected: its switch goes off too, instead of quietly falling back to the demo */
     if (L.conns) for (const id of Object.keys(S.realConn || {})) if (!(L.conns[id]?.state === 'live')) { delete S.realConn[id]; S.conn[id] = false; }
