@@ -6,6 +6,9 @@ import { noteAlert } from './alerts.js'; // the AI pause turning on emails the o
 
 export const MODELS = { opus: 'claude-opus-5-5', sonnet: 'claude-sonnet-5-5' };
 const PRICE = { 'claude-opus-5-5': [4, 20], 'claude-sonnet-5-5': [2, 10], ...GEMINI_PRICE }; // $ per MTok in / out
+/* a model sometimes writes a line break as the two characters \ n inside a JSON string (Gemini did, in a film brief's shot
+   lines); the page then shows "\n" in the text. Every string in a structured reply gets real line breaks. */
+export const realNewlines = (v) => typeof v === 'string' ? (v.includes('\\n') ? v.replace(/\\n/g, '\n') : v) : Array.isArray(v) ? v.map(realNewlines) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, realNewlines(x)])) : v;
 const SEARCH_PRICE = 0.01; // $ per web search
 
 // structured output wants additionalProperties:false on every object
@@ -76,7 +79,7 @@ export function createAI({ apiKey = process.env.ANTHROPIC_API_KEY, mock = proces
     const text = msg.content.filter((b) => b.type === 'text').map((b) => b.text).join('');
     let json = null;
     if (o.schema || o.json) {
-      try { json = JSON.parse(o.schema ? text : text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1)); }
+      try { json = realNewlines(JSON.parse(o.schema ? text : text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1))); }
       catch (e) { log.error('[ai]', o.tag, msg.stop_reason, text.slice(0, 300)); throw new Error(`bad JSON from ${o.tag || model}: ${msg.stop_reason}`); }
     }
     // web search citations, so callers can keep the source of every claim

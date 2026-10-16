@@ -1,7 +1,9 @@
 // Gemini on our own Vertex account, behind the same shape as the Anthropic client, so every caller (ai.js, the jam,
 // research, live watch, the image check) runs on either one without changing. AI_PROVIDER picks it: 'gemini' (the default
 // while we build: Google credits pay for it) or 'anthropic'. Claude model names map to Gemini ones: Opus jobs to
-// GEMINI_DEEP_MODEL, everything else to GEMINI_FAST_MODEL. Both are Flash while we build; set the deep one to Pro for clients.
+// GEMINI_DEEP_MODEL, everything else to GEMINI_FAST_MODEL. Both are Flash while we build; for clients set the deep one to Pro:
+// GEMINI_DEEP_MODEL=gemini-3.1-pro-preview (checked 2026-10-16: it answers on this project in the global location and takes
+// the MEDIUM thinking level; gemini-3.5-pro is listed but not callable here yet). deploy.sh passes the three env vars through.
 import Anthropic from '@anthropic-ai/sdk';
 import { gToken } from './vertex-media.js';
 import { noteVertex } from './alerts.js'; // billing and quota failures reach the ops alerts

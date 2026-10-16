@@ -73,8 +73,8 @@ export function createCalendar({ packs, ai, log = console, today = () => new Dat
     for (const y of years) {
       const cur = [];
       for (const ev of EVENTS.events) { const ms = ev.markets.includes('*') ? markets : ev.markets.filter((m) => markets.includes(m)); if (!ms.length) continue;
-        const ok = conf[`${ev.id}-${y}`]; // dates the organiser announced (confirmDates) replace the estimate
-        const d = ok ? new Date(`${ok.date}T00:00:00Z`) : dateOf(ev, y); if (!d) continue; const span = ok?.end ? Math.max(1, Math.round((Date.parse(ok.end) - Date.parse(ok.date)) / 864e5) + 1) : ev.span || 1;
+        const c0 = conf[`${ev.id}-${y}`], ok = c0?.date && Number.isFinite(Date.parse(c0.date)) ? c0 : null; // dates the organiser announced (confirmDates) replace the estimate; an entry that was only tried ({ tried }) is not a date (it threw "Invalid time value" for every brand)
+        const d = ok ? new Date(`${ok.date}T00:00:00Z`) : dateOf(ev, y); if (!d || Number.isNaN(+d)) continue; const span = ok?.end && Number.isFinite(Date.parse(ok.end)) ? Math.max(1, Math.round((Date.parse(ok.end) - Date.parse(ok.date)) / 864e5) + 1) : ev.span || 1;
         cur.push({ id: `${ev.id}-${y}`, ref: ev.id, name: ev.name, markets: ms, date: iso(d), end: iso(add(d, span - 1)), kind: ev.kind, categories: ev.categories || ['all'], estimated: ok ? false : !!ev.estimated, confirmed: ok ? { url: ok.url, at: ok.at } : null, source: ok ? 'announced' : ev.source || 'curated', plan: planOf(ev.kind, d, span), aka: ev.aka || [] }); }
       for (const m of markets) { let hs = []; try { hs = new Holidays(m, { languages: ['en'] }).getHolidays(y) || []; } catch (e) { log.warn?.('[calendar] holidays', m, e.message); }
         for (const h of hs) { if (!TYPES.has(h.type)) continue; const d = new Date(h.date.slice(0, 10) + 'T00:00:00Z'), w = words(h.name);

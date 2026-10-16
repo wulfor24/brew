@@ -53,6 +53,12 @@ test('cost per move matches the provider: the brand’s own moves on today’s m
   assert.equal(perMove({ moves: [...flash, ...opus], model: 'gemini-3.5-flash', provider: 'gemini' }), 0.09, 'Opus-era moves never price a Flash rewrite');
   assert.equal(perMove({ moves: flash.slice(0, 3), model: 'gemini-3.5-flash', provider: 'gemini' }), EST.gemini, 'too few to go on');
   assert.equal(capOf({ BRAND_WEEK_CAP_USD: '45' }, 'gemini'), 45); assert.ok(capOf({}, 'anthropic') >= 40 && capOf({}, 'anthropic') <= 60); assert.ok(capOf({}, 'gemini') < capOf({}, 'anthropic'));
+  /* the deep model on Pro (GEMINI_DEEP_MODEL=gemini-3.1-pro-preview): the estimate and the pot grow with it, so a brand's rewrites don't stop after a dozen moves */
+  const pro = { GEMINI_DEEP_MODEL: 'gemini-3.1-pro-preview' };
+  assert.ok(perMove({ moves: [], provider: 'gemini', env: pro }) >= 3 * EST.gemini, 'a Pro move is priced well above a Flash one');
+  assert.ok(capOf(pro, 'gemini') >= 3 * capOf({}, 'gemini') && capOf(pro, 'gemini') <= capOf({}, 'anthropic'), 'the Pro pot sits between Flash and Opus');
+  assert.equal(capOf({ GEMINI_DEEP_MODEL: 'gemini-3.5-flash' }, 'gemini'), capOf({}, 'gemini'));
+  assert.equal(capOf(pro, 'anthropic'), capOf({}, 'anthropic'), 'the Gemini model never changes the Anthropic pot');
 });
 
 /* a brand with written moves; each move the mock engine writes costs $0.1 and stops when the run may not spend */
