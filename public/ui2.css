@@ -210,3 +210,22 @@
 .ui2 .c2-more ul{margin:6px 0 10px;padding-left:18px;font-size:13.5px;color:var(--fg-2)}
 .ui2 .c2-more footer{display:flex;align-items:center;gap:10px;justify-content:space-between}
 @media (max-width:640px){.ui2 .c2-list{grid-template-columns:1fr}}
+
+/* ================= landing ================= */
+.ui2 .ob2.ob2-start{display:block;min-height:100vh;background:var(--bg)}
+.ui2 .ob2-start .ob2-show{display:none}
+.ui2 .ob2-start .ob2-form{width:100%;max-width:none;min-height:100vh;display:flex;flex-direction:column;padding:0}
+.ui2 .ob2-start .ob2-top{padding:20px 24px}
+.ui2 .ob2-start .ob2-body{flex:1;width:min(560px,calc(100% - 32px));margin:0 auto;padding:0 0 12vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.ui2 .ob2-start .ob2-mark{display:inline-grid;width:44px;height:44px;margin:0 0 18px;color:var(--fg)}
+.ui2 .ob2-start .ob2-mark svg{width:44px;height:44px}
+.ui2 .ob2-start .ob2-h{font-size:40px;line-height:46px;letter-spacing:-.025em;margin:0 0 10px;max-width:520px}
+.ui2 .ob2-start .ob2-ask{margin:0 0 22px;color:var(--fg-2);font-size:16px}
+.ui2 .ob2-start .ob2-lede{display:none}
+.ui2 .ob2-start .ob2-url{width:100%;max-width:480px}
+.ui2 .ob2-start .ob2-agents{display:flex;flex-direction:column;align-items:center;gap:8px}
+.ui2 .ob2-start .ob2-agents > span{display:inline-flex}
+.ui2 .ob2-start .ob2-agents{flex-flow:row wrap;justify-content:center}
+.ui2 .ob2-start .ob2-agents small{flex-basis:100%}
+.ui2 .ob2-start .ob2-foot{max-width:440px}
+@media (max-width:600px){.ui2 .ob2-start .ob2-h{font-size:30px;line-height:36px}}
