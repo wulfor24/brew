@@ -27,7 +27,10 @@ import { createAlerts, noteVertex } from './alerts.js'; // ops emails: Vertex bi
 import { createBudget } from './budget.js'; // the day's AI budget: a ceiling and a share per brand
 import { createTreg, gcsCache } from './treg.js';
 import { setApifyCache } from './apify.js';
-import { chain as mediaChain, sloosh, slooshOn, openaiImage as openaiImageRaw } from './media.js';
+import { chain as mediaChain, openaiImage as openaiImageRaw } from './media.js';
+import { createVault } from './vault.js';
+import { createSlooshAuth } from './sloosh-auth.js';
+import { createSloosh } from './sloosh-mcp.js';
 import { createBuilder, blocked, clientIp } from './build.js';
 import { createRetire } from './retire.js'; // older revisions stop and exit; brands being reset are hidden
 import { createFactsDesk } from './facts-desk.js';
@@ -181,12 +184,12 @@ const sameProduct = async (refFile, buf, name) => {
     img(ref), img(buf)] }] });
   const t = (msg.content || []).map((x) => x.text || '').join(' ').trim(); if (!/^\W*(same|different)\b/i.test(t)) throw new Error(`no verdict (${msg.stop_reason})`); return { same: /^\W*same\b/i.test(t), why: t.slice(0, 160) };
 };
-/* the image chain (media.js): Sloosh once connected, then Vertex Gemini (both models), then OpenAI gpt-image-1; the jam's
-   image chip puts GPT Image first when it is picked */
+/* the draft image chain (media.js): Vertex Gemini (both models), then OpenAI gpt-image-1; the jam's image chip puts GPT Image
+   first when it is picked. Sloosh never sits here: it makes finals only, behind a button, through finals.js */
 const openaiImage = (o) => openaiImageRaw(o, { readFile: (f) => fs.readFileSync(f) });
 const rawImage = async (o, { gptFirst = false } = {}) => {
-  const steps = [['sloosh', slooshOn() && (() => sloosh('image', { prompt: o.prompt, ratio: o.ratio, src: o.srcFile ? fs.readFileSync(o.srcFile) : null }))], ['gemini', () => rawGeminiImage(o)], ['gpt-image', OPENAI_KEY && (() => openaiImage(o))]];
-  if (gptFirst) steps.splice(1, 0, steps.splice(2, 1)[0]);
+  const steps = [['gemini', () => rawGeminiImage(o)], ['gpt-image', OPENAI_KEY && (() => openaiImage(o))]];
+  if (gptFirst) steps.reverse();
   return (await mediaChain('image', steps, console)).buf;
 };
 const geminiImage = createImageGuard({ gen: (o) => rawImage(o), verify: sameProduct, fetchPhoto: photoAny, resolve: (f) => resolveLocal(f), context: inBrand, log: console });
@@ -299,6 +302,7 @@ const routes = {
     /* paid work running on this instance now (deploy.sh and tools/deploy-demo.sh wait for it): counts by kind, never brand names */
   'GET /api/ops/busy': async () => { const by = { ...(builder?.paidWork?.() || {}), drafts: draftsBg?.busy?.() || 0, cadence: movesCadence?.busy?.() || 0 };
     return { busy: Object.values(by).reduce((a, n) => a + n, 0), by, rev: process.env.K_REVISION || null }; },
+  'GET /api/ops/sloosh': async (b, req) => slooshOps(req),
   'GET /api/config': async (b, req) => ({ ai: MOCK ? 'mock' : 'live', provider: PROVIDER, paused: !MOCK && aiPaused(), image: !!(GPROJECT || OPENAI_KEY), caps: CAPS, used: budget.state.all, share: budget.left(cfgSlug(req)), brandCaps: budget.caps.brand }),
   'POST /api/config': async (b, req) => { if (!auth.isAdmin(auth.user(req))) return { error: 'admins only', ai: MOCK ? 'mock' : 'live' }; if (b.ai === 'mock') MOCK = true; if (b.ai === 'live' && anthropic) MOCK = false; return { ai: MOCK ? 'mock' : 'live' }; }
 };
@@ -458,6 +462,32 @@ const hostOf = async (slug) => { if (!slug || blocked(slug)) return null; const 
 /* seat key → title for invite emails and the approve page (the brand's own roles; every generated brand shares the template's) */
 const seatNames = async (slug) => { const p = packs.peek(slug) || await packs.load(slug).catch(() => null); return Object.fromEntries(Object.entries(p?.seed?.roles || {}).map(([k, r]) => [k, r.title || r.name || k])); };
 const auth = createAuth({ packs, hostOf, seatNames, onTeamChange: () => MEMO.clear(), log: console });
+/* Brew's own Sloosh workspace (sloosh-auth.js): staff sign in once; every brand's finals spend from it (finals.js, a later batch) */
+const slooshAuth = createSlooshAuth({ packs, vault: createVault(packs), auth, log: console });
+const sloosh = createSloosh({ tokenFor: slooshAuth.tokenFor, log: console });
+/* GET /api/ops/sloosh (staff): the connection, the workspace and what Sloosh says about today's limit and credits */
+const slooshStaff = (req) => auth.isAdmin(auth.user(req)) || (!auth.signinOn() && !process.env.K_SERVICE); /* staff, or a local server with sign-in off */
+const slooshOps = async (req) => {
+  if (!slooshStaff(req)) return { error: 'Brew staff only' };
+  const st = await slooshAuth.status(); if (!st.connected) return { ...st, connect: '/api/ops/sloosh/connect' };
+  const [conn, acct] = await Promise.all([sloosh.getConnection().catch((e) => ({ error: e.message })), sloosh.getAccount().catch((e) => ({ error: e.message }))]);
+  const ws = conn?.workspace || acct?.workspace || null; if (ws && !st.workspace) await slooshAuth.setWorkspace(ws).catch(() => {});
+  return { ...st, workspace: ws || st.workspace, connection: conn, account: acct, reconnect: '/api/ops/sloosh/connect' };
+};
+const slooshHandle = async (req, res, u) => {
+  if (!u.pathname.startsWith('/api/ops/sloosh/')) return false;
+  const go = (to) => { res.writeHead(302, { location: to, 'cache-control': 'no-store' }); res.end(); return true; };
+  const me = auth.user(req); if (!me && auth.signinOn()) return go(`/auth/google?next=${encodeURIComponent('/api/ops/sloosh/connect')}`);
+  if (!slooshStaff(req)) return send(res, 403, { error: 'Brew staff only' }), true;
+  if (u.pathname === '/api/ops/sloosh/connect' && req.method === 'GET') { try { return go(await slooshAuth.connectUrl(req, res)); } catch (e) { return send(res, 200, { error: e.message }), true; } }
+  if (u.pathname === '/api/ops/sloosh/callback' && req.method === 'GET') {
+    try { await slooshAuth.callback(req, u); sloosh.reset(); const ws = await sloosh.getConnection().then((c) => c?.workspace || null).catch(() => null); if (ws) await slooshAuth.setWorkspace(ws);
+      return go(`/#ops=sloosh&done=1`); }
+    catch (e) { console.warn('[sloosh] callback', e.message); return go(`/#ops=sloosh&err=${encodeURIComponent(e.message)}`); }
+  }
+  if (u.pathname === '/api/ops/sloosh/disconnect' && req.method === 'POST') { await slooshAuth.disconnect(); sloosh.reset(); return send(res, 200, { ok: true }), true; }
+  return false;
+};
 /* Brew's emails about jams to the brand's team: tagged, asked, assigned, needs your OK right away; replies batched (jam-mail.js) */
 /* a brand waiting on "Check what we read": email the person who started the read and its admins after a few hours, and once
    more a day later (never auto-confirmed). Live site only: the demo sends no email, local servers only with CONFIRM_REMIND=1 */
@@ -633,6 +663,7 @@ const brandFiles = async (req, res, u) => {
     res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-cache', etag }); res.end(body); return true; }
   if (what.startsWith('statics/')) { const b = await packs.get(slug, what); if (!b) return send(res, 404, 'no', 'text/plain'), true; res.writeHead(200, { 'content-type': 'image/jpeg', 'cache-control': 'max-age=300' }); res.end(b); return true; }
   if (what.startsWith('a/')) { const f = await packs.assetFile(slug, what.slice(2)); if (!f) return send(res, 404, 'no', 'text/plain'), true; return serveFile(req, res, f), true; }
+  if (/^refs\/[a-f0-9]{16}\.(png|jpg|webp|mp4)$/.test(what)) { const b = await packs.get(slug, what); if (!b) return send(res, 404, 'no', 'text/plain'), true; res.writeHead(200, { 'content-type': { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp', mp4: 'video/mp4' }[what.split('.').pop()], 'cache-control': 'public, max-age=31536000, immutable' }); res.end(b); return true; } /* References (references.js): hash-named, so forever cacheable */
   /* a brand's PDFs (named or drawn on download) are for its team on live */
   if (!(await teamRead(req, slug))) return send(res, auth.user(req) ? 403 : 401, 'These moves are for the brand’s team. Sign in or ask them to invite you.', 'text/plain'), true;
   /* /b/<slug>/pdf/move-<n>.pdf: the move's PDF, drawn on this first download and kept until the move changes */
@@ -715,6 +746,7 @@ async function serve(req, res, u) {
   try {
     if (demoRoutes && await demoRoutes(req, res, u)) return;
     if (await auth.handle(req, res, u)) return;
+    if (await slooshHandle(req, res, u)) return;
     if (await jamMail.handle(req, res, u)) return; // the mute / only-tags links in jam emails
     if (slackRoutes && await slackRoutes(req, res, u)) return; // what Slack sends: thread replies, Approve (signed)
     if (await connectors.handle(req, res, u)) return;
