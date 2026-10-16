@@ -198,8 +198,8 @@ export function evidenceFor(family, { scorecard, listen, auto, profile = {}, led
     if (scorecard) for (const a of scorecard.areas.filter((x) => x.read && ['crm', 'reviews', 'ads'].includes(x.k))) for (const x of a.parts) add(`${a.label} · ${x.k}: ${x.note}`, x.src, x.url, x.at);
   }
   /* what the team told Brew: every learning is a line with its own source (who added what, when) */
-  if (family === 'learn' && brief?.learned) for (const [k, name] of [['essence', 'Essence'], ['goals', 'Goal'], ['beliefs', 'Belief'], ['facts', 'Fact']])
-    for (const x of (brief.learned[k] || []).slice(0, 12)) add(`${name} (the team's words): ${x.text}${x.quote ? ` [said: "${cut(x.quote, 160)}"]` : ''}`, x.source || 'What the team told Brew', '', String(x.at || '').slice(0, 10));
+  if (family === 'learn' && brief?.learned) for (const [k, name] of [['tried', 'Already tried'], ['essence', 'Essence'], ['goals', 'Goal'], ['beliefs', 'Belief'], ['facts', 'Fact']])
+    for (const x of (brief.learned[k] || []).slice(0, k === 'tried' ? 40 : 12)) add(`${name} (the team's words): ${x.text}${x.quote ? ` [said: "${cut(x.quote, 160)}"]` : ''}`, x.source || 'What the team told Brew', '', String(x.at || '').slice(0, 10));
   // a few ledger lines (prices, review totals) so plans can quote real numbers
   const keep = /^(reviews|catalog|social)\./;
   for (const e of ledger.filter((e) => keep.test(e.key)).slice(0, 18)) add(`${e.label}: ${e.v}`, e.src || 'ledger', e.url, e.at);
@@ -308,7 +308,7 @@ Write ${k} moves (at least ${F.min}, at most ${F.max}). Rules:
 /* ---------- writing one family for one brand ---------- */
 export async function writeFamily(family, { ai, slug, pack, memory = null, log = console, now = Date.now(), numbers, hints = [] }) {
   const F = FAMILIES[family]; const { profile, ledger = [], brief, listen } = pack;
-  if (family === 'learn' && !['essence', 'goals', 'beliefs', 'facts'].some((k) => brief?.learned?.[k]?.length)) return { moves: [], usd: 0, skipped: 'nothing learned yet' };
+  if (family === 'learn' && !['essence', 'goals', 'beliefs', 'facts', 'tried'].some((k) => brief?.learned?.[k]?.length)) return { moves: [], usd: 0, skipped: 'nothing learned yet' };
   const scorecard = pack.scorecard || auditScorecard({ profile, slug, now });
   const ld = family === 'listen' || family === 'auto' ? listenDigest(listen, { now }) : null;
   if (family === 'listen' && !ld) return { moves: [], usd: 0, skipped: 'nothing heard yet' };

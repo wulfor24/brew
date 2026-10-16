@@ -20,11 +20,14 @@ import crypto from 'node:crypto';
 const TOOL = { shopify: 'Shopify', meta: 'Meta Ads', ga4: 'Google Analytics', gads: 'Google Ads', klaviyo: 'Klaviyo', reviews: 'Judge.me', market: 'Marketplaces' };
 
 export const LEARN_CMD = '/update-brand-learnings';
-export const KINDS = ['essence', 'goal', 'belief', 'fact'];
-const BUCKET = { essence: 'essence', goal: 'goals', belief: 'beliefs', fact: 'facts' };
-const HEAD = { essence: 'Essence', goals: 'Goals', beliefs: 'Beliefs', facts: 'Facts' };
+/* tried: something the brand already did and how it went (worked, didn't, mixed). Every one is in the brief, never cut to a few,
+   and the moves must respect it: build on what worked, never bring back what didn't without saying what is different now */
+export const KINDS = ['essence', 'goal', 'belief', 'fact', 'tried'];
+const BUCKET = { essence: 'essence', goal: 'goals', belief: 'beliefs', fact: 'facts', tried: 'tried' };
+const HEAD = { essence: 'Essence', goals: 'Goals', beliefs: 'Beliefs', facts: 'Facts', tried: 'What they tried' };
+const BUCKETS = ['essence', 'goals', 'beliefs', 'facts', 'tried'];
 const MEM_TOPICS = ['products', 'offers', 'audience', 'channels', 'voice', 'creative-style', 'what-works', 'rules'];
-const KEEP = 40; // per kind in learned.json; the oldest go first
+const KEEP = 40, KEEP_TRIED = 80; // per kind in learned.json (what they tried keeps more: it is history); the oldest go first
 const D = 864e5;
 
 const cut = (s, n) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
@@ -130,6 +133,7 @@ export const mergeLearnings = (lists) => { const out = []; for (const xs of list
 const ESSENCE_RE = /\b(we are|we're|our mission|we exist|stands? for|at (our|its) (heart|core)|our brand is|the brand is|what makes us|we started|founded)\b/i;
 const GOAL_RE = /\b(goal|aim|plan(ning)?|priority|priorities|focus(ing)? on|this (quarter|year|month)|next (quarter|year|month|week)|by (q[1-4]|diwali|christmas|black friday|the end of)|launch(ing)?|want to|trying to|target|hope to|roadmap)\b/i;
 const BELIEF_RE = /\b(we believe|we think|we feel|customers? (love|want|hate|care|buy|trust|don'?t)|never|always|avoid|don'?t (say|use|show|want)|we won'?t|no (discounts?|claims?)|tone|our voice)\b/i;
+const TRIED_RE = /\b(we (tried|ran|tested|did|launched|spent)|(did ?n[o']t|didn'?t) (work|move|sell|convert)|worked (well|best|for us)|flopped|backfired|no (lift|impact|difference)|best[- ]performing|our (best|worst) (ad|campaign|offer))\b/i;
 const FACT_RE = /(₹|\$|€|£|\brs\.?\s?\d|\b\d[\d,.]*\s?(%|percent|orders?|customers?|units|skus?|products?|stores?|cities|countries|reviews?)\b|\b(launch(es|ed)?|price[ds]?|sells?|bestsell|hero product|audience|aged?|subscribers?)\b)/i;
 export function heuristicLearnings(text, { max = 14 } = {}) {
   const sents = String(text || '').replace(/\r/g, '').split(/\n+|(?<=[.!?])\s+(?=[\p{Lu}"“])/u).map((x) => x.trim()).filter(Boolean);
@@ -137,7 +141,7 @@ export function heuristicLearnings(text, { max = 14 } = {}) {
   for (const raw of sents) {
     const line = raw.replace(SPEAKER, '').trim();
     if (line.length < 30 || line.length > 280 || /\?$/.test(line)) continue;
-    const kind = ESSENCE_RE.test(line) ? 'essence' : BELIEF_RE.test(line) ? 'belief' : GOAL_RE.test(line) ? 'goal' : FACT_RE.test(line) ? 'fact' : null;
+    const kind = TRIED_RE.test(line) ? 'tried' : ESSENCE_RE.test(line) ? 'essence' : BELIEF_RE.test(line) ? 'belief' : GOAL_RE.test(line) ? 'goal' : FACT_RE.test(line) ? 'fact' : null;
     if (!kind) continue;
     out.push({ kind, text: line, quote: line, topic: null, conflictLabel: '', conflictSays: '' });
     if (out.length >= max) break;
@@ -163,19 +167,21 @@ export function conflictsOf(items = [], sheet = {}) {
 }
 
 /* ---------- the brand context: learned.json → brief.md section, system prompt block, brief.json view ---------- */
-export const emptyLearned = () => ({ v: 1, at: null, essence: [], goals: [], beliefs: [], facts: [], sources: [] });
-export const learnedItems = (L) => ['essence', 'goals', 'beliefs', 'facts'].flatMap((k) => (L?.[k] || []).map((x) => ({ ...x, bucket: k })));
+export const emptyLearned = () => ({ v: 1, at: null, essence: [], goals: [], beliefs: [], facts: [], tried: [], sources: [] });
+export const learnedItems = (L) => BUCKETS.flatMap((k) => (L?.[k] || []).map((x) => ({ ...x, bucket: k })));
 const OPEN = '<!-- brew:learned -->', CLOSE = '<!-- /brew:learned -->';
 export function learnedSection(L, { name = 'the brand', per = 6 } = {}) {
   const parts = [['essence', 'Essence'], ['goals', 'Goals, priorities and plans'], ['beliefs', 'Beliefs (follow these)'], ['facts', 'Facts the team stated']]
     .filter(([k]) => L?.[k]?.length).map(([k, h]) => `**${h}**\n${L[k].slice(0, per).map((x) => `- ${x.text} (${x.source})`).join('\n')}`);
+  /* what they tried: every one, never cut to a few, with the rule the moves follow */
+  if (L?.tried?.length) parts.push(`**What ${name} already tried, and how it went (respect every one)**\nBuild on what worked. Never recommend again what they say didn't work, unless the move says plainly what is different this time and why it should work now. Don't present something they already did as a new idea.\n${L.tried.slice(0, KEEP_TRIED).map((x) => `- ${x.text} (${x.source})`).join('\n')}`);
   if (!parts.length) return '';
   return `## What the team told Brew\nIn ${name}'s own words, from calls, notes and emails the team added. Follow the beliefs and plan toward the goals. A number here is what the team said: quote it as theirs, and the fact sheet and connected accounts win where they disagree.\n\n${parts.join('\n\n')}`;
 }
 export const stripLearned = (md) => String(md || '').replace(new RegExp(`\\n*${OPEN}[\\s\\S]*?${CLOSE}\\n*`, 'g'), '\n').trimEnd();
 export const withLearned = (md, L, o) => { const base = stripLearned(md), sec = learnedSection(L, o); return sec ? `${base}${base ? '\n\n' : ''}${OPEN}\n${sec}\n${CLOSE}\n` : base; };
-export const briefView = (L) => ({ at: L.at, ...Object.fromEntries(['essence', 'goals', 'beliefs', 'facts'].map((k) => [k, (L[k] || []).slice(0, 12).map(({ text, source, at, quote }) => ({ text, source, at, quote: cut(quote, 200) }))])) });
-const memTopic = (x) => (x.bucket === 'essence' || x.kind === 'essence' ? 'essence' : x.kind === 'goal' ? 'goals' : x.kind === 'belief' ? (x.topic === 'rules' ? 'rules' : 'beliefs') : x.topic || null);
+export const briefView = (L) => ({ at: L.at, ...Object.fromEntries(BUCKETS.map((k) => [k, (L[k] || []).slice(0, k === 'tried' ? KEEP_TRIED : 12).map(({ text, source, at, quote }) => ({ text, source, at, quote: cut(quote, 200) }))])) });
+const memTopic = (x) => (x.kind === 'tried' || x.bucket === 'tried' ? 'what-works' : x.bucket === 'essence' || x.kind === 'essence' ? 'essence' : x.kind === 'goal' ? 'goals' : x.kind === 'belief' ? (x.topic === 'rules' ? 'rules' : 'beliefs') : x.topic || null);
 
 /* ---------- which moves and cards rest on what the team told Brew (the ranker lifts their cards) ---------- */
 // moves quote the team's words as theirs (learnedSection asks for it): "the team says…", "team-reported 2.2%", "Arata team notes"
@@ -218,8 +224,8 @@ const capWhy = (why = []) => { const w = why.join(' · ');
 export function draftText({ name, d, again = false }) {
   if (d.replace && !again) return [`**Already saved on ${dateLabel(d.replace.at)}${d.replace.by ? ` by ${d.replace.by}` : ''}**`, 'Here is what Brew saved from it. Edit it and “save” to replace it, or “cancel” to keep it as it is.', ...draftText({ name, d: { ...d, replace: null }, again: true }).split('\n').slice(2)].join('\n');
   const out = [...(!again && d.note ? [d.note, ''] : []), again ? '**Updated draft**' : `**Check before it becomes ${name}’s brand context**`, again ? 'Here is what Brew will save:' : `What Brew read from the ${String(d.kind || 'source').toLowerCase()}${d.again ? ` (${d.again} it already knew are left out)` : ''}. Nothing is saved yet.`];
-  const HD = { essence: 'Essence', goal: 'Goals', belief: 'Beliefs', fact: 'Facts' };
-  for (const k of ['essence', 'goal', 'belief', 'fact']) { const xs = d.items.map((x, i) => [x, i]).filter(([x]) => x.kind === k); if (!xs.length) continue; out.push('', `**${HD[k]}**`); xs.forEach(([x, i]) => out.push(`${i + 1}. ${x.text}`)); }
+  const HD = { essence: 'Essence', goal: 'Goals', belief: 'Beliefs', fact: 'Facts', tried: 'What they tried' };
+  for (const k of KINDS) { const xs = d.items.map((x, i) => [x, i]).filter(([x]) => x.kind === k); if (!xs.length) continue; out.push('', `**${HD[k]}**`); xs.forEach(([x, i]) => out.push(`${i + 1}. ${x.text}`)); }
   if (d.conflicts?.length) { out.push('', '**Left out: the fact sheet wins on numbers**'); d.conflicts.slice(0, 4).forEach((c) => out.push(`- It says ${cut(c.conflictSays || c.text, 90)}; ${c.fact?.label || 'the fact sheet'} reads ${c.fact?.v ?? ''}${c.fact?.src ? ` from ${c.fact.src}` : ''}.`)); }
   out.push('', '**What next**', '- “save” adds these to the brief and Brew’s memory, then refreshes the moves they change', '- “drop 3” removes a line', '- “change 2 to …” rewrites one', '- “add belief: …” adds one (essence, goal, belief or fact)', '- “cancel” saves nothing');
   return out.join('\n');
@@ -232,7 +238,7 @@ export function replyText(r) {
   const n = r.applied.length;
   if (!n && !r.conflicts.length) { out.push(r.again ? `Nothing new in it: the ${r.again} thing${r.again === 1 ? '' : 's'} it says, Brew already knew. Nothing changed.` : `I couldn’t find anything in it that changes what Brew knows about ${r.name}: no essence, goals, beliefs or facts it states. Nothing changed.`); return out.join('\n'); }
   out.push(`**Saved ${n} learning${n === 1 ? '' : 's'} to ${r.name}’s brand context**`, `From the ${r.kind.toLowerCase()} ${r.byShort ? `${r.byShort} added` : 'you added'}${r.again ? `; ${r.again} Brew already had` : ''}. They are in the brief and Brew’s memory, each with its source, and every jam, card and note reads them from now on.`);
-  for (const k of ['essence', 'goal', 'belief', 'fact']) { const xs = r.applied.filter((x) => x.kind === k); if (!xs.length) continue;
+  for (const k of KINDS) { const xs = r.applied.filter((x) => x.kind === k); if (!xs.length) continue;
     out.push('', `**${HEAD[BUCKET[k]]}**`, ...xs.slice(0, 4).map((x) => `- ${x.text}`), ...(xs.length > 4 ? [`- and ${xs.length - 4} more`] : [])); }
   if (r.conflicts.length) { out.push('', '**Not saved: the fact sheet wins on numbers**');
     for (const c of r.conflicts.slice(0, 4)) out.push(`- It says ${cut(c.conflictSays || c.text, 90)}; ${c.fact.label} reads ${c.fact.v} from ${c.fact.src}.${c.fact.connected ? ' Connected accounts are the source of truth for their numbers.' : ' If the new number is right, fix it on the fact sheet with a link.'}`); }
@@ -255,7 +261,7 @@ function movesLine(m, name = 'the brand') {
 /* ---------- prompts ---------- */
 const S = { type: 'string' };
 export const EXTRACT_SCHEMA = { type: 'object', properties: { learnings: { type: 'array', items: { type: 'object', properties: {
-  kind: { type: 'string', enum: KINDS, description: 'essence: who the brand is at heart, why it exists, what it stands for. goal: what they are trying to do (goals, priorities, upcoming plans, launches, dates). belief: what they believe about customers, product, claims and tone, and what to avoid. fact: a concrete fact (a product, a price, a launch, an audience, a channel, a number).' },
+  kind: { type: 'string', enum: KINDS, description: 'essence: who the brand is at heart, why it exists, what it stands for. goal: what they are trying to do (goals, priorities, upcoming plans, launches, dates). belief: what they believe about customers, product, claims and tone, and what to avoid. fact: a concrete fact (a product, a price, a launch, an audience, a channel, a number). tried: something they already did and how it went: a campaign, offer, channel, ad, influencer, price test, launch; say what they did, when if stated, and the result as they put it (worked, did not work, mixed), with their numbers.' },
   text: { type: 'string', description: 'One plain sentence under 30 words about the brand, in the third person ("They…", "Customers…"). Only what the input states.' },
   quote: { type: 'string', description: 'The exact words from the input this rests on, copied character for character (up to 200 characters)' },
   topic: { type: 'string', enum: [...MEM_TOPICS, 'none'], description: 'facts and beliefs: where it belongs (rules = something they never or always do in public); others: none' },
@@ -264,7 +270,8 @@ export const EXTRACT_SCHEMA = { type: 'object', properties: { learnings: { type:
 export function extractPrompt({ name, host, chunk, part, parts, kind, sheet }) {
   const lines = Object.values(sheet || {}).filter((f) => f?.label && !f.demo && f.kind !== 'demo').slice(0, 80).map((f) => `- ${f.label}: ${f.v}${f.connected ? ` (from ${TOOL[f.connected] || f.connected}, connected)` : ''}`);
   return `The team at ${name}${host ? ` (${host})` : ''} gave Brew this ${kind.toLowerCase()}${parts > 1 ? ` (part ${part} of ${parts})` : ''}. It may be a call between the brand's people and Brew or a customer, notes, emails or research.
-Pull out what Brew should learn about ${name}: its essence, its goals and plans, its beliefs, and concrete facts.
+Pull out what Brew should learn about ${name}: its essence, its goals and plans, its beliefs, concrete facts, and what it already tried and how that went.
+- Anything the brand already did with a result ("we ran X and it did/didn't work", "our best ad was…", "influencers never converted for us") is kind tried, one per thing tried, with the result in their words. These matter most: never skip one.
 Rules:
 - Only what the input states. Never infer, round, convert or add a number, name, date or claim. Skip greetings, scheduling and small talk.
 - What the brand's own people say is the brand's view. What a customer says is about customers ("Customers say…"). What Brew or an interviewer suggests is not a learning unless the brand agreed to it.
@@ -354,7 +361,7 @@ export function createLearnings({ ai = null, packs, memory = null, builder = nul
       L ||= { ...emptyLearned(), ...((await packs.getJSON(slug, 'learned.json', null)) || {}) }; delete L.draft;
       if (d.replace) { for (const k of Object.values(BUCKET)) L[k] = (L[k] || []).filter((x) => x.hash !== hash); L.sources = (L.sources || []).filter((x) => x.hash !== hash); } /* an edited, already-saved source: its new lines replace the old */
       const stamp = (x) => ({ id: `l_${crypto.randomBytes(4).toString('hex')}`, text: x.text, quote: x.quote, topic: x.topic || null, kind: x.kind, source: label, hash, at: t0 });
-      for (const x of applied) L[BUCKET[x.kind]] = [stamp(x), ...(L[BUCKET[x.kind]] || [])].slice(0, KEEP);
+      for (const x of applied) L[BUCKET[x.kind]] = [stamp(x), ...(L[BUCKET[x.kind]] || [])].slice(0, x.kind === 'tried' ? KEEP_TRIED : KEEP);
       L.at = t0; L.sources = [{ hash, kind, label, by, byShort, at: t0, chars: d.chars, n: applied.length, conflicts: conflicts.length, how, workId }, ...L.sources].slice(0, 200);
       await packs.put(slug, 'learned.json', L);
       if (applied.length) {
@@ -403,7 +410,7 @@ export function createLearnings({ ai = null, packs, memory = null, builder = nul
     if (/^(cancel|discard|don'?t save|no\b|scrap)/.test(lo)) { delete L.draft; await packs.put(slug, 'learned.json', L); if (d.replace) return { reply: 'Okay, kept as it was. Nothing changed.' }; return { reply: 'Okay, nothing was saved. Paste it again with /update-brand-learnings whenever you want Brew to learn from it.' }; }
     if ((m = lo.match(/^(drop|remove|delete)\b(.*)$/))) { const ns = nums(m[2]); if (!ns.length) return { reply: `Which one? Say e.g. “drop 3” (1 to ${d.items.length}).` }; d.items = d.items.filter((_, i) => !ns.includes(i + 1)); }
     else if ((m = t.match(/^(?:change|edit|fix|reword)\s+(\d+)\s*(?:to|:|-|=)?\s*([\s\S]{4,})$/i))) { const i = +m[1] - 1; if (!d.items[i]) return { reply: `There is no line ${m[1]}. Pick 1 to ${d.items.length}.` }; d.items[i] = { ...d.items[i], text: cut(m[2].trim(), 400), quote: m[2].trim(), edited: true }; }
-    else if ((m = t.match(/^add\s*(essence|goal|belief|fact)?s?\s*[:-]?\s*([\s\S]{4,})$/i))) { const k = (m[1] || 'fact').toLowerCase(); d.items.push({ kind: k, text: cut(m[2].trim(), 400), quote: m[2].trim(), topic: null, typed: true }); }
+    else if ((m = t.match(/^add\s*(essence|goal|belief|fact|tried)?s?\s*[:-]?\s*([\s\S]{4,})$/i))) { const k = (m[1] || 'fact').toLowerCase(); d.items.push({ kind: k, text: cut(m[2].trim(), 400), quote: m[2].trim(), topic: null, typed: true }); }
     else return null;
     L.draft = d; await packs.put(slug, 'learned.json', L);
     if (!d.items.length) { delete L.draft; await packs.put(slug, 'learned.json', L); return { reply: 'That leaves nothing to save, so nothing was saved.' }; }

@@ -22,7 +22,7 @@ import { healthFrom } from './dummy/health.js'; // DUMMY: simulated health rings
 import { isPlay, playDone, totalOf, numbersFor, healSeedNumbers } from './pack-numbers.js'; // one number, one source
 import { createStatics } from './statics.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { mergeLedger, diffLedgers, candidates, triage, changeLine, liveMaterial, CONNECTED_MOVES } from './refresh.js';
+import { mergeLedger, diffLedgers, candidates, triage, changeLine, liveMaterial, handleOfItem, productNames, movesNaming, CONNECTED_MOVES } from './refresh.js';
 import { withLearned, briefView } from './brand-learnings.js';
 import { profileLive, withLive } from './on-connect.js'; // what a real connected account corrects in the team's view
 import { briefWithConnected } from './brief.js'; // what the team told Brew survives a fresh brief
@@ -690,7 +690,9 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const tri = changes.length ? await triage(ai, { name: profile.name, changes, cand: candidates(changes, moves, specs), moves, specs }) : { summary: 'Nothing changed that affects a move.', moves: [] };
     const at = Date.now();
     const u = await editUpd(slug, (u) => {
-      for (const t of tri.moves) u.stale[t.n] = { n: t.n, priority: t.priority, why: t.why, changes: (t.changes || []).map((i) => changes[i]).filter(Boolean).slice(0, 6).map(changeLine), at };
+      for (const t of tri.moves) { const e = { n: t.n, priority: t.priority, why: t.why, changes: (t.changes || []).map((i) => changes[i]).filter(Boolean).slice(0, 6).map(changeLine), at }, o = u.stale[t.n];
+        /* an out-of-stock mark stays on top: the check's reason waits under it (stockSignal) */
+        u.stale[t.n] = o?.stockWhy ? { ...o, was: { priority: e.priority, why: e.why }, why: [...Object.values(o.stockWhy), e.why].join(' '), changes: [...new Set([...(o.changes || []), ...e.changes])].slice(0, 6) } : e; }
       u.lastCheck = { at, why, auto, changes: changes.slice(0, 80), minor, spotted, summary: tri.summary, flagged: tri.moves.map((t) => t.n), usd: +(spentFor(slug) - usd0).toFixed(2) };
       u.checking = null; u.lastError = null;
     });
@@ -761,7 +763,12 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       const pb = priv ? await packs.getJSON(slug, 'private/brief.json', null) : null;
       const brief = pb || await packs.getJSON(slug, 'brief.json'), briefMd = ((pb && await packs.get(slug, 'private/brief.md')) || await packs.get(slug, 'brief.md'))?.toString('utf8') || '';
       const cache = { ...(await packs.getJSON(slug, 'moves.json', {})), ...(priv ? await packs.getJSON(slug, 'private/moves.json', {}) : {}) }, olds = Object.fromEntries(ns.map((n) => [n, cache[n]]));
-      const stale = (await upd(slug)).stale || {}, stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+      const u0 = await upd(slug), stale = u0.stale || {}, stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+      /* what the site can't sell right now (stockSignal): every rewrite reads it, so a rewritten move never builds on it again */
+      const outNow = Object.entries(u0.stockOut || {}).map(([h, k]) => { const t = (profile0.catalog?.products || []).find((x) => x.handle === h)?.title || h.replace(/-/g, ' '); return `- ${t}: ${k.kind === 'oos' ? 'out of stock' : 'no longer on the site'}`; });
+      /* what the team told Brew (learnings, what they tried) reaches every rewrite: the team's private brief is drawn from brief.json and has no such section, so it is laid in here from learned.json */
+      const told = await packs.getJSON(slug, 'learned.json', null), briefMdT = told ? withLearned(briefMd, told, { name: profile0.name }) : briefMd;
+      const stockMd = outNow.length ? `\n\n## Right now on the site\nThese products can't be bought today. Don't build a move on them, feature them or spend on them; pick an in-stock product instead.\n${outNow.slice(0, 40).join('\n')}` : '';
       prevState = (await status(slug)).state;
       /* kept in updates.json while it runs: a restart or deploy mid-rewrite carries on with the moves not yet written (resumeAll) */
       await editUpd(slug, (u) => { u.rewriting = { ns, auto, via, at: Date.now(), prev: u.rewriting?.prev || prevState }; });
@@ -785,7 +792,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         if (!priv) await unmarkPdf(slug, n); /* the public PDF is drawn again on its next download */
         packs.drop(slug); await onPack(slug); saveSpend(slug);
       };
-      const ctx = { brand: { name: profile.name, host: profile.host, descriptor: profile.descriptor }, brief: { md: briefMd, json: brief }, profile, ledger, packs, slug,
+      const ctx = { brand: { name: profile.name, host: profile.host, descriptor: profile.descriptor }, brief: { md: briefMdT + stockMd, json: brief }, profile, ledger, packs, slug,
         load: (n) => cache[n] || null, save: async (n, move) => { cache[n] = move; await (lock = lock.then(() => saveOne(n, move)).catch((e) => log.warn('[rewrite] save', n, e.message))); },
         canSpend: () => !blocked(slug) && dayUsd() < DAY_CAP && spentFor(slug) - usd0 < cap && !st(slug).cancelled,
         effort: process.env.MOVES_EFFORT || 'medium', search: +(process.env.MOVES_SEARCH ?? 1),
@@ -895,7 +902,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     await editUpd(slug, (u) => {
       /* a flag stays until its move is rewritten (the weekly run) or the account is disconnected: a quiet re-read never clears it */
       if (!on) for (const n of Object.keys(u.stale)) if (u.stale[n].via === id) delete u.stale[n];
-      if (fresh.length) for (const n of ns) { const o = u.stale[n]; if (o && o.via !== id) continue; const rel = relevant(n, fresh);
+      if (fresh.length) for (const n of ns) { const o = u.stale[n]; if (o && (o.via !== id || o.stockWhy)) continue; const rel = relevant(n, fresh);
         const lines = first ? rel.map((e) => `New: ${e.label}: ${e.v}`) : changes.filter((c) => rel.some((e) => e.key === c.key)).map(changeLine);
         u.stale[n] = { n, priority: 'medium', via: id, live: true, real: true, private: !pub, at: o?.at || at, seenAt: at,
           why: first ? `${NAME_OF[id] || id} is connected. This plan used estimates for ${rel.map((e) => e.label.toLowerCase()).join(' and ')}; it can now use ${rel.map((e) => e.v).join(' and ')}.`
@@ -955,7 +962,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (u.connectRun || (u.queue || []).some((q) => q.via === 'connected' || q.via === 'live') || u.rewriting?.via === 'live') return { skipped: 'waiting' };
     if (now - (u.liveRun?.at || 0) < LIVE_DAYS * 864e5) return { skipped: 'this week' };
     const moves = await packs.getJSON(slug, 'moves.json', {}), ok = await rewritable(moves);
-    const ns = Object.values(u.stale || {}).filter((f) => f?.live && f.real && f.via && f.via !== 'connected' && ok(f.n)).sort((a, b) => (a.at || 0) - (b.at || 0) || a.n - b.n).map((f) => f.n);
+    const ns = Object.values(u.stale || {}).filter((f) => (f?.stock || f?.live && f.real) && f.via && f.via !== 'connected' && ok(f.n)).sort((a, b) => (a.at || 0) - (b.at || 0) || a.n - b.n).map((f) => f.n);
     if (!ns.length) return { skipped: 'nothing flagged' };
     await editUpd(slug, (v) => { v.liveRun = { at: now, ns }; });
     log.log(`[live] ${slug}: weekly rewrite of ${ns.length} moves your accounts moved (${ns.join(', ')}), cap $${LIVE_CAP}`);
@@ -967,7 +974,45 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   // "whenever relevant": the free catalog watch (every 3 hours) saw a price change, a launch or a removal
   const RETRY_MS = +process.env.REFRESH_RETRY_MS || 24 * 3600e3;
   const backingOff = (u) => !!u?.lastError?.at && Date.now() - u.lastError.at < RETRY_MS;
+  /* a product a move builds on went out of stock or off the site (the free catalog watch, every 3 hours): every move that names
+     it is marked out of date at once (no AI, no spend) with the reason on the move, and rewritten in the weekly run. Back in
+     stock (or back on the site) takes the mark off. Only a change counts: updates.json stockOut keeps what is already known */
+  async function stockSignal(slug, events = []) {
+    const out = events.filter((e) => ['oos', 'removed', 'gone'].includes(e.kind)), back = events.filter((e) => e.kind === 'back' || e.kind === 'new');
+    if (!out.length && !back.length) return { flagged: [] };
+    if (!(await status(slug))?.done) return { flagged: [] };
+    const pub = await packs.getJSON(slug, 'moves.json', {}), priv = await packs.getJSON(slug, 'private/moves.json', {}).catch(() => ({}));
+    const products = (await packs.getJSON(slug, 'profile.json', {}))?.catalog?.products || [];
+    const items = new Map(); for (const e of out) for (const it of e.items || []) { const h = handleOfItem(it); if (h && !items.has(h)) items.set(h, { it, kind: e.kind === 'oos' ? 'oos' : 'gone' }); }
+    /* back in stock clears an out-of-stock mark; a product back on the site clears a gone one; never one this same pass marks out */
+    const backH = new Map(); for (const e of back) for (const it of e.items || []) { const h = handleOfItem(it); if (h && !items.has(h)) backH.set(h, e.kind === 'back' ? 'oos' : 'gone'); }
+    const at = Date.now(), flagged = new Set();
+    const whyOf = (f) => [...Object.values(f.stockWhy || {}), f.was?.why].filter(Boolean).join(' ');
+    await editUpd(slug, (u) => {
+      const known = (u.stockOut ||= {});
+      for (const [h, kind] of backH) {
+        if (known[h]?.kind !== kind) continue;
+        delete known[h];
+        for (const [n, f] of Object.entries(u.stale)) { if (!f?.stockWhy?.[h]) continue; const sw = { ...f.stockWhy }; delete sw[h];
+          if (Object.keys(sw).length) u.stale[n] = { ...f, stockWhy: sw, why: whyOf({ ...f, stockWhy: sw }) };
+          else if (f.was) { const { stockWhy, was, stock, ...rest } = f; u.stale[n] = { ...rest, ...was }; }
+          else delete u.stale[n]; }
+      }
+      for (const [h, { it, kind }] of items) {
+        if (known[h]?.kind === kind) continue; known[h] = { kind, at };
+        const names = productNames(it, products), name = (products.find((x) => x.handle === h)?.title) || (it.title && !/^[a-z]+\.[\w.-]+$/.test(it.title) ? it.title : names[0]);
+        const why = kind === 'oos' ? `${name} is out of stock on the site, and this move builds on it.` : `${name} is no longer on the site, and this move builds on it.`;
+        for (const n of new Set([...movesNaming(pub, names), ...movesNaming(priv, names)])) { if (!pub[n] && !priv[n]) continue; const o = u.stale[n];
+          const was = o ? (o.stockWhy ? o.was : { priority: o.priority, why: o.why, ...(o.via ? { via: o.via } : {}) }) : null;
+          const f = { ...(o || {}), n, priority: 'high', via: o?.via || 'stock', stock: true, stockWhy: { ...(o?.stockWhy || {}), [h]: why }, was, at: o?.at || at, changes: [...new Set([`${kind === 'oos' ? 'Out of stock' : 'Gone from the site'}: ${name}`, ...(o?.changes || [])])].slice(0, 6) };
+          f.why = whyOf(f); u.stale[n] = f; flagged.add(n); }
+      }
+    });
+    if (flagged.size) { emit(slug, { type: 'update-done', changes: items.size, flagged: flagged.size }); log.log(`[stock] ${slug}: ${flagged.size} moves out of date (${[...flagged].join(', ')}): ${[...items.keys()].join(', ')}`); }
+    return { flagged: [...flagged] };
+  }
   async function signal(slug, events = []) {
+    await stockSignal(slug, events).catch((e) => log.warn('[stock]', slug, e.message));
     const rel = events.filter((e) => ['price', 'new', 'removed', 'gone', 'drift', 'rival-price', 'rival-launch'].includes(e.kind)); if (!rel.length) return;
     const s0 = await status(slug), u = await upd(slug); if (!s0?.done || u.auto === false || st(slug).running || st(slug).checking) return;
     if (Date.now() - (u.lastCheck?.at || s0.doneAt || 0) < 24 * 3600e3 || backingOff(u)) return; /* at most one event-driven check a day, and a day after a failed one */
@@ -1089,5 +1134,5 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   /* moves the fact sheet found quoting a changed fact: out of date, with the reason (kept with an older flag's changes) */
   const flagStale = (slug, list = []) => editUpd(slug, (u) => { for (const x of list) { const o = u.stale[x.n]; u.stale[x.n] = { ...x, at: Date.now(), changes: [...new Set([...(x.changes || []), ...(o?.changes || [])])].slice(0, 6), ...(o && !o.private ? { private: false } : {}) }; } });
   const facts = { republish, flagStale, readProduct: async (slug, url) => readProduct(slug, url, (await packs.getJSON(slug, 'profile.json', {})) || {}), readRival, busy: (slug) => !!(st(slug).running || st(slug).checking), setHooks: (h) => Object.assign(hooks, h) };
-  return { ...facts, readLive, heal, healPdfs, pdfFor, pdfOn, connected, liveConnected, checkUpdates, rewrite, updates, setAuto, signal, seen, buildInfo, retry, goPro, checkData, applyCheck, liveWeekly, peek: (slug) => st(slug).status, addEmail, start, resume, resumeAll, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
+  return { ...facts, readLive, heal, healPdfs, pdfFor, pdfOn, connected, liveConnected, checkUpdates, rewrite, updates, setAuto, signal, seen, buildInfo, retry, goPro, checkData, applyCheck, liveWeekly, stockSignal, peek: (slug) => st(slug).status, addEmail, start, resume, resumeAll, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
 }

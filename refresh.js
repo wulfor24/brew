@@ -66,6 +66,20 @@ export function liveMaterial(base = {}, rows = [], { pct = 0.1 } = {}) {
   return { changes, base: next };
 }
 
+/* a product a move can no longer build on (out of stock, off the site): the names a move would call it by (the full title and
+   the part before " - 200ml" / " | Pack of 2"), and the moves that name it anywhere in their text */
+export const handleOfItem = (it = {}) => it.handle || (String(it.url || '').match(/\/products\/([^/?#]+)/) || [])[1] || null;
+export function productNames(it = {}, products = []) {
+  const h = handleOfItem(it), p = products.find((x) => x.handle === h);
+  const t = it.title && !/^[a-z]+\.[\w.-]+$/.test(it.title) ? it.title : p?.title || String(h || '').replace(/-/g, ' ');
+  const short = String(t).split(/\s+[-–|:(]\s*/)[0];
+  return [...new Set([t, short].map((s) => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase()).filter((s) => s.length >= 4))];
+}
+export function movesNaming(moves = {}, names = []) {
+  if (!names.length) return [];
+  return Object.entries(moves).filter(([n, m]) => +n >= 1 && m && !m.meta?.cadence).filter(([, m]) => { const t = JSON.stringify([m.title, m.stat, m.gives, m.sections]).toLowerCase(); return names.some((x) => t.includes(x)); }).map(([n]) => +n);
+}
+
 export const changeLine = (c) => c.kind === 'new' ? `New: ${c.label}: ${c.now}` : c.kind === 'removed' ? `Gone: ${c.label} (was ${c.was})` : `${c.label}: ${c.was} → ${c.now}${c.pct != null ? ` (${c.pct > 0 ? '+' : ''}${c.pct}%)` : ''}`;
 
 // which moves each change touches: the move quotes the old value or names the thing, or its evidence areas include it
