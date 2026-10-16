@@ -4116,7 +4116,7 @@
         <figcaption>${srcMark(q.platform || q.source, name)}<span class="hd-qs"><b>${esc(name)}</b><em>${esc([q.author, q.where || q.sub, when].filter(Boolean).join(' · '))}${q.rating ? ` · ${'★'.repeat(q.rating)}` : ''}</em></span>${q.mode === 'asked' ? '<i class="hd-asked">Asked</i>' : ''}${url ? `<u>${ic('right', 's14')}</u>` : ''}</figcaption></figure>`; };
     /* the same post read twice (a cross-post, a re-read) shows once */
     const seenQ = new Set(), items = x.items.filter((q) => { const t0 = String(q.quote || q.text || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(), k = t0.length > 60 ? t0.slice(0, 60) : `${t0}|${q.author || ''}`; if (!t0 || seenQ.has(k)) return false; seenQ.add(k); return true; });
-    const th = x.themes || [], thN = HD.allT || f.theme ? th.length : 10;
+    const th0 = x.themes || [], thN = HD.allT ? th0.length : 10, thI = th0.findIndex((t) => t.name === f.theme), th = thI >= thN ? [th0[thI], ...th0.filter((_, i) => i !== thI)] : th0; /* ten topics and "N more"; a picked topic always shows */
     el.innerHTML = `<div class="hd-top"><b class="hd-n">${n0(x.total)}</b><span>${f.src || f.mode || f.theme || f.q ? 'match' : `quotes${x.at ? ` · read ${ago(x.at)}` : ''}`}</span></div>
       <div class="hd-grid"><aside class="hd-tools" aria-label="Filters">
         <label class="hd-search">${ic('search', 's16')}<input data-hd-q data-nomic type="search" placeholder="Search the words" value="${esc(f.q)}" aria-label="Search what people said"></label>
