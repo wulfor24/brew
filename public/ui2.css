@@ -304,3 +304,11 @@
 }
 .ui2 .j2-who{min-width:0;overflow:hidden}
 .ui2 .j2-st{min-width:0;overflow:hidden;text-overflow:ellipsis}
+
+/* ---- Slack in the jam (jam-room.js): the live-thread line and Brew's proposal card ---- */
+.ui2 .jm-slack-live{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;margin:4px 0 10px;padding:10px 12px;border-radius:var(--r-row);background:var(--glass-row);box-shadow:inset 0 0 0 1px var(--glass-row-edge);font-size:13px;line-height:18px;color:var(--fg-2)}
+.ui2 .jm-slack-live .slack-ic{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:6px;background:#4a154b;color:#fff;font-weight:700;font-size:12px}
+.ui2 .jm-slack-live a{color:var(--fg);font-weight:500;text-decoration:underline;text-underline-offset:2px;margin-left:auto}
+.ui2 .jm-pending{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:10px;padding:10px;border-radius:var(--r-row);background:var(--surface);box-shadow:inset 0 0 0 1px var(--line)}
+.ui2 .jm-pending::before{content:"Waiting for your yes";flex:1 0 100%;font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-3)}
+.ui2 .jm-pending .btn[disabled]{opacity:.55}
