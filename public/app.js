@@ -14,7 +14,7 @@
   const GEN = !!B.generated, LANDING = BR === 'brew';
   const DEMO_LAND = LANDING && !!window.BREW_DEMO;
   // a review source named after a site ("amazon.com") reads as a second marketplace in Connectors: name it as reviews
-  { const rc = B.connectors?.reviews; if (rc && /\.[a-z]{2,}$/i.test(String(rc.name || '')) ) rc.name = `Reviews on ${rc.name}`; }
+  { const rc = B.connectors?.reviews; if (rc && /\.[a-z]{2,}$/i.test(String(rc.name || '')) && !/^reviews on /i.test(rc.name)) rc.name = `Reviews on ${rc.name}`; }
   // a generated brand's own words for the shared screens (products from its lanes, a rival it really has)
   const GX = (() => { const prods = Object.values(B.lanes || {}).flatMap((l) => String(l.line || '').split(' · ').map((x) => x.split(',')[0].trim())).filter(Boolean);
     return { p1: prods[0] || 'your best seller', p2: prods[1] || prods[0] || 'your best seller', rival: (B.rivalLogos || [])[0]?.[0] || 'your top rival', india: (window.BREW_MONEY?.cur || (/₹/.test(JSON.stringify(B.lanes || {})) ? 'INR' : '')) === 'INR' }; })(); // a brand built by the reader + moves engine
