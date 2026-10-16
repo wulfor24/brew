@@ -2770,12 +2770,13 @@ body:not(.ui2) .lx-col .lx > .q-note{padding:6px 0 28px;text-align:center;font-s
 .wb-col.is-empty .col-top{min-width:0;gap:8px}
 .wb-col.is-empty .col-top h2{min-width:0;font-size:15px;line-height:20px;white-space:normal;color:var(--fg-2)}
 .wb-col.is-empty .col-top .col-fill{display:none}
-/* one height for the whole top bar (Param 2026-10-16): Feed | Deck, the team pill, Viewing as and the theme switch all 42px */
+/* one height for the whole top bar (Param 2026-10-16): Feed | Deck, the team pill, Viewing as and the theme switch all 39px */
 @media (min-width:701px){
-  .topbar .seg{box-sizing:border-box;height:42px;padding:3px;align-items:center}
-  .topbar .seg button{height:36px}
-  .topbar-r .j1-pill,.topbar-r .viewing,.topbar-r > .icon-btn{box-sizing:border-box;height:42px}
-  .topbar-r > .icon-btn{width:42px}
+  .topbar .seg{box-sizing:border-box;height:39px;padding:3px;align-items:center}
+  .topbar .seg button{height:33px}
+  .topbar-r .j1-pill,.topbar-r .viewing,.topbar-r > .icon-btn{box-sizing:border-box;height:39px}
+  .topbar-r > .icon-btn{width:39px}
+  .topbar-r .viewing .face{width:24px;height:24px}
 }
 /* the Work and Deck views: no line under the top bar (Param 2026-10-16) */
 html body.deck-on .topbar{border-bottom:0;box-shadow:none}

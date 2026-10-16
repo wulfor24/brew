@@ -2802,7 +2802,8 @@
   const SIGS = [
     { h: '642 people whose payment failed or whose order came back', why: 'A recovery message to draft in the jam, keyed to the reason the order failed.', n: '642', r: '511', ch: B.config?.country === 'IN' || B.sym === '₹' ? 'WhatsApp' : 'Email', when: '3h' }
   ];
-  const SOURCES = ['shopify', 'whatsapp', 'klaviyo'];
+  const SOURCES0 = ['shopify', 'whatsapp', 'klaviyo'];
+  const sigSources = () => SOURCES0.filter((id) => B.connectors?.[id]); /* a source the brand has no connector for (WhatsApp since sending was cut) is skipped, never read */
   const sigLive = () => conn('shopify');
   const sigFake = () => sigLive() && !window.LiveConn?.isLive?.('shopify'); /* DUMMY: the sample signal never sits next to a connected Shopify */
   const sigCard = (s) => `<article class="sig-card is-dummy"><div class="sig-top">${face('crm')}<b>CRM specialist</b><span class="when">· ${s.when}</span><span class="dummy-tag" title="A sample signal: the numbers are made up in this prototype">Dummy</span></div><hr class="sig-rule">
@@ -2812,15 +2813,15 @@
     ? `<div class="src is-on">${glyph(id, 34)}<span class="src-t"><b>${s.name}</b><span>${s.kind}</span></span><span class="src-ok">Connected</span></div>`
     : `<div class="src">${glyph(id, 34)}<span class="src-t"><b>${s.name}${s.optional ? ' <span class="src-opt">optional</span>' : ''}</b><span>${s.kind}</span></span><button class="src-btn" data-cx="${id}">Connect</button></div>`; };
   // one slim strip of sources: what is live, what one tap adds
-  const sigStrip = () => { const need = ['shopify', 'whatsapp'].filter((id) => !conn(id)).map((id) => B.connectors[id].name);
-    return `<div class="sig-strip"><p>${need.length ? `${ic('plug', 's14')}Shopify is live. Connect ${need.join(' and ')} to see more of the people Signals finds.` : `<i class="pulse"></i>Reading Shopify and WhatsApp. New people land here as they qualify.`}</p>
-      <div class="sig-pills">${SOURCES.map((id) => { const c = B.connectors[id]; return conn(id) ? `<span class="sig-pill is-on">${glyph(id, 16)}${esc(c.name)}${ic('check', 's14')}</span>` : `<button class="sig-pill" data-cx="${id}">${glyph(id, 16)}${esc(c.name)}${c.optional ? '<small>optional</small>' : ''}</button>`; }).join('')}</div></div>`; };
+  const sigStrip = () => { const need = ['shopify', 'whatsapp'].filter((id) => B.connectors?.[id] && !conn(id)).map((id) => B.connectors[id].name);
+    return `<div class="sig-strip"><p>${need.length ? `${ic('plug', 's14')}Shopify is live. Connect ${need.join(' and ')} to see more of the people Signals finds.` : `<i class="pulse"></i>Reading ${B.connectors?.whatsapp ? 'Shopify and WhatsApp' : 'Shopify'}. New people land here as they qualify.`}</p>
+      <div class="sig-pills">${sigSources().map((id) => { const c = B.connectors[id]; return conn(id) ? `<span class="sig-pill is-on">${glyph(id, 16)}${esc(c.name)}${ic('check', 's14')}</span>` : `<button class="sig-pill" data-cx="${id}">${glyph(id, 16)}${esc(c.name)}${c.optional ? '<small>optional</small>' : ''}</button>`; }).join('')}</div></div>`; };
   const sigBody = () => {
     /* a real Shopify shows only what it really found (those arrive as live cards in this column), never the sample signal */
     if (sigLive()) return sigStrip() + (window.LiveConn?.isLive?.('shopify') ? '' : SIGS.map(sigCard).join(''));
-    if (sigUnlocked) return `<p class="sig-sec">Connect your sources</p>${SOURCES.map(srcRow).join('')}`;
+    if (sigUnlocked) return `<p class="sig-sec">Connect your sources</p>${sigSources().map(srcRow).join('')}`;
     return `<article class="sig-lock">${(() => { const im = (B.posts || []).find((x) => x.images?.[0])?.images?.[0]; return im ? `<div class="sig-lock-art" aria-hidden="true"><img src="${esc(im)}" alt=""></div>` : ''; })()}<div class="sig-lock-body">
-        <h3>Connect Shopify${conn('whatsapp') ? '' : ' and WhatsApp'} and Signals turns orders and carts into people to talk to today.</h3>
+        <h3>Connect Shopify${conn('whatsapp') || !B.connectors?.whatsapp ? '' : ' and WhatsApp'} and Signals turns orders and carts into people to talk to today.</h3>
         <div class="sig-will"><div><i></i>Who reaches day 45, the reorder window</div><div><i></i>Recent buyers to ask for a review</div><div><i></i>Failed payments and returned orders</div></div>
         <button class="sig-unlock" data-sig-unlock>Connect your sources${ic('right', 's16')}</button></div></article>`;
   };
