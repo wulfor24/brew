@@ -810,14 +810,13 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       if (via === 'connected') {
         const left = ns.filter((n) => !written.some((w) => w.n === n));
         if (left.length && tries < 3) { await enqueue(slug, left, { via: 'connected', auto: true, notBefore: Date.now() + 20 * 3600e3, tries: tries + 1 }); log.log(`[connect] ${slug}: ${left.length} moves carry on tomorrow`); }
-        if (written.length && priv && !left.length) notify(slug, 'update', { at, moves: written, members: true, lead: `Your accounts are connected, so Brew rewrote ${written.length} of ${(await status(slug))?.name || slug}’s moves with your real numbers`, because: 'Only your team sees these versions.' }).catch((e) => log.warn('[notify]', e.message));
-        await editUpd(slug, (u) => { if (u.connectDone) u.connectDone = { ...u.connectDone, finished: left.length ? null : at, written: (u.connectDone.written || 0) + written.length }; });
       }
     } catch (e) { log.error('[rewrite] failed', slug, e); /* the brand does not stay on "Rewriting N moves" */
       /* a connected run that stopped on an error tries the moves it had not written again in an hour (three tries in all) */
       if (via === 'connected' && tries < 3) { const left = ns.filter((n) => !written.some((w) => w.n === n)); if (left.length) await enqueue(slug, left, { via: 'connected', auto: true, notBefore: Date.now() + 3600e3, tries: tries + 1 }).catch(() => {}); }
       await setStatus(slug, { state: (await status(slug))?.done ? 'Ready' : prevState || 'Ready' }).catch(() => {}); emit(slug, { type: 'rewrite-done', n: written.length, failed: String(e?.message || e).slice(0, 160) }); }
-    finally { x.running = false; x.rewriting = null; saveSpend(slug); await editUpd(slug, (u) => { delete u.rewriting; }).catch(() => {}); setTimeout(() => drain(slug).catch((e) => log.warn('[rewrite] drain', e.message)), 0); }
+    finally { x.running = false; x.rewriting = null; saveSpend(slug); await editUpd(slug, (u) => { delete u.rewriting; }).catch(() => {}); setTimeout(() => drain(slug).catch((e) => log.warn('[rewrite] drain', e.message)), 0);
+      if (via === 'connected') setTimeout(() => settleConnect(slug).catch((e) => log.warn('[connect] settle', e.message)), 50); }
   }
   /* a rewrite cut off by a restart (a deploy): the status goes back to what it was and the moves it had not written yet are
      rewritten now, auto or asked for alike (a move it wrote carries meta.rewrittenAt from after the start) */
@@ -953,6 +952,36 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     emit(slug, { type: 'connect-rewrite', ids: run.ids, n: ns.length });
     drain(slug).catch((e) => log.warn('[connect] drain', e.message));
   }
+  /* a connected run's end, worked out from the moves themselves, not from a write that has to survive: a deploy mid-run restarts
+     it (resumeRewrite) and an older instance can save updates.json over the newer one. A move rewritten since the run began is
+     done; the flags of done moves go, the run is marked finished with its history line, and the team hears once. Moves still
+     missing with nothing queued or running for them are queued again (three times at most). Runs after each connected rewrite
+     and after a restart. */
+  async function settleConnect(slug) {
+    const u0 = await upd(slug), c = u0.connectDone;
+    if (!c?.at || c.finished || u0.connectRun || u0.rewriting || st(slug).running || (u0.queue || []).some((q) => q.via === 'connected')) return;
+    const pub = await packs.getJSON(slug, 'moves.json', {}), pm = await packs.getJSON(slug, 'private/moves.json', {}).catch(() => ({}));
+    const done = (n) => Math.max(Date.parse(pm?.[n]?.meta?.rewrittenAt || 0) || 0, Date.parse(pub[n]?.meta?.rewrittenAt || 0) || 0) >= c.at;
+    const flagged = Object.values(u0.stale || {}).filter((s) => s.via === 'connected').map((s) => +s.n);
+    const left = flagged.filter((n) => pub[n] && !done(n));
+    if (left.length) { const tries = c.settleTries || 0; if (tries >= 3) return;
+      await editUpd(slug, (u) => { if (u.connectDone) u.connectDone.settleTries = tries + 1; });
+      log.log(`[connect] ${slug}: ${left.length} moves of the connected run are still to write, queued again`);
+      await enqueue(slug, left, { via: 'connected', auto: true, tries: tries + 1 }); return drain(slug); }
+    const ns = [...new Set([...Object.keys(pub), ...Object.keys(pm || {})].map(Number))].filter((n) => n >= 1 && n < 1000 && done(n)).sort((a, z) => a - z);
+    const title = (n) => (pm?.[n] || pub[n])?.title || `Move ${pad2(n)}`, names = (c.ids || []).map((k) => NAME_OF[k] || k).join(' and ') || 'Your accounts';
+    let first = false;
+    await editUpd(slug, (u) => { const d = u.connectDone; if (!d || d.at !== c.at || d.finished) return; first = true;
+      for (const [n, s] of Object.entries(u.stale || {})) if (s.via === 'connected' && done(+n)) delete u.stale[n];
+      u.connectDone = { ...d, finished: Date.now(), written: ns.length };
+      if (!(u.history || []).some((h) => h.connected === c.at)) u.history = [{ at: Date.now(), auto: true, connected: c.at, moves: ns.map((n) => ({ n, title: title(n) })), usd: null, because: `${names} connected` }, ...(u.history || [])].slice(0, 30);
+    });
+    if (!first || !ns.length) return;
+    log.log(`[connect] ${slug}: the connected run is in, ${ns.length} moves rewritten`);
+    emit(slug, { type: 'connect-done', n: ns.length });
+    /* the run's own start time keys the email, so a second settle never sends it twice */
+    notify(slug, 'update', { at: c.at, moves: ns.map((n) => ({ n, title: title(n) })), members: true, lead: `${names} ${(c.ids || []).length > 1 ? 'are' : 'is'} connected, so Brew rewrote ${ns.length} of ${(await status(slug))?.name || slug}’s moves with your real numbers`, because: 'Only your team sees these versions.' }).catch((e) => log.warn('[notify]', e.message));
+  }
   /* the weekly rewrite of what connected accounts flagged: once every LIVE_DAYS, the moves their re-reads flagged (real accounts
      only, never the first-connect run's own flags), oldest flag first, up to LIVE_CAP. A move the cap stopped keeps its flag for
      the next week; a brand whose first-connect run is still going waits for it */
@@ -1081,7 +1110,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   }
   async function resumeAll() { for (const sl of String(process.env.OPS_FRESH_RELOAD || '').split(',').map((x) => x.trim()).filter(Boolean)) freshReload(sl).catch((e) => log.error('[ops] fresh', sl, e.message));
     for (const x of await packs.list()) { if (!x.status.done && !x.status.error && !x.status.capped) resume(x.slug).catch((e) => log.error('[build] resume', x.slug, e.message)); else { if (x.status.done) { rebase(x.slug).catch((e) => log.warn('[build] rebase', x.slug, e.message)); healPdfs(x.slug); healCount(x.slug).catch((e) => log.warn('[build] count', x.slug, e.message)); } resumeRewrite(x.slug).catch((e) => log.warn('[rewrite] resume', x.slug, e.message));
-      upd(x.slug).then((u) => { if (u.connectRun) armConnect(x.slug, u.connectRun.due || 0); if ((u.queue || []).some((q) => q.notBefore)) drain(x.slug).catch(() => {}); }).catch(() => {}); } } }
+      upd(x.slug).then((u) => { if (u.connectRun) armConnect(x.slug, u.connectRun.due || 0); if ((u.queue || []).some((q) => q.notBefore)) drain(x.slug).catch(() => {});
+        if (u.connectDone && !u.connectDone.finished) setTimeout(() => settleConnect(x.slug).catch((e) => log.warn('[connect] settle', e.message)), 90e3); /* after resumeRewrite has had its turn */ }).catch(() => {}); } } }
   /* Saved PDFs heal: when the PDF text rules change (PDF_V) the saved PDFs are forgotten and each is drawn again on its next
      download (pdfOn); entries for moves that no longer exist leave status.pdfs. Nothing is drawn ahead of time. */
   const PDF_V = 4; // 2: kickers without "OF N", "What to watch", BREW DRAFTS; 3: no "Brew re-reads / we pause", index without a count; 4: no source-method narration (brew-name.js unSkill) (2026-10-15)
@@ -1134,5 +1164,5 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   /* moves the fact sheet found quoting a changed fact: out of date, with the reason (kept with an older flag's changes) */
   const flagStale = (slug, list = []) => editUpd(slug, (u) => { for (const x of list) { const o = u.stale[x.n]; u.stale[x.n] = { ...x, at: Date.now(), changes: [...new Set([...(x.changes || []), ...(o?.changes || [])])].slice(0, 6), ...(o && !o.private ? { private: false } : {}) }; } });
   const facts = { republish, flagStale, readProduct: async (slug, url) => readProduct(slug, url, (await packs.getJSON(slug, 'profile.json', {})) || {}), readRival, busy: (slug) => !!(st(slug).running || st(slug).checking), setHooks: (h) => Object.assign(hooks, h) };
-  return { ...facts, readLive, heal, healPdfs, pdfFor, pdfOn, connected, liveConnected, checkUpdates, rewrite, updates, setAuto, signal, seen, buildInfo, retry, goPro, checkData, applyCheck, liveWeekly, stockSignal, peek: (slug) => st(slug).status, addEmail, start, resume, resumeAll, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
+  return { ...facts, settleConnect, readLive, heal, healPdfs, pdfFor, pdfOn, connected, liveConnected, checkUpdates, rewrite, updates, setAuto, signal, seen, buildInfo, retry, goPro, checkData, applyCheck, liveWeekly, stockSignal, peek: (slug) => st(slug).status, addEmail, start, resume, resumeAll, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
 }

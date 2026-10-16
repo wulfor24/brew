@@ -100,3 +100,20 @@ test('a simulated account never starts a run', async () => {
   assert.equal(runs.length, 0);
   assert.equal(await P.getJSON(slug, 'private/profile-live.json', null), null);
 });
+
+test('a run whose wrap-up was lost to a restart settles from the moves themselves, and re-queues what is missing', async () => {
+  const { b, P, slug, runs } = await brand();
+  const start = Date.now() - 60e3, later = new Date(start + 30e3).toISOString();
+  /* what a restart left: moves 1 and 2 rewritten after the run began, 3 never written; the flags, no history, not finished */
+  await P.put(slug, 'private/moves.json', { 1: { n: 1, title: 'New one', meta: { rewrittenAt: later } }, 2: { n: 2, title: 'New two', meta: { rewrittenAt: later } } });
+  const flag = (n) => ({ n, via: 'connected', priority: 'medium', private: true, live: true, real: true, why: 'x' });
+  await P.put(slug, 'updates.json', { stale: { 1: flag(1), 2: flag(2), 3: flag(3) }, history: [], queue: [], connectDone: { at: start, ids: ['ga4'], n: 3, finished: null, written: 0 } });
+  await b.settleConnect(slug); await settle();
+  assert.deepEqual(runs.map((r) => r.only), [[3]], 'only the missing move is written again');
+  await settle();
+  const u = await P.getJSON(slug, 'updates.json');
+  assert.ok(u.connectDone.finished, 'then the run is marked finished');
+  assert.equal(Object.values(u.stale).filter((s) => s.via === 'connected').length, 0, 'no flags left over');
+  assert.equal(u.history.filter((h) => h.connected === start).length, 1, 'one history line for the run');
+  await b.settleConnect(slug); assert.equal((await P.getJSON(slug, 'updates.json')).history.filter((h) => h.connected === start).length, 1, 'settling again changes nothing');
+});
