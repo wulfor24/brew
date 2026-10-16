@@ -8,6 +8,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { flagKind, potFit, potOf, potLeft, potAdd, perMove, runKind, nextWeek, weekKey, EST, capOf } from '../rewrite-pot.js';
 
+/* the pot's size follows GEMINI_DEEP_MODEL (deepIsPro): these tests pin the Flash numbers, so the shell's model (a Pro deploy
+   sets it) must not reach them. The Pro case is tested with an explicit env below. */
+delete process.env.GEMINI_DEEP_MODEL; delete process.env.BRAND_WEEK_CAP_USD;
 const quiet = { log() {}, warn() {}, error() {}, info() {} };
 const settle = (ms = 300) => new Promise((r) => setTimeout(r, ms));
 
