@@ -96,22 +96,14 @@ test('connect: build.js saves which accounts a private rewrite used and skips th
   assert.match(fs.readFileSync(path.join(ROOT, 'connectors/index.js'), 'utf8'), /builder\.connectPending\?\.\(slug, id\)/);
 });
 
-/* ---------- 3. deploys wait for paid work ---------- */
-function guard(busyJson, { lastMinAgo = 60, force = '0', wait = '0' } = {}) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'guard-'));
-  const last = new Date(Date.now() - lastMinAgo * 60e3).toISOString();
-  fs.writeFileSync(path.join(dir, 'gcloud'), `#!/bin/sh\necho ${last}\n`, { mode: 0o755 });
-  fs.writeFileSync(path.join(dir, 'curl'), `#!/bin/sh\nprintf '%s' '${busyJson}'\n`, { mode: 0o755 });
-  try { return { ok: true, out: execFileSync('bash', ['-c', `. ${path.join(ROOT, 'tools/deploy-guard.sh')}; deploy_guard svc https://x`], { env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, FORCE: force, DEPLOY_WAIT_MIN: wait }, encoding: 'utf8' }) }; }
-  catch (e) { return { ok: false, out: String(e.stdout || '') }; }
-  finally { fs.rmSync(dir, { recursive: true, force: true }); }
-}
-test('deploy guard: goes when nothing is running', () => { const r = guard('{"busy":0}'); assert.equal(r.ok, true); assert.match(r.out, /no paid work/); });
-test('deploy guard: refuses while paid work runs', () => { const r = guard('{"busy":2,"by":{"rewrite":1,"drafts":1}}'); assert.equal(r.ok, false); assert.match(r.out, /still doing paid work/); });
-test('deploy guard: a recent deploy does not block the next one', () => { const r = guard('{"busy":0}', { lastMinAgo: 1 }); assert.equal(r.ok, true); });
-test('deploy guard: FORCE=1 skips the paid-work check', () => { const r = guard('{"busy":3}', { lastMinAgo: 1, force: '1' }); assert.equal(r.ok, true); });
-test('deploy guard: both deploy scripts use it', () => {
-  for (const f of ['deploy.sh', 'tools/deploy-demo.sh']) assert.match(fs.readFileSync(path.join(ROOT, f), 'utf8'), /deploy_guard (shopos-feed|brew-demo) https:\/\//);
+/* ---------- 3. deploys never wait: the going instance stops starting moves, the next one resumes ---------- */
+test('deploy scripts have no guard and no wait; the builder stops on SIGTERM and the boot resumes', () => {
+  for (const f of ['deploy.sh', 'tools/deploy-demo.sh']) { const s = fs.readFileSync(path.join(ROOT, f), 'utf8'); assert.doesNotMatch(s, /deploy_guard|DEPLOY_WAIT|ops\/busy/, `${f} waits for nothing`); }
+  assert.ok(!fs.existsSync(path.join(ROOT, 'tools/deploy-guard.sh')), 'the guard script is gone');
+  const b = fs.readFileSync(path.join(ROOT, 'build.js'), 'utf8'), srv = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+  assert.match(b, /let stopping = false; const stop = \(\) => \{ stopping = true; \};/); assert.match(b, /canSpend: \(\) => !stopping && !capHit\(slug\)/); assert.match(b, /canSpend: \(\) => !stopping && !blocked\(slug\)/);
+  assert.match(b, /if \(stopping && \(res\.applicable \|\| \[\]\)\.some\(\(n\) => !cache\[n\]\)\)[\s\S]{0,400}return;/, 'a stopped build is left unfinished, never marked done or capped');
+  assert.match(srv, /process\.once\('SIGTERM', \(\) => \{ builder\?\.stop\?\.\(\);/); assert.match(srv, /builder\.resumeAll\(\)/);
 });
 
 /* ---------- 4. alerts ---------- */

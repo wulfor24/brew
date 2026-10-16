@@ -103,7 +103,11 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   /* paid jobs that run beside a build or rewrite (the ad statics): counted for paidWork(), which deploy.sh asks before a deploy */
   let statics = 0; const held = (fn) => { statics++; return fn().finally(() => { statics--; }); };
   /* what paid work this instance is doing now (builds, rewrites, update checks, statics), by kind and without brand names */
-  const paidWork = () => { const by = { build: 0, rewrite: 0, check: 0, statics }; for (const x of S.values()) { if (x.running && !x.confirmed) by[x.rewriting ? 'rewrite' : 'build']++; /* a read waiting for the owner's check (x.confirmed is its wake-up) spends nothing: it held every deploy for a day */ if (x.checking) by.check++; } return by; };
+  const paidWork = () => { const by = { build: 0, rewrite: 0, check: 0, statics }; for (const x of S.values()) { if (x.running && !x.confirmed) by[x.rewriting ? 'rewrite' : 'build']++; /* a read waiting for the owner's check (x.confirmed is its wake-up) spends nothing */ if (x.checking) by.check++; } return by; };
+  /* a deploy or scale-down: SIGTERM (server.js) calls stop(), no new move starts on this instance, every run leaves its brand
+     unfinished (not done, not capped) and the next instance's resumeAll() carries on with the moves not yet saved. Only the
+     moves in flight at that second are written again, so a deploy never has to wait for a build. */
+  let stopping = false; const stop = () => { stopping = true; };
   const st = (slug) => { let x = S.get(slug); if (!x) S.set(slug, x = { events: [], listeners: new Set(), status: null, confirmed: null, running: false, inflight: new Map(), failed: new Map() }); return x; };
   const emit = (slug, ev) => { const x = st(slug); const e = { ...ev, at: Date.now() }; x.events.push(e); if (x.events.length > 2000) x.events.shift(); x.listeners.forEach((f) => { try { f(e); } catch {} }); };
   const subscribe = (slug, f, { replay = true } = {}) => { const x = st(slug); if (replay) x.events.forEach(f); x.listeners.add(f); return () => x.listeners.delete(f); };
@@ -284,7 +288,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       };
       const NUM = await numbersFor(packs.getJSON, slug, { 'profile.json': profile }); /* the moves quote today's counts, each with the day it was read */
       const ctx = { brand: { name: profile.name, host: profile.host, descriptor: profile.descriptor }, brief: { md: briefMd, json: brief }, profile, ledger: withNumbers(ledger, NUM, profile.name), numbers: NUM, packs, slug,
-        load: (n) => cache[n] || null, save: async (n, move) => { cache[n] = move; await save(n, move); }, canSpend: () => !capHit(slug),
+        load: (n) => cache[n] || null, save: async (n, move) => { cache[n] = move; await save(n, move); }, canSpend: () => !stopping && !capHit(slug),
         effort: process.env.MOVES_EFFORT || 'medium', search: +(process.env.MOVES_SEARCH ?? 1),
         onTotal: async (N, applicable) => { total = N; await setStatus(slug, { total: N, applicable }); },
         onStart: (n) => { x.inflight.set(n, Date.now()); x.failed.delete(n); emit(slug, { type: 'move-start', n }); },
@@ -292,10 +296,11 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       if (cache[21] && !(await status(slug))?.statics) staticsJob = makeStatics(slug, cache[21], profile, (fn) => (lock = lock.then(fn).catch((e) => log.warn('[build] statics card', e.message))));
       let res = await eng.runAll(ctx, { concurrency: +process.env.MOVES_CONCURRENCY || 6, waveA: WAVE_A });
       // a move that failed gets one more pass once the rest are written (a cut-off reply, a busy model)
-      if (!capHit(slug) && (res.applicable || []).some((n) => !cache[n])) { await lock; log.warn('[build] second pass for', slug); res = await eng.runAll(ctx, { concurrency: 4, waveA: WAVE_A }); }
+      if (!stopping && !capHit(slug) && (res.applicable || []).some((n) => !cache[n])) { await lock; log.warn('[build] second pass for', slug); res = await eng.runAll(ctx, { concurrency: 4, waveA: WAVE_A }); }
       await lock; await staticsJob;
       if (res.errors?.length) log.warn('[build] moves with errors', slug, res.errors.map((e) => e.n + ': ' + e.error).join('; '));
       if (await cancelled(slug)) { await setStatus(slug, { state: `Stopped. ${saved.size} of ${total} moves written.`, cancelled: true, error: 'cancelled' }); return; }
+      if (stopping && (res.applicable || []).some((n) => !cache[n])) { await setStatus(slug, { state: `Brew is restarting; the rest of the moves carry on in a moment. ${saved.size} of ${total} written.` }); log.warn(`[build] ${slug}: stopping with ${saved.size} of ${total}, the next instance resumes`); return; } /* not done, not capped: resumeAll picks it up */
       if (await budgetPause(slug, saved.size)) return;
       await stage(slug, 'moves', 'done');
       await pdfQueue;
@@ -887,7 +892,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       const NUM = await numbersFor(packs.getJSON, slug, { 'profile.json': profile });
       const ctx = { brand: { name: profile.name, host: profile.host, descriptor: profile.descriptor }, brief: { md: briefMdT + stockMd, json: brief }, profile, ledger: withNumbers(ledger, NUM, profile.name), numbers: NUM, packs, slug,
         load: (n) => cache[n] || null, save: async (n, move) => { cache[n] = move; await (lock = lock.then(() => saveOne(n, move)).catch((e) => log.warn('[rewrite] save', n, e.message))); },
-        canSpend: () => !blocked(slug) && dayUsd() < DAY_CAP && spentFor(slug) - usd0 < cap && !st(slug).cancelled,
+        canSpend: () => !stopping && !blocked(slug) && dayUsd() < DAY_CAP && spentFor(slug) - usd0 < cap && !st(slug).cancelled,
         effort: process.env.MOVES_EFFORT || 'medium', search: +(process.env.MOVES_SEARCH ?? 1),
         onTotal: async () => {}, /* a rewrite keeps the brand's count: the build sets it (there is no `total` here; it threw on every rewrite of 3+ moves) */
         onStart: (n) => { x.inflight.set(n, Date.now()); x.failed.delete(n); emit(slug, { type: 'move-start', n }); },
@@ -1364,5 +1369,5 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (o?.stockWhy) { u.stale[x.n] = { ...o, was: { priority: x.priority, why: x.why, via: x.via }, why: [...Object.values(o.stockWhy), x.why].join(' '), changes: [...new Set([...(o.changes || []), ...(x.changes || [])])].slice(0, 6) }; continue; } /* an out-of-stock mark stays on top */
     u.stale[x.n] = { ...x, at: Date.now(), changes: [...new Set([...(x.changes || []), ...(o?.changes || [])])].slice(0, 6), ...(o && !o.private ? { private: false } : {}) }; } });
   const facts = { pot: potInfo, potSpend, estMove, republish, flagStale, readProduct: async (slug, url) => readProduct(slug, url, (await packs.getJSON(slug, 'profile.json', {})) || {}), readRival, busy: (slug) => !!(st(slug).running || st(slug).checking), setHooks: (h) => Object.assign(hooks, h) };
-  return { ...facts, paidWork, marketCheck, teamStatics, settleConnect, connectPending, readLive, heal, healPdfs, pdfFor, pdfOn, connected, liveConnected, staleConnected, checkUpdates, rewrite, updates, setAuto, signal, seen, buildInfo, retry, goPro, checkData, applyCheck, liveWeekly, stockSignal, peek: (slug) => st(slug).status, addEmail, start, resume, resumeAll, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
+  return { ...facts, paidWork, stop, marketCheck, teamStatics, settleConnect, connectPending, readLive, heal, healPdfs, pdfFor, pdfOn, connected, liveConnected, staleConnected, checkUpdates, rewrite, updates, setAuto, signal, seen, buildInfo, retry, goPro, checkData, applyCheck, liveWeekly, stockSignal, peek: (slug) => st(slug).status, addEmail, start, resume, resumeAll, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
 }

@@ -19,13 +19,13 @@ The short version:
 
 ## Release rhythm
 
-A deploy stops the running instance and every paid job on it (builds, rewrites, statics, drafts, weekly moves). On 16 Oct about
-120 deploys in 22 hours cut that work off again and again. So:
+Deploy whenever a change is tested; continuous deployment is part of how we work, and a deploy never waits for background work.
+What makes that safe (keep it so):
 
-- Batch changes. Commit as you go, deploy once a batch is tested; never deploy one small fix after another.
-- `deploy.sh` and `tools/deploy-demo.sh` wait up to 15 minutes (`DEPLOY_WAIT_MIN`) while `/api/ops/busy` reports paid work,
-  then refuse (`tools/deploy-guard.sh`).
-- `FORCE=1` skips that check, only for a hotfix that can't wait; say why in the commit.
-- Several sessions share this repo: `git pull --rebase` right before deploying, and deploy from a clean, committed tree.
-- Interrupted work picks up after a restart (a rewrite carries on with the moves it hadn't written, without rewriting the index
-  again), but the moves in flight at the moment of the deploy are paid twice. Waiting is cheaper.
+- The instance that goes gets SIGTERM: `builder.stop()` lets no new move start there, jams and workspaces flush, and every
+  run leaves its brand unfinished (not done, not capped) with "Brew is restarting; the rest of the moves carry on in a moment".
+- The new instance's `resumeAll()` (server.js boot) resumes every unfinished build, rewrite and connected run from the moves
+  already saved; each saved move is a file, so only the moves in flight at that second are written again.
+- `/api/ops/busy` still says what paid work an instance is doing; nothing waits on it.
+- Several sessions share this repo: `git pull --rebase` right before deploying, and deploy from a clean, committed tree (a
+  detached worktree at HEAD when others have uncommitted edits here).
