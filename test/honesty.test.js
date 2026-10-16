@@ -166,3 +166,15 @@ test('connectors re-read on their own cadence, and new ones get the default', as
   assert.equal(due('shopify', { lastSync: now - 7 * H, error: 'x', errorAt: now - H }, now), false, 'a failed read waits 3 hours');
   assert.equal(due('shopify', { lastSync: now - 7 * H, error: 'x', errorAt: now - 4 * H }, now), true);
 });
+
+test('Google Ads: a failed account list says why, never "no account"', async () => {
+  const g = (await import('../connectors/google.js')).default;
+  process.env.GOOGLE_ADS_DEVELOPER_TOKEN ||= 'dev'; const f0 = globalThis.fetch;
+  globalThis.fetch = async (u) => ({ ok: !/googleads/.test(u), status: /googleads/.test(u) ? 404 : 200, text: async () => (/googleads/.test(u) ? 'Not Found' : '{}') });
+  try {
+    const os = await g.options({ scope: 'https://www.googleapis.com/auth/adwords https://www.googleapis.com/auth/analytics.readonly', access: 't' });
+    assert.match(os.adsNote || '', /didn’t list the Ads accounts.*404/);
+    const os2 = await g.options({ scope: 'https://www.googleapis.com/auth/analytics.readonly', access: 't' });
+    assert.match(os2.adsNote || '', /wasn’t allowed/);
+  } finally { globalThis.fetch = f0; }
+});

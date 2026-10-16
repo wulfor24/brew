@@ -10,7 +10,9 @@ import crypto from 'node:crypto';
 import { exactSite } from '../auth.js';
 import { card, L, n0, pct, has, fmt, getJSON, form } from './common.js';
 
-const ADS = 'https://googleads.googleapis.com/v21', ADMIN = 'https://analyticsadmin.googleapis.com/v1beta', DATA = 'https://analyticsdata.googleapis.com/v1beta';
+/* Google retires each Ads API version about a year after release, and a retired one answers 404 to every call (v21 did by
+   2026-10-16, which showed as "no Google Ads account"). Bump GOOGLE_ADS_API_VERSION when Google's sunset email comes. */
+const ADS = `https://googleads.googleapis.com/${process.env.GOOGLE_ADS_API_VERSION || 'v26'}`, ADMIN = 'https://analyticsadmin.googleapis.com/v1beta', DATA = 'https://analyticsdata.googleapis.com/v1beta';
 const app = () => ({ id: process.env.GOOGLE_ADS_OAUTH_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || '', secret: process.env.GOOGLE_ADS_OAUTH_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET || '', dev: process.env.GOOGLE_ADS_DEVELOPER_TOKEN || '' });
 const SCOPES = 'https://www.googleapis.com/auth/adwords https://www.googleapis.com/auth/analytics.readonly openid email';
 const tok = (o) => getJSON('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: form(o) }, 'google token');
@@ -71,11 +73,17 @@ const base = {
     return { token: t.access_token, refresh: t.refresh_token || null, exp: Date.now() + (t.expires_in || 3600) * 1e3, scope: t.scope || '' };
   },
   async fresh(c) { if (c.sa) return c.exp > Date.now() + 120e3 ? c : { ...c, ...(await saToken()) }; if (c.exp > Date.now() + 120e3 || !c.refresh) return c; const t = await tok({ grant_type: 'refresh_token', refresh_token: c.refresh, client_id: app().id, client_secret: app().secret }); return { ...c, token: t.access_token, exp: Date.now() + (t.expires_in || 3600) * 1e3 }; },
-  async options(c) {
+  async options(c, { ads = true } = {}) {
     const out = [];
     if (/analytics/.test(c.scope)) { const j = await getJSON(`${ADMIN}/accountSummaries?pageSize=200`, { headers: auth(c) }, 'ga4 accounts').catch(() => ({}));
       for (const a of j.accountSummaries || []) for (const p of a.propertySummaries || []) out.push({ id: p.property, kind: 'ga4', name: p.displayName, sub: `GA4 · ${a.displayName}` }); }
-    if (/adwords/.test(c.scope) && app().dev) { const j = await getJSON(`${ADS}/customers:listAccessibleCustomers`, { headers: { ...auth(c), 'developer-token': app().dev } }, 'google ads accounts').catch(() => ({}));
+    /* why no Ads account came back is said, never shown as "none": the permission left unticked on Google's screen, or Google's error */
+    if (ads) {
+      if (!/adwords/.test(c.scope)) out.adsNote = 'Google Ads access wasn’t allowed on Google’s screen. Use another login and tick “See, edit, create and delete your Google Ads accounts”.';
+      else if (!app().dev) out.adsNote = 'Google Ads isn’t switched on on this server yet.'; }
+    if (ads && /adwords/.test(c.scope) && app().dev) { const j = await getJSON(`${ADS}/customers:listAccessibleCustomers`, { headers: { ...auth(c), 'developer-token': app().dev } }, 'google ads accounts')
+        .catch((e) => { console.warn('[google] list ads accounts', e.message); out.adsNote = `Google didn’t list the Ads accounts: ${e.message.replace(/^google ads accounts /, '').slice(0, 140)}`; return {}; });
+      if (!out.adsNote && !(j.resourceNames || []).length) out.adsNote = 'Google says this login has no Google Ads account. If you just made one, wait a minute and use another login, or check you picked the same Google account.';
       for (const rn of (j.resourceNames || []).slice(0, 25)) { const id = rn.split('/')[1];
         const r = await gaql(c, id, 'SELECT customer.id, customer.descriptive_name, customer.currency_code, customer.manager FROM customer LIMIT 1').catch(() => []);
         const x = r[0]?.customer, dash = (n) => String(n).replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
@@ -154,7 +162,7 @@ export const ga4 = {
   ...base, id: 'ga4', name: 'Google Analytics', modes: ['key', 'oauth'],
   ready: () => saOn() || !!(app().id && app().secret), oauthOn,
   authorize: authUrl(GA4_SCOPES),
-  async options(c) { return (await base.options(c)).filter((o) => o.kind === 'ga4'); },
+  async options(c) { return (await base.options(c, { ads: false })).filter((o) => o.kind === 'ga4'); },
   select: (c, ch) => ga4Of(c, ch),
   owns: (c, ctx) => base.owns({ ...c, customer: null }, ctx),
   sync: (c, ctx, deps) => base.sync({ ...c, customer: null }, ctx, deps, 'ga4')

@@ -231,7 +231,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
       if (opt && !canConnect(access)) return json(res, 403, { error: ADMIN_ONLY, adminOnly: true }), true;
       if (opt && req.method === 'GET') { if (!C?.options) return json(res, 404, { error: 'unknown connector' }), true;
         const pend = await loadPending(slug, id, me.email); if (!pend) return json(res, 200, { options: [], error: 'Connect again: the sign-in expired.' }), true;
-        try { return json(res, 200, { options: await C.options(pend) }), true; } catch (e) { return json(res, 200, { options: [], error: e.message.slice(0, 160) }), true; } }
+        try { const os = await C.options(pend); return json(res, 200, { options: os, ...(os.adsNote ? { adsNote: os.adsNote } : {}) }), true; } catch (e) { return json(res, 200, { options: [], error: e.message.slice(0, 160) }), true; } }
       if (req.method !== 'POST') return false;
       const b = await body(req);
       if (b.action !== 'sync' && !canConnect(access)) return json(res, 403, { error: ADMIN_ONLY, adminOnly: true }), true;
