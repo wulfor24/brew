@@ -1890,6 +1890,14 @@
     repaintDetail(); const i = FEED.findIndex((x) => x.id === p.id), el = $(`.card[data-id="${p.id}"]`); if (el && i >= 0) el.outerHTML = postCard(FEED[i], i);
     toast(`${ic('check', 's16')}Decided: ${esc(o.name)}`); };
   const sendTo = async (to, note) => {
+    /* the live site: "Jam with team" is the jam on Slack (the real post and its thread); the demo keeps the simulated teammate */
+    if (to === 'team' && !window.BREW_DEMO && window.LIVE?.avail?.slack && !window.LIVE.avail.slack.dummy) {
+      if (!conn('slack')) return openConnect('slack', { then: () => sendTo(to, note), why: 'The jam runs in a Slack thread: replies land here, and new assets go there for review.' });
+      const w = await ensureWork(); busy(true, 'Posting to Slack…');
+      const r = await tapi('POST', `/api/work/${w.id}/jb/move`, { to: 'slack', base: location.origin }); busy(false);
+      if (r.error) return toast(esc(r.error)); putWork(r.work); repaintDetail();
+      return toast(`${ic('check', 's16')}The jam is live in ${esc(r.posted?.channel || 'Slack')}. Replies land here; new assets go there for review.`);
+    }
     if (to === 'team' && !conn('slack')) return openConnect('slack', { then: () => { const q = DP?.p || FEED[0]; openDetail(q); if (q.kind === 'conflict') return pullIn(q); DP.picking = colleagueForCard(DP.p).id; repaintDetail(); }, why: 'Your colleague reviews the card in Slack and approves it there.' });
     if (to === 'team' && !note && DP.picking == null) { DP.picking = colleagueForCard(DP.p).id; return repaintDetail(); }
     const w = await ensureWork(); busy(true, 'Asking your teammate…');

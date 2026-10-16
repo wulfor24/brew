@@ -23,11 +23,15 @@ export function createSlackRoutes({ connectors, feed, log = console, secret = ()
   async function reply(ev, team) {
     const slug = await connectors.slackSlug(team); if (!slug) return log.warn('[slack] no brand has workspace', team);
     const user = await connectors.slackUser(slug, ev.user); if (user.bot) return;
-    const r = await feed()?.slackIn({ slug, kind: 'reply', thread: ev.thread_ts, ts: ev.ts, user, text: plain(ev.text) });
+    /* written to @Brew: a change applies at once (still never a paid image or video without a yes) */
+    const bot = (await connectors.slackOf?.(slug)?.catch?.(() => null))?.bot, mention = !!bot && String(ev.text || '').includes(`<@${bot}>`);
+    const r = await feed()?.slackIn({ slug, kind: 'reply', thread: ev.thread_ts, ts: ev.ts, user, mention, text: plain(ev.text, bot ? { [bot]: 'Brew' } : {}) });
     log.log?.(r?.w ? `[slack] ${slug}: a reply from ${user.name} in jam ${r.w.id}` : `[slack] ${slug}: no jam has thread ${ev.thread_ts}`);
   }
   async function press(p) {
-    const a = (p.actions || [])[0]; if (a?.action_id !== 'approve') return;
+    const a = (p.actions || [])[0];
+    if (a?.action_id === 'apply' || a?.action_id === 'dismiss') return proposal(p, a);
+    if (a?.action_id !== 'approve') return;
     const [slug, wid, n] = String(a.value || '').split('|'), team = p.team?.id, ts = p.message?.ts, root = p.message?.thread_ts || ts; /* pressed on the jam's post or on an asset in its thread */
     const tell = (text) => p.response_url && fetch(p.response_url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ response_type: 'ephemeral', replace_original: false, text }) }).catch(() => {});
     /* the button must come from the workspace this brand connected, on the jam's own post */
@@ -41,6 +45,17 @@ export function createSlackRoutes({ connectors, feed, log = console, secret = ()
     await connectors.slackPost(slug, { channel: p.channel?.id, update: ts, text: p.message.text || 'Approved', blocks });
   }
 
+  /* Make it / Not now on a proposal Brew posted in the thread */
+  async function proposal(p, a) {
+    const [slug, wid, pid] = String(a.value || '').split('|');
+    const tell = (text) => p.response_url && fetch(p.response_url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ response_type: 'ephemeral', replace_original: false, text }) }).catch(() => {});
+    if (!slug || (await connectors.slackSlug(p.team?.id)) !== slug) return tell('This workspace isn’t connected to that brand in Brew any more.');
+    const user = await connectors.slackUser(slug, p.user?.id); if (user.bot) return;
+    const r = await feed()?.slackIn({ slug, kind: a.action_id, thread: p.message?.thread_ts || p.message?.ts, user, pid });
+    if (!r?.w || r.w.id !== wid) return tell('Brew couldn’t find that jam. Open it in Brew.');
+    if (r.gone) return tell('That was already answered.');
+    if (r.error) tell(r.error);
+  }
   return async function handle(req, res, u) {
     if (req.method !== 'POST' || !['/slack/events', '/slack/actions'].includes(u.pathname)) return false;
     const body = await raw(req);

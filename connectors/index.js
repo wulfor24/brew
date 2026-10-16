@@ -298,6 +298,9 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     } catch (e) { log.warn('[slack] post', slug, e.message); if (['invalid_auth', 'token_revoked', 'account_inactive'].includes(e.slack)) await editC(slug, (x) => { if (x.slack) x.slack = { ...x.slack, state: 'error', error: slackWhy(e), errorAt: Date.now() }; }).then(() => cache.delete(sk(slug)));
       return { error: slackWhy(e) }; }
   }
+  /* a link that opens a post (or its thread) in Slack */
+  async function slackLink(slug, channel, ts) { const c = await slackOf(slug); if (!c) return null;
+    try { return (await slackApi(c.token, 'chat.getPermalink', { channel, message_ts: ts }, { get: true })).permalink || null; } catch { return null; } }
   /* the channels Brew can post to: public ones (chat:write.public) and private ones it was invited to */
   async function slackChannels(slug) {
     const c = await slackOf(slug); if (!c) return { error: 'Connect Slack first.', connect: true };
@@ -342,5 +345,5 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     return false;
   }
 
-  return { handle: async (req, res, u) => (await slackRoutes(req, res, u)) || handle(req, res, u), sim: SIM, slackOf, slackPost, slackChannels, slackUser, slackSlug, slackGone, liveOf, forViewer, drop: (slug) => cache.delete(sk(slug)), liveView, sync, disconnect, finish, tick, CONNECTORS };
+  return { handle: async (req, res, u) => (await slackRoutes(req, res, u)) || handle(req, res, u), sim: SIM, slackOf, slackPost, slackLink, slackChannels, slackUser, slackSlug, slackGone, liveOf, forViewer, drop: (slug) => cache.delete(sk(slug)), liveView, sync, disconnect, finish, tick, CONNECTORS };
 }

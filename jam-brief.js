@@ -206,7 +206,7 @@ export function createJamBrief(o) {
   const waText = (t, w) => `*Jam: ${w.title}*\n\n${seed(t, w).md.replace(/^#{1,3}\s+/gm, '*').replace(/^(\*[^\n*]+)$/gm, '$1*')}\n\nReply here. When we’re done, paste this chat back into Brew and the brief updates. (jam ${w.id})`;
   const finalDoc = (t, w) => { const d = seed(t, w); return { kind: d.kind, md: d.md, missing: d.missing, contributors: [...new Set((d.edits || []).map((e) => e.by).filter(Boolean))], at: now(t) }; };
 
-  const routes = ({ on, W, say, move, notify, nextTicket, handoff, learn = null, toSlack = null }) => {
+  const routes = ({ on, W, say, move, notify, nextTicket, handoff, learn = null, toSlack = null, askMake = null }) => {
     const get = (t, id) => { const w = W(t, id); if (w) seed(t, w); return w; };
     on('GET', '/api/cards/:cid/brief', async (b, t, p, q) => { const c = cardOf(t, p.cid); return c ? { doc: preview(t, c, q?.get?.('decided') || null) } : { error: 'not found' }; });
     on('POST', '/api/work/:wid/jb', async (b, t, p) => { const w = get(t, p.wid); return w ? { work: w } : { error: 'not found' }; });
@@ -228,6 +228,8 @@ export function createJamBrief(o) {
       const L = learn ? await learn(t, w, text).catch((e) => { log.warn('[learn]', e.message); return { said: null, reply: 'That didn’t go through, so nothing changed. Try again in a minute.' }; }) : null;
       if (L) { say(t, w, { from: 'me', body: L.said || text, learn: true }); say(t, w, { from: 'ai', who: 'Brew', body: L.reply, learn: true }); return { work: w, changed: [], learned: L.n ?? null }; } /* learn: not the jam's own ask (the board keeps asking what to make) */
       say(t, w, { from: 'me', body: text });
+      /* "make it a reel": a paid image or video is proposed first, with Make it / Not now (feed-service propose) */
+      const pd = askMake ? await askMake(t, w, text) : null; if (pd) return { work: w, changed: [], pending: pd };
       const r = await edit(t, w, text, { who: 'You', mode: 'ask' });
       say(t, w, { from: 'ai', who: AGENT[w.agent] || 'AI', body: r.reply || (r.changed.length ? 'Done.' : 'Nothing to change there.'), edited: r.changed });
       if (!['drafting', 'team', 'shared'].includes(w.stage)) move(t, w, 'drafting', null);
@@ -312,5 +314,5 @@ export function createJamBrief(o) {
     });
   };
 
-  return { seed, onSay, routes, finalDoc, waText, preview, missingOf };
+  return { seed, onSay, routes, finalDoc, waText, preview, missingOf, edit };
 }

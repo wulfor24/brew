@@ -78,7 +78,7 @@ test('Slack routes: bad signatures are refused; a reply reaches its jam; a bot n
   await go('/slack/events', ev('E2', 'UB')); await tick();
   const ins = calls.filter((c) => c[0] === 'in');
   assert.equal(ins.length, 1, 'once, and never for a bot');
-  assert.deepEqual({ ...ins[0][1], user: ins[0][1].user.name }, { slug: 'cozy', kind: 'reply', thread: '1.0', ts: '2.0', user: 'Ana', text: 'Ship it @someone' });
+  assert.deepEqual({ ...ins[0][1], user: ins[0][1].user.name }, { slug: 'cozy', kind: 'reply', thread: '1.0', ts: '2.0', user: 'Ana', mention: false, text: 'Ship it @someone' });
 
   await go('/slack/events', JSON.stringify({ type: 'event_callback', event_id: 'E3', team_id: 'T1', event: { type: 'app_uninstalled' } })); await tick();
   assert.deepEqual(calls.find((c) => c[0] === 'gone'), ['gone', 'T1']);
@@ -102,4 +102,32 @@ test('Slack routes: Approve only counts from the workspace that brand connected'
     await h(reqOf(raw, sign(raw)), resOf(), new URL('https://x/slack/actions')); await tick();
     assert.equal(seen[0][1].thread, '1.0', 'Approve on an asset in the thread finds the jam by its thread'); assert.ok(!seen[1][1].blocks.some((b) => b.type === 'actions'), 'the button gives way to who approved');
   } finally { globalThis.fetch = f0; }
+});
+
+test('Slack routes: Make it / Not now reach the jam once, with the proposal id; @Brew is noticed', async () => {
+  const seen = [];
+  const connectors = { slackSlug: async (t) => (t === 'T1' ? 'cozy' : null), slackUser: async () => ({ name: 'Ana' }), slackOf: async () => ({ bot: 'UBREW' }) };
+  const feed = { slackIn: async (x) => { seen.push(x); return { w: { id: 'wk1' }, ok: true }; } };
+  const h = createSlackRoutes({ connectors, feed: () => feed, log: { log() {}, warn() {} }, secret: () => 'shh' });
+  const f0 = globalThis.fetch; globalThis.fetch = async () => ({ ok: true });
+  try {
+    for (const id of ['apply', 'dismiss']) {
+      const raw = new URLSearchParams({ payload: JSON.stringify({ type: 'block_actions', team: { id: 'T1' }, user: { id: 'U1' }, message: { ts: '3.0', thread_ts: '1.0' }, actions: [{ action_id: id, value: 'cozy|wk1|pd_1' }] }) }).toString();
+      await h(reqOf(raw, sign(raw)), resOf(), new URL('https://x/slack/actions')); await tick();
+    }
+    assert.deepEqual(seen.map((x) => [x.kind, x.thread, x.pid]), [['apply', '1.0', 'pd_1'], ['dismiss', '1.0', 'pd_1']]);
+    seen.length = 0;
+    const ev = JSON.stringify({ type: 'event_callback', event_id: 'E9', team_id: 'T1', event: { type: 'message', user: 'U1', ts: '2.0', thread_ts: '1.0', text: '<@UBREW> make it a reel' } });
+    await h(reqOf(ev, sign(ev)), resOf(), new URL('https://x/slack/events')); await tick();
+    assert.equal(seen[0].mention, true); assert.equal(seen[0].text, '@Brew make it a reel');
+  } finally { globalThis.fetch = f0; }
+});
+
+test('jam asks: a paid image or video is proposed first, chatter never spends (feed-service source)', async () => {
+  const fs = await import('node:fs'); const s = fs.readFileSync(new URL('../feed-service.js', import.meta.url), 'utf8');
+  const act = s.slice(s.indexOf('const slackAct'), s.indexOf('const toSlack'));
+  assert.match(act, /kind === 'make'\) return propose\(/, 'a make ask is always a proposal');
+  assert.doesNotMatch(act.slice(act.indexOf('/* chat:')), /iterate|remake|DR\.start|photoFromJam/, 'chat runs nothing');
+  const ap = s.slice(s.indexOf('const applyPending'), s.indexOf('const slackAct'));
+  assert.match(ap, /if \(!p \|\| p\.id !== pid\) return \{ gone: true \};\s*w\.pending = null;/, 'a proposal runs once');
 });

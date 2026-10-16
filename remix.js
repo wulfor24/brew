@@ -529,7 +529,8 @@ export function createRemix(o) {
         const first = rows.length ? imgs[0] : made[0];
         if (!first && !made.some(Boolean)) throw new Error('no image came back');
         ch.pkg = { ...ch.pkg, ...(first ? { image: first } : {}), ...(rows.length ? { cardImages: imgs } : {}) }; ch.imagePending = false; sync(t, ch);
-        version(t, ch, `ai:${ch.agent}`, all && rows.length ? `Photos for ${made.filter(Boolean).length} ${ch.family === 'social' ? 'slides' : 'cards'}` : `New creative: ${why}`);
+        { const v = version(t, ch, `ai:${ch.agent}`, all && rows.length ? `Photos for ${made.filter(Boolean).length} ${ch.family === 'social' ? 'slides' : 'cards'}` : `New creative: ${why}`);
+          try { o.onMedia?.(t, ch, { kind: 'image', images: (rows.length ? imgs : [first]).filter(Boolean), n: v.n, label: v.label }); } catch {} } /* every new asset goes where the jam is (Slack) */
       } catch (e) { ch.imagePending = false; ch.imageError = String(e.message).slice(0, 160); log.warn('[studio image]', e.message); sync(t, ch); }
       finally { IMG_JOBS.delete(ch.id); }
     })();
@@ -576,6 +577,7 @@ export function createRemix(o) {
         const v = versionsOf(t, ch.id).find((x) => x.id === target); if (v) v.snapshot = { ...v.snapshot, ...media };
         if (!target || ch.headVersionId === target || headOf(t, ch)?.id === target) ch.pkg = { ...ch.pkg, ...media };
         ch.videoPending = null; ch.videoStep = null; sync(t, ch);
+        try { o.onMedia?.(t, ch, { kind: 'video', video: media.video, images: [media.poster], n: v?.n, label: 'Short video' }); } catch {}
         ch.thread.push({ from: 'ai', text: `The video for ${v ? `v${v.n}` : 'this version'} is ready: 6 seconds, vertical${voiced ? ', with the hook read over it' : ''}.`, at: now(t) });
         o.save?.(t);
       } catch (e) { ch.videoPending = null; ch.videoStep = null; ch.videoError = `The video didn’t come through (${String(e.message).slice(0, 120)}). Make it again.`; log.warn('[short video]', why, e.message); sync(t, ch); o.save?.(t); }
@@ -604,7 +606,7 @@ export function createRemix(o) {
     if (out?.pkg) {
       ch.pkg = { ...ch.pkg, ...cleanPkg(ch.family, ch.action, fromKV(ch.family, ch.action, out.pkg), clean), ...keepMedia(ch.pkg) };
       if (BANNED.test(publicText(ch.family, ch.action, ch.pkg).join(' '))) ch.pkg = rulePkg(t, ch.agent, ch.family, ch.pkg);
-      sync(t, ch, c); version(t, ch, `ai:${ch.agent}`, message.slice(0, 90), out.label);
+      sync(t, ch, c); { const v = version(t, ch, `ai:${ch.agent}`, message.slice(0, 90), out.label); if (!quiet) try { o.onVersion?.(t, ch, v, message); } catch {} } /* e.g. the jam's Slack thread */
       if (!quiet) ch.thread.push({ from: 'ai', text: clean(out.reply || 'Updated.'), at: now(t), v: versionsOf(t, ch.id).length });
       // the chips follow the conversation: what to try next on this version
       if (Array.isArray(out.next)) { const ctx = chipCtx(ch.action, ch.actionLabel, c); const nx = out.next.map((x) => clean(String(x)).replace(/[.]$/, '')).filter((x) => x && x.length <= 48 && chipRelates(x, ctx)); if (nx.length >= 2) ch.next = nx.slice(0, 4); } /* only chips about this change's action */
@@ -1097,6 +1099,7 @@ export function createRemix(o) {
         const v = versionsOf(t, ch.id).find((x) => x.id === target), d = { ...(v?.snapshot?.draft || ch.pkg.draft || {}), ...media, pending: false };
         if (v) v.snapshot = { ...v.snapshot, draft: d };
         if (headOf(t, ch)?.id === target) ch.pkg = { ...ch.pkg, draft: d };
+        try { o.onMedia?.(t, ch, { kind: as, images: media.images || [], video: media.video || null, n: v?.n, label: REMAKE_AS[as], copy: (plan.slides || []).map((x, i) => `${i + 1}. ${x.onSlide}`).join('\n') || (plan.script || []).map((x) => x.line).join(' ') || '' }); } catch {}
         ch.thread.push({ from: 'ai', text: `${REMAKE_AS[as][0].toUpperCase() + REMAKE_AS[as].slice(1)} for ${v ? `v${v.n}` : 'this version'} is ready${media.err ? `. ${media.err}` : '.'}`, at: now(t) });
       } catch (e) {
         ch.remakeError = `The ${as} didn’t come through (${String(e.message).slice(0, 120)}). The words are on the version; make it again.`; log.warn('[remake]', as, e.message);
@@ -1109,7 +1112,11 @@ export function createRemix(o) {
   const REMAKING = new Set();
   on('POST', '/api/changes/:chid/remake', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };
-    const as = String(b.as || '').toLowerCase(); if (!REMAKE_AS[as]) return { status: 400, error: 'Remake as a video, a carousel or an image.' };
+    return remakeOf(t, ch, String(b.as || '').toLowerCase());
+  });
+  /* the remake itself, shared by the chip and an OK'd ask from the jam (Brew or its Slack thread) */
+  const remakeOf = async (t, ch, as) => {
+    if (!REMAKE_AS[as]) return { status: 400, error: 'Remake as a video, a carousel or an image.' };
     if (ch.remakePending || REMAKING.has(ch.id)) return { error: 'A remake is already being made.', change: pubChange(t, ch) };
     REMAKING.add(ch.id); /* held from before the AI call, so a double tap can't make two versions */
     let plan = null, live = false;
@@ -1123,7 +1130,7 @@ export function createRemix(o) {
     const making = remakeMedia(t, ch, as, plan, v.id);
     if (making) { ch.pkg.draft.pending = true; v.snapshot = { ...v.snapshot, draft: { ...draft, pending: true } }; }
     return { change: pubChange(t, ch), version: { id: v.id, n: v.n }, as, words: live ? 'ai' : 'package', making, why: making ? null : remakeWhy(ch), learned: learnedOut(t) };
-  });
+  };
   on('GET', '/api/changes/:chid/photos', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch);
     const cat = (catalogOf(t) || []).filter((x) => x.img).sort((a, b) => (a.out ? 1 : 0) - (b.out ? 1 : 0)).slice(0, 60).map((x) => ({ t: x.t, img: x.img, ...(x.out ? { out: true } : {}) }));
@@ -1255,5 +1262,10 @@ export function createRemix(o) {
   };
   // picking a version in the jam moves the same pointer the studio uses
   const pickFromJam = (t, w, n) => { const ch = w.changeId && changes(t)[w.changeId]; if (!ch) return; const v = versionsOf(t, ch.id).find((x) => x.n === n); if (!v || editable(ch)) return; const { action, amount, title, sub, state, ...pkg } = v.snapshot; ch.pkg = { ...cleanPkg(ch.family, ch.action, pkg, clean), ...keepMedia({ ...pkg, image: pkg.image || null, knobs: pkg.knobs || {} }, true) }; ch.headVersionId = v.id; sync(t, ch); };
-  return { iterateFromJam, pickFromJam, makePlan, ensurePlan, planReady, onWorkVersion, pubChange, changes, packageOf };
+  /* an OK'd ask from the jam (in Brew or its Slack thread): remake in another form, or a new photo */
+  const remakeFromJam = async (t, w, as) => { const ch = w.changeId && changes(t)[w.changeId]; if (!ch) return null; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) }; return remakeOf(t, ch, as); };
+  const photoFromJam = (t, w, ask) => { const ch = w.changeId && changes(t)[w.changeId]; if (!ch) return null; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };
+    if (!ch.imagePending) ch.pkg.imageBrief = clean(`${ch.pkg.imageBrief || ''} The team asked: ${ask}`).slice(-600);
+    const started = genImage(t, ch, ask); return started ? { started: true } : { error: realOnly(ch) ? `${ch.pkg.platform || 'This place'} wants real photos, not AI ones.` : 'No new photo can be made for this one right now (AI is off, or today’s image limit is used up).' }; };
+  return { remakeFromJam, photoFromJam, iterateFromJam, pickFromJam, makePlan, ensurePlan, planReady, onWorkVersion, pubChange, changes, packageOf };
 }

@@ -1020,7 +1020,7 @@ export function createFeedService(o) {
   const later = (ms, fn) => setTimeout(() => { try { const r = fn(); r?.catch?.((e) => log.warn('[work timer]', e.message)); } catch (e) { log.warn('[work timer]', e.message); } }, ms);
   const notify = (t, w, text, kind = 'update') => { t.notes.unshift({ id: uid('n'), itemId: w.id, cardId: w.cardId, title: w.title, img: w.img, text, kind, at: now(t), read: false }); w.unread = true; w.updatedAt = now(t); };
   const move = (t, w, stage, text, kind) => { if (stage === 'deploying' && w.cardId) decideFromAction(t, t.cards.get(w.cardId), w); const was = w.stage; w.stage = stage; if (was !== stage) stepLearn(t, w, stage); w.history.push([stage, now(t)]); w.updatedAt = now(t); if (text) notify(t, w, text, kind); };
-  const say = (t, w, m) => { const msg = { id: uid('m'), at: now(t), ...m }; if (msg.from === 'me' && !msg.by) { const p = meOf(t); if (p) { msg.by = p; JAMS.join(w, p, 'replied'); } } w.thread.push(msg); if (msg.from === 'me' && w.slack?.ts && o.slack) slackMirror(t, w, msg); if (msg.by) mailEv(t, w, { kind: 'reply', to: (w.people || []).map((x) => x.email), by: msg.by, text: msg.body, id: msg.id }); if (msg.by) w.lastBy = msg.by.email; w.updatedAt = now(t); JB?.onSay(t, w, msg); };
+  const say = (t, w, m) => { const msg = { id: uid('m'), at: now(t), ...m }; if (msg.from === 'me' && !msg.by) { const p = meOf(t); if (p) { msg.by = p; JAMS.join(w, p, 'replied'); } } w.thread.push(msg); if ((msg.from === 'me' || msg.from === 'ai') && w.slack?.ts && o.slack && !msg.noMirror && msg.via !== 'slack' && !msg.learn) slackMirror(t, w, msg); if (msg.by) mailEv(t, w, { kind: 'reply', to: (w.people || []).map((x) => x.email), by: msg.by, text: msg.body, id: msg.id }); if (msg.by) w.lastBy = msg.by.email; w.updatedAt = now(t); JB?.onSay(t, w, msg); };
   const curV = (w) => w.versions.find((v) => v.n === w.current) || w.versions[w.versions.length - 1];
   const addVersion = (t, w, v) => { const n = w.versions.length + 1; w.versions.push({ n, ...v, at: now(t) }); w.current = n; w.title = v.title; if (v.images?.[0]) w.img = v.images[0]; RMX?.onWorkVersion(t, w, v); if (v.images?.[0] && v.by !== 'agent') slackAsset(t, w, { title: `v${n}: ${v.title}`, copy: v.sub, image: v.images[0], kind: 'version', note: v.note }); return n; };
   const workFor = (t, cardId) => t.work.find((w) => w.cardId === cardId && !w.archived && !w.discarded && !['out', 'measuring', 'result'].includes(w.stage));
@@ -1037,8 +1037,8 @@ export function createFeedService(o) {
   /* Slack (connectors/slack.js): a jam taken to Slack is one post in the brand's channel; what the team writes in the jam goes
      to that thread, and the thread's replies and its Approve button come back here (slackIn, from server.js /slack/events) */
   const slugOfT = (t) => t.brandId || DEFAULT_BRAND;
-  const slackMirror = (t, w, msg) => { const who = msg.by?.name || msg.by?.email || 'Someone in Brew';
-    o.slack.slackPost(slugOfT(t), { channel: w.slack.channel, thread_ts: w.slack.ts, text: `*${who}* in Brew: ${String(msg.body || '').slice(0, 3000)}` }).then((r) => { if (r?.error) log.warn('[slack] mirror', r.error); }).catch(() => {}); };
+  const slackMirror = (t, w, msg) => { const who = msg.from === 'ai' ? null : msg.by?.name || msg.by?.email || 'Someone in Brew';
+    o.slack.slackPost(slugOfT(t), { channel: w.slack.channel, thread_ts: w.slack.ts, text: who ? `*${who}* in Brew: ${String(msg.body || '').slice(0, 3000)}` : `${String(msg.body || '').slice(0, 3000)}${msg.edited?.length ? `\n_Updated in the brief: ${msg.edited.join(', ')}_` : ''}` }).then((r) => { if (r?.error) log.warn('[slack] mirror', r.error); }).catch(() => {}); };
   const slackBlocks = (t, w, text, page) => [{ type: 'section', text: { type: 'mrkdwn', text: String(text).slice(0, 2900) } },
     { type: 'actions', elements: [{ type: 'button', style: 'primary', text: { type: 'plain_text', text: `Approve v${w.current}` }, action_id: 'approve', value: `${slugOfT(t)}|${w.id}|${w.current}` },
       ...(page ? [{ type: 'button', text: { type: 'plain_text', text: 'Open in Brew' }, url: page, action_id: 'open' }] : [])] },
@@ -1048,20 +1048,88 @@ export function createFeedService(o) {
   const pubUrl = (x) => { const s = String(x || ''); if (!s) return null; if (/^https:\/\//.test(s)) return s; const base = (process.env.PUBLIC_URL || 'https://brew.joinsquareup.com').replace(/\/$/, '');
     return /^https?:\/\/localhost/.test(base) ? null : `${base}/${s.replace(/^\//, '')}`; };
   const slackAsset = (t, w, a) => {
-    if (!o.slack || !w?.slack?.ts) return; const img = pubUrl(a.image), what = { image: 'image', video: 'video', voice: 'voiceover', carousel: 'carousel', text: 'copy', version: 'version' }[a.kind] || 'draft';
+    if (!o.slack || !w?.slack?.ts) return; const what = { image: 'image', video: 'video', voice: 'voiceover', carousel: 'carousel', text: 'copy', version: 'version' }[a.kind] || 'draft';
     const text = `*New ${what} for review:* ${a.title || w.title}${a.note ? ` (${a.note})` : ''}`;
     const links = [a.video && ['Watch the video', a.video], a.audio && ['Play the voiceover', a.audio], a.zip && ['Get the slides', a.zip]].filter(Boolean).map(([l, u]) => [l, pubUrl(u)]).filter(([, u]) => u);
+    const imgs = [...new Set([...(a.images || []), a.image].filter(Boolean))].map(pubUrl).filter((u) => u && /\.(png|jpe?g|gif|webp)(\?|$)/i.test(u)).slice(0, 10);
     const blocks = [{ type: 'section', text: { type: 'mrkdwn', text: `${text}${a.copy ? `\n${String(a.copy).slice(0, 2500)}` : ''}` } },
-      ...(img && /\.(png|jpe?g|gif|webp)(\?|$)/i.test(img) ? [{ type: 'image', image_url: img, alt_text: String(a.title || w.title).slice(0, 200) }] : []),
+      ...imgs.map((u, i) => ({ type: 'image', image_url: u, alt_text: `${String(a.title || w.title).slice(0, 180)}${imgs.length > 1 ? ` ${i + 1}` : ''}` })),
       { type: 'actions', elements: [{ type: 'button', style: 'primary', text: { type: 'plain_text', text: `Approve v${w.current}` }, action_id: 'approve', value: `${slugOfT(t)}|${w.id}|${w.current}` },
         ...links.map(([l, u], i) => ({ type: 'button', text: { type: 'plain_text', text: l }, url: u, action_id: `open_${i}` })),
         ...(w.slack.page ? [{ type: 'button', text: { type: 'plain_text', text: 'Open in Brew' }, url: w.slack.page, action_id: 'open' }] : [])] }];
     o.slack.slackPost(slugOfT(t), { channel: w.slack.channel, thread_ts: w.slack.ts, text, blocks }).then((r) => { if (r?.error) log.warn('[slack] asset', r.error); }).catch(() => {});
   };
   const toSlack = async (t, w, { text, page, channel }) => {
+  /* the studio (remix.js) made a new asset or version: it goes to the Slack thread of the jam built on that change */
+  const jamOfChange = (t, ch) => [...(JAMS.peek(t.brandId || DEFAULT_BRAND)?.work || []), ...(t.ownWork || [])].find((w) => w.changeId === ch.id && w.slack?.ts) || null; /* media lands in the background: no request to tell whose list t.work is */
+  const studioMedia = (t, ch, m) => { const w = jamOfChange(t, ch); if (!w) return; slackAsset(t, w, { kind: m.kind, title: `v${m.n || '?'} · ${m.label || ch.after?.title || w.title}`, images: m.images, video: m.video, copy: m.copy }); };
+  const studioVersion = (t, ch, v, why) => { const w = jamOfChange(t, ch); if (!w || !o.slack) return;
+    o.slack.slackPost(slugOfT(t), { channel: w.slack.channel, thread_ts: w.slack.ts, text: `*v${v.n} saved:* ${v.label || String(why || '').slice(0, 80)}\n${ch.after?.title ? `_${String(ch.after.title).slice(0, 200)}_` : ''}`.trim() }).catch(() => {}); };
+  /* ---------- the jam's thread talks to Brew, without spending on chatter (Param's rule, 2026-10-16) ----------
+     Every message from a person is sorted with one cheap text call: chat folds into the brief and nothing else; a question
+     gets an answer; a change to the brief or copy is proposed (applied at once only when they wrote @Brew); anything that makes
+     a new image or video is always proposed first. A proposal (w.pending) shows in Brew's jam and in the thread with
+     buttons; it runs once, on whichever side says yes. */
+  const PAID = new Set(['image', 'video', 'carousel']);
+  const MAKE_ASK = /\b(make|create|generate|turn|redo|remake|new|another|fresh|shoot)\b[^.?!]{0,40}\b(videos?|reels?|clips?|carousels?|slides|images?|photos?|pictures?|visuals?|creatives?)\b/i;
+  const asOf = (x) => (/\b(video|reel|clip)/i.test(x) ? 'video' : /\b(carousel|slides)/i.test(x) ? 'carousel' : 'image');
+  const pendText = (p) => p.kind === 'make' ? `I’ll make ${p.as === 'video' ? 'a 6-second vertical video' : p.as === 'carousel' ? 'a carousel' : 'a new image'}${p.summary ? `: ${p.summary}` : ''}. It uses today’s ${p.as === 'video' ? 'video' : 'image'} allowance.` : `I’ll change: ${p.summary || p.text}`;
+  const pendBlocks = (t, w, p, done) => [{ type: 'section', text: { type: 'mrkdwn', text: `*Brew:* ${pendText(p)}${p.by ? `\n_Asked by ${p.by}_` : ''}` } },
+    done ? { type: 'context', elements: [{ type: 'mrkdwn', text: done }] }
+      : { type: 'actions', elements: [{ type: 'button', style: 'primary', text: { type: 'plain_text', text: p.kind === 'make' ? 'Make it' : 'Make this change' }, action_id: 'apply', value: `${slugOfT(t)}|${w.id}|${p.id}` },
+        { type: 'button', text: { type: 'plain_text', text: 'Not now' }, action_id: 'dismiss', value: `${slugOfT(t)}|${w.id}|${p.id}` }] }];
+  const propose = async (t, w, p) => {
+    w.pending = { id: uid('pd'), at: now(t), ...p };
+    say(t, w, { from: 'ai', who: 'Brew', body: pendText(w.pending), pending: w.pending.id, noMirror: true });
+    if (w.slack?.ts && o.slack) { const r = await o.slack.slackPost(slugOfT(t), { channel: w.slack.channel, thread_ts: w.slack.ts, text: pendText(w.pending), blocks: pendBlocks(t, w, w.pending) }).catch(() => null); if (r?.ts && w.pending) w.pending.slackTs = r.ts; }
+    w.updatedAt = now(t); return w.pending;
+  };
+  /* yes or not now, from Brew's jam or the thread: it runs once */
+  const applyPending = async (t, w, pid, who, go) => {
+    const p = w.pending; if (!p || p.id !== pid) return { gone: true };
+    w.pending = null; const name = who || 'Someone';
+    const close = (line) => p.slackTs && w.slack?.ts && o.slack?.slackPost(slugOfT(t), { channel: w.slack.channel, update: p.slackTs, text: line, blocks: pendBlocks(t, w, p, line) }).catch(() => {});
+    if (!go) { close(`Not now · ${name}`); say(t, w, { from: 'system', body: `${name}: not now, for “${pendText(p).slice(0, 90)}”`, noMirror: true }); return { ok: true }; }
+    close(`On it · ${name} said yes`);
+    let r = null;
+    if (p.kind === 'change') {
+      if (w.changeId && RMX) r = await RMX.iterateFromJam(t, w, p.text);
+      if (!r) { const e = await JB.edit(t, w, p.text, { who: name, mode: 'ask' }); say(t, w, { from: 'ai', who: AGENT[w.agent] || 'Brew', body: e.reply || (e.changed.length ? 'Done.' : 'Nothing to change there.'), edited: e.changed }); r = { ok: true }; }
+      else if (!r.error) say(t, w, { from: 'ai', who: AGENT[w.agent] || 'Brew', body: `Done: v${w.current} is ready.` });
+    } else {
+      if (w.changeId && RMX) r = p.as === 'image' ? RMX.photoFromJam(t, w, p.text) : await RMX.remakeFromJam(t, w, p.as);
+      if (!r && DR) { DR.start(t, w, p.as, String(p.text || '').slice(0, 300)); r = { started: true }; }
+      if (r && !r.error) say(t, w, { from: 'ai', who: 'Brew', body: `Making ${p.as === 'video' ? 'the video (about two minutes)' : p.as === 'carousel' ? 'the carousel' : 'the image'}. It lands here and in the thread for review.` });
+    }
+    if (r?.error) say(t, w, { from: 'ai', who: 'Brew', body: r.error });
+    w.updatedAt = now(t); return { ok: !r?.error, error: r?.error || null };
+  };
+  /* one person's message in the thread: sorted, then folded, answered or proposed */
+  const slackAct = async (t, w, { text, user = {}, mention = false }) => {
+    let k = null;
+    if (!isMock() && spend('text')) {
+      const convo = (w.thread || []).filter((m) => m.from !== 'system').slice(-6).map((m) => `${m.who || (m.from === 'me' ? 'Teammate' : 'Brew')}: ${String(m.body).slice(0, 300)}`).join('\n');
+      const prompt = [`A team is planning "${w.title}" for ${BN()} in a Slack thread with Brew, an AI that keeps the brief and makes the assets.`,
+        `The brief now:\n---\n${String(w.doc?.md || '').slice(0, 1800)}\n---`, `The thread so far:\n${convo}`,
+        `The newest message, from ${user.name || 'a teammate'}${mention ? ' (written to @Brew)' : ''}: "${String(text).slice(0, 1200)}"`,
+        w.pending ? `Brew is waiting for a yes on: ${pendText(w.pending)}` : '',
+        'Sort the newest message. chat: people discussing, giving opinions or agreeing among themselves. question: they ask Brew something. change: they ask for an edit to the brief, the copy or the plan. make: they ask for a new or different image, video or carousel. yes / no: a reply to Brew\'s waiting proposal. When unsure, chat.'].filter(Boolean).join('\n\n');
+      try { k = await claudeTool(prompt, { type: 'object', required: ['kind'], properties: { kind: { type: 'string', enum: ['chat', 'question', 'change', 'make', 'yes', 'no'] }, as: { type: 'string', enum: ['image', 'video', 'carousel', 'none'] }, summary: { type: 'string', description: 'For change/make: what exactly will change, in under 20 words' } } }, 300, 'slack-route'); }
+      catch (e) { log.warn('[slack route]', e.message); }
+    }
+    const kind = k?.kind || (mention && MAKE_ASK.test(text) ? 'make' : 'chat');
+    if ((kind === 'yes' || kind === 'no') && w.pending) return applyPending(t, w, w.pending.id, user.name, kind === 'yes');
+    if (kind === 'question') { say(t, w, { from: 'ai', who: 'Brew', body: await answerOnly(t, w, text) }); return; }
+    if (kind === 'change') { const p = { kind: 'change', text, summary: k?.summary || '', by: user.name || null };
+      if (mention) { w.pending = { id: uid('pd'), ...p }; return applyPending(t, w, w.pending.id, user.name, true); }
+      return propose(t, w, p); }
+    if (kind === 'make') return propose(t, w, { kind: 'make', as: PAID.has(k?.as) ? k.as : asOf(text), text, summary: k?.summary || '', by: user.name || null });
+    /* chat: it already folded into the brief (jam-brief onSay, m.real) */
+  };
     if (!o.slack) return { error: 'Slack isn’t on here.' }; if (!reqOf(t)?.member) return { error: 'Only the brand’s team posts to its Slack.' };
     const r = await o.slack.slackPost(slugOfT(t), { channel, text, blocks: slackBlocks(t, w, text, page) }); if (r.error) return r;
-    w.slack = { ts: r.ts, channel: r.channel, team: r.team, name: r.channelName || null, tid: t.id, at: now(t), page: page || null, n: w.current }; return r;
+    w.slack = { ts: r.ts, channel: r.channel, team: r.team, name: r.channelName || null, tid: t.id, at: now(t), page: page || null, n: w.current };
+    w.slack.permalink = await o.slack.slackLink?.(slugOfT(t), r.channel, r.ts).catch(() => null) || null; return r;
   };
   /* a teammate in Slack: answers what was actually asked, from their role, then signs off, asks one thing back, or wants a change */
   const SIGNOFF = /approv|ok to|okay to|good to go|sign.?off|go live|ship it|publish|look at|review|before it goes|green.?light|thoughts\?|happy with/i;
@@ -1454,6 +1522,7 @@ export function createFeedService(o) {
     const body = String(b.body || '').trim();
     // a jam that came from the remix studio keeps working on the package itself
     if (w.changeId && RMX) { const r = await RMX.iterateFromJam(t, w, body); if (r?.error) return r; if (r) { if (w.stage !== 'drafting' && ['team', 'brew', 'needs_you'].includes(w.stage) === false) move(t, w, 'drafting', null); return { work: w, change: r.change }; } }
+    if (MAKE_ASK.test(body)) { say(t, w, { from: 'me', body }); const pd = await propose(t, w, { kind: 'make', as: asOf(body), text: body, summary: '', by: nameOf(meOf(t)) }); return { work: w, pending: pd }; } /* a paid image or video waits for a yes */
     say(t, w, { from: 'me', body });
     const decision = await routeJam(t, body, false);
     t.router.unshift({ id: uid('r'), body: body.slice(0, 140), card: w.title, ...decision, at: now(t) });
@@ -1519,6 +1588,10 @@ export function createFeedService(o) {
     return { work: jamOut(t, w) };
   });
   on('POST', '/api/work/:wid/approve', async (b, t, p) => { const w = W(t, p.wid); if (!w) return { error: 'not found' }; const me0 = meOf(t);
+  /* yes / not now on a proposal Brew made (from a typed ask here, or from the jam's Slack thread): it runs once */
+  on('POST', '/api/work/:wid/pending/:pid', async (b, t, p) => { const w = W(t, p.wid); if (!w) return { error: 'not found' };
+    const r = await applyPending(t, w, p.pid, nameOf(meOf(t)), !!b.go);
+    return r.gone ? { error: 'That was already answered.', work: jamOut(t, w) } : { work: jamOut(t, w), ...(r.error ? { error: r.error } : {}) }; });
     if (b.rev != null && w.current !== b.rev) return { stale: true, work: jamOut(t, w), error: `It changed to v${w.current} while you looked. Check it, then approve.` };
     say(t, w, { from: 'system', body: me0 ? `${nameOf(me0)} approved v${w.current}` : `You approved v${w.current}` }); w.approvedBy = me0 ? { ...me0, n: w.current, at: now(t) } : null;
     const asker = w.assignee?.ask === 'approve' ? w.assignee.by : null; if (w.assignee?.ask === 'approve') w.assignee = null;
@@ -1556,7 +1629,7 @@ export function createFeedService(o) {
     const out = await o.learnings.run(t.brandId || DEFAULT_BRAND, { text: cmd.body, by, byShort, why: cmd.why, workId: w.id });
     return { said, reply: out.reply, n: out.applied?.length ?? null };
   };
-  JB.routes({ toSlack: o.slack ? toSlack : null, on, W, say, move, notify, learn: learnOf, nextTicket: (t) => { leadsAllTenants++; return nextBrandTicket(t); }, handoff: { build: (...a) => HO.build(...a), text: (...a) => HO.text(...a) } });
+  JB.routes({ askMake: (t, w, text) => (MAKE_ASK.test(text) ? propose(t, w, { kind: 'make', as: asOf(text), text, summary: '', by: nameOf(meOf(t)) }) : null), toSlack: o.slack ? toSlack : null, on, W, say, move, notify, learn: learnOf, nextTicket: (t) => { leadsAllTenants++; return nextBrandTicket(t); }, handoff: { build: (...a) => HO.build(...a), text: (...a) => HO.text(...a) } });
   // first drafts in a jam, one tap away: image, video, voice or text, made only when someone asks (drafts.js)
   DR = createDrafts({ claudeTool, geminiImage, treg: o.treg, launchBrowser: o.launchBrowser, zipBuffer: o.zipBuffer, photoAsync: o.photoAsync, photoFile, catalogOf: (t) => (t ? brandOfT(t)?.catalog : null), brandName: (t) => (t ? brandOfT(t)?.seed?.brand?.name || '' : ''), photoOf: (c) => LANE_PHOTO[c?.lane] || Object.values(LANE_PHOTO || {})[0], cardOf: (t, id) => { const c = t.cards.get(id); return c ? fillCard(c, t) : null; },
     briefOf: (t, w) => JB.seed(t, w)?.md, cardBrief, seatLine, isMock, spend, clean, now, uid, say, save: (t) => store?.save(t), AGENT, onReady: (t, w, d) => slackAsset(t, w, { title: d.title, copy: d.copy, image: d.image, video: d.video, audio: d.audio, zip: d.zip, kind: d.as }), log }); DR.routes({ on, W });
@@ -1627,7 +1700,7 @@ export function createFeedService(o) {
   on('GET', '/api/cards/:cid/moves', async (b, t, p) => { const c = t.cards.get(p.cid); if (!c) return { error: 'not found' }; return { moves: MOVES.numsOf(c.src).map((n) => ({ ...MOVES.summary(n), passages: MOVES.passages({ ...c, src: `Move ${n}` }, 4) })) }; });
   /* MEDIA_FAKE=1 on a local server: the jam's short video runs end to end for free (drafts.js fakeMakers) */
   const FAKE = process.env.MEDIA_FAKE === '1' && !process.env.K_SERVICE ? fakeMakers() : null;
-  RMX = createRemix({ onShopos: (t, w, x) => shoposMail(t, w, x), askPerson: async (t, w, q, email) => { const [x] = await tagsOf(t, w, [email]); if (!x) return { error: 'They’re not on the team yet. Invite them first.' }; const me0 = meOf(t);
+  RMX = createRemix({ onMedia: (t, ch, m) => studioMedia(t, ch, m), onVersion: (t, ch, v, why) => studioVersion(t, ch, v, why), onShopos: (t, w, x) => shoposMail(t, w, x), askPerson: async (t, w, q, email) => { const [x] = await tagsOf(t, w, [email]); if (!x) return { error: 'They’re not on the team yet. Invite them first.' }; const me0 = meOf(t);
       JAMS.join(w, x, 'asked'); say(t, w, { from: 'system', body: `${nameOf(me0)} asked ${nameOf(x)}: ${q.q}` }); mailEv(t, w, { kind: 'asked', to: [x.email], by: me0, text: q.q, id: `q_${w.id}_${q.id}` }); return x; }, ...(FAKE ? { makers: FAKE.makers, videoImage: FAKE.image, mediaFake: true } : {}), planOf: (t, c) => (c ? planOfCard(c) : null), save: (t) => store?.save(t), catalogOf: (t) => (t ? brandOfT(t)?.catalog : null), photoAsync: o.photoAsync, photoFile, handoffPath, MOVES, seedJam: (t, w) => JB?.seed(t, w), claudeTool, geminiImage, PUB, LANE_PHOTO, FACTS, unbackedNums: (text) => unbacked({ text: String(text).replace(/\b(?:Rs\.?|INR)\s?(?=\d)/gi, '₹') }, FACT_OK).map((x) => x.n), SEED, AGENT, claudeJSON, cardBrief, seatLine, qaCheck, mechanicalFix, clean, BANNED, isMock, spend, uid, now, clone, inr, on, newWork, addVersion, say, move, notify, later, setState, weekKey, curV, measureOf, log  });
   // tenants survive restarts (store.js); a tenant not in memory is read back from disk or GCS before we give up on it
   const getTenant = async (id) => {
@@ -1646,7 +1719,7 @@ export function createFeedService(o) {
     });
   };
   /* a reply in a jam's Slack thread, or its Approve button pressed (server.js checked Slack's signature and found the brand) */
-  const slackIn = async ({ slug, kind, thread, ts, user = {}, text = '', n = null }) => {
+  const slackIn = async ({ slug, kind, thread, ts, user = {}, text = '', n = null, pid = null, mention = false }) => {
     const br = await packs.load(slug); if (!br) return null; await JAMS.load(br.slug);
     const w = (JAMS.peek(br.slug)?.work || []).find((x) => x.slack?.ts === thread); if (!w) return null;
     const t = (w.slack.tid && await getTenant(w.slack.tid).catch(() => null)) || brandTenants(br)[0]; if (!t) return null;
@@ -1657,6 +1730,9 @@ export function createFeedService(o) {
         say(t, w, { from: 'colleague', who: user.name || 'Someone in Slack', body: String(text).slice(0, 4000), real: true, via: 'slack', ...(user.email ? { email: user.email } : {}) });
         notify(t, w, `${user.name || 'Someone'} replied in Slack`);
       } else if (kind === 'approve') {
+        Promise.resolve(runIn(br, () => slackAct(t, w, { text, user, mention }))).then(() => store?.save(t)).catch((e) => log.warn('[slack act]', e.message));
+      } else if (kind === 'apply' || kind === 'dismiss') {
+        return Promise.resolve(runIn(br, () => applyPending(t, w, pid, user.name, kind === 'apply'))).then((r) => { store?.save(t); return { w, ...r }; });
         if (n != null && n !== w.current) return { stale: true, w };
         if (w.approvedBy?.n === w.current && w.stage === 'ready') return { already: true, w };
         say(t, w, { from: 'system', body: `${user.name || 'Someone'} approved v${w.current} in Slack` });
