@@ -351,3 +351,25 @@ a.fs-src:hover{color:var(--fg);background:var(--surface-2)}
 .hd-q .hd-lg img{width:14px;height:14px}
 .hd-q u{display:inline-flex}
 @media (max-width:700px){.hd-wall{columns:1}.hd-tools .hd-grp{margin:0 -16px;padding:0 16px}}
+
+/* What we heard, audit pass (2026-10-16): the answer first, quieter cards that say they open, "N more" as a chip */
+.hd-sum{display:flex;flex-direction:column;gap:10px;padding:18px 20px;border-radius:20px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line)}
+.hd-sum .hd-l{margin:0}
+.hd-bars{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.hd-bar{display:flex;flex-direction:column;gap:8px;min-width:0;padding:10px 12px 12px;border:0;border-radius:14px;background:var(--surface);font:inherit;color:var(--fg);text-align:left;cursor:pointer;transition:background .15s,transform .15s}
+.hd-bar:hover{background:var(--surface-2);transform:translateY(-1px)}
+.hd-bt{display:flex;flex-direction:column;gap:1px;min-width:0}
+.hd-bt b{font-size:14px;font-weight:600;line-height:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hd-bt em{font-style:normal;font-size:22px;line-height:27px;font-weight:650;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.hd-bar i{display:block;height:5px;border-radius:3px;background:linear-gradient(90deg,var(--fg) var(--w),color-mix(in oklab,var(--fg) 10%,transparent) var(--w))}
+.hd-bar:not(.is-top) i{background:linear-gradient(90deg,color-mix(in oklab,var(--fg) 55%,transparent) var(--w),color-mix(in oklab,var(--fg) 10%,transparent) var(--w))}
+.hd-q blockquote::before{display:none}
+.hd-q,.hd-q:hover{transition:box-shadow .15s,transform .15s}
+.hd-q:hover{transform:translateY(-2px);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--fg) 18%,var(--line)),0 14px 30px -18px rgba(0,0,0,.25)}
+.hd-q u{opacity:0;transform:translateX(-3px);transition:opacity .15s,transform .15s}
+.hd-q:hover u,.hd-q:focus-within u{opacity:1;transform:none;color:var(--fg)}
+.hd-q figcaption{padding-top:10px}
+.hd-chip.is-more{background:none;box-shadow:inset 0 0 0 1px var(--line);color:var(--fg-2);text-decoration:none}
+.hd-chip.is-more:hover{background:var(--surface);color:var(--fg)}
+@media (max-width:820px){.hd-bars{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(150px,1fr);overflow-x:auto;scrollbar-width:none;margin:0 -20px;padding:0 20px}.hd-bars::-webkit-scrollbar{display:none}}
+@media (prefers-reduced-motion:reduce){.hd-q:hover,.hd-bar:hover{transform:none}}
