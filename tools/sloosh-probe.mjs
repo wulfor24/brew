@@ -8,7 +8,7 @@
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
-import { register, tokenRequest, pkce, AUTH_URL, SCOPES } from '../sloosh-auth.js';
+import { register, tokenRequest, pkce, AUTH_URL, SCOPES, RESOURCE } from '../sloosh-auth.js';
 import { createSloosh } from '../sloosh-mcp.js';
 
 const PORT = +process.env.PORT || 8765, OUT = process.env.OUT || process.env.TMPDIR || '.', REDIRECT = `http://127.0.0.1:${PORT}/cb`;
@@ -16,7 +16,7 @@ const CLIENTS = path.join(OUT, 'sloosh-probe-client.json');
 let c = null; try { c = JSON.parse(fs.readFileSync(CLIENTS, 'utf8'))[REDIRECT] || null; } catch {}
 if (!c) { c = await register({ redirect: REDIRECT }); fs.writeFileSync(CLIENTS, JSON.stringify({ [REDIRECT]: c })); }
 const { verifier, challenge } = pkce(); const state = Math.random().toString(36).slice(2);
-const url = `${AUTH_URL()}/oauth/authorize?${new URLSearchParams({ response_type: 'code', client_id: c.client_id, redirect_uri: REDIRECT, scope: SCOPES, state, code_challenge: challenge, code_challenge_method: 'S256' })}`;
+const url = `${AUTH_URL()}/oauth/authorize?${new URLSearchParams({ response_type: 'code', client_id: c.client_id, redirect_uri: REDIRECT, scope: SCOPES, state, code_challenge: challenge, code_challenge_method: 'S256', resource: RESOURCE() })}`;
 const code = await new Promise((resolve, reject) => {
   const srv = http.createServer((rq, rs) => { const u = new URL(rq.url, 'http://x'); if (u.pathname !== '/cb') { rs.writeHead(404); return rs.end(); }
     const ok = u.searchParams.get('state') === state && u.searchParams.get('code'); rs.writeHead(200, { 'content-type': 'text/html' }); rs.end(ok ? '<p>Signed in. You can close this tab.</p>' : `<p>Failed: ${u.searchParams.get('error_description') || u.searchParams.get('error') || 'no code'}</p>`);
@@ -25,6 +25,8 @@ const code = await new Promise((resolve, reject) => {
 });
 const t = await tokenRequest({ grant_type: 'authorization_code', code, redirect_uri: REDIRECT, client_id: c.client_id, code_verifier: verifier });
 console.log('signed in; scope:', t.scope, '; refresh token:', !!t.refresh);
+/* SAVE_SESSION=1 keeps the tokens in $OUT/sloosh-session.json (mode 600) so tools/sloosh-call.mjs can make follow-up calls without another sign-in; delete it when done */
+if (process.env.SAVE_SESSION === '1') { fs.writeFileSync(path.join(OUT, 'sloosh-session.json'), JSON.stringify({ ...t, client_id: c.client_id, at: Date.now() }), { mode: 0o600 }); console.log(`session kept in ${path.join(OUT, 'sloosh-session.json')} (delete it when done)`); }
 const S = createSloosh({ tokenFor: async () => t.token });
 const tools = await S.list();
 fs.mkdirSync('data', { recursive: true });

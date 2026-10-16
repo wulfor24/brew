@@ -82,10 +82,33 @@ export function reviseBrief(prev = {}, change = '') { const keep = ['the product
   return one(`Image 1 is the previous picture. Change only this: ${scrub(change) || 'nothing'}. Keep everything else exactly as in image 1: ${keep.join('; ')}. ${prev.keepLine || ''}`); }
 
 /* ---------- which model, and why ---------- */
-export const MODELS = { image: 'nano-banana-pro', type: 'ideogram-4.5', hex: 'flux-2-pro', edit: 'gpt-image-2.5-sunburst', video: 'seedance-2.5', videoShots: 'seedance-2.0', omni: 'gemini-omni-1.1-flash', veo: 'veo-3.1' };
+/* the ids Sloosh's list_models really returns (read 2026-10-16, tools/sloosh-probe.mjs); there is no Veo on Sloosh, so a Veo-style
+   single shot runs on Gemini Omni. MODEL_OPTS pins each model's aspect ratios and resolutions so a setting is snapped before the quote. */
+export const MODELS = { image: 'gemini-3-pro-image-preview', draft: 'gemini-3.1-flash-image-preview', type: 'ideogram-4.5', hex: 'flux-2-pro', edit: 'gpt-image-2.5-sunburst', video: 'seedance-2.5', videoShots: 'seedance-2.0', omni: 'gemini-omni-1.1-flash' };
+export const MODEL_LABELS = { 'gemini-3-pro-image-preview': 'Nano Banana Pro', 'gemini-3.1-flash-image-preview': 'Nano Banana 2', 'ideogram-4.5': 'Ideogram 4.5', 'flux-2-pro': 'Flux 2 Pro', 'gpt-image-2.5-sunburst': 'GPT Image 2.5 Sunburst', 'seedance-2.5': 'Seedance 2.5', 'seedance-2.0': 'Seedance 2.0', 'gemini-omni-1.1-flash': 'Gemini Omni 1.1 Flash' };
+export const MODEL_OPTS = {
+  'gemini-3-pro-image-preview': { ratios: ['auto', '1:1', '2:3', '3:2', '16:9', '9:16', '4:3', '3:4', '21:9', '4:5', '5:4'], res: ['1K', '2K', '4K'], refs: 14 },
+  'gemini-3.1-flash-image-preview': { ratios: ['auto', '1:1', '2:3', '3:2', '16:9', '9:16', '4:3', '3:4', '21:9', '4:5', '5:4'], res: ['512', '1K', '2K', '4K'], refs: 14 },
+  'ideogram-4.5': { ratios: ['1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3', '5:4', '4:5'], res: ['1K', '2K'], refs: 5 },
+  'flux-2-pro': { ratios: ['1:1', '2:3', '3:2', '16:9', '9:16', '4:3', '3:4', '4:5', '5:4', '21:9'], res: ['1K'], refs: 8 },
+  'gpt-image-2.5-sunburst': { ratios: ['auto', '1:1', '3:2', '2:3', '16:9', '9:16', '4:5', '5:4'], res: ['1K', '2K', '4K'], refs: 16 },
+  'seedance-2.5': { ratios: ['auto', '21:9', '16:9', '4:3', '1:1', '3:4', '9:16'], res: ['480p', '720p', '1080p'], seconds: [4, 30], refs: 30 },
+  'seedance-2.0': { ratios: ['auto', '21:9', '16:9', '4:3', '1:1', '3:4', '9:16'], res: ['480p', '720p', '1080p', '4k'], seconds: [4, 6, 8, 10, 12, 15], refs: 9 },
+  'gemini-omni-1.1-flash': { ratios: ['16:9', '9:16'], res: ['360p', '720p', '1080p', '4k'], seconds: [3, 10], refs: 6 }
+};
+const asNum = (r) => { const [a, b] = String(r).split(':').map(Number); return a && b ? a / b : NaN; };
+/* snap a ratio, a resolution and a length onto what the model offers (nearest ratio by its number, the resolution asked or the best below it) */
+export function fitSettings(model, settings = {}) {
+  const o = MODEL_OPTS[model]; if (!o) return settings; const out = { ...settings };
+  const r = settings.aspect_ratio; if (r && !o.ratios.includes(r)) { const want = asNum(r); const cands = o.ratios.filter((x) => x !== 'auto'); out.aspect_ratio = Number.isFinite(want) ? cands.reduce((best, x) => (Math.abs(asNum(x) - want) < Math.abs(asNum(best) - want) ? x : best), cands[0]) : cands[0]; }
+  const rank = (x) => ({ '512': 0.5, '360p': 0.36, '480p': 0.48, '720p': 0.72, '768p': 0.77, '1080p': 1.08, '1K': 1, '2K': 2, '2k': 2, '4K': 4, '4k': 4 })[x] ?? 1;
+  const res = settings.resolution; if (res && !o.res.includes(res)) { const want = rank(res); const below = o.res.filter((x) => rank(x) <= want); out.resolution = (below.length ? below : o.res).reduce((b, x) => (Math.abs(rank(x) - want) < Math.abs(rank(b) - want) ? x : b)); }
+  if (o.seconds && settings.duration != null) { const d = Math.round(settings.duration); out.duration = o.seconds.length === 2 && o.seconds[1] > 12 ? Math.max(o.seconds[0], Math.min(o.seconds[1], d)) : o.seconds.reduce((b, x) => (Math.abs(x - d) < Math.abs(b - d) ? x : b)); }
+  return out;
+}
 export function pickModel(b) {
   if (b.revise) return { model: MODELS.edit, why: 'a precise edit of the previous picture' };
-  if (b.kind === 'video') return b.model && Object.values(MODELS).includes(b.model) ? { model: b.model, why: 'as picked' } : { model: MODELS.video, why: 'timed beats, the product kept from its photo' };
+  if (b.kind === 'video') return b.model && Object.values(MODELS).includes(b.model) ? { model: b.model, why: 'as picked' } : /^veo/.test(b.model || '') ? { model: MODELS.omni, why: 'one continuous shot (Veo is not on Sloosh)' } : { model: MODELS.video, why: 'timed beats, the product kept from its photo' };
   if (b.model === 'flux-2-pro' || (!(b.text || []).length && (b.brand.colors || []).some((c) => /^#[0-9a-f]{6}$/i.test(c)) && b.brand.exactColors)) return { model: MODELS.hex, why: 'exact brand colours' };
   if ((b.text || []).length >= 3) return { model: MODELS.type, why: 'several lines of type' };
   return { model: MODELS.image, why: (b.text || []).length ? 'finished work with the words set in the picture' : 'finished product photography' };
@@ -98,8 +121,8 @@ export function buildDraft(spec = {}) { const b = brief(spec); return b.kind ===
 export function buildFinal(spec = {}) {
   const b = brief(spec); const { model, why } = pickModel({ ...b, model: spec.model, revise: spec.revise });
   const prompt = spec.revise ? reviseBrief({ text: b.text, keepLine: keepLine({ brand: b.brand, text: !!b.text.length, people: b.people }) }, spec.revise.change)
-    : b.kind === 'video' ? (model === MODELS.videoShots ? seedanceShots(b) : model === MODELS.omni ? omniShot(b) : model === MODELS.veo ? veoShot(b) : seedanceBeats(b))
+    : b.kind === 'video' ? (model === MODELS.videoShots ? seedanceShots(b) : model === MODELS.omni ? omniShot(b) : seedanceBeats(b))
     : model === MODELS.edit ? gptSpec(b) : model === MODELS.hex ? fluxHex(b) : nanoScene(b);
-  const settings = b.kind === 'video' ? { aspect_ratio: b.ratio, resolution: '1080p', duration: Math.max(4, Math.min(30, Math.round(b.seconds || 6))), sound: !!b.sound } : { aspect_ratio: b.ratio, resolution: spec.resolution || '2K' };
-  return { model, prompt, settings, why, refs: b.refs, brief: b };
+  const settings = fitSettings(model, b.kind === 'video' ? { aspect_ratio: b.ratio, resolution: '1080p', duration: Math.max(4, Math.min(30, Math.round(b.seconds || 6))), sound: !!b.sound } : { aspect_ratio: b.ratio, resolution: spec.resolution || '2K' });
+  return { model, label: MODEL_LABELS[model] || model, prompt, settings, why, refs: b.refs, brief: b };
 }

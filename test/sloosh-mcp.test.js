@@ -4,15 +4,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import { register, tokenRequest, createSlooshAuth, pkce } from '../sloosh-auth.js';
-import { createSloosh, argsFor, parseReply, unwrap } from '../sloosh-mcp.js';
+import { createSloosh, argsFor, parseReply, unwrap, flat } from '../sloosh-mcp.js';
+import fs from 'node:fs';
 
-const TOOLS = [
-  { name: 'get_connection', inputSchema: { type: 'object', properties: {} } },
-  { name: 'list_models', inputSchema: { type: 'object', properties: { mode: { type: 'string' } } } },
-  { name: 'quote_generation', inputSchema: { type: 'object', properties: { prompt: { type: 'string' }, model: { type: 'string' }, reference_asset_ids: { type: 'array' }, settings: { type: 'object', properties: { aspect_ratio: { type: 'string' }, duration: { type: 'number' } } }, count: { type: 'number' } }, required: ['prompt', 'model'], additionalProperties: false } },
-  { name: 'generate', inputSchema: { type: 'object', properties: { quote_id: { type: 'string' }, idempotency_key: { type: 'string' }, confirmed: { type: 'boolean' } }, required: ['quote_id', 'idempotency_key', 'confirmed'] } },
-  { name: 'get_generation', inputSchema: { type: 'object', properties: { generation_id: { type: 'string' } }, required: ['generation_id'] } }
-];
+/* the real tools, as tools/list gave them on 2026-10-16 (tools/sloosh-probe.mjs) */
+const REAL = JSON.parse(fs.readFileSync(new URL('../data/sloosh-tools.json', import.meta.url), 'utf8')).tools;
+const real = (n) => { const t = REAL.find((x) => x.name === n); if (!t) throw new Error(`data/sloosh-tools.json has no ${n}`); return t; };
+const TOOLS = ['get_connection', 'get_account', 'list_models', 'quote_generation', 'generate', 'get_generation', 'get_asset', 'import_asset', 'list_assets', 'reconcile_generation'].map(real);
 
 function fakeServers() {
   const log = { tokens: 0, refreshes: 0, calls: [], unauthOnce: false, sse: false };
@@ -34,11 +32,11 @@ function fakeServers() {
       if (sid !== 'sess1') return json(404, { error: 'no session' });
       if (m.method === 'tools/list') return json(200, { jsonrpc: '2.0', id: m.id, result: { tools: TOOLS } });
       if (m.method === 'tools/call') { log.calls.push(m.params); const { name, arguments: a } = m.params;
-        const result = name === 'get_connection' ? { structuredContent: { workspace: { id: 'ws1', name: 'Brew' }, limit: { remaining: 100 } } }
-          : name === 'list_models' ? { content: [{ type: 'text', text: JSON.stringify({ models: [{ id: 'nano-banana-pro', mode: a.mode }] }) }] }
-          : name === 'quote_generation' ? { structuredContent: { quote_id: 'q1', credits: 2.5, expires_at: Date.now() + 300e3 } }
-          : name === 'generate' ? { structuredContent: { generation_id: 'g1', status: 'running' } }
-          : name === 'get_generation' ? { structuredContent: { generation_id: 'g1', status: log.calls.filter((c) => c.name === 'get_generation').length > 1 ? 'completed' : 'running', outputs: [{ asset_id: 'as1' }] } }
+        const result = name === 'get_connection' ? { structuredContent: { connection: { workspaceId: 'org_1', product: 'sloosh', scopes: ['spacelab:read'] }, budget: { configured: true, unit: 'millicredits', dailyLimitUnits: 50000, remainingUnits: 50000 }, spendingEnabled: true, settingsUrl: 'https://sloosh.ai/settings/mcp' } }
+          : name === 'list_models' ? { content: [{ type: 'text', text: JSON.stringify({ models: { image: { defaultModel: 'gemini-nano-banana-2.1', models: [{ id: 'gemini-3-pro-image-preview', label: 'Nano Banana Pro' }] }, video: { defaultModel: 'seedance-2.5', models: [] } }, mode: a.mode }) }] }
+          : name === 'quote_generation' ? { structuredContent: { quoteId: 'q1', credits: 2.5, expiresAt: new Date(Date.now() + 300e3).toISOString(), input: a } }
+          : name === 'generate' ? { structuredContent: { operationId: 'op1', state: 'admitted', reservedUnits: 2500, settledUnits: null, reconciliationRequired: false, cancellationRequested: false, owner: null } }
+          : name === 'get_generation' ? { structuredContent: log.calls.filter((c) => c.name === 'get_generation').length > 1 ? { operationId: 'op1', state: 'settled', owner: { phase: 'settled', outputs: [{ generationId: 'gen1', status: 'completed', url: 'https://cdn/gen1.png' }], chargedCredits: 2.5, errorCode: null } } : { operationId: 'op1', state: 'submitted', owner: { phase: 'running', outputs: [] } } }
           : { isError: true, content: [{ type: 'text', text: 'unknown tool' }] };
         const msg = { jsonrpc: '2.0', id: m.id, result };
         if (log.sse) { rs.writeHead(200, { 'content-type': 'text/event-stream' }); return rs.end(`event: message\ndata: ${JSON.stringify({ jsonrpc: '2.0', method: 'notifications/progress', params: {} })}\n\nevent: message\ndata: ${JSON.stringify(msg)}\n\n`); }
@@ -61,12 +59,26 @@ function rig() {
   return { packs, vault, auth, files, cookies };
 }
 
-test('argsFor maps Brew words onto the tool schema, nests dotted keys and names a missing required key', () => {
-  const q = TOOLS[2];
-  const a = argsFor(q, { prompt: 'p', model: 'm', references: ['a1'], ratio: '4:5', seconds: 6, count: 2 });
-  assert.deepEqual(a, { prompt: 'p', model: 'm', reference_asset_ids: ['a1'], settings: { aspect_ratio: '4:5', duration: 6 }, count: 2 });
-  assert.throws(() => argsFor(q, { prompt: 'p' }), /needs model/);
-  assert.deepEqual(argsFor(TOOLS[4], { id: 'g1' }), { generation_id: 'g1' });
+test('argsFor maps Brew words onto the real schemas, nests modelConfig, drops what a closed schema has no key for, names a missing required key', () => {
+  const q = real('quote_generation'); const ref = { kind: 'workspace', id: '2c1f0a2e-6a2b-4b1e-9c3d-1a2b3c4d5e6f', url: 'https://cdn/x.png', type: 'image', role: 'reference' };
+  const a = argsFor(q, { mode: 'image_gen', prompt: 'p', model: 'gemini-3-pro-image-preview', references: [ref], ratio: '4:5', resolution: '2K', count: 2, seconds: undefined });
+  assert.deepEqual(a, { mode: 'image_gen', prompt: 'p', modelConfig: { modelName: 'gemini-3-pro-image-preview', aspectRatio: '4:5', resolution: '2K' }, uploadedAssets: [ref], generationCount: 2 });
+  assert.throws(() => argsFor(q, { prompt: 'p' }), /needs modelConfig/);
+  const warned = []; assert.deepEqual(argsFor(real('generate'), { quote: 'q1', runKey: 'k1', confirmed: true, nothing: 1 }, { warn: (m) => warned.push(m) }), { quoteId: 'q1', idempotencyKey: 'k1', confirmed: true }); assert.match(warned[0], /no schema key for nothing \(left out\)/);
+  assert.deepEqual(argsFor(real('get_generation'), { id: 'op1' }), { operationId: 'op1' });
+  assert.deepEqual(argsFor(real('get_asset'), { kind: 'generated', id: 'g1' }), { kind: 'generated', id: 'g1' }); /* a top-level oneOf, flattened */
+  assert.deepEqual(flat(real('get_asset').inputSchema).required, ['kind', 'id']);
+});
+
+test('every required key of the tools finals.js calls is filled from Brew’s own words (data/sloosh-tools.json)', () => {
+  const ref = { kind: 'workspace', id: '2c1f0a2e-6a2b-4b1e-9c3d-1a2b3c4d5e6f', url: 'https://cdn/x.png', type: 'image' };
+  const cases = { quote_generation: { mode: 'image_gen', prompt: 'p', model: 'm', references: [ref], ratio: '4:5', resolution: '2K', count: 1 }, generate: { quote: 'q', runKey: 'k', confirmed: true }, get_generation: { id: 'op' },
+    import_asset: { url: 'https://brew.test/a.png', name: 'a.png' }, quote_space: { id: 'sp_1', inputs: { field_1: 'https://brew.test/a.png' } }, run_space: { quote: 'q', runKey: 'k', confirmed: true }, get_space_run: { id: 'op' },
+    get_space_run_outputs: { id: 'op' }, get_space_input_schema: { id: 'sp_1' }, get_asset: { kind: 'generated', id: 'g' }, reconcile_generation: { id: 'op' }, reconcile_space_run: { id: 'op' }, list_spaces: { name: 'product', limit: 50 }, list_assets: { kind: 'workspace', name: 'a' },
+    approve_space_checkpoint: { id: 'op', nodeId: 'n', checkpointKey: 'rk', expectedRerunCount: 0 }, reject_space_checkpoint: { id: 'op', nodeId: 'n', checkpointKey: 'rk', expectedRerunCount: 0 }, list_models: { mode: 'image_gen' }, get_connection: {}, get_account: {} };
+  for (const [name, intent] of Object.entries(cases)) { const t = real(name); const warned = []; const a = argsFor(t, intent, { warn: (m) => warned.push(m) });
+    for (const r of flat(t.inputSchema).required || []) assert.notEqual(a[r], undefined, `${name} needs ${r}`);
+    assert.deepEqual(warned, [], `${name}: ${warned.join('; ')}`); }
 });
 
 test('parseReply reads JSON and SSE bodies; unwrap prefers structuredContent, then JSON text', () => {
@@ -91,13 +103,17 @@ test('register, the staff sign-in, a refreshed token and the MCP session end to 
     const conn = await A.callback({ headers: {} }, new URL(`http://brew.test/cb?code=good&state=${state}`)); assert.equal(conn.token, 'at1'); assert.equal(conn.connectedBy, 'ops@joinsquareup.com');
     assert.ok(R.files.get('_brew/private/sloosh-client.json')['http://brew.test/api/ops/sloosh/callback']);
     const S = createSloosh({ tokenFor: A.tokenFor, log: { warn() {} } });
-    const cx = await S.getConnection(); assert.equal(cx.workspace.name, 'Brew');
-    const models = await S.listModels('image_gen'); assert.equal(models.models[0].mode, 'image_gen');
-    F.log.sse = true; const q = await S.quoteGeneration({ prompt: 'p', model: 'm', ratio: '4:5' }); assert.equal(q.credits, 2.5); F.log.sse = false;
-    assert.deepEqual(F.log.calls.at(-1).arguments, { prompt: 'p', model: 'm', settings: { aspect_ratio: '4:5' } });
+    const cx = await S.getConnection(); assert.equal(cx.budget.remainingUnits, 50000);
+    const models = await S.listModels('image_gen'); assert.equal(models.mode, 'image_gen'); assert.equal(models.models.image.models[0].id, 'gemini-3-pro-image-preview');
+    F.log.sse = true; const q = await S.quoteGeneration({ mode: 'image_gen', prompt: 'p', model: 'm', ratio: '4:5' }); assert.equal(q.credits, 2.5); assert.equal(q.quoteId, 'q1'); F.log.sse = false;
+    assert.deepEqual(F.log.calls.at(-1).arguments, { mode: 'image_gen', prompt: 'p', modelConfig: { modelName: 'm', aspectRatio: '4:5' } });
     /* the token runs out between calls: one refresh, same call again */
-    F.log.unauthOnce = true; const g = await S.generate({ quote: 'q1', runKey: 'k1', confirmed: true }); assert.equal(g.generation_id, 'g1'); assert.equal(F.log.refreshes, 1); assert.equal((await A.status()).connected, true);
-    const done = await S.wait(() => S.getGeneration('g1'), { every: 5 }); assert.equal(done.status, 'completed');
+    F.log.unauthOnce = true; const g = await S.generate({ quote: 'q1', runKey: 'k1', confirmed: true }); assert.equal(g.operationId, 'op1'); assert.equal(F.log.refreshes, 1); assert.equal((await A.status()).connected, true);
+    assert.deepEqual(F.log.calls.at(-1).arguments, { quoteId: 'q1', idempotencyKey: 'k1', confirmed: true });
+    const done = await S.wait(() => S.getGeneration('op1'), { every: 5 }); assert.equal(S.stateOf(done), 'settled'); assert.equal(done.owner.outputs[0].url, 'https://cdn/gen1.png');
+    assert.deepEqual(F.log.calls.at(-1).arguments, { operationId: 'op1' });
+    assert.equal(S.stateOf({ state: 'settled', owner: { phase: 'rejected' } }), 'rejected'); assert.equal(S.stateOf({ state: 'settled', owner: { phase: 'settled', errorCode: 'content_filter', outputs: [{ url: null }] } }), 'failed');
+    assert.equal(S.stateOf({ state: 'settled', owner: { terminalStatus: 'completed' } }), 'completed'); assert.equal(S.pendingCheckpoint({ owner: { checkpoints: [{ nodeId: 'n', decisionPending: true }] } }).nodeId, 'n');
     await assert.rejects(S.call('no_such_tool', {}), /no tool called/);
     await A.disconnect(); await assert.rejects(A.tokenFor(), (e) => e.off === true);
   } finally { F.stop(); }

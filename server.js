@@ -468,7 +468,7 @@ const slooshAuth = createSlooshAuth({ packs, vault: createVault(packs), auth, lo
 const sloosh = createSloosh({ tokenFor: slooshAuth.tokenFor, log: console });
 /* finals (finals.js): the go-live image or video a team asks Sloosh for, quote first, behind a button; records per brand so a
    restart never pays twice (reconcileAll at boot); counted in budget 'credits' and in /api/ops/busy */
-const finals = createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFlush, slugs: async () => (await packs.list()).map((x) => x.slug), log: console });
+const finals = createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFlush, slugs: async () => (await packs.list()).map((x) => x.slug), log: console, geminiImage: countedImage, photo: photoAny }); /* geminiImage: the fallback until Brew's workspace can pay */
 /* GET /api/ops/sloosh (staff): the connection, the workspace and what Sloosh says about today's limit and credits */
 const slooshStaff = (req) => auth.isAdmin(auth.user(req)) || (!auth.signinOn() && !process.env.K_SERVICE); /* staff, or a local server with sign-in off */
 const slooshOps = async (req) => {

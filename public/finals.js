@@ -25,8 +25,8 @@
 
   const paint = () => {
     const w = $('.ph-m.fn-m'); if (!w) return; const st = F.st; const d = st?.draft; const s = st?.status || {}; const credits = st?.credits;
-    const can = !!(s.ok || s.dummy); const whyNot = !can ? s.why || 'Sloosh is not ready.' : credits && credits.left <= 0 ? `This brand’s Sloosh share for today is used up (${credits.cap} credits a day).` : '';
-    const left = s.dummy ? 'Simulated on this site: no credits are spent.' : [s.left != null ? `${s.left} credits left on Brew’s workspace today` : '', credits ? `${credits.left} of ${credits.cap} in this brand’s share` : ''].filter(Boolean).join(' · ');
+    const can = !!(s.ok || s.dummy || s.fallback); const whyNot = !can ? s.why || 'Sloosh is not ready.' : s.ok && credits && credits.left <= 0 ? `This brand’s Sloosh share for today is used up (${credits.cap} credits a day).` : '';
+    const left = s.dummy ? 'Simulated on this site: no credits are spent.' : s.fallback && !s.ok ? `On Gemini for now: ${s.fallbackWhy || 'Sloosh cannot pay yet.'}` : [s.left != null ? `${s.left} credits left on Brew’s workspace today` : '', credits ? `${credits.left} of ${credits.cap} in this brand’s share` : ''].filter(Boolean).join(' · ');
     const q = F.quote; const n = q ? Math.round((q.credits || 0) * 100) / 100 : null;
     w.innerHTML = `<div class="ph-h"><b>${d?.final ? 'Revise the final' : 'Make the final'}</b><button class="icon-btn" data-fn-x aria-label="Close">${ic('x', 's16')}</button></div>
       <div class="ph-b fn-b">
@@ -45,7 +45,7 @@
           ${(st?.spaces || []).map((sp) => `<label class="fn-way${F.way === 'space' && F.space?.id === sp.id ? ' is-on' : ''}"><input type="radio" name="fn-way" value="space:${esc(sp.id)}"${F.way === 'space' && F.space?.id === sp.id ? ' checked' : ''}><b>${esc(sp.name)}</b><span>${esc(sp.about || 'A Sloosh Space')}${sp.credits != null ? ` · about ${esc(sp.credits)} credits` : ''}</span></label>`).join('')}</div>
           ${F.way === 'space' && F.fields ? `<div class="fn-form">${F.fields.map(field).join('')}</div>` : ''}</section>
         ${F.err ? `<p class="st-aerr">${ic('info', 's14')}${esc(F.err)}</p>` : ''}
-        ${q ? `<p class="fn-quote">${ic('check', 's14')}<b>${n === 0 ? 'No credits' : `${n} credits`}</b> · ${esc(q.space ? q.space.name || 'Sloosh Space' : q.model)}${q.hold && q.hold !== q.credits ? ` · holds up to ${esc(q.hold)}` : ''}${q.why ? ` · ${esc(q.why)}` : ''}</p>${q.prompt ? `<details class="fn-prompt"><summary>The words Brew sends</summary><pre>${esc(q.prompt)}</pre></details>` : ''}` : ''}
+        ${q ? `<p class="fn-quote">${ic('check', 's14')}<b>${n === 0 ? 'No credits' : `${n} credits`}</b> · ${esc(q.space ? q.space.name || 'Sloosh Space' : q.label || q.model)}${q.hold && q.hold !== q.credits ? ` · holds up to ${esc(q.hold)}` : ''}${q.why ? ` · ${esc(q.why)}` : ''}${q.warning ? ` · ${esc(q.warning)}` : ''}</p>${q.prompt ? `<details class="fn-prompt"><summary>The words Brew sends</summary><pre>${esc(q.prompt)}</pre></details>` : ''}` : ''}
       </div>
       <div class="ph-f"><span>Nothing is spent until you press ${q ? 'Make it' : 'Get the quote'}.</span><button class="btn btn-ghost" data-fn-x>Cancel</button>${q ? `<button class="btn btn-primary" data-fn-run ${F.busy || whyNot ? 'disabled' : ''}>${F.busy ? 'Starting…' : n === 0 ? 'Make it' : `Make it (${n} credits)`}</button>` : `<button class="btn btn-primary" data-fn-quote ${F.busy || whyNot ? 'disabled' : ''}>${F.busy ? 'Asking Sloosh…' : 'Get the quote'}</button>`}</div>`;
     bind(w);
@@ -80,7 +80,7 @@
     paint(); };
   const runIt = async () => { if (F.busy || !F.quote) return; F.busy = true; paint();
     const r = await api('POST', `${F.base}/run`, { draftId: F.draftId }).catch((e) => ({ error: e.message })); F.busy = false;
-    if (r?.error) { F.err = r.error; paint(); return; } toast(F.quote.dummy ? 'Making the final (simulated here).' : 'Sloosh is making the final. It lands here in a minute or two.'); close(); if (r.change && A.putCh) { A.putCh(r.change); A.paintStudio?.(); } else window.JamRoom?.pull?.(); };
+    if (r?.error) { F.err = r.error; paint(); return; } toast(F.quote.dummy ? 'Making the final (simulated here).' : F.quote.fallback ? 'Gemini is making the final (Sloosh cannot pay yet). It lands here in a minute.' : 'Sloosh is making the final. It lands here in a minute or two.'); close(); if (r.change && A.putCh) { A.putCh(r.change); A.paintStudio?.(); } else window.JamRoom?.pull?.(); };
   const close = () => { if ($('.ph-m.fn-m')) A.closeModal(); F.wid = null; F.base = null; };
   /* open: the draft's photos, references and Spaces come from one call; the draft's own product photo is image 1 */
   const open = async (wid, draftId, base = null) => { if (F.wid) close(); Object.assign(F, { base: base || `/api/work/${wid}/final`, wid, draftId, st: null, picks: [], visual: '', text: '', way: 'brief', space: null, inputs: {}, quote: null, busy: false, err: '', fields: null, missing: null, filled: null, revise: '' });

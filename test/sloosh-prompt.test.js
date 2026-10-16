@@ -56,7 +56,7 @@ test('a revision changes one thing and repeats the keep list, on GPT Image', () 
 
 test('Seedance beats cover the whole clip in whole seconds with no gaps, lines in quotes, no subtitles; 2.0 gets numbered shots', () => {
   const f = buildFinal({ kind: 'video', title: 'reel', subject: 'the Paw Warmer', visual: 'on a desk at night', seconds: 10, sound: true, refs: [{ job: 'product', label: 'the Paw Warmer' }], beats: [{ shot: 'Wide, the warmer glows on the desk', line: 'Cold hands?' }, { shot: 'A hand slides in, close up' }, { shot: 'The camera holds on the smile, sparkles' }], brand });
-  assert.equal(f.model, MODELS.video); assert.deepEqual(f.settings, { aspect_ratio: '4:5', resolution: '1080p', duration: 10, sound: true });
+  assert.equal(f.model, MODELS.video); assert.deepEqual(f.settings, { aspect_ratio: '3:4', resolution: '1080p', duration: 10, sound: true }); /* Seedance has no 4:5: the nearest it offers */
   const beats = f.prompt.split('\n').filter((l) => /^\d+-\d+s:/.test(l)); assert.deepEqual(beats.map((l) => l.split(':')[0]), ['0-3s', '3-7s', '7-10s']);
   assert.match(beats[0], /"Cold hands\?"$/); assert.ok(!/sparkles/.test(f.prompt)); assert.match(f.prompt, /No subtitles/); assert.match(f.prompt, /^Image 1 is the product, the Paw Warmer\./);
   const s = seedanceShots(brief({ kind: 'video', beats: [{ shot: 'a' }, { shot: 'b' }], seconds: 8 })); assert.match(s, /Shot 1: A\.\nShot 2: B\./);

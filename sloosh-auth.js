@@ -8,6 +8,8 @@ import crypto from 'node:crypto';
 export const SCOPES = 'spacelab:read spacelab:author spacelab:execute user:org:read offline_access';
 export const AUTH_URL = () => (process.env.SLOOSH_AUTH_URL || 'https://clerk.app.shopos.ai').replace(/\/$/, '');
 export const MCP_URL = () => process.env.SLOOSH_MCP_URL || 'https://mcp.sloosh.ai/mcp';
+/* RFC 8707: the token is minted for the MCP server, so every authorize and token call names it (else Sloosh answers 401 invalid_token) */
+export const RESOURCE = () => process.env.SLOOSH_RESOURCE || MCP_URL();
 const BREW = '_brew', CLIENT_FILE = 'private/sloosh-client.json', VAULT_ID = 'sloosh';
 const b64u = (b) => Buffer.from(b).toString('base64url');
 export const pkce = () => { const verifier = b64u(crypto.randomBytes(32)); return { verifier, challenge: b64u(crypto.createHash('sha256').update(verifier).digest()) }; };
@@ -21,9 +23,9 @@ export async function register({ redirect, fetchImpl = fetch, grants = ['authori
   return { client_id: j.client_id, client_secret: j.client_secret || null, at: Date.now() };
 }
 
-/* a token call (code, refresh or device grant) → { token, refresh, exp, scope } */
+/* a token call (code, refresh or device grant) → { token, refresh, exp, scope }; the resource is always named */
 export async function tokenRequest(params, { fetchImpl = fetch } = {}) {
-  const r = await fetchImpl(`${AUTH_URL()}/oauth/token`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' }, body: new URLSearchParams(params), signal: AbortSignal.timeout(20e3) });
+  const r = await fetchImpl(`${AUTH_URL()}/oauth/token`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' }, body: new URLSearchParams({ resource: RESOURCE(), ...params }), signal: AbortSignal.timeout(20e3) });
   const j = await r.json().catch(() => ({}));
   if (!r.ok || !j.access_token) { const e = new Error(`Sloosh token ${r.status}: ${j.error_description || j.error || 'no access token'}`); e.oauth = j.error || null; e.status = r.status; throw e; }
   return { token: j.access_token, refresh: j.refresh_token || params.refresh_token || null, exp: Date.now() + Math.max(60, +j.expires_in || 3600) * 1e3, scope: j.scope || SCOPES };
@@ -46,7 +48,7 @@ export function createSlooshAuth({ packs, vault, auth, log = console, fetchImpl 
     const redirect = `${auth.baseOf(req)}${CB}`, c = await clientFor(redirect), { verifier, challenge } = pkce();
     const state = auth.sign({ n: crypto.randomBytes(9).toString('base64url'), email: auth.user(req)?.email || '' }, 900, 'sloosh');
     auth.setCookie(res, 'sl_v', auth.sign({ v: verifier, s: state }, 900, 'sloosh-v'), 900); /* the PKCE verifier never travels through Clerk */
-    const q = new URLSearchParams({ response_type: 'code', client_id: c.client_id, redirect_uri: redirect, scope: SCOPES, state, code_challenge: challenge, code_challenge_method: 'S256' });
+    const q = new URLSearchParams({ response_type: 'code', client_id: c.client_id, redirect_uri: redirect, scope: SCOPES, state, code_challenge: challenge, code_challenge_method: 'S256', resource: RESOURCE() });
     return `${AUTH_URL()}/oauth/authorize?${q}`;
   }
   async function callback(req, u) {
