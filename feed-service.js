@@ -369,10 +369,11 @@ export function createFeedService(o) {
     const fatigue = -Math.min(4, agentShown24h(t, c.agent) * 0.08) - (!t.acted.has(c.id) ? Math.min(4, Math.max(0, seen - 2) * 1.2) : 0);
     const fb = -2 * ((af.fewer || t.fewer)[c.agent] || 0), tune = tuneScore(af.tune, c); /* the member's own weights and topics */
     // what the team told Brew comes first: cards of a move that rests on it, or that quote it themselves
-    const told = toldOf(c) || (B()?.learnedMoves?.has(moveNo(c.id)) ? 2 : 0);
+    const told = toldOf(c) || (B()?.learnedMoves?.has(moveNo(c.id)) ? 2 : 0), lift = B()?.teamCards?.has(c.id) ? 10 : B()?.learnedUp?.has(c.id) ? 8 : 0;
+    const contra = B()?.learnedHide?.has(c.id) ? -40 : 0; /* the team said it doesn't work for them: off the top until someone says "bring back" (brand-learnings.js) */
     const extra = told + (t.boost[c.id] || 0) + (c.onlyWhen && connOn(t, c.onlyWhen) ? 3 : 0) + (c.live && Object.keys(c.live).some((k) => connOn(t, k)) ? 2 : 0) + (c.liveOnly ? 2 : 0);
     const behind = B()?.staleMoves?.has(moveNo(c.id)) ? -8 : 0; /* its move is being rewritten: off the first screen until the new card lands */
-    const total = val + seat + aff + fresh + fatigue + fb + extra + behind + tune;
+    const total = val + seat + aff + fresh + fatigue + fb + extra + behind + tune + lift + contra;
     return { fresh, told, value: val, impact: +val.toFixed(2), impactNote: valNote, impactV: imp.v, impactPct: imp.pct, isDecision: imp.decision, affinity: +aff.toFixed(2), seat: +seat.toFixed(2), fatigue: +fatigue.toFixed(2), feedback: fb, tune, boost: extra, total: +total.toFixed(2), seen };
   };
   const connOn = (t, k) => !!(t.conn?.[k] || t.liveConn?.[k]);
