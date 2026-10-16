@@ -1,0 +1,69 @@
+/* UI2: the designer's makeover (2026-10-16), on only with body.ui2 (?ui=2).
+   Tokens come from feed-system.css (v13 already matches the design: #0a0a0a bg, #1b1b1b card, 20/12/8 radii, SF Pro / Inter, Caveat).
+   This file only adds the new structure: the opening rail, the top bar pill and Ask Brew, and later the new screens. */
+
+/* ================= rail ================= */
+.ui2 .rail.r2{position:sticky;top:0;height:100vh;width:60px;padding:12px;display:flex;flex-direction:column;align-items:flex-start;gap:0;
+  border-right:1px solid var(--line-soft);background:var(--bg);z-index:60;transition:width .34s var(--ease),background .2s,box-shadow .2s}
+.ui2 .rail.r2.open{z-index:90;width:236px;background:var(--card);box-shadow:26px 0 60px rgba(0,0,0,.45)}
+.ui2 .app{grid-template-columns:60px minmax(0,1fr)}
+.ui2 .app > .rail.r2.open{margin-right:-176px} /* opening covers the stage, it never pushes the feed */
+.ui2 .r2 .r2-mark{display:grid;place-items:center;width:28px;height:28px;color:var(--fg)}
+.ui2 .r2 .r2-mark svg{width:28px;height:28px;display:block}
+
+.ui2 .r2-logo{position:relative;flex:0 0 auto;width:36px;height:38px;margin-bottom:8px;padding:0;border:0;border-radius:10px;background:transparent;color:var(--fg-2);cursor:pointer;display:grid;place-items:center;overflow:hidden;transition:background .15s}
+.ui2 .r2-logo > .r2-mark{transition:transform .3s var(--pop),opacity .2s}
+.ui2 .r2-logo:hover{background:var(--glass-row-h)}
+.ui2 .r2-logo:hover > .r2-mark{transform:rotate(-12deg) scale(1.06)}
+.ui2 .r2-word,.ui2 .r2-swap{position:absolute;top:50%;transform:translateY(-50%);opacity:0;pointer-events:none;transition:opacity .2s}
+.ui2 .r2-word{left:4px;display:flex;align-items:center;gap:10px}
+.ui2 .r2-word b{font-size:16px;font-weight:600;letter-spacing:-.01em;color:var(--fg);white-space:nowrap}
+.ui2 .r2-swap{right:6px;color:var(--fg-2)}
+.ui2 .r2.open .r2-logo{width:100%}
+.ui2 .r2.open .r2-logo > .r2-mark{opacity:0}
+.ui2 .r2.open .r2-word{opacity:1}
+.ui2 .r2.open .r2-logo:hover .r2-swap{opacity:1}
+
+.ui2 .r2-nav{flex:1 1 auto;min-height:0;width:100%;display:flex;flex-direction:column;justify-content:center;gap:4px}
+.ui2 .r2-foot{width:100%;display:flex;flex-direction:column;gap:4px}
+.ui2 .r2-item{position:relative;display:flex}
+.ui2 .r2-btn{position:relative;display:flex;align-items:center;gap:12px;overflow:hidden;width:36px;height:36px;padding:0;flex:0 0 auto;border:0;border-radius:10px;
+  background:transparent;color:var(--fg-2);cursor:pointer;font:inherit;transition:background .15s,color .15s,width .34s var(--ease)}
+.ui2 .r2-btn > .ic{margin:0 8px;transition:transform .2s var(--pop)}
+.ui2 .r2-btn:hover{color:var(--fg);background:var(--glass-row-h)}
+.ui2 .r2-btn:hover > .ic{transform:scale(1.06)}
+.ui2 .r2-btn.is-on{background:var(--surface-2);color:var(--fg)}
+.ui2 .r2-btn.is-on > .ic{stroke-width:2.2}
+.ui2 .r2-label{font-size:14px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .18s}
+.ui2 .r2.open .r2-btn{width:100%}
+.ui2 .r2.open .r2-label{opacity:1;transition-delay:.08s}
+.ui2 .r2-dot:empty{display:none}
+.ui2 .r2-dot{position:absolute;left:22px;top:6px;min-width:8px;height:8px;border-radius:99px;background:var(--bad);font-size:0;box-shadow:0 0 0 2px var(--bg)}
+.ui2 .r2-me{margin-top:4px}
+.ui2 .r2-me img,.ui2 .r2-ini{flex:0 0 auto;width:36px;height:36px;border-radius:10px;object-fit:cover}
+.ui2 .r2-ini{display:grid;place-items:center;background:var(--surface);color:var(--fg);font-size:14px;font-weight:600}
+
+/* tooltips outside the rail, only while it is closed */
+.ui2 .r2-tip{position:absolute;left:100%;top:50%;margin:-14px 0 0 10px;height:28px;padding:0 11px;border-radius:8px;background:var(--fg);color:var(--bg);
+  font-size:12.5px;font-weight:500;line-height:28px;white-space:nowrap;opacity:0;visibility:hidden;pointer-events:none;transform:translateX(-6px);z-index:70;
+  transition:opacity .16s ease,transform .22s var(--ease),visibility .16s}
+.ui2 .r2-item:hover .r2-tip,.ui2 .r2-btn:focus-visible ~ .r2-tip{opacity:1;visibility:visible;transform:none}
+.ui2 .r2.open .r2-tip{display:none}
+
+/* ================= top bar ================= */
+.ui2 .topbar.t2 .topbar-r.t2-r{top:12px;right:0;align-items:center;gap:2px;padding:4px;border-radius:999px;border:1px solid var(--glass-chrome-edge);
+  -webkit-backdrop-filter:blur(22px) saturate(1.7);backdrop-filter:blur(22px) saturate(1.7)}
+.ui2 .t2-pill{display:flex;align-items:center;gap:8px;height:32px;padding:0 12px 0 4px;border:0;border-radius:999px;background:transparent;color:var(--fg);font:inherit;font-size:13.5px;font-weight:500;cursor:pointer}
+.ui2 .t2-pill:hover,.ui2 .t2-ask:hover{background:var(--glass-row-h)}
+.ui2 .t2-faces .r2-mark{width:24px;height:24px}
+.ui2 .t2-faces .r2-mark svg{width:24px;height:24px}
+.ui2 .t2-live{width:6px;height:6px;border-radius:99px;background:var(--ok);box-shadow:0 0 0 3px var(--ok-bg)}
+.ui2 .t2-ask{height:32px;padding:0 12px;border:0;border-radius:999px;background:transparent;color:var(--fg);font:inherit;font-size:13.5px;font-weight:500;cursor:pointer}
+.ui2 .t2-r .th-btn{width:32px;height:32px}
+.ui2 .fab{display:none}
+
+@media (max-width:760px){
+  .ui2 .app{grid-template-columns:1fr}
+  .ui2 .rail.r2{display:none}
+  .ui2 .t2-ask{display:none}
+}

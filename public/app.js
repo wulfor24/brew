@@ -51,6 +51,10 @@
   const poss = (n) => `${esc(n)}${/s$/i.test(String(n ?? '').trim()) ? '’' : '’s'}`; // Allbirds’ feed, Comet’s feed
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const ls = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }, del(k) { try { localStorage.removeItem(k); } catch (e) {} } };
+  /* UI2: the designer's makeover (2026-10-16), built behind a flag. ?ui=2 turns it on for this browser, ?ui=1 turns it off.
+     Same data, same API calls; only the markup and styles differ (public/ui2.css). */
+  const UI2 = (() => { const q = new URLSearchParams(location.search).get('ui'); if (q === '2') ls.set('brew-ui', '2'); else if (q === '1') ls.del('brew-ui'); return ls.get('brew-ui') === '2'; })();
+  if (UI2) document.body.classList.add('ui2');
   const api = async (p, body) => { try { const r = await fetch(p, body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}); const j = await r.json(); if (refused(j)) demoSheet(j.host); return j; } catch (e) { return { error: String(e), fallback: true }; } };
   /* demo mode: new work (moves, drafts, images, jams) is made for the brand's team and SquareUp. Anyone else who tries gets this
      one sheet instead of an error: their work email, or the demo stores */
@@ -108,6 +112,7 @@
     eyeoff: '<path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/>',
     minus: '<path d="M5 12h14"/>', copy: '<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
     sliders: '<path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/>',
+    sidebar: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/>',
     refresh: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
     done: '<path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/>',
     wallet: '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
@@ -875,7 +880,46 @@
   };
   const openGStat = (k) => renderQueue(k);
   document.addEventListener('click', (e) => { const g = e.target.closest('[data-gstat]'); if (g) openGStat(g.dataset.gstat); });
+  /* UI2 shell: a 60px rail that opens to 236px (Home, Memory, Connectors; Tune, Notifications, Profile at the foot),
+     and a top bar with Feed | Deck, the brief pill ("N with the team"), Ask Brew and the theme switch. Same data-* hooks as the old shell. */
+  const r2Item = (nav, icon, label, extra = '') => `<div class="r2-item"><button class="r2-btn" ${nav} aria-label="${label}">${icon}<span class="r2-label">${label}</span>${extra}</button><span class="r2-tip" aria-hidden="true">${label}</span></div>`;
+  const appShell2 = () => {
+    const me = window.LIVE?.me, live = window.LiveConn && (window.LIVE?.signin || me);
+    const ini = esc(String(me?.name || me?.email || B.brand.name || 'B').trim()[0] || 'B').toUpperCase();
+    root.innerHTML = `
+      <div class="app">
+        <nav class="rail r2" aria-label="Main">
+          <button class="r2-logo" data-r2-open aria-label="Open the menu" aria-expanded="false"><span class="r2-mark">${SO()}</span><span class="r2-word"><span class="r2-mark">${SO()}</span><b>Brew</b></span><span class="r2-swap">${ic('sidebar')}</span></button>
+          <div class="r2-nav">
+            ${r2Item('data-nav="feed"', ic('home'), 'Home')}
+            ${r2Item('data-nav="learned"', ic('book'), 'Memory')}
+            ${r2Item('data-nav="connectors"', ic('plug'), 'Connectors')}
+          </div>
+          <div class="r2-foot">
+            ${r2Item('data-r2-tune', ic('sliders'), 'Tune the feed')}
+            ${r2Item('data-bell', ic('bell'), 'Notifications', '<i class="r2-dot" data-count="bell"></i>')}
+            <div class="r2-item"><button class="r2-btn r2-me" data-menu aria-label="Profile and brand">${me?.pic ? `<img src="${esc(me.pic)}" alt="" referrerpolicy="no-referrer">` : `<span class="r2-ini">${ini}</span>`}<span class="r2-label">${esc(me?.name || B.brand.name)}</span></button><span class="r2-tip" aria-hidden="true">Profile</span></div>
+            ${live ? `<button class="r2-acct" data-lacct hidden aria-hidden="true"></button>` : ''}
+          </div>
+        </nav>
+        <div class="stage" id="stage">
+          <div class="wash" aria-hidden="true"></div>
+          <div class="topbar t2">
+            <button class="icon-btn phone-only" aria-label="Menu" data-phone-menu>${ic('menu')}</button>
+            <div class="seg glass-chrome" role="tablist">
+              <button role="tab" aria-selected="true" data-nav="feed">${ic('feed', 's16')}Feed</button>
+              <button role="tab" aria-selected="false" data-nav="deck">${ic('deck', 's16')}Deck</button>
+            </div>
+            <div class="topbar-r t2-r glass-chrome"><button class="t2-pill" data-team-pill hidden><span class="t2-faces"><span class="r2-mark">${SO()}</span></span><span data-count="team"></span><i class="t2-live" aria-hidden="true"></i></button><button class="t2-ask" data-ask>Ask Brew</button><button class="icon-btn rb phone-only" aria-label="Notifications" data-bell>${ic('bell')}<i data-count="bell"></i></button>${themeBtn()}</div>
+          </div>
+          <div id="view"></div>
+          <div class="stk-layer" id="stk"></div>
+          <div class="notes-layer" id="notes"></div>
+        </div>
+      </div>`;
+  };
   const appShell = () => {
+    if (UI2) return appShell2();
     root.innerHTML = `
       <div class="app">
         <nav class="rail" aria-label="Main">
@@ -915,6 +959,8 @@
     $$('[data-count="bell"]').forEach((b) => { b.textContent = WORK.unread || ''; b.classList.toggle('hot', !!WORK.unread); });
     const vb = $('[data-viewing]'); if (vb) vb.innerHTML = `${face(ROLE().face)}<span><i class="va">Viewing as </i><b>${esc(ROLE().name)}</b></span>${ic('chev', 's14')}`;
     $$('.rail [data-nav]').forEach((b) => b.classList.toggle('on', b.dataset.nav === (['jams', 'remixes'].includes(view) ? 'saved' : ['move', 'moves'].includes(view) ? 'learned' : view)));
+    if (UI2) { $$('.r2 [data-nav]').forEach((b) => b.classList.toggle('is-on', b.dataset.nav === (['feed', 'deck', 'saved', 'jams', 'work', 'done', 'queue'].includes(view) ? 'feed' : ['learned', 'move', 'moves', 'facts', 'heard'].includes(view) ? 'learned' : view)));
+      const tp = $('[data-team-pill]'), n = WORK.items.filter((w) => w.stage === 'shared').length; if (tp) { tp.hidden = !n; tp.querySelector('[data-count="team"]').textContent = `${n} with the team`; } }
     paintTabbar();
   };
   /* phones: a native tab bar like Instagram (Feed, Deck, new jam, Work, Library) and the section's name in the header */
@@ -2208,10 +2254,16 @@
   document.addEventListener('click', (e) => {
     const n = e.target.closest('[data-nav]');
     if (n) { const v = n.dataset.nav; closePop(); closeModal();
-      if (v === 'deck' && !S.pro) return openPlan('deck'); /* the Pro offer opens over where you are; closing it leaves you there, not on a #v=deck that isn't open */
+      if (v === 'deck' && !S.pro && !UI2) return openPlan('deck'); /* the Pro offer opens over where you are; closing it leaves you there, not on a #v=deck that isn't open */
       if (DP) closeDetail(true); $('#rxd')?.remove(); $('#rxd-scrim')?.remove(); RX.ch = null; VIEWS()[v](); const vh = v === 'feed' ? '' : `#v=${v}`; nav(vh || location.pathname, location.hash !== vh, 'view', v); window.scrollTo(0, 0); return; }
     if (e.target.closest('[data-theme-btn]')) { setTheme(curTheme() === 'dark' ? 'light' : 'dark'); return; }
     if (e.target.closest('[data-open-jam]')) { openJam({ tab: 'ai' }); return; }
+    /* UI2 shell: open/close the rail, Tune, Ask Brew (the global jam until Ask Brew lands), the brief pill */
+    const ro = e.target.closest('[data-r2-open]'); if (ro) { const r = ro.closest('.r2'), o = !r.classList.contains('open'); r.classList.toggle('open', o); ro.setAttribute('aria-expanded', String(o)); return; }
+    if (UI2 && !e.target.closest('.r2')) $('.r2.open')?.classList.remove('open');
+    if (e.target.closest('[data-r2-tune]')) { $('.r2.open')?.classList.remove('open'); whoFor(); return; }
+    if (e.target.closest('[data-ask]')) { openJam({ tab: 'ai' }); return; }
+    if (e.target.closest('[data-team-pill]')) { VIEWS().work(); nav('#v=work', true, 'view', 'work'); return; }
     if (e.target.closest('[data-menu]') || e.target.closest('[data-phone-menu]')) { openMenu(); return; }
     if (e.target.closest('[data-viewing]')) { openViewing(e.target.closest('[data-viewing]')); return; }
     const cx = e.target.closest('[data-cx]'); if (cx) { openConnect(cx.dataset.cx); return; }
