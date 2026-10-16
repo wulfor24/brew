@@ -3,6 +3,7 @@
 // website is the brand's site.
 import { exactSite } from '../auth.js';
 import { card, L, n0, has, getJSON } from './common.js';
+const ppl = (n) => `${n0(n)} ${+n === 1 ? 'person' : 'people'}`;
 
 const K = 'https://a.klaviyo.com/api';
 const H = (c) => ({ authorization: `Klaviyo-API-Key ${c.key}`, revision: '2024-10-15', accept: 'application/vnd.api+json' });
@@ -39,10 +40,11 @@ export default {
     const k = 'klaviyo', src = 'Klaviyo', out = [];
     const off = m.flows.filter(([, on]) => !on).map(([nm]) => nm);
     if (flows.length && off.length) out.push(card(k, 'Klaviyo', ctx.lane, 'flows', { agent: 'crm', sector: 'signals', type: 'decision', roles: ['crm'], badge: [`${m.liveCount} of 5 live`, off.length >= 3 ? 'warn' : 'info'], cta: 'Plan the flows',
-      title: `${off.slice(0, 3).join(', ')} ${off.length === 1 ? 'is' : 'are'} not live in Klaviyo`, sub: `${has(m.list) ? `Your biggest list has ${n0(m.list)} people. ` : ''}The flows that bring second orders run on their own once live, with no ad spend.`,
+      title: `${off.slice(0, 3).join(', ')} ${off.length === 1 ? 'is' : 'are'} not live in Klaviyo`, sub: `${has(m.list) ? `Your biggest list has ${ppl(m.list)}. ` : ''}The flows that bring second orders run on their own once live, with no ad spend.`,
       rows: m.flows.map(([f, on]) => [f, on ? 'Live' : 'Off']), detail: { why: ['Post-purchase and win-back drive second orders.'], how: ['Build the missing flows', 'Turn them on', 'Read revenue from email after 30 days'] } }));
-    const stats = [has(m.list) && ['Biggest list', `${n0(m.list)} people`], ['Key flows live', `${m.liveCount} of 5`], ['Flows in the account', n0(m.flowsTotal)]].filter(Boolean);
-    const changed = [`${m.liveCount} of the 5 key flows are live${off.length ? `; ${off.length} not built yet` : ''}`, has(m.list) && `${n0(m.list)} people on ${m.listName}`].filter(Boolean);
+    /* quiet: no zero tiles, and one person is a person */
+    const stats = [has(m.list) && ['Biggest list', ppl(m.list)], ['Key flows live', `${m.liveCount} of 5`], m.flowsTotal > 0 && ['Flows in the account', n0(m.flowsTotal)]].filter(Boolean);
+    const changed = [m.liveCount ? `${m.liveCount} of the 5 key flows are live${off.length ? `; ${off.length} not built yet` : ''}` : 'None of the 5 key flows are live yet', has(m.list) && `${ppl(m.list)} on ${m.listName}`].filter(Boolean);
     const ledger = [has(m.list) && L('klaviyo.list', 'Email list size (largest list)', n0(m.list), m.list, src), L('klaviyo.flows.live', 'Key email flows live (of 5)', `${m.liveCount} of 5`, m.liveCount, src), L('klaviyo.flows.off', 'Key email flows not live', off.join(', ') || 'none', null, src)].filter(Boolean);
     return { metrics: m, stats, changed, cards: out, ledger, notes };
   }
