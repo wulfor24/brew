@@ -229,3 +229,57 @@
 .ui2 .ob2-start .ob2-agents small{flex-basis:100%}
 .ui2 .ob2-start .ob2-foot{max-width:440px}
 @media (max-width:600px){.ui2 .ob2-start .ob2-h{font-size:30px;line-height:36px}}
+
+/* ================= wiring: team pill pop, jam chips results, Ask Brew, Your feed ================= */
+.ui2 .t2-pill.is-ask .t2-live{background:var(--warn);box-shadow:0 0 0 3px var(--warn-bg)}
+.t2-pop{position:fixed;z-index:95;width:340px;max-height:70vh;overflow:auto;padding:8px;border-radius:18px;background:var(--card);border:1px solid var(--line);box-shadow:var(--sh-raised)}
+.t2-pop header{padding:8px 10px 10px}.t2-pop header b{display:block;font-size:14px}.t2-pop header small{color:var(--fg-3);font-size:12.5px}
+.t2-bi{display:flex;align-items:center;gap:10px;width:100%;padding:10px;border:0;border-radius:12px;background:transparent;color:var(--fg);font:inherit;text-align:left;cursor:pointer}
+.t2-bi:hover{background:var(--glass-row-h)}
+.t2-bt{flex:1;min-width:0}.t2-bt b{display:block;font-size:13.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.t2-bt small{font-size:12px;color:var(--fg-3)}
+.t2-bs{flex:0 0 auto;font-size:11.5px;padding:3px 8px;border-radius:999px;background:var(--glass-pill);color:var(--fg-2)}
+.t2-bs.is-received,.t2-bs.is-in_progress{background:var(--info-bg);color:var(--info)}.t2-bs.is-needs_info{background:var(--warn-bg);color:var(--warn)}.t2-bs.is-delivered{background:var(--ok-bg);color:var(--ok)}
+.t2-empty{padding:10px;color:var(--fg-3);font-size:13px}.t2-pop footer{padding:6px 10px 4px}
+.ui2 .j2-chip.is-pack{background:var(--surface-2)}
+.ui2 .j2-pack{display:flex;align-items:center;gap:10px;margin-top:8px}.ui2 .j2-pack small{color:var(--fg-3)}
+.ui2 .j2-todo{margin-top:8px;font-size:13px;color:var(--fg-2)}
+.ui2 .j2-imp{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;margin:10px 0 6px;padding:14px 16px;border-radius:16px;background:var(--surface);border:1px solid var(--line-soft)}
+.ui2 .j2-imp b{font-size:30px;line-height:34px;font-weight:600;letter-spacing:-.02em}.ui2 .j2-imp b small{font-size:14px;font-weight:500;color:var(--fg-2)}
+.ui2 .j2-imp span{flex-basis:100%;font-size:13px;color:var(--fg-2)}
+.ui2 .j2-conf{font-style:normal;font-size:11.5px;padding:2px 8px;border-radius:999px;background:var(--glass-pill);color:var(--fg-2)}
+.ui2 .j2-conf.is-high{background:var(--ok-bg);color:var(--ok)}.ui2 .j2-conf.is-medium{background:var(--info-bg);color:var(--info)}
+.ui2 .j2-why summary{cursor:pointer;font-size:13px;color:var(--fg-2)}.ui2 .j2-why ul{margin:6px 0;padding-left:18px;font-size:13px;color:var(--fg-2)}.ui2 .j2-why small{font-size:12px;color:var(--fg-3)}
+/* Ask Brew */
+.ask2{position:fixed;z-index:92;top:0;right:0;bottom:0;width:min(440px,100vw);display:flex;flex-direction:column;background:var(--bg);border-left:1px solid var(--line);box-shadow:-26px 0 60px rgba(0,0,0,.35);font-family:var(--font);color:var(--fg);animation:a2in .32s var(--ease)}
+@keyframes a2in{from{transform:translateX(24px);opacity:0}}
+.a2-h{display:flex;align-items:center;gap:6px;padding:12px 14px;border-bottom:1px solid var(--line-soft)}
+.a2-h b{display:flex;align-items:center;gap:8px;margin-right:auto;font-size:15px}.a2-h b svg{width:22px;height:22px}
+.a2-thread{flex:1;overflow:auto;padding:16px 16px 8px;display:flex;flex-direction:column;gap:14px}
+.a2-hi h3{margin:24px 0 14px;font-size:21px;line-height:28px;font-weight:500}
+.a2-starts{display:flex;flex-direction:column;gap:8px}
+.a2-start{text-align:left;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--fg);font:inherit;font-size:14px;cursor:pointer}
+.a2-start:hover{background:var(--surface)}
+.a2m{display:flex;gap:10px;font-size:14px;line-height:21px}
+.a2m.brew > svg{flex:0 0 auto;width:24px;height:24px;margin-top:2px}
+.a2m.me{justify-content:flex-end}.a2m.me p{margin:0;max-width:82%;padding:9px 13px;border-radius:16px 16px 4px 16px;background:var(--surface-2)}
+.a2-body p{margin:0 0 8px}.a2-links{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.a2-links .chip{display:inline-flex;align-items:center;gap:6px;max-width:100%}.a2-links .face{transform:scale(.7)}
+.a2-act{margin-top:6px;display:inline-flex;align-items:center;gap:6px}
+.a2-by{display:block;margin-top:6px;font-size:12px;color:var(--fg-3)}
+.a2-think{margin:0;color:var(--fg-2)}
+.a2-f{position:relative;margin:8px 12px 12px;padding:10px 46px 10px 12px;border:1px solid var(--line);border-radius:16px;background:var(--card)}
+.a2-f textarea{width:100%;border:0;background:transparent;color:var(--fg);font:inherit;font-size:14px;resize:none;outline:none}
+.a2-f .jm-send{position:absolute;right:10px;bottom:10px}
+.a2-seed:empty{display:none}.a2-seed{margin-bottom:6px}.a2-seed .chip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px}
+/* Your feed */
+.ui2 .tu-sig,.ui2 .tu-ag{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line-soft)}
+.ui2 .tu-sig.is-off{opacity:.5}
+.ui2 .tu-t{flex:1;min-width:0}.ui2 .tu-t b{display:block;font-size:14px;font-weight:500}.ui2 .tu-t small{font-size:12.5px;color:var(--fg-3)}
+.ui2 .tu-k{display:grid;place-items:center;width:26px;height:26px;border-radius:8px;background:var(--surface)}.ui2 .tu-k.is-like{color:var(--bad)}
+.ui2 .tu-seg{display:flex;padding:3px;border-radius:10px;background:var(--surface)}
+.ui2 .tu-seg button{height:28px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:var(--fg-3);font:inherit;font-size:12.5px;cursor:pointer}
+.ui2 .tu-seg button[aria-checked="true"]{background:var(--surface-2);color:var(--fg)}
+.ui2 .tu-add{display:flex;gap:8px;margin-bottom:10px}.ui2 .tu-add input{flex:1;height:34px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--fg);font:inherit;font-size:14px}
+.ui2 .m2-chips .chip{display:inline-flex;align-items:center;gap:4px}
+.ui2 .j2-sent{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;color:#1f7a3e}
+.ui2 .tu-col{width:min(720px,100%)}

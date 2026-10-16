@@ -113,6 +113,8 @@
     minus: '<path d="M5 12h14"/>', copy: '<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
     sliders: '<path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/>',
     sidebar: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/>',
+    film: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 3v18"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/>',
+    layers: '<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>',
     refresh: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
     done: '<path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/>',
     wallet: '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
@@ -964,7 +966,7 @@
     const vb = $('[data-viewing]'); if (vb) vb.innerHTML = `${face(ROLE().face)}<span><i class="va">Viewing as </i><b>${esc(ROLE().name)}</b></span>${ic('chev', 's14')}`;
     $$('.rail [data-nav]').forEach((b) => b.classList.toggle('on', b.dataset.nav === (['jams', 'remixes'].includes(view) ? 'saved' : ['move', 'moves'].includes(view) ? 'learned' : view)));
     if (UI2) { $$('.r2 [data-nav]').forEach((b) => b.classList.toggle('is-on', b.dataset.nav === (['feed', 'deck', 'saved', 'jams', 'work', 'done', 'queue'].includes(view) ? 'feed' : ['learned', 'move', 'moves', 'facts', 'heard'].includes(view) ? 'learned' : view)));
-      const tp = $('[data-team-pill]'), n = WORK.items.filter((w) => w.stage === 'shared').length; if (tp) { tp.hidden = !n; tp.querySelector('[data-count="team"]').textContent = `${n} with the team`; } }
+      const tp = $('[data-team-pill]'), wt = WORK.withTeam || { n: 0 }, n = wt.n || 0; if (tp) { tp.hidden = !n; tp.querySelector('[data-count="team"]').textContent = `${n} with the team`; tp.classList.toggle('is-ask', !!wt.needsInfo); } }
     paintTabbar();
   };
   /* phones: a native tab bar like Instagram (Feed, Deck, new jam, Work, Library) and the section's name in the header */
@@ -977,7 +979,7 @@
     let bar = $('#tabbar');
     if (!bar) { bar = document.createElement('nav'); bar.id = 'tabbar'; bar.className = 'tabbar'; bar.setAttribute('aria-label', 'Tabs');
       bar.innerHTML = (UI2 ? TABS2 : TABS).map(([k, icn, n]) => k === '+' ? `<button class="tb-new" data-tbjam aria-label="${n}">${ic(icn, 's18')}</button>` : `<button data-nav="${k}" aria-label="${n}">${ic(icn)}<span>${n}</span>${k === 'work' ? '<i data-count="tbwork"></i>' : ''}</button>`).join('');
-      document.body.appendChild(bar); bar.addEventListener('click', (e) => { if (e.target.closest('[data-tbjam]')) openJam(UI2 ? { tab: 'ai' } : {}); }); }
+      document.body.appendChild(bar); bar.addEventListener('click', (e) => { if (e.target.closest('[data-tbjam]')) { if (UI2) openAsk(); else openJam({}); } }); }
     const cur = UI2 ? (['learned', 'moves', 'move', 'facts', 'heard', 'rules', 'tune'].includes(view) ? 'learned' : ['saved', 'jams', 'work', 'done', 'queue'].includes(view) ? 'deck' : view) : ['jams', 'remixes'].includes(view) ? 'saved' : view;
     $$('[data-nav]', bar).forEach((b) => b.setAttribute('aria-current', b.dataset.nav === cur ? 'page' : 'false'));
     const n = WORK.items.filter((w) => w.stage === 'needs_you').length, wb = $('[data-count="tbwork"]', bar); if (wb) { wb.textContent = n || ''; wb.hidden = !n; }
@@ -2269,9 +2271,12 @@
     const ro = e.target.closest('[data-r2-open]'); if (ro) { const r = ro.closest('.r2'), o = !r.classList.contains('open'); r.classList.toggle('open', o); ro.setAttribute('aria-expanded', String(o)); return; }
     if (UI2 && !e.target.closest('.r2')) $('.r2.open')?.classList.remove('open');
     if (e.target.closest('[data-r2-tune]')) { $('.r2.open')?.classList.remove('open'); whoFor(); return; }
-    if (e.target.closest('[data-ask]')) { openJam({ tab: 'ai' }); return; }
+    const ak = e.target.closest('[data-ask]'); if (ak) { let seed = null; try { seed = ak.dataset.ask ? JSON.parse(ak.dataset.ask) : null; } catch (x) {} openAsk(seed); return; }
     const fm = e.target.closest('[data-find-more]'); if (fm) { fm.disabled = true; refreshFeed({ force: true }).then(() => { fm.disabled = false; toast('Your agents are on it. New cards land at the top.'); }); return; }
-    if (e.target.closest('[data-team-pill]')) { VIEWS().work(); nav('#v=work', true, 'view', 'work'); return; }
+    const tpl = e.target.closest('[data-team-pill]'); if (tpl) { e.stopPropagation(); if ($('#pop.t2-pop')) return closePop(); closePop(); const it = WORK.withTeam?.items || [];
+      const pop = document.createElement('div'); pop.id = 'pop'; pop.className = 'pop t2-pop'; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Briefs with the ShopOS team');
+      pop.innerHTML = `<header><b>With the ShopOS team</b><small>Briefs you sent and where each one is</small></header>${it.map((x) => `<button class="t2-bi" data-witem="${esc(x.wid)}"><span class="t2-bt"><b>${esc(x.title || 'Brief')}</b><small>${esc(x.ticket || '')}${x.at ? ` · ${ago(x.at)}` : ''}</small></span><span class="t2-bs is-${esc(x.status)}">${esc(x.label || x.status)}</span></button>`).join('') || '<p class="t2-empty">Nothing with the team right now.</p>'}<footer><button class="linkbtn" data-nav="done">All briefs ${ic('right', 's14')}</button></footer>`;
+      document.body.appendChild(pop); const r = tpl.getBoundingClientRect(); pop.style.top = `${r.bottom + 8}px`; pop.style.right = `${Math.max(12, innerWidth - r.right)}px`; return; }
     if (e.target.closest('[data-menu]') || e.target.closest('[data-phone-menu]')) { openMenu(); return; }
     if (e.target.closest('[data-viewing]')) { openViewing(e.target.closest('[data-viewing]')); return; }
     const cx = e.target.closest('[data-cx]'); if (cx) { openConnect(cx.dataset.cx); return; }
@@ -3293,7 +3298,7 @@
   const chatTab = (ch, edit) => {
     const msgs = ch.thread || [], vById = (id) => ch.versions.find((v) => v.id === id);
     const log = msgs.map((m) => m.from === 'you' ? `<div class="lgm you"><p>${esc(m.text)}</p></div>` : `<div class="lgm ai">${face(ch.agent)}<div><p>${esc(m.text)}</p>${m.v && ch.versions[m.v - 1] ? madeNote(ch, [ch.versions[m.v - 1]]) : ''}${(m.vs || []).length ? madeNote(ch, m.vs.map(vById).filter(Boolean)) : ''}</div></div>`).join('');
-    return `<div class="it-log">${SPLIT && RX.p ? `<div class="it-empty">${face(ch.agent)}${caseBrief(ch)}</div>` : ''}${log || (SPLIT && RX.p ? '' : `<div class="it-empty">${face(ch.agent)}${`<p>${SPLIT ? 'What should change? Each change makes a new version, and you can always go back.' : 'Tell me what to change, in plain words. I’ll rewrite the whole package and save it as a new version. You can always go back.'}</p>`}</div>`)}${RX.sending ? `<div class="lgm ai pending">${face(ch.agent)}<p><span class="spin"></span>${esc(RX.sending)}</p></div>` : ''}</div>
+    return `<div class="it-log">${SPLIT && RX.p ? `<div class="it-empty">${face(ch.agent)}${caseBrief(ch)}</div>` : ''}${log || (SPLIT && RX.p ? '' : `<div class="it-empty">${face(ch.agent)}${`<p>${SPLIT ? 'What should change? Each change makes a new version, and you can always go back.' : 'Tell me what to change, in plain words. I’ll rewrite the whole package and save it as a new version. You can always go back.'}</p>`}</div>`)}${UI2 ? j2Extra(ch) : ''}${RX.sending ? `<div class="lgm ai pending">${face(ch.agent)}<p><span class="spin"></span>${esc(RX.sending)}</p></div>` : ''}</div>
       ${edit ? `<form class="it-ask" id="st-say">${UI2 ? chips2(ch) : `<div class="it-sugg">${PH_FAM.includes(ch.family) ? `<button type="button" class="chip chip-ph" data-ph-open>${ic('pic', 's14')}Change the photo</button>` : ''}${fitSuggest(ch.suggest).slice(0, PH_FAM.includes(ch.family) ? 3 : 4).map((x) => `<button type="button" class="chip" data-say="${esc(x)}">${esc(x)}</button>`).join('')}</div>`}<div class="it-row${SPLIT && window.Composer?.tools ? ' has-cmp' : ''}"><textarea id="st-in" rows="2"${SPLIT ? ' data-nomic' : ''} placeholder="What should change? Or @ someone">${esc(RX.draft || '')}</textarea>${SPLIT && window.Composer?.tools ? `<span class="jm-tools">${window.Composer.tools()}<span class="jm-tools-r">${window.Mic?.supported ? `<button type="button" class="jm-mic" data-cmp-talk aria-label="Talk instead of typing">${ic('mic', 's16')}</button>` : ''}<button class="jm-send" aria-label="Send" ${RX.sending ? 'disabled' : ''}>${ic('up', 's16')}</button></span></span>` : `<button class="btn btn-primary" aria-label="Send" ${RX.sending ? 'disabled' : ''}>${ic('up', 's16')}</button>`}</div></form>${SPLIT && window.Composer?.foot ? window.Composer.foot() : ''}` : `<p class="it-locked">It’s in a jam. Shape it there.</p>`}`;
   };
   const adjustTab = (ch, edit) => edit ? `<p class="hs-tip">Turn a knob and the package is rewritten to match. Knobs marked “new photo” make a new creative.</p>
@@ -3448,12 +3453,37 @@
     if (ch.verdict === 'fix') out.push(c('data-rx="fix"', 'sparkles', 'Fix it with AI', ' is-go'));
     if (PH_FAM.includes(ch.family)) out.push(c('data-ph-open', 'pic', 'Swap the image'));
     fitSuggest(ch.suggest).slice(0, 3).forEach((x) => out.push(`<button type="button" class="chip j2-chip" data-say="${esc(x)}"${dis}>${esc(x)}</button>`));
+    out.push(c('data-j2-pack', 'down', j2PackLabel(ch), ' is-pack'));
+    out.push(c('data-j2-impact', 'trendup', 'Projected impact'));
+    if (['meta_ad', 'social', 'post'].includes(ch.family) && ch.state !== 'live') { const as = ch.pkg?.draft?.as; if (as !== 'video') out.push(c('data-j2-remake="video"', 'film', 'Make it a reel')); if (as !== 'carousel') out.push(c('data-j2-remake="carousel"', 'layers', 'Make it a carousel')); }
     out.push(c('data-rx="variants"', 'shuffle', 'More like this'));
     if (fitKnobs(ch.knobs).length) out.push(c('data-tab="adjust"', 'sliders', 'Adjust'));
+    if (RX.p) out.push(`<button type="button" class="chip j2-chip" data-ask='${esc(JSON.stringify({ cardId: RX.p.id, label: String(cardOf(RX.p).title || 'This card').slice(0, 60) }))}'>${ic('chat', 's14')}Ask Brew about this</button>`);
     return `<div class="it-sugg j2-chips">${out.join('')}</div>`; };
+  /* the publish pack: read-only, the final files and copy to post yourself. Brew writes to no account */
+  const j2PackLabel = (ch) => { const pf = String(ch.pkg?.platform || ch.pkg?.where?.[0]?.name || '').trim();
+    return ({ meta_ad: 'Post to Instagram', social: 'Post to Instagram', post: pf ? `Post to ${pf}` : 'Get the post', crm: 'Get the message', store: 'Get the HTML', listing: 'Get the listing sheet', vis: 'Get the FAQ files', search: 'Get the Google Ads sheet', setup: 'Get the checklist', brief: 'Get the shot list', meta_ops: 'Get the change list', print: 'Get the print file' })[ch.family] || 'Get the files'; };
+  const J2 = { imp: {}, pack: {} }; /* per change: the projection and the pack, shown in the chat */
+  const j2Sg = (x) => { const v = +x; return Number.isFinite(v) ? `${v > 0 ? '+' : v < 0 ? '−' : ''}${j2Num(Math.abs(v))}` : '—'; };
+  const j2Num = (x) => { const v = +x; return Number.isFinite(v) ? (Math.abs(v) >= 100 ? Math.round(v).toLocaleString('en-IN') : String(+v.toFixed(1))) : '—'; };
+  const j2Extra = (ch) => { const im = J2.imp[ch.id], pk = J2.pack[ch.id]; let h = '';
+    if (pk) h += `<div class="lgm ai">${face(ch.agent)}<div>${pk.busy ? `<p><span class="spin"></span>Putting the files together…</p>` : pk.error ? `<p>${esc(pk.error)}</p>` : `<p>${esc(j2PackLabel(ch))}: your files are ready. The final ${esc((ch.familyName || 'files').toLowerCase())} and its copy, to post yourself. Brew changes nothing in your accounts.</p><div class="j2-pack"><a class="btn btn-ghost sm" href="/${esc(pk.url)}" download="${esc(pk.name)}">${ic('down', 's14')}${esc(pk.name)}</a><small>${(pk.files || []).length} files</small></div>${(pk.todo || []).length ? `<p class="j2-todo">Still to do: ${pk.todo.map(esc).join(' · ')}</p>` : ''}`}</div></div>`;
+    if (im) h += `<div class="lgm ai">${face('performance')}<div>${im.busy ? `<p><span class="spin"></span>Reading this card’s results and benchmarks, then handing it to the Performance marketer…</p>` : im.error ? `<p>${esc(im.error)}</p>` : `<p>Here’s the likely lift if this runs. ${esc(im.label || 'A projection, not a promise')}.</p>
+        <div class="j2-imp"><b>${j2Sg(im.low)} to ${j2Sg(im.high)}<small> ${esc(im.unit || '')}</small></b><span>${esc(im.metric || '')}${im.windowLabel ? `, ${esc(im.windowLabel)}` : ''}</span><em class="j2-conf is-${esc(im.confidence || 'low')}">${esc(im.confidence || 'low')} confidence</em></div>
+        ${(im.basis || []).length ? `<details class="j2-why"><summary>What it’s based on</summary><ul>${im.basis.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>${(im.assumptions || []).length ? `<small>Assumed</small><ul>${im.assumptions.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}${(im.gaps || []).length ? `<small>Couldn’t read</small><ul>${im.gaps.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}</details>` : ''}${im.note ? `<p class="j2-todo">${esc(im.note)}</p>` : ''}`}</div></div>`;
+    return h; };
+  const j2Run = async (kind, ch, arg) => {
+    if (kind === 'pack') { J2.pack[ch.id] = { busy: true }; paintStudio(); const r = await tapi('GET', `/api/changes/${ch.id}/pack${RX.viewing ? `?v=${encodeURIComponent(RX.viewing)}` : ''}`);
+      J2.pack[ch.id] = r.pack || { error: r.error || 'The files didn’t come together. Try again.' }; paintStudio();
+      if (r.pack?.url) { const a = document.createElement('a'); a.href = '/' + r.pack.url; a.download = r.pack.name || 'brew-pack.zip'; document.body.appendChild(a); a.click(); a.remove(); } return; }
+    if (kind === 'impact') { J2.imp[ch.id] = { busy: true }; paintStudio(); const r = await tapi('GET', `/api/changes/${ch.id}/impact`); J2.imp[ch.id] = r.impact || { error: r.error || 'The projection didn’t come back. Try again.' }; return paintStudio(); }
+    if (kind === 'remake') { RX.sending = arg === 'video' ? 'Making it a reel…' : 'Making it a carousel…'; paintStudio(); const r = await tapi('POST', `/api/changes/${ch.id}/remake`, { as: arg }); RX.sending = null;
+      if (r.error || !r.change) { toast(esc(r.error || 'That didn’t work. Try again.')); return paintStudio(); }
+      RX.ch = r.change; putCh(r.change); RX.viewing = null; if (r.making === false && r.why) toast(esc(r.why)); return paintStudio(); } };
   const j2Brief = (ch, pkgCh, edit) => `<div class="j2-scrim" data-tab="iterate"></div><aside class="j2-sheet j2-brief" role="dialog" aria-label="The brief"><header class="j2-sh-h"><b>${ic('doc', 's16')}The brief</b><button class="icon-btn" data-tab="iterate" aria-label="Back to the chat">${ic('x', 's18')}</button></header>
       <div class="j2-sh-b">${detailsTab(ch, pkgCh, edit)}</div>
-      <footer class="j2-sh-f"><button class="btn btn-ghost" data-tab="iterate">Back to chat</button><span class="sp"></span><button class="btn btn-ghost" data-rx="share-team">Share with my team</button><button class="btn btn-primary" data-rx="share-shopos">${ic('send', 's16')}Send brief</button></footer></aside>`;
+      <footer class="j2-sh-f"><button class="btn btn-ghost" data-tab="iterate">Back to chat</button><span class="sp"></span>${(() => { const w = SPLIT ? workOfCard(RX.p?.id) : null, jb = w?.jamBrief, it = (WORK.withTeam?.items || []).find((x) => x.wid === w?.id);
+        return w?.stage === 'shared' && jb?.to !== 'team' ? `<span class="j2-sent">${ic('check', 's16')}Sent to the ShopOS team${w.ticket ? ` · ${esc(w.ticket)}` : ''}${it?.label ? ` · ${esc(it.label)}` : ''}</span>` : `<button class="btn btn-ghost" data-rx="share-team">Share with my team</button><button class="btn btn-primary" data-rx="share-shopos">${ic('send', 's16')}Send brief</button>`; })()}</footer></aside>`;
   const j2Adjust = (ch, edit) => `<div class="j2-scrim" data-tab="iterate"></div><aside class="j2-sheet j2-adjust" role="dialog" aria-label="Adjust"><header class="j2-sh-h"><b>${ic('sliders', 's16')}Adjust</b><button class="icon-btn" data-tab="iterate" aria-label="Close">${ic('x', 's18')}</button></header><div class="j2-sh-b">${adjustTab(ch, edit)}</div></aside>`;
   const j2Moves = async (p) => { if (!p || RX.movesFor === p.id) return; RX.movesFor = p.id; RX.moves = []; const r = await tapi('GET', `/api/cards/${encodeURIComponent(p.id)}/moves`).catch(() => ({})); if (RX.movesFor !== p.id) return; RX.moves = r.moves || []; if (RX.moves.length && view === 'remix') paintStudio(); };
   const paintStudio = () => {
@@ -3493,7 +3523,7 @@
     fitAd();
     const pb = $('.st-panel-b'); if (tab === 'iterate') pb.scrollTop = (ch.thread || []).length || RX.sending ? pb.scrollHeight : 0; /* the case stays first in the chat and scrolls up as it grows; a fresh chat is read from its top */ else if (logScroll && !RX.resetScroll) pb.scrollTop = logScroll; RX.resetScroll = false;
     clearTimeout(RX.pollT);
-    if (ch.copyPending || ch.imagePending || ch.videoPending) RX.pollT = setTimeout(async () => { if (view !== 'remix' || RX.ch?.id !== ch.id) return; const q = await tapi('GET', `/api/changes/${ch.id}`); if (q.change) { RX.ch = q.change; putCh(q.change); } paintStudio(); if (ch.copyPending && q.change && !q.change.copyPending) autoImage(q.change); }, ch.copyPending ? 1500 : 3000);
+    if (ch.copyPending || ch.imagePending || ch.videoPending || ch.remakePending) RX.pollT = setTimeout(async () => { if (view !== 'remix' || RX.ch?.id !== ch.id) return; const q = await tapi('GET', `/api/changes/${ch.id}`); if (q.change) { RX.ch = q.change; putCh(q.change); } paintStudio(); if (ch.copyPending && q.change && !q.change.copyPending) autoImage(q.change); }, ch.copyPending ? 1500 : 3000);
   };
   /* copy inside the tap: the old copy command runs at once; the clipboard API is the fallback, and never waits forever
      (it can hang on a permission prompt, and the button then looked dead: no copy, no toast) */
@@ -3645,6 +3675,7 @@
     const lc = e.target.closest('[data-livech]'); if (lc) { e.stopPropagation(); const p = byId(lc.dataset.card); const ch = p?.liveChange?.changeId; if (p) openRemix(p, ch); return; }
     if (view !== 'remix') return;
     if (e.target.closest('[data-vmenu]')) { RX.vmenu = !RX.vmenu; return paintStudio(); }
+    { const k = e.target.closest('[data-j2-pack],[data-j2-impact],[data-j2-remake]'); if (k && RX.ch) return j2Run(k.hasAttribute('data-j2-pack') ? 'pack' : k.hasAttribute('data-j2-impact') ? 'impact' : 'remake', RX.ch, k.dataset.j2Remake); }
     const jm2 = e.target.closest('[data-j2-move]'); if (jm2) { const m = (RX.moves || []).find((x) => x.n === +jm2.dataset.j2Move); if (!m) return;
       return modal(`<div class="sheet j2-move"><header class="sh-h"><b class="sh-t">Move ${String(m.n).padStart(2, '0')}</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header><h3>${esc(m.title)}</h3>${m.stat ? `<p class="j2-mv-stat"><b>${esc(m.stat)}</b> ${esc(m.statLabel || '')}</p>` : ''}${m.why || m.summary ? `<p>${esc(m.why || m.summary)}</p>` : ''}<div class="cx-btns"><a class="btn btn-ghost" href="${pdfUrl(`move-${m.n}.pdf`)}" target="_blank" rel="noopener">${ic('down', 's16')}PDF</a><button class="btn btn-primary" data-close data-nav-move="${m.n}">Read the move</button></div></div>`); }
     const nm = e.target.closest('[data-nav-move]'); if (nm) { closeModal(); location.hash = `#v=move&m=${nm.dataset.navMove}`; return; }
@@ -4112,21 +4143,46 @@
     modal(`<div class="sheet m2-sheet"><header class="sh-h"><b class="sh-t">${files.length === 1 ? esc(files[0].name) : `${files.length} files`}</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>
       <p class="m2-q">Where should this go?</p>${dest('memory', 'book', 'Add to brand memory', 'Every agent works from it from now on.')}${dest('prefs', 'person', 'Save to my preferences', 'Shapes what the feed shows me, not what the brand says.')}${dest('once', 'clock', 'Use it just this once', 'For the next thing I ask Brew, then forget it.')}</div>`, (m) => {
       $$('[data-m2-dest]', m).forEach((b) => (b.onclick = async () => { const d = b.dataset.m2Dest; $$('[data-m2-dest]', m).forEach((x) => (x.disabled = true)); b.classList.add('is-busy');
-        const read = (f) => new Promise((ok) => { const r = new FileReader(); r.onload = () => ok({ name: f.name, type: f.type, size: f.size, data: String(r.result).split(',')[1] || '' }); r.onerror = () => ok(null); r.readAsDataURL(f); });
-        const list = (await Promise.all(files.map(read))).filter(Boolean);
-        const r = await api(`/api/brands/${encodeURIComponent(mvSlug())}/drop`, { dest: d, files: list, tenant: TID });
+        const IMG = /^image\/(png|jpeg|webp)$/, TXT = /^text\/|json|csv|markdown/;
+        const read = (f, how) => new Promise((ok) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = () => ok(null); r[how](f); });
+        let r = null; const skipped = [];
+        for (const f of files) { const img = IMG.test(f.type), txt = !img && (TXT.test(f.type) || /\.(txt|md|csv|json)$/i.test(f.name));
+          if (!img && !txt) { skipped.push(f.name); continue; } if (img && f.size > 8e6) { skipped.push(f.name); continue; }
+          const v = await read(f, img ? 'readAsDataURL' : 'readAsText'); if (v == null) { skipped.push(f.name); continue; }
+          r = await tapi('POST', `/api/brands/${encodeURIComponent(mvSlug())}/drop`, { dest: d, name: f.name, ...(img ? { data: v } : { text: v }) }); if (r?.error) break; }
+        if (!r && skipped.length) { closeModal(); return toast(`Brew reads photos (PNG, JPG, WebP up to 8 MB) and text files for now. ${esc(skipped.join(', '))} wasn’t added.`); }
         closeModal(); if (!r || r.error) return toast(esc(r?.error || 'That didn’t save. Try again.'));
-        toast(`${ic('check', 's16')}${d === 'memory' ? 'Added to brand memory' : d === 'prefs' ? 'Saved to your preferences' : 'Ready for your next ask'}`); if (['learned', 'rules'].includes(document.body.dataset.m2)) renderLearned(); })); }); };
+        toast(`${ic('check', 's16')}${d === 'memory' ? 'Added to brand memory' : d === 'prefs' ? 'Saved to your preferences' : 'Ready for your next ask'}${skipped.length ? `. Skipped ${esc(skipped.join(', '))}: photos and text files only` : ''}`); if (d === 'prefs' && view === 'tune') renderTune(); if (d === 'once') openAsk(); if (['learned', 'rules'].includes(document.body.dataset.m2)) renderLearned(); })); }); };
   document.addEventListener('click', (e) => { if (!UI2) return; const pk = e.target.closest('[data-m2-pick]'); if (pk) { pk.closest('.m2-drop')?.querySelector('[data-m2-file]')?.click(); } });
   document.addEventListener('change', (e) => { if (e.target.matches?.('[data-m2-file]')) { m2Drop(e.target.files); e.target.value = ''; } });
   ['dragover', 'dragleave', 'drop'].forEach((ev) => document.addEventListener(ev, (e) => { const z = e.target.closest?.('[data-m2-drop]'); if (!z) return; e.preventDefault(); z.classList.toggle('is-over', ev === 'dragover'); if (ev === 'drop') m2Drop(e.dataTransfer?.files || []); }));
   const renderRules = () => { document.body.dataset.m2 = 'rules'; return renderLearned(); };
   /* Your feed: what Brew picked up from your hearts and saves, your seat, and Tune (per-agent weights land with the tuning API) */
-  const renderTune = () => { view = 'tune'; const af = affinity(), R = ROLE();
-    const tags = [...Object.entries(af.agent).map(([k, n]) => [AGENT[k], n]), ...Object.entries(af.lane).map(([k, n]) => [B.lanes[k]?.name, n])].filter(([x]) => x).sort((a, b) => b[1] - a[1]).slice(0, 6);
-    libShell('', '', `<section class="lx-sec">${lxHead('lx-picked', 'Picked up from your choices', tags.length || '', tags.length ? '' : 'Heart and save cards; Brew learns what to show you more of.')}${tags.length ? `<div class="m2-chips">${tags.map(([x]) => `<span class="chip">${esc(x)}</span>`).join('')}</div>` : ''}</section>
+  /* Your feed: what Brew picked up from your choices (each one can be dropped), topics, each agent Less / Normal / More,
+     your saved preferences, and your seat. /api/tenants/:t/tuning; ranking moves an agent ±4 and a topic +2 */
+  const TU = { d: null };
+  const renderTune = async () => { view = 'tune'; const R = ROLE();
+    if (!TU.d) libShell('', '', '<p class="lx-empty">Opening…</p>');
+    const r = await tapi('GET', '/api/tenants/:t/tuning'); if (view !== 'tune') return; if (r.error) { libShell('', '', `<p class="lx-empty">${esc(r.error)}</p>`); return $('.lib-head')?.remove(); }
+    TU.d = r; const tn = r.tuning || {}, sig = r.signals || [], W = r.weights || ['less', 'normal', 'more'];
+    const ign = new Set(tn.ignored || []);
+    libShell('', '', `<section class="lx-sec">${lxHead('lx-picked', 'Picked up from your choices', sig.length || '', sig.length ? 'From your hearts, Not for me and Fewer. Drop any that are wrong.' : 'Heart, save or skip cards; Brew learns what to show you more of.')}
+        ${sig.map((x) => `<div class="tu-sig${ign.has(x.id) ? ' is-off' : ''}"><span class="tu-k is-${esc(x.kind)}">${ic(x.kind === 'like' ? 'heart' : 'minus', 's14')}</span><span class="tu-t"><b>${esc(x.text)}</b>${x.why ? `<small>${esc(x.why)}</small>` : ''}</span>${ign.has(x.id) ? `<button class="linkbtn" data-tu-sigback="${esc(x.id)}">Use it again</button>` : `<button class="icon-btn" data-tu-sigx="${esc(x.id)}" aria-label="Stop counting this">${ic('x', 's16')}</button>`}</div>`).join('')}</section>
+      <section class="lx-sec">${lxHead('lx-topics', 'Topics', (tn.topics || []).length || '', 'Cards about these come first.')}<form class="tu-add" data-tu-topic><input placeholder="Add a topic, e.g. sunscreen" maxlength="40" autocomplete="off"><button class="btn btn-ghost sm">Add</button></form>
+        <div class="m2-chips">${(tn.topics || []).map((t) => `<span class="chip">${esc(t)}<button class="linkbtn" data-tu-topicx="${esc(t)}" aria-label="Remove ${esc(t)}">${ic('x', 's14')}</button></span>`).join('')}</div></section>
+      <section class="lx-sec">${lxHead('lx-agents', 'Agents', '', 'How much each agent shows up in your feed.')}${(r.agents || []).map((a) => `<div class="tu-ag">${face(a.id)}<span class="tu-t"><b>${esc(a.name || AGENT[a.id])}</b></span><span class="tu-seg" role="radiogroup" aria-label="${esc(a.name)}">${W.map((w) => `<button role="radio" aria-checked="${(a.weight || 'normal') === w}" data-tu-w="${esc(a.id)}:${w}">${w[0].toUpperCase() + w.slice(1)}</button>`).join('')}</span></div>`).join('')}</section>
+      ${(tn.notes || []).length ? `<section class="lx-sec">${lxHead('lx-prefs', 'My preferences', tn.notes.length, 'From what you dropped into My preferences.')}${tn.notes.map((n) => `<div class="tu-sig"><span class="tu-t"><b>${esc(n.text || n.name || '')}</b></span><button class="icon-btn" data-tu-notex="${esc(n.id)}" aria-label="Remove">${ic('x', 's16')}</button></div>`).join('')}</section>` : ''}
       <section class="lx-sec">${lxHead('lx-seat', 'Your seat', '', '')}<button class="lx-heard-row" data-r2-tune>${face(R.face)}<span><b>${esc(R.name)}</b><small>Who the feed is for, what comes first and your focus</small></span>${ic('right', 's16')}</button></section>`);
-    $('.lib-head')?.remove(); };
+    $('.lib-head')?.remove(); $('#col')?.classList.add('lib-col', 'tu-col'); };
+  const tuPut = async (body) => { const r = await tapi('PUT', '/api/tenants/:t/tuning', body); if (r.error) return toast(esc(r.error)); TU.d = r; renderTune(); };
+  document.addEventListener('click', async (e) => { if (view !== 'tune') return; const t = e.target;
+    const w = t.closest('[data-tu-w]'); if (w) { const [id, v] = w.dataset.tuW.split(':'); return tuPut({ weights: { ...(TU.d?.tuning?.weights || {}), [id]: v } }); }
+    const tx = t.closest('[data-tu-topicx]'); if (tx) return tuPut({ topics: (TU.d?.tuning?.topics || []).filter((x) => x !== tx.dataset.tuTopicx) });
+    const sx = t.closest('[data-tu-sigx]'); if (sx) { await tapi('DELETE', `/api/tenants/:t/tuning/signals/${encodeURIComponent(sx.dataset.tuSigx)}`); return renderTune(); }
+    const sb = t.closest('[data-tu-sigback]'); if (sb) { await tapi('POST', `/api/tenants/:t/tuning/signals/${encodeURIComponent(sb.dataset.tuSigback)}/restore`); return renderTune(); }
+    const nx = t.closest('[data-tu-notex]'); if (nx) { await tapi('DELETE', `/api/tenants/:t/tuning/notes/${encodeURIComponent(nx.dataset.tuNotex)}`); return renderTune(); } });
+  document.addEventListener('submit', (e) => { const f = e.target.closest?.('[data-tu-topic]'); if (!f) return; e.preventDefault(); const v = $('input', f).value.trim(); if (!v) return;
+    const cur = TU.d?.tuning?.topics || []; if (cur.length >= 12) return toast('Twelve topics at most. Remove one first.'); tuPut({ topics: [...cur.filter((x) => x.toLowerCase() !== v.toLowerCase()), v] }); });
   const lxPut = (kind, id, body) => tapi('PUT', kind === 'lesson' ? `/api/tenants/:t/learning/lessons/${id}` : `/api/tenants/:t/learning/rules/${id}`, body);
   const lxKeep = async () => { const y = window.scrollY; await renderLearned(); window.scrollTo(0, y); };
   document.addEventListener('click', async (e) => {
@@ -4162,6 +4218,44 @@
   const colleagueFor = (p) => colleague(p?.sector === 'creatives' || p?.sector === 'visibility' ? 'brandm' : p?.sector === 'ads' ? 'perf' : p?.sector === 'storefront' || p?.sector === 'catalog' ? 'ops' : 'growth');
 
   const openJam = (ctx) => window.JamRoom.openFromCtx(ctx); // the jam room (jam-room.js)
+  /* ---------- Ask Brew (UI2): one thread per person and brand (/api/tenants/:t/ask). It answers across the feed, the moves
+     and the facts, links the cards and moves it used, and when something should be made it offers the jam (the old global
+     jam's contexts: a card, several cards, the moves, a batch, a signal). ---------- */
+  const ASK = { msgs: [], pending: null, seed: null, busy: false };
+  const askStarters = () => [`What should I fix first this week, and why?`, `Draft three reel hooks for ${GX.p1}`, `Why are people leaving the checkout?`];
+  const askMsg = (m) => m.from === 'brew' ? `<div class="a2m brew">${SO()}<div><div class="a2-body">${rich(m.body || '')}</div>
+      ${(m.links || []).length ? `<div class="a2-links">${m.links.map((l) => l.kind === 'move' ? `<button class="chip" data-a2-move="${esc(l.n)}">${ic('doc', 's14')}Move ${String(l.n).padStart(2, '0')}${l.title ? ` · ${esc(String(l.title).slice(0, 40))}` : ''}</button>` : `<button class="chip" data-a2-card="${esc(l.id)}">${l.agent ? face(l.agent) : ''}${esc(String(l.title || 'Open the card').slice(0, 48))}</button>`).join('')}</div>` : ''}
+      ${m.action?.ctx ? `<button class="btn btn-primary sm a2-act" data-a2-act='${esc(JSON.stringify(m.action.ctx))}' data-a2-say="${esc(m.action.say || '')}">${ic(m.action.kind === 'brief' ? 'send' : 'hand', 's14')}${esc(m.action.label || (m.action.kind === 'brief' ? 'Jam, then send the brief' : 'Jam on it'))}</button>` : ''}
+</div></div>` : `<div class="a2m me"><p>${esc(m.body || m.text || '')}</p></div>`;
+  const paintAsk = () => { const el = $('#ask2'); if (!el) return; const b = $('.a2-thread', el), atEnd = !b || b.scrollHeight - b.scrollTop - b.clientHeight < 60;
+    const first = !ASK.msgs.length;
+    $('.a2-thread', el).innerHTML = (first ? `<div class="a2-hi"><h3>Hi${hiName(ROLE())}, what should we work on?</h3><div class="a2-starts">${askStarters().map((x) => `<button class="a2-start" data-a2-start="${esc(x)}">${esc(x)}</button>`).join('')}</div></div>` : ASK.msgs.map(askMsg).join(''))
+      + (ASK.busy ? `<div class="a2m brew">${SO()}<div><p class="a2-think"><span class="spin"></span>Thinking…</p></div></div>` : '');
+    $('.a2-seed', el).innerHTML = ASK.seed ? `<span class="chip">${ic('link', 's14')}${esc(ASK.seed.label || 'About this')}<button class="linkbtn" data-a2-unseed aria-label="Ask without it">${ic('x', 's14')}</button></span>` : '';
+    if (atEnd || ASK.busy) { const t = $('.a2-thread', el); t.scrollTop = t.scrollHeight; } };
+  const askSend = async (text) => { text = String(text || '').trim(); if (!text || ASK.busy) return; const seed = ASK.seed ? { ...ASK.seed } : undefined; delete seed?.label;
+    ASK.msgs.push({ from: 'me', body: text }); ASK.busy = true; ASK.seed = null; paintAsk();
+    const r = await tapi('POST', '/api/tenants/:t/ask', { text, seed }); ASK.busy = false;
+    if (r.error) { ASK.msgs.push({ from: 'brew', body: r.status === 403 ? 'Ask Brew is for the brand’s team. Ask in the jam instead.' : String(r.error) }); } else ASK.msgs = r.msgs || ASK.msgs;
+    paintAsk(); };
+  const openAsk = async (seed) => { if (seed) ASK.seed = seed;
+    if (!$('#ask2')) { const el = document.createElement('aside'); el.id = 'ask2'; el.className = 'ask2'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Ask Brew');
+      el.innerHTML = `<header class="a2-h"><b>${SO()}Ask Brew</b><button class="icon-btn" data-a2-clear title="Start a new thread" aria-label="Start a new thread">${ic('refresh', 's16')}</button><button class="icon-btn" data-a2-x aria-label="Close">${ic('x', 's18')}</button></header>
+        <div class="a2-thread"></div><form class="a2-f"><div class="a2-seed"></div><textarea rows="2" placeholder="Ask anything about ${esc(B.brand.name)}" aria-label="Ask Brew"></textarea><button class="jm-send" aria-label="Send">${ic('up', 's16')}</button></form>`;
+      document.body.appendChild(el); document.body.classList.add('ask-on');
+      $('.a2-f', el).onsubmit = (e) => { e.preventDefault(); const t = $('textarea', el); const v = t.value; t.value = ''; askSend(v); };
+      $('textarea', el).addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('.a2-f', el).requestSubmit(); } });
+      el.addEventListener('click', async (e) => { const t = e.target;
+        if (t.closest('[data-a2-x]')) { el.remove(); document.body.classList.remove('ask-on'); return; }
+        if (t.closest('[data-a2-clear]')) { await tapi('POST', '/api/tenants/:t/ask', { clear: true }); ASK.msgs = []; return paintAsk(); }
+        if (t.closest('[data-a2-unseed]')) { ASK.seed = null; return paintAsk(); }
+        const st = t.closest('[data-a2-start]'); if (st) return askSend(st.dataset.a2Start);
+        const cd = t.closest('[data-a2-card]'); if (cd) { const p = byId(cd.dataset.a2Card); if (p) { el.remove(); document.body.classList.remove('ask-on'); openDetail(p); } else toast('That card isn’t in this feed any more.'); return; }
+        const mv = t.closest('[data-a2-move]'); if (mv) { el.remove(); document.body.classList.remove('ask-on'); location.hash = `#v=move&m=${mv.dataset.a2Move}`; return; }
+        const ac = t.closest('[data-a2-act]'); if (ac) { let ctx = null; try { ctx = JSON.parse(ac.dataset.a2Act); } catch (x) {} if (!ctx) return; el.remove(); document.body.classList.remove('ask-on');
+          if (ctx.post && byId(ctx.post)) return openDetail(byId(ctx.post)); return openJam({ ...ctx, draft: ac.dataset.a2Say || undefined }); } }); }
+    paintAsk(); setTimeout(() => $('#ask2 textarea')?.focus(), 60);
+    const r = await tapi('GET', '/api/tenants/:t/ask'); if (r && !r.error) { ASK.msgs = r.msgs || []; paintAsk(); } };
 
   /* =========================================================
      Stories

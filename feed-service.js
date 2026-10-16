@@ -1708,7 +1708,7 @@ export function createFeedService(o) {
       if (t) { touch(t); const k = `${r.method} ${r.pattern.replace('/api', '')}`; t.api[k] = { n: (t.api[k]?.n || 0) + 1, last: Date.now() }; if (viewer) await applyLive(t, viewer); }
       if (r.pattern === '/api/tenants/:id/onboarding') { await onboardingStream(t, req, res); return true; }
       const b = req.method === 'GET' ? {} : await readBody(req);
-      try { const out = await r.fn(b, t, params, u.searchParams); if (!t && out?.id && viewer) await applyLive(tenants.get(out.id), viewer); send(res, out?.status || 200, out); if (store && req.method !== 'GET') store.save(t || (out?.id && tenants.get(out.id))); }
+      try { const out = await r.fn(b, t, params, u.searchParams); if (!t && out?.id && viewer) await applyLive(tenants.get(out.id), viewer); send(res, Number.isInteger(out?.status) && out.status >= 100 && out.status < 600 ? out.status : 200, out); /* a reply's own status word (Send brief: 'sent') is data, not the HTTP code */ if (store && req.method !== 'GET') store.save(t || (out?.id && tenants.get(out.id))); }
       catch (e) { log.error(`[feed ${r.pattern}]`, e); send(res, 200, { error: e.message, fallback: true }); }
       return true;
     }

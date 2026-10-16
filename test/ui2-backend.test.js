@@ -203,3 +203,9 @@ test('a guest of a jam can work in it but never discard or restore its studio ch
   assert.equal(guestAllows('/api/cards/c1/remix', ctx), true); assert.equal(guestAllows('/api/cards/c9/remix', ctx), false);
   assert.equal(guestAllows('/api/work/wk_1/message', { ...ctx, wids: [] }), false); assert.ok(GUEST_DO.test('doc/ask'));
 });
+
+test('a reply whose status is a word (Send brief: sent) is not used as the HTTP code', () => {
+  const src = fs.readFileSync(new URL('../feed-service.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(src, /send\(res, out\?\.status \|\| 200/, 'a word status crashed the reply (Invalid status code: sent)');
+  assert.match(src, /Number\.isInteger\(out\?\.status\)/);
+});

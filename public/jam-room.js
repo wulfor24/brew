@@ -311,6 +311,7 @@
     const r = await A.tapi('POST', `/api/work/${w.id}/doc/ship`, { to, force: !!force, base: location.origin, decided: A.S.decided?.[DPx()?.id] || null });
     if (r.needs) { JM.confirm = r.needs; return paint(); }
     JM.confirm = null; JM.pick = false; if (r.error) return toast(esc(r.error));
+    if (to === 'shopos' && r.status === 'sent') { JM.tab = 'chat'; take(r.work); A.counts(); return toast(`${ic('send', 's16')}Brief ${esc(r.work.ticket || '')} sent to the ShopOS team. Its status shows in the top bar.`); }
     const text = r.share?.text || r.work?.jamBrief?.md || '';
     let copied = false; try { await navigator.clipboard.writeText(text); copied = true; } catch (e) {}
     JM.tab = 'chat'; take(r.work); A.counts();
