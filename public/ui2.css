@@ -312,3 +312,12 @@
 .ui2 .jm-pending{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:10px;padding:10px;border-radius:var(--r-row);background:var(--surface);box-shadow:inset 0 0 0 1px var(--line)}
 .ui2 .jm-pending::before{content:"Waiting for your yes";flex:1 0 100%;font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-3)}
 .ui2 .jm-pending .btn[disabled]{opacity:.55}
+.ui2[data-m2="rules"] .lx-zero{display:none} /* the "nothing learned yet" intro belongs to What we learned */
+/* a remade version on the stage (reel, carousel, picture, or its words) */
+.ui2 .as-remade{width:100%;max-width:470px;border-radius:var(--r-panel);overflow:hidden;background:var(--surface)}
+.ui2 .as-remade video,.ui2 .as-remade > img{display:block;width:100%;height:auto}
+.ui2 .as-remade.as-car{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;background:transparent}
+.ui2 .as-remade.as-car img{flex:0 0 80%;scroll-snap-align:start;border-radius:12px}
+.ui2 .as-remade.is-words{padding:16px 18px;font-size:14px;line-height:20px}
+.ui2 .as-remade .as-rw-k{margin:0 0 6px;font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-3)}
+.ui2 .as-remade ol{margin:8px 0 0;padding-left:18px;color:var(--fg-2)}

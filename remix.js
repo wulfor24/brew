@@ -504,7 +504,7 @@ export function createRemix(o) {
   /* ---------- the studio: iterate, knobs, variations, the creative ---------- */
   // the creative: one photo, or (carousels, slides) one per card. all=false makes the first only; the rest on request
   const genImage = (t, ch, why, { all = false } = {}) => {
-    if (!['meta_ad', 'social', 'post'].includes(ch.family) || realOnly(ch) || isMock() || !geminiImage) return false;
+    if (!['meta_ad', 'social', 'post'].includes(ch.family) || realOnly(ch) || isMock() || !geminiImage || ch.remakePending) return false; /* never on top of a remake still being made */
     const c = t.cards.get(ch.cardId) || {}; const p = ch.pkg; const scene = p.knobs?.scene; const rows = p.cards || p.slides || [];
     const what = ch.family === 'social' ? 'an Instagram post' : ch.family === 'post' ? `a ${p.platform || 'social'} post` : 'a Meta ad';
     const briefOf = (i) => (rows.length ? rows[i]?.imageBrief : p.imageBrief) || p.imageBrief || 'The product on a clean surface, soft daylight.';
@@ -1118,6 +1118,8 @@ export function createRemix(o) {
   const remakeOf = async (t, ch, as) => {
     if (!REMAKE_AS[as]) return { status: 400, error: 'Remake as a video, a carousel or an image.' };
     if (ch.remakePending || REMAKING.has(ch.id)) return { error: 'A remake is already being made.', change: pubChange(t, ch) };
+    /* a photo or video still being made would land as a newer version on top of the remake, built before its media existed */
+    if (ch.imagePending || ch.videoPending) return { error: 'A photo for this draft is still being made. Try again in a minute.', change: pubChange(t, ch) };
     REMAKING.add(ch.id); /* held from before the AI call, so a double tap can't make two versions */
     let plan = null, live = false;
     try { if (!isMock() && claudeTool && spend('text')) { try { plan = await remakeLive(t, ch, as); live = !!plan; } catch (e) { log.warn('[remake words]', e.message); } } } finally { REMAKING.delete(ch.id); }

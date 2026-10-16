@@ -3084,6 +3084,13 @@
      picture until new words replace it; a clip plays where the widget shows its picture */
   const assetHtml = (ch, size = 'sm') => {
     const p = ch.pkg || {}, d = p.draft;
+    /* a version remade as a reel, a carousel or a picture (/remake) shows as that format: the clip, the slides, the picture, or its words while they're made */
+    if (d?.remade) { const L = size === 'lg' ? ' lg' : '';
+      if (d.as === 'video' && d.video) return `<div class="as as-draft as-remade${L}"><video class="as-vid" src="${esc(d.video)}"${d.poster ? ` poster="${esc(d.poster)}"` : ''} controls playsinline muted loop preload="metadata"></video></div>`;
+      if (d.as === 'carousel' && d.images?.length) return `<div class="as as-draft as-remade as-car${L}">${d.images.map((u, i) => `<img src="${esc(u)}" alt="${esc((d.slides || [])[i]?.text || `Slide ${i + 1}`)}" loading="lazy">`).join('')}</div>`;
+      if (d.as === 'image' && d.images?.[0]) return `<div class="as as-draft as-remade${L}"><img src="${esc(d.images[0])}" alt="${esc(d.title || '')}"></div>`;
+      const lines = d.as === 'video' ? (d.script || []).map((x) => x.line || x.shot || '') : (d.slides || []).map((x) => x.text || '');
+      return `<div class="as as-draft as-remade is-words${L}"><p class="as-rw-k">${d.as === 'video' ? 'Reel' : d.as === 'carousel' ? 'Carousel' : 'Picture'} · ${d.pending || ch.remakePending ? 'the media is being made' : 'words only'}</p>${d.overlay ? `<b>${esc(d.overlay)}</b>` : ''}<ol>${lines.filter(Boolean).map((x) => `<li>${esc(x)}</li>`).join('')}</ol></div>`; }
     if (d?.text && d.images?.[0]) return `<div class="as as-draft${size === 'lg' ? ' lg' : ''}"><img src="${esc(d.images[0])}" alt="${esc(d.title || 'First draft')}"></div>`;
     let html = assetHtml0(ch, size);
     /* a widget with no picture of its own (a page, a message, a brief) still opens on the card's draft picture */
@@ -3506,7 +3513,7 @@
     fitSuggest(ch.suggest).slice(0, 3).forEach((x) => out.push(`<button type="button" class="chip j2-chip" data-say="${esc(x)}"${dis}>${esc(x)}</button>`));
     out.push(c('data-j2-pack', 'down', j2PackLabel(ch), ' is-pack'));
     out.push(c('data-j2-impact', 'trendup', 'Projected impact'));
-    if (['meta_ad', 'social', 'post'].includes(ch.family) && ch.state !== 'live') { const as = ch.pkg?.draft?.as; if (as !== 'video') out.push(c('data-j2-remake="video"', 'film', 'Make it a reel')); if (as !== 'carousel') out.push(c('data-j2-remake="carousel"', 'layers', 'Make it a carousel')); }
+    if (['meta_ad', 'social', 'post'].includes(ch.family) && ch.state !== 'live') { const as = ch.pkg?.draft?.as || (/carousel/.test(String(ch.action)) ? 'carousel' : /short_video|reel/.test(String(ch.action)) ? 'video' : ''), busyMedia = ch.imagePending || ch.videoPending || ch.remakePending; if (busyMedia) out.push(`<button type="button" class="chip j2-chip" disabled>${ic('clock', 's14')}${ch.remakePending ? esc(ch.remakePending.step || 'Making it…') : 'Making the photo…'}</button>`); else { if (as !== 'video') out.push(c('data-j2-remake="video"', 'film', 'Make it a reel')); if (as !== 'carousel') out.push(c('data-j2-remake="carousel"', 'layers', 'Make it a carousel')); } }
     out.push(c('data-rx="variants"', 'shuffle', 'More like this'));
     if (fitKnobs(ch.knobs).length) out.push(c('data-tab="adjust"', 'sliders', 'Adjust'));
     if (RX.p) out.push(`<button type="button" class="chip j2-chip" data-ask="${esc(JSON.stringify({ cardId: RX.p.id, label: String(cardOf(RX.p).title || 'This card').slice(0, 60) }))}">${ic('chat', 's14')}Ask Brew about this</button>`);
@@ -3516,12 +3523,15 @@
     return ({ meta_ad: 'Post to Instagram', social: 'Post to Instagram', post: pf ? `Post to ${pf}` : 'Get the post', crm: 'Get the message', store: 'Get the HTML', listing: 'Get the listing sheet', vis: 'Get the FAQ files', search: 'Get the Google Ads sheet', setup: 'Get the checklist', brief: 'Get the shot list', meta_ops: 'Get the change list', print: 'Get the print file' })[ch.family] || 'Get the files'; };
   const J2 = { imp: {}, pack: {} }; /* per change: the projection and the pack, shown in the chat */
   const j2Sg = (x) => { const v = +x; return Number.isFinite(v) ? `${v > 0 ? '+' : v < 0 ? '−' : ''}${j2Num(Math.abs(v))}` : '—'; };
+  /* a money unit reads as a money range ($15–$40); anything else as a signed change (+4.3 to +17.3 % better) */
+  const j2Range = (im) => { const u = String(im.unit || '').trim(), cur = { usd: '$', inr: '₹', eur: '€', gbp: '£' }[u.toLowerCase()] || (/^[$₹€£¥]$/.test(u) ? u : '');
+    return cur ? `${esc(cur)}${j2Num(im.low)}–${esc(cur)}${j2Num(im.high)}` : `${j2Sg(im.low)} to ${j2Sg(im.high)}<small> ${esc(u)}</small>`; };
   const j2Num = (x) => { const v = +x; return Number.isFinite(v) ? (Math.abs(v) >= 100 ? Math.round(v).toLocaleString('en-IN') : String(+v.toFixed(1))) : '—'; };
   const j2Key = (ch) => `${ch.id}:${RX.viewing || ch.head || 'v0'}`, j2ImpKey = (ch) => `${ch.id}:${ch.head || 'v0'}`; /* a projection is always of the head version */
   const j2Extra = (ch) => { const im = J2.imp[j2ImpKey(ch)], pk = J2.pack[j2Key(ch)]; let h = '';
     if (pk) h += `<div class="lgm ai">${face(ch.agent)}<div>${pk.busy ? `<p><span class="spin"></span>Putting the files together…</p>` : pk.error ? `<p>${esc(pk.error)}</p>` : `<p>${esc(j2PackLabel(ch))}: your files are ready. The final ${esc((ch.familyName || 'files').toLowerCase())} and its copy, to post yourself. Brew changes nothing in your accounts.</p><div class="j2-pack"><a class="btn btn-ghost sm" href="/${esc(pk.url)}" download="${esc(pk.name)}">${ic('down', 's14')}${esc(pk.name)}</a><small>${(pk.files || []).length} files</small></div>${(pk.todo || []).length ? `<p class="j2-todo">Still to do: ${pk.todo.map(esc).join(' · ')}</p>` : ''}`}</div></div>`;
     if (im) h += `<div class="lgm ai">${face('performance')}<div>${im.busy ? `<p><span class="spin"></span>Reading this card’s results and benchmarks, then handing it to the Performance marketer…</p>` : im.error ? `<p>${esc(im.error)}</p>` : `<p>Here’s the likely lift if this runs. ${esc(im.label || 'A projection, not a promise')}.</p>
-        <div class="j2-imp"><b>${j2Sg(im.low)} to ${j2Sg(im.high)}<small> ${esc(im.unit || '')}</small></b><span>${esc(im.metric || '')}${im.windowLabel ? `, ${esc(im.windowLabel)}` : ''}</span><em class="j2-conf is-${esc(im.confidence || 'low')}">${esc(im.confidence || 'low')} confidence</em></div>
+        <div class="j2-imp"><b>${j2Range(im)}</b><span>${esc(im.metric || '')}${im.windowLabel ? `, ${esc(im.windowLabel)}` : ''}</span><em class="j2-conf is-${esc(im.confidence || 'low')}">${esc(im.confidence || 'low')} confidence</em></div>
         ${(im.basis || []).length ? `<details class="j2-why"><summary>What it’s based on</summary><ul>${im.basis.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>${(im.assumptions || []).length ? `<small>Assumed</small><ul>${im.assumptions.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}${(im.gaps || []).length ? `<small>Couldn’t read</small><ul>${im.gaps.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}</details>` : ''}${im.note ? `<p class="j2-todo">${esc(im.note)}</p>` : ''}`}</div></div>`;
     return h; };
   const j2Run = async (kind, ch, arg) => {
@@ -3647,7 +3657,7 @@
   };
   // a Meta ad without its own creative gets one on the way in (once per package), after its first copy is written
   const autoImage = async (ch) => {
-    if (['meta_ad', 'social'].includes(ch.family) && !ch.copyPending && !ch.versions.some((v) => v.snapshot?.image) && !ch.imagePending && !ch.imageError && aiMode === 'live' && !RX.autoImg[ch.id] && !ls.get(`${LSP()}img-${ch.id}`)) { RX.autoImg[ch.id] = 1; ls.set(`${LSP()}img-${ch.id}`, '1'); /* once per change, ever: a failed or slow photo is never retried on its own (each try costs) */ const r = await tapi('POST', `/api/changes/${ch.id}/image`, {}); if (r.change && RX.ch?.id === ch.id) { RX.ch = r.change; putCh(r.change); paintStudio(); } }
+    if (['meta_ad', 'social'].includes(ch.family) && !ch.copyPending && !ch.remakePending && !ch.versions.some((v) => v.snapshot?.image || v.snapshot?.draft?.video) && !ch.imagePending && !ch.imageError && aiMode === 'live' && !RX.autoImg[ch.id] && !ls.get(`${LSP()}img-${ch.id}`)) { RX.autoImg[ch.id] = 1; ls.set(`${LSP()}img-${ch.id}`, '1'); /* once per change, ever: a failed or slow photo is never retried on its own (each try costs) */ const r = await tapi('POST', `/api/changes/${ch.id}/image`, {}); if (r.change && RX.ch?.id === ch.id) { RX.ch = r.change; putCh(r.change); paintStudio(); } }
   };
   const jamWait = () => { $('.jam-wait')?.remove(); document.body.insertAdjacentHTML('beforeend', `<div class="jam-wait" role="status" aria-live="polite"><p><span class="spin"></span>Opening the jam…</p></div>`); return $('.jam-wait'); };
   const openRemix = async (p, chId, o = {}) => {
