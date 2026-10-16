@@ -2720,10 +2720,15 @@
     view = 'connectors';
     const list = Object.entries(B.connectors), on = list.filter(([id]) => conn(id)), need = list.filter(([id, c]) => !conn(id) && !c.optional), opt = list.filter(([id, c]) => !conn(id) && c.optional);
     const LC = window.LiveConn;
-    const card = ([id, c]) => `<article class="cn-card${conn(id) ? ' is-on' : ''}${c.live ? ' is-live' : ''}" data-cn="${id}">
-        <header>${glyph(id, 40)}<div class="cn-name"><b>${esc(c.name)}</b><span>${esc(c.kind)}</span></div>${LC?.status(id) || (conn(id) ? `<span class="cn-st is-on"><i></i>${c.demo ? 'Demo' : 'Connected'}</span>` : c.optional ? '<span class="cn-st">Optional</span>' : '<span class="cn-st is-off"><i></i>Not connected</span>')}</header>
-        ${conn(id) && (c.stats || []).length ? `<dl class="cn-stats">${c.stats.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>${c.demo ? '<small class="cn-demo">Demo account numbers, built from what we read</small>' : ''}` : ''}
-        ${(conn(id) && c.demo && c.changedDemo?.length ? c.changedDemo : c.changed || []).length ? `<div class="cn-will"><small>${conn(id) ? 'What it’s doing' : 'What it unlocks'}</small><ul>${(conn(id) && c.demo && c.changedDemo?.length ? c.changedDemo : c.changed).slice(0, 3).map((t) => `<li>${esc(t)}</li>`).join('')}</ul></div>` : ''}
+    /* bento: a connected card with numbers and notes spans two tiles, numbers beside what it's doing */
+    const cnDoing = (id, c) => (conn(id) && c.demo && c.changedDemo?.length ? c.changedDemo : c.changed || []);
+    const cnScore = ([id, c]) => (c.stats || []).length * 2 + cnDoing(id, c).length;
+    const WIDE = new Set(on.filter(([, c]) => (c.stats || []).length >= 2).sort((a, b) => cnScore(b) - cnScore(a)).slice(0, Math.floor(on.length / 3)).map(([id]) => id));
+    const cnWide = (id) => WIDE.has(id); /* the richest third of the connected ones: one wide tile per row of a 3-up grid */
+    const card = ([id, c]) => `<article class="cn-card${conn(id) ? ' is-on' : ''}${c.live ? ' is-live' : ''}${cnWide(id) ? ' is-wide' : ''}" data-cn="${id}">
+        <header>${glyph(id, 40)}<div class="cn-name"><b>${esc(c.name)}</b><span title="${esc(c.kind)}">${esc(c.kind)}</span></div>${LC?.status(id) || (conn(id) ? `<span class="cn-st is-on"><i></i>${c.demo ? 'Demo' : 'Connected'}</span>` : c.optional ? '<span class="cn-st">Optional</span>' : '<span class="cn-st is-off"><i></i>Not connected</span>')}</header>
+        <div class="cn-mid">${conn(id) && (c.stats || []).length ? `<dl class="cn-stats">${c.stats.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>${c.demo ? '<small class="cn-demo">Demo account numbers, built from what we read</small>' : ''}` : ''}
+        ${(conn(id) && c.demo && c.changedDemo?.length ? c.changedDemo : c.changed || []).length ? `<div class="cn-will"><small>${conn(id) ? 'What it’s doing' : 'What it unlocks'}</small><ul>${(conn(id) && c.demo && c.changedDemo?.length ? c.changedDemo : c.changed).slice(0, 3).map((t) => `<li>${esc(t)}</li>`).join('')}</ul></div>` : ''}</div>
         <footer>${LC?.footer(id) || (conn(id) ? `<span class="cn-acct">${ic('check', 's14')}${esc(c.account)}</span><button class="cn-btn is-ghost" data-unlink="${id}">Disconnect</button>` : `<span class="cn-acct is-muted">${ic('lock', 's14')}Read-only access</span><button class="cn-btn" data-cx="${id}">Connect${ic('right', 's14')}</button>`)}</footer></article>`;
     const sec = (name, hint, items) => items.length ? `<section class="cn-sec"><h3>${name}<em>${items.length}</em>${hint ? `<small>${hint}</small>` : ''}</h3><div class="cn-grid">${items.map(card).join('')}</div></section>` : '';
     if (UI2) { /* the design's list: search, grouped rows, one tap to connect; what it unlocks folds into the row */

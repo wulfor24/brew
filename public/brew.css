@@ -1908,6 +1908,32 @@ body:has(#dp.dp-full) .rail{position:fixed;top:0;left:0;bottom:0;height:auto;wid
 .cn-btn:hover{background:color-mix(in srgb,var(--fg) 86%,var(--bg))}
 .cn-btn.is-ghost{background:none;color:var(--fg-2);box-shadow:inset 0 0 0 1px var(--line);font-weight:550}
 .cn-btn.is-ghost:hover{color:var(--fg);background:var(--surface)}
+/* connectors as a bento: one tile per source, a connected source with numbers and notes spans two; numbers are small tiles,
+   the account sits on its own line and the actions stay pinned to the foot so every row of cards lines up */
+.cn-grid{grid-auto-flow:row dense;gap:14px}
+.cn-card{gap:16px;padding:20px}
+.cn-grid .cn-card .cn-name span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;-webkit-line-clamp:unset}
+.cn-mid{flex:1;display:flex;flex-direction:column;gap:16px;min-width:0}
+.cn-mid:empty{display:none}
+.cn-card .cn-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px;margin:0;padding:0;background:none}
+.cn-card .cn-stats > div{display:flex;flex-direction:column-reverse;justify-content:flex-end;gap:4px;min-width:0;padding:12px 14px;border-radius:14px;background:var(--surface)}
+.cn-card .cn-stats dd{margin:0;font-size:24px;line-height:28px;font-weight:650;letter-spacing:-.02em;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cn-card .cn-stats dt{font-size:13px;line-height:17px;color:var(--fg-3);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cn-card .cn-demo{margin:-8px 0 0}
+.cn-card .cn-will{flex:0 0 auto;padding:0;background:none;gap:8px}
+.cn-card .cn-will small{font-size:12.5px;letter-spacing:.02em;text-transform:uppercase}
+.cn-card > footer{margin-top:auto;flex-wrap:wrap;justify-content:flex-end;gap:8px;padding-top:14px;border-top:1px solid var(--line-soft,var(--line))}
+.cn-card > footer .cn-acct{flex:1 1 100%;margin-bottom:2px}
+.cn-card > footer .cn-btn{height:34px;padding:0 14px;font-size:14px}
+@media (min-width:900px){
+  .cn-card.is-wide{grid-column:span 2}
+  .cn-card.is-wide .cn-mid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);grid-template-rows:auto auto 1fr;gap:20px;align-items:start}
+  .cn-card.is-wide .cn-mid > *{grid-column:1}
+  .cn-card.is-wide .cn-will{grid-column:2;grid-row:1 / span 3;align-self:stretch;padding-left:20px;border-left:1px solid var(--line-soft,var(--line))}
+  .cn-card.is-wide .cn-demo{margin:-12px 0 0}
+  .cn-card.is-wide > footer .cn-acct{flex:1 1 auto;margin:0}
+  .cn-card.is-wide > footer{flex-wrap:nowrap}
+}
 @media (max-width:700px){.cn-sum{grid-template-columns:auto 1fr;padding:14px 16px}.cn-logos{grid-column:1/-1;flex-wrap:wrap}.cn-grid{grid-template-columns:1fr}.cn-sec h3 small{display:none}}
 
 /* ---------- How it works v2 ---------- */
