@@ -162,3 +162,28 @@
 }
 .ui2 .j2-scroll .it-ask{z-index:6}
 .ui2 .j2 .st-atools{z-index:2}
+
+/* ================= memory ================= */
+.ui2 .m2{position:relative;z-index:2;width:min(720px,100%);margin:0 auto;padding-top:8px}
+.ui2 .m2 h1{margin:12px 0 4px;font-size:28px;line-height:34px;font-weight:600;letter-spacing:-.02em}
+.ui2 .m2-sub{margin:0 0 18px;color:var(--fg-2);font-size:14px}
+.ui2 .m2-drop{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:26px 20px 22px;border:1px dashed var(--line);border-radius:var(--r-card);background:var(--card);transition:border-color .15s,background .15s}
+.ui2 .m2-drop.is-over{border-color:var(--fg-2);background:var(--surface)}
+.ui2 .m2-up{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:var(--surface-2);margin-bottom:4px}
+.ui2 .m2-drop b{font-size:15px;font-weight:600}
+.ui2 .m2-drop > span:not(.m2-up){max-width:360px;font-size:13px;line-height:18px;color:var(--fg-3);margin-bottom:8px}
+.ui2 .m2-tabs{display:flex;gap:4px;margin:18px 0 4px;padding:4px;border-radius:12px;background:var(--card);border:1px solid var(--line-soft);overflow-x:auto;scrollbar-width:none}
+.ui2 .m2-tabs button{flex:1 0 auto;height:32px;padding:0 12px;border:0;border-radius:9px;background:transparent;color:var(--fg-2);font:inherit;font-size:13.5px;cursor:pointer}
+.ui2 .m2-tabs button[aria-selected="true"]{background:var(--surface-2);color:var(--fg)}
+.ui2 .m2:not([hidden]) + #view .lib-head{display:none}
+/* What we learned shows the lessons and the moves; Rules shows the rules, checks and fact sheet; Heard has its own tab */
+.ui2[data-m2="learned"] .lx-sec:has(#lx-rules,#lx-checks,#lx-heard){display:none}
+.ui2[data-m2="rules"] .lx-sec:not(:has(#lx-rules,#lx-checks,#lx-facts)){display:none}
+.ui2[data-m2="rules"] .lib-head,.ui2[data-m2="learned"] .lib-head{display:none}
+.ui2 .m2-chips{display:flex;flex-wrap:wrap;gap:8px}
+.ui2 .m2-sheet .m2-q{margin:0 0 10px;color:var(--fg-2);font-size:14px}
+.ui2 .m2-dest{display:flex;align-items:flex-start;gap:12px;width:100%;padding:12px 14px;margin-bottom:8px;border:1px solid var(--line);border-radius:14px;background:var(--glass-row);color:var(--fg);font:inherit;text-align:left;cursor:pointer}
+.ui2 .m2-dest:hover{background:var(--glass-row-h)}
+.ui2 .m2-dest.is-busy{opacity:.6}
+.ui2 .m2-dest b{display:block;font-size:14px;font-weight:600}
+.ui2 .m2-dest small{display:block;font-size:13px;color:var(--fg-3);margin-top:2px}

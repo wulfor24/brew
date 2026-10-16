@@ -913,6 +913,7 @@
             </div>
             <div class="topbar-r t2-r glass-chrome"><button class="t2-pill" data-team-pill hidden><span class="t2-faces"><span class="r2-mark">${SO()}</span></span><span data-count="team"></span><i class="t2-live" aria-hidden="true"></i></button><button class="t2-ask" data-ask>Ask Brew</button><button class="icon-btn rb phone-only" aria-label="Notifications" data-bell>${ic('bell')}<i data-count="bell"></i></button>${themeBtn()}</div>
           </div>
+          <div class="m2" id="m2" hidden></div>
           <div id="view"></div>
           <div class="stk-layer" id="stk"></div>
           <div class="notes-layer" id="notes"></div>
@@ -1410,7 +1411,8 @@
   /* history: the card page, the remix options, a package in the studio and each view are entries of their own,
      so the browser's Back and ours walk the same path. route() makes the screen match the URL. */
   const nav = (hash, push, a, v = view) => { const st = { a, v }; hash = typeof hash === 'string' && hash.startsWith('#') ? location.pathname + hash : hash; if (push) history.pushState(st, '', hash); else history.replaceState(st, '', hash); };
-  const VIEWS = () => ({ feed: renderFeed, deck: renderDeck, saved: renderSaved, jams: (f) => renderJams(f !== false), remixes: (f) => renderJams(f !== false), done: renderWork, work: renderWork, engine: renderEngine, connectors: renderConnectors, learned: renderLearned, heard: () => renderHeard(), facts: () => renderFacts(), moves: renderMoves, move: renderMove, queue: () => renderQueue() });
+  const VIEWS = () => { const v = VIEWS0(); if (!UI2) return v; v.rules = renderRules; v.tune = renderTune; return Object.fromEntries(Object.entries(v).map(([k, f]) => [k, (...a) => { m2Paint(k); return f(...a); }])); };
+  const VIEWS0 = () => ({ feed: renderFeed, deck: renderDeck, saved: renderSaved, jams: (f) => renderJams(f !== false), remixes: (f) => renderJams(f !== false), done: renderWork, work: renderWork, engine: renderEngine, connectors: renderConnectors, learned: renderLearned, heard: () => renderHeard(), facts: () => renderFacts(), moves: renderMoves, move: renderMove, queue: () => renderQueue() });
   const route = () => {
     const hp = hashParams(), rm = location.hash.match(/^#remix=([^/&]+)(?:\/([^&]+))?/);
     if (rm) { const p = byId(decodeURIComponent(rm[1]));
@@ -3886,10 +3888,10 @@
   /* ---------- The fact sheet: every fact Brew may quote, with its source and the day it was read. The team fixes it with
      choices or a link Brew reads (a typed number is never taken on trust); visitors of a claimed brand only read it ---------- */
   const FS = { open: null, all: new Set() };
-  const renderFacts = async () => {
-    view = 'facts'; counts(); const slug = mvSlug();
+  const renderFacts = async (embed = false) => {
+    if (!embed) view = 'facts'; counts(); const slug = mvSlug();
     if (!$('#fs')) { libShell('Fact sheet', `Every number and name Brew may quote for ${esc(B.brand.name)}, and where it came from.`, '<div class="fsx" id="fs"><p class="lx-empty">Opening…</p></div>'); $('#col')?.classList.add('lib-col', 'fs-col'); }
-    const D = await api(`/api/brands/${slug}/facts`); if (view !== 'facts') return;
+    const D = await api(`/api/brands/${slug}/facts`); if (embed ? !$('#fs') : view !== 'facts') return;
     if (!D || D.error) { $('#fs').innerHTML = `<p class="lx-empty">${esc(D?.error || 'The fact sheet did not open. Try again.')}</p>`; return; }
     paintFacts(D);
   };
@@ -3926,7 +3928,7 @@
       if (!r || r.error) { toast(`${ic('info', 's16')}${esc(r?.error || 'That did not go through. Try again.')}`); return null; }
       (r.notes || []).slice(0, 1).forEach((n) => toast(`${ic('info', 's16')}${esc(n)}`));
       toast(`${ic('check', 's16')}Saved.${r.flagged?.length ? ` ${r.flagged.length} move${r.flagged.length === 1 ? '' : 's'} that quoted it marked out of date.` : ''}`);
-      FS.open = null; if (r.data && view === 'facts') paintFacts(r.data); return r; };
+      FS.open = null; if (r.data && $('#fs')) paintFacts(r.data); return r; };
     el.onclick = async (e) => {
       const fj = e.target.closest('[data-fsjump]'); if (fj) { e.preventDefault(); document.getElementById(`fsg-${fj.dataset.fsjump}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
       const sa = e.target.closest('[data-fsall]'); if (sa) { FS.all.add(sa.dataset.fsall); paintFacts(D); return; }
@@ -3987,7 +3989,7 @@
   const lxBuild = (st) => { const n = Math.max(0, Math.min(51, +st.movesDone || 0)); return `<small class="lx-build" data-lx-build>${esc(lxBuildLine(st))}</small><i class="lx-bar" aria-hidden="true"><b style="width:${Math.round((n / 51) * 100)}%"></b></i>`; };
   const lxBuildPoll = async () => { if (view !== 'learned' || !$('[data-lx-build]')) return; const st = await api(`/api/brands/${mvSlug()}/status`); if (view !== 'learned' || !st || st.error) return;
     if (st.done) return renderLearned(); const el = $('[data-lx-build]'); if (!el) return; el.textContent = lxBuildLine(st); const bar = $('.lx-bar b'); if (bar) bar.style.width = `${Math.round((Math.min(51, +st.movesDone || 0) / 51) * 100)}%`; lxBuild.t = setTimeout(lxBuildPoll, 15e3); };
-  const renderLearned = async () => {
+  const renderLearned0 = async () => {
     view = 'learned';
     const bq = encodeURIComponent(BR), [L, HD, MEM, MVS, CAL, UPS, TOLD] = await Promise.all([tapi('GET', '/api/tenants/:t/learning'), api(`/api/brands/${bq}/heard`), api(`/api/brands/${bq}/memory`), api(`/api/brands/${mvSlug()}/moves`), api(`/api/brands/${bq}/calendar?days=120`), GEN ? api(`/api/brands/${mvSlug()}/updates`) : null, api(`/api/brands/${bq}/told`)]); if (L.error || view !== 'learned') return;
     const heard = HD?.heard || null, memLines = (MEM?.facts || []).filter((f) => f.scope === 'brand').sort((a, b) => (b.n || 1) - (a.n || 1) || (b.updatedAt || 0) - (a.updatedAt || 0));
@@ -4076,6 +4078,37 @@
     $$('[data-hd-theme]').forEach((b) => b.onclick = () => openHeard({ theme: b.dataset.hdTheme }));
     $$('[data-goto-move]').forEach((b) => b.onclick = () => openMove(+b.dataset.gotoMove));
   };
+  /* UI2 Memory: one header (Drop anything here + tabs) over the pages that already exist.
+     What we learned = the learned hub with the moves; Rules = its rules and checks plus the fact sheet; Heard; Your feed. */
+  const renderLearned = async () => { await renderLearned0(); if (!UI2 || view !== 'learned') return;
+    if (document.body.dataset.m2 === 'rules' && !$('#fs')) { ($('#col') || $('#view')).insertAdjacentHTML('beforeend', `<section class="lx-sec m2-facts">${lxHead('lx-facts', 'Fact sheet', '', `Every number and name Brew may quote for ${esc(B.brand.name)}, and where it came from. Every agent follows it.`)}<div class="fsx" id="fs"><p class="lx-empty">Opening…</p></div></section>`); renderFacts(true); } };
+  const M2TAB = { learned: 'learned', moves: 'learned', move: 'learned', rules: 'rules', facts: 'rules', heard: 'heard', tune: 'tune' };
+  const m2Paint = (k) => { const el = $('#m2'); if (!el) return; const t = M2TAB[k]; el.hidden = !t || k === 'move'; document.body.dataset.m2 = t || ''; if (!t || k === 'move') return;
+    const tab = (key, nav, label) => `<button role="tab" data-nav="${nav}" aria-selected="${t === key}">${label}</button>`;
+    el.innerHTML = `<div class="m2-in"><h1>Memory</h1><p class="m2-sub">What Brew knows and follows for ${esc(B.brand.name)}.</p>
+      <div class="m2-drop" data-m2-drop><span class="m2-up">${ic('up', 's18')}</span><b>Drop anything here</b><span>Brand guides, past ads, product sheets, screenshots. Brew reads it and every agent works from it.</span><button class="btn btn-ghost sm" data-m2-pick>Upload files</button><input type="file" multiple hidden data-m2-file></div>
+      <nav class="m2-tabs" role="tablist">${tab('learned', 'learned', 'What we learned')}${tab('tune', 'tune', 'Your feed')}${tab('rules', 'rules', 'Rules')}${tab('heard', 'heard', 'Heard')}</nav></div>`; };
+  /* Drop anything here: pick or drop files, then say where they go (brand memory / my preferences / just this once) */
+  const m2Drop = (files) => { files = [...files].slice(0, 8); if (!files.length) return;
+    const dest = (k, icon, t, d) => `<button class="m2-dest" data-m2-dest="${k}">${ic(icon, 's18')}<span><b>${t}</b><small>${d}</small></span></button>`;
+    modal(`<div class="sheet m2-sheet"><header class="sh-h"><b class="sh-t">${files.length === 1 ? esc(files[0].name) : `${files.length} files`}</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>
+      <p class="m2-q">Where should this go?</p>${dest('memory', 'book', 'Add to brand memory', 'Every agent works from it from now on.')}${dest('prefs', 'person', 'Save to my preferences', 'Shapes what the feed shows me, not what the brand says.')}${dest('once', 'clock', 'Use it just this once', 'For the next thing I ask Brew, then forget it.')}</div>`, (m) => {
+      $$('[data-m2-dest]', m).forEach((b) => (b.onclick = async () => { const d = b.dataset.m2Dest; $$('[data-m2-dest]', m).forEach((x) => (x.disabled = true)); b.classList.add('is-busy');
+        const read = (f) => new Promise((ok) => { const r = new FileReader(); r.onload = () => ok({ name: f.name, type: f.type, size: f.size, data: String(r.result).split(',')[1] || '' }); r.onerror = () => ok(null); r.readAsDataURL(f); });
+        const list = (await Promise.all(files.map(read))).filter(Boolean);
+        const r = await api(`/api/brands/${encodeURIComponent(mvSlug())}/drop`, { dest: d, files: list, tenant: TID });
+        closeModal(); if (!r || r.error) return toast(esc(r?.error || 'That didn’t save. Try again.'));
+        toast(`${ic('check', 's16')}${d === 'memory' ? 'Added to brand memory' : d === 'prefs' ? 'Saved to your preferences' : 'Ready for your next ask'}`); if (['learned', 'rules'].includes(document.body.dataset.m2)) renderLearned(); })); }); };
+  document.addEventListener('click', (e) => { if (!UI2) return; const pk = e.target.closest('[data-m2-pick]'); if (pk) { pk.closest('.m2-drop')?.querySelector('[data-m2-file]')?.click(); } });
+  document.addEventListener('change', (e) => { if (e.target.matches?.('[data-m2-file]')) { m2Drop(e.target.files); e.target.value = ''; } });
+  ['dragover', 'dragleave', 'drop'].forEach((ev) => document.addEventListener(ev, (e) => { const z = e.target.closest?.('[data-m2-drop]'); if (!z) return; e.preventDefault(); z.classList.toggle('is-over', ev === 'dragover'); if (ev === 'drop') m2Drop(e.dataTransfer?.files || []); }));
+  const renderRules = () => { document.body.dataset.m2 = 'rules'; return renderLearned(); };
+  /* Your feed: what Brew picked up from your hearts and saves, your seat, and Tune (per-agent weights land with the tuning API) */
+  const renderTune = () => { view = 'tune'; const af = affinity(), R = ROLE();
+    const tags = [...Object.entries(af.agent).map(([k, n]) => [AGENT[k], n]), ...Object.entries(af.lane).map(([k, n]) => [B.lanes[k]?.name, n])].filter(([x]) => x).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    libShell('', '', `<section class="lx-sec">${lxHead('lx-picked', 'Picked up from your choices', tags.length || '', tags.length ? '' : 'Heart and save cards; Brew learns what to show you more of.')}${tags.length ? `<div class="m2-chips">${tags.map(([x]) => `<span class="chip">${esc(x)}</span>`).join('')}</div>` : ''}</section>
+      <section class="lx-sec">${lxHead('lx-seat', 'Your seat', '', '')}<button class="lx-heard-row" data-r2-tune>${face(R.face)}<span><b>${esc(R.name)}</b><small>Who the feed is for, what comes first and your focus</small></span>${ic('right', 's16')}</button></section>`);
+    $('.lib-head')?.remove(); };
   const lxPut = (kind, id, body) => tapi('PUT', kind === 'lesson' ? `/api/tenants/:t/learning/lessons/${id}` : `/api/tenants/:t/learning/rules/${id}`, body);
   const lxKeep = async () => { const y = window.scrollY; await renderLearned(); window.scrollTo(0, y); };
   document.addEventListener('click', async (e) => {
