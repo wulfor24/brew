@@ -1,6 +1,7 @@
 // Voice and video on our own Google Cloud (Vertex AI) account, never through treg: generated assets are ours to pay for
 // directly. Voice: Gemini TTS (raw PCM, wrapped as WAV). Video: Veo 3.1 image-to-video (submit, poll, bytes come back inline).
 import { execFile } from 'node:child_process';
+import { noteVertex } from './alerts.js'; // billing and quota failures reach the ops alerts
 
 const PROJECT = () => process.env.GOOGLE_CLOUD_PROJECT || 'squareup-492617';
 const VEO_LOC = () => process.env.VEO_LOCATION || 'us-central1';
@@ -13,7 +14,7 @@ export async function gToken() {
   tok = { v, exp: Date.now() + 40 * 60e3 }; return v;
 }
 const post = async (url, body, ms = 120e3) => { const r = await fetch(url, { method: 'POST', headers: { authorization: `Bearer ${await gToken()}`, 'x-goog-user-project': PROJECT(), 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(ms) });
-  if (!r.ok) throw new Error(`Vertex ${r.status}: ${(await r.text()).slice(0, 240)}`); return r.json(); };
+  if (!r.ok) { const t = await r.text(); noteVertex(r.status, t); throw new Error(`Vertex ${r.status}: ${t.slice(0, 240)}`); } return r.json(); };
 
 // 16-bit mono PCM → a playable WAV file
 export const pcmToWav = (pcm, rate = 24000) => { const h = Buffer.alloc(44);

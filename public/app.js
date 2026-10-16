@@ -2393,10 +2393,15 @@
     location.replace(location.pathname); };
 
   let aiMode = 'mock';
-  api('/api/config').then((c) => { aiMode = c.ai || 'mock';
+  api(`/api/config?brand=${encodeURIComponent((B && B.slug) || BR || '')}`).then((c) => { aiMode = c.ai || 'mock';
     /* the AI credit is out (ai.js pause): say so once per visit, rather than letting chats and drafts fail quietly */
     let seen = false; try { seen = !!sessionStorage.getItem('brew-paused'); sessionStorage.setItem('brew-paused', c.paused ? '1' : ''); } catch {}
-    if (c.paused && !seen) { setTimeout(() => toastLong(`${ic('info', 's16')}Brew’s writing is paused for a while. Everything here still opens; new replies, drafts and rewrites wait until it’s back.`, 12000), 1500); } }).catch(() => {});
+    if (c.paused && !seen) { setTimeout(() => toastLong(`${ic('info', 's16')}Brew’s writing is paused for a while. Everything here still opens; new replies, drafts and rewrites wait until it’s back.`, 12000), 1500); }
+    /* this brand's share of today's budget (server budget.js) is used up: say which part, once per visit, instead of drafts failing quietly */
+    const NOUN = { text: 'writing', image: 'pictures', video: 'videos', voice: 'voiceovers' }, out = Object.entries(c.share || {}).filter(([, x]) => x && x.out).map(([k, x]) => [NOUN[k] || k, x.out]);
+    let told = false; try { told = sessionStorage.getItem('brew-share') === out.map((x) => x.join(':')).join(','); sessionStorage.setItem('brew-share', out.map((x) => x.join(':')).join(',')); } catch {}
+    if (out.length && !told && !c.paused) { const mine = out.filter(([, w]) => w === 'brand').map(([n]) => n), all = out.filter(([, w]) => w === 'all').map(([n]) => n);
+      setTimeout(() => toastLong(`${ic('info', 's16')}${mine.length ? `This brand’s share of today’s ${mine.join(' and ')} is used up. ` : ''}${all.length ? `Brew’s budget for ${all.join(' and ')} is used up today across all brands. ` : ''}It resets at midnight UTC; everything else still works.`, 12000), 1800); } }).catch(() => {});
   /* ---------- the demo site (DEMO_MODE): a session per visitor, its accounts are demo accounts the server connects ---------- */
   const DSLUG = () => B.slug || BR;
   const clearLocal = () => { wiping = true; try { Object.keys(localStorage).filter((k) => k.startsWith(LSP())).forEach((k) => ls.del(k)); } catch (e) {} };

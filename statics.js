@@ -17,6 +17,8 @@ const SCHEMA = { type: 'object', properties: { ads: { type: 'array', items: { ty
 
 /* the team's statics as feed cards (private/cards.json): one batch card and one card per ad, members only, their images on the
    team route (never b/<slug>/statics/, which anyone may load). privateOf 21: they belong to the team's Move 21 */
+/* the team's set is made once; a failed or cut-off try (state running/failed) goes again only after retryMs */
+export const teamStaticsDue = (s0, { now = Date.now(), retryMs = 24 * 3600e3 } = {}) => !s0 || (s0.state !== 'done' && now - (+s0.at || 0) >= retryMs);
 export const teamStaticUrl = (slug, id) => `b/${slug}/team/statics/${id}.jpg`;
 export function teamStaticCards(slug, ids = [], text = {}, { lane = 'core', name = 'the brand' } = {}) {
   if (!ids.length) return [];
@@ -90,7 +92,7 @@ export function createStatics({ ai, image, packs, launchBrowser, log = console }
           const m = /^\/?b\/[^/]+\/a\/(.+)$/.exec(String(p.img)); const raw = m && (await packs.get(slug, 'assets/' + m[1])); if (!raw) continue;
           const jpg = await toJpeg(browser, raw, /\.png$/i.test(p.img) ? 'image/png' : /\.webp$/i.test(p.img) ? 'image/webp' : 'image/jpeg');
           const tmp = path.join(os.tmpdir(), `st-${slug}-${a.id}.jpg`); fs.writeFileSync(tmp, jpg);
-          const scene = await image({ srcFile: tmp, ratio: '4:5', prompt: `Create a new photograph: ${a.scene}. Keep the ${profile.name} product and its label exactly as in the reference photo, including any printed text on the pack. Do not add any other text, captions, logos or watermarks anywhere. No before/after, no bodies shown as results. Premium product ad photography, natural light, clean composition, leave the top third calm for a headline.` });
+          const scene = await image({ srcFile: tmp, slug, ratio: '4:5', prompt: `Create a new photograph: ${a.scene}. Keep the ${profile.name} product and its label exactly as in the reference photo, including any printed text on the pack. Do not add any other text, captions, logos or watermarks anywhere. No before/after, no bodies shown as results. Premium product ad photography, natural light, clean composition, leave the top third calm for a headline.` });
           fs.rmSync(tmp, { force: true });
           await packs.put(slug, `${pre}statics/raw-${a.id}.png`, scene, 'image/png');
           const out = await compose(browser, scene, { headline: a.headline, small: a.small, accent });

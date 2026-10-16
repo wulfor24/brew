@@ -21,11 +21,11 @@ import { marketFor, applyMarket, nameOf } from './market.js'; // the selling mar
 import { realRows, privId } from './connectors/common.js'; // DUMMY: simulated account rows are never evidence
 import { healthFrom, geoOf } from './health.js';
 import { isPlay, playDone, totalOf, numbersFor, healSeedNumbers } from './pack-numbers.js'; // one number, one source
-import { createStatics, teamStaticCards } from './statics.js';
+import { createStatics, teamStaticCards, teamStaticsDue } from './statics.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { mergeLedger, diffLedgers, candidates, triage, changeLine, liveMaterial, handleOfItem, productNames, movesNaming, CONNECTED_MOVES } from './refresh.js';
 import { withLearned, briefView } from './brand-learnings.js';
-import { profileLive, withLive } from './on-connect.js'; // what a real connected account corrects in the team's view
+import { profileLive, withLive, settleWait, connectTargets } from './on-connect.js'; // what a real connected account corrects in the team's view
 import { briefWithConnected } from './brief.js'; // what the team told Brew survives a fresh brief
 import { providerNow, geminiModel } from './gemini-client.js';
 import { KINDS, flagKind, runKind, potOf, potLeft, potAdd, potFit, perMove, capOf as potCapOf, nextWeek } from './rewrite-pot.js'; // one weekly rewrite budget a brand
@@ -99,6 +99,10 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   const onSpend = (tag, usd) => { const slug = buildCtx.getStore(); if (slug) charge(slug)(tag, usd); };
   ai.onCharge?.(onSpend); treg.onCharge?.(onSpend);
 
+  /* paid jobs that run beside a build or rewrite (the ad statics): counted for paidWork(), which deploy.sh asks before a deploy */
+  let statics = 0; const held = (fn) => { statics++; return fn().finally(() => { statics--; }); };
+  /* what paid work this instance is doing now (builds, rewrites, update checks, statics), by kind and without brand names */
+  const paidWork = () => { const by = { build: 0, rewrite: 0, check: 0, statics }; for (const x of S.values()) { if (x.running) by[x.rewriting ? 'rewrite' : 'build']++; if (x.checking) by.check++; } return by; };
   const st = (slug) => { let x = S.get(slug); if (!x) S.set(slug, x = { events: [], listeners: new Set(), status: null, confirmed: null, running: false, inflight: new Map(), failed: new Map() }); return x; };
   const emit = (slug, ev) => { const x = st(slug); const e = { ...ev, at: Date.now() }; x.events.push(e); if (x.events.length > 2000) x.events.shift(); x.listeners.forEach((f) => { try { f(e); } catch {} }); };
   const subscribe = (slug, f, { replay = true } = {}) => { const x = st(slug); if (replay) x.events.forEach(f); x.listeners.add(f); return () => x.listeners.delete(f); };
@@ -333,7 +337,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   function makeStatics(slug, move, profile, withLock, { priv = false } = {}) {
     if (!image || !mods.pdf?.launchBrowser) return Promise.resolve();
     if (priv) return makeTeamStatics(slug, move, profile, withLock);
-    return (async () => {
+    return held(async () => {
       if (capHit(slug)) return;
       await setStatus(slug, { statics: { state: 'running' } });
       try {
@@ -352,13 +356,16 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         await setStatus(slug, { statics: { state: 'done', n: ids.length } });
         emit(slug, { type: 'statics', n: ids.length });
       } catch (e) { log.warn('[build] statics', e.message); await setStatus(slug, { statics: { state: 'failed', err: e.message.slice(0, 120) } }); }
-    })();
+    });
   }
+  /* the team's set is made once: a failed or cut-off try is tried again at most once a day (STATICS_RETRY_MS), never on every
+     private rewrite of Move 21 (a connected run used to start a fresh, paid set each time it touched 21) */
+  const staticsDue = (s0) => teamStaticsDue(s0, { retryMs: +(process.env.STATICS_RETRY_MS ?? 24 * 3600e3) });
   /* the team's static ads, from their private rewrite of Move 21 (written with the connected accounts): the images and their
      words stay in private/ and reach members only, as cards in private/cards.json whose images the team route serves
      (/b/<slug>/team/statics/<id>.jpg, signed-in members only). Made once, like the public set; state in private/statics-state.json */
   function makeTeamStatics(slug, move, profile, withLock) {
-    return (async () => {
+    return held(async () => {
       if (capHit(slug)) return;
       await packs.put(slug, 'private/statics-state.json', { state: 'running', at: Date.now(), move: move.meta?.rewrittenAt || move.meta?.at || null });
       try {
@@ -373,7 +380,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         await packs.put(slug, 'private/statics-state.json', { state: 'done', n: ids.length, at: Date.now(), move: move.meta?.rewrittenAt || move.meta?.at || null });
         emit(slug, { type: 'statics', n: ids.length, private: true });
       } catch (e) { log.warn('[build] team statics', e.message); await packs.put(slug, 'private/statics-state.json', { state: 'failed', err: e.message.slice(0, 120), at: Date.now() }); }
-    })();
+    });
   }
   /* the team's statics from the team's Move 21 as it is saved now (an ops probe, or a brand whose private 21 was written
      before team statics existed): the same once-only job a private rewrite starts */
@@ -688,7 +695,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   const REFRESH_DAYS = +process.env.REFRESH_EVERY_DAYS || 7, AUTO_MAX = +process.env.REFRESH_AUTO_MAX || 6;
   const REFRESH_CAP = +process.env.REFRESH_CAP_USD || 60, AUTO_CAP = +process.env.REFRESH_AUTO_CAP_USD || 10;
   const CONNECT_CAP = +process.env.CONNECT_CAP_USD || 40, CONNECT_SETTLE = +(process.env.CONNECT_SETTLE_MS ?? 30 * 60e3); /* teams connect several accounts in one sitting: one run for all of them */
-  const CONNECT_FRESH_MS = +(process.env.CONNECT_FRESH_MS ?? 24 * 3600e3); /* a later account skips a move rewritten this recently */
+  const CONNECT_FRESH_MS = +(process.env.CONNECT_FRESH_MS ?? 24 * 3600e3); /* a later account skips a move rewritten this recently (moves written before connectedWith) */
+  const CONNECT_READ_MAX = +(process.env.CONNECT_READ_MAX_MS ?? 2 * 3600e3); /* the run waits this long at most for a just-connected account's first read */
   /* connected accounts' re-reads: a number counts once it moved LIVE_MATERIAL (10%) since the move was written; the moves they
      flag are rewritten once a week (LIVE_DAYS), up to LIVE_CAP dollars a brand a run, and what the cap stopped waits for next week */
   const LEARN_CAP = +process.env.LEARN_CAP_USD || 30; /* one learnings upload's own rewrite (brand-learnings.js picks the moves within it); "go ahead" on the first one is learnings-all */
@@ -811,7 +819,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     buildCtx.run(slug, () => rewriteNow(slug, ns, o)).catch((e) => log.error('[rewrite]', slug, e.message));
     return { ok: true, n: ns.length, est };
   }
-  async function rewriteNow(slug, ns, { auto = false, via = null, tries = 0 } = {}) {
+  async function rewriteNow(slug, ns, { auto = false, via = null, tries = 0, noIndex = false } = {}) {
     ns = [...new Set((ns || []).map(Number))].filter((n) => n >= 1 && n < 1000); if (!ns.length) return;
     const x = st(slug); if (x.running) return enqueue(slug, ns, { via: via || (auto ? 'weekly' : 'manual'), auto }); x.running = true; x.rewriting = new Set(ns);
     const m = await load(); await restoreSpend(slug); await loadDay(); const usd0 = spentFor(slug), cap0 = via === 'connected' ? CONNECT_CAP : via === 'live' ? LIVE_CAP : via === 'learnings' ? LEARN_CAP : auto ? AUTO_CAP : Math.max(REFRESH_CAP, ns.length * 2.5);
@@ -843,7 +851,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       const stockMd = outNow.length ? `\n\n## Right now on the site\nThese products can't be bought today. Don't build a move on them, feature them or spend on them; pick an in-stock product instead.\n${outNow.slice(0, 40).join('\n')}` : '';
       prevState = (await status(slug)).state;
       /* kept in updates.json while it runs: a restart or deploy mid-rewrite carries on with the moves not yet written (resumeAll) */
-      await editUpd(slug, (u) => { u.rewriting = { ns, auto, via, at: Date.now(), prev: u.rewriting?.prev || prevState }; });
+      await editUpd(slug, (u) => { u.rewriting = { ns, auto, via, tries, at: Date.now(), prev: u.rewriting?.prev || prevState, ...(noIndex ? { indexDone: true } : {}) }; });
       await setStatus(slug, { state: `Rewriting ${ns.length} move${ns.length === 1 ? '' : 's'} with the latest` });
       emit(slug, { type: 'rewrite-start', ns, auto });
       const eng = m.moves.createMovesEngine({ ai, treg, log });
@@ -853,15 +861,16 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         if (n !== 0) {
           const prev = olds[n], file = prev ? `${P}moves/history/${pad2(n)}-${stamp}.json` : null;
           if (prev) await packs.put(slug, file, prev);
-          move.meta = { ...move.meta, version: (prev?.meta?.version || 1) + 1, rewrittenAt: new Date().toISOString(), because: stale[n]?.why || (auto ? 'New evidence came in' : 'Rewritten with the latest evidence'), changes: stale[n]?.changes || [], prevAt: prev?.meta?.at || null, prevFile: file };
+          move.meta = { ...move.meta, version: (prev?.meta?.version || 1) + 1, rewrittenAt: new Date().toISOString(), ...(priv ? { connectedWith: idsOfRows(privL) } : {}), because: stale[n]?.why || (auto ? 'New evidence came in' : 'Rewritten with the latest evidence'), changes: stale[n]?.changes || [], prevAt: prev?.meta?.at || null, prevFile: file };
         }
         await packs.put(slug, `${P}moves/${pad2(n)}.json`, move);
+        if (n === 0) await editUpd(slug, (u) => { if (u.rewriting) u.rewriting.indexDone = true; }); /* a restart does not write the index again */
         const all = await packs.getJSON(slug, `${P}moves.json`, {}); all[n] = move; await packs.put(slug, `${P}moves.json`, all);
         emit(slug, { type: 'move', n, title: move.title, stat: move.stat, gives: move.gives, verified: !!move.meta?.verified, rewritten: true });
         if (n !== 0) { written.push({ n, title: move.title }); await cardsFor(slug, move, profile, { replace: true, priv }).catch((e) => log.warn('[rewrite] cards', n, e.message)); await editUpd(slug, (u) => { delete u.stale[n]; if (kind) { u.pot = potAdd(potOf(u), kind, book()); delete u.pot.waits[n]; } }); }
         if (n === 21 && !priv && (await status(slug))?.statics?.state !== 'done') staticsJob = makeStatics(slug, move, profile, (fn) => (lock = lock.then(fn).catch((e) => log.warn('[rewrite] statics card', e.message))));
         /* the team's rewrite of Move 21 makes the team's own set (once), kept private */
-        if (n === 21 && priv && (await packs.getJSON(slug, 'private/statics-state.json', null))?.state !== 'done') staticsJob = makeStatics(slug, move, profile, (fn) => (lock = lock.then(fn).catch((e) => log.warn('[rewrite] team statics card', e.message))), { priv: true });
+        if (n === 21 && priv && staticsDue(await packs.getJSON(slug, 'private/statics-state.json', null))) staticsJob = makeStatics(slug, move, profile, (fn) => (lock = lock.then(fn).catch((e) => log.warn('[rewrite] team statics card', e.message))), { priv: true });
         if (m.pdf && priv) pdfQ = pdfQ.then(() => renderPdf(slug, m.pdf, move, profile, { priv })).catch((e) => log.warn('[rewrite] pdf', n, e.message)); /* a member's private rewrite keeps its own PDF */
         if (!priv) await unmarkPdf(slug, n); /* the public PDF is drawn again on its next download */
         packs.drop(slug); await onPack(slug); saveSpend(slug);
@@ -873,7 +882,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         onTotal: async () => {}, /* a rewrite keeps the brand's count: the build sets it (there is no `total` here; it threw on every rewrite of 3+ moves) */
         onStart: (n) => { x.inflight.set(n, Date.now()); x.failed.delete(n); emit(slug, { type: 'move-start', n }); },
         onFail: (n, e) => { x.inflight.delete(n); x.failed.set(n, { msg: String(e?.message || e).slice(0, 160), at: Date.now() }); emit(slug, { type: 'move-failed', n, msg: String(e?.message || e).slice(0, 160) }); } };
-      await eng.runAll(ctx, { only: ns.length >= 3 ? [...ns, 0] : ns, concurrency: Math.min(6, ns.length), waveA: WAVE_A });
+      await eng.runAll(ctx, { only: ns.length >= 3 && !noIndex ? [...ns, 0] : ns, concurrency: Math.min(6, ns.length), waveA: WAVE_A });
       await lock; await staticsJob; await pdfQ;
       const usd = +(spentFor(slug) - usd0).toFixed(2), at = Date.now();
       await potSpend(slug, kind, book());
@@ -905,7 +914,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     await setStatus(slug, { state: s0?.done ? 'Ready' : r.prev && !/^Rewriting/.test(r.prev) ? r.prev : s0?.state });
     if (!left.length) { await editUpd(slug, (v) => { delete v.rewriting; }); return; }
     log.log(`[rewrite] ${slug}: carrying on after a restart with ${left.join(', ')}`);
-    buildCtx.run(slug, () => rewriteNow(slug, left, { auto: !!r.auto, via: r.via || null })).catch((e) => log.error('[rewrite] resume', slug, e.message));
+    buildCtx.run(slug, () => rewriteNow(slug, left, { auto: !!r.auto, via: r.via || null, tries: r.tries || 0, noIndex: !!r.indexDone })).catch((e) => log.error('[rewrite] resume', slug, e.message));
   }
   async function updates(slug, { member = true } = {}) {
     const u = await upd(slug), x = st(slug), s0 = await status(slug), moves = await packs.getJSON(slug, 'moves.json', {});
@@ -995,17 +1004,32 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (!pub && (changes.length || !on)) await teamView(slug).catch((e) => log.warn('[connect] team view', e.message)); /* the brief and profile follow every changed number */
     /* a team account read for the first time (not a resync, not a disconnect, never a simulated one): every move is rewritten with it */
     if (!pub && on && !was.length && realRows(add).length) await connectSoon(slug, id).catch((e) => log.warn('[connect] run', slug, e.message));
+    else if (!pub) await connectRead(slug, id).catch(() => {}); /* read (or gone) with nothing new to write from: the run stops waiting for it */
   }
 
   /* ---------- a real account connected: Brew rewrites every move with its numbers, and the team's view of the brand follows ----------
      Connecting three accounts in a row costs one run: the run waits CONNECT_SETTLE after the last connect (kept in updates.json
      connectRun, so a restart carries it). It runs once the moves are written: a build in progress picks it up when it ends. */
   const settling = new Map();
+  /* an account was just connected (its first read is on its way): the run waits for that read and a quiet CONNECT_SETTLE after it */
+  async function connectPending(slug, id) {
+    if (blocked(slug)) return; const at = Date.now(), due = at + CONNECT_SETTLE;
+    await editUpd(slug, (u) => { const r = u.connectRun || { ids: [] }; u.connectRun = { ...r, waiting: { ...(r.waiting || {}), [id]: at }, due: Math.max(+r.due || 0, due) }; });
+    armConnect(slug, due);
+  }
+  /* an account's first read is in (connectSoon) or brought nothing to write from (connectRead): it no longer holds the run */
   async function connectSoon(slug, id) {
     const due = Date.now() + CONNECT_SETTLE;
-    await editUpd(slug, (u) => { u.connectRun = { ids: [...new Set([...(u.connectRun?.ids || []), id])], due }; });
+    await editUpd(slug, (u) => { const w = { ...(u.connectRun?.waiting || {}) }; delete w[id]; u.connectRun = { ...(u.connectRun || {}), ids: [...new Set([...(u.connectRun?.ids || []), id])], waiting: w, due }; });
     armConnect(slug, due); emit(slug, { type: 'connect-run', ids: [id], due });
   }
+  async function connectRead(slug, id) {
+    let left = null; await editUpd(slug, (u) => { const r = u.connectRun; if (!r?.waiting?.[id]) return; const w = { ...r.waiting }; delete w[id];
+      if (!(r.ids || []).length && !Object.keys(w).length) delete u.connectRun; else { u.connectRun = { ...r, waiting: w }; left = u.connectRun; } });
+    if (left) armConnect(slug, left.due || 0);
+  }
+  /* which of the team's accounts a set of ledger rows comes from (shopify, meta, ga4, ...) */
+  const idsOfRows = (rows = []) => Object.entries(PREFIX).filter(([, ps]) => rows.some((e) => ps.some((p) => String(e?.key || '').startsWith(p)))).map(([id]) => id).sort();
   function armConnect(slug, due) {
     clearTimeout(settling.get(slug));
     const t = setTimeout(() => { settling.delete(slug); onConnect(slug).catch((e) => log.error('[connect] run', slug, e.message)); }, Math.max(0, due - Date.now())); t.unref?.(); settling.set(slug, t);
@@ -1025,19 +1049,27 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   }
   async function onConnect(slug) {
     if (blocked(slug)) return;
-    const run = (await upd(slug)).connectRun; if (!run?.ids?.length) return;
+    const u0 = await upd(slug), run = u0.connectRun, now = Date.now(); if (!run) return;
+    /* settle first: a quiet CONNECT_SETTLE since the last connect or first read (whatever fired this timer early), and every
+       just-connected account's first read in (CONNECT_READ_MAX at most), so one run carries every account's numbers */
+    const w0 = settleWait(run, { now, readMaxMs: CONNECT_READ_MAX }); if (w0) return armConnect(slug, w0);
+    if (!run.ids?.length) { await editUpd(slug, (u) => { delete u.connectRun; }); return; }
     const s0 = await status(slug); if (!s0?.done || st(slug).running && !st(slug).rewriting) return; /* the build's finish picks it up */
+    /* a connected run still writing or queued: this one waits for it, so no move is written twice in one sitting */
+    if ((st(slug).running && u0.rewriting?.via === 'connected') || (u0.queue || []).some((q) => q.via === 'connected' && !(q.notBefore > now + 3600e3))) return armConnect(slug, now + 5 * 60e3);
     const rows = realRows(await packs.getJSON(slug, 'private/connected-ledger.json', []));
     if (!rows.length) { await editUpd(slug, (u) => { delete u.connectRun; }); return; }
     await teamView(slug, rows);
     /* the brand's first connected account rewrites every move, once. An account connected after that rewrites only the moves it
        touches (CONNECTED_MOVES), skipping one rewritten in the last day; a skipped move keeps its flag for the weekly run */
     const moves = await packs.getJSON(slug, 'moves.json', {}), ok = await rewritable(moves), all = Object.keys(moves).map(Number).filter(ok).sort((a, z) => a - z);
-    const u1 = await upd(slug), full = !(u1.connectFull || u1.connectDone?.at), at = Date.now();
-    let ns = all;
-    if (!full) { const pm = await packs.getJSON(slug, 'private/moves.json', {}).catch(() => ({})), recent = (n) => at - Math.max(Date.parse(pm?.[n]?.meta?.rewrittenAt || 0) || 0, Date.parse(moves[n]?.meta?.rewrittenAt || 0) || 0) < CONNECT_FRESH_MS;
-      const touch = new Set(run.ids.flatMap((id) => (AREA_LIVE[id] || []).flatMap((a) => CONNECTED_MOVES[a] || [])));
-      ns = all.filter((n) => touch.has(n) && !recent(n)); }
+    /* the first run is decided from the moves themselves too (a team rewrite on file), so an older instance saving updates.json
+       over connectFull never starts a second full run. Each move is written once per set of accounts: a move whose private
+       version already carries every account that touches it (meta.connectedWith) is left alone */
+    const u1 = await upd(slug), at = Date.now(), pm = await packs.getJSON(slug, 'private/moves.json', {}).catch(() => ({}));
+    const full = !(u1.connectFull || u1.connectDone?.at || Object.values(pm || {}).some((m) => m?.meta?.rewrittenAt)), nowIds = idsOfRows(rows);
+    const touches = (id, n) => (AREA_LIVE[id] || []).some((a) => (CONNECTED_MOVES[a] || []).includes(n));
+    const ns = connectTargets({ all, full, runIds: run.ids, nowIds, pm, moves, touches, at, freshMs: CONNECT_FRESH_MS });
     const names = run.ids.map((i) => NAME_OF[i] || i), said = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)} are connected` : `${names[0]} is connected`;
     if (!ns.length) { await editUpd(slug, (u) => { delete u.connectRun; }); log.log(`[connect] ${slug}: ${said}; its moves were rewritten in the last day, nothing to rewrite now`); return; }
     await editUpd(slug, (u) => { if (full) u.connectFull = at;
@@ -1309,5 +1341,5 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (o?.stockWhy) { u.stale[x.n] = { ...o, was: { priority: x.priority, why: x.why, via: x.via }, why: [...Object.values(o.stockWhy), x.why].join(' '), changes: [...new Set([...(o.changes || []), ...(x.changes || [])])].slice(0, 6) }; continue; } /* an out-of-stock mark stays on top */
     u.stale[x.n] = { ...x, at: Date.now(), changes: [...new Set([...(x.changes || []), ...(o?.changes || [])])].slice(0, 6), ...(o && !o.private ? { private: false } : {}) }; } });
   const facts = { pot: potInfo, potSpend, estMove, republish, flagStale, readProduct: async (slug, url) => readProduct(slug, url, (await packs.getJSON(slug, 'profile.json', {})) || {}), readRival, busy: (slug) => !!(st(slug).running || st(slug).checking), setHooks: (h) => Object.assign(hooks, h) };
-  return { ...facts, marketCheck, teamStatics, settleConnect, readLive, heal, healPdfs, pdfFor, pdfOn, connected, liveConnected, checkUpdates, rewrite, updates, setAuto, signal, seen, buildInfo, retry, goPro, checkData, applyCheck, liveWeekly, stockSignal, peek: (slug) => st(slug).status, addEmail, start, resume, resumeAll, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
+  return { ...facts, paidWork, marketCheck, teamStatics, settleConnect, connectPending, readLive, heal, healPdfs, pdfFor, pdfOn, connected, liveConnected, checkUpdates, rewrite, updates, setAuto, signal, seen, buildInfo, retry, goPro, checkData, applyCheck, liveWeekly, stockSignal, peek: (slug) => st(slug).status, addEmail, start, resume, resumeAll, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
 }

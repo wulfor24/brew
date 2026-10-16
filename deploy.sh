@@ -9,6 +9,9 @@ for f in *.js reader/*.js reader/stages/*.js connectors/*.js pdf/*.js public/*.j
 # every module server.js imports must be in the image (the Dockerfile copies *.js and these folders)
 for d in reader connectors pdf skills prompts data sources/moves public; do [ -d "$d" ] || { echo "missing $d/"; exit 1; }; done
 AI_MOCK=1 node --test test/*.test.js >/dev/null || { echo "tests fail: fix them first"; exit 1; }
+# paid work in flight and the release rhythm (tools/deploy-guard.sh; FORCE=1 skips)
+. "$(dirname "$0")/tools/deploy-guard.sh"
+deploy_guard shopos-feed https://brew.joinsquareup.com || exit 1
 OUT=$(gcloud run deploy shopos-feed --source . --project=squareup-492617 --region=asia-south1 \
   --allow-unauthenticated --service-account=brew-runtime@squareup-492617.iam.gserviceaccount.com --memory=4Gi --cpu=2 --no-cpu-throttling --min=1 --max=1 --max-instances=1 --timeout=3600 --concurrency=200 \
   --set-env-vars="^|^GOOGLE_CLOUD_PROJECT=squareup-492617|GOOGLE_OAUTH=1|GEMINI_IMAGE_MODEL=gemini-3-pro-image|DAILY_TEXT_CAP=1500|DAILY_IMAGE_CAP=120|RESEARCH_BUCKET=brew-prototype|TREG_ORG=squareup|TREG_DAY_CAP_USD=40|BUILD_CAP_USD=45|DAILY_BUILD_CAP_USD=${DAILY_BUILD_CAP_USD:-250}|PUBLIC_URL=https://brew.joinsquareup.com|MOVES_CONCURRENCY=8|BUILD_BLOCK=wearcomet-in,everaw-in|ADMIN_EMAILS=${ADMIN_EMAILS:-param@joinsquareup.com;hello@joinsquareup.com;darshanaritesh11@gmail.com}|BUILD_SIGNIN=${BUILD_SIGNIN:-1}|TRUSTED_PROXY_HOPS=${TRUSTED_PROXY_HOPS:-1}|FEED_SIGNIN=${FEED_SIGNIN:-1}|GA4_SA_EMAIL=brew-runtime@squareup-492617.iam.gserviceaccount.com|SHOPIFY_OAUTH=${SHOPIFY_OAUTH:-0}|GOOGLE_OAUTH=${GOOGLE_OAUTH:-1}|META_ADS_CONFIG_ID=2157080375167128" \

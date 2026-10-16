@@ -168,7 +168,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
   const photoRelOf = (c, named, p) => [named?.img, ...(c.images || []), c.img, ...(c.post?.media?.product?.images || []), p?.catalog?.[0]?.img].find((x) => x && typeof x === 'string' && !/^\/?gen\//.test(x)) || null;
   /* one picture of the real product: the guard tries the model again and, failing that, hands back the real photo (genFailed) */
   const makeStill = async (slug, c, { src, ip, ratio, text, catalog, brand, named = null, retry = false }) => {
-    const buf = await geminiImage({ srcFile: src, prompt: ip, ratio, text, catalog, brand, named, fallback: !retry });
+    const buf = await geminiImage({ srcFile: src, prompt: ip, ratio, text, catalog, brand, named, slug, fallback: !retry }); /* slug: the picture counts against this brand's daily share */
     const failed = !!buf?.guard?.genFailed, name = sha(`${slug}|${c.id}|${ip}|${ratio}${failed ? '|photo' : ''}`) + (failed ? '.jpg' : '.png');
     saveGen(name, buf); return { rel: 'gen/' + name, failed, retried: !!buf?.guard?.retried, error: buf?.guard?.error || null, buf };
   };
@@ -198,7 +198,8 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
         if (r.failed) { d.photoOnly = true; d.imgRetry = { n: 1, next: now() + retryWait(1), err: cut(r.error || '', 160) }; d.note = cut(`${d.note} For now this is the real product photo; the new picture is being made again.`, 220); log.warn?.('[drafts-bg] image fell back to the real photo', slug, c.id, r.error || ''); }
         else { box.usd += imageCost(r.buf, cfg); if (r.retried) d.retried = true; }
         d.fromPhoto = true; return r.rel; }
-      catch (e) { d.err = 'The words are here; the picture did not come through.'; d.imgRetry = { n: 1, next: now() + retryWait(1), err: cut(e.message, 160) }; log.warn?.('[drafts-bg] image', slug, c.id, e.message); return null; }
+      catch (e) { if (e.budget) { words(e.message); return null; } /* the brand's image share for today is used: words only, said plainly */
+        d.err = 'The words are here; the picture did not come through.'; d.imgRetry = { n: 1, next: now() + retryWait(1), err: cut(e.message, 160) }; log.warn?.('[drafts-bg] image', slug, c.id, e.message); return null; }
     };
     if (kind === 'image' || kind === 'collection' || kind === 'video') {
       const img = await still(); if (!img) { d.as = 'text'; d.usd = +(box.usd - box.start).toFixed(4); return d; }
@@ -210,7 +211,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
       if (slides.length < 2 || !launchBrowser || !src) { const img = await still(); if (img) { d.image = img; d.as = 'image'; d.note = cut(`${d.note} One picture for now; the slides come with another take.`, 200); } }
       else if (!fits(cfg.imageUsd * 2)) words("The slides wait for tomorrow's budget.");
       else { d.copy = d.copy || slides.map((x, i) => `${i + 1}. ${x.onSlide}`).join('\n'); let made = 0;
-        try { const rr = await M.carousel({ slides, src, ratio, title: j.title, cardTitle: c.title, scene: sceneOf(c), named, id: `${slug}|${d.key}`, canSpend: () => { if (!fits(cfg.imageUsd * (made + 1))) return false; made++; return true; } });
+        try { const rr = await M.carousel({ slides, src, ratio, title: j.title, cardTitle: c.title, scene: sceneOf(c), named, id: `${slug}|${d.key}`, slug, canSpend: () => { if (!fits(cfg.imageUsd * (made + 1))) return false; made++; return true; } });
           box.usd += cfg.imageUsd * (rr.made + rr.retried); Object.assign(d, { slides: rr.slides, image: rr.image }); if (rr.zip) d.zip = rr.zip; if (rr.err) d.err = rr.err; }
         catch (e) { box.usd += cfg.imageUsd * made; words('The slides did not come through; the words are here.'); log.warn?.('[drafts-bg] slides', slug, c.id, e.message); } }
     } else if (['email', 'whatsapp', 'page', 'catalog'].includes(kind) && launchBrowser) { /* free: the words laid out where they will live, with a real product photo */
@@ -337,7 +338,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
   let timer = null;
   const start = () => { if (timer || cfg.killed || cfg.mock || cfg.local) { log.log?.(`[drafts-bg] first drafts ${cfg.killed ? 'off (DRAFTS_BG_OFF)' : cfg.mock ? 'off (AI mock)' : cfg.local ? 'off here (local)' : 'already on'}`); return false; }
     timer = setTimeout(function go() { tick().catch((e) => log.warn?.('[drafts-bg] tick', e.message)).finally(() => { timer = setTimeout(go, cfg.tickMs); timer.unref?.(); }); }, cfg.firstMs); timer.unref?.(); return true; };
-  return { cfg, tick, start, runOne, opened, stateOf, cacheOf };
+  return { cfg, tick, start, runOne, opened, stateOf, cacheOf, busy: () => busy.size };
 }
 
 /* ---------- the jam: a cached draft becomes the jam's first draft ---------- */

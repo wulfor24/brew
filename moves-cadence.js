@@ -572,5 +572,5 @@ export function createMovesScheduler({ packs, ai, memory = null, cardsGen = null
   let timer = null;
   const start = () => { if (timer || cfg.killed || cfg.mock || cfg.local) { log.log?.(`[moves-cadence] weekly moves ${cfg.killed ? 'off (MOVES_REFRESH_OFF)' : cfg.mock ? 'off (AI mock)' : cfg.local ? 'off here (local)' : 'already on'}`); return false; }
     timer = setTimeout(function go() { tick().catch((e) => log.warn?.('[moves-cadence] tick', e.message)).finally(() => { timer = setTimeout(go, cfg.tickMs); timer.unref?.(); }); }, cfg.firstMs); timer.unref?.(); return true; };
-  return { cfg, tick, start, runOne, stateOf, due: dueOf, routes, retire, scorecardFor };
+  return { cfg, tick, start, runOne, stateOf, due: dueOf, routes, retire, scorecardFor, busy: () => busy.size };
 }

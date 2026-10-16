@@ -16,3 +16,16 @@ The short version:
 - Brand-agnostic: never fix one brand; audit every brand with `.claude/skills/brew-external-data/audit.py`.
 - Run `AI_MOCK=1 node --test test/*.test.js`, boot the server locally, then deploy with `./deploy.sh` (it refuses uncommitted
   code and failing tests).
+
+## Release rhythm
+
+A deploy stops the running instance and every paid job on it (builds, rewrites, statics, drafts, weekly moves). On 16 Oct about
+120 deploys in 22 hours cut that work off again and again. So:
+
+- Batch changes. Commit as you go, deploy once a batch is tested; never deploy one small fix after another.
+- `deploy.sh` and `tools/deploy-demo.sh` refuse a deploy within 20 minutes of the last one (`DEPLOY_GAP_MIN`), and wait up to
+  15 minutes (`DEPLOY_WAIT_MIN`) while `/api/ops/busy` reports paid work, then refuse (`tools/deploy-guard.sh`).
+- `FORCE=1` skips both, only for a hotfix that can't wait; say why in the commit.
+- Several sessions share this repo: `git pull --rebase` right before deploying, and deploy from a clean, committed tree.
+- Interrupted work picks up after a restart (a rewrite carries on with the moves it hadn't written, without rewriting the index
+  again), but the moves in flight at the moment of the deploy are paid twice. Waiting is cheaper.

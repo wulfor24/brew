@@ -399,7 +399,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     await Promise.all(items.map(async (x) => {
       const ref = refPhoto(x.lane); if (!ref || !photoFile(ref)) return;
       try {
-        const buf = await geminiImage({ srcFile: photoFile(ref), prompt: `Create a new vertical product photograph: ${x.scene || 'the product on a clean bathroom shelf, soft morning daylight'}. ${`Keep the ${BN()} ${B().config.product?.noun || 'product'} and its label exactly as in the reference`}. ${B().config.product?.avoid || 'No text, no people.'} ${B().config.product?.editorial || B().config.product?.style || 'Premium D2C editorial product photography'}, calm, lots of empty space at the bottom.`, ratio: '9:16', model: process.env.WATCHER_IMAGE_MODEL || 'gemini-2.5-flash-image' });
+        const buf = await geminiImage({ srcFile: photoFile(ref), slug: B().slug, prompt: `Create a new vertical product photograph: ${x.scene || 'the product on a clean bathroom shelf, soft morning daylight'}. ${`Keep the ${BN()} ${B().config.product?.noun || 'product'} and its label exactly as in the reference`}. ${B().config.product?.avoid || 'No text, no people.'} ${B().config.product?.editorial || B().config.product?.style || 'Premium D2C editorial product photography'}, calm, lots of empty space at the bottom.`, ratio: '9:16', model: process.env.WATCHER_IMAGE_MODEL || 'gemini-2.5-flash-image' });
         spent.images += 0.04; x.img = await saveMedia(buf, imgExt(buf));
       } catch (e) { log.warn('[research] howto image', e.message); }
     }));

@@ -125,6 +125,8 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     /* otherwise proof is a sanity check, shown to the team, never ownership: ownership is the team (or the claim) above */
     if (!PUBLIC.has(id)) await vault.save(slug, id, creds);
     if (id === 'slack') teams.clear(); /* the workspace may have moved to this brand */
+    /* a team account connected for the first time: the moves' rewrite waits for its first read (build.js connectPending) */
+    if (!PUBLIC.has(id) && id !== 'slack' && !(await conns(slug))[id]?.lastSync) await builder.connectPending?.(slug, id).catch(() => {});
     await editC(slug, (c) => { c[id] = { state: 'syncing', at: Date.now(), by: me.email, account: proof.account || c[id]?.account || null, verified: !!proof.ok, why: proof.why || '' }; });
     cache.delete(sk(slug));
     return { ...(await sync(slug, id)), claimed: may.claimed, verified: !!proof.ok, why: proof.ok ? null : proof.why || null };

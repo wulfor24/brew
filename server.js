@@ -23,6 +23,8 @@ import { B, BN, runIn, liveRe, setDefaultBrand, inBrand } from './brand-ctx.js';
 import { createImageGuard } from './image-guard.js';
 import { createPacks, slugOf, DEFAULT } from './brand-pack.js';
 import { createAI, aiPaused, billingError, noteBilling } from './ai.js';
+import { createAlerts, noteVertex } from './alerts.js'; // ops emails: Vertex billing/quota, the AI pause, treg balance, 5xx rate
+import { createBudget } from './budget.js'; // the day's AI budget: a ceiling and a share per brand
 import { createTreg, gcsCache } from './treg.js';
 import { setApifyCache } from './apify.js';
 import { chain as mediaChain, sloosh, slooshOn, openaiImage as openaiImageRaw } from './media.js';
@@ -77,9 +79,11 @@ const GPROJECT = process.env.GOOGLE_CLOUD_PROJECT || 'squareup-492617';
 const IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-3-pro-image';
 const OPENAI_KEY = process.env.OPENAI_API_KEY || '';
 let MOCK = process.env.AI_MOCK === '1' || (PROVIDER === 'anthropic' && !ANTHROPIC_KEY); // Gemini needs only Google sign-in
-const CAPS = { text: +process.env.DAILY_TEXT_CAP || 400, image: +process.env.DAILY_IMAGE_CAP || 60, video: +process.env.DAILY_VIDEO_CAP || 15, voice: +process.env.DAILY_VOICE_CAP || 60 };
-const used = { day: new Date().toDateString(), text: 0, image: 0, video: 0, voice: 0 };
-const spend = (k) => { const d = new Date().toDateString(); if (used.day !== d) Object.assign(used, { day: d, text: 0, image: 0, video: 0, voice: 0 }); if (used[k] >= CAPS[k]) return false; used[k]++; if (USAGE) saveUsage(); return true; };
+/* the day's AI budget (budget.js): one ceiling for the server and a share for each brand (DAILY_BRAND_SHARE, BRAND_<KIND>_CAP),
+   kept in the bucket with treg's day total and loaded before the first call (await budget.load() below) */
+const budget = createBudget({ store: { get: () => packs.getJSON('_brew', 'usage-day.json', null), put: (x) => packs.put('_brew', 'usage-day.json', { ...x, treg: { day: treg.meter.day, usd: treg.meter.dayUsd } }) }, log: console });
+const CAPS = budget.caps.all;
+const spend = (k, slug) => budget.spend(k, slug);
 // the system prompt is the active brand's brief (the generated brief.md)
 const SYSTEM = () => B()?.system || '';
 
@@ -152,7 +156,7 @@ async function geminiOnce({ srcFile, prompt, ratio, model }) {
   const url = `https://aiplatform.googleapis.com/v1/projects/${GPROJECT}/locations/global/publishers/google/models/${model}:generateContent`;
   const r = await fetch(url, { method: 'POST', headers: { authorization: `Bearer ${t}`, 'x-goog-user-project': GPROJECT, 'content-type': 'application/json' }, signal: AbortSignal.timeout(120e3),
     body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: { responseModalities: ['TEXT', 'IMAGE'], imageConfig: { aspectRatio: ratio || '1:1' } } }) });
-  if (!r.ok) throw new Error(`Gemini ${model} ${r.status}: ${(await r.text()).slice(0, 300)}`);
+  if (!r.ok) { const t = await r.text(); noteVertex(r.status, t); throw new Error(`Gemini ${model} ${r.status}: ${t.slice(0, 300)}`); }
   const j = await r.json();
   const img = j.candidates?.[0]?.content?.parts?.find((p) => p.inlineData)?.inlineData;
   if (!img) throw new Error(`Gemini ${model} returned no image (${j.candidates?.[0]?.finishReason || 'no reason'})`);
@@ -184,6 +188,9 @@ const rawImage = async (o, { gptFirst = false } = {}) => {
   return (await mediaChain('image', steps, console)).buf;
 };
 const geminiImage = createImageGuard({ gen: (o) => rawImage(o), verify: sameProduct, fetchPhoto: photoAny, resolve: (f) => resolveLocal(f), context: inBrand, log: console });
+/* every picture the build (ad statics, the team's statics), background drafts and story watchers make counts against the day's
+   image budget, the brand's share first (budget.js). The jam's own routes count theirs before calling imageGen */
+const countedImage = async (o = {}) => { if (!spend('image', o.slug)) throw Object.assign(new Error(budget.why('image', o.slug) || 'The image budget for today is used up.'), { soft: true, budget: true }); return geminiImage(o); };
 const imageGen = createImageGuard({ gen: (o) => rawImage(o, { gptFirst: prefs().image === 'gpt-image' && !!OPENAI_KEY && !!o.srcFile }), verify: sameProduct, fetchPhoto: photoAny, resolve: (f) => resolveLocal(f), context: inBrand, log: console });
 
 // ---------- mock replies (free, used when AI is off or fails) ----------
@@ -282,10 +289,15 @@ const photoAsync = async (rel) => { const r = String(rel || '').trim(); if (!r) 
   const rs = /^\/?research\/([\w.-]+)$/.exec(r); if (rs) return researchFile(rs[1]);
   const f = photoFile(r); return isFile(f) ? f : null; };
 
+/* the brand a page asks about (/api/config?brand=), else the one in hand: whose share of today's budget it is shown */
+const cfgSlug = (req) => { const q = String(new URL(req?.url || '/', 'http://x').searchParams.get('brand') || '').replace(/[^a-z0-9-]/g, ''); return q && !blocked(q) ? q : undefined; };
 const routes = {
   'GET /api/research': async () => { const r = B().research; return { ...r.get(), running: r.running(), spent: r.spent() }; },
   'POST /api/research/refresh': async (b, req) => { if (!(await genOk(req, B().slug))) return demoErr(); const ok = ['ads', 'trends', 'news', 'howto']; const which = (b.sources || ok).filter((k) => ok.includes(k)); B().research.refresh(which); return { started: which }; },
-  'GET /api/config': async () => ({ ai: MOCK ? 'mock' : 'live', provider: PROVIDER, paused: !MOCK && aiPaused(), image: !!(GPROJECT || OPENAI_KEY), caps: CAPS, used }),
+    /* paid work running on this instance now (deploy.sh and tools/deploy-demo.sh wait for it): counts by kind, never brand names */
+  'GET /api/ops/busy': async () => { const by = { ...(builder?.paidWork?.() || {}), drafts: draftsBg?.busy?.() || 0, cadence: movesCadence?.busy?.() || 0 };
+    return { busy: Object.values(by).reduce((a, n) => a + n, 0), by, rev: process.env.K_REVISION || null }; },
+  'GET /api/config': async (b, req) => ({ ai: MOCK ? 'mock' : 'live', provider: PROVIDER, paused: !MOCK && aiPaused(), image: !!(GPROJECT || OPENAI_KEY), caps: CAPS, used: budget.state.all, share: budget.left(cfgSlug(req)), brandCaps: budget.caps.brand }),
   'POST /api/config': async (b, req) => { if (!auth.isAdmin(auth.user(req))) return { error: 'admins only', ai: MOCK ? 'mock' : 'live' }; if (b.ai === 'mock') MOCK = true; if (b.ai === 'live' && anthropic) MOCK = false; return { ai: MOCK ? 'mock' : 'live' }; }
 };
 
@@ -298,13 +310,18 @@ let feedSvc = null; // made below, once the brand plumbing exists
 const retire = createRetire({ bucket: BUCKET, gToken, log: console });
 const retireInit = retire.init().catch((e) => console.warn('[retire] init', e.message)); // first, before any brand loads: the stores wait on it
 const packs = createPacks({ ROOT, PUB, bucket: BUCKET, gToken });
-/* the day's usage survives a restart or a deploy (it reset on every one): AI calls by kind and treg dollars, kept in the bucket */
-var USAGE = 'usage-day.json', usageT = null; // var: spend() is defined earlier and may run before this line in tests
-function saveUsage() { clearTimeout(usageT); usageT = setTimeout(() => packs.put('_brew', USAGE, { ...used, treg: { day: treg.meter.day, usd: treg.meter.dayUsd } }).catch((e) => console.warn('[usage] save', e.message)), 3000); } // hoisted: spend() may call it
-packs.getJSON('_brew', USAGE, null).then((j) => { if (!j) return; const d = new Date().toDateString();
-  if (j.day === d) for (const k of ['text', 'image', 'video', 'voice']) used[k] = Math.max(used[k], +j[k] || 0);
-  if (j.treg?.day === d && j.treg.day === treg.meter.day) treg.meter.dayUsd = Math.max(treg.meter.dayUsd, +j.treg.usd || 0); }).catch(() => {});
-treg.onCharge(() => saveUsage());
+/* the day's usage survives a restart or a deploy: AI calls by kind (all brands and each brand) and treg dollars, read back before
+   anything can spend (the brands, background jobs and the server all start after this line) */
+await budget.load();
+await packs.getJSON('_brew', 'usage-day.json', null).then((j) => { const d = new Date().toDateString();
+  if (j?.treg?.day === d && j.treg.day === treg.meter.day) treg.meter.dayUsd = Math.max(treg.meter.dayUsd, +j.treg.usd || 0); }).catch(() => {});
+treg.onCharge(() => budget.touch());
+/* ops alerts to the ShopOS team (alerts.js): once per issue per day, the day's list in the bucket */
+const alerts = createAlerts({ treg, log: console, store: { get: () => packs.getJSON('_brew', 'alerts.json', null), put: (x) => packs.put('_brew', 'alerts.json', x) },
+  sendMail: async ({ to, subject, html, text }) => { const key = process.env.RESEND_API_KEY; if (!key) throw new Error('no RESEND_API_KEY');
+    const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' }, body: JSON.stringify({ from: process.env.NOTIFY_FROM || 'Brew <hello@send.joinsquareup.com>', to: [to], subject, html, text }) });
+    if (!r.ok) throw new Error(`resend ${r.status}`); } });
+alerts.start();
 configureGen({ dir: GEN, researchDir: path.join(PUB, 'research'), bucket: BUCKET, gToken, log: console });
 const store = createStore({ dir: path.join(ROOT, '.tenants'), bucket: BUCKET, gToken });
 // each brand gets its own research (story rings) and live watchers. A generated brand gets them once its read is in
@@ -321,7 +338,7 @@ const attach = (p) => {
   if (read && (!x || x.key !== key)) {
     if (x) { try { x.live?.stop?.(); x.research?.stop?.(); } catch {} } /* the replaced watchers stop: no duplicate timers or catalog signals */
     const params = (m, max) => ({ ...claudeParams(m, max), system: p.system });
-    x = { key, research: createResearch({ ROOT, PUB, anthropic, claudeParams: params, textOf, geminiImage, gToken, clean, factBrief: () => (packs.peek(p.slug) || p).factBrief, brand: p, photoFile, tregClient: treg }),
+    x = { key, research: createResearch({ ROOT, PUB, anthropic, claudeParams: params, textOf, geminiImage: countedImage, gToken, clean, factBrief: () => (packs.peek(p.slug) || p).factBrief, brand: p, photoFile, tregClient: treg }),
       live: createLiveWatch({ ROOT, anthropic, claudeParams: params, textOf, gToken, brand: p, tregClient: treg }) };
     INST.set(p.slug, x);
     x.research.start().catch((e) => console.error('[research] start', p.slug, e.message)); x.live.start().catch((e) => console.error('[live] start', p.slug, e.message));
@@ -345,7 +362,7 @@ const valueSvc = createValue({ ai, packs, log: console, allow: () => !MOCK && (!
 const notesSvc = createNotes({ ai, packs, log: console, allow: () => !MOCK && (!!process.env.K_SERVICE || process.env.NOTES_BG === '1') });
 spendLedger(treg, packs, { log: console });
 const calendar = createCalendar({ packs, ai, log: console });
-const builder = createBuilder({ ROOT, packs, ai, treg, image: geminiImage, log: console, signGate: () => !!(process.env.GOOGLE_CLIENT_ID && process.env.FEED_SIGNIN !== '0' && process.env.BUILD_SIGNIN !== '0'),
+const builder = createBuilder({ ROOT, packs, ai, treg, image: countedImage, log: console, signGate: () => !!(process.env.GOOGLE_CLIENT_ID && process.env.FEED_SIGNIN !== '0' && process.env.BUILD_SIGNIN !== '0'),
   // a pack changed on disk (new seed, facts, moves): reload it, keep its research/live instances
   onPack: async (slug) => { packs.drop(slug); attach(await packs.load(slug)); },
   onCards: (slug, cards, o) => { if (o?.private) connectors?.drop(slug); feedSvc?.addCards(slug, cards, o); } });
@@ -394,7 +411,7 @@ async function teamProbe(slug) {
   const M = 'private/ops-team-probe.json'; if (await packs.getJSON(slug, M, null).catch(() => null)) return;
   if (!realRows(await packs.getJSON(slug, 'private/connected-ledger.json', []).catch(() => [])).length) return console.warn(`[ops] team probe ${slug}: no real connected account`);
   await packs.put(slug, M, { startedAt: Date.now() });
-  const usd = () => +(ai.meter.usd + (treg?.meter?.usd || 0)).toFixed(4), img = () => used.image, out = { startedAt: Date.now() };
+  const usd = () => +(ai.meter.usd + (treg?.meter?.usd || 0)).toFixed(4), img = () => budget.state.all.image, out = { startedAt: Date.now() };
   const step = async (k, fn) => { const u0 = usd(), i0 = img(); try { out[k] = { ...(await fn()) }; } catch (e) { out[k] = { error: e.message }; } out[k].usd = +(usd() - u0).toFixed(4); out[k].images = img() - i0; console.log(`[ops] team probe ${slug} ${k}:`, JSON.stringify(out[k]).slice(0, 400)); };
   await step('auto', async () => { const r = await movesCadence.runOne(slug, ['auto'], { manual: true }); return { written: (r.written || []).map((w) => w.n), team: (r.privWritten || []).map((w) => w.n), errors: r.errors }; });
   await step('ideas', async () => { const r = await createIdeas({ slug, packs, ai, treg, log: console, member: true }).next({ n: 6 }); return { made: r.ideas.length, dropped: r.dropped?.length || 0 }; });
@@ -424,7 +441,7 @@ const storiesWarm = async () => { if (process.env.STORIES_BG === '0' || process.
     const lo = (await social.stateOf(b.slug).catch(() => null))?.lastOpen || 0; if (Date.now() - lo > 3 * 864e5) continue;
     try { attach(await packs.load(b.slug)); console.log('[stories] warm', b.slug); } catch (e) { console.warn('[stories] warm', b.slug, e.message); } } };
 setTimeout(() => storiesWarm().catch(() => {}), 90e3).unref?.(); setInterval(() => storiesWarm().catch(() => {}), 60 * 60e3).unref?.();
-const draftsBg = createDraftsBg({ packs, ai, geminiImage, saveGen, genFile, photoAsync, treg, launchBrowser, zipBuffer, spend, memory: MEMORY_ON() ? memory : null, loadPack: (slug) => packs.load(slug), log: console,
+const draftsBg = createDraftsBg({ packs, ai, geminiImage: countedImage, saveGen, genFile, photoAsync, treg, launchBrowser, zipBuffer, spend, memory: MEMORY_ON() ? memory : null, loadPack: (slug) => packs.load(slug), log: console,
   lastOpenOf: async (slug) => (await social.stateOf(slug))?.lastOpen || 0, onDrafts: async (slug) => { packs.drop(slug); attach(await packs.load(slug)); } });
 draftsBg.start();
 /* first drafts are made by whichever instance's background job ran: every instance re-reads them from the bucket every 3 minutes,
@@ -674,6 +691,7 @@ const demoRoutes = DEMO ? createDemoRoutes({ packs, builder, auth, connectors, r
 http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://x');
   zipRes(req, res);
+  res.once('finish', () => alerts.response(res.statusCode)); /* the 5xx rate for the ops alerts */
   retire.claim(); // traffic reaches this revision: it is the live one
   if (DEMO) { const ses = sessionOf(req, u); if (ses.set) res.setHeader('set-cookie', ses.set); return runDemo(ses.sid, () => serve(req, res, u)); }
   return serve(req, res, u);

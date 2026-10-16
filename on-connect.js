@@ -57,3 +57,24 @@ export function baselineOf(sector, liveLedger = {}) {
   for (const k of BASE[sector] || []) { const e = liveLedger?.[k]; if (e && e.n != null && Number.isFinite(+e.n)) return { baseline: +(+e.n).toFixed(2), baselineV: String(e.v), baselineFrom: e.label || k }; }
   return null;
 }
+
+/* ---------- when a connected run may start, and which moves it writes (build.js onConnect) ----------
+   run: updates.json connectRun { ids, waiting: { id: connectedAt }, due }. Returns the time to look again, or 0 to go now:
+   not before due (a quiet CONNECT_SETTLE after the last connect or first read), and not while a just-connected account's
+   first read is still out (at most readMaxMs after it connected; checked again every 5 minutes) */
+export function settleWait(run, { now = Date.now(), readMaxMs = 2 * 3600e3 } = {}) {
+  if (!run) return 0;
+  if ((+run.due || 0) > now + 1e3) return +run.due;
+  const waits = Object.values(run.waiting || {}).filter((at) => now - at < readMaxMs);
+  return waits.length ? Math.min(now + 5 * 60e3, ...waits.map((at) => at + readMaxMs)) : 0;
+}
+/* the moves a connected run rewrites: every rewritable move on the brand's first run, else the ones the new accounts touch.
+   A move is written once per set of accounts: its private version's meta.connectedWith already holding every account it
+   needs leaves it alone. A move written before connectedWith existed falls back to "rewritten within freshMs" */
+export function connectTargets({ all = [], full = false, runIds = [], nowIds = [], pm = {}, moves = {}, touches = () => true, at = Date.now(), freshMs = 24 * 3600e3 }) {
+  const when = (m) => Date.parse(m?.meta?.rewrittenAt || 0) || 0;
+  const recent = (n) => at - Math.max(when(pm?.[n]), when(moves?.[n])) < freshMs;
+  const needs = (n) => { const w = pm?.[n]?.meta?.connectedWith, want = full ? nowIds : runIds.filter((id) => touches(id, n));
+    if (!want.length) return false; if (!w) return full || !recent(n); return want.some((id) => !w.includes(id)); };
+  return (full ? all : all.filter((n) => runIds.some((id) => touches(id, n)))).filter(needs);
+}

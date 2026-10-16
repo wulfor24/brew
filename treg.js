@@ -89,7 +89,19 @@ export function createTreg({ client = 'shopos-feed', dayCapUsd = +process.env.TR
     if (task && task.status_code !== 20000) throw new Error(`treg ${id}: ${task.status_message}`);
     return task?.result?.[0] ?? null;
   }
-  return { call, dfs, meter, onCharge: (f) => listeners.push(f), live: !off && !!auth()?.token };
+  /* the team's prepaid balance in dollars (GET /orgs, then /orgs/<id>/balance; free, never cached past 10 minutes): the ops alert reads it */
+  let bal = null;
+  async function balance({ maxAgeMs = 10 * 60e3 } = {}) {
+    if (bal && Date.now() - bal.at < maxAgeMs) return bal;
+    const a = auth(); if (off || !a?.token) throw new Error('treg is off');
+    const h = { 'X-Treg-Token': a.token, 'X-Treg-Client': client }, base = process.env.TREG_URL || 'https://treg.to';
+    const r = await fetch(`${base}/orgs`, { headers: h, signal: AbortSignal.timeout(20e3) }); if (!r.ok) throw new Error(`treg orgs ${r.status}`);
+    const j = await r.json(), rows = Array.isArray(j) ? j : j.orgs || j.items || [], o = rows.find((x) => x.slug === a.org) || rows.find((x) => x.active) || rows[0];
+    if (!o?.id) throw new Error('treg: no org');
+    const b = await fetch(`${base}/orgs/${o.id}/balance?limit=1`, { headers: h, signal: AbortSignal.timeout(20e3) }); if (!b.ok) throw new Error(`treg balance ${b.status}`);
+    const x = await b.json(); bal = { usd: +(x.balance_micro || 0) / 1e6, at: Date.now() }; return bal;
+  }
+  return { call, dfs, balance, meter, onCharge: (f) => listeners.push(f), live: !off && !!auth()?.token };
 }
 
 // what a tag is for, and whose brand it was: `pulse-wearcomet-com` → { what: 'pulse', slug: 'wearcomet-com' }

@@ -2,6 +2,7 @@
 // Opus 5.5 writes the long documents; Sonnet 5.5 does short, fast work. Always streams (long outputs),
 // always opts into server-side refusal fallbacks, and meters spend into a cost ledger.
 import { makeLLM, PROVIDER, GEMINI_PRICE, GEMINI_SEARCH_PRICE } from './gemini-client.js';
+import { noteAlert } from './alerts.js'; // the AI pause turning on emails the ops team (once a day)
 
 export const MODELS = { opus: 'claude-opus-5-5', sonnet: 'claude-sonnet-5-5' };
 const PRICE = { 'claude-opus-5-5': [4, 20], 'claude-sonnet-5-5': [2, 10], ...GEMINI_PRICE }; // $ per MTok in / out
@@ -32,7 +33,9 @@ export const aiPaused = () => Date.now() < billingOffUntil;
 /* any Claude client (the jam's own in server.js too) reports a failure here: a billing one pauses every caller, and the
    paused error is the same one call() throws, so callers and the UI can say so instead of answering with a template */
 export const billingError = () => Object.assign(new Error('AI credit is used up: paused until it is topped up'), { billing: true, mock: true });
-export const noteBilling = (e) => { if (!BILLING.test(String(e?.message || e?.error?.error?.message || ''))) return false; billingOffUntil = Date.now() + 15 * 60e3; return true; };
+export const noteBilling = (e) => { const m = String(e?.message || e?.error?.error?.message || ''); if (!BILLING.test(m)) return false;
+  if (!aiPaused()) noteAlert('ai-pause', m.slice(0, 200)); /* the pause turning on is worth an email (alerts.js, once a day) */
+  billingOffUntil = Date.now() + 15 * 60e3; return true; };
 export function createAI({ apiKey = process.env.ANTHROPIC_API_KEY, mock = process.env.AI_MOCK === '1', log = console } = {}) {
   /* Claude, or Gemini on Vertex while we build (gemini-client.js, AI_PROVIDER): same params, same reply shape */
   const client = mock ? null : makeLLM({ apiKey, anthropicOpts: { timeout: 20 * 60e3, maxRetries: 3 }, log });

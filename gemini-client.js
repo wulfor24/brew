@@ -4,6 +4,7 @@
 // GEMINI_DEEP_MODEL, everything else to GEMINI_FAST_MODEL. Both are Flash while we build; set the deep one to Pro for clients.
 import Anthropic from '@anthropic-ai/sdk';
 import { gToken } from './vertex-media.js';
+import { noteVertex } from './alerts.js'; // billing and quota failures reach the ops alerts
 
 export const providerNow = () => ((process.env.AI_PROVIDER || 'gemini').toLowerCase() === 'anthropic' ? 'anthropic' : 'gemini');
 export const PROVIDER = providerNow();
@@ -103,7 +104,7 @@ export function createGeminiClient({ log = console } = {}) {
     for (let a = 0; ; a++) {
       const r = await fetch(url, { method: 'POST', headers: { authorization: `Bearer ${await gToken()}`, 'x-goog-user-project': PROJECT(), 'content-type': 'application/json' }, body, signal: AbortSignal.timeout(15 * 60e3) });
       if (r.ok) return fromGemini(await r.json(), model);
-      const t = await r.text();
+      const t = await r.text(); noteVertex(r.status, t); /* billing and quota trouble reaches the ops alerts (alerts.js) */
       if (a < 3 && [429, 500, 502, 503, 504].includes(r.status)) { log.warn?.(`[gemini] ${model} ${r.status}, retrying`); await new Promise((s) => setTimeout(s, 2 ** a * 4e3)); continue; }
       let msg = t; try { msg = JSON.parse(t).error?.message || t; } catch {}
       throw Object.assign(new Error(`Gemini ${model} ${r.status}: ${String(msg).slice(0, 300)}`), { status: r.status });

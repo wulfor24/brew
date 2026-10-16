@@ -3,6 +3,7 @@
 // budget, feedback, action runs behind a weekly spend limit, versions, jam router + deployment
 // workbench, stories, deck layout, always-on watchers with a QA agent, brand memory and metrics.
 // State is in memory per tenant; the client re-creates its tenant from a snapshot after a restart.
+import { budgetWhy } from './budget.js'; // whose daily share ran out, in plain words
 import { realRows } from './connectors/common.js';
 import { baselineOf, healthReadings } from './on-connect.js'; // the team's own account numbers on cards and the health card
 import fs from 'node:fs';
@@ -1457,7 +1458,7 @@ export function createFeedService(o) {
   // remake a card's image when its generated file is gone (or on request). Same model and rules as the creative agent.
   on('POST', '/api/cards/:cid/image', async (b, t, p) => {
     const c = t.cards.get(p.cid); if (!c) return { error: 'not found' };
-    if (isMock() || !spend('image')) return { error: 'Images are paused right now. Try again in a bit.' };
+    if (isMock() || !spend('image')) return { error: (!isMock() && budgetWhy('image')) || 'Images are paused right now. Try again in a bit.' };
     /* the product the card's asset line (else its words) names, then the lane photo; the picture shows the scene the card promises */
     const named = cardProduct(c, brandOfT(t)?.catalog || [], { brand: BN() }), namedFile = named?.img ? (o.photoAsync ? await o.photoAsync(named.img).catch(() => null) : null) || (fs.existsSync(photoFile(named.img)) ? photoFile(named.img) : null) : null;
     const lane = LANE_PHOTO[c.lane] ? c.lane : Object.keys(LANE_PHOTO)[0], ref = namedFile || photoFile(LANE_PHOTO[lane] || Object.values(LANE_PHOTO)[0]); if (!ref || !fs.existsSync(ref)) return { error: 'There’s no product photo to start from.' };

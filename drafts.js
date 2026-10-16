@@ -3,6 +3,7 @@
 // line, or plain text (ad copy, a WhatsApp message, an email, page copy). Nothing is made until someone taps:
 // a draft costs money, so it is never made for a card nobody opened.
 // Each draft lives on the jam (w.drafts), newest first; the client polls the jam while one is being made.
+import { budgetWhy } from './budget.js'; // whose daily share ran out, in plain words
 import { makeVoice as vertexVoice, makeVideo as vertexVideo } from './media.js'; // Sloosh first once connected, then Vertex, then OpenAI (media.js)
 import { matchProduct, cardProduct, cardScene, sceneOf } from './product-match.js';
 import crypto from 'node:crypto';
@@ -97,16 +98,16 @@ export function createDrafts({ claudeTool, geminiImage, treg, launchBrowser, zip
     Object.assign(d, { as: j.as, title: clean(j.title || 'First draft').slice(0, 70), copy: clean(j.copy || ''), note: clean(j.note || ''), ratio: RATIOS.includes(j.ratio) ? j.ratio : j.as === 'video' ? '9:16' : '4:5' });
     if (j.as === 'carousel') {
       if (!launchBrowser) throw Object.assign(new Error('Carousels can’t be made on this server. The words are here.'), { soft: true });
-      if (!spend('image')) throw Object.assign(new Error('The image budget for today is used up. The words are here; try the slides tomorrow.'), { soft: true });
+      if (!spend('image')) throw Object.assign(new Error((budgetWhy('image') || 'The image budget for today is used up.') + ' The words are here; try the slides tomorrow.'), { soft: true });
       d.ratio = RATIOS.includes(j.ratio) && j.ratio !== '16:9' ? j.ratio : '4:5'; d.copy = d.copy || (j.slides || []).map((x, i) => `${i + 1}. ${x.onSlide}`).join('\n');
       await makeCarousel(t, w, d, j, c);
     } else if (j.as === 'image' || j.as === 'video') {
-      if (!spend('image')) throw Object.assign(new Error('The image budget for today is used up. The words are here; try the picture tomorrow.'), { soft: true });
+      if (!spend('image')) throw Object.assign(new Error((budgetWhy('image') || 'The image budget for today is used up.') + ' The words are here; try the picture tomorrow.'), { soft: true });
       step(t, w, d, j.as === 'video' ? 'Making the first frame' : 'Making the image');
       const im = await makeImage(j, c, d.ratio, t); d.image = 'gen/' + im.name;
       if (im.failed) throw Object.assign(new Error(`The new picture didn’t come through, so this is the real product photo for now. Tap ${j.as === 'video' ? 'video' : 'image'} again for a new one.`), { soft: true });
       if (j.as === 'video') {
-        if (!spend('video')) throw Object.assign(new Error('The video budget for today is used up. Here is the first frame.'), { soft: true });
+        if (!spend('video')) throw Object.assign(new Error((budgetWhy('video') || 'The video budget for today is used up.') + ' Here is the first frame.'), { soft: true });
         step(t, w, d, 'Animating it, about two minutes');
         d.video = 'gen/' + (await makeVideo(t, w, d, d.image.slice(4), j.motion));
         if (j.script && spend('voice')) {
@@ -116,7 +117,7 @@ export function createDrafts({ claudeTool, geminiImage, treg, launchBrowser, zip
         }
       }
     } else if (j.as === 'voice') {
-      if (!spend('voice')) throw Object.assign(new Error('The voice budget for today is used up. The script is here.'), { soft: true });
+      if (!spend('voice')) throw Object.assign(new Error((budgetWhy('voice') || 'The voice budget for today is used up.') + ' The script is here.'), { soft: true });
       step(t, w, d, 'Recording it');
       d.script = clean(j.script || j.copy); d.audio = 'gen/' + (await makeVoice(d.script, j.voiceStyle, j.voice));
     }
@@ -193,14 +194,14 @@ export function createMakers({ geminiImage, treg, launchBrowser, zipBuffer, save
   };
   // a carousel: one photo per slide (3 at a time), then the words set in exact type by Chromium, never drawn by the model.
   // canSpend(i) says whether slide i may be made; bufs carry the image guard's note (guard.retried) so callers can book real cost
-  const carousel = async ({ slides, src, ratio, title, cardTitle, scene = '', named = null, id, clean = (x) => String(x || ''), canSpend = () => true, onStep = () => {} }) => {
+  const carousel = async ({ slides, src, ratio, title, cardTitle, scene = '', named = null, id, slug = undefined, clean = (x) => String(x || ''), canSpend = () => true, onStep = () => {} }) => {
     const raws = [];
     for (let k = 0; k < slides.length; k += 3) {
       onStep(`Making the photos (${Math.min(k + 3, slides.length)} of ${slides.length})`);
       raws.push(...(await Promise.all(slides.slice(k, k + 3).map(async (x, m) => {
         if (!canSpend(k + m)) return null;
         const prompt = `Create photograph ${k + m + 1} of ${slides.length} for one ${title} carousel; every photo shares the same look, light and colour. ${x.visual} ${scene ? `The set as a whole shows what the card promises: ${scene}.` : ''} ${src ? 'Keep the product and its label exactly as in the reference photo.' : ''} No writing anywhere except the product's own label: no signs, notes, calendars, screens or other packaging. Keep the top third calm and simple, words will sit there. Photographic, natural light.`;
-        try { return await geminiImage({ srcFile: src, prompt, ratio, named, text: [x?.onSlide, title, cardTitle].filter(Boolean).join('. '), fallback: true }); } catch (e) { log.warn('[draft slide]', e.message); return null; } /* fallback: a slide with no new photo carries the real product photo under its words */
+        try { return await geminiImage({ srcFile: src, prompt, ratio, named, slug, text: [x?.onSlide, title, cardTitle].filter(Boolean).join('. '), fallback: true }); } catch (e) { log.warn('[draft slide]', e.message); return null; } /* fallback: a slide with no new photo carries the real product photo under its words */
       }))));
     }
     if (!raws.some(Boolean)) throw new Error('no slide photo came back');
