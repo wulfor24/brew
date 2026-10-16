@@ -942,18 +942,17 @@
           </div>
           <div class="rl-foot">
             <button class="icon-btn rl" aria-label="Connectors" data-nav="connectors">${ic('plug')}<span class="rl-tx" aria-hidden="true">Connectors</span></button>
-            ${window.LiveConn && (window.LIVE?.signin || window.LIVE?.me) ? `<button class="icon-btn rl lc-acct" aria-label="Your account" data-lacct>${window.LIVE?.me?.pic ? `<img src="${esc(window.LIVE.me.pic)}" alt="" referrerpolicy="no-referrer">` : ic('person')}<span class="rl-tx" aria-hidden="true">${window.LIVE?.me ? esc(window.LIVE.me.email) : 'Sign in'}</span></button>` : ''}
+            <button class="icon-btn rl lc-acct" aria-label="Your account" data-lacct>${window.LIVE?.me?.pic ? `<img src="${esc(window.LIVE.me.pic)}" alt="" referrerpolicy="no-referrer">` : ic('person')}<span class="rl-tx" aria-hidden="true">${window.LIVE?.me ? esc(window.LIVE.me.email) : 'Account'}</span></button>
           </div>
         </nav>
         <div class="stage" id="stage">
           <div class="wash" aria-hidden="true"></div>
           <div class="topbar">
-            <button class="icon-btn phone-only" aria-label="Menu" data-phone-menu>${ic('menu')}</button>
             <div class="seg glass-chrome" role="tablist">
               <button role="tab" aria-selected="true" data-nav="feed">${ic('feed', 's16')}Feed</button>
               <button role="tab" aria-selected="false" data-nav="deck">${ic('deck', 's16')}Deck</button>
             </div>
-            <div class="topbar-r"><button class="chip j1-pill" data-team-pill hidden title="Briefs with the ShopOS team">${ic('send', 's14')}<span data-count="team"></span><i class="t2-live" aria-hidden="true"></i></button><button class="icon-btn rb phone-only" aria-label="Notifications" data-bell>${ic('bell')}<i data-count="bell"></i></button>${window.LiveConn && (window.LIVE?.signin || window.LIVE?.me) ? `<button class="icon-btn phone-only lc-acct" aria-label="Your account" data-lacct>${window.LIVE?.me?.pic ? `<img src="${esc(window.LIVE.me.pic)}" alt="" referrerpolicy="no-referrer">` : ic('person')}</button>` : ''}<button class="chip viewing" data-viewing aria-label="Switch the seat you view as">${face(ROLE().face)}<span><i class="va">Viewing as </i><b>${esc(ROLE().name)}</b></span>${ic('chev', 's14')}</button>${themeBtn()}</div>
+            <div class="topbar-r"><button class="chip j1-pill" data-team-pill hidden title="Briefs with the ShopOS team">${ic('send', 's14')}<span data-count="team"></span><i class="t2-live" aria-hidden="true"></i></button><button class="icon-btn rb phone-only" aria-label="Notifications" data-bell>${ic('bell')}<i data-count="bell"></i></button><button class="icon-btn phone-only lc-acct" aria-label="Your account" data-lacct>${window.LIVE?.me?.pic ? `<img src="${esc(window.LIVE.me.pic)}" alt="" referrerpolicy="no-referrer">` : ic('person')}</button><button class="chip viewing" data-viewing aria-label="Switch the seat you view as">${face(ROLE().face)}<span><i class="va">Viewing as </i><b>${esc(ROLE().name)}</b></span>${ic('chev', 's14')}</button>${themeBtn()}</div>
           </div>
           <div id="view"></div>
           <div class="stk-layer" id="stk"></div>
@@ -2317,7 +2316,7 @@
     if (e.target.closest('[data-menu]') || e.target.closest('[data-phone-menu]')) { openMenu(); return; }
     if (e.target.closest('[data-viewing]')) { openViewing(e.target.closest('[data-viewing]')); return; }
     const cx = e.target.closest('[data-cx]'); if (cx) { openConnect(cx.dataset.cx); return; }
-    const la = e.target.closest('[data-lacct]'); if (la) { window.LiveConn?.menu(la); return; }
+    const la = e.target.closest('[data-lacct]'); if (la) { openAcct(la); return; }
     const s = e.target.closest('[data-story]'); if (s) { s.classList.add('seen'); openStory(s.dataset.story); }
   });
 
@@ -2373,6 +2372,21 @@
     $('[data-m="restart"]', m).onclick = resetDemo;
     $('[data-m="reset"]', m).onclick = resetDemo;
   });
+  /* ui=1 has no brand menu: the account popup holds what it did. Library, Fact sheet, Sounds, Add to home screen, the setup,
+     demo controls and Start over; What Brew learned and Connectors only on phones (the rail has them on desktop). */
+  const acctIt = (attr, icon, label, meta = '', cls = '') => `<button class="lc-it${cls}" ${attr}>${ic(icon, 's16')}<b>${label}</b>${meta ? `<span>${meta}</span>` : ''}</button>`;
+  const acctRows = () => `<div class="lc-grp">${acctIt('data-nav="saved"', 'bookmark', 'Library', S.saved.length ? `${S.saved.length} saved` : '')}${acctIt('data-nav="learned"', 'book', 'What Brew learned', '', ' lc-phone')}${acctIt('data-nav="facts"', 'doc', 'Fact sheet')}${acctIt('data-nav="connectors"', 'plug', 'Connectors', `${Object.keys(S.conn).filter(conn).length} of ${Object.keys(B.connectors).length}`, ' lc-phone')}</div>
+    <div class="lc-grp">${acctIt('data-acct="sound"', 'bell', 'Sounds', `<i class="sw" aria-checked="${SND.on}" aria-hidden="true"><i></i></i>`)}${isStandalone() ? '' : acctIt('data-acct="install"', 'phone', 'Add to home screen')}${acctIt('data-acct="setup"', 'play', 'Watch the setup again')}${acctIt('data-acct="demo"', 'sliders', 'Demo controls', 'Press .')}${acctIt('data-acct="restart"', 'home', 'Start over from the website')}</div>`;
+  const acctBind = (pop) => pop.addEventListener('click', (e) => { const t = e.target.closest('[data-acct],[data-nav]'); if (!t) return; const k = t.dataset.acct;
+    if (k === 'sound') { SND.on = !SND.on; ls.set(`${LSP()}sound`, SND.on ? 'on' : 'off'); t.querySelector('.sw')?.setAttribute('aria-checked', SND.on); if (SND.on) sound('approve'); return; }
+    pop.remove(); if (k === 'install') openInstall(); if (k === 'setup') start(); if (k === 'demo') openDemo(); if (k === 'restart') resetDemo(); });
+  if (!UI2) window.BrewAcct = { rows: acctRows, bind: acctBind };
+  const openAcct = (btn) => { if (window.LiveConn && (window.LIVE?.signin || window.LIVE?.me)) return window.LiveConn.menu(btn);
+    document.getElementById('lc-pop')?.remove(); const pop = document.createElement('div'); pop.id = 'lc-pop'; pop.className = 'lc-pop';
+    const r = btn.getBoundingClientRect(); pop.style.left = (r.right + 10) + 'px'; pop.style.bottom = Math.max(12, innerHeight - r.bottom) + 'px';
+    pop.innerHTML = `<div class="lc-me"><span><b>${esc(B.brand.name)}</b><small>Viewing as ${esc(ROLE().name)}</small></span></div>${acctRows()}`;
+    document.body.appendChild(pop); acctBind(pop);
+    setTimeout(() => document.addEventListener('click', function off(e) { if (!pop.contains(e.target) && !btn.contains(e.target)) { pop.remove(); document.removeEventListener('click', off); } }), 0); };
   // wipe everything this demo keeps in the browser (state, workspace, shared-link owner) and land on the website step
   const resetDemo = () => { if (window.BREW_DEMO) return demoStart('onboarding'); wiping = true; closeModal();
     try { Object.keys(localStorage).filter((k) => k.startsWith(`${LSP()}`)).forEach((k) => ls.del(k)); } catch (e) { ls.del(KEY); ls.del(`${LSP()}tenant`); ls.del(`${LSP()}tenant-own`); }
