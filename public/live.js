@@ -285,21 +285,25 @@
   async function claim() { const r = await post(`/api/brands/${slug}/claim`); if (r.ok) { A().toast(`${ic('check', 's16')}${esc(B().brand.name)} is yours. Connect its accounts to see live numbers.`); setTimeout(() => location.reload(), 900); } else A().toastLong(esc(r.error || 'Could not claim'), 7000); }
 
   /* ---------- the account button in the rail ---------- */
+  /* Your feed (tune what the feed shows you) lives here in ui=1; UI2 has it on its own rail */
+  const tuneRow = () => document.body.classList.contains('ui2') ? '' : `<button class="btn btn-ghost sm lc-teambtn" data-nav="tune">${ic('sliders', 's14')}Your feed<span>Tune it</span></button>`;
   function menu(btn) {
     document.getElementById('lc-pop')?.remove();
     const pop = document.createElement('div'); pop.id = 'lc-pop'; pop.className = 'lc-pop';
     const r = btn.getBoundingClientRect(); pop.style.left = (r.right + 10) + 'px'; pop.style.bottom = Math.max(12, innerHeight - r.bottom) + 'px'; pop.style.position = 'fixed';
     const ac = L.access, n = B()?.brand?.name || 'this brand';
     const role = ac?.role === 'owner' ? `Owner of ${n}` : ac?.role === 'admin' ? 'Brew team · full access' : ac?.role ? `On ${n}’s team` : L.full ? 'Brew team · full access' : GENB ? `Visitor · you see ${n}’s demo` : '';
-    pop.innerHTML = !L.me ? `<div class="lc-me"><b>Not signed in</b><small>Sign in to read a new brand, claim yours and connect real accounts.</small></div><a class="btn btn-primary sm" href="${signin()}">Sign in with Google</a>`
+    pop.innerHTML = !L.me ? `<div class="lc-me"><b>Not signed in</b><small>Sign in to read a new brand, claim yours and connect real accounts.</small></div><a class="btn btn-primary sm" href="${signin()}">Sign in with Google</a>${tuneRow()}`
       : `<div class="lc-me">${L.me.pic ? `<img src="${esc(L.me.pic)}" alt="" referrerpolicy="no-referrer">` : ''}<span><b>${esc(L.me.name || L.me.email)}</b><small>${esc(L.me.email)}</small>${role ? `<em>${esc(role)}</em>` : ''}</span></div>
         ${GENB && ac?.canClaim ? `<button class="btn btn-primary sm" data-lclaim>Claim ${esc(n)}</button>` : ''}
         ${GENB && ac && !ac.gen ? `<small class="lc-hint">${ac.claimed ? `Ask ${esc(n)}’s team to invite you.` : `Sign in with your work email at ${esc(ac.host || host())} to claim it.`}</small>` : ''}
         ${GENB && ac?.role && ac.role !== 'owner' && ac.role !== 'admin' ? `<div class="lc-views"><small>Your views</small><span>${esc(seatWords(ac.seats))}</span></div>` : ''}
         ${GENB && ac?.role && ac.role !== 'owner' && ac.role !== 'admin' ? `<button class="btn btn-ghost sm lc-teambtn" data-lteamsheet>${ic('person', 's14')}Team and invites<span>${(ac.team || []).length}</span></button>` : ''}
         ${GENB && (ac?.role === 'owner' || ac?.role === 'admin') ? `<button class="btn btn-ghost sm lc-teambtn" data-lteamsheet>${ic('person', 's14')}Team and access<span>${(ac.members || []).length}${(ac.members || []).filter((x) => Array.isArray(x.seats) && !x.seats.length).length ? ' · needs you' : ''}</span></button>` : ''}
+        ${tuneRow()}
         <a class="lc-out" href="/auth/logout?next=${encodeURIComponent(location.pathname)}">Sign out</a>`;
     document.body.appendChild(pop); bindPage(pop);
+    pop.querySelector('[data-nav="tune"]')?.addEventListener('click', () => pop.remove()); /* the app's nav opens the page */
     pop.querySelector('[data-lteamsheet]')?.addEventListener('click', () => { pop.remove(); teamSheet(); });
     setTimeout(() => document.addEventListener('click', function off(e) { if (!pop.contains(e.target) && e.target !== btn) { pop.remove(); document.removeEventListener('click', off); } }), 0);
   }

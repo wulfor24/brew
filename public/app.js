@@ -940,7 +940,6 @@
           <button class="icon-btn rb" aria-label="Library" title="Library: saved and my jams" data-nav="saved">${ic('bookmark')}<i data-count="saved"></i></button>
           <button class="icon-btn rb" aria-label="Work" title="Work: drafting to results" data-nav="work">${ic('board')}<i data-count="work"></i></button>
           <button class="icon-btn" aria-label="What Brew learned" title="What Brew learned" data-nav="learned">${ic('book')}</button>
-          <button class="icon-btn" aria-label="Your feed" title="Your feed: tune what it shows you" data-nav="tune">${ic('sliders')}</button>
           <button class="icon-btn rb" aria-label="Notifications" title="Notifications" data-bell>${ic('bell')}<i data-count="bell"></i></button>
           <button class="icon-btn" aria-label="Connectors" title="Connectors" data-nav="connectors">${ic('plug')}</button>
           <span class="sp"></span>
@@ -2706,9 +2705,15 @@
     return `<section class="cn-sec cn-soon"><h3>Marketplaces<em>${ks.length}</em><small>Listings, ranks, stock and reviews</small></h3><div class="cn-soon-g">${ks.map((k) => `<article class="cn-soon-c">${logoTile(k, 36)}<div class="cn-name"><b>${MARKETS[k]}</b></div><span class="cn-soon-tag">Coming soon</span></article>`).join('')}</div></section>`; };
   const renderConnectors = () => {
     view = 'connectors';
-    const list = Object.entries(B.connectors);
+    const list = Object.entries(B.connectors), on = list.filter(([id]) => conn(id)), need = list.filter(([id, c]) => !conn(id) && !c.optional), opt = list.filter(([id, c]) => !conn(id) && c.optional);
     const LC = window.LiveConn;
-    { /* the design's list (both designs): search, grouped rows, one tap to connect; what it unlocks folds into the row */
+    const card = ([id, c]) => `<article class="cn-card${conn(id) ? ' is-on' : ''}${c.live ? ' is-live' : ''}" data-cn="${id}">
+        <header>${glyph(id, 40)}<div class="cn-name"><b>${esc(c.name)}</b><span>${esc(c.kind)}</span></div>${LC?.status(id) || (conn(id) ? `<span class="cn-st is-on"><i></i>${c.demo ? 'Demo' : 'Connected'}</span>` : c.optional ? '<span class="cn-st">Optional</span>' : '<span class="cn-st is-off"><i></i>Not connected</span>')}</header>
+        ${conn(id) && (c.stats || []).length ? `<dl class="cn-stats">${c.stats.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>${c.demo ? '<small class="cn-demo">Demo account numbers, built from what we read</small>' : ''}` : ''}
+        ${(conn(id) && c.demo && c.changedDemo?.length ? c.changedDemo : c.changed || []).length ? `<div class="cn-will"><small>${conn(id) ? 'What it’s doing' : 'What it unlocks'}</small><ul>${(conn(id) && c.demo && c.changedDemo?.length ? c.changedDemo : c.changed).slice(0, 3).map((t) => `<li>${esc(t)}</li>`).join('')}</ul></div>` : ''}
+        <footer>${LC?.footer(id) || (conn(id) ? `<span class="cn-acct">${ic('check', 's14')}${esc(c.account)}</span><button class="cn-btn is-ghost" data-unlink="${id}">Disconnect</button>` : `<span class="cn-acct is-muted">${ic('lock', 's14')}Read-only access</span><button class="cn-btn" data-cx="${id}">Connect${ic('right', 's14')}</button>`)}</footer></article>`;
+    const sec = (name, hint, items) => items.length ? `<section class="cn-sec"><h3>${name}<em>${items.length}</em>${hint ? `<small>${hint}</small>` : ''}</h3><div class="cn-grid">${items.map(card).join('')}</div></section>` : '';
+    if (UI2) { /* the design's list: search, grouped rows, one tap to connect; what it unlocks folds into the row */
       const STORE = /^(shopify|meta|google|ga4|gads|ads|analytics|amazon|marketplaces|search)/;
       const row = ([id, c]) => `<details class="c2-row${conn(id) ? ' is-on' : ''}" data-cn="${id}" data-c2-name="${esc(`${c.name} ${c.kind}`.toLowerCase())}"><summary>${glyph(id, 32)}<span class="c2-t"><b>${esc(c.name)}</b><small>${esc(c.kind)}</small></span>${LC?.status(id) || (conn(id) ? `<span class="cn-st is-on"><i></i>${c.demo ? 'Demo' : 'Connected'}</span>` : c.optional ? '<span class="cn-st">Optional</span>' : '')}${conn(id) ? ic('chev', 's16') : `<button class="c2-add" data-cx="${id}" aria-label="Connect ${esc(c.name)}">${ic('plus', 's16')}</button>`}</summary>
           <div class="c2-more"><small>${conn(id) ? 'What it’s doing' : 'What it unlocks'}</small><ul>${(conn(id) && c.demo && c.changedDemo?.length ? c.changedDemo : c.changed || []).slice(0, 3).map((t) => `<li>${esc(t)}</li>`).join('')}</ul>
@@ -2721,7 +2726,13 @@
       $('[data-c2-q]')?.addEventListener('input', (e) => { const q = e.target.value.trim().toLowerCase(); $$('.c2-row').forEach((r) => (r.hidden = !!q && !r.dataset.c2Name.includes(q))); $$('.c2-sec').forEach((sc) => (sc.hidden = !$$('.c2-row', sc).some((r) => !r.hidden))); });
       $$('.c2-add').forEach((b) => b.addEventListener('click', (e) => e.preventDefault())); /* the + connects; it never just opens the row */
       $$('[data-unlink]').forEach((b) => b.onclick = () => { S.conn[b.dataset.unlink] = false; save(); toast(`${esc(B.connectors[b.dataset.unlink].name)} disconnected`); renderConnectors(); refreshAfterConnect(); });
-    }
+      return; }
+    const pct = Math.round(on.length / list.length * 100);
+    libShell(`Connectors${LC?.L?.dummy === false ? '' : ' <span class="dummy-tag" title="Connected accounts are simulated in this demo">Dummy</span>'}`, LC?.intro() || (LC?.L?.dummy === false ? `Every source Brew reads for ${B.brand.name}. Connected accounts are read-only and only ${B.brand.name}’s team sees them.` : `Every source Brew reads for ${B.brand.name}. Connected accounts are simulated in this demo (Dummy): connecting shows what would change, and nothing touches a real account.`),
+      `<div class="cn-sum"><div class="cn-sum-n"><b>${on.length}</b><span>of ${list.length} connected</span></div><div class="cn-bar"><i style="width:${pct}%"></i></div><div class="cn-logos">${list.map(([id]) => `<span class="${conn(id) ? '' : 'is-off'}" title="${esc(B.connectors[id].name)}">${glyph(id, 28)}</span>`).join('')}</div></div>
+       ${sec('Not connected yet', 'Connect these to unlock the cards that need them', need)}${sec('Connected', '', on)}${sec('Optional', 'Nice to have', opt)}${soonSec()}`);
+    $('#col')?.classList.add('lib-col', 'cn-col'); if (LC && $('#col')) { LC.bindPage(document.getElementById('view') || $('#col')); }
+    $$('[data-unlink]').forEach((b) => b.onclick = () => { S.conn[b.dataset.unlink] = false; save(); toast(`${esc(B.connectors[b.dataset.unlink].name)} disconnected`); renderConnectors(); refreshAfterConnect(); });
   };
 
   /* =========================================================
