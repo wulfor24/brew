@@ -14,7 +14,8 @@ for (const root of ROOTS.slice(0, 1)) for (const slug of fs.readdirSync(root)) {
     const j = JSON.parse(fs.readFileSync(p, 'utf8')); const xs = f === 'seed.json' ? j.posts || [] : Object.values(j).flat();
     xs.filter((c) => c && c.title).forEach((c) => cards.push({ slug, ...c })); }
 }
-test('every card lands in a family', () => {
+test('every card lands in a family', (t) => {
+  if (!cards.length) return t.skip('no local packs (.brands/ or BRANDS_DIR): a clean checkout has none, so deploy.sh must not fail on it'); /* a saved-data check, not a code check */
   assert.ok(cards.length > 10, `only ${cards.length} cards found`);
   const spread = {}; const other = [];
   for (const c of cards) { const m = F.classify(c); assert.ok(F.byId(m.family)); spread[m.family] = (spread[m.family] || 0) + 1; if (m.family === 'other') other.push(c.title); }
