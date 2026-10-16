@@ -2711,7 +2711,7 @@
   /* DUMMY: marketplaces are Coming soon cards, no connect (DUMMY.md row 7). The ones the read saw the brand sell on come first,
      then the big ones in its country */
   const MARKETS = { amazon: 'Amazon', flipkart: 'Flipkart', myntra: 'Myntra', nykaa: 'Nykaa', blinkit: 'Blinkit', walmart: 'Walmart', target: 'Target', etsy: 'Etsy', ebay: 'eBay' };
-  const soonMarkets = () => { const india = B.config?.country === 'IN' || B.sym === '₹' || /\.in$/.test(B.brand?.host || '');
+  const soonMarkets = () => { const india = B.config?.country ? B.config.country === 'IN' : B.sym === '₹' || /\.in$/.test(B.brand?.host || ''); /* the selling market, never the domain of an exporter */
     const own = (B.marketLogos || []).map((k) => String(k).toLowerCase()).filter((k) => MARKETS[k]);
     return [...new Set([...own, ...(india ? ['amazon', 'flipkart', 'myntra', 'nykaa', 'blinkit'] : ['amazon', 'walmart', 'target', 'etsy', 'ebay'])])].slice(0, 5); };
   const soonSec = () => { const ks = soonMarkets(); if (!ks.length) return '';
@@ -3339,7 +3339,7 @@
   };
   /* the studio's knobs and quick asks come from one shared list; keep only what fits this brand (no haircare scenes on a shoe brand, no Hindi outside India) */
   const OFF_BRAND = /post-pregnancy|dermatologist|^women 30\+$|^for women 30\+$|^men 25-34$|gym-goers|bathroom shelf|lab blue/i;
-  const inIndia = () => B.config?.country === 'IN' || B.sym === '₹';
+  const inIndia = () => (B.config?.country ? B.config.country === 'IN' : B.sym === '₹');
   const fitsBrand = (x) => (!OFF_BRAND.test(String(x).trim()) && (inIndia() || !/\b(hindi|hinglish)\b/i.test(String(x))));
   const fitKnobs = (ks) => (ks || []).map((k) => ({ ...k, opts: (k.opts || []).filter(fitsBrand) })).filter((k) => k.opts.length > 1);
   const fitSuggest = (xs) => (xs || []).filter(fitsBrand);

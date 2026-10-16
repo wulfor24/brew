@@ -2,6 +2,7 @@
 // Rivals come from Claude web search (named with a source) cross-checked with Google SERP overlap on 2–3
 // category queries (treg crawl4ai SERP); each rival homepage + 1–2 product pages are read for prices,
 // claims, offers and guarantee. Ad posters are downloaded because Ad Library URLs expire.
+import { marketLine } from '../../market.js';
 import { adLibrary, adCall } from '../adlib.js';
 import { numbersOf, adsStepLine } from '../../pack-numbers.js';
 import { meta, titleOf, jsonLd, typeIs, clean, stripTags, pathOf, hostOf, money, pool, registrable, today } from '../util.js';
@@ -56,7 +57,7 @@ export async function findRivals(ctx) {
     try {
       const ask = (tag) => ctx.ai({ tag, model: 'sonnet', search: 4, location: profile.country || undefined, max: 2500,
         system: 'You research D2C competitors. Only name companies that a source you found calls a competitor or alternative, or that clearly sell the same kind of product to the same shoppers in the same country. Never invent a website. Never state a rival\'s motive.',
-        prompt: `Brand: ${profile.name} (${profile.host}). Category: ${profile.category || 'unknown'}${profile.subcategory ? ` / ${profile.subcategory}` : ''}. Country: ${profile.country || 'unknown'}.\nFind the main direct competitors of ${profile.name} in ${profile.country || 'its market'}: D2C or consumer brands selling the same kind of product to the same shoppers. Up to 6.\nReturn JSON only: {"rivals":[{"name":"","host":"brand's own store domain, e.g. example.com","why":"one short factual line","source":"URL that supports it"}]}`, json: true });
+        prompt: `Brand: ${profile.name} (${profile.host}). Category: ${profile.category || 'unknown'}${profile.subcategory ? ` / ${profile.subcategory}` : ''}. ${marketLine(profile)}\nFind the main direct competitors of ${profile.name} in ${profile.country || 'its market'}: D2C or consumer brands selling the same kind of product to the same shoppers. Up to 6.\nReturn JSON only: {"rivals":[{"name":"","host":"brand's own store domain, e.g. example.com","why":"one short factual line","source":"URL that supports it"}]}`, json: true });
       // web search can fail for a moment (it did on a live read): one retry before we give up on named rivals
       let r = await ask('reader-rivals');
       if (!(r.json?.rivals || []).length) { await new Promise((ok) => setTimeout(ok, 4000)); r = await ask('reader-rivals-retry'); }

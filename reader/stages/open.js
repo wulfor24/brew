@@ -1,6 +1,7 @@
 // Stage 1 · open: the store's front door. Home page (plain fetch, treg browser fallback), robots.txt, sitemaps
 // (pages per sitemap), key pages (about, FAQ, contact, shipping, returns), platform, and country/currency/locale.
 import { sha, meta, titleOf, links, jsonLd, typeIs, stripTags, clean, pathOf, hostOf, registrable, pool, attr, tags } from '../util.js';
+import { sellingMarket, applyMarket, nameOf } from '../../market.js';
 
 const KEY_PAGES = {
   about: /\/(pages\/)?(about|about-us|our-story|story|who-we-are|brand-story|our-brand|about-[a-z-]+)(\/|$|\?)/i,
@@ -10,8 +11,6 @@ const KEY_PAGES = {
   returns: /\/(policies\/refund-policy|pages\/(returns?|refunds?|exchange)[a-z-]*|returns?[a-z-]*)(\/|$|\?)/i
 };
 const PHONE = [[/\+91[\s-]?\d{5}[\s-]?\d{5}|\b1800[\s-]?\d{3}[\s-]?\d{4}\b/, 'IN'], [/\+44[\s\d]{9,13}/, 'GB'], [/\+1[\s-]?\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{4}/, 'US'], [/\+61[\s\d]{8,12}/, 'AU'], [/\+971[\s\d]{8,11}/, 'AE']];
-const CUR_COUNTRY = { INR: 'IN', GBP: 'GB', AUD: 'AU', CAD: 'CA', NZD: 'NZ', JPY: 'JP', AED: 'AE', SGD: 'SG', USD: 'US' };
-const TLD_COUNTRY = { in: 'IN', uk: 'GB', au: 'AU', ca: 'CA', nz: 'NZ', jp: 'JP', ae: 'AE', sg: 'SG', de: 'DE', fr: 'FR' };
 
 export const looksBlocked = (r) => !r.ok || !r.text || r.text.length < 2000 || /cf-browser-verification|captcha|access denied|enable javascript to|Attention Required/i.test(r.text.slice(0, 20000)) && stripTags(r.text).length < 1500;
 
@@ -55,7 +54,7 @@ export async function open(ctx) {
     if (m && m.currency) {
       ctx.state.shopMeta = m; ctx.state.shopifyShop ||= m.myshopify_domain || null;
       ledger.add({ key: 'shop.currency', label: 'Shop currency (Shopify /meta.json)', v: m.currency, url: `${origin}/meta.json`, method: 'crawl' });
-      if (m.country) ledger.add({ key: 'shop.country', label: 'Shop country (Shopify /meta.json)', v: m.country, url: `${origin}/meta.json`, method: 'crawl' });
+      if (m.country) ledger.add({ key: 'shop.country', label: 'Country the store is registered in (Shopify /meta.json; not where it sells)', v: m.country, url: `${origin}/meta.json`, method: 'crawl' });
       if (m.city) ledger.add({ key: 'shop.address', label: 'Store address city (Shopify /meta.json)', v: [m.city, m.province].filter(Boolean).join(', '), url: `${origin}/meta.json`, method: 'crawl' });
       if (Array.isArray(m.ships_to_countries)) ledger.add({ key: 'shop.ships_to', label: 'Countries the store ships to', v: String(m.ships_to_countries.length), n: m.ships_to_countries.length, unit: 'countries', url: `${origin}/meta.json`, method: 'crawl' });
       // the store sent this visit to another market (/en-in): read the home market instead
@@ -144,33 +143,35 @@ export async function open(ctx) {
   if (fetched.shipping) { const fs = freeShip(fetched.shipping.text); if (fs) ledger.add({ key: 'policy.free_shipping', label: 'Free shipping rule (shipping policy)', v: fs, url: fetched.shipping.url, method: 'crawl' }); }
   if (fetched.returns) { const rd = (fetched.returns.text.match(/\b(\d{1,3})[\s-]*(?:days?|day)\b[^.]{0,60}(return|refund|exchange)|(return|refund|exchange)[^.]{0,60}\b(\d{1,3})[\s-]*days?/i) || []); const d = rd[1] || rd[4]; if (d) ledger.add({ key: 'policy.return_days', label: 'Return / refund window', v: `${d} days`, n: +d, unit: 'days', url: fetched.returns.url, method: 'crawl', note: clean(rd[0]).slice(0, 160) }); }
 
-  // country, currency, locale (each signal into the ledger, then a verdict with its confidence)
+  // currency, then the SELLING market (market.js): where customers are, kept apart from where the store is registered
   const sig = [];
   const sm = ctx.state.shopMeta;
   if (sm?.currency) sig.push(['currency', sm.currency, 'Shopify /meta.json'], ['currency', sm.currency, 'products.json prices are in the shop currency']);
-  if (sm?.country) sig.push(['country', sm.country, 'Shopify /meta.json shop country'], ['country', sm.country, 'Shopify store address']);
   const shCur = (html.match(/Shopify\.currency\s*=\s*\{"active":"([A-Z]{3})"/) || [])[1];
   const shCountry = (html.match(/Shopify\.country\s*=\s*"([A-Z]{2})"/) || [])[1];
   const shLocale = (html.match(/Shopify\.locale\s*=\s*"([a-zA-Z-]+)"/) || [])[1];
   if (shCur) sig.push(['currency', shCur, 'Shopify.currency']);
-  if (shCountry) sig.push(['country', shCountry, 'Shopify.country (the market served to this visit)']);
   const ldCur = (html.match(/"priceCurrency"\s*:\s*"([A-Z]{3})"/) || [])[1] || meta(html, 'og:price:currency') || meta(html, 'product:price:currency');
   if (ldCur) sig.push(['currency', ldCur, 'JSON-LD priceCurrency / og:price:currency']);
   const lang = attr((html.match(/<html\b[^>]*>/i) || [''])[0], 'lang');
   const hreflang = tags(html, 'link').filter((t) => /hreflang/i.test(t)).map((t) => attr(t, 'hreflang')).filter(Boolean);
   const pageText = stripTags(html) + ' ' + Object.values(fetched).map((p) => p.text).join(' ');
-  for (const [re, c] of PHONE) if (re.test(pageText)) { sig.push(['country', c, 'phone number format on the site']); break; }
+  let phone = null; for (const [re, c] of PHONE) if (re.test(pageText)) { phone = c; break; }
   if (/₹|\bRs\.?\s?\d/.test(pageText)) sig.push(['currency', 'INR', 'rupee prices in the page text']);
-  if (loc && loc.includes('-')) { const c = loc.split('-')[1].toUpperCase(); sig.push(['country', c, `locale path /${loc} the site sent this visit to`], ['country', c, 'prices on this market are read from it']); }
-  const tld = profile.host.split('.').pop(); if (TLD_COUNTRY[tld]) sig.push(['country', TLD_COUNTRY[tld], `.${tld} domain`]);
-  const addr = org?.address?.addressCountry || org?.address?.[0]?.addressCountry; if (addr) sig.push(['country', String(addr.name || addr).slice(0, 2).toUpperCase(), 'Organization address in JSON-LD']);
   const vote = (k) => { const m = {}; sig.filter((s) => s[0] === k).forEach((s) => (m[s[1]] = (m[s[1]] || 0) + 1)); return Object.entries(m).sort((a, b) => b[1] - a[1]); };
-  const curV = vote('currency'); profile.currency = curV[0]?.[0] || null;
-  const ctrV = vote('country'); profile.country = ctrV[0]?.[0] || (profile.currency && CUR_COUNTRY[profile.currency]) || null;
-  profile.locale = shLocale ? `${shLocale}${profile.country ? '-' + profile.country : ''}` : lang || null;
+  const curV = vote('currency'); profile.currency = sm?.currency || curV[0]?.[0] || null; /* the shop's own currency is what products.json prices are in; the served one follows the visitor */
+  const addr = org?.address?.addressCountry || org?.address?.[0]?.addressCountry;
+  const msig = { registered: sm?.country || null, currency: profile.currency, shipsTo: Array.isArray(sm?.ships_to_countries) ? sm.ships_to_countries.slice(0, 300) : null, hreflang: [...new Set(hreflang.map((x) => String(x).toLowerCase()))].filter((x) => x !== 'x-default').slice(0, 40),
+    localePath: loc && loc.includes('-') ? loc : null, tld: profile.host.split('.').pop(), phone, orgCountry: addr ? String(addr.name || addr).slice(0, 2).toUpperCase() : null, served: shCountry || null };
+  const mk = sellingMarket(msig);
+  applyMarket(profile, mk);
+  if (!mk.primary) { profile.country = null; profile.markets = []; profile.market = { ...mk, at: new Date().toISOString() }; }
+  profile.locale = shLocale ? `${shLocale}${profile.country ? '-' + profile.country : ''}` : profile.locale || lang || null;
   const confOf = (v, k) => (!v.length ? 'low' : v.length === 1 && sig.filter((s) => s[0] === k).length >= 2 ? 'high' : v.length === 1 ? 'medium' : 'low');
-  if (profile.currency) ledger.add({ key: 'market.currency', label: 'Store currency', v: profile.currency, layer: 'inferred', url: final.href, method: 'crawl', conf: confOf(curV, 'currency'), note: sig.filter((s) => s[0] === 'currency').map((s) => `${s[1]} from ${s[2]}`).join('; ') });
-  if (profile.country) ledger.add({ key: 'market.country', label: 'Home market (country)', v: profile.country, layer: 'inferred', url: final.href, method: 'crawl', conf: ctrV.length ? confOf(ctrV, 'country') : 'low', note: (sig.filter((s) => s[0] === 'country').map((s) => `${s[1]} from ${s[2]}`).join('; ') || `from currency ${profile.currency}`) + (hreflang.length ? `; hreflang: ${hreflang.slice(0, 6).join(', ')}` : '') + (final.href !== url.href && final.pathname.length > 1 ? `; the site redirected this visit to ${final.pathname}` : '') });
+  if (profile.currency) ledger.add({ key: 'market.currency', label: 'Store currency', v: profile.currency, layer: 'inferred', url: final.href, method: 'crawl', conf: sm?.currency ? 'high' : confOf(curV, 'currency'), note: sig.filter((s) => s[0] === 'currency').map((s) => `${s[1]} from ${s[2]}`).join('; ') });
+  if (profile.country) ledger.add({ key: 'market.country', label: 'Main selling market (where customers are)', v: profile.country, layer: 'inferred', url: final.href, method: 'crawl', conf: mk.conf,
+    note: mk.why + (profile.markets.length > 1 ? `; other markets: ${profile.markets.slice(1).join(', ')}` : '') + (hreflang.length ? `; hreflang: ${hreflang.slice(0, 6).join(', ')}` : '') + (msig.localePath ? `; locale path /${msig.localePath} the site sent this visit to` : '') + (phone ? `; ${phone} from phone number format` : '') + (msig.orgCountry ? `; ${msig.orgCountry} from Organization address in JSON-LD` : '') + (shCountry ? `; Shopify.country ${shCountry} (served to this visit)` : '') + (final.href !== url.href && final.pathname.length > 1 ? `; the site redirected this visit to ${final.pathname}` : '') });
+  if (mk.registered && mk.registered !== profile.country) ledger.add({ key: 'market.registered', label: 'Registered in (not the selling market)', v: mk.registered, layer: 'inferred', url: final.href, method: 'crawl', conf: 'high', note: `The store's address is in ${nameOf(mk.registered)}; ${mk.why}` });
 
   // the legal entity, from the footer: copyright holder, and India's company id (CIN) when shown
   const foot = stripTags((html.match(/<footer\b[\s\S]*?<\/footer>/i) || [html.slice(-40000)])[0]);

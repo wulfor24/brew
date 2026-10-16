@@ -86,6 +86,15 @@ export default {
       const units = new Map(); for (const o of o30) for (const li of o.lineItems.nodes) units.set(li.title, (units.get(li.title) || 0) + li.quantity);
       m.top = [...units.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([title, u]) => ({ title, units: u }));
     }
+    /* where the orders ship, 90 days: the brand's real selling market (market.js), which beats the read's guess from the site.
+       Its own query (an address field may need Shopify's protected-data approval): a refusal leaves every other number alone */
+    if (orders?.length) try {
+      const cc = new Map(); let a = null, n = 0;
+      for (let i = 0; i < 4; i++) { const d = await gql(c, 'query($q:String,$a:String){ orders(first:250, after:$a, query:$q){ pageInfo{ hasNextPage endCursor } nodes{ cancelledAt shippingAddress{ countryCodeV2 } } } }', { q: `created_at:>=${since90}`, a });
+        for (const o of d.orders.nodes) { const x = o.shippingAddress?.countryCodeV2; if (!o.cancelledAt && x) { cc.set(x, (cc.get(x) || 0) + 1); n++; } }
+        if (!d.orders.pageInfo.hasNextPage) break; a = d.orders.pageInfo.endCursor; }
+      if (n) { m.shipTo = [...cc.entries()].sort((x, y) => y[1] - x[1]).slice(0, 5).map(([x, k]) => [x, 100 * k / n]); m.shipToN = n; }
+    } catch (e) { if (!e.denied) notes.push(`Order countries: ${e.message.slice(0, 100)}`); }
     try { const d = await gql(c, 'query($q:String){ abandonedCheckoutsCount(query:$q){ count } }', { q: `created_at:>=${dayISO(30 * 864e5)}` }); m.left = d.abandonedCheckoutsCount?.count ?? null; if (has(m.left, m.orders)) m.started = m.left + m.orders; }
     catch (e) { if (!e.denied) notes.push(`Checkouts: ${e.message.slice(0, 100)}`); }
     try { const d = await gql(c, '{ productsCount(query:"status:active"){ count } products(first:100, sortKey:INVENTORY_TOTAL, query:"status:active"){ nodes{ title totalInventory tracksInventory } } }');
@@ -110,6 +119,7 @@ export default {
     const ledger = [has(m.orders) && L('shopify.orders.30d', 'Orders, last 30 days', n0(m.orders), m.orders, src), has(m.aov) && L('shopify.aov', 'Average order value, 30 days', F.money(m.aov), m.aov, src), has(m.revenue) && L('shopify.revenue.30d', 'Revenue, last 30 days', F.big(m.revenue), m.revenue, src),
       has(m.repeat) && L('shopify.repeat.90d', 'Customers in the last 90 days with 2+ orders', pct(m.repeat), m.repeat, src), has(m.left) && L('shopify.checkout.left', 'Checkouts started but not finished, 30 days', n0(m.left), m.left, src),
       has(m.cod) && L('shopify.cod.share', 'Cash on delivery share of orders, 30 days', pct(m.cod), m.cod, src), has(m.codFail) && L('shopify.cod.failed', 'COD orders cancelled or unpaid after 10 days', pct(m.codFail), m.codFail, src),
+      m.shipTo?.length && L('shopify.orders.countries', 'Orders by shipping country, 90 days', m.shipTo.map(([x, s]) => `${x} ${s.toFixed(0)}%`).join('; '), m.shipToN, src),
       has(m.products) && L('shopify.products.active', 'Active products (Shopify admin)', n0(m.products), m.products, src), /* beats the public products.json count on the fact sheet (facts-desk.js PRECEDENCE) */
       m.top?.length && L('shopify.top.30d', 'Best sellers by units, 30 days', m.top.map((x) => `${x.title} (${x.units})`).join('; '), null, src)].filter(Boolean);
     return { metrics: m, stats, changed, cards: out, ledger, notes };

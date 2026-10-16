@@ -4,6 +4,7 @@
 // (found live on Reddit through treg, or read from listen/*.json), never invented.
 // Flow: read the pack → discover threads (treg, same-day cache) → slate (opus) → per-idea thread search (treg) → write (opus,
 // in parallel chunks) → gates (numbers, links, disclosure) → check (sonnet) → ideas. next() stores to ideas/ideas.json.
+import { marketLine } from './market.js';
 import crypto from 'node:crypto';
 import { numbersIn, canon } from './fact-gate.js';
 import { ideaCards } from './social-feed.js';
@@ -236,6 +237,7 @@ export function createIdeas({ slug, packs, ai, treg, log = console, now = () => 
     const own = c.socials.map((s) => `${s.platform}: ${s.url}`).join(', ') || 'none on record';
     const voice = [...(c.brief.language || [])].slice(0, 16).join(', ');
     return `BRAND: ${c.name} (${c.profile.host}) · ${c.cat} · ${c.countryName} · prices in ${c.config.currency || ''}
+MARKET: ${marketLine(c.profile)}
 ABOUT: ${c.profile.about || c.brief.oneLine || ''}
 FOUNDERS ON RECORD: ${c.founders.join(', ') || 'none'} · OWN ACCOUNTS: ${own}
 RIVALS: ${(c.config.rivals || []).join(', ')}

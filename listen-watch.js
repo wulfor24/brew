@@ -15,6 +15,7 @@
 // (themes, sentiment, intent, about). Nothing is generated: threads and communities are only what the sources returned.
 // Files in the pack: listen/config.json, items.json, status.json, threads.json, themes.json, communities.json, asked.json,
 // history/<YYYY-MM-DD>.json (+ history/index.json). Brands never see vendor names: display names come from SOURCES.
+import { marketShort } from './market.js';
 import { createApify } from './apify.js';
 import { adCall } from './reader/adlib.js';
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36';
@@ -171,7 +172,7 @@ export function createListenWatch({ slug, packs, treg, ai, apify = undefined, lo
     if (ai && ai.live !== false) { try {
       const r = await ai.call({ model: 'sonnet', max: 1200, tag: `listen-indirect-${slug}`,
         system: 'You set up social listening for a consumer brand. Be literal: these searches find real people describing a need, not ads.',
-        prompt: `Brand: ${c.name} (${c.host}), country ${c.country}. Category: ${c.category || 'unknown'}. Product noun: ${c.noun}. About: ${String(profile?.about || profile?.tagline || '').slice(0, 300)}\nBest sellers: ${(c.products || []).join('; ') || 'unknown'}\n\nReturn:\n- problems: 3-5 short unbranded searches a person with the problem or need this category solves would type, in their words (e.g. "foot pain all day sneakers", "shoes for standing all day"). No brand names.\n- questions: 3-5 unbranded questions buyers in ${c.country} ask before buying in this category (e.g. "are wool sneakers good for summer").\n- needs: 5-12 lowercase words or short phrases that show a post talks about one of those problems or needs (e.g. "foot pain", "standing all day", "plantar fasciitis").`,
+        prompt: `Brand: ${c.name} (${c.host}), ${marketShort({ country: c.country, registeredCountry: profile?.registeredCountry })}. Category: ${c.category || 'unknown'}. Product noun: ${c.noun}. About: ${String(profile?.about || profile?.tagline || '').slice(0, 300)}\nBest sellers: ${(c.products || []).join('; ') || 'unknown'}\n\nReturn:\n- problems: 3-5 short unbranded searches a person with the problem or need this category solves would type, in their words (e.g. "foot pain all day sneakers", "shoes for standing all day"). No brand names.\n- questions: 3-5 unbranded questions buyers in ${c.country} ask before buying in this category (e.g. "are wool sneakers good for summer").\n- needs: 5-12 lowercase words or short phrases that show a post talks about one of those problems or needs (e.g. "foot pain", "standing all day", "plantar fasciitis").`,
         schema: { type: 'object', properties: { problems: { type: 'array', items: { type: 'string' } }, questions: { type: 'array', items: { type: 'string' } }, needs: { type: 'array', items: { type: 'string' } } } } });
       f = r.json; runCost.cfgAi += r.usd || 0;
     } catch (e) { log.warn?.('[listen] indirect terms', slug, e.message); } }

@@ -14,9 +14,10 @@ import fs from 'node:fs';
 import { slugOf, moneyFmt } from './brand-pack.js';
 import { isFullAccess } from './auth.js'; // SquareUp's people and ADMIN_EMAILS
 import { skeletonSeed, seedFromProfile } from './seed-template.js';
-import { factsFromLedger, configFromProfile, laneProducts } from './derive.js';
+import { factsFromLedger, configFromProfile, laneProducts, marketConfig } from './derive.js';
 import { retiredSet, scrubRetired, allowedFrom } from './fact-gate.js';
 import { createCardsGen } from './cards-gen.js';
+import { marketFor, applyMarket, nameOf } from './market.js'; // the selling market, kept apart from the registered country
 import { realRows, privId } from './connectors/common.js'; // DUMMY: simulated account rows are never evidence
 import { healthFrom } from './dummy/health.js'; // DUMMY: simulated health rings
 import { isPlay, playDone, totalOf, numbersFor, healSeedNumbers } from './pack-numbers.js'; // one number, one source
@@ -457,7 +458,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   /* ---------- "Check what we read" ---------- */
   const SUMMARY = [
     ['name', 'Brand name', (p) => p.name], ['descriptor', 'What you are, in a line', (p) => p.descriptor || p.tagline], ['category', 'Category', (p) => p.category],
-    ['country', 'Main market (country code)', (p) => p.country], ['currency', 'Currency', (p) => p.currency],
+    ['country', 'Main selling market (country code)', (p) => p.country], ['currency', 'Currency', (p) => p.currency],
     ...[0, 1, 2, 3, 4].map((i) => [`product.${i}`, `Hero product ${i + 1}`, (p) => { const x = p.catalog?.products?.[i]; return x ? `${x.title} · ${x.priceLabel || x.price}` : ''; }]),
     ['rivals', 'Main rivals', (p) => (p.rivals || []).map((r) => r.name).join(', ')],
     ['founded', 'Founded', (p) => (typeof p.company?.founded === 'object' ? p.company?.founded?.v : p.company?.founded) || ''], ['founders', 'Founders', (p) => (p.company?.founders || []).map((x) => (typeof x === 'string' ? x : x?.name)).filter(Boolean).join(', ')],
@@ -486,6 +487,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       L.push({ key: key.startsWith('product.') ? `brand.confirmed.${key}` : ['country', 'currency', 'category'].includes(key) ? `market.${key}.confirmed` : `brand.${key}.confirmed`, label: `${key} (confirmed by the brand)`, v: val, layer: 'observed', src: 'Confirmed by the brand in Brew', at, method: 'brand-confirmed' });
     }
     await packs.put(slug, 'profile.json', p); await packs.put(slug, 'ledger.json', L);
+    if (edits.some((x) => x.key === 'country')) await marketCheck(slug).catch((e) => log.warn?.('[market] check', slug, e.message));
     await markConfirmed(slug); emit(slug, { type: 'confirmed', edits: edits.length });
     return { ok: true };
   }
@@ -498,7 +500,13 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   /* mend a saved read when the brand is opened: ads lookups that failed (or never found our own page) are run again,
      and the one-liner is written if Claude never wrote it. At most once a day per brand, never during a build. */
   const healing = new Set();
+  /* the selling market is worked out again first (free: no AI, no fetch), even where the paid repairs below are off */
   async function heal(slug) {
+    const mk = healing.has(slug) || blocked(slug) || st(slug).running || st(slug).checking || process.env.HEAL_OFF === '1' ? null : await marketCheck(slug).catch((e) => (log.warn?.('[market] heal', slug, e.message), null));
+    const r = await healRead(slug);
+    return mk ? ['market', ...(r || [])] : r;
+  }
+  async function healRead(slug) {
     if (healing.has(slug) || blocked(slug) || st(slug).running || st(slug).checking || process.env.AI_MOCK === '1' || process.env.HEAL_OFF === '1') return null;
     healing.add(slug);
     try {
@@ -538,7 +546,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         { key: 'name', label: 'Brand name', v: p.name || '', type: 'text', ...srcOf(L, ['brand.name']) },
         { key: 'descriptor', label: 'What you are, in one line', v: p.descriptor || p.tagline || '', type: 'text', ...srcOf(L, ['brand.descriptor', 'brand.tagline']) },
         { key: 'category', label: 'Category', v: p.category || '', type: 'text', ...srcOf(L, ['market.category']) },
-        { key: 'country', label: 'Main market', v: p.country || '', type: 'country', ...srcOf(L, ['market.country']) },
+        { key: 'country', label: 'Main selling market', v: p.country || '', type: 'country', ...srcOf(L, ['market.country']) },
         { key: 'currency', label: 'Currency', v: p.currency || '', type: 'currency', ...srcOf(L, ['market.currency']) }
       ],
       products: items,
@@ -607,6 +615,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     /* a product the brand removed stops being evidence: its price and list price leave the ledger (facts, brief, moves) */
     const gone = removedKeys(p.catalog.removed);
     await packs.put(slug, 'profile.json', p); await packs.put(slug, 'ledger.json', L.filter((e) => !gone(e)));
+    if (b.who?.country) await marketCheck(slug).catch((e) => log.warn?.('[market] check', slug, e.message)); /* the brand's own market: its moves are marked for the weekly rewrite */
     return { ok: true, notes, data: await checkData(slug) };
   }
 
@@ -980,6 +989,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       u.connected = { ...(u.connected || {}), [id]: on ? Date.now() : null };
     });
     emit(slug, { type: on ? 'connected' : 'disconnected', ids: [id], live: true });
+    /* orders by shipping country and visits by country say where the customers really are: the market follows them */
+    if (['shopify', 'ga4', 'google'].includes(id)) await marketCheck(slug).catch((e) => log.warn('[market] connected', slug, e.message));
     if (!pub) await hooks.connected?.(slug, id).catch((e) => log.warn('[facts] connected', e.message)); /* the fact sheet: connected accounts are the source of truth (facts-desk.js) */
     if (!pub && (changes.length || !on)) await teamView(slug).catch((e) => log.warn('[connect] team view', e.message)); /* the brief and profile follow every changed number */
     /* a team account read for the first time (not a resync, not a disconnect, never a simulated one): every move is rewritten with it */
@@ -1258,6 +1269,38 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     })().finally(() => pdfJobs.delete(key)));
     return pdfJobs.get(key);
   }
+  /* ---------- the selling market (market.js) ----------
+     Worked out again from what is saved: the read's signals (or its ledger, for older reads), the brand's own correction and the
+     connected accounts' orders and visits by country. No AI, no fetch. When the market moves (an Indian-registered store whose
+     orders go to the US), the profile, ledger, config and seed follow, and every move is flagged for the weekly rewrite: the
+     week's pot pays for it (rewrite-pot.js), never an extra run. Returns { was, now, moved } or null when nothing changed. */
+  async function marketCheck(slug) {
+    if (blocked(slug) || st(slug).running) return null;
+    const p = await packs.getJSON(slug, 'profile.json'); if (!p?.host || !p.slug) return null;
+    const L = await packs.getJSON(slug, 'ledger.json', []) || [];
+    const rows = [...realRows(await packs.getJSON(slug, 'connected-ledger.json', [])), ...realRows(await packs.getJSON(slug, 'private/connected-ledger.json', []))];
+    const { market: m, changed } = marketFor(p, L, rows); if (!changed || !m.primary) return null;
+    const was = p.market?.primary || p.country || null, moved = !!was && was !== m.primary;
+    applyMarket(p, m);
+    const at = new Date().toISOString().slice(0, 10), put = (e) => { const i = L.findIndex((x) => x.key === e.key); if (i >= 0) L[i] = { ...L[i], ...e }; else L.push(e); };
+    put({ key: 'market.country', label: 'Main selling market (where customers are)', v: m.primary, layer: 'inferred', method: m.by === 'site' ? 'crawl' : m.by === 'brand' ? 'brand-confirmed' : `account:${m.by === 'orders' ? 'shopify' : 'ga4'}`, conf: m.conf, at,
+      note: m.why + (m.others?.length ? `; other markets: ${m.others.join(', ')}` : '') + (L.find((x) => x.key === 'market.country')?.note?.match(/; hreflang: [^;]+/)?.[0] || '') });
+    if (m.registered && m.registered !== m.primary) put({ key: 'market.registered', label: 'Registered in (not the selling market)', v: m.registered, layer: 'inferred', method: 'crawl', conf: 'high', at, note: `The store's address is in ${nameOf(m.registered)}; ${m.why}` });
+    else { const i = L.findIndex((x) => x.key === 'market.registered'); if (i >= 0) L.splice(i, 1); }
+    const sc = L.find((x) => x.key === 'shop.country'); if (sc) sc.label = 'Country the store is registered in (Shopify /meta.json; not where it sells)';
+    await packs.put(slug, 'profile.json', p); await packs.put(slug, 'ledger.json', L);
+    const cfg = await packs.getJSON(slug, 'config.json', null); if (cfg) await packs.put(slug, 'config.json', { ...cfg, ...marketConfig(p) }); /* country, locale, holidays, search location */
+    packs.drop?.(slug); await onPack(slug);
+    if (moved) {
+      const moves = await packs.getJSON(slug, 'moves.json', {}), ok = await rewritable(moves), ns = Object.keys(moves).map(Number).filter(ok);
+      const why = `Written for shoppers in ${nameOf(was)}, but ${m.why}. Rewritten for ${nameOf(m.primary)}.`;
+      if (ns.length) await flagStale(slug, ns.map((n) => ({ n, priority: 'high', via: 'market', real: true, why, changes: [`Selling market: ${was} → ${m.primary}`] })));
+      emit(slug, { type: 'market', was, now: m.primary, flagged: ns.length });
+      log.log?.(`[market] ${slug}: ${was} → ${m.primary} (${m.by}); ${ns.length} moves flagged for the weekly rewrite`);
+    }
+    return { was, now: m.primary, moved, by: m.by };
+  }
+
   /* ---------- for the fact sheet (facts-desk.js) ---------- */
   const hooks = {};
   const republish = async (slug) => { const p = await packs.getJSON(slug, 'profile.json'); if (!p) return; normalizeProfile(p); await publishBase(slug, p, await packs.getJSON(slug, 'ledger.json', []), await packs.getJSON(slug, 'findings.json')); };
@@ -1266,5 +1309,5 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (o?.stockWhy) { u.stale[x.n] = { ...o, was: { priority: x.priority, why: x.why, via: x.via }, why: [...Object.values(o.stockWhy), x.why].join(' '), changes: [...new Set([...(o.changes || []), ...(x.changes || [])])].slice(0, 6) }; continue; } /* an out-of-stock mark stays on top */
     u.stale[x.n] = { ...x, at: Date.now(), changes: [...new Set([...(x.changes || []), ...(o?.changes || [])])].slice(0, 6), ...(o && !o.private ? { private: false } : {}) }; } });
   const facts = { pot: potInfo, potSpend, estMove, republish, flagStale, readProduct: async (slug, url) => readProduct(slug, url, (await packs.getJSON(slug, 'profile.json', {})) || {}), readRival, busy: (slug) => !!(st(slug).running || st(slug).checking), setHooks: (h) => Object.assign(hooks, h) };
-  return { ...facts, teamStatics, settleConnect, readLive, heal, healPdfs, pdfFor, pdfOn, connected, liveConnected, checkUpdates, rewrite, updates, setAuto, signal, seen, buildInfo, retry, goPro, checkData, applyCheck, liveWeekly, stockSignal, peek: (slug) => st(slug).status, addEmail, start, resume, resumeAll, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
+  return { ...facts, marketCheck, teamStatics, settleConnect, readLive, heal, healPdfs, pdfFor, pdfOn, connected, liveConnected, checkUpdates, rewrite, updates, setAuto, signal, seen, buildInfo, retry, goPro, checkData, applyCheck, liveWeekly, stockSignal, peek: (slug) => st(slug).status, addEmail, start, resume, resumeAll, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
 }

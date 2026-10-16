@@ -26,6 +26,12 @@ export function factsFromLedger(ledger = [], { host } = {}) {
   return F;
 }
 
+/* the config fields that follow the selling market (market.js): a market that moves patches only these */
+export function marketConfig(p = {}) {
+  const cc = (p.country || 'US').toUpperCase();
+  return { country: cc, countryName: CNAME[cc] || cc, markets: (p.markets || [cc]).filter(Boolean), registeredCountry: p.registeredCountry || null, locale: LOCALE[cc] || 'en-US',
+    tzOffsetH: (TZ[cc] || [0])[0], timezone: (TZ[cc] || [0, 'UTC'])[1], locationCode: LOC[cc] || 2840, festival: nextFestival(cc) };
+}
 export function configFromProfile(p, extra = {}) {
   const cc = (p.country || 'US').toUpperCase(), cur = (p.currency || (cc === 'IN' ? 'INR' : cc === 'GB' ? 'GBP' : 'USD')).toUpperCase();
   const cat = [p.category, p.subcategory].filter(Boolean).join(', ') || 'consumer products';
@@ -35,7 +41,7 @@ export function configFromProfile(p, extra = {}) {
   const terms = (p.search?.terms || []).filter(Boolean);
   const kind = catKind(cat);
   return {
-    country: cc, countryName: CNAME[cc] || cc, currency: cur, symbol: SYM[cur] || '', locale: LOCALE[cc] || 'en-US',
+    country: cc, countryName: CNAME[cc] || cc, markets: (p.markets || [cc]).filter(Boolean), registeredCountry: p.registeredCountry || null, currency: cur, symbol: SYM[cur] || '', locale: LOCALE[cc] || 'en-US',
     tzOffsetH: (TZ[cc] || [0])[0], timezone: (TZ[cc] || [0, 'UTC'])[1], locationCode: LOC[cc] || 2840, lang: 'en',
     category: cat, about: `a ${p.category || 'consumer'} brand selling ${products.slice(0, 3).map((x) => x.title).join(', ') || 'online'}`,
     product: { noun: extra.noun || 'product', style: `Premium ${p.category || 'D2C'} product ad photography`, avoid: kind === 'beauty' || kind === 'health' ? 'No text, no before/after, no body parts shown as results.' : 'No text, no invented claims.', look: `Clean, premium ${p.category || 'D2C'} look, no before/after.` },

@@ -62,7 +62,7 @@ export function createCalendar({ packs, ai, log = console, today = () => new Dat
   // where the brand sells: profile/config country, shipping countries, GA4 top countries when stored
   async function marketsOf(slug) {
     const [p, c, g] = await Promise.all([packs.getJSON(slug, 'profile.json', {}), packs.getJSON(slug, 'config.json', {}), packs.getJSON(slug, 'ga4/countries.json', null)]);
-    const xs = [p?.country, c?.country, ...(c?.markets || []), ...(p?.shipping?.countries || c?.shipping?.countries || []), ...((g?.rows || g || []).slice?.(0, 3) || []).filter((r) => (r.share ?? 1) >= 0.1).map((r) => r.code || r.country)];
+    const xs = [p?.country, ...(p?.markets || []), c?.country, ...(c?.markets || []), ...(p?.shipping?.countries || c?.shipping?.countries || []), ...((g?.rows || g || []).slice?.(0, 3) || []).filter((r) => (r.share ?? 1) >= 0.1).map((r) => r.code || r.country)];
     const out = [...new Set(xs.filter(Boolean).map((x) => String(x).toUpperCase().slice(0, 2)))];
     return { markets: out.length ? out : ['US'], category: [p?.category, p?.subcategory, c?.category].filter(Boolean).join(' / ') || c?.product?.noun || '', name: p?.name || c?.name || slug };
   }
