@@ -102,7 +102,7 @@ test('impact: the AI’s unbacked numbers become assumptions; a failed AI is sai
   assert.match(gaps.gaps[0], /couldn’t be read .* this time; the next refresh tries again/);
 });
 
-test('the chips stay read-only: no account writes, no posted wording; guests may use them, demo visitors may not remake', () => {
+test('the chips stay read-only: no account writes, no posted wording; demo visitors may not remake', () => {
   const src = (f) => fs.readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
   const pk = src('publish-pack.js'), im = src('impact.js'), rx = src('remix.js'), fs0 = src('feed-service.js');
   for (const s of [pk, im]) { assert.doesNotMatch(s, /\bfetch\(|treg|connectors\/(meta|shopify|google|klaviyo)/, 'the pack and impact call no outside service'); assert.doesNotMatch(s, /Posted to/); }
@@ -110,8 +110,12 @@ test('the chips stay read-only: no account writes, no posted wording; guests may
   assert.doesNotMatch(block, /Posted to|\.publish\(|graph\.facebook|admin\/api/);
   const DEMO_OK = new RegExp(/const DEMO_OK = \/(.+)\/;/.exec(fs0)[1]);
   assert.ok(!DEMO_OK.test('/api/changes/ch_1/remake'), 'a demo visitor can’t make media');
-  const lit = '/^\\/api\\/changes\\/([^/]+)(\\/|$)/'; assert.ok(fs0.includes(lit), 'the guest rule for a jam’s change is where it was'); /* guestOk: a jam guest reaches its own change’s routes */
-  assert.ok(new RegExp(lit.slice(1, -1)).test('/api/changes/ch_1/remake') && new RegExp(lit.slice(1, -1)).test('/api/changes/ch_1/pack'), 'a jam guest reaches its own change’s chips');
+});
+test('a jam guest reaches its own change’s chips, never discard or restore', async () => {
+  const { guestAllows } = await import('../feed-service.js'), g = { wids: ['w1'], changes: { ch_1: { workId: 'w1' } } };
+  for (const r of ['pack', 'impact', 'remake']) assert.ok(guestAllows(`/api/changes/ch_1/${r}`, g), `a guest may use ${r}`);
+  for (const r of ['discard', 'restore']) assert.ok(!guestAllows(`/api/changes/ch_1/${r}`, g), `a guest may not ${r}`);
+  assert.ok(!guestAllows('/api/changes/ch_2/pack', g), 'not another jam’s change');
 });
 
 /* ---------- on the server (AI mock; MEDIA_FAKE makes media with ffmpeg and Chromium, free) ---------- */
