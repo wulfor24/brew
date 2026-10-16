@@ -108,8 +108,8 @@ function guard(busyJson, { lastMinAgo = 60, force = '0', wait = '0' } = {}) {
 }
 test('deploy guard: goes when nothing is running', () => { const r = guard('{"busy":0}'); assert.equal(r.ok, true); assert.match(r.out, /no paid work/); });
 test('deploy guard: refuses while paid work runs', () => { const r = guard('{"busy":2,"by":{"rewrite":1,"drafts":1}}'); assert.equal(r.ok, false); assert.match(r.out, /still doing paid work/); });
-test('deploy guard: refuses a deploy within the gap', () => { const r = guard('{"busy":0}', { lastMinAgo: 5 }); assert.equal(r.ok, false); assert.match(r.out, /deploy at most every 20 minutes/); });
-test('deploy guard: FORCE=1 skips both checks', () => { const r = guard('{"busy":3}', { lastMinAgo: 1, force: '1' }); assert.equal(r.ok, true); });
+test('deploy guard: a recent deploy does not block the next one', () => { const r = guard('{"busy":0}', { lastMinAgo: 1 }); assert.equal(r.ok, true); });
+test('deploy guard: FORCE=1 skips the paid-work check', () => { const r = guard('{"busy":3}', { lastMinAgo: 1, force: '1' }); assert.equal(r.ok, true); });
 test('deploy guard: both deploy scripts use it', () => {
   for (const f of ['deploy.sh', 'tools/deploy-demo.sh']) assert.match(fs.readFileSync(path.join(ROOT, f), 'utf8'), /deploy_guard (shopos-feed|brew-demo) https:\/\//);
 });
