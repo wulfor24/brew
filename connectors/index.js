@@ -13,7 +13,7 @@ import google, { ga4 } from './google.js';
 import klaviyo from './klaviyo.js';
 import reviews from './reviews.js';
 import market from './market.js';
-import slack, { api as slackApi, why as slackWhy } from './slack.js';
+import slack, { api as slackApi, why as slackWhy, join as slackJoin } from './slack.js';
 import { createSim, SIM_IDS, NAME } from './sim.js';
 import { createVault } from '../vault.js';
 import { DEMO, sk } from '../demo-mode.js';
@@ -287,9 +287,12 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     const c = await vault.load(slug, 'slack'); return c?.token ? c : null;
   }
   /* post to the brand's channel (or another it picked, or a thread): { ts, channel, team } or { error } in plain words */
+  const joined = new Set();
   async function slackPost(slug, { channel, text, blocks, thread_ts, update } = {}) {
     const c = await slackOf(slug); if (!c) return { error: 'Connect Slack first.', connect: true };
     const ch = channel || c.channel; if (!ch) return { error: 'Pick a Slack channel: connect Slack again and choose one.' };
+    /* a top-level post goes to a channel Brew has joined, so the thread's replies come back (joined once per channel) */
+    if (!thread_ts && !update && !joined.has(`${c.team}:${ch}`)) { await slackJoin(c.token, ch); joined.add(`${c.team}:${ch}`); }
     try { const r = await slackApi(c.token, update ? 'chat.update' : 'chat.postMessage', { channel: ch, text: String(text || '').slice(0, 39000), ...(blocks ? { blocks } : {}), ...(thread_ts ? { thread_ts } : {}), ...(update ? { ts: update } : {}), unfurl_links: false, unfurl_media: false });
       return { ts: r.ts, channel: r.channel || ch, team: c.team, channelName: ch === c.channel ? c.channelName : null };
     } catch (e) { log.warn('[slack] post', slug, e.message); if (['invalid_auth', 'token_revoked', 'account_inactive'].includes(e.slack)) await editC(slug, (x) => { if (x.slack) x.slack = { ...x.slack, state: 'error', error: slackWhy(e), errorAt: Date.now() }; }).then(() => cache.delete(sk(slug)));

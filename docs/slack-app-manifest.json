@@ -16,6 +16,7 @@
         "chat:write",
         "chat:write.public",
         "incoming-webhook",
+        "channels:join",
         "channels:read",
         "groups:read",
         "channels:history",

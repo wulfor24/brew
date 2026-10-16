@@ -250,11 +250,15 @@
   }
   /* disconnecting is for the whole team: the same box asks once, then reads nothing more */
   function unlinkBox(id) {
-    A().modal(shell(box({ id, title: `Disconnect ${esc(nm(id))}?`, line: `For everyone on ${poss()} team.`, body: kick('What happens') + ticks(['Cards stop using its live numbers', 'You can connect it again any time']), ghost: ghostBtn('Keep it'), go: goBtn('Disconnect', 'data-unlink-go') })), (m) => {
+    const what = id === 'slack' ? ['Brew stops posting to Slack', 'Replies in Brew’s threads stop coming back to the jams', 'You can connect it again any time']
+      : ['Cards stop using its live numbers', 'You can connect it again any time'];
+    A().modal(shell(box({ id, title: `Disconnect ${esc(nm(id))}?`, line: `For everyone on ${poss()} team.`, body: kick('What happens') + ticks(what), ghost: ghostBtn('Keep it'), go: goBtn('Disconnect', 'data-unlink-go') })), (m) => {
       const go = m.querySelector('[data-unlink-go]');
       go.onclick = async () => { go.disabled = true; go.innerHTML = '<span class="spin"></span>Disconnecting…';
         const r = await post(`/api/brands/${slug}/connect/${id}`, { action: 'disconnect' });
-        if (r.ok) { A().S.conn[id] = false; A().save(); location.reload(); return; }
+        /* stay on the page you were on: the connectors redraw in place, no reload (a reload landed on the feed) */
+        if (r.ok) { delete L.conns[id]; A().S.conn[id] = false; A().save(); A().closeModal?.(); A().toast?.(`${ic('check', 's16')}${esc(nm(id))} disconnected`);
+          refreshLive().then(() => A().refreshAfterConnect?.()).catch(() => {}); return; }
         go.disabled = false; go.textContent = 'Try again'; setStat(m.querySelector('.cxb'), stat(esc(r.error || 'That didn’t go through. Try again.'), 'bad', 'info')); };
     });
   }

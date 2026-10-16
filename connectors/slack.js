@@ -8,7 +8,7 @@ import crypto from 'node:crypto';
 import { form } from './common.js';
 
 const app = () => ({ id: process.env.SLACK_CLIENT_ID || '', secret: process.env.SLACK_CLIENT_SECRET || '', signing: process.env.SLACK_SIGNING_SECRET || '' });
-export const SCOPES = 'chat:write,chat:write.public,incoming-webhook,channels:read,groups:read,channels:history,groups:history,users:read,users:read.email,team:read';
+export const SCOPES = 'chat:write,chat:write.public,incoming-webhook,channels:join,channels:read,groups:read,channels:history,groups:history,users:read,users:read.email,team:read';
 
 /* every Slack Web API call: Slack answers 200 with ok:false on errors, so the error is read from the body */
 export async function api(token, method, body = {}, { get = false } = {}) {
@@ -32,6 +32,9 @@ const WHY = { not_in_channel: 'Brew isn’t in that channel. Invite @Brew to it,
   is_archived: 'That channel is archived.', invalid_auth: 'Slack signed Brew out. Connect Slack again.', token_revoked: 'Slack signed Brew out. Connect Slack again.', account_inactive: 'Slack signed Brew out. Connect Slack again.' };
 export const why = (e) => WHY[e?.slack] || e?.message || 'Slack didn’t take that. Try again.';
 
+/* join a public channel (channels:join); for a private one the team types /invite @Brew in it */
+export const join = (token, channel) => api(token, 'conversations.join', { channel }).then(() => true).catch(() => false);
+
 export default {
   id: 'slack', name: 'Slack', modes: ['oauth'], every: 24,
   ready: () => true,
@@ -44,6 +47,8 @@ export default {
     const j = await r.json().catch(() => ({}));
     if (!j.ok || !j.access_token) throw new Error(`Slack sign-in failed: ${j.error || r.status}`);
     const hook = j.incoming_webhook || {};
+    /* the bot joins the channel picked on Slack's screen: Slack only sends a bot the replies from channels it is in */
+    if (hook.channel_id) await join(j.access_token, hook.channel_id);
     return { token: j.access_token, bot: j.bot_user_id || null, app: j.app_id || null, team: j.team?.id || null, teamName: j.team?.name || null,
       channel: hook.channel_id || null, channelName: hook.channel ? (hook.channel.startsWith('#') ? hook.channel : `#${hook.channel}`) : null, by: j.authed_user?.id || null };
   },
