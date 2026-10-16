@@ -421,7 +421,8 @@
     // the rivals step shows what the Ad Library research really found (research.js), not a canned line
     const res = await fetch('/api/research').then((r) => r.json()).catch(() => null);
     const ra = !GEN && res?.ads?.items?.length ? res.ads : null; // a generated brand's reader already shows its real ads
-    const steps = ra ? B.steps.map((x) => x.k === 'ads' ? { ...x, done: `${ra.brands.length} rivals: ${ra.brands.reduce((n, b) => n + (b.live || 0), 0).toLocaleString('en-IN')} live ads` } : x) : B.steps;
+    /* the ads step quotes the one count (pack-numbers.js, window.BREW_NUMBERS) when the brand has it: the same rivals and numbers as the check page */
+    const NB = window.BREW_NUMBERS, steps = ra && !NB?.rivalAds ? B.steps.map((x) => x.k === 'ads' ? { ...x, done: `${ra.brands.length} rivals: ${ra.brands.reduce((n, b) => n + (b.live || 0), 0).toLocaleString('en-IN')} live ads` } : x) : B.steps;
     const cards = ra ? B.scrape.map((c) => c.kind === 'ad' ? { ...c, src: `Meta Ad Library · ${B.config?.countryName || 'live'}`, img: ra.items[0].poster, copy: ra.items.slice(0, 3).map((a) => `${a.brand}: ${a.hook}`).join(' · '), foot: `${ra.items[0].brand}'s top ad has run ${ra.items[0].days} days in ${ra.items[0].versions} versions.` } : c) : B.scrape;
     root.innerHTML = `
       <main class="screen setup">
@@ -3750,7 +3751,7 @@
     RX.viewing = null; RX.resetScroll = true; paintStudio();
     const r = await tapi('POST', `/api/changes/${ch.id}/${path}`, body || { message: msg });
     RX.sending = false; if (r.error) { toast(esc(r.error)); return paintStudio(); }
-    RX.ch = r.change; putCh(r.change); RX.resetScroll = true; if (Array.isArray(body?.v) || path === 'variants' || path === 'plan') RX.tab = 'iterate'; if (path === 'plan') pullWork(true); paintStudio(); showLearned(r.learned); syncBrief(r.change, msg); if (r.pickPhotos) openPhotos();
+    RX.ch = r.change; putCh(r.change); RX.resetScroll = true; if (Array.isArray(body?.v) || path === 'variants' || path === 'plan') RX.tab = 'iterate'; if (path === 'plan') pullWork(true); paintStudio(); showLearned(r.learned); if (!r.answered) syncBrief(r.change, msg); /* a question changed nothing: no brief rewrite */ if (r.pickPhotos) openPhotos();
   };
   /* a post for X, LinkedIn, Reddit, Quora, a Facebook group or Pinterest: Brew copies it and opens the exact place; you post it.
      Nothing is posted into a community on anyone's behalf */
@@ -4010,6 +4011,7 @@
         <article class="rd-art">${liveIdx}${secs.map((x, i) => `<section id="${sid(i)}"><h2>${esc(x.h)}</h2>${legacy ? (x.paras || []).map((p) => `<p>${t(p)}</p>`).join('') : (x.blocks || []).map(block).join('')}</section>`).join('')}
           ${(m.toConfirm || []).length ? `<section class="rd-tc"><h2>To confirm with ${esc(B.brand.name)}</h2><ul>${m.toConfirm.map((x) => `<li>${t(x)}</li>`).join('')}</ul></section>` : ''}
           ${(m.sources || []).length && !hasSrc ? `<section id="rd-src" class="rd-src"><h2>Sources</h2><ol>${m.sources.map((x) => `<li>${x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.label || x.url)}</a>` : esc(x.label)}${x.at ? `<time>${esc(x.at)}</time>` : ''}</li>`).join('')}</ol></section>` : ''}
+          ${hasSrc && (m.meta?.cites || []).some((c) => c.kind === 'ledger' || c.kind === 'signal') ? `<section class="rd-src"><h2>Evidence lines</h2><ol>${m.meta.cites.filter((c) => c.kind === 'ledger' || c.kind === 'signal').map((c) => `<li>${c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(`${c.label}: ${c.v}`)}</a>` : esc(`${c.label}: ${c.v}${c.src ? ` (${c.src})` : ''}`)}${c.at ? `<time>${esc(c.at)}</time>` : ''}</li>`).join('')}</ol></section>` : ''}
           ${feedCards.length ? `<section class="rd-feed"><h2>In your feed from this move</h2><div>${feedCards.map((p) => `<button data-opencard="${esc(p.id)}">${face(p.agent)}<span><b>${esc(p.title)}</b><small>${esc(p.cta?.label || 'Open')}</small></span>${ic('right', 's16')}</button>`).join('')}</div></section>` : ''}
           <nav class="rd-next">${prev != null ? `<button data-goto="${prev}"><small>Previous</small><b>Move ${String(prev).padStart(2, '0')} · ${esc(byN[prev]?.title || '')}</b></button>` : '<span></span>'}${next != null ? `<button data-goto="${next}" class="is-next"><small>Next</small><b>Move ${String(next).padStart(2, '0')} · ${esc(byN[next]?.title || '')}</b></button>` : ''}</nav>
         </article></div></div>`;
@@ -4053,7 +4055,7 @@
   const fsWhen = (s) => { if (!s) return ''; const t = Date.parse(s); return Number.isFinite(t) ? (String(s).length > 10 ? fmtWhen(t) : fmtDay(t)) : esc(s); };
   const paintFacts = (D) => {
     const el = $('#fs'); if (!el) return;
-    const srcOf = (r) => r.tool ? `<span class="fs-src is-conn">${ic('plug', 's14')}From ${esc(r.tool)}, synced ${fsWhen(r.syncedAt)}</span>` : r.src ? `${r.url ? `<a class="fs-src" href="${esc(r.url)}" target="_blank" rel="noopener"` : '<span class="fs-src"'} title="${esc(srcShort(r.src))}${r.at ? ` · read ${esc(String(fsWhen(r.at)).replace(/<[^>]+>/g, ''))}` : ''}">${esc(srcShort(r.src).replace(/^(?:https?:\/\/)?(?:www\.)?/, ''))}${r.url ? '</a>' : '</span>'}` : '<span class="fs-src is-none">No source</span>';
+    const srcOf = (r) => r.tool ? `<span class="fs-src is-conn${r.stale ? ' is-stale' : ''}">${ic('plug', 's14')}From ${esc(r.tool)}, synced ${fsWhen(r.syncedAt)}${r.stale ? ` · stale${r.staleWhy ? ` (${esc(r.staleWhy)})` : ''}: not used until it reads again` : ''}</span>` : r.src ? `${r.url ? `<a class="fs-src" href="${esc(r.url)}" target="_blank" rel="noopener"` : '<span class="fs-src"'} title="${esc(srcShort(r.src))}${r.at ? ` · read ${esc(String(fsWhen(r.at)).replace(/<[^>]+>/g, ''))}` : ''}">${esc(srcShort(r.src).replace(/^(?:https?:\/\/)?(?:www\.)?/, ''))}${r.url ? '</a>' : '</span>'}` : '<span class="fs-src is-none">No source</span>';
     const hint = (r) => r.kind === 'price' ? 'Paste the product page link' : r.kind === 'rival' ? 'Paste the rival’s website' : r.kind === 'instagram' ? 'Paste your Instagram profile link' : r.kind === 'adpage' ? 'Paste your Facebook page link' : r.kind === 'reviews' ? 'Paste the page where your reviews live' : 'Paste a page that shows the right value';
     // labels keep what a person would say; where it was read already shows on the source line
     const lab = (t) => String(t || '').replace(/\s*\((?:shopify\s*)?\/[^)]*\)/i, '').replace(/\s*\([^)]*\.(?:json|xml)\)/i, '');

@@ -33,10 +33,11 @@ export function connectedFacts(entries = [], publicFacts = {}) {
   for (const e of entries || []) {
     if (!e || simulated(e) || e.v == null || e.v === '') continue; // DUMMY: simulated accounts are never the source of truth
     const tool = toolOf(e.key); if (!tool) continue;
-    const over = (PRECEDENCE[e.key] || []).map((k) => byKey.get(k)).find(Boolean);
+    /* a stale account (it kept failing, or its last read is too old) no longer beats the site's number: shown apart, marked */
+    const over = e.stale ? null : (PRECEDENCE[e.key] || []).map((k) => byKey.get(k)).find(Boolean);
     const k = over ? over[0] : keyOf(e.key);
     F[k] = { v: String(e.v), ...(Number.isFinite(e.n) ? { n: e.n } : {}), label: over ? over[1].label : e.label || e.key, src: `${TOOL[tool]} (connected)`, account: e.src || null, at: e.at, kind: 'connected', connected: tool, key: e.key,
-      ...(over ? { was: { key: over[1].key || over[0], v: over[1].v, src: over[1].src, at: over[1].at } } : {}) };
+      ...(over ? { was: { key: over[1].key || over[0], v: over[1].v, src: over[1].src, at: over[1].at } } : {}), ...(e.stale ? { stale: true, staleWhy: e.staleWhy || null } : {}) };
   }
   return F;
 }
@@ -132,7 +133,7 @@ export function createFactsDesk({ packs, builder, ai = null, onPack = async () =
     const row = ([k, f]) => { const e = lk.get(k) || {}, url = f.url || e.url || (f.src && /^[a-z0-9.-]+\.[a-z]{2,}\//i.test(f.src) ? 'https://' + f.src : /^https?:/.test(f.src || '') ? f.src : null);
       const kind = f.connected ? 'connected' : /^price\.|^mrp\./.test(f.key || '') ? 'price' : /^rival\./.test(f.key || '') || f.kind === 'competitor' ? 'rival' : /^(social|socials)\.instagram/.test(f.key || '') ? 'instagram' : /^ads\.own/.test(f.key || '') ? 'adpage' : /^reviews?\./.test(f.key || '') ? 'reviews' : 'doc';
       return { k, key: f.key || k, label: f.label, v: f.v, src: f.src || null, url, at: String(f.at || '').slice(0, 16), group: groupOf(k, f, s.p.rivalsRe), kind, by: /brand|added by the brand/.test(e.method || '') ? 'team' : f.connected ? 'connected' : /daily check/.test(e.method || '') ? 'daily' : 'read',
-        ...(f.connected ? { tool: TOOL[f.connected], syncedAt: f.at, was: f.was || null } : {}), canRemove: canEdit && !f.connected && f.kind !== 'derived', canLink: canEdit && !f.connected && f.kind !== 'derived' }; };
+        ...(f.connected ? { tool: TOOL[f.connected], syncedAt: f.at, was: f.was || null, ...(f.stale ? { stale: true, staleWhy: f.staleWhy || null } : {}) } : {}), canRemove: canEdit && !f.connected && f.kind !== 'derived', canLink: canEdit && !f.connected && f.kind !== 'derived' }; };
     const rows = Object.entries(s.merged).filter(([, f]) => SHOWN(f)).map(row);
     const groups = GROUPS.map(([k, name]) => ({ k, name, rows: rows.filter((r) => r.group === k) })).filter((g) => g.rows.length);
     const anon = (e) => (member || !/@/.test(e.by || '') ? e : { ...e, by: 'The team' }); /* a visitor never sees who on the team made a change */
@@ -285,7 +286,7 @@ export function createFactsDesk({ packs, builder, ai = null, onPack = async () =
     return { facts, flagged };
   }
   // the numbers a member's cards may use: the public sheet plus the connected facts (never demo accounts)
-  async function memberFacts(slug) { const pf = await packs.getJSON(slug, 'private/facts.json', null); return pf?.facts || {}; }
+  async function memberFacts(slug) { const pf = await packs.getJSON(slug, 'private/facts.json', null); return Object.fromEntries(Object.entries(pf?.facts || {}).filter(([, f]) => !f.stale)); } /* a stale account's numbers are not for cards */
 
   /* ---------- schedule: once a day per brand opened in the last 7 days ---------- */
   const T = { busy: false, timers: [] };

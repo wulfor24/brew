@@ -11,6 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createFamilies, timingLine } from './measure-families.js';
+import { dateCounts } from './pack-numbers.js'; // counts that move day to day say the day they were read
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
@@ -36,6 +37,7 @@ const CONTRACT = `
 
 - The kicker is given in the task, with the real number of moves in this brand's playbook. Do not write "of 50" or "fifty moves".
 - Every claim about the brand, its buyers, its rivals or its market cites one evidence line: a ledger key, a listening line (listen.*), a market pulse line (pulse.*), a video read (video.*) or a calendar line (cal.*). Say where it comes from in plain words in the text ("113 posts heard on Reddit and YouTube since September", "the forecast for Delhi read 12 Oct") and list every key you used in factsUsed. Numbers come only from those lines or from derived arithmetic on them.
+- Counts that change day to day (live ads, products, reviews, ratings, followers) are given with the day of the ledger line they come from: "664 live ads on 14 Oct", never a bare "664 live ads". A newer count on another screen then reads as newer, not as a contradiction.
 - Never name the data vendors or tools behind a line (no API, scraper or provider names). Say what was read and where: "Reddit threads", "Amazon reviews", "Google Shopping results", "the weekly AI answers check".
 - Quote real people only from listen quote lines (keys ending .q1, .q2 … or listen.asked.*), word for word, with the link from that line and the platform and date. Never invent, merge or tidy a quote. Anything else in quotation marks is labelled as our draft copy or a dramatised example.
 - Counts from listening are given with their window and split (e.g. "113 mentions: 42 positive, 8 negative, 63 neutral; 2 this week vs 3 the week before"). Do not turn a count of mentions into a share of customers.
@@ -150,6 +152,49 @@ export function scanNumbers(move, allowed) {
   for (const [k, v] of [['stat', move.stat]]) for (const n of numbersIn(v)) if (!allowed.has(n) && !/target/i.test(move.statLabel || '')) issues.push({ at: k, field: k, raw: n.raw, sentence: `${move.stat} / ${move.statLabel}`, why: 'cover stat not backed' });
   return issues;
 }
+
+// ---------- dates and citations ----------
+/* every count that moves day to day says the day it was read ("664 live ads on 14 Oct"), so a newer count elsewhere reads as newer */
+export function dateMove(move, numbers) {
+  if (!move || !numbers) return move;
+  for (const x of walk(move)) { if (x.kind === 'sources' || typeof x.text !== 'string') continue; const t = dateCounts(x.text, numbers); if (t !== x.text) { const [, i, j] = x.at.match(/s(\d+)\.b(\d+)/) || []; const b = move.sections?.[i]?.blocks?.[j]; if (b) setField(b, x.field, t); } }
+  for (const k of ['gives', 'live']) if (typeof move[k] === 'string') move[k] = dateCounts(move[k], numbers);
+  return move;
+}
+
+/* a move's citations: [{ kind: 'ledger' | 'signal' | 'source' | 'web', key?, label, v?, src?, url?, at? }]. The ledger lines it
+   names in factsUsed, then the lines whose numbers its text quotes (so a move that forgot factsUsed still cites), then the
+   sources it lists, then the search results it used (a URL it lists or a new fact rests on). Kept in meta.cites; the
+   sources list gets the evidence lines, so the move page and the PDF show them. */
+export function citesFor(move, ledger = [], searched = []) {
+  const L = (ledger || []).filter((e) => e?.key), byKey = new Map(L.map((e) => [e.key, e])), keys = [];
+  const take = (k) => { if (byKey.has(k) && !keys.includes(k)) keys.push(k); };
+  for (const k of move.factsUsed || []) take(String(k).trim());
+  const index = L.map((e) => ({ e, vs: [...new Set([...(e.n != null && isFinite(e.n) ? [+e.n] : []), ...numbersIn(e.v).map((x) => x.v), ...rawNums(e.v)])].filter((v) => v >= 10 || !Number.isInteger(v)) }));
+  for (const x of walk(move)) {
+    if (x.kind === 'sources') continue;
+    /* the typed numbers (₹, %, counts), and any bare number of 100 or more ("664 live ads"): small bare ones (30 days) match too much */
+    for (const n of [...numbersIn(x.text), ...rawNums(x.text).filter((v) => v >= 100).map((v) => ({ v, scaled: null }))]) { if (!(n.v >= 10 || !Number.isInteger(n.v))) continue; index.filter((r) => r.vs.some((v) => close(v, n.v) || (n.scaled != null && close(v, n.scaled)))).slice(0, 2).forEach((r) => take(r.e.key)); }
+  }
+  for (const n of numbersIn(move.stat || '')) index.filter((r) => r.vs.some((y) => close(y, n.v))).slice(0, 1).forEach((r) => take(r.e.key));
+  const out = keys.slice(0, 60).map((k) => { const e = byKey.get(k); return { kind: e.signal ? 'signal' : 'ledger', key: k, label: e.label || k, v: e.v, src: e.src || null, url: e.url || null, at: e.at ? String(e.at).slice(0, 10) : null }; });
+  const seen = new Set(out.map((c) => c.url).filter(Boolean));
+  for (const s0 of move.sources || []) { const url = s0?.url || null; if (url && seen.has(url)) continue; if (url) seen.add(url); if (s0?.label || url) out.push({ kind: 'source', label: s0.label || url, url, at: s0.at || null }); }
+  const used = new Set([...(move.sources || []).map((x) => x?.url), ...(move.newFacts || []).map((f) => f?.url)].filter(Boolean));
+  for (const c of searched || []) if (c?.url && used.has(c.url) && !out.some((x) => x.kind === 'web' && x.url === c.url)) out.push({ kind: 'web', label: c.title || c.url, url: c.url, at: c.age || null });
+  return out;
+}
+export function citeMove(move, ledger) {
+  if (!move || move.meta?.mock) return move;
+  move.meta ||= {};
+  move.meta.cites = citesFor(move, ledger, move.meta.searched || []);
+  /* the sources list carries the evidence lines too (label, where it was read, the day), so every renderer shows them */
+  const have = new Set((move.sources || []).map((x) => x?.key || x?.url || x?.label));
+  move.sources = [...(move.sources || []), ...move.meta.cites.filter((c) => (c.kind === 'ledger' || c.kind === 'signal') && !have.has(c.key) && !(c.url && have.has(c.url)))
+    .map((c) => ({ label: `${c.label}: ${c.v}${c.src ? ` (${c.src})` : ''}`, url: c.url, at: c.at, key: c.key }))];
+  return move;
+}
+
 
 // ---------- prompt material ----------
 const AREA = { catalog: ['catalog.', 'product.'], price: ['price.', 'mrp.'], claim: ['claim.'], reviews: ['reviews.', 'review.'], company: ['company.'],
@@ -416,11 +461,11 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
         r = await ai.call({ ...o, schema: null, json: true, messages: undefined, prompt: prompt + `\n\nReturn one JSON object with this shape:\n${JSON.stringify(MOVE_SCHEMA)}` });
         }
       }
-      const move = finish(sp, r.json, { meta: { model: r.msg?.model || 'claude-opus-5-5', at: new Date().toISOString(), usd: r.usd, usage: r.msg?.usage, secs: Math.round((Date.now() - t0) / 1e3), stop: r.stop, verified: false, issues: [], cites: r.cites || [], lookups: lookups.map(({ id, for: f, at, error }) => ({ id, for: f, at, error })) } }, ctx);
-      return move;
+      const move = finish(sp, r.json, { meta: { model: r.msg?.model || 'claude-opus-5-5', at: new Date().toISOString(), usd: r.usd, usage: r.msg?.usage, secs: Math.round((Date.now() - t0) / 1e3), stop: r.stop, verified: false, issues: [], searched: (r.cites || []).map((c) => ({ ...c, kind: 'web' })), cites: [], lookups: lookups.map(({ id, for: f, at, error }) => ({ id, for: f, at, error })) } }, ctx);
+      return dateMove(move, ctx.numbers);
     } catch (e) {
       if (!e.mock) throw e;
-      return mockMove(sp, ctx);
+      return dateMove(mockMove(sp, ctx), ctx.numbers);
     }
   }
 
@@ -447,10 +492,13 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
   }
 
   // ---------- verify ----------
+  /* the evidence is the same whatever model wrote the move: the ledger, the moves it builds on, a new fact only when its URL
+     is one the search really returned and its own quote holds the number, and sums of allowed numbers. Search titles and
+     snippets are not evidence on their own (one model returns them, another doesn't), so no number is allowed from them. */
   function allowedFor(move, ledger, depDigests = {}) {
     const allowed = allowedFromLedger(ledger, Object.values(depDigests));
-    const citeUrls = (move.meta?.cites || []).map((c) => c.url);
-    const citeQuotes = (move.meta?.cites || []).map((c) => `${c.title || ''} ${c.quote || ''}`).join(' ');
+    const web = move.meta?.searched || (move.meta?.cites || []).filter((c) => !c.kind || c.kind === 'web');
+    const citeUrls = [...web.map((c) => c.url), ...(ledger || []).map((e) => e.url)].filter(Boolean);
     const rejected = [];
     for (const f of move.newFacts || []) {
       const host = (u) => { try { return new URL(u).host.replace(/^www\./, ''); } catch { return ''; } };
@@ -459,7 +507,6 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
       const quoteOk = f.quote && ns.every((x) => rawNums(f.quote).some((y) => close(x.v, y)));
       if (urlOk && quoteOk) ns.forEach((x) => { allowed.add(x.v); if (x.scaled) allowed.add(x.scaled); }); else rejected.push(f);
     }
-    for (const x of rawNums(citeQuotes)) allowed.add(x); // numbers the search results really contained
     for (let pass = 0; pass < 2; pass++) for (const d of move.derived || []) {
       const r = evalExpr(d.expr, allowed); const vs = numbersIn(d.v).length ? numbersIn(d.v) : rawNums(d.v).map((v) => ({ v }));
       if (r != null && vs.length && vs.every((x) => Math.abs(x.v - r) <= Math.max(1, Math.abs(r) * 0.02) || Math.abs((x.scaled ?? x.v) - r) <= Math.abs(r) * 0.02)) vs.forEach((x) => allowed.add(x.v));
@@ -532,11 +579,14 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
     }
     const remaining = numIssues.length;
     const statUnbacked = numIssues.some((i) => i.at === 'stat');
-    /* verified means checked and clean: the claim check ran and found nothing left, and the cover stat is backed
-       (numbers the ledger does not back are labelled "to confirm" in the text, which is allowed) */
-    const verified = claimRan && claimIssues.length === 0 && !statUnbacked;
-    move.meta = { ...move.meta, verified, verify: { ...found, claimRan, claimsLeft: claimIssues.length, edits, unresolvedNumbers: remaining, statUnbacked, at: new Date().toISOString() },
-      issues: [...numIssues.map((i) => `${i.at} ${i.raw}: ${i.why}`), ...claimIssues.map((c) => `${c.at} ${c.kind}: ${c.problem}`)] };
+    /* facts it says it used must be ledger lines: a key the evidence doesn't have is a made-up source */
+    const keys = new Set((ledger || []).map((e) => e.key)), unknownKeys = (move.factsUsed || []).filter((k) => k && !keys.has(String(k).trim()) && !/^(derived|web|search|new)\b/i.test(k));
+    /* verified means checked and clean, the same bar for every model: the deterministic scan found every number in the
+       evidence (none left "to confirm"), every fact it names is a real ledger line, the claim check ran and found nothing left,
+       and the cover stat is backed. A model whose checker is softer can't pass a number the evidence lacks. */
+    const verified = claimRan && claimIssues.length === 0 && !statUnbacked && remaining === 0 && unknownKeys.length === 0;
+    move.meta = { ...move.meta, verified, verify: { ...found, claimRan, claimsLeft: claimIssues.length, edits, unresolvedNumbers: remaining, statUnbacked, unknownKeys, at: new Date().toISOString() },
+      issues: [...numIssues.map((i) => `${i.at} ${i.raw}: ${i.why}`), ...claimIssues.map((c) => `${c.at} ${c.kind}: ${c.problem}`), ...unknownKeys.map((k) => `factsUsed ${k}: not a ledger line`)] };
     return { ok: verified && found.numbers === 0, issues: move.meta.issues, move };
   }
 
@@ -624,6 +674,7 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
       const t0 = Date.now(); ctx.onStart?.(n);
       let move; try { move = await writeMove(n, { ...ctx, deps }); } catch (e) { ctx.onFail?.(n, e); throw e; }
       if (doVerify) ({ move } = await verify(move, ctx.ledgerAll, { brief: ctx.brief, deps }));
+      citeMove(move, ctx.ledgerAll); /* its citations: the ledger lines and sources it rests on (keys and URLs), for the move page and the PDF */
       move.meta.secs = Math.round((Date.now() - t0) / 1e3); if (sp.eventId) move.meta.eventId = sp.eventId; if (sp.timing) move.meta.timing = sp.timing;
       done[n] = move; results[n] = move; await ctx.save?.(n, move); onMove?.(n, move);
       // a festival move written at its plan point: the calendar stops offering that point again

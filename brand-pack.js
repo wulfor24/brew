@@ -4,7 +4,7 @@
 // (build.js) into .brands/<slug>/ and mirrored to gs://<bucket>/brands/<slug>/.
 import { nextFestival } from './calendar.js';
 import { healthFrom, HEALTH_V, healthKey, geoOf } from './health.js';
-import { numbersFor, healSeedNumbers } from './pack-numbers.js'; // one number, one source, for every screen
+import { numbersFor, healSeedNumbers, numberRows, dayOf } from './pack-numbers.js'; // one number, one source, for every screen
 import { catalogOf, matchProduct, junkPhoto, cardProduct, cardAssetText } from './product-match.js';
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -57,14 +57,19 @@ function finish(p) {
   const c = p.config;
   if (c) c.festival = nextFestival(c.country) || c.festival; // saved configs carried a fixed 2026 date: always the next one
   const { fx, fxDeep } = fxFor(p.facts);
+  /* today's counts (pack-numbers.js), each with the day it was read, beside the read's facts: the cards, the jam and Ask Brew
+     quote the same number the picker, the read and the check page show, and an older one reads as dated */
+  const haveKeys = new Set(Object.values(p.facts || {}).map((f) => f.key)); /* a fact the team removed stays removed */
+  const cur = Object.fromEntries(numberRows(p.numbers, p.seed?.brand?.name).filter((r) => haveKeys.has(r.key)).map((r) => [`now.${r.key}`, { key: r.key, label: `${r.label} (read ${dayOf(r.at)})`, v: r.v, n: r.n, at: r.at, kind: 'current' }]));
+  const shownFacts = { ...Object.fromEntries(Object.entries(p.facts || {}).filter(([, f]) => !Object.values(cur).some((x) => x.key === f.key))), ...cur };
   const rivals = c.rivals || [];
   const re = (list) => list.length ? new RegExp(`\\b(${list.map((x) => escRe(x).replace(/\\? /g, ' ?')).join('|')})\\b`, 'i') : /(?!)/;
   return Object.assign(p, {
     fx, fxDeep,
     name: p.seed.brand.name, host: p.seed.brand.host,
-    factOk: allowedFrom(p.facts),
-    factBrief: 'Facts you may quote (use these exact numbers, no others):\n' + Object.values(p.facts).filter((f) => f.kind !== 'demo' && f.label).map((f) => `- ${f.label}: ${f.v}${f.kind === 'proposed' ? ' (proposed, say so)' : ''}`).join('\n'),
-    pageFacts: Object.values(p.facts).filter((f) => f.kind !== 'demo' && f.label).map((f) => `- ${f.label}: ${f.v}`).join('\n'),
+    factOk: allowedFrom({ ...p.facts, ...cur }),
+    factBrief: 'Facts you may quote (use these exact numbers, no others; a count that changes day to day says the day it was read, e.g. "664 live ads on 14 Oct"):\n' + Object.values(shownFacts).filter((f) => f.kind !== 'demo' && f.label).map((f) => `- ${f.label}: ${f.v}${f.kind === 'proposed' ? ' (proposed, say so)' : ''}`).join('\n'),
+    pageFacts: Object.values(shownFacts).filter((f) => f.kind !== 'demo' && f.label).map((f) => `- ${f.label}: ${f.v}`).join('\n'),
     rivalsRe: re(rivals), bannedRe: new RegExp(c.banned || '(?!)', 'i'),
     namedRe: new RegExp(`\\b${escRe(p.seed.brand.name)}\\b`, 'i'),
     festivalAt: c.festival?.date ? Date.parse(c.festival.date) : null,
@@ -212,6 +217,9 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
     /* the headline numbers, worked out once (pack-numbers.js): the seed's read steps, ads finding and product count quote
        them, and a seed saved with older ones heals here, for every brand, no rebuild */
     const numbers = await numbersFor(getJSON, slug, { 'profile.json': profile, 'status.json': status, 'moves.json': moves });
+    /* the stories (research.js) read the rivals from config.json: the one rival list (profile.rivals, as the check page edits it), healed at load */
+    const rivalNames = numbers.rivals.map((r) => r.name).slice(0, 8);
+    if (profile && config && rivalNames.length && (config.rivals || []).join('|') !== rivalNames.join('|')) { config.rivals = rivalNames; await put(slug, 'config.json', config).catch(() => {}); }
     if (profile && healSeedNumbers(seed, numbers, seed.brand?.name || profile.name)) await put(slug, 'seed.json', seed).catch(() => {});
     if (profile && (seed.health?.v !== HEALTH_V || seed.health?.key !== healthKey(numbers, profile))) { try { const was = seed.health?.v === HEALTH_V ? seed.health.delta || 0 : 0; seed.health = { ...healthFrom(profile, numbers), delta: was }; seed.geo = geoOf(seed.health) || { score: 0, band: 'Not read yet' }; await put(slug, 'seed.json', seed).catch(() => {}); } catch (e) { log.warn('[packs] health', slug, e.message); } }
     const { fxDeep } = fxFor(facts);

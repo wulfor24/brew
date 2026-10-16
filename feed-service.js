@@ -22,6 +22,7 @@ import { createJamBrief } from './jam-brief.js';
 import { briefParts, withTeam, LABEL as BRIEF_LABEL } from './brief-status.js';
 import { createTuning, tuneScore, learnedSignals, withoutIgnored, AGENTS as TUNE_AGENTS, WEIGHT as TUNE_WEIGHT } from './member-tuning.js'; // Your feed: per-member agent weights, topics, learned signals
 import { memberKey } from './brand-memory.js';
+import { isQuestion, photoAsk, answerGrounded } from './jam-answer.js'; // jam chat: questions answered from the evidence, "keep the photo" never makes one
 import { createAskBrew, answerAsk, cleanSeed } from './ask-brew.js'; // Ask Brew: one thread per member across feed, moves and facts
 import { parseDrop, DESTS } from './drop.js'; // Drop anything: memory, my preferences, just this once // Send brief: the full email and the "N with the team" pill
 import { shipLine } from './text-fit.js';
@@ -1092,6 +1093,8 @@ export function createFeedService(o) {
      buttons; it runs once, on whichever side says yes. */
   const PAID = new Set(['image', 'video', 'carousel']);
   const MAKE_ASK = /\b(make|create|generate|turn|redo|remake|new|another|fresh|shoot)\b[^.?!]{0,40}\b(videos?|reels?|clips?|carousels?|slides|images?|photos?|pictures?|visuals?|creatives?)\b/i;
+  /* a paid make is proposed only for an ask to make one: never for a question, never for "keep the same photo" */
+  const makeAsk = (text) => MAKE_ASK.test(text) && photoAsk(text) !== 'keep' && !isQuestion(text);
   const asOf = (x) => (/\b(video|reel|clip)/i.test(x) ? 'video' : /\b(carousel|slides)/i.test(x) ? 'carousel' : 'image');
   const pendText = (p) => { const what = String(p.summary || p.text || '').trim().replace(/[.\s]+$/, ''); return p.kind === 'make'
     ? `Ready to make ${p.as === 'video' ? 'a 6-second vertical video' : p.as === 'carousel' ? 'a carousel' : 'a new image'}${what ? ` (${what[0].toLowerCase() + what.slice(1)})` : ''}. It uses today’s ${p.as === 'video' ? 'video' : 'image'} allowance.`
@@ -1139,7 +1142,7 @@ export function createFeedService(o) {
       try { k = await claudeTool(prompt, { type: 'object', required: ['kind'], properties: { kind: { type: 'string', enum: ['chat', 'question', 'change', 'make', 'yes', 'no'] }, as: { type: 'string', enum: ['image', 'video', 'carousel', 'none'] }, summary: { type: 'string', description: 'For change/make: what exactly will change, in under 20 words' } } }, 300, 'slack-route'); }
       catch (e) { log.warn('[slack route]', e.message); }
     }
-    const kind = k?.kind || (mention && MAKE_ASK.test(text) ? 'make' : 'chat');
+    const kind = k?.kind || (mention && makeAsk(text) ? 'make' : 'chat');
     if ((kind === 'yes' || kind === 'no') && w.pending) return applyPending(t, w, w.pending.id, user.name, kind === 'yes');
     if (kind === 'question') { say(t, w, { from: 'ai', who: 'Brew', body: await answerOnly(t, w, text) }); return; }
     if (kind === 'change') { const p = { kind: 'change', text, summary: k?.summary || '', by: user.name || null };
@@ -1186,7 +1189,11 @@ export function createFeedService(o) {
     });
   };
   const answerOnly = async (t, w, body) => {
-    if (!isMock() && spend('text')) { try { const j = await claudeTool(`${cardBrief({ ...(t.cards.get(w.cardId) || {}), ...curV(w), agent: w.agent }, seatLine(t.viewer))}\n\nQuestion: "${body}"`, { type: 'object', required: ['answer'], properties: { answer: { type: 'string', description: 'Under 60 words, plain words, lead with the answer' } } }, 600, 'answer'); if (j.answer) return clean(j.answer); } catch (e) { log.warn('[answer]', e.message); if (e.billing) return 'I can’t answer right now: Brew’s writing is paused for a while. Your question stays here in the jam; ask again later, or tag a teammate.'; } }
+    /* grounded and checked (jam-answer.js): numbers and performance claims only where the card and the facts hold them */
+    if (!isMock() && spend('text')) { try { const acct = realRows(t.liveLedger).filter((e) => e.label && e.v != null).slice(0, 24); // DUMMY: simulated accounts are never quoted
+      const j = await answerGrounded({ ai: (pr, sc, mx, tag) => claudeTool(pr, sc, mx, tag), question: body, who: AGENT[w.agent] || 'Brew',
+        evidence: `${cardBrief({ ...(t.cards.get(w.cardId) || {}), ...curV(w), agent: w.agent }, seatLine(t.viewer))}${acct.length ? `\n\nConnected accounts:\n${acct.map((e) => `- ${e.label}: ${e.v}`).join('\n')}` : '\n\nConnected accounts: none with results for this yet.'}` });
+      if (j.answer) return clean(j.answer); } catch (e) { log.warn('[answer]', e.message); if (e.billing) return 'I can’t answer right now: Brew’s writing is paused for a while. Your question stays here in the jam; ask again later, or tag a teammate.'; } }
     return 'I couldn’t answer that just now. Your question stays here in the jam; try again in a minute, or tag a teammate.'; /* never a canned yes (DUMMY.md: no canned answers) */
   };
   const hashN = (str) => [...String(str)].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) >>> 0, 7);
@@ -1546,7 +1553,7 @@ export function createFeedService(o) {
     const w = W(t, p.wid); if (!w) return { error: 'not found' };
     const body = String(b.body || '').trim();
     // a jam that came from the remix studio keeps working on the package itself
-    if (MAKE_ASK.test(body)) { say(t, w, { from: 'me', body }); const pd = await propose(t, w, { kind: 'make', as: asOf(body), text: body, summary: '', by: nameOf(meOf(t)) }); return { work: w, pending: pd }; } /* a paid image or video waits for a yes */
+    if (makeAsk(body)) { say(t, w, { from: 'me', body }); const pd = await propose(t, w, { kind: 'make', as: asOf(body), text: body, summary: '', by: nameOf(meOf(t)) }); return { work: w, pending: pd }; } /* a paid image or video waits for a yes */
     if (w.changeId && RMX) { const r = await RMX.iterateFromJam(t, w, body); if (r?.error) return r; if (r) { if (w.stage !== 'drafting' && ['team', 'brew', 'needs_you'].includes(w.stage) === false) move(t, w, 'drafting', null); return { work: w, change: r.change }; } }
     say(t, w, { from: 'me', body });
     const decision = await routeJam(t, body, false);
@@ -1654,7 +1661,7 @@ export function createFeedService(o) {
     const out = await o.learnings.run(t.brandId || DEFAULT_BRAND, { text: cmd.body, by, byShort, why: cmd.why, workId: w.id });
     return { said, reply: out.reply, n: out.applied?.length ?? null };
   };
-  JB.routes({ askMake: (t, w, text) => (MAKE_ASK.test(text) ? propose(t, w, { kind: 'make', as: asOf(text), text, summary: '', by: nameOf(meOf(t)) }) : null), toSlack: o.slack ? toSlack : null, on, W, say, move, notify, learn: learnOf, nextTicket: (t) => { leadsAllTenants++; return nextBrandTicket(t); }, handoff: { build: (...a) => HO.build(...a), text: (...a) => HO.text(...a) } });
+  JB.routes({ askMake: (t, w, text) => (makeAsk(text) ? propose(t, w, { kind: 'make', as: asOf(text), text, summary: '', by: nameOf(meOf(t)) }) : null), toSlack: o.slack ? toSlack : null, on, W, say, move, notify, learn: learnOf, nextTicket: (t) => { leadsAllTenants++; return nextBrandTicket(t); }, handoff: { build: (...a) => HO.build(...a), text: (...a) => HO.text(...a) } });
   // first drafts in a jam, one tap away: image, video, voice or text, made only when someone asks (drafts.js)
   DR = createDrafts({ claudeTool, geminiImage, treg: o.treg, launchBrowser: o.launchBrowser, zipBuffer: o.zipBuffer, photoAsync: o.photoAsync, photoFile, catalogOf: (t) => (t ? brandOfT(t)?.catalog : null), brandName: (t) => (t ? brandOfT(t)?.seed?.brand?.name || '' : ''), photoOf: (c) => LANE_PHOTO[c?.lane] || Object.values(LANE_PHOTO || {})[0], cardOf: (t, id) => { const c = t.cards.get(id); return c ? fillCard(c, t) : null; },
     briefOf: (t, w) => JB.seed(t, w)?.md, cardBrief, seatLine, isMock, spend, clean, now, uid, say, save: (t) => store?.save(t), AGENT, onReady: (t, w, d) => slackAsset(t, w, { title: d.title, copy: d.copy, image: d.image, video: d.video, audio: d.audio, zip: d.zip, kind: d.as === 'video' && !d.video ? (d.image ? 'image' : 'text') : d.as, note: d.err || null }), /* a video that didn't come through says so, never 'New video' */ log }); DR.routes({ on, W });

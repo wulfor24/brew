@@ -17,7 +17,8 @@ import slack, { api as slackApi, why as slackWhy, join as slackJoin } from './sl
 import { createSim, SIM_IDS, NAME } from './sim.js';
 import { createVault } from '../vault.js';
 import { DEMO, sk } from '../demo-mode.js';
-import { privId, realRows } from './common.js';
+import { privId, realRows, backoff } from './common.js';
+import { emailHtml, p as para } from '../mail-layout.js';
 import { ideaCards, pickIdeas } from '../social-feed.js';
 
 const REAL = { shopify, meta, ga4, google, klaviyo, reviews, slack, marketplaces: market };
@@ -32,8 +33,23 @@ const OFF = new Set(['marketplaces']);
 const EVERY_H = { shopify: 6, meta: 6, google: 6, ga4: 12, klaviyo: 12, reviews: 12, marketplaces: 24 /* paid treg read */ };
 const DEFAULT_H = 12, RETRY_H = 3;
 export const everyOf = (id) => (REAL[id]?.every || EVERY_H[id] || DEFAULT_H) * 3600e3;
+/* a failed read waits until retryAt: the platform's Retry-After on a rate limit, else doubling from 15 minutes up to
+   12 hours, with jitter (failure() below). A record saved before retryAt existed keeps the old 3-hour wait */
 export const due = (id, s, now = Date.now()) => now - (s?.lastSync || 0) >= everyOf(id) - 5 * 60e3 /* an hourly tick may land a few minutes early */
-  && !(s?.error && s?.errorAt && now - s.errorAt < RETRY_H * 3600e3);
+  && !(s?.retryAt ? now < s.retryAt : s?.error && s?.errorAt && now - s.errorAt < RETRY_H * 3600e3);
+/* an account's last numbers stay the fact sheet's truth while it fails, but not forever: after STALE_FAILS failures in a
+   row, or once its last good read is older than STALE_H hours, they are marked stale and stop being evidence */
+export const STALE_FAILS = +process.env.CONNECT_STALE_FAILS || 3, STALE_H = +process.env.CONNECT_STALE_H || 72, WARN_DAYS = 7;
+export function failure(s = {}, e = {}, now = Date.now(), rnd = Math.random) {
+  const fails = (s.fails || 0) + 1, expired = !!e.expired;
+  const wait = expired ? 12 * 3600e3 : backoff(fails, { base: e.rateLimited ? 10 * 60e3 : 15 * 60e3, cap: 12 * 3600e3, retryAfter: e.retryAfter, rnd });
+  const old = s.lastSync && now - s.lastSync > STALE_H * 3600e3;
+  const stale = !!s.lastSync && (s.stale || expired || fails >= STALE_FAILS || old);
+  const staleWhy = !stale ? null : s.staleWhy || (expired ? 'the sign-in expired' : old ? `no good read for ${Math.round((now - s.lastSync) / 3600e3)} hours` : `${fails} reads in a row failed`);
+  return { fails, retryAt: now + wait, stale, staleWhy, ...(expired ? { needsReconnect: true } : {}), ...(e.rateLimited ? { rateLimited: true } : { rateLimited: false }) };
+}
+/* a sign-in that runs out (Meta): days left, null when it doesn't run out or Brew doesn't know */
+export const daysLeft = (s, now = Date.now()) => (s?.expiresAt ? Math.floor((s.expiresAt - now) / 864e5) : null);
 // DUMMY: simulated on the demo site (DEMO_MODE=1)
 export const simOnly = (id) => DEMO || !REAL[id];
 
@@ -146,11 +162,13 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     const C = REAL[id]; let creds = PUBLIC.has(id) ? {} : await vault.load(slug, id);
     if (!creds) throw new Error('Not connected: connect it again.');
     if (C.fresh) { const f = await C.fresh(creds); if (f !== creds) { creds = f; await vault.save(slug, id, creds); } }
+    const exp = C.expires ? { expiresAt: +creds.exp || null, refreshedAt: creds.refreshedAt || null } : null; /* when the sign-in runs out (Meta) */
     const ctx = await ctxOf(slug);
     /* an account not yet matched to the brand is checked again on each read: the brand may have fixed its links since */
     if (C.owns && (await conns(slug))[id]?.verified === false) { const p = await C.owns(creds, ctx).catch(() => null);
       if (p) await editC(slug, (c) => { if (c[id]) c[id] = { ...c[id], verified: !!p.ok, why: p.why || '' }; }); }
-    return C.sync(creds, ctx, deps);
+    try { const d = await C.sync(creds, ctx, deps); return exp ? { ...d, exp } : d; }
+    catch (e) { if (C.expired?.(e)) { e.expired = true; e.message = `${C.name || id} sign-in expired: connect it again. (${e.message.slice(0, 120)})`; } throw e; }
   }
   async function sync(slug, id) {
     await editC(slug, (c) => { c[id] = { ...(c[id] || {}), state: 'syncing', syncAt: Date.now() }; });
@@ -158,7 +176,8 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
       const d = await read(slug, id);
       const data = { at: Date.now(), account: d.account || (await conns(slug))[id]?.account || null, stats: d.stats || [], changed: d.changed || [], cards: d.cards || [], ledger: d.ledger || [], notes: d.notes || [], ...(d.sim ? { sim: true } : {}) };
       await packs.put(slug, liveName(id), data);
-      await editC(slug, (c) => { c[id] = { ...(c[id] || {}), state: 'live', lastSync: data.at, error: null, account: data.account || c[id]?.account, notes: data.notes }; });
+      await editC(slug, (c) => { const x = c[id] || {}; c[id] = { ...x, state: 'live', lastSync: data.at, error: null, account: data.account || x.account, notes: data.notes,
+        fails: 0, retryAt: null, rateLimited: false, stale: false, staleWhy: null, needsReconnect: false, ...(d.exp ? { expiresAt: d.exp.expiresAt, refreshedAt: d.exp.refreshedAt || x.refreshedAt || null, ...(d.exp.expiresAt !== x.expiresAt ? { expiryWarned: null } : {}) } : {}) }; });
       cache.delete(sk(slug));
       await builder.liveConnected?.(slug, id, data.ledger, true, { public: PUBLIC.has(id) }).catch((e) => log.warn('[connect] moves', e.message));
       onLive(slug);
@@ -167,8 +186,12 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     } catch (e) {
       log.warn('[connect] sync', slug, id, e.message);
       /* an account that read before keeps its last read and says what went wrong; a new one shows the error */
-      await editC(slug, (c) => { c[id] = { ...(c[id] || {}), state: c[id]?.lastSync ? 'live' : 'error', error: e.message.slice(0, 200), errorAt: Date.now() }; });
+      let wentStale = null;
+      await editC(slug, (c) => { const x = c[id] || {}, f = failure(x, e); if (f.stale && !x.stale) wentStale = f.staleWhy;
+        c[id] = { ...x, state: x.lastSync ? 'live' : 'error', error: e.message.slice(0, 200), errorAt: Date.now(), ...f }; });
       cache.delete(sk(slug));
+      /* its numbers stay on the fact sheet, marked stale, and stop being evidence for the moves, cards and answers */
+      if (wentStale) await builder.staleConnected?.(slug, id, wentStale, { public: PUBLIC.has(id) }).catch((er) => log.warn('[connect] stale', slug, id, er.message));
       return { ok: false, error: e.message.slice(0, 200) };
     }
   }
@@ -195,6 +218,8 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
       if (!member && !PUBLIC.has(id)) continue;
       const d = L.live[id];
       out[id] = { state: s.state, at: s.at, lastSync: s.lastSync || null, by: member ? s.by : undefined, account: s.account?.name || null, error: s.error || null, why: member && !s.verified ? s.why || null : null, notes: s.notes || [], dummy: simOnly(id) || !!d?.sim,
+        stale: !!s.stale, staleWhy: s.stale ? s.staleWhy || null : null, retryAt: s.error ? s.retryAt || null : null, rateLimited: !!s.rateLimited, needsReconnect: !!s.needsReconnect,
+        ...(member && s.expiresAt ? { expiresAt: s.expiresAt, daysLeft: daysLeft(s) } : {}),
         ...(d && !d.gone ? { stats: d.stats, changed: d.changed, cards: (d.cards || []).length } : {}) };
     }
     const ctx = await ctxOf(slug);
@@ -206,7 +231,8 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     for (const [id, d] of Object.entries(L.live)) { if (d.gone) continue; if (!member && !PUBLIC.has(id)) continue; on[id] = true;
       cards.push(...(d.cards || []).map((c) => ({ ...c, ...(simOnly(id) || d.sim ? { dummy: true } : {}), ...(PUBLIC.has(id) ? { liveOnly: false, publicLive: true } : {}) }))); }
     /* DUMMY: a simulated account's rows never reach the team's numbers (they lose their demo flag once copied, so they stay out here) */
-    const ledger = {}; if (member) for (const [id, d] of Object.entries(L.live)) if (!d.gone && !d.sim && !simOnly(id)) for (const e of realRows(d.ledger)) ledger[e.key] = { v: e.v, n: e.n, at: d.at, label: e.label };
+    /* a stale account (connections.json stale) is never quoted: its numbers wait for a good read */
+    const ledger = {}; if (member) for (const [id, d] of Object.entries(L.live)) if (!d.gone && !d.sim && !simOnly(id) && !L.conns[id]?.stale) for (const e of realRows(d.ledger)) ledger[e.key] = { v: e.v, n: e.n, at: d.at, label: e.label };
     /* the moves rewritten from the team's accounts (private/cards.json): members get those cards, and the shared cards of the
        same moves step aside (privMoves). Cards saved before they had their own id get it here */
     let privMoves = [], privStatics = false;
@@ -310,8 +336,34 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
         const stuck = s?.state === 'syncing' && Date.now() - (s.syncAt || 0) > 30 * 60e3; /* a read cut off by a restart */
         if ((s?.state !== 'live' && !stuck) || simOnly(id) || s.sim || OFF.has(id)) continue;
         if (due(id, s)) await sync(slug, id).catch(() => {});
+        await ageCheck(slug, id).catch((e) => log.warn('[connect] age', slug, id, e.message));
+        await expiryCheck(slug, id).catch((e) => log.warn('[connect] expiry', slug, id, e.message));
       }
     }
+  }
+  /* a last good read older than STALE_H hours goes stale even when no read failed (the tick was off, a platform hung) */
+  async function ageCheck(slug, id, now = Date.now()) {
+    const s = (await conns(slug))[id]; if (!s?.lastSync || s.stale || now - s.lastSync <= STALE_H * 3600e3) return false;
+    const why = `no good read for ${Math.round((now - s.lastSync) / 3600e3)} hours`;
+    await editC(slug, (c) => { if (c[id]) c[id] = { ...c[id], stale: true, staleWhy: why }; }); cache.delete(sk(slug));
+    await builder.staleConnected?.(slug, id, why, { public: PUBLIC.has(id) }); return true;
+  }
+  /* a sign-in that runs out (Meta, about 60 days): the brand's admins get one email a week ahead (and the page says so
+     from then on), and one more when it has run out. Brew already tried to renew it on the read before (meta.js fresh) */
+  async function expiryCheck(slug, id, now = Date.now()) {
+    const s = (await conns(slug))[id], left = daysLeft(s, now); if (left == null || left > WARN_DAYS) return null;
+    const stage = left < 0 ? 'expired' : 'soon', key = `${stage}:${s.expiresAt}`; if (s.expiryWarned === key) return null;
+    const m = await auth.getMembers?.(slug).catch(() => null), to = [...new Set((m?.members || []).filter((x) => ['owner', 'admin'].includes(x.role)).map((x) => String(x.email || '').toLowerCase()).filter(Boolean))];
+    const name = REAL[id]?.name || NAME[id] || id, brand = (await ctxOf(slug).catch(() => ({})))?.profile?.name || slug, base = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com';
+    const day = new Date(s.expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+    const subject = stage === 'expired' ? `${brand}: the ${name} sign-in ran out` : `${brand}: the ${name} sign-in runs out on ${day}`;
+    const line = stage === 'expired' ? `Brew can't read ${name} for ${brand} any more: the sign-in ran out on ${day}. Its last numbers are marked stale and no longer used. Connect it again to bring them back.`
+      : `The ${name} sign-in Brew uses for ${brand} runs out on ${day} (${left} day${left === 1 ? '' : 's'}). ${name} doesn't let Brew renew it on its own, so please connect it again before then. It takes a minute.`;
+    const href = `${base}/${slug}#connectors`;
+    for (const e of to) await auth.mail?.(e, subject, emailHtml({ title: subject, eyebrow: brand, preheader: line.slice(0, 140), body: para(line), cta: { href, label: `Connect ${name} again` } }), `${subject}\n\n${line}\n\n${href}`).catch(() => false);
+    await editC(slug, (c) => { if (c[id]) c[id] = { ...c[id], expiryWarned: key }; }); cache.delete(sk(slug));
+    log.log?.(`[connect] ${slug} ${id}: sign-in ${stage} (${left} days), told ${to.length}`);
+    return { stage, to };
   }
   if (!DEMO && !process.env.BUILD_RESUME_OFF) { const t = setInterval(() => tick().catch((e) => log.warn('[connect] tick', e.message)), 3600e3); t.unref?.(); setTimeout(() => tick().catch(() => {}), 90e3).unref?.(); }
 
@@ -380,5 +432,5 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     return false;
   }
 
-  return { handle: async (req, res, u) => (await slackRoutes(req, res, u)) || handle(req, res, u), sim: SIM, slackOf, slackPost, slackLink, slackChannels, slackUser, slackSlug, slackGone, liveOf, forViewer, drop: (slug) => cache.delete(sk(slug)), liveView, sync, disconnect, finish, tick, CONNECTORS };
+  return { handle: async (req, res, u) => (await slackRoutes(req, res, u)) || handle(req, res, u), sim: SIM, slackOf, slackPost, slackLink, slackChannels, slackUser, slackSlug, slackGone, liveOf, forViewer, drop: (slug) => cache.delete(sk(slug)), liveView, sync, disconnect, finish, tick, ageCheck, expiryCheck, CONNECTORS };
 }

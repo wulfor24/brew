@@ -265,7 +265,12 @@
 
   /* ---------- the connectors page: live accounts, sync, disconnect, who can see it ---------- */
   const status = (id) => { const x = L.conns?.[id]; if (!x) return null;
-    if (x.state === 'live') return x.dummy ? `<span class="cn-st is-on is-live"><i></i>Connected</span><span class="dummy-tag">Dummy</span>` : `<span class="cn-st is-on is-live"><i></i>Live</span>${x.error ? '<span class="cn-st is-off" title="The last refresh did not go through">Last refresh failed</span>' : ''}`;
+    /* one signal per state: reconnect, then stale, then the sign-in running out, then a failed refresh (rate limits retry on their own) */
+    const left = x.daysLeft, warn = x.needsReconnect || (left != null && left < 0) ? '<span class="cn-st is-off" title="Connect it again to bring its numbers back">Sign-in expired: connect again</span>'
+      : x.stale ? `<span class="cn-st is-off" title="${esc(`Its last numbers are not used until it reads again${x.staleWhy ? ` (${x.staleWhy})` : ''}`)}">Stale</span>`
+      : left != null && left <= 7 ? `<span class="cn-st is-off" title="Connect it again before then so Brew keeps reading it">Sign-in runs out in ${left} day${left === 1 ? '' : 's'}</span>`
+      : x.error ? `<span class="cn-st is-off" title="${esc(x.rateLimited ? 'The platform asked Brew to slow down; it tries again on its own' : 'The last refresh did not go through')}">${x.rateLimited ? 'Busy, retrying' : 'Last refresh failed'}</span>` : '';
+    if (x.state === 'live') return x.dummy ? `<span class="cn-st is-on is-live"><i></i>Connected</span><span class="dummy-tag">Dummy</span>` : `<span class="cn-st is-on is-live"><i></i>Live</span>${warn}`;
     if (x.state === 'syncing') return `<span class="cn-st is-on"><i></i>Reading…</span>`;
     return `<span class="cn-st is-off"><i></i>Needs attention</span>`; };
   const footer = (id) => { const x = L.conns?.[id]; if (!x || !member() && x.state !== 'live') return null;

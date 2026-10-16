@@ -219,7 +219,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
       const mine = (j) => (j?.results || []).filter((a) => (id ? String(a.page_id) === String(id) : pageOk(name, a.page_name || a.snapshot?.page_name)));
       const t = mine(top), rc = mine(recent); if (!t.length && !rc.length) return; matched++;
       const first = t[0] || rc[0];
-      brands.push({ name, live: (t.length === (top?.results || []).length && top?.searchResultsCount) || t.length || rc.length, page: first.page_name, pageId: first.page_id, avatar: first.snapshot?.page_profile_picture_url || null });
+      brands.push({ name, live: (t.length === (top?.results || []).length && top?.searchResultsCount) || t.length || rc.length, page: first.page_name, pageId: first.page_id, avatar: first.snapshot?.page_profile_picture_url || null, at: now }); /* at: the day of this count, so pack-numbers.js picks the freshest read per rival */
       take(name, t, 0); take(name, rc, 0);
       /* this rival's unseen ideas are running low: read its next page of ads (at most 3 pages deep a day) */
       const unseenOf = () => [...groups.values()].filter((x) => x.brand === name && isNew(x)).length;

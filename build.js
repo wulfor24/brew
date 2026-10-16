@@ -18,9 +18,9 @@ import { factsFromLedger, configFromProfile, laneProducts, marketConfig } from '
 import { retiredSet, scrubRetired, allowedFrom } from './fact-gate.js';
 import { createCardsGen } from './cards-gen.js';
 import { marketFor, applyMarket, nameOf } from './market.js'; // the selling market, kept apart from the registered country
-import { realRows, privId } from './connectors/common.js'; // DUMMY: simulated account rows are never evidence
+import { realRows, evidenceRows, privId } from './connectors/common.js'; // DUMMY: simulated account rows are never evidence; stale ones stop being evidence
 import { healthFrom, geoOf } from './health.js';
-import { isPlay, playDone, totalOf, numbersFor, healSeedNumbers } from './pack-numbers.js'; // one number, one source
+import { isPlay, playDone, totalOf, numbersFor, healSeedNumbers, withNumbers, reviewsCap } from './pack-numbers.js'; // one number, one source
 import { waitingOnCheck } from './confirm-remind.js'; // a brand whose moves wait on "Check what we read"
 import { createStatics, teamStaticCards, teamStaticsDue } from './statics.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
@@ -282,7 +282,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         await unmarkPdf(slug, n); /* PDFs are made when someone opens one (pdfOn), never in the build */
         packs.drop(slug); await onPack(slug); saveSpend(slug);
       };
-      const ctx = { brand: { name: profile.name, host: profile.host, descriptor: profile.descriptor }, brief: { md: briefMd, json: brief }, profile, ledger, packs, slug,
+      const NUM = await numbersFor(packs.getJSON, slug, { 'profile.json': profile }); /* the moves quote today's counts, each with the day it was read */
+      const ctx = { brand: { name: profile.name, host: profile.host, descriptor: profile.descriptor }, brief: { md: briefMd, json: brief }, profile, ledger: withNumbers(ledger, NUM, profile.name), numbers: NUM, packs, slug,
         load: (n) => cache[n] || null, save: async (n, move) => { cache[n] = move; await save(n, move); }, canSpend: () => !capHit(slug),
         effort: process.env.MOVES_EFFORT || 'medium', search: +(process.env.MOVES_SEARCH ?? 1),
         onTotal: async (N, applicable) => { total = N; await setStatus(slug, { total: N, applicable }); },
@@ -331,7 +332,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const N = await numbersFor(packs.getJSON, slug, { 'profile.json': profile }); healSeedNumbers(seed, N, profile.name); /* the read's steps quote the one count of each */
     seed.health = healthFrom(profile, N); /* the health rings, from what the read found (health.js) */
     seed.geo = geoOf(seed.health) || { score: 0, band: 'Not read yet' };
-    const facts = factsFromLedger(ledger, { host: profile.host });
+    const facts = factsFromLedger(withNumbers(ledger, N, profile.name), { host: profile.host }); /* the current counts, each with its day, replace the read's older rows */
     const cfg = configFromProfile(profile, extra);
     Object.assign(cfg, laneProducts(seed, profile), { statics: (await packs.getJSON(slug, 'config.json', {}))?.statics || [] }); /* a re-read keeps the finished statics */
     await packs.put(slug, 'seed.json', seed); await packs.put(slug, 'facts.json', facts); await packs.put(slug, 'config.json', cfg);
@@ -417,7 +418,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   }
   /* the read's ledger plus every real connected account's numbers (public marketplaces and the team's private accounts) */
   async function mergedLedger(slug, base = null) {
-    const conn = [...realRows(await packs.getJSON(slug, 'connected-ledger.json', [])), ...realRows(await packs.getJSON(slug, 'private/connected-ledger.json', []))];
+    const conn = [...evidenceRows(await packs.getJSON(slug, 'connected-ledger.json', [])), ...evidenceRows(await packs.getJSON(slug, 'private/connected-ledger.json', []))]; /* a stale account's rows are not evidence */
     return mergeLedger(base || await packs.getJSON(slug, 'ledger.json', []), [], { connected: conn }).ledger;
   }
   async function cardsFor(slug, move, profile, { replace = false, priv = false } = {}) {
@@ -561,11 +562,12 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         { key: 'currency', label: 'Currency', v: p.currency || '', type: 'currency', ...srcOf(L, ['market.currency']) }
       ],
       products: items,
-      rivals: (p.rivals || []).map((r) => ({ name: r.name, host: r.host, how: r.how || r.why || '', logo: r.logo || `https://www.google.com/s2/favicons?domain=${r.host}&sz=64`, prices: (r.prices || []).length, live: (p.ads?.rivals || []).find((x) => x.host === r.host || x.name === r.name)?.live ?? null, url: r.url || `https://${r.host}` })),
+      /* the one rival list, each with the freshest count of its live ads (pack-numbers.js rivals): the read and the stories say the same */
+      rivals: (p.rivals || []).map((r) => { const x = N.rivals.find((y) => (r.host && y.host === r.host) || y.name === r.name); return { name: r.name, host: r.host, how: r.how || r.why || '', logo: r.logo || `https://www.google.com/s2/favicons?domain=${r.host}&sz=64`, prices: (r.prices || []).length, live: x?.live ?? null, liveAt: x?.at ? new Date(x.at).toISOString().slice(0, 10) : null, url: r.url || `https://${r.host}` }; }),
       sources: [
         { key: 'adpage', label: 'Facebook page that runs your ads', v: own.page ? `${own.page} · ${(N.ownAds.n ?? 0).toLocaleString('en-IN')} live ads` : own.error ? 'Couldn’t check this time' : 'Not found', url: own.pageId ? `https://www.facebook.com/ads/library/?view_all_page_id=${own.pageId}` : null, hint: 'Paste your Facebook page link if this is wrong', found: !!own.page },
         { key: 'instagram', label: 'Instagram', v: ig?.handle ? '@' + ig.handle : ig?.error ? 'Couldn’t check this time' : 'Not found', url: ig?.url || null, hint: 'Paste your Instagram profile link', found: !!ig?.handle },
-        { key: 'reviews', label: 'Reviews and ratings', v: (rv.platforms || []).some((x) => x.count) ? (rv.platforms || []).filter((x) => x.count).map((x) => `${Number(x.count).toLocaleString('en-IN')} on ${x.label || x.name}`).join(' · ') : rv.total ? `${Number(rv.total).toLocaleString('en-IN')} reviews and ratings` : rv.error ? 'Couldn’t check this time' : 'No reviews found', url: (rv.platforms || [])[0]?.url || null, hint: 'Paste the page where your reviews live (Judge.me, Loox, Amazon…)', found: !!rv.total }
+        { key: 'reviews', label: 'Reviews and ratings', v: reviewsCap(N)?.replace(/\.$/, '') || (N.reviews.n != null ? `${N.reviews.n.toLocaleString('en-IN')} reviews and ratings` : rv.error ? 'Couldn’t check this time' : 'No reviews found'), url: (rv.platforms || [])[0]?.url || null, hint: 'Paste the page where your reviews live (Judge.me, Loox, Amazon…)', found: N.reviews.n != null }
       ],
       company: [
         { key: 'founders', label: 'Founders', v: (p.company?.founders || []).map((x) => (typeof x === 'string' ? x : x?.name)).filter(Boolean).join(', '), type: 'text', ...srcOf(L, ['company.founders', 'company.founder']) },
@@ -608,6 +610,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (Array.isArray(b.removed)) p.catalog.removed = [...new Set([...(p.catalog.removed || []), ...b.removed])];
     for (const u of (b.addProducts || []).slice(0, 6)) { try { const x = await readProduct(slug, u, p); p.catalog.products = [x, ...p.catalog.products.filter((y) => y.handle !== x.handle)]; p.catalog.removed = (p.catalog.removed || []).filter((h) => h !== x.handle); p.catalog.hero = [x.handle, ...(p.catalog.hero || []).filter((h) => h !== x.handle)];
       if (x.price) L.push({ key: `price.${x.handle}`, label: x.title, v: moneyFmt(x.currency || p.currency, p.locale)(x.price), n: x.price, unit: x.currency, layer: 'observed', src: hostOf(x.url) + new URL(x.url).pathname, url: x.url, at, method: 'product page (added by the brand)' }); } catch (e) { notes.push(`${u}: ${e.message}`); } }
+    const rivals0 = (p.rivals || []).map((r) => r.name).join('|');
     if (Array.isArray(b.removeRivals)) p.rivals = (p.rivals || []).filter((r) => !b.removeRivals.includes(r.host));
     for (const u of (b.addRivals || []).slice(0, 6)) { try { const r = await readRival(u, p); p.rivals = [...(p.rivals || []).filter((x) => x.host !== r.host), r]; L.push({ key: `rival.${r.host.replace(/\./g, '-')}.found`, label: `Rival: ${r.name}`, v: r.host, layer: 'observed', src: r.host, url: r.url, at, method: 'brand-confirmed' });
       r.prices.forEach((x, i) => L.push({ key: `rival.${r.host.replace(/\./g, '-')}.price.${i + 1}`, label: `${r.name}: ${x.title}`, v: moneyFmt(p.currency, p.locale)(x.price), n: x.price, unit: p.currency, layer: 'observed', src: r.host, url: x.url, at, method: 'products.json' })); } catch (e) { notes.push(`${u}: ${e.message}`); } }
@@ -627,6 +630,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const gone = removedKeys(p.catalog.removed);
     await packs.put(slug, 'profile.json', p); await packs.put(slug, 'ledger.json', L.filter((e) => !gone(e)));
     if (b.who?.country) await marketCheck(slug).catch((e) => log.warn?.('[market] check', slug, e.message)); /* the brand's own market: its moves are marked for the weekly rewrite */
+    /* the rival list changed: the config the stories read (research.js) and the read's steps follow it, so every screen names the same rivals */
+    if ((p.rivals || []).map((r) => r.name).join('|') !== rivals0) await republish(slug).catch((e) => log.warn('[check] republish', slug, e.message));
     return { ok: true, notes, data: await checkData(slug) };
   }
 
@@ -879,7 +884,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         if (!priv) await unmarkPdf(slug, n); /* the public PDF is drawn again on its next download */
         packs.drop(slug); await onPack(slug); saveSpend(slug);
       };
-      const ctx = { brand: { name: profile.name, host: profile.host, descriptor: profile.descriptor }, brief: { md: briefMdT + stockMd, json: brief }, profile, ledger, packs, slug,
+      const NUM = await numbersFor(packs.getJSON, slug, { 'profile.json': profile });
+      const ctx = { brand: { name: profile.name, host: profile.host, descriptor: profile.descriptor }, brief: { md: briefMdT + stockMd, json: brief }, profile, ledger: withNumbers(ledger, NUM, profile.name), numbers: NUM, packs, slug,
         load: (n) => cache[n] || null, save: async (n, move) => { cache[n] = move; await (lock = lock.then(() => saveOne(n, move)).catch((e) => log.warn('[rewrite] save', n, e.message))); },
         canSpend: () => !blocked(slug) && dayUsd() < DAY_CAP && spentFor(slug) - usd0 < cap && !st(slug).cancelled,
         effort: process.env.MOVES_EFFORT || 'medium', search: +(process.env.MOVES_SEARCH ?? 1),
@@ -973,6 +979,19 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   const AREA_LIVE = { ...AREA_OF, marketplaces: ['store'] };
   NAME_OF.marketplaces = 'Marketplaces'; NAME_OF.slack = 'Slack';
   const PREFIX = { shopify: ['shopify.'], meta: ['meta.'], ga4: ['ga4.'], google: ['gads.'], klaviyo: ['klaviyo.'], marketplaces: ['market.'], reviews: ['reviews.judgeme.'] };
+  /* an account that kept failing, or whose last good read is too old (connectors/index.js failure, ageCheck): its rows stay
+     in the connected ledger, marked stale with why, so the fact sheet shows them as stale and the moves, cards and answers
+     stop resting on them (evidenceRows). The next good read replaces them, unmarked */
+  async function staleConnected(slug, id, why, { public: pub = false } = {}) {
+    const file = pub ? 'connected-ledger.json' : 'private/connected-ledger.json', mine = (e) => !e.demo && (PREFIX[id] || []).some((p) => e.key.startsWith(p));
+    const L = await packs.getJSON(slug, file, []); let n = 0;
+    for (const e of L) if (mine(e) && !e.stale) { e.stale = true; e.staleWhy = why; n++; }
+    if (!n) return 0;
+    await packs.put(slug, file, L);
+    await hooks.connected?.(slug, id); /* the fact sheet (facts-desk connected) shows them as stale; the site's fact is the truth again */
+    log.log?.(`[connect] ${slug} ${id}: ${n} rows stale (${why})`);
+    return n;
+  }
   async function liveConnected(slug, id, add = [], on = true, { public: pub = false } = {}) {
     const file = pub ? 'connected-ledger.json' : 'private/connected-ledger.json', mine = (e) => !e.demo && (PREFIX[id] || []).some((p) => e.key.startsWith(p));
     const before = await packs.getJSON(slug, file, []), was = before.filter(mine);
@@ -1345,5 +1364,5 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (o?.stockWhy) { u.stale[x.n] = { ...o, was: { priority: x.priority, why: x.why, via: x.via }, why: [...Object.values(o.stockWhy), x.why].join(' '), changes: [...new Set([...(o.changes || []), ...(x.changes || [])])].slice(0, 6) }; continue; } /* an out-of-stock mark stays on top */
     u.stale[x.n] = { ...x, at: Date.now(), changes: [...new Set([...(x.changes || []), ...(o?.changes || [])])].slice(0, 6), ...(o && !o.private ? { private: false } : {}) }; } });
   const facts = { pot: potInfo, potSpend, estMove, republish, flagStale, readProduct: async (slug, url) => readProduct(slug, url, (await packs.getJSON(slug, 'profile.json', {})) || {}), readRival, busy: (slug) => !!(st(slug).running || st(slug).checking), setHooks: (h) => Object.assign(hooks, h) };
-  return { ...facts, paidWork, marketCheck, teamStatics, settleConnect, connectPending, readLive, heal, healPdfs, pdfFor, pdfOn, connected, liveConnected, checkUpdates, rewrite, updates, setAuto, signal, seen, buildInfo, retry, goPro, checkData, applyCheck, liveWeekly, stockSignal, peek: (slug) => st(slug).status, addEmail, start, resume, resumeAll, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
+  return { ...facts, paidWork, marketCheck, teamStatics, settleConnect, connectPending, readLive, heal, healPdfs, pdfFor, pdfOn, connected, liveConnected, staleConnected, checkUpdates, rewrite, updates, setAuto, signal, seen, buildInfo, retry, goPro, checkData, applyCheck, liveWeekly, stockSignal, peek: (slug) => st(slug).status, addEmail, start, resume, resumeAll, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
 }

@@ -67,7 +67,7 @@ export async function reviews(ctx) {
   const used = new Set(); const pick = (fn) => { const q = pool3.filter((x) => !used.has(x.text) && fn(x)).sort((a, b) => (Date.parse(b.at || 0) || 0) - (Date.parse(a.at || 0) || 0))[0]; if (q) used.add(q.text); return q; };
   const chosen = [pick((q) => q.rating >= 4 && RESULT.test(q.text)), pick((q) => q.rating === 5 && !RESULT.test(q.text) && q.text.length < 160), pick((q) => q.rating != null && q.rating <= 2)].filter(Boolean);
   while (chosen.length < 3) { const q = pick((x) => x.rating >= 4); if (!q) break; chosen.push(q); }
-  profile.reviews = { platforms, total: platforms.length ? platforms.reduce((a, p) => a + (p.count || 0), 0) : null, quotes: chosen, recent: quotes.slice(0, 40), app, notes };
+  profile.reviews = { platforms, total: platforms.length ? platforms.reduce((a, p) => a + (p.count || 0), 0) : null, quotes: chosen, recent: quotes.slice(0, 40), app, notes, at: new Date().toISOString().slice(0, 10) }; /* at: the day the counts were read (pack-numbers.js reviews) */
   if (profile.reviews.total) ledger.add({ key: 'reviews.total', label: 'Reviews and ratings found (all platforms read)', v: num(profile.reviews.total), n: profile.reviews.total, unit: 'reviews+ratings', url: platforms[0]?.url, method: 'crawl', note: platforms.map((p) => `${p.name} ${num(p.count)}${p.scope ? ` (${p.scope})` : ''}`).join('; ') });
 
   const cap = platforms.length ? platforms.map((p) => `${num(p.count)} ${p.label || p.name}${p.rating ? ` (${p.rating.toFixed(1)}★)` : ''}`).join(' · ') + '.' : 'No reviews found on the site.';
@@ -170,7 +170,7 @@ export async function reviews(ctx) {
     const src = `https://www.${domain}/s?k=${encodeURIComponent(name)}`;
     if (!uniq.length) { notes.push(`No ${name} listings in the ${domain} search.`); ledger.add({ key: 'reviews.amazon.listings', label: `${domain} listings found for "${name}"`, v: '0', n: 0, url: src, method: 'treg:crawl4ai.amazon.search.products' }); return; }
     const total = uniq.reduce((a, r) => a + (+r.reviews || 0), 0); const wr = uniq.reduce((a, r) => a + (+r.reviews || 0) * (+r.rating || 0), 0);
-    platforms.push({ name: domain, label: `${domain} ratings on ${uniq.length} listings`, count: total, rating: total ? wr / total : null, url: src, scope: `first search page for "${name}"` });
+    platforms.push({ name: domain, label: `${domain} ratings on ${uniq.length} listings`, count: total, rating: total ? wr / total : null, listings: uniq.length, url: src, scope: `first search page for "${name}"` });
     ledger.add({ key: 'reviews.amazon.count', label: `${domain} ratings across ${uniq.length} ${name} listings (first search page)`, v: num(total), n: total, unit: 'ratings', url: src, method: 'treg:crawl4ai.amazon.search.products', note: uniq.slice(0, 8).map((r) => `${r.asin} ${r.rating}★ ${r.reviews}`).join('; ') });
     ledger.add({ key: 'reviews.amazon.listings', label: `${domain} listings found for "${name}"`, v: String(uniq.length), n: uniq.length, url: src, method: 'treg:crawl4ai.amazon.search.products' });
     profile.marketplaces = [...(profile.marketplaces || []), { name: domain, listings: uniq.slice(0, 20).map((r) => ({ asin: r.asin, title: clean(r.title).slice(0, 140), price: r.price, rating: r.rating, reviews: r.reviews, url: `https://www.${domain}/dp/${r.asin}` })) }];

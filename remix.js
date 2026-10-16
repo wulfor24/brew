@@ -16,6 +16,7 @@ import { familyOf, FAMILY_NAME, fieldsFor, knobsFor, suggestFor, fitChip, GRADES
 import { buildPack } from './publish-pack.js';
 import { impactInputs, projectImpact } from './impact.js';
 import { realRows } from './connectors/common.js';
+import { isQuestion, photoAsk, answerGrounded } from './jam-answer.js'; // a question gets an answer, never a version; "keep the photo" never makes one
 import { moveNo } from './value.js';
 import { createFamilies } from './measure-families.js';
 import { launchBrowser, zipBuffer, withBrowser } from './pdf/render.js';
@@ -347,7 +348,8 @@ export function createRemix(o) {
     return { image: p.image, knobs: p.knobs, grade: p.grade, ...(p.video ? { video: p.video, poster: p.poster || null, ...(p.videoHook ? { videoHook: p.videoHook } : {}) } : {}), draft: d, ...(d && p.cardImages ? { cardImages: p.cardImages } : {}) }; };
   /* photos on a post: community platforms (Reddit, Quora, Facebook groups) take real photos only, never an AI image */
   const realOnly = (ch) => ch.family === 'post' && /reddit|quora|facebook|fb_group|comment_reply/i.test(`${ch.action} ${ch.pkg?.platform || ''}`);
-  const PHOTO_ASK = /\b(change|swap|replace|new|different|another|other|better|redo|fresh)\b[^.?!]{0,40}\b(photos?|images?|pictures?|pics?|visuals?|creatives?|shots?)\b|\b(photos?|images?|pictures?|pics?|visuals?)\b[^.?!]{0,20}\b(change|swap|replace|redo)\b/i;
+  /* "change the photo" makes a new one; "keep the same photo, change the words only" never does (jam-answer.js photoAsk) */
+  const ANSWERED = new WeakSet(); /* changes whose last message was a question: answered, nothing changed, no brief sync */
   // what the card's own moves say, so packages follow the plan they came from
   const movePassages = (c, extra = '', k = 4) => (MOVES ? MOVES.passages(c, k, extra) : []);
   const moveTag = (x) => MOVES?.tag ? MOVES.tag(x.n, x.h) : `Move ${String(x.n).padStart(2, '0')} · ${x.h}`;
@@ -607,26 +609,51 @@ export function createRemix(o) {
   const suggestOf = (t, ch) => { const asked = new Set((ch.thread || []).filter((m) => m.from === 'you').map((m) => String(m.text).toLowerCase().trim()));
     ch.chips ||= chipsFor(ch.action, t.cards.get(ch.cardId) || {}, B()); /* older changes: worked out once from the action, then kept */
     const pool = [...(ch.next || []), ...ch.chips, ...(ch.chips.length >= 3 ? [] : suggestFor(ch.family, B()))]; return pool.filter((x, i) => !asked.has(x.toLowerCase()) && pool.findIndex((y) => y.toLowerCase() === x.toLowerCase()) === i).slice(0, 4); };
+  /* a question about the package: one small grounded answer (the card, the package, the moves, the facts, the connected
+     numbers), no package rewrite and no version. The answer is checked: a number or a performance claim the evidence
+     doesn't hold is cut, and it says what isn't known */
+  const answerIn = async (t, ch, message, show) => {
+    const c = t.cards.get(ch.cardId) || {};
+    ch.thread.push({ from: 'you', text: show || message, at: now(t) }); ANSWERED.add(ch);
+    if (isMock() || !spend('text')) { ch.thread.push({ from: 'ai', text: 'AI is offline right now, so I can’t answer that. Nothing changed.', at: now(t), offline: true, answer: true }); return ch; }
+    const acct = realRows(t.liveLedger).filter((e) => e.label && e.v != null).slice(0, 24); // DUMMY: simulated accounts are never quoted
+    const evidence = [cardBrief(c, seatLine(t.viewer)), `The package (${ch.actionLabel} on ${ch.target.name}):\n${toKV(ch.family, ch.action, ch.pkg).map((e) => `${e.k}: ${e.v}`).join('\n')}`,
+      movePassages(c, message, 3).map((x) => `${moveTag(x)}: ${x.text || x.t || ''}`).join('\n'),
+      acct.length ? `Connected accounts, read ${acct[0].at || 'today'}:\n${acct.map((e) => `- ${e.label}: ${e.v}`).join('\n')}` : 'Connected accounts: none with results for this yet.'].filter(Boolean).join('\n\n');
+    try {
+      const r = await answerGrounded({ ai: (p, sc, mx, tag) => claudeTool(p, sc, mx, tag), question: message, evidence, history: ch.thread.slice(-7, -1).map((m) => `${m.from === 'you' ? 'Person' : 'Brew'}: ${m.text}`), who: `the ${AGENT[ch.agent] || 'Brew'} agent` });
+      ch.thread.push({ from: 'ai', text: clean(r.answer), at: now(t), answer: true, ...(r.known ? {} : { unknown: true }) });
+    } catch (e) { log.warn('[studio answer]', e.message); ch.thread.push({ from: 'ai', text: 'That didn’t go through, so nothing changed. Ask again in a minute.', at: now(t), answer: true }); }
+    return ch;
+  };
   const iterate = async (t, ch, message, { knob, quiet, show } = {}) => {
     const c = t.cards.get(ch.cardId) || {};
+    ANSWERED.delete(ch);
+    if (!knob && !quiet && isQuestion(message)) return answerIn(t, ch, message, show); /* a question never makes a version */
+    const keepPhoto = photoAsk(message) === 'keep';
     if (!quiet) ch.thread.push({ from: 'you', text: show || message, at: now(t) });
     let out = null;
     if (!isMock() && spend('text')) {
       try {
         const schema = { type: 'object', required: ['reply', 'pkg', 'newImage', 'next'], properties: { plan: { type: 'array', items: { type: 'string' }, description: 'Only when the person asks to change the plan itself (its steps): the whole updated list of steps, 3 to 6, each under 14 words, ending with the step that makes it ready to deploy or hand to the team; never a step called decided. Otherwise an empty list.' }, reply: { type: 'string', description: 'Under 30 words: what you changed, plainly' }, label: { type: 'string', description: 'A name for this new version in a version list: 2 to 4 words, sentence case, what is different about it (e.g. "As a thread", "Shorter hook", "Price up front"). Not the request repeated.' }, next: { type: 'array', items: { type: 'string' }, description: 'Exactly 4 follow-up requests the person might tap next, each 2 to 6 words, in their voice (e.g. "Shorter, for WhatsApp"). Each one a way to cut THIS change (the card’s own action, named in the prompt), using its words: never a generic writing tip that would fit any widget. Specific to this updated package and this conversation; never repeat something already asked or already true of the package.' }, pkg: kvSchema(allKeys([ch.family])), newImage: { type: 'boolean', description: 'True only if the photo itself should change (scene, mood, subject, ratio)' } } };
-        out = await claudeTool(`${cardBrief(c, seatLine(t.viewer))}\n\nYou are the ${AGENT[ch.agent]} agent in the remix studio, iterating a ${FAMILY_NAME[ch.family]} (${ch.actionLabel} on ${ch.target.name}).${c.cta?.label ? ` The card's own action: "${c.cta.label}"; this package is that action and nothing else.` : ''}\n${promptBlock(t, ch.agent === 'brew' ? 'creative' : ch.agent)}\nIt must stay commission-ready and stay exactly this kind of change: ${specOf(ch.action)}\n${productLine(c)}\nFields:\n${fieldsBrief(ch.family, ch.action)}\nCurrent package (field: value):\n${toKV(ch.family, ch.action, ch.pkg).map((e) => `${e.k}: ${e.v}`).join('\n')}\nKnobs set: ${JSON.stringify(ch.pkg.knobs || {})}\nThe conversation so far:\n${ch.thread.slice(-7, -1).map((m) => `${m.from === 'you' ? 'Person' : 'You'}: ${m.text}`).join('\n') || '(none)'}\n${promptBlock(t, ch.agent)}${(ch.notes || []).length ? `\nThe person's notes on this package (respect them):\n${ch.notes.map((n) => `- ${n.text}`).join('\n')}` : ''}\n\nThe person now asks: "${message}"\nReturn the WHOLE updated package (every field, changed or not). ${factsLine}`, schema, 3000, 'studio_iterate');
+        out = await claudeTool(`${cardBrief(c, seatLine(t.viewer))}\n\nYou are the ${AGENT[ch.agent]} agent in the remix studio, iterating a ${FAMILY_NAME[ch.family]} (${ch.actionLabel} on ${ch.target.name}).${c.cta?.label ? ` The card's own action: "${c.cta.label}"; this package is that action and nothing else.` : ''}\n${promptBlock(t, ch.agent === 'brew' ? 'creative' : ch.agent)}\nIt must stay commission-ready and stay exactly this kind of change: ${specOf(ch.action)}\n${productLine(c)}\nFields:\n${fieldsBrief(ch.family, ch.action)}\nCurrent package (field: value):\n${toKV(ch.family, ch.action, ch.pkg).map((e) => `${e.k}: ${e.v}`).join('\n')}\nKnobs set: ${JSON.stringify(ch.pkg.knobs || {})}\nThe conversation so far:\n${ch.thread.slice(-7, -1).map((m) => `${m.from === 'you' ? 'Person' : 'You'}: ${m.text}`).join('\n') || '(none)'}\n${ch.agent === 'brew' ? promptBlock(t, ch.agent) : '' /* the agent's rules are already above; only the brew agent has a second set */}${(ch.notes || []).length ? `\nThe person's notes on this package (respect them):\n${ch.notes.map((n) => `- ${n.text}`).join('\n')}` : ''}\n\nThe person now asks: "${message}"\nReturn the WHOLE updated package (every field, changed or not). ${factsLine}`, schema, 3000, 'studio_iterate');
       } catch (e) { log.warn('[studio iterate]', e.message); }
     }
     const before = { ...ch.after };
     if (Array.isArray(out?.plan) && out.plan.length >= 3) { const pl = withSteps(ch.plan || o.planOf?.(t, c), out.plan.map((x) => clean(String(x)))); if (pl) { ch.plan = pl; const w = (t.work || []).find((x) => x.changeId === ch.id); if (w) w.cardPlan = { ...pl, made: w.cardPlan?.made || null }; } } /* the plan, refined in the chat */
     if (out?.pkg) {
+      const snapIn = JSON.stringify(snapOf(ch));
       ch.pkg = { ...ch.pkg, ...cleanPkg(ch.family, ch.action, fromKV(ch.family, ch.action, out.pkg), clean), ...keepMedia(ch.pkg) };
       if (BANNED.test(publicText(ch.family, ch.action, ch.pkg).join(' '))) ch.pkg = rulePkg(t, ch.agent, ch.family, ch.pkg);
-      sync(t, ch, c); { const v = version(t, ch, `ai:${ch.agent}`, message.slice(0, 90), out.label); if (!quiet) try { o.onVersion?.(t, ch, v, message); } catch {} } /* e.g. the jam's Slack thread */
-      if (!quiet) ch.thread.push({ from: 'ai', text: clean(out.reply || 'Updated.'), at: now(t), v: versionsOf(t, ch.id).length });
+      sync(t, ch, c);
+      /* a version only when the package really changed: the same words back (a question the router missed) is no new version */
+      const same = JSON.stringify(snapOf(ch)) === snapIn;
+      if (!same) { const v = version(t, ch, `ai:${ch.agent}`, message.slice(0, 90), out.label); if (!quiet) try { o.onVersion?.(t, ch, v, message); } catch {} } /* e.g. the jam's Slack thread */
+      else ANSWERED.add(ch);
+      if (!quiet) ch.thread.push({ from: 'ai', text: clean(out.reply || (same ? 'Nothing needed changing.' : 'Updated.')), at: now(t), ...(same ? {} : { v: versionsOf(t, ch.id).length }) });
       // the chips follow the conversation: what to try next on this version
       if (Array.isArray(out.next)) { const ctx = chipCtx(ch.action, ch.actionLabel, c); const nx = out.next.map((x) => clean(String(x)).replace(/[.]$/, '')).filter((x) => x && x.length <= 48 && chipRelates(x, ctx)); if (nx.length >= 2) ch.next = nx.slice(0, 4); } /* only chips about this change's action */
-      if (out.newImage || knob?.kind === 'image') genImage(t, ch, message);
+      if (!keepPhoto && (out.newImage || knob?.kind === 'image')) genImage(t, ch, message); /* "keep the photo" never starts a paid one */
     } else {
       // offline: apply what can be applied without AI, and say so
       /* a new version only when something really changed (a setting applied without AI); a failed rewrite adds no "Not rewritten" version */
@@ -948,13 +975,14 @@ export function createRemix(o) {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };
     const msg = clean(String(b.message || '')).slice(0, 400); if (!msg) return { error: 'empty' };
     /* "change the photo": a new photo, not a rewrite of the words. AI makes one where the platform allows it; the picker opens either way */
-    if (!b.fix && PHOTO_ASK.test(msg) && ['meta_ad', 'social', 'post'].includes(ch.family)) {
+    if (!b.fix && photoAsk(msg) === 'change' && !isQuestion(msg) && ['meta_ad', 'social', 'post'].includes(ch.family)) {
       ch.thread.push({ from: 'you', text: msg, at: now(t) });
       const started = !realOnly(ch) && !ch.imagePending ? (() => { ch.pkg.imageBrief = clean(`${ch.pkg.imageBrief || ''} The team asked: ${msg}`).slice(-600); return genImage(t, ch, msg); })() : false;
       ch.thread.push({ from: 'ai', text: started ? 'Making a new photo now. It lands as a new version in a minute. Rather use one of your own product photos, or upload one? The photo picker is open.' : realOnly(ch) ? `${ch.pkg.platform || 'This community'} wants real photos, not AI ones. Pick one of your product photos or upload your own: the photo picker is open.` : 'Pick one of your product photos or upload your own: the photo picker is open. Want a new one made instead? Describe it there.', at: now(t) });
       return { change: pubChange(t, ch), pickPhotos: true, image: started };
     }
     await iterate(t, ch, msg, { show: b.show ? clean(String(b.show)).slice(0, 300) : null });
+    if (ANSWERED.has(ch)) return { change: pubChange(t, ch), answered: true }; /* a question: answered, nothing changed, no version */
     // fixing: re-check, and if anything is still wrong, try again with the exact problems (twice at most)
     for (let i = 0; b.fix && i < 2 && ch.fixes?.length && !isMock(); i++) await iterate(t, ch, `Still not fixed: ${ch.fixes.join('; ')}. Fix exactly these and change nothing else.`, { quiet: true });
     if (b.fix && ch.fixes?.length) ch.thread.push({ from: 'ai', text: `I couldn’t fix everything: ${ch.fixes.join('; ')}. Edit it in Details, or tell me how you want it.`, at: now(t) });
@@ -1273,6 +1301,7 @@ export function createRemix(o) {
     const ch = w.changeId && changes(t)[w.changeId]; if (!ch) return null; ensurePkg(t, ch);
     if (editable(ch)) return { error: editable(ch) };
     await iterate(t, ch, body);
+    if (ANSWERED.has(ch)) return { change: pubChange(t, ch), answered: true }; /* a question: no new version in the jam either */
     const v = headOf(t, ch);
     w.versions.push({ n: v.n, title: ch.after.title, sub: ch.after.sub, images: ch.pkg.image ? [ch.pkg.image] : ch.after.images, by: 'ai', who: AGENT[ch.agent], note: body.slice(0, 80), at: now(t), changeVersionId: v.id, fromChange: true });
     w.current = v.n; w.title = ch.after.title; w.updatedAt = now(t);

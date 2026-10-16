@@ -154,9 +154,17 @@ function sourcesList(sources) {
   }).join('')}</ul>`;
 }
 
+/* the evidence lines a move rests on (meta.cites, moves-engine citeMove): shown under a Sources section the move wrote itself */
+const evidenceOf = (move) => (move.meta?.cites || []).filter((c) => c.kind === 'ledger' || c.kind === 'signal');
+function evidenceList(move) {
+  const xs = evidenceOf(move); if (!xs.length) return '';
+  return `<h3>Evidence lines</h3><ul class="sources cites">${xs.map((c) => `<li>${inline(`${c.label}: ${c.v}`)}${c.src ? ` <span class="src-url">${esc(String(c.url || c.src).replace(/^https?:\/\//, ''))}</span>` : ''}${c.at ? `, read ${esc(c.at)}` : ''} <span class="src-key">${esc(c.key)}</span></li>`).join('')}</ul>`;
+}
+
 function section(s, move) {
   if (s.kind === 'sources') {
-    const body = (s.blocks && s.blocks.length) ? blocks(s.blocks) : sourcesList(move.sources || []);
+    /* the move's own sources section, then the evidence lines it cites (they are already in move.sources when it wrote none) */
+    const body = (s.blocks && s.blocks.length) ? blocks(s.blocks) + evidenceList(move) : sourcesList(move.sources || []);
     return `<div class="sec sec-sources"><h2>${esc(up(s.h || 'Sources'))}</h2>${body}</div>`;
   }
   return `<section class="sec sec-${esc(s.kind || 'other')}">${h1(s.h)}

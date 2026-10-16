@@ -12,8 +12,31 @@ const all = async (path, token, params, max = 10) => { const out = []; let after
 const pick = (xs, types) => { for (const t of types) { const x = (xs || []).find((y) => y.action_type === t); if (x) return +x.value; } return null; };
 const PURCHASE = ['omni_purchase', 'purchase', 'offsite_conversion.fb_pixel_purchase'];
 
+/* a Meta sign-in lasts about 60 days and has no refresh token. Before it runs out (REFRESH_DAYS) Brew asks Meta for a new
+   long-lived token with the one it holds, where Meta allows it; a token whose end Brew doesn't know is looked up once
+   (debug_token). Either way exp is kept, and connectors/index.js warns the brand's admins a week ahead */
+const DAY = 864e5, REFRESH_DAYS = 10;
+export async function freshMeta(c, { now = Date.now(), getJSONImpl = getJSON } = {}) {
+  if (!c?.token) return c;
+  const a = app(); let out = c;
+  if (!out.exp && !out.expChecked && a.id && a.secret) {
+    const d = await getJSONImpl(`${G}/debug_token?${form({ input_token: out.token, access_token: `${a.id}|${a.secret}` })}`, {}, 'meta debug_token').catch(() => null);
+    const at = +d?.data?.expires_at; out = { ...out, expChecked: now, ...(at > 0 ? { exp: at * 1e3 } : at === 0 ? { exp: null, never: true } : {}) };
+  }
+  if (out.exp && out.exp > now && out.exp - now < REFRESH_DAYS * DAY && a.id && a.secret && !(out.refreshTriedAt && now - out.refreshTriedAt < DAY)) {
+    const long = await getJSONImpl(`${G}/oauth/access_token?${form({ grant_type: 'fb_exchange_token', client_id: a.id, client_secret: a.secret, fb_exchange_token: out.token })}`, {}, 'meta refresh').catch(() => null);
+    const exp = long?.expires_in ? now + long.expires_in * 1e3 : null;
+    out = long?.access_token && exp && exp > out.exp ? { ...out, token: long.access_token, exp, refreshedAt: now, refreshTriedAt: now } : { ...out, refreshTriedAt: now };
+  }
+  return out;
+}
+
 export default {
   id: 'meta', name: 'Meta Ads', modes: ['oauth'], picks: true,
+  expires: true, /* no refresh token: the sign-in itself runs out, so the team is warned before it does */
+  fresh: (c) => freshMeta(c),
+  /* Graph error 190: the sign-in expired or was taken back. Only a new sign-in fixes it */
+  expired: (e) => +e?.code === 190 || /error validating access token|session has expired|access token has expired/i.test(String(e?.message || '')),
   ready: () => !!(app().id && app().secret),
   authorize({ state, redirect }) { const a = app(); return `https://www.facebook.com/${V}/dialog/oauth?${form({ client_id: a.id, redirect_uri: redirect, state, config_id: a.config, response_type: 'code', override_default_response_type: 'true' })}`; },
   async exchange({ query, redirect }) {

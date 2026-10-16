@@ -48,7 +48,7 @@ export function createDemoRoutes({ packs, builder, auth, connectors, readBody, s
     const look = { mark: br.mark || null, logo: br.logo || st.logo || null, colors: br.colors || [], wash: br.wash || [], images: pick,
       tagline: (() => { const t = String(profile?.descriptor || br.tagline || ''), n = String(st.name || ''); return (t.toLowerCase().startsWith(n.toLowerCase()) ? t.slice(n.length).replace(/^\s*[:|\-–]\s*/, '') : t).slice(0, 90); })(),
       category: profile?.category || null, country: profile?.country || null, currency: profile?.currency || null,
-      products: num.products.n || null, reviews: +(profile?.reviews?.total || 0) || null,
+      products: num.products.n || null, reviews: num.reviews.n || null, /* the same count, from the same read, as the read and the check page */
       /* the brand's OWN live ads (never added to the rivals'), the same count as the read, the check page and the rings; else the pages it read */
       ads: num.ownAds.n || null,
       pages: +(String(((await packs.getJSON(slug, 'findings.json', null))?.steps || []).find((x) => x.k === 'open')?.done || '').replace(/,/g, '').match(/^(\d+) pages/)?.[1] || 0) || null };

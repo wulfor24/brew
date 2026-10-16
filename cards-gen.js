@@ -1,6 +1,7 @@
 // Feed cards from a finished move: 1 or 2 cards in the v1 card shape, plus the move's short labels.
 // Same rules as the first hand-built feed: the title is the point, the sub is two sentences (25-35 words:
 // what we saw with the number, then the move and what it gets the brand), every number is in the fact sheet.
+import { numbersOf } from './pack-numbers.js'; // one number, one source
 import { unbacked, allowedFrom, numbersIn, backedNumbers } from './fact-gate.js';
 import { CTA } from './seed-template.js';
 
@@ -155,9 +156,9 @@ Write 1 or 2 cards. Each card is one thing the team can act on now, taken from t
   }
   // the feed's first cards, from the read alone: what we saw on the site, in reviews, ads and AI answers
   async function fromRead(profile, { brand, facts, lanes, laneImg }) {
-    const p = profile, ok = allowedFrom(facts);
-    const ev = JSON.stringify({ catalog: (p.catalog?.products || []).slice(0, 12).map((x) => ({ t: x.title, price: x.priceLabel, mrp: x.mrp, stock: x.inStock, photos: (x.images || []).length, reviews: x.reviews })), count: p.catalog?.count,
-      reviews: { total: p.reviews?.total, platforms: p.reviews?.platforms, quotes: (p.reviews?.quotes || []).slice(0, 8) }, ads: { own: p.ads?.own?.live, rivals: (p.ads?.rivals || []).map((r) => ({ name: r.name, live: r.live, hooks: (r.items || []).slice(0, 3).map((a) => a.hook) })) },
+    const p = profile, ok = allowedFrom(facts), N = numbersOf({ profile: p }); /* the same counts every other screen shows (pack-numbers.js) */
+    const ev = JSON.stringify({ catalog: (p.catalog?.products || []).slice(0, 12).map((x) => ({ t: x.title, price: x.priceLabel, mrp: x.mrp, stock: x.inStock, photos: (x.images || []).length, reviews: x.reviews })), count: N.products.n,
+      reviews: { total: N.reviews.n, platforms: N.reviews.platforms, quotes: (p.reviews?.quotes || []).slice(0, 8) }, ads: { own: N.ownAds.n, rivals: N.rivals.map((r) => ({ name: r.name, live: r.live, hooks: ((p.ads?.rivals || []).find((x) => x.name === r.name)?.items || []).slice(0, 3).map((a) => a.hook) })) },
       ai: { score: p.ai?.score, answers: (p.ai?.answers || []).slice(0, 8).map((a) => ({ tool: a.tool, q: a.q, named: a.named, rivals: a.rivalsNamed })) }, checkout: p.site?.checkout, tech: p.site?.tech }).slice(0, 18000);
     const SCH = { type: 'object', properties: { cards: { type: 'array', items: SCHEMA.properties.cards.items } } };
     let j;
