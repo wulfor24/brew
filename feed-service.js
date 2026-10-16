@@ -1074,8 +1074,10 @@ export function createFeedService(o) {
   const PAID = new Set(['image', 'video', 'carousel']);
   const MAKE_ASK = /\b(make|create|generate|turn|redo|remake|new|another|fresh|shoot)\b[^.?!]{0,40}\b(videos?|reels?|clips?|carousels?|slides|images?|photos?|pictures?|visuals?|creatives?)\b/i;
   const asOf = (x) => (/\b(video|reel|clip)/i.test(x) ? 'video' : /\b(carousel|slides)/i.test(x) ? 'carousel' : 'image');
-  const pendText = (p) => p.kind === 'make' ? `I’ll make ${p.as === 'video' ? 'a 6-second vertical video' : p.as === 'carousel' ? 'a carousel' : 'a new image'}${p.summary ? `: ${p.summary}` : ''}. It uses today’s ${p.as === 'video' ? 'video' : 'image'} allowance.` : `I’ll change: ${p.summary || p.text}`;
-  const pendBlocks = (t, w, p, done) => [{ type: 'section', text: { type: 'mrkdwn', text: `*Brew:* ${pendText(p)}${p.by ? `\n_Asked by ${p.by}_` : ''}` } },
+  const pendText = (p) => { const what = String(p.summary || p.text || '').trim().replace(/[.\s]+$/, ''); return p.kind === 'make'
+    ? `Ready to make ${p.as === 'video' ? 'a 6-second vertical video' : p.as === 'carousel' ? 'a carousel' : 'a new image'}${what ? ` (${what[0].toLowerCase() + what.slice(1)})` : ''}. It uses today’s ${p.as === 'video' ? 'video' : 'image'} allowance.`
+    : `Ready to change this: ${what}.`; };
+  const pendBlocks = (t, w, p, done) => [{ type: 'section', text: { type: 'mrkdwn', text: `${pendText(p)}${p.by ? `\n_Asked by ${p.by}_` : ''}` } },
     done ? { type: 'context', elements: [{ type: 'mrkdwn', text: done }] }
       : { type: 'actions', elements: [{ type: 'button', style: 'primary', text: { type: 'plain_text', text: p.kind === 'make' ? 'Make it' : 'Make this change' }, action_id: 'apply', value: `${slugOfT(t)}|${w.id}|${p.id}` },
         { type: 'button', text: { type: 'plain_text', text: 'Not now' }, action_id: 'dismiss', value: `${slugOfT(t)}|${w.id}|${p.id}` }] }];
