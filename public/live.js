@@ -136,7 +136,7 @@
     if (id === 'klaviyo') return { time: 'Takes about a minute', steps: [
       { t: 'Create a read-only private key', p: 'Name it Brew and choose <b>Read-only key</b>.', go: ['Open Klaviyo', 'https://www.klaviyo.com/settings/account/api-keys'] },
       last('Paste the key', 'Klaviyo shows it once. It starts with pk_.') ] };
-    if (id === 'reviews') return { time: 'Takes about a minute', steps: [
+    if (id === 'reviews') return { time: 'Takes about a minute', alt: 'Paste an API token', steps: [
       { t: 'Copy your Judge.me API token', p: '<b>Settings</b> → <b>Integrations</b> → <b>Developers</b> → <b>View API token</b>.', go: ['Open Judge.me', handle ? `https://admin.shopify.com/store/${encodeURIComponent(handle)}/apps/judgeme` : 'https://judge.me/login'] },
       last('Paste it here', '') ] };
     return { time: 'Takes about a minute', steps: [last(`Connect ${esc(nm(id))}`, av.help ? esc(av.help) : '')] };

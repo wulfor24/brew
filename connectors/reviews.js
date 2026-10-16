@@ -4,11 +4,34 @@
 import { card, L, n0, has, getJSON, form } from './common.js';
 
 const JM = 'https://judge.me/api/v1';
-const get = (c, path, q = {}) => getJSON(`${JM}/${path}?${form({ ...q, shop_domain: c.shop, api_token: c.token })}`, { headers: { 'x-api-token': c.token } }, `judge.me ${path}`);
+/* a pasted private token goes in X-Api-Token with the store; an OAuth token goes as Bearer and carries its own store */
+const get = (c, path, q = {}) => getJSON(c.oauth ? `${JM}/${path}?${form(q)}` : `${JM}/${path}?${form({ ...q, shop_domain: c.shop, api_token: c.token })}`,
+  { headers: c.oauth ? { authorization: `Bearer ${c.token}` } : { 'x-api-token': c.token } }, `judge.me ${path}`);
+/* One-click sign-in (Judge.me OAuth, https://judge.me/api/docs#OAuth). It switches on by itself once Judge.me registers Brew and
+   JUDGEME_CLIENT_ID / JUDGEME_CLIENT_SECRET are set (asked of partnerships@judge.me on 2026-10-16). The token address and scope
+   names aren't in the public docs: set JUDGEME_TOKEN_URL / JUDGEME_SCOPES to what Judge.me sends if they differ. */
+const app = () => ({ id: process.env.JUDGEME_CLIENT_ID || '', secret: process.env.JUDGEME_CLIENT_SECRET || '',
+  tokenUrl: process.env.JUDGEME_TOKEN_URL || 'https://judge.me/oauth/token', scopes: process.env.JUDGEME_SCOPES || 'read_reviews read_shops' });
+const tokenOf = async (body) => { const a = app();
+  const t = await getJSON(a.tokenUrl, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: form({ client_id: a.id, client_secret: a.secret, ...body }) }, 'judge.me token');
+  if (!t?.access_token) throw new Error('Judge.me sent no access token. Try again.');
+  return { token: t.access_token, refresh: t.refresh_token || body.refresh_token || null, expires: t.expires_in ? Date.now() + (+t.expires_in - 120) * 1e3 : null }; };
 
 export default {
-  id: 'reviews', name: 'Judge.me reviews', modes: ['key'],
+  id: 'reviews', name: 'Judge.me reviews', modes: ['oauth', 'key'],
   ready: () => true,
+  oauthOn: () => !!(app().id && app().secret),
+  authorize({ state, redirect }) { return `https://app.judge.me/oauth/authorize?${form({ client_id: app().id, redirect_uri: redirect, response_type: 'code', scope: app().scopes, state })}`; },
+  async exchange({ query, redirect }) {
+    if (query.get('error')) throw Object.assign(new Error('Judge.me didn’t allow Brew in. Try again and approve it.'), { user: true });
+    const t = await tokenOf({ grant_type: 'authorization_code', code: query.get('code'), redirect_uri: redirect });
+    const info = await get({ oauth: true, token: t.token }, 'shops/info').catch(() => ({}));
+    const shop = String(info.shop?.domain || '').toLowerCase();
+    if (!shop) throw new Error('Judge.me didn’t say which store this is. Try again.');
+    return { oauth: true, ...t, shop };
+  },
+  async fresh(c) { if (!c.oauth || !c.expires || Date.now() < c.expires || !c.refresh) return c;
+    return { ...c, ...(await tokenOf({ grant_type: 'refresh_token', refresh_token: c.refresh })) }; },
   keyFields: [{ k: 'shop', label: 'Store address', hint: 'your-store.myshopify.com' }, { k: 'token', label: 'Private API token', hint: 'Judge.me → Settings → Integrations → View API token', secret: true }],
   async fromKey({ shop, token }) {
     const s = String(shop || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, ''), t = String(token || '').trim();

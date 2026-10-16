@@ -178,3 +178,23 @@ test('Google Ads: a failed account list says why, never "no account"', async () 
     assert.match(os2.adsNote || '', /wasn’t allowed/);
   } finally { globalThis.fetch = f0; }
 });
+
+test('Judge.me: one-click sign-in switches on with its client keys, and its token reads as Bearer without a store', async () => {
+  const j = (await import('../connectors/reviews.js')).default;
+  delete process.env.JUDGEME_CLIENT_ID; delete process.env.JUDGEME_CLIENT_SECRET;
+  assert.equal(j.oauthOn(), false, 'off until Judge.me registers Brew');
+  process.env.JUDGEME_CLIENT_ID = 'cid'; process.env.JUDGEME_CLIENT_SECRET = 'sec';
+  try {
+    assert.equal(j.oauthOn(), true);
+    assert.match(j.authorize({ state: 's', redirect: 'https://x/connect/reviews/callback' }), /^https:\/\/app\.judge\.me\/oauth\/authorize\?client_id=cid&.*response_type=code/);
+    const f0 = globalThis.fetch, seen = [];
+    globalThis.fetch = async (u, o = {}) => { seen.push({ u: String(u), h: o.headers || {} });
+      const body = /oauth\/token/.test(u) ? { access_token: 'tok', refresh_token: 'r', expires_in: 3600 } : { shop: { domain: 'cozy.myshopify.com' } };
+      return { ok: true, status: 200, text: async () => JSON.stringify(body) }; };
+    try {
+      const c = await j.exchange({ query: new URLSearchParams('code=abc'), redirect: 'https://x/cb' });
+      assert.equal(c.shop, 'cozy.myshopify.com'); assert.equal(c.oauth, true); assert.equal(c.token, 'tok');
+      const info = seen.find((x) => /shops\/info/.test(x.u)); assert.equal(info.h.authorization, 'Bearer tok'); assert.ok(!/shop_domain|api_token/.test(info.u));
+    } finally { globalThis.fetch = f0; }
+  } finally { delete process.env.JUDGEME_CLIENT_ID; delete process.env.JUDGEME_CLIENT_SECRET; }
+});
