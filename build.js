@@ -21,6 +21,7 @@ import { marketFor, applyMarket, nameOf } from './market.js'; // the selling mar
 import { realRows, privId } from './connectors/common.js'; // DUMMY: simulated account rows are never evidence
 import { healthFrom, geoOf } from './health.js';
 import { isPlay, playDone, totalOf, numbersFor, healSeedNumbers } from './pack-numbers.js'; // one number, one source
+import { waitingOnCheck } from './confirm-remind.js'; // a brand whose moves wait on "Check what we read"
 import { createStatics, teamStaticCards, teamStaticsDue } from './statics.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { mergeLedger, diffLedgers, candidates, triage, changeLine, liveMaterial, handleOfItem, productNames, movesNaming, CONNECTED_MOVES } from './refresh.js';
@@ -223,7 +224,9 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
 
       /* 2. "Check what we read": wait for the brand's corrections (or move on) */
       if (!s.stages?.confirm || s.stages.confirm.state !== 'done') {
-        await stage(slug, 'confirm', 'waiting');
+        /* the wait is stamped once: a restart doesn't make a day-old wait look new (confirm-remind.js reminds from it) */
+        if (s.stages?.confirm?.state !== 'waiting') await stage(slug, 'confirm', 'waiting');
+        if (!(await status(slug))?.waitingSince) await setStatus(slug, { waitingSince: Date.now() });
         /* a confirmation is stored (status.confirmedAt), so a click before this point is honoured, not lost */
         /* a brand read by someone not signed in waits for a signed-in confirm with no time limit: the moves are the expensive part */
         const anon = !!signGate() && !(await packs.getJSON(slug, 'private/created.json', null).catch(() => null));
@@ -273,7 +276,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         if (n === 21) staticsJob = makeStatics(slug, move, profile, (fn) => (lock = lock.then(fn).catch((e) => log.warn('[build] statics card', e.message))));
         await progressCard(slug, saved.size, move, total);
         const done = saved.size, waveA = WAVE_A.every((k) => saved.has(k));
-        await setStatus(slug, { movesDone: done, ready: waveA || (await status(slug)).ready, state: done >= total ? `All ${total} moves written` : `Writing the moves: ${done} of ${total}` });
+        const s1 = await status(slug); /* the pace this run really keeps: the last 12 saves (pack-numbers.js movesEta) */
+        await setStatus(slug, { movesDone: done, paceAt: [...(s1?.paceAt || []), Date.now()].slice(-12), ready: waveA || s1?.ready, state: done >= total ? `All ${total} moves written` : `Writing the moves: ${done} of ${total}` });
         if (waveA && !firstSent) { firstSent = true; notify(slug, 'first').catch((e) => log.warn('[notify]', e.message)); }
         await unmarkPdf(slug, n); /* PDFs are made when someone opens one (pdfOn), never in the build */
         packs.drop(slug); await onPack(slug); saveSpend(slug);
@@ -406,7 +410,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const c = { id: 'build-moves', agent: 'brew', sector: 'signals', type: 'report', lane: Object.keys(seed.lanes || { core: 1 })[0], roles: ['founder', 'growth', 'brand', 'ecom', 'crm'], src: 'Brew deployment team', time: '1 min', kind: 'rows', origin: 'build', boostFor: { founder: 6, growth: 3, brand: 3, ecom: 3, crm: 3 },
       badge: [done >= total ? 'All written' : `${done} of ${total} written`, done >= total ? 'ok' : 'info'],
       title: done >= total ? `All ${total} moves for ${seed.brand?.name} are written` : `Writing your ${total} moves: ${done} done`,
-      sub: `Each move is a full plan with sources, a 30-day rollout and how we measure it. ${last?.title ? `The latest: ${last.title}.` : ''} Open the Moves page to read them; any move downloads as a PDF.`.slice(0, 240),
+      sub: `Each move is a full plan with sources, a 30-day rollout and what to watch. ${last?.title ? `The latest: ${last.title}.` : ''} Open the Moves page to read them; any move downloads as a PDF.`.slice(0, 240),
       rows: [['Written', `${done} of ${total}`], ['Latest', String(last?.title || '').slice(0, 44)]], detail: { why: ['Every card in this feed comes from one of these plans.'], how: ['Open the Moves page.', 'Read any move, or download its PDF.'] }, cta: { label: 'Open the moves' } };
     seed.posts = [c, ...(seed.posts || []).filter((x) => x.id !== c.id)];
     await packs.put(slug, 'seed.json', seed); onCards(slug, [c], { replace: true });
@@ -648,10 +652,10 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const todo = n.emails.filter((x) => !n.sent[`${sentKey}:${x.email}`] && (!team || team.has(String(x.email || '').toLowerCase()))); if (!todo.length) return;
     const subject = kind === 'update' ? `${extra.moves.length} of ${name}’s moves were updated` : kind === 'all' ? `All of ${name}’s moves are ready` : `Your first moves for ${name} are ready`;
     const lead = extra.lead || `Something changed for ${name}, so Brew rewrote the plans it affects`;
-    const line = kind === 'update' ? `${lead}: ${extra.moves.map((x) => `Move ${String(x.n).padStart(2, '0')} (${x.title})`).join(', ')}. ${extra.because || ''}`.trim() : kind === 'all' ? `Brew has finished all ${totalOf(s0)} moves for ${name}: every plan with its sources, a 30-day rollout and how we measure it. Each one downloads as a PDF, and your feed is built from them.` : `Brew has written the first ten moves for ${name}: positioning, customers, rivals, pricing, offers and measurement. Their ideas are in your feed now, and the other ${Math.max(0, totalOf(s0) - 10)} keep landing over the next hour.`;
+    const line = kind === 'update' ? `${lead}: ${extra.moves.map((x) => `Move ${String(x.n).padStart(2, '0')} (${x.title})`).join(', ')}. ${extra.because || ''}`.trim() : kind === 'all' ? `Brew has finished all ${totalOf(s0)} moves for ${name}: every plan with its sources, a 30-day rollout and what to watch. Each one downloads as a PDF, and your feed is built from them.` : `Brew has written the first ten moves for ${name}: positioning, customers, rivals, pricing, offers and measurement. Their ideas are in your feed now, and the other ${Math.max(0, totalOf(s0) - 10)} land one by one; we’ll email again when they’re all in.`;
     const body = kind === 'update'
       ? mailP(`${mailEsc(lead)}:`) + mailList(extra.moves.slice(0, 12).map((x) => `Move ${String(x.n).padStart(2, '0')} · ${x.title}`)) + (extra.because ? mailP(mailEsc(extra.because)) : '')
-      : mailP(mailEsc(kind === 'all' ? `Brew has finished all ${totalOf(s0)} moves for ${name}: every plan with its sources, a 30-day rollout and how we measure it.` : `Brew has written the first ten moves for ${name}: positioning, customers, rivals, pricing, offers and measurement.`)) + mailP(mailEsc(kind === 'all' ? 'Each one downloads as a PDF, and your feed is built from them.' : `Their ideas are in your feed now, and the other ${Math.max(0, totalOf(s0) - 10)} keep landing over the next hour.`));
+      : mailP(mailEsc(kind === 'all' ? `Brew has finished all ${totalOf(s0)} moves for ${name}: every plan with its sources, a 30-day rollout and what to watch.` : `Brew has written the first ten moves for ${name}: positioning, customers, rivals, pricing, offers and measurement.`)) + mailP(mailEsc(kind === 'all' ? 'Each one downloads as a PDF, and your feed is built from them.' : `Their ideas are in your feed now, and the other ${Math.max(0, totalOf(s0) - 10)} land one by one; we’ll email again when they’re all in.`));
     const html = emailHtml({ title: subject, eyebrow: name, preheader: line.slice(0, 140), body, cta: { href: `${base}/${slug}`, label: 'Open the feed' }, secondary: { href: `${base}/${slug}#v=moves`, label: 'Read the moves' }, after: mailP('Every number in them has a source. Anything we could not confirm is marked “to confirm”.', { muted: true, small: true }), base });
     for (const x of todo) {
       const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' }, body: JSON.stringify({ from: process.env.NOTIFY_FROM || 'Brew <hello@send.joinsquareup.com>', to: [x.email], subject, html, text: `${subject}\n\n${line}\n\nOpen the feed: ${base}/${slug}\nRead the moves: ${base}/${slug}#v=moves` }) });
@@ -1212,7 +1216,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   }
   async function list() {
     const all = await packs.list();
-    return all.filter((x) => !blocked(x.slug) && !x.status.cancelled && !x.status.error).sort((a, b) => (b.status.updatedAt || 0) - (a.status.updatedAt || 0)).map((x) => ({ slug: x.slug, name: x.status.name, host: x.status.host, logo: x.status.logo ? (/^https?:\/\//.test(x.status.logo) ? x.status.logo : '/' + String(x.status.logo).replace(/^\/+/, '')) : null, /* one leading slash: '//b/..' would be read as another host */ state: x.status.done ? 'Ready' : x.status.ready ? `${x.status.movesDone || 0} of ${totalOf(x.status)} moves` : 'Reading' }));
+    return all.filter((x) => !blocked(x.slug) && !x.status.cancelled && !x.status.error).sort((a, b) => (b.status.updatedAt || 0) - (a.status.updatedAt || 0)).map((x) => ({ slug: x.slug, name: x.status.name, host: x.status.host, logo: x.status.logo ? (/^https?:\/\//.test(x.status.logo) ? x.status.logo : '/' + String(x.status.logo).replace(/^\/+/, '')) : null, /* one leading slash: '//b/..' would be read as another host */ state: x.status.done ? 'Ready' : x.status.ready ? `${x.status.movesDone || 0} of ${totalOf(x.status)} moves` : waitingOnCheck(x.status) ? 'Waiting for you to check the read' : 'Reading' }));
   }
   // after a restart: carry on with any brand that wasn't finished
   /* a one-off fresh reload (OPS_FRESH_RELOAD=<slug,...>): the pending updates are dropped, the brand's cap lifts (Pro), the build

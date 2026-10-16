@@ -2530,6 +2530,7 @@ body.rx-boot #view{visibility:hidden}
 .brew-wait .bw-k .dot{width:6px;height:6px;border-radius:50%;background:#ffd89a;box-shadow:0 0 8px #ffd89a;animation:bw-dot 1.6s ease-in-out infinite}
 @keyframes bw-dot{50%{opacity:.35}}
 .brew-wait .body{padding:16px 18px 18px}
+.brew-wait .bw-k2{display:inline-flex;align-items:center;gap:6px;margin:0 0 8px;font-size:13px;font-weight:600;color:var(--warn,var(--fg))}
 .brew-wait h3{margin:0 0 6px;font-size:21px;line-height:27.5px;letter-spacing:-.01em}
 .brew-wait .body > p{margin:0 0 14px;color:var(--fg-2)}
 .bw-bar{height:4px;border-radius:4px;background:var(--surface-2);overflow:hidden}

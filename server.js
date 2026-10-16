@@ -57,6 +57,8 @@ import { createPulse } from './market-pulse.js'; // market numbers: demand, sear
 import { createCalendar } from './calendar.js'; // holidays, festivals and sale days for the brand's own markets
 import { createVideoRead } from './video-read.js'; // what a video does: hook, scenes, CTA (Gemini on Vertex)
 import { watchCatalog } from './treg-map.js'; // new treg tools since last week, for admins
+import { movesEta } from './pack-numbers.js';
+import { awaitingCheck, createConfirmRemind } from './confirm-remind.js'; // "Check what we read" waits for a person: hold the watchers, remind by email // the time left on a brand's moves, from the pace the build really kept
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PUB = path.join(ROOT, 'public');
@@ -333,8 +335,12 @@ const attach = (p) => {
   if (p.kind === 'generated') setTimeout(() => notesSvc?.fill(p).catch((e) => console.warn('[notes]', p.slug, e.message)), 5000); /* margin notes for cards that never had one */
   if (p.kind === 'generated') setTimeout(() => valueSvc?.fill(p).catch((e) => console.warn('[move-value]', p.slug, e.message)), 8000); /* grades for moves new or rewritten since the last grading */
   const c = p.config || {}, key = JSON.stringify([c.rivals, c.terms, c.questions, c.country, c.catalogUrl, p.name]);
-  const read = p.kind !== 'default' && (c.questions?.length || c.rivals?.length); // the default context runs no watchers
+  /* a brand waiting on "Check what we read" runs no research or watchers: nobody has asked for the moves yet, and a restart
+     must not pay for them again (confirm-remind.js reminds the team instead) */
+  const held = p.kind === 'generated' && awaitingCheck(p.status);
+  const read = p.kind !== 'default' && (c.questions?.length || c.rivals?.length) && !held; // the default context runs no watchers
   let x = INST.get(p.slug);
+  if (held && x) { try { x.live?.stop?.(); x.research?.stop?.(); } catch {} INST.delete(p.slug); x = null; }
   if (read && (!x || x.key !== key)) {
     if (x) { try { x.live?.stop?.(); x.research?.stop?.(); } catch {} } /* the replaced watchers stop: no duplicate timers or catalog signals */
     const params = (m, max) => ({ ...claudeParams(m, max), system: p.system });
@@ -453,6 +459,9 @@ const hostOf = async (slug) => { if (!slug || blocked(slug)) return null; const 
 const seatNames = async (slug) => { const p = packs.peek(slug) || await packs.load(slug).catch(() => null); return Object.fromEntries(Object.entries(p?.seed?.roles || {}).map(([k, r]) => [k, r.title || r.name || k])); };
 const auth = createAuth({ packs, hostOf, seatNames, onTeamChange: () => MEMO.clear(), log: console });
 /* Brew's emails about jams to the brand's team: tagged, asked, assigned, needs your OK right away; replies batched (jam-mail.js) */
+/* a brand waiting on "Check what we read": email the person who started the read and its admins after a few hours, and once
+   more a day later (never auto-confirmed). Live site only: the demo sends no email, local servers only with CONFIRM_REMIND=1 */
+if (!DEMO && process.env.CONFIRM_REMIND !== '0' && (process.env.K_SERVICE || process.env.CONFIRM_REMIND === '1')) createConfirmRemind({ packs, mail: (...a) => auth.mail(...a), log: console }).start();
 const jamMail = createJamMail({ mail: (...a) => auth.mail(...a), packs, sign: auth.sign, verify: auth.verify, brandName: (slug) => packs.peek(slug)?.seed?.brand?.name || slug, watching: (wid, email) => !!feedSvc?.jams?.watching?.(wid, email), log: console });
 /* Demo Mode: a visitor with no Google sign-in is the owner of their own demo session (demo-mode.js virtualFile) */
 if (DEMO) { const realUser = auth.user; auth.user = (req) => realUser(req) || (demoSid() ? { email: demoEmail(), name: 'You', demo: true } : null); }
@@ -571,7 +580,10 @@ const brandRoutes = async (req, res, u) => {
   const v = await viewerOf(req, slug);
   if (!v.gen && req.method === 'POST' && what !== 'notify' && !v.email && auth.signinOn() && process.env.BUILD_SIGNIN !== '0') return send(res, 401, { error: 'Sign in with your work email to continue.', signin: true }), true;
   if (!v.gen && req.method === 'POST' && what !== 'notify') return send(res, 403, { ...demoErr(v.host), error: v.claimed ? 'Demo mode: only this brand’s team changes it. Ask them to invite you.' : `Demo mode: the moves are written once someone signs in with a work email at ${v.host || 'the brand’s domain'}.`, team: true }), true;
-  if (what === 'status') { const s = (await builder.status(slug)) || { error: 'unknown brand' };
+  if (what === 'status') { let s = (await builder.status(slug)) || { error: 'unknown brand' };
+    /* one count: never fewer written than the moves on file (pack-numbers.js), and a time left only from the measured pace */
+    const w = packs.peek(slug)?.numbers?.moves?.written; if (!s.error && !s.done && +w > (+s.movesDone || 0)) s = { ...s, movesDone: +w };
+    if (!s.error) s = { ...s, etaMin: movesEta(s) };
     /* status stays public (someone signing in mid-read sees where it is), but the move titles, files and spend are the team's */
     if (!(await teamRead(req, slug))) { const { pdfs, zips, statics, usd, proBy, proAt, ...pub } = s; return send(res, 200, pub), true; }
     return send(res, 200, s), true; }

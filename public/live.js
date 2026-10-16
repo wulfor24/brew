@@ -61,7 +61,7 @@
   const ticks = (xs) => (xs.length ? `<ul class="cxb-l">${xs.map((t) => `<li>${ic('check', 's14')}<span>${t}</span></li>`).join('')}</ul>` : '');
   const note = (t, icon = 'sparkles') => `<p class="cxb-note">${ic(icon, 's14')}<span>${t}</span></p>`;
   const stat = (t, kind = '', icon = 'lock') => `<div class="cxb-st${kind ? ` is-${kind}` : ''}" data-st>${icon === 'spin' ? '<span class="spin"></span>' : ic(icon, 's16')}<span>${t}</span></div>`;
-  const READONLY = () => stat('Read-only. Disconnect any time.');
+  const READONLY = (id) => (id === 'slack' ? stat('Posts the cards and jams your team sends to the channel you pick. Disconnect any time.', '', 'send') : stat('Read-only. Disconnect any time.')); /* Slack posts; every other connector only reads */
   const ghostBtn = (t, attr = 'data-close') => `<button type="button" class="cxb-gh" ${attr}>${t}</button>`;
   const goBtn = (t, attr) => `<button type="button" class="cxb-go" ${attr}>${t}</button>`;
   const goLink = (t, href) => `<a class="cxb-go" href="${href}">${t}</a>`;
@@ -75,7 +75,7 @@
   /* the gates before connecting: signed out, or signed in with an email that isn't the brand's */
   function gate(id, dummy) {
     const n = esc(B().brand.name), back = signin(here(`#v=connectors&cx=${id}`));
-    if (!L.me) return box({ id, title: `Connect ${esc(nm(id))}`, line: `Sign in first, so the numbers stay with ${poss()} team.`, body: unlocks(id), status: dummy ? DUMMY(id) : READONLY(), ghost: ghostBtn('Not now'), go: goLink('Sign in with Google', back) });
+    if (!L.me) return box({ id, title: `Connect ${esc(nm(id))}`, line: `Sign in first, so the numbers stay with ${poss()} team.`, body: unlocks(id), status: dummy ? DUMMY(id) : READONLY(id), ghost: ghostBtn('Not now'), go: goLink('Sign in with Google', back) });
     if (L.access && !L.access.gen) { const h = esc(L.access.host || host());
       return box({ id, title: L.access.claimed ? `${poss()} team connects its accounts` : 'Use your work email', line: L.access.claimed ? `${n} is on Brew. Ask its team to invite you.` : `You’re signed in as ${esc(L.me.email)}. The first person from ${h} to connect an account becomes ${poss()} admin.`,
         ghost: L.access.claimed ? '' : ghostBtn('Not now'), go: L.access.claimed ? goBtn('Got it', 'data-close') : goLink('Switch email', `/auth/logout?next=${encodeURIComponent(back)}`) }); }
@@ -96,9 +96,9 @@
       const av = L.avail[id], x = L.conns?.[id], short = esc(nm(id).split(' ')[0]);
       const oauth = av.modes.includes('oauth') && av.oauth, key = av.modes.includes('key') && av.fields?.length;
       const g = guide(id, av, oauth), solo = g.steps.length === 1 && g.steps[0].oauth ? g.steps[0] : null;
-      const status = x?.error ? stat(esc(x.error), 'bad', 'info') : READONLY(), why = x?.why ? note(esc(x.why), 'info') : '';
+      const status = x?.error ? stat(esc(x.error), 'bad', 'info') : READONLY(id), why = x?.why ? note(esc(x.why), 'info') : '';
       const line = esc(opts.why || '') || solo?.p || `Puts ${poss()} real numbers on your cards.`;
-      if (av.modes.includes('public')) html = box({ id, title: `Connect ${esc(nm(id))}`, line, body: unlocks(id) + why, status: av.ready ? READONLY() : stat('The marketplace read is off on this server right now.', 'bad', 'info'), ghost: ghostBtn('Not now'), go: av.ready ? goBtn('Read the listings now', 'data-pub') : '' });
+      if (av.modes.includes('public')) html = box({ id, title: `Connect ${esc(nm(id))}`, line, body: unlocks(id) + why, status: av.ready ? READONLY(id) : stat('The marketplace read is off on this server right now.', 'bad', 'info'), ghost: ghostBtn('Not now'), go: av.ready ? goBtn('Read the listings now', 'data-pub') : '' });
       else if (!oauth && !key) html = box({ id, title: `Connect ${esc(nm(id))}`, line, body: unlocks(id), status: stat(`Connecting ${esc(nm(id))} is being switched on. Brew’s team will send you a link.`, '', 'clock'), go: goBtn('Got it', 'data-close') });
       else {
         const steps = g.steps.filter((s) => !s.oauth), alt = oauth && key && steps.length;
@@ -271,9 +271,9 @@
   const footer = (id) => { const x = L.conns?.[id]; if (!x || !member() && x.state !== 'live') return null;
     return `<span class="cn-acct">${ic('check', 's14')}${esc(x.account || nm(id))}${x.lastSync ? ` · ${ago(x.lastSync)}` : ''}</span>${member() || L.avail?.[id]?.modes?.includes('public') ? `<button class="cn-btn is-ghost" data-lsync="${id}">Sync now</button>` : ''}${member() && boss() ? `<button class="cn-btn is-ghost" data-lunlink="${id}">Disconnect</button>` : ''}`; };
   const intro = () => { if (!GENB || (!L.signin && !L.me)) return null; const n = B().brand.name;
-    if (!L.me) return L.dummy ? `Every source Brew reads for ${n}. <a href="${signin()}">Sign in with Google</a> to connect accounts. Connected accounts are simulated in this demo (Dummy).` : `Every source Brew reads for ${n}. <a href="${signin()}">Sign in with Google</a> to connect ${n}’s real accounts, read-only.`;
+    if (!L.me) return L.dummy ? `Every source Brew reads for ${n}. <a href="${signin()}">Sign in with Google</a> to connect accounts. Connected accounts are simulated in this demo (Dummy).` : `Every source Brew reads for ${n}. <a href="${signin()}">Sign in with Google</a> to connect ${n}’s real accounts, read-only (Slack posts to the channel you pick).`;
     if (member() && !boss()) return `Every source Brew reads for ${n}. Only ${n}’s admins connect or disconnect accounts; you can sync the connected ones.`;
-    if (member()) return L.dummy ? `Every source Brew reads for ${n}. Connected accounts are simulated in this demo (Dummy), built from what Brew read, and only ${n}’s team sees them.` : `Every source Brew reads for ${n}. Connected accounts are read-only, refresh every few hours, and only ${n}’s team sees them.`;
+    if (member()) return L.dummy ? `Every source Brew reads for ${n}. Connected accounts are simulated in this demo (Dummy), built from what Brew read, and only ${n}’s team sees them.` : `Every source Brew reads for ${n}. Connected accounts are read-only (Slack posts to the channel you pick), refresh every few hours, and only ${n}’s team sees them.`;
     if (L.access?.claimed) return `Every source Brew reads for ${n}. Its team sees the live numbers; here you see the demo. Ask them to invite you.`;
     if (L.access?.eligible) return `Every source Brew reads for ${n}. You’re the first from ${esc(host())}: connect an account and ${n} is yours. <button class="linkish" data-lclaim>Claim it with your email</button>`;
     return `Every source Brew reads for ${n}. Here you see the demo: the first person to sign in with a work email at ${esc(host())} and connect an account becomes its admin.`; };
@@ -294,7 +294,7 @@
     const ac = L.access, n = B()?.brand?.name || 'this brand';
     const role = ac?.role === 'owner' ? `Owner of ${n}` : ac?.role === 'admin' ? 'Brew team · full access' : ac?.role ? `On ${n}’s team` : L.full ? 'Brew team · full access' : GENB ? `Visitor · you see ${n}’s demo` : '';
     pop.innerHTML = !L.me ? `<div class="lc-me"><b>Not signed in</b><small>Sign in to read a new brand, claim yours and connect real accounts.</small></div><a class="btn btn-primary sm" href="${signin()}">Sign in with Google</a><div class="lc-grp">${tuneRow()}</div>${window.BrewAcct?.rows?.() || ''}`
-      : `<div class="lc-me">${L.me.pic ? `<img src="${esc(L.me.pic)}" alt="" referrerpolicy="no-referrer">` : ''}<span><b>${esc(L.me.name || L.me.email)}</b><small>${esc(L.me.email)}</small>${role ? `<em>${esc(role)}</em>` : ''}</span></div>
+      : `<div class="lc-me">${L.me.pic ? `<img src="${esc(L.me.pic)}" alt="" referrerpolicy="no-referrer">` : ''}<span><b>${esc(L.me.name || L.me.email)}</b><small>${esc(L.me.demo || /@demo\.brew$/i.test(L.me.email || '') ? 'Demo visitor, no email' : L.me.email)}</small>${role ? `<em>${esc(role)}</em>` : ''}</span></div>
         ${GENB && ac?.canClaim ? `<button class="btn btn-primary sm" data-lclaim>Claim ${esc(n)}</button>` : ''}
         ${GENB && ac && !ac.gen ? `<small class="lc-hint">${ac.claimed ? `Ask ${esc(n)}’s team to invite you.` : `Sign in with your work email at ${esc(ac.host || host())} to claim it.`}</small>` : ''}
         ${GENB && ac?.role && ac.role !== 'owner' && ac.role !== 'admin' ? `<div class="lc-views"><small>Your views</small><span>${esc(seatWords(ac.seats))}</span></div>` : ''}

@@ -59,6 +59,20 @@ export function moves({ status, moves: mv } = {}) {
   return { total, written, weekly };
 }
 
+/** the time left on the moves, in minutes, from the pace the build really kept (status.paceAt: when each of the last moves
+    of this run was saved), or null: no estimate before four moves of this run, while paused or stopped, or when the last
+    move landed more than 20 minutes ago (a stall is not a countdown) */
+export function movesEta(s, now = Date.now()) {
+  if (!s || s.done || s.cancelled || s.capped || s.pausedDay) return null;
+  const N = +s.total, n = +s.movesDone || 0, run = +s.stages?.moves?.at || 0;
+  if (!N || n >= N || s.stages?.moves?.state !== 'running') return null;
+  const ts = (Array.isArray(s.paceAt) ? s.paceAt : []).filter((t) => Number.isFinite(t) && t >= run).sort((a, b) => a - b);
+  if (ts.length < 4) return null;
+  const last = ts[ts.length - 1]; if (now - last > 20 * 60e3) return null;
+  const per = (last - ts[0]) / (ts.length - 1); if (!(per > 0)) return null;
+  return Math.max(1, Math.round(((N - n) * per - (now - last)) / 60e3));
+}
+
 /** AI visibility: the unbranded answers (questions that don't name the brand); all answers kept beside it */
 export function ai({ profile } = {}) {
   const s = profile?.ai?.score || {};

@@ -212,6 +212,8 @@
 
   /* who is signed in: one copy, from Google sign-in (live.js window.LIVE.me); nothing about a person is typed in twice */
   const ME = () => window.LIVE?.me || window.LIVE?.user || null;
+  /* an address we can really email: never the demo's stand-in (demo-…@demo.brew) */
+  const mailMe = () => { const m = ME(), e = m?.email; return e && !m.demo && !/@demo\.brew$/i.test(e) ? e : null; };
   const myFirst = () => { const n = ME()?.name; const f = n ? String(n).trim().split(/\s+/)[0] : null; return f && !/^you$/i.test(f) ? f : null; }; /* a placeholder 'You' is not a name */
   const hiName = (R) => { const n = myFirst() || R?.name; return n && !/^you$/i.test(n) ? `, ${esc(n)}` : ''; };
   const ROLE = () => B.roles[S.viewer.role] || B.roles[Object.keys(B.roles)[0]];
@@ -222,6 +224,10 @@
   /* sign in right after the read: anyone can watch their brand being read, then Google sign-in opens the feed
      (and lets the moves be written). after = where to land once signed in: check | who | feed */
   const needSignin = () => GEN && !!window.LIVE?.signin && !window.LIVE?.me;
+  /* the read is in and waits for a person to check it (confirm-remind.js waitingOnCheck) */
+  const waitsOnCheck = (s) => !!s && !s.done && !s.cancelled && !s.error && !s.confirmedAt && s.stages?.read?.state === 'done' && s.stages?.confirm?.state === 'waiting';
+  /* the time left on a brand's moves: only the server's measured pace (status.etaMin), never a guess */
+  const etaOf = (s) => { const m = s?.etaMin; if (!(m > 0)) return ''; return ` · about ${m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 >= 10 ? ` ${m % 60} min` : ''}`} left`; };
   const signWall = (after) => {
     /* signed in, but not with an email at the brand (and not invited): the read is theirs to look at, the moves wait for the team */
     const A0 = window.LIVE?.access;
@@ -240,12 +246,14 @@
     if (!needSignin()) return false;
     view = 'signin'; $('#su-done')?.remove(); $('#buddy')?.remove(); window.scrollTo(0, 0);
     if (after === 'who') ls.set(`${LSP()}continue`, '1');
-    const next = `/${BR}${after === 'check' ? '#check' : ''}`;
+    const next = `/${BR}${after === 'check' ? '#check' : ''}`, team = after === 'team';
+    /* 'team': a signed-out visitor at a brand's page. What Brew read stays with the brand's team, so no read replay with
+       nothing in it: a plain sign-in for the team, true whether the brand is still being read or long finished */
     root.innerHTML = `<main class="screen sign-wall"><div class="sw-card">
       <div class="sw-mark"><img src="${B.brand.mark}" alt=""></div>
-      <span class="sw-ok">${ic('check', 's14')}${esc(B.brand.name)} is read</span>
-      <h1>Sign in to see your feed</h1>
-      <p>We’ve read ${esc(B.brand.host)}: the store, reviews, rivals and ads. Sign in with your work email at ${esc(B.brand.host)} to open ${esc(B.brand.name)}’s feed and get the moves written.</p>
+      ${team ? '' : `<span class="sw-ok">${ic('check', 's14')}${esc(B.brand.name)} is read</span>`}
+      <h1>${team ? `Sign in to open ${esc(B.brand.name)}` : 'Sign in to see your feed'}</h1>
+      <p>${team ? `${esc(B.brand.name)}’s feed and moves are for its team. Sign in with your work email at ${esc(B.brand.host)}, or ask the team to invite you.` : `We’ve read ${esc(B.brand.host)}: the store, reviews, rivals and ads. Sign in with your work email at ${esc(B.brand.host)} to open ${esc(B.brand.name)}’s feed and get the moves written.`}</p>
       <a class="btn btn-primary lg sw-go" href="/auth/google?next=${encodeURIComponent(next)}"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Continue with Google</a>
       <small>Brew gets your Google name, email and photo, nothing else.</small></div></main>`;
     return true;
@@ -314,11 +322,11 @@
     const LAND_CARDS = [['crm', 'Heard this week', '14 people asked the same sizing question on Reddit. Answer it once, everywhere.', '#1c2a44'], ['visibility', 'AI answers', 'ChatGPT names you in 1 of 4 buyer questions. Here is how to get to 2.', '#2b2440'], ['creative', 'Coming up', 'The next big sale day is in 5 weeks. Planning starts today.', '#3a2a1f']];
     window.scrollTo(0, 0); root.innerHTML = shell(`
         ${UI2 ? `<span class="ob2-mark">${SO()}</span>` : '<span class="ob2-eyebrow">Design partner preview</span>'}
-        <h1 class="ob2-h">${UI2 ? 'Get a team for your brand that works while you sleep.' : 'Your store’s marketing team, in one feed.'}</h1>${UI2 && !DEMO_LAND ? '<p class="ob2-ask">Let’s start with your URL.</p>' : ''}
+        <h1 class="ob2-h">${UI2 ? 'Your brand’s next marketing moves, each with its sources.' : 'Your store’s marketing team, in one feed.'}</h1>${UI2 && !DEMO_LAND ? '<p class="ob2-ask">Let’s start with your URL.</p>' : ''}
         <p class="ob2-lede">${DEMO_LAND ? 'Pick a real brand below and watch it run. Brew reads' : 'Add your website. Brew reads'} your store, reviews, rivals and AI answers, then five agents bring you ideas you shape together and hand over as one brief.</p>
-        ${DEMO_LAND ? '<div class="ob2-demos" id="demos" aria-busy="true"></div>' : `<form class="ob2-url" id="url-form" autocomplete="off">${ic('link', 's18')}<input id="url-in" value="${LANDING ? '' : B.brand.host}" placeholder="yourbrand.com" aria-label="Your website" inputmode="url" autocapitalize="off" spellcheck="false"${window.BREW_DEMO && !LANDING ? ` readonly aria-readonly="true" title="This demo is set up for ${esc(B.brand.host)}"` : ''}><button class="btn btn-primary" id="go" type="submit">${UI2 ? 'Build my team' : 'Build my feed'} ${ic('right', 's16')}</button></form>`}
+        ${DEMO_LAND ? '<div class="ob2-demos" id="demos" aria-busy="true"></div>' : `<form class="ob2-url" id="url-form" autocomplete="off">${ic('link', 's18')}<input id="url-in" value="${LANDING ? '' : B.brand.host}" placeholder="yourbrand.com" aria-label="Your website" inputmode="url" autocapitalize="off" spellcheck="false"${window.BREW_DEMO && !LANDING ? ` readonly aria-readonly="true" title="This demo is set up for ${esc(B.brand.host)}"` : ''}><button class="btn btn-primary" id="go" type="submit">${UI2 ? 'Read my store' : 'Build my feed'} ${ic('right', 's16')}</button></form>`}
         <div class="ob2-agents">${['creative', 'performance', 'storefront', 'visibility', 'crm'].map((a) => `<span title="${AGENT[a]}">${face(a)}</span>`).join('')}<small>Creative, ads, storefront, AI answers and retention agents</small></div>
-        <p class="ob2-foot">${LANDING ? `Brew reads the live site, its reviews, rivals and AI answers, then writes its moves. Every number has a source. ${DEMO_LAND ? 'Connected accounts are a demo workspace, and nothing is sent.' : window.LIVE?.me ? `Signed in as ${esc(window.LIVE.me.email)}.` : window.LIVE?.signin ? 'You sign in with Google to start.' : 'Connected accounts are a demo workspace.'}` : `Every idea comes from the Brew × ${esc(B.brand.name)} move documents. Connected numbers are a demo workspace.`}</p>${LANDING && !DEMO_LAND ? '<div class="ob2-recent" id="recent"></div>' : ''}`, 0,
+        <p class="ob2-foot">${LANDING ? `Brew reads the live site, its reviews, rivals and AI answers, then writes its moves. Every number has a source. ${DEMO_LAND ? 'Connected accounts are a demo workspace, and nothing is sent.' : window.LIVE?.me ? `Signed in as ${esc(window.LIVE.me.email)}.` : window.LIVE?.signin ? 'You sign in with Google to start.' : window.LIVE?.dummy === false ? '' : 'Connected accounts are a demo workspace.'}` : `Every idea comes from the Brew × ${esc(B.brand.name)} move documents.${window.LIVE?.dummy === false ? '' : ' Connected numbers are a demo workspace.'}`}</p>${LANDING && !DEMO_LAND ? '<div class="ob2-recent" id="recent"></div>' : ''}`, 0,
       `<div class="ob2-wash"></div><div class="ob2-collage">${LANDING ? LAND_CARDS.map((c, i) => `<figure class="cl cl${i} cl-txt" style="--clc:${c[3]}">${face(c[0])}<small>${esc(c[1])}</small><b>${esc(c[2])}</b></figure>`).join('') : art.map((src, i) => `<figure class="cl cl${i}"><img src="${src}" alt=""></figure>`).join('')}
         <div class="cl-chip c1">${face('creative')}<span><b>Creative director</b>12 ads ready for this week</span></div>
         <div class="cl-chip c2">${face('performance')}<span><b>Performance marketer</b>Two ad versions, drafted</span><em>Jam</em></div></div>`);
@@ -406,6 +414,8 @@
     document.addEventListener('mouseleave', () => document.body.classList.remove('has-me-cur'));
   };
   const setup = async () => {
+    if (needSignin() && signWall('team')) return; /* signed out: the read is the team's, so ask them to sign in first */
+    if (GEN && window.LIVE?.me && window.LIVE?.access && !window.LIVE.access.gen && !(B.steps || []).length && signWall('check')) return; /* signed in from outside the team: the read was kept from them, so no empty replay */
     meCursor();
     view = 'setup';
     // the rivals step shows what the Ad Library research really found (research.js), not a canned line
@@ -467,7 +477,7 @@
   const checkRead = async () => {
     if (signWall('check')) return;
     view = 'check'; window.scrollTo(0, 0); const slug = B.slug || BR;
-    const D = await api(`/api/brands/${slug}/check`); if (!D || D.error) { toast(`${ic('info', 's16')}${esc(D?.error || 'Could not load what we read')}`); return waitMoves(); }
+    const D = await api(`/api/brands/${slug}/check`); if (!D || D.error) { toast(`${ic('info', 's16')}${esc(D?.error || 'Could not load what we read')}`); return waitMoves({ fromCheck: true }); }
     const st = { hero: new Set(D.products.filter((x) => x.hero).map((x) => x.handle)), removed: new Set(), addProducts: [], removeRivals: new Set(), addRivals: [], who: {}, sources: {}, company: {} };
     const srcLine = (x) => x.src ? `<a class="ck2-src" ${x.url ? `href="${esc(x.url)}" target="_blank" rel="noopener"` : ''}>${ic('link', 's14')}${esc(srcShort(x.src))}${x.at ? ` · ${esc(x.at)}` : ''}</a>` : `<span class="ck2-src is-none">Not found on the site</span>`;
     const field = (x, group) => { const opts = x.type === 'country' ? COUNTRIES : x.type === 'currency' ? CURRENCIES.map((c) => [c, c]) : null;
@@ -519,20 +529,22 @@
     view = 'wait'; root.onclick = null; root.onkeydown = null; window.scrollTo(0, 0); const slug = B.slug || BR; clearTimeout(waitMoves.t);
     const [st, f] = await Promise.all([api(`/api/brands/${slug}/status`), api(`/api/brands/${slug}/findings`)]);
     if (st?.done && !o.stay) return continueToFeed();
+    if (waitsOnCheck(st) && !o.stay && !o.fromCheck) return checkRead(); /* nothing is being written yet: the check is what it waits for */
     const nm = esc(st?.name || B.brand.name), cards = f?.cards || [], mail = ls.get(`${LSP()}mail`);
-    const stages = (s) => { const g = s?.stages || {}, n = s?.movesDone || 0, N = +s?.total || 50; /* one count: the brand's playbook (status.total) */
+    const stages = (s) => { const g = s?.stages || {}, n = s?.movesDone || 0, N = +s?.total || 0; /* one count: the brand's playbook (status.total); none until the engine has counted it */
       const row = (state, t, sub) => `<li class="is-${state}"><i>${state === 'done' ? ic('check', 's14') : state === 'run' ? '<span class="spin"></span>' : ''}</i><div><b>${t}</b>${sub ? `<span>${sub}</span>` : ''}</div></li>`;
       return `<ol class="wt2-steps">${row('done', 'Read your site', 'Products, reviews, ads, rivals, AI answers')}${row(g.brief?.state === 'done' ? 'done' : g.confirm?.state === 'done' ? 'run' : 'wait', 'Write the brand brief', '')}
-        ${row(n >= 10 ? 'done' : g.brief?.state === 'done' ? 'run' : 'wait', 'The first 10 moves', `${Math.min(n, 10)} of 10 · positioning, customers, rivals, pricing`)}${row(n >= N ? 'done' : n >= 10 ? 'run' : 'wait', `All ${N} moves`, `${n} of ${N} written`)}</ol>
-        <div class="wt2-bar"><i style="width:${Math.max(4, Math.round(100 * Math.min(n, N) / N))}%"></i></div>`; };
+        ${row(n >= 10 ? 'done' : g.brief?.state === 'done' ? 'run' : 'wait', 'The first 10 moves', `${Math.min(n, 10)} of 10 · positioning, customers, rivals, pricing`)}${row(N && n >= N ? 'done' : n >= 10 ? 'run' : 'wait', N ? `All ${N} moves` : 'The rest of the moves', N ? `${n} of ${N} written${etaOf(s)}` : `${n} written`)}</ol>
+        <div class="wt2-bar"><i style="width:${Math.max(4, N ? Math.round(100 * Math.min(n, N) / N) : 0)}%"></i></div>`; };
     const mailBox = (em) => em ? `<div class="wt2-mailed">${ic('check', 's16')}<span>We’ll email <b>${esc(em)}</b> when they’re ready.</span><button class="linkbtn" id="wt-change">Change</button></div>`
-      : ME()?.email ? `<form class="wt2-mail" id="wt-mail"><input type="hidden" id="wt-email" value="${esc(ME().email)}"><button class="btn btn-primary sm" type="submit">${ic('bell', 's14')}Email me at ${esc(ME().email)} when they’re ready</button></form>` /* signed in: we know the address */
+      : window.BREW_DEMO ? '<p class="wt2-note">The demo sends no email. Open what we have now; new moves land in the feed.</p>' /* the demo's visitor has no real address */
+      : mailMe() ? `<form class="wt2-mail" id="wt-mail"><input type="hidden" id="wt-email" value="${esc(mailMe())}"><button class="btn btn-primary sm" type="submit">${ic('bell', 's14')}Email me when they’re ready</button><small class="wt2-to">To ${esc(mailMe())}</small></form>` /* signed in: we know the address */
       : `<form class="wt2-mail" id="wt-mail"><label for="wt-email">Get an email when they’re ready</label><div class="wt2-in"><input type="email" id="wt-email" required placeholder="you@${esc(B.brand.host || 'brand.com')}" autocomplete="email"><button class="btn btn-primary sm" type="submit">Notify me</button></div></form>`;
     root.innerHTML = `<main class="screen wt2"><div class="wt2-wrap">
       <aside class="wt2-side"><div class="wt2-panel">
         <div class="wt2-brand">${B.brand.logo ? `<span class="ck2-logo"><img src="${esc(st?.logo ? '/' + String(st.logo).replace(/^\//, '') : B.brand.logo)}" alt=""></span>` : ''}<span class="wt2-live"><span class="dot"></span>Working</span></div>
         <h1>Figuring out the best moves for ${nm}</h1>
-        <p>51 plans, each with its sources, a 30-day rollout and how we measure it. The first ten land in about 20 minutes, all of them in about 2 hours.</p>
+        <p>${+st?.total ? `${+st.total} plans` : 'A set of plans'}, each with its sources, a 30-day rollout and what to watch. They land one by one; the time left shows once we can measure the pace.</p>
         <div id="wt-stages">${stages(st)}</div>
         <div id="wt-mailbox">${mailBox(mail)}</div>
         <button class="btn btn-primary lg wt2-go" id="wt-go">Open what we have now ${ic('right', 's18')}</button>
@@ -547,7 +559,7 @@
     bindMail();
     $('#wt-go').onclick = continueToFeed;
     const poll = async () => { if (view !== 'wait') return; const s2 = await api(`/api/brands/${slug}/status`); const el = $('#wt-stages'); if (el && s2) el.innerHTML = stages(s2);
-      if (s2?.done) { const lv = $('.wt2-live'); if (lv) lv.innerHTML = `${ic('check', 's14')}Ready`; const go = $('#wt-go'); if (go) go.innerHTML = `All ${+s2.total || 50} moves are ready. Open the feed ${ic('right', 's18')}`; return; } /* every move is written: say so, and stop asking */
+      if (s2?.done) { const lv = $('.wt2-live'); if (lv) lv.innerHTML = `${ic('check', 's14')}Ready`; const go = $('#wt-go'); if (go) go.innerHTML = `${+s2.total ? `All ${+s2.total}` : 'All the'} moves are ready. Open the feed ${ic('right', 's18')}`; return; } /* every move is written: say so, and stop asking */
       waitMoves.t = setTimeout(poll, 12e3); };
     waitMoves.t = setTimeout(poll, 12e3);
   };
@@ -626,7 +638,7 @@
     window.scrollTo(0, 0); root.innerHTML = shell(`
       <h1 class="ob2-h">Connect your tools</h1><p class="ob2-lede">${window.LiveConn?.boss?.() === false ? 'Your admin connects these. Once they’re on, cards swap targets for your real numbers.' : 'Cards swap targets for your real numbers. Optional, and you can do it later from any card.'}</p>
       <div class="ob2-cx">${ids.map((id) => cxRow(id)).join('')}</div>
-      <p class="ob2-foot">${ic('lock', 's14')} ${window.LIVE?.dummy === false ? 'Read-only. Brew never changes your accounts.' : 'Demo workspace. No real account is touched.'}</p>
+      <p class="ob2-foot">${ic('lock', 's14')} ${window.LIVE?.dummy === false ? `Read-only. Brew never changes your accounts${ids.includes('slack') ? '; Slack posts only to the channel you pick' : ''}.` : 'Demo workspace. No real account is touched.'}</p>
       ${obNav('Next', true)}`, 3);
     obPreview();
     $('#ob-back').onclick = wantWhat; $('#ob-next').onclick = teamStep;
@@ -1108,19 +1120,23 @@
   /* a brand's first run: until its moves are written, one card says the real feed is on its way, with the time
      left and an email when it is ready (the same notify as the wait screen) */
   let BREW = null, mvT = 0;
-  const mvLeft = (s) => { const n = s?.movesDone || 0, m = s?.stages?.moves, t0 = m?.state === 'running' ? m.at : null;
-    const per = n >= 3 && t0 ? (Date.now() - t0) / n : 140e3, ms = Math.max(60e3, ((+s?.total || 50) - n) * per), min = Math.round(ms / 60e3);
-    return min < 60 ? `about ${min} min left` : `about ${Math.floor(min / 60)} h${min % 60 >= 10 ? ` ${min % 60} min` : ''} left`; };
   const brewingInner = () => { const n = BREW?.movesDone || 0, em = ls.get(`${LSP()}mail`);
     return `<div class="bw-art"><img src="assets/brew/moves-brewing.jpg" alt="" decoding="async"><span class="bw-k"><span class="dot"></span>Brewing</span></div>
       <div class="body"><h3>The magic starts once your moves are in</h3><p>Brew is writing ${+BREW?.total || 50} moves for ${esc(B.brand.name)}. Every card after that comes from them. Wait for it.</p>
-        <div class="bw-bar"><i style="width:${Math.max(3, Math.round(100 * Math.min(n, +BREW?.total || 50) / (+BREW?.total || 50)))}%"></i></div><small class="bw-meta">${n} of ${+BREW?.total || 50} written · ${mvLeft(BREW)}</small>
+        <div class="bw-bar"><i style="width:${Math.max(3, Math.round(100 * Math.min(n, +BREW?.total || 50) / (+BREW?.total || 50)))}%"></i></div><small class="bw-meta">${n} of ${+BREW?.total || 50} written${etaOf(BREW)}</small>
         ${em ? `<p class="bw-mailed">${ic('check', 's14')}<span>We’ll email <b>${esc(em)}</b> when they’re in.</span></p>`
-          : ME()?.email ? `<form class="bw-mail" data-bwmail><input type="hidden" value="${esc(ME().email)}"><button class="btn btn-primary sm" type="submit">Email me at ${esc(ME().email)}</button></form>`
+          : window.BREW_DEMO ? '' /* the demo sends no email, and its visitor has no real address */
+          : mailMe() ? `<form class="bw-mail" data-bwmail><input type="hidden" value="${esc(mailMe())}"><button class="btn btn-primary sm" type="submit" title="To ${esc(mailMe())}">Email me when they’re in</button></form>`
           : `<form class="bw-mail" data-bwmail><input type="email" required placeholder="you@${esc(B.brand.host || 'brand.com')}" autocomplete="email" aria-label="Your email"><button class="btn btn-primary sm" type="submit">Email me</button></form>`}</div>`; };
-  const brewingCard = () => GEN && BREW && !BREW.done && (BREW.movesDone || 0) < (+BREW.total || 50) && !BREW.cancelled ? `<article class="card brew-wait" data-brewing>${brewingInner()}</article>` : '';
+  /* the read waits on a person: nothing is written until someone checks it, and Brew never confirms it for them */
+  const checkWaitCard = () => GEN && waitsOnCheck(BREW) ? `<article class="card brew-wait is-check" data-brewing><div class="body"><span class="bw-k2">${ic('clock', 's14')}Waiting for you${BREW.waitingSince ? ` · ${ago(BREW.waitingSince)}` : ''}</span>
+      <h3>Check what we read for ${esc(B.brand.name)}</h3><p>The brand brief and the moves are written from what you confirm. Nothing more happens until someone on the team checks it.</p>
+      <button class="btn btn-primary sm" type="button" data-checkread>Check what we read ${ic('right', 's14')}</button></div></article>` : '';
+  /* one count with the feed's own "moves" card: the strip shows only while status says moves are still being written */
+  const brewingCard = () => checkWaitCard() || (GEN && BREW && !BREW.done && +BREW.total && (BREW.movesDone || 0) < +BREW.total && !BREW.cancelled ? `<article class="card brew-wait" data-brewing>${brewingInner()}</article>` : '');
+  document.addEventListener('click', (e) => { if (e.target.closest('[data-checkread]')) ensureTenant(true).then(checkRead); });
   const loadMV = async () => { if (!GEN || BREW?.done) return; BREW = await api(`/api/brands/${B.slug || BR}/status`).catch(() => null) || BREW;
-    clearTimeout(mvT); if (BREW && !BREW.done) mvT = setTimeout(async () => { await loadMV(); const el = $('[data-brewing]'); if (el && !el.contains(document.activeElement)) { if (brewingCard()) el.innerHTML = brewingInner(); else el.remove(); } }, 60e3); };
+    clearTimeout(mvT); if (BREW && !BREW.done) mvT = setTimeout(async () => { await loadMV(); const el = $('[data-brewing]'); if (el && !el.contains(document.activeElement)) { const h = brewingCard(); if (h) el.outerHTML = h; else el.remove(); } }, 60e3); };
   document.addEventListener('submit', async (e) => { const f = e.target.closest('[data-bwmail]'); if (!f) return; e.preventDefault(); const em = f.querySelector('input').value.trim(), b = f.querySelector('button'); b.disabled = true;
     const r = await api(`/api/brands/${B.slug || BR}/notify`, { email: em }); b.disabled = false;
     if (r?.ok) { ls.set(`${LSP()}mail`, em); const el = f.closest('[data-brewing]'); if (el) el.innerHTML = brewingInner(); toast(`${ic('check', 's16')}We’ll email you when they’re in`); } else toast(`${ic('info', 's16')}${esc(r?.error || 'That did not go through. Try again.')}`); });
@@ -2727,6 +2743,7 @@
     const LC = window.LiveConn;
     /* bento: a connected card with numbers and notes spans two tiles, numbers beside what it's doing */
     const cnDoing = (id, c) => (conn(id) && c.demo && c.changedDemo?.length ? c.changedDemo : c.changed || []);
+    const accessOf = (id) => (id === 'slack' ? 'Posts to your channel' : 'Read-only access'); /* Slack posts the cards and jams the team sends; every other connector only reads */
     const cnScore = ([id, c]) => (c.stats || []).length * 2 + cnDoing(id, c).length;
     const WIDE = new Set(on.filter(([, c]) => (c.stats || []).length >= 2).sort((a, b) => cnScore(b) - cnScore(a)).slice(0, Math.floor(on.length / 3)).map(([id]) => id));
     const cnWide = (id) => WIDE.has(id); /* the richest third of the connected ones: one wide tile per row of a 3-up grid */
@@ -2734,16 +2751,16 @@
         <header>${glyph(id, 40)}<div class="cn-name"><b>${esc(c.name)}</b><span title="${esc(c.kind)}">${esc(c.kind)}</span></div>${LC?.status(id) || (conn(id) ? `<span class="cn-st is-on"><i></i>${c.demo ? 'Demo' : 'Connected'}</span>` : c.optional ? '<span class="cn-st">Optional</span>' : '<span class="cn-st is-off"><i></i>Not connected</span>')}</header>
         <div class="cn-mid">${conn(id) && (c.stats || []).length ? `<dl class="cn-stats">${c.stats.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>${c.demo ? '<small class="cn-demo">Demo account numbers, built from what we read</small>' : ''}` : ''}
         ${(conn(id) && c.demo && c.changedDemo?.length ? c.changedDemo : c.changed || []).length ? `<div class="cn-will"><small>${conn(id) ? 'What it’s doing' : 'What it unlocks'}</small><ul>${(conn(id) && c.demo && c.changedDemo?.length ? c.changedDemo : c.changed).slice(0, 3).map((t) => `<li>${esc(t)}</li>`).join('')}</ul></div>` : ''}</div>
-        <footer>${LC?.footer(id) || (conn(id) ? `<span class="cn-acct">${ic('check', 's14')}${esc(c.account)}</span><button class="cn-btn is-ghost" data-unlink="${id}">Disconnect</button>` : `<span class="cn-acct is-muted">${ic('lock', 's14')}Read-only access</span><button class="cn-btn" data-cx="${id}">Connect${ic('right', 's14')}</button>`)}</footer></article>`;
+        <footer>${LC?.footer(id) || (conn(id) ? `<span class="cn-acct">${ic('check', 's14')}${esc(c.account)}</span><button class="cn-btn is-ghost" data-unlink="${id}">Disconnect</button>` : `<span class="cn-acct is-muted">${ic(id === 'slack' ? 'send' : 'lock', 's14')}${accessOf(id)}</span><button class="cn-btn" data-cx="${id}">Connect${ic('right', 's14')}</button>`)}</footer></article>`;
     const sec = (name, hint, items) => items.length ? `<section class="cn-sec"><h3>${name}<em>${items.length}</em>${hint ? `<small>${hint}</small>` : ''}</h3><div class="cn-grid">${items.map(card).join('')}</div></section>` : '';
     if (UI2) { /* the design's list: search, grouped rows, one tap to connect; what it unlocks folds into the row */
       const STORE = /^(shopify|meta|google|ga4|gads|ads|analytics|amazon|marketplaces|search)/;
       const row = ([id, c]) => `<details class="c2-row${conn(id) ? ' is-on' : ''}" data-cn="${id}" data-c2-name="${esc(`${c.name} ${c.kind}`.toLowerCase())}"><summary>${glyph(id, 32)}<span class="c2-t"><b>${esc(c.name)}</b><small>${esc(c.kind)}</small></span>${LC?.status(id) || (conn(id) ? `<span class="cn-st is-on"><i></i>${c.demo ? 'Demo' : 'Connected'}</span>` : c.optional ? '<span class="cn-st">Optional</span>' : '')}${conn(id) ? ic('chev', 's16') : `<button class="c2-add" data-cx="${id}" aria-label="Connect ${esc(c.name)}">${ic('plus', 's16')}</button>`}</summary>
           <div class="c2-more"><small>${conn(id) ? 'What it’s doing' : 'What it unlocks'}</small><ul>${(conn(id) && c.demo && c.changedDemo?.length ? c.changedDemo : c.changed || []).slice(0, 3).map((t) => `<li>${esc(t)}</li>`).join('')}</ul>
             ${conn(id) && (c.stats || []).length ? `<dl class="cn-stats">${c.stats.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>` : ''}
-            <footer>${LC?.footer(id) || (conn(id) ? `<span class="cn-acct">${ic('check', 's14')}${esc(c.account)}</span><button class="cn-btn is-ghost" data-unlink="${id}">Disconnect</button>` : `<span class="cn-acct is-muted">${ic('lock', 's14')}Read-only access</span><button class="cn-btn" data-cx="${id}">Connect${ic('right', 's14')}</button>`)}</footer></div></details>`;
+            <footer>${LC?.footer(id) || (conn(id) ? `<span class="cn-acct">${ic('check', 's14')}${esc(c.account)}</span><button class="cn-btn is-ghost" data-unlink="${id}">Disconnect</button>` : `<span class="cn-acct is-muted">${ic(id === 'slack' ? 'send' : 'lock', 's14')}${accessOf(id)}</span><button class="cn-btn" data-cx="${id}">Connect${ic('right', 's14')}</button>`)}</footer></div></details>`;
       const grp = (name, items) => items.length ? `<section class="c2-sec"><h3>${name}</h3><div class="c2-list">${items.map(row).join('')}</div></section>` : '';
-      libShell(`Connectors${LC?.L?.dummy === false ? '' : ' <span class="dummy-tag" title="Connected accounts are simulated in this demo">Dummy</span>'}`, LC?.intro() || `Connect the tools your agents read from. Read-only, and only ${esc(B.brand.name)}’s team sees them.`,
+      libShell(`Connectors${LC?.L?.dummy === false ? '' : ' <span class="dummy-tag" title="Connected accounts are simulated in this demo">Dummy</span>'}`, LC?.intro() || `Connect the tools your agents read from. Read-only (Slack posts to the channel you pick), and only ${esc(B.brand.name)}’s team sees them.`,
         `<label class="c2-search">${ic('search', 's16')}<input type="search" placeholder="Search connectors" data-c2-q autocomplete="off"></label>${grp('Store and ads', list.filter(([id]) => STORE.test(id)))}${grp('Customers and team', list.filter(([id]) => !STORE.test(id)))}${soonSec()}`);
       $('#col')?.classList.add('lib-col', 'cn-col', 'c2-col'); if (LC && $('#col')) LC.bindPage(document.getElementById('view') || $('#col'));
       $('[data-c2-q]')?.addEventListener('input', (e) => { const q = e.target.value.trim().toLowerCase(); $$('.c2-row').forEach((r) => (r.hidden = !!q && !r.dataset.c2Name.includes(q))); $$('.c2-sec').forEach((sc) => (sc.hidden = !$$('.c2-row', sc).some((r) => !r.hidden))); });
@@ -2751,7 +2768,7 @@
       $$('[data-unlink]').forEach((b) => b.onclick = () => { S.conn[b.dataset.unlink] = false; save(); toast(`${esc(B.connectors[b.dataset.unlink].name)} disconnected`); renderConnectors(); refreshAfterConnect(); });
       return; }
     const pct = Math.round(on.length / list.length * 100);
-    libShell(`Connectors${LC?.L?.dummy === false ? '' : ' <span class="dummy-tag" title="Connected accounts are simulated in this demo">Dummy</span>'}`, LC?.intro() || (LC?.L?.dummy === false ? `Every source Brew reads for ${B.brand.name}. Connected accounts are read-only and only ${B.brand.name}’s team sees them.` : `Every source Brew reads for ${B.brand.name}. Connected accounts are simulated in this demo (Dummy): connecting shows what would change, and nothing touches a real account.`),
+    libShell(`Connectors${LC?.L?.dummy === false ? '' : ' <span class="dummy-tag" title="Connected accounts are simulated in this demo">Dummy</span>'}`, LC?.intro() || (LC?.L?.dummy === false ? `Every source Brew reads for ${B.brand.name}. Connected accounts are read-only (Slack posts to the channel you pick) and only ${B.brand.name}’s team sees them.` : `Every source Brew reads for ${B.brand.name}. Connected accounts are simulated in this demo (Dummy): connecting shows what would change, and nothing touches a real account.`),
       `<div class="cn-sum"><div class="cn-sum-n"><b>${on.length}</b><span>of ${list.length} connected</span></div><div class="cn-bar"><i style="width:${pct}%"></i></div><div class="cn-logos">${list.map(([id]) => `<span class="${conn(id) ? '' : 'is-off'}" title="${esc(B.connectors[id].name)}">${glyph(id, 28)}</span>`).join('')}</div></div>
        ${sec('Not connected yet', 'Connect these to unlock the cards that need them', need)}${sec('Connected', '', on)}${sec('Optional', 'Nice to have', opt)}${soonSec()}`);
     $('#col')?.classList.add('lib-col', 'cn-col'); if (LC && $('#col')) { LC.bindPage(document.getElementById('view') || $('#col')); }
