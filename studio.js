@@ -1,4 +1,5 @@
 import { B, BN, BH, CTRY } from './brand-ctx.js';
+import { matchProduct } from './product-match.js';
 // Remix studio: what each kind of change is, as a commission-ready package.
 // Every action belongs to a family. A family says which fields the channel needs (FIELDS), which knobs you can turn
 // on it (KNOBS), how it renders as a card-sized "after" (afterFromPkg), and what counts as complete (missing).
@@ -461,16 +462,16 @@ export const mockPkg = (family, action, c, i = 0, angle = '', F = {}) => {
   return family === 'meta_ad' ? { ...base, ...multiPkg(act, c, F) } : base;
 };
 // offline: the multi-part formats, from the product facts (no claim the site doesn't make)
-const lanesOf = (c, F) => { const LP = B()?.config?.laneProducts; return LP ? Object.values(LP) : [PRODUCT(c.lane, F)]; };
+const lanesOf = (c, F) => { const LP = B()?.config?.laneProducts; return LP ? Object.values(LP) : [productFor(c, F)]; };
 const multiPkg = (act, c, F) => {
-  const P = PRODUCT(c.lane, F), all = lanesOf(c, F);
+  const P = productFor(c, F), all = lanesOf(c, F);
   if (act === 'carousel_ad') return { cards: [{ headline: String(P.hook || P.name).slice(0, 40), text: P.claim || P.name, imageBrief: P.photo, link: P.page }, ...all.filter((x) => x.name !== P.name).slice(0, 3).map((x) => ({ headline: String(x.short || x.name).replace(/^the /, '').slice(0, 40), text: x.price ? `${x.name}, ${x.price}` : x.name, imageBrief: x.photo, link: x.page }))], format: '1:1' };
   if (act === 'collection_ad') return { products: all.slice(0, 6).map((x) => x.name), instantPage: `The ${BN()} range, best sellers first` };
   if (act === 'catalog_ad') return { productSet: 'Every in-stock best seller', frame: P.hook ? String(P.hook).slice(0, 40) : `${BN()} · free delivery` };
   return {};
 };
 const socialPkg = (act, c, i, F) => {
-  const P = PRODUCT(c.lane, F), hook = P.hook || c.title || P.name, handle = '@' + String(BN()).toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const P = productFor(c, F), hook = P.hook || c.title || P.name, handle = '@' + String(BN()).toLowerCase().replace(/[^a-z0-9]+/g, '');
   const tags = [`#${String(BN()).replace(/\W+/g, '')}`];
   if (act === 'ig_post') return { account: handle, overlay: String(hook).slice(0, 50), imageBrief: P.photo, caption: `${hook}.\n\n${P.name}.${P.claim ? ' ' + P.claim + '.' : ''}\n\nTell us what you want to see next.`, hashtags: tags, format: '4:5', postAt: 'Thursday 7 pm' };
   const steps = (c.detail?.how || []).slice(0, 3);
@@ -479,7 +480,7 @@ const socialPkg = (act, c, i, F) => {
 };
 // any other brand, offline: the same shapes, written only from the catalog (no claim the site doesn't make)
 const genericPkg = (family, action, c, i = 0, angle = '', F = {}) => {
-  const P = PRODUCT(c.lane, F), act = String(action).split('.').pop(), N = BN(), sym = B().sym || '';
+  const P = productFor(c, F), act = String(action).split('.').pop(), N = BN(), sym = B().sym || '';
   if (family === 'meta_ops' && opsPkg(act, c)) return opsPkg(act, c);
   if (act === 'fix_links') return linksPkg(c);
   const claim = P.claim ? ` ${P.claim}.` : '', hook = P.hook || c.title || P.name;
@@ -578,7 +579,18 @@ export const ACTION_GUARD = {
   shift_budget: (pkg) => (pkg.spendChangeWeek > 0 ? 'Shifting budget keeps total spend the same' : null)
 };
 // which product the package is about: the card's lane, unless the card names another
-export const productFor = (c, F) => PRODUCT(c.lane, F);
+/* the product a card (or a package made from it) is about: the one its own words name in the catalog, else its lane's
+   product. A card's lane is a broad bucket the AI picks (a heated-slipper card can sit in the sleep-mask lane), so the
+   words win: "Snugglet Toe Toasters plugged into a laptop" is about the Toe Toasters, whatever the lane says. `extra` is
+   text read first (a package's own words, for a remake), then the card's title, body, make pieces, why/how and plan */
+export const cardWords = (c = {}) => [c.title, c.sub, c.make?.pieces, ...(c.detail?.why || []), ...(c.detail?.how || []), ...(Array.isArray(c.plan?.steps) ? c.plan.steps.map((x) => (typeof x === 'string' ? x : x?.t)) : [])].filter((x) => typeof x === 'string' && x).join('. ');
+const asProduct = (m) => { const LP = B()?.config?.laneProducts || {}, lane = Object.values(LP).find((x) => x?.name === m.t);
+  return lane ? { ...lane, img: m.img || lane.img || null } : { name: m.t, short: m.t, price: m.price || '', claim: m.claim || '', hook: m.claim ? String(m.claim).slice(0, 60) : m.t, page: m.url || BH(), photo: `The ${m.t} on a clean surface, soft daylight, calm space at the top.`, pack: '', img: m.img || null }; };
+export const productFor = (c = {}, F, extra = '') => {
+  const cat = B()?.catalog, brand = BN() || '';
+  if (cat?.length) for (const text of [extra, cardWords(c)]) { const m = text && matchProduct(text, cat, { brand }); if (m) return asProduct(m); }
+  return PRODUCT(c.lane, F);
+};
 
 /* ---------- an idea from the ideas stream (ideas.js) → the action and package it opens as in the studio ---------- */
 export const IDEA_ACTION = { x: 'x_post', linkedin: 'linkedin_post', reddit: 'reddit_post', quora: 'quora_answer', facebook: 'fb_group_post', pinterest: 'pinterest_pin', youtube: 'short_video', tiktok: 'short_video' };

@@ -12,7 +12,7 @@ export const junkPhoto = (u) => JUNK.test(String(u || '').split('?')[0]);
 /* a product's price as the store shows it: its own label, else the number in its currency */
 const priceOf = (x) => { if (x.priceLabel) return String(x.priceLabel); const n = +x.price; if (!x.price || !Number.isFinite(n)) return ''; try { return new Intl.NumberFormat('en', { style: 'currency', currency: String(x.currency || 'USD').toUpperCase(), maximumFractionDigits: n % 1 ? 2 : 0 }).format(n); } catch { return String(x.price); } };
 export const catalogOf = (profile, max = 400) => (profile?.catalog?.products || [])
-  .map((x) => ({ t: String(x.title || ''), img: [x.img, ...(x.images || [])].find((u) => u && !JUNK.test(u)) || null, ...(priceOf(x) ? { price: priceOf(x) } : {}), ...(x.inStock === false ? { out: true } : {}) })) /* skip a "sold out" placeholder, keep the product; price and stock for a product grid (draft-mocks.js) */
+  .map((x) => ({ t: String(x.title || ''), img: [x.img, ...(x.images || [])].find((u) => u && !JUNK.test(u)) || null, ...(priceOf(x) ? { price: priceOf(x) } : {}), ...(x.inStock === false ? { out: true } : {}), ...(x.url ? { url: String(x.url) } : {}), ...((x.claims || [])[0] ? { claim: String(x.claims[0]) } : {}) })) /* skip a "sold out" placeholder, keep the product; price and stock for a product grid (draft-mocks.js); its page and first claim for the jam's product line (studio productFor) */
   .filter((x) => x.t && x.img && !JUNK.test(x.t)).slice(0, max);
 
 export function matchProduct(text, catalog, { brand = '' } = {}) {
@@ -23,15 +23,20 @@ export function matchProduct(text, catalog, { brand = '' } = {}) {
   const says = (w) => said.has(w) || (w.length >= 6 && joined.includes(w)); /* "deep space" names "DEEPSPACE" */
   const df = new Map(); for (const p of catalog) for (const w of new Set(words(p.t))) df.set(w, (df.get(w) || 0) + 1);
   const N = catalog.length, idf = (w) => Math.log(1 + N / (df.get(w) || N));
+  const spaced = ` ${words(text).join(' ')} `;
   let best = null, bestScore = 0;
   for (const p of catalog) {
     const ws = [...new Set(words(p.t))].filter((w) => !skip.has(w));
     const hit = ws.filter(says); if (!hit.length) continue;
     // a rare word must be named (not only common ones), and more of the title named wins ties
-    const score = hit.reduce((a, w) => a + idf(w), 0) + hit.length / ws.length;
+    // the product's own name, written out ("Snugglet Paw Warmer is only $39"), beats any overlap of loose words
+    // ("toast your toes" with "foot warmer" once picked the Kitty Toes foot warmer over the Paw Warmer the copy names)
+    const nameWs = words(String(p.t).split(/\s+[–—|:-]\s+|,\s/)[0]).filter((w) => !skip.has(w)), phrase = nameWs.join(' ');
+    const byName = phrase && (nameWs.length >= 2 || nameWs.some((w) => (df.get(w) || N) <= Math.max(2, N * 0.08))) && spaced.includes(` ${phrase} `);
+    const score = hit.reduce((a, w) => a + idf(w), 0) + hit.length / ws.length + (byName ? 10 : 0);
     const rare = hit.some((w) => (df.get(w) || N) <= Math.max(2, N * 0.08));
     // one word must look like a name in the copy; two words of the title together are enough
-    const sure = hit.length >= 2 || (rare && named(hit[0]));
+    const sure = byName || hit.length >= 2 || (rare && named(hit[0]));
     if (sure && score > bestScore) { best = p; bestScore = score; }
   }
   return best;

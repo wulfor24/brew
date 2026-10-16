@@ -172,20 +172,30 @@ const VERB_RULES = [
 export const verbAction = (label, c = {}) => { for (const [re, f] of VERB_RULES) if (re.test(label || '')) { const k = f(c); if (k) return k; } return null; };
 /* the same job, sharpened by the card's case: pausing "the losers" on a sold-out card is pausing what points at it */
 const refine = (k, c) => (k === 'performance.pause_losers' && stockCard(c) ? 'performance.pause_pointing' : k === 'creative.film_brief' && /\b(reels?|shorts?|tiktok)\b/i.test(c.title || '') ? 'creative.short_video' : k);
+/* a card whose title names one ad channel opens on that channel: a button that makes ads somewhere else ("Launch the ad
+   group" on "Launch Meta prospecting…") was written loosely, and the card's own words win. The format the card plans
+   leads when it is on the named channel (a single image ad on Meta), else that channel's own launch */
+const CHANNEL_WORDS = [['meta', /\b(meta|facebook|instagram|ig|reels?|advantage\+?)\b/i], ['google', /\b(google|search ads?|adwords|youtube|pmax|performance max)\b/i]];
+export const namedChannel = (c = {}) => { const hits = CHANNEL_WORDS.filter(([, re]) => re.test(String(c.title || ''))).map(([k]) => k); return hits.length === 1 ? hits[0] : null; };
+const AD_FAMILIES = new Set(['search', 'meta_ad']);
+const onChannel = (k, c) => {
+  const named = namedChannel(c), tool = toolOf(k); if (!k || !named || !tool || tool === named || !AD_FAMILIES.has(familyOf(k))) return k;
+  const made = MAKE_ACTION[c.make?.format]; return made && toolOf(made) === named ? made : TOOL_PRIMARY[named] || k;
+};
 const primaryOf = (c) => {
   if (c.post?.platform) return ideaAction(c.post); // an idea from the stream opens as the post it is, on its own platform
   if (c.kind === 'chat') return 'creative.whatsapp_ad';
   const label = String(c.cta?.label || '').trim(), byLabel = CTA_IN_SECTOR[`${c.sector}:${label}`] ?? CTA_ACTION[label];
-  if (label && !(label in CTA_ACTION) && !CTA_IN_SECTOR[`${c.sector}:${label}`]) { const v = verbAction(label, c); if (v) return refine(v, c); } // a button we don't know: its verb
+  if (label && !(label in CTA_ACTION) && !CTA_IN_SECTOR[`${c.sector}:${label}`]) { const v = verbAction(label, c); if (v) return onChannel(refine(v, c), c); } // a button we don't know: its verb
   if (MAKE_ACTION[c.make?.format] && MAKING.has(label)) return MAKE_ACTION[c.make.format]; // a making button follows the format the card plans (cards-gen keeps them in step)
-  if (byLabel && !GENERIC_CTA.has(label)) return refine(byLabel, c); // a button that names its job: that job, whatever tool the AI named
+  if (byLabel && !GENERIC_CTA.has(label)) return onChannel(refine(byLabel, c), c); // a button that names its job: that job, whatever tool the AI named
   if (byLabel === null && !GENERIC_CTA.has(label)) return null; // a button that only navigates (Open the moves)
-  const made = MAKE_ACTION[c.make?.format]; if (made) return made;
+  const made = MAKE_ACTION[c.make?.format]; if (made) return onChannel(made, c);
   const ai = c.mf?.by === 'ai' ? c.mf.tool : null;
   if (ai && TOOL_PRIMARY[ai] && toolOf(byLabel) !== ai) return TOOL_PRIMARY[ai];
   if (/lab notes|new post|blog/i.test(`${c.title} ${c.campaign || ''}`) && c.sector === 'visibility') return 'visibility.blog_post';
   if (!DECIDE_CTA.has(label) && TRACKING.test(c.title || '')) return 'performance.tracking_fix'; // "go ahead" on a tracking card is the tracking fix (titles are too loose for the other verbs)
-  return byLabel ? refine(byLabel, c) : null;
+  return byLabel ? onChannel(refine(byLabel, c), c) : null;
 };
 /* what a change is called on the jam page, from the card it came from: a Reddit thread of its own is a post, not a
    reply; a comment reply says where it goes */
@@ -317,6 +327,14 @@ export const recipeOfCard = (c) => {
   return { ...r, agent, type, key: `${agent}.${type}`, actionKeys: actions, primary, intents };
 };
 
+/* a week of the package's own daily budget, exactly: the README, the brief and the Ads Editor CSV say the same money
+   (a floor of 1,000 once turned a $15/day ad group into "About $1,000 a week"). An ad with no budget set says so */
+export const amountOf = (act, family, pkg = {}) => {
+  if (!act.money) return 0;
+  if (['meta_ad', 'search'].includes(family) && +pkg.dailyBudget > 0) return Math.round(+pkg.dailyBudget * 7);
+  if (family === 'meta_ops' && pkg.spendChangeWeek > 0) return pkg.spendChangeWeek;
+  return 0; // no budget in the package, or a one-off cost (print, price, codes, sends): the team confirms it
+};
 export function createRemix(o) {
   const { claudeTool, geminiImage, PUB, LANE_PHOTO, FACTS = {}, unbackedNums = () => [], MOVES = null, photoFile = (rel) => path.join(PUB, rel) } = o;
   const catalogOf = o.catalogOf || (() => null);
@@ -330,7 +348,8 @@ export function createRemix(o) {
   // what the card's own moves say, so packages follow the plan they came from
   const movePassages = (c, extra = '', k = 4) => (MOVES ? MOVES.passages(c, k, extra) : []);
   const moveTag = (x) => MOVES?.tag ? MOVES.tag(x.n, x.h) : `Move ${String(x.n).padStart(2, '0')} · ${x.h}`;
-  const productLine = (c) => { const P = productFor(c, FACTS); return `THE PRODUCT: every public field is about ${P.name} (page ${P.page}${P.price ? `, ${P.price}` : ''}${P.claim ? `; claim: ${P.claim}` : ''}). Stay on this product unless the person asks for another one.`; };
+  const productLine = (c, extra = '') => { const P = productFor(c, FACTS, extra); return `THE PRODUCT: every public field is about ${P.name} (page ${P.page}${P.price ? `, ${P.price}` : ''}${P.claim ? `; claim: ${P.claim}` : ''}). Stay on this product unless the person asks for another one.`; };
+  const pkgWords = (ch) => (ch?.pkg ? [ch.after?.title, ...publicText(ch.family, ch.action, ch.pkg)].filter(Boolean).join('. ') : '');
   const specOf = (key) => ACTION_SPEC[String(key).split('.').pop()] || '';
   const { SEED, AGENT, claudeJSON, cardBrief, seatLine, qaCheck, mechanicalFix, clean, BANNED, isMock, spend, uid, now, clone, inr, on, newWork, addVersion, say, move, notify, later, setState, weekKey, curV, log = console } = o;
   const colName = (id) => SEED.colleagues.find((c) => c.id === id)?.name || 'A colleague';
@@ -438,21 +457,13 @@ export function createRemix(o) {
       .filter((x) => !BANNED.test(publicText(familyOf(x.action), x.action, x.pkg).join(' ')));
     return { line: clean(j.line || ''), opts };
   };
-  const amountOf = (act, family, pkg, c) => {
-    if (!act.money) return 0;
-    if (family === 'meta_ad' && pkg.dailyBudget) return Math.max(1000, pkg.dailyBudget * 7);
-    if (family === 'meta_ops' && pkg.spendChangeWeek > 0) return pkg.spendChangeWeek;
-    if (family === 'search' && pkg.dailyBudget) return Math.max(1000, pkg.dailyBudget * 7);
-    if (family === 'meta_ad' || family === 'meta_ops') return 90000; // an estimate for the brief; the team sets the real budget
-    return 0; // one-off costs (print, price, codes, sends): the ShopOS team confirms them
-  };
   // package → the card-sized "after", the money, the checks
   const sync = (t, ch, c) => {
     const act = actOf(ch.action); c ||= t.cards.get(ch.cardId) || {};
     ch.after = afterFromPkg(ch.family, ch.pkg, { images: ['meta_ad', 'social'].includes(ch.family) && c.images ? [ch.batchKey ? ch.pkg.image : c.images[0]] : null });
     ch.after.publicText = publicText(ch.family, ch.action, ch.pkg);
-    ch.amount = amountOf(act, ch.family, ch.pkg, c);
-    ch.costLabel = !act.money ? 'No spend' : ch.amount > 0 ? `About ${inr(ch.amount)} a week` : 'A one-off cost to confirm';
+    ch.amount = act.money ? amountOf(act, ch.family, ch.pkg) : 0;
+    if (act.money) healCost(ch); else ch.costLabel = 'No spend';
     return evaluate(t, ch);
   };
   const snapOf = (ch) => ({ ...ch.pkg, title: ch.after.title, sub: ch.after.sub, action: ch.action, amount: ch.amount });
@@ -490,7 +501,9 @@ export function createRemix(o) {
     return true;
   };
   // old changes (made before packages) get one built from their copy
-  const ensurePkg = (t, ch) => { if (ch.pkg) return ch; const c = t.cards.get(ch.cardId) || {}; ch.family = familyOf(ch.action); ch.pkg = cleanPkg(ch.family, ch.action, mockPkg(ch.family, ch.action, c, 0, ch.angle, FACTS), clean); ch.pkg.knobs = {}; ch.thread ||= []; return sync(t, ch, c); };
+  /* the spend a saved change shows, made again from its package (changes saved before the budget floor came out heal on open) */
+  const healCost = (ch) => { const act = actOf(ch.action); if (!act?.money) return; ch.amount = amountOf(act, ch.family, ch.pkg); ch.costLabel = ch.amount > 0 ? `About ${inr(ch.amount)} a week` : ['meta_ad', 'search', 'meta_ops'].includes(ch.family) ? 'A budget to confirm' : 'A one-off cost to confirm'; };
+  const ensurePkg = (t, ch) => { if (ch.pkg) { healCost(ch); return ch; } const c = t.cards.get(ch.cardId) || {}; ch.family = familyOf(ch.action); ch.pkg = cleanPkg(ch.family, ch.action, mockPkg(ch.family, ch.action, c, 0, ch.angle, FACTS), clean); ch.pkg.knobs = {}; ch.thread ||= []; return sync(t, ch, c); };
   const pubChange = (t, ch) => {
     ensurePkg(t, ch); const tr = trustOf(t, ch.agent);
     if (!ch.v0 && !ch.batchKey && (ch.fromCard || (t.work || []).some((w) => w.changeId === ch.id))) seedV0(t, t.cards.get(ch.cardId), ch);
@@ -544,8 +557,8 @@ export function createRemix(o) {
   const hookOf = (p = {}) => clean(String((p.script || [])[0]?.line || p.title || String(p.copy || '').split('\n')[0] || '')).split(/\s+/).slice(0, 14).join(' ');
   let MK = null; const makers = () => (MK ||= o.makers || createMakers({ geminiImage, log }));
   const VID_JOBS = new Set();
-  const srcPhoto = async (t, ch) => { const c = t.cards.get(ch.cardId) || {}, p = ch.pkg || {};
-    const cands = [...(p.photos || []).filter((u) => !/^gen\//.test(u)), ...(c.images || []).filter((u) => !/^gen\//.test(u) && !/statics\//.test(u)), LANE_PHOTO[c.lane], ...Object.values(LANE_PHOTO || {}), o.catalogOf?.(t)?.[0]?.img].filter((x) => x && typeof x === 'string');
+  const srcPhoto = async (t, ch, lead = null) => { const c = t.cards.get(ch.cardId) || {}, p = ch.pkg || {};
+    const cands = [...(p.photos || []).filter((u) => !/^gen\//.test(u)), lead, ...(c.images || []).filter((u) => !/^gen\//.test(u) && !/statics\//.test(u)), LANE_PHOTO[c.lane], ...Object.values(LANE_PHOTO || {}), o.catalogOf?.(t)?.[0]?.img].filter((x) => x && typeof x === 'string');
     for (const rel of [...new Set(cands)]) { const f = (o.photoAsync ? await o.photoAsync(rel).catch(() => null) : null) || (fs.existsSync(photoFile(rel)) && fs.statSync(photoFile(rel)).isFile() ? photoFile(rel) : null); if (f) return f; }
     return null; };
   const genVideo = (t, ch, why = 'the script') => {
@@ -722,7 +735,7 @@ export function createRemix(o) {
     const fields = fieldsFor(ch.family, ch.action).filter((f) => ch.pkg[f.k] != null && ch.pkg[f.k] !== '' && !(Array.isArray(ch.pkg[f.k]) && !ch.pkg[f.k].length)).map((f) => { const v = ch.pkg[f.k];
       return { label: f.label, pub: !!f.pub, value: f.type === 'rows' ? v.map((r) => f.cols.map((c) => r[c]).filter(Boolean).join(' · ')).join('\n') : Array.isArray(v) ? v.map((x) => typeof x === 'object' ? Object.values(x).filter(Boolean).join(' · ') : x).join('\n') : typeof v === 'object' ? Object.entries(v).map(([k, x]) => `${k}: ${x}`).join(', ') : f.type === 'number' && /₹/.test(f.label) ? inr(v) : String(v) }; });
     return { id: ch.id, family: FAMILY_NAME[ch.family], action: ch.actionLabel, target: `${ch.target.name}${ch.target.object ? ' · ' + ch.target.object : ''}`, version: head?.n || 1, versions: versionsOf(t, ch.id).length,
-      money: ch.money ? `About ${inr(ch.amount)} a week` : 'No spend', undo: ch.irreversible ? `Can’t be undone: ${ch.irreversible}` : `Rollback: ${ch.rollback}`, angle: ch.angle || '',
+      money: ch.money ? (ch.amount > 0 ? `About ${inr(ch.amount)} a week` : ch.costLabel || 'Costs money') : 'No spend', undo: ch.irreversible ? `Can’t be undone: ${ch.irreversible}` : `Rollback: ${ch.rollback}`, angle: ch.angle || '',
       fields, assets: assetsFor(t, ch), thread: (ch.thread || []).map((m) => ({ who: m.from === 'you' ? 'You' : `${AGENT[ch.agent] || 'AI'} (studio)`, text: m.text, at: m.at, v: m.v || null })),
       notes: (ch.notes || []).map((n) => n.text), checks: (ch.myChecks || []).map((m) => ({ text: m.text, done: !!m.done })), studio: `#remix=${ch.cardId}/${ch.id}` }; };
 
@@ -985,7 +998,7 @@ export function createRemix(o) {
   /* a version's package as it was then: the snapshot without the change's own keys */
   const pkgOfVersion = (t, ch, v) => { if (!v) return { ...ch.pkg }; const { action, amount, title, sub, state, ...pkg } = v.snapshot || {}; return pkg; };
   const versionAsked = (t, ch, q) => { const vq = q?.get?.('v'); if (!vq) return headOf(t, ch) || null; return versionsOf(t, ch.id).find((x) => String(x.n) === vq || x.id === vq) || false; };
-  const PACK_V = 1; // bump when a family's pack starts holding different files: every saved pack is made again
+  const PACK_V = 2; // bump when a family's pack starts holding different files or words: every saved pack is made again (2: spend = a week of the daily budget)
   /* read-only: the version as files the team posts or applies themselves (publish-pack.js). Brew writes to no account.
      The zip is saved once per version (gen/pack-….zip) and served from /gen/ like every made file */
   on('GET', '/api/changes/:chid/pack', async (b, t, p, q) => {
@@ -995,7 +1008,7 @@ export function createRemix(o) {
     const key = 'pack-' + crypto.createHash('sha1').update(`${PACK_V}|${ch.id}|${v?.id || ''}|${JSON.stringify(pkg)}|${ch.family}|${BN()}`).digest('hex').slice(0, 20) + '.zip';
     /* built once per version: the zip and what it holds are kept, so a repeat GET runs no ffmpeg or Chrome */
     ch.packMeta ||= {}; if (ch.packMeta[key] && (await genFile(key))) return { pack: { ...ch.packMeta[key], url: 'gen/' + key } };
-    const chV = { ...ch, pkg }; const brand = { name: BN(), host: BH(), colors: B()?.seed?.brand?.colors || [], product: productFor(t.cards.get(ch.cardId) || {}, FACTS)?.name || '' };
+    const chV = { ...ch, pkg }; const brand = { name: BN(), host: BH(), colors: B()?.seed?.brand?.colors || [], product: productFor(t.cards.get(ch.cardId) || {}, FACTS, pkgWords(chV))?.name || '' };
     const read = async (rel) => { if (!rel || typeof rel !== 'string') return null; if (/^\/?gen\//.test(rel)) return genFile(rel.replace(/^\/?gen\//, ''));
       const f = (o.photoAsync ? await o.photoAsync(rel).catch(() => null) : null) || photoFile(rel); return f && fs.existsSync(f) && fs.statSync(f).isFile() ? f : null; };
     const renderPdf = ch.family === 'print' && process.env.PACK_PDF !== '0' ? (html) => withBrowser(async (br) => { const pg = await br.newPage(); try { await pg.setContent(html, { waitUntil: 'load' }); return Buffer.from(await pg.pdf({ preferCSSPageSize: true, printBackground: true })); } finally { await pg.close().catch(() => {}); } }) : null;
@@ -1045,7 +1058,7 @@ export function createRemix(o) {
     const visual = p.imageBrief || (p.slides || p.cards || [])[0]?.imageBrief || 'The product on a clean surface, soft daylight.';
     const end = p.cta || p.button || (p.buttons || [])[0] || (BH() ? `Shop at ${BH()}` : 'Shop now');
     const hook = short(ch.after?.title || said[0] || ch.actionLabel, 10);
-    const P = productFor({ lane: t?.cards?.get?.(ch.cardId)?.lane }, FACTS) || {}; if (said.length < 2) said.push(...[P.claim, P.name !== 'the product' && (P.price ? `${P.name}, ${P.price}` : P.name)].filter((x) => x && !said.includes(x))); /* a short package: the product's own facts fill the middle */
+    const P = productFor(t?.cards?.get?.(ch.cardId) || {}, FACTS, pkgWords(ch)) || {}; if (said.length < 2) said.push(...[P.claim, P.name !== 'the product' && (P.price ? `${P.name}, ${P.price}` : P.name)].filter((x) => x && !said.includes(x))); /* a short package: the product's own facts fill the middle */
     if (as === 'carousel') return { slides: [{ onSlide: hook, visual }, ...said.slice(0, 4).map((x) => ({ onSlide: short(x, 12), visual })), { onSlide: short(end, 8), visual }].slice(0, 6) };
     if (as === 'video') return { script: [{ beat: 'Hook', shot: visual, line: hook }, ...said.slice(0, 3).map((x, i) => ({ beat: ['Show', 'Proof', 'Detail'][i], shot: visual, line: short(x, 14) })), { beat: 'Call to action', shot: visual, line: short(end, 8) }], motion: 'The camera slowly pushes in on the product.' };
     return { overlay: short(ch.after?.title || said[0], 7), imageBrief: visual };
@@ -1059,7 +1072,7 @@ export function createRemix(o) {
     motion: { type: 'string', description: 'Video only: how the camera moves over 6 seconds' } } };
   const remakeLive = async (t, ch, as) => {
     const c = t.cards.get(ch.cardId) || {};
-    const j = await claudeTool(`${cardBrief(c, seatLine(t.viewer))}\n\nYou are the ${AGENT[ch.agent] || 'creative'} agent. Remake this ${FAMILY_NAME[ch.family] || 'change'} (${ch.actionLabel}) as ${REMAKE_AS[as]} for ${BN()}'s own channels, keeping its point and its words where they fit.\n${productLine(c)}\nThe package now (field: value):\n${toKV(ch.family, ch.action, ch.pkg).map((e) => `${e.k}: ${e.v}`).join('\n')}\nFill only the part for ${REMAKE_AS[as]}; leave the others empty. ${factsLine}`, REMAKE_SCHEMA, 2000, 'remake');
+    const j = await claudeTool(`${cardBrief(c, seatLine(t.viewer))}\n\nYou are the ${AGENT[ch.agent] || 'creative'} agent. Remake this ${FAMILY_NAME[ch.family] || 'change'} (${ch.actionLabel}) as ${REMAKE_AS[as]} for ${BN()}'s own channels, keeping its point and its words where they fit.\n${productLine(c, pkgWords(ch))}\nThe package now (field: value):\n${toKV(ch.family, ch.action, ch.pkg).map((e) => `${e.k}: ${e.v}`).join('\n')}\nFill only the part for ${REMAKE_AS[as]}; leave the others empty. ${factsLine}`, REMAKE_SCHEMA, 2000, 'remake');
     const words = [...(j.slides || []).map((x) => x.onSlide), ...(j.script || []).map((x) => x.line), j.overlay].filter(Boolean).join(' ');
     if (!words || BANNED.test(words) || unbackedNums(words).length) return null; /* a claim the facts don't back: the package's own words instead */
     const out = as === 'carousel' ? { slides: (j.slides || []).slice(0, 6).map((x) => ({ onSlide: short(x.onSlide, 12), visual: clean(x.visual || j.imageBrief || '') })) } : as === 'video' ? { script: (j.script || []).slice(0, 5).map((x) => ({ beat: clean(x.beat), shot: clean(x.shot), line: short(x.line, 14) })), motion: clean(j.motion || '') } : { overlay: short(j.overlay, 7), imageBrief: clean(j.imageBrief || '') };
@@ -1074,7 +1087,7 @@ export function createRemix(o) {
     const step = (s) => { if (ch.remakePending) ch.remakePending.step = s; };
     (async () => {
       try {
-        const c = t.cards.get(ch.cardId) || {}, src = await srcPhoto(t, ch); if (!src) throw new Error('no product photo could be read for it');
+        const c = t.cards.get(ch.cardId) || {}, src = await srcPhoto(t, ch, productFor(c, FACTS, pkgWords(ch))?.img); if (!src) throw new Error('no product photo could be read for it');
         const ratio = as === 'video' ? '9:16' : RATIO[ch.pkg.format] && !(as === 'carousel' && ch.pkg.format === '9:16') ? ch.pkg.format : '4:5';
         let media;
         if (as === 'carousel') {
