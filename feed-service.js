@@ -1049,12 +1049,14 @@ export function createFeedService(o) {
      slides as a link, and Approve for the jam's current version */
   const pubUrl = (x) => { const s = String(x || ''); if (!s) return null; if (/^https:\/\//.test(s)) return s; const base = (process.env.PUBLIC_URL || 'https://brew.joinsquareup.com').replace(/\/$/, '');
     return /^https?:\/\/localhost/.test(base) ? null : `${base}/${s.replace(/^\//, '')}`; };
+  /* Slack reads *bold* and • bullets, not Markdown: '### Head' and '**x**' would show as typed */
+  const toMrkdwn = (md) => String(md || '').replace(/^#{1,6}\s+(.+)$/gm, '*$1*').replace(/\*\*(.+?)\*\*/g, '*$1*').replace(/^\s*[-*]\s+/gm, '• ');
   const slackAsset = (t, w, a) => {
     if (!o.slack || !w?.slack?.ts) return; const what = { image: 'image', video: 'video', voice: 'voiceover', carousel: 'carousel', text: 'copy', version: 'version' }[a.kind] || 'draft';
     const text = `*New ${what} for review:* ${a.title || w.title}${a.note ? `\n_${String(a.note).slice(0, 200)}_` : ''}`;
     const imgs = [...new Set([...(a.images || []), a.image].filter(Boolean))].map(pubUrl).filter((u) => u && /\.(png|jpe?g|gif|webp)(\?|$)/i.test(u)).slice(0, 10);
     const links = [a.video && ['Watch the video', a.video], a.audio && ['Play the voiceover', a.audio], a.zip && ['Get the slides', a.zip]].filter(Boolean).map(([l, u]) => [l, pubUrl(u)]).filter(([, u]) => u);
-    const blocks = [{ type: 'section', text: { type: 'mrkdwn', text: `${text}${a.copy ? `\n${String(a.copy).slice(0, 2500)}` : ''}` } },
+    const blocks = [{ type: 'section', text: { type: 'mrkdwn', text: `${text}${a.copy ? `\n${toMrkdwn(a.copy).slice(0, 2500)}` : ''}` } },
       ...imgs.map((u, i) => ({ type: 'image', image_url: u, alt_text: `${String(a.title || w.title).slice(0, 180)}${imgs.length > 1 ? ` ${i + 1}` : ''}` })),
       { type: 'actions', elements: [{ type: 'button', style: 'primary', text: { type: 'plain_text', text: `Approve v${w.current}` }, action_id: 'approve', value: `${slugOfT(t)}|${w.id}|${w.current}` },
         ...links.map(([l, u], i) => ({ type: 'button', text: { type: 'plain_text', text: l }, url: u, action_id: `open_${i}` })),
