@@ -2318,7 +2318,7 @@
   document.addEventListener('click', (e) => {
     const n = e.target.closest('[data-nav]');
     if (n) { const v = n.dataset.nav; closePop(); closeModal(); if (UI2) { $('.r2.open')?.classList.remove('open'); $('[data-r2-open]')?.setAttribute('aria-expanded', 'false'); }
-      if (v === 'deck' && !S.pro && !UI2) return openPlan('deck'); /* the Pro offer opens over where you are; closing it leaves you there, not on a #v=deck that isn't open */
+      if (v === 'deck' && !S.pro && !UI2 && PAYWALL) return openPlan('deck'); /* the Pro offer opens over where you are; closing it leaves you there, not on a #v=deck that isn't open */
       if (DP) closeDetail(true); $('#rxd')?.remove(); $('#rxd-scrim')?.remove(); RX.ch = null; VIEWS()[v](); const vh = v === 'feed' ? '' : `#v=${v}`; nav(vh || location.pathname, location.hash !== vh, 'view', v); window.scrollTo(0, 0); return; }
     if (e.target.closest('[data-theme-btn]')) { setTheme(curTheme() === 'dark' ? 'light' : 'dark'); return; }
     if (e.target.closest('[data-open-jam]')) { openJam({ tab: 'ai' }); return; }
@@ -2886,7 +2886,7 @@
     let i = cols.findIndex((c) => { const b = c.getBoundingClientRect(); return b.left <= mid && b.right > mid; }); if (i < 0) i = d.scrollLeft <= 0 ? 0 : cols.length - 1;
     $$('#deck-tabs .dtab').forEach((t, j) => { t.classList.toggle('on', j === i); t.setAttribute('aria-selected', String(j === i)); }); };
   const renderDeck = () => {
-    if (!S.pro && !UI2) return openPlan('deck');
+    if (!S.pro && !UI2 && PAYWALL) return openPlan('deck');
     if (!$('#view')) appShell();
     view = 'deck'; window.scrollTo(0, 0); $('#stk').innerHTML = ''; $('#notes').innerHTML = '';
     document.body.classList.add('deck-on'); colOrder();
@@ -2947,7 +2947,10 @@
 
   /* ---------- Pro: offered the moment you reach for it; the demo starts a trial ---------- */
   const PLAN_WHY = { deck: ['Open the deck with Pro', 'Every agent gets its own column.'], feed: ['See everything with Pro', 'Every card your agents make, all day.'], moves: ['Write every move with Pro', 'Brew carries on from where it paused and writes the rest of the moves.'] };
-  const openPlan = (why = 'deck', onPro = null) => modal(`<div class="sheet plan-sheet plan2"><button class="icon-btn plan-x" data-close aria-label="Close">${ic('x', 's18')}</button>
+  /* the Pro paywall is off for now (Param 2026-10-16): the deck opens for everyone, a Pro button just goes where it leads,
+     and nothing switches S.pro on (that would start the paid all-day feed). Set PAYWALL = true to bring the offer back. */
+  const PAYWALL = false;
+  const openPlan = (why = 'deck', onPro = null) => !PAYWALL ? (why === 'moves' ? onPro?.() : renderDeck()) : modal(`<div class="sheet plan-sheet plan2"><button class="icon-btn plan-x" data-close aria-label="Close">${ic('x', 's18')}</button>
       <div class="plan-pick"><div class="plan-top"><h3>${esc((PLAN_WHY[why] || PLAN_WHY.feed)[0])}<span class="dummy-tag" title="No billing in this prototype: the trial switches Pro on">Dummy</span></h3><p>${esc((PLAN_WHY[why] || PLAN_WHY.feed)[1])}</p></div>
         <div class="plans"><div class="plan"><header><b>Free</b><span>Your plan</span></header><span class="price">$0</span><ul><li>${ic('check', 's14')}Every card in the feed</li><li>${ic('check', 's14')}Jam on every card</li><li>${ic('check', 's14')}Stories and trends</li></ul></div>
         <div class="plan pro"><header><b>Pro</b></header><span class="price">$7<em>a month, billed yearly</em></span><ul><li>${ic('check', 's14')}A feed that keeps going</li><li>${ic('check', 's14')}The deck</li><li>${ic('check', 's14')}Signals: who to talk to next</li><li>${ic('check', 's14')}Custom agents</li>${why === 'moves' ? `<li>${ic('check', 's14')}Every move written</li>` : ''}</ul></div></div>
@@ -4214,7 +4217,7 @@
     const mvAll = MVS?.moves || [], mvCore = mvAll.filter((m) => m.n >= 1 && m.n < 1000).length, mvWk = mvAll.filter((m) => m.n >= 1000).length, mvStale = UPS?.stale?.length || 0;
     /* while the moves are still being written, the row says how far along (one line and a thin bar), from the build status */
     const mvSt = GEN ? MVS?.status : null, mvBuilding = !!mvSt && !mvSt.done && !mvSt.error && !mvSt.cancelled;
-    const movesHtml = mvAll.length || mvBuilding ? `<section class="lx-sec">${lxHead('lx-moves', 'The moves', '', '')}<button class="lx-heard-row" data-nav="moves"><span class="lg-ic">${ic('doc', 's16')}</span><span><b>${mvCore} move${mvCore === 1 ? '' : 's'} for ${esc(B.brand.name)}${mvWk ? `, plus ${mvWk} new this week` : ''}</b>${mvBuilding ? lxBuild(mvSt) : `<small>${mvStale ? `${mvStale} out of date · ` : ''}Every card in your feed comes from one of them</small>`}</span>${ic('right', 's16')}</button>${mvBuilding && mvSt.capped ? `<div class="lx-pro"><button class="btn btn-primary sm" data-mvpro>Continue with Pro</button></div>` : ''}</section>` : '';
+    const movesHtml = mvAll.length || mvBuilding ? `<section class="lx-sec">${lxHead('lx-moves', 'The moves', '', '')}<button class="lx-heard-row" data-nav="moves"><span class="lg-ic">${ic('doc', 's16')}</span><span><b>${mvCore} move${mvCore === 1 ? '' : 's'} for ${esc(B.brand.name)}${mvWk ? `, plus ${mvWk} new this week` : ''}</b>${mvBuilding ? lxBuild(mvSt) : `<small>${mvStale ? `${mvStale} out of date · ` : ''}Every card in your feed comes from one of them</small>`}</span>${ic('right', 's16')}</button>${mvBuilding && mvSt.capped ? `<div class="lx-pro"><button class="btn btn-primary sm" data-mvpro>${PAYWALL ? 'Continue with Pro' : 'Write the rest'}</button></div>` : ''}</section>` : '';
     clearTimeout(lxBuild.t); if (mvBuilding) lxBuild.t = setTimeout(lxBuildPoll, 15e3);
     // What your team told Brew (brand-learnings.js, learned.json): goals, beliefs and facts from the calls, notes and emails the team added; about 6 show, the rest fold
     const told = TOLD?.told, toldRows = told ? [['essence', 'Essence'], ['goals', 'Goals and plans'], ['beliefs', 'Beliefs'], ['tried', 'What they tried'], ['facts', 'Facts they stated']].flatMap(([k, h]) => (told[k] || []).map((x) => ({ ...x, h }))) : [];
@@ -4254,7 +4257,7 @@
     $$('[data-hd-open]').forEach((b) => b.addEventListener('click', () => openHeard())); /* the overview tile and the row both open it */
     /* paused at the free spend cap: Pro carries the build on to every move */
     $('[data-mvpro]')?.addEventListener('click', (e) => { const b = e.currentTarget, go = async () => { const r = await api(`/api/brands/${mvSlug()}/pro`, {}); if (!r || r.error) { toast(r?.error || 'Pro couldn’t start the moves. Try again.'); return false; } return true; };
-      if (!S.pro) return openPlan('moves', go); b.disabled = true; go().then((ok) => { if (ok) { toast('Writing the rest of the moves.'); renderLearned(); } else b.disabled = false; }); });
+      if (!S.pro && PAYWALL) return openPlan('moves', go); b.disabled = true; go().then((ok) => { if (ok) { toast('Writing the rest of the moves.'); renderLearned(); } else b.disabled = false; }); });
     $$('[data-hd-theme]').forEach((b) => b.onclick = () => openHeard({ theme: b.dataset.hdTheme }));
     $$('[data-goto-move]').forEach((b) => b.onclick = () => openMove(+b.dataset.gotoMove));
   };
