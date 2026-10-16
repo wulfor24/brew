@@ -936,13 +936,13 @@
         <nav class="rail" aria-label="Main">
           <button class="so-mark so-home" data-nav="feed" aria-label="Home: your feed" title="Home">${SO()}</button>
           <div class="rl-mid">
-            <button class="icon-btn rb rl" aria-label="Work" title="Work: drafting to results" data-nav="work">${ic('board')}<span class="rl-tx">Work</span><i data-count="work"></i></button>
-            <button class="icon-btn rl" aria-label="What Brew learned" title="What Brew learned" data-nav="learned">${ic('book')}<span class="rl-tx">Learned</span></button>
-            <button class="icon-btn rb rl" aria-label="Notifications" title="Notifications" data-bell>${ic('bell')}<span class="rl-tx">Alerts</span><i data-count="bell"></i></button>
+            <button class="icon-btn rb rl" aria-label="Work" data-nav="work">${ic('board')}<span class="rl-tx" aria-hidden="true">Work</span><i data-count="work"></i></button>
+            <button class="icon-btn rl" aria-label="What Brew learned" data-nav="learned">${ic('book')}<span class="rl-tx" aria-hidden="true">What Brew learned</span></button>
+            <button class="icon-btn rb rl" aria-label="Notifications" data-bell>${ic('bell')}<span class="rl-tx" aria-hidden="true">Notifications</span><i data-count="bell"></i></button>
           </div>
           <div class="rl-foot">
-            <button class="icon-btn rl" aria-label="Connectors" title="Connectors" data-nav="connectors">${ic('plug')}<span class="rl-tx">Connectors</span></button>
-            <button class="icon-btn rl rl-me" aria-label="Profile and menu" title="${window.LIVE?.me ? esc(window.LIVE.me.email) : 'Profile and menu'}" data-menu>${window.LIVE?.me?.pic ? `<img src="${esc(window.LIVE.me.pic)}" alt="" referrerpolicy="no-referrer">` : `<span class="rl-ini">${esc(String(window.LIVE?.me?.name || window.LIVE?.me?.email || B.brand.name || 'B').trim()[0] || 'B').toUpperCase()}</span>`}<span class="rl-tx">You</span></button>
+            <button class="icon-btn rl" aria-label="Connectors" data-nav="connectors">${ic('plug')}<span class="rl-tx" aria-hidden="true">Connectors</span></button>
+            <button class="icon-btn rl rl-me" aria-label="Profile and menu" data-menu>${window.LIVE?.me?.pic ? `<img src="${esc(window.LIVE.me.pic)}" alt="" referrerpolicy="no-referrer">` : `<span class="rl-ini">${esc(String(window.LIVE?.me?.name || window.LIVE?.me?.email || B.brand.name || 'B').trim()[0] || 'B').toUpperCase()}</span>`}<span class="rl-tx" aria-hidden="true">Profile</span></button>
           </div>
         </nav>
         <div class="stage" id="stage">
