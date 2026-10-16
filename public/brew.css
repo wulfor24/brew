@@ -1495,12 +1495,11 @@ body:has(#dp.dp-full) .rail{position:fixed;top:0;left:0;bottom:0;height:auto;wid
 .rail .icon-btn{position:relative;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:var(--fg-2);transition:background .15s,color .15s}
 /* labels are tooltips: they show on hover or keyboard focus, to the right of the button */
 .rail .rl-tx{position:absolute;left:100%;top:50%;margin:-15px 0 0 12px;height:30px;padding:0 12px;border-radius:9px;background:var(--fg);color:var(--bg);font-size:13.5px;font-weight:500;line-height:30px;white-space:nowrap;opacity:0;visibility:hidden;pointer-events:none;transform:translateX(-6px);z-index:70;box-shadow:0 8px 24px -10px rgba(0,0,0,.4);transition:opacity .16s ease,transform .22s var(--ease,ease),visibility .16s}
+.rail .lc-acct{overflow:visible}
 .rail .icon-btn.rl:hover .rl-tx,.rail .icon-btn.rl:focus-visible .rl-tx{opacity:1;visibility:visible;transform:none}
 .rail .icon-btn:hover{background:var(--surface);color:var(--fg)}
 .rail .icon-btn.on{background:var(--surface-2);color:var(--fg)}
 .rail .icon-btn.on::before{content:"";position:absolute;left:-10px;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--fg)}
-.rail .rl-me img,.rail .rl-ini{width:24px;height:24px;border-radius:50%;object-fit:cover;flex:0 0 auto}
-.rail .rl-ini{display:grid;place-items:center;background:var(--surface-2);color:var(--fg);font-size:12px;font-weight:650}
 /* a generated image that was lost: a soft tile, and one small way to make it again */
 .img-dead{position:relative;width:100%;height:100%;min-height:180px;flex:0 0 100%;background:radial-gradient(120% 80% at 30% 20%,color-mix(in srgb,var(--fg) 6%,transparent),transparent 60%),var(--surface)}
 .img-redo{position:absolute;right:10px;bottom:10px;display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border:0;border-radius:999px;background:color-mix(in srgb,var(--card) 88%,transparent);box-shadow:0 0 0 1px var(--line);color:var(--fg-2);font:inherit;font-size:13px;font-weight:550;cursor:pointer;backdrop-filter:blur(6px);opacity:.85;transition:opacity .15s,color .15s}

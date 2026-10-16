@@ -942,7 +942,7 @@
           </div>
           <div class="rl-foot">
             <button class="icon-btn rl" aria-label="Connectors" data-nav="connectors">${ic('plug')}<span class="rl-tx" aria-hidden="true">Connectors</span></button>
-            <button class="icon-btn rl rl-me" aria-label="Profile and menu" data-menu>${window.LIVE?.me?.pic ? `<img src="${esc(window.LIVE.me.pic)}" alt="" referrerpolicy="no-referrer">` : `<span class="rl-ini">${esc(String(window.LIVE?.me?.name || window.LIVE?.me?.email || B.brand.name || 'B').trim()[0] || 'B').toUpperCase()}</span>`}<span class="rl-tx" aria-hidden="true">Profile</span></button>
+            ${window.LiveConn && (window.LIVE?.signin || window.LIVE?.me) ? `<button class="icon-btn rl lc-acct" aria-label="Your account" data-lacct>${window.LIVE?.me?.pic ? `<img src="${esc(window.LIVE.me.pic)}" alt="" referrerpolicy="no-referrer">` : ic('person')}<span class="rl-tx" aria-hidden="true">${window.LIVE?.me ? esc(window.LIVE.me.email) : 'Sign in'}</span></button>` : ''}
           </div>
         </nav>
         <div class="stage" id="stage">
