@@ -140,7 +140,7 @@ export function createDrafts({ claudeTool, geminiImage, treg, launchBrowser, zip
         d.state = 'ready';
       } catch (e) {
         log.warn('[draft]', e.message);
-        d.state = d.copy ? 'ready' : 'failed'; d.err = e.soft ? e.message : d.copy ? 'The words are here, but the media didn’t come through. Try again.' : 'That didn’t work. Try again.';
+        d.state = d.copy ? 'ready' : 'failed'; d.err = e.soft ? e.message : /filtered/i.test(e.message) && d.image ? 'The video model turned this frame down, so here is the picture. Ask for the video again and Brew tries another scene.' : d.copy ? 'The words are here, but the media didn’t come through. Try again.' : 'That didn’t work. Try again.';
       }
       inflight.delete(d.id); d.step = null; d.doneAt = now(t);
       if (d.state === 'ready') say(t, w, { from: 'ai', who: AGENT[w.agent] || 'AI', body: `First draft ready: ${d.title}. It’s at the top of the brief.` });

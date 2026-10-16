@@ -1051,7 +1051,7 @@ export function createFeedService(o) {
     return /^https?:\/\/localhost/.test(base) ? null : `${base}/${s.replace(/^\//, '')}`; };
   const slackAsset = (t, w, a) => {
     if (!o.slack || !w?.slack?.ts) return; const what = { image: 'image', video: 'video', voice: 'voiceover', carousel: 'carousel', text: 'copy', version: 'version' }[a.kind] || 'draft';
-    const text = `*New ${what} for review:* ${a.title || w.title}${a.note ? ` (${a.note})` : ''}`;
+    const text = `*New ${what} for review:* ${a.title || w.title}${a.note ? `\n_${String(a.note).slice(0, 200)}_` : ''}`;
     const imgs = [...new Set([...(a.images || []), a.image].filter(Boolean))].map(pubUrl).filter((u) => u && /\.(png|jpe?g|gif|webp)(\?|$)/i.test(u)).slice(0, 10);
     const links = [a.video && ['Watch the video', a.video], a.audio && ['Play the voiceover', a.audio], a.zip && ['Get the slides', a.zip]].filter(Boolean).map(([l, u]) => [l, pubUrl(u)]).filter(([, u]) => u);
     const blocks = [{ type: 'section', text: { type: 'mrkdwn', text: `${text}${a.copy ? `\n${String(a.copy).slice(0, 2500)}` : ''}` } },
@@ -1636,7 +1636,7 @@ export function createFeedService(o) {
   JB.routes({ askMake: (t, w, text) => (MAKE_ASK.test(text) ? propose(t, w, { kind: 'make', as: asOf(text), text, summary: '', by: nameOf(meOf(t)) }) : null), toSlack: o.slack ? toSlack : null, on, W, say, move, notify, learn: learnOf, nextTicket: (t) => { leadsAllTenants++; return nextBrandTicket(t); }, handoff: { build: (...a) => HO.build(...a), text: (...a) => HO.text(...a) } });
   // first drafts in a jam, one tap away: image, video, voice or text, made only when someone asks (drafts.js)
   DR = createDrafts({ claudeTool, geminiImage, treg: o.treg, launchBrowser: o.launchBrowser, zipBuffer: o.zipBuffer, photoAsync: o.photoAsync, photoFile, catalogOf: (t) => (t ? brandOfT(t)?.catalog : null), brandName: (t) => (t ? brandOfT(t)?.seed?.brand?.name || '' : ''), photoOf: (c) => LANE_PHOTO[c?.lane] || Object.values(LANE_PHOTO || {})[0], cardOf: (t, id) => { const c = t.cards.get(id); return c ? fillCard(c, t) : null; },
-    briefOf: (t, w) => JB.seed(t, w)?.md, cardBrief, seatLine, isMock, spend, clean, now, uid, say, save: (t) => store?.save(t), AGENT, onReady: (t, w, d) => slackAsset(t, w, { title: d.title, copy: d.copy, image: d.image, video: d.video, audio: d.audio, zip: d.zip, kind: d.as }), log }); DR.routes({ on, W });
+    briefOf: (t, w) => JB.seed(t, w)?.md, cardBrief, seatLine, isMock, spend, clean, now, uid, say, save: (t) => store?.save(t), AGENT, onReady: (t, w, d) => slackAsset(t, w, { title: d.title, copy: d.copy, image: d.image, video: d.video, audio: d.audio, zip: d.zip, kind: d.as === 'video' && !d.video ? (d.image ? 'image' : 'text') : d.as, note: d.err || null }), /* a video that didn't come through says so, never 'New video' */ log }); DR.routes({ on, W });
   MOVES ||= createMoves(path.dirname(PUB));
   // the card page: options, our pick, recommendation, what follows, and the move details that matter.
   // Seed cards are prebuilt (tools/build_card_pages.mjs); any other card is built once on first open.
