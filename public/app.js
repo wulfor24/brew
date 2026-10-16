@@ -784,7 +784,7 @@
     const fd = ['chat', 'conflict', 'answer'].includes(c.kind) ? '' : draftSlot(c); /* a draft replaces the lane photo; a rows card keeps its rows under the words */
     const media = !!fd || c.kind === 'media' || (c.kind === 'variants' && c.images?.length);
     const dn = doneText(p, c), rows = fd && c.kind === 'rows' && c.rows?.length ? slotHtml(c) : '';
-    return `<article class="card${c.liveFrom ? ' is-live' : ''}${p.dummy || p.demo || p.onlyWhen || /^live-/.test(p.id) ? ' is-dummy' : ''}${isNew ? ' is-new' : ''}${fd ? ' has-draft' : ''}" data-post="${i}" data-id="${esc(p.id)}">${head(c.agent, sub, c.badge, true, fromLabel(c))}${fd || slotHtml(c)}${media ? barHtml(c.cta, dn) + actsHtml(p) + body + rows : actsHtml(p) + body + barHtml(c.cta, dn)}</article>`;
+    return `<article class="card${c.liveFrom ? ' is-live' : ''}${p.dummy || p.demo || p.onlyWhen || /^live-/.test(p.id) ? ' is-dummy' : ''}${isNew ? ' is-new' : ''}${fd ? ' has-draft' : ''}" data-post="${i}" data-id="${esc(p.id)}">${UI2 ? head(c.agent, sub, c.badge, true, AGENT[c.agent] || fromLabel(c)) : head(c.agent, sub, c.badge, true, fromLabel(c))}${fd || slotHtml(c)}${media ? barHtml(c.cta, dn) + actsHtml(p) + body + rows : actsHtml(p) + body + barHtml(c.cta, dn)}</article>`;
   };
 
   const introCard = () => `<article class="card" data-intro>${head('brew', 'Welcome', null, false)}
@@ -840,6 +840,7 @@
     const day = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
     const tile = (k) => { const list = GSTAT[k], n = list.length; if (!n) return ''; /* no zero tiles: an empty list says nothing */
       return `<button class="gt${k === 'yes' && n ? ' hot' : ''}" data-gstat="${k}" aria-label="${n} ${QHEAD[k][0]}: open the list"><b class="gt-n">${n}</b><span class="gt-l">${QHEAD[k][0]}</span><span class="gt-s">${QHEAD[k][1]}</span><span class="gt-go">${ic('right', 's14')}</span></button>`; };
+    if (UI2) return `<div class="greet g2"><h2>Hello${hiName(R)}.</h2></div>`; /* UI2: the counts live in Deck → Yours */
     const tiles = ['yes', 'spend', 'board'].map(tile).filter(Boolean);
     return `<div class="greet"><small class="g-day">${esc(day)}</small><h2>${part}${hiName(R)}</h2>
       ${tags.length ? `<p class="g-taste">Tuned to what you like: ${esc(tags.join(' and '))}</p>` : ''}
@@ -1134,7 +1135,7 @@
       if (i === 3 && (!GEN || S.batches.length)) parts.push(teamCard()); if (i === 8) parts.push(deckCard());
     });
     if (noSeats()) parts.splice(3, 0, `<article class="card seat-wait"><div class="body"><h3>You’re on ${esc(B.brand.name)}’s team</h3><p>An admin hasn’t picked your views yet, so you only see what the whole team shares. You’ll get your cards as soon as they choose.</p></div></article>`);
-    parts.push(`<div class="feed-end">You’re caught up. Your agents post as they finish.</div>`);
+    parts.push(UI2 ? `<div class="feed-end fe2"><b>You’re caught up</b><span>Your agents are still working. Pull in the next few now.</span><button class="btn btn-ghost" data-find-more>${ic('refresh', 's16')}Find more</button></div>` : `<div class="feed-end">You’re caught up. Your agents post as they finish.</div>`);
     if (!$('#view')) return; // the page changed while the feed loaded
     $('#view').innerHTML = `<div class="feedcol${settle ? ' settle' : ''}" id="col">${parts.join('')}</div>`;
     counts(); save(); pulseSince = SRV.clock;
@@ -2263,6 +2264,7 @@
     if (UI2 && !e.target.closest('.r2')) $('.r2.open')?.classList.remove('open');
     if (e.target.closest('[data-r2-tune]')) { $('.r2.open')?.classList.remove('open'); whoFor(); return; }
     if (e.target.closest('[data-ask]')) { openJam({ tab: 'ai' }); return; }
+    const fm = e.target.closest('[data-find-more]'); if (fm) { fm.disabled = true; refreshFeed({ force: true }).then(() => { fm.disabled = false; toast('Your agents are on it. New cards land at the top.'); }); return; }
     if (e.target.closest('[data-team-pill]')) { VIEWS().work(); nav('#v=work', true, 'view', 'work'); return; }
     if (e.target.closest('[data-menu]') || e.target.closest('[data-phone-menu]')) { openMenu(); return; }
     if (e.target.closest('[data-viewing]')) { openViewing(e.target.closest('[data-viewing]')); return; }

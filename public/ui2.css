@@ -67,3 +67,15 @@
   .ui2 .rail.r2{display:none}
   .ui2 .t2-ask{display:none}
 }
+
+/* ================= feed ================= */
+.ui2 .greet.g2{padding:20px 2px 2px}
+.ui2 .greet.g2 h2{margin:0;font-size:28px;line-height:36px;font-weight:600;letter-spacing:-.02em}
+.ui2 .card-head .who{display:flex;align-items:baseline;gap:6px;min-width:0;flex-direction:row}
+.ui2 .card-head .who b{font-size:14px;font-weight:500;white-space:nowrap}
+.ui2 .card-head .who span{font-size:13px;color:var(--fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ui2 .card-head .who span::before{content:"· ";color:var(--fg-3)}
+.ui2 .feed-end.fe2{border:1px solid var(--line);border-radius:var(--r-card);padding:48px 32px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+.ui2 .feed-end.fe2 b{font-size:17px;font-weight:500;color:var(--fg)}
+.ui2 .feed-end.fe2 span{font-size:14px;line-height:20px;color:var(--fg-2);max-width:340px;margin-bottom:14px}
+.ui2 .feed-end.fe2 .btn{display:inline-flex;align-items:center;gap:8px}
