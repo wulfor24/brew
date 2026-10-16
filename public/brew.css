@@ -2680,6 +2680,10 @@ body.rx-boot #view{visibility:hidden}
 .j1-pill{display:inline-flex;align-items:center;align-self:center;gap:8px;height:34px;margin:0 6px 0 0;padding:0 12px 0 10px;background:var(--glass-chrome,var(--surface));-webkit-backdrop-filter:blur(22px) saturate(1.8);backdrop-filter:blur(22px) saturate(1.8);box-shadow:inset 0 0 0 1px var(--line);color:var(--fg-2)} /* the same chip as Viewing as, side by side */
 .j1-pill b{font-weight:600;color:var(--fg)}
 .j1-pill[hidden]{display:none}
+/* collapsed to the icon and the count; "with the team" slides out on hover, on keyboard focus and while its list is open */
+.j1-pill [data-count="team"]{display:inline-flex;align-items:baseline;white-space:nowrap}
+.j1-pill .j1-more{display:inline-block;max-width:0;opacity:0;overflow:hidden;vertical-align:bottom;transition:max-width .28s var(--ease,ease),opacity .18s ease}
+.j1-pill:hover .j1-more,.j1-pill:focus-visible .j1-more,body:has(#pop.t2-pop) .j1-pill .j1-more{max-width:9em;opacity:1}
 .j1-pill .t2-live{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px var(--ok-bg)}
 .j1-pill.is-ask .t2-live{background:var(--warn);box-shadow:0 0 0 3px var(--warn-bg)}
 .j1-chip{display:inline-flex;align-items:center;gap:6px}
