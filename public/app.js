@@ -90,6 +90,7 @@
     moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
     home: '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
     up: '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
+    upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>',
     down: '<path d="M12 4v12"/><path d="m6 10 6 6 6-6"/><path d="M5 20h14"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/>',
     pic: '<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
@@ -949,11 +950,12 @@
         <nav class="rail" aria-label="Main">
           <button class="so-mark so-home" data-nav="feed" aria-label="Home: your feed" title="Home">${SO()}</button>
           <div class="rl-mid">
+            <button class="icon-btn rl" aria-label="Feed" data-nav="feed">${ic('home')}<span class="rl-tx" aria-hidden="true">Feed</span></button>
             <button class="icon-btn rb rl" aria-label="Work" data-nav="work">${ic('board')}<span class="rl-tx" aria-hidden="true">Work</span><i data-count="work"></i></button>
-            <button class="icon-btn rl" aria-label="What Brew learned" data-nav="learned">${ic('book')}<span class="rl-tx" aria-hidden="true">What Brew learned</span></button>
             <button class="icon-btn rb rl" aria-label="Notifications" data-bell>${ic('bell')}<span class="rl-tx" aria-hidden="true">Notifications</span><i data-count="bell"></i></button>
           </div>
           <div class="rl-foot">
+            <button class="icon-btn rl" aria-label="What Brew learned" data-nav="learned">${ic('book')}<span class="rl-tx" aria-hidden="true">What Brew learned</span></button>
             <button class="icon-btn rl" aria-label="Connectors" data-nav="connectors">${ic('plug')}<span class="rl-tx" aria-hidden="true">Connectors</span></button>
             <button class="icon-btn rl lc-acct" aria-label="Your account" data-lacct>${window.LIVE?.me?.pic ? `<img src="${esc(window.LIVE.me.pic)}" alt="" referrerpolicy="no-referrer">` : ic('person')}<span class="rl-tx" aria-hidden="true">${window.LIVE?.me ? esc(window.LIVE.me.email) : 'Account'}</span></button>
           </div>
@@ -2393,7 +2395,7 @@
      demo controls and Start over; What Brew learned and Connectors only on phones (the rail has them on desktop). */
   const acctIt = (attr, icon, label, meta = '', cls = '') => `<button class="lc-it${cls}" ${attr}>${ic(icon, 's16')}<b>${label}</b>${meta ? `<span>${meta}</span>` : ''}</button>`;
   const acctRows = () => `<div class="lc-grp">${acctIt('data-nav="saved"', 'bookmark', 'Library', S.saved.length ? `${S.saved.length} saved` : '')}${acctIt('data-nav="learned"', 'book', 'What Brew learned', '', ' lc-phone')}${acctIt('data-nav="facts"', 'doc', 'Fact sheet')}${acctIt('data-nav="connectors"', 'plug', 'Connectors', `${Object.keys(S.conn).filter(conn).length} of ${Object.keys(B.connectors).length}`, ' lc-phone')}</div>
-    <div class="lc-grp">${acctIt('data-acct="sound"', 'bell', 'Sounds', `<i class="sw" aria-checked="${SND.on}" aria-hidden="true"><i></i></i>`)}${isStandalone() ? '' : acctIt('data-acct="install"', 'phone', 'Add to home screen')}${acctIt('data-acct="setup"', 'play', 'Watch the setup again')}${acctIt('data-acct="demo"', 'sliders', 'Demo controls', 'Press .')}${acctIt('data-acct="restart"', 'home', 'Start over from the website')}</div>`;
+    <div class="lc-grp">${acctIt('data-acct="sound"', 'bell', 'Sounds', `<i class="sw" aria-checked="${SND.on}" aria-hidden="true"><i></i></i>`)}${isStandalone() ? '' : acctIt('data-acct="install"', 'phone', 'Add to home screen')}</div>`;
   const acctBind = (pop) => pop.addEventListener('click', (e) => { const t = e.target.closest('[data-acct],[data-nav]'); if (!t) return; const k = t.dataset.acct;
     if (k === 'sound') { SND.on = !SND.on; ls.set(`${LSP()}sound`, SND.on ? 'on' : 'off'); t.querySelector('.sw')?.setAttribute('aria-checked', SND.on); if (SND.on) sound('approve'); return; }
     pop.remove(); if (k === 'install') openInstall(); if (k === 'setup') start(); if (k === 'demo') openDemo(); if (k === 'restart') resetDemo(); });
@@ -4222,7 +4224,7 @@
         ppl && t('data-hd-open', ppl.toLocaleString(), 'Things people said', srcs.slice(0, 2).map((x) => x.name).join(', '))].filter(Boolean);
       return tiles.length ? `<div class="lx-ov">${tiles.join('')}</div>` : ''; };
     libShell('What Brew learned', UI2 ? 'From what you pick, edit and ship. Edit, pause or forget anything.' : 'From what you pick, edit and ship, and anything you drop on this page. Edit, pause or forget any of it.',
-      `<div class="lx"${UI2 ? '' : ' data-m2-drop'}>${UI2 ? '' : lxOverview()}
+      `<div class="lx"${UI2 ? '' : ' data-m2-drop'}>${UI2 ? '' : lxDropBig() + lxOverview()}
         ${UI2 || mvBuilding ? movesHtml : ''}
         ${anyLearned ? '' : UI2 ? `<p class="lx-zero">${ic('sparkles', 's16')}<span>Nothing learned yet. Pick, edit and ship from your cards, and what Brew learns lands here.</span></p>` : ''}
         ${toldHtml}
@@ -4239,8 +4241,7 @@
         ${'' /* "What Brew knows about <brand>" (memHtml) and "What it read lately" (runs) are hidden (Param, 2026-10-16) */}
       </div>`);
     $('#col')?.classList.add('lib-col', 'lx-col');
-    if (!UI2) $('.lib-head')?.insertAdjacentHTML('beforeend', `<div class="lx-hacts"><button class="btn btn-ghost sm" data-m2-pick>${ic('up', 's16')}Upload files</button><input type="file" multiple hidden data-m2-file></div>`);
-    $('[data-hd-open]')?.addEventListener('click', () => openHeard());
+    $$('[data-hd-open]').forEach((b) => b.addEventListener('click', () => openHeard())); /* the overview tile and the row both open it */
     /* paused at the free spend cap: Pro carries the build on to every move */
     $('[data-mvpro]')?.addEventListener('click', (e) => { const b = e.currentTarget, go = async () => { const r = await api(`/api/brands/${mvSlug()}/pro`, {}); if (!r || r.error) { toast(r?.error || 'Pro couldn’t start the moves. Try again.'); return false; } return true; };
       if (!S.pro) return openPlan('moves', go); b.disabled = true; go().then((ok) => { if (ok) { toast('Writing the rest of the moves.'); renderLearned(); } else b.disabled = false; }); });
@@ -4252,6 +4253,8 @@
   const renderLearned = async () => { await renderLearned0(); if (!UI2 || view !== 'learned') return;
     if (document.body.dataset.m2 === 'rules' && !$('#fs')) { ($('#col') || $('#view')).insertAdjacentHTML('beforeend', `<section class="lx-sec m2-facts">${lxHead('lx-facts', 'Fact sheet', '', `Every number and name Brew may quote for ${esc(B.brand.name)}, and where it came from. Every agent follows it.`)}<div class="fsx" id="fs"><p class="lx-empty">Opening…</p></div></section>`); renderFacts(true); } };
   const M2TAB = { learned: 'learned', moves: 'learned', move: 'learned', rules: 'rules', facts: 'rules', heard: 'heard', tune: 'tune' };
+  /* ui=1: the big drop box on What Brew learned (the whole page still takes a drop) */
+  const lxDropBig = () => `<div class="m2-drop lx-drop" data-m2-drop><span class="m2-up">${ic('upload')}</span><b>Drop anything here</b><span>Brand guides, past ads, product sheets, screenshots. Brew reads them and keeps what matters.</span><button class="lx-drop-btn" data-m2-pick>Upload files</button><input type="file" multiple hidden data-m2-file></div>`;
   const m2DropHtml = () => `<div class="m2-drop" data-m2-drop><span class="m2-up">${ic('up', 's18')}</span><b>Drop anything here</b><span>Brand guides, past ads, product sheets, screenshots. Brew reads it and every agent works from it.</span><button class="btn btn-ghost sm" data-m2-pick>Upload files</button><input type="file" multiple hidden data-m2-file></div>`;
   const m2Paint = (k) => { const el = $('#m2'); if (!el) return; const t = M2TAB[k]; el.hidden = !t || k === 'move'; document.body.dataset.m2 = t || ''; if (!t || k === 'move') return;
     const tab = (key, nav, label) => `<button role="tab" data-nav="${nav}" aria-selected="${t === key}">${label}</button>`;
