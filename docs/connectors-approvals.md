@@ -14,20 +14,24 @@ a vendor problem, so Composio, Pipedream and Nango would hit the same approvals.
 | **Marketplaces** | Public Amazon read through treg. This needs treg balance. |
 | **Slack** | One click: **Continue with Slack**, pick the channel on Slack's screen. The Brew Slack app (`docs/slack-app-manifest.json`, made with the Slack CLI) needs no review: public distribution lets any workspace install it. App Directory listing is optional. Keys: `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`, `SLACK_SIGNING_SECRET` in Secret Manager. |
 
-## Needs you, start now (longest first)
+## Waiting on the platforms (status 2026-10-16)
 
-1. **Google Ads, 4–10 weeks.**
-   - Google Ads API Center: apply to move the developer token (`GOOGLE_ADS_DEVELOPER_TOKEN`) up from Test/Explorer to **Basic**.
-   - Google Cloud → OAuth consent screen: add the `adwords` + `analytics.readonly` scopes and submit for verification (privacy policy URL, demo video).
-   - Then deploy with `GOOGLE_OAUTH=1`. Until verification, the first 100 users see an "unverified app" screen.
-2. **Meta Ads + Instagram insights, 2–6 weeks.**
-   - Business Verification for SquareUp in Meta Business Settings.
-   - Then App Review for **ads_read** (Advanced) and **instagram_business_manage_insights** on the app behind `META_ADS_OAUTH_CLIENT_ID`. Use the screencast script below.
+1. **Google Ads + GA4 one-click, 4–10 weeks. Submitted, nothing to do.**
+   - Done: the consent screen asks only for `analytics.readonly`, `adwords`, email, profile and openid, and it went to
+     Google for verification (privacy policy URL, demo video). The application for **Basic** access on the developer
+     token (`GOOGLE_ADS_DEVELOPER_TOKEN`) went in on the same day.
+   - Done: `GOOGLE_OAUTH=1` is live. Until verification, users see the "unverified app" screen, with a cap of 100 users.
+   - The token already reads real accounts (Cozy Snugglet 427-880-7197 is live). Basic access lifts the test limits.
+2. **Meta Ads, 2–6 weeks. Still needs you.**
+   - In review: Business Verification for portfolio 898394269362946 (Yellow Monk Technologies LLP), submitted 2026-10-16.
+   - Next: Tech Provider access verification, then App Review for **ads_read** only (Advanced) on the app behind
+     `META_ADS_OAUTH_CLIENT_ID`. Remove the other permissions first, and use the screencast script below.
    - Until then, the brand's Meta admin gets a role on the app (App roles → Testers/Analysts) and connects with one click.
-3. **Shopify one-click, 3–8 weeks.**
+3. **Shopify one-click, 3–8 weeks. Still needs you.**
    - Submit the public app (`FEED_SHOPIFY_CLIENT_ID`) for review, asking for `read_all_orders` and Protected Customer Data (orders, customers).
    - Then deploy with `SHOPIFY_OAUTH=1` (and `SHOPIFY_PCD_APPROVED=1` once approved).
    - Until then: a custom-distribution install link per brand, or the brand's own app (above).
+4. **Slack Marketplace listing: parked.** Slack doesn't require it, since public distribution already lets any workspace install the app.
 
 ## Screencast script (Meta and Google reviews)
 
