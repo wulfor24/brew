@@ -3559,6 +3559,16 @@
     return rows.length ? `<dl class="j2-facts">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>` : ''; };
   /* the options under the chat: the card's own next step, the brief, photo, the family's quick asks, more versions, the knobs, the files */
   /* the files, the projection and the remakes: the same three chips in both designs (ui=1 puts them after its quick asks) */
+  /* "Make our version": what Brew read from the rival's ad (rival-ad.js), so the team sees the angle, hook and look it is working from */
+  const rivalReadHtml = (ch) => { const r = ch?.rival; if (!r) return '';
+    const rd = r.read, row = (k, v) => (v ? `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>` : '');
+    const sum = [r.angle, rd?.from === 'video' ? 'from the video' : null].filter(Boolean).join(' · ');
+    return `<details class="rv-read"><summary>${r.poster ? `<img src="/${esc(String(r.poster).replace(/^\//, ''))}" alt="" loading="lazy">` : ''}<span><b>What Brew read from ${esc(r.brand)}’s ad</b>${sum ? `<small>${esc(sum)}</small>` : ''}</span></summary>
+      ${rd ? `<dl>${row('What stops the scroll', rd.stopper)}${row('Hook', rd.hookPattern)}${row('Who it speaks to', rd.audience)}${row('Proof', rd.proof)}${row('Layout', rd.layout)}${row('Look', rd.look)}${(rd.beats || []).length ? `<div><dt>Beats</dt><dd><ol>${rd.beats.map((b) => `<li>${esc(b)}</li>`).join('')}</ol></dd></div>` : ''}</dl>
+        ${(rd.works || []).length ? `<p class="rv-works"><b>What makes it work</b></p><ul>${rd.works.map((w) => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}
+        <p class="rv-note">Ours keeps the angle, hook and composition, with your product and your words. Nothing of theirs is copied.</p>`
+        : `<p class="rv-note">${r.hook ? `Their hook: “${esc(r.hook)}”. ` : ''}Brew reads the rest of their ad as it writes the first version.</p>`}
+      ${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">See their ad in the Ad Library ${ic('external', 's14')}</a>` : ''}</details>`; };
   const j2Acts = (ch, c) => { const out = [];
     out.push(c('data-j2-pack', 'down', j2PackLabel(ch), ' is-pack'));
     out.push(c('data-j2-impact', 'trendup', 'Projected impact'));
@@ -3625,7 +3635,7 @@
         <div class="st-body j2-body"><aside class="st-panel j2-panel"><div class="st-panel-b is-chat j2-scroll">
           <section class="j2-draft"><div class="j2-title"><b>${esc(ch.actionLabel)}${ch.target.conn && ch.target.name ? ` <span>on ${esc(ch.target.name)}</span>` : ''}</b><small>${esc(ch.familyName)} · from “${esc(String(ch.before.title || '').slice(0, 70))}”</small></div>
             <main class="st-canvas j2-canvas"><div class="st-asset${ch.copyPending ? ' is-writing' : ''}">${ch.copyPending ? `<p class="st-writing" role="status"><span class="spin"></span>Writing the first draft…</p>` : ''}${assetHtml(pkgCh, 'lg')}</div>${phTools(ch, pkgCh, viewing)}${timeline(ch, viewing)}</main>
-            ${j2Facts(ch, pkgCh)}${shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh))}</section>
+            ${rivalReadHtml(ch)}${j2Facts(ch, pkgCh)}${shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh))}</section>
           ${chatTab(ch, edit)}</div></aside></div>
         ${tab === 'details' ? j2Brief(ch, pkgCh, edit) : tab === 'adjust' ? j2Adjust(ch, edit) : ''}`;
     } else
@@ -3633,7 +3643,7 @@
         <div class="st-ttl"><b>${esc(ch.actionLabel)}${ch.target.conn && ch.target.name ? ` <span>on ${esc(ch.target.name)}</span>` : ''}</b><small>${face(ch.agent)}${esc(ch.familyName)} · from “${esc(String(ch.before.title || '').slice(0, 70))}”</small></div>
         <div class="st-vwrap"><button class="st-vpill${RX.vmenu ? ' is-open' : ''}" data-vmenu aria-haspopup="dialog" aria-expanded="${!!RX.vmenu}" title="Version history">${ic('clock', 's14')}<span>History</span><b class="st-vcount">v${curN(ch)}${ch.versions.length > 1 ? ` of ${ch.versions.length}` : ''}</b>${ic('chev', 's14')}</button>${RX.vmenu ? `<div class="st-vmenu" role="dialog" aria-label="Version history"><div class="st-vmenu-h"><b>Versions</b><small>${ch.versions.length} saved · nothing is ever lost</small></div><div class="st-vmenu-b">${historyTab(ch)}</div></div>` : ''}</div>${themeBtn()}<button class="icon-btn st-more" aria-label="More" data-lmenu="remix:${esc(ch.id)}">${ic('more', 's16')}</button></header>
       <div class="st-body">
-        <main class="st-canvas">${timeline(ch, viewing)}<div class="st-asset${ch.copyPending ? ' is-writing' : ''}">${ch.copyPending ? `<p class="st-writing" role="status"><span class="spin"></span>Writing the first draft…</p>` : ''}${assetHtml(pkgCh, 'lg')}</div>${phTools(ch, pkgCh, viewing)}${shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh))}</main>
+        <main class="st-canvas">${rivalReadHtml(ch)}${timeline(ch, viewing)}<div class="st-asset${ch.copyPending ? ' is-writing' : ''}">${ch.copyPending ? `<p class="st-writing" role="status"><span class="spin"></span>Writing the first draft…</p>` : ''}${assetHtml(pkgCh, 'lg')}</div>${phTools(ch, pkgCh, viewing)}${shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh))}</main>
         <aside class="st-panel"><div class="st-tabs" role="tablist">${[['iterate', 'Chat'], ['adjust', 'Adjust'], ['details', SPLIT ? 'Brief' : 'Details']].map(([k, n]) => `<button role="tab" data-tab="${k}" aria-selected="${tab === k}">${n}</button>`).join('')}</div>
           <div class="st-panel-b${tab === 'iterate' ? ' is-chat' : ''}">${tab === 'iterate' ? chatTab(ch, edit) : tab === 'adjust' ? adjustTab(ch, edit) : tab === 'details' ? detailsTab(ch, pkgCh, edit) : chatTab(ch, edit)}</div></aside>
       </div>`;

@@ -49,14 +49,14 @@ export const imagePrompt = (j, hasSrc, c = null, brand = null) => buildDraft({ k
 export const DRAFT_SCHEMA = SCHEMA;
 export const DRAFT_RATIOS = RATIOS;
 
-export function createDrafts({ rivalAdOf = () => null, claudeTool, geminiImage, treg, launchBrowser, zipBuffer, photoAsync, photoFile, photoOf, catalogOf = () => null, brandName = () => '', cardOf, briefOf, cardBrief, seatLine, isMock, spend, clean, now, uid, say, save, AGENT, onReady = null, log = console }) {
+export function createDrafts({ rivalAdOf = () => null, rivalStoreOf = () => null, claudeTool, geminiImage, treg, launchBrowser, zipBuffer, photoAsync, photoFile, photoOf, catalogOf = () => null, brandName = () => '', cardOf, briefOf, cardBrief, seatLine, isMock, spend, clean, now, uid, say, save, AGENT, onReady = null, log = console }) {
   const keyOf = (s) => crypto.createHash('sha1').update(s).digest('hex').slice(0, 16);
   /* a store photo by URL (the catalog's own image), fetched once into tmp */
   const fetchPhoto = async (u) => { const f = path.join(os.tmpdir(), 'brew-ph-' + keyOf(u) + '.jpg'); if (!fs.existsSync(f)) { const r = await safeFetch(u, { signal: AbortSignal.timeout(20e3) }); if (!r.ok) return null; fs.writeFileSync(f, Buffer.from(await r.arrayBuffer())); } return f; };
   const step = (t, w, d, text) => { d.step = text; save(t); };
   /* a rival ad card ("Make our version"): the ad and how it is made (rival-ad.js), read once per ad */
   const fileOfRel = async (rel) => { try { const f = /^https?:/.test(rel) ? await fetchPhoto(rel) : photoAsync ? await photoAsync(rel) : photoFile(rel); return f && fs.existsSync(f) ? f : null; } catch { return null; } };
-  const rivalRead = async (t, c) => { const ad = isRivalCard(c) ? rivalAdOf(t, c) : null; if (!ad) return null; const style = isMock?.() ? null : await readRivalAd(ad, { call: claudeTool, fileOf: fileOfRel, log }).catch(() => null); return { ad, style }; };
+  const rivalRead = async (t, c) => { const ad = isRivalCard(c) ? rivalAdOf(t, c) : null; if (!ad) return null; const style = isMock?.() ? null : await readRivalAd(ad, { call: claudeTool, fileOf: fileOfRel, store: rivalStoreOf(t), log }).catch(() => null); return { ad, style }; };
 
   // what to make, and the words: one forced tool call
   const plan = async (t, w, c, as, ask) => {

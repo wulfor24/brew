@@ -2814,3 +2814,22 @@ html body.deck-on .topbar{border-bottom:0;box-shadow:none}
 .wb-zero-deck .wb-zero-main{flex:1 1 auto;min-width:min(100%,420px);min-height:0;scroll-snap-align:start}
 @media (max-width:1100px){.wb-col.is-empty{display:none}}
 @media (max-width:700px){.wb-zero-deck .wb-zero-main{flex:0 0 100vw;width:100vw;min-width:0}}
+
+/* "Make our version": what Brew read from the rival's ad (studio) */
+.rv-read{margin:0 0 12px;border:1px solid var(--line, rgba(127,127,127,.25));border-radius:12px;background:var(--bg-2, transparent)}
+.rv-read summary{display:flex;gap:10px;align-items:center;padding:10px 12px;cursor:pointer;list-style:none}
+.rv-read summary::-webkit-details-marker{display:none}
+.rv-read summary img{width:40px;height:40px;object-fit:cover;border-radius:8px;flex:0 0 auto}
+.rv-read summary span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.rv-read summary b{font-size:14px;line-height:19px}
+.rv-read summary small{font-size:12.5px;color:var(--fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rv-read dl{margin:0;padding:0 12px;display:grid;gap:8px}
+.rv-read dl div{display:grid;grid-template-columns:130px 1fr;gap:10px}
+.rv-read dt{font-size:12.5px;color:var(--fg-3)}
+.rv-read dd{margin:0;font-size:13.5px;line-height:19px;color:var(--fg-2)}
+.rv-read dd ol,.rv-read ul{margin:0;padding-left:18px;font-size:13.5px;line-height:19px;color:var(--fg-2)}
+.rv-read ul{padding:0 12px 0 30px}
+.rv-read .rv-works{margin:10px 12px 4px;font-size:12.5px;color:var(--fg-3)}
+.rv-read .rv-note{margin:10px 12px;font-size:12.5px;line-height:17px;color:var(--fg-3)}
+.rv-read a{display:inline-flex;gap:4px;align-items:center;margin:0 12px 12px;font-size:13px}
+@media (max-width:600px){.rv-read dl div{grid-template-columns:1fr;gap:2px}}

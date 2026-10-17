@@ -7,6 +7,7 @@ import { budgetWhy } from './budget.js'; // whose daily share ran out, in plain 
 import { realRows } from './connectors/common.js';
 import { baselineOf, healthReadings } from './on-connect.js'; // the team's own account numbers on cards and the health card
 import fs from 'node:fs';
+import { readRivalAd } from './rival-ad.js'; // rival ads read ahead, kept with the brand
 import vm from 'node:vm';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -670,6 +671,29 @@ export function createFeedService(o) {
     detail: { why: [x.p], how: x.steps }, cta: { label: 'Start this' }, src: `How-to playbook · ${dateIN(at)}`, research: { kind: 'howto', id: x.id, ...(x.adId ? { ad: x.adId } : {}) } });
   /* a story and the archive behind it (research.js pool): a story past its 24 hours can still become a feed card */
   const resAll = (o) => [...(o?.items || []), ...(o?.archive || [])];
+  /* ---------- rival ad reads (rival-ad.js): kept with the brand (rival-reads.json), so a deploy or a second instance never pays
+     for one again; the top ads are read as soon as they arrive, so "Make our version" opens on a finished read ---------- */
+  const READS_F = 'rival-reads.json', readsMem = new Map(), readsChain = new Map();
+  const readsOf = async (slug) => { if (!readsMem.has(slug)) readsMem.set(slug, (await packs.getJSON(slug, READS_F, {}).catch(() => ({}))) || {}); return readsMem.get(slug); };
+  const rivalStore = (slug) => (!slug ? null : {
+    get: async (id) => (await readsOf(slug))[id] || null,
+    put: async (id, r) => { const all = await readsOf(slug); all[id] = { ...r, at: Date.now() };
+      const ks = Object.keys(all); if (ks.length > 150) for (const k of ks.sort((a, b) => (all[a].at || 0) - (all[b].at || 0)).slice(0, ks.length - 150)) delete all[k];
+      const run = (readsChain.get(slug) || Promise.resolve()).then(() => packs.put(slug, READS_F, all)); readsChain.set(slug, run.catch(() => {})); return run; } });
+  const rivalStoreOf = (t) => rivalStore(t ? (t.brandId || DEFAULT_BRAND) : B()?.slug);
+  const fileOfRel = async (rel) => { const f = (o.photoAsync ? await o.photoAsync(rel).catch(() => null) : null) || photoFile(rel); try { return f && fs.statSync(f).isFile() ? f : null; } catch { return null; } };
+  const PREREAD = +(process.env.RIVAL_PREREAD ?? 4); /* how many of the newest top rival ads are read ahead per brand */
+  const prereadRivals = async (b) => {
+    if (!PREREAD || isMock() || !claudeTool || !b?.slug || !b.research?.get) return;
+    const r = b.research.get() || {}, st = rivalStore(b.slug);
+    const ads = resAll(r.ads).filter((a) => a?.id && (a.poster || a.video)).sort((a, x) => (a.rank || 99) - (x.rank || 99)).slice(0, PREREAD);
+    for (const a of ads) { if ((await st.get(a.id))?.layout) continue; if (!spend('text')) break;
+      await readRivalAd(a, { call: claudeTool, fileOf: fileOfRel, store: st, log }).catch(() => null); }
+  };
+  /* what the jam shows under "What Brew read from their ad": the ad, and the read when there is one */
+  const rivalSummary = (t, c) => { const ad = rivalAd(t, c); if (!ad) return null; const rd = readsMem.get(t?.brandId || DEFAULT_BRAND)?.[ad.id] || null;
+    return { brand: ad.brand, url: ad.url || null, poster: ad.poster || null, format: ad.format || 'image', hook: ad.hook || '', angle: rd?.angle || ad.angle || '', days: ad.days || null, versions: ad.versions || null,
+      read: rd ? { stopper: rd.stopper || '', audience: rd.audience || '', proof: rd.proof || '', hookPattern: rd.hookPattern || '', layout: rd.layout || '', look: rd.look || '', beats: rd.beats || [], works: rd.works || [], from: rd.from || 'poster' } : null }; };
   /* the rival ad behind a research ad card ("Make our version", rival-ad.js): the item the read saved, with its poster and clip */
   const rivalAd = (t, c) => { if (c?.research?.kind !== 'ad' && !c?.research?.ad) return null; const r = (t ? brandOfT(t)?.research : null)?.get?.() || research?.get?.() || {};
     const adId = c.research.kind === 'ad' ? c.research.id : c.research.ad; /* a how-to built on a rival ad names it */
@@ -695,12 +719,13 @@ export function createFeedService(o) {
     for (const c of list) { if (out.length >= n) break; if (!c || t.used.has(c.id) || t.cards.has(c.id)) continue; t.used.add(c.id); out.push(c); }
     return out;
   };
-  const wireResearch = (b) => b.research?.onRefresh((done) => {
+  const wireResearch = (b) => { if (b?.research) setTimeout(() => runIn?.(b, () => prereadRivals(b))?.catch?.(() => {}), 90e3).unref?.(); return b.research?.onRefresh((done) => {
+    if (done.includes('ads')) Promise.resolve(runIn ? runIn(b, () => prereadRivals(b)) : prereadRivals(b)).catch((e) => log.warn('[rival preread]', b.slug, e.message));
     for (const t of brandTenants(b)) {
       if (done.includes('trends') && t.watchers.trends) t.watchers.trends.nextRun = now(t) + 15e3;
       if (done.includes('ads') && t.watchers['ads-library']) t.watchers['ads-library'].nextRun = now(t) + 30e3;
     }
-  });
+  }); };
 
   /* ---------- cards from live data (live-watch.js): the brand's catalog and real AI answers ---------- */
   const ENG = { chatgpt: 'ChatGPT', gemini: 'Gemini', perplexity: 'Perplexity', claude: 'Claude' };
@@ -1690,7 +1715,7 @@ export function createFeedService(o) {
   };
   JB.routes({ askMake: (t, w, text) => (makeAsk(text) ? propose(t, w, { kind: 'make', as: asOf(text), text, summary: '', by: nameOf(meOf(t)) }) : null), toSlack: o.slack ? toSlack : null, on, W, say, move, notify, learn: learnOf, nextTicket: (t) => { leadsAllTenants++; return nextBrandTicket(t); }, handoff: { build: (...a) => HO.build(...a), text: (...a) => HO.text(...a) } });
   // first drafts in a jam, one tap away: image, video, voice or text, made only when someone asks (drafts.js)
-  DR = createDrafts({ rivalAdOf: rivalAd, claudeTool, geminiImage, treg: o.treg, launchBrowser: o.launchBrowser, zipBuffer: o.zipBuffer, photoAsync: o.photoAsync, photoFile, catalogOf: (t) => (t ? brandOfT(t)?.catalog : null), brandName: (t) => (t ? brandOfT(t)?.seed?.brand?.name || '' : ''), photoOf: (c) => LANE_PHOTO[c?.lane] || Object.values(LANE_PHOTO || {})[0], cardOf: (t, id) => { const c = t.cards.get(id); return c ? fillCard(c, t) : null; },
+  DR = createDrafts({ rivalAdOf: rivalAd, rivalStoreOf, claudeTool, geminiImage, treg: o.treg, launchBrowser: o.launchBrowser, zipBuffer: o.zipBuffer, photoAsync: o.photoAsync, photoFile, catalogOf: (t) => (t ? brandOfT(t)?.catalog : null), brandName: (t) => (t ? brandOfT(t)?.seed?.brand?.name || '' : ''), photoOf: (c) => LANE_PHOTO[c?.lane] || Object.values(LANE_PHOTO || {})[0], cardOf: (t, id) => { const c = t.cards.get(id); return c ? fillCard(c, t) : null; },
     briefOf: (t, w) => JB.seed(t, w)?.md, cardBrief, seatLine, isMock, spend, clean, now, uid, say, save: (t) => store?.save(t), AGENT, onReady: (t, w, d) => slackAsset(t, w, { title: d.title, copy: d.copy, image: d.image, video: d.video, audio: d.audio, zip: d.zip, kind: d.as === 'video' && !d.video ? (d.image ? 'image' : 'text') : d.as, note: d.err || null }), /* a video that didn't come through says so, never 'New video' */ log });
   /* the jam's finals (finals-routes.js): the sheet's status, the quote, the run and a Space checkpoint; a final lands as a draft
      card marked final and posts to the thread like every asset. Off when the server has no Sloosh client (tests) */
@@ -1763,7 +1788,7 @@ export function createFeedService(o) {
   on('GET', '/api/cards/:cid/moves', async (b, t, p) => { const c = t.cards.get(p.cid); if (!c) return { error: 'not found' }; return { moves: MOVES.numsOf(c.src).map((n) => ({ ...MOVES.summary(n), passages: MOVES.passages({ ...c, src: `Move ${n}` }, 4) })) }; });
   /* MEDIA_FAKE=1 on a local server: the jam's short video runs end to end for free (drafts.js fakeMakers) */
   const FAKE = process.env.MEDIA_FAKE === '1' && !process.env.K_SERVICE ? fakeMakers() : null;
-  RMX = createRemix({ rivalAdOf: rivalAd, references: (t) => REFS.list(t.brandId || DEFAULT_BRAND), finals: o.finals || null, sloosh: o.sloosh || null, creditsLeft: (slug) => o.budgetLeft?.(slug) || null, brandOfT, slugOfT, meOf, onMedia: (t, ch, m) => studioMedia(t, ch, m), onVersion: (t, ch, v, why) => studioVersion(t, ch, v, why), onShopos: (t, w, x) => shoposMail(t, w, x), askPerson: async (t, w, q, email) => { const [x] = await tagsOf(t, w, [email]); if (!x) return { error: 'They’re not on the team yet. Invite them first.' }; const me0 = meOf(t);
+  RMX = createRemix({ rivalAdOf: rivalAd, rivalStoreOf, rivalSummary, references: (t) => REFS.list(t.brandId || DEFAULT_BRAND), finals: o.finals || null, sloosh: o.sloosh || null, creditsLeft: (slug) => o.budgetLeft?.(slug) || null, brandOfT, slugOfT, meOf, onMedia: (t, ch, m) => studioMedia(t, ch, m), onVersion: (t, ch, v, why) => studioVersion(t, ch, v, why), onShopos: (t, w, x) => shoposMail(t, w, x), askPerson: async (t, w, q, email) => { const [x] = await tagsOf(t, w, [email]); if (!x) return { error: 'They’re not on the team yet. Invite them first.' }; const me0 = meOf(t);
       JAMS.join(w, x, 'asked'); say(t, w, { from: 'system', body: `${nameOf(me0)} asked ${nameOf(x)}: ${q.q}` }); mailEv(t, w, { kind: 'asked', to: [x.email], by: me0, text: q.q, id: `q_${w.id}_${q.id}` }); return x; }, ...(FAKE ? { makers: FAKE.makers, videoImage: FAKE.image, mediaFake: true } : {}), planOf: (t, c) => (c ? planOfCard(c) : null), save: (t) => store?.save(t), catalogOf: (t) => (t ? brandOfT(t)?.catalog : null), photoAsync: o.photoAsync, photoFile, handoffPath, MOVES, seedJam: (t, w) => JB?.seed(t, w), claudeTool, geminiImage, PUB, LANE_PHOTO, FACTS, unbackedNums: (text) => unbacked({ text: String(text).replace(/\b(?:Rs\.?|INR)\s?(?=\d)/gi, '₹') }, FACT_OK).map((x) => x.n), SEED, AGENT, claudeJSON, cardBrief, seatLine, qaCheck, mechanicalFix, clean, BANNED, isMock, spend, uid, now, clone, inr, on, newWork, addVersion, say, move, notify, later, setState, weekKey, curV, measureOf, log  });
   // tenants survive restarts (store.js); a tenant not in memory is read back from disk or GCS before we give up on it
   const getTenant = async (id) => {

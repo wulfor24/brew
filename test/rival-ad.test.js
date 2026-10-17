@@ -52,3 +52,17 @@ test('the creative is read once per ad, from its poster, and a failure reads not
   const nothing = await readRivalAd({ ...ad, id: 'a3' }, { call, fileOf: async () => null, video: false, log: { warn() {} } });
   assert.equal(nothing, null, 'no picture to look at: no read');
 });
+
+test('a read is kept with the brand: a kept read costs nothing, a new read is saved, and the selling logic is read too', async () => {
+  forgetRivalReads();
+  const kept = { ...style, angle: 'pain first', stopper: 'a cold foot in the first frame' };
+  let calls = 0, saved = null;
+  const store = { get: async (id) => (id === 'k1' ? kept : null), put: async (id, r) => { saved = { id, r }; } };
+  const call = async () => { calls++; return { ...style, angle: 'social proof', stopper: 'a face', audience: 'office workers', proof: 'reviews' }; };
+  assert.deepEqual(await readRivalAd({ ...ad, id: 'k1' }, { call, store, video: false, log: { warn() {} } }), kept); assert.equal(calls, 0);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rival-')); const f = path.join(dir, 'p.png');
+  fs.writeFileSync(f, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52]));
+  const r = await readRivalAd({ ...ad, id: 'n1' }, { call, store, fileOf: async () => f, video: false, log: { warn() {}, info() {} } });
+  assert.equal(calls, 1); assert.equal(r.angle, 'social proof'); assert.equal(r.proof, 'reviews'); assert.equal(saved.id, 'n1');
+  assert.match(rivalBlock(ad, r, 'Cozy'), /Angle: social proof/); assert.match(rivalBlock(ad, r, 'Cozy'), /What stops the scroll: a face/);
+});

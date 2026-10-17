@@ -8,13 +8,20 @@
 //      given their picture it edits it, and their products, model, words and badges come through (probes, 17 Oct).
 // Nothing of theirs is copied as is: not their brand name, product, logo, faces, claims, numbers or sentences.
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { execFile } from 'node:child_process';
 import { kindOf, mimeOf, RASTER } from './img-norm.js';
 
 /* a research picture (a rival's poster or clip) is never a product photo of ours */
 export const isResearchImage = (rel) => /^\/?research\//.test(String(rel || '')) || /(^|\/)b\/[a-z0-9-]+\/a\/ad-[^/]+$/.test(String(rel || '').split('?')[0]); /* the read's own Ad Library posters (b/<slug>/a/ad-<id>.jpg) too */
 export const isRivalCard = (c) => c?.research?.kind === 'ad' || !!c?.research?.ad; /* a rival's ad card, or a card built on one (a how-to that tests its angle) */
 
-export const STYLE_SCHEMA = { type: 'object', required: ['format', 'hookPattern', 'layout', 'look', 'words', 'beats', 'works'], properties: {
+export const STYLE_SCHEMA = { type: 'object', required: ['format', 'angle', 'hookPattern', 'stopper', 'audience', 'proof', 'layout', 'look', 'words', 'beats', 'works'], properties: {
+  angle: { type: 'string', description: 'The selling angle in a few words, e.g. "pain first, then the fix", "social proof", "price drop", "founder story", "taste test", "routine"' },
+  stopper: { type: 'string', description: 'What stops the scroll: what the eye or ear meets in the first glance or first two seconds, and why it works' },
+  audience: { type: 'string', description: 'Who it speaks to and the moment it catches them in, in one short sentence' },
+  proof: { type: 'string', description: 'The proof device it uses (a number, reviews, a demo, a comparison, a face, none), in a few words' },
   format: { type: 'string', description: 'What kind of creative it is, in a few words: a studio product photo with a headline, a lifestyle photo, a flat graphic with an offer badge, a UGC selfie video, a demo video, a before-you-buy comparison, a carousel' },
   hookPattern: { type: 'string', description: 'How the hook is built, without the rival\'s words: e.g. "names a daily pain, then the fix", "a question the buyer asks", "a number of happy buyers", "price drop in the first line"' },
   layout: { type: 'string', description: 'One or two sentences: where the product sits and how big, the crop, the background, where people or hands are, where the words sit (top third, bottom band, over the product). Say "the product" and "a person": never name or describe their product, pack, flavour, brand, retailer or badge' },
@@ -29,7 +36,7 @@ export const STYLE_SCHEMA = { type: 'object', required: ['format', 'hookPattern'
 } };
 
 const one = (s) => String(s || '').replace(/\s+/g, ' ').trim();
-const MAX_VIDEO = 15 * 1024 * 1024; // a clip the AI can watch inline; bigger ones are read from their first frame
+const MAX_VIDEO = 15 * 1024 * 1024; // a clip the AI can watch inline; a bigger one is shrunk first (480p, first 30 s), else read from its first frame
 
 /* the read, kept per ad id on this instance (a second jam on the same ad reads nothing again) */
 const READS = new Map();
@@ -37,24 +44,34 @@ export function forgetRivalReads() { READS.clear(); }
 
 /* call(content, schema, max, name) → JSON: the jam's structured call (claudeTool), which takes text and image parts.
    fileOf(rel) → a local file for a research path (this instance's disk or the bucket's copy), or null */
-export async function readRivalAd(ad, { call, fileOf = async () => null, video = process.env.AI_PROVIDER !== 'anthropic', log = console } = {}) {
+/* a clip over the inline limit is shrunk once (480p, first 30 seconds, quiet audio kept for spoken hooks), so a video ad is read whole */
+async function shrinkClip(file, log) {
+  const out = path.join(os.tmpdir(), `rival-${path.basename(file).replace(/\W+/g, '_')}-small.mp4`);
+  if (!fs.existsSync(out)) await new Promise((res, rej) => execFile('ffmpeg', ['-y', '-v', 'error', '-i', file, '-t', '30', '-vf', 'scale=-2:480', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '32', '-c:a', 'aac', '-b:a', '48k', out], { timeout: 120e3 }, (e) => (e ? rej(e) : res())));
+  const st = fs.statSync(out); if (st.size > MAX_VIDEO) throw new Error(`still ${Math.round(st.size / 1e6)} MB after shrinking`); log.info?.(`[rival-ad] shrunk ${path.basename(file)} to ${Math.round(st.size / 1e5) / 10} MB`); return out;
+}
+
+/* store: { get(id), put(id, read) } keeps a read with the brand (rival-reads.json), so a deploy or a second instance never pays for it again */
+export async function readRivalAd(ad, { call, fileOf = async () => null, video = process.env.AI_PROVIDER !== 'anthropic', store = null, log = console } = {}) {
   if (!ad?.id || !call) return null;
   if (ad.style?.layout) return ad.style;
   if (READS.has(ad.id)) return READS.get(ad.id);
+  const kept = store ? await store.get(ad.id).catch(() => null) : null; if (kept?.layout) { READS.set(ad.id, Promise.resolve(kept)); return kept; }
   const ask = (watched) => ({ type: 'text', text: `This is a live Meta ad by ${ad.brand} (${ad.format || 'image'} ad${ad.days ? `, live ${ad.days} days` : ''}${ad.versions ? ` in ${ad.versions} version${ad.versions > 1 ? 's' : ''}` : ''}).
 Its copy: headline "${one(ad.headline)}"; text "${one(ad.body).slice(0, 500)}"; button "${one(ad.cta)}".
 ${watched ? 'You are watching the clip itself.' : 'You see its picture (for a video ad, its first frame).'} Read how this creative is MADE, so another brand can make its own ad in the same style with its own product. Describe what you see, not what you guess. Never quote the rival's words in hookPattern, layout or look.` });
-  const shape = (j, from) => ({ format: one(j.format), hookPattern: one(j.hookPattern), layout: one(j.layout), look: one(j.look), beats: (j.beats || []).map(one).filter(Boolean).slice(0, 5), works: (j.works || []).map(one).filter(Boolean).slice(0, 5),
+  const shape = (j, from) => ({ format: one(j.format), angle: one(j.angle), stopper: one(j.stopper), audience: one(j.audience), proof: one(j.proof), hookPattern: one(j.hookPattern), layout: one(j.layout), look: one(j.look), beats: (j.beats || []).map(one).filter(Boolean).slice(0, 5), works: (j.works || []).map(one).filter(Boolean).slice(0, 5),
     words: (j.words || []).filter((w) => w && (w.where || w.role)).slice(0, 4).map((w) => ({ role: w.role || 'other', where: one(w.where), lettering: one(w.lettering), words: +w.words || null })), from });
   const posterPart = async () => { if (!ad.poster) return null; try { const f = await fileOf(ad.poster); if (!f) return null; const b = fs.readFileSync(f); return RASTER.has(kindOf(b)) ? { type: 'image', source: { type: 'base64', media_type: mimeOf(b), data: b.toString('base64') } } : null; } catch (e) { log.warn?.('[rival-ad] poster', e.message); return null; } };
   const p = (async () => {
     /* the clip when the AI can watch it; a clip that can't be read (too big, refused) falls back to the poster, so a video ad is never left unread */
-    if (video && ad.video) { try { const f = await fileOf(ad.video); const st = f && fs.statSync(f);
-        if (st && st.size <= MAX_VIDEO) return shape(await call([{ type: 'document', source: { type: 'base64', media_type: 'video/mp4', data: fs.readFileSync(f).toString('base64') } }, ask(true)], STYLE_SCHEMA, 1500, 'rival_style'), 'video'); }
+    if (video && ad.video) { try { let f = await fileOf(ad.video); const st = f && fs.statSync(f); if (st && st.size > MAX_VIDEO) f = await shrinkClip(f, log);
+        if (f) return shape(await call([{ type: 'document', source: { type: 'base64', media_type: 'video/mp4', data: fs.readFileSync(f).toString('base64') } }, ask(true)], STYLE_SCHEMA, 1500, 'rival_style'), 'video'); }
       catch (e) { log.warn?.('[rival-ad] clip read, trying the poster', e.message); } }
     const pp = await posterPart(); if (!pp) return null; /* nothing to look at: the remake works from the copy alone */
     return shape(await call([pp, ask(false)], STYLE_SCHEMA, 1500, 'rival_style'), 'poster');
-  })().catch((e) => { READS.delete(ad.id); log.warn?.('[rival-ad] read', e.message); return null; });
+  })().then(async (r) => { if (r && store) await store.put(ad.id, r).catch((e) => log.warn?.('[rival-ad] keep', e.message)); return r; })
+    .catch((e) => { READS.delete(ad.id); log.warn?.('[rival-ad] read', e.message); return null; });
   READS.set(ad.id, p);
   return p;
 }
@@ -63,7 +80,7 @@ ${watched ? 'You are watching the clip itself.' : 'You see its picture (for a vi
 export function rivalBlock(ad, style, brand) {
   if (!ad) return '';
   const made = style ? [
-    `Format: ${style.format}.`, `Hook pattern: ${style.hookPattern}.`, `Layout: ${style.layout}`, `Look: ${style.look}`,
+    `Format: ${style.format}.`, style.angle ? `Angle: ${style.angle}.` : '', style.stopper ? `What stops the scroll: ${style.stopper}` : '', style.audience ? `Who it speaks to: ${style.audience}` : '', style.proof ? `Proof device: ${style.proof}.` : '', `Hook pattern: ${style.hookPattern}.`, `Layout: ${style.layout}`, `Look: ${style.look}`,
     style.words?.length ? `Words on the image: ${style.words.map((w) => `${w.role} (${w.words ? `${w.words} words, ` : ''}${w.lettering}, ${w.where})`).join('; ')}.` : 'No words on the image.',
     style.beats?.length ? `Beats: ${style.beats.map((b, i) => `${i + 1}. ${b}`).join(' ')}` : '',
     style.works?.length ? `What makes it work: ${style.works.join('; ')}.` : ''
