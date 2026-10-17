@@ -27,9 +27,9 @@ test('a carousel slide names its place in the set and keeps the top third calm',
   assert.match(d.prompt, /keep the top third calm and simple, the words sit there/);
 });
 
-test('a video draft is one shot with the product still', () => {
+test('a video draft is one handheld shot where hands may use the product, which keeps its shape and mark', () => {
   const d = buildDraft({ kind: 'video', motion: 'the camera drifts right as steam rises, epic', ratio: '9:16' });
-  assert.equal(d.prompt, 'The camera drifts right as steam rises. The product stays still, upright and in sharp focus, its label unchanged and readable; only the light and the camera move, slowly. No new text appears, no captions, no logo.');
+  assert.equal(d.prompt, 'The camera drifts right as steam rises. One continuous handheld phone shot at a natural pace; hands and people may move and use the product; the product keeps its shape, colours and brand mark as in the first frame. No new text appears, no captions, no logo.');
 });
 
 test('a final with text picks Nano Banana Pro, quotes each line with a place and renders it once; three lines go to Ideogram', () => {
@@ -50,7 +50,7 @@ test('exact brand colours go to Flux as hex lines tied to objects, and only ther
 test('a revision changes one thing and repeats the keep list, on GPT Image', () => {
   const f = buildFinal({ kind: 'image', brand, text: ['Peace of mind'], revise: { change: 'the table to polished black marble, slightly warmer light' } });
   assert.equal(f.model, MODELS.edit);
-  assert.equal(f.prompt, 'Image 1 is the previous picture. Change only this: The table to polished black marble, slightly warmer light. Keep everything else exactly as in image 1: the product and every word on its label; the framing and the camera; the light and the colours; the text "Peace of mind". No writing anywhere except the words asked for and the product’s own label: no calendars, notes, signs, screens, books, posters or other packaging. No logos or watermarks that are not the brand’s own. No before and after, no body shown as a result. Nothing invented on the product. No people shown as results, no medical claims.');
+  assert.equal(f.prompt, 'Image 1 is the previous picture. Change only this: The table to polished black marble, slightly warmer light. Keep everything else exactly as in image 1: the product and every word on its label; the framing and the camera; the light and the colours; the text "Peace of mind". No writing anywhere except the words asked for and the product’s own label: no calendars, notes, signs, screens, books, posters or other packaging. No logos or watermarks that are not the brand’s own. No body shown as a result, no before and after of a body. Nothing invented on the product. No people shown as results, no medical claims.');
   assert.match(reviseBrief({}, 'the background'), /Change only this: The background\./);
 });
 

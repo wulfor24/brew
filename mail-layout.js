@@ -23,6 +23,17 @@ export const list = (items) =>
   `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 14px">${items.map((x) =>
     `<tr><td width="18" valign="top" style="font:15px/1.6 ${FONT};color:${C.faint}">•</td><td style="font:15px/1.6 ${FONT};color:${C.body};padding:0 0 4px">${esc(x)}</td></tr>`).join('')}</table>`;
 
+/* a small section heading inside the card (the weekly digest's parts) */
+export const heading = (text) => `<h2 style="margin:22px 0 8px;font:600 15px/1.35 ${FONT};color:${C.ink}">${esc(text)}</h2>`;
+
+/* up to three pictures in a row (static ads, first drafts): public https URLs only, each one a link when href is given */
+export const images = (urls = [], { href = null, alt = '' } = {}) => {
+  const xs = (urls || []).filter((u) => /^https:\/\//.test(String(u || ''))).slice(0, 3); if (!xs.length) return '';
+  const cell = (u) => { const img = `<img src="${esc(u)}" width="160" alt="${esc(alt)}" style="display:block;width:100%;max-width:160px;height:auto;border:1px solid ${C.line};border-radius:12px">`;
+    return `<td valign="top" width="${Math.floor(100 / xs.length)}%" style="padding:0 6px 0 0">${href ? `<a href="${esc(href)}" style="text-decoration:none">${img}</a>` : img}</td>`; };
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 14px"><tr>${xs.map(cell).join('')}</tr></table>`;
+};
+
 const button = (href, label) =>
   `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 0"><tr><td bgcolor="${C.ink}" style="border-radius:12px">` +
   `<a href="${esc(href)}" style="display:inline-block;padding:13px 22px;font:600 15px/1 ${FONT};color:#FFFFFF;text-decoration:none;border-radius:12px">${esc(label)}</a></td></tr></table>`;

@@ -51,6 +51,9 @@ export function cardProduct(c, catalog, opts = {}) {
   const words = `${c?.title || ''}. ${c?.sub || ''}`, strict = { ...opts, byNameOnly: true };
   return matchProduct(words, catalog, strict) || (c?.make?.pieces && matchProduct(c.make.pieces, catalog, strict)) || (opts.byNameOnly ? null : matchProduct(words, catalog, opts));
 }
-/* the scene the card promises its asset shows, as a line for any picture prompt ('' when the card names none) */
-export const sceneOf = (c = {}) => { const p = String(c?.make?.pieces || '').replace(/^[^:]{0,40}:\s*/, '').replace(/\.\s*$/, '').trim(); return p.length >= 8 ? p : ''; }; /* "1 static image: X" → "X" */
+/* the scene the card promises its asset shows, as a line for any picture prompt ('' when the card names none). The words an ad
+   carries ("headline 'Warm toes'", "price line $39", "button Shop now") are set afterwards in exact type, never asked of the
+   image model, so those clauses are taken out here */
+const WORD_CLAUSE = /(?:^|[,;:.]\s*|\s+(?:with|and|plus)\s+)(?:an?\s+|the\s+)?(?:(?:sub-?)?headlines?|price(?:\s+(?:lines?|tags?|badges?|callouts?|points?)|\s*[:=]?\s*[$₹€£\d])|buttons?|cta|captions?|taglines?|text(?:\s+overlays?)?|overlays?|on-?screen\s+text|copy\s+lines?|supers?)\b[^,;.]*/gi;
+export const sceneOf = (c = {}) => { const p = String(c?.make?.pieces || '').replace(/^[^:]{0,40}:\s*/, '').replace(WORD_CLAUSE, '').replace(/^[\s,;:.]+|[\s,;:]+$/g, '').replace(/\.\s*$/, '').trim(); return p.length >= 8 ? p : ''; }; /* "1 static image: X, headline Y" → "X" */
 export const cardScene = (c = {}) => (sceneOf(c) ? `The picture must show what the card promises: ${sceneOf(c)}.` : '');

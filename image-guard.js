@@ -3,8 +3,13 @@
 //   1. the reference photo is the product the words name (matched against the brand's catalog), not a card's or a
 //      lane's default shot; when nothing is named, the caller's own photo stays;
 //   2. the prompt tells the model to keep that product exactly as photographed;
-//   3. after generating, a vision check compares the result with the reference. A mismatch is regenerated once with a
-//      stricter prompt; if it still doesn't match, the real product photo is used instead. A wrong product never ships.
+//   3. after generating, a vision check compares the result with the reference and answers one of four (server.js sameProduct):
+//      SAME (the product's type, shape, colours, pack design and count; soft or garbled small print still counts) keeps it;
+//      TEXT (the right product, its name misspelled in large letters) is made once more on the other Gemini model with the
+//      product turned and smaller, and if the name is still off the new picture is kept, marked guard.labelApprox (never the
+//      packshot); NOREF (the reference is a logo, a graphic or a screenshot) moves to the next catalog photo, else keeps the
+//      picture unchecked (guard.unchecked); DIFFERENT is made again stricter, and if it still doesn't match the real product
+//      photo is used instead. A wrong product never ships.
 // Without a catalog or a reference photo there's nothing to check against and it behaves exactly like the model.
 // Two more, so a picture never fails for a reason we could have handled:
 //   4. a reference path that isn't on this instance's disk (a brand asset or research photo only in the bucket, a store
@@ -16,16 +21,20 @@ import fs from 'node:fs';
 import { matchProduct, junkPhoto } from './product-match.js';
 import path from 'node:path';
 
-const KEEP = (name) => `The product${name ? `, ${name},` : ''} must appear exactly as in the reference photo: the same model, shape, colours, prints, materials and logo. Do not redesign it, swap it for another product, or add a second product.`;
+const KEEP = (name) => `The product${name ? `, ${name},` : ''} must be the same product as in the reference photo: the same product type, shape, colours, materials, pack design and brand mark, and the same number of items. Do not redesign it, swap it for another product, or add a second product; its small print may be soft or turned away, never rewritten.`;
 const STRICT = 'Important: the last attempt showed a different product. Copy the product from the reference photo faithfully; only the scene, light and framing may change.';
+const TURN = 'Show the product turned slightly, at most a third of the frame; its small print may be soft, never rewritten.';
+/* a check's answer as one word: old checkers return only { same } */
+export const verdictOf = (v) => (v?.noref ? 'noref' : v?.text ? 'text' : v?.same ? 'same' : 'different');
 
-// gen({srcFile, prompt, ratio, model}) → Buffer; verify(refFile, buf, name) → { same: boolean, why? }; fetchPhoto(urlOrRel) → local file | null
+// gen({srcFile, prompt, ratio, model}) → Buffer; verify(refFile, buf, name) → { same, text?, noref?, why? }; fetchPhoto(urlOrRel) → local file | null
+// textModel: the other Gemini image model, for a picture whose product name came out misspelled (TEXT)
 // context() → the active brand pack or null (never a default brand: a wrong catalog would swap in another brand's product)
 const isFile = (f) => { try { return !!f && fs.statSync(f).isFile(); } catch { return false; } };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // resolve(path) → a local file for a reference this instance lacks (the server maps brand assets, research and gen files to the bucket)
 /* normalize(file) → a file the models accept (img-norm.js: an SVG, GIF or AVIF product photo becomes a PNG); identity by default */
-export function createImageGuard({ gen, verify = null, fetchPhoto = async () => null, resolve = async () => null, normalize = async (f) => f, context = () => null, tries = 3, backoffMs = 2000, log = console }) {
+export function createImageGuard({ gen, verify = null, fetchPhoto = async () => null, resolve = async () => null, normalize = async (f) => f, context = () => null, tries = 3, backoffMs = 2000, textModel = process.env.GEMINI_IMAGE_FALLBACK || 'gemini-3-pro-image', log = console }) {
   /* the model, tried again on a failure: 2 s, then 6 s (a refused or blocked prompt is not retried) */
   const genRetry = async (o) => { let last;
     for (let i = 0; i < tries; i++) {
@@ -38,39 +47,64 @@ export function createImageGuard({ gen, verify = null, fetchPhoto = async () => 
     /* o.named: the product the caller already knows the picture is about (the card's asset line names it), else the words' */
     const named = o.product === false ? null : o.named?.img ? o.named : matchProduct(`${o.text || ''}\n${o.prompt || ''}`, catalog, { brand });
     /* a logo or brand mark is never the product: with only that, the brand's lead product stands in, else there is no picture */
-    let ref = o.srcFile && !junkPhoto(path.basename(String(o.srcFile))) && !/\/a\/(logo|mark)\.[a-z]+$/i.test(String(o.srcFile)) ? o.srcFile : null;
+    let ref = o.srcFile && !junkPhoto(path.basename(String(o.srcFile))) && !/\/a\/(logo|mark)\.[a-z]+$/i.test(String(o.srcFile)) ? o.srcFile : null, refImg = null; /* refImg: the catalog photo the reference came from, if any */
     if (ref && !isFile(ref)) ref = (await resolve(ref).catch(() => null)) || null; /* a path this instance lacks: the bucket's copy, or nothing */
-    if (named) { const f = await fetchPhoto(named.img).catch(() => null); if (f) ref = f; }
-    if (o.srcFile && !ref && catalog?.[0]?.img) ref = (await fetchPhoto(catalog[0].img).catch(() => null)) || null; /* the caller wanted a reference: the brand's lead product, never an invented one */
+    if (named) { const f = await fetchPhoto(named.img).catch(() => null); if (f) { ref = f; refImg = named.img; } }
+    if (o.srcFile && !ref && catalog?.[0]?.img) { ref = (await fetchPhoto(catalog[0].img).catch(() => null)) || null; if (ref) refImg = catalog[0].img; } /* the caller wanted a reference: the brand's lead product, never an invented one */
     if (o.srcFile && !ref) throw Object.assign(new Error('There is no product photo for this yet. Add one with + (Product photo) and try again.'), { soft: true, noPhoto: true });
     /* every picture the model and the check see is a PNG, JPEG or WebP: a store's SVG or AVIF photo is turned into one first */
     if (ref) ref = await normalize(ref);
     const refFiles = o.refFiles?.length ? (await Promise.all(o.refFiles.map((f) => normalize(f).catch((e) => { log.warn?.('[image-guard] reference dropped', e.message); return null; })))).filter(Boolean) : [];
-    const base = { ...o, srcFile: ref, refFiles, prompt: ref ? `${o.prompt}\n\n${KEEP(named?.t)}` : o.prompt };
+    let base = { ...o, srcFile: ref, refFiles, prompt: ref ? `${o.prompt}\n\n${KEEP(named?.t)}` : o.prompt };
     delete base.text; delete base.catalog; delete base.brand; delete base.product; delete base.fallback; delete base.named;
-    const note = { product: named?.t || null, ref: !!ref, checked: false, same: null, retried: false, fallback: false, genFailed: false };
+    /* gens: pictures made for this one (booked at real cost by callers); pro: how many of them on the other, dearer model */
+    const note = { product: named?.t || null, ref: !!ref, checked: false, same: null, retried: false, fallback: false, genFailed: false, gens: 1, pro: 0 };
     let buf;
     try { buf = await genRetry(base); }
     catch (e) {
       if (!o.fallback || !ref) throw e;
       log.warn?.('[image-guard] no picture came back; using the real photo for now', named?.t || '', e.message.slice(0, 160));
-      return Object.assign(fs.readFileSync(ref), { guard: { ...note, fallback: true, genFailed: true, error: String(e.message).slice(0, 200) } });
+      return Object.assign(fs.readFileSync(ref), { guard: { ...note, gens: 0, fallback: true, genFailed: true, error: String(e.message).slice(0, 200) } });
     }
-    if (ref && verify) {
-      try {
-        let v = await verify(ref, buf, named?.t); note.checked = true; note.same = !!v?.same;
-        if (!v?.same) {
-          log.warn?.('[image-guard] product mismatch, retrying', named?.t || '', v?.why || '');
-          note.retried = true; buf = await genRetry({ ...base, prompt: `${base.prompt}\n${STRICT}` }).catch((e) => { if (!o.fallback) throw e; return null; }); if (!buf) { buf = fs.readFileSync(ref); note.fallback = true; note.genFailed = true; return Object.assign(buf, { guard: note }); }
-          v = await verify(ref, buf, named?.t); note.same = !!v?.same;
-          if (!v?.same) { log.warn?.('[image-guard] still a different product; using the real photo', named?.t || ''); buf = fs.readFileSync(ref); note.fallback = true; note.genFailed = true; } /* a stand-in, not the new picture: callers retry it later */
-        }
-      } catch (e) {
-        // the check itself failed: try it once more; a named product that can't be confirmed falls back to its real photo
-        try { const v = await verify(ref, buf, named?.t); note.checked = true; note.same = !!v?.same; if (!v?.same && named) { buf = fs.readFileSync(ref); note.fallback = true; note.genFailed = true; } }
-        catch (e2) { log.warn?.('[image-guard] check unavailable', e2.message); if (named) { buf = fs.readFileSync(ref); note.fallback = true; note.genFailed = true; } }
-      }
+    if (!ref || !verify) return Object.assign(buf, { guard: note });
+    const done = () => Object.assign(buf, { guard: note });
+    const standIn = () => { buf = fs.readFileSync(ref); note.fallback = true; note.genFailed = true; note.same = false; return done(); }; /* a stand-in, not the new picture: callers retry it later */
+    /* the check, tried twice; null when it can't answer */
+    let refName = named?.t;
+    const check1 = async () => { const v = await verify(ref, buf, refName); note.checked = true; if (v?.why) note.why = String(v.why).slice(0, 160); return verdictOf(v); };
+    const check = async () => { try { return await check1(); } catch (e) { try { return await check1(); } catch (e2) { log.warn?.('[image-guard] check unavailable', e2.message); return null; } } };
+    /* one more picture: { buf } or { err } */
+    const again = async (more) => { try { const b = await genRetry({ ...base, ...more }); note.gens++; note.retried = true; return { buf: b }; } catch (e) { log.warn?.('[image-guard] picture again failed', e.message.slice(0, 160)); return { err: e }; } };
+    /* NOREF: the next product photo in the catalog (never a logo, a mark or a screenshot), up to three tried */
+    const nextRef = async () => { const list = (catalog || []).filter((x) => x?.img && !junkPhoto(x.img) && !/\/a\/(logo|mark)\.[a-z]+$/i.test(x.img)), at = list.findIndex((x) => x.img === refImg); let n = 0;
+      for (const x of [...list.slice(at + 1), ...list.slice(0, Math.max(0, at))]) { if (n++ >= 3) break; const f = await fetchPhoto(x.img).catch(() => null); if (f && f !== ref) { refImg = x.img; refName = x.t || refName; return normalize(f).catch(() => f); } }
+      return null; };
+    let w = await check(); note.verdict = w;
+    if (w === null) { if (named) return standIn(); note.unchecked = true; return done(); } /* a named product that can't be confirmed falls back to its real photo */
+    if (w === 'noref') { /* the reference was not a product photo: the next catalog photo, else the picture as made, unchecked */
+      const next = await nextRef(); if (!next) { log.warn?.('[image-guard] the reference is not a product photo; keeping the picture unchecked', named?.t || ''); note.unchecked = true; note.same = null; return done(); }
+      log.warn?.('[image-guard] the reference is not a product photo; trying the next catalog photo', refImg);
+      ref = next; base = { ...base, srcFile: next }; note.refSwitched = true; note.product = refName || note.product;
+      const r = await again({}); if (!r.buf) { note.unchecked = true; note.same = null; return done(); }
+      buf = r.buf; w = await check(); note.verdict = w;
+      if (w === null || w === 'noref') { note.unchecked = true; note.same = null; return done(); }
     }
-    return Object.assign(buf, { guard: note });
+    if (w === 'text') { /* the right product, its name misspelled large: once more on the other model, turned and smaller; if still off, keep it (never the packshot) */
+      log.warn?.('[image-guard] product name misspelled, trying once more', named?.t || '', note.why || '');
+      const first = buf, r = await again({ model: textModel, prompt: `${base.prompt}\n${TURN}` });
+      if (r.buf) { note.pro++; buf = r.buf; const w2 = await check(); note.verdict = w2; if (w2 === 'same') { note.same = true; return done(); } if (w2 !== 'text') buf = first; } /* different, or no answer: the first picture was the right product */
+      note.labelApprox = true; note.same = true; return done();
+    }
+    if (w === 'different') {
+      log.warn?.('[image-guard] product mismatch, retrying', named?.t || '', note.why || '');
+      const r = await again({ prompt: `${base.prompt}\n${STRICT}` });
+      if (!r.buf) { if (!o.fallback) throw r.err; return standIn(); }
+      buf = r.buf; const w2 = await check(); note.verdict = w2;
+      if (w2 === 'same') { note.same = true; return done(); }
+      if (w2 === 'text') { note.labelApprox = true; note.same = true; return done(); }
+      if (w2 === 'noref' || (w2 === null && !named)) { note.unchecked = true; note.same = null; return done(); }
+      log.warn?.('[image-guard] still a different product; using the real photo', named?.t || ''); return standIn();
+    }
+    note.same = true; return done();
   };
 }

@@ -5,7 +5,8 @@ import { B, BN, BH, CTRY, FESTN, FESTD } from './brand-ctx.js';
    and teammates' and the ShopOS team's replies fold in. It ends as the brief the next people work from.
    Readiness is a quiet checklist of what's still missing for this kind of work, never a score. */
 
-import { promptBlock } from './learn.js';
+import { promptBlock, versionsOf } from './learn.js';
+import { fieldsFor, FAMILY_NAME } from './studio.js';
 import { realRows } from './connectors/common.js';
 import { isQuestion, answerGrounded } from './jam-answer.js'; // a question is answered from the brief and the facts, the brief untouched
 import { planMd } from './card-plan.js';
@@ -184,7 +185,7 @@ export function createJamBrief(o) {
         const md = clean(String(j.doc || '')).trim();
         if (md.length > 40) { const changed = setDoc(t, w, md, who === 'You' ? 'you' : who, mode === 'ask' ? String(text).slice(0, 80) : mode);
           if (j.plan) applyPlan(t, w, j.plan, 'ai', j.measure);
-          if (Array.isArray(j.next)) { const nx = j.next.map((x) => clean(String(x)).replace(/[.]$/, '')).filter((x) => x && x.length <= 56); if (nx.length >= 2) w.doc.next = nx.slice(0, 3); } return { reply: clean(j.reply || ''), changed: changed ? w.doc.edits[0].changed : [] }; }
+          if (Array.isArray(j.next)) { const nx = j.next.map((x) => clean(String(x)).replace(/[.]$/, '')).filter((x) => x && x.length <= 56); if (nx.length >= 2) w.doc.next = nx.slice(0, 3); } return { reply: clean(j.reply || ''), changed: changed ? w.doc.edits[0].changed : [], ai: true }; }
       } catch (e) { log.warn('[jam doc]', e.message); }
     }
     /* a quiet sync (the studio's package changed) is an instruction to the AI, never words for the brief: offline, the brief stays as it is */
@@ -193,6 +194,25 @@ export function createJamBrief(o) {
     const changed = setDoc(t, w, appendNote(w.doc.md, who, text), who === 'You' ? 'you' : who, mode); if (changed) applyPlan(t, w, { ...(w.doc.plan || {}), ...Object.fromEntries(Object.entries(planFromMd(w.doc.md)).filter(([, v]) => v)) }, 'read');
     return { reply: mode === 'add' ? 'Added to the brief under Notes.' : 'Noted in the brief under Notes. (AI is offline, so I didn’t rewrite anything.)', changed: changed ? ['Notes'] : [] };
   };
+
+  /* the brief follows the studio's package, which changes with every edit. It catches up when the brief is opened (the studio's
+     Brief) and when it is sent or shared (doc/ship), never with an AI rewrite on every edit: an edit only notes what was asked
+     (doc/sync lazy, no AI). w.doc.syncedHead is the change version the brief last followed */
+  const headOfCh = (t, ch) => { const vs = versionsOf(t, ch.id); return vs.find((v) => v.id === ch.headVersionId) || vs[vs.length - 1] || null; };
+  const fieldVal = (v) => (Array.isArray(v) ? v.map((x) => (typeof x === 'object' && x ? Object.values(x).filter(Boolean).join(' / ') : x)).join('; ') : typeof v === 'object' && v ? Object.values(v).filter(Boolean).join(' / ') : v);
+  const syncText = (t, w, ch) => {
+    const lines = fieldsFor(ch.family, ch.action).map((f) => { const v = ch.pkg?.[f.k]; return v == null || v === '' || (Array.isArray(v) && !v.length) ? null : `${f.label}: ${fieldVal(v)}`; }).filter(Boolean);
+    const d = ch.pkg?.draft?.remade ? ch.pkg.draft : null, asks = (w.doc?.asks || []).slice(-4);
+    if (d) lines.push(`Format: ${d.as === 'video' ? 'a reel (vertical video)' : d.as === 'carousel' ? `a carousel of ${(d.slides || d.images || []).length || 'several'} slides` : 'a single picture'}${d.overlay ? `; words on it: ${d.overlay}` : ''}`, ...(d.slides || []).map((x, i) => `Slide ${i + 1}: ${x.text || ''}`), ...(d.script || []).map((x, i) => `Beat ${i + 1}: ${x.line || ''}`));
+    if (ch.pkg?.video || d?.video) lines.push('It has its video made (in the assets).');
+    return `The ${FAMILY_NAME[ch.family] || 'package'} is now v${headOfCh(t, ch)?.n || 1}${asks.length ? ` (asked: ${asks.map((x) => `“${x}”`).join('; ')})` : ''}. Make the brief match it exactly, keep everything else:\n${lines.join('\n')}`; };
+  const behind = (t, w) => { const ch = changeOf(t, w), h = ch?.pkg ? headOfCh(t, ch)?.id : null; return !!h && w.doc?.syncedHead !== h; };
+  const syncHead = async (t, w, { text = '' } = {}) => {
+    const ch = changeOf(t, w); if (!ch?.pkg) return null; const head = headOfCh(t, ch)?.id || null;
+    if (head && w.doc.syncedHead === head) return { changed: [], same: true };
+    const r = await edit(t, w, text || syncText(t, w, ch), { who: 'Brew', mode: 'ask', sync: true });
+    if (r?.ai) { w.doc.syncedHead = head; w.doc.asks = []; } /* offline nothing was rewritten: it stays behind and tries again */
+    return r; };
 
   // teammates' and the ShopOS team's replies fold into the brief in the background
   const queue = new Map();
@@ -220,8 +240,12 @@ export function createJamBrief(o) {
     // ask AI to change the brief (or ask it something). One call: the chat reply and the edit.
     /* the studio changed the package: the brief follows it quietly (no chat message), so it is always the final version */
     on('POST', '/api/work/:wid/doc/sync', async (b, t, p) => {
-      const w = get(t, p.wid); if (!w) return { error: 'not found' }; const text = String(b.text || '').trim().slice(0, 3000); if (!text) return { error: 'empty' };
-      const r = await edit(t, w, text, { who: 'Brew', mode: 'ask', sync: true }).catch((e) => ({ error: e.message })); return { work: w, changed: r?.changed || [] };
+      const w = get(t, p.wid); if (!w) return { error: 'not found' }; const text = String(b.text || '').trim().slice(0, 3000);
+      /* lazy (every studio edit): only what was asked is noted, no AI; the brief catches up on open or send */
+      if (b.lazy) { const said = String(b.said || '').replace(/\s+/g, ' ').trim().slice(0, 200); if (said) w.doc.asks = [...(w.doc.asks || []), said].slice(-6); return { work: w, behind: behind(t, w) }; }
+      if (!changeOf(t, w)) { if (!text) return { error: 'empty' }; const r = await edit(t, w, text, { who: 'Brew', mode: 'ask', sync: true }).catch((e) => ({ error: e.message })); return { work: w, changed: r?.changed || [] }; }
+      /* now (the Brief opened): one AI pass, only when the studio's head moved since the brief last followed it */
+      const r = await syncHead(t, w, { text }).catch((e) => ({ error: e.message })); return { work: w, changed: r?.changed || [], same: !!r?.same };
     });
     on('POST', '/api/work/:wid/doc/ask', async (b, t, p) => {
       const w = get(t, p.wid); if (!w) return { error: 'not found' }; const text = String(b.text || '').trim(); if (!text) return { error: 'empty' };
@@ -284,6 +308,9 @@ export function createJamBrief(o) {
        tracked status (brief-status.js) the ShopOS team moves on. Missing items ask once (force), never block */
     on('POST', '/api/work/:wid/doc/ship', async (b, t, p) => {
       const w = get(t, p.wid); if (!w) return { error: 'not found' };
+      /* the brief that goes is the version on the stage: if the studio moved on since the brief last followed it, it catches up
+         first (one AI pass), so the frozen brief, the email and the handoff carry the same version, its reel and its slides */
+      if (behind(t, w)) await syncHead(t, w).catch((e) => log.warn('[brief sync at send]', e.message));
       if (w.doc.missing.length && !b.force) return { needs: w.doc.missing, work: w };
       if (b.decided !== undefined) w.decided = b.decided || null;
       const to = b.to === 'team' ? 'team' : 'shopos', prev = w.jamBrief || null;
@@ -330,5 +357,5 @@ export function createJamBrief(o) {
     });
   };
 
-  return { seed, onSay, routes, finalDoc, waText, preview, missingOf, edit };
+  return { seed, onSay, routes, finalDoc, waText, preview, missingOf, edit, behind, syncHead };
 }

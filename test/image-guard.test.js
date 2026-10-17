@@ -21,7 +21,7 @@ const rig = (verdicts) => { const calls = [], checks = [];
 test('the product the words name becomes the reference, not the card default photo', async () => {
   const { calls, checks, guard } = rig([true]);
   const buf = await guard({ srcFile: DEFAULT, prompt: 'A new ad photo', text: 'Quiet elegance. The Hukum collection.', catalog, brand: 'Comet' });
-  assert.equal(calls[0].srcFile, HUKUM); assert.match(calls[0].prompt, /Aeres HUKUM IVORY[\s\S]*exactly as in the reference/);
+  assert.equal(calls[0].srcFile, HUKUM); assert.match(calls[0].prompt, /Aeres HUKUM IVORY[\s\S]*the same product as in the reference photo[\s\S]*small print may be soft/);
   assert.equal(checks[0].ref, HUKUM); assert.equal(buf.guard.product, 'Aeres HUKUM IVORY'); assert.equal(buf.guard.same, true); assert.equal(buf.toString(), 'GEN1');
 });
 

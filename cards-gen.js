@@ -108,7 +108,9 @@ export function createCardsGen({ ai, log = console }) {
     const moveNums = backedNumbers(move);
     const factList = Object.values(facts).slice(0, 120).map((f) => `- ${f.label}: ${f.v}`).join('\n');
     /* the catalog's examples read with the brand's own hero product; the team's style, learnings and listening lines are named so the writer can cite them */
-    const heroName = profile?.catalog?.products?.find((x) => x?.title && x.inStock !== false)?.title?.split(/\s+[–—|:-]\s+|,\s/)[0] || null;
+    /* the hero rotates move by move over the lead in-stock products: one fixed hero put the same product on every card */
+    const inStock = (profile?.catalog?.products || []).filter((x) => x?.title && x.inStock !== false).slice(0, 8);
+    const heroName = inStock.length ? inStock[(+move.n || 0) % inStock.length].title.split(/\s+[–—|:-]\s+|,\s/)[0] : null;
     const st = config?.product || profile?.config?.product || {}; /* config.json product.style / look / avoid */
     const styleLine = st.style || st.look ? ` ("${[st.style, st.look].filter(Boolean).join('; ')}"${st.avoid ? `; avoid: ${st.avoid}` : ''})` : '';
     const learnList = [...(learned?.facts || []), ...(learned?.beliefs || []), ...(learned?.tried || [])].map((l) => l?.text).filter(Boolean).slice(0, 8);

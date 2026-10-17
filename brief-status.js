@@ -50,8 +50,9 @@ export function briefParts(x = {}, jb = {}, { banned = [] } = {}) {
   if (!deliverables.length && cur?.title) deliverables.push(`${cur.title}${cur.sub ? `: ${cur.sub}` : ''}`);
   const seen = new Set(), assets = [];
   const add = (label, url, image) => { if (!url || seen.has(url)) return; seen.add(url); assets.push({ label, url, image: !!image }); };
-  (pkg?.assets || []).forEach((a) => (a.kind === 'image' ? add(a.label, a.url, true) : a.kind === 'link' ? add(a.label, a.url, false) : null));
-  if (cur?.image) add('Current version', cur.image, true);
+  /* a clip (a reel, a short video) goes as a link to the file: an email can't play it, but it must never be left out */
+  (pkg?.assets || []).forEach((a) => (a.kind === 'image' ? add(a.label, a.url, true) : a.kind === 'link' || a.kind === 'video' ? add(a.kind === 'video' ? `${a.label} (video)` : a.label, a.url, false) : null));
+  if (cur?.image && !pkg) add('Current version', cur.image, true); /* with a package its assets are the version on the stage; the jam's own picture may be an older one */
   (x.card?.images || []).slice(0, 3).forEach((u) => add('From the card', u, true));
   if (x.card?.link) add('The card’s source', x.card.link, false);
   const rules = [];

@@ -35,7 +35,7 @@ test('an invite joins only the invited Google account, with its views', async ()
   res = await join(auth, 'mallory@gmail.com', tok); assert.equal(res.code, 200); assert.match(res.body, /This invite is for raj@gmail.com/);
   assert.equal(await auth.isMember('cozy', { email: 'mallory@gmail.com' }), false);
   // the right account: in, with Growth only
-  res = await join(auth, 'raj@gmail.com', tok); assert.equal(res.code, 302); assert.equal(res.headers.location, '/cozy?joined=1');
+  res = await join(auth, 'raj@gmail.com', tok); assert.equal(res.code, 302); assert.equal(res.headers.location, '/cozy?go=feed&joined=1', 'into the product, not the read replay');
   assert.deepEqual(await auth.seatsOf('cozy', { email: 'raj@gmail.com' }), ['growth']);
   assert.equal((await auth.getMembers('cozy')).invites.length, 0, 'the invite is used up');
 });
@@ -65,13 +65,13 @@ test('only the admin manages views; a teammate invites to their own views only; 
   assert.deepEqual(await auth.seatsOf('cozy', { email: 'raj@gmail.com' }), ['growth', 'brand']);
 });
 
-test('owners, admins, legacy members and visitors keep every view; same-domain teammates wait with none', async () => {
+test('owners, admins, legacy members and visitors keep every view; same-domain teammates join with every view', async () => {
   const { packs, auth } = await owned();
   assert.equal(await auth.seatsOf('cozy', { email: 'ana@cozysnugglet.shop' }), null, 'owner');
   assert.equal(await auth.seatsOf('cozy', { email: 'stranger@gmail.com' }), null, 'visitor (not limited; sees the demo)');
   const m = await auth.getMembers('cozy'); m.members.push({ email: 'old@gmail.com', role: 'member', via: 'before views' }); await packs.put('cozy', 'private/members.json', m);
   assert.equal(await auth.seatsOf('cozy', { email: 'old@gmail.com' }), null, 'a member from before views keeps everything');
-  assert.deepEqual(await auth.seatsOf('cozy', { email: 'bo@cozysnugglet.shop' }), [], 'a same-domain teammate joins with no views');
+  assert.equal(await auth.seatsOf('cozy', { email: 'bo@cozysnugglet.shop' }), null, 'a same-domain teammate joins with every view (an empty feed lost them; an admin can narrow it)');
   assert.equal(await auth.isMember('cozy', { email: 'bo@cozysnugglet.shop' }), true);
 });
 

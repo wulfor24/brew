@@ -1081,3 +1081,40 @@ body.th-on{overflow:hidden}
 .jm-pick .av{width:20px;height:20px;font-size:10px}
 .jm-pick small{padding:6px 8px;color:var(--fg-3);font-size:13.5px}
 .jm-typing-who{display:flex;align-items:center;gap:6px}
+
+/* ---------- the studio is the team's room too (2026-10-17): the jam's controls in its header, the jam's lines in its chat,
+   what the ShopOS team needs on the composer, and cuts as a strip of their own photos ---------- */
+.st-jamctl{display:flex;align-items:center;gap:8px;flex:0 1 auto;min-width:0;position:relative}
+.st-jamctl:empty{display:none}
+.st-jamctl .jm-assign{margin-left:0}
+.st-jamctl .jm-assign-m{left:auto;right:0;top:calc(100% + 6px)}
+.st-people{margin-left:0;padding-left:8px}
+.st-pp-more{align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--surface);color:var(--fg-2);font-size:11px;font-weight:650;line-height:24px}
+.st-jm{display:flex;flex-direction:column}
+.st-jm .jm-m{max-width:100%}
+.st-jm .jm-sys{align-self:center}
+.st-needs{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:12px;background:var(--warn-bg);color:var(--fg);font-size:14px;line-height:19px}
+.st-needs > svg{flex:0 0 auto;margin-top:1px;color:var(--warn)}
+.st-needs b{display:block;font-weight:650}
+.st-needs p{margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.st-needs small{display:block;margin-top:4px;color:var(--fg-2);font-size:13px}
+.lg-cuts{display:flex;gap:8px;max-width:100%;overflow-x:auto;padding:2px 2px 6px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+.lg-cut{flex:0 0 auto;display:flex;flex-direction:column;gap:3px;width:116px;padding:0;border:0;background:transparent;color:var(--fg);font:inherit;text-align:left;cursor:pointer;scroll-snap-align:start}
+.lg-cut img,.lg-cut .lg-cut-ph{display:flex;align-items:center;justify-content:center;width:116px;height:145px;object-fit:cover;border-radius:10px;background:var(--surface);color:var(--fg-3);box-shadow:inset 0 0 0 1px var(--line)}
+.lg-cut.is-on img,.lg-cut.is-on .lg-cut-ph{box-shadow:0 0 0 2px var(--fg)}
+.lg-cut b{font-size:13px;font-weight:650;line-height:16px}
+.lg-cut small{font-size:12.5px;line-height:16px;color:var(--fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lg-cut:focus-visible{outline:2px solid var(--fg);outline-offset:2px;border-radius:10px}
+.as-rw-again{align-self:flex-start;margin-top:10px}
+.bf-syncing{display:flex;align-items:center;gap:8px}
+@media (max-width:600px){.st-jamctl .jm-assign-b{max-width:120px}.lg-cut{width:100px}.lg-cut img,.lg-cut .lg-cut-ph{width:100px;height:125px}}
+/* older takes of a seeded jam's first draft: folded, a small strip, newest first */
+.jm-takes{margin-top:4px;border-radius:12px;background:var(--surface)}
+.jm-takes summary{display:flex;align-items:center;gap:6px;padding:8px 12px;font-size:13.5px;font-weight:600;color:var(--fg-2);cursor:pointer;list-style:none}
+.jm-takes summary::-webkit-details-marker{display:none}
+.jm-takes summary span{color:var(--fg-3);font-weight:500}
+.jm-takes-s{display:flex;gap:8px;overflow-x:auto;padding:0 12px 12px;scroll-snap-type:x mandatory}
+.jm-take{flex:0 0 auto;display:flex;flex-direction:column;gap:4px;width:88px;color:var(--fg-2);text-decoration:none;scroll-snap-align:start}
+.jm-take img,.jm-take .jm-take-ph{display:flex;align-items:center;justify-content:center;width:88px;max-height:156px;object-fit:cover;border-radius:8px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line)}
+.jm-take .jm-take-ph{height:110px;color:var(--fg-3)}
+.jm-take small{display:flex;align-items:center;gap:3px;font-size:12px;line-height:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

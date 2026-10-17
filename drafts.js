@@ -26,9 +26,9 @@ const SCHEMA = {
   type: 'object', required: ['as', 'title', 'copy'], properties: {
     as: { type: 'string', enum: DRAFT_AS, description: 'The form the brief needs: image for a single static ad or post, carousel for a swipeable carousel (ad or post) or a set of Stories, video for a reel or video ad, voice for a voice note, voiceover or radio-style spot, text for copy that ships as words (a message, email, page copy, captions, a script to hand over)' },
     title: { type: 'string', description: 'Under 50 characters: what this draft is, e.g. "Instagram ad: office lunch orders"' },
-    headline: { type: 'string', description: 'image, carousel and video only: the few words set on the picture itself (under 8 words), or empty for none' },
+    headline: { type: 'string', description: 'Required for image and video (set on the picture, and on the first 3 seconds of a clip): 3 to 7 words set on the picture in exact type, as a customer would say it: a review line or the card\'s number, else the pain in their words. Never a slogan or the brand name alone.' },
     copy: { type: 'string', description: 'The words of the asset, ready to use, in Markdown. For an ad: the headline, the primary text and the button. For a message or email: the message itself. For voice: the exact words spoken. No placeholders, no brackets to fill in' },
-    visual: { type: 'string', description: 'image and video only: one or two sentences describing the photograph around the real product as things you can see: the surface, the setting, where the light comes from, the props, who is there and what they do. No mood words (premium, cinematic, aesthetic), no effects (splashes, sparkles, confetti, floating, glow), no keyword lists. No writing anywhere except the product\'s own label: no calendars, notes, signs, screens or other packaging' },
+    visual: { type: 'string', description: 'image and video only: the first-second moment that stops a thumb, as things you can see. Pick ONE: a hand or person using the product mid-action; the problem moment just before the product fixes it; the product unboxed in hands; the product beside what it replaces; a first-person view of the routine. Shot close on a phone, slightly above, in a real home, office or outdoor setting, the product large in the lower two thirds, the top third a plain area for the headline. No mood words, no effects, no writing.' },
     motion: { type: 'string', description: 'video only: one sentence on what moves, in order, and the one camera move over 6 seconds (a slow push in, a pan, a static shot), with the pace' },
     ratio: { type: 'string', enum: RATIOS, description: 'image and video only: 4:5 for a feed ad, 9:16 for a reel or story, 1:1 for a square post' },
     script: { type: 'string', description: 'voice: the words spoken, under 60 words. video: an optional voiceover of at most 14 words, so it fits in 6 seconds; empty for a silent video' },
@@ -43,13 +43,26 @@ const SCHEMA = {
 };
 
 // the planning prompt and the photo prompt, shared by the jam (one tap) and the background first drafts (drafts-bg.js)
-export const draftPrompt = ({ card, role = 'creative', brief = '', mem = '', as = 'auto', ask = '' }) => `${card}\n\nYou are the ${role} agent, and a team is planning this card in a jam.\n\nTHE JAM BRIEF (what the team agreed so far):\n----\n${String(brief || '').slice(0, 9000)}\n----\n${mem ? `\n${mem}\n` : ''}\nMake the first draft of the asset this brief asks for, ready for the team to react to.${as !== 'auto' ? ` Make it as ${as === 'voice' ? 'a voice recording' : as === 'text' ? 'text' : as === 'carousel' ? 'a carousel of 3 to 8 slides' : 'an ' + (as === 'image' ? 'image' : 'video')}${as === 'video' ? ' (a 6-second clip)' : ''}, even if the brief had something else in mind.` : ' Pick the form the brief needs.'}${ask ? `\nThe person asked: ${ask}` : ''}\nRules: plain words, every number from the brief or the brand facts, no discounts or claims the brief does not make, no disclaimers.`;
-/* c: the card, whose asset line ("1 static image: an office worker at her desk wearing …") is the scene the picture must show */
-export const imagePrompt = (j, hasSrc, c = null, brand = null) => buildDraft({ kind: 'image', title: j.title, visual: j.visual, scene: sceneOf(c), hasSrc, ratio: j.ratio, brand: brand || {}, product: brand?.product ? { name: brand.product } : undefined }).prompt; /* one brief for drafts and finals (sloosh-prompt.js) */
+const FORM = { voice: 'a voice recording', text: 'text', carousel: 'a carousel of 3 to 8 slides', image: 'an image', video: 'a video (a 6-second clip)' };
+export const draftPrompt = ({ card, role = 'creative', brief = '', mem = '', as = 'auto', ask = '' }) => `${card}\n\nYou are the ${role} agent, and a team is planning this card in a jam.\n\nTHE JAM BRIEF (what the team agreed so far):\n----\n${String(brief || '').slice(0, 9000)}\n----\n${mem ? `\n${mem}\n` : ''}\nMake the first draft of the asset this brief asks for, ready for the team to react to.${as !== 'auto' ? ` Make it as ${FORM[as] || 'a video (a 6-second clip)'}, even if the brief had something else in mind.` : ' Pick the form the brief needs.'}${ask ? `\nThe person asked: ${ask}` : ''}\nRules: plain words, every number from the brief or the brand facts, no discounts or claims the brief does not make, no disclaimers.\nOpen with the hook: the headline and the first line of the copy name the buyer's moment or a real customer's words from WHAT BUYERS SAY; borrow the structure (never the words) of the longest-running rival ads listed.`;
+/* what real buyers say and the rival ads that keep running (brand-pack.js reviewQuotes, rivalHooks): the hook's raw material,
+   added to the card context of every draft plan (here in the jam, and drafts-bg.js). '' when the read has neither */
+export const hookBlock = ({ reviewQuotes = [], rivalHooks = [] } = {}) => [
+  reviewQuotes?.length ? `WHAT BUYERS SAY (real reviews: echo their words, never invent one):\n${reviewQuotes.map((q) => `- "${String(q).replace(/"/g, '”')}"`).join('\n')}` : '',
+  rivalHooks?.length ? `RIVAL ADS THAT KEEP RUNNING (the rival ads live longest: borrow how the hook is built, never their words, names, products or claims):\n${rivalHooks.map((h) => `- live ${h.days || '?'} days, ${h.format || 'image'} ad${h.hookPattern ? `; hook pattern: ${h.hookPattern}` : ''}${h.stopper ? `; what stops the scroll: ${h.stopper}` : ''}${h.hook ? `; their words, never to reuse: "${String(h.hook).replace(/"/g, '”')}"` : ''}`).join('\n')}` : ''].filter(Boolean).join('\n\n');
+/* the small line under a headline set on a picture: the ad's button, else its first short line that is not the headline */
+export const smallOf = (copy = '', head = '') => { const n = (x) => String(x || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim(), h = n(head);
+  const lines = String(copy || '').split('\n').map((x) => x.replace(/[#*_>`]/g, '').trim()).filter(Boolean);
+  const btn = lines.map((l) => (/^(?:button|cta)[^:]{0,12}:\s*(.+)$/i.exec(l) || [])[1]).find(Boolean); if (btn) return btn.trim().slice(0, 40);
+  const l = lines.map((x) => x.replace(/^(?:headline|primary text|text|body|subject|preview|caption)\s*:\s*/i, '')).find((x) => x.length <= 70 && n(x) && n(x) !== h && !(h && n(x).includes(h)));
+  return l ? l.slice(0, 70) : ''; };
+/* c: the card, whose asset line ("1 static image: an office worker at her desk wearing …") is the scene the picture must show.
+   o.ratio: the ratio the picture is really made at; o.topSpace: a headline is set on it afterwards, so the top third stays calm */
+export const imagePrompt = (j, hasSrc, c = null, brand = null, o = {}) => buildDraft({ kind: 'image', title: j.title, visual: j.visual, scene: sceneOf(c), hasSrc, ratio: o.ratio || j.ratio, topSpace: !!o.topSpace, brand: brand || {}, product: brand?.product ? { name: brand.product } : undefined }).prompt; /* one brief for drafts and finals (sloosh-prompt.js) */
 export const DRAFT_SCHEMA = SCHEMA;
 export const DRAFT_RATIOS = RATIOS;
 
-export function createDrafts({ rivalAdOf = () => null, rivalStoreOf = () => null, claudeTool, geminiImage, treg, launchBrowser, zipBuffer, photoAsync, photoFile, photoOf, catalogOf = () => null, brandName = () => '', cardOf, briefOf, cardBrief, seatLine, isMock, spend, clean, now, uid, say, save, AGENT, onReady = null, log = console }) {
+export function createDrafts({ rivalAdOf = () => null, rivalStoreOf = () => null, hooksOf = () => null, claudeTool, geminiImage, treg, launchBrowser, zipBuffer, photoAsync, photoFile, photoOf, catalogOf = () => null, brandName = () => '', cardOf, briefOf, cardBrief, seatLine, isMock, spend, clean, now, uid, say, save, AGENT, onReady = null, log = console }) {
   const keyOf = (s) => crypto.createHash('sha1').update(s).digest('hex').slice(0, 16);
   /* a store photo by URL (the catalog's own image), fetched once into tmp */
   const fetchPhoto = async (u) => { const f = path.join(os.tmpdir(), 'brew-ph-' + keyOf(u) + '.jpg'); if (!fs.existsSync(f)) { const r = await safeFetch(u, { signal: AbortSignal.timeout(20e3) }); if (!r.ok) return null; fs.writeFileSync(f, Buffer.from(await r.arrayBuffer())); } return f; };
@@ -62,16 +75,18 @@ export function createDrafts({ rivalAdOf = () => null, rivalStoreOf = () => null
   const plan = async (t, w, c, as, ask) => {
     const mem = await memoryBlockAsync(t, w.agent === 'brew' ? 'creative' : w.agent, `${w.title || ''} ${String(briefOf(t, w) || '').slice(0, 1500)}`); // brand memory: voice, creative style, rules, what works
     const rv = await rivalRead(t, c).catch(() => null);
-    const prompt = draftPrompt({ card: c ? `${cardBrief(c, seatLine(t.viewer))}${rv ? `\n\n${rivalBlock(rv.ad, rv.style, brandName(t) || 'the brand')}` : ''}` : `Jam: ${w.title}`, role: AGENT[w.agent] || 'creative', brief: briefOf(t, w), mem, as, ask });
-    const j = await claudeTool(prompt, SCHEMA, 2500, 'draft');
+    const hooks = hookBlock(hooksOf(t) || catalogOf(t)?.hooks || {}); /* real buyers' words and the rival ads that keep running (brand-pack.js hooksOf; feed-service passes them) */
+    const prompt = draftPrompt({ card: c ? `${cardBrief(c, seatLine(t.viewer))}${rv ? `\n\n${rivalBlock(rv.ad, rv.style, brandName(t) || 'the brand')}` : ''}${hooks ? `\n\n${hooks}` : ''}` : `Jam: ${w.title}`, role: AGENT[w.agent] || 'creative', brief: briefOf(t, w), mem, as, ask });
+    const j = await claudeTool(prompt, SCHEMA, 4500, 'draft'); /* 3000 was hit once: a plan cut off mid-JSON */
     if (!DRAFT_AS.includes(j.as) || as !== 'auto') j.as = as === 'auto' ? 'text' : as;
     return j;
   };
 
   // the real product photo: a brand asset may live only in the bucket, so it is fetched when this instance lacks it
   /* after a jam photo, the product the plan's words name (a Hukum ad shows the Hukum shoe), then the card's own pictures */
-  const namedPhoto = (t, j, c) => { const cat = catalogOf(t); if (!cat?.length || !j) return null; const words = [j.title, j.copy, j.headline, j.body, ...(j.slides || []).map((x) => x?.onSlide), c?.title, c?.sub].filter(Boolean).join('. ');
-    return (cardProduct(c, cat, { brand: brandName(t) }) || matchProduct(words, cat, { brand: brandName(t) }))?.img || null; }; /* the card's asset line names the product first */
+  const namedItem = (t, j, c) => { const cat = catalogOf(t); if (!cat?.length || !j) return null; const words = [j.title, j.copy, j.headline, j.body, ...(j.slides || []).map((x) => x?.onSlide), c?.title, c?.sub].filter(Boolean).join('. ');
+    return cardProduct(c, cat, { brand: brandName(t) }) || matchProduct(words, cat, { brand: brandName(t) }) || null; }; /* the card's asset line names the product first */
+  const namedPhoto = (t, j, c) => namedItem(t, j, c)?.img || null;
   const cardNamed = (t, c) => { const cat = c && catalogOf(t); return cat?.length ? cardProduct(c, cat, { brand: brandName(t) }) : null; }; /* the product the card's asset line names, for the image guard */
   const productPhoto = async (c, j = null, t = null) => { for (const rel of [...(c?.refImages || []), namedPhoto(t, j, c), ...(c?.images || []).filter((u) => !isResearchImage(u)) /* a rival's ad is never our product */, photoOf(c), catalogOf(t)?.[0]?.img].filter(Boolean)) { /* a photo added in the jam comes first; the brand's lead product last */ try { const f = /^https?:/.test(rel) ? await fetchPhoto(rel) : photoAsync ? await photoAsync(rel) : photoFile(rel); if (f && fs.existsSync(f)) return f; } catch {} } return null; };
   /* never an invented product: with no real photo there is no picture, and the jam says how to add one */
@@ -82,12 +97,12 @@ export function createDrafts({ rivalAdOf = () => null, rivalStoreOf = () => null
     /* our version of a rival's ad: its composition and look in words (rival-ad.js), our product the only picture; our words sit where theirs do */
     const rv = await rivalRead(t, c).catch(() => null);
     const pic = rv?.style ? rivalPicture(rv.ad, rv.style, { headline: j.headline || String(j.copy || '').replace(/[#*_>`]/g, '').split('\n').map((x) => x.trim()).find(Boolean) || '', button: (String(j.copy || '').match(/button[^:]*:\s*([^\n]+)/i) || [])[1] || '' }) : null; /* the words on the picture, never the draft's internal title */
-    const prompt = pic ? buildDraft({ kind: 'image', title: j.title, visual: `${j.visual || ''} ${pic.visual}`, refs: [{ ...pic.refs[0], label: `${brandName(t) || 'the brand'}'s product` }], text: pic.text, hasSrc: true, ratio, brand: { style: pic.look } }).prompt : imagePrompt(j, true, c);
+    const prompt = pic ? buildDraft({ kind: 'image', title: j.title, visual: `${j.visual || ''} ${pic.visual}`, refs: [{ ...pic.refs[0], label: `${brandName(t) || 'the brand'}'s product` }], text: pic.text, hasSrc: true, ratio, brand: { style: pic.look } }).prompt : imagePrompt(j, true, c, { name: brandName(t), product: c?.refImages?.length ? '' : namedItem(t, j, c)?.t || '' }, { ratio, topSpace: !!j.headline });
     /* the guard tries the model again and the other Gemini model; with no picture at all, the real product photo stands in (failed) */
     const buf = await geminiImage({ srcFile: src, prompt, ratio, named: cardNamed(t, c), text: [c?.make?.pieces, j.title, j.copy, j.headline, c?.title].filter(Boolean).join('. '), fallback: true });
     const failed = !!buf?.guard?.genFailed, name = keyOf(prompt + ratio + (failed ? '|photo' : '')) + (failed ? '.jpg' : '.png');
     saveGen(name, buf);
-    return { name, buf: null, failed };
+    return { name, buf, failed, rival: !!pic }; /* rival: the words sit in the picture already (our version of a rival's ad) */
   };
 
   /* the media makers live in createMakers (below), shared with the background first drafts (drafts-bg.js) */
@@ -96,7 +111,8 @@ export function createDrafts({ rivalAdOf = () => null, rivalStoreOf = () => null
     const slides = (j.slides || []).filter((x) => x?.onSlide).slice(0, 8); if (slides.length < 2) throw Object.assign(new Error('The plan came back without slides. Try again.'), { soft: true });
     const src = needPhoto(await productPhoto(c, j, t)), ratio = d.ratio === '9:16' ? '9:16' : d.ratio === '1:1' ? '1:1' : '4:5';
     const rv = await rivalRead(t, c).catch(() => null); /* our version of a rival's carousel: its composition and look, in words, on every slide */
-    const r = await M.carousel({ slides, src, ...(rv?.style ? { lookLine: ` ${rivalPicture(rv.ad, rv.style).visual}` } : {}), ratio, title: j.title, cardTitle: c?.title, scene: sceneOf(c), named: cardNamed(t, c), id: d.id, clean, canSpend: (i) => i === 0 || spend('image'), onStep: (text) => step(t, w, d, text) });
+    const named = cardNamed(t, c);
+    const r = await M.carousel({ slides, src, ...(rv?.style ? { lookLine: ` ${rivalPicture(rv.ad, rv.style).visual}` } : {}), ratio, title: j.title, cardTitle: c?.title, scene: sceneOf(c), named, product: named?.t || '', brand: { name: brandName(t) }, id: d.id, clean, canSpend: (i) => i === 0 || spend('image'), onStep: (text) => step(t, w, d, text) });
     d.slides = r.slides; d.image = r.image; if (r.zip) d.zip = r.zip; if (r.err) d.err = r.err;
   };
   const makeVoice = (text, style, voice) => M.voice(text, style, voice);
@@ -118,6 +134,9 @@ export function createDrafts({ rivalAdOf = () => null, rivalStoreOf = () => null
       if (!spend('image')) throw Object.assign(new Error((budgetWhy('image') || 'The image budget for today is used up.') + ' The words are here; try the picture tomorrow.'), { soft: true });
       step(t, w, d, j.as === 'video' ? 'Making the first frame' : 'Making the image');
       const im = await makeImage(j, c, d.ratio, t); d.image = 'gen/' + im.name;
+      /* the headline set on the picture in exact type (never drawn by the image model); a rival remake has its words in place already */
+      if (j.headline) d.headline = clean(j.headline).slice(0, 80);
+      if (j.as === 'image' && d.headline && !im.failed && !im.rival && launchBrowser && im.buf) d.render = await M.head(im.buf, { text: d.headline, small: smallOf(d.copy, d.headline) }, d.ratio, im.name).catch((e) => { log.warn('[draft headline]', e.message); return undefined; });
       /* a picture that didn't come through leaves the real product photo: an image says so; a video animates that real photo
          (still the right product) instead of stopping, and says so */
       if (im.failed && j.as !== 'video') throw Object.assign(new Error('The new picture didn’t come through, so this is the real product photo for now. Tap image again for a new one.'), { soft: true });
@@ -198,29 +217,52 @@ export function createMakers({ geminiImage, treg, launchBrowser, zipBuffer, save
   const shoot = async (browser, html, [w, h]) => { const page = await browser.newPage();
     try { await page.setViewport({ width: w, height: h, deviceScaleFactor: 1 }); await page.setContent(html, { waitUntil: 'load' }); return await page.screenshot({ type: 'jpeg', quality: 88 }); }
     finally { await page.close().catch(() => {}); } };
-  const setType = async (browser, buf, { text, small, n, of }, ratio) => {
-    const [w, h] = W[ratio] || W['4:5'];
+  /* the words in exact type at the top of a picture (buf) or of a clear sheet (no buf: laid over a clip). A tall frame (9:16)
+     keeps its words below the top sixth, where Stories and Reels draw their own bars */
+  const mimeOf = (b) => (b[0] === 0xff ? 'image/jpeg' : b.slice(8, 12).toString() === 'WEBP' ? 'image/webp' : 'image/png');
+  const typeHtml = ({ w, h, buf = null, text, small = '', n, of }) => { const k = w / 1080, top = h / w > 1.6 ? Math.round(h * 0.17) : Math.round(76 * k), px = (x) => `${Math.round(x * k)}px`;
     const size = text.length < 28 ? 84 : text.length < 56 ? 68 : 56;
-    return shoot(browser, `<!doctype html><html><head><style>html,body{margin:0;width:${w}px;height:${h}px;overflow:hidden;font-family:"Helvetica Neue",Helvetica,Inter,Arial,sans-serif}
-        .bg{position:absolute;inset:0;background:url(data:image/png;base64,${buf.toString('base64')}) center/cover no-repeat}
-        .s{position:absolute;left:0;right:0;top:0;height:58%;background:linear-gradient(180deg,rgba(10,12,20,.82),rgba(10,12,20,.5) 50%,rgba(10,12,20,0))}
-        .t{position:absolute;left:72px;right:84px;top:76px}h1{margin:0;color:#fff;font-weight:700;font-size:${size}px;line-height:1.1;letter-spacing:-.01em}
-        p{margin:18px 0 0;color:rgba(255,255,255,.88);font-size:36px;line-height:1.3}.n{position:absolute;right:40px;top:40px;padding:6px 16px;border-radius:999px;background:rgba(0,0,0,.45);color:#fff;font-size:26px}</style></head>
-        <body><div class="bg"></div><div class="s"></div><div class="t"><h1>${esc(text)}</h1>${small ? `<p>${esc(small)}</p>` : ''}</div>${of > 1 ? `<span class="n">${n}/${of}</span>` : ''}</body></html>`, [w, h]);
-  };
+    return `<!doctype html><html><head><style>html,body{margin:0;width:${w}px;height:${h}px;overflow:hidden;background:transparent;font-family:"Helvetica Neue",Helvetica,Inter,Arial,sans-serif}
+        .bg{position:absolute;inset:0;${buf ? `background:url(data:${mimeOf(buf)};base64,${buf.toString('base64')}) center/cover no-repeat` : ''}}
+        .s{position:absolute;left:0;right:0;top:0;height:${Math.round(top + h * 0.42)}px;background:linear-gradient(180deg,rgba(10,12,20,.82),rgba(10,12,20,.5) 50%,rgba(10,12,20,0))}
+        .t{position:absolute;left:${px(72)};right:${px(84)};top:${top}px}h1{margin:0;color:#fff;font-weight:700;font-size:${px(size)};line-height:1.1;letter-spacing:-.01em}
+        p{margin:${px(18)} 0 0;color:rgba(255,255,255,.88);font-size:${px(36)};line-height:1.3}.n{position:absolute;right:${px(40)};top:${px(40)};padding:${px(6)} ${px(16)};border-radius:999px;background:rgba(0,0,0,.45);color:#fff;font-size:${px(26)}}</style></head>
+        <body><div class="bg"></div><div class="s"></div><div class="t"><h1>${esc(text)}</h1>${small ? `<p>${esc(small)}</p>` : ''}</div>${of > 1 ? `<span class="n">${n}/${of}</span>` : ''}</body></html>`; };
+  const setType = async (browser, buf, { text, small, n, of }, ratio) => { const [w, h] = W[ratio] || W['4:5']; return shoot(browser, typeHtml({ w, h, buf, text, small, n, of }), [w, h]); };
+  /* one picture with its headline set (a single image ad, the first frame of a clip, a real-photo stand-in): → 'gen/<name>.jpg' */
+  const head = async (buf, { text, small = '' }, ratio = '4:5', key = '') => { if (!buf || !text) return null; const browser = await launchBrowser();
+    try { const out = await setType(browser, buf, { text, small }, ratio); const name = keyOf(`head|${key}|${text}|${small}|${ratio}`) + '.jpg'; save(name, out); return 'gen/' + name; }
+    finally { await browser.close?.().catch?.(() => {}); } };
+  /* the headline on a clip's first seconds: Chromium sets it on a clear sheet at the clip's own size, ffmpeg lays it over
+     (scaled to the clip whatever its size) and keeps the sound → '<name>.mp4', or null without a clip */
+  const probe = (f) => new Promise((res) => execFile('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'csv=p=0:s=x', f], { timeout: 20e3 }, (e, out) => { const m = /(\d+)x(\d+)/.exec(String(out || '')); res(e || !m ? null : [+m[1], +m[2]]); }));
+  const headClip = async (videoName, { text, small = '' }, { seconds = 3 } = {}) => {
+    const v = await file(videoName); if (!v || !text) return null;
+    const [w, h] = (await probe(v)) || W['9:16'];
+    const browser = await launchBrowser(); let png;
+    try { const page = await browser.newPage();
+      try { await page.setViewport({ width: w, height: h, deviceScaleFactor: 1 }); await page.setContent(typeHtml({ w, h, text, small }), { waitUntil: 'load' }); png = await page.screenshot({ type: 'png', omitBackground: true }); }
+      finally { await page.close().catch(() => {}); } }
+    finally { await browser.close?.().catch?.(() => {}); }
+    const pf = path.join(os.tmpdir(), keyOf(`head|${videoName}|${text}|${small}`) + '.png'), out = path.join(os.tmpdir(), keyOf(`headclip|${videoName}|${text}|${small}`) + '.mp4');
+    fs.writeFileSync(pf, png);
+    try { await new Promise((res, rej) => execFile('ffmpeg', ['-y', '-v', 'error', '-i', v, '-loop', '1', '-i', pf, '-filter_complex', `[1:v][0:v]scale2ref[ov][base];[base][ov]overlay=0:0:enable='lt(t,${seconds})':shortest=1,format=yuv420p[v]`, '-map', '[v]', '-map', '0:a?', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-c:a', 'copy', '-movflags', '+faststart', out], { timeout: 120e3 }, (e) => (e ? rej(e) : res())));
+      const name = path.basename(out); save(name, fs.readFileSync(out)); return name; }
+    finally { fs.rmSync(pf, { force: true }); fs.rmSync(out, { force: true }); } };
   // a carousel: one photo per slide (3 at a time), then the words set in exact type by Chromium, never drawn by the model.
   // canSpend(i) says whether slide i may be made; bufs carry the image guard's note (guard.retried) so callers can book real cost
-  const carousel = async ({ slides, src, lookLine = '', ratio, title, cardTitle, scene = '', named = null, id, slug = undefined, clean = (x) => String(x || ''), canSpend = () => true, onStep = () => {} }) => {
-    const raws = [];
+  /* product and brand name the subject ("The subject is the Paw Warmer"), never "The subject is The product." */
+  const carousel = async ({ slides, src, lookLine = '', ratio, title, cardTitle, scene = '', named = null, product = '', brand = {}, id, slug = undefined, clean = (x) => String(x || ''), canSpend = () => true, onStep = () => {} }) => {
+    const raws = []; let budgetHit = false; /* a slide refused by the day's picture budget: the caller makes the set again tomorrow */
     for (let k = 0; k < slides.length; k += 3) {
       onStep(`Making the photos (${Math.min(k + 3, slides.length)} of ${slides.length})`);
       raws.push(...(await Promise.all(slides.slice(k, k + 3).map(async (x, m) => {
-        if (!canSpend(k + m)) return null;
-        const prompt = buildDraft({ kind: 'image', title: `${title} carousel`, visual: `${x.visual || ''}${lookLine}`, scene: scene ? `The set as a whole shows what the card promises: ${scene}.` : '', index: k + m + 1, count: slides.length, topSpace: true, hasSrc: !!src, ratio }).prompt;
-        try { return await geminiImage({ srcFile: src, prompt, ratio, named, slug, text: [x?.onSlide, title, cardTitle].filter(Boolean).join('. '), fallback: true }); } catch (e) { log.warn('[draft slide]', e.message); return null; } /* fallback: a slide with no new photo carries the real product photo under its words */
+        if (!canSpend(k + m)) { budgetHit = true; return null; }
+        const prompt = buildDraft({ kind: 'image', title: `${title} carousel`, visual: `${x.visual || ''}${lookLine}`, scene: scene ? `The set as a whole shows what the card promises: ${scene}.` : '', index: k + m + 1, count: slides.length, topSpace: true, hasSrc: !!src, ratio, product: (product || named?.t) ? { name: product || named.t } : undefined, brand: brand?.name ? { name: brand.name } : {} }).prompt;
+        try { return await geminiImage({ srcFile: src, prompt, ratio, named, slug, text: [x?.onSlide, title, cardTitle].filter(Boolean).join('. '), fallback: true }); } catch (e) { if (e.budget) budgetHit = true; log.warn('[draft slide]', e.message); return null; } /* fallback: a slide with no new photo carries the real product photo under its words */
       }))));
     }
-    if (!raws.some(Boolean)) throw new Error('no slide photo came back');
+    if (!raws.some(Boolean)) throw Object.assign(new Error(budgetHit ? 'The slides wait for the picture budget.' : 'no slide photo came back'), { budget: budgetHit, noSlides: true });
     onStep('Setting the words on each slide');
     const browser = await launchBrowser(), out = [];
     try { for (let i = 0; i < slides.length; i++) { if (!raws[i]) continue; const buf = await setType(browser, raws[i], { text: clean(slides[i].onSlide), small: clean(slides[i].small || ''), n: i + 1, of: slides.length }, ratio);
@@ -239,7 +281,7 @@ export function createMakers({ geminiImage, treg, launchBrowser, zipBuffer, save
     const name = keyOf(text + v + style) + '.wav'; save(name, wav); return name;
   };
 
-  // Veo 3.1 Fast, 6 s at 1080p from the first frame: the product stays put, only light and camera move
+  // Veo 3.1 Fast, 6 s at 1080p from the first frame: one handheld shot, hands may use the product, which keeps its shape and mark
   const video = async (frameName, motion, { onStep = () => {}, ratio = '9:16' } = {}) => {
     const ff = await file(frameName); if (!ff) throw new Error('the first frame is missing'); const frame = fs.readFileSync(ff);
     const buf = await vertexVideo(frame, buildDraft({ kind: 'video', motion, ratio }).prompt,
@@ -258,7 +300,7 @@ export function createMakers({ geminiImage, treg, launchBrowser, zipBuffer, save
   // an HTML mock (email, chat, page, product grid) shot once and saved: → 'gen/<name>.jpg'
   const render = async (html, ratio = '4:5', key = html) => { const browser = await launchBrowser();
     try { const buf = await shoot(browser, html, W[ratio] || W['4:5']); const name = keyOf('mock' + key) + '.jpg'; save(name, buf); return 'gen/' + name; } finally { await browser.close().catch(() => {}); } };
-  return { carousel, voice, video, mux, render, setType, shoot, SIZES: W };
+  return { carousel, voice, video, mux, render, setType, head, headClip, shoot, SIZES: W };
 }
 
 /* local tests only (MEDIA_FAKE=1, never on Cloud Run): the same video path at no cost. The "frame" is the reference photo

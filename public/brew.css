@@ -2833,3 +2833,18 @@ html body.deck-on .topbar{border-bottom:0;box-shadow:none}
 .rv-read .rv-note{margin:10px 12px;font-size:12.5px;line-height:17px;color:var(--fg-3)}
 .rv-read a{display:inline-flex;gap:4px;align-items:center;margin:0 12px 12px;font-size:13px}
 @media (max-width:600px){.rv-read dl div{grid-template-columns:1fr;gap:2px}}
+
+/* ---------- the feed, Instagram-like (2026-10-17): New since your last visit, Start here, the draft's caption, paging ---------- */
+.new-since{display:flex;align-items:center;gap:8px;margin:2px 4px 12px;font-size:14px;line-height:20px;color:var(--fg-2)}
+.new-since .pulse{width:7px;height:7px;border-radius:50%;background:var(--info);flex:none}
+.card-head .new-tag{flex:none;display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:999px;background:var(--info-bg);color:var(--info);font-size:12px;font-weight:550}
+.card-head .start-tag{flex:none;display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 9px;border:0;border-radius:999px;background:var(--fg);color:var(--bg);font:inherit;font-size:12.5px;font-weight:550;cursor:pointer;white-space:nowrap}
+.card-head .start-tag svg{width:12px;height:12px}
+.card.is-start{outline:1.5px solid var(--fg);outline-offset:-1.5px}
+.fd-cap{display:flex;flex-direction:column;gap:2px;padding:10px 14px 2px;min-width:0}
+.fd-cap b{font-size:15px;line-height:21px;font-weight:600;color:var(--fg);overflow-wrap:anywhere}
+.fd-cap span{font-size:14px;line-height:20px;color:var(--fg-2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.media .fd-lab.is-wait{background:rgba(20,20,20,.72)}
+.feed-more{height:1px}
+@media (max-width:420px){.card-head .start-tag{padding:0 7px}.card-head .new-tag{padding:0 6px}}
+.media.fd.r916{aspect-ratio:9/16;max-height:78vh}

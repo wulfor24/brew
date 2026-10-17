@@ -21,7 +21,7 @@ import { createRemix } from './remix.js';
 import { saveGen } from './gen-store.js';
 import { createJamBrief } from './jam-brief.js';
 import { briefParts, withTeam, LABEL as BRIEF_LABEL } from './brief-status.js';
-import { createTuning, tuneScore, learnedSignals, withoutIgnored, AGENTS as TUNE_AGENTS, WEIGHT as TUNE_WEIGHT } from './member-tuning.js'; // Your feed: per-member agent weights, topics, learned signals
+import { createTuning, tuneScore, learnedSignals, withoutIgnored, noteTopics, AGENTS as TUNE_AGENTS, WEIGHT as TUNE_WEIGHT } from './member-tuning.js'; // Your feed: per-member agent weights, topics, learned signals
 import { memberKey } from './brand-memory.js';
 import { isQuestion, photoAsk, answerGrounded } from './jam-answer.js'; // jam chat: questions answered from the evidence, "keep the photo" never makes one
 import { createAskBrew, answerAsk, cleanSeed } from './ask-brew.js'; // Ask Brew: one thread per member across feed, moves and facts
@@ -99,6 +99,50 @@ export function followMoveCards(cards, { docs = {}, posts = [], at = Date.now(),
   }
   return out;
 }
+
+/* ---------- what a person did with the feed, for the ranker (pure; the feed service and test/feed-engagement use them) ---------- */
+const DAY_MS = 864e5;
+/* "Remind me tomorrow": the lift lasts one day ({ v, until }). A bare number saved before 2026-10-17 lifted the card forever: it
+   heals to one last day, once */
+export const boostNow = (b, at) => (b && typeof b === 'object' && b.until > at ? +b.v || 0 : 0);
+export function healBoosts(boost, at) { for (const [id, b] of Object.entries(boost || {})) { if (typeof b === 'number') boost[id] = { v: b, until: at + DAY_MS }; else if (!(b?.until > at)) delete boost[id]; } return boost; }
+/* "seen": the distinct days a card was on screen in the last 7 (redraws and reloads on one day count once); fatigue starts on the
+   second day, 1.5 a day, 6 at most. Seen times older than 14 days are dropped */
+export function seenDays(ts, at, dayOf, win = 7 * DAY_MS) { const d = new Set(); for (const x of ts || []) if (x <= at && at - x < win) d.add(dayOf(x)); return d.size; }
+export const seenFatigue = (days) => (days > 1 ? -Math.min(6, (days - 1) * 1.5) : 0);
+export function pruneShown(shown, at, keep = 14 * DAY_MS) { for (const [id, ts] of Object.entries(shown || {})) { const k = (ts || []).filter((x) => at - x < keep); if (k.length) shown[id] = k; else delete shown[id]; } return shown; }
+/* times an agent's cards were on screen in the last 24 hours: once per rank, not once per card */
+export function agentShown(shown, cards, at) { const n = {}; for (const [id, ts] of Object.entries(shown || {})) { const a = cards.get(id)?.agent; if (!a) continue; for (const x of ts || []) if (at - x < DAY_MS) n[a] = (n[a] || 0) + 1; } return n; }
+/* the last time someone worked on each card's jam: a message from a person or Brew (never "X joined") or a new version */
+export function jamActivity(work) { const m = new Map();
+  for (const w of work || []) { if (!w?.cardId || w.discarded) continue; let last = 0;
+    for (const x of w.thread || []) if (x && x.from !== 'system' && x.at > last) last = x.at;
+    for (const v of w.versions || []) if (v?.n > 1 && v.at > last) last = v.at;
+    if (last > (m.get(w.cardId) || 0)) m.set(w.cardId, last); }
+  return m; }
+/* an opened (acted-on) card stays up for a day, then sinks by 6 unless its jam is still moving */
+export const actedDecay = (actedAt, lastJam, at) => (at - Math.max(actedAt || 0, lastJam || 0) > DAY_MS ? -6 : 0);
+/* cards someone really engaged with: a heart, or a person's message in the card's jam. Only these let a second card of the same
+   move or rival into the first screen; opening a card is not enough */
+export function engagedIds(hearts, work) { const s = new Set(hearts ? [...(hearts.keys ? hearts.keys() : hearts)] : []);
+  for (const w of work || []) if (w?.cardId && !w.discarded && (w.thread || []).some((x) => x?.from === 'me' || (x?.by && !['ai', 'system'].includes(x.from)))) s.add(w.cardId);
+  return s; }
+/* the first screen (12 cards): one card per group (a move, a rival, a live check) unless the first was engaged with, one per
+   near topic (the same story told twice), at most 3 from one agent and 2 of one format. The rest wait right after it; a seated
+   card (the ad and social seats) is never moved, and nothing is ever dropped */
+export function firstScreen(ranked, { groupOf = () => null, engaged = () => false, seated = new Set(), nearOf = () => false, size = 12, perAgent = 3, perFormat = 2 } = {}) {
+  const head = [], defer = [], rest = [], seen = new Map(), agents = {}, fmts = {};
+  for (const c of ranked) {
+    if (head.length >= size) { rest.push(c); continue; }
+    const g = groupOf(c), f = g && seen.get(g), fmt = c.make?.format || null, sit = seated.has(c);
+    const again = !!f && !engaged(f.id), topic = head.some((h) => nearOf(h, c)), crowd = (agents[c.agent] || 0) >= perAgent || (!!fmt && (fmts[fmt] || 0) >= perFormat);
+    if (!sit && (again || topic || crowd)) { defer.push(c); continue; }
+    if (g && !f) seen.set(g, c); head.push(c); agents[c.agent] = (agents[c.agent] || 0) + 1; if (fmt) fmts[fmt] = (fmts[fmt] || 0) + 1;
+  }
+  return [...head, ...defer, ...rest];
+}
+/* a title near one the person marked Not for me (research.js near: most of the words shared) */
+export const nearTitle = (a, b) => !!a && !!b && near({ h: String(a) }, { h: String(b) });
 
 const watchersFor = (b) => (b._watchers ||= [
   { id: 'trends', data: 'live', name: 'Trends', agent: 'brew', cadence: 'Daily', demoEvery: D, firstAt: 45e3, watches: 'Category news, search interest, the festive calendar', produces: 'Trends ring slides; idea cards when a trend meets a product' },
@@ -296,7 +340,7 @@ export function createFeedService(o) {
       plan: snap.pro ? 'pro' : 'free', brandId: B().slug, createdAt: Date.now(), lastSeen: Date.now(),
       viewer: { role: 'founder', wants: ['decision', 'idea'], lane: firstLane(), ...(snap.viewer || {}) }, conn: { ...(snap.conn || {}) },
       cards: new Map(), feedback: [], runs: [], jams: [], versions: [], memory: [], qa: [], router: [], wlog: [], api: {},
-      fewer: { ...(snap.fewer || {}) }, snoozed: {}, boost: {}, shown: {}, acted: new Set(), days: new Set(),
+      fewer: { ...(snap.fewer || {}) }, snoozed: {}, boost: {}, shown: {}, acted: new Set(), actedAt: {}, noTitles: [], days: new Set(),
       storySeen: {}, storyExtra: { trends: [], ads: [], news: [] }, health: {}, deck: { hidden: [], colWidth: 480 },
       batches: B().kind === 'generated' ? [] : clone(SEED.batches).map((b) => ({ id: uid('b'), ...b })), watchers: {}, speed: 'demo',
       work: [], notes: [], decided: {}, onboarding: { startedAt: null, readyAt: null }, proAt: snap.pro ? Date.now() : null, used: new Set(),
@@ -309,6 +353,7 @@ export function createFeedService(o) {
     SEED.scrape.forEach((f, i) => t.memory.push({ id: uid('m'), type: 'finding', kind: f.kind, fact: f.t, source: f.src, at: t0 - 60e3 + i * 1000 }));
     // replay what the client already did (after a server restart)
     (snap.hearts || []).forEach((id) => { if (t.cards.has(id)) t.feedback.push({ id: uid('f'), cardId: id, kind: 'heart', weight: 1, at: t0 }); });
+    (Array.isArray(snap.saved) ? snap.saved : []).slice(0, 300).forEach((id) => { if (t.cards.has(id)) t.feedback.push({ id: uid('f'), cardId: id, kind: 'save', weight: 1.5, at: t0 }); }); /* saves kept in the browser before they were kept here */
     Object.keys(snap.dismissed || {}).forEach((id) => { const c = t.cards.get(id); if (c) c.state = 'dismissed'; });
     Object.entries(snap.done || {}).forEach(([id, label]) => { const c = t.cards.get(id); if (c) { c.state = 'done'; c.done = label; } });
     (snap.extra || []).forEach((e) => { if (e?.card?.id && !t.cards.has(e.card.id)) t.cards.set(e.card.id, { ...e.card, parentCardId: e.after || e.card.parentCardId || null, origin: e.card.origin || 'user', state: 'ready', createdAt: t0, history: [['ready', t0]], loading: false }); });
@@ -329,10 +374,26 @@ export function createFeedService(o) {
 
   /* ---------- lifecycle housekeeping ---------- */
   const setState = (t, c, s) => { c.state = s; (c.history ||= []).push([s, now(t)]); };
+  /* a card someone opened, hearted or built on: when, so it can sink again a day later (actedDecay) */
+  const markActed = (t, id) => { t.acted.add(id); (t.actedAt ||= {})[id] = now(t); };
   const housekeep = (t) => {
     const n = now(t), today = dayKey(n);
     t.cards.forEach((c) => { if (c.expiresAt && c.expiresAt < n && !['expired', 'dismissed', 'done', 'dropped', 'story'].includes(c.state)) setState(t, c, 'expired'); });
-    Object.entries(t.snoozed).forEach(([id, d]) => { if (d !== today) { delete t.snoozed[id]; t.boost[id] = 8; } });
+    /* Remind me tomorrow: back on top for one day, then ranked like any other card (it used to stay up for good) */
+    healBoosts(t.boost ||= {}, n);
+    Object.entries(t.snoozed).forEach(([id, d]) => { if (d !== today) { delete t.snoozed[id]; t.boost[id] = { v: 8, until: n + D }; } });
+    pruneShown(t.shown ||= {}, n);
+    /* an acted card with no time yet (saved before times were kept, or marked by the studio): the jam's start or the heart, else now */
+    const at0 = (t.actedAt ||= {}), untimed = [...t.acted].filter((id) => at0[id] == null);
+    if (untimed.length) { const hearts = new Map(t.feedback.filter((f) => f.kind === 'heart').map((f) => [f.cardId, f.at]));
+      for (const id of untimed) at0[id] = Math.min(...(t.work || []).filter((w) => w.cardId === id).map((w) => w.createdAt || n), hearts.get(id) || n, n); }
+    /* titles marked Not for me, so near ones sink too; healed from the feedback once */
+    if (!t.noTitles) t.noTitles = t.feedback.filter((f) => f.kind === 'not_interested').map((f) => ({ h: t.cards.get(f.cardId)?.title, at: f.at })).filter((x) => x.h).slice(-40);
+    /* expired cards leave the workspace a week later, unless someone worked on, versioned, saved or gave feedback on them */
+    const keep = new Set([...(t.work || []).map((w) => w.cardId), ...(t.versions || []).map((v) => v.cardId), ...t.feedback.map((f) => f.cardId), ...t.acted, ...(t.pinned || []).map((x) => x.id)]);
+    for (const c of t.cards.values()) if (c.parentCardId) keep.add(c.parentCardId);
+    for (const [id, c] of t.cards) { if (c.state !== 'expired' || keep.has(id)) continue; const h = (c.history || []).filter((x) => x[0] === 'expired').at(-1); const at = h?.[1] ?? c.expiresAt ?? c.createdAt ?? n;
+      if (n - at > 7 * D) t.cards.delete(id); }
     const wk = weekKey(n); t.runs.forEach((r) => { if (r.week !== wk) r.counted = false; });
   };
 
@@ -346,21 +407,31 @@ export function createFeedService(o) {
     if (c.type === 'decision') { s += 1; note += ' · a decision'; }
     return { s: +s.toFixed(2), note, v: v || 0, pct: !v && /\d+%/.test(textOfCard(c)), decision: c.type === 'decision' };
   };
-  const clusterOf = (c) => (c.images?.[0]?.includes('statics/') ? 'statics' : c.images ? 'photo' : c.kind);
+  /* the look a heart lifts: a finished static ad only (every card has a photo or rows, so "photo" or the kind lifted 70% of the feed) */
+  const clusterOf = (c) => (c.images?.[0]?.includes('statics/') ? 'statics' : null);
+  /* the product a card is about (product-match.js), remembered per catalog so a rank reads each card once */
+  const prodMemo = new WeakMap();
+  const productOf = (t, c) => { const cat = brandOfT(t)?.catalog; if (!cat?.length) return null; let m = prodMemo.get(cat); if (!m) { m = new Map(); prodMemo.set(cat, m); }
+    const k = `${c.id}|${c.title || ''}`; if (!m.has(k)) { let p = null; try { p = cardProduct(c, cat, { brand: BN() })?.t || null; } catch {} m.set(k, p); if (m.size > 3000) m.clear(); } return m.get(k); };
+  /* this person's saved cards: their own list (member-tuning.js, every device) once there is one, else this workspace's saves */
+  const savedOf = (t, tu = tuningOf(t)) => { if (Array.isArray(tu?.saved) && tu.saved.length) return new Set(tu.saved);
+    const s = new Set(); t.feedback.forEach((f) => { if (f.kind === 'save') s.add(f.cardId); if (f.kind === 'unsave') s.delete(f.cardId); }); return s; };
+  /* hearts lift the same agent, campaign, format (what the card makes), product and look; a save counts as 1.5 hearts */
   const affinityMap = (t) => {
-    const a = { agent: {}, campaign: {}, format: {}, cluster: {} };
+    const a = { agent: {}, campaign: {}, format: {}, cluster: {}, product: {} };
     const hearts = new Map(); t.feedback.forEach((f) => { if (f.kind === 'heart') hearts.set(f.cardId, 1); if (f.kind === 'unheart') hearts.delete(f.cardId); });
     a.no = {}; a.noSector = {}; t.feedback.forEach((f) => { if (f.kind !== 'not_interested') return; const c = t.cards.get(f.cardId); if (!c) return; a.no[c.agent] = (a.no[c.agent] || 0) + 1; a.noSector[c.sector] = (a.noSector[c.sector] || 0) + 1; });
-    hearts.forEach((_, id) => { const c = t.cards.get(id); if (!c) return; a.agent[c.agent] = (a.agent[c.agent] || 0) + 1; if (c.campaign) a.campaign[c.campaign] = (a.campaign[c.campaign] || 0) + 1; a.format[c.kind] = (a.format[c.kind] || 0) + 1; a.cluster[clusterOf(c)] = (a.cluster[clusterOf(c)] || 0) + 1; });
+    const liked = new Map(hearts); savedOf(t).forEach((id) => liked.set(id, (liked.get(id) || 0) + 1.5));
+    const add = (o, k, w) => { if (k) o[k] = (o[k] || 0) + w; };
+    liked.forEach((w, id) => { const c = t.cards.get(id); if (!c) return; add(a.agent, c.agent, w); add(a.campaign, c.campaign, w); add(a.format, c.make?.format, w); add(a.cluster, clusterOf(c), w); add(a.product, productOf(t, c), w); });
     return { a, hearts };
   };
-  const agentShown24h = (t, agent) => { const n = now(t); let k = 0; Object.entries(t.shown).forEach(([id, ts]) => { const c = t.cards.get(id); if (c?.agent === agent) k += ts.filter((x) => n - x < D).length; }); return k; };
   /* the ranker, v2 (2026-10-14): expected value first, then fit and learning; freshness decides between cards of similar value.
      value 0-10: value.js (a move's graded impact x confidence x urgency / effort; live exceptions high; research and listening
      middle). The old money-in-the-text impact only counts for a brand with a known monthly revenue and no grade.
      seat: role, lane and the types this person picked (x0.6). affinity: hearts lift the same agent, campaign, kind and look;
      "not for me" and "fewer" push them down. fatigue: a card shown again and again without being opened sinks */
-  const STREAMY = (c) => !!(c.stream || c.liveOnly || c.live || c.research || c.liveSrc || c.family === 'exception');
+  const STREAMY = (c) => !!(c.stream || c.liveOnly || c.live || c.research || c.liveSrc || c.family === 'exception' || c.origin === 'watcher'); /* a watcher's card (a paid Creative idea too) is news: it fades like one */
   // the "rests on what the team told Brew" lift, per pack (not saved on the card): new learnings re-rank every card
   const toldMemo = new WeakMap();
   const toldOf = (c) => { const terms = B()?.learnedTerms; let m = toldMemo.get(terms || toldMemo); if (!m) { m = new Map(); toldMemo.set(terms || toldMemo, m); }
@@ -375,19 +446,25 @@ export function createFeedService(o) {
     let val = cardValue(c, B()?.moveValue || {}, now(t)); if (!graded && BASE()) val = Math.max(val, imp.s * 2);
     const g = graded ? B().moveValue[moveNo(c.id)] : null;
     const valNote = g ? `Impact ${g.impact}/5, confidence ${Math.round(g.confidence * 100)}%, effort ${['', 'hours', 'days', 'weeks', 'a month+'][g.effort]}${g.by ? `, by ${g.by}` : ''}${g.now ? ', doable now' : ''}` : imp.note;
-    const aff = (af.agent[c.agent] || 0) * 1.5 + (c.campaign ? (af.campaign[c.campaign] || 0) * 1.5 : 0) + (af.format[c.kind] || 0) + (af.cluster[clusterOf(c)] || 0) - (af.no?.[c.agent] || 0) * 0.75 - (af.noSector?.[c.sector] || 0) * 0.5;
+    const pr = af.product && Object.keys(af.product).length ? productOf(t, c) : null;
+    const aff = (af.agent[c.agent] || 0) * 1.5 + (c.campaign ? (af.campaign[c.campaign] || 0) * 1.5 : 0) + (c.make?.format ? af.format[c.make.format] || 0 : 0) + (pr ? (af.product[pr] || 0) * 1.5 : 0) + (clusterOf(c) ? af.cluster[clusterOf(c)] || 0 : 0) - (af.no?.[c.agent] || 0) * 0.75 - (af.noSector?.[c.sector] || 0) * 0.5
+      - ((af.noTitles || []).some((x) => nearTitle(x.h, c.title)) ? 4 : 0); /* near a title they marked Not for me */
     const said = (v.focusTerms || []).length ? Math.min(2, (v.focusTerms || []).filter((w) => `${c.title || ''} ${c.sub || ''} ${c.campaign || ''} ${c.src || ''}`.toLowerCase().includes(w)).length) * 3 : 0; /* what they said should come first, in their words */
     const seat = said + 0.6 * ((R.sector[c.sector] || 0) * 3 + (R.type[c.type] || 0) * 2 + (v.wants.includes(c.type) ? 5 : 0) + (c.lane === v.lane ? 6 : 0) + ((c.roles || []).includes(v.role) ? 4 : 0) + (c.boostFor?.[v.role] || 0)) / 2.5;
-    const seen = (t.shown[c.id] || []).length;
-    const fatigue = -Math.min(4, agentShown24h(t, c.agent) * 0.08) - (!t.acted.has(c.id) ? Math.min(4, Math.max(0, seen - 2) * 1.2) : 0);
-    const fb = -2 * ((af.fewer || t.fewer)[c.agent] || 0), tune = tuneScore(af.tune, c); /* the member's own weights and topics */
+    /* fatigue: the agent's cards on screen today, then this card: days it was seen (an opened card instead sinks a day after its
+       jam goes quiet). Seen counts days, never page redraws */
+    const seen = seenDays(t.shown[c.id], now(t), dayKey), acted = t.acted.has(c.id);
+    const dec = acted ? actedDecay(t.actedAt?.[c.id], af.jamAt?.get(c.id), now(t)) : 0, fatigue = -Math.min(4, (af.shown24?.[c.agent] || 0) * 0.08) + (acted ? dec : seenFatigue(seen));
+    const fb = -2 * ((af.fewer || t.fewer)[c.agent] || 0), tune = tuneScore(af.tune, c, af.notes); /* the member's own weights, topics and the words of their notes */
     // what the team told Brew comes first: cards of a move that rests on it, or that quote it themselves
     const told = toldOf(c) || (B()?.learnedMoves?.has(moveNo(c.id)) ? 2 : 0), lift = B()?.teamCards?.has(c.id) ? 10 : B()?.learnedUp?.has(c.id) ? 8 : 0;
     const contra = B()?.learnedHide?.has(c.id) ? -40 : 0; /* the team said it doesn't work for them: off the top until someone says "bring back" (brand-learnings.js) */
-    const extra = told + (t.boost[c.id] || 0) + (c.onlyWhen && connOn(t, c.onlyWhen) ? 3 : 0) + (c.live && Object.keys(c.live).some((k) => connOn(t, k)) ? 2 : 0) + (c.liveOnly ? 2 : 0);
+    const art = draftView(draftFor(c, B()?.firstDrafts), c); /* a first draft with a picture or clip: the first screen should be things to look at */
+    const look = (art?.images?.length || art?.video ? 3 : 0) + (isStaticCard(c.id) || c.research?.kind === 'ad' ? 2 : 0);
+    const extra = told + look + boostNow(t.boost?.[c.id], now(t)) + (c.onlyWhen && connOn(t, c.onlyWhen) ? 3 : 0) + (c.live && Object.keys(c.live).some((k) => connOn(t, k)) ? 2 : 0) + (c.liveOnly ? 2 : 0);
     const behind = B()?.staleMoves?.has(moveNo(c.id)) ? -8 : 0; /* its move is being rewritten: off the first screen until the new card lands */
     const total = val + seat + aff + fresh + fatigue + fb + extra + behind + tune + lift + contra;
-    return { fresh, told, value: val, impact: +val.toFixed(2), impactNote: valNote, impactV: imp.v, impactPct: imp.pct, isDecision: imp.decision, affinity: +aff.toFixed(2), seat: +seat.toFixed(2), fatigue: +fatigue.toFixed(2), feedback: fb, tune, boost: extra, total: +total.toFixed(2), seen };
+    return { fresh, told, look, value: val, impact: +val.toFixed(2), impactNote: valNote, impactV: imp.v, impactPct: imp.pct, isDecision: imp.decision, affinity: +aff.toFixed(2), seat: +seat.toFixed(2), fatigue: +fatigue.toFixed(2), feedback: fb, tune, boost: boostNow(t.boost?.[c.id], now(t)), extra, total: +total.toFixed(2), seen, ...(dec ? { quiet: true } : {}) };
   };
   const connOn = (t, k) => !!(t.conn?.[k] || t.liveConn?.[k]);
   // live cards are the team's only; a real account hides its demo cards; a move rewritten privately replaces its shared cards
@@ -430,9 +507,15 @@ export function createFeedService(o) {
     // the scheduled Creative agent pitching the brand's festival again: only its newest idea stays
     const fest = FESTN(); if (c.origin === 'watcher' && c.type === 'idea' && fest && fest !== 'the next sale' && new RegExp(`\\b${fest.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(c.title || '')) return `one:fest`;
     return null; };
+  const lastRank = new WeakMap(); /* the newest ranking per workspace: the rings reuse it for a minute instead of ranking again */
   const rank = (t) => {
     housekeep(t);
     const tu = tuningOf(t), { af: a, fewer } = withoutIgnored(affinityMap(t).a, t.fewer, tu?.ignored); a.fewer = fewer; a.tune = tu; /* signals the member deleted no longer count */
+    /* read once per rank, not once per card: the agents' cards on screen today, each card's last jam activity, the words of the
+       person's notes, and the titles they marked Not for me */
+    a.shown24 = agentShown(t.shown, t.cards, now(t)); a.jamAt = jamActivity(t.work); a.noTitles = t.noTitles || [];
+    a.notes = noteTopics([...(tu?.notes || []).map((n) => n.text), ...(t.cardNotes || []).filter((n) => n.useful !== false).map((n) => n.text)], (t.cardNotes || []).filter((n) => n.useful === false).map((n) => n.text));
+    const eng = engagedIds(affinityMap(t).hearts, t.work);
     const all = [...t.cards.values()];
     const top = all.filter((c) => visible(t, c) && !c.parentCardId && c.origin === 'user').sort((x, y) => y.createdAt - x.createdAt);
     const pool = all.filter((c) => visible(t, c) && !c.parentCardId && c.origin !== 'user' && c.origin !== 'signal');
@@ -444,7 +527,7 @@ export function createFeedService(o) {
     const newestLive = new Map(); for (const c of sorted0) { const d = dupOf(c); if (d) { const h = newestLive.get(d); if (!h || c.createdAt > h.createdAt) newestLive.set(d, c); } const g = groupOf(c); if (g?.startsWith('live:')) { const h = newestLive.get(g); const q = (x) => /-q-/.test(x.liveSrc.id); /* the reading about products our cards sell beats the store-wide one */ if (!h || q(c) > q(h) || (q(c) === q(h) && c.createdAt > h.createdAt)) newestLive.set(g, c); } }
     const sorted = []; const later = []; const firstOf = new Map();
     for (const c of sorted0) { const d = dupOf(c); if (d && newestLive.get(d) !== c) continue; const g = groupOf(c); if (g == null) { sorted.push(c); continue; } if (g.startsWith('live:') && newestLive.get(g) !== c) continue; const f = firstOf.get(g);
-      if (!f) { firstOf.set(g, c); sorted.push(c); } else if (t.acted.has(f.id)) sorted.push(c); else later.push(c); }
+      if (!f) { firstOf.set(g, c); sorted.push(c); } else if (eng.has(f.id)) sorted.push(c); else later.push(c); } /* a heart or a real jam message lets a second card in, not a mere open */
     for (const c of later) sorted.splice(Math.max(12, sorted.findIndex((x) => scores[x.id].total < scores[c.id].total) >>> 0), 0, c);
     // interleave: no two of a kind together, no agent twice in a row
     const out = []; const rest = [...sorted];
@@ -455,15 +538,16 @@ export function createFeedService(o) {
       if (k < 0 || k > 10) k = 0;
       out.push(rest[k]); rest.splice(k, 1);
     }
-    return { top, ranked: out, scores };
+    const r = { top, ranked: out, scores, engaged: eng }; lastRank.set(t, { at: Date.now(), r }); return r;
   };
+  const rankSoon = (t, ms = 60e3) => { const x = lastRank.get(t); return x && Date.now() - x.at < ms ? x.r : rank(t); };
   const withChildren = (t, list) => { const res = []; list.forEach((c) => { res.push(c); [...t.cards.values()].filter((x) => x.parentCardId === c.id && visible(t, x)).sort((x, y) => y.createdAt - x.createdAt).forEach((x) => res.push(x)); }); return res; };
   const feed = (t) => {
-    const { top, ranked: all, scores } = rank(t);
+    const { top, ranked: all, scores, engaged: eng } = rank(t);
     // cards the viewer pulled in from the "new cards" pill sit on top for 30 minutes
     const pins = (t.pinned || []).filter((x) => now(t) - x.at < 30 * 60e3).map((x) => all.find((c) => c.id === x.id)).filter(Boolean);
     /* a feed you look at, not a list you read: two visual cards for every text card, each kind kept in its rank order */
-    const isVis = (c) => !!(c?.images?.length || c?.img || c?.video || ['media', 'chat', 'answer', 'variants'].includes(c?.kind));
+    const isVis = (c) => !!(c?.images?.length || c?.img || c?.video || ['media', 'chat', 'answer', 'variants'].includes(c?.kind) || (c && draftView(draftFor(c, B()?.firstDrafts), c))); /* a card with a first draft shows the draft: a picture card */
     const ranked0 = all.filter((c) => !pins.includes(c)), V = ranked0.filter(isVis), N = ranked0.filter((c) => !isVis(c)), ranked = [];
     /* the 2:1 picture/text rhythm, but it never lifts a clearly weaker card over a stronger one (more than 2 points apart) */
     const tot = (c) => scores[c.id]?.total ?? 0;
@@ -491,19 +575,22 @@ export function createFeedService(o) {
       if (j > 0) [ranked[i], ranked[j]] = [ranked[j], ranked[i]]; } }
     /* last: the first screen (12) holds one card per group (groupOf); a repeat of a group whose first card was not acted on
        moves to position 12. Runs after the layout swaps so they can't pull a repeat back up */
-    { const head = [], defer = [], rest = [], seen = new Map(); /* one linear pass: the first 12 take one card per group, repeats follow them */
-      for (const c of ranked) { if (head.length >= 12) { rest.push(c); continue; } const g = groupOf(c), f = g && seen.get(g);
-        if (f && !t.acted.has(f.id) && !seated.has(c)) defer.push(c); else { if (g && !f) seen.set(g, c); head.push(c); } }
-      ranked.splice(0, ranked.length, ...head, ...defer, ...rest); }
+    /* and one card per near topic (the same story twice), at most 3 from one agent and 2 of one format (firstScreen) */
+    ranked.splice(0, ranked.length, ...firstScreen(ranked, { groupOf, engaged: (id) => eng.has(id), seated, nearOf: (a, b) => nearTitle(a.title, b.title) }));
     const shownList = ranked; /* no daily cap: every card is shown (the Pro plan is a Dummy) */
-    const order = withChildren(t, [...top, ...pins, ...shownList]).map((c) => c.id);
+    const order = withChildren(t, [...top, ...pins, ...shownList]).map((c) => c.id); lastOrder.set(t, order);
     return { order, scores, pinned: pins.map((c) => c.id), limit: { plan: t.plan, daily: null, locked: 0 } };
   };
   const measureOf = (t, c) => { const m = { ...(MEASURE[c?.sector] || MEASURE.creatives), ...(c?.measure || {}) };
     // AI answers: today's number is the latest real run, not a sample
     const vr = live?.get()?.visibility?.runs?.[0]; if (c?.sector === 'visibility' && vr && !c?.measure) Object.assign(m, { unit: ` of ${vr.total}`, baseline: vr.named, target: Math.min(vr.total, vr.named + 4), window: 28, attribution: `The same questions, asked the same way every week from ${CTRY()}. A change in who gets named is the result.` }); m.connected = !m.from || connOn(t || {}, m.from); /* a team member's own account: the result is read against its number today */ if (t?.member && m.baseline == null) { const b = baselineOf(c?.sector, t.liveLedger); if (b) Object.assign(m, b); } m.fromName = m.from ? (SEED.connectors[m.from]?.name || m.from) : null; return m; };
   const pub = (c, t) => { const { history, ...rest } = c; if (!rest.note && B()?.notes?.[c.id]) rest.note = B().notes[c.id]; /* margin notes written after the card landed (notes.js) */ if (LEAK.test(`${rest.title} ${rest.sub}`)) { rest.title = scrubLeak(rest.title); rest.sub = scrubLeak(rest.sub); } const dv = draftView(draftFor(c, B()?.firstDrafts), c); if (dv) rest.draft = dv; /* the first draft Brew made for this card (drafts-bg.js), shown on the feed card */ const pl = planOfCard(c); if (pl) rest.plan = pl; /* its plan: what the jam opens on */ if (toldOf(c) && toldSeen(t)) rest.told = true; /* the card itself rests on what the team told Brew: the feed labels it (team only, like the told list) */ return { ...rest, history: (history || []).slice(-6), measure: measureOf(t, c), decided: t?.decided?.[c.id] || null }; };
-  const allCards = (t) => { const o = {}; t.cards.forEach((c, id) => { if (!['dropped'].includes(c.state) && seatOk(t, c)) o[id] = pub(c, t); }); return o; };
+  /* the cards the page needs, not every card the workspace ever held: the feed's order, pinned ones, cards with a jam, saved and
+     hearted ones (the Library and the jams open them by id). With no order yet, every card, as before */
+  const lastOrder = new WeakMap();
+  const allCards = (t, order = lastOrder.get(t)) => { const keep = order ? new Set(order) : null;
+    if (keep) { (t.pinned || []).forEach((x) => keep.add(x.id)); (t.work || []).forEach((w) => w.cardId && keep.add(w.cardId)); savedOf(t).forEach((id) => keep.add(id)); affinityMap(t).hearts.forEach((_, id) => keep.add(id)); }
+    const o = {}; t.cards.forEach((c, id) => { if ((!keep || keep.has(id)) && !['dropped'].includes(c.state) && seatOk(t, c)) o[id] = pub(c, t); }); return o; };
 
   /* ---------- QA agent ---------- */
   // research cards may also quote the numbers in their own source record (an ad's copy, a trend's measured change)
@@ -798,7 +885,7 @@ export function createFeedService(o) {
        part of the first load, not "new since you looked" (the pill would climb to 8 within a minute of a fresh feed) */
     if (st.runs <= 1 || Date.now() - (t.onboarding.readyAt || 0) < FIRST_LOAD_MS) made.forEach((c) => { c.initial = true; });
     st.made += made.length; st.kept += made.filter((c) => c.state === 'ready').length;
-    wlog(t, w, `${why === 'manual' ? 'Run now' : why === 'overnight' ? 'Overnight run' : 'Scheduled run'}: ${made.length} proposed${how ? ', ' + how : ''}`, made);
+    wlog(t, w, `${why === 'manual' ? 'Run now' : why === 'overnight' ? 'Overnight run' : why === 'visit' ? 'When you came back' : 'Scheduled run'}: ${made.length} proposed${how ? ', ' + how : ''}`, made);
     return made;
   };
   const tick = async () => { for (const t of tenants.values()) await runDemo(t.demoSid, () => tickOne(t)); };
@@ -970,8 +1057,10 @@ export function createFeedService(o) {
     const spark = (term) => tr?.series[term]?.values;
     // the brand today: its own most important new things, never outside news.
     // The two top-ranked open cards, then work waiting on you, the latest measured result, and work the team finished.
-    const { ranked } = rank(t);
-    const topCards = ranked.filter((c) => !c.done && !c.loading && !String(c.id).startsWith('r-')).slice(0, 2).map((c, i) => ({ type: 'brand', chip: i ? 'Next up' : 'Biggest move today', h: c.title, p: c.sub, img: (c.images || [])[0], agent: c.agent, cardId: c.id, cta: c.cta?.label, at: c.createdAt }));
+    const { ranked } = rankSoon(t); /* the feed just ranked (the page asks for both at once): reuse it for a minute */
+    /* the brand today leads with what is new since the last visit, when there is any; else the top of the feed */
+    const open0 = ranked.filter((c) => !c.done && !c.loading && !String(c.id).startsWith('r-')), sinceV = t.visit?.prev, news = sinceV ? open0.filter((c) => c.createdAt > sinceV) : [];
+    const topCards = (news.length ? news : open0).slice(0, 2).map((c, i) => ({ type: 'brand', chip: news.length ? (i ? 'Also new' : 'New since your last visit') : i ? 'Next up' : 'Biggest move today', h: c.title, p: c.sub, img: (c.images || [])[0], agent: c.agent, cardId: c.id, cta: c.cta?.label, at: c.createdAt }));
     const waiting = t.work.filter((w) => w.stage === 'needs_you').sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 2).map((w) => { const v = w.versions.find((x) => x.n === w.current) || w.versions[w.versions.length - 1];
       return { type: 'brand', chip: 'Waiting on you', h: v?.title || w.title, p: v?.sub || `${w.with?.name || 'Your team'} sent it back for your OK.`, img: w.img, agent: w.agent, workId: w.id, at: w.updatedAt }; });
     const shipped = extra('news').map((x) => ({ ...x, type: 'brand', chip: x.from || 'Your team' }));
@@ -1090,7 +1179,7 @@ export function createFeedService(o) {
     w.cardSnap = clone(c); // a teammate's workspace may not hold this card (an idea or story made elsewhere): the jam carries it
     seedDrafts(w, c, B().firstDrafts, { uid, at: now(t) }); // a first draft Brew made before the jam opened (drafts-bg.js)
     w.cardPlan = planOfCard(c); // the card's plan is the jam's input: the case, the brief and the make step read it
-    t.work.unshift(w); t.acted.add(c.id); return w;
+    t.work.unshift(w); markActed(t, c.id); return w;
   };
   /* Slack (connectors/slack.js): a jam taken to Slack is one post in the brand's channel; what the team writes in the jam goes
      to that thread, and the thread's replies and its Approve button come back here (slackIn, from server.js /slack/events) */
@@ -1371,15 +1460,21 @@ export function createFeedService(o) {
     if (typeof b.pro === 'boolean' && b.pro && t.plan !== 'pro') { t.plan = 'pro'; t.proAt = Date.now(); }
     return { ok: true };
   });
-  on('GET', '/api/tenants/:id/feed', async (b, t) => { repairHeartKids(t); syncBatches(t); if (B().kind === 'generated') streamSync(t, SEED.posts); const f = feed(t); return { ...f, cards: allCards(t), withTeam: withTeam(t.work.filter((w) => shown0(w) && guestSees(t)(w))), batches: t.batches, health: t.health, healthLive: t.member ? healthReadings(t.liveLedger) : {}, decided: t.decided || {}, clock: now(t) }; });
+  /* the first feed of a new visit: the free watchers look first (a few seconds at most), so a return opens on today's cards, not
+     yesterday's. newIds: cards made since the last visit that this person had not seen before this visit began */
+  const newIdsOf = (t, order) => { const v = t.visit; if (!v?.prev) return []; const began = v.at || now(t);
+    return order.filter((id) => { const c = t.cards.get(id); return c && !c.parentCardId && c.origin !== 'user' && c.state !== 'done' && c.createdAt > v.prev && !(t.shown[id] || []).some((x) => x < began); }); };
+  on('GET', '/api/tenants/:id/feed', async (b, t) => { repairHeartKids(t); syncBatches(t); if (B().kind === 'generated') streamSync(t, SEED.posts);
+    if (t.visit && t.feedVisit !== t.visit.at) { t.feedVisit = t.visit.at; if (t.onboarding.readyAt) await runFree(t, 'visit', 6000); }
+    const f = feed(t); return { ...f, newIds: newIdsOf(t, f.order), saved: [...savedOf(t)], cards: allCards(t), withTeam: withTeam(t.work.filter((w) => shown0(w) && guestSees(t)(w))), batches: t.batches, health: t.health, healthLive: t.member ? healthReadings(t.liveLedger) : {}, decided: t.decided || {}, clock: now(t) }; });
   on('GET', '/api/tenants/:id/deck', async (b, t) => {
     const { top, ranked, scores } = rank(t); const list = withChildren(t, [...top, ...ranked]);
     const cols = {}; ['signals', 'catalog', 'creatives', 'ads', 'storefront', 'visibility'].forEach((k) => (cols[k] = list.filter((c) => c.sector === k).map((c) => c.id)));
-    return { columns: cols, counts: Object.fromEntries(Object.entries(cols).map(([k, v]) => [k, v.length])), layout: t.deck, cards: allCards(t), scores };
+    return { columns: cols, counts: Object.fromEntries(Object.entries(cols).map(([k, v]) => [k, v.length])), layout: t.deck, cards: allCards(t, list.map((c) => c.id)), scores };
   });
   /* Your feed (UI2 Memory): agent weights (less | normal | more), topics, notes, and what Brew picked up from your choices */
   const tuningOut = async (t) => { const slug = t.brandId || DEFAULT_BRAND, tu = await TUNE.get(slug, tuneKey(t));
-    return { tuning: tu, agents: TUNE_AGENTS.map((a) => ({ id: a, name: AGENT[a], weight: tu.weights[a] })), weights: Object.keys(TUNE_WEIGHT), signals: learnedSignals({ feedback: t.feedback, cards: t.cards, fewer: t.fewer, ignored: tu.ignored }), mine: !!reqOf(t)?.member }; };
+    return { tuning: tu, agents: TUNE_AGENTS.map((a) => ({ id: a, name: AGENT[a], weight: tu.weights[a] })), weights: Object.keys(TUNE_WEIGHT), signals: learnedSignals({ feedback: t.feedback, cards: t.cards, fewer: t.fewer, ignored: tu.ignored, saved: tu.saved?.length ? tu.saved : null }), mine: !!reqOf(t)?.member }; };
   on('GET', '/api/tenants/:id/tuning', async (b, t) => tuningOut(t));
   on('PUT', '/api/tenants/:id/tuning', async (b, t) => { await TUNE.put(t.brandId || DEFAULT_BRAND, tuneKey(t), { weights: b.weights, topics: b.topics }); return tuningOut(t); });
   on('DELETE', '/api/tenants/:id/tuning/signals/:sid', async (b, t, p) => { await TUNE.ignore(t.brandId || DEFAULT_BRAND, tuneKey(t), decodeURIComponent(p.sid)); return tuningOut(t); });
@@ -1482,22 +1577,25 @@ export function createFeedService(o) {
     const fresh = newSince(t, since);
     return { newCards: fresh.length, ids: fresh.map((c) => c.id), titles: fresh.slice(0, 3).map((c) => c.title), batches: t.batches, health: t.health, jams: t.jams.map((j) => ({ id: j.id, ticket: j.ticket, status: j.status, last: j.messages.slice(-1)[0], updatedAt: j.updatedAt })), clock: now(t) };
   });
-  on('POST', '/api/tenants/:id/events', async (b, t) => { const n = now(t); (b.shown || []).forEach((id) => { const c = t.cards.get(id); if (!c) return; (t.shown[id] ||= []).push(n); c.shownCount = (c.shownCount || 0) + 1; if (c.state === 'ready') setState(t, c, 'shown'); }); return { ok: true }; });
+  /* a card on screen: one mark per half hour at most (a reload is not a second look), so seen counts real looks */
+  on('POST', '/api/tenants/:id/events', async (b, t) => { const n = now(t); [...new Set(Array.isArray(b.shown) ? b.shown : [])].slice(0, 200).forEach((id) => { const c = t.cards.get(id); if (!c) return; const ts = (t.shown[id] ||= []); if (ts.length && n - ts[ts.length - 1] < 30 * 60e3) return; ts.push(n); c.shownCount = (c.shownCount || 0) + 1; if (c.state === 'ready') setState(t, c, 'shown'); }); return { ok: true }; });
   on('POST', '/api/tenants/:id/cards', async (b, t) => {
     const parent = b.parentCardId ? t.cards.get(b.parentCardId) : null;
     const c = { ...(parent ? clone(parent) : {}), ...b.card, id: uid(b.origin || 'user'), parentCardId: b.asChild ? b.parentCardId : null, origin: b.asChild ? (b.origin || 'jam') : 'user', byRole: null, live: null, done: null, time: 'Just now', createdAt: now(t), history: [] };
     delete c.state; setState(t, c, 'proposed'); setState(t, c, 'qa');
     const checks = qaCheck(c, t); t.qa.unshift({ id: uid('qa'), cardId: c.id, title: c.title, by: b.origin === 'remix' ? 'Remix' : 'Jam', attempt: 1, checks, result: checks.every((x) => x.ok || x.k === 'Names a number') ? 'pass' : 'pass with notes', at: now(t) });
-    setState(t, c, 'ready'); t.cards.set(c.id, c); if (parent) t.acted.add(parent.id);
+    setState(t, c, 'ready'); t.cards.set(c.id, c); if (parent) markActed(t, parent.id);
     return { card: pub(c) };
   });
   on('GET', '/api/cards/:cid', async (b, t, p) => { const c = t.cards.get(p.cid); return c ? { card: pub(c) } : { error: 'not found' }; });
   on('POST', '/api/cards/:cid/feedback', async (b, t, p) => {
     const c = t.cards.get(p.cid); if (!c) return { error: 'not found' };
-    const W = { heart: 1, unheart: -1, not_interested: -1, fewer_agent: -2, snooze: 0, snooze_agent: 0 };
+    const W = { heart: 1, unheart: -1, save: 1.5, unsave: -1.5, not_interested: -1, fewer_agent: -2, snooze: 0, snooze_agent: 0 };
     t.feedback.push({ id: uid('f'), cardId: c.id, userId: 'viewer', kind: b.kind, weight: W[b.kind] ?? 0, at: now(t) });
-    if (b.kind === 'heart') { t.acted.add(c.id); t.memory.unshift({ id: uid('m'), type: 'feedback', fact: `Hearted a ${AGENT[c.agent]} card: “${c.title}”`, source: 'card feedback', at: now(t) }); return { child: pub(heartChild(t, c)) }; }
-    if (b.kind === 'not_interested') { setState(t, c, 'dismissed'); t.memory.unshift({ id: uid('m'), type: 'feedback', fact: `Not interested: “${c.title}”`, source: 'card feedback', at: now(t) }); }
+    /* the bookmark: kept for this person on every device (member-tuning.js), and it lifts cards like it (1.5 hearts) */
+    if (b.kind === 'save' || b.kind === 'unsave') { const tu = await TUNE.setSaved(t.brandId || DEFAULT_BRAND, tuneKey(t), c.id, b.kind === 'save').catch((e) => { log.warn?.('[saved]', e.message); return null; }); return { ok: true, saved: tu ? tu.saved : [...savedOf(t)] }; }
+    if (b.kind === 'heart') { markActed(t, c.id); t.memory.unshift({ id: uid('m'), type: 'feedback', fact: `Hearted a ${AGENT[c.agent]} card: “${c.title}”`, source: 'card feedback', at: now(t) }); return { child: pub(heartChild(t, c)) }; }
+    if (b.kind === 'not_interested') { setState(t, c, 'dismissed'); if (c.title) t.noTitles = [...(t.noTitles || []), { h: String(c.title).slice(0, 160), at: now(t) }].slice(-40); /* near titles sink by 4 */ t.memory.unshift({ id: uid('m'), type: 'feedback', fact: `Not interested: “${c.title}”`, source: 'card feedback', at: now(t) }); }
     if (b.kind === 'fewer_agent') { t.fewer[c.agent] = (t.fewer[c.agent] || 0) + 1; t.memory.unshift({ id: uid('m'), type: 'feedback', fact: `Show fewer from ${AGENT[c.agent]}`, source: 'card feedback', at: now(t) }); }
     if (b.kind === 'snooze') t.snoozed[c.id] = dayKey(now(t));
     // "Tell us why": kept for the ShopOS team, written to brand memory, and a step Brew learns from
@@ -1538,6 +1636,28 @@ export function createFeedService(o) {
     slow.forEach((w) => runWatcher(t, w, why).then(() => touch(t), (e) => console.warn('[watchers] creative', e.message)));
     return { made: made.length, pending: slow.length }; };
   on('POST', '/api/tenants/:id/watchers/run-all', async (b, t) => runAll(t, 'manual'));
+  /* the free watchers (never the paid Creative one), with a time limit: whatever is not done by then lands through the pulse */
+  const FREE_W = new Set(['trends', 'ads-library', 'catalog', 'visibility', 'ads']);
+  const runFree = async (t, why, ms = 6000) => { const made = [];
+    const go = (async () => { for (const w of WATCHERS) { if (!FREE_W.has(w.id) || !t.watchers[w.id]?.enabled) continue; try { made.push(...(await runWatcher(t, w, why))); } catch (e) { log.warn?.('[watcher]', w.id, e.message); } } })();
+    let tm; await Promise.race([go, new Promise((r) => { tm = setTimeout(r, ms); tm.unref?.(); })]); clearTimeout(tm); return made.slice(); };
+  /* research the person never saw in the feed, strongest first: a card that expired unseen comes back, one they turned down never */
+  const fromArchive = (t, n = 3) => { const r = research?.get() || {}, out = [];
+    const by = (wid, xs) => xs.slice().sort((a, b) => resStrength(wid, b, r) - resStrength(wid, a, r)).map((x) => [wid, x]), A = by('ads-library', resAll(r.ads)), T2 = by('trends', resAll(r.trends));
+    const list = []; for (let i = 0; i < Math.max(A.length, T2.length); i++) { if (A[i]) list.push(A[i]); if (T2[i]) list.push(T2[i]); } /* rival ads and trends in turn, each strongest first */
+    for (const [wid, x] of list) { if (out.length >= n) break; const base = researchCard(wid === 'trends' ? 'trend' : 'ad', x.id); if (!base) continue; const have = t.cards.get(base.id); if (!have && t.used.has(base.id)) continue; /* it was in the feed once */
+      if (have) { if (have.state !== 'expired' || (t.shown[base.id] || []).length || t.feedback.some((f) => f.cardId === base.id)) continue; setState(t, have, 'ready'); have.createdAt = now(t); have.expiresAt = now(t) + 3 * D; out.push(have); continue; }
+      t.used.add(base.id); const c = pipeline(t, base, WATCHERS.find((w) => w.id === wid)); if (c?.state === 'ready') out.push(c); }
+    return out; };
+  /* Find more, at the end of the feed: the free watchers run now; what they make (else up to 3 from the research archive) is
+     pinned to the top. Nothing new is said plainly */
+  on('POST', '/api/tenants/:id/find-more', async (b, t) => {
+    let made = (await runFree(t, 'manual', 8000)).filter((c) => c.state === 'ready' && visible(t, c)), from = 'watchers';
+    if (!made.length) { made = fromArchive(t, 3).filter((c) => visible(t, c)); from = 'archive'; }
+    if (!made.length) return { made: 0, ids: [], message: 'Nothing new right now. Your agents keep looking and new cards land at the top.' };
+    const ids = made.map((c) => c.id); t.pinned = [...ids.map((id) => ({ id, at: now(t) })), ...(t.pinned || []).filter((x) => !ids.includes(x.id))].slice(0, 8);
+    return { made: ids.length, ids, from, message: from === 'watchers' ? `${ids.length} new card${ids.length > 1 ? 's' : ''} at the top.` : `Nothing new from your agents yet. ${ids.length} from earlier research you hadn’t seen are at the top.` };
+  });
   on('POST', '/api/tenants/:id/clock', async (b, t) => {
     t.clock += (b.days || 1) * D; touch(t); housekeep(t);
     return { clock: now(t), ...(await runAll(t, 'overnight')) };
@@ -1715,7 +1835,7 @@ export function createFeedService(o) {
   };
   JB.routes({ askMake: (t, w, text) => (makeAsk(text) ? propose(t, w, { kind: 'make', as: asOf(text), text, summary: '', by: nameOf(meOf(t)) }) : null), toSlack: o.slack ? toSlack : null, on, W, say, move, notify, learn: learnOf, nextTicket: (t) => { leadsAllTenants++; return nextBrandTicket(t); }, handoff: { build: (...a) => HO.build(...a), text: (...a) => HO.text(...a) } });
   // first drafts in a jam, one tap away: image, video, voice or text, made only when someone asks (drafts.js)
-  DR = createDrafts({ rivalAdOf: rivalAd, rivalStoreOf, claudeTool, geminiImage, treg: o.treg, launchBrowser: o.launchBrowser, zipBuffer: o.zipBuffer, photoAsync: o.photoAsync, photoFile, catalogOf: (t) => (t ? brandOfT(t)?.catalog : null), brandName: (t) => (t ? brandOfT(t)?.seed?.brand?.name || '' : ''), photoOf: (c) => LANE_PHOTO[c?.lane] || Object.values(LANE_PHOTO || {})[0], cardOf: (t, id) => { const c = t.cards.get(id); return c ? fillCard(c, t) : null; },
+  DR = createDrafts({ rivalAdOf: rivalAd, rivalStoreOf, claudeTool, geminiImage, treg: o.treg, launchBrowser: o.launchBrowser, zipBuffer: o.zipBuffer, photoAsync: o.photoAsync, photoFile, catalogOf: (t) => (t ? brandOfT(t)?.catalog : null), hooksOf: (t) => { const p = t ? brandOfT(t) : B(); return { reviewQuotes: p?.reviewQuotes || [], rivalHooks: p?.rivalHooks || [] }; } /* the brand's review quotes and rival hooks for the drafts (brand-pack.js hooksOf) */, brandName: (t) => (t ? brandOfT(t)?.seed?.brand?.name || '' : ''), photoOf: (c) => LANE_PHOTO[c?.lane] || Object.values(LANE_PHOTO || {})[0], cardOf: (t, id) => { const c = t.cards.get(id); return c ? fillCard(c, t) : null; },
     briefOf: (t, w) => JB.seed(t, w)?.md, cardBrief, seatLine, isMock, spend, clean, now, uid, say, save: (t) => store?.save(t), AGENT, onReady: (t, w, d) => slackAsset(t, w, { title: d.title, copy: d.copy, image: d.image, video: d.video, audio: d.audio, zip: d.zip, kind: d.as === 'video' && !d.video ? (d.image ? 'image' : 'text') : d.as, note: d.err || null }), /* a video that didn't come through says so, never 'New video' */ log });
   /* the jam's finals (finals-routes.js): the sheet's status, the quote, the run and a Space checkpoint; a final lands as a draft
      card marked final and posts to the thread like every asset. Off when the server has no Sloosh client (tests) */
@@ -1837,7 +1957,7 @@ export function createFeedService(o) {
     return guestAllows(path, { wids, changes, cards: new Set(all.filter((w) => wids.includes(w.id)).map((w) => w.cardId).filter(Boolean)) });
   };
   /* the writes a demo-mode visitor may still make: none of them calls a model or makes an asset */
-  const DEMO_OK = /^\/api\/(tenants|work|tenants\/[^/]+\/(ready|clock|events|pin|cards|notes\/(clear|read)|stories\/[^/]+\/seen|deck-layout|state|learning\/.+)|cards\/[^/]+\/(feedback|decided)|work\/[^/]+\/(decided|discard|restore|pick|version|approve|reopen|edit|jb\/move|draft\/[^/]+\/drop)|changes\/[^/]+\/(open|discard|restore|pick|notes|edit))$/;
+  const DEMO_OK = /^\/api\/(tenants|work|tenants\/[^/]+\/(ready|clock|events|pin|find-more|cards|notes\/(clear|read)|stories\/[^/]+\/seen|deck-layout|state|learning\/.+)|cards\/[^/]+\/(feedback|decided)|work\/[^/]+\/(decided|discard|restore|pick|version|approve|reopen|edit|jb\/move|draft\/[^/]+\/drop)|changes\/[^/]+\/(open|discard|restore|pick|notes|edit))$/;
   // every request runs inside its brand: the tenant's brand, or (creating one) the brand the page was opened for
   const handle = async (req, res, u) => {
     if (!/^\/(h\/|api\/(share|tenants|cards|jams|work|changes|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?)$))/.test(u.pathname)) return false;

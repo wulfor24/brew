@@ -1,5 +1,6 @@
-// A brand waiting on "Check what we read" is never forgotten and never confirmed for anyone (audit 2026-10-16: one waited
-// 23 hours with nobody told, and its research reloaded on every container start).
+// A brand waiting on "Check what we read" is never forgotten (audit 2026-10-16: one waited 23 hours with nobody told, and its
+// research reloaded on every container start). Since 2026-10-17 the wait is honest: Brew starts writing at status.writeAt
+// with what it read unless someone checks first, and the reminders stop once the build has started.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -39,6 +40,7 @@ test('reminders: one after a few hours, one a day later, never twice, a late fin
   assert.equal(dueReminder(waiting(), { 0: 1, 1: 1 }, T0 + 99 * H), -1, 'two reminders, then quiet');
   assert.equal(dueReminder(waiting(), {}, T0 + 30 * H), 1, 'found a day late: the day reminder only');
   assert.equal(dueReminder(waiting({ confirmedAt: T0 + H }), {}, T0 + 30 * H), -1);
+  assert.equal(dueReminder(waiting({ stages: { read: { state: 'done' }, confirm: { state: 'waiting' }, brief: { state: 'running' } } }), {}, T0 + 30 * H), -1, 'the build started: no reminder');
 });
 
 test('who hears: the person who started the read and the brand admins, once each, never a demo address', async () => {
@@ -47,12 +49,15 @@ test('who hears: the person who started the read and the brand admins, once each
   assert.deepEqual(await recipients(mem(), 'g'), []);
 });
 
-test('the email: one button straight back to the check page, says it never confirms on its own', () => {
+test('the email: one button into the product, on the check page; says honestly when Brew starts writing', () => {
   const m = reminderMail({ name: 'Gully', slug: 'gully-com', i: 0, base: 'https://brew.example', hours: 3.2 });
-  assert.match(m.html, /href="https:\/\/brew\.example\/gully-com#check"/);
-  assert.match(m.text, /https:\/\/brew\.example\/gully-com#check/);
+  assert.match(m.html, /href="https:\/\/brew\.example\/gully-com\?go=feed#check"/);
+  assert.match(m.text, /https:\/\/brew\.example\/gully-com\?go=feed#check/);
   assert.match(m.subject, /Gully is waiting for you to check what Brew read/);
-  assert.match(m.html, /never confirms a read on its own/);
+  assert.doesNotMatch(m.html, /never confirms/, 'Brew does go on without the check: the email never says otherwise');
+  assert.match(m.text, /Brew starts writing once someone on the team checks it\./, 'no time limit (a read started signed out)');
+  const at = Date.UTC(2026, 9, 15, 9, 30), w = reminderMail({ name: 'Gully', slug: 'g', i: 0, hours: 3, writeAt: at, now: at - 60e3, cfg: { timezone: 'Asia/Kolkata' } });
+  assert.match(w.text, /Brew starts writing at 15:00 \S+ with what it read, unless you check first\./);
   assert.match(reminderMail({ name: 'Gully', slug: 'g', i: 1, hours: 26 }).text, /waited 1 day\. This is the last reminder/);
 });
 

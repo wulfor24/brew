@@ -179,13 +179,18 @@ async function rawGeminiImage(o) {
    and a vision check after each picture regenerates or falls back to the real photo on a mismatch */
 const IMG_MIME = (b) => (b[0] === 0x89 ? 'image/png' : b[0] === 0xff ? 'image/jpeg' : b.slice(0, 4).toString() === 'RIFF' ? 'image/webp' : b.slice(0, 3).toString() === 'GIF' ? 'image/gif' : 'image/jpeg');
 const photoAny = async (u) => { if (!u) return null; if (/^https?:/.test(u)) { const f = path.join(os.tmpdir(), 'brew-ph-' + crypto.createHash('sha1').update(u).digest('hex').slice(0, 16)); if (!fs.existsSync(f)) { const r = await safeFetch(u, { signal: AbortSignal.timeout(20e3) }); if (!r.ok) return null; fs.writeFileSync(f, Buffer.from(await r.arrayBuffer())); } return f; } return photoAsync(u); };
+/* four answers (image-guard.js acts on each): SAME keeps the picture; TEXT (the right product, its name misspelled in large
+   letters) is made once more; DIFFERENT is made again stricter, then the real photo stands in; NOREF (image 1 is a logo, a
+   graphic or a screenshot, not a product photo) moves to another catalog photo. Blurred or garbled small print is SAME: of 54
+   pictures thrown away on 16 Oct, 47 showed the right product. `same` stays for callers that read only it (TEXT is not same) */
 const sameProduct = async (refFile, buf, name) => {
-  if (!anthropic || process.env.AI_MOCK === '1' || process.env.IMAGE_CHECK === '0') return { same: true, why: 'check off' };
+  if (!anthropic || process.env.AI_MOCK === '1' || process.env.IMAGE_CHECK === '0') return { same: true, text: false, noref: false, why: 'check off' };
   const ref = fs.readFileSync(refFile), img = (b) => ({ type: 'image', source: { type: 'base64', media_type: IMG_MIME(b), data: b.toString('base64') } });
   const msg = await anthropic.messages.create({ model: process.env.IMAGE_CHECK_MODEL || 'claude-haiku-5-5', max_tokens: 400, thinking: { type: 'disabled' }, messages: [{ role: 'user', content: [
-    { type: 'text', text: `Image 1 is the real product${name ? ` (${name})` : ''}. Image 2 is a new ad picture. Does image 2 show the same product as image 1: the same model, colours, prints and details, not a different product from the range? Ignore the scene, angle and light. Reply with one word, SAME or DIFFERENT, then a short reason.` },
+    { type: 'text', text: `Image 1 is the real product${name ? ` (${name})` : ''}. Image 2 is a new ad picture. Ignore the scene, the light and the setting. Reply with one word, then a short reason. SAME: the same product (type, shape, colours, pack design, number of items), even if small print is blurred, misspelled or unreadable, a small tag is added or missing, or the angle differs. TEXT: the same product, but its brand or product name is clearly misspelled in large letters. DIFFERENT: another product type, shape, colour, pack design or number of items. NOREF: image 1 is not a product photo (a logo, a graphic, a screenshot).` },
     img(ref), img(buf)] }] });
-  const t = (msg.content || []).map((x) => x.text || '').join(' ').trim(); if (!/^\W*(same|different)\b/i.test(t)) throw new Error(`no verdict (${msg.stop_reason})`); return { same: /^\W*same\b/i.test(t), why: t.slice(0, 160) };
+  const t = (msg.content || []).map((x) => x.text || '').join(' ').trim(), m = /^\W*(same|text|different|noref)\b/i.exec(t); if (!m) throw new Error(`no verdict (${msg.stop_reason})`);
+  const w = m[1].toLowerCase(); return { same: w === 'same' || w === 'noref', text: w === 'text', noref: w === 'noref', verdict: w, why: t.slice(0, 160) };
 };
 /* the draft image chain (media.js): Vertex Gemini (both models), then OpenAI gpt-image-1; the jam's image chip puts GPT Image
    first when it is picked. Sloosh never sits here: it makes finals only, behind a button, through finals.js */
@@ -514,6 +519,9 @@ const slooshHandle = async (req, res, u) => {
    more a day later (never auto-confirmed). Live site only: the demo sends no email, local servers only with CONFIRM_REMIND=1 */
 if (!DEMO && process.env.CONFIRM_REMIND !== '0' && (process.env.K_SERVICE || process.env.CONFIRM_REMIND === '1')) createConfirmRemind({ packs, mail: (...a) => auth.mail(...a), log: console }).start();
 const jamMail = createJamMail({ mail: (...a) => auth.mail(...a), packs, sign: auth.sign, verify: auth.verify, brandName: (slug) => packs.peek(slug)?.seed?.brand?.name || slug, watching: (wid, email) => !!feedSvc?.jams?.watching?.(wid, email), log: console });
+/* the weekly digest (digest.js): each Ready brand's team hears on Monday morning, brand time, what changed in Brew (from saved files,
+   no AI); its Slack channel too when connected. Live site only (Cloud Run, or DIGEST=1 locally), never the demo; DIGEST_OFF=1 stops it */
+if (!DEMO && process.env.DIGEST_OFF !== '1' && (process.env.K_SERVICE || process.env.DIGEST === '1')) import('./digest.js').then(({ createDigest }) => createDigest({ packs, mail: (...a) => auth.mail(...a), slack: () => connectors, prefLink: (slug, email) => jamMail.prefLink(slug, email, 'off'), log: console }).start()).catch((e) => console.warn('[digest] not started:', e.message));
 /* Demo Mode: a visitor with no Google sign-in is the owner of their own demo session (demo-mode.js virtualFile) */
 if (DEMO) { const realUser = auth.user; auth.user = (req) => realUser(req) || (demoSid() ? { email: demoEmail(), name: 'You', demo: true } : null); }
 const memoryRoutes = createMemoryRoutes({ memory, viewerOf: (req, slug) => viewerOf(req, slug), readBody, send, enabled: MEMORY_ON, exists: async (slug) => !blocked(slug) && (!!(await packs.getJSON(slug, 'status.json', null))) }); // brand memory
@@ -644,6 +652,10 @@ const brandRoutes = async (req, res, u) => {
   if (what === 'notify' && req.method === 'POST') { const b = await readBody(req), me = auth.user(req);
     /* "email me when the moves are in": a signed-in person adds their own address (the team may add a teammate), so nobody turns Brew into a mailer */
     if (auth.signinOn() && !me) return send(res, 401, { error: 'Sign in to get an email when the moves are in.', signin: true }), true;
+    /* the moves-ready box's Mute: a signed-in person turns Brew's emails for this brand off (or back on) for themselves only; the
+       same switch the jam emails' footer sets (private/mail-prefs.json), read by the moves emails and the weekly digest */
+    if (typeof b.mute === 'boolean') { if (!me) return send(res, 401, { error: 'Sign in first.', signin: true }), true;
+      const x = await jamMail.setPref(slug, me.email, { mail: b.mute ? 'off' : 'all' }); return send(res, 200, { ok: true, muted: x.mail === 'off', email: me.email }), true; }
     const want = String(b.email || '').trim().toLowerCase();
     if (me && want !== String(me.email).toLowerCase()) { /* a member may add a teammate or someone already invited; nobody adds a stranger */
       const tm = v.member ? await auth.getMembers(slug).catch(() => null) : null, team = new Set([...(tm?.members || []).map((x) => String(x.email).toLowerCase()), ...(tm?.invites || []).map((x) => String(x.email).toLowerCase())]);
@@ -663,7 +675,7 @@ const brandRoutes = async (req, res, u) => {
     return send(res, 200, r), true; }
   if (what === 'retry' && req.method === 'POST') return send(res, 200, await builder.retry(slug)), true;
   if (what === 'pro' && req.method === 'POST') { const me = auth.user(req); return send(res, 200, await builder.goPro(slug, { by: me?.email || v.email || null })), true; } // the paused build carries on to every move
-  if (what === 'check' && req.method === 'GET') return send(res, 200, await builder.checkData(slug, { heal: !auth.signinOn() || !!auth.user(req) })), true; // a paid repair of the saved read only for someone signed in
+  if (what === 'check' && req.method === 'GET') return send(res, 200, await builder.checkData(slug, { heal: !auth.signinOn() || !!auth.user(req), opened: !!auth.user(req) && !!(v.member || v.eligible) })), true; // a paid repair of the saved read only for someone signed in; the team opening it gets the full wait from now (build.js checkOpened)
   if (what === 'check' && req.method === 'POST') { const g = await signGate(); if (g) return send(res, 401, g), true; const b = await readBody(req); return send(res, 200, await builder.applyCheck(slug, b)), true; }
   if (what === 'moves') { const p = await loadBrand(slug); const pm = v.member ? await packs.getJSON(slug, 'private/moves.json', {}) : {}, ms = { ...(p?.moveDocs || {}), ...pm };
     const stale = Object.fromEntries(Object.entries((await packs.getJSON(slug, 'updates.json', null))?.stale || {}).filter(([, x]) => v.member || !x.private)), ppdf = v.member ? await packs.getJSON(slug, 'private/pdfs.json', {}) : {};

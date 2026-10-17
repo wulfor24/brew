@@ -4,6 +4,8 @@ import { sk } from './demo-mode.js';
 //   topics   up to 12 short topics; a card that mentions one is lifted (two at most count)
 //   notes    "My preferences" dropped into Brew (drop.js dest=prefs): kept for the member, read by nothing that spends
 //   ignored  learned signals the member deleted ("picked up from your choices"): the ranker stops using them
+//   saved    the cards this person saved (the bookmark), so every device they open shows them; a save counts as 1.5 hearts
+// Notes ("My preferences") and the workspace's "Tell us why" notes also feed the ranker as a few keywords (noteTopics).
 // Learned signals are not stored: they are read from the workspace's own card feedback (hearts, Not for me, Fewer) every time,
 // so they always match what the ranker uses, and deleting one only adds its id to `ignored`.
 // Kept in the brand pack at private/tuning.json { [memberKey]: tuning }. JSON in GCS: safe at max-instances=1 (brew-storage).
@@ -13,30 +15,46 @@ export const WEIGHT = { less: -4, normal: 0, more: 4 };
 const NAME = { creative: 'Creative', performance: 'Performance', storefront: 'Storefront', visibility: 'AI visibility', crm: 'CRM' };
 
 const str = (x, n) => String(x ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
-export const emptyTuning = () => ({ weights: Object.fromEntries(AGENTS.map((a) => [a, 'normal'])), topics: [], notes: [], ignored: [], at: null });
+export const emptyTuning = () => ({ weights: Object.fromEntries(AGENTS.map((a) => [a, 'normal'])), topics: [], notes: [], ignored: [], saved: [], at: null });
 /* what a client may set: unknown agents, weights and anything else are dropped */
 export function cleanTuning(x = {}, base = emptyTuning()) {
   const out = { ...emptyTuning(), ...base, weights: { ...emptyTuning().weights, ...(base.weights || {}) } };
   if (x.weights && typeof x.weights === 'object') for (const a of AGENTS) if (WEIGHT[x.weights[a]] != null) out.weights[a] = x.weights[a];
   if (Array.isArray(x.topics)) out.topics = [...new Set(x.topics.map((t) => str(t, 40).toLowerCase()).filter((t) => t.length >= 2))].slice(0, 12);
   if (Array.isArray(x.ignored)) out.ignored = [...new Set(x.ignored.map((t) => str(t, 80)).filter(Boolean))].slice(0, 100);
+  out.saved = Array.isArray(base.saved) ? [...new Set(base.saved.map((t) => str(t, 120)).filter(Boolean))].slice(0, 300) : []; /* set only by setSaved, never by a client's put */
   return out;
 }
 const textOf = (c) => `${c.title || ''} ${c.sub || ''} ${c.campaign || ''} ${c.src || ''} ${(c.detail?.why || []).join(' ')}`.toLowerCase();
-/* the ranker's lift for one card: the agent's weight, plus 2 for each topic the card mentions (two at most) */
-export function tuneScore(tuning, c) {
-  if (!tuning || !c) return 0;
-  const w = WEIGHT[tuning.weights?.[c.agent]] || 0;
-  const tx = (tuning.topics || []).length ? textOf(c) : '';
-  const hits = (tuning.topics || []).filter((t) => tx.includes(t)).length;
-  return w + Math.min(2, hits) * 2;
+/* the ranker's lift for one card: the agent's weight, plus 2 for each topic the card mentions (two at most), plus the words the
+   person's notes keep using (noteTopics: +1 each, two at most) and minus the words of the notes on cards they marked not useful */
+export function tuneScore(tuning, c, nt = null) {
+  if (!c || (!tuning && !nt)) return 0;
+  const w = WEIGHT[tuning?.weights?.[c.agent]] || 0;
+  const tx = (tuning?.topics || []).length || nt?.up?.length || nt?.down?.length ? textOf(c) : '';
+  const hits = (tuning?.topics || []).filter((t) => tx.includes(t)).length;
+  const has = (k) => new RegExp(`\\b${k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(tx);
+  const up = (nt?.up || []).filter(has).length, down = (nt?.down || []).filter(has).length;
+  return w + Math.min(2, hits) * 2 + Math.min(2, up) - Math.min(2, down) * 1.5;
+}
+/* the few words a person's notes keep coming back to: lowercased content words (4+ letters, no filler), most used first, at most
+   10. Notes on a card they marked not useful go to `down`, never `up`: "we don't sell gift sets" must not lift gift-set cards */
+const NOTE_STOP = new Set(('about above after again against also always another because been before being below between both brand brew cards card could does doing done down during each even every feed from further have having here hers into just like make more most much must need never only other ours over really same should some such than that their them then there these they this those through under until very want what when where which while will with would your yours just show shows think thing things good great better best please thanks maybe also lets dont doesnt cant wont isnt arent didnt').split(' '));
+export function noteTopics(up = [], down = []) {
+  const top = (texts) => { const n = new Map();
+    for (const x of texts) for (const w of new Set(String(x || '').toLowerCase().replace(/[’']/g, '').match(/\p{L}[\p{L}\p{N}-]{3,}/gu) || [])) if (!NOTE_STOP.has(w) && !/^\d/.test(w)) n.set(w, (n.get(w) || 0) + 1);
+    return [...n.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([w]) => w); };
+  const d = top(down), u = top(up).filter((w) => !d.includes(w));
+  return u.length || d.length ? { up: u, down: d } : null;
 }
 
 /* "Picked up from your choices": what the workspace's card feedback teaches the ranker (feed-service affinityMap and fewer).
    Each has a stable id so the member can delete it. A like needs 2 hearts on that agent or campaign; a skip needs one Not for me
    on that agent, two in one area; fewer is the Fewer button */
-export function learnedSignals({ feedback = [], cards = new Map(), fewer = {}, ignored = [] } = {}) {
+export function learnedSignals({ feedback = [], cards = new Map(), fewer = {}, ignored = [], saved = null } = {}) {
   const hearts = new Map(); feedback.forEach((f) => { if (f.kind === 'heart') hearts.set(f.cardId, 1); if (f.kind === 'unheart') hearts.delete(f.cardId); });
+  /* a saved card is liked too (the ranker counts a save as 1.5 hearts): saved = this person's saved ids, else the workspace's saves */
+  const sv = new Set(saved || []); if (!saved) feedback.forEach((f) => { if (f.kind === 'save') sv.add(f.cardId); if (f.kind === 'unsave') sv.delete(f.cardId); }); sv.forEach((id) => hearts.set(id, 1));
   const n = {}; const inc = (k) => (n[k] = (n[k] || 0) + 1);
   hearts.forEach((_, id) => { const c = cards.get(id); if (!c) return; inc(`like:agent:${c.agent}`); if (c.campaign) inc(`like:campaign:${c.campaign}`); });
   feedback.forEach((f) => { if (f.kind !== 'not_interested') return; const c = cards.get(f.cardId); if (!c) return; inc(`skip:agent:${c.agent}`); if (c.sector) inc(`skip:sector:${c.sector}`); });
@@ -76,7 +94,9 @@ export function createTuning({ packs, now = () => Date.now(), log = console }) {
   const put = (slug, key, patch) => write(slug, key, (cur) => cleanTuning(patch, cur));
   const addNote = (slug, key, text, { source = 'note' } = {}) => write(slug, key, (cur) => { const id = 'pn_' + Math.random().toString(16).slice(2, 10); cur.notes = [{ id, text: str(text, 4000), source: str(source, 140), at: now() }, ...(cur.notes || [])].slice(0, 50); return cur; });
   const dropNote = (slug, key, id) => write(slug, key, (cur) => { cur.notes = (cur.notes || []).filter((n) => n.id !== id); return cur; });
+  /* the bookmark: a card saved or unsaved by this person, on every device they open (the newest first) */
+  const setSaved = (slug, key, id, on) => write(slug, key, (cur) => { const x = str(id, 120); if (!x) return cur; const rest = (cur.saved || []).filter((y) => y !== x); cur.saved = (on ? [x, ...rest] : rest).slice(0, 300); return cur; });
   const ignore = (slug, key, id) => write(slug, key, (cur) => { cur.ignored = [...new Set([...(cur.ignored || []), str(id, 80)])].slice(-100); return cur; });
   const unignore = (slug, key, id) => write(slug, key, (cur) => { cur.ignored = (cur.ignored || []).filter((x) => x !== id); return cur; });
-  return { load, peek, get, put, addNote, dropNote, ignore, unignore, _cache: cache };
+  return { load, peek, get, put, addNote, dropNote, ignore, unignore, setSaved, _cache: cache };
 }

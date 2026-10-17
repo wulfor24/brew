@@ -83,13 +83,22 @@ export function createFinalsRoutes({ on, W, say, meOf, slugOfT, brandOfT, cardOf
 }
 
 /* ---------- the studio: a final is the next version, labelled Final ---------- */
-export function createStudioFinals({ on, C, ensurePkg, sync, version, pubChange, cardOf = () => null, cardPhoto = () => null, catalogOf = () => [], jobs, references = null, finals, sloosh, creditsLeft = () => null, brandOfT, slugOfT, meOf = () => null, onMedia = () => {}, isVideo = () => false, RATIO = {}, now = () => Date.now(), log = console }) {
+export function createStudioFinals({ on, C, ensurePkg, sync, version, pubChange, cardOf = () => null, cardPhoto = () => null, catalogOf = () => [], jobs, vidJobs = null, references = null, finals, sloosh, creditsLeft = () => null, brandOfT, slugOfT, meOf = () => null, onMedia = () => {}, isVideo = () => false, RATIO = {}, now = () => Date.now(), log = console }) {
   const sheet = createFinalsSheet({ finals, sloosh, references, creditsLeft, brandOfT, log, now });
   const nameOf = (t) => meOf(t)?.name || meOf(t)?.email || 'Someone';
   const headFinal = (ch) => (ch.versions || []).find?.((v) => v.id === ch.headVersionId)?.final || ch.lastFinal?.versionId === ch.headVersionId ? ch.lastFinal : null;
-  const baseOf = (t, ch) => { const c = cardOf(t, ch) || {}, p = ch.pkg || {}; const fin = headFinal(ch); return { kind: isVideo(ch) ? 'video' : 'image', title: ch.after?.title || c.title || '', visual: [p.imageBrief, p.knobs?.scene ? `Scene: ${p.knobs.scene}.` : '', p.knobs?.audience ? `For ${p.knobs.audience}.` : ''].filter(Boolean).join(' '), scene: sceneOf(c), text: p.overlay || p.headline || '', copy: p.primaryText || p.copy || '', ratio: RATIO[p.format] || '4:5', script: (p.script || [])[0]?.line || '', fromFile: p.video || p.image || null, revision: fin ? (fin.revision || 0) + 1 : 0, format: c?.make?.format || p.format || '' }; };
+  /* a version remade as a reel, a carousel or a picture (remix.js remakeOf): the final is made in that format, from that draft's
+     own media and words (its first slide for a carousel), and lands back in the draft the stage shows */
+  const remade = (ch) => (ch.pkg?.draft?.remade ? ch.pkg.draft : null);
+  /* the final's file onto the package: into a remade draft (the stage shows it), else the version's own photo or clip */
+  const land = (ch, isVid, file) => { const d = remade(ch);
+    ch.pkg = d ? { ...ch.pkg, draft: { ...d, ...(isVid ? { video: file, poster: d.poster || d.images?.[0] || null } : { images: [file, ...(d.images || []).slice(1)] }), pending: false } } : { ...ch.pkg, ...(isVid ? { video: file } : { image: file }) }; };
+  const baseOf = (t, ch) => { const c = cardOf(t, ch) || {}, p = ch.pkg || {}, d = remade(ch); const fin = headFinal(ch);
+    if (d) { const vid = d.as === 'video', s0 = (d.slides || [])[0] || {};
+      return { kind: vid ? 'video' : 'image', title: d.title || ch.after?.title || c.title || '', visual: [d.imageBrief || s0.visual || (d.script || [])[0]?.shot || p.imageBrief, p.knobs?.scene ? `Scene: ${p.knobs.scene}.` : ''].filter(Boolean).join(' '), scene: sceneOf(c), text: d.overlay || s0.text || (d.script || [])[0]?.line || p.headline || '', copy: p.primaryText || p.copy || '', ratio: d.ratio || (vid ? '9:16' : RATIO[p.format] || '4:5'), motion: d.motion || undefined, script: (d.script || [])[0]?.line || '', beats: vid ? (d.script || []).map((x) => ({ shot: x.shot, line: x.line })) : [], fromFile: (vid ? d.video : null) || d.images?.[0] || p.image || null, revision: fin ? (fin.revision || 0) + 1 : 0, format: vid ? 'reel' : d.as === 'carousel' ? 'carousel ad' : c?.make?.format || p.format || '' }; }
+    return { kind: isVideo(ch) ? 'video' : 'image', title: ch.after?.title || c.title || '', visual: [p.imageBrief, p.knobs?.scene ? `Scene: ${p.knobs.scene}.` : '', p.knobs?.audience ? `For ${p.knobs.audience}.` : ''].filter(Boolean).join(' '), scene: sceneOf(c), text: p.overlay || p.headline || '', copy: p.primaryText || p.copy || '', ratio: RATIO[p.format] || '4:5', script: (p.script || [])[0]?.line || '', fromFile: p.video || p.image || null, revision: fin ? (fin.revision || 0) + 1 : 0, format: c?.make?.format || p.format || '' }; };
   const photos = (t, ch) => { const c = cardOf(t, ch) || {}, p = ch.pkg || {}; return sheet.photosOf(t, c, [...(p.photos || []).filter((u) => !/^gen\//.test(u)), cardPhoto(t, c)]); };
-  const draftOf = (t, ch) => { const p = ch.pkg || {}, b = baseOf(t, ch); return { id: ch.id, as: b.kind, title: b.title, visual: b.visual, motion: '', text: b.text, ratio: b.ratio, final: !!headFinal(ch), image: p.image || null, video: p.video || null }; };
+  const draftOf = (t, ch) => { const p = ch.pkg || {}, b = baseOf(t, ch), d = remade(ch); return { id: ch.id, as: b.kind, title: b.title, visual: b.visual, motion: '', text: b.text, ratio: b.ratio, final: !!headFinal(ch), image: d?.images?.[0] || p.image || null, video: d ? d.video || null : p.video || null }; };
 
   on('GET', '/api/changes/:chid/final/status', async (b, t, p) => { const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); const base = baseOf(t, ch);
     return sheet.status(t, { slug: slugOfT(t), kind: base.kind, format: base.format, photos: photos(t, ch), draft: draftOf(t, ch), pending: ch.finalQuote ? { at: ch.finalQuote.at } : null }); });
@@ -102,22 +111,25 @@ export function createStudioFinals({ on, C, ensurePkg, sync, version, pubChange,
 
   on('POST', '/api/changes/:chid/final/run', async (b, t, p) => { const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); const fq = ch.finalQuote; if (!fq) return { error: 'Get the quote first.' };
     const slug = slugOfT(t), by = nameOf(t), { quote: q, spec } = fq; ch.finalQuote = null; const isVid = spec.kind === 'video';
-    if (isVid) { ch.videoPending = true; ch.videoStep = 'Sloosh is making the final'; } else ch.imagePending = true; ch.imageError = null; ch.finalPending = { at: now(), credits: q.credits, model: q.label || q.model || q.space?.name || null, fallback: !!q.fallback, provider: q.provider || 'sloosh' }; jobs?.add?.(ch.id); sync(t, ch);
+    /* a video final is a video job (vidJobs), so a read while it is made never calls it stopped (C() clears a videoPending it
+       can't find there); an earlier video error is cleared as it starts */
+    const set = isVid ? vidJobs || jobs : jobs;
+    if (isVid) { ch.videoPending = now(); ch.videoStep = 'Sloosh is making the final'; ch.videoError = null; } else ch.imagePending = true; ch.imageError = null; ch.finalPending = { at: now(), credits: q.credits, model: q.label || q.model || q.space?.name || null, fallback: !!q.fallback, provider: q.provider || 'sloosh' }; set?.add?.(ch.id); sync(t, ch);
     (async () => { try { const rec = await finals.run(slug, spec, { quote: q, by, target: { chid: ch.id, revision: spec.revision } });
         if (rec.state === 'checkpoint') { ch.finalCheckpoint = { runKey: rec.runKey, checkpoint: rec.checkpoint || null, at: now() }; ch.imageError = 'The Sloosh Space paused for a check. Open Make the final to carry on or stop.'; }
-        else { ch.pkg = { ...ch.pkg, ...(isVid ? { video: rec.file } : { image: rec.file }) };
+        else { land(ch, isVid, rec.file);
           const v = version(t, ch, rec.provider === 'gemini' ? 'gemini' : 'sloosh', `Final: ${rec.dummy ? 'simulated' : rec.provider === 'gemini' ? `made with Gemini (Sloosh not ready: ${q.fallbackWhy || 'no credits yet'})` : `${rec.charged ?? rec.credits} credits on ${q.space ? q.space.name || 'a Sloosh Space' : q.label || q.model}`}`, rec.dummy ? 'Final (Dummy)' : rec.provider === 'gemini' ? 'Final (Gemini)' : 'Final');
           v.final = { credits: rec.charged ?? rec.credits, model: q.model || null, label: q.label || null, space: q.space || null, dummy: !!rec.dummy, fallback: !!rec.fallback, provider: rec.provider || 'sloosh', link: rec.link || null, assetId: rec.assetId || null, assetKind: rec.assetKind || null, revision: spec.revision, runKey: rec.runKey, by };
           ch.lastFinal = { versionId: v.id, ...v.final };
           try { onMedia(t, ch, { kind: isVid ? 'video' : 'image', images: isVid ? [] : [rec.file], video: isVid ? rec.file : null, n: v.n, label: v.label }); } catch {} }
-      } catch (e) { ch.imageError = String(e.message).slice(0, 200); log.warn('[finals] studio run', slug, e.message); }
-      finally { ch.imagePending = false; ch.videoPending = null; ch.videoStep = null; ch.finalPending = null; jobs?.delete?.(ch.id); sync(t, ch); } })();
+      } catch (e) { if (isVid) ch.videoError = `The final video didn’t come through (${String(e.message).slice(0, 160)}). Make it again.`; ch.imageError = String(e.message).slice(0, 200); log.warn('[finals] studio run', slug, e.message); }
+      finally { if (isVid) { ch.videoPending = null; ch.videoStep = null; } else ch.imagePending = false; ch.finalPending = null; set?.delete?.(ch.id); sync(t, ch); } })();
     return { change: pubChange(t, ch) }; });
 
   on('POST', '/api/changes/:chid/final/checkpoint', async (b, t, p) => { const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; const ck = ch.finalCheckpoint; if (!ck?.runKey) return { error: 'Nothing is waiting here.' };
     const slug = slugOfT(t), by = nameOf(t); ch.finalCheckpoint = null; ch.imagePending = true; ch.imageError = null; jobs?.add?.(ch.id); sync(t, ch);
     (async () => { try { const rec = await finals.checkpoint(slug, ck.runKey, !!b.ok, String(b.note || '').slice(0, 300)); if (rec.error) throw new Error(rec.error);
-        if (rec.state === 'done') { ch.pkg = { ...ch.pkg, image: rec.file }; const v = version(t, ch, 'sloosh', `Final: ${rec.charged ?? rec.credits} credits`, 'Final'); v.final = { credits: rec.charged ?? rec.credits, space: rec.space || null, link: rec.link || null, assetId: rec.assetId || null, runKey: rec.runKey, by }; ch.lastFinal = { versionId: v.id, ...v.final }; try { onMedia(t, ch, { kind: 'image', images: [rec.file], n: v.n, label: v.label }); } catch {} }
+        if (rec.state === 'done') { land(ch, false, rec.file); const v = version(t, ch, 'sloosh', `Final: ${rec.charged ?? rec.credits} credits`, 'Final'); v.final = { credits: rec.charged ?? rec.credits, space: rec.space || null, link: rec.link || null, assetId: rec.assetId || null, runKey: rec.runKey, by }; ch.lastFinal = { versionId: v.id, ...v.final }; try { onMedia(t, ch, { kind: 'image', images: [rec.file], n: v.n, label: v.label }); } catch {} }
         else if (rec.state === 'checkpoint') { ch.finalCheckpoint = { runKey: rec.runKey, checkpoint: rec.checkpoint || null, at: now() }; ch.imageError = 'The Sloosh Space paused again. Open Make the final to carry on or stop.'; }
         else ch.imageError = rec.error || 'stopped at the checkpoint';
       } catch (e) { ch.imageError = String(e.message).slice(0, 200); } finally { ch.imagePending = false; jobs?.delete?.(ch.id); sync(t, ch); } })();

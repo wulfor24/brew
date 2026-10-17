@@ -24,14 +24,28 @@ export const diffOf = (a = {}, b = {}) => {
   keys.forEach((k) => { const x = JSON.stringify(a?.[k] ?? null), y = JSON.stringify(b?.[k] ?? null); if (x !== y) out.push({ k, from: short(a?.[k] ?? ''), to: short(b?.[k] ?? '') }); });
   return out;
 };
+/* team jams (jams.js): a change or a jam the brand's team shares keeps its versions in the team's history (t.teamVg, saved in
+   the brand's jams.json), so every teammate's studio shows the same versions and the same head. A workspace's own copy of
+   that history (written before it was shared) moves in on the first read; two workspaces holding a history for one change
+   are merged by time and numbered again. Cards, rules and a visitor's own changes stay in the workspace (t.vg) */
+export const mergeVersions = (a = [], b = []) => {
+  const seen = new Set(), all = [...(a || []), ...(b || [])].filter((v) => v && v.id && !seen.has(v.id) && seen.add(v.id)).sort((x, y) => (x.at || 0) - (y.at || 0) || (x.n || 0) - (y.n || 0));
+  all.forEach((v, i) => { v.n = i + 1; }); return all;
+};
+const teamOwns = (t, team, id) => !!team && (!!team[id] || !!t.changes?.[id] || (Array.isArray(t.work) && t.work.some((w) => w?.id === id)));
+export const vgOf = (t, objectId) => {
+  const team = t.teamVg;
+  if (teamOwns(t, team, objectId)) { const own = t.vg?.[objectId]; if (Array.isArray(own) && own.length) { team[objectId] = mergeVersions(team[objectId], own); delete t.vg[objectId]; } return team; }
+  return (t.vg ||= {});
+};
 // author: 'ai:<agent>' | 'you' | 'teammate:<name>' | 'brew' | 'learning' | 'system'
 export const addV = (t, type, objectId, snapshot, { author = 'system', reason = '', parent = null, at } = {}) => {
-  t.vg ||= {}; const list = (t.vg[objectId] ||= []);
+  const list = (vgOf(t, objectId)[objectId] ||= []);
   const prev = parent ? list.find((v) => v.id === parent) : list[list.length - 1];
   const v = { id: uid('ver'), n: list.length + 1, type, objectId, parentVersionId: prev?.id || null, author, reason, diff: diffOf(prev?.snapshot, snapshot), snapshot: clone(snapshot), at: at || Date.now() };
   list.push(v); return v;
 };
-export const versionsOf = (t, objectId) => (t.vg?.[objectId] || []);
+export const versionsOf = (t, objectId) => (vgOf(t, objectId)[objectId] || []);
 export const versionById = (t, objectId, id) => versionsOf(t, objectId).find((v) => v.id === id);
 
 /* ---------- learning ---------- */

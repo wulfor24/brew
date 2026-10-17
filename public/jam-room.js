@@ -11,6 +11,9 @@
   const JM = { cid: null, tab: 'brief', draft: '', busy: '', previews: {}, moves: {}, flash: [], saveT: null, confirm: null, menu: false, importing: false, focusIn: false };
   const DPx = () => A.currentDetail && A.currentDetail();
   const W = () => { const p = DPx(); return p?._work || null; };
+  /* the jam the studio (the jam page) is on, when the card page is closed: the same people, tags and controls work there */
+  const studioW = () => { const p = A.studioCard?.(); return p ? A.workOfCard?.(p.id) || null : null; };
+  const jamHere = () => W() || studioW();
   /* real people. The demo site keeps the simulated teammates (Dummy); everywhere else @ means a real person on the team */
   const DEMO = !!window.BREW_DEMO;
   /* Brew's own lines: the Brew mark (the live site has no fictional pod); the demo keeps its letter */
@@ -22,7 +25,7 @@
   const initials = (p) => (p?.name || p?.email || '?').replace(/@.*/, '').split(/[\s._-]+/).filter(Boolean).slice(0, 2).map((x) => x[0].toUpperCase()).join('') || '?';
   const pAv = (p, n = 24) => p?.pic ? `<img class="av av-img" src="${esc(p.pic)}" alt="" referrerpolicy="no-referrer" style="width:${n}px;height:${n}px">` : `<span class="av" style="--ac:hsl(${hue(p?.email)} 38% 42%);width:${n}px;height:${n}px">${esc(initials(p))}</span>`;
   /* everyone this jam can tag: the team, people invited to it, and this jam's guests; never yourself */
-  const realPeople = (w = W()) => { const me = myEmail(), seen = new Map(), inJam = new Set((w?.people || []).map((x) => String(x.email).toLowerCase())),
+  const realPeople = (w = jamHere()) => { const me = myEmail(), seen = new Map(), inJam = new Set((w?.people || []).map((x) => String(x.email).toLowerCase())),
       add = (x, sub) => { const e = String(x.email || '').toLowerCase(); if (!e || e === me || seen.has(e)) return; const here = inJam.has(e);
         seen.set(e, { k: e, email: e, name: x.name || e.replace(/@.*/, ''), sub: here ? `In this jam${sub ? ` · ${sub}` : ''}` : `${sub ? `${sub} · ` : ''}Gets an email to join`, inJam: here, pic: x.pic || null, html: pAv({ ...x, email: e }, 20) }); };
     (window.LIVE?.access?.team || []).forEach((x) => add(x, x.role === 'owner' ? 'Admin' : ''));
@@ -173,9 +176,9 @@
     const mk = w && d.state === 'ready' && !d.failed && ['image', 'video'].includes(d.as) && (d.image || d.video) ? `<button class="linkbtn" data-jm-final="${esc(d.id)}" data-wid="${esc(w.id)}">${ic('sparkles', 's14')}${d.final ? 'Revise the final' : 'Make the final'}</button>` : '';
     const ck = w && d.state === 'checkpoint' ? `<div class="jm-dr-ck"><span>${esc(d.step || 'The Space is waiting for a yes')}</span><button class="btn btn-primary sm" data-jm-fnck="${esc(d.id)}" data-wid="${esc(w.id)}" data-ok="1">Carry on</button><button class="btn btn-ghost sm" data-jm-fnck="${esc(d.id)}" data-wid="${esc(w.id)}" data-ok="0">Stop</button></div>` : '';
     const media = d.state === 'making' ? `<div class="jm-dr-mk"><span class="spin"></span><span>${esc(d.step || 'Making it')}…</span></div>`
-      : d.video ? `<video class="jm-dr-m" src="${esc(d.video)}"${d.image ? ` poster="${esc(d.image)}"` : ''} controls playsinline loop preload="metadata" style="aspect-ratio:${esc((d.ratio || '9:16').replace(':', '/'))}"></video>`
+      : d.video ? `<video class="jm-dr-m" src="${esc(d.video)}"${d.poster || d.render || d.image ? ` poster="${esc(d.poster || d.render || d.image)}"` : ''} controls playsinline loop preload="metadata" style="aspect-ratio:${esc((d.ratio || '9:16').replace(':', '/'))}"></video>`
       : d.slides?.length ? `<div class="jm-dr-sl" style="--ar:${esc((d.ratio || '4:5').replace(':', '/'))}">${d.slides.map((x, i) => `<a href="${esc(x.image)}" target="_blank" rel="noopener" title="Slide ${i + 1}: ${esc(x.text)}"><img src="${esc(x.image)}" alt="Slide ${i + 1}: ${esc(x.text)}" loading="lazy"></a>`).join('')}</div>`
-      : d.render || d.image ? `<img class="jm-dr-m" src="${esc(d.render || d.image)}" alt="${esc(d.title || 'Draft image')}"${d.photo || (d.render && d.image) ? ` data-fb="${esc([d.render ? d.image : null, d.photo].filter(Boolean).join('|'))}"` : ''} style="aspect-ratio:${esc(d.render ? '4/5' : (d.ratio || '4:5').replace(':', '/'))}">` : ''; /* render: an email, chat, page or product-grid mock made before the jam opened */
+      : d.render || d.image ? `<img class="jm-dr-m" src="${esc(d.render || d.image)}" alt="${esc(d.title || 'Draft image')}"${d.photo || (d.render && d.image) ? ` data-fb="${esc([d.render ? d.image : null, d.photo].filter(Boolean).join('|'))}"` : ''} style="aspect-ratio:${esc((d.ratio || '4:5').replace(':', '/'))}">` : ''; /* the draft's own shape (4:5, 1:1 or 9:16), a mock too. render: an email, chat, page or product-grid mock made before the jam opened */
     const audio = d.audio && d.state !== 'making' ? `<div class="jm-dr-au">${d.video ? '<small>Voiceover</small>' : ''}<audio src="${esc(d.audio)}" controls preload="none"></audio></div>` : '';
     const file = d.zip || d.video || d.render || d.image || d.audio;
     return `<article class="jm-dr is-${esc(d.state)}${d.final ? ' is-final' : ''}${d.dummy ? ' is-dummy' : ''}">${media}${audio}${ck}
@@ -184,7 +187,14 @@
         ${d.err ? `<p class="jm-dr-note is-err">${esc(d.err)}</p>` : d.note ? `<p class="jm-dr-note">${esc(d.note)}</p>` : ''}
         ${d.state === 'making' ? '' : `<div class="jm-dr-acts">${mk}${file ? `<a class="linkbtn" href="${esc(file)}" download>${ic('down', 's14')}${d.zip ? `Download all ${d.slides?.length || ''} slides` : 'Download'}</a>` : ''}${d.copy ? `<button class="linkbtn" data-jm-drcopy="${esc(d.id)}">${ic('copy', 's14')}Copy the words</button>` : ''}<button class="linkbtn" data-jm-make="${esc(d.asked || 'auto')}">${ic('refresh', 's14')}Another take</button><button class="linkbtn jm-dr-x" data-jm-drop="${esc(d.id)}" aria-label="Remove this draft">${ic('x', 's14')}</button></div>`}</div></article>`;
   };
-  const draftsHtml = (w) => (w?.drafts?.length ? `<section class="jm-drafts" aria-label="Drafts">${w.drafts.map((d) => draftHtml(d, w)).join('')}</section>` : '');
+  /* a seeded jam can open with the card's clip plus older takes (take: true): the current draft leads, the older takes fold
+     into a small "Earlier takes" strip, newest first, never three equal drafts */
+  const takeThumb = (d) => { const src = d.poster || d.render || d.image || d.slides?.[0]?.image || null, file = d.video || d.zip || d.render || d.image || src, lab = AS[d.as] || ['sparkles', 'Draft'];
+    return `<a class="jm-take" href="${esc(file || '#')}" target="_blank" rel="noopener" title="${esc(`${lab[1]} · ${d.title || 'Earlier take'}`)}">${src ? `<img src="${esc(src)}" alt="" loading="lazy" style="aspect-ratio:${esc((d.ratio || '4:5').replace(':', '/'))}">` : `<span class="jm-take-ph">${ic(lab[0], 's16')}</span>`}<small>${d.video ? `${ic('vid', 's12')}` : ''}${esc(String(d.title || lab[1]).slice(0, 40))}</small></a>`; };
+  const draftsHtml = (w) => { const all = w?.drafts || []; if (!all.length) return '';
+    let main = all.filter((d) => !d.take), takes = all.filter((d) => d.take).sort((a, b) => (b.at || 0) - (a.at || 0));
+    if (!main.length && takes.length) { main = [takes[0]]; takes = takes.slice(1); }
+    return `<section class="jm-drafts" aria-label="Drafts">${main.map((d) => draftHtml(d, w)).join('')}${takes.length ? `<details class="jm-takes"><summary>${ic('clock', 's14')}Earlier takes <span>${takes.length}</span></summary><div class="jm-takes-s">${takes.map(takeThumb).join('')}</div></details>` : ''}</section>`; };
   const makeHtml = (w) => {
     if (['deploying', 'measuring', 'result'].includes(w?.stage)) return '';
     const busy = JM.making || (w?.drafts || []).some((d) => d.state === 'making');
@@ -384,6 +394,18 @@
     if (t.closest('[data-jm-view]')) return viewBrief();
     /* drafts are made from the canvas and the + menu too, both outside the pane */
     const mk = t.closest('[data-jm-make]'); if (mk && DPx()) return makeDraft(mk.dataset.jmMake);
+    /* the studio's header and chat carry the jam's own controls (Assign / Ask for OK, a proposal's Make it): the same actions,
+       on the studio's jam, and the studio repaints */
+    if (t.closest('[data-st-jam]') && !t.closest('[data-jm]')) { const w = studioW(); if (!w) return; const re = () => A.paintStudio?.();
+      if (t.closest('[data-jm-assign]')) { JM.assign = JM.assign ? null : 'work'; return re(); }
+      const am = t.closest('[data-jm-amode]'); if (am) { JM.assign = am.dataset.jmAmode; return re(); }
+      const at = t.closest('[data-jm-assignto]'); if (at) { const ask = JM.assign === 'approve' ? 'approve' : 'work', email = at.dataset.jmAssignto; JM.assign = null;
+        const r = await A.tapi('POST', `/api/work/${w.id}/assign`, { email, ask }); if (r.error) { toast(esc(r.error)); return re(); }
+        if (email) toast(`${ic('send', 's16')}${esc(realPeople(w).find((x) => x.email === email)?.name || email)} will get an email`); if (r.work) A.putWork(r.work); return re(); }
+      const pg = t.closest('[data-pend-go],[data-pend-no]'); if (pg) { const box = pg.closest('[data-pend]'); if (!box) return; box.querySelectorAll('button').forEach((b) => (b.disabled = true));
+        const r = await A.tapi('POST', `/api/work/${w.id}/pending/${box.dataset.pend}`, { go: pg.hasAttribute('data-pend-go') }); if (r.error) toast(esc(r.error)); if (r.work) A.putWork(r.work); return re(); }
+      return; }
+    if (JM.assign && A.studioCard?.() && !$('#dp')) { JM.assign = null; A.paintStudio?.(); } /* a tap anywhere else closes the studio's assign menu */
     if (!t.closest('[data-jm]')) { if ((JM.menu && !t.closest('[data-jm-menu]')) || JM.assign) { JM.menu = false; JM.assign = null; paint(); } return; }
     const alt = t.closest('[data-jm-alt]'); if (alt) { const box = $('#jm-in'); if (box) { box.value = alt.dataset.jmAlt; box.dispatchEvent(new Event('input', { bubbles: true })); box.focus(); } return; }
     const tb = t.closest('[data-jm-tab]'); if (tb) { JM.tab = tb.dataset.jmTab; return paint(); }
@@ -530,5 +552,17 @@
 
   /* who has this jam open (from the open jam's poll): true when it changed, so the strip repaints */
   const setHere = (wid, list) => { const k = (list || []).map((x) => `${x.email}:${x.typing ? 1 : 0}`).sort().join(','), was = (JM.hereK ||= {})[wid]; JM.hereK[wid] = k; (JM.here ||= {})[wid] = list || []; return was !== undefined ? was !== k : !!list?.length; };
-  window.JamRoom = { setHere, open, openFromCtx, close: () => {}, decorateDetail, fromHash, isOpen: () => false, isEditing, paint, addToBrief, send, sendTo, mentionOf, toHtml: (md) => toHtml(md) };
+  /* a message that tags anyone, anywhere in it (a teammate, an email to invite, the ShopOS team), goes to people (sendTo) */
+  const hasTag = (s) => { const x = String(s || '').trim(); if (!x) return false; return DEMO ? !!mentionOf(x) : !!(tagsIn(x).length || shoposIn(x) || freshIn(x).length); };
+  /* the part of a tagging message that also asks Brew for a change: "Make the headline shorter @Ana" → "Make the headline
+     shorter"; "@Brew …" or "@AI …" is always for Brew. A message that opens on a person (@Ana can you…) is for them only */
+  const CHANGE = /^(please\s+)?(make|change|rewrite|shorten|lengthen|add|remove|drop|cut|swap|replace|use|turn|try|fix|update|move|put|lead|open|end|keep|write|show)\b/i;
+  const changeAsk = (s) => { const x = String(s || '').trim(); if (!x) return null;
+    if (/(^|\s)@(brew|ai)\b/i.test(x)) return x.replace(/(^|\s)@(brew|ai)\b[,:]?/gi, ' ').replace(/\s+/g, ' ').trim() || null;
+    if (x.startsWith('@')) return null; const at = x.search(/(^|\s)@\S/); const head = (at < 0 ? x : x.slice(0, at)).trim().replace(/[\s,;:–—-]+$/, '');
+    return head.length >= 6 && CHANGE.test(head) ? head : null; };
+  /* the studio's own view of the jam: who's in it and here now, and its messages, in the jam pane's own look */
+  const peopleHtml = (w) => { if (!w || DEMO) return ''; const ps = people(w).slice(1); if (!ps.length) return '';
+    return `<span class="jm-people st-people" title="${esc(ps.map((x) => x.t).join(', '))}">${ps.slice(0, 5).map((x) => `<span class="jm-pp">${x.html}</span>`).join('')}${ps.length > 5 ? `<span class="jm-pp st-pp-more">+${ps.length - 5}</span>` : ''}</span>`; };
+  window.JamRoom = { setHere, open, openFromCtx, close: () => {}, decorateDetail, fromHash, isOpen: () => false, isEditing, paint, addToBrief, send, sendTo, mentionOf, hasTag, changeAsk, assignHtml: (w) => assignHtml(w), peopleHtml, typingHtml: (w) => typingHtml(w), teamMsg: (m, w) => msgHtml(m, w), toHtml: (md) => toHtml(md) };
 })();

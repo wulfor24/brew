@@ -50,7 +50,7 @@ export function createHandoff({ RMX, pageOf, fillCard, AGENT = {}, SEED = {}, ba
     const page = raw ? await pageOf(t, c).catch(() => null) : null;
     const decided = opts.decided || w.decided || null;
     const ch = w.changeId && t.changes?.[w.changeId]; const pkg = ch && RMX?.packageOf ? RMX.packageOf(t, ch) : null;
-    if (pkg) pkg.assets = pkg.assets.map((a) => a.url ? { ...a, url: abs(a.url, b) } : a);
+    if (pkg) pkg.assets = pkg.assets.map((a) => a.url ? { ...a, url: abs(a.url, b), ...(a.poster ? { poster: abs(a.poster, b) } : {}) } : a);
     const m = w.measure || c.measure || null;
     const who = (x) => x.from === 'me' ? 'You' : x.from === 'ai' ? (x.who || AGENT[w.agent] || 'AI') : x.from === 'brew' ? (x.who ? `${x.who} (Brew)` : 'ShopOS team') : x.from === 'colleague' ? (x.who || 'Teammate') : 'Brew';
     return {
@@ -101,7 +101,7 @@ export function createHandoff({ RMX, pageOf, fillCard, AGENT = {}, SEED = {}, ba
       L.push('', `*The package:* ${x.pkg.action} on ${x.pkg.target} (v${x.pkg.version} of ${x.pkg.versions}) · ${x.pkg.money}`);
       x.pkg.fields.filter((f) => f.pub).slice(0, 4).forEach((f) => L.push(`• ${f.label}: ${clip(f.value, 160)}`));
     }
-    const imgs = [...(x.pkg?.assets || []).filter((a) => a.kind === 'image').map((a) => `${a.label}: ${a.url}`), ...x.card.images.slice(0, 2).map((u) => `Card image: ${u}`), ...x.versions.filter((v) => v.image && v.current).map((v) => `Current version: ${v.image}`)];
+    const imgs = [...(x.pkg?.assets || []).filter((a) => a.kind === 'video' || a.kind === 'image').map((a) => `${a.label}: ${a.url}`), ...x.card.images.slice(0, 2).map((u) => `Card image: ${u}`), ...x.versions.filter((v) => v.image && v.current).map((v) => `Current version: ${v.image}`)];
     const seenU = new Set(); const imgs2 = imgs.filter((l) => { const u = l.slice(l.lastIndexOf(' ') + 1); if (seenU.has(u)) return false; seenU.add(u); return true; });
     if (imgs2.length) L.push('', '*Assets*', ...imgs2.slice(0, 5));
     const chat = x.jam.filter((m) => !m.system).slice(-6);
@@ -160,7 +160,7 @@ ${x.brief ? sec(`The brief${x.brief.kind ? ' · ' + esc(x.brief.kind) : ''}`, md
 ${x.pkg ? sec(`The package · ${esc(x.pkg.family)} · v${x.pkg.version} of ${x.pkg.versions}`, `<p><b>${esc(x.pkg.action)}</b> on ${esc(x.pkg.target)} · ${esc(x.pkg.money)} · ${esc(x.pkg.undo)}</p>
   ${x.pkg.assets.filter((a) => a.kind === 'image').length ? `<div class="imgs">${x.pkg.assets.filter((a) => a.kind === 'image').map((a) => `<figure><img src="${esc(a.url)}" alt=""><figcaption>${esc(a.label)} <a href="${esc(a.url)}" download target="_blank">Download</a></figcaption></figure>`).join('')}</div>` : ''}
   <dl style="margin-top:12px">${x.pkg.fields.map((f) => `<div><dt>${esc(f.label)}${f.pub ? '<em>customers see this</em>' : ''}</dt><dd>${esc(f.value)}</dd></div>`).join('')}</dl>
-  ${x.pkg.assets.filter((a) => a.kind !== 'image').map((a) => a.kind === 'link' ? `<p><a href="${esc(a.url)}" target="_blank">${esc(a.label)} ↗</a></p>` : a.kind === 'todo' ? `<p class="miss">To do: ${esc(a.label)}: ${esc(a.text)}</p>` : `<h4>${esc(a.label)}</h4><pre>${esc(a.text)}</pre>`).join('')}
+  ${x.pkg.assets.filter((a) => a.kind !== 'image').map((a) => a.kind === 'video' ? `<figure class="vid"><video src="${esc(a.url)}"${a.poster ? ` poster="${esc(a.poster)}"` : ''} controls playsinline preload="metadata" style="max-width:320px;width:100%;border-radius:10px"></video><figcaption>${esc(a.label)} <a href="${esc(a.url)}" download target="_blank">Download</a></figcaption></figure>` : a.kind === 'link' ? `<p><a href="${esc(a.url)}" target="_blank">${esc(a.label)} ↗</a></p>` : a.kind === 'todo' ? `<p class="miss">To do: ${esc(a.label)}: ${esc(a.text)}</p>` : `<h4>${esc(a.label)}</h4><pre>${esc(a.text)}</pre>`).join('')}
   ${x.pkg.notes.length ? `<h4>Notes</h4><ul>${x.pkg.notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}${x.pkg.checks.length ? `<h4>Checks</h4><ul>${x.pkg.checks.map((c) => `<li>${c.done ? '✓' : '○'} ${esc(c.text)}</li>`).join('')}</ul>` : ''}`) : ''}
 ${x.versions.length > 1 ? sec('Versions', `<div class="vers">${x.versions.map((v) => `<div class="ver${v.current ? ' cur' : ''}">${v.image ? `<img src="${esc(v.image)}" alt="">` : ''}<div><b>v${v.n} · ${esc(v.title)}</b><p class="eff">${esc(v.sub)}</p><p class="eff">${esc([v.by, v.note].filter(Boolean).join(' · '))}</p></div></div>`).join('')}</div>`) : ''}
 ${x.jam.length ? sec('The jam chat', msgs(x.jam)) : ''}

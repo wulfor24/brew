@@ -4,6 +4,9 @@
 // their workspace (t.ownWork / t.ownChanges), as before. When someone joins the team, their own jams move into the team's.
 // The demo site keeps per-visitor jams (every visitor is a sandbox of their own).
 // One instance runs the service (deploy.sh --max-instances=1), so the in-memory list is the truth and the file follows it.
+// The versions of the team's changes and jams (vg) live here too, beside the changes (learn.js vgOf reads t.teamVg), so a
+// teammate's studio shows the same versions and head as yours.
+import { mergeVersions } from './learn.js';
 const FILE = 'private/jams.json';
 const OPEN = (w) => !w.archived && !w.discarded && !['out', 'measuring', 'result'].includes(w.stage); // the same as feed-service workFor: a shared brief reopens its jam
 const lc = (e) => (e ? String(e).toLowerCase() : null);
@@ -12,10 +15,11 @@ export function createJams({ packs, reqOf, bgMember, log = console, enabled = ()
   const BR = new Map(); // slug → { work, changes, ready, last }
   const box = (slug) => {
     let b = BR.get(slug); if (b) return b;
-    b = { slug, work: [], changes: {}, last: null, loaded: false };
+    b = { slug, work: [], changes: {}, vg: {}, last: null, loaded: false };
     b.ready = (packs?.getJSON ? packs.getJSON(slug, FILE, null) : Promise.resolve(null)).then((j) => {
-      if (j) { const have = new Set(b.work.map((w) => w.id)); b.work.push(...(j.work || []).filter((w) => !have.has(w.id))); b.changes = { ...(j.changes || {}), ...b.changes }; }
-      b.loaded = true; b.last = JSON.stringify({ work: b.work, changes: b.changes });
+      if (j) { const have = new Set(b.work.map((w) => w.id)); b.work.push(...(j.work || []).filter((w) => !have.has(w.id))); b.changes = { ...(j.changes || {}), ...b.changes };
+        for (const [id, list] of Object.entries(j.vg || {})) b.vg[id] = b.vg[id] ? mergeVersions(list, b.vg[id]) : list; }
+      b.loaded = true; b.last = JSON.stringify({ work: b.work, changes: b.changes, vg: b.vg });
     }).catch((e) => { log.warn?.('[jams] load', slug, e.message); b.loaded = true; });
     BR.set(slug, b); return b;
   };
@@ -24,9 +28,9 @@ export function createJams({ packs, reqOf, bgMember, log = console, enabled = ()
   const flush = async (only) => {
     for (const b of BR.values()) {
       if (!b.loaded || (only && b.slug !== only)) continue;
-      let s; try { s = JSON.stringify({ work: b.work, changes: b.changes }); } catch (e) { log.warn?.('[jams] serialise', e.message); continue; }
+      let s; try { s = JSON.stringify({ work: b.work, changes: b.changes, vg: b.vg }); } catch (e) { log.warn?.('[jams] serialise', e.message); continue; }
       if (s === b.last) continue; b.last = s;
-      await packs.put(b.slug, FILE, { at: Date.now(), work: b.work, changes: b.changes }).catch((e) => { b.last = null; log.warn?.('[jams] save', b.slug, e.message); });
+      await packs.put(b.slug, FILE, { at: Date.now(), work: b.work, changes: b.changes, vg: b.vg }).catch((e) => { b.last = null; log.warn?.('[jams] save', b.slug, e.message); });
     }
   };
   const timer = packs?.put && everyMs ? setInterval(() => flush().catch(() => {}), everyMs) : null; timer?.unref?.();
@@ -47,6 +51,8 @@ export function createJams({ packs, reqOf, bgMember, log = console, enabled = ()
     if (!t.ownChanges || typeof t.ownChanges !== 'object') t.ownChanges = c0; else Object.assign(t.ownChanges, c0);
     Object.defineProperty(t, 'work', { configurable: true, enumerable: false, get() { return shared(t) ? box(slugOf(t)).work : t.ownWork; }, set(v) { if (!Array.isArray(v)) return; if (shared(t)) { const b = box(slugOf(t)); b.work.splice(0, b.work.length, ...v); } else t.ownWork = v; } });
     Object.defineProperty(t, 'changes', { configurable: true, enumerable: false, get() { return shared(t) ? box(slugOf(t)).changes : t.ownChanges; }, set(v) { if (!v || typeof v !== 'object') return; if (shared(t)) box(slugOf(t)).changes = v; else t.ownChanges = v; } });
+    /* the team's version history (learn.js vgOf): null for a visitor, whose versions stay in their workspace (t.vg) */
+    Object.defineProperty(t, 'teamVg', { configurable: true, enumerable: false, get() { return shared(t) ? box(slugOf(t)).vg : null; } });
     return t;
   };
 
@@ -87,7 +93,7 @@ export function createJams({ packs, reqOf, bgMember, log = console, enabled = ()
       else b.work.unshift(w);
       n++;
     }
-    for (const [id, ch] of Object.entries(t.ownChanges || {})) if (!b.changes[id]) b.changes[id] = ch;
+    for (const [id, ch] of Object.entries(t.ownChanges || {})) { if (!b.changes[id]) b.changes[id] = ch; if (t.vg?.[id]?.length) { b.vg[id] = mergeVersions(b.vg[id], t.vg[id]); delete t.vg[id]; } } /* their versions come with them */
     t.ownChanges = {};
     if (n) log.log?.(`[jams] ${slugOf(t)}: ${n} jam(s) from ${t.id} joined the team's`);
     return n;

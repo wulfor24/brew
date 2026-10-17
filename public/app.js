@@ -189,7 +189,7 @@
 
   /* ---------- the feed service (server): one tenant per browser; re-created from a snapshot if the server restarted ---------- */
   let TID = ls.get(`${LSP()}tenant`), lastSync = '', syncP = null;
-  const snapshot = () => ({ onboarded: S.onboarded, viewer: S.viewer, conn: S.conn, pro: S.pro, hearts: Object.keys(S.hearts), dismissed: S.dismissed, fewer: S.fewer, done: S.done, extra: S.extra });
+  const snapshot = () => ({ onboarded: S.onboarded, viewer: S.viewer, conn: S.conn, pro: S.pro, hearts: Object.keys(S.hearts), saved: S.saved, dismissed: S.dismissed, fewer: S.fewer, done: S.done, extra: S.extra });
   let tenantP = null;
   const ensureTenant = (force) => { if (TID && !force) return Promise.resolve(TID); if (tenantP) return tenantP;
     tenantP = api('/api/tenants', { url: B.brand.host, brand: B.slug || BR, snapshot: snapshot() }).then((r) => { TID = r.id; ls.set(`${LSP()}tenant`, TID); lastSync = ''; tenantP = null; return TID; }); return tenantP; };
@@ -230,6 +230,9 @@
   /* the read is in and waits for a person to check it (confirm-remind.js waitingOnCheck) */
   const waitsOnCheck = (s) => !!s && !s.done && !s.cancelled && !s.error && !s.confirmedAt && s.stages?.read?.state === 'done' && s.stages?.confirm?.state === 'waiting';
   /* the time left on a brand's moves: only the server's measured pace (status.etaMin), never a guess */
+  /* when Brew starts writing on its own if nobody checks the read (status/check writeAt), in the reader's local time */
+  const writeAtLine = (s) => { const t = typeof s?.writeAt === 'number' ? s.writeAt : Date.parse(s?.writeAt || ''); if (!(t > Date.now())) return `Brew starts writing ${Number.isFinite(t) ? 'in a moment' : 'in a few minutes'} with what it read, unless you check first.`;
+    return `Brew starts writing at ${new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} with what it read, unless you check first.`; };
   const etaOf = (s) => { const m = s?.etaMin; if (!(m > 0)) return ''; return ` · about ${m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 >= 10 ? ` ${m % 60} min` : ''}`} left`; };
   const signWall = (after) => {
     /* signed in, but not with an email at the brand (and not invited): the read is theirs to look at, the moves wait for the team */
@@ -249,7 +252,7 @@
     if (!needSignin()) return false;
     view = 'signin'; $('#su-done')?.remove(); $('#buddy')?.remove(); window.scrollTo(0, 0);
     if (after === 'who') ls.set(`${LSP()}continue`, '1');
-    const next = `/${BR}${after === 'check' ? '#check' : ''}`, team = after === 'team';
+    const next = after === 'check' ? `/${BR}#check` : location.pathname + location.search + location.hash, team = after === 'team'; /* a deep link (a jam, a card) comes back to itself after sign-in */
     /* 'team': a signed-out visitor at a brand's page. What Brew read stays with the brand's team, so no read replay with
        nothing in it: a plain sign-in for the team, true whether the brand is still being read or long finished */
     root.innerHTML = `<main class="screen sign-wall"><div class="sw-card">
@@ -280,18 +283,24 @@
   /* a studio link (#remix=…) boots the feed underneath first: until the studio opens, keep its full-page layout and hide the feed */
   let BOOT_RX = /^#remix=/.test(location.hash); const endBootRx = () => { if (!BOOT_RX) return; BOOT_RX = false; document.body.classList.remove('rx-boot'); document.body.dataset.view = view; };
   const loadStories = async () => { const r = await tapi('GET', '/api/tenants/:t/stories'); if (r.rings) RINGS = r.rings; };
+  /* the rings come after the feed: the feed paints first, the rings slot in when they land (never with a story open) */
+  let ringsP = null;
+  const ringsLater = () => { if (ringsP) return ringsP; ringsP = loadStories().catch(() => {}).finally(() => { ringsP = null; const el = $('.stories'); if (el && !$('#sv') && RINGS) el.outerHTML = storiesHtml(); }); return ringsP; };
   /* stories keep arriving through the day (each lives 24 h): re-read the rings every 10 minutes while the feed is on screen */
   setInterval(async () => { if (document.hidden || view !== 'feed' || LANDING || !$('.stories')) return; try { await loadStories(); const el = $('.stories'); if (el && !$('#sv')) el.outerHTML = storiesHtml(); } catch {} }, 10 * 60e3);
-  let ALL = {}, SCORES = {}, LIMIT = null, PINNED = new Set(), NEWIDS = [], SRV = { health: {}, clock: Date.now() }, WORK = { items: [], notes: [], unread: 0, needsYou: 0 };
+  let ALL = {}, SCORES = {}, LIMIT = null, PINNED = new Set(), NEWIDS = [], NEWSET = new Set(), saveTouched = 0, SRV = { health: {}, clock: Date.now() }, WORK = { items: [], notes: [], unread: 0, needsYou: 0 };
   const allPosts = () => Object.values(ALL).length ? Object.values(ALL) : B.posts;
   const byId = (id) => ALL[id] || B.posts.find((p) => p.id === id);
 
   /* ranking lives in the feed service (freshness + impact + affinity + seat − fatigue, then interleave) */
   const loadFeed = async () => {
     await syncNow();
-    const [r, st] = await Promise.all([tapi('GET', '/api/tenants/:t/feed'), tapi('GET', '/api/tenants/:t/stories')]); if (r.error) return null;
-    if (st.rings) RINGS = st.rings;
+    const r = await tapi('GET', '/api/tenants/:t/feed'); ringsLater(); if (r.error) return null;
     ALL = r.cards; SCORES = r.scores || {}; LIMIT = r.limit; PINNED = new Set(r.pinned || []); SRV.health = r.health || {}; SRV.healthLive = r.healthLive || {}; SRV.clock = r.clock;
+    NEWSET = new Set(r.newIds || []);
+    /* saves live on the server (every device); the ones this browser kept before that go up once */
+    if (Array.isArray(r.saved)) { if (!S.savedSync) { S.savedSync = 1; const up = S.saved.filter((id) => !r.saved.includes(id)); up.forEach((id) => tapi('POST', `/api/cards/${encodeURIComponent(id)}/feedback`, { kind: 'save' })); S.saved = [...new Set([...r.saved, ...up])]; }
+      else if (Date.now() - saveTouched > 5000) S.saved = r.saved.slice(); }
     if (r.batches) S.batches = r.batches;
     Object.values(ALL).forEach((c) => { if (c.done && !S.done[c.id]) S.done[c.id] = c.done; });
     if (r.decided) S.decided = { ...r.decided };
@@ -497,7 +506,7 @@
     const sourceRow = (x) => `<div class="ck2-s${x.found ? '' : ' is-miss'}" data-sk="${x.key}"><div><span>${esc(x.label)}</span><b>${x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.v)}</a>` : esc(x.v)}</b></div>
       <button class="linkbtn" data-fix="${x.key}">${x.found ? 'Change' : 'Add the link'}</button><div class="ck2-fix" hidden><input data-src="${x.key}" placeholder="${esc(x.hint)}" inputmode="url"><small>We read it from that link. Typed numbers are never used.</small></div></div>`;
     root.innerHTML = `<main class="screen ck2"><div class="ck2-wrap">
-      <header class="ck2-head">${D.logo ? `<span class="ck2-logo"><img src="${esc(D.logo)}" alt=""></span>` : ''}<div><h1>Is this right?</h1><p>Everything Brew writes for ${esc(D.name)} starts here. Fix anything that’s off.</p></div></header>
+      <header class="ck2-head">${D.logo ? `<span class="ck2-logo"><img src="${esc(D.logo)}" alt=""></span>` : ''}<div><h1>Is this right?</h1><p>${D.started ? 'Brew is writing with what it read. Fix anything that’s off and the brief and your first moves are rewritten with it.' : `${writeAtLine(D)} Fix anything that’s off.`}</p></div></header>
       <section class="ck2-card"><h2>Who you are <small>${readFrom(D.who)}</small></h2><div class="ck2-grid">${D.who.map((x) => field(x, 'who')).join('')}</div></section>
       <section class="ck2-card"><h2>What you sell <small>${D.count} read · tap to choose the ones to lead with</small></h2><div class="ck2-prods${D.products.length > 8 ? ' is-cap' : ''}" id="ck2-prods">${D.products.map(prodTile).join('')}</div>${D.products.length > 8 ? `<button class="linkbtn ck2-all" data-ckall>Show ${D.products.length - 8} more</button>` : ''}
         <form class="ck2-add" data-add="product"><input placeholder="Paste a product page link to add it" inputmode="url"><button class="btn btn-ghost sm">Add product</button></form></section>
@@ -506,7 +515,7 @@
       <section class="ck2-card"><h2>Where you show up</h2><div class="ck2-srcs">${D.sources.map(sourceRow).join('')}</div></section>
       ${D.company.length ? `<details class="q-more ck2-co"><summary>Company details (optional)</summary><div class="ck2-grid">${D.company.map((x) => field(x, 'company')).join('')}</div></details>` : ''}
       <p class="q-note">Anything without a source is written as “to confirm”.</p>
-      <div class="ck2-bar"><button class="btn btn-primary lg" id="ck-go">Looks right, write my moves ${ic('right', 's18')}</button></div>
+      <div class="ck2-bar"><button class="btn btn-primary lg" id="ck-go">${D.started ? 'Save my corrections' : 'Looks right, write my moves'} ${ic('right', 's18')}</button></div>
     </div></main>`;
     const paintStars = () => $$('.ck2-p').forEach((el) => { const on = st.hero.has(el.dataset.h); el.classList.toggle('is-hero', on); el.setAttribute('aria-pressed', on); });
     root.onclick = (e) => {
@@ -526,7 +535,12 @@
       const v2 = { hero: [...st.hero], removed: [...st.removed], removeRivals: [...st.removeRivals], who: {}, company: {}, sources: {} };
       $$('[data-g]').forEach((el) => { const orig = [...D.who, ...D.company].find((x) => x.key === el.dataset.k); if (orig && String(orig.v) !== el.value.trim() && el.value.trim()) v2[el.dataset.g][el.dataset.k] = el.value.trim(); });
       $$('[data-src]').forEach((el) => { if (el.value.trim()) v2.sources[el.dataset.src] = el.value.trim(); });
-      const r = await api(`/api/brands/${slug}/confirm`, { v2 }); if (r?.notes?.length) toast(`${ic('info', 's16')}${esc(r.notes.join(' '))}`); waitMoves(); };
+      const r = await api(`/api/brands/${slug}/confirm`, { v2 }); if (r?.notes?.length) toast(`${ic('info', 's16')}${esc(r.notes.join(' '))}`);
+      /* the moves write in the background: straight on to the seat picker (a reload, so the feed has the brand's real look and cards) */
+      if (r?.signin || r?.error) { toast(`${ic('info', 's16')}${esc(r.error || 'Sign in to continue.')}`); go.disabled = false; go.innerHTML = `${D.started ? 'Save my corrections' : 'Looks right, write my moves'} ${ic('right', 's18')}`; return; }
+      /* a correction after the moves started still reaches the brief: say what is being rewritten, then carry on */
+      if (r?.recheck?.words) { toast(`${ic('refresh', 's16')}Rewriting the brief and your first moves with ${esc(r.recheck.words)}`); await wait(1800); }
+      if (S.onboarded) { clearTimeout(waitMoves.t); location.replace(location.pathname + location.search); } else continueToFeed(); }; /* set up already: back to the feed, not the seat picker */
   };
   /* ---------- the moves take a while: show what we have now, and email when they are ready ---------- */
   const waitMoves = async (o = {}) => {
@@ -540,7 +554,8 @@
       return `<ol class="wt2-steps">${row('done', 'Read your site', 'Products, reviews, ads, rivals, AI answers')}${row(g.brief?.state === 'done' ? 'done' : g.confirm?.state === 'done' ? 'run' : 'wait', 'Write the brand brief', '')}
         ${row(n >= 10 ? 'done' : g.brief?.state === 'done' ? 'run' : 'wait', 'The first 10 moves', `${Math.min(n, 10)} of 10 · positioning, customers, rivals, pricing`)}${row(N && n >= N ? 'done' : n >= 10 ? 'run' : 'wait', N ? `All ${N} moves` : 'The rest of the moves', N ? `${n} of ${N} written${etaOf(s)}` : `${n} written`)}</ol>
         <div class="wt2-bar"><i style="width:${Math.max(4, N ? Math.round(100 * Math.min(n, N) / N) : 0)}%"></i></div>`; };
-    const mailBox = (em) => em ? `<div class="wt2-mailed">${ic('check', 's16')}<span>We’ll email <b>${esc(em)}</b> when they’re ready.</span><button class="linkbtn" id="wt-change">Change</button></div>`
+    const mailBox = (em) => mailMe() && !window.BREW_DEMO && ls.get(`${LSP()}mail-mute`) !== mailMe() ? mailOnHtml(mailMe(), 'wt2-mailed') /* signed in: already on, with Mute */
+      : em ? `<div class="wt2-mailed">${ic('check', 's16')}<span>We’ll email <b>${esc(em)}</b> when they’re ready.</span><button class="linkbtn" id="wt-change">Change</button></div>`
       : window.BREW_DEMO ? '<p class="wt2-note">The demo sends no email. Open what we have now; new moves land in the feed.</p>' /* the demo's visitor has no real address */
       : mailMe() ? `<form class="wt2-mail" id="wt-mail"><input type="hidden" id="wt-email" value="${esc(mailMe())}"><button class="btn btn-primary sm" type="submit">${ic('bell', 's14')}Email me when they’re ready</button><small class="wt2-to">To ${esc(mailMe())}</small></form>` /* signed in: we know the address */
       : `<form class="wt2-mail" id="wt-mail"><label for="wt-email">Get an email when they’re ready</label><div class="wt2-in"><input type="email" id="wt-email" required placeholder="you@${esc(B.brand.host || 'brand.com')}" autocomplete="email"><button class="btn btn-primary sm" type="submit">Notify me</button></div></form>`;
@@ -548,7 +563,7 @@
       <aside class="wt2-side"><div class="wt2-panel">
         <div class="wt2-brand">${B.brand.logo ? `<span class="ck2-logo"><img src="${esc(st?.logo ? '/' + String(st.logo).replace(/^\//, '') : B.brand.logo)}" alt=""></span>` : ''}<span class="wt2-live"><span class="dot"></span>Working</span></div>
         <h1>Figuring out the best moves for ${nm}</h1>
-        <p>${+st?.total ? `${+st.total} plans` : 'A set of plans'}, each with its sources, a 30-day rollout and what to watch. They land one by one; the time left shows once we can measure the pace.</p>
+        <p>${+st?.total ? `${+st.total} plans` : 'A set of plans'}, each with its sources, a 30-day rollout and what to watch. They land one by one; the time left shows once we can measure the pace.${st?.stages?.confirm?.state === 'waiting' ? ` ${writeAtLine(st)}` : ''}</p>
         <div id="wt-stages">${stages(st)}</div>
         <div id="wt-mailbox">${mailBox(mail)}</div>
         <button class="btn btn-primary lg wt2-go" id="wt-go">Open what we have now ${ic('right', 's18')}</button>
@@ -598,6 +613,10 @@
   const obNav = (next, back) => `<div class="ob2-nav">${back ? `<button class="btn btn-ghost lg" id="ob-back">${ic('left', 's18')} Back</button>` : '<span></span>'}<button class="btn btn-primary lg" id="ob-next">${next} ${ic('right', 's18')}</button></div>`;
   const whoFor = () => {
     if (signWall('who')) return;
+    /* the first person from the brand to set it up claims it (eligible: a work email at the brand, nobody on it yet), so Invite
+       your team and @tags work for them from here */
+    const A0 = window.LIVE?.access; if (GEN && window.LIVE?.me && A0 && !A0.role && !whoFor.claiming) { whoFor.claiming = true; /* Brew staff (full) get an error back: nothing to claim */
+      api(`/api/brands/${B.slug || BR}/claim`, {}).then((r) => { if (!r || r.error) return; if (r.access && window.LIVE) window.LIVE.access = { ...A0, ...r.access }; else A0.role = r.role || 'owner'; }).catch(() => {}).finally(() => { whoFor.claiming = false; }); }
     view = 'ob';
     window.scrollTo(0, 0); root.innerHTML = shell(`
       <h1 class="ob2-h">Who’s this feed for?</h1><p class="ob2-lede">Pick your seat. The feed ranks and words every card for it. You can switch any time.</p>
@@ -712,7 +731,7 @@
     /* the moves count is the brand's own (status.total, loaded by loadMV); until it is loaded the tile says Moves read with no number */
     const nc = Object.keys(S.conn).filter(conn).length;
     const mvTile = () => { const mvN = +BREW?.movesDone || 0, mvT = +BREW?.total || 0;
-      return mvT ? `<div data-mv-tile><b class="tnum">${Math.min(mvN, mvT)}</b>moves ${mvN < mvT ? 'written' : 'read'}</div>` : `<div data-mv-tile><b class="tnum">${ic('check', 's18')}</b>moves read</div>`; };
+      return mvT ? `<div data-mv-tile><b class="tnum">${Math.min(mvN, mvT)}</b>moves written</div>` : `<div data-mv-tile><b class="tnum">${ic('check', 's18')}</b>moves written</div>`; };
     if (GEN && !+BREW?.total) loadMV().then(() => { const el = $('#ready [data-mv-tile]'); if (el && +BREW?.total) el.outerHTML = mvTile(); }).catch(() => {});
     document.body.insertAdjacentHTML('beforeend', `<div class="ready" id="ready"><div class="ready-card">
       <span class="so-mark" style="width:30px;height:30px">${SO()}</span>
@@ -798,11 +817,16 @@
   /* the first draft Brew made for this card (drafts-bg.js, served as card.draft): the asset itself in place of the lane photo.
      A clip plays muted and looped only while it is on screen (armDraftVideos); slides use the feed's own carousel */
   const DRAFT_IC = { video: 'vid', carousel: 'grid', collection: 'grid', catalog: 'grid', email: 'send', whatsapp: 'chat', page: 'doc', image: 'pic' };
+  /* under the draft, the ad as it would run, like a caption: its headline in bold and the first line of its copy (never the memo) */
+  const draftCap = (d) => { const h = String(d.headline || d.title || '').trim(), line = String(d.copy || '').split(/\n+/).map((x) => x.trim()).find(Boolean) || '';
+    return h || line ? `<div class="fd-cap">${h ? `<b>${esc(h)}</b>` : ''}${line && line !== h ? `<span>${esc(line)}</span>` : ''}</div>` : ''; };
   const draftSlot = (c) => { const d = c.draft; if (!d || !(d.video || d.images?.length)) return '';
-    const lab = `<span class="fd-lab">${ic(DRAFT_IC[d.as] || 'sparkles', 's12')}First draft</span>`, port = d.ratio !== '1:1';
+    /* a stand-in (the product photo alone, or a picture being made again) says a new one is coming; it is never called a first draft */
+    const lab = d.remaking || d.photoOnly ? `<span class="fd-lab is-wait">${ic('refresh', 's12')}New picture coming</span>` : `<span class="fd-lab">${ic(DRAFT_IC[d.as] || 'sparkles', 's12')}First draft</span>`, port = d.ratio !== '1:1';
     const fb = [d.fallback, ...(c.images || [])].filter((x) => x && !(d.images || []).includes(x)); /* the real product photo, if the draft's picture can't load */
-    if (d.video) return `<div class="media fd${port ? ' portrait' : ''}"><video class="fd-v" src="${esc(d.video)}"${d.poster ? ` poster="${esc(d.poster)}"` : ''}${fb.length ? ` data-fb="${esc(fb.join('|'))}"` : ''} playsinline muted loop preload="none" aria-label="${esc(d.title || 'First draft video')}"></video>${lab}</div>`;
-    return mediaSlot(d.images.map(esc), { alt: d.title || 'First draft', portrait: port, extra: lab, fallback: fb }).replace('class="media', 'class="media fd'); };
+    const tall = d.ratio === '9:16' ? ' r916' : ''; /* the box takes the draft's own shape (4:5 unless it says otherwise), so a 9:16 clip is not cropped to a square */
+    if (d.video) return `<div class="media fd${port ? ' portrait' : ''}${tall}"><video class="fd-v" src="${esc(d.video)}"${d.poster ? ` poster="${esc(d.poster)}"` : ''}${fb.length ? ` data-fb="${esc(fb.join('|'))}"` : ''} playsinline muted loop preload="none" aria-label="${esc(d.title || 'First draft video')}"></video>${lab}</div>${draftCap(d)}`;
+    return mediaSlot(d.images.map(esc), { alt: d.headline || d.title || 'First draft', portrait: port, extra: lab, fallback: fb }).replace('class="media', `class="media fd${tall}`) + draftCap(d); };
   const postCard = (p, i) => {
     const c = cardOf(p);
     const isNew = PINNED.has(p.id);
@@ -813,7 +837,10 @@
     const fd = ['conflict', 'answer'].includes(c.kind) ? '' : draftSlot(c); /* a draft replaces the lane photo; a rows card keeps its rows under the words */
     const media = !!fd || c.kind === 'media' || (c.kind === 'variants' && c.images?.length);
     const dn = doneText(p, c), rows = fd && c.kind === 'rows' && c.rows?.length ? slotHtml(c) : '';
-    return `<article class="card${c.liveFrom ? ' is-live' : ''}${p.dummy || p.demo || p.onlyWhen || /^live-/.test(p.id) ? ' is-dummy' : ''}${isNew ? ' is-new' : ''}${fd ? ' has-draft' : ''}" data-post="${i}" data-id="${esc(p.id)}">${UI2 ? head(c.agent, sub, c.badge, true, AGENT[c.agent] || fromLabel(c)) : head(c.agent, sub, c.badge, true, fromLabel(c))}${fd || slotHtml(c)}${media ? barHtml(c.cta, dn) + actsHtml(p) + body + rows : actsHtml(p) + body + barHtml(c.cta, dn)}</article>`;
+    /* "New": made since the last visit and not seen before it; "Start here": the first card to open on a first visit */
+    const tags = `${NEWSET.has(p.id) && !isNew ? '<span class="new-tag">New</span>' : ''}${p.id === START_ID ? `<button class="start-tag" data-start>${ic('sparkles', 's12')}Start here</button>` : ''}`;
+    const hd = (UI2 ? head(c.agent, sub, c.badge, true, AGENT[c.agent] || fromLabel(c)) : head(c.agent, sub, c.badge, true, fromLabel(c))).replace('<button class="icon-btn" data-more', `${tags}<button class="icon-btn" data-more`);
+    return `<article class="card${c.liveFrom ? ' is-live' : ''}${p.dummy || p.demo || p.onlyWhen || /^live-/.test(p.id) ? ' is-dummy' : ''}${isNew ? ' is-new' : ''}${fd ? ' has-draft' : ''}${p.id === START_ID ? ' is-start' : ''}" data-post="${i}" data-id="${esc(p.id)}">${hd}${fd || slotHtml(c)}${media ? barHtml(c.cta, dn) + actsHtml(p) + body + rows : actsHtml(p) + body + barHtml(c.cta, dn)}</article>`;
   };
 
   const introCard = () => `<article class="card" data-intro>${head('brew', 'Welcome', null, false)}
@@ -1120,7 +1147,8 @@
   const ringCover = (r) => { const [icon, cls] = RING_ART[r.k] || ['sparkles', 'r-news'];
     return `<span class="cover ${cls}">${icon === 'mark' ? `<img src="${B.brand.mark}" alt="">` : ic(icon)}</span>`; };
   /* Recap (what happened since your last visit) sits right after the brand's own ring, only when the server sent one */
-  const ringKeys = (S2) => { const ks = (ROLE().stories || []).filter((k) => k !== 'recap'); if (S2.recap) ks.splice(ks[0] === 'brand' ? 1 : 0, 0, 'recap'); return ks.filter((k) => S2[k]); };
+  /* unseen rings first (each set keeps its own order), like stories anywhere */
+  const ringKeys = (S2) => { const ks = (ROLE().stories || []).filter((k) => k !== 'recap'); if (S2.recap) ks.splice(ks[0] === 'brand' ? 1 : 0, 0, 'recap'); const on = ks.filter((k) => S2[k]); return [...on.filter((k) => !S2[k].seen), ...on.filter((k) => S2[k].seen)]; };
   const storiesHtml = () => { const S2 = storySets(); return `<div class="stories">${ringKeys(S2).map((k, i) => `<button class="story${S2[k].seen ? ' seen' : ''}${S2[k].loading ? ' loading' : ''}" data-story="${k}" title="${esc(S2[k].title)}"><span class="ring">${ringCover(S2[k])}</span><span class="st-l">${esc(S2[k].title)}</span></button>`).join('')}</div>`; };
 
   /* the end of a free day: a swipeable set of what Pro adds, in Brew's own art, ending on the one button */
@@ -1129,17 +1157,31 @@
   /* a brand's first run: until its moves are written, one card says the real feed is on its way, with the time
      left and an email when it is ready (the same notify as the wait screen) */
   let BREW = null, mvT = 0;
-  const brewingInner = () => { const n = BREW?.movesDone || 0, em = ls.get(`${LSP()}mail`);
-    return `<div class="bw-art"><img src="assets/brew/moves-brewing.jpg" alt="" decoding="async"><span class="bw-k"><span class="dot"></span>Brewing</span></div>
-      <div class="body"><h3>The magic starts once your moves are in</h3><p>Brew is writing ${+BREW?.total || 50} moves for ${esc(B.brand.name)}. Every card after that comes from them. Wait for it.</p>
-        <div class="bw-bar"><i style="width:${Math.max(3, Math.round(100 * Math.min(n, +BREW?.total || 50) / (+BREW?.total || 50)))}%"></i></div><small class="bw-meta">${n} of ${+BREW?.total || 50} written${etaOf(BREW)}</small>
-        ${em ? `<p class="bw-mailed">${ic('check', 's14')}<span>We’ll email <b>${esc(em)}</b> when they’re in.</span></p>`
-          : window.BREW_DEMO ? '' /* the demo sends no email, and its visitor has no real address */
-          : mailMe() ? `<form class="bw-mail" data-bwmail><input type="hidden" value="${esc(mailMe())}"><button class="btn btn-primary sm" type="submit" title="To ${esc(mailMe())}">Email me when they’re in</button></form>`
+  /* the moves stopped (a daily cap, a pause, retries, AI paused): say what happened and offer to write the rest, never "Brewing" forever */
+  const brewStuck = () => !!(BREW && (BREW.capped || BREW.pausedDay || BREW.retryMoves || BREW.aiPausedAt));
+  /* signed in: the moves-ready email is already on for them (the server emails the creator and the team), with a way to mute it */
+  const mailOnHtml = (em, cls) => `<p class="${cls}" data-mailon>${ic('check', 's14')}<span>We’ll email <b>${esc(em)}</b> when your moves are ready.</span> <button class="linkbtn" type="button" data-mailmute>Mute</button></p>`;
+  const brewingInner = () => { const n = BREW?.movesDone || 0, N = +BREW?.total || 50, em = ls.get(`${LSP()}mail`), stuck = brewStuck();
+    return `<div class="bw-art"><img src="assets/brew/moves-brewing.jpg" alt="" decoding="async"><span class="bw-k"><span class="dot"></span>${stuck ? 'Paused' : 'Brewing'}</span></div>
+      <div class="body">${stuck ? `<h3>${esc(BREW.state || 'The moves are paused')}</h3><p>${n} of ${N} moves are written. The cards from them are in your feed now.</p>`
+        : `<h3>New cards land here as each move is written</h3><p>${n} of ${N} written${etaOf(BREW)}. Start with the top ad.</p>`}${BREW?.recheck?.words && !BREW.recheckDone ? `<p class="bw-meta">${ic('refresh', 's14')}Rewriting the brief and your first moves with ${esc(BREW.recheck.words)}</p>` : ''}
+        <div class="bw-bar"><i style="width:${Math.max(3, Math.round(100 * Math.min(n, N) / N))}%"></i></div>${stuck ? `<button class="btn btn-primary sm" type="button" data-mvpro>${PAYWALL ? 'Continue with Pro' : 'Write the rest'}</button>` : ''}
+        ${window.BREW_DEMO ? '' /* the demo sends no email, and its visitor has no real address */
+          : mailMe() && ls.get(`${LSP()}mail-mute`) !== mailMe() ? mailOnHtml(mailMe(), 'bw-mailed')
+          : em ? `<p class="bw-mailed">${ic('check', 's14')}<span>We’ll email <b>${esc(em)}</b> when they’re in.</span></p>`
+          : mailMe() ? `<form class="bw-mail" data-bwmail><input type="hidden" value="${esc(mailMe())}"><button class="btn btn-ghost sm" type="submit" title="To ${esc(mailMe())}">Email me when they’re in</button></form>`
           : `<form class="bw-mail" data-bwmail><input type="email" required placeholder="you@${esc(B.brand.host || 'brand.com')}" autocomplete="email" aria-label="Your email"><button class="btn btn-primary sm" type="submit">Email me</button></form>`}</div>`; };
-  /* the read waits on a person: nothing is written until someone checks it, and Brew never confirms it for them */
+  /* Mute: only said once the server confirms it (until it can, the email's own mute link does it) */
+  document.addEventListener('click', async (e) => { const b = e.target.closest('[data-mailmute]'); if (!b) return; const em = mailMe(); if (!em) return; b.disabled = true;
+    const r = await api(`/api/brands/${B.slug || BR}/notify`, { email: em, mute: true }).catch(() => null);
+    if (r?.muted) { ls.set(`${LSP()}mail-mute`, em); ls.del(`${LSP()}mail`); const p = b.closest('[data-mailon]'); if (p) p.innerHTML = `<span>No emails from Brew for this brand. Turn them back on from any Brew email.</span>`; toast(`${ic('check', 's16')}Muted`); }
+    else { b.disabled = false; toast(`${ic('info', 's16')}Couldn’t mute it from here. Use the mute link in the email.`); } });
+  /* Write the rest, on the feed's paused card (the Learned page binds its own) */
+  document.addEventListener('click', async (e) => { const b = e.target.closest('[data-brewing] [data-mvpro]'); if (!b) return; const go = async () => { const r = await api(`/api/brands/${B.slug || BR}/pro`, {}); if (!r || r.error) { toast(r?.error || 'Couldn’t start the moves. Try again.'); return false; } return true; };
+    if (!S.pro && PAYWALL) return openPlan('moves', go); b.disabled = true; if (await go()) { toast('Writing the rest of the moves.'); BREW = null; await loadMV(); const el = $('[data-brewing]'); if (el) { const h = brewingCard(); if (h) el.outerHTML = h; else el.remove(); } } else b.disabled = false; });
+  /* the read waits a little for a person to check it; then Brew starts writing with what it read (status.writeAt, local time) */
   const checkWaitCard = () => GEN && waitsOnCheck(BREW) ? `<article class="card brew-wait is-check" data-brewing><div class="body"><span class="bw-k2">${ic('clock', 's14')}Waiting for you${BREW.waitingSince ? ` · ${ago(BREW.waitingSince)}` : ''}</span>
-      <h3>Check what we read for ${esc(B.brand.name)}</h3><p>The brand brief and the moves are written from what you confirm. Nothing more happens until someone on the team checks it.</p>
+      <h3>Check what we read for ${esc(B.brand.name)}</h3><p>The brand brief and the moves are written from what you confirm. ${writeAtLine(BREW)}</p>
       <button class="btn btn-primary sm" type="button" data-checkread>Check what we read ${ic('right', 's14')}</button></div></article>` : '';
   /* one count with the feed's own "moves" card: the strip shows only while status says moves are still being written */
   const brewingCard = () => checkWaitCard() || (GEN && BREW && !BREW.done && +BREW.total && (BREW.movesDone || 0) < +BREW.total && !BREW.cancelled ? `<article class="card brew-wait" data-brewing>${brewingInner()}</article>` : '');
@@ -1149,36 +1191,74 @@
   document.addEventListener('submit', async (e) => { const f = e.target.closest('[data-bwmail]'); if (!f) return; e.preventDefault(); const em = f.querySelector('input').value.trim(), b = f.querySelector('button'); b.disabled = true;
     const r = await api(`/api/brands/${B.slug || BR}/notify`, { email: em }); b.disabled = false;
     if (r?.ok) { ls.set(`${LSP()}mail`, em); const el = f.closest('[data-brewing]'); if (el) el.innerHTML = brewingInner(); toast(`${ic('check', 's16')}We’ll email you when they’re in`); } else toast(`${ic('info', 's16')}${esc(r?.error || 'That did not go through. Try again.')}`); });
-  let shownQ = new Set(), shownT = 0, impIO = null;
-  const trackImpressions = () => {
-    impIO?.disconnect();
-    impIO = new IntersectionObserver((en) => en.forEach((e) => { if (e.isIntersecting && e.target.dataset.id) { shownQ.add(e.target.dataset.id); impIO.unobserve(e.target); clearTimeout(shownT); shownT = setTimeout(() => { const ids = [...shownQ]; shownQ.clear(); tapi('POST', '/api/tenants/:t/events', { shown: ids }); }, 1500); } }), { threshold: 0.6 });
-    $$('#col .card[data-post], #deck .card[data-post]').forEach((c) => impIO.observe(c));
+  /* each card is reported once per page load: a redraw, a refresh or a new page of cards never counts it again */
+  let shownQ = new Set(), shownT = 0, impIO = null; const REPORTED = new Set();
+  const trackImpressions = (more) => {
+    if (!more || !impIO) { impIO?.disconnect(); impIO = new IntersectionObserver((en) => en.forEach((e) => { const id = e.target.dataset.id; if (!e.isIntersecting || !id) return; impIO.unobserve(e.target); if (REPORTED.has(id)) return; REPORTED.add(id); shownQ.add(id); clearTimeout(shownT); shownT = setTimeout(() => { const ids = [...shownQ]; shownQ.clear(); if (ids.length) tapi('POST', '/api/tenants/:t/events', { shown: ids }); }, 1500); }), { threshold: 0.6 }); }
+    $$('#col .card[data-post]:not([data-io]), #deck .card[data-post]:not([data-io])').forEach((c) => { c.dataset.io = '1'; impIO.observe(c); });
   };
   const lazyImgs = (h) => String(h).replace(/<img (?![^>]*\bloading=)/g, '<img loading="lazy" decoding="async" ');
+  /* the feed is drawn 15 cards at a time; the next 15 come as the reader nears the end (a sentinel), never all at once */
+  const FEED_PAGE = 15; let FEED_AT = 0, FEED_X = { asked: new Set(), wait: [] }, moreIO = null, START_ID = null;
+  const feedEndHtml = () => `<div class="feed-end fe2"><b>You’re caught up</b><span>Your agents are still working. Pull in the next few now.</span><button class="btn btn-ghost" data-find-more>${ic('refresh', 's16')}Find more</button></div>`;
+  /* cards FEED[from..to) with what sits between them: a connect card from the sixth card on (never above the first pictures), the
+     welcome after the third card on a first visit only, the team card after the fourth, and the Pro card on the demo site only */
+  const feedRun = (from, to) => { const out = [], X = FEED_X, end = Math.min(to, FEED.length);
+    for (let i = from; i < end; i++) { const p = FEED[i];
+      out.push(i < 2 ? postCard(p, i) : lazyImgs(postCard(p, i))); /* the first two cards' pictures load at once; the rest as they near the screen */
+      const need = p.conn || (p.live && Object.keys(p.live)[0]) || NEEDS[p.cta?.label];
+      if (need && B.connectors[need] && !conn(need) && !X.asked.has(need) && X.asked.size < 3 && i < 24) { X.asked.add(need); X.wait.push(need); }
+      if (i >= 5 && X.wait.length) out.push(connectCard(X.wait.shift()));
+      if (i === 2 && S.sessions <= 1) out.push(introCard());
+      if (i === 3 && (!GEN || S.batches.length)) out.push(teamCard());
+      if (i === 8 && (!GEN || window.BREW_DEMO)) out.push(deckCard()); /* DUMMY (Pro, DUMMY.md #4): not on a real brand's live feed */
+    }
+    if (end >= FEED.length) while (X.wait.length) out.push(connectCard(X.wait.shift())); /* a short feed still gets its connect card, last */
+    return out.join(''); };
+  const feedMore = () => { const s = $('#feed-more'); if (!s || view !== 'feed') return; const from = FEED_AT; FEED_AT = Math.min(FEED.length, FEED_AT + FEED_PAGE);
+    s.insertAdjacentHTML('beforebegin', feedRun(from, FEED_AT)); if (FEED_AT >= FEED.length) { moreIO?.disconnect(); s.outerHTML = feedEndHtml(); }
+    requestAnimationFrame(() => { placeStickers(); placeNotes(); trackImpressions(true); }); };
+  const armMore = () => { moreIO?.disconnect(); const s = $('#feed-more'); if (!s) return; if (!('IntersectionObserver' in window)) { while ($('#feed-more')) feedMore(); return; }
+    moreIO = new IntersectionObserver((en) => { if (en.some((e) => e.isIntersecting)) { feedMore(); const n = $('#feed-more'); if (n) { moreIO.disconnect(); moreIO.observe(n); } } }, { rootMargin: '1200px 0px' }); moreIO.observe(s); };
+  /* "N new since your last visit": only when there are some (quiet UI: nothing at 0) */
+  const newLineHtml = () => { const n = FEED.filter((p) => NEWSET.has(p.id)).length; return n ? `<p class="new-since" role="status"><i class="pulse"></i>${n} new since your last visit</p>` : ''; };
   const renderFeed = async (settle) => {
     if (LANDING || !$('#view')) return; // the landing page has no feed
+    const again = view === 'feed' && !!$('#col .card[data-post]'), keepN = again ? FEED_AT : 0; /* a redraw keeps as many cards as were drawn, so the reader keeps their place */
     view = 'feed'; document.body.classList.remove('deck-on');
     $$('.seg [role=tab]').forEach((t) => t.setAttribute('aria-selected', t.dataset.nav === 'feed'));
     if (!$('#col')) $('#view').innerHTML = `<div class="feedcol" id="col"><div class="sk" style="height:120px;border-radius:20px"></div><div class="sk" style="height:420px;border-radius:20px"></div></div>`;
     await Promise.all([loadFeed(), loadMV()]); if (view !== 'feed') return;
+    if (brewingCard()) FEED = FEED.filter((p) => p.id !== 'build-moves'); /* one progress bar above the first idea, not two */
+    /* the first session starts on something to look at: the first card with a first draft (or the static ads) leads, marked Start here */
+    START_ID = null; if (S.sessions <= 1) { const k = FEED.findIndex((p) => p.draft?.images?.length || p.draft?.video || p.id === 'statics-batch'); if (k >= 0) { START_ID = FEED[k].id; if (k > 0) FEED.unshift(...FEED.splice(k, 1)); } }
     const parts = [greeting(), `<div id="newpill" class="newpill" hidden></div>`, storiesHtml(), brewingCard()];
-    if (S.sessions <= 3) parts.push(introCard());
     if (!GEN || B.health.score) parts.push(healthCard()); // a generated brand shows a score only once something real was measured
-    const asked = new Set(); let inserted = 0;
-    FEED.forEach((p, i) => {
-      parts.push(i < 2 ? postCard(p, i) : lazyImgs(postCard(p, i))); /* the first two cards' pictures load at once; the rest as they near the screen */
-      const need = p.conn || (p.live && Object.keys(p.live)[0]) || NEEDS[p.cta?.label];
-      if (need && B.connectors[need] && !conn(need) && !asked.has(need) && inserted < 3 && i < 24) { asked.add(need); inserted++; parts.push(connectCard(need)); }
-      if (i === 3 && (!GEN || S.batches.length)) parts.push(teamCard()); if (i === 8) parts.push(deckCard());
-    });
-    if (noSeats()) parts.splice(3, 0, `<article class="card seat-wait"><div class="body"><h3>You’re on ${esc(B.brand.name)}’s team</h3><p>An admin hasn’t picked your views yet, so you only see what the whole team shares. You’ll get your cards as soon as they choose.</p></div></article>`);
-    parts.push(`<div class="feed-end fe2"><b>You’re caught up</b><span>Your agents are still working. Pull in the next few now.</span><button class="btn btn-ghost" data-find-more>${ic('refresh', 's16')}Find more</button></div>`);
+    parts.push(newLineHtml());
+    FEED_X = { asked: new Set(), wait: [] }; FEED_AT = Math.min(FEED.length, Math.max(FEED_PAGE, keepN));
+    parts.push(feedRun(0, FEED_AT));
+    parts.push(FEED_AT < FEED.length ? '<div class="feed-more" id="feed-more" aria-hidden="true"></div>' : feedEndHtml());
     if (!$('#view')) return; // the page changed while the feed loaded
     $('#view').innerHTML = `<div class="feedcol${settle ? ' settle' : ''}" id="col">${parts.join('')}</div>`;
     counts(); save(); pulseSince = SRV.clock;
-    requestAnimationFrame(() => { placeStickers(); placeNotes(); trackImpressions(); });
+    requestAnimationFrame(() => { placeStickers(); placeNotes(); trackImpressions(); armMore(); });
   };
+  /* the feed refreshing itself: new cards slide in at the top, a card whose draft or words changed is redrawn in place, and
+     nothing else moves (no rebuild, the reader keeps their place) */
+  const insertNew = async () => {
+    if (view !== 'feed' || !$('#col .card[data-post]')) { await renderFeed(true); return 0; }
+    const was = FEED.slice(), have = new Set(was.map((p) => p.id)); const r = await loadFeed(); if (!r || view !== 'feed') { FEED = was; return 0; }
+    const now0 = FEED, fresh = now0.filter((p) => !have.has(p.id) && !cardOf(p).done && !(p.id === 'build-moves' && brewingCard()));
+    FEED = [...fresh, ...was.map((p) => ALL[p.id] || p)];
+    const col = $('#col'), y0 = scrollY, anchor = scrollY > 240 ? [...$$('#col .card[data-post]')].find((el) => el.getBoundingClientRect().bottom > 80) : null, top0 = anchor?.getBoundingClientRect().top;
+    $$('#col .card[data-post]').forEach((el) => { const i = FEED.findIndex((p) => p.id === el.dataset.id); if (i < 0) return; el.dataset.post = i;
+      const o = was.find((p) => p.id === el.dataset.id), n = FEED[i]; if (o && n !== o && (JSON.stringify(o.draft || null) !== JSON.stringify(n.draft || null) || o.title !== n.title || o.done !== n.done) && !el.contains(document.activeElement)) el.outerHTML = postCard(n, i); });
+    if (fresh.length) { const first = $('#col .card[data-post]'); const html = fresh.map((p, i) => postCard(p, i)).join(''); if (first) first.insertAdjacentHTML('beforebegin', html); else col.insertAdjacentHTML('afterbegin', html);
+      fresh.forEach((p) => $(`#col .card[data-id="${CSS.escape(p.id)}"]`)?.classList.add('is-new')); FEED_AT += fresh.length; }
+    const nl = $('#col .new-since'), nh = newLineHtml(); if (nl) { if (nh) nl.outerHTML = nh; else nl.remove(); } else if (nh) $('#col .card[data-post]')?.insertAdjacentHTML('beforebegin', nh);
+    if (anchor && top0 != null && document.body.contains(anchor)) scrollTo(0, y0 + anchor.getBoundingClientRect().top - top0); /* reading further down: the new cards wait above without moving the page */
+    counts(); pulseSince = SRV.clock; requestAnimationFrame(() => { placeStickers(); placeNotes(); trackImpressions(true); });
+    return fresh.length; };
 
   /* ---------- first-draft clips: muted, looped, played only while at least 60% on screen (any view that shows feed cards) ---------- */
   { const still = matchMedia('(prefers-reduced-motion: reduce)');
@@ -1293,6 +1373,7 @@
   const NAV_CTA = { 'Open the deck': () => renderDeck(), 'See all with Pro': () => openPlan('feed'), 'See what moves it': () => openJam({ moves: true }), 'Start a new batch': () => openJam({ batch: true, tab: 'team' }), 'Open the moves': () => { renderMoves(); nav('#v=moves', true, 'view', 'moves'); } };
   /* the card's jam, opened on its plan: the same place tapping the card goes */
   const openCardJam = (p) => { if (!p) return; $$('.sp-ask').forEach((x) => x.remove()); S.jamOn = { ...(S.jamOn || {}), [p.id]: true }; save(); return openDetail(p, { fromCta: true }); };
+  document.addEventListener('click', (e) => { const b = e.target.closest('[data-start]'); if (!b) return; const card = b.closest('.card[data-post]'); const p = card && FEED[+card.dataset.post]; if (p) openCardJam(p); }); /* Start here opens its jam */
   document.addEventListener('click', (e) => {
     const bar = e.target.closest('.card .bar, [data-cp-cta] .bar'); if (!bar || bar.hasAttribute('data-cx') || bar.classList.contains('is-busy')) return;
     const label = bar.dataset.label, card = barBox(bar);
@@ -1321,7 +1402,9 @@
   });
   const toggleSave = (p, b) => {
     const on = !S.saved.includes(p.id);
-    S.saved = on ? [p.id, ...S.saved] : S.saved.filter((x) => x !== p.id); save();
+    S.saved = on ? [p.id, ...S.saved] : S.saved.filter((x) => x !== p.id); save(); saveTouched = Date.now();
+    /* kept on the server too: every device this person opens shows it, and a save lifts cards like it */
+    if (byId(p.id) && !/^(work:|jam-)/.test(String(p.id))) tapi('POST', `/api/cards/${encodeURIComponent(p.id)}/feedback`, { kind: on ? 'save' : 'unsave' }).then((r) => { if (Array.isArray(r?.saved) && Date.now() - saveTouched > 1500) S.saved = r.saved.slice(); });
     $$(`.card[data-id="${p.id}"] [data-act="save"]`).forEach((x) => x.setAttribute('aria-pressed', on));
     toast(on ? `${ic('bookmark', 's16')}Saved` : 'Removed from Saved');
     counts(); if (view === 'saved' && !on) renderSaved();
@@ -1437,7 +1520,8 @@
     if (sc.fresh > 0) r.push({ up: true, ic: 'clock', t: sc.fresh >= 4 ? 'New today' : 'Still recent', w: sc.fresh });
     if (sc.affinity > 0) r.push({ up: true, ic: 'heart', t: `Like the ${AGENT[p.agent]} cards you liked`, w: sc.affinity });
     if (sc.boost > 0) r.push({ up: true, ic: 'refresh', t: 'You asked to see it again', w: sc.boost });
-    if (sc.fatigue < 0) r.push({ up: false, ic: 'eyeoff', t: `You’ve seen it ${sc.seen > 1 ? `${sc.seen} times` : 'before'}, so it’s moving down`, w: -sc.fatigue });
+    if (sc.look > 0) r.push({ up: true, ic: 'pic', t: sc.look >= 3 ? 'Its first draft is ready to look at' : 'An ad to look at', w: sc.look });
+    if (sc.fatigue < 0) r.push({ up: false, ic: 'eyeoff', t: sc.quiet ? 'You opened it a while ago and its jam has gone quiet, so it’s moving down' : `You’ve seen it ${sc.seen > 1 ? `on ${sc.seen} days` : 'before'}, so it’s moving down`, w: -sc.fatigue });
     if (sc.feedback < 0) r.push({ up: false, ic: 'minus', t: `Fewer from ${AGENT[p.agent]}, as you asked`, w: -sc.feedback });
     return r.sort((a, b) => (b.up - a.up) || b.w - a.w); };
   const rankHtml = (id) => { const sc = SCORES[id], p = byId(id); if (!sc || !p) return '';
@@ -2212,15 +2296,21 @@
   /* the open jam: every 3 s it says who's here (and typing) and comes back only when the jam changed, so a teammate's
      message, edit or new version shows up within seconds (the server marks it read for you) */
   let jamPollT = 0;
+  let jamPollGen = 0; /* one loop only: a call while a poll is in flight supersedes it (two loops used to multiply the requests) */
   const jamPoll = async () => {
-    clearTimeout(jamPollT);
-    const w = DP && (DP.p._work || workOfCard(DP.p.id));
+    clearTimeout(jamPollT); const gen = ++jamPollGen;
+    /* the card page's jam, or the studio's (the jam page): the same heartbeat says you're here, marks what you've read and
+       brings a teammate's message or version in either place */
+    const inStudio = !DP && view === 'remix' && !!RX.p && !!RX.ch;
+    const w = DP ? DP.p._work || workOfCard(DP.p.id) : inStudio ? workOfCard(RX.p.id) : null;
     if (w?.id && TID && !document.hidden) {
-      const box = $('#jm-in'), typing = document.activeElement === box && !!box?.value.trim();
+      const box = $(inStudio ? '#st-in' : '#jm-in'), typing = document.activeElement === box && !!box?.value.trim();
       const r = await tapi('GET', `/api/jams/${encodeURIComponent(w.id)}?since=${w.updatedAt || 0}${typing ? '&typing=1' : ''}`).catch(() => null);
       if (r && !r.error) { const changedHere = window.JamRoom?.setHere?.(w.id, r.here || []);
-        if (r.work) { putWork(r.work); counts(); repaintDetail(); } else if (changedHere) window.JamRoom?.paint?.(); }
+        if (inStudio) { if (view === 'remix' && workOfCard(RX.p?.id)?.id === w.id) await studioJamTick(r, changedHere); }
+        else if (r.work) { putWork(r.work); counts(); repaintDetail(); } else if (changedHere) window.JamRoom?.paint?.(); }
     }
+    if (gen !== jamPollGen) return; /* a newer call took over while this one waited */
     jamPollT = setTimeout(jamPoll, document.hidden ? 60e3 : 3000);
   };
   setTimeout(jamPoll, 3000);
@@ -2238,7 +2328,7 @@
     if (freshing || view !== 'feed' || LANDING || !TID || (!force && (document.hidden || busyNow() || scrollY > 240))) return false;
     freshing = true;
     try { if (pulseSince) { const r = await tapi('GET', `/api/tenants/:t/pulse?since=${pulseSince}`); const ids = (r.ids || []).filter((id) => !PINNED.has(id)); if (ids.length) await tapi('POST', '/api/tenants/:t/pin', { ids }); }
-      NEWIDS = []; await renderFeed(true); lastFresh = Date.now(); return true; }
+      NEWIDS = []; const pill = $('#newpill'); if (pill) pill.hidden = true; await insertNew(); lastFresh = Date.now(); return true; }
     catch (e) { return false; } finally { freshing = false; }
   };
   setInterval(() => { if (Date.now() - lastFresh > 3 * 60e3) refreshFeed(); }, 30e3);
@@ -2276,7 +2366,11 @@
     if (UI2 && !e.target.closest('.r2') && $('.r2.open')) { $('.r2.open').classList.remove('open'); $('[data-r2-open]')?.setAttribute('aria-expanded', 'false'); }
     if (e.target.closest('[data-r2-tune]')) { $('.r2.open')?.classList.remove('open'); closePop(); closeModal(); $('#vw-pop')?.remove(); whoFor(); return; }
     const ak = e.target.closest('[data-ask]'); if (ak) { let seed = null; try { seed = ak.dataset.ask ? JSON.parse(ak.dataset.ask) : null; } catch (x) {} openAsk(seed); return; }
-    const fm = e.target.closest('[data-find-more]'); if (fm) { fm.disabled = true; refreshFeed({ force: true }).then((ok) => { fm.disabled = false; toast(ok ? 'Pulled in the latest. New cards land at the top as your agents finish.' : 'Already refreshing. New cards land at the top.'); }); return; }
+    /* Find more: the free watchers look now and what they find (else research you had not seen) lands at the top; nothing new is said plainly */
+    const fm = e.target.closest('[data-find-more]'); if (fm) { fm.disabled = true; fm.innerHTML = '<span class="spin"></span>Looking'; (async () => { const r = await tapi('POST', '/api/tenants/:t/find-more');
+      if (r?.error || r?.fallback) { const ok = await refreshFeed({ force: true }); toast(ok ? 'Pulled in the latest. New cards land at the top as your agents finish.' : 'Already refreshing. New cards land at the top.'); }
+      else { if (r.made) { await insertNew(); window.scrollTo({ top: Math.max(0, ($('#col .card.is-new') || $('#col'))?.getBoundingClientRect().top + scrollY - 90), behavior: 'smooth' }); } toast(`${ic(r.made ? 'sparkles' : 'info', 's16')}${esc(r.message || (r.made ? 'New cards at the top.' : 'Nothing new right now.'))}`); }
+      const b = $('[data-find-more]'); if (b) { b.disabled = false; b.innerHTML = `${ic('refresh', 's16')}Find more`; } })(); return; }
     const tpl = e.target.closest('[data-team-pill]'); if (tpl) { e.stopPropagation(); if ($('#pop.t2-pop')) return closePop(); closePop(); const it = WORK.withTeam?.items || [];
       const pop = document.createElement('div'); pop.id = 'pop'; pop.className = 'pop t2-pop'; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Briefs with the ShopOS team');
       pop.innerHTML = `<header><b>With the ShopOS team</b><small>Briefs you sent and where each one is</small></header>${it.map((x) => `<button class="t2-bi" data-witem="${esc(x.wid)}"><span class="t2-bt"><b>${esc(x.title || 'Brief')}</b><small>${esc(x.ticket || '')}${x.at ? ` · ${ago(x.at)}` : ''}</small></span><span class="t2-bs is-${esc(x.status)}">${esc(x.label || x.status)}</span></button>`).join('') || '<p class="t2-empty">Nothing with the team right now.</p>'}<footer><button class="linkbtn" data-nav="done">All briefs ${ic('right', 's14')}</button></footer>`;
@@ -2331,7 +2425,7 @@
       ${row('data-m="sound"', ic('bell', 's16'), 'Sounds', 'Little cues when things move', `<span class="sw" aria-checked="${SND.on}" aria-hidden="true"><i></i></span>`)}
       ${row('data-m="setup"', ic('refresh', 's16'), 'Watch the setup again', `Or open ${location.host}/#setup`)}
       ${demoOk() ? row('data-m="demo"', ic('sliders', 's16'), 'Demo controls', 'Press . anywhere') : ''}
-      ${window.BREW_DEMO ? `<div class="row2"><button class="btn btn-ghost sm" data-m="restart">Start over from the website</button><button class="btn btn-ghost sm" data-m="reset">Reset demo</button></div>` : row('data-m="restart"', ic('link', 's16'), 'Start again', 'Back to the first page: paste a link and watch Brew read it')}</div>`; };
+      ${window.BREW_DEMO ? `<div class="row2"><button class="btn btn-ghost sm" data-m="restart">Start over from the website</button><button class="btn btn-ghost sm" data-m="reset">Reset demo</button></div>` : row('data-m="restart"', ic('link', 's16'), 'Start again', 'Clears what this browser kept for this feed and goes back to the first page. Your saved cards stay with your account')}</div>`; };
   const openMenu = () => modal(menu2Html(), (m) => {
     $('[data-m="view"]', m).onclick = () => { closeModal(); openViewing(); };
     const ac = $('[data-m="acct"]', m); if (ac) ac.onclick = () => { closeModal(); const vis = (el) => el && el.offsetParent !== null ? el : null; window.LiveConn?.menu(vis($('.r2-me')) || vis($('[data-phone-menu]')) || vis($('[data-lacct]')) || document.body); };
@@ -2347,7 +2441,7 @@
   const acctIt = (attr, icon, label, meta = '', cls = '') => `<button class="lc-it${cls}" ${attr}>${ic(icon, 's16')}<b>${label}</b>${meta ? `<span>${meta}</span>` : ''}</button>`;
   const acctRows = () => `<div class="lc-grp">${acctIt('data-nav="saved"', 'bookmark', 'Library', S.saved.length ? `${S.saved.length} saved` : '')}${acctIt('data-nav="learned"', 'book', 'What Brew learned', '', ' lc-phone')}${acctIt('data-nav="facts"', 'doc', 'Fact sheet')}${acctIt('data-nav="connectors"', 'plug', 'Connectors', cxCount(true), ' lc-phone')}</div>
     <div class="lc-grp">${acctIt('data-acct="sound"', 'bell', 'Sounds', `<i class="sw" aria-checked="${SND.on}" aria-hidden="true"><i></i></i>`)}${isStandalone() ? '' : acctIt('data-acct="install"', 'phone', 'Add to home screen')}</div>
-    <div class="lc-grp">${demoOk() ? acctIt('data-acct="demo"', 'sliders', 'Demo controls', 'Press .') : ''}${acctIt(`data-acct="restart" title="${window.BREW_DEMO ? 'Reset the demo and start from the website' : 'Back to the first page: paste a link and watch Brew read it'}"`, 'link', 'Start again')}</div>`;
+    <div class="lc-grp">${demoOk() ? acctIt('data-acct="demo"', 'sliders', 'Demo controls', 'Press .') : ''}${acctIt(`data-acct="restart" title="${window.BREW_DEMO ? 'Reset the demo and start from the website' : 'Clears what this browser kept for this feed and goes back to the first page. Your saved cards stay with your account'}"`, 'link', 'Start again')}</div>`;
   const acctBind = (pop) => pop.addEventListener('click', (e) => { const t = e.target.closest('[data-acct],[data-nav]'); if (!t) return; const k = t.dataset.acct;
     if (k === 'sound') { SND.on = !SND.on; ls.set(`${LSP()}sound`, SND.on ? 'on' : 'off'); t.querySelector('.sw')?.setAttribute('aria-checked', SND.on); if (SND.on) sound('approve'); return; }
     pop.remove(); if (k === 'install') openInstall(); if (k === 'setup') start(); if (k === 'demo') openDemo(); if (k === 'restart') startAgain(); });
@@ -3125,7 +3219,9 @@
       if (d.as === 'carousel' && d.images?.length) return `<div class="as as-draft as-remade as-car${L}">${d.images.map((u, i) => `<img src="${esc(u)}" alt="${esc((d.slides || [])[i]?.text || `Slide ${i + 1}`)}" loading="lazy">`).join('')}</div>`;
       if (d.as === 'image' && d.images?.[0]) return `<div class="as as-draft as-remade${L}"><img src="${esc(d.images[0])}" alt="${esc(d.title || '')}"></div>`;
       const lines = d.as === 'video' ? (d.script || []).map((x) => x.line || x.shot || '') : (d.slides || []).map((x) => x.text || '');
-      return `<div class="as as-draft as-remade is-words${L}"><p class="as-rw-k">${d.as === 'video' ? 'Reel' : d.as === 'carousel' ? 'Carousel' : 'Picture'} · ${d.pending || ch.remakePending ? 'the media is being made' : ch.remakeError ? esc(ch.remakeError) : 'words only'}</p>${d.overlay ? `<b>${esc(d.overlay)}</b>` : ''}<ol>${lines.filter(Boolean).map((x) => `<li>${esc(x)}</li>`).join('')}</ol></div>`; }
+      /* "being made" only while a remake really runs (the server's remakePending); otherwise one tap makes it again, never a dead end */
+      const busy = !!ch.remakePending, again = !busy && L && view === 'remix' && !ch.realOnly && ch.state !== 'live';
+      return `<div class="as as-draft as-remade is-words${L}"><p class="as-rw-k">${d.as === 'video' ? 'Reel' : d.as === 'carousel' ? 'Carousel' : 'Picture'} · ${busy ? 'the media is being made' : ch.remakeError ? esc(ch.remakeError) : 'words only'}</p>${d.overlay ? `<b>${esc(d.overlay)}</b>` : ''}<ol>${lines.filter(Boolean).map((x) => `<li>${esc(x)}</li>`).join('')}</ol>${again ? `<button type="button" class="btn btn-primary sm as-rw-again" data-j2-remake="${esc(d.as)}">${ic('refresh', 's14')}Make it again</button>` : ''}</div>`; }
     if (d?.text && d.images?.[0]) return `<div class="as as-draft${size === 'lg' ? ' lg' : ''}"><img src="${esc(d.images[0])}" alt="${esc(d.title || 'First draft')}"></div>`;
     let html = assetHtml0(ch, size);
     /* a widget with no picture of its own (a page, a message, a brief) still opens on the card's draft picture */
@@ -3399,11 +3495,23 @@
       ${why.length ? `<div class="case-s"><small>Why it matters</small><ul>${why.map((x) => `<li>${esc(cut(x, 200))}</li>`).join('')}</ul></div>` : ''}
       ${pl?.steps?.length ? `<div class="case-s"><small>The plan</small><ol>${pl.steps.map((x) => `<li>${esc(x.t)}</li>`).join('')}</ol></div>` : ''}
       <p class="case-next">${esc(next)}</p></div>`; };
+  /* cuts made together ("More like this", "three cuts", the plan's make step): a strip of their own photos to swipe and tap */
+  const cutsStrip = (ch, vs) => vs.length ? `<div class="lg-cuts" role="list">${vs.map((v) => { const s = v.snapshot || {}, img = s.image || s.draft?.images?.[0], on = (RX.viewing || ch.head) === v.id;
+      return `<button type="button" role="listitem" class="lg-cut${on ? ' is-on' : ''}" data-v-view="${v.id}" aria-pressed="${on}" title="${esc(`v${v.n} · ${vLabel(v)}`)}">${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : `<span class="lg-cut-ph">${ch.imagePending ? '<span class="spin"></span>' : ic('pic', 's16')}</span>`}<b>v${v.n}</b><small>${esc(vLabel(v))}</small></button>`; }).join('')}</div>` : '';
+  /* the jam is the team's room: the studio's chat holds the jam's own lines too (teammates' messages and tags, the ShopOS team,
+     people joining, taking it or asking for an OK), in time order with the studio's, each with who said it */
+  const JAM_SYS = /brief|moved|sent|joined|gave|asked|approved|took|photo|final|received|progress|delivered|needs/i;
   const chatTab = (ch, edit) => {
-    const msgs = ch.thread || [], vById = (id) => ch.versions.find((v) => v.id === id);
-    const log = msgs.map((m) => m.from === 'you' ? `<div class="lgm you"><p>${esc(m.text)}</p></div>` : `<div class="lgm ai">${face(ch.agent)}<div><p>${esc(m.text)}</p>${m.v && ch.versions[m.v - 1] ? madeNote(ch, [ch.versions[m.v - 1]]) : ''}${(m.vs || []).length ? madeNote(ch, m.vs.map(vById).filter(Boolean)) : ''}</div></div>`).join('');
+    const msgs = ch.thread || [], vById = (id) => ch.versions.find((v) => v.id === id), JR = window.JamRoom, w = SPLIT && RX.p ? workOfCard(RX.p.id) : null, me = String(ME()?.email || '').toLowerCase();
+    const one = (m) => m.from === 'you' ? (me && m.by?.email && String(m.by.email).toLowerCase() !== me && JR?.teamMsg /* a teammate's ask, with their face and name */ ? `<div class="st-jm">${JR.teamMsg({ from: 'me', by: m.by, body: m.text }, w || {})}</div>` : `<div class="lgm you"><p>${esc(m.text)}</p></div>`)
+      : `<div class="lgm ai">${face(ch.agent)}<div><p>${esc(m.text)}</p>${m.v && ch.versions[m.v - 1] ? madeNote(ch, [ch.versions[m.v - 1]]) : ''}${(m.vs || []).length ? (m.cuts && PH_FAM.includes(ch.family) ? cutsStrip(ch, m.vs.map(vById).filter(Boolean)) : madeNote(ch, m.vs.map(vById).filter(Boolean))) : ''}${m.rewrite && edit ? `<button type="button" class="chip j1-chip" data-say="Rewrite it"${RX.sending ? ' disabled' : ''}>${ic('sparkles', 's14')}Rewrite it</button>` : ''}${m.remakeAgain && edit && !ch.remakePending && !ch.realOnly ? `<button type="button" class="chip j1-chip" data-j2-remake="${esc(m.remakeAgain)}"${RX.sending ? ' disabled' : ''}>${ic('refresh', 's14')}Make it again</button>` : ''}</div></div>`;
+    const jam = w && JR?.teamMsg ? (w.thread || []).filter((m) => m && m.id !== 'tmp' && !m.learn && (m.from !== 'system' || m.edited?.length || JAM_SYS.test(m.body || ''))).map((m, i) => ({ at: m.at || 0, i: 1e4 + i, html: `<div class="st-jm" data-st-jam>${JR.teamMsg(m, w)}</div>` })) : [];
+    const log = [...msgs.map((m, i) => ({ at: m.at || 0, i, html: one(m) })), ...jam].sort((a, b) => a.at - b.at || a.i - b.i).map((x) => x.html).join('') + (w && JR?.typingHtml ? JR.typingHtml(w) : '');
+    /* the ShopOS team asked for something: what they need sits on the composer until it is answered */
+    const ni = w?.jamBrief?.status === 'needs_info' ? (w.jamBrief.history || []).find((h) => h.s === 'needs_info') : null;
+    const niHtml = ni ? `<div class="st-needs" role="status">${ic('hand', 's16')}<div><b>${esc(ni.name || 'The ShopOS team')} needs something from you${w.ticket ? ` · ${esc(w.ticket)}` : ''}</b>${ni.note ? `<p>${esc(ni.note)}</p>` : ''}<small>Answer with @ShopOS team in your message: it goes to them by email.</small></div></div>` : '';
     return `<div class="it-log">${SPLIT && RX.p ? `<div class="it-empty">${face(ch.agent)}${caseBrief(ch)}</div>` : ''}${log || (SPLIT && RX.p ? '' : `<div class="it-empty">${face(ch.agent)}${`<p>${SPLIT ? 'What should change? Each change makes a new version, and you can always go back.' : 'Tell me what to change, in plain words. I’ll rewrite the whole package and save it as a new version. You can always go back.'}</p>`}</div>`)}${j2Extra(ch)}${RX.sending ? `<div class="lgm ai pending">${face(ch.agent)}<p><span class="spin"></span>${esc(RX.sending)}</p></div>` : ''}</div>
-      ${edit ? `<form class="it-ask" id="st-say">${UI2 ? chips2(ch) : `<div class="it-sugg">${PH_FAM.includes(ch.family) ? `<button type="button" class="chip chip-ph" data-ph-open>${ic('pic', 's14')}Change the photo</button>` : ''}${j2Acts(ch, (attr, icon, label, cls = '') => `<button type="button" class="chip j1-chip${cls}" ${attr}${RX.sending ? ' disabled' : ''}>${icon ? ic(icon, 's14') : ''}${esc(label)}</button>`).join('')}${fitSuggest(ch.suggest).slice(0, PH_FAM.includes(ch.family) ? 3 : 4).map((x) => `<button type="button" class="chip" data-say="${esc(x)}">${esc(x)}</button>`).join('')}</div>`}<div class="it-row${SPLIT && window.Composer?.tools ? ' has-cmp' : ''}"><textarea id="st-in" rows="2"${SPLIT ? ' data-nomic' : ''} placeholder="What should change? Or @ someone">${esc(RX.draft || '')}</textarea>${SPLIT && window.Composer?.tools ? `<span class="jm-tools">${window.Composer.tools()}<span class="jm-tools-r">${window.Mic?.supported ? `<button type="button" class="jm-mic" data-cmp-talk aria-label="Talk instead of typing">${ic('mic', 's16')}</button>` : ''}<button class="jm-send" aria-label="Send" ${RX.sending ? 'disabled' : ''}>${ic('up', 's16')}</button></span></span>` : `<button class="btn btn-primary" aria-label="Send" ${RX.sending ? 'disabled' : ''}>${ic('up', 's16')}</button>`}</div></form>${SPLIT && window.Composer?.foot ? window.Composer.foot() : ''}` : UI2 ? `<div class="it-ask"><div class="it-sugg j2-chips"><button type="button" class="chip j2-chip is-brief" data-tab="details">${ic('doc', 's14')}View brief</button><button type="button" class="chip j2-chip" data-rx="open">${ic('hand', 's14')}Open the jam</button></div><p class="it-locked">It’s in a jam. Shape it there.</p></div>` : `<p class="it-locked">It’s in a jam. Shape it there.</p>`}`;
+      ${edit ? `<form class="it-ask" id="st-say">${niHtml}${UI2 ? chips2(ch) : `<div class="it-sugg">${PH_FAM.includes(ch.family) ? `<button type="button" class="chip chip-ph" data-ph-open>${ic('pic', 's14')}Change the photo</button>` : ''}${j2Acts(ch, (attr, icon, label, cls = '') => `<button type="button" class="chip j1-chip${cls}" ${attr}${RX.sending ? ' disabled' : ''}>${icon ? ic(icon, 's14') : ''}${esc(label)}</button>`).join('')}${fitSuggest(ch.suggest).slice(0, PH_FAM.includes(ch.family) ? 3 : 4).map((x) => `<button type="button" class="chip" data-say="${esc(x)}">${esc(x)}</button>`).join('')}</div>`}<div class="it-row${SPLIT && window.Composer?.tools ? ' has-cmp' : ''}"><textarea id="st-in" rows="2"${SPLIT ? ' data-nomic' : ''} placeholder="What should change? Or @ someone">${esc(RX.draft || '')}</textarea>${SPLIT && window.Composer?.tools ? `<span class="jm-tools">${window.Composer.tools()}<span class="jm-tools-r">${window.Mic?.supported ? `<button type="button" class="jm-mic" data-cmp-talk aria-label="Talk instead of typing">${ic('mic', 's16')}</button>` : ''}<button class="jm-send" aria-label="Send" ${RX.sending ? 'disabled' : ''}>${ic('up', 's16')}</button></span></span>` : `<button class="btn btn-primary" aria-label="Send" ${RX.sending ? 'disabled' : ''}>${ic('up', 's16')}</button>`}</div></form>${SPLIT && window.Composer?.foot ? window.Composer.foot() : ''}` : UI2 ? `<div class="it-ask"><div class="it-sugg j2-chips"><button type="button" class="chip j2-chip is-brief" data-tab="details">${ic('doc', 's14')}View brief</button><button type="button" class="chip j2-chip" data-rx="open">${ic('hand', 's14')}Open the jam</button></div><p class="it-locked">It’s in a jam. Shape it there.</p></div>` : `<p class="it-locked">It’s in a jam. Shape it there.</p>`}`;
   };
   const adjustTab = (ch, edit) => edit ? `<p class="hs-tip">Turn a knob and the package is rewritten to match. Knobs marked “new photo” make a new creative.</p>
       ${fitKnobs(ch.knobs).map((k) => { const multi = k.kind === 'copy', sel = (RX.knobSel || {})[k.k] || [], cur = (ch.pkg.knobs || {})[k.k];
@@ -3426,6 +3534,7 @@
       ${know ? `<p class="bf-know">${ic('trendup', 's14')}<b>How we’ll know:</b> ${esc(know)}</p>` : ''}${w?.doc?.missing?.length ? `<p class="bf-miss">Still missing: ${w.doc.missing.map((x) => `<button class="linkbtn" data-st-fill="${esc(x)}">${esc(String(x).toLowerCase())}</button>`).join(', ')}</p>` : ''}</section><h4 class="dt-h">The package</h4>`; };
   const briefExtra = (ch) => { const w = workOfCard(RX.p?.id), md = w?.doc?.md || '';
     return `<section class="bf-doc"><div class="bf-doc-h"><h4 class="dt-h">The brief</h4><span>${RX.briefEdit ? '' : `<button class="linkbtn" data-st-briefedit>Edit</button> · `}<button class="linkbtn" data-st-brief>Full hand-off ${ic('right', 's14')}</button></span></div>
+      ${RX.briefSync ? `<p class="dt-empty bf-syncing" role="status"><span class="spin"></span>Bringing the brief up to v${curN(ch)}…</p>` : ''}
       ${RX.briefEdit ? `<textarea class="bf-ed" id="bf-ed" rows="14">${esc(md)}</textarea><div class="dt-actions"><button type="button" class="btn btn-ghost sm" data-st-briefcancel>Cancel</button><button type="button" class="btn btn-primary sm" data-st-briefsave>Save the brief</button></div>`
         : md ? `<article class="bf-md">${window.JamRoom?.toHtml ? window.JamRoom.toHtml(md) : esc(md)}</article>` : '<p class="dt-empty">The brief is written as you jam.</p>'}</section>`; };
   const detailsTab = (ch, pkgCh, edit) => RX.editing && edit
@@ -3572,7 +3681,7 @@
   const j2Acts = (ch, c) => { const out = [];
     out.push(c('data-j2-pack', 'down', j2PackLabel(ch), ' is-pack'));
     out.push(c('data-j2-impact', 'trendup', 'Projected impact'));
-    if (['meta_ad', 'social', 'post'].includes(ch.family) && ch.state !== 'live') { const as = ch.pkg?.draft?.as || (/carousel/.test(String(ch.action)) ? 'carousel' : /short_video|reel/.test(String(ch.action)) ? 'video' : ''), busyMedia = ch.imagePending || ch.videoPending || ch.remakePending; if (busyMedia) out.push(`<button type="button" class="chip j2-chip" disabled>${ic('clock', 's14')}${ch.remakePending ? esc(ch.remakePending.step || 'Making it…') : 'Making the photo…'}</button>`); else { if (as !== 'video') out.push(c('data-j2-remake="video"', 'film', 'Make it a reel')); if (as !== 'carousel') out.push(c('data-j2-remake="carousel"', 'layers', 'Make it a carousel')); } }
+    if (['meta_ad', 'social', 'post'].includes(ch.family) && ch.state !== 'live' && !ch.realOnly /* Reddit, Quora, a Facebook group: real photos only, no AI reel or carousel */) { const as = ch.pkg?.draft?.as || (/carousel/.test(String(ch.action)) ? 'carousel' : /short_video|reel/.test(String(ch.action)) ? 'video' : ''), busyMedia = ch.imagePending || ch.videoPending || ch.remakePending; if (busyMedia) out.push(`<button type="button" class="chip j2-chip" disabled>${ic('clock', 's14')}${ch.remakePending ? esc(ch.remakePending.step || 'Making it…') : 'Making the photo…'}</button>`); else { if (as !== 'video') out.push(c('data-j2-remake="video"', 'film', 'Make it a reel')); if (as !== 'carousel') out.push(c('data-j2-remake="carousel"', 'layers', 'Make it a carousel')); } }
     return out; };
   const chips2 = (ch) => { const pl = planOf(ch), made = planMade(ch), dis = RX.sending ? ' disabled' : '', c = (attr, icon, label, cls = '') => `<button type="button" class="chip j2-chip${cls}" ${attr}${dis}>${icon ? ic(icon, 's14') : ''}${esc(label)}</button>`;
     const out = [c('data-tab="details"', 'doc', 'View brief', ' is-brief')];
@@ -3627,10 +3736,12 @@
     const formFocus = document.activeElement?.closest?.('#st-spec');
     if (formFocus || document.activeElement?.id === 'bf-ed') return; // never repaint under someone typing in the spec or the brief
     const logScroll = $('.st-panel-b')?.scrollTop;
+    /* a repaint from the jam's poll (a teammate's line, a version) never takes the box from someone typing in it */
+    const typingAt = document.activeElement?.id === 'st-in' ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
     if (UI2) { j2Moves(RX.p); const [tone, stx] = j2Status(ch, viewing);
       pg.classList.add('j2');
       pg.innerHTML = `<header class="st-top j2-top"><button class="q-back" data-st-back>${ic('left', 's16')}${ch.batchKey ? `All ${RX.p?.images?.length || ''} ads` : 'Back'}</button>
-          <div class="j2-who">${face(ch.agent)}<b>${esc(AGENT[ch.agent] || 'Brew')}</b><span class="j2-st ${tone}">${esc(stx)}</span></div>
+          <div class="j2-who">${face(ch.agent)}<b>${esc(AGENT[ch.agent] || 'Brew')}</b><span class="j2-st ${tone}">${esc(stx)}</span></div>${studioJamCtl()}
           <div class="st-vwrap"><button class="st-vpill${RX.vmenu ? ' is-open' : ''}" data-vmenu aria-haspopup="dialog" aria-expanded="${!!RX.vmenu}" title="Version history">${ic('clock', 's14')}<b class="st-vcount">v${curN(ch)}${ch.versions.length > 1 ? ` of ${ch.versions.length}` : ''}</b>${ic('chev', 's14')}</button>${RX.vmenu ? `<div class="st-vmenu" role="dialog" aria-label="Version history"><div class="st-vmenu-h"><b>Versions</b><small>${ch.versions.length} saved · nothing is ever lost</small></div><div class="st-vmenu-b">${historyTab(ch)}</div></div>` : ''}</div>${themeBtn()}<button class="icon-btn st-more" aria-label="More" data-lmenu="remix:${esc(ch.id)}">${ic('more', 's16')}</button></header>
         <div class="st-body j2-body"><aside class="st-panel j2-panel"><div class="st-panel-b is-chat j2-scroll">
           <section class="j2-draft"><div class="j2-title"><b>${esc(ch.actionLabel)}${ch.target.conn && ch.target.name ? ` <span>on ${esc(ch.target.name)}</span>` : ''}</b><small>${esc(ch.familyName)} · from “${esc(String(ch.before.title || '').slice(0, 70))}”</small></div>
@@ -3640,7 +3751,7 @@
         ${tab === 'details' ? j2Brief(ch, pkgCh, edit) : tab === 'adjust' ? j2Adjust(ch, edit) : ''}`;
     } else
     pg.innerHTML = `<header class="st-top"><button class="q-back" data-st-back>${ic('left', 's16')}${ch.batchKey ? `All ${RX.p?.images?.length || ''} ads` : SPLIT ? 'Back' : 'Packages'}</button>
-        <div class="st-ttl"><b>${esc(ch.actionLabel)}${ch.target.conn && ch.target.name ? ` <span>on ${esc(ch.target.name)}</span>` : ''}</b><small>${face(ch.agent)}${esc(ch.familyName)} · from “${esc(String(ch.before.title || '').slice(0, 70))}”</small></div>
+        <div class="st-ttl"><b>${esc(ch.actionLabel)}${ch.target.conn && ch.target.name ? ` <span>on ${esc(ch.target.name)}</span>` : ''}</b><small>${face(ch.agent)}${esc(ch.familyName)} · from “${esc(String(ch.before.title || '').slice(0, 70))}”</small></div>${studioJamCtl()}
         <div class="st-vwrap"><button class="st-vpill${RX.vmenu ? ' is-open' : ''}" data-vmenu aria-haspopup="dialog" aria-expanded="${!!RX.vmenu}" title="Version history">${ic('clock', 's14')}<span>History</span><b class="st-vcount">v${curN(ch)}${ch.versions.length > 1 ? ` of ${ch.versions.length}` : ''}</b>${ic('chev', 's14')}</button>${RX.vmenu ? `<div class="st-vmenu" role="dialog" aria-label="Version history"><div class="st-vmenu-h"><b>Versions</b><small>${ch.versions.length} saved · nothing is ever lost</small></div><div class="st-vmenu-b">${historyTab(ch)}</div></div>` : ''}</div>${themeBtn()}<button class="icon-btn st-more" aria-label="More" data-lmenu="remix:${esc(ch.id)}">${ic('more', 's16')}</button></header>
       <div class="st-body">
         <main class="st-canvas">${rivalReadHtml(ch)}${timeline(ch, viewing)}<div class="st-asset${ch.copyPending ? ' is-writing' : ''}">${ch.copyPending ? `<p class="st-writing" role="status"><span class="spin"></span>Writing the first draft…</p>` : ''}${assetHtml(pkgCh, 'lg')}</div>${phTools(ch, pkgCh, viewing)}${shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh))}</main>
@@ -3652,6 +3763,7 @@
     { const at = $('.st-atools'), m = at && $('.st-asset .pm-media, .st-asset .am-media, .st-asset .as-swipe');
       if (m) { let box = m; if (m.classList.contains('as-swipe')) { box = document.createElement('div'); box.className = 'as-swipe-box'; m.before(box); box.appendChild(m); }
         box.classList.add('has-chg'); box.appendChild(at); } }
+    if (typingAt) { const box = $('#st-in'); if (box) { box.focus(); try { box.setSelectionRange(typingAt[0], typingAt[1]); } catch {} } }
     fitAd();
     const pb = $('.st-panel-b'); const nT = (ch.thread || []).length + (RX.sending ? 1 : 0) + Object.keys(J2.imp).length + Object.keys(J2.pack).length;
     if (UI2) { const grew = nT > (RX.j2n || 0) && RX.j2for === ch.id; RX.j2n = nT; const first = RX.j2for !== ch.id; RX.j2for = ch.id; pb.scrollTop = first ? 0 : grew ? pb.scrollHeight : logScroll || 0; RX.resetScroll = false; } /* opening the brief or Adjust never moves the page */
@@ -3747,14 +3859,33 @@
   // our Back from the options page: back to wherever the remix was opened from (the card page, the feed, Work…)
   const leaveRemix = () => { RX.ch = null; pullWork(true); if (['rx', 'rx-deep'].includes(history.state?.a)) return history.back(); nav(location.pathname, false, 'view'); view = RX.from || 'feed'; (VIEWS()[view] || renderFeed)(); window.scrollTo(0, 0); };
   /* the brief follows the package quietly, so it is always the final version */
+  /* the brief follows the package without an AI rewrite on every edit: an edit only notes what was asked (lazy, no AI); the
+     brief catches up when it is opened here (syncBriefNow) and when it is sent or shared (the server's doc/ship) */
   const syncBrief = (ch, said) => { const w = workOfCard(RX.p?.id); if (!SPLIT || !w || !ch?.pkg) return;
-    const pkg = (ch.fields || []).map((f) => { const v = ch.pkg[f.k]; return v == null || v === '' ? null : `${f.label}: ${Array.isArray(v) ? v.map((x) => (typeof x === 'object' ? Object.values(x).join(' / ') : x)).join('; ') : v}`; }).filter(Boolean).join('\n');
-    tapi('POST', `/api/work/${w.id}/doc/sync`, { text: `The ${ch.familyName || 'package'} is now v${curN(ch)}${said ? ` (asked: “${said}”)` : ''}. Make the brief match it exactly, keep everything else:\n${pkg}` }).then((r) => { if (r.work) { putWork(r.work); if (view === 'remix' && RX.tab === 'details' && !RX.briefEdit) paintStudio(); } }); };
+    tapi('POST', `/api/work/${w.id}/doc/sync`, { lazy: true, said: String(said || '').slice(0, 200) }).then((r) => { if (r.work) putWork(r.work); }).catch(() => {}); };
+  const syncBriefNow = () => { const w = workOfCard(RX.p?.id); if (!SPLIT || !w || !RX.ch?.pkg || RX.briefSync) return; RX.briefSync = true;
+    tapi('POST', `/api/work/${w.id}/doc/sync`, { now: true }).then((r) => { RX.briefSync = false; if (r.work) putWork(r.work); if (view === 'remix' && RX.tab === 'details' && !RX.briefEdit) paintStudio(); }).catch(() => { RX.briefSync = false; }); };
+  /* the jam's own controls in the studio's header: Assign / Ask for OK (jam-room.js), who's in it and who's here now */
+  const studioJamCtl = () => { const w = SPLIT && RX.p ? workOfCard(RX.p.id) : null, JR = window.JamRoom; if (!w || !JR?.assignHtml || window.BREW_DEMO) return '<span class="st-jamctl"></span>';
+    return `<span class="st-jamctl" data-st-jam>${JR.assignHtml(w)}${JR.peopleHtml?.(w) || ''}</span>`; };
+  /* the studio's jam moved (jamPoll): a teammate's message or version, an assign, a status. The jam is put in place, the change is
+     read again (its versions and chat are the team's), and the studio repaints; presence alone only redraws the header strip */
+  const studioJamTick = async (r, changedHere) => {
+    if (r.work) { putWork(r.work); counts(); const ch = RX.ch;
+      if (ch && !RX.sending) { const q = await tapi('GET', `/api/changes/${ch.id}`).catch(() => null); if (q?.change && RX.ch?.id === ch.id && !RX.sending) { RX.ch = q.change; putCh(q.change); } }
+      if (view === 'remix') paintStudio(); return; }
+    if (changedHere) { const el = $('.st-jamctl'); if (el) el.outerHTML = studioJamCtl(); const ty = $('.st-panel-b .jm-typing-who'), w = workOfCard(RX.p?.id); if (w && window.JamRoom?.typingHtml) { const h = window.JamRoom.typingHtml(w); if (ty) ty.outerHTML = h || ''; else if (h) $('.st-panel-b .it-log')?.insertAdjacentHTML('beforeend', h); } }
+  };
   const stSay = async (msg, path = 'iterate', body) => {
     const ch = RX.ch; if (!ch || RX.sending) return;
-    if (path === 'iterate' && window.JamRoom?.mentionOf?.(String(msg || '').trim()) && RX.p) { RX.draft = ''; if ($('#st-in')) $('#st-in').value = ''; return window.JamRoom.sendTo(RX.p, msg); } /* @someone: to them, not to the AI */
+    /* a message that tags someone anywhere in it goes to them and the jam (sendTo: they get an email); the AI hears it only
+       when it also asks for a change ("Make the headline shorter @Ana"), and then only that part */
+    if (path === 'iterate' && RX.p && (window.JamRoom?.hasTag ? window.JamRoom.hasTag(String(msg || '').trim()) : window.JamRoom?.mentionOf?.(String(msg || '').trim()))) {
+      const said = String(msg).trim(); RX.draft = ''; if ($('#st-in')) $('#st-in').value = '';
+      await window.JamRoom.sendTo(RX.p, said); paintStudio();
+      const ask = window.JamRoom.changeAsk?.(said); if (!ask) return; msg = ask; body = undefined; }
     RX.sending = path === 'variants' ? 'Making three variations…' : path === 'plan' ? planBusy(ch) : path === 'knob' ? `Applying ${msg}…` : body?.fix ? 'Fixing it…' : 'Working on it…';
-    if (path === 'iterate') { ch.thread = [...(ch.thread || []), { from: 'you', text: msg }]; RX.draft = ''; if ($('#st-in')) $('#st-in').value = ''; RX.tab = 'iterate'; }
+    if (path === 'iterate') { ch.thread = [...(ch.thread || []), { from: 'you', text: msg, at: 9e15 /* last in the timeline until the server's copy lands */ }]; RX.draft = ''; if ($('#st-in')) $('#st-in').value = ''; RX.tab = 'iterate'; }
     RX.viewing = null; RX.resetScroll = true; paintStudio();
     const r = await tapi('POST', `/api/changes/${ch.id}/${path}`, body || { message: msg });
     RX.sending = false; if (r.error) { toast(esc(r.error)); return paintStudio(); }
@@ -3798,7 +3929,7 @@
     if (e.target.closest('[data-st-back]')) return SPLIT && !RX.batch ? leaveRemix() : history.state?.a === 'rx-ch' ? history.back() : backToOptions();
     const os = e.target.closest('[data-open-studio]'); if (os) return openStudio(os.dataset.openStudio);
     const it = e.target.closest('[data-intent]'); if (it) { RX.intent = RX.intent === it.dataset.intent ? '' : it.dataset.intent; if (RX.intent) runRemix(); else paintStart(); return; }
-    const tb = e.target.closest('[data-tab]'); if (tb) { RX.tab = tb.dataset.tab; RX.editing = false; RX.resetScroll = true; return paintStudio(); }
+    const tb = e.target.closest('[data-tab]'); if (tb) { RX.tab = tb.dataset.tab; RX.editing = false; RX.resetScroll = true; if (RX.tab === 'details') syncBriefNow(); /* the Brief opened: it catches up with the version on the stage */ return paintStudio(); }
     const sc = e.target.closest('[data-scope]'); if (sc) { RX.scope[RX.ch.id] = +sc.dataset.scope; return paintStudio(); }
     const vv = e.target.closest('[data-v-view]'); if (vv) {
       const id = vv.dataset.vView, ch = RX.ch; RX.vmenu = false; if (id === ch.head) { RX.viewing = null; return paintStudio(); }
@@ -4559,6 +4690,10 @@
     if (ls.get(`${LSP()}born`) || S.onboarded || TID) { ['tenant', 'tenant-own', 'continue'].forEach((k) => ls.del(LSP() + k)); ls.del(KEY); S = fresh(); TID = null; lastSync = ''; }
     ls.set(`${LSP()}born`, String(born)); }
   window.LiveConn?.overlay(B, S); fitSeat(); save();
+  /* ?go=feed (every Brew email, and invites as ?go=feed&joined=1): read before joined=1 strips the query. A signed-in person skips
+     the read replay and the setup steps; the hash after it still applies (#check, #v=moves, #team, #jam=…) */
+  const GO_FEED = /[?&]go=feed\b/.test(location.search); if (GO_FEED) { const u0 = new URL(location.href); u0.searchParams.delete('go'); history.replaceState(null, '', u0.pathname + u0.search + u0.hash);
+    if (GEN && !LANDING && window.LIVE?.me && !S.onboarded) { S.onboarded = true; save(); } }
   if (/[?&]joined=1/.test(location.search)) { history.replaceState(null, '', location.pathname + location.hash); setTimeout(() => toast(`${ic('check', 's14')}You’re on ${esc(B.brand.name)}’s team`), 600); }
   if (location.hash === '#team' && ['owner', 'admin'].includes(window.LIVE?.access?.role)) setTimeout(() => window.LiveConn?.teamSheet(), 700);
   const cxBack = /[#&]cx(err)?=/.test(location.hash) ? (() => { try { const k = `brew-cxback:${window.BRAND}`, v = sessionStorage.getItem(k); sessionStorage.removeItem(k); return v; } catch (e) { return null; } })() : null;
@@ -4569,6 +4704,9 @@
   else if (GEN && cxBack === 'ob') ensureTenant(true).then(() => { view = 'ob'; connectWhat(); }); // back from a platform's sign-in: the step it left from
   else if (GEN && cxBack === 'check') ensureTenant(true).then(checkRead);
   else if (GEN && cxBack === 'wait') ensureTenant(true).then(waitMoves);
+  /* a link from a Brew email (?go=feed) or to a jam or card (#jam=, #card=, #work=, #v=): a signed-in person goes straight there,
+     never through the read replay and the setup steps again (those stay at #setup) */
+  else if (GEN && location.hash !== '#setup' && (S.onboarded || window.LIVE?.me) && (GO_FEED || /^#(jam|card|work|v)=/.test(location.hash))) { if (!S.onboarded) { S.onboarded = true; save(); } ensureTenant().then(() => { fitSeat(); save(); feed(); }); }
   else if (S.onboarded && location.hash !== '#setup') feed(); else { if (location.hash === '#setup') history.replaceState(null, '', location.pathname); if (GEN && ls.get(`${LSP()}continue`)) { ls.del(`${LSP()}continue`); ensureTenant(true).then(whoFor); } else if (GEN && !(window.BREW_DEMO && location.hash !== '#setup')) ensureTenant(true).then(setup); else start(); } /* the demo site's tour starts on the address screen */
   if (/[#&]cx(err)?=/.test(location.hash)) setTimeout(() => window.LiveConn?.resume(), 900); });
 })();

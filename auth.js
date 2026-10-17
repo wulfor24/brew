@@ -5,7 +5,7 @@ import { smallPage } from './small-page.js';
 // The session is an HMAC-signed cookie (FEED_SESSION_SECRET); there is no user table.
 // A brand is claimed only with an official email, one at the brand's own domain (you@wearcomet.com for wearcomet.com):
 //   1. the first person with an official email to connect one of the brand's accounts, or to tap Claim, becomes its admin
-//   2. teammates on the same company domain join on their own once it is claimed
+//   2. teammates on the same company domain join on their own once it is claimed, with every view (an admin can narrow it)
 //   3. anyone else (another domain, a Gmail) joins only when the team invites them
 //   4. SquareUp's own people (FULL_ACCESS_DOMAINS: joinsquareup.com, shopos.ai) and ADMIN_EMAILS see and make everything on
 //      every brand, but never take a brand that isn't theirs
@@ -88,8 +88,9 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
     const inv = (m.invites || []).find((x) => x.email === u.email && Date.now() - x.at < INVITE_DAYS * 86400e3);
     if (inv) { await addMember(slug, u, 'member', `Invited by ${inv.by}`, inv.seats); log.log?.(`[auth] ${slug}: ${u.email} joined from an invite (on sign-in)`); return 'member'; }
     if (isAdmin(u)) return 'admin';
-    // a claimed brand: a teammate on the owner's company domain joins on their own, with no views until an owner picks them
-    if (m.owner && m.domain && !freeMail(u.email) && domainOf(u.email) === m.domain) { const added = await addMember(slug, u, 'member', 'Same company email', []); if (added === true) joinedMail(slug, u).catch((e) => log.warn('[auth] mail', e.message)); return 'member'; } /* two requests at once: only the one that added them emails the owners */
+    // a claimed brand: a teammate on the owner's company domain joins on their own with every view (an empty feed lost them);
+    // the admins hear and can narrow their views on Team
+    if (m.owner && m.domain && !freeMail(u.email) && domainOf(u.email) === m.domain) { const added = await addMember(slug, u, 'member', 'Same company email', 'all'); if (added === true) joinedMail(slug, u).catch((e) => log.warn('[auth] mail', e.message)); return 'member'; } /* two requests at once: only the one that added them emails the owners */
     return null;
   }
   /* the views this person may use on the brand: null = every view (owners, Brew admins, members from before views, visitors) */
@@ -104,9 +105,9 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
   const brandName = async (slug) => packs.peek?.(slug)?.seed?.brand?.name || packs.peek?.(slug)?.name || (await hostOf(slug)) || slug;
   const seatWords = async (slug, seats) => { if (seats === 'all' || seats == null) return 'every view'; const N = await seatNames(slug).catch(() => ({})); return seats.length ? seats.map((k) => N[k] || k).join(', ') : 'no views yet'; };
   async function joinedMail(slug, u) {
-    const m = await getM(slug), name = await brandName(slug), base = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', link = `${base}/${slug}#team`;
+    const m = await getM(slug), name = await brandName(slug), base = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', link = `${base}/${slug}?go=feed#team`;
     const subject = `${u.name || u.email} joined ${name} on Brew`;
-    for (const o of owners(m)) await mail(o, subject, emailHtml({ title: subject, eyebrow: name, preheader: 'They see nothing yet: pick which views they get.', body: para(`${esc(u.name || u.email)}${u.name ? ` (${esc(u.email)})` : ''} signed in with a company email, so they're on the team.`) + para('They see nothing yet. Pick which views they get.'), cta: { href: link, label: 'Pick their views' } }), `${subject}\n\nThey see nothing until you pick their views: ${link}`);
+    for (const o of owners(m)) await mail(o, subject, emailHtml({ title: subject, eyebrow: name, preheader: 'They see every view. You can narrow that on Team.', body: para(`${esc(u.name || u.email)}${u.name ? ` (${esc(u.email)})` : ''} signed in with a company email, so they're on the team.`) + para('They see every view. If they should see less, pick their views on Team.'), cta: { href: link, label: 'Review their views' } }), `${subject}\n\nThey see every view. If they should see less, pick their views on Team: ${link}`);
   }
   const isMember = async (slug, u) => !!(await roleOf(slug, u));
   async function addMember(slug, u, role, via, seats = 'all') {
@@ -191,10 +192,10 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
       else if (act === 'revoke') m.invites = (m.invites || []).filter((y) => y.email !== email);
     });
     if (err) return { error: err };
-    if (act === 'transfer') { const name = await brandName(slug), base = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', subject = `You're now the admin of ${name} on Brew`; mail(email, subject, emailHtml({ title: subject, eyebrow: name, body: para(`${esc(me.name || me.email)} handed it over to you.`) + para('You can invite people, pick their views and connect accounts.'), cta: { href: `${base}/${slug}`, label: `Open ${name}` } }), subject).catch(() => {}); }
+    if (act === 'transfer') { const name = await brandName(slug), base = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', subject = `You're now the admin of ${name} on Brew`; mail(email, subject, emailHtml({ title: subject, eyebrow: name, body: para(`${esc(me.name || me.email)} handed it over to you.`) + para('You can invite people, pick their views and connect accounts.'), cta: { href: `${base}/${slug}?go=feed`, label: `Open ${name}` } }), subject).catch(() => {}); }
     if (act === 'make_owner' || act === 'step_down') {
       const name = await brandName(slug), base = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', subject = act === 'make_owner' ? `You're now an admin of ${name} on Brew` : `You're no longer an admin of ${name} on Brew`;
-      if (email !== me.email) mail(email, subject, emailHtml({ title: subject, eyebrow: name, body: para(`${esc(me.name || me.email)} made the change.`) + para(act === 'make_owner' ? 'You can invite people, pick their views and connect accounts.' : `Your views: <b style="color:#111">${esc(await seatWords(slug, cleanSeats(b.seats ?? [])))}</b>.`), cta: { href: `${base}/${slug}`, label: `Open ${name}` } }), subject).catch(() => {});
+      if (email !== me.email) mail(email, subject, emailHtml({ title: subject, eyebrow: name, body: para(`${esc(me.name || me.email)} made the change.`) + para(act === 'make_owner' ? 'You can invite people, pick their views and connect accounts.' : `Your views: <b style="color:#111">${esc(await seatWords(slug, cleanSeats(b.seats ?? [])))}</b>.`), cta: { href: `${base}/${slug}?go=feed`, label: `Open ${name}` } }), subject).catch(() => {});
     }
     return { ok: true };
   }
@@ -243,14 +244,14 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
       const raw = u.searchParams.get('t') || '', t = verify(raw, 'invite'), html = (s) => { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex', 'referrer-policy': 'no-referrer' }); res.end(s); return true; };
       if (!t?.slug) return html(page('This invite has expired', 'Ask the person who invited you to send a new one.'));
       const m = await getM(t.slug), me = user(req), next = `/join?t=${raw}`;
-      if (me && m.members.some((x) => x.email === me.email)) return redirect(res, `/${t.slug}`), true;
+      if (me && m.members.some((x) => x.email === me.email)) return redirect(res, `/${t.slug}?go=feed`), true; /* an email link lands in the product, never the read replay */
       const inv = (m.invites || []).find((x) => x.email === t.email);
       if (!inv || Date.now() - inv.at > INVITE_DAYS * 86400e3) return html(page('This invite is no longer valid', 'It was cancelled or replaced. Ask the person who invited you to send a new one.'));
       if (!me) return redirect(res, `/auth/google?next=${encodeURIComponent(next)}`), true;
       if (me.email !== t.email) return html(page(`This invite is for ${t.email}`, `You're signed in as ${me.email}. Switch to the invited Google account to join.`, null, `<p style="margin-top:18px"><a href="/auth/logout?next=${encodeURIComponent(`/auth/google?next=${encodeURIComponent(next)}`)}" style="background:#111;color:#fff;text-decoration:none;padding:11px 18px;border-radius:10px;font-weight:600">Switch account</a></p>`));
       await addMember(t.slug, me, 'member', `Invited by ${inv.by}`, inv.seats);
       log.log?.(`[auth] ${t.slug}: ${me.email} joined from an invite`);
-      return redirect(res, `/${t.slug}?joined=1`), true;
+      return redirect(res, `/${t.slug}?go=feed&joined=1`), true;
     }
     if (p === '/api/me' && req.method === 'GET') {
       const me = user(req), slug = String(u.searchParams.get('brand') || '').replace(/[^a-z0-9-]/g, '');
@@ -261,7 +262,9 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
       const [, slug, what] = m, me = user(req);
       if (!me) return json(res, 401, { error: 'Sign in first.', signin: true }), true;
       if (!(await hostOf(slug))) return json(res, 404, { error: 'unknown brand' }), true;
-      if (what === 'claim' && req.method === 'POST') return json(res, 200, await claim(slug, me)), true;
+      /* Claim: idempotent (the team gets { ok }); the client calls it as the seat picker opens, so a brand whose check was
+         missed is still claimed by its starter or a same-domain person before "Invite your team" and jam tags need a team */
+      if (what === 'claim' && req.method === 'POST') { const r = await claim(slug, me); return json(res, 200, { ...r, access: await claimInfo(slug, me) }), true; }
       if (what === 'team') {
         const role = await roleOf(slug, me); if (!role) return json(res, 403, { error: 'Only the team sees the team.' }), true;
         const boss = role === 'owner' || role === 'admin', mine = boss ? null : await seatsOf(slug, me);

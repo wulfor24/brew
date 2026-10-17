@@ -38,6 +38,7 @@ export function cardValue(c, grades = {}, now = Date.now()) {
   if (n != null) { const v = valueOf(grades[n], now); if (v != null) return +(v - (/-[2-9]$/.test(c.id) ? 0.4 : 0)).toFixed(2); }
   if (c?.family === 'exception' || (c?.badge?.[1] === 'warn' && c?.type === 'decision')) return 7.5;
   if (c?.liveOnly || c?.live) return 6;
+  if (c?.campaign === 'New from your agents') return 5; /* a paid Creative idea, drawn for this brand today: never buried under 3 */
   if (/^build-/.test(c?.id || '') || c?.origin === 'build' && c?.kind === 'rows' && /^build/.test(c?.id || '')) return 2.5;
   if (c?.research) return c.research.kind === 'ad' ? 4.5 : 4;
   if (/^(Ideas|Heard) ·/.test(c?.src || '')) return 4;

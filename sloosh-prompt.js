@@ -10,7 +10,7 @@ export const SLOP = /\b(?:4\s?k|8\s?k|ultra[- ]?(?:detailed|realistic|hd)|hyper[
 export const JOBS = ['product', 'scene', 'style', 'person', 'logo', 'other'];
 /* what a reference of each job tells the model, and what must not change from it */
 const JOB_LINE = {
-  product: (r) => `Image ${r.n} is the product${r.label ? `, ${r.label}` : ''}. Keep its shape, proportions, colours, materials and every printed word on it exactly as shown${r.keep ? `; ${r.keep}` : ''}.`,
+  product: (r) => `Image ${r.n} is the product${r.label ? `, ${r.label}` : ''}. Keep its shape, proportions, colours, materials and brand mark as shown; its small print may be soft or turned away, never rewritten${r.keep ? `; ${r.keep}` : ''}.`, /* asking for exact small print made garbled labels, and a check that threw good pictures away */
   scene: (r) => `Image ${r.n} is the place${r.label ? `, ${r.label}` : ''}: use it as the setting and background${r.keep ? `; ${r.keep}` : ''}.`,
   style: (r) => `Image ${r.n} is the look${r.label ? `, ${r.label}` : ''}: match its light, colours, framing and mood, not its subject${r.keep ? `; ${r.keep}` : ''}.`,
   person: (r) => `Image ${r.n} is ${r.label || 'the person'}: keep their face, hair and build exactly as in that image${r.keep ? `; ${r.keep}` : ''}.`,
@@ -26,19 +26,20 @@ export const scrub = (s) => { const t = one(String(s || '').replace(SLOP, ' ')).
 export const hasSlop = (s) => { SLOP.lastIndex = 0; return SLOP.test(String(s || '')); };
 export const refLines = (refs = []) => refs.filter(Boolean).map((r, i) => (JOB_LINE[JOBS.includes(r.job) ? r.job : 'other'])({ ...r, n: r.n || i + 1 })).join(' ');
 /* the standing rules every picture keeps, for the brand (its own avoid line wins over the default one) */
-export const keepLine = ({ brand = {}, text = false, people = true } = {}) => one(`${text ? 'No writing anywhere except the words asked for and the product’s own label' : 'Nothing in the picture carries writing except the product’s own label'}: no calendars, notes, signs, screens, books, posters or other packaging. No logos or watermarks that are not the brand’s own. No before and after, no body shown as a result${people ? '' : ', no people'}. Nothing invented on the product. ${scrub(brand.avoid || '')}`);
+export const keepLine = ({ brand = {}, text = false, people = true } = {}) => one(`${text ? 'No writing anywhere except the words asked for and the product’s own label' : 'Nothing in the picture carries writing except the product’s own label'}: no calendars, notes, signs, screens, books, posters or other packaging. No logos or watermarks that are not the brand’s own. No body shown as a result, no before and after of a body${people ? '' : ', no people'}. Nothing invented on the product. ${scrub(brand.avoid || '')}`);
 /* "HEADLINE" in bold sans-serif, top third: exact words, a place, a lettering; one line each; rendered once */
 export const textLines = (text = []) => { const xs = (Array.isArray(text) ? text : [text]).map((t) => (typeof t === 'string' ? { words: t } : t)).filter((t) => one(t?.words)); if (!xs.length) return '';
   return xs.map((t) => `Text: "${one(t.words).replace(/"/g, '”')}" in ${t.style || 'clean bold sans-serif'}, ${t.where || 'in the clear space'}.`).join(' ') + ' Render each line once, spelled exactly, and add no other text.'; };
-/* light, lens and colours as things you can see: the brand's style line when it has one, else a quiet default */
-export const lookOf = (brand = {}, kind = 'image') => scrub(brand.style || brand.editorial || (kind === 'video' ? 'Soft daylight from one side, true colours, a steady phone-camera look' : 'Soft daylight from one side, true colours, a slight shadow under the product, a phone-camera look at eye level'));
+/* light, lens and colours as things you can see: the brand's style line when it has one, else a real phone-camera moment in
+   natural light (a still life on a surface reads as a catalog photo and is scrolled past) */
+export const lookOf = (brand = {}, kind = 'image') => scrub(brand.style || brand.editorial || (kind === 'video' ? 'Natural daylight in a real place, true colours, handheld on a phone' : 'A real moment shot on a phone held slightly above, natural daylight in a real home, office or outdoors, true colours, a little lived-in, not a studio still'));
 export const useOf = (ratio, topSpace = false) => `${USE[ratio] || USE['4:5']}${topSpace ? '; keep the top third calm and simple, the words sit there' : ''}`;
 
 /* ---------- the normalised brief every renderer reads ---------- */
 export function brief(spec = {}) {
   const brand = spec.brand || {}; const refs = (spec.refs || []).map((r, i) => ({ n: i + 1, job: JOBS.includes(r?.job) ? r.job : 'other', label: one(r?.label), keep: one(r?.keep), id: r?.id, url: r?.url, file: r?.file }));
   if (!refs.length && spec.hasSrc) refs.push({ n: 1, job: 'product', label: one(spec.product?.name || `${brand.name || ''} ${brand.noun || ''}`) || '', keep: '' });
-  const subject = scrub(spec.subject || spec.product?.name || [brand.name, brand.noun].filter(Boolean).join(' ') || 'the product');
+  const named = spec.subject || spec.product?.name || [brand.name, brand.noun].filter(Boolean).join(' '), subject = named ? scrub(named) : 'the product'; /* never "The subject is The product." */
   return { kind: spec.kind || 'image', title: one(spec.title), subject, visual: scrub(spec.visual), scene: scrub(spec.scene), look: lookOf(brand, spec.kind), ratio: spec.ratio || '4:5', use: useOf(spec.ratio || '4:5', !!spec.topSpace),
     refs, text: spec.text || [], brand, motion: scrub(spec.motion), beats: spec.beats || [], seconds: spec.seconds || 6, sound: spec.sound ?? false, index: spec.index, count: spec.count, people: spec.people !== false, revise: spec.revise || null };
 }
@@ -46,9 +47,9 @@ export function brief(spec = {}) {
 /* ---------- image renderers ---------- */
 /* Nano Banana (Gemini image) reads a scene in sentences: style, subject, setting, action, composition, then the words */
 export function nanoScene(b) {
-  const where = [b.visual, b.scene].filter(Boolean).join(' ');
+  const where = [b.visual, b.scene].filter(Boolean).map(sentence).join(' ');
   const head = b.index ? `Photograph ${b.index} of ${b.count} for one ${b.title || 'carousel'}; every photo in the set shares the same look, light and colours.` : `A photograph${b.title ? ` for ${b.title}` : ''}.`;
-  return one(`${head} ${b.subject ? `The subject is ${b.subject}.` : ''} ${sentence(where) || 'The product on a plain surface in its own setting.'} ${sentence(b.look)} Made for ${b.use}. ${refLines(b.refs)} ${textLines(b.text)} ${keepLine({ brand: b.brand, text: !!(b.text || []).length, people: b.people })}`);
+  return one(`${head} ${b.subject ? `The subject is ${b.subject}.` : ''} ${sentence(where) || 'The product in use in a real home, held close to the camera.'} ${sentence(b.look)} Made for ${b.use}. ${refLines(b.refs)} ${textLines(b.text)} ${keepLine({ brand: b.brand, text: !!(b.text || []).length, people: b.people })}`);
 }
 /* GPT Image reads a spec: one kind of instruction per line */
 export function gptSpec(b) {
@@ -61,8 +62,9 @@ export function gptSpec(b) {
 export function fluxHex(b) { const cs = (b.brand.colors || []).filter((c) => /^#[0-9a-f]{6}$/i.test(String(c))).slice(0, 3); const hex = cs.length ? ` Brand colours, exact: ${cs.map((c, i) => `${c} for ${['the backdrop', 'the accent props', 'the small details'][i]}`).join(', ')}.` : ''; return nanoScene(b) + hex; }
 
 /* ---------- video renderers ---------- */
-/* a draft clip from a still (Veo on Vertex, image to video): one shot, what moves, one camera move, the pace; the product stays */
-export function veoDraft(b) { return one(`${sentence(b.motion) || 'The camera pushes in slowly.'} The product stays still, upright and in sharp focus, its label unchanged and readable; only the light and the camera move, slowly. ${b.sound ? 'Quiet room tone.' : ''} No new text appears, no captions, no logo.`); }
+/* a draft clip from a still (Veo on Vertex, image to video): one handheld shot at a natural pace, what moves and who uses the
+   product; the product keeps its shape, colours and brand mark (a pinned, still product made clips nobody stopped for) */
+export function veoDraft(b) { return one(`${sentence(b.motion) || 'A hand picks the product up and uses it.'} One continuous handheld phone shot at a natural pace; hands and people may move and use the product; the product keeps its shape, colours and brand mark as in the first frame. ${b.sound ? 'Quiet room tone.' : ''} No new text appears, no captions, no logo.`); }
 /* Seedance 2.5: references by job, one summary sentence, then timed beats in whole seconds with no gaps; SFX in <>, lines in quotes */
 export function seedanceBeats(b) {
   const S = Math.max(4, Math.min(30, Math.round(b.seconds || 6))); const beats = (b.beats || []).filter((x) => one(x?.shot || x?.beat || x)).slice(0, 6);

@@ -21,6 +21,24 @@ import { sentenceCase } from './text-fit.js';
 import { withLearned, learnedMoveNs, learnedTerms } from './brand-learnings.js'; // what the team told Brew (pasted into a jam): in every prompt's system text
 import { sandboxName, virtualFile } from './demo-mode.js'; // Demo Mode: per-session private files
 
+/* the raw material of a hook, for every draft plan (drafts.js hookBlock), for every brand: real review lines (top 5, at most
+   120 characters, the read's chosen quotes first, no low ratings) and the three rival ads live longest (days, format, their
+   hook) with how each is built when Brew read it (rival-reads.json: hookPattern, stopper). Words only: never a rival's
+   name or picture. Empty lists when the read found none */
+export function hooksOf(profile, reads = {}) {
+  const short = (t, n = 120) => { t = String(t || '').replace(/\s+/g, ' ').trim(); if (t.length <= n) return t; const s1 = t.split(/(?<=[.!?])\s+/)[0]; return s1.length <= n ? s1 : t.slice(0, n - 1).replace(/\s+\S*$/, '') + '…'; };
+  const seen = new Set(), reviewQuotes = [];
+  for (const q of [...(profile?.reviews?.quotes || []), ...(profile?.reviews?.recent || []).slice().sort((a, b) => (+b?.rating || 0) - (+a?.rating || 0))]) {
+    if (reviewQuotes.length >= 5) break; if (!q?.text || (q.rating && +q.rating < 4) || /https?:\/\//.test(q.text)) continue;
+    const t = short(q.text), k = t.toLowerCase().slice(0, 40); if (t.length < 15 || seen.has(k)) continue; seen.add(k); reviewQuotes.push(t); }
+  const rivalHooks = (profile?.ads?.rivals || []).flatMap((r) => (r?.items || []).filter((a) => a && +a.days > 0 && (a.hook || reads?.[a.id]?.hookPattern)))
+    .sort((a, b) => +b.days - +a.days).slice(0, 3).map((a) => { const rd = reads?.[a.id] || {};
+      return { days: +a.days, format: a.format === 'video' ? 'video' : 'image', hook: short(a.hook, 90), ...(rd.hookPattern ? { hookPattern: short(rd.hookPattern, 160) } : {}), ...(rd.stopper ? { stopper: short(rd.stopper, 160) } : {}) }; });
+  return { reviewQuotes, rivalHooks };
+}
+/* the jam's draft plan reaches the pack only through its catalog (feed-service catalogOf): the hooks ride on it, unseen by JSON */
+const withHooks = (cat, hooks) => { try { Object.defineProperty(cat, 'hooks', { value: hooks, enumerable: false, configurable: true }); } catch {} return cat; };
+
 export const slugOf = (url) => {
   let h = String(url || '').trim().toLowerCase().replace(/^[a-z]+:\/\//, '').replace(/[/?#].*$/, '').replace(/:\d+$/, '').replace(/^www\./, '');
   return h.replace(/[^a-z0-9.-]/g, '').replace(/\./g, '-').replace(/^-+|-+$/g, '');
@@ -218,10 +236,11 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
   async function loadGenerated(slug) {
     const seed = await getJSON(slug, 'seed.json'); if (!seed) return null;
     /* the pack's files are read together, not one after another (each is a bucket read on a fresh instance) */
-    let [facts, config, status, moves, pools, profile, statics, brief, labels, pages, briefJ, moveValue, notesJ, firstDrafts, learned] = await Promise.all([
+    let [facts, config, status, moves, pools, profile, statics, brief, labels, pages, briefJ, moveValue, notesJ, firstDrafts, learned, rivalReads] = await Promise.all([
       getJSON(slug, 'facts.json', {}), getJSON(slug, 'config.json', {}), getJSON(slug, 'status.json', {}), getJSON(slug, 'moves.json', {}), getJSON(slug, 'pools.json', {}),
       getJSON(slug, 'profile.json', null), getJSON(slug, 'statics.json', {}), get(slug, 'brief.md'), getJSON(slug, 'labels.json', {}), getJSON(slug, 'pages.json', {}),
-      getJSON(slug, 'brief.json', {}), getJSON(slug, 'move-value.json', {}), getJSON(slug, 'notes.json', null), getFreshJSON(slug, 'drafts/cards.json', {}), getJSON(slug, 'learned.json', null)]);
+      getJSON(slug, 'brief.json', {}), getJSON(slug, 'move-value.json', {}), getJSON(slug, 'notes.json', null), getFreshJSON(slug, 'drafts/cards.json', {}), getJSON(slug, 'learned.json', null), getJSON(slug, 'rival-reads.json', {})]);
+    const hooks = hooksOf(profile, rivalReads || {}); /* real buyers' words and the rival ads that keep running, for the draft plans */
     /* a brief saved with "null" cells (an empty MRP or note the model wrote out) heals at load, for every brand: the cells go
        blank and the page (the AI's system prompt for the brand) is drawn again with what the team told Brew */
     { const { brief: cb, changed } = cleanBrief(briefJ); if (changed) { briefJ = cb; const md = renderBrief(cb, cb.at || new Date().toISOString().slice(0, 10)); brief = Buffer.from(learned ? withLearned(md, learned, { name: profile?.name }) : md);
@@ -268,7 +287,8 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
       /* cards that never sat in the seed (the team's private rewrites, private/cards.json; connector cards) get the same fitting
          at load: the photo of the product they name (title, then asset line), the button of the asset they make */
       fitLive: (cards) => fitCards(fitPhotos(visualize({ ...seed, posts: cards || [] }, { slug, config, staticText: {}, profile }), profile), { profile, config, seed }).posts,
-      catalog: catalogOf(profile), // the products with a photo each, so a draft's picture shows the product its words name
+      catalog: withHooks(catalogOf(profile), hooks), // the products with a photo each, so a draft's picture shows the product its words name
+      reviewQuotes: hooks.reviewQuotes, rivalHooks: hooks.rivalHooks, // what buyers say and the rival ads that keep running: every draft plan opens on them (drafts.js hookBlock)
       rivalPages: Object.fromEntries((profile?.ads?.rivals || []).filter((r) => r?.name).map((r) => [r.name, { page: r.page || null, host: r.host || null }])), // the Facebook page the read found per rival, for the story rings (research.js)
       personas: briefJ?.personas || [], // who buys: the studio's “Aim at” knob and chips (studio.js knobsFor)
       moveValue, // each move's grade for the ranker (value.js)

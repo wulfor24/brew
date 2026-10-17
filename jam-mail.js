@@ -24,9 +24,9 @@ export function createJamMail({ mail, packs, sign, verify, base = () => process.
   /* does this person want this email: off = none; tags = only being tagged/asked/assigned; a muted jam sends nothing but tags */
   const wants = async (slug, email, wid, kind) => { const x = (await prefsOf(slug))[lc(email)]; if (!x) return true; if (x.mail === 'off') return false; const direct = kind === 'tagged' || kind === 'asked' || kind === 'assigned'; if ((x.muted || []).includes(wid)) return direct && kind === 'tagged'; if (x.mail === 'tags') return direct; return true; };
 
-  const link = (slug, wid) => `${base()}/${slug}#jam=${encodeURIComponent(wid)}`;
+  const link = (slug, wid) => `${base()}/${slug}?go=feed#jam=${encodeURIComponent(wid)}`; /* ?go=feed: straight into the jam, never the read replay */
   const prefLink = (slug, email, set, wid) => `${base()}/mail/pref?t=${encodeURIComponent(sign({ slug, email: lc(email), set, wid: wid || null }, 180 * 86400, 'mailpref'))}`;
-  const footer = (slug, email, wid) => `You’re getting this because you’re in this jam.<br>${footLink(prefLink(slug, email, 'mute', wid), 'Mute this jam')} · ${footLink(prefLink(slug, email, 'tags'), 'Only when I’m tagged')} · ${footLink(prefLink(slug, email, 'off'), 'No jam emails')}`;
+  const footer = (slug, email, wid) => `You’re getting this because you’re in this jam.<br>${footLink(prefLink(slug, email, 'mute', wid), 'Mute this jam')} · ${footLink(prefLink(slug, email, 'tags'), 'Only when I’m tagged')} · ${footLink(prefLink(slug, email, 'off'), 'No emails from Brew')}`;
   const quote = (who, text) => mquote(who, cut(text, 280));
 
   const send = async (to, subject, html, text) => { try { const ok = await mail(to, subject, html, text); if (ok) return true; } catch (e) { log.warn?.('[jam-mail] send', e.message); }
@@ -87,11 +87,12 @@ export function createJamMail({ mail, packs, sign, verify, base = () => process.
   const handle = async (req, res, u) => {
     if (u.pathname !== '/mail/pref' || req.method !== 'GET') return false;
     const t = verify(u.searchParams.get('t') || '', 'mailpref');
-    const page = (h, p) => { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex', 'referrer-policy': 'no-referrer' }); res.end(smallPage(h, p, { link: t?.slug ? { href: `/${t.slug}`, label: `Open ${brandName(t.slug)}` } : null })); return true; };
+    const page = (h, p) => { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex', 'referrer-policy': 'no-referrer' }); res.end(smallPage(h, p, { link: t?.slug ? { href: `/${t.slug}?go=feed`, label: `Open ${brandName(t.slug)}` } : null })); return true; };
     if (!t?.slug || !t.email) return page('This link has expired', 'Open Brew to change your email settings.');
     if (t.set === 'mute' && t.wid) { await setPref(t.slug, t.email, { mute: t.wid }); return page('Muted', 'You won’t get emails about this jam unless someone tags you.'); }
     if (t.set === 'tags') { await setPref(t.slug, t.email, { mail: 'tags' }); return page('Only when you’re tagged', 'You’ll get an email when someone tags you, asks you something or gives you a jam.'); }
-    if (t.set === 'off') { await setPref(t.slug, t.email, { mail: 'off' }); return page('No jam emails', 'You won’t get emails about jams. Invites and team changes still come.'); }
+    /* off also stops the weekly digest and the "moves ready / updated" emails (digest.js teamRecipients reads mail: 'off') */
+    if (t.set === 'off') { await setPref(t.slug, t.email, { mail: 'off' }); return page('No emails from Brew', `No emails from Brew for ${brandName(t.slug)}. Turn them back on any time.`); }
     if (t.set === 'all') { await setPref(t.slug, t.email, { mail: 'all' }); return page('Jam emails are on', 'You’ll hear about the jams you’re in.'); }
     return page('Nothing changed', 'Open Brew to change your email settings.');
   };
@@ -131,12 +132,20 @@ export function createJamMail({ mail, packs, sign, verify, base = () => process.
       `Open the jam: ${jamUrl || link(slug, w.id)}`, briefUrl ? `The brief (read-only): ${briefUrl}` : ''].filter((x, i, a) => x !== '' || a[i - 1] !== '').join('\n');
     const ok = await send(to, subject, html, txt); if (!ok) briefSentKeys.delete(k); return ok;
   };
-  /* the ShopOS team moved a brief on: the person who sent it hears (needs_info quotes what they need) */
+  /* the ShopOS team moved a brief on: the person who sent it hears (needs_info quotes what they need). Delivered and Needs info
+     are the jam's news, so everyone in the jam hears them too (never the person who moved it; their mail settings count, the
+     sender's email always goes). Other steps only reach the sender */
+  const EM = /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/;
   const briefStatus = async (slug, w, { to, by, label, status, note = '', ticket = null, jamUrl }) => {
-    if (!to || !/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(lc(to))) return false;
-    const brand = brandName(slug), title = status === 'needs_info' ? `The ShopOS team needs something for “${cut(w.title, 60)}”` : `Your brief “${cut(w.title, 60)}” is ${String(label).toLowerCase()}`;
+    const sender = lc(to), mover = lc(by?.email), wide = status === 'delivered' || status === 'needs_info';
+    const list = [...new Set([sender, ...(wide ? (w.people || []).map((x) => lc(x.email)) : [])])].filter((e) => e && EM.test(e) && e !== mover);
+    if (!list.length) return false;
+    const brand = brandName(slug), title = status === 'needs_info' ? `The ShopOS team needs something for “${cut(w.title, 60)}”` : `${wide ? 'The' : 'Your'} brief “${cut(w.title, 60)}” is ${String(label).toLowerCase()}`;
     const html = emailHtml({ title, eyebrow: `${brand}${ticket ? ` · ${ticket}` : ''}`, preheader: note ? cut(note, 140) : title, body: note ? quote(by?.name || 'ShopOS team', note) : para(`${esc(label)}.`), cta: { href: jamUrl || link(slug, w.id), label: status === 'needs_info' ? 'Answer in the jam' : 'Open the jam' }, base: base() });
-    return send(lc(to), `${ticket ? `${ticket} · ` : ''}${title}`, html, `${title}\n\n${note ? `${by?.name || 'ShopOS team'}: ${note}\n\n` : ''}Open the jam: ${jamUrl || link(slug, w.id)}`);
+    const txt = `${title}\n\n${note ? `${by?.name || 'ShopOS team'}: ${note}\n\n` : ''}Open the jam: ${jamUrl || link(slug, w.id)}`;
+    let n = 0;
+    for (const e of list) { if (e !== sender && !(await wants(slug, e, w.id, status === 'needs_info' ? 'asked' : 'reply'))) continue; if (await send(e, `${ticket ? `${ticket} · ` : ''}${title}`, html, txt)) n++; }
+    return n > 0;
   };
 
   return { event, flush, drain, shopos, briefSent, briefStatus, handle, prefsOf, setPref, prefLink, pending, stop: () => timer && clearInterval(timer) };
