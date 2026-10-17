@@ -173,3 +173,11 @@ test('a poll that keeps failing or the wait limit leaves the run open (running, 
   R.sloosh.wait = async () => { throw Object.assign(new Error('Sloosh run rejected'), { terminal: true, final: { owner: { chargedCredits: 0 } } }); };
   const q2 = await F2.quote('cozy', { ...spec, visual: 'another' }); await assert.rejects(F2.run('cozy', { ...spec, visual: 'another' }, { quote: q2, target: { chid: 't' } }), /rejected/); assert.equal((await F2.list('cozy')).find((r) => r.target.chid === 't').state, 'failed');
 });
+
+test('where a final shows (land) rides on the record but never in the run key: a retry from a new card finds the same run and pays once', async () => {
+  const R = rig(); const q = await R.F.quote('cozy', spec); const target = { wid: 'w1', draftId: 'd1', revision: 0 };
+  const a = await R.F.run('cozy', spec, { quote: q, target, land: { tid: 'T1', fid: 'fn_a' } });
+  assert.deepEqual(a.land, { tid: 'T1', fid: 'fn_a' });
+  const b = await R.F.run('cozy', spec, { quote: q, target, land: { tid: 'T1', fid: 'fn_b' } });
+  assert.equal(b.runKey, a.runKey); assert.equal(b.state, 'done'); assert.equal(R.calls.filter((c) => c[0] === 'generate').length, 1);
+});

@@ -6,6 +6,8 @@
 //   ai-pause        the AI pause turned on (ai.js: a billing failure stops every call for 15 minutes)
 //   treg-low        treg's team balance is under TREG_LOW_USD (default $10, about one store read is $6)
 //   5xx             ALERT_5XX_RATE (5%) or more of the last 10 minutes' responses were 5xx, once there were ALERT_5XX_MIN (50)
+//   sloosh          Sloosh cannot make finals (needs a reconnect, no daily limit, the day's allowance or the wallet short): finals
+//                   quietly fall back to Gemini, so staff hear it (server.js checks hourly)
 // On Cloud Run only (ALERTS=1 turns it on locally, ALERTS=0 off), never under AI_MOCK or on the demo site.
 import { emailHtml, p as mailP, list as mailList } from './mail-layout.js';
 
@@ -28,14 +30,16 @@ const TITLE = {
   'vertex-quota': 'Vertex quota is running out',
   'ai-pause': 'Brew’s AI is paused',
   'treg-low': 'treg balance is low',
-  '5xx': 'Brew is returning server errors'
+  '5xx': 'Brew is returning server errors',
+  sloosh: 'Sloosh can’t make finals'
 };
 const WHAT = {
   'vertex-billing': 'Check the Google Cloud billing account and credits for squareup-492617. Until it is fixed, moves, drafts and images fail.',
   'vertex-quota': 'Vertex keeps answering 429 (quota). Check the quota page for squareup-492617, or slow the background jobs down.',
   'ai-pause': 'A billing failure paused every AI call for 15 minutes. It turns itself back on, and pauses again while the credit is out.',
   'treg-low': 'Top up the squareup team on treg. Store reads, rivals’ ads, SERP and Instagram need it; at $0 the reads fall back or fail.',
-  '5xx': 'Look at the Cloud Run logs for shopos-feed (severity ERROR) to see what is failing.'
+  '5xx': 'Look at the Cloud Run logs for shopos-feed (severity ERROR) to see what is failing.',
+  sloosh: 'Make the final is using Gemini instead of Sloosh until this is fixed. Reconnect at brew.joinsquareup.com/api/ops/sloosh/connect, or check the daily agent limit and credits on sloosh.ai/settings/mcp.'
 };
 
 export function createAlerts({ env = process.env, store = null, treg = null, sendMail = null, now = () => Date.now(), log = console } = {}) {

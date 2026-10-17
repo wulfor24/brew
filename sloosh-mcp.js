@@ -28,6 +28,18 @@ export const flat = (schema = {}) => { const br = (schema.oneOf || schema.anyOf 
   return { ...schema, properties, required, additionalProperties: br.every((b) => b.additionalProperties === false) ? false : schema.additionalProperties }; };
 const hasPath = (schema, p) => { const ks = p.split('.'); let s = schema; for (const k of ks) { s = s?.properties?.[k]; if (!s) return false; } return true; };
 /* { intentKey: value } → the tool's own argument object; unknown schema keys are reported, required ones missing throw */
+/* every tool finals.js calls, with the words Brew sends: checked against the pinned schemas in the tests and against the live
+   tools/list from the ops page (preflight), so a schema Sloosh changes shows up before a team presses Make the final */
+const REF0 = { kind: 'workspace', id: '2c1f0a2e-6a2b-4b1e-9c3d-1a2b3c4d5e6f', url: 'https://cdn/x.png', type: 'image' };
+export const PREFLIGHT_CASES = { quote_generation: { mode: 'image_gen', prompt: 'p', model: 'm', references: [REF0], ratio: '4:5', resolution: '2K', count: 1 }, generate: { quote: 'q', runKey: 'k', confirmed: true }, get_generation: { id: 'op' },
+  import_asset: { url: 'https://brew.test/a.png', name: 'a.png' }, quote_space: { id: 'sp_1', inputs: { field_1: 'https://brew.test/a.png' } }, run_space: { quote: 'q', runKey: 'k', confirmed: true }, get_space_run: { id: 'op' },
+  get_space_run_outputs: { id: 'op' }, get_space_input_schema: { id: 'sp_1' }, get_asset: { kind: 'generated', id: 'g' }, reconcile_generation: { id: 'op' }, reconcile_space_run: { id: 'op' }, list_spaces: { name: 'product', limit: 50 }, list_assets: { kind: 'workspace', name: 'a' },
+  approve_space_checkpoint: { id: 'op', nodeId: 'n', checkpointKey: 'rk', expectedRerunCount: 0 }, reject_space_checkpoint: { id: 'op', nodeId: 'n', checkpointKey: 'rk', expectedRerunCount: 0 }, list_models: { mode: 'image_gen' }, get_connection: {}, get_account: {} };
+/* tools → { ok, tools: { name: 'ok' | what is wrong } }: nothing is called, only the schemas are read */
+export const preflightOf = (tools = []) => { const out = {}; for (const [name, intent] of Object.entries(PREFLIGHT_CASES)) { const t = tools.find((x) => x.name === name); if (!t) { out[name] = 'Sloosh has no tool by this name now'; continue; }
+  const warned = []; try { argsFor(t, intent, { warn: (m) => warned.push(m) }); out[name] = warned.length ? warned.join('; ') : 'ok'; } catch (e) { out[name] = e.message; } }
+  return { ok: Object.values(out).every((v) => v === 'ok'), tools: out }; };
+
 export function argsFor(tool, intent = {}, log = null) {
   const schema = flat(tool?.inputSchema || {}); const out = {}; const unknown = [];
   for (const [k, v] of Object.entries(intent)) {
@@ -124,7 +136,7 @@ export function createSloosh({ url = MCP_URL(), tokenFor, fetchImpl = fetch, log
   /* an asset reference: { kind: 'workspace'|'generated', id } (the two id spaces are not interchangeable); a bare id is a workspace one */
   const refOf = (r) => (typeof r === 'string' ? { kind: 'workspace', id: r } : { kind: r?.kind || r?.reference?.kind || 'workspace', id: r?.id || r?.reference?.id || r?.assetId });
   const api = {
-    list, call, callRaw, tool, wait, stateOf, pendingCheckpoint, refOf, init, reset: () => { sid = null; ready = null; tools = null; },
+    list, call, callRaw, tool, wait, stateOf, pendingCheckpoint, refOf, init, reset: () => { sid = null; ready = null; tools = null; }, preflight: async () => preflightOf(await list()),
     getConnection: () => call('get_connection'), getAccount: () => call('get_account'), getGuide: (id) => call('get_guide', id ? { id } : {}),
     listModels: (mode) => call('list_models', mode ? { mode } : {}), listAssets: (o = {}) => call('list_assets', typeof o === 'string' ? { name: o } : o), getAsset: (r) => call('get_asset', refOf(r)), viewAsset: (r) => call('view_asset', refOf(r)),
     importAsset: (url, name) => call('import_asset', { url, name: String(name || decodeURIComponent(String(url).split('/').pop().split('?')[0]) || 'brew-reference').slice(0, 200) }),

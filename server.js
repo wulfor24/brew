@@ -23,7 +23,7 @@ import { B, BN, runIn, liveRe, setDefaultBrand, inBrand } from './brand-ctx.js';
 import { createImageGuard } from './image-guard.js';
 import { createPacks, slugOf, DEFAULT } from './brand-pack.js';
 import { createAI, aiPaused, billingError, noteBilling } from './ai.js';
-import { createAlerts, noteVertex } from './alerts.js'; // ops emails: Vertex billing/quota, the AI pause, treg balance, 5xx rate
+import { createAlerts, noteVertex, noteAlert } from './alerts.js'; // ops emails: Vertex billing/quota, the AI pause, treg balance, 5xx rate
 import { createBudget } from './budget.js'; // the day's AI budget: a ceiling and a share per brand
 import { createTreg, gcsCache } from './treg.js';
 import { setApifyCache } from './apify.js';
@@ -31,7 +31,8 @@ import { chain as mediaChain, openaiImage as openaiImageRaw, makeVideo } from '.
 import { createVault } from './vault.js';
 import { createSlooshAuth } from './sloosh-auth.js';
 import { createSloosh } from './sloosh-mcp.js';
-import { createFinals } from './finals.js';
+import { createFinals, pick } from './finals.js';
+import { buildFinal } from './sloosh-prompt.js'; // the ops page's free check quote
 import { createBuilder, blocked, clientIp } from './build.js';
 import { createRetire } from './retire.js'; // older revisions stop and exit; brands being reset are hidden
 import { createFactsDesk } from './facts-desk.js';
@@ -488,8 +489,12 @@ const slooshAuth = createSlooshAuth({ packs, vault: createVault(packs), auth, lo
 const sloosh = createSloosh({ tokenFor: slooshAuth.tokenFor, log: console });
 /* finals (finals.js): the go-live image or video a team asks Sloosh for, quote first, behind a button; records per brand so a
    restart never pays twice (reconcileAll at boot); counted in budget 'credits' and in /api/ops/busy */
-const finals = createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFlush, slugs: async () => (await packs.list()).map((x) => x.slug), log: console, geminiImage: countedImage, photo: photoAny, /* the Gemini fallback until Brew's workspace can pay: the drafts' own makers, counted in the image/video budget */
+const finals = createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFlush, slugs: async () => (await packs.list()).map((x) => x.slug), log: console, geminiImage: countedImage, photo: photoAny,
+  onDone: async (slug, rec) => { const ok = await feedSvc?.finalDone?.(slug, rec); console.log(`[finals] ${slug} ${rec.runKey} ${rec.state} after the restart: ${ok ? 'landed on its card' : 'no card to land on'}`); }, /* a run reconcileAll settles lands where it was asked */ /* the Gemini fallback until Brew's workspace can pay: the drafts' own makers, counted in the image/video budget */
   makeVideo: async (frame, prompt, { ratio = '9:16', seconds = 6, slug } = {}) => { if (!spend('video', slug)) throw Object.assign(new Error(budget.why('video', slug) || 'The video budget for today is used up.'), { soft: true, budget: true }); return makeVideo(frame, prompt, { ratio, seconds }, console); } });
+/* Sloosh's health for the ops alerts: when it needs a reconnect or can't pay, finals quietly go to Gemini, so staff hear it once a day */
+if (process.env.K_SERVICE && process.env.DEMO_MODE !== '1' && process.env.AI_MOCK !== '1') { const slooshCheck = () => finals.status({ fresh: true }).then((st) => { if (!st.ok && !st.dummy) noteAlert('sloosh', st.fallbackWhy || st.why || 'not ready'); }).catch((e) => noteAlert('sloosh', e.message));
+  setTimeout(slooshCheck, 120e3).unref?.(); setInterval(slooshCheck, 3600e3).unref?.(); }
 /* GET /api/ops/sloosh (staff): the connection, the workspace and what Sloosh says about today's limit and credits */
 const slooshStaff = (req) => auth.isAdmin(auth.user(req)) || (!auth.signinOn() && !process.env.K_SERVICE); /* staff, or a local server with sign-in off */
 const slooshOps = async (req) => {
@@ -498,7 +503,12 @@ const slooshOps = async (req) => {
   const st = await slooshAuth.status(); if (!st.connected) return { ...st, connect: '/api/ops/sloosh/connect' };
   const [conn, acct] = await Promise.all([sloosh.getConnection().catch((e) => ({ error: e.message })), sloosh.getAccount().catch((e) => ({ error: e.message }))]);
   const ws = conn?.workspace || acct?.workspace || null; if (ws && !st.workspace) await slooshAuth.setWorkspace(ws).catch(() => {});
-  return { ...st, workspace: ws || st.workspace, connection: conn, account: acct, finals: fin, credits: budget.left().credits, reconnect: '/api/ops/sloosh/connect' };
+  /* preflight: the live tool schemas against the words finals send (free, nothing is called); ?quote=1 also asks for a real quote
+     on a plain image brief, which reserves and spends nothing (a quote is only a price until a yes runs it) */
+  const pre = await sloosh.preflight().catch((e) => ({ ok: false, error: e.message }));
+  let quote = null; if (new URL(req.url, 'http://x').searchParams.get('quote') === '1') { const b = buildFinal({ kind: 'image', title: 'a Meta ad', visual: 'A hand holds the product on a desk by a window.', hasSrc: false, ratio: '4:5', brand: { name: 'Brew check' } });
+    quote = await sloosh.quoteGeneration({ mode: 'image_gen', prompt: b.prompt, model: b.model, references: [], ratio: b.settings.aspect_ratio, resolution: b.settings.resolution, count: 1 }).then((q) => ({ ok: true, model: b.model, credits: pick(q, 'credits', 'expectedCredits') ?? null, expiresAt: pick(q, 'expiresAt') || null, warning: pick(q, 'warning') || null })).catch((e) => ({ ok: false, model: b.model, error: e.message })); }
+  return { ...st, workspace: ws || st.workspace, connection: conn, account: acct, finals: fin, credits: budget.left().credits, preflight: pre, ...(quote ? { quote } : {}), reconnect: '/api/ops/sloosh/connect' };
 };
 const slooshHandle = async (req, res, u) => {
   if (!u.pathname.startsWith('/api/ops/sloosh/')) return false;

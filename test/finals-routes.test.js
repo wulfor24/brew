@@ -1,0 +1,41 @@
+// Make the final from the jam and the studio (finals-routes.js): our version of a rival's ad keeps their composition in words,
+// never their picture; a final Sloosh finishes while Brew restarts lands on the card it was asked from
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createFinalsSheet, createFinalsRoutes } from '../finals-routes.js';
+import { buildFinal } from '../sloosh-prompt.js';
+
+const brandOfT = () => ({ seed: { brand: { name: 'Cozy' } }, config: { product: { noun: 'paw warmer' } }, catalog: [{ t: 'Paw Warmer', img: 'b/cozy/a/warmer.jpg' }] });
+const rival = { refs: [{ job: 'product', label: '', keep: '' }], visual: "The composition of Rivalco's ad, made with our product: the product low in the centre on a desk, cropped tight. No other products, brands, logos, badges or retailer marks.", look: 'Soft window light, warm beige colours.', text: [{ words: 'Cold paws at your desk?', where: 'top third, centred', style: 'bold white sans-serif' }] };
+
+test('a final of our version: their composition and look ride after the brief, our words sit where theirs did, and a rival picture is never a reference', () => {
+  const sheet = createFinalsSheet({ finals: {}, sloosh: {}, brandOfT });
+  const s = sheet.spec({}, { kind: 'image', title: 'Our version', visual: 'A hand slips the warmer into a glove.', text: 'Cold paws at your desk?', rival }, { refs: [{ url: 'b/cozy/a/warmer.jpg', job: 'product' }, { url: 'research/abc.png', job: 'style' }, { url: '/research/x.jpg', job: 'other' }], text: ['Warm paws by the second sip'] });
+  assert.equal(s.refs.length, 1, 'their ad never reaches Sloosh or Gemini as a picture'); assert.equal(s.rival, true);
+  assert.match(s.visual, /glove\. The composition of Rivalco's ad/); assert.equal(s.brand.style, rival.look);
+  assert.deepEqual(s.text, [{ words: 'Warm paws by the second sip', where: 'top third, centred', style: 'bold white sans-serif' }]);
+  const prompt = buildFinal(s).prompt; assert.match(prompt, /top third, centred/); assert.match(prompt, /Warm paws by the second sip/); assert.match(prompt, /cropped tight/);
+  assert.deepEqual(sheet.spec({}, { kind: 'image', title: 'x', visual: 'v', rival }, { text: [] }).text, [], 'empty words in the sheet mean none');
+  const plain = sheet.spec({}, { kind: 'image', title: 'x', visual: 'v', text: 'Hi' }, {}); assert.equal(plain.rival, false); assert.deepEqual(plain.text, ['Hi']);
+});
+
+test('the jam: the quote carries the rival read; a run Sloosh finished after a restart lands on its final card once, a failed one says so', async () => {
+  const routes = new Map(); const on = (m, p, fn) => routes.set(`${m} ${p}`, fn);
+  const w = { id: 'w1', cardId: 'c1', thread: [], drafts: [{ id: 'd1', as: 'image', state: 'ready', title: 'First draft: warm paws', copy: 'Cold paws at your desk?\nButton: Shop now', visual: 'A hand slips the warmer into a glove.', image: 'gen/d1.png' }] };
+  const t = { id: 'T1', work: [w] }; let quoted = null, asked = null, ready = 0, saves = 0;
+  const finals = { quote: async (slug, spec) => { quoted = spec; return { quoteId: 'q1', credits: 1.2, provider: 'sloosh', model: 'gemini-3-pro-image-preview', label: 'Nano Banana Pro' }; } };
+  const J = createFinalsRoutes({ on, W: (tt, id) => tt.work.find((x) => x.id === id), say: (tt, ww, m) => ww.thread.push(m), meOf: () => ({ name: 'Param' }), slugOfT: () => 'cozy', brandOfT, cardOfW: () => ({ id: 'c1', research: { kind: 'ad', id: 'a1' } }), finals, sloosh: {}, rivalOf: async (tt, c, words) => { asked = words; return rival; }, onReady: () => { ready++; }, save: () => { saves++; }, now: () => 1000 });
+  const r = await routes.get('POST /api/work/:wid/final/quote')({ draftId: 'd1', refs: [{ url: 'b/cozy/a/warmer.jpg', job: 'product' }], text: ['Cold paws at your desk?'] }, t, { wid: 'w1' });
+  assert.ok(r.quote); assert.equal(quoted.rival, true); assert.match(quoted.visual, /Rivalco/); assert.equal(asked.button, 'Shop now'); assert.equal(quoted.text[0].where, 'top third, centred');
+  /* the card that waited through the restart (drafts.js heal marks it interrupted), then reconcileAll's record arrives */
+  w.drafts.unshift({ id: 'fn_1', as: 'image', state: 'failed', err: 'This draft was interrupted. Try again.', final: true, from: 'd1' });
+  const rec = { runKey: 'rk1', state: 'done', kind: 'image', provider: 'sloosh', file: 'gen/fin-1.png', link: 'https://cdn.sloosh.test/out1.png', assetId: 'out1', charged: 1.2, model: 'gemini-3-pro-image-preview', target: { wid: 'w1', draftId: 'd1', revision: 0 }, land: { tid: 'T1', fid: 'fn_1' } };
+  assert.equal(J.landDone(t, rec), true); const fd = w.drafts[0];
+  assert.equal(fd.state, 'ready'); assert.equal(fd.image, 'gen/fin-1.png'); assert.equal(fd.failed, false); assert.equal(fd.err, null); assert.equal(fd.credits, 1.2); assert.equal(ready, 1); assert.ok(saves >= 1);
+  assert.match(w.thread.at(-1).body, /The final is here: 1\.2 credits/);
+  assert.equal(J.landDone(t, rec), true); assert.equal(ready, 1, 'landed once');
+  w.drafts.unshift({ id: 'fn_2', as: 'image', state: 'making', final: true, from: 'd1' });
+  J.landDone(t, { ...rec, runKey: 'rk2', state: 'failed', error: 'Sloosh delivered nothing (moderation)', land: { tid: 'T1', fid: 'fn_2' } });
+  assert.equal(w.drafts[0].failed, true); assert.match(w.drafts[0].err, /moderation/); assert.match(w.thread.at(-1).body, /didn’t come through/);
+  assert.equal(J.landDone(t, { ...rec, land: { tid: 'T1', fid: 'gone' } }), false);
+});

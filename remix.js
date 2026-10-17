@@ -1344,7 +1344,7 @@ export function createRemix(o) {
   };
   /* the studio's finals (finals-routes.js createStudioFinals): status, quote, run and a Space checkpoint on this change; the
      result is the next version, labelled Final. Off when the server has no Sloosh client (tests) */
-  if (o.finals && o.sloosh) createStudioFinals({ on, C, ensurePkg, sync, version, pubChange, cardOf: (t, ch) => t.cards.get(ch.cardId) || null, cardPhoto, catalogOf, jobs: IMG_JOBS, vidJobs: VID_JOBS /* a video final is a video job: C() never calls it stopped */, references: (t) => (o.references ? o.references(t) : []), finals: o.finals, sloosh: o.sloosh, creditsLeft: o.creditsLeft, brandOfT: o.brandOfT, slugOfT: o.slugOfT, meOf: o.meOf, onMedia: (t, ch, m) => o.onMedia?.(t, ch, m), isVideo: isVideoPost, RATIO, log });
+  const STUDIO_FINALS = o.finals && o.sloosh ? createStudioFinals({ rivalOf: (t, ch, p) => rivalPic(t, ch, p) /* "Make our version": the final keeps the rival ad's composition, in words */, on, C, ensurePkg, sync, version, pubChange, cardOf: (t, ch) => t.cards.get(ch.cardId) || null, cardPhoto, catalogOf, jobs: IMG_JOBS, vidJobs: VID_JOBS /* a video final is a video job: C() never calls it stopped */, references: (t) => (o.references ? o.references(t) : []), finals: o.finals, sloosh: o.sloosh, creditsLeft: o.creditsLeft, brandOfT: o.brandOfT, slugOfT: o.slugOfT, meOf: o.meOf, onMedia: (t, ch, m) => o.onMedia?.(t, ch, m), isVideo: isVideoPost, RATIO, log }) : null;
   on('GET', '/api/changes/:chid/photos', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch);
     const cat = (catalogOf(t) || []).filter((x) => x.img).sort((a, b) => (a.out ? 1 : 0) - (b.out ? 1 : 0)).slice(0, 60).map((x) => ({ t: x.t, img: x.img, ...(x.out ? { out: true } : {}) }));
@@ -1483,5 +1483,7 @@ export function createRemix(o) {
   const photoFromJam = (t, w, ask) => { const ch = w.changeId && changes(t)[w.changeId]; if (!ch) return null; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };
     if (!ch.imagePending) ch.pkg.imageBrief = clean(`${ch.pkg.imageBrief || ''} The team asked: ${ask}`).slice(-600);
     const started = genImage(t, ch, ask); return started ? { started: true } : { error: realOnly(ch) ? `${ch.pkg.platform || 'This place'} wants real photos, not AI ones.` : 'No new photo can be made for this one right now (AI is off, or today’s image limit is used up).' }; };
-  return { remakeFromJam, photoFromJam, iterateFromJam, pickFromJam, makePlan, ensurePlan, planReady, onWorkVersion, pubChange, changes, packageOf };
+  /* a final Sloosh finished while Brew restarted (finals.reconcileAll → feed-service finalDone): the change's next version, labelled Final */
+  const finalDone = (t, rec) => { const ok = STUDIO_FINALS?.landDone(t, rec) || false; if (ok) o.save?.(t); return ok; };
+  return { remakeFromJam, photoFromJam, iterateFromJam, pickFromJam, makePlan, ensurePlan, planReady, onWorkVersion, pubChange, changes, packageOf, finalDone };
 }

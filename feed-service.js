@@ -7,7 +7,7 @@ import { budgetWhy } from './budget.js'; // whose daily share ran out, in plain 
 import { realRows } from './connectors/common.js';
 import { baselineOf, healthReadings } from './on-connect.js'; // the team's own account numbers on cards and the health card
 import fs from 'node:fs';
-import { readRivalAd } from './rival-ad.js'; // rival ads read ahead, kept with the brand
+import { readRivalAd, rivalPicture } from './rival-ad.js'; // rival ads read ahead, kept with the brand; a final of our version keeps their composition
 import vm from 'node:vm';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -255,6 +255,7 @@ export function createFeedService(o) {
   let HO = null; // the full-context handoff (handoff.js)
   let MOVES = null; // the move documents (moves.js)
   let RMX = null; // the studio (remix.js), wired up once the routes exist
+  let JAM_FINALS = null; // the jam's finals (finals-routes.js), for a final that lands after a restart
   let linkChange = null; // a jam's change package for its work item (set with the work routes)
  // the measuring engine (measure-engine.js), behind MEASURE_ENGINE; off = the old simulated loop
   // the active brand's data (a generated pack, or the Brew default context); see brand-ctx.js
@@ -779,6 +780,8 @@ export function createFeedService(o) {
       await readRivalAd(a, { call: claudeTool, fileOf: fileOfRel, store: st, log }).catch(() => null); }
   };
   /* what the jam shows under "What Brew read from their ad": the ad, and the read when there is one */
+  /* "Make our version" made final (finals-routes.js): the rival ad's composition and look in words, our words where theirs sit (a kept read costs nothing) */
+  const rivalPicOf = async (t, c, words = {}) => { const ad = rivalAd(t, c); if (!ad) return null; const style = await readRivalAd(ad, { call: claudeTool, fileOf: fileOfRel, store: rivalStoreOf(t), log }).catch(() => null); return style ? rivalPicture(ad, style, words) : null; };
   const rivalSummary = (t, c) => { const ad = rivalAd(t, c); if (!ad) return null; const rd = readsMem.get(t?.brandId || DEFAULT_BRAND)?.[ad.id] || null;
     return { brand: ad.brand, url: ad.url || null, poster: ad.poster || null, format: ad.format || 'image', hook: ad.hook || '', angle: rd?.angle || ad.angle || '', days: ad.days || null, versions: ad.versions || null,
       read: rd ? { stopper: rd.stopper || '', audience: rd.audience || '', proof: rd.proof || '', hookPattern: rd.hookPattern || '', layout: rd.layout || '', look: rd.look || '', beats: rd.beats || [], works: rd.works || [], from: rd.from || 'poster' } : null }; };
@@ -1840,8 +1843,8 @@ export function createFeedService(o) {
     briefOf: (t, w) => JB.seed(t, w)?.md, cardBrief, seatLine, isMock, spend, clean, now, uid, say, save: (t) => store?.save(t), AGENT, onReady: (t, w, d) => slackAsset(t, w, { title: d.title, copy: d.copy, image: d.image, video: d.video, audio: d.audio, zip: d.zip, kind: d.as === 'video' && !d.video ? (d.image ? 'image' : 'text') : d.as, note: d.err || null }), /* a video that didn't come through says so, never 'New video' */ log });
   /* the jam's finals (finals-routes.js): the sheet's status, the quote, the run and a Space checkpoint; a final lands as a draft
      card marked final and posts to the thread like every asset. Off when the server has no Sloosh client (tests) */
-  if (o.finals && o.sloosh) createFinalsRoutes({ on, W, say, meOf, slugOfT, brandOfT, cardOfW: (t, w) => (w?.cardId ? t.cards.get(w.cardId) || null : null), references: (t, slug) => REFS.list(slug), finals: o.finals, sloosh: o.sloosh, creditsLeft: (slug) => o.budgetLeft?.(slug) || null,
-    onReady: (t, w, d) => slackAsset(t, w, { title: d.title, copy: d.copy, image: d.image, video: d.video, kind: d.as === 'video' && !d.video ? 'image' : d.as, note: d.err || null }), save: (t) => store?.save(t), now: () => Date.now(), uid, log }); DR.routes({ on, W });
+  JAM_FINALS = o.finals && o.sloosh ? createFinalsRoutes({ on, W, say, meOf, slugOfT, brandOfT, cardOfW: (t, w) => (w?.cardId ? t.cards.get(w.cardId) || null : null), references: (t, slug) => REFS.list(slug), finals: o.finals, sloosh: o.sloosh, creditsLeft: (slug) => o.budgetLeft?.(slug) || null, rivalOf: rivalPicOf,
+    onReady: (t, w, d) => slackAsset(t, w, { title: d.title, copy: d.copy, image: d.image, video: d.video, kind: d.as === 'video' && !d.video ? 'image' : d.as, note: d.err || null }), save: (t) => store?.save(t), now: () => Date.now(), uid, log }) : null; DR.routes({ on, W });
   MOVES ||= createMoves(path.dirname(PUB));
   // the card page: options, our pick, recommendation, what follows, and the move details that matter.
   // Seed cards are prebuilt (tools/build_card_pages.mjs); any other card is built once on first open.
@@ -1927,6 +1930,12 @@ export function createFeedService(o) {
       t.lastSeen = Date.now(); tenants.set(t.id, t); log.log?.(`[store] loaded ${t.id}`); return t;
     });
   };
+  /* a final Sloosh finished (or failed) while Brew restarted (finals.reconcileAll → server.js onDone): onto the jam card or the
+     studio version it was asked from, in the workspace that asked (rec.land.tid) */
+  const finalDone = async (slug, rec) => { const tid = rec?.land?.tid; if (!tid) return false;
+    const t = await getTenant(tid).catch(() => null); if (!t || (t.brandId || DEFAULT_BRAND) !== slug) return false;
+    const br = await packs.load(slug); if (!br) return false;
+    return runIn(br, () => (rec.target?.wid ? JAM_FINALS?.landDone(t, rec) : rec.target?.chid ? RMX?.finalDone?.(t, rec) : false) || false); };
   /* a reply in a jam's Slack thread, or its Approve button pressed (server.js checked Slack's signature and found the brand) */
   const slackIn = async ({ slug, kind, thread, ts, user = {}, text = '', n = null, pid = null, mention = false }) => {
     const br = await packs.load(slug); if (!br) return null; await JAMS.load(br.slug);
@@ -2063,5 +2072,5 @@ export function createFeedService(o) {
   const syncSocial = (slug) => { const br = packs.peek(slug); if (!br) return; runIn(br, () => { for (const t of brandTenants(br)) { streamSync(t, SEED.posts); store?.save(t); } }); };
   // a cadence move was retired (moves-cadence.js): its cards leave every open workspace, unless someone acted on them
   const dropCards = (slug, ids) => { const br = packs.peek(slug); if (!br || !ids?.length) return; runIn(br, () => { for (const t of brandTenants(br)) { for (const id of ids) { const c = t.cards.get(id); if (c && ['ready', 'shown'].includes(c.state) && !t.acted?.has?.(id) && !(t.work || []).some((w) => w.cardId === id)) setState(t, c, 'expired'); } store?.save(t); } }); };
-  return { handle, slackIn, tenants, jams: JAMS, addCards, dropCards, refreshLive, syncSocial, save: (t) => store?.save(t), wire: (b) => { wireResearch(b); wireLive(b); } };
+  return { handle, slackIn, finalDone, tenants, jams: JAMS, addCards, dropCards, refreshLive, syncSocial, save: (t) => store?.save(t), wire: (b) => { wireResearch(b); wireLive(b); } };
 }

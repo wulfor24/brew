@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import { register, tokenRequest, createSlooshAuth, pkce } from '../sloosh-auth.js';
-import { createSloosh, argsFor, parseReply, unwrap, flat } from '../sloosh-mcp.js';
+import { createSloosh, argsFor, parseReply, unwrap, flat, PREFLIGHT_CASES, preflightOf } from '../sloosh-mcp.js';
 import fs from 'node:fs';
 
 /* the real tools, as tools/list gave them on 2026-10-16 (tools/sloosh-probe.mjs) */
@@ -70,15 +70,14 @@ test('argsFor maps Brew words onto the real schemas, nests modelConfig, drops wh
   assert.deepEqual(flat(real('get_asset').inputSchema).required, ['kind', 'id']);
 });
 
-test('every required key of the tools finals.js calls is filled from Brew’s own words (data/sloosh-tools.json)', () => {
-  const ref = { kind: 'workspace', id: '2c1f0a2e-6a2b-4b1e-9c3d-1a2b3c4d5e6f', url: 'https://cdn/x.png', type: 'image' };
-  const cases = { quote_generation: { mode: 'image_gen', prompt: 'p', model: 'm', references: [ref], ratio: '4:5', resolution: '2K', count: 1 }, generate: { quote: 'q', runKey: 'k', confirmed: true }, get_generation: { id: 'op' },
-    import_asset: { url: 'https://brew.test/a.png', name: 'a.png' }, quote_space: { id: 'sp_1', inputs: { field_1: 'https://brew.test/a.png' } }, run_space: { quote: 'q', runKey: 'k', confirmed: true }, get_space_run: { id: 'op' },
-    get_space_run_outputs: { id: 'op' }, get_space_input_schema: { id: 'sp_1' }, get_asset: { kind: 'generated', id: 'g' }, reconcile_generation: { id: 'op' }, reconcile_space_run: { id: 'op' }, list_spaces: { name: 'product', limit: 50 }, list_assets: { kind: 'workspace', name: 'a' },
-    approve_space_checkpoint: { id: 'op', nodeId: 'n', checkpointKey: 'rk', expectedRerunCount: 0 }, reject_space_checkpoint: { id: 'op', nodeId: 'n', checkpointKey: 'rk', expectedRerunCount: 0 }, list_models: { mode: 'image_gen' }, get_connection: {}, get_account: {} };
-  for (const [name, intent] of Object.entries(cases)) { const t = real(name); const warned = []; const a = argsFor(t, intent, { warn: (m) => warned.push(m) });
+test('every required key of the tools finals.js calls is filled from Brew’s own words (data/sloosh-tools.json), and the live preflight reads the same', () => {
+  const tools = Object.keys(PREFLIGHT_CASES).map(real);
+  for (const [name, intent] of Object.entries(PREFLIGHT_CASES)) { const t = real(name); const warned = []; const a = argsFor(t, intent, { warn: (m) => warned.push(m) });
     for (const r of flat(t.inputSchema).required || []) assert.notEqual(a[r], undefined, `${name} needs ${r}`);
     assert.deepEqual(warned, [], `${name}: ${warned.join('; ')}`); }
+  assert.equal(preflightOf(tools).ok, true);
+  const drift = preflightOf(tools.filter((t) => t.name !== 'generate').map((t) => (t.name === 'get_asset' ? { ...t, inputSchema: { type: 'object', properties: { assetRef: { type: 'string' } }, required: ['assetRef'], additionalProperties: false } } : t)));
+  assert.equal(drift.ok, false); assert.match(drift.tools.generate, /no tool/); assert.match(drift.tools.get_asset, /needs assetRef/);
 });
 
 test('parseReply reads JSON and SSE bodies; unwrap prefers structuredContent, then JSON text', () => {

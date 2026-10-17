@@ -34,7 +34,7 @@ export const budgetOf = (c) => { const b = c?.budget || {}; const k = String(b.u
 
 export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFlush = async () => {}, publicUrl = process.env.PUBLIC_URL || '', fetchImpl = fetch, slugs = async () => [], log = console, now = Date.now,
   dummy = () => process.env.DEMO_MODE === '1' || process.env.SLOOSH_DUMMY === '1', readFile = null, geminiImage = null, makeVideo = null, photo = async () => null,
-  onDone = async () => {} /* (slug, rec) after reconcileAll settles a run the UI closures lost at the restart: rec.target says where it goes (a jam draft or a studio change) */ } = {}) {
+  onDone = async () => {} /* (slug, rec) after reconcileAll settles a run the UI closures lost at the restart: rec.target says what it was made from (a jam draft or a studio change), rec.land where it shows (the workspace and the final's card) */ } = {}) {
   const inflight = new Map(); /* runKey → promise, this instance */
   let statusMemo = null;
 
@@ -119,12 +119,12 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
   const writeRec = async (slug, rec) => { await packs.put(slug, recName(rec.runKey), rec); return rec; };
   const runKeyOf = (slug, target, spec) => sha(`${slug}|${JSON.stringify(target || {})}|${JSON.stringify({ k: spec.kind, p: spec.prompt || spec.visual, s: spec.space?.id, i: spec.space?.inputs, r: (spec.refs || []).map((r) => r.url || r.file || r.id), t: spec.text, v: spec.revise?.change, n: spec.revision || 0 })}`);
 
-  async function run(slug, spec = {}, { quote: q, by = null, target = null } = {}) {
+  async function run(slug, spec = {}, { quote: q, by = null, target = null, land = null } = {}) { /* land: where the result is shown ({ tid, fid }), kept on the record but never in the run key, so a retry after a restart finds the same run */
     if (!q?.quoteId) throw new Error('a final needs its quote first');
     const runKey = runKeyOf(slug, target, spec); const prior = await readRec(slug, runKey);
     if (prior?.state === 'done') return prior; if (inflight.has(runKey)) return inflight.get(runKey);
     const p = (async () => {
-      let rec = prior && prior.state !== 'failed' ? prior : { id: 'fn_' + runKey.slice(0, 8), runKey, state: 'starting', provider: q.provider || (q.dummy ? 'dummy' : 'sloosh'), kind: spec.kind || 'image', quote: { id: q.quoteId, credits: q.credits, hold: q.hold, model: q.model, space: q.space, expiresAt: q.expiresAt }, credits: q.credits, model: q.model, space: q.space, prompt: q.prompt, settings: q.settings, inputs: q.inputs || null, refs: (q.refs || []).map((r) => ({ id: r.id, job: r.job, label: r.label, keep: r.keep, assetId: r.assetId || null })), target, by, at: now(), dummy: !!q.dummy, revision: spec.revision || 0 };
+      let rec = prior && prior.state !== 'failed' ? { ...prior, land: land || prior.land || null } : { id: 'fn_' + runKey.slice(0, 8), runKey, state: 'starting', provider: q.provider || (q.dummy ? 'dummy' : 'sloosh'), kind: spec.kind || 'image', quote: { id: q.quoteId, credits: q.credits, hold: q.hold, model: q.model, space: q.space, expiresAt: q.expiresAt }, credits: q.credits, model: q.model, space: q.space, prompt: q.prompt, settings: q.settings, inputs: q.inputs || null, refs: (q.refs || []).map((r) => ({ id: r.id, job: r.job, label: r.label, keep: r.keep, assetId: r.assetId || null })), target, land, by, at: now(), dummy: !!q.dummy, revision: spec.revision || 0 };
       if (rec.state === 'starting') {
         if (q.dummy) { /* DUMMY: the draft's own picture is the "final" (demo site); nothing is paid */
           const from = spec.fromFile || (spec.refs || []).find((r) => r.job === 'product' && r.url)?.url || (spec.refs || [])[0]?.url; if (!from) throw new Error('nothing to show as the final here: pick a photo first');

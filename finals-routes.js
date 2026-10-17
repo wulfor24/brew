@@ -29,10 +29,15 @@ export function createFinalsSheet({ finals, sloosh, references = null, creditsLe
   }
   /* base: what the draft or version already says; b: what the sheet sent */
   function spec(t, base, b = {}) { const kind = base.kind === 'video' ? 'video' : 'image';
-    const refs = (Array.isArray(b.refs) ? b.refs : []).filter((r) => r && (r.url || r.file || r.id)).slice(0, 20).map((r) => ({ id: r.id, url: r.url || r.file, job: r.job || 'other', label: String(r.label || '').slice(0, 80), keep: String(r.keep || '').slice(0, 160), kind: r.kind }));
+    const refs = (Array.isArray(b.refs) ? b.refs : []).filter((r) => r && (r.url || r.file || r.id) && !isResearchImage(r.url || r.file || '')).slice(0, 20).map((r) => ({ id: r.id, url: r.url || r.file, job: r.job || 'other', label: String(r.label || '').slice(0, 80), keep: String(r.keep || '').slice(0, 160), kind: r.kind }));
     const text = kind === 'image' ? (Array.isArray(b.text) ? b.text : b.text != null ? [b.text] : base.text ? [base.text] : []).map((x) => (typeof x === 'string' ? x : x?.words || '')).map((x) => x.trim()).filter(Boolean).slice(0, 4) : [];
-    const brand = brandFacts(t), visual = String(b.visual ?? base.visual ?? '').slice(0, 900);
-    return { kind, title: base.title, visual, scene: base.scene || '', text, refs, ratio: base.ratio || (kind === 'video' ? '9:16' : '4:5'), seconds: +b.seconds || base.seconds || 6, sound: !!b.sound, motion: base.motion, beats: base.beats || [],
+    /* our version of a rival's ad (base.rival, rival-ad.js rivalPicture): their composition and look ride as words after the brief,
+       and our words sit where theirs did (the sheet's edited words replace ours in order). Sloosh and the Gemini fallback get the same */
+    const pic = base.rival?.visual ? base.rival : null, own = String(b.visual ?? base.visual ?? '').slice(0, 900);
+    const brand0 = brandFacts(t), brand = pic?.look ? { ...brand0, style: pic.look } : brand0, visual = pic && !own.includes(pic.visual) ? `${own} ${pic.visual}`.trim().slice(0, 1800) : own;
+    const none = Array.isArray(b.text) && !text.length; /* the sheet's "empty for none" */
+    const placed = pic?.text?.length && kind === 'image' && !none ? pic.text.map((x, i) => ({ ...x, words: text[i] ?? x.words })).filter((x) => String(x.words || '').trim()) : text;
+    return { kind, title: base.title, visual, scene: base.scene || '', text: placed, refs, rival: !!pic, ratio: base.ratio || (kind === 'video' ? '9:16' : '4:5'), seconds: +b.seconds || base.seconds || 6, sound: !!b.sound, motion: base.motion, beats: base.beats || [],
       brand, brandName: brand.name, product: base.product ? { name: base.product } : undefined, fromFile: base.fromFile || null, model: b.model || undefined,
       space: b.space?.id ? { id: String(b.space.id), name: b.space.name || null, inputs: b.space.inputs || {}, ctx: { productPhoto: refs.find((r) => r.job === 'product') || null, refs, copy: { headline: text[0] || '', script: base.script || '', primaryText: base.copy || '' }, brief: [visual, base.scene].filter(Boolean).join(' '), productName: base.product || '', ratio: base.ratio, seconds: +b.seconds || 6, sound: !!b.sound, brand, language: brandOfT(t)?.config?.language || 'English', country: brandOfT(t)?.config?.countryName || '' } } : null,
       revise: b.revise?.change ? { change: String(b.revise.change).slice(0, 300) } : null, revision: base.revision || 0, format: base.format || '' };
@@ -41,10 +46,12 @@ export function createFinalsSheet({ finals, sloosh, references = null, creditsLe
 }
 
 /* ---------- the jam: a final is a draft card ---------- */
-export function createFinalsRoutes({ on, W, say, meOf, slugOfT, brandOfT, cardOfW = () => null, references = null, finals, sloosh, creditsLeft = () => null, onReady = () => {}, save = () => {}, now = () => Date.now(), uid = (p) => `${p}_${Math.random().toString(36).slice(2, 10)}`, log = console }) {
+export function createFinalsRoutes({ on, W, say, meOf, slugOfT, brandOfT, cardOfW = () => null, references = null, finals, sloosh, creditsLeft = () => null, rivalOf = async () => null, onReady = () => {}, save = () => {}, now = () => Date.now(), uid = (p) => `${p}_${Math.random().toString(36).slice(2, 10)}`, log = console }) {
   const sheet = createFinalsSheet({ finals, sloosh, references, creditsLeft, brandOfT, log, now });
   const nameOf = (t) => meOf(t)?.name || meOf(t)?.email || 'Someone';
   const draftOf = (w, id) => (w.drafts || []).find((d) => d.id === id && d.state !== 'making');
+  /* a draft of "Make our version": the rival's ad read (rival-ad.js), with our headline and button where theirs sit */
+  const withRival = async (t, w, d, base) => { const rival = await rivalOf(t, cardOfW(t, w), { headline: base.text || '', button: (String(d.copy || '').match(/button[^:]*:\s*([^\n]+)/i) || [])[1] || '' }).catch(() => null); return rival ? { ...base, rival } : base; };
   const baseOf = (t, w, d) => { const c = cardOfW(t, w); return { kind: d.as === 'video' ? 'video' : 'image', title: d.title, visual: d.visual || '', scene: sceneOf(c), text: d.as !== 'video' ? firstLine(d.copy || '') : '', ratio: d.ratio, motion: d.motion, beats: d.script ? [{ shot: d.motion || d.visual, line: d.script }] : [], script: d.script || '', copy: d.copy || '', product: d.product || '', fromFile: d.video || d.image || null, revision: d.final ? (d.revision || 0) + 1 : 0, format: c?.make?.format || '' }; };
 
   on('GET', '/api/work/:wid/final/status', async (b, t, p, q) => { const w = W(t, p.wid); if (!w) return { error: 'not found' }; const slug = slugOfT(t); const d = draftOf(w, q?.get?.('draftId') || b.draftId) || null; const c = cardOfW(t, w);
@@ -52,7 +59,7 @@ export function createFinalsRoutes({ on, W, say, meOf, slugOfT, brandOfT, cardOf
       draft: d ? { id: d.id, as: d.as, title: d.title, visual: d.visual || '', motion: d.motion || '', text: d.as !== 'video' ? firstLine(d.copy || '') : '', ratio: d.ratio, final: !!d.final, image: d.image, video: d.video } : null }); });
 
   on('POST', '/api/work/:wid/final/quote', async (b, t, p) => { const w = W(t, p.wid); if (!w) return { error: 'not found' }; const d = draftOf(w, b.draftId); if (!d) return { error: 'That draft is not here any more.' };
-    const spec = sheet.spec(t, baseOf(t, w, d), b); const q = await finals.quote(slugOfT(t), spec).catch((e) => ({ error: e.message }));
+    const spec = sheet.spec(t, await withRival(t, w, d, baseOf(t, w, d)), b); const q = await finals.quote(slugOfT(t), spec).catch((e) => ({ error: e.message }));
     if (q.error) { w.finalQuote = null; return { error: q.error, missing: q.missing || null, fields: q.fields || null, inputs: q.inputs || null, filled: q.filled || null, credits: q.credits ?? null }; }
     w.finalQuote = { draftId: d.id, spec, quote: q, at: now(), by: nameOf(t) }; save(t);
     const { raw, ...show } = q; return { quote: { ...show, refs: (q.refs || []).map((r) => ({ id: r.id, url: r.url, job: r.job, label: r.label, keep: r.keep })) } }; });
@@ -62,14 +69,24 @@ export function createFinalsRoutes({ on, W, say, meOf, slugOfT, brandOfT, cardOf
     const fd = { id: uid('fn'), as: d.as, state: 'making', step: q.dummy ? 'Making the final' : q.provider === 'gemini' ? `Making the final with Gemini (Sloosh not ready: ${q.fallbackWhy || 'no credits yet'})` : `Sloosh is making the final (${q.space ? q.space.name || 'a Space' : q.label || q.model})`, provider: q.provider || (q.dummy ? 'dummy' : 'sloosh'), final: true, from: d.id, revision: spec.revision, title: `Final: ${String(d.title || '').replace(/^(first draft|final):\s*/i, '')}`.slice(0, 70), copy: d.copy, ratio: spec.ratio, credits: q.credits, model: q.model || null, space: q.space || null, refs: (q.refs || []).map((r) => ({ id: r.id, job: r.job, label: r.label })), by, at: now(t), dummy: !!q.dummy, product: d.product || null, visual: spec.visual, motion: d.motion || null, script: d.script || null };
     w.drafts.unshift(fd); w.drafts.splice(12); w.updatedAt = now(t); save(t);
     say(t, w, { from: 'system', body: `${by} asked for the final${q.credits ? ` (${q.credits} credits, ${q.space ? q.space.name || 'a Sloosh Space' : q.label || q.model})` : q.provider === 'gemini' ? ' (made with Gemini: Sloosh is not ready yet)' : ''}.`, noMirror: true });
-    (async () => { try { const rec = await finals.run(slug, spec, { quote: q, by, target: { wid: w.id, draftId: d.id, revision: spec.revision } });
-        if (rec.state === 'checkpoint') { Object.assign(fd, { state: 'checkpoint', step: 'The Space is waiting for a yes', runKey: rec.runKey, checkpoint: rec.checkpoint || null }); say(t, w, { from: 'ai', who: 'Brew', body: 'The Sloosh Space paused for a check. Open the final to approve or stop it.', noMirror: true }); }
-        else { Object.assign(fd, { state: 'ready', step: null, runKey: rec.runKey, [spec.kind === 'video' ? 'video' : 'image']: rec.file, link: rec.link || null, assetId: rec.assetId || null, credits: rec.charged ?? rec.credits, dummy: !!rec.dummy, fallback: !!rec.fallback, provider: rec.provider || 'sloosh', outputs: rec.outputs || null });
-          if (spec.kind === 'video' && d.image) fd.image = d.image; /* the draft's still as the poster */
-          say(t, w, { from: 'ai', who: 'Brew', body: rec.dummy ? 'The final is here (simulated on this site).' : rec.provider === 'gemini' ? `The final is here, made with Gemini (Sloosh not ready: ${q.fallbackWhy || 'no credits yet'}).` : `The final is here: ${rec.charged ?? rec.credits} credits on ${q.space ? q.space.name || 'the Space' : q.label || q.model}.`, noMirror: true }); onReady(t, w, fd); }
+    (async () => { try { const rec = await finals.run(slug, spec, { quote: q, by, target: { wid: w.id, draftId: d.id, revision: spec.revision }, land: { tid: t.id || null, fid: fd.id } });
+        landIn(t, w, fd, rec, { label: q.label || q.model, space: q.space, fallbackWhy: q.fallbackWhy, poster: d.image });
       } catch (e) { Object.assign(fd, { state: 'ready', err: e.message, step: null, failed: !e.open, open: !!e.open, runKey: e.rec?.runKey || fd.runKey || null }); log.warn('[finals] run', slug, e.message); say(t, w, { from: 'ai', who: 'Brew', body: e.open ? e.message : `The final didn’t come through: ${e.message}`, noMirror: true }); } /* e.open: Sloosh may still be making it; the record stays running and reconcileAll collects it after the next restart */
       w.updatedAt = now(t); save(t); })();
     return { work: true, draftId: fd.id }; });
+
+  /* a run's record onto its final draft card: the image or clip, the credits, and a line in the thread */
+  function landIn(t, w, fd, rec, { label = null, space = null, fallbackWhy = null, poster = null } = {}) {
+    if (rec.state === 'checkpoint') { Object.assign(fd, { state: 'checkpoint', step: 'The Space is waiting for a yes', runKey: rec.runKey, checkpoint: rec.checkpoint || null }); say(t, w, { from: 'ai', who: 'Brew', body: 'The Sloosh Space paused for a check. Open the final to approve or stop it.', noMirror: true }); return; }
+    if (rec.state !== 'done') { Object.assign(fd, { state: 'ready', err: rec.error || 'The final didn’t come through.', failed: true, step: null, runKey: rec.runKey }); say(t, w, { from: 'ai', who: 'Brew', body: `The final didn’t come through: ${rec.error || 'Sloosh gave nothing back'}`, noMirror: true }); return; }
+    const vid = fd.as === 'video' || rec.kind === 'video';
+    Object.assign(fd, { state: 'ready', step: null, err: null, failed: false, runKey: rec.runKey, [vid ? 'video' : 'image']: rec.file, link: rec.link || null, assetId: rec.assetId || null, credits: rec.charged ?? rec.credits, dummy: !!rec.dummy, fallback: !!rec.fallback, provider: rec.provider || 'sloosh', outputs: rec.outputs || null });
+    if (vid && poster && !fd.image) fd.image = poster; /* the draft's still as the poster */
+    const maker = space?.name || rec.space?.name || label || rec.model || 'Sloosh';
+    say(t, w, { from: 'ai', who: 'Brew', body: rec.dummy ? 'The final is here (simulated on this site).' : rec.provider === 'gemini' ? `The final is here, made with Gemini (Sloosh not ready: ${fallbackWhy || 'no credits yet'}).` : `The final is here: ${rec.charged ?? rec.credits} credits on ${maker}.`, noMirror: true }); onReady(t, w, fd); }
+  /* after a restart (finals.reconcileAll → onDone): the run Sloosh finished while Brew was away lands on the card it was asked from */
+  function landDone(t, rec) { const w = W(t, rec?.target?.wid); if (!w) return false; const fd = (w.drafts || []).find((x) => x.id === rec.land?.fid); if (!fd) return false; if (fd.runKey === rec.runKey && fd.state === 'ready' && !fd.failed) return true;
+    const src = (w.drafts || []).find((x) => x.id === rec.target?.draftId); landIn(t, w, fd, rec, { poster: src?.image || null }); w.updatedAt = now(t); save(t); return true; }
 
   on('POST', '/api/work/:wid/final/checkpoint', async (b, t, p) => { const w = W(t, p.wid); if (!w) return { error: 'not found' }; const fd = (w.drafts || []).find((d) => d.id === b.draftId && d.state === 'checkpoint'); if (!fd?.runKey) return { error: 'Nothing is waiting here.' };
     const slug = slugOfT(t), by = nameOf(t); fd.state = 'making'; fd.step = b.ok ? 'Sloosh is carrying on' : 'Stopping'; save(t);
@@ -79,11 +96,11 @@ export function createFinalsRoutes({ on, W, say, meOf, slugOfT, brandOfT, cardOf
         else { Object.assign(fd, { state: 'ready', err: rec.error || 'stopped', failed: true, step: null }); say(t, w, { from: 'system', body: `${by} stopped the final at the Space’s check.`, noMirror: true }); }
       } catch (e) { Object.assign(fd, { state: 'ready', err: e.message, failed: true, step: null }); } w.updatedAt = now(t); save(t); })();
     return { ok: true }; });
-  return sheet;
+  return { ...sheet, landDone };
 }
 
 /* ---------- the studio: a final is the next version, labelled Final ---------- */
-export function createStudioFinals({ on, C, ensurePkg, sync, version, pubChange, cardOf = () => null, cardPhoto = () => null, catalogOf = () => [], jobs, vidJobs = null, references = null, finals, sloosh, creditsLeft = () => null, brandOfT, slugOfT, meOf = () => null, onMedia = () => {}, isVideo = () => false, RATIO = {}, now = () => Date.now(), log = console }) {
+export function createStudioFinals({ on, C, ensurePkg, sync, version, pubChange, cardOf = () => null, cardPhoto = () => null, catalogOf = () => [], jobs, vidJobs = null, references = null, finals, sloosh, creditsLeft = () => null, rivalOf = async () => null, brandOfT, slugOfT, meOf = () => null, onMedia = () => {}, isVideo = () => false, RATIO = {}, now = () => Date.now(), log = console }) {
   const sheet = createFinalsSheet({ finals, sloosh, references, creditsLeft, brandOfT, log, now });
   const nameOf = (t) => meOf(t)?.name || meOf(t)?.email || 'Someone';
   const headFinal = (ch) => (ch.versions || []).find?.((v) => v.id === ch.headVersionId)?.final || ch.lastFinal?.versionId === ch.headVersionId ? ch.lastFinal : null;
@@ -104,7 +121,8 @@ export function createStudioFinals({ on, C, ensurePkg, sync, version, pubChange,
     return sheet.status(t, { slug: slugOfT(t), kind: base.kind, format: base.format, photos: photos(t, ch), draft: draftOf(t, ch), pending: ch.finalQuote ? { at: ch.finalQuote.at } : null }); });
 
   on('POST', '/api/changes/:chid/final/quote', async (b, t, p) => { const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (ch.imagePending || ch.videoPending || ch.remakePending) return { error: 'A picture is still being made. One moment.' };
-    const spec = sheet.spec(t, baseOf(t, ch), b); const q = await finals.quote(slugOfT(t), spec).catch((e) => ({ error: e.message }));
+    const base = baseOf(t, ch), rival = await rivalOf(t, ch, ch.pkg || {}).catch(() => null); /* "Make our version": their composition and look, our words where theirs sit */
+    const spec = sheet.spec(t, rival ? { ...base, rival } : base, b); const q = await finals.quote(slugOfT(t), spec).catch((e) => ({ error: e.message }));
     if (q.error) { ch.finalQuote = null; return { error: q.error, missing: q.missing || null, fields: q.fields || null, inputs: q.inputs || null, filled: q.filled || null, credits: q.credits ?? null }; }
     ch.finalQuote = { spec, quote: q, at: now(), by: nameOf(t) }; sync(t, ch);
     const { raw, ...show } = q; return { quote: { ...show, refs: (q.refs || []).map((r) => ({ id: r.id, url: r.url, job: r.job, label: r.label, keep: r.keep })) } }; });
@@ -115,16 +133,23 @@ export function createStudioFinals({ on, C, ensurePkg, sync, version, pubChange,
        can't find there); an earlier video error is cleared as it starts */
     const set = isVid ? vidJobs || jobs : jobs;
     if (isVid) { ch.videoPending = now(); ch.videoStep = 'Sloosh is making the final'; ch.videoError = null; } else ch.imagePending = true; ch.imageError = null; ch.finalPending = { at: now(), credits: q.credits, model: q.label || q.model || q.space?.name || null, fallback: !!q.fallback, provider: q.provider || 'sloosh' }; set?.add?.(ch.id); sync(t, ch);
-    (async () => { try { const rec = await finals.run(slug, spec, { quote: q, by, target: { chid: ch.id, revision: spec.revision } });
-        if (rec.state === 'checkpoint') { ch.finalCheckpoint = { runKey: rec.runKey, checkpoint: rec.checkpoint || null, at: now() }; ch.imageError = 'The Sloosh Space paused for a check. Open Make the final to carry on or stop.'; }
-        else { land(ch, isVid, rec.file);
-          const v = version(t, ch, rec.provider === 'gemini' ? 'gemini' : 'sloosh', `Final: ${rec.dummy ? 'simulated' : rec.provider === 'gemini' ? `made with Gemini (Sloosh not ready: ${q.fallbackWhy || 'no credits yet'})` : `${rec.charged ?? rec.credits} credits on ${q.space ? q.space.name || 'a Sloosh Space' : q.label || q.model}`}`, rec.dummy ? 'Final (Dummy)' : rec.provider === 'gemini' ? 'Final (Gemini)' : 'Final');
-          v.final = { credits: rec.charged ?? rec.credits, model: q.model || null, label: q.label || null, space: q.space || null, dummy: !!rec.dummy, fallback: !!rec.fallback, provider: rec.provider || 'sloosh', link: rec.link || null, assetId: rec.assetId || null, assetKind: rec.assetKind || null, revision: spec.revision, runKey: rec.runKey, by };
-          ch.lastFinal = { versionId: v.id, ...v.final };
-          try { onMedia(t, ch, { kind: isVid ? 'video' : 'image', images: isVid ? [] : [rec.file], video: isVid ? rec.file : null, n: v.n, label: v.label }); } catch {} }
+    (async () => { try { const rec = await finals.run(slug, spec, { quote: q, by, target: { chid: ch.id, revision: spec.revision }, land: { tid: t.id || null } });
+        landIn(t, ch, rec, { label: q.label, model: q.model, space: q.space, fallbackWhy: q.fallbackWhy, by, vid: isVid });
       } catch (e) { if (isVid) ch.videoError = `The final video didn’t come through (${String(e.message).slice(0, 160)}). Make it again.`; ch.imageError = String(e.message).slice(0, 200); log.warn('[finals] studio run', slug, e.message); }
       finally { if (isVid) { ch.videoPending = null; ch.videoStep = null; } else ch.imagePending = false; ch.finalPending = null; set?.delete?.(ch.id); sync(t, ch); } })();
     return { change: pubChange(t, ch) }; });
+
+  /* a run's record as the change's next version, labelled Final */
+  function landIn(t, ch, rec, { label = null, model = null, space = null, fallbackWhy = null, by = null, vid = null } = {}) {
+    if (rec.state === 'checkpoint') { ch.finalCheckpoint = { runKey: rec.runKey, checkpoint: rec.checkpoint || null, at: now() }; ch.imageError = 'The Sloosh Space paused for a check. Open Make the final to carry on or stop.'; return; }
+    if (rec.state !== 'done') { ch.imageError = String(rec.error || 'The final didn’t come through.').slice(0, 200); return; }
+    const isVid = vid ?? (rec.kind || 'image') === 'video', sp = space || rec.space || null; land(ch, isVid, rec.file);
+    const v = version(t, ch, rec.provider === 'gemini' ? 'gemini' : 'sloosh', `Final: ${rec.dummy ? 'simulated' : rec.provider === 'gemini' ? `made with Gemini (Sloosh not ready: ${fallbackWhy || 'no credits yet'})` : `${rec.charged ?? rec.credits} credits on ${sp ? sp.name || 'a Sloosh Space' : label || model || rec.model}`}`, rec.dummy ? 'Final (Dummy)' : rec.provider === 'gemini' ? 'Final (Gemini)' : 'Final');
+    v.final = { credits: rec.charged ?? rec.credits, model: model || rec.model || null, label: label || null, space: sp, dummy: !!rec.dummy, fallback: !!rec.fallback, provider: rec.provider || 'sloosh', link: rec.link || null, assetId: rec.assetId || null, assetKind: rec.assetKind || null, revision: rec.revision || 0, runKey: rec.runKey, by: by || rec.by || null };
+    ch.lastFinal = { versionId: v.id, ...v.final };
+    try { onMedia(t, ch, { kind: isVid ? 'video' : 'image', images: isVid ? [] : [rec.file], video: isVid ? rec.file : null, n: v.n, label: v.label }); } catch {} }
+  /* after a restart (finals.reconcileAll → onDone): the final Sloosh finished while Brew was away becomes the change's next version */
+  function landDone(t, rec) { const ch = C(t, rec?.target?.chid); if (!ch) return false; if (ch.lastFinal?.runKey === rec.runKey) return true; landIn(t, ch, rec); sync(t, ch); return true; }
 
   on('POST', '/api/changes/:chid/final/checkpoint', async (b, t, p) => { const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; const ck = ch.finalCheckpoint; if (!ck?.runKey) return { error: 'Nothing is waiting here.' };
     const slug = slugOfT(t), by = nameOf(t); ch.finalCheckpoint = null; ch.imagePending = true; ch.imageError = null; jobs?.add?.(ch.id); sync(t, ch);
@@ -134,5 +159,5 @@ export function createStudioFinals({ on, C, ensurePkg, sync, version, pubChange,
         else ch.imageError = rec.error || 'stopped at the checkpoint';
       } catch (e) { ch.imageError = String(e.message).slice(0, 200); } finally { ch.imagePending = false; jobs?.delete?.(ch.id); sync(t, ch); } })();
     return { change: pubChange(t, ch) }; });
-  return sheet;
+  return { ...sheet, landDone };
 }
