@@ -66,12 +66,14 @@ async function brand(env = {}) {
   return { b, P, slug, runs };
 }
 const settle = (ms = 400) => new Promise((r) => setTimeout(r, ms));
+/* under a full suite 400 ms is not always enough for the run's wrap-up: wait for the state itself, up to 10 s */
+const until = async (ok, ms = 10e3) => { const t0 = Date.now(); while (!(await ok()) && Date.now() - t0 < ms) await settle(50); };
 
 test('a real account connecting rewrites every move with its numbers, privately, once', async () => {
   const { b, P, slug, runs } = await brand();
   await b.liveConnected(slug, 'shopify', SHOP, true, { public: false });
   await b.liveConnected(slug, 'ga4', [row('ga4.conversion', 'Purchases per session', '1.8%', 1.8)], true, { public: false }); /* a second account inside the settle time */
-  await settle();
+  await settle(); await until(async () => !!(await P.getJSON(slug, 'updates.json', {}))?.connectDone?.finished);
   assert.equal(runs.length, 1, 'two connects, one run');
   assert.deepEqual(runs[0].only, [1, 2, 3, 0], 'every playbook move (and the index), never a weekly cadence move');
   assert.deepEqual(runs[0].hero.slice(0, 2), ['rosemary-oil', 'onion-shampoo'], 'the rewrite writes from the best sellers');
