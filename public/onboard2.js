@@ -53,8 +53,10 @@
       if (ev.type === 'finding' && ev.finding) { st.findings.push(ev.finding); if (st.findings.length > 40) st.findings.shift(); if (ev.say) lastSay = ev.say; floatIn(ev.finding); if (ev.finding.kind === 'kit') washIn(ev.finding); }
       if (ev.type === 'picks' && ev.k) { st.picks[ev.k] = ev.items; }
       if (ev.type === 'error') { st.error = ev.msg || 'The store did not open for us.'; save(); es.close(); es = null; paintProgress(); return errorScreen(); }
-      if (ev.type === 'ready') { st.ready = true; st.steps = STEP_KEYS.map((k, i) => st.steps[i] || { k, state: 'done', empty: false, done: 'Done' }); sky(7); es.close(); es = null; save(); paintProgress(); afterReady(); return; }
-      save(); paintProgress(); unlock(); };
+      if (ev.type === 'ready') { st.ready = true; sky(7); save(); paintProgress(); afterReady(); idle(); return; } /* the stream stays open a little: the demo's paced replay sends ready first and its findings after */
+      save(); paintProgress(); unlock(); if (st.ready) idle(); };
+    /* once the read is in, the stream closes after 12 quiet seconds (every late step or finding still lands until then) */
+    let idleT = 0; const idle = () => { clearTimeout(idleT); idleT = setTimeout(() => { if (es) { es.close(); es = null; } st.steps = STEP_KEYS.map((k, i) => (st.steps[i]?.state === 'done' ? st.steps[i] : { k, state: 'done', empty: false, done: 'Done' })); save(); paintProgress(); }, 12000); };
     es.onerror = () => { /* the stream drops on a restart: the status poll below says what is true */ es?.close(); es = null; setTimeout(pollStatus, 4000); };
     clearInterval(tick); tick = setInterval(() => { const t = $('#v2-prog time'); if (t) t.textContent = elapsed(); }, 1000);
   };
