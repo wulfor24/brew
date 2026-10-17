@@ -537,8 +537,9 @@ export function createRemix(o) {
     const slots = rows.length ? rows.map((_, i) => i).filter((i) => (all ? !(p.cardImages || [])[i] : i === 0)).slice(0, 10) : [0];
     if (!slots.length) return false;
     if (!spend('image')) return false;
-    /* pic: a rival ad remade (rival-ad.js): our product is image 1, their ad image 2 (the look only), words where theirs sit */
-    const promptOf = (i, pic = null) => buildDraft({ kind: 'image', title: what, visual: `${briefOf(i)}${pic?.visual ? ` Same composition and look as image 2: ${pic.visual}` : ''}${scene ? ` Scene: ${scene}.` : ''}${p.knobs?.audience ? ` It should feel right for ${p.knobs.audience}.` : ''}`, ...(pic?.refs ? { refs: [{ ...pic.refs[0], label: `${BN()}'s ${B().config.product?.noun || 'product'}` }, pic.refs[1]] } : {}), ...(pic?.text?.length && i === 0 ? { text: pic.text } : {}), index: rows.length > 1 ? i + 1 : undefined, count: rows.length > 1 ? rows.length : undefined, topSpace: !(pic?.text?.length && i === 0), hasSrc: true, ratio: RATIO[p.format] || '4:5', product: { name: `${BN()} ${B().config.product?.noun || 'product'}` }, brand: { name: BN(), ...(B().config.product || {}) } }).prompt; /* one brief for drafts and finals (sloosh-prompt.js) */
+    /* pic: a rival ad remade (rival-ad.js): our product is the only picture the model gets; their ad arrives as its written
+       composition and look, and our words go where theirs sit */
+    const promptOf = (i, pic = null) => buildDraft({ kind: 'image', title: what, visual: `${briefOf(i)}${pic?.visual ? ` ${pic.visual}` : ''}${scene ? ` Scene: ${scene}.` : ''}${p.knobs?.audience ? ` It should feel right for ${p.knobs.audience}.` : ''}`, ...(pic?.visual ? { refs: [{ ...pic.refs[0], label: `${BN()}'s ${B().config.product?.noun || 'product'}` }] } : {}), ...(pic?.text?.length && i === 0 ? { text: pic.text } : {}), index: rows.length > 1 ? i + 1 : undefined, count: rows.length > 1 ? rows.length : undefined, topSpace: !(pic?.text?.length && i === 0), hasSrc: true, ratio: RATIO[p.format] || '4:5', product: { name: `${BN()} ${B().config.product?.noun || 'product'}` }, brand: { name: BN(), ...(B().config.product || {}), ...(pic?.look ? { style: pic.look } : {}) } }).prompt; /* one brief for drafts and finals (sloosh-prompt.js); a remake takes the rival's look */
     ch.imagePending = true; ch.imageError = null; IMG_JOBS.add(ch.id);
     (async () => {
       try {
@@ -547,10 +548,10 @@ export function createRemix(o) {
         const cands = [...(p.photos || []).filter((u) => !/^gen\//.test(u) && !isResearchImage(u)), cardPhoto(t, c), ...(c.images || []).filter((u) => !/^gen\//.test(u) && !isResearchImage(u)), LANE_PHOTO[c.lane], ...Object.values(LANE_PHOTO || {}), o.catalogOf?.(t)?.[0]?.img].filter((x) => x && typeof x === 'string');
         let src = null; for (const rel of [...new Set(cands)]) { src = (o.photoAsync ? await o.photoAsync(rel).catch(() => null) : null) || (fs.existsSync(photoFile(rel)) && fs.statSync(photoFile(rel)).isFile() ? photoFile(rel) : null); if (src) break; }
         if (!src) throw new Error('no product photo could be read for this picture');
-        const rv = await rivalRead(t, c).catch(() => null), look = rv?.ad?.poster ? await fileOfRel(rv.ad.poster) : null;
-        const pic = rv ? rivalPicture(rv.ad, rv.style, { headline: p.overlay || p.headline || p.title || '' }) : null; if (pic && !look) { pic.refs = null; pic.visual = ''; }
-        const one = async (i) => { const prompt = promptOf(i, pic); const key = crypto.createHash('sha1').update(prompt + (p.format || '4:5') + (look || '')).digest('hex').slice(0, 16);
-          if (!(await genFile(`${key}.png`))) { if (i !== slots[0] && !spend('image')) return null; const buf = await geminiImage({ srcFile: src, ...(pic?.refs && look ? { refFiles: [look] } : {}), prompt, ratio: RATIO[p.format] || '4:5' });
+        const rv = await rivalRead(t, c).catch(() => null);
+        const pic = rv?.style ? rivalPicture(rv.ad, rv.style, { headline: p.overlay || p.headline || p.title || '', sub: String(p.primaryText || '').split(/(?<=[.!?])\s/)[0], button: p.cta }) : null;
+        const one = async (i) => { const prompt = promptOf(i, pic); const key = crypto.createHash('sha1').update(prompt + (p.format || '4:5')).digest('hex').slice(0, 16);
+          if (!(await genFile(`${key}.png`))) { if (i !== slots[0] && !spend('image')) return null; const buf = await geminiImage({ srcFile: src, prompt, ratio: RATIO[p.format] || '4:5' });
             if (pic && buf?.guard?.genFailed) throw new Error('the remake did not keep your product as photographed; ask for it again'); /* a plain product photo is not our version of their ad */ saveGen(`${key}.png`, buf); }
           return `gen/${key}.png`; };
         const made = [];
@@ -590,12 +591,12 @@ export function createRemix(o) {
         let frame = /^gen\//.test(p.image || '') && (await genFile(p.image.slice(4))) ? p.image.slice(4) : null;
         if (!frame) {
           const src = await srcPhoto(t, ch); if (!src) throw new Error('no product photo could be read for the first frame');
-          /* our version of a rival's video ad: their first frame is image 2, the look */
-          const rvV = await rivalRead(t, t.cards.get(ch.cardId) || {}).catch(() => null), lookV = rvV?.ad?.poster ? await fileOfRel(rvV.ad.poster) : null;
+          /* our version of a rival's video ad: its first frame's composition and look, in words, with our product */
+          const rvV = await rivalRead(t, t.cards.get(ch.cardId) || {}).catch(() => null);
           const shot = sc[0]?.shot || p.imageBrief || String(p.media || '').replace(/https?:\/\/\S+/g, '').slice(0, 400) || 'The product on a clean surface, soft daylight.';
-          const prompt = `Create the opening frame of a vertical 9:16 ${p.platform || 'short'} video for ${BN()}. ${shot} Keep the ${BN()} ${B().config.product?.noun || 'product'} and its label exactly as in the reference photo; do not invent new text on the pack. Nothing else carries writing: no signs, notes, screens or other packaging. No before/after. Photographic, natural light, the product clearly in frame.${lookV ? ` Image 2 is ${rvV.ad.brand}'s ad: match its framing, light and colours${rvV.style?.layout ? ` (${rvV.style.layout} ${rvV.style.look || ''})` : ''}; take nothing else from it, not its product, logo, brand name, people or words.` : ''}`;
-          const key = crypto.createHash('sha1').update(prompt + '9:16' + (lookV || '')).digest('hex').slice(0, 16) + '.png';
-          if (!(await genFile(key))) saveGen(key, await (o.videoImage || geminiImage)({ srcFile: src, ...(lookV ? { refFiles: [lookV] } : {}), prompt, ratio: '9:16' }));
+          const prompt = `Create the opening frame of a vertical 9:16 ${p.platform || 'short'} video for ${BN()}. ${shot} Keep the ${BN()} ${B().config.product?.noun || 'product'} and its label exactly as in the reference photo; do not invent new text on the pack. Nothing else carries writing: no signs, notes, screens or other packaging. No before/after. Photographic, natural light, the product clearly in frame.${rvV?.style ? ` ${rivalPicture(rvV.ad, rvV.style).visual}` : ''}`;
+          const key = crypto.createHash('sha1').update(prompt + '9:16').digest('hex').slice(0, 16) + '.png';
+          if (!(await genFile(key))) saveGen(key, await (o.videoImage || geminiImage)({ srcFile: src, prompt, ratio: '9:16' }));
           frame = key;
         }
         ch.videoStep = 'Animating it, about a minute';
@@ -1148,19 +1149,19 @@ export function createRemix(o) {
     (async () => {
       try {
         const c = t.cards.get(ch.cardId) || {}, src = await srcPhoto(t, ch, productFor(c, FACTS, pkgWords(ch))?.img); if (!src) throw new Error('no product photo could be read for it');
-        /* our version of a rival's ad: their ad goes along as image 2, the look (rival-ad.js) */
-        const rv = await rivalRead(t, c).catch(() => null), look = rv?.ad?.poster ? await fileOfRel(rv.ad.poster) : null;
-        const lookLine = look ? ` Image 2 is ${rv.ad.brand}'s ad: match its layout, framing, light and colours${rv.style?.layout ? ` (${rv.style.layout} ${rv.style.look || ''})` : ''}; take nothing else from it, not its product, logo, brand name, people or words.` : '';
+        /* our version of a rival's ad: its composition and look in words, with our product (rival-ad.js) */
+        const rv = await rivalRead(t, c).catch(() => null);
+        const lookLine = rv?.style ? ` ${rivalPicture(rv.ad, rv.style).visual}` : '';
         const ratio = as === 'video' ? '9:16' : RATIO[ch.pkg.format] && !(as === 'carousel' && ch.pkg.format === '9:16') ? ch.pkg.format : '4:5';
         let media;
         if (as === 'carousel') {
-          const r = await slideMakers().carousel({ slides: plan.slides, src, ...(look ? { refFiles: [look] } : {}), ratio, title: ch.after?.title || ch.actionLabel, cardTitle: c.title, id: ch.id + target, clean, canSpend: (i) => i === 0 || spend('image'), onStep: step });
+          const r = await slideMakers().carousel({ slides: plan.slides, src, ...(lookLine ? { lookLine } : {}), ratio, title: ch.after?.title || ch.actionLabel, cardTitle: c.title, id: ch.id + target, clean, canSpend: (i) => i === 0 || spend('image'), onStep: step });
           media = { images: r.slides.map((x) => x.image), ...(r.zip ? { zip: r.zip } : {}), ...(r.err ? { err: r.err } : {}) };
         } else {
           const brief = as === 'video' ? plan.script?.[0]?.shot || ch.pkg.imageBrief : plan.imageBrief;
           const prompt = `Create a new ${as === 'video' ? 'opening frame of a vertical 9:16 video' : `${ratio} photograph`} for ${BN()}. ${brief || 'The product on a clean surface, soft daylight.'} Keep the ${BN()} ${B()?.config?.product?.noun || 'product'} and its label exactly as in the reference photo; do not invent new text on the pack. Nothing else carries writing. No before/after. Photographic, natural light, the product clearly in frame.${lookLine}`;
-          const key = crypto.createHash('sha1').update(prompt + ratio + (look || '')).digest('hex').slice(0, 16) + '.png';
-          if (!(await genFile(key))) saveGen(key, await imgMaker()({ srcFile: src, ...(look ? { refFiles: [look] } : {}), prompt, ratio, text: [plan.overlay, ch.after?.title].filter(Boolean).join('. '), fallback: true }));
+          const key = crypto.createHash('sha1').update(prompt + ratio).digest('hex').slice(0, 16) + '.png';
+          if (!(await genFile(key))) saveGen(key, await imgMaker()({ srcFile: src, prompt, ratio, text: [plan.overlay, ch.after?.title].filter(Boolean).join('. '), fallback: true }));
           media = { images: ['gen/' + key] };
           if (as === 'video') {
             step('Animating it, about a minute');

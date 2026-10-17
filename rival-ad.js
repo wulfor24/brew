@@ -4,8 +4,8 @@
 //      format, the hook and how it is built, the layout, the look, the words set on the image and where they sit, the beats
 //      of a video, and what makes it work. One cheap vision call, kept per ad on this instance.
 //   2. write and draw ours on the same angle, hook pattern, format, layout and look, with the brand's own product and only
-//      the brand's facts. The rival's picture goes to the image model as a style reference (image 2), never as our product:
-//      the product photo is always the brand's own (image 1), and the image guard still checks it.
+//      the brand's facts. The image model gets only our product photo and the written breakdown, never the rival's picture:
+//      given their picture it edits it, and their products, model, words and badges come through (probes, 17 Oct).
 // Nothing of theirs is copied as is: not their brand name, product, logo, faces, claims, numbers or sentences.
 import fs from 'node:fs';
 import { kindOf, mimeOf, RASTER } from './img-norm.js';
@@ -17,8 +17,8 @@ export const isRivalCard = (c) => c?.research?.kind === 'ad' || !!c?.research?.a
 export const STYLE_SCHEMA = { type: 'object', required: ['format', 'hookPattern', 'layout', 'look', 'words', 'beats', 'works'], properties: {
   format: { type: 'string', description: 'What kind of creative it is, in a few words: a studio product photo with a headline, a lifestyle photo, a flat graphic with an offer badge, a UGC selfie video, a demo video, a before-you-buy comparison, a carousel' },
   hookPattern: { type: 'string', description: 'How the hook is built, without the rival\'s words: e.g. "names a daily pain, then the fix", "a question the buyer asks", "a number of happy buyers", "price drop in the first line"' },
-  layout: { type: 'string', description: 'One or two sentences: where the product sits and how big, the crop, the background, where people or hands are, where the words sit (top third, bottom band, over the product)' },
-  look: { type: 'string', description: 'One or two sentences as things you can see: light, colours, photo or graphic, props, surface, mood of the setting' },
+  layout: { type: 'string', description: 'One or two sentences: where the product sits and how big, the crop, the background, where people or hands are, where the words sit (top third, bottom band, over the product). Say "the product" and "a person": never name or describe their product, pack, flavour, brand, retailer or badge' },
+  look: { type: 'string', description: 'One or two sentences as things you can see: light, colours, photo or graphic, props, surface, mood of the setting. No product, pack, brand or retailer names' },
   words: { type: 'array', description: 'The words set ON the image, in reading order (empty when there are none)', items: { type: 'object', required: ['role', 'where', 'lettering'], properties: {
     role: { type: 'string', enum: ['headline', 'subline', 'badge', 'price', 'button', 'other'] },
     where: { type: 'string', description: 'Where it sits, e.g. "top third, centred", "a pill in the top-left corner", "bottom band"' },
@@ -45,7 +45,7 @@ export async function readRivalAd(ad, { call, fileOf = async () => null, video =
 Its copy: headline "${one(ad.headline)}"; text "${one(ad.body).slice(0, 500)}"; button "${one(ad.cta)}".
 ${watched ? 'You are watching the clip itself.' : 'You see its picture (for a video ad, its first frame).'} Read how this creative is MADE, so another brand can make its own ad in the same style with its own product. Describe what you see, not what you guess. Never quote the rival's words in hookPattern, layout or look.` });
   const shape = (j, from) => ({ format: one(j.format), hookPattern: one(j.hookPattern), layout: one(j.layout), look: one(j.look), beats: (j.beats || []).map(one).filter(Boolean).slice(0, 5), works: (j.works || []).map(one).filter(Boolean).slice(0, 5),
-    words: (j.words || []).filter((w) => w?.where).slice(0, 4).map((w) => ({ role: w.role || 'other', where: one(w.where), lettering: one(w.lettering), words: +w.words || null })), from });
+    words: (j.words || []).filter((w) => w && (w.where || w.role)).slice(0, 4).map((w) => ({ role: w.role || 'other', where: one(w.where), lettering: one(w.lettering), words: +w.words || null })), from });
   const posterPart = async () => { if (!ad.poster) return null; try { const f = await fileOf(ad.poster); if (!f) return null; const b = fs.readFileSync(f); return RASTER.has(kindOf(b)) ? { type: 'image', source: { type: 'base64', media_type: mimeOf(b), data: b.toString('base64') } } : null; } catch (e) { log.warn?.('[rival-ad] poster', e.message); return null; } };
   const p = (async () => {
     /* the clip when the AI can watch it; a clip that can't be read (too big, refused) falls back to the poster, so a video ad is never left unread */
@@ -76,12 +76,25 @@ MAKE ${String(brand || 'the brand').toUpperCase()}'S OWN VERSION OF THIS AD: the
 }
 
 /* the picture: our product is image 1 (kept exactly), the rival's ad is image 2 (the look only); words go where theirs sit */
-export function rivalPicture(ad, style, { headline = '' } = {}) {
-  const head = style?.words?.find((w) => w.role === 'headline') || style?.words?.[0] || null;
-  const words = one(headline).split(' ').slice(0, Math.max(3, Math.min(9, head?.words || 7))).join(' ');
+export function rivalPicture(ad, style, { headline = '', sub = '', button = '' } = {}) {
+  /* The image model gets OUR product only (image 1) and this written breakdown of their ad, never their picture: an image
+     model given the rival's ad edits it, and their products, model, words and retailer badge came through every time
+     (probes, 17 Oct). Read from the picture, written as words, drawn with our product: the same composition, not a copy. */
+  const role = (r) => style?.words?.find((w) => w.role === r) || null;
+  const fit = (txt, w, max = 9) => one(txt).split(' ').slice(0, Math.max(2, Math.min(max, w?.words || max))).join(' ');
+  const head = role('headline') || style?.words?.[0] || null, subW = role('subline'), btnW = role('button');
+  /* the read names the words' places; when it described them only in the layout ("the headline sits top left"), our words
+     still go there, so the model never invents its own (probe, 17 Oct: "SNA\\CK BETTER") */
+  const says = (re) => re.test(String(style?.layout || ''));
+  const at = (w, re, fallback) => (w ? { where: w.where || fallback, style: w.lettering || 'bold sans-serif' } : says(re) ? { where: fallback, style: 'bold sans-serif' } : null);
+  const hAt = at(head, /headline|title|text|words|copy/i, 'where the layout above puts the headline'), sAt = at(subW, /sub-?head|subline|subtext|supporting/i, 'under the headline, where the layout above puts it'), bAt = at(btnW, /button|cta|call-to-action|pill/i, 'where the layout above puts the button');
+  const text = [hAt && one(headline) && { words: fit(headline, head), ...hAt },
+    sAt && one(sub) && { words: fit(sub, subW, 10), ...sAt },
+    bAt && one(button) && { words: fit(button, btnW, 4), ...bAt }].filter(Boolean);
   return {
-    refs: [{ job: 'product', label: '', keep: '' }, { job: 'style', label: `${ad.brand}'s ad`, keep: 'copy its layout, crop, framing, light, colours and where the words sit; take nothing else from it: not its product, packaging, logo, brand name, people or words' }],
-    visual: style ? `${style.layout} ${style.look}` : '',
-    text: head && words ? [{ words, where: head.where, style: head.lettering }] : []
+    refs: [{ job: 'product', label: '', keep: '' }],
+    visual: style ? `The composition of ${ad.brand}'s ad, made with our product: ${style.layout} ${style.look} Every product, pack or tub in the picture is the product from image 1; no other products, brands, logos, badges or retailer marks.` : '',
+    look: style?.look || '',
+    text
   };
 }

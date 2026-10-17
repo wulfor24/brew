@@ -79,12 +79,12 @@ export function createDrafts({ rivalAdOf = () => null, claudeTool, geminiImage, 
 
   const makeImage = async (j, c, ratio, t = null) => {
     const src = needPhoto(await productPhoto(c, j, t));
-    /* our version of a rival's ad: their ad is image 2, the look only; the words sit where theirs do */
-    const rv = await rivalRead(t, c).catch(() => null), look = rv?.ad?.poster ? await fileOfRel(rv.ad.poster) : null;
-    const pic = rv && look ? rivalPicture(rv.ad, rv.style, { headline: j.headline || String(j.copy || '').replace(/[#*_>`]/g, '').split('\n').map((x) => x.trim()).find(Boolean) || '' }) : null; /* the words on the picture, never the draft's internal title */
-    const prompt = pic ? buildDraft({ kind: 'image', title: j.title, visual: `${j.visual || ''} Same composition and look as image 2: ${pic.visual}`, refs: [{ ...pic.refs[0], label: `${brandName(t) || 'the brand'}'s product` }, pic.refs[1]], text: pic.text, hasSrc: true, ratio }).prompt : imagePrompt(j, true, c);
+    /* our version of a rival's ad: its composition and look in words (rival-ad.js), our product the only picture; our words sit where theirs do */
+    const rv = await rivalRead(t, c).catch(() => null);
+    const pic = rv?.style ? rivalPicture(rv.ad, rv.style, { headline: j.headline || String(j.copy || '').replace(/[#*_>`]/g, '').split('\n').map((x) => x.trim()).find(Boolean) || '', button: (String(j.copy || '').match(/button[^:]*:\s*([^\n]+)/i) || [])[1] || '' }) : null; /* the words on the picture, never the draft's internal title */
+    const prompt = pic ? buildDraft({ kind: 'image', title: j.title, visual: `${j.visual || ''} ${pic.visual}`, refs: [{ ...pic.refs[0], label: `${brandName(t) || 'the brand'}'s product` }], text: pic.text, hasSrc: true, ratio, brand: { style: pic.look } }).prompt : imagePrompt(j, true, c);
     /* the guard tries the model again and the other Gemini model; with no picture at all, the real product photo stands in (failed) */
-    const buf = await geminiImage({ srcFile: src, ...(pic ? { refFiles: [look] } : {}), prompt, ratio, named: cardNamed(t, c), text: [c?.make?.pieces, j.title, j.copy, j.headline, c?.title].filter(Boolean).join('. '), fallback: true });
+    const buf = await geminiImage({ srcFile: src, prompt, ratio, named: cardNamed(t, c), text: [c?.make?.pieces, j.title, j.copy, j.headline, c?.title].filter(Boolean).join('. '), fallback: true });
     const failed = !!buf?.guard?.genFailed, name = keyOf(prompt + ratio + (failed ? '|photo' : '')) + (failed ? '.jpg' : '.png');
     saveGen(name, buf);
     return { name, buf: null, failed };
@@ -95,8 +95,8 @@ export function createDrafts({ rivalAdOf = () => null, claudeTool, geminiImage, 
   const makeCarousel = async (t, w, d, j, c) => {
     const slides = (j.slides || []).filter((x) => x?.onSlide).slice(0, 8); if (slides.length < 2) throw Object.assign(new Error('The plan came back without slides. Try again.'), { soft: true });
     const src = needPhoto(await productPhoto(c, j, t)), ratio = d.ratio === '9:16' ? '9:16' : d.ratio === '1:1' ? '1:1' : '4:5';
-    const rv = await rivalRead(t, c).catch(() => null), look = rv?.ad?.poster ? await fileOfRel(rv.ad.poster) : null; /* our version of a rival's carousel: their ad is image 2, the look */
-    const r = await M.carousel({ slides, src, ...(look ? { refFiles: [look] } : {}), ratio, title: j.title, cardTitle: c?.title, scene: sceneOf(c), named: cardNamed(t, c), id: d.id, clean, canSpend: (i) => i === 0 || spend('image'), onStep: (text) => step(t, w, d, text) });
+    const rv = await rivalRead(t, c).catch(() => null); /* our version of a rival's carousel: its composition and look, in words, on every slide */
+    const r = await M.carousel({ slides, src, ...(rv?.style ? { lookLine: ` ${rivalPicture(rv.ad, rv.style).visual}` } : {}), ratio, title: j.title, cardTitle: c?.title, scene: sceneOf(c), named: cardNamed(t, c), id: d.id, clean, canSpend: (i) => i === 0 || spend('image'), onStep: (text) => step(t, w, d, text) });
     d.slides = r.slides; d.image = r.image; if (r.zip) d.zip = r.zip; if (r.err) d.err = r.err;
   };
   const makeVoice = (text, style, voice) => M.voice(text, style, voice);
@@ -210,15 +210,14 @@ export function createMakers({ geminiImage, treg, launchBrowser, zipBuffer, save
   };
   // a carousel: one photo per slide (3 at a time), then the words set in exact type by Chromium, never drawn by the model.
   // canSpend(i) says whether slide i may be made; bufs carry the image guard's note (guard.retried) so callers can book real cost
-  const carousel = async ({ slides, src, refFiles = [], ratio, title, cardTitle, scene = '', named = null, id, slug = undefined, clean = (x) => String(x || ''), canSpend = () => true, onStep = () => {} }) => {
+  const carousel = async ({ slides, src, lookLine = '', ratio, title, cardTitle, scene = '', named = null, id, slug = undefined, clean = (x) => String(x || ''), canSpend = () => true, onStep = () => {} }) => {
     const raws = [];
     for (let k = 0; k < slides.length; k += 3) {
       onStep(`Making the photos (${Math.min(k + 3, slides.length)} of ${slides.length})`);
       raws.push(...(await Promise.all(slides.slice(k, k + 3).map(async (x, m) => {
         if (!canSpend(k + m)) return null;
-        const prompt = buildDraft({ kind: 'image', title: `${title} carousel`, visual: x.visual, scene: scene ? `The set as a whole shows what the card promises: ${scene}.` : '', index: k + m + 1, count: slides.length, topSpace: true, hasSrc: !!src, ratio,
-          ...(refFiles.length && src ? { refs: [{ job: 'product', label: '', keep: '' }, { job: 'style', label: 'the rival ad we are remaking', keep: 'copy its layout, framing, light and colours; take nothing else from it: not its product, logo, brand name, people or words' }] } : {}) }).prompt;
-        try { return await geminiImage({ srcFile: src, ...(refFiles.length ? { refFiles } : {}), prompt, ratio, named, slug, text: [x?.onSlide, title, cardTitle].filter(Boolean).join('. '), fallback: true }); } catch (e) { log.warn('[draft slide]', e.message); return null; } /* fallback: a slide with no new photo carries the real product photo under its words */
+        const prompt = buildDraft({ kind: 'image', title: `${title} carousel`, visual: `${x.visual || ''}${lookLine}`, scene: scene ? `The set as a whole shows what the card promises: ${scene}.` : '', index: k + m + 1, count: slides.length, topSpace: true, hasSrc: !!src, ratio }).prompt;
+        try { return await geminiImage({ srcFile: src, prompt, ratio, named, slug, text: [x?.onSlide, title, cardTitle].filter(Boolean).join('. '), fallback: true }); } catch (e) { log.warn('[draft slide]', e.message); return null; } /* fallback: a slide with no new photo carries the real product photo under its words */
       }))));
     }
     if (!raws.some(Boolean)) throw new Error('no slide photo came back');

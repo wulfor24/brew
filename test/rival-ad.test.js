@@ -26,14 +26,15 @@ test('the writers get the rival ad, how it is made and the rule: same angle and 
   assert.equal(rivalBlock(null, style, 'Cozy'), '');
 });
 
-test('the picture: our product is image 1, their ad image 2 for the look, our words where theirs sit', () => {
+test('the picture: our product is the only image; their ad arrives as its written composition and look, our words where theirs sit', () => {
   const pic = rivalPicture(ad, style, { headline: 'Warm toes by the second sip of coffee, every single morning' });
-  assert.equal(pic.refs[0].job, 'product'); assert.equal(pic.refs[1].job, 'style');
-  assert.match(pic.refs[1].keep, /not its product/);
+  assert.equal(pic.refs.length, 1, 'never their picture'); assert.equal(pic.refs[0].job, 'product');
+  assert.match(pic.visual, /cropped tight/); assert.match(pic.visual, /no other products, brands, logos/);
+  assert.equal(pic.look, style.look);
   assert.equal(pic.text[0].where, 'top third, centred');
   assert.ok(pic.text[0].words.split(' ').length <= 5, 'about as long as theirs');
-  const prompt = buildDraft({ kind: 'image', title: 'a Meta ad', visual: pic.visual, refs: pic.refs, text: pic.text, hasSrc: true, ratio: '4:5' }).prompt;
-  assert.match(prompt, /Image 1 is the product/); assert.match(prompt, /Image 2 is the look/); assert.match(prompt, /top third, centred/);
+  const prompt = buildDraft({ kind: 'image', title: 'a Meta ad', visual: pic.visual, refs: pic.refs, text: pic.text, hasSrc: true, ratio: '4:5', brand: { style: pic.look } }).prompt;
+  assert.match(prompt, /Image 1 is the product/); assert.doesNotMatch(prompt, /Image 2/); assert.match(prompt, /top third, centred/);
   assert.deepEqual(rivalPicture(ad, null, { headline: 'x y z' }).text, [], 'no words on the image when the rival had none read');
 });
 

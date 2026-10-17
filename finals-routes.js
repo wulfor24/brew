@@ -3,6 +3,7 @@
 // that quote, and a Space checkpoint's yes or no. Mounted by feed-service.js (jam) and remix.js (studio) with one line each.
 // A final lands as a draft card marked final, or as the next studio version labelled Final, and posts to the thread like
 // every other asset. Chat never reaches these routes: only the button does.
+import { isResearchImage } from './rival-ad.js'; // a rival's ad is never a photo a final stands on
 import { sceneOf, cardProduct } from './product-match.js';
 import { familyOf, matchSpaces } from './sloosh-spaces.js';
 
@@ -17,9 +18,9 @@ export function createFinalsSheet({ finals, sloosh, references = null, creditsLe
   /* the real photos a final can stand on: the ones given first, the product the card names, the card's own, the catalog lead */
   const photosOf = (t, c, extra = []) => { const b = brandOfT(t) || {}, cat = b.catalog || []; const named = c ? cardProduct(c, cat, { brand: b.seed?.brand?.name || '' }) : null;
     const rels = [...new Set([...extra, named?.img, ...(c?.images || []), c?.img, ...cat.slice(0, 12).map((x) => x.img)].filter((x) => x && typeof x === 'string' && !/^\/?gen\//.test(x) && !/statics\//.test(x)))];
-    /* a rival ad card ("Make our version"): their ad is offered as the look (image 2), never as a product photo */
-    return rels.slice(0, 16).map((rel) => { if (/^\/?research\//.test(rel)) return { url: rel, label: `${String(c?.title || 'The rival').split(':')[0]}'s ad (the look)`, job: 'style', keep: 'copy its layout, crop, light, colours and where the words sit; take nothing else from it', look: true };
-      const p = cat.find((x) => x.img === rel); return { url: rel, label: p?.t || p?.title || named?.t || c?.title || 'Product photo', job: 'product', named: rel === named?.img }; }); };
+    /* a rival's ad ("Make our version") is never offered: a model given their picture copies it; its composition already
+       rides in the draft's brief as words (rival-ad.js) */
+    return rels.filter((rel) => !isResearchImage(rel)).slice(0, 16).map((rel) => { const p = cat.find((x) => x.img === rel); return { url: rel, label: p?.t || p?.title || named?.t || c?.title || 'Product photo', job: 'product', named: rel === named?.img }; }); };
   async function status(t, { slug, kind = 'image', format = '', photos = [], draft = null, pending = null }) {
     const st = await finals.status(); const fam = familyOf(format, kind);
     const spaces = st.ok && !st.dummy ? matchSpaces(await spacesList(), fam).map((s) => ({ id: s.spaceId || s.id, name: s.title || s.name, about: s.description || '', output: (s.outputTypes || []).join('/') || null, credits: null })) : [];
