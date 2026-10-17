@@ -761,12 +761,13 @@ export function createFeedService(o) {
   /* ---------- rival ad reads (rival-ad.js): kept with the brand (rival-reads.json), so a deploy or a second instance never pays
      for one again; the top ads are read as soon as they arrive, so "Make our version" opens on a finished read ---------- */
   const READS_F = 'rival-reads.json', readsMem = new Map(), readsChain = new Map();
-  const readsOf = async (slug) => { if (!readsMem.has(slug)) readsMem.set(slug, (await packs.getJSON(slug, READS_F, {}).catch(() => ({}))) || {}); return readsMem.get(slug); };
+  const GP = o.globalPacks || packs; /* the brand-file store (getJSON/put): `packs` here is the loaded-pack cache, which has neither (17 Oct: every read failed to save) */
+  const readsOf = async (slug) => { if (!readsMem.has(slug)) readsMem.set(slug, (await GP.getJSON(slug, READS_F, {}).catch(() => ({}))) || {}); return readsMem.get(slug); };
   const rivalStore = (slug) => (!slug ? null : {
     get: async (id) => (await readsOf(slug))[id] || null,
     put: async (id, r) => { const all = await readsOf(slug); all[id] = { ...r, at: Date.now() };
       const ks = Object.keys(all); if (ks.length > 150) for (const k of ks.sort((a, b) => (all[a].at || 0) - (all[b].at || 0)).slice(0, ks.length - 150)) delete all[k];
-      const run = (readsChain.get(slug) || Promise.resolve()).then(() => packs.put(slug, READS_F, all)); readsChain.set(slug, run.catch(() => {})); return run; } });
+      const run = (readsChain.get(slug) || Promise.resolve()).then(() => GP.put(slug, READS_F, all)); readsChain.set(slug, run.catch(() => {})); return run; } });
   const rivalStoreOf = (t) => rivalStore(t ? (t.brandId || DEFAULT_BRAND) : B()?.slug);
   const fileOfRel = async (rel) => { const f = (o.photoAsync ? await o.photoAsync(rel).catch(() => null) : null) || photoFile(rel); try { return f && fs.statSync(f).isFile() ? f : null; } catch { return null; } };
   const PREREAD = +(process.env.RIVAL_PREREAD ?? 4); /* how many of the newest top rival ads are read ahead per brand */
