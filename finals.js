@@ -53,8 +53,12 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
     statusMemo = { at: now(), v }; return v;
   }
   /* the Gemini fallback quote: no credits, the same brief (the Nano Banana rendering is right for Gemini image; a video is Veo on a Gemini still); a Space has none */
+  /* product photos first, then the rest (a look, a scene, a person): Gemini gets them in that order, so "image 1" is always the product */
+  const productFirst = (refs = []) => [...refs.filter((r) => r?.job === 'product'), ...refs.filter((r) => r?.job !== 'product')];
   const geminiQuote = (spec, why) => { if (spec.space) return { error: `${why} A Space runs on Sloosh only.`.trim() }; const vid = spec.kind === 'video'; if (vid && !makeVideo) return { error: `${why} A video final runs on Sloosh only here.`.trim() };
-    const b = buildFinal({ ...spec, kind: 'image' }); const settings = vid ? { aspect_ratio: spec.ratio || '9:16', resolution: '1080p', duration: Math.max(4, Math.min(8, Math.round(spec.seconds || 6))), sound: !!spec.sound } : b.settings;
+    if (!(spec.refs || []).some((r) => r?.job === 'product')) return { error: 'Pick a product photo first: Brew makes the final around the real product.' };
+    spec = { ...spec, refs: productFirst(spec.refs), ratio: vid ? (spec.ratio === '16:9' ? '16:9' : '9:16') : spec.ratio };
+    const b = buildFinal({ ...spec, kind: 'image' }); const settings = vid ? { aspect_ratio: spec.ratio, resolution: '1080p', duration: Math.max(4, Math.min(8, Math.round(spec.seconds || 6))), sound: !!spec.sound } : b.settings;
     return { quoteId: `gemini-${sha(JSON.stringify([spec.kind, spec.visual, spec.text, spec.refs, spec.motion]))}`, provider: 'gemini', fallback: true, why: `on Gemini for now: ${why}`, fallbackWhy: why, credits: 0, hold: 0, model: vid ? 'veo-3.1-fast' : 'gemini-3-pro-image', label: vid ? 'Veo 3.1 Fast (Vertex)' : 'Gemini 3 Pro Image (Vertex)', prompt: b.prompt, motion: vid ? buildDraft({ ...spec, kind: 'video' }).prompt : null, settings, space: null, refs: spec.refs || [], expiresAt: now() + 3600e3, at: now() }; };
 
   /* ---------- Brew's files as Sloosh assets, imported once per workspace ---------- */
@@ -127,9 +131,13 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
           rec = { ...rec, state: 'done', file: from, link: null, assetId: null, charged: 0, doneAt: now() }; return writeRec(slug, rec); }
         if (q.provider === 'gemini' || q.fallback) { /* Gemini for now: the same brief and the product photo, counted in the image/video budget (the makers check it), no Sloosh credit, no quote staleness */
           if (!geminiImage) throw new Error('Gemini is not wired here');
-          const prod = (spec.refs || []).find((r) => r.job === 'product' && (r.url || r.file)) || (spec.refs || [])[0]; const srcFile = prod ? await photo(prod.url || prod.file).catch(() => null) : null; const vid = spec.kind === 'video';
+          const refs = productFirst(q.refs?.length ? q.refs : spec.refs || []), prod = refs.find((r) => r.job === 'product' && (r.url || r.file));
+          if (!prod) throw new Error('Pick a product photo first: Brew makes the final around the real product.');
+          const srcFile = await photo(prod.url || prod.file).catch(() => null), vid = spec.kind === 'video';
+          /* the other picked photos ride along as image 2, 3… in the order the brief names them (a rival's ad as the look, a scene, a person) */
+          const refFiles = (await Promise.all(refs.filter((r) => r !== prod && (r.url || r.file)).map((r) => photo(r.url || r.file).catch(() => null)))).filter(Boolean);
           rec = { ...rec, provider: 'gemini', fallback: true, model: q.model || 'gemini', credits: 0 }; await writeRec(slug, rec);
-          try { const still = await geminiImage({ srcFile, prompt: q.prompt, ratio: vid ? '9:16' : q.settings?.aspect_ratio || '4:5', slug, productName: spec.product?.name || null, text: (spec.text || []).map((t) => (typeof t === 'string' ? t : t?.words || '')).filter(Boolean).join(' · ') });
+          try { const still = await geminiImage({ srcFile, refFiles, prompt: q.prompt, ratio: vid ? (q.settings?.aspect_ratio === '16:9' ? '16:9' : '9:16') : q.settings?.aspect_ratio || '4:5', slug, productName: spec.product?.name || null, text: (spec.text || []).map((t) => (typeof t === 'string' ? t : t?.words || '')).filter(Boolean).join(' · ') });
             /* the image guard hands back the real product photo when the model's picture showed another product or could not be checked
                (guard.fallback / guard.genFailed, image-guard.js): a stand-in is never a final, and no Veo clip is made on it */
             if (still?.guard?.fallback || still?.guard?.genFailed) throw Object.assign(new Error('Gemini could not keep the product as photographed. Try again, or wait for Sloosh.'), { guard: still.guard, soft: true });

@@ -2999,7 +2999,7 @@
   };
   const imgOf = (ch) => ch.pkg?.image || ch.after?.images?.[0] || null;
   /* until a photo is made for it, the jam shows the card's own product photo (never a static: those carry their own words) */
-  const cardPhoto = () => { if (!SPLIT || !RX.p) return null; const im = (RX.p.images || cardOf(RX.p).images || []).find((x) => typeof x === 'string' && !/statics\//.test(x)); return im || null; };
+  const cardPhoto = () => { if (!SPLIT || !RX.p) return null; const im = (RX.p.images || cardOf(RX.p).images || []).find((x) => typeof x === 'string' && !/statics\//.test(x) && !/^\/?research\//.test(x) && !/\/a\/ad-[^/]+$/.test(x.split('?')[0])); return im || null; }; /* a rival's ad is the look of our version, never its picture */
 
   /* ---------- a social post, as it will look on its platform ----------
      X: a thread of posts joined by the reply line, with the character count. Reddit, LinkedIn, Quora, a Facebook group,
@@ -3125,7 +3125,7 @@
       if (d.as === 'carousel' && d.images?.length) return `<div class="as as-draft as-remade as-car${L}">${d.images.map((u, i) => `<img src="${esc(u)}" alt="${esc((d.slides || [])[i]?.text || `Slide ${i + 1}`)}" loading="lazy">`).join('')}</div>`;
       if (d.as === 'image' && d.images?.[0]) return `<div class="as as-draft as-remade${L}"><img src="${esc(d.images[0])}" alt="${esc(d.title || '')}"></div>`;
       const lines = d.as === 'video' ? (d.script || []).map((x) => x.line || x.shot || '') : (d.slides || []).map((x) => x.text || '');
-      return `<div class="as as-draft as-remade is-words${L}"><p class="as-rw-k">${d.as === 'video' ? 'Reel' : d.as === 'carousel' ? 'Carousel' : 'Picture'} · ${d.pending || ch.remakePending ? 'the media is being made' : 'words only'}</p>${d.overlay ? `<b>${esc(d.overlay)}</b>` : ''}<ol>${lines.filter(Boolean).map((x) => `<li>${esc(x)}</li>`).join('')}</ol></div>`; }
+      return `<div class="as as-draft as-remade is-words${L}"><p class="as-rw-k">${d.as === 'video' ? 'Reel' : d.as === 'carousel' ? 'Carousel' : 'Picture'} · ${d.pending || ch.remakePending ? 'the media is being made' : ch.remakeError ? esc(ch.remakeError) : 'words only'}</p>${d.overlay ? `<b>${esc(d.overlay)}</b>` : ''}<ol>${lines.filter(Boolean).map((x) => `<li>${esc(x)}</li>`).join('')}</ol></div>`; }
     if (d?.text && d.images?.[0]) return `<div class="as as-draft${size === 'lg' ? ' lg' : ''}"><img src="${esc(d.images[0])}" alt="${esc(d.title || 'First draft')}"></div>`;
     let html = assetHtml0(ch, size);
     /* a widget with no picture of its own (a page, a message, a brief) still opens on the card's draft picture */

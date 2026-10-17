@@ -1,8 +1,20 @@
 // Voice and video on our own Google Cloud (Vertex AI) account, never through treg: generated assets are ours to pay for
 // directly. Voice: Gemini TTS (raw PCM, wrapped as WAV). Video: Veo 3.1 image-to-video (submit, poll, bytes come back inline).
 import { execFile } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { kindOf } from './img-norm.js';
 import { noteVertex } from './alerts.js'; // billing and quota failures reach the ops alerts
 
+/* a WebP, GIF or AVIF frame (a real-photo stand-in can be any of them) becomes a PNG through ffmpeg before Veo sees it */
+async function pngOrJpeg(buf) {
+  const k = kindOf(buf); if (k === 'png' || k === 'jpeg') return { buf };
+  const id = crypto.createHash('sha1').update(buf).digest('hex').slice(0, 16), src = path.join(os.tmpdir(), `veo-in-${id}`), out = path.join(os.tmpdir(), `veo-in-${id}.png`);
+  if (!fs.existsSync(out)) { fs.writeFileSync(src, buf); await new Promise((res, rej) => execFile('ffmpeg', ['-y', '-v', 'error', '-i', src, '-frames:v', '1', out], { timeout: 60e3 }, (e) => (e ? rej(new Error(`the first frame (${k || 'unknown'}) could not be read: ${e.message}`)) : res()))); }
+  return { buf: fs.readFileSync(out) };
+}
 const PROJECT = () => process.env.GOOGLE_CLOUD_PROJECT || 'squareup-492617';
 const VEO_LOC = () => process.env.VEO_LOCATION || 'us-central1';
 let tok = { v: '', exp: 0 };
@@ -33,7 +45,9 @@ export async function vertexVoice(text, voiceName = 'Kore', { model = process.en
 /** first frame (jpg/png buffer) + motion prompt → MP4 buffer */
 export async function vertexVideo(frame, prompt, { model = process.env.VEO_MODEL || 'veo-3.1-fast-generate-001', seconds = 6, ratio = '9:16', resolution = '1080p', onWait = () => {}, maxMs = 9 * 60e3 } = {}) {
   const base = `https://${VEO_LOC()}-aiplatform.googleapis.com/v1/projects/${PROJECT()}/locations/${VEO_LOC()}/publishers/google/models/${model}`;
-  const mimeType = frame[0] === 0x89 ? 'image/png' : 'image/jpeg';
+  /* Veo takes 16:9 or 9:16 only (a 4:5 or 1:1 draft asked for one and got a 400), 4 to 8 seconds, and a PNG or JPEG first frame */
+  ratio = ratio === '16:9' ? '16:9' : '9:16'; seconds = Math.max(4, Math.min(8, Math.round(+seconds || 6)));
+  ({ buf: frame } = await pngOrJpeg(frame)); const mimeType = kindOf(frame) === 'png' ? 'image/png' : 'image/jpeg';
   const op = await post(`${base}:predictLongRunning`, { instances: [{ prompt, image: { bytesBase64Encoded: frame.toString('base64'), mimeType } }],
     parameters: { sampleCount: 1, durationSeconds: seconds, aspectRatio: ratio, resolution, generateAudio: false, personGeneration: 'allow_adult' } });
   if (!op.name) throw new Error('video was not started');

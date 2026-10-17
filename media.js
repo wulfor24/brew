@@ -4,6 +4,7 @@
 //   image: Vertex Gemini image (the chosen model, then the other one; server.js rawGeminiImage) → OpenAI gpt-image-1
 //   video: Veo 3.1 fast → Veo 3.1 → (the caller keeps the still)
 //   voice: Gemini TTS → OpenAI TTS
+import { mimeOf } from './img-norm.js';
 import { vertexVoice, vertexVideo, pcmToWav } from './vertex-media.js';
 
 const OPENAI = () => process.env.OPENAI_API_KEY || '';
@@ -22,7 +23,7 @@ export async function chain(kind, steps, log = console) {
 export async function openaiImage({ srcFile, srcBuf, prompt, size = '1024x1024' }, { fetchImpl = fetch, readFile } = {}) {
   if (!OPENAI()) throw Object.assign(new Error('no OPENAI_API_KEY'), { off: true });
   const src = srcBuf || (srcFile && readFile ? readFile(srcFile) : null);
-  if (src) { const fd = new FormData(); fd.append('model', 'gpt-image-1'); fd.append('prompt', prompt); fd.append('size', size); fd.append('image', new Blob([src], { type: 'image/jpeg' }), 'src.jpg');
+  if (src) { const fd = new FormData(); fd.append('model', 'gpt-image-1'); fd.append('prompt', prompt); fd.append('size', size); const mt = mimeOf(src); fd.append('image', new Blob([src], { type: mt }), `src.${mt.split('/')[1].replace('jpeg', 'jpg')}`);
     const r = await fetchImpl('https://api.openai.com/v1/images/edits', { method: 'POST', headers: { authorization: `Bearer ${OPENAI()}` }, body: fd, signal: AbortSignal.timeout(180e3) });
     if (!r.ok) throw new Error(`OpenAI ${r.status}: ${(await r.text()).slice(0, 300)}`); return Buffer.from((await r.json()).data[0].b64_json, 'base64'); }
   const r = await fetchImpl('https://api.openai.com/v1/images/generations', { method: 'POST', headers: { authorization: `Bearer ${OPENAI()}`, 'content-type': 'application/json' }, body: JSON.stringify({ model: 'gpt-image-1', prompt, size }), signal: AbortSignal.timeout(180e3) });
@@ -47,7 +48,11 @@ export async function makeVoice(text, voiceName = 'Kore', o = {}, log = console)
 export async function makeVideo(frame, prompt, o = {}, log = console) {
   const fast = process.env.VEO_MODEL || 'veo-3.1-fast-generate-001', full = process.env.VEO_FALLBACK_MODEL || 'veo-3.1-generate-001';
   let filtered = false; /* a clip the model filtered is filtered by the stronger one too: only an outage or a quota moves on to it */
+  /* a filtered clip is tried once more with the plainest motion (Veo's filter mostly reacts to people, words and fast action in
+     the prompt): the same first frame, the camera slowly pushing in, nothing else moving */
+  const SAFE = 'A slow, steady push-in on the product exactly as it is in the first frame. Soft natural light. Nothing else moves. No people, no words, no new objects.';
   const r = await chain('video', [[fast, () => vertexVideo(frame, prompt, { ...o, model: fast }).catch((e) => { filtered = /filtered|could not make/i.test(e.message); throw e; })],
+    [`${fast} (plain motion)`, () => (filtered ? vertexVideo(frame, SAFE, { ...o, model: fast }) : Promise.reject(Object.assign(new Error('not filtered'), { off: true })))],
     [full, full !== fast && (() => (filtered ? Promise.reject(Object.assign(new Error('filtered by the first model'), { off: true })) : vertexVideo(frame, prompt, { ...o, model: full })))]], log);
   return Object.assign(r.buf, { provider: r.provider });
 }

@@ -26,6 +26,7 @@ const SCHEMA = {
   type: 'object', required: ['as', 'title', 'copy'], properties: {
     as: { type: 'string', enum: DRAFT_AS, description: 'The form the brief needs: image for a single static ad or post, carousel for a swipeable carousel (ad or post) or a set of Stories, video for a reel or video ad, voice for a voice note, voiceover or radio-style spot, text for copy that ships as words (a message, email, page copy, captions, a script to hand over)' },
     title: { type: 'string', description: 'Under 50 characters: what this draft is, e.g. "Instagram ad: office lunch orders"' },
+    headline: { type: 'string', description: 'image, carousel and video only: the few words set on the picture itself (under 8 words), or empty for none' },
     copy: { type: 'string', description: 'The words of the asset, ready to use, in Markdown. For an ad: the headline, the primary text and the button. For a message or email: the message itself. For voice: the exact words spoken. No placeholders, no brackets to fill in' },
     visual: { type: 'string', description: 'image and video only: one or two sentences describing the photograph around the real product as things you can see: the surface, the setting, where the light comes from, the props, who is there and what they do. No mood words (premium, cinematic, aesthetic), no effects (splashes, sparkles, confetti, floating, glow), no keyword lists. No writing anywhere except the product\'s own label: no calendars, notes, signs, screens or other packaging' },
     motion: { type: 'string', description: 'video only: one sentence on what moves, in order, and the one camera move over 6 seconds (a slow push in, a pan, a static shot), with the pace' },
@@ -80,7 +81,7 @@ export function createDrafts({ rivalAdOf = () => null, claudeTool, geminiImage, 
     const src = needPhoto(await productPhoto(c, j, t));
     /* our version of a rival's ad: their ad is image 2, the look only; the words sit where theirs do */
     const rv = await rivalRead(t, c).catch(() => null), look = rv?.ad?.poster ? await fileOfRel(rv.ad.poster) : null;
-    const pic = rv && look ? rivalPicture(rv.ad, rv.style, { headline: j.headline || j.title }) : null;
+    const pic = rv && look ? rivalPicture(rv.ad, rv.style, { headline: j.headline || String(j.copy || '').replace(/[#*_>`]/g, '').split('\n').map((x) => x.trim()).find(Boolean) || '' }) : null; /* the words on the picture, never the draft's internal title */
     const prompt = pic ? buildDraft({ kind: 'image', title: j.title, visual: `${j.visual || ''} Same composition and look as image 2: ${pic.visual}`, refs: [{ ...pic.refs[0], label: `${brandName(t) || 'the brand'}'s product` }, pic.refs[1]], text: pic.text, hasSrc: true, ratio }).prompt : imagePrompt(j, true, c);
     /* the guard tries the model again and the other Gemini model; with no picture at all, the real product photo stands in (failed) */
     const buf = await geminiImage({ srcFile: src, ...(pic ? { refFiles: [look] } : {}), prompt, ratio, named: cardNamed(t, c), text: [c?.make?.pieces, j.title, j.copy, j.headline, c?.title].filter(Boolean).join('. '), fallback: true });
@@ -94,7 +95,8 @@ export function createDrafts({ rivalAdOf = () => null, claudeTool, geminiImage, 
   const makeCarousel = async (t, w, d, j, c) => {
     const slides = (j.slides || []).filter((x) => x?.onSlide).slice(0, 8); if (slides.length < 2) throw Object.assign(new Error('The plan came back without slides. Try again.'), { soft: true });
     const src = needPhoto(await productPhoto(c, j, t)), ratio = d.ratio === '9:16' ? '9:16' : d.ratio === '1:1' ? '1:1' : '4:5';
-    const r = await M.carousel({ slides, src, ratio, title: j.title, cardTitle: c?.title, scene: sceneOf(c), named: cardNamed(t, c), id: d.id, clean, canSpend: (i) => i === 0 || spend('image'), onStep: (text) => step(t, w, d, text) });
+    const rv = await rivalRead(t, c).catch(() => null), look = rv?.ad?.poster ? await fileOfRel(rv.ad.poster) : null; /* our version of a rival's carousel: their ad is image 2, the look */
+    const r = await M.carousel({ slides, src, ...(look ? { refFiles: [look] } : {}), ratio, title: j.title, cardTitle: c?.title, scene: sceneOf(c), named: cardNamed(t, c), id: d.id, clean, canSpend: (i) => i === 0 || spend('image'), onStep: (text) => step(t, w, d, text) });
     d.slides = r.slides; d.image = r.image; if (r.zip) d.zip = r.zip; if (r.err) d.err = r.err;
   };
   const makeVoice = (text, style, voice) => M.voice(text, style, voice);
@@ -111,10 +113,15 @@ export function createDrafts({ rivalAdOf = () => null, claudeTool, geminiImage, 
       d.ratio = RATIOS.includes(j.ratio) && j.ratio !== '16:9' ? j.ratio : '4:5'; d.copy = d.copy || (j.slides || []).map((x, i) => `${i + 1}. ${x.onSlide}`).join('\n');
       await makeCarousel(t, w, d, j, c);
     } else if (j.as === 'image' || j.as === 'video') {
+      /* a video is 9:16 or 16:9 (Veo takes nothing else), and a video refused by today's limit says so before a picture is spent */
+      if (j.as === 'video') { d.ratio = d.ratio === '16:9' ? '16:9' : '9:16'; const no = budgetWhy('video'); if (no) throw Object.assign(new Error(`${no} The words and motion are here.`), { soft: true }); }
       if (!spend('image')) throw Object.assign(new Error((budgetWhy('image') || 'The image budget for today is used up.') + ' The words are here; try the picture tomorrow.'), { soft: true });
       step(t, w, d, j.as === 'video' ? 'Making the first frame' : 'Making the image');
       const im = await makeImage(j, c, d.ratio, t); d.image = 'gen/' + im.name;
-      if (im.failed) throw Object.assign(new Error(`The new picture didn’t come through, so this is the real product photo for now. Tap ${j.as === 'video' ? 'video' : 'image'} again for a new one.`), { soft: true });
+      /* a picture that didn't come through leaves the real product photo: an image says so; a video animates that real photo
+         (still the right product) instead of stopping, and says so */
+      if (im.failed && j.as !== 'video') throw Object.assign(new Error('The new picture didn’t come through, so this is the real product photo for now. Tap image again for a new one.'), { soft: true });
+      if (im.failed) d.note = clean(`${d.note ? d.note + ' ' : ''}The first frame is the real product photo: the new scene didn't come through.`).slice(0, 240);
       if (j.as === 'video') {
         if (!spend('video')) throw Object.assign(new Error((budgetWhy('video') || 'The video budget for today is used up.') + ' Here is the first frame.'), { soft: true });
         step(t, w, d, 'Animating it, about two minutes');
@@ -203,14 +210,15 @@ export function createMakers({ geminiImage, treg, launchBrowser, zipBuffer, save
   };
   // a carousel: one photo per slide (3 at a time), then the words set in exact type by Chromium, never drawn by the model.
   // canSpend(i) says whether slide i may be made; bufs carry the image guard's note (guard.retried) so callers can book real cost
-  const carousel = async ({ slides, src, ratio, title, cardTitle, scene = '', named = null, id, slug = undefined, clean = (x) => String(x || ''), canSpend = () => true, onStep = () => {} }) => {
+  const carousel = async ({ slides, src, refFiles = [], ratio, title, cardTitle, scene = '', named = null, id, slug = undefined, clean = (x) => String(x || ''), canSpend = () => true, onStep = () => {} }) => {
     const raws = [];
     for (let k = 0; k < slides.length; k += 3) {
       onStep(`Making the photos (${Math.min(k + 3, slides.length)} of ${slides.length})`);
       raws.push(...(await Promise.all(slides.slice(k, k + 3).map(async (x, m) => {
         if (!canSpend(k + m)) return null;
-        const prompt = buildDraft({ kind: 'image', title: `${title} carousel`, visual: x.visual, scene: scene ? `The set as a whole shows what the card promises: ${scene}.` : '', index: k + m + 1, count: slides.length, topSpace: true, hasSrc: !!src, ratio }).prompt;
-        try { return await geminiImage({ srcFile: src, prompt, ratio, named, slug, text: [x?.onSlide, title, cardTitle].filter(Boolean).join('. '), fallback: true }); } catch (e) { log.warn('[draft slide]', e.message); return null; } /* fallback: a slide with no new photo carries the real product photo under its words */
+        const prompt = buildDraft({ kind: 'image', title: `${title} carousel`, visual: x.visual, scene: scene ? `The set as a whole shows what the card promises: ${scene}.` : '', index: k + m + 1, count: slides.length, topSpace: true, hasSrc: !!src, ratio,
+          ...(refFiles.length && src ? { refs: [{ job: 'product', label: '', keep: '' }, { job: 'style', label: 'the rival ad we are remaking', keep: 'copy its layout, framing, light and colours; take nothing else from it: not its product, logo, brand name, people or words' }] } : {}) }).prompt;
+        try { return await geminiImage({ srcFile: src, ...(refFiles.length ? { refFiles } : {}), prompt, ratio, named, slug, text: [x?.onSlide, title, cardTitle].filter(Boolean).join('. '), fallback: true }); } catch (e) { log.warn('[draft slide]', e.message); return null; } /* fallback: a slide with no new photo carries the real product photo under its words */
       }))));
     }
     if (!raws.some(Boolean)) throw new Error('no slide photo came back');

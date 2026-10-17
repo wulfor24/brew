@@ -606,7 +606,7 @@ export function createFeedService(o) {
         rows: e.items.slice(0, 4).map((x) => [String(x.hook || 'Untitled ad').slice(0, 38), x.video ? 'Video' : 'Image']), detail: { why: ['Read from the public Meta Ad Library today.'], how: ['Connect Meta to see what each one costs and returns.'] }, cta: { label: 'Generate versions' } });
       if (e.kind === 'count') out.push({ ...base, type: 'report', family: 'result', kind: 'rows', badge: ['Live ads', e.now > e.was ? 'ok' : 'warn'], liveNums: nums,
         title: `Live ads went from ${e.was} to ${e.now}`, sub: `The count of ${BN()} ads running in the Meta Ad Library changed since the last read. A big drop can mean a paused account or a budget cut.`, rows: [['Before', String(e.was)], ['Now', String(e.now)]], detail: { why: ['Counted in the public Meta Ad Library.'], how: ['Check the account if the drop was not planned.'] }, cta: { label: 'Open report' } });
-      if (e.kind === 'none') out.push({ ...base, type: 'decision', kind: 'rows', badge: ['No live ads', 'warn'], liveNums: [], title: `No live ${BN()} ads found in the Meta Ad Library`, sub: `We searched the Ad Library for ${CTRY()} and found no ads running for ${BN()} today. Your feed's ad cards start from your moves instead.`, rows: [['Live ads', 'None found']], detail: { why: ['Searched by brand name in the public Ad Library.'], how: ['If you run ads under another page name, tell us and we will track that page.'] }, cta: { label: 'Make our version' } });
+      if (e.kind === 'none') out.push({ ...base, type: 'decision', kind: 'rows', badge: ['No live ads', 'warn'], liveNums: [], title: `No live ${BN()} ads found in the Meta Ad Library`, sub: `We searched the Ad Library for ${CTRY()} and found no ads running for ${BN()} today. Your feed's ad cards start from your moves instead.`, rows: [['Live ads', 'None found']], detail: { why: ['Searched by brand name in the public Ad Library.'], how: ['If you run ads under another page name, tell us and we will track that page.'] }, cta: { label: 'Generate versions' } /* no rival ad behind it: our first ad, never "our version" of something */ });
     }
     return out;
   };
@@ -658,6 +658,7 @@ export function createFeedService(o) {
     campaign: 'Popular ads', title: `${a.brand}: live ${a.days} days in ${a.versions} version${a.versions > 1 ? 's' : ''}`, sub: a.why || a.hook,
     rows: [['Hook', a.hook], ['Angle', a.angle], ['Live since', a.since], ['Format', a.format]],
     detail: { why: [a.why, `Hook: ${a.hook}`, `${a.brand} runs it as ${a.versions} version${a.versions > 1 ? 's' : ''}, ranked ${a.rank} by Meta for reach.`].filter(Boolean), how: [a.take, `Brew reads how ${a.brand}'s ad is made, then drafts yours on the same angle and style, with your product and your words.`, 'You pick one, make the final and share the brief; your team runs it.'].filter(Boolean) },
+    make: { format: a.format === 'video' ? 'reel' : 'single image ad', what: `Our version of ${a.brand}'s ${a.format === 'video' ? 'video' : 'image'} ad`, from: 'rival' }, /* the studio opens on the same kind of creative */
     cta: { label: 'Make our version' }, link: { label: 'See it in the Ad Library', url: a.url }, src: `Meta Ad Library · ${CTRY()} · ${dateIN(at)}`, research: { kind: 'ad', id: a.id } });
   const trendCard = (x, at) => ({ id: 'r-' + x.id, agent: 'brew', sector: 'creatives', type: 'competitor', family: 'learning', lane: firstLane(), roles: ['founder', 'growth', 'brand'], kind: 'rows',
     campaign: 'Trends', title: x.card, sub: x.p,
@@ -666,11 +667,17 @@ export function createFeedService(o) {
     cta: { label: 'Turn into an idea' }, src: `Google Trends · ${CTRY()} · ${dateIN(at)}`, research: { kind: 'trend', id: x.id } });
   const howtoCard = (x, at) => ({ id: 'r-' + x.id, agent: 'creative', sector: 'creatives', type: 'idea', lane: x.lane, roles: ['founder', 'growth', 'brand'], kind: x.img ? 'media' : 'rows', images: x.img ? [x.img] : undefined,
     campaign: 'How to', title: x.card, sub: x.p, rows: x.steps.map((st, i) => [`Step ${i + 1}`, st]),
-    detail: { why: [x.p], how: x.steps }, cta: { label: 'Start this' }, src: `How-to playbook · ${dateIN(at)}`, research: { kind: 'howto', id: x.id } });
+    detail: { why: [x.p], how: x.steps }, cta: { label: 'Start this' }, src: `How-to playbook · ${dateIN(at)}`, research: { kind: 'howto', id: x.id, ...(x.adId ? { ad: x.adId } : {}) } });
   /* a story and the archive behind it (research.js pool): a story past its 24 hours can still become a feed card */
   const resAll = (o) => [...(o?.items || []), ...(o?.archive || [])];
   /* the rival ad behind a research ad card ("Make our version", rival-ad.js): the item the read saved, with its poster and clip */
-  const rivalAd = (t, c) => { if (c?.research?.kind !== 'ad') return null; const r = (t ? brandOfT(t)?.research : null)?.get?.() || research?.get?.() || {}; return resAll(r.ads).find((x) => x.id === c.research.id) || null; };
+  const rivalAd = (t, c) => { if (c?.research?.kind !== 'ad' && !c?.research?.ad) return null; const r = (t ? brandOfT(t)?.research : null)?.get?.() || research?.get?.() || {};
+    const adId = c.research.kind === 'ad' ? c.research.id : c.research.ad; /* a how-to built on a rival ad names it */
+    const a = resAll(r.ads).find((x) => x.id === adId); if (a) return a; if (c.research.kind !== 'ad') return null;
+    /* the ad left the 30-day archive: the card still carries its poster, hook, angle and format, so the remake keeps its reference */
+    const row = (k) => (c.rows || []).find((x) => x[0] === k)?.[1] || '';
+    const poster = (c.images || []).find((u) => /^\/?research\//.test(String(u))) || null; if (!poster && !row('Hook')) return null;
+    return { id: c.research.id, brand: String(c.title || '').split(':')[0].trim() || 'the rival', poster, format: /video/i.test(row('Format')) ? 'video' : 'image', hook: row('Hook'), angle: row('Angle'), headline: row('Hook'), body: String(c.sub || ''), cta: '', fromCard: true }; };
   const researchCard = (kind, id) => {
     const r = research?.get() || {};
     if (kind === 'ad') { const a = resAll(r.ads).find((x) => x.id === id); return a && adCard(a, a.firstSeen || r.ads.fetchedAt); }

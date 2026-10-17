@@ -40,7 +40,8 @@ import { createConnectors } from './connectors/index.js';
 import { createSlackRoutes } from './slack-routes.js';
 import { DEMO, demoSid, demoEmail, runDemo, sessionOf, guardFetch } from './demo-mode.js'; // Demo Mode: the demo site (DEMO_MODE=1)
 import { createDemoRoutes } from './demo-routes.js';
-import { launchBrowser, zipBuffer } from './pdf/render.js';
+import { launchBrowser, zipBuffer, withBrowser } from './pdf/render.js';
+import { createImageNorm } from './img-norm.js'; // every picture a model sees is PNG, JPEG or WebP
 import { thinkModel, prefs } from './model-ctx.js';
 import { createBrandMemory, vertexEmbedder, memoryHooks } from './brand-memory.js'; // brand memory
 import { createMemoryRoutes } from './memory-routes.js'; // brand memory
@@ -190,15 +191,19 @@ const sameProduct = async (refFile, buf, name) => {
    first when it is picked. Sloosh never sits here: it makes finals only, behind a button, through finals.js */
 const openaiImage = (o) => openaiImageRaw(o, { readFile: (f) => fs.readFileSync(f) });
 const rawImage = async (o, { gptFirst = false } = {}) => {
-  const steps = [['gemini', () => rawGeminiImage(o)], ['gpt-image', OPENAI_KEY && (() => openaiImage(o))]];
+  /* GPT Image takes the product photo only: a picture with a look reference (our version of a rival's ad) stays on Gemini, so
+     the look is never silently dropped */
+  const steps = [['gemini', () => rawGeminiImage(o)], ['gpt-image', OPENAI_KEY && !o.refFiles?.length && (() => openaiImage(o))]];
   if (gptFirst) steps.reverse();
   return (await mediaChain('image', steps, console)).buf;
 };
-const geminiImage = createImageGuard({ gen: (o) => rawImage(o), verify: sameProduct, fetchPhoto: photoAny, resolve: (f) => resolveLocal(f), context: inBrand, log: console });
+/* SVG, GIF, AVIF or HEIC product photos become PNGs before any model or check sees them (img-norm.js) */
+const imgNorm = createImageNorm({ withBrowser, log: console });
+const geminiImage = createImageGuard({ gen: (o) => rawImage(o), verify: sameProduct, fetchPhoto: photoAny, resolve: (f) => resolveLocal(f), normalize: imgNorm.normalize, context: inBrand, log: console });
 /* every picture the build (ad statics, the team's statics), background drafts and story watchers make counts against the day's
    image budget, the brand's share first (budget.js). The jam's own routes count theirs before calling imageGen */
 const countedImage = async (o = {}) => { if (!spend('image', o.slug)) throw Object.assign(new Error(budget.why('image', o.slug) || 'The image budget for today is used up.'), { soft: true, budget: true }); return geminiImage(o); };
-const imageGen = createImageGuard({ gen: (o) => rawImage(o, { gptFirst: prefs().image === 'gpt-image' && !!OPENAI_KEY && !!o.srcFile }), verify: sameProduct, fetchPhoto: photoAny, resolve: (f) => resolveLocal(f), context: inBrand, log: console });
+const imageGen = createImageGuard({ gen: (o) => rawImage(o, { gptFirst: prefs().image === 'gpt-image' && !!OPENAI_KEY && !!o.srcFile && !o.refFiles?.length }), verify: sameProduct, fetchPhoto: photoAny, resolve: (f) => resolveLocal(f), normalize: imgNorm.normalize, context: inBrand, log: console });
 
 // ---------- mock replies (free, used when AI is off or fails) ----------
 // three cuts of the card itself when the writer is off: its own numbers, its reason, a smaller first step.
@@ -454,7 +459,12 @@ const storiesWarm = async () => { if (process.env.STORIES_BG === '0' || process.
     const lo = (await social.stateOf(b.slug).catch(() => null))?.lastOpen || 0; if (Date.now() - lo > 3 * 864e5) continue;
     try { attach(await packs.load(b.slug)); console.log('[stories] warm', b.slug); } catch (e) { console.warn('[stories] warm', b.slug, e.message); } } };
 setTimeout(() => storiesWarm().catch(() => {}), 90e3).unref?.(); setInterval(() => storiesWarm().catch(() => {}), 60 * 60e3).unref?.();
-const draftsBg = createDraftsBg({ packs, ai, geminiImage: countedImage, saveGen, genFile, photoAsync, treg, launchBrowser, zipBuffer, spend, memory: MEMORY_ON() ? memory : null, loadPack: (slug) => packs.load(slug), log: console,
+/* background first drafts never use the last of a brand's day: a share is kept for what people ask for in the jam (on 17 Oct
+   background clips used every video before anyone asked for one). BG_RESERVE_<KIND> overrides */
+const BG_RESERVE = { image: +(process.env.BG_RESERVE_IMAGE ?? 40), video: +(process.env.BG_RESERVE_VIDEO ?? 8), voice: +(process.env.BG_RESERVE_VOICE ?? 10) };
+const bgSpend = (k, slug) => { if (BG_RESERVE[k] != null) { const l = budget.left(slug)?.[k]; if (l && l.left <= BG_RESERVE[k]) return false; } return spend(k, slug); };
+const bgImage = async (o = {}) => { const l = budget.left(o.slug)?.image; if (l && l.left <= BG_RESERVE.image) throw Object.assign(new Error('Pictures are kept for the team for the rest of today.'), { soft: true, budget: true }); return countedImage(o); };
+const draftsBg = createDraftsBg({ packs, ai, geminiImage: bgImage, saveGen, genFile, photoAsync, treg, launchBrowser, zipBuffer, spend: bgSpend, memory: MEMORY_ON() ? memory : null, loadPack: (slug) => packs.load(slug), log: console,
   lastOpenOf: async (slug) => (await social.stateOf(slug))?.lastOpen || 0, onDrafts: async (slug) => { packs.drop(slug); attach(await packs.load(slug)); } });
 draftsBg.start();
 /* first drafts are made by whichever instance's background job ran: every instance re-reads them from the bucket every 3 minutes,

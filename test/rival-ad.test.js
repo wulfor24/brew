@@ -39,7 +39,7 @@ test('the picture: our product is image 1, their ad image 2 for the look, our wo
 
 test('the creative is read once per ad, from its poster, and a failure reads nothing (never a made-up style)', async () => {
   forgetRivalReads();
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rival-')); const f = path.join(dir, 'p.png'); fs.writeFileSync(f, Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rival-')); const f = path.join(dir, 'p.png'); fs.writeFileSync(f, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52]));
   let calls = 0, sawImage = false;
   const call = async (parts) => { calls++; sawImage = parts.some((p) => p.type === 'image'); return { ...style, words: style.words }; };
   const a = await readRivalAd(ad, { call, fileOf: async () => f, video: false, log: { warn() {} } });

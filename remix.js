@@ -102,7 +102,7 @@ const CTA_ACTION = {
   'Push 5 titles': 'storefront.listing_titles', 'Draft the listing': 'storefront.listing_content', 'Request takedown': 'storefront.takedown', 'Generate the sets': 'storefront.listing_content', 'Apply 34 edits': 'storefront.listing_titles',
   'Approve the ladder': 'storefront.bundle_offer', 'Approve the 3 offers': 'storefront.bundle_offer', 'Update landing page': 'storefront.page_copy', 'Apply Update': 'storefront.page_copy', 'Publish the page': 'storefront.page_copy', 'Approve 6 popups': 'storefront.new_section', 'Start the tests': 'storefront.page_copy',
   'Shift budget': 'performance.shift_budget', 'Rotate creative': 'creative.swap_creative', 'Publish Campaign': 'performance.new_test', 'Run Monday decisions': 'performance.stop_rule', 'Apply the plan': 'performance.scale_budget', 'Pause those ads': 'performance.pause_losers', 'Draft the switcher ad': 'creative.add_variants', 'Lock the Diwali set': 'creative.add_variants',
-  'Queue the 12': 'creative.add_variants', 'Make the carousel ad': 'creative.carousel_ad', 'Build the collection ad': 'creative.collection_ad', 'Build the catalog ad': 'creative.catalog_ad', 'Draft the post': 'creative.ig_post', 'Draft the carousel post': 'creative.ig_carousel', 'Draft the stories': 'creative.ig_story', 'Queue the ads': 'creative.add_variants', 'Generate versions': 'creative.add_variants', 'Make the video': 'creative.film_brief', 'Brief the shoot': 'creative.film_brief', 'Plan the shoot': 'creative.film_brief', 'Shortlist creators': 'creative.creative_brief', 'Swap the images': 'creative.swap_creative',
+  'Queue the 12': 'creative.add_variants', 'Make the carousel ad': 'creative.carousel_ad', 'Build the collection ad': 'creative.collection_ad', 'Build the catalog ad': 'creative.catalog_ad', 'Draft the post': 'creative.ig_post', 'Draft the carousel post': 'creative.ig_carousel', 'Draft the stories': 'creative.ig_story', 'Queue the ads': 'creative.add_variants', 'Generate versions': 'creative.add_variants', 'Make the video': 'creative.short_video', 'Brief the shoot': 'creative.film_brief', 'Plan the shoot': 'creative.film_brief', 'Shortlist creators': 'creative.creative_brief', 'Swap the images': 'creative.swap_creative',
   'Turn on the journey': 'crm.flow_copy', 'Approve the flows': 'crm.flow_copy', 'Send on WhatsApp': 'crm.paid_broadcast', 'Send the review ask': 'crm.review_ask', 'Approve the box insert': 'crm.print_insert', 'Open the club': 'crm.new_segment',
   'Fix tracking': 'performance.tracking_fix', 'Draft the buyer deck': 'storefront.buyer_deck', 'Build the score': 'storefront.new_section', 'Approve all': 'storefront.new_section', 'Open report': null, 'Agree with the call': 'brew.plan', 'Open the scoreboard': 'brew.plan', 'Ship the five': 'brew.plan',
   'Make our version': 'creative.add_variants', 'Turn into an idea': 'creative.add_variants', 'Start this': 'creative.add_variants', 'Turn on guest checkout': 'storefront.store_setting', 'Launch the ad group': 'performance.search_ad',
@@ -127,7 +127,7 @@ const CTA_IN_SECTOR = {
 const TOOL_PRIMARY = { meta: 'performance.new_test', google: 'performance.search_ad', shopify: 'storefront.page_copy', marketplaces: 'storefront.listing_content', klaviyo: 'crm.flow_copy', whatsapp: 'crm.flow_copy', reviews: 'crm.review_ask' };
 const toolOf = (key) => { const [a, k] = String(key || '').split('.'); return ACTIONS[a]?.[k]?.target?.conn ?? null; };
 // the format a card asks to be made (cards-gen make.format) is the package
-const MAKE_ACTION = { 'single image ad': 'creative.add_variants', 'carousel ad': 'creative.carousel_ad', 'collection ad': 'creative.collection_ad', 'catalog ad': 'creative.catalog_ad', 'video ad': 'creative.film_brief', reel: 'creative.short_video', 'instagram post': 'creative.ig_post', 'instagram carousel': 'creative.ig_carousel', 'instagram stories': 'creative.ig_story', 'whatsapp message': 'crm.flow_copy', email: 'crm.flow_copy', 'page section': 'storefront.page_copy' };
+const MAKE_ACTION = { 'single image ad': 'creative.add_variants', 'carousel ad': 'creative.carousel_ad', 'collection ad': 'creative.collection_ad', 'catalog ad': 'creative.catalog_ad', 'video ad': 'creative.short_video', reel: 'creative.short_video', 'instagram post': 'creative.ig_post', 'instagram carousel': 'creative.ig_carousel', 'instagram stories': 'creative.ig_story', 'whatsapp message': 'crm.flow_copy', email: 'crm.flow_copy', 'page section': 'storefront.page_copy' };
 const TRACKING = /\b(tracking|pixel|conversions? api|capi|ga4|utms?)\b/i;
 const DECIDE_CTA = new Set(['Agree with the call', 'Open the scoreboard', 'Ship the five', 'Apply the plan']); // a decision stays a decision
 const MAKING = new Set(['Generate versions', 'Make the carousel ad', 'Build the collection ad', 'Build the catalog ad', 'Make the video', 'Draft the post', 'Draft the carousel post', 'Draft the stories', 'Approve the flows', 'Update landing page']);
@@ -548,7 +548,7 @@ export function createRemix(o) {
         let src = null; for (const rel of [...new Set(cands)]) { src = (o.photoAsync ? await o.photoAsync(rel).catch(() => null) : null) || (fs.existsSync(photoFile(rel)) && fs.statSync(photoFile(rel)).isFile() ? photoFile(rel) : null); if (src) break; }
         if (!src) throw new Error('no product photo could be read for this picture');
         const rv = await rivalRead(t, c).catch(() => null), look = rv?.ad?.poster ? await fileOfRel(rv.ad.poster) : null;
-        const pic = rv ? rivalPicture(rv.ad, rv.style, { headline: p.headline || p.overlay || p.title || '' }) : null; if (pic && !look) pic.refs = null;
+        const pic = rv ? rivalPicture(rv.ad, rv.style, { headline: p.overlay || p.headline || p.title || '' }) : null; if (pic && !look) { pic.refs = null; pic.visual = ''; }
         const one = async (i) => { const prompt = promptOf(i, pic); const key = crypto.createHash('sha1').update(prompt + (p.format || '4:5') + (look || '')).digest('hex').slice(0, 16);
           if (!(await genFile(`${key}.png`))) { if (i !== slots[0] && !spend('image')) return null; const buf = await geminiImage({ srcFile: src, ...(pic?.refs && look ? { refFiles: [look] } : {}), prompt, ratio: RATIO[p.format] || '4:5' });
             if (pic && buf?.guard?.genFailed) throw new Error('the remake did not keep your product as photographed; ask for it again'); /* a plain product photo is not our version of their ad */ saveGen(`${key}.png`, buf); }
@@ -590,10 +590,12 @@ export function createRemix(o) {
         let frame = /^gen\//.test(p.image || '') && (await genFile(p.image.slice(4))) ? p.image.slice(4) : null;
         if (!frame) {
           const src = await srcPhoto(t, ch); if (!src) throw new Error('no product photo could be read for the first frame');
+          /* our version of a rival's video ad: their first frame is image 2, the look */
+          const rvV = await rivalRead(t, t.cards.get(ch.cardId) || {}).catch(() => null), lookV = rvV?.ad?.poster ? await fileOfRel(rvV.ad.poster) : null;
           const shot = sc[0]?.shot || p.imageBrief || String(p.media || '').replace(/https?:\/\/\S+/g, '').slice(0, 400) || 'The product on a clean surface, soft daylight.';
-          const prompt = `Create the opening frame of a vertical 9:16 ${p.platform || 'short'} video for ${BN()}. ${shot} Keep the ${BN()} ${B().config.product?.noun || 'product'} and its label exactly as in the reference photo; do not invent new text on the pack. Nothing else carries writing: no signs, notes, screens or other packaging. No before/after. Photographic, natural light, the product clearly in frame.`;
-          const key = crypto.createHash('sha1').update(prompt + '9:16').digest('hex').slice(0, 16) + '.png';
-          if (!(await genFile(key))) saveGen(key, await (o.videoImage || geminiImage)({ srcFile: src, prompt, ratio: '9:16' }));
+          const prompt = `Create the opening frame of a vertical 9:16 ${p.platform || 'short'} video for ${BN()}. ${shot} Keep the ${BN()} ${B().config.product?.noun || 'product'} and its label exactly as in the reference photo; do not invent new text on the pack. Nothing else carries writing: no signs, notes, screens or other packaging. No before/after. Photographic, natural light, the product clearly in frame.${lookV ? ` Image 2 is ${rvV.ad.brand}'s ad: match its framing, light and colours${rvV.style?.layout ? ` (${rvV.style.layout} ${rvV.style.look || ''})` : ''}; take nothing else from it, not its product, logo, brand name, people or words.` : ''}`;
+          const key = crypto.createHash('sha1').update(prompt + '9:16' + (lookV || '')).digest('hex').slice(0, 16) + '.png';
+          if (!(await genFile(key))) saveGen(key, await (o.videoImage || geminiImage)({ srcFile: src, ...(lookV ? { refFiles: [lookV] } : {}), prompt, ratio: '9:16' }));
           frame = key;
         }
         ch.videoStep = 'Animating it, about a minute';
@@ -652,7 +654,8 @@ export function createRemix(o) {
       try {
         think(ch, quiet ? 'Fixing what the check flagged' : `Reading your note, the current version and the fact sheet, then writing v${versionsOf(t, ch.id).length + 1}`);
         const schema = { type: 'object', required: ['reply', 'pkg', 'newImage', 'next'], properties: { plan: { type: 'array', items: { type: 'string' }, description: 'Only when the person asks to change the plan itself (its steps): the whole updated list of steps, 3 to 6, each under 14 words, ending with the step that makes it ready to deploy or hand to the team; never a step called decided. Otherwise an empty list.' }, reply: { type: 'string', description: 'Under 30 words: what you changed, plainly' }, label: { type: 'string', description: 'A name for this new version in a version list: 2 to 4 words, sentence case, what is different about it (e.g. "As a thread", "Shorter hook", "Price up front"). Not the request repeated.' }, next: { type: 'array', items: { type: 'string' }, description: 'Exactly 4 follow-up requests the person might tap next, each 2 to 6 words, in their voice (e.g. "Shorter, for WhatsApp"). Each one a way to cut THIS change (the card’s own action, named in the prompt), using its words: never a generic writing tip that would fit any widget. Specific to this updated package and this conversation; never repeat something already asked or already true of the package.' }, pkg: kvSchema(allKeys([ch.family])), newImage: { type: 'boolean', description: 'True only if the photo itself should change (scene, mood, subject, ratio)' } } };
-        out = await claudeTool(`${cardBrief(c, seatLine(t.viewer))}\n\nYou are the ${AGENT[ch.agent]} agent in the remix studio, iterating a ${FAMILY_NAME[ch.family]} (${ch.actionLabel} on ${ch.target.name}).${c.cta?.label ? ` The card's own action: "${c.cta.label}"; this package is that action and nothing else.` : ''}\n${promptBlock(t, ch.agent === 'brew' ? 'creative' : ch.agent)}\nIt must stay commission-ready and stay exactly this kind of change: ${specOf(ch.action)}\n${productLine(c)}\nFields:\n${fieldsBrief(ch.family, ch.action)}\nCurrent package (field: value):\n${toKV(ch.family, ch.action, ch.pkg).map((e) => `${e.k}: ${e.v}`).join('\n')}\nKnobs set: ${JSON.stringify(ch.pkg.knobs || {})}\nThe conversation so far:\n${ch.thread.slice(-7, -1).map((m) => `${m.from === 'you' ? 'Person' : 'You'}: ${m.text}`).join('\n') || '(none)'}\n${ch.agent === 'brew' ? promptBlock(t, ch.agent) : '' /* the agent's rules are already above; only the brew agent has a second set */}${(ch.notes || []).length ? `\nThe person's notes on this package (respect them):\n${ch.notes.map((n) => `- ${n.text}`).join('\n')}` : ''}\n\nThe person now asks: "${message}"\nReturn the WHOLE updated package (every field, changed or not). ${factsLine}`, schema, 3000, 'studio_iterate');
+        const rvI = await rivalRead(t, c).catch(() => null); /* our version of a rival's ad keeps that ad as the reference through every edit */
+        out = await claudeTool(`${cardBrief(c, seatLine(t.viewer))}${rvI ? `\n\n${rivalBlock(rvI.ad, rvI.style, BN())}\nKeep following that ad's angle, hook pattern and style unless the team asks to move away from it.` : ''}\n\nYou are the ${AGENT[ch.agent]} agent in the remix studio, iterating a ${FAMILY_NAME[ch.family]} (${ch.actionLabel} on ${ch.target.name}).${c.cta?.label ? ` The card's own action: "${c.cta.label}"; this package is that action and nothing else.` : ''}\n${promptBlock(t, ch.agent === 'brew' ? 'creative' : ch.agent)}\nIt must stay commission-ready and stay exactly this kind of change: ${specOf(ch.action)}\n${productLine(c)}\nFields:\n${fieldsBrief(ch.family, ch.action)}\nCurrent package (field: value):\n${toKV(ch.family, ch.action, ch.pkg).map((e) => `${e.k}: ${e.v}`).join('\n')}\nKnobs set: ${JSON.stringify(ch.pkg.knobs || {})}\nThe conversation so far:\n${ch.thread.slice(-7, -1).map((m) => `${m.from === 'you' ? 'Person' : 'You'}: ${m.text}`).join('\n') || '(none)'}\n${ch.agent === 'brew' ? promptBlock(t, ch.agent) : '' /* the agent's rules are already above; only the brew agent has a second set */}${(ch.notes || []).length ? `\nThe person's notes on this package (respect them):\n${ch.notes.map((n) => `- ${n.text}`).join('\n')}` : ''}\n\nThe person now asks: "${message}"\nReturn the WHOLE updated package (every field, changed or not). ${factsLine}`, schema, 3000, 'studio_iterate');
       } catch (e) { log.warn('[studio iterate]', e.message); }
     }
     think(ch, out ? 'Checking the words against the facts and the product' : null);
@@ -902,7 +905,7 @@ export function createRemix(o) {
     if (made[0]) seedV0(t, c, made[0]); /* the jam's package opens on the card's own first draft */
     /* "Make our version" of a rival's ad: the person asked for our ad, so its first picture (in the rival's style, our product)
        is made once the words are written; nothing else opens a paid picture by itself */
-    const firstPic = isRivalCard(c) && made[0] && !/^gen\//.test(made[0].pkg?.image || '') ? () => genImage(t, made[0], 'our version of the rival ad') : null;
+    const firstPic = isRivalCard(c) && made[0] && !/^gen\//.test(made[0].pkg?.image || '') ? () => (isVideoPost(made[0]) ? genVideo(t, made[0], 'our version of the rival video') : genImage(t, made[0], 'our version of the rival ad')) : null;
     if (writeLater && made[0]) fillLater(t, c, made[0], writeLater, firstPic); else firstPic?.();
     return { line, live, changes: made.map((x) => pubChange(t, x)), learned: learnedOut(t) };
   });
@@ -1125,8 +1128,8 @@ export function createRemix(o) {
     imageBrief: { type: 'string', description: 'The photograph as things you can see: the surface, the setting, where the light comes from, the props, who is in it and what they do. No mood words (premium, cinematic), no effects (splashes, sparkles, floating, glow), no text in it' },
     motion: { type: 'string', description: 'Video only: how the camera moves over 6 seconds' } } };
   const remakeLive = async (t, ch, as) => {
-    const c = t.cards.get(ch.cardId) || {};
-    const j = await claudeTool(`${cardBrief(c, seatLine(t.viewer))}\n\nYou are the ${AGENT[ch.agent] || 'creative'} agent. Remake this ${FAMILY_NAME[ch.family] || 'change'} (${ch.actionLabel}) as ${REMAKE_AS[as]} for ${BN()}'s own channels, keeping its point and its words where they fit.\n${productLine(c, pkgWords(ch))}\nThe package now (field: value):\n${toKV(ch.family, ch.action, ch.pkg).map((e) => `${e.k}: ${e.v}`).join('\n')}\nFill only the part for ${REMAKE_AS[as]}; leave the others empty. ${factsLine}`, REMAKE_SCHEMA, 2000, 'remake');
+    const c = t.cards.get(ch.cardId) || {}, rv = await rivalRead(t, c).catch(() => null);
+    const j = await claudeTool(`${cardBrief(c, seatLine(t.viewer))}${rv ? `\n\n${rivalBlock(rv.ad, rv.style, BN())}${as === 'video' && rv.style?.beats?.length ? '\nFor the video, follow the rival ad\'s beats in the same order, with our product and our words.' : ''}` : ''}\n\nYou are the ${AGENT[ch.agent] || 'creative'} agent. Remake this ${FAMILY_NAME[ch.family] || 'change'} (${ch.actionLabel}) as ${REMAKE_AS[as]} for ${BN()}'s own channels, keeping its point and its words where they fit.\n${productLine(c, pkgWords(ch))}\nThe package now (field: value):\n${toKV(ch.family, ch.action, ch.pkg).map((e) => `${e.k}: ${e.v}`).join('\n')}\nFill only the part for ${REMAKE_AS[as]}; leave the others empty. ${factsLine}`, REMAKE_SCHEMA, 2000, 'remake');
     const words = [...(j.slides || []).map((x) => x.onSlide), ...(j.script || []).map((x) => x.line), j.overlay].filter(Boolean).join(' ');
     if (!words || BANNED.test(words) || unbackedNums(words).length) return null; /* a claim the facts don't back: the package's own words instead */
     const out = as === 'carousel' ? { slides: (j.slides || []).slice(0, 6).map((x) => ({ onSlide: short(x.onSlide, 12), visual: clean(x.visual || j.imageBrief || '') })) } : as === 'video' ? { script: (j.script || []).slice(0, 5).map((x) => ({ beat: clean(x.beat), shot: clean(x.shot), line: short(x.line, 14) })), motion: clean(j.motion || '') } : { overlay: short(j.overlay, 7), imageBrief: clean(j.imageBrief || '') };
@@ -1136,25 +1139,30 @@ export function createRemix(o) {
   const remakeWhy = (ch) => (ch.remakePending ? 'A remake is already being made.' : isMock() && !o.mediaFake ? 'Pictures and videos are off here, so this version has the words; make the media where AI is on.' : !imgMaker() ? 'This server can’t make pictures.' : 'The picture limit for today is used up. The words are here; make the media tomorrow.');
   /* the media, in the background: lands on the version it was made for, and on the stage if that version is still the head */
   const remakeMedia = (t, ch, as, plan, target) => {
-    if ((isMock() && !o.mediaFake) || !imgMaker() || ch.remakePending || !spend('image')) return false;
+    if ((isMock() && !o.mediaFake) || !imgMaker() || ch.remakePending) return false;
+    /* a refusal by today's limits is said in the chat before anything is spent (it used to leave a silent "words only" version) */
+    const no = as === 'video' && !spend('video') ? 'today’s video limit is used up' : !spend('image') ? 'today’s picture limit is used up' : null;
+    if (no) { ch.remakeError = `The ${as} can’t be made right now: ${no}. The words are on the version.`; ch.thread.push({ from: 'ai', text: ch.remakeError, at: now(t) }); return false; }
     ch.remakePending = { as, at: Date.now(), step: 'Making the first picture' }; ch.remakeError = null; REMAKE_JOBS.add(ch.id);
     const step = (s) => { if (ch.remakePending) ch.remakePending.step = s; };
     (async () => {
       try {
         const c = t.cards.get(ch.cardId) || {}, src = await srcPhoto(t, ch, productFor(c, FACTS, pkgWords(ch))?.img); if (!src) throw new Error('no product photo could be read for it');
+        /* our version of a rival's ad: their ad goes along as image 2, the look (rival-ad.js) */
+        const rv = await rivalRead(t, c).catch(() => null), look = rv?.ad?.poster ? await fileOfRel(rv.ad.poster) : null;
+        const lookLine = look ? ` Image 2 is ${rv.ad.brand}'s ad: match its layout, framing, light and colours${rv.style?.layout ? ` (${rv.style.layout} ${rv.style.look || ''})` : ''}; take nothing else from it, not its product, logo, brand name, people or words.` : '';
         const ratio = as === 'video' ? '9:16' : RATIO[ch.pkg.format] && !(as === 'carousel' && ch.pkg.format === '9:16') ? ch.pkg.format : '4:5';
         let media;
         if (as === 'carousel') {
-          const r = await slideMakers().carousel({ slides: plan.slides, src, ratio, title: ch.after?.title || ch.actionLabel, cardTitle: c.title, id: ch.id + target, clean, canSpend: (i) => i === 0 || spend('image'), onStep: step });
+          const r = await slideMakers().carousel({ slides: plan.slides, src, ...(look ? { refFiles: [look] } : {}), ratio, title: ch.after?.title || ch.actionLabel, cardTitle: c.title, id: ch.id + target, clean, canSpend: (i) => i === 0 || spend('image'), onStep: step });
           media = { images: r.slides.map((x) => x.image), ...(r.zip ? { zip: r.zip } : {}), ...(r.err ? { err: r.err } : {}) };
         } else {
           const brief = as === 'video' ? plan.script?.[0]?.shot || ch.pkg.imageBrief : plan.imageBrief;
-          const prompt = `Create a new ${as === 'video' ? 'opening frame of a vertical 9:16 video' : `${ratio} photograph`} for ${BN()}. ${brief || 'The product on a clean surface, soft daylight.'} Keep the ${BN()} ${B()?.config?.product?.noun || 'product'} and its label exactly as in the reference photo; do not invent new text on the pack. Nothing else carries writing. No before/after. Photographic, natural light, the product clearly in frame.`;
-          const key = crypto.createHash('sha1').update(prompt + ratio).digest('hex').slice(0, 16) + '.png';
-          if (!(await genFile(key))) saveGen(key, await imgMaker()({ srcFile: src, prompt, ratio, text: [plan.overlay, ch.after?.title].filter(Boolean).join('. '), fallback: true }));
+          const prompt = `Create a new ${as === 'video' ? 'opening frame of a vertical 9:16 video' : `${ratio} photograph`} for ${BN()}. ${brief || 'The product on a clean surface, soft daylight.'} Keep the ${BN()} ${B()?.config?.product?.noun || 'product'} and its label exactly as in the reference photo; do not invent new text on the pack. Nothing else carries writing. No before/after. Photographic, natural light, the product clearly in frame.${lookLine}`;
+          const key = crypto.createHash('sha1').update(prompt + ratio + (look || '')).digest('hex').slice(0, 16) + '.png';
+          if (!(await genFile(key))) saveGen(key, await imgMaker()({ srcFile: src, ...(look ? { refFiles: [look] } : {}), prompt, ratio, text: [plan.overlay, ch.after?.title].filter(Boolean).join('. '), fallback: true }));
           media = { images: ['gen/' + key] };
           if (as === 'video') {
-            if (!spend('video')) throw new Error('the video limit for today is used up; the first frame is here');
             step('Animating it, about a minute');
             let name = await makers().video(key, `Over 6 seconds: ${plan.motion || 'The camera slowly pushes in on the product.'}`, { ratio: '9:16', onStep: step });
             const hook = plan.script?.[0]?.line;
@@ -1170,6 +1178,7 @@ export function createRemix(o) {
         ch.thread.push({ from: 'ai', text: `${REMAKE_AS[as][0].toUpperCase() + REMAKE_AS[as].slice(1)} for ${v ? `v${v.n}` : 'this version'} is ready${media.err ? `. ${media.err}` : '.'}`, at: now(t) });
       } catch (e) {
         ch.remakeError = `The ${as} didn’t come through (${String(e.message).slice(0, 120)}). The words are on the version; make it again.`; log.warn('[remake]', as, e.message);
+        ch.thread.push({ from: 'ai', text: ch.remakeError, at: now(t) }); /* said where the person is looking, not only on a field nothing shows */
         const v = versionsOf(t, ch.id).find((x) => x.id === target); if (v?.snapshot?.draft) v.snapshot = { ...v.snapshot, draft: { ...v.snapshot.draft, pending: false } };
         if (headOf(t, ch)?.id === target && ch.pkg.draft) ch.pkg = { ...ch.pkg, draft: { ...ch.pkg.draft, pending: false } };
       } finally { ch.remakePending = null; REMAKE_JOBS.delete(ch.id); o.save?.(t); }

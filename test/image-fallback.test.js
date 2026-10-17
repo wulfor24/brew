@@ -46,7 +46,11 @@ test('a reference this instance lacks is fetched (resolve), then the lead catalo
   await G({ srcFile: missing, prompt: 'x' }); assert.equal(seen.pop(), photo, 'the bucket copy');
   const G2 = createImageGuard({ gen, fetchPhoto: async (u) => (u === 'b/acme-com/a/lead.jpg' ? photo : null), log: quiet });
   await G2({ srcFile: path.join(dir, 'nope.jpg'), prompt: 'x', catalog: [{ t: 'Lead', img: 'b/acme-com/a/lead.jpg' }] }); assert.equal(seen.pop(), photo, 'the brand’s lead product');
-  await assert.rejects(G2({ srcFile: dir /* a directory, as photoFile('') used to give */, prompt: 'x' }), /product photo for this picture could not be found/);
+  await assert.rejects(G2({ srcFile: dir /* a directory, as photoFile('') used to give */, prompt: 'x' }), /no product photo for this yet/i);
+  /* a logo or brand mark is never the product (arata-com, 16 Oct: every picture was checked against the logo): the lead product stands in, else no picture */
+  const logo = path.join(dir, 'b', 'acme-com', 'a', 'logo.png'); fs.mkdirSync(path.dirname(logo), { recursive: true }); fs.copyFileSync(photo, logo);
+  await G2({ srcFile: logo, prompt: 'x', catalog: [{ t: 'Lead', img: 'b/acme-com/a/lead.jpg' }] }); assert.equal(seen.pop(), photo, 'the lead product, not the logo');
+  await assert.rejects(G2({ srcFile: logo, prompt: 'x', catalog: [] }), /no product photo for this yet/i);
 });
 
 /* ---------- first drafts ---------- */

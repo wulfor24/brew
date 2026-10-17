@@ -13,7 +13,8 @@
 //      seconds later). If it still fails and the caller asked for it (fallback: true), the real product photo comes back
 //      instead, marked guard.genFailed, so the caller can show a real picture now and retry the new one later.
 import fs from 'node:fs';
-import { matchProduct } from './product-match.js';
+import { matchProduct, junkPhoto } from './product-match.js';
+import path from 'node:path';
 
 const KEEP = (name) => `The product${name ? `, ${name},` : ''} must appear exactly as in the reference photo: the same model, shape, colours, prints, materials and logo. Do not redesign it, swap it for another product, or add a second product.`;
 const STRICT = 'Important: the last attempt showed a different product. Copy the product from the reference photo faithfully; only the scene, light and framing may change.';
@@ -23,7 +24,8 @@ const STRICT = 'Important: the last attempt showed a different product. Copy the
 const isFile = (f) => { try { return !!f && fs.statSync(f).isFile(); } catch { return false; } };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // resolve(path) → a local file for a reference this instance lacks (the server maps brand assets, research and gen files to the bucket)
-export function createImageGuard({ gen, verify = null, fetchPhoto = async () => null, resolve = async () => null, context = () => null, tries = 3, backoffMs = 2000, log = console }) {
+/* normalize(file) → a file the models accept (img-norm.js: an SVG, GIF or AVIF product photo becomes a PNG); identity by default */
+export function createImageGuard({ gen, verify = null, fetchPhoto = async () => null, resolve = async () => null, normalize = async (f) => f, context = () => null, tries = 3, backoffMs = 2000, log = console }) {
   /* the model, tried again on a failure: 2 s, then 6 s (a refused or blocked prompt is not retried) */
   const genRetry = async (o) => { let last;
     for (let i = 0; i < tries; i++) {
@@ -35,12 +37,16 @@ export function createImageGuard({ gen, verify = null, fetchPhoto = async () => 
     const b = context(), catalog = o.catalog ?? b?.catalog ?? null, brand = o.brand ?? b?.seed?.brand?.name ?? b?.name ?? '';
     /* o.named: the product the caller already knows the picture is about (the card's asset line names it), else the words' */
     const named = o.product === false ? null : o.named?.img ? o.named : matchProduct(`${o.text || ''}\n${o.prompt || ''}`, catalog, { brand });
-    let ref = o.srcFile || null;
+    /* a logo or brand mark is never the product: with only that, the brand's lead product stands in, else there is no picture */
+    let ref = o.srcFile && !junkPhoto(path.basename(String(o.srcFile))) && !/\/a\/(logo|mark)\.[a-z]+$/i.test(String(o.srcFile)) ? o.srcFile : null;
     if (ref && !isFile(ref)) ref = (await resolve(ref).catch(() => null)) || null; /* a path this instance lacks: the bucket's copy, or nothing */
     if (named) { const f = await fetchPhoto(named.img).catch(() => null); if (f) ref = f; }
     if (o.srcFile && !ref && catalog?.[0]?.img) ref = (await fetchPhoto(catalog[0].img).catch(() => null)) || null; /* the caller wanted a reference: the brand's lead product, never an invented one */
-    if (o.srcFile && !ref) throw new Error('the product photo for this picture could not be found');
-    const base = { ...o, srcFile: ref, prompt: ref ? `${o.prompt}\n\n${KEEP(named?.t)}` : o.prompt };
+    if (o.srcFile && !ref) throw Object.assign(new Error('There is no product photo for this yet. Add one with + (Product photo) and try again.'), { soft: true, noPhoto: true });
+    /* every picture the model and the check see is a PNG, JPEG or WebP: a store's SVG or AVIF photo is turned into one first */
+    if (ref) ref = await normalize(ref);
+    const refFiles = o.refFiles?.length ? (await Promise.all(o.refFiles.map((f) => normalize(f).catch((e) => { log.warn?.('[image-guard] reference dropped', e.message); return null; })))).filter(Boolean) : [];
+    const base = { ...o, srcFile: ref, refFiles, prompt: ref ? `${o.prompt}\n\n${KEEP(named?.t)}` : o.prompt };
     delete base.text; delete base.catalog; delete base.brand; delete base.product; delete base.fallback; delete base.named;
     const note = { product: named?.t || null, ref: !!ref, checked: false, same: null, retried: false, fallback: false, genFailed: false };
     let buf;

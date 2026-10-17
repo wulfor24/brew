@@ -8,6 +8,7 @@
 // sources are re-read through the day (EVERY below) so new items keep arriving; feed-service ranks them and drops weak ones. Media is
 // downloaded because Ad Library URLs expire. Snapshot + media persist to GCS so a restart or a deploy
 // refetches nothing; the last good data stays up if a refresh fails.
+import { mimeOf } from './img-norm.js';
 import fs from 'node:fs';
 import { buildDraft } from './sloosh-prompt.js';
 import os from 'node:os';
@@ -152,7 +153,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     const b = Buffer.from(await r.arrayBuffer()); if (b.length > max) throw new Error('too big'); return b;
   };
   const imgExt = (b) => (b[0] === 0x89 && b[1] === 0x50 ? '.png' : '.jpg');
-  const mime = (b) => (imgExt(b) === '.png' ? 'image/png' : 'image/jpeg');
+  const mime = (b) => mimeOf(b); /* by its bytes: a WebP or GIF poster is never sent as a JPEG */
 
   /* ---------- Claude ---------- */
   const parseJSON = (t) => { const a = t.indexOf('{'), b = t.lastIndexOf('}'); return JSON.parse(t.slice(a, b + 1)); };
@@ -411,7 +412,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
   function howtoFromData() {
     const ads = (snap.ads?.items || []).slice().sort((a, b) => (a.rank || 99) - (b.rank || 99)), tr = (snap.trends?.items || []).filter((t) => t.h);
     const out = [];
-    for (const a of ads.slice(0, 2)) if (a.hook) out.push({ h: `How to test ${a.brand}'s ${a.angle || 'top'} angle`.slice(0, 48), p: `${a.brand}'s ad "${a.hook}" has run ${a.days} days in ${a.versions} versions.`,
+    for (const a of ads.slice(0, 2)) if (a.hook) out.push({ adId: a.id, /* the rival ad it builds on: "Start this" remakes from it (rival-ad.js) */ h: `How to test ${a.brand}'s ${a.angle || 'top'} angle`.slice(0, 48), p: `${a.brand}'s ad "${a.hook}" has run ${a.days} days in ${a.versions} versions.`,
       steps: [`Write one ${BN()} hook on the same idea, in your words`, 'Make it a 9:16 static and a 4:5 static', 'Run both against your current best ad for 5 days', 'Keep the one with the lower cost per order'], card: `${a.brand}'s ad has run ${a.days} days: test the idea for ${BN()}` });
     const t = tr[0];
     if (t) out.push({ h: 'How to meet this week\'s search trend', p: t.h,

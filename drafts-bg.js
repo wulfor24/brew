@@ -227,10 +227,10 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
   async function animate(slug, d, box) {
     if (!d.image) return false; /* clips are made on our own Vertex account (vertex-media.js), not treg */
     if (box.usd + cfg.videoUsd > box.cap + 1e-9) { d.note = cut(`${d.note.replace(/ The clip.*$/, '')} The clip waits for tomorrow's budget; here is the first frame.`, 220); return false; }
-    if (!spend('video')) { d.note = cut(`${d.note.replace(/ The clip.*$/, '')} The clip waits for today's video limit; here is the first frame.`, 220); return false; }
+    if (!spend('video', slug)) { d.note = cut(`${d.note.replace(/ The clip.*$/, '')} The clip waits for today's video limit; here is the first frame.`, 220); return false; }
     const tag = `draftsbg-${slug}`, t0 = tregUsd.get(tag) || 0;
     try { d.video = 'gen/' + await M.video(d.image.slice(4), d.motion);
-      if (d.script && spend('voice')) { const au = await M.voice(d.script, '', 'Kore').catch(() => null); const both = au ? await M.mux(d.video.slice(4), au).catch(() => null) : null; if (both) d.video = 'gen/' + both; else if (au) d.audio = 'gen/' + au; }
+      if (d.script && spend('voice', slug)) { const au = await M.voice(d.script, '', 'Kore').catch(() => null); const both = au ? await M.mux(d.video.slice(4), au).catch(() => null) : null; if (both) d.video = 'gen/' + both; else if (au) d.audio = 'gen/' + au; }
       d.as = 'video'; delete d.wants; delete d.clipRetry; delete d.err; d.note = d.note.replace(/ The clip.*$/, ''); }
     catch (e) { const n = (d.clipRetry?.n || 0) + 1; d.err = 'The first frame is here; the clip did not come through. It is tried again later.';
       if (n < MAX_RETRIES) d.clipRetry = { n, next: now() + retryWait(n), err: cut(e.message, 160) }; else { delete d.wants; delete d.clipRetry; d.err = 'The first frame is here; the clip did not come through.'; }

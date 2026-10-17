@@ -8,10 +8,11 @@
 //      the product photo is always the brand's own (image 1), and the image guard still checks it.
 // Nothing of theirs is copied as is: not their brand name, product, logo, faces, claims, numbers or sentences.
 import fs from 'node:fs';
+import { kindOf, mimeOf, RASTER } from './img-norm.js';
 
 /* a research picture (a rival's poster or clip) is never a product photo of ours */
-export const isResearchImage = (rel) => /^\/?research\//.test(String(rel || ''));
-export const isRivalCard = (c) => c?.research?.kind === 'ad';
+export const isResearchImage = (rel) => /^\/?research\//.test(String(rel || '')) || /(^|\/)b\/[a-z0-9-]+\/a\/ad-[^/]+$/.test(String(rel || '').split('?')[0]); /* the read's own Ad Library posters (b/<slug>/a/ad-<id>.jpg) too */
+export const isRivalCard = (c) => c?.research?.kind === 'ad' || !!c?.research?.ad; /* a rival's ad card, or a card built on one (a how-to that tests its angle) */
 
 export const STYLE_SCHEMA = { type: 'object', required: ['format', 'hookPattern', 'layout', 'look', 'words', 'beats', 'works'], properties: {
   format: { type: 'string', description: 'What kind of creative it is, in a few words: a studio product photo with a headline, a lifestyle photo, a flat graphic with an offer badge, a UGC selfie video, a demo video, a before-you-buy comparison, a carousel' },
@@ -28,7 +29,6 @@ export const STYLE_SCHEMA = { type: 'object', required: ['format', 'hookPattern'
 } };
 
 const one = (s) => String(s || '').replace(/\s+/g, ' ').trim();
-const mime = (b) => (b[0] === 0x89 ? 'image/png' : b[0] === 0xff ? 'image/jpeg' : b.slice(0, 4).toString() === 'RIFF' ? 'image/webp' : 'image/jpeg');
 const MAX_VIDEO = 15 * 1024 * 1024; // a clip the AI can watch inline; bigger ones are read from their first frame
 
 /* the read, kept per ad id on this instance (a second jam on the same ad reads nothing again) */
@@ -41,18 +41,19 @@ export async function readRivalAd(ad, { call, fileOf = async () => null, video =
   if (!ad?.id || !call) return null;
   if (ad.style?.layout) return ad.style;
   if (READS.has(ad.id)) return READS.get(ad.id);
-  const p = (async () => {
-    const parts = [];
-    let watched = false;
-    if (video && ad.video) { try { const f = await fileOf(ad.video); const st = f && fs.statSync(f); if (st && st.size <= MAX_VIDEO) { parts.push({ type: 'document', source: { type: 'base64', media_type: 'video/mp4', data: fs.readFileSync(f).toString('base64') } }); watched = true; } } catch (e) { log.warn?.('[rival-ad] clip', e.message); } }
-    if (!watched && ad.poster) { try { const f = await fileOf(ad.poster); if (f) { const b = fs.readFileSync(f); parts.push({ type: 'image', source: { type: 'base64', media_type: mime(b), data: b.toString('base64') } }); } } catch (e) { log.warn?.('[rival-ad] poster', e.message); } }
-    if (!parts.length) return null; /* nothing to look at: the remake works from the copy alone */
-    parts.push({ type: 'text', text: `This is a live Meta ad by ${ad.brand} (${ad.format || 'image'} ad, live ${ad.days || '?'} days in ${ad.versions || 1} version${(ad.versions || 1) > 1 ? 's' : ''}).
+  const ask = (watched) => ({ type: 'text', text: `This is a live Meta ad by ${ad.brand} (${ad.format || 'image'} ad${ad.days ? `, live ${ad.days} days` : ''}${ad.versions ? ` in ${ad.versions} version${ad.versions > 1 ? 's' : ''}` : ''}).
 Its copy: headline "${one(ad.headline)}"; text "${one(ad.body).slice(0, 500)}"; button "${one(ad.cta)}".
-Read how this creative is MADE, so another brand can make its own ad in the same style with its own product. Describe what you see, not what you guess. Never quote the rival's words in hookPattern, layout or look.` });
-    const j = await call(parts, STYLE_SCHEMA, 1500, 'rival_style');
-    return { format: one(j.format), hookPattern: one(j.hookPattern), layout: one(j.layout), look: one(j.look), beats: (j.beats || []).map(one).filter(Boolean).slice(0, 5), works: (j.works || []).map(one).filter(Boolean).slice(0, 5),
-      words: (j.words || []).filter((w) => w?.where).slice(0, 4).map((w) => ({ role: w.role || 'other', where: one(w.where), lettering: one(w.lettering), words: +w.words || null })), from: watched ? 'video' : 'poster' };
+${watched ? 'You are watching the clip itself.' : 'You see its picture (for a video ad, its first frame).'} Read how this creative is MADE, so another brand can make its own ad in the same style with its own product. Describe what you see, not what you guess. Never quote the rival's words in hookPattern, layout or look.` });
+  const shape = (j, from) => ({ format: one(j.format), hookPattern: one(j.hookPattern), layout: one(j.layout), look: one(j.look), beats: (j.beats || []).map(one).filter(Boolean).slice(0, 5), works: (j.works || []).map(one).filter(Boolean).slice(0, 5),
+    words: (j.words || []).filter((w) => w?.where).slice(0, 4).map((w) => ({ role: w.role || 'other', where: one(w.where), lettering: one(w.lettering), words: +w.words || null })), from });
+  const posterPart = async () => { if (!ad.poster) return null; try { const f = await fileOf(ad.poster); if (!f) return null; const b = fs.readFileSync(f); return RASTER.has(kindOf(b)) ? { type: 'image', source: { type: 'base64', media_type: mimeOf(b), data: b.toString('base64') } } : null; } catch (e) { log.warn?.('[rival-ad] poster', e.message); return null; } };
+  const p = (async () => {
+    /* the clip when the AI can watch it; a clip that can't be read (too big, refused) falls back to the poster, so a video ad is never left unread */
+    if (video && ad.video) { try { const f = await fileOf(ad.video); const st = f && fs.statSync(f);
+        if (st && st.size <= MAX_VIDEO) return shape(await call([{ type: 'document', source: { type: 'base64', media_type: 'video/mp4', data: fs.readFileSync(f).toString('base64') } }, ask(true)], STYLE_SCHEMA, 1500, 'rival_style'), 'video'); }
+      catch (e) { log.warn?.('[rival-ad] clip read, trying the poster', e.message); } }
+    const pp = await posterPart(); if (!pp) return null; /* nothing to look at: the remake works from the copy alone */
+    return shape(await call([pp, ask(false)], STYLE_SCHEMA, 1500, 'rival_style'), 'poster');
   })().catch((e) => { READS.delete(ad.id); log.warn?.('[rival-ad] read', e.message); return null; });
   READS.set(ad.id, p);
   return p;
