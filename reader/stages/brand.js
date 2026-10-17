@@ -1,6 +1,9 @@
 // Stage 2 · brand: logo (downloaded), top 3 colours ranked by use in the theme CSS, font families, tagline, descriptor.
 import { meta, attr, tags, abs, clean, stripTags, pathOf, pool, hostOf } from '../util.js';
 
+/* the "who you are" fields, from the same places the check page reads them (build.js checkData) */
+export const whoOf = (p) => ({ name: p.name || null, descriptor: p.descriptor || p.tagline || null, category: p.category || null, country: p.country || null, currency: p.currency || null });
+
 const GENERIC = /^(inherit|initial|unset|serif|sans-serif|monospace|cursive|fantasy|system-ui|-apple-system|blinkmacsystemfont|ui-sans-serif|ui-serif|ui-monospace|segoe ui|roboto|helvetica neue|helvetica|arial|noto sans|liberation sans|apple color emoji|segoe ui emoji|segoe ui symbol|noto color emoji|var\(.*|times new roman|times|georgia|courier new|courier|menlo|monaco|consolas|emoji|math|fangsong|swiper-icons|icomoon|fontawesome|font awesome.*|slick|star|stars|jdgm.*|judgeme.*|loox.*|yotpo.*|icons?|glyphicons.*|material icons|.*icons?)$/i;
 
 export async function brand(ctx) {
@@ -84,6 +87,7 @@ export async function brand(ctx) {
   profile.tagline = tagline || null;
   if (tagline) ledger.add({ key: 'brand.tagline', label: 'Tagline (hero headline or meta description)', v: tagline, url: base, method: 'crawl', note: heads[0] ? 'the home page h1' : 'meta description, first sentence' });
   if (!profile.descriptor && md && md.length <= 60) profile.descriptor = md;
+  ctx.picks?.('who', whoOf(profile)); /* the onboarding's "who you are" tap, as soon as the name and line are known (again when the category lands: index.js) */
 
   const face = [heading || body, 'system-ui', 'sans-serif'].filter(Boolean).map((f) => (/\s/.test(f) && !/,/.test(f) ? `"${f}"` : f)).join(', ');
   ctx.finding('brand', { kind: 'kit', t: 'Brand kit', src: fetchedCss[0] ? pathOf(fetchedCss[0].url).split('?')[0] : pathOf(base), logo, colors: profile.identity.colors, face, typeName: profile.identity.typeName || 'Font not found', ...(colors.length ? {} : { cap: 'No brand colours found in the CSS.' }) }, 'Pulled the brand kit');

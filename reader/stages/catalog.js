@@ -2,9 +2,11 @@
 // product pages in the sitemap. Live prices with currency, MRP, packs, stock, images, launch dates, claim lines.
 // Hero packshots: the store's own best-seller order when it has one, else the main collection's order.
 import { jsonLd, typeIs, clean, stripTags, pathOf, money, num, pool, hostOf, meta, links } from '../util.js';
+import { moneyFmt } from '../../brand-pack.js'; // the price label the check page prints (build.js normalizeProfile)
 
 const PACK = /\bpack of \d+|\b\d+\s?x\s?\d+|\bcombo\b|\bkit\b|\bbundle\b|\bset of\b|\bduo\b|\btrio\b|\bregimen\b|\broutine\b|\bvalue pack\b|\bgift set\b/i;
 const CLAIM = /(\d+(\.\d+)?\s?%|\bup to\b|\bclinically\b|\bdermatologist|\bproven\b|\bstudy\b|\btested\b|\bin \d+ (days|weeks)|\b\d+[xX]\b|\bcertified\b|\bno\. ?1\b|#1\b)/i;
+const NOT_PRODUCT = /gift ?wrap|gift ?card|e-?gift|shipping protection|route protection|insurance|sample|tester|donation/i; // what the check page leaves out (build.js checkData)
 const NONPRODUCT = /gift ?card|e-?gift|shipping protection|route|insurance|free gift|freebie|sample|tester|donation|\bwarranty\b|\bfee\b/i;
 
 export async function catalog(ctx) {
@@ -81,6 +83,9 @@ export async function catalog(ctx) {
   await pool(hero.filter((p) => p.images[0]).slice(0, 8), 4, async (p) => {
     const src = sizeUp(p.images[0]); const a = await ctx.asset(src, `pack-${p.handle}`.slice(0, 80), { max: 8e6 }); if (a) { p.img = a; shots.push(a); }
   });
+  /* the onboarding's product taps: the rows the check page shows (build.js checkData), hero first, prices as the brand writes them */
+  if (products.length && ctx.picks) { const fmt = moneyFmt(profile.currency || currency || 'INR', profile.locale || 'en-IN');
+    ctx.picks('catalog', [...hero, ...products.filter((p) => !hero.includes(p))].filter((p) => !NOT_PRODUCT.test(p.title || '')).slice(0, 12).map((p) => ({ handle: p.handle, title: p.title, price: p.price > 0 ? fmt(p.price) : '', img: p.img || p.images.find((u) => /^https?:/.test(u)) || null }))); }
 
   // ledger: every price and count
   const collOut = [];

@@ -66,3 +66,16 @@ test('a read waiting on the check shows "Waiting for you" in the feed and opens 
   assert.match(app, /if \(waitsOnCheck\(st\) && !o\.stay && !o\.fromCheck\) return checkRead\(\);/);
   assert.match(app, /return waitMoves\(\{ fromCheck: true \}\); \}/, 'no loop between the check and the wait screen');
 });
+
+/* v2 (2026-10-18): the onboarding's progress card is driven by the real read, its tutorial cards are tagged Example, and the
+   whole thing sits behind one flag that the demo tour carries */
+test('v2 onboarding invents no timings and tags its example cards', () => {
+  const ob = src('public/onboard2.js'), mk = src('public/make-sheet.js'), idx = src('public/index.html'), demo = src('demo-routes.js');
+  for (const re of [/min(ute)?s? (left|remaining|saved)/i, /you (just )?saved \d+/i, /~\s*\d+\s*min/])
+    assert.doesNotMatch(ob + mk, re, `found ${re}`);
+  assert.match(ob, /EXAMPLE_CARDS/); assert.match(ob, /is-example/); assert.match(ob, /<em class="v2-ex">Example<\/em>/);
+  assert.doesNotMatch(mk, /\bAI editing\b/, 'the sheet never says "AI editing"');
+  assert.match(idx, /onboard2\.js/); assert.match(idx, /make-sheet\.js/); assert.match(idx, /v2\.css/);
+  assert.match(app, /const V2 = /); assert.match(app, /if \(V2 && !DEMO_LAND && window\.OB2\)/);
+  assert.match(demo, /\(v=/, 'the demo tour carries the v= flag');
+});

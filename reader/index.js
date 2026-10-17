@@ -8,7 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { normalizeUrl, slugOf, createFetcher, createLedger, defaultStore, withTimeout, sha, extOf, today, pathOf } from './util.js';
 import { open } from './stages/open.js';
-import { brand } from './stages/brand.js';
+import { brand, whoOf } from './stages/brand.js';
 import { catalog } from './stages/catalog.js';
 import { reviews } from './stages/reviews.js';
 import { ads, findRivals, ADS_V } from './stages/ads.js';
@@ -85,6 +85,7 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
     const profile = blankProfile(url, slug);
     const steps = STEPS.map((s) => ({ ...s, done: null, tick: [], state: 'queued' }));
     const cards = []; const meter = { treg0: treg?.meter?.usd || 0, ai0: ai?.meter?.usd || 0 };
+    const picks = {}; /* the onboarding's taps (products, rivals, who you are): saved with the findings, emitted as the stages learn them */
     const t0 = Date.now();
     const emit = (ev) => { try { onEvent({ ...ev, ms: Date.now() - t0 }); } catch (e) { log.warn?.('[reader] onEvent', e.message); } };
     const stepOf = (k) => steps.find((s) => s.k === k);
@@ -98,8 +99,12 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
       finding(k, f, say) { cards.push({ ...f, k }); emit({ type: 'finding', k, i: steps.findIndex((s) => s.k === k), finding: f, ...(say ? { say } : {}) }); },
       /* partial: the step found something but part of it couldn't be checked (a live tour then keeps the saved read's step) */
       done(k, text, state = 'done', { partial = false } = {}) { const s = stepOf(k); if (!s) return emit({ type: 'sub', k, state, done: text }); s.done = text; s.state = state; if (partial) s.partial = true; else delete s.partial; emit({ type: 'step', k, i: steps.indexOf(s), state, done: text, ...(partial ? { partial: true } : {}) }); },
+      /* a tap list for the onboarding (k: catalog, rivals, who): an array of items, or { error } when the check didn't go through, never [] for a failure */
+      picks(k, items) { picks[k] = items; emit({ type: 'picks', k, items }); },
       ...services({ slug, http, tregOn, aiOn, fresh }),
     };
+    /* who you are, again whenever the category or Claude's line lands (the brand stage sends the first one) */
+    const who = () => { const w = whoOf(profile); if (JSON.stringify(w) !== JSON.stringify(picks.who)) ctx.picks('who', w); };
 
     // run one stage with a deadline; a stage that fails or times out gets one more try (paid calls that already
     // answered come back from the same-day cache), then the step says so plainly and the read goes on
@@ -112,7 +117,7 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
         // a stage that overran its deadline keeps running in the background but can no longer emit
         let dead = false; const guard = (f) => (...a) => (dead ? undefined : f(...a));
         const mine = []; /* this try's cards, dropped if it fails so a retry doesn't save them twice */
-        const sctx = { ...ctx, tick: guard(ctx.tick), finding: guard((...a) => { ctx.finding(...a); mine.push(cards[cards.length - 1]); }), done: guard(ctx.done) };
+        const sctx = { ...ctx, tick: guard(ctx.tick), finding: guard((...a) => { ctx.finding(...a); mine.push(cards[cards.length - 1]); }), done: guard(ctx.done), picks: guard(ctx.picks) };
         try { const r = await withTimeout(fn(sctx), LIMIT[k] || 90e3, k).catch((e) => { dead = true; throw e; }); delete errors[k]; const s = stepOf(k); if (step && s && s.state !== 'done' && s.state !== 'empty') ctx.done(k, s.done || 'nothing found', 'empty'); timings[k] = Date.now() - s0; return r; }
         catch (e) {
           if (signal?.aborted) throw e;
@@ -135,14 +140,15 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
     const pBrand = run('brand', brand);
     const pCatalog = run('catalog', catalog);
     const pSocials = run('socials', socials, { step: false });
-    const pCategory = pCatalog.then(() => (want('ads') || want('answers') || want('company') ? run('category', inferCategory, { step: false }) : null));
+    const pCategory = pCatalog.then(() => (want('ads') || want('answers') || want('company') ? run('category', inferCategory, { step: false }) : null)).then((r) => { who(); return r; });
     const pReviews = pCatalog.then(() => run('reviews', reviews));
     const pSite = pCatalog.then(() => run('site', site));
     const pRivals = pCategory.then(() => (want('ads') || want('answers') ? run('rivals', findRivals, { step: false }) : null));
-    const pAds = pRivals.then(() => { if (errors.rivals) ctx.state.rivalsNotChecked = errors.rivals; /* "0 rivals" from a failed search is not "no rivals" */ return run('ads', ads); });
+    const pAds = pRivals.then(() => { if (errors.rivals) { ctx.state.rivalsNotChecked = errors.rivals; /* "0 rivals" from a failed search is not "no rivals" */ if (!picks.rivals || (Array.isArray(picks.rivals) && !picks.rivals.length)) ctx.picks('rivals', { error: short(errors.rivals) }); } return run('ads', ads); });
     const pAnswers = pCategory.then(() => run('answers', answers)); /* the AI questions need only the category; socials (Films) runs beside it */
     const pCompany = pCategory.then(() => run('company', company, { step: false }));
     await Promise.all([pBrand, pCatalog, pSocials, pReviews, pSite, pAds, pAnswers, pCompany]);
+    who();
     // which rivals each AI answer named, now that the rival list is final
     if (profile.ai?.answers?.length) relabelRivals(profile);
     return finish();
@@ -151,7 +157,7 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
       for (const s of steps) if (s.state === 'queued' && !want(s.k)) s.state = 'skipped';
       profile.meta = { readAt: new Date().toISOString(), ms: Date.now() - t0, free, only, errors, timings, http: http.stats,
         usd: { treg: +((treg?.meter?.usd || 0) - meter.treg0).toFixed(4), ai: +((ai?.meter?.usd || 0) - meter.ai0).toFixed(4) } };
-      const findings = { steps: steps.map(({ k, t, done, tick, agent, state }) => ({ k, t, done, tick, ...(agent ? { agent } : {}), state })), cards };
+      const findings = { steps: steps.map(({ k, t, done, tick, agent, state }) => ({ k, t, done, tick, ...(agent ? { agent } : {}), state })), cards, picks };
       emit({ type: 'ready', slug, ms: Date.now() - t0 });
       return { slug, profile, ledger: ledger.list(), findings, opened: !!ctx.state.home }; /* opened false: the store's home page never loaded */
     }
@@ -172,12 +178,12 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
     /* a read from before the health card's speed part gets PageSpeed; a failed one is kept and tried again a day later */
     const ps = profile.site?.pagespeed, speedMissing = !!profile.host && !siteBroken && speedOn() && (!ps || (!!ps.error && Date.now() - Date.parse(ps.at || 0) >= 864e5));
     if (!adsBroken && !lineMissing && !answersBroken && !siteBroken && !speedMissing && !failedStages.length) return null;
-    const added = [], cards = [], stepsDone = {};
+    const added = [], cards = [], stepsDone = {}, healPicks = {};
     const http = createFetcher({ slug, saveRaw, loadRaw, fresh: false, log: lg });
     const tregOn = !!treg && treg.live !== false, aiOn = !!ai && ai.live !== false;
     const ctx = { url: new URL(profile.url), slug, http, profile, state: { homeUrl: profile.url }, log: lg, tregOn, aiOn, saveAsset, saveRaw, today: today(),
       ledger: { add: (e) => added.push({ layer: 'observed', at: today(), ...e }) },
-      tick() {}, finding: (k, f) => { cards.push({ ...f, k }); }, done: (k, text, state = 'done', { partial = false } = {}) => { stepsDone[k] = { done: text, state, ...(partial ? { partial: true } : {}) }; },
+      tick() {}, finding: (k, f) => { cards.push({ ...f, k }); }, done: (k, text, state = 'done', { partial = false } = {}) => { stepsDone[k] = { done: text, state, ...(partial ? { partial: true } : {}) }; }, picks: (k, items) => { healPicks[k] = items; },
       ...services({ slug, http, tregOn, aiOn, fresh: false }) };
     const changed = [];
     if (adsBroken) { try { await withTimeout(ads(ctx), LIMIT.ads, 'ads'); changed.push('ads'); } catch (e) { lg.warn?.('[reader] heal ads', slug, e.message); } }
@@ -207,7 +213,7 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
     // new cards replace the old cards of the same step and kind; other cards stay where they were
     const fresh = new Set(cards.map((c) => c.k + '|' + c.kind));
     const f2 = findings ? { ...findings, steps: (findings.steps || []).map((x) => (stepsDone[x.k] ? (({ partial, ...y }) => ({ ...y, ...stepsDone[x.k] }))(x) : x)),
-      cards: cards.length ? [...(findings.cards || []).filter((c) => !fresh.has(c.k + '|' + c.kind)), ...cards] : findings.cards } : findings;
+      cards: cards.length ? [...(findings.cards || []).filter((c) => !fresh.has(c.k + '|' + c.kind)), ...cards] : findings.cards, picks: { ...(findings.picks || {}), ...healPicks } } : findings;
     profile.meta = { ...(profile.meta || {}), healedAt: new Date().toISOString(), healed: changed };
     return { profile, ledger, findings: f2, changed };
   }

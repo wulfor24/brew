@@ -192,6 +192,7 @@ export function followRead({ builder, slug, loadSeed, send, isOpen = () => true,
     if (e.type === 'reader') { const ev = e.ev, i = STEP_KEYS.indexOf(ev.k);
       if (ev.type === 'step' && ev.state === 'reading') send({ type: 'step', i, state: 'reading', tick: ev.tick || '' });
       if (ev.type === 'finding') send({ type: 'finding', i, finding: ev.finding, say: ev.say });
+      if (ev.type === 'picks') send({ type: 'picks', k: ev.k, items: ev.items }); /* the onboarding's taps (products, rivals, who you are) as the reader learns them */
       if (ev.type === 'step' && (ev.state === 'done' || ev.state === 'empty')) { send({ type: 'step', i, state: 'done', empty: ev.state === 'empty', done: ev.done || (ev.state === 'empty' ? 'Nothing found' : 'Done') }); if (AGENT_OF[ev.k]) send({ type: 'agent', agent: AGENT_OF[ev.k] }); } }
     if (e.type === 'read-done' || (e.type === 'status' && e.status?.stages?.read?.state === 'done')) { doneSeen = true; if (!hold) ready(); }
     if (e.type === 'status' && e.status?.error && !sentReady) send({ type: 'error', msg: e.status.state });
@@ -1579,7 +1580,10 @@ export function createFeedService(o) {
   on('GET', '/api/tenants/:id/pulse', async (b, t, p, q) => {
     const since = +q.get('since') || 0;
     const fresh = newSince(t, since);
-    return { newCards: fresh.length, ids: fresh.map((c) => c.id), titles: fresh.slice(0, 3).map((c) => c.title), batches: t.batches, health: t.health, jams: t.jams.map((j) => ({ id: j.id, ticket: j.ticket, status: j.status, last: j.messages.slice(-1)[0], updatedAt: j.updatedAt })), clock: now(t) };
+    /* v2 takes (remix.js): cards whose words or picture changed since `since` (a take that landed, or failed) go in `updated`, apart
+       from `ids` (brand-new cards): the feed re-fetches each one. A take left drawing by a stopped server resolves here too */
+    RMX?.v2?.healTakes(t); const updated = RMX?.v2?.updatedSince(t, since) || [];
+    return { newCards: fresh.length, ids: fresh.map((c) => c.id), titles: fresh.slice(0, 3).map((c) => c.title), updated, batches: t.batches, health: t.health, jams: t.jams.map((j) => ({ id: j.id, ticket: j.ticket, status: j.status, last: j.messages.slice(-1)[0], updatedAt: j.updatedAt })), clock: now(t) };
   });
   /* a card on screen: one mark per half hour at most (a reload is not a second look), so seen counts real looks */
   on('POST', '/api/tenants/:id/events', async (b, t) => { const n = now(t); [...new Set(Array.isArray(b.shown) ? b.shown : [])].slice(0, 200).forEach((id) => { const c = t.cards.get(id); if (!c) return; const ts = (t.shown[id] ||= []); if (ts.length && n - ts[ts.length - 1] < 30 * 60e3) return; ts.push(n); c.shownCount = (c.shownCount || 0) + 1; if (c.state === 'ready') setState(t, c, 'shown'); }); return { ok: true }; });

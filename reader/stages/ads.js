@@ -21,7 +21,21 @@ function noteRivals(ctx) {
   profile.rivals.forEach((r) => ledger.add({ key: `rival.${r.host.replace(/\./g, '-')}.found`, label: `Rival: ${r.name}`, v: r.host, url: r.source || `https://${r.host}`, method: /suggested by AI/.test(r.how) ? 'claude:memory' : /Ad Library/i.test(r.how) ? 'adlib:category-search' : /web search/.test(r.how) ? 'claude:web_search' : 'treg:crawl4ai.google.serp.organic', /* how it was really found */ layer: 'inferred', conf: r.how.includes('+') ? 'high' : 'medium', note: `${r.how}. ${r.why || ''}`.trim() }));
 }
 
+/* the onboarding's rival taps, sent however the search ended: the rivals found (the check page's fields: build.js checkData), or
+   { error } when the search didn't go through; never [] for a failure. Both tries of a failed search report (index.js adds the
+   final error when the stage timed out and could no longer emit) */
 export async function findRivals(ctx) {
+  let err = null;
+  try { await rivalSearch(ctx); } catch (e) { err = e; throw e; } finally { pickRivals(ctx, err); }
+}
+function pickRivals(ctx, err) {
+  if (!ctx.picks) return;
+  const rivals = (ctx.profile.rivals || []).filter((r) => r?.name && r?.host);
+  const why = err?.message || ctx.state?.rivalsNotChecked;
+  if (!rivals.length && why) return ctx.picks('rivals', { error: String(why).replace(/\s+/g, ' ').slice(0, 120) });
+  ctx.picks('rivals', rivals.map((r) => ({ host: r.host, name: r.name, logo: r.logo || `https://www.google.com/s2/favicons?domain=${r.host}&sz=64`, how: r.how || r.why || '' })));
+}
+async function rivalSearch(ctx) {
   const { profile, ledger } = ctx;
   if (!ctx.tregOn && !ctx.aiOn) { profile.rivals = []; if (ctx.state) ctx.state.rivalsNotChecked = 'paid sources off'; return; }
   const cc = (profile.country || 'US').toLowerCase();

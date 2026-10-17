@@ -26,6 +26,7 @@ Everything **not** listed here is real: the read, the moves, the feed, the jam, 
 - There are no canned answers. "Ask" on a teammate's readiness question copies it for them; an AI-owned question gets a suggestion marked "Suggested:". Answers saved from the old simulated flow reopen.
 - Old copy in saved packs and workspaces heals on read (`brew-name.js`): kickers lose the drifting "OF N", "What Brew will watch" becomes "What to watch", BREW SHIPS becomes BREW DRAFTS, and the welcome card says "share the brief". Saved PDFs are drawn again at boot (`build.js` `healPdfs`, `PDF_V`).
 - `test/honesty.test.js` guards all of this.
+- The v2 onboarding's tutorial cards (`public/onboard2.js` `EXAMPLE_CARDS`) are Brew's own teaching examples, never the brand's data: each carries a dashed **Example** tag on screen and an `EXAMPLE:` comment in the code. Nothing about the brand is simulated there, so they need no row above.
 
 ## What the prototype deliberately does not do
 

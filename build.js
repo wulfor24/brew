@@ -375,11 +375,16 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   async function replayRead(slug, findings) {
     if (!findings?.steps) return;
     const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    /* the onboarding's saved taps (findings.picks) follow the step that found them: who you are after brand, products after
+       catalog, rivals after ads (they are found just before it); whatever is left goes after the last step */
+    const PICK_STEP = { who: 'brand', catalog: 'catalog', rivals: 'ads' }, picks = findings.picks || {}, sent = new Set();
+    const sendPicks = (k) => { for (const [pk, items] of Object.entries(picks)) if (!sent.has(pk) && (k == null || (PICK_STEP[pk] || 'answers') === k)) { sent.add(pk); emit(slug, { type: 'reader', ev: { type: 'picks', k: pk, items } }); } };
     for (const [i, st] of findings.steps.entries()) {
       for (const tk of (st.tick || []).filter((x) => x && x !== '…').slice(0, 2)) { emit(slug, { type: 'reader', ev: { type: 'step', k: st.k, i, state: 'reading', tick: tk } }); await wait(500); }
-      for (const c of findings.cards.filter((c) => c.k === st.k)) { emit(slug, { type: 'reader', ev: { type: 'finding', k: st.k, i, finding: c, say: c.say } }); await wait(1400); }
-      emit(slug, { type: 'reader', ev: { type: 'step', k: st.k, i, state: st.state === 'empty' ? 'empty' : 'done', done: st.done } }); await wait(300);
+      for (const c of (findings.cards || []).filter((c) => c.k === st.k)) { emit(slug, { type: 'reader', ev: { type: 'finding', k: st.k, i, finding: c, say: c.say } }); await wait(1400); }
+      emit(slug, { type: 'reader', ev: { type: 'step', k: st.k, i, state: st.state === 'empty' ? 'empty' : 'done', done: st.done } }); sendPicks(st.k); await wait(300);
     }
+    sendPicks(null);
   }
   /* a saved brief whose rows carry the word "null" (an empty MRP, price or note written by the model) is cleaned and its
      page drawn again, once; the team's learnings section is laid in again as the build does (brief.js cleanBrief) */
@@ -1549,5 +1554,5 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (o?.stockWhy) { u.stale[x.n] = { ...o, was: { priority: x.priority, why: x.why, via: x.via }, why: [...Object.values(o.stockWhy), x.why].join(' '), changes: [...new Set([...(o.changes || []), ...(x.changes || [])])].slice(0, 6) }; continue; } /* an out-of-stock mark stays on top */
     u.stale[x.n] = { ...x, at: Date.now(), changes: [...new Set([...(x.changes || []), ...(o?.changes || [])])].slice(0, 6), ...(o && !o.private ? { private: false } : {}) }; } });
   const facts = { pot: potInfo, potSpend, estMove, republish, flagStale, readProduct: async (slug, url) => readProduct(slug, url, (await packs.getJSON(slug, 'profile.json', {})) || {}), readRival, busy: (slug) => !!(st(slug).running || st(slug).checking), setHooks: (h) => Object.assign(hooks, h) };
-  return { ...facts, paidWork, stop, marketCheck, teamStatics, settleConnect, connectPending, readLive, heal, healPdfs, pdfFor, pdfOn, connected, liveConnected, staleConnected, checkUpdates, rewrite, updates, setAuto, signal, seen, buildInfo, retry, goPro, checkData, applyCheck, liveWeekly, stockSignal, peek: (slug) => st(slug).status, addEmail, start, resume, resumeAll, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
+  return { ...facts, paidWork, stop, marketCheck, teamStatics, settleConnect, connectPending, readLive, heal, healPdfs, pdfFor, pdfOn, connected, liveConnected, staleConnected, checkUpdates, rewrite, updates, setAuto, signal, seen, buildInfo, retry, goPro, checkData, applyCheck, liveWeekly, stockSignal, peek: (slug) => st(slug).status, addEmail, start, resume, resumeAll, replayRead, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
 }

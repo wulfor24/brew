@@ -21,6 +21,7 @@ import { impactInputs, projectImpact } from './impact.js';
 import { realRows } from './connectors/common.js';
 import { isQuestion, photoAsk, answerGrounded } from './jam-answer.js'; // a question gets an answer, never a version; "keep the photo" never makes one
 import { moveNo } from './value.js';
+import { budgetWhy } from './budget.js'; // v2 words/takes: a refused spend is said with its real reason, never a silent fallback
 import { createFamilies } from './measure-families.js';
 import { launchBrowser, zipBuffer, withBrowser } from './pdf/render.js';
 import { addV, versionsOf, versionById, signal, answered, autoCheck, outcome, ruleChecks, promptBlock, orderIntents, pickScore, takeNew, trustOf, summary, L, DETECTORS } from './learn.js';
@@ -552,7 +553,8 @@ export function createRemix(o) {
     return { ...pub, ...(isRivalCard(card0) && o.rivalSummary ? { rival: o.rivalSummary(t, card0) } : {}), thinking: ch.thinking && Date.now() - ch.thinking.at < 300e3 ? ch.thinking : null, /* what the studio is doing right now, for the waiting person (think()) */ plan: ch.plan || o.planOf?.(t, t.cards.get(ch.cardId)) || null, copyPending: !!ch.copyPending && FILL_JOBS.has(ch.id) /* "Writing…" while the writer is really running, not a clock */, realOnly: realOnly(ch) /* community posts: real photos only, so no AI remakes */, trust: { level: tr.level, name: tr.name, objects: tr.objects, toNext: tr.toNext }, scope: ch.scope.map((s) => ({ ...s, locked: s.n > tr.objects })),
       familyName: FAMILY_NAME[ch.family], fields: fieldsFor(ch.family, ch.action).map(({ k, label, type, opts, cols, req, pub, hint }) => ({ k, label, type, opts, cols, req, pub, hint })),
       knobs: knobsFor(ch.family, B()), suggest: suggestOf(t, ch), gradeF: GRADES[ch.pkg.grade] || 'none', missing: missing(ch.family, ch.action, ch.pkg),
-      head: headOf(t, ch)?.id || null, versions: versionsOf(t, ch.id).map((v) => ({ id: v.id, n: v.n, author: v.author, reason: v.reason, label: v.label || versionLabel(v.reason, { first: v.n === 1 }), at: v.at, parent: v.parentVersionId, diff: v.diff, snapshot: v.snapshot, ...(v.final ? { final: v.final } : {}) })), live: ch.liveVersionId || null };
+      head: headOf(t, ch)?.id || null, versions: versionsOf(t, ch.id).map((v) => ({ id: v.id, n: v.n, author: v.author, reason: v.reason, label: v.label || versionLabel(v.reason, { first: v.n === 1 }), at: v.at, parent: v.parentVersionId, diff: v.diff, snapshot: v.snapshot, ...(v.final ? { final: v.final } : {}),
+        ...(v.drawing ? { drawing: true } : {}), ...(v.drawError ? { drawError: v.drawError } : {}), ...(v.passed ? { passed: true } : {}), ...(v.asset ? { asset: v.asset } : {}) /* v2 takes: a picture still being made, why it wasn't, a version passed over, the asset that landed */ })), live: ch.liveVersionId || null };
   };
 
   /* ---------- the studio: iterate, knobs, variations, the creative ---------- */
@@ -573,8 +575,8 @@ export function createRemix(o) {
     return rv?.style ? rivalPicture(rv.ad, rv.style, { headline: p.overlay || p.headline || p.title || '', sub: String(p.primaryText || '').split(/(?<=[.!?])\s/)[0], button: p.cta }) : null; };
   /* one picture, made once per brief (the same brief again comes from the gen store, free). pay: asked before a new one is made;
      null back when it refuses (the budget) */
-  const drawPic = async (src, prompt, format, pic, pay = null) => { const key = crypto.createHash('sha1').update(prompt + (format || '4:5')).digest('hex').slice(0, 16);
-    if (!(await genFile(`${key}.png`))) { if (pay && !pay()) return null; const buf = await geminiImage({ srcFile: src, prompt, ratio: RATIO[format] || '4:5' });
+  const drawPic = async (src, prompt, format, pic, pay = null, maker = geminiImage) => { const key = crypto.createHash('sha1').update(prompt + (format || '4:5')).digest('hex').slice(0, 16);
+    if (!(await genFile(`${key}.png`))) { if (pay && !pay()) return null; const buf = await maker({ srcFile: src, prompt, ratio: RATIO[format] || '4:5' });
       if (pic && buf?.guard?.genFailed) throw new Error('the remake did not keep your product as photographed; ask for it again'); /* a plain product photo is not our version of their ad */ saveGen(`${key}.png`, buf); }
     return `gen/${key}.png`; };
   /* never on top of a remake or another photo still being made; community posts take real photos only */
@@ -906,6 +908,7 @@ export function createRemix(o) {
       if (unstick(t, ch) || was) { const what = as === 'video' ? 'reel' : as === 'carousel' ? 'carousel' : 'picture';
         ch.remakeError = `The ${what} stopped before it finished (Brew restarted). Tap Make it again.`; ch.thread.push({ from: 'ai', text: ch.remakeError, at: now(t), remakeAgain: as || null }); } }
     if (ch.copyPending && !FILL_JOBS.has(ch.id)) { ch.copyPending = false; if (!touchedCh(t, ch)) ch.thread.push(startingPoint(t)); } /* the writer stopped with the server */
+    healTakesOf(t, ch); /* a v2 take left drawing by a server that stopped resolves to drawError, never hangs */
     return ch; };
   on('GET', '/api/cards/:cid/remix', async (b, t, p) => {
     const c = t.cards.get(p.cid); if (!c) return { error: 'not found' };
@@ -988,8 +991,154 @@ export function createRemix(o) {
       finally { bump(t, ch); o.save?.(t); }
     })();
   };
+  /* ---------- v2 cards (the Make-it-yours sheet and Another take): never wait on an asset ----------
+     POST /api/cards/:cid/remix takes two more bodies beside the studio's own (no flags, and `fast`, are unchanged):
+
+     A. { words:true, prompt?, chip?, set?:{title, body} }   →  { ok:true, changeId, versionId, n, words:{ title, body } }
+        Rewrites only the card's concept words: the one-line title/angle and the body/caption of the card's package (the same
+        change the studio opens on: found, else built from the card as `fast` does). `why` (the card's signal and its source)
+        is never touched. The fast text model writes them (claudeTool; under AI_MOCK a deterministic variant of the words,
+        shaped by the chip); the chip is the prompt when the prompt is empty. `set` is words the person typed by hand: they are
+        applied exactly as given, no model call and no spend, and `set` wins over a prompt or chip sent with it. The new words
+        are the change's next version (its head) and the card's `take` mirror shows them, so a reload shows them. No asset is
+        drawn. When text spend is refused the reply is { error } with the real reason (budgetWhy), never a silent fallback.
+
+     B. { queue:true, take?:true, prompt?, chip? }  →  { queued:true, changeId, versionId, n, drawing, drawError?, words? }
+        The next version is made at once with drawing:true and the current words (take:true rewrites them first, as in A,
+        inside the same reply, and marks the previous head version passed:true, so ranking treats it like Not for me). The
+        picture is then made in the background on the studio's own picture path (picSrc → picPrompt → drawPic: the card's
+        product photo, the package's image brief, the rival look for "Make our version"), within spend('image') and never
+        under isMock() (MEDIA_FAKE stand-ins excepted), capped at 3 minutes. When it lands: version.drawing=false,
+        version.asset={kind:'image',url}, snapshot.image=url (the stage too when that version is the head), the card's `take`
+        mirror is updated and GET /api/tenants/:id/pulse lists the card id in `updated` (v2.updatedSince). On failure the
+        version keeps drawing:false and drawError:'<reason>' and is delivered the same way; a refusal known at once (AI
+        offline, no photo budget, a community post that takes real photos only) comes back in the reply as drawError. A version
+        left drawing by a server that stopped resolves to drawError on its next load, the next pulse or the next v2 call
+        (healTakes), never hangs.
+
+     The card mirror, spread by feed-service pub(): card.take = { changeId, versionId, n, title, body, image, drawing,
+     drawError, passed:[versionIds], at }. Clients: poll GET /api/tenants/:id/pulse?since=<clock> and re-fetch each card in
+     `updated` (GET /api/cards/:cid → card.take), or GET /api/changes/:chid and read versions[].drawing/drawError/asset. */
+  const TAKE_CAP = 180e3, TAKE_JOBS = new Map(); /* versionId → { chId, run }: the draws in flight in this process (tests await `run`) */
+  const V2_TITLE = { ...TITLE_F, post: 'title', social: null }, V2_BODY = { ...SUB_F, social: 'caption', post: 'copy' };
+  const takeWords = (ch, v = null, t = null) => { const a = v && t ? afterFromPkg(ch.family, pkgOfVersion(t, ch, v)) : ch.after || {}; return { title: String(a.title || ''), body: String(a.sub || '') }; }; /* the head's words, or a version's */
+  /* the words into the package, per family (afterFromPkg reads them back as title/sub); a family with no title field leads
+     its body with the title line */
+  const putWords = (t, ch, c, w) => {
+    const f = ch.family, p = { ...ch.pkg }, tf = V2_TITLE[f], bf = V2_BODY[f];
+    if (f === 'social') { if (p.slides?.length) { p.slides = p.slides.map((s, i) => (i ? s : { ...s, onSlide: w.title })); p.caption = w.body; } else p.caption = [w.title, w.body].filter(Boolean).join('\n'); }
+    else if (f === 'vis') { const e = (p.entries || [])[0] || {}; p.entries = [{ ...e, q: w.title, a: w.body }, ...(p.entries || []).slice(1)]; }
+    else if (f === 'search') { p.headlines = [w.title, ...(p.headlines || []).slice(1)]; p.descriptions = [w.body, ...(p.descriptions || []).slice(1)]; }
+    else if (f === 'setup') { p.what = w.title; p.verify = w.body; }
+    else if (f === 'print') { p.front = w.title; p.back = w.body; }
+    else if (f === 'listing') { p.name = w.title; if (!(p.items || []).length) p.reason = w.body; }
+    else if (f === 'brief') { p.title = w.title; }
+    else { if (tf) p[tf] = w.title; if (bf) p[bf] = w.body; }
+    ch.pkg = { ...ch.pkg, ...cleanPkg(f, ch.action, p, clean), ...keepMedia(ch.pkg) };
+    if (BANNED.test(publicText(f, ch.action, ch.pkg).join(' '))) ch.pkg = rulePkg(t, ch.agent, f, ch.pkg);
+    sync(t, ch, c);
+  };
+  /* AI_MOCK (and the demo site): a deterministic variant shaped by the chip, still honouring what the team taught */
+  const mockWords = (t, ch, ask) => {
+    const { title, body } = takeWords(ch), a = String(ask || ''), sents = body.split(/(?<=[.!?])\s+/).filter(Boolean); let m, out;
+    if (/\bshorter\b/i.test(a)) out = { title: title.split(/\s+/).slice(0, 6).join(' ').replace(/[,:;]$/, ''), body: sents[0] || body, label: 'Shorter' };
+    else if (/\bwarmer\b/i.test(a)) out = { title: title.replace(/[.!]$/, ''), body: `${body.trim()} Made with care, for the people who come back.`.trim(), label: 'Warmer' };
+    else if ((m = /\blead with (.+)/i.exec(a))) out = { title: `${m[1].trim().replace(/[.]$/, '')}: ${title}`, body, label: `Leads with ${m[1].trim()}` };
+    else if ((m = /\bmake it about (.+)/i.exec(a))) out = { title, body: `Where ${m[1].trim().replace(/[.]$/, '')} stops, this starts. ${body}`.trim(), label: `About ${m[1].trim()}` };
+    else if ((m = /^\s*for (.+)/i.exec(a))) out = { title, body: `For the ${m[1].trim().replace(/[.]$/, '')}: ${body}`.trim(), label: `For ${m[1].trim()}` };
+    else { const first = sents[0] && sents[0].replace(/[.]$/, '') !== title ? sents[0].replace(/[.]$/, '') : `${title}, said another way`; out = { title: first.slice(0, 90), body: [...sents.slice(1), title].filter(Boolean).join(' '), label: 'New words' }; }
+    const x = applyRulesMock(t, ch.agent, { title: out.title, sub: out.body }); return { title: clean(x.title), body: clean(x.sub), label: out.label };
+  };
+  const WORDS_SCHEMA = { type: 'object', required: ['title', 'body', 'label'], properties: { title: { type: 'string', description: 'The one-line title or angle, under 12 words, point first' }, body: { type: 'string', description: 'The body or caption as it ships: 1 to 3 short lines to the shopper, plain words, only numbers from the facts' }, label: { type: 'string', description: 'A name for this version: 2 to 4 words, sentence case, what is different (e.g. "Shorter", "Leads with the serum")' } } };
+  /* the words, rewritten by the fast text model (the same client the fast jam path uses); the card's why is not in the ask */
+  const rewriteWords = async (t, c, ch, ask) => {
+    if (isMock()) return mockWords(t, ch, ask);
+    if (!spend('text')) throw Object.assign(new Error(budgetWhy('text', o.slugOfT?.(t), BN()) || 'Brew’s text budget for today is used up, so the words can’t be rewritten right now. Try again after midnight UTC.'), { refused: true });
+    const { title, body } = takeWords(ch), rv = await rivalRead(t, c).catch(() => null);
+    const j = await claudeTool(`${cardBrief(c, seatLine(t.viewer))}${rv ? `\n\n${rivalBlock(rv.ad, rv.style, BN())}` : ''}\n\nYou are the ${AGENT[ch.agent] || 'creative'} agent. Rewrite only the WORDS of this ${FAMILY_NAME[ch.family] || 'change'} (${ch.actionLabel} on ${ch.target.name}) the way the person asks. Same product, same action, same promise; the card's reason (its signal and source) is not yours to change, and no new claims.\n${promptBlock(t, ch.agent === 'brew' ? 'creative' : ch.agent)}\n${productLine(c, pkgWords(ch))}\nNow: title “${title}”\nbody: “${body}”\nThe person asks: “${ask || 'Rewrite the words'}”\nReturn the new title (one line) and body. ${factsLine}`, WORDS_SCHEMA, 700, 'v2_words');
+    const w = { title: clean(String(j.title || '')).slice(0, 160), body: clean(String(j.body || '')).slice(0, 1200), label: j.label };
+    if (!w.title && !w.body) throw new Error('The rewrite came back empty. Try another chip.');
+    if (BANNED.test(`${w.title} ${w.body}`)) throw new Error('The rewrite used a claim this brand can’t make, so the words stay as they are. Try another chip.');
+    const nums = unbackedNums(`${w.title} ${w.body}`); if (nums.length) throw new Error(`The rewrite used a number the facts don’t back (${nums.slice(0, 3).join(', ')}), so the words stay as they are. Try another chip.`);
+    return w;
+  };
+  /* the card's own package for the sheet: the studio's latest fitting change (so Open the studio lands on it), else built now
+     from the card as `fast` does, on the card's own first draft */
+  const takeChange = (t, c, r, cv) => {
+    const fits = new Set(r.actionKeys);
+    const mine = Object.values(changes(t)).filter((x) => x.cardId === c.id && !x.discarded && !x.batchKey && fits.has(x.action) && !editable(x)).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0];
+    if (mine) { ensurePkg(t, mine); return mine; }
+    const ch = build(t, c, cv, r, mockOptions(t, c, r, '', 1)[0], { intent: '', prompt: '' }); seedV0(t, c, ch); return ch;
+  };
+  /* the card carries its latest take (feed-service pub spreads it), and the pulse learns the card changed */
+  const mirrorTake = (t, c, ch, v) => {
+    const w = takeWords(ch, v, t);
+    c.take = { changeId: ch.id, versionId: v.id, n: v.n, title: w.title, body: w.body, image: v.snapshot?.image || null, drawing: !!v.drawing, drawError: v.drawError || null, passed: versionsOf(t, ch.id).filter((x) => x.passed).map((x) => x.id), at: now(t) };
+    const up = (t.cardUpdated ||= {}); up[c.id] = now(t); for (const [id, at] of Object.entries(up)) if (now(t) - at > 86400e3) delete up[id]; /* a day of history is plenty for a pulse */
+  };
+  const failTake = (t, c, ch, v, why) => { v.drawing = false; v.drawError = String(why || 'The picture didn’t come through.').slice(0, 200); if (c) mirrorTake(t, c, ch, v); };
+  /* a take whose draw is not running in this process (a restart, a deploy): it is over, and says so */
+  const healTakesOf = (t, ch) => { let n = 0; for (const v of versionsOf(t, ch.id)) if (v.drawing && !TAKE_JOBS.has(v.id)) { failTake(t, t.cards.get(ch.cardId) || null, ch, v, 'The picture stopped before it finished (Brew restarted). Ask for another take.'); n++; } return n; };
+  const healTakes = (t) => { let n = 0; for (const ch of Object.values(changes(t))) n += healTakesOf(t, ch); return n; };
+  const updatedSince = (t, since = 0) => Object.entries(t.cardUpdated || {}).filter(([id, at]) => at > since && t.cards.has(id)).map(([id]) => id);
+  /* the picture for a take, in the background: the studio's own path (product photo, brief, rival look), one picture, capped */
+  const drawTake = (t, c, ch, v, ask) => {
+    if (!['meta_ad', 'social', 'post'].includes(ch.family)) return failTake(t, c, ch, v, 'This kind of change has no picture to draw; the words are on the version.');
+    if (realOnly(ch)) return failTake(t, c, ch, v, `${ch.pkg?.platform || 'This community'} wants real photos, not AI ones: pick one of your product photos.`);
+    const maker = o.mediaFake ? imgMaker() : geminiImage;
+    if ((isMock() && !o.mediaFake) || !maker) return failTake(t, c, ch, v, isMock() ? 'Pictures are off while AI is offline; the words are on the version.' : 'This server can’t make pictures.');
+    if (!spend('image')) return failTake(t, c, ch, v, budgetWhy('image', o.slugOfT?.(t), BN()) || 'Today’s picture limit is used up; the words are on the version.');
+    ch.imagePending = true; ch.imageError = null; IMG_JOBS.add(ch.id);
+    const p = { ...ch.pkg }, rows = p.cards || p.slides || [], head = takeWords(ch).title;
+    const land = (url) => {
+      if (!v.drawing) return; /* the cap already ended it */
+      const media = { image: url, ...(rows.length ? { cardImages: [url, ...(p.cardImages || []).slice(1)] } : {}) };
+      v.snapshot = { ...v.snapshot, ...media }; v.drawing = false; v.drawError = null; v.asset = { kind: 'image', url };
+      if (headOf(t, ch)?.id === v.id) { ch.pkg = { ...ch.pkg, ...media }; sync(t, ch); try { mirror(t, ch, v); } catch {} }
+      try { o.onMedia?.(t, ch, { kind: 'image', images: [url], n: v.n, label: v.label }); } catch {} /* every new asset goes where the jam is (Slack) */
+      mirrorTake(t, c, ch, v);
+    };
+    const job = (async () => {
+      try {
+        const src = await picSrc(t, ch, p); if (!src) throw new Error('no product photo could be read for this picture');
+        const pic = await rivalPic(t, ch, p);
+        const extra = `${head ? ` The photo goes with the headline “${String(head).slice(0, 120)}”.` : ''}${ask ? ` The team asked: ${String(ask).slice(0, 200)}.` : ''} A fresh take, different from the last picture (take ${v.n}).`;
+        const url = await drawPic(src, picPrompt(ch, p, 0, pic, extra), p.format, pic, null, maker); if (!url) throw new Error('no image came back');
+        land(url);
+      } catch (e) { log.warn('[take]', e.message); if (v.drawing) failTake(t, c, ch, v, `The picture didn’t come through (${String(e.message).slice(0, 120)}). Ask for another take.`); }
+    })();
+    let timer; const cap = new Promise((r) => { timer = setTimeout(() => r('cap'), TAKE_CAP); timer.unref?.(); });
+    const run = Promise.race([job, cap]).then((x) => { clearTimeout(timer); if (x === 'cap' && v.drawing) { log.warn('[take] capped', v.id); failTake(t, c, ch, v, 'The picture took more than 3 minutes. Ask for another take.'); } })
+      .finally(() => { TAKE_JOBS.delete(v.id); ch.imagePending = [...TAKE_JOBS.values()].some((j) => j.chId === ch.id); if (!ch.imagePending) IMG_JOBS.delete(ch.id); bump(t, ch); o.save?.(t); });
+    TAKE_JOBS.set(v.id, { chId: ch.id, run });
+    return true;
+  };
+  const v2Remix = async (b, t, c) => {
+    healTakes(t);
+    const ask = clean(String(b.prompt || '').trim() || String(b.chip || '').trim()).slice(0, 300), take = !!b.take;
+    const r = recipeFor(c), cv = ensureCardVersion(t, c), ch = takeChange(t, c, r, cv), before = { ...ch.after };
+    let words = null;
+    const set = b.set && typeof b.set === 'object' ? { title: clean(String(b.set.title ?? '')).trim().slice(0, 160), body: clean(String(b.set.body ?? '')).trim().slice(0, 1200) } : null; /* typed by hand: applied as is, nothing spent */
+    if (set && !set.title && !set.body) return { error: 'Type a title or a body first.', changeId: ch.id };
+    if (set) { const cur = takeWords(ch); words = { title: set.title || cur.title, body: set.body || cur.body, label: 'Your words' }; putWords(t, ch, c, words); }
+    else if (b.words || take) { try { words = await rewriteWords(t, c, ch, ask); putWords(t, ch, c, words); } catch (e) { log.warn('[v2 words]', e.message); return { error: e.message, changeId: ch.id }; } }
+    t.acted.add(c.id);
+    if (b.words) {
+      const v = version(t, ch, set ? 'you' : `ai:${ch.agent}`, set ? 'Your words' : `New words${ask ? `: ${ask.slice(0, 80)}` : ''}`, words.label || 'New words');
+      signal(t, 'edit', { before, after: ch.after, agent: ch.agent, changeId: ch.id, by: set ? 'you' : 'ai-asked' }, now(t));
+      mirrorTake(t, c, ch, v); o.save?.(t);
+      return { ok: true, changeId: ch.id, versionId: v.id, n: v.n, words: takeWords(ch) };
+    }
+    const prev = headOf(t, ch); if (take && prev) prev.passed = true;
+    const v = version(t, ch, `ai:${ch.agent}`, take ? `Another take${ask ? `: ${ask.slice(0, 80)}` : ''}` : `New picture${ask ? `: ${ask.slice(0, 80)}` : ''}`, words?.label || (take ? 'Another take' : 'New picture'));
+    v.drawing = true; v.drawingAt = now(t); if (take) v.take = true;
+    if (words) signal(t, 'edit', { before, after: ch.after, agent: ch.agent, changeId: ch.id, by: 'ai-asked' }, now(t));
+    mirrorTake(t, c, ch, v); drawTake(t, c, ch, v, ask); o.save?.(t);
+    return { queued: true, changeId: ch.id, versionId: v.id, n: v.n, drawing: !!v.drawing, ...(v.drawError ? { drawError: v.drawError } : {}), ...(words ? { words: takeWords(ch) } : {}) };
+  };
   on('POST', '/api/cards/:cid/remix', async (b, t, p) => {
     const c = t.cards.get(p.cid); if (!c) return { error: 'not found' };
+    if (b.words || b.queue) return v2Remix(b, t, c); /* v2: words first, the picture in the background (the block above) */
     const r = recipeFor(c); const cv = ensureCardVersion(t, c);
     const intent = String(b.intent || '').slice(0, 60), prompt = String(b.prompt || '').slice(0, 300);
     /* fast (opening a jam): the package is built at once from the card itself and the AI writes the lead option in the
@@ -1486,5 +1635,7 @@ export function createRemix(o) {
     const started = genImage(t, ch, ask); return started ? { started: true } : { error: realOnly(ch) ? `${ch.pkg.platform || 'This place'} wants real photos, not AI ones.` : 'No new photo can be made for this one right now (AI is off, or today’s image limit is used up).' }; };
   /* a final Sloosh finished while Brew restarted (finals.reconcileAll → feed-service finalDone): the change's next version, labelled Final */
   const finalDone = (t, rec) => { const ok = STUDIO_FINALS?.landDone(t, rec) || false; if (ok) o.save?.(t); return ok; };
-  return { remakeFromJam, photoFromJam, iterateFromJam, pickFromJam, makePlan, ensurePlan, planReady, onWorkVersion, pubChange, changes, packageOf, finalDone };
+  /* v2 takes for the feed's pulse (updatedSince, healTakes) and for tests (the draws in flight) */
+  const v2 = { updatedSince, healTakes, jobs: TAKE_JOBS, settle: () => Promise.all([...TAKE_JOBS.values()].map((j) => j.run)) };
+  return { remakeFromJam, photoFromJam, iterateFromJam, pickFromJam, makePlan, ensurePlan, planReady, onWorkVersion, pubChange, changes, packageOf, finalDone, v2 };
 }

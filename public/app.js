@@ -58,6 +58,11 @@
      Same data, same API calls; only the markup and styles differ (public/ui2.css). */
   const UI2 = (() => { const q = new URLSearchParams(location.search).get('ui'); if (q === '2') ls.set('brew-ui', '2'); else if (q === '1') ls.del('brew-ui'); return ls.get('brew-ui') === '2'; })();
   if (UI2) document.body.classList.add('ui2');
+  /* V2 (2026-10-18): "the morning" onboarding, the review stack, the gate and the Make-it-yours sheet, behind one flag so it is
+     tested on the live site first. ?v=2 turns it on for this browser, ?v=1 turns it off; with neither stored, BREW_V (deploy.sh)
+     decides. public/onboard2.js, public/make-sheet.js, public/v2.css; nothing below changes behaviour while it is off. */
+  const V2 = (() => { const q = new URLSearchParams(location.search).get('v'); if (q === '2') ls.set('brew-v', '2'); else if (q === '1') ls.set('brew-v', '1'); const v = ls.get('brew-v'); return v === '2' || (!v && String(window.BREW_V || '1') === '2'); })();
+  if (V2) document.body.classList.add('v2');
   const api = async (p, body) => { try { const r = await fetch(p, body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}); const j = await r.json(); if (refused(j)) demoSheet(j.host); return j; } catch (e) { return { error: String(e), fallback: true }; } };
   /* demo mode: new work (moves, drafts, images, jams) is made for the brand's team and SquareUp. Anyone else who tries gets this
      one sheet instead of an error: their work email, or the demo stores */
@@ -328,6 +333,7 @@
         <div class="ob2-body">${inner}</div></section>
       <aside class="ob2-show" id="ob-show" aria-hidden="true">${show || (step ? pvLast : '')}</aside></main>`;
   const start = () => {
+    if (V2 && !DEMO_LAND && window.OB2) { view = 'start'; return window.OB2.start(); } /* v2: the hero, the peek, then the brand page */
     document.body.classList.remove('deck-on'); view = 'start';
     const art = B.startArt || ['assets/intro-1.jpg', 'assets/intro-2.jpg', 'assets/intro-3.jpg'];
     // the landing page shows what the feed says, for any brand: no one brand's photos, no one country's money
@@ -428,6 +434,7 @@
   const setup = async () => {
     if (needSignin() && signWall('team')) return; /* signed out: the read is the team's, so ask them to sign in first */
     if (GEN && window.LIVE?.me && window.LIVE?.access && !window.LIVE.access.gen && !(B.steps || []).length && signWall('check')) return; /* signed in from outside the team: the read was kept from them, so no empty replay */
+    if (V2 && window.OB2) { view = 'setup'; return window.OB2.run(); } /* v2: the taps, the story and the tutorial while the read runs */
     meCursor();
     view = 'setup';
     // the rivals step shows what the Ad Library research really found (research.js), not a canned line
@@ -768,6 +775,7 @@
   const actsHtml = (p) => `<div class="acts">
       <button class="icon-btn" data-act="heart" aria-pressed="${!!S.hearts[p.id]}" aria-label="More like this">${ic('heart')}</button>
       <button class="icon-btn" data-act="jam" aria-label="Jam with the team">${ic('hand')}</button>
+      ${V2 ? `<button class="icon-btn v2-act" data-act="take" aria-label="Another take" title="Another take">${ic('refresh')}</button><button class="icon-btn v2-act" data-act="make" aria-label="Make it yours" title="Make it yours">${ic('sparkles')}</button>` : ''}
       <span class="sp"></span>
       <button class="icon-btn" data-act="save" aria-pressed="${S.saved.includes(p.id)}" aria-label="Save for later">${ic('bookmark')}</button></div>`;
   // card times read as times: "26 min" → "26 min ago" ("Just now", "Mon", "Yesterday" stay as they are)
@@ -1401,6 +1409,11 @@
     }
     if (b.dataset.act === 'save') toggleSave(p, b);
     if (b.dataset.act === 'jam') openDetail(p, { jam: true });
+    /* v2: Make it yours opens the one sheet; Another take passes this card and queues a new one in the background (never a wait) */
+    if (b.dataset.act === 'make') window.MakeSheet?.open(p, { onSaved: () => rerenderKeep(p.id, true) });
+    if (b.dataset.act === 'take') { b.disabled = true; const r = await tapi('POST', `/api/cards/${p.id}/remix`, { queue: true, take: true }); b.disabled = false;
+      if (r?.error || !r?.queued) return toast(`${ic('info', 's16')}${esc(r?.error || 'Another take isn’t available yet.')}`);
+      S.dismissed[p.id] = true; save(); card.classList.add('is-gone'); toast(`${ic('refresh', 's16')}Another take is on its way. It lands at the top when ready.`); setTimeout(() => card.remove(), 400); }
   });
   const toggleSave = (p, b) => {
     const on = !S.saved.includes(p.id);
@@ -2291,7 +2304,9 @@
       await pullWork();
       if (view === 'feed' && pulseSince) { const r = await tapi('GET', `/api/tenants/:t/pulse?since=${pulseSince}`); const pill = $('#newpill');
         const ids = (r.ids || []).filter((id) => !PINNED.has(id));
-        if (pill && ids.length) { NEWIDS = ids; pill.hidden = false; pill.innerHTML = `<button data-newcards>${ic('up', 's14')}${ids.length} new card${ids.length > 1 ? 's' : ''} · show</button>`; } }
+        if (pill && ids.length) { NEWIDS = ids; pill.hidden = false; pill.innerHTML = `<button data-newcards>${ic('up', 's14')}${ids.length} new card${ids.length > 1 ? 's' : ''} · show</button>`; }
+        /* v2: a take or new words landed in the background (remix.js): the card is drawn again in place, no reload */
+        if (V2 && (r.updated || []).length) { await loadFeed(); for (const id of r.updated) { if ($(`#col .card[data-id="${CSS.escape(id)}"]`)) { await rerenderKeep(id, false); break; } } } }
     }
     pulseT = setTimeout(pulse, DP?.w && DP.w.stage === 'team' && window.BREW_DEMO ? 2500 : 10e3);
   };
@@ -4667,7 +4682,8 @@
   /* ---------- go ---------- */
   // jam-room.js (the Jam Room) works from these
   window.__BREW = { putCh: (ch) => putCh(ch), paintStudio: () => paintStudio(), modal: (h, b) => modal(h, b), closeModal: () => closeModal(), refreshAfterConnect: (id) => refreshAfterConnect(id), glyph: (id, n) => glyph(id, n), demoSheet: (h) => demoSheet(h), shareSheet: (p) => shareSheet(p), pageOf: (id) => PAGE[id] || null, studioCard: () => (view === 'remix' ? RX.p : null), studioV: () => (view === 'remix' && RX.ch ? curN(RX.ch) : null) /* the version on the jam's stage, for the sheets */, libAct, cxDone: (id) => $$(`[data-cxrow="${id}"]`).forEach((r) => (r.outerHTML = cxRow(id))), $, $$, esc, wait, ic, face, avatar, podFaces, brewAv, SO, movesTotal: () => +BREW?.total || 0, toast, toastLong, B, AGENT, save, ROLE, colleague, conn, cardOf, byId, tapi, putWork, counts, inrS, openConnect, openDetail, closeDetail, closePop, closeModal, modal, assetHtml, renderView, renderWork, workOfCard, pseudoPost, colleagueForCard,
-    get S() { return S; }, get WORK() { return WORK; }, get view() { return view; }, setChange: (ch) => { if (DP && ch) DP.ch = ch; }, currentDetail: () => DP && (DP.w ? { ...DP.p, _work: DP.w, _ch: DP.ch || null } : DP.p), SPLIT, slotHtml, ago, repaintDetail: () => repaintDetail(true), detailDirty: () => !!DP?.dirty, fitKnobs, fitSuggest };
+    get S() { return S; }, get WORK() { return WORK; }, get view() { return view; }, setChange: (ch) => { if (DP && ch) DP.ch = ch; }, currentDetail: () => DP && (DP.w ? { ...DP.p, _work: DP.w, _ch: DP.ch || null } : DP.p), SPLIT, slotHtml, ago, repaintDetail: () => repaintDetail(true), detailDirty: () => !!DP?.dirty, fitKnobs, fitSuggest,
+    /* v2 (onboard2.js, make-sheet.js) */ V2, UI2, GEN, LANDING, DEMO_LAND, api, ls, LSP, get TID() { return TID; }, signWall, needSignin, ensureTenant, scrCard, seatEntries, defaultWants, loadFeed, rank, openRemix, openPlan, teamStep, finishOnboarding, checkRead, waitMoves, whoFor, continueToFeed, hashParams };
   // #setup replays onboarding (it only plays once otherwise, because finishing it is saved in this browser)
   const adoptShare = async () => { const tok = hashParams().s; if (!tok) return;
     const own = tok.split('~')[0]; if (own === TID) return;
@@ -4689,7 +4705,7 @@
   /* a brand wiped and read again is a new brand: what this browser saved for the old one (onboarding done, its workspace) goes,
      so the read, the check and the setup steps play again instead of opening straight onto the feed */
   const born = window.LIVE?.born; if (GEN && !LANDING && !window.BREW_DEMO && born && ls.get(`${LSP()}born`) !== String(born)) {
-    if (ls.get(`${LSP()}born`) || S.onboarded || TID) { ['tenant', 'tenant-own', 'continue'].forEach((k) => ls.del(LSP() + k)); ls.del(KEY); S = fresh(); TID = null; lastSync = ''; }
+    if (ls.get(`${LSP()}born`) || S.onboarded || TID) { ['tenant', 'tenant-own', 'continue', 'v2'].forEach((k) => ls.del(LSP() + k)); ls.del(KEY); S = fresh(); TID = null; lastSync = ''; }
     ls.set(`${LSP()}born`, String(born)); }
   window.LiveConn?.overlay(B, S); fitSeat(); save();
   /* ?go=feed (every Brew email, and invites as ?go=feed&joined=1): read before joined=1 strips the query. A signed-in person skips
@@ -4702,13 +4718,13 @@
   if (hashParams().s) adoptShare().then(() => { if (S.onboarded) feed(); else start(); });
   else if (LANDING) start(); // the landing is only ever the paste-a-URL page
   else if (GEN && location.hash === '#check') ensureTenant(true).then(checkRead); // reopen "Is this right?"
-  else if (GEN && location.hash === '#wait') ensureTenant(true).then(waitMoves);
-  else if (GEN && cxBack === 'ob') ensureTenant(true).then(() => { view = 'ob'; connectWhat(); }); // back from a platform's sign-in: the step it left from
+  else if (GEN && location.hash === '#wait') ensureTenant(true).then(V2 && window.OB2 ? () => window.OB2.route('wait') : waitMoves);
+  else if (GEN && cxBack === 'ob') ensureTenant(true).then(V2 && window.OB2 ? () => window.OB2.resume() : () => { view = 'ob'; connectWhat(); }); // back from a platform's sign-in: the step it left from
   else if (GEN && cxBack === 'check') ensureTenant(true).then(checkRead);
-  else if (GEN && cxBack === 'wait') ensureTenant(true).then(waitMoves);
+  else if (GEN && cxBack === 'wait') ensureTenant(true).then(V2 && window.OB2 ? () => window.OB2.route('wait') : waitMoves);
   /* a link from a Brew email (?go=feed) or to a jam or card (#jam=, #card=, #work=, #v=): a signed-in person goes straight there,
      never through the read replay and the setup steps again (those stay at #setup) */
   else if (GEN && location.hash !== '#setup' && (S.onboarded || window.LIVE?.me) && (GO_FEED || /^#(jam|card|work|v)=/.test(location.hash))) { if (!S.onboarded) { S.onboarded = true; save(); } ensureTenant().then(() => { fitSeat(); save(); feed(); }); }
-  else if (S.onboarded && location.hash !== '#setup') feed(); else { if (location.hash === '#setup') history.replaceState(null, '', location.pathname); if (GEN && ls.get(`${LSP()}continue`)) { ls.del(`${LSP()}continue`); ensureTenant(true).then(whoFor); } else if (GEN && !(window.BREW_DEMO && location.hash !== '#setup')) ensureTenant(true).then(setup); else start(); } /* the demo site's tour starts on the address screen */
+  else if (S.onboarded && location.hash !== '#setup') feed(); else { if (location.hash === '#setup') history.replaceState(null, '', location.pathname); if (GEN && ls.get(`${LSP()}continue`)) { const c0 = ls.get(`${LSP()}continue`); ls.del(`${LSP()}continue`); ensureTenant(true).then(V2 && window.OB2 ? () => window.OB2.route(c0 === 'v2' ? 'continue' : 'run') : whoFor); } else if (GEN && !(window.BREW_DEMO && location.hash !== '#setup')) ensureTenant(true).then(setup); else start(); } /* the demo site's tour starts on the address screen */
   if (/[#&]cx(err)?=/.test(location.hash)) setTimeout(() => window.LiveConn?.resume(), 900); });
 })();
