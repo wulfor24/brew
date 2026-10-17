@@ -353,7 +353,7 @@
     document.body.classList.add('v2-on'); fontIn(); sky(5);
     shell(`<div class="v2-hero"><h1 class="v2-h v2-h-xl">Your next move,<br>for <span class="v2-type" id="v2-cat">${CATS[0]}</span> brands.</h1>
       <p class="v2-p">Paste your store. Brew reads it, your reviews, your rivals and what AI tools say about you, and writes your first moves while you set up.</p>
-      <form class="v2-url" id="v2-url" autocomplete="off">${A().ic('link', 's18')}<input id="v2-in" placeholder="yourbrand.com" aria-label="Your website" inputmode="url" autocapitalize="off" spellcheck="false"><button class="btn btn-primary" id="v2-go" type="submit">Read my store ${A().ic('right', 's16')}</button></form>
+      <form class="v2-url" id="v2-url" autocomplete="off">${A().ic('link', 's18')}<input id="v2-in" value="${A().LANDING ? '' : esc(brand().host || '')}" placeholder="yourbrand.com" aria-label="Your website" inputmode="url" autocapitalize="off" spellcheck="false"${!A().LANDING && window.BREW_DEMO ? ` readonly aria-readonly="true" title="This demo is set up for ${esc(brand().host || '')}"` : ''}><button class="btn btn-primary" id="v2-go" type="submit">Read my store ${A().ic('right', 's16')}</button></form>
       <p class="v2-foot">${window.LIVE?.me ? `Signed in as ${esc(window.LIVE.me.email)}.` : window.LIVE?.signin ? 'You sign in with Google to start.' : ''} <a href="/?v=1">The earlier flow</a></p></div>`, { noProg: true });
     /* the categories Brew has read, else a plain list */
     A().api('/api/demo-brands').then((r) => { const cs = (r?.brands || []).map((b) => (b.category || '').toLowerCase()).filter(Boolean); if (cs.length) CATS.splice(0, CATS.length, ...new Set(cs)); }).catch(() => {});
@@ -361,6 +361,8 @@
     const going = (on, t) => { const b = $('#v2-go'), i = $('#v2-in'); if (!b) return; b.disabled = on; if (i) i.readOnly = on; if (on) { b.dataset.t ??= b.innerHTML; b.innerHTML = `<span class="spin"></span>${esc(t)}`; } else if (b.dataset.t) b.innerHTML = b.dataset.t; };
     const go = async (e) => { e?.preventDefault(); if ($('#v2-go').disabled) return; const url = $('#v2-in').value.trim(); if (!url) return $('#v2-in').focus(); alive = false;
       going(true, 'Opening your store…');
+      /* a brand's own page (the demo tour starts here): no new brand, the read of this one plays */
+      if (!A().LANDING) { const pk = await A().api(`/api/peek?url=${encodeURIComponent(url)}`).catch(() => null); if (pk && !pk.error) ss.set(`brew-peek:${pk.host || url}`, JSON.stringify(pk)); await peekScreen(pk, url.replace(/^https?:\/\//, '').split('/')[0]); await A().ensureTenant(true); return run(); }
       const host = url.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
       /* the peek and the real read start together: the site card shows within a couple of seconds while the read begins */
       const peekP = A().api(`/api/peek?url=${encodeURIComponent(url)}`).catch(() => null);
