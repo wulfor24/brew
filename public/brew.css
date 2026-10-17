@@ -2847,4 +2847,6 @@ html body.deck-on .topbar{border-bottom:0;box-shadow:none}
 .media .fd-lab.is-wait{background:rgba(20,20,20,.72)}
 .feed-more{height:1px}
 @media (max-width:420px){.card-head .start-tag{padding:0 7px}.card-head .new-tag{padding:0 6px}}
-.media.fd.r916{aspect-ratio:9/16;max-height:78vh}
+.media.fd.r916{aspect-ratio:4/5;max-height:none;background:#0b0b0b;isolation:isolate}
+.media.fd.r916::before{content:'';position:absolute;inset:-28px;background:var(--fd-bg, none) center/cover no-repeat;filter:blur(28px) brightness(.55) saturate(1.1);z-index:0}
+.media.fd.r916 > img,.media.fd.r916 > video.fd-v,.media.fd.r916 .track img{position:relative;z-index:1;object-fit:contain;background:transparent}

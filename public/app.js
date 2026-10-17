@@ -824,9 +824,11 @@
     /* a stand-in (the product photo alone, or a picture being made again) says a new one is coming; it is never called a first draft */
     const lab = d.remaking || d.photoOnly ? `<span class="fd-lab is-wait">${ic('refresh', 's12')}New picture coming</span>` : `<span class="fd-lab">${ic(DRAFT_IC[d.as] || 'sparkles', 's12')}First draft</span>`, port = d.ratio !== '1:1';
     const fb = [d.fallback, ...(c.images || [])].filter((x) => x && !(d.images || []).includes(x)); /* the real product photo, if the draft's picture can't load */
-    const tall = d.ratio === '9:16' ? ' r916' : ''; /* the box takes the draft's own shape (4:5 unless it says otherwise), so a 9:16 clip is not cropped to a square */
-    if (d.video) return `<div class="media fd${port ? ' portrait' : ''}${tall}"><video class="fd-v" src="${esc(d.video)}"${d.poster ? ` poster="${esc(d.poster)}"` : ''}${fb.length ? ` data-fb="${esc(fb.join('|'))}"` : ''} playsinline muted loop preload="none" aria-label="${esc(d.title || 'First draft video')}"></video>${lab}</div>${draftCap(d)}`;
-    return mediaSlot(d.images.map(esc), { alt: d.headline || d.title || 'First draft', portrait: port, extra: lab, fallback: fb }).replace('class="media', `class="media fd${tall}`) + draftCap(d); };
+    /* a reel (9:16) fills the card's width in a 4:5 frame: the whole reel centred over a blurred copy of itself, never a narrow
+       box with an empty side (17 Oct); every other draft keeps its own shape */
+    const tall = d.ratio === '9:16' ? ' r916' : '', bgUrl = tall ? d.poster || d.render || d.images?.[0] || '' : '', bgSt = bgUrl ? ` style="--fd-bg:url(&quot;${esc(bgUrl)}&quot;)"` : '';
+    if (d.video) return `<div class="media fd${port ? ' portrait' : ''}${tall}"${bgSt}><video class="fd-v" src="${esc(d.video)}"${d.poster ? ` poster="${esc(d.poster)}"` : ''}${fb.length ? ` data-fb="${esc(fb.join('|'))}"` : ''} playsinline muted loop preload="none" aria-label="${esc(d.title || 'First draft video')}"></video>${lab}</div>${draftCap(d)}`;
+    return mediaSlot(d.images.map(esc), { alt: d.headline || d.title || 'First draft', portrait: port, extra: lab, fallback: fb }).replace('<div class="media', `<div${bgSt} class="media fd${tall}`) + draftCap(d); };
   const postCard = (p, i) => {
     const c = cardOf(p);
     const isNew = PINNED.has(p.id);
