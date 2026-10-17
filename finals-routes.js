@@ -108,8 +108,10 @@ export function createStudioFinals({ on, C, ensurePkg, sync, version, pubChange,
      own media and words (its first slide for a carousel), and lands back in the draft the stage shows */
   const remade = (ch) => (ch.pkg?.draft?.remade ? ch.pkg.draft : null);
   /* the final's file onto the package: into a remade draft (the stage shows it), else the version's own photo or clip */
-  const land = (ch, isVid, file) => { const d = remade(ch);
-    ch.pkg = d ? { ...ch.pkg, draft: { ...d, ...(isVid ? { video: file, poster: d.poster || d.images?.[0] || null } : { images: [file, ...(d.images || []).slice(1)] }), pending: false } } : { ...ch.pkg, ...(isVid ? { video: file } : { image: file }) }; };
+  /* words: the final has its words set in the picture (Sloosh or Gemini drew them), so the studio lays no overlay on it and the brief
+     never asks for them to be set again (pkg.wordsIn names that file; a new photo shows the overlay again) */
+  const land = (ch, isVid, file, words = false) => { const d = remade(ch);
+    ch.pkg = d ? { ...ch.pkg, draft: { ...d, ...(isVid ? { video: file, poster: d.poster || d.images?.[0] || null } : { images: [file, ...(d.images || []).slice(1)] }), pending: false } } : { ...ch.pkg, ...(isVid ? { video: file } : { image: file, wordsIn: words ? file : null }) }; };
   const baseOf = (t, ch) => { const c = cardOf(t, ch) || {}, p = ch.pkg || {}, d = remade(ch); const fin = headFinal(ch);
     if (d) { const vid = d.as === 'video', s0 = (d.slides || [])[0] || {};
       return { kind: vid ? 'video' : 'image', title: d.title || ch.after?.title || c.title || '', visual: [d.imageBrief || s0.visual || (d.script || [])[0]?.shot || p.imageBrief, p.knobs?.scene ? `Scene: ${p.knobs.scene}.` : ''].filter(Boolean).join(' '), scene: sceneOf(c), text: d.overlay || s0.text || (d.script || [])[0]?.line || p.headline || '', copy: p.primaryText || p.copy || '', ratio: d.ratio || (vid ? '9:16' : RATIO[p.format] || '4:5'), motion: d.motion || undefined, script: (d.script || [])[0]?.line || '', beats: vid ? (d.script || []).map((x) => ({ shot: x.shot, line: x.line })) : [], fromFile: (vid ? d.video : null) || d.images?.[0] || p.image || null, revision: fin ? (fin.revision || 0) + 1 : 0, format: vid ? 'reel' : d.as === 'carousel' ? 'carousel ad' : c?.make?.format || p.format || '' }; }
@@ -143,7 +145,7 @@ export function createStudioFinals({ on, C, ensurePkg, sync, version, pubChange,
   function landIn(t, ch, rec, { label = null, model = null, space = null, fallbackWhy = null, by = null, vid = null } = {}) {
     if (rec.state === 'checkpoint') { ch.finalCheckpoint = { runKey: rec.runKey, checkpoint: rec.checkpoint || null, at: now() }; ch.imageError = 'The Sloosh Space paused for a check. Open Make the final to carry on or stop.'; return; }
     if (rec.state !== 'done') { ch.imageError = String(rec.error || 'The final didn’t come through.').slice(0, 200); return; }
-    const isVid = vid ?? (rec.kind || 'image') === 'video', sp = space || rec.space || null; land(ch, isVid, rec.file);
+    const isVid = vid ?? (rec.kind || 'image') === 'video', sp = space || rec.space || null; land(ch, isVid, rec.file, !!rec.words);
     const v = version(t, ch, rec.provider === 'gemini' ? 'gemini' : 'sloosh', `Final: ${rec.dummy ? 'simulated' : rec.provider === 'gemini' ? `made with Gemini (Sloosh not ready: ${fallbackWhy || 'no credits yet'})` : `${rec.charged ?? rec.credits} credits on ${sp ? sp.name || 'a Sloosh Space' : label || model || rec.model}`}`, rec.dummy ? 'Final (Dummy)' : rec.provider === 'gemini' ? 'Final (Gemini)' : 'Final');
     v.final = { credits: rec.charged ?? rec.credits, model: model || rec.model || null, label: label || null, space: sp, dummy: !!rec.dummy, fallback: !!rec.fallback, provider: rec.provider || 'sloosh', link: rec.link || null, assetId: rec.assetId || null, assetKind: rec.assetKind || null, revision: rec.revision || 0, runKey: rec.runKey, by: by || rec.by || null };
     ch.lastFinal = { versionId: v.id, ...v.final };

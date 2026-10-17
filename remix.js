@@ -844,7 +844,7 @@ export function createRemix(o) {
     if (p.video && p.video !== d?.video) out.push({ kind: 'video', label: `Video${isVideoPost(ch) ? ', 9:16' : ''}`, url: p.video, poster: p.poster || p.image || null });
     if (p.image && !(d && (d.images || []).includes(p.image))) out.push({ kind: 'image', label: `${d ? 'Photo the version was made from' : 'Creative'}, ${p.format || '4:5'}${p.grade && p.grade !== 'Original' ? `, ${p.grade} grade` : ''}`, url: p.image });
     else if (!p.image && !d && (ch.family === 'meta_ad' || ch.family === 'social')) out.push({ kind: 'todo', label: `Creative still to be made (${p.format || '4:5'})`, text: p.imageBrief || 'See the image brief' });
-    if (ch.family === 'meta_ad' && p.overlay) out.push({ kind: 'copy', label: 'Text to set on the creative', text: p.overlay });
+    if (ch.family === 'meta_ad' && p.overlay) out.push({ kind: 'copy', label: p.wordsIn && p.wordsIn === p.image ? 'Words already set in the creative' : 'Text to set on the creative', text: p.overlay });
     if (LANE_PHOTO[c.lane]) out.push({ kind: 'image', label: 'Product photo (reference, keep the label exact)', url: LANE_PHOTO[c.lane] });
     (c.images || []).slice(0, 2).forEach((u, i) => out.push({ kind: 'image', label: isResearchImage(u) ? 'The rival ad this remakes (their look, not your product)' : i ? 'More from the card' : 'The card this came from', url: u }));
     const urls = [p.utm, p.pages, p.file].filter((x) => x && (String(x).includes(BH()) || /utm_/.test(x)));
@@ -899,6 +899,7 @@ export function createRemix(o) {
     for (const v of versionsOf(t, ch.id)) if (v.snapshot?.draft?.pending) v.snapshot = { ...v.snapshot, draft: off(v.snapshot.draft) };
     return n; };
   const C = (t, id) => { const ch = changes(t)[id]; if (!ch) return ch;
+    if (ch.pkg && ch.pkg.wordsIn === undefined && ch.lastFinal?.versionId && /^gen\/fin-/.test(ch.pkg.image || '') && ch.pkg.overlay) ch.pkg.wordsIn = ch.pkg.image; /* a final made before 18 Oct: its words are set in the picture */
     if (ch.imagePending && !IMG_JOBS.has(ch.id)) { ch.imagePending = false; ch.imageError = 'The photo stopped before it finished. Make it again.'; }
     if (ch.videoPending && !VID_JOBS.has(ch.id)) { ch.videoPending = null; ch.videoStep = null; ch.videoError = 'The video stopped before it finished. Make it again.'; }
     if (!REMAKE_JOBS.has(ch.id)) { const as = ch.remakePending?.as || ch.pkg?.draft?.as, was = !!ch.remakePending; ch.remakePending = null;

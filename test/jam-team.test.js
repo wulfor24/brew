@@ -119,3 +119,15 @@ test('Send brief first brings the brief up to a changed head, and the assets car
   await runIn(BRAND, () => R['POST /api/work/:wid/doc/ship']({ to: 'shopos', force: true }, t, { wid: 'wk_1' }));
   assert.equal(prompts.filter(([tag]) => tag === 'jam_doc').length, 1, 'the same head is never synced twice');
 });
+
+test('an image final with its words set in the picture is marked so nothing lays the same words over it; a new photo shows them again', async () => {
+  const finals = { quote: async () => ({ credits: 2.01, provider: 'sloosh', label: 'Nano Banana Pro', model: 'gemini-3-pro-image-preview' }), run: async () => ({ state: 'done', file: 'gen/fin-1.jpg', provider: 'sloosh', charged: 2.01, words: true, kind: 'image', runKey: 'rk1' }), status: async () => ({ ok: true }) };
+  const t = tenant(); t.changes.ch_w = change('ch_w', { pkg: { headline: 'Warm paws', primaryText: 'Cold hands?', overlay: 'Warm hands at work', image: 'gen/draft.png', knobs: {} } });
+  const { call } = studio({ finals, sloosh: { listSpaces: async () => [] }, brandOfT: () => BRAND, slugOfT: () => 'acme' });
+  await call('POST /api/changes/:chid/final/quote', { text: ['Warm hands at work'] }, t, { chid: 'ch_w' });
+  await call('POST /api/changes/:chid/final/run', {}, t, { chid: 'ch_w' }); await tick(); await tick();
+  const ch = t.changes.ch_w; assert.equal(ch.pkg.image, 'gen/fin-1.jpg'); assert.equal(ch.pkg.wordsIn, 'gen/fin-1.jpg');
+  /* a final saved before the mark heals from its file */
+  t.changes.ch_old = change('ch_old', { pkg: { overlay: 'Hi', image: 'gen/fin-2.jpg', knobs: {} }, lastFinal: { versionId: 'v2' } });
+  await call('GET /api/changes/:chid', {}, t, { chid: 'ch_old' }); assert.equal(t.changes.ch_old.pkg.wordsIn, 'gen/fin-2.jpg');
+});
