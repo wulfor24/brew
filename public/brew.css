@@ -2874,3 +2874,57 @@ html body.deck-on .topbar{border-bottom:0;box-shadow:none}
 .hc-fix .ic{grid-row:span 2}
 .hc-fix span{font-family:var(--font-mono);font-size:11.5px;letter-spacing:.01em}
 .hc-fix b{font-size:14px;line-height:19px;font-weight:500;color:var(--fg)}
+
+/* the proof on every card: the shield in the card's actions, and the sheet it opens (Why Brew suggested this, The proof) */
+.card .acts .pf-btn,.pf-btn{display:inline-flex;flex-direction:row;align-items:center;justify-content:center;gap:4px;width:auto;min-width:40px;padding:0 8px;white-space:nowrap}
+.pf-btn .pf-n{font-size:12px;font-weight:600;color:var(--fg-2);font-variant-numeric:tabular-nums}
+.pf-btn.is-thin svg{opacity:.55}
+.sheet.pf-sheet{width:min(560px,100%);max-height:calc(100vh - 32px);overflow:auto;gap:6px}
+.pf-sheet .sh-t{display:flex;align-items:center;gap:8px;font-size:16px}
+.pf-title{margin:0;font-size:15px;line-height:21px;font-weight:600;color:var(--fg)}
+.pf-sec{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.pf-sec h4{margin:0;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--fg-3);font-weight:600}
+.pf-because{margin:0;font-size:15px;line-height:22px;color:var(--fg)}
+.pf-reasons{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;font-size:14px;line-height:20px;color:var(--fg-2)}
+.pf-from{margin:0;font-size:13px;line-height:19px;color:var(--fg-3)}
+.pf-list,.pf-srcs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.pf-i{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-row,12px);background:var(--card)}
+.pf-k{font-size:11.5px;font-weight:600;color:var(--fg-3);text-transform:uppercase;letter-spacing:.03em}
+.pf-v{font-size:15px;line-height:21px;color:var(--fg);font-weight:600;overflow-wrap:anywhere}
+.pf-i.is-quote .pf-v,.pf-i.is-ad .pf-v{font-weight:500;font-style:italic}
+.pf-l{font-size:13.5px;line-height:19px;color:var(--fg-2);overflow-wrap:anywhere}
+.pf-src{font-size:12.5px;line-height:18px;color:var(--fg-3);overflow-wrap:anywhere}
+.pf-src a,.pf-srcs a{color:var(--fg);text-decoration:underline;text-underline-offset:2px;display:inline-flex;align-items:center;gap:3px}
+.pf-move{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--line);border-radius:var(--r-row,12px);background:var(--surface)}
+.pf-mh{display:flex;flex-direction:column;gap:2px}
+.pf-mh b{font-size:14.5px;line-height:20px}
+.pf-srcs li{font-size:13.5px;line-height:19px;color:var(--fg-2);overflow-wrap:anywhere}
+.pf-srcs small{color:var(--fg-3)}
+.pf-move .btn{align-self:flex-start}
+.pf-thin{margin:0;display:flex;gap:6px;align-items:flex-start;font-size:13.5px;line-height:19px;color:var(--fg-2);padding:10px 12px;border-radius:var(--r-row,12px);background:var(--warn-bg)}
+.pf-ev{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;margin:6px 0 8px;font-size:13.5px;line-height:19px}
+.pf-ev dt{color:var(--fg-3);font-size:12px;padding-top:1px}
+.pf-ev dd{margin:0;overflow-wrap:anywhere}
+.pf-ev a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+.pf-ev small{color:var(--fg-3)}
+/* the format chip stays on one line (truncated, the whole line on hover) and the source line gets its own row under it
+   (testing notes 18 Oct: "Page section" wrapped into "Move 04 · Worked examples" on the Signals and AI answers cards) */
+.card .body .mk-chip{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;white-space:nowrap;overflow:hidden;min-width:0;max-width:100%;margin:12px 0 0;padding:6px 10px;border-radius:8px;background:var(--surface-2);line-height:20px}
+.card .body .mk-chip svg{flex:none;margin:0;vertical-align:0}
+.card .body .mk-chip b{flex:none}
+.card .body .mk-chip span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.card .body .mk-chip span::before{content:'·';margin:0 6px 0 0}
+.card .body .src-line{display:flex;clear:both;margin-top:10px;min-width:0;max-width:100%;white-space:nowrap;overflow:hidden}
+.card .body .src-line svg,.card .body .src-line img{flex:none}
+.card .body .src-line .src-tx{min-width:0;overflow:hidden;text-overflow:ellipsis}
+/* WhatsApp checked before sending for approval (jam-room.js move) */
+.wa-state{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:var(--surface-2);font-size:13.5px;color:var(--fg)}
+.wa-dot{width:8px;height:8px;border-radius:50%;background:var(--fg-3);flex:none}
+.wa-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+/* a marketplace listing's photo set, made from the product photo (remix.js genListingPhotos) */
+.al-photos{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.al-photos small{color:var(--fg-3);font-size:12px}
+.al-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
+.al-tile{margin:0;display:flex;flex-direction:column;gap:4px;min-width:0}
+.al-tile img,.al-tile .sk{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;background:#fff;border:1px solid var(--line);display:block}
+.al-tile figcaption{font-size:12px;line-height:16px;color:var(--fg-2);overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}

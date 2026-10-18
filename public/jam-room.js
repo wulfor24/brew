@@ -332,7 +332,7 @@
     const r = await A.tapi('POST', `/api/work/${w.id}/doc/ship`, { to, force: !!force, base: location.origin, decided: A.S.decided?.[DPx()?.id] || null });
     if (r.needs) { JM.confirm = r.needs; return paint(); }
     JM.confirm = null; JM.pick = false; if (r.error) return toast(esc(r.error));
-    if (to === 'shopos' && r.emailed && r.status) { JM.tab = 'chat'; take(r.work); A.counts(); return toast(`${ic('send', 's16')}Brief ${esc(r.work.ticket || '')} sent to the ShopOS team. Its status shows in the top bar.`); }
+    if (to === 'shopos' && r.emailed && r.status) { JM.tab = 'chat'; take(r.work); A.counts(); return toast(`${ic('check', 's16')}Sent to the ShopOS team (${esc(r.work.ticket || 'brief')}). Their reply shows here when they approve.`); }
     const text = r.share?.text || r.work?.jamBrief?.md || '';
     let copied = false; try { await navigator.clipboard.writeText(text); copied = true; } catch (e) {}
     JM.tab = 'chat'; take(r.work); A.counts();
@@ -343,15 +343,25 @@
       <div class="jm-bv-body">${ho ? `<div class="jm-handoff">${ic('link', 's18')}<span><b>The full brief, read-only</b><small>Card, options, moves, package and assets, the jam chat and the studio chat</small></span><a class="btn btn-primary sm" href="${esc(ho)}" target="_blank" rel="noopener">Open</a><button class="btn btn-ghost sm" data-jm-copyho="${esc(ho)}">Copy link</button></div>` : ''}
       <article class="jm-doc is-read">${toHtml(d.md)}</article>
       ${d.missing?.length ? `<p class="jm-missing">${ic('clock', 's14')}Sent with these still open: ${esc(d.missing.join(', ').toLowerCase())}</p>` : ''}</div></div>`); };
-  const move = async (to) => {
+  const move = async (to, opts = {}) => {
     const w = await ensureWork(); if (!w) return; JM.menu = false;
     if (to === 'slack' && !A.conn('slack')) return A.openConnect('slack', { then: () => move('slack'), why: 'Post the brief to a Slack channel and jam there.' });
+    /* WhatsApp is checked first (testing notes 18 Oct: the approval never reached the ShopOS team, and nothing checked the
+       connection). Brew has no WhatsApp connection (sending was cut), so it says so and offers the route that does reach them:
+       the brief, emailed to the ShopOS team and tracked here, their reply landing in this jam. Opening WhatsApp yourself stays,
+       named for what it is: you send it, and Brew doesn't see the reply */
+    if (to === 'whatsapp' && !A.conn('whatsapp') && !opts.self) return A.modal(`<div class="sheet pick-sheet wa-need"><header class="sh-h"><b class="sh-t">${ic('chat', 's16')}Send it for approval</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>
+      <div class="wa-state"><span class="wa-dot"></span>WhatsApp isn’t connected</div>
+      <p class="sh-p">Brew can’t send this to the ShopOS team on WhatsApp, so it wouldn’t reach them. Send it to them from Brew instead: they get the whole brief by email, and their reply shows here in the jam.</p>
+      <div class="wa-acts"><button class="btn btn-primary" data-wa-shopos>${ic('send', 's16')}Send to the ShopOS team</button><button class="btn btn-ghost" data-wa-self>Open WhatsApp and send it myself</button></div></div>`, (m) => {
+        $('[data-wa-shopos]', m).onclick = () => { A.closeModal?.(); ship('shopos'); };
+        $('[data-wa-self]', m).onclick = () => { A.closeModal?.(); move('whatsapp', { self: true }); }; });
     const win = to === 'whatsapp' ? window.open('', '_blank') : null;
     const r = await A.tapi('POST', `/api/work/${w.id}/jb/move`, { to, channel: A.S.slack?.channel, base: location.origin, decided: A.S.decided?.[DPx()?.id] || null }); if (r.error) { win?.close(); return toast(esc(r.error)); }
     if (r.posted) { take(r.work); return toast(`${ic('check', 's16')}Posted to ${esc(r.posted.channel)} in Slack with an Approve button. Replies in the thread land here.`); }
     try { await navigator.clipboard?.writeText(r.text); } catch (e) {}
     if (win) win.location.href = 'https://wa.me/?text=' + encodeURIComponent(r.text);
-    toast(to === 'whatsapp' ? `${ic('chat', 's16')}Opened WhatsApp with the full context: card, options, brief, package, assets and both chats, plus a link to all of it. It’s copied too.` : `${ic('copy', 's16')}Copied the full context with a link to all of it. Brew doesn’t post to Slack: paste it in ${esc(A.S.slack?.channel || 'your channel')}.`);
+    toast(to === 'whatsapp' ? `${ic('chat', 's16')}WhatsApp is open with the full brief and a link to it (copied too). You send it; Brew won’t see their reply, so paste it back here.` : `${ic('copy', 's16')}Copied the full context with a link to all of it. Brew doesn’t post to Slack: paste it in ${esc(A.S.slack?.channel || 'your channel')}.`);
     take(r.work);
   };
 

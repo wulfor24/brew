@@ -47,6 +47,8 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 const GEN_CTX = new AsyncLocalStorage();
 const demoReq = () => GEN_CTX.getStore() === false;
 import { demoSid, runDemo, sk } from './demo-mode.js'; // Demo Mode: per-session workspaces
+import { createEvidence, EVIDENCE_ASK, proofAnswer } from './evidence.js'; // the proof sheet on every card: why it was suggested, and the hard evidence
+import { createPlain } from './plain.js'; // plain words on every card, rewritten once per card and kept per brand
 // cut on a word boundary with an ellipsis, never mid-word or with a dangling space
 const cutWords = (x, n) => { x = String(x).trim(); return x.length > n ? x.slice(0, n - 1).replace(/\s+\S*$/, '').replace(/[\s,;:·-]+$/, '') + '…' : x; };
 
@@ -586,7 +588,10 @@ export function createFeedService(o) {
   const measureOf = (t, c) => { const m = { ...(MEASURE[c?.sector] || MEASURE.creatives), ...(c?.measure || {}) };
     // AI answers: today's number is the latest real run, not a sample
     const vr = live?.get()?.visibility?.runs?.[0]; if (c?.sector === 'visibility' && vr && !c?.measure) Object.assign(m, { unit: ` of ${vr.total}`, baseline: vr.named, target: Math.min(vr.total, vr.named + 4), window: 28, attribution: `The same questions, asked the same way every week from ${CTRY()}. A change in who gets named is the result.` }); m.connected = !m.from || connOn(t || {}, m.from); /* a team member's own account: the result is read against its number today */ if (t?.member && m.baseline == null) { const b = baselineOf(c?.sector, t.liveLedger); if (b) Object.assign(m, b); } m.fromName = m.from ? (SEED.connectors[m.from]?.name || m.from) : null; return m; };
-  const pub = (c, t) => { const { history, ...rest } = c; if (!rest.note && B()?.notes?.[c.id]) rest.note = B().notes[c.id]; /* margin notes written after the card landed (notes.js) */ if (LEAK.test(`${rest.title} ${rest.sub}`)) { rest.title = scrubLeak(rest.title); rest.sub = scrubLeak(rest.sub); } const dv = draftView(draftFor(c, B()?.firstDrafts), c); if (dv) rest.draft = dv; /* the first draft Brew made for this card (drafts-bg.js), shown on the feed card */ const pl = planOfCard(c); if (pl) rest.plan = pl; /* its plan: what the jam opens on */ if (toldOf(c) && toldSeen(t)) rest.told = true; /* the card itself rests on what the team told Brew: the feed labels it (team only, like the told list) */ return { ...rest, history: (history || []).slice(-6), measure: measureOf(t, c), decided: t?.decided?.[c.id] || null }; };
+  /* every card a person reads: plain words (plain.js) and how much proof backs it (evidence.js), the same way for every brand */
+  const EV = createEvidence({ factsOf: () => B()?.facts || {}, movesOf: () => B()?.moveDocs || {}, numsOf: (src) => MOVES?.numsOf(src) || [], adOf: (id) => resAll(research?.get()?.ads).find((a) => a.id === id) || null, country: () => CTRY(), brandHost: () => B()?.host || '' });
+  const PLAIN = o.plain || createPlain({ ai: claudeTool, store: o.globalPacks || packs, spend: (k) => spend(k), isMock, log });
+  const pub = (c0, t) => { const c = process.env.PLAIN_OFF === '1' ? c0 : PLAIN.apply(t ? slugOfT(t) : B()?.slug || DEFAULT_BRAND, c0); const { history, ...rest } = c; try { rest.proof = EV.countOf(c0, { liveLedger: t?.member ? t.liveLedger : null }); } catch (e) { log.warn('[proof]', c0.id, e.message); } if (!rest.note && B()?.notes?.[c.id]) rest.note = B().notes[c.id]; /* margin notes written after the card landed (notes.js) */ if (LEAK.test(`${rest.title} ${rest.sub}`)) { rest.title = scrubLeak(rest.title); rest.sub = scrubLeak(rest.sub); } const dv = draftView(draftFor(c, B()?.firstDrafts), c); if (dv) rest.draft = dv; /* the first draft Brew made for this card (drafts-bg.js), shown on the feed card */ const pl = planOfCard(c); if (pl) rest.plan = pl; /* its plan: what the jam opens on */ if (toldOf(c) && toldSeen(t)) rest.told = true; /* the card itself rests on what the team told Brew: the feed labels it (team only, like the told list) */ return { ...rest, history: (history || []).slice(-6), measure: measureOf(t, c), decided: t?.decided?.[c.id] || null }; };
   /* the cards the page needs, not every card the workspace ever held: the feed's order, pinned ones, cards with a jam, saved and
      hearted ones (the Library and the jams open them by id). With no order yet, every card, as before */
   const lastOrder = new WeakMap();
@@ -1322,6 +1327,7 @@ export function createFeedService(o) {
   };
   const answerOnly = async (t, w, body) => {
     /* grounded and checked (jam-answer.js): numbers and performance claims only where the card and the facts hold them */
+    const c0 = t.cards.get(w.cardId); if (c0 && EVIDENCE_ASK.test(body)) { const pa = proofAnswer(EV.evidenceOf(fillCard(c0, t), { liveLedger: t.member ? t.liveLedger : null, plain: PLAIN.get(slugOfT(t), c0) })); if (pa) return pa.text; } /* "what's the evidence?": the card's own proof */
     if (!isMock() && spend('text')) { try { const acct = realRows(t.liveLedger).filter((e) => e.label && e.v != null).slice(0, 24); // DUMMY: simulated accounts are never quoted
       const j = await answerGrounded({ ai: (pr, sc, mx, tag) => claudeTool(pr, sc, mx, tag), question: body, who: AGENT[w.agent] || 'Brew',
         evidence: `${cardBrief({ ...(t.cards.get(w.cardId) || {}), ...curV(w), agent: w.agent }, seatLine(t.viewer))}${acct.length ? `\n\nConnected accounts:\n${acct.map((e) => `- ${e.label}: ${e.v}`).join('\n')}` : '\n\nConnected accounts: none with results for this yet.'}` });
@@ -1471,7 +1477,9 @@ export function createFeedService(o) {
     return order.filter((id) => { const c = t.cards.get(id); return c && !c.parentCardId && c.origin !== 'user' && c.state !== 'done' && c.createdAt > v.prev && !(t.shown[id] || []).some((x) => x < began); }); };
   on('GET', '/api/tenants/:id/feed', async (b, t) => { repairHeartKids(t); syncBatches(t); if (B().kind === 'generated') streamSync(t, SEED.posts);
     if (t.visit && t.feedVisit !== t.visit.at) { t.feedVisit = t.visit.at; if (t.onboarding.readyAt) await runFree(t, 'visit', 6000); }
-    const f = feed(t); return { ...f, newIds: newIdsOf(t, f.order), saved: [...savedOf(t)], cards: allCards(t), withTeam: withTeam(t.work.filter((w) => shown0(w) && guestSees(t)(w))), batches: t.batches, health: t.health, healthLive: t.member ? healthReadings(t.liveLedger) : {}, decided: t.decided || {}, clock: now(t) }; });
+    await PLAIN.load(slugOfT(t)).catch(() => {});
+    const f = feed(t); if (process.env.PLAIN_OFF !== '1' && !demoReq()) PLAIN.queue(slugOfT(t), f.order.map((id) => t.cards.get(id)).filter(Boolean), BN()); /* cards still in their first words get plain ones in the background */
+    return { ...f, newIds: newIdsOf(t, f.order), saved: [...savedOf(t)], cards: allCards(t), withTeam: withTeam(t.work.filter((w) => shown0(w) && guestSees(t)(w))), batches: t.batches, health: t.health, healthLive: t.member ? healthReadings(t.liveLedger) : {}, decided: t.decided || {}, clock: now(t) }; });
   on('GET', '/api/tenants/:id/deck', async (b, t) => {
     const { top, ranked, scores } = rank(t); const list = withChildren(t, [...top, ...ranked]);
     const cols = {}; ['signals', 'catalog', 'creatives', 'ads', 'storefront', 'visibility'].forEach((k) => (cols[k] = list.filter((c) => c.sector === k).map((c) => c.id)));
@@ -1911,12 +1919,17 @@ export function createFeedService(o) {
     const seen = new Set(), per = {}; return out.filter((x) => { const key = x.text.toLowerCase(); if (seen.has(key)) return false; seen.add(key); per[x.k] = (per[x.k] || 0) + 1; return per[x.k] <= 2; });
   };
   on('GET', '/api/cards/:cid/learned', async (b, t, p) => { const raw = t.cards.get(p.cid); return raw ? { learned: learnedFor(t, fillCard(raw, t)) } : { learned: [] }; });
+  /* the proof sheet (the shield on every card): why Brew suggested it, and the evidence it rests on, each line with its source */
+  on('GET', '/api/cards/:cid/evidence', async (b, t, p) => { const raw = t.cards.get(p.cid); if (!raw || !seatOk(t, raw)) return { error: 'not found' };
+    const slug = slugOfT(t); await PLAIN.load(slug).catch(() => {}); const c = fillCard(raw, t), pl = PLAIN.get(slug, raw), shown = PLAIN.apply(slug, raw);
+    const ev = EV.evidenceOf(c, { liveLedger: t.member ? t.liveLedger : null, plain: pl });
+    return { evidence: { ...ev, card: { id: raw.id, title: shown.title, sub: shown.sub, orig: shown.orig || null }, brand: BN() } }; });
   on('GET', '/api/cards/:cid/page', async (b, t, p) => { const raw = t.cards.get(p.cid); if (!raw) return { error: 'not found' }; const c = fillCard(raw, t); return { page: await pageOf(t, c) }; });
   // a card's source moves: what each one says, and the passages that speak to this card
   on('GET', '/api/cards/:cid/moves', async (b, t, p) => { const c = t.cards.get(p.cid); if (!c) return { error: 'not found' }; return { moves: MOVES.numsOf(c.src).map((n) => ({ ...MOVES.summary(n), passages: MOVES.passages({ ...c, src: `Move ${n}` }, 4) })) }; });
   /* MEDIA_FAKE=1 on a local server: the jam's short video runs end to end for free (drafts.js fakeMakers) */
   const FAKE = process.env.MEDIA_FAKE === '1' && !process.env.K_SERVICE ? fakeMakers() : null;
-  RMX = createRemix({ rivalAdOf: rivalAd, rivalStoreOf, rivalSummary, references: (t) => REFS.list(t.brandId || DEFAULT_BRAND), finals: o.finals || null, sloosh: o.sloosh || null, creditsLeft: (slug) => o.budgetLeft?.(slug) || null, brandOfT, slugOfT, meOf, onMedia: (t, ch, m) => studioMedia(t, ch, m), onVersion: (t, ch, v, why) => studioVersion(t, ch, v, why), onShopos: (t, w, x) => shoposMail(t, w, x), askPerson: async (t, w, q, email) => { const [x] = await tagsOf(t, w, [email]); if (!x) return { error: 'They’re not on the team yet. Invite them first.' }; const me0 = meOf(t);
+  RMX = createRemix({ evidenceOf: (t, c) => (c ? EV.evidenceOf(fillCard(c, t), { liveLedger: t.member ? t.liveLedger : null, plain: PLAIN.get(slugOfT(t), c) }) : null), rivalAdOf: rivalAd, rivalStoreOf, rivalSummary, references: (t) => REFS.list(t.brandId || DEFAULT_BRAND), finals: o.finals || null, sloosh: o.sloosh || null, creditsLeft: (slug) => o.budgetLeft?.(slug) || null, brandOfT, slugOfT, meOf, onMedia: (t, ch, m) => studioMedia(t, ch, m), onVersion: (t, ch, v, why) => studioVersion(t, ch, v, why), onShopos: (t, w, x) => shoposMail(t, w, x), askPerson: async (t, w, q, email) => { const [x] = await tagsOf(t, w, [email]); if (!x) return { error: 'They’re not on the team yet. Invite them first.' }; const me0 = meOf(t);
       JAMS.join(w, x, 'asked'); say(t, w, { from: 'system', body: `${nameOf(me0)} asked ${nameOf(x)}: ${q.q}` }); mailEv(t, w, { kind: 'asked', to: [x.email], by: me0, text: q.q, id: `q_${w.id}_${q.id}` }); return x; }, ...(FAKE ? { makers: FAKE.makers, videoImage: FAKE.image, mediaFake: true } : {}), planOf: (t, c) => (c ? planOfCard(c) : null), save: (t) => store?.save(t), catalogOf: (t) => (t ? brandOfT(t)?.catalog : null), photoAsync: o.photoAsync, photoFile, handoffPath, MOVES, seedJam: (t, w) => JB?.seed(t, w), claudeTool, geminiImage, PUB, LANE_PHOTO, FACTS, unbackedNums: (text) => unbacked({ text: String(text).replace(/\b(?:Rs\.?|INR)\s?(?=\d)/gi, '₹') }, FACT_OK).map((x) => x.n), SEED, AGENT, claudeJSON, cardBrief, seatLine, qaCheck, mechanicalFix, clean, BANNED, isMock, spend, uid, now, clone, inr, on, newWork, addVersion, say, move, notify, later, setState, weekKey, curV, measureOf, log  });
   // tenants survive restarts (store.js); a tenant not in memory is read back from disk or GCS before we give up on it
   const getTenant = async (id) => {

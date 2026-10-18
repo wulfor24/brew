@@ -63,7 +63,7 @@ test('jam brief: a question is answered without rewriting the brief (no new rev,
 test('the studio: a question never makes a version, a package that came back unchanged is no version, "keep the photo" never starts one', () => {
   const r = src('remix.js');
   assert.doesNotMatch(r, /PHOTO_ASK/, 'the old regex that matched "photo, change" is gone');
-  assert.match(r, /if \(!knob && !quiet && isQuestion\(message\)\) \{ think\(ch, [^)]*\); try \{ return await answerIn\(/, 'questions are answered before any rewrite');
+  assert.match(r, /if \(!knob && !quiet && \(isQuestion\(message\) \|\| EVIDENCE_ASK\.test\(message\)\)\) \{ think\(ch, [^)]*\); try \{ return await answerIn\(/, 'questions are answered before any rewrite');
   assert.match(r, /photoAsk\(msg\) === 'change' && !isQuestion\(msg\)/, 'a paid photo only for an ask to change it');
   assert.match(r, /if \(!keepPhoto && \(out\.newImage/, 'the model can’t start a photo the person said to keep');
   assert.match(r, /const same = JSON\.stringify\(snapOf\(ch\)\) === snapIn;\s*\n\s*if \(!same\) \{ const v = version\(/, 'no identical version');

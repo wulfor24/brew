@@ -91,6 +91,7 @@
     external: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
     paste: '<rect width="8" height="4" x="8" y="2" rx="1"/><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2"/>',
     search: '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/>',
+    shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
     chev: '<path d="m6 9 6 6 6-6"/>',
     heart: '<path class="ic-heart" d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
     shuffle: '<path d="m18 14 4 4-4 4"/><path d="m18 2 4 4-4 4"/><path d="M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-7.6a4 4 0 0 1 3.3-1.7H22"/><path d="M2 6h1.972a4 4 0 0 1 3.6 2.2"/><path d="M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45"/>',
@@ -786,9 +787,39 @@
   const actsHtml = (p) => `<div class="acts">
       <button class="icon-btn" data-act="heart" aria-pressed="${!!S.hearts[p.id]}" aria-label="More like this">${ic('heart')}</button>
       <button class="icon-btn" data-act="jam" aria-label="Jam with the team">${ic('hand')}</button>
+      ${proofBtn(p)}
       ${V2 ? `<button class="icon-btn v2-act" data-act="take" aria-label="Another take" title="Another take">${ic('refresh')}</button><button class="icon-btn v2-act" data-act="make" aria-label="Make it yours" title="Make it yours">${ic('sparkles')}</button>` : ''}
       <span class="sp"></span>
       <button class="icon-btn" data-act="save" aria-pressed="${S.saved.includes(p.id)}" aria-label="Save for later">${ic('bookmark')}</button></div>`;
+  /* the proof on every card (evidence.js via /api/cards/:cid/evidence): why Brew suggested it, and the hard evidence behind it */
+  const proofBtn = (p) => { const n = +p.proof?.n || 0; return `<button class="icon-btn pf-btn${p.proof?.strength === 'thin' ? ' is-thin' : ''}" data-act="proof" aria-label="Why this card, and the proof" title="Why Brew suggested this, and the proof">${ic('shield')}${n ? `<span class="pf-n">${n}</span>` : ''}</button>`; };
+  const pfDay = (s) => { const d = s ? new Date(s) : null; return d && !isNaN(d) ? d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : ''; };
+  const PF_KIND = { read: 'Read on your site', math: 'Worked out by Brew', web: 'From the web', fact: 'From your store', count: 'Counted by Brew', account: 'Your account', ad: 'Rival’s ad', quote: 'What people say', idea: 'Evidence', trend: 'Google Trends', row: 'Counted by Brew', link: 'Source' };
+  const pfSrc = (x) => { const bits = [x.src, pfDay(x.at)].filter(Boolean).join(' · ');
+    return `<small class="pf-src">${esc(bits)}${x.url ? ` <a href="${esc(x.url)}" target="_blank" rel="noopener">Open ${ic('external', 's12')}</a>` : ''}</small>`; };
+  const proofHtml = (e) => {
+    const w = e.why || {}, items = e.items || [], moves = e.moves || [];
+    const why = `<section class="pf-sec"><h4>Why Brew suggested this</h4>${w.because ? `<p class="pf-because">${esc(w.because)}</p>` : ''}${(w.reasons || []).length ? `<ul class="pf-reasons">${w.reasons.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}${w.from ? `<p class="pf-from">${esc(w.from)}</p>` : ''}</section>`;
+    const rows = items.map((x) => `<li class="pf-i is-${esc(x.kind)}"><span class="pf-k">${esc(PF_KIND[x.kind] || 'Evidence')}</span>${x.value ? `<b class="pf-v">${esc(x.value)}</b>` : ''}<span class="pf-l">${esc(x.label)}${x.extra ? ` · ${esc(x.extra)}` : ''}${x.note ? ` · <em>${esc(x.note)}</em>` : ''}</span>${pfSrc(x)}</li>`).join('');
+    const mv = moves.map((m) => `<div class="pf-move"><div class="pf-mh"><span class="pf-k">Brew’s plan · Move ${String(m.n).padStart(2, '0')}</span><b>${esc(m.title)}</b>${m.stat ? `<span class="pf-l">Key number: ${esc(m.stat)}</span>` : ''}</div>
+      ${m.sources.length ? `<ul class="pf-srcs">${m.sources.map((s) => `<li>${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)} ${ic('external', 's12')}</a>` : esc(s.label)}${s.at ? `<small> · read ${esc(pfDay(s.at))}</small>` : ''}</li>`).join('')}</ul>` : ''}
+      <button class="btn btn-ghost sm" data-pf-move="${m.n}">${ic('doc', 's14')}Read the full plan${m.more ? ` (${m.more} more sources)` : ''}</button></div>`).join('');
+    const none = !items.length && !moves.length ? `<p class="pf-thin">${ic('info', 's14')}Brew has no source line for this card yet. Treat it as an idea to check, not a fact.</p>` : '';
+    const gap = (e.unbacked || []).length ? `<p class="pf-thin">${ic('info', 's14')}Not matched to a source yet: ${esc(e.unbacked.slice(0, 4).join(', '))}. Check ${e.unbacked.length > 1 ? 'these' : 'this'} before you use ${e.unbacked.length > 1 ? 'them' : 'it'}.</p>` : '';
+    return `${why}<section class="pf-sec"><h4>The proof</h4>${rows ? `<ul class="pf-list">${rows}</ul>` : ''}${mv}${none}${gap}</section>`;
+  };
+  /* "what's the evidence behind this?" in the jam: the card's proof as Saw / Plan / Data / So, and a way to the whole sheet */
+  const proofMsg = (m) => { const x = m.proof || {}, a = (u, l) => (u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(l)}</a>` : esc(l));
+    const rows = [...(x.saw || []).map((s) => ['Saw', `<b>${esc(s.v)}</b> · ${esc(s.l)}${s.src ? ` <small>(${s.url ? a(s.url, s.src) : esc(s.src)})</small>` : ''}`]), ...(x.plan ? [['Plan', esc(x.plan)]] : []), ...((x.data || []).length ? [['Data', x.data.map((d) => a(d.url, d.l)).join(' · ')]] : []), ...(x.so ? [['So', esc(x.so)]] : []), ...((x.unbacked || []).length ? [['Check', `Not matched to a source yet: ${esc(x.unbacked.join(', '))}`]] : [])];
+    return `<p>Here’s what this card is based on.</p>${rows.length ? `<dl class="pf-ev">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>` : '<p>Brew has no source line for this card yet, so treat it as an idea to check, not a fact.</p>'}${m.cardId ? `<button type="button" class="chip j1-chip" data-pf-card="${esc(m.cardId)}">${ic('shield', 's14')}See all the proof</button>` : ''}`; };
+  document.addEventListener('click', (e) => { const b = e.target.closest('[data-pf-card]'); if (!b) return; const p = byId(b.dataset.pfCard); if (p) openProof(p); });
+  const openProof = async (p) => {
+    modal(`<div class="sheet pick-sheet pf-sheet" role="dialog" aria-label="Why this card, and the proof"><header class="sh-h"><b class="sh-t">${ic('shield', 's16')}Why this, and the proof</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>
+      <p class="pf-title">${esc(cardOf(p).title || '')}</p><div class="pf-b"><div class="sk" style="height:64px"></div><div class="sk" style="height:140px;margin-top:12px"></div></div></div>`, (w) => {
+      w.addEventListener('click', (ev) => { const m = ev.target.closest('[data-pf-move]'); if (!m) return; closeModal(); openMove(+m.dataset.pfMove); }); });
+    const r = await tapi('GET', `/api/cards/${encodeURIComponent(p.id)}/evidence`).catch(() => null), box = $('#modal .pf-b'); if (!box) return;
+    box.innerHTML = r?.evidence ? proofHtml(r.evidence) : `<p class="pf-thin">${ic('info', 's14')}The proof didn’t load. Try again in a moment.</p>`;
+  };
   // card times read as times: "26 min" → "26 min ago" ("Just now", "Mon", "Yesterday" stay as they are)
   const agoText = (x) => String(x || '').replace(/^(\d+\s*(?:s|sec|secs|min|mins|m|hr|hrs|h|hour|hours|d|day|days|wk|wks|week|weeks))$/i, '$1 ago');
   /* a card says where it came from in plain words (not which agent wrote it): "From your competitors", "From your store" */
@@ -810,7 +841,7 @@
   /* the campaign line only when it adds something the label does not already say */
   const campLine = (c) => (c.campaign && !FROM_CAMPAIGN[c.campaign] ? c.campaign : '');
   const head = (agent, sub, badge, more = true, title = AGENT[agent]) => `<header class="card-head">${face(agent)}<div class="who"><b>${esc(title)}</b><span>${esc(sub)}</span></div>${badge ? `<span class="badge ${badge[1]}">${esc(String(badge[0]).replace(/\b(\w+)s (\1)\b/gi, '$2'))}</span>` : ''}${more ? `<button class="icon-btn" data-more aria-label="More">${ic('more', 's18')}</button>` : ''}</header>`;
-  const srcLine = (c) => c.src ? `<div class="src-line">${c.type === 'competitor' && rivalIn(`${c.src} ${c.title}`) ? rivalLogo(`${c.src} ${c.title}`, 14) : ic('link', 's14')}${esc(c.src)}${c.liveFrom ? ` · <b>live from ${esc(B.connectors[c.liveFrom].name)}</b>` : ''}</div>` : '';
+  const srcLine = (c) => c.src ? `<div class="src-line" title="${esc(c.src)}">${c.type === 'competitor' && rivalIn(`${c.src} ${c.title}`) ? rivalLogo(`${c.src} ${c.title}`, 14) : ic('link', 's14')}<span class="src-tx">${esc(c.src)}${c.liveFrom ? ` · <b>live from ${esc(B.connectors[c.liveFrom].name)}</b>` : ''}</span></div>` : '';
 
   const slotHtml = (c) => {
     if (c.kind === 'media') return mediaSlot(c.images, { fit: c.fit, fitBg: c.fitBg, alt: c.title, filter: c.gradeF });
@@ -832,7 +863,7 @@
     const c = cardOf(p), dn = doneText(p, c), bar = $(':scope > .bar', el); if (bar && dn && !bar.classList.contains('is-busy') && !$('.sp-ask', el)) bar.outerHTML = barHtml(c.cta, dn); }); };
   // what a card asks to be made, from its move (format and pieces)
   const MAKE_IC = { 'carousel ad': 'grid', 'instagram carousel': 'grid', 'collection ad': 'grid', 'catalog ad': 'grid', 'instagram stories': 'phone', 'instagram post': 'pic', 'single image ad': 'pic', 'video ad': 'vid', reel: 'vid', 'whatsapp message': 'chat', email: 'send', 'page section': 'doc' };
-  const makeChip = (c) => (c.make?.format ? `<p class="mk-chip">${ic(MAKE_IC[c.make.format] || 'sparkles', 's14')}<b>${esc(c.make.format[0].toUpperCase() + c.make.format.slice(1))}</b>${c.make.pieces ? `<span>${esc(c.make.pieces)}</span>` : ''}</p>` : '');
+  const makeChip = (c) => (c.make?.format ? `<p class="mk-chip" title="${esc([c.make.format[0].toUpperCase() + c.make.format.slice(1), c.make.pieces].filter(Boolean).join(' · '))}">${ic(MAKE_IC[c.make.format] || 'sparkles', 's14')}<b>${esc(c.make.format[0].toUpperCase() + c.make.format.slice(1))}</b>${c.make.pieces ? `<span>${esc(c.make.pieces)}</span>` : ''}</p>` : '');
   /* the first draft Brew made for this card (drafts-bg.js, served as card.draft): the asset itself in place of the lane photo.
      A clip plays muted and looped only while it is on screen (armDraftVideos); slides use the feed's own carousel */
   const DRAFT_IC = { video: 'vid', carousel: 'grid', collection: 'grid', catalog: 'grid', email: 'send', whatsapp: 'chat', page: 'doc', image: 'pic' };
@@ -1450,6 +1481,7 @@
     if (b.dataset.act === 'jam') openDetail(p, { jam: true });
     /* v2: Make it yours opens the one sheet; Another take passes this card and queues a new one in the background (never a wait) */
     if (b.dataset.act === 'make') window.MakeSheet?.open(p, { onSaved: () => rerenderKeep(p.id, true) });
+    if (b.dataset.act === 'proof') openProof(p);
     if (b.dataset.act === 'take') { b.disabled = true; const r = await tapi('POST', `/api/cards/${p.id}/remix`, { queue: true, take: true }); b.disabled = false;
       if (r?.error || !r?.queued) return toast(`${ic('info', 's16')}${esc(r?.error || 'Another take isn’t available yet.')}`);
       S.dismissed[p.id] = true; save(); card.classList.add('is-gone'); toast(`${ic('refresh', 's16')}Another take is on its way. It lands at the top when ready.`); setTimeout(() => card.remove(), 400); }
@@ -1646,8 +1678,8 @@
     if (window.JamRoom && (opts.jam || opts.sendBrew || opts.to === 'team' || opts.to === 'brew')) return window.JamRoom.open(p, { mode: opts.to, draft: opts.draft, sendBrew: opts.sendBrew });
     { const w0 = p._work || workOfCard(p.id), late = ['shared', 'team', 'needs_you', 'ready'].includes(w0?.stage);
       /* no in-between page: tapping a card goes straight into its jam (studio, or the canvas jam when it has no package) */
-      if (SPLIT && !opts.noStudio && !opts.fromWork && !late && !jamOn(p, w0) && !String(p.id).startsWith('sig-')) { S.jamOn = { ...(S.jamOn || {}), [p.id]: true }; save(); return openRemix(p); } }
-    { const w0 = p._work || workOfCard(p.id); if (SPLIT && !opts.noStudio && jamOn(p, w0) && (w0?.changeId || !NOPKG.has(p.id)) && !['shared', 'team', 'needs_you', 'ready'].includes(w0?.stage) && !opts.fromWork) return openRemix(p, w0?.changeId || null); } /* a jam from before the studio links its package on the way in */
+      if (SPLIT && !opts.noStudio && !opts.fromWork && !late && !jamOn(p, w0) && !String(p.id).startsWith('sig-')) { S.jamOn = { ...(S.jamOn || {}), [p.id]: true }; save(); return openRemix(p, null, { make: opts.fromCta ? cardOf(p).cta?.label || '' : '' }); } }
+    { const w0 = p._work || workOfCard(p.id); if (SPLIT && !opts.noStudio && jamOn(p, w0) && (w0?.changeId || !NOPKG.has(p.id)) && !['shared', 'team', 'needs_you', 'ready'].includes(w0?.stage) && !opts.fromWork) return openRemix(p, w0?.changeId || null, { make: opts.fromCta ? cardOf(p).cta?.label || '' : '' }); } /* a jam from before the studio links its package on the way in; from the card's button it also makes what the button names */
     closePop(); closeModal(); closeJam();
     const wasOpen = !!DP && !!$('#dp');
     const w = p._work || workOfCard(p.id);
@@ -2948,7 +2980,9 @@
   const sigFake = () => !!window.BREW_DEMO && sigLive() && !window.LiveConn?.isLive?.('shopify'); /* DUMMY: demo site only, and never next to a connected Shopify */
   /* the live site's Signals column holds only what the real connectors post (live-* cards): with none, the column is not shown */
   const sigEmpty = () => !window.BREW_DEMO && !byCol('signals').length;
-  const deckCols = () => COL_ORDER.filter((k) => !(k === 'signals' && sigEmpty()));
+  /* V1 hides the Storefront column (testing notes 18 Oct: not ready, it overwhelms the customer); ?storefront=1 shows it to us */
+  const STOREFRONT_COL = /[?&]storefront=1\b/.test(location.search);
+  const deckCols = () => COL_ORDER.filter((k) => !(k === 'signals' && sigEmpty()) && (k !== 'storefront' || STOREFRONT_COL));
   const sigCard = (s) => `<article class="sig-card is-dummy"><div class="sig-top">${face('crm')}<b>CRM specialist</b><span class="when">· ${s.when}</span><span class="dummy-tag" title="A sample signal: the numbers are made up in this prototype">Dummy</span></div><hr class="sig-rule">
       <div class="sig-main"><h3>${esc(s.h)}</h3><p>${esc(s.why)}</p><div class="sig-nums"><div><b>${s.n}</b><span>fit the rules</span></div><div><b>${s.r}</b><span>reachable today</span></div><div><b>${s.ch}</b><span>channel</span></div></div></div>
       <button class="sig-open" data-sig-open>${ic('person', 's16')}Open signal${ic('right', 's16')}</button></article>`;
@@ -3336,7 +3370,9 @@
       ${p.name ? `<div class="al-name"><small>One name everywhere</small><b>${esc(p.name)}</b></div>` : ''}
       <ul class="ao-list">${(p.items || []).slice(0, lg ? 20 : 4).map((r) => `<li><b>${esc(r.marketplace)}</b>${r.now ? `<del>${esc(r.now)}</del>` : ''}<span class="al-new">${esc(r.new)}</span></li>`).join('')}</ul>
       ${lg && (p.bullets || []).length ? `<div class="al-bul"><small>Bullets on every listing</small><ul>${p.bullets.map((b) => `<li>${esc(b)}</li>`).join('')}</ul></div>` : ''}
-      ${lg && p.images ? `<p class="ao-rule">${ic('grid', 's14')}<span>${esc(p.images)}</span></p>` : ''}${p.reason ? `<p class="ao-rule"><span>${esc(p.reason)}</span></p>` : ''}</div>`;
+      ${(p.photoSet || []).length || (ch.imagePending && (p.photoShots || []).length) ? `<div class="al-photos"><small>${ch.imagePending ? 'Making the listing photos…' : `${p.photoSet.length} photos for every listing`}</small><div class="al-tiles">${(ch.imagePending && !(p.photoSet || []).length ? p.photoShots.map((shot) => ({ shot })) : p.photoSet).map((x) => `<figure class="al-tile">${x.image ? `<img src="${esc(x.image)}" alt="${esc(x.shot)}" loading="lazy">` : '<span class="sk"></span>'}<figcaption>${esc(x.shot)}</figcaption></figure>`).join('')}</div></div>`
+        : lg && /listing_content$/.test(String(ch.action || '')) && !ch.imagePending ? `<div class="am-make"><button class="btn btn-primary sm" data-rx="listing-photos">${ic('sparkles', 's14')}Make the photos</button></div>` : ''}
+      ${lg && p.images && !(p.photoSet || []).length ? `<p class="ao-rule">${ic('grid', 's14')}<span>${esc(p.images)}</span></p>` : ''}${p.reason ? `<p class="ao-rule"><span>${esc(p.reason)}</span></p>` : ''}</div>`;
     if (ch.family === 'meta_ops') return `<div class="as as-ops"><div class="ao-h">${ic('megaphone', 's14')}Meta Ads Manager · ${esc(ch.actionLabel)}</div>
       <ul class="ao-list">${(p.items || []).map((r) => `<li><b>${esc(r.name)}</b><div class="ao-ch"><span>${esc(r.now)}</span>${ic('right', 's14')}<strong>${esc(r.next)}</strong></div></li>`).join('')}</ul>
       ${p.rule ? `<p class="ao-rule">${ic('eyeoff', 's14')}<span><b>Rule:</b> ${esc(p.rule)}${p.checkAt ? ` · ${esc(p.checkAt)}` : ''}</span></p>` : ''}
@@ -3563,7 +3599,7 @@
   const chatTab = (ch, edit) => {
     const msgs = ch.thread || [], vById = (id) => ch.versions.find((v) => v.id === id), JR = window.JamRoom, w = SPLIT && RX.p ? workOfCard(RX.p.id) : null, me = String(ME()?.email || '').toLowerCase();
     const one = (m) => m.from === 'you' ? (me && m.by?.email && String(m.by.email).toLowerCase() !== me && JR?.teamMsg /* a teammate's ask, with their face and name */ ? `<div class="st-jm">${JR.teamMsg({ from: 'me', by: m.by, body: m.text }, w || {})}</div>` : `<div class="lgm you"><p>${esc(m.text)}</p></div>`)
-      : `<div class="lgm ai">${face(ch.agent)}<div><p>${esc(m.text)}</p>${m.v && ch.versions[m.v - 1] ? madeNote(ch, [ch.versions[m.v - 1]]) : ''}${(m.vs || []).length ? (m.cuts && PH_FAM.includes(ch.family) ? cutsStrip(ch, m.vs.map(vById).filter(Boolean)) : madeNote(ch, m.vs.map(vById).filter(Boolean))) : ''}${m.rewrite && edit ? `<button type="button" class="chip j1-chip" data-say="Rewrite it"${RX.sending ? ' disabled' : ''}>${ic('sparkles', 's14')}Rewrite it</button>` : ''}${m.remakeAgain && edit && !ch.remakePending && !ch.realOnly ? `<button type="button" class="chip j1-chip" data-j2-remake="${esc(m.remakeAgain)}"${RX.sending ? ' disabled' : ''}>${ic('refresh', 's14')}Make it again</button>` : ''}</div></div>`;
+      : `<div class="lgm ai">${face(ch.agent)}<div>${m.proof ? proofMsg(m) : `<p>${esc(m.text)}</p>`}${m.v && ch.versions[m.v - 1] ? madeNote(ch, [ch.versions[m.v - 1]]) : ''}${(m.vs || []).length ? (m.cuts && PH_FAM.includes(ch.family) ? cutsStrip(ch, m.vs.map(vById).filter(Boolean)) : madeNote(ch, m.vs.map(vById).filter(Boolean))) : ''}${m.rewrite && edit ? `<button type="button" class="chip j1-chip" data-say="Rewrite it"${RX.sending ? ' disabled' : ''}>${ic('sparkles', 's14')}Rewrite it</button>` : ''}${m.remakeAgain && edit && !ch.remakePending && !ch.realOnly ? `<button type="button" class="chip j1-chip" data-j2-remake="${esc(m.remakeAgain)}"${RX.sending ? ' disabled' : ''}>${ic('refresh', 's14')}Make it again</button>` : ''}</div></div>`;
     const jam = w && JR?.teamMsg ? (w.thread || []).filter((m) => m && m.id !== 'tmp' && !m.learn && (m.from !== 'system' || m.edited?.length || JAM_SYS.test(m.body || ''))).map((m, i) => ({ at: m.at || 0, i: 1e4 + i, html: `<div class="st-jm" data-st-jam>${JR.teamMsg(m, w)}</div>` })) : [];
     const log = [...msgs.map((m, i) => ({ at: m.at || 0, i, html: one(m) })), ...jam].sort((a, b) => a.at - b.at || a.i - b.i).map((x) => x.html).join('') + (w && JR?.typingHtml ? JR.typingHtml(w) : '');
     /* the ShopOS team asked for something: what they need sits on the composer until it is answered */
@@ -3804,7 +3840,7 @@
           <div class="st-vwrap"><button class="st-vpill${RX.vmenu ? ' is-open' : ''}" data-vmenu aria-haspopup="dialog" aria-expanded="${!!RX.vmenu}" title="Version history">${ic('clock', 's14')}<b class="st-vcount">v${curN(ch)}${ch.versions.length > 1 ? ` of ${ch.versions.length}` : ''}</b>${ic('chev', 's14')}</button>${RX.vmenu ? `<div class="st-vmenu" role="dialog" aria-label="Version history"><div class="st-vmenu-h"><b>Versions</b><small>${ch.versions.length} saved · nothing is ever lost</small></div><div class="st-vmenu-b">${historyTab(ch)}</div></div>` : ''}</div>${themeBtn()}<button class="icon-btn st-more" aria-label="More" data-lmenu="remix:${esc(ch.id)}">${ic('more', 's16')}</button></header>
         <div class="st-body j2-body"><aside class="st-panel j2-panel"><div class="st-panel-b is-chat j2-scroll">
           <section class="j2-draft"><div class="j2-title"><b>${esc(ch.actionLabel)}${ch.target.conn && ch.target.name ? ` <span>on ${esc(ch.target.name)}</span>` : ''}</b><small>${esc(ch.familyName)} · from “${esc(String(ch.before.title || '').slice(0, 70))}”</small></div>
-            <main class="st-canvas j2-canvas"><div class="st-asset${ch.copyPending ? ' is-writing' : ''}">${ch.copyPending ? `<p class="st-writing" role="status"><span class="spin"></span>Writing the first draft…</p>` : ''}${assetHtml(pkgCh, 'lg')}</div>${phTools(ch, pkgCh, viewing)}${timeline(ch, viewing)}</main>
+            <main class="st-canvas j2-canvas"><div class="st-asset${ch.copyPending ? ' is-writing' : ''}">${ch.copyPending ? `<p class="st-writing" role="status"><span class="spin"></span>Writing the first draft…</p>` : ''}${!ch.copyPending && ch.ctaPending ? `<p class="st-writing" role="status"><span class="spin"></span>${esc(ch.ctaPending)}…</p>` : ''}${assetHtml(pkgCh, 'lg')}</div>${phTools(ch, pkgCh, viewing)}${timeline(ch, viewing)}</main>
             ${rivalReadHtml(ch)}${j2Facts(ch, pkgCh)}${shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh))}</section>
           ${chatTab(ch, edit)}</div></aside></div>
         ${tab === 'details' ? j2Brief(ch, pkgCh, edit) : tab === 'adjust' ? j2Adjust(ch, edit) : ''}`;
@@ -3813,7 +3849,7 @@
         <div class="st-ttl"><b>${esc(ch.actionLabel)}${ch.target.conn && ch.target.name ? ` <span>on ${esc(ch.target.name)}</span>` : ''}</b><small>${face(ch.agent)}${esc(ch.familyName)} · from “${esc(String(ch.before.title || '').slice(0, 70))}”</small></div>${studioJamCtl()}
         <div class="st-vwrap"><button class="st-vpill${RX.vmenu ? ' is-open' : ''}" data-vmenu aria-haspopup="dialog" aria-expanded="${!!RX.vmenu}" title="Version history">${ic('clock', 's14')}<span>History</span><b class="st-vcount">v${curN(ch)}${ch.versions.length > 1 ? ` of ${ch.versions.length}` : ''}</b>${ic('chev', 's14')}</button>${RX.vmenu ? `<div class="st-vmenu" role="dialog" aria-label="Version history"><div class="st-vmenu-h"><b>Versions</b><small>${ch.versions.length} saved · nothing is ever lost</small></div><div class="st-vmenu-b">${historyTab(ch)}</div></div>` : ''}</div>${themeBtn()}<button class="icon-btn st-more" aria-label="More" data-lmenu="remix:${esc(ch.id)}">${ic('more', 's16')}</button></header>
       <div class="st-body">
-        <main class="st-canvas">${rivalReadHtml(ch)}${timeline(ch, viewing)}<div class="st-asset${ch.copyPending ? ' is-writing' : ''}">${ch.copyPending ? `<p class="st-writing" role="status"><span class="spin"></span>Writing the first draft…</p>` : ''}${assetHtml(pkgCh, 'lg')}</div>${phTools(ch, pkgCh, viewing)}${shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh))}</main>
+        <main class="st-canvas">${rivalReadHtml(ch)}${timeline(ch, viewing)}<div class="st-asset${ch.copyPending ? ' is-writing' : ''}">${ch.copyPending ? `<p class="st-writing" role="status"><span class="spin"></span>Writing the first draft…</p>` : ''}${!ch.copyPending && ch.ctaPending ? `<p class="st-writing" role="status"><span class="spin"></span>${esc(ch.ctaPending)}…</p>` : ''}${assetHtml(pkgCh, 'lg')}</div>${phTools(ch, pkgCh, viewing)}${shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh))}</main>
         <aside class="st-panel"><div class="st-tabs" role="tablist">${[['iterate', 'Chat'], ['adjust', 'Adjust'], ['details', SPLIT ? 'Brief' : 'Details']].map(([k, n]) => `<button role="tab" data-tab="${k}" aria-selected="${tab === k}">${n}</button>`).join('')}</div>
           <div class="st-panel-b${tab === 'iterate' ? ' is-chat' : ''}">${tab === 'iterate' ? chatTab(ch, edit) : tab === 'adjust' ? adjustTab(ch, edit) : tab === 'details' ? detailsTab(ch, pkgCh, edit) : chatTab(ch, edit)}</div></aside>
       </div>`;
@@ -3828,7 +3864,7 @@
     if (UI2) { const grew = nT > (RX.j2n || 0) && RX.j2for === ch.id; RX.j2n = nT; const first = RX.j2for !== ch.id; RX.j2for = ch.id; pb.scrollTop = first ? 0 : grew ? pb.scrollHeight : logScroll || 0; RX.resetScroll = false; } /* opening the brief or Adjust never moves the page */
     else if (tab === 'iterate') pb.scrollTop = (ch.thread || []).length || RX.sending || j2Extra(ch) ? pb.scrollHeight : 0; /* the case stays first in the chat and scrolls up as it grows; a fresh chat is read from its top */ else if (logScroll && !RX.resetScroll) pb.scrollTop = logScroll; RX.resetScroll = false;
     clearTimeout(RX.pollT);
-    if (ch.copyPending || ch.imagePending || ch.videoPending || ch.remakePending) RX.pollT = setTimeout(async () => { if (view !== 'remix' || RX.ch?.id !== ch.id) return; const q = await tapi('GET', `/api/changes/${ch.id}`); if (q.change) { RX.ch = q.change; putCh(q.change); } paintStudio(); if (ch.copyPending && q.change && !q.change.copyPending) autoImage(q.change); }, ch.copyPending ? 1500 : 3000);
+    if (ch.copyPending || ch.imagePending || ch.videoPending || ch.remakePending || ch.ctaPending || ch.ctaQueued) RX.pollT = setTimeout(async () => { if (view !== 'remix' || RX.ch?.id !== ch.id) return; const q = await tapi('GET', `/api/changes/${ch.id}`); if (q.change) { RX.ch = q.change; putCh(q.change); } paintStudio(); if (ch.copyPending && q.change && !q.change.copyPending) autoImage(q.change); }, ch.copyPending ? 1500 : 3000);
   };
   /* copy inside the tap: the old copy command runs at once; the clipboard API is the fallback, and never waits forever
      (it can hang on a permission prompt, and the button then looked dead: no copy, no toast) */
@@ -3902,6 +3938,8 @@
     if (!o.fromHistory && !chId) nav(`#remix=${p.id}`, true, 'rx'); RX.from = from === 'remix' ? RX.from : from;
     RX.batch = isBatchCard(p) ? { items: [] } : null;
     $('#view').innerHTML = chId ? `<div class="std"><p class="std-wait"><span class="spin"></span>Opening the jam…</p></div>` : `<div class="rxp"></div>`; window.scrollTo(0, 0); if (!chId) RX.batch ? paintBatch() : paintStart(); /* going straight to a studio: its empty frame, never the options page in between */
+    /* the card's making button ("Generate versions", "Make the video", "Draft the post"…): the studio opens making it, once per jam */
+    if (chId && o.make && !o.fromHistory) { const r = await tapi('POST', `/api/changes/${chId}/cta-make`, { label: o.make }).catch(() => null); if (r?.change) PRE_CH.set(chId, r.change); }
     if (chId) return openStudio(chId, o.fromHistory ? o : { deep: true, replace: fromCard });
     if (RX.batch) { const g = await loadBatch(); if (g.batch) return; RX.batch = null; paintStart(); }
     const g = await tapi('GET', `/api/cards/${p.id}/remix`);
@@ -3966,6 +4004,7 @@
     }
     if (act === 'video') { const r = await tapi('POST', `/api/changes/${id}/video`, {}); if (r.change) { RX.ch = r.change; putCh(r.change); } if (!r.video) toast(esc(r.error || 'No video right now')); return paintStudio(); }
     if (act === 'images-all') { const r = await tapi('POST', `/api/changes/${id}/image`, { all: true }); if (r.change) { RX.ch = r.change; putCh(r.change); } if (!r.image) toast(esc(r.why || 'No images right now')); return paintStudio(); }
+    if (act === 'listing-photos') { const r = await tapi('POST', `/api/changes/${id}/listing-photos`, {}); if (r.change) { RX.ch = r.change; putCh(r.change); } if (!r.image) toast(esc(r.why || 'No photos right now')); return paintStudio(); }
     if (act === 'image') { const r = await tapi('POST', `/api/changes/${id}/image`, {}); if (r.change) { RX.ch = r.change; putCh(r.change); } if (!r.image) toast(esc(r.why || 'No image right now')); return paintStudio(); }
     if (btn) { btn.disabled = true; btn.classList.add('is-busy'); }
     /* the jam's one exit: Share the brief (share.js). share-shopos / share-team copy it straight away; share asks which */

@@ -20,6 +20,7 @@ import { buildPack } from './publish-pack.js';
 import { impactInputs, projectImpact } from './impact.js';
 import { realRows } from './connectors/common.js';
 import { isQuestion, photoAsk, answerGrounded } from './jam-answer.js'; // a question gets an answer, never a version; "keep the photo" never makes one
+import { EVIDENCE_ASK, proofAnswer } from './evidence.js'; // "what's the evidence?" is answered from the card's own proof
 import { moveNo } from './value.js';
 import { budgetWhy } from './budget.js'; // v2 words/takes: a refused spend is said with its real reason, never a silent fallback
 import { createFamilies } from './measure-families.js';
@@ -550,7 +551,7 @@ export function createRemix(o) {
     if (ch.v0 !== 'draft' && !ch.batchKey && (ch.fromCard || (t.work || []).some((w) => w.changeId === ch.id))) seedV0(t, t.cards.get(ch.cardId), ch); /* 'none' tries again while the jam is untouched: the card's draft may land after the jam opened */
     const { impact: _imp, packMeta: _pk, ...pub } = ch; /* projections can hold the brand's private account rows: they go out only through /impact, per caller */
     const card0 = t.cards.get(ch.cardId); /* our version of a rival's ad: what Brew read from it, shown in the studio */
-    return { ...pub, ...(isRivalCard(card0) && o.rivalSummary ? { rival: o.rivalSummary(t, card0) } : {}), thinking: ch.thinking && Date.now() - ch.thinking.at < 300e3 ? ch.thinking : null, /* what the studio is doing right now, for the waiting person (think()) */ plan: ch.plan || o.planOf?.(t, t.cards.get(ch.cardId)) || null, copyPending: !!ch.copyPending && FILL_JOBS.has(ch.id) /* "Writing…" while the writer is really running, not a clock */, realOnly: realOnly(ch) /* community posts: real photos only, so no AI remakes */, trust: { level: tr.level, name: tr.name, objects: tr.objects, toNext: tr.toNext }, scope: ch.scope.map((s) => ({ ...s, locked: s.n > tr.objects })),
+    return { ...pub, ...(isRivalCard(card0) && o.rivalSummary ? { rival: o.rivalSummary(t, card0) } : {}), thinking: ch.thinking && Date.now() - ch.thinking.at < 300e3 ? ch.thinking : null, /* what the studio is doing right now, for the waiting person (think()) */ plan: ch.plan || o.planOf?.(t, t.cards.get(ch.cardId)) || null, copyPending: !!ch.copyPending && FILL_JOBS.has(ch.id) /* "Writing…" while the writer is really running, not a clock */, ctaPending: ch.ctaPending && CTA_JOBS.has(ch.id) ? ch.ctaPending : null /* the card's button is making it: the studio says what and keeps polling */, realOnly: realOnly(ch) /* community posts: real photos only, so no AI remakes */, trust: { level: tr.level, name: tr.name, objects: tr.objects, toNext: tr.toNext }, scope: ch.scope.map((s) => ({ ...s, locked: s.n > tr.objects })),
       familyName: FAMILY_NAME[ch.family], fields: fieldsFor(ch.family, ch.action).map(({ k, label, type, opts, cols, req, pub, hint }) => ({ k, label, type, opts, cols, req, pub, hint })),
       knobs: knobsFor(ch.family, B()), suggest: suggestOf(t, ch), gradeF: GRADES[ch.pkg.grade] || 'none', missing: missing(ch.family, ch.action, ch.pkg),
       head: headOf(t, ch)?.id || null, versions: versionsOf(t, ch.id).map((v) => ({ id: v.id, n: v.n, author: v.author, reason: v.reason, label: v.label || versionLabel(v.reason, { first: v.n === 1 }), at: v.at, parent: v.parentVersionId, diff: v.diff, snapshot: v.snapshot, ...(v.final ? { final: v.final } : {}),
@@ -608,6 +609,38 @@ export function createRemix(o) {
         else v = version(t, ch, `ai:${ch.agent}`, all && rows.length ? `Photos for ${made.filter(Boolean).length} ${ch.family === 'social' ? 'slides' : 'cards'}` : `New creative: ${why}`);
         try { o.onMedia?.(t, ch, { kind: 'image', images: (rows.length ? imgs : [first]).filter(Boolean), n: v.n, label: v.label }); } catch {} /* every new asset goes where the jam is (Slack) */
       } catch (e) { ch.imagePending = false; ch.imageError = String(e.message).slice(0, 160); log.warn('[studio image]', e.message); sync(t, ch); }
+      finally { IMG_JOBS.delete(ch.id); bump(t, ch); o.save?.(t); }
+    })();
+    return true;
+  };
+  /* a marketplace listing's photo set (testing notes 18 Oct: "Add photos" returned a written shot list, no photos). One photo
+     per shot in the listing's image plan (pkg.images: "1. Main packshot on white, 2. Serum close-up…"), up to 4, each made
+     from the real product photo, square, the first on pure white as marketplaces ask. They land as one new version
+     (pkg.photoSet: [{ shot, image }]); the shot list stays as the brief's words */
+  const shotsOf = (p = {}) => { const raw = String(p.images || '').trim();
+    const xs = raw ? raw.split(/\n+|(?:^|\s)\d+[.)]\s+|;\s*|\s*•\s*/).map((x) => clean(x).replace(/^[-–,.\s]+|[,.\s]+$/g, '')).filter((x) => x.length > 3) : [];
+    return (xs.length >= 2 ? xs : ['Main packshot on a pure white background', 'Close-up of the product and its label', 'The product in use']).slice(0, 4); }; /* one line is a rule for the set, not a shot list */
+  const shotRule = (p = {}) => { const raw = clean(String(p.images || '')).trim(); return raw && shotsOf(p).every((x) => !raw.includes(x)) ? raw.slice(0, 200) : ''; };
+  const genListingPhotos = (t, ch, why) => {
+    if (ch.family !== 'listing' || isMock() || !geminiImage || ch.imagePending) return false;
+    if (!spend('image')) return false;
+    const shots = shotsOf(ch.pkg), product = ch.pkg.product || ch.pkg.name || `${BN()} ${B().config.product?.noun || 'product'}`;
+    ch.imagePending = true; ch.imageError = null; IMG_JOBS.add(ch.id); ch.pkg = { ...ch.pkg, photoShots: shots };
+    (async () => {
+      try {
+        const src = await picSrc(t, ch); if (!src) throw new Error('no product photo could be read for the listing photos');
+        const made = [];
+        for (const [i, shot] of shots.entries()) {
+          const prompt = `A marketplace listing photo (Amazon, Flipkart) of ${product} by ${BN()}. Shot: ${shot}. ${i === 0 ? 'Pure white background (RGB 255,255,255), the product centred and filling about 85% of the frame, soft even studio light, no props.' : 'Clean, bright, photographic, the product the hero of the frame.'} Keep the product, its pack and its label exactly as in the reference photo; never invent new words on the pack and add no other text, badges or logos. Square 1:1.${shotRule(ch.pkg) ? ` The team’s rule for the set: ${shotRule(ch.pkg)}.` : ''}`;
+          const img = await drawPic(src, prompt, '1:1', null, i ? () => spend('image') : null).catch((e) => { log.warn('[listing photo]', e.message); return undefined; });
+          if (img === null) break; if (img) made.push({ shot, image: img });
+        }
+        if (!made.length) throw new Error('no photo came back');
+        ch.pkg = { ...ch.pkg, photoSet: made, image: made[0].image }; ch.imagePending = false; sync(t, ch);
+        const v = version(t, ch, `ai:${ch.agent}`, `Listing photos: ${why}`, `${made.length} listing photos`);
+        ch.thread.push({ from: 'ai', text: `Made ${made.length} listing photo${made.length > 1 ? 's' : ''}: ${made.map((x) => x.shot).join('; ')}.${made.length < shots.length ? ` ${shots.length - made.length} didn’t come through (today’s photo limit, or the picture failed); ask again for the rest.` : ''} They’re ready for the marketplaces.`, at: now(t), v: v.n });
+        try { o.onMedia?.(t, ch, { kind: 'image', images: made.map((x) => x.image), n: v.n, label: v.label }); } catch {}
+      } catch (e) { ch.imagePending = false; ch.imageError = String(e.message).slice(0, 160); log.warn('[listing photos]', e.message); ch.thread.push({ from: 'ai', text: `The listing photos didn’t come through (${ch.imageError}). Tap Make the photos to try again.`, at: now(t) }); sync(t, ch); }
       finally { IMG_JOBS.delete(ch.id); bump(t, ch); o.save?.(t); }
     })();
     return true;
@@ -705,10 +738,13 @@ export function createRemix(o) {
   const answerIn = async (t, ch, message, show) => {
     const c = t.cards.get(ch.cardId) || {};
     ch.thread.push(youSaid(t, show || message)); ANSWERED.add(ch);
+    if (EVIDENCE_ASK.test(message) && o.evidenceOf) { const pa = proofAnswer(o.evidenceOf(t, c)); if (pa) { ch.thread.push({ from: 'ai', text: pa.text, proof: pa.proof, cardId: c.id, at: now(t), answer: true }); return ch; } }
     if (isMock() || !spend('text')) { ch.thread.push({ from: 'ai', text: 'AI is offline right now, so I can’t answer that. Nothing changed.', at: now(t), offline: true, answer: true }); return ch; }
+    const pf = o.evidenceOf ? proofAnswer(o.evidenceOf(t, c)) : null; /* every answer can name where a number came from */
     const acct = realRows(t.liveLedger).filter((e) => e.label && e.v != null).slice(0, 24); // DUMMY: simulated accounts are never quoted
     const evidence = [cardBrief(c, seatLine(t.viewer)), `The package (${ch.actionLabel} on ${ch.target.name}):\n${toKV(ch.family, ch.action, ch.pkg).map((e) => `${e.k}: ${e.v}`).join('\n')}`,
       movePassages(c, message, 3).map((x) => `${moveTag(x)}: ${x.text || x.t || ''}`).join('\n'),
+      pf ? `Where the card's numbers come from:\n${pf.text}` : '',
       acct.length ? `Connected accounts, read ${acct[0].at || 'today'}:\n${acct.map((e) => `- ${e.label}: ${e.v}`).join('\n')}` : 'Connected accounts: none with results for this yet.'].filter(Boolean).join('\n\n');
     try {
       const r = await answerGrounded({ ai: (p, sc, mx, tag) => claudeTool(p, sc, mx, tag), question: message, evidence, history: ch.thread.slice(-7, -1).map((m) => `${m.from === 'you' ? 'Person' : 'Brew'}: ${m.text}`), who: `the ${AGENT[ch.agent] || 'Brew'} agent` });
@@ -722,7 +758,7 @@ export function createRemix(o) {
   const iterate = async (t, ch, message, { knob, quiet, show } = {}) => {
     const c = t.cards.get(ch.cardId) || {};
     ANSWERED.delete(ch);
-    if (!knob && !quiet && isQuestion(message)) { think(ch, 'Looking it up in the facts, the moves and this version'); try { return await answerIn(t, ch, message, show); } finally { think(ch, null); } } /* a question never makes a version */
+    if (!knob && !quiet && (isQuestion(message) || EVIDENCE_ASK.test(message))) { think(ch, 'Looking it up in the facts, the moves and this version'); try { return await answerIn(t, ch, message, show); } finally { think(ch, null); } } /* a question never makes a version */
     const keepPhoto = photoAsk(message) === 'keep';
     if (!quiet) ch.thread.push(youSaid(t, show || message));
     let out = null, nv = null;
@@ -893,7 +929,7 @@ export function createRemix(o) {
   /* ---------- routes ---------- */
   /* a photo being made lives in this process; one saved as pending by a server that has since stopped (a deploy, a restart)
      will never land, so it clears and says to make it again instead of spinning for ever */
-  const IMG_JOBS = new Set(), FILL_JOBS = new Set();
+  const IMG_JOBS = new Set(), FILL_JOBS = new Set(), CTA_JOBS = new Set(); /* CTA_JOBS: a card's making button at work (runCtaMake) */
   /* a remake's draft says "the media is being made" (pending) on the head and on every version made while it waited; when the
      remake is gone (a restart), every one of them stops saying so */
   const unstick = (t, ch) => { let n = 0; const off = (d) => (d?.pending ? (n++, { ...d, pending: false }) : d);
@@ -988,7 +1024,7 @@ export function createRemix(o) {
       ch.copyPending = false; FILL_JOBS.delete(ch.id);
       if (!ok && !touchedCh(t, ch)) ch.thread.push(startingPoint(t));
       try { after?.(); } catch (e) { log.warn('[remix later] after', e.message); }
-      finally { bump(t, ch); o.save?.(t); }
+      finally { if (ch.ctaQueued) { const lab = ch.ctaQueued; ch.ctaQueued = null; try { runCtaMake(t, ch, t.cards.get(ch.cardId) || c, lab); } catch (e) { log.warn('[cta make] queued', e.message); } } /* the card's button was pressed while the first words were written */ bump(t, ch); o.save?.(t); } /* the button's make runs after our version's first picture has started, so it waits for it */
     })();
   };
   /* ---------- v2 cards (the Make-it-yours sheet and Another take): never wait on an asset ----------
@@ -1249,6 +1285,63 @@ export function createRemix(o) {
     ch.thread.push({ from: 'ai', text: isVideoPost(ch) ? `Wrote ${made.length > 1 ? `${made.length} scripts: ${vs}` : `the script: v${made[0]?.n}`}. ${filming ? `Making the video for v${last?.n} now, about two minutes.${made.length > 1 ? ' Open another version and tap Make the video for its clip.' : ''}` : `${videoWhy(ch)} Tap Make the video when you want the clip.`}` : made.length > 1 ? `Made ${made.length} ${pl?.make?.what || 'versions'}: ${vs}.${made.photos ? ' Each gets its own photo in a minute.' : ''} Change any of them here, then share the brief.` : `Made it: v${made[0]?.n}. Change anything here, then share the brief.`, at: now(t), vs: made.map((v) => v.id), ...(made.length > 1 ? { cuts: true } : {}) });
     return { change: pubChange(t, ch), learned: learnedOut(t) };
   });
+  /* ---------- the card's own making button, pressed in the feed (Param, 19 Oct: "a CTA to generate creatives, but in reality it
+     never generates, it simply changes the brief"). Before this, the feed button only opened the jam: the make step ran only if
+     the same button was pressed again inside it, a short video never got its clip, and a carousel got one slide. Now the press
+     makes what the button names, once per jam: "Generate versions" three versions, each with its own picture; a video button
+     the clip; a post, Stories or carousel button its picture or every slide; a message or page button its written versions.
+     Decisions, reports, budget moves and batches make nothing here (a batch's ads are already made). ---------- */
+  const MAKES_ASSET = new Set([...MAKING, 'Rotate creative', 'Make our version', 'Turn into an idea', 'Start this', 'Send the review ask', 'Turn on the journey', 'Publish the page', 'Draft the listing', 'Review draft', 'Make the carousel', 'Make the reel', 'Post it', 'Add photos', 'Swap the images']);
+  const VERSIONS_CTA = /^(generate versions|rotate creative)$/i;
+  const VISUAL = new Set(['meta_ad', 'social', 'post']);
+  const ctaMakes = (t, label, ch, c) => !!label && !ch.batchKey && !(ch.plan || o.planOf?.(t, c))?.batch && !['decision', 'meta_ops', 'setup', 'brief'].includes(ch.family) && (MAKES_ASSET.has(label) || /^(make|draft|generate|build|write|create)\b/i.test(label));
+  const waitFor = async (test, ms = 180e3) => { const end = Date.now() + ms; while (test() && Date.now() < end) await new Promise((r) => setTimeout(r, 2000)); };
+  const runCtaMake = (t, ch, c, label) => {
+    if (CTA_JOBS.has(ch.id)) return false; CTA_JOBS.add(ch.id);
+    const versions = VERSIONS_CTA.test(label), rows = () => ch.pkg?.cards || ch.pkg?.slides || [];
+    ch.ctaPending = ch.family === 'listing' && /photo|image/i.test(label) ? 'Making the listing photos' : versions ? 'Making 3 versions' : isVideoPost(ch) ? 'Getting the video ready' : VISUAL.has(ch.family) ? (rows().length > 1 ? 'Making every slide' : 'Making the picture') : 'Writing it';
+    (async () => {
+      let say = null;
+      try {
+        await waitFor(() => ch.imagePending || ch.remakePending || FILL_JOBS.has(ch.id)); /* a picture already in flight (the first photo, our version) lands first */
+        const pl = ch.plan || o.planOf?.(t, c) || null, steps = (pl?.steps || []).filter((x) => ['gather', 'write', 'make', 'step'].includes(x.k)).map((x) => x.t);
+        const plan = steps.length ? `Follow the plan: ${steps.join('; ')}` : '';
+        if (ch.family === 'listing' && /photo|image/i.test(label)) {
+          const ok = genListingPhotos(t, ch, label); say = ok ? `Making ${shotsOf(ch.pkg).length} listing photos from your product photo: ${shotsOf(ch.pkg).join('; ')}. They land here in a minute or two.` : imageWhy(ch);
+        } else if (versions || !VISUAL.has(ch.family)) {
+          const n = versions ? 3 : Math.max(1, pl?.n || 1);
+          think(ch, `Writing ${n > 1 ? `${n} versions` : 'it'}`);
+          const made = await makeCuts(t, ch, n, plan, (x, i) => (n > 1 ? `Version ${'ABCDEFGH'[i]}: ${x.angle || 'a different cut'}` : `${label}: ready to review`));
+          ch.planRun = { at: now(t), n: made.length, versions: made.map((v) => v.id), by: 'cta' };
+          const vs = made.map((v) => 'v' + v.n).join(', ');
+          if (!made.length) say = 'That didn’t come through. Tap the button again in a minute.';
+          else if (isVideoPost(ch)) { const ok = genVideo(t, ch, label); say = `Wrote ${made.length > 1 ? `${made.length} scripts (${vs})` : 'the script'}. ${ok ? 'Making the video now, about two minutes.' : videoWhy(ch)}`; }
+          else if (VISUAL.has(ch.family)) { const ok = made.photos || (made.length === 1 && genImage(t, ch, label, { target: made[0].id }));
+            say = `Made ${made.length} version${made.length > 1 ? 's' : ''}: ${vs}. ${ok ? `${made.length > 1 ? 'Each gets its own picture' : 'Its picture lands'} in a minute.` : imageWhy(ch)} Tap one to see it.`; }
+          else say = `Wrote ${made.length > 1 ? `${made.length} versions: ${vs}` : `it: v${made[0].n}`}. Change anything here, then share the brief.`;
+        } else if (isVideoPost(ch)) {
+          const ok = genVideo(t, ch, label); say = ok ? 'Making the video now, about two minutes. It lands here on its own.' : videoWhy(ch);
+        } else {
+          const all = rows().length > 1; if (all && rows().every((_, i) => (ch.pkg.cardImages || [])[i])) ch.pkg = { ...ch.pkg, cardImages: [] }; /* every slide had a picture: the press makes a fresh set, the last set stays on its version */
+          const ok = genImage(t, ch, label, { all }); /* a new version: the picture it had stays on the one before */
+          say = ok ? `Making ${all ? `the pictures for all ${rows().length} slides` : 'the picture'} now. ${all ? 'They land' : 'It lands'} here in a minute.` : imageWhy(ch);
+        }
+      } catch (e) { log.warn('[cta make]', e.message); say = `That didn’t come through (${String(e.message).slice(0, 100)}). Tap the button again in a minute.`; }
+      finally { think(ch, null); ch.ctaPending = null; CTA_JOBS.delete(ch.id); if (say) ch.thread.push({ from: 'ai', text: say, at: now(t) }); bump(t, ch); o.save?.(t); }
+    })();
+    return true;
+  };
+  on('POST', '/api/changes/:chid/cta-make', async (b, t, p) => {
+    const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch);
+    const c = t.cards.get(ch.cardId) || {}, label = String(b.label || c.cta?.label || '').slice(0, 60);
+    if (!ctaMakes(t, label, ch, c) || editable(ch) || isMock()) return { change: pubChange(t, ch), making: false };
+    if (ch.ctaMade) return { change: pubChange(t, ch), making: false, already: true }; /* once per jam: the next press just opens it */
+    ch.ctaMade = { label, at: now(t) };
+    if (isRivalCard(c) && (ch.imagePending || ch.videoPending || ch.remakePending || FILL_JOBS.has(ch.id))) return { change: pubChange(t, ch), making: true }; /* our version is already being drawn */
+    if (FILL_JOBS.has(ch.id)) ch.ctaQueued = label; /* the first words are still being written: it runs the moment they land (fillLater) */
+    else runCtaMake(t, ch, c, label);
+    return { change: pubChange(t, ch), making: true };
+  });
   // your checks and notes: kept on the package, read by the AI, sent in the brief
   on('POST', '/api/changes/:chid/checks', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); ch.myChecks ||= [];
@@ -1322,6 +1415,10 @@ export function createRemix(o) {
     let bv = null; if (b.brief) { ch.pkg.imageBrief = clean(String(b.brief)).slice(0, 600); sync(t, ch); bv = version(t, ch, 'you', 'New image brief'); }
     const started = genImage(t, ch, b.brief ? 'your brief' : 'a new take', { all: !!b.all, target: bv?.id || null }); /* the photo lands on the brief's version, not a second one */
     return { change: pubChange(t, ch), image: started, why: started ? null : imageWhy(ch) };
+  });
+  on('POST', '/api/changes/:chid/listing-photos', async (b, t, p) => {
+    const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };
+    const started = genListingPhotos(t, ch, 'a tap'); return { change: pubChange(t, ch), image: started, why: started ? null : ch.family !== 'listing' ? 'Only a marketplace listing makes a photo set.' : imageWhy(ch) };
   });
   on('POST', '/api/changes/:chid/video', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };
