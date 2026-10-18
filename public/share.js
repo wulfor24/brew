@@ -4,7 +4,7 @@
 // Used by the studio's ship bar and the card page; the jam room has the same two buttons (jam-room.js ship()).
 (() => {
   const A = () => window.__BREW;
-  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const esc = (s) => String(s ?? '').replace(/\u2039(?=\s?\d)/g, '₹').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const ic = (k, s) => A()?.ic(k, s) || '';
   const WHO = { shopos: 'the ShopOS team', team: 'your team' };
 

@@ -5,7 +5,7 @@
 (() => {
   const A = () => window.__BREW;
   const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
-  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const esc = (s) => String(s ?? '').replace(/\u2039(?=\s?\d)/g, '₹').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const B = () => A().B, brand = () => B().brand || {};
   const kindOf = (p) => p.post?.platform ? 'heard' : p.kind === 'ad' || p.rival ? 'rival-ad' : p.kind === 'answer' || p.agent === 'visibility' ? 'answer' : /^m\d+/.test(String(p.id)) || p.move ? 'move' : (p.images || []).length ? 'creative' : 'idea';
   /* the chips per kind: short instructions the writer understands; the sheet never says "AI" */

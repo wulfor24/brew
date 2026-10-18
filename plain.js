@@ -32,7 +32,7 @@ export const plainKey = (c) => sha(JSON.stringify([PLAIN_V, c?.title || '', c?.s
 const nums = (s) => new Set([...numbersIn(String(s || ''), { strict: true }), ...numbersIn(String(s || ''))]);
 const subset = (out, src) => { for (const n of nums(out)) if (!src.has(n)) return false; return true; };
 const keepsAll = (out, need) => { const o = nums(out); for (const n of need) if (!o.has(n)) return false; return true; };
-const tidy = (s, n) => String(s || '').replace(/\s*[—–]\s*/g, ', ').replace(/\s+/g, ' ').trim().slice(0, n);
+const tidy = (s, n) => String(s || '').replace(/\u2039(?=\s?\d)/g, '₹') /* the model sometimes writes ₹ as ‹ */.replace(/\s*[—–]\s*/g, ', ').replace(/\s+/g, ' ').trim().slice(0, n);
 
 export const SCHEMA = { type: 'object', properties: { cards: { type: 'array', items: { type: 'object', properties: {
   id: { type: 'string' },

@@ -26,7 +26,7 @@
   const root = $('#root');
   document.body.classList.add('fs');
   const dayPart = () => { const h = new Date().getHours(); return h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : 'Evening'; };
-  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const esc = (s) => String(s ?? '').replace(/\u2039(?=\s?\d)/g, '₹').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   /* written copy shown as written: blank lines are paragraphs, a short CAPS or "Label:" line is a small heading (also when the
      label leads its line: "CUSHIONING Look for…"), "- " / "• " lines are a list, a quoted line is a quote. Every stage uses it,
      so formatting never depends on which card it is. */
@@ -794,19 +794,26 @@
   /* the proof on every card (evidence.js via /api/cards/:cid/evidence): why Brew suggested it, and the hard evidence behind it */
   const proofBtn = (p) => { const n = +p.proof?.n || 0; return `<button class="icon-btn pf-btn${p.proof?.strength === 'thin' ? ' is-thin' : ''}" data-act="proof" aria-label="Why this card, and the proof" title="Why Brew suggested this, and the proof">${ic('shield')}${n ? `<span class="pf-n">${n}</span>` : ''}</button>`; };
   const pfDay = (s) => { const d = s ? new Date(s) : null; return d && !isNaN(d) ? d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : ''; };
-  const PF_KIND = { read: 'Read on your site', math: 'Worked out by Brew', web: 'From the web', fact: 'From your store', count: 'Counted by Brew', account: 'Your account', ad: 'Rival’s ad', quote: 'What people say', idea: 'Evidence', trend: 'Google Trends', row: 'Counted by Brew', link: 'Source' };
-  const pfSrc = (x) => { const bits = [x.src, pfDay(x.at)].filter(Boolean).join(' · ');
-    return `<small class="pf-src">${esc(bits)}${x.url ? ` <a href="${esc(x.url)}" target="_blank" rel="noopener">Open ${ic('external', 's12')}</a>` : ''}</small>`; };
+  /* the sheet says only what a brand needs: the one reason, the few numbers behind it (each with where it came from) and the plan it
+     belongs to. Kind labels, move source lists and repeats stay out; the full plan is one tap away */
+  const pfSrc = (x) => { const src = /^what brew counted$/i.test(x.src || '') || x.kind === 'row' && !x.src ? 'Brew’s count' : /^brew’s maths/i.test(x.src || '') ? 'Brew’s maths' : /^(?:https?:\/\/)?(?:www\.)?([\w-]+(?:\.[\w-]+)+)\/\S*$/i.test(x.src || '') ? x.src.replace(/^(?:https?:\/\/)?(?:www\.)?([^/]+).*$/i, '$1') /* a page address reads as its site */ : x.src || '';
+    const t = esc([src, pfDay(x.at)].filter(Boolean).join(' · '));
+    return x.url ? `<a class="pf-src" href="${esc(x.url)}" target="_blank" rel="noopener">${t || 'Source'}${ic('external', 's12')}</a>` : t ? `<span class="pf-src">${t}</span>` : ''; };
+  /* a short number sits in its own column; a longer value ("226 reviews, 4.47★") goes on its own line; what people wrote reads as a quote */
+  const pfRow = (x) => { const v = String(x.value || ''), label = `${esc(x.label)}${x.extra ? ` · ${esc(x.extra)}` : ''}`;
+    if (v && v.length <= 9) return `<li class="pf-r"><b class="pf-v">${esc(v)}</b><span class="pf-l">${label}</span>${pfSrc(x)}</li>`;
+    const quote = /^(quote|ad|idea|read)$/.test(x.kind) && v.length > 24;
+    return `<li class="pf-r is-text">${v ? quote ? `<q class="pf-q">${esc(v)}</q>` : `<b class="pf-v">${esc(v)}</b>` : ''}<span class="pf-l">${label}</span>${pfSrc(x)}</li>`; };
   const proofHtml = (e) => {
-    const w = e.why || {}, items = e.items || [], moves = e.moves || [];
-    const why = `<section class="pf-sec"><h4>Why Brew suggested this</h4>${w.because ? `<p class="pf-because">${esc(w.because)}</p>` : ''}${(w.reasons || []).length ? `<ul class="pf-reasons">${w.reasons.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}${w.from ? `<p class="pf-from">${esc(w.from)}</p>` : ''}</section>`;
-    const rows = items.map((x) => `<li class="pf-i is-${esc(x.kind)}"><span class="pf-k">${esc(PF_KIND[x.kind] || 'Evidence')}</span>${x.value ? `<b class="pf-v">${esc(x.value)}</b>` : ''}<span class="pf-l">${esc(x.label)}${x.extra ? ` · ${esc(x.extra)}` : ''}${x.note ? ` · <em>${esc(x.note)}</em>` : ''}</span>${pfSrc(x)}</li>`).join('');
-    const mv = moves.map((m) => `<div class="pf-move"><div class="pf-mh"><span class="pf-k">Brew’s plan · Move ${String(m.n).padStart(2, '0')}</span><b>${esc(m.title)}</b>${m.stat ? `<span class="pf-l">Key number: ${esc(m.stat)}</span>` : ''}</div>
-      ${m.sources.length ? `<ul class="pf-srcs">${m.sources.map((s) => `<li>${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)} ${ic('external', 's12')}</a>` : esc(s.label)}${s.at ? `<small> · read ${esc(pfDay(s.at))}</small>` : ''}</li>`).join('')}</ul>` : ''}
-      <button class="btn btn-ghost sm" data-pf-move="${m.n}">${ic('doc', 's14')}Read the full plan${m.more ? ` (${m.more} more sources)` : ''}</button></div>`).join('');
-    const none = !items.length && !moves.length ? `<p class="pf-thin">${ic('info', 's14')}Brew has no source line for this card yet. Treat it as an idea to check, not a fact.</p>` : '';
-    const gap = (e.unbacked || []).length ? `<p class="pf-thin">${ic('info', 's14')}Not matched to a source yet: ${esc(e.unbacked.slice(0, 4).join(', '))}. Check ${e.unbacked.length > 1 ? 'these' : 'this'} before you use ${e.unbacked.length > 1 ? 'them' : 'it'}.</p>` : '';
-    return `${why}<section class="pf-sec"><h4>The proof</h4>${rows ? `<ul class="pf-list">${rows}</ul>` : ''}${mv}${none}${gap}</section>`;
+    /* one row per number: the same price read twice (the page and the card's own count) shows once, the sourced one kept */
+    const seen = new Map(); for (const x of (e.items || []).filter((x) => x.value || x.url)) { const k = String(x.value || x.url).replace(/\s+/g, '').toLowerCase(), o = seen.get(k); if (!o || (!o.url && x.url)) seen.set(k, x); }
+    const w = e.why || {}, items = [...seen.values()], moves = e.moves || [], SHOW = 4;
+    const lead = w.because ? `<p class="pf-because">${esc(w.because)}</p>` : (w.reasons || []).length ? `<p class="pf-because">${esc(w.reasons.join('. ').replace(/\.\./g, '.'))}</p>` : '';
+    const rows = items.length ? `<h4 class="pf-h">What it’s based on</h4><ul class="pf-rows">${items.slice(0, SHOW).map(pfRow).join('')}</ul>${items.length > SHOW ? `<details class="pf-more"><summary>${items.length - SHOW} more</summary><ul class="pf-rows">${items.slice(SHOW).map(pfRow).join('')}</ul></details>` : ''}` : '';
+    const gap = (e.unbacked || []).length ? `<p class="pf-note">${ic('info', 's14')}<span>No source found yet for ${esc(e.unbacked.slice(0, 3).join(', '))}. Check before you use ${e.unbacked.length > 1 ? 'them' : 'it'}.</span></p>` : '';
+    const none = !items.length && !moves.length ? `<p class="pf-note">${ic('info', 's14')}<span>No numbers behind this one yet. Treat it as an idea to check.</span></p>` : '';
+    const plan = moves.length ? `<button type="button" class="pf-plan" data-pf-move="${moves[0].n}"><span><small>From Brew’s plan${moves.length > 1 ? ` (+${moves.length - 1} more)` : ''}</small><b>${esc(moves[0].title)}</b></span>${ic('right', 's16')}</button>` : '';
+    return `${lead}${rows}${gap}${none}${plan}`;
   };
   /* "what's the evidence behind this?" in the jam: the card's proof as Saw / Plan / Data / So, and a way to the whole sheet */
   const proofMsg = (m) => { const x = m.proof || {}, a = (u, l) => (u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(l)}</a>` : esc(l));
@@ -814,11 +821,11 @@
     return `<p>Here’s what this card is based on.</p>${rows.length ? `<dl class="pf-ev">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>` : '<p>Brew has no source line for this card yet, so treat it as an idea to check, not a fact.</p>'}${m.cardId ? `<button type="button" class="chip j1-chip" data-pf-card="${esc(m.cardId)}">${ic('shield', 's14')}See all the proof</button>` : ''}`; };
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-pf-card]'); if (!b) return; const p = byId(b.dataset.pfCard); if (p) openProof(p); });
   const openProof = async (p) => {
-    modal(`<div class="sheet pick-sheet pf-sheet" role="dialog" aria-label="Why this card, and the proof"><header class="sh-h"><b class="sh-t">${ic('shield', 's16')}Why this, and the proof</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>
-      <p class="pf-title">${esc(cardOf(p).title || '')}</p><div class="pf-b"><div class="sk" style="height:64px"></div><div class="sk" style="height:140px;margin-top:12px"></div></div></div>`, (w) => {
+    modal(`<div class="sheet pick-sheet pf-sheet" role="dialog" aria-label="Why this card, and the proof"><header class="sh-h"><b class="sh-t">${ic('shield', 's16')}Why Brew suggests this</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>
+      <div class="pf-b"><div class="sk" style="height:44px"></div><div class="sk" style="height:140px;margin-top:16px"></div></div></div>`, (w) => {
       w.addEventListener('click', (ev) => { const m = ev.target.closest('[data-pf-move]'); if (!m) return; closeModal(); openMove(+m.dataset.pfMove); }); });
     const r = await tapi('GET', `/api/cards/${encodeURIComponent(p.id)}/evidence`).catch(() => null), box = $('#modal .pf-b'); if (!box) return;
-    box.innerHTML = r?.evidence ? proofHtml(r.evidence) : `<p class="pf-thin">${ic('info', 's14')}The proof didn’t load. Try again in a moment.</p>`;
+    box.innerHTML = r?.evidence ? proofHtml(r.evidence) : `<p class="pf-note">${ic('info', 's14')}The proof didn’t load. Try again in a moment.</p>`;
   };
   // card times read as times: "26 min" → "26 min ago" ("Just now", "Mon", "Yesterday" stay as they are)
   const agoText = (x) => String(x || '').replace(/^(\d+\s*(?:s|sec|secs|min|mins|m|hr|hrs|h|hour|hours|d|day|days|wk|wks|week|weeks))$/i, '$1 ago');

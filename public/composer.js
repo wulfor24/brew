@@ -3,7 +3,7 @@
 // on each). The choices travel with every jam request as headers (x-model, x-image-model, x-memory).
 (() => {
   const A = () => window.__BREW;
-  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const esc = (s) => String(s ?? '').replace(/\u2039(?=\s?\d)/g, '₹').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const ic = (k, s) => A()?.ic(k, s) || '';
   const KEY = 'brew:jam-prefs';
   const read = () => { try { return { model: 'auto', image: 'auto', memory: true, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch { return { model: 'auto', image: 'auto', memory: true }; } };
