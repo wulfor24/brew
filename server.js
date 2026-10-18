@@ -65,6 +65,7 @@ import { createCalendar } from './calendar.js'; // holidays, festivals and sale 
 import { createVideoRead } from './video-read.js'; // what a video does: hook, scenes, CTA (Gemini on Vertex)
 import { watchCatalog } from './treg-map.js'; // new treg tools since last week, for admins
 import { movesEta } from './pack-numbers.js';
+import { named as namedStage } from './reader/stages/named.js'; // which brands an AI answer names
 import { createAiQuestions, Q_V } from './ai-questions.js'; // the AI answers questions, each earned by real searches or real threads
 import { awaitingCheck, createConfirmRemind } from './confirm-remind.js'; // "Check what we read" waits for a person: hold the watchers, remind by email // the time left on a brand's moves, from the pace the build really kept
 
@@ -358,15 +359,17 @@ const attach = (p) => {
   /* a brand waiting on "Check what we read" runs no research or watchers: nobody has asked for the moves yet, and a restart
      must not pay for them again (confirm-remind.js reminds the team instead) */
   const held = p.kind === 'generated' && awaitingCheck(p.status);
-  if (p.kind === 'generated' && p.ready && !held) questionsHeal(p); /* questions not yet sourced from real searches: once, in the background */
-  const read = p.kind !== 'default' && (c.questions?.length || c.rivals?.length) && !held; // the default context runs no watchers
+  /* questions not yet sourced from real searches: sourced once in the background, and a brand with no watchers yet waits for them,
+     so its first weekly AI check asks the sourced set instead of asking the read's guesses and then asking again (~30 s) */
+  const needQ = p.kind === 'generated' && p.ready && !held && questionsHeal(p), waitQ = needQ && !INST.get(p.slug) && !QDONE.has(p.slug);
+  const read = p.kind !== 'default' && (c.questions?.length || c.rivals?.length) && !held && !waitQ; // the default context runs no watchers
   let x = INST.get(p.slug);
   if (held && x) { try { x.live?.stop?.(); x.research?.stop?.(); } catch {} INST.delete(p.slug); x = null; }
   if (read && (!x || x.key !== key)) {
     if (x) { try { x.live?.stop?.(); x.research?.stop?.(); } catch {} } /* the replaced watchers stop: no duplicate timers or catalog signals */
     const params = (m, max) => ({ ...claudeParams(m, max), system: p.system });
     x = { key, research: createResearch({ ROOT, PUB, anthropic, claudeParams: params, textOf, geminiImage: countedImage, gToken, clean, factBrief: () => (packs.peek(p.slug) || p).factBrief, brand: p, photoFile, tregClient: treg }),
-      live: createLiveWatch({ ROOT, anthropic, claudeParams: params, textOf, gToken, brand: p, tregClient: treg }) };
+      live: createLiveWatch({ ROOT, anthropic, claudeParams: params, textOf, gToken, brand: p, tregClient: treg, namePass: (as) => namedPass(p, as) }) };
     INST.set(p.slug, x);
     x.research.start().catch((e) => console.error('[research] start', p.slug, e.message)); x.live.start().catch((e) => console.error('[live] start', p.slug, e.message));
     p.research = x.research; p.live = x.live; feedSvc?.wire(p);
@@ -383,19 +386,30 @@ const loadBrand = async (slug, o) => blocked(slug) ? null : attach(await packs.l
 /* a brand's AI answers questions, sourced from real demand (ai-questions.js) the first time it loads after this shipped, and when
    Q_V moves on. The new set goes into config.json (the team's own questions kept), the pack reloads, and the weekly check sees a
    new set and asks it on its next tick. One try per brand every 6 hours if it can't find enough evidence */
-let AIQ = null; const QHEAL = new Map(); const aiq = () => (AIQ ||= createAiQuestions({ packs, treg, ai, log: console })); /* made on first use: `ai` is declared further down */
+let AIQ = null; const QHEAL = new Map(), QDONE = new Set(); /* QDONE: the heal ended (sourced or not), so the watchers start either way */ const aiq = () => (AIQ ||= createAiQuestions({ packs, treg, ai, log: console })); /* made on first use: `ai` is declared further down */
+/* true while the brand's questions still need sourcing (the caller waits on QDONE before starting its watchers) */
 const questionsHeal = (p) => {
-  if (MOCK || process.env.DEMO_MODE === '1' || process.env.QUESTIONS_OFF === '1' || p.config?.questionsV === Q_V) return;
-  const slug = p.slug; if (Date.now() - (QHEAL.get(slug) || 0) < 6 * 3600e3) return; QHEAL.set(slug, Date.now());
+  if (MOCK || process.env.DEMO_MODE === '1' || process.env.QUESTIONS_OFF === '1' || p.config?.questionsV === Q_V) return false;
+  const slug = p.slug; if (Date.now() - (QHEAL.get(slug) || 0) < 6 * 3600e3) return !QDONE.has(slug); QHEAL.set(slug, Date.now()); QDONE.delete(slug);
+  const done = () => { if (QDONE.has(slug)) return; QDONE.add(slug); packs.drop(slug); loadBrand(slug).catch(() => {}); }; /* the watchers start, sourced or not */
+  const guard = setTimeout(done, 4 * 60e3); guard.unref?.(); /* a sourcing that hangs never keeps a brand's watchers off */
   (async () => {
     await new Promise((res) => setTimeout(res, 3000)); /* after boot: never before `ai` exists, and never in the way of the page load */
     const r = await aiq().source(slug);
-    if (!r.ok) { console.warn('[ai-questions]', slug, `only ${r.questions.length} questions with evidence`, r.method.errors.join('; ')); return; }
+    if (!r.ok) { console.warn('[ai-questions]', slug, `only ${r.questions.length} questions with evidence`, r.method.errors.join('; ')); return done(); }
     const c = (await packs.getJSON(slug, 'config.json', {})) || {};
     await packs.put(slug, 'config.json', { ...c, questions: r.questions, questionsV: Q_V, questionsMethod: r.method, rivalsAI: r.rivals.length ? r.rivals : c.rivalsAI || c.rivals || [] });
     console.log('[ai-questions]', slug, `${r.questions.length} questions from ${r.method.candidates} candidates (${r.method.sources.join(', ')})`);
-    packs.drop(slug); await loadBrand(slug);
-  })().catch((e) => console.warn('[ai-questions]', slug, e.message));
+    done();
+  })().catch((e) => { console.warn('[ai-questions]', slug, e.message); done(); }).finally(() => clearTimeout(guard));
+  return true;
+};
+/* which brands each weekly AI answer names, by the read's own pass (reader/stages/named.js) on the fast model */
+const namedPass = async (p, as) => {
+  if (MOCK) throw new Error('AI is off');
+  const prof = { name: p.name, ai: { answers: as.map((a) => ({ text: a.text || [a.said, a.excerpt].filter(Boolean).join(' '), entities: a.brands || [] })) } };
+  await namedStage({ profile: prof, aiOn: true, ai: (o) => ai.call(o) });
+  prof.ai.answers.forEach((x, i) => { as[i].brandsNamed = x.brandsNamed || []; });
 };
 const brandPacks = { load: loadBrand, peek: (slug) => packs.peek(slug) };
 setDefaultBrand(await loadBrand(DEFAULT));

@@ -39,11 +39,13 @@ test('standings from the weekly check: question ids become their text, a questio
   assert.equal(standFromRun(null, {}), null);
 });
 
-test('named most often: brands the answers name beyond the known rivals, own brand and rivals aside; a failed pass is an error', () => {
+test('who the answers name: with the brands pass the rows are the brands named most; without it the rivals stand in; a failed pass is an error', () => {
   const withNamed = (pass, brands) => ({ ...profile, ai: { named: pass, answers: profile.ai.answers.map((a, i) => ({ ...a, brandsNamed: brands[i] })) } });
   const s = standFromRead(withNamed({ v: 1, at: '2026-10-19' }, [['Rival One', 'Beta Co', 'WishCare'], ['Rival One', 'wishcare', 'Himalaya Herbals Anti-Dandruff', 'Himalaya'], [], ['Acme', 'Rival One', 'Bare Anatomy']]));
-  assert.deepEqual(s.named.list.map((r) => [r.name, r.n, r.un]), [['WishCare', 2, 2], ['Himalaya', 1, 1], ['Bare Anatomy', 1, 0]]);
-  assert.equal(s.named.of, 4); assert.equal(s.named.unOf, 3);
+  /* with the brands pass read, the rows are who the answers name most (19 Oct): no second list under them */
+  assert.equal(s.rivalsBy, 'named'); assert.equal(s.named, null);
+  assert.ok(['Rival One', 'WishCare'].every((n) => s.rivals.some((r) => r.name === n)), s.rivals.map((r) => r.name).join());
+  assert.equal(s.rivals.find((r) => r.name === 'WishCare').un, 2);
   assert.equal(standFromRead(profile).named, null); // pass not run yet: nothing shown, never "none"
   assert.match(standFromRead(withNamed({ v: 1, at: '2026-10-19', error: 'timeout' }, [])).named.error, /couldn’t be read/);
   assert.deepEqual(standFromRead(withNamed({ v: 1, at: '2026-10-19' }, [[], [], [], []])).named.list, []); // read, and truly no other brand

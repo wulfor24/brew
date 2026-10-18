@@ -26,7 +26,7 @@ const strip = (md) => String(md || '').replace(/!\[[^\]]*\]\([^)]*\)/g, '').repl
 const domainOf = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
 
 // One instance per brand (server.js makes it with the brand pack). Snapshot: brands/<slug>/live-watch.json.
-export function createLiveWatch({ ROOT, anthropic, claudeParams, textOf, gToken, brand, tregClient = null, log = console }) {
+export function createLiveWatch({ ROOT, anthropic, claudeParams, textOf, gToken, brand, tregClient = null, namePass = null, log = console }) {
   const cfg = brand.config, FACTS = brand.facts || {}, HOST = brand.host, IN = cfg.locationCode || 2356, GEO = cfg.country || 'IN';
   const QUESTIONS = cfg.questions || [], RIVALS = cfg.rivalsAI || cfg.rivals || [];
   const esc = (x) => String(x).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -164,6 +164,7 @@ export function createLiveWatch({ ROOT, anthropic, claudeParams, textOf, gToken,
     if (answers.length < jobs.length / 2) throw new Error(`only ${answers.length} of ${jobs.length} answers: ${failed.slice(0, 3).join('; ')}`);
     const prev = snap.visibility?.runs?.[0] || null;
     const run = { at: now, answers, failed, named: answers.filter((a) => a.named).length, total: answers.length, qs: qsOf(QUESTIONS), qKey: qKey(QUESTIONS) };
+    run.brandsPass = await brandsOf(answers); /* which brands each answer names (reader/stages/named.js): the AI answers card compares against them */
     const ev = [], day = new Date(now).toISOString().slice(0, 10), add = (e) => ev.push({ ...e, at: now, run: now });
     add({ id: 'vis-score-' + day, kind: 'score', named: run.named, total: run.total, was: prev ? { named: prev.named, total: prev.total } : null,
       byEngine: Object.keys(ENGINES).map((e) => ({ engine: e, named: answers.filter((a) => a.engine === e && a.named).length, total: answers.filter((a) => a.engine === e).length })) });
@@ -202,17 +203,24 @@ export function createLiveWatch({ ROOT, anthropic, claudeParams, textOf, gToken,
      sourcing never triggers this, so a deploy re-asks nothing on its own */
   const stale = (k) => k === 'visibility' && QUESTIONS.some((q) => q?.why) && snap.visibility?.runs?.[0] && snap.visibility.runs[0].qKey !== qKey(QUESTIONS);
   const due = () => Object.keys(JOBS).filter((k) => (!snap[k] || Date.now() - snap[k].fetchedAt > CADENCE[k] || stale(k)) && !(Date.now() - failedAt(k) < RETRY[k]));
+  /* the brands each answer names, read from its own text on the fast model (namePass, server.js): { v, at } or { v, at, error }. A failed
+     pass is an error, never "names nobody" */
+  const brandsOf = async (as) => { if (!namePass || !as.length) return null; const at = new Date().toISOString();
+    try { await namePass(as); return { v: 1, at }; } catch (e) { log.warn(`[live] ${brand.slug} brands named`, e.message); return { v: 1, at, error: String(e.message || e).slice(0, 160) }; } };
   /* one question the team added: asked now on every tool and added to the latest run, so its answers show at once (about $0.02) */
   async function askOne(q) {
     const run = snap.visibility?.runs?.[0]; if (!run) throw new Error('The AI answers haven’t been read yet; it is asked in the first check.');
     const out = [], fails = [];
     await Promise.all(engines().map(async (e) => { try { const r = await ask[e](q.q); if (r?.text) out.push(read(q, e, r)); else fails.push(`${e} (empty)`); } catch (err) { fails.push(`${e} (${String(err.message).slice(0, 60)})`); } }));
+    if (out.length) await brandsOf(out);
     run.answers = [...run.answers.filter((a) => a.q !== q.id), ...out]; run.qs = [...(run.qs || []).filter((x) => x.id !== q.id), ...qsOf([q])];
     run.named = run.answers.filter((a) => a.named).length; run.total = run.answers.length; persist(); listeners.forEach((f) => f(['visibility']));
     return { asked: out.length, failed: fails };
   }
   const start = async () => {
     await load();
+    /* a run from before the brands pass gets it once (one fast-model call), so the AI answers card compares against who it names */
+    const r0 = snap.visibility?.runs?.[0]; if (r0?.answers?.length && !r0.brandsPass && namePass && !process.env.LIVE_OFF) brandsOf(r0.answers).then((x) => { if (x) { r0.brandsPass = x; persist(); listeners.forEach((f) => f(['visibility'])); } });
     const tick = () => { const d = due(); if (d.length && !process.env.LIVE_OFF) refresh(d); };
     stopped = false; clearTimeout(timers.t); clearInterval(timers.i);
     timers.t = setTimeout(() => { if (!stopped) tick(); }, 8000); timers.i = setInterval(() => { if (!stopped) tick(); }, 15 * 60e3); timers.i.unref?.();

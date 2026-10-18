@@ -57,3 +57,17 @@ test('the AI answers card reads each run with the questions it asked; a run from
   assert.equal(standFromRun({ ...run, qs: undefined }, { questions: qs, rivals: ['Traya'], brand: 'Arata' }), null, 'an old run can’t be matched to new questions');
   assert.ok(standFromRun({ ...run, qs: undefined }, { questions: [{ id: 'q1', q: 'old guess' }], rivals: ['Traya'], brand: 'Arata' }), 'before sourcing, old runs still show');
 });
+
+test('the AI answers card compares the brand with the brands the answers name most; the read’s rivals they never name are listed', () => {
+  const qs = [{ id: 'q1', q: 'best hair growth serum in india', branded: false, why: { kind: 'search', label: 'x' } }, { id: 'q2', q: 'best anti hair fall shampoo', branded: false, why: { kind: 'search', label: 'y' } }];
+  const a = (q, engine, brandsNamed, named = false) => ({ q, engine, named, rivals: [], brandsNamed, text: brandsNamed.join(', ') });
+  const run = { at: Date.UTC(2026, 9, 19), qs, brandsPass: { v: 1, at: '2026-10-19' }, answers: [a('q1', 'chatgpt', ['Minimalist', 'WishCare']), a('q1', 'gemini', ['Minimalist', 'Traya']), a('q2', 'chatgpt', ['Mamaearth', 'Minimalist'])] };
+  const st = standFromRun(run, { questions: qs, rivals: ['Fix My Curls', 'Moxie Beauty', 'WishCare'], brand: 'Arata' });
+  assert.equal(st.rivalsBy, 'named'); assert.equal(st.rivals[0].name, 'Minimalist'); assert.equal(st.rivals[0].un, 3);
+  assert.deepEqual(st.knownUnnamed, ['Fix My Curls', 'Moxie Beauty'], 'WishCare is named, so it is a row, not a note');
+  assert.equal(st.named, null, 'no second list under the rows');
+  const old = standFromRun({ ...run, brandsPass: undefined }, { questions: qs, rivals: ['Fix My Curls', 'WishCare'], brand: 'Arata' });
+  assert.equal(old.rivalsBy, 'read', 'without the brands pass the read’s rivals stand in');
+  const failed = standFromRun({ ...run, brandsPass: { v: 1, at: 'x', error: 'timeout' } }, { questions: qs, rivals: ['WishCare'], brand: 'Arata' });
+  assert.equal(failed.rivalsBy, 'read'); assert.ok(failed.named?.error, 'a failed pass says so, never "names nobody"');
+});

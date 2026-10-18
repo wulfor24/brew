@@ -89,6 +89,6 @@ test('wiring: the build stamps the wait once, the server holds watchers and runs
   assert.match(b, /if \(s\.stages\?\.confirm\?\.state !== 'waiting'\) await stage\(slug, 'confirm', 'waiting'\);/);
   assert.match(b, /if \(!\(await status\(slug\)\)\?\.waitingSince\) await setStatus\(slug, \{ waitingSince: Date\.now\(\) \}\);/);
   assert.match(s, /const held = p\.kind === 'generated' && awaitingCheck\(p\.status\);/);
-  assert.match(s, /&& !held; \/\/ the default context runs no watchers/);
+  assert.match(s, /&& !held(?: && !waitQ)?; \/\/ the default context runs no watchers/);
   assert.match(s, /if \(!DEMO && process\.env\.CONFIRM_REMIND !== '0' && \(process\.env\.K_SERVICE \|\| process\.env\.CONFIRM_REMIND === '1'\)\) createConfirmRemind\(/);
 });

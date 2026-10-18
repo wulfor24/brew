@@ -31,7 +31,15 @@ function namedOf(rows, skip, pass) {
 function standOf({ answers, brand, rivals, at, src, rivalsError = null, namedPass = null }) {
   const ok = answers.filter((a) => a && a.q);
   if (!ok.length) return null;
-  const names = [...new Set(rivals.map((r) => String(r || '').trim()).filter((r) => r && r.toLowerCase() !== String(brand || '').toLowerCase()))].slice(0, 8);
+  const known = [...new Set(rivals.map((r) => String(r || '').trim()).filter((r) => r && r.toLowerCase() !== String(brand || '').toLowerCase()))].slice(0, 8);
+  /* who the brand is up against in AI answers is who the answers name (Param, 19 Oct: Arata was compared with the curl brands its
+     read picked while the answers named Minimalist, WishCare and others): the brands named most where the shopper named no brand,
+     when the brands pass read them; the read's rivals stand in only without that pass. A known rival the answers never name is
+     listed by name (knownUnnamed), never dropped silently */
+  const all = namedOf(ok, new Set([nameKey(brand)]), namedPass), un0 = !!all?.unOf && all.list.some((r) => r.un), cnt0 = (r) => (un0 ? r.un : r.n);
+  const top = all && !all.error ? all.list.filter(cnt0).slice(0, 6).map((r) => r.name) : [];
+  const byNamed = top.length >= 2, names = byNamed ? top : known;
+  const knownUnnamed = byNamed ? known.filter((k) => !all.list.some((r) => nameKey(r.name) === nameKey(k) && r.n)) : [];
   const res = names.map((n) => [n, reName(n)]);
   const hits = (a) => res.filter(([n, re]) => (a.rivals || []).some((x) => String(x).toLowerCase() === n.toLowerCase()) || (a.brands || []).some((x) => nameKey(x) === nameKey(n)) || (a.text && re.test(a.text))).map(([n]) => n);
   const rows = ok.map((a) => ({ ...a, hit: hits(a) }));
@@ -44,8 +52,8 @@ function standOf({ answers, brand, rivals, at, src, rivalsError = null, namedPas
     return { name: n, n: mine.length, un: mineU.length, qs: forQ.slice(0, 3).map(([q, k, b]) => ({ q, k, of: rows.filter((a) => a.q === q).length, branded: !!b })) }; };
   return { v: STAND_V, src, at, of: rows.length, tools: [...new Set(rows.map((a) => a.tool))].length, questions: qs.length,
     brand: { name: brand, n: rows.filter((a) => a.named).length, un: unb.filter((a) => a.named).length }, unOf: unb.length,
-    rivals: names.map(rival).sort((a, b) => b.un - a.un || b.n - a.n), rivalsError: names.length ? null : rivalsError, qs,
-    named: namedOf(rows, new Set([brand, ...names].map(nameKey).filter(Boolean)), namedPass) };
+    rivals: names.map(rival).sort((a, b) => b.un - a.un || b.n - a.n), rivalsError: names.length ? null : rivalsError, qs, rivalsBy: byNamed ? 'named' : 'read', knownUnnamed,
+    named: byNamed ? null : namedOf(rows, new Set([brand, ...names].map(nameKey).filter(Boolean)), namedPass) }; /* the rows are already who they name */
 }
 
 /* from the read: profile.ai.answers and profile.rivals */
@@ -67,5 +75,5 @@ export function standFromRun(run, { questions = [], rivals = [], brand = '' } = 
   if (!run.qs && questions.some((q) => q?.why)) return null;
   const qs = [...(run.qs || []), ...questions.filter((q) => !(run.qs || []).some((x) => x.id === q.id))], qText = new Map(qs.map((q) => [q.id, q.q])), qBr = new Map(qs.filter((q) => q.branded != null).map((q) => [q.id, q.branded])), own = brand ? reName(brand) : null; /* a run keeps the set it asked (run.qs) */
   return standOf({ src: 'weekly', at: new Date(run.at).toISOString().slice(0, 10), brand, rivals,
-    answers: run.answers.map((a) => { const q = qText.get(a.q) || a.q; return { q, branded: qBr.has(a.q) ? qBr.get(a.q) : !!(own && own.test(q)), tool: a.engine, named: !!a.named, rivals: a.rivals || [], brands: a.brands || [], text: a.text || `${a.said || ''} ${a.excerpt || ''}` }; }) });
+    answers: run.answers.map((a) => { const q = qText.get(a.q) || a.q; return { q, branded: qBr.has(a.q) ? qBr.get(a.q) : !!(own && own.test(q)), tool: a.engine, named: !!a.named, rivals: a.rivals || [], brands: a.brandsNamed || [], text: a.text || `${a.said || ''} ${a.excerpt || ''}` }; }), namedPass: run.brandsPass || null });
 }

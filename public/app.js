@@ -964,7 +964,7 @@
      is newer. Counted where the shopper named no brand (that is where new buyers come from); an unread source says so */
   const aiStand = () => { const r = (B.health?.rings || []).find((x) => x.k === 'AI answers')?.stand || null, w = SRV.aiStand || null;
     const s = w && !w.error && (!r || r.error || String(w.at || '') >= String(r.at || '')) ? w : r;
-    return s && !s.named && r?.named ? { ...s, named: { ...r.named, at: r.at } } : s; /* the weekly check has no brands-named pass: the read's stands in, with its own counts */ };
+    return s && !s.named && s.rivalsBy !== 'named' && r?.named ? { ...s, named: { ...r.named, at: r.at } } : s; /* when the rows are who the answers name, there is no second list */ /* the weekly check has no brands-named pass: the read's stands in, with its own counts */ };
   /* the brands the answers name most, beside the known rivals (st.named): counted where the shopper named no brand when any are */
   const aisNamed = (nm) => { if (!nm || nm.error) return null; const un = !!nm.unOf && nm.list.some((r) => r.un), c = (r) => (un ? r.un : r.n);
     return { c, of: un ? nm.unOf : nm.of, top: nm.list.filter(c) }; };
@@ -980,6 +980,7 @@
     const rv = st.rivals.slice(0, compact ? 3 : 6), top = [...st.rivals].sort((a, b) => b.n - a.n).find((r) => r.n);
     return `${compact ? '' : `<div class="ais-hd"><p class="ais-h">Who AI names when shoppers ask</p><button class="icon-btn pf-btn" data-ais-proof="${esc(st.src || 'weekly')}" aria-label="The questions Brew asked, why, and each AI’s answer" title="The questions Brew asked, why, and each AI’s answer">${ic('shield')}<span class="pf-n">${st.questions || ''}</span></button></div>`}<p class="ais-sub">${st.unOf ? `${of} answers to ${nq} question${nq === 1 ? '' : 's'} where the shopper named no brand` : `${of} answers to ${nq} shopper question${nq === 1 ? '' : 's'}`}, from ${st.tools} AI tool${st.tools === 1 ? '' : 's'}${st.at ? ` · ${esc(fmtDay(Date.parse(st.at)) || st.at)}` : ''}</p>
       <div class="ais-rows">${row(st.brand, true)}${rv.map((r) => row(r)).join('')}</div>
+      ${!compact && (st.knownUnnamed || []).length ? `<p class="ais-note">Not named in any of these answers: ${esc(st.knownUnnamed.join(', '))}.</p>` : ''}
       ${st.rivalsError ? `<p class="ais-note">${esc(st.rivalsError)}</p>` : !st.rivals.length ? `<p class="ais-note">Brew hasn’t found ${esc(B.brand.name)}’s rivals yet, so only ${esc(B.brand.name)} is counted.</p>` : ''}
       ${!compact && st.unOf && st.of > st.unOf ? `<p class="ais-note">Counting the questions that name a brand too: ${esc(st.brand.name)} ${st.brand.n} of ${st.of}${top ? `, ${esc(top.name)} ${top.n} of ${st.of}` : ''}.</p>` : ''}
       ${st.named?.error ? `<p class="ais-note">${esc(st.named.error)}</p>` : (() => { const nm = aisNamed(st.named); if (!nm) return '';
