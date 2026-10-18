@@ -966,7 +966,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   /* the rewrite queue (updates.json queue): what the team told Brew goes first, then a big change (a rival's price move or
      launch, our catalog), then the weekly check's stale moves. A rewrite asked for while another runs waits its turn instead of
      being turned away, and starts the moment the brand is free (drain) */
-  const PRIO = { learnings: 0, 'learnings-all': 0, event: 1, manual: 1, connected: 1, weekly: 2, live: 2, new: 3 };
+  const PRIO = { learnings: 0, 'learnings-all': 0, event: 1, manual: 1, connected: 1, stale: 2, weekly: 2, live: 2, new: 3 };
   const enqueue = (slug, ns, { via = 'manual', auto = false, notBefore = null, tries = null } = {}) => editUpd(slug, (u) => { const q = (u.queue ||= []);
     let e = q.find((x) => x.via === via); if (!e) { e = { via, prio: PRIO[via] ?? 1, ns: [], auto, at: Date.now() }; q.push(e); } e.ns = [...new Set([...e.ns, ...ns])]; e.auto = e.auto && auto;
     if (notBefore) e.notBefore = notBefore; else delete e.notBefore; if (tries != null) e.tries = tries; });
@@ -1108,10 +1108,14 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   async function updates(slug, { member = true } = {}) {
     const u = await upd(slug), x = st(slug), s0 = await status(slug), moves = await packs.getJSON(slug, 'moves.json', {});
     if (!member) u.stale = Object.fromEntries(Object.entries(u.stale || {}).filter(([, v]) => !v.private));
+    /* where an outdated move's refresh stands (staleSweep): being rewritten, queued, waiting for next week's pot, or due within
+       the hour; off when the team turned automatic updates off */
+    const inQ = new Set((u.queue || []).flatMap((q) => (q.ns || []).map(Number))), wq = potOf(u).waits || {}, rw = new Set([...(x.rewriting || [])].map(Number));
+    const refreshOf = (n) => (u.auto === false ? 'off' : rw.has(+n) ? 'now' : inQ.has(+n) ? 'queued' : wq[n] ? 'next-week' : 'soon');
     const specs = (await load()).moves?.SPECS || [], nm = (n) => (moves[n]?.title ? sentenceCase(moves[n].title) : sentenceCase(specs.find((p) => p.n === +n)?.discipline || '', [], { force: true })) || `Move ${pad2(n)}`;
-    const stale = Object.values(u.stale || {}).filter((s) => moves[s.n] && s.via !== 'connected' /* a connected run rewrites them on its own */).sort((a, b) => (a.priority === b.priority ? a.n - b.n : a.priority === 'high' ? -1 : 1)).map((s) => ({ ...s, title: nm(s.n) }));
+    const stale = Object.values(u.stale || {}).filter((s) => moves[s.n] && s.via !== 'connected' /* a connected run rewrites them on its own */).sort((a, b) => (a.priority === b.priority ? a.n - b.n : a.priority === 'high' ? -1 : 1)).map((s) => ({ ...s, title: nm(s.n), refresh: refreshOf(s.n) }));
     const last = u.lastCheck?.at || s0?.doneAt || null;
-    return { auto: u.auto !== false, every: REFRESH_DAYS, checking: x.checking ? (u.checking || { at: Date.now() }) : null, lastCheck: u.lastCheck || null, lastError: u.lastError || null, stale,
+    return { auto: u.auto !== false, every: REFRESH_DAYS, potNext: nextWeek(), checking: x.checking ? (u.checking || { at: Date.now() }) : null, lastCheck: u.lastCheck || null, lastError: u.lastError || null, stale,
       next: u.auto !== false && s0?.done ? (last || Date.now()) + REFRESH_DAYS * 864e5 : null, history: (u.history || []).slice(0, 10),
       rewriting: x.rewriting ? [...x.rewriting].map((n) => ({ n, title: nm(n), secs: x.inflight.has(n) ? Math.round((Date.now() - x.inflight.get(n)) / 1e3) : null, done: !x.inflight.has(n) && moves[n]?.meta?.rewrittenAt && Date.parse(moves[n].meta.rewrittenAt) > Date.now() - 3 * 3600e3 })) : null,
       /* a connected account's run, for the team: waiting for more connects, then rewriting every move with the numbers */
@@ -1335,6 +1339,33 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     drain(slug).catch((e) => log.warn('[live] drain', e.message));
     return { ok: true, ns, wait: wait.map((x) => x.n) };
   }
+  /* outdated moves refresh on their own (Param, 19 Oct: "I want outdated moves to be automatically refreshed"): the hourly tick
+     and every signal that flags moves queue the flagged moves this week's pot covers, best kind first (out of stock, events,
+     the site check, accounts, the rest); what the pot can't cover keeps its flag and waits for next week's pot. A move written
+     in the last day waits a day, so a signal that flips back and forth can't loop. Auto off (updates.json auto) stops it */
+  const SWEEP_EVERY = +(process.env.STALE_SWEEP_MS ?? 3600e3), SWEEP_FRESH = +(process.env.STALE_FRESH_MS ?? 864e5);
+  async function staleSweep(slug, { now = Date.now(), why = 'hourly' } = {}) {
+    if (process.env.STALE_SWEEP === '0') return { skipped: 'off' };
+    if (blocked(slug) || (st(slug).running && !st(slug).rewriting)) return { skipped: 'busy' };
+    const s0 = await status(slug), u = await upd(slug);
+    if (!s0?.done || s0.cancelled || u.auto === false) return { skipped: 'auto off' };
+    if (u.connectRun || (u.queue || []).some((q) => q.via === 'connected')) return { skipped: 'waiting' }; /* the first-connect run rewrites everything itself */
+    if (why === 'hourly' && now - (u.sweep?.at || 0) < SWEEP_EVERY) return { skipped: 'recent' };
+    const moves = await packs.getJSON(slug, 'moves.json', {}), ok = await rewritable(moves);
+    const inQ = new Set((u.queue || []).flatMap((q) => (q.ns || []).map(Number))), busy = new Set([...(st(slug).rewriting || [])].map(Number));
+    const fresh = (n) => now - (Date.parse(moves[n]?.meta?.rewrittenAt || '') || 0) < SWEEP_FRESH;
+    const items = Object.values(u.stale || {}).filter((f) => f && f.via !== 'connected' && !f.demo && !(f.live && !f.real) && ok(+f.n) && !inQ.has(+f.n) && !busy.has(+f.n) && !fresh(+f.n))
+      .map((f) => ({ n: +f.n, kind: flagKind(f), at: f.at || 0, top: !!(f.stock || f.via === 'stock') }));
+    await editUpd(slug, (v) => { v.sweep = { at: now, why }; });
+    if (!items.length) return { skipped: 'nothing flagged' };
+    const P = await potInfo(slug, now), { now: go, wait } = potFit(P.pot, P.cap, P.est, items), ns = go.map((x) => x.n);
+    await potWait(slug, wait, go);
+    if (!ns.length) { log.log(`[stale] ${slug}: ${wait.length} outdated moves wait for next week's pot ($${P.pot.usd.toFixed(2)} of $${P.cap} spent)`); return { skipped: 'pot', wait: wait.map((x) => x.n) }; }
+    log.log(`[stale] ${slug}: refreshing ${ns.length} outdated moves (${ns.join(', ')}, ${why}), about $${(ns.length * P.est).toFixed(2)} of the week's $${P.cap} pot${wait.length ? `; ${wait.length} wait for next week` : ''}`);
+    await enqueue(slug, ns, { via: 'stale', auto: true });
+    drain(slug).catch((e) => log.warn('[stale] drain', e.message));
+    return { ok: true, ns, wait: wait.map((x) => x.n) };
+  }
   const setAuto = (slug, on) => editUpd(slug, (u) => { u.auto = !!on; }).then(() => ({ ok: true }));
   // "whenever relevant": the free catalog watch (every 3 hours) saw a price change, a launch or a removal
   const RETRY_MS = +process.env.REFRESH_RETRY_MS || 24 * 3600e3;
@@ -1379,7 +1410,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
           f.why = whyOf(f); u.stale[n] = f; flagged.add(n); }
       }
     });
-    if (flagged.size) { emit(slug, { type: 'update-done', changes: items.size, flagged: flagged.size }); log.log(`[stock] ${slug}: ${flagged.size} moves out of date (${[...flagged].join(', ')}): ${[...items.keys()].join(', ')}`); }
+    if (flagged.size) { emit(slug, { type: 'update-done', changes: items.size, flagged: flagged.size }); log.log(`[stock] ${slug}: ${flagged.size} moves out of date (${[...flagged].join(', ')}): ${[...items.keys()].join(', ')}`);
+      staleSweep(slug, { why: 'stock' }).catch((e) => log.warn('[stale] stock', slug, e.message)); } /* refreshed now, not at the weekly run */
     return { flagged: [...flagged] };
   }
   async function signal(slug, events = []) {
@@ -1409,6 +1441,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       if (Date.now() - (s0.seenAt || s0.doneAt || 0) > 30 * 864e5) continue;
       const u = await upd(b.slug); if (u.auto === false) continue;
       await liveWeekly(b.slug).catch((e) => log.warn('[live] weekly', b.slug, e.message)); /* its own week: a failed site check does not hold it */
+      await staleSweep(b.slug).catch((e) => log.warn('[stale] sweep', b.slug, e.message)); /* outdated moves refresh within the hour, inside the week's pot */
       await hooks.newMoves?.(b.slug).catch((e) => log.warn('[pot] new moves', b.slug, e.message)); /* new moves from learnings that waited for the pot */
       if (backingOff(u)) continue; /* a failed check waits a day before the next paid try, not an hour */
       if (Date.now() - (u.lastCheck?.at || s0.doneAt || Date.now()) > REFRESH_DAYS * 864e5) await checkUpdates(b.slug, { auto: true, why: 'Weekly check' });
@@ -1557,5 +1590,5 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (o?.stockWhy) { u.stale[x.n] = { ...o, was: { priority: x.priority, why: x.why, via: x.via }, why: [...Object.values(o.stockWhy), x.why].join(' '), changes: [...new Set([...(o.changes || []), ...(x.changes || [])])].slice(0, 6) }; continue; } /* an out-of-stock mark stays on top */
     u.stale[x.n] = { ...x, at: Date.now(), changes: [...new Set([...(x.changes || []), ...(o?.changes || [])])].slice(0, 6), ...(o && !o.private ? { private: false } : {}) }; } });
   const facts = { pot: potInfo, potSpend, estMove, republish, flagStale, readProduct: async (slug, url) => readProduct(slug, url, (await packs.getJSON(slug, 'profile.json', {})) || {}), readRival, busy: (slug) => !!(st(slug).running || st(slug).checking), setHooks: (h) => Object.assign(hooks, h) };
-  return { ...facts, paidWork, stop, marketCheck, teamStatics, settleConnect, connectPending, readLive, heal, healPdfs, pdfFor, pdfOn, connected, liveConnected, staleConnected, checkUpdates, rewrite, updates, setAuto, signal, seen, buildInfo, retry, goPro, checkData, applyCheck, liveWeekly, stockSignal, peek: (slug) => st(slug).status, addEmail, start, resume, resumeAll, replayRead, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
+  return { ...facts, paidWork, stop, marketCheck, teamStatics, settleConnect, connectPending, readLive, heal, healPdfs, pdfFor, pdfOn, connected, liveConnected, staleConnected, checkUpdates, rewrite, updates, setAuto, signal, staleSweep, seen, buildInfo, retry, goPro, checkData, applyCheck, liveWeekly, stockSignal, peek: (slug) => st(slug).status, addEmail, start, resume, resumeAll, replayRead, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
 }

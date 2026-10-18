@@ -4360,17 +4360,32 @@
         <div class="rd-acts"><span class="rd-pn"><button ${prev == null ? 'disabled' : `data-goto="${prev}"`} title="Previous move" aria-label="Previous move">${ic('right', 's16')}</button><button ${next == null ? 'disabled' : `data-goto="${next}"`} title="Next move" aria-label="Next move">${ic('right', 's16')}</button></span>
           ${n != null ? `<a class="btn btn-primary sm" href="${pdfUrl(`move-${n}.pdf`)}" target="_blank" rel="noopener">${ic('doc', 's16')}Open the PDF</a>
           <details class="rd2-more"><summary class="icon-btn" aria-label="More for this move" title="More">${ic('more', 's16')}</summary><div class="rd2-menu"><a href="${pdfUrl(`move-${n}.pdf`, 1)}">${ic('down', 's16')}Download the PDF</a>${GEN && n ? `<button data-rdrw ${!up?.canRewrite || rwing ? 'disabled' : ''} title="${up?.building ? 'Opens once the moves are written' : 'Writes this move again from the latest evidence'}">${rwing ? '<span class="spin"></span>Rewriting…' : `${ic('refresh', 's16')}Rewrite with the latest`}</button>` : ''}</div></details>` : ''}</div></div>
-      ${(() => { /* the move at one glance (Param, 19 Oct: "simplify it, one quick glance"): what it is, the one number, what it gives,
-         when it is live; trust and freshness are one quiet line each, never a row of badges, tiles and repeated chips */
-        const claims = GEN && !m.meta?.verified ? claimsOf(m) : [], about = topicCase(String(kick || '').replace(/\s*·\s*move\s+\d+\s*$/i, '').trim().toLowerCase()) || (grp ? grp[1] : '');
-        const statB = n === 0 && written.length ? String(written.length) : m.stat, chips = (x) => (x || []).filter((c) => !String(stl?.why || '').includes(c)).slice(0, 3);
-        return `<header class="rd-hero rd2-hero"><p class="rd2-kick">${n === 0 ? 'The index' : `Move ${String(n).padStart(2, '0')}${about ? ` · ${esc(about)}` : ''}`}</p>
+      ${(() => { /* the move at one glance, weighted for the brand reading it (Param, 19 Oct: "simple, visual, one quick-glance
+         grasp; right weight to the right elements, from the brand's point of view"): what the move is, the problem in their own
+         number, what is live in 30 days; then the plan, week by week, what we need from them and how we'll know; trust and
+         freshness are one quiet line each, and the full write-up sits under it for whoever wants the detail */
+        const claims = GEN && !m.meta?.verified ? claimsOf(m) : [], about = topicCase(String(kick || '').replace(/\s*·\s*move\s+\d+\s*$/i, '').trim().toLowerCase()).replace(/(\d+\s)(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/g, (x, d, mo) => d + mo[0].toUpperCase() + mo.slice(1)) || (grp ? grp[1] : '');
+        const statB = n === 0 && written.length ? String(written.length) : m.stat, g = n === 0 ? {} : moveGlance(m), bn = esc(B.brand.name);
+        const fresh = stl ? (() => { const st0 = rwing ? 'now' : stl.refresh || (up?.auto === false ? 'off' : 'soon'), why = `<small>${esc(stl.why)}</small>`, wd = up?.potNext ? new Date(up.potNext).toLocaleDateString('en-IN', { weekday: 'long' }) : 'next week';
+          if (st0 === 'now') return `<div class="rd2-fresh is-now"><span class="spin"></span><p><b>Refreshing with the latest now.</b> It updates here when done.${why}</p></div>`;
+          if (st0 === 'queued' || st0 === 'soon') return `<div class="rd2-fresh is-now">${ic('refresh', 's16')}<p><b>Out of date. Brew is refreshing it with the latest</b>, usually within the hour.${why}</p></div>`;
+          if (st0 === 'next-week') return `<div class="rd2-fresh">${ic('refresh', 's16')}<p><b>Out of date.</b> It refreshes on its own on ${esc(wd)}, when the week’s refresh budget starts again.${why}</p>${GEN && up?.canRewrite ? `<button class="btn btn-ghost sm" data-rdrw>Refresh now</button>` : ''}</div>`;
+          return `<div class="rd2-fresh">${ic('refresh', 's16')}<p><b>Out of date.</b> Automatic updates are off for ${bn}.${why}</p>${GEN && up?.canRewrite ? `<button class="btn btn-primary sm" data-rdrw>Refresh now</button>` : ''}</div>`; })() : '';
+        return `<header class="rd-hero rd2-hero">
+        <p class="rd2-kick">${n === 0 ? 'The index' : `Move ${String(n).padStart(2, '0')}${about ? ` · ${esc(about)}` : ''}`}</p>
         <h1>${esc(n === 0 && written.length ? String(m.title || '').replace(/^\S+(?=\s+moves?\b)/i, String(written.length)) : m.title)}</h1>
-        ${statB ? `<p class="rd2-stat"><b>${esc(statB)}</b>${m.statLabel ? `<span>${esc(/[a-z]/.test(m.statLabel) ? m.statLabel : capsOff(m.statLabel))}</span>` : ''}</p>` : ''}
-        ${m.gives || m.live ? `<dl class="rd2-gl">${m.gives ? `<div><dt>You get</dt><dd>${esc(m.gives)}</dd></div>` : ''}${m.live ? `<div><dt>In 30 days</dt><dd>${esc(m.live)}</dd></div>` : ''}</dl>` : ''}
-        ${m.meta?.verified ? `<p class="rd2-trust is-ok">${ic('check', 's14')}Every number checked</p>` : claims.length ? `<details class="rd2-trust"><summary>${ic('check', 's14')}Numbers checked · ${claims.length} ${claims.length === 1 ? 'line' : 'lines'} to confirm${ic('right', 's14 chev')}</summary><ul>${claims.map((x) => `<li>${esc(x)}</li>`).join('')}</ul><p>Read these as the writer’s view until someone confirms them.</p></details>` : ''}
-        ${stl ? `<div class="rd2-stale"><span>${ic('refresh', 's16')}</span><p><b>${stl.priority === 'high' ? 'Out of date' : 'May be out of date'}.</b> ${esc(stl.why)}${chips(stl.changes).length ? ` <small>${chips(stl.changes).map(esc).join(' · ')}</small>` : ''}</p>${GEN && up?.canRewrite ? `<button class="btn btn-primary sm" data-rdrw ${rwing ? 'disabled' : ''}>${rwing ? '<span class="spin"></span>Rewriting…' : 'Rewrite now'}</button>` : ''}</div>`
-          : m.meta?.version > 1 ? `<p class="rd2-ver">Version ${m.meta.version}, rewritten ${fmtDay(m.meta.rewrittenAt)}${m.meta.because ? `: ${esc(m.meta.because)}` : ''}</p>` : ''}</header>`; })()}
+        ${m.gives ? `<p class="rd2-sub">${esc(m.gives)}</p>` : ''}
+        ${fresh}
+        <div class="rd2-why">${statB ? `<div class="rd2-num"><b>${esc(statB)}</b>${m.statLabel ? `<span>${esc(/[a-z]/.test(m.statLabel) ? m.statLabel : capsOff(m.statLabel))}</span>` : ''}</div>` : ''}
+          ${(g.found || []).length ? `<div class="rd2-found"><h2>What we found</h2><ul>${g.found.map((x) => `<li>${x}</li>`).join('')}</ul></div>` : ''}</div>
+        ${m.live ? `<div class="rd2-live"><h2>Live in 30 days</h2><p>${esc(m.live)}</p></div>` : ''}
+        ${(g.steps || []).length ? `<div class="rd2-blk"><h2>The plan</h2><ol class="rd2-steps">${g.steps.map((x, i) => `<li><i>${i + 1}</i><span>${esc(x)}</span></li>`).join('')}</ol></div>` : ''}
+        ${(g.weeks || []).length ? `<div class="rd2-blk"><h2>Week by week</h2><ol class="rd2-weeks" style="--n:${g.weeks.length}">${g.weeks.map((x) => `<li><b>${esc(x.w)}</b><span>${esc(x.live)}</span></li>`).join('')}</ol></div>` : ''}
+        ${(g.needs || []).length || g.measure ? `<div class="rd2-two">${(g.needs || []).length ? `<div class="rd2-blk"><h2>What we need from ${bn}</h2><ul class="rd2-needs">${g.needs.map((x) => `<li>${ic('check', 's14')}<span>${esc(x)}</span></li>`).join('')}</ul></div>` : ''}
+          ${g.measure ? `<div class="rd2-blk"><h2>How we’ll know it worked</h2><div class="rd2-goal"><p>${esc(g.measure.metric)}</p>${g.measure.big ? `<div class="rd2-ft"><span><small>Today</small><b>${esc(g.measure.from)}</b></span>${ic('right', 's16')}<span><small>${esc(g.measure.when)}</small><b>${esc(g.measure.to)}</b></span></div>` : `<dl class="rd2-ft2"><div><dt>Today</dt><dd>${esc(g.measure.from)}</dd></div><div><dt>${esc(g.measure.when)}</dt><dd>${esc(g.measure.to)}</dd></div></dl>`}</div></div>` : ''}</div>` : ''}
+        <div class="rd2-foot">${m.meta?.verified ? `<p class="rd2-trust is-ok">${ic('check', 's14')}Every number checked</p>` : claims.length ? `<details class="rd2-trust"><summary>${ic('check', 's14')}Numbers checked · ${claims.length} ${claims.length === 1 ? 'line' : 'lines'} to confirm${ic('right', 's14 chev')}</summary><ul>${claims.map((x) => `<li>${esc(x)}</li>`).join('')}</ul><p>Read these as the writer’s view until someone confirms them.</p></details>` : ''}
+          ${!stl && m.meta?.version > 1 ? `<p class="rd2-ver">Updated ${fmtDay(m.meta.rewrittenAt)}${m.meta.because ? `: ${esc(m.meta.because)}` : ''}</p>` : ''}</div>
+        ${secs.length ? `<p class="rd2-full">The full move<small>Every finding, table and source</small></p>` : ''}</header>`; })()}
       <div class="rd-main"><nav class="rd-toc" aria-label="Contents"><small>On this page</small>${liveIdx ? '<a href="#rd-all" data-toc="all">Every move so far</a>' : ''}${secs.map((x, i) => `<a href="#${sid(i)}" data-toc="${i}">${esc(x.h)}</a>`).join('')}${(m.sources || []).length && !hasSrc ? `<a href="#rd-src" data-toc="src">Sources</a>` : ''}</nav>
         <article class="rd-art">${liveIdx}${secs.map((x, i) => `<section id="${sid(i)}"><h2>${esc(x.h)}</h2>${legacy ? (x.paras || []).map((p) => `<p>${t(p)}</p>`).join('') : (x.blocks || []).map(block).join('')}</section>`).join('')}
           ${(m.toConfirm || []).length ? `<section class="rd-tc"><h2>To confirm with ${esc(B.brand.name)}</h2><ul>${m.toConfirm.map((x) => `<li>${t(x)}</li>`).join('')}</ul></section>` : ''}
@@ -4381,9 +4396,9 @@
         </article></div></div>`;
     $$('[data-goto]', $('#view')).forEach((x) => x.onclick = () => openMove(+x.dataset.goto));
     $$('[data-rdrw]', $('#view')).forEach((x) => x.onclick = async () => {
-      if (x.dataset.sure !== '1') { $$('[data-rdrw]').forEach((y) => { y.dataset.sure = '1'; y.innerHTML = `Rewrite · about $2, 8 min? Yes`; }); return; }
+      if (x.dataset.sure !== '1') { $$('[data-rdrw]').forEach((y) => { y.dataset.sure = '1'; y.innerHTML = `Refresh · about $${(+up?.estMove || 0.1).toFixed(2)}? Yes`; }); return; }
       $$('[data-rdrw]').forEach((y) => { y.disabled = true; y.innerHTML = '<span class="spin"></span>Rewriting…'; });
-      const r = await api(`/api/brands/${slug}/updates`, { action: 'rewrite', moves: [n] }); toast(r?.error ? esc(r.error) : `Rewriting Move ${String(n).padStart(2, '0')} with the latest. About 8 minutes; it updates here when done.`);
+      const r = await api(`/api/brands/${slug}/updates`, { action: 'rewrite', moves: [n] }); toast(r?.error ? esc(r.error) : `Refreshing Move ${String(n).padStart(2, '0')} with the latest. It updates here when done.`);
       if (r?.error) renderMove(); else MV.t = setTimeout(() => view === 'move' && MV.n === n && renderMove(), 60e3); });
     if (rwing) MV.t = setTimeout(() => view === 'move' && MV.n === n && renderMove(), 30e3);
     $$('[data-opencard]', $('#view')).forEach((x) => x.onclick = () => { const p = byId(x.dataset.opencard); if (p) openDetail(p); });
@@ -4393,6 +4408,30 @@
     $$('.rd-art section[id]').forEach((x) => io.observe(x));
   };
 
+  /* the move's parts a brand reads first, taken from the move itself (every move is written to the same template: What we
+     found ends in Key takeaways, The plan has numbered steps, the 30-day table has a week, what the brand provides and what is
+     live, How we measure starts with its metric, today's number and the target). Nothing here is written or guessed: a part
+     the move doesn't have is left out */
+  const moveGlance = (m) => { const secs = (m?.sections || []).filter((x) => x.h && x.blocks), sec = (re) => secs.find((x) => re.test(x.h));
+    const plain = (x) => String(x || '').replace(/\*\*(.+?)\*\*/g, '$1').replace(/`([^`]+)`/g, '$1').replace(/\s+/g, ' ').trim();
+    const first = (x) => { const p = plain(x); const m1 = p.match(/^(.{20,170}?[.!?])(\s|$)/); return m1 ? m1[1] : p.length > 170 ? p.slice(0, 169).replace(/\s+\S*$/, '') + '…' : p; };
+    const tbl = (s0) => (s0?.blocks || []).find((b) => b.t === 'table' && (b.head || []).length && (b.rows || []).length);
+    const col = (t0, re) => (t0.head || []).findIndex((h) => re.test(String(h)));
+    const out = {};
+    const fd = sec(/what we found/i); if (fd) { const bl = fd.blocks, k = bl.findIndex((b) => b.t === 'h3' && /takeaway/i.test(b.text || '')), li = (k >= 0 ? bl.slice(k) : []).find((b) => b.t === 'list') || null;
+      if (li) out.found = li.items.slice(0, 3).map((x) => { const p = plain(x), mm = p.match(/^([^:]{3,60}):\s*(.+)$/); return mm ? `<b>${esc(mm[1])}:</b> ${esc(first(mm[2]))}` : esc(first(p)); });
+      else { const ft = fd.blocks.find((b) => b.t === 'table' && col(b, /what we found|finding|result/i) >= 0 && col(b, /signal|check|what we read/i) >= 0); /* no takeaways: the signals table, "signal: what we found" */
+        if (ft) { const ck = col(ft, /signal|check|what we read/i), cf = col(ft, /what we found|finding|result/i); out.found = ft.rows.slice(0, 3).filter((r) => plain(r[cf])).map((r) => `<b>${esc(plain(r[ck]))}:</b> ${esc(first(r[cf]))}`); }
+        else { const ls = [...fd.blocks].reverse().find((b) => b.t === 'list' && (b.items || []).length); if (ls) out.found = ls.items.slice(0, 3).map((x) => { const p = plain(x), mm = p.match(/^([^:]{3,60}):\s*(.+)$/); return mm ? `<b>${esc(mm[1])}:</b> ${esc(first(mm[2]))}` : esc(first(p)); }); } } }
+    const pl = sec(/^the plan/i); if (pl) out.steps = pl.blocks.filter((b) => b.t === 'h3').map((b) => plain(b.text).replace(/^\d+[.)]\s*/, '')).filter((x) => x && !/not doing|decision rule|watch trigger|^cadence|creative cadence|what we are not/i.test(x)).slice(0, 5);
+    const wk = tbl(sec(/30-day|deployment|rollout/i)); if (wk) { const cw = col(wk, /week/i), cl = col(wk, /live/i), cn = col(wk, /provide|from you|needs?|brings|gives/i);
+      if (cw >= 0 && cl >= 0) out.weeks = wk.rows.slice(0, 6).map((r) => ({ w: /^\d+$/.test(String(r[cw]).trim()) ? `Week ${String(r[cw]).trim()}` : plain(r[cw]), live: first(r[cl]) })).filter((x) => x.live);
+      if (cn >= 0) out.needs = [...new Set(wk.rows.map((r) => plain(r[cn])).filter((x) => x && !/^(none|nothing|n\/a|-|–)\.?$/i.test(x)).map((x) => first(x)))].slice(0, 4); }
+    const ms = tbl(sec(/how we measure/i)); if (ms) { const cm = col(ms, /metric/i), cb = col(ms, /baseline|today|now/i), ct = col(ms, /target|goal/i), r = ms.rows[0];
+      if (cm >= 0 && cb >= 0 && ct >= 0 && r) { const tidy = (x) => plain(x).replace(/^(?:target|goal):\s*/i, '').replace(/\s*\([^)]*\)\s*$/, '').trim();
+        const from = /^to be (?:instrumented|pulled|measured|set)/i.test(plain(r[cb])) ? 'Not measured yet' : tidy(r[cb]), to = tidy(r[ct]);
+        out.measure = { metric: tidy(r[cm]), from, to, big: from.length <= 18 && to.length <= 18 /* short numbers get the big Today → target; sentences read as two lines */, when: (String(ms.head[ct]).match(/\d+[- ]day/i)?.[0] || 'Target').replace(/(\d+)[- ]day/i, 'Day $1') }; } }
+    return out; };
   /* a label written in capitals, in sentence case: acronyms stay (AI, SEO), the brand keeps its own spelling, "vs" goes lower */
   const capsOff = (x) => { const bn = B.brand?.name || ''; let o = topicCase(String(x || '').toLowerCase()).replace(/\bVS\b/g, 'vs'); if (bn) o = o.replace(new RegExp(`\\b${bn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi'), bn); return o; };
   /* the move page's ⋯ menu closes on a click anywhere else, or Escape */
