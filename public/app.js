@@ -924,7 +924,7 @@
      is newer. Counted where the shopper named no brand (that is where new buyers come from); an unread source says so */
   const aiStand = () => { const r = (B.health?.rings || []).find((x) => x.k === 'AI answers')?.stand || null, w = SRV.aiStand || null;
     const s = w && !w.error && (!r || r.error || String(w.at || '') >= String(r.at || '')) ? w : r;
-    return s && !s.named && r?.named ? { ...s, named: r.named } : s; /* the weekly check has no brands-named pass: the read's stands in, with its own counts */ };
+    return s && !s.named && r?.named ? { ...s, named: { ...r.named, at: r.at } } : s; /* the weekly check has no brands-named pass: the read's stands in, with its own counts */ };
   /* the brands the answers name most, beside the known rivals (st.named): counted where the shopper named no brand when any are */
   const aisNamed = (nm) => { if (!nm || nm.error) return null; const un = !!nm.unOf && nm.list.some((r) => r.un), c = (r) => (un ? r.un : r.n);
     return { c, of: un ? nm.unOf : nm.of, top: nm.list.filter(c) }; };
@@ -943,7 +943,7 @@
       ${st.rivalsError ? `<p class="ais-note">${esc(st.rivalsError)}</p>` : !st.rivals.length ? `<p class="ais-note">Brew hasn’t found ${esc(B.brand.name)}’s rivals yet, so only ${esc(B.brand.name)} is counted.</p>` : ''}
       ${!compact && st.unOf && st.of > st.unOf ? `<p class="ais-note">Counting the questions that name a brand too: ${esc(st.brand.name)} ${st.brand.n} of ${st.of}${top ? `, ${esc(top.name)} ${top.n} of ${st.of}` : ''}.</p>` : ''}
       ${st.named?.error ? `<p class="ais-note">${esc(st.named.error)}</p>` : (() => { const nm = aisNamed(st.named); if (!nm) return '';
-        return `<p class="ais-h2">Named most often</p>${nm.top.length ? `<div class="ais-rows">${nm.top.slice(0, compact ? 3 : 5).map((r) => `<div class="ais-row"><b>${esc(r.name)}</b><span class="ais-bar"><i style="width:${nm.of ? Math.round((100 * nm.c(r)) / nm.of) : 0}%"></i></span><em>${nm.c(r)} of ${nm.of}</em></div>`).join('')}</div>` : `<p class="ais-note">These answers name no other brands.</p>`}`; })()}`; };
+        return `<p class="ais-h2">Named most often</p>${nm.of !== of ? `<p class="ais-sub">Counted in ${nm.of} answers${st.named.at ? ` from ${esc(fmtDay(Date.parse(st.named.at)) || st.named.at)}` : ''}</p>` : ''}${nm.top.length ? `<div class="ais-rows">${nm.top.slice(0, compact ? 3 : 5).map((r) => `<div class="ais-row"><b>${esc(r.name)}</b><span class="ais-bar"><i style="width:${nm.of ? Math.round((100 * nm.c(r)) / nm.of) : 0}%"></i></span><em>${nm.c(r)} of ${nm.of}</em></div>`).join('')}</div>` : `<p class="ais-note">These answers name no other brands.</p>`}`; })()}`; };
   /* the one line on an AI answers card: who the answers name, beside the brand */
   const aisLine = (p) => { if (p.sector !== 'visibility') return ''; const st = aiStand(), nm = aisNamed(st?.named)?.top.length ? aisNamed(st.named) : null; if (!st || st.error || (!st.rivals.length && !nm)) return '';
     const [cnt, of] = aisOf(st), top = st.rivals.filter((r) => cnt(r)).slice(0, 2);
