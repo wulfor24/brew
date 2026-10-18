@@ -416,7 +416,9 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     seed.geo = geoOf(seed.health) || { score: 0, band: 'Not read yet' };
     const facts = factsFromLedger(withNumbers(ledger, N, profile.name), { host: profile.host }); /* the current counts, each with its day, replace the read's older rows */
     const cfg = configFromProfile(profile, extra);
-    Object.assign(cfg, laneProducts(seed, profile), { statics: (await packs.getJSON(slug, 'config.json', {}))?.statics || [] }); /* a re-read keeps the finished statics */
+    const cfg0 = (await packs.getJSON(slug, 'config.json', {})) || {};
+    Object.assign(cfg, laneProducts(seed, profile), { statics: cfg0.statics || [] }); /* a re-read keeps the finished statics */
+    if (cfg0.questionsV) Object.assign(cfg, { questions: cfg0.questions, questionsV: cfg0.questionsV, questionsMethod: cfg0.questionsMethod, rivalsAI: cfg0.rivalsAI || cfg.rivalsAI }); /* and the questions sourced from real searches (ai-questions.js), with the team's own */
     await packs.put(slug, 'seed.json', seed); await packs.put(slug, 'facts.json', facts); await packs.put(slug, 'config.json', cfg);
     packs.drop(slug); await onPack(slug);
   }

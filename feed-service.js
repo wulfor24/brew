@@ -1477,6 +1477,49 @@ export function createFeedService(o) {
      yesterday's. newIds: cards made since the last visit that this person had not seen before this visit began */
   /* the weekly AI answers check (live-watch.js), as who is named for which question; the client shows it when newer than the read's */
   const aiStandWeekly = () => { try { const cfg = B()?.config || {}; return standFromRun(live?.get()?.visibility?.runs?.[0], { questions: cfg.questions || [], rivals: cfg.rivalsAI || cfg.rivals || (B()?.profile?.rivals || []).map((r) => r?.name), brand: BN() }); } catch (e) { log.warn('[ai-stand]', e.message); return null; } };
+  /* the AI answers card's proof (Param, 19 Oct: "how do I know which questions were asked? why should I trust you?"): how Brew
+     asked, each question with why it is there (real searches, Google's suggestions, a real thread, a best seller: ai-questions.js),
+     and every tool's own answer with the brands it named and its sources. src: the same set the card shows (weekly or read) */
+  const AI_TOOL = { chatgpt: 'ChatGPT', gemini: 'Gemini', perplexity: 'Perplexity', claude: 'Claude', 'chat-gpt': 'ChatGPT' };
+  const toolName = (x) => AI_TOOL[String(x || '').toLowerCase()] || String(x || 'AI tool');
+  const ansText = (x) => String(x || '').replace(/(?:\s*:?-{3,}:?)+/g, ' ').replace(/\s{2,}/g, ' ').trim(); /* table rules from the answers' markdown */
+  const domOf = (u) => { try { return new URL(/^https?:/.test(u) ? u : `https://${u}`).hostname.replace(/^www\./, ''); } catch { return String(u || ''); } };
+  on('GET', '/api/tenants/:id/ai-answers', async (b, t, p, q) => {
+    const slug = slugOfT(t), cfg = B()?.config || {}, src = q?.get?.('src') === 'read' ? 'read' : 'weekly', run = live?.get()?.visibility?.runs?.[0] || null;
+    const qMeta = new Map((cfg.questions || []).map((x) => [x.q, x]));
+    let qs = [], at = null, tools = [];
+    if (src === 'weekly' && run && (run.qs || !(cfg.questions || []).some((x) => x?.why))) {
+      const list = run.qs || cfg.questions || []; at = run.at;
+      qs = list.map((x) => ({ q: x.q, branded: x.branded ?? null, why: x.why || qMeta.get(x.q)?.why || null, team: x.why?.kind === 'team',
+        answers: run.answers.filter((a) => a.q === x.id).map((a) => ({ tool: toolName(a.engine), named: !!a.named, rivals: a.rivals || [], brands: (a.brands || []).slice(0, 12), text: ansText(a.text || [a.said, a.excerpt].filter(Boolean).join(' ')), full: !!a.text, sources: [...new Set((a.sources?.length ? a.sources : a.domains || []).map(domOf))].slice(0, 6) })) }));
+      tools = [...new Set(run.answers.map((a) => toolName(a.engine)))];
+    } else {
+      const prof = await GP.getJSON(slug, 'profile.json', {}).catch(() => ({})), ans = prof?.ai?.answers || [];
+      at = ans.map((a) => a.at).filter(Boolean).sort().pop() || null;
+      qs = [...new Set(ans.map((a) => a.q))].map((qq) => ({ q: qq, branded: !!ans.find((a) => a.q === qq)?.branded, why: qMeta.get(qq)?.why || null,
+        answers: ans.filter((a) => a.q === qq).map((a) => ({ tool: toolName(a.tool), named: !!a.named, rivals: a.rivalsNamed || [], brands: (a.brandsNamed || a.entities || []).map((x) => (typeof x === 'string' ? x : x?.name)).filter(Boolean).slice(0, 12), text: ansText(String(a.text || '').slice(0, 3000)), full: true, sources: [...new Set((a.sources || []).map((x) => domOf(typeof x === 'string' ? x : x?.url)))].filter(Boolean).slice(0, 6) })) }));
+      tools = [...new Set(ans.map((a) => toolName(a.tool)))];
+    }
+    const sourced = qs.filter((x) => x.why && x.why.kind !== 'none' && x.why.kind !== 'team').length;
+    const r = reqOf(t);
+    return { ai: { src, at, brand: BN(), country: cfg.countryName || CTRY(), tools, questions: qs, sourced, pending: (cfg.questions || []).some((x) => x?.why) && !qs.some((x) => x.why),
+      method: cfg.questionsMethod ? { at: cfg.questionsMethod.at, candidates: cfg.questionsMethod.candidates, errors: cfg.questionsMethod.errors || [] } : null,
+      canAdd: !!(r?.member || meOf(t)?.staff) && process.env.DEMO_MODE !== '1', teamLeft: Math.max(0, 3 - (cfg.questions || []).filter((x) => x?.why?.kind === 'team').length) } };
+  });
+  /* "Add a question your customers ask": kept with the brand's set (up to 3, through every re-source) and asked now on every tool */
+  on('POST', '/api/tenants/:id/ai-questions', async (b, t) => {
+    const r = reqOf(t), me0 = meOf(t); if (!(r?.member || me0?.staff) || process.env.DEMO_MODE === '1') return { status: 403, error: 'Sign in as part of the team to add a question.' };
+    const text = clean(String(b.q || '')).replace(/\s+/g, ' ').trim().slice(0, 160); if (text.length < 8) return { error: 'Type the question the way a customer would ask it.' };
+    const slug = slugOfT(t), c = (await GP.getJSON(slug, 'config.json', {})) || {}, qs = c.questions || [];
+    if (qs.some((x) => String(x.q).toLowerCase() === text.toLowerCase())) return { error: 'That question is already asked.' };
+    const team = qs.filter((x) => x?.why?.kind === 'team'); if (team.length >= 3) return { error: 'Your team has added 3 questions. Remove one to add another.' };
+    const who = me0?.name || me0?.email || 'your team', qn = { id: `t${Date.now().toString(36)}`, q: text, branded: new RegExp(`\\b${BN().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(text), why: { kind: 'team', label: `Added by ${who}: a question your customers ask`, at: new Date().toISOString() } };
+    await GP.put(slug, 'config.json', { ...c, questions: [...qs, qn] });
+    if (B()?.config) B().config.questions = [...(B().config.questions || []), qn]; /* the pack in memory too, so the card and the next run see it */
+    if (typeof live?.askOne !== 'function' || isMock()) return { ok: true, asked: false, note: 'Brew asks it in the next weekly check.' };
+    live.askOne(qn).then((x) => log.log?.(`[ai-questions] ${slug} asked "${text}" on ${x.asked} tools`)).catch((e) => log.warn('[ai-questions] ask', slug, e.message));
+    return { ok: true, asked: true, note: 'Brew is asking ChatGPT, Gemini and Perplexity now. The answers land here in a minute or two.' };
+  });
   const newIdsOf = (t, order) => { const v = t.visit; if (!v?.prev) return []; const began = v.at || now(t);
     return order.filter((id) => { const c = t.cards.get(id); return c && !c.parentCardId && c.origin !== 'user' && c.state !== 'done' && c.createdAt > v.prev && !(t.shown[id] || []).some((x) => x < began); }); };
   on('GET', '/api/tenants/:id/feed', async (b, t) => { repairHeartKids(t); syncBatches(t); if (B().kind === 'generated') streamSync(t, SEED.posts);

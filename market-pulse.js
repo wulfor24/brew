@@ -48,11 +48,14 @@ export function createPulse({ slug, packs, treg, ai, log = console, now = () => 
     const products = (p.catalog?.products || []).filter((x) => !x.pack);
     return { name: p.name || l.name || c.name || slug, host: (p.host || l.host || '').replace(/^www\./, ''), country, loc: c.locationCode || LOC[country] || 2840, currency: p.currency || c.currency || 'USD',
       category: [p.category, p.subcategory].filter(Boolean).join(' / ') || l.category || noun, noun, terms, themes: themeNames, rivals, products, heroes: products.slice(0, 3),
-      instagram: p.socials?.instagram?.handle || l.instagram || null, cities: c.cities || CITIES[country] || CITIES.US, questions: [...(c.questions || []).map((q) => q.q || q), ...(p.ai?.questions || [])], asins: c.asins || p.asins || [], bestSellersUrl: c.amazonBestSellersUrl || null };
+      instagram: p.socials?.instagram?.handle || l.instagram || null, cities: c.cities || CITIES[country] || CITIES.US, questions: [...(c.questions || []).map((q) => q.q || q), ...(p.ai?.questions || [])], sourced: (c.questions || []).filter((q) => q?.why && q.q), asins: c.asins || p.asins || [], bestSellersUrl: c.amazonBestSellersUrl || null };
   }
 
   /* ---------- the 20 fixed buyer questions (written once, then never changed so weeks compare) ---------- */
   async function questions(b) {
+    /* the brand's one set, sourced from real searches and threads (ai-questions.js), when it has one: the same questions as the
+       weekly AI check and the AI answers card, not a second set of guesses */
+    if ((b.sourced || []).length >= 4) return b.sourced.map((q) => ({ q: q.q, kind: q.branded ? 'branded' : 'unbranded' }));
     const have = await packs.getJSON(slug, 'pulse/questions.json', null); if (have?.questions?.length && (have.by !== 'template' || !aiCall)) return have.questions; // a template set is rewritten once when the AI is on
     let qs = [], by = 'template';
     if (aiCall) try { const r = await aiCall({ tag: `pulse-questions-${slug}`, model: 'sonnet', max: 2000, schema: { type: 'object', properties: { questions: { type: 'array', items: { type: 'object', properties: { q: { type: 'string' }, kind: { type: 'string', enum: ['unbranded', 'compare', 'branded'] } } } } } },

@@ -62,7 +62,10 @@ export function standFromRead(p = {}) {
 /* from the weekly check: the newest visibility run (live-watch.js), its questions from the brand config */
 export function standFromRun(run, { questions = [], rivals = [], brand = '' } = {}) {
   if (!run?.answers?.length) return null;
-  const qText = new Map(questions.map((q) => [q.id, q.q])), own = brand ? reName(brand) : null;
+  /* a run made before its brand's questions were sourced again has no record of what it asked: its answers can't be matched to
+     the new questions by id, so it stands down until the new run lands (the read's standing shows meanwhile) */
+  if (!run.qs && questions.some((q) => q?.why)) return null;
+  const qs = [...(run.qs || []), ...questions.filter((q) => !(run.qs || []).some((x) => x.id === q.id))], qText = new Map(qs.map((q) => [q.id, q.q])), qBr = new Map(qs.filter((q) => q.branded != null).map((q) => [q.id, q.branded])), own = brand ? reName(brand) : null; /* a run keeps the set it asked (run.qs) */
   return standOf({ src: 'weekly', at: new Date(run.at).toISOString().slice(0, 10), brand, rivals,
-    answers: run.answers.map((a) => { const q = qText.get(a.q) || a.q; return { q, branded: !!(own && own.test(q)), tool: a.engine, named: !!a.named, rivals: a.rivals || [], text: `${a.said || ''} ${a.excerpt || ''}` }; }) });
+    answers: run.answers.map((a) => { const q = qText.get(a.q) || a.q; return { q, branded: qBr.has(a.q) ? qBr.get(a.q) : !!(own && own.test(q)), tool: a.engine, named: !!a.named, rivals: a.rivals || [], brands: a.brands || [], text: a.text || `${a.said || ''} ${a.excerpt || ''}` }; }) });
 }

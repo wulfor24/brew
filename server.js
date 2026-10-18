@@ -65,6 +65,7 @@ import { createCalendar } from './calendar.js'; // holidays, festivals and sale 
 import { createVideoRead } from './video-read.js'; // what a video does: hook, scenes, CTA (Gemini on Vertex)
 import { watchCatalog } from './treg-map.js'; // new treg tools since last week, for admins
 import { movesEta } from './pack-numbers.js';
+import { createAiQuestions, Q_V } from './ai-questions.js'; // the AI answers questions, each earned by real searches or real threads
 import { awaitingCheck, createConfirmRemind } from './confirm-remind.js'; // "Check what we read" waits for a person: hold the watchers, remind by email // the time left on a brand's moves, from the pace the build really kept
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -357,6 +358,7 @@ const attach = (p) => {
   /* a brand waiting on "Check what we read" runs no research or watchers: nobody has asked for the moves yet, and a restart
      must not pay for them again (confirm-remind.js reminds the team instead) */
   const held = p.kind === 'generated' && awaitingCheck(p.status);
+  if (p.kind === 'generated' && p.ready && !held) questionsHeal(p); /* questions not yet sourced from real searches: once, in the background */
   const read = p.kind !== 'default' && (c.questions?.length || c.rivals?.length) && !held; // the default context runs no watchers
   let x = INST.get(p.slug);
   if (held && x) { try { x.live?.stop?.(); x.research?.stop?.(); } catch {} INST.delete(p.slug); x = null; }
@@ -378,6 +380,23 @@ const attach = (p) => {
   return p;
 };
 const loadBrand = async (slug, o) => blocked(slug) ? null : attach(await packs.load(slug, o));
+/* a brand's AI answers questions, sourced from real demand (ai-questions.js) the first time it loads after this shipped, and when
+   Q_V moves on. The new set goes into config.json (the team's own questions kept), the pack reloads, and the weekly check sees a
+   new set and asks it on its next tick. One try per brand every 6 hours if it can't find enough evidence */
+let AIQ = null; const QHEAL = new Map(); const aiq = () => (AIQ ||= createAiQuestions({ packs, treg, ai, log: console })); /* made on first use: `ai` is declared further down */
+const questionsHeal = (p) => {
+  if (MOCK || process.env.DEMO_MODE === '1' || process.env.QUESTIONS_OFF === '1' || p.config?.questionsV === Q_V) return;
+  const slug = p.slug; if (Date.now() - (QHEAL.get(slug) || 0) < 6 * 3600e3) return; QHEAL.set(slug, Date.now());
+  (async () => {
+    await new Promise((res) => setTimeout(res, 3000)); /* after boot: never before `ai` exists, and never in the way of the page load */
+    const r = await aiq().source(slug);
+    if (!r.ok) { console.warn('[ai-questions]', slug, `only ${r.questions.length} questions with evidence`, r.method.errors.join('; ')); return; }
+    const c = (await packs.getJSON(slug, 'config.json', {})) || {};
+    await packs.put(slug, 'config.json', { ...c, questions: r.questions, questionsV: Q_V, questionsMethod: r.method, rivalsAI: r.rivals.length ? r.rivals : c.rivalsAI || c.rivals || [] });
+    console.log('[ai-questions]', slug, `${r.questions.length} questions from ${r.method.candidates} candidates (${r.method.sources.join(', ')})`);
+    packs.drop(slug); await loadBrand(slug);
+  })().catch((e) => console.warn('[ai-questions]', slug, e.message));
+};
 const brandPacks = { load: loadBrand, peek: (slug) => packs.peek(slug) };
 setDefaultBrand(await loadBrand(DEFAULT));
 const ai = createAI({ apiKey: ANTHROPIC_KEY, mock: process.env.AI_MOCK === '1' || (PROVIDER === 'anthropic' && !ANTHROPIC_KEY) });

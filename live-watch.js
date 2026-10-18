@@ -144,11 +144,17 @@ export function createLiveWatch({ ROOT, anthropic, claudeParams, textOf, gToken,
     const plain = strip(r.text), doms = [...new Set((r.sources || []).map(domainOf).filter(Boolean))];
     const rivals = RIVALS.filter((b) => new RegExp(`\\b${b.replace(/ /g, '\\s+')}\\b`, 'i').test(plain) || (r.brands || []).some((x) => new RegExp(b, 'i').test(x)));
     const at = plain.search(nameRe), sentence = at >= 0 ? plain.slice(Math.max(0, plain.lastIndexOf('.', at) + 1), (plain.indexOf('.', at) + 1) || at + 200).trim() : '';
-    return { q: q.id, engine, named: named(plain), citesBrand: doms.some((d) => hostRe.test(d)), rivals, domains: doms.slice(0, 8), said: sentence.slice(0, 240), excerpt: plain.slice(0, 280), model: r.model || '' };
+    /* the whole answer is kept (up to 3,000 characters) with the brands it names and its sources: the proof sheet shows them */
+    return { q: q.id, engine, named: named(plain), citesBrand: doms.some((d) => hostRe.test(d)), rivals, domains: doms.slice(0, 8), said: sentence.slice(0, 240), excerpt: plain.slice(0, 280), text: plain.slice(0, 3000), brands: (r.brands || []).slice(0, 20), sources: [...new Set(r.sources || [])].slice(0, 8), model: r.model || '' };
   };
+  /* the question set a run asked: a run whose set differs from the brand's now is out of date and runs again (team questions
+     added one by one are asked on their own, askOne, and never re-run the rest) */
+  const qKey = (qs) => JSON.stringify((qs || []).filter((q) => q?.why?.kind !== 'team').map((q) => [q.id, q.q]));
+  const qsOf = (qs) => (qs || []).map(({ id, q, branded, why }) => ({ id, q, ...(branded != null ? { branded } : {}), ...(why ? { why } : {}) }));
+  const engines = () => Object.keys(ENGINES).filter((e) => e !== 'claude' || anthropic?.provider !== 'gemini'); // no Claude ask on Gemini
   async function refreshVisibility() {
     const now = Date.now(), answers = [], failed = [];
-    const jobs = QUESTIONS.flatMap((q) => Object.keys(ENGINES).filter((e) => e !== 'claude' || anthropic?.provider !== 'gemini').map((e) => [q, e])); // no Claude ask on Gemini
+    const jobs = QUESTIONS.flatMap((q) => engines().map((e) => [q, e]));
     for (let i = 0; i < jobs.length; i += 6) {
       await Promise.all(jobs.slice(i, i + 6).map(async ([q, e]) => {
         try { const r = await ask[e](q.q); if (r?.text) answers.push(read(q, e, r)); else failed.push(`${e}: ${q.id} (empty)`); }
@@ -157,7 +163,7 @@ export function createLiveWatch({ ROOT, anthropic, claudeParams, textOf, gToken,
     }
     if (answers.length < jobs.length / 2) throw new Error(`only ${answers.length} of ${jobs.length} answers: ${failed.slice(0, 3).join('; ')}`);
     const prev = snap.visibility?.runs?.[0] || null;
-    const run = { at: now, answers, failed, named: answers.filter((a) => a.named).length, total: answers.length };
+    const run = { at: now, answers, failed, named: answers.filter((a) => a.named).length, total: answers.length, qs: qsOf(QUESTIONS), qKey: qKey(QUESTIONS) };
     const ev = [], day = new Date(now).toISOString().slice(0, 10), add = (e) => ev.push({ ...e, at: now, run: now });
     add({ id: 'vis-score-' + day, kind: 'score', named: run.named, total: run.total, was: prev ? { named: prev.named, total: prev.total } : null,
       byEngine: Object.keys(ENGINES).map((e) => ({ engine: e, named: answers.filter((a) => a.engine === e && a.named).length, total: answers.filter((a) => a.engine === e).length })) });
@@ -192,7 +198,19 @@ export function createLiveWatch({ ROOT, anthropic, claudeParams, textOf, gToken,
   }
   const failed = {};
   const failedAt = (k) => Math.max(failed[k] || 0, snap[k]?.lastError?.at || 0);
-  const due = () => Object.keys(JOBS).filter((k) => (!snap[k] || Date.now() - snap[k].fetchedAt > CADENCE[k]) && !(Date.now() - failedAt(k) < RETRY[k]));
+  /* the brand's questions were sourced again (ai-questions.js, each with its why): the next tick asks the new set. A set from before
+     sourcing never triggers this, so a deploy re-asks nothing on its own */
+  const stale = (k) => k === 'visibility' && QUESTIONS.some((q) => q?.why) && snap.visibility?.runs?.[0] && snap.visibility.runs[0].qKey !== qKey(QUESTIONS);
+  const due = () => Object.keys(JOBS).filter((k) => (!snap[k] || Date.now() - snap[k].fetchedAt > CADENCE[k] || stale(k)) && !(Date.now() - failedAt(k) < RETRY[k]));
+  /* one question the team added: asked now on every tool and added to the latest run, so its answers show at once (about $0.02) */
+  async function askOne(q) {
+    const run = snap.visibility?.runs?.[0]; if (!run) throw new Error('The AI answers haven’t been read yet; it is asked in the first check.');
+    const out = [], fails = [];
+    await Promise.all(engines().map(async (e) => { try { const r = await ask[e](q.q); if (r?.text) out.push(read(q, e, r)); else fails.push(`${e} (empty)`); } catch (err) { fails.push(`${e} (${String(err.message).slice(0, 60)})`); } }));
+    run.answers = [...run.answers.filter((a) => a.q !== q.id), ...out]; run.qs = [...(run.qs || []).filter((x) => x.id !== q.id), ...qsOf([q])];
+    run.named = run.answers.filter((a) => a.named).length; run.total = run.answers.length; persist(); listeners.forEach((f) => f(['visibility']));
+    return { asked: out.length, failed: fails };
+  }
   const start = async () => {
     await load();
     const tick = () => { const d = due(); if (d.length && !process.env.LIVE_OFF) refresh(d); };
@@ -202,5 +220,5 @@ export function createLiveWatch({ ROOT, anthropic, claudeParams, textOf, gToken,
   /* a replaced watcher (the brand's rivals, terms or catalog changed) stops: no second timer, no stale listeners */
   let stopped = false; const timers = {};
   const stop = () => { stopped = true; clearTimeout(timers.t); clearInterval(timers.i); listeners.length = 0; };
-  return { start, stop, refresh, due, get: () => snap, onRefresh: (f) => listeners.push(f), running: () => [...running], spent: () => ({ ...spent }) };
+  return { start, stop, refresh, due, askOne, get: () => snap, onRefresh: (f) => listeners.push(f), running: () => [...running], spent: () => ({ ...spent }) };
 }
