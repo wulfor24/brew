@@ -37,7 +37,8 @@ function standOf({ answers, brand, rivals, at, src, rivalsError = null, namedPas
      when the brands pass read them; the read's rivals stand in only without that pass. A known rival the answers never name is
      listed by name (knownUnnamed), never dropped silently */
   const all = namedOf(ok, new Set([nameKey(brand)]), namedPass), un0 = !!all?.unOf && all.list.some((r) => r.un), cnt0 = (r) => (un0 ? r.un : r.n);
-  const top = all && !all.error ? all.list.filter(cnt0).slice(0, 6).map((r) => r.name) : [];
+  const isKnown = (r) => (known.some((k) => nameKey(k) === nameKey(r.name)) ? 1 : 0); /* on a tie, a rival the read already knows keeps its row */
+  const top = all && !all.error ? all.list.filter(cnt0).sort((a, b) => cnt0(b) - cnt0(a) || isKnown(b) - isKnown(a)).slice(0, 6).map((r) => r.name) : [];
   const byNamed = top.length >= 2, names = byNamed ? top : known;
   const knownUnnamed = byNamed ? known.filter((k) => !all.list.some((r) => nameKey(r.name) === nameKey(k) && r.n)) : [];
   const res = names.map((n) => [n, reName(n)]);
