@@ -38,3 +38,13 @@ test('standings from the weekly check: question ids become their text, a questio
   assert.equal(s.rivals[0].un, 1); assert.equal(s.rivals[0].qs[0].q, 'best serum?');
   assert.equal(standFromRun(null, {}), null);
 });
+
+test('named most often: brands the answers name beyond the known rivals, own brand and rivals aside; a failed pass is an error', () => {
+  const withNamed = (pass, brands) => ({ ...profile, ai: { named: pass, answers: profile.ai.answers.map((a, i) => ({ ...a, brandsNamed: brands[i] })) } });
+  const s = standFromRead(withNamed({ v: 1, at: '2026-10-19' }, [['Rival One', 'Beta Co', 'WishCare'], ['Rival One', 'wishcare', 'Himalaya Herbals Anti-Dandruff', 'Himalaya'], [], ['Acme', 'Rival One', 'Bare Anatomy']]));
+  assert.deepEqual(s.named.list.map((r) => [r.name, r.n, r.un]), [['WishCare', 2, 2], ['Himalaya', 1, 1], ['Bare Anatomy', 1, 0]]);
+  assert.equal(s.named.of, 4); assert.equal(s.named.unOf, 3);
+  assert.equal(standFromRead(profile).named, null); // pass not run yet: nothing shown, never "none"
+  assert.match(standFromRead(withNamed({ v: 1, at: '2026-10-19', error: 'timeout' }, [])).named.error, /couldn’t be read/);
+  assert.deepEqual(standFromRead(withNamed({ v: 1, at: '2026-10-19' }, [[], [], [], []])).named.list, []); // read, and truly no other brand
+});

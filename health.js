@@ -22,7 +22,7 @@ const reviewsErr = (p = {}) => !(p.reviews?.platforms || []).length && p.reviews
 export function healthKey(N, p = {}) {
   const co = p.site?.checkout || {}, ps = p.site?.pagespeed || {};
   return [N.ownAds.n ?? (N.ownAds.error ? 'err' : '-'), `${N.rivalAds.n}/${N.rivalAds.read}`, `${N.ai.named ?? '-'}/${N.ai.of ?? '-'}`, N.products.n ?? '-',
-    co.v ? `${reachedOf(co) ? 1 : 0}${co.clicks ?? ''}${co.guest ?? ''}${(co.payments || []).length}` : '-', ps.score ?? (ps.error ? 'err' : '-'), p.reviews?.total ?? (reviewsErr(p) ? 'err' : '-'), p.ads?.at || '-'].join('|');
+    co.v ? `${reachedOf(co) ? 1 : 0}${co.clicks ?? ''}${co.guest ?? ''}${(co.payments || []).length}` : '-', ps.score ?? (ps.error ? 'err' : '-'), p.reviews?.total ?? (reviewsErr(p) ? 'err' : '-'), p.ads?.at || '-', p.ai?.named?.at || '-'].join('|'); /* named: the brands-named pass landed (ai-standing.js) */
 }
 
 /* Google PageSpeed for the home page, as a phone. Free, but it needs an API key (keyless calls get 429). A failure is kept as { error }, never a score */

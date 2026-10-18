@@ -9,6 +9,7 @@ import crypto from 'node:crypto';
 import { adCall } from './reader/adlib.js';
 import { ADS_V } from './reader/stages/ads.js';
 import { SITE_V, speedOn } from './reader/stages/site.js';
+import { namedStale } from './reader/stages/named.js';
 import { wiping } from './retire.js';
 import { sentenceCase } from './text-fit.js';
 import path from 'node:path';
@@ -668,7 +669,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       const p = await packs.getJSON(slug, 'profile.json'); if (!p?.host || !p.slug) return null;
       // healed today: wait a day; a heal that still hit errors tries again after an hour; a read from before a
       // stage changed (older ads version) or with no written one-liner heals now
-      const outdated = (p.ads && p.ads.v !== ADS_V) || (p.site?.checkout && p.site.checkout.v !== SITE_V) || !['claude', 'brand'].includes(p.descriptorBy) || (!!p.host && !p.site?.pagespeed && speedOn());
+      const outdated = (p.ads && p.ads.v !== ADS_V) || (p.site?.checkout && p.site.checkout.v !== SITE_V) || !['claude', 'brand'].includes(p.descriptorBy) || (!!p.host && !p.site?.pagespeed && speedOn()) || namedStale(p);
       const stillBroken = !!p.ads?.own?.error || (p.ads?.rivals || []).some((r) => r.error) || (!p.ai?.answers?.length && !!p.meta?.errors?.answers); /* the AI tools step failed in the read: ask again hourly */
       if (!outdated && p.meta?.healedAt && Date.now() - Date.parse(p.meta.healedAt) < (stillBroken ? 36e5 : 864e5)) return null;
       const reader = makeReader(await load()); if (!reader.heal) return null;

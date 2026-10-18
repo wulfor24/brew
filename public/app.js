@@ -901,6 +901,7 @@
       <div class="body" style="padding-top:12px"><p>Each card is one idea. Tap it for details. Heart it to see more like it.</p></div></article>`;
 
   const healthNow = () => { const h = JSON.parse(JSON.stringify(B.health)); Object.entries(B.connectors).forEach(([id, c]) => { if (conn(id)) Object.entries(c.health || {}).forEach(([k, d]) => { const r = h.rings.find((x) => x.k === k); if (r) r.v += d; }); }); Object.entries(SRV.health || {}).forEach(([k, d]) => { const r = h.rings.find((x) => x.k === k); if (r) r.v += d; }); /* the team's own accounts: the ring says what they read (the score stays simulated) */ Object.entries(SRV.healthLive || {}).forEach(([k, x]) => { const r = h.rings.find((y) => y.k === k); if (r && x?.what) { r.what = x.what; r.parts = x.parts; } }); const rd = h.rings.filter((r) => r.read !== false); h.score = rd.length ? Math.round(rd.reduce((a, r) => a + r.v, 0) / rd.length) : 0; return h; };
+  /* the rings: three arcs, no composite number in the middle (an average of ads, the store and AI answers means nothing on its own) */
   const ringSvg = (h) => { const R = [52, 40, 28];
     return `<svg viewBox="0 0 130 130" width="100%" role="img" aria-label="${h.rings.map((r) => `${r.k} ${r.read === false ? 'not read' : `${r.v} of 100`}`).join(', ')}">${h.rings.map((r, i) => { const c = 2 * Math.PI * R[i]; return `<circle cx="65" cy="65" r="${R[i]}" fill="none" stroke="var(--surface-2)" stroke-width="8"/><circle class="ring-arc" cx="65" cy="65" r="${R[i]}" fill="none" stroke="var(--fg)" stroke-opacity="${1 - i * .3}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${(c * (r.read === false ? 0 : r.v) / 100).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 65 65)"/>`; }).join('')}</svg>`; };
   /* Store health (2026-10-19, Param: "this card makes no sense, its CTA makes no sense"): one finding, said plainly; each ring
@@ -919,11 +920,14 @@
   const hcCta = (low) => { const m = hcFix(low);
     return m ? `<p class="hc-fix">${ic('doc', 's14')}<span>The fix · Move ${String(m.n).padStart(2, '0')}</span><b>${esc((window.fx || ((x) => x))(m.title))}</b></p><button class="bar" data-hc-move="${esc(m.n)}"><span class="lead">${ic('right', 's16')}Open the move</span>${ic('right', 's16 chev')}</button>`
       : `<button class="bar" data-hc-how><span class="lead">${ic('info', 's16')}How each ring is scored</span>${ic('right', 's16 chev')}</button>`; };
-  const healthCard = () => { const h = healthNow(), read = h.rings.filter((r) => r.read !== false), low = [...read].sort((a, b) => a.v - b.v)[0] || null;
   /* AI answers: where the brand and its rivals stand (ai-standing.js), from the read's answers or the weekly check, whichever
      is newer. Counted where the shopper named no brand (that is where new buyers come from); an unread source says so */
   const aiStand = () => { const r = (B.health?.rings || []).find((x) => x.k === 'AI answers')?.stand || null, w = SRV.aiStand || null;
-    return w && !w.error && (!r || r.error || String(w.at || '') >= String(r.at || '')) ? w : r; };
+    const s = w && !w.error && (!r || r.error || String(w.at || '') >= String(r.at || '')) ? w : r;
+    return s && !s.named && r?.named ? { ...s, named: r.named } : s; /* the weekly check has no brands-named pass: the read's stands in, with its own counts */ };
+  /* the brands the answers name most, beside the known rivals (st.named): counted where the shopper named no brand when any are */
+  const aisNamed = (nm) => { if (!nm || nm.error) return null; const un = !!nm.unOf && nm.list.some((r) => r.un), c = (r) => (un ? r.un : r.n);
+    return { c, of: un ? nm.unOf : nm.of, top: nm.list.filter(c) }; };
   const aisClip = (q, n = 64) => { q = String(q || '').replace(/\?$/, ''); return q.length > n ? q.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : q; };
   const aisOf = (st) => st.unOf ? [(x) => x.un, st.unOf] : [(x) => x.n, st.of];
   const aisHtml = (st, { compact = false } = {}) => {
@@ -937,11 +941,15 @@
     return `${compact ? '' : `<p class="ais-h">Who AI names when shoppers ask</p>`}<p class="ais-sub">${st.unOf ? `${of} answers to ${nq} question${nq === 1 ? '' : 's'} where the shopper named no brand` : `${of} answers to ${nq} shopper question${nq === 1 ? '' : 's'}`}, from ${st.tools} AI tool${st.tools === 1 ? '' : 's'}${st.at ? ` · ${esc(fmtDay(Date.parse(st.at)) || st.at)}` : ''}</p>
       <div class="ais-rows">${row(st.brand, true)}${rv.map((r) => row(r)).join('')}</div>
       ${st.rivalsError ? `<p class="ais-note">${esc(st.rivalsError)}</p>` : !st.rivals.length ? `<p class="ais-note">Brew hasn’t found ${esc(B.brand.name)}’s rivals yet, so only ${esc(B.brand.name)} is counted.</p>` : ''}
-      ${!compact && st.unOf && st.of > st.unOf ? `<p class="ais-note">Counting the questions that name a brand too: ${esc(st.brand.name)} ${st.brand.n} of ${st.of}${top ? `, ${esc(top.name)} ${top.n} of ${st.of}` : ''}.</p>` : ''}`; };
+      ${!compact && st.unOf && st.of > st.unOf ? `<p class="ais-note">Counting the questions that name a brand too: ${esc(st.brand.name)} ${st.brand.n} of ${st.of}${top ? `, ${esc(top.name)} ${top.n} of ${st.of}` : ''}.</p>` : ''}
+      ${st.named?.error ? `<p class="ais-note">${esc(st.named.error)}</p>` : (() => { const nm = aisNamed(st.named); if (!nm) return '';
+        return `<p class="ais-h2">Named most often</p>${nm.top.length ? `<div class="ais-rows">${nm.top.slice(0, compact ? 3 : 5).map((r) => `<div class="ais-row"><b>${esc(r.name)}</b><span class="ais-bar"><i style="width:${nm.of ? Math.round((100 * nm.c(r)) / nm.of) : 0}%"></i></span><em>${nm.c(r)} of ${nm.of}</em></div>`).join('')}</div>` : `<p class="ais-note">These answers name no other brands.</p>`}`; })()}`; };
   /* the one line on an AI answers card: who the answers name, beside the brand */
-  const aisLine = (p) => { if (p.sector !== 'visibility') return ''; const st = aiStand(); if (!st || st.error || !st.rivals.length) return '';
+  const aisLine = (p) => { if (p.sector !== 'visibility') return ''; const st = aiStand(), nm = aisNamed(st?.named)?.top.length ? aisNamed(st.named) : null; if (!st || st.error || (!st.rivals.length && !nm)) return '';
     const [cnt, of] = aisOf(st), top = st.rivals.filter((r) => cnt(r)).slice(0, 2);
-    return `<p class="ais-line">${ic('sparkles', 's14')}<span>${top.length ? `AI names ${top.map((r) => `${esc(r.name)} in ${cnt(r)}`).join(', ')} of ${of} answers; ${esc(st.brand.name)} in ${cnt(st.brand)}` : `AI names none of ${esc(st.rivals.slice(0, 3).map((r) => r.name).join(', '))} in ${of} answers; ${esc(st.brand.name)} in ${cnt(st.brand)}`}</span></p>`; };
+    /* no known rival named: say who the answers do name instead */
+    return `<p class="ais-line">${ic('sparkles', 's14')}<span>${top.length ? `AI names ${top.map((r) => `${esc(r.name)} in ${cnt(r)}`).join(', ')} of ${of} answers; ${esc(st.brand.name)} in ${cnt(st.brand)}` : nm ? `AI names ${nm.top.slice(0, 2).map((r) => `${esc(r.name)} in ${nm.c(r)}`).join(', ')} of ${nm.of} answers${nm.of === of ? `; ${esc(st.brand.name)} in ${cnt(st.brand)}` : ''}` : `AI names none of ${esc(st.rivals.slice(0, 3).map((r) => r.name).join(', '))} in ${of} answers; ${esc(st.brand.name)} in ${cnt(st.brand)}`}</span></p>`; };
+  const healthCard = () => { const h = healthNow(), read = h.rings.filter((r) => r.read !== false), low = [...read].sort((a, b) => a.v - b.v)[0] || null;
     const fixLine = low && (B.health.moves || []).find((x) => x.k === low.k)?.t;
     const [said, todo] = fixLine ? [fixLine.split(/(?<=\.)\s+/)[0], fixLine.split(/(?<=\.)\s+/).slice(1).join(' ')] : [null, null];
     const head1 = !read.length ? `${B.brand.name}’s store couldn’t be read this time.` : said || (low && low.v < 60 ? `${low.k} is ${B.brand.name}’s weakest ring, at ${low.v} of 100.` : `${B.brand.name}’s store reads well on every ring.`);
@@ -976,7 +984,6 @@
   /* one rule for each count, read from the ranked feed only (loadFeed), never from FEED, which the deck, the lists and
      the library reuse for their own rows: the greeting tile, the list behind it, its tab and the setup preview agree */
   const TODAY_N = 14;
-  /* the rings: three arcs, no composite number in the middle (an average of ads, the store and AI answers means nothing on its own) */
   const todayOf = (ranked) => ranked.slice(0, TODAY_N).filter((p) => !cardOf(p).done);
   const yesOf = (ranked) => todayOf(ranked).filter((p) => p.type === 'decision');
   const gLists = () => { const vis = todayOf(RANKED);

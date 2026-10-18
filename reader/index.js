@@ -16,6 +16,7 @@ import { site, SITE_V, speedOn } from './stages/site.js';
 import { pageSpeed } from '../health.js';
 import { answers, inferCategory, writeLine } from './stages/answers.js';
 import { socials } from './stages/socials.js';
+import { named, namedStale } from './stages/named.js';
 import { company } from './stages/company.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -29,7 +30,7 @@ export const STEPS = [
   { k: 'answers', t: 'Ask the AI tools', agent: 'visibility' }
 ];
 // per-stage deadlines (ms)
-const LIMIT = { open: 45e3, brand: 40e3, catalog: 60e3, reviews: 75e3, category: 40e3, rivals: 70e3, ads: 240e3, site: 200e3, answers: 170e3, socials: 120e3, company: 150e3 };
+const LIMIT = { open: 45e3, brand: 40e3, catalog: 60e3, reviews: 75e3, category: 40e3, rivals: 70e3, ads: 240e3, site: 200e3, answers: 170e3, named: 100e3, socials: 120e3, company: 150e3 };
 
 /* stages heal() can run again from a saved profile plus the home page (a failed or timed-out one is recorded in meta.errors) */
 const RERUN = { reviews, socials, company };
@@ -151,6 +152,8 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
     who();
     // which rivals each AI answer named, now that the rival list is final
     if (profile.ai?.answers?.length) relabelRivals(profile);
+    // which brands each answer names, the known rivals or not (one fast-model pass over the saved text)
+    if (profile.ai?.answers?.length) await run('named', named, { step: false });
     return finish();
 
     function finish() {
@@ -171,13 +174,14 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
     const lineMissing = profile.descriptorBy !== 'claude' && profile.descriptorBy !== 'brand';
     const answersBroken = answersFailed(profile, findings);
     const siteBroken = siteFailed(profile);
+    const namedBroken = namedStale(profile); /* the brands each answer names: missing, older, or failed over an hour ago */
     /* a stage the read recorded as failed or timed out (meta.errors: reviews, socials, company) is run again from the saved
        profile and the home page, once a day per stage (meta.healTried), so "No reviews found" never stands for a failed check */
     const tried = profile.meta?.healTried || {};
     const failedStages = Object.keys(profile.meta?.errors || {}).filter((k) => RERUN[k] && !!profile.host && (!tried[k] || Date.now() - Date.parse(tried[k]) >= 864e5));
     /* a read from before the health card's speed part gets PageSpeed; a failed one is kept and tried again a day later */
     const ps = profile.site?.pagespeed, speedMissing = !!profile.host && !siteBroken && speedOn() && (!ps || (!!ps.error && Date.now() - Date.parse(ps.at || 0) >= 864e5));
-    if (!adsBroken && !lineMissing && !answersBroken && !siteBroken && !speedMissing && !failedStages.length) return null;
+    if (!adsBroken && !lineMissing && !answersBroken && !namedBroken && !siteBroken && !speedMissing && !failedStages.length) return null;
     const added = [], cards = [], stepsDone = {}, healPicks = {};
     const http = createFetcher({ slug, saveRaw, loadRaw, fresh: false, log: lg });
     const tregOn = !!treg && treg.live !== false, aiOn = !!ai && ai.live !== false;
@@ -193,6 +197,10 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
       try { await withTimeout(answers(ctx), LIMIT.answers, 'answers'); if (profile.rivals?.length && profile.ai?.answers?.length) relabelRivals(profile);
         if (profile.ai?.answers?.length) { changed.push('answers'); if (profile.meta?.errors && profile.ai.questionsBy !== 'template') delete profile.meta.errors.answers; } }
       catch (e) { lg.warn?.('[reader] heal answers', slug, e.message); if (profile.meta) profile.meta.errors = { ...(profile.meta.errors || {}), answers: e.message }; }
+    }
+    // the brands each answer names, again whenever the answers were asked again (a failure is kept on profile.ai.named)
+    if ((namedBroken || changed.includes('answers')) && aiOn && profile.ai?.answers?.length) {
+      try { await withTimeout(named(ctx), LIMIT.named, 'named'); changed.push('named'); } catch (e) { lg.warn?.('[reader] heal named', slug, e.message); changed.push('named:failed'); }
     }
     // the checkout walk from an older walker, or one that never reached checkout, is walked again
     if (siteBroken) { try { await withTimeout(site(ctx), LIMIT.site, 'site'); changed.push('site'); } catch (e) { lg.warn?.('[reader] heal site', slug, e.message); } }
