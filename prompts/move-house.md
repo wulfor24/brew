@@ -156,6 +156,12 @@ guarantee terms)"). Also fill the top-level `sources` array with {label, url, at
    ad policy (e.g. health claims, personal attributes: write about the product and the study, never
    "you have …").
 7. Rival facts come only from the rival evidence or your dated searches. Prices are dated.
+8. **Say you saw only what the evidence holds.** "Customers are asking / complaining", "visitors bounce,
+   leave or abandon carts", "sales / orders / repeat buying are down", "ads are tired" and "people search
+   for" are observations: write them only with the review, thread, connected-account row or search count
+   that shows them, cited. Without one, write the idea as an idea ("buyers may worry …", "a price this high
+   can make new visitors hesitate") or as "to confirm". Happy reviews are proof that something works, never
+   evidence of doubt.
 
 ## Output
 

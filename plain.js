@@ -11,6 +11,7 @@
 // until a card's rewrite lands it shows its own words with the jargon swapped for plain ones (dejargon, no AI).
 import crypto from 'node:crypto';
 import { numbersIn } from './fact-gate.js';
+import { claimGaps } from './proof-logic.js'; /* a rewrite never claims Brew saw more than the card did */
 
 export const PLAIN_V = 3; /* 2: outcome-first titles, no technical steps in the title or body (testing notes 18 Oct); 3: every field required, half answers never kept */
 const FILE = 'plain.json';
@@ -32,6 +33,9 @@ export const plainKey = (c) => sha(JSON.stringify([PLAIN_V, c?.title || '', c?.s
 const nums = (s) => new Set([...numbersIn(String(s || ''), { strict: true }), ...numbersIn(String(s || ''))]);
 const subset = (out, src) => { for (const n of nums(out)) if (!src.has(n)) return false; return true; };
 const keepsAll = (out, need) => { const o = nums(out); for (const n of need) if (!o.has(n)) return false; return true; };
+/* the kinds of thing a text says Brew saw that the brand's evidence can't show (proof-logic.js), sentence by sentence */
+const gapsIn = (s, kinds) => new Set(String(s || '').split(/(?<=[.!?])\s+/).flatMap((x) => claimGaps(x, kinds).map((g) => g.kind)));
+const addsGap = (out, orig, kinds) => { const was = gapsIn(orig, kinds); for (const g of gapsIn(out, kinds)) if (!was.has(g)) return true; return false; };
 const tidy = (s, n) => String(s || '').replace(/\u2039(?=\s?\d)/g, '₹') /* the model sometimes writes ₹ as ‹ */.replace(/\s*[—–]\s*/g, ', ').replace(/\s+/g, ' ').trim().slice(0, n);
 
 export const SCHEMA = { type: 'object', properties: { cards: { type: 'array', items: { type: 'object', properties: {
@@ -54,6 +58,8 @@ How to write:
 - Keep every number exactly as written (same symbol, same digits). Never add a number, never drop the card's main number, never round.
 - Keep product names, brand names and rival names exactly as written.
 - Never add a fact, claim or promise the original doesn't make. Same meaning, same advice, simpler words.
+- Never turn an idea into something Brew saw. "May", "might" and "can" stay. Say people are asking, complaining or worried, that visitors leave, bounce or abandon carts, that sales, orders or ad results are up or down, or that people search for something, only when the original says Brew saw it. Happy reviews are proof that it works, never doubt.
+- "because" names the evidence the original names (a review, a thread, a page Brew read, an account number). When the original gives a reason without evidence, say it as an idea: "Brew suggests this because buyers may worry ...".
 - Write in the same language as the original.
 
 Cards (JSON):
@@ -61,7 +67,7 @@ ${JSON.stringify(list)}
 
 Return every card by its id.`;
 
-export function createPlain({ ai, store, spend = () => true, isMock = () => false, log = console }) {
+export function createPlain({ ai, store, spend = () => true, isMock = () => false, log = console, kindsOf = () => ({}) }) { /* kindsOf(slug): what Brew holds for the brand (proof-logic.js evidenceKinds) */
   const mem = new Map(), chain = new Map(), running = new Map(), failedAt = new Map(), tries = new Map();
   const load = async (slug) => { if (!mem.has(slug)) mem.set(slug, (await store?.getJSON(slug, FILE, {}).catch(() => ({}))) || {}); return mem.get(slug); };
   const save = (slug) => { const all = mem.get(slug); if (!all || !store?.put) return;
@@ -77,11 +83,13 @@ export function createPlain({ ai, store, spend = () => true, isMock = () => fals
     if (p && (p.title !== c.title || p.sub !== c.sub)) out.orig = { title: c.title, sub: c.sub }; /* the words as written, for the proof sheet */
     return out; };
   /* one checked rewrite: each field is kept only when it carries the original's numbers and no new one */
-  const check = (c, r) => { if (!r) return null; const src = nums([c.title, c.sub, ...(c.detail?.why || []), ...(c.detail?.how || [])].join(' '));
-    const field = (orig, out, n) => { const t = tidy(out, n); if (!t) return null; if (!subset(t, src) || !keepsAll(t, nums(orig))) return null; return t; };
+  /* ... and says Brew saw nothing the card itself didn't: a rewrite that turns "may worry" into "are worried", or adds "visitors are leaving", keeps the original */
+  const check = (c, r, kinds = {}) => { if (!r) return null; const src = nums([c.title, c.sub, ...(c.detail?.why || []), ...(c.detail?.how || [])].join(' '));
+    const said = [c.title, c.sub, ...(c.detail?.why || [])].filter(Boolean).join(' ');
+    const field = (orig, out, n) => { const t = tidy(out, n); if (!t) return null; if (!subset(t, src) || !keepsAll(t, nums(orig)) || addsGap(t, said, kinds)) return null; return t; };
     const list = (orig = [], out = [], n) => { const xs = (out || []).slice(0, Math.max(orig.length, 0) || 3).map((x, i) => field(orig[i] || '', x, n)); return xs.length && xs.every(Boolean) ? xs : null; };
     const title = field(c.title, r.title, 90), sub = field(c.sub, r.sub, 320);
-    const because = (() => { const t = tidy(r.because, 280); return t && subset(t, src) ? t : null; })();
+    const because = (() => { const t = tidy(r.because, 280); return t && subset(t, src) && !addsGap(t, said, kinds) ? t : null; })();
     return { title: title || c.title, sub: sub || c.sub, why: (c.detail?.why || []).length ? list(c.detail.why, r.why, 120) : null, how: (c.detail?.how || []).length ? list(c.detail.how, r.how, 100) : null, because, at: Date.now() }; };
   /* rewrite the cards that have none yet, a batch at a time, one run per brand. Never twice at once, never in a mock run */
   const queue = (slug, cards, brand) => {
@@ -99,7 +107,8 @@ export function createPlain({ ai, store, spend = () => true, isMock = () => fals
           /* a card is kept only with its whole rewrite (title, body and the reason); a half answer is tried again on a later load,
              at most 3 times, then the card keeps its own words with the jargon swapped */
           let kept = 0, half = 0;
-          for (const c of part) { const x = by.get(c.id), r = check(c, x), k = plainKey(c);
+          const kinds = (() => { try { return kindsOf(slug) || {}; } catch { return {}; } })();
+          for (const c of part) { const x = by.get(c.id), r = check(c, x, kinds), k = plainKey(c);
             if (r && x?.sub && x?.because) { all[k] = r; kept++; tries.delete(k); }
             else { half++; const n = (tries.get(k) || 0) + 1; tries.set(k, n); if (n >= 3 && r) { all[k] = r; tries.delete(k); } } }
           log.log?.(`[plain] ${slug} ${part.length} cards: ${kept} rewritten${half ? `, ${half} came back incomplete (tried again later)` : ''}`);

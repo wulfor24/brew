@@ -16,8 +16,9 @@ export const CONNECTOR_NAMES = { shopify: 'Shopify', ga4: 'Google Analytics', me
 
 /* only what the card says it SAW needs proof of that kind: "We saw customers questioning …", "visitors are leaving the page". What
    it expects to happen ("helps convert", "encourages repeat orders", "will build trust") is the idea, not a claim about data, so
-   the check reads the sentence only up to the first word that says what the action will do */
-const EXPECT = /\b(need to|needs to|should|must|before they|helps?|helping|will|would|could|can|to help|encourages?|builds?|keeps?|stops?|drives?|gets?|lowers?|raises?|makes?|lets?|gives?|captures?|answers?|addresses|addressing|improves?|so (?:the|that|you|we|they))\b/i;
+   the check reads the sentence only up to the first word that says what the action will do, or that it is a guess ("buyers may
+   worry …" is the idea said as an idea, which is how the writers are told to say what Brew didn't see) */
+const EXPECT = /\b(may|might|likely|probably|need to|needs to|should|must|before they|helps?|helping|will|would|could|can|to help|encourages?|builds?|keeps?|stops?|drives?|gets?|lowers?|raises?|makes?|lets?|gives?|captures?|answers?|addresses|addressing|improves?|so (?:the|that|you|we|they))\b/i;
 const observedOf = (claim) => { const s = String(claim || '').replace(/^\s*brew suggests this (?:because|after)\s*/i, ''); const m = s.match(EXPECT); return m ? s.slice(0, m.index) : s; };
 /* what people said, asked or worried about */
 const VOICE_RE = /\b(questioning|question(?:s|ed)? (?:if|whether|about)|asking (?:if|whether|about|for)|complain\w*|worr(?:y|ied|ies)|fears?|feared|doubts?|doubting|skeptic\w*|talk(?:s|ing)? about|debat\w*|say(?:s|ing)?|said|mention\w*|reviews? (?:show|say|mention)|praise\w*|verbatims?|threads?)\b/i;
@@ -60,6 +61,61 @@ const voiceItem = (v) => ({ mine: true, kind: 'voice', label: `${v.rating ? `${v
 
 /* a review's stars: its rating, or the "5★ review" its label says */
 const starsOf = (x) => +(x.rating || String(x.label || '').match(/(\d(?:\.\d)?)\s*★/)?.[1] || 0);
+
+/* What kinds of evidence Brew holds for a brand, for the writers (cards-gen.js, plain.js): a card may say Brew SAW something only
+   of a kind it holds, so fewer cards need a note on the proof sheet. voice is reviews ({kind:'review', rating}) and threads
+   ({kind:'thread'}); ledger and facts give the connected accounts (method "account:<id>", never demo or stale) and search data */
+const ACCOUNT_OF = { ga4: 'ga4', shopify: 'shopify', meta: 'meta', gads: 'google', google: 'google', klaviyo: 'klaviyo' };
+const LISTEN_HOST = /reddit\.com|quora\.com|youtube\.com|youtu\.be|twitter\.com|\bx\.com|instagram\.com\/(?:p|reel)\/|forum|community|threads\.net|tiktok\.com/i;
+export function evidenceKinds({ voice = [], ledger = [], facts = {}, sources = [] } = {}) {
+  const rv = voice.filter((v) => v?.kind === 'review'), rated = rv.filter((v) => +v.rating);
+  const unhappy = rated.filter((v) => +v.rating <= 3), happy = rated.filter((v) => +v.rating >= 4);
+  const signals = (ledger || []).filter((e) => e?.signal && e.v && !e.demo);
+  const listened = (sources || []).filter((s) => LISTEN_HOST.test(String(s?.url || '')));
+  const threads = voice.filter((v) => v?.kind === 'thread').length + signals.length + listened.length;
+  const where = [...new Set([...voice.filter((v) => v?.kind === 'thread').map((v) => v.where || v.platform), ...listened.map((s) => String(s.url).replace(/^https?:\/\/(www\.)?/, '').split('/')[0])].filter(Boolean))].slice(0, 3);
+  const accounts = new Set((ledger || []).filter((e) => e && !e.demo && !e.stale && /^account:/.test(e.method || '')).map((e) => ACCOUNT_OF[String(e.method).slice(8)] || ACCOUNT_OF[String(e.key || '').split('.')[0]]).filter(Boolean));
+  const lines = [...(ledger || []), ...Object.values(facts || {})].filter((e) => e && !e.demo).map((e) => String(e.label || ''));
+  const search = { ranks: lines.filter((l) => /google rank|rank for|position for/i.test(l)).length, ai: lines.filter((l) => /\bAI answers?\b/i.test(l)).length,
+    volumes: lines.filter((l) => /search volume|monthly searches|searches (?:a|per|every) month|google trends|keyword volume|searches for/i.test(l)).length };
+  return { reviews: rv.length, happy: happy.length, unhappy: unhappy.length, unhappyText: unhappy.slice(0, 2).map((v) => cut(v.text, 90)), threads, where, accounts: [...accounts], search };
+}
+/* what a card's "we saw …" sentence claims that the brand's evidence (evidenceKinds) can't show: the same reading refine() does on the
+   proof sheet, so a writer can fix the words before the card ships. Only the observation counts, never what the action will do */
+export function claimGaps(text, k = {}) {
+  const seen = observedOf(text), out = [], acc = new Set(k.accounts || []);
+  const metric = METRICS.find((m) => m.re.test(seen));
+  if (metric && !metric.needs.some((id) => acc.has(id))) out.push({ kind: 'account', what: metric.what, needs: metric.needs });
+  const searchClaim = SEARCH_RE.test(seen);
+  if (searchClaim && !k.search?.volumes) out.push({ kind: 'search' });
+  if (!searchClaim && VOICE_RE.test(seen)) {
+    if (!k.reviews && !k.threads) out.push({ kind: 'voice' });
+    else if (DOUBT_RE.test(seen) && !k.unhappy && !k.threads) out.push({ kind: 'praise' });
+  }
+  return out;
+}
+/* the gap said to a writer, in one line */
+export const gapLine = (g) => g.kind === 'account' ? `it says what the brand's ${g.what} are, but no ${g.needs.map((id) => CONNECTOR_NAMES[id] || id).join(' or ')} account is connected`
+  : g.kind === 'search' ? 'it says how people search, but Brew holds no search counts' : g.kind === 'praise' ? 'it says people doubt or complain, but every review Brew holds is happy'
+  : 'it says customers say this, but Brew holds no reviews or posts';
+/* the block every card writer gets: what Brew holds, and how to say what it doesn't */
+export function writerEvidence(k = {}, brand = 'the brand') {
+  const acc = (k.accounts || []).map((id) => CONNECTOR_NAMES[id] || id);
+  const rev = !k.reviews ? 'none. Brew has read no customer reviews for this brand'
+    : `${k.reviews} read (${k.happy} at 4★ or 5★, ${k.unhappy} at 3★ or below)${k.unhappy ? `. Unhappy ones say: ${k.unhappyText.map((t) => `"${t}"`).join('; ')}` : '. None complains, so they are proof that it works, never a sign of doubt'}`;
+  const th = k.threads ? `${k.threads}${k.where?.length ? ` (${k.where.join(', ')})` : ''}` : 'none';
+  const se = [k.search?.ranks ? `Google rank checks (${k.search.ranks})` : '', k.search?.ai ? 'AI answer checks' : '', k.search?.volumes ? `search counts (${k.search.volumes})` : ''].filter(Boolean).join(', ') || 'none';
+  return `WHAT BREW HOLDS FOR ${brand} (a card may say Brew saw something only of these kinds):
+- Customer reviews: ${rev}.
+- Posts and threads people wrote online: ${th}.
+- ${brand}'s own accounts: ${acc.length ? `${acc.join(', ')} connected` : 'none connected'}. ${acc.length ? 'Anything else (' : '('}visits, bounce, conversion, carts, orders, sales, repeat buying, ad results, email results) Brew cannot see${acc.length ? ' beyond those accounts' : ''}.
+- Search data: ${se}${k.search?.volumes ? '' : '. No counts of how many people search'}.
+How to word it:
+- "We saw", "customers say", "people are asking", "visitors are leaving", "people search for" only when the kind above holds it, naming where ("a 5★ Judge.me review says...", "a Reddit thread asks...").
+- What the move reasons but Brew did not see is an idea, said as one: "buyers may worry the gel ruins curls", "a price this high can make new visitors hesitate". Never "we saw" for it.
+- Never say visitors bounce, leave, drop off or abandon carts, or that sales, orders, repeat buying, ad returns or email results are up, down, high or low, unless one of the accounts above shows it.
+- Happy reviews are proof that it works. Never call them doubt, worry or a problem.`;
+}
 
 export function refine(c, e, { voice = [], connected = () => false, has = () => true } = {}) {
   if (!c || !e) return e;
