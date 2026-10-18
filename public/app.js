@@ -1462,6 +1462,9 @@
     openCardJam(p);
   });
 
+  /* the health card's two buttons: open the move that fixes the weakest ring, or open every ring's checks */
+  document.addEventListener('click', (e) => { const mv = e.target.closest('[data-hc-move]'); if (mv) { openMove(+mv.dataset.hcMove); return; }
+    const how = e.target.closest('[data-hc-how]'); if (how) { const c = how.closest('.card'); const all = [...c.querySelectorAll('.hc-ring')], open = all.every((d) => d.open); all.forEach((d) => (d.open = !open)); } });
   /* ---------- heart, remix, save, jam ---------- */
   document.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-act]'); if (!b) return;
@@ -1494,9 +1497,6 @@
     $$(`.card[data-id="${p.id}"] [data-act="save"]`).forEach((x) => x.setAttribute('aria-pressed', on));
     toast(on ? `${ic('bookmark', 's16')}Saved` : 'Removed from Saved');
     counts(); if (view === 'saved' && !on) renderSaved();
-  /* the health card's two buttons: open the move that fixes the weakest ring, or open every ring's checks */
-  document.addEventListener('click', (e) => { const mv = e.target.closest('[data-hc-move]'); if (mv) { openMove(+mv.dataset.hcMove); return; }
-    const how = e.target.closest('[data-hc-how]'); if (how) { const c = how.closest('.card'); const all = [...c.querySelectorAll('.hc-ring')], open = all.every((d) => d.open); all.forEach((d) => (d.open = !open)); } });
   };
   const rerenderKeep = async (id, quiet) => {
     const y = scrollY; await renderFeed(); scrollTo(0, y);
