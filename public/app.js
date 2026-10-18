@@ -799,22 +799,53 @@
   const pfSrc = (x) => { const src = /^what brew counted$/i.test(x.src || '') || x.kind === 'row' && !x.src ? 'Brew’s count' : /^brew’s maths/i.test(x.src || '') ? 'Brew’s maths' : /^(?:https?:\/\/)?(?:www\.)?([\w-]+(?:\.[\w-]+)+)\/\S*$/i.test(x.src || '') ? x.src.replace(/^(?:https?:\/\/)?(?:www\.)?([^/]+).*$/i, '$1') /* a page address reads as its site */ : x.src || '';
     const t = esc([src, pfDay(x.at)].filter(Boolean).join(' · '));
     return x.url ? `<a class="pf-src" href="${esc(x.url)}" target="_blank" rel="noopener">${t || 'Source'}${ic('external', 's12')}</a>` : t ? `<span class="pf-src">${t}</span>` : ''; };
-  /* a short number sits in its own column; a longer value ("226 reviews, 4.47★") goes on its own line; what people wrote reads as a quote */
-  const pfRow = (x) => { const v = String(x.value || ''), label = `${esc(x.label)}${x.extra ? ` · ${esc(x.extra)}` : ''}`;
+  /* a short number sits in its own column; a longer value ("226 reviews, 4.47★") goes on its own line; what people wrote reads as a quote.
+     A page Brew read that says its number in its label ("MitoActive price: ₹1,499") shows that number like any other */
+  const pfRow = (x) => { let v = String(x.value || ''), l = String(x.label || '');
+    if (!v && x.kind === 'source') { const m = l.match(/^(.{3,}?):\s*(.+)$/), t = m && m[2].replace(/\s*\([^)]*\)?\s*…?$/, '').replace(/…$/, '').trim(); if (t && /\d/.test(t) && t.length <= 24) { l = m[1]; v = t; } }
+    const label = `${esc(l)}${x.extra ? ` · ${esc(x.extra)}` : ''}`;
     if (v && v.length <= 9) return `<li class="pf-r"><b class="pf-v">${esc(v)}</b><span class="pf-l">${label}</span>${pfSrc(x)}</li>`;
-    const quote = /^(quote|ad|idea|read|voice)$/.test(x.kind) && v.length > 24;
+    const quote = /^(quote|voice|ad|idea|read)$/.test(x.kind) && v.length > 24; if (quote) v = v.replace(/^[“"]\s*|\s*[”"]$/g, '');
     return `<li class="pf-r is-text">${v ? quote ? `<q class="pf-q">${esc(v)}</q>` : `<b class="pf-v">${esc(v)}</b>` : ''}<span class="pf-l">${label}</span>${pfSrc(x)}</li>`; };
-  const proofHtml = (e) => {
+  /* what the proof rests on, said plainly, and the accounts that would check it against the brand's real numbers. A card from public
+     data says so; its connectors are the ones for its area (ads → Meta/Google Ads, store → Shopify/Analytics, customers → Klaviyo) */
+  const PF_CX = { ads: ['meta', 'google', 'shopify'], creatives: ['meta', 'shopify'], storefront: ['shopify', 'ga4'], catalog: ['shopify', 'ga4'], visibility: ['ga4', 'google'], signals: ['shopify', 'klaviyo'],
+    'rival-weakness': ['meta', 'shopify'], 'social-posts': ['meta'], 'price-offer': ['shopify', 'ga4'], cro: ['shopify', 'ga4'], seo: ['ga4', 'google'], 'ai-seo': ['ga4'], listening: ['shopify', 'reviews'], automation: ['klaviyo', 'shopify'] };
+  const pfBasis = (items, p, needs) => { const c = p ? cardOf(p) : {}, host = String(B.brand?.host || '').replace(/^www\./, ''), on = (x) => { const h = String(x.url || '').match(/^https?:\/\/(?:www\.)?([^/]+)/)?.[1] || ''; return host && (h === host || h.endsWith('.' + host)); };
+    const said = new Set(), acct = new Set();
+    for (const x of items) { const src = `${x.src || ''} ${x.url || ''}`;
+      if (x.kind === 'account') acct.add(String(x.src || '').replace(/^Your\s+|\s+account$/gi, ''));
+      else if (x.kind === 'voice' || /judge\.?me|loox|okendo|yotpo|reviews?/i.test(src) && !/ad library/i.test(src)) said.add('customer reviews');
+      else if (x.kind === 'quote') said.add('what people say online');
+      else if (x.kind === 'ad') said.add('rivals’ live ads');
+      else if (x.kind === 'trend') said.add('Google searches');
+      else if (x.kind === 'web' || x.url && !on(x) && x.kind === 'source') said.add('other sites Brew read');
+      else said.add('your public store pages'); }
+    const list = [...said], join = (a) => a.length > 1 ? `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}` : a[0] || '';
+    const ids = [...new Set([...(needs || []), ...(PF_CX[c.family] || []), ...(PF_CX[c.sector] || []), 'shopify', 'ga4', 'meta'])].filter((id) => B.connectors?.[id] && !conn(id)).slice(0, 3);
+    const real = acct.size ? `<p class="pf-basis is-real">${ic('check', 's14')}<span>Checked against your ${esc(join([...acct]))} account${acct.size > 1 ? 's' : ''}.</span></p>` : '';
+    const pub = list.length ? `<p class="pf-basis">${acct.size ? `Also from ${esc(join(list))}` : `Based on ${esc(join(list))}, not your sales or ad numbers yet`}.</p>` : '';
+    const ask = !acct.size && ids.length ? `<div class="pf-cx"><span>Connect to check this against your real numbers</span><div class="pf-cx-b">${ids.map((id) => `<button type="button" class="chip" data-pf-cx="${id}">${glyph(id, 18)}${esc(B.connectors[id].name)}</button>`).join('')}</div></div>` : '';
+    return `${real}${pub}${ask}`; };
+  const proofHtml = (e, p) => {
     /* one row per number: the same price read twice (the page and the card's own count) shows once, the sourced one kept */
     const seen = new Map(); for (const x of (e.items || []).filter((x) => x.value || x.url)) { const k = String(x.value || x.url).replace(/\s+/g, '').toLowerCase(), o = seen.get(k); if (!o || (!o.url && x.url)) seen.set(k, x); }
-    const w = e.why || {}, items = [...seen.values()], moves = e.moves || [], SHOW = 4;
+    /* the real data first (numbers, accounts, what customers said), then the pages Brew read */
+    const items = [...seen.values()].sort((a, b) => (a.kind === 'source') - (b.kind === 'source'));
+    const w = e.why || {}, moves = e.moves || [], SHOW = 4;
     const lead = w.because ? `<p class="pf-because">${esc(w.because)}</p>` : (w.reasons || []).length ? `<p class="pf-because">${esc(w.reasons.join('. ').replace(/\.\./g, '.'))}</p>` : '';
-    const rows = items.length ? `<h4 class="pf-h">What it’s based on</h4><ul class="pf-rows">${items.slice(0, SHOW).map(pfRow).join('')}</ul>${items.length > SHOW ? `<details class="pf-more"><summary>${items.length - SHOW} more</summary><ul class="pf-rows">${items.slice(SHOW).map(pfRow).join('')}</ul></details>` : ''}` : '';
+    const rows = items.length ? `<h4 class="pf-h">The real data behind it</h4><ul class="pf-rows">${items.slice(0, SHOW).map(pfRow).join('')}</ul>${items.length > SHOW ? `<details class="pf-more"><summary>${items.length - SHOW} more</summary><ul class="pf-rows">${items.slice(SHOW).map(pfRow).join('')}</ul></details>` : ''}` : '';
     const gap = (e.unbacked || []).length ? `<p class="pf-note">${ic('info', 's14')}<span>No source found yet for ${esc(e.unbacked.slice(0, 3).join(', '))}. Check before you use ${e.unbacked.length > 1 ? 'them' : 'it'}.</span></p>` : '';
-    const none = !items.length ? `<p class="pf-note">${ic('info', 's14')}<span>No numbers behind this one yet. Treat it as an idea to check.</span></p>` : '';
-    /* the move is Brew's reasoning, never the evidence (Param, 19 Oct): only a quiet link to the write-up, after the evidence */
-    const plan = moves.length ? `<button type="button" class="pf-writeup" data-pf-move="${moves[0].n}">Read Brew’s write-up ${ic('right', 's14')}</button>` : '';
-    return `${lead}${rows}${gap}${none}${plan}`;
+    /* does the data prove the claim (proof-logic.js): a claim with no data of its kind, or data that says the opposite, is said first */
+    const cl = { ...(e.claim || {}) };
+    /* a result only the brand's own accounts show: what this page has connected decides whether it asks to connect or says it isn't matched yet */
+    if (cl.metric) { const miss = (cl.metricNeeds || []).filter((id) => B.connectors?.[id] && !conn(id)); cl.needs = miss;
+      cl.note = miss.length ? `Brew can’t see your ${cl.metric} yet, so this part is a guess.` /* the connect buttons below ask */ : `Brew hasn’t matched this to your ${cl.metric} yet, so treat that part as a guess.`; }
+    const check = cl.note ? `<p class="pf-note is-claim">${ic('info', 's14')}<span>${esc(cl.note)}</span></p>` : '';
+    const none = !items.length && !cl.note ? `<p class="pf-note">${ic('info', 's14')}<span>No real data behind this one yet. Treat it as an idea to check, not a fact.</span></p>` : '';
+    /* the move is Brew's reasoning from this data, never proof itself: a quiet link to the write-up, after the data */
+    const plan = moves.length ? `<button type="button" class="pf-wu" data-pf-move="${moves[0].n}">How Brew worked it out: ${esc(moves[0].title)}${ic('right', 's14')}</button>` : '';
+    return `${lead}${check}${rows}${gap}${none}${pfBasis(items, p, cl.needs)}${plan}`;
   };
   /* "what's the evidence behind this?" in the jam: the card's proof as Saw / Plan / Data / So, and a way to the whole sheet */
   const proofMsg = (m) => { const x = m.proof || {}, a = (u, l) => (u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(l)}</a>` : esc(l));
@@ -824,9 +855,10 @@
   const openProof = async (p) => {
     modal(`<div class="sheet pick-sheet pf-sheet" role="dialog" aria-label="Why this card, and the proof"><header class="sh-h"><b class="sh-t">${ic('shield', 's16')}Why Brew suggests this</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>
       <div class="pf-b"><div class="sk" style="height:44px"></div><div class="sk" style="height:140px;margin-top:16px"></div></div></div>`, (w) => {
-      w.addEventListener('click', (ev) => { const m = ev.target.closest('[data-pf-move]'); if (!m) return; closeModal(); openMove(+m.dataset.pfMove); }); });
+      w.addEventListener('click', (ev) => { const x = ev.target.closest('[data-pf-cx]'); if (x) { ev.stopPropagation(); closeModal(); return openConnect(x.dataset.pfCx, { why: 'Brew checks its cards against your real numbers, not just your public pages.', then: () => openProof(p) }); }
+        const m = ev.target.closest('[data-pf-move]'); if (!m) return; closeModal(); openMove(+m.dataset.pfMove); }); });
     const r = await tapi('GET', `/api/cards/${encodeURIComponent(p.id)}/evidence`).catch(() => null), box = $('#modal .pf-b'); if (!box) return;
-    box.innerHTML = r?.evidence ? proofHtml(r.evidence) : `<p class="pf-note">${ic('info', 's14')}The proof didn’t load. Try again in a moment.</p>`;
+    box.innerHTML = r?.evidence ? proofHtml(r.evidence, p) : `<p class="pf-note">${ic('info', 's14')}The proof didn’t load. Try again in a moment.</p>`;
   };
   // card times read as times: "26 min" → "26 min ago" ("Just now", "Mon", "Yesterday" stay as they are)
   const agoText = (x) => String(x || '').replace(/^(\d+\s*(?:s|sec|secs|min|mins|m|hr|hrs|h|hour|hours|d|day|days|wk|wks|week|weeks))$/i, '$1 ago');

@@ -2903,12 +2903,17 @@ a.pf-src:hover{color:var(--fg);text-decoration:underline;text-underline-offset:2
 .pf-more .pf-rows{border-top:1px solid var(--line)}
 .pf-note{margin:0;display:flex;gap:8px;align-items:flex-start;font-size:13.5px;line-height:19px;color:var(--fg-2);padding:10px 12px;border-radius:var(--r-row,12px);background:var(--warn-bg)}
 .pf-note .ic{flex:0 0 auto;margin-top:2px;color:var(--warn)}
-.pf-plan{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-row,12px);background:var(--surface);color:var(--fg);font:inherit;cursor:pointer}
-.pf-plan:hover{background:var(--card)}
-.pf-plan>span{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
-.pf-plan small{font-size:12.5px;color:var(--fg-3)}
-.pf-plan b{font-size:14px;line-height:20px;font-weight:600}
-.pf-plan .ic{flex:0 0 auto;color:var(--fg-3)}
+.pf-basis{margin:0;font-size:13.5px;line-height:19px;color:var(--fg-2)}
+.pf-basis.is-real{display:flex;gap:6px;align-items:flex-start;color:var(--ok)}
+.pf-basis.is-real .ic{flex:0 0 auto;margin-top:2px}
+.pf-cx{display:flex;flex-direction:column;gap:8px;margin-top:-8px;padding:12px;border-radius:var(--r-row,12px);background:var(--surface);border:1px solid var(--line)}
+.pf-cx>span{font-size:13.5px;line-height:19px;font-weight:600;color:var(--fg)}
+.pf-cx-b{display:flex;flex-wrap:wrap;gap:6px}
+.pf-cx-b .chip{display:inline-flex;align-items:center;gap:6px}
+.pf-cx-b .cx-glyph{border-radius:5px;font-size:11px}
+.pf-wu{display:inline-flex;align-items:center;gap:4px;align-self:flex-start;max-width:100%;padding:0;border:0;background:none;color:var(--fg-3);font:inherit;font-size:13px;line-height:18px;text-align:left;cursor:pointer}
+.pf-wu:hover{color:var(--fg);text-decoration:underline;text-underline-offset:2px}
+.pf-wu .ic{flex:0 0 auto}
 .pf-ev{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;margin:6px 0 8px;font-size:13.5px;line-height:19px}
 .pf-ev dt{color:var(--fg-3);font-size:12px;padding-top:1px}
 .pf-ev dd{margin:0;overflow-wrap:anywhere}
