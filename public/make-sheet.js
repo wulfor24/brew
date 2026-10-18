@@ -13,8 +13,8 @@
     const base = { creative: ['Rewrite the words', 'Change the photo', 'Try another look'], 'rival-ad': ['Make our version', 'Shorter', 'Warmer'], heard: ['Answer it once', 'Turn into a move', 'Warmer'], answer: ['Turn into a page', 'Shorter', 'Plainer'], move: ['Shorter', 'Warmer', hero ? `Lead with ${hero}` : 'Lead with the bestseller'], idea: ['Shorter', 'Warmer', 'Sharper'] }[k] || ['Shorter', 'Warmer'];
     if (rival && k !== 'rival-ad') base.push(`Make it about ${rival}`); return base.slice(0, 4); };
   const f = (x) => (window.fx || ((s) => s))(x);
-  const cardHtml = (p, c, v) => { const img = (c.images || [])[0]; return `<article class="v2-card mk-card"><header>${brand().mark || brand().logo ? `<img class="v2-card-mk" src="${esc(brand().mark || brand().logo)}" alt="">` : `<span class="v2-card-mk">${A().SO()}</span>`}<b>${esc(brand().name || '')}</b>${v?.drawing ? '<em class="v2-drawing">drawing…</em>' : ''}</header>
-    ${img ? `<div class="v2-card-img"><img src="${esc(img)}" alt=""></div>` : ''}<div class="v2-card-body"><h3 id="mk-pv-t">${esc(f(c.title))}</h3><p id="mk-pv-b">${esc(f(c.sub || c.p || ''))}</p></div></article>`; };
+  const cardHtml = (p, c, v) => { const img = (c.images || [])[0], mk = brand().mark || brand().logo; return `<article class="card v2-card mk-card"><header class="card-head">${mk ? `<img class="v2-mk" src="${esc(mk)}" alt="">` : A().face('brew')}<div class="who"><b>${esc(brand().name || '')}</b><span>As it will ship</span></div>${v?.drawing ? '<span class="badge warn">drawing…</span>' : ''}</header>
+    ${img ? `<div class="media portrait"><img src="${esc(img)}" alt=""></div>` : ''}<div class="body"><h3 id="mk-pv-t">${esc(f(c.title))}</h3><p id="mk-pv-b">${esc(f(c.sub || c.p || ''))}</p></div></article>`; };
 
   const open = (p, o = {}) => {
     const c = A().cardOf(p), chips = CHIPS(p), why = f(c.why || c.from || c.sub0 || ''), src = c.src || (c.sources || [])[0] || '';

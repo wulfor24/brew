@@ -343,7 +343,7 @@
         <div class="ob2-body">${inner}</div></section>
       <aside class="ob2-show" id="ob-show" aria-hidden="true">${show || (step ? pvLast : '')}</aside></main>`;
   const start = () => {
-    if (V2 && !DEMO_LAND && window.OB2) { view = 'start'; return window.OB2.start(); } /* v2: the hero, the peek, then the brand page */
+    /* v2 keeps this start page; the brand page's read is where v2 begins (setup → OB2.run) */
     document.body.classList.remove('deck-on'); view = 'start';
     const art = B.startArt || ['assets/intro-1.jpg', 'assets/intro-2.jpg', 'assets/intro-3.jpg'];
     // the landing page shows what the feed says, for any brand: no one brand's photos, no one country's money

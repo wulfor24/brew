@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Walk the v2 onboarding headlessly, the way a person would with the keyboard: the beats, the tutorial, the sunrise, the
-// stack, the gate, then the feed. Fails on any screen that shows "undefined", "NaN" or "null", on a JS error, on a progress
-// bar ahead of the read, or on more than one confirm POST. Writes PNGs and a JSON log to --out (default: $TMPDIR/v2-walk).
+// Walk the v2 onboarding headlessly, the way a person would with the keyboard: the beats, the tutorial, the morning, the
+// stack, the gate, then the feed. Fails on any screen that shows "undefined", "NaN" or "null", on a JS error, on a read status
+// ahead of the stream, or on more than one confirm POST. Writes PNGs and a JSON log to --out (default: $TMPDIR/v2-walk).
 //   node tools/v2-walk.mjs --url http://localhost:4200/cozysnugglet-shop [--dark] [--mobile] [--out DIR] [--landing]
 //   --stack: the morning stack instead (FEED_STACK): a browser that finished onboarding opens the feed with ?stack=1 → the day's
 //   stack with its "n of N" counter, two verbs, Esc → the feed; a reload the same day shows no stack; ?stack=0 and ?go=feed never do.
@@ -29,8 +29,8 @@ let shot = 0;
 const snap = async (name) => { const f = path.join(OUT, `${String(++shot).padStart(2, '0')}-${name}.png`); await page.screenshot({ path: f }); return f; };
 const text = () => page.evaluate(() => document.body.innerText || '');
 const check = async (where) => { const t = await text(); for (const re of [/\bundefined\b/, /\bNaN\b/, /\[object Object\]/, /\bnull\b/]) if (re.test(t)) bad.push(`${where}: text shows ${re}`);
-  const prog = await page.evaluate(() => { const bar = document.querySelector('.v2-bar i'), dots = document.querySelectorAll('.v2-dots li.is-done').length; return bar ? { w: parseFloat(bar.style.width), dots } : null; });
-  if (prog && prog.w > Math.max(3, Math.round(100 * prog.dots / 7)) + 1) bad.push(`${where}: bar ${prog.w}% ahead of ${prog.dots} done stages`); };
+  const prog = await page.evaluate(() => { const s = document.querySelector('#v2-status')?.textContent || '', m = s.match(/(\d) of 7 sources/), done = document.querySelectorAll('.v2-rail .step.done').length; return m ? { said: +m[1], done } : null; });
+  if (prog && prog.said > prog.done) bad.push(`${where}: the status says ${prog.said} of 7 but the rail shows ${prog.done} done`); };
 const dbg = () => page.evaluate(() => (window.OB2 && window.OB2.debug ? window.OB2.debug() : null)).catch(() => null);
 const view = () => page.evaluate(() => window.__BREW?.view).catch(() => null);
 
@@ -50,10 +50,10 @@ if (has('--stack')) {
   const u1 = new URL(URL0); u1.searchParams.set('v', '2'); u1.searchParams.set('stack', '1'); await page.goto(u1.toString(), { waitUntil: 'domcontentloaded' });
   if (!(await stackUp())) bad.push('stack: no card came up in 25 s'); else {
     await sleep(600); await snap('morning'); await check('morning');
-    const c0 = await count(), head = await page.evaluate(() => document.querySelector('.v2-tut h1')?.textContent || ''), total = +(c0.split(' of ')[1] || 0);
+    const c0 = await count(), head = await page.evaluate(() => document.querySelector('#v2-stage h1')?.textContent || ''), total = +(c0.split(' of ')[1] || 0);
     note('morning stack', { head, count: c0, view: await view() });
     if (!/^1 of \d+$/.test(c0)) bad.push(`stack: counter "${c0}" is not "1 of N"`);
-    if (!(await page.$('#v2-skip'))) bad.push('stack: no "Open the feed" button');
+    if (!(await page.$('[data-v2-skip]'))) bad.push('stack: no "Open the feed" button');
     await page.keyboard.press('ArrowRight'); await sleep(1100); const c1 = await count(); if (total > 1 && c1 !== `2 of ${total}`) bad.push(`stack: after Keep the counter says "${c1}"`);
     if (total > 2) { await page.keyboard.press('ArrowLeft'); await sleep(1100); const c2 = await count(); if (c2 !== `3 of ${total}`) bad.push(`stack: after Not for me the counter says "${c2}"`); }
     await page.keyboard.press('o'); await sleep(700); await snap('morning-open'); await check('morning-open');
@@ -85,14 +85,14 @@ if (has('--stack')) {
 let guard = 0, lastBeat = '';
 while (guard++ < 80) {
   const d = await dbg(); if (!d) { await sleep(800); continue; }
-  const beat = d.beat, kind = await page.evaluate(() => { const s = document.querySelector('#v2-stage > *'); return s ? s.className : ''; });
+  const beat = d.beat, kind = d.kind || '';
   if (beat !== lastBeat) { await snap(beat); await check(beat); note(`beat ${beat}`, { kind, ready: d.st.ready, steps: d.st.steps.filter((x) => x && x.state === 'done').length }); lastBeat = beat; }
   if (d.st.error) { note('read error screen', { msg: d.st.error }); break; }
-  if (kind.includes('v2-done')) { await snap('done'); await check('done'); note('done screen', { findings: d.st.findings.length }); break; }
-  if (kind.includes('v2-slide')) { await sleep(900); await page.keyboard.press('Space'); }
-  else if (kind.includes('v2-tut')) { const h = await page.evaluate(() => document.querySelector('.v2-tut h1')?.textContent || ''); await page.keyboard.press(/keep/.test(h) ? 'ArrowRight' : /Open/.test(h) ? 'o' : /drop/.test(h) ? 'ArrowLeft' : 'ArrowRight'); await sleep(2800); }
-  else if (kind.includes('v2-hold')) { await sleep(2000); }
-  else if (kind.includes('v2-tap')) { const multi = await page.$('#v2-confirm'); await page.keyboard.press('1'); await sleep(250); if (multi) await page.keyboard.press('Space'); }
+  if (kind === 'done') { await sleep(1200); await snap('done'); await check('done'); note('done screen', { findings: d.st.findings.length }); break; }
+  if (kind === 'slide') { await sleep(900); await page.keyboard.press('Space'); }
+  else if (kind === 'tutorial') { const h = await page.evaluate(() => document.querySelector('#v2-stage h1')?.textContent || ''); await page.keyboard.press(/keep/.test(h) ? 'ArrowRight' : /Open/.test(h) ? 'o' : /drop/.test(h) ? 'ArrowLeft' : 'ArrowRight'); await sleep(2800); }
+  else if (kind === 'hold') { await sleep(2000); }
+  else if (kind === 'tap' || kind === 'brand') { const multi = await page.$('#v2-next'); await page.keyboard.press('1'); await sleep(250); if (multi) await page.keyboard.press('Space'); }
   else await sleep(600);
   await sleep(500);
 }
@@ -101,7 +101,6 @@ if (confirms > 1) bad.push(`confirm POSTed ${confirms} times`);
 await page.keyboard.press('Space'); await sleep(4500); await snap('stack'); await check('stack');
 for (let i = 0; i < 3; i++) { const card = await page.$('.v2-card:not(.is-wait)'); if (!card) break; await page.keyboard.press(i === 1 ? 'ArrowLeft' : 'ArrowRight'); await sleep(1400); }
 await snap('gate'); await check('gate'); note('gate', { text: (await text()).split('\n').find((l) => /Unlock|moves/.test(l)) || '' });
-await page.keyboard.press('Space'); await sleep(1200); await snap('plan'); await check('plan');
 await page.keyboard.press('Space'); await sleep(3500); await snap('after-gate'); await check('after-gate');
 const v = await view(); note('end', { view: v, confirms, bad: bad.length });
 fs.writeFileSync(path.join(OUT, 'walk.json'), JSON.stringify({ url: URL0, log, bad, confirms, view: v }, null, 2));

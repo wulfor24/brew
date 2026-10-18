@@ -73,10 +73,10 @@ test('v2 onboarding invents no timings and tags its example cards', () => {
   const ob = src('public/onboard2.js'), mk = src('public/make-sheet.js'), idx = src('public/index.html'), demo = src('demo-routes.js');
   for (const re of [/min(ute)?s? (left|remaining|saved)/i, /you (just )?saved \d+/i, /~\s*\d+\s*min/])
     assert.doesNotMatch(ob + mk, re, `found ${re}`);
-  assert.match(ob, /EXAMPLE_CARDS/); assert.match(ob, /is-example/); assert.match(ob, /<em class="v2-ex">Example<\/em>/);
+  assert.match(ob, /EXAMPLE_CARDS/); assert.match(ob, /example: true/); assert.match(ob, /<span class="badge info">Example<\/span>/);
   assert.doesNotMatch(mk, /\bAI editing\b/, 'the sheet never says "AI editing"');
   assert.match(idx, /onboard2\.js/); assert.match(idx, /make-sheet\.js/); assert.match(idx, /v2\.css/);
-  assert.match(app, /const V2 = /); assert.match(app, /if \(V2 && !DEMO_LAND && window\.OB2\)/);
+  assert.match(app, /const V2 = /); assert.match(app, /if \(V2 && window\.OB2\) \{ view = 'setup'; return window\.OB2\.run\(\); \}/);
   assert.match(demo, /\(v=/, 'the demo tour carries the v= flag');
 });
 
