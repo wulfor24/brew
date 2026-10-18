@@ -7,8 +7,9 @@
 // kept out of the score. Conversion, spend and cost per order need the brand's own accounts; the score never guesses them.
 // The counts come from pack-numbers.js, so the rings quote the same numbers as every other screen.
 import { numbersOf } from './pack-numbers.js';
+import { standFromRead } from './ai-standing.js';
 
-export const HEALTH_V = 'real-1'; // bump when a ring is scored differently: every brand's score is worked out again at load (brand-pack.js)
+export const HEALTH_V = 'real-2'; // bump when a ring is scored differently: every brand's score is worked out again at load (brand-pack.js)
 const clamp = (x) => Math.max(0, Math.min(100, Math.round(x)));
 const fmt = (n) => Number(n).toLocaleString('en-US');
 /* the walk reached the checkout page (siteFailed in reader/index.js reads it the same way) */
@@ -93,7 +94,7 @@ function aiAnswers(p, fix) {
   if (uOf && uN / uOf < 0.5) fix.push(['AI answers', `AI tools named ${p.name || 'you'} in ${uN} of ${uOf} answers where the shopper didn’t ask for it by name. Publish pages that answer what shoppers ask.`]);
   else if (!uOf && v < 50) fix.push(['AI answers', `AI tools named ${p.name || 'you'} in ${named} of ${of} answers. Publish pages that answer what shoppers ask.`]);
   return { k: 'AI answers', v, read: true, what: uOf ? `Named in ${uN} of ${uOf} answers when not asked by name${bOf ? `, ${bN} of ${bOf} when asked` : ''}` : `Named in ${named} of ${of} real AI answers`,
-    parts, src: 'ChatGPT, Gemini, Perplexity, Claude' };
+    parts, src: 'ChatGPT, Gemini, Perplexity, Claude', stand: standFromRead(p) /* who else the answers name, and for which questions (ai-standing.js) */ };
 }
 
 export function healthFrom(p = {}, N = numbersOf({ profile: p })) {

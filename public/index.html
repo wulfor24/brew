@@ -256,6 +256,31 @@
   .sig-unlock{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;margin:16px 0 0;height:42px;border:0;border-radius:12px;background:var(--fg);color:var(--bg);font:inherit;font-size:14px;font-weight:550;cursor:pointer;transition:transform .14s var(--pop)}
   .sig-unlock:hover{transform:translateY(-1px)}
   .src{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:14px;background:var(--card)}
+  /* AI answers: who is named, how often, for which questions */
+  .ais-h{margin:0 0 4px;font-size:17px;line-height:24px;font-weight:500;letter-spacing:-.01em}
+  .ais-sub{margin:0 0 12px;font-size:12.5px;line-height:18px;color:var(--fg-3)}
+  .ais-rows{display:flex;flex-direction:column;gap:10px}
+  .ais-row{display:grid;grid-template-columns:minmax(0,1fr) 72px auto;align-items:center;gap:4px 10px}
+  .ais-row b{font-size:13.5px;font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ais-row b small{font-weight:400;color:var(--fg-3);font-size:11px}
+  .ais-row.is-you b{font-weight:600}
+  .ais-bar{height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden}.ais-bar i{display:block;height:100%;background:var(--fg);border-radius:3px}
+  .ais-row em{font-style:normal;font-size:12.5px;color:var(--fg-2);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .ais-q{grid-column:1/-1;margin:0;font-size:12px;line-height:17px;color:var(--fg-3)}
+  .ais-note{margin:12px 0 0;font-size:12px;line-height:17px;color:var(--fg-3)}
+  .ais-mini{margin:10px 0 4px}.ais-mini .ais-sub{margin-bottom:8px}
+  .ring-rows div.ais-mini{display:block;padding:0;border:0;margin:10px 0 4px}
+  .ring-rows .ais-mini div.ais-rows{display:flex;flex-direction:column;gap:6px;padding:0;border:0}
+  .ring-rows .ais-mini div.ais-row{display:grid;grid-template-columns:minmax(0,1fr) 56px auto;gap:2px 10px;padding:0;border:0;align-items:center}
+  .ring-rows .ais-mini .ais-row b{font-size:12.5px}.ring-rows .ais-mini .ais-row em{font-size:12px;font-weight:400;grid-row:auto;font-family:inherit}
+  .ring-rows .ais-mini span.ais-bar{grid-column:auto}
+  .ais-line{display:flex;gap:6px;align-items:flex-start;margin:8px 0 0;font-size:12.5px;line-height:18px;color:var(--fg-3)}.ais-line .ic{flex:none;margin-top:2px}
+  /* the Signals guide: what it needs, the steps, what you get */
+  .sig-guide .sig-sec{margin:18px 0 8px;padding:0}
+  .sig-lede{margin:0;font-size:13.5px;line-height:20px;color:var(--fg-2)}
+  .sig-srcs{display:flex;flex-direction:column;gap:6px}.sig-srcs .src{background:var(--surface);padding:11px 12px}
+  .sig-srcs .src-t > span{white-space:normal;line-height:17px}.src-bad{font-style:normal;color:var(--bad,#b0432f)}
+  .sig-steps{margin:0;padding:0 0 0 18px;display:flex;flex-direction:column;gap:8px;font-size:13px;line-height:19px;color:var(--fg-3)}
+  .sig-steps b{font-weight:500;color:var(--fg)}
   .src-ic{width:34px;height:34px;border-radius:10px;flex:0 0 auto;display:grid;place-items:center;background:var(--surface);color:var(--fg-2)}
   .src.is-on .src-ic{color:var(--ok)}
   .src-t{flex:1;min-width:0;display:flex;flex-direction:column}

@@ -49,6 +49,7 @@ const demoReq = () => GEN_CTX.getStore() === false;
 import { demoSid, runDemo, sk } from './demo-mode.js'; // Demo Mode: per-session workspaces
 import { createEvidence, EVIDENCE_ASK, proofAnswer } from './evidence.js'; // the proof sheet on every card: why it was suggested, and the hard evidence
 import { createPlain, dejargon } from './plain.js'; // plain words on every card, rewritten once per card and kept per brand
+import { standFromRun } from './ai-standing.js'; // who the weekly AI answers name, and for which questions
 // cut on a word boundary with an ellipsis, never mid-word or with a dangling space
 const cutWords = (x, n) => { x = String(x).trim(); return x.length > n ? x.slice(0, n - 1).replace(/\s+\S*$/, '').replace(/[\s,;:·-]+$/, '') + '…' : x; };
 
@@ -1474,13 +1475,15 @@ export function createFeedService(o) {
   });
   /* the first feed of a new visit: the free watchers look first (a few seconds at most), so a return opens on today's cards, not
      yesterday's. newIds: cards made since the last visit that this person had not seen before this visit began */
+  /* the weekly AI answers check (live-watch.js), as who is named for which question; the client shows it when newer than the read's */
+  const aiStandWeekly = () => { try { const cfg = B()?.config || {}; return standFromRun(live?.get()?.visibility?.runs?.[0], { questions: cfg.questions || [], rivals: cfg.rivalsAI || cfg.rivals || (B()?.profile?.rivals || []).map((r) => r?.name), brand: BN() }); } catch (e) { log.warn('[ai-stand]', e.message); return null; } };
   const newIdsOf = (t, order) => { const v = t.visit; if (!v?.prev) return []; const began = v.at || now(t);
     return order.filter((id) => { const c = t.cards.get(id); return c && !c.parentCardId && c.origin !== 'user' && c.state !== 'done' && c.createdAt > v.prev && !(t.shown[id] || []).some((x) => x < began); }); };
   on('GET', '/api/tenants/:id/feed', async (b, t) => { repairHeartKids(t); syncBatches(t); if (B().kind === 'generated') streamSync(t, SEED.posts);
     if (t.visit && t.feedVisit !== t.visit.at) { t.feedVisit = t.visit.at; if (t.onboarding.readyAt) await runFree(t, 'visit', 6000); }
     await PLAIN.load(slugOfT(t)).catch(() => {});
     const f = feed(t); if (process.env.PLAIN_OFF !== '1' && !demoReq()) PLAIN.queue(slugOfT(t), f.order.map((id) => t.cards.get(id)).filter(Boolean), BN()); /* cards still in their first words get plain ones in the background */
-    return { ...f, newIds: newIdsOf(t, f.order), saved: [...savedOf(t)], cards: allCards(t), withTeam: withTeam(t.work.filter((w) => shown0(w) && guestSees(t)(w))), batches: t.batches, health: t.health, healthLive: t.member ? healthReadings(t.liveLedger) : {}, decided: t.decided || {}, clock: now(t) }; });
+    return { ...f, newIds: newIdsOf(t, f.order), saved: [...savedOf(t)], cards: allCards(t), withTeam: withTeam(t.work.filter((w) => shown0(w) && guestSees(t)(w))), batches: t.batches, health: t.health, healthLive: t.member ? healthReadings(t.liveLedger) : {}, aiStand: aiStandWeekly(), decided: t.decided || {}, clock: now(t) }; });
   on('GET', '/api/tenants/:id/deck', async (b, t) => {
     const { top, ranked, scores } = rank(t); const list = withChildren(t, [...top, ...ranked]);
     const cols = {}; ['signals', 'catalog', 'creatives', 'ads', 'storefront', 'visibility'].forEach((k) => (cols[k] = list.filter((c) => c.sector === k).map((c) => c.id)));

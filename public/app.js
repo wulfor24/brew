@@ -312,7 +312,7 @@
   const loadFeed = async () => {
     await syncNow();
     const r = await tapi('GET', '/api/tenants/:t/feed'); ringsLater(); if (r.error) return null;
-    ALL = r.cards; SCORES = r.scores || {}; LIMIT = r.limit; PINNED = new Set(r.pinned || []); SRV.health = r.health || {}; SRV.healthLive = r.healthLive || {}; SRV.clock = r.clock;
+    ALL = r.cards; SCORES = r.scores || {}; LIMIT = r.limit; PINNED = new Set(r.pinned || []); SRV.health = r.health || {}; SRV.healthLive = r.healthLive || {}; SRV.aiStand = r.aiStand || null; SRV.clock = r.clock;
     NEWSET = new Set(r.newIds || []);
     /* saves live on the server (every device); the ones this browser kept before that go up once */
     if (Array.isArray(r.saved)) { if (!S.savedSync) { S.savedSync = 1; const up = S.saved.filter((id) => !r.saved.includes(id)); up.forEach((id) => tapi('POST', `/api/cards/${encodeURIComponent(id)}/feedback`, { kind: 'save' })); S.saved = [...new Set([...r.saved, ...up])]; }
@@ -885,7 +885,7 @@
     const sub = [isNew ? 'Just in' : agoText(c.time), campLine(c)].filter(Boolean).join(' · ');
     const lc = null; /* Do it now was cut: nothing goes live from Brew, so no card shows a Live row */
     const live = lc ? `<button class="live-row" data-livech data-card="${esc(p.id)}" title="${esc(`${lc.label}${lc.scope ? ' · ' + lc.scope : ''} · ${byTeam(lc.by) ? 'shipped by the ShopOS team' : 'shipped by Brew'}. Open the history`)}"><span class="live-pill"><i class="pulse"></i>Live</span><span class="live-tx">${esc(lc.label)}</span><span class="live-v">v${lc.v}</span>${ic('right', 's14')}</button>` : '';
-    const body = `<div class="body">${live || statusRow(p, c)}${p.told ? `<span class="told-tag" title="This card uses what your team told Brew">${ic('book', 's12')}From what your team told Brew</span>` : ''}<h3>${esc(c.title)}</h3><p>${esc(c.sub)}</p>${makeChip(c)}${srcLine(c)}</div>`;
+    const body = `<div class="body">${live || statusRow(p, c)}${p.told ? `<span class="told-tag" title="This card uses what your team told Brew">${ic('book', 's12')}From what your team told Brew</span>` : ''}<h3>${esc(c.title)}</h3><p>${esc(c.sub)}</p>${makeChip(c)}${aisLine(p)}${srcLine(c)}</div>`;
     const fd = ['conflict', 'answer'].includes(c.kind) ? '' : draftSlot(c); /* a draft replaces the lane photo; a rows card keeps its rows under the words */
     const media = !!fd || c.kind === 'media' || (c.kind === 'variants' && c.images?.length);
     const dn = doneText(p, c), rows = fd && c.kind === 'rows' && c.rows?.length ? slotHtml(c) : '';
@@ -920,6 +920,28 @@
     return m ? `<p class="hc-fix">${ic('doc', 's14')}<span>The fix · Move ${String(m.n).padStart(2, '0')}</span><b>${esc((window.fx || ((x) => x))(m.title))}</b></p><button class="bar" data-hc-move="${esc(m.n)}"><span class="lead">${ic('right', 's16')}Open the move</span>${ic('right', 's16 chev')}</button>`
       : `<button class="bar" data-hc-how><span class="lead">${ic('info', 's16')}How each ring is scored</span>${ic('right', 's16 chev')}</button>`; };
   const healthCard = () => { const h = healthNow(), read = h.rings.filter((r) => r.read !== false), low = [...read].sort((a, b) => a.v - b.v)[0] || null;
+  /* AI answers: where the brand and its rivals stand (ai-standing.js), from the read's answers or the weekly check, whichever
+     is newer. Counted where the shopper named no brand (that is where new buyers come from); an unread source says so */
+  const aiStand = () => { const r = (B.health?.rings || []).find((x) => x.k === 'AI answers')?.stand || null, w = SRV.aiStand || null;
+    return w && !w.error && (!r || r.error || String(w.at || '') >= String(r.at || '')) ? w : r; };
+  const aisClip = (q, n = 64) => { q = String(q || '').replace(/\?$/, ''); return q.length > n ? q.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : q; };
+  const aisOf = (st) => st.unOf ? [(x) => x.un, st.unOf] : [(x) => x.n, st.of];
+  const aisHtml = (st, { compact = false } = {}) => {
+    if (!st) return compact ? '' : `<p class="ais-note">The AI answers haven’t been read for ${esc(B.brand.name)} yet.</p>`;
+    if (st.error) return `<p class="ais-note">${esc(st.error)}</p>`;
+    const [cnt, of] = aisOf(st), nq = st.unOf ? st.qs.filter((q) => !q.branded).length : st.questions;
+    const forOf = (r, you) => { const qs = you ? st.qs.filter((q) => q.brand && (!st.unOf || !q.branded)).map((q) => q.q) : (r.qs || []).filter((q) => !st.unOf || !q.branded).map((q) => q.q);
+      return qs.length ? `Named for “${esc(aisClip(qs[0]))}”${qs.length > 1 ? ` and ${qs.length - 1} more` : ''}` : 'Not named in any of these answers'; };
+    const row = (r, you) => `<div class="ais-row${you ? ' is-you' : ''}"><b>${esc(r.name)}${you ? ' <small>you</small>' : ''}</b><span class="ais-bar"><i style="width:${of ? Math.round((100 * cnt(r)) / of) : 0}%"></i></span><em>${cnt(r)} of ${of}</em>${compact ? '' : `<p class="ais-q">${forOf(r, you)}</p>`}</div>`;
+    const rv = st.rivals.slice(0, compact ? 3 : 6), top = [...st.rivals].sort((a, b) => b.n - a.n).find((r) => r.n);
+    return `${compact ? '' : `<p class="ais-h">Who AI names when shoppers ask</p>`}<p class="ais-sub">${st.unOf ? `${of} answers to ${nq} question${nq === 1 ? '' : 's'} where the shopper named no brand` : `${of} answers to ${nq} shopper question${nq === 1 ? '' : 's'}`}, from ${st.tools} AI tool${st.tools === 1 ? '' : 's'}${st.at ? ` · ${esc(fmtDay(Date.parse(st.at)) || st.at)}` : ''}</p>
+      <div class="ais-rows">${row(st.brand, true)}${rv.map((r) => row(r)).join('')}</div>
+      ${st.rivalsError ? `<p class="ais-note">${esc(st.rivalsError)}</p>` : !st.rivals.length ? `<p class="ais-note">Brew hasn’t found ${esc(B.brand.name)}’s rivals yet, so only ${esc(B.brand.name)} is counted.</p>` : ''}
+      ${!compact && st.unOf && st.of > st.unOf ? `<p class="ais-note">Counting the questions that name a brand too: ${esc(st.brand.name)} ${st.brand.n} of ${st.of}${top ? `, ${esc(top.name)} ${top.n} of ${st.of}` : ''}.</p>` : ''}`; };
+  /* the one line on an AI answers card: who the answers name, beside the brand */
+  const aisLine = (p) => { if (p.sector !== 'visibility') return ''; const st = aiStand(); if (!st || st.error || !st.rivals.length) return '';
+    const [cnt, of] = aisOf(st), top = st.rivals.filter((r) => cnt(r)).slice(0, 2);
+    return `<p class="ais-line">${ic('sparkles', 's14')}<span>${top.length ? `AI names ${top.map((r) => `${esc(r.name)} in ${cnt(r)}`).join(', ')} of ${of} answers; ${esc(st.brand.name)} in ${cnt(st.brand)}` : `AI names none of ${esc(st.rivals.slice(0, 3).map((r) => r.name).join(', '))} in ${of} answers; ${esc(st.brand.name)} in ${cnt(st.brand)}`}</span></p>`; };
     const fixLine = low && (B.health.moves || []).find((x) => x.k === low.k)?.t;
     const [said, todo] = fixLine ? [fixLine.split(/(?<=\.)\s+/)[0], fixLine.split(/(?<=\.)\s+/).slice(1).join(' ')] : [null, null];
     const head1 = !read.length ? `${B.brand.name}’s store couldn’t be read this time.` : said || (low && low.v < 60 ? `${low.k} is ${B.brand.name}’s weakest ring, at ${low.v} of 100.` : `${B.brand.name}’s store reads well on every ring.`);
@@ -928,7 +950,7 @@
     if (GEN && !HC_MOVES) hcMoves().then(() => { const el = $('.card[data-health] [data-hc-how]'); if (el && hcFix(low)) el.outerHTML = hcCta(low); }).catch(() => {});
     return `<article class="card hc${B.health.dummy ? ' is-dummy' : ''}" data-health>${head('brew', B.health.public ? `From your public site${Object.values(SRV.healthLive || {}).some((x) => x?.what) ? ' and your accounts' : ''}${when ? ` · ${esc(when)}` : ''}` : `Up ${h.delta + Object.keys(S.conn).filter(conn).length} this week`, null, false, 'Store health')}
       <div class="body hc-body"><h3>${esc(head1)}</h3>${sub1 ? `<p>${esc(sub1)}</p>` : ''}</div>
-      <div class="inset"><div class="ring-wrap">${ringSvg(h)}<div class="ring-rows hc-rows">${h.rings.map((r) => `<details class="hc-ring${r === low ? ' is-low' : ''}"><summary><b>${esc(r.k)}</b><em>${r.read === false ? '–' : `${r.v}<small>/100</small>`}</em><span>${esc(hcLine(r))}</span></summary>${(r.parts || []).length ? `<ul class="hc-parts">${r.parts.map((x) => `<li><span>${esc(x.k)}</span><b>${x.v}<small>/${x.of}</small></b><small>${esc(x.note || '')}</small></li>`).join('')}</ul>` : ''}${r.src ? `<p class="hc-src">${ic('link', 's14')}${esc(r.src)}</p>` : ''}</details>`).join('')}</div></div></div>
+      <div class="inset"><div class="ring-wrap">${ringSvg(h)}<div class="ring-rows hc-rows">${h.rings.map((r) => `<details class="hc-ring${r === low ? ' is-low' : ''}"><summary><b>${esc(r.k)}</b><em>${r.read === false ? '–' : `${r.v}<small>/100</small>`}</em><span>${esc(hcLine(r))}</span></summary>${(r.parts || []).length ? `<ul class="hc-parts">${r.parts.map((x) => `<li><span>${esc(x.k)}</span><b>${x.v}<small>/${x.of}</small></b><small>${esc(x.note || '')}</small></li>`).join('')}</ul>` : ''}${r.k === 'AI answers' && aiStand()?.rivals ? `<div class="ais ais-mini">${aisHtml(aiStand(), { compact: true })}</div>` : ''}${r.src ? `<p class="hc-src">${ic('link', 's14')}${esc(r.src)}</p>` : ''}</details>`).join('')}</div></div></div>
       ${read.length ? hcCta(low) : ''}</article>`; };
 
   const teamCard = () => { const bs = S.batches.filter((b) => !b.roles || b.roles.includes(S.viewer.role) || b.team).slice(0, 4); const need = bs.filter((b) => b.st === 'Needs you').length;
@@ -1952,7 +1974,7 @@
         </div>${visual}
         ${!past && pg?.lead && pg.lead !== c.sub ? `<p class="cp-lead"><span>${ic('sparkles', 's14')}The call</span>${esc(pg.lead)}</p>` : ''}</header>
       <div class="cp-do">${(ph === 'fresh' || (ph === 'jamming' && w?.stage === 'drafting')) && c.cta?.label && !p._work && FEED.some((x) => x.id === p.id) ? `<div class="cp-cta" data-cp-cta data-post="${FEED.findIndex((x) => x.id === p.id)}"><span class="cp-cta-k">${ic('zap', 's14')}${c.done ? 'Done' : 'The action this card recommends'}</span>${barHtml(c.cta, c.done)}</div>` : ''}${cpActs(p, ch)}</div>
-      ${past ? howHtml(p, w, pg) : pg && c.kind !== 'variants' ? `<section class="cp-sec cp-pick-sec"><h2>${dec ? 'Your call' : 'Pick your path'}<small>${dec ? 'it’s in the brief' : `${pg.options.length} ways to play it`}</small></h2>
+      ${p.sector === 'visibility' && aiStand() ? `<section class="cp-sec ais"><h2>Where you stand in AI answers</h2>${aisHtml(aiStand())}</section>` : ''}${past ? howHtml(p, w, pg) : pg && c.kind !== 'variants' ? `<section class="cp-sec cp-pick-sec"><h2>${dec ? 'Your call' : 'Pick your path'}<small>${dec ? 'it’s in the brief' : `${pg.options.length} ways to play it`}</small></h2>
           <div class="cp-tiles" role="tablist" style="--n:${pg.options.length}">${pg.options.map(tile).join('')}</div>${cur ? panel(cur) : ''}</section>
         ${pick && pg.reason && ['fresh', 'decided'].includes(ph) ? `<section class="cp-rec">${face(ag)}<div><small>Why Brew picks ${L[pg.options.indexOf(pick)]}</small><p>${esc(pg.reason)}</p>
           ${pg.follows?.length ? `<ol class="cp-follows" aria-label="What follows"><li class="cp-follows-k">Then</li>${pg.follows.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>` : ''}
@@ -2968,40 +2990,66 @@
   const byCol = (k) => FEED.map((p, i) => [p, i]).filter(([p]) => p.sector === k);
   const colState = {}; ['signals', 'catalog', 'creatives', 'ads', 'storefront', 'visibility'].forEach((k) => (colState[k] = { hidden: false }));
   const COL_MIN = 380, COL_MAX = 900, COL_SNAP = [380, 480, 600, 720, 840];
-  let colW = 480, sigUnlocked = false;
-  // the day-45 and review signals already arrive as live cards in this column; this is the one only Signals finds
+  let colW = 480;
   /* DUMMY: a sample signal with made-up numbers, shown only with a simulated Shopify (DUMMY.md row 2); tagged Dummy in the card */
   const SIGS = [
-    { h: '642 people whose payment failed or whose order came back', why: 'A recovery message to draft in the jam, keyed to the reason the order failed.', n: '642', r: '511', ch: B.config?.country === 'IN' || B.sym === '₹' ? 'WhatsApp' : 'Email', when: '3h' }
+    { h: '642 people whose payment failed or whose order came back', why: 'Brew drafts a short note for each reason the order failed. Your team sends it from your own tools.', n: '642', r: '511', ch: B.config?.country === 'IN' || B.sym === '₹' ? 'WhatsApp' : 'Email', when: '3h' }
   ];
-  const SOURCES0 = ['shopify', 'whatsapp', 'klaviyo'];
-  const sigSources = () => SOURCES0.filter((id) => B.connectors?.[id]); /* a source the brand has no connector for (WhatsApp since sending was cut) is skipped, never read */
+  /* what Signals reads, in the order it needs them: the store first (nothing to read without it), then reviews, then email.
+     WhatsApp is not here: Brew sending was cut, so there is nothing for it to read */
+  const andList = (a) => a.length < 2 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`;
+  const SOURCES0 = ['shopify', 'reviews', 'klaviyo'];
+  const SIG_WHY = { shopify: { need: 'Needed first', why: 'Your orders and checkouts. Without them Signals has nothing to read.', gets: 'People who left at checkout, and customers due to buy again' },
+    reviews: { need: 'Adds more', why: 'Your reviews.', gets: 'Reviews still waiting for a reply' },
+    klaviyo: { need: 'Optional', why: 'Your email flows.', gets: 'Emails that should go out on their own but are switched off' } };
+  const sigSources = () => SOURCES0.filter((id) => B.connectors?.[id]); /* a source the brand has no connector for is skipped, never read */
   const sigLive = () => conn('shopify');
   const sigFake = () => !!window.BREW_DEMO && sigLive() && !window.LiveConn?.isLive?.('shopify'); /* DUMMY: demo site only, and never next to a connected Shopify */
-  /* the live site's Signals column holds only what the real connectors post (live-* cards): with none, the column is not shown */
-  const sigEmpty = () => !window.BREW_DEMO && !byCol('signals').length;
+  /* the Signals column always shows when the brand has a store connector: with nothing connected it says what to connect
+     and why (18 Oct testing notes: an empty or hidden column read as broken) */
+  const sigEmpty = () => !window.BREW_DEMO && !byCol('signals').length && !B.connectors?.shopify;
   /* V1 hides the Storefront column (testing notes 18 Oct: not ready, it overwhelms the customer); ?storefront=1 shows it to us */
   const STOREFRONT_COL = /[?&]storefront=1\b/.test(location.search);
   const deckCols = () => COL_ORDER.filter((k) => !(k === 'signals' && sigEmpty()) && (k !== 'storefront' || STOREFRONT_COL));
   const sigCard = (s) => `<article class="sig-card is-dummy"><div class="sig-top">${face('crm')}<b>CRM specialist</b><span class="when">· ${s.when}</span><span class="dummy-tag" title="A sample signal: the numbers are made up in this prototype">Dummy</span></div><hr class="sig-rule">
-      <div class="sig-main"><h3>${esc(s.h)}</h3><p>${esc(s.why)}</p><div class="sig-nums"><div><b>${s.n}</b><span>fit the rules</span></div><div><b>${s.r}</b><span>reachable today</span></div><div><b>${s.ch}</b><span>channel</span></div></div></div>
-      <button class="sig-open" data-sig-open>${ic('person', 's16')}Open signal${ic('right', 's16')}</button></article>`;
-  const srcRow = (id) => { const s = B.connectors[id]; return conn(id)
-    ? `<div class="src is-on">${glyph(id, 34)}<span class="src-t"><b>${s.name}</b><span>${s.kind}</span></span><span class="src-ok">Connected</span></div>`
-    : `<div class="src">${glyph(id, 34)}<span class="src-t"><b>${s.name}${s.optional ? ' <span class="src-opt">optional</span>' : ''}</b><span>${s.kind}</span></span><button class="src-btn" data-cx="${id}">Connect</button></div>`; };
-  // one slim strip of sources: what is live, what one tap adds
-  const sigStrip = () => { const need = ['shopify', 'whatsapp'].filter((id) => B.connectors?.[id] && !conn(id)).map((id) => B.connectors[id].name);
-    return `<div class="sig-strip"><p>${need.length ? `${ic('plug', 's14')}Shopify is live. Connect ${need.join(' and ')} to see more of the people Signals finds.` : `<i class="pulse"></i>Reading ${B.connectors?.whatsapp ? 'Shopify and WhatsApp' : 'Shopify'}. New people land here as they qualify.`}</p>
-      <div class="sig-pills">${sigSources().map((id) => { const c = B.connectors[id]; return conn(id) ? `<span class="sig-pill is-on">${glyph(id, 16)}${esc(c.name)}${ic('check', 's14')}</span>` : `<button class="sig-pill" data-cx="${id}">${glyph(id, 16)}${esc(c.name)}${c.optional ? '<small>optional</small>' : ''}</button>`; }).join('')}</div></div>`; };
+      <div class="sig-main"><h3>${esc(s.h)}</h3><p>${esc(s.why)}</p><div class="sig-nums"><div><b>${s.n}</b><span>people</span></div><div><b>${s.r}</b><span>can be reached</span></div><div><b>${s.ch}</b><span>best way to reach them</span></div></div></div>
+      <button class="sig-open" data-sig-open>${ic('person', 's16')}See who they are${ic('right', 's16')}</button></article>`;
+  /* one source: what it is, why Signals needs it, and its state in a word (a connected account that stopped reading says so) */
+  const sigState = (id) => { const x = window.LiveConn?.L?.conns?.[id];
+    if (x && (x.needsReconnect || (x.daysLeft != null && x.daysLeft < 0))) return ['bad', 'Sign-in expired: connect again'];
+    if (x?.stale) return ['bad', 'Stopped reading: connect again'];
+    if (conn(id)) return ['ok', 'Connected'];
+    if (x?.state === 'syncing') return ['busy', 'Reading…'];
+    return null; };
+  const srcRow = (id) => { const s = B.connectors[id], w = SIG_WHY[id] || { need: s.optional ? 'Optional' : '', why: s.kind }, st = sigState(id), admin = window.LiveConn?.boss?.() === false;
+    const right = st?.[0] === 'ok' ? `<span class="src-ok">${ic('check', 's14')}Connected</span>` : st?.[0] === 'busy' ? `<span class="src-state">${st[1]}</span>`
+      : admin ? `<span class="src-state">${st ? st[1] : 'Your admin connects it'}</span>` : `<button class="src-btn" data-cx="${id}">${st ? 'Connect again' : 'Connect'}</button>`;
+    return `<div class="src${st?.[0] === 'ok' ? ' is-on' : ''}${st?.[0] === 'busy' ? ' is-busy' : ''}">${glyph(id, 34)}<span class="src-t"><b>${esc(s.name)}${w.need ? ` <span class="src-opt">${w.need}</span>` : ''}</b><span>${esc(w.why)}${st?.[0] === 'bad' ? ` <em class="src-bad">${st[1]}.</em>` : ''}</span></span>${right}</div>`; };
+  /* the guide: what Signals does, what it needs first and why, the steps, and what lands here. Every brand, live or demo */
+  const sigGuide = () => { const srcs = sigSources(), store = B.connectors?.shopify?.name || 'your store';
+    const gets = srcs.map((id) => SIG_WHY[id]?.gets).filter(Boolean);
+    return `<article class="sig-lock sig-guide"><div class="sig-lock-body">
+        <h3>Signals tells you which customers to reach today.</h3>
+        <p class="sig-lede">It reads ${esc(store)}${srcs.includes('reviews') ? ' and your reviews' : ''} once a day and finds the people worth a message right now.</p>
+        <p class="sig-sec">What it needs</p>
+        <div class="sig-srcs">${srcs.map(srcRow).join('')}</div>
+        <p class="sig-sec">How it works</p>
+        <ol class="sig-steps"><li><b>You connect ${esc(store)}.</b> Read-only: Brew can look, but can't change anything or message anyone.</li>
+          <li><b>Brew reads it once a day.</b> Orders, checkouts${srcs.includes('reviews') ? ', reviews' : ''}${srcs.includes('klaviyo') ? ' and email flows' : ''}.</li>
+          <li><b>A card lands here.</b> It says who, how many, and what to tell them. Your team sends it from your own tools.</li></ol>
+        ${gets.length ? `<p class="sig-sec">What you get</p><div class="sig-will">${gets.map((g) => `<div><i></i>${esc(g)}</div>`).join('')}</div>` : ''}
+      </div></article>`; };
+  // once the store is connected: one slim strip, what is read and what one tap adds
+  const sigStrip = () => { const more = sigSources().filter((id) => id !== 'shopify' && !conn(id) && !sigState(id)), bad = sigSources().filter((id) => sigState(id)?.[0] === 'bad');
+    const n = byCol('signals').length;
+    return `<div class="sig-strip"><p>${bad.length ? `${ic('info', 's14')}${esc(B.connectors[bad[0]].name)} stopped reading. Connect it again so Signals keeps finding people.`
+      : `<i class="pulse"></i>Brew reads ${esc(andList(sigSources().filter(conn).map((id) => B.connectors[id].name)))} once a day. ${n ? 'Each card below is a group of people to reach.' : 'Nothing to act on yet; new people land here as Brew finds them.'}`}${!bad.length && more.length ? ` Connect ${esc(andList(more.map((id) => B.connectors[id].name)))} to find more.` : ''}</p>
+      <div class="sig-pills">${sigSources().map((id) => { const c = B.connectors[id], st = sigState(id); return st?.[0] === 'ok' ? `<span class="sig-pill is-on">${glyph(id, 16)}${esc(c.name)}${ic('check', 's14')}</span>` : window.LiveConn?.boss?.() === false ? '' : `<button class="sig-pill" data-cx="${id}">${glyph(id, 16)}${esc(c.name)}${st ? '<small>connect again</small>' : SIG_WHY[id]?.need === 'Optional' ? '<small>optional</small>' : ''}</button>`; }).join('')}</div></div>`; };
   const sigBody = () => {
-    if (!window.BREW_DEMO) return ''; /* the live site: no sample signal, no lock card, no strip; only the real live-* cards */
+    if (!sigSources().length) return '';
+    if (!sigLive() || sigState('shopify')?.[0] === 'bad') return sigGuide();
     /* a real Shopify shows only what it really found (those arrive as live cards in this column), never the sample signal */
-    if (sigLive()) return sigStrip() + (window.LiveConn?.isLive?.('shopify') ? '' : SIGS.map(sigCard).join(''));
-    if (sigUnlocked) return `<p class="sig-sec">Connect your sources</p>${sigSources().map(srcRow).join('')}`;
-    return `<article class="sig-lock">${(() => { const im = (B.posts || []).find((x) => x.images?.[0])?.images?.[0]; return im ? `<div class="sig-lock-art" aria-hidden="true"><img src="${esc(im)}" alt=""></div>` : ''; })()}<div class="sig-lock-body">
-        <h3>Connect Shopify${conn('whatsapp') || !B.connectors?.whatsapp ? '' : ' and WhatsApp'} and Signals turns orders and carts into people to talk to today.</h3>
-        <div class="sig-will"><div><i></i>Who reaches day 45, the reorder window</div><div><i></i>Recent buyers to ask for a review</div><div><i></i>Failed payments and returned orders</div></div>
-        <button class="sig-unlock" data-sig-unlock>Connect your sources${ic('right', 's16')}</button></div></article>`;
+    return sigStrip() + (sigFake() ? SIGS.map(sigCard).join('') : '');
   };
   /* UI2 Deck: one column per agent area (same /deck cards, grouped by agent), and "Yours" on the side: the lists that used
      to be Library, Work and the greeting counts. Each Yours row opens the view that already does that job, so nothing is lost. */
@@ -3023,7 +3071,7 @@
       <p class="y2-h">Areas</p>
       <div class="side-nav">${Object.keys(AREAS).map((k) => `<button data-colnav="${k}" aria-current="false"><i class="col-dot" style="background:${AREAS[k].dot}"></i>${AREAS[k].name}<span class="n">${byArea(k).length || ''}</span></button>`).join('')}</div>`; };
   const colHTML = (k) => {
-    const cards = byCol(k), sb = k === 'signals' ? sigBody() : '';
+    const cards = byCol(k), sb = k === 'signals' ? sigBody() : k === 'visibility' ? `<article class="sig-lock ais-card"><div class="sig-lock-body ais">${aisHtml(aiStand())}</div></article>` : '';
     return `<section class="dcol" data-col="${k}">
         <div class="col-head"><div class="col-top"><h2><span class="col-emo" aria-hidden="true">${SECTORS[k].emo}</span>${SECTORS[k].name}</h2><span class="col-fill"></span>
           <span class="col-menu"><button class="col-dots" aria-label="Column options">${ic('more', 's18')}</button>
@@ -3033,7 +3081,7 @@
   };
   const sideHTML = () => `
     <div class="side-brand" data-nav="feed" role="button" tabindex="0" title="Home: your feed"><i class="bmark"><img src="${B.brand.mark}" alt=""></i><span><b>${B.brand.name}</b><span>Your deck</span></span></div>
-    <p class="side-note">Every agent has its own column and posts all day.${sigEmpty() ? '' : ' Signals reads your customers and drafts who to talk to next.'}</p>
+    <p class="side-note">Every agent has its own column and posts all day.${sigEmpty() ? '' : ' Signals reads your orders and tells you which customers to reach today.'}</p>
     <div class="side-rule"></div>
     <div class="side-nav">${deckCols().map((k) => { const n = k === 'signals' ? byCol(k).length + (sigFake() ? SIGS.length : 0) : byCol(k).length;
       return `<button data-colnav="${k}" class="${colState[k].hidden ? 'muted' : ''}" aria-current="false"><i class="col-dot" style="background:${SECTORS[k].dot}"></i>${SECTORS[k].name}<span class="n">${n || ''}</span></button>`; }).join('')}</div>
@@ -3094,9 +3142,7 @@
           const fresh = byCol(k).filter(([p]) => !had.has(p.id)).length; toast(fresh ? `${ic('sparkles', 's16')}${fresh} new in ${SECTORS[k].name}` : `${ic('check', 's16')}${SECTORS[k].name} is up to date`); })(); }
       if (act.dataset.colact === 'hide') { colState[k].hidden = true; saveLayout(); buildDeck(); toast(`${SECTORS[k].name} hidden`); }
       return; }
-    if (t.closest('[data-sig-unlock]')) { sigUnlocked = true; const h = $('.dcol[data-col="signals"] .sig-body'); if (h) h.innerHTML = sigBody(); return; }
-    const sg = window.BREW_DEMO ? t.closest('.sig-card') : null; if (sg) { const s0 = SIGS[$$('.sig-card').indexOf(sg)]; if (s0) openDetail({ id: 'sig-' + s0.n, agent: 'crm', sector: 'signals', type: 'decision', kind: 'rows', lane: 'core', time: s0.when, title: s0.h, sub: s0.why, rows: [['Fit the rules', s0.n], ['Reachable today', s0.r], ['Channel', s0.ch]], cta: { label: 'Send on WhatsApp' }, detail: { why: [s0.why], how: ['The message is drafted for each person.', 'You approve the first send.', 'Replies come back into this card.'] },
-        measure: { metric: 'Reorders by day 45', unit: '%', baseline: 18, target: 24, window: 21, connected: true, watch: ['Opt-outs', 'Messages read', 'Complaints'], attribution: 'A 10% holdout gets no message. The gap in reorders between the two groups is the lift.' } }); return; }
+    const sg = window.BREW_DEMO ? t.closest('.sig-card') : null; if (sg) { const s0 = SIGS[$$('.sig-card').indexOf(sg)]; if (s0) openDetail({ id: 'sig-' + s0.n, agent: 'crm', sector: 'signals', type: 'decision', kind: 'rows', lane: 'core', time: s0.when, title: s0.h, sub: s0.why, rows: [['People', s0.n], ['Can be reached', s0.r], ['Best way to reach them', s0.ch]], cta: { label: 'Draft the message' }, detail: { why: [s0.why], how: ['Brew drafts one short note for each reason the order failed.', 'You check it in the jam.', 'Your team sends it from your own tools.'] } }); return; }
     const side = t.closest('[data-side]'); if (side) { const s = side.dataset.side; if (s === 'jam') openJam({ tab: 'ai' }); if (s === 'dash') openDash(); if (s === 'tune') openTune(); }
   });
   let colDrag = null, wRaf = null;
