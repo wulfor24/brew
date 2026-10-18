@@ -19,7 +19,10 @@
   /* ---------- state kept in this browser, so a refresh carries on where it was ---------- */
   const fresh = () => ({ v: 1, startedAt: Date.now(), i: 0, done: {}, v2: { hero: [], removed: [], removeRivals: [], who: {}, company: {}, sources: {} }, picks: {}, steps: [], findings: [], ready: false, posted: false, confirmed: false, kept: [], acted: 0, stage: 'onboard' });
   let st = null;
-  const load = () => { try { st = { ...fresh(), ...JSON.parse(ls.get(KEY()) || '{}') }; } catch (e) { st = fresh(); } return st; };
+  /* a finding's identity: a reopened stream replays the whole read, so the same finding must count once (it was counted twice) */
+  const fKey = (f) => [f?.k, f?.kind, f?.t, f?.src].join('|');
+  const uniqF = (list) => { const seen = new Set(); return (list || []).filter((f) => { const k = fKey(f); if (seen.has(k)) return false; seen.add(k); return true; }); };
+  const load = () => { try { st = { ...fresh(), ...JSON.parse(ls.get(KEY()) || '{}') }; } catch (e) { st = fresh(); } st.findings = uniqF(st.findings); return st; };
   const save = () => ls.set(KEY(), JSON.stringify(st));
 
   /* ---------- the read, as the right-hand rail tells it (v1's reading screen, one column) ---------- */
@@ -46,7 +49,7 @@
     es.onmessage = (m) => { let ev; try { ev = JSON.parse(m.data); } catch (e) { return; }
       if (ev.type === 'step' && ev.state === 'reading') { readingK = STEP_KEYS[ev.i] || readingK; st.steps[ev.i] = { k: STEP_KEYS[ev.i], state: 'reading' }; }
       if (ev.type === 'step' && ev.state === 'done') { st.steps[ev.i] = { k: STEP_KEYS[ev.i], state: 'done', empty: !!ev.empty, done: ev.done }; if (readingK === STEP_KEYS[ev.i]) readingK = null; }
-      if (ev.type === 'finding' && ev.finding) { st.findings.push(ev.finding); if (st.findings.length > 40) st.findings.shift(); if (ev.say) lastSay = ev.say; if (ev.finding.kind === 'kit') washIn(ev.finding); }
+      if (ev.type === 'finding' && ev.finding) { const fk = fKey(ev.finding); st.findings = st.findings.filter((f) => fKey(f) !== fk); st.findings.push(ev.finding); if (st.findings.length > 40) st.findings.shift(); if (ev.say) lastSay = ev.say; if (ev.finding.kind === 'kit') washIn(ev.finding); }
       if (ev.type === 'picks' && ev.k) st.picks[ev.k] = ev.items;
       if (ev.type === 'error') { st.error = ev.msg || 'The store did not open for us.'; save(); es.close(); es = null; paintRead(); return errorScreen(); }
       if (ev.type === 'ready') { st.ready = true; save(); paintRead(); afterReady(); idle(); return; } /* the stream stays open a little: the demo's paced replay sends ready first and its findings after */

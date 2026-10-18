@@ -2850,3 +2850,27 @@ html body.deck-on .topbar{border-bottom:0;box-shadow:none}
 .media.fd.r916{aspect-ratio:4/5;max-height:none;background:#0b0b0b;isolation:isolate}
 .media.fd.r916::before{content:'';position:absolute;inset:-28px;background:var(--fd-bg, none) center/cover no-repeat;filter:blur(28px) brightness(.55) saturate(1.1);z-index:0}
 .media.fd.r916 > img,.media.fd.r916 > video.fd-v,.media.fd.r916 .track img{position:relative;z-index:1;object-fit:contain;background:transparent}
+
+/* Store health (2026-10-19): the finding first, then the rings; each ring opens to show its checks; the fix is a real move */
+.card.hc .hc-body{padding:2px 16px 12px}
+.card.hc .inset{margin-top:0}
+.hc-rows{display:flex;flex-direction:column}
+.hc-ring{border-top:1px solid var(--line)}.hc-ring:first-child{border-top:0}
+.hc-ring summary{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;padding:8px 0;cursor:pointer;list-style:none}
+.hc-ring summary::-webkit-details-marker{display:none}
+.hc-ring summary b{font-size:13.5px;font-weight:500;display:flex;align-items:center;gap:6px}
+.hc-ring summary b::after{content:'';width:6px;height:6px;border-right:1.5px solid var(--fg-3);border-bottom:1.5px solid var(--fg-3);transform:rotate(-45deg);transition:transform .2s var(--ease);margin-left:2px}
+.hc-ring[open] summary b::after{transform:rotate(45deg)}
+.hc-ring summary em{font-style:normal;font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;grid-row:span 2;align-self:center}
+.hc-ring summary em small{font-size:11.5px;font-weight:500;color:var(--fg-3);margin-left:1px}
+.hc-ring summary span{font-size:12.5px;line-height:17px;color:var(--fg-3)}
+.hc-ring.is-low summary span{color:var(--fg-2)}
+.hc-parts{margin:0 0 10px;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.hc-parts li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 10px;padding:7px 10px;border-radius:10px;background:var(--card);font-size:12.5px}
+.hc-parts li span{color:var(--fg)}.hc-parts li b{font-weight:500;font-variant-numeric:tabular-nums;color:var(--fg-2)}.hc-parts li b small{grid-column:auto;display:inline;font-size:11px;color:var(--fg-3)}
+.hc-parts li small{grid-column:1/-1;color:var(--fg-3);font-size:12px;line-height:16px}
+.hc-src{display:flex;align-items:center;gap:5px;margin:0 0 10px;font-family:var(--font-mono);font-size:11.5px;color:var(--fg-3)}
+.hc-fix{display:grid;grid-template-columns:auto minmax(0,1fr);gap:1px 8px;align-items:center;margin:0 16px 10px;color:var(--fg-3);font-size:12.5px}
+.hc-fix .ic{grid-row:span 2}
+.hc-fix span{font-family:var(--font-mono);font-size:11.5px;letter-spacing:.01em}
+.hc-fix b{font-size:14px;line-height:19px;font-weight:500;color:var(--fg)}

@@ -745,6 +745,7 @@
     if ($('#ready')) return; // a double-click on Next must not stack a second ready card
     S.onboarded = true; save(); tapi('POST', '/api/tenants/:t/ready');
     const n = rank().length, R = ROLE();
+    if (V2) return feed(); /* v2 already said good morning, showed the rings and the first three: no second welcome on top of it */
     /* the moves count is the brand's own (status.total, loaded by loadMV); until it is loaded the tile says Moves read with no number */
     const nc = Object.keys(S.conn).filter(conn).length;
     const mvTile = () => { const mvN = +BREW?.movesDone || 0, mvT = +BREW?.total || 0;
@@ -870,12 +871,34 @@
 
   const healthNow = () => { const h = JSON.parse(JSON.stringify(B.health)); Object.entries(B.connectors).forEach(([id, c]) => { if (conn(id)) Object.entries(c.health || {}).forEach(([k, d]) => { const r = h.rings.find((x) => x.k === k); if (r) r.v += d; }); }); Object.entries(SRV.health || {}).forEach(([k, d]) => { const r = h.rings.find((x) => x.k === k); if (r) r.v += d; }); /* the team's own accounts: the ring says what they read (the score stays simulated) */ Object.entries(SRV.healthLive || {}).forEach(([k, x]) => { const r = h.rings.find((y) => y.k === k); if (r && x?.what) { r.what = x.what; r.parts = x.parts; } }); const rd = h.rings.filter((r) => r.read !== false); h.score = rd.length ? Math.round(rd.reduce((a, r) => a + r.v, 0) / rd.length) : 0; return h; };
   const ringSvg = (h) => { const R = [52, 40, 28];
-    return `<svg viewBox="0 0 130 130" width="100%" role="img" aria-label="Brand health ${h.score} of 100">${h.rings.map((r, i) => { const c = 2 * Math.PI * R[i]; return `<circle cx="65" cy="65" r="${R[i]}" fill="none" stroke="var(--surface-2)" stroke-width="8"/><circle class="ring-arc" cx="65" cy="65" r="${R[i]}" fill="none" stroke="var(--fg)" stroke-opacity="${1 - i * .3}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${(c * r.v / 100).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 65 65)"/>`; }).join('')}
-      <text x="65" y="71" text-anchor="middle" fill="var(--fg)" font-size="20" font-weight="600" font-family="Inter,sans-serif">${h.score}</text></svg>`; };
-  const healthCard = () => { const h = healthNow(); const focus = h.rings.find((r) => r.k === ROLE().health) || h.rings[0]; const low = [...h.rings].filter((r) => r.read !== false).sort((a, b) => a.v - b.v)[0] || h.rings[0];
-    return `<article class="card${B.health.dummy ? ' is-dummy' : ''}" data-health>${head('brew', B.health.public ? `From your public site${Object.values(SRV.healthLive || {}).some((x) => x?.what) ? ' and your accounts' : ''} · ${esc(B.health.at || '')}` : `Up ${h.delta + Object.keys(S.conn).filter(conn).length} this week`, null, false)}<div class="inset"><div class="ring-wrap">${ringSvg(h)}<div class="ring-rows">${h.rings.map((r) => `<div class="${r.k === focus.k ? 'focus' : ''}"><b>${esc(r.k)}</b><em>${r.read === false ? '–' : r.v}</em><span>${esc(r.what)}</span></div>`).join('')}</div></div></div>
-      <div class="body"><h3>${B.brand.name} scores ${h.score}. ${esc(low.k)} hold${low.k.endsWith('s') ? '' : 's'} it back.</h3><p>${(() => { const m = (B.health.moves || []).find((x) => x.k === low.k) || (B.health.moves || []).find((x) => x.k === focus.k); return m ? esc(m.t) : S.viewer.role === 'founder' ? 'Every card below helps raise it.' : `You can move ${esc(focus.k)} most.`; })()}</p></div>
-      ${barHtml({ label: 'See what moves it' })}</article>`; };
+    return `<svg viewBox="0 0 130 130" width="100%" role="img" aria-label="${h.rings.map((r) => `${r.k} ${r.read === false ? 'not read' : `${r.v} of 100`}`).join(', ')}">${h.rings.map((r, i) => { const c = 2 * Math.PI * R[i]; return `<circle cx="65" cy="65" r="${R[i]}" fill="none" stroke="var(--surface-2)" stroke-width="8"/><circle class="ring-arc" cx="65" cy="65" r="${R[i]}" fill="none" stroke="var(--fg)" stroke-opacity="${1 - i * .3}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${(c * (r.read === false ? 0 : r.v) / 100).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 65 65)"/>`; }).join('')}</svg>`; };
+  /* Store health (2026-10-19, Param: "this card makes no sense, its CTA makes no sense"): one finding, said plainly; each ring
+     says what it found (its weakest check, not how it is scored) and opens to show every check; the button opens the move that
+     fixes the weakest ring (matched by the move's skill), never an empty jam. A ring that couldn't be read says so. */
+  const HC_SKILLS = { 'AI answers': { _: ['ai-seo', 'content-strategy', 'programmatic-seo'] },
+    Creative: { 'Hook variety': ['ad-creative', 'video'], Formats: ['video', 'image', 'ad-creative'], Volume: ['ads', 'ad-creative'], 'Live ads': ['ads', 'ad-creative'], _: ['ad-creative', 'ads'] },
+    Storefront: { 'Mobile speed': ['cro', 'site-architecture'], 'Reaching checkout': ['cro', 'signup'], 'Guest checkout': ['signup', 'cro'], 'Payment options': ['cro', 'signup'], 'Photos per product': ['image', 'cro'], 'Reviews on the site': ['customer-research', 'emails', 'cro'], _: ['cro', 'copywriting'] } };
+  const hcWeak = (r) => (r.parts || []).filter((x) => x.of).sort((a, b) => a.v / a.of - b.v / b.of)[0] || null;
+  const hcLine = (r) => { if (r.read === false) return r.what; const w = hcWeak(r); if (!w) return r.what;
+    return w.v >= w.of ? `Every check passed: ${(r.parts || []).map((x) => x.k.toLowerCase()).join(', ')}` : `${w.k}: ${w.note}`; };
+  let HC_MOVES = null; /* the brand's moves with their skills (GET /api/brands/:slug/moves), once per page */
+  const hcMoves = async () => { if (HC_MOVES || !GEN) return HC_MOVES; const r = await api(`/api/brands/${B.slug || BR}/moves`).catch(() => null); HC_MOVES = (r?.moves || []).filter((m) => m.skill && +m.n >= 1 && +m.n < 1000); return HC_MOVES; }; /* private moves come back only to team members (server.js), who can open them */
+  const hcFix = (low) => { if (!low || low.read === false || !HC_MOVES?.length) return null; const map = HC_SKILLS[low.k] || {}, w = hcWeak(low);
+    for (const sk of [...(w && map[w.k] || []), ...(map._ || [])]) { const m = HC_MOVES.find((x) => x.skill === sk); if (m) return m; } return null; };
+  const hcCta = (low) => { const m = hcFix(low);
+    return m ? `<p class="hc-fix">${ic('doc', 's14')}<span>The fix · Move ${String(m.n).padStart(2, '0')}</span><b>${esc((window.fx || ((x) => x))(m.title))}</b></p><button class="bar" data-hc-move="${esc(m.n)}"><span class="lead">${ic('right', 's16')}Open the move</span>${ic('right', 's16 chev')}</button>`
+      : `<button class="bar" data-hc-how><span class="lead">${ic('info', 's16')}How each ring is scored</span>${ic('right', 's16 chev')}</button>`; };
+  const healthCard = () => { const h = healthNow(), read = h.rings.filter((r) => r.read !== false), low = [...read].sort((a, b) => a.v - b.v)[0] || null;
+    const fixLine = low && (B.health.moves || []).find((x) => x.k === low.k)?.t;
+    const [said, todo] = fixLine ? [fixLine.split(/(?<=\.)\s+/)[0], fixLine.split(/(?<=\.)\s+/).slice(1).join(' ')] : [null, null];
+    const head1 = !read.length ? `${B.brand.name}’s store couldn’t be read this time.` : said || (low && low.v < 60 ? `${low.k} is ${B.brand.name}’s weakest ring, at ${low.v} of 100.` : `${B.brand.name}’s store reads well on every ring.`);
+    const sub1 = !read.length ? 'The next refresh tries again. Nothing here is a guess.' : said ? (todo || '') /* a finding with no action sentence stands alone: the move under the rings is the action */ : (low && low.v < 60 ? hcLine(low) : `The lowest is ${low.k}, at ${low.v} of 100.`);
+    const when = B.health.at ? (fmtDay(Date.parse(B.health.at)) || B.health.at) : '';
+    if (GEN && !HC_MOVES) hcMoves().then(() => { const el = $('.card[data-health] [data-hc-how]'); if (el && hcFix(low)) el.outerHTML = hcCta(low); }).catch(() => {});
+    return `<article class="card hc${B.health.dummy ? ' is-dummy' : ''}" data-health>${head('brew', B.health.public ? `From your public site${Object.values(SRV.healthLive || {}).some((x) => x?.what) ? ' and your accounts' : ''}${when ? ` · ${esc(when)}` : ''}` : `Up ${h.delta + Object.keys(S.conn).filter(conn).length} this week`, null, false, 'Store health')}
+      <div class="body hc-body"><h3>${esc(head1)}</h3>${sub1 ? `<p>${esc(sub1)}</p>` : ''}</div>
+      <div class="inset"><div class="ring-wrap">${ringSvg(h)}<div class="ring-rows hc-rows">${h.rings.map((r) => `<details class="hc-ring${r === low ? ' is-low' : ''}"><summary><b>${esc(r.k)}</b><em>${r.read === false ? '–' : `${r.v}<small>/100</small>`}</em><span>${esc(hcLine(r))}</span></summary>${(r.parts || []).length ? `<ul class="hc-parts">${r.parts.map((x) => `<li><span>${esc(x.k)}</span><b>${x.v}<small>/${x.of}</small></b><small>${esc(x.note || '')}</small></li>`).join('')}</ul>` : ''}${r.src ? `<p class="hc-src">${ic('link', 's14')}${esc(r.src)}</p>` : ''}</details>`).join('')}</div></div></div>
+      ${read.length ? hcCta(low) : ''}</article>`; };
 
   const teamCard = () => { const bs = S.batches.filter((b) => !b.roles || b.roles.includes(S.viewer.role) || b.team).slice(0, 4); const need = bs.filter((b) => b.st === 'Needs you').length;
     const tone = (b) => b.st === 'Needs you' ? 'warn' : b.st === 'Done' ? 'ok' : b.st === 'Stopped' ? 'bad' : 'run';
@@ -900,6 +923,7 @@
   /* one rule for each count, read from the ranked feed only (loadFeed), never from FEED, which the deck, the lists and
      the library reuse for their own rows: the greeting tile, the list behind it, its tab and the setup preview agree */
   const TODAY_N = 14;
+  /* the rings: three arcs, no composite number in the middle (an average of ads, the store and AI answers means nothing on its own) */
   const todayOf = (ranked) => ranked.slice(0, TODAY_N).filter((p) => !cardOf(p).done);
   const yesOf = (ranked) => todayOf(ranked).filter((p) => p.type === 'decision');
   const gLists = () => { const vis = todayOf(RANKED);
@@ -1395,7 +1419,7 @@
   const barBox = (bar) => bar.closest('.card,[data-cp-cta]');
   // the money question, as a tray under the action: what it spends, the weekly meter, launch or not yet
   /* buttons that are a place to go, not a card's action */
-  const NAV_CTA = { 'Open the deck': () => renderDeck(), 'See all with Pro': () => openPlan('feed'), 'See what moves it': () => openJam({ moves: true }), 'Start a new batch': () => openJam({ batch: true, tab: 'team' }), 'Open the moves': () => { renderMoves(); nav('#v=moves', true, 'view', 'moves'); } };
+  const NAV_CTA = { 'Open the deck': () => renderDeck(), 'See all with Pro': () => openPlan('feed'), 'Start a new batch': () => openJam({ batch: true, tab: 'team' }), 'Open the moves': () => { renderMoves(); nav('#v=moves', true, 'view', 'moves'); } };
   /* the card's jam, opened on its plan: the same place tapping the card goes */
   const openCardJam = (p) => { if (!p) return; $$('.sp-ask').forEach((x) => x.remove()); S.jamOn = { ...(S.jamOn || {}), [p.id]: true }; save(); return openDetail(p, { fromCta: true }); };
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-start]'); if (!b) return; const card = b.closest('.card[data-post]'); const p = card && FEED[+card.dataset.post]; if (p) openCardJam(p); }); /* Start here opens its jam */
@@ -1438,6 +1462,9 @@
     $$(`.card[data-id="${p.id}"] [data-act="save"]`).forEach((x) => x.setAttribute('aria-pressed', on));
     toast(on ? `${ic('bookmark', 's16')}Saved` : 'Removed from Saved');
     counts(); if (view === 'saved' && !on) renderSaved();
+  /* the health card's two buttons: open the move that fixes the weakest ring, or open every ring's checks */
+  document.addEventListener('click', (e) => { const mv = e.target.closest('[data-hc-move]'); if (mv) { openMove(+mv.dataset.hcMove); return; }
+    const how = e.target.closest('[data-hc-how]'); if (how) { const c = how.closest('.card'); const all = [...c.querySelectorAll('.hc-ring')], open = all.every((d) => d.open); all.forEach((d) => (d.open = !open)); } });
   };
   const rerenderKeep = async (id, quiet) => {
     const y = scrollY; await renderFeed(); scrollTo(0, y);

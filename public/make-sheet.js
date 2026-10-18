@@ -27,7 +27,7 @@
           <label class="mk-f"><span>The words</span><textarea id="mk-b" rows="4">${esc(words.body)}</textarea></label>
           ${why ? `<div class="mk-f is-ro"><span>Why it’s here</span><p>${esc(why)}${src ? ` <a class="mk-src" href="${/^https?:/.test(src) ? esc(src) : '#'}" target="_blank" rel="noopener">${esc(String(src).replace(/^https?:\/\//, '').slice(0, 40))}</a>` : ''}</p></div>` : ''}
           ${c.stat || c.gives ? `<div class="mk-f is-ro"><span>What it moves</span><p>${esc(f(c.stat || c.gives))}</p></div>` : ''}
-          <div class="mk-chips">${chips.map((x) => `<button class="mk-chip" data-chip="${esc(x)}">${esc(x)}</button>`).join('')}</div>
+          <div class="mks-chips">${chips.map((x) => `<button class="mks-chip" data-chip="${esc(x)}">${esc(x)}</button>`).join('')}</div>
           <form class="mk-ask" id="mk-ask"><input id="mk-q" placeholder="What would you change?" autocomplete="off"><button class="btn btn-primary sm" type="submit">Go</button></form>
           <p class="mk-note" id="mk-note" role="status" hidden></p>
           <div class="mk-acts"><button class="btn btn-ghost" id="mk-team">${A().ic('person', 's16')} Decide together</button><span class="sp"></span><button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" id="mk-save">Save</button></div>
@@ -38,14 +38,14 @@
       const tIn = $('#mk-t', w), bIn = $('#mk-b', w); const sync = () => { words.title = tIn.value.trim(); words.body = bIn.value.trim(); dirty = true; const pt = $('#mk-pv-t', w), pb = $('#mk-pv-b', w); if (pt) pt.textContent = words.title; if (pb) pb.textContent = words.body; };
       tIn.oninput = sync; bIn.oninput = sync;
       /* a chip or a prompt: the words come back first and show at once; the picture, if the card has one, is queued and lands later */
-      const ask = async (prompt, chip) => { if (busy) return; busy = true; note('Rewriting the words…'); $$('.mk-chip', w).forEach((b) => (b.disabled = true));
+      const ask = async (prompt, chip) => { if (busy) return; busy = true; note('Rewriting the words…'); $$('.mks-chip', w).forEach((b) => (b.disabled = true));
         const r = await A().tapi('POST', `/api/cards/${p.id}/remix`, { words: true, prompt: prompt || '', chip: chip || '' }).catch((e) => ({ error: e.message }));
-        $$('.mk-chip', w).forEach((b) => (b.disabled = false)); busy = false;
+        $$('.mks-chip', w).forEach((b) => (b.disabled = false)); busy = false;
         if (!r || r.error) { note(r?.error || 'That didn’t go through. You can still edit the words yourself.', 'bad'); return; }
         if (r.words) { tIn.value = r.words.title || tIn.value; bIn.value = r.words.body || bIn.value; sync(); dirty = false; saved = r.versionId || null; }
         if ((c.images || []).length && chip !== 'Shorter' && chip !== 'Warmer' && chip !== 'Plainer' && chip !== 'Sharper') { const q = await A().tapi('POST', `/api/cards/${p.id}/remix`, { queue: true, prompt: prompt || '', chip: chip || '' }).catch(() => null); if (q?.queued) { note('Words done. The picture is being redrawn and lands on the card when it’s ready.'); $('#mk-left', w).innerHTML = cardHtml(p, { ...c, title: words.title, sub: words.body }, { drawing: true }); return; } }
         note('Done. Save to keep it.'); };
-      $$('.mk-chip', w).forEach((b) => (b.onclick = () => ask('', b.dataset.chip)));
+      $$('.mks-chip', w).forEach((b) => (b.onclick = () => ask('', b.dataset.chip)));
       $('#mk-ask', w).onsubmit = (e) => { e.preventDefault(); const q = $('#mk-q', w).value.trim(); if (!q) return; $('#mk-q', w).value = ''; ask(q, ''); };
       $('#mk-save', w).onclick = async () => { if (busy) return; busy = true; const b = $('#mk-save', w); b.disabled = true; b.innerHTML = '<span class="spin"></span>Saving';
         let r = { ok: true, versionId: saved };
