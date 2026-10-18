@@ -795,6 +795,7 @@ const pageFor = async (seg) => {
   else { if (blocked(slug)) return null; const st = await builder.status(slug); if (!st) return null; builder.seen(slug); scripts = `<script src="/b/${slug}/facts.js"></script>\n<script src="/b/${slug}/seed.js"></script>`; }
   if (DEMO) scripts += '\n<script>window.BREW_DEMO = 1;</script>'; // the demo site: demo controls, demo accounts
   scripts += `\n<script>window.BREW_V=${flagJson(process.env.BREW_V || '1')};window.BREW_GATE=${flagJson(process.env.BREW_GATE || 'trial')};</script>`; // onboarding v2 (?v=2 on the page overrides; deploy.sh sets both)
+  scripts += `\n<script>window.FEED_STACK=${flagJson(process.env.FEED_STACK || '0')};</script>`; // v2 morning stack: the day's top cards as a swipe stack before the feed (?stack=1|0 on the page overrides; off unless set)
   const p = slug && await loadBrand(slug);
   const name = p?.name || 'Brew', mark = p ? '/' + String(p.seed.brand.mark).replace(/^\//, '') : '/assets/brew-mark.svg';
   return versioned(INDEX.replace('<base href="/">', '<base href="/">').replace(/<!--BRAND-SCRIPTS-->[\s\S]*?<!--\/BRAND-SCRIPTS-->/, scripts)

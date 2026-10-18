@@ -79,3 +79,22 @@ test('v2 onboarding invents no timings and tags its example cards', () => {
   assert.match(app, /const V2 = /); assert.match(app, /if \(V2 && !DEMO_LAND && window\.OB2\)/);
   assert.match(demo, /\(v=/, 'the demo tour carries the v= flag');
 });
+
+/* FEED_STACK (2026-10-18): the morning stack sits behind its own flag inside v2, is keyed by the brand's date, counts honestly
+   ("n of N" from the cards really queued), and never opens on an email, jam, card or studio link */
+test('the morning stack is behind FEED_STACK, keyed by the brand date, honest about its count, never on a deep link', () => {
+  const ob = src('public/onboard2.js'), sv = src('server.js');
+  assert.match(sv, /window\.FEED_STACK=\$\{flagJson\(process\.env\.FEED_STACK \|\| '0'\)\}/, 'injected on every page, off unless set');
+  assert.match(src('deploy.sh'), /\|FEED_STACK=\$\{FEED_STACK:-0\}/); assert.match(src('tools/deploy-demo.sh'), /,FEED_STACK=\$\{FEED_STACK:-0\}/);
+  assert.match(app, /const FEED_STACK = V2 && /, 'inside v2 only'); assert.match(app, /get\('stack'\); if \(q === '1'\) ls\.set\('brew-stack', '1'\); else if \(q === '0'\) ls\.set\('brew-stack', '0'\)/);
+  assert.match(app, /const morningDue = \(\) => FEED_STACK && GEN && !LANDING && !!window\.OB2\?\.morning && !GO_LINK && !BOOT_RX && !\/\^#\(jam\|card\|work\|v\|remix\|cx\|cxerr\|s\)=\|\^#\(check\|team\)\$\/\.test\(location\.hash\) && S\.viewer\.stackDay !== brandClock\(\)\.day/);
+  assert.match(app, /if \(GO_FEED\) \{ GO_LINK = true;/, 'an email link never opens the stack');
+  assert.match(app, /if \(morningDue\(\)\) \{ view = 'stack'; S\.viewer\.stackDay = brandClock\(\)\.day; save\(\); return window\.OB2\.morning\(\{ onDone: \(\) => feed\(\) \}\); \}/, 'marked seen before it opens, then the feed');
+  assert.match(src('brand-pack.js'), /tz: p\.config\?\.timezone && p\.config\.timezone !== 'UTC' \? p\.config\.timezone : null/, 'the brand zone reaches the page');
+  assert.match(ob, /const runStack = \(o\) => \{/); assert.match(ob, /const firstThree = \(ranked\) => mixN\(ranked, 3\);/, 'the onboarding and the morning share one mix');
+  assert.match(ob, /c\.textContent = `\$\{Math\.min\(acted \+ 1, total\)\} of \$\{total\}`/, 'the counter counts the cards really queued');
+  assert.match(ob, /if \(k === 'Escape' && o\.skip && !\$\('#modal'\)\) \{ finish\(\); return true; \}/); assert.match(ob, /skip: 'Open the feed'/);
+  assert.match(ob, /Math\.max\(1, Math\.min\(50, \+V\(\)\.perDay \|\| 10\)\)/, 'N is the person\'s own setting, 10 by default');
+  for (const re of [/\b10 ready moves\b/, /ready moves every morning/, /\d+ moves? (saved|a day guaranteed)/i]) assert.doesNotMatch(ob, re, `found ${re}: the stack shows real cards, it promises no count`);
+  assert.doesNotMatch(ob, /Good morning, \$\{esc\(name\(\)\)\}\.<\/h1>[^]*?10 cards/, 'no fixed ten anywhere');
+});

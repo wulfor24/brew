@@ -63,6 +63,15 @@
      decides. public/onboard2.js, public/make-sheet.js, public/v2.css; nothing below changes behaviour while it is off. */
   const V2 = (() => { const q = new URLSearchParams(location.search).get('v'); if (q === '2') ls.set('brew-v', '2'); else if (q === '1') ls.set('brew-v', '1'); const v = ls.get('brew-v'); return v === '2' || (!v && String(window.BREW_V || '1') === '2'); })();
   if (V2) document.body.classList.add('v2');
+  /* FEED_STACK (2026-10-18), inside v2 only: the first time the feed opens on a given day (the brand's date, this workspace) the
+     day's top cards come as the swipe stack from onboard2.js before the scroll feed. ?stack=1 turns it on for this browser,
+     ?stack=0 off; with neither stored, FEED_STACK (deploy.sh) decides. Never on ?go=feed, a jam, a card or a studio link. */
+  const FEED_STACK = V2 && (() => { const q = new URLSearchParams(location.search).get('stack'); if (q === '1') ls.set('brew-stack', '1'); else if (q === '0') ls.set('brew-stack', '0'); const v = ls.get('brew-stack'); return v === '1' || (!v && String(window.FEED_STACK || '0') === '1'); })();
+  /* the brand's own date and hour (its zone from the pack; else its offset; else this browser's clock) */
+  const brandClock = () => { const z = window.BREW_MONEY || {}, now = new Date(); const pad = (n) => String(n).padStart(2, '0');
+    try { if (z.tz) { const P = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: z.tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit' }).formatToParts(now).map((x) => [x.type, x.value])); return { day: `${P.year}-${P.month}-${P.day}`, hour: +P.hour }; } } catch (e) { /* an unknown zone: the offset below */ }
+    if (Number.isFinite(+z.tzOffsetH) && z.tzOffsetH !== null) { const d = new Date(now.getTime() + +z.tzOffsetH * 36e5); return { day: d.toISOString().slice(0, 10), hour: d.getUTCHours() }; }
+    return { day: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`, hour: now.getHours() }; };
   const api = async (p, body) => { try { const r = await fetch(p, body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}); const j = await r.json(); if (refused(j)) demoSheet(j.host); return j; } catch (e) { return { error: String(e), fallback: true }; } };
   /* demo mode: new work (moves, drafts, images, jams) is made for the brand's team and SquareUp. Anyone else who tries gets this
      one sheet instead of an error: their work email, or the demo stores */
@@ -274,6 +283,7 @@
   const colleague = (id) => { const c = B.colleagues.find((x) => x.id === id) || B.colleagues[0], nm = S.slack.names[c.id]; return { ...c, name: nm || c.name, ini: nm ? nm.trim().split(/\s+/).slice(0, 2).map((x) => x[0]).join('').toUpperCase() : c.ini }; };
   const conn = (id) => !!S.conn[id];
   let view = 'feed';
+  let GO_LINK = false; /* opened from a Brew email (?go=feed): the feed itself, never the morning stack first */
 
   /* card as the viewer sees it: role copy, then live numbers for connected sources */
   const cardOf = (p) => {
@@ -1019,7 +1029,12 @@
       </div>
       <button class="fab" aria-label="Jam with the team" data-open-jam>${ic('hand')}</button>`;
   };
-  const feed = async () => { if (signWall('feed')) return endBootRx(); appShell(); const rh = location.hash.match(/^#remix=([^&]+)/); const hp = hashParams(); const h = hp.card ? [null, hp.card] : null; pulseT || (pulseT = setTimeout(pulse, 4000)); window.scrollTo(0, 0); await Promise.all([pullWork(true), renderFeed()]); const p = h && byId(h[1]); if (p) openDetail(p); else if (h) { history.replaceState(null, '', location.pathname); toast('That card is no longer in the feed.'); } if (hp.work) { const wk = WORK.items.find((x) => x.id === hp.work); if (wk) openDetail(byId(wk.cardId) ? { ...byId(wk.cardId), _work: wk } : pseudoPost(wk)); } if (location.hash.startsWith('#jam=')) window.JamRoom?.fromHash(); if (hp.v && hp.v !== 'feed' && VIEWS()[hp.v]) VIEWS()[hp.v](); const [rcid, rch] = rh ? decodeURIComponent(rh[1]).split('/') : []; const rp = rcid && byId(rcid); if (rp) await openRemix(rp, rch).catch(() => {}); endBootRx(); };
+  /* the morning stack is due when: v2 + FEED_STACK, a brand page, this workspace hasn't seen today's stack (the brand's date), and the
+     feed was opened plainly (not from an email, a jam, a card, a studio or a page link) */
+  const morningDue = () => FEED_STACK && GEN && !LANDING && !!window.OB2?.morning && !GO_LINK && !BOOT_RX && !/^#(jam|card|work|v|remix|cx|cxerr|s)=|^#(check|team)$/.test(location.hash) && S.viewer.stackDay !== brandClock().day;
+  const feed = async () => { if (signWall('feed')) return endBootRx();
+    if (morningDue()) { view = 'stack'; S.viewer.stackDay = brandClock().day; save(); return window.OB2.morning({ onDone: () => feed() }); }
+    appShell(); const rh = location.hash.match(/^#remix=([^&]+)/); const hp = hashParams(); const h = hp.card ? [null, hp.card] : null; pulseT || (pulseT = setTimeout(pulse, 4000)); window.scrollTo(0, 0); await Promise.all([pullWork(true), renderFeed()]); const p = h && byId(h[1]); if (p) openDetail(p); else if (h) { history.replaceState(null, '', location.pathname); toast('That card is no longer in the feed.'); } if (hp.work) { const wk = WORK.items.find((x) => x.id === hp.work); if (wk) openDetail(byId(wk.cardId) ? { ...byId(wk.cardId), _work: wk } : pseudoPost(wk)); } if (location.hash.startsWith('#jam=')) window.JamRoom?.fromHash(); if (hp.v && hp.v !== 'feed' && VIEWS()[hp.v]) VIEWS()[hp.v](); const [rcid, rch] = rh ? decodeURIComponent(rh[1]).split('/') : []; const rp = rcid && byId(rcid); if (rp) await openRemix(rp, rch).catch(() => {}); endBootRx(); };
   const counts = () => {
     const sv = $('[data-count="saved"]'), wk = $('[data-count="work"]');
     if (sv) sv.textContent = S.saved.length || ''; if (wk) { const n = WORK.items.filter((w) => w.stage === 'needs_you').length; wk.textContent = n || ''; wk.classList.toggle('hot', !!n); }
@@ -4683,7 +4698,7 @@
   // jam-room.js (the Jam Room) works from these
   window.__BREW = { putCh: (ch) => putCh(ch), paintStudio: () => paintStudio(), modal: (h, b) => modal(h, b), closeModal: () => closeModal(), refreshAfterConnect: (id) => refreshAfterConnect(id), glyph: (id, n) => glyph(id, n), demoSheet: (h) => demoSheet(h), shareSheet: (p) => shareSheet(p), pageOf: (id) => PAGE[id] || null, studioCard: () => (view === 'remix' ? RX.p : null), studioV: () => (view === 'remix' && RX.ch ? curN(RX.ch) : null) /* the version on the jam's stage, for the sheets */, libAct, cxDone: (id) => $$(`[data-cxrow="${id}"]`).forEach((r) => (r.outerHTML = cxRow(id))), $, $$, esc, wait, ic, face, avatar, podFaces, brewAv, SO, movesTotal: () => +BREW?.total || 0, toast, toastLong, B, AGENT, save, ROLE, colleague, conn, cardOf, byId, tapi, putWork, counts, inrS, openConnect, openDetail, closeDetail, closePop, closeModal, modal, assetHtml, renderView, renderWork, workOfCard, pseudoPost, colleagueForCard,
     get S() { return S; }, get WORK() { return WORK; }, get view() { return view; }, setChange: (ch) => { if (DP && ch) DP.ch = ch; }, currentDetail: () => DP && (DP.w ? { ...DP.p, _work: DP.w, _ch: DP.ch || null } : DP.p), SPLIT, slotHtml, ago, repaintDetail: () => repaintDetail(true), detailDirty: () => !!DP?.dirty, fitKnobs, fitSuggest,
-    /* v2 (onboard2.js, make-sheet.js) */ V2, UI2, GEN, LANDING, DEMO_LAND, api, ls, LSP, get TID() { return TID; }, signWall, needSignin, ensureTenant, scrCard, seatEntries, defaultWants, loadFeed, rank, openRemix, openPlan, teamStep, finishOnboarding, checkRead, waitMoves, whoFor, continueToFeed, hashParams };
+    /* v2 (onboard2.js, make-sheet.js) */ V2, FEED_STACK, brandClock, UI2, GEN, LANDING, DEMO_LAND, api, ls, LSP, get TID() { return TID; }, signWall, needSignin, ensureTenant, scrCard, seatEntries, defaultWants, loadFeed, rank, openRemix, openPlan, teamStep, finishOnboarding, checkRead, waitMoves, whoFor, continueToFeed, hashParams };
   // #setup replays onboarding (it only plays once otherwise, because finishing it is saved in this browser)
   const adoptShare = async () => { const tok = hashParams().s; if (!tok) return;
     const own = tok.split('~')[0]; if (own === TID) return;
@@ -4710,7 +4725,7 @@
   window.LiveConn?.overlay(B, S); fitSeat(); save();
   /* ?go=feed (every Brew email, and invites as ?go=feed&joined=1): read before joined=1 strips the query. A signed-in person skips
      the read replay and the setup steps; the hash after it still applies (#check, #v=moves, #team, #jam=…) */
-  const GO_FEED = /[?&]go=feed\b/.test(location.search); if (GO_FEED) { const u0 = new URL(location.href); u0.searchParams.delete('go'); history.replaceState(null, '', u0.pathname + u0.search + u0.hash);
+  const GO_FEED = /[?&]go=feed\b/.test(location.search); if (GO_FEED) { GO_LINK = true; const u0 = new URL(location.href); u0.searchParams.delete('go'); history.replaceState(null, '', u0.pathname + u0.search + u0.hash);
     if (GEN && !LANDING && window.LIVE?.me && !S.onboarded) { S.onboarded = true; save(); } }
   if (/[?&]joined=1/.test(location.search)) { history.replaceState(null, '', location.pathname + location.hash); setTimeout(() => toast(`${ic('check', 's14')}You’re on ${esc(B.brand.name)}’s team`), 600); }
   if (location.hash === '#team' && ['owner', 'admin'].includes(window.LIVE?.access?.role)) setTimeout(() => window.LiveConn?.teamSheet(), 700);

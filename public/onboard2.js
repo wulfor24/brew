@@ -303,30 +303,60 @@
 
   /* ---------- the review stack: the first three real cards, one at a time, then the gate ---------- */
   const kindOf = (p) => p.post?.platform ? 'heard' : p.kind === 'ad' || p.rival || /rival/i.test(p.family || '') ? 'rival-ad' : p.kind === 'answer' || p.agent === 'visibility' ? 'answer' : /^m\d+/.test(String(p.id)) || p.move ? 'move' : p.family === 'result' ? 'report' : (p.images || []).length ? 'creative' : 'idea';
-  const firstThree = (ranked) => { const used = new Set(), out = []; const take = (pred) => { const p = ranked.find((x) => !used.has(x.id) && pred(x) && !A().cardOf(x).done); if (p) { used.add(p.id); out.push(p); } };
+  const mixN = (ranked, n) => { const S0 = S(), ok = (p) => p && p.id && p.id !== 'build-moves' && !A().cardOf(p).done && !S0.dismissed?.[p.id] && !S0.hearts?.[p.id] && !!A().cardOf(p).title; const used = new Set(), out = []; const take = (pred) => { const p = ranked.find((x) => !used.has(x.id) && ok(x) && pred(x)); if (p) { used.add(p.id); out.push(p); } };
     take((p) => kindOf(p) === 'move'); take((p) => kindOf(p) === 'rival-ad'); take((p) => ['heard', 'answer'].includes(kindOf(p)));
-    for (const p of ranked) { if (out.length >= 3) break; if (!used.has(p.id) && !A().cardOf(p).done) { used.add(p.id); out.push(p); } } return out; };
+    for (const p of ranked) { if (out.length >= n) break; if (!used.has(p.id) && ok(p)) { used.add(p.id); out.push(p); } } return out.slice(0, n); };
+  const firstThree = (ranked) => mixN(ranked, 3);
   const KIND_T = { move: 'A move', 'rival-ad': 'A rival’s ad', heard: 'Heard this week', answer: 'What AI says', report: 'A number moved', creative: 'A draft, yours', idea: 'An idea' };
   const realCard = (p) => { const c = A().cardOf(p), img = (c.images || [])[0], f = window.fx || ((x) => x), k = kindOf(p);
     return `<article class="v2-card" data-id="${esc(p.id)}"><header>${brand().mark || brand().logo ? `<img class="v2-card-mk" src="${esc(brand().mark || brand().logo)}" alt="">` : `<span class="v2-card-mk">${A().SO()}</span>`}<b>${esc(name())}</b><em>${esc(KIND_T[k] || 'A card')}</em></header>
       ${img ? `<div class="v2-card-img"><img src="${esc(img)}" alt="">${c.drawing ? '<span class="v2-drawing">drawing…</span>' : ''}</div>` : ''}
       <div class="v2-card-body"><small>${esc(c.from || c.sub0 || '')}</small><h3>${esc(f(c.title))}</h3><p>${esc(f(c.sub || c.p || c.why || ''))}</p>${c.stat || c.gives ? `<span class="v2-moves">${A().ic('up', 's14')}${esc(f(c.stat || c.gives))}</span>` : ''}</div></article>`; };
+  /* one stack runner for the onboarding's first three and the morning stack (FEED_STACK): a card list, the four verbs, a quiet
+     counter when asked, a way out at any time, and onDone when the cards are acted on or the person skips */
+  const runStack = (o) => {
+    const queue = o.cards.slice(), total = queue.length, max = Math.min(o.max || total, total), kept = o.kept || []; let acted = 0, over = false;
+    const finish = () => { if (over) return; over = true; keys(null); o.onDone(); };
+    document.body.classList.add('v2-on'); fontIn(); sky(7);
+    shell(`<div class="v2-tut"><h1 class="v2-h v2-h-sm">${o.head}</h1><p class="v2-p">${o.sub}</p>${o.counter ? '<p class="v2-count" id="v2-count" role="status"></p>' : ''}<div class="v2-stackwrap" id="v2-stack"></div>${verbsHtml(false)}${hint(`<kbd>←</kbd> drop · <kbd>→</kbd> keep · <kbd>O</kbd> open · <kbd>R</kbd> another take · <kbd>E</kbd> make it yours${o.skip ? ' · <kbd>Esc</kbd> the feed' : ''}`)}</div>`,
+      { noProg: true, right: `<div class="v2-right">${o.skip ? `<button class="linkbtn v2-skip" id="v2-skip">${esc(o.skip)}</button>` : ''}<ol class="v2-kept" id="v2-kept"></ol></div>` });
+    $('#v2-skip')?.addEventListener('click', finish);
+    const paintKept = () => { const k = $('#v2-kept'); if (k) k.innerHTML = kept.map((x) => `<li class="is-${x.v}">${A().ic(x.v === 'keep' ? 'check' : x.v === 'take' ? 'refresh' : 'x', 's14')}<span>${esc(x.t)}</span><em>${x.v === 'keep' ? 'Kept' : x.v === 'take' ? 'Another take' : 'Passed'}</em></li>`).join(''); };
+    const paintCount = () => { const c = $('#v2-count'); if (c) c.textContent = `${Math.min(acted + 1, total)} of ${total}`; };
+    const showNext = () => { const p = queue.shift(); if (!p || acted >= max) return finish(); paintCount(); const host = $('#v2-stack'); host.innerHTML = realCard(p); const card = $('.v2-card', host);
+      const did = async (verb) => {
+        if (verb === 'open') { const c = A().cardOf(p); openParts(card, { title: c.title, why: c.sub || c.p || c.why || '', moves: c.stat || c.gives || '' }); const o2 = $('.v2-parts', card); if (o2 && !$('.v2-full', card)) o2.insertAdjacentHTML('afterend', `<button class="linkbtn v2-full" data-full>Open in full</button>`); $('[data-full]', card)?.addEventListener('click', () => A().openDetail(p)); return; }
+        if (verb === 'make') { window.MakeSheet?.open(p, { onSaved: () => { const c2 = A().byId(p.id) || p; host.innerHTML = realCard(c2); bindVerbs($('.v2-card', host), did); } }); return; }
+        if (verb === 'keep') { S().hearts[p.id] = true; A().save(); A().tapi('POST', `/api/cards/${p.id}/feedback`, { kind: 'heart' }).catch(() => {}); kept.push({ id: p.id, t: A().cardOf(p).title, v: 'keep' }); confetti(); }
+        if (verb === 'drop') { S().dismissed[p.id] = true; A().save(); A().tapi('POST', `/api/cards/${p.id}/feedback`, { kind: 'not_interested' }).catch(() => {}); kept.push({ id: p.id, t: A().cardOf(p).title, v: 'drop' }); }
+        if (verb === 'take') { const r = await A().tapi('POST', `/api/cards/${p.id}/remix`, { queue: true, take: true }).catch(() => null); if (!r || r.error) { A().toast(`${A().ic('info', 's16')}${esc(r?.error || 'Another take isn’t available yet.')}`); return; } kept.push({ id: p.id, t: A().cardOf(p).title, v: 'take' }); }
+        acted++; o.onActed?.(acted); paintKept(); await flyOut(card, verb === 'keep' ? 'keep' : 'drop'); showNext(); };
+      bindVerbs(card, did); keys((k) => { if (k === 'ArrowRight') { did('keep'); return true; } if (k === 'ArrowLeft') { did('drop'); return true; } if (k === 'o' || k === 'O') { did('open'); return true; } if (k === 'r' || k === 'R') { did('take'); return true; } if (k === 'e' || k === 'E') { did('make'); return true; } if (k === 'Escape' && o.skip && !$('#modal')) { finish(); return true; } }); };
+    paintKept(); showNext();
+  };
+  /* FEED_STACK: today's stack is counted once per workspace, by the brand's own date (the onboarding's first three count as today's) */
+  const markDay = () => { if (!A().FEED_STACK) return; V().stackDay = A().brandClock().day; A().save(); };
+  /* the onboarding's stack: the first three real cards, then the gate */
   const stack = async () => {
     document.body.classList.add('v2-on'); fontIn(); load(); st.stage = 'stack'; save(); sky(7);
-    shell(`<div class="v2-tut"><h1 class="v2-h v2-h-sm">Your first three.</h1><p class="v2-p">Real cards for ${esc(name())}. Keep what fits.</p><div class="v2-stackwrap" id="v2-stack"><div class="v2-card is-wait"><span class="spin"></span></div></div>${verbsHtml(false)}${hint(`<kbd>←</kbd> drop · <kbd>→</kbd> keep · <kbd>O</kbd> open · <kbd>R</kbd> another take · <kbd>E</kbd> make it yours`)}</div>`, { noProg: true, right: `<ol class="v2-kept" id="v2-kept"></ol>` });
-    await A().loadFeed(); let ranked = A().rank(); let queue = firstThree(ranked); let acted = 0;
+    shell(`<div class="v2-tut"><h1 class="v2-h v2-h-sm">Your first three.</h1><p class="v2-p">Real cards for ${esc(name())}. Keep what fits.</p><div class="v2-stackwrap" id="v2-stack"><div class="v2-card is-wait"><span class="spin"></span></div></div>${verbsHtml(false)}</div>`, { noProg: true, right: `<ol class="v2-kept" id="v2-kept"></ol>` });
+    await A().loadFeed(); const queue = firstThree(A().rank());
     if (!queue.length) { return gate(); }
-    const paintKept = () => { const k = $('#v2-kept'); if (k) k.innerHTML = st.kept.map((x) => `<li class="is-${x.v}">${A().ic(x.v === 'keep' ? 'check' : x.v === 'take' ? 'refresh' : 'x', 's14')}<span>${esc(x.t)}</span><em>${x.v === 'keep' ? 'Kept' : x.v === 'take' ? 'Another take' : 'Passed'}</em></li>`).join(''); };
-    const showNext = () => { const p = queue.shift(); if (!p || acted >= 3) return gate(); const host = $('#v2-stack'); host.innerHTML = realCard(p); const card = $('.v2-card', host);
-      const did = async (verb) => {
-        if (verb === 'open') { const c = A().cardOf(p); openParts(card, { title: c.title, why: c.sub || c.p || c.why || '', moves: c.stat || c.gives || '' }); const o = $('.v2-parts', card); if (o && !$('.v2-full', card)) o.insertAdjacentHTML('afterend', `<button class="linkbtn v2-full" data-full>Open in full</button>`); $('[data-full]', card)?.addEventListener('click', () => A().openDetail(p)); return; }
-        if (verb === 'make') { window.MakeSheet?.open(p, { onSaved: () => { const c2 = A().byId(p.id) || p; host.innerHTML = realCard(c2); bindVerbs($('.v2-card', host), did); } }); return; }
-        if (verb === 'keep') { S().hearts[p.id] = true; A().save(); A().tapi('POST', `/api/cards/${p.id}/feedback`, { kind: 'heart' }).catch(() => {}); st.kept.push({ id: p.id, t: A().cardOf(p).title, v: 'keep' }); confetti(); }
-        if (verb === 'drop') { S().dismissed[p.id] = true; A().save(); A().tapi('POST', `/api/cards/${p.id}/feedback`, { kind: 'not_interested' }).catch(() => {}); st.kept.push({ id: p.id, t: A().cardOf(p).title, v: 'drop' }); }
-        if (verb === 'take') { const r = await A().tapi('POST', `/api/cards/${p.id}/remix`, { queue: true, take: true }).catch(() => null); if (!r || r.error) { A().toast(`${A().ic('info', 's16')}${esc(r?.error || 'Another take isn’t available yet.')}`); return; } st.kept.push({ id: p.id, t: A().cardOf(p).title, v: 'take' }); }
-        acted++; st.acted = acted; save(); paintKept(); await flyOut(card, verb === 'keep' ? 'keep' : 'drop'); showNext(); };
-      bindVerbs(card, did); keys((k) => { if (k === 'ArrowRight') { did('keep'); return true; } if (k === 'ArrowLeft') { did('drop'); return true; } if (k === 'o' || k === 'O') { did('open'); return true; } if (k === 'r' || k === 'R') { did('take'); return true; } if (k === 'e' || k === 'E') { did('make'); return true; } }); };
-    paintKept(); showNext();
+    markDay();
+    runStack({ cards: queue, max: 3, head: 'Your first three.', sub: `Real cards for ${esc(name())}. Keep what fits.`, kept: st.kept, onActed: (n) => { st.acted = n; save(); }, onDone: gate });
+  };
+  /* FEED_STACK: the morning stack. The day's top N ranked cards (N = how many a morning the person asked for, 10 by default), mixed by
+     the first-three rule, as the same swipe stack before the scroll feed. Esc or "Open the feed" leaves at any time; every verb
+     writes what it writes in the feed. Called by app.js feed() once per brand-day per workspace; onDone opens the feed. */
+  const morning = async (o = {}) => {
+    const n = Math.max(1, Math.min(50, +V().perDay || 10));
+    document.body.classList.add('v2-on'); fontIn(); sky(7);
+    shell(`<div class="v2-tut"><div class="v2-stackwrap" id="v2-stack"><div class="v2-card is-wait"><span class="spin"></span></div></div></div>`, { noProg: true });
+    const done = () => { keys(null); document.body.classList.remove('v2-on'); o.onDone?.(); };
+    await A().loadFeed().catch(() => null); const cards = mixN(A().rank(), n);
+    if (!cards.length) return done();
+    const h = A().brandClock().hour, part = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+    runStack({ cards, head: `${part}, ${esc(name())}.`, sub: `Today’s cards, one at a time. Keep what fits; the feed is behind them.`, counter: true, skip: 'Open the feed', kept: [], onDone: done });
   };
   /* the gate: the fourth card blurred, then what the plan allows (BREW_GATE: trial | plan | off) */
   const gate = async () => {
@@ -397,5 +427,5 @@
   const resume = () => run();
   const reset = () => { ls.del(KEY()); st = null; };
   const debug = () => ({ st, beat: beatAt(st?.i || 0)?.id, lastSay, es: !!es });
-  window.OB2 = { start, run, route, resume, reset, debug, stack };
+  window.OB2 = { start, run, route, resume, reset, debug, stack, morning, mixN };
 })();
