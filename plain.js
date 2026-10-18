@@ -12,7 +12,7 @@
 import crypto from 'node:crypto';
 import { numbersIn } from './fact-gate.js';
 
-export const PLAIN_V = 2; /* 2: outcome-first titles, no technical steps in the title or body (testing notes 18 Oct) */
+export const PLAIN_V = 3; /* 2: outcome-first titles, no technical steps in the title or body (testing notes 18 Oct); 3: every field required, half answers never kept */
 const FILE = 'plain.json';
 const BATCH = 12, MAX_KEEP = 2500;
 
@@ -34,16 +34,16 @@ const subset = (out, src) => { for (const n of nums(out)) if (!src.has(n)) retur
 const keepsAll = (out, need) => { const o = nums(out); for (const n of need) if (!o.has(n)) return false; return true; };
 const tidy = (s, n) => String(s || '').replace(/\s*[—–]\s*/g, ', ').replace(/\s+/g, ' ').trim().slice(0, n);
 
-const SCHEMA = { type: 'object', properties: { cards: { type: 'array', items: { type: 'object', properties: {
+export const SCHEMA = { type: 'object', properties: { cards: { type: 'array', items: { type: 'object', properties: {
   id: { type: 'string' },
   title: { type: 'string', description: 'At most 60 characters. What to do, or what is wrong, in everyday words. Keep the main number if the original title has one.' },
   sub: { type: 'string', description: 'Two short sentences, at most 32 words in all: what Brew saw (with its number), then what to do and what the brand gets.' },
   why: { type: 'array', items: { type: 'string' }, description: 'The same reasons as the original, each under 12 everyday words. Same count as the original, at most 3.' },
   how: { type: 'array', items: { type: 'string' }, description: 'The same steps as the original, each under 10 everyday words, starting with a verb. Same count as the original, at most 3.' },
   because: { type: 'string', description: 'One or two sentences, under 40 words: why Brew suggests this, naming the evidence in plain words ("Brew suggests this because ...").' }
-} } } } };
+}, required: ['id', 'title', 'sub', 'why', 'how', 'because'] } } }, required: ['cards'] }; /* every field asked for: an optional one was often left out (19 Oct: 154 of 167 Arata cards came back with no body, steps or reason) */
 
-const prompt = (brand, list) => `You rewrite cards in a marketing app for ${brand || 'a brand'}'s team so anyone gets each one in two seconds, with no decoding.
+export const prompt = (brand, list) => `You rewrite cards in a marketing app for ${brand || 'a brand'}'s team so anyone gets each one in two seconds, with no decoding.
 
 How to write:
 - Everyday words a busy shop owner uses when texting a friend. Short sentences. One idea per sentence.
@@ -62,7 +62,7 @@ ${JSON.stringify(list)}
 Return every card by its id.`;
 
 export function createPlain({ ai, store, spend = () => true, isMock = () => false, log = console }) {
-  const mem = new Map(), chain = new Map(), running = new Map(), failedAt = new Map();
+  const mem = new Map(), chain = new Map(), running = new Map(), failedAt = new Map(), tries = new Map();
   const load = async (slug) => { if (!mem.has(slug)) mem.set(slug, (await store?.getJSON(slug, FILE, {}).catch(() => ({}))) || {}); return mem.get(slug); };
   const save = (slug) => { const all = mem.get(slug); if (!all || !store?.put) return;
     const ks = Object.keys(all); if (ks.length > MAX_KEEP) for (const k of ks.sort((a, b) => (all[a].at || 0) - (all[b].at || 0)).slice(0, ks.length - MAX_KEEP)) delete all[k];
@@ -96,7 +96,13 @@ export function createPlain({ ai, store, spend = () => true, isMock = () => fals
         try {
           const j = await ai(prompt(brand, list), SCHEMA, 6000, 'plain_cards');
           const by = new Map((j?.cards || []).map((x) => [x.id, x]));
-          for (const c of part) { const r = check(c, by.get(c.id)); if (r) all[plainKey(c)] = r; }
+          /* a card is kept only with its whole rewrite (title, body and the reason); a half answer is tried again on a later load,
+             at most 3 times, then the card keeps its own words with the jargon swapped */
+          let kept = 0, half = 0;
+          for (const c of part) { const x = by.get(c.id), r = check(c, x), k = plainKey(c);
+            if (r && x?.sub && x?.because) { all[k] = r; kept++; tries.delete(k); }
+            else { half++; const n = (tries.get(k) || 0) + 1; tries.set(k, n); if (n >= 3 && r) { all[k] = r; tries.delete(k); } } }
+          log.log?.(`[plain] ${slug} ${part.length} cards: ${kept} rewritten${half ? `, ${half} came back incomplete (tried again later)` : ''}`);
           await save(slug);
         } catch (e) { log.warn('[plain]', slug, e.message); failedAt.set(slug, Date.now()); break; }
       }

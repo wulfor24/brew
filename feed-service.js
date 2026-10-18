@@ -48,7 +48,7 @@ const GEN_CTX = new AsyncLocalStorage();
 const demoReq = () => GEN_CTX.getStore() === false;
 import { demoSid, runDemo, sk } from './demo-mode.js'; // Demo Mode: per-session workspaces
 import { createEvidence, EVIDENCE_ASK, proofAnswer } from './evidence.js'; // the proof sheet on every card: why it was suggested, and the hard evidence
-import { createPlain } from './plain.js'; // plain words on every card, rewritten once per card and kept per brand
+import { createPlain, dejargon } from './plain.js'; // plain words on every card, rewritten once per card and kept per brand
 // cut on a word boundary with an ellipsis, never mid-word or with a dangling space
 const cutWords = (x, n) => { x = String(x).trim(); return x.length > n ? x.slice(0, n - 1).replace(/\s+\S*$/, '').replace(/[\s,;:·-]+$/, '') + '…' : x; };
 
@@ -1067,7 +1067,8 @@ export function createFeedService(o) {
     const spark = (term) => tr?.series[term]?.values;
     // the brand today: its own most important new things, never outside news.
     // The two top-ranked open cards, then work waiting on you, the latest measured result, and work the team finished.
-    const { ranked } = rankSoon(t); /* the feed just ranked (the page asks for both at once): reuse it for a minute */
+    const { ranked: ranked0 } = rankSoon(t); /* the feed just ranked (the page asks for both at once): reuse it for a minute */
+    const ranked = process.env.PLAIN_OFF === '1' ? ranked0 : ranked0.map((c) => PLAIN.apply(slugOfT(t), c)); /* the stories say each card in the same plain words as the feed */
     /* the brand today leads with what is new since the last visit, when there is any; else the top of the feed */
     const open0 = ranked.filter((c) => !c.done && !c.loading && !String(c.id).startsWith('r-')), sinceV = t.visit?.prev, news = sinceV ? open0.filter((c) => c.createdAt > sinceV) : [];
     const topCards = (news.length ? news : open0).slice(0, 2).map((c, i) => ({ type: 'brand', chip: news.length ? (i ? 'Also new' : 'New since your last visit') : i ? 'Next up' : 'Biggest move today', h: c.title, p: c.sub, img: (c.images || [])[0], agent: c.agent, cardId: c.id, cta: c.cta?.label, at: c.createdAt }));
@@ -1077,7 +1078,7 @@ export function createFeedService(o) {
     const brandSlides = [...topCards, ...waiting, ...shipped, ...t.batches.slice(0, 3).map((b, i) => ({ type: 'brand', chip: 'Your agents, this week', h: b.t, p: `${b.s}.`, agent: b.team ? 'brew' : b.agent, pct: b.pct, st: b.st, at: batches[i]?.at }))].slice(0, 8);
     /* Recap: what happened since this person was last here (recap.js). No last visit, or nothing since: no ring */
     const v = t.visit, recapSlides = v?.prev ? buildRecap({ since: v.prev, sinceReal: v.prevReal, when: sinceLabel(v.prev, now(t), B()?.tzMs ?? 5.5 * H), work: t.work, notes: t.notes,
-      cards: ranked.filter((c) => !c.done && !c.loading && !String(c.id).startsWith('r-')), moveDocs: brandOfT(t)?.moveDocs, ledger: t.member ? t.liveLedger : null, base: v.base,
+      cards: ranked.filter((c) => !c.done && !c.loading && !String(c.id).startsWith('r-')), moveDocs: brandOfT(t)?.moveDocs, plain: dejargon, ledger: t.member ? t.liveLedger : null, base: v.base,
       moveCard: (n) => ranked.find((c) => moveNo(c.id) === n)?.id || null }) : [];
     const recapRing = recapSlides.length ? [{ k: 'recap', title: 'Recap', slides: recapSlides, updatedAt: Math.max(...recapSlides.map((x) => x.at || 0)) || null, source: 'Since your last visit', seen: (t.storySeen.recap || 0) >= (v.atReal || v.at || 0) }] : [];
     return [

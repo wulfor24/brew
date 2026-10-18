@@ -74,3 +74,14 @@ test('"what\'s the evidence behind this?" is answered from the card\'s own proof
   assert.match(a.text, /^Here’s what this card is based on\./); assert.match(a.text, /Saw: ₹748/); assert.match(a.text, /Plan: Move 08 · Bonus and naming rules/);
   assert.equal(a.proof.saw[0].url, 'https://www.arata.in/products/combo');
 });
+
+test('plain: a half answer (no body or reason) is never saved; it is asked again on the next load', async () => {
+  const files = {}; const store = { getJSON: async (s, f) => files[`${s}/${f}`] || {}, put: async (s, f, v) => { files[`${s}/${f}`] = JSON.parse(JSON.stringify(v)); } };
+  const c = { id: 'h1', title: 'Front ads with the hero SKU', sub: 'The PDP converts at 2%.', detail: { why: ['CTR is low'], how: ['Fix the PDP'] } };
+  let calls = 0; const ai = async () => { calls++; return { cards: [{ id: 'h1', title: 'Lead your ads with your best seller', why: ['Few people click'] }] }; };
+  const P = createPlain({ ai, store, log: { warn() {}, log() {} } }); await P.load('b2');
+  P.queue('b2', [c], 'B2'); while (P.busy('b2')) await new Promise((r) => setTimeout(r, 5));
+  assert.equal(P.get('b2', c), null, 'nothing kept from a half answer');
+  P.queue('b2', [c], 'B2'); while (P.busy('b2')) await new Promise((r) => setTimeout(r, 5));
+  assert.equal(calls, 2, 'asked again');
+});

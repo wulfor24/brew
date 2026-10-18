@@ -41,6 +41,7 @@ export function sinceLabel(prev, now, tzMs = 5.5 * 3600e3) {
  */
 export function buildRecap(o) {
   const { since, sinceReal } = o; if (!since) return [];
+  const pw = typeof o.plain === 'function' ? o.plain : (x) => x; /* move titles and reasons in everyday words, like the cards (plain.js dejargon) */
   const live = (w) => !w.archived && !w.discarded, slides = [], tally = [];
   /* briefs with the ShopOS team: a move the team made since (the brand sending it is not news to them) */
   const briefs = (o.work || []).filter(live).map((w) => { const moves = (w.jamBrief?.history || []).filter((h) => h.at > sinceReal && h.s !== 'sent');
@@ -69,9 +70,9 @@ export function buildRecap(o) {
   /* moves rewritten since (new evidence, a retired fact) */
   const moved = Object.entries(o.moveDocs || {}).map(([n, m]) => ({ n: +n, m, at: Date.parse(m?.meta?.rewrittenAt || 0) || 0 })).filter((x) => x.at > sinceReal && x.n >= 1 && x.n < 1000).sort((a, b) => b.at - a.at);
   if (moved.length) { tally.push(plural(moved.length, 'move') + ' rewritten');
-    slides.push({ type: 'recap', kind: 'moves', chip: 'Moves rewritten', h: moved.length === 1 ? moved[0].m.title : 'Each one with the latest evidence', ...big(moved.length, 'Moves rewritten'), at: moved[0].at,
-      p: moved.length === 1 ? (moved[0].m.meta?.because ? `${moved[0].m.meta.because}.`.replace(/\.\.$/, '.') : 'Rewritten with the latest evidence.') : null,
-      rows: moved.slice(0, 4).map((x) => ({ t: x.m.title, s: x.m.meta?.because || null, move: x.n, cardId: o.moveCard?.(x.n) || null })) }); }
+    slides.push({ type: 'recap', kind: 'moves', chip: 'Moves rewritten', h: moved.length === 1 ? pw(moved[0].m.title) : 'Each one with the latest evidence', ...big(moved.length, 'Moves rewritten'), at: moved[0].at,
+      p: moved.length === 1 ? (moved[0].m.meta?.because ? `${pw(moved[0].m.meta.because)}.`.replace(/\.\.$/, '.') : 'Rewritten with the latest evidence.') : null,
+      rows: moved.slice(0, 4).map((x) => ({ t: pw(x.m.title), s: x.m.meta?.because ? pw(x.m.meta.because) : null, move: x.n, cardId: o.moveCard?.(x.n) || null })) }); }
   /* connected accounts: a real number that moved since the last visit */
   const base = o.base || {}, nums = Object.entries(o.ledger || {}).filter(([k, e]) => base[k] && Number.isFinite(+e?.n) && +e.n !== base[k].n && (e.at || 0) > sinceReal)
     .map(([k, e]) => ({ k, label: e.label || k, was: base[k].v ?? String(base[k].n), now: e.v ?? String(e.n), up: +e.n > base[k].n, d: Math.abs(+e.n - base[k].n) / Math.max(1e-9, Math.abs(base[k].n)) }))

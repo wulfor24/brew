@@ -71,3 +71,9 @@ test('the last visit in plain words', () => {
   assert.match(sinceLabel(T0, T0 + 3 * 24 * H), /^Since [A-Z][a-z]+day$/);
   assert.equal(sinceLabel(T0, T0 + 9 * 24 * H), 'In the last 9 days');
 });
+
+test('the Recap says moves in plain words, like the cards', () => {
+  const T1 = Date.UTC(2026, 9, 18, 10);
+  const s = buildRecap({ since: T1, sinceReal: T1, work: [], notes: [], cards: [], moveDocs: { 5: { title: 'Which serum should front the ROAS test', meta: { rewrittenAt: new Date(T1 + 3600e3).toISOString(), because: 'The AOV moved' } } }, plain: (x) => String(x).replace(/\bROAS\b/g, 'sales per rupee of ads').replace(/\bAOV\b/g, 'average order') });
+  const m = s.find((x) => x.kind === 'moves'); assert.match(m.h, /sales per rupee of ads/); assert.match(m.p, /average order/);
+});
