@@ -20,8 +20,10 @@ test('evidence: every number on a move card is matched to its fact line with sou
   assert.ok(v.includes('₹748') && v.includes('₹199') && v.includes('474 reviews'));
   const f = e.items.find((x) => x.value === '₹748');
   assert.equal(f.url, 'https://www.arata.in/products/combo'); assert.equal(f.at, '2026-10-14'); assert.equal(f.label, 'Anti-Dandruff Combo price');
-  assert.equal(e.moves[0].n, 8); assert.ok(e.moves[0].sources[0].url);
-  assert.equal(e.strength, 'strong'); assert.match(e.why.from, /Bonus and naming rules/);
+  assert.equal(e.moves[0].n, 8, 'the move is linked as Brew’s write-up');
+  assert.ok(!('sources' in e.moves[0]) && !e.why.from, 'never offered as proof itself');
+  const pages = e.items.filter((x) => x.kind === 'source'); assert.ok(pages.some((x) => x.url === 'https://www.facebook.com/ads/library'), 'the pages Brew read are proof, as themselves');
+  assert.equal(e.strength, 'strong');
 });
 test('evidence: a demo fact never backs a card, and an unmatched number is named, not hidden', () => {
   const e = EV.evidenceOf({ id: 'x', title: 'Revenue is ₹9,99,000', sub: 'Up to ₹5,555 this week.' });
@@ -71,7 +73,7 @@ test('"what\'s the evidence behind this?" is answered from the card\'s own proof
   assert.ok(!EVIDENCE_ASK.test('make it shorter'));
   const e = EV.evidenceOf({ id: 'm08-2', src: 'Move 08 · Bonus and naming rules', title: 'Add a free massager to the ₹748 set', sub: 'The ₹199 Scalp Massager costs little.' });
   const a = proofAnswer(e);
-  assert.match(a.text, /^Here’s what this card is based on\./); assert.match(a.text, /Saw: ₹748/); assert.match(a.text, /Plan: Move 08 · Bonus and naming rules/);
+  assert.match(a.text, /^Here’s what this card is based on\./); assert.match(a.text, /Saw: ₹748/); assert.ok(!/Plan:|Move 08/.test(a.text), 'the move is not the evidence'); assert.match(a.text, /Read: /);
   assert.equal(a.proof.saw[0].url, 'https://www.arata.in/products/combo');
 });
 
@@ -84,4 +86,15 @@ test('plain: a half answer (no body or reason) is never saved; it is asked again
   assert.equal(P.get('b2', c), null, 'nothing kept from a half answer');
   P.queue('b2', [c], 'B2'); while (P.busy('b2')) await new Promise((r) => setTimeout(r, 5));
   assert.equal(calls, 2, 'asked again');
+});
+
+test('real customer voice backs a card when it speaks to what the card is about, with its rating, product and link', () => {
+  const voice = [{ kind: 'review', text: 'Steady drop in hair fall within a month, the massager helps too', rating: 5, product: 'Scalp Massager', src: 'Judge.me', url: 'https://arata.in/r/1', at: '2026-06-29' },
+    { kind: 'review', text: 'Delivery was late and the box was dented', rating: 2, product: 'Gift box', url: 'https://arata.in/r/2' },
+    { kind: 'thread', text: 'Does a scalp massager actually help hair fall?', where: 'r/IndianHair', platform: 'reddit', url: 'https://reddit.com/r/IndianHair/1', replies: 31 }];
+  const e = EV.evidenceOf({ id: 'v1', brand: 'Arata', title: 'Add a free scalp massager to the hair fall set', sub: 'Buyers say the massager helps their hair fall.' }, { voice });
+  const v = e.items.filter((x) => x.kind === 'voice' || x.kind === 'quote');
+  assert.equal(v.length, 2, 'the review and the thread about it; not the unrelated one');
+  assert.equal(v[0].label, '5★ review of Scalp Massager'); assert.equal(v[0].url, 'https://arata.in/r/1');
+  assert.ok(v.some((x) => x.kind === 'quote' && x.extra === '31 replies'));
 });

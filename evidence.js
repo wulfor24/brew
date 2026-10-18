@@ -5,9 +5,12 @@
 // Where the proof comes from, for any card, any brand:
 //   1. every number on the card, matched to the fact-sheet line that holds it (label, value, the page or account it was
 //      read from, the day), the brand's connected accounts first for a team member
-//   2. the move it came from: its title, its headline number and the sources the move cites
-//   3. what the card itself was built on: a rival's ad in the Ad Library, a customer thread or quote, an idea's evidence,
+//   2. what the card itself was built on: a rival's ad in the Ad Library, a customer thread or quote, an idea's evidence,
 //      a Google Trends series, the rows Brew counted
+//   3. real customer voice that speaks to the card: reviews (with rating, product and link) and threads Brew's listening found
+//   4. the pages and records Brew read for it (the sources its move cites, as themselves)
+// A move is never proof (Param, 19 Oct: "moves themselves are derived from the real evidence"): it is Brew's reasoning, so
+// the sheet shows what the move rests on, and links to the move only as Brew's write-up
 // An item with a link is "sourced"; a card with none says so plainly instead of pretending.
 import { numbersIn } from './fact-gate.js';
 
@@ -24,6 +27,9 @@ const connName = (key) => CONN[String(key || '').split('.')[0]] || 'your account
 /* plain counts too ("474 reviews", "12 of 32"): the gate (fact-gate.js) leaves them alone, but they are evidence all the same */
 const plainNums = (s) => (String(s || '').match(/(?<![\d.,₹$€£]|rs\.?\s?|rs\s)\d{2,}(?:[.,]\d+)*(?![\d%])/gi) || []).map((x) => x.replace(/,/g, '')).filter((x) => !(/^\d{4}$/.test(x) && +x >= 1900 && +x <= 2100));
 const allNums = (s) => [...new Set([...numbersIn(String(s || ''), { strict: true }), ...numbersIn(String(s || '')), ...plainNums(s)])];
+/* a creator's paid post is not a customer speaking */
+const PAID = /#\s?ad\b|#sponsored|#collab|paid partnership|\bcomment\s*[“"']?\s*link|link in (?:my )?bio|use (?:my )?code\b/i;
+const voiceKey = (t) => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 60);
 const isEvRow = (x) => /^[^:]{2,60}:\s*[₹$€£]?[\d.,]+\s*$/.test(x) || /^[^:“"]{2,90}\([^)]*\):/.test(x);
 
 export function createEvidence({ factsOf, movesOf, numsOf, adOf = () => null, country = () => '', brandHost = () => '' }) {
@@ -44,7 +50,7 @@ export function createEvidence({ factsOf, movesOf, numsOf, adOf = () => null, co
   const pick = (cands, cw, used, loose) => cands.map((f) => { let hit = 0; for (const w of new Set(words(f.label).filter((x) => !/^\d/.test(x)))) if (cw.has(w)) hit++; return { f, hit, s: hit + (used.has(f.key) ? 3 : 0) + (f.kind === 'current' ? 1 : 0) }; })
     .filter((x) => !loose || x.hit >= 2 || used.has(x.f.key)).sort((a, b) => b.s - a.s)[0]?.f;
 
-  function evidenceOf(c, { liveLedger = null, plain = null } = {}) {
+  function evidenceOf(c, { liveLedger = null, plain = null, voice = [] } = {}) {
     if (!c) return null;
     const facts = factsOf() || {}, idx = indexOf(facts), cw = new Set(words(cardText(c)));
     const ns = (numsOf?.(c.src) || []), M = movesOf() || {};
@@ -77,10 +83,20 @@ export function createEvidence({ factsOf, movesOf, numsOf, adOf = () => null, co
     /* a finding from Brew's read of the site: what was read, where, and when */
     if ((c.origin === 'read' || /^read from /i.test(c.src || '')) && !items.length) { const h = String(brandHost() || '').replace(/^www\./, '');
       add({ kind: 'read', label: 'What Brew read on your site', value: cut(String(c.sub || '').split(/(?<=[.!?])\s+/)[0], 200), src: cut(c.src || h, 80), url: h ? `https://${h}/` : null }); }
-    /* 3. the move it came from: its headline number, and the sources it cites, those the card names first */
-    const moves = ns.filter((n) => M[n]).map((n) => { const m = M[n];
-      const srcs = (m.sources || []).filter((s) => s?.label).map((s) => { let hit = 0; for (const w of new Set(words(s.label))) if (cw.has(w)) hit++; return { s, hit }; }).sort((a, b) => b.hit - a.hit).map((x) => x.s);
-      return { n, title: m.title || '', stat: m.stat ? `${m.stat}${m.statLabel ? ` · ${String(m.statLabel).toLowerCase()}` : ''}` : '', sources: srcs.slice(0, 6).map((s) => ({ label: cut(s.label, 110), url: okUrl(s.url), at: s.at ? String(s.at).slice(0, 10) : null })), more: Math.max(0, srcs.length - 6) }; });
+    /* real customer voice on what the card is about: a review or a thread that shares its words (or names its product) */
+    const brandW = new Set(words(c.brand || ''));
+    const voiceHits = (voice || []).map((v) => { let hit = 0; for (const w of new Set(words(`${v.text} ${v.product || ''}`))) if (cw.has(w) && !brandW.has(w)) hit++; const prod = v.product && cardText(c).toLowerCase().includes(String(v.product).toLowerCase().split(/\s+[-–|]\s+/)[0]); return { v, s: hit + (prod ? 3 : 0) }; })
+      .filter((x) => x.s >= 3 && !PAID.test(x.v.text)).sort((a, b) => b.s - a.s)
+      .filter((x, i, a) => a.findIndex((y) => voiceKey(y.v.text) === voiceKey(x.v.text)) === i).slice(0, 3); /* the same review listed under two products shows once */
+    for (const { v } of voiceHits) add(v.kind === 'review' ? { kind: 'voice', label: `${v.rating ? `${v.rating}★ review` : 'A customer review'}${v.product ? ` of ${cut(v.product, 60)}` : ''}`, value: cut(v.text, 220), src: v.src || 'Your reviews', url: okUrl(v.url), at: v.at ? String(v.at).slice(0, 10) : null }
+      : { kind: 'quote', label: v.where ? `Said on ${v.where}` : 'Said online', value: cut(v.text, 220), src: v.platform || hostOf(v.url), url: okUrl(v.url), extra: v.replies ? `${v.replies} replies` : '' });
+    /* the pages and records Brew read for this card (its move's sources, as themselves), those the card names first */
+    const srcs = ns.flatMap((n) => M[n]?.sources || []).filter((x) => x?.label && okUrl(x.url))
+      .map((x) => { let hit = 0; for (const w of new Set(words(x.label))) if (cw.has(w)) hit++; return { x, hit }; }).sort((a, b) => b.hit - a.hit).map((y) => y.x);
+    const srcSeen = new Set(items.map((x) => x.url).filter(Boolean));
+    for (const x of srcs) { if (srcSeen.has(x.url)) continue; srcSeen.add(x.url); if (items.filter((y) => y.kind === 'source').length >= 5) break;
+      add({ kind: 'source', label: cut(x.label, 110), value: '', src: hostOf(x.url), url: x.url, at: x.at ? String(x.at).slice(0, 10) : null }); }
+    const moves = ns.filter((n) => M[n]).map((n) => ({ n, title: M[n].title || '' })); /* Brew's write-up, linked from the sheet; never counted as proof */
     /* the rows Brew counted, when no fact above already says them */
     for (const r of c.rows || []) if (Array.isArray(r) && r[0] && r[1] && c.research?.kind !== 'trend' && !items.some((x) => x.value && String(r[1]).includes(x.value))) {
       if (/^(step \d+|where|post at|measure|backed by|move|latest|written)$/i.test(r[0])) continue;
@@ -90,12 +106,11 @@ export function createEvidence({ factsOf, movesOf, numsOf, adOf = () => null, co
     }
     const rawOf = (n) => (cardText(c).match(/(?:₹|\$|€|£|rs\.?\s?)?\d[\d,.]*\s?(?:%|x|×|k|lakh|crore|cr)?/gi) || []).find((x) => numbersIn(x, { strict: true }).concat(numbersIn(x)).includes(n))?.trim() || n; /* as the card wrote it: ₹5,555, not ₹5555 */
     const unbacked = gatedOfCard(c).filter((n) => !backed.has(n) && !items.some((x) => x.value && allNums(x.value).includes(n))).map(rawOf);
-    const sourced = items.filter((x) => x.url || x.kind === 'account').length + moves.reduce((a, m) => a + m.sources.filter((s) => s.url).length, 0);
+    const sourced = items.filter((x) => x.url || x.kind === 'account').length;
     /* why Brew suggested it: the plain-words pass's own line when it has one, else the card's own reasons */
     const reasons = (plain?.why?.length ? plain.why : (c.detail?.why || []).filter((x) => x && !isEvRow(x))).slice(0, 3);
     const because = plain?.because || [String(c.sub || '').split(/(?<=[.!?])\s+/)[0]].filter(Boolean).join(' ');
-    const from = moves.length ? `It comes from Brew’s plan “${cut(moves[0].title, 90)}”${moves.length > 1 ? ` and ${moves.length - 1} more` : ''}.` : c.src ? `It comes from: ${cut(c.src, 90)}.` : '';
-    return { why: { because, reasons, from }, items: items.slice(0, 10), moves, unbacked, count: items.length + moves.reduce((a, m) => a + m.sources.length, 0), sourced, strength: sourced >= 2 ? 'strong' : items.length || moves.length ? 'some' : 'thin' };
+    return { why: { because, reasons }, items: items.slice(0, 14), moves, unbacked, count: Math.min(items.length, 14), sourced, strength: sourced >= 2 ? 'strong' : items.length ? 'some' : 'thin' };
   }
   /* the feed card's proof icon: how many things back it, without building the whole sheet's text */
   const countOf = (c, o) => { const e = evidenceOf(c, o); return e ? { n: e.count, strength: e.strength } : null; };
@@ -107,12 +122,11 @@ export function createEvidence({ factsOf, movesOf, numsOf, adOf = () => null, co
 export const EVIDENCE_ASK = /\b(evidence|proof|sources?|sourced|based on|backs? (?:this|it|that)( up)?|back (?:this|it|that) up|how do (?:you|we) know|where (?:did|does|do|is) .{1,40}? (?:come|coming) from|data behind|why (?:this|that) (?:card|move|idea|suggestion|number|price)|why (?:did|do|would) (?:you|brew) (?:suggest|say|think|recommend)|what(?:'s| is) (?:this|that|it) based)\b/i;
 export const proofAnswer = (e) => {
   if (!e) return null;
-  const saw = (e.items || []).filter((x) => x.value).slice(0, 4).map((x) => ({ v: x.value, l: x.label, src: [x.src, x.at ? String(x.at).slice(0, 10) : ''].filter(Boolean).join(' · '), url: x.url || null, kind: x.kind }));
-  const m = (e.moves || [])[0], plan = m ? `Move ${String(m.n).padStart(2, '0')} · ${m.title}` : null;
-  const data = m ? m.sources.filter((x) => x.url).slice(0, 3).map((x) => ({ l: x.label, url: x.url })) : [];
+  const saw = (e.items || []).filter((x) => x.value && x.kind !== 'source').slice(0, 4).map((x) => ({ v: x.value, l: x.label, src: [x.src, x.at ? String(x.at).slice(0, 10) : ''].filter(Boolean).join(' · '), url: x.url || null, kind: x.kind }));
+  const data = (e.items || []).filter((x) => x.kind === 'source' && x.url).slice(0, 3).map((x) => ({ l: x.label, url: x.url }));
   const so = e.why?.because || (e.why?.reasons || [])[0] || '';
-  const text = ['Here’s what this card is based on.', ...saw.map((x) => `Saw: ${x.v}, ${x.l}${x.src ? ` (${x.src})` : ''}.`), plan ? `Plan: ${plan}.` : '', data.length ? `Sources: ${data.map((x) => x.l).join('; ')}.` : '', so ? `So: ${so}` : '',
-    !saw.length && !plan ? 'Brew has no source line for this card yet, so treat it as an idea to check, not a fact.' : '', (e.unbacked || []).length ? `Not matched to a source yet: ${e.unbacked.slice(0, 3).join(', ')}.` : ''].filter(Boolean).join('\n');
-  return { text, proof: { saw, plan, data, so, unbacked: (e.unbacked || []).slice(0, 3) } };
+  const text = ['Here’s what this card is based on.', ...saw.map((x) => `Saw: ${x.v}, ${x.l}${x.src ? ` (${x.src})` : ''}.`), data.length ? `Read: ${data.map((x) => x.l).join('; ')}.` : '', so ? `So: ${so}` : '',
+    !saw.length && !data.length ? 'Brew has no source line for this card yet, so treat it as an idea to check, not a fact.' : '', (e.unbacked || []).length ? `Not matched to a source yet: ${e.unbacked.slice(0, 3).join(', ')}.` : ''].filter(Boolean).join('\n');
+  return { text, proof: { saw, data, so, unbacked: (e.unbacked || []).slice(0, 3) } };
 };
 

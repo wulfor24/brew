@@ -2960,3 +2960,4 @@ a.pf-src:hover{color:var(--fg);text-decoration:underline;text-underline-offset:2
 .aiq-add div{display:flex;gap:8px}
 .aiq-add input{flex:1;min-width:0;font:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg)}
 .aiq-add small{color:var(--fg-3);font-size:12px}
+.pf-writeup{align-self:flex-start;display:inline-flex;align-items:center;gap:4px;margin-top:12px;padding:0;border:0;background:none;font:inherit;font-size:13px;color:var(--fg-3);text-decoration:underline;text-underline-offset:2px;cursor:pointer}

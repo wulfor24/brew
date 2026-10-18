@@ -802,7 +802,7 @@
   /* a short number sits in its own column; a longer value ("226 reviews, 4.47★") goes on its own line; what people wrote reads as a quote */
   const pfRow = (x) => { const v = String(x.value || ''), label = `${esc(x.label)}${x.extra ? ` · ${esc(x.extra)}` : ''}`;
     if (v && v.length <= 9) return `<li class="pf-r"><b class="pf-v">${esc(v)}</b><span class="pf-l">${label}</span>${pfSrc(x)}</li>`;
-    const quote = /^(quote|ad|idea|read)$/.test(x.kind) && v.length > 24;
+    const quote = /^(quote|ad|idea|read|voice)$/.test(x.kind) && v.length > 24;
     return `<li class="pf-r is-text">${v ? quote ? `<q class="pf-q">${esc(v)}</q>` : `<b class="pf-v">${esc(v)}</b>` : ''}<span class="pf-l">${label}</span>${pfSrc(x)}</li>`; };
   const proofHtml = (e) => {
     /* one row per number: the same price read twice (the page and the card's own count) shows once, the sourced one kept */
@@ -811,13 +811,14 @@
     const lead = w.because ? `<p class="pf-because">${esc(w.because)}</p>` : (w.reasons || []).length ? `<p class="pf-because">${esc(w.reasons.join('. ').replace(/\.\./g, '.'))}</p>` : '';
     const rows = items.length ? `<h4 class="pf-h">What it’s based on</h4><ul class="pf-rows">${items.slice(0, SHOW).map(pfRow).join('')}</ul>${items.length > SHOW ? `<details class="pf-more"><summary>${items.length - SHOW} more</summary><ul class="pf-rows">${items.slice(SHOW).map(pfRow).join('')}</ul></details>` : ''}` : '';
     const gap = (e.unbacked || []).length ? `<p class="pf-note">${ic('info', 's14')}<span>No source found yet for ${esc(e.unbacked.slice(0, 3).join(', '))}. Check before you use ${e.unbacked.length > 1 ? 'them' : 'it'}.</span></p>` : '';
-    const none = !items.length && !moves.length ? `<p class="pf-note">${ic('info', 's14')}<span>No numbers behind this one yet. Treat it as an idea to check.</span></p>` : '';
-    const plan = moves.length ? `<button type="button" class="pf-plan" data-pf-move="${moves[0].n}"><span><small>From Brew’s plan${moves.length > 1 ? ` (+${moves.length - 1} more)` : ''}</small><b>${esc(moves[0].title)}</b></span>${ic('right', 's16')}</button>` : '';
+    const none = !items.length ? `<p class="pf-note">${ic('info', 's14')}<span>No numbers behind this one yet. Treat it as an idea to check.</span></p>` : '';
+    /* the move is Brew's reasoning, never the evidence (Param, 19 Oct): only a quiet link to the write-up, after the evidence */
+    const plan = moves.length ? `<button type="button" class="pf-writeup" data-pf-move="${moves[0].n}">Read Brew’s write-up ${ic('right', 's14')}</button>` : '';
     return `${lead}${rows}${gap}${none}${plan}`;
   };
   /* "what's the evidence behind this?" in the jam: the card's proof as Saw / Plan / Data / So, and a way to the whole sheet */
   const proofMsg = (m) => { const x = m.proof || {}, a = (u, l) => (u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(l)}</a>` : esc(l));
-    const rows = [...(x.saw || []).map((s) => ['Saw', `<b>${esc(s.v)}</b> · ${esc(s.l)}${s.src ? ` <small>(${s.url ? a(s.url, s.src) : esc(s.src)})</small>` : ''}`]), ...(x.plan ? [['Plan', esc(x.plan)]] : []), ...((x.data || []).length ? [['Data', x.data.map((d) => a(d.url, d.l)).join(' · ')]] : []), ...(x.so ? [['So', esc(x.so)]] : []), ...((x.unbacked || []).length ? [['Check', `Not matched to a source yet: ${esc(x.unbacked.join(', '))}`]] : [])];
+    const rows = [...(x.saw || []).map((s) => ['Saw', `<b>${esc(s.v)}</b> · ${esc(s.l)}${s.src ? ` <small>(${s.url ? a(s.url, s.src) : esc(s.src)})</small>` : ''}`]), ...((x.data || []).length ? [['Read', x.data.map((d) => a(d.url, d.l)).join(' · ')]] : []), ...(x.so ? [['So', esc(x.so)]] : []), ...((x.unbacked || []).length ? [['Check', `Not matched to a source yet: ${esc(x.unbacked.join(', '))}`]] : [])];
     return `<p>Here’s what this card is based on.</p>${rows.length ? `<dl class="pf-ev">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>` : '<p>Brew has no source line for this card yet, so treat it as an idea to check, not a fact.</p>'}${m.cardId ? `<button type="button" class="chip j1-chip" data-pf-card="${esc(m.cardId)}">${ic('shield', 's14')}See all the proof</button>` : ''}`; };
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-pf-card]'); if (!b) return; const p = byId(b.dataset.pfCard); if (p) openProof(p); });
   const openProof = async (p) => {
