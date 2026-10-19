@@ -146,3 +146,12 @@ test('a long question is cut inside its quotes, never through the closing one', 
   for (const brand of ['Arata', 'Forest Essentials India', 'X']) { const t = gapFix({ q, brand }).title; assert.ok(t.length <= 92, t); assert.match(t, /”$/, t); assert.equal((t.match(/“/g) || []).length, 1); }
   assert.equal(gapFix({ q: 'Is Arata safe?', brand: 'Arata' }).title, 'Get Arata named when shoppers ask “Is Arata safe”');
 });
+
+/* FEED-NOT-02: the Work board and the studio say whose ad it is the way the feed does */
+test('Work board tiles say "Made for you" on our own ads; the studio uses the feed’s label, never from “title”', () => {
+  const app = src('public/app.js');
+  assert.match(app, /const c = w\.whose \|\| w\.cardSnap \|\| \{\}, rv = rivalOf\(c\), wa = rv \? ourVersionOf\(rv\.name\) : whoseAd\(/);
+  assert.match(src('feed-service.js'), /whose: whoseOf\(t\.cards\.get\(w\.cardId\) \|\| w\.cardSnap\)/, 'the jam carries the card bits the board needs');
+  assert.doesNotMatch(app, /`from “\$\{esc\(String\(ch\.before\.title/);
+  assert.match(app, /return esc\(\(c && \(whoseAd\(c\) \|\| fromLabel\(c\)\)\) \|\| 'Made for you'\)/);
+});
