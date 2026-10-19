@@ -1094,7 +1094,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         if (n === 0) await editUpd(slug, (u) => { if (u.rewriting) u.rewriting.indexDone = true; }); /* a restart does not write the index again */
         const all = await packs.getJSON(slug, `${P}moves.json`, {}); all[n] = move; await packs.put(slug, `${P}moves.json`, all);
         emit(slug, { type: 'move', n, title: move.title, stat: move.stat, gives: move.gives, verified: !!move.meta?.verified, rewritten: true });
-        if (n !== 0) { written.push({ n, title: move.title }); await cardsFor(slug, move, profile, { replace: true, priv }).catch((e) => log.warn('[rewrite] cards', n, e.message)); await editUpd(slug, (u) => { delete u.stale[n]; if (kind) { u.pot = potAdd(potOf(u), kind, book()); delete u.pot.waits[n]; } }); }
+        if (n !== 0) { written.push({ n, title: move.title }); /* cardsDue: a restart between the move and its cards writes the cards at boot (healCards) */ await editUpd(slug, (u) => { u.cardsDue = { ...(u.cardsDue || {}), [n]: priv ? 'p' : 1 }; }); await cardsFor(slug, move, profile, { replace: true, priv }).catch((e) => log.warn('[rewrite] cards', n, e.message)); await editUpd(slug, (u) => { delete u.stale[n]; if (u.cardsDue) delete u.cardsDue[n]; if (kind) { u.pot = potAdd(potOf(u), kind, book()); delete u.pot.waits[n]; } }); }
         if (n === 21 && !priv && staticsUnset((await status(slug))?.statics)) staticsJob = makeStatics(slug, move, profile, (fn) => (lock = lock.then(fn).catch((e) => log.warn('[rewrite] statics card', e.message))));
         /* the team's rewrite of Move 21 makes the team's own set (once), kept private */
         if (n === 21 && priv && staticsDue(await packs.getJSON(slug, 'private/statics-state.json', null))) staticsJob = makeStatics(slug, move, profile, (fn) => (lock = lock.then(fn).catch((e) => log.warn('[rewrite] team statics card', e.message))), { priv: true });
@@ -1133,6 +1133,17 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   }
   /* a rewrite cut off by a restart (a deploy): the status goes back to what it was and the moves it had not written yet are
      rewritten now, auto or asked for alike (a move it wrote carries meta.rewrittenAt from after the start) */
+  /* a rewritten move whose cards a restart cut off (updates.json cardsDue): its cards are written now, from the saved move,
+     so the feed never keeps the old move's cards under the new move */
+  async function healCards(slug) {
+    const due = Object.entries((await upd(slug)).cardsDue || {}); if (!due.length || blocked(slug)) return;
+    const profile0 = normalizeProfile(await packs.getJSON(slug, 'profile.json'));
+    for (const [k, w] of due) { const n = +k, priv = w === 'p';
+      const move = (await packs.getJSON(slug, priv ? 'private/moves.json' : 'moves.json', {}))?.[n];
+      const profile = priv ? withLive(profile0, await packs.getJSON(slug, 'private/profile-live.json', null)) : profile0;
+      if (move) { log.log(`[rewrite] ${slug}: writing move ${n}'s cards, cut off by a restart`); await cardsFor(slug, move, profile, { replace: true, priv }).catch((e) => log.warn('[rewrite] heal cards', n, e.message)); }
+      await editUpd(slug, (u) => { if (u.cardsDue) delete u.cardsDue[n]; }); }
+  }
   async function resumeRewrite(slug) {
     const u = await upd(slug), r = u.rewriting; if (!r || st(slug).running || blocked(slug)) return;
     /* a move this run already wrote counts as done, wherever it was saved (a member's rewrite goes to private/moves.json) */
@@ -1530,7 +1541,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     await setStatus(slug, { total: Math.max(n, +s0.total || 0), movesDone: n, applicable: Object.keys(moves).map(Number).filter((k) => isPlay(k, moves[k])).sort((a, c) => a - c) });
   }
   async function resumeAll() { for (const sl of String(process.env.OPS_FRESH_RELOAD || '').split(',').map((x) => x.trim()).filter(Boolean)) freshReload(sl).catch((e) => log.error('[ops] fresh', sl, e.message));
-    for (const x of await packs.list()) { if (!x.status.done && !x.status.error && !x.status.capped) resume(x.slug).catch((e) => log.error('[build] resume', x.slug, e.message)); else { if (x.status.done) { rebase(x.slug).catch((e) => log.warn('[build] rebase', x.slug, e.message)); healPdfs(x.slug); healCount(x.slug).catch((e) => log.warn('[build] count', x.slug, e.message)); restartStatics(x.slug).catch((e) => log.warn('[build] statics restart', x.slug, e.message)); } resumeRewrite(x.slug).catch((e) => log.warn('[rewrite] resume', x.slug, e.message));
+    for (const x of await packs.list()) { if (!x.status.done && !x.status.error && !x.status.capped) resume(x.slug).catch((e) => log.error('[build] resume', x.slug, e.message)); else { if (x.status.done) { rebase(x.slug).catch((e) => log.warn('[build] rebase', x.slug, e.message)); healPdfs(x.slug); healCount(x.slug).catch((e) => log.warn('[build] count', x.slug, e.message)); restartStatics(x.slug).catch((e) => log.warn('[build] statics restart', x.slug, e.message)); } healCards(x.slug).catch((e) => log.warn('[rewrite] heal cards', x.slug, e.message)).then(() => resumeRewrite(x.slug)).catch((e) => log.warn('[rewrite] resume', x.slug, e.message));
       if (x.status.recheck?.at) setTimeout(() => drain(x.slug).catch((e) => log.warn('[check] late', x.slug, e.message)), 60e3); /* a late check a restart cut short: after resumeRewrite has had its turn */
       upd(x.slug).then((u) => { if (u.connectRun) armConnect(x.slug, u.connectRun.due || 0); if ((u.queue || []).some((q) => q.notBefore)) drain(x.slug).catch(() => {});
         if (u.connectDone && !u.connectDone.finished) setTimeout(() => settleConnect(x.slug).catch((e) => log.warn('[connect] settle', e.message)), 90e3); /* after resumeRewrite has had its turn */ }).catch(() => {});
