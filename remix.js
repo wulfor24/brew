@@ -1297,8 +1297,12 @@ export function createRemix(o) {
   // another version: a different cut of the same package
   on('POST', '/api/changes/:chid/more', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); const c = t.cards.get(ch.cardId); const r = recipeFor(c);
-    let x = null; if (!isMock() && spend('text')) { try { x = (await liveOptions(t, c, { ...r, actionKeys: [ch.action] }, ch.intent, b.prompt || '', 1, ch)).opts[0]; } catch (e) { log.warn('[more]', e.message); } }
+    /* a card that lists its ideas: One more makes the next idea the options don't have yet */
+    const op0 = optionsOf(t, ch), have = new Set((op0?.list || []).map((o) => o.name.toLowerCase())), idea = (c?.variants || []).find((v) => v?.angle && !have.has(shortName(v.angle).toLowerCase()));
+    const ask = idea ? `Write the cut for this idea, keeping its angle and claim: ${idea.angle}: ${idea.title || ''}. ${idea.sub || ''}${b.prompt ? ` ${b.prompt}` : ''}` : b.prompt || '';
+    let x = null; if (!isMock() && spend('text')) { try { x = (await liveOptions(t, c, { ...r, actionKeys: [ch.action] }, ch.intent, ask, 1, ch)).opts[0]; } catch (e) { log.warn('[more]', e.message); } }
     if (!x) { const i = (versionsOf(t, ch.id).length + 1) % 3; x = mockOptions(t, c, { ...r, actionKeys: [ch.action] }, ch.intent, 1, i)[0]; }
+    if (idea) x = { ...x, angle: idea.angle };
     ch.pkg = { ...rulePkg(t, ch.agent, ch.family, cleanPkg(ch.family, ch.action, x.pkg, clean)), ...keepMedia(ch.pkg) };
     sync(t, ch, c);
     /* with options on the stage, another one is one more option beside them (same parent as the others, its own tab) */
@@ -1314,6 +1318,10 @@ export function createRemix(o) {
   /* n finished cuts of this package, each a version you can pick (Make 3 variations, and the plan's make step) */
   const makeCuts = async (t, ch, n, prompt, reasonOf) => {
     const c = t.cards.get(ch.cardId) || {}; const r = recipeFor(c);
+    /* a card that already lists its ideas ("More like what you liked": three angles, each a title and a reason) makes exactly
+       those, one option per idea in the card's order, named as the card names them (Param, 19 Oct: "which 3 versions?") */
+    const ideas = n > 1 ? (c.variants || []).filter((v) => v?.title || v?.angle).slice(0, 6) : [];
+    if (ideas.length >= 2) { n = ideas.length; prompt = `Write exactly ${n} cuts, one for each of these ideas, in this order, each keeping its idea's angle and claim:\n${ideas.map((v, i) => `${i + 1}. ${v.angle ? `${v.angle}: ` : ''}${v.title || ''}. ${v.sub || ''}`).join('\n')}${prompt ? `\n${prompt}` : ''}`; }
     let xs = null; if (!isMock() && spend('text')) { try { xs = (await liveOptions(t, c, { ...r, actionKeys: [ch.action] }, ch.intent, `${n > 1 ? `${n === 3 ? 'Three' : n} distinct cuts` : 'The finished version, ready to deploy'} of this exact package: ${toKV(ch.family, ch.action, ch.pkg).map((e) => `${e.k}: ${e.v}`).join(' · ')}${prompt ? '. ' + prompt : ''}`, n)).opts; } catch (e) { log.warn('[variants]', e.message); } }
     /* the plan promised n (Param, 19 Oct: "which 3 versions?" when 2 came back): the writer is asked again for the missing ones,
        each a different angle from the ones already written; only if it still can't, the rule-based cuts fill the gap */
@@ -1322,6 +1330,7 @@ export function createRemix(o) {
       xs = xs.concat(more.filter((x) => !xs.some((y) => String(y.angle || '').toLowerCase() === String(x.angle || '').toLowerCase()))); } catch (e) { log.warn('[variants] top-up', e.message); break; } }
     if (!xs?.length) xs = mockOptions(t, c, { ...r, actionKeys: [ch.action] }, ch.intent, n, 1);
     else if (xs.length < n) xs = xs.concat(mockOptions(t, c, { ...r, actionKeys: [ch.action] }, ch.intent, n, 1).filter((x) => !xs.some((y) => y.angle === x.angle)).slice(0, n - xs.length));
+    if (ideas.length >= 2) xs = ideas.map((v, i) => ({ ...(xs[i] || xs[i % xs.length]), angle: v.angle || v.title })); /* the card's names on its own ideas */
     const base = headOf(t, ch); const made = []; const keep = { ...ch.pkg };
     xs.slice(0, n).forEach((x, i) => {
       ch.pkg = { ...rulePkg(t, ch.agent, ch.family, cleanPkg(ch.family, ch.action, x.pkg, clean)), ...keepMedia(ch.pkg) }; sync(t, ch, c);
