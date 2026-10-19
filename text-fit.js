@@ -106,3 +106,12 @@ export const oneOf = (x) => String(x ?? '').replace(COUNT, (m, nw, mid, noun, at
    "8 ads", "two posts a week") */
 const TAKES = /(?<!\b(?:of|pack|set|buy|get)\s)\b(?:two|three|four|five|six|[2-6])\s+(new\s+|more\s+|different\s+|fresh\s+)?((?:hook|reel|video|ad|caption|headline|creative)\s+)?(hooks|versions|variants|variations|cuts|scripts|takes|concepts|angles)\b/gi;
 export const oneTake = (x) => String(x ?? '').replace(TAKES, (m, nw, mid, noun, at) => `${at === 0 || /[.!?]\s*$/.test(String(x).slice(0, at)) ? 'One' : 'one'} ${nw || ''}${mid || ''}${one(noun)}`);
+/* a card said as one (title, line, source, how-steps: oneTake; the asset line: oneOf), for every card wherever it is read:
+   the pack load (brand-pack fitCard), every card sent to the page (feed-service pub), the brief (jam-brief). The same card back
+   when nothing changes */
+export const oneCard = (c) => { if (!c || typeof c !== 'object') return c; let x = c;
+  if (x.make?.pieces && oneOf(x.make.pieces) !== x.make.pieces) x = { ...x, make: { ...x.make, pieces: oneOf(x.make.pieces) } };
+  for (const k of ['title', 'sub', 'src', 'section']) if (typeof x[k] === 'string' && oneTake(x[k]) !== x[k]) x = { ...x, [k]: oneTake(x[k]) };
+  if (Array.isArray(x.detail?.how) && x.detail.how.some((h) => typeof h === 'string' && oneTake(h) !== h)) x = { ...x, detail: { ...x.detail, how: x.detail.how.map((h) => (typeof h === 'string' ? oneTake(h) : h)) } };
+  if (x.cta?.label === 'Generate versions') x = { ...x, cta: { ...x.cta, label: 'Make the ad' } };
+  return x; };

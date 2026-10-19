@@ -413,7 +413,7 @@ export function createRemix(o) {
     const checks = qa.map((x) => (x.k === 'Names a number' ? { ...x, soft: true } : { ...x, fix: true }));
     const trust = trustOf(t, act.agent);
     if (ch.pkg) {
-      const miss = missing(ch.family, ch.action, ch.pkg); checks.unshift({ k: miss.length ? `Missing: ${miss.join(', ')}` : `${FAMILY_NAME[ch.family]} package complete`, ok: !miss.length, pkg: true, fix: true });
+      const miss = missing(ch.family, ch.action, ch.pkg).map((l) => (isAdClip(ch) ? ({ Post: 'Ad text', Title: 'Headline' }[l] || l) : l)); checks.unshift({ k: miss.length ? `Missing: ${miss.join(', ')}` : `${isAdClip(ch) ? 'Meta video ad' : FAMILY_NAME[ch.family]} package complete`, ok: !miss.length, pkg: true, fix: true });
       const guard = ACTION_GUARD[String(ch.action).split('.').pop()]?.(ch.pkg); if (guard) checks.unshift({ k: guard, ok: false, fix: true });
       const lk = leaks(ch.family, ch.action, ch.pkg); checks.splice(1, 0, { k: lk.length ? `Reads like an internal note, not to customers (“${lk.slice(0, 3).join('”, “')}”)` : 'Written for customers, not the team', ok: !lk.length, fix: true, leak: true });
     }
@@ -493,8 +493,13 @@ export function createRemix(o) {
     return { line: clean(j.line || ''), opts };
   };
   // package → the card-sized "after", the money, the checks
+  /* a Meta video ad (labelFor: a video card about paid ads) is an ad, not a post: no posting time, no hashtags, its stage
+     says what it is (Param, 19 Oct: "Social post · Monday at 9:00 AM" and "#arata #hairgrowth" on a Meta ad) */
+  const isAdClip = (ch) => ch?.action === 'creative.short_video' && ch.target?.conn === 'meta';
+  const adClip = (ch) => { if (!isAdClip(ch) || !ch.pkg) return; delete ch.pkg.postAt; delete ch.pkg.hashtags; if (!ch.pkg.platform || /^social post$|shorts|youtube|tiktok|reels? &/i.test(ch.pkg.platform)) ch.pkg.platform = 'Meta video ad · Reels and Stories'; };
   const sync = (t, ch, c) => {
     const act = actOf(ch.action); c ||= t.cards.get(ch.cardId) || {};
+    adClip(ch);
     ch.after = afterFromPkg(ch.family, ch.pkg, { images: ['meta_ad', 'social'].includes(ch.family) && c.images && !isRivalCard(c) ? [ch.batchKey ? ch.pkg.image : c.images[0]] : null });
     ch.after.publicText = publicText(ch.family, ch.action, ch.pkg);
     ch.amount = act.money ? amountOf(act, ch.family, ch.pkg) : 0;
@@ -562,7 +567,7 @@ export function createRemix(o) {
     ensurePkg(t, ch); const tr = trustOf(t, ch.agent);
     if (ch.v0 !== 'draft' && !ch.batchKey && (ch.fromCard || (t.work || []).some((w) => w.changeId === ch.id))) seedV0(t, t.cards.get(ch.cardId), ch); /* 'none' tries again while the jam is untouched: the card's draft may land after the jam opened */
     if (ch.plan && o.planOf) { const fresh = o.planOf(t, t.cards.get(ch.cardId) || {}); if (fresh && ch.plan.v !== fresh.v) ch.plan = fresh; } /* plans saved before one-always rebuild */
-    if (ch.action === 'creative.short_video' && ch.target?.conn === 'meta' && ch.pkg && (!ch.pkg.platform || /^social post$|shorts|youtube|tiktok/i.test(ch.pkg.platform))) ch.pkg.platform = 'Meta video ad · Reels and Stories';
+    adClip(ch);
     if (ch.state === 'draft' && !ch.batchKey) { const lf = labelFor(ch.action, t.cards.get(ch.cardId) || {}); /* jams opened before the card-led names heal on read */
       if (lf && lf.label !== ch.actionLabel && ['creative.add_variants', 'creative.short_video'].includes(ch.action)) { ch.actionLabel = lf.label; ch.target = { conn: lf.target.conn, name: lf.target.name || (lf.target.conn ? SEED.connectors[lf.target.conn]?.name : 'A person'), object: lf.target.object }; } }
     healDraftCode(t, ch);
@@ -570,7 +575,7 @@ export function createRemix(o) {
     const { impact: _imp, packMeta: _pk, ...pub } = ch; /* projections can hold the brand's private account rows: they go out only through /impact, per caller */
     const card0 = t.cards.get(ch.cardId); /* our version of a rival's ad: what Brew read from it, shown in the studio */
     return { ...pub, ...(isRivalCard(card0) && o.rivalSummary ? { rival: o.rivalSummary(t, card0) } : {}), thinking: ch.thinking && Date.now() - ch.thinking.at < 300e3 ? ch.thinking : null, /* what the studio is doing right now, for the waiting person (think()) */ plan: ch.plan || o.planOf?.(t, t.cards.get(ch.cardId)) || null, copyPending: !!ch.copyPending && FILL_JOBS.has(ch.id) /* "Writing…" while the writer is really running, not a clock */, ctaPending: ch.ctaPending && CTA_JOBS.has(ch.id) ? ch.ctaPending : null /* the card's button is making it: the studio says what and keeps polling */, realOnly: realOnly(ch) /* community posts: real photos only, so no AI remakes */, trust: { level: tr.level, name: tr.name, objects: tr.objects, toNext: tr.toNext }, scope: ch.scope.map((s) => ({ ...s, locked: s.n > tr.objects })),
-      familyName: ch.action === 'creative.short_video' && ch.target?.conn === 'meta' ? 'Meta video ad' : FAMILY_NAME[ch.family], fields: fieldsFor(ch.family, ch.action).map(({ k, label, type, opts, cols, req, pub, hint }) => ({ k, label, type, opts, cols, req, pub, hint })),
+      familyName: ch.action === 'creative.short_video' && ch.target?.conn === 'meta' ? 'Meta video ad' : FAMILY_NAME[ch.family], fields: fieldsFor(ch.family, ch.action).filter((f) => !isAdClip(ch) || !['postAt', 'hashtags', 'where'].includes(f.k)).map(({ k, label, type, opts, cols, req, pub, hint }) => ({ k, label: isAdClip(ch) ? ({ copy: 'Ad text', title: 'Headline', platform: 'Placement' }[k] || label) : label, type, opts, cols, req, pub, hint })),
       knobs: knobsFor(ch.family, B()), suggest: suggestOf(t, ch), gradeF: GRADES[ch.pkg.grade] || 'none', missing: missing(ch.family, ch.action, ch.pkg),
       options: opts /* the cuts as tabs: pick one (Param, 19 Oct) */, head: headOf(t, ch)?.id || null, versions: versionsOf(t, ch.id).map((v) => ({ id: v.id, n: v.n, author: v.author, reason: v.reason, label: v.label || versionLabel(v.reason, { first: v.n === 1 }), at: v.at, parent: v.parentVersionId, diff: v.diff, snapshot: v.snapshot, ...(v.final ? { final: v.final } : {}),
         ...(v.drawing ? { drawing: true } : {}), ...(v.drawError ? { drawError: v.drawError } : {}), ...(v.passed ? { passed: true } : {}), ...(v.asset ? { asset: v.asset } : {}) /* v2 takes: a picture still being made, why it wasn't, a version passed over, the asset that landed */ })), live: ch.liveVersionId || null };
@@ -1334,7 +1339,9 @@ export function createRemix(o) {
     const rows = ch.pkg?.cards || ch.pkg?.slides || [], visual = canPic(ch) && !isVideoPost(ch);
     /* the new take's words never sit on the last take's picture or clip: the picture is made for it, the clip is filmed for it */
     const media = keepMedia(ch.pkg); if (visual) { delete media.cardImages; } if (isVideoPost(ch)) { delete media.video; delete media.poster; delete media.videoHook; delete media.frameFor; }
-    ch.pkg = { ...rulePkg(t, ch.agent, ch.family, cleanPkg(ch.family, ch.action, x.pkg, clean)), ...media };
+    const prev = { ...ch.pkg }; ch.pkg = { ...rulePkg(t, ch.agent, ch.family, cleanPkg(ch.family, ch.action, x.pkg, clean)), ...media };
+    /* a field the new take left out keeps the last take's words, so a redo never ships with a hole ("Missing: Post") */
+    for (const f of fieldsFor(ch.family, ch.action)) { const v = ch.pkg[f.k]; if (f.req && (v == null || v === '' || (Array.isArray(v) && !v.length)) && prev[f.k] != null && prev[f.k] !== '') ch.pkg[f.k] = prev[f.k]; }
     if (x.angle) ch.angle = x.angle; sync(t, ch, c);
     const v = version(t, ch, `ai:${ch.agent}`, `Redo${x.angle ? `: ${x.angle}` : ''}`, 'Redo');
     ch.planRun = { at: now(t), n: 1, versions: [v.id], by: 'redo' }; /* the card's button steps aside: this take is the one on the stage */

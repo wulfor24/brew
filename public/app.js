@@ -3850,7 +3850,7 @@
     else if (media && !fin && isReel(ch) && !p.video) { head = `Script ready${nm}`; tip = 'Make the video to see it moving. It’s a quick draft; the final reel is made after.'; main = `<button class="btn btn-primary ship-go" data-rx="video">${ic('vid', 's16')}Make the video</button>`; }
     else if (media && !fin) { head = `Draft ${reel ? 'video' : 'photo'} ready${nm}`; tip = `A quick draft made by Brew to check the idea. The final ${reel ? 'reel' : 'picture'} is made on Sloosh, ready to post. Then Send brief.`; main = finalBtn(ch); }
     else if (media) { head = `Final ready${nm}`; tip = 'Send brief: the ShopOS team gets it by email and posts or runs it. Its status shows in the top bar.'; main = send; }
-    else { head = `Ready${nm}`; tip = ch.family === 'post' ? 'The brief carries the post and where it goes. You post it yourself; Brew never posts in communities for you.' : 'Send brief: the ShopOS team gets it by email and runs it. Its status shows in the top bar.'; main = send; }
+    else { head = `Ready${nm}`; tip = ch.family === 'post' && ch.target?.conn !== 'meta' ? 'The brief carries the post and where it goes. You post it yourself; Brew never posts in communities for you.' : 'Send brief: the ShopOS team gets it by email and runs it. Its status shows in the top bar.'; main = send; }
     const items = [];
     if (!/data-rx="share-shopos"/.test(main)) items.push(['data-rx="share-shopos"', 'send', 'Send the brief now', 'The ShopOS team gets it by email and makes it.']);
     items.push(['data-rx="share-team"', 'copy', 'Share with my team', 'Copy the brief and a link to paste in your team’s chat.']);
@@ -3924,7 +3924,7 @@
     const pl = planOf(ch), made = planMade(ch), opens = (ch.pkg?.where || []).some((w) => /^https?:/.test(w.url || '')), rule = (ch.pkg?.where || []).map((w) => w.rule).find(Boolean);
     const next = !made && pl ? `Press “${planGo(ch, pl).label}” below. ${planGo(ch, pl).line}. Change it, then share the brief.`
       : fix ? `Fix this first: ${(ch.fixes || []).join('; ')}. Press “Fix it with AI”, or tell me how.`
-      : ch.family === 'post' ? `Happy with it? Share the brief: it carries the post and where it goes; you post it yourself. Not right? Redo it.${rule ? ` ${rule}` : ''}` : 'Happy with it? Share the brief with the ShopOS team or your own team. Not right? Redo it, or tell me what to change.';
+      : ch.family === 'post' && ch.target?.conn !== 'meta' ? `Happy with it? Share the brief: it carries the post and where it goes; you post it yourself. Not right? Redo it.${rule ? ` ${rule}` : ''}` : 'Happy with it? Share the brief with the ShopOS team or your own team. Not right? Redo it, or tell me what to change.';
     return `<div class="case"><small class="case-k">The case${c.src ? ` · ${esc(c.src)}` : ''}</small>
       <b class="case-t">${esc(cut(c.title, 140))}</b>${c.sub ? `<p>${esc(cut(c.sub, 240))}</p>` : ''}
       ${why.length ? `<div class="case-s"><small>Why it matters</small><ul>${why.map((x) => `<li>${esc(cut(x, 200))}</li>`).join('')}</ul></div>` : ''}

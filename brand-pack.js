@@ -17,7 +17,7 @@ import { fitCta, fillMake, readSrc } from './cards-gen.js';
 import { cleanBrief, renderBrief } from './brief.js'; // a saved brief's "null" cells heal at load
 import { aboutOf, OLD_ABOUT } from './derive.js'; // a saved config.about written by the old rule heals at load
 import { prototypeConnectors } from './seed-template.js'; // DUMMY: connector copy that promises no action
-import { sentenceCase, oneOf, oneTake } from './text-fit.js';
+import { sentenceCase, oneCard } from './text-fit.js';
 import { withLearned, learnedMoveNs, learnedTerms } from './brand-learnings.js'; // what the team told Brew (pasted into a jam): in every prompt's system text
 import { sandboxName, virtualFile } from './demo-mode.js'; // Demo Mode: per-session private files
 
@@ -217,11 +217,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
       detail: { ...(c.detail || {}), how: (c.detail?.how || []).map((h) => h.replace(/^Queue the kept ones as one test\.?$/, 'Download the kept ones for your team to run.').replace(/^Open the set\b/, 'Open the batch')) } };
     return c;
   };
-  /* one version, always: a saved asset line that names a count of options ("3 ads highlighting…") says one */
-  const oneMake = (c) => { let x = c.make?.pieces && oneOf(c.make.pieces) !== c.make.pieces ? { ...c, make: { ...c.make, pieces: oneOf(c.make.pieces) } } : c;
-    for (const k of ['title', 'sub']) if (typeof x[k] === 'string' && oneTake(x[k]) !== x[k]) x = { ...x, [k]: oneTake(x[k]) };
-    if (Array.isArray(x.detail?.how) && x.detail.how.some((h) => typeof h === 'string' && oneTake(h) !== h)) x = { ...x, detail: { ...x.detail, how: x.detail.how.map((h) => (typeof h === 'string' ? oneTake(h) : h)) } };
-    return x; };
+  const oneMake = oneCard; /* one version, always: saved counts of takes said as one (text-fit oneCard) */
   const fitCard = (keep, ctx = {}) => (c) => (c && typeof c === 'object' ? fitCta(fillMake(healCopy(oneMake({ ...c, ...(c.title ? { title: sentenceCase(c.title, keep) } : {}) }), ctx))) : c); /* fillMake: a card that names an asset but was written without "make" gets one (cards-gen.js inferMake) */
   const fitCards = (sd, ctx) => { const keep = keepOf(ctx); return { ...sd, posts: (sd.posts || []).map(fitCard(keep, ctx)) }; };
   const fitPools = (pl, keep) => Object.fromEntries(Object.entries(pl).map(([k, v]) => [k, Array.isArray(v) ? v.map(fitCard(keep)) : v]));

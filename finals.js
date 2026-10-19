@@ -92,7 +92,7 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
     const share = budget.refusal('credits', slug, 1); if (share) return { error: budget.why('credits', slug, spec.brandName) };
     if (dummy()) return { quoteId: 'dummy', credits: 0, dummy: true, model: spec.space ? null : buildFinal(spec).model, space: spec.space || null, prompt: spec.space ? null : buildFinal(spec).prompt, settings: spec.space ? null : buildFinal(spec).settings, refs: spec.refs || [], expiresAt: now() + 3600e3, at: now() };
     /* an image final always has a Gemini answer: any Sloosh quote failure ends as a Gemini quote with the reason (a Space or a video keeps Sloosh's error) */
-    const canFallBack = !!geminiImage && !spec.space && spec.kind !== 'video';
+    const canFallBack = !!geminiImage && !spec.space && (spec.kind !== 'video' || !!makeVideo); /* a video final falls back to Veo on a Gemini still (19 Oct: a raw "owner_invalid_request" reached the person) */
     const PAY = /credit|wallet|allocation|limit|fund|plan|entitle|balance|payment|402|allowance|insufficient|owned|asset|not found|unauthori/i;
     let refs; try { refs = await withAssets(slug, spec.refs || []); } catch (e) { if (canFallBack) return geminiQuote(spec, `Sloosh could not take the reference photos (${e.message.slice(0, 160)}).`); throw e; }
     let q, out;
@@ -102,7 +102,7 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
       q = await sloosh.quoteSpace({ id: spec.space.id, inputs }); out = { space: { id: spec.space.id, name: spec.space.name || null }, inputs, fields, filled: pre.filled, prompt: null, settings: null, model: null }; }
     else { const b = buildFinal({ ...spec, refs }); const vid = b.kind === 'video' || spec.kind === 'video';
       try { q = await sloosh.quoteGeneration({ mode: vid ? 'video_gen' : 'image_gen', prompt: b.prompt, model: b.model, references: uploaded(refs), ratio: b.settings.aspect_ratio, resolution: b.settings.resolution, seconds: vid ? b.settings.duration : undefined, sound: vid ? b.settings.sound : undefined, count: spec.count || 1 });
-      } catch (e) { if (canFallBack) return geminiQuote(spec, PAY.test(e.message) ? `Sloosh cannot pay for this yet (${e.message.slice(0, 160)}).` : `Sloosh could not quote this (${e.message.slice(0, 160)}).`); throw e; }
+      } catch (e) { if (canFallBack) return geminiQuote(spec, PAY.test(e.message) ? `Sloosh cannot pay for this yet (${e.message.slice(0, 160)}).` : `Sloosh could not quote this (${e.message.slice(0, 160)}).`); return { error: 'Sloosh couldn’t price this final just now. Try again in a minute.', detail: e.message.slice(0, 200) }; }
       out = { model: b.model, label: b.label || b.model, why: b.why, prompt: b.prompt, settings: b.settings, space: null }; }
     const credits = creditsOf(q), hold = holdOf(q) || credits, quoteId = idOf(q), warning = pick(q, 'warning') || null;
     if (warning && canFallBack && /wallet|allocation|credit|limit|short|balance|payment|402|allowance|insufficient|owned|asset|not found|unauthori/i.test(warning)) return geminiQuote(spec, `Sloosh says: ${warning}`);

@@ -9,7 +9,7 @@ import { promptBlock, versionsOf } from './learn.js';
 import { fieldsFor, FAMILY_NAME } from './studio.js';
 import { realRows } from './connectors/common.js';
 import { isQuestion, answerGrounded } from './jam-answer.js'; // a question is answered from the brief and the facts, the brief untouched
-import { planMd } from './card-plan.js';
+import { planMd, PLAN_V, oneOf } from './card-plan.js';
 import { MEASURE_SCHEMA, MEASURE_ASK, vetMeasure, measureFromMd } from './measure-spec.js';
 import { startStatus, moveStatus, LABEL } from './brief-status.js';
 
@@ -108,6 +108,13 @@ export function createJamBrief(o) {
      match it exactly, keep everything else: …"): it was never meant to be read, so it leaves the brief on load */
   const SYNC_NOTE = /^- (?:Brew: )?The [^\n]{0,80} is now v\d+[^\n]*Make the brief match it exactly, keep everything else:[^\n]*\n?/gm;
   const seed = (t, w) => {
+    /* one, always (Param, 19 Oct): a jam saved with a plan of options (plan v1: "Write 3 new versions", "Draft the two new hook
+       variants") rebuilds it from the card, and its brief follows: rewritten when nobody touched it, else its plan section is
+       swapped for the new one and any count of takes in it said as one. The case, the brief and the card's button read this */
+    if (w.cardId && w.cardPlan && w.cardPlan.v !== PLAN_V) { const c0 = cardOf(t, w.cardId); const fresh = c0 && o.planOf?.(t, c0);
+      if (fresh) { const made = w.cardPlan.made; w.cardPlan = { ...fresh, ...(made ? { made } : {}) };
+        if (w.doc?.md) { if ((w.doc.rev || 1) <= 1 && !(w.doc.edits || []).length && !bundleOf(t, c0).length) { w.doc.md = draftFrom(t, c0, w); w.doc.plan = null; w.doc.measure = null; }
+          else w.doc.md = w.doc.md.replace(/(## The plan\n)([\s\S]*?)(?=\n## |$)/, (m0, h, body) => `${h}${/\*\*Next:\*\*/.test(body) ? planMd(w.cardPlan) : oneOf(body)}`); } } }
     if (w.doc?.md && SYNC_NOTE.test(w.doc.md)) { SYNC_NOTE.lastIndex = 0; w.doc.md = w.doc.md.replace(SYNC_NOTE, '').replace(/\n## Notes\n(?=\s*(\n## |$))/, '\n'); }
     if (!w.doc) { const c = cardOf(t, w.cardId) || { title: w.title, sub: '' }; w.doc = { md: bundleOf(t, c).length ? bundleFrom(t, c) : draftFrom(t, c, w), rev: 1, edits: [], at: now(t), planned: 1 }; }
     /* a brief written before cards carried a plan gets it: rewritten when nobody touched it yet, else the plan is added at the end */

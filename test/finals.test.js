@@ -143,14 +143,15 @@ test('a refused generate charges no share and says failed; the same spec again g
   const R2 = rig(); R2.budget.spend('credits', 'cozy', 5); const q3 = { ...(await R.F.quote('cozy', spec)), at: Date.now() }; await assert.rejects(R2.F.run('cozy', spec, { quote: q3, target: { chid: 'x' } }), (e) => e.budget === true); assert.equal(R2.calls.filter((c) => c[0] === 'generate').length, 0);
 });
 
-test('any Sloosh quote failure on an image ends as a Gemini quote with the reason; a video or a Space keeps Sloosh’s error', async () => {
+test('any Sloosh quote failure on an image or a video ends as a Gemini (Veo) quote with the reason, never a raw error; a Space keeps Sloosh’s', async () => {
   const gemini = async () => Buffer.from('G');
   const R = rig({ gemini }); R.sloosh.quoteGeneration = async () => { throw new Error('Sloosh quote_generation: insufficient balance (402)'); };
   const q = await R.F.quote('cozy', spec); assert.equal(q.provider, 'gemini'); assert.match(q.fallbackWhy, /cannot pay for this yet \(.*insufficient balance/);
   R.sloosh.quoteGeneration = async () => { throw new Error('Sloosh quote_generation: asset not found'); }; assert.match((await R.F.quote('cozy', spec)).fallbackWhy, /cannot pay for this yet/);
   R.sloosh.quoteGeneration = async () => { throw new Error('Sloosh MCP 503: upstream'); }; const q3 = await R.F.quote('cozy', spec); assert.equal(q3.provider, 'gemini'); assert.match(q3.fallbackWhy, /could not quote this \(Sloosh MCP 503/);
   R.sloosh.quoteGeneration = async () => ({ credits: 1 }); assert.match((await R.F.quote('cozy', spec)).fallbackWhy, /without a quote id/);
-  const RV = rig({ gemini, video: async () => Buffer.from('V') }); RV.sloosh.quoteGeneration = async () => { throw new Error('Sloosh MCP 503: upstream'); }; await assert.rejects(RV.F.quote('cozy', { ...spec, kind: 'video' }), /503/);
+  const RV = rig({ gemini, video: async () => Buffer.from('V') }); RV.sloosh.quoteGeneration = async () => { throw new Error('Sloosh MCP 503: upstream'); }; const qv = await RV.F.quote('cozy', { ...spec, kind: 'video' }); assert.equal(qv.provider, 'gemini'); assert.equal(qv.model, 'veo-3.1-fast'); /* 19 Oct: "owner_invalid_request" reached the person */
+  const RN = rig({ gemini: null }); RN.sloosh.quoteGeneration = async () => { throw new Error('Sloosh quote_generation: owner_invalid_request'); }; const qn = await RN.F.quote('cozy', spec); assert.match(qn.error, /couldn’t price this final just now/); assert.ok(!/owner_invalid/.test(qn.error), 'never the raw code');
   /* over the workspace's day: an image goes to Gemini with that reason, with no gemini wired it is the plain refusal */
   const RL = rig({ gemini, left: 1 }); const ql = await RL.F.quote('cozy', spec); assert.equal(ql.provider, 'gemini'); assert.match(ql.fallbackWhy, /would hold 2.5 credits and Brew’s Sloosh workspace has 1 left today/);
   const RS = rig({ gemini, left: 1 }); RS.sloosh.getSpaceInputSchema = async () => ({ type: 'object', properties: { headline: { type: 'string' } } }); RS.sloosh.quoteSpace = async () => ({ quoteId: 'qs', credits: 2.5 });
