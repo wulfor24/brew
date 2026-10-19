@@ -483,7 +483,7 @@ export function createRemix(o) {
     const rv = await rivalRead(t, c).catch(() => null), rivalLine = rv ? `\n${rivalBlock(rv.ad, rv.style, BN())}\n` : '';
     const moveBlock = mv.length ? `\nWHAT THE CARD'S MOVES SAY (the Brew plan this card came from). Build the packages from these, using their specifics (steps, wording, timing, examples), and set "from" to the passage each option follows:\n${mv.map((x) => `[${moveTag(x)}] ${x.text}`).join('\n')}\n` : '';
     const rec = `WHAT THE CARD RECOMMENDS: "${c.title}". ${c.sub || ''}${c.cta?.label ? ` The card's action: "${c.cta.label}".` : ''}${c.detail?.why?.length ? `\nWhy: ${c.detail.why.join(' ')}` : ''}${c.detail?.how?.length ? `\nHow: ${c.detail.how.join(' ')}` : ''}${o.planOf?.(t, c)?.draft ? '\nOption 1 starts from the first draft the card shows (above): keep its words and its product wherever they fit the fields.' : ''}`;
-    const ask = like ? `Make ONE more option: a different cut of this package (action ${like.action}): ${JSON.stringify(toKV(like.family, like.action, like.pkg))}` : `${rec}\n\nRemix this card into ${n} complete packages that could be commissioned today. ${r.primary ? `Option 1 MUST be exactly what the card recommends, with action ${r.primary}, built from the card's own how-steps and numbers. Options 2 and 3 are different cuts of the same thing the card asks for (another angle, a smaller first step, a different scope), using the same action unless another listed action clearly does the same job. Never propose a different kind of job than the card's.` : 'Every option must serve the goal the card names; do not drift to unrelated levers.'}`;
+    const ask = like ? `Make ONE new take: a different cut of this package (action ${like.action}): ${JSON.stringify(toKV(like.family, like.action, like.pkg))}` : `${rec}\n\nRemix this card into ${n} complete packages that could be commissioned today. ${r.primary ? `Option 1 MUST be exactly what the card recommends, with action ${r.primary}, built from the card's own how-steps and numbers. Options 2 and 3 are different cuts of the same thing the card asks for (another angle, a smaller first step, a different scope), using the same action unless another listed action clearly does the same job. Never propose a different kind of job than the card's.` : 'Every option must serve the goal the card names; do not drift to unrelated levers.'}`;
     const schema = { type: 'object', required: ['line', 'options'], properties: { line: { type: 'string', description: 'Under 18 words: what you made' },
       options: { type: 'array', items: { type: 'object', required: ['action', 'angle', 'why', 'pkg'], properties: { action: { type: 'string', enum: r.actionKeys }, angle: { type: 'string', description: '2-3 words' }, from: { type: 'string', description: 'The move passage it follows, exactly as in the brackets, or empty' }, why: { type: 'string', description: 'Under 16 words: why this moves the number' }, next: { type: 'array', items: { type: 'string' }, description: 'Exactly 4 follow-up asks the person might tap to reshape THIS package, each 2 to 6 words, in their voice, about the card’s own action and case (the products, ads, pages or people it names), never a generic writing tip' }, pkg: kvSchema(allKeys(fams)) } } } } };
     const j = await claudeTool(`${cardBrief(c, seatLine(t.viewer))}\n\nYou are the ${AGENT[c.agent] || 'agent'} agent. ${ask}\n${moveBlock}${rivalLine}What the reader wants: "${[intent, prompt].filter(Boolean).join('. ') || r.intents[0]}".\nActions you may use, with the fields each package needs:\n${acts}\n${learned ? '\n' + learned + '\n' : ''}\n${productLine(c)}\nWrite every package exactly as it ships: real copy, real settings, nothing left as a placeholder. Each package must do what its action says it is, nothing else. ${factsLine}`, schema, 4000, 'remix_options');
@@ -538,7 +538,7 @@ export function createRemix(o) {
        still holds only its first version and nobody has said anything (it used to stay 'none' for good) */
     if (ch.v0 === 'none' && (versionsOf(t, ch.id).length > 1 || (ch.thread || []).length || ch.imagePending)) return false;
     ch.v0 = 'none';
-    const pl = o.planOf?.(t, c); if (pl && !ch.plan) ch.plan = pl;
+    const pl = o.planOf?.(t, c); if (pl && (!ch.plan || ch.plan.v !== pl.v)) ch.plan = pl;
     const d = pl?.draft; if (!d || !(d.images?.length || d.video) || versionsOf(t, ch.id).length > 1) return false;
     const imgs = d.images || [], text = TEXT_DRAFT.test(d.as || '') && !d.video;
     ch.pkg = { ...ch.pkg, draft: { as: d.as, images: imgs, video: d.video || null, poster: d.poster || null, ratio: d.ratio || null, title: d.title || '', text, ...(text ? { code: d.code || null } : {}) } }; /* code: a draft that is markup or a snippet shows on the stage as code */
@@ -561,6 +561,8 @@ export function createRemix(o) {
   const pubChange = (t, ch) => {
     ensurePkg(t, ch); const tr = trustOf(t, ch.agent);
     if (ch.v0 !== 'draft' && !ch.batchKey && (ch.fromCard || (t.work || []).some((w) => w.changeId === ch.id))) seedV0(t, t.cards.get(ch.cardId), ch); /* 'none' tries again while the jam is untouched: the card's draft may land after the jam opened */
+    if (ch.plan && o.planOf) { const fresh = o.planOf(t, t.cards.get(ch.cardId) || {}); if (fresh && ch.plan.v !== fresh.v) ch.plan = fresh; } /* plans saved before one-always rebuild */
+    if (ch.action === 'creative.short_video' && ch.target?.conn === 'meta' && ch.pkg && (!ch.pkg.platform || /^social post$|shorts|youtube|tiktok/i.test(ch.pkg.platform))) ch.pkg.platform = 'Meta video ad · Reels and Stories';
     if (ch.state === 'draft' && !ch.batchKey) { const lf = labelFor(ch.action, t.cards.get(ch.cardId) || {}); /* jams opened before the card-led names heal on read */
       if (lf && lf.label !== ch.actionLabel && ['creative.add_variants', 'creative.short_video'].includes(ch.action)) { ch.actionLabel = lf.label; ch.target = { conn: lf.target.conn, name: lf.target.name || (lf.target.conn ? SEED.connectors[lf.target.conn]?.name : 'A person'), object: lf.target.object }; } }
     healDraftCode(t, ch);
@@ -1335,6 +1337,7 @@ export function createRemix(o) {
     ch.pkg = { ...rulePkg(t, ch.agent, ch.family, cleanPkg(ch.family, ch.action, x.pkg, clean)), ...media };
     if (x.angle) ch.angle = x.angle; sync(t, ch, c);
     const v = version(t, ch, `ai:${ch.agent}`, `Redo${x.angle ? `: ${x.angle}` : ''}`, 'Redo');
+    ch.planRun = { at: now(t), n: 1, versions: [v.id], by: 'redo' }; /* the card's button steps aside: this take is the one on the stage */
     if (ch.options && !ch.options.picked) ch.options = { ...ch.options, picked: v.id }; /* an old jam with options: the redo is the one */
     let made = '';
     if (visual) made = genImage(t, ch, 'the new take', { all: rows.length > 1, target: v.id }) ? (rows.length > 1 ? 'Its slides land in a minute.' : 'Its picture lands in a minute.') : '';
@@ -1481,12 +1484,6 @@ export function createRemix(o) {
       ch.thread.push({ from: 'ai', text: say || 'It’s on the stage. Happy with it? Share the brief. Not right? Say redo, or tell me what to change.', at: now(t) });
       return { change: pubChange(t, ch), learned: learnedOut(t) }; }
     if (!b.fix && !isQuestion(msg) && (REDO_RE.test(msg) || CUTS_RE.test(msg))) { ch.thread.push(youSaid(t, msg)); await redoOne(t, ch, REDO_RE.test(msg) ? '' : msg.replace(CUTS_RE, 'a new take')); return { change: pubChange(t, ch), learned: learnedOut(t) }; }
-    const cut = null; /* counted cuts are gone: one at a time (above) */
-    if (cut) { ch.thread.push(youSaid(t, msg)); const n = NUMW[cut[1].toLowerCase()] || +cut[1];
-      try { think(ch, `Writing ${n} cuts of this version`); const made = await makeCuts(t, ch, n, msg, (x, i) => `Cut ${'ABCDE'[i]}: ${x.angle || 'a different cut'}`);
-        ch.thread.push({ from: 'ai', text: made.length ? `Made ${made.length} options: ${cutNames(ch, made)}.${made.photos ? ' Each gets its own photo in a minute.' : ''} Tap them above the stage and use the one you like.` : 'Those cuts didn’t come through. Try again in a minute.', at: now(t), vs: made.map((v) => v.id), cuts: true });
-      } finally { think(ch, null); }
-      return { change: pubChange(t, ch), learned: learnedOut(t) }; }
     const rm = !b.fix && !isQuestion(msg) && ['meta_ad', 'social', 'post'].includes(ch.family) ? REMAKE_RE.exec(msg) : null;
     if (rm) { ch.thread.push(youSaid(t, msg)); const r = await remakeOf(t, ch, /carousel/i.test(rm[1]) ? 'carousel' : 'video');
       const why = r.error || (r.making === false ? r.why : null); if (why) ch.thread.push({ from: 'ai', text: why, at: now(t) }); else if (r.version) ch.thread.push({ from: 'ai', text: `Remade it as ${/carousel/i.test(rm[1]) ? 'a carousel' : 'a reel'}: v${r.version.n}. The media lands on it in a minute or two.`, at: now(t), v: r.version.n });

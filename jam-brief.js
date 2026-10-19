@@ -76,8 +76,7 @@ export function createJamBrief(o) {
     if (pick) {
       plan.push(`**${chosen ? 'We go with' : 'Brew recommends'}:** ${pick.name}. ${trim(pick.says, 200)}`);
       if (pick.effect) plan.push(`**What changes:** ${trim(pick.effect, 220)}`);
-      const others = opts.filter((o) => o !== pick).map((o) => o.name);
-      if (!chosen && others.length) plan.push(`**Other options:** ${others.join('; ')}.`);
+      /* one, always (Param, 19 Oct): the brief carries the one way forward, never the other options */
     } else if (d.how?.length && !cp) plan.push(...d.how.slice(0, 3));
     if (ch?.after?.publicText?.length) plan.push(`**The package:** ${ch.actionLabel} on ${ch.target?.name || 'the connected tool'}.`);
     /* the card's plan is the jam's input: its steps toward the card's action, ending on that action */

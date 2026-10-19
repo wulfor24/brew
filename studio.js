@@ -640,7 +640,7 @@ export const ideaPkg = (i = {}, act = String(ideaAction(i)).split('.').pop(), c 
     return { account: handle, ...(act === 'ig_post' ? { overlay: String(i.hook || i.title || '').slice(0, 60), imageBrief: m.prompt || '' } : { slides: slides.length ? slides : [{ onSlide: i.hook || i.title || '', imageBrief: m.prompt || '' }] }),
       caption: [i.copy, i.cta && !String(i.copy || '').includes(i.cta) ? i.cta : ''].filter(Boolean).join('\n\n'), hashtags: tags, format: act === 'ig_story' ? '9:16' : '4:5', postAt: i.postAt || '' };
   }
-  const label = `${i.platformLabel || i.platform || 'Social'} ${i.format || 'post'}`.trim();
+  const label = act === 'short_video' && !i.platform && isAdVideo(c) ? 'Meta video ad · Reels and Stories' : `${i.platformLabel || i.platform || 'Social'} ${i.format || 'post'}`.trim();
   const title = String(i.copy || '').match(/^\s*title:\s*(.+)$/im)?.[1] || (act === 'reddit_post' && i.format === 'reply' ? '' : i.title || '');
   const copy = String(i.copy || '').replace(/^\s*title:\s*.+\n+/i, '');
   return { platform: label, ...(i.author?.name ? { author: i.author.name, authorRole: `${i.author.role || 'Co-founder'}, ${BN()}` } : {}), ...(title && ['reddit_post', 'pinterest_pin', 'short_video', 'quora_answer'].includes(act) ? { title } : {}),

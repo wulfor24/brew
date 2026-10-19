@@ -3834,7 +3834,7 @@
     if (r?.error) { toast(`${ic('info', 's16')}${esc(r.error)}`); return paintStudio(); }
     if (r?.change) { RX.ch = r.change; putCh(r.change); } toast(`${ic('sparkles', 's16')}Making the final. It lands here when it’s done.`); paintStudio(); };
   const stepBar = (ch) => {
-    const p = ch.pkg || {}, op = ch.options, opt = optOn(ch), media = PH_FAM.includes(ch.family) && !ch.realOnly && (ch.family !== 'post' || isReel(ch) || p.image || p.media || p.video);
+    const p = ch.pkg || {}, op = null, opt = null, /* one, always: an old jam's options never ask to pick one */ _op = ch.options, media = PH_FAM.includes(ch.family) && !ch.realOnly && (ch.family !== 'post' || isReel(ch) || p.image || p.media || p.video);
     const fin = ch.versions.find((v) => v.id === ch.head)?.final, fix = ch.verdict === 'fix', reel = isReel(ch) || !!p.video;
     const steps = [...(op ? ['Pick one'] : []), 'Draft', ...(media ? ['Final'] : []), 'Send'];
     const at = op && !op.picked ? 'Pick one' : media && !fin ? 'Draft' : media ? 'Final' : 'Draft';
@@ -3861,7 +3861,8 @@
     const redo = !busy && !(op && !op.picked) ? `<button class="btn btn-ghost ship-redo" data-rx="variants" title="A new take from a new angle. This one stays in History.">${ic('shuffle', 's16')}Redo it</button>` : '';
     return `<div class="ship one ${fix ? 'warn' : 'ok'}">${strip}<div class="ship-tx is-step"><b><span class="ship-l">${head}</span>${tipBtn(tip)}</b></div><div class="ship-btns">${shipMenu(ch, items)}${redo}${main}</div></div>`; };
   /* the options as tabs above the stage, named by their angle, never v1–v5 */
-  const optTabs = (ch, viewing) => { const op = ch.options; if (!op || viewing || ch.batchKey) return '';
+  /* one, always: no option tabs, not even on jams saved with options (the one on the stage is the one; the rest are in History) */
+  const optTabs = (ch, viewing) => { const op = null; if (!op || viewing || ch.batchKey) return '';
     if (op.picked) { const it = op.list.find((x) => x.id === op.picked); return it ? `<div class="st-opts is-picked"><span>${ic('check', 's14')}Using <b>${esc(it.name)}</b></span><button type="button" class="linkbtn" data-opt-change>Change</button></div>` : ''; }
     const HAS = { final: 'Final', video: 'Video', photo: 'Photo', words: isReel(ch) ? 'Script' : 'Words' };
     return `<div class="st-opts" role="tablist" aria-label="Options">${op.list.map((it) => `<button type="button" role="tab" class="st-opt${it.id === op.on ? ' is-on' : ''}" data-opt="${esc(it.id)}" aria-selected="${it.id === op.on}">${it.image ? `<img src="/${esc(String(it.image).replace(/^\//, ''))}" alt="" loading="lazy">` : `<i class="st-opt-l">${esc(it.letter)}</i>`}<span><b>${esc(it.name)}</b><small>${esc(it.letter)} · ${HAS[it.has] || ''}</small></span></button>`).join('')}${op.list.length < 6 ? `<button type="button" class="st-opt is-add" data-opt-more${RX.sending ? ' disabled' : ''}><i class="st-opt-l">+</i><span><b>One more</b><small>A different angle</small></span></button>` : ''}</div>`; };
@@ -3912,7 +3913,7 @@
      makes the one version on the stage what the card asked for, and Redo it makes the next take. hasMade: the stage already
      holds it (a short video's clip, an ad's or a post's picture, a written family's words), so the plan's button steps aside */
   const hasDraft = (ch) => { const p = ch?.pkg || {}; return ch?.v0 === 'draft' || !!(p.video || /^\/?gen\//.test(p.image || '') || p.draft?.images?.length || p.draft?.video); };
-  const hasMade = (ch) => { if (!ch || ch.copyPending) return false; const p = ch.pkg || {}, rows = p.cards || p.slides || [];
+  const hasMade = (ch) => { if (!ch || ch.copyPending) return false; if (ch.videoPending || ch.imagePending || ch.remakePending || ch.ctaPending) return true; /* being made: the button that makes it steps aside */ const p = ch.pkg || {}, rows = p.cards || p.slides || [];
     if (isReel(ch)) return !!p.video; if (['meta_ad', 'social'].includes(ch.family) && !ch.realOnly) return rows.length > 1 ? rows.every((_, i) => (p.cardImages || [])[i]) : !!(/^\/?gen\//.test(p.image || '') || p.draft?.images?.length); return true; };
   const planGo = (ch, pl) => ({ label: pl?.cta || 'Make it', line: `Brew makes the ${pl?.make?.one || pl?.make?.what || 'version'} on the stage${isReel(ch) ? ' and films it' : ['meta_ad', 'social'].includes(ch?.family) ? ' with its picture' : ''}; redo it if it isn’t right` });
   const planMade = (ch) => !!(ch?.planRun || ch?.batchKey || planOf(ch)?.batch || ch?.state === 'jam' || !planOf(ch) || hasMade(ch));
@@ -4239,7 +4240,7 @@
   const paintRemix = () => (RX.ch ? paintStudio() : RX.batch ? paintBatch() : paintStart());
   const runRemix = async () => {
     if (RX.busy) return; const prompt = $('#rx-in')?.value.trim() || '';
-    RX.busy = 'Writing three complete packages. About 15 seconds.'; RX.earlier = [...RX.list, ...RX.earlier]; RX.list = []; RX.line = ''; paintStart();
+    RX.busy = 'Writing it from the card. About 15 seconds.'; RX.earlier = [...RX.list, ...RX.earlier]; RX.list = []; RX.line = ''; paintStart();
     const r = await tapi('POST', `/api/cards/${RX.p.id}/remix`, { intent: RX.intent, prompt });
     RX.busy = false; if (r.error) { RX.line = 'That didn’t work. Try again.'; return paintStart(); }
     RX.list = r.changes; RX.line = r.live ? r.line : 'AI is offline, so these are templates built from the card. Open one and edit it, or try again shortly.'; paintStart(); showLearned(r.learned);
@@ -4327,7 +4328,7 @@
       await window.JamRoom.sendTo(RX.p, said); paintStudio();
       const ask = window.JamRoom.changeAsk?.(said); if (!ask) return; msg = ask; body = undefined; }
     RX.from = path === 'iterate' ? String(msg || '') : null; /* the chip or box that asked: it spins while RX.sending */
-    RX.sending = path === 'variants' ? 'Making three variations…' : path === 'plan' ? planBusy(ch) : path === 'knob' ? `Applying ${msg}…` : body?.fix ? 'Fixing it…' : 'Working on it…';
+    RX.sending = path === 'variants' || path === 'more' ? 'Writing a new take…' : path === 'plan' ? planBusy(ch) : path === 'knob' ? `Applying ${msg}…` : body?.fix ? 'Fixing it…' : 'Working on it…';
     if (path === 'iterate') { ch.thread = [...(ch.thread || []), { from: 'you', text: msg, at: 9e15 /* last in the timeline until the server's copy lands */ }]; RX.draft = ''; if ($('#st-in')) $('#st-in').value = ''; RX.tab = 'iterate'; }
     RX.viewing = null; RX.resetScroll = true; paintStudio();
     const r = await tapi('POST', `/api/changes/${ch.id}/${path}`, body || { message: msg });
@@ -5001,7 +5002,7 @@
      and the facts, links the cards and moves it used, and when something should be made it offers the jam (the old global
      jam's contexts: a card, several cards, the moves, a batch, a signal). ---------- */
   const ASK = { msgs: [], pending: null, seed: null, busy: false };
-  const askStarters = () => [`What should I fix first this week, and why?`, `Draft three reel hooks for ${GX.p1}`, `Why are people leaving the checkout?`];
+  const askStarters = () => [`What should I fix first this week, and why?`, `Draft a reel hook for ${GX.p1}`, `Why are people leaving the checkout?`];
   const askMsg = (m) => m.from === 'brew' ? `<div class="a2m brew">${SO()}<div><div class="a2-body">${rich(m.body || '')}</div>
       ${(m.links || []).length ? `<div class="a2-links">${m.links.map((l) => l.kind === 'move' ? `<button class="chip" data-a2-move="${esc(l.n)}">${ic('doc', 's14')}Move ${String(l.n).padStart(2, '0')}${l.title ? ` · ${esc(String(l.title).slice(0, 40))}` : ''}</button>` : `<button class="chip" data-a2-card="${esc(l.id)}">${l.agent ? face(l.agent) : ''}${esc(String(l.title || 'Open the card').slice(0, 48))}</button>`).join('')}</div>` : ''}
       ${m.action?.ctx ? `<button class="btn btn-primary sm a2-act" data-a2-act="${esc(JSON.stringify(m.action.ctx))}" data-a2-say="${esc(m.action.say || '')}">${ic(m.action.kind === 'brief' ? 'send' : 'hand', 's14')}${esc(m.action.label || (m.action.kind === 'brief' ? 'Jam, then send the brief' : 'Jam on it'))}</button>` : ''}

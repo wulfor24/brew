@@ -12,7 +12,7 @@ import { familyOf, FAMILY_NAME } from './studio.js';
 import { one, oneOf } from './text-fit.js'; // the asset said as one; saved option counts said as one
 export { one, oneOf };
 
-export const PLAN_V = 1;
+export const PLAN_V = 2; /* 2: one, always (19 Oct): saved plans on jams and work items with v 1 are rebuilt from the card */
 const cut = (s, n) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
 const lc = (s) => String(s || '').replace(/^./, (x) => x.toLowerCase());
 const andList = (xs) => xs.length <= 1 ? (xs[0] || '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`;

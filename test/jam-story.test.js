@@ -51,3 +51,15 @@ test('the jam is named for what the card asked: new ads unless a test runs; a vi
   assert.equal(labelFor('creative.short_video', { title: 'Post the size-worry Reel', make: { format: 'reel' }, sub: 'Our Meta ads say the same' }).label, 'Make the short video', 'a reel stays a reel');
   assert.equal(labelFor('creative.short_video', { title: 'x', post: { platform: 'youtube' } }).label, 'Make the short video', 'an idea from the stream stays organic');
 });
+
+// Param, 19 Oct: "it still shows making 3 variations - ensure this issue is not still there across the entire feed app", and
+// "ensure it doesn't even come up in jam brief case": nothing a person reads offers several versions to pick from
+test('no screen, case or brief offers several versions to pick from', async () => {
+  const fs = await import('node:fs');
+  const read = (f) => fs.readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
+  const app = read('public/app.js'), brief = read('jam-brief.js'), canvas = read('public/canvas.js'), plan = read('card-plan.js');
+  for (const bad of ['Making three variations', 'Writing three complete packages', 'Make 3 variations', 'Try 3 versions', 'Draft three reel hooks']) assert.ok(!app.includes(bad) && !canvas.includes(bad), bad);
+  assert.ok(!brief.includes('Other options'), 'the brief carries the one way forward');
+  assert.match(plan, /export const PLAN_V = 2;/, 'plans saved before one-always rebuild');
+  assert.match(app, /const optTabs = \(ch, viewing\) => \{ const op = null;/, 'no option tabs, even on old jams');
+});
