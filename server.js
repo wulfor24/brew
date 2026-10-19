@@ -552,7 +552,16 @@ const slooshOps = async (req) => {
   if (sp.get('models') === '1') models = Object.fromEntries(await Promise.all(['image_gen', 'video_gen'].map(async (m) => [m, await sloosh.listModels(m).catch((e) => ({ error: e.message }))])));
   if (sp.get('quote') === 'video') { const slug = sp.get('brand') || 'cozysnugglet-shop'; const b = await loadBrand(slug).catch(() => null); const lead = (b?.catalog || []).find((x) => x.img) || null;
     const img = sp.get('img') || lead?.img || null; probe = { brand: slug, ...(await finals.probe(slug, img, { label: lead?.t || lead?.title || 'Product photo' }).catch((e) => ({ error: e.message }))) }; }
-  return { ...st, workspace: ws || st.workspace, connection: conn, account: acct, finals: fin, credits: budget.left().credits, preflight: pre, ...(quote ? { quote } : {}), ...(models ? { models } : {}), ...(probe ? { probe } : {}), refusals: finals.refusals(), reconnect: '/api/ops/sloosh/connect' };
+  /* ?final=1&brand=<slug>[&frame=<gen/... still>]: finals.quote itself (live fit, references, start frame, the 720p retry) on a reel and an
+     image as the studio builds them, on the brand's lead product photo; free, nothing is kept */
+  let finalCheck = null; if (sp.get('final') === '1') { const slug = sp.get('brand') || 'cozysnugglet-shop'; const b = await loadBrand(slug).catch(() => null); const lead = (b?.catalog || []).find((x) => x.img) || null;
+    const prod = lead ? { url: lead.img, job: 'product', label: lead.t || lead.title || 'Product' } : null, frame = sp.get('frame');
+    const base = { title: 'a reel', subject: prod?.label, visual: 'A hand picks the product up from a kitchen counter and uses it.', brand: { name: b?.seed?.brand?.name || slug }, brandName: slug };
+    const show = (q) => (q?.error ? { error: q.error, detail: q.detail || null } : { provider: q.provider, model: q.model, credits: q.credits, hold: q.hold, settings: q.settings, refs: (q.refs || []).map((r) => `${r.job}/${r.role || 'reference'}`), fallbackWhy: q.fallbackWhy || null, warning: q.warning || null, promptStart: String(q.prompt || '').slice(0, 300) });
+    const video = { ...base, kind: 'video', ratio: '9:16', seconds: 9, sound: true, beats: [{ shot: 'A hand reaches for the product.', line: 'This one changed my mornings.' }, { shot: 'Close on it in use.', line: '' }, { shot: 'Back on the counter.', line: 'Try it.' }], refs: [prod, ...(frame ? [{ url: frame, job: 'frame' }] : [])].filter(Boolean) };
+    const image = { ...base, kind: 'image', ratio: '4:5', text: [], refs: [prod, ...(frame ? [{ url: frame, job: 'layout' }] : [])].filter(Boolean) };
+    finalCheck = { brand: slug, reel: show(await finals.quote(slug, video).catch((e) => ({ error: e.message }))), image: show(await finals.quote(slug, image).catch((e) => ({ error: e.message }))) }; }
+  return { ...st, workspace: ws || st.workspace, connection: conn, account: acct, finals: fin, ...(finalCheck ? { finalCheck } : {}), credits: budget.left().credits, preflight: pre, ...(quote ? { quote } : {}), ...(models ? { models } : {}), ...(probe ? { probe } : {}), refusals: finals.refusals(), reconnect: '/api/ops/sloosh/connect' };
 };
 const slooshHandle = async (req, res, u) => {
   if (!u.pathname.startsWith('/api/ops/sloosh/')) return false;
