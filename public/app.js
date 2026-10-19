@@ -967,9 +967,11 @@
     const c = cardOf(p), dn = doneText(p, c), bar = $(':scope > .bar', el); if (bar && dn && !bar.classList.contains('is-busy') && !$('.sp-ask', el)) bar.outerHTML = barHtml(c.cta, dn); }); };
   // what a card asks to be made, from its move (format and pieces)
   const MAKE_IC = { 'carousel ad': 'grid', 'instagram carousel': 'grid', 'collection ad': 'grid', 'catalog ad': 'grid', 'instagram stories': 'phone', 'instagram post': 'pic', 'single image ad': 'pic', 'video ad': 'vid', reel: 'vid', 'whatsapp message': 'chat', email: 'send', 'page section': 'doc' };
+  /* saved pieces were cut at 100 characters mid-word ("…data and s"): end on the last whole word with … (cards-gen.js now cuts on a word) */
+  const mkWhole = (x) => { const p = String(x || '').replace(/\s+/g, ' ').trim(); return p.length >= 100 && !/[.!?…)]$/.test(p) ? `${p.replace(/[\s,;:·–—-]*\S*$/, '')}…` : p; };
   /* the pieces never repeat the format beside it: "Page section on /: JSON-LD …" reads "Homepage: JSON-LD …", "Email · 1 email:
      day-3 note" reads "Email · Day-3 note"; a count above one stays (19 Oct) */
-  const mkPieces = (c) => { const f = c.make.format.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), p = String(c.make.pieces || '').trim(), m = p.match(new RegExp(`^(?:(?:1|one|a)\\s+)?${f}s?(?:\\s+on\\s+(\\/\\S*?))?\\s*:\\s*`, 'i'));
+  const mkPieces = (c) => { const f = c.make.format.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), p = mkWhole(c.make.pieces), m = p.match(new RegExp(`^(?:(?:1|one|a)\\s+)?${f}s?(?:\\s+on\\s+(\\/\\S*?))?\\s*:\\s*`, 'i'));
     if (!m) return p; const rest = p.slice(m[0].length); if (!rest) return '';
     return m[1] ? `${m[1] === '/' ? 'Homepage' : m[1]}: ${rest}` : rest[0].toUpperCase() + rest.slice(1); };
   const mkName = (f) => (f[0].toUpperCase() + f.slice(1)).replace(/\bwhatsapp\b/i, 'WhatsApp').replace(/\binstagram\b/i, 'Instagram');
@@ -1121,7 +1123,7 @@
   const aisLine = (p) => { if (p.sector !== 'visibility') return ''; const st = aiStand(), nm = aisNamed(st?.named)?.top.length ? aisNamed(st.named) : null; if (!st || st.error || (!st.rivals.length && !nm)) return '';
     const [cnt, of] = aisOf(st), top = st.rivals.filter((r) => cnt(r)).slice(0, 2);
     /* no known rival named: say who the answers do name instead */
-    return `<p class="ais-line">${ic('sparkles', 's14')}<span>${top.length ? `AI names ${top.map((r) => `${esc(r.name)} in ${cnt(r)}`).join(', ')} of ${of} answers; ${esc(st.brand.name)} in ${cnt(st.brand)}` : nm ? `AI names ${nm.top.slice(0, 2).map((r) => `${esc(r.name)} in ${nm.c(r)}`).join(', ')} of ${nm.of} answers${nm.of === of ? `; ${esc(st.brand.name)} in ${cnt(st.brand)}` : ''}` : `AI names none of ${esc(st.rivals.slice(0, 3).map((r) => r.name).join(', '))} in ${of} answers; ${esc(st.brand.name)} in ${cnt(st.brand)}`}</span></p>`; };
+    return `<p class="ais-line">${ic('sparkles', 's14')}<span>${top.length ? `AI names ${top.map((r) => `${esc(r.name)} in ${cnt(r)}`).join(', ')} of ${of} answers; ${esc(st.brand.name)} in ${cnt(st.brand)}` : nm ? `AI names ${nm.top.slice(0, 2).map((r) => `${esc(r.name)} in ${nm.c(r)}`).join(', ')} of ${nm.of} answers${nm.of === of ? `; ${esc(st.brand.name)} in ${cnt(st.brand)}` : ''}` : `AI names none of ${esc(st.rivals.slice(0, 3).map((r) => r.name).join(', '))} in ${of} answers; ${esc(st.brand.name)} in ${cnt(st.brand)}`}</span></p>`.replace(/ in (\d+)/g, ' in&nbsp;$1'); }; /* a count never wraps away from its name ("Arata in" / "0") */
   const healthCard = () => { const h = healthNow(), read = h.rings.filter((r) => r.read !== false), low = [...read].sort((a, b) => a.v - b.v)[0] || null;
     const fixLine = low && (h.moves || []).find((x) => x.k === low.k)?.t;
     const [said, todo] = fixLine ? [fixLine.split(/(?<=\.)\s+/)[0], fixLine.split(/(?<=\.)\s+/).slice(1).join(' ')] : [null, null];

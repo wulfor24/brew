@@ -7,6 +7,8 @@ import { unbacked, allowedFrom, numbersIn, backedNumbers } from './fact-gate.js'
 import { CTA } from './seed-template.js';
 import * as catalog from './creative-catalog.js'; /* what can be made: formats, the prompt block, generic and repeat checks */
 import { evidenceKinds, claimGaps, gapLine, writerEvidence } from './proof-logic.js'; /* a card says Brew saw only what Brew holds */
+/* the asset line ends on a whole word, never mid-word ("…data and s", 19 Oct) */
+const cutWords = (x, n) => { const s = String(x ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? `${s.slice(0, n - 1).replace(/[\s,;:·–—-]*\S*$/, '')}…` : s; };
 
 const SECTOR = { know: ['signals', 'brew'], found: ['visibility', 'visibility'], reach: ['creatives', 'creative'], convert: ['storefront', 'storefront'], keep: ['signals', 'crm'], expand: ['signals', 'brew'] };
 const BY_SKILL = { ads: ['ads', 'performance'], analytics: ['ads', 'performance'], attribution: ['ads', 'performance'], 'ab-testing': ['storefront', 'storefront'], aso: ['catalog', 'storefront'], 'seo-audit': ['visibility', 'visibility'], schema: ['visibility', 'visibility'], 'ai-seo': ['visibility', 'visibility'], 'site-architecture': ['storefront', 'storefront'], 'programmatic-seo': ['visibility', 'visibility'], pricing: ['storefront', 'storefront'], offers: ['storefront', 'storefront'], 'competitor-profiling': ['signals', 'brew'], competitors: ['visibility', 'visibility'] };
@@ -176,7 +178,7 @@ ${catalog.promptBlock({ product: heroName })}
       // a card that names what to make carries it, and its button makes exactly that format
       const fam = toFamily(c.make?.format);
       if (fam) {
-        card.make = { format: fam, pieces: String(c.make.pieces || '').trim().slice(0, 100), ...(c.make.backedBy ? { backedBy: String(c.make.backedBy).trim().slice(0, 80) } : {}) };
+        card.make = { format: fam, pieces: cutWords(c.make.pieces, 100), ...(c.make.backedBy ? { backedBy: String(c.make.backedBy).trim().slice(0, 80) } : {}) };
         if (catalog.isGeneric(card.make.pieces)) log.warn('[cards] generic asset', card.id, JSON.stringify(card.make.pieces)); /* the audit (tools/audit-cards.mjs) counts these per brand */
         fitCta(card);
         if (MAKES_CREATIVE.test(fam)) { card.sector = 'creatives'; if (card.agent !== 'brew') card.agent = 'creative'; Object.assign(card, fitRoles(card)); }
@@ -236,7 +238,7 @@ Return every card by its id.`;
         kind: (c.rows || []).filter((r) => r?.length >= 2).length ? 'rows' : 'media', title: String(c.title || '').trim(), sub: String(c.sub || '').trim(), detail: { why: (c.why || []).slice(0, 3), how: (c.how || []).slice(0, 3) }, cta: { label: CTA[c.cta] ? c.cta : 'Generate versions' } };
       const rows = (c.rows || []).filter((r) => r?.length >= 2).slice(0, 5).map((r) => [String(r[0]).slice(0, 40), String(r[1]).slice(0, 48)]);
       const fam = toFamily(c.make?.format);
-      if (fam) { card.make = { format: fam, pieces: String(c.make.pieces || '').trim().slice(0, 100) }; fitCta(card); }
+      if (fam) { card.make = { format: fam, pieces: cutWords(c.make.pieces, 100) }; fitCta(card); }
       if (card.kind === 'rows') card.rows = rows; else { const img = laneImg?.[lane]; if (img) card.images = [img]; else { card.kind = 'rows'; card.rows = rows; } }
       if (unbacked({ title: card.title, sub: card.sub, rows: card.rows, detail: card.detail, make: card.make }, { has: (n) => ok.has(n) || nums.has(n) }, { strict: true }).length) return;
       if (!card.title || !card.sub || LEAK.test(card.title + card.sub)) return;
