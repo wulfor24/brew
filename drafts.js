@@ -3,6 +3,7 @@
 // line, or plain text (ad copy, a WhatsApp message, an email, page copy). Nothing is made until someone taps:
 // a draft costs money, so it is never made for a card nobody opened.
 // Each draft lives on the jam (w.drafts), newest first; the client polls the jam while one is being made.
+import { CLAIMS_RULE, COPY_RULE } from './claims.js'; // no invented codes, guarantees or timed results; copy that reads right
 import { budgetWhy } from './budget.js'; // whose daily share ran out, in plain words
 import { makeVoice as vertexVoice, makeVideo as vertexVideo } from './media.js'; // Vertex, then OpenAI (media.js); Sloosh makes finals only
 import { buildDraft } from './sloosh-prompt.js'; // one brief for drafts and finals
@@ -44,7 +45,7 @@ const SCHEMA = {
 
 // the planning prompt and the photo prompt, shared by the jam (one tap) and the background first drafts (drafts-bg.js)
 const FORM = { voice: 'a voice recording', text: 'text', carousel: 'a carousel of 3 to 8 slides', image: 'an image', video: 'a video (a 6-second clip)' };
-export const draftPrompt = ({ card, role = 'creative', brief = '', mem = '', as = 'auto', ask = '' }) => `${card}\n\nYou are the ${role} agent, and a team is planning this card in a jam.\n\nTHE JAM BRIEF (what the team agreed so far):\n----\n${String(brief || '').slice(0, 9000)}\n----\n${mem ? `\n${mem}\n` : ''}\nMake the first draft of the asset this brief asks for, ready for the team to react to.${as !== 'auto' ? ` Make it as ${FORM[as] || 'a video (a 6-second clip)'}, even if the brief had something else in mind.` : ' Pick the form the brief needs.'}${ask ? `\nThe person asked: ${ask}` : ''}\nRules: plain words, every number from the brief or the brand facts, no discounts or claims the brief does not make, no disclaimers.\nOpen with the hook: the headline and the first line of the copy name the buyer's moment or a real customer's words from WHAT BUYERS SAY; borrow the structure (never the words) of the longest-running rival ads listed.`;
+export const draftPrompt = ({ card, role = 'creative', brief = '', mem = '', as = 'auto', ask = '' }) => `${card}\n\nYou are the ${role} agent, and a team is planning this card in a jam.\n\nTHE JAM BRIEF (what the team agreed so far):\n----\n${String(brief || '').slice(0, 9000)}\n----\n${mem ? `\n${mem}\n` : ''}\nMake the first draft of the asset this brief asks for, ready for the team to react to.${as !== 'auto' ? ` Make it as ${FORM[as] || 'a video (a 6-second clip)'}, even if the brief had something else in mind.` : ' Pick the form the brief needs.'}${ask ? `\nThe person asked: ${ask}` : ''}\nRules: plain words, every number from the brief or the brand facts, no discounts or claims the brief does not make, no disclaimers. ${CLAIMS_RULE} ${COPY_RULE}\nOpen with the hook: the headline and the first line of the copy name the buyer's moment or a real customer's words from WHAT BUYERS SAY; borrow the structure (never the words) of the longest-running rival ads listed.`;
 /* what real buyers say and the rival ads that keep running (brand-pack.js reviewQuotes, rivalHooks): the hook's raw material,
    added to the card context of every draft plan (here in the jam, and drafts-bg.js). '' when the read has neither */
 export const hookBlock = ({ reviewQuotes = [], rivalHooks = [] } = {}) => [

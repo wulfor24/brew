@@ -22,6 +22,7 @@ import { realRows } from './connectors/common.js';
 import { isQuestion, photoAsk, answerGrounded } from './jam-answer.js'; // a question gets an answer, never a version; "keep the photo" never makes one
 import { EVIDENCE_ASK, proofAnswer } from './evidence.js'; // "what's the evidence?" is answered from the card's own proof
 import { moveNo } from './value.js';
+import { claimFlags, claimCheck, copyFlags, sourceText, CLAIMS_RULE, COPY_RULE } from './claims.js'; // invented codes, guarantees, timed results and copy that reads wrong are flagged before shipping
 import { budgetWhy } from './budget.js'; // v2 words/takes: a refused spend is said with its real reason, never a silent fallback
 import { createFamilies } from './measure-families.js';
 import { launchBrowser, zipBuffer, withBrowser } from './pdf/render.js';
@@ -401,6 +402,11 @@ export function createRemix(o) {
   };
 
   /* ---------- checks + verdict ---------- */
+  /* the brand's own words (facts, catalog, the card's real evidence): a claim they carry is backed (claims.js) */
+  const SRC = new WeakMap();
+  const brandSource = (t, card) => { const cat = catalogOf(t) || null; const key = Array.isArray(cat) || (cat && typeof cat === 'object') ? cat : null; let base = key && SRC.get(key);
+    if (base == null) { base = sourceText(Object.values(FACTS || {}).map((f) => [f?.label, f?.v, ...(f?.aliases || [])]), cat, o.SEED?.brand?.about || '', o.SEED?.brand?.tagline || ''); if (key) SRC.set(key, base); }
+    return `${base}\n${sourceText(card.post?.evidence || [], card.evidence || [], card.liveOnly || /^live-/.test(card.id || '') ? [card.title, card.sub, card.rows] : [])}`; };
   const evaluate = (t, ch) => {
     const card = t.cards.get(ch.cardId) || {}; const act = actOf(ch.action); const r = recipeFor(card);
     const pubT = ch.pkg ? publicText(ch.family, ch.action, ch.pkg) : [];
@@ -417,6 +423,11 @@ export function createRemix(o) {
       const guard = ACTION_GUARD[String(ch.action).split('.').pop()]?.(ch.pkg); if (guard) checks.unshift({ k: guard, ok: false, fix: true });
       const lk = leaks(ch.family, ch.action, ch.pkg); checks.splice(1, 0, { k: lk.length ? `Reads like an internal note, not to customers (“${lk.slice(0, 3).join('”, “')}”)` : 'Written for customers, not the team', ok: !lk.length, fix: true, leak: true });
     }
+    /* what a shopper would read: no invented code, guarantee or timed result, and copy that reads right (QA-25, QA-02) */
+    const shopperText = [ch.after.title, ch.after.sub, ...pubT].filter(Boolean).join('\n');
+    const cf = claimFlags(shopperText, brandSource(t, card), { allowNewCode: /discount_offer$/.test(ch.action || '') });
+    checks.push({ k: claimCheck(cf), ok: !cf.length, fix: true, claims: cf.map((f) => f.quote) });
+    const lf = copyFlags(shopperText); if (lf.length) checks.push({ k: `Reads wrong: ${lf.join('; ')}`, ok: false, fix: true });
     if (ch.imagePending) checks.push({ k: 'The new creative is still rendering', ok: false, soft: true });
     checks.push(act.irreversible ? { k: `Can’t be undone: ${act.irreversible}. Whoever ships it from the brief should know.`, ok: true, team: true } : { k: `Can be undone: ${act.rollback}`, ok: !!act.rollback && !/^nothing|^—/i.test(act.rollback), soft: true });
     if (act.target.conn) checks.push({ k: `${SEED.connectors[act.target.conn]?.name || act.target.conn} connected`, ok: !!t.conn[act.target.conn], soft: true, conn: act.target.conn });
@@ -474,7 +485,7 @@ export function createRemix(o) {
       return { action: key, angle: angles[i % angles.length], from: mv[j] ? moveTag(mv[j]) : null, why: why[i % Math.max(1, why.length)] || '', pkg: mockPkg(fam, key, c, i, angles[i % angles.length], FACTS), fromCard: i === 0 && !!r.primary && key === r.primary };
     });
   };
-  const factsLine = `WHO READS WHAT: the card above is an internal note for the ${BN()} team (business numbers, goals, plans, moves). Never copy its wording or its numbers into the package. Fields marked public are read by shoppers and customers: write to them about what they're buying, the product, the result, the price, the offer, in ${BN()}'s voice. No revenue, crore, goals, tracks, funnels, repeat rate, ROAS, cost per order, "the team" or plans. Internal fields (ad sets, segments, rules, budgets) use real operational names, e.g. "Intensive Serum | Broad | 22-45 | Reels", never business metrics. Copy rules: plain words, only numbers from the facts above, "up to" and the day window on every result claim, never name a rival, no before/after scalp claims.`;
+  const factsLine = `WHO READS WHAT: the card above is an internal note for the ${BN()} team (business numbers, goals, plans, moves). Never copy its wording or its numbers into the package. Fields marked public are read by shoppers and customers: write to them about what they're buying, the product, the result, the price, the offer, in ${BN()}'s voice. No revenue, crore, goals, tracks, funnels, repeat rate, ROAS, cost per order, "the team" or plans. Internal fields (ad sets, segments, rules, budgets) use real operational names, e.g. "Intensive Serum | Broad | 22-45 | Reels", never business metrics. Copy rules: plain words, only numbers from the facts above, "up to" and the day window on every result claim, never name a rival, no before/after scalp claims. ${CLAIMS_RULE} ${COPY_RULE}`;
   const liveOptions = async (t, c, r, intent, prompt, n = 1, like = null) => {
     const fams = [...new Set(r.actionKeys.map(familyOf))];
     const acts = r.actionKeys.map((k) => { const a = actOf(k), lf = labelFor(k, c) || a; return `- ${k}: ${lf.label} on ${lf.target?.name || SEED.connectors[lf.target?.conn]?.name || 'a person'} (${lf.target?.object || a.target.object})${a.money ? ', spends money' : ''}${a.jam ? `, needs a person: ${a.jam}` : ''}. What it is: ${lf.spec || specOf(k)}\n  Package fields:\n${fieldsBrief(familyOf(k), k)}`; }).join('\n');
