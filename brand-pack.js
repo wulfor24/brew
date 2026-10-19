@@ -170,7 +170,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
       if (b) { const f = fileOf(slug, name); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, b); try { return JSON.parse(b.toString('utf8')); } catch { return d; } } }
     return getJSON(slug, name, d); };
   // the file names in one folder of a pack (moves/history/ for the weekly history), this disk and the bucket together
-  const listFiles = async (slug, sub) => { await retireReady(); if (wiping(slug)) return []; const d = fileOf(slug, sub), local = fs.existsSync(d) ? fs.readdirSync(d) : [], pre = `brands/${slug}/${sub}`;
+  const listFiles = async (slug, sub) => { await retireReady(); if (wiping(slug)) return []; const d = fileOf(slug, sub), local = fs.existsSync(d) ? fs.readdirSync(d) : [], pre = `brands/${slug}/${String(sub).replace(/\/+$/, '')}/`; /* the trailing slash matters: without it every name came back as "/x.json", the no-folder filter dropped them all, and a fresh instance saw no saved finals (a paid Sloosh reel was never collected after a restart, 19 Oct) */
     const rem = remote ? await gcsList(pre).then((xs) => xs.map((x) => x.name.slice(pre.length)).filter((n) => n && !n.includes('/'))).catch((e) => { log.warn('[packs] list', pre, e.message); return []; }) : [];
     return [...new Set([...local, ...rem])]; };
   // a pack asset (/b/<slug>/a/<file>) on disk, pulled from GCS on a miss
