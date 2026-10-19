@@ -867,3 +867,8 @@ body[data-view="remix"] .fab{display:none}
 .sv-note details summary::after{content:' More';color:var(--fg-3);font-weight:600}.sv-note details[open] summary{display:none}.sv-note details p{margin:0}
 @media (max-width:520px){.sv-hook{font-size:17px;line-height:22px;max-height:88px}}
 .sv-phone .pm-add .btn{color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.4)}
+/* FEED-NOT-04: the studio's first view is quiet: the plan folds under one line, two chips and More */
+.case-plan summary{cursor:pointer;list-style:none}.case-plan summary::-webkit-details-marker{display:none}
+.case-plan summary small::after{content:' · Show';color:var(--fg-3);text-transform:none;letter-spacing:0}.case-plan[open] summary small::after{content:''}
+.it-sugg .it-more{color:var(--fg-2)}
+.std .it-sugg:not(.is-open){flex-wrap:wrap;overflow:visible;mask-image:none;-webkit-mask-image:none} /* two chips and More: nothing to scroll, nothing faded */
