@@ -260,6 +260,8 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
     const rivalNames = numbers.rivals.map((r) => r.name).slice(0, 8);
     if (profile && config && rivalNames.length && (config.rivals || []).join('|') !== rivalNames.join('|')) { config.rivals = rivalNames; await put(slug, 'config.json', config).catch(() => {}); }
     if (profile && healSeedNumbers(seed, numbers, seed.brand?.name || profile.name)) await put(slug, 'seed.json', seed).catch(() => {});
+    /* a seed saved when the connector took the store's platform name ("Custom", "Woocommerce") heals to Shopify, what connecting does (QA 19 Oct) */
+    if (seed.connectors?.shopify && seed.connectors.shopify.name !== 'Shopify') { seed.connectors.shopify.name = 'Shopify'; await put(slug, 'seed.json', seed).catch(() => {}); }
     if (profile && (seed.health?.v !== HEALTH_V || seed.health?.key !== healthKey(numbers, profile))) { try { const was = seed.health?.v === HEALTH_V ? seed.health.delta || 0 : 0; seed.health = { ...healthFrom(profile, numbers, seed.health?.public ? seed.health : null), delta: was }; /* the last score: what changed since it (QA FEED-QA-18) */ seed.geo = geoOf(seed.health) || { score: 0, band: 'Not read yet' }; await put(slug, 'seed.json', seed).catch(() => {}); } catch (e) { log.warn('[packs] health', slug, e.message); } }
     const { fxDeep } = fxFor(facts);
     /* DUMMY: the simulated accounts (demo-data.js) exist on the demo site only (DEMO_MODE=1): made once per read and kept as
