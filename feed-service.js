@@ -2006,7 +2006,7 @@ export function createFeedService(o) {
   on('GET', '/api/cards/:cid/evidence', async (b, t, p) => { const raw = t.cards.get(p.cid); if (!raw || !seatOk(t, raw)) return { error: 'not found' };
     const slug = slugOfT(t); await PLAIN.load(slug).catch(() => {}); const c = fillCard(raw, t), pl = PLAIN.get(slug, raw), shown = PLAIN.apply(slug, raw);
     const voice = await voiceReady(slug), ev = refineProof(c, EV.evidenceOf({ ...c, brand: BN() }, { liveLedger: t.member ? t.liveLedger : null, plain: pl, voice }), { voice, connected: (id) => connOn(t, id), has: (id) => !!SEED?.connectors?.[id] });
-    return { evidence: { ...ev, card: { id: raw.id, title: shown.title, sub: shown.sub, orig: shown.orig || null }, brand: BN() } }; });
+    return { evidence: { ...ev, items: (ev.items || []).map((x) => ({ ...x, label: dejargon(x.label), src: dejargon(x.src) })), card: { id: raw.id, title: shown.title, sub: shown.sub, orig: shown.orig || null }, brand: BN() } }; }); /* source lines in plain words too (no products.json) */
   on('GET', '/api/cards/:cid/page', async (b, t, p) => { const raw = t.cards.get(p.cid); if (!raw) return { error: 'not found' }; const c = fillCard(raw, t); return { page: await pageOf(t, c) }; });
   // a card's source moves: what each one says, and the passages that speak to this card
   on('GET', '/api/cards/:cid/moves', async (b, t, p) => { const c = t.cards.get(p.cid); if (!c) return { error: 'not found' }; return { moves: MOVES.numsOf(c.src).map((n) => ({ ...MOVES.summary(n), passages: MOVES.passages({ ...c, src: `Move ${n}` }, 4) })) }; });

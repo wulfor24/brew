@@ -11,6 +11,7 @@ import vm from 'node:vm';
 import path from 'node:path';
 import { allowedFrom } from './fact-gate.js';
 import { demoFor, withDemo, DEMO_V } from './demo-data.js';
+import { dejargon } from './plain.js'; // plain words on saved source names
 import { brewFile } from './brew-name.js'; // packs written before the rename say ShopOS
 import { socialize, readSocial } from './social-feed.js'; // what listening heard and the ideas stream, as cards
 import { fitCta, fillMake, readSrc } from './cards-gen.js';
@@ -225,7 +226,8 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
   const fitPools = (pl, keep) => Object.fromEntries(Object.entries(pl).map(([k, v]) => [k, Array.isArray(v) ? v.map(fitCard(keep)) : v]));
   const ipRow = (r) => (Array.isArray(r) && /\(in progress\)$/.test(r[1] || '') ? [r[0], sentenceCase(r[1], [], { force: true }), ...r.slice(2)] : r); // the index's unwritten rows carry skill names
   const fitMoves = (ms, keep) => Object.fromEntries(Object.entries(ms || {}).map(([n, m]) => [n, m && typeof m === 'object' && m.title ? { ...m, title: sentenceCase(m.title, keep),
-    ...(Array.isArray(m.sections) ? { sections: m.sections.map((sec) => ({ ...sec, blocks: (sec.blocks || []).map((b) => (b?.rows ? { ...b, rows: b.rows.map(ipRow) } : b)) })) } : {}) } : m]));
+    ...(Array.isArray(m.sections) ? { sections: m.sections.map((sec) => ({ ...sec, blocks: (sec.blocks || []).map((b) => (b?.rows ? { ...b, rows: b.rows.map(ipRow) } : b)) })) } : {}),
+    ...(Array.isArray(m.sources) ? { sources: m.sources.map((x) => (x && typeof x === 'object' && x.label ? { ...x, label: dejargon(x.label) } : x)) } : {}) } : m])); /* source names in plain words (QA FEED-ARV-06: "catalogue (products.json)") */
   /* a move card says where its move stands: "Being updated" while the evidence has overtaken the move and its rewrite is
      queued (the ranker keeps it off the first screen), "Updated" for three days after a rewrite lands. Other badges stay */
   const moveBadges = (seed, moves = {}, stale = new Set()) => {

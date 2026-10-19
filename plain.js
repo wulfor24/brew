@@ -90,6 +90,7 @@ export function createPlain({ ai, store, spend = () => true, isMock = () => fals
   const apply = (slug, c) => { if (!c || typeof c !== 'object') return c; const p = get(slug, c);
     const d = c.detail || {}, out = { ...c, title: dejargon(p?.title || c.title), sub: dejargon(p?.sub || c.sub) };
     if (c.detail) out.detail = { ...d, why: (p?.why?.length ? p.why : d.why || []).map(dejargon), how: (p?.how?.length ? p.how : d.how || []).map(dejargon) };
+    if (c.make?.pieces) out.make = { ...c.make, pieces: dejargon(c.make.pieces) }; /* the make chip under the words ("Homepage: JSON-LD …") */
     if (p?.because) out.because = p.because;
     if (p && (p.title !== c.title || p.sub !== c.sub)) out.orig = { title: c.title, sub: c.sub }; /* the words as written, for the proof sheet */
     return out; };

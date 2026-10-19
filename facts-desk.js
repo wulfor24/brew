@@ -7,6 +7,7 @@ import { keyOf } from './derive.js';
 import { numbersIn, canon } from './fact-gate.js';
 import { moneyFmt } from './brand-pack.js';
 import { simulated } from './connectors/common.js';
+import { dejargon } from './plain.js';
 
 const D = 864e5, today = () => new Date().toISOString().slice(0, 10);
 const NOT_PRODUCT = /gift ?wrap|gift ?card|e-?gift|shipping protection|route protection|insurance|sample|tester|donation/i;
@@ -62,12 +63,12 @@ export function diffCatalog(ledger = [], items = [], { host, currency = 'USD', l
     if (!x) { changes.push({ kind: 'removed', key: e.key, handle: handleOf(e.key), label: e.label || e.key, was: String(e.v), wasN: e.n, src: e.url || e.src }); continue; }
     const n = e.key.startsWith('mrp.') ? x.mrp : x.price;
     if (Number.isFinite(e.n) && n > 0 && Math.abs(n - e.n) >= 0.01) { const v = money(n); changes.push({ kind: 'changed', key: e.key, handle: x.handle, label: e.label || e.key, was: String(e.v), wasN: e.n, now: v, nowN: n, src: x.url });
-      out.push({ ...e, v, n, at, src: `${hostOf(host)}/products/${x.handle}`, url: x.url, method: e.method && /added by the brand/.test(e.method) ? e.method : 'products.json (daily check)' }); }
+      out.push({ ...e, v, n, at, src: `${hostOf(host)}/products/${x.handle}`, url: x.url, method: e.method && /added by the brand/.test(e.method) ? e.method : 'product list (daily check)' }); }
     else out.push(e);
   }
   const have = new Set(ledger.filter(ours).map((e) => handleOf(e.key)));
   for (const x of items) { if (have.has(x.handle) || gone.has(x.handle) || !(x.price > 0)) continue; const v = money(x.price); if (tomb(`price.${x.handle}`, v)) continue;
-    const e = { key: `price.${x.handle}`, label: `${x.title} price`, v, n: x.price, unit: currency, layer: 'observed', src: `${hostOf(host)}/products/${x.handle}`, url: x.url, at, method: 'products.json (daily check)' };
+    const e = { key: `price.${x.handle}`, label: `${x.title} price`, v, n: x.price, unit: currency, layer: 'observed', src: `${hostOf(host)}/products/${x.handle}`, url: x.url, at, method: 'product list (daily check)' };
     out.push(e); changes.push({ kind: 'new', key: e.key, handle: x.handle, label: e.label, now: v, nowN: x.price, src: x.url, item: x }); }
   return { ledger: out, changes, gone: [...new Set(changes.filter((c) => c.kind === 'removed').map((c) => c.handle))] };
 }
@@ -132,7 +133,7 @@ export function createFactsDesk({ packs, builder, ai = null, onPack = async () =
     const ledger = await packs.getJSON(slug, 'ledger.json', []), lk = new Map(ledger.map((e) => [keyOf(e.key), e]));
     const row = ([k, f]) => { const e = lk.get(k) || {}, url = f.url || e.url || (f.src && /^[a-z0-9.-]+\.[a-z]{2,}\//i.test(f.src) ? 'https://' + f.src : /^https?:/.test(f.src || '') ? f.src : null);
       const kind = f.connected ? 'connected' : /^price\.|^mrp\./.test(f.key || '') ? 'price' : /^rival\./.test(f.key || '') || f.kind === 'competitor' ? 'rival' : /^(social|socials)\.instagram/.test(f.key || '') ? 'instagram' : /^ads\.own/.test(f.key || '') ? 'adpage' : /^reviews?\./.test(f.key || '') ? 'reviews' : 'doc';
-      return { k, key: f.key || k, label: f.label, v: f.v, src: f.src || null, url, at: String(f.at || '').slice(0, 16), group: groupOf(k, f, s.p.rivalsRe), kind, by: /brand|added by the brand/.test(e.method || '') ? 'team' : f.connected ? 'connected' : /daily check/.test(e.method || '') ? 'daily' : 'read',
+      return { k, key: f.key || k, label: dejargon(f.label), v: f.v, src: dejargon(f.src) || null, url, /* plain words on every fact row (QA FEED-ARV-06): no products.json, custom pixel sandbox */ at: String(f.at || '').slice(0, 16), group: groupOf(k, f, s.p.rivalsRe), kind, by: /brand|added by the brand/.test(e.method || '') ? 'team' : f.connected ? 'connected' : /daily check/.test(e.method || '') ? 'daily' : 'read',
         ...(f.connected ? { tool: TOOL[f.connected], syncedAt: f.at, was: f.was || null, ...(f.stale ? { stale: true, staleWhy: f.staleWhy || null } : {}) } : {}), canRemove: canEdit && !f.connected && f.kind !== 'derived', canLink: canEdit && !f.connected && f.kind !== 'derived' }; };
     const rows = Object.entries(s.merged).filter(([, f]) => SHOWN(f)).map(row);
     const groups = GROUPS.map(([k, name]) => ({ k, name, rows: rows.filter((r) => r.group === k) })).filter((g) => g.rows.length);
@@ -253,7 +254,7 @@ export function createFactsDesk({ packs, builder, ai = null, onPack = async () =
     P.catalog.hero = (P.catalog.hero || []).filter((h) => !gone.has(h));
     P.catalog.count = items.length; /* the count every screen shows (pack-numbers.js products) moves with the check, as the ledger's does */
     for (const c of d.changes.filter((c) => c.kind === 'new' && !P.catalog.products.some((x) => x.handle === c.item.handle))) P.catalog.products.push({ handle: c.item.handle, title: c.item.title, price: c.item.price, currency: P.currency, inStock: c.item.inStock, url: c.item.url, img: c.item.img, images: c.item.img ? [c.item.img] : [], published: c.item.published, claims: [] });
-    const counts = { 'catalog.count': items.length, 'catalog.out_of_stock': items.filter((x) => !x.inStock).length }, ledger = d.ledger.map((e) => (counts[e.key] != null && +String(e.v).replace(/,/g, '') !== counts[e.key] ? { ...e, v: counts[e.key].toLocaleString('en-US'), n: counts[e.key], at: today(), method: 'products.json (daily check)' } : e));
+    const counts = { 'catalog.count': items.length, 'catalog.out_of_stock': items.filter((x) => !x.inStock).length }, ledger = d.ledger.map((e) => (counts[e.key] != null && +String(e.v).replace(/,/g, '') !== counts[e.key] ? { ...e, v: counts[e.key].toLocaleString('en-US'), n: counts[e.key], at: today(), method: 'product list (daily check)' } : e));
     const n = { changed: d.changes.filter((c) => c.kind === 'changed').length, removed: d.gone.length, added: d.changes.filter((c) => c.kind === 'new').length };
     const summary = `${items.length} products read · ${n.changed} price${n.changed === 1 ? '' : 's'} changed · ${n.removed} gone · ${n.added} new · ${stock} stock change${stock === 1 ? '' : 's'}`;
     if (d.changes.length || stock || ledger.some((e, i) => e !== d.ledger[i])) {

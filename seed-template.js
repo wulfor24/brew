@@ -9,7 +9,7 @@ const andList = (xs) => xs.length <= 1 ? xs.join('') : xs.slice(0, -1).join(', '
 
 // the button vocabulary the remix engine knows (remix.js CTA_ACTION); generated cards pick from these
 export const CTA = {
-  'Publish Campaign': ['Publishing', 'Campaign is live on Meta'], 'Shift budget': ['Moving budget', 'Budget moved to the winners'], 'Rotate creative': ['Swapping ads', 'Fresh versions are live'],
+  'Publish Campaign': ['Publishing', 'Campaign is live on Meta'], 'Publish the campaign': ['Publishing', 'Campaign is live on Meta'], 'Shift budget': ['Moving budget', 'Budget moved to the winners'], 'Rotate creative': ['Swapping ads', 'Fresh versions are live'],
   'Update landing page': ['Updating pages', 'The pages are updated'], 'Publish the page': ['Publishing', 'The page is live'], 'Make the ad': ['Making', 'The ad is on the way'], 'Generate versions': ['Generating', 'Versions on the way'],
   'Draft the listing': ['Drafting', 'Listing drafted'], 'Fix tracking': ['Fixing tracking', 'Tracking fixes queued'], 'Turn on the journey': ['Turning it on', 'The journey is on'],
   'Approve the flows': ['Saving', 'Flows saved as drafts'], 'Send the review ask': ['Sending', 'Review ask is going out'], 'Make the video': ['Starting', 'The video is in production'],
@@ -21,7 +21,7 @@ export const CTA = {
   'Make the carousel ad': ['Making', 'The carousel is drafted'], 'Build the collection ad': ['Building', 'The collection ad is drafted'], 'Build the catalog ad': ['Building', 'The catalog ad is drafted'],
   'Draft the post': ['Drafting', 'The post is drafted'], 'Draft the carousel post': ['Drafting', 'The carousel post is drafted'], 'Draft the stories': ['Drafting', 'The stories are drafted']
 };
-export const SPENDS = ['Publish Campaign', 'Shift budget', 'Launch the ad group', 'Queue the ads'];
+export const SPENDS = ['Publish Campaign', 'Publish the campaign', 'Shift budget', 'Launch the ad group', 'Queue the ads'];
 export const PERSON = ['Brief the shoot', 'Draft the buyer deck', 'Open the scoreboard', 'Review draft', 'Open report'];
 
 const STEPS = [

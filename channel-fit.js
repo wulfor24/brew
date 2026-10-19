@@ -5,7 +5,7 @@
 // so the ranking is the same as before for anyone who skipped the questions.
 
 /* the label a card's button carries → the tool it runs on */
-export const NEEDS = { 'Queue the 12': 'meta', 'Publish Campaign': 'meta', 'Shift budget': 'meta', 'Rotate creative': 'meta', 'Apply the plan': 'meta', 'Run Monday decisions': 'meta', 'Lock the Diwali set': 'meta',
+export const NEEDS = { 'Queue the 12': 'meta', 'Publish Campaign': 'meta', 'Publish the campaign': 'meta', 'Shift budget': 'meta', 'Rotate creative': 'meta', 'Apply the plan': 'meta', 'Run Monday decisions': 'meta', 'Lock the Diwali set': 'meta',
   'Update landing page': 'shopify', 'Apply Update': 'shopify', 'Turn on guest checkout': 'shopify', 'Approve 6 popups': 'shopify', 'Publish the page': 'shopify', 'Approve the 3 offers': 'shopify', 'Approve the ladder': 'shopify',
   'Push 5 titles': 'marketplaces', 'Draft the listing': 'marketplaces', 'Send on WhatsApp': 'whatsapp', 'Turn on the journey': 'whatsapp', 'Send the review ask': 'loox',
   'Launch the ad group': 'google', 'Fix tracking': 'google', 'Approve the flows': 'klaviyo', 'Swap the images': 'meta', 'Pause those ads': 'meta',
@@ -55,7 +55,7 @@ export function channelFit(chs, card) {
 }
 
 /* labels that put a new ad out (the managing ones, budget shifts and pauses, are not new ads) */
-const AD_CTAS = new Set(['Publish Campaign', 'Queue the 12', 'Queue the ads', 'Rotate creative', 'Swap the images', 'Lock the Diwali set', 'Launch the ad group', 'Make the carousel ad', 'Build the collection ad', 'Build the catalog ad']);
+const AD_CTAS = new Set(['Publish Campaign', 'Publish the campaign', 'Queue the 12', 'Queue the ads', 'Rotate creative', 'Swap the images', 'Lock the Diwali set', 'Launch the ad group', 'Make the carousel ad', 'Build the collection ad', 'Build the catalog ad']);
 /* labels that fix or build what everything else stands on: the store, listings, tracking, the markup */
 const GROUND_CTAS = new Set(['Fix tracking', 'Fix the markup', 'Turn on guest checkout', 'Update landing page', 'Apply Update', 'Publish the page', 'Push the titles', 'Push 5 titles', 'Draft the listing', 'Publish the claims ledger']);
 const GROUND_SECTORS = new Set(['storefront', 'catalog', 'visibility']);

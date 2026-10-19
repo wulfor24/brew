@@ -40,3 +40,16 @@ test('a Signals card that rests on an account names it; talk, team and connected
   assert.deepEqual(cardNeeds({ id: 'm05-2', sector: 'signals', title: 'Hold three claims until R&D sends a basis' }, [], off), []);
   assert.deepEqual(cardNeeds({ id: 'm42-1', sector: 'signals', title: 'Remind serum buyers' }, [], { has: () => false, connected: () => false }), [], 'a brand with no store connector is never asked to connect one');
 });
+
+test('brand-facing labels: source lines, fact rows and the campaign button in plain words and sentence case', async () => {
+  const fs = await import('node:fs');
+  const mc = fs.readFileSync(new URL('../moves-cadence.js', import.meta.url), 'utf8'), fd = fs.readFileSync(new URL('../facts-desk.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(mc, /`\$\{host\} products\.json`/, 'scorecard sources say "product list"');
+  assert.doesNotMatch(fd, /'products\.json \(daily check\)'/);
+  assert.match(fd, /label: dejargon\(f\.label\)/, 'fact rows heal saved labels');
+  const { oneCard } = await import('../text-fit.js');
+  assert.equal(oneCard({ cta: { label: 'Publish Campaign' } }).cta.label, 'Publish the campaign');
+  const { recipeOfCard } = await import('../remix.js');
+  assert.equal(recipeOfCard({ sector: 'ads', cta: { label: 'Publish the campaign' } }).primary, recipeOfCard({ sector: 'ads', cta: { label: 'Publish Campaign' } }).primary, 'the healed label maps like the old one');
+  assert.equal(dejargon('Shopify Custom Web Pixel Sandbox'), 'Shopify tracking code');
+});

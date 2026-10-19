@@ -114,4 +114,5 @@ export const oneCard = (c) => { if (!c || typeof c !== 'object') return c; let x
   for (const k of ['title', 'sub', 'src', 'section']) if (typeof x[k] === 'string' && oneTake(x[k]) !== x[k]) x = { ...x, [k]: oneTake(x[k]) };
   if (Array.isArray(x.detail?.how) && x.detail.how.some((h) => typeof h === 'string' && oneTake(h) !== h)) x = { ...x, detail: { ...x.detail, how: x.detail.how.map((h) => (typeof h === 'string' ? oneTake(h) : h)) } };
   if (x.cta?.label === 'Generate versions') x = { ...x, cta: { ...x.cta, label: 'Make the ad' } };
+  if (x.cta?.label === 'Publish Campaign') x = { ...x, cta: { ...x.cta, label: 'Publish the campaign' } }; /* sentence case like every other button (QA TRU-05); the maps know both */
   return x; };

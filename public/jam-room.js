@@ -174,7 +174,7 @@
       ${k || kn ? `<p class="jm-final-know">${ic('trendup', 's14')}<b>How we’ll know:</b> ${esc(k ? `${k.metric.name}, ${k.how.toLowerCase()}, grade ${k.plannedGrade}, read after ${k.window} days` : `${bp.metric || kn.metric}, ${String(kn.bestHow || '').toLowerCase()}, grade ${kn.bestGrade} at best`)}</p>` : ''}</section>`;
   };
   // first drafts: one tap makes the asset the brief asks for (AI picks the form) or in a form you pick
-  const AS = { image: ['pic', 'Image'], carousel: ['grid', 'Carousel'], video: ['vid', 'Video'], voice: ['mic', 'Voice'], text: ['txt', 'Text'], email: ['send', 'Email'], whatsapp: ['chat', 'WhatsApp message'], page: ['doc', 'Page section'], collection: ['grid', 'Collection ad'], catalog: ['grid', 'Catalog ad'] };
+  const AS = { image: ['pic', 'Image'], carousel: ['grid', 'Carousel'], video: ['vid', 'Video'], voice: ['mic', 'Voice'], text: ['txt', 'Text'], email: ['send', 'Email'], whatsapp: ['chat', 'WhatsApp message'], page: ['doc', 'Store page'], collection: ['grid', 'Collection ad'], catalog: ['grid', 'Catalog ad'] };
   const draftHtml = (d, w = null) => {
     const lab = AS[d.as] || ['sparkles', 'Draft'];
     /* a final (made by Sloosh, or simulated on the demo site) carries its kicker; a ready image or video draft offers Make the final */

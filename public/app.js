@@ -346,7 +346,7 @@
   const affinity = () => { const a = { agent: {}, lane: {}, type: {} }; Object.keys(S.hearts).forEach((id) => { const p = byId(id); if (!p) return; a.agent[p.agent] = (a.agent[p.agent] || 0) + 1; a.lane[p.lane] = (a.lane[p.lane] || 0) + 1; a.type[p.type] = (a.type[p.type] || 0) + 1; }); return a; };
 
   /* what each action needs connected first */
-  const NEEDS = { 'Queue the 12': 'meta', 'Publish Campaign': 'meta', 'Shift budget': 'meta', 'Rotate creative': 'meta', 'Apply the plan': 'meta', 'Run Monday decisions': 'meta', 'Lock the Diwali set': 'meta',
+  const NEEDS = { 'Queue the 12': 'meta', 'Publish Campaign': 'meta', 'Publish the campaign': 'meta', 'Shift budget': 'meta', 'Rotate creative': 'meta', 'Apply the plan': 'meta', 'Run Monday decisions': 'meta', 'Lock the Diwali set': 'meta',
     'Update landing page': 'shopify', 'Apply Update': 'shopify', 'Turn on guest checkout': 'shopify', 'Approve 6 popups': 'shopify', 'Publish the page': 'shopify',
     'Push 5 titles': 'marketplaces', 'Draft the listing': 'marketplaces', 'Send on WhatsApp': 'whatsapp', 'Turn on the journey': 'whatsapp', 'Send the review ask': 'loox',
     'Launch the ad group': 'google', 'Fix tracking': 'google', 'Approve the flows': 'klaviyo' };
@@ -1021,8 +1021,10 @@
   const mkPieces = (c) => { const f = c.make.format.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), p = mkWhole(c.make.pieces), m = p.match(new RegExp(`^(?:(?:1|one|a)\\s+)?${f}s?(?:\\s+on\\s+(\\/\\S*?))?\\s*:\\s*`, 'i'));
     if (!m) return p; const rest = p.slice(m[0].length); if (!rest) return '';
     return m[1] ? `${m[1] === '/' ? 'Homepage' : m[1]}: ${rest}` : rest[0].toUpperCase() + rest.slice(1); };
-  const mkName = (f) => (f[0].toUpperCase() + f.slice(1)).replace(/\bwhatsapp\b/i, 'WhatsApp').replace(/\binstagram\b/i, 'Instagram');
-  const makeChip = (c) => { if (!c.make?.format) return ''; const f = mkName(c.make.format), pc = mkPieces(c);
+  /* "Page section" is the builder's word: say which page (QA FEED-ARV-06) */
+  const pageName = (c) => /\/products?\/|product pages?|\bPDPs?\b/i.test(`${c.make?.pieces || ''} ${c.title || ''}`) ? 'Product page' : 'Store page';
+  const mkName = (f, c) => (/^page sections?$/i.test(f) && c ? pageName(c) : f[0].toUpperCase() + f.slice(1)).replace(/\bwhatsapp\b/i, 'WhatsApp').replace(/\binstagram\b/i, 'Instagram');
+  const makeChip = (c) => { if (!c.make?.format) return ''; const f = mkName(c.make.format, c), pc = mkPieces(c);
     return `<p class="mk-chip" title="${esc([f, pc].filter(Boolean).join(' · '))}">${ic(MAKE_IC[c.make.format] || 'sparkles', 's14')}<b>${esc(f)}</b>${pc ? `<span>${esc(pc)}</span>` : ''}</p>`; };
   /* the first draft Brew made for this card (drafts-bg.js, served as card.draft): the asset itself in place of the lane photo.
      A clip plays muted and looped only while it is on screen (armDraftVideos); slides use the feed's own carousel */

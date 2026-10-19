@@ -61,9 +61,9 @@ export function auditScorecard({ profile: p = {}, slug = '', now = Date.now(), l
   { const parts = [];
     if (prods.length) {
       const avg = prods.reduce((a, x) => a + (x.images?.length || 0), 0) / prods.length, thin = prods.filter((x) => (x.images?.length || 0) <= 1).length;
-      parts.push(part('Photos per product', (Math.min(avg, 4) / 4) * 20, 20, `${avg.toFixed(1)} photos per product on average across ${prods.length} products read; ${thin} have one photo or none`, `${host} products.json`, `${site}/products.json`));
+      parts.push(part('Photos per product', (Math.min(avg, 4) / 4) * 20, 20, `${avg.toFixed(1)} photos per product on average across ${prods.length} products read; ${thin} have one photo or none`, `${host} product list`, `${site}/products.json`));
       const inStock = prods.filter((x) => x.inStock !== false).length;
-      parts.push(part('In stock', (inStock / prods.length) * 20, 20, `${inStock} of ${prods.length} products read are in stock (${pct(inStock, prods.length)}%)`, `${host} products.json`, `${site}/products.json`));
+      parts.push(part('In stock', (inStock / prods.length) * 20, 20, `${inStock} of ${prods.length} products read are in stock (${pct(inStock, prods.length)}%)`, `${host} product list`, `${site}/products.json`));
       const withRev = prods.filter((x) => (x.reviews?.count ?? x.reviews?.n ?? (typeof x.reviews === 'number' ? x.reviews : 0)) > 0).length;
       if (p.reviews?.app || withRev) parts.push(part('Reviews on product pages', p.reviews?.app ? 15 : (withRev / prods.length) * 15, 15, p.reviews?.app ? `review app on the site: ${p.reviews.app}` : `${withRev} of ${prods.length} products show reviews`, `${host} product pages`, site));
       else parts.push(part('Reviews on product pages', 0, 15, 'no review widget was found on the product pages read', `${host} product pages`, site));
