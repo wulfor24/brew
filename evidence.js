@@ -82,6 +82,9 @@ export function createEvidence({ factsOf, movesOf, numsOf, adOf = () => null, co
   const pick = (cands, cw, used, loose) => cands.map((f) => { let hit = 0; for (const w of new Set(words(f.label).filter((x) => !/^\d/.test(x)))) if (cw.has(w)) hit++; return { f, hit, s: hit + (used.has(f.key) ? 3 : 0) + (f.kind === 'current' ? 1 : 0) }; })
     .filter((x) => !loose || x.hit >= 2 || used.has(x.f.key)).sort((a, b) => b.s - a.s)[0]?.f;
 
+  /* a pulse line is a market number, not the brand's own: a plain count ("100", "30") backs the card only when its move used
+     that line; a specific one also needs two words in common with the card (the rival's name, what was counted) */
+  const pickPulse = (cands, cw, used, loose) => pick(cands.filter((f) => used.has(f.key) || (!loose && words(`${f.label} ${f.subject || ''}`).filter((w) => !/^\d/.test(w) && cw.has(w)).length >= 2)), cw, used, false);
   function evidenceOf(c, { liveLedger = null, plain = null, voice = [], team: teamOk = true } = {}) { /* teamOk: what the team told Brew is for its team only, like the told list */
     if (!c) return null;
     const facts = factsOf() || {}, idx = indexOf(facts), pidx = pulseIndex(pulseOf?.()), cw = new Set(words(cardText(c)));
@@ -100,7 +103,7 @@ export function createEvidence({ factsOf, movesOf, numsOf, adOf = () => null, co
     for (const n of nums) {
       const acct = live.find(([, e]) => e && allNums(e.v).includes(n));
       if (acct) { const [key, e] = acct; add({ kind: 'account', label: plainLabel(e.label) || key, value: String(e.v), src: `Your ${connName(key)} account`, at: e.at ? new Date(e.at).toISOString().slice(0, 10) : null, url: null, num: n }); backed.add(n); continue; }
-      const loose = !gated.has(n) || String(n).replace(/\D/g, '').length <= 2, f = pick(idx.get(n) || [], cw, used, loose) || pick(pidx.get(n) || [], cw, used, loose); /* "10%", "₹0", "2x" are common too */
+      const loose = !gated.has(n) || String(n).replace(/\D/g, '').length <= 2, f = pick(idx.get(n) || [], cw, used, loose) || pickPulse(pidx.get(n) || [], cw, used, loose); /* "10%", "₹0", "2x" are common too */
       if (!f) { const d = ns.flatMap((k) => M[k]?.derived || []).find((x) => x?.v != null && allNums(x.v).includes(n)); /* the move's own sum, shown with its working */
         if (d) { add({ kind: 'math', label: `Worked out: ${cut(d.expr, 160)}`, value: String(d.v), src: 'Brew’s maths from the prices and counts above', url: null, num: n }); backed.add(n); } continue; }
       backed.add(n);

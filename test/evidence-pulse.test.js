@@ -23,6 +23,9 @@ test('a rival search number on a card is matched to the pulse line it came from,
 test('a pulse number never backs a card it shares no words with, and no pulse is fine', () => {
   const E = createEvidence({ factsOf: () => ({}), movesOf: () => ({}), numsOf: () => [], pulseOf: () => P });
   assert.equal(E.evidenceOf({ id: 'x', title: 'Gift sets', sub: 'Sell 37 gift sets this week.' }).items.some((i) => /pulse|rankings/.test(i.src || '')), false);
+  const T = [{ key: 'trends.curly', label: 'Google interest in "curly hair products", last 4 weeks vs the 4 before', v: '100', src: 'Google Trends', subject: null }];
+  const E2 = createEvidence({ factsOf: () => ({}), movesOf: () => ({}), numsOf: () => [], pulseOf: () => T });
+  assert.equal(E2.evidenceOf({ id: 'z', title: 'Curly hair gel 100 ml', sub: 'Our curly hair gel, 100 ml, for wash days.' }).items.some((i) => i.num === '100'), false, 'a plain count needs its move to have used the line');
   const N = createEvidence({ factsOf: () => ({}), movesOf: () => ({}), numsOf: () => [] });
   assert.ok(N.evidenceOf({ id: 'y', title: 'Moxie Beauty', sub: '3,749 searches' }));
 });
