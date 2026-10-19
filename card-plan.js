@@ -13,7 +13,7 @@ import { one, oneOf } from './text-fit.js'; // the asset said as one; saved opti
 import { dejargon } from './plain.js'; // a plan's steps in the same plain words as the card (no GMC, webhook, products.json, JSON-LD)
 export { one, oneOf };
 
-export const PLAN_V = 3; /* 2: one, always (19 Oct): saved plans on jams and work items with v 1 are rebuilt from the card; 3: plain words in every step (QA FEED-ARV-07) */
+export const PLAN_V = 4; /* 4: "page section" reads "page", search-info swaps said once (final QA pass 19 Oct); 2: one, always (19 Oct): saved plans on jams and work items with v 1 are rebuilt from the card; 3: plain words in every step (QA FEED-ARV-07) */
 const cut = (s, n) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
 const lc = (s) => String(s || '').replace(/^./, (x) => x.toLowerCase());
 const andList = (xs) => xs.length <= 1 ? (xs[0] || '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`;

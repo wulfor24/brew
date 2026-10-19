@@ -27,3 +27,40 @@ test('card chat and studio: the evidence ask is answered before routing, and the
   assert.match(s, /createRemix\(\{ evidenceOf: \(t, c\) => proofOfCard\(t, c\)/, 'the studio gets the same refined proof');
   assert.match(s, /const proofOfCard = [^\n]*refineProof\(/);
 });
+
+/* move numbers: weekly and timely moves never show their number on file */
+import { moveSay, moveLabel, moveNum } from '../move-label.js';
+import { dejargon, plainSrc } from '../plain.js';
+import { noteOk, NO_NOTE } from '../notes.js';
+test('timely moves (100–999 by hash) read "Timely move"; notes, sources and the build log use the label', () => {
+  assert.equal(moveLabel(966), 'Timely move'); assert.equal(moveNum(966), 'T'); assert.equal(moveLabel(7), 'Move 07'); assert.equal(moveLabel(1011), 'Weekly move 11');
+  assert.equal(moveSay('move 1006'), 'Weekly move 6', 'a margin note’s eyebrow'); assert.equal(moveSay('MOVE 1006'), 'Weekly move 6');
+  assert.equal(moveSay('Move 966 · Diwali gifting'), 'Timely move · Diwali gifting'); assert.equal(plainSrc('Move 432 · Loop 2: Diwali'), 'Timely move · Diwali');
+  assert.equal(moveSay('Moves 05 and 966'), 'Move 05 and timely move'); assert.equal(moveSay('Move 05 · 1999 rupees'), 'Move 05 · 1999 rupees');
+  assert.match(src('feed-service.js'), /rest\.note = nt\.k \? \{ \.\.\.nt, k: moveSay\(nt\.k\) \}/);
+  assert.doesNotMatch(src('build.js'), /from Move \$\{pad\(e\.n\)\}/);
+  for (const f of ['public/app.js', 'public/jam-room.js']) assert.match(src(f), /\+n >= 100 \? 'Timely move'/, f);
+});
+test('a count before a singular SKU or PDP reads plural', () => {
+  assert.equal(dejargon('373 of 913 SKU are live'), '373 of 913 products are live'); assert.equal(dejargon('913 PDP'), '913 product pages'); assert.equal(dejargon('1 SKU is out'), '1 product is out');
+});
+
+/* plain words: no doubled swaps, no leftover "structured", the page plumbing and "page section" */
+test('search-info swaps never double up or keep "structured"; meta.json, collections.json, rich snippets and page section read plain', () => {
+  assert.equal(dejargon('Add Product schema structured data'), 'Add search-friendly product info');
+  assert.equal(dejargon('Deploy structured JSON-LD for every product'), 'Deploy search-friendly product info for every product');
+  assert.equal(dejargon('search-friendly product info search-friendly product info on every page'), 'search-friendly product info on every page');
+  assert.equal(dejargon('Read meta.json and collections.json'), 'Read your store details and your collection list');
+  assert.doesNotMatch(dejargon('Win rich snippets'), /snippet/);
+  assert.equal(dejargon('Page section: Traya alternative page'), 'Page: Traya alternative page');
+  assert.equal(dejargon('Build the page section layout in Shopify staging'), 'Build the page layout in Shopify staging');
+  assert.match(src('feed-service.js'), /why: \{ \.\.\.ev\.why, because: dejargon\(ev\.why\.because\), reasons: \(ev\.why\.reasons \|\| \[\]\)\.map\(dejargon\) \}/, 'the proof sheet’s lead line and reasons');
+  assert.match(src('feed-service.js'), /moves: ev\.moves\.map\(\(m\) => \(\{ \.\.\.m, title: dejargon\(m\.title\) \}\)\)/, '"How Brew worked it out"');
+});
+
+/* FEED-QA-21: a margin note is re-checked against the card as it reads now; live status cards get none */
+test('a stale count never rides on a card: "only 1 of 52 done" fails on "All 65 written"; build, lv and live cards get no note', () => {
+  assert.equal(noteOk({ k: 'build', h: 'only 1 of 52 done' }, { title: 'All 65 written', sub: '' }), false);
+  for (const id of ['build-moves', 'lv-meta-1', 'live-ga4']) assert.ok(NO_NOTE.test(id), id); assert.ok(!NO_NOTE.test('m21-1'));
+  assert.match(src('notes.js'), /!NO_NOTE\.test\(p\.id\)/); assert.match(src('feed-service.js'), /!NO_NOTE\.test\(c\.id\) && noteOk\(nt, c0\)/);
+});
