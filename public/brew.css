@@ -3083,3 +3083,4 @@ body.qf-on{overflow:hidden}
 @media (max-width:760px){.qf-top{grid-template-columns:1fr auto;padding:12px 16px}.qf-prog{grid-column:1/-1;grid-row:2;justify-content:center}.qf-mid{padding:12px 16px 32px}.qf-stage .ob2-grid.three{grid-template-columns:1fr 1fr}}
 .qf-stage .v2-hint{justify-content:center}
 .su-done .btn,.su-done .linkbtn{white-space:nowrap;flex:0 0 auto}
+.wb-whose{display:block;color:var(--fg-3);font-size:12.5px;line-height:16px;margin:0 0 2px}

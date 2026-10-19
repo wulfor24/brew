@@ -984,8 +984,18 @@
   const FROM_FAMILY = { 'rival-weakness': 'From your competitors', listening: 'From your customers', 'social-posts': 'For your socials', seo: 'From Google search', 'ai-seo': 'From AI answers', seasonal: 'Coming up on the calendar', weather: 'From the weather', 'price-offer': 'Prices and offers', cro: 'From your store', automation: 'Saves you time', result: 'Your results' };
   const FROM_SECTOR = { ads: 'From your ads', storefront: 'From your store', catalog: 'From your store', visibility: 'From AI answers', signals: 'From your customers' };
   const FROM_CAMPAIGN = { 'Popular ads': 'From your competitors', Trends: 'Trending in your category', 'How to': 'Step-by-step guide', 'More like this': 'More like what you liked', 'New from your agents': 'New idea for you', 'From your ad plan': 'From your ad plan' };
+  /* whose ad it is (FEED-NOT-02): a rival's ad says "Seen on <rival>"; once our version is drawn on it, "Our version of <rival>'s
+     ad"; an ad of ours says "Made for you". The rival's name: the card's own (rivalName), the studio's rival read, the make line
+     ("Our version of X's image ad") or the ad card's title ("X: live 30 days…"), so saved cards say it too */
+  const AD_FORMATS = new Set(['single image ad', 'carousel ad', 'collection ad', 'catalog ad', 'video ad', 'reel']);
+  const rivalOf = (c = {}) => { if (!(c.research?.kind === 'ad' || c.research?.ad || c.make?.from === 'rival')) return null;
+    return { name: c.rivalName || c.rival?.brand || (String(c.make?.what || '').match(/^Our version of (.+?)['’]s\b/) || [])[1] || (c.research?.kind === 'ad' ? (String(c.title || '').match(/^([^:]{2,40}):\s/) || [])[1] : '') || '' }; };
+  const oursOn = (c = {}) => !!(c.draft?.images?.length || c.draft?.video || c.take?.image);
+  const ourVersionOf = (n) => (n ? `Our version of ${n}’s ad` : 'Our version of a rival’s ad');
+  const whoseAd = (c = {}) => { const rv = rivalOf(c); if (rv && (c.research?.kind === 'ad' || c.make?.from === 'rival')) return oursOn(c) ? ourVersionOf(rv.name) : rv.name ? `Seen on ${rv.name}` : 'Seen on a rival’s ads';
+    if (!rv && (AD_FORMATS.has(c.make?.format) || /^static-/.test(String(c.id || '')) /* a finished static from the ad plan */) && (c.kind === 'media' || c.images?.length || oursOn(c))) return 'Made for you'; return ''; };
   const fromLabel = (c = {}) => {
-    const r = c.research?.kind;
+    const r = c.research?.kind, wa = whoseAd(c); if (wa) return wa;
     if (r === 'ad' || (c.type === 'competitor' && c.sector === 'ads')) return 'From your competitors';
     if (r === 'trend') return 'Trending in your category';
     if (r === 'howto') return 'Step-by-step guide';
@@ -2556,7 +2566,7 @@
   const tileHtml = (w) => `<article class="card wb-card${w.unread ? ' is-unread' : ''}" data-witem="${w.id}" tabindex="0">
       <header class="card-head">${face(w.agent || 'brew')}<div class="who"><b>${esc(AGENT[w.agent] || 'Brew')}</b><span>${ago(w.updatedAt)}</span></div>${wbBadge(w)}</header>
       ${w.img ? `<div class="media portrait"><img src="${esc(w.img)}" alt="" loading="lazy"></div>` : ''}
-      <div class="body"><h3>${w.unread ? '<i class="wb-new"></i>' : ''}${esc(wbTitle(w))}</h3>${wbBody(w)}</div>${wbFoot(w)}</article>`;
+      <div class="body">${rivalOf(w.cardSnap || {}) ? `<small class="wb-whose">${esc(ourVersionOf(rivalOf(w.cardSnap).name))}</small>` : ''}<h3>${w.unread ? '<i class="wb-new"></i>' : ''}${esc(wbTitle(w))}</h3>${wbBody(w)}</div>${wbFoot(w)}</article>`;
   const wbStrip = (w) => { const say = w.stage === 'needs_you' ? `Answer ${esc(w.with?.name || 'them')}` : w.stage === 'team' ? `With ${esc(w.with?.name || 'your team')}` : w.stage === 'ready' ? 'Approved · share the brief' : w.stage === 'shared' ? `Brief shared${w.ticket ? ' · ' + esc(w.ticket) : ''}` : w.versions?.length > 1 ? `Draft v${w.current} of ${w.versions.length}` : 'Draft';
     return `<div class="wb-strip is-${esc(w.stage)}">${w.unread ? '<i class="wb-new"></i>' : ''}<b>${say}</b><span>${ago(w.updatedAt)}</span>${ic('right', 's14')}</div>`; };
   const workTile = (w) => { const p = w.cardId && byId(w.cardId), i = p ? FEED.indexOf(p) : -1;
@@ -4227,6 +4237,8 @@
         return w?.stage === 'shared' && jb?.to !== 'team' ? `<span class="j2-sent">${ic('check', 's16')}Sent to the ShopOS team${w.ticket ? ` · ${esc(w.ticket)}` : ''}${it?.label ? ` · ${esc(it.label)}` : ''}</span>` : `<button class="btn btn-ghost" data-rx="share-team">Share with my team</button><button class="btn btn-primary" data-rx="share-shopos">${ic('send', 's16')}Send brief</button>`; })()}</footer></aside>`;
   const j2Adjust = (ch, edit) => `<div class="j2-scrim" data-tab="iterate"></div><aside class="j2-sheet j2-adjust" role="dialog" aria-label="Adjust"><header class="j2-sh-h"><b>${ic('sliders', 's16')}Adjust</b><button class="icon-btn" data-tab="iterate" aria-label="Close">${ic('x', 's18')}</button></header><div class="j2-sh-b">${adjustTab(ch, edit)}</div></aside>`;
   const j2Moves = async (p) => { if (!p || RX.movesFor === p.id) return; RX.movesFor = p.id; RX.moves = []; const r = await tapi('GET', `/api/cards/${encodeURIComponent(p.id)}/moves`).catch(() => ({})); if (RX.movesFor !== p.id) return; RX.moves = r.moves || []; if (RX.moves.length && view === 'remix') paintStudio(); };
+  /* the studio says where its draft came from: a rival's ad → "Our version of <rival>'s ad" (FEED-NOT-02), else the card */
+  const studioFrom = (ch) => { const rv = rivalOf(RX.p ? cardOf(RX.p) : {}) || (ch.rival ? { name: ch.rival.brand || '' } : null); return rv ? esc(ourVersionOf(rv.name || ch.rival?.brand || '')) : `from “${esc(String(ch.before.title || '').slice(0, 70))}”`; };
   const paintStudio = () => {
     const pg = $('#view .std'); const ch = RX.ch; if (!pg || !ch) return;
     window.__GR = { Original: 'none', Warm: 'sepia(.25) saturate(1.25) hue-rotate(-8deg)', Quiet: 'saturate(.6) brightness(1.05) contrast(.92)', Vivid: 'saturate(1.6) contrast(1.08)', 'Golden hour': 'sepia(.45) saturate(1.4) brightness(1.05)' };
@@ -4246,14 +4258,14 @@
           <div class="j2-who">${face(ch.agent)}<b>${esc(AGENT[ch.agent] || 'Brew')}</b><span class="j2-st ${tone}">${esc(stx)}</span></div>${studioJamCtl()}
           <div class="st-vwrap"><button class="st-vpill${RX.vmenu ? ' is-open' : ''}" data-vmenu aria-haspopup="dialog" aria-expanded="${!!RX.vmenu}" title="Version history">${ic('clock', 's14')}<b class="st-vcount">v${curN(ch)}${ch.versions.length > 1 ? ` of ${ch.versions.length}` : ''}</b>${ic('chev', 's14')}</button>${RX.vmenu ? `<div class="st-vmenu" role="dialog" aria-label="Version history"><div class="st-vmenu-h"><b>Versions</b><small>${ch.versions.length} saved · nothing is ever lost</small></div><div class="st-vmenu-b">${historyTab(ch)}</div></div>` : ''}</div>${themeBtn()}<button class="icon-btn st-more" aria-label="More" data-lmenu="remix:${esc(ch.id)}">${ic('more', 's16')}</button></header>
         <div class="st-body j2-body"><aside class="st-panel j2-panel"><div class="st-panel-b is-chat j2-scroll">
-          <section class="j2-draft"><div class="j2-title"><b>${esc(ch.actionLabel)}${ch.target.conn && ch.target.name ? ` <span>on ${esc(ch.target.name)}</span>` : ''}</b><small>${esc(ch.familyName)} · from “${esc(String(ch.before.title || '').slice(0, 70))}”</small></div>
+          <section class="j2-draft"><div class="j2-title"><b>${esc(ch.actionLabel)}${ch.target.conn && ch.target.name ? ` <span>on ${esc(ch.target.name)}</span>` : ''}</b><small>${esc(ch.familyName)} · ${studioFrom(ch)}</small></div>
             <main class="st-canvas j2-canvas"><div class="st-asset${ch.copyPending ? ' is-writing' : ''}">${ch.copyPending ? `<p class="st-writing" role="status"><span class="spin"></span>Writing the first draft from the card…</p>` : ''}${!ch.copyPending && ch.ctaPending ? `<p class="st-writing" role="status"><span class="spin"></span>${esc(ch.ctaPending)}…</p>` : ''}${assetHtml(pkgCh, 'lg')}</div>${phTools(ch, pkgCh, viewing)}${timeline(ch, viewing)}</main>
             ${rivalReadHtml(ch)}${j2Facts(ch, pkgCh)}${shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh))}</section>
           ${chatTab(ch, edit)}</div></aside></div>
         ${tab === 'details' ? j2Brief(ch, pkgCh, edit) : tab === 'adjust' ? j2Adjust(ch, edit) : ''}`;
     } else
     pg.innerHTML = `<header class="st-top"><button class="q-back" data-st-back>${ic('left', 's16')}${ch.batchKey ? `All ${RX.p?.images?.length || ''} ads` : SPLIT ? 'Back' : 'Packages'}</button>
-        <div class="st-ttl"><b>${esc(ch.actionLabel)}${ch.target.conn && ch.target.name ? ` <span>on ${esc(ch.target.name)}</span>` : ''}</b><small>${face(ch.agent)}${esc(ch.familyName)} · from “${esc(String(ch.before.title || '').slice(0, 70))}”</small></div>${studioJamCtl()}
+        <div class="st-ttl"><b>${esc(ch.actionLabel)}${ch.target.conn && ch.target.name ? ` <span>on ${esc(ch.target.name)}</span>` : ''}</b><small>${face(ch.agent)}${esc(ch.familyName)} · ${studioFrom(ch)}</small></div>${studioJamCtl()}
         <div class="st-vwrap"><button class="st-vpill${RX.vmenu ? ' is-open' : ''}" data-vmenu aria-haspopup="dialog" aria-expanded="${!!RX.vmenu}" title="Version history">${ic('clock', 's14')}<span>History</span>${ic('chev', 's14')}</button>${RX.vmenu ? `<div class="st-vmenu" role="dialog" aria-label="Version history"><div class="st-vmenu-h"><b>Versions</b><small>${ch.versions.length} saved · nothing is ever lost</small></div><div class="st-vmenu-b">${historyTab(ch)}</div></div>` : ''}</div>${themeBtn()}<button class="icon-btn st-more" aria-label="More" data-lmenu="remix:${esc(ch.id)}">${ic('more', 's16')}</button></header>
       <div class="st-body">
         <main class="st-canvas">${rivalReadHtml(ch)}${optTabs(ch, viewing)}<div class="st-asset${ch.copyPending ? ' is-writing' : ''}">${ch.copyPending ? `<p class="st-writing" role="status"><span class="spin"></span>Writing the first draft from the card…</p>` : ''}${!ch.copyPending && ch.ctaPending ? `<p class="st-writing" role="status"><span class="spin"></span>${esc(ch.ctaPending)}…</p>` : ''}${assetHtml(pkgCh, 'lg')}</div>${phTools(ch, pkgCh, viewing)}${shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh))}</main>
