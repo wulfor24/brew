@@ -232,3 +232,23 @@ test('FEED-NOT-05: two near-simultaneous starts (two tabs, or two instances) mak
   /* a refusal on the first never blocks the second: each is judged on its own */
   const [e1] = await Promise.all([a.start('not a site', {})]); assert.match(e1.error, /look like a website/);
 });
+
+/* ---------- MOB-05: the seed is not rebuilt on every page load ---------- */
+test('MOB-05: a fresh brand load is reused while the pack is unchanged, and rebuilt the moment anything is written to it', async () => {
+  const os = await import('node:os'), path = await import('node:path');
+  const { createPacks } = await import('../brand-pack.js');
+  const quiet = { log() {}, warn() {}, error() {}, info() {} };
+  const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'brew-qa-seed-')), P = createPacks({ ROOT, PUB: new URL('../public', import.meta.url).pathname, bucket: null, gToken: null, log: quiet }), slug = 'seed-example-com';
+  await P.put(slug, 'seed.json', { brand: { name: 'Acme', host: 'acme.in', mark: 'm.svg' }, lanes: { core: { name: 'Core', line: 'x' } }, posts: [{ id: 'c1', title: 'One', type: 'idea' }] });
+  await P.put(slug, 'status.json', { slug, name: 'Acme', ready: true });
+  const a = await P.load(slug, { fresh: true, share: true });
+  await new Promise((r) => setTimeout(r, 3100)); /* past the old 3 s window */
+  const b = await P.load(slug, { fresh: true, share: true });
+  assert.equal(b, a, 'nothing written: the same load is served');
+  const v = P.version(slug); await P.put(slug, 'seed.json', { brand: { name: 'Acme', host: 'acme.in', mark: 'm.svg' }, lanes: { core: { name: 'Core', line: 'x' } }, posts: [{ id: 'c2', title: 'Two', type: 'idea' }] });
+  assert.ok(P.version(slug) > v, 'a write moves the version on');
+  const c = await P.load(slug, { fresh: true, share: true });
+  assert.notEqual(c, a); assert.deepEqual(c.seed.posts.map((x) => x.id), ['c2'], 'the next load is fresh');
+  P.drop(slug); assert.notEqual(await P.load(slug, { fresh: true, share: true }), c, 'drop() forces a fresh load too');
+  assert.match(src('server.js'), /loadBrand\(slug, \{ fresh: true, share: true \}\)/, 'seed.js and facts.js use the shared fresh load');
+});

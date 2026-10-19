@@ -19,7 +19,7 @@ import { aboutOf, OLD_ABOUT } from './derive.js'; // a saved config.about writte
 import { prototypeConnectors } from './seed-template.js'; // DUMMY: connector copy that promises no action
 import { sentenceCase, oneCard } from './text-fit.js';
 import { withLearned, learnedMoveNs, learnedTerms } from './brand-learnings.js'; // what the team told Brew (pasted into a jam): in every prompt's system text
-import { sandboxName, virtualFile } from './demo-mode.js'; // Demo Mode: per-session private files
+import { sandboxName, virtualFile, demoSid } from './demo-mode.js'; // Demo Mode: per-session private files
 
 /* the raw material of a hook, for every draft plan (drafts.js hookBlock), for every brand: real review lines (top 5, at most
    120 characters, the read's chosen quotes first, no low ratings) and the three rival ads live longest (days, format, their
@@ -120,6 +120,8 @@ import { wiping, retireReady } from './retire.js'; // a brand being reset is nev
 export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
   const DIR = path.join(ROOT, '.brands'); fs.mkdirSync(DIR, { recursive: true });
   const cache = new Map();
+  /* every write to a pack moves its version on (put, drop): a fresh load is reused while nothing was written to the pack */
+  const vers = new Map(), ver = (slug) => vers.get(slug) || 0, bump = (slug) => vers.set(slug, ver(slug) + 1);
   const remote = !!(process.env.K_SERVICE && bucket && gToken);
   const gcsGet = async (name) => { const tk = await gToken(); const r = await fetch(`https://storage.googleapis.com/storage/v1/b/${bucket}/o/${encodeURIComponent(name)}?alt=media`, { headers: { authorization: `Bearer ${tk}` }, signal: AbortSignal.timeout(30e3) }); if (r.status === 404) return null; if (!r.ok) throw new Error(`gcs get ${name} ${r.status}`); return Buffer.from(await r.arrayBuffer()); };
   const gcsPut = async (name, buf, type = 'application/json') => { const tk = await gToken(); const r = await fetch(`https://storage.googleapis.com/upload/storage/v1/b/${bucket}/o?uploadType=media&name=${encodeURIComponent(name)}`, { method: 'POST', headers: { authorization: `Bearer ${tk}`, 'content-type': type }, body: buf, signal: AbortSignal.timeout(60e3) }); if (!r.ok) throw new Error(`gcs put ${name} ${r.status}`); };
@@ -136,7 +138,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
     const f = fileOf(slug, name); fs.mkdirSync(path.dirname(f), { recursive: true });
     // bytes may come as a Uint8Array (a browser screenshot), not a Buffer: never JSON them
     const buf = Buffer.isBuffer(data) ? data : data instanceof Uint8Array || data instanceof ArrayBuffer ? Buffer.from(data) : Buffer.from(typeof data === 'string' ? data : JSON.stringify(data, null, 1));
-    fs.writeFileSync(f, buf);
+    fs.writeFileSync(f, buf); bump(slug);
     if (remote) await gcsPut(`brands/${slug}/${name}`, buf, type || (name.endsWith('.json') ? 'application/json' : undefined)).catch((e) => log.warn('[packs] gcs put', name, e.message));
     return f;
   };
@@ -302,14 +304,18 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
     });
   }
 
-  /* a fresh load is shared for a few seconds: the page asks for seed.js and facts.js together, and both want it fresh */
-  const freshP = new Map();
+  /* a fresh load is shared: the page asks for seed.js and facts.js together, and both want it fresh. It is reused while the
+     pack's version (every put on this instance) is unchanged, for at most FRESH_MS (a write another instance made shows within
+     that), so a page load no longer rebuilds the whole seed each time (MOB-05: ~0.35 s a load for a big pack) */
+  const freshP = new Map(), FRESH_MS = +process.env.SEED_CACHE_MS || 60e3;
   async function load(slug, { fresh = false, share = false } = {}) {
     if (!slug) return null;
     if (!fresh && cache.has(slug)) return cache.get(slug);
-    const f0 = share && freshP.get(slug); if (f0 && Date.now() - f0.at < 3000) return f0.p;
+    const key = `${slug}|${demoSid() || ''}`; /* the demo site: each visitor's sandbox is its own */
+    const f0 = share && freshP.get(key); if (f0 && (Date.now() - f0.at < 3000 || (f0.v === ver(slug) && Date.now() - f0.at < FRESH_MS))) return f0.p;
+    const v0 = ver(slug);
     const p0 = (async () => { const p = slug === DEFAULT ? loadDefault() : await loadGenerated(slug); if (p) cache.set(slug, p); return p; })();
-    if (share) { freshP.set(slug, { at: Date.now(), p: p0 }); p0.catch(() => freshP.delete(slug)); if (freshP.size > 200) freshP.clear(); }
+    if (share) { freshP.set(key, { at: Date.now(), p: p0, v: v0 }); p0.catch(() => freshP.delete(key)); if (freshP.size > 200) freshP.clear(); }
     return p0;
   }
   const peek = (slug) => cache.get(slug) || null;
@@ -326,5 +332,5 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
   }
   /* the first drafts of every loaded brand, re-read from the bucket: a draft made on another instance shows here too, the same on every refresh */
   const refreshDrafts = async () => { for (const [slug, p] of cache) { if (p?.kind !== 'generated') continue; const d = await getFreshJSON(slug, 'drafts/cards.json', null).catch(() => null); if (d && typeof d === 'object') p.firstDrafts = d; } };
-  return { load, peek, put, get, getJSON, getFreshJSON, listFiles, refreshDrafts, assetFile, list, dirOf, clientFacts, clientSeed, drop: (slug) => cache.delete(slug), remote };
+  return { load, peek, put, get, getJSON, getFreshJSON, listFiles, refreshDrafts, assetFile, list, dirOf, clientFacts, clientSeed, drop: (slug) => { bump(slug); for (const k of freshP.keys()) if (k.startsWith(`${slug}|`)) freshP.delete(k); return cache.delete(slug); }, version: ver, remote };
 }
