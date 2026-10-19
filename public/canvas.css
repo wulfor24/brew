@@ -814,6 +814,12 @@ body[data-view="remix"] .fab{display:none}
 /* a jam opens on the card's own package at once; its first draft is written behind it (one quiet pill, the ad faded) */
 .st-asset.is-writing{position:relative}
 .st-asset.is-writing > :not(.st-writing){opacity:.55;transition:opacity .3s}
+/* while the first draft is written, the stage's words are placeholders built from the store's facts, not the AI's draft: they
+   show as bars, never as copy that looks written (Param, 19 Oct). Pictures stay as they are */
+.st-asset.is-writing > :not(.st-writing) :is(p,h1,h2,h3,h4,h5,h6,li,dd,dt,td,th,blockquote,figcaption,small,b,strong,em,i,span,a,label,div){color:transparent!important;text-shadow:none!important;-webkit-text-fill-color:transparent}
+.st-asset.is-writing > :not(.st-writing) :is(p,h1,h2,h3,h4,h5,h6,li,dd,blockquote,figcaption):not(:has(img,video,svg)){background:color-mix(in srgb,var(--fg-2) 13%,transparent);border-radius:6px;animation:stSkel 1.4s ease-in-out infinite}
+@keyframes stSkel{50%{opacity:.55}}
+@media (prefers-reduced-motion:reduce){.st-asset.is-writing > :not(.st-writing) *{animation:none!important}}
 .st-writing{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:3;display:inline-flex;gap:8px;align-items:center;margin:0;padding:6px 12px;border-radius:999px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line),0 4px 14px rgba(0,0,0,.08);color:var(--fg-2);font-size:13px;line-height:17px;white-space:nowrap}
 .st-writing .spin{width:11px;height:11px}
 

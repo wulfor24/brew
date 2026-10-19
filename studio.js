@@ -1,5 +1,5 @@
 import { B, BN, BH, CTRY } from './brand-ctx.js';
-import { matchProduct } from './product-match.js';
+import { matchProduct, sceneOf } from './product-match.js';
 // Remix studio: what each kind of change is, as a commission-ready package.
 // Every action belongs to a family. A family says which fields the channel needs (FIELDS), which knobs you can turn
 // on it (KNOBS), how it renders as a card-sized "after" (afterFromPkg), and what counts as complete (missing).
@@ -464,33 +464,33 @@ export const mockPkg = (family, action, c, i = 0, angle = '', F = {}) => {
 // offline: the multi-part formats, from the product facts (no claim the site doesn't make)
 const lanesOf = (c, F) => { const LP = B()?.config?.laneProducts; return LP ? Object.values(LP) : [productFor(c, F)]; };
 const multiPkg = (act, c, F) => {
-  const P = productFor(c, F), all = lanesOf(c, F);
-  if (act === 'carousel_ad') return { cards: [{ headline: String(P.hook || P.name).slice(0, 40), text: P.claim || P.name, imageBrief: P.photo, link: P.page }, ...all.filter((x) => x.name !== P.name).slice(0, 3).map((x) => ({ headline: String(x.short || x.name).replace(/^the /, '').slice(0, 40), text: x.price ? `${x.name}, ${x.price}` : x.name, imageBrief: x.photo, link: x.page }))], format: '1:1' };
+  const P = tplProduct(c, F), all = lanesOf(c, F);
+  if (act === 'carousel_ad') return { cards: [{ headline: wcut(P.hook || P.name, 40), text: P.claim || P.name, imageBrief: P.photo, link: P.page }, ...all.filter((x) => x.name !== P.name).slice(0, 3).map((x) => ({ headline: String(x.short || x.name).replace(/^the /, '').slice(0, 40), text: x.price ? `${x.name}, ${x.price}` : x.name, imageBrief: x.photo, link: x.page }))], format: '1:1' };
   if (act === 'collection_ad') return { products: all.slice(0, 6).map((x) => x.name), instantPage: `The ${BN()} range, best sellers first` };
-  if (act === 'catalog_ad') return { productSet: 'Every in-stock best seller', frame: P.hook ? String(P.hook).slice(0, 40) : `${BN()} · free delivery` };
+  if (act === 'catalog_ad') return { productSet: 'Every in-stock best seller', frame: P.hook ? wcut(P.hook, 40) : `${BN()} · free delivery` };
   return {};
 };
 const socialPkg = (act, c, i, F) => {
-  const P = productFor(c, F), hook = P.hook || c.title || P.name, handle = '@' + String(BN()).toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const P = tplProduct(c, F), hook = P.hook, handle = '@' + String(BN()).toLowerCase().replace(/[^a-z0-9]+/g, '');
   const tags = [`#${String(BN()).replace(/\W+/g, '')}`];
-  if (act === 'ig_post') return { account: handle, overlay: String(hook).slice(0, 50), imageBrief: P.photo, caption: `${hook}.\n\n${P.name}.${P.claim ? ' ' + P.claim + '.' : ''}\n\nTell us what you want to see next.`, hashtags: tags, format: '4:5', postAt: 'Thursday 7 pm' };
+  if (act === 'ig_post') return { account: handle, overlay: wcut(hook, 50), imageBrief: P.photo, caption: `${P.lead ? `${P.lead}.\n\n` : ''}${P.name}.${P.claim ? ' ' + P.claim.replace(/[.!]+$/, '') + '.' : ''}\n\nTell us what you want to see next.`, hashtags: tags, format: '4:5', postAt: 'Thursday 7 pm' };
   const steps = (c.detail?.how || []).slice(0, 3);
-  const slides = [{ onSlide: String(c.title || hook).slice(0, 70), imageBrief: P.photo }, ...steps.map((x) => ({ onSlide: x, imageBrief: P.photo })), { onSlide: act === 'ig_story' ? 'Which one is you? Vote below' : 'Save this for later', imageBrief: P.photo }];
+  const slides = [{ onSlide: wcut(c.title || hook, 70), imageBrief: P.photo }, ...steps.map((x) => ({ onSlide: x, imageBrief: P.photo })), { onSlide: act === 'ig_story' ? 'Which one is you? Vote below' : 'Save this for later', imageBrief: P.photo }];
   return { account: handle, slides, caption: `${hook}.\n\n${(c.detail?.why || []).slice(0, 2).join(' ')}`.trim(), hashtags: tags, ...(act === 'ig_story' ? { stickers: 'A poll on the last story' } : {}), format: act === 'ig_story' ? '9:16' : '4:5', postAt: 'Thursday 7 pm' };
 };
 // any other brand, offline: the same shapes, written only from the catalog (no claim the site doesn't make)
 const genericPkg = (family, action, c, i = 0, angle = '', F = {}) => {
-  const P = productFor(c, F), act = String(action).split('.').pop(), N = BN(), sym = B().sym || '';
+  const P = tplProduct(c, F), act = String(action).split('.').pop(), N = BN(), sym = B().sym || '';
   if (family === 'meta_ops' && opsPkg(act, c)) return opsPkg(act, c);
   if (act === 'fix_links') return linksPkg(c);
-  const claim = P.claim ? ` ${P.claim}.` : '', hook = P.hook || c.title || P.name;
+  const claim = P.claim ? ` ${P.claim.replace(/[.!]+$/, '')}.` : '', hook = P.hook;
   const sh = P.short.replace(/^the /, '');
-  if (family === 'meta_ad') return { primaryText: `${hook}. ${P.name}${P.price ? `, ${P.price}` : ''}.${claim}`, headline: String(hook).slice(0, 40), description: 'Shop the range', overlay: hook, cta: act === 'whatsapp_ad' ? 'Send WhatsApp message' : 'Shop now', ...(act === 'whatsapp_ad' ? { chat: [{ from: 'in', text: `Hi, I want to know about ${P.short}` }, { from: 'out', text: `Hi! ${P.name}${P.price ? ` is ${P.price}` : ''}.${claim}` }] } : {}), imageBrief: P.photo, format: '4:5', audience: `${CTRY()}, people interested in ${B().config.category || 'the category'}`, placements: 'Instagram and Facebook feeds, Reels', adSet: `${sh} | Broad | ${act === 'new_test' ? 'Test' : 'Feed'}`, schedule: 'Starts tomorrow, read after 7 days', utm: `${P.page}?utm_source=meta&utm_campaign=remix` };
+  if (family === 'meta_ad') return { primaryText: `${P.lead ? `${P.lead}. ` : ''}${P.name}${P.price ? `, ${P.price}` : ''}.${claim}`, headline: wcut(hook, 40), description: 'Shop the range', overlay: hook, cta: act === 'whatsapp_ad' ? 'Send WhatsApp message' : 'Shop now', ...(act === 'whatsapp_ad' ? { chat: [{ from: 'in', text: `Hi, I want to know about ${P.short}` }, { from: 'out', text: `Hi! ${P.name}${P.price ? ` is ${P.price}` : ''}.${claim}` }] } : {}), imageBrief: P.photo, format: '4:5', audience: `${CTRY()}, people interested in ${B().config.category || 'the category'}`, placements: 'Instagram and Facebook feeds, Reels', adSet: `${sh} | Broad | ${act === 'new_test' ? 'Test' : 'Feed'}`, schedule: 'Starts tomorrow, read after 7 days', utm: `${P.page}?utm_source=meta&utm_campaign=remix` };
   if (family === 'meta_ops') return { summary: `${angle ? angle + ': ' : ''}${ACT_LABEL[act] || 'Change'} on the ${sh} campaign`, items: [`${sh} | Broad | Feed`, `${sh} | Retargeting 30d`].map((name) => ({ name, now: 'As set today', next: act === 'pause_losers' ? 'Paused if above target' : 'Changed by the rule' })), rule: 'Pause any ad set whose cost per first order stays above target for 48 hours', checkAt: 'Every morning at 9', spendChangeWeek: 0 };
   if (family === 'store') return { pages: P.page, section: i % 2 ? 'Top of the product description' : 'End of the product description', heading: hook, body: `${P.name}.${claim}`.trim(), bullets: (c.detail?.how || []).slice(0, 3) };
   if (family === 'vis') return { file: act === 'llms_txt' ? `${BH()}/llms.txt` : act === 'schema_fix' ? `Product markup (JSON-LD) on ${BH()} product pages` : `${BH()}/pages/faq`, entries: [{ q: c.q || `Is ${P.name} good?`, a: `${P.name}${P.price ? ` costs ${P.price} on ${BH()}` : ''}.${claim}`, source: 'Product page' }], asOf: 'As of today' };
   if (family === 'crm') return { channel: act === 'flow_copy' || act === 'review_ask' ? 'WhatsApp' : 'Email', flow: 'Second order flow, step 1', trigger: 'Day 21 after delivery', segment: 'Opted-in buyers', exclusions: 'Returns, anyone who ordered this week', subject: `How is ${P.short} going?`, message: act === 'review_ask' ? `Hi {first_name}, how is ${P.short} going? A quick review helps others decide.` : `Hi {first_name}, how is ${P.short} going? Need more before it runs out?`, buttons: act === 'review_ask' ? ['Write a review', 'Ask a question'] : ['Reorder', 'Ask a question'] };
-  if (family === 'search') return { adGroup: `${sh} | Problem | Phrase`, keywords: (B().config.terms?.[0] || []).slice(0, 3).map((k) => `"${k}" (phrase)`), negatives: ['free', 'diy'], headlines: [String(hook).slice(0, 30), `${sh}${P.price ? ', ' + P.price : ''}`.slice(0, 30)], descriptions: [`${P.name}.${claim}`.slice(0, 90)], finalUrl: P.page, bidding: 'Maximise conversions, target cost per order from the plan' };
+  if (family === 'search') return { adGroup: `${sh} | Problem | Phrase`, keywords: (B().config.terms?.[0] || []).slice(0, 3).map((k) => `"${k}" (phrase)`), negatives: ['free', 'diy'], headlines: [wcut(hook, 30), `${sh}${P.price ? ', ' + P.price : ''}`.slice(0, 30)], descriptions: [`${P.name}.${claim}`.slice(0, 90)], finalUrl: P.page, bidding: 'Maximise conversions, target cost per order from the plan' };
   if (family === 'listing') return { product: P.name, name: `${N} ${P.name}`, items: (B().config.marketplaces || ['Amazon']).map((m) => ({ marketplace: m, now: 'As listed today', new: `${N} ${P.name}` })), bullets: [P.claim].filter(Boolean), images: 'The same images on every listing, product first', searchTerms: (B().config.terms?.[0] || []).slice(0, 3).join(', ') };
   if (family === 'brief') return { title: `${hook}: a 30-second film`, deliverables: ['One 30s film, 9:16', 'Two 15s cuts, 9:16 and 4:5'], scenes: [{ shot: 'Close-up: the product in hand', line: hook }, { shot: 'In use', line: P.claim || P.name }, { shot: 'Pack shot with price', line: `${P.name}${P.price ? ', ' + P.price : ''}.` }], talent: 'To confirm', location: 'To confirm', deadline: 'This week' };
   if (family === 'setup') return { tool: 'Store and ad tracking', what: c.title || 'Change a setting', steps: (c.detail?.how || ['Change the setting', 'Test a full order on mobile', 'Watch for 7 days']).slice(0, 4), verify: 'Before and after, the same number', customerSees: 'Nothing changes for customers' };
@@ -584,8 +584,43 @@ export const ACTION_GUARD = {
    words win: "Snugglet Toe Toasters plugged into a laptop" is about the Toe Toasters, whatever the lane says. `extra` is
    text read first (a package's own words, for a remake), then the card's title, body, make pieces, why/how and plan */
 export const cardWords = (c = {}) => [c.title, c.sub, c.make?.pieces, ...(c.detail?.why || []), ...(c.detail?.how || []), ...(Array.isArray(c.plan?.steps) ? c.plan.steps.map((x) => (typeof x === 'string' ? x : x?.t)) : [])].filter((x) => typeof x === 'string' && x).join('. ');
+/* a video card about paid ads (a Meta video ad, ad costs, the live ads) is a Meta video ad, not an organic Reels post: the jam
+   says so, the writer writes it for Reels and Stories placements, and the brief goes to Ads Manager (Param, 19 Oct: "Refresh
+   MitoActive serum video hooks weekly", a card about the brand's live Meta video ads, opened as an Instagram Reels and YouTube
+   Shorts post). An idea from the stream (c.post) or a card that asks for a reel stays organic */
+const AD_TALK = /\b(?:meta|facebook|instagram)\s+(?:video\s+)?ads?\b|\bvideo\s+ads?\b|\bads?\s+(?:manager|account|costs?|spend|library)\b|\blive\s+ads\b|\bpaid\s+(?:social|video)\b|\b(?:CPM|CTR|ROAS|CPA|hook rate|thumb-?stop)\b/i;
+export const isAdVideo = (c = {}) => !!c && !c.post && (c.make?.format === 'video ad' || (c.make?.format !== 'reel' && AD_TALK.test(cardWords(c))));
+/* "Add to the live test" only when the card is about a test that runs; any other ad idea makes new ads */
+export const namesLiveTest = (c = {}) => /\b(?:live|running|current|existing|ongoing)\s+(?:meta\s+)?(?:ad\s+)?tests?\b|\btest\s+(?:ad\s+set|campaign|budget)\b|META_Test|\b(?:in|to|into)\s+the\s+(?:meta\s+)?test\b|\bA\/B\b/i.test(cardWords(c)) || (c.images || []).length >= 3;
+/* a store claim as the site prints it can carry footnote marks ("growth in 84 days 1 and", "by up to 95% 2 .."): they go, so
+   the words Brew starts from read as copy. "Pack of 2", "Day 1", "Buy 2" keep their numbers */
+const FOOT = /(?<=[a-z%)])(?<!\b(?:of|for|in|x|buy|get|pack|set|with|to|and|or|step|day|no|vol|size|version|gen|top|under|over|by|at|pick|save|only|just|from))\s+[1-9](?:\s*,\s*[1-9])*(?=\s*(?:\.+|,|;|\band\b|\bor\b|$))/gi;
+export const cleanClaim = (x) => String(x || '').replace(/(?<=\S)[¹²³⁴⁵⁶⁷⁸⁹⁰†‡]+/g, '').replace(FOOT, '').replace(/\s*\.(?:\s*\.)+/g, '.').replace(/\s+([.,;])/g, '$1').replace(/\s+/g, ' ').trim();
+/* the claim's first sentence, whole words only (it used to be cut at 60 characters, mid-word) */
+const firstLine = (x, n = 70) => { const s1 = String(x || '').split(/(?<=[.!?])\s+/)[0].replace(/[.!?]+$/, '').trim(); return s1.length <= n ? s1 : ''; };
+/* a hook that stops mid-phrase ("…powered by", "…has shown up to") is no hook: the product's name stands in */
+const DANGLE = /\b(?:by|with|and|or|of|to|for|the|a|an|in|on|at|up|from|than|as|is|are|was|has|have|had|shown|our|your|its|their)$/i;
+const wholeHook = (h, name) => { h = String(h || '').trim().replace(/[,;:–-]+$/, ''); return h && !DANGLE.test(h) ? h : name; };
 const asProduct = (m) => { const LP = B()?.config?.laneProducts || {}, lane = Object.values(LP).find((x) => x?.name === m.t);
-  return lane ? { ...lane, img: m.img || lane.img || null } : { name: m.t, short: m.t, price: m.price || '', claim: m.claim || '', hook: m.claim ? String(m.claim).slice(0, 60) : m.t, page: m.url || BH(), photo: `The ${m.t} on a clean surface, soft daylight, calm space at the top.`, pack: '', img: m.img || null }; };
+  if (lane) return { ...lane, claim: cleanClaim(lane.claim), hook: wholeHook(cleanClaim(lane.hook), lane.name), img: m.img || lane.img || null };
+  const claim = cleanClaim(m.claim);
+  return { name: m.t, short: m.t, price: m.price || '', claim, hook: wholeHook(firstLine(claim), m.t), page: m.url || BH(), photo: `The ${m.t} on a clean surface, soft daylight, calm space at the top.`, pack: '', img: m.img || null }; };
+/* the starting package (on the stage while the first draft is written, and kept when it can't be) tells the card's story with
+   the product's facts, for every family (Param, 19 Oct: the ad said "As per clinical trials, 87%…" twice, with the site's
+   footnote marks, under a card about a light serum against heavy oils):
+   - the hook is the card's own line when it reads as something a shopper could see (no internal words, not an instruction to
+     the team), else the product's first claim line
+   - the claim is never said twice: when it opens with the hook, the body carries the claim once (lead)
+   - the picture brief is the scene the card asks for (sceneOf: make.pieces, else its picture how-step), else a plain pack shot */
+const OPS_VERB = /^(refresh|rotate|pause|scale|launch|fix|add|swap|test|run|set|move|shift|cut|raise|lower|restart|turn|publish|update|export|track|stop|send|build|queue|make|draft|write|create|review|check|ask|reply|lead|open|start|use|try|put|keep|drop|retire|reuse|repurpose|answer|post|get|win|own|claim|list|push|bring|close|grow|double|split|bundle|price|offer|show|pin|tag|reach|target|retarget)\b/i;
+const NOT_PUBLIC = /\b(costs?|times|than|vs|versus|cheaper|pricier|per (?:ml|g|kg|unit|wear)|margins?|share|ads?|ad set|campaigns?|creatives?|hooks?|tests?|audiences?|budgets?|posts?|reels?|pages?|listings?|emails?|flows?|segments?|feed|brief|watcher|rivals?|competitors?|search|SEO|CTR|CPC|CPM|spend|orders?|sales|traffic)\b/i;
+const rivalNamed = (t) => Object.keys(B()?.rivalPages || {}).some((r) => r && r.length > 2 && new RegExp(`\\b${r.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(t));
+export const cardHook = (c = {}) => { const t = String(c.title || '').replace(/\s+/g, ' ').trim(); return t && t.length <= 70 && !INTERNAL.test(t) && !OPS_VERB.test(t) && !NOT_PUBLIC.test(t) && !/[’']s\s+(?:serum|price|ads?)\b/i.test(t) && !rivalNamed(t) ? t.replace(/[.!]+$/, '') : ''; };
+/* a hook cut to a field's limit at a word, never mid-word ("…with our ₹1") */
+const wcut = (x, n) => { x = String(x || '').trim(); return x.length <= n ? x : x.slice(0, n + 1).replace(/\s+\S*$/, '').replace(/[\s,;:&+–-]+$/, '').trim() || x.slice(0, n); };
+const leadOf = (hook, claim, name) => (!hook || (name && hook.toLowerCase() === String(name).toLowerCase()) || (claim && claim.toLowerCase().startsWith(hook.toLowerCase().replace(/[.!?]+$/, ''))) ? '' : hook); /* the name is said right after it; the claim says it itself */
+const tplProduct = (c, F) => { const P = productFor(c, F), hook = cardHook(c) || wholeHook(cleanClaim(P.hook), P.name) || c.title || P.name, sc = sceneOf(c);
+  return { ...P, claim: cleanClaim(P.claim), hook, lead: leadOf(hook, cleanClaim(P.claim), P.name), photo: sc ? `The ${P.name}: ${sc}. Natural light, the label readable.` : P.photo }; };
 export const productFor = (c = {}, F, extra = '') => {
   const cat = B()?.catalog, brand = BN() || '';
   if (cat?.length) for (const text of [extra, cardWords(c)]) { const m = text && matchProduct(text, cat, { brand }); if (m) return asProduct(m); }

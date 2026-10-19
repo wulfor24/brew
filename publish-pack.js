@@ -85,7 +85,9 @@ export async function buildPack({ ch, pkg: p = {}, family, version = 1, brand = 
       const ws = (p.where || []).filter((w) => w?.name || w?.url);
       put('where.txt', ws.length ? ws.map((w) => `${w.name || 'Here'}${w.url ? `\n${w.url}` : ''}${w.rule ? `\nRule: ${w.rule}` : ''}`).join('\n\n') + '\n' : `${p.platform || place}\n`);
       ws.forEach((w) => /^https?:/.test(w.url || '') && links.push(w.url));
-      where.unshift(`${p.platform || place}: paste the post from copy.txt in the place named in where.txt${ws.some((w) => w.rule) ? ', keeping to its rule' : ''}. A person posts it; communities want you to say you work at ${name}.`);
+      /* a Meta video ad (remix labelFor: a video card about paid ads) is made in Ads Manager, not posted */
+      if (ch?.target?.conn === 'meta') where.unshift(`Meta Ads Manager: make a video ad with the video file for Reels and Stories placements, and the words in copy.txt as its primary text.`);
+      else where.unshift(`${p.platform || place}: paste the post from copy.txt in the place named in where.txt${ws.some((w) => w.rule) ? ', keeping to its rule' : ''}. A person posts it; communities want you to say you work at ${name}.`);
       if (p.media && !p.image && !p.video) todo.push(`The picture or video: ${p.media}`);
       break; }
     case 'crm': {

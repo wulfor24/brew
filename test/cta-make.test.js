@@ -39,7 +39,7 @@ test('Generate versions makes three new versions, each with its own picture, not
   const vs = versionsOf(t, id); assert.ok(vs.length >= 4, `three cuts beside the first version (${vs.length})`);
   const cuts = vs.filter((v) => /^Version [ABC]/.test(v.reason || '')); assert.equal(cuts.length, 3);
   assert.ok(cuts.every((v) => /^gen\//.test(v.snapshot?.image || '')), 'every cut has a picture that was made');
-  assert.ok(ch.thread.some((x) => /Made 3 versions/.test(x.text || '')), 'the chat says what was made');
+  assert.ok(ch.thread.some((x) => /Made 3 new versions/.test(x.text || '')), 'the chat says what was made');
   const again = await S.call('POST /api/changes/:chid/cta-make', { label: 'Generate versions' }, t, { chid: id });
   assert.equal(again.already, true); assert.equal(versionsOf(t, id).length, vs.length, 'the next press opens the jam, it never pays twice');
 });
@@ -62,4 +62,20 @@ test('a decision button makes nothing; Add photos on a listing makes the photo s
   assert.ok((ch.pkg.photoSet || []).length >= 3, `the listing has its photos (${(ch.pkg.photoSet || []).length})`);
   assert.ok(ch.pkg.photoSet.every((x) => /^gen\//.test(x.image) && x.shot), 'each photo is made and named by its shot');
   assert.ok(versionsOf(t2, id).some((v) => (v.snapshot?.photoSet || []).length), 'it lands as a version');
+});
+
+// Param, 19 Oct: "if the video is already there, what does Make the video do?" A first draft that already has its clip is not
+// filmed again: the button makes the plan's new cuts (new hooks), the first draft stays as v1, and the stage's one is filmed
+test('Make the video on a first draft that has its clip makes new scripts, never the same clip again', async () => {
+  const plan = { n: 3, cta: 'Make the video', steps: [], make: { n: 3, what: 'short videos' } };
+  const S = studio({ planOf: () => plan }), t = tenant(card({ cta: { label: 'Make the video' }, make: { format: 'reel', pieces: 'The balm in a cold hand' } }));
+  const r = await S.call('POST /api/cards/:cid/remix', { fast: true }, t, { cid: 'c1' }); const id = r.changes[0].id, ch = t.changes[id];
+  ch.v0 = 'draft'; ch.pkg = { ...ch.pkg, video: 'gen/first.mp4', image: 'gen/first.png' }; versionsOf(t, id)[0].snapshot = { ...versionsOf(t, id)[0].snapshot, video: 'gen/first.mp4' };
+  await S.call('POST /api/changes/:chid/cta-make', { label: 'Make the video' }, t, { chid: id });
+  await settle(ch);
+  const vs = versionsOf(t, id);
+  assert.equal(vs[0].snapshot.video, 'gen/first.mp4', 'the first draft keeps its clip as v1');
+  assert.ok(vs.filter((v) => /^Version [ABC]/.test(v.reason || '')).length === 3, `three new cuts (${vs.map((v) => v.reason).join(' | ')})`);
+  assert.ok(ch.thread.some((x) => /3 new scripts/.test(x.text || '') && /first draft stays as v1/.test(x.text || '')), `the chat says what was made: ${ch.thread.map((x) => x.text).join(' | ')}`);
+  assert.equal(ch.planRun?.n, 3, 'the jam does not offer the same make again');
 });

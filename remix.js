@@ -9,13 +9,13 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { saveGen, genFile } from './gen-store.js';
 import { createMakers } from './drafts.js';
-import { cardProduct } from './product-match.js';
+import { cardProduct, sceneOf } from './product-match.js';
 import { isRivalCard, isResearchImage, readRivalAd, rivalBlock, rivalPicture } from './rival-ad.js'; // "Make our version" of a rival's ad: read it, then remake it in its style
 import { createStudioFinals } from './finals-routes.js';
 import { buildDraft } from './sloosh-prompt.js'; // Make the final on a version: Sloosh, quote first, behind a button
 import { versionLabel } from './text-fit.js';
 import { withSteps } from './card-plan.js';
-import { familyOf, FAMILY_NAME, fieldsFor, knobsFor, suggestFor, fitChip, GRADES, pkgSchema, fieldsBrief, kvSchema, allKeys, fromKV, toKV, cleanPkg, publicText, missing, afterFromPkg, mockPkg, RATIO, leaks, isMulti, ACTION_SPEC, ACTION_GUARD, productFor, ideaAction, ideaPkg, chipsFor, chipRelates, chipCtx } from './studio.js';
+import { familyOf, FAMILY_NAME, fieldsFor, knobsFor, suggestFor, fitChip, GRADES, pkgSchema, fieldsBrief, kvSchema, allKeys, fromKV, toKV, cleanPkg, publicText, missing, afterFromPkg, mockPkg, RATIO, leaks, isMulti, ACTION_SPEC, ACTION_GUARD, productFor, ideaAction, ideaPkg, chipsFor, chipRelates, chipCtx, isAdVideo, namesLiveTest } from './studio.js';
 import { buildPack } from './publish-pack.js';
 import { impactInputs, projectImpact } from './impact.js';
 import { realRows } from './connectors/common.js';
@@ -211,6 +211,11 @@ export const labelFor = (key, c = {}) => { const [a, k] = String(key).split('.')
   const pl = PLN[raw] || (/^[a-z]/.test(c.post?.platformLabel || '') ? '' : c.post?.platformLabel) || (raw ? raw[0].toUpperCase() + raw.slice(1) : '');
   if (k === 'reddit_post' && c.post && !/reply|comment/i.test(c.post.format || '')) return { label: 'Post on Reddit', target: { ...act.target, object: 'Reddit post' } };
   if (k === 'comment_reply' && pl) return { label: `Reply on ${pl}`, target: { ...act.target, name: pl } };
+  /* the jam's name says what the card asked for (Param, 19 Oct): new ads unless the card is about a test that runs; a video
+     card about paid ads is a Meta video ad, written for Reels and Stories placements and run from Ads Manager */
+  if (k === 'add_variants' && c.title && !namesLiveTest(c)) return { label: 'Make new ads', target: { ...act.target, object: 'New ad' } };
+  if (k === 'short_video' && isAdVideo(c)) return { label: 'Make the video ad', target: { conn: 'meta', object: 'Video ad', name: 'Meta Ads' }, adVideo: true,
+    spec: 'A vertical 9:16 Meta video ad for Reels and Stories placements, run from Ads Manager: five beats, each with the shot and the line, the hook in the first second, the product shown early, and the primary text as the caption. Not an organic post: no hashtags, no posting time.' };
   return { label: act.label, target: act.target }; };
 // the card's area decides which actions make sense, not which agent posted it
 const SECTOR_AGENT = { catalog: 'storefront', ads: 'performance', creatives: 'creative', storefront: 'storefront', visibility: 'visibility', signals: 'crm' };
@@ -472,7 +477,7 @@ export function createRemix(o) {
   const factsLine = `WHO READS WHAT: the card above is an internal note for the ${BN()} team (business numbers, goals, plans, moves). Never copy its wording or its numbers into the package. Fields marked public are read by shoppers and customers: write to them about what they're buying, the product, the result, the price, the offer, in ${BN()}'s voice. No revenue, crore, goals, tracks, funnels, repeat rate, ROAS, cost per order, "the team" or plans. Internal fields (ad sets, segments, rules, budgets) use real operational names, e.g. "Intensive Serum | Broad | 22-45 | Reels", never business metrics. Copy rules: plain words, only numbers from the facts above, "up to" and the day window on every result claim, never name a rival, no before/after scalp claims.`;
   const liveOptions = async (t, c, r, intent, prompt, n = 3, like = null) => {
     const fams = [...new Set(r.actionKeys.map(familyOf))];
-    const acts = r.actionKeys.map((k) => { const a = actOf(k); return `- ${k}: ${a.label} on ${SEED.connectors[a.target.conn]?.name || 'a person'} (${a.target.object})${a.money ? ', spends money' : ''}${a.jam ? `, needs a person: ${a.jam}` : ''}. What it is: ${specOf(k)}\n  Package fields:\n${fieldsBrief(familyOf(k), k)}`; }).join('\n');
+    const acts = r.actionKeys.map((k) => { const a = actOf(k), lf = labelFor(k, c) || a; return `- ${k}: ${lf.label} on ${lf.target?.name || SEED.connectors[lf.target?.conn]?.name || 'a person'} (${lf.target?.object || a.target.object})${a.money ? ', spends money' : ''}${a.jam ? `, needs a person: ${a.jam}` : ''}. What it is: ${lf.spec || specOf(k)}\n  Package fields:\n${fieldsBrief(familyOf(k), k)}`; }).join('\n');
     const learned = promptBlock(t, c.agent === 'brew' ? 'creative' : c.agent);
     const mv = like ? [] : movePassages(c, [intent, prompt].join(' '));
     const rv = await rivalRead(t, c).catch(() => null), rivalLine = rv ? `\n${rivalBlock(rv.ad, rv.style, BN())}\n` : '';
@@ -549,11 +554,13 @@ export function createRemix(o) {
   const pubChange = (t, ch) => {
     ensurePkg(t, ch); const tr = trustOf(t, ch.agent);
     if (ch.v0 !== 'draft' && !ch.batchKey && (ch.fromCard || (t.work || []).some((w) => w.changeId === ch.id))) seedV0(t, t.cards.get(ch.cardId), ch); /* 'none' tries again while the jam is untouched: the card's draft may land after the jam opened */
+    if (ch.state === 'draft' && !ch.batchKey) { const lf = labelFor(ch.action, t.cards.get(ch.cardId) || {}); /* jams opened before the card-led names heal on read */
+      if (lf && lf.label !== ch.actionLabel && ['creative.add_variants', 'creative.short_video'].includes(ch.action)) { ch.actionLabel = lf.label; ch.target = { conn: lf.target.conn, name: lf.target.name || (lf.target.conn ? SEED.connectors[lf.target.conn]?.name : 'A person'), object: lf.target.object }; } }
     const opts = optionsOf(t, ch); /* first: healing an old jam can move its stage */
     const { impact: _imp, packMeta: _pk, ...pub } = ch; /* projections can hold the brand's private account rows: they go out only through /impact, per caller */
     const card0 = t.cards.get(ch.cardId); /* our version of a rival's ad: what Brew read from it, shown in the studio */
     return { ...pub, ...(isRivalCard(card0) && o.rivalSummary ? { rival: o.rivalSummary(t, card0) } : {}), thinking: ch.thinking && Date.now() - ch.thinking.at < 300e3 ? ch.thinking : null, /* what the studio is doing right now, for the waiting person (think()) */ plan: ch.plan || o.planOf?.(t, t.cards.get(ch.cardId)) || null, copyPending: !!ch.copyPending && FILL_JOBS.has(ch.id) /* "Writing…" while the writer is really running, not a clock */, ctaPending: ch.ctaPending && CTA_JOBS.has(ch.id) ? ch.ctaPending : null /* the card's button is making it: the studio says what and keeps polling */, realOnly: realOnly(ch) /* community posts: real photos only, so no AI remakes */, trust: { level: tr.level, name: tr.name, objects: tr.objects, toNext: tr.toNext }, scope: ch.scope.map((s) => ({ ...s, locked: s.n > tr.objects })),
-      familyName: FAMILY_NAME[ch.family], fields: fieldsFor(ch.family, ch.action).map(({ k, label, type, opts, cols, req, pub, hint }) => ({ k, label, type, opts, cols, req, pub, hint })),
+      familyName: ch.action === 'creative.short_video' && ch.target?.conn === 'meta' ? 'Meta video ad' : FAMILY_NAME[ch.family], fields: fieldsFor(ch.family, ch.action).map(({ k, label, type, opts, cols, req, pub, hint }) => ({ k, label, type, opts, cols, req, pub, hint })),
       knobs: knobsFor(ch.family, B()), suggest: suggestOf(t, ch), gradeF: GRADES[ch.pkg.grade] || 'none', missing: missing(ch.family, ch.action, ch.pkg),
       options: opts /* the cuts as tabs: pick one (Param, 19 Oct) */, head: headOf(t, ch)?.id || null, versions: versionsOf(t, ch.id).map((v) => ({ id: v.id, n: v.n, author: v.author, reason: v.reason, label: v.label || versionLabel(v.reason, { first: v.n === 1 }), at: v.at, parent: v.parentVersionId, diff: v.diff, snapshot: v.snapshot, ...(v.final ? { final: v.final } : {}),
         ...(v.drawing ? { drawing: true } : {}), ...(v.drawError ? { drawError: v.drawError } : {}), ...(v.passed ? { passed: true } : {}), ...(v.asset ? { asset: v.asset } : {}) /* v2 takes: a picture still being made, why it wasn't, a version passed over, the asset that landed */ })), live: ch.liveVersionId || null };
@@ -569,10 +576,13 @@ export function createRemix(o) {
     for (const rel of [...new Set(cands)]) { const f = await readable(rel); if (f) return f; } return null; };
   /* the brief for one picture of package p (slot i of its cards or slides). pic: a rival ad remade (rival-ad.js): our product is
      the only picture the model gets; their ad arrives as its written composition and look, and our words go where theirs sit */
-  const picPrompt = (ch, p, i, pic = null, extra = '') => { const rows = p.cards || p.slides || [], scene = p.knobs?.scene;
+  /* c: the card. Its scene (sceneOf: make.pieces, else its picture how-step) rides on every picture of the jam unless someone
+     set a scene of their own or the brief already says it, so a rewrite of the words never drops what the card promised */
+  const picPrompt = (ch, p, i, pic = null, extra = '', c = null) => { const rows = p.cards || p.slides || [], scene = p.knobs?.scene;
     const what = ch.family === 'social' ? 'an Instagram post' : ch.family === 'post' ? `a ${p.platform || 'social'} post` : 'a Meta ad';
     const brief = (rows.length ? rows[i]?.imageBrief : p.imageBrief) || p.imageBrief || 'The product on a clean surface, soft daylight.';
-    return buildDraft({ kind: 'image', title: what, visual: `${brief}${pic?.visual ? ` ${pic.visual}` : ''}${scene ? ` Scene: ${scene}.` : ''}${p.knobs?.audience ? ` It should feel right for ${p.knobs.audience}.` : ''}${extra}`, ...(pic?.visual ? { refs: [{ ...pic.refs[0], label: `${BN()}'s ${B().config.product?.noun || 'product'}` }] } : {}), ...(pic?.text?.length && i === 0 ? { text: pic.text } : {}), index: rows.length > 1 ? i + 1 : undefined, count: rows.length > 1 ? rows.length : undefined, topSpace: !(pic?.text?.length && i === 0), hasSrc: true, ratio: RATIO[p.format] || '4:5', product: { name: `${BN()} ${B().config.product?.noun || 'product'}` }, brand: { name: BN(), ...(B().config.product || {}), ...(pic?.look ? { style: pic.look } : {}) } }).prompt; }; /* one brief for drafts and finals (sloosh-prompt.js); a remake takes the rival's look */
+    const sc = !scene && !pic?.visual && c && !isRivalCard(c) ? sceneOf(c) : '', card = sc && !brief.toLowerCase().includes(sc.toLowerCase().slice(0, 24)) ? ` The picture must show what the card promises: ${sc}.` : '';
+    return buildDraft({ kind: 'image', title: what, visual: `${brief}${card}${pic?.visual ? ` ${pic.visual}` : ''}${scene ? ` Scene: ${scene}.` : ''}${p.knobs?.audience ? ` It should feel right for ${p.knobs.audience}.` : ''}${extra}`, ...(pic?.visual ? { refs: [{ ...pic.refs[0], label: `${BN()}'s ${B().config.product?.noun || 'product'}` }] } : {}), ...(pic?.text?.length && i === 0 ? { text: pic.text } : {}), index: rows.length > 1 ? i + 1 : undefined, count: rows.length > 1 ? rows.length : undefined, topSpace: !(pic?.text?.length && i === 0), hasSrc: true, ratio: RATIO[p.format] || '4:5', product: { name: `${BN()} ${B().config.product?.noun || 'product'}` }, brand: { name: BN(), ...(B().config.product || {}), ...(pic?.look ? { style: pic.look } : {}) } }).prompt; }; /* one brief for drafts and finals (sloosh-prompt.js); a remake takes the rival's look */
   const rivalPic = async (t, ch, p) => { const rv = await rivalRead(t, t.cards.get(ch.cardId) || {}).catch(() => null);
     return rv?.style ? rivalPicture(rv.ad, rv.style, { headline: p.overlay || p.headline || p.title || '', sub: String(p.primaryText || '').split(/(?<=[.!?])\s/)[0], button: p.cta }) : null; };
   /* one picture, made once per brief (the same brief again comes from the gen store, free). pay: asked before a new one is made;
@@ -597,7 +607,7 @@ export function createRemix(o) {
       try {
         const src = await picSrc(t, ch, p); if (!src) throw new Error('no product photo could be read for this picture');
         const pic = await rivalPic(t, ch, p);
-        const one = (i) => drawPic(src, picPrompt(ch, p, i, pic), p.format, pic, i !== slots[0] ? () => spend('image') : null);
+        const one = (i) => drawPic(src, picPrompt(ch, p, i, pic, '', t.cards.get(ch.cardId)), p.format, pic, i !== slots[0] ? () => spend('image') : null);
         const made = [];
         for (let k = 0; k < slots.length; k += 3) made.push(...(await Promise.all(slots.slice(k, k + 3).map((i) => one(i).catch((e) => { log.warn('[studio image]', e.message); return null; })))));
         const imgs = [...(ch.pkg.cardImages || [])]; slots.forEach((i, k) => { if (made[k]) imgs[i] = made[k]; });
@@ -659,7 +669,7 @@ export function createRemix(o) {
         const src = await picSrc(t, ch); if (!src) throw new Error('no product photo could be read for these photos');
         for (const [k, v] of vs.entries()) {
           const pv = pkgOfVersion(t, ch, v), pic = await rivalPic(t, ch, pv), head = pv.headline || pv.title || pv.heading || v.snapshot?.title || '';
-          const img = await drawPic(src, picPrompt(ch, pv, 0, pic, head ? ` The photo goes with the headline “${String(head).slice(0, 120)}”.` : ''), pv.format, pic, k ? () => spend('image') : null).catch((e) => { log.warn('[cut photo]', e.message); return undefined; });
+          const img = await drawPic(src, picPrompt(ch, pv, 0, pic, head ? ` The photo goes with the headline “${String(head).slice(0, 120)}”.` : '', t.cards.get(ch.cardId)), pv.format, pic, k ? () => spend('image') : null).catch((e) => { log.warn('[cut photo]', e.message); return undefined; });
           if (img === null) { stopped = true; break; } if (!img) continue;
           const media = { image: img, ...((pv.cards || pv.slides || []).length ? { cardImages: [img, ...(pv.cardImages || []).slice(1)] } : {}) };
           landMedia(t, ch, v, media); sync(t, ch); done++; /* its own option; the stage only when it is that cut or grew from it */
@@ -693,7 +703,10 @@ export function createRemix(o) {
       try {
         const M = makers();
         /* the first frame: a photo already made for this post, else a new 9:16 one of the real product */
-        let frame = /^gen\//.test(p.image || '') && (await genFile(p.image.slice(4))) ? p.image.slice(4) : null;
+        /* a new cut opens on its own first shot: the frame made for another script (the first draft's still, kept on the
+           package by keepMedia) is not reused for it, so three new hooks are three new videos, not one picture animated thrice */
+        const shot0 = String(sc[0]?.shot || '').trim(), reuse = !shot0 || (p.frameFor != null ? p.frameFor === shot0 : !versionsOf(t, ch.id).some((x) => x.id !== target && x.snapshot?.video));
+        let frame = reuse && /^gen\//.test(p.image || '') && (await genFile(p.image.slice(4))) ? p.image.slice(4) : null;
         if (!frame) {
           const src = await srcPhoto(t, ch); if (!src) throw new Error('no product photo could be read for the first frame');
           /* our version of a rival's video ad: its first frame's composition and look, in words, with our product */
@@ -711,7 +724,7 @@ export function createRemix(o) {
         if (hook && spend('voice')) { ch.videoStep = 'Adding the voiceover';
           const au = await M.voice(hook, 'warm and natural, like a creator talking to camera', 'Kore').catch((e) => { log.warn('[short video voice]', e.message); return null; });
           const both = au ? await M.mux(name, au).catch((e) => { log.warn('[short video mux]', e.message); return null; }) : null; if (both) { name = both; voiced = true; } }
-        const media = { video: 'gen/' + name, poster: 'gen/' + frame, image: 'gen/' + frame, videoHook: hook };
+        const media = { video: 'gen/' + name, poster: 'gen/' + frame, image: 'gen/' + frame, videoHook: hook, frameFor: shot0 };
         const v = versionsOf(t, ch.id).find((x) => x.id === target); if (v) v.snapshot = { ...v.snapshot, ...media };
         /* the clip lands in the option it was made for (Param, 19 Oct: no more "Video added" versions): on the stage when the stage
            is that version or grew from it, else only in that option, which the tabs show; nothing is laid on another option's script */
@@ -1181,7 +1194,7 @@ export function createRemix(o) {
         const src = await picSrc(t, ch, p); if (!src) throw new Error('no product photo could be read for this picture');
         const pic = await rivalPic(t, ch, p);
         const extra = `${head ? ` The photo goes with the headline “${String(head).slice(0, 120)}”.` : ''}${ask ? ` The team asked: ${String(ask).slice(0, 200)}.` : ''} A fresh take, different from the last picture (take ${v.n}).`;
-        const url = await drawPic(src, picPrompt(ch, p, 0, pic, extra), p.format, pic, null, maker); if (!url) throw new Error('no image came back');
+        const url = await drawPic(src, picPrompt(ch, p, 0, pic, extra, t.cards.get(ch.cardId)), p.format, pic, null, maker); if (!url) throw new Error('no image came back');
         land(url);
       } catch (e) { log.warn('[take]', e.message); if (v.drawing) failTake(t, c, ch, v, `The picture didn’t come through (${String(e.message).slice(0, 120)}). Ask for another take.`); }
     })();
@@ -1361,7 +1374,7 @@ export function createRemix(o) {
     const c = t.cards.get(ch.cardId) || {}; const pl = ch.plan || o.planOf?.(t, c) || null; if (pl) ch.plan = pl;
     if (pl?.batch || ch.batchKey) return { change: pubChange(t, ch) }; /* a batch card's ads are already made: keep or drop them */
     const n = Math.max(1, pl?.n || 1), steps = (pl?.steps || []).filter((x) => ['gather', 'write', 'make', 'step'].includes(x.k)).map((x) => x.t);
-    const made = await makeCuts(t, ch, n, [steps.length ? `Follow the plan: ${steps.join('; ')}` : '', b.prompt].filter(Boolean).join('. '), (x, i) => (n > 1 ? `Version ${'ABCDEFGH'[i]}: ${x.angle || 'a different cut'}` : `${pl?.cta || 'Made'}: ready to review`));
+    const made = await makeCuts(t, ch, n, [steps.length ? `Follow the plan: ${steps.join('; ')}` : '', n > 1 ? newAngles(ch) : '', b.prompt].filter(Boolean).join('. '), (x, i) => (n > 1 ? `Version ${'ABCDEFGH'[i]}: ${x.angle || 'a different cut'}` : `${pl?.cta || 'Made'}: ready to review`));
     ch.planRun = { at: now(t), n: made.length, versions: made.map((v) => v.id) };
     const w = (t.work || []).find((x) => x.changeId === ch.id); if (w) w.cardPlan = { ...(w.cardPlan || pl || {}), ...(pl || {}), made: now(t) };
     /* a short video gets its clip, not just its script: the version on screen is filmed now, the others on a tap */
@@ -1381,6 +1394,10 @@ export function createRemix(o) {
   const VISUAL = new Set(['meta_ad', 'social', 'post']);
   const ctaMakes = (t, label, ch, c) => !!label && !ch.batchKey && !(ch.plan || o.planOf?.(t, c))?.batch && !['decision', 'meta_ops', 'setup', 'brief'].includes(ch.family) && (MAKES_ASSET.has(label) || /^(make|draft|generate|build|write|create)\b/i.test(label));
   const waitFor = async (test, ms = 180e3) => { const end = Date.now() + ms; while (test() && Date.now() < end) await new Promise((r) => setTimeout(r, 2000)); };
+  /* when the stage already holds a first draft, the make step's cuts are new angles, never the first draft written again */
+  const newAngles = (ch) => { const p = ch.pkg || {}, was = String(p.headline || p.overlay || p.title || p.subject || hookOf(p) || '').slice(0, 120);
+    return ch.v0 === 'draft' || p.video || /^gen\//.test(p.image || '') ? `The first draft is already on the stage${was ? ` (“${was}”)` : ''}: every cut is a new angle with a different hook, never that draft again` : ''; };
+  const firstKept = (t, ch, made) => { const v1 = versionsOf(t, ch.id)[0]; return v1 && !made.some((v) => v.id === v1.id) && (ch.v0 === 'draft' || v1.snapshot?.video || v1.snapshot?.image) ? `; your first draft stays as v${v1.n}` : ''; };
   const runCtaMake = (t, ch, c, label) => {
     if (CTA_JOBS.has(ch.id)) return false; CTA_JOBS.add(ch.id);
     const versions = VERSIONS_CTA.test(label), rows = () => ch.pkg?.cards || ch.pkg?.slides || [];
@@ -1390,25 +1407,32 @@ export function createRemix(o) {
       try {
         await waitFor(() => ch.imagePending || ch.remakePending || FILL_JOBS.has(ch.id)); /* a picture already in flight (the first photo, our version) lands first */
         const pl = ch.plan || o.planOf?.(t, c) || null, steps = (pl?.steps || []).filter((x) => ['gather', 'write', 'make', 'step'].includes(x.k)).map((x) => x.t);
-        const plan = steps.length ? `Follow the plan: ${steps.join('; ')}` : '';
+        const plan = [steps.length ? `Follow the plan: ${steps.join('; ')}` : '', newAngles(ch)].filter(Boolean).join('. ');
+        /* the button makes what the card's plan says, the same from the feed as from the jam (/plan): the plan's n cuts, each a
+           new angle on the first draft, with its picture or (a short video) the one on the stage filmed. It used to film the
+           stage again when a first draft already had its clip: the same frame and script, about $0.90, for nothing new (Param,
+           19 Oct). A carousel or Stories keeps "every slide" of the one on the stage; a rival's "our version" keeps its own path */
+        const pn = Math.max(1, pl?.n || 1), cuts = versions || !VISUAL.has(ch.family) || (pn > 1 && rows().length <= 1 && !isRivalCard(c));
         if (ch.family === 'listing' && /photo|image/i.test(label)) {
           const ok = genListingPhotos(t, ch, label); say = ok ? `Making ${shotsOf(ch.pkg).length} listing photos from your product photo: ${shotsOf(ch.pkg).join('; ')}. They land here in a minute or two.` : imageWhy(ch);
-        } else if (versions || !VISUAL.has(ch.family)) {
-          const n = versions ? 3 : Math.max(1, pl?.n || 1);
+        } else if (cuts) {
+          const n = versions ? 3 : pn;
           think(ch, `Writing ${n > 1 ? `${n} versions` : 'it'}`);
           const made = await makeCuts(t, ch, n, plan, (x, i) => (n > 1 ? `Version ${'ABCDEFGH'[i]}: ${x.angle || 'a different cut'}` : `${label}: ready to review`));
           ch.planRun = { at: now(t), n: made.length, versions: made.map((v) => v.id), by: 'cta' };
           const vs = cutNames(ch, made);
           if (!made.length) say = 'That didn’t come through. Tap the button again in a minute.';
-          else if (isVideoPost(ch)) { const ok = genVideo(t, ch, label); say = `Wrote ${made.length > 1 ? `${made.length} scripts (${vs})` : 'the script'}. ${ok ? 'Making the video now, about two minutes.' : videoWhy(ch)}`; }
+          else if (isVideoPost(ch)) { const ok = genVideo(t, ch, label); say = `Wrote ${made.length > 1 ? `${made.length} new scripts (${vs})` : 'the script'}${firstKept(t, ch, made)}. ${ok ? `Making the video for the one on the stage now, about two minutes.${made.length > 1 ? ' Open another option to make its video.' : ''}` : videoWhy(ch)}`; }
           else if (VISUAL.has(ch.family)) { const ok = made.photos || (made.length === 1 && genImage(t, ch, label, { target: made[0].id }));
-            say = `Made ${made.length} version${made.length > 1 ? 's' : ''}: ${vs}. ${ok ? `${made.length > 1 ? 'Each gets its own picture' : 'Its picture lands'} in a minute.` : imageWhy(ch)} Tap one to see it.`; }
+            say = `Made ${made.length} ${made.length > 1 ? 'new versions' : 'version'}: ${vs}${firstKept(t, ch, made)}. ${ok ? `${made.length > 1 ? 'Each gets its own picture' : 'Its picture lands'} in a minute.` : imageWhy(ch)} Tap one to see it.`; }
           else say = `Wrote ${made.length > 1 ? `${made.length} versions: ${vs}` : `it: v${made[0].n}`}. Change anything here, then share the brief.`;
         } else if (isVideoPost(ch)) {
-          const ok = genVideo(t, ch, label); say = ok ? 'Making the video now, about two minutes. It lands here on its own.' : videoWhy(ch);
+          const ok = genVideo(t, ch, label); if (ok) ch.planRun = { at: now(t), n: 1, versions: [headOf(t, ch)?.id].filter(Boolean), by: 'cta' };
+          say = ok ? 'Making the video now, about two minutes. It lands here on its own.' : videoWhy(ch);
         } else {
           const all = rows().length > 1; if (all && rows().every((_, i) => (ch.pkg.cardImages || [])[i])) ch.pkg = { ...ch.pkg, cardImages: [] }; /* every slide had a picture: the press makes a fresh set, the last set stays on its version */
           const ok = genImage(t, ch, label, { all }); /* a new version: the picture it had stays on the one before */
+          if (ok) ch.planRun = { at: now(t), n: 1, versions: [], by: 'cta' };
           say = ok ? `Making ${all ? `the pictures for all ${rows().length} slides` : 'the picture'} now. ${all ? 'They land' : 'It lands'} here in a minute.` : imageWhy(ch);
         }
       } catch (e) { log.warn('[cta make]', e.message); say = `That didn’t come through (${String(e.message).slice(0, 100)}). Tap the button again in a minute.`; }

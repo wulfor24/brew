@@ -55,5 +55,13 @@ export function cardProduct(c, catalog, opts = {}) {
    carries ("headline 'Warm toes'", "price line $39", "button Shop now") are set afterwards in exact type, never asked of the
    image model, so those clauses are taken out here */
 const WORD_CLAUSE = /(?:^|[,;:.]\s*|\s+(?:with|and|plus)\s+)(?:an?\s+|the\s+)?(?:(?:sub-?)?headlines?|price(?:\s+(?:lines?|tags?|badges?|callouts?|points?)|\s*[:=]?\s*[$₹€£\d])|buttons?|cta|captions?|taglines?|text(?:\s+overlays?)?|overlays?|on-?screen\s+text|copy\s+lines?|supers?)\b[^,;.]*/gi;
-export const sceneOf = (c = {}) => { const p = String(c?.make?.pieces || '').replace(/^[^:]{0,40}:\s*/, '').replace(WORD_CLAUSE, '').replace(/^[\s,;:.]+|[\s,;:]+$/g, '').replace(/\.\s*$/, '').trim(); return p.length >= 8 ? p : ''; }; /* "1 static image: X, headline Y" → "X" */
+const tidyScene = (x) => String(x || '').replace(WORD_CLAUSE, '').replace(/^[\s,;:.]+|[\s,;:]+$/g, '').replace(/\.\s*$/, '').trim();
+/* a card with no make.pieces (a watcher's idea, an older card) still says what its picture shows in a how-step ("Design a
+   split-screen layout contrasting heavy oils with light serum"): the first step that describes a picture, not words, a link
+   or a setting, without its "Design a" (Param, 19 Oct: the jam's first photo was a plain pack shot under that card) */
+const SEE = /\b(split[- ]?screen|side[- ]by[- ]side|contrast\w*|versus|vs\.?|close-?ups?|macro|shots?|photos?|pictures?|images?|visuals?|scenes?|layouts?|flat ?lays?|lifestyle|in use|in hand|hands?|model|wearing|beside|next to|show(?:s|ing)?|demo\w*|texture|drops?|pour\w*|bathroom|shower|kitchen|desk|bed|window|outdoors?)\b/i;
+const NOT_SEE = /\b(typograph\w*|fonts?|headlines?|copy|captions?|buttons?|cta|checkout|links?|landing|url|utm|budget|bid\w*|audiences?|targeting|ad sets?|placements?|pixel|track\w*|schedule|post at|hashtags?|subject line|email|whatsapp|test|launch|price|discount|offer|reviews?|rating)\b/i;
+const VERB = /^(?:design|create|make|use|shoot|build|show|film|feature|style|open(?: on| with)?|lead with|start with|frame|stage|picture|photograph)\s+(?:it\s+(?:as|with)\s+)?(?:an?\s+|the\s+)?/i;
+const howScene = (c = {}) => { const h = (c?.detail?.how || []).find((x) => typeof x === 'string' && SEE.test(x) && !NOT_SEE.test(x)); const p = tidyScene(String(h || '').replace(VERB, '')); return p.length >= 8 && p.length <= 160 ? p : ''; };
+export const sceneOf = (c = {}) => { const p = tidyScene(String(c?.make?.pieces || '').replace(/^[^:]{0,40}:\s*/, '')); return p.length >= 8 ? p : howScene(c); }; /* "1 static image: X, headline Y" → "X" */
 export const cardScene = (c = {}) => (sceneOf(c) ? `The picture must show what the card promises: ${sceneOf(c)}.` : '');

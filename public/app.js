@@ -3854,8 +3854,8 @@
       if (w0 && w0.stage === 'shared') return `<div class="ship ok"><div class="ship-tx"><b>${ic('check', 's16')}Brief shared${w0.ticket ? `: ${esc(w0.ticket)}` : ''}</b><span>With ${w0.jamBrief?.to === 'team' ? 'your team' : 'the ShopOS team'}. The jam ends here.</span></div><div class="ship-btns"><button class="btn btn-ghost" data-st-brief>${ic('doc', 's16')}The brief</button><button class="btn btn-ghost" data-rx="share-${w0.jamBrief?.to === 'team' ? 'team' : 'shopos'}">${ic('copy', 's16')}Copy it again</button>${lnk}</div></div>`; }
     /* before the plan's make step has run, the jam's main button is the card's own action: it makes the work, it ships nothing */
     if (SPLIT && !ch.batchKey && ch.state !== 'jam' && !planMade(ch)) { const pl = planOf(ch);
-      return `<div class="ship one ok"><div class="ship-tx"><b>${ic('sparkles', 's16')}<span class="ship-l">${ch.v0 === 'draft' ? 'First draft' : 'Draft'} · v${curN(ch)}</span>${tipBtn(`${pl.cta} makes ${pl.n > 1 ? `${pl.n} ${pl.make?.what || 'versions'}` : `the ${pl.make?.what || 'version'}`} here. Then share the brief.`)}</b></div>
-        <div class="ship-btns">${shipMenu(ch, [['data-rx="share-shopos"', 'send', 'Send the brief now', 'The ShopOS team gets it by email and makes it.'], ['data-rx="share-team"', 'copy', 'Share with my team', 'Copy the brief and a link to paste in your team’s chat.']])}<button class="btn btn-primary" data-rx="plan">${ic('sparkles', 's16')}${esc(pl.cta)}</button></div></div>`; }
+      return `<div class="ship one ok"><div class="ship-tx"><b>${ic('sparkles', 's16')}<span class="ship-l">${ch.v0 === 'draft' ? 'First draft' : 'Draft'} · v${curN(ch)}</span>${tipBtn(`${planGo(ch, pl).line}. Then share the brief.`)}</b></div>
+        <div class="ship-btns">${shipMenu(ch, [['data-rx="share-shopos"', 'send', 'Send the brief now', 'The ShopOS team gets it by email and makes it.'], ['data-rx="share-team"', 'copy', 'Share with my team', 'Copy the brief and a link to paste in your team’s chat.']])}<button class="btn btn-primary" data-rx="plan">${ic('sparkles', 's16')}${esc(planGo(ch, pl).label)}</button></div></div>`; }
     if (SPLIT && !ch.batchKey && ch.state !== 'jam') return stepBar(ch);
     if (ch.state === 'jam') return `<div class="ship warn"><div class="ship-tx"><b>${ic('hand', 's16')}Being planned in a jam</b><span>Answer the open questions there, then it ships.</span></div><div class="ship-btns"><button class="btn btn-primary" data-rx="open">Open the jam</button></div></div>`;
     const R = RXROUTE[ch.verdict] || RXROUTE.jam, blocks = ch.checks.filter((x) => !x.ok && !x.soft);
@@ -3877,13 +3877,22 @@
   /* first thing on the chat: the case in plain words (what we saw, why it matters) and what you do next, as steps */
   /* the card's plan (card-plan.js), and whether its make step has run: before it has, the jam's main button is the card's own action */
   const planOf = (ch) => ch?.plan || (RX.p ? cardOf(RX.p).plan : null) || null;
+  /* the card's button, said as what it really does from here (Param, 19 Oct: "if the video is already there, what does Make the
+     video do?"): once the stage holds a first draft (the card's own, or the copy and photo written when the jam opened), the
+     button makes the plan's n MORE, each a new angle, and the first draft stays as v1. Same words on the button, its tip and
+     the chat's last line, for every family */
+  const hasDraft = (ch) => { const p = ch?.pkg || {}; return ch?.v0 === 'draft' || !!(p.video || /^\/?gen\//.test(p.image || '') || p.draft?.images?.length || p.draft?.video); };
+  const planGo = (ch, pl) => { const n = pl?.n || 1, what = pl?.make?.what || 'versions', more = n > 1 && hasDraft(ch) && !/\b(versions?|variations?|more|another|new)\b/i.test(pl?.cta || '');
+    const d = hasDraft(ch), film = isReel(ch) ? ': one is filmed now, the others when you open them' : ['meta_ad', 'social'].includes(ch?.family) ? ', each with its own picture' : '';
+    return { label: more ? `Make ${n} more ${what}` : pl?.cta || 'Make it', more,
+      line: n > 1 ? `${d ? `Your first draft stays as v${curN(ch)}. ` : ''}Brew makes ${n} ${d ? 'new ' : ''}${what} on the stage${d ? ', each a new angle' : ''}${film}` : `Brew makes the ${what} on the stage` }; };
   const planMade = (ch) => !!(ch?.planRun || ch?.batchKey || planOf(ch)?.batch || ch?.state === 'jam' || !planOf(ch));
   const planBusy = (ch) => { const pl = planOf(ch); return pl?.n ? `Making ${pl.n > 1 ? `${pl.n} ${pl.make?.what || 'versions'}` : `the ${pl.make?.what || 'version'}`}…` : 'Working on it…'; };
   /* first thing on the chat: the case in plain words, the card's plan toward its action, and the one thing to press next */
   const caseBrief = (ch) => { const c = cardOf(RX.p), d = c.detail || {}, cut = (x, n) => { x = String(x || '').trim(); return x.length > n ? x.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : x; };
     const why = (d.why || []).filter((x) => x && !/^[^:]{2,60}:\s*[₹$€£]?[\d.,]+\s*$/.test(x) && !/^[^:“"]{2,90}\([^)]*\):/.test(x) /* evidence rows (label (source): value), not reasons */).slice(0, 2), fix = ch.verdict === 'fix';
     const pl = planOf(ch), made = planMade(ch), opens = (ch.pkg?.where || []).some((w) => /^https?:/.test(w.url || '')), rule = (ch.pkg?.where || []).map((w) => w.rule).find(Boolean);
-    const next = !made && pl ? `Press “${pl.cta}” below. Brew makes ${pl.n > 1 ? `${pl.n} ${pl.make?.what || 'versions'}` : `the ${pl.make?.what || 'version'}`} on the stage; change any of them, then share the brief.`
+    const next = !made && pl ? `Press “${planGo(ch, pl).label}” below. ${planGo(ch, pl).line}; change any of them, then share the brief.`
       : fix ? `Fix this first: ${(ch.fixes || []).join('; ')}. Press “Fix it with AI”, or tell me how.`
       : ch.family === 'post' ? `Happy with it? Share the brief: it carries the post and where it goes; you post it yourself.${rule ? ` ${rule}` : ''}` : 'Happy with it? Share the brief with the ShopOS team or your own team. It copies the brief and a link to everything.';
     return `<div class="case"><small class="case-k">The case${c.src ? ` · ${esc(c.src)}` : ''}</small>
@@ -4081,7 +4090,7 @@
     return out; };
   const chips2 = (ch) => { const pl = planOf(ch), made = planMade(ch), dis = RX.sending ? ' disabled' : '', c = (attr, icon, label, cls = '') => `<button type="button" class="chip j2-chip${cls}" ${attr}${dis}>${icon ? ic(icon, 's14') : ''}${esc(label)}</button>`;
     const out = [c('data-tab="details"', 'doc', 'View brief', ' is-brief')];
-    if (!made && pl) out.push(c('data-rx="plan"', 'sparkles', pl.cta, ' is-go'));
+    if (!made && pl) out.push(c('data-rx="plan"', 'sparkles', planGo(ch, pl).label, ' is-go'));
     if (ch.verdict === 'fix') out.push(c('data-rx="fix"', 'sparkles', 'Fix it with AI', ' is-go'));
     if (PH_FAM.includes(ch.family)) out.push(c('data-ph-open', 'pic', 'Swap the image'));
     fitSuggest(ch.suggest).slice(0, 3).forEach((x) => out.push(`<button type="button" class="chip j2-chip" data-say="${esc(x)}"${dis}>${esc(x)}</button>`));
@@ -4092,7 +4101,8 @@
     return `<div class="it-sugg j2-chips">${out.join('')}</div>`; };
   /* the publish pack: read-only, the final files and copy to post yourself. Brew writes to no account */
   const j2PackLabel = (ch) => { const pf = String(ch.pkg?.platform || ch.pkg?.where?.[0]?.name || '').trim();
-    return ({ meta_ad: 'Post to Instagram', social: 'Post to Instagram', post: pf ? `Post to ${pf}` : 'Get the post', crm: 'Get the message', store: 'Get the HTML', listing: 'Get the listing sheet', vis: 'Get the FAQ files', search: 'Get the Google Ads sheet', setup: 'Get the checklist', brief: 'Get the shot list', meta_ops: 'Get the change list', print: 'Get the print file' })[ch.family] || 'Get the files'; };
+    if (ch.target?.conn === 'meta') return 'Get the Ads Manager files'; /* a Meta ad (or a Meta video ad) is made in Ads Manager, never posted to Instagram */
+    return ({ meta_ad: 'Get the Ads Manager files', social: 'Post to Instagram', post: pf ? `Post to ${pf}` : 'Get the post', crm: 'Get the message', store: 'Get the HTML', listing: 'Get the listing sheet', vis: 'Get the FAQ files', search: 'Get the Google Ads sheet', setup: 'Get the checklist', brief: 'Get the shot list', meta_ops: 'Get the change list', print: 'Get the print file' })[ch.family] || 'Get the files'; };
   const J2 = { imp: {}, pack: {} }; /* per change: the projection and the pack, shown in the chat */
   const j2Sg = (x) => { const v = +x; return Number.isFinite(v) ? `${v > 0 ? '+' : v < 0 ? '−' : ''}${j2Num(Math.abs(v))}` : '—'; };
   /* a money unit reads as a money range ($15–$40); anything else as a signed change (+4.3 to +17.3 % better) */
@@ -4143,7 +4153,7 @@
           <div class="st-vwrap"><button class="st-vpill${RX.vmenu ? ' is-open' : ''}" data-vmenu aria-haspopup="dialog" aria-expanded="${!!RX.vmenu}" title="Version history">${ic('clock', 's14')}<b class="st-vcount">v${curN(ch)}${ch.versions.length > 1 ? ` of ${ch.versions.length}` : ''}</b>${ic('chev', 's14')}</button>${RX.vmenu ? `<div class="st-vmenu" role="dialog" aria-label="Version history"><div class="st-vmenu-h"><b>Versions</b><small>${ch.versions.length} saved · nothing is ever lost</small></div><div class="st-vmenu-b">${historyTab(ch)}</div></div>` : ''}</div>${themeBtn()}<button class="icon-btn st-more" aria-label="More" data-lmenu="remix:${esc(ch.id)}">${ic('more', 's16')}</button></header>
         <div class="st-body j2-body"><aside class="st-panel j2-panel"><div class="st-panel-b is-chat j2-scroll">
           <section class="j2-draft"><div class="j2-title"><b>${esc(ch.actionLabel)}${ch.target.conn && ch.target.name ? ` <span>on ${esc(ch.target.name)}</span>` : ''}</b><small>${esc(ch.familyName)} · from “${esc(String(ch.before.title || '').slice(0, 70))}”</small></div>
-            <main class="st-canvas j2-canvas"><div class="st-asset${ch.copyPending ? ' is-writing' : ''}">${ch.copyPending ? `<p class="st-writing" role="status"><span class="spin"></span>Writing the first draft…</p>` : ''}${!ch.copyPending && ch.ctaPending ? `<p class="st-writing" role="status"><span class="spin"></span>${esc(ch.ctaPending)}…</p>` : ''}${assetHtml(pkgCh, 'lg')}</div>${phTools(ch, pkgCh, viewing)}${timeline(ch, viewing)}</main>
+            <main class="st-canvas j2-canvas"><div class="st-asset${ch.copyPending ? ' is-writing' : ''}">${ch.copyPending ? `<p class="st-writing" role="status"><span class="spin"></span>Writing the first draft from the card…</p>` : ''}${!ch.copyPending && ch.ctaPending ? `<p class="st-writing" role="status"><span class="spin"></span>${esc(ch.ctaPending)}…</p>` : ''}${assetHtml(pkgCh, 'lg')}</div>${phTools(ch, pkgCh, viewing)}${timeline(ch, viewing)}</main>
             ${rivalReadHtml(ch)}${j2Facts(ch, pkgCh)}${shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh))}</section>
           ${chatTab(ch, edit)}</div></aside></div>
         ${tab === 'details' ? j2Brief(ch, pkgCh, edit) : tab === 'adjust' ? j2Adjust(ch, edit) : ''}`;
@@ -4152,7 +4162,7 @@
         <div class="st-ttl"><b>${esc(ch.actionLabel)}${ch.target.conn && ch.target.name ? ` <span>on ${esc(ch.target.name)}</span>` : ''}</b><small>${face(ch.agent)}${esc(ch.familyName)} · from “${esc(String(ch.before.title || '').slice(0, 70))}”</small></div>${studioJamCtl()}
         <div class="st-vwrap"><button class="st-vpill${RX.vmenu ? ' is-open' : ''}" data-vmenu aria-haspopup="dialog" aria-expanded="${!!RX.vmenu}" title="Version history">${ic('clock', 's14')}<span>History</span>${ic('chev', 's14')}</button>${RX.vmenu ? `<div class="st-vmenu" role="dialog" aria-label="Version history"><div class="st-vmenu-h"><b>Versions</b><small>${ch.versions.length} saved · nothing is ever lost</small></div><div class="st-vmenu-b">${historyTab(ch)}</div></div>` : ''}</div>${themeBtn()}<button class="icon-btn st-more" aria-label="More" data-lmenu="remix:${esc(ch.id)}">${ic('more', 's16')}</button></header>
       <div class="st-body">
-        <main class="st-canvas">${rivalReadHtml(ch)}${optTabs(ch, viewing)}<div class="st-asset${ch.copyPending ? ' is-writing' : ''}">${ch.copyPending ? `<p class="st-writing" role="status"><span class="spin"></span>Writing the first draft…</p>` : ''}${!ch.copyPending && ch.ctaPending ? `<p class="st-writing" role="status"><span class="spin"></span>${esc(ch.ctaPending)}…</p>` : ''}${assetHtml(pkgCh, 'lg')}</div>${phTools(ch, pkgCh, viewing)}${shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh))}</main>
+        <main class="st-canvas">${rivalReadHtml(ch)}${optTabs(ch, viewing)}<div class="st-asset${ch.copyPending ? ' is-writing' : ''}">${ch.copyPending ? `<p class="st-writing" role="status"><span class="spin"></span>Writing the first draft from the card…</p>` : ''}${!ch.copyPending && ch.ctaPending ? `<p class="st-writing" role="status"><span class="spin"></span>${esc(ch.ctaPending)}…</p>` : ''}${assetHtml(pkgCh, 'lg')}</div>${phTools(ch, pkgCh, viewing)}${shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh))}</main>
         <aside class="st-panel"><div class="st-tabs" role="tablist">${[['iterate', 'Chat'], ['adjust', 'Adjust'], ['details', SPLIT ? 'Brief' : 'Details']].map(([k, n]) => `<button role="tab" data-tab="${k}" aria-selected="${tab === k}">${n}</button>`).join('')}</div>
           <div class="st-panel-b${tab === 'iterate' ? ' is-chat' : ''}">${tab === 'iterate' ? chatTab(ch, edit) : tab === 'adjust' ? adjustTab(ch, edit) : tab === 'details' ? detailsTab(ch, pkgCh, edit) : chatTab(ch, edit)}</div></aside>
       </div>`;

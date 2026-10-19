@@ -33,7 +33,7 @@ const MAKE_N = { meta_ad: 3, social: 3, post: 3, crm: 3, store: 3, vis: 3, searc
 const ASSET = {
   meta_ad: (k, c) => ({ carousel_ad: 'carousel ads', collection_ad: 'collection ads', catalog_ad: 'catalog ads', whatsapp_ad: 'WhatsApp chat ads' }[k] || (c?.make?.format && /video|reel/i.test(c.make.format) ? 'video ads' : 'Meta ads')),
   social: (k) => ({ ig_carousel: 'Instagram carousels', ig_story: 'Instagram Stories' }[k] || 'Instagram posts'),
-  post: (k, c, lab) => (k === 'short_video' ? 'short videos' : k === 'comment_reply' || /reply/i.test(lab || '') ? 'replies' : 'posts'),
+  post: (k, c, lab) => (k === 'short_video' ? (/video ad/i.test(lab || '') ? 'video ads' : 'short videos') : k === 'comment_reply' || /reply/i.test(lab || '') ? 'replies' : 'posts'),
   crm: (k) => ({ review_ask: 'review asks', new_segment: 'segments', paid_broadcast: 'WhatsApp broadcasts', discount_offer: 'retention offers', flow_timing: 'send schedules' }[k] || 'messages'),
   store: (k) => ({ price_change: 'price changes', bundle_offer: 'offer tiles', pdp_block: 'proof blocks', new_section: 'page sections', blog_post: 'blog posts' }[k] || 'page copy versions'),
   vis: (k) => ({ llms_txt: 'llms.txt and claims lists', schema_fix: 'markup fixes', new_claim: 'claims', blog_post: 'blog posts' }[k] || 'FAQ answers'),
@@ -65,7 +65,7 @@ const STEPS = {
     { k: 'write', t: `Write ${n} ${k === 'short_video' ? 'scripts' : asset}, in the brand’s own words`, s: 'Only facts we can back' },
     { k: 'make', t: `Make the ${asset}`, s: k === 'short_video' ? `${n} cuts with their hooks` : `${n} versions to pick from` },
     { k: 'review', t: 'Review each one on the stage', s: 'Change it until it sounds like you' },
-    { k: 'ready', t: `Ready: share the brief, then post it ${where === 'where it goes' ? 'yourself' : `on ${where}`}`, s: 'The brief carries the post and where it goes' }],
+    { k: 'ready', t: where === 'Meta Ads' ? 'Ready: share the brief so the team runs it on Meta Ads' : `Ready: share the brief, then post it ${where === 'where it goes' ? 'yourself' : `on ${where}`}`, s: where === 'Meta Ads' ? 'It copies the brief, the video and the ad text for Ads Manager' : 'The brief carries the post and where it goes' }],
   crm: ({ items, n, asset, c, where }) => [
     { k: 'gather', t: `Pick who gets it${items.length ? `: ${andList(items)}` : ''}`, s: 'And who is left out' },
     { k: 'write', t: `Write ${n} ${asset}`, s: cut((c.detail?.how || [])[0] || 'Subject, words and the button', 110) },

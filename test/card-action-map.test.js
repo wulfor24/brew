@@ -41,7 +41,7 @@ const TABLE = [
   [card('Brief the shoot', { sector: 'creatives' }), 'creative.film_brief', 'Brief a film', 'brief'],
   [card('Make the video', { sector: 'creatives', title: 'Post the size-worry Reel' }), 'creative.short_video', 'Make the short video', 'post'],
   /* a card that plans a video ad makes the video (17 Oct: it opened a words-only shoot brief and no video could be made) */
-  [card('Make the video', { sector: 'creatives', make: { format: 'video ad' } }), 'creative.short_video', 'Make the short video', 'post'],
+  [card('Make the video', { sector: 'creatives', make: { format: 'video ad' } }), 'creative.short_video', 'Make the video ad', 'post'], // a Meta video ad, not an organic post
   [card('Make the carousel ad', { sector: 'creatives' }), 'creative.carousel_ad', 'Carousel ad', 'meta_ad'],
   [card('Draft the post', { sector: 'creatives' }), 'creative.ig_post', 'Instagram post', 'social'],
   [card('Draft the stories', { sector: 'creatives' }), 'creative.ig_story', 'Instagram Stories', 'social'],
