@@ -46,6 +46,11 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 /* this request may make fresh work (the brand's team, SquareUp); false = demo mode. Unset off a request (the background clock) */
 const GEN_CTX = new AsyncLocalStorage();
 const demoReq = () => GEN_CTX.getStore() === false;
+/* V1 hides Storefront everywhere (testing notes 18 Oct, QA FEED-ARV-05: not ready, it overwhelms the customer): its cards leave the
+   feed, the deck and the stories. ?storefront=1 on the page (sent as ?sf=1, or read from the page address) shows it all to us */
+const SF_CTX = new AsyncLocalStorage();
+export const storefrontOn = () => process.env.STOREFRONT === '1' || SF_CTX.getStore() === true;
+export const sfReq = (req, u) => u?.searchParams?.get('sf') === '1' || /[?&]storefront=1\b/.test(String(req?.headers?.referer || ''));
 import { demoSid, runDemo, sk } from './demo-mode.js'; // Demo Mode: per-session workspaces
 import { createEvidence, EVIDENCE_ASK, proofAnswer } from './evidence.js'; // the proof sheet on every card: why it was suggested, and the hard evidence
 import { refine as refineProof, evidenceKinds, cardNeeds } from './proof-logic.js'; // does the proof prove the claim: the card's own review pointer, no price-as-proof, claims that need an account
@@ -483,7 +488,7 @@ export function createFeedService(o) {
   const clampSeat = (t) => { const S = t?.seats; if (S && t.viewer && !S.includes(t.viewer.role) && S.length) t.viewer = { ...t.viewer, role: S[0] }; };
   // a price card saved before the paise fix whose every row is "₹1,850 → ₹1,850" says nothing changed: never shown
   const noChange = (c) => c.liveSrc?.kind === 'catalog' && c.badge?.[0] === 'Price changed' && c.rows?.length && c.rows.every((r) => { const m = /^(.+) → (.+)$/.exec(r?.[1] || ''); return m && m[1] === m[2]; });
-  const visible = (t, c) => seatOk(t, c) && !noChange(c) && !(c.origin === 'watcher' && c.type === 'idea' && !titlePricesMatch(c)) && ['ready', 'shown', 'approved', 'done'].includes(c.state) && !t.snoozed[c.id] && (!c.onlyWhen || connOn(t, c.onlyWhen))
+  const visible = (t, c) => seatOk(t, c) && (c.sector !== 'storefront' || storefrontOn()) && !noChange(c) && !(c.origin === 'watcher' && c.type === 'idea' && !titlePricesMatch(c)) && ['ready', 'shown', 'approved', 'done'].includes(c.state) && !t.snoozed[c.id] && (!c.onlyWhen || connOn(t, c.onlyWhen))
     && !(c.liveOnly && !t.member) && !(c.demo && (t.member || t.liveConn?.[c.onlyWhen])) && !(!c.liveOnly && t.privMoves?.includes(moveOfId(c.id))) && !(!c.liveOnly && t.privStatics && isStaticCard(c.id));
   // bring a workspace in line with what this viewer may see: add the live cards, drop the ones they may not have
   const applyLive = async (t, viewer) => {
@@ -547,9 +552,9 @@ export function createFeedService(o) {
       if (k < 0 || k > 10) k = 0;
       out.push(rest[k]); rest.splice(k, 1);
     }
-    const r = { top, ranked: out, scores, engaged: eng }; lastRank.set(t, { at: Date.now(), r }); return r;
+    const r = { top, ranked: out, scores, engaged: eng }; lastRank.set(t, { at: Date.now(), r, sf: storefrontOn() }); return r;
   };
-  const rankSoon = (t, ms = 60e3) => { const x = lastRank.get(t); return x && Date.now() - x.at < ms ? x.r : rank(t); };
+  const rankSoon = (t, ms = 60e3) => { const x = lastRank.get(t); return x && x.sf === storefrontOn() && Date.now() - x.at < ms ? x.r : rank(t); };
   const withChildren = (t, list) => { const res = []; list.forEach((c) => { res.push(c); [...t.cards.values()].filter((x) => x.parentCardId === c.id && visible(t, x)).sort((x, y) => y.createdAt - x.createdAt).forEach((x) => res.push(x)); }); return res; };
   const feed = (t) => {
     const { top, ranked: all, scores, engaged: eng } = rank(t);
@@ -2117,7 +2122,7 @@ export function createFeedService(o) {
     const gw = !viewer?.member && viewer?.email ? JAMS.guestWids(br.slug, viewer.email) : [];
     const who = { member: !!viewer?.member, me: viewer?.email || null /* whoever is signed in, member or staff: their own setup answers */, email: viewer?.member ? viewer.email || null : null, name: viewer?.member ? viewer.name || null : null, pic: viewer?.member ? viewer.pic || null : null, claimed: !!viewer?.claimed, slug: br.slug, seats: viewer?.member && Array.isArray(viewer.seats) ? viewer.seats : null,
       guest: gw.length ? { email: String(viewer.email).toLowerCase(), name: viewer.name || null, pic: viewer.pic || null, wids: gw } : null };
-    return GEN_CTX.run(gen, () => MC.run(who, t0, () => runIn(br, () => withPrefs(prefsOf(req), () => handleIn(req, res, u, viewer))))); // the jam's model and memory choice, for this request
+    return SF_CTX.run(sfReq(req, u), () => GEN_CTX.run(gen, () => MC.run(who, t0, () => runIn(br, () => withPrefs(prefsOf(req), () => handleIn(req, res, u, viewer)))))); // the jam's model and memory choice, for this request
   };
   const handleIn = async (req, res, u, viewer) => {
     const hm = u.pathname.match(/^\/h\/([\w~-]+)$/);

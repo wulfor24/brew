@@ -299,6 +299,10 @@
   const colleague = (id) => { const c = B.colleagues.find((x) => x.id === id) || B.colleagues[0], nm = S.slack.names[c.id]; return { ...c, name: nm || c.name, ini: nm ? nm.trim().split(/\s+/).slice(0, 2).map((x) => x[0]).join('').toUpperCase() : c.ini }; };
   const conn = (id) => !!S.conn[id];
   let view = 'feed';
+  /* V1 hides Storefront everywhere (testing notes 18 Oct, QA FEED-ARV-05): its column, its ring row, its cards (feed-service visible),
+     its agent in the roster and its tag. ?storefront=1 shows it all to us */
+  const SF_ON = /[?&]storefront=1\b/.test(location.search), SFQ = SF_ON ? '?sf=1' : '';
+  const AGENTS5 = ['creative', 'performance', 'storefront', 'visibility', 'crm'], AGENTS_ON = AGENTS5.filter((a) => a !== 'storefront' || SF_ON);
   let GO_LINK = false; /* opened from a Brew email (?go=feed): the feed itself, never the morning stack first */
 
   /* card as the viewer sees it: role copy, then live numbers for connected sources */
@@ -318,7 +322,7 @@
   let RINGS = null;
   /* a studio link (#remix=…) boots the feed underneath first: until the studio opens, keep its full-page layout and hide the feed */
   let BOOT_RX = /^#remix=/.test(location.hash); const endBootRx = () => { if (!BOOT_RX) return; BOOT_RX = false; document.body.classList.remove('rx-boot'); document.body.dataset.view = view; };
-  const loadStories = async () => { const r = await tapi('GET', '/api/tenants/:t/stories'); if (r.rings) RINGS = r.rings; };
+  const loadStories = async () => { const r = await tapi('GET', `/api/tenants/:t/stories${SFQ}`); if (r.rings) RINGS = r.rings; };
   /* the rings come after the feed: the feed paints first, the rings slot in when they land (never with a story open) */
   let ringsP = null;
   const ringsLater = () => { if (ringsP) return ringsP; ringsP = loadStories().catch(() => {}).finally(() => { ringsP = null; const el = $('.stories'); if (el && !$('#sv') && RINGS) el.outerHTML = storiesHtml(); }); return ringsP; };
@@ -331,7 +335,7 @@
   /* ranking lives in the feed service (freshness + impact + affinity + seat − fatigue, then interleave) */
   const loadFeed = async () => {
     await syncNow();
-    const r = await tapi('GET', '/api/tenants/:t/feed'); ringsLater(); if (r.error) return null;
+    const r = await tapi('GET', `/api/tenants/:t/feed${SFQ}`); ringsLater(); if (r.error) return null;
     ALL = r.cards; SCORES = r.scores || {}; LIMIT = r.limit; PINNED = new Set(r.pinned || []); SRV.health = r.health || {}; SRV.healthLive = r.healthLive || {}; SRV.aiRing = r.aiRing || null; SRV.clock = r.clock;
     NEWSET = new Set(r.newIds || []);
     /* saves live on the server (every device); the ones this browser kept before that go up once */
@@ -384,9 +388,9 @@
     window.scrollTo(0, 0); root.innerHTML = shell(`
         ${UI2 ? `<span class="ob2-mark">${SO()}</span>` : '<span class="ob2-eyebrow">Design partner preview</span>'}
         <h1 class="ob2-h">${UI2 ? 'Your brand’s next marketing moves, each with its sources.' : 'Your store’s marketing team, in one feed.'}</h1>${UI2 && !DEMO_LAND ? '<p class="ob2-ask">Let’s start with your URL.</p>' : ''}
-        <p class="ob2-lede">${DEMO_LAND ? 'Pick a real brand below and watch it run. Brew reads' : 'Add your website. Brew reads'} your store, reviews, rivals and AI answers, then five agents bring you ideas you shape together and hand over as one brief.</p>
+        <p class="ob2-lede">${DEMO_LAND ? 'Pick a real brand below and watch it run. Brew reads' : 'Add your website. Brew reads'} your store, reviews, rivals and AI answers, then ${SF_ON ? 'five' : 'four'} agents bring you ideas you shape together and hand over as one brief.</p>
         ${DEMO_LAND ? '<div class="ob2-demos" id="demos" aria-busy="true"></div>' : `<form class="ob2-url" id="url-form" autocomplete="off">${ic('link', 's18')}<input id="url-in" value="${LANDING ? '' : B.brand.host}" placeholder="yourbrand.com" aria-label="Your website" aria-describedby="url-err" inputmode="url" enterkeyhint="go" autocapitalize="off" spellcheck="false"${window.BREW_DEMO && !LANDING ? ` readonly aria-readonly="true" title="This demo is set up for ${esc(B.brand.host)}"` : ''}><button class="btn btn-primary" id="go" type="submit">${UI2 ? 'Read my store' : 'Build my feed'} ${ic('right', 's16')}</button></form>${LANDING ? `<p class="ob2-err" id="url-err" role="alert" hidden></p><p class="ob2-own">${OWN_LINE}</p>` : ''}`}
-        <div class="ob2-agents">${['creative', 'performance', 'storefront', 'visibility', 'crm'].map((a) => `<span title="${AGENT[a]}">${face(a)}</span>`).join('')}<small>Creative, ads, storefront, AI answers and retention agents</small></div>
+        <div class="ob2-agents">${AGENTS_ON.map((a) => `<span title="${AGENT[a]}">${face(a)}</span>`).join('')}<small>${SF_ON ? 'Creative, ads, storefront, AI answers and retention agents' : 'Creative, ads, AI answers and retention agents'}</small></div>
         <p class="ob2-foot">${LANDING ? `Brew reads the live site, its reviews, rivals and AI answers, then writes its moves. Every number has a source. ${DEMO_LAND ? 'Connected accounts are a demo workspace, and nothing is sent.' : window.LIVE?.me ? `Signed in as ${esc(window.LIVE.me.email)}.` : window.LIVE?.signin ? 'Sign in with Google. Email sign-in is coming.' : window.LIVE?.dummy === false ? '' : 'Connected accounts are a demo workspace.'}` : `Every idea comes from the Brew × ${esc(B.brand.name)} move documents.${window.LIVE?.dummy === false ? '' : ' Connected numbers are a demo workspace.'}`}</p>${LANDING && !DEMO_LAND ? '<div class="ob2-recent" id="recent"></div>' : ''}${LANDING ? '<p class="ob2-legal">Preview · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></p>' : ''}`, 0,
       `<div class="ob2-wash"></div><div class="ob2-collage">${LANDING ? LAND_CARDS.map((c, i) => `<figure class="cl cl${i} cl-txt" style="--clc:${c[3]}">${face(c[0])}<small>${esc(c[1])}</small><b>${esc(c[2])}</b></figure>`).join('') : art.map((src, i) => `<figure class="cl cl${i}"><img src="${src}" alt=""></figure>`).join('')}
         <div class="cl-chip c1">${face('creative')}<span><b>Creative director</b>12 ads ready for this week</span></div>
@@ -506,7 +510,7 @@
         <aside class="su-rail">
           <div class="host"><img src="${B.brand.mark}" alt="">${esc(B.brand.host)}</div>
           <ol class="steps">${steps.map((s, i) => `<li class="step" data-i="${i}"><span class="dot"></span><div><b>${esc(s.t)}</b><span>Queued</span></div></li>`).join('')}</ol>
-          <div class="roster"><h4>Setting up your agents</h4>${['creative', 'performance', 'storefront', 'visibility', 'crm'].map((a) => `<div class="agent-row" data-a="${a}">${face(a)}<div><b>${AGENT[a]}</b><span class="st">Waiting</span></div></div>`).join('')}</div>
+          <div class="roster"><h4>Setting up your agents</h4>${AGENTS_ON.map((a) => `<div class="agent-row" data-a="${a}">${face(a)}<div><b>${AGENT[a]}</b><span class="st">Waiting</span></div></div>`).join('')}</div>
         </aside>
         <section class="su-main">
           <div class="su-head"><h2>Reading ${esc(B.brand.name)}</h2><span>Your store, reviews, rivals and AI answers.</span><button class="btn btn-ghost sm skip" id="skip">Skip ahead</button></div>
@@ -1075,7 +1079,7 @@
        the rival panel (health.js aiRingFromRun), never one check's score over another's rows */
     const ai = h.rings.findIndex((x) => x.k === 'AI answers'), w = SRV.aiRing;
     if (B.health.public && ai >= 0 && w?.read && (h.rings[ai].read === false || String(w.at || '') >= String(h.rings[ai].at || h.rings[ai].stand?.at || ''))) {
-      h.rings[ai] = w; h.moves = [...(h.moves || []).filter((x) => x.k !== 'AI answers'), ...(w.fixT ? [{ k: 'AI answers', t: w.fixT }] : [])]; } /* the team's own accounts: the ring says what they read (the score stays simulated) */ Object.entries(SRV.healthLive || {}).forEach(([k, x]) => { const r = h.rings.find((y) => y.k === k); if (r && x?.what) { r.what = x.what; r.parts = x.parts; } }); const rd = h.rings.filter((r) => r.read !== false); h.score = rd.length ? Math.round(rd.reduce((a, r) => a + r.v, 0) / rd.length) : 0; return h; };
+      h.rings[ai] = w; h.moves = [...(h.moves || []).filter((x) => x.k !== 'AI answers'), ...(w.fixT ? [{ k: 'AI answers', t: w.fixT }] : [])]; } /* the team's own accounts: the ring says what they read (the score stays simulated) */ Object.entries(SRV.healthLive || {}).forEach(([k, x]) => { const r = h.rings.find((y) => y.k === k); if (r && x?.what) { r.what = x.what; r.parts = x.parts; } }); if (!SF_ON) { h.rings = h.rings.filter((r) => r.k !== 'Storefront'); h.moves = (h.moves || []).filter((x) => x.k !== 'Storefront'); } /* V1 hides Storefront: the ring keeps its other rows (QA FEED-ARV-05) */ const rd = h.rings.filter((r) => r.read !== false); h.score = rd.length ? Math.round(rd.reduce((a, r) => a + r.v, 0) / rd.length) : 0; return h; };
   /* the rings: three arcs, no composite number in the middle (an average of ads, the store and AI answers means nothing on its own) */
   const ringSvg = (h) => { const R = [52, 40, 28];
     return `<svg viewBox="0 0 130 130" width="100%" role="img" aria-label="${h.rings.map((r) => `${r.k} ${r.read === false ? 'not read' : `${r.v} of 100`}`).join(', ')}">${h.rings.map((r, i) => { const c = 2 * Math.PI * R[i]; return `<circle cx="65" cy="65" r="${R[i]}" fill="none" stroke="var(--surface-2)" stroke-width="8"/><circle class="ring-arc" cx="65" cy="65" r="${R[i]}" fill="none" stroke="var(--fg)" stroke-opacity="${1 - i * .3}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${(c * (r.read === false ? 0 : r.v) / 100).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 65 65)"/>`; }).join('')}</svg>`; };
@@ -1983,7 +1987,8 @@
     return { lead: c.sub, options: [{ id: 'o1', name: c.cta?.label || 'Do what it recommends', says: how[0] || c.sub, effect: how.slice(1).map((t) => (/[.!?]$/.test(t) ? t : `${t}.`)).join(' ') || (c.detail?.why || [])[0] || '', moves: [], pick: true }], reason: (c.detail?.why || [])[0] || '', follows: [], moves: [] }; };
   const mv2 = (n) => String(n).padStart(2, '0');
   const KIND = { report: 'Report', idea: 'Idea', decision: 'Decision', competitor: 'Competitor watch' };
-  const SECTOR = { ads: 'Ads', creatives: 'Creatives', storefront: 'Store', catalog: 'Marketplaces', visibility: 'AI visibility', signals: 'Customers' };
+  /* one name per area everywhere: the deck's column names (QA FEED-ARV-08: Catalog was "Marketplaces" here); Storefront only with ?storefront=1 */
+  const SECTOR = { ads: 'Ads', creatives: 'Creatives', ...(SF_ON ? { storefront: 'Storefront' } : {}), catalog: 'Catalog', visibility: 'AI answers', signals: 'Signals' };
   // how we measure it, on the card page: today → target on a track, what we watch, how it's attributed
   const cpMeasure = (m, w, f) => { const reads = w?.measure?.readings || [], res = w?.result, has = m.connected && m.baseline != null;
     return `<div class="cp-m">
@@ -3270,7 +3275,7 @@
      and why (18 Oct testing notes: an empty or hidden column read as broken) */
   const sigEmpty = () => !window.BREW_DEMO && !byCol('signals').length && !B.connectors?.shopify;
   /* V1 hides the Storefront column (testing notes 18 Oct: not ready, it overwhelms the customer); ?storefront=1 shows it to us */
-  const STOREFRONT_COL = /[?&]storefront=1\b/.test(location.search);
+  const STOREFRONT_COL = SF_ON;
   const deckCols = () => COL_ORDER.filter((k) => !(k === 'signals' && sigEmpty()) && (k !== 'storefront' || STOREFRONT_COL));
   const sigCard = (s) => `<article class="sig-card is-dummy"><div class="sig-top">${face('crm')}<b>CRM specialist</b><span class="when">· ${s.when}</span><span class="dummy-tag" title="A sample signal: the numbers are made up in this prototype">Dummy</span></div><hr class="sig-rule">
       <div class="sig-main"><h3>${esc(s.h)}</h3><p>${esc(s.why)}</p><div class="sig-nums"><div><b>${s.n}</b><span>people</span></div><div><b>${s.r}</b><span>can be reached</span></div><div><b>${s.ch}</b><span>best way to reach them</span></div></div></div>
@@ -3358,7 +3363,7 @@
   const saveLayout = () => tapi('PUT', '/api/tenants/:t/deck-layout', { hidden: Object.keys(colState).filter((k) => colState[k].hidden), colWidth: Math.round(colW) });
   const buildDeck = async () => {
     const d0 = deckEl(); if (!d0) return; await syncNow();
-    const r = await tapi('GET', '/api/tenants/:t/deck'); if (r.error) return;
+    const r = await tapi('GET', `/api/tenants/:t/deck${SFQ}`); if (r.error) return;
     ALL = r.cards; SCORES = r.scores || SCORES; FEED = Object.values(r.columns).flat().map((id) => ALL[id]).filter(Boolean);
     if (!layoutLoaded) { layoutLoaded = true; (r.layout.hidden || []).forEach((k) => colState[k] && (colState[k].hidden = true)); colW = r.layout.colWidth || colW; }
     const d = deckEl(); if (!d) return;
