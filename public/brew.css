@@ -2919,16 +2919,18 @@ a.pf-src:hover{color:var(--fg);text-decoration:underline;text-underline-offset:2
 .pf-ev dd{margin:0;overflow-wrap:anywhere}
 .pf-ev a{color:inherit;text-decoration:underline;text-underline-offset:2px}
 .pf-ev small{color:var(--fg-3)}
-/* the format chip stays on one line (truncated, the whole line on hover) and the source line gets its own row under it
-   (testing notes 18 Oct: "Page section" wrapped into "Move 04 · Worked examples" on the Signals and AI answers cards) */
-.card .body .mk-chip{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;white-space:nowrap;overflow:hidden;min-width:0;max-width:100%;margin:12px 0 0;padding:6px 10px;border-radius:8px;background:var(--surface-2);line-height:20px}
-.card .body .mk-chip svg{flex:none;margin:0;vertical-align:0}
-.card .body .mk-chip b{flex:none}
-.card .body .mk-chip span{min-width:0;overflow:hidden;text-overflow:ellipsis}
-.card .body .mk-chip span::before{content:'·';margin:0 6px 0 0}
-.card .body .src-line{display:flex;clear:both;margin-top:10px;min-width:0;max-width:100%;white-space:nowrap;overflow:hidden}
-.card .body .src-line svg,.card .body .src-line img{flex:none}
-.card .body .src-line .src-tx{min-width:0;overflow:hidden;text-overflow:ellipsis}
+/* the fact lines under a card's words (what it makes, who AI names, where it came from): one quiet stack, each a hanging icon
+   and plain text in the card's own font. The asset line wraps to two lines instead of cutting mid-word in a grey box, the AI
+   line is small (it was body-sized: .body p beat .ais-line), the source drops the code font (testing 19 Oct: "fix the ui") */
+.card .body .mk-chip,.card .body p.ais-line,.card .body .src-line{position:relative;display:block;clear:both;min-width:0;max-width:100%;margin:6px 0 0;padding:0 0 0 22px;border-radius:0;background:none;font-family:inherit;letter-spacing:0;overflow:hidden}
+.card .body .mk-chip{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;margin-top:14px;white-space:normal;font-size:14px;line-height:20px;color:var(--fg-2)}
+.card .body .mk-chip b{font-weight:600;color:var(--fg)}
+.card .body .mk-chip span::before{content:' · ';margin:0;color:var(--fg-3)}
+.card .body p.ais-line{font-size:13.5px;line-height:19px;color:var(--fg-2)}
+.card .body .src-line{white-space:nowrap;text-overflow:ellipsis;font-size:13px;line-height:19px;color:var(--fg-3)}
+.card .body .src-line .src-tx{display:inline}
+.card .body .mk-chip>svg:first-child{position:absolute;left:0;top:3px;margin:0}
+.card .body p.ais-line>.ic,.card .body .src-line>svg:first-child,.card .body .src-line>.rv-logo:first-child{position:absolute;left:0;top:2.5px;margin:0}
 /* WhatsApp checked before sending for approval (jam-room.js move) */
 .wa-state{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:var(--surface-2);font-size:13.5px;color:var(--fg)}
 .wa-dot{width:8px;height:8px;border-radius:50%;background:var(--fg-3);flex:none}

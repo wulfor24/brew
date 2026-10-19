@@ -967,7 +967,14 @@
     const c = cardOf(p), dn = doneText(p, c), bar = $(':scope > .bar', el); if (bar && dn && !bar.classList.contains('is-busy') && !$('.sp-ask', el)) bar.outerHTML = barHtml(c.cta, dn); }); };
   // what a card asks to be made, from its move (format and pieces)
   const MAKE_IC = { 'carousel ad': 'grid', 'instagram carousel': 'grid', 'collection ad': 'grid', 'catalog ad': 'grid', 'instagram stories': 'phone', 'instagram post': 'pic', 'single image ad': 'pic', 'video ad': 'vid', reel: 'vid', 'whatsapp message': 'chat', email: 'send', 'page section': 'doc' };
-  const makeChip = (c) => (c.make?.format ? `<p class="mk-chip" title="${esc([c.make.format[0].toUpperCase() + c.make.format.slice(1), c.make.pieces].filter(Boolean).join(' · '))}">${ic(MAKE_IC[c.make.format] || 'sparkles', 's14')}<b>${esc(c.make.format[0].toUpperCase() + c.make.format.slice(1))}</b>${c.make.pieces ? `<span>${esc(c.make.pieces)}</span>` : ''}</p>` : '');
+  /* the pieces never repeat the format beside it: "Page section on /: JSON-LD …" reads "Homepage: JSON-LD …", "Email · 1 email:
+     day-3 note" reads "Email · Day-3 note"; a count above one stays (19 Oct) */
+  const mkPieces = (c) => { const f = c.make.format.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), p = String(c.make.pieces || '').trim(), m = p.match(new RegExp(`^(?:(?:1|one|a)\\s+)?${f}s?(?:\\s+on\\s+(\\/\\S*?))?\\s*:\\s*`, 'i'));
+    if (!m) return p; const rest = p.slice(m[0].length); if (!rest) return '';
+    return m[1] ? `${m[1] === '/' ? 'Homepage' : m[1]}: ${rest}` : rest[0].toUpperCase() + rest.slice(1); };
+  const mkName = (f) => (f[0].toUpperCase() + f.slice(1)).replace(/\bwhatsapp\b/i, 'WhatsApp').replace(/\binstagram\b/i, 'Instagram');
+  const makeChip = (c) => { if (!c.make?.format) return ''; const f = mkName(c.make.format), pc = mkPieces(c);
+    return `<p class="mk-chip" title="${esc([f, pc].filter(Boolean).join(' · '))}">${ic(MAKE_IC[c.make.format] || 'sparkles', 's14')}<b>${esc(f)}</b>${pc ? `<span>${esc(pc)}</span>` : ''}</p>`; };
   /* the first draft Brew made for this card (drafts-bg.js, served as card.draft): the asset itself in place of the lane photo.
      A clip plays muted and looped only while it is on screen (armDraftVideos); slides use the feed's own carousel */
   const DRAFT_IC = { video: 'vid', carousel: 'grid', collection: 'grid', catalog: 'grid', email: 'send', whatsapp: 'chat', page: 'doc', image: 'pic' };
