@@ -12,6 +12,7 @@ import { isQuestion, answerGrounded } from './jam-answer.js'; // a question is a
 import { planMd, PLAN_V, oneOf } from './card-plan.js';
 import { MEASURE_SCHEMA, MEASURE_ASK, vetMeasure, measureFromMd } from './measure-spec.js';
 import { startStatus, moveStatus, LABEL } from './brief-status.js';
+import { moveLabel, moveNum, moveSay } from './move-label.js'; // weekly moves read "Weekly move 11", never "Move 1011" (QA FEED-QA-12)
 
 // what a brief for each kind of work must say before someone can act on it: [label, pattern that shows it's covered]
 const NEEDS = {
@@ -89,7 +90,7 @@ export function createJamBrief(o) {
     if (c.needs) parts.push(`## Who decides\n${c.needs}${/\.$/.test(c.needs) ? '' : '.'}`);
     if (d.watch) parts.push(`## Watch-outs\n${trim(d.watch, 240)}`);
     const ns = MOVES ? MOVES.numsOf(c.src) : [];
-    if (ns.length) parts.push(`## Backed by\n${ns.length > 3 ? `${ns.length} of the plans Brew wrote for ${BN()} (Moves ${ns.map((n) => String(n).padStart(2, '0')).join(', ').replace(/, (\d+)$/, ' and $1')}).` : ns.map((n) => `Move ${String(n).padStart(2, '0')}: ${MOVES.short ? MOVES.short(n) : ''}`).join(' · ')}`);
+    if (ns.length) parts.push(`## Backed by\n${ns.length > 3 ? `${ns.length} of the plans Brew wrote for ${BN()} (${ns.map(moveLabel).join(', ').replace(/, ([^,]+)$/, ' and $1')}).` : ns.map((n) => `${moveLabel(n)}: ${MOVES.short ? MOVES.short(n) : ''}`).join(' · ')}`);
     return parts.filter(Boolean).join('\n\n');
   };
   // several cards jammed together ("Jam on all"): one brief, one plan per card. They stay separate unless someone asks to merge them.

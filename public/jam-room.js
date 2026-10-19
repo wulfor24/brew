@@ -5,6 +5,7 @@
    Design: the feed system's paper and tokens. No score, no locks, no effects; a quiet list of what's still missing. */
 (() => {
   const A = window.__BREW; if (!A) return;
+  const mvLabel = (n) => (+n > 1000 ? `Weekly move ${+n - 1000}` : `Move ${String(n).padStart(2, '0')}`); /* weekly moves read "Weekly move 11", never "Move 1011" (QA FEED-QA-12) */
   const { $, $$, esc, ic, face, avatar, toast, AGENT } = A;
   const BNAME = () => window.FEED_DATA?.[window.BRAND]?.brand?.name || 'the brand'; // the brand this page is for
   const EARLY = ['drafting', 'team', 'needs_you', 'shared'];
@@ -275,13 +276,13 @@
     const box = $('#dp-moves'); if (!box) return; const ms = JM.moves[p.id];
     if (!ms) { box.hidden = ms === null ? false : true; return; }
     if (!ms.length) { box.hidden = true; return; }
-    box.hidden = false; $('.dp-moves-l', box).innerHTML = ms.map((m) => `<button class="dp-move" data-jm-movedoc="${m.n}"><span class="dp-move-n">Move ${String(m.n).padStart(2, '0')}</span><b>${esc(m.title)}</b>${m.stat ? `<small>${esc(m.stat)} ${esc((m.statLabel || '').toLowerCase())}</small>` : ''}${ic('right', 's14')}</button>`).join('');
+    box.hidden = false; $('.dp-moves-l', box).innerHTML = ms.map((m) => `<button class="dp-move" data-jm-movedoc="${m.n}"><span class="dp-move-n">${mvLabel(m.n)}</span><b>${esc(m.title)}</b>${m.stat ? `<small>${esc(m.stat)} ${esc((m.statLabel || '').toLowerCase())}</small>` : ''}${ic('right', 's14')}</button>`).join('');
   };
   const moveSheet = (n) => {
     const p = DPx(), m = (JM.moves[p?.id] || []).find((x) => x.n === +n); if (!m) return;
-    const tag = (x) => `Move ${String(m.n).padStart(2, '0')} · ${x}`;
+    const tag = (x) => `${mvLabel(m.n)} · ${x}`;
     A.modal(`<div class="sheet mv-sheet"><button class="icon-btn rx-close" data-close aria-label="Close">${ic('x', 's18')}</button>
-      <small class="mv-k">Move ${String(m.n).padStart(2, '0')}${(() => { const N = +A.movesTotal?.() || 0; return N && m.n <= N ? ` of ${N}` : ''; })()} · Brew × ${esc(BNAME())}</small><h2>${esc(m.title)}</h2>
+      <small class="mv-k">${mvLabel(m.n)}${(() => { const N = +A.movesTotal?.() || 0; return N && m.n <= N ? ` of ${N}` : ''; })()} · Brew × ${esc(BNAME())}</small><h2>${esc(m.title)}</h2>
       ${m.stat ? `<p class="mv-stat"><b>${esc(m.stat)}</b> ${esc((m.statLabel || '').toLowerCase())}</p>` : ''}
       ${m.gives ? `<section><h4>What it gives ${esc(BNAME())}</h4><p data-sel-from="${esc(tag('What it gives'))}">${esc(m.gives)}</p></section>` : ''}
       ${m.live ? `<section><h4>Live 30 days after we start</h4><p>${esc(m.live)}</p></section>` : ''}

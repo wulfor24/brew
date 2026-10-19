@@ -34,6 +34,7 @@ import { briefWithConnected, cleanBrief, renderBrief } from './brief.js'; // wha
 import { aiPaused } from './ai.js'; // a billing pause: the build says so and resumes, never writes a mock
 import { providerNow, geminiModel } from './gemini-client.js';
 import { KINDS, flagKind, runKind, potOf, potLeft, potAdd, potFit, perMove, capOf as potCapOf, nextWeek } from './rewrite-pot.js'; // one weekly rewrite budget a brand
+import { moveLabel, moveNum, moveSay } from './move-label.js'; // weekly moves read "Weekly move 11", never "Move 1011" (QA FEED-QA-12)
 
 const buildCtx = new AsyncLocalStorage(); // which brand's build a paid call belongs to
 // addresses that must never be read or built (wrong links, removals): BUILD_BLOCK=slug;slug (deploy.sh needs ; since its env list is comma-separated)
@@ -839,17 +840,17 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const href = `${base}/${slug}?go=feed`, movesHref = `${base}/${slug}?go=feed#v=moves`;
     const subject = kind === 'update' ? `${extra.moves.length} of ${name}’s moves were updated` : kind === 'all' ? (partial ? `${done} of ${total} moves for ${name} are ready` : `All of ${name}’s moves are ready`) : `Your first moves for ${name} are ready`;
     const lead = extra.lead || `Something changed for ${name}, so Brew rewrote the plans it affects`;
-    const first = kind === 'first' ? WAVE_A.filter((k) => moves[k]?.title).sort((a, b) => a - b).map((k) => `Move ${String(k).padStart(2, '0')} · ${moves[k].title}`) : [];
+    const first = kind === 'first' ? WAVE_A.filter((k) => moves[k]?.title).sort((a, b) => a - b).map((k) => `${moveLabel(k)} · ${moves[k].title}`) : [];
     const left = Math.max(0, total - done);
     const allLine = partial ? `Brew has written ${done} of ${total} moves for ${name}: every plan with its sources, a 30-day rollout and what to watch.` : `Brew has finished all ${total} moves for ${name}: every plan with its sources, a 30-day rollout and what to watch.`;
     const whyPart = capped ? `The other ${left} are paused at this brand’s spending cap; open Brew to carry on.` : missing ? `${missing} could not be written this time; the Moves page names them.` : '';
     const firstLine = `Brew has written the first ${first.length || 10} moves for ${name}: positioning, customers, rivals, pricing, offers and measurement.`;
     const firstNext = `Their ideas are in your feed now, and the other ${left} land one by one; we’ll email again when they’re all in.`;
-    const line = kind === 'update' ? `${lead}: ${extra.moves.map((x) => `Move ${String(x.n).padStart(2, '0')} (${x.title})`).join(', ')}. ${extra.because || ''}`.trim() : kind === 'all' ? `${allLine} ${whyPart} Each one downloads as a PDF, and your feed is built from them.`.replace(/\s+/g, ' ') : `${firstLine} ${firstNext}`;
+    const line = kind === 'update' ? `${lead}: ${extra.moves.map((x) => `${moveLabel(x.n)} (${x.title})`).join(', ')}. ${extra.because || ''}`.trim() : kind === 'all' ? `${allLine} ${whyPart} Each one downloads as a PDF, and your feed is built from them.`.replace(/\s+/g, ' ') : `${firstLine} ${firstNext}`;
     /* the "all" email shows a few of the brand's static ads (public files) */
     const statics = kind === 'all' ? (((await packs.getJSON(slug, 'config.json', {})) || {}).statics || []).slice(0, 3).map((id) => `${base}/b/${slug}/statics/${encodeURIComponent(id)}.jpg`) : [];
     const body = kind === 'update'
-      ? mailP(`${mailEsc(lead)}:`) + mailList(extra.moves.slice(0, 12).map((x) => `Move ${String(x.n).padStart(2, '0')} · ${x.title}`)) + (extra.because ? mailP(mailEsc(extra.because)) : '')
+      ? mailP(`${mailEsc(lead)}:`) + mailList(extra.moves.slice(0, 12).map((x) => `${moveLabel(x.n)} · ${x.title}`)) + (extra.because ? mailP(mailEsc(extra.because)) : '')
       : kind === 'all' ? mailP(mailEsc(allLine)) + (whyPart ? mailP(mailEsc(whyPart)) : '') + mailP('Each one downloads as a PDF, and your feed is built from them.') + (statics.length ? mailP(mailEsc(`${statics.length === 1 ? 'An ad' : `${statics.length} of the ads`} Brew made from your ad plan:`)) + mailImages(statics, { href, alt: `${name} ad` }) : '')
       : mailP(mailEsc(firstLine)) + (first.length ? mailList(first) : '') + mailP(mailEsc(firstNext));
     const html = emailHtml({ title: subject, eyebrow: name, preheader: line.slice(0, 140), body, cta: { href, label: 'Open the feed' }, secondary: { href: movesHref, label: 'Read the moves' }, after: mailP('Every number in them has a source. Anything we could not confirm is marked “to confirm”.', { muted: true, small: true }), base });
@@ -865,7 +866,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const s0 = await status(slug); if (!s0) return { error: 'unknown brand' };
     const x = st(slug), moves = await packs.getJSON(slug, 'moves.json', {});
     const specs = (await load()).moves?.SPECS || [];
-    const nm = (n) => sentenceCase(specs.find((p) => p.n === n)?.discipline || '', [], { force: true }) || String(specs.find((p) => p.n === n)?.kicker || '').toLowerCase().replace(/^./, (c) => c.toUpperCase()) || `Move ${String(n).padStart(2, '0')}`; // skill names are Title Cased
+    const nm = (n) => sentenceCase(specs.find((p) => p.n === n)?.discipline || '', [], { force: true }) || String(specs.find((p) => p.n === n)?.kicker || '').toLowerCase().replace(/^./, (c) => c.toUpperCase()) || moveLabel(n); // skill names are Title Cased
     const done = Object.entries(moves).filter(([k, mv]) => isPlay(k, mv)); // the playbook: not the index, not cadence moves
     const app = s0.applicable?.length ? s0.applicable : [...Array(51).keys()].filter(Boolean);
     const order = [...WAVE_A.filter((n) => app.includes(n)), ...app.filter((n) => !WAVE_A.includes(n))];
@@ -874,7 +875,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const failed = [...x.failed.entries()].map(([n, f]) => ({ n, title: nm(n), msg: /max_tokens/.test(f.msg) ? 'The reply ran out of room' : /refused/.test(f.msg) ? 'The model declined this one' : /cap|budget/.test(f.msg) ? 'Spend cap reached' : 'It stopped with an error', at: f.at }));
     const pad = (n) => String(n).padStart(2, '0');
     const ev = x.events.filter((e) => ['move', 'move-start', 'move-failed', 'pdf', 'statics', 'cards', 'confirmed', 'read-done'].includes(e.type)).slice(-40).reverse().slice(0, 25)
-      .map((e) => ({ at: e.at, type: e.type, text: e.type === 'move' ? `Move ${pad(e.n)} written: ${e.title}` : e.type === 'move-start' ? `Started Move ${pad(e.n)} · ${nm(e.n)}` : e.type === 'move-failed' ? `Move ${pad(e.n)} stopped, it gets another try` : e.type === 'pdf' ? `PDF ready: ${e.file}` : e.type === 'statics' ? `${e.n} static ads made` : e.type === 'cards' ? `${e.cards.length} new card${e.cards.length === 1 ? '' : 's'} from Move ${pad(e.n)}` : e.type === 'confirmed' ? 'You confirmed what we read' : 'Your site was read' }));
+      .map((e) => ({ at: e.at, type: e.type, text: e.type === 'move' ? `${moveLabel(e.n)} written: ${e.title}` : e.type === 'move-start' ? `Started ${moveLabel(e.n)} · ${nm(e.n)}` : e.type === 'move-failed' ? `${moveLabel(e.n)} stopped, it gets another try` : e.type === 'pdf' ? `PDF ready: ${e.file}` : e.type === 'statics' ? `${e.n} static ads made` : e.type === 'cards' ? `${e.cards.length} new card${e.cards.length === 1 ? '' : 's'} from Move ${pad(e.n)}` : e.type === 'confirmed' ? 'You confirmed what we read' : 'Your site was read' }));
     const g = s0.stages || {};
     return { name: s0.name, running: !!x.running, state: s0.state, done: done.length, core: WAVE_A.filter((n) => moves[n]).length, total: totalOf(s0), pdfs: Object.keys(s0.pdfs || {}).filter((k) => isPlay(k)).length, /* PDFs are made on download */ zips: s0.zips || [], statics: s0.statics || null,
       stages: { read: g.read?.state || null, confirm: g.confirm?.state || null, brief: g.brief?.state || null, moves: g.moves?.state || null },
@@ -1127,7 +1128,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
        the hour; off when the team turned automatic updates off */
     const inQ = new Set((u.queue || []).flatMap((q) => (q.ns || []).map(Number))), wq = potOf(u).waits || {}, rw = new Set([...(x.rewriting || [])].map(Number));
     const refreshOf = (n) => (u.auto === false ? 'off' : rw.has(+n) ? 'now' : inQ.has(+n) ? 'queued' : wq[n] ? 'next-week' : 'soon');
-    const specs = (await load()).moves?.SPECS || [], nm = (n) => (moves[n]?.title ? sentenceCase(moves[n].title) : sentenceCase(specs.find((p) => p.n === +n)?.discipline || '', [], { force: true })) || `Move ${pad2(n)}`;
+    const specs = (await load()).moves?.SPECS || [], nm = (n) => (moves[n]?.title ? sentenceCase(moves[n].title) : sentenceCase(specs.find((p) => p.n === +n)?.discipline || '', [], { force: true })) || moveLabel(n);
     const stale = Object.values(u.stale || {}).filter((s) => moves[s.n] && s.via !== 'connected' /* a connected run rewrites them on its own */).sort((a, b) => (a.priority === b.priority ? a.n - b.n : a.priority === 'high' ? -1 : 1)).map((s) => ({ ...s, title: nm(s.n), refresh: refreshOf(s.n) }));
     const last = u.lastCheck?.at || s0?.doneAt || null;
     return { auto: u.auto !== false, every: REFRESH_DAYS, potNext: nextWeek(), checking: x.checking ? (u.checking || { at: Date.now() }) : null, lastCheck: u.lastCheck || null, lastError: u.lastError || null, stale,
@@ -1319,7 +1320,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       log.log(`[connect] ${slug}: ${left.length} moves of the connected run are still to write, queued again`);
       await enqueue(slug, left, { via: 'connected', auto: true, tries: tries + 1 }); return drain(slug); }
     const ns = [...new Set([...Object.keys(pub), ...Object.keys(pm || {})].map(Number))].filter((n) => n >= 1 && n < 1000 && done(n)).sort((a, z) => a - z);
-    const title = (n) => (pm?.[n] || pub[n])?.title || `Move ${pad2(n)}`, names = (c.ids || []).map((k) => NAME_OF[k] || k).join(' and ') || 'Your accounts';
+    const title = (n) => (pm?.[n] || pub[n])?.title || moveLabel(n), names = (c.ids || []).map((k) => NAME_OF[k] || k).join(' and ') || 'Your accounts';
     let first = false;
     await editUpd(slug, (u) => { const d = u.connectDone; if (!d || d.at !== c.at || d.finished) return; first = true;
       for (const [n, s] of Object.entries(u.stale || {})) if (s.via === 'connected' && done(+n)) delete u.stale[n];

@@ -11,7 +11,8 @@
 // until a card's rewrite lands it shows its own words with the jargon swapped for plain ones (dejargon, no AI).
 import crypto from 'node:crypto';
 import { numbersIn } from './fact-gate.js';
-import { claimGaps } from './proof-logic.js'; /* a rewrite never claims Brew saw more than the card did */
+import { claimGaps } from './proof-logic.js';
+import { moveSay } from './move-label.js'; /* a rewrite never claims Brew saw more than the card did */
 
 export const PLAIN_V = 3; /* 2: outcome-first titles, no technical steps in the title or body (testing notes 18 Oct); 3: every field required, half answers never kept */
 const FILE = 'plain.json';
@@ -35,7 +36,7 @@ const JARGON = [
 ];
 /* a swap at the start of a sentence starts with a capital, like the words it replaced */
 const cap1 = (to, m, at, all) => (/^[A-Z`/]/.test(m) && /^[a-z]/.test(to) && (at === 0 || /[.!?:]\s+$/.test(all.slice(Math.max(0, at - 3), at))) ? to[0].toUpperCase() + to.slice(1) : to);
-export const dejargon = (s) => { if (typeof s !== 'string' || !s) return s; let x = s; for (const [re, to] of JARGON) x = x.replace(re, (m, ...a) => cap1(to, m, a[a.length - 2], a[a.length - 1])); return x; };
+export const dejargon = (s) => { if (typeof s !== 'string' || !s) return s; let x = s; for (const [re, to] of JARGON) x = x.replace(re, (m, ...a) => cap1(to, m, a[a.length - 2], a[a.length - 1])); return moveSay(x); }; /* and "Weekly move 11", never "Move 1011" */
 
 const sha = (s) => crypto.createHash('sha1').update(s).digest('hex').slice(0, 16);
 export const plainKey = (c) => sha(JSON.stringify([PLAIN_V, c?.title || '', c?.sub || '', c?.detail?.why || [], c?.detail?.how || []]));

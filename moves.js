@@ -2,6 +2,7 @@
 // Cards name their moves in `src` ("Moves 28 and 43", "Move 21 · example 5"). This finds the moves and
 // the passages in them that speak to a card, so remix packages and the jam can follow what the moves say.
 import { live } from './brand-ctx.js';
+import { moveLabel } from './move-label.js'; // "Weekly move 11", never "Move 1011"
 
 const STOP = new Set('the a an and or of to in on for with is are be we our your you it this that by at as from per one two three each every not no new more than into out up its their them they have has was were will can all any about after before over under what when who how why which also just only very most'.split(' '));
 const words = (s) => String(s || '').toLowerCase().replace(/\{\{[^}]+\}\}/g, ' ').match(/[a-z0-9₹%]+/g)?.filter((w) => w.length > 2 && !STOP.has(w)) || [];
@@ -13,7 +14,7 @@ export function createMoves(ROOT) {
   const label = (n, h) => L[n]?.heads?.[h] || fit(h, 28);
   const short = (n) => L[n]?.short || fit(M[n]?.title, 28);
   const line = (n) => L[n]?.line || fit(M[n]?.gives, 120);
-  const tag = (n, h) => `Move ${String(n).padStart(2, '0')} · ${h ? label(n, h) : short(n)}`;
+  const tag = (n, h) => `${moveLabel(n)} · ${h ? label(n, h) : short(n)}`;
   // "Moves 01, 04, 08 and 17" or "Move 21 · example 5" → [1, 4, 8, 17] / [21]
   const numsOf = (src) => { const m = String(src || '').match(/^moves?\s+([\d,\sand]+)/i); return m ? [...new Set((m[1].match(/\d+/g) || []).map(Number))].filter((n) => M[n]) : []; };
   // a section's readable text: generated moves keep blocks (p, list items, example bodies, callouts); older ones kept paras

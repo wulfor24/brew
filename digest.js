@@ -14,6 +14,7 @@
 // Live site only (server.js starts it on Cloud Run), never on the demo site. If the brand's Slack is connected, the same
 // lines go to its channel once.
 import { emailHtml, esc, p as mailP, list as mailList, heading, images as mailImages, footLink } from './mail-layout.js';
+import { moveLabel, moveNum, moveSay } from './move-label.js'; // weekly moves read "Weekly move 11", never "Move 1011" (QA FEED-QA-12)
 
 const DAY = 864e5, WEEK = 7 * DAY, IST = 5.5;
 const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[a-z]{2,}$/i;
@@ -124,7 +125,7 @@ export function digestMail({ name, slug, base = process.env.PUBLIC_URL || 'https
   const html = [], text = [];
   const sec = (h, items, after = '') => { if (!items.length) return; html.push(heading(h) + mailList(items) + after); text.push(`${h}\n${items.map((x) => `- ${x}`).join('\n')}`); };
   if (jams.length) sec('Waiting on you', jams.map((j) => `“${j.title}” ${j.ask}`));
-  sec('Moves Brew rewrote', [...c.rewritten.slice(0, 8).map((m) => `Move ${pad2(m.n)} · ${m.title}${m.because ? `: ${m.because}` : ''}`), ...(c.teamOnly.rewritten ? [`and ${plural(c.teamOnly.rewritten, 'more move')} for your team, in Brew`] : [])]);
+  sec('Moves Brew rewrote', [...c.rewritten.slice(0, 8).map((m) => `${moveLabel(m.n)} · ${m.title}${m.because ? `: ${m.because}` : ''}`), ...(c.teamOnly.rewritten ? [`and ${plural(c.teamOnly.rewritten, 'more move')} for your team, in Brew`] : [])]);
   sec('New this week', [...c.weekly.slice(0, 6).map((m) => m.title), ...(c.teamOnly.weekly ? [`and ${plural(c.teamOnly.weekly, 'more')} for your team, in Brew`] : [])]);
   sec(nAds === 1 ? 'A rival ad Brew spotted' : 'Rival ads Brew spotted', c.rivalAds.slice(0, 3).map((a) => (a.title ? `${a.brand}: ${a.title}` : a.brand)));
   if (c.theme || c.question) {

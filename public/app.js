@@ -303,6 +303,9 @@
      its agent in the roster and its tag. ?storefront=1 shows it all to us */
   const SF_ON = /[?&]storefront=1\b/.test(location.search), SFQ = SF_ON ? '?sf=1' : '';
   const AGENTS5 = ['creative', 'performance', 'storefront', 'visibility', 'crm'], AGENTS_ON = AGENTS5.filter((a) => a !== 'storefront' || SF_ON);
+  /* how a move's number is said (QA FEED-QA-12, move-label.js on the server): weekly moves are numbered from 1001 inside Brew and
+     read "Weekly move 11" (badge "W11"), never "Move 1011" */
+  const mvLabel = (n) => (+n > 1000 ? `Weekly move ${+n - 1000}` : `Move ${String(n).padStart(2, '0')}`), mvNum = (n) => (+n > 1000 ? `W${+n - 1000}` : String(n).padStart(2, '0'));
   let GO_LINK = false; /* opened from a Brew email (?go=feed): the feed itself, never the morning stack first */
 
   /* card as the viewer sees it: role copy, then live numbers for connected sources */
@@ -1097,7 +1100,7 @@
   const hcFix = (low) => { if (!low || low.read === false || !HC_MOVES?.length) return null; const map = HC_SKILLS[low.k] || {}, w = hcWeak(low);
     for (const sk of [...(w && map[w.k] || []), ...(map._ || [])]) { const m = HC_MOVES.find((x) => x.skill === sk); if (m) return m; } return null; };
   const hcCta = (low) => { const m = hcFix(low);
-    return m ? `<p class="hc-fix">${ic('doc', 's14')}<span>The fix · Move ${String(m.n).padStart(2, '0')}</span><b>${esc((window.fx || ((x) => x))(m.title))}</b></p><button class="bar" data-hc-move="${esc(m.n)}"><span class="lead">${ic('right', 's16')}Open the move</span>${ic('right', 's16 chev')}</button>`
+    return m ? `<p class="hc-fix">${ic('doc', 's14')}<span>The fix · ${mvLabel(m.n)}</span><b>${esc((window.fx || ((x) => x))(m.title))}</b></p><button class="bar" data-hc-move="${esc(m.n)}"><span class="lead">${ic('right', 's16')}Open the move</span>${ic('right', 's16 chev')}</button>`
       : `<button class="bar" data-hc-how><span class="lead">${ic('info', 's16')}How each ring is scored</span>${ic('right', 's16 chev')}</button>`; };
   /* AI answers: where the brand and its rivals stand (ai-standing.js), from the read's answers or the weekly check, whichever
      is newer. Counted where the shopper named no brand (that is where new buyers come from); an unread source says so */
@@ -1989,7 +1992,7 @@
     tapi('GET', `/api/cards/${encodeURIComponent(p.id)}/page`).then((r) => { PAGE[p.id] = r.page || false; if (DP?.p?.id === p.id) repaintDetail(); }); };
   const localPage = (c) => { const how = c.detail?.how || [];
     return { lead: c.sub, options: [{ id: 'o1', name: c.cta?.label || 'Do what it recommends', says: how[0] || c.sub, effect: how.slice(1).map((t) => (/[.!?]$/.test(t) ? t : `${t}.`)).join(' ') || (c.detail?.why || [])[0] || '', moves: [], pick: true }], reason: (c.detail?.why || [])[0] || '', follows: [], moves: [] }; };
-  const mv2 = (n) => String(n).padStart(2, '0');
+  const mv2 = (n) => mvNum(n);
   const KIND = { report: 'Report', idea: 'Idea', decision: 'Decision', competitor: 'Competitor watch' };
   /* one name per area everywhere: the deck's column names (QA FEED-ARV-08: Catalog was "Marketplaces" here); Storefront only with ?storefront=1 */
   const SECTOR = { ads: 'Ads', creatives: 'Creatives', ...(SF_ON ? { storefront: 'Storefront' } : {}), catalog: 'Catalog', visibility: 'AI answers', signals: 'Signals' };
@@ -2135,7 +2138,7 @@
       <div class="cp-how-b">${pg ? pg.options.map((o, i) => `<div class="cp-how-o${o.id === dec ? ' is-chosen' : ''}"><span class="cp-n">${o.id === dec ? ic('check', 's14') : L[i]}</span><div><b>${esc(o.name)}</b>${o.id === dec ? '<em class="cp-tag ok">Chosen</em>' : o.pick ? `<em class="cp-tag pick">Brew pick</em>` : ''}<p>${esc(o.effect || o.says || '')}</p></div></div>`).join('') : ''}
         ${pg?.reason ? `<p class="cp-how-why"><b>Why Brew picked it:</b> ${esc(pg.reason)}</p>` : ''}
         ${hist ? `<ol class="cp-how-t">${hist}</ol>` : ''}
-        ${pg?.moves?.length ? `<p class="cp-how-mv">${ic('link', 's14')}Backed by ${pg.moves.map((x) => `Move ${mv2(x.n)}`).join(', ')}</p>` : ''}</div></details>`;
+        ${pg?.moves?.length ? `<p class="cp-how-mv">${ic('link', 's14')}Backed by ${pg.moves.map((x) => `${mvLabel(x.n)}`).join(', ')}</p>` : ''}</div></details>`;
   };
   // the card's own buttons on its page: remix it in the studio, save it, jam on it
   const cpActs = (p, ch) => { const canRemix = false, saved = S.saved.includes(p.id);
@@ -2570,10 +2573,10 @@
     clearTimeout(BG.t); const slug = B.slug || BR; const out = [];
     if (GEN) { const b = await api(`/api/brands/${slug}/build`);
       if (b && !b.error) {
-        b.inflight.forEach((x) => out.push({ id: 'bg-m' + x.n, kind: 'run', t: `Writing Move ${String(x.n).padStart(2, '0')}`, s: x.title, meta: `${mins(x.secs)} so far · usually 6 to 9`, pct: Math.min(92, Math.round(100 * x.secs / 480)) }));
-        b.failed.forEach((x) => out.push({ id: 'bg-f' + x.n, kind: 'fail', t: `Move ${String(x.n).padStart(2, '0')} stopped`, s: `${x.title} · ${x.msg}`, meta: 'It gets another try once the rest are written' }));
+        b.inflight.forEach((x) => out.push({ id: 'bg-m' + x.n, kind: 'run', t: `Writing ${mvLabel(x.n)}`, s: x.title, meta: `${mins(x.secs)} so far · usually 6 to 9`, pct: Math.min(92, Math.round(100 * x.secs / 480)) }));
+        b.failed.forEach((x) => out.push({ id: 'bg-f' + x.n, kind: 'fail', t: `${mvLabel(x.n)} stopped`, s: `${x.title} · ${x.msg}`, meta: 'It gets another try once the rest are written' }));
         if (b.statics?.state === 'running') out.push({ id: 'bg-st', kind: 'run', t: 'Making your static ads', s: 'From Move 21, on your real product photos', meta: 'About 5 minutes', pct: 40 });
-        b.queue.slice(0, 3).forEach((x) => out.push({ id: 'bg-q' + x.n, kind: 'next', t: `Up next: Move ${String(x.n).padStart(2, '0')}`, s: x.title, meta: 'Starts when a slot frees up' }));
+        b.queue.slice(0, 3).forEach((x) => out.push({ id: 'bg-q' + x.n, kind: 'next', t: `Up next: ${mvLabel(x.n)}`, s: x.title, meta: 'Starts when a slot frees up' }));
         if (!b.inflight.length && b.done < 51 && !b.failed.length && !b.queue.length) out.push({ id: 'bg-w', kind: 'next', t: 'Waiting to start', s: b.state || '', meta: '' });
       } }
     const r = await api('/api/research'); (r?.running || []).forEach((k) => out.push({ id: 'bg-r' + k, kind: 'run', t: { ads: 'Reading rival ads', own: 'Reading your live ads', trends: 'Reading Google Trends', news: 'Reading industry news', howto: 'Writing this week’s playbooks' }[k] || 'Research', s: 'For your story rings', meta: 'A minute or two', pct: 50 }));
@@ -4143,7 +4146,7 @@
     const when = one(p.postAt) || one(p.schedule) || one(p.trigger) || one(p.checkAt) || bp.when || '';
     const backed = (RX.moves || []).slice(0, 3), measure = bp.metric || one(p.measure) || (kn ? kn.metric : '') || '';
     const budget = one(p.dailyBudget) || bp.budget || '';
-    const rows = [['Where', where && esc(where)], ['Post at', when && esc(when)], ['Budget', budget && esc(budget)], ['Backed by', backed.length ? backed.map((m) => `<button class="linkbtn j2-mv" data-j2-move="${m.n}" title="${esc(m.title)}">Move ${String(m.n).padStart(2, '0')}</button>`).join(' ') : ''], ['Measure', measure && esc(measure)]].filter(([, v]) => v);
+    const rows = [['Where', where && esc(where)], ['Post at', when && esc(when)], ['Budget', budget && esc(budget)], ['Backed by', backed.length ? backed.map((m) => `<button class="linkbtn j2-mv" data-j2-move="${m.n}" title="${esc(m.title)}">${mvLabel(m.n)}</button>`).join(' ') : ''], ['Measure', measure && esc(measure)]].filter(([, v]) => v);
     return rows.length ? `<dl class="j2-facts">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>` : ''; };
   /* the options under the chat: the card's own next step, the brief, photo, the family's quick asks, more versions, the knobs, the files */
   /* the files, the projection and the remakes: the same three chips in both designs (ui=1 puts them after its quick asks) */
@@ -4409,7 +4412,7 @@
     if (e.target.closest('[data-vmenu]')) { RX.vmenu = !RX.vmenu; return paintStudio(); }
     { const k = e.target.closest('[data-j2-pack],[data-j2-impact],[data-j2-remake]'); if (k && RX.ch) return j2Run(k.hasAttribute('data-j2-pack') ? 'pack' : k.hasAttribute('data-j2-impact') ? 'impact' : 'remake', RX.ch, k.dataset.j2Remake); }
     const jm2 = e.target.closest('[data-j2-move]'); if (jm2) { const m = (RX.moves || []).find((x) => x.n === +jm2.dataset.j2Move); if (!m) return;
-      return modal(`<div class="sheet j2-move"><header class="sh-h"><b class="sh-t">Move ${String(m.n).padStart(2, '0')}</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header><h3>${esc(m.title)}</h3>${m.stat ? `<p class="j2-mv-stat"><b>${esc(m.stat)}</b> ${esc(m.statLabel || '')}</p>` : ''}${m.why || m.summary ? `<p>${esc(m.why || m.summary)}</p>` : ''}<div class="cx-btns"><a class="btn btn-ghost" href="${pdfUrl(`move-${m.n}.pdf`)}" target="_blank" rel="noopener">${ic('down', 's16')}PDF</a><button class="btn btn-primary" data-close data-nav-move="${m.n}">Read the move</button></div></div>`); }
+      return modal(`<div class="sheet j2-move"><header class="sh-h"><b class="sh-t">${mvLabel(m.n)}</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header><h3>${esc(m.title)}</h3>${m.stat ? `<p class="j2-mv-stat"><b>${esc(m.stat)}</b> ${esc(m.statLabel || '')}</p>` : ''}${m.why || m.summary ? `<p>${esc(m.why || m.summary)}</p>` : ''}<div class="cx-btns"><a class="btn btn-ghost" href="${pdfUrl(`move-${m.n}.pdf`)}" target="_blank" rel="noopener">${ic('down', 's16')}PDF</a><button class="btn btn-primary" data-close data-nav-move="${m.n}">Read the move</button></div></div>`); }
     const nm = e.target.closest('[data-nav-move]'); if (nm) { closeModal(); location.hash = `#v=move&m=${nm.dataset.navMove}`; return; }
     if (e.target.closest('[data-ph-open]')) return openPhotos();
     { const dl = e.target.closest('[data-st-dl]'); if (dl && RX.ch) { const ch = RX.ch, v = RX.viewing && RX.viewing !== ch.head ? ch.versions.find((x) => x.id === RX.viewing) : null; return downloadVersion(ch, asPkg(ch, v), dl); } }
@@ -4519,11 +4522,11 @@
     const done = ms.filter((m) => m.n >= 1 && m.n < 1000 && !m.cadence).length, extra = ms.length - done, building = !!b && !st.done; // the playbook (status.total): not the index, not weekly moves (1001+)
     const live = new Map((b?.inflight || []).map((x) => [x.n, x])), failed = new Map((b?.failed || []).map((x) => [x.n, x]));
     const kick = (m) => String(m?.kicker || '').replace(/\s*·\s*move\s+\d+\s+of\s+\d+\s*$/i, '');
-    const card = (m) => `<article class="mv2-c" data-mv="${m.n}" tabindex="0"><div class="mv2-k"><span>${String(m.n).padStart(2, '0')}</span>${kick(m) ? `<i>${esc(kick(m).toLowerCase())}</i>` : ''}</div>
+    const card = (m) => `<article class="mv2-c" data-mv="${m.n}" tabindex="0"><div class="mv2-k"><span>${mvNum(m.n)}</span>${kick(m) ? `<i>${esc(kick(m).toLowerCase())}</i>` : ''}</div>
       <h4>${esc(m.title)}</h4>${m.stat ? `<p class="mv2-st"><b>${esc(m.stat)}</b> ${esc(String(m.statLabel || '').toLowerCase())}</p>` : m.gives ? `<p>${esc(m.gives)}</p>` : ''}
       ${m.n != null ? `<a class="mv2-pdf" href="${pdfUrl(`move-${m.n}.pdf`)}" target="_blank" rel="noopener" title="Open the PDF" aria-label="Open the PDF" data-stop>${ic('doc', 's14')}</a>` : ''}</article>`;
     const pend = (n) => { const x = live.get(n), f = failed.get(n);
-      return `<li class="${x ? 'is-run' : f ? 'is-fail' : ''}"><span class="mv2-n">${String(n).padStart(2, '0')}</span><b>${esc(x?.title || f?.title || (b?.queue || []).find((q) => q.n === n)?.title || '')}</b><em>${x ? `<span class="spin"></span>Writing · ${mins(x.secs)}` : f ? 'Stopped · retries soon' : building ? 'Queued' : 'Not written'}</em></li>`; };
+      return `<li class="${x ? 'is-run' : f ? 'is-fail' : ''}"><span class="mv2-n">${mvNum(n)}</span><b>${esc(x?.title || f?.title || (b?.queue || []).find((q) => q.n === n)?.title || '')}</b><em>${x ? `<span class="spin"></span>Writing · ${mins(x.secs)}` : f ? 'Stopped · retries soon' : building ? 'Queued' : 'Not written'}</em></li>`; };
     const groupsHtml = MV_GROUPS.map(([k, name, a, z]) => { const ns = [...Array.from({ length: z - a + 1 }, (_, i) => a + i), ...ms.filter((m) => m.n > 50 && m.n < 1000 && m.group === k).map((m) => m.n)], w = ns.filter((n) => by[n]), p = ns.filter((n) => !by[n]); /* listening-era (51-65) and dynamic (100+) moves sit in their own group */
       return `<section class="mv2-sec" id="mvg-${k}"><header><h3>${esc(name)}</h3>${p.length ? `<span>${w.length} of ${ns.length}</span>` : ''}</header>
         ${w.length ? `<div class="mv2-grid">${w.map((n) => card(by[n])).join('')}</div>` : ''}${(() => { const hot = p.filter((n) => live.has(n) || failed.has(n)), rest = p.filter((n) => !live.has(n) && !failed.has(n)), names = rest.map((n) => (b?.queue || []).find((q) => q.n === n)?.title).filter(Boolean);
@@ -4544,16 +4547,16 @@
     const buildHtml = !b ? `<div class="bd-empty">${GEN ? 'Build details are not available yet.' : `${poss(B.brand.name)} moves were written by the Brew team by hand, so there is no live build to show.`}</div>` : `
       ${stepper(b)}
       <div class="q-stack">
-        ${b.inflight.length ? `<section class="bd-card"><h3>Writing now</h3>${b.inflight.map((x) => `<div class="bd-run"><span class="spin"></span><div><b>Move ${String(x.n).padStart(2, '0')} · ${esc(x.title)}</b><span>${mins(x.secs)} so far · usually 6 to 9</span></div></div>`).join('')}</section>` : ''}
-        ${b.failed.length ? `<section class="bd-card is-fail"><h3>Stopped <small>they get another try</small><button class="btn btn-ghost sm" data-bgretry>Retry now</button></h3>${b.failed.map((x) => `<div class="bd-row"><b>Move ${String(x.n).padStart(2, '0')} · ${esc(x.title)}</b><span>${esc(x.msg)}</span></div>`).join('')}</section>` : ''}
-        ${b.queue.length ? `<section class="bd-card"><h3>Up next</h3><ol class="bd-q">${b.queue.map((x) => `<li><span>${String(x.n).padStart(2, '0')}</span>${esc(x.title)}</li>`).join('')}</ol></section>` : ''}
+        ${b.inflight.length ? `<section class="bd-card"><h3>Writing now</h3>${b.inflight.map((x) => `<div class="bd-run"><span class="spin"></span><div><b>${mvLabel(x.n)} · ${esc(x.title)}</b><span>${mins(x.secs)} so far · usually 6 to 9</span></div></div>`).join('')}</section>` : ''}
+        ${b.failed.length ? `<section class="bd-card is-fail"><h3>Stopped <small>they get another try</small><button class="btn btn-ghost sm" data-bgretry>Retry now</button></h3>${b.failed.map((x) => `<div class="bd-row"><b>${mvLabel(x.n)} · ${esc(x.title)}</b><span>${esc(x.msg)}</span></div>`).join('')}</section>` : ''}
+        ${b.queue.length ? `<section class="bd-card"><h3>Up next</h3><ol class="bd-q">${b.queue.map((x) => `<li><span>${mvNum(x.n)}</span>${esc(x.title)}</li>`).join('')}</ol></section>` : ''}
         ${b.usd > 0 ? `<p class="q-note">Spent $${b.usd.toFixed(2)} of a $${b.cap} cap on Claude, treg and images for this brand.</p>` : ''}
         ${b.events.length ? `<details class="q-more"><summary>Activity</summary><ul class="bd-log">${b.events.map((e) => `<li class="is-${e.type}"><time>${new Date(e.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time><span>${esc(e.text)}</span></li>`).join('')}</ul></details>` : ''}
       </div>`;
     const upHtml = !U ? `<div class="bd-empty">${GEN ? 'Updates open once the moves are written.' : `${poss(B.brand.name)} moves were written by hand, so Brew doesn’t refresh them.`}</div>` : (() => {
       const lc = U.lastCheck, chk = U.checking, rw = U.rewriting;
       const est = (n) => `about $${Math.max(1, Math.round(n * U.estMove))}`;
-      const stale = U.stale.map((x) => `<label class="up-mv is-${x.priority}"><input type="checkbox" data-upn="${x.n}" ${x.priority === 'high' ? 'checked' : ''} ${U.canRewrite ? '' : 'disabled'}><div><div class="up-mvh"><span>${String(x.n).padStart(2, '0')}</span><button class="linkbtn" data-mv="${x.n}">${esc(x.title)}</button>${x.priority === 'high' ? '' : '<em>worth a look</em>'}</div>
+      const stale = U.stale.map((x) => `<label class="up-mv is-${x.priority}"><input type="checkbox" data-upn="${x.n}" ${x.priority === 'high' ? 'checked' : ''} ${U.canRewrite ? '' : 'disabled'}><div><div class="up-mvh"><span>${mvNum(x.n)}</span><button class="linkbtn" data-mv="${x.n}">${esc(x.title)}</button>${x.priority === 'high' ? '' : '<em>worth a look</em>'}</div>
         <p>${esc(x.why)}</p></div></label>`).join('');
       return `<div class="up q-stack">
         <section class="up-hero"><div class="up-hl"><h3>${chk ? 'Checking now…' : lc ? `Last checked ${fmtWhen(lc.at)}` : 'Not checked yet'}</h3>
@@ -4566,12 +4569,12 @@
           return c.waiting ? `${esc(who)} ${are} connected. Brew rewrites your moves with your real numbers ${c.due && c.due > Date.now() ? `in about ${Math.max(1, Math.round((c.due - Date.now()) / 60e3))} min` : 'shortly'}, in case you connect more.`
             : c.later ? `${esc(who)} ${are} connected. ${c.written} of ${c.n} moves are rewritten with your real numbers; the rest carry on tomorrow.`
             : `${esc(who)} ${are} connected. Rewriting ${c.n ? `all ${c.n}` : 'your'} moves with your real numbers.`; })()}</p>` : ''}
-        ${rw ? `<section class="bd-card"><h3>Rewriting now <small>${rw.length}</small></h3>${rw.map((x) => `<div class="bd-run">${x.done ? `<span class="up-done">${ic('check', 's14')}</span>` : '<span class="spin"></span>'}<div><b>Move ${String(x.n).padStart(2, '0')} · ${esc(x.title)}</b><span>${x.done ? 'Rewritten' : x.secs != null ? `${mins(x.secs)} so far` : 'Waiting its turn'}</span></div></div>`).join('')}</section>` : ''}
+        ${rw ? `<section class="bd-card"><h3>Rewriting now <small>${rw.length}</small></h3>${rw.map((x) => `<div class="bd-run">${x.done ? `<span class="up-done">${ic('check', 's14')}</span>` : '<span class="spin"></span>'}<div><b>${mvLabel(x.n)} · ${esc(x.title)}</b><span>${x.done ? 'Rewritten' : x.secs != null ? `${mins(x.secs)} so far` : 'Waiting its turn'}</span></div></div>`).join('')}</section>` : ''}
         ${nStale ? `<section class="up-out"><h3>Out of date <small>${nStale}</small></h3><div class="up-list">${stale}</div>
           <footer class="up-foot"><button class="btn btn-primary" data-uprw ${U.canRewrite ? '' : 'disabled'}>Rewrite the ticked moves</button><span data-upest>${est(U.stale.filter((x) => x.priority === 'high').length)}</span></footer></section>` : lc ? '<p class="q-note">Every move matches the latest read.</p>' : ''}
         ${lc && (lc.changes || []).length ? `<details class="q-more"><summary>What changed · ${lc.changes.length}</summary><ul class="up-ch">${lc.changes.slice(0, 24).map((c) => `<li class="is-${c.kind}"><i>${c.kind === 'new' ? 'New' : c.kind === 'removed' ? 'Gone' : 'Changed'}</i><span>${esc(c.label)}</span><b>${c.kind === 'changed' ? `${esc(c.was)} → ${esc(c.now)}` : esc(c.now || c.was || '')}</b></li>`).join('')}</ul>
           ${(lc.spotted || []).length ? `<p class="up-note">New rivals spotted, not added: ${lc.spotted.map((x) => esc(x.name || x.host)).join(', ')}.</p>` : ''}</details>` : ''}
-        ${U.history.length ? `<details class="q-more"><summary>Rewritten before</summary><ul class="bd-log">${U.history.map((h) => `<li><time>${fmtDay(h.at)}</time><span>${h.auto ? 'On its own' : 'You asked'}: ${h.moves.map((x) => `Move ${String(x.n).padStart(2, '0')}`).join(', ')}${h.usd ? ` · $${h.usd.toFixed(2)}` : ''}</span></li>`).join('')}</ul></details>` : ''}
+        ${U.history.length ? `<details class="q-more"><summary>Rewritten before</summary><ul class="bd-log">${U.history.map((h) => `<li><time>${fmtDay(h.at)}</time><span>${h.auto ? 'On its own' : 'You asked'}: ${h.moves.map((x) => `${mvLabel(x.n)}`).join(', ')}${h.usd ? ` · $${h.usd.toFixed(2)}` : ''}</span></li>`).join('')}</ul></details>` : ''}
       </div>`; })();
     /* Build is a tab only while there is something to watch; once done it is one link away */
     const showBuild = building || !!b?.failed?.length || MVT.tab === 'build';
@@ -4587,7 +4590,7 @@
     $$('[data-mv]').forEach((x) => x.onclick = (e) => { if (e.target.closest('[data-stop]')) return; openMove(+x.dataset.mv); });
     $$('[data-mvt]').forEach((x) => x.onclick = () => { MVT.tab = x.dataset.mvt; renderMoves(); });
     $$('[data-wk]').forEach((x) => x.onclick = async () => { const box = $(`[data-wkx="${x.dataset.wk}"]`); if (!box) return; if (!box.hidden) { box.hidden = true; return; }
-      const c = (await api(`/api/brands/${slug}/history/${encodeURIComponent(x.dataset.wk)}`))?.changes || {}, nn = (n) => String(n).padStart(2, '0');
+      const c = (await api(`/api/brands/${slug}/history/${encodeURIComponent(x.dataset.wk)}`))?.changes || {}, nn = mvNum;
       const eng = (q) => (q?.seen >= 10 && q?.seenBefore >= 10 && q.now != null && q.before != null ? ` Engaged ${Math.round(q.before * 100)}% → ${Math.round(q.now * 100)}%.` : '');
       box.innerHTML = `<ul class="wk-ch">${(c.rewritten || []).map((m) => `<li><span>${nn(m.n)}</span><div><b>${m.before?.title && m.before.title !== m.title ? `${esc(m.before.title)} → ` : ''}${esc(m.title)}</b><p>${esc(m.because || 'Rewritten')}${m.learnings?.length ? `, with learnings from ${esc(m.learnings.join(', '))}` : ''}.${eng(m.quality)}</p></div></li>`).join('')}
         ${(c.new || []).map((m) => `<li><span>${nn(m.n)}</span><div><b>${esc(m.title)}</b><p>New</p></div></li>`).join('')}${(c.retired || []).map((m) => `<li class="is-gone"><span>${nn(m.n)}</span><div><b>${esc(m.title)}</b><p>Retired</p></div></li>`).join('')}</ul>`;
@@ -4613,7 +4616,7 @@
     $('#view').innerHTML = `<div class="rd"><div class="sk" style="height:60vh;border-radius:24px"></div></div>`; window.scrollTo(0, 0);
     const [m, list, up] = await Promise.all([api(`/api/brands/${slug}/moves/${n}`), api(`/api/brands/${slug}/moves`), GEN ? api(`/api/brands/${slug}/updates`) : null]); if (view !== 'move') return;
     const stl = (up?.stale || []).find((x) => x.n === n), rwing = (up?.rewriting || []).find((x) => x.n === n && !x.done);
-    if (!m || m.error) { $('#view').innerHTML = `<div class="rd"><div class="bd-empty">Move ${String(n).padStart(2, '0')} is not written yet. <button class="linkbtn" data-nav="moves">Back to the moves</button></div></div>`; return; }
+    if (!m || m.error) { $('#view').innerHTML = `<div class="rd"><div class="bd-empty">${mvLabel(n)} is not written yet. <button class="linkbtn" data-nav="moves">Back to the moves</button></div></div>`; return; }
     const pdfs = list?.pdfs || {}, all = (list?.moves || []).map((x) => x.n).sort((a, b) => a - b), at = all.indexOf(n), prev = all[at - 1], next = all[at + 1];
     const byN = Object.fromEntries((list?.moves || []).map((x) => [x.n, x]));
     const grp = MV_GROUPS.find(([, , a, z]) => n >= a && n <= z), kick = String(m.kicker || '').replace(/\s*·\s*move\s+\d+\s+of\s+\d+\s*$/i, '');
@@ -4630,7 +4633,7 @@
     const sid = (i) => `rd-s${i}`;
     /* the index is written once, at the start; this part is live: every move written so far, new ones included, by group */
     const written = (list?.moves || []).filter((x) => x.n > 0).sort((a2, b2) => a2.n - b2.n);
-    const liveIdx = n === 0 && written.length ? `<section id="rd-all" class="rd-all"><h2>Every move so far <small>${written.length}</small></h2>${[...MV_GROUPS, ['new', 'Added since', 51, 9999]].map(([, name, lo, hi]) => { const g = written.filter((x) => x.n >= lo && x.n <= hi); return g.length ? `<h3>${esc(name)}</h3><ol class="rd-all-l">${g.map((x) => `<li><button data-goto="${x.n}"><span>${String(x.n).padStart(2, '0')}</span><b>${esc(x.title || '')}</b>${x.n > 50 ? '<em>New</em>' : ''}</button></li>`).join('')}</ol>` : ''; }).join('')}</section>` : '';
+    const liveIdx = n === 0 && written.length ? `<section id="rd-all" class="rd-all"><h2>Every move so far <small>${written.length}</small></h2>${[...MV_GROUPS, ['new', 'Added since', 51, 9999]].map(([, name, lo, hi]) => { const g = written.filter((x) => x.n >= lo && x.n <= hi); return g.length ? `<h3>${esc(name)}</h3><ol class="rd-all-l">${g.map((x) => `<li><button data-goto="${x.n}"><span>${mvNum(x.n)}</span><b>${esc(x.title || '')}</b>${x.n > 50 ? '<em>New</em>' : ''}</button></li>`).join('')}</ol>` : ''; }).join('')}</section>` : '';
     const feedCards = allPosts().filter((p) => new RegExp(`^moves?\\s[^·]*\\b0?${n}\\b`, 'i').test(p.src || '')).slice(0, 4);
     $('#view').innerHTML = `<div class="rd">
       <div class="rd-bar rd2-bar"><button class="rd-back" data-nav="moves">${ic('right', 's16')}<span>All moves</span></button>
@@ -4649,7 +4652,7 @@
           if (st0 === 'next-week') return `<div class="rd2-fresh">${ic('refresh', 's16')}<p><b>Out of date.</b> It refreshes on its own on ${esc(wd)}, when the week’s refresh budget starts again.${why}</p>${GEN && up?.canRewrite ? `<button class="btn btn-ghost sm" data-rdrw>Refresh now</button>` : ''}</div>`;
           return `<div class="rd2-fresh">${ic('refresh', 's16')}<p><b>Out of date.</b> Automatic updates are off for ${bn}.${why}</p>${GEN && up?.canRewrite ? `<button class="btn btn-primary sm" data-rdrw>Refresh now</button>` : ''}</div>`; })() : '';
         return `<header class="rd-hero rd2-hero">
-        <p class="rd2-kick">${n === 0 ? 'The index' : `Move ${String(n).padStart(2, '0')}${about ? ` · ${esc(about)}` : ''}`}</p>
+        <p class="rd2-kick">${n === 0 ? 'The index' : `${mvLabel(n)}${about ? ` · ${esc(about)}` : ''}`}</p>
         <h1>${esc(n === 0 && written.length ? String(m.title || '').replace(/^\S+(?=\s+moves?\b)/i, String(written.length)) : m.title)}</h1>
         ${m.gives ? `<p class="rd2-sub">${esc(m.gives)}</p>` : ''}
         ${fresh}
@@ -4669,13 +4672,13 @@
           ${(m.sources || []).length && !hasSrc ? `<section id="rd-src" class="rd-src"><h2>Sources</h2><ol>${m.sources.map((x) => `<li>${x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.label || x.url)}</a>` : esc(x.label)}${x.at ? `<time>${esc(x.at)}</time>` : ''}</li>`).join('')}</ol></section>` : ''}
           ${hasSrc && (m.meta?.cites || []).some((c) => c.kind === 'ledger' || c.kind === 'signal') ? `<section class="rd-src"><h2>Evidence lines</h2><ol>${m.meta.cites.filter((c) => c.kind === 'ledger' || c.kind === 'signal').map((c) => `<li>${c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(`${c.label}: ${c.v}`)}</a>` : esc(`${c.label}: ${c.v}${c.src ? ` (${c.src})` : ''}`)}${c.at ? `<time>${esc(c.at)}</time>` : ''}</li>`).join('')}</ol></section>` : ''}
           ${feedCards.length ? `<section class="rd-feed"><h2>In your feed from this move</h2><div>${feedCards.map((p) => `<button data-opencard="${esc(p.id)}">${face(p.agent)}<span><b>${esc(p.title)}</b><small>${esc(p.cta?.label || 'Open')}</small></span>${ic('right', 's16')}</button>`).join('')}</div></section>` : ''}
-          <nav class="rd-next">${prev != null ? `<button data-goto="${prev}"><small>Previous</small><b>Move ${String(prev).padStart(2, '0')} · ${esc(byN[prev]?.title || '')}</b></button>` : '<span></span>'}${next != null ? `<button data-goto="${next}" class="is-next"><small>Next</small><b>Move ${String(next).padStart(2, '0')} · ${esc(byN[next]?.title || '')}</b></button>` : ''}</nav>
+          <nav class="rd-next">${prev != null ? `<button data-goto="${prev}"><small>Previous</small><b>${mvLabel(prev)} · ${esc(byN[prev]?.title || '')}</b></button>` : '<span></span>'}${next != null ? `<button data-goto="${next}" class="is-next"><small>Next</small><b>${mvLabel(next)} · ${esc(byN[next]?.title || '')}</b></button>` : ''}</nav>
         </article></div></div>`;
     $$('[data-goto]', $('#view')).forEach((x) => x.onclick = () => openMove(+x.dataset.goto));
     $$('[data-rdrw]', $('#view')).forEach((x) => x.onclick = async () => {
       if (x.dataset.sure !== '1') { $$('[data-rdrw]').forEach((y) => { y.dataset.sure = '1'; y.innerHTML = `Refresh · about $${(+up?.estMove || 0.1).toFixed(2)}? Yes`; }); return; }
       $$('[data-rdrw]').forEach((y) => { y.disabled = true; y.innerHTML = '<span class="spin"></span>Rewriting…'; });
-      const r = await api(`/api/brands/${slug}/updates`, { action: 'rewrite', moves: [n] }); toast(r?.error ? esc(r.error) : `Refreshing Move ${String(n).padStart(2, '0')} with the latest. It updates here when done.`);
+      const r = await api(`/api/brands/${slug}/updates`, { action: 'rewrite', moves: [n] }); toast(r?.error ? esc(r.error) : `Refreshing ${mvLabel(n)} with the latest. It updates here when done.`);
       if (r?.error) renderMove(); else MV.t = setTimeout(() => view === 'move' && MV.n === n && renderMove(), 60e3); });
     if (rwing) MV.t = setTimeout(() => view === 'move' && MV.n === n && renderMove(), 30e3);
     $$('[data-opencard]', $('#view')).forEach((x) => x.onclick = () => { const p = byId(x.dataset.opencard); if (p) openDetail(p); });
@@ -5048,7 +5051,7 @@
   const ASK = { msgs: [], pending: null, seed: null, busy: false };
   const askStarters = () => [`What should I fix first this week, and why?`, `Draft a reel hook for ${GX.p1}`, `Why are people leaving the checkout?`];
   const askMsg = (m) => m.from === 'brew' ? `<div class="a2m brew">${SO()}<div><div class="a2-body">${rich(m.body || '')}</div>
-      ${(m.links || []).length ? `<div class="a2-links">${m.links.map((l) => l.kind === 'move' ? `<button class="chip" data-a2-move="${esc(l.n)}">${ic('doc', 's14')}Move ${String(l.n).padStart(2, '0')}${l.title ? ` · ${esc(String(l.title).slice(0, 40))}` : ''}</button>` : `<button class="chip" data-a2-card="${esc(l.id)}">${l.agent ? face(l.agent) : ''}${esc(String(l.title || 'Open the card').slice(0, 48))}</button>`).join('')}</div>` : ''}
+      ${(m.links || []).length ? `<div class="a2-links">${m.links.map((l) => l.kind === 'move' ? `<button class="chip" data-a2-move="${esc(l.n)}">${ic('doc', 's14')}${mvLabel(l.n)}${l.title ? ` · ${esc(String(l.title).slice(0, 40))}` : ''}</button>` : `<button class="chip" data-a2-card="${esc(l.id)}">${l.agent ? face(l.agent) : ''}${esc(String(l.title || 'Open the card').slice(0, 48))}</button>`).join('')}</div>` : ''}
       ${m.action?.ctx ? `<button class="btn btn-primary sm a2-act" data-a2-act="${esc(JSON.stringify(m.action.ctx))}" data-a2-say="${esc(m.action.say || '')}">${ic(m.action.kind === 'brief' ? 'send' : 'hand', 's14')}${esc(m.action.label || (m.action.kind === 'brief' ? 'Jam, then send the brief' : 'Jam on it'))}</button>` : ''}
 </div></div>` : `<div class="a2m me"><p>${esc(m.body || m.text || '')}</p></div>`;
   const paintAsk = () => { const el = $('#ask2'); if (!el) return; const b = $('.a2-thread', el), atEnd = !b || b.scrollHeight - b.scrollTop - b.clientHeight < 60;

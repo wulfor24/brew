@@ -27,6 +27,7 @@ import { budgetWhy } from './budget.js'; // v2 words/takes: a refused spend is s
 import { createFamilies } from './measure-families.js';
 import { launchBrowser, zipBuffer, withBrowser } from './pdf/render.js';
 import { addV, versionsOf, versionById, signal, answered, autoCheck, outcome, ruleChecks, promptBlock, orderIntents, pickScore, takeNew, trustOf, summary, L, DETECTORS } from './learn.js';
+import { moveLabel } from './move-label.js'; // "Weekly move 11", never "Move 1011"
 
 /* ---------- what each agent can change, live ---------- */
 export const ACTIONS = {
@@ -379,7 +380,7 @@ export function createRemix(o) {
   const ANSWERED = new WeakSet(); /* changes whose last message was a question: answered, nothing changed, no brief sync */
   // what the card's own moves say, so packages follow the plan they came from
   const movePassages = (c, extra = '', k = 4) => (MOVES ? MOVES.passages(c, k, extra) : []);
-  const moveTag = (x) => MOVES?.tag ? MOVES.tag(x.n, x.h) : `Move ${String(x.n).padStart(2, '0')} · ${x.h}`;
+  const moveTag = (x) => MOVES?.tag ? MOVES.tag(x.n, x.h) : `${moveLabel(x.n)} · ${x.h}`;
   const productLine = (c, extra = '') => { const P = productFor(c, FACTS, extra); return `THE PRODUCT: every public field is about ${P.name} (page ${P.page}${P.price ? `, ${P.price}` : ''}${P.claim ? `; claim: ${P.claim}` : ''}). Stay on this product unless the person asks for another one.`; };
   const pkgWords = (ch) => (ch?.pkg ? [ch.after?.title, ...publicText(ch.family, ch.action, ch.pkg)].filter(Boolean).join('. ') : '');
   const specOf = (key) => ACTION_SPEC[String(key).split('.').pop()] || '';

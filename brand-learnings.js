@@ -15,6 +15,7 @@
 // The same paste again is recognised by its hash: nothing is learned twice and nothing is spent.
 // Pure helpers are exported so tests run them free; createLearnings wires the store, memory, builder and cadence.
 import crypto from 'node:crypto';
+import { moveLabel, moveNum, moveSay } from './move-label.js'; // weekly moves read "Weekly move 11", never "Move 1011" (QA FEED-QA-12)
 
 // connected tools by key prefix (the same names as facts-desk.js TOOL; kept here so brand-pack.js can import this file)
 const TOOL = { shopify: 'Shopify', meta: 'Meta Ads', ga4: 'Google Analytics', gads: 'Google Ads', klaviyo: 'Klaviyo', reviews: 'Judge.me', market: 'Marketplaces' };
@@ -274,7 +275,7 @@ export function replyText(r) {
   return out.join('\n');
 }
 function movesLine(m, name = 'the brand') {
-  const ns = (xs) => listAnd(xs.map((n) => `Move ${pad(n)}`));
+  const ns = (xs) => listAnd(xs.map(moveLabel));
   const mins = (k) => (k <= 2 ? '10 to 15 minutes' : k <= 6 ? '15 to 20 minutes' : k <= 18 ? 'about 30 to 45 minutes' : 'about an hour'); /* six at a time */
   const out = [];
   if (m.pending?.ns?.length) out.push(`- ${m.pending.ns.length} moves change in a way that matters (${ns(m.pending.ns)}). Rewriting all of them costs about $${m.pending.est}, over the $${m.pending.cap} an upload spends on its own.`, `- Reply “go ahead” to rewrite all ${m.pending.ns.length} (${mins(m.pending.ns.length)}), or “just the top ones” for the ${m.pending.top.length} that matter most, within $${m.pending.cap}.`);

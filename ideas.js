@@ -9,6 +9,7 @@ import { promptBlock as creativeBlock } from './creative-catalog.js'; // what ca
 import crypto from 'node:crypto';
 import { numbersIn, canon } from './fact-gate.js';
 import { ideaCards } from './social-feed.js';
+import { moveLabel, moveNum, moveSay } from './move-label.js'; // weekly moves read "Weekly move 11", never "Move 1011" (QA FEED-QA-12)
 
 /* ---------- platforms ---------- */
 export const PLATFORMS = {
@@ -121,7 +122,7 @@ export function createIdeas({ slug, packs, ai, treg, log = console, now = () => 
     const cardsOf = {}; for (const c of (seed.posts || [])) { const m = /^Move (\d+)/.exec(c.src || ''); if (m) (cardsOf[m[1]] ||= []).push(c.id); }
     const movesD = Object.values(moves).filter((m) => m && m.n > 0).sort((a, b) => a.n - b.n).map((m) => {
       const take = []; for (const s of m.sections || []) { let on = false; for (const b of s.blocks || []) { if (b.t === 'h3') on = /takeaway/i.test(b.text || ''); else if (on && b.t === 'list') take.push(...(b.items || [])); } }
-      return { ref: `Move ${m.n}`, n: m.n, title: m.title, skill: m.skill, gives: cut(m.gives, 220), take: take.slice(0, 3).map((x) => cut(String(x).replace(/\*\*/g, ''), 220)), cards: cardsOf[m.n] || [] };
+      return { ref: moveLabel(m.n), n: m.n, title: m.title, skill: m.skill, gives: cut(m.gives, 220), take: take.slice(0, 3).map((x) => cut(String(x).replace(/\*\*/g, ''), 220)), cards: cardsOf[m.n] || [] };
     });
     const socials = Object.entries(profile.socials || {}).filter(([, v]) => v?.url).map(([k, v]) => ({ platform: k, url: v.url, handle: v.handle || v.url.replace(/\/$/, '').split('/').pop() }));
     const founders = (profile.company?.founders || []).map((f) => f.name), founderRoles = Object.fromEntries((profile.company?.founders || []).filter((f) => f?.name).map((f) => [f.name, f.role || f.title || 'Co-founder']));
