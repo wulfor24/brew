@@ -3,7 +3,7 @@
 // line, or plain text (ad copy, a WhatsApp message, an email, page copy). Nothing is made until someone taps:
 // a draft costs money, so it is never made for a card nobody opened.
 // Each draft lives on the jam (w.drafts), newest first; the client polls the jam while one is being made.
-import { CLAIMS_RULE, COPY_RULE } from './claims.js'; // no invented codes, guarantees or timed results; copy that reads right
+import { CLAIMS_RULE, COPY_RULE, cleanDraftClaims } from './claims.js'; // no invented codes, guarantees or timed results; copy that reads right
 import { budgetWhy } from './budget.js'; // whose daily share ran out, in plain words
 import { makeVoice as vertexVoice, makeVideo as vertexVideo } from './media.js'; // Vertex, then OpenAI (media.js); Sloosh makes finals only
 import { buildDraft } from './sloosh-prompt.js'; // one brief for drafts and finals
@@ -63,7 +63,7 @@ export const imagePrompt = (j, hasSrc, c = null, brand = null, o = {}) => buildD
 export const DRAFT_SCHEMA = SCHEMA;
 export const DRAFT_RATIOS = RATIOS;
 
-export function createDrafts({ rivalAdOf = () => null, rivalStoreOf = () => null, hooksOf = () => null, claudeTool, geminiImage, treg, launchBrowser, zipBuffer, photoAsync, photoFile, photoOf, catalogOf = () => null, brandName = () => '', cardOf, briefOf, cardBrief, seatLine, isMock, spend, clean, now, uid, say, save, AGENT, onReady = null, log = console }) {
+export function createDrafts({ sourceOf = () => '', rivalAdOf = () => null, rivalStoreOf = () => null, hooksOf = () => null, claudeTool, geminiImage, treg, launchBrowser, zipBuffer, photoAsync, photoFile, photoOf, catalogOf = () => null, brandName = () => '', cardOf, briefOf, cardBrief, seatLine, isMock, spend, clean, now, uid, say, save, AGENT, onReady = null, log = console }) {
   const keyOf = (s) => crypto.createHash('sha1').update(s).digest('hex').slice(0, 16);
   /* a store photo by URL (the catalog's own image), fetched once into tmp */
   const fetchPhoto = async (u) => { const f = path.join(os.tmpdir(), 'brew-ph-' + keyOf(u) + '.jpg'); if (!fs.existsSync(f)) { const r = await safeFetch(u, { signal: AbortSignal.timeout(20e3) }); if (!r.ok) return null; fs.writeFileSync(f, Buffer.from(await r.arrayBuffer())); } return f; };
@@ -79,6 +79,7 @@ export function createDrafts({ rivalAdOf = () => null, rivalStoreOf = () => null
     const hooks = hookBlock(hooksOf(t) || catalogOf(t)?.hooks || {}); /* real buyers' words and the rival ads that keep running (brand-pack.js hooksOf; feed-service passes them) */
     const prompt = draftPrompt({ card: c ? `${cardBrief(c, seatLine(t.viewer))}${rv ? `\n\n${rivalBlock(rv.ad, rv.style, brandName(t) || 'the brand')}` : ''}${hooks ? `\n\n${hooks}` : ''}` : `Jam: ${w.title}`, role: AGENT[w.agent] || 'creative', brief: briefOf(t, w), mem, as, ask });
     const j = await claudeTool(prompt, SCHEMA, 4500, 'draft'); /* 3000 was hit once: a plan cut off mid-JSON */
+    try { cleanDraftClaims(j, sourceOf(t, c)); } catch {} /* QA-25: the store's own claims only (its facts, catalog, reviews, the card's evidence) */
     if (!DRAFT_AS.includes(j.as) || as !== 'auto') j.as = as === 'auto' ? 'text' : as;
     return j;
   };

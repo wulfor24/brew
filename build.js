@@ -35,6 +35,7 @@ import { aiPaused } from './ai.js'; // a billing pause: the build says so and re
 import { providerNow, geminiModel } from './gemini-client.js';
 import { KINDS, flagKind, runKind, potOf, potLeft, potAdd, potFit, perMove, capOf as potCapOf, nextWeek } from './rewrite-pot.js'; // one weekly rewrite budget a brand
 import { moveLabel, moveNum, moveSay } from './move-label.js'; // weekly moves read "Weekly move 11", never "Move 1011" (QA FEED-QA-12)
+import { markMoveClaims, sourceText } from './claims.js'; // move PDFs mark a claim the store never made, like the page
 
 const buildCtx = new AsyncLocalStorage(); // which brand's build a paid call belongs to
 // addresses that must never be read or built (wrong links, removals): BUILD_BLOCK=slug;slug (deploy.sh needs ; since its env list is comma-separated)
@@ -481,7 +482,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         const { ids, text } = await createStatics({ ai, image, packs, launchBrowser: mods.pdf.launchBrowser, log }).make(slug, { move, profile, facts, priv: true });
         await withLock(async () => {
           const seed = await packs.getJSON(slug, 'seed.json', {}), lane = Object.keys(seed.lanes || { core: 1 })[0];
-          const cards = teamStaticCards(slug, ids, text, { lane, name: profile.name });
+          const cards = teamStaticCards(slug, ids, text, { lane, name: profile.name, titleOf: (h) => (profile.catalog?.products || []).find((x) => x?.handle === h)?.title || '' });
           const pc = (await packs.getJSON(slug, 'private/cards.json', [])).filter((c) => !/^(static-|statics-batch)/.test(c.id));
           await packs.put(slug, 'private/cards.json', [...pc, ...cards]); onCards(slug, cards, { replace: true, private: true });
         });
@@ -1522,7 +1523,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   }
   /* Saved PDFs heal: when the PDF text rules change (PDF_V) the saved PDFs are forgotten and each is drawn again on its next
      download (pdfOn); entries for moves that no longer exist leave status.pdfs. Nothing is drawn ahead of time. */
-  const PDF_V = 4; // 2: kickers without "OF N", "What to watch", BREW DRAFTS; 3: no "Brew re-reads / we pause", index without a count; 4: no source-method narration (brew-name.js unSkill) (2026-10-15)
+  const PDF_V = 5; // 5: ₹ never ‹, claims the store never made marked "Proposed (team decides)" (final QA pass 19 Oct); 2: kickers without "OF N", "What to watch", BREW DRAFTS; 3: no "Brew re-reads / we pause", index without a count; 4: no source-method narration (brew-name.js unSkill) (2026-10-15)
   let pdfHealQ = Promise.resolve();
   const healPdfs = (slug) => (pdfHealQ = pdfHealQ.catch(() => {}).then(async () => {
     if (blocked(slug) || process.env.PDF_HEAL_OFF === '1') return;
@@ -1550,6 +1551,9 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   const pdfFor = async (slug, move, o = {}) => { const m = await load(); if (!m.pdf) return null; const profile = await packs.getJSON(slug, 'profile.json'); if (!profile) return null; return renderPdf(slug, m.pdf, move, profile, o); }; /* { priv: true }: the team's copy (private/pdf) */
   /* a move's PDF, made when someone opens it: drawn once per version of the move (and of the PDF rules), then served from the
      pack; two people opening it at once wait for the same render. → { name, buf } | null */
+  /* the brand's own words for the claims mark (claims.js): its facts, products and about */
+  const claimSrcOf = async (slug) => { const [facts, profile] = await Promise.all([packs.getJSON(slug, 'facts.json', {}).catch(() => ({})), packs.getJSON(slug, 'profile.json', null).catch(() => null)]);
+    return sourceText(Object.values(facts || {}).map((f) => [f?.label, f?.v, ...(f?.aliases || [])]), (profile?.catalog?.products || []).map((x) => [x?.title, x?.description]), profile?.about || '', profile?.brand?.about || ''); };
   const pdfJobs = new Map();
   async function pdfOn(slug, n) {
     if (blocked(slug)) return null;
@@ -1561,7 +1565,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (!pdfJobs.has(key)) pdfJobs.set(key, (async () => {
       const m = await load(); if (!m.pdf) throw new Error('PDF renderer not installed');
       const profile = await packs.getJSON(slug, 'profile.json'); if (!profile) throw new Error('no profile');
-      await renderPdf(slug, m.pdf, mv, profile, { ver }); const name = m.pdf.pdfName(mv);
+      await renderPdf(slug, m.pdf, markMoveClaims(mv, await claimSrcOf(slug)) /* a code or guarantee the store never made reads as the team's call, as on the page (QA-25) */, profile, { ver }); const name = m.pdf.pdfName(mv);
       return { name, buf: await packs.get(slug, 'pdf/' + name) };
     })().finally(() => pdfJobs.delete(key)));
     return pdfJobs.get(key);

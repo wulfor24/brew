@@ -58,7 +58,7 @@ export function createFinalsSheet({ finals, sloosh, references = null, creditsLe
 }
 
 /* ---------- the jam: a final is a draft card ---------- */
-export function createFinalsRoutes({ on, W, say, meOf, slugOfT, brandOfT, cardOfW = () => null, references = null, finals, sloosh, creditsLeft = () => null, rivalOf = async () => null, onReady = () => {}, save = () => {}, now = () => Date.now(), uid = (p) => `${p}_${Math.random().toString(36).slice(2, 10)}`, log = console }) {
+export function createFinalsRoutes({ blockOf = () => null, on, W, say, meOf, slugOfT, brandOfT, cardOfW = () => null, references = null, finals, sloosh, creditsLeft = () => null, rivalOf = async () => null, onReady = () => {}, save = () => {}, now = () => Date.now(), uid = (p) => `${p}_${Math.random().toString(36).slice(2, 10)}`, log = console }) {
   const sheet = createFinalsSheet({ finals, sloosh, references, creditsLeft, brandOfT, log, now });
   const nameOf = (t) => meOf(t)?.name || meOf(t)?.email || 'Someone';
   const draftOf = (w, id) => (w.drafts || []).find((d) => d.id === id && d.state !== 'making');
@@ -71,6 +71,7 @@ export function createFinalsRoutes({ on, W, say, meOf, slugOfT, brandOfT, cardOf
       draft: d ? { id: d.id, as: d.as, title: d.title, visual: d.visual || '', motion: d.motion || '', text: d.as !== 'video' ? firstLine(d.copy || '') : '', ratio: d.ratio, final: !!d.final, image: d.image, video: d.video } : null }); });
 
   on('POST', '/api/work/:wid/final/quote', async (b, t, p) => { const w = W(t, p.wid); if (!w) return { error: 'not found' }; const d = draftOf(w, b.draftId); if (!d) return { error: 'That draft is not here any more.' };
+    const block = blockOf(t, w, d); if (block) return { error: block, fixFirst: true }; /* the same gate as the studio's: no paid final over a flagged claim */
     const spec = sheet.spec(t, await withRival(t, w, d, baseOf(t, w, d)), b); const q = await finals.quote(slugOfT(t), spec).catch((e) => ({ error: e.message }));
     if (q.error) { w.finalQuote = null; return { error: q.error, missing: q.missing || null, fields: q.fields || null, inputs: q.inputs || null, filled: q.filled || null, credits: q.credits ?? null }; }
     w.finalQuote = { draftId: d.id, spec, quote: q, at: now(), by: nameOf(t) }; save(t);
@@ -112,7 +113,7 @@ export function createFinalsRoutes({ on, W, say, meOf, slugOfT, brandOfT, cardOf
 }
 
 /* ---------- the studio: a final is the next version, labelled Final ---------- */
-export function createStudioFinals({ headOf = () => null, useVersion = () => {}, versionById = () => null, on, C, ensurePkg, sync, version, pubChange, cardOf = () => null, cardPhoto = () => null, catalogOf = () => [], jobs, vidJobs = null, references = null, finals, sloosh, creditsLeft = () => null, rivalOf = async () => null, brandOfT, slugOfT, meOf = () => null, onMedia = () => {}, isVideo = () => false, RATIO = {}, now = () => Date.now(), log = console }) {
+export function createStudioFinals({ blockOf = () => null, headOf = () => null, useVersion = () => {}, versionById = () => null, on, C, ensurePkg, sync, version, pubChange, cardOf = () => null, cardPhoto = () => null, catalogOf = () => [], jobs, vidJobs = null, references = null, finals, sloosh, creditsLeft = () => null, rivalOf = async () => null, brandOfT, slugOfT, meOf = () => null, onMedia = () => {}, isVideo = () => false, RATIO = {}, now = () => Date.now(), log = console }) {
   const sheet = createFinalsSheet({ finals, sloosh, references, creditsLeft, brandOfT, log, now });
   const nameOf = (t) => meOf(t)?.name || meOf(t)?.email || 'Someone';
   const headFinal = (ch) => (ch.versions || []).find?.((v) => v.id === ch.headVersionId)?.final || ch.lastFinal?.versionId === ch.headVersionId ? ch.lastFinal : null;
@@ -138,6 +139,7 @@ export function createStudioFinals({ headOf = () => null, useVersion = () => {},
     return sheet.status(t, { slug: slugOfT(t), kind: base.kind, format: base.format, photos: photos(t, ch), draft: draftOf(t, ch), pending: ch.finalQuote ? { at: ch.finalQuote.at } : null }); });
 
   on('POST', '/api/changes/:chid/final/quote', async (b, t, p) => { const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (ch.imagePending || ch.videoPending || ch.remakePending) return { error: 'A picture is still being made. One moment.' };
+    const block = blockOf(t, ch); if (block) return { error: block, fixFirst: true }; /* a paid final never carries an invented code, guarantee or timed result, or copy that reads wrong (QA-25, QA-02) */
     const base = baseOf(t, ch), rival = await rivalOf(t, ch, ch.pkg || {}).catch(() => null); /* "Make our version": their composition and look, our words where theirs sit */
     /* one tap (the studio's main button, Param 19 Oct): what the sheet fills by hand. The draft's own product photo as image 1 (label
        kept exact); a reel runs about 3 seconds a beat (6–15) with sound, so the script's lines are spoken. The quote itself is free */

@@ -20,6 +20,7 @@ import { DEMO, sk } from '../demo-mode.js';
 import { privId, realRows, backoff } from './common.js';
 import { emailHtml, p as para } from '../mail-layout.js';
 import { ideaCards, pickIdeas } from '../social-feed.js';
+import { staticProduct } from '../statics.js'; // a team static names the product in its photo
 
 const REAL = { shopify, meta, ga4, google, klaviyo, reviews, slack, marketplaces: market };
 export const CONNECTORS = Object.fromEntries(SIM_IDS.map((id) => [id, { id, name: NAME[id] }]));
@@ -254,6 +255,10 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
        same moves step aside (privMoves). Cards saved before they had their own id get it here */
     let privMoves = [], privStatics = false;
     if (member) { const pc = await packs.getJSON(slug, 'private/cards.json', []).catch(() => []);
+      /* a team static saved before it named its product gets it back from the set's own record (private/statics.json) */
+      const bare = (Array.isArray(pc) ? pc : []).filter((c) => c?.teamStatics && /^static-.+-p$/.test(c.id || '') && !c.product);
+      if (bare.length) { const [st, prof] = await Promise.all([packs.getJSON(slug, 'private/statics.json', {}).catch(() => ({})), packs.getJSON(slug, 'profile.json', null).catch(() => null)]);
+        for (const c of bare) { const h = st?.[c.id.replace(/^static-|-p$/g, '')]?.product, ti = h && (prof?.catalog?.products || []).find((x) => x?.handle === h)?.title; if (ti) Object.assign(c, staticProduct(ti)); } }
       for (const c of Array.isArray(pc) ? pc : []) if (c?.id && c.privateOf != null) cards.push({ ...c, id: privId(c.id), liveOnly: true });
       privMoves = [...new Set(cards.filter((c) => c.privateOf != null).map((c) => +c.privateOf))]; privStatics = cards.some((c) => c.teamStatics);
       /* the team's ideas (private/ideas/ideas.json, written with the connected facts): members only, next to the public ones */

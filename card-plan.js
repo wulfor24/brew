@@ -13,7 +13,7 @@ import { one, oneOf } from './text-fit.js'; // the asset said as one; saved opti
 import { dejargon } from './plain.js'; // a plan's steps in the same plain words as the card (no GMC, webhook, products.json, JSON-LD)
 export { one, oneOf };
 
-export const PLAN_V = 3; /* 2: one, always (19 Oct): saved plans on jams and work items with v 1 are rebuilt from the card; 3: plain words in every step (QA FEED-ARV-07) */
+export const PLAN_V = 4; /* 4: "Review it on the stage", never "each one" (final QA pass 19 Oct); 2: one, always (19 Oct): saved plans on jams and work items with v 1 are rebuilt from the card; 3: plain words in every step (QA FEED-ARV-07) */
 const cut = (s, n) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
 const lc = (s) => String(s || '').replace(/^./, (x) => x.toLowerCase());
 const andList = (xs) => xs.length <= 1 ? (xs[0] || '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`;
@@ -57,55 +57,55 @@ const STEPS = {
     { k: 'gather', t: items.length && (['add_variants', 'swap_creative', 'swap_copy'].includes(k) || items.some((x) => /\b(ads?|creatives?|hooks?|video|reel)\b/i.test(x))) ? `Pick the winning ads${items.length ? `: ${andList(items)}` : ''}` : `Pick the product and the angle${items.length ? `: ${andList(items)}` : ''}`, s: items.length ? 'Named on the card, from its numbers' : cut(c.sub, 110) },
     { k: 'write', t: 'Write the ad, with one strong hook', s: c.make?.pieces ? cut(c.make.pieces, 90) : 'The offer and the product, in the brand’s voice' },
     { k: 'make', t: `Make the ${one(asset)}`, s: `Ready to run on ${where}; redo it if it isn’t right` },
-    { k: 'review', t: 'Review each one on the stage', s: 'Change any version until it’s right; nothing is lost' },
+    { k: 'review', t: 'Review it on the stage', s: 'Change it until it’s right; nothing is lost' },
     { k: 'ready', t: `Ready: share the brief so the team launches it on ${where}`, s: 'It copies the brief and a link to everything' }],
   social: ({ items, n, asset, c }) => [
     { k: 'gather', t: `Pick the product and the moment${items.length ? `: ${andList(items)}` : ''}`, s: cut(c.sub, 110) },
     { k: 'write', t: 'Write the caption and the words on each slide', s: c.make?.pieces ? cut(c.make.pieces, 90) : 'In the brand’s voice, one idea' },
     { k: 'make', t: `Make the ${one(asset)}`, s: 'With its pictures; redo it if it isn’t right' },
-    { k: 'review', t: 'Review each one on the stage', s: 'Change the words or the picture until it’s right' },
+    { k: 'review', t: 'Review it on the stage', s: 'Change the words or the picture until it’s right' },
     { k: 'ready', t: 'Ready: share the brief, then post it yourself', s: 'The brief carries the post and where it goes' }],
   post: ({ k, n, asset, c, where }) => [
     { k: 'gather', t: c.post?.where?.[0]?.name ? `Read the thread on ${c.post.where[0].name}` : 'Read where it goes and what people asked', s: c.post?.where?.[0]?.rule ? cut(c.post.where[0].rule, 110) : cut(c.sub, 110) },
     { k: 'write', t: `Write the ${k === 'short_video' ? 'script' : one(asset)}, in the brand’s own words`, s: 'Only facts we can back' },
     { k: 'make', t: `Make the ${one(asset)}`, s: k === 'short_video' ? 'The hook in the first second; redo it if it isn’t right' : 'Redo it if it isn’t right' },
-    { k: 'review', t: 'Review each one on the stage', s: 'Change it until it sounds like you' },
+    { k: 'review', t: 'Review it on the stage', s: 'Change it until it sounds like you' },
     { k: 'ready', t: where === 'Meta Ads' ? 'Ready: share the brief so the team runs it on Meta Ads' : `Ready: share the brief, then post it ${where === 'where it goes' ? 'yourself' : `on ${where}`}`, s: where === 'Meta Ads' ? 'It copies the brief, the video and the ad text for Ads Manager' : 'The brief carries the post and where it goes' }],
   crm: ({ items, n, asset, c, where }) => [
     { k: 'gather', t: `Pick who gets it${items.length ? `: ${andList(items)}` : ''}`, s: 'And who is left out' },
     { k: 'write', t: `Write the ${one(asset)}`, s: cut((c.detail?.how || [])[0] || 'Subject, words and the button', 110) },
     { k: 'make', t: `Make the ${one(asset)}`, s: 'As people will see it' },
-    { k: 'review', t: 'Review each one on the stage', s: 'Change the words or the timing until it’s right' },
+    { k: 'review', t: 'Review it on the stage', s: 'Change the words or the timing until it’s right' },
     { k: 'ready', t: `Ready: share the brief so the team sends it from ${where}`, s: 'It copies the brief and a link to everything' }],
   store: ({ items, n, asset, c, where }) => [
     { k: 'gather', t: `Pick the page${items.length ? `: ${andList(items)}` : 's it changes'}`, s: cut(c.sub, 110) },
     { k: 'write', t: `Write the ${one(asset)}`, s: cut((c.detail?.how || [])[0] || 'What shoppers read, in the brand’s voice', 110) },
     { k: 'make', t: `Make the ${one(asset)}`, s: 'As the page will show it' },
-    { k: 'review', t: 'Review each one on the stage', s: 'Change it until it’s right' },
+    { k: 'review', t: 'Review it on the stage', s: 'Change it until it’s right' },
     { k: 'ready', t: `Ready: share the brief so the team publishes it on ${where}`, s: 'It copies the brief and a link to everything' }],
   vis: ({ items, n, asset, c, where }) => [
     { k: 'gather', t: `Pick the question and its sources${items.length ? `: ${andList(items)}` : ''}`, s: cut(c.sub, 110) },
     { k: 'write', t: `Write the ${one(asset)}`, s: 'Every claim with its source and date' },
     { k: 'make', t: `Make the ${one(asset)}`, s: 'One AI tools can cite' },
-    { k: 'review', t: 'Review each one on the stage', s: 'Change it until every line is backed' },
+    { k: 'review', t: 'Review it on the stage', s: 'Change it until every line is backed' },
     { k: 'ready', t: `Ready: share the brief so the team publishes it on ${where}`, s: 'It copies the brief and a link to everything' }],
   search: ({ items, n, c, where }) => [
     { k: 'gather', t: `Pick the searches to win${items.length ? `: ${andList(items)}` : ''}`, s: cut(c.sub, 110) },
     { k: 'write', t: 'Write the headlines and descriptions', s: 'Each under the character limits' },
     { k: 'make', t: 'Make the search ad', s: 'The ad group with keywords and budget' },
-    { k: 'review', t: 'Review each one on the stage', s: 'Change it until it’s right' },
+    { k: 'review', t: 'Review it on the stage', s: 'Change it until it’s right' },
     { k: 'ready', t: `Ready: share the brief so the team launches it on ${where}`, s: 'The brief says the spend' }],
   listing: ({ items, n, asset, c, where }) => [
     { k: 'gather', t: `Pick the listings${items.length ? `: ${andList(items)}` : ''}`, s: cut(c.sub, 110) },
     { k: 'write', t: `Write the ${one(asset)}`, s: 'One name used everywhere' },
     { k: 'make', t: `Make the ${one(asset)}`, s: 'Listing by listing' },
-    { k: 'review', t: 'Review each one on the stage', s: 'Change it until it’s right' },
+    { k: 'review', t: 'Review it on the stage', s: 'Change it until it’s right' },
     { k: 'ready', t: `Ready: share the brief so the team pushes it to ${where}`, s: 'It copies the brief and a link to everything' }],
   print: ({ n, c }) => [
     { k: 'gather', t: 'Pick what goes in the box', s: cut(c.sub, 110) },
     { k: 'write', t: 'Write the front and back', s: 'Short, with one thing to do' },
     { k: 'make', t: 'Make the insert design', s: 'With size and quantity' },
-    { k: 'review', t: 'Review each one on the stage', s: 'Change it until it’s right' },
+    { k: 'review', t: 'Review it on the stage', s: 'Change it until it’s right' },
     { k: 'ready', t: 'Ready: share the brief with whoever prints it', s: 'The brief has everything the printer needs' }],
   meta_ops: ({ items, k, asset, c, where }) => [
     { k: 'gather', t: `${k === 'restart_paused' ? 'Find what was paused' : k === 'scale_budget' || k === 'shift_budget' ? 'Find where the budget is' : 'Find the ads it touches'}${items.length ? `: ${andList(items)}` : ''}`, s: cut(c.sub, 110) },

@@ -36,6 +36,7 @@ import { hasCode } from './code-md.js'; // a draft that is code (markup, a snipp
 import { inferMake } from './cards-gen.js';
 import { isRivalCard, isResearchImage } from './rival-ad.js'; // a rival's poster is never our product photo
 import { genFlush as genFlush0 } from './gen-store.js';
+import { cleanDraftClaims, packSource } from './claims.js'; // the store's own claims only, in drafts made with nobody watching
 
 const H = 3600e3, DAY = 24 * H;
 const cut = (s, n) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
@@ -212,6 +213,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
     const prompt = draftPrompt({ card, role: c.agent === 'brew' ? 'creative' : c.agent || 'creative', brief: cardBriefText(c, { moveDocs: p.moveDocs }), mem, as, ask });
     const r = await ai.call({ model: 'sonnet', prompt, schema: DRAFT_SCHEMA, max: 4500, tag: 'draft-bg' }); box.usd += r.usd || 0; /* 3000 was hit once: a plan cut off mid-JSON */
     const j = r.json || {}; j.as = as;
+    const cut0 = cleanDraftClaims(j, packSource(p, c)); if (cut0.length) log.info?.('[drafts-bg] dropped unbacked claims', c.id, cut0.map((f) => f.phrase).join(', ')); /* QA-25: a code, guarantee or timed result the store never made never reaches a first draft */
     /* a clip is 9:16 from its first frame (Veo takes 9:16 or 16:9); Stories too */
     const ratio = kind === 'stories' || kind === 'video' ? '9:16' : DRAFT_RATIOS.includes(j.ratio) && j.ratio !== '16:9' ? j.ratio : c.make?.format === 'reel' ? '9:16' : '4:5';
     const d = { k: 2, cardId: c.id, key: draftKey(c), kind, format: c.make?.format || null, cardTitle: c.title, as: kind === 'stories' ? 'carousel' : ['email', 'whatsapp', 'page', 'collection', 'catalog'].includes(kind) ? kind : as, title: cut(j.title || 'First draft', 70), copy: String(j.copy || '').trim(), note: cut(j.note || '', 160), ratio, at: now(), by: 'Brew', bg: true };

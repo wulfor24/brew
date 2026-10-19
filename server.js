@@ -71,6 +71,7 @@ import { movesEta } from './pack-numbers.js';
 import { named as namedStage } from './reader/stages/named.js'; // which brands an AI answer names
 import { createAiQuestions, Q_V } from './ai-questions.js'; // the AI answers questions, each earned by real searches or real threads
 import { awaitingCheck, createConfirmRemind } from './confirm-remind.js'; // "Check what we read" waits for a person: hold the watchers, remind by email // the time left on a brand's moves, from the pace the build really kept
+import { markMoveClaims, packSource } from './claims.js'; // the team's private moves read like the shared ones
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PUB = path.join(ROOT, 'public');
@@ -731,7 +732,7 @@ const brandRoutes = async (req, res, u) => {
     return send(res, 200, { news, spend, meter: { usd: treg.meter.usd, calls: treg.meter.calls, today: treg.meter.dayUsd } }), true; }
   const mm = u.pathname.match(/^\/api\/brands\/([a-z0-9-]+)\/moves\/(\d+)$/);
   if (mm) { const p = await loadBrand(mm[1]), v = await viewerOf(req, mm[1]); const priv = v.member ? (await packs.getJSON(mm[1], 'private/moves.json', {}))[+mm[2]] : null;
-    return send(res, 200, priv ? { ...priv, private: true } : p?.moveDocs?.[+mm[2]] || { error: 'not written yet' }), true; }
+    return send(res, 200, priv ? { ...markMoveClaims(priv, packSource(p)), private: true } : p?.moveDocs?.[+mm[2]] || { error: 'not written yet' }), true; } /* the team's own moves are marked like the shared ones (QA-25) */
   /* the fact sheet: anyone may read the public sheet; members also see their connected facts; on a claimed brand only its team edits */
   const fm = u.pathname.match(/^\/api\/brands\/([a-z0-9-]+)\/facts$/);
   if (fm) { const slug = fm[1]; if (blocked(slug) || !(await packs.getJSON(slug, 'status.json', null))) return send(res, 404, { error: 'unknown brand' }), true;
@@ -818,7 +819,7 @@ const brandFiles = async (req, res, u) => {
   const mn = what.slice(4).match(/^move-(\d{1,4})\.pdf$/i);
   if (mn) { const v = await viewerOf(req, slug); let pp = v.member ? (await packs.getJSON(slug, 'private/pdfs.json', null))?.[+mn[1]] : null, pb = pp ? await packs.get(slug, 'private/pdf/' + pp) : null;
     /* a team-only move with no PDF yet (a weekly private run) is drawn now from the team's copy, never the shared one */
-    const pmv = v.member && !pb ? (await packs.getJSON(slug, 'private/moves.json', {}).catch(() => ({})))?.[+mn[1]] : null;
+    const pmv0 = v.member && !pb ? (await packs.getJSON(slug, 'private/moves.json', {}).catch(() => ({})))?.[+mn[1]] : null, pmv = pmv0 ? markMoveClaims(pmv0, packSource(await loadBrand(slug).catch(() => null))) : null;
     if (pmv) { try { await builder.pdfFor(slug, pmv, { priv: true }); pp = (await packs.getJSON(slug, 'private/pdfs.json', null))?.[+mn[1]]; pb = pp ? await packs.get(slug, 'private/pdf/' + pp) : null; } catch (e) { console.warn('[pdf] private', slug, mn[1], e.message); }
       if (!pb) return send(res, 503, 'The PDF could not be drawn just now. Try again in a minute.', 'text/plain'), true; }
     let r = pb ? { name: pp, buf: pb } : null; if (!r) try { r = await builder.pdfOn(slug, +mn[1]); } catch (e) { console.warn('[pdf] on demand', slug, mn[1], e.message); return send(res, 503, 'The PDF could not be drawn just now. Try again in a minute.', 'text/plain'), true; }

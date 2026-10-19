@@ -21,13 +21,17 @@ const SCHEMA = { type: 'object', properties: { ads: { type: 'array', items: { ty
 /* the team's set is made once; a failed or cut-off try (state running/failed) goes again only after retryMs */
 export const teamStaticsDue = (s0, { now = Date.now(), retryMs = 24 * 3600e3 } = {}) => !s0 || (s0.state !== 'done' && now - (+s0.at || 0) >= retryMs);
 export const teamStaticUrl = (slug, id) => `b/${slug}/team/statics/${id}.jpg`;
-export function teamStaticCards(slug, ids = [], text = {}, { lane = 'core', name = 'the brand' } = {}) {
+/* titleOf(handle): the product's name as the store lists it. Each ad's card names the product in its photo (text[id].product), so
+   its jam, studio and picture are about that product, never the lane's first one (final QA pass 19 Oct: the Paw Warmer static
+   opened on the Hush Mask) */
+export const staticProduct = (title) => (title ? { product: title, make: { format: 'single image ad', pieces: `1 static: ${title}` } } : {});
+export function teamStaticCards(slug, ids = [], text = {}, { lane = 'core', name = 'the brand', titleOf = () => '' } = {}) {
   if (!ids.length) return [];
   const base = { agent: 'creative', sector: 'creatives', type: 'idea', lane, roles: ['brand', 'growth', 'founder'], kind: 'media', origin: 'build', campaign: 'From your ad plan', liveOnly: true, privateOf: 21, teamStatics: true };
   return [{ ...base, id: 'statics-batch-p', src: 'Move 21 · static ads · your accounts', time: '5 min', images: ids.map((id) => teamStaticUrl(slug, id)),
     title: `${ids.length} ads from your ad plan, written with your account numbers`, sub: `Each one puts a real ${name} product photo in a new scene, with a headline from your Move 21. Only your team sees these.`,
     detail: { why: ['Concepts come from your rewrite of the ad-creative move.', 'Every number on them is in your fact sheet or your connected accounts.'], how: ['Open the set and keep or drop each ad.', 'Edit any of them in the studio.', 'Queue the kept ones as one test.'] }, cta: { label: 'Queue the ads' } },
-  ...ids.filter((id) => text[id]?.headline).map((id, i) => ({ ...base, id: `static-${id}-p`, src: 'Move 21 · static ad · your accounts', time: `${12 + i * 17} min`, images: [teamStaticUrl(slug, id)], title: String(text[id].headline).slice(0, 120),
+  ...ids.filter((id) => text[id]?.headline).map((id, i) => ({ ...base, ...staticProduct(titleOf(text[id].product)), id: `static-${id}-p`, src: 'Move 21 · static ad · your accounts', time: `${12 + i * 17} min`, images: [teamStaticUrl(slug, id)], title: String(text[id].headline).slice(0, 120),
     sub: `${text[id].small ? `${String(text[id].small).replace(/\.?$/, '.')} ` : ''}Made from your Move 21 with a real ${name} photo. Only your team sees it.`,
     detail: { why: ['The concept comes from your rewrite of the ad-creative move.', 'Every number on it is in your fact sheet or your connected accounts.'], how: ['Jam on it to change the words or the scene.', 'Share the brief and your team puts it in the ad account.'] }, cta: { label: 'Make the ad' } }))];
 }

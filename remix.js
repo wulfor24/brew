@@ -16,7 +16,7 @@ import { buildDraft } from './sloosh-prompt.js'; // Make the final on a version:
 import { versionLabel } from './text-fit.js';
 import { ctaName } from './seed-template.js'; /* a renamed button (Publish Campaign, List what points there) maps as its new name */
 import { withSteps } from './card-plan.js';
-import { familyOf, FAMILY_NAME, fieldsFor, knobsFor, suggestFor, fitChip, GRADES, pkgSchema, fieldsBrief, kvSchema, allKeys, fromKV, toKV, cleanPkg, publicText, missing, afterFromPkg, mockPkg, RATIO, leaks, isMulti, ACTION_SPEC, ACTION_GUARD, productFor, ideaAction, ideaPkg, chipsFor, chipRelates, chipCtx, isAdVideo, namesLiveTest } from './studio.js';
+import { shopperLine, familyOf, FAMILY_NAME, fieldsFor, knobsFor, suggestFor, fitChip, GRADES, pkgSchema, fieldsBrief, kvSchema, allKeys, fromKV, toKV, cleanPkg, publicText, missing, afterFromPkg, mockPkg, RATIO, leaks, isMulti, ACTION_SPEC, ACTION_GUARD, productFor, ideaAction, ideaPkg, chipsFor, chipRelates, chipCtx, isAdVideo, namesLiveTest } from './studio.js';
 import { buildPack } from './publish-pack.js';
 import { impactInputs, projectImpact } from './impact.js';
 import { realRows } from './connectors/common.js';
@@ -193,11 +193,15 @@ const onChannel = (k, c) => {
   const named = namedChannel(c), tool = toolOf(k); if (!k || !named || !tool || tool === named || !AD_FAMILIES.has(familyOf(k))) return k;
   const made = MAKE_ACTION[c.make?.format]; return made && toolOf(made) === named ? made : TOOL_PRIMARY[named] || k;
 };
+const MARKETPLACE = /\b(?:amazon|flipkart|nykaa|myntra|meesho|ajio|tata cliq|jiomart|blinkit|zepto|swiggy instamart|bigbasket|etsy|ebay|walmart|target\.com|marketplaces?|seller central)\b/i;
 const primaryOf = (c) => {
   if (c.post?.platform) return ideaAction(c.post); // an idea from the stream opens as the post it is, on its own platform
   if (c.kind === 'chat') return 'creative.whatsapp_ad';
   const label = ctaName(c.cta?.label), byLabel = CTA_IN_SECTOR[`${c.sector}:${label}`] ?? CTA_ACTION[label];
   if (label && !(label in CTA_ACTION) && !CTA_IN_SECTOR[`${c.sector}:${label}`]) { const v = verbAction(label, c); if (v) return onChannel(refine(v, c), c); } // a button we don't know: its verb
+  /* "Draft the listing" is a marketplace listing when the card names a marketplace, else the card's own format (an outreach email
+     opened "Change page copy on Shopify", an Amazon launch "Publish an FAQ answer": final QA pass 19 Oct) */
+  if (label === 'Draft the listing') { if (MARKETPLACE.test(`${c.title || ''} ${c.sub || ''} ${c.make?.pieces || ''}`)) return 'storefront.listing_content'; if (MAKE_ACTION[c.make?.format]) return onChannel(MAKE_ACTION[c.make.format], c); }
   if (MAKE_ACTION[c.make?.format] && MAKING.has(label)) return MAKE_ACTION[c.make.format]; // a making button follows the format the card plans (cards-gen keeps them in step)
   if (byLabel && !GENERIC_CTA.has(label)) return onChannel(refine(byLabel, c), c); // a button that names its job: that job, whatever tool the AI named
   if (byLabel === null && !GENERIC_CTA.has(label)) return null; // a button that only navigates (Open the moves)
@@ -427,7 +431,9 @@ export function createRemix(o) {
       const lk = leaks(ch.family, ch.action, ch.pkg); checks.splice(1, 0, { k: lk.length ? `Reads like an internal note, not to customers (“${lk.slice(0, 3).join('”, “')}”)` : 'Written for customers, not the team', ok: !lk.length, fix: true, leak: true });
     }
     /* what a shopper would read: no invented code, guarantee or timed result, and copy that reads right (QA-25, QA-02) */
-    const shopperText = [ch.after.title, ch.after.sub, ...pubT].filter(Boolean).join('\n');
+    /* a reel's spoken and shown lines and a remake's script and slides are read by shoppers too (QA-25: PURE25 sat in a script) */
+    const lines = (xs, k) => (Array.isArray(xs) ? xs : []).map((x) => (typeof x === 'string' ? x : x?.[k])).filter((x) => typeof x === 'string' && x.trim());
+    const shopperText = [ch.after.title, ch.after.sub, ...pubT, ...lines(ch.pkg?.script, 'line'), ...lines(ch.pkg?.draft?.script, 'line'), ...lines(ch.pkg?.draft?.slides, 'text'), ...lines(ch.pkg?.slides, 'text'), ...lines([ch.pkg?.draft?.text, ch.pkg?.draft?.copy])].filter(Boolean).join('\n');
     const src = brandSource(t, card), cf = claimFlags(shopperText, src, { allowNewCode: /discount_offer$/.test(ch.action || '') });
     checks.push({ k: claimCheck(cf), ok: !cf.length, fix: true, claims: cf.map((f) => f.quote) });
     const lf = copyFlags(shopperText, { source: src, names: [BN(), o.SEED?.brand?.name, ...(catalogOf(t) || []).map((x) => x?.t)] }); if (lf.length) checks.push({ k: `Reads wrong: ${lf.join('; ')}`, ok: false, fix: true });
@@ -523,7 +529,7 @@ export function createRemix(o) {
   const landingOf = (t, ch, c = {}) => { const p = ch.pkg || {}, cut = (x, n) => { x = String(x || '').replace(/\s+/g, ' ').trim(); return x.length > n ? `${x.slice(0, n - 1).replace(/\s+\S*$/, '')}…` : x; }, same = (a, b) => cut(a, 200).toLowerCase().replace(/[^a-z0-9]+/g, '') === cut(b, 200).toLowerCase().replace(/[^a-z0-9]+/g, '');
     const cat = catalogOf(t) || [], named = (() => { try { return cardProduct(c, cat, { brand: o.SEED?.brand?.name || '' }); } catch { return null; } })();
     const prods = [named, ...cat.filter((x) => !x.out && x !== named)].filter((x) => x?.img).slice(0, 3);
-    const points = (p.bullets || []).map((x) => cut(String(x).replace(/^[-•\d.)\s]+/, ''), 90)).filter((x) => x.length > 3 && !TASK.test(x));
+    const points = (p.bullets || []).map((x) => cut(String(x).replace(/^[-•\d.)\s]+/, ''), 90)).filter((x) => x.length > 3 && !TASK.test(x) && shopperLine(x)); /* never a team step or an ad note as a page benefit */
     const benefits = prods.length ? prods.map((x, i) => ({ title: cut(String(x.t).split(/\s+[–—|-]\s+/)[0], 48), body: points[i] || cut(x.claim, 90) || '', img: x.img }))
       : points.slice(0, 3).map((x) => ({ title: x, body: '', img: null }));
     const quote = ((cat.hooks || {}).reviewQuotes || [])[0] || null, hero = cut(p.heading || c.title, 90);
@@ -690,12 +696,14 @@ export function createRemix(o) {
   const listingFromCatalog = (t, ch, why) => {
     const shots = shotsOf(ch.pkg), c = t.cards.get(ch.cardId) || {}, cat = catalogOf(t) || [], name = ch.pkg.product || ch.pkg.name || '';
     const named = (name && cat.find((x) => x.t === name || x.t.toLowerCase().includes(String(name).toLowerCase()))) || (() => { try { return cardProduct(c, cat, { brand: o.SEED?.brand?.name || '' }); } catch { return null; } })();
-    const pool = [...new Set([...(named?.imgs || [named?.img]), ...cat.filter((x) => !x.out && x !== named).flatMap((x) => [x.img])].filter(Boolean))];
+    /* only the named product's own photos, one per shot it has: another product's photo in its listing set is a wrong listing
+       (final QA pass 19 Oct: Arata, Ugaoo, Porter and York filled shots with other products). No named product: the photo brief */
+    const pool = named ? [...new Set([...(named.imgs || []), named.img].filter(Boolean))] : [];
     if (!pool.length) { ch.pkg = { ...ch.pkg, photoBrief: true }; return 0; }
     const made = shots.map((shot, i) => (pool[i] ? { shot, image: pool[i], own: true } : null)).filter(Boolean);
     ch.pkg = { ...ch.pkg, photoSet: made, image: made[0].image, photoBrief: false };
     const v = version(t, ch, `ai:${ch.agent}`, `Listing photos (your product photos): ${why}`, `${made.length} listing photos`);
-    ch.thread.push({ from: 'ai', text: `Placed ${made.length} of your own product photos as the listing set: ${made.map((x) => x.shot).join('; ')}. New photos are made where AI images are on; these are the store’s own.`, at: now(t), v: v.n });
+    const left = shots.length - made.length; ch.thread.push({ from: 'ai', text: `Placed ${made.length} of ${named.t}’s own photos as the listing set: ${made.map((x) => x.shot).join('; ')}.${left > 0 ? ` The store has no photo for the other ${left === 1 ? 'shot' : `${left} shots`}, so ${left === 1 ? 'it stays' : 'they stay'} in the photo brief.` : ''} New photos are made where AI images are on; these are the store’s own.`, at: now(t), v: v.n });
     sync(t, ch); return made.length; };
   const genListingPhotos = (t, ch, why) => {
     if (ch.family !== 'listing' || ch.imagePending) return false;
@@ -1776,7 +1784,7 @@ export function createRemix(o) {
   };
   /* the studio's finals (finals-routes.js createStudioFinals): status, quote, run and a Space checkpoint on this change; the
      result is the next version, labelled Final. Off when the server has no Sloosh client (tests) */
-  const STUDIO_FINALS = o.finals && o.sloosh ? createStudioFinals({ headOf, useVersion, versionById: (t, ch, id) => versionById(t, ch.id, id), rivalOf: (t, ch, p) => rivalPic(t, ch, p) /* "Make our version": the final keeps the rival ad's composition, in words */, on, C, ensurePkg, sync, version, pubChange, cardOf: (t, ch) => t.cards.get(ch.cardId) || null, cardPhoto, catalogOf, jobs: IMG_JOBS, vidJobs: VID_JOBS /* a video final is a video job: C() never calls it stopped */, references: (t) => (o.references ? o.references(t) : []), finals: o.finals, sloosh: o.sloosh, creditsLeft: o.creditsLeft, brandOfT: o.brandOfT, slugOfT: o.slugOfT, meOf: o.meOf, onMedia: (t, ch, m) => o.onMedia?.(t, ch, m), isVideo: isVideoPost, RATIO, log }) : null;
+  const STUDIO_FINALS = o.finals && o.sloosh ? createStudioFinals({ blockOf: (t, ch) => { try { evaluate(t, ch); } catch { return null; } const f = (ch.fixes || []).find((k) => /^(?:Claims to check|Reads wrong)/.test(k)); return f ? `Fix this first: ${f.replace(/^Claims to check before shipping: /, '')}. Then make the final.` : null; }, headOf, useVersion, versionById: (t, ch, id) => versionById(t, ch.id, id), rivalOf: (t, ch, p) => rivalPic(t, ch, p) /* "Make our version": the final keeps the rival ad's composition, in words */, on, C, ensurePkg, sync, version, pubChange, cardOf: (t, ch) => t.cards.get(ch.cardId) || null, cardPhoto, catalogOf, jobs: IMG_JOBS, vidJobs: VID_JOBS /* a video final is a video job: C() never calls it stopped */, references: (t) => (o.references ? o.references(t) : []), finals: o.finals, sloosh: o.sloosh, creditsLeft: o.creditsLeft, brandOfT: o.brandOfT, slugOfT: o.slugOfT, meOf: o.meOf, onMedia: (t, ch, m) => o.onMedia?.(t, ch, m), isVideo: isVideoPost, RATIO, log }) : null;
   on('GET', '/api/changes/:chid/photos', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch);
     const cat = (catalogOf(t) || []).filter((x) => x.img).sort((a, b) => (a.out ? 1 : 0) - (b.out ? 1 : 0)).slice(0, 60).map((x) => ({ t: x.t, img: x.img, ...(x.out ? { out: true } : {}) }));

@@ -77,7 +77,7 @@ test('Add photos with AI offline places the store’s own product photos; with n
   assert.ok(set.length >= 3, `photos placed (${set.length})`); assert.deepEqual(set.slice(0, 3).map((x) => x.image), cat[0].imgs, 'the named product’s own photos first');
   assert.ok(set.every((x) => x.own && x.shot), 'each is the store’s own photo, named by its shot');
   assert.ok(versionsOf(t, id).some((v) => (v.snapshot?.photoSet || []).length), 'it lands as a version');
-  assert.ok(ch.thread.some((m) => /your own product photos/i.test(m.text || '')), 'the chat says they are the store’s own');
+  assert.ok(ch.thread.some((m) => /Acme Balm’s own photos/i.test(m.text || '')), 'the chat says they are the product’s own');
   const S2 = studio({ isMock: () => true, geminiImage: null, mediaFake: false, catalogOf: () => [] }), t2 = tenant(card({ agent: 'storefront', sector: 'catalog', title: 'Add photos to the balm listing', cta: { label: 'Add photos' } }));
   const b = await press(S2, t2, 'Add photos'); await settle(b.ch);
   assert.equal((b.ch.pkg.photoSet || []).length, 0); assert.equal(b.ch.pkg.photoBrief, true, 'the shots stay as the Photo brief');

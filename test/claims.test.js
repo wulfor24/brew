@@ -71,3 +71,23 @@ test('a warm cast is softened toward the product photo, a warm product is left a
   assert.equal((await balanceWarm(fs.readFileSync(gold), gold, { log: quiet })).fixed, false, 'a gold product in its own gold photo');
   const bad = await balanceWarm(Buffer.from('not a picture'), null, { log: quiet }); assert.equal(bad.fixed, false);
 });
+
+/* final QA pass 19 Oct: drafts made with nobody watching, saved moves, team statics */
+test('an unattended draft drops every unbacked claim; a flagged headline is never set on the picture', async () => {
+  const { cleanDraftClaims } = await import('../claims.js');
+  const j = { headline: 'Warm feet in 7 days', copy: 'Meet the Paw Warmer. Use code COZY15 for 15% off. Warm feet in 7 days, guaranteed.\nShop now.', slides: [{ onSlide: 'Clinically proven warmth' }, { onSlide: 'Shop the Paw Warmer' }] };
+  const hit = cleanDraftClaims(j, 'Snugglet Paw Warmer $39');
+  assert.ok(hit.length >= 3); assert.equal(j.headline, undefined); assert.equal(j.copy, 'Meet the Paw Warmer.\nShop now.'); assert.deepEqual(j.slides.map((x) => x.onSlide), ['', 'Shop the Paw Warmer']);
+  const ok = { headline: 'Cold feet, fixed', copy: 'Use code MAMA10 at checkout.' }; assert.deepEqual(cleanDraftClaims(ok, 'Use code MAMA10 for 10% off'), []); assert.equal(ok.copy, 'Use code MAMA10 at checkout.');
+});
+test('a saved move keeps an invented code readable but marks it as the team’s call', async () => {
+  const { markMoveClaims } = await import('../claims.js');
+  const m = markMoveClaims({ n: 3, sections: [{ blocks: [{ t: 'example', title: 'Script', body: 'Cold feet? Use code COZY15 for 15% off. Shop now.' }, { items: ['Offer a money-back guarantee', 'Post daily'] }] }] }, 'paw warmer');
+  assert.equal(m.sections[0].blocks[0].body, 'Cold feet? Proposed (team decides): Use code COZY15 for 15% off. Shop now.');
+  assert.deepEqual(m.sections[0].blocks[1].items, ['Proposed (team decides): Offer a money-back guarantee', 'Post daily']);
+});
+test('a team static names the product in its photo', async () => {
+  const { teamStaticCards } = await import('../statics.js');
+  const c = teamStaticCards('x', ['a1'], { a1: { headline: 'Cold feet, fixed.', product: 'paw' } }, { titleOf: (h) => (h === 'paw' ? 'Snugglet Paw Warmer' : '') })[1];
+  assert.equal(c.product, 'Snugglet Paw Warmer'); assert.match(c.make.pieces, /Snugglet Paw Warmer/);
+});

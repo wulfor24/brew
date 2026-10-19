@@ -22,6 +22,12 @@ const ABSOLUTE = /\b(?:clinically (?:proven|tested|backed)|dermatologist[- ](?:a
 /* the brand's own words, for "is this claim theirs?": every string in the facts, the catalog rows, evidence, about */
 export const sourceText = (...parts) => { const out = []; const walk = (o, d = 0) => { if (d > 6 || o == null) return; if (typeof o === 'string' || typeof o === 'number') out.push(String(o)); else if (Array.isArray(o)) o.slice(0, 2000).forEach((x) => walk(x, d + 1)); else if (typeof o === 'object') for (const [k, v] of Object.entries(o)) if (!/^(img|image|images|src|url|logo|id|handle)$/i.test(k)) walk(v, d + 1); }; parts.forEach((p) => walk(p)); return norm(out.join(' \n ')); };
 
+/* a brand pack's own words (brand-pack.js: facts, catalog, the review quotes, about), plus the card's real evidence */
+const PACK_SRC = new WeakMap();
+export const packSource = (p, card = null) => { let base = p && typeof p === 'object' ? PACK_SRC.get(p) : '';
+  if (base == null || base === undefined) { base = sourceText(Object.values(p?.facts || {}).map((f) => [f?.label, f?.v, ...(f?.aliases || [])]), p?.catalog, p?.reviewQuotes, p?.seed?.brand?.about || '', p?.seed?.brand?.tagline || '', p?.factBrief || ''); if (p && typeof p === 'object') PACK_SRC.set(p, base); }
+  return card ? `${base || ''}\n${sourceText(card.post?.evidence || [], card.evidence || [])}` : base || ''; };
+
 /* → [{ kind, phrase, quote, why }] for every claim in `text` that `source` (sourceText) doesn't carry */
 export function claimFlags(text, source = '', { allowNewCode = false } = {}) {
   const s = String(text || ''); if (!s.trim()) return [];
@@ -49,6 +55,18 @@ export function scrubClaims(text, source = '', { kinds = ['code', 'guarantee'] }
   const s = String(text || ''); source = typeof source === 'string' ? norm(source) : sourceText(source); const fl = claimFlags(s, source).filter((f) => kinds.includes(f.kind)); if (!fl.length) return s;
   return s.split(/(?<=[.!?])\s+|\n/).filter((sent) => !fl.some((f) => sent.includes(f.phrase))).join(s.includes('\n') ? '\n' : ' ').trim() || s;
 }
+
+/* a move is the team's plan, so a claim the store never made stays readable but is marked as the team's call, the way the
+   moves contract writes it (moves-engine.js): "Proposed (team decides): Use code COZY15 …". Saved moves written before the
+   rule heal on read (brand-pack fitMoves, the team's private moves) */
+const PROPOSED = 'Proposed (team decides): ';
+export function markClaims(text, source = '') {
+  const s = String(text ?? ''); if (!s.trim()) return text; const src = typeof source === 'string' ? norm(source) : sourceText(source);
+  const fl = claimFlags(s, src); if (!fl.length) return text;
+  return s.split(/(?<=[.!?])(\s+)|(\n)/).map((x) => (x && !/^\s*$/.test(x) && fl.some((f) => x.includes(f.phrase)) && !/proposed \(team decides\)/i.test(x) ? `${x.match(/^\s*/)[0]}${PROPOSED}${x.trimStart()}` : x ?? '')).join('');
+}
+export const markMoveClaims = (m, source = '') => (!m || typeof m !== 'object' || !Array.isArray(m.sections) ? m : { ...m, sections: m.sections.map((sec) => ({ ...sec, blocks: (sec.blocks || []).map((b) => (!b || typeof b !== 'object' ? b : {
+  ...b, ...(typeof b.body === 'string' ? { body: markClaims(b.body, source) } : {}), ...(typeof b.text === 'string' ? { text: markClaims(b.text, source) } : {}), ...(Array.isArray(b.items) ? { items: b.items.map((x) => (typeof x === 'string' ? markClaims(x, source) : x)) } : {}) })) })) });
 
 /* a draft the AI wrote with nobody watching (a feed card's first draft, a jam draft: QA-25, "drafts made outside the studio
    are never checked"): every sentence with a code, guarantee, timed result or absolute the brand's own words don't carry is
