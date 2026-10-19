@@ -80,7 +80,7 @@
       <aside class="ob2-show v2-show" aria-hidden="true"><div class="ob2-wash v2-wash"></div><div class="v2-read" id="v2-show"${o.right != null ? ' data-hold="1"' : ''}>${o.right != null ? o.right : railHtml()}</div></aside></main>`;
     $('[data-v2-skip]')?.addEventListener('click', () => (o.onSkip || skipAhead)()); window.scrollTo(0, 0); };
   const stage = (inner, o = {}) => { let s = $('#v2-stage'); if (!s && mode === 'q') { QO?.onShow?.(); s = $('#v2-stage'); } if (!s) return mode === 'q' ? null : shell(inner, o); /* v1 owns its screen: it reopens its question layer, never a v2 shell */ s.innerHTML = inner; s.classList.remove('is-in'); void s.offsetWidth; s.classList.add('is-in'); if (o.right != null) { const r = $('#v2-show'); if (r) { r.dataset.hold = '1'; r.innerHTML = o.right; } } window.scrollTo(0, 0); };
-  const skipAhead = () => { keys(null); beats().forEach((b) => { if (!['done', 'hold'].includes(b.kind)) st.done[b.id] ||= 'skip'; }); save(); next(); };
+  const skipAhead = () => { if (st.error && mode !== 'q') return errorScreen(); /* a failed read never skips into an empty feed (QA 19 Oct) */ keys(null); beats().forEach((b) => { if (!['done', 'hold'].includes(b.kind)) st.done[b.id] ||= 'skip'; }); save(); next(); };
 
   /* ---------- keys: the two that matter are always on screen ---------- */
   let keyFn = null; const keys = (fn) => { keyFn = fn; };
