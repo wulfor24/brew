@@ -49,6 +49,25 @@ export function noteTopics(up = [], down = []) {
   return u.length || d.length ? { up: u, down: d } : null;
 }
 
+/* which way a note points, so "no discount cards" pushes discount cards down instead of lifting them:
+   notePrefs (Gemini, when the note is saved) gives { more, less } in a few words each; a note saved before that, or with the AI
+   off, is split by sentence: one that says no, never, don't, avoid, stop, fewer or less goes to `down` */
+const NEG = /\b(no|not|never|don'?t|doesn'?t|won'?t|can'?t|avoid|stop|without|less|fewer|hate|dislike|skip|nothing|neither|nor)\b|n't\b/i;
+export function noteSides(notes = []) {
+  const up = [], down = [];
+  for (const n of notes || []) {
+    if (Array.isArray(n?.more) || Array.isArray(n?.less)) { up.push(...(n.more || [])); down.push(...(n.less || [])); continue; }
+    for (const x of String(n?.text ?? n ?? '').replace(/[’]/g, "'").split(/(?<=[.!?;])\s+|\n+/)) if (x.trim()) (NEG.test(x) ? down : up).push(x);
+  }
+  return { up, down };
+}
+const cleanSides = (x) => { if (!x || typeof x !== 'object') return {}; const l = (a) => (Array.isArray(a) ? a.map((w) => str(w, 60).toLowerCase()).filter((w) => w.length > 2).slice(0, 8) : []);
+  const more = l(x.more), less = l(x.less); return more.length || less.length ? { more, less } : {}; };
+export const PREF_SCHEMA = { type: 'object', properties: {
+  more: { type: 'array', items: { type: 'string' }, description: 'What this person wants MORE of in their feed: 0 to 8 short topic words or two-word phrases as a card would say them (e.g. "gifting", "reels", "email flows")' },
+  less: { type: 'array', items: { type: 'string' }, description: 'What they want LESS of or never: 0 to 8 short topic words or two-word phrases as a card would say them (e.g. "discounts", "influencers")' } } };
+export const prefPrompt = (text) => `A member of a brand's team saved this as their own preference for the Brew feed (cards with marketing ideas and fixes):\n"""\n${String(text).slice(0, 4000)}\n"""\nWhat do they want more of, and what do they want less of or never? Only what the note says; a "no", "never", "stop" or "less" is less. Words a card about it would use.`;
+
 /* "Picked up from your choices": what the workspace's card feedback teaches the ranker (feed-service affinityMap and fewer).
    Each has a stable id so the member can delete it. A like needs 2 hearts on that agent or campaign; a skip needs one Not for me
    on that agent, two in one area; fewer is the Fewer button */
@@ -93,7 +112,8 @@ export function createTuning({ packs, now = () => Date.now(), log = console }) {
     const all = await load(slug); const cur = cleanTuning({}, all[key] || emptyTuning()); const next = fn(cur) || cur; next.at = now(); all[key] = next; await packs.put(slug, FILE, all); return next; });
     locks.set(lk, run); return run; };
   const put = (slug, key, patch) => write(slug, key, (cur) => cleanTuning(patch, cur));
-  const addNote = (slug, key, text, { source = 'note' } = {}) => write(slug, key, (cur) => { const id = 'pn_' + Math.random().toString(16).slice(2, 10); cur.notes = [{ id, text: str(text, 4000), source: str(source, 140), at: now() }, ...(cur.notes || [])].slice(0, 50); return cur; });
+  /* sides: what Gemini read the note as ({ more, less }, notePrefs), kept so the ranker never reads a "no" as a "yes" */
+  const addNote = (slug, key, text, { source = 'note', sides = null } = {}) => write(slug, key, (cur) => { const id = 'pn_' + Math.random().toString(16).slice(2, 10); cur.notes = [{ id, text: str(text, 4000), source: str(source, 140), at: now(), ...cleanSides(sides) }, ...(cur.notes || [])].slice(0, 50); return cur; });
   const dropNote = (slug, key, id) => write(slug, key, (cur) => { cur.notes = (cur.notes || []).filter((n) => n.id !== id); return cur; });
   /* the bookmark: a card saved or unsaved by this person, on every device they open (the newest first) */
   const setSaved = (slug, key, id, on) => write(slug, key, (cur) => { const x = str(id, 120); if (!x) return cur; const rest = (cur.saved || []).filter((y) => y !== x); cur.saved = (on ? [x, ...rest] : rest).slice(0, 300); return cur; });

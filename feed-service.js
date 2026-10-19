@@ -23,11 +23,12 @@ import { createRemix } from './remix.js';
 import { saveGen } from './gen-store.js';
 import { createJamBrief } from './jam-brief.js';
 import { briefParts, withTeam, LABEL as BRIEF_LABEL } from './brief-status.js';
-import { createTuning, tuneScore, learnedSignals, withoutIgnored, noteTopics, AGENTS as TUNE_AGENTS, WEIGHT as TUNE_WEIGHT } from './member-tuning.js'; // Your feed: per-member agent weights, topics, learned signals
+import { createTuning, tuneScore, learnedSignals, withoutIgnored, noteTopics, noteSides, PREF_SCHEMA, prefPrompt, AGENTS as TUNE_AGENTS, WEIGHT as TUNE_WEIGHT } from './member-tuning.js'; // Your feed: per-member agent weights, topics, learned signals
 import { memberKey, saveVoicePick } from './brand-memory.js';
 import { isQuestion, photoAsk, answerGrounded } from './jam-answer.js'; // jam chat: questions answered from the evidence, "keep the photo" never makes one
 import { createAskBrew, answerAsk, cleanSeed } from './ask-brew.js'; // Ask Brew: one thread per member across feed, moves and facts
 import { parseDrop, DESTS } from './drop.js';
+import { readDrop, dropKind } from './drop-read.js'; // Drop anything here: PDFs, Word, PowerPoint, Excel, text and photos, read for the learnings
 import { createReferences } from './references.js';
 import { createFinalsRoutes } from './finals-routes.js';
 import { buildDraft } from './sloosh-prompt.js'; // one brief for every draft picture // Make the final: Sloosh, quote first, behind a button (finals.js) // References: the brand's uploaded photos, past ads, looks and videos, for the generators // Drop anything: memory, my preferences, just this once // Send brief: the full email and the "N with the team" pill
@@ -304,7 +305,7 @@ export function createFeedService(o) {
   const meOf = (t) => { const r = reqOf(t); if (!r) return null; if (r.member && r.email) return { email: r.email, name: r.name || null, pic: r.pic || null, ...(o.isStaff?.(r.email) ? { staff: true } : {}) }; if (r.guest?.email) return { email: r.guest.email, name: r.guest.name || null, pic: r.guest.pic || null }; return null; };
   const tenants = new (class extends Map { set(k, t) { MC.guard(t); JAMS.guard(t); return super.set(k, t); } })();
   /* jam emails to the team (jam-mail.js); the demo site never sends */
-  const mailEv = (t, w, ev) => { if (!o.jamMail || process.env.DEMO_MODE === '1') return; o.jamMail.event(t.brandId || DEFAULT_BRAND, w, ev).catch((e) => log.warn?.('[jam-mail]', e.message)); };
+  const mailEv = (t, w, ev) => { if (!o.jamMail || process.env.DEMO_MODE === '1') return; const ct = t.cards?.get?.(w.cardId)?.title; /* the email names the jam as the jam shows it (its card), never a draft's own headline */ o.jamMail.event(t.brandId || DEFAULT_BRAND, ct && ct !== w.title ? { ...w, title: ct } : w, ev).catch((e) => log.warn?.('[jam-mail]', e.message)); };
   const nameOf = (p) => p?.name || p?.email || 'Someone';
   /* Your feed (member-tuning.js): a member's tuning is theirs on every device (keyed by their email); anyone else tunes this workspace */
   const TUNE = o.tuning || createTuning({ packs: o.globalPacks || packs, log });
@@ -470,6 +471,11 @@ export function createFeedService(o) {
   const toldMemo = new WeakMap();
   const toldOf = (c) => { const terms = B()?.learnedTerms; let m = toldMemo.get(terms || toldMemo); if (!m) { m = new Map(); toldMemo.set(terms || toldMemo, m); }
     if (!m.has(c.id)) m.set(c.id, cardUsesLearned(`${c.title || ''} ${c.sub || ''} ${(c.detail?.why || []).join(' ')} ${(c.detail?.how || []).join(' ')}`, terms) ? 5 : 0); return m.get(c.id); };
+  /* the feed's label "From what your team told Brew": a card the team's words made (told-…), lifted, or whose move was rewritten on
+     them, or one that quotes them itself. One test for every card type, so a label never depends on how the card was written */
+  /* the learnings name the public card (m12-1); a connected team sees its private twin (m12-1-p, connectors/common.js privId) */
+  const inLearned = (k, id) => { const x = B()?.[k]; return !!x && (x.has(id) || x.has(String(id || '').replace(/-p$/, ''))); };
+  const toldCard = (c) => !!c && (c.origin === 'told' || c.told === true || inLearned('teamCards', c.id) || inLearned('learnedUp', c.id) || !!B()?.learnedMoves?.has(moveNo(c.id)) || !!toldOf(c));
   // who may see that a card rests on what the team told Brew: the same people as the told list (server.js /told)
   const toldSeen = (t) => process.env.DEMO_MODE === '1' || !!t?.member || process.env.FEED_SIGNIN === '0';
   const score = (t, c, af) => {
@@ -491,8 +497,8 @@ export function createFeedService(o) {
     const dec = acted ? actedDecay(t.actedAt?.[c.id], af.jamAt?.get(c.id), now(t)) : 0, fatigue = -Math.min(4, (af.shown24?.[c.agent] || 0) * 0.08) + (acted ? dec : seenFatigue(seen));
     const fb = -2 * ((af.fewer || t.fewer)[c.agent] || 0), tune = tuneScore(af.tune, c, af.notes); /* the member's own weights, topics and the words of their notes */
     // what the team told Brew comes first: cards of a move that rests on it, or that quote it themselves
-    const told = toldOf(c) || (B()?.learnedMoves?.has(moveNo(c.id)) ? 2 : 0), lift = B()?.teamCards?.has(c.id) ? 10 : B()?.learnedUp?.has(c.id) ? 8 : 0;
-    const contra = B()?.learnedHide?.has(c.id) ? -40 : 0; /* the team said it doesn't work for them: off the top until someone says "bring back" (brand-learnings.js) */
+    const told = toldOf(c) || (B()?.learnedMoves?.has(moveNo(c.id)) ? 2 : 0), lift = inLearned('teamCards', c.id) ? 10 : inLearned('learnedUp', c.id) ? 8 : 0;
+    const contra = inLearned('learnedHide', c.id) ? -40 : 0; /* the team said it doesn't work for them: off the top until someone says "bring back" (brand-learnings.js) */
     const art = draftView(draftFor(c, B()?.firstDrafts), c); /* a first draft with a picture or clip: the first screen should be things to look at */
     const look = (art?.images?.length || art?.video ? 3 : 0) + (isStaticCard(c.id) || c.research?.kind === 'ad' ? 2 : 0);
     const extra = told + look + boostNow(t.boost?.[c.id], now(t)) + (c.onlyWhen && connOn(t, c.onlyWhen) ? 3 : 0) + (c.live && Object.keys(c.live).some((k) => connOn(t, k)) ? 2 : 0) + (c.liveOnly ? 2 : 0);
@@ -550,7 +556,8 @@ export function createFeedService(o) {
     /* read once per rank, not once per card: the agents' cards on screen today, each card's last jam activity, the words of the
        person's notes, and the titles they marked Not for me */
     a.shown24 = agentShown(t.shown, t.cards, now(t)); a.jamAt = jamActivity(t.work); a.noTitles = t.noTitles || [];
-    a.notes = noteTopics([...(tu?.notes || []).map((n) => n.text), ...(t.cardNotes || []).filter((n) => n.useful !== false).map((n) => n.text)], (t.cardNotes || []).filter((n) => n.useful === false).map((n) => n.text));
+    const ns = noteSides(tu?.notes); /* a "no" in a note pushes its words down (member-tuning.js noteSides) */
+    a.notes = noteTopics([...ns.up, ...(t.cardNotes || []).filter((n) => n.useful !== false).map((n) => n.text)], [...ns.down, ...(t.cardNotes || []).filter((n) => n.useful === false).map((n) => n.text)]);
     const eng = engagedIds(affinityMap(t).hearts, t.work);
     const all = [...t.cards.values()];
     const top = all.filter((c) => visible(t, c) && !c.parentCardId && c.origin === 'user').sort((x, y) => y.createdAt - x.createdAt);
@@ -633,7 +640,7 @@ export function createFeedService(o) {
     VOICE.set(slug, { at: Date.now(), list: v?.list || [], job }); return VOICE.get(slug).list; };
   const voiceReady = async (slug) => { voiceOf(slug); await VOICE.get(slug)?.job?.catch(() => {}); return voiceOf(slug); }; /* the proof sheet waits for it; the feed never does */
   const PLAIN = o.plain || createPlain({ ai: claudeTool, store: o.globalPacks || packs, spend: (k) => spend(k), isMock, log, kindsOf: (slug) => evidenceKinds({ voice: voiceOf(slug) }) }); /* the rewrite claims no more than the brand's reviews and threads show */
-  const pub = (c0, t) => { if (c0?.cta?.label) fitCta(c0); /* a saved card's button heals: renamed, or one about another topic (FEED-QA-20) */ const c = oneCard(process.env.PLAIN_OFF === '1' ? c0 : PLAIN.apply(t ? slugOfT(t) : B()?.slug || DEFAULT_BRAND, c0)); /* one, always: a tenant's saved card says one too */ const { history, ...rest } = c; try { const sl = t ? slugOfT(t) : B()?.slug || DEFAULT_BRAND, vo = voiceOf(sl), e = refineProof(c0, EV.evidenceOf({ ...c0, brand: BN() }, { liveLedger: t?.member ? t.liveLedger : null, plain: PLAIN.get(sl, c0), voice: vo }), { voice: vo, connected: (id) => !!t && connOn(t, id), has: (id) => !!SEED?.connectors?.[id] }); const nd = cardNeeds(c0, e?.claim?.needs, { connected: (id) => !!t && connOn(t, id), has: (id) => !!SEED?.connectors?.[id] }); rest.proof = e ? { n: e.count, strength: e.strength, ...(nd.length ? { needs: nd } : {}) } : null; } /* needs: the accounts the card rests on that aren't connected (the card's one-line Connect, FEED-ARV-07) */ /* the shield counts what the sheet shows: the proof checked against the claim (proof-logic.js) */ catch (e) { log.warn('[proof]', c0.id, e.message); } { const nt = rest.note || B()?.notes?.[c.id]; delete rest.note; if (typeof nt === 'string') rest.note = nt; else if (nt?.h && !NO_NOTE.test(c.id) && noteOk(nt, c0)) rest.note = nt.k ? { ...nt, k: nt.k === nt.k.toLowerCase() ? moveSay(nt.k).toLowerCase() : moveSay(nt.k) } : nt; } /* margin notes written after the card landed (notes.js), checked against the card as it reads now: a build card's "All 65 written" never carries an old "only 1 of 52 done" (FEED-QA-21); "move 1006" reads "weekly move 6" */ if (LEAK.test(`${rest.title} ${rest.sub}`)) { rest.title = scrubLeak(rest.title); rest.sub = scrubLeak(rest.sub); } const dv = draftView(draftFor(c, B()?.firstDrafts), c); if (dv) { const said = { headline: dv.headline, copy: dv.copy }; try { cleanDraftClaims(said, packSource(t ? brandOfT(t) : B(), c0)); } catch {} rest.draft = { ...dv, headline: said.headline, copy: said.copy, ...(dv.title ? { title: dejargon(dv.title) } : {}) }; if (!said.headline) delete rest.draft.headline; } /* a draft saved before the claims check shows no unbacked claim under the card (QA-25) */ /* the draft's own name in plain words ("Saaya Blue PDP Comfort FAQ Section") */ /* the first draft Brew made for this card (drafts-bg.js), shown on the feed card */ const pl = planOfCard(c); if (pl) rest.plan = pl; /* its plan: what the jam opens on */ if (toldOf(c) && toldSeen(t)) rest.told = true; /* the card itself rests on what the team told Brew: the feed labels it (team only, like the told list) */ rest.src = rest.src === 'Brew deployment team' ? 'The ShopOS team, Brew’s build crew' : moveSay(rest.src); /* one name for the team (FEED-QA-10) */ /* the source line a person reads: "Weekly move 11" (QA FEED-QA-12); t.cards keeps "Move 1011" for numsOf */ return { ...rest, history: (history || []).slice(-6), measure: measureOf(t, c), decided: t?.decided?.[c.id] || null }; };
+  const pub = (c0, t) => { if (c0?.cta?.label) fitCta(c0); /* a saved card's button heals: renamed, or one about another topic (FEED-QA-20) */ const c = oneCard(process.env.PLAIN_OFF === '1' ? c0 : PLAIN.apply(t ? slugOfT(t) : B()?.slug || DEFAULT_BRAND, c0)); /* one, always: a tenant's saved card says one too */ const { history, ...rest } = c; try { const sl = t ? slugOfT(t) : B()?.slug || DEFAULT_BRAND, vo = voiceOf(sl), e = refineProof(c0, EV.evidenceOf({ ...c0, brand: BN() }, { liveLedger: t?.member ? t.liveLedger : null, plain: PLAIN.get(sl, c0), voice: vo }), { voice: vo, connected: (id) => !!t && connOn(t, id), has: (id) => !!SEED?.connectors?.[id] }); const nd = cardNeeds(c0, e?.claim?.needs, { connected: (id) => !!t && connOn(t, id), has: (id) => !!SEED?.connectors?.[id] }); rest.proof = e ? { n: e.count, strength: e.strength, ...(nd.length ? { needs: nd } : {}) } : null; } /* needs: the accounts the card rests on that aren't connected (the card's one-line Connect, FEED-ARV-07) */ /* the shield counts what the sheet shows: the proof checked against the claim (proof-logic.js) */ catch (e) { log.warn('[proof]', c0.id, e.message); } { const nt = rest.note || B()?.notes?.[c.id]; delete rest.note; if (typeof nt === 'string') rest.note = nt; else if (nt?.h && !NO_NOTE.test(c.id) && noteOk(nt, c0)) rest.note = nt.k ? { ...nt, k: nt.k === nt.k.toLowerCase() ? moveSay(nt.k).toLowerCase() : moveSay(nt.k) } : nt; } /* margin notes written after the card landed (notes.js), checked against the card as it reads now: a build card's "All 65 written" never carries an old "only 1 of 52 done" (FEED-QA-21); "move 1006" reads "weekly move 6" */ if (LEAK.test(`${rest.title} ${rest.sub}`)) { rest.title = scrubLeak(rest.title); rest.sub = scrubLeak(rest.sub); } const dv = draftView(draftFor(c, B()?.firstDrafts), c); if (dv) { const said = { headline: dv.headline, copy: dv.copy }; try { cleanDraftClaims(said, packSource(t ? brandOfT(t) : B(), c0)); } catch {} rest.draft = { ...dv, headline: said.headline, copy: said.copy, ...(dv.title ? { title: dejargon(dv.title) } : {}) }; if (!said.headline) delete rest.draft.headline; } /* a draft saved before the claims check shows no unbacked claim under the card (QA-25) */ /* the draft's own name in plain words ("Saaya Blue PDP Comfort FAQ Section") */ /* the first draft Brew made for this card (drafts-bg.js), shown on the feed card */ const pl = planOfCard(c); if (pl) rest.plan = pl; /* its plan: what the jam opens on */ if (toldSeen(t) && toldCard(c)) rest.told = true; /* the card itself rests on what the team told Brew: the feed labels it (team only, like the told list) */ rest.src = rest.src === 'Brew deployment team' ? 'The ShopOS team, Brew’s build crew' : moveSay(rest.src); /* one name for the team (FEED-QA-10) */ /* the source line a person reads: "Weekly move 11" (QA FEED-QA-12); t.cards keeps "Move 1011" for numsOf */ return { ...rest, history: (history || []).slice(-6), measure: measureOf(t, c), decided: t?.decided?.[c.id] || null }; };
   /* the cards the page needs, not every card the workspace ever held: the feed's order, pinned ones, cards with a jam, saved and
      hearted ones (the Library and the jams open them by id). With no order yet, every card, as before */
   const lastOrder = new WeakMap();
@@ -1672,10 +1679,50 @@ export function createFeedService(o) {
     if (x.ok) t.viewer = { ...t.viewer, voice: x.voice };
     return x;
   });
+  /* Drop anything here, step 1: what one file says (drop-read.js: PDFs and photos read by Gemini, Word, PowerPoint and Excel
+     unzipped here, text as it is). A photo or MP4 dropped for the brand also joins its References, which the generators work
+     from (the team only, like the References page). The text comes back to the sheet, which sends it on with step 2 */
+  const teamNo = (t, what) => { const r = reqOf(t); return r?.member || process.env.DEMO_MODE === '1' ? null : { status: r?.email ? 403 : 401, error: `Only this brand’s team can ${what}.`, team: true }; };
+  on('POST', '/api/brands/:slug/drop/read', async (b, t, p) => {
+    const slug = t.brandId || DEFAULT_BRAND; if (p.slug !== slug) return { status: 400, error: 'This workspace is for another brand.' };
+    const forBrand = b.dest === 'memory'; if (forBrand) { const no = teamNo(t, 'add to its memory'); if (no) return no; }
+    if (/\.mp4$/i.test(String(b.name || '')) || /^data:video\/mp4/.test(String(b.data || ''))) { if (!forBrand) return { error: 'Videos go to the brand’s References: pick Add to brand memory.' };
+      const x = await REFS.add(slug, { data: b.data, label: b.name, job: 'style', by: meOf(t)?.email || null }); return x.error ? x : { ok: true, kind: 'video', text: '', ref: { id: x.item?.id, same: !!x.same } }; }
+    const paid = ['pdf', 'image'].includes(dropKind(b.name, b.type)), ai = paid && !isMock() && spend('text') ? o.ai : null;
+    const f = await readDrop(b, { ai }).catch((e) => { log.warn?.('[drop] read', slug, e.message); return { error: `Brew couldn’t read ${String(b.name || 'that file').slice(0, 80)}. Try again, or drop it as a PDF.` }; });
+    if (f.error) return f;
+    let ref = null;
+    if (forBrand && f.image) { const x = await REFS.add(slug, { data: `data:${f.image.ext === 'jpg' ? 'image/jpeg' : `image/${f.image.ext}`};base64,${f.image.buf.toString('base64')}`, label: b.name, job: f.image.job, keep: f.image.shows, by: meOf(t)?.email || null }).catch((e) => ({ error: e.message }));
+      ref = x.error ? { error: x.error } : { id: x.item?.id, same: !!x.same }; }
+    return { ok: true, kind: f.kind, text: f.text, chars: f.chars, cut: f.cut, usd: f.usd, ref };
+  });
+  /* Drop anything here, step 2 for the brand: the learnings draft the sheet shows (brand-learnings.js), then its answer: "save"
+     (the brief, Brew's memory, the moves it changes and the feed), "drop 2 5", "go ahead" / "just the top ones", or "cancel" */
+  const draftOut = (d) => d ? { kind: d.kind, items: (d.items || []).map((x) => ({ kind: x.kind, text: x.text })), again: d.again || 0, clipped: d.clipped || 0, replace: !!d.replace,
+    conflicts: (d.conflicts || []).slice(0, 6).map((c) => ({ says: c.conflictSays || c.text, label: c.fact?.label || '', v: c.fact?.v ?? '', src: c.fact?.src || '' })) } : null;
+  const learnOut = (x) => ({ ok: true, reply: x.reply, draft: x.d ? draftOut(x.d) : null, saved: !!x.saved || !!x.applied, cancelled: !!x.cancelled, n: x.applied?.length ?? null,
+    pending: x.moves?.pending ? { all: x.moves.pending.ns.length, top: x.moves.pending.top.length } : null });
+  on('POST', '/api/brands/:slug/learnings/answer', async (b, t, p) => {
+    const slug = t.brandId || DEFAULT_BRAND; if (p.slug !== slug) return { status: 400, error: 'This workspace is for another brand.' };
+    const r = reqOf(t), no = learnGate({ member: !!r?.member, demoSite: process.env.DEMO_MODE === '1', name: BN() }); if (no) return { error: no, team: true };
+    if (!o.learnings) return { error: 'Brand learnings are off here.' };
+    const text = String(b.text || '').trim().slice(0, 400); if (!text) return { error: 'Say save, cancel, or which lines to drop.' };
+    const x = (await o.learnings.review(slug, text)) || (await o.learnings.confirm(slug, text));
+    return x ? learnOut(x) : { error: 'There is nothing waiting to save. Drop the file again.' };
+  });
   /* Drop anything here (drop.js): memory (the brand's memory), prefs (my preferences), once (this jam, or the next ask) */
   on('POST', '/api/brands/:slug/drop', async (b, t, p) => {
     const slug = t.brandId || DEFAULT_BRAND; if (p.slug !== slug) return { status: 400, error: 'This workspace is for another brand.' };
     const dest = DESTS.includes(b.dest) ? b.dest : null; if (!dest) return { error: 'Pick where it goes: brand memory, my preferences, just this once, or References.' };
+    /* the brand's memory, from the team on the live site: brand learnings, so it reaches the brief, the moves and the feed, after
+       the team checks the draft. The demo site (and a server without learnings) keeps the direct memory note below */
+    if (dest === 'memory' && !b.data && o.learnings && process.env.DEMO_MODE !== '1') {
+      const r0 = reqOf(t), no = learnGate({ member: !!r0?.member, demoSite: false, name: BN() }); if (no) return { status: r0?.email ? 403 : 401, error: no, team: true };
+      const text = String(b.text || '').replace(/\r/g, '').trim(); if (text.length < 4) return { error: 'Nothing in it to read.' };
+      const by = r0.name || r0.email || 'the team', byShort = r0.name ? String(r0.name).split(/\s+/)[0] : r0.email || '';
+      const x = await o.learnings.run(slug, { text, by, byShort, why: 'drop', kind: 'Upload', files: (Array.isArray(b.files) ? b.files : [b.name]).map(String).filter(Boolean) });
+      return { ...learnOut(x), dest, learn: true, dup: !!x.dup && !x.draft };
+    }
     /* References: the file itself, for the generators (references.js); label + job + keep ride in the body. The team only */
     if (dest === 'references') { const r0 = reqOf(t); if (!(r0?.member || process.env.DEMO_MODE === '1')) return { status: r0?.email ? 403 : 401, error: 'Only this brand’s team adds References.', team: true };
       const x = await REFS.add(slug, { data: b.data, label: b.label || b.name, job: b.job, keep: b.keep, by: meOf(t)?.email || null }); return x.error ? x : { ok: true, dest, item: x.item, same: !!x.same }; }
@@ -1692,7 +1739,8 @@ export function createFeedService(o) {
       return { ok: true, dest, added: x.added, updated: x.updated, confirmed: x.same?.length || 0, cut: !!f.cut, file: rel };
     }
     if (dest === 'prefs') {
-      const tu = await TUNE.addNote(slug, tuneKey(t), label, { source: 'Dropped into Brew' });
+      let sides = null; if (f.kind === 'text' && !isMock() && spend('text')) sides = await claudeTool(prefPrompt(f.text), PREF_SCHEMA, 600, 'pref-sides').catch((e) => { log.warn?.('[drop] prefs', e.message); return null; });
+      const tu = await TUNE.addNote(slug, tuneKey(t), label, { source: 'Dropped into Brew', sides });
       if (o.memory && mk && f.kind === 'text') await o.memory.add(slug, f.text, { scope: 'member', memberId: mk, source: { kind: 'drop', label: `my preferences, dropped by team member ${mk}` }, by: `team member ${mk}` }).catch((e) => log.warn?.('[drop] prefs memory', e.message));
       return { ok: true, dest, note: tu.notes[0], cut: !!f.cut, file: rel };
     }
@@ -1954,9 +2002,13 @@ export function createFeedService(o) {
     const [x] = await tagsOf(t, w, [b.email]); if (!x) return { error: 'They’re not on the team yet. Invite them from Team and access first.' };
     const ask = b.ask === 'approve' ? 'approve' : 'work';
     w.assignee = { ...x, ask, by: me0?.email || null, at: now(t) }; JAMS.join(w, x, 'assigned');
-    say(t, w, { from: 'system', body: ask === 'approve' ? `${nameOf(me0)} asked ${nameOf(x)} for their OK on v${w.current}` : `${nameOf(me0)} gave this jam to ${nameOf(x)}` });
+    /* said in the chat as a tag from the person who assigned it (so the chat, Slack and the email all tell the same story);
+       the assign email is the tag's email, never a second one */
+    const at = `@${x.name || x.email.replace(/@.*/, '')}`, note = String(b.note || '').trim().slice(0, 400);
+    const body = `${at} ${ask === 'approve' ? `can you OK v${w.current}?` : 'this one’s yours.'}${note ? ` ${note}` : ''}`;
+    if (me0) say(t, w, { from: 'me', body, to: [x.email] }); else say(t, w, { from: 'system', body: ask === 'approve' ? `Asked ${nameOf(x)} for their OK on v${w.current}` : `Gave this jam to ${nameOf(x)}` });
     if (ask === 'approve') move(t, w, 'needs_you', null);
-    mailEv(t, w, { kind: ask === 'approve' ? 'approve' : 'assigned', to: [x.email], by: me0, text: String(b.note || '').slice(0, 400), id: `as_${w.id}_${x.email}_${ask}_${w.current}` });
+    mailEv(t, w, { kind: ask === 'approve' ? 'approve' : 'assigned', to: [x.email], by: me0, text: note, id: w.thread[w.thread.length - 1].id });
     return { work: jamOut(t, w) };
   });
   /* yes / not now on a proposal Brew made (from a typed ask here, or from the jam's Slack thread): it runs once */
@@ -2143,7 +2195,7 @@ export function createFeedService(o) {
   const DEMO_OK = /^\/api\/(tenants|work|tenants\/[^/]+\/(ready|clock|events|pin|find-more|cards|notes\/(clear|read)|stories\/[^/]+\/seen|deck-layout|state|learning\/.+)|cards\/[^/]+\/(feedback|decided)|work\/[^/]+\/(decided|discard|restore|pick|version|approve|reopen|edit|jb\/move|draft\/[^/]+\/drop)|changes\/[^/]+\/(open|discard|restore|pick|notes|edit))$/;
   // every request runs inside its brand: the tenant's brand, or (creating one) the brand the page was opened for
   const handle = async (req, res, u) => {
-    if (!/^\/(h\/|api\/(share|tenants|cards|jams|work|changes|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?|voice)$))/.test(u.pathname)) return false;
+    if (!/^\/(h\/|api\/(share|tenants|cards|jams|work|changes|brands\/[a-z0-9-]+\/(?:drop\/read|learnings\/answer)$|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?|voice)$))/.test(u.pathname)) return false;
     let tid = null;
     const hm0 = u.pathname.match(/^\/h\/([\w~-]+)$/), sm0 = u.pathname.match(/^\/api\/share\/([\w~-]+)$/);
     if (hm0) tid = parseToken(hm0[1])?.tid; else if (sm0) tid = parseShare(sm0[1])?.tid; else tid = u.pathname.match(/^\/api\/tenants\/(t_[a-f0-9]+)/)?.[1] || req.headers['x-tenant'];
@@ -2170,7 +2222,7 @@ export function createFeedService(o) {
        team sees an empty feed (the page still loads, and a guest still gets their jam), and only their own jam's card */
     const outside = br.kind === 'generated' && o.liveTeamOnly?.() && !viewer?.member && !viewer?.gen;
     /* Ask, Your feed and Drop are the team's: outside it, on live, no writes either (Ask's answers name the brand's cards) */
-    if (outside && req.method !== 'GET' && /^\/api\/(tenants\/[^/]+\/(ask|tuning)(\/.*)?|brands\/[^/]+\/(drop|voice))$/.test(u.pathname)) { send(res, 403, { error: 'This is for the brand’s team.', teamOnly: true }); return true; }
+    if (outside && req.method !== 'GET' && /^\/api\/(tenants\/[^/]+\/(ask|tuning)(\/.*)?|brands\/[^/]+\/(?:drop\/read|learnings\/answer)|brands\/[^/]+\/(drop|voice))$/.test(u.pathname)) { send(res, 403, { error: 'This is for the brand’s team.', teamOnly: true }); return true; }
     if (outside && req.method === 'GET') {
       if (/^\/api\/tenants\/[^/]+\/feed$/.test(u.pathname)) { send(res, 200, { order: [], cards: {}, scores: {}, pinned: [], limit: { plan: 'free', daily: null, locked: 0 }, teamOnly: true }); return true; }
       if (/^\/api\/tenants\/[^/]+\/stories$/.test(u.pathname)) { send(res, 200, { rings: [], teamOnly: true }); return true; }
@@ -2215,7 +2267,7 @@ export function createFeedService(o) {
       if (viewer?.member && w) { if (!JAMS.isIn(w, email)) JAMS.join(w, { email, name: viewer.name, pic: viewer.pic }, 'joined'); send(res, 200, { member: true, jam: w.id }); return true; }
       if (email && w && !viewer?.member && !viewer?.gen) { JAMS.join(w, { email, name: viewer.name, pic: viewer.pic }, 'guest'); guest = true; }
       send(res, 200, { guest, signedIn: !!email, jam: tok.wid || null, tenant: t.id, viewer: t.viewer, conn: t.conn, pro: t.plan === 'pro', decided: t.decided || {} }); return true; }
-    if (!/^\/api\/(tenants|cards|jams|work|changes|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?|voice)$)/.test(u.pathname)) return false;
+    if (!/^\/api\/(tenants|cards|jams|work|changes|brands\/[a-z0-9-]+\/(?:drop\/read|learnings\/answer)$|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?|voice)$)/.test(u.pathname)) return false;
     for (const r of ROUTES) {
       if (r.method !== req.method) continue; const m = u.pathname.match(r.re); if (!m) continue;
       const params = m.groups || {};
