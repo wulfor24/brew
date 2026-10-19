@@ -607,6 +607,8 @@ a.btn,.rd-acts a,.mv2-dl a,.mv2-pdf{text-decoration:none!important}
 .lc-grp{display:flex;flex-direction:column;padding:6px 0;border-top:1px solid var(--line-soft,var(--line))}
 .lc-it{display:flex;align-items:center;gap:12px;width:100%;height:38px;padding:0 10px;border:0;border-radius:10px;background:none;color:var(--fg);font:inherit;font-size:14px;text-align:left;cursor:pointer}
 .lc-it:hover{background:var(--surface)}
+.lc-pop a.lc-it{text-decoration:none}.lc-it.lc-legal{cursor:default}.lc-it.lc-legal:hover{background:none}.lc-legal a{color:inherit;text-underline-offset:3px} /* Help, Privacy & terms, Delete my data */
+.del-sheet h3 .dummy-tag{vertical-align:3px;margin-left:6px}.del-what{margin:0 0 16px;padding-left:18px;color:var(--fg-2);font-size:14.5px;line-height:21px}
 .lc-it > .ic{color:var(--fg-2);flex:0 0 auto}
 .lc-it > b{font-weight:500;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lc-it > span{margin-left:auto;font-size:13px;color:var(--fg-3);display:flex;align-items:center}

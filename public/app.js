@@ -2814,8 +2814,8 @@
   const openAcct = (btn) => { if (window.LiveConn && (window.LIVE?.signin || window.LIVE?.me)) return window.LiveConn.menu(btn);
     document.getElementById('lc-pop')?.remove(); const pop = document.createElement('div'); pop.id = 'lc-pop'; pop.className = 'lc-pop';
     const r = btn.getBoundingClientRect(); pop.style.left = (r.right + 10) + 'px'; pop.style.bottom = Math.max(12, innerHeight - r.bottom) + 'px';
-    pop.innerHTML = `<div class="lc-me"><span><b>${esc(B.brand.name)}</b><small>Viewing as ${esc(ROLE().name)}</small></span></div>${acctRows()}`;
-    document.body.appendChild(pop); acctBind(pop);
+    pop.innerHTML = `<div class="lc-me"><span><b>${esc(B.brand.name)}</b><small>Viewing as ${esc(ROLE().name)}</small></span></div>${acctRows()}${window.LiveConn?.helpRows?.() || ''}`;
+    document.body.appendChild(pop); acctBind(pop); pop.querySelector('[data-ldelete]')?.addEventListener('click', () => { pop.remove(); window.LiveConn?.deleteSheet?.(); });
     setTimeout(() => document.addEventListener('click', function off(e) { if (!pop.contains(e.target) && !btn.contains(e.target)) { pop.remove(); document.removeEventListener('click', off); } }), 0); };
   // wipe everything this demo keeps in the browser (state, workspace, shared-link owner) and land on the website step
   const resetDemo = () => { if (window.BREW_DEMO) return demoStart('onboarding'); wiping = true; closeModal();

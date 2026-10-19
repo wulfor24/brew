@@ -324,24 +324,44 @@
   /* ---------- the account button in the rail ---------- */
   /* Your feed (tune what the feed shows you) lives here in ui=1; UI2 has it on its own rail */
   const tuneRow = () => document.body.classList.contains('ui2') ? '' : `<button class="lc-it" data-nav="tune">${ic('sliders', 's16')}<b>Your feed</b><span>Tune it</span></button>`;
+  /* ---------- help, privacy and deleting your data: the same rows for everyone (staff, team, visitor, signed out) ---------- */
+  const HELLO = 'hello@joinsquareup.com';
+  const meMail = () => { const e = L.me?.email; return e && !L.me?.demo && !/@demo\.brew$/i.test(e) ? e : ''; }; /* a demo visitor has no real address */
+  const brandTag = () => (GENB ? `${B()?.brand?.name || slug} (${slug})` : '');
+  const helpRows = () => `<div class="lc-grp lc-help">
+      <a class="lc-it" href="mailto:${HELLO}?subject=${encodeURIComponent(`Brew help${GENB ? ` · ${brandTag()}` : ''}`)}">${ic('info', 's16')}<b>Help</b><span>Email us</span></a>
+      <span class="lc-it lc-legal">${ic('shield', 's16')}<b><a href="/privacy" target="_blank" rel="noopener">Privacy</a> &amp; <a href="/terms" target="_blank" rel="noopener">terms</a></b></span>
+      ${meMail() ? `<button class="lc-it" type="button" data-ldelete>${ic('minus', 's16')}<b>Delete my data</b></button>` : ''}</div>`;
+  /* DUMMY: "Delete my data" deletes nothing itself. It drafts an email from the person's own mail app to the Brew team with the
+     brand and their address, and the team deletes by hand (DUMMY.md row 9). The sheet says so and carries the Dummy tag */
+  function deleteSheet() {
+    const em = meMail(), n = B()?.brand?.name || 'this brand';
+    const body = `Please delete my data from Brew.\n\nBrand: ${GENB ? brandTag() : 'none'}\nMy email: ${em}\n`;
+    const href = `mailto:${HELLO}?subject=${encodeURIComponent(`Delete my data${GENB ? ` · ${slug}` : ''}`)}&body=${encodeURIComponent(body)}`;
+    A()?.modal?.(`<div class="sheet del-sheet"><h3>Delete my data <span class="dummy-tag">Dummy</span></h3>
+      <p>This emails the Brew team from your own email. We delete it by hand and reply when it’s done.</p>
+      <ul class="del-what"><li>Your sign-in: the name, email and photo Google gave us</li><li>Your saved cards, feed settings and jam messages</li>${GENB ? `<li>If you’re ${esc(n)}’s admin and ask for it: the whole workspace (the read, moves, jams and connected keys)</li>` : ''}</ul>
+      <div class="cx-btns"><button class="btn btn-ghost" data-close>Cancel</button><a class="btn btn-primary" href="${esc(href)}" data-close>Email the request</a></div></div>`);
+  }
   function menu(btn) {
     document.getElementById('lc-pop')?.remove();
     const pop = document.createElement('div'); pop.id = 'lc-pop'; pop.className = 'lc-pop';
     const r = btn.getBoundingClientRect(); pop.style.left = (r.right + 10) + 'px'; pop.style.bottom = Math.max(12, innerHeight - r.bottom) + 'px'; pop.style.position = 'fixed';
     const ac = L.access, n = B()?.brand?.name || 'this brand';
     const role = ac?.role === 'owner' ? `Owner of ${n}` : ac?.role === 'admin' ? 'Brew team · full access' : ac?.role ? `On ${n}’s team` : L.full ? 'Brew team · full access' : GENB ? `Visitor · you see ${n}’s demo` : '';
-    pop.innerHTML = !L.me ? `<div class="lc-me"><b>Not signed in</b><small>Sign in to read a new brand, claim yours and connect real accounts.</small></div><a class="btn btn-primary sm" href="${signin()}">Sign in with Google</a><div class="lc-grp">${tuneRow()}</div>${window.BrewAcct?.rows?.() || ''}`
+    pop.innerHTML = !L.me ? `<div class="lc-me"><b>Not signed in</b><small>Sign in to read a new brand, claim yours and connect real accounts.</small></div><a class="btn btn-primary sm" href="${signin()}">Sign in with Google</a><div class="lc-grp">${tuneRow()}</div>${window.BrewAcct?.rows?.() || ''}${helpRows()}`
       : `<div class="lc-me">${L.me.pic ? `<img src="${esc(L.me.pic)}" alt="" referrerpolicy="no-referrer">` : ''}<span><b>${esc(L.me.name || L.me.email)}</b><small>${esc(L.me.demo || /@demo\.brew$/i.test(L.me.email || '') ? 'Demo visitor, no email' : L.me.email)}</small>${role ? `<em>${esc(role)}</em>` : ''}</span></div>
         ${GENB && ac?.canClaim ? `<button class="btn btn-primary sm" data-lclaim>Claim ${esc(n)}</button>` : ''}
         ${GENB && ac && !ac.gen ? `<small class="lc-hint">${ac.claimed ? `Ask ${esc(n)}’s team to invite you.` : `Sign in with your work email at ${esc(ac.host || host())} to claim it.`}</small>` : ''}
         ${GENB && ac?.role && ac.role !== 'owner' && ac.role !== 'admin' ? `<div class="lc-views"><small>Your views</small><span>${esc(seatWords(ac.seats))}</span></div>` : ''}
         <div class="lc-grp">${GENB && ac?.role && ac.role !== 'owner' && ac.role !== 'admin' ? `<button class="lc-it" data-lteamsheet>${ic('person', 's16')}<b>Team and invites</b><span>${(ac.team || []).length}</span></button>` : ''}
         ${GENB && (ac?.role === 'owner' || ac?.role === 'admin') ? `<button class="lc-it" data-lteamsheet>${ic('person', 's16')}<b>Team and access</b><span>${(ac.members || []).length}${(ac.members || []).filter((x) => Array.isArray(x.seats) && !x.seats.length).length ? ' · needs you' : ''}</span></button>` : ''}
-        ${tuneRow()}</div>${window.BrewAcct?.rows?.() || ''}
+        ${tuneRow()}</div>${window.BrewAcct?.rows?.() || ''}${helpRows()}
         <a class="lc-out" href="/auth/logout?next=${encodeURIComponent(location.pathname)}">Sign out</a>`;
     document.body.appendChild(pop); bindPage(pop); window.BrewAcct?.bind?.(pop);
     pop.querySelector('[data-nav="tune"]')?.addEventListener('click', () => pop.remove()); /* the app's nav opens the page */
     pop.querySelector('[data-lteamsheet]')?.addEventListener('click', () => { pop.remove(); teamSheet(); });
+    pop.querySelector('[data-ldelete]')?.addEventListener('click', () => { pop.remove(); deleteSheet(); });
     setTimeout(() => document.addEventListener('click', function off(e) { if (!pop.contains(e.target) && e.target !== btn) { pop.remove(); document.removeEventListener('click', off); } }), 0);
   }
   /* ---------- the team: invite by email, pick each person's views, change the admin ---------- */
@@ -435,5 +455,5 @@
 
 
 
-  window.LiveConn = { boss: () => !L.me || boss(), isReady: () => !!L.ready, simId, teamSheet, seatWords, open, overlay, resume, status, footer, intro, bindPage, menu, claim, isLive, get L() { return L; }, gen: GENB, signin };
+  window.LiveConn = { boss: () => !L.me || boss(), isReady: () => !!L.ready, simId, teamSheet, seatWords, open, overlay, resume, status, footer, intro, bindPage, menu, helpRows, deleteSheet, claim, isLive, get L() { return L; }, gen: GENB, signin };
 })();

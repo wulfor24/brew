@@ -193,3 +193,16 @@ test('FEED-QA-30: a saved read whose market the site only guessed heals to "to c
   assert.deepEqual(Object.keys((await P.getJSON(slug, 'updates.json', {}))?.stale || {}), [], 'nothing rewritten, nothing spent');
   assert.equal(await b.marketCheck(slug), null, 'healed once');
 });
+
+/* ---------- FEED-QA-29 / TRU-07 / ACC-12: the account menu ---------- */
+test('FEED-QA-29: everyone’s account menu has Help, Privacy & terms and Delete my data (marked Dummy: the team deletes by hand)', () => {
+  const l = src('public/live.js'), menu = l.slice(l.indexOf('function menu(btn)'), l.indexOf('/* ---------- the team: invite by email'));
+  assert.equal((menu.match(/\$\{helpRows\(\)\}/g) || []).length, 2, 'signed in or not, whatever the role');
+  assert.match(l, /href="mailto:\$\{HELLO\}\?subject=\$\{encodeURIComponent\(`Brew help\$\{GENB \? ` · \$\{brandTag\(\)\}` : ''\}`\)\}"/);
+  assert.match(l, /href="\/privacy"[^>]*>Privacy<\/a> &amp; <a href="\/terms"/);
+  assert.match(l, /\/\* DUMMY: "Delete my data" deletes nothing itself/);
+  assert.match(l, /Delete my data <span class="dummy-tag">Dummy<\/span>/);
+  assert.match(l, /Brand: \$\{GENB \? brandTag\(\) : 'none'\}\\nMy email: \$\{em\}/, 'the request names the brand slug and the person’s email');
+  assert.match(src('DUMMY.md'), /\| 9 \| \*\*Delete my data\*\*/);
+  assert.match(appSrc(), /\$\{acctRows\(\)\}\$\{window\.LiveConn\?\.helpRows\?\.\(\) \|\| ''\}/, 'the menu without sign-in has them too');
+});
