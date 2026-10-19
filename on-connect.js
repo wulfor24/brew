@@ -76,5 +76,8 @@ export function connectTargets({ all = [], full = false, runIds = [], nowIds = [
   const recent = (n) => at - Math.max(when(pm?.[n]), when(moves?.[n])) < freshMs;
   const needs = (n) => { const w = pm?.[n]?.meta?.connectedWith, want = full ? nowIds : runIds.filter((id) => touches(id, n));
     if (!want.length) return false; if (!w) return full || !recent(n); return want.some((id) => !w.includes(id)); };
-  return (full ? all : all.filter((n) => runIds.some((id) => touches(id, n)))).filter(needs);
+  /* the moves the accounts touch go first: when the weekly pot runs out mid-run the rest wait for next week, never these */
+  const hit = (n) => (full ? nowIds : runIds).some((id) => touches(id, n));
+  const ns = (full ? all : all.filter((n) => runIds.some((id) => touches(id, n)))).filter(needs);
+  return [...ns.filter(hit), ...ns.filter((n) => !hit(n))];
 }

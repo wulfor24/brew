@@ -69,6 +69,8 @@ test('connect: each move is rewritten once per set of accounts', () => {
   const touches = (id, n) => ({ ga4: [1, 2], klaviyo: [3], shopify: [1, 2, 3, 4] })[id]?.includes(n);
   /* the first run writes every move */
   assert.deepEqual(connectTargets({ all, full: true, runIds: ['ga4', 'klaviyo'], nowIds: ['ga4', 'klaviyo'], pm: {}, touches, at }), [1, 2, 3, 4]);
+  /* the moves the accounts touch lead the first run, so a pot that runs out mid-run never leaves them for next week */
+  assert.deepEqual(connectTargets({ all: [1, 2, 3, 4, 5, 6], full: true, runIds: ['ga4'], nowIds: ['ga4'], pm: {}, touches: (id, n) => ({ ga4: [5, 3] })[id]?.includes(n), at }), [3, 5, 1, 2, 4, 6]);
   /* a repeat of the first run (a deploy, an overwritten updates.json) skips moves already written with those accounts */
   const pm = Object.fromEntries(all.map((n) => [n, { meta: { rewrittenAt: new Date(at - 3600e3).toISOString(), connectedWith: ['ga4', 'klaviyo'] } }]));
   assert.deepEqual(connectTargets({ all, full: true, runIds: ['ga4', 'klaviyo'], nowIds: ['ga4', 'klaviyo'], pm, touches, at }), []);

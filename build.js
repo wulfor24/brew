@@ -1496,7 +1496,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       if (x.running) return setTimeout(tick, 60e3).unref?.();
       if (!s1?.done) { if (s1?.capped || s1?.pausedDay) await setStatus(slug, { capped: false, pausedDay: null }); log.log(`[ops] ${slug}: writing the missing moves`); resume(slug).catch((e) => log.error('[ops] resume', e.message)); return setTimeout(tick, 120e3).unref?.(); }
       const moves = await packs.getJSON(slug, 'moves.json', {}), t0 = mk.startedAt;
-      const old = Object.keys(moves).map(Number).filter((n) => n >= 1 && n <= 50 && Math.max(Date.parse(moves[n]?.meta?.rewrittenAt || 0), Date.parse(moves[n]?.meta?.at || 0)) < t0).sort((a, b) => a - b);
+      const old = Object.keys(moves).map(Number).filter((n) => n >= 1 && n < 1000 /* every playbook move, not the weekly ones (1001+) */ && Math.max(Date.parse(moves[n]?.meta?.rewrittenAt || 0), Date.parse(moves[n]?.meta?.at || 0)) < t0).sort((a, b) => a - b);
       if (!old.length) { await packs.put(slug, 'private/ops-fresh.json', { ...mk, phase: 'done', doneAt: Date.now() }); log.log(`[ops] ${slug}: fresh reload done`); return; }
       await packs.put(slug, 'private/ops-fresh.json', { ...mk, phase: 'rewrite' }); log.log(`[ops] ${slug}: rewriting ${old.length} older moves: ${old.join(', ')}`);
       await editUpd(slug, (u) => { for (const n of old) u.stale[n] = { n, priority: 'high', why: 'Fresh reload with what the team told us', changes: [], at: Date.now() }; });
