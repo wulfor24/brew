@@ -34,7 +34,7 @@ const isFile = (f) => { try { return !!f && fs.statSync(f).isFile(); } catch { r
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // resolve(path) → a local file for a reference this instance lacks (the server maps brand assets, research and gen files to the bucket)
 /* normalize(file) → a file the models accept (img-norm.js: an SVG, GIF or AVIF product photo becomes a PNG); identity by default */
-export function createImageGuard({ gen, verify = null, fetchPhoto = async () => null, resolve = async () => null, normalize = async (f) => f, context = () => null, tries = 3, backoffMs = 2000, textModel = process.env.GEMINI_IMAGE_FALLBACK || 'gemini-3-pro-image', log = console }) {
+export function createImageGuard({ balance = null, gen, verify = null, fetchPhoto = async () => null, resolve = async () => null, normalize = async (f) => f, context = () => null, tries = 3, backoffMs = 2000, textModel = process.env.GEMINI_IMAGE_FALLBACK || 'gemini-3-pro-image', log = console }) {
   /* the model, tried again on a failure: 2 s, then 6 s (a refused or blocked prompt is not retried) */
   const genRetry = async (o) => { let last;
     for (let i = 0; i < tries; i++) {
@@ -42,7 +42,12 @@ export function createImageGuard({ gen, verify = null, fetchPhoto = async () => 
       catch (e) { last = e; if (/\b(400|403)\b|blocked|safety|refus/i.test(e.message) && !/no image/i.test(e.message)) break; if (i < tries - 1) { log.warn?.('[image-guard] model failed, trying again', e.message.slice(0, 160)); await sleep(backoffMs * (i ? 3 : 1)); } }
     }
     throw last; };
-  return async function guardedImage(o = {}) {
+  /* balance(buf, refFile) → { buf, fixed }: a picture washed warm is pulled back toward its product photo (color-cast.js) */
+  const REF = Symbol('ref');
+  const finish = async (r) => { if (!balance || !Buffer.isBuffer(r) || r.guard?.fallback) return r; const x = await balance(r, r[REF] || null).catch(() => null);
+    return x?.fixed ? Object.assign(x.buf, { guard: { ...r.guard, warmFixed: true } }) : r; };
+  return async (o = {}) => finish(await guardedImage(o));
+  async function guardedImage(o = {}) {
     const b = context(), catalog = o.catalog ?? b?.catalog ?? null, brand = o.brand ?? b?.seed?.brand?.name ?? b?.name ?? '';
     /* o.named: the product the caller already knows the picture is about (the card's asset line names it), else the words' */
     const named = o.product === false ? null : o.named?.img ? o.named : matchProduct(`${o.text || ''}\n${o.prompt || ''}`, catalog, { brand });
@@ -66,8 +71,8 @@ export function createImageGuard({ gen, verify = null, fetchPhoto = async () => 
       log.warn?.('[image-guard] no picture came back; using the real photo for now', named?.t || '', e.message.slice(0, 160));
       return Object.assign(fs.readFileSync(ref), { guard: { ...note, gens: 0, fallback: true, genFailed: true, error: String(e.message).slice(0, 200) } });
     }
-    if (!ref || !verify) return Object.assign(buf, { guard: note });
-    const done = () => Object.assign(buf, { guard: note });
+    if (!ref || !verify) return Object.assign(buf, { guard: note, [REF]: ref });
+    const done = () => Object.assign(buf, { guard: note, [REF]: ref });
     const standIn = () => { buf = fs.readFileSync(ref); note.fallback = true; note.genFailed = true; note.same = false; return done(); }; /* a stand-in, not the new picture: callers retry it later */
     /* the check, tried twice; null when it can't answer */
     let refName = named?.t;
@@ -106,5 +111,5 @@ export function createImageGuard({ gen, verify = null, fetchPhoto = async () => 
       log.warn?.('[image-guard] still a different product; using the real photo', named?.t || ''); return standIn();
     }
     note.same = true; return done();
-  };
+  }
 }

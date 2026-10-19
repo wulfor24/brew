@@ -23,7 +23,8 @@ import { createStore } from './store.js';
 import { B, BN, runIn, liveRe, setDefaultBrand, inBrand } from './brand-ctx.js';
 import { createImageGuard } from './image-guard.js';
 import { createPacks, slugOf, DEFAULT } from './brand-pack.js';
-import { createAI, aiPaused, billingError, noteBilling } from './ai.js';
+import { balanceWarm } from './color-cast.js'; // a picture washed yellow is pulled back toward its product photo (QA 13 Oct)
+import { createAI, aiPaused, billingError, noteBilling, realNewlines } from './ai.js';
 import { createAlerts, noteVertex, noteAlert } from './alerts.js'; // ops emails: Vertex billing/quota, the AI pause, treg balance, 5xx rate
 import { createBudget } from './budget.js'; // the day's AI budget: a ceiling and a share per brand
 import { createTreg, gcsCache } from './treg.js';
@@ -100,7 +101,7 @@ const SYSTEM = () => B()?.system || '';
 
 // ---------- guardrails ----------
 const BANNED = liveRe((b) => b.bannedRe); // the claim words this brand's category can't use
-const clean = (s) => String(s || '').replace(/—/g, ',').replace(/ ,/g, ',');
+const clean = (s) => String(s || '').replace(/—/g, ',').replace(/ ,/g, ',').replace(/\\n/g, '\n').replace(/\u2039(?=\s?\d)/g, '₹');
 
 // ---------- Claude ----------
 // Sonnet 5.5 for live latency. Thinking off (`between_tools`, valid at effort high or below) and low effort,
@@ -119,7 +120,7 @@ const claudeJSON = async (prompt, max = 2000) => {
   const msg = await claudeCreate(claudeParams([{ role: 'user', content: prompt + '\n\nReply with JSON only, no prose, no code fences.' }], max));
   if (msg.stop_reason === 'refusal') throw new Error('refused: ' + (msg.stop_details?.category || 'unknown'));
   const t = textOf(msg);
-  try { return JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)); }
+  try { return realNewlines(JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1))); } /* line breaks as real ones, ₹ never ‹ (QA-02, QA-08) */
   catch (e) { console.error('[claudeJSON]', msg.model, msg.stop_reason, t.slice(0, 400)); throw e; }
 };
 // Structured output: the reply is constrained to a JSON schema (output_config.format), so it always parses,
@@ -139,7 +140,7 @@ const claudeTool = async (prompt, schema, max = 3000, name = 'reply') => {
   if (msg.stop_reason === 'refusal') throw new Error('refused: ' + (msg.stop_details?.category || 'unknown'));
   if (msg.stop_reason === 'max_tokens') console.warn('[claudeTool]', name, 'hit max_tokens', max);
   const t = textOf(msg);
-  try { return JSON.parse(t); } catch (e) { console.error('[claudeTool]', name, msg.stop_reason, t.slice(0, 300)); throw e; }
+  try { return realNewlines(JSON.parse(t)); } catch (e) { console.error('[claudeTool]', name, msg.stop_reason, t.slice(0, 300)); throw e; }
 };
 // the active brand's fact sheet: every number Claude writes must come from it, or QA drops the card
 const FACT_BRIEF = () => B()?.factBrief || '';
@@ -208,11 +209,11 @@ const rawImage = async (o, { gptFirst = false } = {}) => {
 };
 /* SVG, GIF, AVIF or HEIC product photos become PNGs before any model or check sees them (img-norm.js) */
 const imgNorm = createImageNorm({ withBrowser, log: console });
-const geminiImage = createImageGuard({ gen: (o) => rawImage(o), verify: sameProduct, fetchPhoto: photoAny, resolve: (f) => resolveLocal(f), normalize: imgNorm.normalize, context: inBrand, log: console });
+const geminiImage = createImageGuard({ balance: balanceWarm, gen: (o) => rawImage(o), verify: sameProduct, fetchPhoto: photoAny, resolve: (f) => resolveLocal(f), normalize: imgNorm.normalize, context: inBrand, log: console });
 /* every picture the build (ad statics, the team's statics), background drafts and story watchers make counts against the day's
    image budget, the brand's share first (budget.js). The jam's own routes count theirs before calling imageGen */
 const countedImage = async (o = {}) => { if (!spend('image', o.slug)) throw Object.assign(new Error(budget.why('image', o.slug) || 'The image budget for today is used up.'), { soft: true, budget: true }); return geminiImage(o); };
-const imageGen = createImageGuard({ gen: (o) => rawImage(o, { gptFirst: prefs().image === 'gpt-image' && !!OPENAI_KEY && !!o.srcFile && !o.refFiles?.length }), verify: sameProduct, fetchPhoto: photoAny, resolve: (f) => resolveLocal(f), normalize: imgNorm.normalize, context: inBrand, log: console });
+const imageGen = createImageGuard({ balance: balanceWarm, gen: (o) => rawImage(o, { gptFirst: prefs().image === 'gpt-image' && !!OPENAI_KEY && !!o.srcFile && !o.refFiles?.length }), verify: sameProduct, fetchPhoto: photoAny, resolve: (f) => resolveLocal(f), normalize: imgNorm.normalize, context: inBrand, log: console });
 
 // ---------- mock replies (free, used when AI is off or fails) ----------
 // three cuts of the card itself when the writer is off: its own numbers, its reason, a smaller first step.
