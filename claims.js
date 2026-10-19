@@ -7,6 +7,11 @@
    drafts.js: cleanDraftClaims), the finals gate and the writers' prompts (CLAIMS_RULE). */
 
 const norm = (s) => String(s || '').toLowerCase().replace(/[’']/g, "'").replace(/\s+/g, ' ');
+/* a brand's own words are long (every product): normalised once per text, not once per sentence checked (a feed of 120 cards and
+   a pack of 60 moves checked against the same words took 12–50 s to load when each check lower-cased them again) */
+const NORMED = new Map();
+const srcNorm = (source) => { if (typeof source !== 'string') return sourceText(source); const hit = NORMED.get(source); if (hit !== undefined) return hit;
+  const n = norm(source); if (NORMED.size >= 12) NORMED.delete(NORMED.keys().next().value); NORMED.set(source, n); NORMED.set(n, n); return n; };
 /* the sentence a phrase sits in, for the flag's quote */
 const around = (text, i, len) => { const s = String(text); const a = Math.max(0, s.lastIndexOf('.', i) + 1, s.lastIndexOf('\n', i) + 1), b0 = s.slice(i + len).search(/[.!?\n]/), b = b0 < 0 ? s.length : i + len + b0 + 1; return s.slice(a, b).trim().slice(0, 140); };
 
@@ -20,18 +25,20 @@ const RESULT = /\b(?:result|warm|relie|pain|sore|ache|firm|lift|tone|younger|glo
 const ABSOLUTE = /\b(?:clinically (?:proven|tested|backed)|dermatologist[- ](?:approved|recommended|tested)|doctor[- ]recommended|scientifically proven|permanent(?:ly)?|forever|never again|100% (?:safe|natural|effective|organic|results?)|no side[- ]effects|works for everyone|cures?)\b/gi;
 
 /* the brand's own words, for "is this claim theirs?": every string in the facts, the catalog rows, evidence, about */
-export const sourceText = (...parts) => { const out = []; const walk = (o, d = 0) => { if (d > 6 || o == null) return; if (typeof o === 'string' || typeof o === 'number') out.push(String(o)); else if (Array.isArray(o)) o.slice(0, 2000).forEach((x) => walk(x, d + 1)); else if (typeof o === 'object') for (const [k, v] of Object.entries(o)) if (!/^(img|image|images|src|url|logo|id|handle)$/i.test(k)) walk(v, d + 1); }; parts.forEach((p) => walk(p)); return norm(out.join(' \n ')); };
+export const sourceText = (...parts) => { const out = []; const walk = (o, d = 0) => { if (d > 6 || o == null) return; if (typeof o === 'string' || typeof o === 'number') out.push(String(o)); else if (Array.isArray(o)) o.slice(0, 2000).forEach((x) => walk(x, d + 1)); else if (typeof o === 'object') for (const [k, v] of Object.entries(o)) if (!/^(img|image|images|src|url|logo|id|handle)$/i.test(k)) walk(v, d + 1); }; parts.forEach((p) => walk(p)); const n = norm(out.join(' \n ')); if (n.length > 2000) { if (NORMED.size >= 12) NORMED.delete(NORMED.keys().next().value); NORMED.set(n, n); } return n; };
 
 /* a brand pack's own words (brand-pack.js: facts, catalog, the review quotes, about), plus the card's real evidence */
 const PACK_SRC = new WeakMap();
 export const packSource = (p, card = null) => { let base = p && typeof p === 'object' ? PACK_SRC.get(p) : '';
   if (base == null || base === undefined) { base = sourceText(Object.values(p?.facts || {}).map((f) => [f?.label, f?.v, ...(f?.aliases || [])]), p?.catalog, p?.reviewQuotes, p?.seed?.brand?.about || '', p?.seed?.brand?.tagline || '', p?.factBrief || ''); if (p && typeof p === 'object') PACK_SRC.set(p, base); }
-  return card ? `${base || ''}\n${sourceText(card.post?.evidence || [], card.evidence || [])}` : base || ''; };
+  if (!card || typeof card !== 'object') return base || ''; const ev = sourceText(card.post?.evidence || [], card.evidence || []); if (!ev.trim()) return base || '';
+  const k = CARD_SRC.get(card); if (k?.base === base && k.ev === ev) return k.s; const out = `${base || ''}\n${ev}`; CARD_SRC.set(card, { base, ev, s: out }); NORMED.set(out, out); if (NORMED.size > 12) NORMED.delete(NORMED.keys().next().value); return out; }; /* the same string per card, so it is normalised once */
+const CARD_SRC = new WeakMap();
 
 /* → [{ kind, phrase, quote, why }] for every claim in `text` that `source` (sourceText) doesn't carry */
 export function claimFlags(text, source = '', { allowNewCode = false } = {}) {
   const s = String(text || ''); if (!s.trim()) return [];
-  const src = typeof source === 'string' ? norm(source) : sourceText(source), flags = [], seen = new Set();
+  const src = srcNorm(source), flags = [], seen = new Set();
   const add = (kind, phrase, i, why) => { const k = `${kind}:${phrase.toLowerCase()}`; if (seen.has(k)) return; seen.add(k); flags.push({ kind, phrase, quote: around(s, i, phrase.length), why }); };
   for (const m of s.matchAll(CODE_CTX)) { const code = m[1]; if (code !== code.toUpperCase() || (!/\d/.test(code) && code.length < 5)) continue; if (NOT_CODE.test(code) || allowNewCode) continue;
     if (!src.includes(code.toLowerCase())) add('code', code, m.index, `the code ${code} isn’t on your store`); }
@@ -52,7 +59,7 @@ export const CLAIMS_RULE = 'Never invent a discount code, coupon, guarantee, ref
    guarantee, keep the rest; titles keep their words (a flagged title fails QA and is rewritten instead). kinds: which flags
    drop a sentence (a draft made with nobody watching drops every kind) */
 export function scrubClaims(text, source = '', { kinds = ['code', 'guarantee'] } = {}) {
-  const s = String(text || ''); source = typeof source === 'string' ? norm(source) : sourceText(source); const fl = claimFlags(s, source).filter((f) => kinds.includes(f.kind)); if (!fl.length) return s;
+  const s = String(text || ''); source = srcNorm(source); const fl = claimFlags(s, source).filter((f) => kinds.includes(f.kind)); if (!fl.length) return s;
   return s.split(/(?<=[.!?])\s+|\n/).filter((sent) => !fl.some((f) => sent.includes(f.phrase))).join(s.includes('\n') ? '\n' : ' ').trim() || s;
 }
 
@@ -61,7 +68,7 @@ export function scrubClaims(text, source = '', { kinds = ['code', 'guarantee'] }
    rule heal on read (brand-pack fitMoves, the team's private moves) */
 const PROPOSED = 'Proposed (team decides): ';
 export function markClaims(text, source = '') {
-  const s = String(text ?? ''); if (!s.trim()) return text; const src = typeof source === 'string' ? norm(source) : sourceText(source);
+  const s = String(text ?? ''); if (!s.trim()) return text; const src = srcNorm(source);
   const fl = claimFlags(s, src); if (!fl.length) return text;
   return s.split(/(?<=[.!?])(\s+)|(\n)/).map((x) => (x && !/^\s*$/.test(x) && fl.some((f) => x.includes(f.phrase)) && !/proposed \(team decides\)/i.test(x) ? `${x.match(/^\s*/)[0]}${PROPOSED}${x.trimStart()}` : x ?? '')).join('');
 }
@@ -74,7 +81,7 @@ export const markMoveClaims = (m, source = '') => (!m || typeof m !== 'object' |
    Mutates `j` (the draft plan) and returns the flags it removed */
 export function cleanDraftClaims(j, source = '') {
   if (!j || typeof j !== 'object') return [];
-  const src = typeof source === 'string' ? norm(source) : sourceText(source), hit = [];
+  const src = srcNorm(source), hit = [];
   /* every flagged sentence goes, even when that leaves nothing (scrubClaims keeps the text rather than return nothing) */
   const strip = (x, f) => x.split(/(?<=[.!?])\s+|\n/).filter((sent) => !f.some((g) => sent.includes(g.phrase))).join(x.includes('\n') ? '\n' : ' ').trim();
   const fix = (x) => { if (typeof x !== 'string' || !x.trim()) return x; const f = claimFlags(x, src); if (!f.length) return x; hit.push(...f); return strip(x, f); };
@@ -92,10 +99,11 @@ export function cleanDraftClaims(j, source = '') {
    uses it somewhere: "NOT" shouted is still flagged. */
 const ACRO = /^(?:SPF|PA|UV|UVA|UVB|AHA|BHA|USA|UK|EU|UAE|COD|FAQ|DIY|OTP|SMS|GST|MRP|SKU|ML|KG|CEO|AI|HD|NEW|FREE|SALE|OFF|BOGO|DM|IG|FB|USP|PDP|ASAP|OK|ISO|GMP|FDA|BPA|PETA|RSVP|VIP|USB|LED|XL|XXL|PM|AM|TV|PC|DIY)$/;
 const REPEAT_OK = /^(that|this|with|your|more|very|from|have|what|when|each|week|step|days?|again|over|after|by|and)$/;
+const WORDS = new Map(), wordsOf = (x) => { const h = WORDS.get(x); if (h !== undefined) return h; const w = words(x); if (WORDS.size >= 8) WORDS.delete(WORDS.keys().next().value); WORDS.set(x, w); return w; };
 const words = (x) => norm(x).replace(/[^a-z0-9₹%&' ]+/g, ' ').replace(/\s+/g, ' ').trim();
 export function copyFlags(text, opts = {}) {
   const o = typeof opts === 'string' ? { source: opts } : opts || {};
-  const s = String(text || ''), out = [], src = typeof o.source === 'string' ? words(o.source) : words(sourceText(o.source));
+  const s = String(text || ''), out = [], src = wordsOf(srcNorm(o.source || ''));
   const names = (o.names || []).filter((x) => typeof x === 'string' && x.trim()).map(words), nameWords = new Set(names.flatMap((n) => n.split(' ')));
   const nameStarts = new Set(names.map((n) => n.split(' ').slice(0, 2).join(' ')).filter((x) => x.includes(' ')));
   const inName = (phrase) => { const p = words(phrase); return p.length > 3 && names.some((n) => n.includes(p)); };
