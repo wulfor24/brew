@@ -103,3 +103,10 @@ test('news For lines: ad-platform news, stakes and launches each get their own l
   assert.equal(newsCta({ h: 'X launches a serum' }), 'Turn into an idea');
   assert.match(src('feed-service.js'), /cta: \{ label: newsCta\(x\) \}/); assert.match(src('public/app.js'), /esc\(sl\.cta \|\| 'Turn into an idea'\)/);
 });
+
+/* FEED-QA-28: a trend slide with no search series never sits under the Search interest chip */
+test('trend slides with no series are dropped; calendar and rising slides stay', () => {
+  const s = src('feed-service.js');
+  assert.match(s, /const hasSeries = \(x\) => x\.kind === 'calendar' \|\| \(x\.kind === 'rising' && x\.rising\?\.length\) \|\| \(x\.terms \|\| \[\]\)\.some\(\(term\) => tr\?\.series\?\.\[term\]\?\.values\?\.length\);/);
+  assert.match(s, /const trSlides = \(tr\?\.items \|\| \[\]\)\.filter\(hasSeries\)/);
+});

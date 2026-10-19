@@ -1133,7 +1133,9 @@ export function createFeedService(o) {
     const ads = r.ads, tr = r.trends, nw = r.news, ht = r.howto;
     const adSlides = (ads?.items || []).map((a) => ({ type: 'ad', ...a, forUs: a.take || adForUs(a, BN()), total: ads.brands.find((b) => b.name === a.brand)?.live, cardId: t.cards.has('r-ad-' + a.id) ? 'r-ad-' + a.id : null }));
     const where = B()?.config?.countryName || null; /* the brand's own market, never a hard-coded country (QA STO-05/06) */
-    const trSlides = (tr?.items || []).map((x) => ({ type: x.kind === 'rising' ? 'rising' : 'trend', ...x, where, rising: x.rising ? x.rising.map((r) => ({ ...r, v: riseLabel(r.v) })) : x.rising, series: x.terms.map((term) => { const s = tr.series[term]; return { term, values: s.values, change: s.change, last: s.last }; }), dates: tr.series[x.terms[0]]?.dates || Object.values(tr.series)[0]?.dates }));
+    /* a trend slide shows a search series under its "Search interest" chip: one the AI wrote with no series ("We currently have 0 live Meta ads") is dropped; calendar and rising-searches slides stand on their own (final QA pass 19 Oct, FEED-QA-28) */
+    const hasSeries = (x) => x.kind === 'calendar' || (x.kind === 'rising' && x.rising?.length) || (x.terms || []).some((term) => tr?.series?.[term]?.values?.length);
+    const trSlides = (tr?.items || []).filter(hasSeries).map((x) => ({ type: x.kind === 'rising' ? 'rising' : 'trend', ...x, where, rising: x.rising ? x.rising.map((r) => ({ ...r, v: riseLabel(r.v) })) : x.rising, series: (x.terms || []).filter((term) => tr.series?.[term]).map((term) => { const s = tr.series[term]; return { term, values: s.values, change: s.change, last: s.last }; }), dates: tr.series[x.terms[0]]?.dates || Object.values(tr.series)[0]?.dates }));
     const batches = t.batches.slice(0, 3).map((b) => ({ type: 'note', c: SEED.brand.wash[1], h: b.t, p: `${b.s}. ${b.st === 'Running' ? b.pct + '% done.' : b.st + '.'}`, from: 'Your work' }));
     const newsSlides = (nw?.items || []).map((x) => ({ type: 'news', ...x, id: newsId(x), forUs: x.take || newsForUs(x, BN()), cta: newsCta(x) }));
     const spark = (term) => tr?.series[term]?.values;
