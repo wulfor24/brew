@@ -381,7 +381,7 @@ export function createLearnings({ ai = null, packs, memory = null, builder = nul
   }
 
   /* run(slug, { text, by, byShort, mode, why, workId }) → the reply and what changed */
-  async function run(slug, { text, by = 'the team', byShort = '', why = 'command', workId = null, ask = true } = {}) { /* ask false (the setup box): no jam to answer a warning in, so the first learnings rewrite the top moves and mark the rest */
+  async function run(slug, { text, by = 'the team', byShort = '', why = 'command', workId = null, ask = true, kind: kind0 = null, files = [] } = {}) { /* kind0 + files: the drop box ("Upload", the file names), so the source says what was dropped */ /* ask false (the setup box): no jam to answer a warning in, so the first learnings rewrite the top moves and mark the rest */
     return serial(slug, async () => {
       const t0 = now(), raw = String(text || '').trim();
       const p = await packs.load(slug, { fresh: true }).catch(() => null), name = p?.name || slug, host = p?.host || '';
@@ -393,12 +393,12 @@ export function createLearnings({ ai = null, packs, memory = null, builder = nul
       if (seen) { const items = Object.keys(BUCKET).flatMap((k) => (L[BUCKET[k]] || []).filter((x) => x.hash === hash).map((x) => ({ kind: k, text: x.text, quote: x.quote, topic: x.topic || null })));
         if (!ask || !items.length) return { dup: true, reply: replyText({ note, dup: { kind: seen.kind, at: seen.at, by: seen.byShort || seen.by, n: seen.n } }) };
         const d = { hash, kind: seen.kind, label: seen.label, by, byShort, at: t0, chars: seen.chars, how: seen.how, workId, items, conflicts: [], again: 0, clipped: 0, usd: 0, note: '', first: false, replace: { at: seen.at, by: seen.byShort || seen.by } };
-        L.draft = d; await packs.put(slug, 'learned.json', L); return { draft: true, dup: true, reply: draftText({ name, d }) }; }
-      if (L.draft?.hash === hash) return { draft: true, reply: draftText({ name, d: L.draft }) }; /* the same paste again while its draft waits: the draft, no new read */
+        L.draft = d; await packs.put(slug, 'learned.json', L); return { draft: true, dup: true, d, reply: draftText({ name, d }) }; }
+      if (L.draft?.hash === hash) return { draft: true, d: L.draft, reply: draftText({ name, d: L.draft }) }; /* the same paste again while its draft waits: the draft, no new read */
       const reads = L.reads || L.sources.map((x) => x.at); /* every read counts toward the day, saved or not */
       if (reads.filter((at) => dayOf(at) === dayOf(t0)).length >= DAY_MAX) return { capped: true, reply: `${note ? `${note}\n\n` : ''}${name} has added ${DAY_MAX} sources today, the daily limit. Paste it again tomorrow and Brew learns from it then. Nothing was spent.` };
       const clipped = raw.length > MAX_CHARS ? MAX_CHARS : 0, src = clipped ? raw.slice(0, MAX_CHARS) : raw;
-      const kind = sourceKind(src), label = `${kind}, added by ${by}, ${dayOf(t0)}`;
+      const kind = kind0 || sourceKind(src), names = files.map((x) => cut(x, 60)).filter(Boolean).slice(0, 6), label = `${kind}${names.length ? ` (${names.join(', ')}${files.length > names.length ? ` and ${files.length - names.length} more` : ''})` : ''}, added by ${by}, ${dayOf(t0)}`;
       const pf = await packs.getJSON(slug, 'private/facts.json', null).catch(() => null), sheet = { ...(p?.facts || {}), ...(pf?.facts || {}) };
       // 1. read it
       let items = null, usd = 0, how = 'words';
@@ -412,7 +412,7 @@ export function createLearnings({ ai = null, packs, memory = null, builder = nul
       L.reads = [t0, ...reads].slice(0, 100);
       const d = { hash, kind, label, by, byShort, at: t0, chars: raw.length, how, workId, items: applied, conflicts, again, clipped, usd: +usd.toFixed(4), note, first };
       /* the team checks what Brew read before it becomes brand context: nothing is saved, and no move starts, until "save" */
-      if (ask && applied.length) { L.draft = d; await packs.put(slug, 'learned.json', L); log.log?.(`[learn] ${slug}: ${kind} ${raw.length} chars → ${applied.length} to review (${again} known, ${conflicts.length} conflicts) by ${how}, $${d.usd}`); return { draft: true, reply: draftText({ name, d }) }; }
+      if (ask && applied.length) { L.draft = d; await packs.put(slug, 'learned.json', L); log.log?.(`[learn] ${slug}: ${kind} ${raw.length} chars → ${applied.length} to review (${again} known, ${conflicts.length} conflicts) by ${how}, $${d.usd}`); return { draft: true, d, reply: draftText({ name, d }) }; }
       return apply(slug, d, { L, p, ask });
     });
   }
@@ -494,14 +494,14 @@ export function createLearnings({ ai = null, packs, memory = null, builder = nul
     const nums = (x) => [...new Set((x.match(/\d+/g) || []).map(Number))].filter((n) => n >= 1 && n <= d.items.length);
     let m;
     if (/^(save|save it|save them|looks good|looks right|all good|yes|yep|confirm|ok(ay)?|approve|correct)\b/.test(lo)) return { ...(await serial(slug, () => apply(slug, { ...d, note: '' }, { L, p }))), saved: true }; /* the draft already said how it was read */
-    if (/^(cancel|discard|don'?t save|no\b|scrap)/.test(lo)) { delete L.draft; await packs.put(slug, 'learned.json', L); if (d.replace) return { reply: 'Okay, kept as it was. Nothing changed.' }; return { reply: 'Okay, nothing was saved. Paste it again with /update-brand-learnings whenever you want Brew to learn from it.' }; }
+    if (/^(cancel|discard|don'?t save|no\b|scrap)/.test(lo)) { delete L.draft; await packs.put(slug, 'learned.json', L); if (d.replace) return { cancelled: true, reply: 'Okay, kept as it was. Nothing changed.' }; return { cancelled: true, reply: 'Okay, nothing was saved. Paste it again with /update-brand-learnings whenever you want Brew to learn from it.' }; }
     if ((m = lo.match(/^(drop|remove|delete)\b(.*)$/))) { const ns = nums(m[2]); if (!ns.length) return { reply: `Which one? Say e.g. “drop 3” (1 to ${d.items.length}).` }; d.items = d.items.filter((_, i) => !ns.includes(i + 1)); }
     else if ((m = t.match(/^(?:change|edit|fix|reword)\s+(\d+)\s*(?:to|:|-|=)?\s*([\s\S]{4,})$/i))) { const i = +m[1] - 1; if (!d.items[i]) return { reply: `There is no line ${m[1]}. Pick 1 to ${d.items.length}.` }; d.items[i] = { ...d.items[i], text: cut(m[2].trim(), 400), quote: m[2].trim(), edited: true }; }
     else if ((m = t.match(/^add\s*(essence|goal|belief|fact|tried)?s?\s*[:-]?\s*([\s\S]{4,})$/i))) { const k = (m[1] || 'fact').toLowerCase(); d.items.push({ kind: k, text: cut(m[2].trim(), 400), quote: m[2].trim(), topic: null, typed: true }); }
     else return null;
     L.draft = d; await packs.put(slug, 'learned.json', L);
     if (!d.items.length) { delete L.draft; await packs.put(slug, 'learned.json', L); return { reply: 'That leaves nothing to save, so nothing was saved.' }; }
-    return { reply: draftText({ name, d, again: true }) };
+    return { reply: draftText({ name, d, again: true }), d };
   }
 
   /* the answer to the first-learnings warning: "go ahead" refreshes every move it named, "just the top ones" the most affected within the cap */

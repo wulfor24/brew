@@ -2703,6 +2703,24 @@ body.rx-boot #view{visibility:hidden}
 .lx .m2-drop{margin-bottom:22px}
 .sheet.m2-sheet{width:min(460px,100%);padding:20px 20px 12px}
 .m2-sheet .sh-h{margin-bottom:6px}
+/* Drop anything here → brand memory: reading each file, the learnings draft to check, the reply */
+.m2-sheet .m2-body{max-height:min(70vh,640px);overflow:auto}
+.m2-sheet .dl-list{display:flex;flex-direction:column;gap:2px;margin:0 0 12px}
+.m2-sheet .dl-h{display:block;margin:10px 0 4px;font-size:13px;font-weight:600;color:var(--fg-2)}
+.m2-sheet .dl-row{display:flex;gap:10px;align-items:flex-start;padding:6px 4px;border-radius:10px;font-size:14px;line-height:20px;cursor:pointer}
+.m2-sheet .dl-row:hover{background:var(--glass-row-h,rgba(127,127,127,.08))}
+.m2-sheet .dl-row input{margin-top:3px;flex:none}
+.m2-sheet .dl-row.is-off span{color:var(--fg-3);text-decoration:line-through}
+.m2-sheet .dl-file{display:flex;justify-content:space-between;gap:12px;margin:0;padding:6px 0;font-size:14px;border-bottom:1px solid var(--line)}
+.m2-sheet .dl-file span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.m2-sheet .dl-file small{flex:none;color:var(--fg-3)}
+.m2-sheet .dl-note{display:flex;gap:6px;align-items:flex-start;margin:0 0 10px;font-size:13px;line-height:19px;color:var(--fg-2)}
+.m2-sheet .dl-note.is-warn{display:block;color:var(--warn,#b45309)}
+.m2-sheet .dl-reply{font-size:14px;line-height:21px;margin:0 0 12px}
+.m2-sheet .dl-reply p{margin:0 0 8px}
+.m2-sheet .dl-reply ul{margin:0 0 8px;padding-left:18px}
+.m2-sheet .dl-reply li{margin:0 0 4px}
+.m2-sheet .dl-acts{display:flex;gap:8px;position:sticky;bottom:0;padding:10px 0 4px;background:inherit}
 @media (max-width:760px){.j1-pill [data-count="team"]{display:none}.j1-pill{height:36px;padding:0 10px;border-radius:12px;background:var(--surface);box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}}
 
 /* What Brew learned, ui=1 (2026-10-16 audit): a header with Upload, one overview row, every part in the same card,

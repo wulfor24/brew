@@ -5028,29 +5028,83 @@
     if (document.body.dataset.m2 === 'rules' && !$('#fs')) { ($('#col') || $('#view')).insertAdjacentHTML('beforeend', `<section class="lx-sec m2-facts">${lxHead('lx-facts', 'Fact sheet', '', `Every number and name Brew may quote for ${esc(B.brand.name)}, and where it came from. Every agent follows it.`)}<div class="fsx" id="fs"><p class="lx-empty">Opening…</p></div></section>`); renderFacts(true); } };
   const M2TAB = { learned: 'learned', moves: 'learned', move: 'learned', rules: 'rules', facts: 'rules', heard: 'heard', tune: 'tune' };
   /* ui=1: the big drop box on What Brew learned (the whole page still takes a drop) */
-  const lxDropBig = () => `<div class="m2-drop lx-drop" data-m2-drop><span class="m2-up">${ic('upload')}</span><b>Drop anything here</b><span>Brand guides, past ads, product sheets, screenshots. Brew reads them and keeps what matters.</span><button class="lx-drop-btn" data-m2-pick>Upload files</button><input type="file" multiple hidden data-m2-file></div>`;
-  const m2DropHtml = () => `<div class="m2-drop" data-m2-drop><span class="m2-up">${ic('up', 's18')}</span><b>Drop anything here</b><span>Brand guides, past ads, product sheets, screenshots. Brew reads it and every agent works from it.</span><button class="btn btn-ghost sm" data-m2-pick>Upload files</button><input type="file" multiple hidden data-m2-file></div>`;
+  const lxDropBig = () => `<div class="m2-drop lx-drop" data-m2-drop><span class="m2-up">${ic('upload')}</span><b>Drop anything here</b><span>Brand guides, past ads, product sheets, screenshots. Brew reads them and keeps what matters.</span><button class="lx-drop-btn" data-m2-pick>Upload files</button><input type="file" multiple hidden accept=".pdf,.docx,.pptx,.xlsx,.txt,.md,.csv,.tsv,.json,.png,.jpg,.jpeg,.webp,.mp4" data-m2-file></div>`;
+  const m2DropHtml = () => `<div class="m2-drop" data-m2-drop><span class="m2-up">${ic('up', 's18')}</span><b>Drop anything here</b><span>Brand guides, past ads, product sheets, screenshots. Brew reads it and every agent works from it.</span><button class="btn btn-ghost sm" data-m2-pick>Upload files</button><input type="file" multiple hidden accept=".pdf,.docx,.pptx,.xlsx,.txt,.md,.csv,.tsv,.json,.png,.jpg,.jpeg,.webp,.mp4" data-m2-file></div>`;
   const m2Paint = (k) => { const el = $('#m2'); if (!el) return; const t = M2TAB[k]; el.hidden = !t || k === 'move'; document.body.dataset.m2 = t || ''; if (!t || k === 'move') return;
     const tab = (key, nav, label) => `<button role="tab" data-nav="${nav}" aria-selected="${t === key}">${label}</button>`;
     el.innerHTML = `<div class="m2-in"><h1>Memory</h1><p class="m2-sub">What Brew knows and follows for ${esc(B.brand.name)}.</p>
       ${m2DropHtml()}
       <nav class="m2-tabs" role="tablist">${tab('learned', 'learned', 'What we learned')}${tab('tune', 'tune', 'Your feed')}${tab('rules', 'rules', 'Rules')}${tab('heard', 'heard', 'Heard')}</nav></div>`; };
-  /* Drop anything here: pick or drop files, then say where they go (brand memory / my preferences / just this once) */
+  /* Drop anything here: pick or drop files, then say where they go (brand memory / my preferences / just this once).
+     Brand memory reads every file (PDF, Word, PowerPoint, Excel and photos through the server, drop-read.js), shows the learnings
+     draft to check, and on Save they reach the brief, Brew's memory, the moves they change and the feed (brand-learnings.js) */
+  const DROP_TXT = /^text\/|json|csv|markdown/, DROP_IMG = /^image\/(png|jpeg|webp)$/;
+  const dropRead = (f, how) => new Promise((ok) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = () => ok(null); r[how](f); });
+  const isTxtFile = (f) => !DROP_IMG.test(f.type) && (DROP_TXT.test(f.type) || /\.(txt|md|markdown|csv|tsv|json)$/i.test(f.name));
+  const dropMax = (f) => (/\.mp4$/i.test(f.name) ? 25e6 : DROP_IMG.test(f.type) ? 8e6 : 20e6);
+  /* one file → its words, read on the server (drop/read); a photo or MP4 for the brand also joins its References there */
+  const dropText = async (f, dest) => {
+    if (f.size > dropMax(f)) return { error: `${f.name} is over ${Math.round(dropMax(f) / 1e6)} MB.` };
+    const txt = isTxtFile(f), v = await dropRead(f, txt ? 'readAsText' : 'readAsDataURL'); if (v == null) return { error: `${f.name} didn’t open.` };
+    return tapi('POST', `/api/brands/${encodeURIComponent(mvSlug())}/drop/read`, { dest, name: f.name, type: f.type, ...(txt ? { text: v } : { data: v }) }); };
+  const KIND_H = { essence: 'Essence', goal: 'Goals', belief: 'Beliefs', fact: 'Facts', tried: 'What they tried' };
+  const dropDraftHtml = (d, gone) => { const ks = Object.keys(KIND_H).filter((k) => d.items.some((x) => x.kind === k));
+    return `<p class="m2-q">${d.replace ? 'Brew already saved this upload. Change what it keeps, then Save.' : `Check what Brew read before it becomes ${esc(B.brand.name)}’s brand context. Untick anything wrong.`}${d.again ? ` ${d.again} thing${d.again === 1 ? '' : 's'} it already knew ${d.again === 1 ? 'is' : 'are'} left out.` : ''}${d.clipped ? ` It was long, so Brew read the first ${d.clipped.toLocaleString('en-US')} characters.` : ''}</p>
+      <div class="dl-list">${ks.map((k) => `<b class="dl-h">${KIND_H[k]}</b>${d.items.map((x, i) => [x, i]).filter(([x]) => x.kind === k).map(([x, i]) => `<label class="dl-row${gone.has(i + 1) ? ' is-off' : ''}"><input type="checkbox" data-dl-i="${i + 1}"${gone.has(i + 1) ? '' : ' checked'}><span>${esc(x.text)}</span></label>`).join('')}`).join('')}
+      ${d.conflicts?.length ? `<b class="dl-h">Not saved: the fact sheet wins on numbers</b>${d.conflicts.map((c) => `<p class="dl-note">It says ${esc(c.says)}; ${esc(c.label || 'the fact sheet')} reads ${esc(String(c.v))}${c.src ? ` from ${esc(c.src)}` : ''}.</p>`).join('')}` : ''}</div>`; };
+  /* the learnings reply (brand-learnings.js replyText): **headings**, "- " lines and plain lines */
+  const dlReply = (t) => { const bold = (x) => esc(x).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>'); let ul = false; const out = [];
+    for (const ln of String(t).split('\n')) { const li = /^\s*-\s+(.*)$/.exec(ln); if (li) { if (!ul) { out.push('<ul>'); ul = true; } out.push(`<li>${bold(li[1])}</li>`); continue; }
+      if (ul) { out.push('</ul>'); ul = false; } const h = /^\*\*(.+)\*\*$/.exec(ln.trim()); if (h) out.push(`<b class="dl-h">${esc(h[1])}</b>`); else if (ln.trim()) out.push(`<p>${bold(ln)}</p>`); }
+    if (ul) out.push('</ul>'); return out.join(''); };
   const m2Drop = (files) => { files = [...files].slice(0, 8); if (!files.length) return;
     const dest = (k, icon, t, d) => `<button class="m2-dest" data-m2-dest="${k}">${ic(icon, 's18')}<span><b>${t}</b><small>${d}</small></span></button>`;
-    modal(`<div class="sheet m2-sheet"><header class="sh-h"><b class="sh-t">${files.length === 1 ? esc(files[0].name) : `${files.length} files`}</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>
-      <p class="m2-q">Where should this go?</p>${dest('memory', 'book', 'Add to brand memory', 'Every agent works from it from now on.')}${dest('prefs', 'person', 'Save to my preferences', 'Shapes what the feed shows me, not what the brand says.')}${UI2 ? dest('once', 'clock', 'Use it just this once', 'For the next thing I ask Brew, then forget it.') : ''}</div>`, (m) => {
+    const head = `<header class="sh-h"><b class="sh-t">${files.length === 1 ? esc(files[0].name) : `${files.length} files`}</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>`;
+    modal(`<div class="sheet m2-sheet">${head}<div class="m2-body"><p class="m2-q">Where should this go?</p>${dest('memory', 'book', 'Add to brand memory', 'Brew reads it, you check what it learned, and the brief, moves and feed follow.')}${dest('prefs', 'person', 'Save to my preferences', 'Shapes what the feed shows me, not what the brand says.')}${UI2 ? dest('once', 'clock', 'Use it just this once', 'For the next thing I ask Brew, then forget it.') : ''}</div></div>`, (m) => {
+      const body = $('.m2-body', m), paint = (html) => { body.innerHTML = html; };
+      const after = () => { if (['learned', 'rules'].includes(document.body.dataset.m2) || view === 'learned') renderLearned(); if (view === 'tune') renderTune(); };
+      /* the learnings answer: the reply, the first-learnings choice (all of the moves or the top ones), then Done */
+      const answered = (r) => { const pend = r.pending ? `<div class="dl-acts"><button class="btn btn-primary sm" data-dl-say="go ahead">Rewrite all ${r.pending.all}</button><button class="btn btn-ghost sm" data-dl-say="just the top ones">Just the top ${r.pending.top}</button></div>` : '';
+        paint(`<div class="dl-reply">${dlReply(r.reply || '')}</div>${pend || `<div class="dl-acts"><button class="btn btn-primary sm" data-close>Done</button></div>`}`);
+        if (r.saved) { loadFeed().catch(() => {}); after(); }
+        $$('[data-dl-say]', body).forEach((b) => (b.onclick = async () => { const done = busyBtn(b, 'Starting…'); const x = await tapi('POST', `/api/brands/${encodeURIComponent(mvSlug())}/learnings/answer`, { text: b.dataset.dlSay }); done(); if (x.error) return toast(esc(x.error)); answered(x); })); };
+      const say = (text) => tapi('POST', `/api/brands/${encodeURIComponent(mvSlug())}/learnings/answer`, { text });
+      const showDraft = (r, notes) => { const d = r.draft, gone = new Set();
+        paint(`${notes}${dropDraftHtml(d, gone)}<div class="dl-acts"><button class="btn btn-primary sm" data-dl-save>Save to brand memory</button><button class="btn btn-ghost sm" data-dl-cancel>Cancel</button></div>`);
+        $$('[data-dl-i]', body).forEach((c) => (c.onchange = () => { const i = +c.dataset.dlI; c.checked ? gone.delete(i) : gone.add(i); c.closest('.dl-row').classList.toggle('is-off', !c.checked); $('[data-dl-save]', body).disabled = gone.size >= d.items.length; }));
+        $('[data-dl-cancel]', body).onclick = async () => { await say('cancel'); closeModal(); toast('Nothing was saved.'); };
+        $('[data-dl-save]', body).onclick = async (e) => { const done = busyBtn(e.currentTarget, 'Saving…');
+          if (gone.size) { const x = await say(`drop ${[...gone].sort((a, b) => a - b).join(' ')}`); if (x.error) { done(); return toast(esc(x.error)); } }
+          const x = await say('save'); done(); if (x.error) return toast(esc(x.error)); answered(x); }; };
       $$('[data-m2-dest]', m).forEach((b) => (b.onclick = async () => { const d = b.dataset.m2Dest; $$('[data-m2-dest]', m).forEach((x) => (x.disabled = true)); b.classList.add('is-busy');
-        const IMG = /^image\/(png|jpeg|webp)$/, TXT = /^text\/|json|csv|markdown/;
-        const read = (f, how) => new Promise((ok) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = () => ok(null); r[how](f); });
-        let r = null; const skipped = [];
-        for (const f of files) { const img = IMG.test(f.type), txt = !img && (TXT.test(f.type) || /\.(txt|md|csv|json)$/i.test(f.name));
-          if (!img && !txt) { skipped.push(f.name); continue; } if (img && f.size > 8e6) { skipped.push(f.name); continue; }
-          const v = await read(f, img ? 'readAsDataURL' : 'readAsText'); if (v == null) { skipped.push(f.name); continue; }
-          r = await tapi('POST', `/api/brands/${encodeURIComponent(mvSlug())}/drop`, { dest: d, name: f.name, ...(img ? { data: v } : { text: v }) }); if (r?.error) break; }
-        if (!r && skipped.length) { closeModal(); return toast(`Brew reads photos (PNG, JPG, WebP up to 8 MB) and text files for now. ${esc(skipped.join(', '))} wasn’t added.`); }
+        /* brand memory: read every file, then one learnings draft for all of them */
+        if (d === 'memory') {
+          const st = files.map((f) => ({ f, s: 'Waiting' })), list = () => paint(`<p class="m2-q">Reading ${files.length === 1 ? 'it' : `${files.length} files`}…</p><div class="dl-list">${st.map((x) => `<p class="dl-file"><span>${esc(x.f.name)}</span><small>${esc(x.s)}</small></p>`).join('')}</div>`);
+          list(); const texts = [], bad = []; let refs = 0;
+          for (const x of st) { x.s = 'Reading…'; list(); const r = await dropText(x.f, 'memory');
+            if (r?.team) { closeModal(); return toast(esc(r.error)); }
+            if (r?.error) { x.s = 'Not read'; bad.push(`${x.f.name}: ${r.error}`); } else { x.s = r.ref && !r.ref.error ? 'Read, and added to References' : 'Read'; if (r.ref && !r.ref.error && !r.ref.same) refs++; if (r.text) texts.push(`--- ${x.f.name} ---\n${r.text}`); }
+            list(); }
+          const notes = `${refs ? `<p class="dl-note">${ic('check', 's14')}${refs} picture${refs === 1 ? '' : 's'} added to References, so new pictures and videos can work from ${refs === 1 ? 'it' : 'them'}.</p>` : ''}${bad.length ? `<p class="dl-note is-warn">${bad.map(esc).join('<br>')}</p>` : ''}`;
+          if (!texts.length) { paint(`${notes || '<p class="m2-q">There was nothing in it to read.</p>'}<div class="dl-acts"><button class="btn btn-primary sm" data-close>Done</button></div>`); if (refs) after(); return; }
+          paint(`${notes}<p class="m2-q"><span class="spin"></span> Pulling out what Brew should learn…</p>`);
+          const r = await tapi('POST', `/api/brands/${encodeURIComponent(mvSlug())}/drop`, { dest: 'memory', text: texts.join('\n\n'), files: files.map((f) => f.name) });
+          if (r?.error) { closeModal(); return toast(esc(r.error)); }
+          if (!r.learn) { closeModal(); toast(`${ic('check', 's16')}Added to brand memory`); return after(); } /* the demo site: a direct memory note */
+          if (r.draft?.items?.length && !r.saved) return showDraft(r, notes);
+          return answered(r); /* nothing new in it, or already saved: the reply says so */
+        }
+        /* my preferences and just this once: the words of a PDF, Word, PowerPoint or Excel file; a photo or text file as before */
+        let r = null; const skipped = []; let cut = false;
+        for (const f of files) { const img = DROP_IMG.test(f.type), txt = isTxtFile(f);
+          if (img && f.size > 8e6) { skipped.push(f.name); continue; }
+          let body0 = null;
+          if (img || txt) { const v = await dropRead(f, img ? 'readAsDataURL' : 'readAsText'); if (v == null) { skipped.push(f.name); continue; } body0 = img ? { data: v } : { text: v }; }
+          else { const x = await dropText(f, d); if (x?.error || !x?.text) { skipped.push(f.name); continue; } body0 = { text: x.text }; }
+          r = await tapi('POST', `/api/brands/${encodeURIComponent(mvSlug())}/drop`, { dest: d, name: f.name, ...body0 }); if (r?.error) break; if (r?.cut) cut = true; }
+        if (!r && skipped.length) { closeModal(); return toast(`Brew couldn’t read ${esc(skipped.join(', '))}. It reads PDF, Word, PowerPoint, Excel, text files and photos (PNG, JPG, WebP).`); }
         closeModal(); if (!r || r.error) return toast(esc(r?.error || 'That didn’t save. Try again.'));
-        toast(`${ic('check', 's16')}${d === 'memory' ? 'Added to brand memory' : d === 'prefs' ? 'Saved to your preferences' : 'Ready for your next ask'}${skipped.length ? `. Skipped ${esc(skipped.join(', '))}: photos and text files only` : ''}`); if (d === 'prefs' && view === 'tune') renderTune(); if (d === 'once') openAsk(); if (['learned', 'rules'].includes(document.body.dataset.m2) || (!UI2 && view === 'learned')) renderLearned(); })); }); };
+        toast(`${ic('check', 's16')}${d === 'prefs' ? 'Saved to your preferences' : 'Ready for your next ask'}${cut ? '. It was long, so Brew kept the first 4,000 characters' : ''}${skipped.length ? `. Couldn’t read ${esc(skipped.join(', '))}` : ''}`); if (d === 'prefs') { loadFeed().catch(() => {}); after(); } if (d === 'once') openAsk(); })); }); };
   document.addEventListener('click', (e) => { const pk = e.target.closest('[data-m2-pick]'); if (pk) { (pk.closest('.m2-drop') || pk.parentElement)?.querySelector('[data-m2-file]')?.click(); } });
   document.addEventListener('change', (e) => { if (e.target.matches?.('[data-m2-file]')) { m2Drop(e.target.files); e.target.value = ''; } });
   ['dragover', 'dragleave', 'drop'].forEach((ev) => document.addEventListener(ev, (e) => { const z = e.target.closest?.('[data-m2-drop]'); if (!z) return; e.preventDefault(); z.classList.toggle('is-over', ev === 'dragover'); if (ev === 'drop') m2Drop(e.dataTransfer?.files || []); }));
