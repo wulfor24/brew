@@ -2075,6 +2075,9 @@ export function createFeedService(o) {
   const getTenant = async (id) => {
     let t = tenants.get(id); if (t || !store || !id) return t;
     t = await store.load(id); if (!t) return null;
+    /* a workspace edited outside Brew (a reset script that blanked a Set to {}) loads with the right shapes, so the feed never throws "t.acted is not iterable" */
+    for (const k of ['acted', 'days', 'used']) if (k in t && !(t[k] instanceof Set)) t[k] = new Set(Array.isArray(t[k]) ? t[k] : Array.isArray(t[k]?.__s) ? t[k].__s : []);
+    if ('cards' in t && !(t.cards instanceof Map)) t.cards = new Map(Array.isArray(t.cards) ? t.cards : Array.isArray(t.cards?.__m) ? t.cards.__m : []);
     const br = await packs.load(t.brandId || DEFAULT_BRAND); if (!br) return null;
     await JAMS.load(br.slug);
     return runIn(br, () => {

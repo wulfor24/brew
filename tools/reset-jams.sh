@@ -31,7 +31,7 @@ for f in os.listdir(d):
     p = os.path.join(d, f); t = json.load(open(p))
     for k, v in (('vg', {}), ('versions', []), ('router', []), ('ownWork', []), ('ownChanges', {}), ('work', []), ('changes', {}), ('actedAt', {})):
         if k in t: t[k] = v
-    if 'acted' in t: t['acted'] = [] if isinstance(t['acted'], list) else {}
+    if 'acted' in t: t['acted'] = {'__s': []}  # a Set, in store.js's tagged form (a bare {} broke every feed: "t.acted is not iterable")
     cs = t.get('cards'); n = 0
     def strip(c):
         global n
