@@ -27,7 +27,9 @@ a vendor problem, so Composio, Pipedream and Nango would hit the same approvals.
    - Next: Tech Provider access verification, then App Review for **ads_read** only (Advanced) on the app behind
      `META_ADS_OAUTH_CLIENT_ID`. Remove the other permissions first, and use the screencast script below.
    - Until then, the brand's Meta admin gets a role on the app (App roles → Testers/Analysts) and connects with one click.
-3. **Shopify one-click, 3–8 weeks. Still needs you.**
+3. **Shopify one-click, 3–8 weeks. Still needs you.** Code ready for review since 2026-10-20 (Brew inside the Shopify admin,
+   webhooks, trimmed scopes). The full checklist, listing copy and screencast are in `docs/shopify-app-review.md`; that
+   replaces the steps below.
    - Submit the public app (`FEED_SHOPIFY_CLIENT_ID`) for review, asking for `read_all_orders` and Protected Customer Data (orders, customers).
    - Then deploy with `SHOPIFY_OAUTH=1` (and `SHOPIFY_PCD_APPROVED=1` once approved).
    - Until then: a custom-distribution install link per brand, or the brand's own app (above).
