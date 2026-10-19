@@ -13,6 +13,8 @@ const nums = (s) => [...String(s || '').toLowerCase().replace(/(\d),(\d)/g, '$1$
 const wordNums = (s) => (String(s || '').toLowerCase().match(/[a-z]+/g) || []).filter((w) => WORDS[w] && w !== 'one' && w !== 'half').map((w) => WORDS[w]);
 const textOf = (c) => JSON.stringify([c.title, c.sub, c.src, c.rows, c.detail, c.campaign, c.badge, c.options?.map?.((o) => [o.name, o.sub])]);
 
+/* live status cards (the build's progress, live-account cards) change their numbers by the hour: a note written for one goes stale, so they get none (final QA pass 19 Oct, FEED-QA-21) */
+export const NO_NOTE = /^(build|lv|live)-/;
 // a note may only quote numbers its card carries ("day 30", "4 of 7", "twelve"); small counting words like "one" pass
 export function noteOk(note, card) {
   if (!note?.h || note.h.length > 70 || (note.k || '').length > 28 || /—/.test(note.h)) return false;
@@ -37,7 +39,7 @@ export function createNotes({ ai, packs, log = console, allow = () => true } = {
     try {
       const st = await stateOf(slug); pack.notes = st.notes;
       /* simulated-account cards (demo-data.js: demo / onlyWhen) never show on the live site, so they get no paid note there */
-      const seen = new Set(st.seen), all = (pack.rawSeed?.posts || pack.seed?.posts || []).filter((p) => p?.id && !p.note && p.title && p.kind !== 'conflict' && !(process.env.DEMO_MODE !== '1' && (p.demo || p.onlyWhen)));
+      const seen = new Set(st.seen), all = (pack.rawSeed?.posts || pack.seed?.posts || []).filter((p) => p?.id && !p.note && p.title && p.kind !== 'conflict' && !NO_NOTE.test(p.id) && !(process.env.DEMO_MODE !== '1' && (p.demo || p.onlyWhen)));
       let posts = all.filter((p) => !seen.has(p.id));
       /* the feed shows a note every 2 or 3 cards, so a brand needs about one note per three cards: one with fewer (written
          when it was one in three of fewer cards) gets one more pass over its cards without a note, once */

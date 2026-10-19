@@ -520,7 +520,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   async function progressCard(slug, done, last, total) {
     total ||= totalOf(await status(slug));
     const seed = await packs.getJSON(slug, 'seed.json', {});
-    const c = { id: 'build-moves', agent: 'brew', sector: 'signals', type: 'report', lane: Object.keys(seed.lanes || { core: 1 })[0], roles: ['founder', 'growth', 'brand', 'ecom', 'crm'], src: 'Brew deployment team', time: '1 min', kind: 'rows', origin: 'build', boostFor: { founder: 6, growth: 3, brand: 3, ecom: 3, crm: 3 },
+    const c = { id: 'build-moves', agent: 'brew', sector: 'signals', type: 'report', lane: Object.keys(seed.lanes || { core: 1 })[0], roles: ['founder', 'growth', 'brand', 'ecom', 'crm'], src: 'The ShopOS team, Brew’s build crew', time: '1 min', kind: 'rows', origin: 'build', boostFor: { founder: 6, growth: 3, brand: 3, ecom: 3, crm: 3 },
       badge: [done >= total ? 'All written' : `${done} of ${total} written`, done >= total ? 'ok' : 'info'],
       title: done >= total ? `All ${total} moves for ${seed.brand?.name} are written` : `Writing your ${total} moves: ${done} done`,
       sub: `Each move is a full plan with sources, a 30-day rollout and what to watch. ${last?.title ? `The latest: ${last.title}.` : ''} Open the Moves page to read them; any move downloads as a PDF.`.slice(0, 240),
@@ -884,7 +884,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const failed = [...x.failed.entries()].map(([n, f]) => ({ n, title: nm(n), msg: /max_tokens/.test(f.msg) ? 'The reply ran out of room' : /refused/.test(f.msg) ? 'The model declined this one' : /cap|budget/.test(f.msg) ? 'Spend cap reached' : 'It stopped with an error', at: f.at }));
     const pad = (n) => String(n).padStart(2, '0');
     const ev = x.events.filter((e) => ['move', 'move-start', 'move-failed', 'pdf', 'statics', 'cards', 'confirmed', 'read-done'].includes(e.type)).slice(-40).reverse().slice(0, 25)
-      .map((e) => ({ at: e.at, type: e.type, text: e.type === 'move' ? `${moveLabel(e.n)} written: ${e.title}` : e.type === 'move-start' ? `Started ${moveLabel(e.n)} · ${nm(e.n)}` : e.type === 'move-failed' ? `${moveLabel(e.n)} stopped, it gets another try` : e.type === 'pdf' ? `PDF ready: ${e.file}` : e.type === 'statics' ? `${e.n} static ads made` : e.type === 'cards' ? `${e.cards.length} new card${e.cards.length === 1 ? '' : 's'} from Move ${pad(e.n)}` : e.type === 'confirmed' ? 'You confirmed what we read' : 'Your site was read' }));
+      .map((e) => ({ at: e.at, type: e.type, text: e.type === 'move' ? `${moveLabel(e.n)} written: ${e.title}` : e.type === 'move-start' ? `Started ${moveLabel(e.n)} · ${nm(e.n)}` : e.type === 'move-failed' ? `${moveLabel(e.n)} stopped, it gets another try` : e.type === 'pdf' ? `PDF ready: ${e.file}` : e.type === 'statics' ? `${e.n} static ads made` : e.type === 'cards' ? `${e.cards.length} new card${e.cards.length === 1 ? '' : 's'} from ${moveLabel(e.n)}` : e.type === 'confirmed' ? 'You confirmed what we read' : 'Your site was read' }));
     const g = s0.stages || {};
     return { name: s0.name, running: !!x.running, state: s0.state, done: done.length, core: WAVE_A.filter((n) => moves[n]).length, total: totalOf(s0), pdfs: Object.keys(s0.pdfs || {}).filter((k) => isPlay(k)).length, /* PDFs are made on download */ zips: s0.zips || [], statics: s0.statics || null,
       stages: { read: g.read?.state || null, confirm: g.confirm?.state || null, brief: g.brief?.state || null, moves: g.moves?.state || null },

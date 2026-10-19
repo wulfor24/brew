@@ -26,9 +26,10 @@ export function simStatus(st, s) {
     done: n >= N, ready: n >= 10, state: n >= N ? 'Ready' : c ? `Writing the moves: ${n} of ${N}` : 'Read', zips: n >= N ? st.zips : [] };
 }
 
-export function createDemoRoutes({ packs, builder, auth, connectors, readBody, send, loadBrand, social = null, draftsBg = null, log = console }) {
-  const session = async (slug) => (await packs.getJSON(slug, SES, null)) || { flow: 'ready' };
-  const setSession = (slug, s) => packs.put(slug, SES, { ...s, at: Date.now() });
+export function createDemoRoutes({ packs, builder, auth, connectors, readBody, send, loadBrand, social = null, draftsBg = null, onSession = () => {}, log = console }) {
+  /* every read and write of the session also tells the feed's copy (server.js viewStatus), so the first feed after "Looks right" and the banner count the same moves (final QA pass 19 Oct, FEED-QA-09) */
+  const session = async (slug) => { const s = await packs.getJSON(slug, SES, null); if (s) onSession(slug, s); return s || { flow: 'ready' }; };
+  const setSession = (slug, s) => { const x = { ...s, at: Date.now() }; onSession(slug, x); return packs.put(slug, SES, x); };
   const isAdmin = (req) => { const u = auth.user(req); return !!u && !u.demo && auth.isAdmin(u); };
   const base = (req) => process.env.PUBLIC_URL || `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}`;
 

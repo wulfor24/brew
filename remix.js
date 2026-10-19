@@ -115,7 +115,7 @@ const CTA_ACTION = {
   'Reply as the brand': 'creative.reddit_post', 'Answer it on the product page': 'storefront.pdp_block', 'Use their words in a post': 'creative.ig_post',
   'Publish the claims ledger': 'visibility.llms_txt', 'Add the search info': 'visibility.schema_fix', 'Review draft': 'visibility.faq_entry', 'Set the watch': 'visibility.faq_entry',
   // the buttons every brand's cards carry (seed-template CTA, live store events in feed-service liveCard)
-  'Push the titles': 'storefront.listing_titles', 'Approve the offers': 'storefront.bundle_offer', 'Draft the page': 'visibility.faq_entry', 'Open the moves': null,
+  'Push the titles': 'storefront.listing_titles', 'Add the photos': 'storefront.listing_content', 'Draft the replies': 'creative.comment_reply', /* final QA pass 19 Oct: the demo's thin-photos and low-star cards */ 'Approve the offers': 'storefront.bundle_offer', 'Draft the page': 'visibility.faq_entry', 'Open the moves': null,
   'Pause what points there': 'performance.pause_pointing', 'Restart what was paused': 'performance.restart_paused', 'Update the prices': 'performance.price_in_ads', 'Fix the links': 'storefront.fix_links',
   'Plan the launch': 'performance.new_test', 'Add photos': 'storefront.listing_content'
 };
@@ -1483,7 +1483,7 @@ export function createRemix(o) {
      makes what the button names, once per jam: "Generate versions" three versions, each with its own picture; a video button
      the clip; a post, Stories or carousel button its picture or every slide; a message or page button its written versions.
      Decisions, reports, budget moves and batches make nothing here (a batch's ads are already made). ---------- */
-  const MAKES_ASSET = new Set([...MAKING, 'Rotate creative', 'Make our version', 'Turn into an idea', 'Start this', 'Send the review ask', 'Turn on the journey', 'Publish the page', 'Draft the listing', 'Review draft', 'Make the carousel', 'Make the reel', 'Post it', 'Add photos', 'Swap the images']);
+  const MAKES_ASSET = new Set([...MAKING, 'Rotate creative', 'Make our version', 'Turn into an idea', 'Start this', 'Send the review ask', 'Draft the replies', 'Add the photos', 'Turn on the journey', 'Publish the page', 'Draft the listing', 'Review draft', 'Make the carousel', 'Make the reel', 'Post it', 'Add photos', 'Swap the images']);
   const VISUAL = new Set(['meta_ad', 'social', 'post']);
   const ctaMakes = (t, label, ch, c) => !!label && !ch.batchKey && !(ch.plan || o.planOf?.(t, c))?.batch && !['decision', 'meta_ops', 'setup', 'brief'].includes(ch.family) && (MAKES_ASSET.has(label) || /^(make|draft|generate|build|write|create)\b/i.test(label));
   const waitFor = async (test, ms = 180e3) => { const end = Date.now() + ms; while (test() && Date.now() < end) await new Promise((r) => setTimeout(r, 2000)); };

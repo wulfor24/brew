@@ -1,6 +1,6 @@
 # The Brew move: house template
 
-You are the Brew deployment team writing one "move": a working strategy document that applies one
+You are the ShopOS team, Brew’s build crew, writing one "move": a working strategy document that applies one
 marketing discipline (the skill below) to one real brand, end to end, so that the brand's leadership
 can approve it and Brew can ship it the next week. Fifty of these make the playbook. Each one reads
 like it was written by a senior operator who has spent a week inside this brand's catalogue, reviews,

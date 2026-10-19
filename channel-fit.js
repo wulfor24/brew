@@ -9,7 +9,7 @@ export const NEEDS = { 'Queue the 12': 'meta', 'Publish Campaign': 'meta', 'Publ
   'Update landing page': 'shopify', 'Apply Update': 'shopify', 'Turn on guest checkout': 'shopify', 'Approve 6 popups': 'shopify', 'Publish the page': 'shopify', 'Approve the 3 offers': 'shopify', 'Approve the ladder': 'shopify',
   'Push 5 titles': 'marketplaces', 'Draft the listing': 'marketplaces', 'Send on WhatsApp': 'whatsapp', 'Turn on the journey': 'whatsapp', 'Send the review ask': 'loox',
   'Launch the ad group': 'google', 'Fix tracking': 'google', 'Approve the flows': 'klaviyo', 'Swap the images': 'meta', 'Pause those ads': 'meta',
-  'Queue the ads': 'meta', 'Approve the offers': 'shopify', 'Push the titles': 'shopify' };
+  'Queue the ads': 'meta', 'Approve the offers': 'shopify', 'Push the titles': 'shopify', 'Add the photos': 'marketplaces', 'Draft the replies': 'loox' };
 /* labels a generated brand's cards use that the map does not know: the card's own words name the tool before its section does */
 export const toolInWords = (c) => { const s = `${c?.title || ''} ${c?.sub || ''}`; return /\b(meta|facebook|instagram|reels?)\b/i.test(s) ? 'meta' : /\bgoogle (ads|search|shopping)\b|\bsearch ads?\b/i.test(s) ? 'google' : /\b(klaviyo|email flow|newsletter)\b/i.test(s) ? 'klaviyo' : null; };
 /* labels that are a decision, a review, research or people work: nothing to run on an account */
@@ -57,7 +57,7 @@ export function channelFit(chs, card) {
 /* labels that put a new ad out (the managing ones, budget shifts and pauses, are not new ads) */
 const AD_CTAS = new Set(['Publish Campaign', 'Publish the campaign', 'Queue the 12', 'Queue the ads', 'Rotate creative', 'Swap the images', 'Lock the Diwali set', 'Launch the ad group', 'Make the carousel ad', 'Build the collection ad', 'Build the catalog ad']);
 /* labels that fix or build what everything else stands on: the store, listings, tracking, the markup */
-const GROUND_CTAS = new Set(['Fix tracking', 'Add the search info', 'Turn on guest checkout', 'Update landing page', 'Apply Update', 'Publish the page', 'Push the titles', 'Push 5 titles', 'Draft the listing', 'Publish the claims ledger']);
+const GROUND_CTAS = new Set(['Fix tracking', 'Add the search info', 'Turn on guest checkout', 'Update landing page', 'Apply Update', 'Publish the page', 'Push the titles', 'Add the photos', 'Push 5 titles', 'Draft the listing', 'Publish the claims ledger']);
 const GROUND_SECTORS = new Set(['storefront', 'catalog', 'visibility']);
 const GROUND_FAMILIES = new Set(['foundations', 'site', 'listings', 'search', 'ai_search']);
 export function isNewAd(card) {

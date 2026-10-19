@@ -21,15 +21,18 @@ const BATCH = 12, MAX_KEEP = 2500;
 /* the words people decode: replaced in the card's own text while its rewrite is on its way, and banned in the rewrite */
 const JARGON = [
   [/\bROAS\b/g, 'return on ad spend'], [/\bAOV\b/g, 'average order'], [/\bCAC\b/g, 'cost to win a customer'], [/\bCPA\b/g, 'cost per sale'],
-  [/\bCTR\b/g, 'click rate'], [/\bCVR\b/g, 'buy rate'], [/\bLTV\b/g, 'lifetime spend'], [/\bPDPs\b/g, 'product pages'], [/\bPDP\b/g, 'product page'], [/\bSKUs\b/g, 'products'], [/\bSKU\b/g, 'product'],
+  [/\bCTR\b/g, 'click rate'], [/\bCVR\b/g, 'buy rate'], [/\bLTV\b/g, 'lifetime spend'], [/\b(\d[\d,]*)\s+PDP\b/g, (m, n) => `${n} product page${n === '1' ? '' : 's'}`], [/\b(\d[\d,]*)\s+SKU\b/g, (m, n) => `${n} product${n === '1' ? '' : 's'}`], /* "913 SKU are" reads "913 products are", never "913 product are" */
+  [/\bPDPs\b/g, 'product pages'], [/\bPDP\b/g, 'product page'], [/\bSKUs\b/g, 'products'], [/\bSKU\b/g, 'product'],
   [/\bUGC\b/g, 'customer-style'], [/\bATC\b/g, 'add to cart'], [/\bSERPs?\b/g, 'Google results'], [/\bCRO\b/g, 'store fixes'],
   [/\bunbranded (?:queries|searches|questions)\b/gi, 'searches that name no brand'], [/\bcold (?:buyers|audiences?|traffic)\b/gi, 'people new to you'],
   [/\bretargeting\b/gi, 'ads to past visitors'], [/\bconversion rate\b/gi, 'share of visitors who buy'], [/\bhero (?:product|SKU)\b/gi, 'best seller'],
   /* the store's plumbing (QA 19 Oct, FEED-ARV-07: jam plans and source lines said GMC, webhook, products.json, JSON-LD) */
-  [/(?:\b(?:our|your|the)\s+)?(?:Shopify(?:'s|’s)?\s+)?`?(?:\b(?:https?:\/\/)?[\w-]+(?:\.[\w-]+)+)?\/?\bproducts\.json\b`?/gi, 'your product list'],
+  [/(?:\b(?:our|your|the)\s+)?(?:Shopify(?:'s|’s)?\s+)?`?(?:\b(?:https?:\/\/)?[\w-]+(?:\.[\w-]+)+)?\/?\b(products|collections|meta)\.json\b`?/gi, (m, f) => ({ products: 'your product list', collections: 'your collection list', meta: 'your store details' })[f.toLowerCase()]],
   [/\b(?:(?:an?|the|your|structured|root|new)\s+)*`?\/?\bllms\.txt\b`?(?:\s+(?:file|signpost|page))?/gi, 'a page for AI tools'],
-  [/\b(?:JSON-LD|schema\.org|structured data)(?:\s+(?:FAQPage|FAQ|Product|Review|Organization))?(?:\s+(?:schema|markup|structured data))*\b/gi, 'search-friendly product info'],
-  [/\b(?:(?:FAQPage|FAQ|Product|Review|Organization)\s+)?schema(?:\s+markup)?\b/gi, 'search-friendly product info'],
+  /* one pattern for the whole phrase, a leading "structured" included: "Add Product schema structured data" was swapped twice ("search-friendly product info search-friendly product info") and "structured JSON-LD" kept "structured" (final QA pass 19 Oct) */
+  [/\b(?:structured\s+)?(?:(?:FAQPage|FAQ|Product|Review|Organi[sz]ation)\s+)?(?:JSON-LD|schema\.org|structured data|schema)(?:\s+(?:FAQPage|FAQ|Product|Review|Organi[sz]ation))?(?:\s+(?:JSON-LD|schema|markup|structured data))*\b/gi, 'search-friendly product info'],
+  [/\brich (?:snippets?|results?)\b/gi, 'star ratings and prices in Google'],
+  [/\b(P|p)age sections?\b/g, (m, p) => `${p}age`], /* "Page section: Traya alternative page" reads "Page: …"; the make format on file stays "page section" */
   [/\b(?:Google Merchant Center|GMC)(?: feeds?)?\b/g, 'Google Shopping feed'], [/\bMerchant Center\b/g, 'Google Shopping'],
   [/\bwebhooks\b/gi, 'automatic alerts'], [/\bwebhook\b/gi, 'automatic alert'], [/\bGTM\b/g, 'Google Tag Manager'],
   [/\bcustom (?:web )?pixels?(?:\s+sandbox)?\b/gi, 'tracking code'],
@@ -43,10 +46,14 @@ const JARGON = [
 ];
 /* a swap at the start of a sentence starts with a capital, like the words it replaced */
 const cap1 = (to, m, at, all) => (/^[A-Z`/]/.test(m) && /^[a-z]/.test(to) && (at === 0 || /[.!?:·]\s+$/.test(all.slice(Math.max(0, at - 3), at)) || /^-[A-Z]/.test(all.slice(at + m.length, at + m.length + 2))) ? to[0].toUpperCase() + to.slice(1) : to); /* and in a Title-Case compound ("SKU-Specific" → "Product-Specific") */
-export const dejargon = (s) => { if (typeof s !== 'string' || !s) return s; let x = s; for (const [re, to] of JARGON) x = x.replace(re, (m, ...a) => { const at = a[a.length - 2], all = a[a.length - 1]; return cap1(typeof to === 'function' ? to(m, ...a) : to, m, at, all); }); return moveSay(x); }; /* and "Weekly move 11", never "Move 1011" */
+/* a swap that lands next to its own words ("search-friendly product info search-friendly product info") says it once */
+const SWAPS = [...new Set(JARGON.map(([, to]) => to).filter((x) => typeof x === 'string'))].map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+const TWICE = new RegExp(`\\b(${SWAPS.join('|')})(?:\\s+\\1\\b)+`, 'gi');
+const twice = (x) => x.replace(TWICE, '$1');
+export const dejargon = (s) => { if (typeof s !== 'string' || !s) return s; let x = s; for (const [re, to] of JARGON) x = x.replace(re, (m, ...a) => { const at = a[a.length - 2], all = a[a.length - 1]; return cap1(typeof to === 'function' ? to(m, ...a) : to, m, at, all); }); return moveSay(twice(x)); }; /* and "Weekly move 11", never "Move 1011" */
 /* the source line under a card ("Move 64 · Loop 3: SKU-Specific Reorder Clocks"): the move's own words, without the plan's
    internal numbering (Loop 3, Pillar 2, Phase 1) and in plain words */
-export const plainSrc = (s) => (typeof s !== 'string' || !s ? s : dejargon(s.replace(/(·\s*)(?:Loop|Pillar|Phase|Step|Part|Stage|Track|Wave|Tier|Layer|Workstream|Sprint)\s*\d+[a-z]?\s*[:.\-–—]\s*/gi, '$1')));
+export const plainSrc = (s) => (typeof s !== 'string' || !s ? s : dejargon(s.replace(/(·\s*)(?:Loop|Pillar|Phase|Step|Part|Stage|Track|Wave|Tier|Layer|Workstream|Sprint|Decision)\s*\d+[a-z]?\s*[:.\-–—]\s*/gi, '$1')));
 
 const sha = (s) => crypto.createHash('sha1').update(s).digest('hex').slice(0, 16);
 export const plainKey = (c) => sha(JSON.stringify([PLAIN_V, c?.title || '', c?.sub || '', c?.detail?.why || [], c?.detail?.how || []]));

@@ -45,6 +45,7 @@ import { createSlackRoutes } from './slack-routes.js';
 import { DEMO, demoSid, demoEmail, runDemo, sessionOf, guardFetch } from './demo-mode.js'; // Demo Mode: the demo site (DEMO_MODE=1)
 import { createDemoRoutes, simStatus } from './demo-routes.js';
 const DEMO_SES = new Map(); /* visitor|slug → the demo tour session, for the feed's view of the build (viewStatus) */
+const demoSes = (slug, s) => { DEMO_SES.set(`${demoSid() || ''}|${slug}`, s); if (DEMO_SES.size > 2000) DEMO_SES.delete(DEMO_SES.keys().next().value); }; /* the session as demo-routes last read or wrote it: the feed never counts from the one before */
 import { launchBrowser, zipBuffer, withBrowser } from './pdf/render.js';
 import { createImageNorm } from './img-norm.js'; // every picture a model sees is PNG, JPEG or WebP
 import { thinkModel, prefs } from './model-ctx.js';
@@ -620,7 +621,7 @@ feedSvc = createFeedService({ /* tagging an email in a jam invites them to the t
   /* one count of the moves written (QA FEED-QA-09): on the demo site a tour session replays the build, and the feed's "Your moves"
      line reads the same replay as the status route (demo-routes.js simStatus); the session is read in the background */
   viewStatus: DEMO ? (slug, st) => { const k = `${demoSid() || ''}|${slug}`; /* each visitor's own tour session (demo-mode.js sandboxes the file per visitor) */
-    packs.getJSON(slug, 'private/demo/session.json', null).then((x) => { DEMO_SES.set(k, x); if (DEMO_SES.size > 2000) DEMO_SES.delete(DEMO_SES.keys().next().value); }).catch(() => {}); return simStatus(st, DEMO_SES.get(k)); } : null,
+    if (!DEMO_SES.has(k)) packs.getJSON(slug, 'private/demo/session.json', null).then((x) => { if (!DEMO_SES.has(k)) demoSes(slug, x); }).catch(() => {}); return simStatus(st, DEMO_SES.get(k)); } : null, /* demo-routes keeps the copy fresh on every read and write (onSession) */
   slack: DEMO ? null : connectors, /* a really connected Slack: jams post to it and its thread replies come back (slack-routes.js) */
   viewerOf, genOk, liveFor: (slug, member) => connectors.forViewer(slug, member),
   /* membership checked from the signed-in user on every request and on the background clock (feed-service.js REQ / bgTeam) */
@@ -730,9 +731,11 @@ const brandRoutes = async (req, res, u) => {
     const slug = u.searchParams.get('brand'), month = new Date().toISOString().slice(0, 7);
     const [news, spend] = await Promise.all([watchCatalog(treg).catch((e) => ({ error: e.message })), slug ? packs.getJSON(slug, `spend/${month}.json`, null).catch(() => null) : null]);
     return send(res, 200, { news, spend, meter: { usd: treg.meter.usd, calls: treg.meter.calls, today: treg.meter.dayUsd } }), true; }
+  /* one name for the team (FEED-QA-10): move docs written before say "the Brew deployment team"; they read the agreed phrase */
+  const crewName = (d) => { const j = d && JSON.stringify(d); return j && j.includes('Brew deployment team') ? JSON.parse(j.replace(/\bthe Brew deployment team\b/g, 'the ShopOS team, Brew’s build crew').replace(/\bBrew deployment team\b/g, 'The ShopOS team, Brew’s build crew')) : d; };
   const mm = u.pathname.match(/^\/api\/brands\/([a-z0-9-]+)\/moves\/(\d+)$/);
   if (mm) { const p = await loadBrand(mm[1]), v = await viewerOf(req, mm[1]); const priv = v.member ? (await packs.getJSON(mm[1], 'private/moves.json', {}))[+mm[2]] : null;
-    return send(res, 200, priv ? { ...markMoveClaims(priv, packSource(p)), private: true } : p?.moveDocs?.[+mm[2]] || { error: 'not written yet' }), true; } /* the team's own moves are marked like the shared ones (QA-25) */
+    return send(res, 200, crewName(priv ? { ...markMoveClaims(priv, packSource(p)), private: true } : p?.moveDocs?.[+mm[2]] || { error: 'not written yet' })), true; } /* the team's own moves are marked like the shared ones (QA-25); one name for the team */
   /* the fact sheet: anyone may read the public sheet; members also see their connected facts; on a claimed brand only its team edits */
   const fm = u.pathname.match(/^\/api\/brands\/([a-z0-9-]+)\/facts$/);
   if (fm) { const slug = fm[1]; if (blocked(slug) || !(await packs.getJSON(slug, 'status.json', null))) return send(res, 404, { error: 'unknown brand' }), true;
@@ -882,7 +885,7 @@ async function transcribe(req, res) {
   } catch (e) { console.error('[transcribe]', e.message); return send(res, 200, { error: 'Could not hear that. Try again, or type it.', text: '' }); }
 }
 
-const demoRoutes = DEMO ? createDemoRoutes({ packs, builder, auth, connectors, readBody, send, loadBrand, social, draftsBg, log: console }) : null;
+const demoRoutes = DEMO ? createDemoRoutes({ packs, builder, auth, connectors, readBody, send, loadBrand, social, draftsBg, onSession: (slug, s) => demoSes(slug, s), log: console }) : null;
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://x');
   zipRes(req, res);

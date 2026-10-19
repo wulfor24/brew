@@ -8,6 +8,7 @@ import { B, BN, BH, CTRY, FESTN, FESTD } from './brand-ctx.js';
 import { promptBlock, versionsOf } from './learn.js';
 import { fieldsFor, FAMILY_NAME } from './studio.js';
 import { realRows } from './connectors/common.js';
+import { EVIDENCE_ASK } from './evidence.js'; // "what's the evidence?" is answered from the card's proof
 import { isQuestion, answerGrounded } from './jam-answer.js'; // a question is answered from the brief and the facts, the brief untouched
 import { planMd, PLAN_V, oneOf } from './card-plan.js';
 import { MEASURE_SCHEMA, MEASURE_ASK, vetMeasure, measureFromMd } from './measure-spec.js';
@@ -264,6 +265,8 @@ export function createJamBrief(o) {
       const pd = askMake ? await askMake(t, w, text) : null; if (pd) return { work: w, changed: [], pending: pd };
       /* a question: one small grounded answer (the card, the brief, the facts, the connected numbers), checked, and the
          brief is not rewritten. Faster than re-writing the whole brief to answer it, and it never invents a result */
+      /* "what's the evidence for this?": the card's own proof as the shield shows it, never the general answer and never a note in the brief (final QA pass 19 Oct, FEED-ARV-01) */
+      if (EVIDENCE_ASK.test(text) && o.proofOf) { const pa = o.proofOf(t, w); if (pa) { say(t, w, { from: 'ai', who: AGENT[w.agent] || 'Brew', body: pa, edited: [], answer: true }); return { work: w, changed: [], answered: true }; } }
       if (isQuestion(text)) {
         const c = cardOf(t, w.cardId) || { title: w.title, sub: '', agent: w.agent }; let body = 'AI is offline right now, so I can’t answer that. Type the answer into the brief, or ask a teammate with @.';
         if (!isMock() && spend('text')) try { const a = await answerGrounded({ ai: (pr, sc, mx, tag) => claudeTool(pr, sc, mx, tag), question: text, who: AGENT[w.agent] || 'Brew',

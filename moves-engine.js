@@ -645,7 +645,7 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
       ...[0, 1, 2, 3].map((r) => GROUPS.map((_, i) => `│ ${box(i, r)} │`).join(r === 1 ? '─>' : '  ')), GROUPS.map(() => '└' + '─'.repeat(W + 2) + '┘').join('  '),
       GROUPS.map((_, i) => `${counts[i]} moves`.padEnd(W + 4)).join(' ')].join('\n');
     const sections = [
-      { h: 'What this is', kind: 'other', blocks: [p(`Working documents from the Brew deployment team, one per marketing discipline or signal, every one built on ${name}'s real catalogue, prices, claims, customers, competitors and what people say about it. New moves are added as Brew hears new things. Read this index, then open the move you want to see.`)] },
+      { h: 'What this is', kind: 'other', blocks: [p(`Working documents from the ShopOS team, Brew’s build crew, one per marketing discipline or signal, every one built on ${name}'s real catalogue, prices, claims, customers, competitors and what people say about it. New moves are added as Brew hears new things. Read this index, then open the move you want to see.`)] },
       { h: 'How to read it', kind: 'other', blocks: [p(`The six groups follow a customer from first search to repeat order. Each document ends with a 30-day deployment table and the metric we are held to.`)] },
       { h: 'The end to end', kind: 'other', blocks: [{ ...p(''), t: 'diagram', text: diagram }, ...(ov ? [p(ov.thread), p(ov.today)] : [])] },
       ...GROUPS.map(([g, h, sub], gi) => ({ h, kind: 'other', blocks: [p(`**${sub} · ${counts[gi]} MOVES**`), { ...p(''), t: 'table', head: ['#', 'MOVE', 'WHAT IT GIVES', 'STAT'],
