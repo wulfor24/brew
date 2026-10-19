@@ -119,7 +119,12 @@ test('on the server: a snooze lifts for a day, an opened card sinks after a quie
     TID = (await j('POST', `/api/tenants?brand=${SLUG}`, { snapshot: { onboarded: true } })).id;
     const f0 = await j('GET', `/api/tenants/${TID}/feed`); assert.ok(f0.order.length >= 4, `a feed: ${f0.order.length}`);
     assert.deepEqual(f0.saved, []); assert.ok(Array.isArray(f0.newIds));
-    assert.ok(Object.keys(f0.cards).every((id) => f0.order.includes(id)), 'the payload holds the feed’s cards, not every card ever made');
+    /* beyond the feed's own cards, only the ones the feed keeps on purpose (allCards): a jam that is open (the team's jams on this
+       brand's shared files count), a pin, a save; never every card ever made */
+    const jams = (() => { try { return JSON.parse(fs.readFileSync(path.join('.brands', SLUG, 'private', 'jams.json'), 'utf8')).work || []; } catch { return []; } })();
+    const kept = new Set([...f0.order, ...(f0.pinned || []), ...(f0.saved || []), ...jams.map((w) => w.cardId).filter(Boolean)]);
+    const extra = Object.keys(f0.cards).filter((id) => !kept.has(id));
+    assert.deepEqual(extra, [], 'the payload holds the feed’s cards, not every card ever made');
     const sc = async () => (await j('GET', `/api/tenants/${TID}/feed`)).scores;
     const [snz, opened, seen] = f0.order.filter((id) => !f0.pinned.includes(id)).slice(-3);
     // H7: save on one workspace, the person's other workspace (another device) gets it back
