@@ -285,7 +285,13 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
     if (seed.connectors) seed.connectors = prototypeConnectors(seed.connectors);
     /* what the team told Brew, on the feed (brand-learnings.js): its new cards join the seed, a card it lifts carries the reason as
        its margin note (for three weeks), and a card it contradicts steps off the top (the ranker reads learnedHide) */
-    const LC = learned?.cards || {}, upFresh = Object.entries(LC.up || {}).filter(([, x]) => Date.now() - (x.at || 0) < 21 * 864e5), teamName = seed.brand?.name || profile?.name || slug;
+    /* a lift or a step back is kept by card id, and a rewritten move reuses its ids for new cards: it holds only while the card
+       still says what it said (its saved title, by words), so a rewrite never buries or lifts a card nobody judged */
+    const titleNow = new Map((seed.posts || []).map((c) => [c.id, c.title])), wordsOf = (t) => new Set(String(t || '').toLowerCase().match(/[a-z0-9]+/g) || []);
+    const sameCard = ([id, x]) => { const now = titleNow.get(id); if (!x?.title || now == null) return true; const a = wordsOf(x.title), b = wordsOf(now); if (!a.size || !b.size) return true;
+      let n = 0; for (const w of a) if (b.has(w)) n++; return n / Math.max(a.size, b.size) >= 0.6; };
+    const LC0 = learned?.cards || {}, LC = { ...LC0, up: Object.fromEntries(Object.entries(LC0.up || {}).filter(sameCard)), hide: Object.fromEntries(Object.entries(LC0.hide || {}).filter(sameCard)) };
+    const upFresh = Object.entries(LC.up || {}).filter(([, x]) => Date.now() - (x.at || 0) < 21 * 864e5), teamName = seed.brand?.name || profile?.name || slug;
     if ((LC.add || []).length) { const have = new Set((seed.posts || []).map((x) => x.id)); seed.posts = [...LC.add.filter((x) => x?.id && !have.has(x.id)), ...(seed.posts || [])]; }
     const toldNotes = Object.fromEntries(upFresh.map(([id, x]) => [id, `From what ${teamName}’s team told us: ${x.why}`]));
     const seedD = moveBadges(fitCards(withDemo(fitPhotos(socialize(visualize(seed, { slug, config, staticText: statics, profile }), social, { profile }), profile), demo), { profile, config, seed, status }), moves, staleMoves);
