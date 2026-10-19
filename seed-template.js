@@ -19,7 +19,8 @@ export const CTA = {
   'Draft the buyer deck': ['Drafting', 'Buyer deck drafted'], 'Make our version': ['Drafting', 'Our version is drafted'], 'Review draft': ['Opening', 'Draft is ready to review'],
   'Push the titles': ['Pushing', 'New titles pushed'], 'Open the moves': ['Opening', 'Moves page open'], 'Queue the ads': ['Queueing', 'The kept ads are queued as one test'], 'Approve the offers': ['Saving', 'Offers saved as drafts'],
   'Make the carousel ad': ['Making', 'The carousel is drafted'], 'Build the collection ad': ['Building', 'The collection ad is drafted'], 'Build the catalog ad': ['Building', 'The catalog ad is drafted'],
-  'Draft the post': ['Drafting', 'The post is drafted'], 'Draft the carousel post': ['Drafting', 'The carousel post is drafted'], 'Draft the stories': ['Drafting', 'The stories are drafted']
+  'Draft the post': ['Drafting', 'The post is drafted'], 'Draft the carousel post': ['Drafting', 'The carousel post is drafted'], 'Draft the stories': ['Drafting', 'The stories are drafted'],
+  'Draft the replies': ['Drafting', 'Replies drafted for your OK'], 'Add the photos': ['Adding', 'The photos are added']
 };
 /* buttons renamed since they were saved: a saved card, jam or work item says the new name, and every map reads it (FEED-QA-20) */
 export const CTA_RENAME = { 'Publish Campaign': 'Publish the campaign', 'Fix the markup': 'Add the search info', 'List what points there': 'Pause what points there', 'Plan the restart': 'Restart what was paused' };

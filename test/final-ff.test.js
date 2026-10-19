@@ -64,3 +64,23 @@ test('a stale count never rides on a card: "only 1 of 52 done" fails on "All 65 
   for (const id of ['build-moves', 'lv-meta-1', 'live-ga4']) assert.ok(NO_NOTE.test(id), id); assert.ok(!NO_NOTE.test('m21-1'));
   assert.match(src('notes.js'), /!NO_NOTE\.test\(p\.id\)/); assert.match(src('feed-service.js'), /!NO_NOTE\.test\(c\.id\) && noteOk\(nt, c0\)/);
 });
+
+/* FEED-QA-20: buttons match the card, generically, on saved cards too */
+import { fitCta } from '../cards-gen.js';
+test('Make our version only on rival cards; Draft the listing only about marketplaces; Queue the ads waits for something made; demo replies and photos', () => {
+  const email = { title: 'Send a day-14 is-it-working email to serum buyers', sub: 'Add this check to the hair fall flow.', make: { format: 'email', pieces: '1 email at day 14' }, cta: { label: 'Make our version' } };
+  assert.equal(fitCta(email).cta.label, 'Approve the flows');
+  const ownAd = { title: 'Show viewers a different offer for 30 days', sub: 'Three ads answer three objections.', make: { format: 'single image ad', pieces: '3 statics' }, cta: { label: 'Make our version' } };
+  assert.equal(fitCta(ownAd).cta.label, 'Make the ad');
+  const rival = { title: 'Mamaearth runs a routine ad', sub: 'Their ad leads with the routine.', research: { kind: 'ad' }, make: { format: 'single image ad', pieces: '' }, cta: { label: 'Make our version' } };
+  assert.equal(fitCta(rival).cta.label, 'Make our version');
+  const pitch = { title: 'Pitch Purifit on a shower-kit insert swap', sub: 'Email Purifit an insert swap.', make: { format: 'email', pieces: '1 outreach email to Purifit' }, cta: { label: 'Draft the listing' } };
+  assert.equal(fitCta(pitch).cta.label, 'Approve the flows');
+  assert.equal(fitCta({ title: 'Fix your Amazon listing titles', sub: 'Titles miss the search words.', cta: { label: 'Draft the listing' } }).cta.label, 'Draft the listing');
+  const vid = { title: 'Run 10 routine and dandruff videos', sub: 'Lead video spend with routine.', make: { format: 'video ad', pieces: '10 cuts' }, cta: { label: 'Queue the ads' } };
+  assert.equal(fitCta(vid).cta.label, 'Make the video');
+  assert.equal(fitCta({ title: '12 low-star reviews have no reply yet', sub: 'A calm reply reads better than silence.', cta: { label: 'Send the review ask' } }).cta.label, 'Draft the replies');
+  assert.equal(fitCta({ title: 'Ask happy buyers for reviews', sub: 'Only 12 reviews so far.', cta: { label: 'Send the review ask' } }).cta.label, 'Send the review ask');
+  assert.equal(fitCta({ title: '40 of your 90 marketplace listings have one or two photos', sub: 'The photos already exist.', cta: { label: 'Push the titles' } }).cta.label, 'Add the photos');
+  assert.equal(fitCta({ title: 'Rewrite 5 listing titles', sub: 'Titles miss the words.', cta: { label: 'Push the titles' } }).cta.label, 'Push the titles');
+});

@@ -6,6 +6,7 @@ import { mockAllowed } from './ai.js'; // a mock card stands in only on a mock r
 import { unbacked, allowedFrom, numbersIn, backedNumbers } from './fact-gate.js';
 import { CTA, ctaName } from './seed-template.js';
 import * as catalog from './creative-catalog.js'; /* what can be made: formats, the prompt block, generic and repeat checks */
+import { isRivalCard } from './rival-ad.js'; /* "Make our version" belongs only on a card built on a rival's ad */
 import { evidenceKinds, claimGaps, gapLine, writerEvidence } from './proof-logic.js'; /* a card says Brew saw only what Brew holds */
 /* the asset line ends on a whole word, never mid-word ("…data and s", 19 Oct) */
 const cutWords = (x, n) => { const s = String(x ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? `${s.slice(0, n - 1).replace(/\S*$/, '').replace(/[\s,;:·.–—-]+$/, '')}…` : s; };
@@ -36,6 +37,8 @@ const TOPIC_CTA = {
   'Pause what points there': /\b(?:out of stock|sold.?out|stock)\b/i,
   'Restart what was paused': /\b(?:back in stock|restock(?:ed)?|paused)\b/i,
   'Send the review ask': /\breviews?\b/i,
+  /* a marketplace listing button only on a card about marketplaces (final QA pass 19 Oct: "Draft the listing" on an outreach email) */
+  'Draft the listing': /\b(?:marketplaces?|listings?|amazon|flipkart|nykaa|myntra|meesho|ajio|blinkit|zepto|instamart|swiggy|etsy|walmart|ebay|asins?)\b/i,
   'Update the prices': /\bprices?\b/i,
   'Fix the links': /\b(?:links?|404s?|broken|redirects?)\b/i,
   /* moving ad money between campaigns: never on a card about Google's "crawl budget" or a shopper's budget (final QA pass 19 Oct) */
@@ -47,6 +50,7 @@ export const topicOk = (c) => { const re = TOPIC_CTA[c?.cta?.label], w = cardWor
    writer filling the "make" slot (final QA pass 19 Oct: "Fix broken checkout tracking" carried "Review strip under add to
    cart on <product>", a crawl-budget card a collection banner). The asset counts as mentioned when the card's words name its
    product or its thing (the words before the colon: "Review strip", "Collection banner") */
+const SWITCH = [['Send the review ask', /\b(?:repl(?:y|ies|ied)|respond|answer(?:ed)?)\b/i, null, 'Draft the replies'], ['Push the titles', /\b(?:photos?|images?|pictures?)\b/i, /\btitles?\b/i, 'Add the photos']];
 const FIX_CTAS = new Set(['Fix tracking', 'Shift budget', 'Fix the links', 'Turn on guest checkout']);
 const STOP = new Set(['with', 'from', 'your', 'for', 'and', 'the', 'page', 'pages', 'store', 'section', 'under', 'above', 'over', 'into', 'each', 'card', 'product', 'products']);
 const keyWords = (x) => (String(x || '').toLowerCase().match(/[a-z]{4,}/g) || []).filter((w) => !STOP.has(w));
@@ -60,14 +64,19 @@ export function fitCta(card) {
   const offTopic = card.cta?.label && !topicOk(card);
   /* an asset the card never talks about goes when its button only fixes or decides (or its button was off-topic anyway) */
   if (card.make?.format && (FIX_CTAS.has(card.cta?.label) || offTopic) && !makeMentioned(card)) { card.makeDropped = card.make.format; delete card.make; }
-  if (offTopic) { const f = card.make?.format || inferMake({ ...card, cta: null })?.format; card.cta = { ...card.cta, label: (f && MAKE_CTA[f]) || 'Agree with the call' }; }
+  /* "Make our version" is the rival-ad button: on any other card (an email, our own ad) it promises a picture of theirs (final QA pass 19 Oct) */
+  const notRival = card.cta?.label === 'Make our version' && !isRivalCard(card);
+  /* a button whose words name another job than the card's headline: replying to low stars is not a review ask, thin photos are not titles (demo cards, final QA pass 19 Oct) */
+  const head = `${card.title || ''} ${card.sub || ''}`;
+  for (const [l, re, no, to] of SWITCH) if (card.cta?.label === l && re.test(head) && !(no && no.test(head))) card.cta = { ...card.cta, label: to };
+  if (offTopic || notRival) { const f = card.make?.format || inferMake({ ...card, cta: null })?.format; card.cta = { ...card.cta, label: (f && MAKE_CTA[f]) || 'Agree with the call' }; }
   /* a card that pauses spend on something sold out says so on its button, not "Shift budget" (Gully Labs, final QA pass 19 Oct) */
   if (card.cta?.label === 'Shift budget' && /\bpaus/i.test(card.title || '') && TOPIC_CTA['Pause what points there'].test(cardWords(card))) card.cta = { ...card.cta, label: 'Pause what points there' };
   const want = card?.make?.format && MAKE_CTA[card.make.format], cur = card?.cta?.label;
   /* a Google search button ("Launch the ad group") on a card that makes a Meta or social asset promises the wrong thing: the format's own button */
   const wrongNet = OTHER_NETWORK.has(cur) && MAKES_CREATIVE.test(card?.make?.format || '');
   if (cur === 'Generate versions') card.cta = { ...(card.cta || {}), label: 'Make the ad' }; /* saved cards: the button makes one ad */
-  if (want && CTA[want] && card.cta?.label !== want && (!cur || MAKE_LABELS.has(cur) || wrongNet || cur === 'Publish the campaign' /* a card that makes something: its button makes it (a video ad card makes the video), Brew never publishes */)) card.cta = { ...(card.cta || {}), label: want };
+  if (want && CTA[want] && card.cta?.label !== want && (!cur || MAKE_LABELS.has(cur) || wrongNet || cur === 'Queue the ads' /* nothing made yet to queue: make it first */ || cur === 'Publish the campaign' /* a card that makes something: its button makes it (a video ad card makes the video), Brew never publishes */)) card.cta = { ...(card.cta || {}), label: want };
   return card;
 }
 /* a card that names an asset carries what to make. Old packs were written before every such card set "make", so cards

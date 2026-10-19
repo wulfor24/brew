@@ -355,7 +355,7 @@
   /* what each action needs connected first */
   const NEEDS = { 'Queue the 12': 'meta', 'Publish Campaign': 'meta', 'Publish the campaign': 'meta', 'Shift budget': 'meta', 'Rotate creative': 'meta', 'Apply the plan': 'meta', 'Run Monday decisions': 'meta', 'Lock the Diwali set': 'meta',
     'Update landing page': 'shopify', 'Apply Update': 'shopify', 'Turn on guest checkout': 'shopify', 'Approve 6 popups': 'shopify', 'Publish the page': 'shopify',
-    'Push 5 titles': 'marketplaces', 'Draft the listing': 'marketplaces', 'Send on WhatsApp': 'whatsapp', 'Turn on the journey': 'whatsapp', 'Send the review ask': 'loox',
+    'Push 5 titles': 'marketplaces', 'Draft the listing': 'marketplaces', 'Send on WhatsApp': 'whatsapp', 'Turn on the journey': 'whatsapp', 'Send the review ask': 'loox', 'Draft the replies': 'loox', 'Add the photos': 'marketplaces',
     'Launch the ad group': 'google', 'Fix tracking': 'google', 'Approve the flows': 'klaviyo' };
 
   /* =========================================================
