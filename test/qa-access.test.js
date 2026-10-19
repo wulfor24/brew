@@ -252,3 +252,11 @@ test('MOB-05: a fresh brand load is reused while the pack is unchanged, and rebu
   P.drop(slug); assert.notEqual(await P.load(slug, { fresh: true, share: true }), c, 'drop() forces a fresh load too');
   assert.match(src('server.js'), /loadBrand\(slug, \{ fresh: true, share: true \}\)/, 'seed.js and facts.js use the shared fresh load');
 });
+
+/* ---------- FEED-QA-11: the demo pill never covers the rail ---------- */
+test('FEED-QA-11: wherever the rail shows, the Demo pill sits beside it, not over Your account', () => {
+  const css = src('public/brew.css');
+  assert.match(css, /@media \(min-width:701px\)\{body:has\(\.rail\) \.demo-pill\{left:calc\(60px \+ 14px\)\}\}/);
+  assert.ok(css.indexOf('body:has(.rail) .demo-pill') > css.indexOf('@media (max-width:760px){.demo-pill'), 'it wins over the narrow rule too (701-760px still has the rail)');
+  assert.match(src('public/index.html'), /@media \(max-width:700px\)\{[\s\S]*?\.rail\{display:none\}/, 'the rail hides at 700px and below');
+});
