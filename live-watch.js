@@ -94,10 +94,10 @@ export function createLiveWatch({ ROOT, anthropic, claudeParams, textOf, gToken,
     if (drift.length) add({ id: 'cat-drift-' + sha(drift.map((q) => q.handle + q.p.price).join()), kind: 'drift', items: drift.map((q) => ({ title: q.p.title, url: q.p.url, was: inr(q.n), now: inr(q.p.price) })) });
     const gone = quoted.map((q) => ({ ...q, p: by.get(q.handle) })).filter((q) => !q.p);
     if (gone.length) add({ id: 'cat-gone-quoted-' + sha(gone.map((q) => q.handle).join()), kind: 'gone', quoted: true, items: gone.map((q) => ({ title: q.key, url: `https://${HOST}/products/${q.handle}` })) });
-    // stock: anything we quote on a card going out of stock is urgent; the rest is one roll-up
+    // stock: ONE reading of everything sold out, naming the products our cards and ads point to (urgent when there are any). Two
+    // readings (ours, and a roll-up that held them again) showed as two cards, 74 and 373 (QA FEED-11, 19 Oct)
     const oos = items.filter((x) => !x.inStock), oosQuoted = oos.filter((x) => quoted.some((q) => q.handle === x.handle));
-    if (oosQuoted.length) add({ id: 'cat-oos-q-' + sha(oosQuoted.map((x) => x.handle).join()), kind: 'oos', urgent: true, items: oosQuoted });
-    if (oos.length) add({ id: 'cat-oos-' + sha(oos.map((x) => x.handle).join()), kind: 'oos', items: oos });
+    if (oos.length) add({ id: 'cat-oos-' + sha(oos.map((x) => x.handle).join()), kind: 'oos', ...(oosQuoted.length ? { urgent: true } : {}), quoted: oosQuoted.map((x) => x.handle), items: oos });
     if (prev) {
       const back = items.filter((x) => x.inStock && before.get(x.handle) && !before.get(x.handle).inStock);
       if (back.length) add({ id: 'cat-back-' + day + sha(back.map((x) => x.handle).join()), kind: 'back', items: back });

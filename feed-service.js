@@ -54,6 +54,7 @@ export const sfReq = (req, u) => u?.searchParams?.get('sf') === '1' || /[?&]stor
 import { demoSid, runDemo, sk } from './demo-mode.js'; // Demo Mode: per-session workspaces
 import { createEvidence, EVIDENCE_ASK, proofAnswer } from './evidence.js'; // the proof sheet on every card: why it was suggested, and the hard evidence
 import { refine as refineProof, evidenceKinds, cardNeeds } from './proof-logic.js'; // does the proof prove the claim: the card's own review pointer, no price-as-proof, claims that need an account
+import { salesRank as salesRank0, handleOf, unitsFrom } from './catalog-rank.js'; // the catalog cards' order: what sells most first (QA FEED-ARV-08)
 import { createPlain, dejargon } from './plain.js'; // plain words on every card, rewritten once per card and kept per brand
 import { aiRingFromRun } from './health.js'; // the AI answers ring from the weekly check: score, rows and who the answers name, all one run
 import { toolOf, channelFit, paceFit, paceOf, cleanViewer } from './channel-fit.js'; // where a card's work goes out, and how it fits the channels and ad pace the viewer told Brew in setup
@@ -407,7 +408,16 @@ export function createFeedService(o) {
     for (const [id, c] of t.cards) { if (c.state !== 'expired' || keep.has(id)) continue; const h = (c.history || []).filter((x) => x[0] === 'expired').at(-1); const at = h?.[1] ?? c.expiresAt ?? c.createdAt ?? n;
       if (n - at > 7 * D) t.cards.delete(id); }
     const wk = weekKey(n); t.runs.forEach((r) => { if (r.week !== wk) r.counted = false; });
+    healCatalog(t, keep);
   };
+  /* saved catalog cards are written again from their reading (QA FEED-ARV-08, CAT_V): product · issue · fix, best sellers first.
+     The old "products our cards sell" reading is part of the one stock-out card now: its own card steps aside (kept if worked on) */
+  const healCatalog = (t, keep = new Set()) => { const evs = live?.get()?.catalog?.events || [];
+    for (const c of t.cards.values()) { if (c.liveSrc?.kind !== 'catalog') continue;
+      if (/^cat-oos-q-/.test(c.liveSrc.id) && !keep.has(c.id) && !['dismissed', 'done', 'dropped', 'expired'].includes(c.state)) { setState(t, c, 'dropped'); continue; }
+      if (c.catV === CAT_V || !evs.length) continue; c.catV = CAT_V; /* the watcher's readings load after boot: heal once they are here */
+      const e = evs.find((x) => x.id === c.liveSrc.id); const f = e && liveCard('catalog', e, t); if (!f) continue;
+      for (const k of ['title', 'sub', 'rows', 'detail', 'badge', 'cta', 'liveNums', 'link']) if (f[k] !== undefined) c[k] = f[k]; } };
 
   /* ---------- ranking ---------- */
   const BASE = () => B().config.baseMonthly || 0; // the brand's monthly revenue, when it is known 
@@ -538,7 +548,7 @@ export function createFeedService(o) {
     /* one card per group in the first screen: a move's other cards, a live check's older readings and a second ad from the same
        rival wait until position 12, unless the first was already acted on. A live check that read the same thing again (stock-outs,
        price drift) keeps only its newest reading at all: the older ones are the same news */
-    const newestLive = new Map(); for (const c of sorted0) { const d = dupOf(c); if (d) { const h = newestLive.get(d); if (!h || c.createdAt > h.createdAt) newestLive.set(d, c); } const g = groupOf(c); if (g?.startsWith('live:')) { const h = newestLive.get(g); const q = (x) => /-q-/.test(x.liveSrc.id); /* the reading about products our cards sell beats the store-wide one */ if (!h || q(c) > q(h) || (q(c) === q(h) && c.createdAt > h.createdAt)) newestLive.set(g, c); } }
+    const newestLive = new Map(); for (const c of sorted0) { const d = dupOf(c); if (d) { const h = newestLive.get(d); if (!h || c.createdAt > h.createdAt) newestLive.set(d, c); } const g = groupOf(c); if (g?.startsWith('live:')) { const h = newestLive.get(g); if (!h || c.createdAt > h.createdAt) newestLive.set(g, c); } /* one stock-out card holds the products our cards sell (QA FEED-11): the newest reading wins */ }
     const sorted = []; const later = []; const firstOf = new Map();
     for (const c of sorted0) { const d = dupOf(c); if (d && newestLive.get(d) !== c) continue; const g = groupOf(c); if (g == null) { sorted.push(c); continue; } if (g.startsWith('live:') && newestLive.get(g) !== c) continue; const f = firstOf.get(g);
       if (!f) { firstOf.set(g, c); sorted.push(c); } else if (eng.has(f.id)) sorted.push(c); else later.push(c); } /* a heart or a real jam message lets a second card in, not a mere open */
@@ -850,25 +860,39 @@ export function createFeedService(o) {
   const andList = (xs) => xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`;
   const short = (s, n) => (s.length <= n ? s : s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…');
   const plural = (n, a, b) => `${n} ${n === 1 ? a : b}`;
-  const liveCard = (wid, e) => {
+  /* catalog cards: the products that sell most first, by the best signal Brew holds, and the card says which (QA FEED-ARV-08):
+     units sold in 30 days (a connected Shopify, team only), else the store's own best-seller list, else review counts, else price.
+     Products our cards and ads point to always lead */
+  const CAT_V = 2;
+  const quotedOf = () => new Set(Object.values(B()?.facts || {}).filter((f) => f && f.kind === 'price' && /\/products\//.test(String(f.src || ''))).map((f) => String(f.src).split('/').pop()));
+  const nameOfItem = (i) => { const f = /^[\w.-]+$/.test(String(i?.title || '')) ? B()?.facts?.[i.title] : null; return f?.label ? String(f.label).replace(/\s+(price|mrp)$/i, '') : String(i?.title || ''); }; /* a removed product saved as its fact key reads as its name */
+  const unitsOf = (t) => { const e = t?.member ? t.liveLedger?.['shopify.top.30d'] : null; return e && !e.demo && !e.stale ? unitsFrom(e.v) : new Map(); }; /* the team's own Shopify, never a simulated one */
+  const salesRank = (x, t, quoted) => salesRank0(x, { rank: B()?.catalogRank || {}, units: unitsOf(t), quoted });
+  const liveCard = (wid, e, t = null) => {
     const at = new Date(e.at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
     if (wid === 'catalog') {
-      const x = e.items || [], names = x.map((i) => i.title), base = { id: 'lv-' + e.id, agent: 'storefront', sector: 'catalog', lane: firstLane(), roles: ['ecom', 'founder', 'growth'], kind: 'rows', src: `${BH()}, checked ${at}`, liveSrc: { kind: 'catalog', id: e.id }, link: x[0]?.url ? { label: `Open on ${BH()}`, url: x[0].url } : undefined, ttlDays: 7 };
-      const rows = (f) => x.slice(0, 4).map(f);
+      /* one line per product, "issue · fix", the products that sell most first; the title names the product (or the count) and
+         what to do (QA FEED-ARV-08). Saved cards are written again from their reading (housekeep, CAT_V) */
+      if (/^cat-oos-q-/.test(e.id)) return null; /* an old reading of only the products our cards sell: the one stock-out card holds them (QA FEED-11) */
+      const quoted = new Set([...(e.quoted || []), ...quotedOf()]), r = salesRank((e.items || []).map((i) => ({ ...i, title: nameOfItem(i) })), t, quoted), x = r.sorted, n = x.length;
+      if (!n) return null;
+      const t0 = short(x[0].title, 32), isQ = (i) => quoted.has(handleOf(i)), nq = x.filter(isQ).length;
+      const base = { id: 'lv-' + e.id, catV: CAT_V, agent: 'storefront', sector: 'catalog', lane: firstLane(), roles: ['ecom', 'founder', 'growth'], kind: 'rows', src: `${BH()}, checked ${at}`, liveSrc: { kind: 'catalog', id: e.id }, link: x[0]?.url ? { label: `Open on ${BH()}`, url: x[0].url } : undefined, ttlDays: 7 };
+      const rows = (f) => x.slice(0, 4).map((i) => [short(i.title, 34), f(i)]), order = `Order: ${r.said}.`;
       if (e.kind === 'oos') return { ...base, type: 'decision', family: 'exception', badge: ['Out of stock', 'warn'],
-        title: e.urgent ? `${plural(x.length, 'product our cards sell is', 'products our cards sell are')} out of stock` : `${plural(x.length, 'product is', 'products are')} out of stock on ${BH()}`,
-        sub: `The live store shows ${short(andList(names.slice(0, 3)), 160)}${x.length > 3 ? ` and ${x.length - 3} more` : ''} as sold out. Any ad, message or link that sends people there loses the sale until it's back.`,
-        rows: rows((i) => [short(i.title, 40), 'Out of stock']), detail: { why: [`Checked on the live ${BH()} catalog.`, 'Shoppers who land there can’t buy.', e.urgent ? 'These are products the feed’s cards and ads point to.' : 'Ads and messages may still point there.'], how: ['Brew lists every ad and message that points there.', 'Your team pauses them or swaps in an in-stock product.', 'Brew posts a card when it is back in stock.'] }, cta: { label: 'List what points there' } };
-      if (e.kind === 'back') return { ...base, type: 'report', family: 'result', badge: ['Back in stock', 'ok'], title: `${plural(x.length, 'product is', 'products are')} back in stock on ${BH()}`, sub: `${short(andList(names.slice(0, 3)), 180)} can be bought again. Anything paused for it can restart.`, rows: rows((i) => [short(i.title, 40), 'In stock']), detail: { why: [`Checked on the live ${BH()} catalog.`], how: ['Your team restarts anything it paused for it.'] }, cta: { label: 'Plan the restart' } };
+        title: n === 1 ? `${t0} is sold out: pause the ads that point to it` : `${plural(n, 'product is', 'products are')} sold out: pause the ads that point to them`,
+        sub: `${nq ? (n === 1 ? 'Our ads point to it. ' : `${nq} of them ${nq === 1 ? 'is a product' : 'are products'} our ads point to. `) : ''}Shoppers who land there can’t buy until it’s back.`,
+        rows: rows((i) => `Sold out · ${isQ(i) ? 'pause our ads' : 'pause links'}`), detail: { why: [`Checked on the live ${BH()} catalog.`, 'Shoppers who land there can’t buy.', order], how: ['Brew lists every ad and message that points there.', 'Your team pauses them or swaps in an in-stock product.', 'Brew posts a card when it is back in stock.'] }, cta: { label: 'List what points there' } };
+      if (e.kind === 'back') return { ...base, type: 'report', family: 'result', badge: ['Back in stock', 'ok'], title: n === 1 ? `${t0} is back in stock: restart its ads` : `${plural(n, 'product is', 'products are')} back in stock: restart their ads`, sub: `${n === 1 ? 'It' : 'They'} can be bought again. Anything paused for ${n === 1 ? 'it' : 'them'} can restart.`, rows: rows(() => 'In stock · restart ads'), detail: { why: [`Checked on the live ${BH()} catalog.`, order], how: ['Your team restarts anything it paused for it.'] }, cta: { label: 'Plan the restart' } };
       if (e.kind === 'price' || e.kind === 'drift') { const it = x.map((i) => ({ t: i.title, was: i.was != null ? (typeof i.was === 'number' ? inrN(i.was) : i.was) : '', now: i.now || inrN(i.price) })).filter((i) => i.was !== i.now); // saved events from before the paise fix: "₹1,850 → ₹1,850" is no change
         if (!it.length) return null;
         return { ...base, type: 'decision', family: 'exception', badge: ['Price changed', 'warn'], liveNums: it.flatMap((i) => [i.was, i.now]),
-          title: e.kind === 'drift' ? `${plural(it.length, 'price our cards quote has', 'prices our cards quote have')} changed on ${BH()}` : `${plural(it.length, 'price', 'prices')} changed on ${BH()}`,
+          title: it.length === 1 ? `${short(it[0].t, 32)} is now ${it[0].now}: update its ads` : e.kind === 'drift' ? `${plural(it.length, 'price our cards quote has', 'prices our cards quote have')} changed: update those ads` : `${plural(it.length, 'price', 'prices')} changed on ${BH()}: update the ads that quote them`,
           sub: `${short(it[0].t, 60)} is now ${it[0].now}${it[0].was ? `, was ${it[0].was}` : ''}${it.length > 1 ? `, plus ${plural(it.length - 1, 'more', 'more')}` : ''}. ${e.kind === 'drift' ? 'Cards and ads that quote the old price are now wrong.' : 'Ads and messages quoting the old price need the new one.'}`,
-          rows: it.slice(0, 4).map((i) => [short(i.t, 34), i.was ? `${i.was} → ${i.now}` : i.now]), detail: { why: [`Read from the live ${BH()} catalog.`, 'A wrong price in an ad is a broken promise at checkout.'], how: ['The fact sheet takes the new price on its daily check.', 'Brew lists the cards and moves that quote the old one.', 'Your team updates the ads and messages.'] }, cta: { label: 'Update the prices' } }; }
-      if (e.kind === 'removed' || e.kind === 'gone') return { ...base, type: 'decision', family: 'exception', badge: ['Removed', 'warn'], title: `${plural(x.length, 'product was', 'products were')} removed from ${BH()}`, sub: `${short(andList(names.slice(0, 3)), 180)} ${x.length === 1 ? 'is' : 'are'} gone from the live store. Links and ads that point there now land on an error page.`, rows: rows((i) => [short(i.title, 40), 'Gone']), detail: { why: [`Checked on the live ${BH()} catalog.`, 'A dead link wastes every click.'], how: ['Brew lists what points there.', 'Your team redirects it or pauses it.'] }, cta: { label: 'Fix the links' } };
-      if (e.kind === 'new') return { ...base, type: 'idea', family: 'idea', badge: ['New on the store', 'info'], liveNums: x.map((i) => inrN(i.price)), title: `${plural(x.length, 'new product is', 'new products are')} live on ${BH()}`, sub: `${short(andList(names.slice(0, 3)), 170)}${x.length > 3 ? ` and ${x.length - 3} more` : ''} went live recently. None has launch content in the feed yet.`, rows: rows((i) => [short(i.title, 40), inrN(i.price)]), detail: { why: [`Found on the live ${BH()} catalog.`, 'A launch with no ads or messages sells to nobody.'], how: ['The Creative director drafts launch ideas.', 'The CRM specialist drafts a message to past buyers.', 'You pick what goes out.'] }, cta: { label: 'Plan the launch' } };
-      if (e.kind === 'thin') return { ...base, type: 'decision', family: 'exception', badge: [plural(x.length, 'listing', 'listings'), 'warn'], title: `${plural(x.length, 'listing has', 'listings have')} one photo or none on ${BH()}`, sub: `${short(andList(names.slice(0, 2)), 170)}${x.length > 2 ? ` and ${x.length - 2} more` : ''} show a single image. Catalog ads and shoppers need more than one angle to trust a combo.`, rows: rows((i) => [short(i.title, 40), `${i.images} photo${i.images === 1 ? '' : 's'}`]), detail: { why: [`Counted on the live ${BH()} catalog.`, 'Listings with one image convert worse and look thin in catalog ads.'], how: ['Brew drafts packshots from the single-product photos.', 'Keep each one or redo it.', 'Your team adds them to the listings.'] }, cta: { label: 'Add photos' } };
+          rows: it.slice(0, 4).map((i) => [short(i.t, 34), `${i.was ? `${i.was} → ${i.now}` : i.now} · update ads`]), detail: { why: [`Read from the live ${BH()} catalog.`, 'A wrong price in an ad is a broken promise at checkout.', order], how: ['The fact sheet takes the new price on its daily check.', 'Brew lists the cards and moves that quote the old one.', 'Your team updates the ads and messages.'] }, cta: { label: 'Update the prices' } }; }
+      if (e.kind === 'removed' || e.kind === 'gone') return { ...base, type: 'decision', family: 'exception', badge: ['Removed', 'warn'], title: n === 1 ? `${t0} was removed: redirect its link` : `${plural(n, 'product was', 'products were')} removed: redirect their links`, sub: `${n === 1 ? 'It is' : 'They are'} gone from the live store. Links and ads that point there now land on an error page.`, rows: rows(() => 'Removed · redirect link'), detail: { why: [`Checked on the live ${BH()} catalog.`, 'A dead link wastes every click.', order], how: ['Brew lists what points there.', 'Your team redirects it or pauses it.'] }, cta: { label: 'Fix the links' } };
+      if (e.kind === 'new') return { ...base, type: 'idea', family: 'idea', badge: ['New on the store', 'info'], liveNums: x.map((i) => inrN(i.price)), title: n === 1 ? `${t0} is new on ${BH()}: plan its launch` : `${plural(n, 'new product is', 'new products are')} live: plan their launch`, sub: `${n === 1 ? 'It went' : 'They went'} live recently. None has launch content in the feed yet.`, rows: rows((i) => `New, ${inrN(i.price)} · plan launch`), detail: { why: [`Found on the live ${BH()} catalog.`, 'A launch with no ads or messages sells to nobody.', order], how: ['The Creative director drafts launch ideas.', 'The CRM specialist drafts a message to past buyers.', 'You pick what goes out.'] }, cta: { label: 'Plan the launch' } };
+      if (e.kind === 'thin') return { ...base, type: 'decision', family: 'exception', badge: [plural(n, 'listing', 'listings'), 'warn'], title: n === 1 ? `${t0} has ${plural(x[0].images || 0, 'photo', 'photos').replace(/^0 photos$/, 'no photo')}: add more angles` : `${plural(n, 'listing has', 'listings have')} one photo or none: add more angles`, sub: 'Shoppers and catalog ads need more than one angle to trust a product.', rows: rows((i) => `${i.images ? plural(i.images, 'photo', 'photos') : 'No photo'} · add angles`), detail: { why: [`Counted on the live ${BH()} catalog.`, 'Listings with one image convert worse and look thin in catalog ads.', order], how: ['Brew drafts packshots from the single-product photos.', 'Keep each one or redo it.', 'Your team adds them to the listings.'] }, cta: { label: 'Add photos' } };
       return null;
     }
     /* the AI tools that really answered in this event's run, never the full list: a tool that failed or wasn't asked isn't named */
@@ -890,7 +914,7 @@ export function createFeedService(o) {
   };
   const fromLive = (t, wid, n) => {
     const s = live?.get()?.[wid]; const out = [];
-    for (const e of s?.events || []) { if (out.length >= n) break; const id = 'lv-' + e.id; if (t.used.has(id) || t.cards.has(id)) continue; const c = liveCard(wid, e); t.used.add(id); if (c) out.push(c); }
+    for (const e of s?.events || []) { if (out.length >= n) break; const id = 'lv-' + e.id; if (t.used.has(id) || t.cards.has(id)) continue; const c = liveCard(wid, e, t); t.used.add(id); if (c) out.push(c); }
     return out;
   };
   const wireLive = (b) => b.live?.onRefresh((done) => { for (const t of brandTenants(b)) done.forEach((k) => { if (t.watchers[k]) t.watchers[k].nextRun = now(t) + 10e3; }); });
