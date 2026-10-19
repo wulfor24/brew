@@ -3645,6 +3645,10 @@
   /* ---------- the asset, as it will run, in its channel's frame ---------- */
   /* the card's first draft is v0 on the stage, exactly as the card showed it: a text draft (an email, a chat, a page) is its
      picture until new words replace it; a clip plays where the widget shows its picture */
+  /* CRE-07: the ad's headline edits in place, one step: click it on the preview, type, Enter (or click away) saves it as a new
+     version through the same POST /edit as the brief form; Esc puts it back. Only on the jam's stage, on the version in use */
+  const hlHtml = (ch, p, lg) => (lg && view === 'remix' && !RX.viewing && ch.state !== 'jam' && !ch.batchKey && RX.ch?.id === ch.id
+    ? `<b class="am-hl" data-hl-edit role="button" tabindex="0" title="Click to change the headline" spellcheck="true">${esc(p.headline || '')}</b>` : `<b>${esc(p.headline || '')}</b>`);
   const assetHtml = (ch, size = 'sm') => {
     const p = ch.pkg || {}, d = p.draft;
     /* a version remade as a reel, a carousel or a picture (/remake) shows as that format: the clip, the slides, the picture, or its words while they're made */
@@ -3686,7 +3690,7 @@
         <p class="am-text">${esc(p.primaryText || '')}</p>
         <div class="am-media${img ? '' : ' noimg'}" style="aspect-ratio:${coll ? '16/9' : '1/1'}">${img ? `<img src="${esc(img)}" alt="" style="filter:${esc(ch.gradeF || 'none')}">` : `<div class="am-empty">${ic('sparkles', 's16')}<span>${coll ? 'The cover is made in the studio' : 'Each person sees products from the set'}</span></div>`}${!coll && p.frame ? `<span class="am-frame">${esc(p.frame)}</span>` : ''}${pending}${!img && lg && !ch.imagePending ? `<div class="am-make"><button class="btn btn-primary sm" data-rx="image">${ic('sparkles', 's14')}Make the ${coll ? 'cover' : 'sample photo'}</button></div>` : ''}</div>
         ${coll ? `<div class="am-grid">${p.products.slice(0, 4).map((x) => `<span>${esc(x)}</span>`).join('')}</div>` : `<p class="am-set">${ic('grid', 's14')}<span><b>Product set:</b> ${esc(p.productSet)}</span></p>`}
-        <div class="am-foot"><div><small>${B.brand.host}</small><b>${esc(p.headline || '')}</b>${coll && p.instantPage ? `<span>Opens: ${esc(p.instantPage)}</span>` : ''}</div><span class="am-cta">${esc(p.cta || 'Shop now')}</span></div></div>`;
+        <div class="am-foot"><div><small>${B.brand.host}</small>${hlHtml(ch, p, lg)}${coll && p.instantPage ? `<span>Opens: ${esc(p.instantPage)}</span>` : ''}</div><span class="am-cta">${esc(p.cta || 'Shop now')}</span></div></div>`;
     }
     if (ch.family === 'social') {
       const story = p.format === '9:16', handle = p.account || `@${String(B.brand.name).toLowerCase().replace(/[^a-z0-9]+/g, '')}`;
@@ -3701,7 +3705,7 @@
       return `<div class="as as-meta${lg ? ' lg' : ''}" style="--ar:${(rw / rh) || 0.8}"><div class="am-h"><span class="am-logo"><img src="${esc(B.brand.mark)}" alt=""></span><div><b>${B.brand.name}</b><small>Sponsored</small></div></div>
         <p class="am-text">${esc(p.primaryText || '')}</p>
         <div class="am-media${img ? '' : ' noimg'}" style="aspect-ratio:${ratio}">${img ? `<img src="${esc(img)}" alt="" style="filter:${esc(ch.gradeF || 'none')}">` : !lg ? `<div class="am-empty">${ic('sparkles', 's16')}<span>The photo is made in the studio</span></div>` : ''}${p.overlay && p.image && p.wordsIn !== p.image /* a final with its words set in the picture */ ? `<span class="am-ov">${esc(p.overlay)}</span>` : ''}${pending}${!p.image && lg && !ch.imagePending ? (img ? `<button class="am-newpic" data-rx="image">${ic('sparkles', 's14')}New photo for this ad</button>` : `<div class="am-make"><span>No photo for this version yet</span><button class="btn btn-primary sm" data-rx="image">${ic('sparkles', 's14')}Make the photo</button></div>`) : ''}</div>
-        <div class="am-foot"><div><small>${B.brand.host}</small><b>${esc(p.headline || '')}</b>${p.description ? `<span>${esc(p.description)}</span>` : ''}</div><span class="am-cta">${esc(p.cta || 'Shop now')}</span></div>
+        <div class="am-foot"><div><small>${B.brand.host}</small>${hlHtml(ch, p, lg)}${p.description ? `<span>${esc(p.description)}</span>` : ''}</div><span class="am-cta">${esc(p.cta || 'Shop now')}</span></div>
         ${lg && act === 'whatsapp_ad' && p.chat?.length ? `<div class="am-chat"><small>When they tap, WhatsApp opens with</small>${p.chat.map((m) => `<div class="wa ${m.from === 'in' ? 'in' : 'out'}">${esc(m.text)}</div>`).join('')}</div>` : ''}</div>`;
     }
     if (ch.family === 'post') return postMock(ch, p, lg);
@@ -4258,7 +4262,7 @@
     const viewing = RX.viewing && RX.viewing !== ch.head ? ch.versions.find((v) => v.id === RX.viewing) : null; if (!viewing) RX.viewing = null;
     const pkgCh = asPkg(ch, viewing), edit = ch.state !== 'jam', tab = RX.tab && RX.tab !== 'history' ? RX.tab : 'iterate'; /* history is the dropdown on the History button now */
     const formFocus = document.activeElement?.closest?.('#st-spec');
-    if (formFocus || document.activeElement?.id === 'bf-ed') { pollJob(ch); return; } // never repaint under someone typing in the spec or the brief (the job poll keeps going, so no status is left behind)
+    if (formFocus || document.activeElement?.id === 'bf-ed' || document.activeElement?.matches?.('[data-hl-edit][contenteditable]')) { pollJob(ch); return; } // never repaint under someone typing in the spec or the brief (the job poll keeps going, so no status is left behind)
     const logScroll = $('.st-panel-b')?.scrollTop;
     /* an open panel stays open through a repaint (the jam's 3-second poll, a video landing): Param, 19 Oct, "What Brew read" closed in 2 s */
     const keepOpen = RX.keepFor === ch.id ? new Set([...pg.querySelectorAll('details[data-keep][open]')].map((d) => d.dataset.keep)) : new Set(); RX.keepFor = ch.id;
@@ -4299,6 +4303,19 @@
     else if (tab === 'iterate') pb.scrollTop = (ch.thread || []).length || RX.sending || j2Extra(ch) ? pb.scrollHeight : 0; /* the case stays first in the chat and scrolls up as it grows; a fresh chat is read from its top */ else if (logScroll && !RX.resetScroll) pb.scrollTop = logScroll; RX.resetScroll = false;
     pollJob(ch);
   };
+  /* the headline in place (hlHtml): click → type → Enter or click away saves a version; Esc cancels */
+  const hlStart = (el) => { if (el.isContentEditable || RX.sending) return; el.dataset.was = el.textContent; el.contentEditable = 'plaintext-only'; if (el.contentEditable !== 'plaintext-only') el.contentEditable = 'true'; el.focus();
+    try { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); } catch {} };
+  const hlSave = async (el) => { const was = el.dataset.was ?? '', now = el.textContent.replace(/\s+/g, ' ').trim(); el.removeAttribute('contenteditable'); delete el.dataset.was; const ch = RX.ch;
+    if (!ch || !now || now === was.trim()) { el.textContent = was; return; }
+    const r = await tapi('POST', `/api/changes/${ch.id}/edit`, { pkg: { headline: now }, reason: 'New headline' }).catch((e) => ({ error: e.message }));
+    if (r.error) { el.textContent = was; return toast(`${ic('info', 's16')}${esc(r.error)}`); }
+    if (r.change) { RX.ch = r.change; putCh(r.change); } toast(`${ic('check', 's16')}Headline saved as v${curN(RX.ch)}`); paintStudio(); };
+  document.addEventListener('click', (e) => { const el = e.target.closest?.('[data-hl-edit]'); if (el && view === 'remix') hlStart(el); });
+  addEventListener('keydown', (e) => { const el = e.target.closest?.('[data-hl-edit]'); if (!el) return; /* capture: Esc and Enter here never reach the studio's own keys */
+    if (!el.isContentEditable) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopImmediatePropagation(); hlStart(el); } return; }
+    if (e.key === 'Enter') { e.preventDefault(); e.stopImmediatePropagation(); el.blur(); } else if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); el.textContent = el.dataset.was ?? el.textContent; el.dataset.was = el.textContent; el.blur(); } }, true);
+  document.addEventListener('focusout', (e) => { const el = e.target.closest?.('[data-hl-edit]'); if (el?.isContentEditable) hlSave(el); });
   /* while a job runs, read the change again every few seconds and repaint, until every pending flag has cleared */
   const pollJob = (ch) => { clearTimeout(RX.pollT);
     if (jobOf(ch)) RX.pollT = setTimeout(async () => { if (view !== 'remix' || RX.ch?.id !== ch.id) return; const q = await tapi('GET', `/api/changes/${ch.id}`).catch(() => ({})); if (q.change) { RX.ch = q.change; putCh(q.change); } paintStudio(); if (ch.copyPending && q.change && !q.change.copyPending) autoImage(q.change); }, ch.copyPending ? 1500 : 3000); };
