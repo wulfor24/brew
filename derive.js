@@ -46,13 +46,15 @@ export function factsFromLedger(ledger = [], { host } = {}) {
 }
 
 /* the config fields that follow the selling market (market.js): a market that moves patches only these */
+/* a market still "to confirm" (market.js toConfirm) stays unknown: no country, name, markets or sale day, never a quiet US
+   (QA 19 Oct). Readers say "your market" or skip the market-only lines; locale, time zone and search location keep a neutral default */
 export function marketConfig(p = {}) {
-  const cc = (p.country || 'US').toUpperCase();
-  return { country: cc, countryName: CNAME[cc] || cc, markets: (p.markets || [cc]).filter(Boolean), registeredCountry: p.registeredCountry || null, locale: LOCALE[cc] || 'en-US',
-    tzOffsetH: (TZ[cc] || [0])[0], timezone: (TZ[cc] || [0, 'UTC'])[1], locationCode: LOC[cc] || 2840, festival: nextFestival(cc) };
+  const cc = String(p.country || '').toUpperCase();
+  return { country: cc, countryName: cc ? CNAME[cc] || cc : '', markets: (p.markets || [cc]).filter(Boolean), registeredCountry: p.registeredCountry || null, locale: LOCALE[cc] || 'en-US',
+    tzOffsetH: (TZ[cc] || [0])[0], timezone: (TZ[cc] || [0, 'UTC'])[1], locationCode: LOC[cc] || 2840, festival: cc ? nextFestival(cc) : null };
 }
 export function configFromProfile(p, extra = {}) {
-  const cc = (p.country || 'US').toUpperCase(), cur = (p.currency || (cc === 'IN' ? 'INR' : cc === 'GB' ? 'GBP' : 'USD')).toUpperCase();
+  const cc = String(p.country || '').toUpperCase(), cur = String(p.currency || (cc === 'IN' ? 'INR' : cc === 'GB' ? 'GBP' : cc === 'US' ? 'USD' : '')).toUpperCase(); /* no market, no guessed currency (marketConfig) */
   const cat = [p.category, p.subcategory].filter(Boolean).join(', ') || 'consumer products';
   const products = p.catalog?.products || [];
   const rivals = (p.rivals || []).map((r) => r.name).filter(Boolean).slice(0, 8);
@@ -60,11 +62,10 @@ export function configFromProfile(p, extra = {}) {
   const terms = (p.search?.terms || []).filter(Boolean);
   const kind = catKind(cat);
   return {
-    country: cc, countryName: CNAME[cc] || cc, markets: (p.markets || [cc]).filter(Boolean), registeredCountry: p.registeredCountry || null, currency: cur, symbol: SYM[cur] || '', locale: LOCALE[cc] || 'en-US',
-    tzOffsetH: (TZ[cc] || [0])[0], timezone: (TZ[cc] || [0, 'UTC'])[1], locationCode: LOC[cc] || 2840, lang: 'en',
+    ...marketConfig(p), currency: cur, symbol: SYM[cur] || '', lang: 'en',
     category: cat, about: aboutOf(p),
     product: { noun: extra.noun || 'product', style: `Premium ${p.category || 'D2C'} product ad photography`, avoid: kind === 'beauty' || kind === 'health' ? 'No text, no before/after, no body parts shown as results.' : 'No text, no invented claims.', look: `Clean, premium ${p.category || 'D2C'} look, no before/after.` },
-    festival: nextFestival(cc), // rolls forward every year (calendar.js); brand-pack.js re-picks it at every load
+    festival: cc ? nextFestival(cc) : null, // rolls forward every year (calendar.js); brand-pack.js re-picks it at every load
     rivals, rivalsAI: rivals, rivalsSafe: 'other brands', newsRivals: rivals,
     terms: terms.length ? [terms.slice(0, 5), terms.slice(5, 10)].filter((x) => x.length) : [], rising: terms.slice(0, 2), listingTerm: terms[0] || p.category || '',
     questions: q.slice(0, 8),

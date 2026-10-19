@@ -1590,7 +1590,10 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (!m.primary && m.toConfirm) { if (!p.country || p.market?.by !== 'site') return null;
       const was = p.country; Object.assign(p, { country: null, markets: [], market: { ...m, at: new Date().toISOString() } });
       for (const k of ['market.country', 'market.registered']) { const i = L.findIndex((x) => x.key === k); if (i >= 0) L.splice(i, 1); }
-      await packs.put(slug, 'profile.json', p); await packs.put(slug, 'ledger.json', L); packs.drop?.(slug); await onPack(slug);
+      await packs.put(slug, 'profile.json', p); await packs.put(slug, 'ledger.json', L);
+      /* the settings follow: no country, name, markets or sale day left behind for the cards and watchers (QA 19 Oct) */
+      const cfg0 = await packs.getJSON(slug, 'config.json', null); if (cfg0) await packs.put(slug, 'config.json', { ...cfg0, ...marketConfig(p) });
+      packs.drop?.(slug); await onPack(slug);
       log.log?.(`[market] ${slug}: ${was} → to confirm (${m.why})`); return { was, now: null, moved: false, by: 'site', toConfirm: true }; }
     if (!m.primary) return null;
     const was = p.market?.primary || p.country || null, moved = !!was && was !== m.primary;

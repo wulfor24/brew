@@ -38,7 +38,9 @@ export function createPulse({ slug, packs, treg, ai, log = console, now = () => 
   async function brandInfo() {
     const [profile, config, lc, themes] = await Promise.all(['profile.json', 'config.json', 'listen/config.json', 'listen/themes.json'].map((n) => packs.getJSON(slug, n, {}).catch(() => ({}))));
     const p = profile || {}, c = config || {}, l = lc || {};
-    const country = String(p.country || c.country || l.country || 'US').toUpperCase();
+    /* market: the confirmed selling market, or '' while it is "to confirm" (QA 19 Oct). Text says "your market" then and the
+       market-only reads (city weather, TikTok Shop) are skipped; the search calls need one location, so they keep the neutral default */
+    const market = String(p.country || c.country || '').toUpperCase(), country = market || String(l.country || 'US').toUpperCase();
     const rivals = (Array.isArray(p.rivals) && p.rivals.length ? p.rivals : (c.rivals || []).map((name) => ({ name })))
       .map((r) => (typeof r === 'string' ? (r.includes('.') ? { name: r.split('.')[0], host: r } : { name: r }) : r)).filter((r) => r?.name || r?.host).slice(0, 5)
       .map((r) => ({ name: r.name || r.host, host: r.host ? String(r.host).replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '') : null, instagram: r.instagram || r.socials?.instagram?.handle || null }));
@@ -46,9 +48,9 @@ export function createPulse({ slug, packs, treg, ai, log = console, now = () => 
     const terms = [...new Set([...(l.terms?.category || []), ...(c.terms || []).flat(), ...(c.rising || [])].map((t) => String(t).replace(/"/g, '').trim().toLowerCase()).filter(Boolean))].slice(0, 12);
     const themeNames = (themes?.themes || []).slice(0, 10).map((t) => t.name).filter(Boolean);
     const products = (p.catalog?.products || []).filter((x) => !x.pack);
-    return { name: p.name || l.name || c.name || slug, host: (p.host || l.host || '').replace(/^www\./, ''), country, loc: c.locationCode || LOC[country] || 2840, currency: p.currency || c.currency || 'USD',
+    return { name: p.name || l.name || c.name || slug, host: (p.host || l.host || '').replace(/^www\./, ''), country, market, loc: c.locationCode || LOC[country] || 2840, currency: p.currency || c.currency || '',
       category: [p.category, p.subcategory].filter(Boolean).join(' / ') || l.category || noun, noun, terms, themes: themeNames, rivals, products, heroes: products.slice(0, 3),
-      instagram: p.socials?.instagram?.handle || l.instagram || null, cities: c.cities || CITIES[country] || CITIES.US, questions: [...(c.questions || []).map((q) => q.q || q), ...(p.ai?.questions || [])], sourced: (c.questions || []).filter((q) => q?.why && q.q), asins: c.asins || p.asins || [], bestSellersUrl: c.amazonBestSellersUrl || null };
+      instagram: p.socials?.instagram?.handle || l.instagram || null, cities: market ? c.cities || CITIES[market] || [] : [], questions: [...(c.questions || []).map((q) => q.q || q), ...(p.ai?.questions || [])], sourced: (c.questions || []).filter((q) => q?.why && q.q), asins: c.asins || p.asins || [], bestSellersUrl: c.amazonBestSellersUrl || null };
   }
 
   /* ---------- the 20 fixed buyer questions (written once, then never changed so weeks compare) ---------- */
@@ -59,7 +61,7 @@ export function createPulse({ slug, packs, treg, ai, log = console, now = () => 
     const have = await packs.getJSON(slug, 'pulse/questions.json', null); if (have?.questions?.length && (have.by !== 'template' || !aiCall)) return have.questions; // a template set is rewritten once when the AI is on
     let qs = [], by = 'template';
     if (aiCall) try { const r = await aiCall({ tag: `pulse-questions-${slug}`, model: 'sonnet', max: 2000, schema: { type: 'object', properties: { questions: { type: 'array', items: { type: 'object', properties: { q: { type: 'string' }, kind: { type: 'string', enum: ['unbranded', 'compare', 'branded'] } } } } } },
-      prompt: `Write exactly 20 real questions a shopper in ${b.country} types into ChatGPT before buying ${b.noun} (category: ${b.category}). The brand is ${b.name} (${b.host}); rivals: ${b.rivals.map((r) => r.name).join(', ') || 'none known'}.\n12 unbranded (best X for Y, X under a price, which X for a person or a problem, is X worth it), 5 compare (brand vs a rival, or "alternatives to <rival>"), 3 branded (is ${b.name} good, ${b.name} sizing/quality/returns). Use what shoppers talk about: ${b.themes.slice(0, 8).join(', ')}. Search terms people use: ${b.terms.slice(0, 6).join('; ')}. Plain words, no numbering.` });
+      prompt: `Write exactly 20 real questions a shopper${b.market ? ` in ${b.market}` : ''} types into ChatGPT before buying ${b.noun} (category: ${b.category}). The brand is ${b.name} (${b.host}); rivals: ${b.rivals.map((r) => r.name).join(', ') || 'none known'}.\n12 unbranded (best X for Y, X under a price, which X for a person or a problem, is X worth it), 5 compare (brand vs a rival, or "alternatives to <rival>"), 3 branded (is ${b.name} good, ${b.name} sizing/quality/returns). Use what shoppers talk about: ${b.themes.slice(0, 8).join(', ')}. Search terms people use: ${b.terms.slice(0, 6).join('; ')}. Plain words, no numbering.` });
       qs = (r.json?.questions || []).filter((x) => x.q).slice(0, 20); if (qs.length >= 15) by = 'ai'; } catch (e) { log.warn?.('[pulse] questions', e.message); }
     if (qs.length < 20) { const seen = new Set(qs.map((x) => x.q.toLowerCase())); const add = (q, kind) => { if (qs.length < 20 && !seen.has(q.toLowerCase())) { seen.add(q.toLowerCase()); qs.push({ q, kind }); } };
       b.questions.forEach((q) => add(String(q), 'unbranded')); b.terms.forEach((t) => add(/^(best|which|how|is|what)\b/i.test(t) ? t : `best ${t}`, 'unbranded'));
@@ -195,10 +197,10 @@ export function createPulse({ slug, packs, treg, ai, log = console, now = () => 
   // best sellers: TikTok Shop hot list (where TikTok Shop runs) filtered to the category, Amazon best sellers when the pack has the category page
   S.bestsellers = { cadence: 'weekly', family: 'price-offer', async run(b, L, note) {
     const words = new Set(`${b.noun} ${b.category}`.toLowerCase().split(/[^a-z]+/).filter((w) => w.length > 3));
-    if (TT_SHOP.has(b.country)) { const j = await call('tikhub.x.tiktok-shop-web-fetch-hot-selling-products-list', { query: { region: b.country, count: 100 } });
+    if (b.market && TT_SHOP.has(b.market)) { const j = await call('tikhub.x.tiktok-shop-web-fetch-hot-selling-products-list', { query: { region: b.country, count: 100 } });
       const rows = (firstArr(j?.data) || []).map((x) => x.title || x.product_name || x.name || x.product_title).filter(Boolean); const hit = rows.filter((t) => [...words].some((w) => t.toLowerCase().includes(w)));
       L({ key: 'bestsellers.tiktok-shop', label: `TikTok Shop best sellers in your category (${b.country})`, value: hit.length, unit: 'products', items: hit.slice(0, 10), of: rows.length, source: 'TikTok Shop best sellers', family: 'price-offer' }); }
-    else note(`TikTok Shop does not run in ${b.country}`);
+    else note(b.market ? `TikTok Shop does not run in ${b.market}` : 'TikTok Shop not read: your selling market is not confirmed yet');
     if (b.bestSellersUrl) { const j = await call('brightdata.x.amazon-best-sellers', { query: { dataset_id: 'gd_l1vijixj9g2vp7563' }, body: { input: [{ url: b.bestSellersUrl }] } }); const rows = firstArr(j) || [];
       L({ key: 'bestsellers.amazon', label: 'Amazon best sellers in your category', value: rows.length, unit: 'products', items: rows.slice(0, 10).map((r) => r.title || r.name).filter(Boolean), source: 'Amazon best sellers', family: 'price-offer', url: b.bestSellersUrl }); }
   } };

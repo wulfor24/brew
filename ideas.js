@@ -238,7 +238,7 @@ export function createIdeas({ slug, packs, ai, treg, log = console, now = () => 
     const cm = d.communities.map((x, i) => `C${i + 1} ${x.name}${x.weekly ? ` (${x.weekly.toLocaleString('en-IN')} weekly active)` : ''}: ${x.desc || ''}${x.why ? ' · heard: ' + x.why : ''}\n   RULES: ${cut(x.rules, 1100) || 'not read'}`).join('\n');
     const own = c.socials.map((s) => `${s.platform}: ${s.url}`).join(', ') || 'none on record';
     const voice = [...(c.brief.language || [])].slice(0, 16).join(', ');
-    return `BRAND: ${c.name} (${c.profile.host}) · ${c.cat} · ${c.countryName} · prices in ${c.config.currency || ''}
+    return `BRAND: ${c.name} (${c.profile.host}) · ${c.cat} · ${c.countryName || 'selling market not confirmed'} · prices in ${c.config.currency || 'the store’s currency'}
 MARKET: ${marketLine(c.profile)}
 ABOUT: ${c.profile.about || c.brief.oneLine || ''}
 FOUNDERS ON RECORD: ${c.founders.join(', ') || 'none'} · OWN ACCOUNTS: ${own}
