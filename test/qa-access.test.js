@@ -150,3 +150,46 @@ test('FEED-QA-27: one plain note when the catalog is truly empty or the store is
   assert.match(src('build.js'), /storeNote: N\.storeNote \|\| null/);
   const a = appSrc(); assert.match(a, /D\.storeNote \? `<p class="ck2-note">/); assert.match(a, /window\.BREW_NUMBERS\?\.storeNote \? `<p class="ready-note">/);
 });
+
+/* ---------- FEED-QA-30: the selling market ---------- */
+test('FEED-QA-30: hreflang ties never pick a market; EU currencies, domains and the site language count; a close call is "to confirm"', async () => {
+  const { sellingMarket, marketFor } = await import('../market.js');
+  const eu = ['bg-bg', 'cs-cz', 'sk-sk', 'pl-pl', 'hu-hu', 'ro-ro', 'de-de', 'x-default'];
+  const tie = sellingMarket({ currency: 'EUR', hreflang: eu, tld: 'com', lang: 'en' });
+  assert.equal(tie.primary, null, 'a dozen hreflang regions and euro prices: no market is picked'); assert.equal(tie.toConfirm, true); assert.match(tie.why, /^to confirm/);
+  assert.equal(sellingMarket({ currency: 'CZK', hreflang: eu, tld: 'com' }).primary, 'CZ', 'the currency outweighs hreflang counts');
+  assert.equal(sellingMarket({ currency: 'EUR', hreflang: eu, tld: 'com', lang: 'cs' }).primary, 'CZ', 'and so does the site’s language');
+  assert.equal(sellingMarket({ currency: 'PLN', tld: 'pl' }).primary, 'PL');
+  assert.equal(sellingMarket({ currency: 'EUR', tld: 'com', lang: 'de' }).primary, 'DE');
+  assert.equal(sellingMarket({ currency: 'CHF', tld: 'com', lang: 'de' }).primary, 'CH', 'German with francs is Switzerland');
+  assert.equal(sellingMarket({ currency: 'USD', tld: 'co' }).primary, 'US', '.co is a generic name, not Colombia');
+  assert.equal(sellingMarket({ currency: 'EUR', tld: 'com', rivals: ['shop.bg', 'store.bg'] }).primary, null, 'rivals never decide the market');
+  /* the old rules still hold */
+  assert.equal(sellingMarket({ registered: 'US', currency: 'USD', hreflang: ['en-us', 'en-gb', 'en-ca'], tld: 'com' }).primary, 'US');
+  assert.equal(sellingMarket({ registered: 'IN', currency: 'INR', shipsTo: ['IN'], tld: 'in' }).primary, 'IN');
+  /* a saved read that guessed BG from hreflang heals to "to confirm"; a brand answer pins it */
+  const prof = { slug: 'shoe-com', host: 'shoe.com', country: 'BG', currency: 'EUR', market: { v: 1, primary: 'BG', by: 'site', conf: 'low', signals: { currency: 'EUR', hreflang: eu, tld: 'com', lang: 'en' } } };
+  const r = marketFor(prof, []); assert.equal(r.market.primary, null); assert.equal(r.changed, true);
+  assert.equal(marketFor(prof, [{ key: 'market.country.confirmed', v: 'CZ', method: 'brand-confirmed' }]).market.primary, 'CZ');
+  const a = appSrc(); assert.match(a, /\[\[x\.v, x\.v \|\| 'To confirm'\], \.\.\.opts\]/);
+  assert.match(src('build.js'), /if \(!m\.primary && m\.toConfirm\) \{ if \(!p\.country \|\| p\.market\?\.by !== 'site'\) return null;/, 'only a market the site guessed is cleared, never the brand’s or a connected account’s');
+  assert.match(src('reader/stages/open.js'), /lang: lang \? String\(lang\)/);
+});
+test('FEED-QA-30: a saved read whose market the site only guessed heals to "to confirm" on load, without flagging moves', async () => {
+  const os = await import('node:os'), path = await import('node:path');
+  const { createBuilder } = await import('../build.js'), { createPacks } = await import('../brand-pack.js');
+  const quiet = { log() {}, warn() {}, error() {}, info() {} };
+  const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'brew-qa-mk-')), P = createPacks({ ROOT, PUB: path.join(ROOT, 'public'), bucket: null, gToken: null, log: quiet }), slug = 'shoe-com';
+  const eu = ['bg-bg', 'cs-cz', 'sk-sk', 'pl-pl', 'hu-hu', 'ro-ro', 'x-default'];
+  await P.put(slug, 'status.json', { slug, name: 'Shoe', done: true, ready: true, state: 'Ready' });
+  await P.put(slug, 'profile.json', { slug, name: 'Shoe', host: 'shoe.com', country: 'BG', markets: ['BG'], currency: 'EUR', catalog: { products: [] }, market: { v: 1, primary: 'BG', by: 'site', conf: 'low', signals: { currency: 'EUR', hreflang: eu, tld: 'com', lang: 'en' } } });
+  await P.put(slug, 'ledger.json', [{ key: 'market.country', v: 'BG', note: 'the UK: hreflang' }]); await P.put(slug, 'config.json', { country: 'BG' });
+  await P.put(slug, 'moves.json', { 1: { n: 1, title: 'Move 1', meta: { at: 'a' } } });
+  const b = createBuilder({ ROOT, packs: P, ai: { onCharge() {} }, treg: { onCharge() {} }, log: quiet, modules: { reader: null, brief: null, moves: { SPECS: [{ n: 1 }], createMovesEngine: () => ({ runAll: async () => {} }) }, pdf: null } });
+  const r = await b.marketCheck(slug);
+  assert.deepEqual([r.was, r.now, r.moved, r.toConfirm], ['BG', null, false, true]);
+  const p = await P.getJSON(slug, 'profile.json'); assert.equal(p.country, null); assert.equal(p.market.toConfirm, true);
+  assert.equal((await P.getJSON(slug, 'ledger.json')).find((e) => e.key === 'market.country'), undefined, 'no guessed market left on the fact sheet');
+  assert.deepEqual(Object.keys((await P.getJSON(slug, 'updates.json', {}))?.stale || {}), [], 'nothing rewritten, nothing spent');
+  assert.equal(await b.marketCheck(slug), null, 'healed once');
+});

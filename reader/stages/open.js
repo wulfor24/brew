@@ -162,7 +162,7 @@ export async function open(ctx) {
   const curV = vote('currency'); profile.currency = sm?.currency || curV[0]?.[0] || null; /* the shop's own currency is what products.json prices are in; the served one follows the visitor */
   const addr = org?.address?.addressCountry || org?.address?.[0]?.addressCountry;
   const msig = { registered: sm?.country || null, currency: profile.currency, shipsTo: Array.isArray(sm?.ships_to_countries) ? sm.ships_to_countries.slice(0, 300) : null, hreflang: [...new Set(hreflang.map((x) => String(x).toLowerCase()))].filter((x) => x !== 'x-default').slice(0, 40),
-    localePath: loc && loc.includes('-') ? loc : null, tld: profile.host.split('.').pop(), phone, orgCountry: addr ? String(addr.name || addr).slice(0, 2).toUpperCase() : null, served: shCountry || null };
+    localePath: loc && loc.includes('-') ? loc : null, tld: profile.host.split('.').pop(), lang: lang ? String(lang).toLowerCase().slice(0, 12) : null, phone, orgCountry: addr ? String(addr.name || addr).slice(0, 2).toUpperCase() : null, served: shCountry || null };
   const mk = sellingMarket(msig);
   applyMarket(profile, mk);
   if (!mk.primary) { profile.country = null; profile.markets = []; profile.market = { ...mk, at: new Date().toISOString() }; }

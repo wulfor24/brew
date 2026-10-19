@@ -1561,7 +1561,15 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const p = await packs.getJSON(slug, 'profile.json'); if (!p?.host || !p.slug) return null;
     const L = await packs.getJSON(slug, 'ledger.json', []) || [];
     const rows = [...realRows(await packs.getJSON(slug, 'connected-ledger.json', [])), ...realRows(await packs.getJSON(slug, 'private/connected-ledger.json', []))];
-    const { market: m, changed } = marketFor(p, L, rows); if (!changed || !m.primary) return null;
+    const { market: m, changed } = marketFor(p, L, rows); if (!changed) return null;
+    /* too close to call from the site alone (market.js toConfirm): a market the read only guessed is cleared, so the check page
+       asks for it ("To confirm"). Nothing is rewritten for it and nothing is spent; the brand's answer pins it */
+    if (!m.primary && m.toConfirm) { if (!p.country || p.market?.by !== 'site') return null;
+      const was = p.country; Object.assign(p, { country: null, markets: [], market: { ...m, at: new Date().toISOString() } });
+      for (const k of ['market.country', 'market.registered']) { const i = L.findIndex((x) => x.key === k); if (i >= 0) L.splice(i, 1); }
+      await packs.put(slug, 'profile.json', p); await packs.put(slug, 'ledger.json', L); packs.drop?.(slug); await onPack(slug);
+      log.log?.(`[market] ${slug}: ${was} → to confirm (${m.why})`); return { was, now: null, moved: false, by: 'site', toConfirm: true }; }
+    if (!m.primary) return null;
     const was = p.market?.primary || p.country || null, moved = !!was && was !== m.primary;
     applyMarket(p, m);
     const at = new Date().toISOString().slice(0, 10), put = (e) => { const i = L.findIndex((x) => x.key === e.key); if (i >= 0) L[i] = { ...L[i], ...e }; else L.push(e); };

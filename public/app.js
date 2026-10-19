@@ -591,8 +591,8 @@
   };
 
   /* ---------- "Check what we read": the brand confirms the facts everything else is built on ---------- */
-  const COUNTRIES = [['IN', 'India'], ['US', 'United States'], ['GB', 'United Kingdom'], ['AE', 'UAE'], ['CA', 'Canada'], ['AU', 'Australia'], ['SG', 'Singapore'], ['DE', 'Germany'], ['FR', 'France']];
-  const CURRENCIES = ['INR', 'USD', 'GBP', 'AED', 'CAD', 'AUD', 'SGD', 'EUR'];
+  const COUNTRIES = [['IN', 'India'], ['US', 'United States'], ['GB', 'United Kingdom'], ['AE', 'UAE'], ['CA', 'Canada'], ['AU', 'Australia'], ['SG', 'Singapore'], ['DE', 'Germany'], ['FR', 'France'], ['NL', 'Netherlands'], ['ES', 'Spain'], ['IT', 'Italy'], ['CZ', 'Czechia'], ['PL', 'Poland']];
+  const CURRENCIES = ['INR', 'USD', 'GBP', 'AED', 'CAD', 'AUD', 'SGD', 'EUR', 'CZK', 'PLN'];
   const checkRead = async () => {
     if (signWall('check')) return;
     view = 'check'; window.scrollTo(0, 0); const slug = B.slug || BR;
@@ -601,7 +601,7 @@
     const srcLine = (x) => x.src ? `<a class="ck2-src" ${x.url ? `href="${esc(x.url)}" target="_blank" rel="noopener"` : ''}>${ic('link', 's14')}${esc(srcShort(x.src))}${x.at ? ` · ${esc(x.at)}` : ''}</a>` : `<span class="ck2-src is-none">Not found on the site</span>`;
     const field = (x, group) => { const opts = x.type === 'country' ? COUNTRIES : x.type === 'currency' ? CURRENCIES.map((c) => [c, c]) : null;
       const wide = x.key === 'descriptor';
-      return `<label class="ck2-f${wide ? ' ck2-wide' : ''}"><span>${esc(x.label)}</span>${wide ? `<textarea data-g="${group}" data-k="${x.key}" rows="1" placeholder="Add it if you know it">${esc(x.v)}</textarea>` : opts ? `<select data-g="${group}" data-k="${x.key}">${(opts.some(([v]) => v === x.v) ? opts : [[x.v, x.v], ...opts]).map(([v, n]) => `<option value="${esc(v)}"${v === x.v ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select>` : `<input data-g="${group}" data-k="${x.key}" value="${esc(x.v)}" placeholder="Add it if you know it">`}${x.src ? '' : '<span class="ck2-src is-none">Not found on the site</span>'}</label>`; };
+      return `<label class="ck2-f${wide ? ' ck2-wide' : ''}"><span>${esc(x.label)}</span>${wide ? `<textarea data-g="${group}" data-k="${x.key}" rows="1" placeholder="Add it if you know it">${esc(x.v)}</textarea>` : opts ? `<select data-g="${group}" data-k="${x.key}">${(opts.some(([v]) => v === x.v) ? opts : [[x.v, x.v || 'To confirm'], ...opts]) /* a market the read couldn't call is asked, never guessed */.map(([v, n]) => `<option value="${esc(v)}"${v === x.v ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select>` : `<input data-g="${group}" data-k="${x.key}" value="${esc(x.v)}" placeholder="Add it if you know it">`}${x.src ? '' : '<span class="ck2-src is-none">Not found on the site</span>'}</label>`; };
     /* one line per section says where its fields were read, instead of a source under every field */
     const readFrom = (xs) => { const hs = [...new Set(xs.filter((x) => x.src).map((x) => srcShort(x.src).replace(/^(?:https?:\/\/)?(?:www\.)?/, '').split('/')[0]))], at = xs.find((x) => x.at)?.at;
       return hs.length ? `Read from ${esc(hs.slice(0, 2).join(' and '))}${at ? ` on ${esc(fmtDay(Date.parse(at)) || at)}` : ''}` : ''; };
