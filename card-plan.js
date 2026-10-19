@@ -9,6 +9,8 @@
 // Rule: no step is ever shown as done before it happened ("Decided" is never a plan step).
 import { recipeOfCard, labelFor } from './remix.js';
 import { familyOf, FAMILY_NAME } from './studio.js';
+import { one, oneOf } from './text-fit.js'; // the asset said as one; saved option counts said as one
+export { one, oneOf };
 
 export const PLAN_V = 1;
 const cut = (s, n) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
@@ -28,7 +30,9 @@ export const namedItems = (c = {}, n = 3) => {
 };
 
 /* how many finished assets the make step puts on the stage, per widget family */
-const MAKE_N = { meta_ad: 3, social: 3, post: 3, crm: 3, store: 3, vis: 3, search: 3, listing: 3, print: 3, meta_ops: 1, setup: 1, brief: 1, decision: 1 };
+/* one, always (Param, 19 Oct: "let's not give 3 options anywhere: lead with only 1 and let them redo it if they don't like it").
+   Every family's make step makes ONE finished asset; Redo it (remix /more) makes the next take, the last one stays in History */
+const MAKE_N = { meta_ad: 1, social: 1, post: 1, crm: 1, store: 1, vis: 1, search: 1, listing: 1, print: 1, meta_ops: 1, setup: 1, brief: 1, decision: 1 };
 // what the make step makes, in words, per family and per action where the family is too broad
 const ASSET = {
   meta_ad: (k, c) => ({ carousel_ad: 'carousel ads', collection_ad: 'collection ads', catalog_ad: 'catalog ads', whatsapp_ad: 'WhatsApp chat ads' }[k] || (c?.make?.format && /video|reel/i.test(c.make.format) ? 'video ads' : 'Meta ads')),
@@ -50,56 +54,56 @@ const WHERE = (target, fam) => target?.name && target.name !== 'A person' ? targ
 const STEPS = {
   meta_ad: ({ items, k, n, asset, where, c }) => [
     { k: 'gather', t: items.length && (['add_variants', 'swap_creative', 'swap_copy'].includes(k) || items.some((x) => /\b(ads?|creatives?|hooks?|video|reel)\b/i.test(x))) ? `Pick the winning ads${items.length ? `: ${andList(items)}` : ''}` : `Pick the product and the angle${items.length ? `: ${andList(items)}` : ''}`, s: items.length ? 'Named on the card, from its numbers' : cut(c.sub, 110) },
-    { k: 'write', t: `Write ${n} new versions, one hook angle each`, s: c.make?.pieces ? cut(c.make.pieces, 90) : 'Different openings on the same offer and product' },
-    { k: 'make', t: `Make the ${asset}`, s: `${n} ${asset}, ready to run on ${where}` },
+    { k: 'write', t: 'Write the ad, with one strong hook', s: c.make?.pieces ? cut(c.make.pieces, 90) : 'The offer and the product, in the brand’s voice' },
+    { k: 'make', t: `Make the ${one(asset)}`, s: `Ready to run on ${where}; redo it if it isn’t right` },
     { k: 'review', t: 'Review each one on the stage', s: 'Change any version until it’s right; nothing is lost' },
     { k: 'ready', t: `Ready: share the brief so the team launches it on ${where}`, s: 'It copies the brief and a link to everything' }],
   social: ({ items, n, asset, c }) => [
     { k: 'gather', t: `Pick the product and the moment${items.length ? `: ${andList(items)}` : ''}`, s: cut(c.sub, 110) },
-    { k: 'write', t: `Write ${n} captions and the words on each slide`, s: c.make?.pieces ? cut(c.make.pieces, 90) : 'In the brand’s voice, one idea per post' },
-    { k: 'make', t: `Make the ${asset}`, s: `${n} versions with their pictures` },
+    { k: 'write', t: 'Write the caption and the words on each slide', s: c.make?.pieces ? cut(c.make.pieces, 90) : 'In the brand’s voice, one idea' },
+    { k: 'make', t: `Make the ${one(asset)}`, s: 'With its pictures; redo it if it isn’t right' },
     { k: 'review', t: 'Review each one on the stage', s: 'Change the words or the picture until it’s right' },
     { k: 'ready', t: 'Ready: share the brief, then post it yourself', s: 'The brief carries the post and where it goes' }],
   post: ({ k, n, asset, c, where }) => [
     { k: 'gather', t: c.post?.where?.[0]?.name ? `Read the thread on ${c.post.where[0].name}` : 'Read where it goes and what people asked', s: c.post?.where?.[0]?.rule ? cut(c.post.where[0].rule, 110) : cut(c.sub, 110) },
-    { k: 'write', t: `Write ${n} ${k === 'short_video' ? 'scripts' : asset}, in the brand’s own words`, s: 'Only facts we can back' },
-    { k: 'make', t: `Make the ${asset}`, s: k === 'short_video' ? `${n} cuts with their hooks` : `${n} versions to pick from` },
+    { k: 'write', t: `Write the ${k === 'short_video' ? 'script' : one(asset)}, in the brand’s own words`, s: 'Only facts we can back' },
+    { k: 'make', t: `Make the ${one(asset)}`, s: k === 'short_video' ? 'The hook in the first second; redo it if it isn’t right' : 'Redo it if it isn’t right' },
     { k: 'review', t: 'Review each one on the stage', s: 'Change it until it sounds like you' },
     { k: 'ready', t: where === 'Meta Ads' ? 'Ready: share the brief so the team runs it on Meta Ads' : `Ready: share the brief, then post it ${where === 'where it goes' ? 'yourself' : `on ${where}`}`, s: where === 'Meta Ads' ? 'It copies the brief, the video and the ad text for Ads Manager' : 'The brief carries the post and where it goes' }],
   crm: ({ items, n, asset, c, where }) => [
     { k: 'gather', t: `Pick who gets it${items.length ? `: ${andList(items)}` : ''}`, s: 'And who is left out' },
-    { k: 'write', t: `Write ${n} ${asset}`, s: cut((c.detail?.how || [])[0] || 'Subject, words and the button', 110) },
-    { k: 'make', t: `Make the ${asset}`, s: `${n} versions, as people will see them` },
+    { k: 'write', t: `Write the ${one(asset)}`, s: cut((c.detail?.how || [])[0] || 'Subject, words and the button', 110) },
+    { k: 'make', t: `Make the ${one(asset)}`, s: 'As people will see it' },
     { k: 'review', t: 'Review each one on the stage', s: 'Change the words or the timing until it’s right' },
     { k: 'ready', t: `Ready: share the brief so the team sends it from ${where}`, s: 'It copies the brief and a link to everything' }],
   store: ({ items, n, asset, c, where }) => [
     { k: 'gather', t: `Pick the page${items.length ? `: ${andList(items)}` : 's it changes'}`, s: cut(c.sub, 110) },
-    { k: 'write', t: `Write ${n} ${asset}`, s: cut((c.detail?.how || [])[0] || 'What shoppers read, in the brand’s voice', 110) },
-    { k: 'make', t: `Make the ${asset}`, s: `${n} versions, as the page will show them` },
+    { k: 'write', t: `Write the ${one(asset)}`, s: cut((c.detail?.how || [])[0] || 'What shoppers read, in the brand’s voice', 110) },
+    { k: 'make', t: `Make the ${one(asset)}`, s: 'As the page will show it' },
     { k: 'review', t: 'Review each one on the stage', s: 'Change it until it’s right' },
     { k: 'ready', t: `Ready: share the brief so the team publishes it on ${where}`, s: 'It copies the brief and a link to everything' }],
   vis: ({ items, n, asset, c, where }) => [
     { k: 'gather', t: `Pick the question and its sources${items.length ? `: ${andList(items)}` : ''}`, s: cut(c.sub, 110) },
-    { k: 'write', t: `Write ${n} ${asset}`, s: 'Every claim with its source and date' },
-    { k: 'make', t: `Make the ${asset}`, s: `${n} versions AI tools can cite` },
+    { k: 'write', t: `Write the ${one(asset)}`, s: 'Every claim with its source and date' },
+    { k: 'make', t: `Make the ${one(asset)}`, s: 'One AI tools can cite' },
     { k: 'review', t: 'Review each one on the stage', s: 'Change it until every line is backed' },
     { k: 'ready', t: `Ready: share the brief so the team publishes it on ${where}`, s: 'It copies the brief and a link to everything' }],
   search: ({ items, n, c, where }) => [
     { k: 'gather', t: `Pick the searches to win${items.length ? `: ${andList(items)}` : ''}`, s: cut(c.sub, 110) },
-    { k: 'write', t: `Write ${n} sets of headlines and descriptions`, s: 'Each under the character limits' },
-    { k: 'make', t: 'Make the search ads', s: `${n} ad groups with keywords and budget` },
+    { k: 'write', t: 'Write the headlines and descriptions', s: 'Each under the character limits' },
+    { k: 'make', t: 'Make the search ad', s: 'The ad group with keywords and budget' },
     { k: 'review', t: 'Review each one on the stage', s: 'Change it until it’s right' },
     { k: 'ready', t: `Ready: share the brief so the team launches it on ${where}`, s: 'The brief says the spend' }],
   listing: ({ items, n, asset, c, where }) => [
     { k: 'gather', t: `Pick the listings${items.length ? `: ${andList(items)}` : ''}`, s: cut(c.sub, 110) },
-    { k: 'write', t: `Write ${n} ${asset}`, s: 'One name used everywhere' },
-    { k: 'make', t: `Make the ${asset}`, s: `${n} versions, listing by listing` },
+    { k: 'write', t: `Write the ${one(asset)}`, s: 'One name used everywhere' },
+    { k: 'make', t: `Make the ${one(asset)}`, s: 'Listing by listing' },
     { k: 'review', t: 'Review each one on the stage', s: 'Change it until it’s right' },
     { k: 'ready', t: `Ready: share the brief so the team pushes it to ${where}`, s: 'It copies the brief and a link to everything' }],
   print: ({ n, c }) => [
     { k: 'gather', t: 'Pick what goes in the box', s: cut(c.sub, 110) },
-    { k: 'write', t: `Write ${n} fronts and backs`, s: 'Short, with one thing to do' },
-    { k: 'make', t: 'Make the insert designs', s: `${n} versions with size and quantity` },
+    { k: 'write', t: 'Write the front and back', s: 'Short, with one thing to do' },
+    { k: 'make', t: 'Make the insert design', s: 'With size and quantity' },
     { k: 'review', t: 'Review each one on the stage', s: 'Change it until it’s right' },
     { k: 'ready', t: 'Ready: share the brief with whoever prints it', s: 'The brief has everything the printer needs' }],
   meta_ops: ({ items, k, asset, c, where }) => [
@@ -134,7 +138,7 @@ export function actionOfCard(c = {}) { const r = recipeOfCard(c); const action =
 
 // steps a writer (AI) gave the card: their words, the action's own make and last steps
 const fromAi = (ai, det) => {
-  const xs = (Array.isArray(ai) ? ai : []).map((x) => cut(typeof x === 'string' ? x : x?.t, 90)).filter((x) => x && !/\bdecided\b/i.test(x));
+  const xs = (Array.isArray(ai) ? ai : []).map((x) => cut(oneOf(typeof x === 'string' ? x : x?.t), 90)).filter((x) => x && !/\bdecided\b/i.test(x));
   if (xs.length < 3 || xs.length > 6) return null;
   const body = xs.slice(0, -1).map((t) => ({ k: 'step', t, s: '' }));
   const mi = body.findIndex((x) => /\b(make|draft|write|generate|design|build|create|shoot|render|produce)\b/i.test(x.t));
@@ -149,7 +153,7 @@ export const caseSummary = (c = {}, plan) => {
   // the first reason that says something new: not a bare "Label: ₹123", not the card's own line again
   const why = (c.detail?.why || []).find((x) => x && !/^[^:]{2,60}:\s*[₹$€£]?[\d.,]+\s*$/.test(x) && sq(x) !== sq(c.sub) && sq(x) !== sq(c.title));
   return [cut(c.title, 140).replace(/[.!?]?$/, '.'), sub && sub !== c.title ? sub.replace(/[.!?…]?$/, (m) => m || '.') : '', why ? cut(why, 160).replace(/[.!?]?$/, '.') : '',
-    plan.n ? `Brew makes ${plan.n} ${plan.make.what} for you to review; nothing ships until you say so.` : 'Nothing ships until you say so.', `Next: ${plan.cta}.`].filter(Boolean).join(' ');
+    plan.n ? `Brew makes the ${one(plan.make.what)} for you to review; redo it if it isn’t right. Nothing ships until you say so.` : 'Nothing ships until you say so.', `Next: ${plan.cta}.`].filter(Boolean).join(' ');
 };
 
 /* the plan for a card. draft: the card's first draft (drafts-bg draftView), which becomes v0 on the jam's stage */
@@ -173,7 +177,7 @@ export function planFor(c = {}, { draft = null, action: forced = null } = {}) {
   let by = 'rule';
   const ai = !batch && c.plan?.by === 'ai' ? fromAi(c.plan.steps, steps) : null; if (ai) { steps = ai; by = 'ai'; }
   const plan = { v: PLAN_V, action, family, asset: FAMILY_NAME[family] || 'Version', cta, n, batch, by, target: ctx.where,
-    make: { n, what: asset, kind: family }, steps: steps.map((s, i) => ({ n: i + 1, ...s })), draft: draft ? { as: draft.as, images: draft.images || [], video: draft.video || null, poster: draft.poster || null, ratio: draft.ratio || null, title: draft.title || '', copy: draft.copy || '' } : null,
+    make: { n, what: asset, one: one(asset), kind: family }, steps: steps.map((s, i) => ({ n: i + 1, ...s })), draft: draft ? { as: draft.as, images: draft.images || [], video: draft.video || null, poster: draft.poster || null, ratio: draft.ratio || null, title: draft.title || '', copy: draft.copy || '' } : null,
     conflict: !!recipe.conflict };
   plan.summary = caseSummary(c, plan);
   return plan;
@@ -181,6 +185,6 @@ export function planFor(c = {}, { draft = null, action: forced = null } = {}) {
 
 // the plan as Markdown, for the jam brief (jam-brief.js) and every prompt that reads the card (cardBrief)
 export const planMd = (plan) => plan ? `${plan.steps.map((s) => `${s.n}. ${s.t}${s.s ? ` (${s.s})` : ''}`).join('\n')}\n\n**Next:** ${plan.cta}.` : '';
-export const planPrompt = (plan) => plan ? `\nThe card's plan toward “${plan.cta}” (${plan.asset}${plan.n ? `, the make step makes ${plan.n} ${plan.make.what}` : ''}):\n${plan.steps.map((s) => `${s.n}. ${s.t}`).join('\n')}${plan.draft?.copy || plan.draft?.title ? `\nThe first draft the card shows (v0 on the jam's stage, ${plan.draft.as || 'draft'}): ${cut([plan.draft.title, plan.draft.copy].filter(Boolean).join(' · '), 400)}` : ''}` : '';
+export const planPrompt = (plan) => plan ? `\nThe card's plan toward “${plan.cta}” (${plan.asset}${plan.n ? `, the make step makes one ${one(plan.make.what)}: never several options to pick from` : ''}):\n${plan.steps.map((s) => `${s.n}. ${s.t}`).join('\n')}${plan.draft?.copy || plan.draft?.title ? `\nThe first draft the card shows (v0 on the jam's stage, ${plan.draft.as || 'draft'}): ${cut([plan.draft.title, plan.draft.copy].filter(Boolean).join(' · '), 400)}` : ''}` : '';
 // the plan after someone changed its steps in the jam's chat: their steps, the action's own make and last steps
 export const withSteps = (plan, steps) => { if (!plan) return plan; const s = fromAi(steps, plan.steps); return s ? { ...plan, steps: s.map((x, i) => ({ ...x, n: i + 1 })), by: 'chat' } : plan; };

@@ -296,7 +296,7 @@ export const ACTION_CHIPS = {
   shift_budget: ['Smaller shift', 'Winners only', 'Keep total spend the same', 'Move it back after 7 days'],
   new_test: ['Smaller budget', 'New audience', 'Read it after 7 days', 'One hook only'],
   swap_copy: ['Shorter', 'Number first', 'Keep the photo', 'A real review as the hook'],
-  add_variants: ['Three cuts of this ad', 'A real review as the hook', 'Shorter primary text', 'Number first'],
+  add_variants: ['A sharper hook', 'A real review as the hook', 'Shorter primary text', 'Number first'],
   swap_creative: ['New hook', 'New look, same offer', 'Replace the most tired ad', 'Shorter primary text'],
   whatsapp_ad: ['Warmer first message', 'Answer price in the chat', 'Shorter chat', 'Shorter primary text'],
   carousel_ad: ['Five cards', 'One product per card', 'Proof on the last card', 'Shorter card lines'],

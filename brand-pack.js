@@ -17,7 +17,7 @@ import { fitCta, fillMake, readSrc } from './cards-gen.js';
 import { cleanBrief, renderBrief } from './brief.js'; // a saved brief's "null" cells heal at load
 import { aboutOf, OLD_ABOUT } from './derive.js'; // a saved config.about written by the old rule heals at load
 import { prototypeConnectors } from './seed-template.js'; // DUMMY: connector copy that promises no action
-import { sentenceCase } from './text-fit.js';
+import { sentenceCase, oneOf, oneTake } from './text-fit.js';
 import { withLearned, learnedMoveNs, learnedTerms } from './brand-learnings.js'; // what the team told Brew (pasted into a jam): in every prompt's system text
 import { sandboxName, virtualFile } from './demo-mode.js'; // Demo Mode: per-session private files
 
@@ -193,7 +193,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
     for (const [i, id] of (config.statics?.length ? config.statics : Object.keys(staticText || {})).entries()) { const t = staticText[id] || {}; if (have.has(`static-${id}`) || !t.headline) continue;
       posts.push({ id: `static-${id}`, agent: 'creative', sector: 'creatives', type: 'idea', lane, roles: ['brand', 'growth', 'founder'], src: 'Move 21 · static ad', time: `${12 + i * 17} min`, kind: 'media', origin: 'build',
         images: [`b/${slug}/statics/${id}.jpg`], campaign: 'From your ad plan', title: String(t.headline).slice(0, 120), sub: `${t.small ? `${String(t.small).replace(/\.?$/, '.')} ` : ''}Made from Move 21 with a real ${seed.brand?.name || 'product'} photo. Jam on it to change it, then download it for your team to run.`,
-        detail: { why: ['The concept comes from the ad-creative move.', 'Every number on it is in your fact sheet.'], how: ['Jam on it to change the words or the scene.', 'Share the brief and your team puts it in the ad account.'] }, cta: { label: 'Generate versions' } }); }
+        detail: { why: ['The concept comes from the ad-creative move.', 'Every number on it is in your fact sheet.'], how: ['Jam on it to change the words or the scene.', 'Share the brief and your team puts it in the ad account.'] }, cta: { label: 'Make the ad' } }); }
     const prods = catalogOf(profile); /* one photo per product, sold-out placeholders skipped */
     if (prods.length) { const lanePics = new Set(Object.values(seed.laneImg || {}).map((x) => String(x).replace(/^\//, '')));
       const hash = (str) => [...str].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7), used = new Map();
@@ -217,7 +217,12 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
       detail: { ...(c.detail || {}), how: (c.detail?.how || []).map((h) => h.replace(/^Queue the kept ones as one test\.?$/, 'Download the kept ones for your team to run.').replace(/^Open the set\b/, 'Open the batch')) } };
     return c;
   };
-  const fitCard = (keep, ctx = {}) => (c) => (c && typeof c === 'object' ? fitCta(fillMake(healCopy({ ...c, ...(c.title ? { title: sentenceCase(c.title, keep) } : {}) }, ctx))) : c); /* fillMake: a card that names an asset but was written without "make" gets one (cards-gen.js inferMake) */
+  /* one version, always: a saved asset line that names a count of options ("3 ads highlighting…") says one */
+  const oneMake = (c) => { let x = c.make?.pieces && oneOf(c.make.pieces) !== c.make.pieces ? { ...c, make: { ...c.make, pieces: oneOf(c.make.pieces) } } : c;
+    for (const k of ['title', 'sub']) if (typeof x[k] === 'string' && oneTake(x[k]) !== x[k]) x = { ...x, [k]: oneTake(x[k]) };
+    if (Array.isArray(x.detail?.how) && x.detail.how.some((h) => typeof h === 'string' && oneTake(h) !== h)) x = { ...x, detail: { ...x.detail, how: x.detail.how.map((h) => (typeof h === 'string' ? oneTake(h) : h)) } };
+    return x; };
+  const fitCard = (keep, ctx = {}) => (c) => (c && typeof c === 'object' ? fitCta(fillMake(healCopy(oneMake({ ...c, ...(c.title ? { title: sentenceCase(c.title, keep) } : {}) }), ctx))) : c); /* fillMake: a card that names an asset but was written without "make" gets one (cards-gen.js inferMake) */
   const fitCards = (sd, ctx) => { const keep = keepOf(ctx); return { ...sd, posts: (sd.posts || []).map(fitCard(keep, ctx)) }; };
   const fitPools = (pl, keep) => Object.fromEntries(Object.entries(pl).map(([k, v]) => [k, Array.isArray(v) ? v.map(fitCard(keep)) : v]));
   const ipRow = (r) => (Array.isArray(r) && /\(in progress\)$/.test(r[1] || '') ? [r[0], sentenceCase(r[1], [], { force: true }), ...r.slice(2)] : r); // the index's unwritten rows carry skill names

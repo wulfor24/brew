@@ -3840,7 +3840,10 @@
     items.push(['data-rx="share-team"', 'copy', 'Share with my team', 'Copy the brief and a link to paste in your team’s chat.']);
     if (media && (p.image || p.video || p.draft?.images?.length) && !ch.finalPending) items.push([`data-fn-studio="${esc(ch.id)}"`, 'sparkles', fin ? 'Change the final…' : 'Choose how the final is made…', 'Pick the photos, the model or a Sloosh Space yourself.']);
     if (dlTool(ch, ch)) items.push(['data-st-dl', 'down', 'Download', 'This version’s files, as they are now.']);
-    return `<div class="ship one ${fix ? 'warn' : 'ok'}">${strip}<div class="ship-tx is-step"><b><span class="ship-l">${head}</span>${tipBtn(tip)}</b></div><div class="ship-btns">${shipMenu(ch, items)}${main}</div></div>`; };
+    /* Redo it: one new take beside the one way forward, whenever the version can still change (not while something is being made) */
+    const busy = ch.copyPending || ch.videoPending || ch.imagePending || ch.remakePending || ch.finalPending || ch.ctaPending;
+    const redo = !busy && !(op && !op.picked) ? `<button class="btn btn-ghost ship-redo" data-rx="variants" title="A new take from a new angle. This one stays in History.">${ic('shuffle', 's16')}Redo it</button>` : '';
+    return `<div class="ship one ${fix ? 'warn' : 'ok'}">${strip}<div class="ship-tx is-step"><b><span class="ship-l">${head}</span>${tipBtn(tip)}</b></div><div class="ship-btns">${shipMenu(ch, items)}${redo}${main}</div></div>`; };
   /* the options as tabs above the stage, named by their angle, never v1–v5 */
   const optTabs = (ch, viewing) => { const op = ch.options; if (!op || viewing || ch.batchKey) return '';
     if (op.picked) { const it = op.list.find((x) => x.id === op.picked); return it ? `<div class="st-opts is-picked"><span>${ic('check', 's14')}Using <b>${esc(it.name)}</b></span><button type="button" class="linkbtn" data-opt-change>Change</button></div>` : ''; }
@@ -3889,24 +3892,22 @@
   /* first thing on the chat: the case in plain words (what we saw, why it matters) and what you do next, as steps */
   /* the card's plan (card-plan.js), and whether its make step has run: before it has, the jam's main button is the card's own action */
   const planOf = (ch) => ch?.plan || (RX.p ? cardOf(RX.p).plan : null) || null;
-  /* the card's button, said as what it really does from here (Param, 19 Oct: "if the video is already there, what does Make the
-     video do?"): once the stage holds a first draft (the card's own, or the copy and photo written when the jam opened), the
-     button makes the plan's n MORE, each a new angle, and the first draft stays as v1. Same words on the button, its tip and
-     the chat's last line, for every family */
+  /* one, always (Param, 19 Oct: "let's not give 3 options anywhere: lead with only 1 and let them redo it"): the card's button
+     makes the one version on the stage what the card asked for, and Redo it makes the next take. hasMade: the stage already
+     holds it (a short video's clip, an ad's or a post's picture, a written family's words), so the plan's button steps aside */
   const hasDraft = (ch) => { const p = ch?.pkg || {}; return ch?.v0 === 'draft' || !!(p.video || /^\/?gen\//.test(p.image || '') || p.draft?.images?.length || p.draft?.video); };
-  const planGo = (ch, pl) => { const n = pl?.n || 1, what = pl?.make?.what || 'versions', more = n > 1 && hasDraft(ch) && !/\b(versions?|variations?|more|another|new)\b/i.test(pl?.cta || '');
-    const d = hasDraft(ch), film = isReel(ch) ? ': one is filmed now, the others when you open them' : ['meta_ad', 'social'].includes(ch?.family) ? ', each with its own picture' : '';
-    return { label: more ? `Make ${n} more ${what}` : pl?.cta || 'Make it', more,
-      line: n > 1 ? `${d ? `Your first draft stays as v${curN(ch)}. ` : ''}Brew makes ${n} ${d ? 'new ' : ''}${what} on the stage${d ? ', each a new angle' : ''}${film}` : `Brew makes the ${what} on the stage` }; };
-  const planMade = (ch) => !!(ch?.planRun || ch?.batchKey || planOf(ch)?.batch || ch?.state === 'jam' || !planOf(ch));
+  const hasMade = (ch) => { if (!ch || ch.copyPending) return false; const p = ch.pkg || {}, rows = p.cards || p.slides || [];
+    if (isReel(ch)) return !!p.video; if (['meta_ad', 'social'].includes(ch.family) && !ch.realOnly) return rows.length > 1 ? rows.every((_, i) => (p.cardImages || [])[i]) : !!(/^\/?gen\//.test(p.image || '') || p.draft?.images?.length); return true; };
+  const planGo = (ch, pl) => ({ label: pl?.cta || 'Make it', line: `Brew makes the ${pl?.make?.one || pl?.make?.what || 'version'} on the stage${isReel(ch) ? ' and films it' : ['meta_ad', 'social'].includes(ch?.family) ? ' with its picture' : ''}; redo it if it isn’t right` });
+  const planMade = (ch) => !!(ch?.planRun || ch?.batchKey || planOf(ch)?.batch || ch?.state === 'jam' || !planOf(ch) || hasMade(ch));
   const planBusy = (ch) => { const pl = planOf(ch); return pl?.n ? `Making ${pl.n > 1 ? `${pl.n} ${pl.make?.what || 'versions'}` : `the ${pl.make?.what || 'version'}`}…` : 'Working on it…'; };
   /* first thing on the chat: the case in plain words, the card's plan toward its action, and the one thing to press next */
   const caseBrief = (ch) => { const c = cardOf(RX.p), d = c.detail || {}, cut = (x, n) => { x = String(x || '').trim(); return x.length > n ? x.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : x; };
     const why = (d.why || []).filter((x) => x && !/^[^:]{2,60}:\s*[₹$€£]?[\d.,]+\s*$/.test(x) && !/^[^:“"]{2,90}\([^)]*\):/.test(x) /* evidence rows (label (source): value), not reasons */).slice(0, 2), fix = ch.verdict === 'fix';
     const pl = planOf(ch), made = planMade(ch), opens = (ch.pkg?.where || []).some((w) => /^https?:/.test(w.url || '')), rule = (ch.pkg?.where || []).map((w) => w.rule).find(Boolean);
-    const next = !made && pl ? `Press “${planGo(ch, pl).label}” below. ${planGo(ch, pl).line}; change any of them, then share the brief.`
+    const next = !made && pl ? `Press “${planGo(ch, pl).label}” below. ${planGo(ch, pl).line}. Change it, then share the brief.`
       : fix ? `Fix this first: ${(ch.fixes || []).join('; ')}. Press “Fix it with AI”, or tell me how.`
-      : ch.family === 'post' ? `Happy with it? Share the brief: it carries the post and where it goes; you post it yourself.${rule ? ` ${rule}` : ''}` : 'Happy with it? Share the brief with the ShopOS team or your own team. It copies the brief and a link to everything.';
+      : ch.family === 'post' ? `Happy with it? Share the brief: it carries the post and where it goes; you post it yourself. Not right? Redo it.${rule ? ` ${rule}` : ''}` : 'Happy with it? Share the brief with the ShopOS team or your own team. Not right? Redo it, or tell me what to change.';
     return `<div class="case"><small class="case-k">The case${c.src ? ` · ${esc(c.src)}` : ''}</small>
       <b class="case-t">${esc(cut(c.title, 140))}</b>${c.sub ? `<p>${esc(cut(c.sub, 240))}</p>` : ''}
       ${why.length ? `<div class="case-s"><small>Why it matters</small><ul>${why.map((x) => `<li>${esc(cut(x, 200))}</li>`).join('')}</ul></div>` : ''}
@@ -3934,7 +3935,7 @@
       ${fitKnobs(ch.knobs).map((k) => { const multi = k.kind === 'copy', sel = (RX.knobSel || {})[k.k] || [], cur = (ch.pkg.knobs || {})[k.k];
         return `<div class="kn"><span>${esc(k.label)}${k.kind === 'image' ? ' <em>new photo</em>' : multi ? ' <em>pick one or more</em>' : ''}</span><div>${k.opts.map((o) => `<button class="chip${multi && sel.includes(o) ? ' picked' : ''}" data-knob="${k.k}" data-v="${esc(o)}" data-multi="${multi ? 1 : ''}" aria-pressed="${multi ? sel.includes(o) : cur === o}" ${RX.sending ? 'disabled' : ''}>${multi && sel.includes(o) ? ic('check', 's14') : ''}${esc(o)}${!multi || !sel.length ? (cur === o ? '' : '') : ''}</button>`).join('')}</div>
           ${multi && sel.length ? `<div class="kn-apply"><button class="btn btn-primary sm" data-knob-apply="${k.k}" ${RX.sending ? 'disabled' : ''}>${sel.length > 1 ? `Make ${sel.length} versions` : `Apply ${esc(sel[0])}`}</button><button class="linkbtn" data-knob-clear="${k.k}">Clear</button>${sel.length > 1 ? '<small>One version for each, side by side</small>' : ''}</div>` : multi && cur ? `<small class="kn-cur">Now: ${esc(cur)}</small>` : ''}</div>`; }).join('')}
-      <div class="adj-more"><button class="btn btn-ghost sm" data-rx="variants" ${RX.sending ? 'disabled' : ''}>${ic('shuffle', 's14')}Make 3 variations</button>${['meta_ad', 'social'].includes(ch.family) ? `<button class="btn btn-ghost sm" data-rx="image">${ic('sparkles', 's14')}New photo</button>` : ''}</div>${RX.sending ? `<p class="rxp-status"><span class="spin"></span>${esc(RX.sending)}</p>` : ''}`
+      <div class="adj-more"><button class="btn btn-ghost sm" data-rx="variants" ${RX.sending ? 'disabled' : ''}>${ic('shuffle', 's14')}Redo it</button>${['meta_ad', 'social'].includes(ch.family) ? `<button class="btn btn-ghost sm" data-rx="image">${ic('sparkles', 's14')}New photo</button>` : ''}</div>${RX.sending ? `<p class="rxp-status"><span class="spin"></span>${esc(RX.sending)}</p>` : ''}`
     : `<p class="it-locked">It’s in a jam. Shape it there.</p>`;
   const mineHtml = (ch, edit) => `<section class="dt-mine"><h4 class="dt-h">Your checks</h4>
       ${(ch.myChecks || []).length ? `<ul class="mc-list">${ch.myChecks.map((m) => `<li class="${m.done ? 'done' : ''}"><button class="mc-box" data-mc="${m.id}" aria-pressed="${!!m.done}" aria-label="Tick">${m.done ? ic('check', 's14') : ''}</button><span>${esc(m.text)}${m.always ? '<em>every time</em>' : ''}</span>${edit ? `<button class="linkbtn mc-x" data-mc-rm="${m.id}" aria-label="Remove">${ic('x', 's14')}</button>` : ''}</li>`).join('')}</ul>` : '<p class="dt-empty">Add what you want ticked before this ships. Only you tick these.</p>'}
@@ -4107,7 +4108,7 @@
     if (PH_FAM.includes(ch.family)) out.push(c('data-ph-open', 'pic', 'Swap the image'));
     fitSuggest(ch.suggest).slice(0, 3).forEach((x) => out.push(`<button type="button" class="chip j2-chip" data-say="${esc(x)}"${dis}>${esc(x)}</button>`));
     out.push(...j2Acts(ch, c));
-    out.push(c('data-rx="variants"', 'shuffle', 'More like this'));
+    out.push(c('data-rx="variants"', 'shuffle', 'Redo it'));
     if (fitKnobs(ch.knobs).length) out.push(c('data-tab="adjust"', 'sliders', 'Adjust'));
     if (RX.p) out.push(`<button type="button" class="chip j2-chip" data-ask="${esc(JSON.stringify({ cardId: RX.p.id, label: String(cardOf(RX.p).title || 'This card').slice(0, 60) }))}">${ic('chat', 's14')}Ask Brew about this</button>`);
     return `<div class="it-sugg j2-chips">${out.join('')}</div>`; };

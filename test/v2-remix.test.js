@@ -142,7 +142,7 @@ test('a take left drawing by a server that stopped resolves to a drawError on th
 test('the existing remix bodies are untouched: no flags builds the studio’s packages as before', async () => {
   const t = tenant(), { call } = studio();
   const r = await call('POST /api/cards/:cid/remix', {}, t, { cid: 'c1' });
-  assert.ok(Array.isArray(r.changes) && r.changes.length === 3, 'three packages'); assert.ok(r.line); assert.equal(r.queued, undefined); assert.equal(r.ok, undefined);
+  assert.ok(Array.isArray(r.changes) && r.changes.length === 1, 'one package, always'); assert.ok(r.line); assert.equal(r.queued, undefined); assert.equal(r.ok, undefined);
   assert.equal(t.cards.get('c1').take, undefined, 'no take mirror on the card');
 });
 

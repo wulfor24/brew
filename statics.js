@@ -29,7 +29,7 @@ export function teamStaticCards(slug, ids = [], text = {}, { lane = 'core', name
     detail: { why: ['Concepts come from your rewrite of the ad-creative move.', 'Every number on them is in your fact sheet or your connected accounts.'], how: ['Open the set and keep or drop each ad.', 'Edit any of them in the studio.', 'Queue the kept ones as one test.'] }, cta: { label: 'Queue the ads' } },
   ...ids.filter((id) => text[id]?.headline).map((id, i) => ({ ...base, id: `static-${id}-p`, src: 'Move 21 · static ad · your accounts', time: `${12 + i * 17} min`, images: [teamStaticUrl(slug, id)], title: String(text[id].headline).slice(0, 120),
     sub: `${text[id].small ? `${String(text[id].small).replace(/\.?$/, '.')} ` : ''}Made from your Move 21 with a real ${name} photo. Only your team sees it.`,
-    detail: { why: ['The concept comes from your rewrite of the ad-creative move.', 'Every number on it is in your fact sheet or your connected accounts.'], how: ['Jam on it to change the words or the scene.', 'Share the brief and your team puts it in the ad account.'] }, cta: { label: 'Generate versions' } }))];
+    detail: { why: ['The concept comes from your rewrite of the ad-creative move.', 'Every number on it is in your fact sheet or your connected accounts.'], how: ['Jam on it to change the words or the scene.', 'Share the brief and your team puts it in the ad account.'] }, cta: { label: 'Make the ad' } }))];
 }
 
 /* GET /b/<slug>/team/statics/<id>.jpg: a member of the brand gets the image from private/statics/; anyone else gets 401 (signed

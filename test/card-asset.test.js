@@ -30,6 +30,7 @@ test('loose words in an asset line never pick a product', () => {
 });
 
 test('a Google search button on a Meta asset card becomes the format’s own button', () => {
-  assert.equal(fitCta({ cta: { label: 'Launch the ad group' }, make: { format: 'single image ad' } }).cta.label, 'Generate versions');
+  assert.equal(fitCta({ cta: { label: 'Launch the ad group' }, make: { format: 'single image ad' } }).cta.label, 'Make the ad');
+  assert.equal(fitCta({ cta: { label: 'Generate versions' } }).cta.label, 'Make the ad', 'a saved card’s button makes one ad');
   assert.equal(fitCta({ cta: { label: 'Launch the ad group' } }).cta.label, 'Launch the ad group');
 });

@@ -104,7 +104,7 @@ const CTA_ACTION = {
   'Push 5 titles': 'storefront.listing_titles', 'Draft the listing': 'storefront.listing_content', 'Request takedown': 'storefront.takedown', 'Generate the sets': 'storefront.listing_content', 'Apply 34 edits': 'storefront.listing_titles',
   'Approve the ladder': 'storefront.bundle_offer', 'Approve the 3 offers': 'storefront.bundle_offer', 'Update landing page': 'storefront.page_copy', 'Apply Update': 'storefront.page_copy', 'Publish the page': 'storefront.page_copy', 'Approve 6 popups': 'storefront.new_section', 'Start the tests': 'storefront.page_copy',
   'Shift budget': 'performance.shift_budget', 'Rotate creative': 'creative.swap_creative', 'Publish Campaign': 'performance.new_test', 'Run Monday decisions': 'performance.stop_rule', 'Apply the plan': 'performance.scale_budget', 'Pause those ads': 'performance.pause_losers', 'Draft the switcher ad': 'creative.add_variants', 'Lock the Diwali set': 'creative.add_variants',
-  'Queue the 12': 'creative.add_variants', 'Make the carousel ad': 'creative.carousel_ad', 'Build the collection ad': 'creative.collection_ad', 'Build the catalog ad': 'creative.catalog_ad', 'Draft the post': 'creative.ig_post', 'Draft the carousel post': 'creative.ig_carousel', 'Draft the stories': 'creative.ig_story', 'Queue the ads': 'creative.add_variants', 'Generate versions': 'creative.add_variants', 'Make the video': 'creative.short_video', 'Brief the shoot': 'creative.film_brief', 'Plan the shoot': 'creative.film_brief', 'Shortlist creators': 'creative.creative_brief', 'Swap the images': 'creative.swap_creative',
+  'Queue the 12': 'creative.add_variants', 'Make the carousel ad': 'creative.carousel_ad', 'Build the collection ad': 'creative.collection_ad', 'Build the catalog ad': 'creative.catalog_ad', 'Draft the post': 'creative.ig_post', 'Draft the carousel post': 'creative.ig_carousel', 'Draft the stories': 'creative.ig_story', 'Queue the ads': 'creative.add_variants', 'Generate versions': 'creative.add_variants', 'Make the ad': 'creative.add_variants', 'Make the video': 'creative.short_video', 'Brief the shoot': 'creative.film_brief', 'Plan the shoot': 'creative.film_brief', 'Shortlist creators': 'creative.creative_brief', 'Swap the images': 'creative.swap_creative',
   'Turn on the journey': 'crm.flow_copy', 'Approve the flows': 'crm.flow_copy', 'Send on WhatsApp': 'crm.paid_broadcast', 'Send the review ask': 'crm.review_ask', 'Approve the box insert': 'crm.print_insert', 'Open the club': 'crm.new_segment',
   'Fix tracking': 'performance.tracking_fix', 'Draft the buyer deck': 'storefront.buyer_deck', 'Build the score': 'storefront.new_section', 'Approve all': 'storefront.new_section', 'Open report': null, 'Agree with the call': 'brew.plan', 'Open the scoreboard': 'brew.plan', 'Ship the five': 'brew.plan',
   'Make our version': 'creative.add_variants', 'Turn into an idea': 'creative.add_variants', 'Start this': 'creative.add_variants', 'Turn on guest checkout': 'storefront.store_setting', 'Launch the ad group': 'performance.search_ad',
@@ -118,12 +118,12 @@ const CTA_ACTION = {
 /* buttons that say "go ahead" without naming a job: the card's planned format or the tool it names decides the package.
    Every other known button names its job, and that job wins over the tool (Param, 2026-10-14: "Pause what points there"
    opened as "Launch a test on Meta Ads" because the named tool beat the button) */
-const GENERIC_CTA = new Set(['Agree with the call', 'Open the scoreboard', 'Ship the five', 'Apply the plan', 'Approve all', 'Start this', 'Turn into an idea', 'Make our version', 'Generate versions', 'Start the tests', 'Apply Update', 'Review draft', 'Set the watch', 'Open report', 'Publish Campaign', 'Publish the page']);
+const GENERIC_CTA = new Set(['Agree with the call', 'Open the scoreboard', 'Ship the five', 'Apply the plan', 'Approve all', 'Start this', 'Turn into an idea', 'Make our version', 'Generate versions', 'Make the ad', 'Start the tests', 'Apply Update', 'Review draft', 'Set the watch', 'Open report', 'Publish Campaign', 'Publish the page']);
 // the same button means different things in different places
 const CTA_IN_SECTOR = {
   'creatives:Publish Campaign': 'creative.add_variants', 'storefront:Draft the listing': 'storefront.page_copy', 'signals:Draft the listing': 'storefront.page_copy', 'creatives:Draft the listing': 'storefront.page_copy', 'visibility:Draft the listing': 'visibility.faq_entry', 'ads:Draft the listing': 'storefront.page_copy', 'catalog:Swap the images': 'storefront.listing_content', 'visibility:Publish the page': 'visibility.faq_entry', 'visibility:Open report': 'visibility.faq_entry',
   // "make the next version" on a measured result repeats what worked, where it worked
-  'creatives:Generate versions': 'creative.add_variants', 'ads:Generate versions': 'creative.add_variants', 'storefront:Generate versions': 'storefront.page_copy', 'signals:Generate versions': 'crm.flow_copy', 'visibility:Generate versions': 'visibility.faq_entry', 'catalog:Generate versions': 'storefront.listing_titles'
+  'creatives:Generate versions': 'creative.add_variants', 'creatives:Make the ad': 'creative.add_variants', 'ads:Make the ad': 'creative.add_variants', 'ads:Generate versions': 'creative.add_variants', 'storefront:Generate versions': 'storefront.page_copy', 'signals:Generate versions': 'crm.flow_copy', 'visibility:Generate versions': 'visibility.faq_entry', 'catalog:Generate versions': 'storefront.listing_titles'
 };
 /* the tool the AI named for the card (measure-families): a "go ahead" button opens on that tool */
 const TOOL_PRIMARY = { meta: 'performance.new_test', google: 'performance.search_ad', shopify: 'storefront.page_copy', marketplaces: 'storefront.listing_content', klaviyo: 'crm.flow_copy', whatsapp: 'crm.flow_copy', reviews: 'crm.review_ask' };
@@ -132,7 +132,7 @@ const toolOf = (key) => { const [a, k] = String(key || '').split('.'); return AC
 const MAKE_ACTION = { 'single image ad': 'creative.add_variants', 'carousel ad': 'creative.carousel_ad', 'collection ad': 'creative.collection_ad', 'catalog ad': 'creative.catalog_ad', 'video ad': 'creative.short_video', reel: 'creative.short_video', 'instagram post': 'creative.ig_post', 'instagram carousel': 'creative.ig_carousel', 'instagram stories': 'creative.ig_story', 'whatsapp message': 'crm.flow_copy', email: 'crm.flow_copy', 'page section': 'storefront.page_copy' };
 const TRACKING = /\b(tracking|pixel|conversions? api|capi|ga4|utms?)\b/i;
 const DECIDE_CTA = new Set(['Agree with the call', 'Open the scoreboard', 'Ship the five', 'Apply the plan']); // a decision stays a decision
-const MAKING = new Set(['Generate versions', 'Make the carousel ad', 'Build the collection ad', 'Build the catalog ad', 'Make the video', 'Draft the post', 'Draft the carousel post', 'Draft the stories', 'Approve the flows', 'Update landing page']);
+const MAKING = new Set(['Generate versions', 'Make the ad', 'Make the carousel ad', 'Build the collection ad', 'Build the catalog ad', 'Make the video', 'Draft the post', 'Draft the carousel post', 'Draft the stories', 'Approve the flows', 'Update landing page']);
 const STOCK = /\b(out of stock|sold[ -]?out|stock-?outs?|no stock)\b/i;
 const stockCard = (c) => STOCK.test(`${c.title || ''} ${c.badge?.[0] || ''}`) || (c.liveSrc?.kind === 'catalog' && /stock/i.test(c.badge?.[0] || ''));
 /* a button we have never seen (cards written by the AI): what its verb asks for, in order. Each rule names one job */
@@ -244,7 +244,7 @@ const ACTION_INTENTS = {
   shift_budget: ['Smaller shift', 'Winners only'], scale_budget: ['+20% step', 'One ad set first'], pause_losers: ['Worst three only', 'Pause for 48 hours'], stop_rule: ['Stricter line', 'Looser line'],
   pause_pointing: ['Only the sold-out products', 'Restart when back in stock'], restart_paused: ['Only what was paused for stock', 'Lower budget first'], price_in_ads: ['Every ad that quotes it', 'New price first'], fix_links: ['Closest product', 'The collection page'], comment_reply: ['Answer in one line', 'Friendlier'],
   new_test: ['Smaller budget', 'New audience'], swap_copy: ['Shorter', 'Number first'], search_ad: ['Exact match only', 'Add negatives'], tracking_fix: ['Meta first', 'Google first'],
-  add_variants: ['Three cuts', 'Hindi version'], carousel_ad: ['Five cards', 'One product per card'], collection_ad: ['Best sellers only', 'New arrivals'], catalog_ad: ['Price on the frame', 'Rating on the frame'], ig_post: ['Number first', 'Real review'], ig_carousel: ['Seven slides', 'Myth vs fact'], ig_story: ['Add a poll', 'Three stories'], swap_creative: ['New hook', 'New look'], whatsapp_ad: ['Shorter chat', 'Hinglish'], film_brief: ['Shorter film', 'Phone-shot version'], creative_brief: ['Five angles', 'From real reviews'],
+  add_variants: ['A sharper hook', 'Hindi version'], carousel_ad: ['Five cards', 'One product per card'], collection_ad: ['Best sellers only', 'New arrivals'], catalog_ad: ['Price on the frame', 'Rating on the frame'], ig_post: ['Number first', 'Real review'], ig_carousel: ['Seven slides', 'Myth vs fact'], ig_story: ['Add a poll', 'Three stories'], swap_creative: ['New hook', 'New look'], whatsapp_ad: ['Shorter chat', 'Hinglish'], film_brief: ['Shorter film', 'Phone-shot version'], creative_brief: ['Five angles', 'From real reviews'],
   faq_entry: ['Tighter answer', 'Add the source'], llms_txt: ['Fewer lines', 'Add dates'], schema_fix: ['Price and rating only'], new_claim: ['Softer claim', 'With the study'],
   flow_copy: ['Softer tone', 'Hinglish'], flow_timing: ['Later send', 'Fewer messages'], review_ask: ['Ask for a photo', 'Shorter ask'], new_segment: ['Tighter segment', 'Leave out new buyers'], paid_broadcast: ['Smaller list first', 'Hinglish'], print_insert: ['Fewer words', 'Bigger QR'], discount_offer: ['Smaller offer', 'Shorter expiry'],
   x_post: ['Shorter', 'As a thread'], linkedin_post: ['Shorter', 'More personal'], reddit_post: ['Answer first', 'Add an honest downside'], quora_answer: ['Shorter', 'Add a comparison'], fb_group_post: ['Warmer', 'Ask the group'], pinterest_pin: ['More search words'], short_video: ['Shorter', 'Hook in 1 second'],
@@ -259,7 +259,7 @@ export const RECIPES = {
     competitor: { intents: ['Counter ad', 'Our proof point', 'Steal the format'], actions: ['swap_copy', 'new_test'] }
   },
   creative: {
-    decision: { intents: ['Ship it', 'Three cuts', 'As a carousel'], actions: ['add_variants', 'swap_creative', 'carousel_ad'] },
+    decision: { intents: ['Ship it', 'A sharper hook', 'As a carousel'], actions: ['add_variants', 'swap_creative', 'carousel_ad'] },
     idea: { intents: ['New hook', 'New format', 'Carousel', 'Organic post'], actions: ['add_variants', 'carousel_ad', 'ig_carousel', 'swap_creative', 'whatsapp_ad', 'film_brief', 'collection_ad', 'ig_story', 'ig_post'] },
     report: { intents: ['Brief the next five', 'Refresh tired ads', 'What worked'], actions: ['creative_brief', 'swap_creative', 'add_variants'], levers: true },
     competitor: { intents: ['Our version', 'Counter-angle', 'Steal the format'], actions: ['add_variants', 'carousel_ad', 'swap_creative', 'ig_carousel'] }
@@ -465,7 +465,7 @@ export function createRemix(o) {
     const x = applyRulesMock(t, agent, { title: pkg[tf], sub: pkg[sf] || '' });
     return { ...pkg, [tf]: x.title, ...(sf && pkg[sf] ? { [sf]: x.sub } : {}) };
   };
-  const mockOptions = (t, c, r, intent, n = 3, offset = 0) => {
+  const mockOptions = (t, c, r, intent, n = 1, offset = 0) => {
     const why = c.detail?.why || [];
     const angles = [intent || r.intents[0], ...r.intents.filter((x) => x !== intent), 'Sharper', 'Smaller step'];
     const mv = movePassages(c, intent || '', n);
@@ -475,7 +475,7 @@ export function createRemix(o) {
     });
   };
   const factsLine = `WHO READS WHAT: the card above is an internal note for the ${BN()} team (business numbers, goals, plans, moves). Never copy its wording or its numbers into the package. Fields marked public are read by shoppers and customers: write to them about what they're buying, the product, the result, the price, the offer, in ${BN()}'s voice. No revenue, crore, goals, tracks, funnels, repeat rate, ROAS, cost per order, "the team" or plans. Internal fields (ad sets, segments, rules, budgets) use real operational names, e.g. "Intensive Serum | Broad | 22-45 | Reels", never business metrics. Copy rules: plain words, only numbers from the facts above, "up to" and the day window on every result claim, never name a rival, no before/after scalp claims.`;
-  const liveOptions = async (t, c, r, intent, prompt, n = 3, like = null) => {
+  const liveOptions = async (t, c, r, intent, prompt, n = 1, like = null) => {
     const fams = [...new Set(r.actionKeys.map(familyOf))];
     const acts = r.actionKeys.map((k) => { const a = actOf(k), lf = labelFor(k, c) || a; return `- ${k}: ${lf.label} on ${lf.target?.name || SEED.connectors[lf.target?.conn]?.name || 'a person'} (${lf.target?.object || a.target.object})${a.money ? ', spends money' : ''}${a.jam ? `, needs a person: ${a.jam}` : ''}. What it is: ${lf.spec || specOf(k)}\n  Package fields:\n${fieldsBrief(familyOf(k), k)}`; }).join('\n');
     const learned = promptBlock(t, c.agent === 'brew' ? 'creative' : c.agent);
@@ -525,7 +525,7 @@ export function createRemix(o) {
     { const ctx = chipCtx(x.action, ch.actionLabel, c), nx = (x.next || []).filter((y) => chipRelates(y, ctx)); if (nx.length >= 2) ch.next = nx.slice(0, 4); } /* the AI's chips for this case, when they talk about it */
     ch.myChecks = (L(t).myChecks?.[family] || []).map((m) => ({ id: uid('mc'), text: m.text, done: false, always: true, at: now(t) })); ch.notes = [];
     sync(t, ch, c);
-    version(t, ch, `ai:${ch.agent}`, `Remix: ${intent || 'three options'}${prompt ? ` · “${prompt.slice(0, 60)}”` : ''}`);
+    version(t, ch, `ai:${ch.agent}`, `Remix: ${intent || 'the card'}${prompt ? ` · “${prompt.slice(0, 60)}”` : ''}`);
     changes(t)[ch.id] = ch; return ch;
   };
   /* the card's first draft (drafts-bg.js) is v0 on the jam's stage: exactly the asset the feed card showed, never an
@@ -1267,7 +1267,7 @@ export function createRemix(o) {
        was offered every action, and a draft for another one was thrown away without a word) */
     if (!opts && fast && spend('text')) writeLater = async () => (await liveOptions(t, c, { ...r, actionKeys: [r.actionKeys[0]] }, intent, prompt, 1)).opts[0] || null;
     else if (!opts && !isMock() && spend('text')) { try { const x = await liveOptions(t, c, r, intent, prompt); if (x.opts.length) { opts = x.opts; line = x.line; live = true; } } catch (e) { log.warn('[remix]', e.message); } }
-    if (!opts) { opts = mockOptions(t, c, r, intent, b.fast ? 1 : 3); /* opening a jam builds the one package it opens on, never two orphans beside it */ line = r.conflict ? 'Three ways to settle it. A person decides, so each one opens a jam.' : 'Three changes from this card. Each says where it goes and who ships it.'; }
+    if (!opts) { opts = mockOptions(t, c, r, intent, 1); /* opening a jam builds the one package it opens on, never two orphans beside it */ line = r.conflict ? 'A way to settle it. A person decides, so it opens a jam.' : 'The change from this card: where it goes and who ships it.'; }
     // the card's own suggestion always leads; the rest are ranked by what this team tends to pick
     const made = opts.map((x) => build(t, c, cv, r, x, { intent, prompt })).sort((a, b) => (b.fromCard - a.fromCard) || (b.score - a.score));
     if (intent) signal(t, 'pick', { agent: made[0]?.agent, intent }, now(t));
@@ -1308,23 +1308,37 @@ export function createRemix(o) {
   on('GET', '/api/changes/:chid', async (b, t, p) => { const ch = C(t, p.chid); return ch ? { change: pubChange(t, evaluate(t, ch)) } : { error: 'not found' }; });
   const editable = (ch) => (['running', 'live', 'deploy_team'].includes(ch.state) ? 'It is live. Undo it first, or open a jam for the next version.' : null);
   // another version: a different cut of the same package
-  on('POST', '/api/changes/:chid/more', async (b, t, p) => {
-    const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); const c = t.cards.get(ch.cardId); const r = recipeFor(c);
-    /* a card that lists its ideas: One more makes the next idea the options don't have yet */
-    const op0 = optionsOf(t, ch), have = new Set((op0?.list || []).map((o) => o.name.toLowerCase())), idea = (c?.variants || []).find((v) => v?.angle && !have.has(shortName(v.angle).toLowerCase()));
-    const ask = idea ? `Write the cut for this idea, keeping its angle and claim: ${idea.angle}: ${idea.title || ''}. ${idea.sub || ''}${b.prompt ? ` ${b.prompt}` : ''}` : b.prompt || '';
-    let x = null; if (!isMock() && spend('text')) { try { x = (await liveOptions(t, c, { ...r, actionKeys: [ch.action] }, ch.intent, ask, 1, ch)).opts[0]; } catch (e) { log.warn('[more]', e.message); } }
-    if (!x) { const i = (versionsOf(t, ch.id).length + 1) % 3; x = mockOptions(t, c, { ...r, actionKeys: [ch.action] }, ch.intent, 1, i)[0]; }
+  /* ---------- Redo it: one new take (Param, 19 Oct: "always lead with only 1 and let them redo it if they don't like it").
+     One version on the stage, never options to pick from: Redo it writes the next take from a new angle (the card's next
+     listed idea when it lists some), with its own picture (an ad or a post) or its own clip (a short video that had one).
+     The last take stays in History. Every "another version" entry point lands here: Redo it, More like this, One more ---------- */
+  const redoOne = async (t, ch, prompt = '') => {
+    const c = t.cards.get(ch.cardId) || {}, r = recipeFor(c), was = headOf(t, ch), hadClip = !!(isVideoPost(ch) && ch.pkg?.video);
+    const used = new Set(versionsOf(t, ch.id).map((v) => String(v.reason || '').toLowerCase()));
+    const idea = (c.variants || []).find((v) => v?.angle && ![...used].some((x) => x.includes(String(v.angle).toLowerCase())));
+    const ask = [idea ? `Write the take for this idea, keeping its angle and claim: ${idea.angle}: ${idea.title || ''}. ${idea.sub || ''}` : '', newAngles(ch) || 'A new angle with a different hook from the version on the stage', prompt].filter(Boolean).join('. ');
+    think(ch, 'Writing a new take');
+    let x = null; try { if (!isMock() && spend('text')) x = (await liveOptions(t, c, { ...r, actionKeys: [ch.action] }, ch.intent, ask, 1, ch)).opts[0]; } catch (e) { log.warn('[redo]', e.message); } finally { think(ch, null); }
+    if (!x) { const k = (versionsOf(t, ch.id).length + 1) % 3; x = mockOptions(t, c, { ...r, actionKeys: [ch.action] }, ch.intent, 1, k)[0]; }
     if (idea) x = { ...x, angle: idea.angle };
-    ch.pkg = { ...rulePkg(t, ch.agent, ch.family, cleanPkg(ch.family, ch.action, x.pkg, clean)), ...keepMedia(ch.pkg) };
-    sync(t, ch, c);
-    /* with options on the stage, another one is one more option beside them (same parent as the others, its own tab) */
-    const op = optionsOf(t, ch), first = op && versionById(t, ch.id, op.list[0].id);
-    if (op && !op.picked && first) { const L = 'ABCDEFGH'[op.list.length] || 'X', v = addV(t, 'change', ch.id, snapOf(ch), { author: `ai:${ch.agent}`, reason: `Version ${L}: ${x.angle || 'a different cut'}`, parent: first.parentVersionId });
-      ch.options.ids.push(v.id); const nm = shortName(x.angle); if (nm) ch.options.names = { ...(ch.options.names || {}), [v.id]: nm }; useVersion(t, ch, v); cutPhotos(t, ch, [v], true) /* its own photo */;
-      ch.thread.push({ from: 'ai', text: `Made one more option: ${L} (${nm || 'a different cut'}). It’s on the stage now.`, at: now(t) }); }
-    else version(t, ch, `ai:${ch.agent}`, `Another version${x.angle ? `: ${x.angle}` : ''}`);
+    const rows = ch.pkg?.cards || ch.pkg?.slides || [], visual = canPic(ch) && !isVideoPost(ch);
+    /* the new take's words never sit on the last take's picture or clip: the picture is made for it, the clip is filmed for it */
+    const media = keepMedia(ch.pkg); if (visual) { delete media.cardImages; } if (isVideoPost(ch)) { delete media.video; delete media.poster; delete media.videoHook; delete media.frameFor; }
+    ch.pkg = { ...rulePkg(t, ch.agent, ch.family, cleanPkg(ch.family, ch.action, x.pkg, clean)), ...media };
+    if (x.angle) ch.angle = x.angle; sync(t, ch, c);
+    const v = version(t, ch, `ai:${ch.agent}`, `Redo${x.angle ? `: ${x.angle}` : ''}`, 'Redo');
+    if (ch.options && !ch.options.picked) ch.options = { ...ch.options, picked: v.id }; /* an old jam with options: the redo is the one */
+    let made = '';
+    if (visual) made = genImage(t, ch, 'the new take', { all: rows.length > 1, target: v.id }) ? (rows.length > 1 ? 'Its slides land in a minute.' : 'Its picture lands in a minute.') : '';
+    else if (hadClip) made = genVideo(t, ch, 'the new take') ? 'Filming it now, about two minutes.' : videoWhy(ch);
+    else if (isVideoPost(ch)) made = 'Tap Make the video when you want the clip.';
+    ch.thread.push({ from: 'ai', text: `Redid it${x.angle ? `: ${shortName(x.angle) || x.angle}` : ''}. v${v.n} is on the stage${was ? `; v${was.n} is in History` : ''}. ${made}`.trim(), at: now(t) });
     signal(t, 'pick', { agent: ch.agent, angle: ch.angle, action: ch.action, changeId: ch.id }, now(t));
+    return v;
+  };
+  on('POST', '/api/changes/:chid/more', async (b, t, p) => {
+    const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };
+    await redoOne(t, ch, String(b.prompt || '').slice(0, 300));
     return { change: pubChange(t, ch), learned: learnedOut(t) };
   });
   // three variations at once: each one a version you can pick
@@ -1358,13 +1372,14 @@ export function createRemix(o) {
   };
   /* "three cuts of this ad", "2 versions", "five options": that many cuts, never one package (the chip used to go to iterate) */
   const CUTS_RE = /\b(two|three|four|five|[2-5])\s+(cuts|versions|variations|options)\b/i, NUMW = { two: 2, three: 3, four: 4, five: 5 };
+  const GO_RE = /^\s*(?:ok(?:ay)?|yes|yep|yeah|sure|go|go ahead|do it|do that|make it|make this|let'?s go|let'?s do it|please do|proceed|start|run it|yes please)(?:[\s,.!]+(?:do it|go ahead|please|now|then))*[\s.!]*$/i;
+  const REDO_RE = /^\s*(?:please\s+)?(?:redo(?: it| this)?|again|try again|another(?: one| take| version| option)?|one more|a different (?:one|take|version)|new (?:one|take|version)|give me another(?: one)?)[\s.!]*$/i;
   /* "make it a reel / a carousel" typed or tapped as a quick ask: the remake itself, as the chip above does */
   const REMAKE_RE = /^\s*(?:please\s+)?(?:make|turn|remake)\s+(?:it|this)\s+(?:into\s+)?(?:as\s+)?(?:a\s+|an\s+)?(reel|video|carousel)\b/i;
   // three variations at once: each one a version you can pick
   on('POST', '/api/changes/:chid/variants', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };
-    const made = await makeCuts(t, ch, 3, b.prompt || '', (x, i) => `Variation ${'ABC'[i]}: ${x.angle || 'a different cut'}`);
-    ch.thread.push({ from: 'ai', text: `Made ${made.length} options: ${cutNames(ch, made)}.${made.photos ? ' Each gets its own photo in a minute.' : ''} Tap them above the stage, then use the one you like.`, at: now(t), vs: made.map((v) => v.id), cuts: true });
+    await redoOne(t, ch, String(b.prompt || '').slice(0, 300)); /* one, always: "More like this" is a redo, never three options */
     return { change: pubChange(t, ch), learned: learnedOut(t) };
   });
   /* the card's action, pressed in the jam: the plan's make step puts what the last step needs on the stage (card-plan.js).
@@ -1373,14 +1388,8 @@ export function createRemix(o) {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };
     const c = t.cards.get(ch.cardId) || {}; const pl = ch.plan || o.planOf?.(t, c) || null; if (pl) ch.plan = pl;
     if (pl?.batch || ch.batchKey) return { change: pubChange(t, ch) }; /* a batch card's ads are already made: keep or drop them */
-    const n = Math.max(1, pl?.n || 1), steps = (pl?.steps || []).filter((x) => ['gather', 'write', 'make', 'step'].includes(x.k)).map((x) => x.t);
-    const made = await makeCuts(t, ch, n, [steps.length ? `Follow the plan: ${steps.join('; ')}` : '', n > 1 ? newAngles(ch) : '', b.prompt].filter(Boolean).join('. '), (x, i) => (n > 1 ? `Version ${'ABCDEFGH'[i]}: ${x.angle || 'a different cut'}` : `${pl?.cta || 'Made'}: ready to review`));
-    ch.planRun = { at: now(t), n: made.length, versions: made.map((v) => v.id) };
-    const w = (t.work || []).find((x) => x.changeId === ch.id); if (w) w.cardPlan = { ...(w.cardPlan || pl || {}), ...(pl || {}), made: now(t) };
-    /* a short video gets its clip, not just its script: the version on screen is filmed now, the others on a tap */
-    const filming = isVideoPost(ch) && made.length ? genVideo(t, ch, 'the plan') : false;
-    const vs = cutNames(ch, made), last = made[made.length - 1];
-    ch.thread.push({ from: 'ai', text: isVideoPost(ch) ? `Wrote ${made.length > 1 ? `${made.length} scripts: ${vs}` : `the script: v${made[0]?.n}`}. ${filming ? `Making the video for ${made.length > 1 ? `${'ABCDEFGH'[made.length - 1]}` : 'it'} now, about two minutes.${made.length > 1 ? ' Tap the options above the phone to compare; each makes its own video.' : ''}` : `${videoWhy(ch)} Tap Make the video when you want the clip.`}` : made.length > 1 ? `Made ${made.length} options: ${vs}.${made.photos ? ' Each gets its own photo in a minute.' : ''} Tap them above the stage and use the one you like.` : `Made it: v${made[0]?.n}. Change anything here, then share the brief.`, at: now(t), vs: made.map((v) => v.id), ...(made.length > 1 ? { cuts: true } : {}) });
+    const say = await makeOne(t, ch, c, pl?.cta || c.cta?.label || ''); /* one, always: the version on the stage gets what the button names */
+    if (say) ch.thread.push({ from: 'ai', text: say, at: now(t) });
     return { change: pubChange(t, ch), learned: learnedOut(t) };
   });
   /* ---------- the card's own making button, pressed in the feed (Param, 19 Oct: "a CTA to generate creatives, but in reality it
@@ -1390,51 +1399,40 @@ export function createRemix(o) {
      the clip; a post, Stories or carousel button its picture or every slide; a message or page button its written versions.
      Decisions, reports, budget moves and batches make nothing here (a batch's ads are already made). ---------- */
   const MAKES_ASSET = new Set([...MAKING, 'Rotate creative', 'Make our version', 'Turn into an idea', 'Start this', 'Send the review ask', 'Turn on the journey', 'Publish the page', 'Draft the listing', 'Review draft', 'Make the carousel', 'Make the reel', 'Post it', 'Add photos', 'Swap the images']);
-  const VERSIONS_CTA = /^(generate versions|rotate creative)$/i;
   const VISUAL = new Set(['meta_ad', 'social', 'post']);
   const ctaMakes = (t, label, ch, c) => !!label && !ch.batchKey && !(ch.plan || o.planOf?.(t, c))?.batch && !['decision', 'meta_ops', 'setup', 'brief'].includes(ch.family) && (MAKES_ASSET.has(label) || /^(make|draft|generate|build|write|create)\b/i.test(label));
   const waitFor = async (test, ms = 180e3) => { const end = Date.now() + ms; while (test() && Date.now() < end) await new Promise((r) => setTimeout(r, 2000)); };
   /* when the stage already holds a first draft, the make step's cuts are new angles, never the first draft written again */
   const newAngles = (ch) => { const p = ch.pkg || {}, was = String(p.headline || p.overlay || p.title || p.subject || hookOf(p) || '').slice(0, 120);
     return ch.v0 === 'draft' || p.video || /^gen\//.test(p.image || '') ? `The first draft is already on the stage${was ? ` (“${was}”)` : ''}: every cut is a new angle with a different hook, never that draft again` : ''; };
-  const firstKept = (t, ch, made) => { const v1 = versionsOf(t, ch.id)[0]; return v1 && !made.some((v) => v.id === v1.id) && (ch.v0 === 'draft' || v1.snapshot?.video || v1.snapshot?.image) ? `; your first draft stays as v${v1.n}` : ''; };
+  /* the card's button makes ONE (Param, 19 Oct: never 3 options): the version on the stage gets what the button names, once.
+     A short video without its clip is filmed; an ad or a post without a picture made for it gets one (a carousel or Stories:
+     every slide still missing one); a written family is already written by the time the jam opens. Anything already there
+     stays: the next take is Redo it. The same from the feed (cta-make) as from the jam (/plan). Returns the chat line */
+  const makeOne = async (t, ch, c, label) => {
+    const rows = ch.pkg?.cards || ch.pkg?.slides || [], head = headOf(t, ch);
+    ch.planRun = { at: now(t), n: 1, versions: [head?.id].filter(Boolean), by: 'one' };
+    const w = (t.work || []).find((x) => x.changeId === ch.id); if (w) w.cardPlan = { ...(w.cardPlan || ch.plan || {}), made: now(t) };
+    if (ch.family === 'listing' && /photo|image/i.test(label)) { const ok = genListingPhotos(t, ch, label); return ok ? `Making ${shotsOf(ch.pkg).length} listing photos from your product photo: ${shotsOf(ch.pkg).join('; ')}. They land here in a minute or two.` : imageWhy(ch); }
+    if (isVideoPost(ch)) { if (ch.pkg?.video || ch.videoPending) return null; const ok = genVideo(t, ch, label); return ok ? 'Making the video now, about two minutes. It lands here on its own. Not right? Redo it.' : videoWhy(ch); }
+    if (VISUAL.has(ch.family) && canPic(ch)) {
+      const missing = rows.length > 1 ? rows.some((_, i) => !(ch.pkg.cardImages || [])[i]) : !/^gen\//.test(ch.pkg?.image || '');
+      if (!missing) return null;
+      const ok = genImage(t, ch, label, { all: rows.length > 1, target: head?.id || null });
+      return ok ? `Making ${rows.length > 1 ? `the pictures for all ${rows.length} slides` : 'the picture'} now. ${rows.length > 1 ? 'They land' : 'It lands'} here in a minute. Not right? Redo it.` : imageWhy(ch);
+    }
+    /* a written family: the first words are the version; only a jam whose first draft never got written is written now */
+    if ((ch.thread || []).some((m) => m.rewrite) && versionsOf(t, ch.id).length <= 1) { const made = await makeCuts(t, ch, 1, '', () => `${label}: ready to review`); return made.length ? `Wrote it: v${made[0].n}. Change anything here, or Redo it.` : 'That didn’t come through. Tap the button again in a minute.'; }
+    return null;
+  };
   const runCtaMake = (t, ch, c, label) => {
     if (CTA_JOBS.has(ch.id)) return false; CTA_JOBS.add(ch.id);
-    const versions = VERSIONS_CTA.test(label), rows = () => ch.pkg?.cards || ch.pkg?.slides || [];
-    ch.ctaPending = ch.family === 'listing' && /photo|image/i.test(label) ? 'Making the listing photos' : versions ? 'Making 3 versions' : isVideoPost(ch) ? 'Getting the video ready' : VISUAL.has(ch.family) ? (rows().length > 1 ? 'Making every slide' : 'Making the picture') : 'Writing it';
+    ch.ctaPending = ch.family === 'listing' && /photo|image/i.test(label) ? 'Making the listing photos' : isVideoPost(ch) ? 'Getting the video ready' : VISUAL.has(ch.family) ? 'Making the picture' : 'Writing it';
     (async () => {
       let say = null;
       try {
         await waitFor(() => ch.imagePending || ch.remakePending || FILL_JOBS.has(ch.id)); /* a picture already in flight (the first photo, our version) lands first */
-        const pl = ch.plan || o.planOf?.(t, c) || null, steps = (pl?.steps || []).filter((x) => ['gather', 'write', 'make', 'step'].includes(x.k)).map((x) => x.t);
-        const plan = [steps.length ? `Follow the plan: ${steps.join('; ')}` : '', newAngles(ch)].filter(Boolean).join('. ');
-        /* the button makes what the card's plan says, the same from the feed as from the jam (/plan): the plan's n cuts, each a
-           new angle on the first draft, with its picture or (a short video) the one on the stage filmed. It used to film the
-           stage again when a first draft already had its clip: the same frame and script, about $0.90, for nothing new (Param,
-           19 Oct). A carousel or Stories keeps "every slide" of the one on the stage; a rival's "our version" keeps its own path */
-        const pn = Math.max(1, pl?.n || 1), cuts = versions || !VISUAL.has(ch.family) || (pn > 1 && rows().length <= 1 && !isRivalCard(c));
-        if (ch.family === 'listing' && /photo|image/i.test(label)) {
-          const ok = genListingPhotos(t, ch, label); say = ok ? `Making ${shotsOf(ch.pkg).length} listing photos from your product photo: ${shotsOf(ch.pkg).join('; ')}. They land here in a minute or two.` : imageWhy(ch);
-        } else if (cuts) {
-          const n = versions ? 3 : pn;
-          think(ch, `Writing ${n > 1 ? `${n} versions` : 'it'}`);
-          const made = await makeCuts(t, ch, n, plan, (x, i) => (n > 1 ? `Version ${'ABCDEFGH'[i]}: ${x.angle || 'a different cut'}` : `${label}: ready to review`));
-          ch.planRun = { at: now(t), n: made.length, versions: made.map((v) => v.id), by: 'cta' };
-          const vs = cutNames(ch, made);
-          if (!made.length) say = 'That didn’t come through. Tap the button again in a minute.';
-          else if (isVideoPost(ch)) { const ok = genVideo(t, ch, label); say = `Wrote ${made.length > 1 ? `${made.length} new scripts (${vs})` : 'the script'}${firstKept(t, ch, made)}. ${ok ? `Making the video for the one on the stage now, about two minutes.${made.length > 1 ? ' Open another option to make its video.' : ''}` : videoWhy(ch)}`; }
-          else if (VISUAL.has(ch.family)) { const ok = made.photos || (made.length === 1 && genImage(t, ch, label, { target: made[0].id }));
-            say = `Made ${made.length} ${made.length > 1 ? 'new versions' : 'version'}: ${vs}${firstKept(t, ch, made)}. ${ok ? `${made.length > 1 ? 'Each gets its own picture' : 'Its picture lands'} in a minute.` : imageWhy(ch)} Tap one to see it.`; }
-          else say = `Wrote ${made.length > 1 ? `${made.length} versions: ${vs}` : `it: v${made[0].n}`}. Change anything here, then share the brief.`;
-        } else if (isVideoPost(ch)) {
-          const ok = genVideo(t, ch, label); if (ok) ch.planRun = { at: now(t), n: 1, versions: [headOf(t, ch)?.id].filter(Boolean), by: 'cta' };
-          say = ok ? 'Making the video now, about two minutes. It lands here on its own.' : videoWhy(ch);
-        } else {
-          const all = rows().length > 1; if (all && rows().every((_, i) => (ch.pkg.cardImages || [])[i])) ch.pkg = { ...ch.pkg, cardImages: [] }; /* every slide had a picture: the press makes a fresh set, the last set stays on its version */
-          const ok = genImage(t, ch, label, { all }); /* a new version: the picture it had stays on the one before */
-          if (ok) ch.planRun = { at: now(t), n: 1, versions: [], by: 'cta' };
-          say = ok ? `Making ${all ? `the pictures for all ${rows().length} slides` : 'the picture'} now. ${all ? 'They land' : 'It lands'} here in a minute.` : imageWhy(ch);
-        }
+        say = await makeOne(t, ch, c, label);
       } catch (e) { log.warn('[cta make]', e.message); say = `That didn’t come through (${String(e.message).slice(0, 100)}). Tap the button again in a minute.`; }
       finally { think(ch, null); ch.ctaPending = null; CTA_JOBS.delete(ch.id); if (say) ch.thread.push({ from: 'ai', text: say, at: now(t) }); bump(t, ch); o.save?.(t); }
     })();
@@ -1468,7 +1466,14 @@ export function createRemix(o) {
   on('POST', '/api/changes/:chid/iterate', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };
     const msg = clean(String(b.message || '')).slice(0, 400); if (!msg) return { error: 'empty' };
-    const cut = !b.fix && !isQuestion(msg) ? CUTS_RE.exec(msg) : null;
+    /* "do it", "go ahead", "yes": the card's button, said in words (Param, 19 Oct: "do it" got "I don't know that yet because the
+       question is unspecified"). "redo", "another one", "three cuts": one new take, never several options to pick from */
+    if (!b.fix && GO_RE.test(msg)) { ch.thread.push(youSaid(t, msg)); const c0 = t.cards.get(ch.cardId) || {};
+      const say = await makeOne(t, ch, c0, (ch.plan || o.planOf?.(t, c0))?.cta || c0.cta?.label || '');
+      ch.thread.push({ from: 'ai', text: say || 'It’s on the stage. Happy with it? Share the brief. Not right? Say redo, or tell me what to change.', at: now(t) });
+      return { change: pubChange(t, ch), learned: learnedOut(t) }; }
+    if (!b.fix && !isQuestion(msg) && (REDO_RE.test(msg) || CUTS_RE.test(msg))) { ch.thread.push(youSaid(t, msg)); await redoOne(t, ch, REDO_RE.test(msg) ? '' : msg.replace(CUTS_RE, 'a new take')); return { change: pubChange(t, ch), learned: learnedOut(t) }; }
+    const cut = null; /* counted cuts are gone: one at a time (above) */
     if (cut) { ch.thread.push(youSaid(t, msg)); const n = NUMW[cut[1].toLowerCase()] || +cut[1];
       try { think(ch, `Writing ${n} cuts of this version`); const made = await makeCuts(t, ch, n, msg, (x, i) => `Cut ${'ABCDE'[i]}: ${x.angle || 'a different cut'}`);
         ch.thread.push({ from: 'ai', text: made.length ? `Made ${made.length} options: ${cutNames(ch, made)}.${made.photos ? ' Each gets its own photo in a minute.' : ''} Tap them above the stage and use the one you like.` : 'Those cuts didn’t come through. Try again in a minute.', at: now(t), vs: made.map((v) => v.id), cuts: true });

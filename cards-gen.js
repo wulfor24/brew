@@ -17,18 +17,19 @@ const ROLES = { signals: ['founder', 'crm', 'growth'], ads: ['growth', 'founder'
 const MAKE_FORMATS = catalog.formats(); /* the catalog's families (data/creative-catalog.json): the same 13 names as before, so saved packs still map */
 /* a format the writer names (a family, or a Sloosh Space or model from the catalog) → the family the card carries; null when it is none of them or "other" */
 const toFamily = (f) => { const fam = catalog.familyOf(f); return fam && fam !== 'other' ? fam : null; };
-const MAKE_CTA = { 'single image ad': 'Generate versions', 'carousel ad': 'Make the carousel ad', 'collection ad': 'Build the collection ad', 'catalog ad': 'Build the catalog ad', 'video ad': 'Make the video', reel: 'Make the video', 'instagram post': 'Draft the post', 'instagram carousel': 'Draft the carousel post', 'instagram stories': 'Draft the stories', 'whatsapp message': 'Approve the flows', email: 'Approve the flows', 'page section': 'Update landing page' };
+const MAKE_CTA = { 'single image ad': 'Make the ad', /* one ad, never "versions" (Param, 19 Oct) */ 'carousel ad': 'Make the carousel ad', 'collection ad': 'Build the collection ad', 'catalog ad': 'Build the catalog ad', 'video ad': 'Make the video', reel: 'Make the video', 'instagram post': 'Draft the post', 'instagram carousel': 'Draft the carousel post', 'instagram stories': 'Draft the stories', 'whatsapp message': 'Approve the flows', email: 'Approve the flows', 'page section': 'Update landing page' };
 /* the button follows what the card asks to be made. Cause of "Draft the post" on a page card: the old rule kept any
    button that mentioned a post, carousel or video, so a page section kept the AI's social-post button. Now a making
    button of another format is replaced by the one for the planned format; a non-making button (a decision, a spend,
    "Publish the page") is the card's own choice and stays. Used when cards are written and when packs load. */
 const OTHER_NETWORK = new Set(['Launch the ad group']);
-const MAKE_LABELS = new Set([...Object.values(MAKE_CTA), 'Draft the post', 'Draft the carousel post', 'Draft the stories', 'Make the video', 'Generate versions']);
+const MAKE_LABELS = new Set([...Object.values(MAKE_CTA), 'Draft the post', 'Draft the carousel post', 'Draft the stories', 'Make the video', 'Generate versions', 'Make the ad']);
 export function fitCta(card) {
   const want = card?.make?.format && MAKE_CTA[card.make.format], cur = card?.cta?.label;
   /* a Google search button ("Launch the ad group") on a card that makes a Meta or social asset promises the wrong thing: the format's own button */
   const wrongNet = OTHER_NETWORK.has(cur) && MAKES_CREATIVE.test(card?.make?.format || '');
-  if (want && CTA[want] && cur !== want && (!cur || MAKE_LABELS.has(cur) || wrongNet)) card.cta = { ...(card.cta || {}), label: want };
+  if (cur === 'Generate versions') card.cta = { ...(card.cta || {}), label: 'Make the ad' }; /* saved cards: the button makes one ad */
+  if (want && CTA[want] && card.cta?.label !== want && (!cur || MAKE_LABELS.has(cur) || wrongNet)) card.cta = { ...(card.cta || {}), label: want };
   return card;
 }
 /* a card that names an asset carries what to make. Old packs were written before every such card set "make", so cards
@@ -55,7 +56,7 @@ const NO_MAKE = /^(build-|statics-batch$|story-|live-|read-|heard-)/;
 /* buttons that decide, fix or open something: such a card is not asking for an asset, whatever its words mention */
 const NOT_MAKING = new Set(['Fix tracking', 'Agree with the call', 'Open the moves', 'Open the scoreboard', 'Shift budget', 'Fix the markup', 'Push the titles', 'Launch the ad group', 'Turn on guest checkout', 'Publish the claims ledger', 'Shortlist creators', 'Draft the buyer deck', 'Brief the shoot', 'Open report', 'Approve the offers']);
 /* buttons that ship an asset: the body may say which, and with nothing named the button's own format is used (flows and journeys name theirs) */
-const CTA_DEFAULT = { 'Send the review ask': 'email', 'Make the video': 'reel', 'Generate versions': 'single image ad', 'Rotate creative': 'single image ad', 'Queue the ads': 'single image ad', 'Publish Campaign': 'single image ad', 'Make our version': 'single image ad', 'Approve the flows': null, 'Turn on the journey': null, 'Publish the page': 'page section', 'Draft the listing': 'page section' };
+const CTA_DEFAULT = { 'Send the review ask': 'email', 'Make the video': 'reel', 'Generate versions': 'single image ad', 'Make the ad': 'single image ad', 'Rotate creative': 'single image ad', 'Queue the ads': 'single image ad', 'Publish Campaign': 'single image ad', 'Make our version': 'single image ad', 'Approve the flows': null, 'Turn on the journey': null, 'Publish the page': 'page section', 'Draft the listing': 'page section' };
 const TALKS_ABOUT = /\b(?:pause|stop|kill|cut|turn off|switch off|audit|check|fix|track|measure|count|confirm|install|restart|rival'?s?|competitor'?s?)\b[^.]{0,30}\bads?\b/i;
 const formatIn = (text) => { for (const [format, re] of MAKE_RE) { if (!re.test(text)) continue; if (format === 'single image ad' && TALKS_ABOUT.test(text) && !/\b(?:new|write|make|draft|launch)\b/i.test(text)) return null; return format; } return null; };
 export function inferMake(c = {}) {
@@ -86,9 +87,9 @@ const SCHEMA = {
       cta: { type: 'string', enum: Object.keys(CTA) },
       make: { type: 'object', description: 'Required when the card asks for something to be made or its title, body or button names an ad, email, reel, video, post, carousel, Stories, WhatsApp message or page: the format and the pieces in it. Omit only for reports and plans that make nothing', properties: {
         format: { type: 'string', enum: MAKE_FORMATS, description: 'A family from WHAT CAN BE MADE' },
-        pieces: { type: 'string', description: 'Under 90 characters: a concrete asset from the catalog: format, the exact product as the store lists it, the scene or angle, the hook; e.g. "6 slides: the fit room, one body type per slide". Never starts with the format’s own name or a URL path. Never a generic ad ("a new ad", "fresh creative", "some visuals")' },
+        pieces: { type: 'string', description: 'Under 90 characters: a concrete asset from the catalog: format, the exact product as the store lists it, the scene or angle, the hook; e.g. "6 slides: the fit room, one body type per slide". Never starts with the format’s own name or a URL path. ONE asset, never a count of options ("3 ads", "three hooks", "2 versions"): Brew makes one and the team redoes it if they want another. Never a generic ad ("a new ad", "fresh creative", "some visuals")' },
         backedBy: { type: 'string', description: 'Under 60 characters: which of the brand\'s own lines this asset rests on: a fact sheet line, the brand style, a team learning, a ledger line or a listening line, named' } } },
-      plan: { type: 'array', items: { type: 'string' }, description: '3 to 5 ground-work steps toward the card’s button, in order, each under 14 words, naming the real ads, products, pages or people from the move (e.g. "Pick the two winning ads: Fit room and Rain test", "Write 3 new hooks per winner", "Make the carousels", "Review them", "Ready to launch on Meta or hand to the team"). The last step is ready to deploy or hand to the team. Never a step that says it is decided or done.' },
+      plan: { type: 'array', items: { type: 'string' }, description: '3 to 5 ground-work steps toward the card’s button, in order, each under 14 words, naming the real ads, products, pages or people from the move (e.g. "Pick the two winning ads: Fit room and Rain test", "Write one new hook for the winner", "Make the carousel", "Review it", "Ready to launch on Meta or hand to the team"). The last step is ready to deploy or hand to the team. Never a step that says it is decided or done.' },
       section: { type: 'string', description: 'The move section heading this card comes from' }
     } } }
   }
@@ -235,7 +236,7 @@ Return every card by its id.`;
     (j.cards || []).slice(0, 4).forEach((c, i) => {
       const [sector, agent] = SEC(`${c.title} ${c.sub}`);
       const card = { id: `read-${i + 1}`, origin: 'read', agent, sector, type: c.type, lane, roles: ROLES[sector] || ['founder'], src: readSrc(brand.host, p.meta?.readAt), time: `${4 + i * 3} min`,
-        kind: (c.rows || []).filter((r) => r?.length >= 2).length ? 'rows' : 'media', title: String(c.title || '').trim(), sub: String(c.sub || '').trim(), detail: { why: (c.why || []).slice(0, 3), how: (c.how || []).slice(0, 3) }, cta: { label: CTA[c.cta] ? c.cta : 'Generate versions' } };
+        kind: (c.rows || []).filter((r) => r?.length >= 2).length ? 'rows' : 'media', title: String(c.title || '').trim(), sub: String(c.sub || '').trim(), detail: { why: (c.why || []).slice(0, 3), how: (c.how || []).slice(0, 3) }, cta: { label: CTA[c.cta] ? c.cta : 'Make the ad' } };
       const rows = (c.rows || []).filter((r) => r?.length >= 2).slice(0, 5).map((r) => [String(r[0]).slice(0, 40), String(r[1]).slice(0, 48)]);
       const fam = toFamily(c.make?.format);
       if (fam) { card.make = { format: fam, pieces: cutWords(c.make.pieces, 100) }; fitCta(card); }

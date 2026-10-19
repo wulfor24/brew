@@ -115,7 +115,7 @@
       : (LIB?.turns?.[isChange(c) ? 'change' : familyOf(c, ch)] || LIB?.turns?.other || []).map((t) => `<button class="chip" data-cv-ask="${H.esc(t)}">${H.esc(t)}</button>`).join('');
     const visual = blocksFor(c, w, ch).some((b) => ['creative', 'message', 'page', 'listing'].includes(b)), drafts = w?.drafts || [], making = drafts.some((d) => d.state === 'making');
     const make = !visual ? '' : making ? `<span class="chip is-make is-busy"><span class="spin"></span>Making the draft…</span>` : `<button class="chip is-make" data-jm-make="auto">${H.ic('sparkles', 's12')}${drafts.some((d) => d.state === 'ready') ? 'Make another draft' : 'Make the first draft'}</button>`;
-    return `<div class="cv-turns">${make}${chips}<button class="chip is-3" data-cv-ask="Make 3 different versions of this, each with a different angle.">${H.ic('sparkles', 's12')}Try 3 versions</button></div>`;
+    return `<div class="cv-turns">${make}${chips}<button class="chip is-3" data-cv-ask="Redo it">${H.ic('sparkles', 's12')}Redo it</button></div>`;
   };
   // the jam view: the blocks, the versions, the quick turns
   const linked = new Set();

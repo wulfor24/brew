@@ -68,11 +68,11 @@ test('after a restart a remake stops saying “being made” on every version th
   assert.equal(t.changes.ch_1.thread.filter((x) => x.remakeAgain).length, 1, 'said once'); assert.ok(again.change);
 });
 
-test('“three cuts of this ad” makes three cuts, not one package; a community post is never remade with AI media', async () => {
+test('“three cuts of this ad” makes one new take (one, always); a community post is never remade with AI media', async () => {
   const t = tenant(); t.changes.ch_1 = change('ch_1'); const { call } = studio();
   await call('GET /api/changes/:chid', {}, t, { chid: 'ch_1' }); const before = versionsOf(t, 'ch_1').length;
   const r = await call('POST /api/changes/:chid/iterate', { message: 'Three cuts of this ad' }, t, { chid: 'ch_1' });
-  assert.equal(versionsOf(t, 'ch_1').length, before + 3); assert.ok(r.change.thread.at(-1).cuts && r.change.thread.at(-1).vs.length === 3);
+  assert.equal(versionsOf(t, 'ch_1').length, before + 1); assert.match(r.change.thread.at(-1).text, /^Redid it/);
   t.changes.ch_r = change('ch_r', { family: 'post', action: 'creative.reddit_post', pkg: { platform: 'Reddit', copy: 'Honest answer', knobs: {} } });
   const rr = await call('POST /api/changes/:chid/remake', { as: 'carousel' }, t, { chid: 'ch_r' });
   assert.match(rr.error, /real photos only/); assert.equal(rr.change.realOnly, true, 'the chips hide on it');

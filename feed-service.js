@@ -713,10 +713,10 @@ export function createFeedService(o) {
         rows: e.items.slice(0, 4).map((x) => [String(x.hook || 'Untitled ad').slice(0, 38), `${x.days} days`]), detail: { why: ['Read from your live ads in the public Meta Ad Library.', 'Spend and results need your Meta account connected.'], how: ['We draft fresh versions of the long runners.', 'You pick which go live.', 'The old ones pause when the new ones start.'] }, cta: { label: 'Rotate creative' } });
       if (e.kind === 'new') out.push({ ...base, type: 'report', family: 'result', kind: 'rows', badge: ['New live', 'info'], liveNums: nums,
         title: `${e.n} new ad${e.n === 1 ? '' : 's'} went live since the last read`, sub: `We now count ${o.live} live ads for ${BN()} in the Meta Ad Library. The new ones are below, so the team can see what is being tested.`,
-        rows: e.items.slice(0, 4).map((x) => [String(x.hook || 'Untitled ad').slice(0, 38), x.video ? 'Video' : 'Image']), detail: { why: ['Read from the public Meta Ad Library today.'], how: ['Connect Meta to see what each one costs and returns.'] }, cta: { label: 'Generate versions' } });
+        rows: e.items.slice(0, 4).map((x) => [String(x.hook || 'Untitled ad').slice(0, 38), x.video ? 'Video' : 'Image']), detail: { why: ['Read from the public Meta Ad Library today.'], how: ['Connect Meta to see what each one costs and returns.'] }, cta: { label: 'Make the ad' } });
       if (e.kind === 'count') out.push({ ...base, type: 'report', family: 'result', kind: 'rows', badge: ['Live ads', e.now > e.was ? 'ok' : 'warn'], liveNums: nums,
         title: `Live ads went from ${e.was} to ${e.now}`, sub: `The count of ${BN()} ads running in the Meta Ad Library changed since the last read. A big drop can mean a paused account or a budget cut.`, rows: [['Before', String(e.was)], ['Now', String(e.now)]], detail: { why: ['Counted in the public Meta Ad Library.'], how: ['Check the account if the drop was not planned.'] }, cta: { label: 'Open report' } });
-      if (e.kind === 'none') out.push({ ...base, type: 'decision', kind: 'rows', badge: ['No live ads', 'warn'], liveNums: [], title: `No live ${BN()} ads found in the Meta Ad Library`, sub: `We searched the Ad Library for ${CTRY()} and found no ads running for ${BN()} today. Your feed's ad cards start from your moves instead.`, rows: [['Live ads', 'None found']], detail: { why: ['Searched by brand name in the public Ad Library.'], how: ['If you run ads under another page name, tell us and we will track that page.'] }, cta: { label: 'Generate versions' } /* no rival ad behind it: our first ad, never "our version" of something */ });
+      if (e.kind === 'none') out.push({ ...base, type: 'decision', kind: 'rows', badge: ['No live ads', 'warn'], liveNums: [], title: `No live ${BN()} ads found in the Meta Ad Library`, sub: `We searched the Ad Library for ${CTRY()} and found no ads running for ${BN()} today. Your feed's ad cards start from your moves instead.`, rows: [['Live ads', 'None found']], detail: { why: ['Searched by brand name in the public Ad Library.'], how: ['If you run ads under another page name, tell us and we will track that page.'] }, cta: { label: 'Make the ad' } /* no rival ad behind it: our first ad, never "our version" of something */ });
     }
     return out;
   };
@@ -759,7 +759,7 @@ export function createFeedService(o) {
           saveGen(key + '.png', buf); img = `gen/${key}.png`; imgNote = 'generated with the cheap image model';
         } catch (e) { log.warn('[creative watcher] image', e.message); }
       }
-      return { cards: [{ id: uid('w-c'), agent: 'creative', sector: 'creatives', type: 'idea', lane, roles: ['brand', 'growth', 'founder'], kind: 'media', images: [img], campaign: 'New from your agents', title: clean(j.title), sub: clean(j.sub), detail: { why: (j.why || []).map(clean), how: (j.how || []).map(clean) }, cta: { label: 'Generate versions' } }], how: `written live by Claude, image ${imgNote}` };
+      return { cards: [{ id: uid('w-c'), agent: 'creative', sector: 'creatives', type: 'idea', lane, roles: ['brand', 'growth', 'founder'], kind: 'media', images: [img], campaign: 'New from your agents', title: clean(j.title), sub: clean(j.sub), detail: { why: (j.why || []).map(clean), how: (j.how || []).map(clean) }, cta: { label: 'Make the ad' } }], how: `written live by Claude, image ${imgNote}` };
     } catch (e) { log.warn('[creative watcher]', e.message); return { cards: fromPool(t, 'creative'), how: 'from the pool (AI call failed)' }; }
   };
   /* ---------- cards from real research (research.js) ---------- */
@@ -941,18 +941,20 @@ export function createFeedService(o) {
   const variantOk = (parent, v) => { const ok = new Set(FACT_OK); numbersIn(JSON.stringify({ t: parent.title, s: parent.sub, r: parent.rows, d: parent.detail })).forEach((n) => ok.add(n)); return !unbacked({ text: `${v.title} ${v.sub}` }, ok).length; };
   // heart cards made before that check could carry canned versions with stale prices: rebuild them from their parent
   const repairHeartKids = (t) => { for (const c of t.cards.values()) { if (c.origin !== 'heart' || !c.variants?.length || c._vfix) continue; const parent = t.cards.get(c.parentCardId); if (!parent) continue;
-    const good = c.variants.filter((v) => variantOk(parent, v)); c.variants = good.length === c.variants.length ? c.variants : [...good, ...mockVariants(parent)].slice(0, 3); c._vfix = 1; } };
+    const good = c.variants.filter((v) => variantOk(parent, v)); c.variants = good.length === c.variants.length ? c.variants : [...good, ...mockVariants(parent)].slice(0, 3); c._vfix = 1; }
+    /* one, always (Param, 19 Oct): a heart card made with three cuts keeps its first; Redo it in the jam makes the next */
+    for (const c of t.cards.values()) if (c.origin === 'heart' && (c.variants?.length || 0) > 1) { c.variants = c.variants.slice(0, 1); c.title = 'One more in the direction you hearted'; c.sub = String(c.sub || '').replace(/,? cut three ways/i, '').replace(/\s*Pick the one to run\./, ' Redo it in the jam if it isn’t right.'); } };
   const heartChild = (t, parent) => {
     const existing = [...t.cards.values()].find((c) => c.parentCardId === parent.id && c.origin === 'heart'); if (existing) return existing;
-    const child = { id: uid('more'), parentCardId: parent.id, origin: 'heart', agent: parent.agent === 'brew' ? 'creative' : parent.agent, sector: parent.sector, type: 'idea', family: 'idea', lane: parent.lane, roles: parent.roles, time: 'Just now', campaign: 'More like this', kind: 'variants', loading: true, images: parent.images ? [parent.images[0]] : null, title: 'Three more in the direction you hearted', sub: `Same idea as “${parent.title}”, cut three ways.`, cta: { label: 'Generate versions' }, src: parent.src, createdAt: now(t), history: [] };
+    const child = { id: uid('more'), parentCardId: parent.id, origin: 'heart', agent: parent.agent === 'brew' ? 'creative' : parent.agent, sector: parent.sector, type: 'idea', family: 'idea', lane: parent.lane, roles: parent.roles, time: 'Just now', campaign: 'More like this', kind: 'variants', loading: true, images: parent.images ? [parent.images[0]] : null, title: 'One more in the direction you hearted', sub: `Same idea as “${parent.title}”, one new cut.`, cta: { label: 'Make the ad' }, src: parent.src, createdAt: now(t), history: [] };
     setState(t, child, 'proposed'); t.cards.set(child.id, child);
     (async () => {
       setState(t, child, 'qa');
       let vs, how = 'mock';
-      if (!isMock() && spend('text')) { try { const j = await claudeJSON(`${cardBrief(parent, seatLine(t.viewer))}\n\nThe reader hearted this card. Write three new feed cards in the same direction, each a different cut (persona, format or hook). JSON: {"variants":[{"angle":"2-3 words","title":"under 60 chars, point first, plain words","sub":"two sentences, 25 to 35 words: what we saw with the number, then the move and what it gets ${BN()}; no fonts, design notes or file names; numbers only from the facts"}]}`); vs = j.variants; how = 'live'; } catch (e) { log.warn('[heart]', e.message); } }
-      vs = (vs || mockVariants(parent)).slice(0, 3).map((v) => ({ ...v, title: clean(v.title), sub: clean(v.sub) })).filter((v) => !BANNED.test(v.title + v.sub) && variantOk(parent, v));
-      child.variants = vs.length ? vs : mockVariants(parent); child.loading = false;
-      child.sub = how === 'live' ? `Written just now from “${parent.title}”. Pick the one to run.` : `Same idea as “${parent.title}”, cut three ways. Pick the one to run.`;
+      if (!isMock() && spend('text')) { try { const j = await claudeJSON(`${cardBrief(parent, seatLine(t.viewer))}\n\nThe reader hearted this card. Write ONE new feed card in the same direction, a different cut (persona, format or hook) from the card above. JSON: {"variants":[{"angle":"2-3 words","title":"under 60 chars, point first, plain words","sub":"two sentences, 25 to 35 words: what we saw with the number, then the move and what it gets ${BN()}; no fonts, design notes or file names; numbers only from the facts"}]}`); vs = j.variants; how = 'live'; } catch (e) { log.warn('[heart]', e.message); } }
+      vs = (vs || mockVariants(parent)).slice(0, 1).map((v) => ({ ...v, title: clean(v.title), sub: clean(v.sub) })).filter((v) => !BANNED.test(v.title + v.sub) && variantOk(parent, v));
+      child.variants = vs.length ? vs : mockVariants(parent).slice(0, 1); child.loading = false;
+      child.sub = how === 'live' ? `Written just now from “${parent.title}”. Redo it in the jam if it isn’t right.` : `Same idea as “${parent.title}”, one new cut. Redo it in the jam if it isn’t right.`;
       t.qa.unshift({ id: uid('qa'), cardId: child.id, title: child.title, by: 'Heart', attempt: 1, checks: [{ k: 'No banned words', ok: true }, { k: 'Names a number', ok: true }], result: 'pass', at: now(t) });
       setState(t, child, 'ready');
     })();
@@ -974,16 +976,17 @@ export function createFeedService(o) {
   };
 
   /* ---------- versions (remix and jam) ---------- */
+  /* one, always (Param, 19 Oct): a jam message makes ONE new version of the card, never three to pick from */
   const makeVersions = async (t, c, prompt, extra = '') => {
     if (!isMock() && spend('text')) {
       try {
-        const j = await claudeTool(`${cardBrief(c, seatLine(t.viewer))}\n\nThe reader wants: "${prompt || 'three distinct angles'}". ${extra}\n${promptBlock(t, c.agent === 'brew' ? 'creative' : c.agent)}\nReply as the ${AGENT[c.agent] || 'agent'}: one short line, then three versions of this card that do exactly that. Plain words, only numbers from the facts.`,
+        const j = await claudeTool(`${cardBrief(c, seatLine(t.viewer))}\n\nThe reader wants: "${prompt || 'a new angle'}". ${extra}\n${promptBlock(t, c.agent === 'brew' ? 'creative' : c.agent)}\nReply as the ${AGENT[c.agent] || 'agent'}: one short line, then ONE version of this card that do exactly that. Plain words, only numbers from the facts.`,
           { type: 'object', required: ['line', 'versions'], properties: { line: { type: 'string', description: 'Under 20 words' }, versions: { type: 'array', items: { type: 'object', required: ['angle', 'title', 'sub'], properties: { angle: { type: 'string', description: '2-3 words' }, title: { type: 'string', description: 'Under 60 characters' }, sub: { type: 'string', description: 'Under 100 characters, one exact number from the facts' } } } } } }, 1500, 'versions');
-        const vs = (j.versions || []).slice(0, 3).map((v) => ({ ...v, title: clean(v.title), sub: clean(v.sub) })).filter((v) => !BANNED.test(v.title + v.sub) && qaCheck({ ...c, ...v }).every((x) => x.ok || x.k === 'Names a number'));
-        if (vs.length) return { line: clean(j.line || 'Here are three versions.'), versions: vs, live: true };
+        const vs = (j.versions || []).slice(0, 1).map((v) => ({ ...v, title: clean(v.title), sub: clean(v.sub) })).filter((v) => !BANNED.test(v.title + v.sub) && qaCheck({ ...c, ...v }).every((x) => x.ok || x.k === 'Names a number'));
+        if (vs.length) return { line: clean(j.line || 'Here it is.'), versions: vs, live: true };
       } catch (e) { log.warn('[versions]', e.message); }
     }
-    return { line: 'Here are three versions. Pick one, or tell me what to change.', versions: mockVariants(c), live: false };
+    return { line: 'Here it is. Not right? Ask again, or tell me what to change.', versions: mockVariants(c).slice(0, 1), live: false };
   };
 
   /* ---------- engine view: everything the spec describes, in one read ---------- */

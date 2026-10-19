@@ -98,12 +98,13 @@ test('every button the product writes opens a plan, except the ones that are a p
   }
 });
 
-test('“Generate versions” on a card with winning ads: name them, write three hooks, make them, review, ready', () => {
+test('“Generate versions” on a card with winning ads: name them, write one hook, make the one ad, review, ready', () => {
   const pl = planFor(K('gv', { cta: { label: 'Generate versions' }, make: { format: 'carousel ad' }, rows: [['Ad “Fit room”', 'CTR 2.1%'], ['Ad “Rain test”', 'CTR 1.8%'], ['Audience', '25-44']] }));
   assert.match(pl.steps[0].t, /Pick the winning ads: Ad “Fit room” and Ad “Rain test”$/);
-  assert.match(pl.steps[1].t, /Write 3 new versions/); assert.equal(pl.steps[2].k, 'make'); assert.match(pl.steps[2].t, /carousel ads/);
+  assert.match(pl.steps[1].t, /Write the ad, with one strong hook/); assert.equal(pl.steps[2].k, 'make'); assert.match(pl.steps[2].t, /Make the carousel ad$/);
   assert.match(pl.steps[3].t, /Review/); assert.match(pl.steps[4].t, /Ready: share the brief so the team launches it on Meta Ads/);
-  assert.equal(pl.n, 3);
+  assert.equal(pl.n, 1);
+  assert.doesNotMatch(JSON.stringify(pl), /\b[23] (?:versions|options|cuts|ads|hooks)\b|three /i, 'nowhere promises several');
 });
 
 test('a plan the writer gave with AI keeps its words, drops "decided", and keeps the action’s own make and ready steps', () => {

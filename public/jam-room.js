@@ -208,7 +208,7 @@
     const cut = (x, n) => { x = String(x || '').trim(); return x.length > n ? x.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : x; };
     const why = (c.detail?.why || []).filter((x) => x && !/^[^:]{2,60}:\s*[₹$€£]?[\d.,]+\s*$/.test(x) && !/^[^:“"]{2,90}\([^)]*\):/.test(x) /* evidence rows (label (source): value), not reasons */).slice(0, 2), miss = (w?.doc?.missing || []).map((x) => String(x).toLowerCase());
     const pl = w?.cardPlan || c.plan, made = !pl || pl.made || (w?.drafts || []).some((d) => d.state === 'ready' && !d.seeded) || (w && w.stage !== 'drafting');
-    const next = pl && !made ? `Press “${pl.cta}” below to make the ${pl.make?.what || 'versions'} here; change them, then share the brief.`
+    const next = pl && !made ? `Press “${pl.cta}” below to make the ${pl.make?.one || pl.make?.what || 'version'} here; change it or redo it, then share the brief.`
       : miss.length ? `Tell me in the chat: ${miss.join('; ')}. Then share the brief.`
       : 'Happy with it? Share the brief with the ShopOS team or your own team from the bottom bar. It copies the brief and a link to everything.';
     return `<div class="case"><small class="case-k">The case${c.src ? ` · ${esc(c.src)}` : ''}</small><b class="case-t">${esc(cut(c.title, 140))}</b>${c.sub ? `<p>${esc(cut(c.sub, 240))}</p>` : ''}
