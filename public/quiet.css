@@ -472,3 +472,12 @@ p.rd2-trust,.rd2-trust>summary{display:inline-flex;align-items:center;gap:6px}
 .sv-src a{color:inherit;text-decoration:underline;text-underline-offset:2px}
 /* what changed in a health ring since its last score (QA FEED-QA-18) */
 .hc-was{display:block;font-size:12px;opacity:.75}
+/* the feed's finish line (QA FEED-NOT-06, FEED-14/15): done for today, tomorrow, a quiet Find more, Yesterday folded */
+.feed-end.fe2 .fe-more{margin-top:6px;font-size:14px;display:inline-flex;align-items:center;gap:6px;opacity:.8}
+.fe-y{margin-top:14px;width:100%;text-align:left}
+.fe-y summary{cursor:pointer;font-size:14px;opacity:.75;list-style:none}.fe-y summary::-webkit-details-marker{display:none}
+.fe-y summary small{margin-left:4px;opacity:.7}
+.fe-y ul{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:2px}
+.fe-y li button{display:flex;flex-direction:column;align-items:flex-start;gap:1px;width:100%;padding:8px 10px;border-radius:10px;text-align:left;text-decoration:none}
+.fe-y li button:hover{background:var(--surface-2,rgba(127,127,127,.1))}
+.fe-y li b{font-weight:500;font-size:14px;line-height:1.35}.fe-y li small{font-size:12px;opacity:.7}

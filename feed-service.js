@@ -1585,12 +1585,22 @@ export function createFeedService(o) {
   });
   const newIdsOf = (t, order) => { const v = t.visit; if (!v?.prev) return []; const began = v.at || now(t);
     return order.filter((id) => { const c = t.cards.get(id); return c && !c.parentCardId && c.origin !== 'user' && c.state !== 'done' && c.createdAt > v.prev && !(t.shown[id] || []).some((x) => x < began); }); };
+  /* "Yesterday" at the end of the feed (QA FEED-15): the cards this person saw or acted on the day before, newest first, from what the
+     workspace already keeps (impressions, feedback, the cards they worked on). The page folds it by default */
+  const DID = { heart: 'You liked it', save: 'You saved it', not_interested: 'You hid it', snooze: 'You put it off', fewer: 'You asked for fewer' };
+  const yesterdayOf = (t) => { const n = now(t), y = dayKey(n - D), last = new Map(), did = new Map(), seen = (id, x) => last.set(id, Math.max(last.get(id) || 0, x));
+    for (const [id, ts] of Object.entries(t.shown || {})) for (const x of ts || []) if (dayKey(x) === y) seen(id, x);
+    for (const f of t.feedback || []) if (f?.cardId && f.at && dayKey(f.at) === y) { seen(f.cardId, f.at); if (DID[f.kind]) did.set(f.cardId, DID[f.kind]); }
+    for (const [id, x] of Object.entries(t.actedAt || {})) if (x && dayKey(x) === y) { seen(id, x); if (!did.has(id)) did.set(id, 'You worked on it'); }
+    const slug = slugOfT(t);
+    return [...last.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => t.cards.get(id)).filter((c) => c?.title && seatOk(t, c) && !c.parentCardId).slice(0, 12)
+      .map((c) => ({ id: c.id, title: (process.env.PLAIN_OFF === '1' ? c : PLAIN.apply(slug, c)).title, did: did.get(c.id) || 'You saw it' })); };
   on('GET', '/api/tenants/:id/feed', async (b, t) => { repairHeartKids(t); syncBatches(t); if (B().kind === 'generated') streamSync(t, SEED.posts);
     if (t.visit && t.feedVisit !== t.visit.at) { t.feedVisit = t.visit.at; if (t.onboarding.readyAt) await runFree(t, 'visit', 6000); }
     await PLAIN.load(slugOfT(t)).catch(() => {});
     const f = feed(t); if (process.env.PLAIN_OFF !== '1' && !demoReq()) PLAIN.queue(slugOfT(t), f.order.map((id) => t.cards.get(id)).filter(Boolean), BN()); /* cards still in their first words get plain ones in the background */
     oneTitles(t);
-    return { ...f, newIds: newIdsOf(t, f.order), saved: [...savedOf(t)], cards: allCards(t), withTeam: withTeam(t.work.filter((w) => shown0(w) && guestSees(t)(w))), batches: t.batches, health: t.health, healthLive: t.member ? healthReadings(t.liveLedger) : {}, aiRing: aiRingWeekly(), decided: t.decided || {}, clock: now(t) }; });
+    return { ...f, newIds: newIdsOf(t, f.order), saved: [...savedOf(t)], cards: allCards(t), withTeam: withTeam(t.work.filter((w) => shown0(w) && guestSees(t)(w))), batches: t.batches, health: t.health, healthLive: t.member ? healthReadings(t.liveLedger) : {}, aiRing: aiRingWeekly(), decided: t.decided || {}, yesterday: yesterdayOf(t), clock: now(t) }; });
   on('GET', '/api/tenants/:id/deck', async (b, t) => {
     const { top, ranked, scores } = rank(t); const list = withChildren(t, [...top, ...ranked]);
     const cols = {}; ['signals', 'catalog', 'creatives', 'ads', 'storefront', 'visibility'].forEach((k) => (cols[k] = list.filter((c) => c.sector === k).map((c) => c.id)));

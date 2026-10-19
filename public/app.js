@@ -339,7 +339,7 @@
   const loadFeed = async () => {
     await syncNow();
     const r = await tapi('GET', `/api/tenants/:t/feed${SFQ}`); ringsLater(); if (r.error) return null;
-    ALL = r.cards; SCORES = r.scores || {}; LIMIT = r.limit; PINNED = new Set(r.pinned || []); SRV.health = r.health || {}; SRV.healthLive = r.healthLive || {}; SRV.aiRing = r.aiRing || null; SRV.clock = r.clock;
+    ALL = r.cards; SCORES = r.scores || {}; LIMIT = r.limit; PINNED = new Set(r.pinned || []); SRV.health = r.health || {}; SRV.healthLive = r.healthLive || {}; SRV.aiRing = r.aiRing || null; SRV.clock = r.clock; SRV.yesterday = r.yesterday || [];
     NEWSET = new Set(r.newIds || []);
     /* saves live on the server (every device); the ones this browser kept before that go up once */
     if (Array.isArray(r.saved)) { if (!S.savedSync) { S.savedSync = 1; const up = S.saved.filter((id) => !r.saved.includes(id)); up.forEach((id) => tapi('POST', `/api/cards/${encodeURIComponent(id)}/feedback`, { kind: 'save' })); S.saved = [...new Set([...r.saved, ...up])]; }
@@ -1553,7 +1553,14 @@
   const lazyImgs = (h) => String(h).replace(/<img (?![^>]*\bloading=)/g, '<img loading="lazy" decoding="async" ');
   /* the feed is drawn 15 cards at a time; the next 15 come as the reader nears the end (a sentinel), never all at once */
   const FEED_PAGE = 15; let FEED_AT = 0, FEED_X = { asked: new Set(), wait: [] }, moreIO = null, START_ID = null;
-  const feedEndHtml = () => `<div class="feed-end fe2"><b>You’re caught up</b><span>Your agents are still working. Pull in the next few now.</span><button class="btn btn-ghost" data-find-more>${ic('refresh', 's16')}Find more</button></div>`;
+  /* the end of the feed is a calm finish line (QA FEED-NOT-06, FEED-14/15): done for today, what tomorrow brings, Find more as a
+     quiet link, and Yesterday folded under it (the cards this person saw or acted on the day before). No prices: pricing is parked */
+  const tomorrowLine = () => { const d = new Date(`${brandClock().day}T12:00:00Z`), mon = !isNaN(d) && d.getUTCDay() === 0, n = +S.viewer.perDay || 0;
+    return `Tomorrow morning your agents bring ${n ? `your ${n} for the day` : 'a fresh set of cards'}${mon ? ', and Monday’s round-up of the week' : ''}.`; };
+  const ydayHtml = () => { const ys = (SRV.yesterday || []).filter((y) => y?.id && y.title); if (!ys.length) return '';
+    return `<details class="fe-y"><summary>Yesterday <small>${ys.length}</small></summary><ul>${ys.map((y) => `<li><button class="linkbtn" data-yday="${esc(y.id)}"><b>${esc(y.title)}</b><small>${esc(y.did)}</small></button></li>`).join('')}</ul></details>`; };
+  const feedEndHtml = () => `<div class="feed-end fe2"><b>You’re done for today</b><span>${esc(tomorrowLine())}</span><button class="linkbtn fe-more" data-find-more>${ic('refresh', 's14')}Find more</button>${ydayHtml()}</div>`;
+  document.addEventListener('click', (e) => { const y = e.target.closest('[data-yday]'); if (!y) return; const p = byId(y.dataset.yday) || (ALL[y.dataset.yday] ? { ...ALL[y.dataset.yday] } : null); if (p) openDetail(p); else toast('That card is no longer here.'); });
   /* cards FEED[from..to) with what sits between them: a connect card from the sixth card on (never above the first pictures), the
      welcome after the third card on a first visit only, the team card after the fourth, and the Pro card on the demo site only */
   const feedRun = (from, to) => { const out = [], X = FEED_X, end = Math.min(to, FEED.length);
@@ -2755,7 +2762,7 @@
     const fm = e.target.closest('[data-find-more]'); if (fm) { fm.disabled = true; fm.innerHTML = '<span class="spin"></span>Looking'; (async () => { const r = await tapi('POST', '/api/tenants/:t/find-more');
       if (r?.error || r?.fallback) { const ok = await refreshFeed({ force: true }); toast(ok ? 'Pulled in the latest. New cards land at the top as your agents finish.' : 'Already refreshing. New cards land at the top.'); }
       else { if (r.made) { await insertNew(); window.scrollTo({ top: Math.max(0, ($('#col .card.is-new') || $('#col'))?.getBoundingClientRect().top + scrollY - 90), behavior: 'smooth' }); } toast(`${ic(r.made ? 'sparkles' : 'info', 's16')}${esc(r.message || (r.made ? 'New cards at the top.' : 'Nothing new right now.'))}`); }
-      const b = $('[data-find-more]'); if (b) { b.disabled = false; b.innerHTML = `${ic('refresh', 's16')}Find more`; } })(); return; }
+      const b = $('[data-find-more]'); if (b) { b.disabled = false; b.innerHTML = `${ic('refresh', 's14')}Find more`; } })(); return; }
     const tpl = e.target.closest('[data-team-pill]'); if (tpl) { e.stopPropagation(); if ($('#pop.t2-pop')) return closePop(); closePop(); const it = WORK.withTeam?.items || [];
       const pop = document.createElement('div'); pop.id = 'pop'; pop.className = 'pop t2-pop'; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Briefs with the ShopOS team');
       pop.innerHTML = `<header><b>With the ShopOS team</b><small>Briefs you sent and where each one is</small></header>${it.map((x) => `<button class="t2-bi" data-witem="${esc(x.wid)}"><span class="t2-bt"><b>${esc(x.title || 'Brief')}</b><small>${esc(x.ticket || '')}${x.at ? ` · ${ago(x.at)}` : ''}</small></span><span class="t2-bs is-${esc(x.status)}">${esc(x.label || x.status)}</span></button>`).join('') || '<p class="t2-empty">Nothing with the team right now.</p>'}<footer><button class="linkbtn" data-nav="done">All briefs ${ic('right', 's14')}</button></footer>`;
