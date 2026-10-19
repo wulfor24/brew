@@ -116,7 +116,7 @@ export const NORM = {
   ytComment: (cm, v, now) => ({ id: `yt:${cm.comment_id}`, platform: 'youtube', kind: 'comment', link: cm.url || `https://www.youtube.com/watch?v=${v.id}&lc=${cm.comment_id}`, postedAt: ms(cm.published_date || cm.published, now), author: short(cm.author?.name || cm.author), text: clip(cm.text), likes: cm.likes || 0, replies: cm.replies ?? null,
     sub: v.channel, subUrl: v.channelUrl || null, thread: `yt-${v.id}`, threadTitle: v.title, threadUrl: `https://www.youtube.com/watch?v=${v.id}`, q: v.q, acct: v.acct }),
   redditApp: (p, q) => { const id = String(p.id || '').replace(/^t3_/, ''), sub = p.subreddit?.prefixedName || (p.subreddit?.name ? `r/${p.subreddit.name}` : '');
-    return { id: `rd:t3_${id}`, platform: 'reddit', kind: 'post', link: p.permalink ? `https://www.reddit.com${p.permalink}` : p.url, postedAt: ms(p.createdAt), author: short(p.authorInfo?.name), title: unesc(p.postTitle), text: clip(p.content?.markdown), sub, likes: p.score || 0, replies: p.commentCount ?? null, thread: id, threadTitle: unesc(p.postTitle), q }; },
+    return { id: `rd:t3_${id}`, platform: 'reddit', kind: 'post', link: p.permalink ? `https://www.reddit.com${p.permalink}` : p.url, postedAt: ms(p.createdAt), author: short(p.authorInfo?.name), title: unesc(p.postTitle), text: clip(p.content?.markdown), sub, likes: p.score || 0, replies: p.commentCount ?? null, floor: false, thread: id, threadTitle: unesc(p.postTitle), q }; },
   redditAppComment: (n, v) => ({ id: `rd:t1_${String(n.id).replace(/^t1_/, '')}`, platform: 'reddit', kind: 'comment', link: n.permalink ? `https://www.reddit.com${n.permalink}` : v.threadUrl, postedAt: ms(n.createdAt), author: short(n.authorInfo?.name), text: clip(n.content?.markdown || n.content?.preview), sub: v.sub, likes: n.score || 0, replies: null, thread: v.thread, threadTitle: v.threadTitle, threadUrl: v.threadUrl, q: v.q }),
   redditComment: (d, v) => ({ id: `rd:t1_${d.id}`, platform: 'reddit', kind: 'comment', link: `https://www.reddit.com${d.permalink || ''}`, postedAt: ms(d.created_utc), author: short(d.author), text: clip(d.body), sub: `r/${d.subreddit}`, likes: d.score || 0, replies: null, thread: v.thread, threadTitle: v.threadTitle, threadUrl: v.threadUrl, q: v.q }),
   threadsPost: (p, q) => ({ id: `th:${p.pk || p.id}`, platform: 'threads', kind: 'post', link: p.url || `https://www.threads.com/@${p.user?.username}/post/${p.code}`, postedAt: ms(p.taken_at), author: short(p.user?.full_name || p.user?.username), text: clip(p.caption?.text ?? p.caption), likes: p.like_count || 0,
@@ -302,7 +302,7 @@ export function createListenWatch({ slug, packs, treg, ai, apify = undefined, lo
       if (!ppOff) for (const what of ['submission', 'comment']) {
         try { const j = await getRetry(`https://api.pullpush.io/reddit/search/${what}/?q=${encodeURIComponent(q)}&size=100&sort=desc&sort_type=created_utc`, 'json', 25e3, 3e3 * pace); ppOk++; pp429 = 0;
           for (const x of j.data || []) { if (what === 'submission') { if (x.removed_by_category || x.selftext === '[removed]') continue;
-              out.push({ id: `rd:t3_${x.id}`, platform: 'reddit', kind: 'post', link: `https://www.reddit.com${x.permalink}`, postedAt: (x.created_utc || 0) * 1e3, author: short(x.author), title: unesc(x.title), text: unesc(x.selftext).slice(0, 800), sub: `r/${x.subreddit}`, likes: x.score || 0, replies: x.num_comments ?? null, thread: x.id, threadTitle: unesc(x.title), q: kind }); }
+              out.push({ id: `rd:t3_${x.id}`, platform: 'reddit', kind: 'post', link: `https://www.reddit.com${x.permalink}`, postedAt: (x.created_utc || 0) * 1e3, author: short(x.author), title: unesc(x.title), text: unesc(x.selftext).slice(0, 800), sub: `r/${x.subreddit}`, likes: x.score || 0, replies: x.num_comments ?? null, floor: true, thread: x.id, threadTitle: unesc(x.title), q: kind }); } /* PullPush counts the replies when it archived the post (often minutes after it went up): a floor */
             else { if (!x.body || x.body === '[removed]' || x.body === '[deleted]') continue; const tid = String(x.link_id || '').replace(/^t3_/, '') || threadOf(x.permalink);
               out.push({ id: `rd:t1_${x.id}`, platform: 'reddit', kind: 'comment', link: `https://www.reddit.com${x.permalink || ''}`, postedAt: (x.created_utc || 0) * 1e3, author: short(x.author), text: unesc(x.body).slice(0, 800), sub: `r/${x.subreddit}`, likes: x.score || 0, thread: tid, q: kind }); } } }
         catch (e) { st.notes.push(`pullpush ${what} "${q}": ${e.message}`); if (e.status === 429 && ++pp429 >= 3) { ppOff = true; st.notes.push('pullpush kept refusing (429): the paid search reads the rest'); break; } }
@@ -575,6 +575,12 @@ export function createListenWatch({ slug, packs, treg, ai, apify = undefined, lo
 
   /* ---------- the derived views ---------- */
   const quoteOf = (x) => { const t = String(x.title || '').replace(/[.!?…\s]+$/, ''); return (t && !String(x.text).toLowerCase().startsWith(t.toLowerCase()) ? `${t}. ${x.text}` : x.text).slice(0, 260); };
+  /* a thread's reply count: the platform's live count, else a floor (an archive's count or the comments Brew heard, whichever is
+     more, flagged repliesFloor), else unknown (null). Never the number of comments Brew happened to keep, shown as the total */
+  const repliesOf = (post, xs) => { const heardC = xs.filter((y) => y.kind === 'comment').length, n = post?.replies;
+    if (n != null && post.floor === false) return { replies: Math.max(n, heardC), repliesLive: true };
+    if (n != null && !post.floor && post.platform !== 'reddit') return { replies: Math.max(n, heardC), repliesLive: true }; /* TikTok, Instagram, YouTube, X and LinkedIn give live counts */
+    const f = Math.max(n ?? 0, heardC); return f ? { replies: f, repliesFloor: true } : { replies: null }; };
   function threadsOf(items) {
     const by = new Map();
     for (const x of items) { if (!x.thread || REVIEW.has(x.platform)) continue; const k = `${x.platform}:${x.thread}`; (by.get(k) || by.set(k, []).get(k)).push(x); }
@@ -585,7 +591,7 @@ export function createListenWatch({ slug, packs, treg, ai, apify = undefined, lo
       const title = post?.title || lead.threadTitle || null;
       const cnt = (f) => { const m = {}; xs.forEach((y) => { const v = f(y); if (v) m[v] = (m[v] || 0) + 1; }); return Object.entries(m).sort((a, b) => b[1] - a[1])[0]?.[0] || null; };
       const best = [...xs].sort((a, b) => (b.about === 'brand') - (a.about === 'brand') || String(b.text).length - String(a.text).length)[0];
-      out.push({ id: k, url, platform: lead.platform, where: lead.sub || lead.platform, title: title || quoteOf(lead).slice(0, 90), lastActive: Math.max(...xs.map((y) => y.postedAt || 0)), replies: post?.replies ?? lead.replies ?? xs.filter((y) => y.kind === 'comment').length,
+      out.push({ id: k, url, platform: lead.platform, where: lead.sub || lead.platform, title: title || quoteOf(lead).slice(0, 90), lastActive: Math.max(...xs.map((y) => y.postedAt || 0)), ...repliesOf(post, xs),
         heard: xs.length, about: post?.about || cnt((y) => y.about), intent: post?.intent || cnt((y) => y.intent), sentiment: cnt((y) => y.sentiment), quote: quoteOf(best), quoteId: best.id }); }
     // rank: about the brand first, then live conversations (recent, with replies)
     const score = (t) => (t.about === 'brand' ? 3 : t.about === 'rival' ? 1.5 : 1) * (1 + Math.log1p(t.replies || 0) + Math.log1p(t.heard)) * Math.exp(-(now() - t.lastActive) / (60 * DAY));

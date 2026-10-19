@@ -1,14 +1,17 @@
 // Endless inspiration: a stream of ready-to-post social ideas for one brand, every one backed by its moves and data.
 // Per idea: platform-native hook + copy + CTA + hashtags, a media plan (image, carousel slides, 5-beat video script) with
 // generation prompts that keep the real product as in its photos, and where to post it: real communities and threads only
-// (found live on Reddit through treg, or read from listen/*.json), never invented.
+// (found live on Reddit through treg, or read from listen/*.json), never invented, and only places that pass community-gate.js:
+// a reply's thread was active in the last two weeks, sits in the brand's market, is open and has Reddit's own reply count;
+// a Quora answer goes to a real question page; a reply has to be about what its thread asked.
 // Flow: read the pack → discover threads (treg, same-day cache) → slate (opus) → per-idea thread search (treg) → write (opus,
 // in parallel chunks) → gates (numbers, links, disclosure) → check (sonnet) → ideas. next() stores to ideas/ideas.json.
 import { marketLine } from './market.js';
 import { promptBlock as creativeBlock } from './creative-catalog.js'; // what can be made, for ideas that make something
 import crypto from 'node:crypto';
 import { numbersIn, canon } from './fact-gate.js';
-import { ideaCards } from './social-feed.js';
+import { ideaCards, ideaUsable } from './social-feed.js';
+import { usableThread, redditStats, withStats, repliesText, isQuoraQuestion, inMarket, matchesThread, REPLY_DAYS } from './community-gate.js'; // which threads and questions any brand may be pointed at
 import { moveLabel, moveNum, moveSay } from './move-label.js'; // weekly moves read "Weekly move 11", never "Move 1011" (QA FEED-QA-12)
 
 /* ---------- platforms ---------- */
@@ -72,7 +75,7 @@ export function createIdeas({ slug, packs, ai, treg, log = console, now = () => 
   const spend = { ai: 0, treg: 0 };
   const callAI = async (o) => { const r = await ai.call(o); spend.ai += r.usd || 0; return r; };
   const tregOn = () => !!treg && treg.live !== false;
-  const callTreg = async (id, query) => { const u0 = treg.meter?.usd || 0; try { return await treg.call(id, { query, tag: 'ideas:' + id }); } finally { spend.treg += (treg.meter?.usd || 0) - u0; } };
+  const callTreg = async (id, query, extra = {}) => { const u0 = treg.meter?.usd || 0; try { return await treg.call(id, { ...(query ? { query } : {}), ...extra, tag: 'ideas:' + id }); } finally { spend.treg += (treg.meter?.usd || 0) - u0; } };
 
   /* ---------- read the pack ---------- */
   async function load(fresh = false) {
@@ -130,6 +133,8 @@ export function createIdeas({ slug, packs, ai, treg, log = console, now = () => 
       threads: (Array.isArray(lThreads) ? lThreads : lThreads?.threads || []).map(normThread).filter(Boolean),
       communities: (Array.isArray(lComms) ? lComms : lComms?.communities || []).filter((c) => c?.url).sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 8).map((c) => ({ name: c.name || (c.subreddit ? 'r/' + c.subreddit : c.url), url: c.url, platform: c.platform || (c.subreddit ? 'reddit' : ''), sub: c.subreddit || (c.url.match(/\/r\/([^/]+)/) || [])[1] || '', rules: typeof c.rules === 'string' ? c.rules : Array.isArray(c.rules) ? c.rules.map((r) => r.text || r.name || r).join('\n') : '', weekly: c.weekly || null, why: c.why || '', themes: c.themes || [] }))
     };
+    // real Quora questions listening's web search found (a question page, never a profile, space or search)
+    listen.quora = itemsL.filter((x) => isQuoraQuestion(x.link || x.url)).map((x) => ({ url: x.link || x.url, title: cut(x.title || x.text, 200), platform: 'quora' }));
     const lanes = Object.keys(seed.lanes || {});
     ctx = { member, accountFacts: acct.length, profile, facts, config, seed, brief, ledger, name, sym, cat, noun, ev, products, movesD, socials, founders, founderRoles, listen, lanes, country: profile.country || config.country || '', countryName: config.countryName || profile.country || '' };
     // the allowed numbers: anything that appears in the evidence, facts, ledger, product titles or the threads we hand the writer
@@ -146,7 +151,7 @@ export function createIdeas({ slug, packs, ai, treg, log = console, now = () => 
     const url = t.url && /^https?:/.test(t.url) ? t.url : t.permalink ? 'https://www.reddit.com' + t.permalink : null; if (!url) return null;
     const sub = t.subreddit || (url.match(/\/r\/([^/]+)/) || [])[1] || '';
     const ms = t.lastActive || t.postedAt; const at = t.created_at_iso?.slice(0, 10) || (ms ? new Date(ms).toISOString().slice(0, 10) : '') || t.at || dateOf(t.created_utc);
-    return { id: t.id || sha(url).slice(0, 8), platform: t.platform || (sub ? 'reddit' : 'web'), sub, title: cut(t.title, 200), text: cut(t.selftext || t.text || t.body || (t.quote !== t.title ? t.quote : '') || '', 400), url, comments: t.num_comments ?? t.comments ?? t.replies ?? null, at, ...(t.intent ? { intent: t.intent } : {}), ...(t.sentiment ? { sentiment: t.sentiment } : {}) };
+    return { id: t.id || sha(url).slice(0, 8), platform: t.platform || (sub ? 'reddit' : 'web'), sub, title: cut(t.title, 200), text: cut(t.selftext || t.text || t.body || (t.quote !== t.title ? t.quote : '') || '', 400), url, comments: t.num_comments ?? t.comments ?? t.replies ?? null, ...(t.repliesFloor || t.commentsFloor ? { commentsFloor: true } : {}), at, ...(ms ? { lastActive: ms } : {}), ...(t.locked ? { locked: true } : {}), ...(t.archived ? { archived: true } : {}), ...(t.intent ? { intent: t.intent } : {}), ...(t.sentiment ? { sentiment: t.sentiment } : {}) };
   }
 
   /* ---------- live discovery: real Reddit threads + subreddit rules (same-day cache in the pack) ---------- */
@@ -176,15 +181,37 @@ export function createIdeas({ slug, packs, ai, treg, log = console, now = () => 
     const age = t.at ? (T() - Date.parse(t.at)) / 864e5 : 60;
     return s + Math.min(2, Math.log10((t.comments || 0) + 1)) + (age <= 30 ? 1 : age > 120 ? -2 : 0);
   };
+  const MIN_REL = 3; /* names the brand (3), or the category and a rival (2 + 2), or the category on a thread with replies */
+  const idOfUrl = (u) => (String(u || '').match(/\/comments\/([a-z0-9]+)/i) || [])[1] || null;
+  /* the shared treg client, with this run's spend counted */
+  const countingTreg = () => ({ live: treg.live, call: async (id, o) => { const u0 = treg.meter?.usd || 0; try { return await treg.call(id, o); } finally { spend.treg += (treg.meter?.usd || 0) - u0; } } });
+  /* real Quora questions: what listening found, then one web search for the brand (shared treg client, 24-hour cache) when
+     fewer than four; a question must be close to the brand and, in an English market, in English */
+  async function quoraQuestions(c, cache) {
+    const have = new Map((c.listen.quora || []).map((q) => [q.url, q]));
+    if (have.size < 4 && tregOn()) {
+      const k = `quora|${c.name}`;
+      if (!cache.q[k]) { try { const j = await callTreg('treg.web.search', undefined, { body: { q: `site:quora.com ${c.name} ${c.noun}`, limit: 10 } }); cache.q[k] = (j?.output?.results || []).filter((r) => isQuoraQuestion(r.url)).map((r) => ({ url: r.url.replace(/[?#].*$/, ''), title: cut(String(r.title || '').replace(/\s*-\s*Quora\s*$/i, ''), 200), platform: 'quora' })); }
+        catch (e) { log.warn?.('[ideas] quora search', e.message); cache.q[k] = []; } }
+      for (const q of cache.q[k]) if (!have.has(q.url)) have.set(q.url, q);
+    }
+    return [...have.values()].map((q) => ({ ...q, rel: relevance(c, { title: q.title, text: '', comments: 0, at: new Date(T()).toISOString() }) - 1 })) /* no age or reply bonus for an evergreen question */
+      .filter((q) => q.title && q.rel >= 2 && inMarket({ title: q.title }, c.profile).ok).sort((a, b) => b.rel - a.rel).slice(0, 8);
+  }
   async function discover({ fresh = false } = {}) {
     const c = await load();
     const cache = fresh ? { day: today(), q: {}, rules: {} } : await cacheGet();
     const terms = (c.config.terms || []).flat().slice(0, 3);
     const rivals = (c.config.rivals || []).slice(0, 2);
     const qs = [`${c.name} ${c.noun}`, `${c.name} ${c.noun} review`, ...terms, ...rivals.map((r) => `${r} ${c.noun}`)].slice(0, 7);
-    const found = new Map(c.listen.threads.map((t) => [t.url, { ...t, from: 'listen' }]));
+    const found = new Map(c.listen.threads.filter((t) => t.platform === 'reddit').map((t) => [t.url, { ...t, from: 'listen' }])); /* Reddit replies go to Reddit threads */
     for (const q of qs) for (const t of await searchReddit(cache, q)) if (!found.has(t.url)) found.set(t.url, { ...t, from: 'search: ' + q });
-    const threads = [...found.values()].map((t) => ({ ...t, rel: relevance(c, t) })).filter((t) => t.rel >= 2).sort((a, b) => b.rel - a.rel).slice(0, 30);
+    // the community gate (community-gate.js): fresh, in the market, open, close enough to the brand; then Reddit's own counts
+    const rejected = [];
+    const gated = [...found.values()].map((t) => ({ ...t, rel: relevance(c, t) })).filter((t) => { const g = usableThread(t, { now: T(), profile: c.profile, rel: t.rel, minRel: MIN_REL, brand: c.name }); if (!g.ok) rejected.push({ url: t.url, why: g.why }); return g.ok; }).sort((a, b) => b.rel - a.rel).slice(0, 30);
+    const stats = await redditStats(gated, { treg: tregOn() ? countingTreg() : null, paid: 6, log });
+    const threads = gated.map((t) => withStats(t, stats.get(idOfUrl(t.url)))).filter((t) => { const g = usableThread(t, { now: T(), profile: c.profile, brand: c.name }); if (!g.ok) rejected.push({ url: t.url, why: g.why }); return g.ok; });
+    const quora = await quoraQuestions(c, cache);
     // communities: subreddits the threads live in, ranked by how many relevant threads they hold
     const subs = {}; threads.forEach((t) => { if (t.sub) (subs[t.sub] ||= []).push(t); });
     const top = Object.entries(subs).sort((a, b) => b[1].length - a[1].length || b[1][0].rel - a[1][0].rel).slice(0, 7);
@@ -193,7 +220,7 @@ export function createIdeas({ slug, packs, ai, treg, log = console, now = () => 
     for (const x of c.listen.communities) { if (communities.some((y) => y.url === x.url)) { const y = communities.find((y) => y.url === x.url); y.why = x.why; y.themes = x.themes; continue; } if (communities.length >= 10) break;
       const r = x.sub && !x.rules ? await rulesOf(cache, x.sub) : null; communities.push({ ...x, threads: subs[x.sub]?.length || 0, rules: x.rules || r?.rules || '', weekly: x.weekly || r?.weekly || null, desc: r?.desc || '' }); }
     await cachePut(cache);
-    c.disc = { threads, communities, queries: qs };
+    c.disc = { threads, communities, quora, queries: qs, rejected: rejected.slice(0, 40) };
     return c.disc;
   }
 
@@ -211,12 +238,12 @@ export function createIdeas({ slug, packs, ai, treg, log = console, now = () => 
     if (!b2b) P('instagram', 5, has('instagram') ? `@${has('instagram').handle} is the brand's main channel${igAvg ? ` (${igAvg} average likes on the last 12 posts)` : ''}; ${visual ? 'a visual category that sells on the look' : 'Reels reach non-followers'}.` : `No Instagram account on record, but ${visual ? 'the category sells on the look' : 'Reels are the widest consumer reach'}; start from Reels.`);
     if (!b2b) P('youtube', 3, `Shorts reach ${c.countryName || 'the market'} buyers who search before they buy${c.country === 'IN' ? ' and fill the gap TikTok left in India' : ''}; ${has('youtube') ? 'the channel exists' : 'no channel on record, so Shorts can start one'}.`);
     if (!b2b && !NO_TIKTOK.includes(c.country)) P('tiktok', 3, `Short video is where ${c.cat || 'this category'} gets discovered; ${has('tiktok') ? 'the account exists' : 'no account on record yet'}.`);
-    P('reddit', b2b ? 4 : 4, d.threads.length ? `${d.threads.length} relevant threads in the last month${subs.length ? ` across ${subs.slice(0, 4).join(', ')}` : ''}, people asking about ${c.name} and its rivals by name.` : `Buyers ask for honest takes on Reddit before they buy; no live thread found this month, so start with a value post.`, d.threads.length ? ['reply', 'post'] : ['post']);
+    P('reddit', b2b ? 4 : 4, d.threads.length ? `${d.threads.length} live threads from the last ${REPLY_DAYS} days${subs.length ? ` across ${subs.slice(0, 4).join(', ')}` : ''}, people asking about ${c.name} and its rivals by name.` : `Buyers ask for honest takes on Reddit before they buy; no live thread found this month, so start with a value post.`, d.threads.length ? ['reply', 'post'] : ['post']);
     P('x', b2b ? 3 : 2, has('x') ? `@${has('x').handle} exists; threads carry the story behind drops and launches.` : `No X account on record; a founder thread tells the story behind the brand where press and early adopters read.`);
     if (c.founders.length || has('linkedin')) P('linkedin', b2b ? 5 : 2, `${c.founders.length ? `Founders on record (${c.founders.slice(0, 2).join(', ')})` : 'A company page exists'}; ${b2b ? 'buyers are here' : 'founder stories here reach press, partners, retail buyers and hires'}.`);
     if (visual && !b2b) P('pinterest', 2, `${c.cat} is searched on Pinterest as outfit and style ideas; pins send search traffic to product pages for months.`);
-    if ((c.config.questions || []).length) P('quora', b2b ? 3 : 2, `${(c.config.questions || []).length} real buyer questions on record (e.g. "${cut(c.config.questions[0].q || c.config.questions[0], 70)}"); Quora answers rank on Google and feed AI answers.`);
-    if (!b2b && (older || ['IN', 'PH', 'ID', 'BR', 'MX', 'NG'].includes(c.country))) P('facebook', 1, `${c.countryName} buyers still swap recommendations in Facebook groups${older ? ', and this category skews to an audience that lives there' : ''}.`);
+    if ((d.quora || []).length) P('quora', b2b ? 3 : 2, `${d.quora.length} real Quora questions about ${c.name} and its category (e.g. "${cut(d.quora[0].title, 70)}"); Quora answers rank on Google and feed AI answers.`);
+    if (!b2b && d.communities.some((x) => /facebook\.com\/groups\//.test(x.url || '')) && (older || ['IN', 'PH', 'ID', 'BR', 'MX', 'NG'].includes(c.country))) P('facebook', 1, `${c.countryName} buyers still swap recommendations in Facebook groups${older ? ', and this category skews to an audience that lives there' : ''}.`);
     return out.sort((a, b) => b.weight - a.weight);
   }
 
@@ -234,7 +261,7 @@ export function createIdeas({ slug, packs, ai, treg, log = console, now = () => 
     const ev = c.ev.map((e) => `${e.id} [${e.kind}] ${e.label}: ${e.value}`).join('\n');
     const prods = c.products.map((p) => `- ${p.handle}: ${p.title} (${p.type}), ${c.sym}${Number(p.price).toLocaleString('en-IN')}${p.inStock ? '' : ', SOLD OUT'}${p.claim ? ' · ' + cut(p.claim, 140) : ''}`).join('\n');
     const mv = c.movesD.map((m) => `${m.ref} · ${m.title}: ${m.gives}${m.take.length ? '\n   takeaways: ' + m.take.join(' | ') : ''}`).join('\n');
-    const th = d.threads.map((t, i) => `T${i + 1} r/${t.sub} · ${t.at} · ${t.comments ?? '?'} comments${t.intent ? ` · ${t.intent}/${t.sentiment || '?'}` : ''} · "${t.title}"${t.text ? ' · OP: ' + cut(t.text, 260) : ''}`).join('\n');
+    const th = d.threads.map((t, i) => `T${i + 1} r/${t.sub} · ${t.at} · ${repliesText(t.comments, t.commentsFloor) || 'replies not counted'}${t.intent ? ` · ${t.intent}/${t.sentiment || '?'}` : ''} · "${t.title}"${t.text ? ' · OP: ' + cut(t.text, 260) : ''}`).join('\n');
     const cm = d.communities.map((x, i) => `C${i + 1} ${x.name}${x.weekly ? ` (${x.weekly.toLocaleString('en-IN')} weekly active)` : ''}: ${x.desc || ''}${x.why ? ' · heard: ' + x.why : ''}\n   RULES: ${cut(x.rules, 1100) || 'not read'}`).join('\n');
     const own = c.socials.map((s) => `${s.platform}: ${s.url}`).join(', ') || 'none on record';
     const voice = [...(c.brief.language || [])].slice(0, 16).join(', ');
@@ -258,11 +285,14 @@ ${ev}
 MOVES (the brand's strategy; tie each idea to one or two):
 ${mv}
 
-LIVE THREADS (real, found this month):
+LIVE THREADS (real, active in the last ${REPLY_DAYS} days, in the brand's market):
 ${th || 'none found'}
 
 COMMUNITIES (real, with their rules):
-${cm || 'none found'}`;
+${cm || 'none found'}
+
+QUORA QUESTIONS (real, open):
+${(d.quora || []).map((q, i) => `Q${i + 1} "${q.title}"`).join('\n') || 'none found'}`;
   }
 
   const SYS = (c) => `You are the social team for ${c.name}, writing ready-to-post ideas for its own channels and the real communities where its buyers talk. Hard rules:
@@ -277,7 +307,7 @@ ${cm || 'none found'}`;
   const S_SLATE = { type: 'object', properties: { items: { type: 'array', items: { type: 'object', properties: {
     slot: { type: 'integer' }, platform: { type: 'string', enum: Object.keys(PLATFORMS) }, format: { type: 'string' }, angle: { type: 'string', description: 'one line: the idea, specific to the brand, with the hook direction' },
     product: { type: 'string', description: 'product handle from PRODUCTS, or empty' }, evidence: { type: 'array', items: { type: 'string' }, description: 'E ids that back it' },
-    where: { type: 'array', items: { type: 'string' }, description: 'T or C ids where it goes (Reddit/Quora/Facebook), empty for own channels' }, moves: { type: 'array', items: { type: 'string' }, description: 'e.g. "Move 21"' },
+    where: { type: 'array', items: { type: 'string' }, description: 'T or C ids (Reddit), Q ids (Quora) where it goes, empty for own channels' }, moves: { type: 'array', items: { type: 'string' }, description: 'e.g. "Move 21"' },
     query: { type: 'string', description: '3-6 word Reddit search to find more live threads on this topic' } } } } } };
   const S_IDEAS = { type: 'object', properties: { ideas: { type: 'array', items: { type: 'object', properties: {
     slot: { type: 'integer' }, title: { type: 'string', description: 'one line for the feed card, under 70 chars, the point first' }, hook: { type: 'string' }, copy: { type: 'string', description: 'the full post, ready to paste, native length and style' },
@@ -285,7 +315,7 @@ ${cm || 'none found'}`;
     media: { type: 'object', properties: { kind: { type: 'string', enum: ['none', 'image', 'carousel', 'video'] }, prompt: { type: 'string', description: 'image/video generation prompt or real-photo brief; the product must match its photos exactly' },
       slides: { type: 'array', items: { type: 'object', properties: { text: { type: 'string' }, prompt: { type: 'string' } } } },
       script: { type: 'array', items: { type: 'object', properties: { beat: { type: 'string' }, shot: { type: 'string' }, line: { type: 'string' } } } } } },
-    where: { type: 'array', items: { type: 'object', properties: { ref: { type: 'string', description: 'T or C id' }, why: { type: 'string' }, rule: { type: 'string', description: 'the community rule that applies and how this post respects it' } } } },
+    where: { type: 'array', items: { type: 'object', properties: { ref: { type: 'string', description: 'T, C or Q id' }, why: { type: 'string' }, rule: { type: 'string', description: 'the community rule that applies and how this post respects it' } } } },
     why: { type: 'string', description: 'one line: why this works for this brand now' }, evidence: { type: 'array', items: { type: 'string' } }, moves: { type: 'array', items: { type: 'string' } },
     measure: { type: 'object', properties: { metric: { type: 'string' }, how: { type: 'string' } } }, postAt: { type: 'string', description: 'best day and local time for this platform and audience' }, product: { type: 'string' } } } } } };
   const S_CHECK = { type: 'object', properties: { checks: { type: 'array', items: { type: 'object', properties: {
@@ -306,14 +336,14 @@ ${cm || 'none found'}`;
     // 1. the slate: one angle per slot, diverse across products, personas, moves and evidence
     const slate = (await callAI({ model: 'opus', effort: 'medium', max: 12000, tag: 'ideas:slate', schema: S_SLATE, system: SYS(c),
       prompt: `${ctxText}${avoidTxt}\n\n${creativeBlock({ product: c.products[0]?.title || null })}\n\nPlan ${plan.length} social ideas, one per slot:\n${plan.map((s) => `slot ${s.slot}: ${PLATFORMS[s.platform].label} ${s.format}`).join('\n')}\n${seed ? `\nFOCUS for this batch: ${seed}\n` : ''}
-Each angle must be specific to ${c.name} (a named product, drop, review line, rival comparison, buyer question or founder fact), grounded in EVIDENCE ids, and different from the others (spread across products, personas, moves). Where a slot makes an image, carousel or video, plan it from WHAT CAN BE MADE: the format, the exact product as the store lists it, the scene or angle, the hook; never "a new post", "fresh creative" or "some visuals", and no two slots share format + product + angle. Reddit replies must answer a specific T thread whose subreddit rules allow it (skip buy/sell threads); a Reddit post goes to a C community whose rules allow it. Quora and Facebook slots answer a BUYER QUESTION. Prefer the freshest, most-commented threads.` })).json?.items || [];
+Each angle must be specific to ${c.name} (a named product, drop, review line, rival comparison, buyer question or founder fact), grounded in EVIDENCE ids, and different from the others (spread across products, personas, moves). Where a slot makes an image, carousel or video, plan it from WHAT CAN BE MADE: the format, the exact product as the store lists it, the scene or angle, the hook; never "a new post", "fresh creative" or "some visuals", and no two slots share format + product + angle. Reddit replies must answer a specific T thread whose subreddit rules allow it, about exactly what its poster asked (skip buy/sell threads); a Reddit post goes to a C community whose rules allow it. A Quora slot answers one Q question, about exactly what it asks. Prefer the freshest, most-replied threads.` })).json?.items || [];
     const bySlot = new Map(slate.map((s) => [s.slot, s]));
     const items = plan.map((p) => ({ ...p, ...(bySlot.get(p.slot) || { angle: '', evidence: [], where: [], moves: [], query: '' }), platform: p.platform, format: p.format }));
     // 2. live threads per community idea (treg), as extra candidates for the writer and the checker
     const cache = await cacheGet(); const extra = {};
     const known = new Set(d.threads.map((t) => t.url));
     for (const it of items.filter((x) => x.platform === 'reddit' && x.query).slice(0, 6)) {
-      const ts = (await searchReddit(cache, it.query)).filter((t) => !known.has(t.url)).map((t) => ({ ...t, rel: relevance(c, t) + [...words(it.query)].filter((w) => words(t.title + ' ' + t.text).has(w)).length })).filter((t) => t.rel >= 2).sort((a, b) => b.rel - a.rel).slice(0, 4);
+      const ts = (await searchReddit(cache, it.query)).filter((t) => !known.has(t.url)).map((t) => ({ ...t, rel: relevance(c, t) + [...words(it.query)].filter((w) => words(t.title + ' ' + t.text).has(w)).length })).filter((t) => usableThread(t, { now: T(), profile: c.profile, rel: t.rel, minRel: MIN_REL, brand: c.name }).ok).sort((a, b) => b.rel - a.rel).slice(0, 4);
       ts.forEach((t) => { known.add(t.url); d.threads.push(t); });
       extra[it.slot] = ts.map((t) => 'T' + (d.threads.indexOf(t) + 1));
     }
@@ -324,7 +354,7 @@ Each angle must be specific to ${c.name} (a named product, drop, review line, ri
     const all = items.map((s) => `slot ${s.slot} ${PLATFORMS[s.platform].label} ${s.format}: ${s.angle}`).join('\n');
     const written = (await Promise.all(chunks.map((ch, k) => callAI({ model: 'opus', effort: 'high', max: 24000, tag: 'ideas:write', schema: S_IDEAS, system: SYS(c),
       prompt: `${ctxText2}\n\n${creativeBlock({ product: c.products[0]?.title || null })}\n\nTHE WHOLE BATCH (for context, do not overlap):\n${all}\n\nWRITE THESE ${ch.length}, finished and ready to post:\n${ch.map((s) => `slot ${s.slot}: ${PLATFORMS[s.platform].label} ${s.format}\n  angle: ${s.angle}\n  product: ${s.product || 'none'} · evidence: ${(s.evidence || []).join(', ')} · where: ${[...(s.where || []), ...(extra[s.slot] || [])].join(', ') || 'own account'} · moves: ${(s.moves || []).join(', ')}\n  style: ${NATIVE[s.platform]}`).join('\n')}
-For each: title, hook, full copy, cta, hashtags, media (kind; for image/carousel/video a generation prompt that places the REAL product from its photos, unchanged, written as a makeable asset from WHAT CAN BE MADE: the exact product, the scene or angle, the hook, backed by a named EVIDENCE id or review line, never a generic ad and never a repeat of another slot's format + product + angle; carousel = slides with text + prompt; video = exactly 5 beats with shot + line), where (only places to post THIS idea on its own platform: for a Reddit reply the first ref is the T thread being replied to; T/C refs with why and the exact rule that applies; empty for own channels, Quora and Facebook), why, evidence ids, moves, measure (metric + how to read it), postAt (local time, ${c.config.timezone || 'local'}), product handle.`
+For each: title, hook, full copy, cta, hashtags, media (kind; for image/carousel/video a generation prompt that places the REAL product from its photos, unchanged, written as a makeable asset from WHAT CAN BE MADE: the exact product, the scene or angle, the hook, backed by a named EVIDENCE id or review line, never a generic ad and never a repeat of another slot's format + product + angle; carousel = slides with text + prompt; video = exactly 5 beats with shot + line), where (only places to post THIS idea on its own platform: for a Reddit reply the first ref is the T thread being replied to, and the title and copy answer what that thread asks; for Quora the Q question being answered; T/C/Q refs with why and the exact rule that applies; empty for own channels), why, evidence ids, moves, measure (metric + how to read it), postAt (local time, ${c.config.timezone || 'local'}), product handle.`
     }).then((r) => r.json?.ideas || []).catch((e) => { log.warn?.('[ideas] write chunk', k, e.message); return []; })))).flat();
     // 4. assemble with real references, then the deterministic gates
     d.threads.forEach((t) => { c.feed(t.title); c.feed(t.text); });
@@ -336,6 +366,7 @@ For each: title, hook, full copy, cta, hashtags, media (kind; for image/carousel
     ideas.forEach((i) => i.where.forEach((w) => { const x = w.kind === 'thread' && d.communities.find((x) => w.url.includes(`/r/${x.sub}/`)); if (x?.weekly && !w.weekly) w.weekly = x.weekly; }));
     // 5. the check (sonnet): native, on-voice, claims backed, community rules respected; may fix copy and add threads
     ideas = await check(c, d, ideas, extra);
+    ideas = await places(c, d, ideas);
     ideas.forEach((i) => gate(c, i));
     ideas.filter((i) => i._drop).forEach((i) => dropped.push({ title: i.title, platform: i.platform, why: ['unbacked numbers: ' + (i.gated || []).join(', ')] }));
     ideas = ideas.filter((i) => !i._drop);
@@ -350,15 +381,14 @@ For each: title, hook, full copy, cta, hashtags, media (kind; for image/carousel
     w = unesc(w);
     const P = PLATFORMS[s.platform]; if (!P || !w?.copy) return null;
     const prod = c.products.find((p) => p.handle === (w.product || s.product)) || null;
-    const refOf = (r) => { const m = /^([TC])(\d+)$/.exec(String(r).trim()); if (!m) return null; const x = (m[1] === 'T' ? d.threads : d.communities)[+m[2] - 1]; return x ? { x, kind: m[1] === 'T' ? 'thread' : 'community' } : null; };
+    const refOf = (r) => { const m = /^([TCQ])(\d+)$/.exec(String(r).trim()); if (!m) return null; const x = (m[1] === 'T' ? d.threads : m[1] === 'Q' ? d.quora || [] : d.communities)[+m[2] - 1]; return x ? { x: m[1] === 'Q' ? { ...x, platform: 'quora' } : x, kind: m[1] === 'T' ? 'thread' : m[1] === 'Q' ? 'question' : 'community' } : null; };
     const where = [];
     for (const wh of (w.where || [])) { const r = refOf(wh.ref); if (!r || r.x.platform !== s.platform || /\b(do not|don't|won't|never) (post|comment|answer|reply)|not (post|answer)ing there|signal|context only|not a place/i.test(wh.rule + ' ' + wh.why) || where.some((x) => x.url === r.x.url)) continue; const comm = r.kind === 'thread' ? d.communities.find((x) => x.sub === r.x.sub) : r.x;
-      where.push({ name: r.kind === 'thread' ? `r/${r.x.sub}: ${r.x.title}` : r.x.name, url: r.x.url, kind: r.kind, why: wh.why || '', rule: wh.rule || '', ...(r.kind === 'thread' ? { at: r.x.at, comments: r.x.comments } : {}), ...(comm?.weekly ? { weekly: comm.weekly } : {}) }); }
+      where.push({ name: r.kind === 'thread' ? `r/${r.x.sub}: ${r.x.title}` : r.kind === 'question' ? `Quora: ${r.x.title}` : r.x.name, url: r.x.url, kind: r.kind, why: wh.why || '', rule: wh.rule || '', ...(r.kind === 'thread' ? { at: r.x.at, comments: r.x.comments, ...(r.x.commentsFloor ? { commentsFloor: true } : {}), ...(r.x.lastActive ? { lastActive: r.x.lastActive } : {}) } : {}), ...(comm?.weekly && r.kind !== 'question' ? { weekly: comm.weekly } : {}) }); }
     // own channels: the brand's real account; community platforms with no live thread: a real search link, flagged as such
     const own = c.socials.find((x) => x.platform === P.social);
     if (!where.length && own) where.push({ name: `@${own.handle} (own ${P.label})`, url: own.url, kind: 'own', why: 'The brand\'s own account.', rule: '' });
-    if (!where.length && s.platform === 'quora') where.push({ name: 'Quora search: live questions', url: `https://www.quora.com/search?q=${encodeURIComponent(s.query || c.config.questions?.[0]?.q || `${c.name} ${c.noun}`)}`, kind: 'search', why: 'No live Quora question read yet: pick the newest matching one from this search.', rule: 'Quora: disclose the affiliation, no promotional links.' });
-    if (!where.length && s.platform === 'facebook') where.push({ name: 'Facebook group search', url: `https://www.facebook.com/search/groups/?q=${encodeURIComponent(`${c.noun} ${c.countryName}`)}`, kind: 'search', why: 'No group read yet: join one where members ask for recommendations, then post.', rule: 'Read the group rules first; most ban links and brand posts without admin approval.' });
+    /* a community idea with no real place (no thread, community, question or group read) is dropped after the check (ideaUsable) */
     const whereNote = !where.length && P.social ? `${c.name} has no ${P.label} account on record: start one, or post from a founder's account.` : '';
     const evid = (w.evidence || s.evidence || []).map((id) => c.ev.find((e) => e.id === String(id).trim())).filter(Boolean).map(({ label, value, source }) => ({ label, value, source }));
     const moves = [...new Set([...(w.moves || []), ...(s.moves || [])].map((m) => (String(m).match(/\d+/) || [])[0]).filter(Boolean))].map((n) => c.movesD.find((m) => m.n === +n)).filter(Boolean);
@@ -409,6 +439,29 @@ For each: title, hook, full copy, cta, hashtags, media (kind; for image/carousel
     }
   }
 
+  /* the places every community idea points at, made sure (community-gate.js): a reply's thread is re-read for Reddit's live
+     count and whether it is still open, the reply is about what that thread asked, and no community idea is left without a
+     real place. What fails is dropped and said in dropped[], never shown */
+  async function places(c, d, ideas) {
+    const targets = ideas.filter((i) => i.platform === 'reddit').flatMap((i) => i.where.filter((w) => w.kind === 'thread'));
+    const stats = await redditStats(targets.map((w) => ({ url: w.url })), { treg: tregOn() ? countingTreg() : null, paid: targets.length, log });
+    return ideas.filter((i) => {
+      const no = (why) => { dropped.push({ title: i.title, platform: i.platform, why: [why] }); log.info?.('[ideas] dropped', i.title, why); return false; };
+      for (const w of i.where) if (w.kind === 'thread') { const st = stats.get(idOfUrl(w.url)); if (st) { const at0 = w.at; Object.assign(w, withStats({}, st)); if (at0) w.at = at0; if (st.comments == null) delete w.comments; } }
+      if (i.platform === 'reddit' && i.format === 'reply') {
+        const w = i.where.find((x) => x.kind === 'thread'); if (!w) return no('a reply with no thread to reply to');
+        if (w.locked || w.archived || w.removed) return no('the thread is closed to replies now');
+        const t = d.threads.find((x) => x.url === w.url) || { title: String(w.name || '').replace(/^[^:]+:\s*/, '') };
+        if (!matchesThread(i, t)) return no(`not about what the thread asked ("${cut(t.title, 80)}")`);
+      }
+      /* a post (not a reply) keeps only the threads on its topic as places; the community itself stays */
+      if (i.format !== 'reply') i.where = i.where.filter((w) => w.kind !== 'thread' || matchesThread(i, d.threads.find((x) => x.url === w.url) || { title: String(w.name || '').replace(/^[^:]+:\s*/, '') }));
+      if (i.platform === 'quora') { const q = i.where.find((x) => x.kind === 'question'); const src = q && (d.quora || []).find((x) => x.url === q.url); if (q && src && !matchesThread(i, src)) return no(`not about the Quora question ("${cut(src.title, 80)}")`); }
+      if (!ideaUsable(i, { now: T(), profile: c.profile })) return no('no real thread, question or group to post it in');
+      return true;
+    });
+  }
+
   let dropped = [];
   async function check(c, d, ideas, extra) {
     if (!ideas.length) return ideas;
@@ -420,7 +473,7 @@ For each: title, hook, full copy, cta, hashtags, media (kind; for image/carousel
     let r;
     try {
       r = await callAI({ model: 'sonnet', max: 16000, tag: 'ideas:check', schema: S_CHECK, system: SYS(c),
-        prompt: `EVIDENCE:\n${evText}\n\nCOMMUNITY RULES:\n${rules}\n\nCheck each idea. Creative direction (scenes, styling, shots, outfit pairings, questions to the audience) needs no evidence; factual claims about the product, the brand, its customers, founders, sales, or numbers do. Answer "ok" when the idea is fine: do not rewrite for taste. "fix" when: a claim or number is not in EVIDENCE, a review is misquoted, it reads like an ad on Reddit/Quora/Facebook, it breaks a community rule, it is off-platform in style or length, it uses AI-tell words, or it states a TO CONFIRM item as fact. Give the fixed title/hook/copy (keep everything good; same platform style). "drop" only if it cannot be saved. List in badWhere any WHERE url whose rules forbid this post or that does not fit it. For CANDIDATES, return the T ids that genuinely fit (same topic, community rules allow it).\n\n${ideas.map((i) => `--- slot ${i._slot} · ${i.platformLabel} ${i.format}\nTITLE: ${i.title}\nHOOK: ${i.hook}\nCOPY:\n${i.copy}\nSLIDES: ${i.media.slides.map((x) => x.text).join(' | ')}\nSCRIPT: ${i.media.script.map((x) => x.line).join(' | ')}\nWHERE: ${i.where.map((w) => `${w.name} <${w.url}>`).join(' | ')}\nCITED: ${i.evidence.map((e) => e.value).join(' | ')}${pre[i._slot]?.length ? `\nUNBACKED NUMBERS (must go): ${pre[i._slot].map((b) => b.n).join(', ')}` : ''}${cand(i).length ? `\nCANDIDATES:\n${cand(i).join('\n')}` : ''}`).join('\n\n')}` });
+        prompt: `EVIDENCE:\n${evText}\n\nCOMMUNITY RULES:\n${rules}\n\nCheck each idea. Creative direction (scenes, styling, shots, outfit pairings, questions to the audience) needs no evidence; factual claims about the product, the brand, its customers, founders, sales, or numbers do. Answer "ok" when the idea is fine: do not rewrite for taste. "fix" when: a claim or number is not in EVIDENCE, a review is misquoted, it reads like an ad on Reddit/Quora/Facebook, it breaks a community rule, it is off-platform in style or length, it uses AI-tell words, or it states a TO CONFIRM item as fact. Give the fixed title/hook/copy (keep everything good; same platform style). "drop" only if it cannot be saved. List in badWhere any WHERE url whose rules forbid this post or that does not fit it. For CANDIDATES, return the T ids that genuinely fit (same topic, community rules allow it).\n\n${ideas.map((i) => `--- slot ${i._slot} · ${i.platformLabel} ${i.format}\nTITLE: ${i.title}\nHOOK: ${i.hook}\nCOPY:\n${i.copy}\nSLIDES: ${i.media.slides.map((x) => x.text).join(' | ')}\nSCRIPT: ${i.media.script.map((x) => x.line).join(' | ')}\nWHERE: ${i.where.map((w) => `${w.name} <${w.url}>`).join(' | ')}${(() => { const w = i.where.find((x) => x.kind === 'thread' || x.kind === 'question'); const t = w && [...d.threads, ...(d.quora || [])].find((x) => x.url === w.url); return t ? `\nIT ANSWERS: "${t.title}"${t.text ? ' · ' + cut(t.text, 300) : ''} (title and copy must answer exactly this; if they do not, fix them to, or drop)` : ''; })()}\nCITED: ${i.evidence.map((e) => e.value).join(' | ')}${pre[i._slot]?.length ? `\nUNBACKED NUMBERS (must go): ${pre[i._slot].map((b) => b.n).join(', ')}` : ''}${cand(i).length ? `\nCANDIDATES:\n${cand(i).join('\n')}` : ''}`).join('\n\n')}` });
     } catch (e) { log.warn?.('[ideas] check failed', e.message); return ideas; }
     const by = new Map((r.json?.checks || []).map((x) => [x.slot, x]));
     return ideas.filter((i) => {

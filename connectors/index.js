@@ -263,8 +263,8 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
       privMoves = [...new Set(cards.filter((c) => c.privateOf != null).map((c) => +c.privateOf))]; privStatics = cards.some((c) => c.teamStatics);
       /* the team's ideas (private/ideas/ideas.json, written with the connected facts): members only, next to the public ones */
       const mi = await packs.getJSON(slug, 'private/ideas/ideas.json', null).catch(() => null);
-      if (mi?.items?.length) { const seed = (await packs.getJSON(slug, 'seed.json', {}).catch(() => ({}))) || {};
-        cards.push(...ideaCards(pickIdeas(mi.items), seed).map((c) => ({ ...c, id: privId(c.id), liveOnly: true, memberIdea: true }))); } }
+      if (mi?.items?.length) { const [seed, profile] = await Promise.all([packs.getJSON(slug, 'seed.json', {}).catch(() => ({})), packs.getJSON(slug, 'profile.json', null).catch(() => null)]);
+        cards.push(...ideaCards(pickIdeas(mi.items, { profile: profile || {} }), seed || {}) /* the community gate heals saved team ideas too (community-gate.js) */.map((c) => ({ ...c, id: privId(c.id), liveOnly: true, memberIdea: true }))); } }
     return { cards, on, privMoves, privStatics, ledger };
   }
 

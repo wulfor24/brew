@@ -288,7 +288,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
     const LC = learned?.cards || {}, upFresh = Object.entries(LC.up || {}).filter(([, x]) => Date.now() - (x.at || 0) < 21 * 864e5), teamName = seed.brand?.name || profile?.name || slug;
     if ((LC.add || []).length) { const have = new Set((seed.posts || []).map((x) => x.id)); seed.posts = [...LC.add.filter((x) => x?.id && !have.has(x.id)), ...(seed.posts || [])]; }
     const toldNotes = Object.fromEntries(upFresh.map(([id, x]) => [id, `From what ${teamName}’s team told us: ${x.why}`]));
-    const seedD = moveBadges(fitCards(withDemo(fitPhotos(socialize(visualize(seed, { slug, config, staticText: statics, profile }), social), profile), demo), { profile, config, seed, status }), moves, staleMoves);
+    const seedD = moveBadges(fitCards(withDemo(fitPhotos(socialize(visualize(seed, { slug, config, staticText: statics, profile }), social, { profile }), profile), demo), { profile, config, seed, status }), moves, staleMoves);
     return finish({
       slug, kind: 'generated', ready: !!status.ready, status, demo, numbers,
       seed: fxDeep(seedD), rawSeed: seedD, facts,

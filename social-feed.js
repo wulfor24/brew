@@ -10,6 +10,7 @@
 // Nothing is invented here: every thread, quote, count and community comes from the files listen-watch.js and ideas.js wrote.
 import { createListenWatch, sourceName } from './listen-watch.js';
 import { createIdeas, PLATFORMS } from './ideas.js';
+import { usableThread, repliesText, isQuoraQuestion } from './community-gate.js'; // which threads any brand may be pointed at
 
 const H = 3600e3, DAY = 24 * H;
 const cut = (s, n) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
@@ -30,6 +31,20 @@ const asksQ = (t) => t?.intent === 'question' && (/\?/.test(String(t.title || ''
    the feed keeps one of these in its first screen (feed-service.js social seats) */
 export const isCommunityCard = (c) => !!c && (c.heard?.kind === 'thread' || (c.stream === 'ideas' && !!PLATFORMS[c.post?.platform]?.community));
 
+/* a saved community idea still points at a real, usable place: a reply's thread passes the community gate (fresh, in the
+   market, open), a Quora answer goes to a real question page, and no idea's only place is a search link. Ideas written before
+   the gate heal here, at load, with no rerun */
+export function ideaUsable(i, { now = Date.now(), profile = {} } = {}) {
+  if (!PLATFORMS[i?.platform]?.community) return true;
+  const where = i.where || [], real = where.filter((w) => w.kind !== 'search' && w.kind !== 'own');
+  if (!real.length) return false;
+  if (i.platform === 'quora') return real.some((w) => isQuoraQuestion(w.url));
+  if (i.format === 'reply') { const t = real.find((w) => w.kind === 'thread'); if (!t) return false;
+    const sub = (String(t.url).match(/\/r\/([^/]+)/) || [])[1] || '';
+    return usableThread({ url: t.url, sub, title: String(t.name || '').replace(/^[^:]+:\s*/, ''), intent: 'question' /* the writer picked it as a question to answer */, at: t.at, lastActive: t.lastActive, locked: t.locked, archived: t.archived, removed: t.removed }, { now, profile }).ok; }
+  return true;
+}
+
 /* ---------- ideas → cards ---------- */
 export function ideaCards(ideas, seed = {}, { now = Date.now() } = {}) {
   const posts = seed?.posts || [];
@@ -44,7 +59,8 @@ export function ideaCards(ideas, seed = {}, { now = Date.now() } = {}) {
     const hasMedia = i.media?.kind && i.media.kind !== 'none';
     const imgs = hasMedia ? (i.media.product?.images || []).filter((x) => typeof x === 'string' && /^https?:|^\/?b\//.test(x)).slice(0, 3) : [];
     const thread = where.find((w) => w.kind === 'thread');
-    const heard = thread ? `${thread.name.split(':')[0]}${thread.comments != null ? ` · ${thread.comments} replies` : ''}` : ev.some((e) => /^Listen|^Reddit/i.test(e.label || '')) ? 'from what Brew heard' : '';
+    const rt = thread ? repliesText(thread.comments, thread.commentsFloor) : '';
+    const heard = thread ? `${thread.name.split(':')[0]}${rt ? ` · ${rt}` : ''}` : ev.some((e) => /^Listen|^Reddit/i.test(e.label || '')) ? 'from what Brew heard' : '';
     return { id: i.id, agent: P.agent, sector: P.sector, type: 'idea', kind: imgs.length ? 'media' : 'rows', ...(lane ? { lane } : {}), roles: rolesOf(P.agent), origin: 'ideas', stream: 'ideas',
       src: `Ideas · ${P.label} ${i.format}${heard ? ` · Heard ${heard}` : i.moves?.[0] ? ' · ' + i.moves[0] : ''}`, time: ageText(i.at, now),
       badge: [`${P.label} ${i.format}`, 'info'], title: cut(i.title, 90), sub: cut(i.hook || i.copy, 220), ...(imgs.length ? { images: imgs } : {}),
@@ -57,9 +73,9 @@ export function ideaCards(ideas, seed = {}, { now = Date.now() } = {}) {
 }
 
 /* ---------- which ideas are in the feed today: newest batch first, then the rest in a daily rotation ---------- */
-export function pickIdeas(items, { now = Date.now(), max = 12, fresh = 6 } = {}) {
+export function pickIdeas(items, { now = Date.now(), max = 12, fresh = 6, profile = {} } = {}) {
   const seen = new Set(), seenT = new Set();
-  const xs = [...(items || [])].filter((i) => i?.id && i.title && i.copy).sort((a, b) => (Date.parse(b.at) || 0) - (Date.parse(a.at) || 0))
+  const xs = [...(items || [])].filter((i) => i?.id && i.title && i.copy && ideaUsable(i, { now, profile })).sort((a, b) => (Date.parse(b.at) || 0) - (Date.parse(a.at) || 0))
     .filter((i) => { const t = `${i.platform}:${norm(i.title)}`; if (seen.has(i.id) || seenT.has(t)) return false; seen.add(i.id); seenT.add(t); return true; });
   if (xs.length <= max) return xs;
   const head = xs.slice(0, fresh), rest = xs.slice(fresh), k = max - head.length;
@@ -68,25 +84,28 @@ export function pickIdeas(items, { now = Date.now(), max = 12, fresh = 6 } = {})
 }
 
 /* ---------- what listening heard → cards ---------- */
-export function heardCards(L, seed = {}, { now = Date.now(), name = seed?.brand?.name || 'the brand', maxQ = 2, maxT = 2 } = {}) {
+export function heardCards(L, seed = {}, { now = Date.now(), name = seed?.brand?.name || 'the brand', maxQ = 2, maxT = 2, profile = {} } = {}) {
   const out = [], lane = Object.keys(seed?.lanes || {})[0], posts = seed?.posts || [];
   const rolesOf = (agent) => posts.find((p) => p.agent === agent)?.roles || ['founder', 'brand', 'growth'];
   const items = new Map((L?.items || []).map((x) => [x.id, x]));
   const at = L?.status?.at || L?.at || now;
   // the questions people asked, where a reply from the brand would help (recent, about the brand or the category)
-  const qs = (L?.threads || []).filter((t) => t?.url && asksQ(t) && ['brand', 'category', 'rival'].includes(t.about) && !NOT_A_PLACE.test(`${t.where} ${t.title}`) && now - (t.lastActive || 0) < 120 * DAY)
+  /* Reddit threads only: a creator's video or a rival's post is not a community. Fresh, in the market, open, asking (community-gate.js) */
+  const qs = (L?.threads || []).filter((t) => t?.url && asksQ(t) && /\?/.test(`${t.title} ${t.quote || ''}`) && ['brand', 'category', 'rival'].includes(t.about) && !NOT_A_PLACE.test(`${t.where} ${t.title}`)
+      && usableThread({ ...t, sub: /^r\//.test(t.where || '') ? t.where : '', text: t.quote }, { now, profile, brand: name }).ok)
     .sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, maxQ);
   for (const t of qs) {
-    const n = t.replies || 0, where = t.where || t.platform, q = cut(t.title, 90);
+    /* a count shows only when it is the platform's own (repliesLive) or a floor: threads saved before 20 Oct counted what Brew kept */
+    const n = t.repliesLive || t.repliesFloor ? t.replies ?? null : null, rt = repliesText(n, t.repliesFloor), where = t.where || t.platform, q = cut(t.title, 90);
     out.push({ id: `heard-q-${hash(t.url)}`, agent: 'visibility', sector: 'visibility', type: 'idea', kind: 'rows', ...(lane ? { lane } : {}), roles: rolesOf('visibility'), origin: 'listen', stream: 'heard',
-      src: `Heard · ${where} · ${n} repl${n === 1 ? 'y' : 'ies'}`, time: ageText(Math.min(now, t.lastActive || at), now), badge: ['Asked', 'info'],
-      title: `Asked in ${where}: “${cut(t.title, 60)}”`, sub: `${n ? `${n} repl${n === 1 ? 'y' : 'ies'} so far` : 'No replies yet'}, last active ${dateText(t.lastActive)}. ${t.about === 'brand' ? `They are asking about ${name} by name.` : t.about === 'rival' ? 'They are weighing a rival.' : 'They are choosing in your category.'} Reply as ${name}: answer the question first, say who you are.`,
-      rows: [['Where', where], ['Replies', String(n)], ['Last active', dateText(t.lastActive)], ['Mood', SENT[t.sentiment] || 'mixed']],
+      src: `Heard · ${where}${rt ? ` · ${rt}` : ''}`, time: ageText(Math.min(now, t.lastActive || at), now), badge: ['Asked', 'info'],
+      title: `Asked in ${where}: “${cut(t.title, 60)}”`, sub: `${rt ? `${rt} so far` : n === 0 ? 'No replies yet' : 'Replies not counted'}, last active ${dateText(t.lastActive)}. ${t.about === 'brand' ? `They are asking about ${name} by name.` : t.about === 'rival' ? 'They are weighing a rival.' : 'They are choosing in your category.'} Reply as ${name}: answer the question first, say who you are.`,
+      rows: [['Where', where], ...(rt ? [['Replies', rt]] : []), ['Last active', dateText(t.lastActive)], ['Mood', SENT[t.sentiment] || 'mixed']],
       link: { label: 'Open the thread', url: t.url }, cta: { label: 'Reply as the brand' },
       detail: { why: [`“${cut(t.quote || t.title, 220)}”`, `Read in public on ${t.platform === 'reddit' ? 'Reddit' : t.platform}, ${dateText(t.lastActive)}.`], how: ['Open the thread and read the replies.', `Answer what they asked, plainly, and say you work at ${name}.`, 'No links or discount codes unless the community allows them.'] },
-      heard: { kind: 'thread', url: t.url, where, replies: n, quote: t.quote || t.title },
+      heard: { kind: 'thread', url: t.url, where, replies: n, ...(t.repliesFloor ? { repliesFloor: true } : {}), quote: t.quote || t.title },
       post: { id: `heard-q-${hash(t.url)}`, platform: t.platform === 'reddit' ? 'reddit' : t.platform, platformLabel: t.platform === 'reddit' ? 'Reddit' : t.platform, format: 'reply', title: q, hook: '', copy: '', hashtags: [],
-        media: { kind: 'none', slides: [], script: [] }, where: [{ name: `${where}: ${q}`, url: t.url, kind: 'thread', why: 'A real question about the brand, asked in public.', rule: 'Read the community rules before replying.', comments: n }], why: 'Someone asked in public; a plain answer from the brand helps them and everyone who reads the thread later.', evidence: [], moves: [], measure: { metric: 'Upvotes, replies and no mod removal', how: 'Check the thread after 24 hours and 7 days' }, postAt: 'Today', at: new Date(at).toISOString() } });
+        media: { kind: 'none', slides: [], script: [] }, where: [{ name: `${where}: ${q}`, url: t.url, kind: 'thread', why: 'A real question about the brand, asked in public.', rule: 'Read the community rules before replying.', comments: n, ...(t.repliesFloor ? { commentsFloor: true } : {}), lastActive: t.lastActive }], why: 'Someone asked in public; a plain answer from the brand helps them and everyone who reads the thread later.', evidence: [], moves: [], measure: { metric: 'Upvotes, replies and no mod removal', how: 'Check the thread after 24 hours and 7 days' }, postAt: 'Today', at: new Date(at).toISOString() } });
   }
   // themes: how many said it, how they felt, and two of them in their own words
   const total = L?.total || (L?.items || []).filter((x) => x.themes?.length).length || 0;
@@ -111,11 +130,11 @@ export function heardCards(L, seed = {}, { now = Date.now(), name = seed?.brand?
 }
 
 /* ---------- into the seed, next to visualize ---------- */
-export function socialize(seed, social, { now = Date.now() } = {}) {
+export function socialize(seed, social, { now = Date.now(), profile = {} } = {}) {
   if (!social || !seed) return seed;
   try {
     const have = new Set((seed.posts || []).map((p) => p.id));
-    const add = [...heardCards(social.listen, seed, { now }), ...ideaCards(pickIdeas(social.ideas, { now }), seed, { now })].filter((c) => !have.has(c.id) && (have.add(c.id), true));
+    const add = [...heardCards(social.listen, seed, { now, profile }), ...ideaCards(pickIdeas(social.ideas, { now, profile }), seed, { now })].filter((c) => !have.has(c.id) && (have.add(c.id), true));
     return add.length ? { ...seed, posts: [...(seed.posts || []), ...add] } : seed;
   } catch { return seed; } // the feed never breaks on a bad file
 }
