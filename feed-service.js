@@ -2171,7 +2171,9 @@ export function createFeedService(o) {
   const finalDone = async (slug, rec) => { const tid = rec?.land?.tid; if (!tid) return false;
     const t = await getTenant(tid).catch(() => null); if (!t || (t.brandId || DEFAULT_BRAND) !== slug) return false;
     const br = await packs.load(slug); if (!br) return false; await JAMS.load(br.slug); /* a team's jams load in the background: without this wait t.changes read empty and a final collected after a restart had "no card to land on" (19 Oct) */
-    return runIn(br, () => (rec.target?.wid ? JAM_FINALS?.landDone(t, rec) : rec.target?.chid ? RMX?.finalDone?.(t, rec) : false) || false); };
+    /* landed as the team: with no request the workspace reads the team's jams only when its last member is known (t.teamEmail), and
+       a staff-made jam has none, so the change looked missing. A member context with no email lands it without naming anyone */
+    return MC.run({ member: true, email: null, slug: br.slug, bg: 'finals' }, null, () => runIn(br, () => (rec.target?.wid ? JAM_FINALS?.landDone(t, rec) : rec.target?.chid ? RMX?.finalDone?.(t, rec) : false) || false)); };
   /* a reply in a jam's Slack thread, or its Approve button pressed (server.js checked Slack's signature and found the brand) */
   const slackIn = async ({ slug, kind, thread, ts, user = {}, text = '', n = null, pid = null, mention = false }) => {
     const br = await packs.load(slug); if (!br) return null; await JAMS.load(br.slug);
