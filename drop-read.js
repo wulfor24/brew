@@ -6,7 +6,7 @@
 // What comes back is the source the brand-learnings review reads (brand-learnings.js run): the team sees the draft and saves
 // it, so nothing a file says becomes brand context unchecked. Same for every brand: nothing here knows one.
 import zlib from 'node:zlib';
-export const DOC_MAX = 20e6, IMAGE_MAX = 8e6, TEXT_CHARS = 120000;
+export const DOC_MAX = 20e6, IMAGE_MAX = 8e6, TEXT_CHARS = 200000;
 export const IMG = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp' };
 const OFFICE = ['docx', 'pptx', 'xlsx'];
 const extOf = (name = '') => String(name).toLowerCase().split('.').pop();
