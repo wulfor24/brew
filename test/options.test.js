@@ -54,12 +54,12 @@ test('a clip made for one option lands in that option only, never as a new versi
 
 test('a jam saved before options heals: v2–v4 are the options, the old “Video added” copy folds away and the stage goes to the option whose clip it carried', async () => {
   const t = tenant(); const { call } = studio();
-  t.changes.ch_1 = change('ch_1', { action: 'creative.short_video', family: 'post', headVersionId: 'v5', pkg: { title: 'Festive', script: [{ line: 'festive prep is chaotic!' }], video: 'gen/c.mp4', knobs: {} } });
+  t.changes.ch_1 = change('ch_1', { action: 'creative.short_video', family: 'post', headVersionId: 'v5', thread: [{ from: 'ai', v: 5, text: 'The video for v4 is ready: 6 seconds, vertical. It’s on v5 too, the version on screen.' }], pkg: { title: 'Festive', script: [{ line: 'festive prep is chaotic!' }], video: 'gen/c.mp4', knobs: {} } });
   t.vg = { ch_1: [
     { id: 'v1', n: 1, at: 1, reason: 'The first draft on the card', label: 'First draft', snapshot: { title: 'First' } },
     { id: 'v2', n: 2, at: 2, parentVersionId: 'v1', reason: 'Version A: festive brand-team comedy skit', snapshot: { title: 'A' } },
     { id: 'v3', n: 3, at: 3, parentVersionId: 'v1', reason: 'Version B: dermatologist says science backed', snapshot: { title: 'B' } },
-    { id: 'v4', n: 4, at: 4, parentVersionId: 'v1', reason: 'Version C: curly girl routine', snapshot: { title: 'C', video: 'gen/c.mp4' } },
+    { id: 'v4', n: 4, at: 4, parentVersionId: 'v1', reason: 'Version C: curly girl routine', snapshot: { title: 'C' } } /* live data: the clip never reached v4 */,
     { id: 'v5', n: 5, at: 5, parentVersionId: 'v2', reason: 'Video added', label: 'Video added', snapshot: { title: 'A', video: 'gen/c.mp4' } }] };
   const r = await call('GET /api/changes/:chid', {}, t, { chid: 'ch_1' });
   const op = r.change.options; assert.ok(op); assert.deepEqual(op.list.map((x) => x.id), ['v2', 'v3', 'v4']);

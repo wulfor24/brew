@@ -943,6 +943,11 @@ export function createRemix(o) {
       if (ids.length < 2) { const cuts = vs.filter((v) => CUT_RE.test(v.reason || '')), grp = []; for (let i = cuts.length - 1; i >= 0; i--) { const v = cuts[i]; if (grp.length && v.parentVersionId !== grp[0].parentVersionId) break; grp.unshift(v); if (CUT_RE.exec(v.reason)[1] === 'A') break; } ids = grp.map((v) => v.id); }
       if (ids.length < 2) return null; ch.options = { ids, names: {}, picked: null, at: now(t) }; }
     const { ids, names = {}, picked = null } = ch.options;
+    /* an old "Video added" copy whose clip never reached the version it was made for: the chat line that announced it ("The video
+       for v4 is ready", saved with the copy's number) names that version, and the clip goes back there (once per jam) */
+    if (!ch.options.clipsHealed) { ch.options.clipsHealed = 1;
+      for (const v of vs) if (v.label === 'Video added' && v.snapshot?.video) { const m = (ch.thread || []).find((x) => x.v === v.n && /The video for v\d+ is ready/.test(x.text || '')), n = m ? +/The video for v(\d+)/.exec(m.text)[1] : 0, src = n ? vs.find((x) => x.n === n) : null;
+        if (src && src !== v && !src.snapshot?.video) { const { video, poster, image, videoHook } = v.snapshot; src.snapshot = { ...src.snapshot, video, ...(poster ? { poster } : {}), ...(/^gen\//.test(image || '') ? { image } : {}), ...(videoHook ? { videoHook } : {}) }; } } }
     const list = ids.filter((id) => by.has(id)).map((id, i) => { const v0 = by.get(id), letter = 'ABCDEFGH'[i];
       const mine = vs.filter((v) => optIdOf(ids, by, v) === id && !strayClip(vs, by, ids, v)), tip = mine.reduce((a, b) => (b.n > a.n ? b : a), v0), sn = tip.snapshot || {};
       const img = sn.image || sn.poster || sn.draft?.poster || sn.draft?.images?.[0] || null;
