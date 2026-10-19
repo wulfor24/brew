@@ -49,18 +49,29 @@ export function scrubClaims(text, source = '') {
   return s.split(/(?<=[.!?])\s+/).filter((sent) => !fl.some((f) => sent.includes(f.phrase))).join(' ').trim() || s;
 }
 
-/* Copy that reads wrong (QA 19 Oct: "Is heavy hair fall NOT giving?", "up to 7 days a week", "Onion Hair Oil with Onion Oil",
-   line breaks written as the two characters \n). Cheap checks on what a shopper reads; each flag is fixable in the studio. */
+/* Copy that reads wrong (QA 19 Oct: "Is heavy hair fall NOT giving?", "up to 7 days a week", a product word written twice,
+   line breaks written as the two characters \n). Cheap checks on what a shopper reads; each flag is fixable in the studio.
+   The brand's own words are never flagged (`source`, as for claimFlags): a real product name that repeats a word ("Onion Hair
+   Oil with Onion Oil") or a store banner in capitals ("FREE SHIPPING ON ALL ORDERS") is the store's, not the writer's. */
 const ACRO = /^(?:SPF|PA|UV|UVA|UVB|AHA|BHA|USA|UK|EU|UAE|COD|FAQ|DIY|OTP|SMS|GST|MRP|SKU|ML|KG|CEO|AI|HD|NEW|FREE|SALE|OFF|BOGO|DM|IG|FB|USP|PDP|ASAP|OK|ISO|GMP|FDA|BPA|PETA|RSVP|VIP)$/;
-export function copyFlags(text) {
-  const s = String(text || ''), out = [];
+const REPEAT_OK = /^(that|this|with|your|more|very|from|have|what|when|each|week|step|days?|again|over|after|by|and)$/;
+export function copyFlags(text, source = '') {
+  const s = String(text || ''), out = [], src = typeof source === 'string' ? norm(source) : sourceText(source);
+  const theirs = (phrase) => !!src && phrase.length > 3 && src.includes(norm(phrase).replace(/[^a-z0-9₹%&' -]+/g, ' ').replace(/\s+/g, ' ').trim());
   if (/\\n|\\t/.test(s)) out.push('line breaks show as “\\n” in the text');
-  const caps = (s.match(/\b[A-Z]{3,}\b/g) || []).filter((w) => !ACRO.test(w) && /[a-z]/.test(s.replace(/\b[A-Z]{3,}\b/g, '')));
+  /* a run of capitals the store itself writes that way is its own banner; a lone shouted word in sentence case is not */
+  const runs = s.match(/\b[A-Z][A-Z0-9₹%&' -]*[A-Z0-9]\b/g) || [];
+  const caps = runs.filter((r) => !theirs(r)).flatMap((r) => r.match(/\b[A-Z]{3,}\b/g) || []).filter((w) => !ACRO.test(w) && /[a-z]/.test(s.replace(/\b[A-Z]{3,}\b/g, '')));
   if (caps.length) out.push(`shouting caps (“${caps[0]}”)`);
   if (/\bnot giving\s*[?!.]|\b(?:is|are)\s+(?:not\s+)?giving\s*[?!.]/i.test(s)) out.push('slang that doesn’t read right (“… giving?”)');
   if (/\bup to \d+ days a week\b|\b(?:[8-9]|\d{2,}) days a week\b/i.test(s)) out.push('a time phrase that doesn’t make sense (“days a week”)');
-  for (const line of s.split(/\n|(?<=[.!?])\s+/)) { const w = line.toLowerCase().match(/[a-z]{4,}/g) || [];
-    for (let i = 0; i < w.length; i++) for (let j = i + 1; j < Math.min(w.length, i + 4); j++) if (w[i] === w[j] && !/^(that|this|with|your|more|very|from|have|what|when|each|week|step|days?)$/.test(w[i])) { out.push(`a repeated word (“${w[i]}”) in one phrase`); i = w.length; break; } }
+  /* a word written twice in a row ("Oil Oil"), or a capitalised name word twice within a few words ("Onion Oil Onion Hair Oil"),
+     unless that stretch is the brand's own (a real product name). Plain repeats for rhythm ("stronger hair, healthier hair") read fine */
+  const dbl = s.match(/\b([A-Za-z]{2,})\s+\1\b/i); if (dbl && !theirs(dbl[0])) out.push(`a repeated word (“${dbl[1].toLowerCase()}”) in one phrase`);
+  for (const line of s.split(/\n|(?<=[.!?])\s+/)) { const ws = [...line.matchAll(/[A-Z][a-z]{3,}/g)];
+    outer: for (let i = 0; i < ws.length; i++) for (let j = i + 1; j < Math.min(ws.length, i + 4); j++) { const w = ws[i][0].toLowerCase(); if (w !== ws[j][0].toLowerCase() || REPEAT_OK.test(w)) continue;
+      if (theirs(line.slice(ws[i].index, ws[j].index + ws[j][0].length))) continue;
+      out.push(`a repeated word (“${w}”) in one phrase`); break outer; } }
   return [...new Set(out)];
 }
 export const COPY_RULE = 'Write natural, idiomatic English a good copywriter would sign off: no forced slang, no shouting caps, never the same product word twice in one name, line breaks as real line breaks.';

@@ -40,6 +40,15 @@ test('copy that reads wrong is flagged', () => {
   assert.ok(copyFlags('Onion Hair Oil with Onion Oil').some((x) => /repeated/.test(x)));
   assert.ok(copyFlags('Line one\\nLine two').some((x) => /\\n/.test(x)));
   assert.deepEqual(copyFlags('Day after day, your hair gets stronger. FREE shipping today.'), []);
+  assert.ok(copyFlags('Our Oil Oil is great').some((x) => /repeated/.test(x)), 'a word twice in a row');
+  assert.deepEqual(copyFlags('Stronger hair, healthier hair, every wash.'), [], 'a repeat for rhythm reads fine');
+});
+
+test('the brand’s own words are never flagged as reading wrong', () => {
+  const src = sourceText({ facts: { p: { label: 'Product', v: 'Onion Hair Oil with Onion Oil & Redensyl for Hair Fall Control' }, s: { label: 'Banner', v: 'FREE SHIPPING ON ALL ORDERS ABOVE ₹299' } } });
+  assert.deepEqual(copyFlags('Onion Hair Oil with Onion Oil & Redensyl, now ₹419.', src), [], 'the real product name');
+  assert.deepEqual(copyFlags('FREE SHIPPING ON ALL ORDERS ABOVE ₹299. Shop now.', src), [], 'the store’s own banner');
+  assert.ok(copyFlags('BUY NOW before it ends.', src).some((x) => /caps/.test(x)), 'shouting the store never wrote');
 });
 
 test('realNewlines turns written \\n into line breaks and ‹ before a price into ₹', () => {
