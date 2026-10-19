@@ -3,6 +3,7 @@
 // Hero packshots: the store's own best-seller order when it has one, else the main collection's order.
 import { jsonLd, typeIs, clean, stripTags, pathOf, money, num, pool, hostOf, meta, links } from '../util.js';
 import { moneyFmt } from '../../brand-pack.js'; // the price label the check page prints (build.js normalizeProfile)
+import { adminUrl } from './admin.js';
 
 const PACK = /\bpack of \d+|\b\d+\s?x\s?\d+|\bcombo\b|\bkit\b|\bbundle\b|\bset of\b|\bduo\b|\btrio\b|\bregimen\b|\broutine\b|\bvalue pack\b|\bgift set\b/i;
 const CLAIM = /(\d+(\.\d+)?\s?%|\bup to\b|\bclinically\b|\bdermatologist|\bproven\b|\bstudy\b|\btested\b|\bin \d+ (days|weeks)|\b\d+[xX]\b|\bcertified\b|\bno\. ?1\b|#1\b)/i;
@@ -16,7 +17,13 @@ export async function catalog(ctx) {
   // Shopify answers products.json in the visitor's market (a store can show INR to a visit from India): ask
   // for the home market explicitly so prices match the shop currency
   const mk = state.shopMeta?.country ? `&country=${state.shopMeta.country}` : '';
-  if (profile.platform === 'shopify') {
+  /* a closed store (stages/admin.js): the active products and collections its Shopify admin gave, in the products.json shape */
+  const admin = state.admin;
+  if (admin) {
+    ctx.tick('catalog', 'Shopify admin');
+    products = (admin.products || []).map((p) => shopifyItem(p, origin, cur)); collections = admin.collections || [];
+    how = 'shopify admin';
+  } else if (profile.platform === 'shopify') {
     ctx.tick('catalog', '/products.json');
     for (let page = 1; page <= 12; page++) {
       const r = await http.get(`${origin}/products.json?limit=250&page=${page}${mk}`, { as: 'json', key: `products-${page}`, ms: 30e3 });
@@ -65,7 +72,7 @@ export async function catalog(ctx) {
 
   // order: the store's own best-selling sort → a best-seller collection → main collection order
   let order = null, orderHow = null;
-  if (profile.platform === 'shopify') {
+  if (profile.platform === 'shopify' && !admin) {
     const bs = collections.find((c) => /best-?sell|bestseller|top-?sell|most-?loved|most-?popular|top-?rated/i.test(c.handle + ' ' + c.title));
     if (bs) { const r = await http.get(`${origin}/collections/${bs.handle}/products.json?limit=50${mk}`, { as: 'json', key: 'bestsellers' }); if (r.ok && r.json?.products?.length) { order = r.json.products.map((p) => p.handle); orderHow = `the "${clean(bs.title)}" collection`; } }
     if (!order) { const r = await http.get(`${origin}/collections/all?sort_by=best-selling${mk}`, { key: 'all-best-selling' });
@@ -88,6 +95,7 @@ export async function catalog(ctx) {
     ctx.picks('catalog', [...hero, ...products.filter((p) => !hero.includes(p))].filter((p) => !NOT_PRODUCT.test(p.title || '')).slice(0, 12).map((p) => ({ handle: p.handle, title: p.title, price: p.price > 0 ? fmt(p.price) : '', img: p.img || p.images.find((u) => /^https?:/.test(u)) || null }))); }
 
   // ledger: every price and count
+  const listUrl = admin ? adminUrl(admin.shop?.myshopify, '/products') : `${origin}/products.json`, listHow = admin ? 'shopify-admin' : 'products.json';
   const collOut = [];
   for (const c of collections.slice(0, 200)) collOut.push({ handle: c.handle, title: clean(c.title), count: c.products_count ?? null });
   profile.catalog = {
@@ -95,31 +103,32 @@ export async function catalog(ctx) {
     products: products.map((p) => ({ ...(p.id ? { id: p.id } : {}), handle: p.handle, title: p.title, type: p.type || null, price: p.price || null, mrp: p.mrp || null, currency: p.currency || null, inStock: p.inStock, variants: p.variants, images: p.images.slice(0, 6), img: p.img || null, url: p.url, published: p.published || null, tags: p.tags || [], claims: p.claims || [], pack: !!p.pack, reviews: p.reviews || null })),
     hero: hero.map((p) => p.handle), order: orderHow || 'catalog order', source: how
   };
-  if (products.length) ledger.add({ key: 'catalog.count', label: 'Products in the catalog', v: String(products.length), n: products.length, unit: 'products', url: how === 'products.json' ? `${origin}/products.json` : origin, method: how?.startsWith('jsonld') ? 'jsonld' : how || 'crawl', note: how?.startsWith('jsonld') ? `only product pages read so far; ${ctx.state.productPageCount || 0} product URLs in the sitemap` : undefined });
-  if (collections.length) ledger.add({ key: 'catalog.collections', label: 'Collections', v: String(collections.length), n: collections.length, url: `${origin}/collections.json`, method: 'products.json' });
-  const packs = products.filter((p) => p.pack); if (products.length) ledger.add({ key: 'catalog.packs', label: 'Packs, kits and bundles', v: String(packs.length), n: packs.length, url: `${origin}/products.json`, method: how?.startsWith('jsonld') ? 'jsonld' : 'products.json', layer: 'inferred', conf: 'medium', note: 'titles that say pack/kit/combo/set/duo/trio' });
-  const oos = products.filter((p) => p.inStock === false); if (products.length) ledger.add({ key: 'catalog.out_of_stock', label: 'Products out of stock', v: String(oos.length), n: oos.length, url: `${origin}/products.json`, method: how?.startsWith('jsonld') ? 'jsonld' : 'products.json' });
+  if (products.length) ledger.add({ key: 'catalog.count', label: 'Products in the catalog', v: String(products.length), n: products.length, unit: 'products', url: admin ? listUrl : how === 'products.json' ? `${origin}/products.json` : origin, method: how?.startsWith('jsonld') ? 'jsonld' : admin ? listHow : how || 'crawl', note: how?.startsWith('jsonld') ? `only product pages read so far; ${ctx.state.productPageCount || 0} product URLs in the sitemap` : admin ? `active products in the Shopify admin${admin.partial ? `; the first ${products.length} of ${admin.count} read` : ''}` : undefined });
+  if (collections.length) ledger.add({ key: 'catalog.collections', label: 'Collections', v: String(collections.length), n: collections.length, url: admin ? adminUrl(admin.shop?.myshopify, '/collections') : `${origin}/collections.json`, method: listHow });
+  const packs = products.filter((p) => p.pack); if (products.length) ledger.add({ key: 'catalog.packs', label: 'Packs, kits and bundles', v: String(packs.length), n: packs.length, url: listUrl, method: how?.startsWith('jsonld') ? 'jsonld' : listHow, layer: 'inferred', conf: 'medium', note: 'titles that say pack/kit/combo/set/duo/trio' });
+  const oos = products.filter((p) => p.inStock === false); if (products.length) ledger.add({ key: 'catalog.out_of_stock', label: 'Products out of stock', v: String(oos.length), n: oos.length, url: listUrl, method: how?.startsWith('jsonld') ? 'jsonld' : listHow });
   for (const p of products.slice(0, 400)) {
-    if (p.price > 0) ledger.add({ key: `price.${p.handle}`, label: `${p.title} price`, v: money(p.price, p.currency), n: p.price, unit: p.currency, url: p.url, method: how?.startsWith('jsonld') ? 'jsonld' : how === 'products.json' ? 'products.json' : 'crawl' });
-    if (p.mrp > p.price) ledger.add({ key: `mrp.${p.handle}`, label: `${p.title} list price (compare-at)`, v: money(p.mrp, p.currency), n: p.mrp, unit: p.currency, url: p.url, method: how === 'products.json' ? 'products.json' : 'jsonld' });
+    const pu = admin && p.id ? adminUrl(admin.shop?.myshopify, `/products/${p.id}`) : p.url; /* a closed store's product page isn't public yet: its admin page */
+    if (p.price > 0) ledger.add({ key: `price.${p.handle}`, label: `${p.title} price`, v: money(p.price, p.currency), n: p.price, unit: p.currency, url: pu, method: how?.startsWith('jsonld') ? 'jsonld' : admin ? listHow : how === 'products.json' ? 'products.json' : 'crawl' });
+    if (p.mrp > p.price) ledger.add({ key: `mrp.${p.handle}`, label: `${p.title} list price (compare-at)`, v: money(p.mrp, p.currency), n: p.mrp, unit: p.currency, url: pu, method: admin ? listHow : how === 'products.json' ? 'products.json' : 'jsonld' });
   }
   const dated = products.filter((p) => p.published).sort((a, b) => Date.parse(b.published) - Date.parse(a.published));
   const newest = dated.find((p) => !p.pack) || dated[0];
-  if (newest) ledger.add({ key: 'catalog.newest', label: 'Newest product (published date)', v: `${newest.title}, ${newest.published.slice(0, 10)}`, url: newest.url, method: 'products.json', note: 'Shopify published_at: the date it went live in this store, which can differ from a launch date' });
+  if (newest) ledger.add({ key: 'catalog.newest', label: 'Newest product (published date)', v: `${newest.title}, ${newest.published.slice(0, 10)}`, url: admin ? listUrl : newest.url, method: listHow, note: 'Shopify published_at: the date it went live in this store, which can differ from a launch date' });
   if (order) ledger.add({ key: 'catalog.order', label: 'Best-seller order used for heroes', v: orderHow, url: origin, method: 'crawl' });
 
   // findings
   if (!products.length) {
-    ctx.finding('catalog', { kind: 'rows', t: 'The catalog', src: pathOf(origin), rows: [], cap: 'No product catalog found on the site.' });
+    ctx.finding('catalog', { kind: 'rows', t: 'The catalog', src: admin ? 'Shopify admin' : pathOf(origin), rows: [], cap: admin ? 'The Shopify admin has no active products yet.' : 'No product catalog found on the site.' });
     return ctx.done('catalog', 'no products found', 'empty');
   }
   const top = hero.slice(0, 5);
   const rows = top.map((p) => [shortTitle(p.title), p.mrp > p.price ? `${money(p.price, p.currency)} (MRP ${money(p.mrp, p.currency)})` : money(p.price, p.currency)]);
   const partial = how?.startsWith('jsonld') && (ctx.state.productPageCount || 0) > products.length;
-  const capBits = [partial ? `${num(ctx.state.productPageCount, currency)} product pages in the sitemap, ${products.length} read.` : `${num(products.length, currency)} products.`];
+  const capBits = [partial ? `${num(ctx.state.productPageCount, currency)} product pages in the sitemap, ${products.length} read.` : admin?.partial ? `${num(products.length, currency)} of ${num(admin.count, currency)} active products read from the Shopify admin.` : `${num(products.length, currency)} products${admin ? ' from the Shopify admin' : ''}.`];
   if (newest) capBits.push(`Newest: ${shortTitle(newest.title)}, ${fmtDate(newest.published)}.`);
-  ctx.finding('catalog', { kind: 'rows', t: 'The catalog', src: pathOf(how === 'products.json' ? `${origin}/products.json` : origin), rows, cap: capBits.join(' '), order: orderHow || 'catalog order' }, 'Read live prices');
-  if (shots.length) ctx.finding('catalog', { kind: 'grid', t: 'Packshots on your site', src: pathOf(origin + '/products'), imgs: shots.slice(0, 4), all: shots, cap: `${shots.length} product photos saved${orderHow ? `, best sellers first (${orderHow.replace(/ \(.*\)/, '')})` : ''}.` }, 'Saved the packshots');
+  ctx.finding('catalog', { kind: 'rows', t: 'The catalog', src: admin ? 'Shopify admin' : pathOf(how === 'products.json' ? `${origin}/products.json` : origin), rows, cap: capBits.join(' '), order: orderHow || 'catalog order' }, 'Read live prices');
+  if (shots.length) ctx.finding('catalog', { kind: 'grid', t: admin ? 'Your product photos' : 'Packshots on your site', src: admin ? 'Shopify admin' : pathOf(origin + '/products'), imgs: shots.slice(0, 4), all: shots, cap: `${shots.length} product photos saved${orderHow ? `, best sellers first (${orderHow.replace(/ \(.*\)/, '')})` : ''}.` }, 'Saved the packshots');
   const types = new Set(products.map((p) => p.type).filter(Boolean));
   ctx.done('catalog', `${partial ? `${num(ctx.state.productPageCount, currency)} product pages, ${products.length} read` : `${num(products.length, currency)} products`}${collections.length ? `, ${collections.length} collections` : types.size ? `, ${types.size} types` : ''}`);
 }

@@ -19,6 +19,8 @@ export async function brand(ctx) {
     if (/logo/i.test(s) || (profile.name && new RegExp(`^${esc(profile.name)}$`, 'i').test(attr(t, 'alt') || ''))) cands.push({ url: abs(src, base), how: 'header <img>' });
   }
   const svgLogo = (header.match(/<a\b[^>]*(?:logo|header__heading-link|site-header__logo)[^>]*>\s*(<svg\b[\s\S]*?<\/svg>)/i) || header.match(/(<svg\b[^>]*(?:logo)[^>]*>[\s\S]*?<\/svg>)/i) || [])[1];
+  /* a closed store: the logo set in its Shopify brand settings comes first (stages/admin.js) */
+  if (state.admin?.brand?.logo) cands.push({ url: state.admin.brand.logo, how: 'Shopify brand settings' });
   const orgLogo = state.org?.logo ? (typeof state.org.logo === 'string' ? state.org.logo : state.org.logo.url || state.org.logo.contentUrl) : null;
   if (orgLogo) cands.push({ url: abs(orgLogo, base), how: 'Organization logo (JSON-LD)' });
   const icons = tags(html, 'link').filter((t) => /icon/i.test(attr(t, 'rel') || '')).map((t) => ({ rel: attr(t, 'rel').toLowerCase(), url: abs(attr(t, 'href'), base), sizes: attr(t, 'sizes') }));
@@ -58,6 +60,9 @@ export async function brand(ctx) {
   for (const c of chroma) { if (picked.some((p) => dist(p, c) < 40)) { const p = picked.find((q) => dist(q, c) < 40); p.n += c.n; continue; } picked.push({ ...c }); }
   picked.sort((a, b) => b.n - a.n);
   let colors = picked.slice(0, 3);
+  /* the brand colours set in Shopify, for a closed store whose password page has too few of its own */
+  const setColors = (state.admin?.brand?.colors || []).map((hex) => ({ hex, n: 0, ...hsl(hex) })).filter((c) => !colors.some((x) => x.hex === c.hex));
+  if (colors.length < 3 && setColors.length) colors = [...colors, ...setColors].slice(0, 3);
   const neutralNote = colors.length < 3 ? ' (fewer than 3 non-grey colours in the CSS; the rest are its most used dark/neutral)' : '';
   if (colors.length < 3) { const dark = ranked.filter((c) => !colors.some((p) => p.hex === c.hex) && c.l < 0.25); const light = ranked.filter((c) => !colors.some((p) => p.hex === c.hex) && c.l >= 0.25 && c.l < 0.97 && c.s <= 0.18); colors = [...colors, ...dark.slice(0, 1), ...light].slice(0, 3); }
   profile.identity.colors = colors.map((c) => c.hex);
@@ -80,7 +85,7 @@ export async function brand(ctx) {
   if (body) ledger.add({ key: 'brand.font.body', label: 'Body font', v: body, url: fetchedCss[0]?.url || base, method: 'crawl' });
 
   /* tagline: the hero headline when it is not just the name, else the meta description's first sentence */
-  const heads = [...html.matchAll(/<h(1)\b[^>]*>([\s\S]*?)<\/h\1>/gi)].map((m) => clean(stripTags(m[2]))).filter((t) => t && t.length >= 8 && t.length <= 90 && t.toLowerCase() !== String(profile.name).toLowerCase() && !/cart|search|menu|newsletter|subscribe|log ?in|sign ?up|account|cookie|your bag|terms|conditions|privacy|promotion/i.test(t));
+  const heads = [...html.matchAll(/<h(1)\b[^>]*>([\s\S]*?)<\/h\1>/gi)].map((m) => clean(stripTags(m[2]))).filter((t) => t && t.length >= 8 && t.length <= 90 && t.toLowerCase() !== String(profile.name).toLowerCase() && !/cart|search|menu|newsletter|subscribe|log ?in|sign ?up|account|cookie|your bag|terms|conditions|privacy|promotion|opening soon|coming soon|launching soon|password|enter (the )?store|be the first to know/i.test(t));
   const md = meta(html, 'description') || meta(html, 'og:description');
   const mdLine = md ? (md.match(/^[^.!?]{12,140}[.!?]/) || [md.slice(0, 140)])[0] : null;
   const tagline = heads[0] || (mdLine && mdLine.trim().toLowerCase() !== String(profile.name).toLowerCase() ? mdLine : null);
@@ -91,7 +96,7 @@ export async function brand(ctx) {
 
   const face = [heading || body, 'system-ui', 'sans-serif'].filter(Boolean).map((f) => (/\s/.test(f) && !/,/.test(f) ? `"${f}"` : f)).join(', ');
   ctx.finding('brand', { kind: 'kit', t: 'Brand kit', src: fetchedCss[0] ? pathOf(fetchedCss[0].url).split('?')[0] : pathOf(base), logo, colors: profile.identity.colors, face, typeName: profile.identity.typeName || 'Font not found', ...(colors.length ? {} : { cap: 'No brand colours found in the CSS.' }) }, 'Pulled the brand kit');
-  ctx.done('brand', [logo ? '1 logo' : 'no logo found', colors.length ? `${colors.length} colours` : 'no colours found', profile.identity.typeName ? profile.identity.typeName : 'font not found'].join(', '));
+  ctx.done('brand', [logo ? '1 logo' : state.closed ? 'no logo on the password page' : 'no logo found', colors.length ? `${colors.length} colours` : 'no colours found', profile.identity.typeName ? profile.identity.typeName : 'font not found'].join(', '));
 }
 
 const esc = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

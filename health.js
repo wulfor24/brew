@@ -8,6 +8,7 @@
 // The counts come from pack-numbers.js, so the rings quote the same numbers as every other screen.
 import { numbersOf } from './pack-numbers.js';
 import { standFromRead, standFromRun } from './ai-standing.js';
+import { CLOSED_WHY } from './reader/closed.js';
 
 export const HEALTH_V = 'real-4'; /* 4: each part says when it was checked, and what changed since the last score (QA FEED-QA-18) */ // bump when a ring is scored differently: every brand's score is worked out again at load (brand-pack.js)
 const clamp = (x) => Math.max(0, Math.min(100, Math.round(x)));
@@ -85,11 +86,15 @@ function storefront(p, fix) {
   /* reviews on the brand's own site only: marketplace reviews are not on the store */
   const pl = p.reviews?.platforms || [], onSite = pl.filter((x) => !MKT.test(x.name || '')), rv = pl.length ? onSite.reduce((a, x) => a + (+x.count || 0), 0) : +p.reviews?.total || 0;
   const rvErr = reviewsErr(p);
-  if (p.reviews && !rvErr) { sp.push(['Reviews on the site', rv >= 100 ? 15 : rv > 0 ? 8 : 0, 15, rv ? `${fmt(rv)} on the site${pl.some((x) => MKT.test(x.name || '')) ? ' (marketplaces not counted)' : ''}` : 'no reviews on the site', readAt]);
+  /* a closed store (Shopify's password page): the speed, the walk and the site's reviews can't be read yet, so they are left out
+     and the ring says why (reader/stages/admin.js), never "no reviews on the site" */
+  const closed = !!p.closed;
+  if (p.reviews && !rvErr && !(closed && p.reviews.closed && !rv)) { sp.push(['Reviews on the site', rv >= 100 ? 15 : rv > 0 ? 8 : 0, 15, rv ? `${fmt(rv)} on the site${pl.some((x) => MKT.test(x.name || '')) ? ' (marketplaces not counted)' : ''}` : 'no reviews on the site', readAt]);
     if (!rv) fix.push(['Storefront', 'No reviews were found on the site. Ask for one after delivery.']); }
-  if (!sp.length) return { k: 'Storefront', v: 0, read: false, what: rvErr || p.meta?.errors?.site ? 'The store couldn’t be read this time; the next refresh tries again' : 'Not read yet', parts: [], src: 'the site read' };
+  const closedWhat = closed ? `the checkout walk, page speed and site reviews wait: ${CLOSED_WHY}` : null;
+  if (!sp.length) return { k: 'Storefront', v: 0, read: false, what: closed ? `Not checked: ${CLOSED_WHY}. Brew checks once the store opens` : rvErr || p.meta?.errors?.site ? 'The store couldn’t be read this time; the next refresh tries again' : 'Not read yet', parts: [], src: 'the site read' };
   const got = sp.reduce((a, x) => a + x[1], 0), max = sp.reduce((a, x) => a + x[2], 0);
-  return { k: 'Storefront', v: clamp((100 * got) / max), read: true, what: `From ${p.host || 'your store'}: ${sp.map((x) => x[0].toLowerCase()).join(', ')}${rvErr ? '; reviews couldn’t be read this time, the next refresh tries again' : ''}`,
+  return { k: 'Storefront', v: clamp((100 * got) / max), read: true, what: `From ${p.host || 'your store'}: ${sp.map((x) => x[0].toLowerCase()).join(', ')}${rvErr ? '; reviews couldn’t be read this time, the next refresh tries again' : ''}${closedWhat ? `; ${closedWhat}` : ''}`,
     parts: sp.map(([k, v, of, note, at]) => ({ k, v: Math.round(v), of, note, ...(at ? { at: String(at).slice(0, 10) } : {}) })), src: [ps?.score != null && `Google PageSpeed (${ps.at})`, reached && 'the checkout walk', 'the site read'].filter(Boolean).join(', ') };
 }
 
@@ -101,9 +106,9 @@ const toolsLine = (ts = []) => [...new Set(ts.filter(Boolean).map((t) => TOOL[St
 /* the AI answers ring from ONE check (the read's answers or a weekly run): the score, the rows under it, the finding and the
    rival standing all count the same answers, so they can never disagree (Param, 19 Oct: 21/100 over rows adding to 15, a
    0 of 10 row over a 1 of 15 panel). fixT is this check's own finding, carried on the ring for the card's headline */
-function aiRingOf({ name, s = {}, tools = [], at = null, from = 'read', stand = null, error = null }) {
+function aiRingOf({ name, s = {}, tools = [], at = null, from = 'read', stand = null, error = null, closed = false }) {
   const named = s.named ?? null, of = +s.of || 0, uN = s.unbrandedNamed ?? null, uOf = +s.unbrandedOf || 0, src = toolsLine(tools);
-  if (!of) return { k: 'AI answers', v: 0, read: false, what: error ? 'The AI answers couldn’t be read this time; the next refresh tries again' : 'Not read yet', parts: [], src, at, from, stand, fixT: null };
+  if (!of) return { k: 'AI answers', v: 0, read: false, what: closed ? `Not asked: ${CLOSED_WHY}, so AI tools can’t see the store yet` : error ? 'The AI answers couldn’t be read this time; the next refresh tries again' : 'Not read yet', parts: [], src, at, from, stand, fixT: null };
   /* what counts is being named when the shopper did not ask for the brand: unbranded questions carry 85 of the 100,
      questions with the brand's name in them mostly name it anyway, so they carry 15 */
   const bN = uOf ? named - uN : null, bOf = uOf ? of - uOf : null, parts = [];
@@ -119,7 +124,7 @@ function aiRingOf({ name, s = {}, tools = [], at = null, from = 'read', stand = 
 function aiAnswers(p, fix) {
   const ok = (p.ai?.answers || []).filter((a) => a && !a.error);
   const at = ok.map((a) => a.at).filter(Boolean).sort().pop() || p.meta?.readAt || null;
-  const r = aiRingOf({ name: p.name, s: p.ai?.score || {}, tools: ok.map((a) => a.tool), at, from: 'read', stand: standFromRead(p), error: p.meta?.errors?.answers });
+  const r = aiRingOf({ name: p.name, s: p.ai?.score || {}, tools: ok.map((a) => a.tool), at, from: 'read', stand: standFromRead(p), error: p.meta?.errors?.answers, closed: !!p.ai?.closed });
   if (r.fixT) fix.push(['AI answers', r.fixT]);
   return r;
 }

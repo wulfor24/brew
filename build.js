@@ -166,7 +166,9 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const p = start0(url, o); if (slug && !was) { starting.set(slug, p); p.catch(() => {}).finally(() => { if (starting.get(slug) === p) starting.delete(slug); }); }
     return p;
   }
-  async function start0(url, { ip, user = null, fresh = false } = {}) {
+  /* admin: a Shopify Admin API snapshot (reader/stages/admin.js adminCatalog) for a store behind Shopify's password page, from the
+     Shopify app (shopify-app.js startRead): saved privately, and every read of the brand opens from it while the store stays closed */
+  async function start0(url, { ip, user = null, fresh = false, admin = null } = {}) {
     const raw = String(url || '').trim(); const slug = slugOf(raw);
     if (blocked(slug)) return { error: 'This address can’t be read here.' };
     /* the host is lower-cased before it is judged: ARATA.IN or https://Arata.In/… is the same site, as the landing already says (QA 19 Oct) */
@@ -191,10 +193,10 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     st(slug).status = {}; /* a new status, not merged over the last run's stages, PDFs and counts */
     /* the starter files go up together: one after another kept the person on the landing for 3-5s */
     await Promise.all([packs.put(slug, 'seed.json', skeletonSeed({ slug, host })), packs.put(slug, 'facts.json', {}), packs.put(slug, 'config.json', { countryName: '', questions: [], rivals: [] }),
-      user ? packs.put(slug, 'private/created.json', { by: user.email, at: Date.now() }).catch(() => {}) : null]);
+      user ? packs.put(slug, 'private/created.json', { by: user.email, at: Date.now() }).catch(() => {}) : null, admin ? packs.put(slug, ADMIN_SNAP, admin) : null]);
     await setStatus(slug, { slug, host, url: /^https?:/i.test(raw) ? raw.replace(/^(https?:\/\/)([^/?#]+)/i, (_, a, h) => a.toLowerCase() + h.toLowerCase()) : 'https://' + host, name: host, createdAt: Date.now(), stages: {}, ready: false, done: false, state: 'Reading the site', error: null, cancelled: null, freshRead: !!(prev && fresh),
       /* born: the brand's first read on Brew; a re-read keeps it, a wipe ends it, and a browser that saved another born forgets its onboarding */
-      born: prev?.born || Date.now(), ...(prev?.seenAt ? { seenAt: prev.seenAt } : {}) });
+      born: prev?.born || Date.now(), ...(prev?.seenAt ? { seenAt: prev.seenAt } : {}), source: admin ? { kind: 'shopify-admin', shop: admin.shop?.myshopify || null, at: admin.at } : prev?.source || null }); /* a restart keeps reading from the admin */
     packs.drop(slug); await onPack(slug);
     resume(slug).catch((e) => log.error('[build]', slug, e));
     return { slug, status: await status(slug) };
@@ -214,6 +216,17 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     Object.assign(x, { cancelled: false, usd: 0, usdLoaded: true, confirmed: null }); x.inflight.clear(); x.failed.clear();
   }
 
+  /* the Admin API snapshot a read opens from: a brand started from the Shopify app whose store is (still) behind the password
+     page. Once a heal sees the store open (profile.closed gone), reads go back to the public site */
+  const ADMIN_SNAP = 'private/admin-catalog.json';
+  const adminFor = async (slug, s, profile = undefined) => {
+    if (s?.source?.kind !== 'shopify-admin') return null;
+    const p = profile === undefined ? await packs.getJSON(slug, 'profile.json', null).catch(() => null) : profile;
+    return p && !p.closed ? null : packs.getJSON(slug, ADMIN_SNAP, null).catch(() => null);
+  };
+  /* a newer snapshot (the Shopify app takes one when the merchant opens it while the store is closed) */
+  const saveAdmin = async (slug, snap) => { const s = await status(slug); if (!snap?.shop || s?.source?.kind !== 'shopify-admin') return false;
+    await packs.put(slug, ADMIN_SNAP, snap); await setStatus(slug, { source: { ...s.source, at: snap.at } }); return true; };
   const makeReader = (m) => m.reader.createReader({ ai, treg, log, saveAsset: async (sl, name, buf, type) => { const n = String(name).replace(/[^a-zA-Z0-9._-]+/g, '-'); await packs.put(sl, 'assets/' + n, buf, type); return `/b/${sl}/a/${n}`; },
     saveRaw: (sl, name, data) => packs.put(sl, `raw/${new Date().toISOString().slice(0, 10)}/${String(name).replace(/[^a-zA-Z0-9._-]+/g, '-')}`, data),
     loadRaw: async (sl, name) => { const f = path.join(packs.dirOf(sl), 'raw', new Date().toISOString().slice(0, 10), String(name).replace(/[^a-zA-Z0-9._-]+/g, '-')); if (!fs.existsSync(f)) return null; const b = fs.readFileSync(f); const t = b.toString('utf8'); try { return JSON.parse(t); } catch { return t; } } });
@@ -228,7 +241,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       saveAsset: async (sl, name, buf, type) => { const n = String(name).replace(/[^a-zA-Z0-9._-]+/g, '-'); await packs.put(sl, 'assets/' + n, buf, type); return `/b/${sl}/a/${n}`; }, /* photos the cards show */
       saveRaw: (sl, name, data) => (paidOnly(name) ? packs.put(sl, `raw/${new Date().toISOString().slice(0, 10)}/${String(name).replace(/[^a-zA-Z0-9._-]+/g, '-')}`, data) : Promise.resolve()),
       loadRaw: async (sl, name) => (paidOnly(name) ? packs.getJSON(sl, `raw/${new Date().toISOString().slice(0, 10)}/${String(name).replace(/[^a-zA-Z0-9._-]+/g, '-')}`, null) : null) });
-    return reader.read(s.url, { fresh: false, onEvent, signal });
+    return reader.read(s.url, { fresh: false, onEvent, signal, admin: await adminFor(slug, s) });
   }
   // the brand's spend survives a restart (cost.json is written as it goes)
   const restoreSpend = async (slug) => { const x = st(slug); if (x.usdLoaded) return; x.usdLoaded = true; const c = await packs.getJSON(slug, 'cost.json', null); x.usd = Math.max(x.usd || 0, +c?.usd || 0); };
@@ -259,9 +272,10 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         await halt(slug); if (await budgetPause(slug, 0)) return;
         await stage(slug, 'read', 'running'); await setStatus(slug, { state: 'Reading the site', error: null }); /* a new run clears the last one's error, or the brand stays hidden */
         const reader = makeReader(m);
-        const out = await reader.read(s.url, { fresh: !!s.freshRead, onEvent: (e) => emit(slug, { type: 'reader', ev: e }) });
+        const out = await reader.read(s.url, { fresh: !!s.freshRead, onEvent: (e) => emit(slug, { type: 'reader', ev: e }), admin: await adminFor(slug, s, null) });
         /* the store did not open: nothing to write a brief or moves from, so stop here without spending more */
-        if (!storeOpened(out)) { await packs.put(slug, 'findings.json', out.findings || null).catch(() => {}); await stage(slug, 'read', 'failed'); await setStatus(slug, { state: `We could not open ${s.host || 'the store'}. Check the address and try again.`, error: 'store did not open', unreadable: true }); return; }
+        if (!storeOpened(out)) { await packs.put(slug, 'findings.json', out.findings || null).catch(() => {}); await stage(slug, 'read', 'failed');
+          await setStatus(slug, { state: out.closed ? `${s.host || 'The store'} is behind Shopify’s password page, so its site can’t be read. Open Brew from your Shopify admin to read it from there.` : `We could not open ${s.host || 'the store'}. Check the address and try again.`, error: 'store did not open', unreadable: true, ...(out.closed ? { closed: true } : {}) }); return; }
         ({ profile, ledger, findings } = out);
         normalizeProfile(profile);
         await packs.put(slug, 'profile.json', profile); await packs.put(slug, 'ledger.json', ledger); await packs.put(slug, 'findings.json', findings);
@@ -947,7 +961,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   async function doCheck(slug, { auto, why, max = null, via = null }) {
     const m = await load(); await restoreSpend(slug); const usd0 = spentFor(slug), s0 = await status(slug);
     const old = await packs.getJSON(slug, 'ledger.json', []), oldP = await packs.getJSON(slug, 'profile.json');
-    const out = await makeReader(m).read(s0.url, { fresh: true, prev: oldP, onEvent: (e) => { if (e.type === 'step' && e.done) emit(slug, { type: 'update-step', k: e.k, text: e.done }); } });
+    const out = await makeReader(m).read(s0.url, { fresh: true, prev: oldP, admin: await adminFor(slug, s0, oldP), onEvent: (e) => { if (e.type === 'step' && e.done) emit(slug, { type: 'update-step', k: e.k, text: e.done }); } });
     /* the store did not open today: nothing is compared or overwritten (the error is kept and the next try waits a day) */
     if (!storeOpened(out)) throw new Error('The store did not open, so nothing was compared. Brew tries again tomorrow.');
     const gone = removedKeys(oldP?.catalog?.removed);
@@ -1629,5 +1643,5 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (o?.stockWhy) { u.stale[x.n] = { ...o, was: { priority: x.priority, why: x.why, via: x.via }, why: [...Object.values(o.stockWhy), x.why].join(' '), changes: [...new Set([...(o.changes || []), ...(x.changes || [])])].slice(0, 6) }; continue; } /* an out-of-stock mark stays on top */
     u.stale[x.n] = { ...x, at: Date.now(), changes: [...new Set([...(x.changes || []), ...(o?.changes || [])])].slice(0, 6), ...(o && !o.private ? { private: false } : {}) }; } });
   const facts = { pot: potInfo, potSpend, estMove, republish, flagStale, readProduct: async (slug, url) => readProduct(slug, url, (await packs.getJSON(slug, 'profile.json', {})) || {}), readRival, busy: (slug) => !!(st(slug).running || st(slug).checking), setHooks: (h) => Object.assign(hooks, h) };
-  return { ...facts, paidWork, stop, marketCheck, teamStatics, settleConnect, connectPending, readLive, heal, healPdfs, pdfFor, pdfOn, connected, liveConnected, staleConnected, checkUpdates, rewrite, updates, setAuto, signal, staleSweep, seen, buildInfo, retry, goPro, checkData, applyCheck, liveWeekly, stockSignal, peek: (slug) => st(slug).status, addEmail, start, resume, resumeAll, replayRead, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
+  return { ...facts, saveAdmin, paidWork, stop, marketCheck, teamStatics, settleConnect, connectPending, readLive, heal, healPdfs, pdfFor, pdfOn, connected, liveConnected, staleConnected, checkUpdates, rewrite, updates, setAuto, signal, staleSweep, seen, buildInfo, retry, goPro, checkData, applyCheck, liveWeekly, stockSignal, peek: (slug) => st(slug).status, addEmail, start, resume, resumeAll, replayRead, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
 }

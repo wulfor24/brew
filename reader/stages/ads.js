@@ -3,6 +3,7 @@
 // category queries (treg crawl4ai SERP); each rival homepage + 1–2 product pages are read for prices,
 // claims, offers and guarantee. Ad posters are downloaded because Ad Library URLs expire.
 import { marketLine } from '../../market.js';
+import { CLOSED_WHY } from '../closed.js';
 import { adLibrary, adCall } from '../adlib.js';
 import { numbersOf, adsStepLine } from '../../pack-numbers.js';
 import { meta, titleOf, jsonLd, typeIs, clean, stripTags, pathOf, hostOf, money, pool, registrable, today } from '../util.js';
@@ -55,7 +56,10 @@ async function rivalSearch(ctx) {
   const freq = new Map();
   for (const s of serp) for (const r of s.results) { if (!r.domain || r.domain === own || NOT_BRANDS.test(r.domain + '.')) continue; const f = freq.get(r.domain) || { domain: r.domain, n: 0, best: 99, qs: [] }; f.n++; f.best = Math.min(f.best, r.pos || 99); f.qs.push(s.q); freq.set(r.domain, f); }
   const ownRank = serp.map((s) => ({ q: s.q, pos: s.results.find((r) => r.domain === own)?.pos || null }));
-  ownRank.forEach((o) => ledger.add({ key: `search.rank.${o.q.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, label: `Google rank for "${o.q}" (${cc.toUpperCase()})`, v: o.pos ? `#${o.pos}` : 'not in top 20', ...(o.pos ? { n: o.pos } : {}), url: `https://www.google.com/search?q=${encodeURIComponent(o.q)}&gl=${cc}`, method: 'treg:crawl4ai.google.serp.organic' }));
+  /* a closed store can't rank: Google never sees a store behind Shopify's password page. The category searches still find
+     rivals (and are the moves' stored evidence); the store's own rank says plainly it wasn't checked */
+  if (ctx.state?.closed) { profile.search.closed = true; ledger.add({ key: 'search.rank', label: `Google rank for the category searches (${cc.toUpperCase()})`, v: `not checked: ${CLOSED_WHY}`, url: profile.url, method: 'shopify-admin', note: 'Google can’t list a store behind the password page; Brew checks once it opens' }); }
+  else ownRank.forEach((o) => ledger.add({ key: `search.rank.${o.q.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, label: `Google rank for "${o.q}" (${cc.toUpperCase()})`, v: o.pos ? `#${o.pos}` : 'not in top 20', ...(o.pos ? { n: o.pos } : {}), url: `https://www.google.com/search?q=${encodeURIComponent(o.q)}&gl=${cc}`, method: 'treg:crawl4ai.google.serp.organic' }));
   /* a re-read of a brand Brew already knows (the weekly check): its rivals stay the brand's list, so there is no paid search
      for new ones; each known rival's store is read again for today's prices, claims and offers */
   const known = (ctx.prev?.rivals || []).filter((r) => r?.host && r?.name).slice(0, 5);

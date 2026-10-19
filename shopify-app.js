@@ -6,12 +6,21 @@
 //   - the store's primary domain is the brand: a store whose domain Brew has read is linked to that brand, its staff join the team
 //     (the store's owner, or the installer of an unclaimed brand, is admin), and the Shopify account connects itself
 //   - a store Brew hasn't read waits for the merchant to start the read (a paid run, so never on install by itself)
+//   - a store behind Shopify's password page (every development store, so every app reviewer) is read from its Admin API
+//     instead of the storefront: products, prices, photos, descriptions, collections, currency (reader/stages/admin.js);
+//     the checkout walk, page speed and AI answers say they wait until the store opens
+//   - which brand a store is: its custom domain only when that is safe. A development store, or a closed one, takes its custom
+//     domain only when the domain serves this very store (its Shopify shop id or name on the page); otherwise it is its own
+//     myshopify host, a brand of its own that nobody else can claim (auth.js PLATFORM), so a dev store never reaches
+//     another brand's domain
 //   - every Brew page opened inside the admin gets App Bridge first in <head> and frame-ancestors for the admin only
 //   - Google, Meta and Slack refuse to sign in inside a frame: those open in a new tab through a short signed hop
 //   - app/uninstalled and the three compliance webhooks are HMAC-checked; Brew keeps no per-customer record, so the customer
 //     ones have nothing to send or erase, and shop/redact (and uninstall) drop the store's token and its numbers
 import crypto from 'node:crypto';
 import { slugOf } from './brand-pack.js';
+import { adminCatalog } from './reader/stages/admin.js';
+import { isPasswordPage, CLOSED_WHY } from './reader/closed.js';
 
 const API = '2026-04';
 const SCOPES = 'read_products,read_inventory,read_orders,read_customers'; /* the same list as docs/shopify.app.toml (legacy install only) */
@@ -61,7 +70,7 @@ export function createShopifyApp({ auth, connectors, builder, packs, log = conso
   const raw = (req) => new Promise((r) => { const cs = []; let n = 0; req.on('data', (c) => { n += c.length; if (n < 2e6) cs.push(c); }); req.on('end', () => r(Buffer.concat(cs))); });
   const post = async (shop, path, body) => { const r = await fetchFn(`https://${shop}${path}`, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(20e3) });
     const t = await r.text(); let j = {}; try { j = JSON.parse(t); } catch {} if (!r.ok) throw Object.assign(new Error(`shopify ${r.status}: ${(j.error_description || j.error || j.errors || t).toString().slice(0, 160)}`), { status: r.status, code: j.error }); return j; };
-  const gql = async (shop, token, query) => { const r = await fetchFn(`https://${shop}/admin/api/${API}/graphql.json`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-shopify-access-token': token }, body: JSON.stringify({ query }), signal: AbortSignal.timeout(20e3) });
+  const gql = async (shop, token, query, variables) => { const r = await fetchFn(`https://${shop}/admin/api/${API}/graphql.json`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-shopify-access-token': token }, body: JSON.stringify({ query, ...(variables ? { variables } : {}) }), signal: AbortSignal.timeout(20e3) });
     const j = await r.json().catch(() => ({})); if (!r.ok || j.errors) throw new Error(`shopify graphql ${r.status}: ${JSON.stringify(j.errors || '').slice(0, 160)}`); return j.data; };
 
   /* token exchange: the session token for the shop's offline token (what the Shopify connector reads with), or for an online one,
@@ -85,13 +94,26 @@ export function createShopifyApp({ auth, connectors, builder, packs, log = conso
     try { const me = await personOf(t); if (me) { req.brewUser = me; req.shopify = t; } } catch (e) { log.warn('[shopify-app] who', t.shop, e.message); }
   }
 
-  /* the store's own facts: its name and the domain it sells on (its primary domain is the brand) */
-  const shopInfo = async (shop, token) => (await gql(shop, token, '{ shop { name myshopifyDomain primaryDomain { host } } }')).shop;
-  /* a storefront behind Shopify's password page can't be read (a development store, a store not launched yet) */
-  async function locked(host) {
-    try { const r = await fetchFn(`https://${host}/`, { redirect: 'follow', signal: AbortSignal.timeout(8000), headers: { 'user-agent': 'Brew (+https://brew.joinsquareup.com)' } }); return new URL(r.url).pathname === '/password'; }
-    catch { return false; }
+  /* the store's own facts: its name, id, the domain it sells on, and whether it is a development store */
+  const shopInfo = async (shop, token) => { const s = (await gql(shop, token, '{ shop { id name myshopifyDomain primaryDomain { host } } }')).shop || {};
+    const dev = await gql(shop, token, '{ shop { plan { partnerDevelopment } } }').then((d) => !!d.shop?.plan?.partnerDevelopment).catch(() => null); /* null: Shopify didn't say */
+    return { ...s, dev }; };
+  /* the storefront at a host, as a shopper's browser sees it: behind Shopify's password page or open, and whose store it is
+     (proof: 'match' when the page names this shop, 'other' when it names another Shopify store, 'unknown' when it can't tell) */
+  async function storefront(host, t, info) {
+    try { const r = await fetchFn(`https://${host}/`, { redirect: 'follow', signal: AbortSignal.timeout(8000), headers: { 'user-agent': 'Brew (+https://brew.joinsquareup.com)' } });
+      const text = await r.text().catch(() => ''), id = String(info?.id || '').split('/').pop(), sid = r.headers?.get?.('x-shopid') || null;
+      const named = (text.match(/Shopify\.shop\s*=\s*["']([a-z0-9-]+\.myshopify\.com)["']/) || [])[1] || null;
+      const proof = (sid && id && sid === id) || named === t.shop ? 'match' : (sid && id && sid !== id) || (named && named !== t.shop) ? 'other' : 'unknown';
+      return { locked: isPasswordPage({ url: r.url || `https://${host}/`, text }), proof }; }
+    catch { return { locked: false, proof: 'unknown' }; }
   }
+  /* the host the brand is keyed by (brand-pack slugOf): the custom domain, unless a dev or closed store can't show it is theirs */
+  const keyOf = (t, info, sf) => { const own = info.myshopifyDomain || t.shop, custom = String(info.primaryDomain?.host || '').toLowerCase().replace(/^www\./, '');
+    if (!custom || SHOP.test(custom)) return own;
+    if (sf.proof === 'match') return custom;
+    if (sf.proof === 'other' || sf.locked || info.dev) return own; /* a development or closed store: never another brand's domain on its word alone */
+    return custom; /* a live store: Shopify checked the domain before it could be primary */ };
   /* the store's staff join the brand's team: the store's owner (or whoever installs on a brand nobody has claimed) as admin */
   async function joinTeam(slug, me) {
     const access = await auth.claimInfo(slug, me); if (access.role) return access.role;
@@ -108,11 +130,13 @@ export function createShopifyApp({ auth, connectors, builder, packs, log = conso
     if (!r.ok) log.warn('[shopify-app] connect', slug, r.error);
     return { slug, connected: !!r.ok, error: r.ok ? null : r.error || null };
   }
-  /* which brand a store is: the brand already connected to it, else the brand read at its primary domain */
+  /* which brand a store is: the brand already connected to it, else the brand read at its key host (keyOf). A brand whose read
+     never opened (a password page read from the web) is not a read: the merchant reads it again from here */
   async function brandOf(t, creds) {
     const known = await connectors.shopSlug?.(t.shop).catch(() => null); if (known && (await builder.status(known))) return { slug: known, info: null };
-    const info = await shopInfo(t.shop, creds.token), host = info.primaryDomain?.host || t.shop, slug = slugOf(host);
-    return { slug: slug && (await builder.status(slug)) ? slug : null, host, info };
+    const info = await shopInfo(t.shop, creds.token), custom = info.primaryDomain?.host || t.shop, sf = await storefront(custom, t, info), host = keyOf(t, info, sf), slug = slugOf(host);
+    const st = slug ? await builder.status(slug) : null;
+    return { slug: st && !st.unreadable ? slug : null, retry: !!st?.unreadable, host, info, sf };
   }
 
   const authorizeUrl = (req, shop) => `https://${shop}/admin/oauth/authorize?${new URLSearchParams({ client_id: app().id, scope: SCOPES, redirect_uri: `${base(req)}/shopify/callback`, state: auth.sign({ shop, n: crypto.randomBytes(9).toString('base64url') }, 900, 'shopify-install') })}`;
@@ -124,15 +148,28 @@ export function createShopifyApp({ auth, connectors, builder, packs, log = conso
     let creds; try { creds = credsOf(await exchange(t, 'offline'), t.shop); }
     catch (e) { if (e.status === 400 || e.status === 401) return { state: 'authorize', url: authorizeUrl(req, t.shop) }; throw e; }
     const b = await brandOf(t, creds);
-    if (b.slug) { const l = await link(b.slug, t, me, creds); return { state: 'linked', slug: b.slug, connected: l.connected, error: l.error }; }
-    return { state: 'unread', host: b.host, name: b.info?.name || null, locked: await locked(b.host) };
+    if (b.slug) { const l = await link(b.slug, t, me, creds); fresher(b.slug, t, creds).catch((e) => log.warn('[shopify-app] snapshot', b.slug, e.message)); return { state: 'linked', slug: b.slug, connected: l.connected, error: l.error }; }
+    return { state: 'unread', host: b.host, name: b.info?.name || null, locked: !!b.sf?.locked };
+  }
+  /* a brand read from the admin while the store is closed: a newer snapshot once a day when the merchant opens the app (free),
+     so the weekly check and a heal compare today's products, not the install day's */
+  async function fresher(slug, t, creds) {
+    const s = await builder.status(slug); if (s?.source?.kind !== 'shopify-admin' || s.source.shop !== t.shop || Date.now() - Date.parse(s.source.at || 0) < 864e5) return;
+    const snap = await adminCatalog({ gql: (q, v) => gql(t.shop, creds.token, q, v), log }); snap.shop.host = s.host || snap.shop.host;
+    await builder.saveAdmin?.(slug, snap);
   }
   /* the merchant starts the read of their store's domain (a paid run, so only on their tap), then the store links to it */
   async function startRead(req, t) {
     const me = req.brewUser; if (!me) return { error: 'Open Brew again from your Shopify admin.' };
-    const creds = credsOf(await exchange(t, 'offline'), t.shop), info = await shopInfo(t.shop, creds.token), host = info.primaryDomain?.host || t.shop;
-    if (await locked(host)) return { error: `${host} is behind Shopify’s password page, so Brew can’t read it yet. Remove the password in Online Store → Preferences, then try again.`, locked: true };
-    const r = await builder.start(host, { user: me, ip: null }); if (r.error || !r.slug) return { error: r.error || 'The read didn’t start. Try again in a minute.' };
+    const creds = credsOf(await exchange(t, 'offline'), t.shop), b = await brandOf(t, creds);
+    if (b.slug) { await link(b.slug, t, me, creds).catch((e) => log.warn('[shopify-app] link', b.slug, e.message)); return { slug: b.slug }; } /* read meanwhile (another tab, a teammate) */
+    /* a closed store: the read starts from its Admin API (free), with only active products, never drafts */
+    let admin = null;
+    if (b.sf.locked) {
+      admin = await adminCatalog({ gql: (q, v) => gql(t.shop, creds.token, q, v), log }); admin.shop.host = b.host;
+      if (!admin.products.length) return { error: `Your store has no active products yet, and ${CLOSED_WHY}, so there is nothing for Brew to read. Add a product in Products, then tap Read my store again.`, locked: true };
+    }
+    const r = await builder.start(b.host, { user: me, ip: null, ...(admin ? { admin } : {}), ...(b.retry ? { fresh: true } : {}) }); if (r.error || !r.slug) return { error: r.error || 'The read didn’t start. Try again in a minute.' };
     await link(r.slug, t, me, creds).catch((e) => log.warn('[shopify-app] link after read', r.slug, e.message));
     return { slug: r.slug };
   }

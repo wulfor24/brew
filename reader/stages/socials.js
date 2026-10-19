@@ -1,6 +1,7 @@
 // Socials and films: the brand's own social links (header/footer), YouTube channel top videos (YouTube Data API
 // when YOUTUBE_API_KEY is set, else treg crawl4ai), Instagram recent posts (treg crawl4ai). Emits the "Films" card.
 import { clean, pathOf, num, pool } from '../util.js';
+import { CLOSED_WHY } from '../closed.js';
 
 const NET = {
   instagram: /^https?:\/\/(www\.)?instagram\.com\/([A-Za-z0-9._]+)\/?(\?|$)/i,
@@ -52,9 +53,9 @@ export async function socials(ctx) {
     const p = (s.instagram?.posts || []).filter((x) => x.imageSrc).sort((a, b) => (b.likes || 0) - (a.likes || 0))[0];
     if (p) { const img = await ctx.asset(p.imageSrc, 'ig-' + (p.url.match(/\/(p|reel)\/([\w-]+)/) || [])[2], { max: 4e6 }); p.img = img;
       ctx.finding('answers', { kind: 'film', t: 'Films', src: `instagram.com/${s.instagram.handle}`, img, url: p.url, cap: `Most liked of the last ${s.instagram.posts.length} posts: ${p.likes != null ? num(p.likes) + ' likes' : ''}${p.at ? `, ${p.at}` : ''}. "${p.caption.slice(0, 80)}"` }); }
-    else if (!s.youtube && !s.instagram) ctx.finding('answers', { kind: 'film', t: 'Films', src: pathOf(state.homeUrl), img: null, cap: 'No YouTube or Instagram link found on the site.' });
+    else if (!s.youtube && !s.instagram) ctx.finding('answers', { kind: 'film', t: 'Films', src: pathOf(state.homeUrl), img: null, cap: state.closed ? `Social links not read: ${CLOSED_WHY}, and its password page links none. Brew looks again once the store opens.` : 'No YouTube or Instagram link found on the site.' });
   }
-  ctx.done('socials', Object.keys(found).join(', ') || 'no social links found');
+  ctx.done('socials', Object.keys(found).join(', ') || (state.closed ? `not read: ${CLOSED_WHY}` : 'no social links found'));
 }
 
 async function ytApi(ctx, ch, K) {

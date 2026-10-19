@@ -2,6 +2,7 @@
 // (pages per sitemap), key pages (about, FAQ, contact, shipping, returns), platform, and country/currency/locale.
 import { sha, meta, titleOf, links, jsonLd, typeIs, stripTags, clean, pathOf, hostOf, registrable, pool, attr, tags } from '../util.js';
 import { sellingMarket, applyMarket, nameOf } from '../../market.js';
+import { isPasswordPage, CLOSED_WHY } from '../closed.js';
 
 const KEY_PAGES = {
   about: /\/(pages\/)?(about|about-us|our-story|story|who-we-are|brand-story|our-brand|about-[a-z-]+)(\/|$|\?)/i,
@@ -24,6 +25,9 @@ export async function open(ctx) {
     if (r) { home = { ok: true, status: 200, url: r.url || url.href, text: r.html }; homeVia = 'treg:litescrape.web.fetch.post'; }
   }
   if (!home.ok || !home.text) throw new Error(`home page did not load (${home.status || home.error})`);
+  /* Shopify's password page is not the store: nothing on it is the brand's catalog or copy (the Shopify app reads such a store
+     from its admin instead: stages/admin.js) */
+  if (isPasswordPage(home)) { ctx.state.passwordPage = true; throw new Error(CLOSED_WHY); }
   let final = new URL(home.url || url.href);
   const origin = final.origin;
   Object.assign(ctx.state, { home: home.text, origin, homeUrl: final.href, homeVia });

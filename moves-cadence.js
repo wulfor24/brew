@@ -14,6 +14,7 @@
 // routines picked from the Klaviyo flows that are on or off). It goes to private/moves.json, private/moves/, private/cards.json
 // (ids ending -p, privateOf the move number) and private/audit/scorecard.json; the public run and its files never change.
 import { allowedFromLedger, scanNumbers } from './moves-engine.js';
+import { closedLine } from './reader/closed.js';
 import { realRows, privId } from './connectors/common.js';
 import { mergeLedger } from './refresh.js';
 import { withLive } from './on-connect.js';
@@ -65,14 +66,17 @@ export function auditScorecard({ profile: p = {}, slug = '', now = Date.now(), l
       const inStock = prods.filter((x) => x.inStock !== false).length;
       parts.push(part('In stock', (inStock / prods.length) * 20, 20, `${inStock} of ${prods.length} products read are in stock (${pct(inStock, prods.length)}%)`, `${host} product list`, `${site}/products.json`));
       const withRev = prods.filter((x) => (x.reviews?.count ?? x.reviews?.n ?? (typeof x.reviews === 'number' ? x.reviews : 0)) > 0).length;
-      if (p.reviews?.app || withRev) parts.push(part('Reviews on product pages', p.reviews?.app ? 15 : (withRev / prods.length) * 15, 15, p.reviews?.app ? `review app on the site: ${p.reviews.app}` : `${withRev} of ${prods.length} products show reviews`, `${host} product pages`, site));
+      if (p.closed && p.reviews?.closed && !withRev) parts.push(part('Reviews on product pages', 0, 0, closedLine('review widgets'), `${host} product pages`, site)); /* a closed store: never "no review widget" */
+      else if (p.reviews?.app || withRev) parts.push(part('Reviews on product pages', p.reviews?.app ? 15 : (withRev / prods.length) * 15, 15, p.reviews?.app ? `review app on the site: ${p.reviews.app}` : `${withRev} of ${prods.length} products show reviews`, `${host} product pages`, site));
       else parts.push(part('Reviews on product pages', 0, 15, 'no review widget was found on the product pages read', `${host} product pages`, site));
     }
     const walk = co.walk || [];
+    if (co.closed) parts.push(part('Path to checkout', 0, 0, closedLine('the walk to checkout'), 'Brew checkout walk', site));
     if (walk.length) { const ok = walk.filter((s) => s.ok).length; parts.push(part('Path to checkout', (ok / walk.length) * 25, 25, `${ok} of ${walk.length} steps of the walk to checkout worked (home, product, cart, checkout)${co.msToCheckout ? `, ${(co.msToCheckout / 1000).toFixed(1)} s to checkout` : ''}`, 'Brew checkout walk', walk[0]?.url || site)); }
     const want = [['faq|help', 'FAQ or help'], ['return', 'returns'], ['shipping', 'shipping'], ['contact', 'contact']];
     const have = want.filter(([re]) => keyPages.some((u) => new RegExp(re, 'i').test(u)));
-    if (keyPages.length || p.site) parts.push(part('Help pages', (have.length / want.length) * 20, 20, `${have.length} of ${want.length} help pages found: ${have.map((x) => x[1]).join(', ') || 'none'}${have.length < want.length ? `; not found: ${want.filter((x) => !have.includes(x)).map((x) => x[1]).join(', ')}` : ''}`, `${host} key pages`, keyPages[0] || site));
+    if (p.closed && !keyPages.length) parts.push(part('Help pages', 0, 0, closedLine('help pages'), `${host} key pages`, site));
+    else if (keyPages.length || p.site) parts.push(part('Help pages', (have.length / want.length) * 20, 20, `${have.length} of ${want.length} help pages found: ${have.map((x) => x[1]).join(', ') || 'none'}${have.length < want.length ? `; not found: ${want.filter((x) => !have.includes(x)).map((x) => x[1]).join(', ')}` : ''}`, `${host} key pages`, keyPages[0] || site));
     area('site', parts);
   }
   /* search */
@@ -81,7 +85,8 @@ export function auditScorecard({ profile: p = {}, slug = '', now = Date.now(), l
     if (sm.length) parts.push(part('Articles and guides', (Math.min(arts, 40) / 40) * 30, 30, `${arts} blog and article pages in the sitemap`, `${host} sitemap.xml`, sm.find((s) => /articles/.test(s.url))?.url || `${site}/sitemap.xml`));
     const prodPages = sm.filter((s) => /sitemap_products/.test(s.url)).reduce((a, s) => a + (s.pages || 0), 0);
     if (sm.length && p.catalog?.count) parts.push(part('Products in the sitemap', (Math.min(prodPages, p.catalog.count) / p.catalog.count) * 20, 20, `${prodPages} product pages in the sitemap for ${p.catalog.count} products in the catalog`, `${host} sitemap.xml`, `${site}/sitemap.xml`));
-    if (serp.length) { const bare = String(host).replace(/^www\./, ''), hits = serp.filter((s) => (s.results || []).some((r) => String(r.domain || '').includes(bare)));
+    if (p.closed || p.search?.closed) parts.push(part('Ranks for category searches', 0, 0, closedLine('Google rank'), 'Google results', ''));
+    else if (serp.length) { const bare = String(host).replace(/^www\./, ''), hits = serp.filter((s) => (s.results || []).some((r) => String(r.domain || '').includes(bare)));
       const top = serp[0]?.results?.slice(0, 3).map((r) => r.domain).join(', ');
       parts.push(part('Ranks for category searches', (hits.length / serp.length) * 50, 50, `${host} is in the results read for ${hits.length} of ${serp.length} category searches${top ? `; "${serp[0].q}" shows ${top} first` : ''}`, 'Google results read by Brew', `https://www.google.com/search?q=${encodeURIComponent(serp[0].q)}`)); }
     else if (terms.length) parts.push(part('Ranks for category searches', 0, 0, `category searches were not read (${terms.slice(0, 2).join(', ')})`, 'Google results', ''));
@@ -96,6 +101,7 @@ export function auditScorecard({ profile: p = {}, slug = '', now = Date.now(), l
       if (s.unbrandedOf) { const miss = ans.find((a) => !a.branded && !a.named && (a.rivalsNamed || []).length) || ans.find((a) => !a.branded && !a.named);
         parts.push(part('Named in category questions', (s.unbrandedNamed / s.unbrandedOf) * 70, 70, `named in ${s.unbrandedNamed} of ${s.unbrandedOf} category questions that did not name the brand${miss ? `; e.g. ${miss.tool} on "${cut(miss.q, 90)}"${(miss.rivalsNamed || []).length ? ` named ${miss.rivalsNamed.slice(0, 3).join(', ')}` : ''}` : ''}`, 'AI answers read by Brew', '')); }
     }
+    if (!parts.length && p.ai?.closed) parts.push(part('AI answers', 0, 0, closedLine('AI answers'), 'AI answers', ''));
     area('ai', parts, s?.byTool ? { byTool: s.byTool } : {});
   }
   /* paid ads */
@@ -135,7 +141,8 @@ export function auditScorecard({ profile: p = {}, slug = '', now = Date.now(), l
   }
   /* social */
   { const so = p.socials || {}, parts = [], nets = ['instagram', 'youtube', 'tiktok', 'facebook', 'x', 'pinterest', 'linkedin'], on = nets.filter((k) => so[k]?.url);
-    if (Object.keys(so).length) {
+    if (p.closed && !on.length) parts.push(part('Channels', 0, 0, closedLine('social links'), `${host} footer links`, site)); /* a closed store: its links aren't readable yet, never "none" */
+    else if (Object.keys(so).length) {
       parts.push(part('Channels', (Math.min(on.length, 5) / 5) * 25, 25, `${on.length} of ${nets.length} social channels linked from the site: ${on.join(', ') || 'none'}`, `${host} footer links`, site));
       const ig = so.instagram, posts = Array.isArray(ig?.posts) ? ig.posts : [];
       if (posts.length) {

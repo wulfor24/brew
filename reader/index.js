@@ -18,6 +18,7 @@ import { answers, inferCategory, writeLine } from './stages/answers.js';
 import { socials } from './stages/socials.js';
 import { named, namedStale } from './stages/named.js';
 import { company } from './stages/company.js';
+import { openAdmin, CLOSED_STAGE, reopenCheck } from './stages/admin.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const STEPS = [
@@ -79,7 +80,9 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
     return svc;
   }
 
-  async function read(input, { onEvent = () => {}, signal, only = null, fresh = false, free = false, prev = null } = {}) { // prev: the brand's last profile (a re-read keeps its rivals, searches and questions)
+  /* admin: a Shopify Admin API snapshot (stages/admin.js adminCatalog) for a store whose storefront is behind the password page:
+     the read opens from it instead of the public site, and the stages that need the site say plainly that they didn't run */
+  async function read(input, { onEvent = () => {}, signal, only = null, fresh = false, free = false, prev = null, admin = null } = {}) { // prev: the brand's last profile (a re-read keeps its rivals, searches and questions)
     const url = normalizeUrl(input); const slug = slugOf(url.href);
     const want = (k) => !only || only.includes(k);
     const ledger = createLedger();
@@ -104,6 +107,9 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
       picks(k, items) { picks[k] = items; emit({ type: 'picks', k, items }); },
       ...services({ slug, http, tregOn, aiOn, fresh }),
     };
+    if (admin) ctx.state.admin = admin;
+    /* a closed store: the stages that need the public site run their closed stand-in (stages/admin.js CLOSED_STAGE) */
+    const S = (k, fn) => (c) => (c.state.closed && CLOSED_STAGE[k] ? CLOSED_STAGE[k](c) : fn(c));
     /* who you are, again whenever the category or Claude's line lands (the brand stage sends the first one) */
     const who = () => { const w = whoOf(profile); if (JSON.stringify(w) !== JSON.stringify(picks.who)) ctx.picks('who', w); };
 
@@ -132,8 +138,8 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
     };
     const errors = {}, timings = {};
 
-    await run('open', open);
-    if (!ctx.state.home) {
+    await run('open', admin ? openAdmin : open);
+    if (!ctx.state.home && !ctx.state.closed) {
       // nothing else can run without the home page
       for (const s of steps) if (s.state === 'queued') ctx.done(s.k, 'skipped: the store did not open', 'empty');
       return finish();
@@ -143,10 +149,10 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
     const pSocials = run('socials', socials, { step: false });
     const pCategory = pCatalog.then(() => (want('ads') || want('answers') || want('company') ? run('category', inferCategory, { step: false }) : null)).then((r) => { who(); return r; });
     const pReviews = pCatalog.then(() => run('reviews', reviews));
-    const pSite = pCatalog.then(() => run('site', site));
+    const pSite = pCatalog.then(() => run('site', S('site', site)));
     const pRivals = pCategory.then(() => (want('ads') || want('answers') ? run('rivals', findRivals, { step: false }) : null));
     const pAds = pRivals.then(() => { if (errors.rivals) { ctx.state.rivalsNotChecked = errors.rivals; /* "0 rivals" from a failed search is not "no rivals" */ if (!picks.rivals || (Array.isArray(picks.rivals) && !picks.rivals.length)) ctx.picks('rivals', { error: short(errors.rivals) }); } return run('ads', ads); });
-    const pAnswers = pCategory.then(() => run('answers', answers)); /* the AI questions need only the category; socials (Films) runs beside it */
+    const pAnswers = pCategory.then(() => run('answers', S('answers', answers))); /* the AI questions need only the category; socials (Films) runs beside it */
     const pCompany = pCategory.then(() => run('company', company, { step: false }));
     await Promise.all([pBrand, pCatalog, pSocials, pReviews, pSite, pAds, pAnswers, pCompany]);
     who();
@@ -162,13 +168,17 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
         usd: { treg: +((treg?.meter?.usd || 0) - meter.treg0).toFixed(4), ai: +((ai?.meter?.usd || 0) - meter.ai0).toFixed(4) } };
       const findings = { steps: steps.map(({ k, t, done, tick, agent, state }) => ({ k, t, done, tick, ...(agent ? { agent } : {}), state })), cards, picks };
       emit({ type: 'ready', slug, ms: Date.now() - t0 });
-      return { slug, profile, ledger: ledger.list(), findings, opened: !!ctx.state.home }; /* opened false: the store's home page never loaded */
+      return { slug, profile, ledger: ledger.list(), findings, opened: !!ctx.state.home || !!ctx.state.closed, ...(ctx.state.passwordPage ? { closed: true } : {}) }; /* opened false: the store's home page never loaded (closed: it was Shopify's password page) */
     }
   }
   /** Mend a saved read without reading the brand again: re-run the ads stage when any Ad Library lookup failed or
    *  our own page was never found, and write the one-liner when Claude never did. Returns what changed, or null. */
   async function heal(saved, { findings = null, ledger: L = [], log: lg = log } = {}) {
     const profile = JSON.parse(JSON.stringify(saved)); const slug = profile.slug;
+    const http = createFetcher({ slug, saveRaw, loadRaw, fresh: false, log: lg });
+    /* a store that was closed (Shopify's password page) is looked at again once a day: still closed, it says when it was
+       checked; open now, the stages it skipped are marked to run again below (stages/admin.js reopenCheck) */
+    const reopen = profile.closed ? await reopenCheck({ profile, http }).catch((e) => (lg.warn?.('[reader] reopen', slug, e.message), null)) : null;
     const ownAds = profile.ads?.own || {};
     const adsBroken = !!profile.host && (!profile.ads || profile.ads.v !== ADS_V || !!ownAds.error || !ownAds.page || (profile.ads.rivals || []).some((r) => r.error) || (profile.rivals || []).length > (profile.ads.rivals || []).length);
     const lineMissing = profile.descriptorBy !== 'claude' && profile.descriptorBy !== 'brand';
@@ -181,15 +191,14 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
     const failedStages = Object.keys(profile.meta?.errors || {}).filter((k) => RERUN[k] && !!profile.host && (!tried[k] || Date.now() - Date.parse(tried[k]) >= 864e5));
     /* a read from before the health card's speed part gets PageSpeed; a failed one is kept and tried again a day later */
     const ps = profile.site?.pagespeed, speedMissing = !!profile.host && !siteBroken && speedOn() && (!ps || (!!ps.error && Date.now() - Date.parse(ps.triedAt || ps.at || 0) >= 864e5)); /* triedAt: a kept reading's last failed try */
-    if (!adsBroken && !lineMissing && !answersBroken && !namedBroken && !siteBroken && !speedMissing && !failedStages.length) return null;
+    if (!reopen && !adsBroken && !lineMissing && !answersBroken && !namedBroken && !siteBroken && !speedMissing && !failedStages.length) return null;
     const added = [], cards = [], stepsDone = {}, healPicks = {};
-    const http = createFetcher({ slug, saveRaw, loadRaw, fresh: false, log: lg });
     const tregOn = !!treg && treg.live !== false, aiOn = !!ai && ai.live !== false;
-    const ctx = { url: new URL(profile.url), slug, http, profile, state: { homeUrl: profile.url }, log: lg, tregOn, aiOn, saveAsset, saveRaw, today: today(),
+    const ctx = { url: new URL(profile.url), slug, http, profile, state: { homeUrl: profile.url, ...(profile.closed ? { closed: profile.closed, home: '' } : {}) }, log: lg, tregOn, aiOn, saveAsset, saveRaw, today: today(),
       ledger: { add: (e) => added.push({ layer: 'observed', at: today(), ...e }) },
       tick() {}, finding: (k, f) => { cards.push({ ...f, k }); }, done: (k, text, state = 'done', { partial = false } = {}) => { stepsDone[k] = { done: text, state, ...(partial ? { partial: true } : {}) }; }, picks: (k, items) => { healPicks[k] = items; },
       ...services({ slug, http, tregOn, aiOn, fresh: false }) };
-    const changed = [];
+    const changed = reopen ? [reopen] : [];
     if (adsBroken) { try { await withTimeout(ads(ctx), LIMIT.ads, 'ads'); changed.push('ads'); } catch (e) { lg.warn?.('[reader] heal ads', slug, e.message); } }
     if (lineMissing && aiOn) { try { if (await writeLine(ctx)) changed.push('line'); } catch (e) { lg.warn?.('[reader] heal line', slug, e.message); } }
     // the AI tools step that timed out or failed in the read is asked again (it needs only the saved profile)
@@ -208,6 +217,7 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
     if (failedStages.length) {
       /* the stages read the home page (review widget, social links): fetched once here, as the open stage did */
       try { const r = await http.get(profile.url, { key: 'heal-home' }); if (r.ok) { ctx.state.home = r.text; ctx.state.homeUrl = r.url || profile.url; ctx.state.origin = new URL(ctx.state.homeUrl).origin; } } catch (e) { lg.warn?.('[reader] heal home', slug, e.message); }
+      if (profile.closed) ctx.state.home = ''; /* still closed: the password page is not the store */
       ctx.state.origin ||= new URL(profile.url).origin; ctx.state.home ||= '';
       for (const k of failedStages) {
         profile.meta = { ...(profile.meta || {}), healTried: { ...(profile.meta?.healTried || {}), [k]: new Date().toISOString() } };
@@ -233,12 +243,14 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
 export function siteFailed(profile) {
   if (!profile.host || !profile.catalog?.products?.length) return false;
   const co = profile.site?.checkout;
+  if (co?.closed) return false; /* not walked because the store is closed: reopenCheck clears it once the store opens */
   if (!co || co.v !== SITE_V) return true;
   return !(co.walk || []).some((s) => s.step === 'Checkout entry' && s.ok);
 }
 
 /** the read's AI tools step failed or timed out and no answers were saved */
 export function answersFailed(profile, findings) {
+  if (profile.ai?.closed) return false; // not asked because the store is closed: reopenCheck marks it once the store opens
   if (profile.ai?.questionsBy === 'template') return true; // the AI could not write the questions: write them now
   if (profile.ai?.answers?.length) return false;
   if (profile.meta?.errors?.answers) return true;

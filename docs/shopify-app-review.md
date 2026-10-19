@@ -1,7 +1,7 @@
 # Shopify app review: Brew
 
-Status 2026-10-20. The code side is done and live (commit de3dcdc). The submission needs Param in Shopify's dashboards, and it
-has one product gap to close before it goes in (step 0).
+Status 2026-10-20. The code side is done and live, including the read of a password-protected store (step 0). The submission
+needs Param in Shopify's dashboards (steps 1 onwards).
 
 Once approved, Brew is listed in the Shopify App Store and any merchant can install it in one click. Built for Shopify is a
 later badge on top of that (50 paid installs + 5 reviews + design/speed rules), not part of this review.
@@ -19,23 +19,42 @@ later badge on top of that (50 paid installs + 5 reviews + design/speed rules), 
 | Mandatory compliance webhooks | `/shopify/webhooks`: HMAC-checked (401 on a bad signature). customers/data_request and customers/redact: Brew stores no per-customer record. shop/redact and app/uninstalled: the store's token and numbers are dropped |
 | 1.2 billing | Free during the preview: no charges, so no Billing API yet |
 
-How a store becomes a brand: the store's primary domain is the brand.
+How a store becomes a brand: the store's primary domain is the brand, when that is safe.
 - **Domain already read by Brew:** the store links to that brand. The installer joins the team, as owner if nobody has claimed the brand; on a claimed brand the store's owner joins as admin and other staff as members. Shopify connects itself.
 - **Domain not read yet:** the home page offers "Read my store" (a paid read, so it only starts on the merchant's tap).
-- **Storefront behind Shopify's password page:** Brew says so plainly.
+- **Storefront behind Shopify's password page:** "Read my store" reads the store from its Admin API instead (step 0).
+- **Development or closed store with a custom domain:** the custom domain is used only when that domain serves this very store
+  (its page names this shop, or Shopify's `x-shopid` header matches). Otherwise the brand is the store's own
+  `<store>.myshopify.com`, which nobody can claim by email domain (auth.js `PLATFORM`). So installing on a dev store never
+  reaches, joins or claims another brand's domain. A live, open store keeps using its primary domain (Shopify verified it).
 
 Google, Meta and Slack refuse to sign in inside a frame, so inside the admin those open in a new tab through a signed
 two-minute hop (`/shopify/hop`).
 
-## Step 0: close the gap reviewers will hit (before submitting)
+## Step 0: a store behind the password page (done, live 2026-10-20)
 
-Shopify reviewers install on a **development store**, and development stores always sit behind the storefront password.
-Today Brew can't read a store behind the password, so a reviewer would see "Brew can't read your store yet" and reject the app
-under 2.1 ("core functionality must work").
+Shopify reviewers install on a **development store**, and development stores always sit behind the storefront password. Brew
+reads such a store from its **Admin API** (`reader/stages/admin.js`), so the read, the moves and the feed still work:
 
-Fix: when the storefront is closed, read the store from the Admin API instead (the products, prices, images and descriptions
-Brew already has scope for), so the read and the moves still work. This is a reader change and needs the
-`brew-external-data` skill. It is proposed as its own session.
+- **What is read (free, on the merchant's tap):** the shop's name, description, currency, country and ships-to countries;
+  up to 500 **active** products (never drafts) with prices, compare-at prices, stock, photos and descriptions; collections
+  when Shopify allows; the logo and colours from the brand settings, plus the theme's own on the password page. The snapshot
+  is kept privately (`private/admin-catalog.json`) and refreshed once a day when the merchant opens the app.
+- **What waits until the store opens:** the checkout walk, PageSpeed, the AI answers and the store's own Google rank. Each says
+  plainly that it didn't run because the storefront is behind Shopify's password page (read steps, health rings, scorecard),
+  never "none". Rivals, their ads and the category searches still run. A heal looks at the store once a day; when the password
+  comes off, those stages run on their own.
+- **A store with no active products:** the home says to add a product first instead of starting an empty read.
+- **From the web:** a read of a password page no longer reads it as the brand: it stops and says to open Brew from the Shopify admin.
+
+Tests: `test/shopify-catalog.test.js`. To try it as a reviewer would: install on a dev store with a few products, open Brew
+from Apps, tap **Read my store**.
+
+### Deploying while local main has diverged
+
+The local `main` in `brew/` has diverged from `origin/main`. Never deploy from it: make a temporary worktree at
+`origin/main`, cherry-pick only your commits, run `AI_MOCK=1 node --test test/*.test.js`, push to `origin/main`, then deploy
+from that worktree (`./deploy.sh`).
 
 ## Step 1: Param, in the Dev Dashboard (dev.shopify.com → the Brew public app, `FEED_SHOPIFY_CLIENT_ID`)
 
@@ -91,9 +110,11 @@ Brew already has scope for), so the read and the moves still work. This is a rea
 
 ## Step 5: testing instructions for the reviewer
 
-> Install Brew on your development store from the install link; there is no separate sign-up. Brew opens inside the admin and
-> reads the store (products, stock and the last 60 days of orders). The first read takes a few minutes; the feed then shows
-> moves built from the store. Brew is read-only: it never writes to the store. Optional: Meta Ads, Google Analytics and Klaviyo
+> Install Brew on your development store from the install link; there is no separate sign-up. Brew opens inside the admin.
+> Add a few products to the store if it has none, then tap **Read my store**. A development store's storefront is behind
+> Shopify's password page, so Brew reads it from the Shopify admin (products, prices, photos, descriptions, stock); the checkout
+> walk, page speed and AI answers say they wait until the store opens. The read takes up to half an hour, and the feed fills in
+> with moves built from the store as each one is written. Brew is read-only: it never writes to the store. Optional: Meta Ads, Google Analytics and Klaviyo
 > connect from Connectors and open in a new tab, because those services don't allow sign-in inside a frame.
 > Contact: hello@joinsquareup.com.
 

@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { PLATFORM } from '../auth.js';
 
 /* ---------- outbound fetches only reach the public internet ----------
    Every URL a store, a rival or a person gives Brew is fetched through this: http(s) only, and each hop (redirects are
@@ -55,7 +56,8 @@ export const registrable = (host) => {
   const last2 = p.slice(-2).join('.');
   return SUFFIX2.has(last2) ? p.slice(-3).join('.') : last2;
 };
-export const slugOf = (url) => registrable(normalizeUrl(url).hostname).replace(/\./g, '-');
+/* a shared platform domain (brand.myshopify.com, brand.wixsite.com: auth.js PLATFORM) is never the brand: the whole host is */
+export const slugOf = (url) => { const h = normalizeUrl(url).hostname.toLowerCase().replace(/^www\./, ''), r = registrable(h); return (PLATFORM.test(r) ? h : r).replace(/\./g, '-'); };
 
 /* ---------- HTML ---------- */
 const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', ndash: '–', mdash: '—', rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“', hellip: '…', trade: '™', reg: '®', copy: '©', rupee: '₹' };

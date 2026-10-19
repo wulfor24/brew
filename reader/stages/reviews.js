@@ -2,6 +2,7 @@
 // reviews); per-product ratings from JSON-LD; marketplace listings and ratings via treg (Amazon search, and
 // Amazon review text for the most-reviewed listing). Verbatims are kept exactly, with rating, date and URL.
 import { jsonLd, typeIs, clean, stripTags, pathOf, num, pool, attr, withTimeout } from '../util.js';
+import { CLOSED_WHY } from '../closed.js';
 
 const AMAZON = { IN: ['in', 'amazon.in'], US: ['us', 'amazon.com'], GB: ['uk', 'amazon.co.uk'], CA: ['ca', 'amazon.ca'], AU: ['au', 'amazon.com.au'], DE: ['de', 'amazon.de'], FR: ['fr', 'amazon.fr'], AE: ['ae', 'amazon.ae'], JP: ['jp', 'amazon.co.jp'] };
 const RESULT = /\b\d+\s*(days?|weeks?|months?)\b|\bdifference\b|\bresults?\b|\bnoticed?\b|\breduced\b|\bless\b|\bthicker\b|\bvisible\b|\bimprov|\bwithin\b|\bafter\b.*\b(use|using)\b|\bcleared?\b|\bsofter\b|\bgone\b/i;
@@ -29,10 +30,12 @@ export async function reviews(ctx) {
 
   // product pages of the heroes: review app + JSON-LD ratings (the site stage reuses these through the cache)
   ctx.tick('reviews', 'product pages');
-  const pages = await pool(heroes.slice(0, 5), 5, async (p, i) => { const r = await http.get(state.mq ? `${p.url}?${state.mq}` : p.url, { key: 'hero-pp-' + i }); return r.ok ? { p, html: r.text, url: p.url } : null; });
+  /* a closed store (stages/admin.js): its product pages are Shopify's password page, so the site's review widgets can't be read */
+  const closed = !!state.closed;
+  const pages = closed ? [] : await pool(heroes.slice(0, 5), 5, async (p, i) => { const r = await http.get(state.mq ? `${p.url}?${state.mq}` : p.url, { key: 'hero-pp-' + i }); return r.ok ? { p, html: r.text, url: p.url } : null; });
   const ppHtml = pages.filter((x) => x && x.html);
   state.heroPages = ppHtml;
-  const app = detectReviewApp(state.home) || ppHtml.map((x) => detectReviewApp(x.html)).find(Boolean) || null;
+  const app = closed ? null : detectReviewApp(state.home) || ppHtml.map((x) => detectReviewApp(x.html)).find(Boolean) || null;
   for (const x of ppHtml) {
     // the page's own product, not a recommended one further down
     const norm = (t) => clean(t).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
@@ -51,7 +54,8 @@ export async function reviews(ctx) {
     const known = prods.filter((p) => p.reviews?.count); const sum = known.reduce((a, p) => a + p.reviews.count, 0);
     if (sum) platforms.push({ name: app, count: sum, rating: null, url: origin, scope: `JSON-LD on ${known.length} product pages (not the store total)` });
   }
-  if (!app) notes.push('No review widget found on the home page or the top product pages.');
+  if (closed) notes.push(`Review widgets on the site not read: ${CLOSED_WHY}.`);
+  else if (!app) notes.push('No review widget found on the home page or the top product pages.');
   if (app) ledger.add({ key: 'site.tech.review_app', label: 'Review app on the site', v: app, url: state.homeUrl, method: 'crawl' });
 
   /* marketplaces through treg */
@@ -67,12 +71,12 @@ export async function reviews(ctx) {
   const used = new Set(); const pick = (fn) => { const q = pool3.filter((x) => !used.has(x.text) && fn(x)).sort((a, b) => (Date.parse(b.at || 0) || 0) - (Date.parse(a.at || 0) || 0))[0]; if (q) used.add(q.text); return q; };
   const chosen = [pick((q) => q.rating >= 4 && RESULT.test(q.text)), pick((q) => q.rating === 5 && !RESULT.test(q.text) && q.text.length < 160), pick((q) => q.rating != null && q.rating <= 2)].filter(Boolean);
   while (chosen.length < 3) { const q = pick((x) => x.rating >= 4); if (!q) break; chosen.push(q); }
-  profile.reviews = { platforms, total: platforms.length ? platforms.reduce((a, p) => a + (p.count || 0), 0) : null, quotes: chosen, recent: quotes.slice(0, 40), app, notes, at: new Date().toISOString().slice(0, 10) }; /* at: the day the counts were read (pack-numbers.js reviews) */
+  profile.reviews = { platforms, total: platforms.length ? platforms.reduce((a, p) => a + (p.count || 0), 0) : null, quotes: chosen, recent: quotes.slice(0, 40), app, notes, at: new Date().toISOString().slice(0, 10), ...(closed ? { closed: true } : {}) }; /* at: the day the counts were read (pack-numbers.js reviews) */
   if (profile.reviews.total) ledger.add({ key: 'reviews.total', label: 'Reviews and ratings found (all platforms read)', v: num(profile.reviews.total), n: profile.reviews.total, unit: 'reviews+ratings', url: platforms[0]?.url, method: 'crawl', note: platforms.map((p) => `${p.name} ${num(p.count)}${p.scope ? ` (${p.scope})` : ''}`).join('; ') });
 
-  const cap = platforms.length ? platforms.map((p) => `${num(p.count)} ${p.label || p.name}${p.rating ? ` (${p.rating.toFixed(1)}★)` : ''}`).join(' · ') + '.' : 'No reviews found on the site.';
+  const cap = platforms.length ? platforms.map((p) => `${num(p.count)} ${p.label || p.name}${p.rating ? ` (${p.rating.toFixed(1)}★)` : ''}`).join(' · ') + '.' : closed ? `Reviews on the site not read: ${CLOSED_WHY}. Brew reads them once the store opens.` : 'No reviews found on the site.';
   ctx.finding('reviews', { kind: 'quotes', t: 'How your customers write', src: [...new Set(chosen.map((q) => q.src))].join(' · ') || (app || 'site'), quotes: chosen.map((q) => `“${q.text}”`), items: chosen, cap: chosen.length ? cap : `${cap} No review text could be read.` }, chosen.length ? 'Read real reviews' : undefined);
-  ctx.done('reviews', profile.reviews.total ? `${num(profile.reviews.total)} reviews and ratings` : app ? `${app} found, no totals readable` : 'no reviews found', profile.reviews.total ? 'done' : 'empty');
+  ctx.done('reviews', profile.reviews.total ? `${num(profile.reviews.total)} reviews and ratings` : closed ? `not read on the site: ${CLOSED_WHY}` : app ? `${app} found, no totals readable` : 'no reviews found', profile.reviews.total ? 'done' : 'empty');
 
   /* ---------- review apps ---------- */
   async function judgeme() {
