@@ -88,10 +88,11 @@ export function auditScorecard({ profile: p = {}, slug = '', now = Date.now(), l
     area('seo', parts);
   }
   /* AI answers */
-  { const s = p.ai?.score, parts = [], ans = p.ai?.answers || [];
+  { const s = p.ai?.score, parts = [], ans = (p.ai?.answers || []).filter((a) => !a.error) /* a failed tool is no answer */;
+    const TL = { chatgpt: 'ChatGPT', gemini: 'Gemini', perplexity: 'Perplexity', claude: 'Claude' }, tl = [...new Set(ans.map((a) => TL[a.tool] || a.tool))].join(', ');
     if (s?.of) {
       const bOf = s.of - (s.unbrandedOf || 0);
-      parts.push(part('Named when asked by name', (s.named - (s.unbrandedNamed || 0)) / Math.max(1, bOf) * 30, bOf > 0 ? 30 : 0,`named in ${s.named - (s.unbrandedNamed || 0)} of ${s.of - (s.unbrandedOf || 0)} answers that asked about ${p.name} by name`, 'ChatGPT, Gemini, Perplexity and Claude answers', ''));
+      parts.push(part('Named when asked by name', (s.named - (s.unbrandedNamed || 0)) / Math.max(1, bOf) * 30, bOf > 0 ? 30 : 0,`named in ${s.named - (s.unbrandedNamed || 0)} of ${s.of - (s.unbrandedOf || 0)} answers that asked about ${p.name} by name`, tl ? `${tl} answers` : 'AI answers read by Brew', ''));
       if (s.unbrandedOf) { const miss = ans.find((a) => !a.branded && !a.named && (a.rivalsNamed || []).length) || ans.find((a) => !a.branded && !a.named);
         parts.push(part('Named in category questions', (s.unbrandedNamed / s.unbrandedOf) * 70, 70, `named in ${s.unbrandedNamed} of ${s.unbrandedOf} category questions that did not name the brand${miss ? `; e.g. ${miss.tool} on "${cut(miss.q, 90)}"${(miss.rivalsNamed || []).length ? ` named ${miss.rivalsNamed.slice(0, 3).join(', ')}` : ''}` : ''}`, 'AI answers read by Brew', '')); }
     }

@@ -29,7 +29,7 @@ function namedOf(rows, skip, pass) {
 
 /* answers: [{ q, branded, tool, named, rivals: [names already matched], brands: [every brand it names], text }] → the standing */
 function standOf({ answers, brand, rivals, at, src, rivalsError = null, namedPass = null }) {
-  const ok = answers.filter((a) => a && a.q);
+  const ok = answers.filter((a) => a && a.q && !a.error); /* a tool that failed is no answer: never counted as "not named" */
   if (!ok.length) return null;
   const known = [...new Set(rivals.map((r) => String(r || '').trim()).filter((r) => r && r.toLowerCase() !== String(brand || '').toLowerCase()))].slice(0, 8);
   /* who the brand is up against in AI answers is who the answers name (Param, 19 Oct: Arata was compared with the curl brands its
@@ -63,9 +63,9 @@ export function standFromRead(p = {}) {
   if (!(ai.answers || []).length) return p.meta?.errors?.answers ? { error: 'The AI answers couldn’t be read this time; the next refresh tries again.' } : null;
   const rivals = (p.rivals || []).map((r) => r?.name).filter(Boolean);
   const rivalsError = !rivals.length ? (p.meta?.errors?.rivals ? 'The rivals couldn’t be read this time; the next refresh tries again.' : null) : null;
-  const at = ai.answers.map((a) => a.at).filter(Boolean).sort().pop() || null;
+  const at = ai.answers.filter((a) => !a.error).map((a) => a.at).filter(Boolean).sort().pop() || p.meta?.readAt || null;
   return standOf({ src: 'read', at, brand: p.name, rivals, rivalsError, namedPass: ai.named || null,
-    answers: ai.answers.map((a) => ({ q: a.q, branded: !!a.branded, tool: a.tool, named: !!a.named, rivals: a.rivalsNamed || [], brands: a.brandsNamed || [], text: a.text || '' })) });
+    answers: ai.answers.map((a) => ({ q: a.q, branded: !!a.branded, tool: a.tool, error: a.error || null, named: !!a.named, rivals: a.rivalsNamed || [], brands: a.brandsNamed || [], text: a.text || '' })) });
 }
 
 /* from the weekly check: the newest visibility run (live-watch.js), its questions from the brand config */

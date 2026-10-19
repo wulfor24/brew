@@ -2,14 +2,14 @@
 // with the source of every part:
 //   Creative:   the brand's own live ads in the Meta Ad Library (volume against its rivals, hook variety, formats; at most 85)
 //   Storefront: Google PageSpeed (mobile), the checkout walk, photos per product, reviews on the site
-//   AI answers: the real ChatGPT, Gemini, Perplexity and Claude answers from the read
+//   AI answers: the real answers of the AI tools that answered in the read (the weekly check replaces it when newer)
 // A part that could not be read is left out, never scored as zero, and a ring with nothing read is shown as not read and
 // kept out of the score. Conversion, spend and cost per order need the brand's own accounts; the score never guesses them.
 // The counts come from pack-numbers.js, so the rings quote the same numbers as every other screen.
 import { numbersOf } from './pack-numbers.js';
-import { standFromRead } from './ai-standing.js';
+import { standFromRead, standFromRun } from './ai-standing.js';
 
-export const HEALTH_V = 'real-2'; // bump when a ring is scored differently: every brand's score is worked out again at load (brand-pack.js)
+export const HEALTH_V = 'real-3'; // bump when a ring is scored differently: every brand's score is worked out again at load (brand-pack.js)
 const clamp = (x) => Math.max(0, Math.min(100, Math.round(x)));
 const fmt = (n) => Number(n).toLocaleString('en-US');
 /* the walk reached the checkout page (siteFailed in reader/index.js reads it the same way) */
@@ -82,19 +82,44 @@ function storefront(p, fix) {
     parts: sp.map(([k, v, of, note]) => ({ k, v: Math.round(v), of, note })), src: [ps?.score != null && `Google PageSpeed (${ps.at})`, reached && 'the checkout walk', 'the site read'].filter(Boolean).join(', ') };
 }
 
-function aiAnswers(p, fix) {
-  const s = p.ai?.score || {}, named = s.named ?? null, of = +s.of || 0, uN = s.unbrandedNamed ?? null, uOf = +s.unbrandedOf || 0;
-  if (!of) return { k: 'AI answers', v: 0, read: false, what: p.meta?.errors?.answers ? 'The AI answers couldn’t be read this time; the next refresh tries again' : 'Not read yet', parts: [], src: 'ChatGPT, Gemini, Perplexity, Claude' };
+/* the AI tools that really answered in a check, by name: a tool that failed or wasn't asked is never listed */
+const TOOL = { chatgpt: 'ChatGPT', 'chat-gpt': 'ChatGPT', gemini: 'Gemini', perplexity: 'Perplexity', claude: 'Claude' };
+const ORDER = ['ChatGPT', 'Gemini', 'Perplexity', 'Claude'], rank = (n) => (ORDER.indexOf(n) + 1 || 99);
+const toolsLine = (ts = []) => [...new Set(ts.filter(Boolean).map((t) => TOOL[String(t).toLowerCase()] || String(t)))].sort((a, b) => rank(a) - rank(b)).join(', ');
+
+/* the AI answers ring from ONE check (the read's answers or a weekly run): the score, the rows under it, the finding and the
+   rival standing all count the same answers, so they can never disagree (Param, 19 Oct: 21/100 over rows adding to 15, a
+   0 of 10 row over a 1 of 15 panel). fixT is this check's own finding, carried on the ring for the card's headline */
+function aiRingOf({ name, s = {}, tools = [], at = null, from = 'read', stand = null, error = null }) {
+  const named = s.named ?? null, of = +s.of || 0, uN = s.unbrandedNamed ?? null, uOf = +s.unbrandedOf || 0, src = toolsLine(tools);
+  if (!of) return { k: 'AI answers', v: 0, read: false, what: error ? 'The AI answers couldn’t be read this time; the next refresh tries again' : 'Not read yet', parts: [], src, at, from, stand, fixT: null };
   /* what counts is being named when the shopper did not ask for the brand: unbranded questions carry 85 of the 100,
      questions with the brand's name in them mostly name it anyway, so they carry 15 */
   const bN = uOf ? named - uN : null, bOf = uOf ? of - uOf : null, parts = [];
   if (uOf) { parts.push({ k: 'Not asked by name', v: Math.round((85 * uN) / uOf), of: 85, note: `${uN} of ${uOf} answers` });
     parts.push(bOf ? { k: 'Asked by name', v: Math.round((15 * bN) / bOf), of: 15, note: `${bN} of ${bOf} answers` } : { k: 'Asked by name', v: Math.round((15 * uN) / uOf), of: 15, note: 'no branded questions asked; scored like the rest' }); }
   const v = uOf ? clamp(parts.reduce((a, x) => a + x.v, 0)) : clamp((100 * named) / of);
-  if (uOf && uN / uOf < 0.5) fix.push(['AI answers', `AI tools named ${p.name || 'you'} in ${uN} of ${uOf} answers where the shopper didn’t ask for it by name. Publish pages that answer what shoppers ask.`]);
-  else if (!uOf && v < 50) fix.push(['AI answers', `AI tools named ${p.name || 'you'} in ${named} of ${of} answers. Publish pages that answer what shoppers ask.`]);
+  const fixT = uOf && uN / uOf < 0.5 ? `AI tools named ${name || 'you'} in ${uN} of ${uOf} answers where the shopper didn’t ask for it by name. Publish pages that answer what shoppers ask.`
+    : !uOf && v < 50 ? `AI tools named ${name || 'you'} in ${named} of ${of} answers. Publish pages that answer what shoppers ask.` : null;
   return { k: 'AI answers', v, read: true, what: uOf ? `Named in ${uN} of ${uOf} answers when not asked by name${bOf ? `, ${bN} of ${bOf} when asked` : ''}` : `Named in ${named} of ${of} real AI answers`,
-    parts, src: 'ChatGPT, Gemini, Perplexity, Claude', stand: standFromRead(p) /* who else the answers name, and for which questions (ai-standing.js) */ };
+    parts, src, at, from, stand /* who else the same answers name, and for which questions (ai-standing.js) */, fixT };
+}
+
+function aiAnswers(p, fix) {
+  const ok = (p.ai?.answers || []).filter((a) => a && !a.error);
+  const at = ok.map((a) => a.at).filter(Boolean).sort().pop() || p.meta?.readAt || null;
+  const r = aiRingOf({ name: p.name, s: p.ai?.score || {}, tools: ok.map((a) => a.tool), at, from: 'read', stand: standFromRead(p), error: p.meta?.errors?.answers });
+  if (r.fixT) fix.push(['AI answers', r.fixT]);
+  return r;
+}
+
+/* the AI answers ring from the newest weekly run (live-watch.js): its score is counted from the standing itself, so the ring,
+   its rows and the rival panel are the same answers. null when the run can't be matched to the brand's questions yet */
+export function aiRingFromRun(run, { questions = [], rivals = [], brand = '' } = {}) {
+  const stand = standFromRun(run, { questions, rivals, brand });
+  if (!stand) return null;
+  return aiRingOf({ name: brand, s: { named: stand.brand.n, of: stand.of, unbrandedNamed: stand.unOf ? stand.brand.un : null, unbrandedOf: stand.unOf },
+    tools: run.answers.map((a) => a.engine), at: new Date(run.at).toISOString(), from: 'weekly', stand });
 }
 
 export function healthFrom(p = {}, N = numbersOf({ profile: p })) {

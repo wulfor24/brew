@@ -312,7 +312,7 @@
   const loadFeed = async () => {
     await syncNow();
     const r = await tapi('GET', '/api/tenants/:t/feed'); ringsLater(); if (r.error) return null;
-    ALL = r.cards; SCORES = r.scores || {}; LIMIT = r.limit; PINNED = new Set(r.pinned || []); SRV.health = r.health || {}; SRV.healthLive = r.healthLive || {}; SRV.aiStand = r.aiStand || null; SRV.clock = r.clock;
+    ALL = r.cards; SCORES = r.scores || {}; LIMIT = r.limit; PINNED = new Set(r.pinned || []); SRV.health = r.health || {}; SRV.healthLive = r.healthLive || {}; SRV.aiRing = r.aiRing || null; SRV.clock = r.clock;
     NEWSET = new Set(r.newIds || []);
     /* saves live on the server (every device); the ones this browser kept before that go up once */
     if (Array.isArray(r.saved)) { if (!S.savedSync) { S.savedSync = 1; const up = S.saved.filter((id) => !r.saved.includes(id)); up.forEach((id) => tapi('POST', `/api/cards/${encodeURIComponent(id)}/feedback`, { kind: 'save' })); S.saved = [...new Set([...r.saved, ...up])]; }
@@ -940,7 +940,14 @@
       <button class="nav l" aria-label="Previous">${ic('left', 's16')}</button><button class="nav r" aria-label="Next">${ic('right', 's16')}</button></div>
       <div class="body" style="padding-top:12px"><p>Each card is one idea. Tap it for details. Heart it to see more like it.</p></div></article>`;
 
-  const healthNow = () => { const h = JSON.parse(JSON.stringify(B.health)); Object.entries(B.connectors).forEach(([id, c]) => { if (conn(id)) Object.entries(c.health || {}).forEach(([k, d]) => { const r = h.rings.find((x) => x.k === k); if (r) r.v += d; }); }); Object.entries(SRV.health || {}).forEach(([k, d]) => { const r = h.rings.find((x) => x.k === k); if (r) r.v += d; }); /* the team's own accounts: the ring says what they read (the score stays simulated) */ Object.entries(SRV.healthLive || {}).forEach(([k, x]) => { const r = h.rings.find((y) => y.k === k); if (r && x?.what) { r.what = x.what; r.parts = x.parts; } }); const rd = h.rings.filter((r) => r.read !== false); h.score = rd.length ? Math.round(rd.reduce((a, r) => a + r.v, 0) / rd.length) : 0; return h; };
+  /* a measured health (health.js, B.health.public) shows what was measured: nothing is added on top of it (connecting a tool or
+     a weekly card used to bump a ring, so Arata's AI ring read 21 over rows adding to 15). Only the simulated health moves */
+  const healthNow = () => { const h = JSON.parse(JSON.stringify(B.health)); if (!B.health.public) { Object.entries(B.connectors).forEach(([id, c]) => { if (conn(id)) Object.entries(c.health || {}).forEach(([k, d]) => { const r = h.rings.find((x) => x.k === k); if (r) r.v += d; }); }); Object.entries(SRV.health || {}).forEach(([k, d]) => { const r = h.rings.find((x) => x.k === k); if (r) r.v += d; }); }
+    /* AI answers come from ONE check, the newest of the read and the weekly run: its score, the rows under it, its finding and
+       the rival panel (health.js aiRingFromRun), never one check's score over another's rows */
+    const ai = h.rings.findIndex((x) => x.k === 'AI answers'), w = SRV.aiRing;
+    if (B.health.public && ai >= 0 && w?.read && (h.rings[ai].read === false || String(w.at || '') >= String(h.rings[ai].at || h.rings[ai].stand?.at || ''))) {
+      h.rings[ai] = w; h.moves = [...(h.moves || []).filter((x) => x.k !== 'AI answers'), ...(w.fixT ? [{ k: 'AI answers', t: w.fixT }] : [])]; } /* the team's own accounts: the ring says what they read (the score stays simulated) */ Object.entries(SRV.healthLive || {}).forEach(([k, x]) => { const r = h.rings.find((y) => y.k === k); if (r && x?.what) { r.what = x.what; r.parts = x.parts; } }); const rd = h.rings.filter((r) => r.read !== false); h.score = rd.length ? Math.round(rd.reduce((a, r) => a + r.v, 0) / rd.length) : 0; return h; };
   /* the rings: three arcs, no composite number in the middle (an average of ads, the store and AI answers means nothing on its own) */
   const ringSvg = (h) => { const R = [52, 40, 28];
     return `<svg viewBox="0 0 130 130" width="100%" role="img" aria-label="${h.rings.map((r) => `${r.k} ${r.read === false ? 'not read' : `${r.v} of 100`}`).join(', ')}">${h.rings.map((r, i) => { const c = 2 * Math.PI * R[i]; return `<circle cx="65" cy="65" r="${R[i]}" fill="none" stroke="var(--surface-2)" stroke-width="8"/><circle class="ring-arc" cx="65" cy="65" r="${R[i]}" fill="none" stroke="var(--fg)" stroke-opacity="${1 - i * .3}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${(c * (r.read === false ? 0 : r.v) / 100).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 65 65)"/>`; }).join('')}</svg>`; };
@@ -962,9 +969,7 @@
       : `<button class="bar" data-hc-how><span class="lead">${ic('info', 's16')}How each ring is scored</span>${ic('right', 's16 chev')}</button>`; };
   /* AI answers: where the brand and its rivals stand (ai-standing.js), from the read's answers or the weekly check, whichever
      is newer. Counted where the shopper named no brand (that is where new buyers come from); an unread source says so */
-  const aiStand = () => { const r = (B.health?.rings || []).find((x) => x.k === 'AI answers')?.stand || null, w = SRV.aiStand || null;
-    const s = w && !w.error && (!r || r.error || String(w.at || '') >= String(r.at || '')) ? w : r;
-    return s && !s.named && s.rivalsBy !== 'named' && r?.named ? { ...s, named: { ...r.named, at: r.at } } : s; /* when the rows are who the answers name, there is no second list */ /* the weekly check has no brands-named pass: the read's stands in, with its own counts */ };
+  const aiStand = () => (B.health?.rings ? healthNow().rings.find((x) => x.k === 'AI answers')?.stand || null : null); /* the same check as the ring above it */
   /* the brands the answers name most, beside the known rivals (st.named): counted where the shopper named no brand when any are */
   const aisNamed = (nm) => { if (!nm || nm.error) return null; const un = !!nm.unOf && nm.list.some((r) => r.un), c = (r) => (un ? r.un : r.n);
     return { c, of: un ? nm.unOf : nm.of, top: nm.list.filter(c) }; };
@@ -1032,7 +1037,7 @@
     /* no known rival named: say who the answers do name instead */
     return `<p class="ais-line">${ic('sparkles', 's14')}<span>${top.length ? `AI names ${top.map((r) => `${esc(r.name)} in ${cnt(r)}`).join(', ')} of ${of} answers; ${esc(st.brand.name)} in ${cnt(st.brand)}` : nm ? `AI names ${nm.top.slice(0, 2).map((r) => `${esc(r.name)} in ${nm.c(r)}`).join(', ')} of ${nm.of} answers${nm.of === of ? `; ${esc(st.brand.name)} in ${cnt(st.brand)}` : ''}` : `AI names none of ${esc(st.rivals.slice(0, 3).map((r) => r.name).join(', '))} in ${of} answers; ${esc(st.brand.name)} in ${cnt(st.brand)}`}</span></p>`; };
   const healthCard = () => { const h = healthNow(), read = h.rings.filter((r) => r.read !== false), low = [...read].sort((a, b) => a.v - b.v)[0] || null;
-    const fixLine = low && (B.health.moves || []).find((x) => x.k === low.k)?.t;
+    const fixLine = low && (h.moves || []).find((x) => x.k === low.k)?.t;
     const [said, todo] = fixLine ? [fixLine.split(/(?<=\.)\s+/)[0], fixLine.split(/(?<=\.)\s+/).slice(1).join(' ')] : [null, null];
     const head1 = !read.length ? `${B.brand.name}’s store couldn’t be read this time.` : said || (low && low.v < 60 ? `${low.k} is ${B.brand.name}’s weakest ring, at ${low.v} of 100.` : `${B.brand.name}’s store reads well on every ring.`);
     const sub1 = !read.length ? 'The next refresh tries again. Nothing here is a guess.' : said ? (todo || '') /* a finding with no action sentence stands alone: the move under the rings is the action */ : (low && low.v < 60 ? hcLine(low) : `The lowest is ${low.k}, at ${low.v} of 100.`);

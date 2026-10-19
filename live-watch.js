@@ -178,7 +178,7 @@ export function createLiveWatch({ ROOT, anthropic, claudeParams, textOf, gToken,
       if (lost.length) add({ id: `vis-loss-${q.id}-${day}`, kind: 'loss', q: q.q, engines: lost, yes, of: as.length, rivals });
       if (!yes.length && rivals.length) add({ id: `vis-gap-${q.id}-${day}`, kind: 'gap', q: q.q, of: as.length, rivals: rivals.slice(0, 4), domains: doms, excerpt: as.find((a) => a.rivals.length)?.excerpt });
     }
-    snap.visibility = { fetchedAt: now, runs: [run, ...(snap.visibility?.runs || [])].slice(0, 8), events: [...ev, ...(snap.visibility?.events || [])].slice(0, 60), source: `ChatGPT, Gemini, Perplexity and Claude, asked from ${cfg.countryName || 'your market'}` };
+    snap.visibility = { fetchedAt: now, runs: [run, ...(snap.visibility?.runs || [])].slice(0, 8), events: [...ev, ...(snap.visibility?.events || [])].slice(0, 60), source: `${[...new Set(answers.map((a) => ENGINES[a.engine] || a.engine))].join(', ')}, asked from ${cfg.countryName || 'your market'}` }; /* only the tools that answered */
     return ev.length;
   }
 
