@@ -468,6 +468,11 @@
     /* v1 (19 Oct, from the prototype): the read shows once, then five questions take the whole screen while the read carries on
        behind them, then the read comes back with everything that landed meanwhile (OB2.questions, onboard2.js mode q). Once per
        brand per browser; no tutorial, stack or gate on v1 */
+    /* answered before by this signed-in person (another browser, a private window, their phone): the answers come back from the
+       server (GET /setup, kept per person per brand) and the questions are not asked again */
+    if (!V2 && GEN && window.OB2?.questions && !window.OB2.qState().qDone) { const sv = (await tapi('GET', '/api/tenants/:t/setup').catch(() => null))?.setup;
+      if (sv?.done) { const done = {}; if (sv.role && B.roles?.[sv.role]) { S.viewer.role = sv.role; done.seat = sv.role; } if (Array.isArray(sv.wants) && sv.wants.length) { S.viewer.wants = sv.wants; S.viewer.wantsTouched = true; done.first = sv.wants; }
+        if (Array.isArray(sv.channels)) { S.viewer.channels = sv.channels; done.channels = sv.channels; } save(); ls.set(`${LSP()}q1`, JSON.stringify({ qDone: true, done, fromServer: true })); } }
     const QM = !V2 && GEN && !!window.OB2?.questions && !window.OB2.qState().qDone;
     root.innerHTML = `
       <main class="screen setup">
@@ -488,6 +493,8 @@
        taps already confirmed the read) */
     let readyGo, qGo; const readP = new Promise((r) => (readyGo = r)), qP = QM ? new Promise((r) => (qGo = r)) : Promise.resolve({});
     const qBuf = [], toQ = (ev) => { if (!QM) return; if (Q) Q.feed(ev); else qBuf.push(ev); };
+    const keepSetup = () => { const d = window.OB2.qState().done || {}, ok = (k) => d[k] != null && d[k] !== 'skip';
+      tapi('PUT', '/api/tenants/:t/setup', { ...(ok('seat') ? { role: S.viewer.role } : {}), ...(ok('first') ? { wants: S.viewer.wants } : {}), ...(ok('channels') ? { channels: S.viewer.channels || [] } : {}), done: true }).catch(() => {}); };
     /* the question layer: full screen, one question in the middle, five marks for progress, the read as one quiet line */
     const readLine = () => { const done = $$('.step.done').length, n = $$('#scr .scr').length; return readIn ? `${esc(B.brand.name)} is read · ${n} findings` : `<span class="spin"></span>Reading ${esc(B.brand.name)} · ${done} of ${steps.length} · ${n} findings`; };
     const qLayer = () => { if ($('#qfull')) return; document.body.insertAdjacentHTML('beforeend', `<div class="qfull" id="qfull" role="dialog" aria-modal="true" aria-label="A few questions">
@@ -501,14 +508,14 @@
         onShow: qLayer, /* a product or rival question whose data landed late */
         onStep: (i, n) => { const el = $('#qf-prog'); if (el) el.innerHTML = Array.from({ length: n }, (_, k) => `<li class="${k < i ? 'done' : k === i ? 'on' : ''}"></li>`).join(''); },
         onWait: () => { qClose(); if (!readIn && !$('#su-wait')) document.body.insertAdjacentHTML('beforeend', `<div class="su-done" id="su-wait"><span class="spin"></span><div><b>Thanks. Brew is still reading ${esc(B.brand.name)}.</b><span>Your feed opens from here the moment the read is in.</span></div></div>`); },
-        onDone: (r) => { qClose(); qGo(r || {}); }
+        onDone: (r) => { qClose(); keepSetup(); qGo(r || {}); }
       }).then((h) => { Q = h; qBuf.splice(0).forEach((ev) => h.feed(ev)); }); };
     /* the read once: after a handful of findings (or a few seconds) a bar offers the questions; the read never stops for them */
     const askText = () => readIn ? `<b>${esc(B.brand.name)} is read.</b><span>Five quick taps, so your feed fits you.</span>` : '<b>Brew keeps reading in the background.</b><span>Five quick taps meanwhile, so your feed fits you.</span>';
     const askBar = () => { const t0 = $('#su-ask-t'); if (t0) t0.innerHTML = askText(); if (!QM || qOpened || skipped || failed || $('#su-ask')) return;
       document.body.insertAdjacentHTML('beforeend', `<div class="su-done" id="su-ask"><span class="su-ok">${ic('sparkles', 's18')}</span><div id="su-ask-t">${askText()}</div><button class="linkbtn" id="su-ask-no">Skip</button><button class="btn btn-primary lg" id="su-ask-go">Answer 5 questions ${ic('right', 's18')}</button></div>`);
       $('#su-ask-go').onclick = qOpen; $('#su-ask-go').focus();
-      $('#su-ask-no').onclick = () => { $('#su-ask')?.remove(); qOpened = true; window.OB2.questions({ onDone: (r) => qGo(r || {}) }).then((h) => { Q = h; qBuf.splice(0).forEach((ev) => h.feed(ev)); h.skip(); }); }; };
+      $('#su-ask-no').onclick = () => { $('#su-ask')?.remove(); qOpened = true; window.OB2.questions({ onDone: (r) => { keepSetup(); qGo(r || {}); } }).then((h) => { Q = h; qBuf.splice(0).forEach((ev) => h.feed(ev)); h.skip(); }); }; };
     if (QM) setTimeout(askBar, 9000);
     const fly = (el, say) => { if (!el) return; const sp = buddy.querySelector('span'), was = buddy.offsetWidth; const prev = sp.textContent; sp.textContent = say; const r = el.getBoundingClientRect(), w = Math.max(was, buddy.offsetWidth); sp.textContent = prev; clearTimeout(fly.t); fly.t = setTimeout(() => (sp.textContent = say), 900); clearTimeout(fly.h); fly.h = setTimeout(() => { buddy.style.opacity = 0; }, 2800); buddy.style.opacity = 1; buddy.style.transform = `translate(${Math.max(8, Math.min(r.left + r.width * .6, r.right - w - 8, innerWidth - w - 16))}px,${Math.min(r.top + 26, innerHeight - 60)}px)`; }; // the label swaps once the cursor lands, so a longer one never sticks out mid-flight
     // POST /tenants started the read; GET /tenants/:id/onboarding streams each step and finding as it lands
@@ -4926,7 +4933,7 @@
   const tuPut = async (body) => { const r = await tapi('PUT', '/api/tenants/:t/tuning', body); if (r.error) return toast(esc(r.error)); TU.d = r; renderTune(); };
   document.addEventListener('click', async (e) => { if (view !== 'tune') return; const t = e.target;
     const sv = t.closest('[data-tu-v]'); if (sv) { const [k, v0] = sv.dataset.tuV.split(':'); S.viewer[k] = k === 'perDay' ? +v0 : v0; save(); if (k === 'voice') pushVoice(); return renderTune(); }
-    const cv = t.closest('[data-tu-ch]'); if (cv) { const x = cv.dataset.tuCh, cur = S.viewer.channels || []; S.viewer.channels = cur.includes(x) ? cur.filter((y) => y !== x) : [...cur, x]; save(); return renderTune(); }
+    const cv = t.closest('[data-tu-ch]'); if (cv) { const x = cv.dataset.tuCh, cur = S.viewer.channels || []; S.viewer.channels = cur.includes(x) ? cur.filter((y) => y !== x) : [...cur, x]; save(); tapi('PUT', '/api/tenants/:t/setup', { channels: S.viewer.channels }).catch(() => {}); return renderTune(); }
     const w = t.closest('[data-tu-w]'); if (w) { const [id, v] = w.dataset.tuW.split(':'); return tuPut({ weights: { ...(TU.d?.tuning?.weights || {}), [id]: v } }); }
     const tx = t.closest('[data-tu-topicx]'); if (tx) return tuPut({ topics: (TU.d?.tuning?.topics || []).filter((x) => x !== tx.dataset.tuTopicx) });
     const sx = t.closest('[data-tu-sigx]'); if (sx) { await tapi('DELETE', `/api/tenants/:t/tuning/signals/${encodeURIComponent(sx.dataset.tuSigx)}`); return renderTune(); }

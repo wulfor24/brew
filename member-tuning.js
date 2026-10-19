@@ -22,6 +22,7 @@ export function cleanTuning(x = {}, base = emptyTuning()) {
   if (x.weights && typeof x.weights === 'object') for (const a of AGENTS) if (WEIGHT[x.weights[a]] != null) out.weights[a] = x.weights[a];
   if (Array.isArray(x.topics)) out.topics = [...new Set(x.topics.map((t) => str(t, 40).toLowerCase()).filter((t) => t.length >= 2))].slice(0, 12);
   if (Array.isArray(x.ignored)) out.ignored = [...new Set(x.ignored.map((t) => str(t, 80)).filter(Boolean))].slice(0, 100);
+  out.setup = base.setup && typeof base.setup === 'object' ? base.setup : null; /* set only by setSetup */
   out.saved = Array.isArray(base.saved) ? [...new Set(base.saved.map((t) => str(t, 120)).filter(Boolean))].slice(0, 300) : []; /* set only by setSaved, never by a client's put */
   return out;
 }
@@ -96,7 +97,11 @@ export function createTuning({ packs, now = () => Date.now(), log = console }) {
   const dropNote = (slug, key, id) => write(slug, key, (cur) => { cur.notes = (cur.notes || []).filter((n) => n.id !== id); return cur; });
   /* the bookmark: a card saved or unsaved by this person, on every device they open (the newest first) */
   const setSaved = (slug, key, id, on) => write(slug, key, (cur) => { const x = str(id, 120); if (!x) return cur; const rest = (cur.saved || []).filter((y) => y !== x); cur.saved = (on ? [x, ...rest] : rest).slice(0, 300); return cur; });
+  /* the setup answers (feed-service /setup): seat, what comes first, channels, done; merged, never a client's whole object */
+  const setSetup = (slug, key, x = {}) => write(slug, key, (cur) => { const was = cur.setup || {}, nx = { ...was };
+    if (typeof x.role === 'string') nx.role = str(x.role, 24); if (Array.isArray(x.wants)) nx.wants = x.wants.map((w) => str(w, 24)).slice(0, 2);
+    if (Array.isArray(x.channels)) nx.channels = x.channels.map((c) => str(c, 24)).slice(0, 6); if (x.done) nx.done = true; nx.at = now(); cur.setup = nx; return cur; });
   const ignore = (slug, key, id) => write(slug, key, (cur) => { cur.ignored = [...new Set([...(cur.ignored || []), str(id, 80)])].slice(-100); return cur; });
   const unignore = (slug, key, id) => write(slug, key, (cur) => { cur.ignored = (cur.ignored || []).filter((x) => x !== id); return cur; });
-  return { load, peek, get, put, addNote, dropNote, ignore, unignore, setSaved, _cache: cache };
+  return { load, peek, get, put, addNote, dropNote, ignore, unignore, setSaved, setSetup, _cache: cache };
 }

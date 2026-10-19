@@ -1551,6 +1551,13 @@ export function createFeedService(o) {
   const tuningOut = async (t) => { const slug = t.brandId || DEFAULT_BRAND, tu = await TUNE.get(slug, tuneKey(t));
     return { tuning: tu, agents: TUNE_AGENTS.map((a) => ({ id: a, name: AGENT[a], weight: tu.weights[a] })), weights: Object.keys(TUNE_WEIGHT), signals: learnedSignals({ feedback: t.feedback, cards: t.cards, fewer: t.fewer, ignored: tu.ignored, saved: tu.saved?.length ? tu.saved : null }), mine: !!reqOf(t)?.member }; };
   on('GET', '/api/tenants/:id/tuning', async (b, t) => tuningOut(t));
+  /* the setup answers (v1's questions: seat, what comes first, channels), kept per signed-in person per brand, so a new browser,
+     a private window or a teammate's phone never asks them again. Signed out: nothing kept here (the browser keeps its own) */
+  const setupKey = (t) => { const r = MC.REQ.getStore(), e = r && r.slug === (t.brandId || DEFAULT_BRAND) ? r.me : null; return e ? memberKey(e) : null; };
+  on('GET', '/api/tenants/:id/setup', async (b, t) => { const k = setupKey(t); return { setup: k ? (await TUNE.get(t.brandId || DEFAULT_BRAND, k)).setup || null : null, kept: !!k }; });
+  on('PUT', '/api/tenants/:id/setup', async (b, t) => { const k = setupKey(t); if (!k) return { setup: null, kept: false };
+    const x = await TUNE.setSetup(t.brandId || DEFAULT_BRAND, k, { ...cleanViewer(b, { tools: Object.keys(SEED.connectors || {}) }), role: SEED.roles?.[b.role] ? b.role : undefined, wants: Array.isArray(b.wants) ? b.wants.filter((w) => SEED.wants?.[w]).slice(0, 2) : undefined, done: !!b.done });
+    return { setup: x.setup, kept: true }; });
   on('PUT', '/api/tenants/:id/tuning', async (b, t) => { await TUNE.put(t.brandId || DEFAULT_BRAND, tuneKey(t), { weights: b.weights, topics: b.topics }); return tuningOut(t); });
   on('DELETE', '/api/tenants/:id/tuning/signals/:sid', async (b, t, p) => { await TUNE.ignore(t.brandId || DEFAULT_BRAND, tuneKey(t), decodeURIComponent(p.sid)); return tuningOut(t); });
   on('POST', '/api/tenants/:id/tuning/signals/:sid/restore', async (b, t, p) => { await TUNE.unignore(t.brandId || DEFAULT_BRAND, tuneKey(t), decodeURIComponent(p.sid)); return tuningOut(t); });
@@ -2102,7 +2109,7 @@ export function createFeedService(o) {
     /* this request's viewer, checked from the signed-in user (REQ): t.member and t.memberEmail read it. A team member who opens
        the workspace becomes the one the background clock re-checks (teamEmail) */
     const gw = !viewer?.member && viewer?.email ? JAMS.guestWids(br.slug, viewer.email) : [];
-    const who = { member: !!viewer?.member, email: viewer?.member ? viewer.email || null : null, name: viewer?.member ? viewer.name || null : null, pic: viewer?.member ? viewer.pic || null : null, claimed: !!viewer?.claimed, slug: br.slug, seats: viewer?.member && Array.isArray(viewer.seats) ? viewer.seats : null,
+    const who = { member: !!viewer?.member, me: viewer?.email || null /* whoever is signed in, member or staff: their own setup answers */, email: viewer?.member ? viewer.email || null : null, name: viewer?.member ? viewer.name || null : null, pic: viewer?.member ? viewer.pic || null : null, claimed: !!viewer?.claimed, slug: br.slug, seats: viewer?.member && Array.isArray(viewer.seats) ? viewer.seats : null,
       guest: gw.length ? { email: String(viewer.email).toLowerCase(), name: viewer.name || null, pic: viewer.pic || null, wids: gw } : null };
     return GEN_CTX.run(gen, () => MC.run(who, t0, () => runIn(br, () => withPrefs(prefsOf(req), () => handleIn(req, res, u, viewer))))); // the jam's model and memory choice, for this request
   };
