@@ -91,7 +91,7 @@ test('FEED-QA-06 / 13: the ready card always shows numbers, counts cards from th
   const a = appSrc(), fo = a.slice(a.indexOf('const finishOnboarding = async'), a.indexOf("$('#open-feed').onclick"));
   assert.match(fo, /if \(!rank\(\)\.length\) await Promise\.race\(\[loadFeed\(\)/, 'the feed is loaded before it is counted');
   assert.doesNotMatch(fo, /<b class="tnum">\$\{ic\(/, 'never an icon where a number goes');
-  assert.match(fo, /\$\{CARDS_WORD\(n\)\}/); assert.match(fo, /\$\{MOVES_WORD\(movesInPlan\(\)\)\}/);
+  assert.match(fo, /\$\{CARDS_WORD\(n\)\}/); assert.match(fo, /\$\{MOVES_WORD\(m\)\}/); assert.match(fo, /const m = movesInPlan\(\)/);
   const [cw, mw] = a.match(/const CARDS_WORD = (\(n\) => `[^`]+`), MOVES_WORD = (\(n\) => `[^`]+`);/).slice(1).map((x) => (0, eval)(x));
   assert.equal(cw(12), 'cards in your feed'); assert.equal(cw(1), 'card in your feed'); assert.equal(mw(51), 'moves in your plan');
   const mip = a.match(/const movesInPlan = (\(\) => \{[^}]+\});/)[1];

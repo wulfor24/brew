@@ -715,7 +715,7 @@
         <p class="pv-cap">Your feed, as ${/^[AEIOU]/.test(R.name) ? 'an' : 'a'} ${esc(R.name.toLowerCase())}</p>
         <div class="pv-win"><div class="pv-bar"><i></i><i></i><i></i><span>${location.host}</span></div>
           <div class="pv-in"><small>Today</small><h3>${dayPart()}${hiName(R)}</h3>
-            <div class="pv-tiles">${yes ? `<span class="hot"><b>${yes}</b>need your yes</span>` : ''}<span><b>${cards.length}</b>new ideas</span><span><b>5</b>agents on it</span></div>
+            <div class="pv-tiles">${yes ? `<span class="hot"><b>${yes}</b>need your yes</span>` : ''}${all.length ? `<span><b>${all.length}</b>${all.length === 1 ? 'card' : 'cards'}</span>` : ''}<span><b>5</b>agents on it</span></div>
             ${cards.slice(0, 3).map(pvCard).join('')}</div></div></div>`; pvLast = host.innerHTML.replace('class="pv"', 'class="pv still"'); };
     let cards = [];
     let all = [];
@@ -867,13 +867,15 @@
     finishOnboarding.busy = true; if (!rank().length) await Promise.race([loadFeed().catch(() => null), wait(4000)]); finishOnboarding.busy = false; if ($('#ready')) return;
     const n = rank().length || (B.posts || []).filter((p) => !p.onlyWhen).length, R = ROLE();
     const nc = Object.keys(S.conn).filter(conn).length;
-    const mvTile = () => `<div data-mv-tile><b class="tnum">${movesInPlan()}</b>${MOVES_WORD(movesInPlan())}</div>`;
+    const mvTile = () => { const m = movesInPlan(); return `<div data-mv-tile${m ? '' : ' hidden'}><b class="tnum">${m}</b>${MOVES_WORD(m)}</div>`; }; /* no 0 tile (quiet UI) */
     if (GEN && !BREW) loadMV().then(() => { const el = $('#ready [data-mv-tile]'); if (el) el.outerHTML = mvTile(); }).catch(() => {});
     document.body.insertAdjacentHTML('beforeend', `<div class="ready" id="ready"><div class="ready-card">
       <span class="so-mark" style="width:30px;height:30px">${SO()}</span>
-      <h3>Your feed is ready${myFirst() ? ', ' + esc(myFirst()) : ''}.</h3>
-      <p>${n} ${n === 1 ? 'card' : 'cards'}, picked for ${/^[AEIOU]/i.test(R.name) ? 'an' : 'a'} ${esc(R.name.toLowerCase())}. Each comes from a move in your plan. Tap any card to see more.</p>
-      <div class="counts"><div><b class="tnum">${n}</b>${CARDS_WORD(n)}</div>${mvTile()}<div><b class="tnum">5</b>agents</div>${nc ? `<div><b class="tnum">${nc}</b>connected</div>` : ''}</div>
+      ${n ? `<h3>Your feed is ready${myFirst() ? ', ' + esc(myFirst()) : ''}.</h3>
+      <p>${n} ${n === 1 ? 'card' : 'cards'}, picked for ${/^[AEIOU]/i.test(R.name) ? 'an' : 'a'} ${esc(R.name.toLowerCase())}. Each comes from a move in your plan. Tap any card to see more.</p>`
+      : `<h3>Your cards are still being written${myFirst() ? ', ' + esc(myFirst()) : ''}.</h3>
+      <p>Brew is writing the moves your cards come from. Each card lands in your feed as its move is done. Open the feed now to see what we read.</p>`}
+      <div class="counts">${n ? `<div><b class="tnum">${n}</b>${CARDS_WORD(n)}</div>` : ''}${mvTile()}<div><b class="tnum">5</b>agents</div>${nc ? `<div><b class="tnum">${nc}</b>connected</div>` : ''}</div>
       ${window.BREW_NUMBERS?.storeNote ? `<p class="ready-note">${esc(window.BREW_NUMBERS.storeNote)}</p>` : ''}
       <button class="lm" id="open-feed"><span class="lm-rim"><span class="lm-in">Open my feed ${ic('right', 's18')}</span></span></button>
     </div></div>`);
