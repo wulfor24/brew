@@ -111,3 +111,24 @@ test('ONB-15: each setup step is saved per brand and a refresh resumes there (no
   assert.match(a, /else if \(GEN && !V2 && !askedSetup && OB_AT\[S\.obStep\] && !S\.onboarded\) ensureTenant\(true\)\.then\(resumeOb\)/);
   assert.match(a, /const KEY = `\$\{LSP\(\)\}demo-v1`/, 'S (and the step in it) is kept per brand');
 });
+
+/* ---------- FEED-QA-15: the write time is set once ---------- */
+test('FEED-QA-15: "Brew starts writing at" is set on the first open of the check page and never moves on a revisit', async () => {
+  const os = await import('node:os'), path = await import('node:path');
+  process.env.BUILD_RESUME_OFF = '1'; process.env.REFRESH_AUTO = '0';
+  const { createBuilder } = await import('../build.js'), { createPacks } = await import('../brand-pack.js');
+  const quiet = { log() {}, warn() {}, error() {}, info() {} };
+  const P = createPacks({ ROOT: fs.mkdtempSync(path.join(os.tmpdir(), 'brew-qa-')), PUB: new URL('../public', import.meta.url).pathname, bucket: null, gToken: null, log: quiet });
+  const slug = 'wait-example-com', since = Date.now() - 60e3;
+  await P.put(slug, 'seed.json', { brand: { name: 'Acme', host: 'acme.in' }, lanes: { core: { name: 'Core', line: 'x' } }, posts: [] });
+  await P.put(slug, 'profile.json', { name: 'Acme', host: 'acme.in', slug, catalog: { products: [] } }); await P.put(slug, 'ledger.json', []);
+  await P.put(slug, 'status.json', { slug, name: 'Acme', host: 'acme.in', waitingSince: since, checkOpenAt: since - 864e5, stages: { read: { state: 'done' }, confirm: { state: 'waiting', at: since } } });
+  const ai = { onCharge() {}, call: async () => { throw new Error('AI is off'); } };
+  const b = createBuilder({ ROOT: path.dirname(P.dirOf(slug)), packs: P, ai, treg: { onCharge() {} }, log: quiet, modules: { reader: null, brief: null, moves: null, pdf: null } });
+  await b.checkData(slug, { heal: false, opened: true });
+  const s1 = await b.status(slug); assert.ok(s1.checkOpenAt >= since, 'a stamp from an earlier build does not count: the first open of this wait sets it');
+  const first = s1.writeAt; assert.ok(first > Date.now());
+  const realNow = Date.now; Date.now = () => realNow() + 5 * 60e3; /* a revisit five minutes later */
+  try { await b.checkData(slug, { heal: false, opened: true }); } finally { Date.now = realNow; }
+  const s2 = await b.status(slug); assert.equal(s2.writeAt, first, 'the time never moves later'); assert.equal(s2.checkOpenAt, s1.checkOpenAt);
+});

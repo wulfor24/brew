@@ -686,10 +686,11 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     } catch (e) { log.warn?.('[build] heal', slug, e.message); return null; }
     finally { healing.delete(slug); }
   }
-  /* someone on the team opened the check page while the brand waits: Brew gives them the full wait from now (checkOpenAt), and
-     says when it starts writing (writeAt). At most one write a minute */
+  /* someone on the team opened the check page while the brand waits: Brew gives them the full wait from that first open
+     (checkOpenAt), and says when it starts writing (writeAt). Once per build: a revisit never moves the time later (it drifted
+     a minute on every visit), and a stamp from an earlier build (before this wait began) doesn't count */
   async function checkOpened(slug) {
-    const s = await status(slug); if (!awaitingCheck(s) || s.confirmedAt || Date.now() - (+s.checkOpenAt || 0) < 60e3) return;
+    const s = await status(slug); if (!awaitingCheck(s) || s.confirmedAt || +s.checkOpenAt >= (+s.waitingSince || 0) && +s.checkOpenAt > 0) return;
     const patch = { checkOpenAt: Date.now() }; if (!(await anonOf(slug))) patch.writeAt = confirmDueAt({ ...s, ...patch });
     await setStatus(slug, patch);
   }
