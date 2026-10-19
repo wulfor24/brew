@@ -413,8 +413,8 @@
       const at = t.closest('[data-jm-assignto]'); if (at) { const ask = JM.assign === 'approve' ? 'approve' : 'work', email = at.dataset.jmAssignto; JM.assign = null;
         const r = await A.tapi('POST', `/api/work/${w.id}/assign`, { email, ask }); if (r.error) { toast(esc(r.error)); return re(); }
         if (email) toast(`${ic('send', 's16')}${esc(realPeople(w).find((x) => x.email === email)?.name || email)} will get an email`); if (r.work) A.putWork(r.work); return re(); }
-      const pg = t.closest('[data-pend-go],[data-pend-no]'); if (pg) { const box = pg.closest('[data-pend]'); if (!box) return; box.querySelectorAll('button').forEach((b) => (b.disabled = true));
-        const r = await A.tapi('POST', `/api/work/${w.id}/pending/${box.dataset.pend}`, { go: pg.hasAttribute('data-pend-go') }); if (r.error) toast(esc(r.error)); if (r.work) A.putWork(r.work); return re(); }
+      const pg = t.closest('[data-pend-go],[data-pend-no]'); if (pg) { const box = pg.closest('[data-pend]'); if (!box) return; box.querySelectorAll('button').forEach((b) => (b.disabled = true)); const done = A.busyBtn?.(pg, pg.textContent.trim()) || (() => {});
+        const r = await A.tapi('POST', `/api/work/${w.id}/pending/${box.dataset.pend}`, { go: pg.hasAttribute('data-pend-go') }).catch((er) => ({ error: er.message })); done(); if (r.error) toast(esc(r.error)); if (r.work) A.putWork(r.work); return re(); }
       return; }
     if (JM.assign && A.studioCard?.() && !$('#dp')) { JM.assign = null; A.paintStudio?.(); } /* a tap anywhere else closes the studio's assign menu */
     if (!t.closest('[data-jm]')) { if ((JM.menu && !t.closest('[data-jm-menu]')) || JM.assign) { JM.menu = false; JM.assign = null; paint(); } return; }
@@ -430,8 +430,8 @@
       if (email) toast(`${ic('send', 's16')}${esc(realPeople().find((x) => x.email === email)?.name || email)} will get an email`); return take(r.work); }
     if (t.closest('[data-jm-share]')) { JM.share = !JM.share; return paint(); }
     /* a proposal Brew made (a paid image or video, or a change asked for in Slack): it runs only on Make it */
-    const pg = t.closest('[data-pend-go],[data-pend-no]'); if (pg) { const w = W(), box = pg.closest('[data-pend]'); if (!w || !box) return; box.querySelectorAll('button').forEach((b) => (b.disabled = true));
-      const r = await A.tapi('POST', `/api/work/${w.id}/pending/${box.dataset.pend}`, { go: pg.hasAttribute('data-pend-go') }); if (r.error) toast(esc(r.error)); return take(r.work); }
+    const pg = t.closest('[data-pend-go],[data-pend-no]'); if (pg) { const w = W(), box = pg.closest('[data-pend]'); if (!w || !box) return; box.querySelectorAll('button').forEach((b) => (b.disabled = true)); const done = A.busyBtn?.(pg, pg.textContent.trim()) || (() => {});
+      const r = await A.tapi('POST', `/api/work/${w.id}/pending/${box.dataset.pend}`, { go: pg.hasAttribute('data-pend-go') }).catch((er) => ({ error: er.message })); done(); if (r.error) toast(esc(r.error)); return take(r.work); }
     const mo = t.closest('[data-jm-move]'); if (mo) { JM.share = false; return move(mo.dataset.jmMove); }
     if (t.closest('[data-jm-fresh]')) { JM.menu = false; const w = W(); if (w) A.libAct.fresh('jam', w.id); return; }
     if (t.closest('[data-jm-discard]')) { JM.menu = false; const w = W(); if (w) A.libAct.discard('jam', w.id); return; }
@@ -447,7 +447,7 @@
     const mn = t.closest('[data-jm-mention]'); if (mn) { JM.draft = JM.draft.replace(/@[\w .@+'-]*$/, `@${mn.dataset.jmMention} `); paint(); const i = $('#jm-in'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); return; }
     if (t.closest('[data-jm-pick]')) { JM.pick = true; return paint(); }
     if (t.closest('[data-jm-unpick]')) { JM.pick = false; return paint(); }
-    const sh = t.closest('[data-jm-ship]'); if (sh) { sh.disabled = true; return ship(sh.dataset.jmShip === 'team' ? 'team' : 'shopos', sh.hasAttribute('data-force')); }
+    const sh = t.closest('[data-jm-ship]'); if (sh) { const done = A.busyBtn?.(sh, 'Sending…') || (() => {}); return ship(sh.dataset.jmShip === 'team' ? 'team' : 'shopos', sh.hasAttribute('data-force')).finally(done); }
     if (t.closest('[data-jm-noship]')) { JM.confirm = null; return paint(); }
   });
   document.addEventListener('submit', async (e) => {

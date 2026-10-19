@@ -7,7 +7,7 @@ import { budgetWhy } from './budget.js'; // whose daily share ran out, in plain 
 import { realRows } from './connectors/common.js';
 import { baselineOf, healthReadings } from './on-connect.js'; // the team's own account numbers on cards and the health card
 import fs from 'node:fs';
-import { readRivalAd, rivalPicture } from './rival-ad.js'; // rival ads read ahead, kept with the brand; a final of our version keeps their composition
+import { readRivalAd, rivalPicture, isResearchImage, isRivalCard } from './rival-ad.js'; // rival ads read ahead, kept with the brand; a final of our version keeps their composition
 import vm from 'node:vm';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -1064,7 +1064,7 @@ export function createFeedService(o) {
        that has one), shown faint behind the text; with no match it stays a plain dark slide, never a colour blob */
     const STOP = new Set('the and for with your you are was this that from have has not but our its into than then them they what when will more most over just only also about after before their there these those which while been being'.split(' '));
     const words = (x) => new Set(String(x || '').toLowerCase().match(/[a-z][a-z-]{3,}/g)?.filter((w) => !STOP.has(w)) || []);
-    const pool = [...t.cards.values()].filter((c) => c.images?.[0] && !String(c.images[0]).startsWith('data:')).map((c) => ({ img: c.images[0], w: words(`${c.title} ${c.sub || ''}`) }));
+    const pool = [...t.cards.values()].filter((c) => c.images?.[0] && !String(c.images[0]).startsWith('data:') && !isRivalCard(c)) /* a rival's poster is never the brand's photo */.map((c) => ({ img: c.images[0], w: words(`${c.title} ${c.sub || ''}`) }));
     const bgFor = (sl) => { if (sl.img || sl.poster || !pool.length) return sl; const w = words([sl.h, sl.p, ...(sl.steps || [])].join(' ')); let best = null, top = 1;
       for (const c of pool) { let n = 0; for (const x of w) if (c.w.has(x)) n++; if (n > top) { top = n; best = c; } }
       return best ? { ...sl, bg: best.img } : sl; };
@@ -1189,9 +1189,18 @@ export function createFeedService(o) {
   const curV = (w) => w.versions.find((v) => v.n === w.current) || w.versions[w.versions.length - 1];
   const addVersion = (t, w, v) => { const n = w.versions.length + 1; w.versions.push({ n, ...v, at: now(t) }); w.current = n; w.title = v.title; if (v.images?.[0]) w.img = v.images[0]; RMX?.onWorkVersion(t, w, v); if (v.images?.[0] && v.by !== 'agent') slackAsset(t, w, { title: `v${n}: ${v.title}`, copy: v.sub, image: v.images[0], kind: 'version', note: v.note }); return n; };
   const workFor = (t, cardId) => t.work.find((w) => w.cardId === cardId && !w.archived && !w.discarded && !['out', 'measuring', 'result'].includes(w.stage));
-  const newWork = (t, c) => {
-    const w = { id: uid('wk'), cardId: c.id, title: c.title, img: c.images?.[0] || null, agent: c.agent, sector: c.sector, cta: c.cta?.label || null, stage: 'drafting',
-      versions: [{ n: 1, title: c.title, sub: c.sub, images: c.images || null, by: 'agent', who: AGENT[c.agent], note: 'The original card', at: now(t) }], current: 1,
+  /* a rival's ad card's pictures are theirs: a workspace never holds them as our v1, its thumbnail or a notification's picture.
+     Workspaces saved before this heal on load (getTenant); a card no longer held is known by its r-ad- id and research path */
+  const theirPics = (t, cardId) => { const c = t.cards?.get?.(cardId); if (c) return isRivalCard(c) ? new Set((c.images || []).filter(Boolean)) : null; return /^r-ad-/.test(String(cardId || '')) ? { has: (u) => isResearchImage(u) } : null; };
+  const healRivalWork = (t) => { let n = 0;
+    for (const w of t.work || []) { const bad = theirPics(t, w.cardId); if (!bad) continue;
+      for (const v of w.versions || []) if (v.images?.some((u) => bad.has(u))) { v.images = v.images.filter((u) => !bad.has(u)); if (!v.images.length) v.images = null; n++; }
+      if (w.img && bad.has(w.img)) { w.img = [...(w.versions || [])].reverse().find((v) => v.images?.[0])?.images[0] || null; n++; } }
+    for (const x of t.notes || []) { const bad = x.img && theirPics(t, x.cardId); if (bad && bad.has(x.img)) { x.img = (t.work || []).find((w) => w.id === x.itemId)?.img || null; n++; } }
+    return n; };
+  const newWork = (t, c) => { const own = isRivalCard(c) ? null : c.images?.length ? c.images : null;
+    const w = { id: uid('wk'), cardId: c.id, title: c.title, img: own?.[0] || null, agent: c.agent, sector: c.sector, cta: c.cta?.label || null, stage: 'drafting',
+      versions: [{ n: 1, title: c.title, sub: c.sub, images: own, by: 'agent', who: AGENT[c.agent], note: 'The original card', at: now(t) }], current: 1,
       thread: [], with: null, ticket: null, deploy: null, createdAt: now(t), updatedAt: now(t), unread: false, history: [['drafting', now(t)]], ...(c.ctxKey ? { ctxKey: c.ctxKey } : {}), ...(c.bundle?.length ? { bundle: c.bundle } : {}) };
     const me0 = meOf(t); if (me0) { w.startedBy = me0; JAMS.join(w, me0, 'started'); }
     w.cardSnap = clone(c); // a teammate's workspace may not hold this card (an idea or story made elsewhere): the jam carries it
@@ -2005,6 +2014,7 @@ export function createFeedService(o) {
       // a generated brand: cards from moves that landed while this workspace was away
       if (br.kind === 'generated') streamSync(t, SEED.posts);
       if (br.kind === 'generated') { followMoves(t, br); const t0 = now(t); for (const p of SEED.posts) if (!t.cards.has(p.id)) t.cards.set(p.id, { ...clone(p), family: p.family || FAMILY[p.type] || 'idea', state: 'ready', origin: 'move', createdAt: t0, expiresAt: null, history: [['ready', t0]], shownCount: 0, ...(mvOf(br, p.id) ? { mv: mvOf(br, p.id) } : {}) }); }
+      if (healRivalWork(t)) store?.save(t);
       t.lastSeen = Date.now(); tenants.set(t.id, t); log.log?.(`[store] loaded ${t.id}`); return t;
     });
   };

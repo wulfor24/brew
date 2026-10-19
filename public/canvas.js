@@ -33,9 +33,11 @@
     const bp = w?.doc?.plan || {}, v = w?.versions?.find((x) => x.n === w.current) || null;
     const draft = (w?.drafts || []).find((d) => d.state === 'ready' && (d.image || d.video || d.slides?.length || d.copy)) || null;
     const making = (w?.drafts || []).find((d) => d.state === 'making') || null;
-    const img = draft?.image || ch?.pkg?.image || (v && v.n > 1 ? v.images?.[0] : null) || w?.refImages?.[0] || c.images?.[0] || null;
-    const head = bp.headline || ch?.after?.title || (v && v.n > 1 ? v.title : '') || c.title || '';
-    const body = bp.body || ch?.after?.sub || (v && v.n > 1 ? v.sub : '') || c.sub || '';
+    /* a rival's ad card: its picture and its title are about their ad, never ours (make-sheet.js isRival); ours waits for a draft */
+    const theirs = window.MakeSheet?.isRival?.(c) ?? (c?.research?.kind === 'ad' || !!c?.research?.ad);
+    const img = draft?.image || ch?.pkg?.image || (v && v.n > 1 ? v.images?.[0] : null) || w?.refImages?.[0] || (theirs ? null : c.images?.[0]) || null;
+    const head = bp.headline || ch?.after?.title || (v && v.n > 1 ? v.title : '') || (theirs ? c.make?.what || '' : c.title) || '';
+    const body = bp.body || ch?.after?.sub || (v && v.n > 1 ? v.sub : '') || (theirs ? '' : c.sub) || '';
     return { p, c, w, ch, H, bp, v, draft, making, img, head, body, btn: bp.button || '', brand: H.B.brand };
   };
   const ph = (H, text, ask) => `<button type="button" class="cv-ph${text ? '' : ' is-row'}" data-cv-ask="${H.esc(ask || `Fill in: ${text}`)}">${H.ic('sparkles', 's12')}${text ? `<em>${H.esc(text)}</em>` : ''}<span>Ask in the chat →</span></button>`; /* in a labelled row the label already says what is missing */

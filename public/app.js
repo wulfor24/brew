@@ -188,6 +188,10 @@
   /* ---------- toast ---------- */
   let toastT;
   const toast = (html) => { $('.toast')?.remove(); const t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); t.innerHTML = html; document.body.appendChild(t); clearTimeout(toastT); toastT = setTimeout(() => t.remove(), 2800); };
+  /* a button waiting on the server: a spinner and what it is doing, so a slow answer never reads as a dead click. Returns the
+     undo; a button repainted away in the meantime is left alone */
+  const busyBtn = (b, label = '') => { if (!b) return () => {}; const html = b.innerHTML; b.disabled = true; b.classList.add('is-wait'); b.setAttribute('aria-busy', 'true'); b.innerHTML = `<span class="spin"></span>${esc(label)}`;
+    return () => { if (!b.isConnected) return; b.disabled = false; b.classList.remove('is-wait'); b.removeAttribute('aria-busy'); b.innerHTML = html; }; };
 
   /* =========================================================
      State: one object, kept in localStorage. Reset demo clears it.
@@ -293,7 +297,7 @@
     if (p.live) Object.entries(p.live).forEach(([cid, o]) => { if (conn(cid)) c = { ...c, ...o, liveFrom: cid }; });
     /* Another take (remix.js mirrorTake → p.take): the card's draft slot shows it; the card's own title and why stay the move's.
        Being drawn: the old picture says a new one is coming. Didn't come through: the old picture, and the reason under it */
-    if (p.take && (p.take.image || p.take.drawing || p.take.drawError)) { const t = p.take, d0 = c.draft || {}, base = d0.images?.length ? d0.images : (c.images || []).slice(0, 1);
+    if (p.take && (p.take.image || p.take.drawing || p.take.drawError)) { const t = p.take, d0 = c.draft || {}, base = d0.images?.length ? d0.images : (p.research?.kind === 'ad' || p.research?.ad ? [] : (c.images || []).slice(0, 1)); /* a rival's poster is never the stand-in for our take */
       if (t.image) c.draft = { ...d0, as: 'take', images: [t.image], video: null, poster: null, render: null, headline: t.title, title: t.title, copy: t.body, fallback: base[0] || d0.fallback, remaking: false, photoOnly: false, takeErr: null };
       else if (base.length || d0.video) c.draft = { ...d0, as: 'take', images: base, headline: t.title || d0.headline, copy: t.body || d0.copy, remaking: !!t.drawing, photoOnly: false, takeErr: t.drawing ? null : t.drawError }; }
     if (p.done) c.done = p.done; /* only what really happened: the server's own record, never a tap remembered in this browser */
@@ -973,7 +977,7 @@
   const draftSlot = (c) => { const d = c.draft; if (!d || !(d.video || d.images?.length)) return '';
     /* a stand-in (the product photo alone, or a picture being made again) says a new one is coming; it is never called a first draft */
     const lab = d.remaking || d.photoOnly ? `<span class="fd-lab is-wait">${ic('refresh', 's12')}New picture coming</span>` : d.takeErr ? `<span class="fd-lab is-wait" title="${esc(d.takeErr)}">${ic('info', 's12')}No new picture</span>` : `<span class="fd-lab">${ic(DRAFT_IC[d.as] || 'sparkles', 's12')}${d.as === 'take' ? 'Another take' : 'First draft'}</span>`, port = d.ratio !== '1:1';
-    const fb = [d.fallback, ...(c.images || [])].filter((x) => x && !(d.images || []).includes(x)); /* the real product photo, if the draft's picture can't load */
+    const fb = [d.fallback, ...(window.MakeSheet?.isRival?.(c) ? [] : c.images || [])].filter((x) => x && !(d.images || []).includes(x)); /* never a rival's poster under our draft */ /* the real product photo, if the draft's picture can't load */
     /* a reel (9:16) fills the card's width in a 4:5 frame: the whole reel centred over a blurred copy of itself, never a narrow
        box with an empty side (17 Oct); every other draft keeps its own shape */
     const tall = d.ratio === '9:16' ? ' r916' : '', bgUrl = tall ? d.poster || d.render || d.images?.[0] || '' : '', bgSt = bgUrl ? ` style="--fd-bg:url(&quot;${esc(bgUrl)}&quot;)"` : '';
@@ -991,7 +995,7 @@
     const dn = doneText(p, c), rows = fd && c.kind === 'rows' && c.rows?.length ? slotHtml(c) : '';
     /* "New": made since the last visit and not seen before it; "Start here": the first card to open on a first visit */
     const tags = `${NEWSET.has(p.id) && !isNew ? '<span class="new-tag">New</span>' : ''}${p.id === START_ID ? `<button class="start-tag" data-start>${ic('sparkles', 's12')}Start here</button>` : ''}`;
-    const hd = (UI2 ? head(c.agent, sub, c.badge, true, AGENT[c.agent] || fromLabel(c)) : head(c.agent, sub, c.badge, true, fromLabel(c))).replace('<button class="icon-btn" data-more', `${tags}<button class="icon-btn" data-more`);
+    const hd = (UI2 ? head(c.agent, sub, c.badge, true, (window.MakeSheet?.isRival?.(c) ? '' : AGENT[c.agent]) || fromLabel(c)) /* a rival's ad says it is theirs, never under our agent's name */ : head(c.agent, sub, c.badge, true, fromLabel(c))).replace('<button class="icon-btn" data-more', `${tags}<button class="icon-btn" data-more`);
     return `<article class="card${c.liveFrom ? ' is-live' : ''}${p.dummy || p.demo || p.onlyWhen || /^live-/.test(p.id) ? ' is-dummy' : ''}${isNew ? ' is-new' : ''}${fd ? ' has-draft' : ''}${p.id === START_ID ? ' is-start' : ''}" data-post="${i}" data-id="${esc(p.id)}">${hd}${fd || slotHtml(c)}${media ? barHtml(c.cta, dn) + actsHtml(p) + body + rows : actsHtml(p) + body + barHtml(c.cta, dn)}</article>`;
   };
 
@@ -1099,7 +1103,7 @@
     modal(`<div class="sheet pick-sheet pf-sheet ai-sheet" role="dialog" aria-label="How Brew checks AI answers"><header class="sh-h"><b class="sh-t">${ic('shield', 's16')}How Brew checks AI answers</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>
       <div class="pf-b"><div class="sk" style="height:64px"></div><div class="sk" style="height:180px;margin-top:12px"></div></div></div>`, (w) => {
       w.addEventListener('submit', async (ev) => { const f = ev.target.closest('[data-aiq-add]'); if (!f) return; ev.preventDefault(); const i = $('input', f), b = $('button', f), v = i.value.trim(); if (!v) return;
-        b.disabled = true; const r = await tapi('POST', '/api/tenants/:t/ai-questions', { q: v }).catch(() => null); b.disabled = false;
+        const done = busyBtn(b, 'Asking…'); const r = await tapi('POST', '/api/tenants/:t/ai-questions', { q: v }).catch(() => null); done();
         if (!r?.ok) return toast(esc(r?.error || 'That didn’t go through. Try again.'));
         toast(`${ic('check', 's16')}${esc(r.note)}`); paint(); if (r.asked) setTimeout(paint, 75e3); }); });
     const paint = async () => { const r = await tapi('GET', `/api/tenants/:t/ai-answers?src=${encodeURIComponent(src || 'weekly')}`).catch(() => null), box = $('#modal .ai-sheet .pf-b'); if (!box) return;
@@ -1452,7 +1456,7 @@
     else { b.disabled = false; toast(`${ic('info', 's16')}Couldn’t mute it from here. Use the mute link in the email.`); } });
   /* Write the rest, on the feed's paused card (the Learned page binds its own) */
   document.addEventListener('click', async (e) => { const b = e.target.closest('[data-brewing] [data-mvpro]'); if (!b) return; const go = async () => { const r = await api(`/api/brands/${B.slug || BR}/pro`, {}); if (!r || r.error) { toast(r?.error || 'Couldn’t start the moves. Try again.'); return false; } return true; };
-    if (!S.pro && PAYWALL) return openPlan('moves', go); b.disabled = true; if (await go()) { toast('Writing the rest of the moves.'); BREW = null; await loadMV(); const el = $('[data-brewing]'); if (el) { const h = brewingCard(); if (h) el.outerHTML = h; else el.remove(); } } else b.disabled = false; });
+    if (!S.pro && PAYWALL) return openPlan('moves', go); const done = busyBtn(b, 'Starting…'); if (await go()) { toast('Writing the rest of the moves.'); BREW = null; await loadMV(); const el = $('[data-brewing]'); if (el) { const h = brewingCard(); if (h) el.outerHTML = h; else el.remove(); } done(); b.disabled = true; } else done(); }); /* started: it stays off, so the rest is never asked for twice */
   /* the read waits a little for a person to check it; then Brew starts writing with what it read (status.writeAt, local time) */
   const checkWaitCard = () => GEN && waitsOnCheck(BREW) ? `<article class="card brew-wait is-check" data-brewing><div class="body"><span class="bw-k2">${ic('clock', 's14')}Waiting for you${BREW.waitingSince ? ` · ${ago(BREW.waitingSince)}` : ''}</span>
       <h3>Check what we read for ${esc(B.brand.name)}</h3><p>The brand brief and the moves are written from what you confirm. ${writeAtLine(BREW)}</p>
@@ -1680,7 +1684,7 @@
     /* v2: Make it yours opens the one sheet; Another take passes this card and queues a new one in the background (never a wait) */
     if (b.dataset.act === 'make') window.MakeSheet?.open(p, { onSaved: () => rerenderKeep(p.id, true) });
     if (b.dataset.act === 'proof') openProof(p);
-    if (b.dataset.act === 'take') { b.disabled = true; const r = await tapi('POST', `/api/cards/${p.id}/remix`, { queue: true, take: true }); b.disabled = false;
+    if (b.dataset.act === 'take') { const done = busyBtn(b, 'Starting…'); const r = await tapi('POST', `/api/cards/${p.id}/remix`, { queue: true, take: true }).catch((er) => ({ error: er.message })); done();
       if (r?.error || !r?.queued) return toast(`${ic('info', 's16')}${esc(r?.error || 'Another take isn’t available yet.')}`);
       S.dismissed[p.id] = true; save(); card.classList.add('is-gone'); toast(`${ic('refresh', 's16')}Another take is on its way. It lands at the top when ready.`); setTimeout(() => card.remove(), 400); }
   });
@@ -1704,8 +1708,8 @@
     requestAnimationFrame(() => { placeStickers(); placeNotes(); }); };
   /* v1: Another take keeps the card in place (v2's handler passes it for the stack); the new take shows on its draft when drawn */
   document.addEventListener('click', async (e) => { if (V2) return; const b = e.target.closest('.card [data-act="take"]'); if (!b) return; e.stopImmediatePropagation();
-    const p = FEED[+b.closest('.card').dataset.post]; if (!p || b.disabled) return; b.disabled = true;
-    const r = await tapi('POST', `/api/cards/${p.id}/remix`, { queue: true, take: true }); b.disabled = false;
+    const p = FEED[+b.closest('.card').dataset.post]; if (!p || b.disabled) return; const done = busyBtn(b, 'Starting…');
+    const r = await tapi('POST', `/api/cards/${p.id}/remix`, { queue: true, take: true }).catch((er) => ({ error: er.message })); done();
     if (r?.error || !r?.queued) return toast(`${ic('info', 's16')}${esc(r?.error || 'Another take isn’t available yet.')}`);
     await redrawTakes([p.id]);
     toast(`${ic(r.drawError ? 'info' : 'refresh', 's16')}${esc(r.drawError || (r.drawing ? 'Another take is on its way. It shows on this card when it’s ready.' : 'Another take is on this card.'))}`); }, true);
@@ -1756,9 +1760,9 @@
       <label class="sl-note"><input id="sl-note" placeholder="Add a note (optional)" maxlength="240"></label>
       <div class="sh-foot"><button class="btn btn-ghost sm" data-close>Cancel</button><button class="btn btn-primary sm" data-sl-go>${ic('send', 's16')}Post to <span data-sl-ch>${esc(ch.name)}</span></button></div></div>`, (m) => {
       $$('[data-sl-id]', m).forEach((b) => (b.onclick = () => { ch = top.find((x) => x.id === b.dataset.slId) || ch; $$('[data-sl-id]', m).forEach((x) => x.setAttribute('aria-pressed', String(x === b))); $('[data-sl-ch]', m).textContent = ch.name; }));
-      $('[data-sl-go]', m).onclick = async (ev) => { const btn = ev.currentTarget; btn.disabled = true;
+      $('[data-sl-go]', m).onclick = async (ev) => { const btn = ev.currentTarget, done = busyBtn(btn, 'Posting…');
         const r = await fetch(`/api/brands/${window.BRAND}/slack/post`, { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ channel: ch.id, title: c.title, sub: c.sub || '', note: $('#sl-note', m).value.trim(), url }) }).then((x) => x.json()).catch(() => ({ error: 'You look offline. Try again.' }));
-        if (r.error) { btn.disabled = false; return toast(esc(r.error)); }
+        if (r.error) { done(); return toast(esc(r.error)); }
         closeModal(); logIt(c.title, `Posted to ${ch.name}`, 'send'); toast(`${ic('check', 's16')}Posted to ${esc(ch.name)} in Slack. The link opens this card.`); };
     });
   };
@@ -2338,7 +2342,7 @@
     const to = t.closest('[data-to]'); if (to) { DP.to = to.dataset.to; DP.picking = null; repaintDetail(); $('#dp-in')?.focus(); return; }
     const ch = t.closest('[data-chip]'); if (ch) return sendComposer(ch.dataset.chip);
     const sd = t.closest('[data-send]'); if (sd) return sendTo(sd.dataset.send);
-    const jb = t.closest('[data-jb-send]'); if (jb) { jb.disabled = true; return window.JamRoom?.send?.(jb.dataset.jbSend); }
+    const jb = t.closest('[data-jb-send]'); if (jb) { const done = busyBtn(jb, 'Sending…'); return Promise.resolve(window.JamRoom?.send?.(jb.dataset.jbSend)).finally(done); }
     const cg = t.closest('[data-cp-go]'); if (cg) return goWith(DP.p, cg.dataset.cpGo);
     const co = t.closest('[data-cp-open]'), cob = t.closest('button,a,details'); if (co && (!cob || cob === co)) { DP.mOpen = !!$('.cp-measure')?.open; DP.openOpt = { ...(DP.openOpt || {}), [DP.p.id]: co.dataset.cpOpen }; repaintDetail(); const cm2 = $('.cp-measure.is-opt'); cm2?.classList.add('is-swap'); return; }
     if (t.closest('[data-cp-undo]')) { if (DP.w && DP.w.stage === 'shared') return toast('The brief is shared. Make the next version instead.'); const d = { ...(S.decided || {}) }; delete d[DP.p.id]; S.decided = d; save(); pushDecided(DP.p.id, null); if (DP.w) { DP.w.decided = null; tapi('POST', `/api/work/${DP.w.id}/decided`, { id: null }); } return repaintDetail(); }
@@ -4014,7 +4018,7 @@
         if (e.target.closest('[data-ph-x]')) return closeModal();
         const pk = e.target.closest('[data-ph-pick],[data-ph-ref]'); if (pk) { const u = pk.dataset.phRef != null ? PH.data.references[+pk.dataset.phRef].url.replace(/^\//, '') : PH.data.photos[+pk.dataset.phPick].img, max = PH.data.max || 1; PH.sel = PH.sel.includes(u) ? PH.sel.filter((x) => x !== u) : max === 1 ? [u] : [...PH.sel, u].slice(-max); return phPaint(w); }
         if (e.target.closest('[data-ph-use]')) return phDone(await tapi('POST', `/api/changes/${ch.id}/photo`, { urls: PH.sel }));
-        const ai = e.target.closest('[data-ph-ai]'); if (ai) { ai.disabled = true; const brief = [PH.brief.trim(), PH.sel[0] ? `Use this product: ${PH.data.photos.find((x) => x.img === PH.sel[0])?.t || ''}` : ''].filter(Boolean).join('. ');
+        const ai = e.target.closest('[data-ph-ai]'); if (ai) { busyBtn(ai, 'Starting…'); const brief = [PH.brief.trim(), PH.sel[0] ? `Use this product: ${PH.data.photos.find((x) => x.img === PH.sel[0])?.t || ''}` : ''].filter(Boolean).join('. ');
           if (PH.sel.length) await tapi('POST', `/api/changes/${ch.id}/photo`, { urls: PH.sel.slice(0, 1) }); /* the picked product is the AI's reference */
           return phDone(await tapi('POST', `/api/changes/${ch.id}/photo`, { ai: true, brief })); }
       }); }); };
@@ -4500,8 +4504,8 @@
     $$('[data-mvjump]').forEach((x) => x.onclick = (e) => { e.preventDefault(); $(`#mvg-${x.dataset.mvjump}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
     const upEst = () => { const k = $$('[data-upn]:checked').length, el = $('[data-upest]'); if (el) el.textContent = `${k ? `about $${Math.max(1, Math.round(k * (U?.estMove || 1.7)))}` : 'Tick a move'} · 8 to 10 min`; const bt = $('[data-uprw]'); if (bt) bt.disabled = !k || !U?.canRewrite; };
     $$('[data-upn]').forEach((x) => x.onchange = upEst); if ($('[data-upn]')) upEst();
-    $('[data-upcheck]')?.addEventListener('click', async (e) => { e.currentTarget.disabled = true; const r = await api(`/api/brands/${slug}/updates`, { action: 'check' }); toast(r?.error ? esc(r.error) : 'Checking for updates. This takes about 3 minutes.'); renderMoves(); });
-    $('[data-uprw]')?.addEventListener('click', async (e) => { const ns = $$('[data-upn]:checked').map((x) => +x.dataset.upn); if (!ns.length) return; e.currentTarget.disabled = true; const r = await api(`/api/brands/${slug}/updates`, { action: 'rewrite', moves: ns }); toast(r?.error ? esc(r.error) : `Rewriting ${ns.length} move${ns.length === 1 ? '' : 's'}. About 8 to 10 minutes.`); renderMoves(); });
+    $('[data-upcheck]')?.addEventListener('click', async (e) => { busyBtn(e.currentTarget, 'Checking…'); const r = await api(`/api/brands/${slug}/updates`, { action: 'check' }); toast(r?.error ? esc(r.error) : 'Checking for updates. This takes about 3 minutes.'); renderMoves(); });
+    $('[data-uprw]')?.addEventListener('click', async (e) => { const ns = $$('[data-upn]:checked').map((x) => +x.dataset.upn); if (!ns.length) return; busyBtn(e.currentTarget, 'Starting…'); const r = await api(`/api/brands/${slug}/updates`, { action: 'rewrite', moves: ns }); toast(r?.error ? esc(r.error) : `Rewriting ${ns.length} move${ns.length === 1 ? '' : 's'}. About 8 to 10 minutes.`); renderMoves(); });
     $('[data-upauto]')?.addEventListener('change', async (e) => { await api(`/api/brands/${slug}/updates`, { action: 'auto', on: e.target.checked }); toast(e.target.checked ? 'The moves will keep themselves current.' : 'Automatic updates are off.'); renderMoves(); });
     const busy = U?.checking || U?.rewriting;
     if (building || busy) MV.t = setTimeout(() => view === 'moves' && renderMoves(), MVT.tab !== 'moves' || busy ? 8e3 : 15e3);
@@ -4833,7 +4837,7 @@
     $$('[data-hd-open]').forEach((b) => b.addEventListener('click', () => openHeard())); /* the overview tile and the row both open it */
     /* paused at the free spend cap: Pro carries the build on to every move */
     $('[data-mvpro]')?.addEventListener('click', (e) => { const b = e.currentTarget, go = async () => { const r = await api(`/api/brands/${mvSlug()}/pro`, {}); if (!r || r.error) { toast(r?.error || 'Pro couldn’t start the moves. Try again.'); return false; } return true; };
-      if (!S.pro && PAYWALL) return openPlan('moves', go); b.disabled = true; go().then((ok) => { if (ok) { toast('Writing the rest of the moves.'); renderLearned(); } else b.disabled = false; }); });
+      if (!S.pro && PAYWALL) return openPlan('moves', go); const done = busyBtn(b, 'Starting…'); go().then((ok) => { done(); if (ok) { b.disabled = true; toast('Writing the rest of the moves.'); renderLearned(); } }); });
     $$('[data-hd-theme]').forEach((b) => b.onclick = () => openHeard({ theme: b.dataset.hdTheme }));
     $$('[data-goto-move]').forEach((b) => b.onclick = () => openMove(+b.dataset.gotoMove));
   };
@@ -5131,7 +5135,7 @@
 
   /* ---------- go ---------- */
   // jam-room.js (the Jam Room) works from these
-  window.__BREW = { putCh: (ch) => putCh(ch), paintStudio: () => paintStudio(), modal: (h, b) => modal(h, b), closeModal: () => closeModal(), refreshAfterConnect: (id) => refreshAfterConnect(id), glyph: (id, n) => glyph(id, n), demoSheet: (h) => demoSheet(h), shareSheet: (p) => shareSheet(p), pageOf: (id) => PAGE[id] || null, studioCard: () => (view === 'remix' ? RX.p : null), studioV: () => (view === 'remix' && RX.ch ? curN(RX.ch) : null) /* the version on the jam's stage, for the sheets */, libAct, cxDone: (id) => $$(`[data-cxrow="${id}"]`).forEach((r) => (r.outerHTML = cxRow(id))), $, $$, esc, wait, ic, face, avatar, podFaces, brewAv, SO, movesTotal: () => +BREW?.total || 0, toast, toastLong, B, AGENT, save, ROLE, colleague, conn, cardOf, byId, tapi, putWork, counts, inrS, openConnect, openDetail, closeDetail, closePop, closeModal, modal, assetHtml, renderView, renderWork, workOfCard, pseudoPost, colleagueForCard,
+  window.__BREW = { busyBtn: (b, l) => busyBtn(b, l), putCh: (ch) => putCh(ch), paintStudio: () => paintStudio(), modal: (h, b) => modal(h, b), closeModal: () => closeModal(), refreshAfterConnect: (id) => refreshAfterConnect(id), glyph: (id, n) => glyph(id, n), demoSheet: (h) => demoSheet(h), shareSheet: (p) => shareSheet(p), pageOf: (id) => PAGE[id] || null, studioCard: () => (view === 'remix' ? RX.p : null), studioV: () => (view === 'remix' && RX.ch ? curN(RX.ch) : null) /* the version on the jam's stage, for the sheets */, libAct, cxDone: (id) => $$(`[data-cxrow="${id}"]`).forEach((r) => (r.outerHTML = cxRow(id))), $, $$, esc, wait, ic, face, avatar, podFaces, brewAv, SO, movesTotal: () => +BREW?.total || 0, toast, toastLong, B, AGENT, save, ROLE, colleague, conn, cardOf, byId, tapi, putWork, counts, inrS, openConnect, openDetail, closeDetail, closePop, closeModal, modal, assetHtml, renderView, renderWork, workOfCard, pseudoPost, colleagueForCard,
     get S() { return S; }, get WORK() { return WORK; }, get view() { return view; }, setChange: (ch) => { if (DP && ch) DP.ch = ch; }, currentDetail: () => DP && (DP.w ? { ...DP.p, _work: DP.w, _ch: DP.ch || null } : DP.p), SPLIT, slotHtml, ago, repaintDetail: () => repaintDetail(true), detailDirty: () => !!DP?.dirty, fitKnobs, fitSuggest,
     /* v2 (onboard2.js, make-sheet.js) */ V2, FEED_STACK, brandClock, UI2, GEN, LANDING, DEMO_LAND, api, ls, LSP, get TID() { return TID; }, signWall, needSignin, ensureTenant, scrCard, seatEntries, defaultWants, loadFeed, rank, openRemix, openPlan, teamStep, finishOnboarding, checkRead, waitMoves, whoFor, continueToFeed, hashParams };
   // #setup replays onboarding (it only plays once otherwise, because finishing it is saved in this browser)

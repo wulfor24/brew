@@ -33,6 +33,7 @@ import { draftPrompt, imagePrompt, hookBlock, smallOf, DRAFT_SCHEMA, DRAFT_RATIO
 import { cardValue } from './value.js'; // what a card is worth doing: the order drafts are made in
 import { emailHtml, whatsappHtml, pageHtml, collectionHtml } from './draft-mocks.js';
 import { inferMake } from './cards-gen.js';
+import { isRivalCard, isResearchImage } from './rival-ad.js'; // a rival's poster is never our product photo
 import { genFlush as genFlush0 } from './gen-store.js';
 
 const H = 3600e3, DAY = 24 * H;
@@ -121,7 +122,7 @@ export function cardBriefText(c = {}, { moveDocs = {} } = {}) {
 export function draftView(d, c = null) {
   if (!d) return null; const images = d.slides?.length ? d.slides.map((x) => x.image).filter(Boolean) : d.render ? [d.render] : d.image ? [d.image] : [];
   if (!images.length && !d.video) return null;
-  const fallback = [d.photo, ...(c?.images || []), c?.img].find((x) => x && typeof x === 'string' && !images.includes(x)) || null;
+  const fallback = [d.photo, ...(isRivalCard(c) ? [] : [...(c?.images || []), c?.img])].find((x) => x && typeof x === 'string' && !images.includes(x) && !isResearchImage(x)) || null; /* never a rival's poster under our draft */
   const bare = !!d.photoOnly && !d.render && !d.video && !d.slides?.length;
   return { as: d.as, kind: d.kind || d.as, images, video: d.video || null, poster: d.video ? d.poster || d.render || d.image || images[0] || null : null, ratio: d.video && d.clipStill ? '9:16' : d.ratio || null, title: d.title || '', copy: cut(String(d.copy || '').replace(/[#*_>`]/g, ''), 240),
     ...(d.headline ? { headline: d.headline } : {}), ...(fallback ? { fallback } : {}), ...(d.imgRetry || bare ? { remaking: true } : {}), ...(bare ? { photoOnly: true } : {}) };
@@ -168,7 +169,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
   const opened = (slug) => { if (slug) opens.set(slug, now()); };
   // the real product photo: a pack asset, a public file, or a store image fetched once into tmp
   const photo = async (c, named = null) => {
-    for (const rel of [named?.img, ...(c.images || []), c.img, ...(c.post?.media?.product?.images || [])].filter(Boolean)) {
+    for (const rel of [named?.img, ...(isRivalCard(c) ? [] : [...(c.images || []), c.img]), ...(c.post?.media?.product?.images || [])].filter((x) => x && !isResearchImage(x))) {
       try {
         if (/^https?:/.test(rel)) { const f = path.join(os.tmpdir(), 'brew-ph-' + sha(rel) + '.jpg'); if (!fs.existsSync(f)) { const r = await safeFetch(rel, { signal: AbortSignal.timeout(20e3) }); if (!r.ok) continue; fs.writeFileSync(f, Buffer.from(await r.arrayBuffer())); } return f; }
         const f = photoAsync ? await photoAsync(rel) : null; if (f && fs.existsSync(f)) return f;
@@ -184,7 +185,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
     return out; };
   const render = async (html, ratio, key) => (launchBrowser ? M.render(html, ratio, key) : null);
   /* the address of the real photo a draft stands on (for the page's fallback), in the order photo() tries them */
-  const photoRelOf = (c, named, p) => [named?.img, ...(c.images || []), c.img, ...(c.post?.media?.product?.images || []), p?.catalog?.[0]?.img].find((x) => x && typeof x === 'string' && !/^\/?gen\//.test(x)) || null;
+  const photoRelOf = (c, named, p) => [named?.img, ...(isRivalCard(c) ? [] : [...(c.images || []), c.img]), ...(c.post?.media?.product?.images || []), p?.catalog?.[0]?.img].find((x) => x && typeof x === 'string' && !/^\/?gen\//.test(x)) || null;
   /* one picture of the real product: the guard tries the model again and, failing that, hands back the real photo (genFailed).
      salt: a new take on another day is another file, whatever its words */
   const makeStill = async (slug, c, { src, ip, ratio, text, catalog, brand, named = null, retry = false, salt = '' }) => {

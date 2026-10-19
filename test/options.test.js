@@ -76,3 +76,15 @@ test('One more beside the options is one more option: same parent, its own tab, 
   const op = m.change.options; assert.equal(op.list.length, 4); assert.equal(op.list[3].letter, 'D'); assert.equal(op.on, op.list[3].id); assert.equal(m.change.head, op.list[3].id);
   assert.equal(op.list[3].tip, op.list[3].id, 'its own tab, not part of another option'); assert.equal(op.list[2].tip, r.change.options.list[2].tip, 'C is untouched');
 });
+
+test('a card that lists its ideas makes exactly those: one option per idea, in order, named as the card names them; One more makes the missing one', async () => {
+  const t = tenant(); const card = t.cards.get('c1'); card.kind = 'variants';
+  card.variants = [{ angle: 'Hairfall combo hook', title: 'Stop thinning with the combo', sub: 'a' }, { angle: 'Dandruff relief focus', title: 'Scale the dandruff combo', sub: 'b' }, { angle: 'Scale ad volume', title: 'Match Pilgrim', sub: 'c' }];
+  t.changes.ch_1 = change('ch_1'); const { call } = studio();
+  await call('GET /api/changes/:chid', {}, t, { chid: 'ch_1' });
+  const r = await call('POST /api/changes/:chid/iterate', { message: 'Two cuts of this ad' }, t, { chid: 'ch_1' });
+  assert.deepEqual(r.change.options.list.map((o) => o.name), ['Hairfall combo hook', 'Dandruff relief focus', 'Scale ad volume']);
+  /* a jam made before this with only two of them: One more makes the third idea */
+  t.changes.ch_1.options.ids.pop(); const m = await call('POST /api/changes/:chid/more', {}, t, { chid: 'ch_1' });
+  assert.equal(m.change.options.list.at(-1).name, 'Scale ad volume');
+});
