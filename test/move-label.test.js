@@ -18,7 +18,7 @@ test('every place a move number is shown uses the label; the card src on file ke
   const read = (f) => fs.readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
   for (const f of ['moves.js', 'jam-brief.js', 'handoff.js', 'digest.js', 'brand-learnings.js', 'build.js', 'public/jam-room.js', 'public/app.js'])
     assert.doesNotMatch(read(f).split('\n').filter((l) => !/const mvLabel = /.test(l)).join('\n'), /Move \$\{String\([\w.]+\)\.padStart\(2, '0'\)\}|`Move \$\{pad2?\([\w.]+\)\}/, `${f} says moves through the label helper`);
-  assert.match(read('feed-service.js'), /rest\.src = moveSay\(rest\.src\)/);
+  assert.match(read('feed-service.js'), /rest\.src = [^\n]*: moveSay\(rest\.src\)/); /* the old team name heals first (FEED-QA-10) */
   assert.match(read('moves-cadence.js'), /const pre = `Move \$\{pad\(move\.n\)\}`/, 'src on file is unchanged (numsOf reads it)');
 });
 
