@@ -1039,13 +1039,19 @@
     const tall = d.ratio === '9:16' ? ' r916' : '', bgUrl = tall ? d.poster || d.render || d.images?.[0] || '' : '', bgSt = bgUrl ? ` style="--fd-bg:url(&quot;${esc(bgUrl)}&quot;)"` : '';
     if (d.video) return `<div class="media fd${port ? ' portrait' : ''}${tall}"${bgSt}><video class="fd-v" src="${esc(d.video)}"${d.poster ? ` poster="${esc(d.poster)}"` : ''}${fb.length ? ` data-fb="${esc(fb.join('|'))}"` : ''} playsinline muted loop preload="none" aria-label="${esc(d.title || 'First draft video')}"></video>${lab}</div>${draftCap(d)}`;
     return mediaSlot(d.images.map(esc), { alt: d.headline || d.title || 'First draft', portrait: port, extra: lab, fallback: fb }).replace('<div class="media', `<div${bgSt} class="media fd${tall}`) + draftCap(d); };
+  /* a Signals card that rests on an account Brew can't read yet says so on the card, in one line with one Connect (QA FEED-ARV-07):
+     the account is the one the proof sheet names (feed-service pub: proof.needs), the store first like the column guide */
+  const needOf = (p) => { if (p?.sector !== 'signals') return null; const ids = (p.proof?.needs || []).filter((id) => B.connectors?.[id] && !conn(id));
+    return ids.includes('shopify') ? 'shopify' : ids[0] || null; };
+  const needLine = (p) => { const id = needOf(p); if (!id) return ''; const nm = B.connectors[id].name, admin = window.LiveConn?.boss?.() === false;
+    return `<div class="card-need">${ic('plug', 's14')}<span>Connect ${esc(nm)} to see this</span>${admin ? '<small>Your admin connects it</small>' : `<button class="btn btn-ghost sm" data-cx="${esc(id)}">Connect</button>`}</div>`; };
   const postCard = (p, i) => {
     const c = cardOf(p);
     const isNew = PINNED.has(p.id);
     const sub = [isNew ? 'Just in' : agoText(c.time), campLine(c)].filter(Boolean).join(' · ');
     const lc = null; /* Do it now was cut: nothing goes live from Brew, so no card shows a Live row */
     const live = lc ? `<button class="live-row" data-livech data-card="${esc(p.id)}" title="${esc(`${lc.label}${lc.scope ? ' · ' + lc.scope : ''} · ${byTeam(lc.by) ? 'shipped by the ShopOS team' : 'shipped by Brew'}. Open the history`)}"><span class="live-pill"><i class="pulse"></i>Live</span><span class="live-tx">${esc(lc.label)}</span><span class="live-v">v${lc.v}</span>${ic('right', 's14')}</button>` : '';
-    const body = `<div class="body">${live || statusRow(p, c)}${p.told ? `<span class="told-tag" title="This card uses what your team told Brew">${ic('book', 's12')}From what your team told Brew</span>` : ''}<h3>${esc(c.title)}</h3><p>${esc(c.sub)}</p>${makeChip(c)}${aisLine(p)}${srcLine(c)}</div>`;
+    const body = `<div class="body">${live || statusRow(p, c)}${p.told ? `<span class="told-tag" title="This card uses what your team told Brew">${ic('book', 's12')}From what your team told Brew</span>` : ''}<h3>${esc(c.title)}</h3><p>${esc(c.sub)}</p>${makeChip(c)}${aisLine(p)}${needLine(p)}${srcLine(c)}</div>`;
     const fd = ['conflict', 'answer'].includes(c.kind) ? '' : draftSlot(c); /* a draft replaces the lane photo; a rows card keeps its rows under the words */
     const media = !!fd || c.kind === 'media' || (c.kind === 'variants' && c.images?.length);
     const dn = doneText(p, c), rows = fd && c.kind === 'rows' && c.rows?.length ? slotHtml(c) : '';

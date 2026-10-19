@@ -60,6 +60,6 @@ test('no screen, case or brief offers several versions to pick from', async () =
   const app = read('public/app.js'), brief = read('jam-brief.js'), canvas = read('public/canvas.js'), plan = read('card-plan.js');
   for (const bad of ['Making three variations', 'Writing three complete packages', 'Make 3 variations', 'Try 3 versions', 'Draft three reel hooks']) assert.ok(!app.includes(bad) && !canvas.includes(bad), bad);
   assert.ok(!brief.includes('Other options'), 'the brief carries the one way forward');
-  assert.match(plan, /export const PLAN_V = 2;/, 'plans saved before one-always rebuild');
+  assert.match(plan, /export const PLAN_V = ([2-9]|\d{2,});/, 'plans saved before one-always rebuild');
   assert.match(app, /const optTabs = \(ch, viewing\) => \{ const op = null;/, 'no option tabs, even on old jams');
 });

@@ -58,13 +58,13 @@ test('plain: cached rewrites apply by the card\'s own words; jargon is swapped w
   const P = createPlain({ ai, store });
   await P.load('b1');
   const before = P.apply('b1', c);
-  assert.equal(before.title, 'sales per rupee of ads is low on product page traffic'); assert.match(before.sub, /people new to you/i);
+  assert.equal(before.title, 'Return on ad spend is low on product page traffic'); assert.match(before.sub, /people new to you/i);
   assert.ok(P.queue('b1', [c], 'B1')); while (P.busy('b1')) await new Promise((r) => setTimeout(r, 5));
   const after = P.apply('b1', c);
   assert.equal(after.title, 'Your ads bring back too little'); assert.equal(after.detail.how[0], 'Fix the product page'); assert.equal(after.orig.title, c.title);
   assert.ok(files['b1/plain.json'][plainKey(c)]);
   assert.equal(P.apply('b1', { ...c, title: 'Changed words' }).title, 'Changed words'); /* changed words: no stale rewrite */
-  assert.equal(dejargon('AOV and CTR'), 'average order and click rate');
+  assert.equal(dejargon('AOV and CTR'), 'Average order and click rate'); /* a swap that starts a sentence keeps its capital */
 });
 
 test('"what\'s the evidence behind this?" is answered from the card\'s own proof: what Brew saw, the plan, the sources, the reasoning', async () => {

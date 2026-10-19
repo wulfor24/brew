@@ -10,9 +10,10 @@
 import { recipeOfCard, labelFor } from './remix.js';
 import { familyOf, FAMILY_NAME } from './studio.js';
 import { one, oneOf } from './text-fit.js'; // the asset said as one; saved option counts said as one
+import { dejargon } from './plain.js'; // a plan's steps in the same plain words as the card (no GMC, webhook, products.json, JSON-LD)
 export { one, oneOf };
 
-export const PLAN_V = 2; /* 2: one, always (19 Oct): saved plans on jams and work items with v 1 are rebuilt from the card */
+export const PLAN_V = 3; /* 2: one, always (19 Oct): saved plans on jams and work items with v 1 are rebuilt from the card; 3: plain words in every step (QA FEED-ARV-07) */
 const cut = (s, n) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
 const lc = (s) => String(s || '').replace(/^./, (x) => x.toLowerCase());
 const andList = (xs) => xs.length <= 1 ? (xs[0] || '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`;
@@ -40,7 +41,7 @@ const ASSET = {
   post: (k, c, lab) => (k === 'short_video' ? (/video ad/i.test(lab || '') ? 'video ads' : 'short videos') : k === 'comment_reply' || /reply/i.test(lab || '') ? 'replies' : 'posts'),
   crm: (k) => ({ review_ask: 'review asks', new_segment: 'segments', paid_broadcast: 'WhatsApp broadcasts', discount_offer: 'retention offers', flow_timing: 'send schedules' }[k] || 'messages'),
   store: (k) => ({ price_change: 'price changes', bundle_offer: 'offer tiles', pdp_block: 'proof blocks', new_section: 'page sections', blog_post: 'blog posts' }[k] || 'page copy versions'),
-  vis: (k) => ({ llms_txt: 'llms.txt and claims lists', schema_fix: 'markup fixes', new_claim: 'claims', blog_post: 'blog posts' }[k] || 'FAQ answers'),
+  vis: (k) => ({ llms_txt: 'AI-tool pages', schema_fix: 'search-friendly product info fixes', new_claim: 'claims', blog_post: 'blog posts' }[k] || 'FAQ answers'),
   search: () => 'search ads', listing: (k) => (k === 'takedown' ? 'takedown requests' : 'listing versions'), print: () => 'insert designs',
   meta_ops: (k) => ({ pause_losers: 'pause list', pause_pointing: 'pause list', restart_paused: 'restart list', scale_budget: 'budget change', shift_budget: 'budget change', stop_rule: 'stop rule', price_in_ads: 'price update', swap_copy: 'copy swap' }[k] || 'account change'),
   setup: (k) => ({ fix_links: 'redirect list', tracking_fix: 'tracking fix', store_setting: 'setting change' }[k] || 'change list'),
@@ -177,9 +178,9 @@ export function planFor(c = {}, { draft = null, action: forced = null } = {}) {
   let by = 'rule';
   const ai = !batch && c.plan?.by === 'ai' ? fromAi(c.plan.steps, steps) : null; if (ai) { steps = ai; by = 'ai'; }
   const plan = { v: PLAN_V, action, family, asset: FAMILY_NAME[family] || 'Version', cta, n, batch, by, target: ctx.where,
-    make: { n, what: asset, one: one(asset), kind: family }, steps: steps.map((s, i) => ({ n: i + 1, ...s })), draft: draft ? { as: draft.as, images: draft.images || [], video: draft.video || null, poster: draft.poster || null, ratio: draft.ratio || null, title: draft.title || '', copy: draft.copy || '', ...(draft.code ? { code: draft.code } : {}) } : null,
+    make: { n, what: asset, one: one(asset), kind: family }, steps: steps.map((s, i) => ({ n: i + 1, ...s, t: dejargon(s.t), s: dejargon(s.s) })), draft: draft ? { as: draft.as, images: draft.images || [], video: draft.video || null, poster: draft.poster || null, ratio: draft.ratio || null, title: draft.title || '', copy: draft.copy || '', ...(draft.code ? { code: draft.code } : {}) } : null,
     conflict: !!recipe.conflict };
-  plan.summary = caseSummary(c, plan);
+  plan.summary = dejargon(caseSummary(c, plan));
   return plan;
 }
 
@@ -187,4 +188,4 @@ export function planFor(c = {}, { draft = null, action: forced = null } = {}) {
 export const planMd = (plan) => plan ? `${plan.steps.map((s) => `${s.n}. ${s.t}${s.s ? ` (${s.s})` : ''}`).join('\n')}\n\n**Next:** ${plan.cta}.` : '';
 export const planPrompt = (plan) => plan ? `\nThe card's plan toward “${plan.cta}” (${plan.asset}${plan.n ? `, the make step makes one ${one(plan.make.what)}: never several options to pick from` : ''}):\n${plan.steps.map((s) => `${s.n}. ${s.t}`).join('\n')}${plan.draft?.copy || plan.draft?.title ? `\nThe first draft the card shows (v0 on the jam's stage, ${plan.draft.as || 'draft'}): ${cut([plan.draft.title, plan.draft.copy].filter(Boolean).join(' · '), 400)}` : ''}` : '';
 // the plan after someone changed its steps in the jam's chat: their steps, the action's own make and last steps
-export const withSteps = (plan, steps) => { if (!plan) return plan; const s = fromAi(steps, plan.steps); return s ? { ...plan, steps: s.map((x, i) => ({ ...x, n: i + 1 })), by: 'chat' } : plan; };
+export const withSteps = (plan, steps) => { if (!plan) return plan; const s = fromAi(steps, plan.steps); return s ? { ...plan, steps: s.map((x, i) => ({ ...x, n: i + 1, t: dejargon(x.t), s: dejargon(x.s) })), by: 'chat' } : plan; };

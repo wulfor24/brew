@@ -464,3 +464,6 @@ p.rd2-trust,.rd2-trust>summary{display:inline-flex;align-items:center;gap:6px}
 .rd2-ft2>div{display:grid;grid-template-columns:64px minmax(0,1fr);gap:10px}
 .rd2-ft2 dt{font-size:12.5px;color:var(--fg-3);padding-top:1px}
 .rd2-ft2 dd{margin:0;font-size:14.5px;line-height:1.4;color:var(--fg)}
+/* a Signals card that needs an account: one line, one Connect (QA FEED-ARV-07) */
+.card-need{display:flex;align-items:center;gap:8px;margin:8px 0 2px;padding:7px 8px 7px 10px;border-radius:12px;background:var(--surface-2,rgba(127,127,127,.12));font-size:13.5px;line-height:1.35;color:var(--fg-2,#6b6b6b)}
+.card-need>span{flex:1;min-width:0}.card-need .btn{flex:0 0 auto}.card-need small{font-size:12px;opacity:.8}

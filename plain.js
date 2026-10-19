@@ -19,13 +19,23 @@ const BATCH = 12, MAX_KEEP = 2500;
 
 /* the words people decode: replaced in the card's own text while its rewrite is on its way, and banned in the rewrite */
 const JARGON = [
-  [/\bROAS\b/g, 'sales per rupee of ads'], [/\bAOV\b/g, 'average order'], [/\bCAC\b/g, 'cost to win a customer'], [/\bCPA\b/g, 'cost per sale'],
-  [/\bCTR\b/g, 'click rate'], [/\bCVR\b/g, 'buy rate'], [/\bLTV\b/g, 'lifetime spend'], [/\bPDPs?\b/g, 'product page'], [/\bSKUs?\b/g, 'product'],
+  [/\bROAS\b/g, 'return on ad spend'], [/\bAOV\b/g, 'average order'], [/\bCAC\b/g, 'cost to win a customer'], [/\bCPA\b/g, 'cost per sale'],
+  [/\bCTR\b/g, 'click rate'], [/\bCVR\b/g, 'buy rate'], [/\bLTV\b/g, 'lifetime spend'], [/\bPDPs\b/g, 'product pages'], [/\bPDP\b/g, 'product page'], [/\bSKUs\b/g, 'products'], [/\bSKU\b/g, 'product'],
   [/\bUGC\b/g, 'customer-style'], [/\bATC\b/g, 'add to cart'], [/\bSERPs?\b/g, 'Google results'], [/\bCRO\b/g, 'store fixes'],
   [/\bunbranded (?:queries|searches|questions)\b/gi, 'searches that name no brand'], [/\bcold (?:buyers|audiences?|traffic)\b/gi, 'people new to you'],
-  [/\bretargeting\b/gi, 'ads to past visitors'], [/\bconversion rate\b/gi, 'share of visitors who buy'], [/\bhero (?:product|SKU)\b/gi, 'best seller']
+  [/\bretargeting\b/gi, 'ads to past visitors'], [/\bconversion rate\b/gi, 'share of visitors who buy'], [/\bhero (?:product|SKU)\b/gi, 'best seller'],
+  /* the store's plumbing (QA 19 Oct, FEED-ARV-07: jam plans and source lines said GMC, webhook, products.json, JSON-LD) */
+  [/`?(?:\b(?:https?:\/\/)?[\w-]+(?:\.[\w-]+)+)?\/?\bproducts\.json\b`?/gi, 'your product list'],
+  [/\b(?:(?:an?|the|your|structured|root|new)\s+)*`?\/?\bllms\.txt\b`?(?:\s+(?:file|signpost|page))?/gi, 'a page for AI tools'],
+  [/\b(?:JSON-LD|schema\.org|structured data)(?:\s+(?:FAQPage|FAQ|Product|Review|Organization))?(?:\s+(?:schema|markup|structured data))*\b/gi, 'search-friendly product info'],
+  [/\b(?:(?:FAQPage|FAQ|Product|Review|Organization)\s+)?schema(?:\s+markup)?\b/gi, 'search-friendly product info'],
+  [/\b(?:Google Merchant Center|GMC)(?: feeds?)?\b/g, 'Google Shopping feed'], [/\bMerchant Center\b/g, 'Google Shopping'],
+  [/\bwebhooks\b/gi, 'automatic alerts'], [/\bwebhook\b/gi, 'automatic alert'], [/\bGTM\b/g, 'Google Tag Manager'],
+  [/\bcustom (?:web )?pixels?(?:\s+sandbox)?\b/gi, 'tracking code']
 ];
-export const dejargon = (s) => { if (typeof s !== 'string' || !s) return s; let x = s; for (const [re, to] of JARGON) x = x.replace(re, to); return x; };
+/* a swap at the start of a sentence starts with a capital, like the words it replaced */
+const cap1 = (to, m, at, all) => (/^[A-Z`/]/.test(m) && /^[a-z]/.test(to) && (at === 0 || /[.!?:]\s+$/.test(all.slice(Math.max(0, at - 3), at))) ? to[0].toUpperCase() + to.slice(1) : to);
+export const dejargon = (s) => { if (typeof s !== 'string' || !s) return s; let x = s; for (const [re, to] of JARGON) x = x.replace(re, (m, ...a) => cap1(to, m, a[a.length - 2], a[a.length - 1])); return x; };
 
 const sha = (s) => crypto.createHash('sha1').update(s).digest('hex').slice(0, 16);
 export const plainKey = (c) => sha(JSON.stringify([PLAIN_V, c?.title || '', c?.sub || '', c?.detail?.why || [], c?.detail?.how || []]));
@@ -52,7 +62,7 @@ export const prompt = (brand, list) => `You rewrite cards in a marketing app for
 How to write:
 - Everyday words a busy shop owner uses when texting a friend. Short sentences. One idea per sentence.
 - Say plainly what is going on and what to do. Lead with the point.
-- The title says what the brand gets, in an owner's words ("Show your star ratings in Google and AI answers"), never the technical step. JSON-LD, schema, structured data, markup, meta tags, theme files, llms.txt, sitemaps and code never go in the title or body: at most in a step, said simply ("add your reviews to your store pages' code").
+- The title says what the brand gets, in an owner's words ("Show your star ratings in Google and AI answers"), never the technical step. JSON-LD, schema, structured data, markup, meta tags, theme files, llms.txt, products.json, webhooks, GMC, custom pixels, sitemaps and code never go anywhere on the card, steps included: say what they do ("add your reviews to your store pages' code", "your product list", "an automatic alert", "your Google Shopping feed").
 - No marketing or ad-industry jargon or abbreviations: no ROAS, AOV, CAC, CPA, CTR, CVR, LTV, PDP, SKU, UGC, SERP, CRO, SEO, AEO, funnel, cohort, retargeting, lookalike, cold audience, hero product, unbranded queries, lanes, gates, levers, "front the ads", "proof gate". Say what they mean instead ("people new to the brand", "the product page", "searches that don't name a brand", "lead your ads with").
 - No hype or filler: no "unlock", "leverage", "optimize", "supercharge", "game-changer", "seamless". No em dashes.
 - Keep every number exactly as written (same symbol, same digits). Never add a number, never drop the card's main number, never round.
@@ -76,9 +86,10 @@ export function createPlain({ ai, store, spend = () => true, isMock = () => fals
   /* the cached rewrite for a card, if its words haven't changed since (sync: the feed never waits on a load) */
   const get = (slug, c) => { const all = mem.get(slug); if (!all) { load(slug).catch(() => {}); return null; } return all[plainKey(c)] || null; };
   /* the card a person reads: the rewrite where there is one, else its own words with the jargon swapped */
+  /* a rewrite is swapped too: one written before a word joined the list still never shows it */
   const apply = (slug, c) => { if (!c || typeof c !== 'object') return c; const p = get(slug, c);
-    const d = c.detail || {}, out = { ...c, title: p?.title || dejargon(c.title), sub: p?.sub || dejargon(c.sub) };
-    if (c.detail) out.detail = { ...d, why: p?.why?.length ? p.why : (d.why || []).map(dejargon), how: p?.how?.length ? p.how : (d.how || []).map(dejargon) };
+    const d = c.detail || {}, out = { ...c, title: dejargon(p?.title || c.title), sub: dejargon(p?.sub || c.sub) };
+    if (c.detail) out.detail = { ...d, why: (p?.why?.length ? p.why : d.why || []).map(dejargon), how: (p?.how?.length ? p.how : d.how || []).map(dejargon) };
     if (p?.because) out.because = p.because;
     if (p && (p.title !== c.title || p.sub !== c.sub)) out.orig = { title: c.title, sub: c.sub }; /* the words as written, for the proof sheet */
     return out; };

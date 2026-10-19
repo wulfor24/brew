@@ -168,3 +168,15 @@ export function refine(c, e, { voice = [], connected = () => false, has = () => 
   return { ...e, items: backing, context, claim: { voice: voiceClaim, metric: metric && !accountIn ? metric.what : null, metricNeeds, note, needs }, count: backing.length, sourced,
     strength: note ? 'thin' : sourced >= 2 ? 'strong' : backing.length ? 'some' : 'thin' };
 }
+
+/* the accounts a card needs before Brew can show it for real, not yet connected (QA FEED-ARV-07: a Signals card says so on the card).
+   First what its claim rests on (refine: claim.needs, what the proof sheet names); else a Signals card about people to reach (buyers,
+   subscribers, checkouts, orders) rests on the store, the same source the deck's Signals guide asks for first. Cards from online talk,
+   from the team or from a connected account need nothing. */
+const PEOPLE = /\b(buyers?|customers?|subscribers?|shoppers?|checkout starters|abandoned (?:carts?|checkouts?)|carts?|reorders?|repeat (?:buyers|customers|orders)|first[- ]time buyers|lapsed|win[- ]?back|cancel\w*)\b/i;
+export function cardNeeds(c = {}, claimNeeds = [], { has = () => true, connected = () => false } = {}) {
+  const open = (ids) => [...new Set(ids)].filter((id) => has(id) && !connected(id));
+  const fromClaim = open(claimNeeds || []); if (fromClaim.length) return fromClaim;
+  if (c.sector !== 'signals' || c.origin === 'listen' || c.origin === 'told' || c.stream === 'heard' || /^(live-|lv-|heard-|told-|build-)/.test(String(c.id || ''))) return [];
+  return PEOPLE.test(String(c.title || '')) ? open(['shopify']) : []; /* the title says who: the card is about a group of the brand's own people */
+}
