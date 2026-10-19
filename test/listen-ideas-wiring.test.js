@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { ideaCards, pickIdeas, heardCards, socialize, heardView, dueFor, socialConfig, createSocialScheduler, SOCIAL_DEFAULTS } from '../social-feed.js';
+import { ideaCards, pickIdeas, heardCards, socialize, heardView, dueFor, socialConfig, createSocialScheduler, SOCIAL_DEFAULTS, isCommunityCard } from '../social-feed.js';
 import { createPacks } from '../brand-pack.js';
 import { recipeOfCard } from '../remix.js';
 import { ideaAction, ideaPkg, familyOf, fieldsFor, missing } from '../studio.js';
@@ -66,6 +66,14 @@ test('listening cards: real question threads (no buy/sell boards, nothing stale)
   assert.equal(sizing.heard.quotes.length, 2); assert.ok(sizing.heard.quotes.every((q) => /^https:\/\/www\.reddit\.com\//.test(q.url)));
   assert.match(ts.find((c) => c.heard.name === 'comfort').title, /83% positive/);
   assert.deepEqual(heardCards({}, SEED), [], 'no listening data, no cards');
+});
+
+test('community cards (a heard thread, a Reddit or Quora idea) are told apart from posts and theme cards, for the feed seat', () => {
+  const ids = ideaCards([idea(1), REDDIT, idea(2, { platform: 'quora', platformLabel: 'Quora', format: 'answer', media: { kind: 'none', slides: [], script: [] } })], SEED, { now: NOW });
+  assert.deepEqual(ids.map(isCommunityCard), [false, true, true]);
+  const hs = heardCards(LISTEN, SEED, { now: NOW });
+  assert.ok(hs.filter((c) => c.heard.kind === 'thread').every(isCommunityCard)); assert.ok(!hs.filter((c) => c.heard.kind === 'theme').some(isCommunityCard));
+  assert.equal(isCommunityCard(null), false); assert.equal(isCommunityCard({ id: 'm01-a' }), false);
 });
 
 test('socialize adds both streams to the seed once, keeps every existing card, and is a no-op without data', () => {

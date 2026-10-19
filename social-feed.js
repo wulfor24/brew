@@ -26,6 +26,10 @@ const NOT_A_PLACE = /marketplace|buysell|buy_sell|deals?\b|coupon|loot/i;
 // a video post (a review, an unboxing) is not a question to answer unless its title asks one
 const asksQ = (t) => t?.intent === 'question' && (/\?/.test(String(t.title || '')) || !/youtube\.com|youtu\.be|tiktok\.com|instagram\.com/i.test(String(t.url || '')));
 
+/* a card that asks the brand to reply or post in a community (a thread listening heard, a Reddit / Quora / Facebook group idea):
+   the feed keeps one of these in its first screen (feed-service.js social seats) */
+export const isCommunityCard = (c) => !!c && (c.heard?.kind === 'thread' || (c.stream === 'ideas' && !!PLATFORMS[c.post?.platform]?.community));
+
 /* ---------- ideas → cards ---------- */
 export function ideaCards(ideas, seed = {}, { now = Date.now() } = {}) {
   const posts = seed?.posts || [];

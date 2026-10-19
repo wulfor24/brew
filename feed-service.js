@@ -66,6 +66,7 @@ import { aiRingFromRun } from './health.js'; // the AI answers ring from the wee
 import { toolOf, channelFit, paceFit, paceOf, cleanViewer } from './channel-fit.js'; // where a card's work goes out, and how it fits the channels and ad pace the viewer told Brew in setup
 import { moveLabel, moveNum, moveSay } from './move-label.js'; // weekly moves read "Weekly move 11", never "Move 1011" (QA FEED-QA-12)
 import { claimFlags, cleanDraftClaims, packSource } from './claims.js'; // drafts and finals carry only the store's own claims (QA-25)
+import { isCommunityCard } from './social-feed.js'; // a reply or post in a community, from what listening heard: it keeps a first-screen seat
 // cut on a word boundary with an ellipsis, never mid-word or with a dangling space
 const cutWords = (x, n) => { x = String(x).trim(); return x.length > n ? x.slice(0, n - 1).replace(/\s+\S*$/, '').replace(/[\s,;:·-]+$/, '') + '…' : x; };
 
@@ -596,8 +597,12 @@ export function createFeedService(o) {
     const tot = (c) => scores[c.id]?.total ?? 0;
     for (let i = 0; V.length || N.length; i++) { let L = (i % 3 === 2 && N.length) || !V.length ? N : V; const O = L === V ? N : V; if (O.length && L.length && tot(O[0]) - tot(L[0]) > 2) L = O; ranked.push(L.shift()); }
     let seated = new Set();
-    /* the social stream (ready posts, what people asked) always has a seat in the first screen: its best two at 3 and 7 */
-    { const isSoc = (c) => /^(Ideas|Heard) ·/.test(c?.src || ''); const off = top.length + pins.length; /* seats 3 and 7 count from the top of what the reader sees, pins and top cards included */ const soc = [[ranked.find((c) => isSoc(c) && !isVis(c)), Math.max(0, 2 - off)], [ranked.find((c) => isSoc(c) && isVis(c)), Math.max(1, 6 - off)]].filter((x) => x[0]);
+    /* the social stream (ready posts, what people asked) always has seats in the first screen: at 3 the best reply or post in a
+       community (a thread listening heard, a Reddit or Quora idea), at 7 the best picture post, at 9 the best other text card
+       (what people talk about). Scored on their own they sit near 100: moves outscore them */
+    { const isSoc = (c) => /^(Ideas|Heard) ·/.test(c?.src || ''); const off = top.length + pins.length; /* seats 3, 7 and 9 count from the top of what the reader sees, pins and top cards included */
+      const comm = ranked.find((c) => isSoc(c) && !isVis(c) && isCommunityCard(c)), text1 = comm || ranked.find((c) => isSoc(c) && !isVis(c));
+      const soc = [[text1, Math.max(0, 2 - off)], [ranked.find((c) => isSoc(c) && isVis(c)), Math.max(1, 6 - off)], [comm && ranked.find((c) => c !== comm && isSoc(c) && !isVis(c)), Math.max(2, 8 - off)]].filter((x) => x[0]);
       seated = new Set(soc.map((x) => x[0])); soc.forEach(([c, at]) => { const i = ranked.indexOf(c); if (i > at && at < ranked.length) [ranked[at], ranked[i]] = [ranked[i], ranked[at]]; }); } /* a swap with the card in that seat (same picture/text slot), so the 2:1 rhythm holds */
     /* an ad or a social post to make always has two seats in the first screen: the best two at 2 and 6. Moves mostly plan
        page, email and WhatsApp work, and the ranker leans to decisions, so before this the first ad card sat at 9 to 15 */
