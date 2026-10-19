@@ -145,11 +145,14 @@
 
   // quick turns and placeholders talk to the jam; knobs make versions on the change
   document.addEventListener('click', async (e) => {
-    const a = e.target.closest('[data-cv-ask]'); if (a) { e.preventDefault(); return window.JamRoom?.send?.(a.dataset.cvAsk); }
+    /* the chip that asked spins and the other turns go quiet until the jam has answered, like Make it yours */
+    const a = e.target.closest('[data-cv-ask]'); if (a) { e.preventDefault(); if (a.disabled) return; const box = a.closest('.cv-turns'), sib = box ? [...box.querySelectorAll('button')].filter((x) => x !== a && !x.disabled) : [];
+      const done = window.__BREW?.busyBtn?.(a, a.textContent.trim()) || (() => {}); sib.forEach((x) => (x.disabled = true));
+      return Promise.resolve(window.JamRoom?.send?.(a.dataset.cvAsk)).finally(() => { done(); sib.forEach((x) => { if (x.isConnected) x.disabled = false; }); }); }
     const k = e.target.closest('[data-cv-knob]'); if (k) { const o = k.parentElement.querySelector('.cv-opts'); o.hidden = !o.hidden; k.setAttribute('aria-expanded', String(!o.hidden)); return; }
     const kv = e.target.closest('[data-cv-knobv]'); if (kv) { const A = window.__BREW, w = A.currentDetail?.()?._work, cid = w?.changeId; if (!cid) return;
-      kv.disabled = true; A.toast(`${A.ic('sparkles', 's16')}Making the ${A.esc(kv.dataset.v.toLowerCase())} version…`);
-      const r = await A.tapi('POST', `/api/changes/${cid}/knob`, { k: kv.dataset.cvKnobv, v: kv.dataset.v }); if (r.change) A.setChange(r.change); A.repaintDetail(); return; }
+      const done = A.busyBtn?.(kv, kv.textContent.trim()) || (() => {}); A.toast(`${A.ic('sparkles', 's16')}Making the ${A.esc(kv.dataset.v.toLowerCase())} version…`);
+      const r = await A.tapi('POST', `/api/changes/${cid}/knob`, { k: kv.dataset.cvKnobv, v: kv.dataset.v }).catch((er) => ({ error: er.message })); done(); if (r.error) A.toast(A.esc(r.error)); if (r.change) A.setChange(r.change); A.repaintDetail(); return; }
     const cv = e.target.closest('[data-cv-chv]'); if (cv) { const A = window.__BREW, w = A.currentDetail?.()?._work; if (!w?.changeId) return; const r = await A.tapi('POST', `/api/changes/${w.changeId}/restore`, { versionId: cv.dataset.cvChv }); if (r.error) return A.toast(A.esc(r.error)); if (r.change) A.setChange(r.change); A.repaintDetail(); }
   });
 

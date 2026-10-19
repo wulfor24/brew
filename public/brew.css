@@ -269,6 +269,7 @@
 .tile.on{border-color:var(--fg);box-shadow:inset 0 0 0 1px var(--fg)}
 .dp-f{gap:8px}
 .dp-f.is-busy .compose,.dp-f.is-busy .dp-ctas{opacity:.5;pointer-events:none}
+.dp-f.is-busy .dp-chips{pointer-events:none}.dp-f.is-busy .dp-chips .chip:not(.is-wait){opacity:.5}
 .dp-chips{gap:6px}
 .dp-chips .chip{font-size:13.5px}
 .to-seg{display:flex;align-items:center;gap:4px;font-size:13px;color:var(--fg-3)}

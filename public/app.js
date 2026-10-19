@@ -190,7 +190,7 @@
   const toast = (html) => { $('.toast')?.remove(); const t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); t.innerHTML = html; document.body.appendChild(t); clearTimeout(toastT); toastT = setTimeout(() => t.remove(), 2800); };
   /* a button waiting on the server: a spinner and what it is doing, so a slow answer never reads as a dead click. Returns the
      undo; a button repainted away in the meantime is left alone */
-  const busyBtn = (b, label = '') => { if (!b) return () => {}; const html = b.innerHTML; b.disabled = true; b.classList.add('is-wait'); b.setAttribute('aria-busy', 'true'); b.innerHTML = `<span class="spin"></span>${esc(label)}`;
+  const busyBtn = (b, label = '') => { if (!b) return () => {}; const html = b.innerHTML; b.disabled = true; b.classList.add('is-wait'); b.setAttribute('aria-busy', 'true'); b.innerHTML = `<span class="spin"></span>${b.matches('.icon-btn') ? '' : esc(label)}`; /* an icon button has no room for words: the spinner alone */
     return () => { if (!b.isConnected) return; b.disabled = false; b.classList.remove('is-wait'); b.removeAttribute('aria-busy'); b.innerHTML = html; }; };
 
   /* =========================================================
@@ -2333,7 +2333,10 @@
     toast(`${ic('send', 's16')}Sent to ${esc(r.work.with.name)} in ${esc(r.work.with.channel)}`);
   };
   const colleagueForCard = (p) => p?.owner ? colleague(p.owner) : colleague(p?.sector === 'creatives' || p?.sector === 'visibility' ? 'brandm' : p?.sector === 'ads' ? 'perf' : p?.sector === 'storefront' || p?.sector === 'catalog' ? 'ops' : 'growth');
-  const sendComposer = async (text) => {
+  /* the chip or send button that asked spins until the answer is in, like Make it yours (the panel's busy line stays too) */
+  const sendComposer = (text, el) => { if (!text) return; const done = el ? busyBtn(el, el.matches('.chip') ? el.textContent.trim() : '') : () => {};
+    return Promise.resolve(sendComposer0(text)).finally(done); };
+  const sendComposer0 = async (text) => {
     if (!text) return; const to = DP.to;
     if (to !== 'ai' && (!DP.w || DP.w.with?.kind !== to)) return sendTo(to, text);
     const w = await ensureWork();
@@ -2356,7 +2359,7 @@
     if (t.closest('[data-dpsave]')) { toggleSave(DP.p); t.closest('[data-dpsave]').setAttribute('aria-pressed', S.saved.includes(DP.p.id)); return; }
     const o = t.closest('[data-dp-open]'); if (o) { const x = byId(o.dataset.dpOpen); if (x) openDetail(x); return; }
     const to = t.closest('[data-to]'); if (to) { DP.to = to.dataset.to; DP.picking = null; repaintDetail(); $('#dp-in')?.focus(); return; }
-    const ch = t.closest('[data-chip]'); if (ch) return sendComposer(ch.dataset.chip);
+    const ch = t.closest('[data-chip]'); if (ch) return sendComposer(ch.dataset.chip, ch);
     const sd = t.closest('[data-send]'); if (sd) return sendTo(sd.dataset.send);
     const jb = t.closest('[data-jb-send]'); if (jb) { const done = busyBtn(jb, 'Sending…'); return Promise.resolve(window.JamRoom?.send?.(jb.dataset.jbSend)).finally(done); }
     const cg = t.closest('[data-cp-go]'); if (cg) return goWith(DP.p, cg.dataset.cpGo);
@@ -2401,7 +2404,7 @@
     const jn = t.closest('[data-jq-ans]'); if (jn) { DP.answering = jn.dataset.jqAns; repaintDetail(); $(`[data-jqf="${DP.answering}"] input`)?.focus(); return; }
   });
   document.addEventListener('submit', (e) => {
-    if (e.target.id === 'dp-f') { e.preventDefault(); const v = $('#dp-in').value.trim(); $('#dp-in').value = ''; sendComposer(v); }
+    if (e.target.id === 'dp-f') { e.preventDefault(); const v = $('#dp-in').value.trim(); $('#dp-in').value = ''; sendComposer(v, e.target.querySelector('button')); }
     const jf = e.target.closest('[data-jqf]'); if (jf) { e.preventDefault(); const v = $('input', jf).value.trim(); if (!v) return; tapi('POST', `/api/work/${DP.w.id}/plan/answer`, { qid: jf.dataset.jqf, answer: v }).then((r) => { DP.answering = null; putWork(r.work); repaintDetail(); showLearned(r.learned); }); }
     if (e.target.id === 'jq-add') { e.preventDefault(); const v = $('#jq-add input').value.trim(); if (!v) return; tapi('POST', `/api/work/${DP.w.id}/plan/add`, { q: v }).then((r) => { putWork(r.work); repaintDetail(); }); }
     if (e.target.id === 'dp-pick') { e.preventDefault(); sendTo('team', $('#dp-note').value.trim() || `@${colleague(DP.picking).name} can you look at this before it goes out?`); }
@@ -3925,7 +3928,7 @@
     const ni = w?.jamBrief?.status === 'needs_info' ? (w.jamBrief.history || []).find((h) => h.s === 'needs_info') : null;
     const niHtml = ni ? `<div class="st-needs" role="status">${ic('hand', 's16')}<div><b>${esc(ni.name || 'The ShopOS team')} needs something from you${w.ticket ? ` · ${esc(w.ticket)}` : ''}</b>${ni.note ? `<p>${esc(ni.note)}</p>` : ''}<small>Answer with @ShopOS team in your message: it goes to them by email.</small></div></div>` : '';
     return `<div class="it-log">${SPLIT && RX.p ? `<div class="it-empty">${face(ch.agent)}${caseBrief(ch)}</div>` : ''}${log || (SPLIT && RX.p ? '' : `<div class="it-empty">${face(ch.agent)}${`<p>${SPLIT ? 'What should change? Each change makes a new version, and you can always go back.' : 'Tell me what to change, in plain words. I’ll rewrite the whole package and save it as a new version. You can always go back.'}</p>`}</div>`)}${j2Extra(ch)}${RX.sending ? `<div class="lgm ai pending">${face(ch.agent)}<p><span class="spin"></span>${esc(RX.sending)}</p></div>` : ''}</div>
-      ${edit ? `<form class="it-ask" id="st-say">${niHtml}${UI2 ? chips2(ch) : `<div class="it-sugg">${PH_FAM.includes(ch.family) && !(SPLIT && phTools(ch, ch, null)) ? `<button type="button" class="chip chip-ph" data-ph-open>${ic('pic', 's14')}Change the photo</button>` : ''}${j2Acts(ch, (attr, icon, label, cls = '') => `<button type="button" class="chip j1-chip${cls}" ${attr}${RX.sending ? ' disabled' : ''}>${icon ? ic(icon, 's14') : ''}${esc(label)}</button>`).join('')}${fitSuggest(ch.suggest).slice(0, PH_FAM.includes(ch.family) ? 3 : 4).map((x) => `<button type="button" class="chip" data-say="${esc(x)}">${esc(x)}</button>`).join('')}</div>`}<div class="it-row${SPLIT && window.Composer?.tools ? ' has-cmp' : ''}"><textarea id="st-in" rows="2"${SPLIT ? ' data-nomic' : ''} placeholder="What should change? Or @ someone">${esc(RX.draft || '')}</textarea>${SPLIT && window.Composer?.tools ? `<span class="jm-tools">${window.Composer.tools()}<span class="jm-tools-r">${window.Mic?.supported ? `<button type="button" class="jm-mic" data-cmp-talk aria-label="Talk instead of typing">${ic('mic', 's16')}</button>` : ''}<button class="jm-send" aria-label="Send" ${RX.sending ? 'disabled' : ''}>${ic('up', 's16')}</button></span></span>` : `<button class="btn btn-primary" aria-label="Send" ${RX.sending ? 'disabled' : ''}>${ic('up', 's16')}</button>`}</div></form>${SPLIT && window.Composer?.foot ? window.Composer.foot() : ''}` : UI2 ? `<div class="it-ask"><div class="it-sugg j2-chips"><button type="button" class="chip j2-chip is-brief" data-tab="details">${ic('doc', 's14')}View brief</button><button type="button" class="chip j2-chip" data-rx="open">${ic('hand', 's14')}Open the jam</button></div><p class="it-locked">It’s in a jam. Shape it there.</p></div>` : `<p class="it-locked">It’s in a jam. Shape it there.</p>`}`;
+      ${edit ? `<form class="it-ask" id="st-say">${niHtml}${UI2 ? chips2(ch) : `<div class="it-sugg">${PH_FAM.includes(ch.family) && !(SPLIT && phTools(ch, ch, null)) ? `<button type="button" class="chip chip-ph" data-ph-open>${ic('pic', 's14')}Change the photo</button>` : ''}${j2Acts(ch, (attr, icon, label, cls = '') => `<button type="button" class="chip j1-chip${cls}" ${attr}${RX.sending ? ' disabled' : ''}>${icon ? ic(icon, 's14') : ''}${esc(label)}</button>`).join('')}${fitSuggest(ch.suggest).slice(0, PH_FAM.includes(ch.family) ? 3 : 4).map((x) => `<button type="button" class="chip${RX.sending && RX.from === x ? ' is-wait' : ''}" data-say="${esc(x)}"${RX.sending ? ' disabled' : ''}>${RX.sending && RX.from === x ? '<span class="spin"></span>' : ''}${esc(x)}</button>`).join('')}</div>`}<div class="it-row${SPLIT && window.Composer?.tools ? ' has-cmp' : ''}"><textarea id="st-in" rows="2"${SPLIT ? ' data-nomic' : ''} placeholder="What should change? Or @ someone">${esc(RX.draft || '')}</textarea>${SPLIT && window.Composer?.tools ? `<span class="jm-tools">${window.Composer.tools()}<span class="jm-tools-r">${window.Mic?.supported ? `<button type="button" class="jm-mic" data-cmp-talk aria-label="Talk instead of typing">${ic('mic', 's16')}</button>` : ''}<button class="jm-send${RX.sending ? ' is-wait' : ''}" aria-label="Send" ${RX.sending ? 'disabled aria-busy="true"' : ''}>${RX.sending ? '<span class="spin"></span>' : ic('up', 's16')}</button></span></span>` : `<button class="btn btn-primary${RX.sending ? ' is-wait' : ''}" aria-label="Send" ${RX.sending ? 'disabled aria-busy="true"' : ''}>${RX.sending ? '<span class="spin"></span>' : ic('up', 's16')}</button>`}</div></form>${SPLIT && window.Composer?.foot ? window.Composer.foot() : ''}` : UI2 ? `<div class="it-ask"><div class="it-sugg j2-chips"><button type="button" class="chip j2-chip is-brief" data-tab="details">${ic('doc', 's14')}View brief</button><button type="button" class="chip j2-chip" data-rx="open">${ic('hand', 's14')}Open the jam</button></div><p class="it-locked">It’s in a jam. Shape it there.</p></div>` : `<p class="it-locked">It’s in a jam. Shape it there.</p>`}`;
   };
   const adjustTab = (ch, edit) => edit ? `<p class="hs-tip">Turn a knob and the package is rewritten to match. Knobs marked “new photo” make a new creative.</p>
       ${fitKnobs(ch.knobs).map((k) => { const multi = k.kind === 'copy', sel = (RX.knobSel || {})[k.k] || [], cur = (ch.pkg.knobs || {})[k.k];
@@ -4306,6 +4309,7 @@
       const said = String(msg).trim(); RX.draft = ''; if ($('#st-in')) $('#st-in').value = '';
       await window.JamRoom.sendTo(RX.p, said); paintStudio();
       const ask = window.JamRoom.changeAsk?.(said); if (!ask) return; msg = ask; body = undefined; }
+    RX.from = path === 'iterate' ? String(msg || '') : null; /* the chip or box that asked: it spins while RX.sending */
     RX.sending = path === 'variants' ? 'Making three variations…' : path === 'plan' ? planBusy(ch) : path === 'knob' ? `Applying ${msg}…` : body?.fix ? 'Fixing it…' : 'Working on it…';
     if (path === 'iterate') { ch.thread = [...(ch.thread || []), { from: 'you', text: msg, at: 9e15 /* last in the timeline until the server's copy lands */ }]; RX.draft = ''; if ($('#st-in')) $('#st-in').value = ''; RX.tab = 'iterate'; }
     RX.viewing = null; RX.resetScroll = true; paintStudio();
