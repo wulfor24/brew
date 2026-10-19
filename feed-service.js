@@ -33,7 +33,7 @@ import { shipLine } from './text-fit.js';
 import { createDrafts, fakeMakers } from './drafts.js';
 import { cardProduct, cardScene } from './product-match.js';
 import { seedDrafts, draftFor, draftView } from './drafts-bg.js';
-import { planFor, planPrompt } from './card-plan.js';
+import { planFor, planPrompt, PLAN_V } from './card-plan.js'; // PLAN_V: saved plans older than one-always rebuild (workOut0)
 import { createMoves } from './moves.js';
 import { rulesFor, addLesson, stepOnce, lessonsFor, promptBlock, outcome, memoryBlock } from './learn.js';
 import { createHandoff, parseToken, handoffPath, jamPath, shareToken, parseShare } from './handoff.js';
