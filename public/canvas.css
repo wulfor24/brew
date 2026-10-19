@@ -893,3 +893,5 @@ body[data-view="remix"] .fab{display:none}
 .as-landing .lp-q p{margin:0;font-size:14.5px;line-height:20px}
 .as-landing .lp-q cite{display:block;margin-top:4px;font-style:normal;font-size:12.5px;color:var(--fg-3)}
 .as-landing .lp-ben figcaption{display:flex;flex-direction:column;gap:2px}.as-landing .lp-ben figcaption span{font-weight:400;color:var(--fg-2);font-size:13px;line-height:17px}
+@media (max-width:700px){.std .ship-btns{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} .std .ship-redo .btn-free{display:none}} /* the ship row never runs off a phone; Redo it keeps its tooltip there */
+@media (max-width:860px){.ship.one{flex-wrap:nowrap}.ship.one .ship-steps{flex:0 0 auto;margin:0}} /* stacked on a phone: the steps strip is a row above, never a column beside the buttons (its 100% basis meant full height there) */
