@@ -31,7 +31,7 @@ export function moveStatus(jb, to, { by = null, note = '', at = Date.now() } = {
 /* the briefs still with the ShopOS team (sent and not delivered), for the top bar's pill */
 export function withTeam(work = []) {
   const items = work.filter((w) => !w.archived && !w.discarded && w.jamBrief?.status && w.jamBrief.status !== 'delivered')
-    .map((w) => ({ wid: w.id, title: w.title, ticket: w.ticket || null, status: w.jamBrief.status, label: LABEL[w.jamBrief.status], at: w.jamBrief.statusAt || w.jamBrief.sharedAt || null }))
+    .map((w) => ({ wid: w.id, title: w.title, ticket: w.ticket || null, status: w.jamBrief.status, label: LABEL[w.jamBrief.status], sentAt: w.jamBrief.sharedAt || null /* "Sent 4:12 pm" on the pill */, at: w.jamBrief.statusAt || w.jamBrief.sharedAt || null }))
     .sort((a, b) => (b.at || 0) - (a.at || 0));
   return { n: items.length, needsInfo: items.filter((x) => x.status === 'needs_info').length, items };
 }

@@ -357,12 +357,8 @@
        connection). Brew has no WhatsApp connection (sending was cut), so it says so and offers the route that does reach them:
        the brief, emailed to the ShopOS team and tracked here, their reply landing in this jam. Opening WhatsApp yourself stays,
        named for what it is: you send it, and Brew doesn't see the reply */
-    if (to === 'whatsapp' && !A.conn('whatsapp') && !opts.self) return A.modal(`<div class="sheet pick-sheet wa-need"><header class="sh-h"><b class="sh-t">${ic('chat', 's16')}Send it for approval</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>
-      <div class="wa-state"><span class="wa-dot"></span>WhatsApp isn’t connected</div>
-      <p class="sh-p">Brew can’t send this to the ShopOS team on WhatsApp, so it wouldn’t reach them. Send it to them from Brew instead: they get the whole brief by email, and their reply shows here in the jam.</p>
-      <div class="wa-acts"><button class="btn btn-primary" data-wa-shopos>${ic('send', 's16')}Send to the ShopOS team</button><button class="btn btn-ghost" data-wa-self>Open WhatsApp and send it myself</button></div></div>`, (m) => {
-        $('[data-wa-shopos]', m).onclick = () => { A.closeModal?.(); ship('shopos'); };
-        $('[data-wa-self]', m).onclick = () => { A.closeModal?.(); move('whatsapp', { self: true }); }; });
+    if (to === 'whatsapp' && !A.conn('whatsapp') && !opts.self) return A.waNeed({ title: 'Send it for approval', p: 'Brew can’t send this to the ShopOS team on WhatsApp, so it wouldn’t reach them. Send it to them from Brew instead: they get the whole brief by email, and their reply shows here in the jam.',
+      primary: 'Send to the ShopOS team', onPrimary: () => ship('shopos'), onSelf: () => move('whatsapp', { self: true }) }); /* the one "WhatsApp isn't connected" sheet (app.js waNeed) */
     const win = to === 'whatsapp' ? window.open('', '_blank') : null;
     const r = await A.tapi('POST', `/api/work/${w.id}/jb/move`, { to, channel: A.S.slack?.channel, base: location.origin, decided: A.S.decided?.[DPx()?.id] || null }); if (r.error) { win?.close(); return toast(esc(r.error)); }
     if (r.posted) { take(r.work); return toast(`${ic('check', 's16')}Posted to ${esc(r.posted.channel)} in Slack with an Approve button. Replies in the thread land here.`); }
