@@ -4,7 +4,7 @@
 import { numbersOf, dayOf } from './pack-numbers.js'; // one number, one source
 import { mockAllowed } from './ai.js'; // a mock card stands in only on a mock run, never after a billing pause
 import { unbacked, allowedFrom, numbersIn, backedNumbers } from './fact-gate.js';
-import { CTA } from './seed-template.js';
+import { CTA, ctaName } from './seed-template.js';
 import * as catalog from './creative-catalog.js'; /* what can be made: formats, the prompt block, generic and repeat checks */
 import { evidenceKinds, claimGaps, gapLine, writerEvidence } from './proof-logic.js'; /* a card says Brew saw only what Brew holds */
 /* the asset line ends on a whole word, never mid-word ("…data and s", 19 Oct) */
@@ -24,12 +24,32 @@ const MAKE_CTA = { 'single image ad': 'Make the ad', /* one ad, never "versions"
    "Publish the page") is the card's own choice and stays. Used when cards are written and when packs load. */
 const OTHER_NETWORK = new Set(['Launch the ad group']);
 const MAKE_LABELS = new Set([...Object.values(MAKE_CTA), 'Draft the post', 'Draft the carousel post', 'Draft the stories', 'Make the video', 'Generate versions', 'Make the ad']);
+/* a button tied to one topic belongs only on a card about that topic (FEED-QA-20: the AI picked "Fix tracking" for a card
+   about bundles). The card's own words (title, body, reasons, steps, rows, asset) must name the topic; if they don't, the
+   button becomes the one for what the card makes, else "Agree with the call". Used when cards are written, when packs load
+   and when a saved card is read (feed-service pub) */
+const TOPIC_CTA = {
+  'Fix tracking': /\b(?:tracking|track(?:ed|s)?|pixels?|conversions? api|capi|ga4|utms?|tags?|attribution|purchase events?|analytics|measurement)\b/i,
+  'Fix the markup': /\b(?:schema|markup|structured data|json-?ld|rich (?:results?|snippets?))\b/i,
+  'Launch the ad group': /\b(?:google|search ads?|keywords?|ad groups?|amazon|sponsored|ppc|bing|shopping ads?)\b/i,
+  'Turn on guest checkout': /\b(?:checkout|guest)\b/i,
+  'Pause what points there': /\b(?:out of stock|sold.?out|stock)\b/i,
+  'Restart what was paused': /\b(?:back in stock|restock(?:ed)?|paused)\b/i,
+  'Send the review ask': /\breviews?\b/i,
+  'Update the prices': /\bprices?\b/i,
+  'Fix the links': /\b(?:links?|404s?|broken|redirects?)\b/i
+};
+const cardWords = (c) => [c.title, c.sub, ...(c.detail?.why || []), ...(c.detail?.how || []), ...(c.rows || []).flat(), c.make?.pieces, ...(c.plan?.steps || [])].filter((x) => typeof x === 'string').join(' ');
+export const topicOk = (c) => { const re = TOPIC_CTA[c?.cta?.label]; return !re || re.test(cardWords(c)); };
 export function fitCta(card) {
+  if (!card || typeof card !== 'object') return card;
+  if (card.cta?.label && ctaName(card.cta.label) !== card.cta.label) card.cta = { ...card.cta, label: ctaName(card.cta.label) }; /* a renamed button heals (Publish Campaign, List what points there) */
+  if (card.cta?.label && !topicOk(card)) { const f = card.make?.format || inferMake({ ...card, cta: null })?.format; card.cta = { ...card.cta, label: (f && MAKE_CTA[f]) || 'Agree with the call' }; }
   const want = card?.make?.format && MAKE_CTA[card.make.format], cur = card?.cta?.label;
   /* a Google search button ("Launch the ad group") on a card that makes a Meta or social asset promises the wrong thing: the format's own button */
   const wrongNet = OTHER_NETWORK.has(cur) && MAKES_CREATIVE.test(card?.make?.format || '');
   if (cur === 'Generate versions') card.cta = { ...(card.cta || {}), label: 'Make the ad' }; /* saved cards: the button makes one ad */
-  if (want && CTA[want] && card.cta?.label !== want && (!cur || MAKE_LABELS.has(cur) || wrongNet)) card.cta = { ...(card.cta || {}), label: want };
+  if (want && CTA[want] && card.cta?.label !== want && (!cur || MAKE_LABELS.has(cur) || wrongNet || cur === 'Publish the campaign' /* a card that makes something: its button makes it (a video ad card makes the video), Brew never publishes */)) card.cta = { ...(card.cta || {}), label: want };
   return card;
 }
 /* a card that names an asset carries what to make. Old packs were written before every such card set "make", so cards
@@ -61,7 +81,7 @@ const TALKS_ABOUT = /\b(?:pause|stop|kill|cut|turn off|switch off|audit|check|fi
 const formatIn = (text) => { for (const [format, re] of MAKE_RE) { if (!re.test(text)) continue; if (format === 'single image ad' && TALKS_ABOUT.test(text) && !/\b(?:new|write|make|draft|launch)\b/i.test(text)) return null; return format; } return null; };
 export function inferMake(c = {}) {
   if (!c || typeof c !== 'object' || c.make?.format || NO_MAKE.test(String(c.id || '')) || c.liveOnly || c.mock || c.demo || ['report', 'competitor'].includes(c.type) || (c.origin === 'listen' && c.heard)) return null;
-  const cta = c.cta?.label || ''; if (CTA_MAKE[cta]) return { format: toFamily(formatIn(c.title || '')) || CTA_MAKE[cta], pieces: '', inferred: true }; /* the title's own format is more exact than a making button */
+  const cta = ctaName(c.cta?.label || ''); if (CTA_MAKE[cta]) return { format: toFamily(formatIn(c.title || '')) || CTA_MAKE[cta], pieces: '', inferred: true }; /* the title's own format is more exact than a making button */
   if (NOT_MAKING.has(cta)) return null;
   const f = toFamily(formatIn(c.title || '') || (cta in CTA_DEFAULT ? formatIn(c.sub || '') || CTA_DEFAULT[cta] : null)); /* the title names it; the body only counts under a button that ships something; only a catalog family is ever set */
   return f ? { format: f, pieces: '', inferred: true } : null;

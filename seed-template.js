@@ -21,6 +21,9 @@ export const CTA = {
   'Make the carousel ad': ['Making', 'The carousel is drafted'], 'Build the collection ad': ['Building', 'The collection ad is drafted'], 'Build the catalog ad': ['Building', 'The catalog ad is drafted'],
   'Draft the post': ['Drafting', 'The post is drafted'], 'Draft the carousel post': ['Drafting', 'The carousel post is drafted'], 'Draft the stories': ['Drafting', 'The stories are drafted']
 };
+/* buttons renamed since they were saved: a saved card, jam or work item says the new name, and every map reads it (FEED-QA-20) */
+export const CTA_RENAME = { 'Publish Campaign': 'Publish the campaign', 'List what points there': 'Pause what points there', 'Plan the restart': 'Restart what was paused' };
+export const ctaName = (l) => { const s = String(l ?? '').trim(); return CTA_RENAME[s] || s; };
 export const SPENDS = ['Publish Campaign', 'Publish the campaign', 'Shift budget', 'Launch the ad group', 'Queue the ads'];
 export const PERSON = ['Brief the shoot', 'Draft the buyer deck', 'Open the scoreboard', 'Review draft', 'Open report'];
 
