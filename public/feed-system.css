@@ -158,7 +158,7 @@
 .chip:hover,.chip[aria-pressed="true"]{color:var(--fg);background:var(--surface-2)}
 
 /* ================= agent faces ================= */
-.face{width:30px;height:30px;flex:0 0 auto;display:grid;place-items:center;border-radius:10px;position:relative}
+.face{width:30px;height:30px;flex:0 0 auto!important;display:grid;place-items:center;border-radius:10px;position:relative}
 .face i{position:absolute;top:10px;width:7px;height:9px;background:#fff;border-radius:50%}
 .face i::after{content:'';position:absolute;left:2px;top:3px;width:3.5px;height:4px;border-radius:50%;background:#111}
 .face i:nth-child(1){left:7px}.face i:nth-child(2){right:7px}
