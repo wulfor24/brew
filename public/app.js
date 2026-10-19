@@ -162,7 +162,7 @@
   };
   const ic = (k, s = '') => `<svg class="ic ${s}" viewBox="0 0 24 24" aria-hidden="true">${P[k]}</svg>`;
   const SO = (bg = 'currentColor', ink = 'var(--bg)') => `<svg viewBox="0 0 200 200" aria-hidden="true"><rect width="200" height="200" rx="56" fill="${bg}"/><path d="M62 38h26v62.5a50 50 0 1 1-26 43.8z" fill="${ink}"/><circle cx="112" cy="138" r="24" fill="${bg}"/><path d="M128 30c10 9 10 19 0 28M150 34c10 9 10 19 0 28" fill="none" stroke="${ink}" stroke-width="9" stroke-linecap="round"/></svg>`; // the Brew mark
-  const AGENT = { creative: 'Creative director', performance: 'Performance marketer', storefront: 'Storefront manager', visibility: 'AI visibility', crm: 'CRM specialist', brew: 'Brew' };
+  const AGENT = { creative: 'Creative director', performance: 'Performance marketer', storefront: /[?&]storefront=1\b/.test(location.search) ? 'Storefront manager' : 'Catalog manager' /* Storefront hidden: it owns catalog cards (FEED-ARV-05) */, visibility: 'AI visibility', crm: 'CRM specialist', brew: 'Brew' };
   const face = (a) => `<span class="face ${a}" aria-hidden="true"><i></i><i></i></span>`;
   // real brand marks: a padded mark on a white tile, or the brand's own full-bleed app icon; marketplaces stack three
   const LOGOS = { shopify: ['shopify.svg'], meta: ['meta.svg'], google: ['google.svg'], ga4: ['google-analytics.svg'], whatsapp: ['whatsapp.svg'], slack: ['slack.svg'], klaviyo: ['klaviyo.png'], loox: ['loox.png', 1], judgeme: ['judgeme.png', 1], amazon: ['amazon.svg', 1], nykaa: ['nykaa.png', 1], blinkit: ['blinkit.png', 1], flipkart: ['flipkart.svg'], myntra: ['myntra.png', 1], walmart: ['walmart.svg'], target: ['target.svg'], etsy: ['etsy.svg'], ebay: ['ebay.svg'] };

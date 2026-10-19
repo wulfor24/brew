@@ -84,3 +84,11 @@ test('Make our version only on rival cards; Draft the listing only about marketp
   assert.equal(fitCta({ title: '40 of your 90 marketplace listings have one or two photos', sub: 'The photos already exist.', cta: { label: 'Push the titles' } }).cta.label, 'Add the photos');
   assert.equal(fitCta({ title: 'Rewrite 5 listing titles', sub: 'Titles miss the words.', cta: { label: 'Push the titles' } }).cta.label, 'Push the titles');
 });
+
+/* FEED-ARV-05: Storefront hidden → the storefront agent is the Catalog manager wherever its name shows */
+test('with Storefront off the agent signs as the Catalog manager, on the server, in saved replies and in the app', () => {
+  const s = src('feed-service.js');
+  assert.match(s, /Object\.defineProperty\(AGENT, 'storefront', \{ get: \(\) => \(storefrontOn\(\) \? 'Storefront manager' : 'Catalog manager'\)/);
+  assert.match(s, /thread: sfWho\(w\.thread\)/, 'replies saved before heal on read');
+  assert.match(src('public/app.js'), /storefront: \/\[\?&\]storefront=1\\b\/\.test\(location\.search\) \? 'Storefront manager' : 'Catalog manager'/);
+});

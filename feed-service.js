@@ -69,6 +69,9 @@ const cutWords = (x, n) => { x = String(x).trim(); return x.length > n ? x.slice
 
 const H = 3600e3, D = 24 * H;
 const AGENT = { creative: 'Creative director', performance: 'Performance marketer', storefront: 'Storefront manager', visibility: 'AI visibility', crm: 'CRM specialist', brew: 'Brew' };
+/* with Storefront hidden (V1, unless ?storefront=1) the storefront agent only owns catalog cards, so it signs as the Catalog manager (final QA pass 19 Oct, FEED-ARV-05) */
+Object.defineProperty(AGENT, 'storefront', { get: () => (storefrontOn() ? 'Storefront manager' : 'Catalog manager'), enumerable: true });
+const sfWho = (th) => (storefrontOn() || !Array.isArray(th) ? th : th.map((m) => (m?.who === 'Storefront manager' ? { ...m, who: AGENT.storefront } : m))); /* replies saved before say it too */
 const FAMILY = { idea: 'idea', decision: 'decision', report: 'result', competitor: 'learning' };
 // brand-specific values come from the active brand pack (brand-ctx.js / brand-pack.js)
 const RIVALS = liveRe((b) => b.rivalsRe);
@@ -1847,7 +1850,7 @@ export function createFeedService(o) {
   const guestSees = (t) => { const g = reqOf(t)?.guest; return g ? (w) => g.wids.includes(w.id) : () => true; };
   let shown = shown0;
   /* a jam out to the client: unread is this person's (they haven't opened it since it changed), and who has it open now */
-  const jamOut = (t, w) => { const me0 = meOf(t), seen = me0 ? w.reads?.[me0.email] : null; return { ...w, title: dejargon(w.title), cardSnap: undefined, unread: me0 ? (w.updatedAt > (seen || 0) && (w.people || []).some((p) => p.email === me0.email) && w.lastBy !== me0.email) : !!w.unread, mine: !!me0 && JAMS.isIn(w, me0.email), here: JAMS.here(w.id).filter((p) => p.email !== me0?.email) }; };
+  const jamOut = (t, w) => { const me0 = meOf(t), seen = me0 ? w.reads?.[me0.email] : null; return { ...w, title: dejargon(w.title), thread: sfWho(w.thread), cardSnap: undefined, unread: me0 ? (w.updatedAt > (seen || 0) && (w.people || []).some((p) => p.email === me0.email) && w.lastBy !== me0.email) : !!w.unread, mine: !!me0 && JAMS.isIn(w, me0.email), here: JAMS.here(w.id).filter((p) => p.email !== me0?.email) }; };
   const workOut = (t) => { const see = guestSees(t); shown = (w) => shown0(w) && see(w); try { return workOut0(t); } finally { shown = shown0; } };
   const workOut0 = (t) => (repairHeartKids(t), dedupeShortcuts(t), fixTickets(t), oneTitles(t), t.work.forEach((w) => { if (typeof w.cta === 'string' && ctaName(w.cta) !== w.cta) w.cta = ctaName(w.cta); RMX.ensurePlan(t, w); if (w.cardId && (!w.cardPlan || w.cardPlan.v !== PLAN_V) && t.cards.get(w.cardId)) { const made = w.cardPlan?.made; w.cardPlan = planOfCard(t.cards.get(w.cardId)); if (w.cardPlan && made) w.cardPlan.made = made; } /* jams opened before plans (or before one-always, plan v2) heal */ if (!['measuring', 'result'].includes(w.stage)) JB.seed(t, w); titleFromDoc(w); }), { items: t.work.filter(shown).map((w) => jamOut(t, w)), discarded: t.work.filter((w) => !w.archived && w.discarded && guestSees(t)(w)).map((w) => jamOut(t, w)), me: meOf(t), notes: t.notes.slice(0, 40), unread: t.notes.filter((n) => !n.read).length, needsYou: t.work.filter((w) => shown(w) && w.stage === 'needs_you').length, withTeam: withTeam(t.work.filter(shown)) });
   on('GET', '/api/tenants/:id/work', async (b, t) => workOut(t));
