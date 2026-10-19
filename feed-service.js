@@ -300,7 +300,7 @@ export function createFeedService(o) {
   const meOf = (t) => { const r = reqOf(t); if (!r) return null; if (r.member && r.email) return { email: r.email, name: r.name || null, pic: r.pic || null, ...(o.isStaff?.(r.email) ? { staff: true } : {}) }; if (r.guest?.email) return { email: r.guest.email, name: r.guest.name || null, pic: r.guest.pic || null }; return null; };
   const tenants = new (class extends Map { set(k, t) { MC.guard(t); JAMS.guard(t); return super.set(k, t); } })();
   /* jam emails to the team (jam-mail.js); the demo site never sends */
-  const mailEv = (t, w, ev) => { if (!o.jamMail || process.env.DEMO_MODE === '1') return; o.jamMail.event(t.brandId || DEFAULT_BRAND, w, ev).catch((e) => log.warn?.('[jam-mail]', e.message)); };
+  const mailEv = (t, w, ev) => { if (!o.jamMail || process.env.DEMO_MODE === '1') return; const ct = t.cards?.get?.(w.cardId)?.title; /* the email names the jam as the jam shows it (its card), never a draft's own headline */ o.jamMail.event(t.brandId || DEFAULT_BRAND, ct && ct !== w.title ? { ...w, title: ct } : w, ev).catch((e) => log.warn?.('[jam-mail]', e.message)); };
   const nameOf = (p) => p?.name || p?.email || 'Someone';
   /* Your feed (member-tuning.js): a member's tuning is theirs on every device (keyed by their email); anyone else tunes this workspace */
   const TUNE = o.tuning || createTuning({ packs: o.globalPacks || packs, log });

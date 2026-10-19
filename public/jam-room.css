@@ -1075,7 +1075,7 @@ body.th-on{overflow:hidden}
 .jm-seg{display:flex;gap:2px;padding:3px;margin-bottom:4px;border-radius:9px;background:var(--surface)}
 .jm-seg button{flex:1;justify-content:center;height:28px;font-size:13.5px;color:var(--fg-2);white-space:nowrap;padding:0 10px}
 /* assign rows: name over its line, one row each, nothing wraps beside the avatar */
-.jm-assign-m{min-width:280px;max-width:320px;padding:6px}
+.jm-assign-m{left:auto;right:0;min-width:280px;max-width:320px;padding:6px} /* opens leftward: the button sits at the right of the pane */
 .jm-assign-m .jm-seg{margin-bottom:6px}
 .jm-assign-m button[role="menuitem"]{height:auto;min-height:44px;padding:6px 10px}
 .jm-assign-m .av{flex:0 0 auto}
