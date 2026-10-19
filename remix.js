@@ -510,9 +510,28 @@ export function createRemix(o) {
      says what it is (Param, 19 Oct: "Social post · Monday at 9:00 AM" and "#arata #hairgrowth" on a Meta ad) */
   const isAdClip = (ch) => ch?.action === 'creative.short_video' && ch.target?.conn === 'meta';
   const adClip = (ch) => { if (!isAdClip(ch) || !ch.pkg) return; delete ch.pkg.postAt; delete ch.pkg.hashtags; if (!ch.pkg.platform || /^social post$|shorts|youtube|tiktok|reels? &/i.test(ch.pkg.platform)) ch.pkg.platform = 'Meta video ad · Reels and Stories'; };
+  /* CRE-15: a card whose asset is a landing page gets a landing-page draft, in one version, with its words: a hero (the page
+     copy's heading and first line), three benefit blocks (its points, else the card's reasons) each with one of the brand's
+     own product photos (the named product first), one real review quote from the read (none when the read found none, never
+     made up) and one button. Built from the package and the pack, no AI call, so the mock path makes it too; it follows every
+     word edit (sync) and saved jams gain it when read (pubChange) */
+  const LANDING = /\blanding[- ]pages?\b|\bwaitlist page\b|\b(?:comparison|vs\.?|versus) page\b/i;
+  const isLanding = (ch, c = {}) => ch.action === 'storefront.page_copy' && LANDING.test([c.title, c.sub, c.make?.pieces, c.make?.what, ...(c.detail?.how || [])].filter((x) => typeof x === 'string').join(' '));
+  const LANDING_V = 4; /* bump when the page is drawn differently: saved jams redraw it when read */
+  const TASK = /^(?:create|import|configure|set ?up|add|build|publish|launch|deploy|test|write|install|enable|update|map|run|draft|review|record|upload|edit|pick|shoot|compare|highlight|show|explain|mention|include|list|lead with|use|place|put|swap|replace|link)\b/i; /* a build step, not a shopper benefit */
+  const landingOf = (t, ch, c = {}) => { const p = ch.pkg || {}, cut = (x, n) => { x = String(x || '').replace(/\s+/g, ' ').trim(); return x.length > n ? `${x.slice(0, n - 1).replace(/\s+\S*$/, '')}…` : x; }, same = (a, b) => cut(a, 200).toLowerCase().replace(/[^a-z0-9]+/g, '') === cut(b, 200).toLowerCase().replace(/[^a-z0-9]+/g, '');
+    const cat = catalogOf(t) || [], named = (() => { try { return cardProduct(c, cat, { brand: o.SEED?.brand?.name || '' }); } catch { return null; } })();
+    const prods = [named, ...cat.filter((x) => !x.out && x !== named)].filter((x) => x?.img).slice(0, 3);
+    const points = (p.bullets || []).map((x) => cut(String(x).replace(/^[-•\d.)\s]+/, ''), 90)).filter((x) => x.length > 3 && !TASK.test(x));
+    const benefits = prods.length ? prods.map((x, i) => ({ title: cut(String(x.t).split(/\s+[–—|-]\s+/)[0], 48), body: points[i] || cut(x.claim, 90) || '', img: x.img }))
+      : points.slice(0, 3).map((x) => ({ title: x, body: '', img: null }));
+    const quote = ((cat.hooks || {}).reviewQuotes || [])[0] || null, hero = cut(p.heading || c.title, 90);
+    const first = (x) => cut(String(x || '').split(/(?<=[.!?])\s+/)[0], 180), sub = [p.body, named?.claim].map(first).find((x) => x && !same(x, hero)) || ''; /* the page's own words or the product's claim, never the card's analysis */
+    return { v: LANDING_V, hero, sub, benefits, quote: quote ? { text: quote, who: 'A customer review' } : null, cta: cut(p.button || 'Shop now', 30) }; };
   const sync = (t, ch, c) => {
     const act = actOf(ch.action); c ||= t.cards.get(ch.cardId) || {};
     adClip(ch);
+    if (ch.pkg && isLanding(ch, c)) ch.pkg.landing = landingOf(t, ch, c);
     ch.after = afterFromPkg(ch.family, ch.pkg, { images: ['meta_ad', 'social'].includes(ch.family) && c.images && !isRivalCard(c) ? [ch.batchKey ? ch.pkg.image : c.images[0]] : null });
     ch.after.publicText = publicText(ch.family, ch.action, ch.pkg);
     ch.amount = act.money ? amountOf(act, ch.family, ch.pkg) : 0;
@@ -584,6 +603,7 @@ export function createRemix(o) {
     if (ch.state === 'draft' && !ch.batchKey) { const lf = labelFor(ch.action, t.cards.get(ch.cardId) || {}); /* jams opened before the card-led names heal on read */
       if (lf && lf.label !== ch.actionLabel && ['creative.add_variants', 'creative.short_video'].includes(ch.action)) { ch.actionLabel = lf.label; ch.target = { conn: lf.target.conn, name: lf.target.name || (lf.target.conn ? SEED.connectors[lf.target.conn]?.name : 'A person'), object: lf.target.object }; } }
     healDraftCode(t, ch);
+    if (ch.pkg && ch.pkg.landing?.v !== LANDING_V && isLanding(ch, t.cards.get(ch.cardId) || {})) sync(t, ch); /* a jam saved before landing drafts gains its page */
     const opts = optionsOf(t, ch); /* first: healing an old jam can move its stage */
     const { impact: _imp, packMeta: _pk, ...pub } = ch; /* projections can hold the brand's private account rows: they go out only through /impact, per caller */
     const card0 = t.cards.get(ch.cardId); /* our version of a rival's ad: what Brew read from it, shown in the studio */

@@ -880,3 +880,16 @@ body[data-view="remix"] .fab{display:none}
 .am-hl[data-hl-edit]{cursor:text;border-radius:4px;outline:0;transition:box-shadow .15s}
 .am-hl[data-hl-edit]:hover{box-shadow:0 0 0 2px var(--line)}
 .am-hl[data-hl-edit][contenteditable]{box-shadow:0 0 0 2px var(--accent,#2563eb);background:var(--card)}
+/* CRE-15: a landing page draft in the browser frame */
+.as-landing .lp{display:flex;flex-direction:column;gap:18px;padding:22px 22px 24px}
+.as-landing .lp-hero{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.as-landing .lp-hero h3{margin:0;font-size:24px;line-height:29px;letter-spacing:-.01em}
+.as-landing .lp-hero p{margin:0;color:var(--fg-2);font-size:15px;line-height:21px}
+.as-landing .lp-ben{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+.as-landing .lp-ben figure{margin:0;display:flex;flex-direction:column;gap:6px}
+.as-landing .lp-ben img,.as-landing .lp-ph{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:10px;background:var(--surface);display:block}
+.as-landing .lp-ben figcaption{font-size:13.5px;line-height:18px;font-weight:600;color:var(--fg)}
+.as-landing .lp-q{margin:0;padding:12px 14px;border-radius:12px;background:var(--surface)}
+.as-landing .lp-q p{margin:0;font-size:14.5px;line-height:20px}
+.as-landing .lp-q cite{display:block;margin-top:4px;font-style:normal;font-size:12.5px;color:var(--fg-3)}
+.as-landing .lp-ben figcaption{display:flex;flex-direction:column;gap:2px}.as-landing .lp-ben figcaption span{font-weight:400;color:var(--fg-2);font-size:13px;line-height:17px}

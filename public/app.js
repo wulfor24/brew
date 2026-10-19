@@ -3729,6 +3729,13 @@
       <ul class="ao-list">${(p.items || []).map((r) => `<li><b>${esc(r.name)}</b><div class="ao-ch"><span>${esc(r.now)}</span>${ic('right', 's14')}<strong>${esc(r.next)}</strong></div></li>`).join('')}</ul>
       ${p.rule ? `<p class="ao-rule">${ic('eyeoff', 's14')}<span><b>Rule:</b> ${esc(p.rule)}${p.checkAt ? ` · ${esc(p.checkAt)}` : ''}</span></p>` : ''}
       ${p.spendChangeWeek ? `<p class="ao-spend ${p.spendChangeWeek > 0 ? 'up' : 'down'}">${p.spendChangeWeek > 0 ? '+' : '−'}${inrS(Math.abs(p.spendChangeWeek))} a week</p>` : ''}</div>`;
+    /* CRE-15: a landing page draft (remix.js landingOf): hero with the one button, three benefit blocks with the brand's photos,
+       one real review quote when the read has one; the same browser frame as a page section */
+    if (ch.family === 'store' && p.landing?.hero) { const L = p.landing;
+      return `<div class="as as-web as-landing"><div class="aw-bar"><i></i><i></i><i></i><span>${esc(B.brand.host || '')}</span></div><div class="lp">
+        <section class="lp-hero"><small class="aw-where">Landing page</small><h3>${esc(L.hero)}</h3>${L.sub ? `<p>${esc(L.sub)}</p>` : ''}<span class="aw-btn">${esc(L.cta || 'Shop now')}</span></section>
+        ${(L.benefits || []).length ? `<section class="lp-ben">${L.benefits.slice(0, size === 'lg' ? 3 : 2).map((b) => `<figure>${b.img ? `<img src="${esc(cdnSized(b.img, 600))}" alt="" loading="lazy" decoding="async">` : '<span class="lp-ph"></span>'}<figcaption><b>${esc(b.title)}</b>${b.body ? `<span>${esc(b.body)}</span>` : ''}</figcaption></figure>`).join('')}</section>` : ''}
+        ${L.quote?.text ? `<blockquote class="lp-q"><p>“${esc(L.quote.text)}”</p><cite>${esc(L.quote.who || 'A customer review')}</cite></blockquote>` : ''}</div></div>`; }
     if (ch.family === 'store') return `<div class="as as-web"><div class="aw-bar"><i></i><i></i><i></i><span>${esc((String(p.pages || '').match(/(?:[a-z0-9-]+\.)+[a-z]{2,}\/[^\s,;)]*/i) || [`${B.brand.host}`])[0].replace(/^www\./, ''))}</span></div>
       <div class="aw-body"><small class="aw-where">${esc([String(p.pages || '').replace(/(?:https?:\/\/)?(?:www\.)?(?:[a-z0-9-]+\.)+[a-z]{2,}\/\S*/gi, '').replace(/^[\s,;·-]+|[\s,;·-]+$/g, ''), p.section].filter(Boolean).join(' · '))}</small><h4>${esc(p.heading || '')}</h4><div class="rx">${rich(p.body)}</div>${(p.bullets || []).length ? `<ul>${p.bullets.map((x) => `<li>${ic('check', 's14')}${esc(x)}</li>`).join('')}</ul>` : ''}
       ${p.priceAfter ? `<div class="aw-price">${p.priceBefore ? `<del>${esc(p.priceBefore)}</del>` : ''}<b>${esc(p.priceAfter)}</b></div>` : ''}${p.button ? `<span class="aw-btn">${esc(p.button)}</span>` : ''}</div></div>`;
