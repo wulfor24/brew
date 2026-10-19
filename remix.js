@@ -649,8 +649,8 @@ export function createRemix(o) {
   /* each cut its own photo (More like this, "three cuts", the plan's make step): one picture per version from that cut's own
      brief and headline, within today's photo budget (it stops at the limit and says how many got one). The cut on the stage
      changes with it; the chat shows the cuts as a strip to tap */
-  const cutPhotos = (t, ch, vs) => {
-    if (!canPic(ch) || isVideoPost(ch) || vs.length < 2) return 0;
+  const cutPhotos = (t, ch, vs, one = false) => {
+    if (!canPic(ch) || isVideoPost(ch) || vs.length < (one ? 1 : 2)) return 0;
     if (!spend('image')) return 0;
     ch.imagePending = true; ch.imageError = null; IMG_JOBS.add(ch.id);
     (async () => {
@@ -1278,7 +1278,13 @@ export function createRemix(o) {
     let x = null; if (!isMock() && spend('text')) { try { x = (await liveOptions(t, c, { ...r, actionKeys: [ch.action] }, ch.intent, b.prompt || '', 1, ch)).opts[0]; } catch (e) { log.warn('[more]', e.message); } }
     if (!x) { const i = (versionsOf(t, ch.id).length + 1) % 3; x = mockOptions(t, c, { ...r, actionKeys: [ch.action] }, ch.intent, 1, i)[0]; }
     ch.pkg = { ...rulePkg(t, ch.agent, ch.family, cleanPkg(ch.family, ch.action, x.pkg, clean)), ...keepMedia(ch.pkg) };
-    sync(t, ch, c); version(t, ch, `ai:${ch.agent}`, `Another version${x.angle ? `: ${x.angle}` : ''}`);
+    sync(t, ch, c);
+    /* with options on the stage, another one is one more option beside them (same parent as the others, its own tab) */
+    const op = optionsOf(t, ch), first = op && versionById(t, ch.id, op.list[0].id);
+    if (op && !op.picked && first) { const L = 'ABCDEFGH'[op.list.length] || 'X', v = addV(t, 'change', ch.id, snapOf(ch), { author: `ai:${ch.agent}`, reason: `Version ${L}: ${x.angle || 'a different cut'}`, parent: first.parentVersionId });
+      ch.options.ids.push(v.id); const nm = shortName(x.angle); if (nm) ch.options.names = { ...(ch.options.names || {}), [v.id]: nm }; useVersion(t, ch, v); cutPhotos(t, ch, [v], true) /* its own photo */;
+      ch.thread.push({ from: 'ai', text: `Made one more option: ${L} (${nm || 'a different cut'}). It’s on the stage now.`, at: now(t) }); }
+    else version(t, ch, `ai:${ch.agent}`, `Another version${x.angle ? `: ${x.angle}` : ''}`);
     signal(t, 'pick', { agent: ch.agent, angle: ch.angle, action: ch.action, changeId: ch.id }, now(t));
     return { change: pubChange(t, ch), learned: learnedOut(t) };
   });
@@ -1287,7 +1293,13 @@ export function createRemix(o) {
   const makeCuts = async (t, ch, n, prompt, reasonOf) => {
     const c = t.cards.get(ch.cardId) || {}; const r = recipeFor(c);
     let xs = null; if (!isMock() && spend('text')) { try { xs = (await liveOptions(t, c, { ...r, actionKeys: [ch.action] }, ch.intent, `${n > 1 ? `${n === 3 ? 'Three' : n} distinct cuts` : 'The finished version, ready to deploy'} of this exact package: ${toKV(ch.family, ch.action, ch.pkg).map((e) => `${e.k}: ${e.v}`).join(' · ')}${prompt ? '. ' + prompt : ''}`, n)).opts; } catch (e) { log.warn('[variants]', e.message); } }
+    /* the plan promised n (Param, 19 Oct: "which 3 versions?" when 2 came back): the writer is asked again for the missing ones,
+       each a different angle from the ones already written; only if it still can't, the rule-based cuts fill the gap */
+    for (let k = 0; xs?.length && xs.length < n && k < 2 && !isMock() && spend('text'); k++) { try {
+      const more = (await liveOptions(t, c, { ...r, actionKeys: [ch.action] }, ch.intent, `${n - xs.length} more distinct ${n - xs.length > 1 ? 'cuts' : 'cut'} of this exact package, each a different angle from these: ${xs.map((x) => x.angle).filter(Boolean).join('; ')}${prompt ? '. ' + prompt : ''}`, n - xs.length)).opts || [];
+      xs = xs.concat(more.filter((x) => !xs.some((y) => String(y.angle || '').toLowerCase() === String(x.angle || '').toLowerCase()))); } catch (e) { log.warn('[variants] top-up', e.message); break; } }
     if (!xs?.length) xs = mockOptions(t, c, { ...r, actionKeys: [ch.action] }, ch.intent, n, 1);
+    else if (xs.length < n) xs = xs.concat(mockOptions(t, c, { ...r, actionKeys: [ch.action] }, ch.intent, n, 1).filter((x) => !xs.some((y) => y.angle === x.angle)).slice(0, n - xs.length));
     const base = headOf(t, ch); const made = []; const keep = { ...ch.pkg };
     xs.slice(0, n).forEach((x, i) => {
       ch.pkg = { ...rulePkg(t, ch.agent, ch.family, cleanPkg(ch.family, ch.action, x.pkg, clean)), ...keepMedia(ch.pkg) }; sync(t, ch, c);

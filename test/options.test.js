@@ -67,3 +67,12 @@ test('a jam saved before options heals: v2–v4 are the options, the old “Vide
   assert.equal(op.list[0].tip, 'v2', 'the stray copy is not option A'); assert.equal(op.list[0].has, 'words'); assert.equal(op.list[2].has, 'video');
   assert.equal(r.change.head, 'v4', 'the stage shows the option whose clip it was'); assert.equal(op.on, 'v4');
 });
+
+test('One more beside the options is one more option: same parent, its own tab, on the stage', async () => {
+  const t = tenant(); t.changes.ch_1 = change('ch_1'); const { call } = studio();
+  await call('GET /api/changes/:chid', {}, t, { chid: 'ch_1' });
+  const r = await call('POST /api/changes/:chid/iterate', { message: 'Three cuts of this ad' }, t, { chid: 'ch_1' });
+  const m = await call('POST /api/changes/:chid/more', {}, t, { chid: 'ch_1' });
+  const op = m.change.options; assert.equal(op.list.length, 4); assert.equal(op.list[3].letter, 'D'); assert.equal(op.on, op.list[3].id); assert.equal(m.change.head, op.list[3].id);
+  assert.equal(op.list[3].tip, op.list[3].id, 'its own tab, not part of another option'); assert.equal(op.list[2].tip, r.change.options.list[2].tip, 'C is untouched');
+});

@@ -3048,3 +3048,4 @@ a.pf-src:hover{color:var(--fg);text-decoration:underline;text-underline-offset:2
 .sv-make.is-row{position:static;flex-direction:row;justify-content:center;margin:10px 0 0}
 .sv-make.is-row small{color:var(--fg-2);text-shadow:none}
 .pm-sv>.st-atools{margin:10px 0 4px}
+.st-opt.is-add{border-style:dashed;color:var(--fg-3)}
