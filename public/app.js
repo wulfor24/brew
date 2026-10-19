@@ -668,7 +668,7 @@
     return (claiming = api(`/api/brands/${B.slug || BR}/claim`, {}).then((r) => { if (!r || r.error) return; if (r.access && window.LIVE) window.LIVE.access = { ...A0, ...r.access }; else A0.role = r.role || 'owner'; }).catch(() => {}).finally(() => { claiming = null; })); };
   /* the voice tap (v1 questions) becomes a brand rule every draft reads; only the team saves it, so after the claim */
   const pushVoice = () => { const v = S.viewer.voice; if (!GEN || !v || S.viewer.voiceSaved === v) return;
-    api(`/api/brands/${B.slug || BR}/voice`, { voice: v }).then((r) => { if (r && !r.error) { S.viewer.voiceSaved = v; save(); } }).catch(() => {}); };
+    tapi('POST', `/api/brands/${B.slug || BR}/voice`, { voice: v }).then((r) => { if (r && !r.error) { S.viewer.voiceSaved = v; save(); } }).catch(() => {}); };
   /* what the v1 questions already asked (onboard2.js mode q): those screens are not asked twice */
   const qAns = (id) => { const d = window.OB2?.qState?.().done?.[id]; return d != null && d !== false && d !== 'skip'; }; /* a tap keeps its value, a brand tap true, a skip 'skip' */
   const afterRead = () => { if (signWall('who')) return; claimFirst().then(pushVoice); if (qAns('seat') && S.viewer.role) { view = 'ob'; return wantWhat(); } whoFor(); };
