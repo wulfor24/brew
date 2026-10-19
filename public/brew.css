@@ -2734,8 +2734,11 @@ body.rx-boot #view{visibility:hidden}
 .m2-sheet .dz-sec h4{margin:0;font-size:13px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--fg-2)}
 .m2-sheet .dz-sec header .linkbtn{font-size:13px;color:var(--fg-3)}
 .m2-sheet .dz-sec ul{list-style:none;margin:0;padding:0}
-.m2-sheet .dz-row{display:grid;grid-template-columns:22px 1fr auto;gap:12px;align-items:start;padding:10px 8px;margin:0 -8px;border-radius:12px}
+.m2-sheet .dz-row{display:grid;grid-template-columns:22px auto 1fr auto;gap:12px;align-items:start;padding:10px 8px;margin:0 -8px;border-radius:12px}
 .m2-sheet .dz-row+.dz-row{border-top:1px solid var(--line)}
+/* the line's number, so a person can name it ("untick 12", "drop 12") */
+.m2-sheet .dz-n{min-width:2ch;padding-top:2px;text-align:right;font-size:12px;font-variant-numeric:tabular-nums;color:var(--fg-3)}
+.m2-sheet .dz-row.is-off .dz-n{text-decoration:line-through}
 .m2-sheet .dz-row:hover{background:var(--glass-row-h,rgba(127,127,127,.06))}
 .m2-sheet .dz-tog{width:22px;height:22px;margin-top:1px;border-radius:7px;border:1.5px solid var(--fg);background:var(--fg);color:var(--bg,#fff);display:grid;place-items:center;padding:0;cursor:pointer}
 .m2-sheet .dz-tog .ic{opacity:1}

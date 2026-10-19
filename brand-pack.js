@@ -242,10 +242,10 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
   async function loadGenerated(slug) {
     const seed = await getJSON(slug, 'seed.json'); if (!seed) return null;
     /* the pack's files are read together, not one after another (each is a bucket read on a fresh instance) */
-    let [facts, config, status, moves, pools, profile, statics, brief, labels, pages, briefJ, moveValue, notesJ, firstDrafts, learned, rivalReads] = await Promise.all([
+    let [facts, config, status, moves, pools, profile, statics, brief, labels, pages, briefJ, moveValue, notesJ, firstDrafts, learned, rivalReads, pulseJ] = await Promise.all([
       getJSON(slug, 'facts.json', {}), getJSON(slug, 'config.json', {}), getJSON(slug, 'status.json', {}), getJSON(slug, 'moves.json', {}), getJSON(slug, 'pools.json', {}),
       getJSON(slug, 'profile.json', null), getJSON(slug, 'statics.json', {}), get(slug, 'brief.md'), getJSON(slug, 'labels.json', {}), getJSON(slug, 'pages.json', {}),
-      getJSON(slug, 'brief.json', {}), getJSON(slug, 'move-value.json', {}), getJSON(slug, 'notes.json', null), getFreshJSON(slug, 'drafts/cards.json', {}), getJSON(slug, 'learned.json', null), getJSON(slug, 'rival-reads.json', {})]);
+      getJSON(slug, 'brief.json', {}), getJSON(slug, 'move-value.json', {}), getJSON(slug, 'notes.json', null), getFreshJSON(slug, 'drafts/cards.json', {}), getJSON(slug, 'learned.json', null), getJSON(slug, 'rival-reads.json', {}), getJSON(slug, 'pulse/latest.json', null)]);
     const hooks = hooksOf(profile, rivalReads || {}); /* real buyers' words and the rival ads that keep running, for the draft plans */
     /* a brief saved with "null" cells (an empty MRP or note the model wrote out) heals at load, for every brand: the cells go
        blank and the page (the AI's system prompt for the brand) is drawn again with what the team told Brew */
@@ -312,6 +312,9 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
       /* what the team told Brew, as proof (evidence.js): each learning with its words and source; why a card was lifted or stepped back */
       learnedEv: { items: learnedItems(learned).map(({ text, quote, source, at, kind, hash }) => ({ text, quote, source, at, kind, hash })), up: Object.fromEntries(upFresh), hide: LC.hide || {}, add: LC.add || [] },
       learnedUp: new Set(upFresh.map(([id]) => id)), learnedHide: new Set(Object.keys(LC.hide || {})), teamCards: new Set((LC.add || []).map((x) => x.id)), // the ranker: lift, step back, and the team's own cards first
+      /* the market pulse's measured lines (market-pulse.js: rival search rankings and gaps, clicks, ad counts, AI answers), as
+         proof (evidence.js): a card's number that one of them holds shows where it came from */
+      pulseEv: (pulseJ?.lines || []).filter((x) => x?.key && x.value != null && typeof x.value !== 'object').map(({ key, label, value, unit, source, url, at, subject, own }) => ({ key, label, v: `${value}${unit ? ` ${unit}` : ''}`, src: source || 'Market pulse', url: url || null, at: at || null, subject: subject || null, own: !!own })),
       firstDrafts, // first drafts made in the background (drafts-bg.js), seeded into a card's jam
       client: { facts: `b/${slug}/facts.js`, seed: `b/${slug}/seed.js` }
     });

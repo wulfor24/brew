@@ -3,7 +3,8 @@
 // card) and by the feed's card summary (how many sources a card shows on its proof icon).
 //
 // Where the proof comes from, for any card, any brand:
-//   1. every number on the card, matched to the fact-sheet line that holds it (label, value, the page or account it was
+//   1. every number on the card, matched to the fact-sheet line that holds it, else the market pulse's line (a rival's search
+//      rankings and gaps, clicks, ad counts) (label, value, the page or account it was
 //      read from, the day), the brand's connected accounts first for a team member
 //   2. what the card itself was built on: a rival's ad in the Ad Library, a customer thread or quote, an idea's evidence,
 //      a Google Trends series, the rows Brew counted
@@ -56,7 +57,7 @@ export function teamOf(c, T, ns = [], M = {}) {
   return out;
 }
 
-export function createEvidence({ factsOf, movesOf, numsOf, adOf = () => null, country = () => '', brandHost = () => '', learnedOf = () => null }) {
+export function createEvidence({ factsOf, movesOf, numsOf, adOf = () => null, country = () => '', brandHost = () => '', learnedOf = () => null, pulseOf = () => null }) {
   /* a fact read from the brand's own site or accounts, or from somewhere else (a rival's page, a marketplace, the web) */
   const ownOf = (f) => { const h = String(brandHost() || '').replace(/^www\./, ''), u = hostOf(f.url) || String(f.src || '').split('/')[0].replace(/^www\./, ''); return !h || !u || u === h || u.endsWith('.' + h) || /shopify|meta\.json/i.test(f.src || ''); };
   /* the brand's facts by number: canonical number → the facts whose value holds it (demo facts never count) */
@@ -65,6 +66,13 @@ export function createEvidence({ factsOf, movesOf, numsOf, adOf = () => null, co
     const m = new Map(); for (const [id, f] of Object.entries(facts)) { if (!f || f.kind === 'demo' || f.v == null) continue;
       const ns = new Set(allNums(f.v)); for (const n of ns) { if (!m.has(n)) m.set(n, []); m.get(n).push({ id, ...f }); } }
     IDX.set(facts, m); return m; };
+  /* the market pulse's lines by number (rival search rankings and gaps, clicks, ad counts): keyed as the moves cite them
+     (pulse.<key>), so a number a move took from the pulse matches the line it came from */
+  const PIDX = new WeakMap();
+  const pulseIndex = (lines) => { if (!Array.isArray(lines)) return new Map(); if (PIDX.has(lines)) return PIDX.get(lines);
+    const m = new Map(); for (const x of lines) { if (!x?.key) continue; const f = { ...x, key: `pulse.${x.key}`, label: x.label || x.key, pulse: true };
+      for (const n of new Set(allNums(f.v))) { if (!m.has(n)) m.set(n, []); m.get(n).push(f); } }
+    PIDX.set(lines, m); return m; };
   const cardText = (c) => [c.title, c.sub, ...(c.rows || []).map((r) => (Array.isArray(r) ? r.join(' ') : '')), ...(c.detail?.why || []), c.make?.pieces, c.make?.backedBy].filter(Boolean).join(' \n ');
   const numsOfCard = (c) => allNums(cardText(c));
   const gatedOfCard = (c) => { const s = cardText(c); return [...new Set([...numbersIn(s, { strict: true }), ...numbersIn(s)])]; }; /* money, shares, multiples, big counts: what must have a source */
@@ -76,7 +84,7 @@ export function createEvidence({ factsOf, movesOf, numsOf, adOf = () => null, co
 
   function evidenceOf(c, { liveLedger = null, plain = null, voice = [], team: teamOk = true } = {}) { /* teamOk: what the team told Brew is for its team only, like the told list */
     if (!c) return null;
-    const facts = factsOf() || {}, idx = indexOf(facts), cw = new Set(words(cardText(c)));
+    const facts = factsOf() || {}, idx = indexOf(facts), pidx = pulseIndex(pulseOf?.()), cw = new Set(words(cardText(c)));
     const ns = (numsOf?.(c.src) || []), M = movesOf() || {};
     const used = new Set(ns.flatMap((n) => M[n]?.factsUsed || []));
     const items = [], seen = new Set();
@@ -92,11 +100,11 @@ export function createEvidence({ factsOf, movesOf, numsOf, adOf = () => null, co
     for (const n of nums) {
       const acct = live.find(([, e]) => e && allNums(e.v).includes(n));
       if (acct) { const [key, e] = acct; add({ kind: 'account', label: plainLabel(e.label) || key, value: String(e.v), src: `Your ${connName(key)} account`, at: e.at ? new Date(e.at).toISOString().slice(0, 10) : null, url: null, num: n }); backed.add(n); continue; }
-      const f = pick(idx.get(n) || [], cw, used, !gated.has(n) || String(n).replace(/\D/g, '').length <= 2); /* "10%", "₹0", "2x" are common too */
+      const loose = !gated.has(n) || String(n).replace(/\D/g, '').length <= 2, f = pick(idx.get(n) || [], cw, used, loose) || pick(pidx.get(n) || [], cw, used, loose); /* "10%", "₹0", "2x" are common too */
       if (!f) { const d = ns.flatMap((k) => M[k]?.derived || []).find((x) => x?.v != null && allNums(x.v).includes(n)); /* the move's own sum, shown with its working */
         if (d) { add({ kind: 'math', label: `Worked out: ${cut(d.expr, 160)}`, value: String(d.v), src: 'Brew’s maths from the prices and counts above', url: null, num: n }); backed.add(n); } continue; }
       backed.add(n);
-      add({ kind: f.kind === 'current' ? 'count' : ownOf(f) ? 'fact' : 'web', label: plainLabel(f.label) || f.key, value: String(f.v), src: f.src || hostOf(f.url) || 'Brew’s read of your store', url: okUrl(f.url), at: f.at ? String(f.at).slice(0, 10) : null, num: n, ...(f.kind === 'proposed' ? { note: 'Proposed, not measured yet' } : {}) });
+      add({ kind: f.pulse ? (f.own ? 'fact' : 'web') : f.kind === 'current' ? 'count' : ownOf(f) ? 'fact' : 'web', label: plainLabel(f.label) || f.key, value: String(f.v), src: f.pulse ? [f.src, f.subject].filter(Boolean).join(' · ') : f.src || hostOf(f.url) || 'Brew’s read of your store', url: okUrl(f.url), at: f.at ? String(f.at).slice(0, 10) : null, num: n, ...(f.kind === 'proposed' ? { note: 'Proposed, not measured yet' } : {}) });
     }
     /* 2. what the card was built on */
     const ad = c.research?.kind === 'ad' ? adOf(c.research.id) : null;

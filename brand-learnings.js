@@ -187,9 +187,11 @@ export function conflictsOf(items = [], sheet = {}) {
 export const emptyLearned = () => ({ v: 1, at: null, essence: [], goals: [], beliefs: [], facts: [], tried: [], sources: [] });
 export const learnedItems = (L) => BUCKETS.flatMap((k) => (L?.[k] || []).map((x) => ({ ...x, bucket: k })));
 const OPEN = '<!-- brew:learned -->', CLOSE = '<!-- /brew:learned -->';
+/* beliefs are the team's guardrails (claims, creative, language): every one reaches the moves, never the first few only */
+const KEEP_BELIEFS = 40;
 export function learnedSection(L, { name = 'the brand', per = 6 } = {}) {
   const parts = [['essence', 'Essence'], ['goals', 'Goals, priorities and plans'], ['beliefs', 'Beliefs (follow these)'], ['facts', 'Facts the team stated']]
-    .filter(([k]) => L?.[k]?.length).map(([k, h]) => `**${h}**\n${L[k].slice(0, per).map((x) => `- ${x.text} (${x.source})`).join('\n')}`);
+    .filter(([k]) => L?.[k]?.length).map(([k, h]) => `**${h}**\n${L[k].slice(0, k === 'beliefs' ? KEEP_BELIEFS : per).map((x) => `- ${x.text} (${x.source})`).join('\n')}`);
   /* what they tried: every one, never cut to a few, with the rule the moves follow */
   if (L?.tried?.length) parts.push(`**What ${name} already tried, and how it went (respect every one)**\nBuild on what worked. Never recommend again what they say didn't work, unless the move says plainly what is different this time and why it should work now. Don't present something they already did as a new idea.\n${L.tried.slice(0, KEEP_TRIED).map((x) => `- ${x.text} (${x.source})`).join('\n')}`);
   if (!parts.length) return '';

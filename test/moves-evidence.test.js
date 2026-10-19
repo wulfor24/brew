@@ -58,6 +58,7 @@ test('the prompt sends the signal lines with the ledger, the timing and the real
   const p = eng.buildPrompt(51, { brand: { name: 'Comet' }, brief: { md: 'brief' }, profile: profileIN, ledger: [{ key: 'price.hero', v: '₹2,999', label: 'Hero price' }], signalLines: L, total: 58 });
   assert.match(p, /listen\.theme\.sizing \| 37 mentions/); assert.match(p, /listen\.theme\.sizing\.q1 \| Do these run small.*\| https:\/\/www\.reddit\.com/);
   assert.match(p, /price\.hero \| ₹2,999/); assert.match(p, /Write Move 51 of 58 /); assert.match(p, /Check timings: Checks every week/);
+  assert.match(p, /Guardrails: the beliefs under "What the team told Brew"/); assert.match(p, /never carry a guarantee, refund promise, timed result or claim from it/); /* a learnings rewrite of an offers move kept the exemplar's guarantee */
   assert.match(p, /Kicker \(fixed\): ANSWERS FROM LISTENING · MOVE 51\n/); assert.doesNotMatch(p.split("# Depth and format exemplar")[0] + p.split("</exemplar>")[1], /OF 50\b/);
 });
 
