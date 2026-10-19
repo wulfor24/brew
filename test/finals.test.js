@@ -36,6 +36,9 @@ test('quote imports the references once, sends the brief with the ratio in the s
   assert.deepEqual(R.calls[1][1], { mode: 'image_gen', prompt: q.prompt, model: 'gemini-3-pro-image-preview', references: [{ kind: 'workspace', id: 'as-sk.jpg', url: 'https://cdn.sloosh.test/sk.jpg', type: 'image', role: 'reference' }], ratio: '4:5', resolution: '2K', seconds: undefined, sound: undefined, count: 1 });
   assert.match(q.prompt, /Image 1 is the product, Hush Mask/);
   await R.F.quote('cozy', spec); assert.equal(R.calls.filter((c) => c[0] === 'import').length, 1); /* cached in private/sloosh-assets.json */
+  /* 19 Oct: a reused asset went out with its saved link and Sloosh refused it ("does not match its owned asset"): the link comes from get_asset */
+  const sent = R.calls.filter((c) => c[0] === 'quote_generation' || c[1]?.references).at(-1)[1].references[0]; assert.equal(sent.url, 'https://cdn.sloosh.test/as-sk.jpg.png');
+  const R2 = rig(); R2.sloosh.getAsset = async () => { throw new Error('Sloosh get_asset: not found'); }; await R2.F.quote('cozy', spec); await R2.F.quote('cozy', spec); assert.equal(R2.calls.filter((c) => c[0] === 'import').length, 2, 'an asset Sloosh lost is imported again');
 });
 
 test('a quote over the workspace’s remaining limit or the brand’s share is refused in plain words', async () => {

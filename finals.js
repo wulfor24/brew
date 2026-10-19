@@ -75,7 +75,12 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
     if (ref?.asset?.id) return ref.asset;
     const url = /^https?:\/\//.test(rel) ? rel : `${publicUrl.replace(/\/$/, '')}/${rel.replace(/^\//, '')}`;
     const cache = await assetCache(slug), key = sha(url), ws = await wsId(), hit = cache[key];
-    if (hit?.assetId && hit.link && ws && hit.ws === ws) return { kind: hit.kind || 'workspace', id: hit.assetId, url: hit.link, type: hit.type || 'image' };
+    /* a kept asset id is reused, but never its old link: Sloosh's asset URLs have no fixed lifetime, and a quote that passes a stale one
+       is refused ("An uploaded asset does not match its owned asset. Call get_asset and pass its returned url", owner_invalid_request:
+       every final on a photo used before, 19 Oct). get_asset is free; an asset it can't find is imported again */
+    if (hit?.assetId && ws && hit.ws === ws) { const ref0 = { kind: hit.kind || 'workspace', id: hit.assetId };
+      const link = await sloosh.getAsset(ref0).then(linkOf).catch((e) => { log.warn?.('[finals] get_asset', ref0.id, e.message.slice(0, 160)); return null; });
+      if (link) { if (link !== hit.link) { cache[key] = { ...hit, link, at: now() }; await packs.put(slug, ASSETS, cache).catch(() => {}); } return { ...ref0, url: link, type: hit.type || 'image' }; } }
     const r = await sloosh.importAsset(url, ref?.label || rel.split('/').pop()); const asset = refOf(r);
     if (!asset) throw Object.assign(new Error(`Sloosh import_asset gave no asset id (keys: ${Object.keys(r || {}).join(', ')})`), { schema: true });
     const type = /video/.test(String(pick(r, 'asset.assetType', 'asset.contentType') || '')) || ref?.kind === 'video' ? 'video' : 'image';
