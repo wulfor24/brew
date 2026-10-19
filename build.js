@@ -151,6 +151,9 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
 
   /* ---------- start a brand ---------- */
   const byUser = new Map(); // email → [started at, …] today
+  const madeToday = async (email) => { const all = await packs.list().catch(() => []), now = Date.now(); /* only brands started in the last day are opened */
+    const by = await Promise.all(all.filter((x) => now - (+x.status?.createdAt || 0) < 864e5).map((x) => packs.getJSON(x.slug, 'private/created.json', null).catch(() => null)));
+    return by.filter((c) => c?.by === email && now - (+c.at || 0) < 864e5).map((c) => +c.at); };
   /* two starts of the same address at once (two tabs, a double click, two instances) make one paid run: on this instance the
      second waits for the first and joins it; across instances a short-lived marker in the pack (start-lock.json, written
      before anything else) tells the other one to join instead of starting or resuming a second run */
@@ -175,7 +178,9 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (prev && !fresh) { if (!st(slug).running && !prev.done) resume(slug).catch((e) => log.error('[build] resume', slug, e.message)); return { slug, existing: true, status: prev }; }
     if (prev && fresh && (st(slug).running || st(slug).checking)) return { error: 'This brand is being written right now. Restart it once this run stops.' };
     const PER_USER = +process.env.BUILD_PER_USER_DAY || 3, mine = (byUser.get(user?.email) || []).filter((t) => Date.now() - t < 864e5);
-    if (user && mine.length >= PER_USER && !process.env.BUILD_NO_IP_LIMIT && !isFullAccess(user.email)) return { error: `${PER_USER} new brands a day per person. Open one you already started, or try again tomorrow.` };
+    /* the count survives a deploy: each brand's saved created stamp (private/created.json), not only this instance's memory (QA 19 Oct) */
+    const made = user && !process.env.BUILD_NO_IP_LIMIT && !isFullAccess(user.email) ? Math.max(mine.length, (await madeToday(user.email)).length) : 0;
+    if (user && made >= PER_USER && !process.env.BUILD_NO_IP_LIMIT && !isFullAccess(user.email)) return { error: `${PER_USER} new brands a day per person. Open one you already started, or try again tomorrow.` };
     if (!user && ip && Date.now() - (byIp.get(ip) || 0) < IP_GAP && !process.env.BUILD_NO_IP_LIMIT) return { error: 'One new brand an hour from the same network. Open one you already started, or try again later.' };
     await loadDay(); if (dayUsd() >= DAY_CAP) return { error: 'Today’s reading budget is used up. Try again tomorrow.' };
     if (user) byUser.set(user.email, [...mine, Date.now()]); else if (ip) byIp.set(ip, Date.now());
