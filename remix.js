@@ -681,7 +681,7 @@ export function createRemix(o) {
   let MK = null; const makers = () => (MK ||= o.makers || createMakers({ geminiImage, log }));
   const VID_JOBS = new Set();
   const srcPhoto = async (t, ch, lead = null) => { const c = t.cards.get(ch.cardId) || {}, p = ch.pkg || {};
-    const cands = [...refsOf(t, ch), ...(p.photos || []).filter((u) => !/^gen\//.test(u)), lead, cardPhoto(t, c), ...(c.images || []).filter((u) => !/^gen\//.test(u) && !/statics\//.test(u) && !isResearchImage(u)), LANE_PHOTO[c.lane], ...Object.values(LANE_PHOTO || {}), o.catalogOf?.(t)?.[0]?.img].filter((x) => x && typeof x === 'string'); /* the jam's own photos first */
+    const cands = [...refsOf(t, ch), ...(p.photos || []).filter((u) => !/^gen\//.test(u) && !isResearchImage(u)), lead, cardPhoto(t, c), ...(isRivalCard(c) ? [] : c.images || []).filter((u) => !/^gen\//.test(u) && !/statics\//.test(u) && !isResearchImage(u)), LANE_PHOTO[c.lane], ...Object.values(LANE_PHOTO || {}), o.catalogOf?.(t)?.[0]?.img].filter((x) => x && typeof x === 'string'); /* the jam's own photos first */
     for (const rel of [...new Set(cands)]) { const f = await readable(rel); if (f) return f; }
     return null; };
   const genVideo = (t, ch, why = 'the script') => {
@@ -1141,9 +1141,10 @@ export function createRemix(o) {
   };
   /* the card's own package for the sheet: the studio's latest fitting change (so Open the studio lands on it), else built now
      from the card as `fast` does, on the card's own first draft */
+  const latestTake = (t, c, r) => { const fits = new Set(r.actionKeys);
+    return Object.values(changes(t)).filter((x) => x.cardId === c.id && !x.discarded && !x.batchKey && fits.has(x.action) && !editable(x)).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0] || null; };
   const takeChange = (t, c, r, cv) => {
-    const fits = new Set(r.actionKeys);
-    const mine = Object.values(changes(t)).filter((x) => x.cardId === c.id && !x.discarded && !x.batchKey && fits.has(x.action) && !editable(x)).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0];
+    const mine = latestTake(t, c, r);
     if (mine) { ensurePkg(t, mine); return mine; }
     const ch = build(t, c, cv, r, mockOptions(t, c, r, '', 1)[0], { intent: '', prompt: '' }); seedV0(t, c, ch); return ch;
   };
@@ -1190,6 +1191,16 @@ export function createRemix(o) {
     TAKE_JOBS.set(v.id, { chId: ch.id, run });
     return true;
   };
+  /* what the sheet opens on, read only (nothing built, saved or spent): the words and picture Save writes to, i.e. the card's
+     latest take, else the package a first take would start from. Its picture is ours (a draft or a take), never a rival's poster */
+  const v2Peek = (t, c) => {
+    const r = recipeFor(c), mine = latestTake(t, c, r);
+    if (mine) { ensurePkg(t, mine); const v = headOf(t, mine), img = v?.snapshot?.image || mine.pkg?.image || null;
+      return { words: takeWords(mine), image: img && !isResearchImage(img) ? img : null, drawing: !!v?.drawing, changeId: mine.id }; }
+    const x = mockOptions(t, c, r, '', 1)[0], f = familyOf(x.action), act = actOf(x.action);
+    const a = afterFromPkg(f, rulePkg(t, act.agent, f, cleanPkg(f, x.action, x.pkg || mockPkg(f, x.action, c, 0, '', FACTS), clean)));
+    return { words: { title: String(a.title || ''), body: String(a.sub || '') }, image: null };
+  };
   const v2Remix = async (b, t, c) => {
     healTakes(t);
     const ask = clean(String(b.prompt || '').trim() || String(b.chip || '').trim()).slice(0, 300), take = !!b.take;
@@ -1198,7 +1209,7 @@ export function createRemix(o) {
     const set = b.set && typeof b.set === 'object' ? { title: clean(String(b.set.title ?? '')).trim().slice(0, 160), body: clean(String(b.set.body ?? '')).trim().slice(0, 1200) } : null; /* typed by hand: applied as is, nothing spent */
     if (set && !set.title && !set.body) return { error: 'Type a title or a body first.', changeId: ch.id };
     if (set) { const cur = takeWords(ch); words = { title: set.title || cur.title, body: set.body || cur.body, label: 'Your words' }; putWords(t, ch, c, words); }
-    else if (b.words || take) { try { words = await rewriteWords(t, c, ch, ask); putWords(t, ch, c, words); } catch (e) { log.warn('[v2 words]', e.message); return { error: e.message, changeId: ch.id }; } }
+    else if (b.words) { try { words = await rewriteWords(t, c, ch, ask); putWords(t, ch, c, words); } catch (e) { log.warn('[v2 words]', e.message); return { error: e.message, changeId: ch.id }; } }
     t.acted.add(c.id);
     if (b.words) {
       const v = version(t, ch, set ? 'you' : `ai:${ch.agent}`, set ? 'Your words' : `New words${ask ? `: ${ask.slice(0, 80)}` : ''}`, words.label || 'New words');
@@ -1210,11 +1221,22 @@ export function createRemix(o) {
     const v = version(t, ch, `ai:${ch.agent}`, take ? `Another take${ask ? `: ${ask.slice(0, 80)}` : ''}` : `New picture${ask ? `: ${ask.slice(0, 80)}` : ''}`, words?.label || (take ? 'Another take' : 'New picture'));
     v.drawing = true; v.drawingAt = now(t); if (take) v.take = true;
     if (words) signal(t, 'edit', { before, after: ch.after, agent: ch.agent, changeId: ch.id, by: 'ai-asked' }, now(t));
-    mirrorTake(t, c, ch, v); drawTake(t, c, ch, v, ask); o.save?.(t);
+    mirrorTake(t, c, ch, v);
+    /* Another take answers at once: its new words are written in the background (the AI call took minutes on a slow day and the
+       button sat still), then its picture is drawn with them. The take is held in TAKE_JOBS meanwhile, so healTakes leaves it be */
+    if (take && !set) { const wj = (async () => {
+        try { let tm; const w2 = await Promise.race([rewriteWords(t, c, ch, ask), new Promise((_, no) => { tm = setTimeout(() => no(new Error('the words took over 90 s; the take keeps the last words')), 90e3); tm.unref?.(); })]).finally(() => clearTimeout(tm)); if (v.drawing) { putWords(t, ch, c, w2); v.snapshot = { ...v.snapshot, ...snapOf(ch) }; v.label = cleanLabel(w2.label) || v.label;
+          signal(t, 'edit', { before, after: ch.after, agent: ch.agent, changeId: ch.id, by: 'ai-asked' }, now(t)); try { mirror(t, ch, v); } catch {} mirrorTake(t, c, ch, v); } }
+        catch (e) { log.warn('[take words]', e.message); }
+        TAKE_JOBS.delete(v.id); if (v.drawing) drawTake(t, c, ch, v, ask); o.save?.(t); })();
+      TAKE_JOBS.set(v.id, { chId: ch.id, run: wj }); o.save?.(t);
+      return { queued: true, changeId: ch.id, versionId: v.id, n: v.n, drawing: true }; }
+    drawTake(t, c, ch, v, ask); o.save?.(t);
     return { queued: true, changeId: ch.id, versionId: v.id, n: v.n, drawing: !!v.drawing, ...(v.drawError ? { drawError: v.drawError } : {}), ...(words ? { words: takeWords(ch) } : {}) };
   };
   on('POST', '/api/cards/:cid/remix', async (b, t, p) => {
     const c = t.cards.get(p.cid); if (!c) return { error: 'not found' };
+    if (b.peek) return v2Peek(t, c); /* v2 sheet: what it opens on */
     if (b.words || b.queue) return v2Remix(b, t, c); /* v2: words first, the picture in the background (the block above) */
     const r = recipeFor(c); const cv = ensureCardVersion(t, c);
     const intent = String(b.intent || '').slice(0, 60), prompt = String(b.prompt || '').slice(0, 300);
@@ -1658,7 +1680,7 @@ export function createRemix(o) {
     if (b.ai) { if (b.brief) ch.pkg.imageBrief = clean(String(b.brief)).slice(0, 600); const started = genImage(t, ch, b.brief ? 'your brief' : 'a new take');
       if (!started) return { error: realOnly(ch) ? 'This community wants real photos: pick or upload one.' : ch.imagePending ? 'A photo is already being made.' : isMock() ? 'Images are off while AI is offline.' : 'No image budget left today.' };
       ch.thread.push({ from: 'ai', text: 'Making a new photo now. It lands as a new version in a minute.', at: now(t) }); return { change: pubChange(t, ch), image: true }; }
-    let urls = Array.isArray(b.urls) ? b.urls.map(String).filter((u) => /^(https:\/\/|gen\/|b\/|assets\/)/.test(u) && !/\.\.|\\|\0/.test(u)).slice(0, ch.family === 'post' ? 4 : 1) : [];
+    let urls = Array.isArray(b.urls) ? b.urls.map(String).filter((u) => /^(https:\/\/|gen\/|b\/|assets\/)/.test(u) && !/\.\.|\\|\0/.test(u) && !isResearchImage(u)).slice(0, ch.family === 'post' ? 4 : 1) : []; /* a rival's poster is never our photo */
     if (b.upload) { const m = /^data:(image\/(png|jpe?g|webp));base64,(.+)$/.exec(String(b.upload)); if (!m) return { error: 'Add a PNG, JPG or WebP photo.' };
       const buf = Buffer.from(m[3], 'base64'); if (buf.length > 8e6) return { error: 'That photo is over 8 MB.' };
       const name = `up-${crypto.createHash('sha1').update(buf).digest('hex').slice(0, 16)}.${m[2] === 'jpeg' ? 'jpg' : m[2]}`; saveGen(name, buf); urls = [`gen/${name}`]; }
@@ -1797,6 +1819,6 @@ export function createRemix(o) {
   /* a final Sloosh finished while Brew restarted (finals.reconcileAll → feed-service finalDone): the change's next version, labelled Final */
   const finalDone = (t, rec) => { const ok = STUDIO_FINALS?.landDone(t, rec) || false; if (ok) o.save?.(t); return ok; };
   /* v2 takes for the feed's pulse (updatedSince, healTakes) and for tests (the draws in flight) */
-  const v2 = { updatedSince, healTakes, jobs: TAKE_JOBS, settle: () => Promise.all([...TAKE_JOBS.values()].map((j) => j.run)) };
+  const v2 = { updatedSince, healTakes, jobs: TAKE_JOBS, settle: async () => { while (TAKE_JOBS.size) await Promise.all([...TAKE_JOBS.values()].map((j) => j.run)); } }; /* a take's words job hands over to its picture job */
   return { remakeFromJam, photoFromJam, iterateFromJam, pickFromJam, makePlan, ensurePlan, planReady, onWorkVersion, pubChange, changes, packageOf, finalDone, v2, landMedia };
 }

@@ -215,13 +215,17 @@
 
   /* ---------- the card: the feed's own card, for the tutorial's examples and the stack's real ones ---------- */
   const KIND_T = { move: 'A move', 'rival-ad': 'A rival’s ad', heard: 'Heard this week', answer: 'What AI says', report: 'A number moved', creative: 'A draft, yours', idea: 'An idea', joke: 'A move?' };
-  const cardHtml = ({ id, who, kind, img, title, body, moves, example, drawing }) => `<article class="card v2-card" data-id="${esc(id)}">
+  const cardHtml = ({ id, who, kind, img, theirs, title, body, moves, example, drawing }) => `<article class="card v2-card" data-id="${esc(id)}">
       <header class="card-head">${who.mark ? `<img class="v2-mk" src="${esc(who.mark)}" alt="">` : face('brew')}<div class="who"><b>${esc(who.name)}</b><span>${esc(KIND_T[kind] || 'A card')}</span></div>${example ? '<span class="badge info">Example</span>' : ''}${drawing ? '<span class="badge warn">drawing…</span>' : ''}</header>
-      ${img ? `<div class="media portrait"><img src="${esc(img)}" alt=""></div>` : ''}
+      ${img ? `<div class="media portrait"><img src="${esc(img)}" alt="">${theirs ? '<span class="fd-lab">Their ad</span>' : ''}</div>` : ''}
       <div class="body"><h3>${esc(title)}</h3><p>${esc(body || '')}</p>${moves ? `<div class="v2-moves">${ic('trendup', 's14')}${esc(moves)}</div>` : ''}</div></article>`;
-  const kindOf = (p) => p.post?.platform ? 'heard' : p.kind === 'ad' || p.rival || /rival/i.test(p.family || '') ? 'rival-ad' : p.kind === 'answer' || p.agent === 'visibility' ? 'answer' : /^m\d+/.test(String(p.id)) || p.move ? 'move' : p.family === 'result' ? 'report' : (p.images || []).length ? 'creative' : 'idea';
-  const realCard = (p) => { const c = A().cardOf(p); return cardHtml({ id: p.id, who: { name: name(), mark: brand().mark || brand().logo }, kind: kindOf(p), img: (c.images || [])[0], title: f(c.title), body: f(c.sub || c.p || c.why || ''), moves: f(c.stat || c.gives || ''), drawing: !!c.drawing }); };
-  const openParts = (card, c) => { const body = $('.body', card); if (!body || $('.v2-parts', card)) return; body.insertAdjacentHTML('beforeend', `<div class="inset v2-parts"><div class="rows"><div><span>The move</span><b>${esc(c.title)}</b></div><div><span>Why it’s here</span><b>${esc(c.why)}</b></div><div><span>What it moves</span><b>${esc(c.moves)}</b></div><div><span>Your call</span><b>Keep, drop, another take, or make it yours</b></div></div></div>`); };
+  /* rival test and "our picture" are the sheet's own (make-sheet.js): a rival's poster is shown only as theirs, never as ours */
+  const MS = () => window.MakeSheet || {}, isRival = (p) => MS().isRival?.(p) ?? (p?.research?.kind === 'ad' || !!p?.research?.ad);
+  const kindOf = (p) => p.post?.platform ? 'heard' : isRival(p) ? 'rival-ad' : p.kind === 'answer' || p.agent === 'visibility' ? 'answer' : /^m\d+/.test(String(p.id)) || p.move ? 'move' : p.family === 'result' ? 'report' : (p.images || []).length ? 'creative' : 'idea';
+  const whyOf = (c) => f(c.because || (c.detail?.why || [])[0] || '');
+  const realCard = (p) => { const c = A().cardOf(p), ours = MS().ourPic?.(p, c) || null, theirs = !ours && isRival(p) ? (c.images || [])[0] : null;
+    return cardHtml({ id: p.id, who: { name: name(), mark: brand().mark || brand().logo }, kind: kindOf(p), img: ours || theirs, theirs: !!theirs, title: f(c.title), body: f(c.sub || c.p || ''), drawing: !!c.take?.drawing }); };
+  const openParts = (card, c) => { const body = $('.body', card); if (!body || $('.v2-parts', card)) return; body.insertAdjacentHTML('beforeend', `<div class="inset v2-parts"><div class="rows"><div><span>The move</span><b>${esc(c.title)}</b></div>${c.why ? `<div><span>Why it’s here</span><b>${esc(c.why)}</b></div>` : ''}${c.moves ? `<div><span>What it moves</span><b>${esc(c.moves)}</b></div>` : ''}<div><span>Your call</span><b>Keep, drop, another take, or make it yours</b></div></div></div>`); };
   const nudge = (card, want) => { card.classList.remove('nudge-keep', 'nudge-drop', 'nudge-open'); void card.offsetWidth; card.classList.add(`nudge-${want}`); };
   const flyOut = (card, verb) => new Promise((r) => { card.classList.add(verb === 'keep' ? 'fly-right' : 'fly-left'); setTimeout(r, reduced() ? 0 : 380); });
 
@@ -317,11 +321,11 @@
     const paintCount = () => { const c = $('#v2-count'); if (c) c.textContent = `${Math.min(acted + 1, total)} of ${total}`; };
     const showNext = () => { const p = queue.shift(); if (!p || acted >= max) return finish(); paintCount(); const host = $('#v2-stack'); host.innerHTML = realCard(p); const card = $('.v2-card', host);
       const did = async (verb) => {
-        if (verb === 'open') { const c = A().cardOf(p); openParts(card, { title: f(c.title), why: f(c.sub || c.p || c.why || ''), moves: f(c.stat || c.gives || '') }); if (!$('[data-full]', card)) { $('.body', card).insertAdjacentHTML('beforeend', `<button class="linkbtn v2-full" data-full>Open in full</button>`); $('[data-full]', card).onclick = () => A().openDetail(p); } return; }
+        if (verb === 'open') { const c = A().cardOf(p); openParts(card, { title: f(c.title), why: whyOf(c), moves: '' }); if (!$('[data-full]', card)) { $('.body', card).insertAdjacentHTML('beforeend', `<button class="linkbtn v2-full" data-full>Open in full</button>`); $('[data-full]', card).onclick = () => A().openDetail(p); } return; }
         if (verb === 'make') { window.MakeSheet?.open(p, { onSaved: () => { const c2 = A().byId(p.id) || p; host.innerHTML = realCard(c2); bindVerbs($('.v2-card', host), did); } }); return; }
         if (verb === 'keep') { S().hearts[p.id] = true; A().save(); A().tapi('POST', `/api/cards/${p.id}/feedback`, { kind: 'heart' }).catch(() => {}); kept.push({ id: p.id, t: f(A().cardOf(p).title), v: 'keep' }); }
         if (verb === 'drop') { S().dismissed[p.id] = true; A().save(); A().tapi('POST', `/api/cards/${p.id}/feedback`, { kind: 'not_interested' }).catch(() => {}); kept.push({ id: p.id, t: f(A().cardOf(p).title), v: 'drop' }); }
-        if (verb === 'take') { const r = await A().tapi('POST', `/api/cards/${p.id}/remix`, { queue: true, take: true }).catch(() => null); if (!r || r.error) { A().toast(`${ic('info', 's16')}${esc(r?.error || 'Another take isn’t available yet.')}`); return; } kept.push({ id: p.id, t: f(A().cardOf(p).title), v: 'take' }); }
+        if (verb === 'take') { const done = A().busyBtn?.($('[data-verb="take"]'), 'Starting…') || (() => {}); const r = await A().tapi('POST', `/api/cards/${p.id}/remix`, { queue: true, take: true }).catch(() => null); done(); if (!r || r.error) { A().toast(`${ic('info', 's16')}${esc(r?.error || 'Another take isn’t available yet.')}`); return; } kept.push({ id: p.id, t: f(A().cardOf(p).title), v: 'take' }); }
         acted++; o.onActed?.(acted); paintKept(); await flyOut(card, verb === 'keep' ? 'keep' : 'drop'); showNext(); };
       bindVerbs(card, did); keys((k) => { if (k === 'ArrowRight') { did('keep'); return true; } if (k === 'ArrowLeft') { did('drop'); return true; } if (k === 'o' || k === 'O') { did('open'); return true; } if (k === 'r' || k === 'R') { did('take'); return true; } if (k === 'e' || k === 'E') { did('make'); return true; } if (k === 'Escape' && o.skip && !$('#modal')) { finish(); return true; } }); };
     paintKept(); showNext();

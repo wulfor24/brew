@@ -7,6 +7,7 @@ import { B } from './brand-ctx.js';
 // - /h/<token>?full=1: a read-only page with all of it (signed link, no login), rendered by html(ctx); /h/<token> opens the jam
 // - text(ctx): the WhatsApp/Slack message, a full summary plus the link to the page
 import crypto from 'node:crypto';
+import { isRivalCard } from './rival-ad.js'; // a rival's ad card: its pictures never go in our brief
 
 /* links are signed with HANDOFF_SECRET; links signed before it was set (with the Anthropic key) still open, so rotating the
    Anthropic key no longer breaks shared briefs once HANDOFF_SECRET is set */
@@ -59,8 +60,11 @@ export function createHandoff({ RMX, pageOf, fillCard, AGENT = {}, SEED = {}, ba
         status: w.jamBrief?.status ? ({ sent: 'Sent', received: 'Received', in_progress: 'In progress', needs_info: 'Needs info', delivered: 'Delivered' })[w.jamBrief.status] || w.jamBrief.status : null },
       links: { jam: abs(jamPath(t, w, opts.changeId), b), page: abs(`${handoffPath(t, w)}?full=1`, b), studio: pkg ? abs(pkg.studio, b) : null },
       brand: SEED.brand?.name || 'the brand', mark: SEED.brand?.mark || null,
+      /* a rival's ad card: its pictures are theirs, so the brief carries none of them (the Ad Library link is the source) and
+         says what we make, our version, rather than the rival's card title */
       card: { title: c.title, sub: c.sub, agent: AGENT[c.agent] || 'Brew', type: KIND[c.type] || c.type || '', rows: c.rows || [], src: c.src || '', link: c.link || null,
-        images: (c.images || []).filter((u) => !/mito[23]/.test(u)).map((u) => abs(u, b)), how: c.detail?.how || [], why: c.detail?.why || [], watch: c.detail?.watch || '' },
+        theirs: isRivalCard(c), make: c.make?.what || null,
+        images: isRivalCard(c) ? [] : (c.images || []).filter((u) => !/mito[23]/.test(u)).map((u) => abs(u, b)), how: c.detail?.how || [], why: c.detail?.why || [], watch: c.detail?.watch || '' },
       page: page ? { lead: page.lead, reason: page.reason, follows: page.follows || [], moves: page.moves || [],
         options: page.options.map((o) => ({ ...o, chosen: decided ? (decided.id || decided) === o.id : false })) } : null,
       decided: decided && page ? page.options.find((o) => o.id === (decided.id || decided)) || null : null,

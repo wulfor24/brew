@@ -47,7 +47,7 @@ export function briefParts(x = {}, jb = {}, { banned = [] } = {}) {
   if (spec.Deliverables) deliverables.push(spec.Deliverables);
   if (!deliverables.length && x.decided?.name) deliverables.push(`${x.decided.name}${x.decided.effect ? `: ${x.decided.effect}` : ''}`);
   const cur = (x.versions || []).find((v) => v.current);
-  if (!deliverables.length && cur?.title) deliverables.push(`${cur.title}${cur.sub ? `: ${cur.sub}` : ''}`);
+  if (!deliverables.length && cur?.title) deliverables.push(x.card?.theirs && cur.n === 1 ? x.card.make || 'Our version of the rival’s ad' : `${cur.title}${cur.sub ? `: ${cur.sub}` : ''}`); /* v1 of a rival card is their ad, not ours */
   const seen = new Set(), assets = [];
   const add = (label, url, image) => { if (!url || seen.has(url)) return; seen.add(url); assets.push({ label, url, image: !!image }); };
   /* a clip (a reel, a short video) goes as a link to the file: an email can't play it, but it must never be left out */

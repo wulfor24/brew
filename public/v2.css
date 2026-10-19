@@ -132,6 +132,7 @@ body.v2-on #inst,body.v2-on .demo-pill{display:none!important}
 .mk-f.is-ro p{margin:0;font-size:13.5px;line-height:19px;color:var(--fg-2)}.mk-src{font-family:var(--font-mono);font-size:11.5px;color:var(--fg-3)}
 .mk-sheet .mks-chips{display:flex;flex-wrap:wrap;gap:8px}.mk-sheet .mks-chip{height:30px;padding:0 12px;border-radius:var(--r-pill);border:0;background:var(--surface);color:var(--fg-2);font:inherit;font-size:13.5px;cursor:pointer}.mk-sheet .mks-chip:hover{color:var(--fg);background:var(--surface-2)}.mk-sheet .mks-chip:disabled{opacity:.5;cursor:progress}
 .mk-ask{display:flex;gap:8px}.mk-ask input{flex:1;min-width:0;height:40px;border-radius:12px;border:0;padding:0 12px;background:var(--surface);color:var(--fg);font:inherit;font-size:14.5px;outline:none;box-shadow:inset 0 0 0 1px var(--line)}.mk-ask input:focus{box-shadow:inset 0 0 0 1.5px var(--fg)}
+.mk-nopic{margin:0;padding:28px 18px;text-align:center;font-size:13.5px;color:var(--fg-2);background:var(--surface);border-bottom:1px solid var(--line)}
 .mk-note{margin:0;font-size:13px;color:var(--fg-2)}.mk-note[data-kind="bad"]{color:var(--bad)}
 .mk-acts{display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap}.mk-acts .sp{flex:1}
 .mk-doors{display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:12px;background:var(--ok-bg);font-size:14px;flex-wrap:wrap}.mk-doors b{font-weight:600}

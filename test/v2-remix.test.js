@@ -88,18 +88,21 @@ test('queue mode: returns at once with drawing:true; the picture lands later on 
   const pubV2 = (await call('GET /api/changes/:chid', {}, t, { chid: r.changeId })).change.versions.find((x) => x.id === r.versionId); assert.equal(pubV2.drawing, undefined); assert.deepEqual(pubV2.asset, v.asset);
 });
 
-test('take:true rewrites the words first, marks the previous version passed and draws the new take in the background', async () => {
+test('take:true answers at once, marks the previous version passed, then rewrites the words and draws the new take in the background', async () => {
   const t = tenant(), { call, RMX } = studio({ geminiImage: fakeImage, mediaFake: true });
   const first = await call('POST /api/cards/:cid/remix', { words: true, chip: 'Warmer' }, t, { cid: 'c1' });
   const r = await call('POST /api/cards/:cid/remix', { queue: true, take: true, prompt: 'Make it about mittens' }, t, { cid: 'c1' });
-  assert.equal(r.queued, true); assert.equal(r.drawing, true); assert.ok(r.words?.body, 'the rewritten words come back in the same reply');
-  assert.match(r.words.body, /mittens/i, 'the typed prompt shaped the words');
+  assert.equal(r.queued, true); assert.equal(r.drawing, true); assert.equal(r.words, undefined, 'the reply never waits on the words (an AI call)');
+  assert.ok(RMX.v2.jobs.has(r.versionId), 'the take is held while its words are written, so healTakes leaves it be');
+  assert.equal(RMX.v2.healTakes(t), 0);
   const vs = versionsOf(t, r.changeId); assert.equal(vs.length, 3, 'one version for the take, not two');
   assert.equal(vs.find((x) => x.id === first.versionId).passed, true, 'the version passed over'); assert.equal(vs.at(-1).passed, undefined); assert.equal(vs.at(-1).take, true);
   assert.deepEqual(t.cards.get('c1').take.passed, [first.versionId]);
   const pub = (await call('GET /api/changes/:chid', {}, t, { chid: r.changeId })).change; assert.equal(pub.versions.find((x) => x.id === first.versionId).passed, true);
   await RMX.v2.settle();
-  assert.equal(vs.at(-1).drawing, false); assert.ok(vs.at(-1).asset?.url); assert.equal(t.cards.get('c1').take.title, r.words.title);
+  assert.equal(vs.at(-1).drawing, false); assert.ok(vs.at(-1).asset?.url);
+  assert.match(t.cards.get('c1').take.body, /mittens/i, 'the typed prompt shaped the words, on the take the card carries');
+  assert.match(vs.at(-1).snapshot.sub || JSON.stringify(vs.at(-1).snapshot), /mittens/i, 'and on the version itself');
 });
 
 test('a failing generator: the version ends with drawing:false and a drawError, the card and the pulse carry it', async () => {
@@ -148,4 +151,19 @@ test('the feed’s pulse hands out the updated card ids and heals stale takes (f
   const route = src.slice(src.indexOf("on('GET', '/api/tenants/:id/pulse'"), src.indexOf("on('POST', '/api/tenants/:id/events'"));
   assert.match(route, /RMX\?\.v2\?\.healTakes\(t\)/); assert.match(route, /updated = RMX\?\.v2\?\.updatedSince\(t, since\)/); assert.match(route, /\bupdated,/, 'the reply carries `updated`');
   assert.match(route, /ids: fresh\.map/, 'brand-new cards stay in `ids`');
+});
+
+test('peek: Make it yours opens on the words Save writes to, builds and spends nothing, never hands back a rival poster', async () => {
+  const t = tenant(), { call } = studio();
+  const n0 = Object.keys(t.changes || {}).length;
+  const r = await call('POST /api/cards/:cid/remix', { peek: true }, t, { cid: 'c1' });
+  assert.ok(r.words && (r.words.title || r.words.body), 'the words a first take starts from');
+  assert.equal(Object.keys(t.changes || {}).length, n0, 'opening the sheet builds no change');
+  const s = await call('POST /api/cards/:cid/remix', { words: true, set: { title: 'Soft on cold mornings', body: 'Warm paws, all walk long.' } }, t, { cid: 'c1' });
+  const r2 = await call('POST /api/cards/:cid/remix', { peek: true }, t, { cid: 'c1' });
+  assert.deepEqual(r2.words, { title: 'Soft on cold mornings', body: 'Warm paws, all walk long.' }); assert.equal(r2.changeId, s.changeId);
+  /* a picture of theirs on the change (an old one, or a pick) is never what the sheet shows as ours */
+  t.changes[s.changeId].pkg.image = 'research/abc123.jpg'; t.changes[s.changeId].headVersionId = null;
+  const r3 = await call('POST /api/cards/:cid/remix', { peek: true }, t, { cid: 'c1' });
+  assert.ok(!r3.image || !/^research\//.test(r3.image));
 });

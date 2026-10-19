@@ -30,7 +30,7 @@
   const ask = (p, w, to, missing) => A().modal(`<div class="sheet act-sheet"><header class="sh-h"><b class="sh-t">Share the brief</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>
       <p class="rv-note is-warn">${ic('clock', 's14')}<span>Still missing: <b>${esc(missing.join(', ').toLowerCase())}</b>. Whoever runs it will ask you.</span></p>
       <div class="sp-row rv-acts"><button class="btn btn-ghost" data-close>Keep jamming</button><button class="btn btn-primary" data-share-force>${ic(to === 'shopos' ? 'send' : 'copy', 's16')}${to === 'shopos' ? 'Send it anyway' : 'Copy it anyway'}</button></div></div>`,
-    (m) => m.querySelector('[data-share-force]')?.addEventListener('click', (e) => { e.currentTarget.disabled = true; send(p, w, to, true); }));
+    (m) => m.querySelector('[data-share-force]')?.addEventListener('click', (e) => { const done = A().busyBtn?.(e.currentTarget, to === 'shopos' ? 'Sending…' : 'Copying…') || (() => {}); send(p, w, to, true).finally(done); }));
 
   /* open(p, to): to = 'shopos' | 'team'; without one, a small sheet asks which */
   const open = async (p0, to) => {
@@ -40,7 +40,7 @@
     a.modal(`<div class="sheet act-sheet"><header class="sh-h"><b class="sh-t">Share the brief</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>
         <p class="sh-sub">Send it to the ShopOS team and they take it from here, or copy it with a link to everything for your own team.</p>
         <div class="sp-row rv-acts"><button class="btn btn-primary" data-share-to="shopos">${ic('send', 's16')}Send to the ShopOS team</button><button class="btn btn-ghost" data-share-to="team">Share with my team</button></div></div>`,
-      (m) => m.querySelectorAll('[data-share-to]').forEach((b) => b.addEventListener('click', () => { b.disabled = true; send(p, w, b.dataset.shareTo, false); })));
+      (m) => m.querySelectorAll('[data-share-to]').forEach((b) => b.addEventListener('click', () => { const done = A().busyBtn?.(b, b.dataset.shareTo === 'shopos' ? 'Sending…' : 'Copying…') || (() => {}); send(p, w, b.dataset.shareTo, false).finally(done); })));
   };
   window.Share = { open };
 })();

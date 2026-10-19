@@ -147,6 +147,7 @@
 .bar.is-busy .chev,.bar.is-done .chev{opacity:0}
 @keyframes liquid{0%{width:0}35%{width:42%}60%{width:58%}100%{width:100%;border-radius:0}}
 .spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--glass-pill);border-top-color:var(--fg);animation:spin .8s linear infinite;flex:0 0 auto}
+.is-wait{display:inline-flex;align-items:center;justify-content:center;gap:7px;cursor:progress}.is-wait .spin{border-color:color-mix(in srgb,currentColor 30%,transparent);border-top-color:currentColor}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* ================= badges, chips ================= */
