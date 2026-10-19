@@ -704,8 +704,8 @@ const brandRoutes = async (req, res, u) => {
   const hm = u.pathname.match(/^\/api\/brands\/([a-z0-9-]+)\/heard$/);
   if (hm && req.method === 'GET') { const slug = hm[1]; if (blocked(slug)) return send(res, 404, { error: 'unknown brand' }), true;
     const g = (n) => packs.getJSON(slug, n, null).catch(() => null);
-    const [th, tr, cm, st, it] = await Promise.all([g('listen/themes.json'), g('listen/threads.json'), g('listen/communities.json'), g('listen/status.json'), g('listen/items.json')]);
-    const v = heardView({ themes: th?.themes || [], total: th?.total || 0, threads: tr?.threads || [], communities: cm?.communities || [], status: st, items: it?.items || [] }, { name: packs.peek(slug)?.name || (await packs.getJSON(slug, 'status.json', {}))?.name || slug });
+    const [th, tr, cm, st, it, lc, pf] = await Promise.all([g('listen/themes.json'), g('listen/threads.json'), g('listen/communities.json'), g('listen/status.json'), g('listen/items.json'), g('listen/config.json'), g('profile.json')]);
+    const v = heardView({ themes: th?.themes || [], total: th?.total || 0, threads: tr?.threads || [], communities: cm?.communities || [], status: st, items: it?.items || [], config: lc }, { name: packs.peek(slug)?.name || (await packs.getJSON(slug, 'status.json', {}))?.name || slug, profile: pf || {} });
     const bg = await social.due(slug).catch(() => null), ss = await social.stateOf(slug).catch(() => ({}));
     return send(res, 200, { heard: v, schedule: { lastListen: ss.lastListen || null, lastIdeas: ss.lastIdeas || null, spentToday: ss.spend || null, due: bg } }), true; }
   // What we heard: every quote (filter by source, mode, theme, intent, words; paged), the asked threads, the daily history

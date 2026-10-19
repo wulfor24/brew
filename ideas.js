@@ -10,8 +10,8 @@ import { marketLine } from './market.js';
 import { promptBlock as creativeBlock } from './creative-catalog.js'; // what can be made, for ideas that make something
 import crypto from 'node:crypto';
 import { numbersIn, canon } from './fact-gate.js';
-import { ideaCards, ideaUsable } from './social-feed.js';
-import { usableThread, redditStats, withStats, repliesText, isQuoraQuestion, inMarket, matchesThread, REPLY_DAYS } from './community-gate.js'; // which threads and questions any brand may be pointed at
+import { ideaCards, ideaUsable, rivalCards, categoryCards } from './social-feed.js';
+import { usableThread, redditStats, withStats, repliesText, isQuoraQuestion, inMarket, matchesThread, REPLY_DAYS, usableCommunity, topicStems, typeaheadCommunities } from './community-gate.js'; // which threads and questions any brand may be pointed at
 import { moveLabel, moveNum, moveSay } from './move-label.js'; // weekly moves read "Weekly move 11", never "Move 1011" (QA FEED-QA-12)
 
 /* ---------- platforms ---------- */
@@ -58,6 +58,7 @@ const OLDER = /\b(health|wellness|pharma|supplement|ayurved|parent|baby|kid|pet|
 const sha = (s) => crypto.createHash('sha1').update(String(s)).digest('hex');
 const cut = (s, n) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s; };
 const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const squashN = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
 const words = (s) => new Set(norm(s).split(' ').filter((w) => w.length > 2 && !STOP.has(w)));
 const STOP = new Set('the and for with you your are this that from have what which best any just like does good get its not but how who why was were will can our out all has had than too very more most into over about they them their there then here when where some been also only want looks look'.split(' '));
 const dateOf = (utc) => utc ? new Date(utc * 1000).toISOString().slice(0, 10) : '';
@@ -81,9 +82,9 @@ export function createIdeas({ slug, packs, ai, treg, log = console, now = () => 
   async function load(fresh = false) {
     if (ctx && !fresh) return ctx;
     const g = (n, d = null) => packs.getJSON(slug, n, d).catch(() => d);
-    const [profile, facts, config, seed, moves, ledger, brief, lThreads, lThemes, lComms, lItems] = await Promise.all([
+    const [profile, facts, config, seed, moves, ledger, brief, lThreads, lThemes, lComms, lItems, lCfg, research, pulse] = await Promise.all([
       g('profile.json', {}), g('facts.json', {}), g('config.json', {}), g('seed.json', {}), g('moves.json', {}), g('ledger.json', []), g('brief.json', {}),
-      g('listen/threads.json'), g('listen/themes.json'), g('listen/communities.json'), g('listen/items.json')]);
+      g('listen/threads.json'), g('listen/themes.json'), g('listen/communities.json'), g('listen/items.json'), g('listen/config.json'), g('research.json'), g('pulse/latest.json')]);
     const name = profile.name || seed.brand?.name || config.name || slug;
     const sym = config.symbol || '';
     const cat = [profile.category, profile.subcategory, config.category].filter(Boolean).join(', ');
@@ -101,6 +102,21 @@ export function createIdeas({ slug, packs, ai, treg, log = console, now = () => 
     for (const c of (brief.claims || [])) add(`Brand claim: ${c.product} (${c.basis})`, c.claim, '', 'claim');
     const ig = profile.socials?.instagram;
     for (const p of (ig?.posts || []).slice(0, 12)) add(`Instagram @${ig.handle} ${p.kind}, ${p.at}, ${(p.likes || 0).toLocaleString('en-IN')} likes`, p.caption, p.url, 'social');
+    // what moves around the brand this week (research.js, market-pulse.js): trends, rising searches, industry and rival news,
+    // rivals' long-running ads, and the market pulse. Timely angles for the writer; every one is a cited fact like the rest
+    const stamp = (ms) => { const t = typeof ms === 'number' ? ms : Date.parse(ms || ''); return t > 0 ? new Date(t).toISOString().slice(0, 10) : ''; };
+    const ownName = squashN(profile.name || seed.brand?.name || '');
+    for (const t of (research?.trends?.items || []).slice(0, 6)) if (t?.h) add(`Trend (${t.kind || 'search'}, read ${stamp(t.firstSeen || research.trends.fetchedAt)})`, [t.h, t.p].filter(Boolean).join(': '), '', 'trend');
+    const geo = profile.country || config.country || '';
+    const catWords = new Set(`${profile.category || ''} ${profile.subcategory || ''} ${(lCfg?.terms?.category || []).join(' ')}`.toLowerCase().match(/[a-z]{4,}/g) || []);
+    for (const [term, qs] of Object.entries(research?.trends?.rising || {})) { const on = (qs || []).filter((x) => x?.q && String(x.q).toLowerCase().split(/\s+/).some((w) => catWords.has(w) || catWords.has(w.replace(/s$/, '')) || squashN(x.q).includes(ownName))).slice(0, 5); /* rising queries that share a word with the category: Google's rising list carries noise */
+      if (on.length) add(`Rising Google searches around "${term}"${geo ? ` (${geo})` : ''}, last 90 days`, on.map((x) => `${x.q}${x.v ? ` (+${x.v}%)` : ''}`).join(', '), `https://trends.google.com/trends/explore?${geo ? `geo=${geo}&` : ''}q=${encodeURIComponent(term)}`, 'trend'); }
+    for (const n of [...(research?.news?.items || [])].sort((a, b) => (Date.parse(b.date || '') || b.firstSeen || 0) - (Date.parse(a.date || '') || a.firstSeen || 0)).slice(0, 6)) if (n?.h) add(`News, ${n.source || n.domain || 'web'}${n.date ? `, ${stamp(n.date)}` : ''}`, [n.h, n.p].filter(Boolean).join('. '), n.url || '', 'news');
+    const rivalAds = (research?.ads?.items || []).filter((a) => a?.brand && squashN(a.brand) !== ownName && (a.headline || a.body || a.hook)).sort((a, b) => (+b.days || 0) - (+a.days || 0)).slice(0, 6); /* the longest-running first: an ad that keeps running is one that works */
+    for (const a of rivalAds) add(`Rival ad: ${a.brand}, live ${a.days || '?'} days${a.versions ? `, ${a.versions} versions` : ''} (Meta Ad Library)`, [a.headline || a.hook, cut(a.body, 160)].filter(Boolean).join(' · '), a.url || '', 'rival-ad');
+    const pl = (Array.isArray(pulse?.lines) ? pulse.lines : Object.values(pulse?.lines || {})).filter((x) => x?.label && x.value != null && x.value !== '' && ['seasonal', 'rival-weakness', 'price-offer', 'social-posts', 'weather', 'research'].includes(x.family) && !(x.value === 0 && x.family !== 'seasonal'));
+    const PRI = { seasonal: 0, 'rival-weakness': 1, 'price-offer': 2, weather: 3, 'social-posts': 4, research: 5 }; /* what changed first, standing counts last */
+    for (const x of pl.sort((a, b) => (PRI[a.family] ?? 9) - (PRI[b.family] ?? 9)).slice(0, 12)) add(`Market pulse: ${x.label} (${x.source || x.family}, ${stamp(x.at)})`, `${typeof x.value === 'number' ? x.value.toLocaleString('en-IN') : x.value}${x.unit && x.unit !== 'count' ? ` ${x.unit}` : ''}`, x.url || '', 'pulse');
     for (const a of (profile.ads?.own?.items || []).slice(0, 6)) add(`Own Meta ad live since ${a.since} (${a.format})`, [a.hook, a.body].filter(Boolean).join(' · '), a.url, 'ad');
     // listen-watch.js output: themes with counts and their quoted posts (exact text, with links)
     const themes = (Array.isArray(lThemes) ? lThemes : lThemes?.themes || []).slice(0, 12);
@@ -111,6 +127,10 @@ export function createIdeas({ slug, packs, ai, treg, log = console, now = () => 
       add(`Listen theme "${t.name || t.theme}" (${t.n != null ? `${t.n} mentions${t.pos != null ? `: ${t.pos} positive, ${t.neg} negative` : ''}` : 'mentions'})`, t.quote || t.summary || t.name, t.quoteLink || t.url, 'listen');
       for (const id of (t.quoteIds || []).slice(0, 2)) { const x = itemBy.get(id); if (x) add(`${x.platform === 'reddit' ? 'Reddit' : x.platform || 'Post'} ${x.kind || ''}${(x.link || '').match(/\/r\/[^/]+/)?.[0] ? ' in ' + (x.link || '').match(/\/r\/([^/]+)/)[0].slice(1) : ''}, ${when(x)} (theme: ${t.name})`, [x.title, x.text].filter(Boolean).join(' · '), x.link || x.url, 'listen'); }
     }
+    // what people dislike about the rivals and what the category keeps asking (the same counts as the feed's rival and category cards)
+    { const LL = { items: itemsL, config: { rivals: lCfg?.rivals || config.rivals || [], noun: lCfg?.noun || noun } };
+      for (const r of rivalCards(LL, { profile, max: 3 })) add(`Listen: what people dislike about ${r.heard.name} (${r.heard.neg} of ${r.heard.n} mentions negative, last 90 days; complaints: ${r.heard.themes.join(', ')})`, r.heard.quotes.map((q) => `“${q.text}”`).join(' · ') || r.sub, r.heard.quotes[0]?.url || '', 'listen');
+      for (const k of categoryCards(LL, { profile, max: 2 })) add(`Listen: ${k.heard.n} category posts about ${k.heard.name} (${k.heard.questions} questions, ${k.heard.complaints} complaints, last 90 days)`, k.heard.quotes.map((q) => `“${q.text}”`).join(' · '), k.heard.quotes[0]?.url || '', 'listen'); }
     if (!themes.length) for (const l of itemsL.slice(0, 30)) add(`Listen: ${l.platform || l.kind || 'mention'}${when(l) ? ', ' + when(l) : ''}`, l.quote || l.text || l.title, l.link || l.url, 'listen');
     // products: heroes, the brief's catalogue, then the newest in stock (real photos for the media prompts)
     const all = profile.catalog?.products || [];
@@ -131,7 +151,10 @@ export function createIdeas({ slug, packs, ai, treg, log = console, now = () => 
     const founders = (profile.company?.founders || []).map((f) => f.name), founderRoles = Object.fromEntries((profile.company?.founders || []).filter((f) => f?.name).map((f) => [f.name, f.role || f.title || 'Co-founder']));
     const listen = {
       threads: (Array.isArray(lThreads) ? lThreads : lThreads?.threads || []).map(normThread).filter(Boolean),
-      communities: (Array.isArray(lComms) ? lComms : lComms?.communities || []).filter((c) => c?.url).sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 8).map((c) => ({ name: c.name || (c.subreddit ? 'r/' + c.subreddit : c.url), url: c.url, platform: c.platform || (c.subreddit ? 'reddit' : ''), sub: c.subreddit || (c.url.match(/\/r\/([^/]+)/) || [])[1] || '', rules: typeof c.rules === 'string' ? c.rules : Array.isArray(c.rules) ? c.rules.map((r) => r.text || r.name || r).join('\n') : '', weekly: c.weekly || null, why: c.why || '', themes: c.themes || [] }))
+      communities: (Array.isArray(lComms) ? lComms : lComms?.communities || []).filter((c) => c?.url).sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 30).map((c) => ({ name: c.name || (c.subreddit ? 'r/' + c.subreddit : c.url), url: c.url, platform: c.platform || (c.subreddit ? 'reddit' : ''), sub: c.subreddit || (c.url.match(/\/r\/([^/]+)/) || [])[1] || '', rules: typeof c.rules === 'string' ? c.rules : Array.isArray(c.rules) ? c.rules.map((r) => r.text || r.name || r).join('\n') : '', weekly: c.weekly || null, why: c.why || '', themes: c.themes || [], brand: c.brand || 0, rival: c.rival || 0, category: c.category || 0, threads: c.threads || 0 })),
+      /* the words a community about this category carries in its name (community-gate.js topicStems), from listening's category searches */
+      stems: topicStems({ noun, terms: [...(lCfg?.terms?.category || []), ...(lCfg?.terms?.problems || []).slice(0, 2), String(profile.subcategory || ''), String(profile.category || '')] }),
+      categoryQs: (lCfg?.terms?.category || []).map((q) => String(q).replace(/["']/g, '')).slice(0, 2)
     };
     // real Quora questions listening's web search found (a question page, never a profile, space or search)
     listen.quora = itemsL.filter((x) => isQuoraQuestion(x.link || x.url)).map((x) => ({ url: x.link || x.url, title: cut(x.title || x.text, 200), platform: 'quora' }));
@@ -198,6 +221,26 @@ export function createIdeas({ slug, packs, ai, treg, log = console, now = () => 
     return [...have.values()].map((q) => ({ ...q, rel: relevance(c, { title: q.title, text: '', comments: 0, at: new Date(T()).toISOString() }) - 1 })) /* no age or reply bonus for an evergreen question */
       .filter((q) => q.title && q.rel >= 2 && inMarket({ title: q.title }, c.profile).ok).sort((a, b) => b.rel - a.rel).slice(0, 8);
   }
+  async function communitiesFor(c, cache, threads, rejected = []) {
+    const subs = {}; threads.forEach((t) => { if (t.sub) (subs[t.sub] ||= []).push(t); });
+    const cand = new Map(), put = (x) => { const k = String(x.sub || '').toLowerCase(); if (!k) return; const was = cand.get(k); cand.set(k, { ...(was || {}), ...x, threads: Math.max(was?.threads || 0, x.threads || 0, subs[x.sub]?.length || 0), from: [...new Set([...(was?.from || []), x.from])] }); };
+    Object.entries(subs).forEach(([sub, ts]) => put({ name: 'r/' + sub, sub, url: `https://www.reddit.com/r/${sub}/`, platform: 'reddit', threads: ts.length, from: 'threads' }));
+    c.listen.communities.filter((x) => x.platform === 'reddit' && x.sub).forEach((x) => put({ ...x, from: 'listen' }));
+    for (const q of (c.listen.categoryQs?.length ? c.listen.categoryQs : [c.noun]).slice(0, 2)) {
+      const k = `subs|${q}`;
+      if (!cache.q[k] && tregOn()) { try { cache.q[k] = typeaheadCommunities(await callTreg('tikhub.x.reddit-app-fetch-search-typeahead', { query: q, safe_search: 'unset', allow_nsfw: '0', need_format: false })); } catch (e) { log.warn?.('[ideas] community search', q, e.message); cache.q[k] = []; } }
+      (cache.q[k] || []).forEach((x) => put({ ...x, from: 'search' }));
+    }
+    // the gate on what is known now (name, market, size from the search), then rules and size for the ones that pass
+    const out = [];
+    const ranked = [...cand.values()].map((m) => ({ m, g: usableCommunity(m, { profile: c.profile, stems: c.listen.stems }) })).filter(({ m, g }) => { if (!g.ok) rejected.push({ url: m.url, why: g.why }); return g.ok; })
+      .sort((a, b) => (b.m.threads || 0) - (a.m.threads || 0) || (b.m.brand || 0) - (a.m.brand || 0) || (b.m.weekly || 0) - (a.m.weekly || 0)).map(({ m }) => m);
+    for (const m of ranked) { if (out.length >= 10) break;
+      const r = !m.rules ? await rulesOf(cache, m.sub) : null, x = { ...m, rules: m.rules || r?.rules || '', weekly: m.weekly || r?.weekly || null, desc: m.desc || r?.desc || '' };
+      const g = usableCommunity(x, { profile: c.profile, stems: c.listen.stems }); if (!g.ok) { rejected.push({ url: x.url, why: g.why }); continue; } /* the size the rules read gave */
+      out.push(x); }
+    return out;
+  }
   async function discover({ fresh = false } = {}) {
     const c = await load();
     const cache = fresh ? { day: today(), q: {}, rules: {} } : await cacheGet();
@@ -212,13 +255,10 @@ export function createIdeas({ slug, packs, ai, treg, log = console, now = () => 
     const stats = await redditStats(gated, { treg: tregOn() ? countingTreg() : null, paid: 6, log });
     const threads = gated.map((t) => withStats(t, stats.get(idOfUrl(t.url)))).filter((t) => { const g = usableThread(t, { now: T(), profile: c.profile, brand: c.name }); if (!g.ok) rejected.push({ url: t.url, why: g.why }); return g.ok; });
     const quora = await quoraQuestions(c, cache);
-    // communities: subreddits the threads live in, ranked by how many relevant threads they hold
-    const subs = {}; threads.forEach((t) => { if (t.sub) (subs[t.sub] ||= []).push(t); });
-    const top = Object.entries(subs).sort((a, b) => b[1].length - a[1].length || b[1][0].rel - a[1][0].rel).slice(0, 7);
-    const communities = [];
-    for (const [sub, ts] of top) { const r = await rulesOf(cache, sub); communities.push({ name: 'r/' + sub, sub, url: `https://www.reddit.com/r/${sub}/`, platform: 'reddit', threads: ts.length, weekly: r?.weekly || null, rules: r?.rules || '', desc: r?.desc || '' }); }
-    for (const x of c.listen.communities) { if (communities.some((y) => y.url === x.url)) { const y = communities.find((y) => y.url === x.url); y.why = x.why; y.themes = x.themes; continue; } if (communities.length >= 10) break;
-      const r = x.sub && !x.rules ? await rulesOf(cache, x.sub) : null; communities.push({ ...x, threads: subs[x.sub]?.length || 0, rules: x.rules || r?.rules || '', weekly: x.weekly || r?.weekly || null, desc: r?.desc || '' }); }
+    // communities (community-gate.js usableCommunity): where the live threads are, where listening heard the brand, its rivals
+    // and the category, and the category's biggest communities from Reddit's own search; each one about the category, in the
+    // market, not a deals or general-chat board, with its rules and size read before an idea may post there
+    const communities = await communitiesFor(c, cache, threads, rejected);
     await cachePut(cache);
     c.disc = { threads, communities, quora, queries: qs, rejected: rejected.slice(0, 40) };
     return c.disc;
@@ -301,7 +341,8 @@ ${(d.quora || []).map((q, i) => `Q${i + 1} "${q.title}"`).join('\n') || 'none fo
 - Respect each community's RULES literally (self-promotion, links, AI images, sales/deals, reco limits). If a rule forbids the idea there, pick another place.
 - On Reddit, Quora and Facebook groups: be useful first, disclose the affiliation, no links, no hashtags, no AI images.
 - Write natively for each platform; no "elevate", "game-changer", "unleash", "dive in", em dashes or corporate tone. Indian English where the brand is Indian.
-- Never add disclaimers, "illustrative" labels or fine print.`;
+- Never add disclaimers, "illustrative" labels or fine print.
+- EVIDENCE also holds what moves this week: [trend], [news] (the industry and rivals), [rival-ad] (rivals' ads that keep running) and [pulse] (the market's numbers). Where one fits, tie an idea to it so the post is timely: a rising search, a festival, a rival's move, a complaint about a rival. Answer a rival's long-running ad with ${c.name}'s own angle; never copy its words, offer or picture, and never name or knock the rival in the post.`;
 
   /* ---------- schemas (strict structured output: no limits, explicit properties) ---------- */
   const S_SLATE = { type: 'object', properties: { items: { type: 'array', items: { type: 'object', properties: {

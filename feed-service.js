@@ -599,10 +599,11 @@ export function createFeedService(o) {
     let seated = new Set();
     /* the social stream (ready posts, what people asked) always has seats in the first screen: at 3 the best reply or post in a
        community (a thread listening heard, a Reddit or Quora idea), at 7 the best picture post, at 9 the best other text card
-       (what people talk about). Scored on their own they sit near 100: moves outscore them */
+       (what people say about the brand, a rival's complaints or the category's questions, before a second reply card). Scored on
+       their own they sit near 100: moves outscore them */
     { const isSoc = (c) => /^(Ideas|Heard) ·/.test(c?.src || ''); const off = top.length + pins.length; /* seats 3, 7 and 9 count from the top of what the reader sees, pins and top cards included */
       const comm = ranked.find((c) => isSoc(c) && !isVis(c) && isCommunityCard(c)), text1 = comm || ranked.find((c) => isSoc(c) && !isVis(c));
-      const soc = [[text1, Math.max(0, 2 - off)], [ranked.find((c) => isSoc(c) && isVis(c)), Math.max(1, 6 - off)], [comm && ranked.find((c) => c !== comm && isSoc(c) && !isVis(c)), Math.max(2, 8 - off)]].filter((x) => x[0]);
+      const soc = [[text1, Math.max(0, 2 - off)], [ranked.find((c) => isSoc(c) && isVis(c)), Math.max(1, 6 - off)], [comm && (ranked.find((c) => c !== comm && isSoc(c) && !isVis(c) && !isCommunityCard(c)) || ranked.find((c) => c !== comm && isSoc(c) && !isVis(c))), Math.max(2, 8 - off)]].filter((x) => x[0]);
       seated = new Set(soc.map((x) => x[0])); soc.forEach(([c, at]) => { const i = ranked.indexOf(c); if (i > at && at < ranked.length) [ranked[at], ranked[i]] = [ranked[i], ranked[at]]; }); } /* a swap with the card in that seat (same picture/text slot), so the 2:1 rhythm holds */
     /* an ad or a social post to make always has two seats in the first screen: the best two at 2 and 6. Moves mostly plan
        page, email and WhatsApp work, and the ranker leans to decisions, so before this the first ad card sat at 9 to 15 */

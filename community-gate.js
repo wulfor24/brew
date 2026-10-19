@@ -90,7 +90,7 @@ export function usableThread(t, { now = Date.now(), profile = {}, minRel = 3, re
   if (!quora && !freshThread(t, now)) why.push(`last active ${lastActiveOf(t) ? Math.round((now - lastActiveOf(t)) / DAY) + ' days ago' : 'on an unknown date'} (replies go to threads active in the last ${REPLY_DAYS} days)`);
   const m = inMarket(t, profile); if (!m.ok) why.push(m.why);
   if (t.locked || t.archived || t.removed) why.push('closed to replies');
-  if (/\b(buy|sell|wts|wtb)\b/i.test(t.title || '') || /buysell|marketplace|deals?\b|coupon|loot|reps\b|replica|fakes?\b/i.test(`${t.sub || ''} ${t.where || ''}`)) why.push('a buy/sell, deals or replica board');
+  if (/\b(buy|sell|wts|wtb)\b/i.test(t.title || '') || dealsBoard(t.sub || t.where)) why.push('a buy/sell, deals or replica board');
   if (rel != null && rel < minRel) why.push(`not close enough to the brand (score ${rel} < ${minRel})`);
   return { ok: !why.length, why };
 }
@@ -147,3 +147,51 @@ export function withStats(t, s) {
 }
 /* how a reply count reads on a card: the real number, "at least N" for an archive floor, nothing when unknown */
 export const repliesText = (n, floor = false) => n == null || (floor && !n) ? '' : floor ? `${n}+ repl${n === 1 ? 'y' : 'ies'}` : `${n} repl${n === 1 ? 'y' : 'ies'}`;
+
+/* ---------- communities: where a brand may post, for ANY brand ----------
+   A community a brand posts in is a Reddit community about its category (or that talks about the brand or its rivals), in its
+   market, not a deals, swap or replica board, not a general-chat community (r/AskReddit, r/AmItheAsshole, a city's own sub). */
+/* deals, swaps, trades and replicas: a sub's name runs its words together ("SneakersOfferIndia", "RepsneakersDogs") */
+export const dealsBoard = (sub) => { const s = String(sub || '').replace(/^\/?r\//i, '').toLowerCase().replace(/[^a-z]/g, ''); return !!s && (/buysell|marketplace|deal|offer|coupon|loot|giveaway|freebie|exchange|swap|forsale|trade|bst$|replica|fashionrep|repladies|reps$/.test(s) || /^reps?(?=[a-z]{4})/.test(s)); };
+/* general chat: big communities about everything, where a brand's post is off-topic by the rules */
+const GENERIC = new Set(['askreddit', 'amitheasshole', 'aitah', 'aita', 'nostupidquestions', 'tooafraidtoask', 'explainlikeimfive', 'todayilearned', 'pics', 'funny', 'memes', 'dankmemes', 'news', 'worldnews', 'casualconversation',
+  'relationship_advice', 'relationships', 'offmychest', 'trueoffmychest', 'unpopularopinion', 'mildlyinfuriating', 'rant', 'confession', 'teenagers', 'showerthoughts', 'lifeprotips', 'outoftheloop', 'changemyview', 'tifu',
+  'jokes', 'videos', 'gaming', 'movies', 'music', 'technology', 'interestingasfuck', 'damnthatsinteresting', 'nextfuckinglevel', 'facepalm', 'wholesomememes', 'me_irl', 'meirl', 'indiaspeaks', 'indiasocial',
+  'indiancasualconversation', 'askindia', 'twentiesindia', 'teenindia', 'desimemes', 'indiandankmemes', 'askuk', 'casualuk', 'unitedkingdom', 'askanamerican', 'askeurope', 'europe', 'australia', 'canada', 'india',
+  'popular', 'all', 'bestof', 'iama', 'askmen', 'askwomen', 'twoxchromosomes', 'mademesmile', 'aww', 'oddlysatisfying', 'whatisthisthing', 'antiwork', 'collegerant', 'genz', 'millennials', 'teenagersbuthot']);
+const STEM_STOP = new Set(['best', 'good', 'buy', 'online', 'review', 'reviews', 'brand', 'brands', 'product', 'products', 'cheap', 'price', 'store', 'shop', 'near', 'with', 'from', 'that', 'this', 'what', 'which', 'your', 'free', 'natural', 'organic', 'premium', 'new', 'india', 'indian']);
+/* the words a community about this category would carry in its name: "curly hair products India" → curl, hair */
+export function topicStems({ noun = '', terms = [], products = [] } = {}) {
+  const out = new Set();
+  for (const s of [noun, ...terms, ...products].flat()) for (let w of String(s || '').toLowerCase().replace(/["']/g, '').match(/[a-z]{4,}/g) || []) {
+    if (STEM_STOP.has(w) || Object.values(PLACES).some((xs) => xs.includes(w))) continue;
+    w = w.replace(/(ies)$/, 'y').replace(/(ing|es|s)$/, '').replace(/y$/, ''); if (w.length >= 4) out.add(w); }
+  return [...out];
+}
+/* a community a brand may post in: { ok, why[] }. m: { name|sub, url, weekly, brand, rival, category, threads, desc } */
+export function usableCommunity(m, { profile = {}, stems = null, minWeekly = 1000 } = {}) { /* stems null: the topic is not checked (a saved idea at load) */
+  const sub = String(m?.sub || m?.name || '').replace(/^\/?r\//i, ''), low = sub.toLowerCase(), why = [];
+  if (!sub || !/reddit\.com\/r\//i.test(m?.url || `https://www.reddit.com/r/${sub}/`)) return { ok: false, why: ['not a Reddit community'] };
+  if (/^u_/.test(low)) return { ok: false, why: ['a person’s profile'] };
+  if (dealsBoard(sub)) why.push('a deals, swap or replica board');
+  if (GENERIC.has(low)) why.push('a general-chat community');
+  const pl = placesOf(sub), rest = PLACE_RE.reduce((x, [, re]) => x.replace(new RegExp(re.source, 'g'), ''), low.replace(/[^a-z]/g, ''));
+  if (pl.length && rest.length < 4) why.push('a place’s own community, not about the category');
+  const mk = marketsOf(profile); if (mk.length && pl.length && !pl.some((cc) => mk.includes(cc))) why.push(`a community for ${pl.join('/')}, outside ${mk.join('/')}`);
+  if (m?.nsfw || m?.over18) why.push('marked adult');
+  if (m?.weekly != null && m.weekly < minWeekly) why.push(`small (${m.weekly} weekly visitors)`);
+  const named = !stems || stems.some((w) => low.includes(w) || String(m?.desc || '').toLowerCase().includes(w));
+  const talk = (m?.brand || 0) * 2 + (m?.rival || 0) + (m?.category || 0);
+  if (!named && !(talk >= 4 && (m?.threads || 0) >= 2)) why.push('not about the category (its name does not say so and little of its talk is)');
+  return { ok: !why.length, why };
+}
+/* communities from Reddit's search box (treg tikhub typeahead): [{ name, url, weekly, nsfw }] */
+export function typeaheadCommunities(j) {
+  const out = [], walk = (o, d = 0) => { if (!o || typeof o !== 'object' || d > 14) return; if (Array.isArray(o)) return o.forEach((x) => walk(x, d + 1));
+    if (o.__typename === 'TypeaheadSuggestion') { const b = o.behaviors?.default || {}, name = b.name || String(o.presentation?.name || '').replace(/^r\//, ''), sr = b.telemetry?.trackingContext?.subreddit || {};
+      if (name && b.__typename === 'SearchCommunityNavigationBehavior') out.push({ name: `r/${name}`, sub: name, url: `https://www.reddit.com/r/${name}/`, weekly: visitors(o.presentation?.description), nsfw: !!(sr.isNsfw || sr.isQuarantined) }); return; }
+    for (const v of Object.values(o)) walk(v, d + 1); };
+  walk(j); return out;
+}
+/* "121K weekly visitors" → 121000 */
+export const visitors = (s) => { const m = /([\d.,]+)\s*([KkMm]?)\s*weekly/.exec(String(s || '')); if (!m) return null; const n = parseFloat(m[1].replace(/,/g, '')); return Math.round(n * (/k/i.test(m[2]) ? 1e3 : /m/i.test(m[2]) ? 1e6 : 1)); };

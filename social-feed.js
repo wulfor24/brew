@@ -10,7 +10,7 @@
 // Nothing is invented here: every thread, quote, count and community comes from the files listen-watch.js and ideas.js wrote.
 import { createListenWatch, sourceName } from './listen-watch.js';
 import { createIdeas, PLATFORMS } from './ideas.js';
-import { usableThread, repliesText, isQuoraQuestion } from './community-gate.js'; // which threads any brand may be pointed at
+import { usableThread, usableCommunity, topicStems, repliesText, isQuoraQuestion, inMarket } from './community-gate.js'; // which threads any brand may be pointed at
 
 const H = 3600e3, DAY = 24 * H;
 const cut = (s, n) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
@@ -39,6 +39,8 @@ export function ideaUsable(i, { now = Date.now(), profile = {} } = {}) {
   const where = i.where || [], real = where.filter((w) => w.kind !== 'search' && w.kind !== 'own');
   if (!real.length) return false;
   if (i.platform === 'quora') return real.some((w) => isQuoraQuestion(w.url));
+  /* a Reddit post's communities: in the market, not a deals, general-chat or a city's own board (the topic was checked when written) */
+  if (i.platform === 'reddit' && i.format !== 'reply' && !real.some((w) => w.kind === 'thread' || (w.kind === 'community' && usableCommunity({ name: w.name, url: w.url, weekly: w.weekly ?? null }, { profile }).ok))) return false;
   if (i.format === 'reply') { const t = real.find((w) => w.kind === 'thread'); if (!t) return false;
     const sub = (String(t.url).match(/\/r\/([^/]+)/) || [])[1] || '';
     return usableThread({ url: t.url, sub, title: String(t.name || '').replace(/^[^:]+:\s*/, ''), intent: 'question' /* the writer picked it as a question to answer */, at: t.at, lastActive: t.lastActive, locked: t.locked, archived: t.archived, removed: t.removed }, { now, profile }).ok; }
@@ -84,7 +86,7 @@ export function pickIdeas(items, { now = Date.now(), max = 12, fresh = 6, profil
 }
 
 /* ---------- what listening heard → cards ---------- */
-export function heardCards(L, seed = {}, { now = Date.now(), name = seed?.brand?.name || 'the brand', maxQ = 2, maxT = 2, profile = {} } = {}) {
+export function heardCards(L, seed = {}, { now = Date.now(), name = seed?.brand?.name || 'the brand', maxQ = 2, maxT = 2, maxR = 2, maxC = 1, profile = {} } = {}) {
   const out = [], lane = Object.keys(seed?.lanes || {})[0], posts = seed?.posts || [];
   const rolesOf = (agent) => posts.find((p) => p.agent === agent)?.roles || ['founder', 'brand', 'growth'];
   const items = new Map((L?.items || []).map((x) => [x.id, x]));
@@ -126,6 +128,70 @@ export function heardCards(L, seed = {}, { now = Date.now(), name = seed?.brand?
       detail: { why: [...quotes.map((q) => `“${q.text}” (${q.where})`), `Counted from ${total || t.n} tagged public posts, comments and reviews.`], how: [mood === 'neg' ? `Answer the worry where buyers decide: the product page and the FAQ.` : `Use their words in the next post or ad.`, 'Reply in the threads where it comes up.', 'Brew keeps counting, so you see if it moves.'] },
       heard: { kind: 'theme', name: t.name, n: t.n, pos: t.pos, neg: t.neg, neutral: t.neutral, quotes } });
   }
+  out.push(...rivalCards(L, { now, name, at, lane, roles: rolesOf('brew'), max: maxR, profile }), ...categoryCards(L, { now, name, at, lane, roles: rolesOf('brew'), max: maxC, skip: new Set(picks.map((t) => norm(t.name))), profile }));
+  return out;
+}
+
+/* ---------- what listening heard about the rivals and the category, as cards (any brand) ----------
+   Listening already searches every rival by name and the category's searches and problems; before 20 Oct that talk only fed
+   the writer. A rival card: what people dislike about one rival (its complaints by theme, two quotes, linked). A category card:
+   what buyers in the category keep asking or complaining about that no brand card covers. Counted over the last 90 days. */
+const WINDOW = 90 * DAY;
+const squash = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+const SRC = { reddit: 'Reddit', youtube: 'YouTube', instagram: 'Instagram', tiktok: 'TikTok', x: 'X', linkedin: 'LinkedIn', facebook: 'Facebook', amazon: 'Amazon', trustpilot: 'Trustpilot', google: 'Google reviews', news: 'News', web: 'Forums', threads: 'Threads', pinterest: 'Pinterest', walmart: 'Walmart', site: 'Site reviews', nykaa: 'Nykaa', flipkart: 'Flipkart', myntra: 'Myntra' };
+const quoteOfItem = (x) => ({ text: cut([x.title, x.text].filter(Boolean).join('. '), 200), url: x.link || x.url || null, where: x.sub || SRC[x.platform] || x.platform || 'public post' });
+/* a theme that names a kind of post, not a need ("product review", "feedback", "comparison") is no complaint or question */
+const META_THEME = /\b(reviews?|feedback|general|discussion|opinions?|experiences?|comparisons?|recommendations?|routine|content|post|video)\b/i;
+const themeCount = (xs) => { const m = {}; xs.forEach((x) => (x.themes || []).forEach((t) => { m[t] = (m[t] || 0) + 1; })); return Object.entries(m).sort((a, b) => b[1] - a[1]); };
+const whereOf = (xs) => Object.entries(xs.reduce((m, x) => ((m[SRC[x.platform] || x.platform] = (m[SRC[x.platform] || x.platform] || 0) + 1), m), {})).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, n]) => `${k} ${n}`).join(' · ');
+/* two quotes that say the thing: linked, readable in the brand's market, and carrying the theme's own words when there is one */
+const bestQuotes = (xs, { words = '', profile = {} } = {}) => { const ws = String(words).toLowerCase().match(/[a-z]{3,}/g) || [];
+  const ok = [...xs].filter((x) => (x.link || x.url) && String(x.text || x.title || '').length >= 30 && inMarket({ title: x.title, text: x.text }, profile).ok);
+  const hit = (x) => ws.some((w) => `${x.title || ''} ${x.text || ''}`.toLowerCase().includes(w.replace(/s$/, '')));
+  return (ws.length ? ok.filter(hit) : ok).sort((a, b) => (b.kind === 'review' || b.kind === 'comment') - (a.kind === 'review' || a.kind === 'comment') || String(a.text || '').length - String(b.text || '').length).slice(0, 2).map(quoteOfItem); };
+/* separate conversations (one video's comment section is one) */
+const convos = (xs) => new Set(xs.map((x) => x.thread || x.threadUrl || x.link || x.id)).size;
+const recentOf = (L, now) => (L?.items || []).filter((x) => x && x.mode !== 'asked' && (x.postedAt || 0) > now - WINDOW && (x.postedAt || 0) <= now + DAY);
+export function rivalCards(L, { now = Date.now(), name = 'the brand', at = now, lane, roles = ['founder', 'brand', 'growth'], max = 2, profile = {} } = {}) {
+  const rivals = (L?.config?.rivals || []).filter((r) => typeof r === 'string' && squash(r).length >= 3); if (!rivals.length) return [];
+  const xs = recentOf(L, now).filter((x) => x.about === 'rival'), by = new Map(rivals.map((r) => [r, []]));
+  for (const x of xs) { const t = squash(`${x.title || ''} ${x.text || ''} ${x.sub || ''} ${x.threadTitle || ''}`); const r = rivals.find((r) => t.includes(squash(r))); if (r) by.get(r).push(x); }
+  const out = [];
+  /* a complaint is a theme most of whose mentions are negative (a topic like "product review" is not one) */
+  const complaints = (ys, neg) => { const all = Object.fromEntries(themeCount(ys)); return themeCount(neg).filter(([t, n]) => n >= 2 && n / (all[t] || n) >= 0.4 && !META_THEME.test(t)).slice(0, 2).map(([t]) => t); };
+  const ranked = [...by.entries()].map(([r, ys]) => { const neg = ys.filter((y) => y.sentiment === 'neg'); return { r, ys, neg, th: complaints(ys, neg) }; })
+    .filter((v) => v.ys.length >= 6 && v.neg.length >= 4 && v.neg.length / v.ys.length >= 0.15 && v.th.length && convos(v.neg) >= 3).sort((a, b) => b.neg.length - a.neg.length || b.ys.length - a.ys.length);
+  for (const { r, ys, neg, th } of ranked.slice(0, max)) {
+    const pos = ys.filter((y) => y.sentiment === 'pos').length, negP = pct(neg.length, ys.length), quotes = bestQuotes(neg, { words: th.join(' '), profile }).concat(bestQuotes(neg, { profile })).filter((q, i, a) => a.findIndex((x) => x.url === q.url) === i).slice(0, 2);
+    const since = Math.min(...ys.map((y) => y.postedAt || now));
+    out.push({ id: `heard-r-${hash(r)}`, agent: 'brew', sector: 'signals', type: 'report', family: 'learning', kind: 'rows', ...(lane ? { lane } : {}), roles, origin: 'listen', stream: 'heard',
+      src: `Heard · ${r} · ${ys.length} mentions`, time: ageText(at, now), badge: ['Rival', 'warn'],
+      title: th.length ? `What people dislike about ${r}: ${th.join(' and ')}` : `${neg.length} people unhappy with ${r} lately`,
+      sub: quotes[0] ? `“${quotes[0].text}” (${quotes[0].where})` : `${neg.length} of ${ys.length} public posts about ${r} were negative.`,
+      rows: [['Mentions', `${ys.length} since ${dateText(since)}`], ['Mood', `${pos} positive · ${neg.length} negative (${negP}%)`], ...(th.length ? [['Top complaints', th.join(', ')]] : []), ['Where', whereOf(ys)]],
+      ...(quotes[0]?.url ? { link: { label: `Read it in ${quotes[0].where}`, url: quotes[0].url } } : {}), cta: { label: 'Win their unhappy buyers' },
+      detail: { why: [...quotes.map((q) => `“${q.text}” (${q.where})`), `Counted from ${ys.length} public posts, comments and reviews that name ${r}, last 90 days.`],
+        how: [th.length ? `Show how ${name} handles ${th[0]}, in the ads and on the product page where ${r}'s buyers compare.` : `Show where ${name} does better, in the ads and on the product page.`, `Reply where people complain, as ${name}: help first, say who you are, never knock ${r}.`, 'Brew keeps counting, so you see if it moves.'] },
+      heard: { kind: 'rival', name: r, n: ys.length, neg: neg.length, pos, themes: th, quotes } });
+  }
+  return out;
+}
+export function categoryCards(L, { now = Date.now(), name = 'the brand', at = now, lane, roles = ['founder', 'brand', 'growth'], max = 1, skip = new Set(), profile = {} } = {}) {
+  const xs = recentOf(L, now).filter((x) => x.about === 'category' && ['question', 'complaint'].includes(x.intent)); if (xs.length < 5) return [];
+  const noun = L?.config?.noun || 'the category', out = [];
+  for (const [t, n] of themeCount(xs)) { if (out.length >= max) break; if (n < 5 || skip.has(norm(t)) || META_THEME.test(t)) continue;
+    const ys = xs.filter((x) => (x.themes || []).includes(t)), q = ys.filter((x) => x.intent === 'question').length, cpl = ys.length - q, quotes = bestQuotes(ys, { words: t, profile }), asks = q >= cpl;
+    if (!quotes.length || convos(ys) < 3) continue; /* no post that says it in the theme's own words, or all of it one conversation: not sure enough to show */
+    out.push({ id: `heard-c-${hash(t)}`, agent: 'brew', sector: 'signals', type: 'report', family: 'learning', kind: 'rows', ...(lane ? { lane } : {}), roles, origin: 'listen', stream: 'heard',
+      src: `Heard · ${noun} buyers · ${ys.length} posts`, time: ageText(at, now), badge: [asks ? 'Asked' : 'Complaint', asks ? 'info' : 'warn'],
+      title: asks ? `Buyers keep asking about ${t}: ${ys.length} posts, none of them about ${name} yet` : `What buyers complain about in ${noun}: ${t}, ${ys.length} posts`,
+      sub: quotes[0] ? `“${quotes[0].text}” (${quotes[0].where})` : `${ys.length} public posts about ${t}.`,
+      rows: [['Posts', `${ys.length} in the last 90 days`], ['Questions', String(q)], ['Complaints', String(cpl)], ['Where', whereOf(ys)]],
+      ...(quotes[0]?.url ? { link: { label: `Read it in ${quotes[0].where}`, url: quotes[0].url } } : {}), cta: { label: asks ? 'Answer it in a post' : 'Show how we solve it' },
+      detail: { why: [...quotes.map((x) => `“${x.text}” (${x.where})`), `Counted from public posts about ${noun} that do not name a brand, last 90 days.`],
+        how: [asks ? `Answer it once, well: a post, a reel or an FAQ on the product page that ${name} can link to.` : `Show how ${name} solves it, with the product, in the next post or ad.`, 'Reply where it comes up, as the brand.', 'Brew keeps counting, so you see if it moves.'] },
+      heard: { kind: 'category', name: t, n: ys.length, questions: q, complaints: cpl, quotes } });
+  }
   return out;
 }
 
@@ -147,23 +213,26 @@ export async function readSocial(packs, slug, { ttlMs = 10 * 60e3 } = {}) {
 }
 async function readSocialNow(packs, slug) {
   const g = (n) => packs.getJSON(slug, n, null).catch(() => null);
-  const [ideas, threads, themes, comms, status] = await Promise.all([g('ideas/ideas.json'), g('listen/threads.json'), g('listen/themes.json'), g('listen/communities.json'), g('listen/status.json')]);
+  const [ideas, threads, themes, comms, status, config] = await Promise.all([g('ideas/ideas.json'), g('listen/threads.json'), g('listen/themes.json'), g('listen/communities.json'), g('listen/status.json'), g('listen/config.json')]);
   if (!ideas?.items?.length && !threads?.threads?.length && !themes?.themes?.length) return null;
   // items only to resolve the quotes of the themes we show (the file is big; read it only when themes exist)
   const items = themes?.themes?.length ? (await g('listen/items.json'))?.items || [] : [];
-  return { ideas: ideas?.items || [], listen: { threads: threads?.threads || [], themes: themes?.themes || [], total: themes?.total || 0, communities: comms?.communities || [], status, items } };
+  return { ideas: ideas?.items || [], listen: { threads: threads?.threads || [], themes: themes?.themes || [], total: themes?.total || 0, communities: comms?.communities || [], status, items, config: config ? { rivals: config.rivals || [], noun: config.noun || '', terms: config.terms || {}, category: config.category || '' } : null } };
 }
 
 /* ---------- What Brew learned → Heard ---------- */
-export function heardView(L, { name = 'the brand', now = Date.now() } = {}) {
+export function heardView(L, { name = 'the brand', now = Date.now(), profile = {} } = {}) {
   if (!L || (!L.themes?.length && !L.threads?.length)) return null;
   const items = new Map((L.items || []).map((x) => [x.id, x]));
   const quote = (x) => x && ({ text: cut([x.title, x.text].filter(Boolean).join('. '), 220), url: x.link, where: x.sub || x.platform, at: x.postedAt || null });
   const themes = (L.themes || []).filter((t) => t.n >= 3).slice(0, 4).map((t) => ({ name: t.name, n: t.n, share: t.share, pos: t.pos, neg: t.neg, neutral: t.neutral, brand: t.brand, week: t.wow?.week ?? null, lastWeek: t.wow?.lastWeek ?? null,
     quotes: (t.quoteIds || []).map((id) => quote(items.get(id))).filter(Boolean).slice(0, 2).concat(!(t.quoteIds || []).some((id) => items.has(id)) && t.quote ? [{ text: cut(t.quote, 220), url: t.quoteLink, where: '' }] : []).slice(0, 2) }));
-  const communities = (L.communities || []).slice(0, 5).map((c) => ({ name: c.name, url: c.url, posts: c.posts, threads: c.threads, brand: c.brand, questions: c.questions, why: c.why, lastActive: c.lastActive }));
-  const questions = (L.threads || []).filter((t) => t.url && asksQ(t) && !NOT_A_PLACE.test(`${t.where} ${t.title}`)).sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 5)
-    .map((t) => ({ title: t.title, url: t.url, where: t.where, replies: t.replies, lastActive: t.lastActive, about: t.about }));
+  /* the communities that pass the community gate (about the category, in the market, not deals or general chat), and the
+     questions from the last two weeks there; a reply count only when it is the platform's own or a floor */
+  const stems = L.config ? topicStems({ noun: L.config.noun, terms: [...(L.config.terms?.category || []), String(L.config.category || '')] }) : null;
+  const communities = (L.communities || []).filter((c) => c.platform !== 'reddit' || usableCommunity(c, { profile, stems }).ok).slice(0, 5).map((c) => ({ name: c.name, url: c.url, posts: c.posts, threads: c.threads, brand: c.brand, questions: c.questions, why: c.why, lastActive: c.lastActive }));
+  const questions = (L.threads || []).filter((t) => t.url && asksQ(t) && !NOT_A_PLACE.test(`${t.where} ${t.title}`) && (t.platform !== 'reddit' || usableThread({ ...t, sub: /^r\//.test(t.where || '') ? t.where : '', text: t.quote }, { now, profile, brand: name }).ok)).sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 5)
+    .map((t) => ({ title: t.title, url: t.url, where: t.where, replies: t.repliesLive || t.repliesFloor ? t.replies : null, ...(t.repliesFloor ? { repliesFloor: true } : {}), lastActive: t.lastActive, about: t.about }));
   const st = L.status || {}, okSources = Object.entries(st.sources || {}).filter(([, s]) => s.state === 'ok').map(([, s]) => s.name);
   /* sources the last run could not read, with why: shown as not read, never as "none found" */
   /* a source skipped on purpose (not sold there, no channel known) is not a failure: only real errors are listed as "couldn't read" */
