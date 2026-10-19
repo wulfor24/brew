@@ -163,8 +163,9 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   async function start0(url, { ip, user = null, fresh = false } = {}) {
     const raw = String(url || '').trim(); const slug = slugOf(raw);
     if (blocked(slug)) return { error: 'This address can’t be read here.' };
-    if (!slug || !/\.[a-z]{2,}/.test(raw.replace(/^[a-z]+:\/\//i, '').split('/')[0])) return { error: 'That doesn’t look like a website. Try yourbrand.com' };
+    /* the host is lower-cased before it is judged: ARATA.IN or https://Arata.In/… is the same site, as the landing already says (QA 19 Oct) */
     const host = raw.replace(/^[a-z]+:\/\//i, '').replace(/[/?#].*$/, '').replace(/^www\./i, '').toLowerCase();
+    if (!slug || !/\.[a-z]{2,}/.test(host)) return { error: 'That doesn’t look like a website. Try yourbrand.com' };
     const prev = await status(slug);
     /* another instance is starting this brand right now: join its run, never start (or resume) a second one */
     if (await otherStart(slug)) return { slug, existing: true, status: prev || (await packs.getFreshJSON(slug, 'status.json', null).catch(() => null)) || { slug, host: slug, state: 'Reading the site' } };

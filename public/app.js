@@ -411,7 +411,7 @@
         const url = $('#url-in').value.trim(); if (!url) return $('#url-in').focus();
         const site = siteOf(url); if (!site.ok) { urlErr(site.name ? 'That looks like a name. Paste the website address instead.' : 'That doesn’t look like a website. Try yourbrand.com', site.guess); return $('#url-in').focus(); }
         urlErr(''); going(true, 'Opening your store…');
-        const r = await api('/api/brands', { url }).catch(() => null);
+        const r = await api('/api/brands', { url }).then((j) => (j?.fallback ? null : j)).catch(() => null); /* a dropped network is the plain line below, never "TypeError: Failed to fetch" (QA 19 Oct) */
         if (r?.signin) { going(true, 'Taking you to sign in…'); location.href = `/auth/google?next=${encodeURIComponent('/?build=' + encodeURIComponent(url))}`; return; }
         if (!r?.slug) { going(false); urlErr(r?.error || 'That address did not open. Check it and try again.'); return $('#url-in').focus(); }
         location.href = '/' + r.slug; return; }

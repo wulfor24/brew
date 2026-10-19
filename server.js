@@ -937,7 +937,7 @@ async function serve(req, res, u) {
     // a page: / is the landing, /<slug> a brand, /privacy and /terms; anything else is a real 404 (legal-pages.js pageOf)
     const pg = pageOf(u.pathname);
     if (pg.kind === 'api') return send(res, 404, { error: 'not found' });
-    if (/\.[a-z0-9]{2,5}$/i.test(u.pathname)) return send(res, 404, 'no', 'text/plain');
+    if (pg.kind !== 'landing' && /\.[a-z0-9]{2,5}$/i.test(u.pathname)) return send(res, 404, 'no', 'text/plain'); /* /index.html is the landing, never a plain "no" (QA 19 Oct) */
     if (pg.kind === 'legal') return send(res, 200, LEGAL[pg.page](), 'text/html; charset=utf-8');
     const html = pg.kind === 'landing' ? await pageFor('') : pg.kind === 'slug' ? await pageFor(pg.slug) : null;
     if (html && pg.redirect) { res.writeHead(302, { location: `/${pg.slug}${u.search}` }); return res.end(); }
