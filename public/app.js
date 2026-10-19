@@ -439,7 +439,7 @@
     if (meCursor.on || !matchMedia('(pointer:fine)').matches) return; meCursor.on = true;
     document.body.insertAdjacentHTML('beforeend', `<div class="me-cur" id="me-cur">${cursorSvg()}<span></span></div>`);
     const el = $('#me-cur'), sp = el.querySelector('span');
-    addEventListener('mousemove', (e) => { const on = !!$('.screen.setup'); document.body.classList.toggle('has-me-cur', on); if (!on) return;
+    addEventListener('mousemove', (e) => { const on = !!$('.screen.setup') && !$('#qfull') && !!e.target.closest?.('.su-main') && !e.target.closest?.('button,a,.su-done'); document.body.classList.toggle('has-me-cur', on); if (!on) return; /* never over the questions or a button */
       // over a card: what we found there, in short; elsewhere: how much of the brand is read so far
       const card = e.target.closest?.('.scr.fc'), n = $$('#scr .scr').length;
       const say = card?.dataset.gist || (n ? `${B.brand.name}: ${n} finding${n > 1 ? 's' : ''}${$('#su-done') ? '' : ' so far'}` : `Reading ${B.brand.name}`);
@@ -461,47 +461,64 @@
     /* the ads step quotes the one count (pack-numbers.js, window.BREW_NUMBERS) when the brand has it: the same rivals and numbers as the check page */
     const NB = window.BREW_NUMBERS, steps = ra && !NB?.rivalAds ? B.steps.map((x) => x.k === 'ads' ? { ...x, done: `${ra.brands.length} rivals: ${ra.brands.reduce((n, b) => n + (b.live || 0), 0).toLocaleString('en-IN')} live ads` } : x) : B.steps;
     const cards = ra ? B.scrape.map((c) => c.kind === 'ad' ? { ...c, src: `Meta Ad Library · ${B.config?.countryName || 'live'}`, img: ra.items[0].poster, copy: ra.items.slice(0, 3).map((a) => `${a.brand}: ${a.hook}`).join(' · '), foot: `${ra.items[0].brand}'s top ad has run ${ra.items[0].days} days in ${ra.items[0].versions} versions.` } : c) : B.scrape;
-    /* v1 asks v2's questions while the read runs (OB2.questions, onboard2.js mode q): the question in the left rail, the read's
-       steps under it, the findings on the right as before. Once per brand per browser; no tutorial, stack or gate on v1 */
+    /* v1 (19 Oct, from the prototype): the read shows once, then five questions take the whole screen while the read carries on
+       behind them, then the read comes back with everything that landed meanwhile (OB2.questions, onboard2.js mode q). Once per
+       brand per browser; no tutorial, stack or gate on v1 */
     const QM = !V2 && GEN && !!window.OB2?.questions && !window.OB2.qState().qDone;
     root.innerHTML = `
-      <main class="screen setup${QM ? ' su-q' : ''}">
+      <main class="screen setup">
         <aside class="su-rail">
-          <div class="host"><img src="${B.brand.mark}" alt="">${esc(B.brand.host)}${QM ? '<button class="btn btn-ghost sm su-qskip" id="su-qskip">Skip questions</button>' : ''}</div>
-          ${QM ? '<div class="ob2-body v2-body su-qstage" id="v2-stage"></div>' : ''}
+          <div class="host"><img src="${B.brand.mark}" alt="">${esc(B.brand.host)}</div>
           <ol class="steps">${steps.map((s, i) => `<li class="step" data-i="${i}"><span class="dot"></span><div><b>${esc(s.t)}</b><span>Queued</span></div></li>`).join('')}</ol>
-          ${QM ? '' : `<div class="roster"><h4>Setting up your agents</h4>${['creative', 'performance', 'storefront', 'visibility', 'crm'].map((a) => `<div class="agent-row" data-a="${a}">${face(a)}<div><b>${AGENT[a]}</b><span class="st">Waiting</span></div></div>`).join('')}</div>`}
+          <div class="roster"><h4>Setting up your agents</h4>${['creative', 'performance', 'storefront', 'visibility', 'crm'].map((a) => `<div class="agent-row" data-a="${a}">${face(a)}<div><b>${AGENT[a]}</b><span class="st">Waiting</span></div></div>`).join('')}</div>
         </aside>
         <section class="su-main">
-          <div class="su-head"><h2>Reading ${esc(B.brand.name)}</h2><span>Your store, reviews, rivals and AI answers.</span><button class="btn btn-ghost sm skip" id="skip"${QM ? ' hidden' : ''}>Skip ahead</button></div>
+          <div class="su-head"><h2>Reading ${esc(B.brand.name)}</h2><span>Your store, reviews, rivals and AI answers.</span><button class="btn btn-ghost sm skip" id="skip">Skip ahead</button></div>
           <div class="scr-grid" id="scr"></div>
         </section>
       </main>
       <div class="buddy" id="buddy" style="opacity:0">${cursorSvg()}<span>Brew</span></div>`;
-    let skipped = false, failed = false, readIn = false, Q = null;
+    let skipped = false, failed = false, readIn = false, Q = null, qOpened = false;
     const buddy = $('#buddy');
-    /* the done bar waits for both: the read (readP) and, on v1 with questions, the last question (qP, which also says whether the
+    /* the done bar waits for both: the read (readP) and, with the questions, the last answer (qP, which also says whether the
        taps already confirmed the read) */
     let readyGo, qGo; const readP = new Promise((r) => (readyGo = r)), qP = QM ? new Promise((r) => (qGo = r)) : Promise.resolve({});
     const qBuf = [], toQ = (ev) => { if (!QM) return; if (Q) Q.feed(ev); else qBuf.push(ev); };
-    if (QM) window.OB2.questions({
-      onDone: (r) => { $('#su-qskip')?.remove(); $('#v2-stage')?.remove(); $('.screen.setup')?.classList.remove('su-q'); qGo(r || {}); },
-      onWait: () => { $('#su-qskip')?.remove(); $('#skip')?.removeAttribute('hidden'); } /* every question answered, the read still running: Skip ahead as before */
-    }).then((h) => { Q = h; qBuf.splice(0).forEach((ev) => h.feed(ev)); });
-    $('#su-qskip')?.addEventListener('click', () => Q?.skip());
+    /* the question layer: full screen, one question in the middle, five marks for progress, the read as one quiet line */
+    const readLine = () => { const done = $$('.step.done').length, n = $$('#scr .scr').length; return readIn ? `${esc(B.brand.name)} is read · ${n} findings` : `<span class="spin"></span>Reading ${esc(B.brand.name)} · ${done} of ${steps.length} · ${n} findings`; };
+    const qLayer = () => { if ($('#qfull')) return; document.body.insertAdjacentHTML('beforeend', `<div class="qfull" id="qfull" role="dialog" aria-modal="true" aria-label="A few questions">
+        <header class="qf-top"><span class="qf-read" id="qf-read">${readLine()}</span><ol class="qf-prog" id="qf-prog" aria-hidden="true"></ol><button class="btn btn-ghost sm" id="qf-skip">Skip questions</button></header>
+        <div class="qf-mid"><div class="ob2-body v2-body qf-stage" id="v2-stage"></div></div></div>`);
+      document.body.classList.add('qf-on'); $('#qf-skip').onclick = () => Q?.skip(); };
+    const qClose = () => { $('#qfull')?.remove(); document.body.classList.remove('qf-on'); };
+    const qPaint = () => { const el = $('#qf-read'); if (el) el.innerHTML = readLine(); };
+    const qOpen = () => { $('#su-ask')?.remove(); qLayer(); if (qOpened) return; qOpened = true;
+      window.OB2.questions({
+        onShow: qLayer, /* a product or rival question whose data landed late */
+        onStep: (i, n) => { const el = $('#qf-prog'); if (el) el.innerHTML = Array.from({ length: n }, (_, k) => `<li class="${k < i ? 'done' : k === i ? 'on' : ''}"></li>`).join(''); },
+        onWait: () => { qClose(); if (!readIn && !$('#su-wait')) document.body.insertAdjacentHTML('beforeend', `<div class="su-done" id="su-wait"><span class="spin"></span><div><b>Thanks. Brew is still reading ${esc(B.brand.name)}.</b><span>Your feed opens from here the moment the read is in.</span></div></div>`); },
+        onDone: (r) => { qClose(); qGo(r || {}); }
+      }).then((h) => { Q = h; qBuf.splice(0).forEach((ev) => h.feed(ev)); }); };
+    /* the read once: after a handful of findings (or a few seconds) a bar offers the questions; the read never stops for them */
+    const askText = () => readIn ? `<b>${esc(B.brand.name)} is read.</b><span>Five quick taps, so your feed fits you.</span>` : '<b>Brew keeps reading in the background.</b><span>Five quick taps meanwhile, so your feed fits you.</span>';
+    const askBar = () => { const t0 = $('#su-ask-t'); if (t0) t0.innerHTML = askText(); if (!QM || qOpened || skipped || failed || $('#su-ask')) return;
+      document.body.insertAdjacentHTML('beforeend', `<div class="su-done" id="su-ask"><span class="su-ok">${ic('sparkles', 's18')}</span><div id="su-ask-t">${askText()}</div><button class="linkbtn" id="su-ask-no">Skip</button><button class="btn btn-primary lg" id="su-ask-go">Answer 5 questions ${ic('right', 's18')}</button></div>`);
+      $('#su-ask-go').onclick = qOpen; $('#su-ask-go').focus();
+      $('#su-ask-no').onclick = () => { $('#su-ask')?.remove(); qOpened = true; window.OB2.questions({ onDone: (r) => qGo(r || {}) }).then((h) => { Q = h; qBuf.splice(0).forEach((ev) => h.feed(ev)); h.skip(); }); }; };
+    if (QM) setTimeout(askBar, 9000);
     const fly = (el, say) => { if (!el) return; const sp = buddy.querySelector('span'), was = buddy.offsetWidth; const prev = sp.textContent; sp.textContent = say; const r = el.getBoundingClientRect(), w = Math.max(was, buddy.offsetWidth); sp.textContent = prev; clearTimeout(fly.t); fly.t = setTimeout(() => (sp.textContent = say), 900); clearTimeout(fly.h); fly.h = setTimeout(() => { buddy.style.opacity = 0; }, 2800); buddy.style.opacity = 1; buddy.style.transform = `translate(${Math.max(8, Math.min(r.left + r.width * .6, r.right - w - 8, innerWidth - w - 16))}px,${Math.min(r.top + 26, innerHeight - 60)}px)`; }; // the label swaps once the cursor lands, so a longer one never sticks out mid-flight
     // POST /tenants started the read; GET /tenants/:id/onboarding streams each step and finding as it lands
     const es = new EventSource(`/api/tenants/${TID}/onboarding`);
-    $('#skip').onclick = () => { skipped = true; es.close(); Q?.stop(); $('#buddy')?.remove(); $('#su-done')?.remove(); if (signWall('who')) return; afterRead(); };
+    $('#skip').onclick = () => { skipped = true; es.close(); Q?.stop(); qClose(); $('#buddy')?.remove(); $$('#su-done,#su-ask,#su-wait').forEach((x) => x.remove()); if (signWall('who')) return; afterRead(); };
     es.onmessage = async (m) => {
       if (skipped) return es.close();
       let ev; try { ev = JSON.parse(m.data); } catch (e) { return; } const li = ev.i != null ? $(`.step[data-i="${ev.i}"]`) : null;
       toQ(ev);
       if (ev.type === 'step' && ev.state === 'reading' && li) { li.classList.add('reading'); if (!li.querySelector('.spin')) li.querySelector('.dot').innerHTML = '<span class="spin"></span>'; li.querySelector('span:last-child').textContent = `Reading ${ev.tick}`; }
-      if (ev.type === 'finding') { $('#scr').insertAdjacentHTML('beforeend', scrCard(ev.finding)); const el = $('#scr').lastElementChild; el.classList.add('fresh'); $$('#scr .scr.fresh').forEach((x) => x !== el && x.classList.remove('fresh')); if (!(QM && Q && !$('#su-done') && matchMedia('(max-width: 760px)').matches)) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); /* on a phone the question sits above the findings: never scroll it away */ if (ev.say) setTimeout(() => fly(el, ev.say), 350); }
+      if (ev.type === 'finding') { $('#scr').insertAdjacentHTML('beforeend', scrCard(ev.finding)); const el = $('#scr').lastElementChild; el.classList.add('fresh'); $$('#scr .scr.fresh').forEach((x) => x !== el && x.classList.remove('fresh')); if (!$('#qfull')) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); if (ev.say && !$('#qfull')) setTimeout(() => fly(el, ev.say), 350); if ($$('#scr .scr').length >= 6) askBar(); qPaint(); }
       if (ev.type === 'agent') { const row = $(`.agent-row[data-a="${ev.agent}"]`); if (row) { row.classList.add('on'); row.querySelector('.st').textContent = 'Has ideas ready'; } }
-      if (ev.type === 'step' && ev.state === 'done' && li) { li.classList.remove('reading'); li.classList.add('done'); li.classList.toggle('empty', !!ev.empty); li.querySelector('.dot').innerHTML = ic(ev.empty ? 'minus' : 'check', 's14'); li.querySelector('span:last-child').textContent = ev.done; } /* a step that found nothing or could not finish gets a dash, never a tick */
-      if (ev.type === 'error') { failed = true; es.close(); buddy.remove(); $$('.step.reading').forEach((el) => { el.classList.remove('reading'); el.querySelector('.dot').innerHTML = ic('minus', 's14'); });
+      if (ev.type === 'step' && ev.state === 'done' && li) { li.classList.remove('reading'); li.classList.add('done'); li.classList.toggle('empty', !!ev.empty); li.querySelector('.dot').innerHTML = ic(ev.empty ? 'minus' : 'check', 's14'); li.querySelector('span:last-child').textContent = ev.done; qPaint(); } /* a step that found nothing or could not finish gets a dash, never a tick */
+      if (ev.type === 'error') { failed = true; es.close(); buddy.remove(); qClose(); $$('#su-ask,#su-wait').forEach((x) => x.remove()); $$('.step.reading').forEach((el) => { el.classList.remove('reading'); el.querySelector('.dot').innerHTML = ic('minus', 's14'); });
         document.body.insertAdjacentHTML('beforeend', `<div class="su-done" id="su-done"><div><b>We couldn’t read ${esc(B.brand.name)}.</b><span>${esc(ev.msg || 'The store did not open for us.')} Check the address, or try again in a few minutes.</span></div><button class="btn btn-primary lg" id="su-next">Back to the start</button></div>`);
         $('#su-next').onclick = () => { location.href = '/'; }; return; }
       if (ev.type === 'ready') { es.close(); finishRead(); }
@@ -512,11 +529,11 @@
       // a brand read earlier can say "ready" before any step: show what was read, not seven "Queued" rows and 0 findings
       steps.forEach((x, i) => { const el = $(`.step[data-i="${i}"]`); if (el && !el.classList.contains('done')) { const empty = x.state === 'empty'; el.classList.remove('reading'); el.classList.add('done'); el.classList.toggle('empty', empty); el.querySelector('.dot').innerHTML = ic(empty ? 'minus' : 'check', 's14'); el.querySelector('span:last-child').textContent = x.done || (empty ? 'Nothing found' : 'Done'); } });
       if (!$$('#scr .scr').length && cards.length) $('#scr').innerHTML = cards.map(scrCard).join('');
-      readyGo();
+      qPaint(); askBar(); readyGo();
     };
     // stop here: the presenter moves on when the room has taken it in
     const showDone = async (q = {}) => {
-      if (skipped || failed || $('#su-done')) return;
+      if (skipped || failed || $('#su-done')) return; $$('#su-ask,#su-wait').forEach((x) => x.remove());
       const n = $$('#scr .scr').length, posted = !!q.posted;
       document.body.insertAdjacentHTML('beforeend', `<div class="su-done" id="su-done"><span class="su-ok">${ic('check', 's18')}</span><div><b>${esc(B.brand.name)} is read.</b><span>${steps.length} sources, ${n} findings. Your feed starts from these.</span></div>${posted ? '<button class="linkbtn" id="su-check">Check everything we read</button>' : ''}<button class="btn btn-primary lg" id="su-next">Set up my feed ${ic('right', 's18')}</button></div>`);
       // a brand whose facts were already confirmed goes straight to the seat picker (confirming again would rewrite its moves)
@@ -531,7 +548,7 @@
     /* the stream drops (a restart): while questions are open, the status poll says when the read is in; otherwise on to the seat, as before */
     const poll = async () => { if (skipped || readIn) return; const s = await api(`/api/brands/${B.slug || BR}/status`).catch(() => null);
       if (s?.stages?.read?.state === 'done') { toQ({ type: 'ready' }); return finishRead(); } setTimeout(poll, 8000); };
-    es.onerror = () => { if (skipped || readIn) return; es.close(); if (QM && Q && GEN) return poll(); buddy.remove(); if (signWall('who')) return; afterRead(); };
+    es.onerror = () => { if (skipped || readIn) return; es.close(); if (QM && GEN) return poll(); buddy.remove(); if (signWall('who')) return; afterRead(); };
   };
 
   /* ---------- "Check what we read": the brand confirms the facts everything else is built on ---------- */
@@ -1792,6 +1809,7 @@
   };
   // why this card is here, in words a client reads: what lifted it, what held it back, where it sits today,
   // and a way to say if it was useful (that feedback re-ranks the feed and teaches Brew)
+  const paceOfN = (n) => (n == null || !Number.isFinite(+n) ? null : +n === 0 ? 'none' : +n < 10 ? 'few' : +n < 50 ? 'ten' : 'always'); /* channel-fit paceOf */
   const reasonsOf = (p, sc) => { const r = [], role = ROLE();
     if (sc.seat > 0) r.push({ up: true, ic: 'person', t: `Picked for your seat: ${role.title}`, w: sc.seat });
     if (sc.impact > 0) r.push({ up: true, ic: 'trendup', t: sc.impactV ? `About ${inrS(sc.impactV)} a month at stake` : sc.impactPct ? 'Moves a number you track' : 'Could move revenue', w: sc.impact });
@@ -1803,7 +1821,7 @@
     if (sc.fatigue < 0) r.push({ up: false, ic: 'eyeoff', t: sc.quiet ? 'You opened it a while ago and its jam has gone quiet, so it’s moving down' : `You’ve seen it ${sc.seen > 1 ? `on ${sc.seen} days` : 'before'}, so it’s moving down`, w: -sc.fatigue });
     if (sc.feedback < 0) r.push({ up: false, ic: 'minus', t: `Fewer from ${AGENT[p.agent]}, as you asked`, w: -sc.feedback });
     if (sc.chan < 0) r.push({ up: false, ic: 'minus', t: 'For a channel you don’t run', w: -sc.chan });
-    if (sc.pace > 0) r.push({ up: true, ic: 'trendup', t: ['none', 'few'].includes(S.viewer.adPace) ? 'Groundwork first, as you run few ads' : 'New ads first, as you run them most weeks', w: sc.pace });
+    if (sc.pace > 0) r.push({ up: true, ic: 'trendup', t: ['none', 'few'].includes(S.viewer.adPace || paceOfN(window.BREW_NUMBERS?.ownAds?.n)) ? 'Groundwork first, as you run few ads' : 'New ads first, as you run them most weeks', w: sc.pace });
     return r.sort((a, b) => (b.up - a.up) || b.w - a.w); };
   const rankHtml = (id) => { const sc = SCORES[id], p = byId(id); if (!sc || !p) return '';
     const rs = reasonsOf(p, sc), pos = FEED.findIndex((x) => x.id === id), top = rs.filter((x) => x.up).slice(0, 2).map((x) => x.t);
@@ -2759,7 +2777,8 @@
     const NOUN = { text: 'writing', image: 'pictures', video: 'videos', voice: 'voiceovers' }, out = Object.entries(c.share || {}).filter(([, x]) => x && x.out).map(([k, x]) => [NOUN[k] || k, x.out]);
     let told = false; try { told = sessionStorage.getItem('brew-share') === out.map((x) => x.join(':')).join(','); sessionStorage.setItem('brew-share', out.map((x) => x.join(':')).join(',')); } catch {}
     if (out.length && !told && !c.paused) { const mine = out.filter(([, w]) => w === 'brand').map(([n]) => n), all = out.filter(([, w]) => w === 'all').map(([n]) => n);
-      setTimeout(() => toastLong(`${ic('info', 's16')}${mine.length ? `This brand’s share of today’s ${mine.join(' and ')} is used up. ` : ''}${all.length ? `Brew’s budget for ${all.join(' and ')} is used up today across all brands. ` : ''}It resets at midnight UTC; everything else still works.`, 12000), 1800); } }).catch(() => {});
+      const sayLater = (f) => (['setup', 'ob'].includes(view) || $('#qfull') ? setTimeout(() => sayLater(f), 4000) : f()); /* never over the read or the questions: it waits for the feed */
+      setTimeout(() => sayLater(() => toastLong(`${ic('info', 's16')}${mine.length ? `This brand’s share of today’s ${mine.join(' and ')} is used up. ` : ''}${all.length ? `Brew’s budget for ${all.join(' and ')} is used up today across all brands. ` : ''}It resets at midnight UTC; everything else still works.`, 12000)), 1800); } }).catch(() => {});
   /* ---------- the demo site (DEMO_MODE): a session per visitor, its accounts are demo accounts the server connects ---------- */
   const DSLUG = () => B.slug || BR;
   const clearLocal = () => { wiping = true; try { Object.keys(localStorage).filter((k) => k.startsWith(LSP())).forEach((k) => ls.del(k)); } catch (e) {} };
@@ -4874,17 +4893,17 @@
      the brand's voice (the team's, so only for its people) */
   const TU_SET = { perDay: [[3, '3'], [5, '5'], [10, '10']], adPace: [['none', 'None'], ['few', 'A few'], ['ten', '10+'], ['always', 'Always on']], voice: [['site', 'Like our site'], ['warmer', 'Warmer'], ['sharper', 'Sharper'], ['plainer', 'Plainer']] };
   const TU_CH = [['instagram', 'Instagram'], ['facebook', 'Facebook'], ['google', 'Google'], ['email', 'Email'], ['whatsapp', 'WhatsApp'], ['marketplace', 'Marketplaces']];
-  const tuSetup = () => { const v = S.viewer, team = !!(window.LIVE?.me && (window.LIVE.access?.role || window.LIVE.access?.full)) && GEN;
+  const tuSetup = () => { const v = S.viewer, team = !!(window.LIVE?.me && window.LIVE.access?.role) && GEN; /* the voice saves for the brand's members only (brand-memory saveVoicePick) */
     const seg = (k, label, cur) => `<div class="tu-ag"><span class="tu-t"><b>${label}</b></span><span class="tu-seg" role="radiogroup" aria-label="${label}">${TU_SET[k].map(([x, t]) => `<button role="radio" aria-checked="${String(cur) === String(x)}" data-tu-v="${k}:${x}">${t}</button>`).join('')}</span></div>`;
     return `<section class="lx-sec">${lxHead('lx-setup', 'Your setup', '', 'From the questions while Brew read your store.')}
       ${seg('perDay', 'Moves a morning', v.perDay || '')}
-      <div class="tu-ag"><span class="tu-t"><b>Channels you run</b><small>Up to three. Cards for other channels sit lower.</small></span><span class="tu-seg">${TU_CH.map(([x, t]) => `<button aria-pressed="${(v.channels || []).includes(x)}" data-tu-ch="${x}">${t}</button>`).join('')}</span></div>
+      <div class="tu-ag"><span class="tu-t"><b>Channels you run</b><small>Every one you run. Cards for the others sit lower.</small></span><span class="tu-seg">${TU_CH.map(([x, t]) => `<button aria-pressed="${(v.channels || []).includes(x)}" data-tu-ch="${x}">${t}</button>`).join('')}</span></div>
       ${seg('adPace', 'Ads last month', v.adPace || '')}
       ${team ? seg('voice', 'Brand voice', v.voice || 'site') : ''}</section>`; };
   const tuPut = async (body) => { const r = await tapi('PUT', '/api/tenants/:t/tuning', body); if (r.error) return toast(esc(r.error)); TU.d = r; renderTune(); };
   document.addEventListener('click', async (e) => { if (view !== 'tune') return; const t = e.target;
     const sv = t.closest('[data-tu-v]'); if (sv) { const [k, v0] = sv.dataset.tuV.split(':'); S.viewer[k] = k === 'perDay' ? +v0 : v0; save(); if (k === 'voice') pushVoice(); return renderTune(); }
-    const cv = t.closest('[data-tu-ch]'); if (cv) { const x = cv.dataset.tuCh, cur = S.viewer.channels || []; S.viewer.channels = cur.includes(x) ? cur.filter((y) => y !== x) : [...cur, x].slice(-3); save(); return renderTune(); }
+    const cv = t.closest('[data-tu-ch]'); if (cv) { const x = cv.dataset.tuCh, cur = S.viewer.channels || []; S.viewer.channels = cur.includes(x) ? cur.filter((y) => y !== x) : [...cur, x]; save(); return renderTune(); }
     const w = t.closest('[data-tu-w]'); if (w) { const [id, v] = w.dataset.tuW.split(':'); return tuPut({ weights: { ...(TU.d?.tuning?.weights || {}), [id]: v } }); }
     const tx = t.closest('[data-tu-topicx]'); if (tx) return tuPut({ topics: (TU.d?.tuning?.topics || []).filter((x) => x !== tx.dataset.tuTopicx) });
     const sx = t.closest('[data-tu-sigx]'); if (sx) { await tapi('DELETE', `/api/tenants/:t/tuning/signals/${encodeURIComponent(sx.dataset.tuSigx)}`); return renderTune(); }

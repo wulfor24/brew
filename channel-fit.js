@@ -71,6 +71,8 @@ export function isGroundwork(card) {
 }
 /* how many ads they ran last month → [new ad, groundwork] lift */
 export const PACE = { none: [-3, 4], few: [0, 2], ten: [2, 0], always: [4, 0] };
+/* the ad pace the read counted: the brand's own live Meta ads (pack-numbers ownAds) → none / few / ten / always; null when unread */
+export const paceOf = (n) => (n == null || n === '' || !Number.isFinite(+n) ? null : +n === 0 ? 'none' : +n < 10 ? 'few' : +n < 50 ? 'ten' : 'always');
 export function paceFit(adPace, card) {
   const w = PACE[adPace]; if (!w) return 0;
   return isNewAd(card) ? w[0] : isGroundwork(card) ? w[1] : 0;
@@ -82,7 +84,7 @@ export const AD_PACES = Object.keys(PACE), PER_DAY = [3, 5, 10], TEAM_SIZES = ['
 export function cleanViewer(v, { tools = null } = {}) {
   if (!v || typeof v !== 'object' || Array.isArray(v)) return {};
   const out = { ...v }, has = (k) => Object.prototype.hasOwnProperty.call(v, k), one = (k, ok) => { if (!has(k)) return; if (v[k] === null) out[k] = null; else if (ok(v[k])) out[k] = v[k]; else delete out[k]; };
-  if (has('channels')) { if (v.channels === null) out.channels = null; else if (Array.isArray(v.channels)) out.channels = [...new Set(v.channels.filter((x) => CHANNELS.includes(x)))].slice(0, 3); else delete out.channels; }
+  if (has('channels')) { if (v.channels === null) out.channels = null; else if (Array.isArray(v.channels)) out.channels = [...new Set(v.channels.filter((x) => CHANNELS.includes(x)))]; else delete out.channels; }
   if (has('tools')) { const okTool = (x) => typeof x === 'string' && (tools ? tools.includes(x) : /^[a-z0-9_-]{1,30}$/.test(x));
     if (v.tools === null) out.tools = null; else if (Array.isArray(v.tools)) out.tools = [...new Set(v.tools.filter(okTool))].slice(0, 20); else delete out.tools; }
   one('adPace', (x) => AD_PACES.includes(x));

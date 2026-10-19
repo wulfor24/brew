@@ -79,12 +79,12 @@
         <div id="v2-status">${o.noStatus ? '' : statusLine()}</div></section>
       <aside class="ob2-show v2-show" aria-hidden="true"><div class="ob2-wash v2-wash"></div><div class="v2-read" id="v2-show"${o.right != null ? ' data-hold="1"' : ''}>${o.right != null ? o.right : railHtml()}</div></aside></main>`;
     $('[data-v2-skip]')?.addEventListener('click', () => (o.onSkip || skipAhead)()); window.scrollTo(0, 0); };
-  const stage = (inner, o = {}) => { const s = $('#v2-stage'); if (!s) return mode === 'q' ? null : shell(inner, o); /* v1 owns its screen: never take it over */ s.innerHTML = inner; s.classList.remove('is-in'); void s.offsetWidth; s.classList.add('is-in'); if (o.right != null) { const r = $('#v2-show'); if (r) { r.dataset.hold = '1'; r.innerHTML = o.right; } } window.scrollTo(0, 0); };
+  const stage = (inner, o = {}) => { let s = $('#v2-stage'); if (!s && mode === 'q') { QO?.onShow?.(); s = $('#v2-stage'); } if (!s) return mode === 'q' ? null : shell(inner, o); /* v1 owns its screen: it reopens its question layer, never a v2 shell */ s.innerHTML = inner; s.classList.remove('is-in'); void s.offsetWidth; s.classList.add('is-in'); if (o.right != null) { const r = $('#v2-show'); if (r) { r.dataset.hold = '1'; r.innerHTML = o.right; } } window.scrollTo(0, 0); };
   const skipAhead = () => { keys(null); beats().forEach((b) => { if (!['done', 'hold'].includes(b.kind)) st.done[b.id] ||= 'skip'; }); save(); next(); };
 
   /* ---------- keys: the two that matter are always on screen ---------- */
   let keyFn = null; const keys = (fn) => { keyFn = fn; };
-  const keysOn = () => document.body.classList.contains('v2-on') || (mode === 'q' && !!$('.screen.setup.su-q #v2-stage'));
+  const keysOn = () => document.body.classList.contains('v2-on') || (mode === 'q' && !!$('#qfull #v2-stage'));
   document.addEventListener('keydown', (e) => { if (!keyFn || !keysOn()) return; if (e.target.closest('input,textarea,[contenteditable]')) return; if (e.metaKey || e.ctrlKey || e.altKey) return; const k = e.key === ' ' ? 'Space' : e.key; if (keyFn(k) === true) e.preventDefault(); });
 
   /* ---------- the beats ---------- */
@@ -113,18 +113,14 @@
     { id: 'hold', kind: 'hold' },
     { id: 'done', kind: 'done' }
   ];
-  /* v1 (mode q): no tutorial, hold or done; lines that name v2-only verbs say what v1 really does; team and voice only for
-     the brand's own people (they invite and they own the voice), tools only when the brand has connectors */
-  const V1COPY = {
-    s4: { p: 'Each card says the move and why it’s here, with its sources, and asks for your call. Ads your rivals run, what people are saying, how your store scores.' },
-    s5: { p: 'Heart what fits. Hide what doesn’t. Brew learns your taste, not a persona.' },
-    voice: { p: 'Every draft follows it. You can change it in Your feed.' },
-    perDay: { p: 'Brew marks that many as today’s. The rest wait below.' }
-  };
-  const canTeam = () => { const L = window.LIVE || {}; return !!(L.me && (L.access?.role || L.access?.eligible || L.access?.full)); };
+  /* v1 (mode q, 19 Oct): five questions, full screen, while the read runs behind them: the seat, what comes first, the channels,
+     the products to lead with, the rivals. No slides, tutorial, hold or done. Ad pace comes from the ads the read counted
+     (channel-fit paceOf); voice, moves a morning, tools and team keep their defaults and live in Your feed and the later steps.
+     Channels: every one they run (a cap would sink cards for a channel they do run), and none is an answer too */
+  const Q_ORDER = ['seat', 'first', 'channels', 'lead', 'rivals'];
+  const V1COPY = { channels: { multi: 6, optional: true, p: 'Pick every one you run. Moves for the others sit lower.' } };
   const beats = () => { const bs = BEATS(); if (mode !== 'q') return bs;
-    return bs.filter((b) => !['tutorial', 'hold', 'done'].includes(b.kind) && !(['team', 'voice'].includes(b.id) && !canTeam()) && !(b.id === 'tools' && !b.tiles.length))
-      .map((b) => (V1COPY[b.id] ? { ...b, ...V1COPY[b.id] } : b)); };
+    return Q_ORDER.map((id) => bs.find((b) => b.id === id)).filter((b) => b && !(b.kind === 'brand' && st?.confirmed)).map((b) => (V1COPY[b.id] ? { ...b, ...V1COPY[b.id] } : b)); };
   const beatAt = (i) => beats()[i];
   const needsMet = (b) => { if (!b.needs) return true; if (st.confirmed) return 'skip'; const p = st.picks[b.needs]; if (p && !(Array.isArray(p) && !p.length)) return true; if (st.ready) return 'late'; return false; };
   const next = async () => {
@@ -139,7 +135,7 @@
     return show(bs[bs.length - 1]);
   };
   const finish = (b, val) => { st.done[b.id] = val ?? true; save(); return next(); };
-  const show = (b) => ({ slide, tap, brand: brandTap, tutorial, hold, done }[b.kind] || slide)(b);
+  const show = (b) => { if (mode === 'q') QO?.onStep?.(beats().findIndex((x) => x.id === b.id), beats().length); return ({ slide, tap, brand: brandTap, tutorial, hold, done }[b.kind] || slide)(b); };
   const back = () => { const bs = beats(); for (let i = st.i - 1; i >= 0; i--) { if (bs[i].kind === 'hold' || bs[i].kind === 'done') continue; delete st.done[bs[i].id]; st.i = i; save(); return show(bs[i]); } };
 
   /* ---------- a slide: a kicker, one line, one sentence; a key or a tap moves on, or it moves on by itself ---------- */
@@ -160,14 +156,14 @@
   const tap = (b) => {
     let cur = b.multi ? [...(b.get() || [])] : b.get();
     const on = (v) => b.multi ? cur.map(String).includes(String(v)) : String(cur) === String(v);
-    const paint = () => { $$('.ob2-tile').forEach((el) => el.setAttribute('aria-pressed', on(el.dataset.v))); const n = $('#v2-next'); if (n) n.disabled = !cur.length; };
+    const paint = () => { $$('.ob2-tile').forEach((el) => el.setAttribute('aria-pressed', on(el.dataset.v))); const n = $('#v2-next'); if (n) n.disabled = !cur.length && !b.optional; };
     const cols = b.tiles.length === 3 || b.tiles.length > 4 ? ' three' : '';
     stage(`<h1 class="ob2-h">${b.q}</h1>${b.p ? `<p class="ob2-lede">${b.p}</p>` : ''}<div class="ob2-grid${cols}">${b.tiles.map((t, i) => tileHtml(t, i, on(t.v))).join('')}</div>
       ${b.multi ? nav('Next') : hint(`<kbd>1</kbd>–<kbd>${b.tiles.length}</kbd> or tap`)}`);
     const pick = (v0) => { const t = b.tiles.find((x) => String(x.v) === String(v0)); if (!t) return; const v = t.v;
       if (b.multi) { cur = on(v) ? cur.filter((x) => String(x) !== String(v)) : [...cur, v].slice(-b.multi); paint(); return; }
       cur = v; paint(); b.set(v); keys(null); setTimeout(() => finish(b, v), 180); };
-    const confirm = () => { if (!b.multi || !cur.length) return; b.set(cur); keys(null); finish(b, cur); };
+    const confirm = () => { if (!b.multi || (!cur.length && !b.optional)) return; b.set(cur); keys(null); finish(b, cur); };
     $$('.ob2-tile').forEach((el) => (el.onclick = () => pick(el.dataset.v)));
     $('#v2-next')?.addEventListener('click', confirm); $('#v2-back')?.addEventListener('click', back);
     keys((k) => { const n = +k; if (n >= 1 && n <= b.tiles.length) { pick(b.tiles[n - 1].v); return true; } if ((k === 'Space' || k === 'Enter') && b.multi) { confirm(); return true; } if (k === 'Backspace') { back(); return true; } });
@@ -272,7 +268,7 @@
   const afterReady = async () => { await postConfirm(); const b = beatAt(st.i); if (b && b.kind === 'hold') return finish(b, true); };
   /* the taps replaced the check page: once the read is in and the who tap is past, the same confirm goes up and the moves start */
   const postConfirm = async () => { if (st.posted || st.confirmed || !st.ready) return;
-    if (mode === 'q') { const bt = ['lead', 'rivals', 'who']; if (!bt.every((k) => st.done[k])) return; if (!bt.some((k) => st.done[k] === true)) return; } /* v1: all three brand taps past, at least one answered; none answered → v1's check page instead */
+    if (mode === 'q') { const bt = ['lead', 'rivals']; if (!bt.every((k) => st.done[k])) return; if (!bt.some((k) => st.done[k] === true)) return; } /* v1: both brand taps past, at least one answered; none answered → v1's check page instead (it also holds Is this you?) */
     else { const whoPast = st.done.who || st.done.tut || st.done.done; if (!whoPast) return; }
     st.posted = true; save();
     /* only the taps that were answered go up: an empty hero list would otherwise unset the brand's leads (build.js applyCheck) */
@@ -386,8 +382,9 @@
   const qDone = () => { qWait = false; keys(null); st.qDone = true; save(); const o = QO; QO = null; o?.onDone?.({ posted: !!st.posted, skipped: !!st.skipped }); };
   const qEnd = async () => { keys(null);
     if (st.ready || st.error) { if (!st.error) await postConfirm(); return qDone(); }
-    qWait = true; /* every question is answered and the read is still running: brand taps whose data lands now still come first */
-    QO?.onWait?.(); stage(`${kick('Still reading', '<span class="spin"></span>')}<h1 class="ob2-h">That’s everything for now.</h1><p class="ob2-lede">Brew is still reading ${esc(name())}. The next step shows here the moment the read is in.</p>`); };
+    qWait = true; /* every question answered, the read still running: v1 goes back to the read; a product or rival question whose
+       data lands later reopens the layer (stage → onShow) */
+    QO?.onWait?.(); };
   const qFeed = (ev) => { if (mode !== 'q' || !st || st.qDone || !ev) return;
     if (ev.type === 'picks' && ev.k) { st.picks[ev.k] = ev.items; save(); if (qWait && beats().some((b) => b.kind === 'brand' && !st.done[b.id] && needsMet(b) === true)) { qWait = false; next(); } }
     if (ev.type === 'ready' && !st.ready) { st.ready = true; save(); if (qWait) { qWait = false; next(); } }

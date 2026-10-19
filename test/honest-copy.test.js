@@ -105,13 +105,12 @@ test('the morning stack is behind FEED_STACK, keyed by the brand date, honest ab
 test('v1 asks the questions during the read, and only the questions', () => {
   const ob = src('public/onboard2.js'), idx = src('public/index.html');
   assert.match(ob, /window\.OB2 = \{[^}]*\bquestions, qState \}/);
-  assert.match(ob, /bs\.filter\(\(b\) => !\['tutorial', 'hold', 'done'\]\.includes\(b\.kind\)/, 'no tutorial, hold or done in mode q');
-  assert.match(ob, /if \(!s\) return mode === 'q' \? null : shell\(inner, o\);/, 'mode q never takes over v1\'s screen');
-  assert.match(ob, /if \(mode === 'q'\) \{ const bt = \['lead', 'rivals', 'who'\]; if \(!bt\.every\(\(k\) => st\.done\[k\]\)\) return; if \(!bt\.some\(\(k\) => st\.done\[k\] === true\)\) return; \}/);
+  assert.match(ob, /const Q_ORDER = \['seat', 'first', 'channels', 'lead', 'rivals'\];/, 'five questions in mode q: no slides, tutorial, hold or done');
+  assert.match(ob, /channels: \{ multi: 6, optional: true,/, 'every channel they run, and none is an answer');
+  assert.match(ob, /if \(!s && mode === 'q'\) \{ QO\?\.onShow\?\.\(\); s = \$\('#v2-stage'\); \} if \(!s\) return mode === 'q' \? null : shell\(inner, o\);/, 'mode q reopens v1\'s layer, never a v2 shell');
+  assert.match(ob, /if \(mode === 'q'\) \{ const bt = \['lead', 'rivals'\]; if \(!bt\.every\(\(k\) => st\.done\[k\]\)\) return; if \(!bt\.some\(\(k\) => st\.done\[k\] === true\)\) return; \}/);
   assert.match(ob, /st\.done\.lead === true && \(mode !== 'q' \|\| \(st\.v2\.hero \|\| \[\]\)\.length\)/, 'never an empty hero list from v1');
-  assert.match(ob, /Heart what fits\. Hide what doesn’t\./); assert.match(ob, /You can change it in Your feed\./); assert.match(ob, /Brew marks that many as today’s\./);
   assert.match(ob, /slice\(0, mode === 'q' \? 99 : 4\)/, 'v1 offers every seat, as its seat step did');
-  assert.match(ob, /if \(mode !== 'q'\) voiceMemory\(v\);/, 'v1 saves the voice after the claim (pushVoice), not before it');
   assert.match(app, /const QM = !V2 && GEN && !!window\.OB2\?\.questions && !window\.OB2\.qState\(\)\.qDone;/);
   assert.match(app, /Promise\.all\(\[readP, qP\]\)\.then\(\(\[, q\]\) => showDone\(q\)\);/, 'the done bar waits for the read and the last question');
   assert.match(app, /if \(posted\) \{ b\.disabled = true; return continueToFeed\(\); \}/);
@@ -120,7 +119,9 @@ test('v1 asks the questions during the read, and only the questions', () => {
   assert.match(app, /const ids = \[\.\.\.new Set\(\[\.\.\.\(S\.viewer\.tools \|\| \[\]\), \.\.\.ROLE\(\)\.connectors\]\)\]/, 'picked tools first');
   assert.match(app, /const todayN = \(\) => \+S\.viewer\.perDay \|\| 14;/);
   assert.match(app, /'continue', 'v2', 'q1'\]\.forEach/, 'a re-read starts the questions fresh');
-  assert.match(idx, /\.setup\.su-q\{/);
+  assert.match(src('public/brew.css'), /\.qfull\{position:fixed;inset:0;/, 'the questions take the whole screen');
+  assert.match(app, /if \(QM\) setTimeout\(askBar, 9000\);/, 'the read shows first, then the questions are offered');
+  assert.match(app, /onWait: \(\) => \{ qClose\(\);/, 'answered before the read is done: back to the read');
   for (const re of [/OB2\.(stack|morning|run)\(/]) assert.doesNotMatch(app.match(/const setup = async[^]*?\n  };\n/)[0].replace(/if \(V2 && window\.OB2\) \{ view = 'setup'; return window\.OB2\.run\(\); \}/, ''), re, 'v1 setup runs no v2 screen');
 });
 

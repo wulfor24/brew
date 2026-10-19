@@ -3049,3 +3049,23 @@ a.pf-src:hover{color:var(--fg);text-decoration:underline;text-underline-offset:2
 .sv-make.is-row small{color:var(--fg-2);text-shadow:none}
 .pm-sv>.st-atools{margin:10px 0 4px}
 .st-opt.is-add{border-style:dashed;color:var(--fg-3)}
+/* v1 questions, full screen (19 Oct, from the prototype): one question in the middle, five marks, the read as one quiet line
+   above; the read carries on underneath and comes back when the last answer is in */
+body.qf-on{overflow:hidden}
+.qfull{position:fixed;inset:0;z-index:150;display:flex;flex-direction:column;background:var(--bg);color:var(--fg);animation:rise .3s var(--settle) both}
+.qf-top{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px;padding:16px 24px}
+.qf-read{display:flex;align-items:center;gap:8px;min-width:0;font-size:13px;color:var(--fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qf-read .spin{width:12px;height:12px;flex:0 0 auto}
+.qf-prog{display:flex;gap:6px;margin:0;padding:0;list-style:none}
+.qf-prog li{width:28px;height:3px;border-radius:2px;background:var(--line)}
+.qf-prog li.done,.qf-prog li.on{background:var(--fg)}
+.qf-top .btn{justify-self:end}
+.qf-mid{flex:1;overflow:auto;display:flex;justify-content:center;padding:24px 24px 48px}
+.qf-stage{width:min(560px,100%);margin:auto 0}
+.qf-stage .ob2-h{text-align:center}
+.qf-stage .ob2-lede{text-align:center}
+.qf-stage .ob2-nav{justify-content:center;gap:12px}
+@media (pointer:coarse){.qf-stage .v2-kbd,.qf-stage .v2-hint{display:none}}
+@media (max-width:760px){.qf-top{grid-template-columns:1fr auto;padding:12px 16px}.qf-prog{grid-column:1/-1;grid-row:2;justify-content:center}.qf-mid{padding:12px 16px 32px}.qf-stage .ob2-grid.three{grid-template-columns:1fr 1fr}}
+.qf-stage .v2-hint{justify-content:center}
+.su-done .btn,.su-done .linkbtn{white-space:nowrap;flex:0 0 auto}

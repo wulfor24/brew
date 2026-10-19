@@ -51,7 +51,7 @@ import { createEvidence, EVIDENCE_ASK, proofAnswer } from './evidence.js'; // th
 import { refine as refineProof, evidenceKinds } from './proof-logic.js'; // does the proof prove the claim: the card's own review pointer, no price-as-proof, claims that need an account
 import { createPlain, dejargon } from './plain.js'; // plain words on every card, rewritten once per card and kept per brand
 import { aiRingFromRun } from './health.js'; // the AI answers ring from the weekly check: score, rows and who the answers name, all one run
-import { toolOf, channelFit, paceFit, cleanViewer } from './channel-fit.js'; // where a card's work goes out, and how it fits the channels and ad pace the viewer told Brew in setup
+import { toolOf, channelFit, paceFit, paceOf, cleanViewer } from './channel-fit.js'; // where a card's work goes out, and how it fits the channels and ad pace the viewer told Brew in setup
 // cut on a word boundary with an ellipsis, never mid-word or with a dangling space
 const cutWords = (x, n) => { x = String(x).trim(); return x.length > n ? x.slice(0, n - 1).replace(/\s+\S*$/, '').replace(/[\s,;:·-]+$/, '') + '…' : x; };
 
@@ -471,7 +471,7 @@ export function createFeedService(o) {
     const extra = told + look + boostNow(t.boost?.[c.id], now(t)) + (c.onlyWhen && connOn(t, c.onlyWhen) ? 3 : 0) + (c.live && Object.keys(c.live).some((k) => connOn(t, k)) ? 2 : 0) + (c.liveOnly ? 2 : 0);
     const behind = B()?.staleMoves?.has(moveNo(c.id)) ? -8 : 0; /* its move is being rewritten: off the first screen until the new card lands */
     /* what they said in setup: a card only for channels they don't run sinks; their ad pace lifts new ads or groundwork (channel-fit.js). 0 with no answers */
-    const chan = channelFit(v.channels, c), pace = paceFit(v.adPace, c);
+    const chan = channelFit(v.channels, c), pace = paceFit(v.adPace || paceOf(B()?.numbers?.ownAds?.n), c); /* no answer: the pace the read counted */
     const total = val + seat + aff + fresh + fatigue + fb + extra + behind + tune + lift + contra + chan + pace;
     return { fresh, told, look, value: val, impact: +val.toFixed(2), impactNote: valNote, impactV: imp.v, impactPct: imp.pct, isDecision: imp.decision, affinity: +aff.toFixed(2), seat: +seat.toFixed(2), fatigue: +fatigue.toFixed(2), feedback: fb, tune, boost: boostNow(t.boost?.[c.id], now(t)), extra, chan, pace, total: +total.toFixed(2), seen, ...(dec ? { quiet: true } : {}) };
   };

@@ -102,7 +102,7 @@ test('paceFit: new ads and groundwork, by how many ads they ran last month', () 
 
 test('cleanViewer keeps only the setup answers it knows, and passes the rest of the viewer through', () => {
   const v = cleanViewer({ role: 'growth', lane: 'x', channels: ['instagram', 'tiktok', 'email', 'instagram', 'google', 'whatsapp'], adPace: 'few', perDay: '5', tools: ['shopify', 'nope', 'meta'], teamSize: 'me', voice: 'warmer' }, { tools: ['shopify', 'meta', 'klaviyo'] });
-  assert.deepEqual(v, { role: 'growth', lane: 'x', channels: ['instagram', 'email', 'google'], adPace: 'few', perDay: 5, tools: ['shopify', 'meta'], teamSize: 'me', voice: 'warmer' });
+  assert.deepEqual(v, { role: 'growth', lane: 'x', channels: ['instagram', 'email', 'google', 'whatsapp'], adPace: 'few', perDay: 5, tools: ['shopify', 'meta'], teamSize: 'me', voice: 'warmer' });
   const bad = cleanViewer({ channels: 'instagram', adPace: 'lots', perDay: 7, tools: {}, teamSize: 'army', voice: 'shouty', role: 'brand' });
   assert.deepEqual(bad, { role: 'brand' }, 'a bad answer is dropped, so the saved one stays');
   assert.deepEqual(cleanViewer({ channels: null, voice: null }), { channels: null, voice: null }, 'null clears');
@@ -113,9 +113,15 @@ test('cleanViewer keeps only the setup answers it knows, and passes the rest of 
 
 test('score() adds chan + pace and returns both; PUT /state and a new tenant whitelist the answers', () => {
   const s = fs.readFileSync(new URL('../feed-service.js', import.meta.url), 'utf8');
-  assert.match(s, /const chan = channelFit\(v\.channels, c\), pace = paceFit\(v\.adPace, c\);/);
+  assert.match(s, /const chan = channelFit\(v\.channels, c\), pace = paceFit\(v\.adPace \|\| paceOf\(B\(\)\?\.numbers\?\.ownAds\?\.n\), c\);/);
   assert.match(s, /const total = val \+ seat \+ aff \+ fresh \+ fatigue \+ fb \+ extra \+ behind \+ tune \+ lift \+ contra \+ chan \+ pace;/);
   assert.match(s, /extra, chan, pace, total:/, 'the scored item carries chan and pace for the reasons line');
   assert.match(s, /t\.viewer = \{ \.\.\.t\.viewer, \.\.\.cleanViewer\(b\.viewer,/);
   assert.match(s, /lane: firstLane\(\), \.\.\.cleanViewer\(snap\.viewer,/);
+});
+
+test('no ad-pace answer: the pace is the ads the read counted (paceOf)', async () => {
+  const { paceOf } = await import('../channel-fit.js');
+  assert.equal(paceOf(null), null); assert.equal(paceOf(undefined), null); assert.equal(paceOf('x'), null);
+  assert.equal(paceOf(0), 'none'); assert.equal(paceOf(4), 'few'); assert.equal(paceOf(20), 'ten'); assert.equal(paceOf(1296), 'always');
 });
