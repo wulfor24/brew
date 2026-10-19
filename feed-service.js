@@ -1990,9 +1990,13 @@ export function createFeedService(o) {
     const [x] = await tagsOf(t, w, [b.email]); if (!x) return { error: 'They’re not on the team yet. Invite them from Team and access first.' };
     const ask = b.ask === 'approve' ? 'approve' : 'work';
     w.assignee = { ...x, ask, by: me0?.email || null, at: now(t) }; JAMS.join(w, x, 'assigned');
-    say(t, w, { from: 'system', body: ask === 'approve' ? `${nameOf(me0)} asked ${nameOf(x)} for their OK on v${w.current}` : `${nameOf(me0)} gave this jam to ${nameOf(x)}` });
+    /* said in the chat as a tag from the person who assigned it (so the chat, Slack and the email all tell the same story);
+       the assign email is the tag's email, never a second one */
+    const at = `@${x.name || x.email.replace(/@.*/, '')}`, note = String(b.note || '').trim().slice(0, 400);
+    const body = `${at} ${ask === 'approve' ? `can you OK v${w.current}?` : 'this one’s yours.'}${note ? ` ${note}` : ''}`;
+    if (me0) say(t, w, { from: 'me', body, to: [x.email] }); else say(t, w, { from: 'system', body: ask === 'approve' ? `Asked ${nameOf(x)} for their OK on v${w.current}` : `Gave this jam to ${nameOf(x)}` });
     if (ask === 'approve') move(t, w, 'needs_you', null);
-    mailEv(t, w, { kind: ask === 'approve' ? 'approve' : 'assigned', to: [x.email], by: me0, text: String(b.note || '').slice(0, 400), id: `as_${w.id}_${x.email}_${ask}_${w.current}` });
+    mailEv(t, w, { kind: ask === 'approve' ? 'approve' : 'assigned', to: [x.email], by: me0, text: note, id: w.thread[w.thread.length - 1].id });
     return { work: jamOut(t, w) };
   });
   /* yes / not now on a proposal Brew made (from a typed ask here, or from the jam's Slack thread): it runs once */
@@ -2179,7 +2183,7 @@ export function createFeedService(o) {
   const DEMO_OK = /^\/api\/(tenants|work|tenants\/[^/]+\/(ready|clock|events|pin|find-more|cards|notes\/(clear|read)|stories\/[^/]+\/seen|deck-layout|state|learning\/.+)|cards\/[^/]+\/(feedback|decided)|work\/[^/]+\/(decided|discard|restore|pick|version|approve|reopen|edit|jb\/move|draft\/[^/]+\/drop)|changes\/[^/]+\/(open|discard|restore|pick|notes|edit))$/;
   // every request runs inside its brand: the tenant's brand, or (creating one) the brand the page was opened for
   const handle = async (req, res, u) => {
-    if (!/^\/(h\/|api\/(share|tenants|cards|jams|work|changes|brands\/[a-z0-9-]+\/(drop|drop\/read|learnings\/answer|references(\/[^/]+(\/remove)?)?|voice)$))/.test(u.pathname)) return false;
+    if (!/^\/(h\/|api\/(share|tenants|cards|jams|work|changes|brands\/[a-z0-9-]+\/(?:drop\/read|learnings\/answer)$|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?|voice)$))/.test(u.pathname)) return false;
     let tid = null;
     const hm0 = u.pathname.match(/^\/h\/([\w~-]+)$/), sm0 = u.pathname.match(/^\/api\/share\/([\w~-]+)$/);
     if (hm0) tid = parseToken(hm0[1])?.tid; else if (sm0) tid = parseShare(sm0[1])?.tid; else tid = u.pathname.match(/^\/api\/tenants\/(t_[a-f0-9]+)/)?.[1] || req.headers['x-tenant'];
@@ -2206,7 +2210,7 @@ export function createFeedService(o) {
        team sees an empty feed (the page still loads, and a guest still gets their jam), and only their own jam's card */
     const outside = br.kind === 'generated' && o.liveTeamOnly?.() && !viewer?.member && !viewer?.gen;
     /* Ask, Your feed and Drop are the team's: outside it, on live, no writes either (Ask's answers name the brand's cards) */
-    if (outside && req.method !== 'GET' && /^\/api\/(tenants\/[^/]+\/(ask|tuning)(\/.*)?|brands\/[^/]+\/(drop|drop\/read|learnings\/answer|voice))$/.test(u.pathname)) { send(res, 403, { error: 'This is for the brand’s team.', teamOnly: true }); return true; }
+    if (outside && req.method !== 'GET' && /^\/api\/(tenants\/[^/]+\/(ask|tuning)(\/.*)?|brands\/[^/]+\/(?:drop\/read|learnings\/answer)|brands\/[^/]+\/(drop|voice))$/.test(u.pathname)) { send(res, 403, { error: 'This is for the brand’s team.', teamOnly: true }); return true; }
     if (outside && req.method === 'GET') {
       if (/^\/api\/tenants\/[^/]+\/feed$/.test(u.pathname)) { send(res, 200, { order: [], cards: {}, scores: {}, pinned: [], limit: { plan: 'free', daily: null, locked: 0 }, teamOnly: true }); return true; }
       if (/^\/api\/tenants\/[^/]+\/stories$/.test(u.pathname)) { send(res, 200, { rings: [], teamOnly: true }); return true; }
@@ -2251,7 +2255,7 @@ export function createFeedService(o) {
       if (viewer?.member && w) { if (!JAMS.isIn(w, email)) JAMS.join(w, { email, name: viewer.name, pic: viewer.pic }, 'joined'); send(res, 200, { member: true, jam: w.id }); return true; }
       if (email && w && !viewer?.member && !viewer?.gen) { JAMS.join(w, { email, name: viewer.name, pic: viewer.pic }, 'guest'); guest = true; }
       send(res, 200, { guest, signedIn: !!email, jam: tok.wid || null, tenant: t.id, viewer: t.viewer, conn: t.conn, pro: t.plan === 'pro', decided: t.decided || {} }); return true; }
-    if (!/^\/api\/(tenants|cards|jams|work|changes|brands\/[a-z0-9-]+\/(drop|drop\/read|learnings\/answer|references(\/[^/]+(\/remove)?)?|voice)$)/.test(u.pathname)) return false;
+    if (!/^\/api\/(tenants|cards|jams|work|changes|brands\/[a-z0-9-]+\/(?:drop\/read|learnings\/answer)$|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?|voice)$)/.test(u.pathname)) return false;
     for (const r of ROUTES) {
       if (r.method !== req.method) continue; const m = u.pathname.match(r.re); if (!m) continue;
       const params = m.groups || {};
