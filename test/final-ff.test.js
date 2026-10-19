@@ -132,3 +132,9 @@ test('demo: confirming hands the fresh session to the feed’s copy at once, so 
   const st = simStatus({ total: 64, stages: {}, done: true }, last[1]); assert.equal(st.movesDone, 0); assert.equal(st.done, false, 'not "All 64 written" while the banner says 0 of 64');
   assert.match(src('server.js'), /onSession: \(slug, s\) => demoSes\(slug, s\)/);
 });
+
+/* FEED-QA-18: every health row says when it was checked */
+test('Creative and AI-answers rows carry a checked date, like Storefront’s', () => {
+  assert.match(src('health.js'), /parts: parts\.map\(\(\[k, v, of, note\]\) => \(\{ k, v: Math\.round\(v\), of, note, at: adsAt \}\)\), src: 'Meta Ad Library', at: adsAt \}/);
+  assert.match(src('public/app.js'), /\(x\.at \|\| r\.at\) \? ` · checked \$\{esc\(fmtDay\(Date\.parse\(x\.at \|\| r\.at\)\)/, 'a row with no date of its own shows its ring’s (AI answers)');
+});

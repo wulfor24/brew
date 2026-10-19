@@ -48,7 +48,7 @@ export function keepSpeed(prev, next) {
 const dayOf = (at) => { const d = at ? new Date(at) : null; return d && !isNaN(d) ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : null; };
 
 function creative(p, N, fix) {
-  const own = N.ownAds, items = p.ads?.own?.items || [], live = own.n;
+  const own = N.ownAds, items = p.ads?.own?.items || [], live = own.n, adsAt = p.ads?.at || p.meta?.readAt || null;
   if (live == null) return { k: 'Creative', v: 0, read: false, what: own.error || p.meta?.errors?.ads ? 'Your ads couldn’t be read this time; the next refresh tries again' : 'Not read yet', parts: [], src: 'Meta Ad Library' }; /* a whole ads stage that failed is not "not read yet" */
   if (!live) { fix.push(['Creative', `No live ads were found in the Meta Ad Library for ${own.page || p.name || 'this brand'}.`]);
     return { k: 'Creative', v: 0, read: true, what: `No live ads in the Meta Ad Library${own.page ? ` for ${own.page}` : ''}`, parts: [{ k: 'Live ads', v: 0, of: 100, note: '0 live' }], src: 'Meta Ad Library' }; }
@@ -65,7 +65,7 @@ function creative(p, N, fix) {
   if (med != null && live < med / 2) fix.push(['Creative', `${fmt(live)} live ads against a rival median of ${fmt(med)}. Rivals are testing far more.`]);
   else if (live < 10) fix.push(['Creative', `${live} live ad${live === 1 ? '' : 's'} is too few to learn from. Test more angles each week.`]);
   return { k: 'Creative', v: clamp((got / max) * 85), read: true, what: `From your ${fmt(live)} live ads: volume, hooks, formats (up to 85 from public data)`,
-    parts: parts.map(([k, v, of, note]) => ({ k, v: Math.round(v), of, note })), src: 'Meta Ad Library' };
+    parts: parts.map(([k, v, of, note]) => ({ k, v: Math.round(v), of, note, at: adsAt })), src: 'Meta Ad Library', at: adsAt }; /* when the ads were read: every ring row says when it was checked, not only Storefront's (final QA pass 19 Oct, FEED-QA-18) */
 }
 
 function storefront(p, fix) {
