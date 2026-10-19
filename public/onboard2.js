@@ -297,7 +297,7 @@
     const go = () => { keys(null); st.stage = 'stack'; st.done[b.id] = true; save(); S().onboarded = false; A().save(); A().ls.set(`${A().LSP()}continue`, 'v2'); location.reload(); /* a reload: the page gets the real seed (logo, colours, cards) before the stack */ };
     $('#v2-open').onclick = go; keys((k) => { if (k === 'Space' || k === 'Enter') { go(); return true; } });
   };
-  const errorScreen = () => { keys(null); stage(`<h1 class="ob2-h">We couldn’t read ${esc(name())}.</h1><p class="ob2-lede">${esc(st.error)} Check the address, or try again in a few minutes.</p><div class="ob2-nav"><span></span><a class="btn btn-primary lg" href="/">Back to the start</a></div>`); $('[data-v2-skip]')?.remove(); };
+  const errorScreen = () => { keys(null); stage(`<h1 class="ob2-h">We couldn’t read ${esc(name())}.</h1><p class="ob2-lede">${esc(window.__readFail ? window.__readFail(st.error) : st.error)}</p><div class="ob2-nav"><span></span><a class="btn btn-primary lg" href="/">Back to the start</a></div>`); $('[data-v2-skip]')?.remove(); };
 
   /* ---------- the stack: the first three real cards after onboarding, and the morning stack (FEED_STACK) ---------- */
   const mixN = (ranked, n) => { const S0 = S(), ok = (p) => p && p.id && p.id !== 'build-moves' && !A().cardOf(p).done && !S0.dismissed?.[p.id] && !S0.hearts?.[p.id] && !!A().cardOf(p).title; const used = new Set(), out = []; const take = (pred) => { const p = ranked.find((x) => !used.has(x.id) && ok(x) && pred(x)); if (p) { used.add(p.id); out.push(p); } };

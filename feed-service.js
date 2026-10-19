@@ -198,7 +198,7 @@ export function followRead({ builder, slug, loadSeed, send, isOpen = () => true,
       if (ev.type === 'step' && ev.state === 'reading') send({ type: 'step', i, state: 'reading', tick: ev.tick || '' });
       if (ev.type === 'finding') send({ type: 'finding', i, finding: ev.finding, say: ev.say });
       if (ev.type === 'picks') send({ type: 'picks', k: ev.k, items: ev.items }); /* the onboarding's taps (products, rivals, who you are) as the reader learns them */
-      if (ev.type === 'step' && (ev.state === 'done' || ev.state === 'empty')) { send({ type: 'step', i, state: 'done', empty: ev.state === 'empty', done: ev.done || (ev.state === 'empty' ? 'Nothing found' : 'Done') }); if (AGENT_OF[ev.k]) send({ type: 'agent', agent: AGENT_OF[ev.k] }); } }
+      if (ev.type === 'step' && (ev.state === 'done' || ev.state === 'empty')) { send({ type: 'step', i, state: 'done', empty: ev.state === 'empty', done: ev.done || (ev.state === 'empty' ? 'Nothing found' : 'Done') }); if (AGENT_OF[ev.k] && ev.state === 'done') send({ type: 'agent', agent: AGENT_OF[ev.k] }); } } /* an agent has ideas only from a step that found something: an empty or skipped step (a store that didn't open) wakes nobody */
     if (e.type === 'read-done' || (e.type === 'status' && e.status?.stages?.read?.state === 'done')) { doneSeen = true; if (!hold) ready(); }
     if (e.type === 'status' && e.status?.error && !sentReady) send({ type: 'error', msg: e.status.state });
   };
@@ -1138,7 +1138,7 @@ export function createFeedService(o) {
       if (ev.type === 'step' && (ev.state === 'done' || ev.state === 'empty') && i >= 0) {
         const v = tourStep(ev, savedStep(ev.k), savedCards(ev.k), held.get(ev.k) || []); held.delete(ev.k);
         v.cards.forEach((c) => send({ type: 'finding', i, ...c }, PACE.finding));
-        send({ type: 'step', i, state: 'done', empty: v.empty, done: v.done }, PACE.step); if (AGENT_OF[ev.k]) send({ type: 'agent', agent: AGENT_OF[ev.k] }); } } })
+        send({ type: 'step', i, state: 'done', empty: v.empty, done: v.done }, PACE.step); if (AGENT_OF[ev.k] && !v.empty) send({ type: 'agent', agent: AGENT_OF[ev.k] }); } } })
       .then((out) => { if (out?.opened === false) return q.then(fallback); for (const [k, evs] of held) evs.forEach((e) => send({ type: 'finding', i: STEP_KEYS.indexOf(k), finding: e.finding, say: e.say || 'Found it' }, PACE.finding)); held.clear(); sentReady = true; ready(); })
       .catch((e) => { if (!open) return; log.warn('[demo] live read', slug, e.message); q.then(fallback); });
   };

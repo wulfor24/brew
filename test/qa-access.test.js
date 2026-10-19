@@ -57,3 +57,30 @@ test('FEED-QA-16 / 17: the landing and the check page say who may run Brew; the 
   assert.match(a, /<p class="q-note">\$\{OWN_LINE\}<\/p>/);
   assert.match(a, /Sign in with Google\. Email sign-in is coming\./);
 });
+
+/* ---------- FEED-QA-05: a store that can't be read ---------- */
+test('FEED-QA-05: steps that end empty (a store that did not open) wake no agent, and the error is one sentence', async () => {
+  const { followRead } = await import('../feed-service.js');
+  const subs = new Set(), events = [];
+  const builder = { events: () => events, status: async () => ({ stages: { read: { state: 'running' } } }), subscribe: (slug, f) => { subs.add(f); return () => subs.delete(f); } };
+  const sent = []; const off = followRead({ builder, slug: 'x', loadSeed: async () => null, send: (e) => sent.push(e), replayMs: 0 });
+  const emit = (e) => { events.push(e); subs.forEach((f) => f(e)); };
+  emit({ type: 'reader', ev: { type: 'step', k: 'open', state: 'empty', done: 'could not open the store' } });
+  for (const k of ['brand', 'catalog', 'reviews', 'ads', 'site', 'answers']) emit({ type: 'reader', ev: { type: 'step', k, state: 'empty', done: 'skipped: the store did not open' } });
+  emit({ type: 'status', status: { error: 'store did not open', state: 'We could not open acme.in. Check the address and try again.' } });
+  off();
+  assert.equal(sent.filter((e) => e.type === 'agent').length, 0, 'no agent says it has ideas');
+  assert.equal(sent.filter((e) => e.type === 'step' && e.empty).length, 7);
+  assert.equal(sent.find((e) => e.type === 'error')?.msg, 'We could not open acme.in. Check the address and try again.');
+  /* a step that found something still wakes its agent */
+  const sent2 = [], subs2 = new Set(); followRead({ builder: { ...builder, subscribe: (s, f) => { subs2.add(f); return () => {}; } }, slug: 'y', loadSeed: async () => null, send: (e) => sent2.push(e), replayMs: 0 });
+  subs2.forEach((f) => f({ type: 'reader', ev: { type: 'step', k: 'catalog', state: 'done', done: '12 products' } }));
+  assert.deepEqual(sent2.filter((e) => e.type === 'agent').map((e) => e.agent), ['storefront']);
+  /* the page says it once: the server's sentence already tells them what to do */
+  const a = appSrc(), m = a.match(/const readFail = (\(msg\) => \{[\s\S]*?\};)/), readFail = (0, eval)(m[1].replace(/;$/, ''));
+  assert.equal(readFail('We could not open acme.in. Check the address and try again.'), 'We could not open acme.in. Check the address and try again.');
+  assert.equal(readFail('The site timed out'), 'The site timed out. Check the address, or try again in a few minutes.');
+  assert.equal(readFail(''), 'The store did not open for us. Check the address, or try again in a few minutes.');
+  assert.doesNotMatch(src('public/onboard2.js'), /\$\{esc\(st\.error\)\} Check the address/);
+  assert.match(a, /r\.querySelector\('\.st'\)\.textContent = 'Nothing read'/);
+});

@@ -365,6 +365,9 @@
         ${step ? `<ol class="ob2-steps">${all.map((x, i) => `<li class="${i + 1 < at ? 'done' : i + 1 === at ? 'on' : ''}"><i>${i + 1 < at ? ic('check', 's14') : i + 1}</i><span>${x.t}</span></li>`).join('')}</ol>` : ''}
         <div class="ob2-body">${inner}</div></section>
       <aside class="ob2-show" id="ob-show" aria-hidden="true">${show || (step ? pvLast : '')}</aside></main>`; };
+  /* why a read failed, said once: the server's reason when it already tells them what to do, else the reason and what to do */
+  const readFail = (msg) => { const m = String(msg || '').trim() || 'The store did not open for us.'; return /try again|check the address/i.test(m) ? m : `${m.replace(/\.?$/, '.')} Check the address, or try again in a few minutes.`; };
+  window.__readFail = readFail; /* onboard2.js says it the same way */
   /* who may run Brew on a store, said once on the landing and the check page (no gate behind it) */
   const OWN_LINE = 'Run Brew on your own store, or one you work on. Your team claims the workspace; others only see what’s public.';
   /* is it a website address? { ok } | { name, guess } (a brand name with no dot: one guess, <name>.com) | { bad } */
@@ -554,7 +557,8 @@
       if (ev.type === 'agent') { const row = $(`.agent-row[data-a="${ev.agent}"]`); if (row) { row.classList.add('on'); row.querySelector('.st').textContent = 'Has ideas ready'; } }
       if (ev.type === 'step' && ev.state === 'done' && li) { li.classList.remove('reading'); li.classList.add('done'); li.classList.toggle('empty', !!ev.empty); li.querySelector('.dot').innerHTML = ic(ev.empty ? 'minus' : 'check', 's14'); li.querySelector('span:last-child').textContent = ev.done; qPaint(); } /* a step that found nothing or could not finish gets a dash, never a tick */
       if (ev.type === 'error') { failed = true; es.close(); buddy.remove(); qClose(); $$('#su-ask,#su-wait').forEach((x) => x.remove()); $$('.step.reading').forEach((el) => { el.classList.remove('reading'); el.querySelector('.dot').innerHTML = ic('minus', 's14'); });
-        document.body.insertAdjacentHTML('beforeend', `<div class="su-done" id="su-done"><div><b>We couldn’t read ${esc(B.brand.name)}.</b><span>${esc(ev.msg || 'The store did not open for us.')} Check the address, or try again in a few minutes.</span></div><button class="btn btn-primary lg" id="su-next">Back to the start</button></div>`);
+        $$('.agent-row').forEach((r) => { r.classList.remove('on'); r.querySelector('.st').textContent = 'Nothing read'; }); /* nothing was read, so no agent has ideas */
+        document.body.insertAdjacentHTML('beforeend', `<div class="su-done" id="su-done"><div><b>We couldn’t read ${esc(B.brand.name)}.</b><span>${esc(readFail(ev.msg))}</span></div><button class="btn btn-primary lg" id="su-next">Back to the start</button></div>`);
         $('#su-next').onclick = () => { location.href = '/'; }; return; }
       if (ev.type === 'ready') { es.close(); finishRead(); }
     };
