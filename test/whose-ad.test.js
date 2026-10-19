@@ -25,6 +25,6 @@ test('a rival ad says it was seen on that rival; our version on it says so; our 
 test('the studio header, the Work board and the feed all use it', () => {
   assert.match(src, /const fromLabel = \(c = \{\}\) => \{\n\s*const r = c\.research\?\.kind, wa = whoseAd\(c\); if \(wa\) return wa;/);
   assert.equal((src.match(/\$\{esc\(ch\.familyName\)\} · \$\{studioFrom\(ch\)\}/g) || []).length, 2, 'both studio layouts');
-  assert.match(src, /wb-whose[^\n]*ourVersionOf\(rivalOf\(w\.cardSnap\)\.name\)/);
+  assert.match(src, /rv = rivalOf\(c\), wa = rv \? ourVersionOf\(rv\.name\) : whoseAd\([^\n]*wb-whose/, 'the Work board: rival, else Made for you (final QA pass 19 Oct)');
   assert.match(fs.readFileSync(new URL('../feed-service.js', import.meta.url), 'utf8'), /rivalName: a\.brand/);
 });
