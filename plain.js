@@ -53,7 +53,7 @@ const twice = (x) => x.replace(TWICE, '$1');
 export const dejargon = (s) => { if (typeof s !== 'string' || !s) return s; let x = s; for (const [re, to] of JARGON) x = x.replace(re, (m, ...a) => { const at = a[a.length - 2], all = a[a.length - 1]; return cap1(typeof to === 'function' ? to(m, ...a) : to, m, at, all); }); return moveSay(twice(x)); }; /* and "Weekly move 11", never "Move 1011" */
 /* the source line under a card ("Move 64 · Loop 3: SKU-Specific Reorder Clocks"): the move's own words, without the plan's
    internal numbering (Loop 3, Pillar 2, Phase 1) and in plain words */
-export const plainSrc = (s) => (typeof s !== 'string' || !s ? s : dejargon(s.replace(/(·\s*)(?:Loop|Pillar|Phase|Step|Part|Stage|Track|Wave|Tier|Layer|Workstream|Sprint|Decision)\s*\d+[a-z]?\s*[:.\-–—]\s*/gi, '$1')));
+export const plainSrc = (s) => (typeof s !== 'string' || !s ? s : dejargon(s.replace(/(·\s*)(?:Loop|Pillar|Phase|Step|Part|Stage|Track|Wave|Tier|Layer|Workstream|Sprint|Decision)s?\s*\d+[a-z]?(?:\s*(?:and|&|to|[–—-])\s*\d+[a-z]?)*\s*[:.\-–—]\s*/gi, '$1')));
 
 const sha = (s) => crypto.createHash('sha1').update(s).digest('hex').slice(0, 16);
 export const plainKey = (c) => sha(JSON.stringify([PLAIN_V, c?.title || '', c?.sub || '', c?.detail?.why || [], c?.detail?.how || []]));
