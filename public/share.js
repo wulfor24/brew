@@ -38,7 +38,7 @@
     const w = await workFor(p); if (!w) return a.toast('Couldn’t start the jam. Try again.');
     if (to) return send(p, w, to, false);
     a.modal(`<div class="sheet act-sheet"><header class="sh-h"><b class="sh-t">Share the brief</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>
-        <p class="sh-sub">Send it to the ShopOS team and they take it from here, or copy it with a link to everything for your own team.</p>
+        <p class="sh-sub">Send it to the ShopOS team, Brew’s build crew: they take it from here. Or copy it with a link to everything for your own team.</p>
         <div class="sp-row rv-acts"><button class="btn btn-primary" data-share-to="shopos">${ic('send', 's16')}Send to the ShopOS team</button><button class="btn btn-ghost" data-share-to="team">Share with my team</button></div></div>`,
       (m) => m.querySelectorAll('[data-share-to]').forEach((b) => b.addEventListener('click', () => { const done = A().busyBtn?.(b, b.dataset.shareTo === 'shopos' ? 'Sending…' : 'Copying…') || (() => {}); send(p, w, b.dataset.shareTo, false).finally(done); })));
   };

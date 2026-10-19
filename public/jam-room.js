@@ -156,7 +156,7 @@
     // sent from Brew. Before that: the card's make step, then whatever the brief still misses.
     const p = DPx(), c = p && A.cardOf ? A.cardOf(p) : null, miss = doc?.missing || [];
     /* the same two words as the studio (19 Oct): Send brief = the ShopOS team by email, they make it; Share with my team = copy it with a link */
-    const two = `<button class="btn btn-ghost" data-jm-ship="team" title="Copy the brief and a link to paste in your team’s chat">Share with my team</button><button class="btn btn-primary jm-go" data-jm-ship="shopos" title="The ShopOS team gets it by email and makes it. Its status shows in the top bar.">${ic('send', 's16')}<span>Send brief</span></button>`;
+    const two = `<button class="btn btn-ghost" data-jm-ship="team" title="Copy the brief and a link to paste in your team’s chat">Share with my team</button><button class="btn btn-primary jm-go" data-jm-ship="shopos" title="The ShopOS team, Brew’s build crew, gets it by email and makes it. Its status shows in the top bar.">${ic('send', 's16')}<span>Send brief</span></button>`;
     const share = `<button class="btn btn-ghost jm-share" data-jm-share aria-expanded="${!!JM.share}" aria-label="Share" title="Share">${ic('link', 's16')}</button>${JM.share ? `<div class="jm-menu jm-share-m" role="menu"><button data-jm-move="whatsapp">${ic('chat', 's14')}WhatsApp</button><button data-jm-move="slack"><span class="slack-ic sm">#</span>Slack</button><button data-jm-handoff>${ic('link', 's14')}Copy the link to everything</button></div>` : ''}`;
     /* the card's action, before the plan's make step ran: it makes the draft here first */
     if (JM.pick) return `<div class="jm-ship is-split">${two}${share}<button class="linkbtn jm-alt" data-jm-unpick>Not yet</button></div>`; /* "Or share the brief": the two ways, before or after the make step */
@@ -216,7 +216,7 @@
     const pl = w?.cardPlan || c.plan, made = !pl || pl.made || (w?.drafts || []).some((d) => d.state === 'ready' && !d.seeded) || (w && w.stage !== 'drafting');
     const next = pl && !made ? `Press “${pl.cta}” below to make the ${pl.make?.one || pl.make?.what || 'version'} here; change it or redo it, then share the brief.`
       : miss.length ? `Tell me in the chat: ${miss.join('; ')}. Then share the brief.`
-      : 'Happy with it? Share the brief with the ShopOS team or your own team from the bottom bar. It copies the brief and a link to everything.';
+      : 'Happy with it? Share the brief with the ShopOS team, Brew’s build crew, or your own team from the bottom bar. It copies the brief and a link to everything.';
     return `<div class="case"><small class="case-k">The case${c.src ? ` · ${esc(c.src)}` : ''}</small><b class="case-t">${esc(cut(c.title, 140))}</b>${c.sub ? `<p>${esc(cut(c.sub, 240))}</p>` : ''}
       ${why.length ? `<div class="case-s"><small>Why it matters</small><ul>${why.map((x) => `<li>${esc(cut(x, 200))}</li>`).join('')}</ul></div>` : ''}
       ${pl?.steps?.length ? `<div class="case-s"><small>The plan</small><ol>${pl.steps.map((x) => `<li>${esc(x.t)}</li>`).join('')}</ol></div>` : ''}
@@ -357,7 +357,7 @@
        connection). Brew has no WhatsApp connection (sending was cut), so it says so and offers the route that does reach them:
        the brief, emailed to the ShopOS team and tracked here, their reply landing in this jam. Opening WhatsApp yourself stays,
        named for what it is: you send it, and Brew doesn't see the reply */
-    if (to === 'whatsapp' && !A.conn('whatsapp') && !opts.self) return A.waNeed({ title: 'Send it for approval', p: 'Brew can’t send this to the ShopOS team on WhatsApp, so it wouldn’t reach them. Send it to them from Brew instead: they get the whole brief by email, and their reply shows here in the jam.',
+    if (to === 'whatsapp' && !A.conn('whatsapp') && !opts.self) return A.waNeed({ title: 'Send it for approval', p: 'Brew can’t send this to the ShopOS team, Brew’s build crew, on WhatsApp, so it wouldn’t reach them. Send it to them from Brew instead: they get the whole brief by email, and their reply shows here in the jam.',
       primary: 'Send to the ShopOS team', onPrimary: () => ship('shopos'), onSelf: () => move('whatsapp', { self: true }) }); /* the one "WhatsApp isn't connected" sheet (app.js waNeed) */
     const win = to === 'whatsapp' ? window.open('', '_blank') : null;
     const r = await A.tapi('POST', `/api/work/${w.id}/jb/move`, { to, channel: A.S.slack?.channel, base: location.origin, decided: A.S.decided?.[DPx()?.id] || null }); if (r.error) { win?.close(); return toast(esc(r.error)); }
