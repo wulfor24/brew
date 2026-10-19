@@ -988,29 +988,42 @@
   /* the AI answers card's proof (Param, 19 Oct: "why should I trust you?"): how Brew asked, each question with why it is there,
      and every tool's own answer with the brands it named and its sources; the team adds the questions their customers ask */
   const aiAnsHtml = (a) => { const day = a.at ? fmtDay(typeof a.at === 'number' ? a.at : Date.parse(a.at)) : '';
-    const how = `Brew asked ${a.tools.length ? esc(a.tools.join(', ').replace(/, ([^,]*)$/, ' and $1')) : 'the AI tools'} these questions as a shopper in ${esc(a.country || 'your market')} would${day ? `, on ${esc(day)}` : ''}. The same questions every week, so weeks compare.`;
-    const old = !a.sourced && a.questions.length ? `<p class="pf-thin">${ic('info', 's14')}These questions were written by Brew from your category, not checked against real searches. Brew is replacing them with questions people really search for and ask; the new answers land within the day.</p>` : a.pending ? `<p class="pf-thin">${ic('clock', 's14')}Brew has picked new questions from real searches and is asking them now. These are the last answers until they land.</p>` : '';
-    const ans = (x) => `<div class="aiq-a"><div class="aiq-ah"><b>${esc(x.tool)}</b><span class="${x.named ? 'aiq-y' : 'aiq-n'}">${x.named ? `Names ${esc(a.brand)}` : `Doesn’t name ${esc(a.brand)}`}</span></div>
-      ${(x.brands.length || x.rivals.length) ? `<p class="aiq-names">Brands it names: ${esc([...new Set([...x.rivals, ...x.brands])].slice(0, 10).join(', '))}</p>` : ''}
-      ${x.text ? `<p class="aiq-t">${esc(x.text)}${x.full ? '' : '…'}</p>` : ''}${x.sources.length ? `<p class="aiq-src">Sources it used: ${esc(x.sources.join(', '))}</p>` : ''}</div>`;
-    const q = (x) => { const n = x.answers.filter((y) => y.named).length;
-      return `<details class="aiq"><summary><span class="aiq-q">${esc(x.q)}</span>${x.why ? `<span class="aiq-why">${x.why.url ? `<a href="${esc(x.why.url)}" target="_blank" rel="noopener">${esc(x.why.label)}</a>` : esc(x.why.label)}</span>` : '<span class="aiq-why is-none">Written by Brew, not checked against searches</span>'}
-        <span class="aiq-sum">${x.answers.length ? `${n} of ${x.answers.length} name ${esc(a.brand)} · read the answers` : x.team ? 'Being asked now' : 'Not answered yet'}</span></summary>${x.answers.map(ans).join('')}</details>`; };
+    const tools = a.tools.length ? a.tools.join(', ').replace(/, ([^,]*)$/, ' and $1') : 'the AI tools';
+    /* the result first, in one sentence: how often the answers name the brand when the shopper named no brand */
     const un = a.questions.filter((x) => !x.branded), br = a.questions.filter((x) => x.branded);
-    const add = a.canAdd ? (a.teamLeft ? `<form class="aiq-add" data-aiq-add><label for="aiq-in">Add a question your customers ask</label><div><input id="aiq-in" maxlength="160" placeholder="e.g. which serum works for thinning hair at the crown?" autocomplete="off"><button class="btn btn-primary sm" type="submit">Ask it</button></div><small>Brew asks it on every AI tool now and every week after.</small></form>` : `<p class="pf-from">Your team has added 3 questions, the most Brew keeps.</p>`) : '';
-    return `<section class="pf-sec"><h4>How Brew asked</h4><p class="pf-because">${how}</p>${old}</section>
-      ${un.length ? `<section class="pf-sec"><h4>Questions that name no brand</h4>${un.map(q).join('')}</section>` : ''}
-      ${br.length ? `<section class="pf-sec"><h4>Questions that name ${esc(a.brand)}</h4>${br.map(q).join('')}</section>` : ''}
-      ${a.method?.errors?.length ? `<p class="pf-from">Some sources couldn’t be read last time (${esc(a.method.errors.join('; '))}); the next refresh tries again.</p>` : ''}${add}`; };
+    const tally = (xs) => xs.reduce((t, x) => ({ n: t.n + x.answers.filter((y) => y.named).length, of: t.of + x.answers.length }), { n: 0, of: 0 }), tu = tally(un);
+    const lead = tu.of ? `${esc(tools)} named ${esc(a.brand)} in ${tu.n} of ${tu.of} answers to what shoppers ask${tu.n ? '' : ''}.` : `Brew asks ${esc(tools)} what shoppers in ${esc(a.country || 'your market')} ask.`;
+    const how = `Asked as a shopper in ${esc(a.country || 'your market')} would${day ? `, on ${esc(day)}` : ''}. The same questions every week, so weeks compare.`;
+    const note = !a.sourced && a.questions.length ? `<p class="pf-note">${ic('info', 's14')}<span>Brew wrote these questions from your category; they aren’t checked against real searches yet. Questions people really search for land within the day.</span></p>`
+      : a.pending ? `<p class="pf-note">${ic('clock', 's14')}<span>Brew is asking new questions from real searches now. These are the last answers until they land.</span></p>` : '';
+    /* why the question is there, in a few words: "2,900 searches a month on Google", "Asked on Reddit · 128 replies" */
+    const whyShort = (w) => { if (!w) return 'Written by Brew'; const l = String(w.label || '');
+      if (w.kind === 'search') { const m = l.match(/^([\d.,]+\s?[kKmM]?)\s+Google searches a month/); if (m) return `${m[1]} searches a month on Google`; }
+      if (w.kind === 'team') return 'Added by your team'; if (w.kind === 'none' || !l) return 'Written by Brew';
+      if (w.kind === 'suggest') return 'Google suggests it as people type';
+      if (w.kind === 'thread') return l.split(':')[0].replace(/^Asked on (\w)/, (m, c) => `Asked on ${c.toUpperCase()}`).replace(/, (\S+ replies)$/, ' · $1');
+      return l.split(/:\s|\s+for\s+“/)[0]; };
+    /* each AI tool on one line: the tool, the brands its answer names, and whether that includes the brand; the full answer one tap away */
+    const ans = (x) => { const names = [...new Set([...x.rivals, ...x.brands])].slice(0, 8);
+      return `<li class="aiq-a"><b>${esc(x.tool)}</b><div class="aiq-ab"><span class="aiq-names">${names.length ? esc(names.join(', ')) : 'Names no brand'}</span>${x.text ? `<details class="aiq-full"><summary>Read the answer</summary><p class="aiq-t">${esc(x.text)}${x.full ? '' : '…'}</p>${x.sources.length ? `<p class="aiq-src">Sources: ${esc(x.sources.join(', '))}</p>` : ''}</details>` : ''}</div><span class="aiq-tag ${x.named ? 'is-y' : 'is-n'}">${x.named ? `${ic('check', 's14')}You` : 'Not you'}</span></li>`; };
+    const q = (x) => { const n = x.answers.filter((y) => y.named).length, of = x.answers.length, w = whyShort(x.why);
+      const score = of ? `<b class="aiq-sc${n ? ' is-y' : ''}">${n}<small>/${of}</small></b>` : `<b class="aiq-sc is-wait">${ic('clock', 's14')}</b>`;
+      const why = x.why?.url ? `<a href="${esc(x.why.url)}" target="_blank" rel="noopener" title="${esc(x.why.label || '')}">${esc(w)}${ic('external', 's12')}</a>` : esc(w);
+      return `<details class="aiq"><summary>${score}<span class="aiq-m"><span class="aiq-q">${esc(x.q)}</span><span class="aiq-why">${why}${!of ? ` · ${x.team ? 'being asked now' : 'not answered yet'}` : ''}</span></span>${of ? ic('chev', 's16') : ''}</summary>${of ? `<ul class="aiq-as">${x.answers.map(ans).join('')}</ul>` : ''}</details>`; };
+    const add = a.canAdd ? (a.teamLeft ? `<form class="aiq-add" data-aiq-add><label for="aiq-in">Add a question your customers ask</label><div><input id="aiq-in" maxlength="160" placeholder="Which serum works for thinning at the crown?" autocomplete="off"><button class="btn btn-primary sm" type="submit">Ask it</button></div></form>` : `<p class="pf-basis">Your team has added 3 questions, the most Brew keeps.</p>`) : '';
+    const list = (xs, h) => xs.length ? `<h4 class="pf-h">${h}</h4><div class="aiq-list">${xs.map(q).join('')}</div>` : '';
+    return `<p class="pf-because">${lead}</p><p class="pf-basis">${how}</p>${note}
+      ${list(un, 'When shoppers name no brand')}${list(br, `When shoppers ask about ${esc(a.brand)}`)}
+      ${a.method?.errors?.length ? `<p class="pf-basis">Some sources couldn’t be read last time; the next refresh tries again.</p>` : ''}${add}`; };
   const openAiProof = async (src) => {
-    modal(`<div class="sheet pick-sheet pf-sheet ai-sheet" role="dialog" aria-label="The questions Brew asked"><header class="sh-h"><b class="sh-t">${ic('shield', 's16')}The questions Brew asked</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>
+    modal(`<div class="sheet pick-sheet pf-sheet ai-sheet" role="dialog" aria-label="How Brew checks AI answers"><header class="sh-h"><b class="sh-t">${ic('shield', 's16')}How Brew checks AI answers</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>
       <div class="pf-b"><div class="sk" style="height:64px"></div><div class="sk" style="height:180px;margin-top:12px"></div></div></div>`, (w) => {
       w.addEventListener('submit', async (ev) => { const f = ev.target.closest('[data-aiq-add]'); if (!f) return; ev.preventDefault(); const i = $('input', f), b = $('button', f), v = i.value.trim(); if (!v) return;
         b.disabled = true; const r = await tapi('POST', '/api/tenants/:t/ai-questions', { q: v }).catch(() => null); b.disabled = false;
         if (!r?.ok) return toast(esc(r?.error || 'That didn’t go through. Try again.'));
         toast(`${ic('check', 's16')}${esc(r.note)}`); paint(); if (r.asked) setTimeout(paint, 75e3); }); });
     const paint = async () => { const r = await tapi('GET', `/api/tenants/:t/ai-answers?src=${encodeURIComponent(src || 'weekly')}`).catch(() => null), box = $('#modal .ai-sheet .pf-b'); if (!box) return;
-      box.innerHTML = r?.ai ? aiAnsHtml(r.ai) : `<p class="pf-thin">${ic('info', 's14')}The questions didn’t load. Try again in a moment.</p>`; };
+      box.innerHTML = r?.ai ? aiAnsHtml(r.ai) : `<p class="pf-note">${ic('info', 's14')}<span>The questions didn’t load. Try again in a moment.</span></p>`; };
     paint(); };
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-ais-proof]'); if (!b) return; e.preventDefault(); e.stopPropagation(); openAiProof(b.dataset.aisProof); }, true);
   /* the one line on an AI answers card: who the answers name, beside the brand */

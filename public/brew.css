@@ -2943,26 +2943,38 @@ a.pf-src:hover{color:var(--fg);text-decoration:underline;text-underline-offset:2
 /* the AI answers card's proof: the questions Brew asked, why, and each AI's own answer (app.js openAiProof) */
 .ais-hd{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .ais-hd .ais-h{margin:0}
-.aiq{border:1px solid var(--line);border-radius:var(--r-row,12px);background:var(--card);padding:0}
-.aiq + .aiq{margin-top:8px}
-.aiq summary{list-style:none;cursor:pointer;display:flex;flex-direction:column;gap:3px;padding:10px 12px}
+.aiq-list{margin-top:-4px}
+.aiq{border-bottom:1px solid var(--line)}
+.aiq:last-child{border-bottom:0}
+.aiq summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:48px minmax(0,1fr) auto;column-gap:14px;align-items:start;padding:12px 0}
 .aiq summary::-webkit-details-marker{display:none}
-.aiq-q{font-size:15px;line-height:21px;font-weight:600;color:var(--fg)}
-.aiq-why{font-size:13px;line-height:18px;color:var(--fg-2)}
-.aiq-why a{color:inherit;text-decoration:underline;text-underline-offset:2px}
-.aiq-why.is-none{color:var(--fg-3)}
-.aiq-sum{font-size:12.5px;color:var(--fg-3)}
-.aiq[open] .aiq-sum{color:var(--fg-2)}
-.aiq-a{border-top:1px solid var(--line);padding:10px 12px;display:flex;flex-direction:column;gap:4px}
-.aiq-ah{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13.5px}
-.aiq-y{font-size:12px;font-weight:600;color:var(--ok)}
-.aiq-n{font-size:12px;color:var(--fg-3)}
-.aiq-names{margin:0;font-size:13px;line-height:18px;color:var(--fg)}
-.aiq-t{margin:0;font-size:13px;line-height:19px;color:var(--fg-2);max-height:180px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
-.aiq-src{margin:0;font-size:12px;line-height:17px;color:var(--fg-3);overflow-wrap:anywhere}
-.aiq-add{display:flex;flex-direction:column;gap:6px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
-.aiq-add label{font-size:13.5px;font-weight:600}
+.aiq summary>.ic{margin-top:3px;color:var(--fg-3);transition:transform .15s}
+.aiq[open] summary>.ic{transform:rotate(180deg)}
+.aiq-sc{font-size:18px;line-height:24px;font-weight:600;color:var(--fg-3);font-variant-numeric:tabular-nums}
+.aiq-sc small{font-size:13px;font-weight:500;color:var(--fg-3)}
+.aiq-sc.is-y{color:var(--ok)}
+.aiq-sc.is-wait{display:inline-flex;padding-top:4px}
+.aiq-m{display:flex;flex-direction:column;gap:2px;min-width:0}
+.aiq-q{font-size:14.5px;line-height:21px;font-weight:500;color:var(--fg);text-wrap:pretty}
+.aiq-why{font-size:12.5px;line-height:18px;color:var(--fg-3)}
+.aiq-why a{color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+.aiq-why a:hover{color:var(--fg);text-decoration:underline;text-underline-offset:2px}
+.aiq-as{list-style:none;margin:-4px 0 12px 62px;padding:0}
+.aiq-a{display:grid;grid-template-columns:80px minmax(0,1fr) auto;column-gap:10px;align-items:baseline;padding:8px 0;border-top:1px solid var(--line);font-size:13px;line-height:18px}
+.aiq-a>b{font-weight:600;color:var(--fg)}
+.aiq-ab{display:flex;flex-direction:column;gap:2px;min-width:0}
+.aiq-names{color:var(--fg-2);overflow-wrap:anywhere}
+.aiq-tag{display:inline-flex;align-items:center;gap:3px;font-size:12px;white-space:nowrap}
+.aiq-tag.is-y{color:var(--ok);font-weight:600}
+.aiq-tag.is-n{color:var(--fg-3)}
+.aiq-full summary{display:inline;cursor:pointer;font-size:12.5px;color:var(--fg-3);text-decoration:underline;text-underline-offset:2px;padding:0}
+.aiq-full summary::-webkit-details-marker{display:none}
+.aiq-full[open] summary{display:none}
+.aiq-t{margin:4px 0 0;font-size:13px;line-height:19px;color:var(--fg-2);max-height:200px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
+.aiq-src{margin:4px 0 0;font-size:12px;line-height:17px;color:var(--fg-3);overflow-wrap:anywhere}
+.aiq-add{display:flex;flex-direction:column;gap:8px;padding-top:14px;border-top:1px solid var(--line)}
+.aiq-add label{font-size:13.5px;font-weight:600;color:var(--fg)}
 .aiq-add div{display:flex;gap:8px}
-.aiq-add input{flex:1;min-width:0;font:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg)}
-.aiq-add small{color:var(--fg-3);font-size:12px}
+.aiq-add input{flex:1;min-width:0;font:inherit;font-size:14px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg)}
+@media (max-width:520px){.aiq summary{grid-template-columns:40px minmax(0,1fr) auto;column-gap:10px}.aiq-as{margin-left:0}.aiq-a{grid-template-columns:72px minmax(0,1fr) auto}}
 .pf-writeup{align-self:flex-start;display:inline-flex;align-items:center;gap:4px;margin-top:12px;padding:0;border:0;background:none;font:inherit;font-size:13px;color:var(--fg-3);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
