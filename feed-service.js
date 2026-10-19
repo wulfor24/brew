@@ -497,7 +497,7 @@ export function createFeedService(o) {
     const dec = acted ? actedDecay(t.actedAt?.[c.id], af.jamAt?.get(c.id), now(t)) : 0, fatigue = -Math.min(4, (af.shown24?.[c.agent] || 0) * 0.08) + (acted ? dec : seenFatigue(seen));
     const fb = -2 * ((af.fewer || t.fewer)[c.agent] || 0), tune = tuneScore(af.tune, c, af.notes); /* the member's own weights, topics and the words of their notes */
     // what the team told Brew comes first: cards of a move that rests on it, or that quote it themselves
-    const told = toldOf(c) || (B()?.learnedMoves?.has(moveNo(c.id)) ? 2 : 0), lift = inLearned('teamCards', c.id) ? 10 : inLearned('learnedUp', c.id) ? 8 : 0;
+    const told = toldOf(c) || (B()?.learnedMoves?.has(moveNo(c.id)) ? 6 : 0), /* a move rewritten on the team's strategy: its cards come first */ lift = inLearned('teamCards', c.id) ? 10 : inLearned('learnedUp', c.id) ? 8 : 0;
     const contra = inLearned('learnedHide', c.id) ? -40 : 0; /* the team said it doesn't work for them: off the top until someone says "bring back" (brand-learnings.js) */
     const art = draftView(draftFor(c, B()?.firstDrafts), c); /* a first draft with a picture or clip: the first screen should be things to look at */
     const look = (art?.images?.length || art?.video ? 3 : 0) + (isStaticCard(c.id) || c.research?.kind === 'ad' ? 2 : 0);
@@ -1698,9 +1698,15 @@ export function createFeedService(o) {
   });
   /* Drop anything here, step 2 for the brand: the learnings draft the sheet shows (brand-learnings.js), then its answer: "save"
      (the brief, Brew's memory, the moves it changes and the feed), "drop 2 5", "go ahead" / "just the top ones", or "cancel" */
-  const draftOut = (d) => d ? { kind: d.kind, items: (d.items || []).map((x) => ({ kind: x.kind, text: x.text })), again: d.again || 0, clipped: d.clipped || 0, replace: !!d.replace,
+  const draftOut = (d) => d ? { kind: d.kind, label: d.label, chars: d.chars || 0, items: (d.items || []).map((x) => ({ kind: x.kind, text: x.text, quote: String(x.quote || '').slice(0, 220) })), again: d.again || 0, clipped: d.clipped || 0, replace: !!d.replace,
     conflicts: (d.conflicts || []).slice(0, 6).map((c) => ({ says: c.conflictSays || c.text, label: c.fact?.label || '', v: c.fact?.v ?? '', src: c.fact?.src || '' })) } : null;
-  const learnOut = (x) => ({ ok: true, reply: x.reply, draft: x.d ? draftOut(x.d) : null, saved: !!x.saved || !!x.applied, cancelled: !!x.cancelled, n: x.applied?.length ?? null,
+  /* what the save changed, for the sheet's result view: the brief, the moves (rewriting now, waiting for the weekly run, new) and the feed */
+  const titleOf = (n) => { const m = B()?.moveDocs?.[n] || B()?.moveDocs?.[String(n)]; return m?.title ? String(m.title).slice(0, 90) : null; };
+  const changedOut = (x) => x.applied ? { learned: x.applied.length, again: x.again || 0, conflicts: (x.conflicts || []).length,
+    rewrite: (x.moves?.rewrite?.ns || []).map((n) => ({ n, title: titleOf(n) })), queued: !!x.moves?.rewrite?.queued, rewriteError: x.moves?.rewrite?.error || (x.moves?.rewrite?.off ? 'AI is off here' : null),
+    weekly: (x.moves?.weekly || []).map((w) => ({ n: w.n, title: titleOf(w.n) })), fresh: x.moves?.learn?.n || 0, freshWhy: x.moves?.learn?.why?.length ? 'waits for this week’s budget' : null,
+    add: (x.cards?.add || []).map((c) => c.title), up: (x.cards?.up || []).map((c) => ({ title: c.title, why: c.why })), hide: (x.cards?.hide || []).map((c) => ({ title: c.title, why: c.why })) } : null;
+  const learnOut = (x) => ({ ok: true, reply: x.reply, draft: x.d ? draftOut(x.d) : null, saved: !!x.saved || !!x.applied, cancelled: !!x.cancelled, n: x.applied?.length ?? null, changed: changedOut(x),
     pending: x.moves?.pending ? { all: x.moves.pending.ns.length, top: x.moves.pending.top.length } : null });
   on('POST', '/api/brands/:slug/learnings/answer', async (b, t, p) => {
     const slug = t.brandId || DEFAULT_BRAND; if (p.slug !== slug) return { status: 400, error: 'This workspace is for another brand.' };
@@ -2159,7 +2165,7 @@ export function createFeedService(o) {
      studio version it was asked from, in the workspace that asked (rec.land.tid) */
   const finalDone = async (slug, rec) => { const tid = rec?.land?.tid; if (!tid) return false;
     const t = await getTenant(tid).catch(() => null); if (!t || (t.brandId || DEFAULT_BRAND) !== slug) return false;
-    const br = await packs.load(slug); if (!br) return false;
+    const br = await packs.load(slug); if (!br) return false; await JAMS.load(br.slug); /* a team's jams load in the background: without this wait t.changes read empty and a final collected after a restart had "no card to land on" (19 Oct) */
     return runIn(br, () => (rec.target?.wid ? JAM_FINALS?.landDone(t, rec) : rec.target?.chid ? RMX?.finalDone?.(t, rec) : false) || false); };
   /* a reply in a jam's Slack thread, or its Approve button pressed (server.js checked Slack's signature and found the brand) */
   const slackIn = async ({ slug, kind, thread, ts, user = {}, text = '', n = null, pid = null, mention = false }) => {

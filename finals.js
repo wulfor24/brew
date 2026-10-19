@@ -273,12 +273,18 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
 
   /* ---------- after a restart: every run still open is finished or failed, never paid again ---------- */
   /* a run settled here (done, failed or at a checkpoint) reaches the jam or the studio through onDone: the record carries target */
-  const settled = async (slug, rec) => { if (!rec || rec.state === 'running' || rec.state === 'starting') return; try { await onDone(slug, rec); } catch (e) { log.warn('[finals] onDone', slug, rec.runKey, e.message); } };
+  /* a settled run lands where it was asked; a done run that found no card (the brand's jams not loaded yet, the instance gone) keeps
+     landed: false and the next boot tries again, three times at most (19 Oct: a paid reel was done but never reached its card) */
+  const settled = async (slug, rec) => { if (!rec || rec.state === 'running' || rec.state === 'starting') return; let ok = false;
+    try { ok = !!(await onDone(slug, rec)); } catch (e) { log.warn('[finals] onDone', slug, rec.runKey, e.message); }
+    if (rec.state === 'done' && rec.landed !== ok) await writeRec(slug, { ...rec, landed: ok, landTries: (rec.landTries || 0) + (ok ? 0 : 1) }).catch(() => {}); };
   async function reconcileAll() {
     if (dummy()) return 0; let n = 0;
     for (const slug of await slugs().catch(() => [])) {
       const files = await packs.listFiles(slug, DIR.replace(/\/$/, '')).catch(() => []);
-      for (const f of files) { const rec = await packs.getJSON(slug, DIR + f, null); if (!rec || !['starting', 'running'].includes(rec.state)) continue; n++;
+      for (const f of files) { const rec = await packs.getJSON(slug, DIR + f, null); if (!rec) continue;
+        if (rec.state === 'done' && rec.landed === false && (rec.landTries || 0) < 3 && (rec.land?.tid || rec.target)) { n++; await settled(slug, rec); continue; } /* done on Sloosh, never reached its card */
+        if (!['starting', 'running'].includes(rec.state)) continue; n++;
         if (rec.fallback) { await settled(slug, await writeRec(slug, { ...rec, state: 'failed', error: 'Brew restarted while Gemini was making this; nothing was charged. Make it again.', charged: 0, failedAt: now() })); continue; }
         (async () => { try {
           if (!rec.genId) { /* the paid call may or may not have gone out: the same quote + idempotency key gives back the same operation or a refusal, never a second charge */
