@@ -102,7 +102,8 @@ export function createSloosh({ url = MCP_URL(), tokenFor, fetchImpl = fetch, log
   async function call(name, intent = {}) {
     const t = await tool(name); const args = argsFor(t, intent, log);
     const r = await rpc('tools/call', { name, arguments: args });
-    if (r?.isError) { const u = unwrap(r); throw Object.assign(new Error(`Sloosh ${name}: ${u?.text || u?.error || u?.message || JSON.stringify(u).slice(0, 300)}`), { tool: name, result: u }); }
+    /* the whole reason, not only its code (19 Oct: "owner_invalid_request" alone said nothing about what was wrong) */
+    if (r?.isError) { const u = unwrap(r); const why = typeof u === 'string' ? u : [u?.error || u?.code, u?.message || u?.text || u?.detail, u?.details ? JSON.stringify(u.details).slice(0, 300) : '', u?.field || u?.path ? `at ${u.field || u.path}` : ''].filter(Boolean).join(': ') || JSON.stringify(u).slice(0, 300); throw Object.assign(new Error(`Sloosh ${name}: ${why}`), { tool: name, result: u }); }
     return unwrap(r);
   }
   /* raw arguments, when the caller already speaks the schema (a Space form) */
