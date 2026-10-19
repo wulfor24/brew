@@ -660,8 +660,23 @@ export function createRemix(o) {
     const xs = raw ? raw.split(/\n+|(?:^|\s)\d+[.)]\s+|;\s*|\s*•\s*/).map((x) => clean(x).replace(/^[-–,.\s]+|[,.\s]+$/g, '')).filter((x) => x.length > 3) : [];
     return (xs.length >= 2 ? xs : ['Main packshot on a pure white background', 'Close-up of the product and its label', 'The product in use']).slice(0, 4); }; /* one line is a rule for the set, not a shot list */
   const shotRule = (p = {}) => { const raw = clean(String(p.images || '')).trim(); return raw && shotsOf(p).every((x) => !raw.includes(x)) ? raw.slice(0, 200) : ''; };
+  /* DUMMY: where no photo can be made (AI offline: the demo site, a mock run; or no image model on this server), "Add photos"
+     still lands photos: the brand's own product photos from its catalog, one per shot, the named product's own shots first.
+     They are the brand's real photos, not made ones, and the version and the chat say so (DUMMY.md row 9). No catalog photo
+     at all: the shot list stays as a "Photo brief" and the chat says no photo could be made. Returns the number placed */
+  const listingFromCatalog = (t, ch, why) => {
+    const shots = shotsOf(ch.pkg), c = t.cards.get(ch.cardId) || {}, cat = catalogOf(t) || [], name = ch.pkg.product || ch.pkg.name || '';
+    const named = (name && cat.find((x) => x.t === name || x.t.toLowerCase().includes(String(name).toLowerCase()))) || (() => { try { return cardProduct(c, cat, { brand: o.SEED?.brand?.name || '' }); } catch { return null; } })();
+    const pool = [...new Set([...(named?.imgs || [named?.img]), ...cat.filter((x) => !x.out && x !== named).flatMap((x) => [x.img])].filter(Boolean))];
+    if (!pool.length) { ch.pkg = { ...ch.pkg, photoBrief: true }; return 0; }
+    const made = shots.map((shot, i) => (pool[i] ? { shot, image: pool[i], own: true } : null)).filter(Boolean);
+    ch.pkg = { ...ch.pkg, photoSet: made, image: made[0].image, photoBrief: false };
+    const v = version(t, ch, `ai:${ch.agent}`, `Listing photos (your product photos): ${why}`, `${made.length} listing photos`);
+    ch.thread.push({ from: 'ai', text: `Placed ${made.length} of your own product photos as the listing set: ${made.map((x) => x.shot).join('; ')}. New photos are made where AI images are on; these are the store’s own.`, at: now(t), v: v.n });
+    sync(t, ch); return made.length; };
   const genListingPhotos = (t, ch, why) => {
-    if (ch.family !== 'listing' || isMock() || !geminiImage || ch.imagePending) return false;
+    if (ch.family !== 'listing' || ch.imagePending) return false;
+    if (isMock() || !geminiImage) { const n = listingFromCatalog(t, ch, why); if (!n) ch.thread.push({ from: 'ai', text: 'No photo could be made here, and the store has no product photo to place. The shot list stays as the photo brief for your team.', at: now(t) }); bump(t, ch); o.save?.(t); return n ? 'own' : false; }
     if (!spend('image')) return false;
     const shots = shotsOf(ch.pkg), product = ch.pkg.product || ch.pkg.name || `${BN()} ${B().config.product?.noun || 'product'}`;
     ch.imagePending = true; ch.imageError = null; IMG_JOBS.add(ch.id); ch.pkg = { ...ch.pkg, photoShots: shots };
@@ -1449,7 +1464,7 @@ export function createRemix(o) {
     const rows = ch.pkg?.cards || ch.pkg?.slides || [], head = headOf(t, ch);
     ch.planRun = { at: now(t), n: 1, versions: [head?.id].filter(Boolean), by: 'one' };
     const w = (t.work || []).find((x) => x.changeId === ch.id); if (w) w.cardPlan = { ...(w.cardPlan || ch.plan || {}), made: now(t) };
-    if (ch.family === 'listing' && /photo|image/i.test(label)) { const ok = genListingPhotos(t, ch, label); return ok ? `Making ${shotsOf(ch.pkg).length} listing photos from your product photo: ${shotsOf(ch.pkg).join('; ')}. They land here in a minute or two.` : imageWhy(ch); }
+    if (ch.family === 'listing' && /photo|image/i.test(label)) { const ok = genListingPhotos(t, ch, label); if (ok === 'own') return null; /* placed at once, and the chat said so */ if (!ok && ch.pkg?.photoBrief) return null; return ok ? `Making ${shotsOf(ch.pkg).length} listing photos from your product photo: ${shotsOf(ch.pkg).join('; ')}. They land here in a minute or two.` : imageWhy(ch); }
     if (isVideoPost(ch)) { if (ch.pkg?.video || ch.videoPending) return null; const ok = genVideo(t, ch, label); return ok ? 'Making the video now, about two minutes. It lands here on its own. Not right? Redo it.' : videoWhy(ch); }
     if (VISUAL.has(ch.family) && canPic(ch)) {
       const missing = rows.length > 1 ? rows.some((_, i) => !(ch.pkg.cardImages || [])[i]) : !/^gen\//.test(ch.pkg?.image || '');
@@ -1477,7 +1492,7 @@ export function createRemix(o) {
   on('POST', '/api/changes/:chid/cta-make', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch);
     const c = t.cards.get(ch.cardId) || {}, label = String(b.label || c.cta?.label || '').slice(0, 60);
-    if (!ctaMakes(t, label, ch, c) || editable(ch) || isMock()) return { change: pubChange(t, ch), making: false };
+    if (!ctaMakes(t, label, ch, c) || editable(ch) || (isMock() && !(ch.family === 'listing' && /photo|image/i.test(label)) /* AI offline: only a listing's photos still land (the store's own, listingFromCatalog) */)) return { change: pubChange(t, ch), making: false };
     if (ch.ctaMade) return { change: pubChange(t, ch), making: false, already: true }; /* once per jam: the next press just opens it */
     ch.ctaMade = { label, at: now(t) };
     if (isRivalCard(c) && (ch.imagePending || ch.videoPending || ch.remakePending || FILL_JOBS.has(ch.id))) return { change: pubChange(t, ch), making: true }; /* our version is already being drawn */
@@ -1562,7 +1577,7 @@ export function createRemix(o) {
   });
   on('POST', '/api/changes/:chid/listing-photos', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };
-    const started = genListingPhotos(t, ch, 'a tap'); return { change: pubChange(t, ch), image: started, why: started ? null : ch.family !== 'listing' ? 'Only a marketplace listing makes a photo set.' : imageWhy(ch) };
+    const started = genListingPhotos(t, ch, 'a tap'); return { change: pubChange(t, ch), image: started, why: started ? null : ch.family !== 'listing' ? 'Only a marketplace listing makes a photo set.' : ch.pkg?.photoBrief ? 'No photo could be made here; the shots stay as the photo brief.' : imageWhy(ch) };
   });
   on('POST', '/api/changes/:chid/video', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };

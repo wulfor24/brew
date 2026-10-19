@@ -66,6 +66,24 @@ test('a decision button makes nothing; Add photos on a listing makes the photo s
   assert.ok(versionsOf(t2, id).some((v) => (v.snapshot?.photoSet || []).length), 'it lands as a version');
 });
 
+// FEED-ARV-04: on the demo site or a mock run no photo can be made, so "Add photos" places the brand's own catalog photos
+// (the named product's first, DUMMY.md row 9) as a version; with no catalog photo the shots stay as the Photo brief. Never a
+// written shot list under a button that said Add photos.
+test('Add photos with AI offline places the store’s own product photos; with none, the Photo brief and a plain line', async () => {
+  const cat = [{ t: 'Acme Balm', img: 'https://cdn.example/balm-1.jpg', imgs: ['https://cdn.example/balm-1.jpg', 'https://cdn.example/balm-2.jpg', 'https://cdn.example/balm-3.jpg'] }, { t: 'Acme Scrub', img: 'https://cdn.example/scrub.jpg', imgs: ['https://cdn.example/scrub.jpg'] }];
+  const S = studio({ isMock: () => true, geminiImage: null, mediaFake: false, catalogOf: () => cat }), t = tenant(card({ agent: 'storefront', sector: 'catalog', title: 'Add photos to the Acme Balm listing', cta: { label: 'Add photos' } }));
+  const { id, ch } = await press(S, t, 'Add photos'); await settle(ch);
+  assert.equal(ch.family, 'listing'); const set = ch.pkg.photoSet || [];
+  assert.ok(set.length >= 3, `photos placed (${set.length})`); assert.deepEqual(set.slice(0, 3).map((x) => x.image), cat[0].imgs, 'the named product’s own photos first');
+  assert.ok(set.every((x) => x.own && x.shot), 'each is the store’s own photo, named by its shot');
+  assert.ok(versionsOf(t, id).some((v) => (v.snapshot?.photoSet || []).length), 'it lands as a version');
+  assert.ok(ch.thread.some((m) => /your own product photos/i.test(m.text || '')), 'the chat says they are the store’s own');
+  const S2 = studio({ isMock: () => true, geminiImage: null, mediaFake: false, catalogOf: () => [] }), t2 = tenant(card({ agent: 'storefront', sector: 'catalog', title: 'Add photos to the balm listing', cta: { label: 'Add photos' } }));
+  const b = await press(S2, t2, 'Add photos'); await settle(b.ch);
+  assert.equal((b.ch.pkg.photoSet || []).length, 0); assert.equal(b.ch.pkg.photoBrief, true, 'the shots stay as the Photo brief');
+  assert.ok(b.ch.thread.some((m) => /No photo could be made/.test(m.text || '')), 'and the chat says so');
+});
+
 // Param, 19 Oct: "if the video is already there, what does Make the video do?", then "lead with only 1 and let them redo it".
 // A first draft that already has its clip is the one: the button makes nothing more and never films it again; Redo it makes
 // one new take with its own new clip, and the first draft stays in History
