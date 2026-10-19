@@ -184,7 +184,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     /* the starter files go up together: one after another kept the person on the landing for 3-5s */
     await Promise.all([packs.put(slug, 'seed.json', skeletonSeed({ slug, host })), packs.put(slug, 'facts.json', {}), packs.put(slug, 'config.json', { countryName: '', questions: [], rivals: [] }),
       user ? packs.put(slug, 'private/created.json', { by: user.email, at: Date.now() }).catch(() => {}) : null]);
-    await setStatus(slug, { slug, host, url: /^https?:/.test(raw) ? raw : 'https://' + host, name: host, createdAt: Date.now(), stages: {}, ready: false, done: false, state: 'Reading the site', error: null, cancelled: null, freshRead: !!(prev && fresh),
+    await setStatus(slug, { slug, host, url: /^https?:/i.test(raw) ? raw.replace(/^(https?:\/\/)([^/?#]+)/i, (_, a, h) => a.toLowerCase() + h.toLowerCase()) : 'https://' + host, name: host, createdAt: Date.now(), stages: {}, ready: false, done: false, state: 'Reading the site', error: null, cancelled: null, freshRead: !!(prev && fresh),
       /* born: the brand's first read on Brew; a re-read keeps it, a wipe ends it, and a browser that saved another born forgets its onboarding */
       born: prev?.born || Date.now(), ...(prev?.seenAt ? { seenAt: prev.seenAt } : {}) });
     packs.drop(slug); await onPack(slug);
