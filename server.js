@@ -729,9 +729,11 @@ const brandRoutes = async (req, res, u) => {
     const slug = u.searchParams.get('brand'), month = new Date().toISOString().slice(0, 7);
     const [news, spend] = await Promise.all([watchCatalog(treg).catch((e) => ({ error: e.message })), slug ? packs.getJSON(slug, `spend/${month}.json`, null).catch(() => null) : null]);
     return send(res, 200, { news, spend, meter: { usd: treg.meter.usd, calls: treg.meter.calls, today: treg.meter.dayUsd } }), true; }
+  /* one name for the team (FEED-QA-10): move docs written before say "the Brew deployment team"; they read the agreed phrase */
+  const crewName = (d) => { const j = d && JSON.stringify(d); return j && j.includes('Brew deployment team') ? JSON.parse(j.replace(/\bthe Brew deployment team\b/g, 'the ShopOS team, Brew’s build crew').replace(/\bBrew deployment team\b/g, 'The ShopOS team, Brew’s build crew')) : d; };
   const mm = u.pathname.match(/^\/api\/brands\/([a-z0-9-]+)\/moves\/(\d+)$/);
   if (mm) { const p = await loadBrand(mm[1]), v = await viewerOf(req, mm[1]); const priv = v.member ? (await packs.getJSON(mm[1], 'private/moves.json', {}))[+mm[2]] : null;
-    return send(res, 200, priv ? { ...priv, private: true } : p?.moveDocs?.[+mm[2]] || { error: 'not written yet' }), true; }
+    return send(res, 200, crewName(priv ? { ...priv, private: true } : p?.moveDocs?.[+mm[2]] || { error: 'not written yet' })), true; }
   /* the fact sheet: anyone may read the public sheet; members also see their connected facts; on a claimed brand only its team edits */
   const fm = u.pathname.match(/^\/api\/brands\/([a-z0-9-]+)\/facts$/);
   if (fm) { const slug = fm[1]; if (blocked(slug) || !(await packs.getJSON(slug, 'status.json', null))) return send(res, 404, { error: 'unknown brand' }), true;

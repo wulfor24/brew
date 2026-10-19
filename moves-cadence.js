@@ -360,7 +360,7 @@ export async function writeFamily(family, { ai, slug, pack, memory = null, log =
   const have = family === 'learn' ? Object.entries(pack.moves || {}).filter(([n, m]) => +n > 0 && m?.title).map(([n, m]) => `${pad(n)} ${m.title}`) : [];
   const prompt = familyPrompt(family, { name: profile?.name || slug, host: profile?.host || slug, ev, scorecard, listen: ld, auto, memory: mem, brief, today: dayOf(now), k, hints, have });
   const r = await ai.call({ model: 'sonnet', effort: 'medium', max: 16000, schema: FAMILY_SCHEMA, prompt, tag: `moves-${family}`,
-    system: 'You are the Brew deployment team writing short, exact strategy documents. Every claim rests on the evidence you are given.' });
+    system: 'You are the ShopOS team, Brew’s build crew, writing short, exact strategy documents. Every claim rests on the evidence you are given.' });
   const raws = (r.json?.moves || []).slice(0, F.max), at = new Date(now).toISOString(), run = `${family}-${dayOf(now)}`;
   const nums = numbers(raws.length), moves = [];
   raws.forEach((raw, i) => { const m = shapeMove({ ...raw, brand: profile?.name }, { n: nums[i], family, ev, ledger, at, run, usd: (r.usd || 0) / Math.max(1, raws.length), model: r.msg?.model || 'unknown' }); if (m) moves.push(m); });

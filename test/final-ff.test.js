@@ -110,3 +110,13 @@ test('trend slides with no series are dropped; calendar and rising slides stay',
   assert.match(s, /const hasSeries = \(x\) => x\.kind === 'calendar' \|\| \(x\.kind === 'rising' && x\.rising\?\.length\) \|\| \(x\.terms \|\| \[\]\)\.some\(\(term\) => tr\?\.series\?\.\[term\]\?\.values\?\.length\);/);
   assert.match(s, /const trSlides = \(tr\?\.items \|\| \[\]\)\.filter\(hasSeries\)/);
 });
+
+/* FEED-QA-10: one name for the team everywhere */
+test('no "Brew deployment team" anywhere a person reads; the agreed phrase on first mention', () => {
+  for (const f of ['build.js', 'moves-engine.js', 'moves-cadence.js', 'prompts/move-house.md']) assert.doesNotMatch(src(f), /Brew deployment team/, f);
+  assert.match(src('build.js'), /src: 'The ShopOS team, Brew’s build crew'/);
+  assert.match(src('server.js'), /const crewName = /, 'saved move docs heal on read');
+  assert.match(src('feed-service.js'), /or the ShopOS team, Brew’s build crew\.`/);
+  assert.match(src('public/app.js'), /<b>With the ShopOS team<\/b><small>Brew’s build crew: /);
+  assert.match(src('handoff.js'), /'The ShopOS team, Brew’s build crew'/);
+});
