@@ -246,3 +246,12 @@ test('the build keeps the Admin API snapshot privately and hands it to the read;
   assert.equal(reads.at(-1).admin, null); assert.equal(await b.saveAdmin(w.slug, snap), false, 'only a brand started from the app takes snapshots');
   const ws = await b.status(w.slug); assert.equal(ws.unreadable, true); assert.match(ws.state, /behind Shopify’s password page.*Open Brew from your Shopify admin/);
 });
+
+test('the embedded home’s own scripts are files, not app routes: /shopify-home.js and /shopify-embed.js are left to the static server', async () => {
+  const x = rig();
+  for (const f of ['/shopify-home.js', '/shopify-embed.js']) {
+    const { Readable } = await import('node:stream'); const req = Readable.from([]); Object.assign(req, { method: 'GET', url: f, headers: { 'sec-fetch-dest': 'script' } });
+    const res = { setHeader() {}, writeHead() {}, end() {} };
+    assert.equal(await x.sa.handle(req, res, new URL(f, 'https://brew.test')), false, f);
+  }
+});

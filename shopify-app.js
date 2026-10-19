@@ -196,13 +196,15 @@ export function createShopifyApp({ auth, connectors, builder, packs, log = conso
 
   async function handle(req, res, u) {
     const p = u.pathname;
-    if (!p.startsWith('/shopify') && !(embeddedReq(req, u) && /^\/(connect\/[a-z0-9]+\/start|auth\/google)$/.test(p))) return false;
+    /* the app's own routes only: /shopify-home.js and /shopify-embed.js are public files, served like any other */
+    const own = p === '/shopify' || p.startsWith('/shopify/');
+    if (!own && !(embeddedReq(req, u) && /^\/(connect\/[a-z0-9]+\/start|auth\/google)$/.test(p))) return false;
     if (p === '/shopify/webhooks' && req.method === 'POST') return webhook(req, res);
     if (!app().id || !app().secret) return json(res, 404, { error: 'The Shopify app is not set up on this server.' }), true;
     const shop = SHOP.test(u.searchParams.get('shop') || '') ? u.searchParams.get('shop') : null;
 
     /* a sign-in that can't run in a frame (Google, Meta, Slack): one tap opens it in a new tab, signed in as this person */
-    if (!p.startsWith('/shopify')) return html(res, 200, embedHtml(page('Opens in a new tab', `<p>Signing in here opens in a new tab, because ${p.startsWith('/auth') ? 'Google' : 'that service'} doesn’t allow it inside Shopify.</p>
+    if (!own) return html(res, 200, embedHtml(page('Opens in a new tab', `<p>Signing in here opens in a new tab, because ${p.startsWith('/auth') ? 'Google' : 'that service'} doesn’t allow it inside Shopify.</p>
 <p><button class="go" data-next="${esc(p + u.search)}">Continue in a new tab</button></p><p><a href="javascript:history.back()">Back</a></p>`), shop), shop), true;
 
     if (p === '/shopify' && req.method === 'GET') {
