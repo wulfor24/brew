@@ -22,7 +22,7 @@ import { saveGen } from './gen-store.js';
 import { createJamBrief } from './jam-brief.js';
 import { briefParts, withTeam, LABEL as BRIEF_LABEL } from './brief-status.js';
 import { createTuning, tuneScore, learnedSignals, withoutIgnored, noteTopics, AGENTS as TUNE_AGENTS, WEIGHT as TUNE_WEIGHT } from './member-tuning.js'; // Your feed: per-member agent weights, topics, learned signals
-import { memberKey } from './brand-memory.js';
+import { memberKey, saveVoicePick } from './brand-memory.js';
 import { isQuestion, photoAsk, answerGrounded } from './jam-answer.js'; // jam chat: questions answered from the evidence, "keep the photo" never makes one
 import { createAskBrew, answerAsk, cleanSeed } from './ask-brew.js'; // Ask Brew: one thread per member across feed, moves and facts
 import { parseDrop, DESTS } from './drop.js';
@@ -51,6 +51,7 @@ import { createEvidence, EVIDENCE_ASK, proofAnswer } from './evidence.js'; // th
 import { refine as refineProof, evidenceKinds } from './proof-logic.js'; // does the proof prove the claim: the card's own review pointer, no price-as-proof, claims that need an account
 import { createPlain, dejargon } from './plain.js'; // plain words on every card, rewritten once per card and kept per brand
 import { aiRingFromRun } from './health.js'; // the AI answers ring from the weekly check: score, rows and who the answers name, all one run
+import { toolOf, channelFit, paceFit, cleanViewer } from './channel-fit.js'; // where a card's work goes out, and how it fits the channels and ad pace the viewer told Brew in setup
 // cut on a word boundary with an ellipsis, never mid-word or with a dangling space
 const cutWords = (x, n) => { x = String(x).trim(); return x.length > n ? x.slice(0, n - 1).replace(/\s+\S*$/, '').replace(/[\s,;:·-]+$/, '') + '…' : x; };
 
@@ -344,7 +345,7 @@ export function createFeedService(o) {
     const t = {
       id: uid('t'), host: BH(), name: SEED.brand.name, clock: 0,
       plan: snap.pro ? 'pro' : 'free', brandId: B().slug, createdAt: Date.now(), lastSeen: Date.now(),
-      viewer: { role: 'founder', wants: ['decision', 'idea'], lane: firstLane(), ...(snap.viewer || {}) }, conn: { ...(snap.conn || {}) },
+      viewer: { role: 'founder', wants: ['decision', 'idea'], lane: firstLane(), ...cleanViewer(snap.viewer, { tools: Object.keys(SEED.connectors || {}) }) }, conn: { ...(snap.conn || {}) },
       cards: new Map(), feedback: [], runs: [], jams: [], versions: [], memory: [], qa: [], router: [], wlog: [], api: {},
       fewer: { ...(snap.fewer || {}) }, snoozed: {}, boost: {}, shown: {}, acted: new Set(), actedAt: {}, noTitles: [], days: new Set(),
       storySeen: {}, storyExtra: { trends: [], ads: [], news: [] }, health: {}, deck: { hidden: [], colWidth: 480 },
@@ -469,8 +470,10 @@ export function createFeedService(o) {
     const look = (art?.images?.length || art?.video ? 3 : 0) + (isStaticCard(c.id) || c.research?.kind === 'ad' ? 2 : 0);
     const extra = told + look + boostNow(t.boost?.[c.id], now(t)) + (c.onlyWhen && connOn(t, c.onlyWhen) ? 3 : 0) + (c.live && Object.keys(c.live).some((k) => connOn(t, k)) ? 2 : 0) + (c.liveOnly ? 2 : 0);
     const behind = B()?.staleMoves?.has(moveNo(c.id)) ? -8 : 0; /* its move is being rewritten: off the first screen until the new card lands */
-    const total = val + seat + aff + fresh + fatigue + fb + extra + behind + tune + lift + contra;
-    return { fresh, told, look, value: val, impact: +val.toFixed(2), impactNote: valNote, impactV: imp.v, impactPct: imp.pct, isDecision: imp.decision, affinity: +aff.toFixed(2), seat: +seat.toFixed(2), fatigue: +fatigue.toFixed(2), feedback: fb, tune, boost: boostNow(t.boost?.[c.id], now(t)), extra, total: +total.toFixed(2), seen, ...(dec ? { quiet: true } : {}) };
+    /* what they said in setup: a card only for channels they don't run sinks; their ad pace lifts new ads or groundwork (channel-fit.js). 0 with no answers */
+    const chan = channelFit(v.channels, c), pace = paceFit(v.adPace, c);
+    const total = val + seat + aff + fresh + fatigue + fb + extra + behind + tune + lift + contra + chan + pace;
+    return { fresh, told, look, value: val, impact: +val.toFixed(2), impactNote: valNote, impactV: imp.v, impactPct: imp.pct, isDecision: imp.decision, affinity: +aff.toFixed(2), seat: +seat.toFixed(2), fatigue: +fatigue.toFixed(2), feedback: fb, tune, boost: boostNow(t.boost?.[c.id], now(t)), extra, chan, pace, total: +total.toFixed(2), seen, ...(dec ? { quiet: true } : {}) };
   };
   const connOn = (t, k) => !!(t.conn?.[k] || t.liveConn?.[k]);
   // live cards are the team's only; a real account hides its demo cards; a move rewritten privately replaces its shared cards
@@ -1166,19 +1169,8 @@ export function createFeedService(o) {
   /* ---------- work board: a card you are working on, from first edit to deployment ----------
      drafting (you + AI, as many iterations as you like) → with your team / with Brew → needs you
      → ready to deploy → deploying → deployed. Every change from someone else is a notification. */
-  const NEEDS = { 'Queue the 12': 'meta', 'Publish Campaign': 'meta', 'Shift budget': 'meta', 'Rotate creative': 'meta', 'Apply the plan': 'meta', 'Run Monday decisions': 'meta', 'Lock the Diwali set': 'meta',
-    'Update landing page': 'shopify', 'Apply Update': 'shopify', 'Turn on guest checkout': 'shopify', 'Approve 6 popups': 'shopify', 'Publish the page': 'shopify', 'Approve the 3 offers': 'shopify', 'Approve the ladder': 'shopify',
-    'Push 5 titles': 'marketplaces', 'Draft the listing': 'marketplaces', 'Send on WhatsApp': 'whatsapp', 'Turn on the journey': 'whatsapp', 'Send the review ask': 'loox',
-    'Launch the ad group': 'google', 'Fix tracking': 'google', 'Approve the flows': 'klaviyo', 'Swap the images': 'meta', 'Pause those ads': 'meta',
-    'Queue the ads': 'meta', 'Approve the offers': 'shopify', 'Push the titles': 'shopify' };
-  /* labels a generated brand's cards use that the map does not know: the card's own words name the tool before its section does */
-  const toolInWords = (c) => { const s = `${c?.title || ''} ${c?.sub || ''}`; return /\b(meta|facebook|instagram|reels?)\b/i.test(s) ? 'meta' : /\bgoogle (ads|search|shopping)\b|\bsearch ads?\b/i.test(s) ? 'google' : /\b(klaviyo|email flow|newsletter)\b/i.test(s) ? 'klaviyo' : null; };
-  /* labels that are a decision, a review, research or people work: nothing to run on an account */
-  const NO_TOOL = new Set(['Agree with the call', 'Open the moves', 'Open the scoreboard', 'Review draft', 'Brief the shoot', 'Shortlist creators', 'Draft the buyer deck', 'Fix tracking', 'Fix the markup']);
-  /* a label that only fits some cards: it names its tool when the card's words agree, else nothing runs */
-  const IF_WORDS = { 'Draft the listing': [/\b(amazon|myntra|nykaa|flipkart|ajio|tata cliq|marketplace|listing)\b/i, 'marketplaces'], 'Approve the flows': [/\b(email|flow|klaviyo|newsletter|win-?back|welcome|post-purchase|abandon)\b/i, 'klaviyo'], 'Turn on the journey': [/\b(whatsapp|message|journey|reminder|alert|nudge)\b/i, 'whatsapp'] };
-  const deployTarget = (label, card) => { const mf = card?.mf || null, ai = mf?.by === 'ai' && mf.tool ? mf.tool : null, iw = IF_WORDS[label];
-    let k = ai ? (ai === 'none' ? null : ai === 'reviews' ? 'loox' : ai) : NO_TOOL.has(label) ? null : iw ? (iw[0].test(`${card?.title || ''} ${card?.sub || ''}`) ? iw[1] : null) : NEEDS[label] || toolInWords(card) || (card?.sector === 'creatives' || card?.sector === 'ads' ? 'meta' : card?.sector === 'storefront' ? 'shopify' : null); if (k === 'loox' && !SEED.connectors.loox) k = SEED.connectors.reviews ? 'reviews' : null; return k && SEED.connectors[k] ? { conn: k, name: SEED.connectors[k].name } : { conn: null, name: 'Brew' }; };
+  /* where a card's action runs: NEEDS / NO_TOOL / IF_WORDS / toolInWords and the pure toolOf live in channel-fit.js */
+  const deployTarget = (label, card) => { let k = toolOf(label, card); if (k === 'loox' && !SEED.connectors.loox) k = SEED.connectors.reviews ? 'reviews' : null; return k && SEED.connectors[k] ? { conn: k, name: SEED.connectors[k].name } : { conn: null, name: 'Brew' }; };
   const colleagueFor = (c) => SEED.colleagues.find((x) => x.id === (c?.sector === 'creatives' || c?.sector === 'visibility' ? 'brandm' : c?.sector === 'ads' ? 'perf' : c?.sector === 'storefront' || c?.sector === 'catalog' ? 'ops' : 'growth'));
   // what a teammate pushes back with, per sector (plain, brand-neutral ones unless the brand's config has its own)
   const GENERIC_PUSHBACK = {
@@ -1475,7 +1467,7 @@ export function createFeedService(o) {
     return { viewer: t.viewer, note: String(j?.note || '').slice(0, 200) || null, wants, lane, terms, learning };
   });
   on('PUT', '/api/tenants/:id/state', async (b, t) => {
-    if (b.viewer) { t.viewer = { ...t.viewer, ...b.viewer }; clampSeat(t); }
+    if (b.viewer) { t.viewer = { ...t.viewer, ...cleanViewer(b.viewer, { tools: Object.keys(SEED.connectors || {}) }) }; clampSeat(t); } /* setup answers are whitelisted: channels, adPace, perDay, tools, teamSize, voice */
     if (b.conn) { const was = t.conn || {}; t.conn = { ...b.conn };
       // a newly connected source: work that measures from it starts reading real numbers
       const added = Object.keys(t.conn).filter((k) => t.conn[k] && !was[k] && !t.liveConn?.[k]);
@@ -1584,6 +1576,14 @@ export function createFeedService(o) {
     if (imgs.length && r.action) r.action.refImages = imgs.map((f) => f.url);
     const added = await ASK.append(slug, key, { from: 'me', body: text, ...(seed ? { seed } : {}), ...(pending.length ? { files: pending } : {}), by: meOf(t)?.email || null }, { from: 'brew', body: r.body, links: r.links, action: r.action, by: r.by, route: r.route });
     return { added, ...(await askOut(t)) };
+  });
+  /* the voice the team picked in setup: one keyed brand-memory fact (voice.pick), so a new pick replaces the old and every draft
+     writer reads it (brand-memory.js puts it first in every prompt block). The team only, like the brand memory itself */
+  on('POST', '/api/brands/:slug/voice', async (b, t, p) => {
+    const slug = t.brandId || DEFAULT_BRAND; if (p.slug !== slug) return { status: 400, error: 'This workspace is for another brand.' };
+    const x = await saveVoicePick(o.memory, slug, b.voice, { who: reqOf(t), demo: process.env.DEMO_MODE === '1' });
+    if (x.ok) t.viewer = { ...t.viewer, voice: x.voice };
+    return x;
   });
   /* Drop anything here (drop.js): memory (the brand's memory), prefs (my preferences), once (this jam, or the next ask) */
   on('POST', '/api/brands/:slug/drop', async (b, t, p) => {
@@ -2048,7 +2048,7 @@ export function createFeedService(o) {
   const DEMO_OK = /^\/api\/(tenants|work|tenants\/[^/]+\/(ready|clock|events|pin|find-more|cards|notes\/(clear|read)|stories\/[^/]+\/seen|deck-layout|state|learning\/.+)|cards\/[^/]+\/(feedback|decided)|work\/[^/]+\/(decided|discard|restore|pick|version|approve|reopen|edit|jb\/move|draft\/[^/]+\/drop)|changes\/[^/]+\/(open|discard|restore|pick|notes|edit))$/;
   // every request runs inside its brand: the tenant's brand, or (creating one) the brand the page was opened for
   const handle = async (req, res, u) => {
-    if (!/^\/(h\/|api\/(share|tenants|cards|jams|work|changes|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?)$))/.test(u.pathname)) return false;
+    if (!/^\/(h\/|api\/(share|tenants|cards|jams|work|changes|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?|voice)$))/.test(u.pathname)) return false;
     let tid = null;
     const hm0 = u.pathname.match(/^\/h\/([\w~-]+)$/), sm0 = u.pathname.match(/^\/api\/share\/([\w~-]+)$/);
     if (hm0) tid = parseToken(hm0[1])?.tid; else if (sm0) tid = parseShare(sm0[1])?.tid; else tid = u.pathname.match(/^\/api\/tenants\/(t_[a-f0-9]+)/)?.[1] || req.headers['x-tenant'];
@@ -2075,7 +2075,7 @@ export function createFeedService(o) {
        team sees an empty feed (the page still loads, and a guest still gets their jam), and only their own jam's card */
     const outside = br.kind === 'generated' && o.liveTeamOnly?.() && !viewer?.member && !viewer?.gen;
     /* Ask, Your feed and Drop are the team's: outside it, on live, no writes either (Ask's answers name the brand's cards) */
-    if (outside && req.method !== 'GET' && /^\/api\/(tenants\/[^/]+\/(ask|tuning)(\/.*)?|brands\/[^/]+\/drop)$/.test(u.pathname)) { send(res, 403, { error: 'This is for the brand’s team.', teamOnly: true }); return true; }
+    if (outside && req.method !== 'GET' && /^\/api\/(tenants\/[^/]+\/(ask|tuning)(\/.*)?|brands\/[^/]+\/(drop|voice))$/.test(u.pathname)) { send(res, 403, { error: 'This is for the brand’s team.', teamOnly: true }); return true; }
     if (outside && req.method === 'GET') {
       if (/^\/api\/tenants\/[^/]+\/feed$/.test(u.pathname)) { send(res, 200, { order: [], cards: {}, scores: {}, pinned: [], limit: { plan: 'free', daily: null, locked: 0 }, teamOnly: true }); return true; }
       if (/^\/api\/tenants\/[^/]+\/stories$/.test(u.pathname)) { send(res, 200, { rings: [], teamOnly: true }); return true; }
@@ -2120,7 +2120,7 @@ export function createFeedService(o) {
       if (viewer?.member && w) { if (!JAMS.isIn(w, email)) JAMS.join(w, { email, name: viewer.name, pic: viewer.pic }, 'joined'); send(res, 200, { member: true, jam: w.id }); return true; }
       if (email && w && !viewer?.member && !viewer?.gen) { JAMS.join(w, { email, name: viewer.name, pic: viewer.pic }, 'guest'); guest = true; }
       send(res, 200, { guest, signedIn: !!email, jam: tok.wid || null, tenant: t.id, viewer: t.viewer, conn: t.conn, pro: t.plan === 'pro', decided: t.decided || {} }); return true; }
-    if (!/^\/api\/(tenants|cards|jams|work|changes|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?)$)/.test(u.pathname)) return false;
+    if (!/^\/api\/(tenants|cards|jams|work|changes|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?|voice)$)/.test(u.pathname)) return false;
     for (const r of ROUTES) {
       if (r.method !== req.method) continue; const m = u.pathname.match(r.re); if (!m) continue;
       const params = m.groups || {};

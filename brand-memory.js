@@ -33,6 +33,26 @@ export const TOPICS = {
 };
 const TOPIC_KEYS = Object.keys(TOPICS);
 export const SCOPES = ['brand', 'member', 'run'];
+/* the voice the team picked in setup (feed-service POST /api/brands/:slug/voice): one keyed brand fact, so a new pick replaces
+   the old, and every prompt block prints it first, with or without a query */
+export const VOICE_KEY = 'voice.pick';
+export const VOICE_LINE = {
+  site: 'Voice: like the site, as Brew read it',
+  warmer: 'Voice: warmer than the site. Write like a friend who knows the product: close, kind, a little personal.',
+  sharper: 'Voice: sharper than the site. Short sentences, a clear point of view, nothing softened.',
+  plainer: 'Voice: plainer than the site. Everyday words, one idea per sentence, no flourishes.'
+};
+export const VOICES = Object.keys(VOICE_LINE);
+/* the voice route's work (feed-service POST /api/brands/:slug/voice): the team only, a known voice, memory on; the pick is saved
+   as the keyed fact, so it updates in place. who = the request's viewer ({ member, email }); demo = the demo site */
+export async function saveVoicePick(memory, slug, voice, { who = null, demo = false } = {}) {
+  if (!(who?.member || demo)) return { status: who?.email ? 403 : 401, error: 'Only this brand’s team can set its voice.', team: true };
+  if (!VOICES.includes(voice)) return { status: 400, error: `Voice is one of ${VOICES.join(', ')}.` };
+  if (!memory) return { error: 'Brand memory is off here.', off: true };
+  const mk = who?.member && who.email ? memberKey(who.email) : null, by = mk ? `team member ${mk}` : 'a teammate';
+  const x = await memory.add(slug, VOICE_LINE[voice], { scope: 'brand', topic: 'voice', key: VOICE_KEY, infer: false, source: { kind: 'team', label: `voice picked in setup by ${by}` }, by });
+  return { ok: true, voice, line: VOICE_LINE[voice], added: x.added?.length || 0, updated: x.updated?.length || 0 };
+}
 // which topics each agent reads first in a prompt
 // the brand's own word (essence, goals, beliefs) comes right after the rules for every agent: it is how they want to be read
 const OWN = ['essence', 'goals', 'beliefs'];
@@ -260,36 +280,39 @@ export function createBrandMemory({ ai = null, packs, embed = null, allow = () =
   }
 
   /* ---------- prompts ---------- */
-  const format = (name, groups, mine) => {
+  const voicePick = (state) => state.facts.find((f) => f.scope === 'brand' && f.key === VOICE_KEY) || null;
+  const format = (name, groups, mine, vp = null) => {
     const parts = groups.filter(([, xs]) => xs.length).map(([k, xs]) => `${TOPICS[k].title}:\n${xs.map((f) => `- ${f.text}`).join('\n')}`);
+    if (vp) parts.unshift(`The voice the team picked (follow it in every line you write):\n- ${vp.text}`);
     if (mine?.length) parts.push(`This person’s own preferences:\n${mine.map((f) => `- ${f.text}`).join('\n')}`);
     return parts.length ? `Brand memory for ${name} (shared by the team, read from their live site, ads, posts and results, and what the team told Brew; follow the rules and the brand's own essence, goals and beliefs, lean on what works, match the voice and creative style):\n${parts.join('\n')}` : '';
   };
   const pick = (state, { agent, memberId, max = 1600, per = 4 }) => {
     const order = FOCUS[agent] || ['rules', ...OWN, 'creative-style', 'voice', 'what-works', 'products', 'offers', 'audience', 'channels'];
     const byW = (a, b) => weight(b) - weight(a); let used = 0; const groups = [];
-    for (const k of order) { const xs = state.facts.filter((f) => f.scope === 'brand' && f.topic === k).sort(byW).slice(0, k === 'rules' ? 6 : OWN.includes(k) ? 3 : per).filter((f) => (used += f.text.length + 4) < max); groups.push([k, xs]); }
+    for (const k of order) { const xs = state.facts.filter((f) => f.scope === 'brand' && f.topic === k && f.key !== VOICE_KEY).sort(byW).slice(0, k === 'rules' ? 6 : OWN.includes(k) ? 3 : per).filter((f) => (used += f.text.length + 4) < max); groups.push([k, xs]); }
     const mine = memberId ? state.facts.filter((f) => f.scope === 'member' && f.memberId === memberId).sort(byW).slice(0, 4) : [];
     return { groups, mine };
   };
   // async: the facts that matter for this query (semantic search) plus every rule
   async function promptBlock(slug, { query = '', memberId = null, runId = null, agent = null, k = 10, name } = {}) {
     const c = await load(slug); if (!c.state.facts.length) return '';
-    if (!query) { const { groups, mine } = pick(c.state, { agent, memberId }); return format(name || c.state.meta.name || slug, groups, mine); }
+    const vp = voicePick(c.state);
+    if (!query) { const { groups, mine } = pick(c.state, { agent, memberId }); return format(name || c.state.meta.name || slug, groups, mine, vp); }
     const hits = await search(slug, query, { memberId, runId, k: k + 6 }); const byId = new Map(c.state.facts.map((f) => [f.id, f]));
     const rules = c.state.facts.filter((f) => f.scope === 'brand' && f.topic === 'rules').sort((a, b) => weight(b) - weight(a)).slice(0, 6);
     /* the brand's own word rides along with every query, like the rules: the top two lines of essence, goals and beliefs */
     const own = OWN.flatMap((t) => c.state.facts.filter((f) => f.scope === 'brand' && f.topic === t).sort((a, b) => weight(b) - weight(a)).slice(0, 2));
-    const chosen = [...new Set([...rules, ...own, ...hits.map((h) => byId.get(h.id)).filter((f) => f && f.topic !== 'rules' && f.scope === 'brand')])].slice(0, k + 12);
+    const chosen = [...new Set([...rules, ...own, ...hits.map((h) => byId.get(h.id)).filter((f) => f && f.topic !== 'rules' && f.scope === 'brand')])].filter((f) => f !== vp).slice(0, k + 12);
     const groups = TOPIC_KEYS.map((t) => [t, chosen.filter((f) => f.topic === t)]);
-    return format(name || c.state.meta.name || slug, groups, hits.map((h) => byId.get(h.id)).filter((f) => f?.scope === 'member').slice(0, 4));
+    return format(name || c.state.meta.name || slug, groups, hits.map((h) => byId.get(h.id)).filter((f) => f?.scope === 'member').slice(0, 4), vp);
   }
   // sync, from the cache (prompts that cannot wait); the first call for a brand warms the cache and returns ''
   function blockSync(slug, { agent = null, memberId = null, name } = {}) {
     const c = cache.get(sk(slug)); if (!c) { warm(slug); return ''; }
     maybeLearn(slug, c);
     if (!c.state.facts.length) return '';
-    const { groups, mine } = pick(c.state, { agent, memberId }); return format(name || c.state.meta.name || slug, groups, mine);
+    const { groups, mine } = pick(c.state, { agent, memberId }); return format(name || c.state.meta.name || slug, groups, mine, voicePick(c.state));
   }
   const warm = (slug) => { if (!slug || cache.has(sk(slug))) return; load(slug).then((c) => maybeLearn(slug, c)).catch((e) => log.warn?.('[memory] warm', e.message)); };
   // a brand read that memory has not learned from yet: learn once, in the background
@@ -431,7 +454,7 @@ export function createBrandMemory({ ai = null, packs, embed = null, allow = () =
         }
       }
       // hard cap per topic: the weakest lines go first
-      for (const k of TOPIC_KEYS) { const xs = st.facts.filter((f) => f.scope === 'brand' && f.topic === k).sort((a, b) => weight(b) - weight(a)); xs.slice(MAX_PER_TOPIC).forEach((f) => drop(f, 'topic full, weakest line')); }
+      for (const k of TOPIC_KEYS) { const xs = st.facts.filter((f) => f.scope === 'brand' && f.topic === k && f.key !== VOICE_KEY).sort((a, b) => weight(b) - weight(a)); xs.slice(MAX_PER_TOPIC).forEach((f) => drop(f, 'topic full, weakest line')); }
       st.meta.consolidatedAt = t0; await save(slug, c); return out;
     });
   }
