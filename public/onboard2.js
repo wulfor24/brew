@@ -12,7 +12,9 @@
   const ls = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }, del(k) { try { localStorage.removeItem(k); } catch (e) {} } };
   const root = () => $('#root');
   const B = () => A().B, slug = () => B().slug || window.BRAND, brand = () => B().brand || {}, name = () => brand().name || brand().host || 'your store';
-  const KEY = () => `${A().LSP()}v2`;
+  /* mode 'q' (2026-10-19): v1's reading screen asks the same questions (OB2.questions); its own key, so v1 and v2 never mix */
+  let mode = 'v2', QO = null, qWait = false;
+  const KEY = () => `${A().LSP()}${mode === 'q' ? 'q1' : 'v2'}`;
   const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const ic = (k, s) => A().ic(k, s), face = (a) => A().face(a), f = (x) => (window.fx || ((s) => s))(x);
 
@@ -77,17 +79,18 @@
         <div id="v2-status">${o.noStatus ? '' : statusLine()}</div></section>
       <aside class="ob2-show v2-show" aria-hidden="true"><div class="ob2-wash v2-wash"></div><div class="v2-read" id="v2-show"${o.right != null ? ' data-hold="1"' : ''}>${o.right != null ? o.right : railHtml()}</div></aside></main>`;
     $('[data-v2-skip]')?.addEventListener('click', () => (o.onSkip || skipAhead)()); window.scrollTo(0, 0); };
-  const stage = (inner, o = {}) => { const s = $('#v2-stage'); if (!s) return shell(inner, o); s.innerHTML = inner; s.classList.remove('is-in'); void s.offsetWidth; s.classList.add('is-in'); if (o.right != null) { const r = $('#v2-show'); if (r) { r.dataset.hold = '1'; r.innerHTML = o.right; } } window.scrollTo(0, 0); };
+  const stage = (inner, o = {}) => { const s = $('#v2-stage'); if (!s) return mode === 'q' ? null : shell(inner, o); /* v1 owns its screen: never take it over */ s.innerHTML = inner; s.classList.remove('is-in'); void s.offsetWidth; s.classList.add('is-in'); if (o.right != null) { const r = $('#v2-show'); if (r) { r.dataset.hold = '1'; r.innerHTML = o.right; } } window.scrollTo(0, 0); };
   const skipAhead = () => { keys(null); beats().forEach((b) => { if (!['done', 'hold'].includes(b.kind)) st.done[b.id] ||= 'skip'; }); save(); next(); };
 
   /* ---------- keys: the two that matter are always on screen ---------- */
   let keyFn = null; const keys = (fn) => { keyFn = fn; };
-  document.addEventListener('keydown', (e) => { if (!keyFn || !document.body.classList.contains('v2-on')) return; if (e.target.closest('input,textarea,[contenteditable]')) return; if (e.metaKey || e.ctrlKey || e.altKey) return; const k = e.key === ' ' ? 'Space' : e.key; if (keyFn(k) === true) e.preventDefault(); });
+  const keysOn = () => document.body.classList.contains('v2-on') || (mode === 'q' && !!$('.screen.setup.su-q #v2-stage'));
+  document.addEventListener('keydown', (e) => { if (!keyFn || !keysOn()) return; if (e.target.closest('input,textarea,[contenteditable]')) return; if (e.metaKey || e.ctrlKey || e.altKey) return; const k = e.key === ' ' ? 'Space' : e.key; if (keyFn(k) === true) e.preventDefault(); });
 
   /* ---------- the beats ---------- */
   const S = () => A().S, V = () => S().viewer;
   const setViewer = (patch) => { Object.assign(S().viewer, patch); A().save(); };
-  const seatTiles = () => A().seatEntries().slice(0, 4).map(([k, r]) => ({ v: k, t: r.title, s: r.line, face: r.face }));
+  const seatTiles = () => A().seatEntries().slice(0, mode === 'q' ? 99 : 4).map(([k, r]) => ({ v: k, t: r.title, s: r.line, face: r.face }));
   const BEATS = () => [
     { id: 'intro', kind: 'slide', kick: '6:30', ico: 'clock', h: st?.ready ? `Brew has read ${esc(name())}.` : `While Brew reads ${esc(name())}…`, p: 'A few taps, so your mornings fit you. Nothing to type.', cta: true },
     { id: 'seat', kind: 'tap', q: 'Who’s this feed for?', p: 'Pick your seat. The feed ranks and words every card for it. You can switch any time.', tiles: seatTiles(), get: () => V().role, set: (v) => setViewer({ role: v, wants: V().wantsTouched ? V().wants : A().defaultWants(v) }) },
@@ -102,7 +105,7 @@
     { id: 's4', kind: 'slide', kick: 'Every morning', ico: 'feed', h: 'Ready moves.', p: 'Each card says the move, why it’s here, what it moves, and asks for your call. Ads your rivals run, what people are saying, how your store scores. All of it, with sources.' },
     { id: 's5', kind: 'slide', kick: 'And', ico: 'heart', h: 'Every tap teaches tomorrow’s feed.', p: 'Keep what fits. Drop what doesn’t. Brew learns your taste, not a persona.' },
     { id: 'adPace', kind: 'tap', q: `How many ads did ${esc(name())} run last month?`, p: 'It sets what comes first: new ads, or the ground under them.', tiles: [{ v: 'none', t: 'None', s: 'Not yet' }, { v: 'few', t: 'A few', s: 'Now and then' }, { v: 'ten', t: '10 or more', s: 'Most weeks' }, { v: 'always', t: 'Always on', s: 'Every day' }], get: () => V().adPace, set: (v) => setViewer({ adPace: v }) },
-    { id: 'voice', kind: 'tap', q: 'How should Brew sound?', p: 'Every draft follows it. You can change it later from any card.', tiles: [{ v: 'site', t: 'Like our site', s: 'The voice Brew read', star: true }, { v: 'warmer', t: 'Warmer', s: 'More human, fewer claims' }, { v: 'sharper', t: 'Sharper', s: 'Shorter, bolder' }, { v: 'plainer', t: 'Plainer', s: 'No flourish, just facts' }], get: () => V().voice || 'site', set: (v) => { setViewer({ voice: v }); voiceMemory(v); } },
+    { id: 'voice', kind: 'tap', q: 'How should Brew sound?', p: 'Every draft follows it. You can change it later from any card.', tiles: [{ v: 'site', t: 'Like our site', s: 'The voice Brew read', star: true }, { v: 'warmer', t: 'Warmer', s: 'More human, fewer claims' }, { v: 'sharper', t: 'Sharper', s: 'Shorter, bolder' }, { v: 'plainer', t: 'Plainer', s: 'No flourish, just facts' }], get: () => V().voice || 'site', set: (v) => { setViewer({ voice: v }); if (mode !== 'q') voiceMemory(v); } },
     { id: 'who', kind: 'brand', needs: 'who', q: 'Is this you?', p: 'Fix anything that’s off. Brew writes from these.' },
     { id: 'tools', kind: 'tap', multi: 4, q: 'Which of these do you use?', p: 'Pick now, connect later. Read-only, always.', tiles: Object.entries(B().connectors || {}).filter(([k]) => k !== 'marketplaces').slice(0, 8).map(([k, c]) => ({ v: k, t: c.name, s: c.kind, glyph: k })), get: () => V().tools || [], set: (v) => setViewer({ tools: v }) },
     { id: 'team', kind: 'tap', q: 'Who else should see this?', p: 'You can invite them at the end, or later from the menu.', tiles: [{ v: 'me', t: 'Just me' }, { v: 'few', t: '2 to 5 of us' }, { v: 'team', t: 'A team' }, { v: 'agency', t: 'Us and an agency' }], get: () => V().teamSize, set: (v) => setViewer({ teamSize: v }) },
@@ -110,16 +113,29 @@
     { id: 'hold', kind: 'hold' },
     { id: 'done', kind: 'done' }
   ];
-  const beats = () => BEATS();
+  /* v1 (mode q): no tutorial, hold or done; lines that name v2-only verbs say what v1 really does; team and voice only for
+     the brand's own people (they invite and they own the voice), tools only when the brand has connectors */
+  const V1COPY = {
+    s4: { p: 'Each card says the move and why it’s here, with its sources, and asks for your call. Ads your rivals run, what people are saying, how your store scores.' },
+    s5: { p: 'Heart what fits. Hide what doesn’t. Brew learns your taste, not a persona.' },
+    voice: { p: 'Every draft follows it. You can change it in Your feed.' },
+    perDay: { p: 'Brew marks that many as today’s. The rest wait below.' }
+  };
+  const canTeam = () => { const L = window.LIVE || {}; return !!(L.me && (L.access?.role || L.access?.eligible || L.access?.full)); };
+  const beats = () => { const bs = BEATS(); if (mode !== 'q') return bs;
+    return bs.filter((b) => !['tutorial', 'hold', 'done'].includes(b.kind) && !(['team', 'voice'].includes(b.id) && !canTeam()) && !(b.id === 'tools' && !b.tiles.length))
+      .map((b) => (V1COPY[b.id] ? { ...b, ...V1COPY[b.id] } : b)); };
   const beatAt = (i) => beats()[i];
   const needsMet = (b) => { if (!b.needs) return true; if (st.confirmed) return 'skip'; const p = st.picks[b.needs]; if (p && !(Array.isArray(p) && !p.length)) return true; if (st.ready) return 'late'; return false; };
   const next = async () => {
+    if (mode === 'q' && (!QO || st.qDone)) return; /* v1 left the reading screen, or the questions are over */
     const bs = beats();
     for (let i = 0; i < bs.length; i++) { const b = bs[i]; if (st.done[b.id]) continue;
       if (b.kind === 'brand') { const m = needsMet(b); if (m === false) continue; if (m === 'skip') { st.done[b.id] = 'skip'; continue; }
         if (m === 'late') { const ok = await lateData(b.needs); if (!ok) { st.done[b.id] = 'skip'; continue; } } }
       if (b.kind === 'hold' && (st.ready || st.error)) { st.done[b.id] = 'skip'; continue; }
       st.i = i; save(); return show(b); }
+    if (mode === 'q') return qEnd();
     return show(bs[bs.length - 1]);
   };
   const finish = (b, val) => { st.done[b.id] = val ?? true; save(); return next(); };
@@ -255,10 +271,12 @@
   };
   const afterReady = async () => { await postConfirm(); const b = beatAt(st.i); if (b && b.kind === 'hold') return finish(b, true); };
   /* the taps replaced the check page: once the read is in and the who tap is past, the same confirm goes up and the moves start */
-  const postConfirm = async () => { if (st.posted || st.confirmed || !st.ready) return; const whoPast = st.done.who || st.done.tut || st.done.done; if (!whoPast) return;
+  const postConfirm = async () => { if (st.posted || st.confirmed || !st.ready) return;
+    if (mode === 'q') { const bt = ['lead', 'rivals', 'who']; if (!bt.every((k) => st.done[k])) return; if (!bt.some((k) => st.done[k] === true)) return; } /* v1: all three brand taps past, at least one answered; none answered → v1's check page instead */
+    else { const whoPast = st.done.who || st.done.tut || st.done.done; if (!whoPast) return; }
     st.posted = true; save();
     /* only the taps that were answered go up: an empty hero list would otherwise unset the brand's leads (build.js applyCheck) */
-    const v2 = { who: st.v2.who || {}, company: {}, sources: {} }; if (st.done.lead === true) { v2.hero = st.v2.hero; v2.removed = st.v2.removed; } if (st.done.rivals === true) v2.removeRivals = st.v2.removeRivals;
+    const v2 = { who: st.v2.who || {}, company: {}, sources: {} }; if (st.done.lead === true && (mode !== 'q' || (st.v2.hero || []).length)) { v2.hero = st.v2.hero; v2.removed = st.v2.removed; } if (st.done.rivals === true) v2.removeRivals = st.v2.removeRivals;
     const r = await A().api(`/api/brands/${slug()}/confirm`, { v2 }).catch(() => null);
     if (r?.signin || r?.error) { st.posted = false; save(); if (r?.signin) A().signWall('check'); else A().toast(`${ic('info', 's16')}${esc(r.error || 'Could not save what you picked.')}`); return; }
     if (r?.notes?.length) A().toast(`${ic('info', 's16')}${esc(r.notes.join(' '))}`); };
@@ -362,7 +380,25 @@
   const start = async () => { await A().ensureTenant(true); return run(); };
   const route = (kind) => { load(); if (kind === 'continue' || st.stage === 'stack') return stack(); return run(); };
   const resume = () => run();
+  /* ---------- v1: the questions only, inside v1's reading screen (app.js setup, #v2-stage in its left rail) ----------
+     v1's own stream passes events in (feed); no second stream, shell, tutorial, stack or gate. When the questions are over and
+     the read is in, the same confirm goes up (when a brand tap was answered) and onDone tells v1 to show its done bar. */
+  const qDone = () => { qWait = false; keys(null); st.qDone = true; save(); const o = QO; QO = null; o?.onDone?.({ posted: !!st.posted, skipped: !!st.skipped }); };
+  const qEnd = async () => { keys(null);
+    if (st.ready || st.error) { if (!st.error) await postConfirm(); return qDone(); }
+    qWait = true; /* every question is answered and the read is still running: brand taps whose data lands now still come first */
+    QO?.onWait?.(); stage(`${kick('Still reading', '<span class="spin"></span>')}<h1 class="ob2-h">That’s everything for now.</h1><p class="ob2-lede">Brew is still reading ${esc(name())}. The next step shows here the moment the read is in.</p>`); };
+  const qFeed = (ev) => { if (mode !== 'q' || !st || st.qDone || !ev) return;
+    if (ev.type === 'picks' && ev.k) { st.picks[ev.k] = ev.items; save(); if (qWait && beats().some((b) => b.kind === 'brand' && !st.done[b.id] && needsMet(b) === true)) { qWait = false; next(); } }
+    if (ev.type === 'ready' && !st.ready) { st.ready = true; save(); if (qWait) { qWait = false; next(); } }
+    if (ev.type === 'error') { st.error = ev.msg || 'The store did not open for us.'; save(); qDone(); } };
+  const qSkip = () => { if (!st || st.qDone) return; keys(null); st.skipped = true; beats().forEach((b) => { if (!st.done[b.id]) st.done[b.id] = 'skip'; }); save(); qEnd(); };
+  const questions = async (o = {}) => { mode = 'q'; QO = o; qWait = false; load();
+    const s = await A().api(`/api/brands/${slug()}/status`).catch(() => null); st.confirmed = s?.stages?.confirm?.state === 'done'; if (s?.stages?.read?.state === 'done') st.ready = true; save();
+    next();
+    return { feed: qFeed, skip: qSkip, posted: () => !!st?.posted, answered: (id) => !!st?.done?.[id] && st.done[id] !== 'skip', stop: () => { keys(null); qWait = false; QO = null; } }; };
+  const qState = () => { try { return JSON.parse(ls.get(`${A().LSP()}q1`) || '{}'); } catch (e) { return {}; } };
   const reset = () => { ls.del(KEY()); st = null; };
   const debug = () => ({ st, beat: beatAt(st?.i || 0)?.id, kind: beatAt(st?.i || 0)?.kind, lastSay, es: !!es });
-  window.OB2 = { start, run, route, resume, reset, debug, stack, morning, mixN };
+  window.OB2 = { start, run, route, resume, reset, debug, stack, morning, mixN, questions, qState };
 })();

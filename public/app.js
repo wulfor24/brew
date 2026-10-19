@@ -291,6 +291,11 @@
     let c = { ...p };
     const r = p.byRole?.[S.viewer.role]; if (r) c = { ...c, ...r };
     if (p.live) Object.entries(p.live).forEach(([cid, o]) => { if (conn(cid)) c = { ...c, ...o, liveFrom: cid }; });
+    /* Another take (remix.js mirrorTake → p.take): the card's draft slot shows it; the card's own title and why stay the move's.
+       Being drawn: the old picture says a new one is coming. Didn't come through: the old picture, and the reason under it */
+    if (p.take && (p.take.image || p.take.drawing || p.take.drawError)) { const t = p.take, d0 = c.draft || {}, base = d0.images?.length ? d0.images : (c.images || []).slice(0, 1);
+      if (t.image) c.draft = { ...d0, as: 'take', images: [t.image], video: null, poster: null, render: null, headline: t.title, title: t.title, copy: t.body, fallback: base[0] || d0.fallback, remaking: false, photoOnly: false, takeErr: null };
+      else if (base.length || d0.video) c.draft = { ...d0, as: 'take', images: base, headline: t.title || d0.headline, copy: t.body || d0.copy, remaking: !!t.drawing, photoOnly: false, takeErr: t.drawing ? null : t.drawError }; }
     if (p.done) c.done = p.done; /* only what really happened: the server's own record, never a tap remembered in this browser */
     if (p.kind === 'conflict' && S.decided?.[p.id]) c.done = 'Decided: ' + (p.options.find((o) => o.id === S.decided[p.id])?.name || '');
     return c;
@@ -338,11 +343,13 @@
   const OB_STEPS = ['Your role', 'Focus', 'Tools', 'Team'];
   const lockup = () => /^brew$/i.test(B.brand.name || '') ? `<span class="ob2-lock"><span class="so-mark">${SO()}</span><span><b>Brew</b></span></span>`
     : `<span class="ob2-lock"><span class="so-mark">${SO()}</span><i>×</i><img src="${B.brand.mark}" alt=""><span><b>Brew</b> for ${esc(B.brand.name)}</span></span>`;
-  const shell = (inner, step, show) => `<main class="screen ob2${step ? '' : ' ob2-start'}">
+  /* only the steps this person will see: the role tapped on the reading screen, or "Just me" (no team step), drop out */
+  const obSteps = () => OB_STEPS.map((t, i) => ({ t, n: i + 1 })).filter((x) => !(x.n === 1 && !S.onboarded && qAns('seat')) && !(x.n === 4 && S.viewer.teamSize === 'me'));
+  const shell = (inner, step, show) => { const all = step ? obSteps() : [], at = Math.max(1, all.findIndex((x) => x.n === step) + 1); return `<main class="screen ob2${step ? '' : ' ob2-start'}">
       <section class="ob2-form"><header class="ob2-top">${lockup()}${step ? '<button class="btn btn-ghost sm" data-ob-skip>Skip to my feed</button>' : ''}</header>
-        ${step ? `<ol class="ob2-steps">${OB_STEPS.map((t, i) => `<li class="${i + 1 < step ? 'done' : i + 1 === step ? 'on' : ''}"><i>${i + 1 < step ? ic('check', 's14') : i + 1}</i><span>${t}</span></li>`).join('')}</ol>` : ''}
+        ${step ? `<ol class="ob2-steps">${all.map((x, i) => `<li class="${i + 1 < at ? 'done' : i + 1 === at ? 'on' : ''}"><i>${i + 1 < at ? ic('check', 's14') : i + 1}</i><span>${x.t}</span></li>`).join('')}</ol>` : ''}
         <div class="ob2-body">${inner}</div></section>
-      <aside class="ob2-show" id="ob-show" aria-hidden="true">${show || (step ? pvLast : '')}</aside></main>`;
+      <aside class="ob2-show" id="ob-show" aria-hidden="true">${show || (step ? pvLast : '')}</aside></main>`; };
   const start = () => {
     /* v2 keeps this start page; the brand page's read is where v2 begins (setup → OB2.run) */
     document.body.classList.remove('deck-on'); view = 'start';
@@ -454,52 +461,77 @@
     /* the ads step quotes the one count (pack-numbers.js, window.BREW_NUMBERS) when the brand has it: the same rivals and numbers as the check page */
     const NB = window.BREW_NUMBERS, steps = ra && !NB?.rivalAds ? B.steps.map((x) => x.k === 'ads' ? { ...x, done: `${ra.brands.length} rivals: ${ra.brands.reduce((n, b) => n + (b.live || 0), 0).toLocaleString('en-IN')} live ads` } : x) : B.steps;
     const cards = ra ? B.scrape.map((c) => c.kind === 'ad' ? { ...c, src: `Meta Ad Library · ${B.config?.countryName || 'live'}`, img: ra.items[0].poster, copy: ra.items.slice(0, 3).map((a) => `${a.brand}: ${a.hook}`).join(' · '), foot: `${ra.items[0].brand}'s top ad has run ${ra.items[0].days} days in ${ra.items[0].versions} versions.` } : c) : B.scrape;
+    /* v1 asks v2's questions while the read runs (OB2.questions, onboard2.js mode q): the question in the left rail, the read's
+       steps under it, the findings on the right as before. Once per brand per browser; no tutorial, stack or gate on v1 */
+    const QM = !V2 && GEN && !!window.OB2?.questions && !window.OB2.qState().qDone;
     root.innerHTML = `
-      <main class="screen setup">
+      <main class="screen setup${QM ? ' su-q' : ''}">
         <aside class="su-rail">
-          <div class="host"><img src="${B.brand.mark}" alt="">${esc(B.brand.host)}</div>
+          <div class="host"><img src="${B.brand.mark}" alt="">${esc(B.brand.host)}${QM ? '<button class="btn btn-ghost sm su-qskip" id="su-qskip">Skip questions</button>' : ''}</div>
+          ${QM ? '<div class="ob2-body v2-body su-qstage" id="v2-stage"></div>' : ''}
           <ol class="steps">${steps.map((s, i) => `<li class="step" data-i="${i}"><span class="dot"></span><div><b>${esc(s.t)}</b><span>Queued</span></div></li>`).join('')}</ol>
-          <div class="roster"><h4>Setting up your agents</h4>${['creative', 'performance', 'storefront', 'visibility', 'crm'].map((a) => `<div class="agent-row" data-a="${a}">${face(a)}<div><b>${AGENT[a]}</b><span class="st">Waiting</span></div></div>`).join('')}</div>
+          ${QM ? '' : `<div class="roster"><h4>Setting up your agents</h4>${['creative', 'performance', 'storefront', 'visibility', 'crm'].map((a) => `<div class="agent-row" data-a="${a}">${face(a)}<div><b>${AGENT[a]}</b><span class="st">Waiting</span></div></div>`).join('')}</div>`}
         </aside>
         <section class="su-main">
-          <div class="su-head"><h2>Reading ${esc(B.brand.name)}</h2><span>Your store, reviews, rivals and AI answers.</span><button class="btn btn-ghost sm skip" id="skip">Skip ahead</button></div>
+          <div class="su-head"><h2>Reading ${esc(B.brand.name)}</h2><span>Your store, reviews, rivals and AI answers.</span><button class="btn btn-ghost sm skip" id="skip"${QM ? ' hidden' : ''}>Skip ahead</button></div>
           <div class="scr-grid" id="scr"></div>
         </section>
       </main>
       <div class="buddy" id="buddy" style="opacity:0">${cursorSvg()}<span>Brew</span></div>`;
-    let skipped = false;
+    let skipped = false, failed = false, readIn = false, Q = null;
     const buddy = $('#buddy');
+    /* the done bar waits for both: the read (readP) and, on v1 with questions, the last question (qP, which also says whether the
+       taps already confirmed the read) */
+    let readyGo, qGo; const readP = new Promise((r) => (readyGo = r)), qP = QM ? new Promise((r) => (qGo = r)) : Promise.resolve({});
+    const qBuf = [], toQ = (ev) => { if (!QM) return; if (Q) Q.feed(ev); else qBuf.push(ev); };
+    if (QM) window.OB2.questions({
+      onDone: (r) => { $('#su-qskip')?.remove(); $('#v2-stage')?.remove(); $('.screen.setup')?.classList.remove('su-q'); qGo(r || {}); },
+      onWait: () => { $('#su-qskip')?.remove(); $('#skip')?.removeAttribute('hidden'); } /* every question answered, the read still running: Skip ahead as before */
+    }).then((h) => { Q = h; qBuf.splice(0).forEach((ev) => h.feed(ev)); });
+    $('#su-qskip')?.addEventListener('click', () => Q?.skip());
     const fly = (el, say) => { if (!el) return; const sp = buddy.querySelector('span'), was = buddy.offsetWidth; const prev = sp.textContent; sp.textContent = say; const r = el.getBoundingClientRect(), w = Math.max(was, buddy.offsetWidth); sp.textContent = prev; clearTimeout(fly.t); fly.t = setTimeout(() => (sp.textContent = say), 900); clearTimeout(fly.h); fly.h = setTimeout(() => { buddy.style.opacity = 0; }, 2800); buddy.style.opacity = 1; buddy.style.transform = `translate(${Math.max(8, Math.min(r.left + r.width * .6, r.right - w - 8, innerWidth - w - 16))}px,${Math.min(r.top + 26, innerHeight - 60)}px)`; }; // the label swaps once the cursor lands, so a longer one never sticks out mid-flight
     // POST /tenants started the read; GET /tenants/:id/onboarding streams each step and finding as it lands
     const es = new EventSource(`/api/tenants/${TID}/onboarding`);
-    $('#skip').onclick = () => { skipped = true; es.close(); $('#buddy')?.remove(); $('#su-done')?.remove(); if (signWall('who')) return; whoFor(); };
+    $('#skip').onclick = () => { skipped = true; es.close(); Q?.stop(); $('#buddy')?.remove(); $('#su-done')?.remove(); if (signWall('who')) return; afterRead(); };
     es.onmessage = async (m) => {
       if (skipped) return es.close();
-      const ev = JSON.parse(m.data), li = ev.i != null ? $(`.step[data-i="${ev.i}"]`) : null;
+      let ev; try { ev = JSON.parse(m.data); } catch (e) { return; } const li = ev.i != null ? $(`.step[data-i="${ev.i}"]`) : null;
+      toQ(ev);
       if (ev.type === 'step' && ev.state === 'reading' && li) { li.classList.add('reading'); if (!li.querySelector('.spin')) li.querySelector('.dot').innerHTML = '<span class="spin"></span>'; li.querySelector('span:last-child').textContent = `Reading ${ev.tick}`; }
-      if (ev.type === 'finding') { $('#scr').insertAdjacentHTML('beforeend', scrCard(ev.finding)); const el = $('#scr').lastElementChild; el.classList.add('fresh'); $$('#scr .scr.fresh').forEach((x) => x !== el && x.classList.remove('fresh')); el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); if (ev.say) setTimeout(() => fly(el, ev.say), 350); }
+      if (ev.type === 'finding') { $('#scr').insertAdjacentHTML('beforeend', scrCard(ev.finding)); const el = $('#scr').lastElementChild; el.classList.add('fresh'); $$('#scr .scr.fresh').forEach((x) => x !== el && x.classList.remove('fresh')); if (!(QM && Q && !$('#su-done') && matchMedia('(max-width: 760px)').matches)) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); /* on a phone the question sits above the findings: never scroll it away */ if (ev.say) setTimeout(() => fly(el, ev.say), 350); }
       if (ev.type === 'agent') { const row = $(`.agent-row[data-a="${ev.agent}"]`); if (row) { row.classList.add('on'); row.querySelector('.st').textContent = 'Has ideas ready'; } }
       if (ev.type === 'step' && ev.state === 'done' && li) { li.classList.remove('reading'); li.classList.add('done'); li.classList.toggle('empty', !!ev.empty); li.querySelector('.dot').innerHTML = ic(ev.empty ? 'minus' : 'check', 's14'); li.querySelector('span:last-child').textContent = ev.done; } /* a step that found nothing or could not finish gets a dash, never a tick */
-      if (ev.type === 'error') { es.close(); buddy.remove(); $$('.step.reading').forEach((el) => { el.classList.remove('reading'); el.querySelector('.dot').innerHTML = ic('minus', 's14'); });
+      if (ev.type === 'error') { failed = true; es.close(); buddy.remove(); $$('.step.reading').forEach((el) => { el.classList.remove('reading'); el.querySelector('.dot').innerHTML = ic('minus', 's14'); });
         document.body.insertAdjacentHTML('beforeend', `<div class="su-done" id="su-done"><div><b>We couldn’t read ${esc(B.brand.name)}.</b><span>${esc(ev.msg || 'The store did not open for us.')} Check the address, or try again in a few minutes.</span></div><button class="btn btn-primary lg" id="su-next">Back to the start</button></div>`);
         $('#su-next').onclick = () => { location.href = '/'; }; return; }
-      if (ev.type === 'ready') {
-        es.close(); $$('.agent-row').forEach((r) => { r.classList.add('on'); r.querySelector('.st').textContent = 'Has ideas ready'; });
-        buddy.style.opacity = 0; await wait(500); if (skipped) return; buddy.remove();
-        // a brand read earlier can say "ready" before any step: show what was read, not seven "Queued" rows and 0 findings
-        steps.forEach((x, i) => { const el = $(`.step[data-i="${i}"]`); if (el && !el.classList.contains('done')) { const empty = x.state === 'empty'; el.classList.remove('reading'); el.classList.add('done'); el.classList.toggle('empty', empty); el.querySelector('.dot').innerHTML = ic(empty ? 'minus' : 'check', 's14'); el.querySelector('span:last-child').textContent = x.done || (empty ? 'Nothing found' : 'Done'); } });
-        if (!$$('#scr .scr').length && cards.length) $('#scr').innerHTML = cards.map(scrCard).join('');
-        // stop here: the presenter moves on when the room has taken it in
-        const n = $$('#scr .scr').length;
-        document.body.insertAdjacentHTML('beforeend', `<div class="su-done" id="su-done"><span class="su-ok">${ic('check', 's18')}</span><div><b>${esc(B.brand.name)} is read.</b><span>${steps.length} sources, ${n} findings. Your feed starts from these.</span></div><button class="btn btn-primary lg" id="su-next">Set up my feed ${ic('right', 's18')}</button></div>`);
-        // a brand whose facts were already confirmed goes straight to the seat picker (confirming again would rewrite its moves)
-        const confirmed = GEN ? (await api(`/api/brands/${B.slug || BR}/status`).catch(() => null))?.stages?.confirm?.state === 'done' : false;
-        if (skipped) return;
-        $('#su-next').onclick = (e) => { if (signWall(GEN && !confirmed ? 'check' : 'who')) return; const b = e.currentTarget; if (GEN && !confirmed) { b.disabled = true; b.innerHTML = '<span class="spin"></span>Opening'; checkRead().finally(() => $('#su-done')?.remove()); return; } $('#su-done').remove(); whoFor(); }; $('#su-next').focus();
-        if (GEN && !confirmed) $('#su-next').innerHTML = `Check what we read ${ic('right', 's18')}`;
-      }
+      if (ev.type === 'ready') { es.close(); finishRead(); }
     };
-    es.onerror = () => { if (!skipped) { es.close(); buddy.remove(); if (signWall('who')) return; whoFor(); } };
+    const finishRead = async () => {
+      if (readIn) return; readIn = true; $$('.agent-row').forEach((r) => { r.classList.add('on'); r.querySelector('.st').textContent = 'Has ideas ready'; });
+      buddy.style.opacity = 0; await wait(500); if (skipped) return; buddy.remove();
+      // a brand read earlier can say "ready" before any step: show what was read, not seven "Queued" rows and 0 findings
+      steps.forEach((x, i) => { const el = $(`.step[data-i="${i}"]`); if (el && !el.classList.contains('done')) { const empty = x.state === 'empty'; el.classList.remove('reading'); el.classList.add('done'); el.classList.toggle('empty', empty); el.querySelector('.dot').innerHTML = ic(empty ? 'minus' : 'check', 's14'); el.querySelector('span:last-child').textContent = x.done || (empty ? 'Nothing found' : 'Done'); } });
+      if (!$$('#scr .scr').length && cards.length) $('#scr').innerHTML = cards.map(scrCard).join('');
+      readyGo();
+    };
+    // stop here: the presenter moves on when the room has taken it in
+    const showDone = async (q = {}) => {
+      if (skipped || failed || $('#su-done')) return;
+      const n = $$('#scr .scr').length, posted = !!q.posted;
+      document.body.insertAdjacentHTML('beforeend', `<div class="su-done" id="su-done"><span class="su-ok">${ic('check', 's18')}</span><div><b>${esc(B.brand.name)} is read.</b><span>${steps.length} sources, ${n} findings. Your feed starts from these.</span></div>${posted ? '<button class="linkbtn" id="su-check">Check everything we read</button>' : ''}<button class="btn btn-primary lg" id="su-next">Set up my feed ${ic('right', 's18')}</button></div>`);
+      // a brand whose facts were already confirmed goes straight to the seat picker (confirming again would rewrite its moves)
+      const confirmed = GEN ? (await api(`/api/brands/${B.slug || BR}/status`).catch(() => null))?.stages?.confirm?.state === 'done' : false;
+      if (skipped) return;
+      /* the questions confirmed the read: a reload, so the feed opens with the real logo, products and cards (as after the check page) */
+      $('#su-next').onclick = (e) => { if (signWall(GEN && !confirmed ? 'check' : 'who')) return; const b = e.currentTarget; if (posted) { b.disabled = true; return continueToFeed(); } if (GEN && !confirmed) { b.disabled = true; b.innerHTML = '<span class="spin"></span>Opening'; checkRead().finally(() => $('#su-done')?.remove()); return; } $('#su-done').remove(); afterRead(); }; $('#su-next').focus();
+      $('#su-check')?.addEventListener('click', () => { if (signWall('check')) return; checkRead().finally(() => $('#su-done')?.remove()); });
+      if (GEN && !confirmed && !posted) $('#su-next').innerHTML = `Check what we read ${ic('right', 's18')}`;
+    };
+    Promise.all([readP, qP]).then(([, q]) => showDone(q));
+    /* the stream drops (a restart): while questions are open, the status poll says when the read is in; otherwise on to the seat, as before */
+    const poll = async () => { if (skipped || readIn) return; const s = await api(`/api/brands/${B.slug || BR}/status`).catch(() => null);
+      if (s?.stages?.read?.state === 'done') { toQ({ type: 'ready' }); return finishRead(); } setTimeout(poll, 8000); };
+    es.onerror = () => { if (skipped || readIn) return; es.close(); if (QM && Q && GEN) return poll(); buddy.remove(); if (signWall('who')) return; afterRead(); };
   };
 
   /* ---------- "Check what we read": the brand confirms the facts everything else is built on ---------- */
@@ -629,12 +661,20 @@
   };
   const LANE_IMG = B.laneImg || {};
   const obNav = (next, back) => `<div class="ob2-nav">${back ? `<button class="btn btn-ghost lg" id="ob-back">${ic('left', 's18')} Back</button>` : '<span></span>'}<button class="btn btn-primary lg" id="ob-next">${next} ${ic('right', 's18')}</button></div>`;
+  /* the first person from the brand to set it up claims it (eligible: a work email at the brand, nobody on it yet), so Invite
+     your team and @tags work for them from here */
+  let claiming = null;
+  const claimFirst = () => { const A0 = window.LIVE?.access; if (!(GEN && window.LIVE?.me && A0 && !A0.role)) return Promise.resolve(); if (claiming) return claiming; /* Brew staff (full) get an error back: nothing to claim */
+    return (claiming = api(`/api/brands/${B.slug || BR}/claim`, {}).then((r) => { if (!r || r.error) return; if (r.access && window.LIVE) window.LIVE.access = { ...A0, ...r.access }; else A0.role = r.role || 'owner'; }).catch(() => {}).finally(() => { claiming = null; })); };
+  /* the voice tap (v1 questions) becomes a brand rule every draft reads; only the team saves it, so after the claim */
+  const pushVoice = () => { const v = S.viewer.voice; if (!GEN || !v || S.viewer.voiceSaved === v) return;
+    api(`/api/brands/${B.slug || BR}/voice`, { voice: v }).then((r) => { if (r && !r.error) { S.viewer.voiceSaved = v; save(); } }).catch(() => {}); };
+  /* what the v1 questions already asked (onboard2.js mode q): those screens are not asked twice */
+  const qAns = (id) => { const d = window.OB2?.qState?.().done?.[id]; return d != null && d !== false && d !== 'skip'; }; /* a tap keeps its value, a brand tap true, a skip 'skip' */
+  const afterRead = () => { if (signWall('who')) return; claimFirst().then(pushVoice); if (qAns('seat') && S.viewer.role) { view = 'ob'; return wantWhat(); } whoFor(); };
   const whoFor = () => {
     if (signWall('who')) return;
-    /* the first person from the brand to set it up claims it (eligible: a work email at the brand, nobody on it yet), so Invite
-       your team and @tags work for them from here */
-    const A0 = window.LIVE?.access; if (GEN && window.LIVE?.me && A0 && !A0.role && !whoFor.claiming) { whoFor.claiming = true; /* Brew staff (full) get an error back: nothing to claim */
-      api(`/api/brands/${B.slug || BR}/claim`, {}).then((r) => { if (!r || r.error) return; if (r.access && window.LIVE) window.LIVE.access = { ...A0, ...r.access }; else A0.role = r.role || 'owner'; }).catch(() => {}).finally(() => { whoFor.claiming = false; }); }
+    claimFirst();
     view = 'ob';
     window.scrollTo(0, 0); root.innerHTML = shell(`
       <h1 class="ob2-h">Who’s this feed for?</h1><p class="ob2-lede">Pick your seat. The feed ranks and words every card for it. You can switch any time.</p>
@@ -646,15 +686,17 @@
   };
   const defaultWants = (r) => ({ founder: ['decision', 'competitor'], growth: ['decision', 'report'], brand: ['idea', 'competitor'], ecom: ['decision', 'report'], crm: ['decision', 'idea'] }[r]);
   const wantWhat = () => {
+    /* during onboarding, what the reading-screen questions asked is not asked again (a later Tune shows everything) */
+    const noWants = !S.onboarded && qAns('first'), noLane = !S.onboarded && qAns('lead');
     window.scrollTo(0, 0); root.innerHTML = shell(`
-      <div class="ob3"><h1 class="ob2-h">What should come first?</h1><p class="ob2-lede">Pick up to two, and tell Brew what you’ve learned.</p>
-      <section class="ob3-s"><small class="ob3-k">Show me first</small>
-        <div class="ob3-pills">${Object.entries(B.wants).map(([k, w]) => `<button class="ob3-pill" data-want="${k}" aria-pressed="${S.viewer.wants.includes(k)}" title="${esc(w.line)}">${ic('check', 's14')}${esc(w.name)}</button>`).join('')}</div></section>
+      <div class="ob3">${noWants && noLane ? '<h1 class="ob2-h">Anything Brew should know?</h1><p class="ob2-lede">What works for you, what doesn’t, what you’ve learned. Optional.</p>' : noWants ? '<h1 class="ob2-h">Anything Brew should know?</h1><p class="ob2-lede">The product you’re pushing, and what you’ve learned. Both optional.</p>' : '<h1 class="ob2-h">What should come first?</h1><p class="ob2-lede">Pick up to two, and tell Brew what you’ve learned.</p>'}
+      ${noWants ? '' : `<section class="ob3-s"><small class="ob3-k">Show me first</small>
+        <div class="ob3-pills">${Object.entries(B.wants).map(([k, w]) => `<button class="ob3-pill" data-want="${k}" aria-pressed="${S.viewer.wants.includes(k)}" title="${esc(w.line)}">${ic('check', 's14')}${esc(w.name)}</button>`).join('')}</div></section>`}
       <section class="ob3-s"><small class="ob3-k">In your own words</small>
         <div class="ob3-say"><textarea id="ob-say" data-nomic data-ownmic rows="1" placeholder="What works for you, what doesn’t, what you’ve learned. Type or talk.">${esc(S.viewer.focusNote || '')}</textarea>${window.Mic?.supported ? `<button type="button" class="ob3-mic" id="ob-say-mic" aria-label="Talk instead of typing" title="Talk instead of typing">${ic('mic', 's16')}</button>` : ''}</div>
         <small id="ob-said" class="ob3-said">${S.viewer.focusNote ? `${ic('check', 's14')}Saved. Your moves, docs and cards follow this.` : ''}</small></section>
-      <section class="ob3-s"><small class="ob3-k">The product you’re pushing</small>
-        <div class="ob3-pills">${Object.entries(B.lanes).map(([k, l]) => `<button class="ob3-pill ob3-prod" data-lane="${k}" aria-pressed="${S.viewer.lane === k}"><img src="${LANE_IMG[k]}" alt="">${esc(l.name)}</button>`).join('')}</div></section></div>
+      ${noLane ? '' : `<section class="ob3-s"><small class="ob3-k">The product you’re pushing</small>
+        <div class="ob3-pills">${Object.entries(B.lanes).map(([k, l]) => `<button class="ob3-pill ob3-prod" data-lane="${k}" aria-pressed="${S.viewer.lane === k}"><img src="${LANE_IMG[k]}" alt="">${esc(l.name)}</button>`).join('')}</div></section>`}</div>
       ${obNav('Next', true)}`, 2);
     obPreview();
     $$('[data-want]').forEach((b) => b.onclick = () => {
@@ -675,17 +717,18 @@
     $('#ob-back').onclick = whoFor; $('#ob-next').onclick = async () => { await sayIt(); connectWhat(); };
   };
   const connectWhat = () => {
-    const ids = ROLE().connectors;
+    /* the tools picked on the reading screen come first (each still needs its own sign-in, so nothing is preselected) */
+    const ids = [...new Set([...(S.viewer.tools || []), ...ROLE().connectors])].filter((k) => B.connectors?.[k]);
     window.scrollTo(0, 0); root.innerHTML = shell(`
       <h1 class="ob2-h">Connect your tools</h1><p class="ob2-lede">${window.LiveConn?.boss?.() === false ? 'Your admin connects these. Once they’re on, cards swap targets for your real numbers.' : 'Cards swap targets for your real numbers. Optional, and you can do it later from any card.'}</p>
       <div class="ob2-cx">${ids.map((id) => cxRow(id)).join('')}</div>
       <p class="ob2-foot">${ic('lock', 's14')} ${window.LIVE?.dummy === false ? `Read-only. Brew never changes your accounts${ids.includes('slack') ? '; Slack posts only to the channel you pick' : ''}.` : 'Demo workspace. No real account is touched.'}</p>
       ${obNav('Next', true)}`, 3);
     obPreview();
-    $('#ob-back').onclick = wantWhat; $('#ob-next').onclick = teamStep;
+    $('#ob-back').onclick = wantWhat; $('#ob-next').onclick = () => (S.viewer.teamSize === 'me' ? finishOnboarding() : teamStep()); /* "Just me" on the reading screen: no invite step */
   };
-  const cxRow = (id) => { const c = B.connectors[id];
-    return `<div class="cx-row" data-cxrow="${id}">${glyph(id, 40)}<span class="lg-tx"><b>${esc(c.name)}${c.optional ? ' <span class="src-opt">optional</span>' : ''}</b><span>${esc(c.kind)}</span></span>
+  const cxRow = (id) => { const c = B.connectors[id], used = view === 'ob' && (S.viewer.tools || []).includes(id);
+    return `<div class="cx-row" data-cxrow="${id}">${glyph(id, 40)}<span class="lg-tx"><b>${esc(c.name)}${c.optional ? ' <span class="src-opt">optional</span>' : ''}${used ? ' <span class="src-opt">You use this</span>' : ''}</b><span>${esc(c.kind)}</span></span>
       ${conn(id) ? `<span class="cx-on">${ic('check', 's14')} Connected</span>` : window.LiveConn?.boss?.() === false ? `<span class="cx-ask">Admin connects</span>` : `<button class="btn btn-primary sm" data-cx="${id}">Connect</button>`}</div>`; };
   /* the last step: invite the people you'll jam with. They get an email and see only the views you pick. Admins invite;
      a teammate sees who's already here. Nothing about anyone is typed twice: you are who you signed in as */
@@ -744,7 +787,7 @@
   };
   const finishOnboarding = () => {
     if ($('#ready')) return; // a double-click on Next must not stack a second ready card
-    S.onboarded = true; save(); tapi('POST', '/api/tenants/:t/ready');
+    S.onboarded = true; save(); tapi('POST', '/api/tenants/:t/ready'); claimFirst().then(pushVoice); /* the voice tap, if it did not save yet */
     const n = rank().length, R = ROLE();
     if (V2) return feed(); /* v2 already said good morning, showed the rings and the first three: no second welcome on top of it */
     /* the moves count is the brand's own (status.total, loaded by loadMV); until it is loaded the tile says Moves read with no number */
@@ -788,7 +831,7 @@
       <button class="icon-btn" data-act="heart" aria-pressed="${!!S.hearts[p.id]}" aria-label="More like this">${ic('heart')}</button>
       <button class="icon-btn" data-act="jam" aria-label="Jam with the team">${ic('hand')}</button>
       ${proofBtn(p)}
-      ${V2 ? `<button class="icon-btn v2-act" data-act="take" aria-label="Another take" title="Another take">${ic('refresh')}</button><button class="icon-btn v2-act" data-act="make" aria-label="Make it yours" title="Make it yours">${ic('sparkles')}</button>` : ''}
+      <button class="icon-btn v2-act" data-act="take" aria-label="Another take" title="Another take">${ic('refresh')}</button>${V2 ? `<button class="icon-btn v2-act" data-act="make" aria-label="Make it yours" title="Make it yours">${ic('sparkles')}</button>` : ''}
       <span class="sp"></span>
       <button class="icon-btn" data-act="save" aria-pressed="${S.saved.includes(p.id)}" aria-label="Save for later">${ic('bookmark')}</button></div>`;
   /* the proof on every card (evidence.js via /api/cards/:cid/evidence): why Brew suggested it, and the hard evidence behind it */
@@ -912,7 +955,7 @@
     return h || line ? `<div class="fd-cap">${h ? `<b>${esc(h)}</b>` : ''}${line && line !== h ? `<span>${esc(line)}</span>` : ''}</div>` : ''; };
   const draftSlot = (c) => { const d = c.draft; if (!d || !(d.video || d.images?.length)) return '';
     /* a stand-in (the product photo alone, or a picture being made again) says a new one is coming; it is never called a first draft */
-    const lab = d.remaking || d.photoOnly ? `<span class="fd-lab is-wait">${ic('refresh', 's12')}New picture coming</span>` : `<span class="fd-lab">${ic(DRAFT_IC[d.as] || 'sparkles', 's12')}First draft</span>`, port = d.ratio !== '1:1';
+    const lab = d.remaking || d.photoOnly ? `<span class="fd-lab is-wait">${ic('refresh', 's12')}New picture coming</span>` : d.takeErr ? `<span class="fd-lab is-wait" title="${esc(d.takeErr)}">${ic('info', 's12')}No new picture</span>` : `<span class="fd-lab">${ic(DRAFT_IC[d.as] || 'sparkles', 's12')}${d.as === 'take' ? 'Another take' : 'First draft'}</span>`, port = d.ratio !== '1:1';
     const fb = [d.fallback, ...(c.images || [])].filter((x) => x && !(d.images || []).includes(x)); /* the real product photo, if the draft's picture can't load */
     /* a reel (9:16) fills the card's width in a 4:5 frame: the whole reel centred over a blurred copy of itself, never a narrow
        box with an empty side (17 Oct); every other draft keeps its own shape */
@@ -1060,7 +1103,7 @@
     if (GEN && !HC_MOVES) hcMoves().then(() => { const el = $('.card[data-health] [data-hc-how]'); if (el && hcFix(low)) el.outerHTML = hcCta(low); }).catch(() => {});
     return `<article class="card hc${B.health.dummy ? ' is-dummy' : ''}" data-health>${head('brew', B.health.public ? `From your public site${Object.values(SRV.healthLive || {}).some((x) => x?.what) ? ' and your accounts' : ''}${when ? ` · ${esc(when)}` : ''}` : `Up ${h.delta + Object.keys(S.conn).filter(conn).length} this week`, null, false, 'Store health')}
       <div class="body hc-body"><h3>${esc(head1)}</h3>${sub1 ? `<p>${esc(sub1)}</p>` : ''}</div>
-      <div class="inset"><div class="ring-wrap">${ringSvg(h)}<div class="ring-rows hc-rows">${h.rings.map((r) => `<details class="hc-ring${r === low ? ' is-low' : ''}"><summary><b>${esc(r.k)}</b><em>${r.read === false ? '–' : `${r.v}<small>/100</small>`}</em><span>${esc(hcLine(r))}</span></summary>${(r.parts || []).length ? `<ul class="hc-parts">${r.parts.map((x) => `<li><span>${esc(x.k)}</span><b>${x.v}<small>/${x.of}</small></b><small>${esc(x.note || '')}</small></li>`).join('')}</ul>` : ''}${r.k === 'AI answers' && aiStand()?.rivals ? `<div class="ais ais-mini">${aisHtml(aiStand(), { compact: true })}</div>` : ''}${r.src ? `<p class="hc-src">${ic('link', 's14')}${esc(r.src)}</p>` : ''}</details>`).join('')}</div></div></div>
+      <div class="inset"><div class="ring-wrap">${ringSvg(h)}<div class="ring-rows hc-rows">${h.rings.map((r) => `<details class="hc-ring${r === low ? ' is-low' : ''}"><summary><b>${esc(r.k)}</b><em>${r.read === false ? '–' : `${r.v}<small>/100</small>`}</em><span>${esc(hcLine(r))}</span></summary>${(r.parts || []).length ? `<ul class="hc-parts">${r.parts.map((x) => `<li><span>${esc(x.k)}</span><b>${x.v}<small>/${x.of}</small></b><small>${esc(x.note || '')}</small></li>`).join('')}</ul>` : ''}${r.k === 'AI answers' && aiStand()?.rivals ? `<div class="ais ais-mini">${aisHtml(aiStand(), { compact: true })}<button class="linkbtn hc-ais" data-ais-proof="${esc(aiStand().src || 'weekly')}">${ic('shield', 's14')}Every question and each AI’s answer</button></div>` : ''}${r.src ? `<p class="hc-src">${ic('link', 's14')}${esc(r.src)}</p>` : ''}</details>`).join('')}</div></div></div>
       ${read.length ? hcCta(low) : ''}</article>`; };
 
   const teamCard = () => { const bs = S.batches.filter((b) => !b.roles || b.roles.includes(S.viewer.role) || b.team).slice(0, 4); const need = bs.filter((b) => b.st === 'Needs you').length;
@@ -1085,8 +1128,9 @@
   /* the three counts on the greeting, and the full pages behind them */
   /* one rule for each count, read from the ranked feed only (loadFeed), never from FEED, which the deck, the lists and
      the library reuse for their own rows: the greeting tile, the list behind it, its tab and the setup preview agree */
-  const TODAY_N = 14;
-  const todayOf = (ranked) => ranked.slice(0, TODAY_N).filter((p) => !cardOf(p).done);
+  /* today's window: the number picked on the reading screen ("How many moves a morning?"), else the full 14 */
+  const todayN = () => +S.viewer.perDay || 14;
+  const todayOf = (ranked) => ranked.slice(0, todayN()).filter((p) => !cardOf(p).done);
   const yesOf = (ranked) => todayOf(ranked).filter((p) => p.type === 'decision');
   const gLists = () => { const vis = todayOf(RANKED);
     return { yes: yesOf(RANKED), spend: vis.filter((p) => B.spends.includes(p.cta?.label)), board: WORK.items.filter((w) => w.stage === 'needs_you').sort((a, b) => b.updatedAt - a.updatedAt) }; };
@@ -1425,6 +1469,7 @@
       if (i === 2 && S.sessions <= 1) out.push(introCard());
       if (i === 3 && (!GEN || S.batches.length)) out.push(teamCard());
       if (i === 8 && (!GEN || window.BREW_DEMO)) out.push(deckCard()); /* DUMMY (Pro, DUMMY.md #4): not on a real brand's live feed */
+      if (+S.viewer.perDay && i === +S.viewer.perDay - 1 && end > i + 1) out.push(`<p class="feed-today">${ic('check', 's14')}That’s today’s ${+S.viewer.perDay}. The rest are below, whenever you want them.</p>`); /* the "moves a morning" answer */
     }
     if (end >= FEED.length) while (X.wait.length) out.push(connectCard(X.wait.shift())); /* a short feed still gets its connect card, last */
     return out.join(''); };
@@ -1465,7 +1510,7 @@
     FEED = [...fresh, ...was.map((p) => ALL[p.id] || p)];
     const col = $('#col'), y0 = scrollY, anchor = scrollY > 240 ? [...$$('#col .card[data-post]')].find((el) => el.getBoundingClientRect().bottom > 80) : null, top0 = anchor?.getBoundingClientRect().top;
     $$('#col .card[data-post]').forEach((el) => { const i = FEED.findIndex((p) => p.id === el.dataset.id); if (i < 0) return; el.dataset.post = i;
-      const o = was.find((p) => p.id === el.dataset.id), n = FEED[i]; if (o && n !== o && (JSON.stringify(o.draft || null) !== JSON.stringify(n.draft || null) || o.title !== n.title || o.done !== n.done) && !el.contains(document.activeElement)) el.outerHTML = postCard(n, i); });
+      const o = was.find((p) => p.id === el.dataset.id), n = FEED[i]; if (o && n !== o && (JSON.stringify(o.draft || null) !== JSON.stringify(n.draft || null) || JSON.stringify(o.take || null) !== JSON.stringify(n.take || null) || o.title !== n.title || o.done !== n.done) && !el.contains(document.activeElement)) el.outerHTML = postCard(n, i); });
     if (fresh.length) { const first = $('#col .card[data-post]'); const html = fresh.map((p, i) => postCard(p, i)).join(''); if (first) first.insertAdjacentHTML('beforebegin', html); else col.insertAdjacentHTML('afterbegin', html);
       fresh.forEach((p) => $(`#col .card[data-id="${CSS.escape(p.id)}"]`)?.classList.add('is-new')); FEED_AT += fresh.length; }
     const nl = $('#col .new-since'), nh = newLineHtml(); if (nl) { if (nh) nl.outerHTML = nh; else nl.remove(); } else if (nh) $('#col .card[data-post]')?.insertAdjacentHTML('beforebegin', nh);
@@ -1635,6 +1680,18 @@
     const y = scrollY; await renderFeed(); scrollTo(0, y);
     const c = $(`#col .card[data-id="${id}"]`); if (c && !quiet) { c.classList.add('is-new'); setTimeout(() => c.classList.remove('is-new'), 2400); }
   };
+  /* v1: cards whose take changed are drawn again where they are; the feed keeps its order (insertNew's pattern, no new cards) */
+  const redrawTakes = async (ids) => { if (view !== 'feed' || !ids?.length) return; const was = FEED.slice(); const r = await loadFeed(); if (!r || view !== 'feed') { FEED = was; return; }
+    FEED = was.map((p) => ALL[p.id] || p);
+    for (const id of ids) { const el = $(`#col .card[data-id="${CSS.escape(id)}"]`); const i = el ? +el.dataset.post : -1; if (!el || FEED[i]?.id !== id || el.contains(document.activeElement)) continue; el.outerHTML = postCard(FEED[i], i); }
+    requestAnimationFrame(() => { placeStickers(); placeNotes(); }); };
+  /* v1: Another take keeps the card in place (v2's handler passes it for the stack); the new take shows on its draft when drawn */
+  document.addEventListener('click', async (e) => { if (V2) return; const b = e.target.closest('.card [data-act="take"]'); if (!b) return; e.stopImmediatePropagation();
+    const p = FEED[+b.closest('.card').dataset.post]; if (!p || b.disabled) return; b.disabled = true;
+    const r = await tapi('POST', `/api/cards/${p.id}/remix`, { queue: true, take: true }); b.disabled = false;
+    if (r?.error || !r?.queued) return toast(`${ic('info', 's16')}${esc(r?.error || 'Another take isn’t available yet.')}`);
+    await redrawTakes([p.id]);
+    toast(`${ic(r.drawError ? 'info' : 'refresh', 's16')}${esc(r.drawError || (r.drawing ? 'Another take is on its way. It shows on this card when it’s ready.' : 'Another take is on this card.'))}`); }, true);
 
   /* ---------- the ··· menu on every card ---------- */
   const closePop = () => $('#pop')?.remove();
@@ -1745,6 +1802,8 @@
     if (sc.look > 0) r.push({ up: true, ic: 'pic', t: sc.look >= 3 ? 'Its first draft is ready to look at' : 'An ad to look at', w: sc.look });
     if (sc.fatigue < 0) r.push({ up: false, ic: 'eyeoff', t: sc.quiet ? 'You opened it a while ago and its jam has gone quiet, so it’s moving down' : `You’ve seen it ${sc.seen > 1 ? `on ${sc.seen} days` : 'before'}, so it’s moving down`, w: -sc.fatigue });
     if (sc.feedback < 0) r.push({ up: false, ic: 'minus', t: `Fewer from ${AGENT[p.agent]}, as you asked`, w: -sc.feedback });
+    if (sc.chan < 0) r.push({ up: false, ic: 'minus', t: 'For a channel you don’t run', w: -sc.chan });
+    if (sc.pace > 0) r.push({ up: true, ic: 'trendup', t: ['none', 'few'].includes(S.viewer.adPace) ? 'Groundwork first, as you run few ads' : 'New ads first, as you run them most weeks', w: sc.pace });
     return r.sort((a, b) => (b.up - a.up) || b.w - a.w); };
   const rankHtml = (id) => { const sc = SCORES[id], p = byId(id); if (!sc || !p) return '';
     const rs = reasonsOf(p, sc), pos = FEED.findIndex((x) => x.id === id), top = rs.filter((x) => x.up).slice(0, 2).map((x) => x.t);
@@ -2513,7 +2572,8 @@
         const ids = (r.ids || []).filter((id) => !PINNED.has(id));
         if (pill && ids.length) { NEWIDS = ids; pill.hidden = false; pill.innerHTML = `<button data-newcards>${ic('up', 's14')}${ids.length} new card${ids.length > 1 ? 's' : ''} · show</button>`; }
         /* v2: a take or new words landed in the background (remix.js): the card is drawn again in place, no reload */
-        if (V2 && (r.updated || []).length) { await loadFeed(); for (const id of r.updated) { if ($(`#col .card[data-id="${CSS.escape(id)}"]`)) { await rerenderKeep(id, false); break; } } } }
+        if (V2 && (r.updated || []).length) { await loadFeed(); for (const id of r.updated) { if ($(`#col .card[data-id="${CSS.escape(id)}"]`)) { await rerenderKeep(id, false); break; } } }
+        else if ((r.updated || []).length) await redrawTakes(r.updated); /* v1: the take landed on the card it was asked from, same place in the feed */ }
     }
     pulseT = setTimeout(pulse, DP?.w && DP.w.stage === 'team' && window.BREW_DEMO ? 2500 : 10e3);
   };
@@ -4739,10 +4799,24 @@
         <div class="m2-chips">${(tn.topics || []).map((t) => `<span class="chip">${esc(t)}<button class="linkbtn" data-tu-topicx="${esc(t)}" aria-label="Remove ${esc(t)}">${ic('x', 's14')}</button></span>`).join('')}</div></section>
       <section class="lx-sec">${lxHead('lx-agents', 'Agents', '', 'How much each agent shows up in your feed.')}${(r.agents || []).map((a) => `<div class="tu-ag">${face(a.id)}<span class="tu-t"><b>${esc(a.name || AGENT[a.id])}</b></span><span class="tu-seg" role="radiogroup" aria-label="${esc(a.name)}">${W.map((w) => `<button role="radio" aria-checked="${(a.weight || 'normal') === w}" data-tu-w="${esc(a.id)}:${w}">${w[0].toUpperCase() + w.slice(1)}</button>`).join('')}</span></div>`).join('')}</section>
       ${(tn.notes || []).length ? `<section class="lx-sec">${lxHead('lx-prefs', 'My preferences', tn.notes.length, 'From what you dropped into My preferences.')}${tn.notes.map((n) => `<div class="tu-sig"><span class="tu-t"><b>${esc(n.text || n.name || '')}</b></span><button class="icon-btn" data-tu-notex="${esc(n.id)}" aria-label="Remove">${ic('x', 's16')}</button></div>`).join('')}</section>` : ''}
+      ${tuSetup()}
       <section class="lx-sec">${lxHead('lx-seat', 'Your seat', '', '')}<button class="lx-heard-row" data-r2-tune>${face(R.face)}<span><b>${esc(R.name)}</b><small>Who the feed is for, what comes first and your focus</small></span>${ic('right', 's16')}</button></section>`);
     if (UI2) $('.lib-head')?.remove(); $('#col')?.classList.add('lib-col', 'tu-col'); };
+  /* the reading screen's answers, changeable here (so "change it later" is true): moves a morning, channels, ads last month, and
+     the brand's voice (the team's, so only for its people) */
+  const TU_SET = { perDay: [[3, '3'], [5, '5'], [10, '10']], adPace: [['none', 'None'], ['few', 'A few'], ['ten', '10+'], ['always', 'Always on']], voice: [['site', 'Like our site'], ['warmer', 'Warmer'], ['sharper', 'Sharper'], ['plainer', 'Plainer']] };
+  const TU_CH = [['instagram', 'Instagram'], ['facebook', 'Facebook'], ['google', 'Google'], ['email', 'Email'], ['whatsapp', 'WhatsApp'], ['marketplace', 'Marketplaces']];
+  const tuSetup = () => { const v = S.viewer, team = !!(window.LIVE?.me && (window.LIVE.access?.role || window.LIVE.access?.full)) && GEN;
+    const seg = (k, label, cur) => `<div class="tu-ag"><span class="tu-t"><b>${label}</b></span><span class="tu-seg" role="radiogroup" aria-label="${label}">${TU_SET[k].map(([x, t]) => `<button role="radio" aria-checked="${String(cur) === String(x)}" data-tu-v="${k}:${x}">${t}</button>`).join('')}</span></div>`;
+    return `<section class="lx-sec">${lxHead('lx-setup', 'Your setup', '', 'From the questions while Brew read your store.')}
+      ${seg('perDay', 'Moves a morning', v.perDay || '')}
+      <div class="tu-ag"><span class="tu-t"><b>Channels you run</b><small>Up to three. Cards for other channels sit lower.</small></span><span class="tu-seg">${TU_CH.map(([x, t]) => `<button aria-pressed="${(v.channels || []).includes(x)}" data-tu-ch="${x}">${t}</button>`).join('')}</span></div>
+      ${seg('adPace', 'Ads last month', v.adPace || '')}
+      ${team ? seg('voice', 'Brand voice', v.voice || 'site') : ''}</section>`; };
   const tuPut = async (body) => { const r = await tapi('PUT', '/api/tenants/:t/tuning', body); if (r.error) return toast(esc(r.error)); TU.d = r; renderTune(); };
   document.addEventListener('click', async (e) => { if (view !== 'tune') return; const t = e.target;
+    const sv = t.closest('[data-tu-v]'); if (sv) { const [k, v0] = sv.dataset.tuV.split(':'); S.viewer[k] = k === 'perDay' ? +v0 : v0; save(); if (k === 'voice') pushVoice(); return renderTune(); }
+    const cv = t.closest('[data-tu-ch]'); if (cv) { const x = cv.dataset.tuCh, cur = S.viewer.channels || []; S.viewer.channels = cur.includes(x) ? cur.filter((y) => y !== x) : [...cur, x].slice(-3); save(); return renderTune(); }
     const w = t.closest('[data-tu-w]'); if (w) { const [id, v] = w.dataset.tuW.split(':'); return tuPut({ weights: { ...(TU.d?.tuning?.weights || {}), [id]: v } }); }
     const tx = t.closest('[data-tu-topicx]'); if (tx) return tuPut({ topics: (TU.d?.tuning?.topics || []).filter((x) => x !== tx.dataset.tuTopicx) });
     const sx = t.closest('[data-tu-sigx]'); if (sx) { await tapi('DELETE', `/api/tenants/:t/tuning/signals/${encodeURIComponent(sx.dataset.tuSigx)}`); return renderTune(); }
@@ -4994,7 +5068,7 @@
   /* a brand wiped and read again is a new brand: what this browser saved for the old one (onboarding done, its workspace) goes,
      so the read, the check and the setup steps play again instead of opening straight onto the feed */
   const born = window.LIVE?.born; if (GEN && !LANDING && !window.BREW_DEMO && born && ls.get(`${LSP()}born`) !== String(born)) {
-    if (ls.get(`${LSP()}born`) || S.onboarded || TID) { ['tenant', 'tenant-own', 'continue', 'v2'].forEach((k) => ls.del(LSP() + k)); ls.del(KEY); S = fresh(); TID = null; lastSync = ''; }
+    if (ls.get(`${LSP()}born`) || S.onboarded || TID) { ['tenant', 'tenant-own', 'continue', 'v2', 'q1'].forEach((k) => ls.del(LSP() + k)); ls.del(KEY); S = fresh(); TID = null; lastSync = ''; }
     ls.set(`${LSP()}born`, String(born)); }
   window.LiveConn?.overlay(B, S); fitSeat(); save();
   /* ?go=feed (every Brew email, and invites as ?go=feed&joined=1): read before joined=1 strips the query. A signed-in person skips
@@ -5014,6 +5088,6 @@
   /* a link from a Brew email (?go=feed) or to a jam or card (#jam=, #card=, #work=, #v=): a signed-in person goes straight there,
      never through the read replay and the setup steps again (those stay at #setup) */
   else if (GEN && location.hash !== '#setup' && (S.onboarded || window.LIVE?.me) && (GO_FEED || /^#(jam|card|work|v)=/.test(location.hash))) { if (!S.onboarded) { S.onboarded = true; save(); } ensureTenant().then(() => { fitSeat(); save(); feed(); }); }
-  else if (S.onboarded && location.hash !== '#setup') feed(); else { if (location.hash === '#setup') history.replaceState(null, '', location.pathname); if (GEN && ls.get(`${LSP()}continue`)) { const c0 = ls.get(`${LSP()}continue`); ls.del(`${LSP()}continue`); ensureTenant(true).then(V2 && window.OB2 ? () => window.OB2.route(c0 === 'v2' ? 'continue' : 'run') : whoFor); } else if (GEN && !(window.BREW_DEMO && location.hash !== '#setup')) ensureTenant(true).then(setup); else start(); } /* the demo site's tour starts on the address screen */
+  else if (S.onboarded && location.hash !== '#setup') feed(); else { if (location.hash === '#setup') history.replaceState(null, '', location.pathname); if (GEN && ls.get(`${LSP()}continue`)) { const c0 = ls.get(`${LSP()}continue`); ls.del(`${LSP()}continue`); ensureTenant(true).then(V2 && window.OB2 ? () => window.OB2.route(c0 === 'v2' ? 'continue' : 'run') : afterRead); } else if (GEN && !(window.BREW_DEMO && location.hash !== '#setup')) ensureTenant(true).then(setup); else start(); } /* the demo site's tour starts on the address screen */
   if (/[#&]cx(err)?=/.test(location.hash)) setTimeout(() => window.LiveConn?.resume(), 900); });
 })();

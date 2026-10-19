@@ -3011,3 +3011,10 @@ a.pf-src:hover{color:var(--fg);text-decoration:underline;text-underline-offset:2
 .aiq-add input{flex:1;min-width:0;font:inherit;font-size:14px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg)}
 @media (max-width:520px){.aiq summary{grid-template-columns:40px minmax(0,1fr) auto;column-gap:10px}.aiq-as{margin-left:0}.aiq-a{grid-template-columns:72px minmax(0,1fr) auto}}
 .pf-writeup{align-self:flex-start;display:inline-flex;align-items:center;gap:4px;margin-top:12px;padding:0;border:0;background:none;font:inherit;font-size:13px;color:var(--fg-3);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+
+/* the health ring's AI answers row opens the same sheet as the Deck's shield (v1 and v2) */
+.hc-ais{display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-size:13px}
+/* Your setup in Your feed: channels are a multi-pick on the same segmented control; the "moves a morning" line in the feed */
+.tu-seg{flex-wrap:wrap}
+.tu-seg button[aria-pressed="true"]{background:var(--surface-2);color:var(--fg)}
+.feed-today{display:flex;align-items:center;gap:8px;margin:6px 0 18px;padding:0 4px;color:var(--fg-3);font-size:13px}

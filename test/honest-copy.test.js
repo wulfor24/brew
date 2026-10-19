@@ -98,3 +98,36 @@ test('the morning stack is behind FEED_STACK, keyed by the brand date, honest ab
   for (const re of [/\b10 ready moves\b/, /ready moves every morning/, /\d+ moves? (saved|a day guaranteed)/i]) assert.doesNotMatch(ob, re, `found ${re}: the stack shows real cards, it promises no count`);
   assert.doesNotMatch(ob, /Good morning, \$\{esc\(name\(\)\)\}\.<\/h1>[^]*?10 cards/, 'no fixed ten anywhere');
 });
+
+/* v1 questions (2026-10-19): v1's reading screen asks v2's taps through OB2.questions (mode q), never the tutorial, stack, gate
+   or "Good morning"; a confirm goes up only when a brand tap was answered and never with an empty hero list; lines that name
+   v2-only verbs say what v1 does; screens already asked are not asked again during onboarding */
+test('v1 asks the questions during the read, and only the questions', () => {
+  const ob = src('public/onboard2.js'), idx = src('public/index.html');
+  assert.match(ob, /window\.OB2 = \{[^}]*\bquestions, qState \}/);
+  assert.match(ob, /bs\.filter\(\(b\) => !\['tutorial', 'hold', 'done'\]\.includes\(b\.kind\)/, 'no tutorial, hold or done in mode q');
+  assert.match(ob, /if \(!s\) return mode === 'q' \? null : shell\(inner, o\);/, 'mode q never takes over v1\'s screen');
+  assert.match(ob, /if \(mode === 'q'\) \{ const bt = \['lead', 'rivals', 'who'\]; if \(!bt\.every\(\(k\) => st\.done\[k\]\)\) return; if \(!bt\.some\(\(k\) => st\.done\[k\] === true\)\) return; \}/);
+  assert.match(ob, /st\.done\.lead === true && \(mode !== 'q' \|\| \(st\.v2\.hero \|\| \[\]\)\.length\)/, 'never an empty hero list from v1');
+  assert.match(ob, /Heart what fits\. Hide what doesn’t\./); assert.match(ob, /You can change it in Your feed\./); assert.match(ob, /Brew marks that many as today’s\./);
+  assert.match(ob, /slice\(0, mode === 'q' \? 99 : 4\)/, 'v1 offers every seat, as its seat step did');
+  assert.match(ob, /if \(mode !== 'q'\) voiceMemory\(v\);/, 'v1 saves the voice after the claim (pushVoice), not before it');
+  assert.match(app, /const QM = !V2 && GEN && !!window\.OB2\?\.questions && !window\.OB2\.qState\(\)\.qDone;/);
+  assert.match(app, /Promise\.all\(\[readP, qP\]\)\.then\(\(\[, q\]\) => showDone\(q\)\);/, 'the done bar waits for the read and the last question');
+  assert.match(app, /if \(posted\) \{ b\.disabled = true; return continueToFeed\(\); \}/);
+  assert.match(app, /const noWants = !S\.onboarded && qAns\('first'\), noLane = !S\.onboarded && qAns\('lead'\);/, 'a later Tune still shows everything');
+  assert.match(app, /\$\('#ob-next'\)\.onclick = \(\) => \(S\.viewer\.teamSize === 'me' \? finishOnboarding\(\) : teamStep\(\)\);/);
+  assert.match(app, /const ids = \[\.\.\.new Set\(\[\.\.\.\(S\.viewer\.tools \|\| \[\]\), \.\.\.ROLE\(\)\.connectors\]\)\]/, 'picked tools first');
+  assert.match(app, /const todayN = \(\) => \+S\.viewer\.perDay \|\| 14;/);
+  assert.match(app, /'continue', 'v2', 'q1'\]\.forEach/, 'a re-read starts the questions fresh');
+  assert.match(idx, /\.setup\.su-q\{/);
+  for (const re of [/OB2\.(stack|morning|run)\(/]) assert.doesNotMatch(app.match(/const setup = async[^]*?\n  };\n/)[0].replace(/if \(V2 && window\.OB2\) \{ view = 'setup'; return window\.OB2\.run\(\); \}/, ''), re, 'v1 setup runs no v2 screen');
+});
+
+test('Another take is on every card in v1 and v2; Make it yours stays v2; a take shows on its card', () => {
+  assert.match(app, /<button class="icon-btn v2-act" data-act="take" aria-label="Another take" title="Another take">\$\{ic\('refresh'\)\}<\/button>\$\{V2 \? `<button class="icon-btn v2-act" data-act="make"/);
+  assert.match(app, /document\.addEventListener\('click', async \(e\) => \{ if \(V2\) return; const b = e\.target\.closest\('\.card \[data-act="take"\]'\)/, 'v1 keeps the card in place');
+  assert.match(app, /if \(p\.take && \(p\.take\.image \|\| p\.take\.drawing \|\| p\.take\.drawError\)\)/, 'cardOf draws the take');
+  assert.match(app, /else if \(\(r\.updated \|\| \[\]\)\.length\) await redrawTakes\(r\.updated\);/, 'the pulse redraws it in place on v1');
+  assert.match(app, /data-ais-proof="\$\{esc\(aiStand\(\)\.src \|\| 'weekly'\)\}">\$\{ic\('shield', 's14'\)\}Every question and each AI’s answer/, 'the health ring opens the AI answers sheet');
+});
