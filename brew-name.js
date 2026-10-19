@@ -14,7 +14,11 @@ const OLD_RX = [[/( · MOVE \d{2,4}) OF \d{2,3}\b/g, '$1'],
   [/\b(B|b)etween checks,? Brew re-reads\b/g, '$1etween checks, look at'], [/\bat each check,? Brew re-reads\b/gi, 'at each check, look at'],
   [/\bBrew re-reads\b/g, 'the team looks at'], [/\bBrew watches\b/g, 'The team watches'], [/(^|[.!?]\s+)Brew ships it\b/g, '$1The team ships it'], [/\bBrew ships it\b/g, 'the team ships it'],
   [/\b(W|w)e (pause|revert|roll back|stop)\b/g, (m, w, v) => `${w === 'W' ? 'The' : 'the'} team should ${v === 'roll back' ? 'roll back' : v}`]];
-export const brewText = (s) => { if (typeof s !== 'string') return s; let t = /shopos/i.test(s) ? s.replace(RE, (m) => TO[m] ?? 'brew') : s; for (const [a, b] of OLD_COPY) if (t.includes(a)) t = t.split(a).join(b); for (const [re, b] of OLD_RX) t = t.replace(re, b); return t; };
+/* an address is a name, not copy: sai@shopos.ai, https://shopos.ai/x and shopos.ai stay as written (the rename once turned
+   invited emails into @brew.ai, so invites and members on that domain could never match their Google sign-in) */
+const inAddress = (s, i, m) => { let a = i, b = i + m.length; while (a > 0 && !/[\s"'<>(),;]/.test(s[a - 1])) a--; while (b < s.length && !/[\s"'<>(),;]/.test(s[b])) b++;
+  const tok = s.slice(a, b); return tok.includes('@') || /:\/\/|^www\./i.test(tok) || /^shopos\.[a-z]{2,}/.test(s.slice(i)); };
+export const brewText = (s) => { if (typeof s !== 'string') return s; let t = /shopos/i.test(s) ? s.replace(RE, (m, i) => inAddress(s, i, m) ? m : TO[m] ?? 'brew') : s; for (const [a, b] of OLD_COPY) if (t.includes(a)) t = t.split(a).join(b); for (const [re, b] of OLD_RX) t = t.replace(re, b); return t; };
 // a stored file: only text that we wrote (JSON, JS, Markdown, HTML, text), never secrets or binaries
 /* some generated packs stored "₹" as the text \u20b9 (escaped twice), and workspaces copied it: read it back as the character.
    Works on JSON text; control characters stay escaped so the JSON still parses. */
