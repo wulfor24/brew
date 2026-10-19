@@ -84,3 +84,19 @@ test('FEED-QA-05: steps that end empty (a store that did not open) wake no agent
   assert.doesNotMatch(src('public/onboard2.js'), /\$\{esc\(st\.error\)\} Check the address/);
   assert.match(a, /r\.querySelector\('\.st'\)\.textContent = 'Nothing read'/);
 });
+
+/* ---------- FEED-QA-06 / FEED-QA-13: the ready card ---------- */
+test('FEED-QA-06 / 13: the ready card always shows numbers, counts cards from the loaded feed, and names both counts', () => {
+  const a = appSrc(), fo = a.slice(a.indexOf('const finishOnboarding = async'), a.indexOf("$('#open-feed').onclick"));
+  assert.match(fo, /if \(!rank\(\)\.length\) await Promise\.race\(\[loadFeed\(\)/, 'the feed is loaded before it is counted');
+  assert.doesNotMatch(fo, /<b class="tnum">\$\{ic\(/, 'never an icon where a number goes');
+  assert.match(fo, /\$\{CARDS_WORD\(n\)\}/); assert.match(fo, /\$\{MOVES_WORD\(movesInPlan\(\)\)\}/);
+  const [cw, mw] = a.match(/const CARDS_WORD = (\(n\) => `[^`]+`), MOVES_WORD = (\(n\) => `[^`]+`);/).slice(1).map((x) => (0, eval)(x));
+  assert.equal(cw(12), 'cards in your feed'); assert.equal(cw(1), 'card in your feed'); assert.equal(mw(51), 'moves in your plan');
+  const mip = a.match(/const movesInPlan = (\(\) => \{[^}]+\});/)[1];
+  const run = (BREW, w = {}) => new Function('BREW', 'window', `return (${mip})();`)(BREW, w);
+  assert.equal(run(null, { MOVES_WRITTEN: 7, MOVES_TOTAL: 51 }), 7, 'before status loads: the seed’s count');
+  assert.equal(run({ movesDone: 57, total: 51 }, {}), 51, 'never more than the plan');
+  assert.equal(run(null, {}), 0);
+  assert.match(a, /moves in your plan written\$\{etaOf\(BREW\)\}/, 'the feed’s own counter uses the same words');
+});

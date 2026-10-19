@@ -844,21 +844,24 @@
         IV.busy = false; IV.open = false; IV.chips = left; redraw(); if (err) msg('bad', err); }; }
     $('#ob-back').onclick = connectWhat; $('#ob-next').onclick = finishOnboarding;
   };
-  const finishOnboarding = () => {
-    if ($('#ready')) return; // a double-click on Next must not stack a second ready card
-    S.onboarded = true; save(); tapi('POST', '/api/tenants/:t/ready'); claimFirst().then(pushVoice); /* the voice tap, if it did not save yet */
-    const n = rank().length, R = ROLE();
+  /* the two counts, named the same everywhere: the cards the feed shows, and the moves (plans) they come from */
+  const CARDS_WORD = (n) => `card${n === 1 ? '' : 's'} in your feed`, MOVES_WORD = (n) => `move${n === 1 ? '' : 's'} in your plan`;
+  const movesInPlan = () => { const n = +BREW?.movesDone || +window.MOVES_WRITTEN || 0, t = +BREW?.total || +window.MOVES_TOTAL || 0; return t ? Math.min(n, t) : n; }; /* the seed's count (pack-numbers.js) until status loads: always a number */
+  const finishOnboarding = async () => {
+    if ($('#ready') || finishOnboarding.busy) return; // a double-click on Next must not stack a second ready card
+    S.onboarded = true; delete S.obStep; save(); tapi('POST', '/api/tenants/:t/ready'); claimFirst().then(pushVoice); /* the voice tap, if it did not save yet */
     if (V2) return feed(); /* v2 already said good morning, showed the rings and the first three: no second welcome on top of it */
-    /* the moves count is the brand's own (status.total, loaded by loadMV); until it is loaded the tile says Moves read with no number */
+    /* the cards count is the feed's own: before the feed has loaded, load it (a few seconds at most), so it never says 0 */
+    finishOnboarding.busy = true; if (!rank().length) await Promise.race([loadFeed().catch(() => null), wait(4000)]); finishOnboarding.busy = false; if ($('#ready')) return;
+    const n = rank().length || (B.posts || []).filter((p) => !p.onlyWhen).length, R = ROLE();
     const nc = Object.keys(S.conn).filter(conn).length;
-    const mvTile = () => { const mvN = +BREW?.movesDone || 0, mvT = +BREW?.total || 0;
-      return mvT ? `<div data-mv-tile><b class="tnum">${Math.min(mvN, mvT)}</b>moves written</div>` : `<div data-mv-tile><b class="tnum">${ic('check', 's18')}</b>moves written</div>`; };
-    if (GEN && !+BREW?.total) loadMV().then(() => { const el = $('#ready [data-mv-tile]'); if (el && +BREW?.total) el.outerHTML = mvTile(); }).catch(() => {});
+    const mvTile = () => `<div data-mv-tile><b class="tnum">${movesInPlan()}</b>${MOVES_WORD(movesInPlan())}</div>`;
+    if (GEN && !BREW) loadMV().then(() => { const el = $('#ready [data-mv-tile]'); if (el) el.outerHTML = mvTile(); }).catch(() => {});
     document.body.insertAdjacentHTML('beforeend', `<div class="ready" id="ready"><div class="ready-card">
       <span class="so-mark" style="width:30px;height:30px">${SO()}</span>
       <h3>Your feed is ready${myFirst() ? ', ' + esc(myFirst()) : ''}.</h3>
-      <p>${n} ideas, picked for ${/^[AEIOU]/i.test(R.name) ? 'an' : 'a'} ${esc(R.name.toLowerCase())}. Tap any card to see more.</p>
-      <div class="counts"><div><b class="tnum">${n}</b>ideas</div><div><b class="tnum">5</b>agents</div>${mvTile()}${nc ? `<div><b class="tnum">${nc}</b>connected</div>` : ''}</div>
+      <p>${n} ${n === 1 ? 'card' : 'cards'}, picked for ${/^[AEIOU]/i.test(R.name) ? 'an' : 'a'} ${esc(R.name.toLowerCase())}. Each comes from a move in your plan. Tap any card to see more.</p>
+      <div class="counts"><div><b class="tnum">${n}</b>${CARDS_WORD(n)}</div>${mvTile()}<div><b class="tnum">5</b>agents</div>${nc ? `<div><b class="tnum">${nc}</b>connected</div>` : ''}</div>
       <button class="lm" id="open-feed"><span class="lm-rim"><span class="lm-in">Open my feed ${ic('right', 's18')}</span></span></button>
     </div></div>`);
     $('#open-feed').onclick = () => { $$('.ready').forEach((x) => x.remove()); feed(); };
@@ -1488,8 +1491,8 @@
   const mailOnHtml = (em, cls) => `<p class="${cls}" data-mailon>${ic('check', 's14')}<span>We’ll email <b>${esc(em)}</b> when your moves are ready.</span> <button class="linkbtn" type="button" data-mailmute>Mute</button></p>`;
   const brewingInner = () => { const n = BREW?.movesDone || 0, N = +BREW?.total || 50, em = ls.get(`${LSP()}mail`), stuck = brewStuck();
     return `<div class="bw-art"><img src="assets/brew/moves-brewing.jpg" alt="" decoding="async"><span class="bw-k"><span class="dot"></span>${stuck ? 'Paused' : 'Brewing'}</span></div>
-      <div class="body">${stuck ? `<h3>${esc(BREW.state || 'The moves are paused')}</h3><p>${n} of ${N} moves are written. The cards from them are in your feed now.</p>`
-        : `<h3>New cards land here as each move is written</h3><p>${n} of ${N} written${etaOf(BREW)}. Start with the top ad.</p>`}${BREW?.recheck?.words && !BREW.recheckDone ? `<p class="bw-meta">${ic('refresh', 's14')}Rewriting the brief and your first moves with ${esc(BREW.recheck.words)}</p>` : ''}
+      <div class="body">${stuck ? `<h3>${esc(BREW.state || 'The moves are paused')}</h3><p>${n} of ${N} moves in your plan are written. The cards from them are in your feed now.</p>`
+        : `<h3>New cards land here as each move is written</h3><p>${n} of ${N} moves in your plan written${etaOf(BREW)}. Start with the top ad.</p>`}${BREW?.recheck?.words && !BREW.recheckDone ? `<p class="bw-meta">${ic('refresh', 's14')}Rewriting the brief and your first moves with ${esc(BREW.recheck.words)}</p>` : ''}
         <div class="bw-bar"><i style="width:${Math.max(3, Math.round(100 * Math.min(n, N) / N))}%"></i></div>${stuck ? `<button class="btn btn-primary sm" type="button" data-mvpro>${PAYWALL ? 'Continue with Pro' : 'Write the rest'}</button>` : ''}
         ${window.BREW_DEMO ? '' /* the demo sends no email, and its visitor has no real address */
           : mailMe() && ls.get(`${LSP()}mail-mute`) !== mailMe() ? mailOnHtml(mailMe(), 'bw-mailed')
