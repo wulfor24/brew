@@ -36,7 +36,11 @@ const norm = (s) => String(s || '').toLowerCase().replace(/[’‘`´]/g, "'").r
 const STOP = new Set('a an the and or of to in on for with at by from is are was were be been it its this that these those as their they them our we you your has have had not no but if so than then into over under per vs via about more most very just really also like will would can could should do does did i me my us'.split(' '));
 const words = (s) => norm(s).split(' ').filter((w) => w.length > 2 && !STOP.has(w)).map((w) => w.replace(/(ing|ers|er|ies|es|s|ed|ly)$/, ''));
 const jaccard = (a, b) => { const A = new Set(words(a)), Bs = new Set(words(b)); if (!A.size || !Bs.size) return 0; let i = 0; A.forEach((x) => Bs.has(x) && i++); return i / (A.size + Bs.size - i); };
-export const sameLearning = (a, b) => norm(a) === norm(b) || jaccard(a, b) >= 0.8;
+const NUMW = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, twenty: 20, thirty: 30, 'thirty-five': 35, forty: 40, fifty: 50, sixty: 60, ninety: 90, hundred: 100 };
+const digits = (s) => String(s || '').toLowerCase().replace(/\b(thirty-five|one|two|three|four|five|six|seven|eight|nine|ten|twenty|thirty|forty|fifty|sixty|ninety|hundred)\b/g, (w) => String(NUMW[w]));
+/* the same point in other words: near-identical, or close and resting on the same numbers ("twice daily for 90 days" twice) */
+export const sameLearning = (a, b) => { const A = digits(a), Bx = digits(b); if (norm(A) === norm(Bx)) return true; const j = jaccard(A, Bx); if (j >= 0.8) return true;
+  const na = numsOf(A).sort().join(), nb = numsOf(Bx).sort().join(); return !!na && na === nb && j >= 0.45; };
 const dayOf = (ms) => new Date(ms).toISOString().slice(0, 10);
 const dateLabel = (ms) => new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 const pad = (n) => String(n).padStart(2, '0');
@@ -205,7 +209,7 @@ export function learnedMoveNs(moves = {}, L = null) {
   if (!learnedItems(L).length) return new Set();
   // only a move written after the team's words arrived can rest on them (older moves that say "the team" quote the read)
   const since = Date.parse(L?.at || 0) || +L?.at || 0;
-  return new Set(Object.entries(moves || {}).filter(([n, m]) => +n > 0 && m && (Date.parse(m.meta?.at || 0) || 0) >= since && TEAM_CITE.test(JSON.stringify([m.title, m.gives, m.sections, m.sources]))).map(([n]) => +n));
+  return new Set(Object.entries(moves || {}).filter(([n, m]) => +n > 0 && m && (/^What the team told us\b/.test(m.meta?.because || '') /* rewritten on the learnings (flagStale's why) */ || ((Date.parse(m.meta?.at || 0) || 0) >= since && TEAM_CITE.test(JSON.stringify([m.title, m.gives, m.sections, m.sources]))))).map(([n]) => +n));
 }
 
 /* ---------- cards: what the plan may do to the feed, checked: only cards that exist, never one both up and hidden ---------- */
@@ -223,7 +227,7 @@ export function vetCardPlan(c = {}, cards = [], items = []) {
   const wrong = new Set(hide.flatMap((x) => { const inCard = mk(`${have.get(x.id)?.title} ${have.get(x.id)?.sub}`), inWhy = mk(x.why); return [...inCard].filter((k) => inWhy.has(k)); }));
   const offMarket = (id) => [...mk(`${have.get(id)?.title} ${have.get(id)?.sub}`)].some((k) => wrong.has(k));
   const up = pick((c?.up || []).filter((x) => !(x?.id && offMarket(x.id))), 8);
-  const add = (c?.add || []).filter((x) => x?.title && x?.sub).slice(0, 3).map((x) => ({ title: cut(x.title, 90), sub: cut(x.sub, 320), why: (x.why || []).map((w) => cut(w, 110)).filter(Boolean).slice(0, 3), how: (x.how || []).map((w) => cut(w, 110)).filter(Boolean).slice(0, 3),
+  const add = (c?.add || []).filter((x) => x?.title && x?.sub).slice(0, 6).map((x) => ({ title: cut(x.title, 90), sub: cut(x.sub, 320), why: (x.why || []).map((w) => cut(w, 110)).filter(Boolean).slice(0, 3), how: (x.how || []).map((w) => cut(w, 110)).filter(Boolean).slice(0, 3),
     sector: ['signals', 'creatives', 'storefront', 'visibility', 'ads', 'catalog'].includes(x.sector) ? x.sector : 'signals', uses: (x.uses || []).filter((i) => items[i]).slice(0, 3) }));
   return { up, hide, add };
 }
@@ -301,7 +305,7 @@ function cardsLine(c = {}, name = 'the brand') {
 const S = { type: 'string' };
 export const EXTRACT_SCHEMA = { type: 'object', properties: { learnings: { type: 'array', items: { type: 'object', properties: {
   kind: { type: 'string', enum: KINDS, description: 'essence: who the brand is at heart, why it exists, what it stands for. goal: what they are trying to do (goals, priorities, upcoming plans, launches, dates). belief: what they believe about customers, product, claims and tone, and what to avoid. fact: a concrete fact (a product, a price, a launch, an audience, a channel, a number). tried: something they already did and how it went: a campaign, offer, channel, ad, influencer, price test, launch; say what they did, when if stated, and the result as they put it (worked, did not work, mixed), with their numbers.' },
-  text: { type: 'string', description: 'One plain sentence under 30 words about the brand, in the third person ("They…", "Customers…"). Only what the input states.' },
+  text: { type: 'string', description: 'One plain sentence under 35 words about the brand, in the third person ("They…", "Customers…", "The plan…"). Only what the input states.' },
   quote: { type: 'string', description: 'The exact words from the input this rests on, copied character for character (up to 200 characters)' },
   topic: { type: 'string', enum: [...MEM_TOPICS, 'none'], description: 'facts and beliefs: where it belongs (rules = something they never or always do in public); others: none' },
   conflictLabel: { type: 'string', description: 'facts only: the label of the fact-sheet line this states a DIFFERENT value for, copied exactly; empty when it agrees or the sheet does not have it' },
@@ -309,12 +313,14 @@ export const EXTRACT_SCHEMA = { type: 'object', properties: { learnings: { type:
 export function extractPrompt({ name, host, chunk, part, parts, kind, sheet }) {
   const lines = Object.values(sheet || {}).filter((f) => f?.label && !f.demo && f.kind !== 'demo').slice(0, 80).map((f) => `- ${f.label}: ${f.v}${f.connected ? ` (from ${TOOL[f.connected] || f.connected}, connected)` : ''}`);
   return `The team at ${name}${host ? ` (${host})` : ''} gave Brew this ${kind.toLowerCase()}${parts > 1 ? ` (part ${part} of ${parts})` : ''}. It may be a call between the brand's people and Brew or a customer, notes, emails or research.
-Pull out what Brew should learn about ${name}: its essence, its goals and plans, its beliefs, concrete facts, and what it already tried and how that went.
+Pull out what Brew should learn about ${name}: its essence, its goals and plans (the strategy, whoever proposed it), its beliefs and guardrails, concrete facts, and what it already tried and how that went. Brew turns these into its moves and the feed, so cover the whole input, start to end.
 - Anything the brand already did with a result ("we ran X and it did/didn't work", "our best ad was…", "influencers never converted for us") is kind tried, one per thing tried, with the result in their words. These matter most: never skip one.
 Rules:
 - Only what the input states. Never infer, round, convert or add a number, name, date or claim. Skip greetings, scheduling and small talk.
-- What the brand's own people say is the brand's view. What a customer says is about customers ("Customers say…"). What Brew or an interviewer suggests is not a learning unless the brand agreed to it.
-- One learning per item, no duplicates; 0 to 25 items. quote is copied exactly from the input.
+- Whoever wrote it (the brand's team, Brew, ShopOS, an agency or a consultant), a plan, proposal or strategy in it is the strategy Brew now works to. Keep each part as its own learning: every campaign or series (its name, who it is for, the channel, the format), every audience, market or region and its order, every offer or pack, every landing page, every retention or CRM step, every channel test, every target or goal number, every rollout step or wave, every measurement rule, and every guardrail on claims, creative or language. Plans are goal; rules and guardrails are belief.
+- What a customer says is about customers ("Customers say…").
+- Scripts, storyboards and example posts: one learning per series or idea saying what it is, who it is for and how it should feel, never one per line or scene.
+- One learning per distinct point: never the same point twice, even in other words. Up to 60 items for a long plan. quote is copied exactly from the input.
 - A fact that gives a different value for a line on the fact sheet below: set conflictLabel and conflictSays. The sheet and connected accounts are the source of truth for numbers.
 ${lines.length ? `\nFACT SHEET (what Brew already has):\n${lines.join('\n')}\n` : ''}
 INPUT:
@@ -326,24 +332,24 @@ const IMPACT = { type: 'string', enum: ['high', 'medium', 'low'], description: '
 const PICK = { type: 'object', properties: { id: S, why: { type: 'string', description: 'One plain sentence naming what the team said' } } };
 export const PLAN_SCHEMA = { type: 'object', properties: {
   stale: { type: 'array', description: 'Every move these learnings change, as many as they really touch (none to all of them), the most affected first', items: { type: 'object', properties: { n: { type: 'integer' }, impact: IMPACT, why: { type: 'string', description: 'One plain sentence: what in the learnings changes this move' }, uses: { type: 'array', items: { type: 'integer' }, description: 'the learning numbers it rests on' } } } },
-  fresh: { type: 'array', description: 'New moves the learnings open that no current move covers (0 to 3)', items: { type: 'object', properties: { title: S, why: { type: 'string', description: 'One sentence, naming the learning it comes from' } } } },
+  fresh: { type: 'array', description: 'New moves the learnings open that no current move covers (0 to 5)', items: { type: 'object', properties: { title: S, why: { type: 'string', description: 'One sentence, naming the learning it comes from' } } } },
   cards: { type: 'object', properties: {
     up: { type: 'array', description: 'Cards (by id, from the list) that build on what the team said and should come first (0 to 8). Only a card no learning cuts against: wrong market, audience, product, price rule or something they said did not work rules it out', items: PICK },
     hide: { type: 'array', description: 'Cards (by id, from the list) that contradict what the team said: something they said did not work, never do, or a product or goal they ruled out (0 to 8). Only a clear contradiction', items: PICK },
     repeats: { type: 'array', description: 'For EACH learning that says something did not work (kind tried, or a belief ruling a tactic out): that learning’s number and every card id from the list that repeats the same tactic, channel or offer (empty ids when none does)', items: { type: 'object', properties: { uses: { type: 'integer' }, ids: { type: 'array', items: S } } } },
-    add: { type: 'array', description: 'New cards that act on what the team said right now, each resting on one learning (1 to 3; 0 only when nothing in the learnings can be acted on)', items: { type: 'object', properties: {
+    add: { type: 'array', description: 'New cards that act on what the team said right now, each resting on one learning: one per campaign, offer or step of a plan they can start this week (1 to 6; 0 only when nothing in the learnings can be acted on)', items: { type: 'object', properties: {
       title: { type: 'string', description: 'What to do, under 12 words, in sentence case (only the first word and names capitalised), in the brand team’s words where possible' }, sub: { type: 'string', description: 'Two plain sentences: what to do and why, quoting what the team said. No number the learnings do not state' },
       why: { type: 'array', items: S, description: '2 or 3 short reasons, each from the learnings' }, how: { type: 'array', items: S, description: '2 or 3 short steps' },
       sector: { type: 'string', enum: ['signals', 'creatives', 'storefront', 'visibility', 'ads', 'catalog'] }, uses: { type: 'array', items: { type: 'integer' }, description: 'the learning numbers it rests on' } } } } } } } };
 export function planPrompt({ name, items, moves, cards = [] }) {
   const ms = Object.entries(moves || {}).filter(([n, m]) => +n >= 1 && m?.title).map(([n, m]) => `${n} | ${cut(m.title, 90)} | ${cut(m.gives || m.stat || '', 140)}${m.meta?.cadence ? ' | (weekly move)' : ''}`);
   const cs = cards.slice(0, 120).map((c) => `${c.id} | ${cut(c.title, 90)} | ${cut(c.sub, 140)}`);
-  return `${name}'s team just told Brew these learnings:\n${items.map((x, i) => `${i}. [${x.kind}] ${x.text}`).join('\n')}\n\nBrew's current moves for ${name} (number | title | what it gives):\n${ms.join('\n')}\n${cs.length ? `\nThe cards on ${name}'s feed now (id | title | what it says):\n${cs.join('\n')}\n` : ''}\nDecide:\n- stale: the moves these learnings make out of date: a goal changes what comes first, a belief rules out what the move proposes, a fact changes a product, price, launch or audience the move relies on, something they tried says the move repeats a failure or should build on a winner. Include every move the learnings really change; that can be many or all of them. Rate each one's impact honestly: high only when the move is now wrong. A move the learnings do not touch stays as it is. Never a weekly move.\n- fresh: what the learnings open that no move covers yet (a goal, a launch, a belief to build on). Empty when the current moves already cover it.\n- cards.up / cards.hide: from the card list only, by id. Lift a card only when every learning agrees with it (market, audience, product, price rule, what worked). Hide every card that repeats something they said did not work (the same tactic, channel or offer), and any card for a market or audience they say is not theirs. Hide only a clear contradiction, never a maybe.\n- cards.add: 1 to 3 cards the team can act on today from what they said (build on what worked, put their goal first). Each rests on a learning.\nNever invent anything the learnings do not say.`;
+  return `${name}'s team just told Brew these learnings:\n${items.map((x, i) => `${i}. [${x.kind}] ${x.text}`).join('\n')}\n\nBrew's current moves for ${name} (number | title | what it gives):\n${ms.join('\n')}\n${cs.length ? `\nThe cards on ${name}'s feed now (id | title | what it says):\n${cs.join('\n')}\n` : ''}\nDecide:\n- stale: the moves these learnings make out of date: a goal changes what comes first, a belief rules out what the move proposes, a fact changes a product, price, launch or audience the move relies on, something they tried says the move repeats a failure or should build on a winner. Include every move the learnings really change; that can be many or all of them. Rate each one's impact honestly: high only when the move is now wrong. A move the learnings do not touch stays as it is. Never a weekly move.\n- fresh: what the learnings open that no move covers yet (a campaign, an audience, a market, an offer, a retention step, a goal to build on). Empty when the current moves already cover it.\n- A plan or strategy in the learnings is what comes first now: a move that should lead with it, change its order, audience, market, channel or offer for it, or drop what it rules out is stale.\n- cards.up / cards.hide: from the card list only, by id. Lift a card only when every learning agrees with it (market, audience, product, price rule, what worked). Hide every card that repeats something they said did not work (the same tactic, channel or offer), and any card for a market or audience they say is not theirs. Hide only a clear contradiction, never a maybe.\n- cards.add: 1 to 6 cards the team can act on today from what they said: the first steps of their plan, building on what worked, their goal first. Each rests on a learning.\nNever invent anything the learnings do not say.`;
 }
 
 /* ---------- the run ---------- */
 export function createLearnings({ ai = null, packs, memory = null, builder = null, cadence = null, feed = null, onPack = async () => {}, log = console, now = () => Date.now(), env = process.env, wait = (ms) => new Promise((r) => setTimeout(r, ms).unref?.()) } = {}) {
-  const MAX_CHARS = +env.LEARN_MAX_CHARS || 120000, CHUNK = +env.LEARN_CHUNK_CHARS || 14000, LEARN_CAP = +env.LEARN_CAP_USD || 30, EST = +env.LEARN_MOVE_EST_USD || 0.6, FRESH_MS = +(env.LEARN_FRESH_MS ?? 24 * 3600e3), /* an upload rewrites every move it really changes, up to LEARN_CAP dollars (EST a move); one rewritten in the last day waits for the weekly run */ DAY_MAX = +env.LEARN_DAY_MAX || 12;
+  const MAX_CHARS = +env.LEARN_MAX_CHARS || 120000, CHUNK = +env.LEARN_CHUNK_CHARS || ((env.AI_PROVIDER || 'gemini').toLowerCase() === 'anthropic' ? 14000 : 120000), /* Gemini reads a whole plan in one go (no repeats across parts, the strategy seen whole) */ LEARN_CAP = +env.LEARN_CAP_USD || 30, EST = +env.LEARN_MOVE_EST_USD || 0.6, FRESH_MS = +(env.LEARN_FRESH_MS ?? 24 * 3600e3), /* an upload rewrites every move it really changes, up to LEARN_CAP dollars (EST a move); one rewritten in the last day waits for the weekly run */ DAY_MAX = +env.LEARN_DAY_MAX || 12;
   const locks = new Map(); const serial = (slug, f) => { const p = (locks.get(slug) || Promise.resolve()).then(f, f); locks.set(slug, p.catch(() => {})); return p; };
   const live = () => !!ai?.live;
 
@@ -351,7 +357,7 @@ export function createLearnings({ ai = null, packs, memory = null, builder = nul
     const parts = chunkText(text, CHUNK), box = { usd: 0 }, lists = [];
     // three chunks at a time: a long transcript reads in a minute, not ten
     for (let i = 0; i < parts.length; i += 3) {
-      const rs = await Promise.all(parts.slice(i, i + 3).map((chunk, j) => ai.call({ model: 'sonnet', tag: 'learn-extract', max: 6000, effort: 'low', schema: EXTRACT_SCHEMA,
+      const rs = await Promise.all(parts.slice(i, i + 3).map((chunk, j) => ai.call({ model: 'sonnet', tag: 'learn-extract', max: 16000, effort: 'low', schema: EXTRACT_SCHEMA,
         system: 'You read what a brand’s team shared and keep only what it states, word for word. You never invent.',
         prompt: extractPrompt({ name, host, chunk, part: i + j + 1, parts: parts.length, kind, sheet }) }).then((r) => { box.usd += r.usd || 0; return vetLearnings((r.json?.learnings || []).map((x) => ({ ...x, topic: x.topic === 'none' ? null : x.topic })), chunk); })));
       lists.push(...rs);
@@ -362,7 +368,7 @@ export function createLearnings({ ai = null, packs, memory = null, builder = nul
     const r = await ai.call({ model: 'sonnet', tag: 'learn-plan', max: 5000, effort: 'low', schema: PLAN_SCHEMA, prompt: planPrompt({ name, items, moves, cards }) });
     const ok = (n) => +n >= 1 && +n <= 50 && moves[n] && !moves[n].meta?.cadence;
     const stale = []; for (const s of r.json?.stale || []) if (ok(s.n) && !stale.some((x) => x.n === +s.n)) stale.push({ n: +s.n, impact: ['high', 'medium', 'low'].includes(s.impact) ? s.impact : 'medium', why: cut(s.why, 220), uses: (s.uses || []).filter((i) => items[i]).slice(0, 4) });
-    return { stale, fresh: (r.json?.fresh || []).filter((x) => x?.title).slice(0, 3).map((x) => ({ title: cut(x.title, 90), why: cut(x.why, 220) })), cards: vetCardPlan(r.json?.cards, cards, items), usd: r.usd || 0 };
+    return { stale, fresh: (r.json?.fresh || []).filter((x) => x?.title).slice(0, 5).map((x) => ({ title: cut(x.title, 90), why: cut(x.why, 220) })), cards: vetCardPlan(r.json?.cards, cards, items), usd: r.usd || 0 };
   }
   // the new moves run once the rewrite is in (both write moves.json), in the background
   /* they draw from the brand's weekly pot as new moves (its last kind): with too little left for two, the ideas wait in
@@ -452,7 +458,7 @@ export function createLearnings({ ai = null, packs, memory = null, builder = nul
           const C = L.cards || { up: {}, hide: {}, add: [] };
           for (const x of pl.cards.up || []) { C.up[x.id] = { why: x.why, title: x.title, at: t0, hash }; delete C.hide[x.id]; }
           for (const x of pl.cards.hide || []) { C.hide[x.id] = { why: x.why, title: x.title, at: t0, hash }; delete C.up[x.id]; }
-          C.add = [...made, ...(C.add || [])].slice(0, 6);
+          C.add = [...made, ...(C.add || [])].slice(0, 12);
           L.cards = C; await packs.put(slug, 'learned.json', L); await onPack(slug);
           if (made.length) await feed?.addCards?.(slug, made);
           Object.assign(cards, { up: pl.cards.up || [], hide: pl.cards.hide || [], add: made });
@@ -479,7 +485,7 @@ export function createLearnings({ ai = null, packs, memory = null, builder = nul
         } else if (ns.length) moves.rewrite = live() ? { error: 'rewrites are switched off here' } : { off: true };
         if (pl.fresh.length && cadence) {
           const d = await cadence.due(slug, { manual: true, only: ['learn'] }).catch((e) => ({ families: [], why: [e.message] }));
-          if (d.families.includes('learn')) { moves.learn = { n: Math.min(3, pl.fresh.length), after: !!moves.rewrite?.ns || !!moves.pending }; if (moves.pending) { L.pendingFull.fresh = pl.fresh; await packs.put(slug, 'learned.json', L); } else afterRewrite(slug, pl.fresh); } /* waiting on the first-learnings answer */
+          if (d.families.includes('learn')) { moves.learn = { n: Math.min(5, pl.fresh.length), after: !!moves.rewrite?.ns || !!moves.pending }; if (moves.pending) { L.pendingFull.fresh = pl.fresh; await packs.put(slug, 'learned.json', L); } else afterRewrite(slug, pl.fresh); } /* waiting on the first-learnings answer */
           else moves.learn = { why: d.why || [] };
         }
       }

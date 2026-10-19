@@ -30,7 +30,7 @@ export const FAMILIES = {
   listen: { label: 'Listening', kicker: 'LISTENING', min: 2, max: 4, badge: 'Listening move' },
   auto: { label: 'Automation', kicker: 'AUTOMATION', min: 2, max: 4, badge: 'Automation move' },
   /* written when the team adds learnings in a jam (brand-learnings.js), never on the weekly clock */
-  learn: { label: 'From what you told us', kicker: 'FROM YOUR TEAM', min: 1, max: 3, badge: 'From your team' }
+  learn: { label: 'From what you told us', kicker: 'FROM YOUR TEAM', min: 1, max: 5, badge: 'From your team' }
 };
 export const FAMILY_ORDER = ['listen', 'auto']; // the weekly families
 const ON_ASK = ['learn']; // families that run only when asked (manual, named in only)

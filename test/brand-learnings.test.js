@@ -214,7 +214,7 @@ test('cadence: learned moves run only when asked, cite the team’s words, and o
   assert.ok(ev.some((e) => /Goal \(the team's words\): Launch the serum in November at ₹899/.test(e.text) && e.src.startsWith('Call transcript, added by Priya')));
   const pr = familyPrompt('auto', { name: 'Glow', host: 'glow.in', ev: [], scorecard: { areas: [], weakest: [] }, auto: { email: 'Klaviyo', chat: 'WhatsApp' }, brief, k: 3 });
   assert.match(pr, /toldByTheTeam/); assert.match(pr, /Never say miracle/);
-  assert.equal(FAMILIES.learn.max, 3);
+  assert.equal(FAMILIES.learn.max, 5); /* a strategy can open up to five new moves */
   const none = await writeFamily('learn', { ai: { call: async () => assert.fail('no call without learnings') }, slug: 'x', pack: { profile: {}, brief: { oneLine: 'x' } }, numbers: () => [] });
   assert.equal(none.skipped, 'nothing learned yet');
 });

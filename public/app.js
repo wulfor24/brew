@@ -5051,11 +5051,12 @@
     if (f.size > dropMax(f)) return { error: `${f.name} is over ${Math.round(dropMax(f) / 1e6)} MB.` };
     const txt = isTxtFile(f), v = await dropRead(f, txt ? 'readAsText' : 'readAsDataURL'); if (v == null) return { error: `${f.name} didn’t open.` };
     return tapi('POST', `/api/brands/${encodeURIComponent(mvSlug())}/drop/read`, { dest, name: f.name, type: f.type, ...(txt ? { text: v } : { data: v }) }); };
-  const KIND_H = { essence: 'Essence', goal: 'Goals', belief: 'Beliefs', fact: 'Facts', tried: 'What they tried' };
-  const dropDraftHtml = (d, gone) => { const ks = Object.keys(KIND_H).filter((k) => d.items.some((x) => x.kind === k));
-    return `<p class="m2-q">${d.replace ? 'Brew already saved this upload. Change what it keeps, then Save.' : `Check what Brew read before it becomes ${esc(B.brand.name)}’s brand context. Untick anything wrong.`}${d.again ? ` ${d.again} thing${d.again === 1 ? '' : 's'} it already knew ${d.again === 1 ? 'is' : 'are'} left out.` : ''}${d.clipped ? ` It was long, so Brew read the first ${d.clipped.toLocaleString('en-US')} characters.` : ''}</p>
-      <div class="dl-list">${ks.map((k) => `<b class="dl-h">${KIND_H[k]}</b>${d.items.map((x, i) => [x, i]).filter(([x]) => x.kind === k).map(([x, i]) => `<label class="dl-row${gone.has(i + 1) ? ' is-off' : ''}"><input type="checkbox" data-dl-i="${i + 1}"${gone.has(i + 1) ? '' : ' checked'}><span>${esc(x.text)}</span></label>`).join('')}`).join('')}
-      ${d.conflicts?.length ? `<b class="dl-h">Not saved: the fact sheet wins on numbers</b>${d.conflicts.map((c) => `<p class="dl-note">It says ${esc(c.says)}; ${esc(c.label || 'the fact sheet')} reads ${esc(String(c.v))}${c.src ? ` from ${esc(c.src)}` : ''}.</p>`).join('')}` : ''}</div>`; };
+  /* the review: groups in the order a strategy reads (plans first), each line with the words it rests on */
+  const KIND_H = { goal: 'Goals and plans', belief: 'Beliefs and guardrails', fact: 'Facts', tried: 'What they tried', essence: 'Essence' };
+  const dzKb = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1e3))} KB`);
+  const dzClock = (ms) => { const s0 = Math.floor(ms / 1000); return `${Math.floor(s0 / 60)}:${String(s0 % 60).padStart(2, '0')}`; };
+  const dzSame = (a, b) => { const f = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); return f(a) === f(b) || f(b).includes(f(a)); }; /* a quote that is the line itself adds nothing */
+  const dzStep = (state, t, d = '') => `<li class="dz-step is-${state}"><span class="dz-dot">${state === 'done' ? ic('check', 's14') : state === 'on' ? '<span class="spin"></span>' : ''}</span><span><b>${t}</b>${d ? `<small>${d}</small>` : ''}</span></li>`;
   /* the learnings reply (brand-learnings.js replyText): **headings**, "- " lines and plain lines */
   const dlReply = (t) => { const bold = (x) => esc(x).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>'); let ul = false; const out = [];
     for (const ln of String(t).split('\n')) { const li = /^\s*-\s+(.*)$/.exec(ln); if (li) { if (!ul) { out.push('<ul>'); ul = true; } out.push(`<li>${bold(li[1])}</li>`); continue; }
@@ -5063,40 +5064,77 @@
     if (ul) out.push('</ul>'); return out.join(''); };
   const m2Drop = (files) => { files = [...files].slice(0, 8); if (!files.length) return;
     const dest = (k, icon, t, d) => `<button class="m2-dest" data-m2-dest="${k}">${ic(icon, 's18')}<span><b>${t}</b><small>${d}</small></span></button>`;
-    const head = `<header class="sh-h"><b class="sh-t">${files.length === 1 ? esc(files[0].name) : `${files.length} files`}</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>`;
-    modal(`<div class="sheet m2-sheet">${head}<div class="m2-body"><p class="m2-q">Where should this go?</p>${dest('memory', 'book', 'Add to brand memory', 'Brew reads it, you check what it learned, and the brief, moves and feed follow.')}${dest('prefs', 'person', 'Save to my preferences', 'Shapes what the feed shows me, not what the brand says.')}${UI2 ? dest('once', 'clock', 'Use it just this once', 'For the next thing I ask Brew, then forget it.') : ''}</div></div>`, (m) => {
-      const body = $('.m2-body', m), paint = (html) => { body.innerHTML = html; };
+    const name1 = files.length === 1 ? files[0].name : `${files.length} files`;
+    modal(`<div class="sheet m2-sheet"><header class="sh-h dz-h"><span class="dz-ht"><b class="sh-t">${esc(name1)}</b><small class="dz-sub">${files.length === 1 ? dzKb(files[0].size) : files.map((f) => esc(f.name)).join(', ')}</small></span><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header><div class="m2-body"><p class="m2-q">Where should this go?</p>${dest('memory', 'book', 'Add to brand memory', 'Brew reads it, you check what it learned, then the brief, moves and feed follow.')}${dest('prefs', 'person', 'Save to my preferences', 'Shapes what the feed shows me, not what the brand says.')}${UI2 ? dest('once', 'clock', 'Use it just this once', 'For the next thing I ask Brew, then forget it.') : ''}</div></div>`, (m) => {
+      const sheet = $('.m2-sheet', m), body = $('.m2-body', m), paint = (html, foot = '') => { body.innerHTML = html; $('.dz-foot', sheet)?.remove(); if (foot) sheet.insertAdjacentHTML('beforeend', `<footer class="dz-foot">${foot}</footer>`); };
+      const head = (t, sub) => { $('.sh-t', sheet).textContent = t; $('.dz-sub', sheet).textContent = sub || ''; };
       const after = () => { if (['learned', 'rules'].includes(document.body.dataset.m2) || view === 'learned') renderLearned(); if (view === 'tune') renderTune(); };
-      /* the learnings answer: the reply, the first-learnings choice (all of the moves or the top ones), then Done */
-      const answered = (r) => { const pend = r.pending ? `<div class="dl-acts"><button class="btn btn-primary sm" data-dl-say="go ahead">Rewrite all ${r.pending.all}</button><button class="btn btn-ghost sm" data-dl-say="just the top ones">Just the top ${r.pending.top}</button></div>` : '';
-        paint(`<div class="dl-reply">${dlReply(r.reply || '')}</div>${pend || `<div class="dl-acts"><button class="btn btn-primary sm" data-close>Done</button></div>`}`);
-        if (r.saved) { loadFeed().catch(() => {}); after(); }
-        $$('[data-dl-say]', body).forEach((b) => (b.onclick = async () => { const done = busyBtn(b, 'Starting…'); const x = await tapi('POST', `/api/brands/${encodeURIComponent(mvSlug())}/learnings/answer`, { text: b.dataset.dlSay }); done(); if (x.error) return toast(esc(x.error)); answered(x); })); };
       const say = (text) => tapi('POST', `/api/brands/${encodeURIComponent(mvSlug())}/learnings/answer`, { text });
-      const showDraft = (r, notes) => { const d = r.draft, gone = new Set();
-        paint(`${notes}${dropDraftHtml(d, gone)}<div class="dl-acts"><button class="btn btn-primary sm" data-dl-save>Save to brand memory</button><button class="btn btn-ghost sm" data-dl-cancel>Cancel</button></div>`);
-        $$('[data-dl-i]', body).forEach((c) => (c.onchange = () => { const i = +c.dataset.dlI; c.checked ? gone.delete(i) : gone.add(i); c.closest('.dl-row').classList.toggle('is-off', !c.checked); $('[data-dl-save]', body).disabled = gone.size >= d.items.length; }));
-        $('[data-dl-cancel]', body).onclick = async () => { await say('cancel'); closeModal(); toast('Nothing was saved.'); };
-        $('[data-dl-save]', body).onclick = async (e) => { const done = busyBtn(e.currentTarget, 'Saving…');
+      /* the result: what changed in the brief, the moves and the feed, each in its own block */
+      const answered = (r) => { const c = r.changed; sheet.classList.add('is-wide'); body.scrollTop = 0;
+        if (!c) { head(r.cancelled ? 'Nothing saved' : 'Nothing new to save', ''); return paint(`<div class="dz-reply">${dlReply(r.reply || '')}</div>`, `<span></span><button class="btn btn-primary sm" data-close>Done</button>`); }
+        head(`Saved to ${B.brand.name}’s brand context`, `${c.learned} learning${c.learned === 1 ? '' : 's'}${c.again ? ` · ${c.again} it already knew` : ''}${c.conflicts ? ` · ${c.conflicts} left to the fact sheet` : ''}`);
+        const mv = (x) => `<li><span class="dz-mn">${esc(mvNum(x.n))}</span><span>${esc(x.title || mvLabel(x.n))}</span></li>`, t = (x) => `<li><span>${esc(x.title || x)}</span>${x.why ? `<small>${esc(x.why)}</small>` : ''}</li>`;
+        const moves = [c.rewrite.length ? `<p class="dz-k">${c.queued ? 'Rewriting next, after the work running now' : 'Rewriting now'} · ${c.rewrite.length}</p><ul class="dz-ul">${c.rewrite.map(mv).join('')}</ul>` : '',
+          r.pending ? `<p class="dz-k">${r.pending.all} moves change with this</p><p class="dz-note">Rewrite all of them, or the ${r.pending.top} that matter most within this upload’s budget.</p><div class="dz-acts"><button class="btn btn-primary sm" data-dl-say="go ahead">Rewrite all ${r.pending.all}</button><button class="btn btn-ghost sm" data-dl-say="just the top ones">Just the top ${r.pending.top}</button></div>` : '',
+          c.weekly.length ? `<details class="dz-more"><summary>${c.weekly.length} more in the weekly run</summary><ul class="dz-ul">${c.weekly.map(mv).join('')}</ul></details>` : '',
+          c.fresh ? `<p class="dz-k">New moves · up to ${c.fresh}</p><p class="dz-note">Written from this in a few minutes, once the rewrite is in.</p>` : c.freshWhy ? `<p class="dz-note">New moves from this ${esc(c.freshWhy)}.</p>` : '',
+          c.rewriteError ? `<p class="dz-note is-warn">The rewrite can’t start now: ${esc(c.rewriteError)}. The moves are marked on the Moves tab.</p>` : ''].join('') || '<p class="dz-note">No move needed changing.</p>';
+        const feed = [c.add.length ? `<p class="dz-k">New on your feed · ${c.add.length}</p><ul class="dz-ul">${c.add.map(t).join('')}</ul>` : '', c.up.length ? `<p class="dz-k">Moved to the top · ${c.up.length}</p><ul class="dz-ul">${c.up.map(t).join('')}</ul>` : '', c.hide.length ? `<p class="dz-k">Off the top · ${c.hide.length}</p><ul class="dz-ul">${c.hide.map(t).join('')}</ul>` : ''].join('') || `<p class="dz-note">${c.rewrite.length || r.pending ? 'The feed reorders as the rewritten moves land.' : 'No card needed to move.'}</p>`;
+        paint(`<div class="dz-res"><section class="dz-card"><h4>${ic('book', 's16')}Brief and memory</h4><p class="dz-note">Every move, card and jam reads these now, each with its source. They sit on this page under What the team told Brew.</p></section>
+          <section class="dz-card"><h4>${ic('layers', 's16')}Moves</h4>${moves}</section><section class="dz-card"><h4>${ic('feed', 's16')}Your feed</h4>${feed}<p class="dz-note">Cards built on this carry “From what your team told Brew”.</p></section></div>`,
+          `<span></span><button class="btn btn-ghost sm" data-close>Done</button><button class="btn btn-primary sm" data-dz-feed>Open the feed</button>`);
+        loadFeed().catch(() => {}); after();
+        $('[data-dz-feed]', sheet)?.addEventListener('click', () => { closeModal(); location.hash = ''; location.reload(); });
+        $$('[data-dl-say]', body).forEach((b) => (b.onclick = async () => { const done = busyBtn(b, 'Starting…'); const x = await say(b.dataset.dlSay); done(); if (x.error) return toast(esc(x.error)); toast(`${ic('check', 's16')}${esc(String(x.reply || '').split('\n')[0])}`); b.closest('.dz-acts')?.remove(); })); };
+      /* the review: every line kept unless unticked, editable in place, with the words it rests on */
+      const showDraft = (r, notes) => { const d = r.draft, gone = new Set(), edits = new Map(), n = d.items.length; sheet.classList.add('is-wide');
+        head(`What Brew learned from ${files.length === 1 ? files[0].name : `${files.length} files`}`, `${n} learning${n === 1 ? '' : 's'}${d.chars ? ` from ${d.chars.toLocaleString('en-US')} characters` : ''}${d.again ? ` · ${d.again} it already knew left out` : ''} · nothing saved yet`);
+        const ks = Object.keys(KIND_H).filter((k) => d.items.some((x) => x.kind === k));
+        const row = (x, i) => `<li class="dz-row" data-i="${i + 1}"><button class="dz-tog" role="checkbox" aria-checked="true" aria-label="Keep this line" data-dz-tog>${ic('check', 's14')}</button><div class="dz-txt"><p class="dz-t" data-dz-t>${esc(x.text)}</p>${x.quote && !dzSame(x.quote, x.text) ? `<p class="dz-q">“${esc(x.quote)}”</p>` : ''}</div><button class="dz-ed" data-dz-ed>Edit</button></li>`;
+        paint(`${notes}${d.replace ? '<p class="dz-note">Brew saved this upload before. Change what it keeps, then Save.</p>' : ''}${d.clipped ? `<p class="dz-note">It was long, so Brew read the first ${d.clipped.toLocaleString('en-US')} characters.</p>` : ''}
+          <nav class="dz-chips">${ks.map((k) => `<a href="#dz-${k}" data-dz-jump="${k}">${KIND_H[k]}<b>${d.items.filter((x) => x.kind === k).length}</b></a>`).join('')}</nav>
+          ${ks.map((k) => `<section class="dz-sec" id="dz-${k}"><header><h4>${KIND_H[k]}</h4><button class="linkbtn" data-dz-all="${k}">Untick all</button></header><ul>${d.items.map((x, i) => [x, i]).filter(([x]) => x.kind === k).map(([x, i]) => row(x, i)).join('')}</ul></section>`).join('')}
+          ${d.conflicts?.length ? `<section class="dz-sec"><header><h4>Left out: the fact sheet wins on numbers</h4></header>${d.conflicts.map((c) => `<p class="dz-note">It says ${esc(c.says)}; ${esc(c.label || 'the fact sheet')} reads ${esc(String(c.v))}${c.src ? ` from ${esc(c.src)}` : ''}.</p>`).join('')}</section>` : ''}`,
+          `<p class="dz-why">Save updates the brief, rewrites the moves this changes and reorders your feed.</p><button class="btn btn-ghost sm" data-dl-cancel>Cancel</button><button class="btn btn-primary sm" data-dl-save>Save ${n}</button>`);
+        body.scrollTop = 0;
+        const sync = () => { const k = n - gone.size, b = $('[data-dl-save]', sheet); b.textContent = k ? `Save ${k}${gone.size ? ` of ${n}` : ''}` : 'Nothing to save'; b.disabled = !k;
+          $$('[data-dz-all]', body).forEach((a) => { const rows = $$(`#dz-${a.dataset.dzAll} .dz-row`, body); a.textContent = rows.every((r0) => gone.has(+r0.dataset.i)) ? 'Tick all' : 'Untick all'; }); };
+        const set = (li, on) => { const i = +li.dataset.i; if (on) gone.delete(i); else gone.add(i); li.classList.toggle('is-off', !on); $('[data-dz-tog]', li).setAttribute('aria-checked', String(on)); };
+        body.onclick = (e) => { const tg = e.target.closest('[data-dz-tog]'); if (tg) { const li = tg.closest('.dz-row'); set(li, li.classList.contains('is-off')); return sync(); }
+          const al = e.target.closest('[data-dz-all]'); if (al) { const rows = $$(`#dz-${al.dataset.dzAll} .dz-row`, body), on = rows.every((r0) => gone.has(+r0.dataset.i)); rows.forEach((r0) => set(r0, on)); return sync(); }
+          const jp = e.target.closest('[data-dz-jump]'); if (jp) { e.preventDefault(); $(`#dz-${jp.dataset.dzJump}`, body)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+          const ed = e.target.closest('[data-dz-ed]'); if (ed) { const t = $('[data-dz-t]', ed.closest('.dz-row')); t.contentEditable = 'true'; t.classList.add('is-editing'); t.focus(); const rg = document.createRange(); rg.selectNodeContents(t); const sl = getSelection(); sl.removeAllRanges(); sl.addRange(rg); } };
+        body.addEventListener('keydown', (e) => { const t = e.target.closest?.('[data-dz-t].is-editing'); if (!t) return; if (e.key === 'Enter') { e.preventDefault(); t.blur(); } if (e.key === 'Escape') { e.stopPropagation(); t.textContent = d.items[+t.closest('.dz-row').dataset.i - 1].text; t.blur(); } });
+        body.addEventListener('focusout', (e) => { const t = e.target.closest?.('[data-dz-t].is-editing'); if (!t) return; t.contentEditable = 'false'; t.classList.remove('is-editing'); const i = +t.closest('.dz-row').dataset.i, v = t.textContent.replace(/\s+/g, ' ').trim();
+          if (v && v !== d.items[i - 1].text) { edits.set(i, v); t.closest('.dz-row').classList.add('is-edited'); } else { t.textContent = d.items[i - 1].text; edits.delete(i); t.closest('.dz-row').classList.remove('is-edited'); } });
+        $('[data-dl-cancel]', sheet).onclick = async () => { await say('cancel'); closeModal(); toast('Nothing was saved.'); };
+        $('[data-dl-save]', sheet).onclick = async (e) => { const done = busyBtn(e.currentTarget, 'Saving…');
+          for (const [i, v] of edits) if (!gone.has(i)) { const x = await say(`change ${i} to ${v}`); if (x.error) { done(); return toast(esc(x.error)); } } /* edits first: dropping renumbers the lines */
           if (gone.size) { const x = await say(`drop ${[...gone].sort((a, b) => a - b).join(' ')}`); if (x.error) { done(); return toast(esc(x.error)); } }
-          const x = await say('save'); done(); if (x.error) return toast(esc(x.error)); answered(x); }; };
+          head('Saving', 'Updating the brief, finding the moves this changes and reordering your feed'); paint(`<ol class="dz-steps">${dzStep('done', 'Brief and memory')}${dzStep('on', 'Finding the moves this changes', 'Brew reads every move against what you saved')}${dzStep('todo', 'Reordering your feed')}</ol>`);
+          const x = await say('save'); done(); if (x.error) { head('That didn’t save', ''); return paint(`<p class="dz-note is-warn">${esc(x.error)}</p>`, `<span></span><button class="btn btn-primary sm" data-close>Close</button>`); } answered(x); }; sync(); };
       $$('[data-m2-dest]', m).forEach((b) => (b.onclick = async () => { const d = b.dataset.m2Dest; $$('[data-m2-dest]', m).forEach((x) => (x.disabled = true)); b.classList.add('is-busy');
-        /* brand memory: read every file, then one learnings draft for all of them */
+        /* brand memory: read every file, then one learnings draft for all of them; steps and a clock while it works */
         if (d === 'memory') {
-          const st = files.map((f) => ({ f, s: 'Waiting' })), list = () => paint(`<p class="m2-q">Reading ${files.length === 1 ? 'it' : `${files.length} files`}…</p><div class="dl-list">${st.map((x) => `<p class="dl-file"><span>${esc(x.f.name)}</span><small>${esc(x.s)}</small></p>`).join('')}</div>`);
-          list(); const texts = [], bad = []; let refs = 0;
-          for (const x of st) { x.s = 'Reading…'; list(); const r = await dropText(x.f, 'memory');
-            if (r?.team) { closeModal(); return toast(esc(r.error)); }
-            if (r?.error) { x.s = 'Not read'; bad.push(`${x.f.name}: ${r.error}`); } else { x.s = r.ref && !r.ref.error ? 'Read, and added to References' : 'Read'; if (r.ref && !r.ref.error && !r.ref.same) refs++; if (r.text) texts.push(`--- ${x.f.name} ---\n${r.text}`); }
-            list(); }
-          const notes = `${refs ? `<p class="dl-note">${ic('check', 's14')}${refs} picture${refs === 1 ? '' : 's'} added to References, so new pictures and videos can work from ${refs === 1 ? 'it' : 'them'}.</p>` : ''}${bad.length ? `<p class="dl-note is-warn">${bad.map(esc).join('<br>')}</p>` : ''}`;
-          if (!texts.length) { paint(`${notes || '<p class="m2-q">There was nothing in it to read.</p>'}<div class="dl-acts"><button class="btn btn-primary sm" data-close>Done</button></div>`); if (refs) after(); return; }
-          paint(`${notes}<p class="m2-q"><span class="spin"></span> Pulling out what Brew should learn…</p>`);
-          const r = await tapi('POST', `/api/brands/${encodeURIComponent(mvSlug())}/drop`, { dest: 'memory', text: texts.join('\n\n'), files: files.map((f) => f.name) });
+          const st = files.map((f) => ({ f, note: dzKb(f.size) })), t0 = Date.now(); let phase = 'read', timer = null;
+          const slow = files.some((f) => !isTxtFile(f) && !/\.(docx|pptx|xlsx)$/i.test(f.name));
+          const draw = () => { if (!document.body.contains(body)) return clearInterval(timer);
+            paint(`<ol class="dz-steps">${dzStep(phase === 'read' ? 'on' : 'done', files.length === 1 ? 'Reading the file' : `Reading ${files.length} files`, st.map((x) => `${esc(x.f.name)} · ${esc(x.note)}`).join('<br>'))}${dzStep(phase === 'learn' ? 'on' : phase === 'read' ? 'todo' : 'done', 'Pulling out what Brew should learn', 'Goals and plans, beliefs, facts and what they tried')}${dzStep('todo', 'You check it, then save')}</ol>
+              <p class="dz-clock">${dzClock(Date.now() - t0)}<small>${slow ? 'PDFs and photos take a minute or two. You can leave this open.' : 'Usually under a minute.'}</small></p>`); };
+          head('Reading what you dropped', 'Nothing is saved until you check it'); draw(); timer = setInterval(draw, 1000);
+          const texts = [], bad = []; let refs = 0;
+          for (const x of st) { x.note = 'reading…'; const r = await dropText(x.f, 'memory');
+            if (r?.team) { clearInterval(timer); closeModal(); return toast(esc(r.error)); }
+            if (r?.error) { x.note = 'couldn’t read it'; bad.push(`${x.f.name}: ${r.error}`); } else { x.note = r.ref && !r.ref.error ? 'read · added to References' : 'read'; if (r.ref && !r.ref.error && !r.ref.same) refs++; if (r.text) texts.push(`--- ${x.f.name} ---\n${r.text}`); } }
+          const notes = `${refs ? `<p class="dz-note">${ic('check', 's14')}${refs} picture${refs === 1 ? '' : 's'} added to References, so new pictures and videos can work from ${refs === 1 ? 'it' : 'them'}.</p>` : ''}${bad.length ? `<p class="dz-note is-warn">${bad.map(esc).join('<br>')}</p>` : ''}`;
+          if (!texts.length) { clearInterval(timer); head('Nothing to learn from', ''); paint(notes || '<p class="dz-note">There was nothing in it to read.</p>', `<span></span><button class="btn btn-primary sm" data-close>Done</button>`); if (refs) after(); return; }
+          phase = 'learn'; draw();
+          const r = await tapi('POST', `/api/brands/${encodeURIComponent(mvSlug())}/drop`, { dest: 'memory', text: texts.join('\n\n'), files: files.map((f) => f.name) }); clearInterval(timer);
           if (r?.error) { closeModal(); return toast(esc(r.error)); }
           if (!r.learn) { closeModal(); toast(`${ic('check', 's16')}Added to brand memory`); return after(); } /* the demo site: a direct memory note */
           if (r.draft?.items?.length && !r.saved) return showDraft(r, notes);
-          return answered(r); /* nothing new in it, or already saved: the reply says so */
+          return answered(r); /* nothing new in it, or already saved */
         }
         /* my preferences and just this once: the words of a PDF, Word, PowerPoint or Excel file; a photo or text file as before */
         let r = null; const skipped = []; let cut = false;
