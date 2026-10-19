@@ -968,7 +968,7 @@
   // what a card asks to be made, from its move (format and pieces)
   const MAKE_IC = { 'carousel ad': 'grid', 'instagram carousel': 'grid', 'collection ad': 'grid', 'catalog ad': 'grid', 'instagram stories': 'phone', 'instagram post': 'pic', 'single image ad': 'pic', 'video ad': 'vid', reel: 'vid', 'whatsapp message': 'chat', email: 'send', 'page section': 'doc' };
   /* saved pieces were cut at 100 characters mid-word ("…data and s"): end on the last whole word with … (cards-gen.js now cuts on a word) */
-  const mkWhole = (x) => { const p = String(x || '').replace(/\s+/g, ' ').trim(); return p.length >= 100 && !/[.!?…)]$/.test(p) ? `${p.replace(/[\s,;:·–—-]*\S*$/, '')}…` : p; };
+  const mkWhole = (x) => { const p = String(x || '').replace(/\s+/g, ' ').trim(); return p.length >= 99 && !/[.!?…)]$/.test(p) ? `${p.replace(/\S*$/, '').replace(/[\s,;:·.–—-]+$/, '')}…` : p; };
   /* the pieces never repeat the format beside it: "Page section on /: JSON-LD …" reads "Homepage: JSON-LD …", "Email · 1 email:
      day-3 note" reads "Email · Day-3 note"; a count above one stays (19 Oct) */
   const mkPieces = (c) => { const f = c.make.format.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), p = mkWhole(c.make.pieces), m = p.match(new RegExp(`^(?:(?:1|one|a)\\s+)?${f}s?(?:\\s+on\\s+(\\/\\S*?))?\\s*:\\s*`, 'i'));

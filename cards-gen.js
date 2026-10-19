@@ -8,7 +8,7 @@ import { CTA } from './seed-template.js';
 import * as catalog from './creative-catalog.js'; /* what can be made: formats, the prompt block, generic and repeat checks */
 import { evidenceKinds, claimGaps, gapLine, writerEvidence } from './proof-logic.js'; /* a card says Brew saw only what Brew holds */
 /* the asset line ends on a whole word, never mid-word ("…data and s", 19 Oct) */
-const cutWords = (x, n) => { const s = String(x ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? `${s.slice(0, n - 1).replace(/[\s,;:·–—-]*\S*$/, '')}…` : s; };
+const cutWords = (x, n) => { const s = String(x ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? `${s.slice(0, n - 1).replace(/\S*$/, '').replace(/[\s,;:·.–—-]+$/, '')}…` : s; };
 
 const SECTOR = { know: ['signals', 'brew'], found: ['visibility', 'visibility'], reach: ['creatives', 'creative'], convert: ['storefront', 'storefront'], keep: ['signals', 'crm'], expand: ['signals', 'brew'] };
 const BY_SKILL = { ads: ['ads', 'performance'], analytics: ['ads', 'performance'], attribution: ['ads', 'performance'], 'ab-testing': ['storefront', 'storefront'], aso: ['catalog', 'storefront'], 'seo-audit': ['visibility', 'visibility'], schema: ['visibility', 'visibility'], 'ai-seo': ['visibility', 'visibility'], 'site-architecture': ['storefront', 'storefront'], 'programmatic-seo': ['visibility', 'visibility'], pricing: ['storefront', 'storefront'], offers: ['storefront', 'storefront'], 'competitor-profiling': ['signals', 'brew'], competitors: ['visibility', 'visibility'] };
