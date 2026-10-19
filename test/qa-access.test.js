@@ -100,3 +100,14 @@ test('FEED-QA-06 / 13: the ready card always shows numbers, counts cards from th
   assert.equal(run(null, {}), 0);
   assert.match(a, /moves in your plan written\$\{etaOf\(BREW\)\}/, 'the feed’s own counter uses the same words');
 });
+
+/* ---------- ONB-15: a refresh mid-setup ---------- */
+test('ONB-15: each setup step is saved per brand and a refresh resumes there (not a step back); #setup still replays', () => {
+  const a = appSrc();
+  assert.match(a, /const OB_AT = \{ who: \(\) => whoFor\(\), want: \(\) => wantWhat\(\), connect: \(\) => connectWhat\(\), team: \(\) => teamStep\(\) \}/);
+  for (const [fn, k] of [['const whoFor', 'who'], ['const wantWhat', 'want'], ['const connectWhat', 'connect'], ['const teamStep', 'team']]) {
+    const body = a.slice(a.indexOf(fn), a.indexOf(fn) + 1600); assert.match(body, new RegExp(`obAt\\('${k}'\\)`), `${fn} saves its step`); }
+  assert.match(a, /S\.onboarded = true; delete S\.obStep;/, 'finishing setup forgets the step');
+  assert.match(a, /else if \(GEN && !V2 && !askedSetup && OB_AT\[S\.obStep\] && !S\.onboarded\) ensureTenant\(true\)\.then\(resumeOb\)/);
+  assert.match(a, /const KEY = `\$\{LSP\(\)\}demo-v1`/, 'S (and the step in it) is kept per brand');
+});

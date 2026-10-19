@@ -728,11 +728,15 @@
     tapi('POST', `/api/brands/${B.slug || BR}/voice`, { voice: v }).then((r) => { if (r && !r.error) { S.viewer.voiceSaved = v; save(); } }).catch(() => {}); };
   /* what the v1 questions already asked (onboard2.js mode q): those screens are not asked twice */
   const qAns = (id) => { const d = window.OB2?.qState?.().done?.[id]; return d != null && d !== false && d !== 'skip'; }; /* a tap keeps its value, a brand tap true, a skip 'skip' */
-  const afterRead = () => { if (signWall('who')) return; claimFirst().then(pushVoice); if (qAns('seat') && S.viewer.role) { view = 'ob'; return wantWhat(); } whoFor(); };
+  /* the setup step this browser is on (per brand, in S): a refresh opens the same step, never the one before it */
+  const OB_AT = { who: () => whoFor(), want: () => wantWhat(), connect: () => connectWhat(), team: () => teamStep() };
+  const obAt = (k) => { if (S.obStep !== k) { S.obStep = k; save(); } };
+  const resumeOb = () => { if (signWall('who')) return; claimFirst().then(pushVoice); view = 'ob'; (OB_AT[S.obStep] || whoFor)(); };
+  const afterRead = () => { if (signWall('who')) return; if (OB_AT[S.obStep] && S.obStep !== 'who') return resumeOb(); claimFirst().then(pushVoice); if (qAns('seat') && S.viewer.role) { view = 'ob'; return wantWhat(); } whoFor(); };
   const whoFor = () => {
     if (signWall('who')) return;
     claimFirst();
-    view = 'ob';
+    view = 'ob'; if (!S.onboarded) obAt('who');
     window.scrollTo(0, 0); root.innerHTML = shell(`
       <h1 class="ob2-h">Who’s this feed for?</h1><p class="ob2-lede">Pick your seat. The feed ranks and words every card for it. You can switch any time.</p>
       <div class="ob2-grid">${seatEntries().map(([k, r]) => `<button class="ob2-tile" data-role="${k}" aria-pressed="${S.viewer.role === k}">${face(r.face)}<b>${esc(r.title)}</b><span>${esc(r.line)}</span><i class="ob2-tick">${ic('check', 's14')}</i></button>`).join('')}</div>
@@ -744,7 +748,7 @@
   const defaultWants = (r) => ({ founder: ['decision', 'competitor'], growth: ['decision', 'report'], brand: ['idea', 'competitor'], ecom: ['decision', 'report'], crm: ['decision', 'idea'] }[r]);
   const wantWhat = () => {
     /* during onboarding, what the reading-screen questions asked is not asked again (a later Tune shows everything) */
-    const noWants = !S.onboarded && qAns('first'), noLane = !S.onboarded && qAns('lead');
+    const noWants = !S.onboarded && qAns('first'), noLane = !S.onboarded && qAns('lead'); if (!S.onboarded) obAt('want');
     const laneIds = Object.keys(B.lanes || {}), lanePics = laneIds.every((k) => LANE_IMG[k]) && new Set(laneIds.map((k) => LANE_IMG[k])).size === laneIds.length; /* a photo only when each product has its own: one shared picture on every chip tells them apart by nothing */
     window.scrollTo(0, 0); root.innerHTML = shell(`
       <div class="ob3">${noWants && noLane ? '<h1 class="ob2-h">Anything Brew should know?</h1><p class="ob2-lede">What works for you, what doesn’t, what you’ve learned. Optional.</p>' : noWants ? '<h1 class="ob2-h">Anything Brew should know?</h1><p class="ob2-lede">The product you’re pushing, and what you’ve learned. Both optional.</p>' : '<h1 class="ob2-h">What should come first?</h1><p class="ob2-lede">Pick up to two, and tell Brew what you’ve learned.</p>'}
@@ -777,7 +781,7 @@
   };
   const connectWhat = () => {
     /* the tools picked on the reading screen come first (each still needs its own sign-in, so nothing is preselected) */
-    const ids = [...new Set([...(S.viewer.tools || []), ...ROLE().connectors])].filter((k) => B.connectors?.[k]);
+    const ids = [...new Set([...(S.viewer.tools || []), ...ROLE().connectors])].filter((k) => B.connectors?.[k]); if (!S.onboarded) obAt('connect');
     window.scrollTo(0, 0); root.innerHTML = shell(`
       <h1 class="ob2-h">Connect your tools</h1><p class="ob2-lede">${window.LiveConn?.boss?.() === false ? 'Your admin connects these. Once they’re on, cards swap targets for your real numbers.' : 'Cards swap targets for your real numbers. Optional, and you can do it later from any card.'}</p>
       <div class="ob2-cx">${ids.map((id) => cxRow(id)).join('')}</div>
@@ -795,6 +799,7 @@
   const teamStep = () => {
     const ac = window.LIVE?.access, boss = !!ac?.role /* admins and teammates both invite; a teammate only to their own views */, team = (ac?.team || []).filter((x) => x.email !== ME()?.email);
     if (!GEN || !ME() || !ac?.role) return finishOnboarding(); /* only a brand's own team brings people in */
+    if (!S.onboarded) obAt('team');
     const seats = seatEntries(); IV.seats = (IV.seats || []).filter((k) => seats.some(([s0]) => s0 === k)); if (!IV.seats?.length) IV.seats = [seats.find(([k]) => k !== S.viewer.role)?.[0] || seats[0]?.[0]];
     const seatWords = (ks) => ks.length >= Object.keys(B.roles || {}).length ? 'Everything' : ks.map((k) => B.roles[k]?.title || k).join(', ');
     const okMail = (e) => /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(e) && e !== ME()?.email;
@@ -5248,6 +5253,6 @@
   /* a link from a Brew email (?go=feed) or to a jam or card (#jam=, #card=, #work=, #v=): a signed-in person goes straight there,
      never through the read replay and the setup steps again (those stay at #setup) */
   else if (GEN && location.hash !== '#setup' && (S.onboarded || window.LIVE?.me) && (GO_FEED || /^#(jam|card|work|v)=/.test(location.hash))) { if (!S.onboarded) { S.onboarded = true; save(); } ensureTenant().then(() => { fitSeat(); save(); feed(); }); }
-  else if (S.onboarded && location.hash !== '#setup') feed(); else { if (location.hash === '#setup') history.replaceState(null, '', location.pathname); if (GEN && ls.get(`${LSP()}continue`)) { const c0 = ls.get(`${LSP()}continue`); ls.del(`${LSP()}continue`); ensureTenant(true).then(V2 && window.OB2 ? () => window.OB2.route(c0 === 'v2' ? 'continue' : 'run') : afterRead); } else if (GEN && !(window.BREW_DEMO && location.hash !== '#setup')) ensureTenant(true).then(setup); else start(); } /* the demo site's tour starts on the address screen */
+  else if (S.onboarded && location.hash !== '#setup') feed(); else { const askedSetup = location.hash === '#setup'; if (askedSetup) history.replaceState(null, '', location.pathname); if (GEN && ls.get(`${LSP()}continue`)) { const c0 = ls.get(`${LSP()}continue`); ls.del(`${LSP()}continue`); ensureTenant(true).then(V2 && window.OB2 ? () => window.OB2.route(c0 === 'v2' ? 'continue' : 'run') : afterRead); } else if (GEN && !V2 && !askedSetup && OB_AT[S.obStep] && !S.onboarded) ensureTenant(true).then(resumeOb); /* a refresh mid-setup: the same step */ else if (GEN && !(window.BREW_DEMO && location.hash !== '#setup')) ensureTenant(true).then(setup); else start(); } /* the demo site's tour starts on the address screen */
   if (/[#&]cx(err)?=/.test(location.hash)) setTimeout(() => window.LiveConn?.resume(), 900); });
 })();
