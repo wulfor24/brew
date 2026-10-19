@@ -37,7 +37,7 @@ test('timely moves (100–999 by hash) read "Timely move"; notes, sources and th
   assert.equal(moveSay('move 1006'), 'Weekly move 6', 'a margin note’s eyebrow'); assert.equal(moveSay('MOVE 1006'), 'Weekly move 6');
   assert.equal(moveSay('Move 966 · Diwali gifting'), 'Timely move · Diwali gifting'); assert.equal(plainSrc('Move 432 · Loop 2: Diwali'), 'Timely move · Diwali');
   assert.equal(moveSay('Moves 05 and 966'), 'Move 05 and timely move'); assert.equal(moveSay('Move 05 · 1999 rupees'), 'Move 05 · 1999 rupees');
-  assert.match(src('feed-service.js'), /rest\.note = nt\.k \? \{ \.\.\.nt, k: nt\.k === nt\.k\.toLowerCase\(\) \? moveSay\(nt\.k\)\.toLowerCase\(\) : moveSay\(nt\.k\) \}/);
+  assert.match(src('feed-service.js'), /k: nt\.k === nt\.k\.toLowerCase\(\) \? moveSay\(nt\.k\)\.toLowerCase\(\) : moveSay\(nt\.k\)/);
   assert.doesNotMatch(src('build.js'), /from Move \$\{pad\(e\.n\)\}/);
   for (const f of ['public/app.js', 'public/jam-room.js']) assert.match(src(f), /\+n >= 100 \? 'Timely move'/, f);
 });

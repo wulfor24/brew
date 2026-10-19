@@ -101,7 +101,9 @@ export const one = (x) => String(x || '').replace(/(\S+)$/, (w) => (/ies$/i.test
    plans written before the one-version rule heal wherever they are read. A ratio or a size is not a count ("4:5 static", "1/2 posts",
    "2.5 ads"): the asset line read "4:one static" on every 4:5 card (final QA pass 19 Oct) */
 const COUNT = /(?<![\d:/.,×])\b(?:the\s+)?(?:two|three|four|five|six|[2-6])\s+(new\s+|more\s+|different\s+|fresh\s+)?((?:[a-z-]+\s+)?)(hooks?|versions?|variants?|variations?|cuts?|options?|ads?|scripts?|videos?|reels?|posts?|emails?|messages?|headlines?|captions?|creatives?|angles?|takes?|concepts?|carousels?|statics?)\b/gi;
-export const oneOf = (x) => String(x ?? '').replace(COUNT, (m, nw, mid, noun, at) => `${at === 0 ? "One" : "one"} ${nw || ''}${mid}${one(noun)}`);
+/* ratios a saved workspace copy already lost ("4:5 static" was saved as "4:one static"): put back */
+const RATIO_BACK = { 4: '4:5', 3: '3:4', 2: '2:3' };
+export const oneOf = (x) => String(x ?? '').replace(/\b([234]):one\b/g, (m, a) => RATIO_BACK[a]).replace(COUNT, (m, nw, mid, noun, at) => `${at === 0 ? "One" : "one"} ${nw || ''}${mid}${one(noun)}`);
 /* the card's own prose (title, line, how-steps): only counts of creative takes become one ("three hook variants", "Make three reel
    scripts", "Two fresh versions of each winner"); counts that are the plan itself stay ("Pack of 2", "three featured options",
    "8 ads", "two posts a week") */

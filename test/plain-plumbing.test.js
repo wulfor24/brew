@@ -72,4 +72,5 @@ test('a ratio is not a count: an asset line keeps 4:5 (final QA pass 19 Oct: "4:
   assert.equal(oneOf('4:5 static: Gully Number 001 – Megh White close-up'), '4:5 static: Gully Number 001 – Megh White close-up');
   assert.equal(oneCard({ make: { format: 'instagram post', pieces: '4:5 post: the unboxing card' } }).make.pieces, '4:5 post: the unboxing card');
   assert.equal(oneOf('Make 3 statics of the serum'), 'Make one static of the serum');
+  assert.equal(oneCard({ make: { format: 'single image ad', pieces: '4:one static: Milky Soft Wash' } }).make.pieces, '4:5 static: Milky Soft Wash', 'a saved copy that lost its ratio gets it back');
 });
