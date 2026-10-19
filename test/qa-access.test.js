@@ -206,3 +206,29 @@ test('FEED-QA-29: everyone’s account menu has Help, Privacy & terms and Delete
   assert.match(src('DUMMY.md'), /\| 9 \| \*\*Delete my data\*\*/);
   assert.match(appSrc(), /\$\{acctRows\(\)\}\$\{window\.LiveConn\?\.helpRows\?\.\(\) \|\| ''\}/, 'the menu without sign-in has them too');
 });
+
+/* ---------- FEED-NOT-05: two starts of the same brand at once ---------- */
+test('FEED-NOT-05: two near-simultaneous starts (two tabs, or two instances) make one paid read', async () => {
+  const os = await import('node:os'), path = await import('node:path');
+  process.env.BUILD_RESUME_OFF = '1'; process.env.REFRESH_AUTO = '0';
+  const { createBuilder } = await import('../build.js'), { createPacks } = await import('../brand-pack.js'), { blankProfile } = await import('../reader/index.js');
+  const quiet = { log() {}, warn() {}, error() {}, info() {} };
+  const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'brew-qa-start-')), P = createPacks({ ROOT, PUB: path.join(ROOT, 'public'), bucket: null, gToken: null, log: quiet });
+  const reads = [];
+  const make = () => createBuilder({ ROOT, packs: P, ai: { onCharge() {}, call: async () => { throw new Error('off'); } }, treg: { onCharge() {} }, log: quiet,
+    modules: { reader: { createReader: () => ({ read: async (url) => { reads.push(url); await new Promise((r) => setTimeout(r, 50)); return { opened: false, profile: blankProfile(new URL(url), 'x'), ledger: [], findings: { steps: [{ k: 'open', state: 'empty', done: 'could not open the store' }], cards: [] } }; } }) }, brief: null, moves: null, pdf: null } });
+  const a = make();
+  /* two tabs on one instance: both answer with the same brand, one read runs */
+  const [r1, r2] = await Promise.all([a.start('https://twin-example.com', { ip: '9.9.9.1' }), a.start('https://www.twin-example.com/', { ip: '9.9.9.2' })]);
+  assert.equal(r1.slug, 'twin-example-com'); assert.equal(r2.slug, r1.slug); assert.ok(!r1.existing && r2.existing, 'the second joins the first');
+  await new Promise((r) => setTimeout(r, 150));
+  assert.equal(reads.length, 1, 'one read, not two');
+  /* another instance a moment later: the marker in the pack says someone is starting it, so it joins and never resumes a second run */
+  const b2 = make(); const r3 = await b2.start('https://twin-example.com', { ip: '9.9.9.3' });
+  assert.deepEqual([r3.slug, r3.existing], ['twin-example-com', true]);
+  await new Promise((r) => setTimeout(r, 150));
+  assert.equal(reads.length, 1);
+  assert.ok((await P.getJSON('twin-example-com', 'start-lock.json'))?.by, 'the marker names the instance that started it');
+  /* a refusal on the first never blocks the second: each is judged on its own */
+  const [e1] = await Promise.all([a.start('not a site', {})]); assert.match(e1.error, /look like a website/);
+});

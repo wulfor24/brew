@@ -148,12 +148,25 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
 
   /* ---------- start a brand ---------- */
   const byUser = new Map(); // email → [started at, …] today
-  async function start(url, { ip, user = null, fresh = false } = {}) {
+  /* two starts of the same address at once (two tabs, a double click, two instances) make one paid run: on this instance the
+     second waits for the first and joins it; across instances a short-lived marker in the pack (start-lock.json, written
+     before anything else) tells the other one to join instead of starting or resuming a second run */
+  const starting = new Map(), INSTANCE = crypto.randomBytes(6).toString('hex'), LOCK = 'start-lock.json', LOCK_MS = +process.env.START_LOCK_MS || 5 * 60e3;
+  const otherStart = async (slug) => { const lk = await packs.getFreshJSON(slug, LOCK, null).catch(() => null); return lk && lk.by !== INSTANCE && Date.now() - (+lk.at || 0) < LOCK_MS ? lk : null; };
+  async function start(url, o = {}) {
+    const slug = slugOf(String(url || '').trim()), was = slug && starting.get(slug);
+    if (was) { const r = await was.catch(() => null); if (r?.slug) return { slug: r.slug, existing: true, status: await status(r.slug) }; } /* the first failed (a limit, a bad address): this one is judged on its own */
+    const p = start0(url, o); if (slug && !was) { starting.set(slug, p); p.catch(() => {}).finally(() => { if (starting.get(slug) === p) starting.delete(slug); }); }
+    return p;
+  }
+  async function start0(url, { ip, user = null, fresh = false } = {}) {
     const raw = String(url || '').trim(); const slug = slugOf(raw);
     if (blocked(slug)) return { error: 'This address can’t be read here.' };
     if (!slug || !/\.[a-z]{2,}/.test(raw.replace(/^[a-z]+:\/\//i, '').split('/')[0])) return { error: 'That doesn’t look like a website. Try yourbrand.com' };
     const host = raw.replace(/^[a-z]+:\/\//i, '').replace(/[/?#].*$/, '').replace(/^www\./i, '').toLowerCase();
     const prev = await status(slug);
+    /* another instance is starting this brand right now: join its run, never start (or resume) a second one */
+    if (await otherStart(slug)) return { slug, existing: true, status: prev || (await packs.getFreshJSON(slug, 'status.json', null).catch(() => null)) || { slug, host: slug, state: 'Reading the site' } };
     if (prev?.cancelled && !fresh) return { error: 'This address was stopped. Ask Brew to restart it.' };
     if (prev && !fresh) { if (!st(slug).running && !prev.done) resume(slug).catch((e) => log.error('[build] resume', slug, e.message)); return { slug, existing: true, status: prev }; }
     if (prev && fresh && (st(slug).running || st(slug).checking)) return { error: 'This brand is being written right now. Restart it once this run stops.' };
@@ -162,6 +175,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (!user && ip && Date.now() - (byIp.get(ip) || 0) < IP_GAP && !process.env.BUILD_NO_IP_LIMIT) return { error: 'One new brand an hour from the same network. Open one you already started, or try again later.' };
     await loadDay(); if (dayUsd() >= DAY_CAP) return { error: 'Today’s reading budget is used up. Try again tomorrow.' };
     if (user) byUser.set(user.email, [...mine, Date.now()]); else if (ip) byIp.set(ip, Date.now());
+    await packs.put(slug, LOCK, { at: Date.now(), by: INSTANCE }); /* first, before the starter files: the other instances join */
     st(slug).events.length = 0; /* a new read starts a new story: viewers replay only this run's events */
     if (prev && fresh) await resetPack(slug);
     st(slug).status = {}; /* a new status, not merged over the last run's stages, PDFs and counts */
