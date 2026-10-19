@@ -12,7 +12,7 @@
 // the image guard hands back the real photo as a stand-in, the run fails and says so. Every quote and record carries provider:
 // 'sloosh' | 'gemini'. The brand's credit share is spent only once Sloosh has taken a quote (an operation id), never on a refusal.
 import crypto from 'node:crypto';
-import { buildFinal, buildDraft } from './sloosh-prompt.js';
+import { buildFinal, buildDraft, optsOf, lowerRes } from './sloosh-prompt.js';
 import { formOf, prefill } from './sloosh-spaces.js';
 
 const DIR = 'private/finals/', ASSETS = 'private/sloosh-assets.json', MAX_BYTES = 64 * 1024 * 1024, QUOTE_FRESH_MS = 4 * 60e3;
@@ -57,7 +57,7 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
   const productFirst = (refs = []) => [...refs.filter((r) => r?.job === 'product'), ...refs.filter((r) => r?.job !== 'product')];
   const geminiQuote = (spec, why) => { if (spec.space) return { error: `${why} A Space runs on Sloosh only.`.trim() }; const vid = spec.kind === 'video'; if (vid && !makeVideo) return { error: `${why} A video final runs on Sloosh only here.`.trim() };
     if (!(spec.refs || []).some((r) => r?.job === 'product')) return { error: 'Pick a product photo first: Brew makes the final around the real product.' };
-    spec = { ...spec, refs: productFirst(spec.refs), ratio: vid ? (spec.ratio === '16:9' ? '16:9' : '9:16') : spec.ratio };
+    spec = { ...spec, refs: productFirst((spec.refs || []).filter((r) => r?.job !== 'frame')), ratio: vid ? (spec.ratio === '16:9' ? '16:9' : '9:16') : spec.ratio };
     const b = buildFinal({ ...spec, kind: 'image' }); const settings = vid ? { aspect_ratio: spec.ratio, resolution: '1080p', duration: Math.max(4, Math.min(8, Math.round(spec.seconds || 6))), sound: !!spec.sound } : b.settings;
     return { quoteId: `gemini-${sha(JSON.stringify([spec.kind, spec.visual, spec.text, spec.refs, spec.motion]))}`, provider: 'gemini', fallback: true, why: `on Gemini for now: ${why}`, fallbackWhy: why, credits: 0, hold: 0, model: vid ? 'veo-3.1-fast' : 'gemini-3-pro-image', label: vid ? 'Veo 3.1 Fast (Vertex)' : 'Gemini 3 Pro Image (Vertex)', prompt: b.prompt, motion: vid ? buildDraft({ ...spec, kind: 'video' }).prompt : null, settings, space: null, refs: spec.refs || [], expiresAt: now() + 3600e3, at: now() }; };
 
@@ -94,6 +94,21 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
   function noteRefusal(slug, tool, ask, e) { const row = { at: new Date(now()).toISOString(), slug, tool, ask: shapeOf(ask), code: e?.code || null, error: String(e?.message || e).slice(0, 900) };
     refusals.unshift(row); refusals.length = Math.min(refusals.length, 12); log.warn('[finals] Sloosh refused', JSON.stringify(row)); return row; }
 
+  /* the references a model takes: images up to its limit (product photos first), videos only where it takes them, and the opening
+     frame (job 'frame') only on a video model that takes one. Seedance takes a start frame or references, not both
+     (framesExcludesReferenceImages), so a reel with the approved draft's first frame opens on it alone; a model that requires a
+     start frame (Kling) gets the product photo as one */
+  function refsFor(refs = [], o, vid) {
+    const frame = refs.find((r) => r.job === 'frame'), rest = productFirst(refs.filter((r) => r.job !== 'frame'));
+    const takesFrame = vid && o?.frames && o.frames.start !== 'none';
+    if (takesFrame && frame && (o.framesAlone || o.refs === 0)) return [{ ...frame, role: 'start' }];
+    const imgs = rest.filter((r) => r.asset?.type !== 'video').slice(0, o?.refs ?? MAX_REFS), vids = rest.filter((r) => r.asset?.type === 'video').slice(0, o?.videos ?? (vid ? MAX_REFS : 0));
+    let out = [...imgs, ...vids].map((r) => ({ ...r, role: r.role === 'start' ? undefined : r.role }));
+    if (takesFrame && frame) out = [{ ...frame, role: 'start' }, ...out];
+    else if (vid && o?.frames?.start === 'required') { const prod = rest.find((r) => r.job === 'product' && r.asset?.type !== 'video'); if (prod) out = [{ ...prod, job: 'frame', role: 'start' }]; }
+    return out.slice(0, MAX_REFS);
+  }
+
   /* ---------- quote: free, good for five minutes, shown before any yes ---------- */
   async function quote(slug, spec = {}) {
     const st = await status(); if (!st.ok) return st.fallback ? geminiQuote(spec, st.fallbackWhy) : { error: st.why };
@@ -108,11 +123,25 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
       const inputs = { ...pre.values, ...(spec.space.inputs || {}) }; const missing = pre.missing.filter((m) => inputs[m.key] == null);
       if (missing.length) return { error: `The Space still needs ${missing.map((m) => m.label.toLowerCase()).join(', ')}.`, missing, fields, inputs, filled: pre.filled };
       q = await sloosh.quoteSpace({ id: spec.space.id, inputs }).catch((e) => { noteRefusal(slug, 'quote_space', { space: spec.space.id, inputs: Object.keys(inputs) }, e); throw e; }); out = { space: { id: spec.space.id, name: spec.space.name || null }, inputs, fields, filled: pre.filled, prompt: null, settings: null, model: null }; }
-    else { const b = buildFinal({ ...spec, refs }); const vid = b.kind === 'video' || spec.kind === 'video';
-      const ask = { mode: vid ? 'video_gen' : 'image_gen', prompt: b.prompt, model: b.model, references: uploaded(refs), ratio: b.settings.aspect_ratio, resolution: b.settings.resolution, seconds: vid ? b.settings.duration : undefined, sound: vid ? b.settings.sound : undefined, count: spec.count || 1 };
+    else { const vid = spec.kind === 'video', mode = vid ? 'video_gen' : 'image_gen';
+      /* the model as it is today (list_models): a model Sloosh dropped is swapped for its default, and the settings, references,
+         start frame and sound are fitted to what it takes, so Brew never sends a quote the model refuses for its shape */
+      const specs = sloosh.modelSpecs ? await sloosh.modelSpecs(mode).catch((e) => { log.warn?.('[finals] list_models', e.message); return null; }) : null;
+      let model = buildFinal({ ...spec, refs }).model, live = specs?.models?.[model] || null, swapped = null;
+      if (!live && specs && Object.keys(specs.models).length && specs.models[specs.default]) { swapped = model; model = specs.default; live = specs.models[model]; log.warn?.(`[finals] Sloosh has no ${swapped} now; using its default ${model}`); }
+      const use = refsFor(refs, optsOf(model, live), vid);
+      const make = (res) => buildFinal({ ...spec, refs: use, forceModel: model, resolution: res }, live);
+      const askOf = (b) => ({ mode, prompt: b.prompt, model: b.model, references: uploaded(use), ratio: b.settings.aspect_ratio, resolution: b.settings.resolution, seconds: vid ? b.settings.duration : undefined, sound: vid ? b.settings.sound : undefined, count: spec.count || 1 });
+      let b = make(), ask = askOf(b);
       try { q = await sloosh.quoteGeneration(ask);
+        /* a reel over what is left of the day's limit is asked again one resolution down (never under 720p) before it goes to Veo:
+           a 9 s Seedance 2.5 reel is 76.77 credits at 1080p and about a third of that at 720p (19 Oct, the daily limit is 50) */
+        for (let res = b.settings.resolution; vid && st.left != null && (holdOf(q) || creditsOf(q)) > st.left;) {
+          res = lowerRes(model, res, live); if (!res || !['720p', '768p', '1080p', '1K', '2K', '2k'].includes(res)) break;
+          const b2 = make(res), a2 = askOf(b2); const q2 = await sloosh.quoteGeneration(a2).catch((e) => { noteRefusal(slug, 'quote_generation', a2, e); return null; }); if (!q2) break;
+          b = b2; ask = a2; q = q2; }
       } catch (e) { noteRefusal(slug, 'quote_generation', ask, e); if (canFallBack) return geminiQuote(spec, PAY.test(e.message) ? `Sloosh cannot pay for this yet (${e.message.slice(0, 160)}).` : `Sloosh could not quote this (${e.message.slice(0, 160)}).`); return { error: 'Sloosh couldn’t price this final just now. Try again in a minute.', detail: e.message.slice(0, 200) }; }
-      out = { model: b.model, label: b.label || b.model, why: b.why, prompt: b.prompt, settings: b.settings, space: null }; }
+      refs = use; out = { model: b.model, label: b.label || b.model, why: swapped ? `${b.why}; Sloosh no longer offers ${swapped}` : b.why, prompt: b.prompt, settings: b.settings, space: null }; }
     const credits = creditsOf(q), hold = holdOf(q) || credits, quoteId = idOf(q), warning = pick(q, 'warning') || null;
     if (warning && canFallBack && /wallet|allocation|credit|limit|short|balance|payment|402|allowance|insufficient|owned|asset|not found|unauthori/i.test(warning)) return geminiQuote(spec, `Sloosh says: ${warning}`);
     if (!quoteId) { const why = `Sloosh quoted without a quote id (keys: ${Object.keys(q || {}).join(', ')})`; return canFallBack ? geminiQuote(spec, `${why}.`) : { error: why }; }

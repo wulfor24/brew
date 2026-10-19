@@ -7,13 +7,16 @@
 
 /* words that add noise, not detail: stripped from any sentence a model wrote, refused in the standing lines */
 export const SLOP = /\b(?:4\s?k|8\s?k|ultra[- ]?(?:detailed|realistic|hd)|hyper[- ]?realistic|photo[- ]?realistic|trending(?: on \w+)?|award[- ]winning|masterpiece|cinematic|premium(?:-looking| look| feel)?|luxurious|stunning|breathtaking|gorgeous|magical|epic|aesthetic|vibes?|sparkl\w*|glitter\w*|confetti|lens flares?|bokeh balls?|floating(?: in mid[- ]?air| product)?|levitat\w+|swirl\w*|splash\w* of (?:water|milk|cream)|liquid splash\w*|explod\w+|dramatic (?:smoke|fog|lighting)|neon glow|glowing (?:aura|edges?)|light rays?|god rays?|depth of field|dof|octane|unreal engine|8-bit|high quality|best quality|professional photography|studio quality)\b[,.;: ]*/gi;
-export const JOBS = ['product', 'scene', 'style', 'person', 'logo', 'other'];
+export const JOBS = ['product', 'scene', 'style', 'person', 'logo', 'layout', 'frame', 'other']; /* layout: the approved draft picture; frame: a video's opening frame (sent as start_frame, never numbered) */
 /* what a reference of each job tells the model, and what must not change from it */
 const JOB_LINE = {
   product: (r) => `Image ${r.n} is the product${r.label ? `, ${r.label}` : ''}. Keep its shape, proportions, colours, materials and brand mark as shown; its small print may be soft or turned away, never rewritten${r.keep ? `; ${r.keep}` : ''}.`, /* asking for exact small print made garbled labels, and a check that threw good pictures away */
   scene: (r) => `Image ${r.n} is the place${r.label ? `, ${r.label}` : ''}: use it as the setting and background${r.keep ? `; ${r.keep}` : ''}.`,
   style: (r) => `Image ${r.n} is the look${r.label ? `, ${r.label}` : ''}: match its light, colours, framing and mood, not its subject${r.keep ? `; ${r.keep}` : ''}.`,
   person: (r) => `Image ${r.n} is ${r.label || 'the person'}: keep their face, hair and build exactly as in that image${r.keep ? `; ${r.keep}` : ''}.`,
+  /* the draft the team approved: the final keeps its composition, the product comes only from the product photo (a draft is a
+     Gemini picture, so its product may be a little off; the photo is the truth) */
+  layout: (r) => `Image ${r.n} is the approved draft${r.label ? `, ${r.label}` : ''}: keep its framing, where everything sits, the setting and the light, and make it sharper and more finished; take the product itself only from the product photo, never from this image${r.keep ? `; ${r.keep}` : ''}.`,
   logo: (r) => `Image ${r.n} is the logo${r.label ? `, ${r.label}` : ''}: reproduce it exactly, once, where the text sits${r.keep ? `; ${r.keep}` : ''}.`,
   other: (r) => `Image ${r.n}${r.label ? ` is ${r.label}` : ''}${r.keep ? `: ${r.keep}` : ': use it as a reference for what it shows'}.`
 };
@@ -37,11 +40,12 @@ export const useOf = (ratio, topSpace = false) => `${USE[ratio] || USE['4:5']}${
 
 /* ---------- the normalised brief every renderer reads ---------- */
 export function brief(spec = {}) {
-  const brand = spec.brand || {}; const refs = (spec.refs || []).map((r, i) => ({ n: i + 1, job: JOBS.includes(r?.job) ? r.job : 'other', label: one(r?.label), keep: one(r?.keep), id: r?.id, url: r?.url, file: r?.file }));
+  const brand = spec.brand || {}; const all = (spec.refs || []).map((r) => ({ job: JOBS.includes(r?.job) ? r.job : 'other', label: one(r?.label), keep: one(r?.keep), id: r?.id, url: r?.url, file: r?.file }));
+  const frame = all.find((r) => r.job === 'frame') || null, refs = all.filter((r) => r.job !== 'frame').map((r, i) => ({ ...r, n: i + 1 }));
   if (!refs.length && spec.hasSrc) refs.push({ n: 1, job: 'product', label: one(spec.product?.name || `${brand.name || ''} ${brand.noun || ''}`) || '', keep: '' });
   const named = spec.subject || spec.product?.name || [brand.name, brand.noun].filter(Boolean).join(' '), subject = named ? scrub(named) : 'the product'; /* never "The subject is The product." */
   return { kind: spec.kind || 'image', title: one(spec.title), subject, visual: scrub(spec.visual), scene: scrub(spec.scene), look: lookOf(brand, spec.kind), ratio: spec.ratio || '4:5', use: useOf(spec.ratio || '4:5', !!spec.topSpace),
-    refs, text: spec.text || [], brand, motion: scrub(spec.motion), beats: spec.beats || [], seconds: spec.seconds || 6, sound: spec.sound ?? false, index: spec.index, count: spec.count, people: spec.people !== false, revise: spec.revise || null };
+    refs, frame, text: spec.text || [], brand, motion: scrub(spec.motion), beats: spec.beats || [], seconds: spec.seconds || 6, sound: spec.sound ?? false, index: spec.index, count: spec.count, people: spec.people !== false, revise: spec.revise || null };
 }
 
 /* ---------- image renderers ---------- */
@@ -67,15 +71,17 @@ export function fluxHex(b) { const cs = (b.brand.colors || []).filter((c) => /^#
 export function veoDraft(b) { return one(`${sentence(b.motion) || 'A hand picks the product up and uses it.'} One continuous handheld phone shot at a natural pace; hands and people may move and use the product; the product keeps its shape, colours and brand mark as in the first frame. ${b.sound ? 'Quiet room tone.' : ''} No new text appears, no captions, no logo.`); }
 /* Seedance 2.5: references by job, one summary sentence, then timed beats in whole seconds with no gaps; SFX in <>, lines in quotes */
 export function seedanceBeats(b) {
-  const S = Math.max(4, Math.min(30, Math.round(b.seconds || 6))); const beats = (b.beats || []).filter((x) => one(x?.shot || x?.beat || x)).slice(0, 6);
+  const S = Math.max(4, Math.min(30, Math.round(b.seconds || 6))); const beats = (b.beats || []).filter((x) => one(typeof x === 'string' ? x : x?.shot || x?.beat || x?.line)).slice(0, 6);
   const n = beats.length || 1, cut = (i) => Math.round((S * i) / n);
-  const body = beats.length ? beats.map((x, i) => { const shot = scrub(x.shot || x.beat || x), line = one(x.line); return `${cut(i)}-${cut(i + 1)}s: ${sentence(shot)}${line ? ` "${line.replace(/"/g, '”')}"` : ''}`; }).join('\n') : `0-${S}s: ${sentence(b.motion) || 'The camera pushes in slowly on the product.'}`;
-  return [`${refLines(b.refs)}`.trim(), one(`A ${b.title ? `${b.title}: ` : ''}${b.subject}${b.visual || b.scene ? `, ${[b.visual, b.scene].filter(Boolean).join(' ')}` : ''}. ${b.look} One camera move per beat, slow and steady.`), body, one(`${b.sound ? 'Quiet ambient sound that fits the room.' : 'No music.'} No subtitles, no captions, no logo, no watermark. ${keepLine({ brand: b.brand, people: b.people })}`)].filter(Boolean).join('\n');
+  const body = beats.length ? beats.map((x, i) => { const shot = scrub(typeof x === 'string' ? x : x.shot || x.beat || ''), line = one(x.line); return `${cut(i)}-${cut(i + 1)}s: ${sentence(shot) || 'The same shot carries on.'}${line ? ` "${line.replace(/"/g, '”')}"` : ''}`; }).join('\n') : `0-${S}s: ${sentence(b.motion) || 'The camera pushes in slowly on the product.'}`;
+  return [b.frame ? FRAME_LINE : `${refLines(b.refs)}`.trim(), one(`A ${b.title ? `${b.title}: ` : ''}${b.subject}${b.visual || b.scene ? `, ${[b.visual, b.scene].filter(Boolean).join(' ')}` : ''}. ${b.look} One camera move per beat, slow and steady.`), body, one(`${b.sound ? 'Quiet ambient sound that fits the room.' : 'No music.'} No subtitles, no captions, no logo, no watermark. ${keepLine({ brand: b.brand, people: b.people })}`)].filter(Boolean).join('\n');
 }
+/* a clip that opens on the approved draft's first frame (sent as start_frame; Seedance takes a frame or references, not both) */
+export const FRAME_LINE = 'The video opens exactly on the start frame given and moves on from it. Keep the product exactly as it appears in that frame: its shape, colours, label and brand mark; never redraw it.';
 /* Seedance 2.0 reads numbered shots, not timestamps */
 export function seedanceShots(b) { return seedanceBeats(b).replace(/^(\d+)-(\d+)s:/gm, (m, a, c, off, s) => `Shot ${s.slice(0, off).split('\n').filter((l) => /^\d+-\d+s:/.test(l)).length + 1}:`); }
 /* Gemini Omni: one continuous shot with its own Audio line, nothing negative */
-export function omniShot(b) { return one(`A single continuous ${Math.max(3, Math.min(10, b.seconds || 6))}-second shot. ${b.look} ${[b.visual, b.scene].filter(Boolean).join(' ')} The camera ${b.motion ? b.motion.replace(/^the camera\s*/i, '') : 'pushes in slowly'} as ${b.subject} stays in sharp focus. ${refLines(b.refs)}`) + `\nAudio: ${b.sound ? 'quiet room tone, no music.' : 'silence.'}`; }
+export function omniShot(b) { return one(`A single continuous ${Math.max(3, Math.min(10, b.seconds || 6))}-second shot. ${b.look} ${[b.visual, b.scene].filter(Boolean).join(' ')} The camera ${b.motion ? b.motion.replace(/^the camera\s*/i, '') : 'pushes in slowly'} as ${b.subject} stays in sharp focus. ${b.frame ? FRAME_LINE : refLines(b.refs)}`) + `\nAudio: ${b.sound ? 'quiet room tone, no music.' : 'silence.'}`; }
 /* Veo 3.1: cinematography first, no reference tags; the references are matched by what the words describe */
 export function veoShot(b) { return one(`Slow push in, eye level, 50mm, shallow focus on ${b.subject}. ${[b.visual, b.scene].filter(Boolean).join(' ')} ${b.look} ${sentence(b.motion)} The product stays still with its label readable. ${b.sound ? 'Ambient noise: the quiet of the room.' : ''} No captions, no logo.`); }
 
@@ -94,22 +100,46 @@ export const MODEL_OPTS = {
   'ideogram-4.5': { ratios: ['1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3', '5:4', '4:5'], res: ['1K', '2K'], refs: 5 },
   'flux-2-pro': { ratios: ['1:1', '2:3', '3:2', '16:9', '9:16', '4:3', '3:4', '4:5', '5:4', '21:9'], res: ['1K'], refs: 8 },
   'gpt-image-2.5-sunburst': { ratios: ['auto', '1:1', '3:2', '2:3', '16:9', '9:16', '4:5', '5:4'], res: ['1K', '2K', '4K'], refs: 16 },
-  'seedance-2.5': { ratios: ['auto', '21:9', '16:9', '4:3', '1:1', '3:4', '9:16'], res: ['480p', '720p', '1080p'], seconds: [4, 30], refs: 30 },
-  'seedance-2.0': { ratios: ['auto', '21:9', '16:9', '4:3', '1:1', '3:4', '9:16'], res: ['480p', '720p', '1080p', '4k'], seconds: [4, 6, 8, 10, 12, 15], refs: 9 },
-  'gemini-omni-1.1-flash': { ratios: ['16:9', '9:16'], res: ['360p', '720p', '1080p', '4k'], seconds: [3, 10], refs: 6 }
+  'seedance-2.5': { ratios: ['auto', '21:9', '16:9', '4:3', '1:1', '3:4', '9:16'], res: ['480p', '720p', '1080p'], seconds: [4, 30], refs: 30, maxChars: 30000, frames: { start: 'optional', end: 'optional' }, framesAlone: true, audio: 'optional' },
+  'seedance-2.0': { ratios: ['auto', '21:9', '16:9', '4:3', '1:1', '3:4', '9:16'], res: ['480p', '720p', '1080p', '4k'], seconds: [4, 6, 8, 10, 12, 15], refs: 9, maxChars: 30000, frames: { start: 'optional', end: 'optional' }, framesAlone: true, audio: 'optional' },
+  'gemini-omni-1.1-flash': { ratios: ['16:9', '9:16'], res: ['360p', '720p', '1080p', '4k'], seconds: [3, 4, 5, 6, 7, 8, 9, 10], refs: 6, audio: 'always' }
 };
 const asNum = (r) => { const [a, b] = String(r).split(':').map(Number); return a && b ? a / b : NaN; };
-/* snap a ratio, a resolution and a length onto what the model offers (nearest ratio by its number, the resolution asked or the best below it) */
-export function fitSettings(model, settings = {}) {
-  const o = MODEL_OPTS[model]; if (!o) return settings; const out = { ...settings };
-  const r = settings.aspect_ratio; if (r && !o.ratios.includes(r)) { const want = asNum(r); const cands = o.ratios.filter((x) => x !== 'auto'); out.aspect_ratio = Number.isFinite(want) ? cands.reduce((best, x) => (Math.abs(asNum(x) - want) < Math.abs(asNum(best) - want) ? x : best), cands[0]) : cands[0]; }
+/* the options a model takes, from list_models when Brew has it (live) and from MODEL_OPTS when Sloosh can't be asked: a field the
+   live model doesn't list (Kling has no aspect ratio, Qwen no resolution) is left out of the quote rather than sent and refused */
+export function optsOf(model, live = null) {
+  if (live?.fields) { const f = live.fields, c = live.constraints || {}, nums = (xs) => (xs || []).map(Number).filter(Number.isFinite);
+    return { live: true, ratios: f.aspectRatio || null, res: f.resolution || null, seconds: f.duration ? nums(f.duration) : null, quality: f.quality || null,
+      refs: c.maxReferenceImages ?? null, videos: c.includeVideo ? c.maxReferenceVideos ?? null : 0, maxChars: c.maxPromptChars || null, frames: c.frames || null, framesAlone: !!c.framesExcludesReferenceImages,
+      audio: live.controls?.generateAudio?.state || null }; }
+  const o = MODEL_OPTS[model]; if (!o) return null;
+  return { live: false, ratios: o.ratios, res: o.res, seconds: o.seconds ? (o.seconds.length === 2 && o.seconds[1] > 12 ? Array.from({ length: o.seconds[1] - o.seconds[0] + 1 }, (_, i) => o.seconds[0] + i) : o.seconds) : null, quality: null,
+    refs: o.refs ?? null, videos: null, maxChars: o.maxChars || null, frames: o.frames || null, framesAlone: !!o.framesAlone, audio: o.audio || null };
+}
+/* snap a ratio, a resolution and a length onto what the model offers (nearest ratio by its number, the resolution asked or the best
+   below it, the nearest length); sound only where the model lets it be switched (Gemini Omni, Grok and MiniMax always make sound and
+   refuse the switch with owner_invalid_request, 19 Oct; Kling 2.5 never does) */
+export function fitSettings(model, settings = {}, live = null) {
+  const o = optsOf(model, live); if (!o) return settings; const out = { ...settings };
+  const r = settings.aspect_ratio; if (r && o.ratios) { if (!o.ratios.includes(r)) { const want = asNum(r); const cands = o.ratios.filter((x) => x !== 'auto'); out.aspect_ratio = cands.length ? (Number.isFinite(want) ? cands.reduce((best, x) => (Math.abs(asNum(x) - want) < Math.abs(asNum(best) - want) ? x : best), cands[0]) : cands[0]) : 'auto'; } } else if (o.live && !o.ratios) delete out.aspect_ratio;
   const rank = (x) => ({ '512': 0.5, '360p': 0.36, '480p': 0.48, '720p': 0.72, '768p': 0.77, '1080p': 1.08, '1K': 1, '2K': 2, '2k': 2, '4K': 4, '4k': 4 })[x] ?? 1;
-  const res = settings.resolution; if (res && !o.res.includes(res)) { const want = rank(res); const below = o.res.filter((x) => rank(x) <= want); out.resolution = (below.length ? below : o.res).reduce((b, x) => (Math.abs(rank(x) - want) < Math.abs(rank(b) - want) ? x : b)); }
-  if (o.seconds && settings.duration != null) { const d = Math.round(settings.duration); out.duration = o.seconds.length === 2 && o.seconds[1] > 12 ? Math.max(o.seconds[0], Math.min(o.seconds[1], d)) : o.seconds.reduce((b, x) => (Math.abs(x - d) < Math.abs(b - d) ? x : b)); }
+  const res = settings.resolution; if (res && o.res) { if (!o.res.includes(res)) { const want = rank(res); const below = o.res.filter((x) => rank(x) <= want); out.resolution = (below.length ? below : o.res).reduce((b, x) => (Math.abs(rank(x) - want) < Math.abs(rank(b) - want) ? x : b)); } } else if (o.live && !o.res) delete out.resolution;
+  if (settings.duration != null) { if (o.seconds?.length) { const d = Math.round(settings.duration); out.duration = o.seconds.reduce((b, x) => (Math.abs(x - d) < Math.abs(b - d) ? x : b)); } else if (o.live) delete out.duration; }
+  if ('sound' in out && o.audio && o.audio !== 'optional') delete out.sound;
   return out;
 }
+/* the next resolution down that the model offers (a reel at 1080p that would pass the day's limit is asked again at 720p) */
+export function lowerRes(model, res, live = null) { const o = optsOf(model, live); const order = ['4k', '4K', '2k', '2K', '1080p', '1K', '768p', '720p', '480p', '360p'];
+  const xs = (o?.res || []).slice().sort((a, b) => order.indexOf(a) - order.indexOf(b)); const i = xs.indexOf(res); return i >= 0 && i < xs.length - 1 ? xs[i + 1] : null; }
+/* a prompt over the model's limit is cut at the last whole sentence that fits (the keep line is the last sentence on most renderers,
+   so the cut comes out of the middle: the beats or the scene) */
+export function trimPrompt(prompt, max) { const p = String(prompt || ''); if (!max || p.length <= max) return p;
+  const lines = p.split('\n'), last = lines.length > 1 ? lines.pop() : '', room = max - (last ? last.length + 1 : 0); let head = lines.join('\n');
+  if (room < 200) { head = p; } else if (head.length > room) { const cut = head.slice(0, room); const stop = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('.\n')); head = stop > room * 0.5 ? cut.slice(0, stop + 1) : cut; return last ? `${head}\n${last}` : head; }
+  return p.slice(0, max); }
 export function pickModel(b) {
-  if (b.revise) return { model: MODELS.edit, why: 'a precise edit of the previous picture' };
+  if (b.force) return { model: b.force, why: b.forceWhy || pickModel({ ...b, force: null }).why }; /* the model fitted to Sloosh's live list (finals.quote) */
+  if (b.revise && b.kind !== 'video') return { model: MODELS.edit, why: 'a precise edit of the previous picture' }; /* never an image model for a reel */
   if (b.kind === 'video') return b.model && Object.values(MODELS).includes(b.model) ? { model: b.model, why: 'as picked' } : /^veo/.test(b.model || '') ? { model: MODELS.omni, why: 'one continuous shot (Veo is not on Sloosh)' } : { model: MODELS.video, why: 'timed beats, the product kept from its photo' };
   if (b.model === 'flux-2-pro' || (!(b.text || []).length && (b.brand.colors || []).some((c) => /^#[0-9a-f]{6}$/i.test(c)) && b.brand.exactColors)) return { model: MODELS.hex, why: 'exact brand colours' };
   if ((b.text || []).length >= 3) return { model: MODELS.type, why: 'several lines of type' };
@@ -120,11 +150,11 @@ export function pickModel(b) {
 /* a Gemini image or Veo draft: the same brief, rendered as a scene (Gemini image is the Nano Banana family) or a Veo shot */
 export function buildDraft(spec = {}) { const b = brief(spec); return b.kind === 'video' ? { prompt: veoDraft(b), ratio: b.ratio, brief: b } : { prompt: nanoScene(b), ratio: b.ratio, brief: b }; }
 /* a Sloosh final: the model, its prompt and the settings the chips carry (never in the words) */
-export function buildFinal(spec = {}) {
-  const b = brief(spec); const { model, why } = pickModel({ ...b, model: spec.model, revise: spec.revise });
-  const prompt = spec.revise ? reviseBrief({ text: b.text, keepLine: keepLine({ brand: b.brand, text: !!b.text.length, people: b.people }) }, spec.revise.change)
+export function buildFinal(spec = {}, live = null) {
+  const b = brief(spec); const { model, why } = pickModel({ ...b, model: spec.model, revise: spec.revise, force: spec.forceModel || null });
+  const prompt = spec.revise && b.kind !== 'video' ? reviseBrief({ text: b.text, keepLine: keepLine({ brand: b.brand, text: !!b.text.length, people: b.people }) }, spec.revise.change)
     : b.kind === 'video' ? (model === MODELS.videoShots ? seedanceShots(b) : model === MODELS.omni ? omniShot(b) : seedanceBeats(b))
     : model === MODELS.edit ? gptSpec(b) : model === MODELS.hex ? fluxHex(b) : nanoScene(b);
-  const settings = fitSettings(model, b.kind === 'video' ? { aspect_ratio: b.ratio, resolution: '1080p', duration: Math.max(4, Math.min(30, Math.round(b.seconds || 6))), sound: !!b.sound } : { aspect_ratio: b.ratio, resolution: spec.resolution || '2K' });
-  return { model, label: MODEL_LABELS[model] || model, prompt, settings, why, refs: b.refs, brief: b };
+  const settings = fitSettings(model, b.kind === 'video' ? { aspect_ratio: b.ratio, resolution: spec.resolution || '1080p', duration: Math.max(4, Math.min(30, Math.round(b.seconds || 6))), sound: !!b.sound } : { aspect_ratio: b.ratio, resolution: spec.resolution || '2K' }, live);
+  return { model, label: live?.label || MODEL_LABELS[model] || model, prompt: trimPrompt(prompt, optsOf(model, live)?.maxChars), settings, why, refs: b.refs, frame: b.frame, brief: b };
 }

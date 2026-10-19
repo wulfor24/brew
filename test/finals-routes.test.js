@@ -49,7 +49,7 @@ test('one tap in the studio: the quote picks the product photo, a reel runs 3 s 
   createStudioFinals({ on, C: (tt, id) => tt.changes[id], ensurePkg: () => {}, sync: () => {}, version: () => ({ id: 'v2', n: 2 }), pubChange: (tt, c) => ({ id: c.id }), cardOf: () => ({ id: 'c1', title: 'Warm paws' }), cardPhoto: () => 'b/cozy/a/warmer.jpg', jobs: new Set(), vidJobs: new Set(), finals, sloosh: {}, brandOfT, slugOfT: () => 'cozy', isVideo: (c) => !!c.pkg.script, RATIO: {} });
   const q = await routes.get('POST /api/changes/:chid/final/quote')({ auto: true }, t, { chid: 'ch1' });
   assert.equal(q.quote.credits, 12); assert.equal(quoted.kind, 'video'); assert.equal(quoted.seconds, 12, '4 beats × 3 s'); assert.equal(quoted.sound, true);
-  assert.equal(quoted.refs[0]?.job, 'product'); assert.match(quoted.refs[0].keep, /label exact/);
+  assert.equal(quoted.refs[0]?.job, 'product'); assert.equal(quoted.refs[0].keep, '', 'no "label exact": it garbled labels');
   const stale = await routes.get('POST /api/changes/:chid/final/run')({ expect: 'q0' }, t, { chid: 'ch1' });
   assert.equal(stale.requote, true); assert.equal(ran, 0, 'a different quote spends nothing');
   ch.finalQuote.quote.expiresAt = Date.now() - 1; const old = await routes.get('POST /api/changes/:chid/final/run')({ expect: 'q1' }, t, { chid: 'ch1' });

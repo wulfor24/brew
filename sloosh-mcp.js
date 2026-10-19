@@ -85,6 +85,19 @@ export function errorText(u) {
   return (seen.length ? seen.join(' — ') : JSON.stringify(u)).slice(0, 600);
 }
 
+/* list_models → { default, models: { id: { fields: { aspectRatio: [..], resolution: [..], duration: [..] }, defaults, constraints, controls } } }.
+   The reply nests by type ({ models: { image: { defaultModel, models } } }) or not ({ models: { defaultModel, models } }); both are read. */
+export function specsOf(r) {
+  const out = { default: null, models: {} };
+  const walk = (g, depth = 0) => { if (!g || typeof g !== 'object' || depth > 3) return;
+    if (Array.isArray(g.models)) { out.default ||= g.defaultModel || null;
+      for (const m of g.models) if (m?.id) out.models[m.id] = { id: m.id, label: m.label || m.id, defaults: m.defaults || {}, constraints: m.constraints || {}, controls: m.controls || {},
+        fields: Object.fromEntries(Object.entries(m.fields || {}).map(([k, f]) => [k, (f?.options || []).map((o) => String(o.value))])) };
+      return; }
+    for (const x of Object.values(g)) walk(x, depth + 1); };
+  walk(r?.models ?? r); return out;
+}
+
 /* a tools/call result with isError → an Error with the code, the whole reason and every text block Sloosh sent */
 export function refused(name, r) { const u = unwrap(r); let why = errorText(u);
   for (const t of (r?.content || []).filter((c) => c.type === 'text').slice(1).map((c) => String(c.text || '').trim())) if (t && !why.includes(t.slice(0, 60))) why += ` — ${t}`;
@@ -115,6 +128,12 @@ export function createSloosh({ url = MCP_URL(), tokenFor, fetchImpl = fetch, log
     await post({ jsonrpc: '2.0', method: 'notifications/initialized' }).catch(() => {});
     return r; })().catch((e) => { ready = null; throw e; }));
 
+  /* what each model takes today (list_models, free, an hour): the options a setting must be one of, how many references, whether
+     sound can be switched, whether a start frame is taken. Sloosh renames and adds models without notice (16 → 19 Oct: Nano Banana 2.1
+     became the default, Kling and MiniMax arrived), so a quote is fitted to this, not to a list pinned in the code */
+  const modelsMemo = {};
+  async function modelSpecs(mode = 'image_gen') { const m = modelsMemo[mode]; if (m && Date.now() - m.at < TOOLS_TTL) return m.v;
+    const v = specsOf(await call('list_models', { mode })); if (Object.keys(v.models).length) modelsMemo[mode] = { at: Date.now(), v }; return v; }
   async function list() { await init(); if (tools && Date.now() - toolsAt < TOOLS_TTL) return tools; const r = await rpc('tools/list'); tools = r.tools || []; toolsAt = Date.now(); return tools; }
   const tool = async (name) => { const t = (await list()).find((x) => x.name === name); if (!t) throw Object.assign(new Error(`Sloosh has no tool called ${name}`), { noTool: true }); return t; };
   /* call a tool with Brew's words; the schema decides the argument names */
@@ -155,7 +174,7 @@ export function createSloosh({ url = MCP_URL(), tokenFor, fetchImpl = fetch, log
   /* an asset reference: { kind: 'workspace'|'generated', id } (the two id spaces are not interchangeable); a bare id is a workspace one */
   const refOf = (r) => (typeof r === 'string' ? { kind: 'workspace', id: r } : { kind: r?.kind || r?.reference?.kind || 'workspace', id: r?.id || r?.reference?.id || r?.assetId });
   const api = {
-    list, call, callRaw, tool, wait, stateOf, pendingCheckpoint, refOf, init, reset: () => { sid = null; ready = null; tools = null; }, preflight: async () => preflightOf(await list()),
+    list, call, callRaw, tool, wait, stateOf, pendingCheckpoint, refOf, init, modelSpecs, reset: () => { sid = null; ready = null; tools = null; for (const k of Object.keys(modelsMemo)) delete modelsMemo[k]; }, preflight: async () => preflightOf(await list()),
     getConnection: () => call('get_connection'), getAccount: () => call('get_account'), getGuide: (id) => call('get_guide', id ? { id } : {}),
     listModels: (mode) => call('list_models', mode ? { mode } : {}), listAssets: (o = {}) => call('list_assets', typeof o === 'string' ? { name: o } : o), getAsset: (r) => call('get_asset', refOf(r)), viewAsset: (r) => call('view_asset', refOf(r)),
     importAsset: (url, name) => call('import_asset', { url, name: String(name || decodeURIComponent(String(url).split('/').pop().split('?')[0]) || 'brew-reference').slice(0, 200) }),
