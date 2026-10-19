@@ -120,3 +120,15 @@ test('no "Brew deployment team" anywhere a person reads; the agreed phrase on fi
   assert.match(src('public/app.js'), /<b>With the ShopOS team<\/b><small>Brew’s build crew: /);
   assert.match(src('handoff.js'), /'The ShopOS team, Brew’s build crew'/);
 });
+
+/* FEED-QA-09 (demo): the feed's count and the banner read the same fresh session */
+import { createDemoRoutes, simStatus } from '../demo-routes.js';
+test('demo: confirming hands the fresh session to the feed’s copy at once, so the first feed and the banner count the same', async () => {
+  const D = new Map([['acme/private/demo/session.json', { flow: 'onboarding' }]]), seen = [];
+  const packs = { getJSON: async (s, n, d) => D.get(`${s}/${n}`) ?? d, put: async (s, n, o) => { D.set(`${s}/${n}`, o); } };
+  const routes = createDemoRoutes({ packs, builder: { status: async () => ({ total: 64, stages: {} }) }, auth: { user: () => null, isAdmin: () => false }, connectors: {}, readBody: async () => ({}), send: () => {}, loadBrand: async () => null, onSession: (slug, s) => seen.push([slug, s]), log: quiet });
+  await routes({ method: 'POST', headers: {} }, {}, new URL('http://x/api/brands/acme/confirm'));
+  const last = seen.at(-1); assert.equal(last[0], 'acme'); assert.ok(last[1].confirmedAt, 'the feed’s copy has the confirm');
+  const st = simStatus({ total: 64, stages: {}, done: true }, last[1]); assert.equal(st.movesDone, 0); assert.equal(st.done, false, 'not "All 64 written" while the banner says 0 of 64');
+  assert.match(src('server.js'), /onSession: \(slug, s\) => demoSes\(slug, s\)/);
+});
