@@ -26,7 +26,8 @@ test('the time left comes only from the pace this run really kept', () => {
   /* the status route adds it, and never says fewer written than the moves on file */
   const sv = src('server.js');
   assert.match(sv, /s = \{ \.\.\.s, etaMin: movesEta\(s\) \}/);
-  assert.match(sv, /packs\.peek\(slug\)\?\.numbers\?\.moves\?\.written; if \(!s\.error && !s\.done && \+w > \(\+s\.movesDone \|\| 0\)\) s = \{ \.\.\.s, movesDone: \+w \}/);
+  assert.match(sv, /const w = \+packs\.peek\(slug\)\?\.numbers\?\.moves\?\.written \|\| 0/); /* and never fewer than this build already showed (QA FEED-QA-21) */
+  assert.match(sv, /Math\.min\(Math\.max\(\+s\.movesDone \|\| 0, w, was\), \+s\.total \|\| Infinity\)/);
   assert.match(src('build.js'), /paceAt: \[\.\.\.\(s1\?\.paceAt \|\| \[\]\), Date\.now\(\)\]\.slice\(-12\)/);
   /* the feed's strip and the wait screen read the same field */
   assert.match(app, /const etaOf = \(s\) => \{ const m = s\?\.etaMin;/);
