@@ -1517,6 +1517,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       await buildCtx.run(slug, () => rewriteNow(slug, old)).catch((e) => log.error('[ops] rewrite', e.message));
       /* a pass that rewrote nothing (budget, errors) stops the loop instead of paying again every minute (2026-10-14: about $7 for nothing) */
       const after = await packs.getJSON(slug, 'moves.json', {}), left = old.filter((n) => Math.max(Date.parse(after[n]?.meta?.rewrittenAt || 0), Date.parse(after[n]?.meta?.at || 0)) < t0);
+      /* what is left are festival moves whose window has passed (no spec today): the reload is done, they stay as they are */
+      if (left.length && left.every((n) => n >= 100)) { await packs.put(slug, 'private/ops-fresh.json', { ...mk, phase: 'done', doneAt: Date.now(), skipped: left }); log.log(`[ops] ${slug}: fresh reload done; ${left.join(', ')} left as they are (no spec today)`); return; }
       if (left.length >= old.length) { await packs.put(slug, 'private/ops-fresh.json', { ...mk, phase: 'stalled', stalledAt: Date.now(), why: 'a pass rewrote no moves' }); log.warn(`[ops] ${slug}: fresh reload stopped: a pass rewrote no moves`); return; }
       setTimeout(tick, 60e3).unref?.(); /* whatever a restart cut short is picked up next time round */ };
     setTimeout(tick, 20e3).unref?.();

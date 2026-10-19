@@ -703,9 +703,12 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
       // a festival move written at its plan point: the calendar stops offering that point again
       if (sp.eventId && !move.meta?.mock && ctx.calendarApi?.markPlanned) for (const pt of sp.event?.points || []) await ctx.calendarApi.markPlanned(ctx.slug, sp.eventId, pt).catch(() => {});
     };
-    const wave = async (ns) => {
+    const wave = async (ns0) => {
+      /* a move whose spec is gone (a festival move after its window: today's calendar no longer makes its spec) is left as it
+         is, never a crash that stops every other move of the run */
+      const ns = ns0.filter((n) => spec(n, ctx) || (log.warn?.(`[moves] ${n}: no spec today, left as it is`), false));
       const pending = new Set(ns), running = new Map(); const errors = [];
-      const ready = (n) => (spec(n, ctx).deps || []).every((d) => !pending.has(d) && !running.has(d));
+      const ready = (n) => (spec(n, ctx)?.deps || []).every((d) => !pending.has(d) && !running.has(d));
       while (pending.size || running.size) {
         for (const n of [...pending]) {
           if (running.size >= concurrency) break;
