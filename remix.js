@@ -430,7 +430,7 @@ export function createRemix(o) {
     const shopperText = [ch.after.title, ch.after.sub, ...pubT].filter(Boolean).join('\n');
     const src = brandSource(t, card), cf = claimFlags(shopperText, src, { allowNewCode: /discount_offer$/.test(ch.action || '') });
     checks.push({ k: claimCheck(cf), ok: !cf.length, fix: true, claims: cf.map((f) => f.quote) });
-    const lf = copyFlags(shopperText, src); if (lf.length) checks.push({ k: `Reads wrong: ${lf.join('; ')}`, ok: false, fix: true });
+    const lf = copyFlags(shopperText, { source: src, names: [BN(), o.SEED?.brand?.name, ...(catalogOf(t) || []).map((x) => x?.t)] }); if (lf.length) checks.push({ k: `Reads wrong: ${lf.join('; ')}`, ok: false, fix: true });
     if (ch.imagePending) checks.push({ k: 'The new creative is still rendering', ok: false, soft: true });
     checks.push(act.irreversible ? { k: `Can’t be undone: ${act.irreversible}. Whoever ships it from the brief should know.`, ok: true, team: true } : { k: `Can be undone: ${act.rollback}`, ok: !!act.rollback && !/^nothing|^—/i.test(act.rollback), soft: true });
     if (act.target.conn) checks.push({ k: `${SEED.connectors[act.target.conn]?.name || act.target.conn} connected`, ok: !!t.conn[act.target.conn], soft: true, conn: act.target.conn });

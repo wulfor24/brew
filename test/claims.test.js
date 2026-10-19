@@ -45,10 +45,15 @@ test('copy that reads wrong is flagged', () => {
 });
 
 test('the brand’s own words are never flagged as reading wrong', () => {
-  const src = sourceText({ facts: { p: { label: 'Product', v: 'Onion Hair Oil with Onion Oil & Redensyl for Hair Fall Control' }, s: { label: 'Banner', v: 'FREE SHIPPING ON ALL ORDERS ABOVE ₹299' } } });
-  assert.deepEqual(copyFlags('Onion Hair Oil with Onion Oil & Redensyl, now ₹419.', src), [], 'the real product name');
-  assert.deepEqual(copyFlags('FREE SHIPPING ON ALL ORDERS ABOVE ₹299. Shop now.', src), [], 'the store’s own banner');
-  assert.ok(copyFlags('BUY NOW before it ends.', src).some((x) => /caps/.test(x)), 'shouting the store never wrote');
+  const names = ['ARATA', 'Onion Hair Oil with Onion Oil & Redensyl for Hair Fall Control', 'Heated Hand Pillow', 'Heated Mouse Pad', 'Snugglet Toe Toasters – USB Heated Plush Bootie', 'Gully Number 001 - CMF by Nothing'];
+  const o = { names, source: 'Free shipping on all orders above ₹299. We do not test on animals.' };
+  assert.deepEqual(copyFlags('Onion Hair Oil with Onion Oil & Redensyl, now ₹419.', o), [], 'the real product name');
+  assert.deepEqual(copyFlags('FREE SHIPPING ON ALL ORDERS ABOVE ₹299. Shop now.', o), [], 'the store’s own banner');
+  assert.deepEqual(copyFlags('Meet ARATA. Gully Number 001 - CMF by Nothing, made for streets.', o), [], 'the brand and product names in caps');
+  assert.deepEqual(copyFlags('The Desk Day: Heated Hand Pillow, Heated Mouse Pad and socks.', o), [], 'a list of the store’s products');
+  assert.ok(copyFlags('Is heavy hair fall NOT giving? Fix it.', o).some((x) => /caps/.test(x)), 'a common word shouted is still flagged, though the store says "not"');
+  assert.ok(copyFlags('BUY NOW before it ends.', o).some((x) => /caps/.test(x)), 'shouting the store never wrote');
+  assert.ok(copyFlags('Onion Oil Onion Hair Oil for you.', o).some((x) => /repeated/.test(x)), 'a doubled name word the writer made up');
 });
 
 test('realNewlines turns written \\n into line breaks and ‹ before a price into ₹', () => {
