@@ -31,7 +31,8 @@ import { createFinalsRoutes } from './finals-routes.js';
 import { buildDraft } from './sloosh-prompt.js'; // one brief for every draft picture // Make the final: Sloosh, quote first, behind a button (finals.js) // References: the brand's uploaded photos, past ads, looks and videos, for the generators // Drop anything: memory, my preferences, just this once // Send brief: the full email and the "N with the team" pill
 import { shipLine, oneCard, oneTake } from './text-fit.js';
 import { createDrafts, fakeMakers } from './drafts.js';
-import { cardProduct, cardScene } from './product-match.js';
+import { cardProduct, cardScene, matchProduct } from './product-match.js';
+import { gapFix } from './ai-gap.js'; // the AI-answers gap card's own fix (QA FEED-ARV-09)
 import { seedDrafts, draftFor, draftView } from './drafts-bg.js';
 import { planFor, planPrompt, PLAN_V } from './card-plan.js';
 import { createMoves } from './moves.js';
@@ -412,7 +413,9 @@ export function createFeedService(o) {
   };
   /* saved catalog cards are written again from their reading (QA FEED-ARV-08, CAT_V): product · issue · fix, best sellers first.
      The old "products our cards sell" reading is part of the one stock-out card now: its own card steps aside (kept if worked on) */
-  const healCatalog = (t, keep = new Set()) => { const evs = live?.get()?.catalog?.events || [];
+  const healCatalog = (t, keep = new Set()) => { const evs = live?.get()?.catalog?.events || [], vevs = live?.get()?.visibility?.events || [];
+    if (vevs.length) for (const c of t.cards.values()) { if (c.liveSrc?.kind !== 'visibility' || c.visV === VIS_V) continue; const e = vevs.find((x) => x.id === c.liveSrc.id); if (e?.kind !== 'gap') continue; c.visV = VIS_V; /* saved gap cards say their own fix too */
+      const f = liveCard('visibility', e, t); if (f) for (const k of ['title', 'sub', 'rows', 'detail', 'link']) if (f[k] !== undefined) c[k] = f[k]; }
     for (const c of t.cards.values()) { if (c.liveSrc?.kind !== 'catalog') continue;
       if (/^cat-oos-q-/.test(c.liveSrc.id) && !keep.has(c.id) && !['dismissed', 'done', 'dropped', 'expired'].includes(c.state)) { setState(t, c, 'dropped'); continue; }
       if (c.catV === CAT_V || !evs.length) continue; c.catV = CAT_V; /* the watcher's readings load after boot: heal once they are here */
@@ -863,7 +866,7 @@ export function createFeedService(o) {
   /* catalog cards: the products that sell most first, by the best signal Brew holds, and the card says which (QA FEED-ARV-08):
      units sold in 30 days (a connected Shopify, team only), else the store's own best-seller list, else review counts, else price.
      Products our cards and ads point to always lead */
-  const CAT_V = 2;
+  const CAT_V = 2, VIS_V = 2; /* VIS_V: AI-answers gap cards say their own fix */
   const quotedOf = () => new Set(Object.values(B()?.facts || {}).filter((f) => f && f.kind === 'price' && /\/products\//.test(String(f.src || ''))).map((f) => String(f.src).split('/').pop()));
   const nameOfItem = (i) => { const f = /^[\w.-]+$/.test(String(i?.title || '')) ? B()?.facts?.[i.title] : null; return f?.label ? String(f.label).replace(/\s+(price|mrp)$/i, '') : String(i?.title || ''); }; /* a removed product saved as its fact key reads as its name */
   const unitsOf = (t) => { const e = t?.member ? t.liveLedger?.['shopify.top.30d'] : null; return e && !e.demo && !e.stale ? unitsFrom(e.v) : new Map(); }; /* the team's own Shopify, never a simulated one */
@@ -903,9 +906,12 @@ export function createFeedService(o) {
       return { ...base, type: 'report', family: 'result', kind: 'rows', badge: [d == null ? 'This week' : d > 0 ? `+${d}` : d < 0 ? `${d}` : 'No change', d > 0 ? 'ok' : d < 0 ? 'warn' : 'info'], health: d ? { 'AI answers': d } : undefined,
         title: `${BN()} is named in ${e.named} of ${e.total} AI answers this week`, sub: `We asked ${nq ? plural(nq, 'shopper question', 'shopper questions') : 'shopper questions'} to ${tools}, from ${CTRY()}.${e.was ? ` Last time it was ${e.was.named} of ${e.was.total}.` : ' This is the first reading; next week shows the change.'}`,
         rows: e.byEngine.filter((b) => b.total).map((b) => [ENG[b.engine], `${b.named} of ${b.total}`]), detail: { why: ['Real answers from the consumer apps, with web search on.', 'Shoppers ask these before they buy.'], how: ['Brew asks the same questions every week.', 'Each gap becomes a card with a page or a claims fix to draft.'] }, cta: { label: 'Open report' } }; }
-    if (e.kind === 'gap') return { ...base, type: 'decision', family: 'exception', kind: 'answer', q: e.q, a: `${andList(e.rivals)} ${e.rivals.length === 1 ? 'is' : 'are'} named. ${BN()} is in none of the ${e.of} answers.`,
-      title: short(`Ask AI “${e.q.replace(/\?$/, '')}”: ${BN()} is in 0 of ${e.of}`, 76), sub: `${tools} name ${andList(e.rivals)}${e.domains?.length ? ` and cite ${andList(e.domains.slice(0, 3))}` : ''}. A page on ${BH()} that answers this directly is how a brand gets named.`,
-      rows: [[`${BN()} named`, `0 of ${e.of}`], ['Named instead', short(e.rivals.join(', '), 40)]], detail: { why: [`Real answers from the consumer apps, asked from ${CTRY()}.`, 'Answers lean on the sites they cite.'], how: ['Brew drafts a page that answers the question with your claims.', `Your team puts it on ${BH()}.`, 'Brew asks again next week.'] }, cta: { label: 'Draft the page' } };
+    if (e.kind === 'gap') { /* one specific fix per gap (QA FEED-ARV-09): the question, the rival named instead, the brand's page that fits it */
+      const g = gapFix({ q: e.q, rivals: e.rivals || [], product: matchProduct(e.q, B()?.catalog || [], { brand: BN() }), brand: BN(), host: BH() });
+      return { ...base, visV: VIS_V, type: 'decision', family: 'exception', kind: 'answer', q: e.q, a: `${andList(e.rivals)} ${e.rivals.length === 1 ? 'is' : 'are'} named. ${BN()} is in none of the ${e.of} answers.`,
+        title: g.title, sub: `${tools} name ${andList(e.rivals.slice(0, 2))} instead${e.domains?.length ? ` and cite ${andList(e.domains.slice(0, 2))}` : ''}. The fix: ${g.fix}.`,
+        rows: [['Named instead', short(e.rivals.join(', '), 40)], ['Page that fits', g.page], [`${BN()} named`, `0 of ${e.of}`]], ...(g.url ? { link: { label: `Open the page on ${BH()}`, url: g.url } } : {}),
+        detail: { why: [`Real answers from the consumer apps, asked from ${CTRY()}.`, 'Answers lean on the sites they cite.'], how: [`Brew drafts ${g.fix}.`, `Your team puts it on ${BH()}.`, 'Brew asks again next week.'] }, cta: { label: 'Draft the page' } }; }
     if (e.kind === 'win') return { ...base, type: 'report', family: 'result', kind: 'answer', q: e.q, a: e.said || `${andList(e.engines.map((x) => ENG[x]))} now names ${BN()}.`, badge: ['Named', 'ok'], health: { 'AI answers': e.engines.length },
       title: short(`${andList(e.engines.map((x) => ENG[x]))} now names ${BN()} for “${e.q.replace(/\?$/, '')}”`, 76), sub: `${BN()} is now in ${e.yes.length} of ${e.of} answers to this question, up from ${e.yes.length - e.engines.length} last time.`, rows: [['Named in', `${e.yes.length} of ${e.of}`]], detail: { why: ['Real answers, compared with last week.'], how: ['We keep asking weekly.'] }, cta: { label: 'Open report' } };
     if (e.kind === 'loss') return { ...base, type: 'decision', family: 'exception', kind: 'rows', badge: ['Dropped', 'warn'], health: { 'AI answers': -e.engines.length },
