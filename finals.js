@@ -86,6 +86,14 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
   const withAssets = async (slug, refs = []) => Promise.all(refs.slice(0, MAX_REFS).map(async (r) => { const a = await assetFor(slug, r); return { ...r, asset: a, assetId: a.id }; }));
   const uploaded = (refs) => refs.slice(0, MAX_REFS).map((r) => ({ kind: r.asset.kind, id: r.asset.id, url: r.asset.url, type: r.asset.type || 'image', role: r.role === 'start' ? 'start_frame' : r.role === 'end' ? 'end_frame' : 'reference' }));
 
+  /* every Sloosh refusal is logged with what Brew asked for (model, mode, settings, how many references and their roles, the prompt's
+     length; never a URL or the prompt itself) and Sloosh's whole reason, and the last few are kept for the ops page. A quote that fell
+     back to Gemini/Veo used to leave no trace at all (19 Oct: a reel's quote_generation refused with owner_invalid_request) */
+  const refusals = [];
+  const shapeOf = (a = {}) => a.prompt == null ? a : { mode: a.mode, model: a.model, ratio: a.ratio, resolution: a.resolution, seconds: a.seconds, sound: a.sound, count: a.count, promptChars: String(a.prompt || '').length, refs: (a.references || []).map((r) => `${r.type}/${r.role}/${r.kind}`) };
+  function noteRefusal(slug, tool, ask, e) { const row = { at: new Date(now()).toISOString(), slug, tool, ask: shapeOf(ask), code: e?.code || null, error: String(e?.message || e).slice(0, 900) };
+    refusals.unshift(row); refusals.length = Math.min(refusals.length, 12); log.warn('[finals] Sloosh refused', JSON.stringify(row)); return row; }
+
   /* ---------- quote: free, good for five minutes, shown before any yes ---------- */
   async function quote(slug, spec = {}) {
     const st = await status(); if (!st.ok) return st.fallback ? geminiQuote(spec, st.fallbackWhy) : { error: st.why };
@@ -94,16 +102,16 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
     /* an image final always has a Gemini answer: any Sloosh quote failure ends as a Gemini quote with the reason (a Space or a video keeps Sloosh's error) */
     const canFallBack = !!geminiImage && !spec.space && (spec.kind !== 'video' || !!makeVideo); /* a video final falls back to Veo on a Gemini still (19 Oct: a raw "owner_invalid_request" reached the person) */
     const PAY = /credit|wallet|allocation|limit|fund|plan|entitle|balance|payment|402|allowance|insufficient|owned|asset|not found|unauthori/i;
-    let refs; try { refs = await withAssets(slug, spec.refs || []); } catch (e) { if (canFallBack) return geminiQuote(spec, `Sloosh could not take the reference photos (${e.message.slice(0, 160)}).`); throw e; }
+    let refs; try { refs = await withAssets(slug, spec.refs || []); } catch (e) { noteRefusal(slug, 'import_asset', { refs: (spec.refs || []).length }, e); if (canFallBack) return geminiQuote(spec, `Sloosh could not take the reference photos (${e.message.slice(0, 160)}).`); throw e; }
     let q, out;
     if (spec.space) { const schema = await sloosh.getSpaceInputSchema(spec.space.id); const fields = formOf(pick(schema, 'form', 'schema', 'inputSchema') || schema); const pre = prefill(fields, spec.space.ctx || {});
       const inputs = { ...pre.values, ...(spec.space.inputs || {}) }; const missing = pre.missing.filter((m) => inputs[m.key] == null);
       if (missing.length) return { error: `The Space still needs ${missing.map((m) => m.label.toLowerCase()).join(', ')}.`, missing, fields, inputs, filled: pre.filled };
-      q = await sloosh.quoteSpace({ id: spec.space.id, inputs }); out = { space: { id: spec.space.id, name: spec.space.name || null }, inputs, fields, filled: pre.filled, prompt: null, settings: null, model: null }; }
+      q = await sloosh.quoteSpace({ id: spec.space.id, inputs }).catch((e) => { noteRefusal(slug, 'quote_space', { space: spec.space.id, inputs: Object.keys(inputs) }, e); throw e; }); out = { space: { id: spec.space.id, name: spec.space.name || null }, inputs, fields, filled: pre.filled, prompt: null, settings: null, model: null }; }
     else { const b = buildFinal({ ...spec, refs }); const vid = b.kind === 'video' || spec.kind === 'video';
-      try { q = await sloosh.quoteGeneration({ mode: vid ? 'video_gen' : 'image_gen', prompt: b.prompt, model: b.model, references: uploaded(refs), ratio: b.settings.aspect_ratio, resolution: b.settings.resolution, seconds: vid ? b.settings.duration : undefined, sound: vid ? b.settings.sound : undefined, count: spec.count || 1 });
-      } catch (e) { log.warn?.('[finals] quote refused', slug, vid ? 'video' : 'image', b.model, `${refs.length} refs (${refs.map((r) => `${r.job || r.role || '?'}:${r.asset?.type || '?'}`).join(',')})`, `${b.settings.aspect_ratio} ${b.settings.resolution}${vid ? ` ${b.settings.duration}s` : ''}`, e.message.slice(0, 300), e.result ? JSON.stringify(e.result).slice(0, 600) : '');
-        if (canFallBack) return geminiQuote(spec, PAY.test(e.message) ? `Sloosh cannot pay for this yet (${e.message.slice(0, 160)}).` : `Sloosh could not quote this (${e.message.slice(0, 160)}).`); return { error: 'Sloosh couldn’t price this final just now. Try again in a minute.', detail: e.message.slice(0, 200) }; }
+      const ask = { mode: vid ? 'video_gen' : 'image_gen', prompt: b.prompt, model: b.model, references: uploaded(refs), ratio: b.settings.aspect_ratio, resolution: b.settings.resolution, seconds: vid ? b.settings.duration : undefined, sound: vid ? b.settings.sound : undefined, count: spec.count || 1 };
+      try { q = await sloosh.quoteGeneration(ask);
+      } catch (e) { noteRefusal(slug, 'quote_generation', ask, e); if (canFallBack) return geminiQuote(spec, PAY.test(e.message) ? `Sloosh cannot pay for this yet (${e.message.slice(0, 160)}).` : `Sloosh could not quote this (${e.message.slice(0, 160)}).`); return { error: 'Sloosh couldn’t price this final just now. Try again in a minute.', detail: e.message.slice(0, 200) }; }
       out = { model: b.model, label: b.label || b.model, why: b.why, prompt: b.prompt, settings: b.settings, space: null }; }
     const credits = creditsOf(q), hold = holdOf(q) || credits, quoteId = idOf(q), warning = pick(q, 'warning') || null;
     if (warning && canFallBack && /wallet|allocation|credit|limit|short|balance|payment|402|allowance|insufficient|owned|asset|not found|unauthori/i.test(warning)) return geminiQuote(spec, `Sloosh says: ${warning}`);
@@ -112,6 +120,30 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
     out.provider = 'sloosh';
     const over = budget.refusal('credits', slug, Math.ceil(credits)); if (over) return { error: budget.why('credits', slug, spec.brandName, Math.ceil(credits)), credits };
     return { quoteId, credits, hold, warning, expiresAt: expiresOf(q), at: now(), refs: refs.map((r) => ({ ...r, asset: r.asset })), ...out, raw: q };
+  }
+
+  /* ---------- the ops page's free check: real quotes on a real product photo, one setting changed at a time ---------- */
+  /* quotes reserve and spend nothing (quote_generation: "Does not start work or debit credits"); each variant changes one thing
+     from what Brew sends, so the one Sloosh refuses shows by elimination. The photo is imported once (import is free too). */
+  async function probe(slug, photoUrl, { label = 'Product photo' } = {}) {
+    if (!photoUrl) return { error: 'no product photo to test with' };
+    let ref; try { const [r] = await withAssets(slug, [{ url: photoUrl, job: 'product', label }]); ref = r; } catch (e) { return { error: `import_asset: ${e.message}` }; }
+    const spec = { title: 'a reel', subject: label, visual: 'A hand picks the product up from a kitchen counter and uses it.', ratio: '9:16', seconds: 9, sound: true, refs: [ref], beats: [{ shot: 'A hand reaches for the product on the counter.', line: 'This one changed my mornings.' }, { shot: 'Close on the product in use.', line: '' }, { shot: 'The product back on the counter, morning light.', line: 'Try it.' }], brand: { name: 'Brew check' } };
+    const one = async (name, kind, tweak = (a) => a, specTweak = {}) => { const b = buildFinal({ ...spec, kind, ...specTweak }); const vid = kind === 'video';
+      const ask = tweak({ mode: vid ? 'video_gen' : 'image_gen', prompt: b.prompt, model: b.model, references: uploaded([ref]), ratio: b.settings.aspect_ratio, resolution: b.settings.resolution, seconds: vid ? b.settings.duration : undefined, sound: vid ? b.settings.sound : undefined, count: 1 });
+      try { const q = await sloosh.quoteGeneration(ask); return { name, ok: !!idOf(q), credits: creditsOf(q), warning: pick(q, 'warning') || null, ask: shapeOf(ask) }; }
+      catch (e) { return { name, ok: false, code: e.code || null, error: String(e.message).slice(0, 900), ask: shapeOf(ask) }; } };
+    const variants = [
+      one('image as Brew sends it', 'image', (a) => a, { ratio: '4:5' }),
+      one('reel as Brew sends it', 'video'),
+      one('reel, sound left out', 'video', (a) => ({ ...a, sound: undefined })),
+      one('reel, photo as start frame', 'video', (a) => ({ ...a, references: a.references.map((r) => ({ ...r, role: 'start_frame' })) })),
+      one('reel, no photo', 'video', (a) => ({ ...a, references: [] })),
+      one('reel, 720p 5 s', 'video', (a) => ({ ...a, resolution: '720p', seconds: 5 })),
+      one('reel on Seedance 2.0', 'video', (a) => ({ ...a, model: 'seedance-2.0', seconds: 8 })),
+      one('reel on Gemini Omni', 'video', (a) => ({ ...a, model: 'gemini-omni-1.1-flash', seconds: 8 }))
+    ];
+    return { photo: { kind: ref.asset.kind, id: ref.asset.id, type: ref.asset.type }, results: await Promise.all(variants) };
   }
 
   /* ---------- run: the yes on a quote; written before the paid call; idempotent on the key ---------- */
@@ -152,7 +184,7 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
         if (budget.refusal('credits', slug, units)) throw Object.assign(new Error(budget.why('credits', slug, null, units)), { budget: true });
         await writeRec(slug, rec);
         let r; try { r = q.space ? await sloosh.runSpace({ quote: q.quoteId, runKey, confirmed: true }) : await sloosh.generate({ quote: q.quoteId, runKey, confirmed: true }); }
-        catch (e) { rec = { ...rec, state: 'failed', error: `Sloosh did not start this one (${String(e.message).slice(0, 200)}). Nothing was charged; ask for a fresh quote.`, charged: 0, failedAt: now() }; await writeRec(slug, rec); throw Object.assign(new Error(rec.error), { rec, cause: e, soft: true }); }
+        catch (e) { noteRefusal(slug, q.space ? 'run_space' : 'generate', { quote: q.quoteId, model: q.model }, e); rec = { ...rec, state: 'failed', error: `Sloosh did not start this one (${String(e.message).slice(0, 200)}). Nothing was charged; ask for a fresh quote.`, charged: 0, failedAt: now() }; await writeRec(slug, rec); throw Object.assign(new Error(rec.error), { rec, cause: e, soft: true }); }
         const gid = idOf(r);
         if (!gid) { rec = { ...rec, state: 'failed', error: `Sloosh gave no operation id (keys: ${Object.keys(r || {}).join(', ')}); check Sloosh’s Assets before paying again`, charged: null, failedAt: now() }; await writeRec(slug, rec); throw Object.assign(new Error(rec.error), { rec }); }
         budget.spend('credits', slug, units); /* the share moves only now, once per operation */
@@ -219,5 +251,5 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
   const busy = () => inflight.size;
   const get = (slug, runKey) => readRec(slug, runKey);
   async function list(slug) { const files = await packs.listFiles(slug, DIR.replace(/\/$/, '')).catch(() => []); const out = []; for (const f of files) { const r = await packs.getJSON(slug, DIR + f, null); if (r) out.push(r); } return out.sort((a, b) => b.at - a.at); }
-  return { status, quote, run, checkpoint, reconcileAll, busy, get, list, assetFor, runKeyOf, forget: () => { statusMemo = null; wsMemo = null; } /* after a connect or disconnect (server.js): the connection and the workspace are read again */ };
+  return { refusals: () => refusals.slice(), noteRefusal, probe, status, quote, run, checkpoint, reconcileAll, busy, get, list, assetFor, runKeyOf, forget: () => { statusMemo = null; wsMemo = null; } /* after a connect or disconnect (server.js): the connection and the workspace are read again */ };
 }

@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import { register, tokenRequest, createSlooshAuth, pkce } from '../sloosh-auth.js';
-import { createSloosh, argsFor, parseReply, unwrap, flat, PREFLIGHT_CASES, preflightOf } from '../sloosh-mcp.js';
+import { createSloosh, argsFor, parseReply, unwrap, flat, PREFLIGHT_CASES, preflightOf, errorText, errorCode, refused } from '../sloosh-mcp.js';
 import fs from 'node:fs';
 
 /* the real tools, as tools/list gave them on 2026-10-16 (tools/sloosh-probe.mjs) */
@@ -136,4 +136,13 @@ test('several calls that need a refresh at once share one in-flight refresh', as
   const A = createSlooshAuth({ ...R, fetchImpl, log: { warn() {}, info() {} } });
   const got = await Promise.all([A.tokenFor(), A.tokenFor({ force: true }), A.tokenFor()]); assert.deepEqual(got, ['at1', 'at1', 'at1']); assert.equal(refreshes, 1);
   assert.equal(await A.tokenFor({ force: true }), 'at1'); assert.equal(refreshes, 1); /* a 401 right after a refresh: the refresh just landed, the token stands */
+});
+
+test('a refused call keeps the code and every word of why (19 Oct: a reel quote showed the bare owner_invalid_request)', () => {
+  const r = { isError: true, content: [{ type: 'text', text: JSON.stringify({ error: 'owner_invalid_request', message: 'generateAudio is not supported by seedance-2.5', details: { field: 'modelConfig.generateAudio' } }) }] };
+  const e = refused('quote_generation', r);
+  assert.equal(e.code, 'owner_invalid_request'); assert.match(e.message, /owner_invalid_request/); assert.match(e.message, /generateAudio is not supported/); assert.match(e.message, /modelConfig\.generateAudio/);
+  assert.equal(errorText({ text: 'owner_invalid_request' }), 'owner_invalid_request');
+  assert.match(errorText({ error: { code: 'bad_ratio', message: '4:5 is not offered' } }), /bad_ratio — 4:5 is not offered/); assert.equal(errorCode({ error: { code: 'bad_ratio' } }), 'bad_ratio');
+  const two = refused('generate', { isError: true, content: [{ type: 'text', text: 'owner_invalid_request' }, { type: 'text', text: 'start frame required for this model' }] }); assert.match(two.message, /start frame required/);
 });

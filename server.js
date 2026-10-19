@@ -544,7 +544,13 @@ const slooshOps = async (req) => {
   const pre = await sloosh.preflight().catch((e) => ({ ok: false, error: e.message }));
   let quote = null; if (new URL(req.url, 'http://x').searchParams.get('quote') === '1') { const b = buildFinal({ kind: 'image', title: 'a Meta ad', visual: 'A hand holds the product on a desk by a window.', hasSrc: false, ratio: '4:5', brand: { name: 'Brew check' } });
     quote = await sloosh.quoteGeneration({ mode: 'image_gen', prompt: b.prompt, model: b.model, references: [], ratio: b.settings.aspect_ratio, resolution: b.settings.resolution, count: 1 }).then((q) => ({ ok: true, model: b.model, credits: pick(q, 'credits', 'expectedCredits') ?? null, expiresAt: pick(q, 'expiresAt') || null, warning: pick(q, 'warning') || null })).catch((e) => ({ ok: false, model: b.model, error: e.message })); }
-  return { ...st, workspace: ws || st.workspace, connection: conn, account: acct, finals: fin, credits: budget.left().credits, preflight: pre, ...(quote ? { quote } : {}), reconnect: '/api/ops/sloosh/connect' };
+  /* ?models=1: what Sloosh's models really take today (list_models, free); ?quote=video&brand=<slug>[&img=<https url>]: real free quotes
+     on that brand's product photo, the reel as Brew sends it and one setting changed per variant (finals.probe) */
+  const sp = new URL(req.url, 'http://x').searchParams; let models = null, probe = null;
+  if (sp.get('models') === '1') models = Object.fromEntries(await Promise.all(['image_gen', 'video_gen'].map(async (m) => [m, await sloosh.listModels(m).catch((e) => ({ error: e.message }))])));
+  if (sp.get('quote') === 'video') { const slug = sp.get('brand') || 'cozysnugglet-shop'; const b = await loadBrand(slug).catch(() => null); const lead = (b?.catalog || []).find((x) => x.img) || null;
+    const img = sp.get('img') || lead?.img || null; probe = { brand: slug, ...(await finals.probe(slug, img, { label: lead?.t || lead?.title || 'Product photo' }).catch((e) => ({ error: e.message }))) }; }
+  return { ...st, workspace: ws || st.workspace, connection: conn, account: acct, finals: fin, credits: budget.left().credits, preflight: pre, ...(quote ? { quote } : {}), ...(models ? { models } : {}), ...(probe ? { probe } : {}), refusals: finals.refusals(), reconnect: '/api/ops/sloosh/connect' };
 };
 const slooshHandle = async (req, res, u) => {
   if (!u.pathname.startsWith('/api/ops/sloosh/')) return false;

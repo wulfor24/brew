@@ -71,6 +71,25 @@ export function unwrap(result) {
   try { return JSON.parse(texts[0]); } catch { return { text: texts.join('\n') }; }
 }
 
+/* a refused tool call → its code and every word of why (code, message, details, field). Sloosh answers { error: 'owner_invalid_request', message, details | issues }
+   (or the code alone as text); taking the first field only kept the code and dropped the reason (19 Oct, a reel quote) */
+const str = (v) => (v == null ? '' : typeof v === 'string' ? v : JSON.stringify(v));
+export const errorCode = (u) => { const e = u?.error; return str((e && typeof e === 'object' ? e.code || e.type : e) || u?.code || u?.errorCode || '').slice(0, 80) || null; };
+export function errorText(u) {
+  if (u == null) return 'no reason given';
+  if (typeof u === 'string') return u.slice(0, 600);
+  const e = u.error && typeof u.error === 'object' ? u.error : {};
+  const parts = [errorCode(u), e.message || u.message, u.text, e.detail || e.details || u.detail || u.details, e.issues || u.issues || u.errors, e.hint || u.hint, (e.field || u.field || e.path || u.path) ? `at ${str(e.field || u.field || e.path || u.path)}` : '', u.requestId || e.requestId ? `request ${u.requestId || e.requestId}` : '']
+    .map(str).map((s) => s.trim()).filter(Boolean);
+  const seen = []; for (const p of parts) if (!seen.some((s) => s.includes(p))) seen.push(p);
+  return (seen.length ? seen.join(' — ') : JSON.stringify(u)).slice(0, 600);
+}
+
+/* a tools/call result with isError → an Error with the code, the whole reason and every text block Sloosh sent */
+export function refused(name, r) { const u = unwrap(r); let why = errorText(u);
+  for (const t of (r?.content || []).filter((c) => c.type === 'text').slice(1).map((c) => String(c.text || '').trim())) if (t && !why.includes(t.slice(0, 60))) why += ` — ${t}`;
+  return Object.assign(new Error(`Sloosh ${name}: ${why.slice(0, 900)}`), { tool: name, result: u, code: errorCode(u) }); }
+
 export function createSloosh({ url = MCP_URL(), tokenFor, fetchImpl = fetch, log = console, clientInfo = { name: 'brew', version: '1' } } = {}) {
   let sid = null, ready = null, toolsAt = 0, tools = null, seq = 0;
   const headers = async (force) => ({ 'content-type': 'application/json', accept: 'application/json, text/event-stream', authorization: `Bearer ${await tokenFor({ force })}`, 'mcp-protocol-version': PROTOCOL, ...(sid ? { 'mcp-session-id': sid } : {}) });
@@ -88,7 +107,7 @@ export function createSloosh({ url = MCP_URL(), tokenFor, fetchImpl = fetch, log
   async function rpc(method, params = {}) {
     const id = ++seq; const m = await post({ jsonrpc: '2.0', id, method, params });
     if (!m) throw new Error(`Sloosh MCP: no reply to ${method}`);
-    if (m.error) throw Object.assign(new Error(`Sloosh ${method}: ${m.error.message || JSON.stringify(m.error).slice(0, 200)}`), { rpc: m.error });
+    if (m.error) throw Object.assign(new Error(`Sloosh ${method}: ${[m.error.message, m.error.data != null ? str(m.error.data) : ''].filter(Boolean).join(' — ').slice(0, 900) || JSON.stringify(m.error).slice(0, 300)}`), { rpc: m.error, code: m.error.code });
     return m.result;
   }
   const init = () => (ready ||= (async () => {
@@ -102,12 +121,11 @@ export function createSloosh({ url = MCP_URL(), tokenFor, fetchImpl = fetch, log
   async function call(name, intent = {}) {
     const t = await tool(name); const args = argsFor(t, intent, log);
     const r = await rpc('tools/call', { name, arguments: args });
-    /* the whole reason, not only its code (19 Oct: "owner_invalid_request" alone said nothing about what was wrong) */
-    if (r?.isError) { const u = unwrap(r); const why = typeof u === 'string' ? u : [u?.error || u?.code, u?.message || u?.text || u?.detail, u?.details ? JSON.stringify(u.details).slice(0, 300) : '', u?.field || u?.path ? `at ${u.field || u.path}` : ''].filter(Boolean).join(': ') || JSON.stringify(u).slice(0, 300); throw Object.assign(new Error(`Sloosh ${name}: ${why}`), { tool: name, result: u }); }
+    if (r?.isError) throw refused(name, r);
     return unwrap(r);
   }
   /* raw arguments, when the caller already speaks the schema (a Space form) */
-  async function callRaw(name, args = {}) { await tool(name); const r = await rpc('tools/call', { name, arguments: args }); if (r?.isError) { const u = unwrap(r); throw Object.assign(new Error(`Sloosh ${name}: ${u?.text || u?.error || JSON.stringify(u).slice(0, 300)}`), { tool: name, result: u }); } return unwrap(r); }
+  async function callRaw(name, args = {}) { await tool(name); const r = await rpc('tools/call', { name, arguments: args }); if (r?.isError) throw refused(name, r); return unwrap(r); }
 
   /* polling, on the shapes Sloosh really returns: an operation { state: admitted|dispatching|submitted|ambiguous|settled, owner }.
      A generation's owner has phase (… settled|rejected|cancelled), outputs [{ generationId, status, url }] and errorCode; a Space run's
