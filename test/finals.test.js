@@ -185,3 +185,12 @@ test('where a final shows (land) rides on the record but never in the run key: a
   const b = await R.F.run('cozy', spec, { quote: q, target, land: { tid: 'T1', fid: 'fn_b' } });
   assert.equal(b.runKey, a.runKey); assert.equal(b.state, 'done'); assert.equal(R.calls.filter((c) => c[0] === 'generate').length, 1);
 });
+
+test('a reel over what is left today is asked again at 720p, then shorter, before it goes to Veo (19 Oct: 15 s was 128 credits at 1080p, 52 at 720p, limit 50)', async () => {
+  const R = rig({ left: 50 }); const per = { '1080p': 8.53, '720p': 3.467 };
+  R.sloosh.quoteGeneration = async (o) => { R.calls.push(['quote', o]); const c = +(per[o.resolution] * o.seconds).toFixed(3); return { quoteId: 'q' + R.calls.length, credits: c, expiresAt: new Date(Date.now() + 300e3).toISOString(), ...(c > 50 ? { warning: 'This is over the MCP daily limit: 50 credits remain' } : {}) }; };
+  const q = await R.F.quote('cozy', { ...spec, kind: 'video', text: [], ratio: '9:16', seconds: 15, sound: true });
+  const asks = R.calls.filter((c) => c[0] === 'quote').map((c) => [c[1].resolution, c[1].seconds]);
+  assert.deepEqual(asks, [['1080p', 15], ['720p', 15], ['720p', 13]]);
+  assert.ok(q.credits > 0 && q.credits <= 50, `fits what is left: ${q.credits}`); /* the rig's own site cap (10) then refuses it, which is the budget's job */
+});

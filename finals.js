@@ -136,7 +136,7 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
       let model = buildFinal({ ...spec, refs }).model, live = specs?.models?.[model] || null, swapped = null;
       if (!live && specs && Object.keys(specs.models).length && specs.models[specs.default]) { swapped = model; model = specs.default; live = specs.models[model]; log.warn?.(`[finals] Sloosh has no ${swapped} now; using its default ${model}`); }
       const use = refsFor(refs, optsOf(model, live), vid);
-      const make = (res) => buildFinal({ ...spec, refs: use, forceModel: model, resolution: res }, live);
+      const make = (res, secs) => buildFinal({ ...spec, refs: use, forceModel: model, resolution: res, ...(secs ? { seconds: secs } : {}) }, live);
       const askOf = (b) => ({ mode, prompt: b.prompt, model: b.model, references: uploaded(use), ratio: b.settings.aspect_ratio, resolution: b.settings.resolution, seconds: vid ? b.settings.duration : undefined, sound: vid ? b.settings.sound : undefined, count: spec.count || 1 });
       let b = make(), ask = askOf(b);
       try { q = await sloosh.quoteGeneration(ask); noteTry(slug, ask, q);
@@ -146,6 +146,12 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
           res = lowerRes(model, res, live); if (!res || !['720p', '768p', '1080p', '1K', '2K', '2k'].includes(res)) break;
           const b2 = make(res), a2 = askOf(b2); const q2 = await sloosh.quoteGeneration(a2).catch((e) => { noteRefusal(slug, 'quote_generation', a2, e); return null; }); if (!q2) break; noteTry(slug, a2, q2);
           b = b2; ask = a2; q = q2; }
+        /* still over at 720p: the reel is made shorter to fit what is left today (every beat kept, timed to the new length; never under
+           6 s), priced from what Sloosh just quoted per second (a 15 s reel is 52 credits at 720p, 19 Oct) */
+        if (vid && st.left != null && (holdOf(q) || creditsOf(q)) > st.left && b.settings.duration) {
+          const per = (holdOf(q) || creditsOf(q)) / b.settings.duration, fit = Math.floor((st.left * 0.95) / per);
+          if (fit >= 6 && fit < b.settings.duration) { const b2 = make(b.settings.resolution, fit), a2 = askOf(b2); const q2 = await sloosh.quoteGeneration(a2).catch((e) => { noteRefusal(slug, 'quote_generation', a2, e); return null; });
+            if (q2) { noteTry(slug, a2, q2); b = b2; ask = a2; q = q2; } } }
       } catch (e) { noteRefusal(slug, 'quote_generation', ask, e); if (canFallBack) return geminiQuote(spec, PAY.test(e.message) ? `Sloosh cannot pay for this yet (${e.message.slice(0, 160)}).` : `Sloosh could not quote this (${e.message.slice(0, 160)}).`); return { error: 'Sloosh couldn’t price this final just now. Try again in a minute.', detail: e.message.slice(0, 200) }; }
       refs = use; out = { model: b.model, label: b.label || b.model, why: swapped ? `${b.why}; Sloosh no longer offers ${swapped}` : b.why, prompt: b.prompt, settings: b.settings, space: null }; }
     const credits = creditsOf(q), hold = holdOf(q) || credits, quoteId = idOf(q), warning = pick(q, 'warning') || null;
