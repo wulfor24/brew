@@ -51,5 +51,6 @@ export const brewFile = (name, buf) => {
   let t = esc || /shopos|remix it, jam|jam on it, do it|What Brew will watch|BREW SHIPS|Brew re-reads|Brew watches|Brew ships|\bwe (?:pause|revert|roll back|stop)\b|(?:Fifty|Sixty|Seventy|Eighty)[- ]?\w* moves for|Fifty-one moves|MOVE \d+ OF \d+/i.test(s) ? brewText(esc ? onceEscaped(s) : s) : s;
   if (/\.(json|md)$/i.test(name) && /(^|\/)(moves(\.json|\/)|seed\.json$)/.test(name) && SKILL_HINT.test(t)) t = /\.json$/i.test(name) ? unSkillJSON(t) : t.split('\n').map(unSkill).join('\n'); /* moves: no source-method narration */
   if (/\.json$/i.test(name) && /(^|\/)(jams\.json$|drafts\/|moves(\.json|\/)|seed\.json$)/.test(name) && t.includes('\\\\n')) t = t.replace(/\\\\n/g, '\\n'); /* a saved reply that wrote line breaks as the two characters \ n (ai.js realNewlines) reads with real ones */
+  if (/\.json$/i.test(name) && t.includes('\u2039')) t = t.replace(/\u2039(?=\s?\d)/g, '₹'); /* ₹ the model wrote as ‹ ("Only ‹419") reads as ₹ in every saved file */
   return t === s ? buf : Buffer.from(t, 'utf8');
 };

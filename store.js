@@ -34,7 +34,10 @@ export function createStore({ dir, bucket, gToken, log = console }) {
   /* the first load of each workspace after boot reads the bucket, not this disk: for the ~20 s two instances overlap on a
      deploy the disk copy may be the old one. After that the disk copy (kept in step by write()) serves, as before */
   const fromGcs = new Set();
-  const parse = (s) => JSON.parse(brewText(onceEscaped(s)), dec);
+  /* a workspace saved before the fix heals as it loads: line breaks written as the two characters \ n read as real ones, and ₹ the
+     model wrote as ‹ reads as ₹ (QA-02, QA-08) */
+  const healSaved = (s) => { let x = String(s); if (x.includes('\\\\n')) x = x.replace(/\\\\n/g, '\\n'); if (x.includes('\u2039')) x = x.replace(/\u2039(?=\s?\d)/g, '₹'); return x; };
+  const parse = (s) => JSON.parse(healSaved(brewText(onceEscaped(s))), dec);
   const load0 = async (id) => {
     if (!id || !/^t_[a-f0-9]+$/.test(id)) return null;
     if (remote && !fromGcs.has(id)) { try { const s = await gcs('GET', id); fromGcs.add(id); fs.writeFileSync(file(id), s); return parse(s); } catch (e) { if (/404/.test(e.message)) { fromGcs.add(id); return null; } log.warn('[store] gcs first read', e.message); } } /* the bucket unreachable: the disk copy below */

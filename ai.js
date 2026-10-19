@@ -8,7 +8,8 @@ export const MODELS = { opus: 'claude-opus-5-5', sonnet: 'claude-sonnet-5-5' };
 const PRICE = { 'claude-opus-5-5': [4, 20], 'claude-sonnet-5-5': [2, 10], ...GEMINI_PRICE }; // $ per MTok in / out
 /* a model sometimes writes a line break as the two characters \ n inside a JSON string (Gemini did, in a film brief's shot
    lines); the page then shows "\n" in the text. Every string in a structured reply gets real line breaks. */
-export const realNewlines = (v) => typeof v === 'string' ? (v.includes('\\n') ? v.replace(/\\n/g, '\n') : v) : Array.isArray(v) ? v.map(realNewlines) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, realNewlines(x)])) : v;
+/* also ₹ the model sometimes writes as ‹ ("Only ‹419"): fixed where the words are written, so copies, pages, emails and finals get ₹ too */
+export const realNewlines = (v) => typeof v === 'string' ? (v.includes('\\n') ? v.replace(/\\n/g, '\n') : v).replace(/\u2039(?=\s?\d)/g, '₹') : Array.isArray(v) ? v.map(realNewlines) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, realNewlines(x)])) : v;
 const SEARCH_PRICE = 0.01; // $ per web search
 
 // structured output wants additionalProperties:false on every object
