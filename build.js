@@ -79,7 +79,9 @@ const CONFIRM_WAIT = +process.env.BUILD_CONFIRM_WAIT_MS || 15 * 60e3; // the bri
 /* when Brew starts writing without the check: CONFIRM_WAIT after the wait began or after someone on the team last opened the
    check page, from the saved timestamps (status.waitingSince, status.checkOpenAt), so a restart or a deploy never starts the
    clock again and a brand is never stalled by frequent deploys */
-export const confirmDueAt = (s, wait = CONFIRM_WAIT) => Math.max(+s?.waitingSince || 0, +s?.checkOpenAt || 0) + wait;
+/* once a time has been said (status.writeAt), it is the time: the banner, the wait screen, the check page and the timer all keep it
+   (QA 19 Oct: the first open of the check page slid it once after the banner had shown an earlier one) */
+export const confirmDueAt = (s, wait = CONFIRM_WAIT) => +s?.writeAt > 0 ? +s.writeAt : Math.max(+s?.waitingSince || 0, +s?.checkOpenAt || 0) + wait;
 /* what the brief is written from, field by field (short hashes): a check after the build started that changes one of these
    rewrites the brief and the first wave of moves (confirm → recheck → lateCheck) */
 const hash8 = (v) => crypto.createHash('sha1').update(JSON.stringify(v ?? null)).digest('hex').slice(0, 8);
@@ -707,7 +709,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
      a minute on every visit), and a stamp from an earlier build (before this wait began) doesn't count */
   async function checkOpened(slug) {
     const s = await status(slug); if (!awaitingCheck(s) || s.confirmedAt || +s.checkOpenAt >= (+s.waitingSince || 0) && +s.checkOpenAt > 0) return;
-    const patch = { checkOpenAt: Date.now() }; if (!(await anonOf(slug))) patch.writeAt = confirmDueAt({ ...s, ...patch });
+    const patch = { checkOpenAt: Date.now() }; if (!(+s.writeAt > 0) && !(await anonOf(slug))) patch.writeAt = confirmDueAt({ ...s, ...patch }); /* a time already shown never moves */
     await setStatus(slug, patch);
   }
   async function checkData(slug, { heal: doHeal = true, opened = false } = {}) {
