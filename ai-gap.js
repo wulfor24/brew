@@ -16,7 +16,8 @@ export const gapKind = (q) => (KINDS.find(([, re]) => re.test(String(q || ''))) 
    brand, host: the brand's name and site */
 export function gapFix({ q = '', rivals = [], product = null, brand = 'the brand', host = 'your site' } = {}) {
   const kind = gapKind(q), rival = rivals[0] || null, page = product?.t ? `the ${cut(product.t, 40)} page` : `a buyer’s guide page on ${host}`;
-  const quote = `“${cut(String(q).replace(/\?$/, ''), 70)}”`;
+  /* the question is cut to fit the title's 90 characters inside its quotes, so the closing quote is never the part cut off (final QA pass 19 Oct, FEED-ARV-13) */
+  const lead = `Get ${brand} named when shoppers ask `, quote = `“${cut(String(q).replace(/\?$/, ''), Math.max(20, Math.min(70, 90 - lead.length - 2)))}”`;
   const fix = {
     compare: `a comparison section on ${page}: ${brand}${rival ? ` and ${rival}` : ' and the other names'}, side by side, with what makes ${brand} different`,
     proof: `a proof block on ${page}: what it does, how long it takes, and the reviews that say so`,
@@ -27,5 +28,5 @@ export function gapFix({ q = '', rivals = [], product = null, brand = 'the brand
     other: `an FAQ block on ${page} that answers it directly`
   }[kind];
   return { kind, fix, page: product?.t ? cut(product.t, 40) : 'A new guide page', url: product?.url || null, rival,
-    title: cut(`Get ${brand} named when shoppers ask ${quote}`, 90) /* the benefit first (plain.js rule), the question second */ };
+    title: `${lead}${quote}` /* the benefit first (plain.js rule), the question second */ };
 }

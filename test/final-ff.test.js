@@ -138,3 +138,11 @@ test('Creative and AI-answers rows carry a checked date, like Storefront’s', (
   assert.match(src('health.js'), /parts: parts\.map\(\(\[k, v, of, note\]\) => \(\{ k, v: Math\.round\(v\), of, note, at: adsAt \}\)\), src: 'Meta Ad Library', at: adsAt \}/);
   assert.match(src('public/app.js'), /\(x\.at \|\| r\.at\) \? ` · checked \$\{esc\(fmtDay\(Date\.parse\(x\.at \|\| r\.at\)\)/, 'a row with no date of its own shows its ring’s (AI answers)');
 });
+
+/* FEED-ARV-13: the gap card's question always closes its quote */
+import { gapFix } from '../ai-gap.js';
+test('a long question is cut inside its quotes, never through the closing one', () => {
+  const q = 'Which is the best natural onion hair oil for hair fall and dandruff that is safe for coloured hair in India?';
+  for (const brand of ['Arata', 'Forest Essentials India', 'X']) { const t = gapFix({ q, brand }).title; assert.ok(t.length <= 92, t); assert.match(t, /”$/, t); assert.equal((t.match(/“/g) || []).length, 1); }
+  assert.equal(gapFix({ q: 'Is Arata safe?', brand: 'Arata' }).title, 'Get Arata named when shoppers ask “Is Arata safe”');
+});
