@@ -333,6 +333,8 @@ Rules:
 - What a customer says is about customers ("Customers say…").
 - Scripts, storyboards and example posts: one learning per series or idea saying what it is, who it is for and how it should feel, never one per line or scene.
 - Go through the input section by section, start to end, and miss none: every number that says how they are doing now, every goal or target (with its number), every audience, every campaign, series or idea, every channel, market and rollout wave in order, every offer, page and retention step, every way results are measured, every guardrail, and what they ask for. A plan of many pages gives 30 to 60 learnings; a short note gives a few.
+- This input is ${chunk.length.toLocaleString('en-US')} characters: return at least ${Math.max(6, Math.min(50, Math.round(chunk.length / 1500)))} learnings (up to 70) if it has that many distinct points. Stopping early loses what Brew needs.
+- A learning about results keeps its numbers exactly as written (ROAS, CTR, conversion rate, CPA, AOV, spend, share, dates): never "significantly", "a large share" or "well" in place of a number the input gives. Write every number in digits as the input does (3.93x, 40%, ₹60.6L), never in words.
 - One learning per distinct point: never the same point twice, even in other words. quote is copied exactly from the input, one passage of up to 200 characters, never joined from two places.
 - A fact that gives a different value for a line on the fact sheet below: set conflictLabel and conflictSays. The sheet and connected accounts are the source of truth for numbers.
 ${lines.length ? `\nFACT SHEET (what Brew already has):\n${lines.join('\n')}\n` : ''}
