@@ -872,3 +872,7 @@ body[data-view="remix"] .fab{display:none}
 .case-plan summary small::after{content:' · Show';color:var(--fg-3);text-transform:none;letter-spacing:0}.case-plan[open] summary small::after{content:''}
 .it-sugg .it-more{color:var(--fg-2)}
 .std .it-sugg:not(.is-open){flex-wrap:wrap;overflow:visible;mask-image:none;-webkit-mask-image:none} /* two chips and More: nothing to scroll, nothing faded */
+/* "Free draft" on every draft-making button and the chips (CRE-10): small and quiet; only the final shows credits */
+.btn .btn-free{font-size:11.5px;font-weight:500;opacity:.72;margin-left:6px;white-space:nowrap}
+.it-sugg .it-free{align-self:center;margin-left:auto;padding-left:4px;font-size:12px;color:var(--fg-3);white-space:nowrap}
+@media (max-width:520px){.btn .btn-free-t{display:none}}

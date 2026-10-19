@@ -906,7 +906,7 @@
       <button class="icon-btn" data-act="heart" aria-pressed="${!!S.hearts[p.id]}" aria-label="More like this">${ic('heart')}</button>
       <button class="icon-btn" data-act="jam" aria-label="Jam with the team">${ic('hand')}</button>
       ${proofBtn(p)}
-      <button class="icon-btn v2-act" data-act="take" aria-label="Another take" title="Another take">${ic('refresh')}</button>${V2 ? `<button class="icon-btn v2-act" data-act="make" aria-label="Make it yours" title="Make it yours">${ic('sparkles')}</button>` : ''}
+      <button class="icon-btn v2-act" data-act="take" aria-label="Another take, a free draft" title="Another take · Free draft">${ic('refresh')}</button>${V2 ? `<button class="icon-btn v2-act" data-act="make" aria-label="Make it yours" title="Make it yours">${ic('sparkles')}</button>` : ''}
       <span class="sp"></span>
       <button class="icon-btn" data-act="save" aria-pressed="${S.saved.includes(p.id)}" aria-label="Save for later">${ic('bookmark')}</button></div>`;
   /* the proof on every card (evidence.js via /api/cards/:cid/evidence): why Brew suggested it, and the hard evidence behind it */
@@ -3593,7 +3593,7 @@
       /* the clip itself: made on the stage (a first frame of the real product, animated, the hook read over it) */
       const hk = String(hook || '').split(/\s+/).slice(0, 14).join(' '), newHook = p.video && p.videoHook && p.videoHook.trim() !== hk.trim(), newPic = p.video && p.poster && p.image && p.image !== p.poster, stale = newHook || newPic;
       const make = lg && view === 'remix' && !ch.batchKey ? (ch.videoPending ? `<div class="sv-make is-busy"><span class="spin"></span>${esc(ch.videoStep || 'Making the video')}…</div>`
-        : SPLIT && !stale && !ch.videoError ? '' /* the jam's main button makes the first video (stepBar) */ : !p.video || stale ? `<div class="sv-make${SPLIT ? ' is-row' : ''}">${ch.videoError ? `<small>${esc(ch.videoError)}</small>` : ''}<button class="btn ${SPLIT ? 'btn-ghost' : 'btn-primary'} sm" data-rx="video">${ic('vid', 's14')}${stale ? (newPic ? 'Remake the video with this photo' : 'Remake the video for this hook') : ch.videoError ? 'Make it again' : 'Make the video'}</button></div>` : '') : '';
+        : SPLIT && !stale && !ch.videoError ? '' /* the jam's main button makes the first video (stepBar) */ : !p.video || stale ? `<div class="sv-make${SPLIT ? ' is-row' : ''}">${ch.videoError ? `<small>${esc(ch.videoError)}</small>` : ''}<button class="btn ${SPLIT ? 'btn-ghost' : 'btn-primary'} sm" data-rx="video">${ic('vid', 's14')}${stale ? (newPic ? 'Remake the video with this photo' : 'Remake the video for this hook') : ch.videoError ? 'Make it again' : 'Make the video'}${freeTag(true)}</button></div>` : '') : '';
       body = `<div class="pm pm-sv"><div class="sv-phone">${pmMedia(ch, p, lg, { ratio: '9/16', video: true }) || '<div class="pm-media is-slot" style="aspect-ratio:9/16"></div>'}${p.video ? '' : `<p class="sv-hook">${esc(hook || '')}</p>`}${/is-row/.test(make) ? '' : make}
           <div class="sv-side">${pmI('like')}${pmI('reply')}${pmI('share')}</div><div class="sv-cap"><b>@${esc(h)}</b><span class="sv-cap-t">${esc(String(p.title || String(p.copy || '').split('\n')[0] || '').replace(/["“”]/g, '').replace(/\s{2,}/g, ' ').trim())}</span>${tags.length ? `<span class="pm-tag sv-cap-tags">${esc(tags.slice(0, 4).join(' '))}</span>` : ''}</div></div>${/is-row/.test(make) ? make : ''}${svNote(ch, p, lg)}
         ${lg && sc.length ? `<ol class="sv-beats">${sc.map((x, i) => `<li><small>${esc(x.beat || `Beat ${i + 1}`)}</small><b>${esc(x.line || '')}</b><span>${esc(x.shot || '')}</span></li>`).join('')}</ol>` : ''}</div>`;
@@ -3886,6 +3886,10 @@
     const r = await tapi('POST', `/api/changes/${ch.id}/final/quote`, { auto: true }).catch((e) => ({ error: e.message }));
     RX.fq[k] = r?.quote ? { st: 'ok', q: r.quote } : { st: 'err', err: r?.error || 'Sloosh didn’t answer.' };
     if (view === 'remix' && RX.ch?.id === ch.id) paintStudio(); return RX.fq[k]; };
+  /* say before it runs whether it costs (CRE-10/RMX-10/CRE-05): drafts are on Brew, so every draft-making button carries a quiet
+     "Free draft" (a clip adds how long it takes); only the final shows credits (finalBtn) */
+  const FREE = 'Free draft', FREE_CLIP = 'Free draft · about two minutes' /* the same wait the chat says when the clip starts (remix.js makeOne): a first frame, then Veo */;
+  const freeTag = (clip = false) => `<small class="btn-free" title="${clip ? FREE_CLIP : FREE}">${FREE}${clip ? `<span class="btn-free-t">${FREE_CLIP.slice(FREE.length)}</span>` : ''}</small>`; /* a phone keeps just Free draft */
   const finalBtn = (ch) => { const what = isReel(ch) || ch.pkg?.video ? 'reel' : 'picture'; RX.fq ||= {}; const f = RX.fq[fqKey(ch)];
     if (!f) { setTimeout(() => fqFetch(ch), 0); return `<button class="btn btn-primary ship-go" disabled><span class="spin"></span>Make the final ${what}</button>`; }
     if (f.st === 'loading') return `<button class="btn btn-primary ship-go" disabled><span class="spin"></span>Make the final ${what}</button>`;
@@ -3915,9 +3919,9 @@
     if (job && !ch.finalPending) { head = `<span class="spin"></span>${esc(job)}${nm}`; tip = media ? 'Brew makes a quick draft first, so you can check the idea. The final is made after.' : 'It lands here on its own in a moment.'; main = `<button class="btn btn-primary ship-go" disabled>${esc(job)}…</button>`; }
     else if (op && !op.picked) { head = `Pick one of ${op.list.length}`; tip = 'Tap the options above the stage to compare them, then use the one you like. The others stay in History.';
       main = `<button class="btn btn-primary ship-go" ${opt ? `data-opt-use="${esc(opt.id)}"` : 'disabled'}>${ic('check', 's16')}${opt ? `Use ${esc(opt.name)}` : 'Pick one above'}</button>`; }
-    else if (fix) { head = `Needs a fix: ${esc((ch.fixes || [])[0] || 'see the checks')}`; tip = `Before it can ship: ${(ch.fixes || []).join('; ')}.`; main = `<button class="btn btn-primary ship-go" data-rx="fix">${ic('sparkles', 's16')}Fix it with AI</button>`; }
+    else if (fix) { head = `Needs a fix: ${esc((ch.fixes || [])[0] || 'see the checks')}`; tip = `Before it can ship: ${(ch.fixes || []).join('; ')}.`; main = `<button class="btn btn-primary ship-go" data-rx="fix">${ic('sparkles', 's16')}Fix it with AI${freeTag()}</button>`; }
     else if (ch.finalPending) { head = `<span class="spin"></span>${ch.finalPending.fallback ? 'Brew' : 'Sloosh'} is making the final${nm}`; tip = 'It lands here when it’s done, usually in a minute or two.'; main = `<button class="btn btn-primary ship-go" disabled>Making the final…</button>`; }
-    else if (media && !fin && isReel(ch) && !p.video) { head = `Script ready${nm}`; tip = 'Make the video to see it moving. It’s a quick draft; the final reel is made after.'; main = `<button class="btn btn-primary ship-go" data-rx="video">${ic('vid', 's16')}Make the video</button>`; }
+    else if (media && !fin && isReel(ch) && !p.video) { head = `Script ready${nm}`; tip = 'Make the video to see it moving. It’s a quick draft; the final reel is made after.'; main = `<button class="btn btn-primary ship-go" data-rx="video">${ic('vid', 's16')}Make the video${freeTag(true)}</button>`; }
     else if (media && !fin) { head = `Draft ${reel ? 'video' : 'photo'} ready${nm}`; tip = `A quick draft made by Brew to check the idea. The final ${reel ? 'reel' : 'picture'} is made on Sloosh, ready to post. Then Send brief.`; main = finalBtn(ch); }
     else if (media) { head = `Final ready${nm}`; tip = 'Send brief: the ShopOS team gets it by email and posts or runs it. Its status shows in the top bar.'; main = send; }
     else { head = `Ready${nm}`; tip = ch.family === 'post' && ch.target?.conn !== 'meta' ? 'The brief carries the post and where it goes. You post it yourself; Brew never posts in communities for you.' : 'Send brief: the ShopOS team gets it by email and runs it. Its status shows in the top bar.'; main = send; }
@@ -3928,7 +3932,7 @@
     if (dlTool(ch, ch)) items.push(['data-st-dl', 'down', 'Download', 'This version’s files, as they are now.']);
     /* Redo it: one new take beside the one way forward, whenever the version can still change (not while something is being made) */
     const busy = !!job;
-    const redo = !busy && !(op && !op.picked) ? `<button class="btn btn-ghost ship-redo" data-rx="variants" title="A new take from a new angle. This one stays in History.">${ic('shuffle', 's16')}Redo it</button>` : '';
+    const redo = !busy && !(op && !op.picked) ? `<button class="btn btn-ghost ship-redo" data-rx="variants" title="A new take from a new angle, a free draft. This one stays in History.">${ic('shuffle', 's16')}Redo it${freeTag()}</button>` : '';
     return `<div class="ship one ${fix ? 'warn' : 'ok'}">${strip}<div class="ship-tx is-step"><b><span class="ship-l">${head}</span>${tipBtn(tip)}</b></div><div class="ship-btns">${shipMenu(ch, items)}${redo}${main}</div></div>`; };
   /* the options as tabs above the stage, named by their angle, never v1–v5 */
   /* one, always: no option tabs, not even on jams saved with options (the one on the stage is the one; the rest are in History) */
@@ -3958,7 +3962,7 @@
     if (SPLIT && !ch.batchKey && ch.state !== 'jam' && jobOf(ch)) return stepBar(ch); /* being made: the bar says what, never Draft or Ready */
     if (SPLIT && !ch.batchKey && ch.state !== 'jam' && !planMade(ch)) { const pl = planOf(ch);
       return `<div class="ship one ok"><div class="ship-tx"><b>${ic('sparkles', 's16')}<span class="ship-l">${ch.v0 === 'draft' ? 'First draft' : 'Draft'} · v${curN(ch)}</span>${tipBtn(`${planGo(ch, pl).line}. Then share the brief.`)}</b></div>
-        <div class="ship-btns">${shipMenu(ch, [['data-rx="share-shopos"', 'send', 'Send the brief now', 'The ShopOS team gets it by email and makes it.'], ['data-rx="share-team"', 'copy', 'Share with my team', 'Copy the brief and a link to paste in your team’s chat.']])}<button class="btn btn-primary" data-rx="plan">${ic('sparkles', 's16')}${esc(planGo(ch, pl).label)}</button></div></div>`; }
+        <div class="ship-btns">${shipMenu(ch, [['data-rx="share-shopos"', 'send', 'Send the brief now', 'The ShopOS team gets it by email and makes it.'], ['data-rx="share-team"', 'copy', 'Share with my team', 'Copy the brief and a link to paste in your team’s chat.']])}<button class="btn btn-primary" data-rx="plan">${ic('sparkles', 's16')}${esc(planGo(ch, pl).label)}${freeTag(isReel(ch))}</button></div></div>`; }
     if (SPLIT && !ch.batchKey && ch.state !== 'jam') return stepBar(ch);
     if (ch.state === 'jam') return `<div class="ship warn"><div class="ship-tx"><b>${ic('hand', 's16')}Being planned in a jam</b><span>Answer the open questions there, then it ships.</span></div><div class="ship-btns"><button class="btn btn-primary" data-rx="open">Open the jam</button></div></div>`;
     const R = RXROUTE[ch.verdict] || RXROUTE.jam, blocks = ch.checks.filter((x) => !x.ok && !x.soft);
@@ -4017,7 +4021,7 @@
     const rest = [...(PH_FAM.includes(ch.family) && !(SPLIT && phTools(ch, ch, null)) ? [`<button type="button" class="chip chip-ph" data-ph-open>${ic('pic', 's14')}Change the photo</button>`] : []),
       ...j2Acts(ch, (attr, icon, label, cls = '') => `<button type="button" class="chip j1-chip${cls}" ${attr}${dis}>${icon ? ic(icon, 's14') : ''}${esc(label)}</button>`)];
     const all = [...asks, ...rest], first = all.slice(0, 2), more = all.slice(2), open = RX.moreChips === ch.id;
-    return `<div class="it-sugg${open ? ' is-open' : ''}">${first.join('')}${more.length ? (open ? more.join('') : `<button type="button" class="chip it-more" data-chips-more aria-expanded="false">${ic('more', 's14')}More</button>`) : ''}</div>`; };
+    return `<div class="it-sugg${open ? ' is-open' : ''}">${first.join('')}${more.length ? (open ? more.join('') : `<button type="button" class="chip it-more" data-chips-more aria-expanded="false">${ic('more', 's14')}More</button>`) : ''}${all.length ? `<small class="it-free" title="Every change here is a draft made by Brew, free. Only the final costs credits.">${FREE}s</small>` : ''}</div>`; };
   const chatTab = (ch, edit) => {
     const msgs = ch.thread || [], vById = (id) => ch.versions.find((v) => v.id === id), JR = window.JamRoom, w = SPLIT && RX.p ? workOfCard(RX.p.id) : null, me = String(ME()?.email || '').toLowerCase();
     const one = (m) => m.from === 'you' ? (me && m.by?.email && String(m.by.email).toLowerCase() !== me && JR?.teamMsg /* a teammate's ask, with their face and name */ ? `<div class="st-jm">${JR.teamMsg({ from: 'me', by: m.by, body: m.text }, w || {})}</div>` : `<div class="lgm you"><p>${esc(m.text)}</p></div>`)

@@ -1381,7 +1381,7 @@ export function createRemix(o) {
     if (ch.options && !ch.options.picked) ch.options = { ...ch.options, picked: v.id }; /* an old jam with options: the redo is the one */
     let made = '';
     if (visual) made = genImage(t, ch, 'the new take', { all: rows.length > 1, target: v.id }) ? (rows.length > 1 ? 'Its slides land in a minute.' : 'Its picture lands in a minute.') : '';
-    else if (hadClip) made = genVideo(t, ch, 'the new take') ? 'Filming it now, about two minutes.' : videoWhy(ch);
+    else if (hadClip) made = genVideo(t, ch, 'the new take') ? 'Filming it now, a free draft, about two minutes.' : videoWhy(ch);
     else if (isVideoPost(ch)) made = 'Tap Make the video when you want the clip.';
     ch.thread.push({ from: 'ai', text: `Redid it${x.angle ? `: ${shortName(x.angle) || x.angle}` : ''}. v${v.n} is on the stage${was ? `; v${was.n} is in History` : ''}. ${made}`.trim(), at: now(t) });
     signal(t, 'pick', { agent: ch.agent, angle: ch.angle, action: ch.action, changeId: ch.id }, now(t));
@@ -1465,7 +1465,7 @@ export function createRemix(o) {
     ch.planRun = { at: now(t), n: 1, versions: [head?.id].filter(Boolean), by: 'one' };
     const w = (t.work || []).find((x) => x.changeId === ch.id); if (w) w.cardPlan = { ...(w.cardPlan || ch.plan || {}), made: now(t) };
     if (ch.family === 'listing' && /photo|image/i.test(label)) { const ok = genListingPhotos(t, ch, label); if (ok === 'own') return null; /* placed at once, and the chat said so */ if (!ok && ch.pkg?.photoBrief) return null; return ok ? `Making ${shotsOf(ch.pkg).length} listing photos from your product photo: ${shotsOf(ch.pkg).join('; ')}. They land here in a minute or two.` : imageWhy(ch); }
-    if (isVideoPost(ch)) { if (ch.pkg?.video || ch.videoPending) return null; const ok = genVideo(t, ch, label); return ok ? 'Making the video now, about two minutes. It lands here on its own. Not right? Redo it.' : videoWhy(ch); }
+    if (isVideoPost(ch)) { if (ch.pkg?.video || ch.videoPending) return null; const ok = genVideo(t, ch, label); return ok ? 'Making the video now, a free draft, about two minutes. It lands here on its own. Not right? Redo it.' : videoWhy(ch); }
     if (VISUAL.has(ch.family) && canPic(ch)) {
       const missing = rows.length > 1 ? rows.some((_, i) => !(ch.pkg.cardImages || [])[i]) : !/^gen\//.test(ch.pkg?.image || '');
       if (!missing) return null;
