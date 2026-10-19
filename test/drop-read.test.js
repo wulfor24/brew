@@ -66,3 +66,16 @@ test('a "no" in a preference note pushes its words down, never up', () => {
   /* what Gemini read the note as wins over the sentence split */
   assert.deepEqual(noteSides([{ text: 'whatever', more: ['reels'], less: ['influencers'] }]), { up: ['reels'], down: ['influencers'] });
 });
+
+test('a PDF read that comes back as a summary is read again; chat around a copy is dropped; several files are read one by one', async () => {
+  const { unchat, thinRead } = await import('../drop-read.js'); const { byFile } = await import('../brand-learnings.js');
+  assert.equal(unchat('Here is the text:\n\nBody line.\n\nWould you like a summary of the phases?'), 'Body line.');
+  assert.equal(thinRead('short', 'A few bullets. Would you like more?', 1e6), true);
+  assert.equal(thinRead('x'.repeat(4000), 'x', 6e6), true, 'far too short for a 6 MB deck');
+  assert.equal(thinRead('x'.repeat(40000), 'x', 6e6), false);
+  const asks = []; const ai = { live: true, call: async (o) => { asks.push(o.messages[0].content[1].text); return asks.length === 1 ? { text: '* One bullet\n\nWould you like a summary?', usd: 0 } : { text: 'Page one words.\nPage two words.', usd: 0 }; } };
+  const r = await readDrop({ name: 'deck.pdf', data: Buffer.from('%PDF').toString('base64') }, { ai });
+  assert.equal(asks.length, 2); assert.equal(r.text, 'Page one words.\nPage two words.');
+  assert.deepEqual(byFile('--- a.pdf ---\none\n--- b.pdf ---\ntwo'), ['--- a.pdf ---\none', '--- b.pdf ---\ntwo']);
+  assert.deepEqual(byFile('just notes'), ['just notes']);
+});

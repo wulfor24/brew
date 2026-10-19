@@ -103,6 +103,12 @@ export function sourceKind(text) {
   return 'Notes';
 }
 // paragraph-aware chunks with a small overlap, so a learning split across a boundary is still read whole once
+/* a drop of several files arrives as "--- name ---" blocks (drop box): one block per file, each with its own header */
+export function byFile(text) {
+  const s = String(text || ''), at = [...s.matchAll(/^--- .{1,140} ---$/gm)].map((m) => m.index);
+  if (at.length < 2) return s ? [s] : [];
+  return at.map((x, i) => s.slice(x, at[i + 1] ?? s.length).trim()).filter(Boolean);
+}
 export function chunkText(text, size = 14000, overlap = 400) {
   const s = String(text || ''); if (s.length <= size) return s ? [s] : [];
   const out = []; let i = 0;
@@ -361,7 +367,7 @@ export function createLearnings({ ai = null, packs, memory = null, builder = nul
   const live = () => !!ai?.live;
 
   async function extract({ name, host, text, kind, sheet }) {
-    const parts = chunkText(text, CHUNK), box = { usd: 0 }, lists = [];
+    const parts = byFile(text).flatMap((f) => chunkText(f, CHUNK)), box = { usd: 0 }, lists = []; /* each dropped file read on its own: a long audit never crowds out a plan's guardrails */
     // three chunks at a time: a long transcript reads in a minute, not ten
     for (let i = 0; i < parts.length; i += 3) {
       const rs = await Promise.all(parts.slice(i, i + 3).map((chunk, j) => ai.call({ model: 'sonnet', tag: 'learn-extract', max: 16000, effort: 'medium', think: true, schema: EXTRACT_SCHEMA,

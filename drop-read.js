@@ -54,6 +54,12 @@ const IMAGE_SCHEMA = { type: 'object', properties: {
   text: { type: 'string', description: 'Every word printed on the picture, copied exactly, line by line in reading order. Empty when it has none' },
   shows: { type: 'string', description: 'One or two plain sentences: what the picture shows (the product, people, setting, colours, layout, what kind of asset it is: an ad, a page, a guide, a packshot)' },
   job: { type: 'string', enum: ['product', 'scene', 'style', 'person', 'logo', 'other'], description: 'What the brand would use it for when making new pictures: product = the product itself, scene = a setting or lifestyle shot, style = a look to follow (an ad, a mood board, a guide page), person = a model or face, logo, other' } } };
+const PDF_SYSTEM = 'You are a transcription engine. You copy every word of a document in reading order and nothing else. You never summarise, shorten, comment or ask a question.';
+const PDF_AGAIN = 'Transcribe this whole document, every page, every word, word for word: titles, body text, tables, captions, slide text, script lines, footnotes. A summary is wrong. Add one line in square brackets for each picture or chart. Output only the transcription.';
+/* chat around a copy ("Here is…", "Would you like…") is not the document */
+export const unchat = (t) => String(t || '').replace(/^\s*(here is|here's|below is|sure[,!])[^\n]*\n+/i, '').replace(/\n+[^\n]*\b(would you like|let me know if|i can also|do you want me to)\b[^\n]*\s*$/i, '').trim();
+/* a read that is a summary: it asked a question, or it is far too short for the file (a text deck gives ~10k characters a MB) */
+export const thinRead = (text, raw, bytes) => /\b(would you like|let me know if|here is a summary|in summary)\b/i.test(String(raw || '')) || (bytes > 1.5e6 && String(text || '').length < 8000);
 const PDF_ASK = 'Copy out all the text in this document, word for word, in reading order. Keep each heading and list item on its own line. For each picture, chart, colour swatch or logo, add one line in square brackets saying what it shows (with colour codes when they are printed). Nothing else: no summary, no comments.';
 
 /* readDrop({ name, type, data }) → { kind, text, chars, cut, image?: { buf, ext, shows, job }, usd } | { error }
@@ -71,8 +77,12 @@ export async function readDrop(f = {}, { ai = null } = {}) {
   if (!live) return { error: `Reading ${kind === 'pdf' ? 'PDFs' : 'photos'} needs the AI, which is off on this server.` };
   const mime = kind === 'pdf' ? 'application/pdf' : IMG[ext] || String(f.type || 'image/png');
   if (kind === 'pdf') {
-    const r = await ai.call({ model: 'sonnet', tag: 'drop-read', max: 30000, effort: 'low', messages: [{ role: 'user', content: [{ type: 'document', source: { type: 'base64', media_type: mime, data: b64 } }, { type: 'text', text: PDF_ASK }] }] });
-    return done(kind, r.text || '', r.usd);
+    /* a copy, never a summary: a model sometimes answers a long deck with a few bullets and "Would you like…". Such a read
+       (chat lines, or far too few words for the file) is read again with the stricter ask, and the longer copy is kept */
+    const read = (ask) => ai.call({ model: 'sonnet', tag: 'drop-read', max: 60000, effort: 'low', system: PDF_SYSTEM, messages: [{ role: 'user', content: [{ type: 'document', source: { type: 'base64', media_type: mime, data: b64 } }, { type: 'text', text: ask }] }] });
+    let r = await read(PDF_ASK), usd = r.usd || 0, text = unchat(r.text);
+    if (thinRead(text, r.text, buf.length)) { const r2 = await read(PDF_AGAIN).catch(() => null); usd += r2?.usd || 0; const t2 = unchat(r2?.text); if (t2.length > text.length) text = t2; }
+    return done(kind, text, usd);
   }
   const r = await ai.call({ model: 'sonnet', tag: 'drop-read', max: 3000, effort: 'low', schema: IMAGE_SCHEMA, messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: mime, data: b64 } }, { type: 'text', text: `A brand's team dropped this picture (“${name}”) into Brew. Read it.` }] }] });
   const j = r.json || {}, words = String(j.text || '').trim(), shows = String(j.shows || '').trim().slice(0, 400);
