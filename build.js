@@ -80,7 +80,9 @@ const CONFIRM_WAIT = +process.env.BUILD_CONFIRM_WAIT_MS || 15 * 60e3; // the bri
 /* when Brew starts writing without the check: CONFIRM_WAIT after the wait began or after someone on the team last opened the
    check page, from the saved timestamps (status.waitingSince, status.checkOpenAt), so a restart or a deploy never starts the
    clock again and a brand is never stalled by frequent deploys */
-export const confirmDueAt = (s, wait = CONFIRM_WAIT) => Math.max(+s?.waitingSince || 0, +s?.checkOpenAt || 0) + wait;
+/* once a time has been said (status.writeAt), it is the time: the banner, the wait screen, the check page and the timer all keep it
+   (QA 19 Oct: the first open of the check page slid it once after the banner had shown an earlier one) */
+export const confirmDueAt = (s, wait = CONFIRM_WAIT) => +s?.writeAt > 0 ? +s.writeAt : Math.max(+s?.waitingSince || 0, +s?.checkOpenAt || 0) + wait;
 /* what the brief is written from, field by field (short hashes): a check after the build started that changes one of these
    rewrites the brief and the first wave of moves (confirm → recheck → lateCheck) */
 const hash8 = (v) => crypto.createHash('sha1').update(JSON.stringify(v ?? null)).digest('hex').slice(0, 8);
@@ -150,6 +152,9 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
 
   /* ---------- start a brand ---------- */
   const byUser = new Map(); // email → [started at, …] today
+  const madeToday = async (email) => { const all = await packs.list().catch(() => []), now = Date.now(); /* only brands started in the last day are opened */
+    const by = await Promise.all(all.filter((x) => now - (+x.status?.createdAt || 0) < 864e5).map((x) => packs.getJSON(x.slug, 'private/created.json', null).catch(() => null)));
+    return by.filter((c) => c?.by === email && now - (+c.at || 0) < 864e5).map((c) => +c.at); };
   /* two starts of the same address at once (two tabs, a double click, two instances) make one paid run: on this instance the
      second waits for the first and joins it; across instances a short-lived marker in the pack (start-lock.json, written
      before anything else) tells the other one to join instead of starting or resuming a second run */
@@ -164,8 +169,9 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   async function start0(url, { ip, user = null, fresh = false } = {}) {
     const raw = String(url || '').trim(); const slug = slugOf(raw);
     if (blocked(slug)) return { error: 'This address can’t be read here.' };
-    if (!slug || !/\.[a-z]{2,}/.test(raw.replace(/^[a-z]+:\/\//i, '').split('/')[0])) return { error: 'That doesn’t look like a website. Try yourbrand.com' };
+    /* the host is lower-cased before it is judged: ARATA.IN or https://Arata.In/… is the same site, as the landing already says (QA 19 Oct) */
     const host = raw.replace(/^[a-z]+:\/\//i, '').replace(/[/?#].*$/, '').replace(/^www\./i, '').toLowerCase();
+    if (!slug || !/\.[a-z]{2,}/.test(host)) return { error: 'That doesn’t look like a website. Try yourbrand.com' };
     const prev = await status(slug);
     /* another instance is starting this brand right now: join its run, never start (or resume) a second one */
     if (await otherStart(slug)) return { slug, existing: true, status: prev || (await packs.getFreshJSON(slug, 'status.json', null).catch(() => null)) || { slug, host: slug, state: 'Reading the site' } };
@@ -173,7 +179,9 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (prev && !fresh) { if (!st(slug).running && !prev.done) resume(slug).catch((e) => log.error('[build] resume', slug, e.message)); return { slug, existing: true, status: prev }; }
     if (prev && fresh && (st(slug).running || st(slug).checking)) return { error: 'This brand is being written right now. Restart it once this run stops.' };
     const PER_USER = +process.env.BUILD_PER_USER_DAY || 3, mine = (byUser.get(user?.email) || []).filter((t) => Date.now() - t < 864e5);
-    if (user && mine.length >= PER_USER && !process.env.BUILD_NO_IP_LIMIT && !isFullAccess(user.email)) return { error: `${PER_USER} new brands a day per person. Open one you already started, or try again tomorrow.` };
+    /* the count survives a deploy: each brand's saved created stamp (private/created.json), not only this instance's memory (QA 19 Oct) */
+    const made = user && !process.env.BUILD_NO_IP_LIMIT && !isFullAccess(user.email) ? Math.max(mine.length, (await madeToday(user.email)).length) : 0;
+    if (user && made >= PER_USER && !process.env.BUILD_NO_IP_LIMIT && !isFullAccess(user.email)) return { error: `${PER_USER} new brands a day per person. Open one you already started, or try again tomorrow.` };
     if (!user && ip && Date.now() - (byIp.get(ip) || 0) < IP_GAP && !process.env.BUILD_NO_IP_LIMIT) return { error: 'One new brand an hour from the same network. Open one you already started, or try again later.' };
     await loadDay(); if (dayUsd() >= DAY_CAP) return { error: 'Today’s reading budget is used up. Try again tomorrow.' };
     if (user) byUser.set(user.email, [...mine, Date.now()]); else if (ip) byIp.set(ip, Date.now());
@@ -184,7 +192,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     /* the starter files go up together: one after another kept the person on the landing for 3-5s */
     await Promise.all([packs.put(slug, 'seed.json', skeletonSeed({ slug, host })), packs.put(slug, 'facts.json', {}), packs.put(slug, 'config.json', { countryName: '', questions: [], rivals: [] }),
       user ? packs.put(slug, 'private/created.json', { by: user.email, at: Date.now() }).catch(() => {}) : null]);
-    await setStatus(slug, { slug, host, url: /^https?:/.test(raw) ? raw : 'https://' + host, name: host, createdAt: Date.now(), stages: {}, ready: false, done: false, state: 'Reading the site', error: null, cancelled: null, freshRead: !!(prev && fresh),
+    await setStatus(slug, { slug, host, url: /^https?:/i.test(raw) ? raw.replace(/^(https?:\/\/)([^/?#]+)/i, (_, a, h) => a.toLowerCase() + h.toLowerCase()) : 'https://' + host, name: host, createdAt: Date.now(), stages: {}, ready: false, done: false, state: 'Reading the site', error: null, cancelled: null, freshRead: !!(prev && fresh),
       /* born: the brand's first read on Brew; a re-read keeps it, a wipe ends it, and a browser that saved another born forgets its onboarding */
       born: prev?.born || Date.now(), ...(prev?.seenAt ? { seenAt: prev.seenAt } : {}) });
     packs.drop(slug); await onPack(slug);
@@ -707,7 +715,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
      a minute on every visit), and a stamp from an earlier build (before this wait began) doesn't count */
   async function checkOpened(slug) {
     const s = await status(slug); if (!awaitingCheck(s) || s.confirmedAt || +s.checkOpenAt >= (+s.waitingSince || 0) && +s.checkOpenAt > 0) return;
-    const patch = { checkOpenAt: Date.now() }; if (!(await anonOf(slug))) patch.writeAt = confirmDueAt({ ...s, ...patch });
+    const patch = { checkOpenAt: Date.now() }; if (!(+s.writeAt > 0) && !(await anonOf(slug))) patch.writeAt = confirmDueAt({ ...s, ...patch }); /* a time already shown never moves */
     await setStatus(slug, patch);
   }
   async function checkData(slug, { heal: doHeal = true, opened = false } = {}) {
@@ -1586,7 +1594,10 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (!m.primary && m.toConfirm) { if (!p.country || p.market?.by !== 'site') return null;
       const was = p.country; Object.assign(p, { country: null, markets: [], market: { ...m, at: new Date().toISOString() } });
       for (const k of ['market.country', 'market.registered']) { const i = L.findIndex((x) => x.key === k); if (i >= 0) L.splice(i, 1); }
-      await packs.put(slug, 'profile.json', p); await packs.put(slug, 'ledger.json', L); packs.drop?.(slug); await onPack(slug);
+      await packs.put(slug, 'profile.json', p); await packs.put(slug, 'ledger.json', L);
+      /* the settings follow: no country, name, markets or sale day left behind for the cards and watchers (QA 19 Oct) */
+      const cfg0 = await packs.getJSON(slug, 'config.json', null); if (cfg0) await packs.put(slug, 'config.json', { ...cfg0, ...marketConfig(p) });
+      packs.drop?.(slug); await onPack(slug);
       log.log?.(`[market] ${slug}: ${was} → to confirm (${m.why})`); return { was, now: null, moved: false, by: 'site', toConfirm: true }; }
     if (!m.primary) return null;
     const was = p.market?.primary || p.country || null, moved = !!was && was !== m.primary;

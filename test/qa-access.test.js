@@ -91,7 +91,7 @@ test('FEED-QA-06 / 13: the ready card always shows numbers, counts cards from th
   const a = appSrc(), fo = a.slice(a.indexOf('const finishOnboarding = async'), a.indexOf("$('#open-feed').onclick"));
   assert.match(fo, /if \(!rank\(\)\.length\) await Promise\.race\(\[loadFeed\(\)/, 'the feed is loaded before it is counted');
   assert.doesNotMatch(fo, /<b class="tnum">\$\{ic\(/, 'never an icon where a number goes');
-  assert.match(fo, /\$\{CARDS_WORD\(n\)\}/); assert.match(fo, /\$\{MOVES_WORD\(movesInPlan\(\)\)\}/);
+  assert.match(fo, /\$\{CARDS_WORD\(n\)\}/); assert.match(fo, /\$\{MOVES_WORD\(m\)\}/); assert.match(fo, /const m = movesInPlan\(\)/);
   const [cw, mw] = a.match(/const CARDS_WORD = (\(n\) => `[^`]+`), MOVES_WORD = (\(n\) => `[^`]+`);/).slice(1).map((x) => (0, eval)(x));
   assert.equal(cw(12), 'cards in your feed'); assert.equal(cw(1), 'card in your feed'); assert.equal(mw(51), 'moves in your plan');
   const mip = a.match(/const movesInPlan = (\(\) => \{[^}]+\});/)[1];
@@ -105,7 +105,7 @@ test('FEED-QA-06 / 13: the ready card always shows numbers, counts cards from th
 /* ---------- ONB-15: a refresh mid-setup ---------- */
 test('ONB-15: each setup step is saved per brand and a refresh resumes there (not a step back); #setup still replays', () => {
   const a = appSrc();
-  assert.match(a, /const OB_AT = \{ who: \(\) => whoFor\(\), want: \(\) => wantWhat\(\), connect: \(\) => connectWhat\(\), team: \(\) => teamStep\(\) \}/);
+  assert.match(a, /const OB_AT = \{ check: \(\) => checkRead\(\), who: \(\) => whoFor\(\), want: \(\) => wantWhat\(\), connect: \(\) => connectWhat\(\), team: \(\) => teamStep\(\) \}/);
   for (const [fn, k] of [['const whoFor', 'who'], ['const wantWhat', 'want'], ['const connectWhat', 'connect'], ['const teamStep', 'team']]) {
     const body = a.slice(a.indexOf(fn), a.indexOf(fn) + 1600); assert.match(body, new RegExp(`obAt\\('${k}'\\)`), `${fn} saves its step`); }
   assert.match(a, /S\.onboarded = true; delete S\.obStep;/, 'finishing setup forgets the step');

@@ -16,7 +16,7 @@ import { brewFile } from './brew-name.js'; // packs written before the rename sa
 import { socialize, readSocial } from './social-feed.js'; // what listening heard and the ideas stream, as cards
 import { fitCta, fillMake, readSrc } from './cards-gen.js';
 import { cleanBrief, renderBrief } from './brief.js'; // a saved brief's "null" cells heal at load
-import { aboutOf, OLD_ABOUT } from './derive.js'; // a saved config.about written by the old rule heals at load
+import { aboutOf, OLD_ABOUT, marketConfig } from './derive.js'; // a saved config.about written by the old rule heals at load
 import { prototypeConnectors } from './seed-template.js'; // DUMMY: connector copy that promises no action
 import { sentenceCase, oneCard } from './text-fit.js';
 import { withLearned, learnedMoveNs, learnedTerms } from './brand-learnings.js'; // what the team told Brew (pasted into a jam): in every prompt's system text
@@ -77,7 +77,7 @@ const fxFor = (FACTS) => {
 // a brand at runtime: what feed-service, research, live-watch, remix and the client read
 function finish(p) {
   const c = p.config;
-  if (c) c.festival = nextFestival(c.country) || c.festival; // saved configs carried a fixed 2026 date: always the next one
+  if (c) c.festival = c.country ? nextFestival(c.country) || c.festival : null; // saved configs carried a fixed 2026 date: always the next one; no market, no sale day (QA 19 Oct)
   const { fx, fxDeep } = fxFor(p.facts);
   /* today's counts (pack-numbers.js), each with the day it was read, beside the read's facts: the cards, the jam and Ask Brew
      quote the same number the picker, the read and the check page show, and an older one reads as dated */
@@ -261,6 +261,8 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
     const rivalNames = numbers.rivals.map((r) => r.name).slice(0, 8);
     if (profile && config && rivalNames.length && (config.rivals || []).join('|') !== rivalNames.join('|')) { config.rivals = rivalNames; await put(slug, 'config.json', config).catch(() => {}); }
     if (profile && healSeedNumbers(seed, numbers, seed.brand?.name || profile.name)) await put(slug, 'seed.json', seed).catch(() => {});
+    /* a seed saved when the connector took the store's platform name ("Custom", "Woocommerce") heals to Shopify, what connecting does (QA 19 Oct) */
+    if (seed.connectors?.shopify && seed.connectors.shopify.name !== 'Shopify') { seed.connectors.shopify.name = 'Shopify'; await put(slug, 'seed.json', seed).catch(() => {}); }
     if (profile && (seed.health?.v !== HEALTH_V || seed.health?.key !== healthKey(numbers, profile))) { try { const was = seed.health?.v === HEALTH_V ? seed.health.delta || 0 : 0; seed.health = { ...healthFrom(profile, numbers, seed.health?.public ? seed.health : null), delta: was }; /* the last score: what changed since it (QA FEED-QA-18) */ seed.geo = geoOf(seed.health) || { score: 0, band: 'Not read yet' }; await put(slug, 'seed.json', seed).catch(() => {}); } catch (e) { log.warn('[packs] health', slug, e.message); } }
     const { fxDeep } = fxFor(facts);
     /* DUMMY: the simulated accounts (demo-data.js) exist on the demo site only (DEMO_MODE=1): made once per read and kept as
@@ -271,6 +273,11 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
       demo = await getJSON(slug, 'demo.json', null);
       if (!demo || demo.v !== DEMO_V || demo.lanes !== Object.keys(seed.lanes || {}).join()) {
         if (profile) { demo = { ...demoFor({ ...profile, slug }, seed), lanes: Object.keys(seed.lanes || {}).join() }; await put(slug, 'demo.json', demo).catch(() => {}); } } }
+    /* a market "to confirm" (no profile.country) saved into config as the old US default heals to unknown: no US, USD, Black
+       Friday or New York time on any card, prompt or watcher (QA 19 Oct); the store's own currency stays */
+    if (profile && !profile.country && config && (config.country || config.countryName || (config.markets || []).length || config.festival)) {
+      Object.assign(config, marketConfig(profile), { currency: String(profile.currency || '').toUpperCase() || (config.currency === 'USD' ? '' : config.currency || '') }); config.symbol = config.currency ? config.symbol : '';
+      await put(slug, 'config.json', config).catch(() => {}); }
     /* config.about written by the old rule (the first three catalog rows) heals to the brand's own words (derive.js aboutOf) */
     if (profile && config && (!config.about || OLD_ABOUT.test(config.about))) { const a = aboutOf(profile); if (a && a !== config.about) { config.about = a; await put(slug, 'config.json', config).catch(() => {}); } }
     /* listening and the ideas stream (social-feed.js): every brand gets them at load, no rebuild; a brand without them gets nothing */

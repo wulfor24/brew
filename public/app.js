@@ -411,7 +411,7 @@
         const url = $('#url-in').value.trim(); if (!url) return $('#url-in').focus();
         const site = siteOf(url); if (!site.ok) { urlErr(site.name ? 'That looks like a name. Paste the website address instead.' : 'That doesn’t look like a website. Try yourbrand.com', site.guess); return $('#url-in').focus(); }
         urlErr(''); going(true, 'Opening your store…');
-        const r = await api('/api/brands', { url }).catch(() => null);
+        const r = await api('/api/brands', { url }).then((j) => (j?.fallback ? null : j)).catch(() => null); /* a dropped network is the plain line below, never "TypeError: Failed to fetch" (QA 19 Oct) */
         if (r?.signin) { going(true, 'Taking you to sign in…'); location.href = `/auth/google?next=${encodeURIComponent('/?build=' + encodeURIComponent(url))}`; return; }
         if (!r?.slug) { going(false); urlErr(r?.error || 'That address did not open. Check it and try again.'); return $('#url-in').focus(); }
         location.href = '/' + r.slug; return; }
@@ -554,7 +554,7 @@
     const fly = (el, say) => { if (!el) return; const sp = buddy.querySelector('span'), was = buddy.offsetWidth; const prev = sp.textContent; sp.textContent = say; const r = el.getBoundingClientRect(), w = Math.max(was, buddy.offsetWidth); sp.textContent = prev; clearTimeout(fly.t); fly.t = setTimeout(() => (sp.textContent = say), 900); clearTimeout(fly.h); fly.h = setTimeout(() => { buddy.style.opacity = 0; }, 2800); buddy.style.opacity = 1; buddy.style.transform = `translate(${Math.max(8, Math.min(r.left + r.width * .6, r.right - w - 8, innerWidth - w - 16))}px,${Math.min(r.top + 26, innerHeight - 60)}px)`; }; // the label swaps once the cursor lands, so a longer one never sticks out mid-flight
     // POST /tenants started the read; GET /tenants/:id/onboarding streams each step and finding as it lands
     const es = new EventSource(`/api/tenants/${TID}/onboarding`);
-    $('#skip').onclick = () => { skipped = true; es.close(); Q?.stop(); qClose(); $('#buddy')?.remove(); $$('#su-done,#su-ask,#su-wait').forEach((x) => x.remove()); if (signWall('who')) return; afterRead(); };
+    $('#skip').onclick = () => { if (failed) return; skipped = true; /* a read that failed has nothing to skip ahead to (QA 19 Oct) */ es.close(); Q?.stop(); qClose(); $('#buddy')?.remove(); $$('#su-done,#su-ask,#su-wait').forEach((x) => x.remove()); if (signWall('who')) return; afterRead(); };
     es.onmessage = async (m) => {
       if (skipped) return es.close();
       let ev; try { ev = JSON.parse(m.data); } catch (e) { return; } const li = ev.i != null ? $(`.step[data-i="${ev.i}"]`) : null;
@@ -563,7 +563,7 @@
       if (ev.type === 'finding') { $('#scr').insertAdjacentHTML('beforeend', scrCard(ev.finding)); const el = $('#scr').lastElementChild; el.classList.add('fresh'); $$('#scr .scr.fresh').forEach((x) => x !== el && x.classList.remove('fresh')); if (!$('#qfull')) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); if (ev.say && !$('#qfull')) setTimeout(() => fly(el, ev.say), 350); if ($$('#scr .scr').length >= 6) askBar(); qPaint(); }
       if (ev.type === 'agent') { const row = $(`.agent-row[data-a="${ev.agent}"]`); if (row) { row.classList.add('on'); row.querySelector('.st').textContent = 'Has ideas ready'; } }
       if (ev.type === 'step' && ev.state === 'done' && li) { li.classList.remove('reading'); li.classList.add('done'); li.classList.toggle('empty', !!ev.empty); li.querySelector('.dot').innerHTML = ic(ev.empty ? 'minus' : 'check', 's14'); li.querySelector('span:last-child').textContent = ev.done; qPaint(); } /* a step that found nothing or could not finish gets a dash, never a tick */
-      if (ev.type === 'error') { failed = true; es.close(); buddy.remove(); qClose(); $$('#su-ask,#su-wait').forEach((x) => x.remove()); $$('.step.reading').forEach((el) => { el.classList.remove('reading'); el.querySelector('.dot').innerHTML = ic('minus', 's14'); });
+      if (ev.type === 'error') { failed = true; es.close(); buddy.remove(); qClose(); $('#skip')?.remove(); const hd = $('.su-head h2'); if (hd) hd.textContent = `We couldn’t read ${B.brand.name}`; /* no "Reading …", no Skip ahead into an empty feed */ $$('#su-ask,#su-wait').forEach((x) => x.remove()); $$('.step.reading').forEach((el) => { el.classList.remove('reading'); el.querySelector('.dot').innerHTML = ic('minus', 's14'); });
         $$('.agent-row').forEach((r) => { r.classList.remove('on'); r.querySelector('.st').textContent = 'Nothing read'; }); /* nothing was read, so no agent has ideas */
         document.body.insertAdjacentHTML('beforeend', `<div class="su-done" id="su-done"><div><b>We couldn’t read ${esc(B.brand.name)}.</b><span>${esc(readFail(ev.msg))}</span></div><button class="btn btn-primary lg" id="su-next">Back to the start</button></div>`);
         $('#su-next').onclick = () => { location.href = '/'; }; return; }
@@ -602,7 +602,7 @@
   const CURRENCIES = ['INR', 'USD', 'GBP', 'AED', 'CAD', 'AUD', 'SGD', 'EUR', 'CZK', 'PLN'];
   const checkRead = async () => {
     if (signWall('check')) return;
-    view = 'check'; window.scrollTo(0, 0); const slug = B.slug || BR;
+    view = 'check'; window.scrollTo(0, 0); const slug = B.slug || BR; if (!S.onboarded) obAt('check');
     const D = await api(`/api/brands/${slug}/check`); if (!D || D.error) { toast(`${ic('info', 's16')}${esc(D?.error || 'Could not load what we read')}`); return waitMoves({ fromCheck: true }); }
     const st = { hero: new Set(D.products.filter((x) => x.hero).map((x) => x.handle)), removed: new Set(), addProducts: [], removeRivals: new Set(), addRivals: [], who: {}, sources: {}, company: {} };
     const srcLine = (x) => x.src ? `<a class="ck2-src" ${x.url ? `href="${esc(x.url)}" target="_blank" rel="noopener"` : ''}>${ic('link', 's14')}${esc(srcShort(x.src))}${x.at ? ` · ${esc(x.at)}` : ''}</a>` : `<span class="ck2-src is-none">Not found on the site</span>`;
@@ -619,7 +619,7 @@
     const sourceRow = (x) => `<div class="ck2-s${x.found ? '' : ' is-miss'}" data-sk="${x.key}"><div><span>${esc(x.label)}</span><b>${x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.v)}</a>` : esc(x.v)}</b></div>
       <button class="linkbtn" data-fix="${x.key}">${x.found ? 'Change' : 'Add the link'}</button><div class="ck2-fix" hidden><input data-src="${x.key}" placeholder="${esc(x.hint)}" inputmode="url"><small>We read it from that link. Typed numbers are never used.</small></div></div>`;
     root.innerHTML = `<main class="screen ck2"><div class="ck2-wrap">
-      <header class="ck2-head">${D.logo ? `<span class="ck2-logo"><img src="${esc(D.logo)}" alt=""></span>` : ''}<div><h1>Is this right?</h1><p>${D.started ? 'Brew is writing with what it read. Fix anything that’s off and the brief and your first moves are rewritten with it.' : `${writeAtLine(D)} Fix anything that’s off.`}</p></div></header>
+      <header class="ck2-head">${D.logo ? `<span class="ck2-logo"><img src="${esc(D.logo)}" alt=""></span>` : ''}<button class="btn btn-ghost sm ck2-skip" id="ck-skip">${S.onboarded ? 'Skip to my feed' : 'Skip for now'}</button><div><h1>Is this right?</h1><p>${D.started ? 'Brew is writing with what it read. Fix anything that’s off and the brief and your first moves are rewritten with it.' : `${writeAtLine(D)} Fix anything that’s off.`}</p></div></header>
       <section class="ck2-card"><h2>Who you are <small>${readFrom(D.who)}</small></h2><div class="ck2-grid">${D.who.map((x) => field(x, 'who')).join('')}</div></section>
       <section class="ck2-card"><h2>What you sell <small>${D.count} read · tap to choose the ones to lead with</small></h2>${D.storeNote ? `<p class="ck2-note">${ic('info', 's14')}${esc(D.storeNote)}</p>` : ''}<div class="ck2-prods${D.products.length > 8 ? ' is-cap' : ''}" id="ck2-prods">${D.products.map(prodTile).join('')}</div>${D.products.length > 8 ? `<button class="linkbtn ck2-all" data-ckall>Show ${D.products.length - 8} more</button>` : ''}
         <form class="ck2-add" data-add="product"><input placeholder="Paste a product page link to add it" inputmode="url"><button class="btn btn-ghost sm">Add product</button></form></section>
@@ -645,6 +645,8 @@
       if (r?.notes?.length) toast(`${ic('info', 's16')}${esc(r.notes[0])}`);
       if (r?.data) { inp.value = ''; if (f.dataset.add === 'product') { const nw = r.data.products.find((x) => x.added && !$(`.ck2-p[data-h="${CSS.escape(x.handle)}"]`)); if (nw) { st.hero.add(nw.handle); $('#ck2-prods').insertAdjacentHTML('afterbegin', prodTile({ ...nw, hero: true })); } }
         else { const have = new Set($$('.ck2-r').map((x) => x.dataset.host)); r.data.rivals.filter((x) => !have.has(x.host) && !st.removeRivals.has(x.host)).forEach((x) => { $('.ck2-empty')?.remove(); $('#ck2-rivals').insertAdjacentHTML('beforeend', rivalTile(x)); }); } } });
+    /* the quiet skip every setup step has: Brew writes with what it read at the time it said; the setup goes on (or back to the feed) */
+    $('#ck-skip').onclick = () => { if (S.onboarded) { clearTimeout(waitMoves.t); return location.replace(location.pathname + location.search); } continueToFeed(); };
     $('#ck-go').onclick = async () => { const go = $('#ck-go'); go.disabled = true; go.innerHTML = '<span class="spin"></span>Saving';
       const v2 = { hero: [...st.hero], removed: [...st.removed], removeRivals: [...st.removeRivals], who: {}, company: {}, sources: {} };
       $$('[data-g]').forEach((el) => { const orig = [...D.who, ...D.company].find((x) => x.key === el.dataset.k); if (orig && String(orig.v) !== el.value.trim() && el.value.trim()) v2[el.dataset.g][el.dataset.k] = el.value.trim(); });
@@ -697,7 +699,7 @@
     waitMoves.t = setTimeout(poll, 12e3);
   };
   // the page was opened before the read: reload so the feed has the real logo, colours, products and cards, then carry on to the seat picker
-  const continueToFeed = () => { clearTimeout(waitMoves.t); ls.set(`${LSP()}continue`, '1'); location.reload(); };
+  const continueToFeed = () => { clearTimeout(waitMoves.t); if (S.obStep === 'check') { delete S.obStep; save(); } /* past the check: the reload opens the next step, not the check again */ ls.set(`${LSP()}continue`, '1'); location.reload(); };
 
   /* =========================================================
      3. Onboarding: who is this for, what do you want, connect, team
@@ -715,7 +717,7 @@
         <p class="pv-cap">Your feed, as ${/^[AEIOU]/.test(R.name) ? 'an' : 'a'} ${esc(R.name.toLowerCase())}</p>
         <div class="pv-win"><div class="pv-bar"><i></i><i></i><i></i><span>${location.host}</span></div>
           <div class="pv-in"><small>Today</small><h3>${dayPart()}${hiName(R)}</h3>
-            <div class="pv-tiles">${yes ? `<span class="hot"><b>${yes}</b>need your yes</span>` : ''}<span><b>${cards.length}</b>new ideas</span><span><b>5</b>agents on it</span></div>
+            <div class="pv-tiles">${yes ? `<span class="hot"><b>${yes}</b>need your yes</span>` : ''}${all.length ? `<span><b>${all.length}</b>${all.length === 1 ? 'card' : 'cards'}</span>` : ''}<span><b>5</b>agents on it</span></div>
             ${cards.slice(0, 3).map(pvCard).join('')}</div></div></div>`; pvLast = host.innerHTML.replace('class="pv"', 'class="pv still"'); };
     let cards = [];
     let all = [];
@@ -736,9 +738,9 @@
   /* what the v1 questions already asked (onboard2.js mode q): those screens are not asked twice */
   const qAns = (id) => { const d = window.OB2?.qState?.().done?.[id]; return d != null && d !== false && d !== 'skip'; }; /* a tap keeps its value, a brand tap true, a skip 'skip' */
   /* the setup step this browser is on (per brand, in S): a refresh opens the same step, never the one before it */
-  const OB_AT = { who: () => whoFor(), want: () => wantWhat(), connect: () => connectWhat(), team: () => teamStep() };
+  const OB_AT = { check: () => checkRead(), who: () => whoFor(), want: () => wantWhat(), connect: () => connectWhat(), team: () => teamStep() }; /* check: a refresh on "Is this right?" reopens it, not the whole read (QA 19 Oct) */
   const obAt = (k) => { if (S.obStep !== k) { S.obStep = k; save(); } };
-  const resumeOb = () => { if (signWall('who')) return; claimFirst().then(pushVoice); view = 'ob'; (OB_AT[S.obStep] || whoFor)(); };
+  const resumeOb = () => { if (signWall(S.obStep === 'check' ? 'check' : 'who')) return; claimFirst().then(pushVoice); view = 'ob'; (OB_AT[S.obStep] || whoFor)(); };
   const afterRead = () => { if (signWall('who')) return; if (OB_AT[S.obStep] && S.obStep !== 'who') return resumeOb(); claimFirst().then(pushVoice); if (qAns('seat') && S.viewer.role) { view = 'ob'; return wantWhat(); } whoFor(); };
   const whoFor = () => {
     if (signWall('who')) return;
@@ -867,13 +869,15 @@
     finishOnboarding.busy = true; if (!rank().length) await Promise.race([loadFeed().catch(() => null), wait(4000)]); finishOnboarding.busy = false; if ($('#ready')) return;
     const n = rank().length || (B.posts || []).filter((p) => !p.onlyWhen).length, R = ROLE();
     const nc = Object.keys(S.conn).filter(conn).length;
-    const mvTile = () => `<div data-mv-tile><b class="tnum">${movesInPlan()}</b>${MOVES_WORD(movesInPlan())}</div>`;
+    const mvTile = () => { const m = movesInPlan(); return `<div data-mv-tile${m ? '' : ' hidden'}><b class="tnum">${m}</b>${MOVES_WORD(m)}</div>`; }; /* no 0 tile (quiet UI) */
     if (GEN && !BREW) loadMV().then(() => { const el = $('#ready [data-mv-tile]'); if (el) el.outerHTML = mvTile(); }).catch(() => {});
     document.body.insertAdjacentHTML('beforeend', `<div class="ready" id="ready"><div class="ready-card">
       <span class="so-mark" style="width:30px;height:30px">${SO()}</span>
-      <h3>Your feed is ready${myFirst() ? ', ' + esc(myFirst()) : ''}.</h3>
-      <p>${n} ${n === 1 ? 'card' : 'cards'}, picked for ${/^[AEIOU]/i.test(R.name) ? 'an' : 'a'} ${esc(R.name.toLowerCase())}. Each comes from a move in your plan. Tap any card to see more.</p>
-      <div class="counts"><div><b class="tnum">${n}</b>${CARDS_WORD(n)}</div>${mvTile()}<div><b class="tnum">5</b>agents</div>${nc ? `<div><b class="tnum">${nc}</b>connected</div>` : ''}</div>
+      ${n ? `<h3>Your feed is ready${myFirst() ? ', ' + esc(myFirst()) : ''}.</h3>
+      <p>${n} ${n === 1 ? 'card' : 'cards'}, picked for ${/^[AEIOU]/i.test(R.name) ? 'an' : 'a'} ${esc(R.name.toLowerCase())}. Each comes from a move in your plan. Tap any card to see more.</p>`
+      : `<h3>Your cards are still being written${myFirst() ? ', ' + esc(myFirst()) : ''}.</h3>
+      <p>Brew is writing the moves your cards come from. Each card lands in your feed as its move is done. Open the feed now to see what we read.</p>`}
+      <div class="counts">${n ? `<div><b class="tnum">${n}</b>${CARDS_WORD(n)}</div>` : ''}${mvTile()}<div><b class="tnum">5</b>agents</div>${nc ? `<div><b class="tnum">${nc}</b>connected</div>` : ''}</div>
       ${window.BREW_NUMBERS?.storeNote ? `<p class="ready-note">${esc(window.BREW_NUMBERS.storeNote)}</p>` : ''}
       <button class="lm" id="open-feed"><span class="lm-rim"><span class="lm-in">Open my feed ${ic('right', 's18')}</span></span></button>
     </div></div>`);

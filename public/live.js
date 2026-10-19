@@ -357,7 +357,7 @@
         <div class="lc-grp">${GENB && ac?.role && ac.role !== 'owner' && ac.role !== 'admin' ? `<button class="lc-it" data-lteamsheet>${ic('person', 's16')}<b>Team and invites</b><span>${(ac.team || []).length}</span></button>` : ''}
         ${GENB && (ac?.role === 'owner' || ac?.role === 'admin') ? `<button class="lc-it" data-lteamsheet>${ic('person', 's16')}<b>Team and access</b><span>${(ac.members || []).length}${(ac.members || []).filter((x) => Array.isArray(x.seats) && !x.seats.length).length ? ' · needs you' : ''}</span></button>` : ''}
         ${tuneRow()}</div>${window.BrewAcct?.rows?.() || ''}${helpRows()}
-        <a class="lc-out" href="/auth/logout?next=${encodeURIComponent(location.pathname)}">Sign out</a>`;
+        ${L.me.demo || /@demo\.brew$/i.test(L.me.email || '') ? '' : `<a class="lc-out" href="/auth/logout?next=${encodeURIComponent(location.pathname)}">Sign out</a>`}`; /* a demo visitor's session is the tour: Sign out did nothing there, Start again covers it (QA 19 Oct) */
     document.body.appendChild(pop); bindPage(pop); window.BrewAcct?.bind?.(pop);
     pop.querySelector('[data-nav="tune"]')?.addEventListener('click', () => pop.remove()); /* the app's nav opens the page */
     pop.querySelector('[data-lteamsheet]')?.addEventListener('click', () => { pop.remove(); teamSheet(); });
