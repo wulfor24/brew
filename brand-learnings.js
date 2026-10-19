@@ -115,10 +115,16 @@ export function chunkText(text, size = 14000, overlap = 400) {
 }
 
 /* ---------- vetting: every learning rests on words that are really in the paste ---------- */
+/* the quote is really in the source: word for word, or (a model trims, joins two lines or drops a symbol) most of its
+   three-word runs are, and every number in it is in the source too. Nothing a source doesn't say gets through */
 export function quoteIn(quote, src) {
   const q = norm(quote); if (q.length < 8) return false;
   const S = typeof src === 'string' ? norm(src) : src;
-  return S.includes(q) || (q.length > 90 && S.includes(q.slice(0, 80)));
+  if (S.includes(q) || (q.length > 90 && S.includes(q.slice(0, 80)))) return true;
+  const w = q.split(' '); if (w.length < 5) return false;
+  const runs = []; for (let i = 0; i + 3 <= w.length; i++) runs.push(w.slice(i, i + 3).join(' '));
+  const hit = runs.filter((r) => S.includes(r)).length; if (hit / runs.length < 0.7) return false;
+  const sn = new Set(numsOf(S)); return numsOf(q).every((n) => sn.has(n));
 }
 export function vetLearnings(raw = [], sourceText = '') {
   const S = norm(sourceText), out = [];
@@ -320,7 +326,8 @@ Rules:
 - Whoever wrote it (the brand's team, Brew, ShopOS, an agency or a consultant), a plan, proposal or strategy in it is the strategy Brew now works to. Keep each part as its own learning: every campaign or series (its name, who it is for, the channel, the format), every audience, market or region and its order, every offer or pack, every landing page, every retention or CRM step, every channel test, every target or goal number, every rollout step or wave, every measurement rule, and every guardrail on claims, creative or language. Plans are goal; rules and guardrails are belief.
 - What a customer says is about customers ("Customers say…").
 - Scripts, storyboards and example posts: one learning per series or idea saying what it is, who it is for and how it should feel, never one per line or scene.
-- One learning per distinct point: never the same point twice, even in other words. Up to 60 items for a long plan. quote is copied exactly from the input.
+- Go through the input section by section, start to end, and miss none: every number that says how they are doing now, every goal or target (with its number), every audience, every campaign, series or idea, every channel, market and rollout wave in order, every offer, page and retention step, every way results are measured, every guardrail, and what they ask for. A plan of many pages gives 30 to 60 learnings; a short note gives a few.
+- One learning per distinct point: never the same point twice, even in other words. quote is copied exactly from the input, one passage of up to 200 characters, never joined from two places.
 - A fact that gives a different value for a line on the fact sheet below: set conflictLabel and conflictSays. The sheet and connected accounts are the source of truth for numbers.
 ${lines.length ? `\nFACT SHEET (what Brew already has):\n${lines.join('\n')}\n` : ''}
 INPUT:
@@ -344,7 +351,7 @@ export const PLAN_SCHEMA = { type: 'object', properties: {
 export function planPrompt({ name, items, moves, cards = [] }) {
   const ms = Object.entries(moves || {}).filter(([n, m]) => +n >= 1 && m?.title).map(([n, m]) => `${n} | ${cut(m.title, 90)} | ${cut(m.gives || m.stat || '', 140)}${m.meta?.cadence ? ' | (weekly move)' : ''}`);
   const cs = cards.slice(0, 120).map((c) => `${c.id} | ${cut(c.title, 90)} | ${cut(c.sub, 140)}`);
-  return `${name}'s team just told Brew these learnings:\n${items.map((x, i) => `${i}. [${x.kind}] ${x.text}`).join('\n')}\n\nBrew's current moves for ${name} (number | title | what it gives):\n${ms.join('\n')}\n${cs.length ? `\nThe cards on ${name}'s feed now (id | title | what it says):\n${cs.join('\n')}\n` : ''}\nDecide:\n- stale: the moves these learnings make out of date: a goal changes what comes first, a belief rules out what the move proposes, a fact changes a product, price, launch or audience the move relies on, something they tried says the move repeats a failure or should build on a winner. Include every move the learnings really change; that can be many or all of them. Rate each one's impact honestly: high only when the move is now wrong. A move the learnings do not touch stays as it is. Never a weekly move.\n- fresh: what the learnings open that no move covers yet (a campaign, an audience, a market, an offer, a retention step, a goal to build on). Empty when the current moves already cover it.\n- A plan or strategy in the learnings is what comes first now: a move that should lead with it, change its order, audience, market, channel or offer for it, or drop what it rules out is stale.\n- cards.up / cards.hide: from the card list only, by id. Lift a card only when every learning agrees with it (market, audience, product, price rule, what worked). Hide every card that repeats something they said did not work (the same tactic, channel or offer), and any card for a market or audience they say is not theirs. Hide only a clear contradiction, never a maybe.\n- cards.add: 1 to 6 cards the team can act on today from what they said: the first steps of their plan, building on what worked, their goal first. Each rests on a learning.\nNever invent anything the learnings do not say.`;
+  return `${name}'s team just told Brew these learnings:\n${items.map((x, i) => `${i}. [${x.kind}] ${x.text}`).join('\n')}\n\nBrew's current moves for ${name} (number | title | what it gives):\n${ms.join('\n')}\n${cs.length ? `\nThe cards on ${name}'s feed now (id | title | what it says):\n${cs.join('\n')}\n` : ''}\nDecide:\n- stale: the moves these learnings make out of date: a goal changes what comes first, a belief rules out what the move proposes, a fact changes a product, price, launch or audience the move relies on, something they tried says the move repeats a failure or should build on a winner. Include every move the learnings really change; that can be many or all of them. Rate each one's impact honestly: high only when the move is now wrong. A move the learnings do not touch stays as it is. Never a weekly move.\n- fresh: what the learnings open that no move covers yet (a campaign, an audience, a market, an offer, a retention step, a goal to build on). Empty when the current moves already cover it.\n- A plan or strategy in the learnings is what comes first now: a move that should lead with it, change its order, audience, market, channel, offer or creative for it, or drop what it rules out is stale. A whole growth plan usually touches many moves (ads, creative, pages, retention, markets): go through the moves one by one against it and leave out only those it really does not touch.\n- cards.up / cards.hide: from the card list only, by id. Lift a card only when every learning agrees with it (market, audience, product, price rule, what worked). Hide every card that repeats something they said did not work (the same tactic, channel or offer), and any card for a market or audience they say is not theirs. Hide only a clear contradiction, never a maybe.\n- cards.add: 1 to 6 cards the team can act on today from what they said: the first steps of their plan, building on what worked, their goal first. Each rests on a learning.\nNever invent anything the learnings do not say.`;
 }
 
 /* ---------- the run ---------- */
@@ -357,7 +364,7 @@ export function createLearnings({ ai = null, packs, memory = null, builder = nul
     const parts = chunkText(text, CHUNK), box = { usd: 0 }, lists = [];
     // three chunks at a time: a long transcript reads in a minute, not ten
     for (let i = 0; i < parts.length; i += 3) {
-      const rs = await Promise.all(parts.slice(i, i + 3).map((chunk, j) => ai.call({ model: 'sonnet', tag: 'learn-extract', max: 16000, effort: 'low', schema: EXTRACT_SCHEMA,
+      const rs = await Promise.all(parts.slice(i, i + 3).map((chunk, j) => ai.call({ model: 'sonnet', tag: 'learn-extract', max: 16000, effort: 'medium', think: true, schema: EXTRACT_SCHEMA,
         system: 'You read what a brand’s team shared and keep only what it states, word for word. You never invent.',
         prompt: extractPrompt({ name, host, chunk, part: i + j + 1, parts: parts.length, kind, sheet }) }).then((r) => { box.usd += r.usd || 0; return vetLearnings((r.json?.learnings || []).map((x) => ({ ...x, topic: x.topic === 'none' ? null : x.topic })), chunk); })));
       lists.push(...rs);
