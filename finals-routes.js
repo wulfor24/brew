@@ -157,7 +157,7 @@ export function createStudioFinals({ headOf = () => null, useVersion = () => {},
     (async () => { try { const from = ch.finalPending?.from || null, rec = await finals.run(slug, spec, { quote: q, by, target: { chid: ch.id, revision: spec.revision }, land: { tid: t.id || null, from } });
         landIn(t, ch, rec, { from, label: q.label, model: q.model, space: q.space, fallbackWhy: q.fallbackWhy, by, vid: isVid });
       } catch (e) { if (isVid) ch.videoError = `The final video didn’t come through (${String(e.message).slice(0, 160)}). Make it again.`; ch.imageError = String(e.message).slice(0, 200); log.warn('[finals] studio run', slug, e.message); }
-      finally { if (isVid) { ch.videoPending = null; ch.videoStep = null; } else ch.imagePending = false; ch.finalPending = null; set?.delete?.(ch.id); sync(t, ch); } })();
+      finally { set?.delete?.(ch.id); if (isVid) { ch.videoPending = null; ch.videoStep = null; } else ch.imagePending = !!jobs?.has?.(ch.id) /* another picture still drawing keeps its spinner */; ch.finalPending = null; sync(t, ch); } })();
     return { change: pubChange(t, ch) }; });
 
   /* a run's record as the change's next version, labelled Final */
@@ -180,7 +180,7 @@ export function createStudioFinals({ headOf = () => null, useVersion = () => {},
         if (rec.state === 'done') { land(ch, false, rec.file); const v = version(t, ch, 'sloosh', `Final: ${rec.charged ?? rec.credits} credits`, 'Final'); v.final = { credits: rec.charged ?? rec.credits, space: rec.space || null, link: rec.link || null, assetId: rec.assetId || null, runKey: rec.runKey, by }; ch.lastFinal = { versionId: v.id, ...v.final }; try { onMedia(t, ch, { kind: 'image', images: [rec.file], n: v.n, label: v.label }); } catch {} }
         else if (rec.state === 'checkpoint') { ch.finalCheckpoint = { runKey: rec.runKey, checkpoint: rec.checkpoint || null, at: now() }; ch.imageError = 'The Sloosh Space paused again. Open Make the final to carry on or stop.'; }
         else ch.imageError = rec.error || 'stopped at the checkpoint';
-      } catch (e) { ch.imageError = String(e.message).slice(0, 200); } finally { ch.imagePending = false; jobs?.delete?.(ch.id); sync(t, ch); } })();
+      } catch (e) { ch.imageError = String(e.message).slice(0, 200); } finally { jobs?.delete?.(ch.id); ch.imagePending = !!jobs?.has?.(ch.id); sync(t, ch); } })();
     return { change: pubChange(t, ch) }; });
   return { ...sheet, landDone };
 }

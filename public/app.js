@@ -3896,11 +3896,12 @@
     const nm = opt ? ` · <em>${esc(opt.name)}</em>` : '';
     let head, tip, main;
     const send = `<button class="btn btn-primary ship-go" data-rx="share-shopos">${ic('send', 's16')}Send brief</button>`;
-    if (op && !op.picked) { head = `Pick one of ${op.list.length}`; tip = 'Tap the options above the stage to compare them, then use the one you like. The others stay in History.';
+    const job = jobOf(ch);
+    if (job && !ch.finalPending) { head = `<span class="spin"></span>${esc(job)}${nm}`; tip = media ? 'Brew makes a quick draft first, so you can check the idea. The final is made after.' : 'It lands here on its own in a moment.'; main = `<button class="btn btn-primary ship-go" disabled>${esc(job)}…</button>`; }
+    else if (op && !op.picked) { head = `Pick one of ${op.list.length}`; tip = 'Tap the options above the stage to compare them, then use the one you like. The others stay in History.';
       main = `<button class="btn btn-primary ship-go" ${opt ? `data-opt-use="${esc(opt.id)}"` : 'disabled'}>${ic('check', 's16')}${opt ? `Use ${esc(opt.name)}` : 'Pick one above'}</button>`; }
     else if (fix) { head = `Needs a fix: ${esc((ch.fixes || [])[0] || 'see the checks')}`; tip = `Before it can ship: ${(ch.fixes || []).join('; ')}.`; main = `<button class="btn btn-primary ship-go" data-rx="fix">${ic('sparkles', 's16')}Fix it with AI</button>`; }
-    else if (media && ch.finalPending) { head = `<span class="spin"></span>${ch.finalPending.fallback ? 'Brew' : 'Sloosh'} is making the final${nm}`; tip = 'It lands here when it’s done, usually in a minute or two.'; main = `<button class="btn btn-primary ship-go" disabled>Making the final…</button>`; }
-    else if (media && !fin && (ch.videoPending || ch.imagePending || ch.remakePending)) { head = `<span class="spin"></span>Making the ${ch.videoPending ? 'video' : 'photo'}${nm}`; tip = 'Brew makes a quick draft first, so you can check the idea. The final is made after.'; main = `<button class="btn btn-primary ship-go" disabled>${ch.videoPending ? 'Making the video…' : 'Making the photo…'}</button>`; }
+    else if (ch.finalPending) { head = `<span class="spin"></span>${ch.finalPending.fallback ? 'Brew' : 'Sloosh'} is making the final${nm}`; tip = 'It lands here when it’s done, usually in a minute or two.'; main = `<button class="btn btn-primary ship-go" disabled>Making the final…</button>`; }
     else if (media && !fin && isReel(ch) && !p.video) { head = `Script ready${nm}`; tip = 'Make the video to see it moving. It’s a quick draft; the final reel is made after.'; main = `<button class="btn btn-primary ship-go" data-rx="video">${ic('vid', 's16')}Make the video</button>`; }
     else if (media && !fin) { head = `Draft ${reel ? 'video' : 'photo'} ready${nm}`; tip = `A quick draft made by Brew to check the idea. The final ${reel ? 'reel' : 'picture'} is made on Sloosh, ready to post. Then Send brief.`; main = finalBtn(ch); }
     else if (media) { head = `Final ready${nm}`; tip = 'Send brief: the ShopOS team gets it by email and posts or runs it. Its status shows in the top bar.'; main = send; }
@@ -3911,7 +3912,7 @@
     if (media && (p.image || p.video || p.draft?.images?.length) && !ch.finalPending) items.push([`data-fn-studio="${esc(ch.id)}"`, 'sparkles', fin ? 'Change the final…' : 'Choose how the final is made…', 'Pick the photos, the model or a Sloosh Space yourself.']);
     if (dlTool(ch, ch)) items.push(['data-st-dl', 'down', 'Download', 'This version’s files, as they are now.']);
     /* Redo it: one new take beside the one way forward, whenever the version can still change (not while something is being made) */
-    const busy = ch.copyPending || ch.videoPending || ch.imagePending || ch.remakePending || ch.finalPending || ch.ctaPending;
+    const busy = !!job;
     const redo = !busy && !(op && !op.picked) ? `<button class="btn btn-ghost ship-redo" data-rx="variants" title="A new take from a new angle. This one stays in History.">${ic('shuffle', 's16')}Redo it</button>` : '';
     return `<div class="ship one ${fix ? 'warn' : 'ok'}">${strip}<div class="ship-tx is-step"><b><span class="ship-l">${head}</span>${tipBtn(tip)}</b></div><div class="ship-btns">${shipMenu(ch, items)}${redo}${main}</div></div>`; };
   /* the options as tabs above the stage, named by their angle, never v1–v5 */
@@ -3939,6 +3940,7 @@
         return `<div class="ship ok"><div class="ship-tx"><b>${ic('check', 's16')}Sent to the ShopOS team${w0.ticket ? ` · ${esc(w0.ticket)}` : ''}${it?.label ? ` · ${esc(it.label)}` : ''}</b><span>They take it from here. Its status shows in the top bar.</span></div><div class="ship-btns"><button class="btn btn-ghost" data-st-brief>${ic('doc', 's16')}The brief</button>${lnk}</div></div>`; }
       if (w0 && w0.stage === 'shared') return `<div class="ship ok"><div class="ship-tx"><b>${ic('check', 's16')}Brief shared${w0.ticket ? `: ${esc(w0.ticket)}` : ''}</b><span>With ${w0.jamBrief?.to === 'team' ? 'your team' : 'the ShopOS team'}. The jam ends here.</span></div><div class="ship-btns"><button class="btn btn-ghost" data-st-brief>${ic('doc', 's16')}The brief</button><button class="btn btn-ghost" data-rx="share-${w0.jamBrief?.to === 'team' ? 'team' : 'shopos'}">${ic('copy', 's16')}Copy it again</button>${lnk}</div></div>`; }
     /* before the plan's make step has run, the jam's main button is the card's own action: it makes the work, it ships nothing */
+    if (SPLIT && !ch.batchKey && ch.state !== 'jam' && jobOf(ch)) return stepBar(ch); /* being made: the bar says what, never Draft or Ready */
     if (SPLIT && !ch.batchKey && ch.state !== 'jam' && !planMade(ch)) { const pl = planOf(ch);
       return `<div class="ship one ok"><div class="ship-tx"><b>${ic('sparkles', 's16')}<span class="ship-l">${ch.v0 === 'draft' ? 'First draft' : 'Draft'} · v${curN(ch)}</span>${tipBtn(`${planGo(ch, pl).line}. Then share the brief.`)}</b></div>
         <div class="ship-btns">${shipMenu(ch, [['data-rx="share-shopos"', 'send', 'Send the brief now', 'The ShopOS team gets it by email and makes it.'], ['data-rx="share-team"', 'copy', 'Share with my team', 'Copy the brief and a link to paste in your team’s chat.']])}<button class="btn btn-primary" data-rx="plan">${ic('sparkles', 's16')}${esc(planGo(ch, pl).label)}</button></div></div>`; }
@@ -3966,6 +3968,9 @@
   /* one, always (Param, 19 Oct: "let's not give 3 options anywhere: lead with only 1 and let them redo it"): the card's button
      makes the one version on the stage what the card asked for, and Redo it makes the next take. hasMade: the stage already
      holds it (a short video's clip, an ad's or a post's picture, a written family's words), so the plan's button steps aside */
+  /* the one job running on this change right now, in plain words ('' when nothing is): every status line (the step bar, the
+     UI2 header, the case's next step, the chips) asks this first, so none says Ready or Draft while something is being made */
+  const jobOf = (ch) => !ch ? '' : ch.finalPending ? `${ch.finalPending.fallback ? 'Brew' : 'Sloosh'} is making the final` : ch.copyPending || ch.ctaQueued ? 'Writing the first draft' : ch.remakePending ? (ch.remakePending.step || 'Making it') : ch.videoPending ? (ch.videoStep || 'Making the video') : ch.ctaPending ? String(ch.ctaPending) : ch.imagePending ? (ch.family === 'listing' ? 'Making the listing photos' : 'Making the photo') : '';
   const hasDraft = (ch) => { const p = ch?.pkg || {}; return ch?.v0 === 'draft' || !!(p.video || /^\/?gen\//.test(p.image || '') || p.draft?.images?.length || p.draft?.video); };
   const hasMade = (ch) => { if (!ch || ch.copyPending) return false; if (ch.videoPending || ch.imagePending || ch.remakePending || ch.ctaPending) return true; /* being made: the button that makes it steps aside */ const p = ch.pkg || {}, rows = p.cards || p.slides || [];
     if (isReel(ch)) return !!p.video; if (['meta_ad', 'social'].includes(ch.family) && !ch.realOnly) return rows.length > 1 ? rows.every((_, i) => (p.cardImages || [])[i]) : !!(/^\/?gen\//.test(p.image || '') || p.draft?.images?.length); return true; };
@@ -3976,7 +3981,7 @@
   const caseBrief = (ch) => { const c = cardOf(RX.p), d = c.detail || {}, cut = (x, n) => { x = String(x || '').trim(); return x.length > n ? x.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : x; };
     const why = (d.why || []).filter((x) => x && !/^[^:]{2,60}:\s*[₹$€£]?[\d.,]+\s*$/.test(x) && !/^[^:“"]{2,90}\([^)]*\):/.test(x) /* evidence rows (label (source): value), not reasons */).slice(0, 2), fix = ch.verdict === 'fix';
     const pl = planOf(ch), made = planMade(ch), opens = (ch.pkg?.where || []).some((w) => /^https?:/.test(w.url || '')), rule = (ch.pkg?.where || []).map((w) => w.rule).find(Boolean);
-    const next = !made && pl ? `Press “${planGo(ch, pl).label}” below. ${planGo(ch, pl).line}. Change it, then share the brief.`
+    const next = jobOf(ch) ? `${jobOf(ch)} now. It lands on the stage on its own; then change it or share the brief.` : !made && pl ? `Press “${planGo(ch, pl).label}” below. ${planGo(ch, pl).line}. Change it, then share the brief.`
       : fix ? `Fix this first: ${(ch.fixes || []).join('; ')}. Press “Fix it with AI”, or tell me how.`
       : ch.family === 'post' && ch.target?.conn !== 'meta' ? `Happy with it? Share the brief: it carries the post and where it goes; you post it yourself. Not right? Redo it.${rule ? ` ${rule}` : ''}` : 'Happy with it? Share the brief with the ShopOS team or your own team. Not right? Redo it, or tell me what to change.';
     return `<div class="case"><small class="case-k">The case${c.src ? ` · ${esc(c.src)}` : ''}</small>
@@ -4144,7 +4149,7 @@
      (Where / Post at / Backed by / Measure), the chat with option chips, the status band, and the brief and Adjust as overlays.
      Same RX state, same data-* actions and API calls as the studio; only the layout differs. ---------- */
   const j2Status = (ch, viewing) => { const w0 = SPLIT ? workOfCard(RX.p?.id) : null;
-    if (viewing) return ['info', `Looking at v${viewing.n}`]; if (RX.sending) return ['info', 'Working…'];
+    if (viewing) return ['info', `Looking at v${viewing.n}`]; if (RX.sending) return ['info', 'Working…']; if (jobOf(ch)) return ['info', `${jobOf(ch)}…`];
     if (w0?.stage === 'shared') return ['ok', `Brief sent${w0.ticket ? ' · ' + w0.ticket : ''}`]; if (w0?.stage === 'needs_you') return ['warn', 'Needs your OK'];
     if (w0?.stage === 'team') return ['info', `With ${w0.with?.name || 'your team'}`]; if (ch.state === 'jam') return ['warn', 'In a jam'];
     if (ch.verdict === 'fix') return ['warn', 'Needs a fix']; if (!planMade(ch)) return ['', ch.v0 === 'draft' ? 'First draft' : 'Draft']; return ['ok', `Ready · v${curN(ch)}`]; };
@@ -4170,7 +4175,7 @@
   const j2Acts = (ch, c) => { const out = [];
     out.push(c('data-j2-pack', 'down', j2PackLabel(ch), ' is-pack'));
     out.push(c('data-j2-impact', 'trendup', 'Projected impact'));
-    if (['meta_ad', 'social', 'post'].includes(ch.family) && ch.state !== 'live' && !ch.realOnly /* Reddit, Quora, a Facebook group: real photos only, no AI reel or carousel */) { const as = ch.pkg?.draft?.as || (/carousel/.test(String(ch.action)) ? 'carousel' : /short_video|reel/.test(String(ch.action)) ? 'video' : ''), busyMedia = ch.imagePending || ch.videoPending || ch.remakePending; if (busyMedia) out.push(`<button type="button" class="chip j2-chip" disabled>${ic('clock', 's14')}${ch.remakePending ? esc(ch.remakePending.step || 'Making it…') : 'Making the photo…'}</button>`); else { if (as !== 'video') out.push(c('data-j2-remake="video"', 'film', 'Make it a reel')); if (as !== 'carousel') out.push(c('data-j2-remake="carousel"', 'layers', 'Make it a carousel')); } }
+    if (['meta_ad', 'social', 'post'].includes(ch.family) && ch.state !== 'live' && !ch.realOnly /* Reddit, Quora, a Facebook group: real photos only, no AI reel or carousel */) { const as = ch.pkg?.draft?.as || (/carousel/.test(String(ch.action)) ? 'carousel' : /short_video|reel/.test(String(ch.action)) ? 'video' : ''), busyMedia = ch.imagePending || ch.videoPending || ch.remakePending; if (busyMedia) out.push(`<button type="button" class="chip j2-chip" disabled>${ic('clock', 's14')}${esc(jobOf(ch) || 'Making it')}…</button>`); else { if (as !== 'video') out.push(c('data-j2-remake="video"', 'film', 'Make it a reel')); if (as !== 'carousel') out.push(c('data-j2-remake="carousel"', 'layers', 'Make it a carousel')); } }
     return out; };
   const chips2 = (ch) => { const pl = planOf(ch), made = planMade(ch), dis = RX.sending ? ' disabled' : '', c = (attr, icon, label, cls = '') => `<button type="button" class="chip j2-chip${cls}" ${attr}${dis}>${icon ? ic(icon, 's14') : ''}${esc(label)}</button>`;
     const out = [c('data-tab="details"', 'doc', 'View brief', ' is-brief')];
@@ -4224,7 +4229,7 @@
     const viewing = RX.viewing && RX.viewing !== ch.head ? ch.versions.find((v) => v.id === RX.viewing) : null; if (!viewing) RX.viewing = null;
     const pkgCh = asPkg(ch, viewing), edit = ch.state !== 'jam', tab = RX.tab && RX.tab !== 'history' ? RX.tab : 'iterate'; /* history is the dropdown on the History button now */
     const formFocus = document.activeElement?.closest?.('#st-spec');
-    if (formFocus || document.activeElement?.id === 'bf-ed') return; // never repaint under someone typing in the spec or the brief
+    if (formFocus || document.activeElement?.id === 'bf-ed') { pollJob(ch); return; } // never repaint under someone typing in the spec or the brief (the job poll keeps going, so no status is left behind)
     const logScroll = $('.st-panel-b')?.scrollTop;
     /* an open panel stays open through a repaint (the jam's 3-second poll, a video landing): Param, 19 Oct, "What Brew read" closed in 2 s */
     const keepOpen = RX.keepFor === ch.id ? new Set([...pg.querySelectorAll('details[data-keep][open]')].map((d) => d.dataset.keep)) : new Set(); RX.keepFor = ch.id;
@@ -4263,9 +4268,11 @@
     const pb = $('.st-panel-b'); const nT = (ch.thread || []).length + (RX.sending ? 1 : 0) + Object.keys(J2.imp).length + Object.keys(J2.pack).length;
     if (UI2) { const grew = nT > (RX.j2n || 0) && RX.j2for === ch.id; RX.j2n = nT; const first = RX.j2for !== ch.id; RX.j2for = ch.id; pb.scrollTop = first ? 0 : grew ? pb.scrollHeight : logScroll || 0; RX.resetScroll = false; } /* opening the brief or Adjust never moves the page */
     else if (tab === 'iterate') pb.scrollTop = (ch.thread || []).length || RX.sending || j2Extra(ch) ? pb.scrollHeight : 0; /* the case stays first in the chat and scrolls up as it grows; a fresh chat is read from its top */ else if (logScroll && !RX.resetScroll) pb.scrollTop = logScroll; RX.resetScroll = false;
-    clearTimeout(RX.pollT);
-    if (ch.copyPending || ch.imagePending || ch.videoPending || ch.remakePending || ch.ctaPending || ch.ctaQueued) RX.pollT = setTimeout(async () => { if (view !== 'remix' || RX.ch?.id !== ch.id) return; const q = await tapi('GET', `/api/changes/${ch.id}`); if (q.change) { RX.ch = q.change; putCh(q.change); } paintStudio(); if (ch.copyPending && q.change && !q.change.copyPending) autoImage(q.change); }, ch.copyPending ? 1500 : 3000);
+    pollJob(ch);
   };
+  /* while a job runs, read the change again every few seconds and repaint, until every pending flag has cleared */
+  const pollJob = (ch) => { clearTimeout(RX.pollT);
+    if (jobOf(ch)) RX.pollT = setTimeout(async () => { if (view !== 'remix' || RX.ch?.id !== ch.id) return; const q = await tapi('GET', `/api/changes/${ch.id}`).catch(() => ({})); if (q.change) { RX.ch = q.change; putCh(q.change); } paintStudio(); if (ch.copyPending && q.change && !q.change.copyPending) autoImage(q.change); }, ch.copyPending ? 1500 : 3000); };
   /* copy inside the tap: the old copy command runs at once; the clipboard API is the fallback, and never waits forever
      (it can hang on a permission prompt, and the button then looked dead: no copy, no toast) */
   const copyText = async (s) => { try { const ta = document.createElement('textarea'); ta.value = s; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;left:-9999px'; document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); ta.remove(); if (ok) return true; } catch (e) {}

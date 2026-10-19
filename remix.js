@@ -641,13 +641,13 @@ export function createRemix(o) {
         const first = rows.length ? imgs[0] : made[0];
         if (!first && !made.some(Boolean)) throw new Error('no image came back');
         const media = { ...(first ? { image: first } : {}), ...(rows.length ? { cardImages: imgs } : {}) };
-        ch.pkg = { ...ch.pkg, ...media }; ch.imagePending = false; sync(t, ch);
+        ch.pkg = { ...ch.pkg, ...media }; ch.imagePending = IMG_JOBS.count(ch.id) > 1; sync(t, ch);
         const tv = target ? versionsOf(t, ch.id).find((x) => x.id === target) : null; let v;
         if (tv) { tv.snapshot = { ...tv.snapshot, ...media }; v = tv; if (headOf(t, ch)?.id === tv.id) { try { mirror(t, ch, tv); } catch {} } else v = version(t, ch, `ai:${ch.agent}`, `Photo added: ${why}`, 'Photo added'); }
         else v = version(t, ch, `ai:${ch.agent}`, all && rows.length ? `Photos for ${made.filter(Boolean).length} ${ch.family === 'social' ? 'slides' : 'cards'}` : `New creative: ${why}`);
         try { o.onMedia?.(t, ch, { kind: 'image', images: (rows.length ? imgs : [first]).filter(Boolean), n: v.n, label: v.label }); } catch {} /* every new asset goes where the jam is (Slack) */
-      } catch (e) { ch.imagePending = false; ch.imageError = String(e.message).slice(0, 160); log.warn('[studio image]', e.message); sync(t, ch); }
-      finally { IMG_JOBS.delete(ch.id); bump(t, ch); o.save?.(t); }
+      } catch (e) { ch.imagePending = IMG_JOBS.count(ch.id) > 1; ch.imageError = String(e.message).slice(0, 160); log.warn('[studio image]', e.message); sync(t, ch); }
+      finally { imgEnd(ch); bump(t, ch); o.save?.(t); }
     })();
     return true;
   };
@@ -674,12 +674,12 @@ export function createRemix(o) {
           if (img === null) break; if (img) made.push({ shot, image: img });
         }
         if (!made.length) throw new Error('no photo came back');
-        ch.pkg = { ...ch.pkg, photoSet: made, image: made[0].image }; ch.imagePending = false; sync(t, ch);
+        ch.pkg = { ...ch.pkg, photoSet: made, image: made[0].image }; ch.imagePending = IMG_JOBS.count(ch.id) > 1; sync(t, ch);
         const v = version(t, ch, `ai:${ch.agent}`, `Listing photos: ${why}`, `${made.length} listing photos`);
         ch.thread.push({ from: 'ai', text: `Made ${made.length} listing photo${made.length > 1 ? 's' : ''}: ${made.map((x) => x.shot).join('; ')}.${made.length < shots.length ? ` ${shots.length - made.length} didn’t come through (today’s photo limit, or the picture failed); ask again for the rest.` : ''} They’re ready for the marketplaces.`, at: now(t), v: v.n });
         try { o.onMedia?.(t, ch, { kind: 'image', images: made.map((x) => x.image), n: v.n, label: v.label }); } catch {}
       } catch (e) { ch.imagePending = false; ch.imageError = String(e.message).slice(0, 160); log.warn('[listing photos]', e.message); ch.thread.push({ from: 'ai', text: `The listing photos didn’t come through (${ch.imageError}). Tap Make the photos to try again.`, at: now(t) }); sync(t, ch); }
-      finally { IMG_JOBS.delete(ch.id); bump(t, ch); o.save?.(t); }
+      finally { imgEnd(ch); bump(t, ch); o.save?.(t); }
     })();
     return true;
   };
@@ -705,7 +705,7 @@ export function createRemix(o) {
         ch.thread.push({ from: 'ai', text: `Each cut has its own photo now${done < vs.length ? ` (${done} of ${vs.length}: ${stopped ? 'today’s photo limit is used up' : 'the rest didn’t come through'})` : ''}. Tap one to put it on the stage.`, at: now(t), vs: vs.map((v) => v.id), cuts: true });
         try { o.onMedia?.(t, ch, { kind: 'image', images: vs.map((v) => v.snapshot?.image).filter(Boolean), n: headOf(t, ch)?.n, label: `${done} cuts` }); } catch {}
       } catch (e) { ch.imageError = String(e.message).slice(0, 160); log.warn('[cut photos]', e.message); }
-      finally { ch.imagePending = false; IMG_JOBS.delete(ch.id); sync(t, ch); bump(t, ch); o.save?.(t); }
+      finally { imgEnd(ch); sync(t, ch); bump(t, ch); o.save?.(t); }
     })();
     return vs.length;
   };
@@ -1010,7 +1010,11 @@ export function createRemix(o) {
   /* ---------- routes ---------- */
   /* a photo being made lives in this process; one saved as pending by a server that has since stopped (a deploy, a restart)
      will never land, so it clears and says to make it again instead of spinning for ever */
-  const IMG_JOBS = new Set(), FILL_JOBS = new Set(), CTA_JOBS = new Set(); /* CTA_JOBS: a card's making button at work (runCtaMake) */
+  /* IMG_JOBS counts per change (a take and a chat photo can draw at once): each job adds once and ends once, and imagePending
+     follows the count when a job ends (imgEnd), so one job ending never clears another's spinner or leaves its own behind */
+  const IMG_JOBS = (() => { const m = new Map(); return { add: (id) => m.set(id, (m.get(id) || 0) + 1), delete: (id) => { const n = (m.get(id) || 0) - 1; if (n > 0) m.set(id, n); else m.delete(id); }, has: (id) => m.has(id), count: (id) => m.get(id) || 0 }; })();
+  const imgEnd = (ch) => { IMG_JOBS.delete(ch.id); ch.imagePending = IMG_JOBS.has(ch.id); };
+  const FILL_JOBS = new Set(), CTA_JOBS = new Set(); /* CTA_JOBS: a card's making button at work (runCtaMake) */
   /* a remake's draft says "the media is being made" (pending) on the head and on every version made while it waited; when the
      remake is gone (a restart), every one of them stops saying so */
   const unstick = (t, ch) => { let n = 0; const off = (d) => (d?.pending ? (n++, { ...d, pending: false }) : d);
@@ -1024,6 +1028,7 @@ export function createRemix(o) {
     if (!REMAKE_JOBS.has(ch.id)) { const as = ch.remakePending?.as || ch.pkg?.draft?.as, was = !!ch.remakePending; ch.remakePending = null;
       if (unstick(t, ch) || was) { const what = as === 'video' ? 'reel' : as === 'carousel' ? 'carousel' : 'picture';
         ch.remakeError = `The ${what} stopped before it finished (Brew restarted). Tap Make it again.`; ch.thread.push({ from: 'ai', text: ch.remakeError, at: now(t), remakeAgain: as || null }); } }
+    if (ch.ctaQueued && !FILL_JOBS.has(ch.id) && !CTA_JOBS.has(ch.id)) ch.ctaQueued = null; /* a queued button whose writer stopped with the server: the studio stops polling on it */
     if (ch.copyPending && !FILL_JOBS.has(ch.id)) { ch.copyPending = false; if (!touchedCh(t, ch)) ch.thread.push(startingPoint(t)); } /* the writer stopped with the server */
     healTakesOf(t, ch); /* a v2 take left drawing by a server that stopped resolves to drawError, never hangs */
     return ch; };
@@ -1227,7 +1232,7 @@ export function createRemix(o) {
     })();
     let timer; const cap = new Promise((r) => { timer = setTimeout(() => r('cap'), TAKE_CAP); timer.unref?.(); });
     const run = Promise.race([job, cap]).then((x) => { clearTimeout(timer); if (x === 'cap' && v.drawing) { log.warn('[take] capped', v.id); failTake(t, c, ch, v, 'The picture took more than 3 minutes. Ask for another take.'); } })
-      .finally(() => { TAKE_JOBS.delete(v.id); ch.imagePending = [...TAKE_JOBS.values()].some((j) => j.chId === ch.id); if (!ch.imagePending) IMG_JOBS.delete(ch.id); bump(t, ch); o.save?.(t); });
+      .finally(() => { TAKE_JOBS.delete(v.id); imgEnd(ch); sync(t, ch); bump(t, ch); o.save?.(t); }); /* its own job ends: the spinner goes unless another picture is still being drawn */
     TAKE_JOBS.set(v.id, { chId: ch.id, run });
     return true;
   };
