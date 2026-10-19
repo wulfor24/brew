@@ -1003,6 +1003,7 @@
     if (r === 'ad' || (c.type === 'competitor' && c.sector === 'ads')) return 'From your competitors';
     if (r === 'trend') return 'Trending in your category';
     if (r === 'howto') return 'Step-by-step guide';
+    if (isToldCard(c)) return 'From your team'; /* a card made from what the team told Brew: says so once, in the header */
     if (FROM_CAMPAIGN[c.campaign]) return FROM_CAMPAIGN[c.campaign];
     if (c.type === 'competitor') return 'From your competitors';
     if (FROM_FAMILY[c.family]) return FROM_FAMILY[c.family];
@@ -1021,8 +1022,13 @@
       return `<div class="inset cf-slot">${c.options.map((o) => `<div class="cf-opt${o.id === (dec || c.pick) ? ' on' : ''}"><span class="cf-dot">${o.id === dec ? ic('check', 's14') : ''}</span><span class="lg-tx"><b>${esc(o.name)}</b><span>Moves ${esc(o.moves)}</span></span>${o.id === c.pick && !dec ? '<span class="badge info">Brew pick</span>' : ''}</div>`).join('')}${c.needs ? `<p class="cf-needs">${ic('person', 's14')}Needs ${esc(c.needs)} before anything ships</p>` : ''}</div>`; }
     if (c.kind === 'answer') return `<div class="inset ans-slot"><div class="ans-q">${ic('chat', 's14')}${esc(c.q)}</div><p>${esc(c.a)}</p><span class="badge bad">${B.brand.name} not named</span></div>`;
     if (c.kind === 'variants') return `${c.images?.length ? mediaSlot(c.images.slice(0, 1), { filter: c.gradeF }) : ''}<div class="inset var-slot">${c.loading ? '<div class="sk" style="height:58px"></div><div class="sk" style="height:58px"></div><div class="sk" style="height:58px"></div>' : (c.variants || []).map((v) => `<div class="var"><span class="chip">${esc(v.angle || 'Version')}</span><b>${esc(v.title)}</b><span>${esc(v.sub)}</span></div>`).join('')}</div>`;
-    return `<div class="inset"><div class="rows">${(c.rows || []).map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}</div></div>`;
+    /* a long value stacks under its label (left, full width) so the label never wraps word by word beside it */
+    return `<div class="inset"><div class="rows">${(c.rows || []).map(([k, v]) => { v = toldRowV(c, k, v); return `<div${String(v).length > 28 ? ' class="is-long"' : ''}><span>${esc(k)}</span><b>${esc(v)}</b></div>`; }).join('')}</div></div>`;
   };
+  /* a told card's "From" names the files the team added, readably (saved cards carry "Upload (Arata-Performance-Audit_compressed.pdf, …)") */
+  const isToldCard = (c) => c?.origin === 'told' || /^told-/.test(c?.id || '');
+  const toldRowV = (c, k, v) => !isToldCard(c) || !/^from$/i.test(k) ? v : String(v).replace(/\b(?:uploads?|files?)\s*\(/gi, '').replace(/[()]/g, '').replace(/\s*(?:…|\.\.\.)\s*$/, '')
+    .split(/\s*,\s*/).filter(Boolean).map((f) => f.replace(/\.(pdf|docx?|txt|md|png|jpe?g|csv|xlsx?)$/i, '').replace(/[_-]?compressed$/i, '').replace(/[_-]+/g, ' ').replace(/\s*(…|\.\.\.)$/, '').trim()).filter(Boolean).join(', ');
   // a card that has work in flight says where it is, in one row, from the same phase model as the card page
   const STATUS = { jamming: (w) => STAGE[w.stage], ready: () => 'Ready to share', shared: (w) => `Brief shared${w.ticket ? ` · ${w.ticket}` : ''}` };
   const statusRow = (p, c) => { const w = workOfCard(p.id), ph = w ? phaseOf(p, w, c) : null; if (!ph || !STATUS[ph]) return '';
@@ -1074,7 +1080,7 @@
     const sub = [isNew ? 'Just in' : agoText(c.time), campLine(c)].filter(Boolean).join(' · ');
     const lc = null; /* Do it now was cut: nothing goes live from Brew, so no card shows a Live row */
     const live = lc ? `<button class="live-row" data-livech data-card="${esc(p.id)}" title="${esc(`${lc.label}${lc.scope ? ' · ' + lc.scope : ''} · ${byTeam(lc.by) ? 'shipped by the ShopOS team' : 'shipped by Brew'}. Open the history`)}"><span class="live-pill"><i class="pulse"></i>Live</span><span class="live-tx">${esc(lc.label)}</span><span class="live-v">v${lc.v}</span>${ic('right', 's14')}</button>` : '';
-    const body = `<div class="body">${live || statusRow(p, c)}${p.told ? `<span class="told-tag" title="This card uses what your team told Brew">${ic('book', 's12')}From what your team told Brew</span>` : ''}<h3>${esc(c.title)}</h3><p>${esc(c.sub)}</p>${makeChip(c)}${aisLine(p)}${needLine(p)}${srcLine(c)}</div>`;
+    const body = `<div class="body">${live || statusRow(p, c)}${p.told && !isToldCard(c) ? `<span class="told-tag" title="This card uses what your team told Brew">${ic('book', 's12')}From what your team told Brew</span>` : ''}<h3>${esc(c.title)}</h3><p>${esc(c.sub)}</p>${makeChip(c)}${aisLine(p)}${needLine(p)}${isToldCard(c) ? '' : srcLine(c)}</div>`;
     const fd = ['conflict', 'answer'].includes(c.kind) ? '' : draftSlot(c); /* a draft replaces the lane photo; a rows card keeps its rows under the words */
     const media = !!fd || c.kind === 'media' || (c.kind === 'variants' && c.images?.length);
     const dn = doneText(p, c), rows = fd && c.kind === 'rows' && c.rows?.length ? slotHtml(c) : '';
@@ -1270,7 +1276,7 @@
   const qRow = (p, i) => { const c = cardOf(p);
     return `<article class="card q-card${(c.images || p.images || [])[0] ? '' : ' no-img'}${p.dummy || p.demo || p.onlyWhen || /^live-/.test(p.id) ? ' is-dummy' : ''}" data-post="${i}" data-id="${esc(p.id)}">${qThumb(p, c)}
       <div class="q-body"><div class="q-meta">${face(p.agent)}${c.badge ? `<span class="badge ${c.badge[1]}">${esc(c.badge[0])}</span>` : `<span>${esc(fromLabel(c))}</span>`}</div>
-        ${p.told ? `<span class="told-tag" title="This card uses what your team told Brew">${ic('book', 's12')}From what your team told Brew</span>` : ''}<h3>${esc(c.title)}</h3><p>${esc(c.sub)}</p></div>
+        ${p.told && !isToldCard(c) ? `<span class="told-tag" title="This card uses what your team told Brew">${ic('book', 's12')}From what your team told Brew</span>` : ''}<h3>${esc(c.title)}</h3><p>${esc(c.sub)}</p></div>
       <div class="q-acts">${barHtml(c.cta || { label: 'Open' }, c.done)}</div></article>`; };
   const wRow = (w) => `<article class="card q-card${w.img ? '' : ' no-img'}">${w.img ? `<span class="q-thumb"><img src="${w.img}" alt=""></span>` : ''}
       <div class="q-body"><div class="q-meta">${w.with?.kind === 'team' ? avatar(colleague(w.with.id), 22) : face(w.agent || 'brew')}<b>${w.with ? `From ${esc(w.with.name)}` : 'From Brew'}</b><span>· ${ago(w.updatedAt)}</span><span class="badge warn">Needs you</span></div>

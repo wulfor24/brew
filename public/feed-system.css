@@ -204,6 +204,8 @@
 .rows div{display:flex;justify-content:space-between;gap:12px;padding:8px 2px;border-top:1px solid var(--line);font-size:14px}
 .rows div:first-child{border-top:0}
 .rows span{color:var(--fg-2)}.rows b{font-weight:500;text-align:right;font-variant-numeric:tabular-nums}
+.rows span{flex:none;white-space:nowrap}
+.rows div.is-long{flex-direction:column;gap:2px}.rows div.is-long b{text-align:left;line-height:20px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .card.is-new{box-shadow:0 0 0 1.5px var(--fg)}
 
 /* ================= stickers ================= */
