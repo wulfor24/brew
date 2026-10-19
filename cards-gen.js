@@ -40,7 +40,7 @@ const TOPIC_CTA = {
   'Fix the links': /\b(?:links?|404s?|broken|redirects?)\b/i
 };
 const cardWords = (c) => [c.title, c.sub, ...(c.detail?.why || []), ...(c.detail?.how || []), ...(c.rows || []).flat(), c.make?.pieces, ...(c.plan?.steps || [])].filter((x) => typeof x === 'string').join(' ');
-export const topicOk = (c) => { const re = TOPIC_CTA[c?.cta?.label]; return !re || re.test(cardWords(c)); };
+export const topicOk = (c) => { const re = TOPIC_CTA[c?.cta?.label], w = cardWords(c); return !re || !w.trim() || re.test(w); }; /* no words to judge by: the button stays */
 export function fitCta(card) {
   if (!card || typeof card !== 'object') return card;
   if (card.cta?.label && ctaName(card.cta.label) !== card.cta.label) card.cta = { ...card.cta, label: ctaName(card.cta.label) }; /* a renamed button heals (Publish Campaign, List what points there) */

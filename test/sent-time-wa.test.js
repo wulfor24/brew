@@ -19,5 +19,5 @@ test('the pill items carry when the brief was sent; the client says it in the re
 test('WhatsApp buttons go through the one not-connected sheet', () => {
   assert.ok(!/href="https:\/\/wa\.me\//.test(app), 'no bare wa.me link in the share sheet');
   assert.match(app, /if \(conn\('whatsapp'\)\) \{ window\.open/); assert.match(app, /waNeed\(\{ title: 'Share on WhatsApp'/);
-  assert.match(jr, /return A\.waNeed\(\{ title: 'Send it for approval'/); assert.match(app, /window\.__BREW = \{ waNeed: \(o\) => waNeed\(o\)/);
+  assert.match(jr, /return A\.waNeed\(\{ title: 'Send it for approval'/); assert.match(app, /window\.__BREW = \{[^\n]*waNeed: \(o\) => waNeed\(o\)/);
 });

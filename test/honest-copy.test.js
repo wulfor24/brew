@@ -127,7 +127,7 @@ test('v1 asks the questions during the read, and only the questions', () => {
 });
 
 test('Another take is on every card in v1 and v2; Make it yours stays v2; a take shows on its card', () => {
-  assert.match(app, /<button class="icon-btn v2-act" data-act="take" aria-label="Another take" title="Another take">\$\{ic\('refresh'\)\}<\/button>\$\{V2 \? `<button class="icon-btn v2-act" data-act="make"/);
+  assert.match(app, /<button class="icon-btn v2-act" data-act="take" aria-label="Another take, a free draft" title="Another take · Free draft">\$\{ic\('refresh'\)\}<\/button>\$\{V2 \? `<button class="icon-btn v2-act" data-act="make"/);
   assert.match(app, /document\.addEventListener\('click', async \(e\) => \{ if \(V2\) return; const b = e\.target\.closest\('\.card \[data-act="take"\]'\)/, 'v1 keeps the card in place');
   assert.match(app, /if \(p\.take && \(p\.take\.image \|\| p\.take\.drawing \|\| p\.take\.drawError\)\)/, 'cardOf draws the take');
   assert.match(app, /else if \(\(r\.updated \|\| \[\]\)\.length\) await redrawTakes\(r\.updated\);/, 'the pulse redraws it in place on v1');
