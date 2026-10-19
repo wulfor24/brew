@@ -4,7 +4,7 @@
 // personal data, never submits a form and never pays.
 import fs from 'node:fs';
 import { pathOf, clean } from '../util.js';
-import { pageSpeed } from '../../health.js';
+import { pageSpeed, keepSpeed } from '../../health.js';
 /* PageSpeed is a live Google call: it needs PAGESPEED_API_KEY (without one Google answers 429), and is off under node --test */
 export const speedOn = () => !!process.env.PAGESPEED_API_KEY && process.env.PAGESPEED_OFF !== '1' && !process.env.NODE_TEST_CONTEXT;
 
@@ -54,7 +54,7 @@ export async function site(ctx) {
   if (state.home) for (const [k, v] of Object.entries(tech)) if (v) ledger.add({ key: `site.tech.${k}`, label: `Tech on the site: ${k}`, v: v === true ? 'yes' : v, url: state.homeUrl, method: 'crawl', note: 'found in the home / product page source' });
 
   /* Google PageSpeed for the health card's Storefront ring, run beside the walk; a failure is kept as { error } */
-  const speed = state.homeUrl && speedOn() ? pageSpeed(state.homeUrl, { log: ctx.log }).then((ps) => { profile.site.pagespeed = ps; }) : Promise.resolve();
+  const speed = state.homeUrl && speedOn() ? pageSpeed(state.homeUrl, { log: ctx.log }).then((ps) => { profile.site.pagespeed = keepSpeed(profile.site.pagespeed, ps); }) /* a failed check keeps the last good score with its date (health.js keepSpeed) */ : Promise.resolve();
   const hero = (profile.catalog?.hero || []).map((h) => (profile.catalog.products || []).find((p) => p.handle === h)).find((p) => p && p.inStock !== false) || profile.catalog?.products?.find((p) => p.inStock);
   const exe = CHROME();
   if (!exe) { await speed; profile.site.checkout = { v: SITE_V, error: 'no Chrome on this machine (set CHROME_PATH)' }; ctx.finding('site', { kind: 'rows', t: 'The path to checkout', src: pathOf(state.homeUrl), rows: techRows(tech), cap: 'Checkout not walked: no browser available.' }); return ctx.done('site', 'tech read, checkout not walked', 'empty'); }

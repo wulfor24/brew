@@ -13,7 +13,7 @@ import { catalog } from './stages/catalog.js';
 import { reviews } from './stages/reviews.js';
 import { ads, findRivals, ADS_V } from './stages/ads.js';
 import { site, SITE_V, speedOn } from './stages/site.js';
-import { pageSpeed } from '../health.js';
+import { pageSpeed, keepSpeed } from '../health.js';
 import { answers, inferCategory, writeLine } from './stages/answers.js';
 import { socials } from './stages/socials.js';
 import { named, namedStale } from './stages/named.js';
@@ -180,7 +180,7 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
     const tried = profile.meta?.healTried || {};
     const failedStages = Object.keys(profile.meta?.errors || {}).filter((k) => RERUN[k] && !!profile.host && (!tried[k] || Date.now() - Date.parse(tried[k]) >= 864e5));
     /* a read from before the health card's speed part gets PageSpeed; a failed one is kept and tried again a day later */
-    const ps = profile.site?.pagespeed, speedMissing = !!profile.host && !siteBroken && speedOn() && (!ps || (!!ps.error && Date.now() - Date.parse(ps.at || 0) >= 864e5));
+    const ps = profile.site?.pagespeed, speedMissing = !!profile.host && !siteBroken && speedOn() && (!ps || (!!ps.error && Date.now() - Date.parse(ps.triedAt || ps.at || 0) >= 864e5)); /* triedAt: a kept reading's last failed try */
     if (!adsBroken && !lineMissing && !answersBroken && !namedBroken && !siteBroken && !speedMissing && !failedStages.length) return null;
     const added = [], cards = [], stepsDone = {}, healPicks = {};
     const http = createFetcher({ slug, saveRaw, loadRaw, fresh: false, log: lg });
@@ -204,7 +204,7 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
     }
     // the checkout walk from an older walker, or one that never reached checkout, is walked again
     if (siteBroken) { try { await withTimeout(site(ctx), LIMIT.site, 'site'); changed.push('site'); } catch (e) { lg.warn?.('[reader] heal site', slug, e.message); } }
-    if (speedMissing) { profile.site = { ...(profile.site || {}), pagespeed: await pageSpeed(profile.url, { log: lg }) }; changed.push('pagespeed'); }
+    if (speedMissing) { profile.site = { ...(profile.site || {}), pagespeed: keepSpeed(profile.site?.pagespeed, await pageSpeed(profile.url, { log: lg })) }; changed.push('pagespeed'); }
     if (failedStages.length) {
       /* the stages read the home page (review widget, social links): fetched once here, as the open stage did */
       try { const r = await http.get(profile.url, { key: 'heal-home' }); if (r.ok) { ctx.state.home = r.text; ctx.state.homeUrl = r.url || profile.url; ctx.state.origin = new URL(ctx.state.homeUrl).origin; } } catch (e) { lg.warn?.('[reader] heal home', slug, e.message); }

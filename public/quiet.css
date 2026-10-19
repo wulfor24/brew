@@ -470,3 +470,5 @@ p.rd2-trust,.rd2-trust>summary{display:inline-flex;align-items:center;gap:6px}
 /* a story's "For <brand>:" line and its source link (QA FEED-ARV-10): one line, one button, the source quiet */
 .sv-tx .sv-take{margin:8px 0 0;font-size:14px;line-height:1.4}
 .sv-src a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+/* what changed in a health ring since its last score (QA FEED-QA-18) */
+.hc-was{display:block;font-size:12px;opacity:.75}

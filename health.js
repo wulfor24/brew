@@ -9,7 +9,7 @@
 import { numbersOf } from './pack-numbers.js';
 import { standFromRead, standFromRun } from './ai-standing.js';
 
-export const HEALTH_V = 'real-3'; // bump when a ring is scored differently: every brand's score is worked out again at load (brand-pack.js)
+export const HEALTH_V = 'real-4'; /* 4: each part says when it was checked, and what changed since the last score (QA FEED-QA-18) */ // bump when a ring is scored differently: every brand's score is worked out again at load (brand-pack.js)
 const clamp = (x) => Math.max(0, Math.min(100, Math.round(x)));
 const fmt = (n) => Number(n).toLocaleString('en-US');
 /* the walk reached the checkout page (siteFailed in reader/index.js reads it the same way) */
@@ -37,6 +37,16 @@ export async function pageSpeed(url, { key = process.env.PAGESPEED_API_KEY, fetc
   } catch (e) { log.warn?.('[health] pagespeed', url, e.message); return { error: e.message, at, url }; }
 }
 
+/* a new PageSpeed reading over the last one (QA FEED-QA-18: Storefront jumped 100 ↔ 80 when a check failed, then came back):
+   a failed check keeps the last good score with its own date and carries the failure beside it (error, triedAt), so the ring
+   never drops a part it read before; a new score says what it was before (was) */
+export function keepSpeed(prev, next) {
+  if (!next) return prev || null;
+  if (next.error) return prev?.score != null ? { ...prev, error: next.error, triedAt: next.at || null } : next;
+  return prev?.score != null && prev.score !== next.score ? { ...next, was: { score: prev.score, at: prev.at || null } } : next;
+}
+const dayOf = (at) => { const d = at ? new Date(at) : null; return d && !isNaN(d) ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : null; };
+
 function creative(p, N, fix) {
   const own = N.ownAds, items = p.ads?.own?.items || [], live = own.n;
   if (live == null) return { k: 'Creative', v: 0, read: false, what: own.error || p.meta?.errors?.ads ? 'Your ads couldn’t be read this time; the next refresh tries again' : 'Not read yet', parts: [], src: 'Meta Ad Library' }; /* a whole ads stage that failed is not "not read yet" */
@@ -60,26 +70,27 @@ function creative(p, N, fix) {
 
 function storefront(p, fix) {
   const prods = p.catalog?.products || [], co = p.site?.checkout || {}, ps = p.site?.pagespeed, sp = [];
-  if (ps && ps.score != null) { sp.push(['Mobile speed', ps.score * 0.35, 35, `PageSpeed ${ps.score} of 100${ps.lcp ? `, main image at ${ps.lcp}` : ''}`]);
+  const readAt = p.meta?.readAt || null;
+  if (ps && ps.score != null) { sp.push(['Mobile speed', ps.score * 0.35, 35, `PageSpeed ${ps.score} of 100${ps.lcp ? `, main image at ${ps.lcp}` : ''}${ps.was?.score != null ? ` (was ${ps.was.score}${dayOf(ps.was.at) ? ` on ${dayOf(ps.was.at)}` : ''})` : ''}${ps.error ? '; the newest check didn’t go through, so this is the last good one' : ''}`, ps.at || null]);
     if (ps.score < 50) fix.push(['Storefront', `Mobile PageSpeed is ${ps.score} of 100${ps.lcp ? `; the main image shows at ${ps.lcp}` : ''}. Speed up the first screen.`]); }
   /* the walk: only what it actually saw counts. A walk that stopped early, or a checkout app that loads after the walk
      (GoKwik, opened by /checkout), is left out, never scored as a no */
   const reached = reachedOf(co), seen = reached && !co.direct;
-  if (reached) sp.push(['Reaching checkout', 10 + ((co.clicks ?? 9) <= 2 ? 5 : 0), 15, `reached in ${co.clicks ?? '?'} click${co.clicks === 1 ? '' : 's'} from the product page`]);
-  if (seen && co.guest != null) { sp.push(['Guest checkout', co.guest ? 10 : 0, 10, co.guest ? 'offered' : 'login first']); if (!co.guest) fix.push(['Storefront', 'The walk was asked to log in before checkout. Let people buy as a guest.']); }
-  const pay = co.payments || []; if (seen && pay.length) sp.push(['Payment options', pay.length >= 3 ? 10 : 5, 10, `${pay.length} seen: ${pay.slice(0, 4).join(', ')}`]);
+  if (reached) sp.push(['Reaching checkout', 10 + ((co.clicks ?? 9) <= 2 ? 5 : 0), 15, `reached in ${co.clicks ?? '?'} click${co.clicks === 1 ? '' : 's'} from the product page`, co.at || readAt]);
+  if (seen && co.guest != null) { sp.push(['Guest checkout', co.guest ? 10 : 0, 10, co.guest ? 'offered' : 'login first', co.at || readAt]); if (!co.guest) fix.push(['Storefront', 'The walk was asked to log in before checkout. Let people buy as a guest.']); }
+  const pay = co.payments || []; if (seen && pay.length) sp.push(['Payment options', pay.length >= 3 ? 10 : 5, 10, `${pay.length} seen: ${pay.slice(0, 4).join(', ')}`, co.at || readAt]);
   if (prods.length) { const photos = prods.reduce((a, x) => a + (x.images?.length || 0), 0) / prods.length, thin = prods.filter((x) => (x.images?.length || 0) <= 1).length;
-    sp.push(['Photos per product', Math.min(photos / 4, 1) * 15, 15, `${photos.toFixed(1)} on average over ${prods.length} product${prods.length === 1 ? '' : 's'}`]);
+    sp.push(['Photos per product', Math.min(photos / 4, 1) * 15, 15, `${photos.toFixed(1)} on average over ${prods.length} product${prods.length === 1 ? '' : 's'}`, readAt]);
     if (thin) fix.push(['Storefront', `${thin} product${thin === 1 ? ' has' : 's have'} one photo or none. Add angles so shoppers and catalog ads can trust them.`]); }
   /* reviews on the brand's own site only: marketplace reviews are not on the store */
   const pl = p.reviews?.platforms || [], onSite = pl.filter((x) => !MKT.test(x.name || '')), rv = pl.length ? onSite.reduce((a, x) => a + (+x.count || 0), 0) : +p.reviews?.total || 0;
   const rvErr = reviewsErr(p);
-  if (p.reviews && !rvErr) { sp.push(['Reviews on the site', rv >= 100 ? 15 : rv > 0 ? 8 : 0, 15, rv ? `${fmt(rv)} on the site${pl.some((x) => MKT.test(x.name || '')) ? ' (marketplaces not counted)' : ''}` : 'no reviews on the site']);
+  if (p.reviews && !rvErr) { sp.push(['Reviews on the site', rv >= 100 ? 15 : rv > 0 ? 8 : 0, 15, rv ? `${fmt(rv)} on the site${pl.some((x) => MKT.test(x.name || '')) ? ' (marketplaces not counted)' : ''}` : 'no reviews on the site', readAt]);
     if (!rv) fix.push(['Storefront', 'No reviews were found on the site. Ask for one after delivery.']); }
   if (!sp.length) return { k: 'Storefront', v: 0, read: false, what: rvErr || p.meta?.errors?.site ? 'The store couldn’t be read this time; the next refresh tries again' : 'Not read yet', parts: [], src: 'the site read' };
   const got = sp.reduce((a, x) => a + x[1], 0), max = sp.reduce((a, x) => a + x[2], 0);
   return { k: 'Storefront', v: clamp((100 * got) / max), read: true, what: `From ${p.host || 'your store'}: ${sp.map((x) => x[0].toLowerCase()).join(', ')}${rvErr ? '; reviews couldn’t be read this time, the next refresh tries again' : ''}`,
-    parts: sp.map(([k, v, of, note]) => ({ k, v: Math.round(v), of, note })), src: [ps?.score != null && `Google PageSpeed (${ps.at})`, reached && 'the checkout walk', 'the site read'].filter(Boolean).join(', ') };
+    parts: sp.map(([k, v, of, note, at]) => ({ k, v: Math.round(v), of, note, ...(at ? { at: String(at).slice(0, 10) } : {}) })), src: [ps?.score != null && `Google PageSpeed (${ps.at})`, reached && 'the checkout walk', 'the site read'].filter(Boolean).join(', ') };
 }
 
 /* the AI tools that really answered in a check, by name: a tool that failed or wasn't asked is never listed */
@@ -122,8 +133,18 @@ export function aiRingFromRun(run, { questions = [], rivals = [], brand = '' } =
     tools: run.answers.map((a) => a.engine), at: new Date(run.at).toISOString(), from: 'weekly', stand });
 }
 
-export function healthFrom(p = {}, N = numbersOf({ profile: p })) {
-  const fix = [], rings = [creative(p, N, fix), storefront(p, fix), aiAnswers(p, fix)];
+/* what changed since the last score, on the ring and on each part that moved: "was 80" (QA FEED-QA-18) */
+function since(rings, prev) {
+  for (const r of rings) { const o = prev?.rings?.find((x) => x.k === r.k); if (!o || o.read === false || r.read === false) continue;
+    const moved = [];
+    for (const x of r.parts || []) { const y = (o.parts || []).find((z) => z.k === x.k); if (y && y.of === x.of && y.v !== x.v) { x.was = y.v; moved.push(`${x.k.toLowerCase()} ${y.v} → ${x.v}`); } }
+    const gone = (o.parts || []).filter((y) => !(r.parts || []).some((x) => x.k === y.k)).map((y) => `${y.k.toLowerCase()} not read this time`);
+    if (o.v !== r.v) { r.was = o.v; r.changed = [...moved, ...gone].join('; ') || null; } }
+  return rings;
+}
+
+export function healthFrom(p = {}, N = numbersOf({ profile: p }), prev = null) {
+  const fix = [], rings = since([creative(p, N, fix), storefront(p, fix), aiAnswers(p, fix)], prev);
   const read = rings.filter((r) => r.read); // a ring we could not read is shown as such, never averaged in as zero
   return { v: HEALTH_V, key: healthKey(N, p), score: read.length ? clamp(read.reduce((a, r) => a + r.v, 0) / read.length) : 0, delta: 0, public: true, rings,
     moves: fix.slice(0, 3).map(([k, t]) => ({ k, t })), at: new Date().toISOString().slice(0, 10) };
