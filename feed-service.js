@@ -32,7 +32,8 @@ import { buildDraft } from './sloosh-prompt.js'; // one brief for every draft pi
 import { shipLine, oneCard, oneTake } from './text-fit.js';
 import { createDrafts, fakeMakers } from './drafts.js';
 import { cardProduct, cardScene, matchProduct } from './product-match.js';
-import { gapFix } from './ai-gap.js'; // the AI-answers gap card's own fix (QA FEED-ARV-09)
+import { gapFix } from './ai-gap.js';
+import { newsForUs, adForUs } from './for-us.js'; // every rival and news story ends on one line for the brand (QA FEED-ARV-10) // the AI-answers gap card's own fix (QA FEED-ARV-09)
 import { seedDrafts, draftFor, draftView } from './drafts-bg.js';
 import { planFor, planPrompt, PLAN_V } from './card-plan.js';
 import { createMoves } from './moves.js';
@@ -793,6 +794,12 @@ export function createFeedService(o) {
     rows: x.rising ? x.rising.slice(0, 4).map((r) => [r.q.length > 38 ? r.q.slice(0, 36) + '…' : r.q, riseLabel(r.v)]) : x.terms.map((term) => { const s = research.get().trends.series[term]; return [term, s.change == null ? `index ${s.last}` : `${s.change > 0 ? '+' : ''}${s.change}% in 30 days`]; }),
     detail: { why: [x.p, x.h], how: ['Brew turns it into an ad idea or a page change.', 'You approve it before anything goes live.'] },
     cta: { label: 'Turn into an idea' }, src: `Google Trends · ${CTRY()} · ${dateIN(at)}`, research: { kind: 'trend', id: x.id } });
+  /* a news story's card: what it means for the brand, as one idea to plan (the story slide's one button, QA FEED-ARV-10) */
+  const newsId = (x) => 'nw-' + crypto.createHash('sha1').update(String(x?.url || x?.h || '')).digest('hex').slice(0, 10);
+  const newsCard = (x, at) => ({ id: 'r-' + newsId(x), agent: 'brew', sector: 'signals', type: 'idea', family: 'idea', lane: firstLane(), roles: ['founder', 'growth', 'brand'], kind: 'rows',
+    campaign: 'Industry news', title: `What “${short(String(x.h || ''), 60)}” means for ${BN()}`, sub: x.take || newsForUs(x, BN()),
+    rows: [['The story', short(String(x.h || ''), 60)], ['Source', x.source || x.domain || 'the web']], detail: { why: [x.p].filter(Boolean), how: ['Brew drafts one idea for an ad or a page.', 'You decide if it goes out.'] },
+    cta: { label: 'Turn into an idea' }, link: x.url ? { label: 'Read the story', url: x.url } : undefined, src: `${x.source || x.domain || 'Web search'} · ${dateIN(at)}`, research: { kind: 'news', id: newsId(x) } });
   const howtoCard = (x, at) => ({ id: 'r-' + x.id, agent: 'creative', sector: 'creatives', type: 'idea', lane: x.lane, roles: ['founder', 'growth', 'brand'], kind: x.img ? 'media' : 'rows', images: x.img ? [x.img] : undefined,
     campaign: 'How to', title: x.card, sub: x.p, rows: x.steps.map((st, i) => [`Step ${i + 1}`, st]),
     detail: { why: [x.p], how: x.steps }, cta: { label: 'Start this' }, src: `How-to playbook · ${dateIN(at)}`, research: { kind: 'howto', id: x.id, ...(x.adId ? { ad: x.adId } : {}) } });
@@ -837,6 +844,7 @@ export function createFeedService(o) {
     if (kind === 'ad') { const a = resAll(r.ads).find((x) => x.id === id); return a && adCard(a, a.firstSeen || r.ads.fetchedAt); }
     if (kind === 'trend') { const x = resAll(r.trends).find((y) => y.id === id); return x && x.terms?.every((term) => r.trends.series?.[term]) && trendCard(x, x.firstSeen || r.trends.fetchedAt); }
     if (kind === 'howto') { const x = resAll(r.howto).find((y) => y.id === id); return x && howtoCard(x, x.firstSeen || r.howto.fetchedAt); }
+    if (kind === 'news') { const x = resAll(r.news).find((y) => newsId(y) === id); return x && newsCard(x, x.firstSeen || r.news.fetchedAt); }
   };
   /* which research becomes a card: live stories and archived ones alike, strongest first (ads: Meta rank, versions, run
      length; trends: size of the move), so a strong story that expired from the ring still reaches the feed, where the
@@ -1112,14 +1120,15 @@ export function createFeedService(o) {
       ? [{ type: 'note', c: SEED.brand.wash[2], h: `No ${title.toLowerCase()} yet`, p: 'The first read found nothing to show. Brew tries again within the hour.', from: 'Brew', at: fails[k].at }]
       : r0[k]?.lastError
       ? [{ type: 'note', c: SEED.brand.wash[2], h: `Couldn't refresh ${title} this time`, p: 'The source didn’t answer. Brew tries again within the hour.', from: 'Brew', at: r0[k].lastError.at }]
-      : r0[k] ? [{ type: 'note', c: SEED.brand.wash[1], h: `Finding new ${title.toLowerCase()} stories`, p: 'Brew is reading the source again. New ones land here shortly.', from: 'Brew', at: now(t) }] : slides);
+      : slides); /* a ring that is only waiting for its next read has nothing to show: it is hidden, not a "Finding new stories" slide (QA FEED-QA-28) */
     const ring = (k, title, slides, o = {}) => { slides = failedNote(k, title, slides); return { k, title, slides: slides.map(bgFor), ...o, seen: !!o.updatedAt && (t.storySeen[k] || 0) >= o.updatedAt }; };
     const extra = (k) => t.storyExtra[k].slice().reverse().map((x) => ({ ...x, type: 'note' }));
     const ads = r.ads, tr = r.trends, nw = r.news, ht = r.howto;
-    const adSlides = (ads?.items || []).map((a) => ({ type: 'ad', ...a, total: ads.brands.find((b) => b.name === a.brand)?.live, cardId: t.cards.has('r-ad-' + a.id) ? 'r-ad-' + a.id : null }));
-    const trSlides = (tr?.items || []).map((x) => ({ type: x.kind === 'rising' ? 'rising' : 'trend', ...x, rising: x.rising ? x.rising.map((r) => ({ ...r, v: riseLabel(r.v) })) : x.rising, series: x.terms.map((term) => { const s = tr.series[term]; return { term, values: s.values, change: s.change, last: s.last }; }), dates: tr.series[x.terms[0]]?.dates || Object.values(tr.series)[0]?.dates }));
+    const adSlides = (ads?.items || []).map((a) => ({ type: 'ad', ...a, forUs: a.take || adForUs(a, BN()), total: ads.brands.find((b) => b.name === a.brand)?.live, cardId: t.cards.has('r-ad-' + a.id) ? 'r-ad-' + a.id : null }));
+    const where = B()?.config?.countryName || null; /* the brand's own market, never a hard-coded country (QA STO-05/06) */
+    const trSlides = (tr?.items || []).map((x) => ({ type: x.kind === 'rising' ? 'rising' : 'trend', ...x, where, rising: x.rising ? x.rising.map((r) => ({ ...r, v: riseLabel(r.v) })) : x.rising, series: x.terms.map((term) => { const s = tr.series[term]; return { term, values: s.values, change: s.change, last: s.last }; }), dates: tr.series[x.terms[0]]?.dates || Object.values(tr.series)[0]?.dates }));
     const batches = t.batches.slice(0, 3).map((b) => ({ type: 'note', c: SEED.brand.wash[1], h: b.t, p: `${b.s}. ${b.st === 'Running' ? b.pct + '% done.' : b.st + '.'}`, from: 'Your work' }));
-    const newsSlides = (nw?.items || []).map((x) => ({ type: 'news', ...x }));
+    const newsSlides = (nw?.items || []).map((x) => ({ type: 'news', ...x, id: newsId(x), forUs: x.take || newsForUs(x, BN()) }));
     const spark = (term) => tr?.series[term]?.values;
     // the brand today: its own most important new things, never outside news.
     // The two top-ranked open cards, then work waiting on you, the latest measured result, and work the team finished.
@@ -1145,7 +1154,7 @@ export function createFeedService(o) {
       ring('news', 'Industry news', newsSlides.slice(0, 10), { updatedAt: lastAt(nw), source: nw?.source, cover: newsSlides.find((x) => x.img)?.img, loading: !nw && !fails.news }),
       ring('howto', 'How to', (ht?.items || []).map((x) => ({ type: 'howto', ...x, cardId: t.cards.has('r-' + x.id) ? 'r-' + x.id : null })), { updatedAt: lastAt(ht), source: ht?.source, cover: ht?.items.find((x) => x.img)?.img, loading: !ht && !fails.howto })
 
-    ]; /* all five rings always show: fresh stories, else the best recent ones while new ones are read, else what is happening */
+    ].filter((x) => x.k === 'brand' || x.slides.length); /* a ring with no slides is hidden (QA FEED-QA-28); the brand's own ring stays. A ring whose read failed keeps its note */
   };
 
   /* ---------- onboarding stream (SSE) ---------- */

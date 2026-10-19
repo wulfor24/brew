@@ -1494,7 +1494,7 @@
     return `<span class="cover ${cls}">${icon === 'mark' ? `<img src="${B.brand.mark}" alt="">` : ic(icon)}</span>`; };
   /* Recap (what happened since your last visit) sits right after the brand's own ring, only when the server sent one */
   /* unseen rings first (each set keeps its own order), like stories anywhere */
-  const ringKeys = (S2) => { const ks = (ROLE().stories || []).filter((k) => k !== 'recap'); if (S2.recap) ks.splice(ks[0] === 'brand' ? 1 : 0, 0, 'recap'); const on = ks.filter((k) => S2[k]); return [...on.filter((k) => !S2[k].seen), ...on.filter((k) => S2[k].seen)]; };
+  const ringKeys = (S2) => { const ks = (ROLE().stories || []).filter((k) => k !== 'recap'); if (S2.recap) ks.splice(ks[0] === 'brand' ? 1 : 0, 0, 'recap'); const on = ks.filter((k) => S2[k] && (k === 'brand' || S2[k].slides?.length)); /* a ring with nothing to show is hidden (QA FEED-QA-28) */ return [...on.filter((k) => !S2[k].seen), ...on.filter((k) => S2[k].seen)]; };
   const storiesHtml = () => { const S2 = storySets(); return `<div class="stories">${ringKeys(S2).map((k, i) => `<button class="story${S2[k].seen ? ' seen' : ''}${S2[k].loading ? ' loading' : ''}" data-story="${k}" title="${esc(S2[k].title)}"><span class="ring">${ringCover(S2[k])}</span><span class="st-l">${esc(S2[k].title)}</span></button>`).join('')}</div>`; };
 
   /* the end of a free day: a swipeable set of what Pro adds, in Brew's own art, ending on the one button */
@@ -5110,6 +5110,8 @@
     paintStory();
   };
   // one slide's media + text, by type
+  /* every rival and news story ends on one line for the brand and one button (QA FEED-ARV-10): its take, else a line read from the story */
+  const forUs = (sl) => { const t = sl.take || sl.forUs; return t ? `<p class="sv-take"><b>For ${esc(B.brand.name)}:</b> ${esc(t)}</p>` : ''; };
   const slideHtml = (s, sl) => {
     const src = (t) => `<div class="sv-src">${esc(t)}</div>`;
     if (sl.type === 'ad') return `${sl.video ? `<video src="${sl.video}" poster="${sl.poster}" autoplay muted playsinline loop></video>` : `<img src="${sl.poster}" alt="">`}
@@ -5117,13 +5119,13 @@
         <span class="sv-chip">${rivalLogo(sl.brand, 16)}${esc(sl.brand)} · live ${sl.days} days · ${sl.versions} version${sl.versions > 1 ? 's' : ''}</span>
         <h3>${esc(sl.title)}</h3>
         ${sl.why ? `<p>${esc(sl.why)}</p>` : `<p>${esc(sl.headline)}</p>`}
-        ${sl.take ? `<p class="sv-take"><b>For ${B.brand.name}:</b> ${esc(sl.take)}</p>` : ''}
-        <div class="sv-acts"><button class="sv-btn pri" data-sv-card="ad" data-id="${esc(sl.id)}">${ic('sparkles', 's14')}Make our version</button><a class="sv-btn" href="${esc(sl.url)}" target="_blank" rel="noopener">Ad Library ${ic('right', 's14')}</a></div>
-        ${src(`${s.source} · ${sl.total ? `${sl.brand} runs ${sl.total} ads · ` : ''}checked ${svAgo(s.updatedAt)}`)}</div>`;
+        ${forUs(sl)}
+        <div class="sv-acts"><button class="sv-btn pri" data-sv-card="ad" data-id="${esc(sl.id)}">${ic('sparkles', 's14')}Make our version</button></div>
+        <div class="sv-src">${esc(`${s.source} · ${sl.total ? `${sl.brand} runs ${sl.total} ads · ` : ''}checked ${svAgo(s.updatedAt)}`)}${sl.url ? ` · <a href="${esc(sl.url)}" target="_blank" rel="noopener">See it in the Ad Library</a>` : ''}</div></div>`;
     if (sl.type === 'trend') {
       const W = 320, H = 150, cols = ['#fff', '#82B1FF', '#FFDDBF'];
       return `<div class="wash2 sv-dark"></div><div class="sv-tx sv-mid">
-        <span class="sv-chip">Search interest · India · 7-day average</span><h3>${esc(sl.h)}</h3><p>${esc(sl.p)}</p>
+        <span class="sv-chip">Search interest${sl.where ? ` · ${esc(sl.where)}` : ''} · 7-day average</span><h3>${esc(sl.h)}</h3><p>${esc(sl.p)}</p>
         <svg class="sv-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-label="Search interest, last 90 days">${(() => { const sm = sl.series.map((x) => smooth7(x.values)), all = sm.flat(); return sm.map((v, i) => `<path d="${sparkPath(v, W, H, 4, Math.max(...all, 1), 0)}" style="stroke:${cols[i]}"/>`).join(''); })()}</svg>
         <div class="sv-legend">${sl.series.map((x, i) => `<span><i style="background:${cols[i]}"></i>${esc(x.term)}${x.change != null ? ` <b>${x.change > 0 ? '+' : ''}${x.change}%</b>` : ''}</span>`).join('')}</div>
         <div class="sv-axis"><span>${fmtDate(sl.dates?.[0])}</span><span>${fmtDate(sl.dates?.[1])}</span></div>
@@ -5131,15 +5133,15 @@
         ${src(`${s.source} · checked ${svAgo(s.updatedAt)}`)}</div>`;
     }
     if (sl.type === 'rising') return `<div class="wash2 sv-dark"></div><div class="sv-tx sv-mid">
-        <span class="sv-chip">Rising searches · India</span><h3>${esc(sl.h)}</h3><p>${esc(sl.p)}</p>
+        <span class="sv-chip">Rising searches${sl.where ? ` · ${esc(sl.where)}` : ''}</span><h3>${esc(sl.h)}</h3><p>${esc(sl.p)}</p>
         <ol class="sv-rise">${(sl.rising || []).map((r) => `<li><span>${esc(r.q)}</span><b>${esc(r.v)}</b></li>`).join('')}</ol>
         <div class="sv-acts"><button class="sv-btn pri" data-sv-card="trend" data-id="${esc(sl.id)}">${ic('sparkles', 's14')}Turn into an idea</button></div>
         ${src(`${s.source} · checked ${svAgo(s.updatedAt)}`)}</div>`;
     if (sl.type === 'news') return `${sl.img ? `<img src="${sl.img}" alt="">` : svBack(sl)}
       <div class="sv-tx"><span class="sv-chip"><img class="sv-fav" src="https://www.google.com/s2/favicons?domain=${esc(sl.domain)}&sz=32" alt="">${esc(sl.source || sl.domain)}${sl.date ? ` · ${fmtDate(sl.date)}` : ''}</span>
-        <h3>${esc(sl.h)}</h3><p>${esc(sl.p)}</p>
-        <div class="sv-acts"><a class="sv-btn pri" href="${esc(sl.url)}" target="_blank" rel="noopener">Read the story ${ic('right', 's14')}</a></div>
-        ${src(`Found by web search · ${svAgo(s.updatedAt)}`)}</div>`;
+        <h3>${esc(sl.h)}</h3><p>${esc(sl.p)}</p>${forUs(sl)}
+        ${sl.id ? `<div class="sv-acts"><button class="sv-btn pri" data-sv-card="news" data-id="${esc(sl.id)}">${ic('sparkles', 's14')}Turn into an idea</button></div>` : ''}
+        <div class="sv-src">Found by web search · ${esc(svAgo(s.updatedAt))}${sl.url ? ` · <a href="${esc(sl.url)}" target="_blank" rel="noopener">Read the story</a>` : ''}</div></div>`;
     if (sl.type === 'brand') { const btn = sl.workId ? `<button class="sv-btn pri" data-sv-work="${esc(sl.workId)}">Review it ${ic('right', 's14')}</button>` : sl.cardId ? `<button class="sv-btn pri" data-sv-open="${esc(sl.cardId)}">${esc(sl.cta || 'Open the card')} ${ic('right', 's14')}</button>` : '';
       const hero = sl.pct != null ? `<div class="sv-hero stat svpg"><span><small>${esc(sl.st === 'Running' ? 'Done so far' : sl.st || 'Progress')}</small><b>${sl.pct}%</b></span><div class="sv-prog"><div style="width:${sl.pct}%"></div></div><em class="plain">${esc(AGENT[sl.agent] || '')}</em></div>` : sl.stat ? `<div class="sv-hero stat"><span><small>Before</small><b>${esc(sl.stat[0])}</b></span>${ic('right', 's18')}<span><small>Now</small><b>${esc(sl.stat[1])}</b></span><em>${esc(/^[+−-]/.test(sl.stat[2]) ? sl.stat[2] : (sl.win ? '+' : '') + sl.stat[2])}</em></div>` : `<div class="sv-hero">${face(sl.agent || 'brew')}<small>${esc(AGENT[sl.agent || 'brew'])}</small></div>`;
       return `${sl.img ? `<img src="${sl.img}" alt="">` : `${svBack(sl)}${hero}`}
