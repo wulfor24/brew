@@ -992,33 +992,48 @@
         return `<p class="ais-h2">Named most often</p>${nm.of !== of ? `<p class="ais-sub">Counted in ${nm.of} answers${st.named.at ? ` from ${esc(fmtDay(Date.parse(st.named.at)) || st.named.at)}` : ''}</p>` : ''}${nm.top.length ? `<div class="ais-rows">${nm.top.slice(0, compact ? 3 : 5).map((r) => `<div class="ais-row"><b>${esc(r.name)}</b><span class="ais-bar"><i style="width:${nm.of ? Math.round((100 * nm.c(r)) / nm.of) : 0}%"></i></span><em>${nm.c(r)} of ${nm.of}</em></div>`).join('')}</div>` : `<p class="ais-note">These answers name no other brands.</p>`}`; })()}`; };
   /* the AI answers card's proof (Param, 19 Oct: "why should I trust you?"): how Brew asked, each question with why it is there,
      and every tool's own answer with the brands it named and its sources; the team adds the questions their customers ask */
+  /* one glance (Param, 19 Oct: "aim for 15/10, one quick glance"): the score as a big number and a dot per answer, the biggest gap,
+     who gets named instead, then every question as a row: how many people search it (a bar) and one dot per AI tool (filled = names you) */
+  const AIV_TOOL = { chatgpt: ['GPT', '#10a37f'], gemini: ['Gem', '#4285f4'], perplexity: ['Pplx', '#20808d'], claude: ['Cl', '#d97757'], copilot: ['Cop', '#7a5af8'], 'google ai overviews': ['AIO', '#ea4335'] };
+  const aivTool = (t) => AIV_TOOL[String(t).toLowerCase()] || [String(t).slice(0, 3), '#8a8a8a'];
+  const aivVol = (w) => { const m = String(w?.label || '').match(/^([\d.,]+)\s?([kKmM]?)\s+Google searches a month/); if (!m || w.kind !== 'search') return 0; const n = parseFloat(m[1].replace(/,/g, '')); return n * ({ k: 1e3, m: 1e6 }[m[2].toLowerCase()] || 1); };
+  const aivFmt = (n) => (n >= 1e5 ? `${Math.round(n / 1e3)}k` : n >= 1e3 ? `${(n / 1e3).toFixed(n >= 1e4 ? 0 : 1).replace(/\.0$/, '')}k` : String(Math.round(n)));
   const aiAnsHtml = (a) => { const day = a.at ? fmtDay(typeof a.at === 'number' ? a.at : Date.parse(a.at)) : '';
-    const tools = a.tools.length ? a.tools.join(', ').replace(/, ([^,]*)$/, ' and $1') : 'the AI tools';
-    /* the result first, in one sentence: how often the answers name the brand when the shopper named no brand */
+    const tools = a.tools.length ? a.tools : [...new Set(a.questions.flatMap((x) => x.answers.map((y) => y.tool)))];
+    const toolList = tools.join(', ').replace(/, ([^,]*)$/, ' and $1') || 'the AI tools';
     const un = a.questions.filter((x) => !x.branded), br = a.questions.filter((x) => x.branded);
-    const tally = (xs) => xs.reduce((t, x) => ({ n: t.n + x.answers.filter((y) => y.named).length, of: t.of + x.answers.length }), { n: 0, of: 0 }), tu = tally(un);
-    const lead = tu.of ? `${esc(tools)} named ${esc(a.brand)} in ${tu.n} of ${tu.of} answers to what shoppers ask${tu.n ? '' : ''}.` : `Brew asks ${esc(tools)} what shoppers in ${esc(a.country || 'your market')} ask.`;
-    const how = `Asked as a shopper in ${esc(a.country || 'your market')} would${day ? `, on ${esc(day)}` : ''}. The same questions every week, so weeks compare.`;
+    const all = un.flatMap((x) => x.answers), named = all.filter((y) => y.named).length;
+    /* 1. the score: a big number and one dot per answer */
+    const hero = all.length ? `<div class="aiv-hero"><div class="aiv-big${!named ? ' is-zero' : named / all.length < 1 / 3 ? ' is-low' : ''}"><b>${named}</b><span>of ${all.length}</span></div><div class="aiv-hm"><p>answers name <b>${esc(a.brand)}</b> when a shopper asks without naming a brand</p><div class="aiv-dots" aria-hidden="true">${all.map((y) => `<i class="${y.named ? 'is-y' : ''}"></i>`).join('')}</div></div></div>`
+      : `<p class="pf-because">Brew asks ${esc(toolList)} what shoppers ask, every week.</p>`;
+    /* 2. the biggest gap: the most-searched question no tool names the brand for */
+    const gap = un.filter((x) => x.answers.length && !x.answers.some((y) => y.named)).map((x) => ({ x, v: aivVol(x.why) })).sort((p, q) => q.v - p.v)[0];
+    const gapHtml = gap ? `<div class="aiv-gap">${ic('trendup', 's16')}<p><b>Biggest gap:</b> “${esc(gap.x.q)}”${gap.v ? ` gets ${esc(aivFmt(gap.v))} searches a month` : ''}, and no AI names ${esc(a.brand)}.</p></div>` : '';
+    /* 3. who the answers name instead */
+    /* the same brand counts as the AI answers card beside it (aiStand: products folded into their brand); the answers' rival names if it isn't loaded */
+    const st = aiStand(), [cOf] = st && !st.error ? aisOf(st) : [null];
+    let top = cOf ? (st.rivals || []).map((r) => [r.name, cOf(r) || 0]).filter((x) => x[1] > 0) : [];
+    if (!top.length) { const cnt = new Map(); for (const y of all) for (const b of new Set(y.rivals || [])) if (b && b.toLowerCase() !== String(a.brand).toLowerCase()) cnt.set(b, (cnt.get(b) || 0) + 1); top = [...cnt]; }
+    top = top.sort((p, q) => q[1] - p[1]).slice(0, 4); const mx = Math.max(named, top[0]?.[1] || 0, 1);
+    /* the brand on top, against the brands the answers name instead */
+    const bar = (b, n, you) => `<div class="aiv-ir${you ? ' is-you' : ''}"><span>${esc(b)}${you ? ' <small>you</small>' : ''}</span><i><u style="width:${n ? Math.max(6, Math.round((n / mx) * 100)) : 0}%"></u></i><b>${n}</b></div>`;
+    const inst = top.length ? `<div class="aiv-inst"><h4 class="pf-h">Who AI names, out of ${all.length} answers</h4>${bar(a.brand, named, true)}${top.map(([b, n]) => bar(b, n)).join('')}</div>` : '';
+    /* 4. the questions: demand bar and one dot per tool */
+    const vmax = Math.max(1, ...a.questions.map((x) => aivVol(x.why)));
+    const head = `<div class="aiv-th"><span>Question, and how many search it</span><span class="aiv-cols">${tools.map((t) => { const [s, c] = aivTool(t); return `<abbr title="${esc(t)}" style="--tc:${c}">${esc(s)}</abbr>`; }).join('')}</span></div>`;
+    const demand = (x) => { const v = aivVol(x.why); if (v) return `<span class="aiv-d"><i><u style="width:${Math.max(4, Math.round((v / vmax) * 100))}%"></u></i>${esc(aivFmt(v))} a month</span>`;
+      const w = x.why || {}; const l = w.kind === 'thread' ? String(w.label || '').split(':')[0].replace(/^Asked on (\w)/, (m, c) => `Asked on ${c.toUpperCase()}`).replace(/, (\S+ replies)$/, ' · $1') : w.kind === 'suggest' ? 'Google suggests it' : w.kind === 'team' ? 'Added by your team' : w.kind === 'product' ? String(w.label || '').split(' (')[0] : 'Written by Brew';
+      return `<span class="aiv-d is-txt">${w.url ? `<a href="${esc(w.url)}" target="_blank" rel="noopener">${esc(l)}</a>` : esc(l)}</span>`; };
+    const ansRow = (y) => { const names = [...new Set([...(y.rivals || []), ...(y.brands || [])])].slice(0, 8);
+      return `<li class="aiq-a"><b>${esc(y.tool)}</b><div class="aiq-ab"><span class="aiq-names">${names.length ? esc(names.join(', ')) : 'Names no brand'}</span>${y.text ? `<details class="aiq-full"><summary>Read the answer</summary><p class="aiq-t">${esc(y.text)}${y.full ? '' : '…'}</p>${y.sources.length ? `<p class="aiq-src">Sources: ${esc(y.sources.join(', '))}</p>` : ''}</details>` : ''}</div><span class="aiq-tag ${y.named ? 'is-y' : 'is-n'}">${y.named ? `${ic('check', 's14')}You` : 'Not you'}</span></li>`; };
+    const row = (x) => { const cells = tools.map((t) => { const y = x.answers.find((z) => z.tool === t); return `<i class="aiv-c${!y ? ' is-none' : y.named ? ' is-y' : ''}" title="${esc(t)}: ${!y ? 'not asked yet' : y.named ? `names ${esc(a.brand)}` : `doesn’t name ${esc(a.brand)}`}">${y?.named ? ic('check', 's12') : ''}</i>`; }).join('');
+      return `<details class="aiv-q${gap && gap.x === x ? ' is-gap' : ''}"><summary><span class="aiv-qm"><span class="aiv-qt">${esc(x.q)}</span>${demand(x)}</span><span class="aiv-cols">${cells}</span></summary>${x.answers.length ? `<ul class="aiq-as">${x.answers.map(ansRow).join('')}</ul>` : ''}</details>`; };
+    const block = (xs, h) => xs.length ? `<section class="aiv-sec"><h4 class="pf-h">${h}</h4>${head}${xs.map(row).join('')}</section>` : '';
     const note = !a.sourced && a.questions.length ? `<p class="pf-note">${ic('info', 's14')}<span>Brew wrote these questions from your category; they aren’t checked against real searches yet. Questions people really search for land within the day.</span></p>`
       : a.pending ? `<p class="pf-note">${ic('clock', 's14')}<span>Brew is asking new questions from real searches now. These are the last answers until they land.</span></p>` : '';
-    /* why the question is there, in a few words: "2,900 searches a month on Google", "Asked on Reddit · 128 replies" */
-    const whyShort = (w) => { if (!w) return 'Written by Brew'; const l = String(w.label || '');
-      if (w.kind === 'search') { const m = l.match(/^([\d.,]+\s?[kKmM]?)\s+Google searches a month/); if (m) return `${m[1]} searches a month on Google`; }
-      if (w.kind === 'team') return 'Added by your team'; if (w.kind === 'none' || !l) return 'Written by Brew';
-      if (w.kind === 'suggest') return 'Google suggests it as people type';
-      if (w.kind === 'thread') return l.split(':')[0].replace(/^Asked on (\w)/, (m, c) => `Asked on ${c.toUpperCase()}`).replace(/, (\S+ replies)$/, ' · $1');
-      return l.split(/:\s|\s+for\s+“/)[0]; };
-    /* each AI tool on one line: the tool, the brands its answer names, and whether that includes the brand; the full answer one tap away */
-    const ans = (x) => { const names = [...new Set([...x.rivals, ...x.brands])].slice(0, 8);
-      return `<li class="aiq-a"><b>${esc(x.tool)}</b><div class="aiq-ab"><span class="aiq-names">${names.length ? esc(names.join(', ')) : 'Names no brand'}</span>${x.text ? `<details class="aiq-full"><summary>Read the answer</summary><p class="aiq-t">${esc(x.text)}${x.full ? '' : '…'}</p>${x.sources.length ? `<p class="aiq-src">Sources: ${esc(x.sources.join(', '))}</p>` : ''}</details>` : ''}</div><span class="aiq-tag ${x.named ? 'is-y' : 'is-n'}">${x.named ? `${ic('check', 's14')}You` : 'Not you'}</span></li>`; };
-    const q = (x) => { const n = x.answers.filter((y) => y.named).length, of = x.answers.length, w = whyShort(x.why);
-      const score = of ? `<b class="aiq-sc${n ? ' is-y' : ''}">${n}<small>/${of}</small></b>` : `<b class="aiq-sc is-wait">${ic('clock', 's14')}</b>`;
-      const why = x.why?.url ? `<a href="${esc(x.why.url)}" target="_blank" rel="noopener" title="${esc(x.why.label || '')}">${esc(w)}${ic('external', 's12')}</a>` : esc(w);
-      return `<details class="aiq"><summary>${score}<span class="aiq-m"><span class="aiq-q">${esc(x.q)}</span><span class="aiq-why">${why}${!of ? ` · ${x.team ? 'being asked now' : 'not answered yet'}` : ''}</span></span>${of ? ic('chev', 's16') : ''}</summary>${of ? `<ul class="aiq-as">${x.answers.map(ans).join('')}</ul>` : ''}</details>`; };
     const add = a.canAdd ? (a.teamLeft ? `<form class="aiq-add" data-aiq-add><label for="aiq-in">Add a question your customers ask</label><div><input id="aiq-in" maxlength="160" placeholder="Which serum works for thinning at the crown?" autocomplete="off"><button class="btn btn-primary sm" type="submit">Ask it</button></div></form>` : `<p class="pf-basis">Your team has added 3 questions, the most Brew keeps.</p>`) : '';
-    const list = (xs, h) => xs.length ? `<h4 class="pf-h">${h}</h4><div class="aiq-list">${xs.map(q).join('')}</div>` : '';
-    return `<p class="pf-because">${lead}</p><p class="pf-basis">${how}</p>${note}
-      ${list(un, 'When shoppers name no brand')}${list(br, `When shoppers ask about ${esc(a.brand)}`)}
+    return `${hero}${gapHtml}${note}${inst}${block(un, 'When shoppers name no brand')}${block(br, `When shoppers ask about ${esc(a.brand)}`)}
+      <p class="pf-basis aiv-how">Asked ${esc(toolList)} as a shopper in ${esc(a.country || 'your market')} would${day ? `, on ${esc(day)}` : ''}. The same questions every week, so weeks compare. Tap a question to read each answer.</p>
       ${a.method?.errors?.length ? `<p class="pf-basis">Some sources couldn’t be read last time; the next refresh tries again.</p>` : ''}${add}`; };
   const openAiProof = async (src) => {
     modal(`<div class="sheet pick-sheet pf-sheet ai-sheet" role="dialog" aria-label="How Brew checks AI answers"><header class="sh-h"><b class="sh-t">${ic('shield', 's16')}How Brew checks AI answers</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>
