@@ -39,3 +39,21 @@ test('the jam: the quote carries the rival read; a run Sloosh finished after a r
   assert.equal(w.drafts[0].failed, true); assert.match(w.drafts[0].err, /moderation/); assert.match(w.thread.at(-1).body, /didn’t come through/);
   assert.equal(J.landDone(t, { ...rec, land: { tid: 'T1', fid: 'gone' } }), false);
 });
+
+test('one tap in the studio: the quote picks the product photo, a reel runs 3 s a beat with sound, and a run never spends a price it did not show', async () => {
+  const { createStudioFinals } = await import('../finals-routes.js');
+  const routes = new Map(); const on = (m, p, fn) => routes.set(`${m} ${p}`, fn); let quoted = null, ran = 0, qn = 0;
+  const ch = { id: 'ch1', cardId: 'c1', family: 'post', action: 'creative.short_video', headVersionId: 'v1', pkg: { title: 'Festive', script: [{ shot: 'a', line: 'one' }, { shot: 'b', line: 'two' }, { shot: 'c', line: 'three' }, { shot: 'd', line: 'four' }], video: 'gen/d.mp4', photos: ['b/cozy/a/warmer.jpg'] }, thread: [] };
+  const t = { id: 'T1', changes: { ch1: ch } };
+  const finals = { quote: async (slug, spec) => { quoted = spec; qn++; return { quoteId: `q${qn}`, credits: 12, provider: 'sloosh', model: 'seedance-2.5', label: 'Seedance 2.5', expiresAt: Date.now() + 600e3 }; }, run: async () => { ran++; return { state: 'done', kind: 'video', file: 'gen/f.mp4', provider: 'sloosh', charged: 12 }; } };
+  createStudioFinals({ on, C: (tt, id) => tt.changes[id], ensurePkg: () => {}, sync: () => {}, version: () => ({ id: 'v2', n: 2 }), pubChange: (tt, c) => ({ id: c.id }), cardOf: () => ({ id: 'c1', title: 'Warm paws' }), cardPhoto: () => 'b/cozy/a/warmer.jpg', jobs: new Set(), vidJobs: new Set(), finals, sloosh: {}, brandOfT, slugOfT: () => 'cozy', isVideo: (c) => !!c.pkg.script, RATIO: {} });
+  const q = await routes.get('POST /api/changes/:chid/final/quote')({ auto: true }, t, { chid: 'ch1' });
+  assert.equal(q.quote.credits, 12); assert.equal(quoted.kind, 'video'); assert.equal(quoted.seconds, 12, '4 beats × 3 s'); assert.equal(quoted.sound, true);
+  assert.equal(quoted.refs[0]?.job, 'product'); assert.match(quoted.refs[0].keep, /label exact/);
+  const stale = await routes.get('POST /api/changes/:chid/final/run')({ expect: 'q0' }, t, { chid: 'ch1' });
+  assert.equal(stale.requote, true); assert.equal(ran, 0, 'a different quote spends nothing');
+  ch.finalQuote.quote.expiresAt = Date.now() - 1; const old = await routes.get('POST /api/changes/:chid/final/run')({ expect: 'q1' }, t, { chid: 'ch1' });
+  assert.equal(old.requote, true); assert.equal(ran, 0, 'an expired quote spends nothing');
+  await routes.get('POST /api/changes/:chid/final/quote')({ auto: true }, t, { chid: 'ch1' });
+  const ok = await routes.get('POST /api/changes/:chid/final/run')({ expect: 'q2' }, t, { chid: 'ch1' }); assert.ok(ok.change); await new Promise((r) => setTimeout(r, 10)); assert.equal(ran, 1);
+});

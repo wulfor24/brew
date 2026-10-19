@@ -549,12 +549,13 @@ export function createRemix(o) {
   const pubChange = (t, ch) => {
     ensurePkg(t, ch); const tr = trustOf(t, ch.agent);
     if (ch.v0 !== 'draft' && !ch.batchKey && (ch.fromCard || (t.work || []).some((w) => w.changeId === ch.id))) seedV0(t, t.cards.get(ch.cardId), ch); /* 'none' tries again while the jam is untouched: the card's draft may land after the jam opened */
+    const opts = optionsOf(t, ch); /* first: healing an old jam can move its stage */
     const { impact: _imp, packMeta: _pk, ...pub } = ch; /* projections can hold the brand's private account rows: they go out only through /impact, per caller */
     const card0 = t.cards.get(ch.cardId); /* our version of a rival's ad: what Brew read from it, shown in the studio */
     return { ...pub, ...(isRivalCard(card0) && o.rivalSummary ? { rival: o.rivalSummary(t, card0) } : {}), thinking: ch.thinking && Date.now() - ch.thinking.at < 300e3 ? ch.thinking : null, /* what the studio is doing right now, for the waiting person (think()) */ plan: ch.plan || o.planOf?.(t, t.cards.get(ch.cardId)) || null, copyPending: !!ch.copyPending && FILL_JOBS.has(ch.id) /* "Writing…" while the writer is really running, not a clock */, ctaPending: ch.ctaPending && CTA_JOBS.has(ch.id) ? ch.ctaPending : null /* the card's button is making it: the studio says what and keeps polling */, realOnly: realOnly(ch) /* community posts: real photos only, so no AI remakes */, trust: { level: tr.level, name: tr.name, objects: tr.objects, toNext: tr.toNext }, scope: ch.scope.map((s) => ({ ...s, locked: s.n > tr.objects })),
       familyName: FAMILY_NAME[ch.family], fields: fieldsFor(ch.family, ch.action).map(({ k, label, type, opts, cols, req, pub, hint }) => ({ k, label, type, opts, cols, req, pub, hint })),
       knobs: knobsFor(ch.family, B()), suggest: suggestOf(t, ch), gradeF: GRADES[ch.pkg.grade] || 'none', missing: missing(ch.family, ch.action, ch.pkg),
-      head: headOf(t, ch)?.id || null, versions: versionsOf(t, ch.id).map((v) => ({ id: v.id, n: v.n, author: v.author, reason: v.reason, label: v.label || versionLabel(v.reason, { first: v.n === 1 }), at: v.at, parent: v.parentVersionId, diff: v.diff, snapshot: v.snapshot, ...(v.final ? { final: v.final } : {}),
+      options: opts /* the cuts as tabs: pick one (Param, 19 Oct) */, head: headOf(t, ch)?.id || null, versions: versionsOf(t, ch.id).map((v) => ({ id: v.id, n: v.n, author: v.author, reason: v.reason, label: v.label || versionLabel(v.reason, { first: v.n === 1 }), at: v.at, parent: v.parentVersionId, diff: v.diff, snapshot: v.snapshot, ...(v.final ? { final: v.final } : {}),
         ...(v.drawing ? { drawing: true } : {}), ...(v.drawError ? { drawError: v.drawError } : {}), ...(v.passed ? { passed: true } : {}), ...(v.asset ? { asset: v.asset } : {}) /* v2 takes: a picture still being made, why it wasn't, a version passed over, the asset that landed */ })), live: ch.liveVersionId || null };
   };
 
@@ -661,8 +662,7 @@ export function createRemix(o) {
           const img = await drawPic(src, picPrompt(ch, pv, 0, pic, head ? ` The photo goes with the headline “${String(head).slice(0, 120)}”.` : ''), pv.format, pic, k ? () => spend('image') : null).catch((e) => { log.warn('[cut photo]', e.message); return undefined; });
           if (img === null) { stopped = true; break; } if (!img) continue;
           const media = { image: img, ...((pv.cards || pv.slides || []).length ? { cardImages: [img, ...(pv.cardImages || []).slice(1)] } : {}) };
-          v.snapshot = { ...v.snapshot, ...media }; done++;
-          if (headOf(t, ch)?.id === v.id) { ch.pkg = { ...ch.pkg, ...media }; sync(t, ch); try { mirror(t, ch, v); } catch {} }
+          landMedia(t, ch, v, media); sync(t, ch); done++; /* its own option; the stage only when it is that cut or grew from it */
         }
         if (!done) throw new Error('no photo came back for the cuts');
         ch.thread.push({ from: 'ai', text: `Each cut has its own photo now${done < vs.length ? ` (${done} of ${vs.length}: ${stopped ? 'today’s photo limit is used up' : 'the rest didn’t come through'})` : ''}. Tap one to put it on the stage.`, at: now(t), vs: vs.map((v) => v.id), cuts: true });
@@ -713,13 +713,11 @@ export function createRemix(o) {
           const both = au ? await M.mux(name, au).catch((e) => { log.warn('[short video mux]', e.message); return null; }) : null; if (both) { name = both; voiced = true; } }
         const media = { video: 'gen/' + name, poster: 'gen/' + frame, image: 'gen/' + frame, videoHook: hook };
         const v = versionsOf(t, ch.id).find((x) => x.id === target); if (v) v.snapshot = { ...v.snapshot, ...media };
-        /* the person carried on while it was made: the clip joins the version on screen as "Video added" (it used to land only
-           on the version it started from, out of sight) */
-        const onHead = !target || headOf(t, ch)?.id === target;
-        ch.pkg = { ...ch.pkg, ...media }; ch.videoPending = null; ch.videoStep = null; sync(t, ch);
-        let at = v; if (onHead) { if (v) try { mirror(t, ch, v); } catch {} } else at = version(t, ch, `ai:${ch.agent}`, 'Video added', 'Video added');
-        try { o.onMedia?.(t, ch, { kind: 'video', video: media.video, images: [media.poster], n: at?.n, label: 'Short video' }); } catch {}
-        ch.thread.push({ from: 'ai', text: `The video for ${v ? `v${v.n}` : 'this version'} is ready: 6 seconds, vertical${voiced ? ', with the hook read over it' : ''}.${!onHead && at ? ` It’s on v${at.n} too, the version on screen.` : ''}`, at: now(t), ...(!onHead && at ? { v: at.n } : {}) });
+        /* the clip lands in the option it was made for (Param, 19 Oct: no more "Video added" versions): on the stage when the stage
+           is that version or grew from it, else only in that option, which the tabs show; nothing is laid on another option's script */
+        const vName = v ? optionName(t, ch, v) : '', place = landMedia(t, ch, v, media); ch.videoPending = null; ch.videoStep = null; sync(t, ch);
+        try { o.onMedia?.(t, ch, { kind: 'video', video: media.video, images: [media.poster], n: (place.at || v)?.n, label: 'Short video' }); } catch {}
+        ch.thread.push({ from: 'ai', text: `The video${vName ? ` for ${vName}` : ''} is ready: 6 seconds, vertical${voiced ? ', with the hook read over it' : ''}.${!place.onStage && vName ? ` Tap ${vName} above the phone to see it.` : ''}`, at: now(t) });
         o.save?.(t);
       } catch (e) { ch.videoPending = null; ch.videoStep = null; ch.videoError = `The video didn’t come through (${String(e.message).slice(0, 120)}). Make it again.`; log.warn('[short video]', why, e.message); sync(t, ch); o.save?.(t); }
       finally { VID_JOBS.delete(ch.id); bump(t, ch); }
@@ -926,6 +924,44 @@ export function createRemix(o) {
 
   // move the head to a version: its package becomes the current one. No copy is made.
   const useVersion = (t, ch, v) => { const { action, amount, title, sub, state, ...pkg } = v.snapshot; ch.pkg = { ...cleanPkg(ch.family, ch.action, pkg, clean), ...keepMedia({ ...pkg, image: pkg.image || null, knobs: pkg.knobs || {} }, true) }; ch.headVersionId = v.id; sync(t, ch); try { mirror(t, ch, v); } catch {} }; /* the jam's current version follows */
+  /* ---------- options (Param, 19 Oct: "3 options, pick one", for every move that makes options). The cuts a make step writes are
+     the jam's options; every later version belongs to the option it grew from (its parent chain), so a chat edit, a photo, a clip
+     or a final stays inside its option. The studio shows them as tabs named by their angle, never as v1–v5. Jams saved before
+     this heal from their cut reasons ("Version A: …", "Variation B: …"), and an old "Video added" copy is folded away. ---------- */
+  const CUT_RE = /^(?:Version|Variation) ([A-H]):\s*(.*)$/;
+  const shortName = (s) => { const w = String(s || '').replace(/[“”"().!?]/g, '').replace(/^(?:an?|the)\s+/i, '').trim().split(/\s+/).filter(Boolean).slice(0, 3).join(' ').replace(/[,;:–-]+$/, ''); return w ? w[0].toUpperCase() + w.slice(1) : ''; };
+  const cutNames = (ch, made) => (made.length > 1 ? made.map((v, i) => `${'ABCDEFGH'[i]} (${ch.options?.names?.[v.id] || shortName(CUT_RE.exec(v.reason || '')?.[2]) || 'a different cut'})`).join(', ') : made.map((v) => 'v' + v.n).join(', ')); /* chat names options by letter and angle, never v-numbers */
+  const parentsOf = (t, ch) => { const vs = versionsOf(t, ch.id), by = new Map(vs.map((v) => [v.id, v])); return { vs, by }; };
+  const descends = (t, ch, v, ancestorId) => { const { by } = parentsOf(t, ch); for (let x = v, k = 0; x && k < 400; x = by.get(x.parentVersionId), k++) if (x.id === ancestorId) return true; return false; };
+  const optIdOf = (ids, by, v) => { for (let x = v, k = 0; x && k < 400; x = by.get(x.parentVersionId), k++) if (ids.includes(x.id)) return x.id; return null; };
+  /* an old "Video added" version: a copy of the stage's script carrying another option's clip */
+  const strayClip = (vs, by, ids, v) => v.label === 'Video added' && !!v.snapshot?.video && vs.some((x) => x !== v && x.snapshot?.video === v.snapshot.video && optIdOf(ids, by, x) !== optIdOf(ids, by, v));
+  const optionsOf = (t, ch) => {
+    const { vs, by } = parentsOf(t, ch); if (vs.length < 2) return null;
+    if (!ch.options?.ids?.length) { /* heal: the newest run of cuts (planRun, else the last cut reasons that share a parent) */
+      let ids = (ch.planRun?.versions || []).filter((id) => by.has(id));
+      if (ids.length < 2) { const cuts = vs.filter((v) => CUT_RE.test(v.reason || '')), grp = []; for (let i = cuts.length - 1; i >= 0; i--) { const v = cuts[i]; if (grp.length && v.parentVersionId !== grp[0].parentVersionId) break; grp.unshift(v); if (CUT_RE.exec(v.reason)[1] === 'A') break; } ids = grp.map((v) => v.id); }
+      if (ids.length < 2) return null; ch.options = { ids, names: {}, picked: null, at: now(t) }; }
+    const { ids, names = {}, picked = null } = ch.options;
+    const list = ids.filter((id) => by.has(id)).map((id, i) => { const v0 = by.get(id), letter = 'ABCDEFGH'[i];
+      const mine = vs.filter((v) => optIdOf(ids, by, v) === id && !strayClip(vs, by, ids, v)), tip = mine.reduce((a, b) => (b.n > a.n ? b : a), v0), sn = tip.snapshot || {};
+      const img = sn.image || sn.poster || sn.draft?.poster || sn.draft?.images?.[0] || null;
+      return { id, letter, name: names[id] || shortName(CUT_RE.exec(v0.reason || '')?.[2]) || v0.label || `Option ${letter}`, tip: tip.id, has: tip.final ? 'final' : sn.video || sn.draft?.video ? 'video' : img ? 'photo' : 'words', image: img }; });
+    if (list.length < 2) return null;
+    const head = headOf(t, ch), on = head ? optIdOf(ids, by, head) : null;
+    /* a stage left on an old "Video added" copy goes to the option whose clip it carries */
+    if (head && strayClip(vs, by, ids, head) && !ch.liveVersionId) { const own = vs.find((x) => x !== head && x.snapshot?.video === head.snapshot.video && optIdOf(ids, by, x) !== on); const it = own && list.find((x) => x.id === optIdOf(ids, by, own)); if (it) { useVersion(t, ch, by.get(it.tip)); return optionsOf(t, ch); } }
+    return { list, picked: list.some((x) => x.id === picked) ? picked : null, on }; };
+  const optionName = (t, ch, v) => { const op = optionsOf(t, ch); if (!op || !v) return ''; const { by } = parentsOf(t, ch), id = optIdOf(op.list.map((x) => x.id), by, v), it = op.list.find((x) => x.id === id); return it ? it.name : ''; };
+  /* media made for version v (a clip, a photo) lands in v; on the stage too when the stage is v or grew from it; and on the newest
+     version of v's option when that grew from v. Never as a new version, never on another option */
+  const landMedia = (t, ch, v, media) => { const head = headOf(t, ch);
+    if (!v) { ch.pkg = { ...ch.pkg, ...media }; if (head) head.snapshot = { ...head.snapshot, ...media }; return { onStage: true, at: head }; }
+    v.snapshot = { ...v.snapshot, ...media };
+    const onStage = !!head && (head.id === v.id || descends(t, ch, head, v.id));
+    if (onStage) { ch.pkg = { ...ch.pkg, ...media }; if (head.id !== v.id) head.snapshot = { ...head.snapshot, ...media }; try { mirror(t, ch, head); } catch {} return { onStage, at: head }; }
+    const op = optionsOf(t, ch), it = op && op.list.find((x) => x.tip !== v.id && descends(t, ch, versionById(t, ch.id, x.tip), v.id)); const tip = it && versionById(t, ch.id, it.tip);
+    if (tip) tip.snapshot = { ...tip.snapshot, ...media }; try { mirror(t, ch, tip || v); } catch {} return { onStage: false, at: tip || v }; };
   /* ---------- routes ---------- */
   /* a photo being made lives in this process; one saved as pending by a server that has since stopped (a deploy, a restart)
      will never land, so it clears and says to make it again instead of spinning for ever */
@@ -1254,6 +1290,7 @@ export function createRemix(o) {
       ch.pkg = { ...keep }; // the cuts sit beside the version you are on; you pick one
     });
     for (const v of made) try { mirror(t, ch, v); } catch {} /* every cut is a version of the jam too */
+    if (made.length > 1) ch.options = { ids: made.map((v) => v.id), names: Object.fromEntries(made.map((v, i) => [v.id, shortName(xs[i]?.angle)]).filter(([, n]) => n)), picked: null, at: now(t) }; /* the cuts are the jam's options: tabs, pick one */
     if (made.length) useVersion(t, ch, made[made.length - 1]); else sync(t, ch, c);
     made.photos = cutPhotos(t, ch, made); /* each cut its own photo, in the background, within today's limit */
     return made;
@@ -1266,7 +1303,7 @@ export function createRemix(o) {
   on('POST', '/api/changes/:chid/variants', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };
     const made = await makeCuts(t, ch, 3, b.prompt || '', (x, i) => `Variation ${'ABC'[i]}: ${x.angle || 'a different cut'}`);
-    ch.thread.push({ from: 'ai', text: `Made ${made.length} variations: ${made.map((v) => 'v' + v.n).join(', ')}. You’re looking at the last one.${made.photos ? ' Each gets its own photo in a minute.' : ''} Tap one to put it on the stage.`, at: now(t), vs: made.map((v) => v.id), cuts: true });
+    ch.thread.push({ from: 'ai', text: `Made ${made.length} options: ${cutNames(ch, made)}.${made.photos ? ' Each gets its own photo in a minute.' : ''} Tap them above the stage, then use the one you like.`, at: now(t), vs: made.map((v) => v.id), cuts: true });
     return { change: pubChange(t, ch), learned: learnedOut(t) };
   });
   /* the card's action, pressed in the jam: the plan's make step puts what the last step needs on the stage (card-plan.js).
@@ -1281,8 +1318,8 @@ export function createRemix(o) {
     const w = (t.work || []).find((x) => x.changeId === ch.id); if (w) w.cardPlan = { ...(w.cardPlan || pl || {}), ...(pl || {}), made: now(t) };
     /* a short video gets its clip, not just its script: the version on screen is filmed now, the others on a tap */
     const filming = isVideoPost(ch) && made.length ? genVideo(t, ch, 'the plan') : false;
-    const vs = made.map((v) => 'v' + v.n).join(', '), last = made[made.length - 1];
-    ch.thread.push({ from: 'ai', text: isVideoPost(ch) ? `Wrote ${made.length > 1 ? `${made.length} scripts: ${vs}` : `the script: v${made[0]?.n}`}. ${filming ? `Making the video for v${last?.n} now, about two minutes.${made.length > 1 ? ' Open another version and tap Make the video for its clip.' : ''}` : `${videoWhy(ch)} Tap Make the video when you want the clip.`}` : made.length > 1 ? `Made ${made.length} ${pl?.make?.what || 'versions'}: ${vs}.${made.photos ? ' Each gets its own photo in a minute.' : ''} Change any of them here, then share the brief.` : `Made it: v${made[0]?.n}. Change anything here, then share the brief.`, at: now(t), vs: made.map((v) => v.id), ...(made.length > 1 ? { cuts: true } : {}) });
+    const vs = cutNames(ch, made), last = made[made.length - 1];
+    ch.thread.push({ from: 'ai', text: isVideoPost(ch) ? `Wrote ${made.length > 1 ? `${made.length} scripts: ${vs}` : `the script: v${made[0]?.n}`}. ${filming ? `Making the video for ${made.length > 1 ? `${'ABCDEFGH'[made.length - 1]}` : 'it'} now, about two minutes.${made.length > 1 ? ' Tap the options above the phone to compare; each makes its own video.' : ''}` : `${videoWhy(ch)} Tap Make the video when you want the clip.`}` : made.length > 1 ? `Made ${made.length} options: ${vs}.${made.photos ? ' Each gets its own photo in a minute.' : ''} Tap them above the stage and use the one you like.` : `Made it: v${made[0]?.n}. Change anything here, then share the brief.`, at: now(t), vs: made.map((v) => v.id), ...(made.length > 1 ? { cuts: true } : {}) });
     return { change: pubChange(t, ch), learned: learnedOut(t) };
   });
   /* ---------- the card's own making button, pressed in the feed (Param, 19 Oct: "a CTA to generate creatives, but in reality it
@@ -1313,7 +1350,7 @@ export function createRemix(o) {
           think(ch, `Writing ${n > 1 ? `${n} versions` : 'it'}`);
           const made = await makeCuts(t, ch, n, plan, (x, i) => (n > 1 ? `Version ${'ABCDEFGH'[i]}: ${x.angle || 'a different cut'}` : `${label}: ready to review`));
           ch.planRun = { at: now(t), n: made.length, versions: made.map((v) => v.id), by: 'cta' };
-          const vs = made.map((v) => 'v' + v.n).join(', ');
+          const vs = cutNames(ch, made);
           if (!made.length) say = 'That didn’t come through. Tap the button again in a minute.';
           else if (isVideoPost(ch)) { const ok = genVideo(t, ch, label); say = `Wrote ${made.length > 1 ? `${made.length} scripts (${vs})` : 'the script'}. ${ok ? 'Making the video now, about two minutes.' : videoWhy(ch)}`; }
           else if (VISUAL.has(ch.family)) { const ok = made.photos || (made.length === 1 && genImage(t, ch, label, { target: made[0].id }));
@@ -1362,7 +1399,7 @@ export function createRemix(o) {
     const cut = !b.fix && !isQuestion(msg) ? CUTS_RE.exec(msg) : null;
     if (cut) { ch.thread.push(youSaid(t, msg)); const n = NUMW[cut[1].toLowerCase()] || +cut[1];
       try { think(ch, `Writing ${n} cuts of this version`); const made = await makeCuts(t, ch, n, msg, (x, i) => `Cut ${'ABCDE'[i]}: ${x.angle || 'a different cut'}`);
-        ch.thread.push({ from: 'ai', text: made.length ? `Made ${made.length} cuts: ${made.map((v) => 'v' + v.n).join(', ')}.${made.photos ? ' Each gets its own photo in a minute.' : ''} Tap one to put it on the stage.` : 'Those cuts didn’t come through. Try again in a minute.', at: now(t), vs: made.map((v) => v.id), cuts: true });
+        ch.thread.push({ from: 'ai', text: made.length ? `Made ${made.length} options: ${cutNames(ch, made)}.${made.photos ? ' Each gets its own photo in a minute.' : ''} Tap them above the stage and use the one you like.` : 'Those cuts didn’t come through. Try again in a minute.', at: now(t), vs: made.map((v) => v.id), cuts: true });
       } finally { think(ch, null); }
       return { change: pubChange(t, ch), learned: learnedOut(t) }; }
     const rm = !b.fix && !isQuestion(msg) && ['meta_ad', 'social', 'post'].includes(ch.family) ? REMAKE_RE.exec(msg) : null;
@@ -1591,7 +1628,7 @@ export function createRemix(o) {
   };
   /* the studio's finals (finals-routes.js createStudioFinals): status, quote, run and a Space checkpoint on this change; the
      result is the next version, labelled Final. Off when the server has no Sloosh client (tests) */
-  const STUDIO_FINALS = o.finals && o.sloosh ? createStudioFinals({ rivalOf: (t, ch, p) => rivalPic(t, ch, p) /* "Make our version": the final keeps the rival ad's composition, in words */, on, C, ensurePkg, sync, version, pubChange, cardOf: (t, ch) => t.cards.get(ch.cardId) || null, cardPhoto, catalogOf, jobs: IMG_JOBS, vidJobs: VID_JOBS /* a video final is a video job: C() never calls it stopped */, references: (t) => (o.references ? o.references(t) : []), finals: o.finals, sloosh: o.sloosh, creditsLeft: o.creditsLeft, brandOfT: o.brandOfT, slugOfT: o.slugOfT, meOf: o.meOf, onMedia: (t, ch, m) => o.onMedia?.(t, ch, m), isVideo: isVideoPost, RATIO, log }) : null;
+  const STUDIO_FINALS = o.finals && o.sloosh ? createStudioFinals({ headOf, useVersion, versionById: (t, ch, id) => versionById(t, ch.id, id), rivalOf: (t, ch, p) => rivalPic(t, ch, p) /* "Make our version": the final keeps the rival ad's composition, in words */, on, C, ensurePkg, sync, version, pubChange, cardOf: (t, ch) => t.cards.get(ch.cardId) || null, cardPhoto, catalogOf, jobs: IMG_JOBS, vidJobs: VID_JOBS /* a video final is a video job: C() never calls it stopped */, references: (t) => (o.references ? o.references(t) : []), finals: o.finals, sloosh: o.sloosh, creditsLeft: o.creditsLeft, brandOfT: o.brandOfT, slugOfT: o.slugOfT, meOf: o.meOf, onMedia: (t, ch, m) => o.onMedia?.(t, ch, m), isVideo: isVideoPost, RATIO, log }) : null;
   on('GET', '/api/changes/:chid/photos', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch);
     const cat = (catalogOf(t) || []).filter((x) => x.img).sort((a, b) => (a.out ? 1 : 0) - (b.out ? 1 : 0)).slice(0, 60).map((x) => ({ t: x.t, img: x.img, ...(x.out ? { out: true } : {}) }));
@@ -1634,6 +1671,16 @@ export function createRemix(o) {
     ensurePkg(t, ch); const v = versionById(t, ch.id, b.versionId); if (!v) return { error: 'no version' };
     if (editable(ch)) return { error: 'It is live. Undo it first.' };
     useVersion(t, ch, v);
+    return { change: pubChange(t, ch) };
+  });
+  /* options: a tab puts that option's newest version on the stage (/restore does the same, no copy is made); Use this one picks
+     it, and the others fold away; opt null opens the choice again */
+  on('POST', '/api/changes/:chid/options/pick', async (b, t, p) => {
+    const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); const op = optionsOf(t, ch); if (!op) return { error: 'There are no options to pick from here.' };
+    if (b.opt == null) { ch.options.picked = null; return { change: pubChange(t, ch) }; }
+    const it = op.list.find((x) => x.id === b.opt); if (!it) return { error: 'That option is gone.' };
+    if (headOf(t, ch)?.id !== it.tip) { if (editable(ch)) return { error: 'It is live. Undo it first.' }; useVersion(t, ch, versionById(t, ch.id, it.tip)); }
+    if (b.use !== false) ch.options.picked = it.id; o.save?.(t);
     return { change: pubChange(t, ch) };
   });
   // discard a remix (kept under Discarded, can be restored). Live or with Brew has to be undone or withdrawn first.
@@ -1734,5 +1781,5 @@ export function createRemix(o) {
   const finalDone = (t, rec) => { const ok = STUDIO_FINALS?.landDone(t, rec) || false; if (ok) o.save?.(t); return ok; };
   /* v2 takes for the feed's pulse (updatedSince, healTakes) and for tests (the draws in flight) */
   const v2 = { updatedSince, healTakes, jobs: TAKE_JOBS, settle: () => Promise.all([...TAKE_JOBS.values()].map((j) => j.run)) };
-  return { remakeFromJam, photoFromJam, iterateFromJam, pickFromJam, makePlan, ensurePlan, planReady, onWorkVersion, pubChange, changes, packageOf, finalDone, v2 };
+  return { remakeFromJam, photoFromJam, iterateFromJam, pickFromJam, makePlan, ensurePlan, planReady, onWorkVersion, pubChange, changes, packageOf, finalDone, v2, landMedia };
 }

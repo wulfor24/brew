@@ -149,7 +149,8 @@
     // the jam ends with Share the brief: to the ShopOS team or to your own team. Both copy the brief and its link; nothing is
     // sent from Brew. Before that: the card's make step, then whatever the brief still misses.
     const p = DPx(), c = p && A.cardOf ? A.cardOf(p) : null, miss = doc?.missing || [];
-    const two = `<span class="jm-share-k">Share the brief with</span><button class="btn btn-primary jm-go" data-jm-ship="shopos">${ic('copy', 's16')}<span>ShopOS team</span></button><button class="btn btn-ghost" data-jm-ship="team">My team</button>`;
+    /* the same two words as the studio (19 Oct): Send brief = the ShopOS team by email, they make it; Share with my team = copy it with a link */
+    const two = `<button class="btn btn-ghost" data-jm-ship="team" title="Copy the brief and a link to paste in your team’s chat">Share with my team</button><button class="btn btn-primary jm-go" data-jm-ship="shopos" title="The ShopOS team gets it by email and makes it. Its status shows in the top bar.">${ic('send', 's16')}<span>Send brief</span></button>`;
     const share = `<button class="btn btn-ghost jm-share" data-jm-share aria-expanded="${!!JM.share}" aria-label="Share" title="Share">${ic('link', 's16')}</button>${JM.share ? `<div class="jm-menu jm-share-m" role="menu"><button data-jm-move="whatsapp">${ic('chat', 's14')}WhatsApp</button><button data-jm-move="slack"><span class="slack-ic sm">#</span>Slack</button><button data-jm-handoff>${ic('link', 's14')}Copy the link to everything</button></div>` : ''}`;
     /* the card's action, before the plan's make step ran: it makes the draft here first */
     if (JM.pick) return `<div class="jm-ship is-split">${two}${share}<button class="linkbtn jm-alt" data-jm-unpick>Not yet</button></div>`; /* "Or share the brief": the two ways, before or after the make step */
