@@ -79,3 +79,10 @@ test('a PDF read that comes back as a summary is read again; chat around a copy 
   assert.deepEqual(byFile('--- a.pdf ---\none\n--- b.pdf ---\ntwo'), ['--- a.pdf ---\none', '--- b.pdf ---\ntwo']);
   assert.deepEqual(byFile('just notes'), ['just notes']);
 });
+
+test('drop/read keeps its cache in the brand-file store (GP), never the loaded-pack cache, and a cache failure is only a miss', async () => {
+  const s = (await import('node:fs')).readFileSync(new URL('../feed-service.js', import.meta.url), 'utf8');
+  const route = s.slice(s.indexOf("on('POST', '/api/brands/:slug/drop/read'"), s.indexOf("on('POST', '/api/brands/:slug/learnings/answer'"));
+  assert.ok(route.length > 100); assert.ok(!/packs\.(getJSON|put)\(/.test(route), 'packs here has no getJSON/put');
+  assert.match(route, /GP\.getJSON\(slug, cacheF/); assert.match(route, /GP\.put\(slug, cacheF/);
+});

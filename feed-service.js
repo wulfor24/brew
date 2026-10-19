@@ -1696,11 +1696,11 @@ export function createFeedService(o) {
     const paid = ['pdf', 'image'].includes(dropKind(b.name, b.type)), ai = paid && !isMock() && spend('text') ? o.ai : null;
     /* the same file again (a second try, a cancelled draft) is not read or paid for twice: its words are kept per brand by its hash */
     const key = paid ? crypto.createHash('sha256').update(String(b.data || '')).digest('hex').slice(0, 24) : null, cacheF = key ? `private/drop-reads/${key}.json` : null;
-    const hit = cacheF ? await packs.getJSON(slug, cacheF, null).catch(() => null) : null;
+    const hit = cacheF ? await Promise.resolve().then(() => GP.getJSON(slug, cacheF, null)).catch(() => null) : null; /* GP: the brand-file store; a cache that can't be read is just a miss */
     if (hit?.text && !(forBrand && dropKind(b.name, b.type) === 'image')) return { ok: true, kind: hit.kind, text: hit.text, chars: hit.chars, cut: !!hit.cut, usd: 0, ref: null, cached: true };
     const f = await readDrop(b, { ai }).catch((e) => { log.warn?.('[drop] read', slug, e.message); return { error: `Brew couldn’t read ${String(b.name || 'that file').slice(0, 80)}. Try again, or drop it as a PDF.` }; });
     if (f.error) return f;
-    if (cacheF && f.text && f.chars > 200) await packs.put(slug, cacheF, { kind: f.kind, text: f.text, chars: f.chars, cut: f.cut, name: String(b.name || '').slice(0, 120), at: Date.now() }).catch(() => {});
+    if (cacheF && f.text && f.chars > 200) await Promise.resolve().then(() => GP.put(slug, cacheF, { kind: f.kind, text: f.text, chars: f.chars, cut: f.cut, name: String(b.name || '').slice(0, 120), at: Date.now() })).catch((e) => log.warn?.('[drop] cache', e.message));
     let ref = null;
     if (forBrand && f.image) { const x = await REFS.add(slug, { data: `data:${f.image.ext === 'jpg' ? 'image/jpeg' : `image/${f.image.ext}`};base64,${f.image.buf.toString('base64')}`, label: b.name, job: f.image.job, keep: f.image.shows, by: meOf(t)?.email || null }).catch((e) => ({ error: e.message }));
       ref = x.error ? { error: x.error } : { id: x.item?.id, same: !!x.same }; }
