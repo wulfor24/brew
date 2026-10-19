@@ -60,7 +60,8 @@
 
   /* ---------- the connect box: one glass box per connector; its states (connect, key, busy, error, picked, done) swap in place ---------- */
   const poss = () => { const n = B().brand.name || ''; return `${esc(n)}${/s$/i.test(n) ? '’' : '’s'}`; };
-  const box = ({ id, title, line = '', body = '', status = '', ghost = '', go = '' }) => `<div class="cxb-h">${logo(id)}<span><b>${title}</b>${line ? `<em>${line}</em>` : ''}</span><button type="button" class="cxb-x" data-close aria-label="Close">${ic('x', 's16')}</button></div>${body}${status}${ghost || go ? `<div class="cxb-f">${ghost}${go}</div>` : ''}`;
+  /* header and buttons stay put; only the body between them scrolls, so the button is always in reach */
+  const box = ({ id, title, line = '', body = '', status = '', ghost = '', go = '' }) => `<div class="cxb-h">${logo(id)}<span><b>${title}</b>${line ? `<em>${line}</em>` : ''}</span><button type="button" class="cxb-x" data-close aria-label="Close">${ic('x', 's16')}</button></div><div class="cxb-b">${body}${status}</div>${ghost || go ? `<div class="cxb-f">${ghost}${go}</div>` : ''}`;
   const kick = (t) => `<p class="cxb-k">${t}</p>`;
   const ticks = (xs) => (xs.length ? `<ul class="cxb-l">${xs.map((t) => `<li>${ic('check', 's14')}<span>${t}</span></li>`).join('')}</ul>` : '');
   const note = (t, icon = 'sparkles') => `<p class="cxb-note">${ic(icon, 's14')}<span>${t}</span></p>`;
@@ -71,6 +72,10 @@
   const goLink = (t, href) => `<a class="cxb-go" href="${href}">${t}</a>`;
   const pane = (k, html, on) => `<div class="cxb-p" data-pane="${k}"${on ? '' : ' hidden'}>${html}</div>`;
   const shell = (html) => `<div class="sheet cxb" role="dialog" aria-modal="true">${html}</div>`;
+  /* the header draws its bottom line only once the body has scrolled under it; the buttons' top line only while more is below */
+  const edges = (m) => m.querySelectorAll('.cxb-b').forEach((b) => { if (b.dataset.edged) return; b.dataset.edged = 1;
+    const f = () => { const p = b.parentElement; p.classList.toggle('is-up', b.scrollTop > 2); p.classList.toggle('is-down', b.scrollHeight - b.scrollTop - b.clientHeight > 2); };
+    b.addEventListener('scroll', f, { passive: true }); new ResizeObserver(f).observe(b); f(); });
   /* what a connector unlocks, from the brand's own connector card; a plain line per platform when the pack has none */
   const READS = { google: ['Spend, clicks and orders from search', 'Which searches bring buyers'], ga4: ['Sessions, sources and checkouts', 'Where shoppers drop off'], meta: ['Spend, reach and cost per order', 'Which ads are winning'],
     shopify: ['Orders, customers and carts', 'Products and stock'], klaviyo: ['Flows, campaigns and their revenue', 'How the list grows'], reviews: ['Reviews and ratings', 'What customers praise and complain about'], slack: ['Post cards and jams to a channel', 'Thread replies land in the jam', 'Approve from Slack'] };
@@ -115,9 +120,9 @@
       else if (!oauth && !key) html = box({ id, title: `Connect ${esc(nm(id))}`, line, body: unlocks(id), status: stat(`Connecting ${esc(nm(id))} is being switched on. Brew’s team will send you a link.`, '', 'clock'), go: goBtn('Got it', 'data-close') });
       else {
         const steps = g.steps.filter((s) => !s.oauth), alt = oauth && key && steps.length;
-        const oauthPane = oauth ? box({ id, title: `Connect ${esc(nm(id))}`, line, body: claimNote() + unlocks(id) + why + (id === 'shopify' ? field({ k: 'shop', label: 'Store address', hint: 'your-store.myshopify.com' }, 'data-shop') : ''), status,
+        const oauthPane = oauth ? box({ id, title: `Connect ${esc(nm(id))}`, line, body: claimNote() + unlocks(id) + why + (id === 'shopify' ? `<div class="cxb-form">${field({ k: 'shop', label: 'Store address', hint: 'your-store.myshopify.com' }, 'data-shop')}</div>` : ''), status,
           ghost: alt ? ghostBtn(esc(g.alt), 'data-swap="key"') : ghostBtn('Not now'), go: goBtn(`Continue with ${short}${ic('right', 's16')}`, 'data-oauth') }) : '';
-        const keyPane = key && steps.length ? box({ id, title: `Connect ${esc(nm(id))}`, line: esc(g.time), body: (oauth ? '' : claimNote() + why) + kick('Steps') + stepList(steps) + fieldsOf(id, av), status,
+        const keyPane = key && steps.length ? box({ id, title: `Connect ${esc(nm(id))}`, line: esc(g.time), body: (oauth ? '' : claimNote() + why) + stepList(steps) + `<div class="cxb-form">${fieldsOf(id, av)}</div>`, status,
           ghost: alt ? ghostBtn('Back', 'data-swap="oauth"') : ghostBtn('Not now'), go: goBtn('Connect', 'data-key') }) : '';
         html = oauth ? pane('oauth', oauthPane, true) + (alt ? pane('key', keyPane, false) : '') : pane('key', keyPane, true);
       }
@@ -162,7 +167,7 @@
     return `<label class="lc-f${f.alt ? ' is-alt' : ''}"${f.alt ? ' hidden' : ''}><small>${esc(f.label)}</small><span class="lc-in"><input ${attr || `data-k="${f.k}"`} ${f.secret ? 'type="password" autocomplete="off"' : 'autocomplete="off"'} spellcheck="false" placeholder="${esc(f.hint || '')}" value="${esc(v)}"${f.req ? ' required' : ''}>${canPaste() && f.k !== 'shop' ? `<button type="button" class="lc-paste" data-paste>${ic('paste', 's14')}Paste</button>` : ''}</span></label>`; };
   function fieldsOf(id, av) {
     let fs = av.fields.map((f) => ({ ...f, req: !f.optional }));
-    if (id === 'shopify') { fs = fs.map((f) => f.k === 'token' ? { ...f, label: 'Admin API access token', alt: true } : { ...f, req: true }).map((f) => f.k === 'clientId' ? { ...f, hint: 'Client ID' } : f.k === 'clientSecret' ? { ...f, hint: 'Client secret' } : f);
+    if (id === 'shopify') { fs = fs.map((f) => f.k === 'token' ? { ...f, label: 'Admin API access token', alt: true } : { ...f, req: true }).map((f) => f.k === 'clientId' || f.k === 'clientSecret' ? { ...f, hint: '' } : f.k === 'token' ? { ...f, hint: 'shpat_…' } : f);
       return fs.map((f) => field(f)).join('') + '<button type="button" class="lc-alt" data-alt>I have an Admin API token instead</button>'; }
     if (id === 'ga4') fs = fs.map((f) => ({ ...f, label: 'Property ID or GA4 page address', hint: '123456789' }));
     if (id === 'reviews') fs = fs.map((f) => f.k === 'token' ? { ...f, hint: 'Your private API token' } : f);
@@ -171,6 +176,7 @@
   }
   /* the box's own controls: swap between sign-in and key, copy, paste, the Shopify token toggle */
   function bindBox(m) {
+    edges(m);
     m.querySelectorAll('[data-swap]').forEach((b) => b.onclick = () => { m.querySelectorAll('.cxb-p').forEach((p) => { p.hidden = p.dataset.pane !== b.dataset.swap; }); m.querySelector('.cxb-p:not([hidden]) input:not([value]), .cxb-p:not([hidden]) input[value=""]')?.focus({ preventScroll: true }); });
     m.querySelectorAll('[data-copy]').forEach((b) => b.onclick = async () => { try { await navigator.clipboard.writeText(b.dataset.copy); } catch (e) { const r = document.createRange(); r.selectNodeContents(b.previousElementSibling); getSelection().removeAllRanges(); getSelection().addRange(r); }
       const t = b.querySelector('span'); t.textContent = 'Copied'; b.classList.add('is-ok'); setTimeout(() => { t.textContent = 'Copy'; b.classList.remove('is-ok'); }, 1600); });
@@ -185,12 +191,13 @@
     if (!GENB || (!L.signin && !L.me)) return false;
     const html = gate(id, true) || box({ id, title: `Connect ${esc(nm(id))}`, line: esc(opts.why || '') || (id === 'slack' ? 'Share cards with your team and approve them in a thread.' : `Puts ${poss()} numbers on your cards.`), body: claimNote() + unlocks(id), status: DUMMY(id), ghost: ghostBtn('Not now'), go: goBtn(`Connect ${esc(nm(id).split(' ')[0])}`, 'data-dm') });
     A().modal(shell(html), (m) => {
-      keepPlace(m); m.querySelector('[data-dm]')?.addEventListener('click', () => run(m, id, Promise.all([post(`/api/brands/${slug}/connect/${id}`, { action: 'connect' }), timeout(1600)]).then(([r]) => r), opts));
+      keepPlace(m); edges(m); m.querySelector('[data-dm]')?.addEventListener('click', () => run(m, id, Promise.all([post(`/api/brands/${slug}/connect/${id}`, { action: 'connect' }), timeout(1600)]).then(([r]) => r), opts));
     });
     return true;
   }
   /* the box's status line and button, in place: busy while it reads, the reason when it fails */
-  const setStat = (p, html) => { const s = p.querySelector('[data-st]'); if (s) s.outerHTML = html; else p.querySelector('.cxb-f')?.insertAdjacentHTML('beforebegin', html); };
+  const setStat = (p, html) => { const s = p.querySelector('[data-st]'); if (s) s.outerHTML = html; else p.querySelector('.cxb-b')?.insertAdjacentHTML('beforeend', html);
+    const b = p.querySelector('[data-st]')?.closest('.cxb-b'); if (b && /is-(bad|busy)/.test(html)) b.scrollTo({ top: b.scrollHeight, behavior: 'smooth' }); };
   // the accounts as the server sees them now (state, stats, what changed), laid over the brand's connector cards
   async function refreshLive() { const r = await get(`/api/brands/${slug}/live`); if (!r?.conns) return; Object.assign(L, r, { user: r.me || r.user || null }); overlay(B(), A().S); A().save(); }
   // reading the account: busy in place, then what came back
@@ -247,6 +254,7 @@
     if (!boss()) return A().modal(shell(askAdmin(id)));
     const what = id === 'google' ? 'accounts' : id === 'ga4' ? 'property' : L.avail?.[id]?.multi ? 'ad accounts' : 'ad account', many = id === 'google' || !!L.avail?.[id]?.multi;
     A().modal(shell(box({ id, title: `Pick the ${what}`, line: `The ${many ? 'ones' : 'one'} that ${many ? 'are' : 'is'} ${poss()}.`, body: '<div class="cxb-opts"><span class="spin"></span></div>', ghost: ghostBtn('Cancel'), go: goBtn('Connect', 'data-go') })), async (m) => {
+      edges(m);
       const r = await get(`/api/brands/${slug}/connect/${id}/options`), box0 = m.querySelector('.cxb'), opts = r.options || [], go = m.querySelector('[data-go]');
       if (!opts.length) { m.querySelector('.cxb-opts').remove(); setStat(box0, stat(esc(r.error || 'No accounts came back for this login. Try a login that can see them.'), 'bad', 'info')); go.textContent = 'Try again'; go.onclick = () => leave(`/connect/${id}/start?brand=${slug}`); return; }
       const GOOG = id === 'google' || id === 'ga4', groups = id === 'google' ? [['ads', 'Google Ads'], ['ga4', 'Google Analytics']] : id === 'ga4' ? [['ga4', 'Google Analytics property']] : [[null, 'Ad account']];
@@ -275,6 +283,7 @@
     const what = id === 'slack' ? ['Brew stops posting to Slack', 'Replies in Brew’s threads stop coming back to the jams', 'You can connect it again any time']
       : ['Cards stop using its live numbers', 'You can connect it again any time'];
     A().modal(shell(box({ id, title: `Disconnect ${esc(nm(id))}?`, line: `For everyone on ${poss()} team.`, body: kick('What happens') + ticks(what), ghost: ghostBtn('Keep it'), go: goBtn('Disconnect', 'data-unlink-go') })), (m) => {
+      edges(m);
       const go = m.querySelector('[data-unlink-go]');
       go.onclick = async () => { go.disabled = true; go.innerHTML = '<span class="spin"></span>Disconnecting…';
         const r = await post(`/api/brands/${slug}/connect/${id}`, { action: 'disconnect' });
