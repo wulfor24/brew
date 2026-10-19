@@ -117,7 +117,15 @@ How to word it:
 - Happy reviews are proof that it works. Never call them doubt, worry or a problem.`;
 }
 
-export function refine(c, e, { voice = [], connected = () => false, has = () => true } = {}) {
+/* the brand's own product words that sit on many of its cards ("mitoactive", "serum" on Arata, "snugglet" on Cozy), and words on a
+   third of all its cards, say nothing about one card: a page sharing only those is not about it. Topic words ("ads", "reviews")
+   are not product names, so they still count. Worked out once per card list */
+const COMMON = new WeakMap();
+const commonOf = (corpus, names = []) => { if (!Array.isArray(corpus) || corpus.length < 10) return new Set(); if (COMMON.has(corpus)) return COMMON.get(corpus);
+  const df = new Map(); for (const p of corpus) for (const w of new Set(words(`${p?.title || ''} ${p?.sub || ''}`))) df.set(w, (df.get(w) || 0) + 1);
+  const nw = new Set(words((names || []).join(' ')));
+  const out = new Set([...df].filter(([w, n]) => n / corpus.length > 0.35 || (nw.has(w) && n / corpus.length > 0.15)).map(([w]) => w)); COMMON.set(corpus, out); return out; };
+export function refine(c, e, { voice = [], connected = () => false, has = () => true, corpus = null, names = null } = {}) {
   if (!c || !e) return e;
   const claim = String(e.why?.because || String(c.sub || '').split(/(?<=[.!?])\s+/)[0] || '');
   const cardText = [c.title, c.sub, claim, c.make?.pieces, c.make?.backedBy, ...(c.rows || []).map((r) => (Array.isArray(r) ? r.join(' ') : ''))].filter(Boolean).join(' \n ');
@@ -135,7 +143,7 @@ export function refine(c, e, { voice = [], connected = () => false, has = () => 
     for (const { v } of neg.reverse()) add(v.kind === 'review' ? voiceItem(v) : { mine: true, kind: 'quote', label: v.where ? `Said on ${v.where}` : 'Said online', value: cut(v.text, 220), src: v.platform || '', url: okUrl(v.url), extra: v.replies ? `${v.replies} replies` : '' }); }
   /* 2. what only describes the card leaves the proof: spec rows, and the promoted product's price when the claim isn't about price */
   /* a page Brew read is proof only when it is about what the card says (shares a word with it beyond the brand's own name) */
-  const brandW = new Set(words(c.brand || e.brand || '')), aboutW = new Set(words([c.title, claim, c.make?.pieces].filter(Boolean).join(' ')).filter((w) => !brandW.has(w) && !/^\d/.test(w)));
+  const brandW = new Set(words(c.brand || e.brand || '')), common = commonOf(corpus, names), aboutW = new Set(words([c.title, claim, c.make?.pieces].filter(Boolean).join(' ')).filter((w) => !brandW.has(w) && !common.has(w) && !/^\d/.test(w)));
   const about = (x) => new Set(words(x.label).filter((w) => aboutW.has(w))).size >= 2; /* one shared word ("hair" on a hair brand) is chance */
   const priceClaim = PRICE_CLAIM.test(claim);
   /* customer voice Brew matched by shared words backs a claim about customers, reviews or proof, never one about ads, ranks or prices
@@ -164,7 +172,7 @@ export function refine(c, e, { voice = [], connected = () => false, has = () => 
   else if (voiceClaim && !voiceIn.length) note = 'The card says customers are saying this, but Brew hasn’t found the reviews or posts that show it. Treat it as a guess until you see them.';
   else if (voiceClaim && DOUBT_RE.test(seen) && voiceIn.length && voiceIn.every((x) => x.kind === 'voice' && starsOf(x) >= 4)) {
     const n = voiceIn.length; note = `The card says people doubt this, but what Brew found is praise: ${['', 'a', 'two', 'three', 'four', 'five'][n] || n} ${voiceIn.every((x) => starsOf(x) === 5) ? '5★' : 'happy'} review${n > 1 ? 's' : ''}. Use ${n > 1 ? 'them' : 'it'} as proof that it works, not as the problem.`; }
-  const sourced = backing.filter((x) => x.url || x.kind === 'account').length;
+  const sourced = backing.filter((x) => x.url || x.kind === 'account' || x.kind === 'team').length;
   return { ...e, items: backing, context, claim: { voice: voiceClaim, metric: metric && !accountIn ? metric.what : null, metricNeeds, note, needs }, count: backing.length, sourced,
     strength: note ? 'thin' : sourced >= 2 ? 'strong' : backing.length ? 'some' : 'thin' };
 }

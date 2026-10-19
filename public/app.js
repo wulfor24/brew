@@ -914,7 +914,7 @@
       <span class="sp"></span>
       <button class="icon-btn" data-act="save" aria-pressed="${S.saved.includes(p.id)}" aria-label="Save for later">${ic('bookmark')}</button></div>`;
   /* the proof on every card (evidence.js via /api/cards/:cid/evidence): why Brew suggested it, and the hard evidence behind it */
-  const proofBtn = (p) => { const n = +p.proof?.n || 0; return `<button class="icon-btn pf-btn${p.proof?.strength === 'thin' ? ' is-thin' : ''}" data-act="proof" aria-label="Why this card, and the proof" title="Why Brew suggested this, and the proof">${ic('shield')}${n ? `<span class="pf-n">${n}</span>` : ''}</button>`; };
+  const proofBtn = (p) => { if (/^(build-|status-)/.test(String(p.id || '')) || p.kind === 'status') return ''; /* a status card ("All 56 moves are written") claims nothing to prove */ const n = +p.proof?.n || 0; return `<button class="icon-btn pf-btn${p.proof?.strength === 'thin' ? ' is-thin' : ''}" data-act="proof" aria-label="Why this card, and the proof" title="Why Brew suggested this, and the proof">${ic('shield')}${n ? `<span class="pf-n">${n}</span>` : ''}</button>`; };
   const pfDay = (s) => { const d = s ? new Date(s) : null; return d && !isNaN(d) ? d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : ''; };
   /* the sheet says only what a brand needs: the one reason, the few numbers behind it (each with where it came from) and the plan it
      belongs to. Kind labels, move source lists and repeats stay out; the full plan is one tap away */
@@ -927,7 +927,7 @@
     if (!v && x.kind === 'source') { const m = l.match(/^(.{3,}?):\s*(.+)$/), t = m && m[2].replace(/\s*\([^)]*\)?\s*…?$/, '').replace(/…$/, '').trim(); if (t && /\d/.test(t) && t.length <= 24) { l = m[1]; v = t; } }
     const label = `${esc(l)}${x.extra ? ` · ${esc(x.extra)}` : ''}`;
     if (v && v.length <= 9) return `<li class="pf-r"><b class="pf-v">${esc(v)}</b><span class="pf-l">${label}</span>${pfSrc(x)}</li>`;
-    const quote = /^(quote|voice|ad|idea|read)$/.test(x.kind) && v.length > 24; if (quote) v = v.replace(/^[“"]\s*|\s*[”"]$/g, '');
+    const quote = /^(quote|voice|ad|idea|read|team)$/.test(x.kind) && v.length > 24; if (quote) v = v.replace(/^[“"]\s*|\s*[”"]$/g, '');
     return `<li class="pf-r is-text">${v ? quote ? `<q class="pf-q">${esc(v)}</q>` : `<b class="pf-v">${esc(v)}</b>` : ''}<span class="pf-l">${label}</span>${pfSrc(x)}</li>`; };
   /* what the proof rests on, said plainly, and the accounts that would check it against the brand's real numbers. A card from public
      data says so; its connectors are the ones for its area (ads → Meta/Google Ads, store → Shopify/Analytics, customers → Klaviyo) */
@@ -938,6 +938,7 @@
     for (const x of items) { const src = `${x.src || ''} ${x.url || ''}`;
       if (x.kind === 'account') acct.add(String(x.src || '').replace(/^Your\s+|\s+account$/gi, ''));
       else if (x.kind === 'voice' || /judge\.?me|loox|okendo|yotpo|reviews?/i.test(src) && !/ad library/i.test(src)) said.add('customer reviews');
+      else if (x.kind === 'team') said.add('what your team told Brew');
       else if (x.kind === 'quote') said.add('what people say online');
       else if (x.kind === 'ad') said.add('rivals’ live ads');
       else if (x.kind === 'trend') said.add('Google searches');
@@ -967,7 +968,9 @@
     const none = !items.length && !cl.note ? `<p class="pf-note">${ic('info', 's14')}<span>No real data behind this one yet. Treat it as an idea to check, not a fact.</span></p>` : '';
     /* the move is Brew's reasoning from this data, never proof itself: a quiet link to the write-up, after the data */
     const plan = moves.length ? `<button type="button" class="pf-wu" data-pf-move="${moves[0].n}">How Brew worked it out: ${esc(moves[0].title)}${ic('right', 's14')}</button>` : '';
-    return `${lead}${check}${rows}${gap}${none}${pfBasis(items, p, cl.needs)}${plan}`;
+    /* stepped back on what the team said (brand-learnings.js): said first, so nobody acts on it without knowing */
+    const contra = e.contra ? `<p class="pf-note is-claim">${ic('info', 's14')}<span>Brew moved this off the top: ${esc(e.contra)}</span></p>` : '';
+    return `${lead}${contra}${check}${rows}${gap}${none}${pfBasis(items, p, cl.needs)}${plan}`;
   };
   /* "what's the evidence behind this?" in the jam: the card's proof as Saw / Plan / Data / So, and a way to the whole sheet */
   const proofMsg = (m) => { const x = m.proof || {}, a = (u, l) => (u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(l)}</a>` : esc(l));

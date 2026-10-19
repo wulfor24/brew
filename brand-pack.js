@@ -19,7 +19,7 @@ import { cleanBrief, renderBrief } from './brief.js'; // a saved brief's "null" 
 import { aboutOf, OLD_ABOUT, marketConfig } from './derive.js'; // a saved config.about written by the old rule heals at load
 import { prototypeConnectors } from './seed-template.js'; // DUMMY: connector copy that promises no action
 import { sentenceCase, oneCard } from './text-fit.js';
-import { withLearned, learnedMoveNs, learnedTerms } from './brand-learnings.js'; // what the team told Brew (pasted into a jam): in every prompt's system text
+import { withLearned, learnedMoveNs, learnedTerms, learnedItems } from './brand-learnings.js'; // what the team told Brew (pasted into a jam): in every prompt's system text
 import { sandboxName, virtualFile, demoSid } from './demo-mode.js'; // Demo Mode: per-session private files
 import { markMoveClaims, sourceText } from './claims.js'; // saved moves: a claim the store never made is marked as the team's call
 
@@ -309,6 +309,8 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
       staleMoves, // moves the evidence has overtaken, waiting for their rewrite: their cards step back (feed-service score)
       learnedMoves: learnedMoveNs(moves, learned), learnedTerms: learnedTerms(learned, (seed.posts || []).map((x) => [x.title, x.sub, ...(x.detail?.why || []), ...(x.detail?.how || [])].join(' '))), // moves that rest on what the team told Brew: the ranker lifts their cards (feed-service score)
       notes: { ...(notesJ?.notes || {}), ...toldNotes }, // margin notes written for this brand's cards (notes.js), and why the team's words lifted one
+      /* what the team told Brew, as proof (evidence.js): each learning with its words and source; why a card was lifted or stepped back */
+      learnedEv: { items: learnedItems(learned).map(({ text, quote, source, at, kind, hash }) => ({ text, quote, source, at, kind, hash })), up: Object.fromEntries(upFresh), hide: LC.hide || {}, add: LC.add || [] },
       learnedUp: new Set(upFresh.map(([id]) => id)), learnedHide: new Set(Object.keys(LC.hide || {})), teamCards: new Set((LC.add || []).map((x) => x.id)), // the ranker: lift, step back, and the team's own cards first
       firstDrafts, // first drafts made in the background (drafts-bg.js), seeded into a card's jam
       client: { facts: `b/${slug}/facts.js`, seed: `b/${slug}/seed.js` }

@@ -32,7 +32,31 @@ const PAID = /#\s?ad\b|#sponsored|#collab|paid partnership|\bcomment\s*[“"']?\
 const voiceKey = (t) => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 60);
 const isEvRow = (x) => /^[^:]{2,60}:\s*[₹$€£]?[\d.,]+\s*$/.test(x) || /^[^:“"]{2,90}\([^)]*\):/.test(x);
 
-export function createEvidence({ factsOf, movesOf, numsOf, adOf = () => null, country = () => '', brandHost = () => '' }) {
+/* the learnings a card rests on: by the card's own record (a team card's rows, the reason it was lifted or stepped back, the
+   "Learned:" lines its rewritten move carries), each matched to the saved learning so the sheet shows its words and source.
+   Never by shared words alone: a rival's ad that happens to use the same words is not what the team told Brew */
+const pubId = (id) => String(id || '').replace(/-p$/, '');
+export function teamOf(c, T, ns = [], M = {}) {
+  const out = { items: [], contra: null }; if (!c || !T?.items?.length) return out;
+  const L = T.items, seen = new Set(), id = pubId(c.id);
+  const best = (text, pool = L, min = 3) => { const tw = new Set(words(text)); if (!tw.size) return null;
+    return pool.map((x) => { let hit = 0; for (const w of new Set(words(x.text))) if (tw.has(w)) hit++; return { x, hit }; }).filter((y) => y.hit >= min).sort((a, b) => b.hit - a.hit)[0]?.x || null; };
+  const KL = { goal: 'Your plan', belief: 'Your team’s rule', fact: 'Your team said', tried: 'What you tried', essence: 'Who you are' };
+  const lab = (x) => KL[x?.kind] || 'Your team said';
+  const push = (x, label) => { if (!x || !label || seen.has(x.text) || out.items.length >= 3) return; seen.add(x.text); out.items.push({ ...x, label }); };
+  /* a card the learnings made: the learning in its "The team said" row */
+  if (c.origin === 'told' || /^told-/.test(id)) { const said = (c.rows || []).find((r) => Array.isArray(r) && /team said/i.test(r[0]))?.[1] || c.sub; const x = best(said, L, 2); push(x, lab(x)); }
+  /* lifted: the learning behind the reason (same upload first) */
+  const up = T.up?.[id]; if (up) { const pool = L.filter((x) => !up.hash || x.hash === up.hash); const x = best(`${up.why} ${c.title} ${c.sub}`, pool.length ? pool : L, 2); push(x, lab(x)); }
+  /* stepped back: it repeats what the team ruled out, said plainly on the sheet */
+  const hd = T.hide?.[id]; if (hd) { const pool = L.filter((x) => !hd.hash || x.hash === hd.hash); const x = best(`${hd.why}`, pool.length ? pool : L, 2); out.contra = String(hd.why || '').trim() || null; push(x, 'Your team said this doesn’t work'); }
+  /* its move was rewritten on the learnings: the lines the rewrite says it used */
+  for (const n of ns) { const m = M[n]?.meta; if (!/^What the team told us\b/.test(m?.because || '')) continue;
+    for (const ch of m.changes || []) { const t = String(ch).replace(/^Learned:\s*/, ''); const x = L.find((y) => y.text.startsWith(t.replace(/…$/, '').slice(0, 60))) || best(t, L, 3); push(x, lab(x)); } }
+  return out;
+}
+
+export function createEvidence({ factsOf, movesOf, numsOf, adOf = () => null, country = () => '', brandHost = () => '', learnedOf = () => null }) {
   /* a fact read from the brand's own site or accounts, or from somewhere else (a rival's page, a marketplace, the web) */
   const ownOf = (f) => { const h = String(brandHost() || '').replace(/^www\./, ''), u = hostOf(f.url) || String(f.src || '').split('/')[0].replace(/^www\./, ''); return !h || !u || u === h || u.endsWith('.' + h) || /shopify|meta\.json/i.test(f.src || ''); };
   /* the brand's facts by number: canonical number → the facts whose value holds it (demo facts never count) */
@@ -50,7 +74,7 @@ export function createEvidence({ factsOf, movesOf, numsOf, adOf = () => null, co
   const pick = (cands, cw, used, loose) => cands.map((f) => { let hit = 0; for (const w of new Set(words(f.label).filter((x) => !/^\d/.test(x)))) if (cw.has(w)) hit++; return { f, hit, s: hit + (used.has(f.key) ? 3 : 0) + (f.kind === 'current' ? 1 : 0) }; })
     .filter((x) => !loose || x.hit >= 2 || used.has(x.f.key)).sort((a, b) => b.s - a.s)[0]?.f;
 
-  function evidenceOf(c, { liveLedger = null, plain = null, voice = [] } = {}) {
+  function evidenceOf(c, { liveLedger = null, plain = null, voice = [], team: teamOk = true } = {}) { /* teamOk: what the team told Brew is for its team only, like the told list */
     if (!c) return null;
     const facts = factsOf() || {}, idx = indexOf(facts), cw = new Set(words(cardText(c)));
     const ns = (numsOf?.(c.src) || []), M = movesOf() || {};
@@ -58,6 +82,10 @@ export function createEvidence({ factsOf, movesOf, numsOf, adOf = () => null, co
     const items = [], seen = new Set();
     const add = (x) => { const k = `${x.kind}|${x.label}|${x.value}|${x.url || ''}`; if (seen.has(k) || !(x.label || x.value)) return; seen.add(k); items.push(x); };
     const nums = numsOfCard(c), gated = new Set(gatedOfCard(c));
+    /* 0. what the team told Brew (brand-learnings.js), when the card rests on it: a card the learnings made, lifted or stepped back,
+       or one whose move was rewritten on them. Their own words and where they came from (the upload, who, the day), first */
+    const T = teamOk ? learnedOf?.() || null : null, team = teamOf(c, T, ns, M);
+    for (const x of team.items) add({ kind: 'team', label: x.label, value: cut(x.text, 220), quote: x.quote ? cut(x.quote, 220) : '', src: cut(String(x.source || '').replace(/,\s*\d{4}-\d{2}-\d{2}$/, ''), 110), at: x.at ? new Date(x.at).toISOString().slice(0, 10) : null, url: null });
     /* 1. the team's own accounts (members only): a number on the card that a connected account reports */
     const live = liveLedger && typeof liveLedger === 'object' ? Object.entries(liveLedger) : [];
     const backed = new Set();
@@ -106,11 +134,11 @@ export function createEvidence({ factsOf, movesOf, numsOf, adOf = () => null, co
     }
     const rawOf = (n) => (cardText(c).match(/(?:₹|\$|€|£|rs\.?\s?)?\d[\d,.]*\s?(?:%|x|×|k|lakh|crore|cr)?/gi) || []).find((x) => numbersIn(x, { strict: true }).concat(numbersIn(x)).includes(n))?.trim() || n; /* as the card wrote it: ₹5,555, not ₹5555 */
     const unbacked = gatedOfCard(c).filter((n) => !backed.has(n) && !items.some((x) => x.value && allNums(x.value).includes(n))).map(rawOf);
-    const sourced = items.filter((x) => x.url || x.kind === 'account').length;
+    const sourced = items.filter((x) => x.url || x.kind === 'account' || x.kind === 'team').length; /* the team's own words, with the file they came from, count as sourced */
     /* why Brew suggested it: the plain-words pass's own line when it has one, else the card's own reasons */
     const reasons = (plain?.why?.length ? plain.why : (c.detail?.why || []).filter((x) => x && !isEvRow(x))).slice(0, 3);
     const because = plain?.because || [String(c.sub || '').split(/(?<=[.!?])\s+/)[0]].filter(Boolean).join(' ');
-    return { why: { because, reasons }, items: items.slice(0, 14), moves, unbacked, count: Math.min(items.length, 14), sourced, strength: sourced >= 2 ? 'strong' : items.length ? 'some' : 'thin' };
+    return { why: { because, reasons }, items: items.slice(0, 14), moves, unbacked, count: Math.min(items.length, 14), sourced, strength: sourced >= 2 ? 'strong' : items.length ? 'some' : 'thin', ...(team.contra ? { contra: team.contra } : {}), told: team.items.length > 0 };
   }
   /* the feed card's proof icon: how many things back it, without building the whole sheet's text */
   const countOf = (c, o) => { const e = evidenceOf(c, o); return e ? { n: e.count, strength: e.strength } : null; };
