@@ -727,15 +727,16 @@
   const wantWhat = () => {
     /* during onboarding, what the reading-screen questions asked is not asked again (a later Tune shows everything) */
     const noWants = !S.onboarded && qAns('first'), noLane = !S.onboarded && qAns('lead');
+    const laneIds = Object.keys(B.lanes || {}), lanePics = laneIds.every((k) => LANE_IMG[k]) && new Set(laneIds.map((k) => LANE_IMG[k])).size === laneIds.length; /* a photo only when each product has its own: one shared picture on every chip tells them apart by nothing */
     window.scrollTo(0, 0); root.innerHTML = shell(`
       <div class="ob3">${noWants && noLane ? '<h1 class="ob2-h">Anything Brew should know?</h1><p class="ob2-lede">What works for you, what doesn’t, what you’ve learned. Optional.</p>' : noWants ? '<h1 class="ob2-h">Anything Brew should know?</h1><p class="ob2-lede">The product you’re pushing, and what you’ve learned. Both optional.</p>' : '<h1 class="ob2-h">What should come first?</h1><p class="ob2-lede">Pick up to two, and tell Brew what you’ve learned.</p>'}
       ${noWants ? '' : `<section class="ob3-s"><small class="ob3-k">Show me first</small>
         <div class="ob3-pills">${Object.entries(B.wants).map(([k, w]) => `<button class="ob3-pill" data-want="${k}" aria-pressed="${S.viewer.wants.includes(k)}" title="${esc(w.line)}">${ic('check', 's14')}${esc(w.name)}</button>`).join('')}</div></section>`}
-      <section class="ob3-s"><small class="ob3-k">In your own words</small>
-        <div class="ob3-say"><textarea id="ob-say" data-nomic data-ownmic rows="1" placeholder="What works for you, what doesn’t, what you’ve learned. Type or talk.">${esc(S.viewer.focusNote || '')}</textarea>${window.Mic?.supported ? `<button type="button" class="ob3-mic" id="ob-say-mic" aria-label="Talk instead of typing" title="Talk instead of typing">${ic('mic', 's16')}</button>` : ''}</div>
-        <small id="ob-said" class="ob3-said">${S.viewer.focusNote ? `${ic('check', 's14')}Saved. Your moves, docs and cards follow this.` : ''}</small></section>
       ${noLane ? '' : `<section class="ob3-s"><small class="ob3-k">The product you’re pushing</small>
-        <div class="ob3-pills">${Object.entries(B.lanes).map(([k, l]) => `<button class="ob3-pill ob3-prod" data-lane="${k}" aria-pressed="${S.viewer.lane === k}"><img src="${LANE_IMG[k]}" alt="">${esc(l.name)}</button>`).join('')}</div></section>`}</div>
+        <div class="ob3-pills">${Object.entries(B.lanes).map(([k, l]) => `<button class="ob3-pill${lanePics ? ' ob3-prod' : ''}" data-lane="${k}" aria-pressed="${S.viewer.lane === k}">${lanePics ? `<img src="${LANE_IMG[k]}" alt="">` : ''}${esc(l.name)}</button>`).join('')}</div></section>`}
+      <section class="ob3-s"><small class="ob3-k">In your own words</small>
+        <div class="ob3-say"><textarea id="ob-say" data-nomic data-ownmic rows="1" placeholder="Type here, or tap the mic and talk.">${esc(S.viewer.focusNote || '')}</textarea>${window.Mic?.supported ? `<button type="button" class="ob3-mic" id="ob-say-mic" aria-label="Talk instead of typing" title="Talk instead of typing">${ic('mic', 's16')}</button>` : ''}</div>
+        <small id="ob-said" class="ob3-said">${S.viewer.focusNote ? `${ic('check', 's14')}Saved. Your moves, docs and cards follow this.` : ''}</small></section></div>
       ${obNav('Next', true)}`, 2);
     obPreview();
     $$('[data-want]').forEach((b) => b.onclick = () => {
@@ -751,7 +752,8 @@
       S.viewer.focusNote = text; S.viewer.focusTerms = r.terms || []; if (r.wants?.length) { S.viewer.wants = r.wants; S.viewer.wantsTouched = true; } if (r.lane) S.viewer.lane = r.lane; save();
       $$('[data-want]').forEach((x) => x.setAttribute('aria-pressed', S.viewer.wants.includes(x.dataset.want))); $$('[data-lane]').forEach((x) => x.setAttribute('aria-pressed', x.dataset.lane === S.viewer.lane));
       said.innerHTML = `${ic('check', 's14')}${r.learning ? 'Got it. Brew is learning from this. Your moves, docs and cards follow it.' : 'Got it. Your feed follows this.'}`; obPreview(); return true; };
-    $('#ob-say-mic')?.addEventListener('click', (e) => { const b = e.currentTarget; if (window.Mic?.on) { window.Mic.stop(); b.classList.remove('is-on'); b.setAttribute('aria-label', 'Talk instead of typing'); return; } window.Mic?.talk($('#ob-say')); b.classList.add('is-on'); b.setAttribute('aria-label', 'Stop and use what I said'); const w = setInterval(() => { if (!window.Mic?.on) { b.classList.remove('is-on'); clearInterval(w); } }, 400); }); $('#ob-say').addEventListener('blur', () => sayIt()); $('#ob-say').addEventListener('input', (e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(200, e.target.scrollHeight) + 'px'; });
+    $('#ob-say-mic')?.addEventListener('click', (e) => { const b = e.currentTarget; if (window.Mic?.on) { window.Mic.stop(); b.classList.remove('is-on'); b.setAttribute('aria-label', 'Talk instead of typing'); return; } window.Mic?.talk($('#ob-say')); b.classList.add('is-on'); b.setAttribute('aria-label', 'Stop and use what I said'); const w = setInterval(() => { if (!window.Mic?.on) { b.classList.remove('is-on'); clearInterval(w); } }, 400); }); $('#ob-say').addEventListener('blur', () => sayIt()); const fitSay = (t) => { t.style.height = 'auto'; t.style.height = Math.min(200, t.scrollHeight + 2) + 'px'; }; /* grows with what they write (a saved note opens at its full height) */
+    $('#ob-say').addEventListener('input', (e) => fitSay(e.target)); fitSay($('#ob-say')); $('.ob3-say').addEventListener('click', (e) => { if (e.target === e.currentTarget) $('#ob-say').focus(); });
     $('#ob-say').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sayIt(); } });
     $('#ob-back').onclick = whoFor; $('#ob-next').onclick = async () => { await sayIt(); connectWhat(); };
   };
