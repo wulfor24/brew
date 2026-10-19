@@ -24,6 +24,7 @@ import { B, BN, runIn, liveRe, setDefaultBrand, inBrand } from './brand-ctx.js';
 import { createImageGuard } from './image-guard.js';
 import { createPacks, slugOf, DEFAULT } from './brand-pack.js';
 import { balanceWarm } from './color-cast.js'; // a picture washed yellow is pulled back toward its product photo (QA 13 Oct)
+import { LEGAL, notFoundPage, pageOf } from './legal-pages.js'; // /privacy, /terms and a real 404
 import { createAI, aiPaused, billingError, noteBilling, realNewlines } from './ai.js';
 import { createAlerts, noteVertex, noteAlert } from './alerts.js'; // ops emails: Vertex billing/quota, the AI pause, treg balance, 5xx rate
 import { createBudget } from './budget.js'; // the day's AI budget: a ceiling and a share per brand
@@ -909,10 +910,14 @@ async function serve(req, res, u) {
     let f = path.normalize(path.join(PUB, decodeURIComponent(u.pathname)));
     if (!f.startsWith(PUB)) return send(res, 403, 'no', 'text/plain');
     if (fs.existsSync(f) && fs.statSync(f).isFile() && u.pathname !== '/index.html') return serveFile(req, res, f);
-    // a page: / is the landing, /<slug> a brand (an unknown slug falls back to the landing)
-    const seg = (u.pathname.match(/^\/([a-z0-9-]+)\/?$/) || [])[1] || '';
+    // a page: / is the landing, /<slug> a brand, /privacy and /terms; anything else is a real 404 (legal-pages.js pageOf)
+    const pg = pageOf(u.pathname);
+    if (pg.kind === 'api') return send(res, 404, { error: 'not found' });
     if (/\.[a-z0-9]{2,5}$/i.test(u.pathname)) return send(res, 404, 'no', 'text/plain');
-    const html = (await pageFor(seg)) || (await pageFor(''));
-    return send(res, 200, html, 'text/html; charset=utf-8');
+    if (pg.kind === 'legal') return send(res, 200, LEGAL[pg.page](), 'text/html; charset=utf-8');
+    const html = pg.kind === 'landing' ? await pageFor('') : pg.kind === 'slug' ? await pageFor(pg.slug) : null;
+    if (html && pg.redirect) { res.writeHead(302, { location: `/${pg.slug}${u.search}` }); return res.end(); }
+    if (html) return send(res, 200, html, 'text/html; charset=utf-8');
+    return send(res, 404, notFoundPage(), 'text/html; charset=utf-8');
   } catch (e) { console.error(e); send(res, 500, { error: 'server' }); }
 }
