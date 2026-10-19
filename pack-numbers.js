@@ -97,6 +97,20 @@ export function products({ profile, liveWatch, daily, status } = {}) {
   return fresher(read, watch) || { n: null, at: 0 };
 }
 
+/** one plain note when the store is outside what Brew reads well (FEED-QA-27), or null. Only on what the read really saw:
+    the catalog stage ran without an error and found no product (a failed or skipped read is never "empty"), or the store is
+    on a platform the read named that isn't Shopify. Worked out from the saved profile, so every saved read shows it too */
+export const NO_CATALOG_NOTE = 'Brew is built for Shopify stores today. We couldn’t read a product catalog here, so product cards will be thin.';
+export const NOT_SHOPIFY_NOTE = 'Brew is built for Shopify stores today, so some store details may be thin here.';
+export function storeNote({ profile, liveWatch } = {}) {
+  if (!profile) return null;
+  const ran = profile.meta?.timings?.catalog != null, failed = !!profile.meta?.errors?.catalog, n = products({ profile, liveWatch }).n;
+  if (ran && !failed && !(+n > 0)) return NO_CATALOG_NOTE;
+  const plat = String(profile.platform || '').toLowerCase();
+  if (plat && plat !== 'shopify' && plat !== 'unknown' && +n > 0) return NOT_SHOPIFY_NOTE;
+  return null;
+}
+
 /** the moves: total = the playbook (status.total), written = playbook moves on file, weekly = cadence moves apart */
 export function moves({ status, moves: mv } = {}) {
   const written = mv ? playDone(mv) : +status?.movesDone || 0;
@@ -129,7 +143,7 @@ export function ai({ profile } = {}) {
 }
 
 export function numbersOf(x = {}) {
-  return { ownAds: ownAds(x), rivalAds: rivalAds(x), rivals: rivals(x), products: products(x), moves: moves(x), ai: ai(x), reviews: reviews(x), ratings: ratings(x) };
+  return { ownAds: ownAds(x), rivalAds: rivalAds(x), rivals: rivals(x), products: products(x), moves: moves(x), ai: ai(x), reviews: reviews(x), ratings: ratings(x), storeNote: storeNote(x) };
 }
 
 /* the files the numbers come from, read through any packs store (brand-pack.js, demo-routes.js, build.js) */

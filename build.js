@@ -709,7 +709,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const N = await numbersFor(packs.getJSON, slug, { 'profile.json': p }); /* the same numbers every other screen shows */
     const s0 = (await status(slug)) || {};
     return {
-      name: p.name, host: p.host, logo: p.identity?.logo || null, count: N.products.n ?? prods.length,
+      name: p.name, host: p.host, logo: p.identity?.logo || null, count: N.products.n ?? prods.length, storeNote: N.storeNote || null, /* not Shopify, or no catalog read (pack-numbers.js storeNote) */
       /* when Brew starts writing with what it read unless someone checks first (null: it waits for a check, or it has started) */
       writeAt: awaitingCheck(s0) && !s0.confirmedAt ? s0.writeAt || null : null, started: s0.stages?.confirm?.state === 'done',
       who: [

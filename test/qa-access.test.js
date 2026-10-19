@@ -132,3 +132,21 @@ test('FEED-QA-15: "Brew starts writing at" is set on the first open of the check
   try { await b.checkData(slug, { heal: false, opened: true }); } finally { Date.now = realNow; }
   const s2 = await b.status(slug); assert.equal(s2.writeAt, first, 'the time never moves later'); assert.equal(s2.checkOpenAt, s1.checkOpenAt);
 });
+
+/* ---------- FEED-QA-27: a store Brew can't read well says so, once ---------- */
+test('FEED-QA-27: one plain note when the catalog is truly empty or the store is not Shopify; a failed or skipped read is not empty', async () => {
+  const { storeNote, numbersOf, NO_CATALOG_NOTE, NOT_SHOPIFY_NOTE } = await import('../pack-numbers.js');
+  const prof = (o = {}) => ({ name: 'Acme', platform: 'shopify', catalog: { products: [] }, meta: { timings: { open: 1, catalog: 2 }, errors: {} }, ...o });
+  assert.equal(storeNote({ profile: prof() }), NO_CATALOG_NOTE, 'the catalog stage ran and found nothing');
+  assert.equal(storeNote({ profile: prof({ platform: 'custom' }) }), NO_CATALOG_NOTE);
+  assert.equal(storeNote({ profile: prof({ meta: { timings: { catalog: 2 }, errors: { catalog: 'timed out' } } }) }), null, 'a failed read is never "no catalog"');
+  assert.equal(storeNote({ profile: prof({ meta: { timings: { open: 1 }, errors: {} } }) }), null, 'a catalog step that never ran says nothing');
+  assert.equal(storeNote({ profile: prof({ catalog: { products: [{ handle: 'a' }] } }) }), null, 'a Shopify store with products: no note');
+  assert.equal(storeNote({ profile: prof({ platform: 'woocommerce', catalog: { count: 67, products: [] } }) }), NOT_SHOPIFY_NOTE);
+  assert.equal(storeNote({ profile: prof({ platform: 'unknown', catalog: { count: 9 } }) }), null);
+  assert.equal(storeNote({ profile: null }), null);
+  assert.equal(numbersOf({ profile: prof() }).storeNote, NO_CATALOG_NOTE, 'every screen gets it from the one count (seed and check page)');
+  assert.match(NO_CATALOG_NOTE, /^Brew is built for Shopify stores today\. We couldn’t read a product catalog here, so product cards will be thin\.$/);
+  assert.match(src('build.js'), /storeNote: N\.storeNote \|\| null/);
+  const a = appSrc(); assert.match(a, /D\.storeNote \? `<p class="ck2-note">/); assert.match(a, /window\.BREW_NUMBERS\?\.storeNote \? `<p class="ready-note">/);
+});

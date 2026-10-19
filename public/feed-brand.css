@@ -203,6 +203,8 @@ a.ck2-src[href]:hover{color:var(--fg)}
 .ck2-r a{font-size:13.5px;color:var(--fg-2);text-decoration:none}
 .ck2-r small{font-size:13px;color:var(--fg-3);line-height:1.4}
 .ck2-r .ck2-x{box-shadow:none;background:transparent;width:26px;height:26px}
+.ck2-note{display:flex;gap:6px;align-items:flex-start;margin:-6px 0 14px;font-size:14px;line-height:20px;color:var(--fg-2)}.ck2-note .ic{flex:0 0 auto;margin-top:3px} /* not Shopify, or no catalog read */
+.ready-note{margin:0 0 14px;font-size:13.5px;line-height:19px;color:var(--fg-3)}
 .ck2-empty{grid-column:1/-1;margin:0;color:var(--fg-3);font-size:14.5px}
 .ck2-srcs{display:flex;flex-direction:column}
 .ck2-s{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 16px;padding:12px 0;border-bottom:1px solid var(--line-soft,var(--line))}

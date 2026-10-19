@@ -614,7 +614,7 @@
     root.innerHTML = `<main class="screen ck2"><div class="ck2-wrap">
       <header class="ck2-head">${D.logo ? `<span class="ck2-logo"><img src="${esc(D.logo)}" alt=""></span>` : ''}<div><h1>Is this right?</h1><p>${D.started ? 'Brew is writing with what it read. Fix anything that’s off and the brief and your first moves are rewritten with it.' : `${writeAtLine(D)} Fix anything that’s off.`}</p></div></header>
       <section class="ck2-card"><h2>Who you are <small>${readFrom(D.who)}</small></h2><div class="ck2-grid">${D.who.map((x) => field(x, 'who')).join('')}</div></section>
-      <section class="ck2-card"><h2>What you sell <small>${D.count} read · tap to choose the ones to lead with</small></h2><div class="ck2-prods${D.products.length > 8 ? ' is-cap' : ''}" id="ck2-prods">${D.products.map(prodTile).join('')}</div>${D.products.length > 8 ? `<button class="linkbtn ck2-all" data-ckall>Show ${D.products.length - 8} more</button>` : ''}
+      <section class="ck2-card"><h2>What you sell <small>${D.count} read · tap to choose the ones to lead with</small></h2>${D.storeNote ? `<p class="ck2-note">${ic('info', 's14')}${esc(D.storeNote)}</p>` : ''}<div class="ck2-prods${D.products.length > 8 ? ' is-cap' : ''}" id="ck2-prods">${D.products.map(prodTile).join('')}</div>${D.products.length > 8 ? `<button class="linkbtn ck2-all" data-ckall>Show ${D.products.length - 8} more</button>` : ''}
         <form class="ck2-add" data-add="product"><input placeholder="Paste a product page link to add it" inputmode="url"><button class="btn btn-ghost sm">Add product</button></form></section>
       <section class="ck2-card"><h2>Who you compete with</h2><div class="ck2-rivals" id="ck2-rivals">${D.rivals.length ? D.rivals.map(rivalTile).join('') : '<p class="ck2-empty">No rivals yet. Add the brands you lose sales to.</p>'}</div>
         <form class="ck2-add" data-add="rival"><input placeholder="Paste a rival’s website, e.g. rivalbrand.com" inputmode="url"><button class="btn btn-ghost sm">Add rival</button></form></section>
@@ -867,6 +867,7 @@
       <h3>Your feed is ready${myFirst() ? ', ' + esc(myFirst()) : ''}.</h3>
       <p>${n} ${n === 1 ? 'card' : 'cards'}, picked for ${/^[AEIOU]/i.test(R.name) ? 'an' : 'a'} ${esc(R.name.toLowerCase())}. Each comes from a move in your plan. Tap any card to see more.</p>
       <div class="counts"><div><b class="tnum">${n}</b>${CARDS_WORD(n)}</div>${mvTile()}<div><b class="tnum">5</b>agents</div>${nc ? `<div><b class="tnum">${nc}</b>connected</div>` : ''}</div>
+      ${window.BREW_NUMBERS?.storeNote ? `<p class="ready-note">${esc(window.BREW_NUMBERS.storeNote)}</p>` : ''}
       <button class="lm" id="open-feed"><span class="lm-rim"><span class="lm-in">Open my feed ${ic('right', 's18')}</span></span></button>
     </div></div>`);
     $('#open-feed').onclick = () => { $$('.ready').forEach((x) => x.remove()); feed(); };
