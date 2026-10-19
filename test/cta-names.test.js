@@ -1,5 +1,5 @@
 // FEED-QA-20: every card button says what it does and opens that job. The out-of-stock card's button pauses what points
-// there (it said "List what points there", which no map knew); a topic button ("Fix tracking", "Fix the markup", "Launch the
+// there (it said "List what points there", which no map knew); a topic button ("Fix tracking", "Add the search info", "Launch the
 // ad group"…) stays only on a card about that topic; "Publish Campaign" is sentence case, and a video-ad card's button makes
 // the video. Saved cards, live cards and jams heal as they are read.
 import test from 'node:test';
@@ -26,7 +26,7 @@ test('a topic button stays only on a card about that topic; otherwise the making
   assert.equal(fitCta(card('Fix tracking', { title: 'Run a carousel ad of the bundles', make: { format: 'carousel ad' } })).cta.label, 'Make the carousel ad');
   assert.equal(fitCta(card('Launch the ad group', { title: 'Launch Meta ads for office workers' })).cta.label, 'Make the ad', 'a Google button on a Meta ad card');
   assert.equal(fitCta(card('Launch the ad group', { title: 'Bid on the “heated slippers” Google keyword' })).cta.label, 'Launch the ad group');
-  assert.equal(fitCta(card('Fix the markup', { title: 'Add FAQ schema to the product page' })).cta.label, 'Fix the markup');
+  assert.equal(fitCta(card('Add the search info', { title: 'Add FAQ schema to the product page' })).cta.label, 'Add the search info');
   assert.equal(topicOk(card('Make the ad')), true, 'a button with no topic is never touched');
 });
 
@@ -38,4 +38,16 @@ test('Publish Campaign is sentence case everywhere; a card that makes something 
   const fitted = fitCta(vid); assert.equal(fitted.cta.label, 'Make the video'); assert.equal(recipeOfCard(fitted).primary, 'creative.short_video', 'the video-ad card’s button makes the video');
   assert.equal(fitCta(card('Publish Campaign', { sector: 'ads', title: 'Shift spend to the winners' })).cta.label, 'Publish the campaign', 'nothing to make: the renamed button stays');
   assert.equal(recipeOfCard(card('Publish Campaign', { sector: 'ads', title: 'Shift spend to the winners' })).primary, recipeOfCard(card('Publish the campaign', { sector: 'ads', title: 'Shift spend to the winners' })).primary, 'old and new names open the same job');
+});
+
+/* final QA pass 19 Oct (live Mamaearth): "Shift budget" on a crawl-budget card, a review strip on a tracking fix */
+test('a fix card keeps no asset its words never mention, and Shift budget is only about ad money', () => {
+  const track = fitCta(card('Fix tracking', { title: 'Fix broken checkout tracking to trace Meta sales', sub: 'Gokwik checkouts bypass standard Shopify browser tracking.', make: { format: 'page section', pieces: 'Review strip under add to cart on Ubtan Natural Glow Face Wash' } }));
+  assert.equal(track.cta.label, 'Fix tracking'); assert.equal(track.make, undefined); assert.equal(track.makeDropped, 'page section');
+  const crawl = fitCta(card('Shift budget', { title: 'Stop Google from wasting crawl budget on sold-out products', sub: 'Archiving long-term out-of-stock items cleans up our sitemaps.', make: { format: 'page section', pieces: 'Collection banner: Onion Hair Oil with Onion Oil' } }));
+  assert.equal(crawl.cta.label, 'Agree with the call'); assert.equal(crawl.make, undefined);
+  assert.equal(fitCta(card('Shift budget', { title: 'Move budget to the campaign with the best cost per order', sub: 'Campaign A wins.' })).cta.label, 'Shift budget');
+  const strip = fitCta(card('Fix tracking', { title: 'Track clicks on the new review strip', sub: 'Add a review strip under add to cart and count its clicks.', make: { format: 'page section', pieces: 'Review strip under add to cart on Ubtan Face Wash' } }));
+  assert.equal(strip.make?.format, 'page section', 'an asset the card talks about stays');
+  assert.equal(fitCta(card('Fix the markup', { title: 'Show your star ratings in Google', make: { format: 'page section', pieces: 'Homepage: search-friendly product info' } })).cta.label, 'Add the search info', 'renamed, and a plain-worded card keeps it');
 });

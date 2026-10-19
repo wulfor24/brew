@@ -16,7 +16,7 @@ const oldDeployTarget = (SEED) => {
   /* labels a generated brand's cards use that the map does not know: the card's own words name the tool before its section does */
   const toolInWords = (c) => { const s = `${c?.title || ''} ${c?.sub || ''}`; return /\b(meta|facebook|instagram|reels?)\b/i.test(s) ? 'meta' : /\bgoogle (ads|search|shopping)\b|\bsearch ads?\b/i.test(s) ? 'google' : /\b(klaviyo|email flow|newsletter)\b/i.test(s) ? 'klaviyo' : null; };
   /* labels that are a decision, a review, research or people work: nothing to run on an account */
-  const NO_TOOL = new Set(['Agree with the call', 'Open the moves', 'Open the scoreboard', 'Review draft', 'Brief the shoot', 'Shortlist creators', 'Draft the buyer deck', 'Fix tracking', 'Fix the markup']);
+  const NO_TOOL = new Set(['Agree with the call', 'Open the moves', 'Open the scoreboard', 'Review draft', 'Brief the shoot', 'Shortlist creators', 'Draft the buyer deck', 'Fix tracking', 'Add the search info']);
   /* a label that only fits some cards: it names its tool when the card's words agree, else nothing runs */
   const IF_WORDS = { 'Draft the listing': [/\b(amazon|myntra|nykaa|flipkart|ajio|tata cliq|marketplace|listing)\b/i, 'marketplaces'], 'Approve the flows': [/\b(email|flow|klaviyo|newsletter|win-?back|welcome|post-purchase|abandon)\b/i, 'klaviyo'], 'Turn on the journey': [/\b(whatsapp|message|journey|reminder|alert|nudge)\b/i, 'whatsapp'] };
   const deployTarget = (label, card) => { const mf = card?.mf || null, ai = mf?.by === 'ai' && mf.tool ? mf.tool : null, iw = IF_WORDS[label];

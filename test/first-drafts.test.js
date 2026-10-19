@@ -46,7 +46,7 @@ test('cards that name an asset get "make" back-filled from their own words; othe
   assert.equal(inferMake({ id: 'read-2', type: 'idea', title: 'Neeman’s runs 654 ads' }), null, 'read cards are left alone');
   const kept = { id: 'm09-1', type: 'idea', title: 'An email', make: { format: 'reel', pieces: '1 reel' } }; assert.deepEqual(fillMake(kept).make, kept.make, 'a card that has "make" keeps it');
   assert.deepEqual(fillMake({ ...kept, roles: ['ecom'] }).roles, ['ecom', 'brand', 'growth', 'founder'], 'an ad or post card reaches the creative seats and the founder');
-  assert.deepEqual(fillMake({ id: 'm11-1', type: 'idea', title: 'Fix the markup', roles: ['ecom'], cta: { label: 'Fix the markup' } }).roles, ['ecom'], 'other cards keep their roles');
+  assert.deepEqual(fillMake({ id: 'm11-1', type: 'idea', title: 'Add the search info', roles: ['ecom'], cta: { label: 'Add the search info' } }).roles, ['ecom'], 'other cards keep their roles');
   assert.deepEqual(fillMake({ id: 'm10-1', type: 'idea', title: 'Send the WhatsApp back-in-stock alert' }).make, { format: 'whatsapp message', pieces: '', inferred: true });
 });
 

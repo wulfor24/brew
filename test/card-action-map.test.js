@@ -36,8 +36,8 @@ const TABLE = [
   [card('Shift budget', { sector: 'ads', ...ai('meta') }), 'performance.shift_budget', 'Shift budget', 'meta_ops'],
   [card('Launch the ad group', { sector: 'ads', ...ai('google') }), 'performance.search_ad', 'Launch a Google Search ad group', 'search'],
   [card('Rotate creative', { sector: 'ads' }), 'creative.swap_creative', 'Swap a tired creative', 'meta_ad'],
-  [card('Fix the markup', { sector: 'visibility' }), 'visibility.schema_fix', 'Fix product markup', 'vis'],
-  [card('Publish the claims ledger', { sector: 'visibility' }), 'visibility.llms_txt', 'Update llms.txt and the claims list', 'vis'],
+  [card('Add the search info', { sector: 'visibility' }), 'visibility.schema_fix', 'Add search info to product pages', 'vis'],
+  [card('Publish the claims ledger', { sector: 'visibility' }), 'visibility.llms_txt', 'Update the page for AI tools and the claims list', 'vis'],
   [card('Brief the shoot', { sector: 'creatives' }), 'creative.film_brief', 'Brief a film', 'brief'],
   [card('Make the video', { sector: 'creatives', title: 'Post the size-worry Reel' }), 'creative.short_video', 'Make the short video', 'post'],
   /* a card that plans a video ad makes the video (17 Oct: it opened a words-only shoot brief and no video could be made) */

@@ -13,7 +13,7 @@ export const NEEDS = { 'Queue the 12': 'meta', 'Publish Campaign': 'meta', 'Publ
 /* labels a generated brand's cards use that the map does not know: the card's own words name the tool before its section does */
 export const toolInWords = (c) => { const s = `${c?.title || ''} ${c?.sub || ''}`; return /\b(meta|facebook|instagram|reels?)\b/i.test(s) ? 'meta' : /\bgoogle (ads|search|shopping)\b|\bsearch ads?\b/i.test(s) ? 'google' : /\b(klaviyo|email flow|newsletter)\b/i.test(s) ? 'klaviyo' : null; };
 /* labels that are a decision, a review, research or people work: nothing to run on an account */
-export const NO_TOOL = new Set(['Agree with the call', 'Open the moves', 'Open the scoreboard', 'Review draft', 'Brief the shoot', 'Shortlist creators', 'Draft the buyer deck', 'Fix tracking', 'Fix the markup']);
+export const NO_TOOL = new Set(['Agree with the call', 'Open the moves', 'Open the scoreboard', 'Review draft', 'Brief the shoot', 'Shortlist creators', 'Draft the buyer deck', 'Fix tracking', 'Add the search info']);
 /* a label that only fits some cards: it names its tool when the card's words agree, else nothing runs */
 export const IF_WORDS = { 'Draft the listing': [/\b(amazon|myntra|nykaa|flipkart|ajio|tata cliq|marketplace|listing)\b/i, 'marketplaces'], 'Approve the flows': [/\b(email|flow|klaviyo|newsletter|win-?back|welcome|post-purchase|abandon)\b/i, 'klaviyo'], 'Turn on the journey': [/\b(whatsapp|message|journey|reminder|alert|nudge)\b/i, 'whatsapp'] };
 
@@ -57,7 +57,7 @@ export function channelFit(chs, card) {
 /* labels that put a new ad out (the managing ones, budget shifts and pauses, are not new ads) */
 const AD_CTAS = new Set(['Publish Campaign', 'Publish the campaign', 'Queue the 12', 'Queue the ads', 'Rotate creative', 'Swap the images', 'Lock the Diwali set', 'Launch the ad group', 'Make the carousel ad', 'Build the collection ad', 'Build the catalog ad']);
 /* labels that fix or build what everything else stands on: the store, listings, tracking, the markup */
-const GROUND_CTAS = new Set(['Fix tracking', 'Fix the markup', 'Turn on guest checkout', 'Update landing page', 'Apply Update', 'Publish the page', 'Push the titles', 'Push 5 titles', 'Draft the listing', 'Publish the claims ledger']);
+const GROUND_CTAS = new Set(['Fix tracking', 'Add the search info', 'Turn on guest checkout', 'Update landing page', 'Apply Update', 'Publish the page', 'Push the titles', 'Push 5 titles', 'Draft the listing', 'Publish the claims ledger']);
 const GROUND_SECTORS = new Set(['storefront', 'catalog', 'visibility']);
 const GROUND_FAMILIES = new Set(['foundations', 'site', 'listings', 'search', 'ai_search']);
 export function isNewAd(card) {

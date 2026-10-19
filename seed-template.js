@@ -14,7 +14,7 @@ export const CTA = {
   'Draft the listing': ['Drafting', 'Listing drafted'], 'Fix tracking': ['Fixing tracking', 'Tracking fixes queued'], 'Turn on the journey': ['Turning it on', 'The journey is on'],
   'Approve the flows': ['Saving', 'Flows saved as drafts'], 'Send the review ask': ['Sending', 'Review ask is going out'], 'Make the video': ['Starting', 'The video is in production'],
   'Brief the shoot': ['Briefing', 'Shoot brief sent to the team'], 'Shortlist creators': ['Shortlisting', 'Creators shortlisted'], 'Start the tests': ['Starting tests', 'The tests are running'],
-  'Fix the markup': ['Fixing', 'Markup fixed'], 'Publish the claims ledger': ['Publishing', 'Claims list and llms.txt are public'], 'Launch the ad group': ['Launching', 'The search ads are live'],
+  'Add the search info': ['Adding', 'Search info added'], 'Publish the claims ledger': ['Publishing', 'The claims list and the page for AI tools are public'], 'Launch the ad group': ['Launching', 'The search ads are live'],
   'Turn on guest checkout': ['Turning it on', 'Guest checkout is on'], 'Agree with the call': ['Saving', 'Decision saved'], 'Open the scoreboard': ['Opening', 'Scoreboard is open'],
   'Draft the buyer deck': ['Drafting', 'Buyer deck drafted'], 'Make our version': ['Drafting', 'Our version is drafted'], 'Review draft': ['Opening', 'Draft is ready to review'],
   'Push the titles': ['Pushing', 'New titles pushed'], 'Open the moves': ['Opening', 'Moves page open'], 'Queue the ads': ['Queueing', 'The kept ads are queued as one test'], 'Approve the offers': ['Saving', 'Offers saved as drafts'],
@@ -22,7 +22,7 @@ export const CTA = {
   'Draft the post': ['Drafting', 'The post is drafted'], 'Draft the carousel post': ['Drafting', 'The carousel post is drafted'], 'Draft the stories': ['Drafting', 'The stories are drafted']
 };
 /* buttons renamed since they were saved: a saved card, jam or work item says the new name, and every map reads it (FEED-QA-20) */
-export const CTA_RENAME = { 'Publish Campaign': 'Publish the campaign', 'List what points there': 'Pause what points there', 'Plan the restart': 'Restart what was paused' };
+export const CTA_RENAME = { 'Publish Campaign': 'Publish the campaign', 'Fix the markup': 'Add the search info', 'List what points there': 'Pause what points there', 'Plan the restart': 'Restart what was paused' };
 export const ctaName = (l) => { const s = String(l ?? '').trim(); return CTA_RENAME[s] || s; };
 export const SPENDS = ['Publish Campaign', 'Publish the campaign', 'Shift budget', 'Launch the ad group', 'Queue the ads'];
 export const PERSON = ['Brief the shoot', 'Draft the buyer deck', 'Open the scoreboard', 'Review draft', 'Open report'];

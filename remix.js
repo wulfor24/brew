@@ -24,6 +24,7 @@ import { isQuestion, photoAsk, answerGrounded } from './jam-answer.js'; // a que
 import { EVIDENCE_ASK, proofAnswer } from './evidence.js'; // "what's the evidence?" is answered from the card's own proof
 import { moveNo } from './value.js';
 import { claimFlags, claimCheck, copyFlags, sourceText, CLAIMS_RULE, COPY_RULE } from './claims.js'; // invented codes, guarantees, timed results and copy that reads wrong are flagged before shipping
+import { dejargon } from './plain.js'; // jam names in plain words, like the cards
 import { budgetWhy } from './budget.js'; // v2 words/takes: a refused spend is said with its real reason, never a silent fallback
 import { createFamilies } from './measure-families.js';
 import { launchBrowser, zipBuffer, withBrowser } from './pdf/render.js';
@@ -84,8 +85,8 @@ export const ACTIONS = {
   visibility: {
     blog_post: { label: 'Publish a blog post', target: { conn: 'shopify', object: 'Blog post' }, money: false, rollback: 'Unpublish the post', scope: [[1, 'One post']], preview: 'copy' },
     faq_entry: { label: 'Publish an FAQ answer', target: { conn: 'shopify', object: 'FAQ page' }, money: false, rollback: 'Unpublish the entry', scope: [[1, 'One question'], [5, '5 questions'], [20, 'All 20 tracked questions']], preview: 'answer', settings: [['Where', 'The site’s FAQ page, with the “as of” date'], ['Re-check', 'Next weekly AI read']] },
-    llms_txt: { label: 'Update llms.txt and the claims list', target: { conn: 'shopify', object: 'llms.txt' }, money: false, rollback: 'Restore the previous file', scope: [[1, 'One file']], preview: 'checklist', settings: [['File', 'llms.txt on your site'], ['Re-check', 'Next weekly AI read']] },
-    schema_fix: { label: 'Fix product markup', target: { conn: 'shopify', object: 'Product markup' }, money: false, rollback: 'Restore the old markup', scope: [[1, 'One product'], [12, 'All 12 products']], preview: 'checklist', settings: [['Adds', 'Price, rating and study facts'], ['Re-check', 'Next weekly AI read']] },
+    llms_txt: { label: 'Update the page for AI tools and the claims list', target: { conn: 'shopify', object: 'Page for AI tools' }, money: false, rollback: 'Restore the previous page', scope: [[1, 'One page']], preview: 'checklist', settings: [['Page', 'The page for AI tools on your site'], ['Re-check', 'Next weekly AI read']] },
+    schema_fix: { label: 'Add search info to product pages', target: { conn: 'shopify', object: 'Search info on product pages' }, money: false, rollback: 'Restore the old page code', scope: [[1, 'One product'], [12, 'All 12 products']], preview: 'checklist', settings: [['Adds', 'Price, rating and study facts'], ['Re-check', 'Next weekly AI read']] },
     new_claim: { label: 'Publish a new claim', target: { conn: 'shopify', object: 'Claims page' }, money: false, jam: 'A new claim needs a source and legal', rollback: 'Unpublish', scope: [[1, 'One page']], preview: 'copy' }
   },
   crm: {
@@ -112,7 +113,7 @@ const CTA_ACTION = {
   'Fix tracking': 'performance.tracking_fix', 'Draft the buyer deck': 'storefront.buyer_deck', 'Build the score': 'storefront.new_section', 'Approve all': 'storefront.new_section', 'Open report': null, 'Agree with the call': 'brew.plan', 'Open the scoreboard': 'brew.plan', 'Ship the five': 'brew.plan',
   'Make our version': 'creative.add_variants', 'Turn into an idea': 'creative.add_variants', 'Start this': 'creative.add_variants', 'Turn on guest checkout': 'storefront.store_setting', 'Launch the ad group': 'performance.search_ad',
   'Reply as the brand': 'creative.reddit_post', 'Answer it on the product page': 'storefront.pdp_block', 'Use their words in a post': 'creative.ig_post',
-  'Publish the claims ledger': 'visibility.llms_txt', 'Fix the markup': 'visibility.schema_fix', 'Review draft': 'visibility.faq_entry', 'Set the watch': 'visibility.faq_entry',
+  'Publish the claims ledger': 'visibility.llms_txt', 'Add the search info': 'visibility.schema_fix', 'Review draft': 'visibility.faq_entry', 'Set the watch': 'visibility.faq_entry',
   // the buttons every brand's cards carry (seed-template CTA, live store events in feed-service liveCard)
   'Push the titles': 'storefront.listing_titles', 'Approve the offers': 'storefront.bundle_offer', 'Draft the page': 'visibility.faq_entry', 'Open the moves': null,
   'Pause what points there': 'performance.pause_pointing', 'Restart what was paused': 'performance.restart_paused', 'Update the prices': 'performance.price_in_ads', 'Fix the links': 'storefront.fix_links',
@@ -276,7 +277,7 @@ export const RECIPES = {
   visibility: {
     decision: { intents: ['Publish it', 'Tighter answer', 'Add the source'], actions: ['faq_entry', 'llms_txt', 'schema_fix'] },
     idea: { intents: ['FAQ answer', 'llms.txt line', 'Markup fix'], actions: ['faq_entry', 'llms_txt', 'schema_fix'] },
-    report: { intents: ['Get us named', 'Fix the markup', 'What moves this'], actions: ['faq_entry', 'llms_txt', 'schema_fix'], levers: true },
+    report: { intents: ['Get us named', 'Add the search info', 'What moves this'], actions: ['faq_entry', 'llms_txt', 'schema_fix'], levers: true },
     competitor: { intents: ['Counter with our numbers', 'Dated comparison', 'New claim'], actions: ['faq_entry', 'new_claim'] }
   },
   crm: {
@@ -427,9 +428,9 @@ export function createRemix(o) {
     }
     /* what a shopper would read: no invented code, guarantee or timed result, and copy that reads right (QA-25, QA-02) */
     const shopperText = [ch.after.title, ch.after.sub, ...pubT].filter(Boolean).join('\n');
-    const cf = claimFlags(shopperText, brandSource(t, card), { allowNewCode: /discount_offer$/.test(ch.action || '') });
+    const src = brandSource(t, card), cf = claimFlags(shopperText, src, { allowNewCode: /discount_offer$/.test(ch.action || '') });
     checks.push({ k: claimCheck(cf), ok: !cf.length, fix: true, claims: cf.map((f) => f.quote) });
-    const lf = copyFlags(shopperText); if (lf.length) checks.push({ k: `Reads wrong: ${lf.join('; ')}`, ok: false, fix: true });
+    const lf = copyFlags(shopperText, src); if (lf.length) checks.push({ k: `Reads wrong: ${lf.join('; ')}`, ok: false, fix: true });
     if (ch.imagePending) checks.push({ k: 'The new creative is still rendering', ok: false, soft: true });
     checks.push(act.irreversible ? { k: `Can’t be undone: ${act.irreversible}. Whoever ships it from the brief should know.`, ok: true, team: true } : { k: `Can be undone: ${act.rollback}`, ok: !!act.rollback && !/^nothing|^—/i.test(act.rollback), soft: true });
     if (act.target.conn) checks.push({ k: `${SEED.connectors[act.target.conn]?.name || act.target.conn} connected`, ok: !!t.conn[act.target.conn], soft: true, conn: act.target.conn });
@@ -607,6 +608,8 @@ export function createRemix(o) {
     const opts = optionsOf(t, ch); /* first: healing an old jam can move its stage */
     const { impact: _imp, packMeta: _pk, ...pub } = ch; /* projections can hold the brand's private account rows: they go out only through /impact, per caller */
     const card0 = t.cards.get(ch.cardId); /* our version of a rival's ad: what Brew read from it, shown in the studio */
+    /* the jam's own name in plain words ("syncing our Shopify products.json stock levels", final QA pass 19 Oct); the package itself is untouched */
+    if (pub.after?.title && dejargon(pub.after.title) !== pub.after.title) pub.after = { ...pub.after, title: dejargon(pub.after.title) };
     return { ...pub, ...(isRivalCard(card0) && o.rivalSummary ? { rival: o.rivalSummary(t, card0) } : {}), thinking: ch.thinking && Date.now() - ch.thinking.at < 300e3 ? ch.thinking : null, /* what the studio is doing right now, for the waiting person (think()) */ plan: ch.plan || o.planOf?.(t, t.cards.get(ch.cardId)) || null, copyPending: !!ch.copyPending && FILL_JOBS.has(ch.id) /* "Writing…" while the writer is really running, not a clock */, ctaPending: ch.ctaPending && CTA_JOBS.has(ch.id) ? ch.ctaPending : null /* the card's button is making it: the studio says what and keeps polling */, realOnly: realOnly(ch) /* community posts: real photos only, so no AI remakes */, trust: { level: tr.level, name: tr.name, objects: tr.objects, toNext: tr.toNext }, scope: ch.scope.map((s) => ({ ...s, locked: s.n > tr.objects })),
       familyName: ch.action === 'creative.short_video' && ch.target?.conn === 'meta' ? 'Meta video ad' : FAMILY_NAME[ch.family], fields: fieldsFor(ch.family, ch.action).filter((f) => !isAdClip(ch) || !['postAt', 'hashtags', 'where'].includes(f.k)).map(({ k, label, type, opts, cols, req, pub, hint }) => ({ k, label: isAdClip(ch) ? ({ copy: 'Ad text', title: 'Headline', platform: 'Placement' }[k] || label) : label, type, opts, cols, req, pub, hint })),
       knobs: knobsFor(ch.family, B()), suggest: suggestOf(t, ch), gradeF: GRADES[ch.pkg.grade] || 'none', missing: missing(ch.family, ch.action, ch.pkg),
@@ -939,7 +942,10 @@ export function createRemix(o) {
     if (stage !== 'drafting') move(t, w, stage, null);
     return w;
   };
-  const brief = (ch) => ({ id: ch.id, team: !!(ch.money || ch.irreversible), teamWhy: ch.teamWhy || null, costLabel: ch.costLabel || null, actionLabel: ch.actionLabel, target: `${ch.target.name}${ch.target.conn ? ' · ' + ch.target.object : ''}`, money: ch.money, amount: ch.amount, scope: ch.scope.map((s) => ({ n: s.n, label: s.label })) });
+  /* action names renamed since a jam was saved say the new name (final QA pass 19 Oct: "Fix product markup", "llms.txt") */
+  const ACT_RENAME = { 'Fix product markup': 'Add search info to product pages', 'Update llms.txt and the claims list': 'Update the page for AI tools and the claims list', 'Product markup': 'Search info on product pages', 'llms.txt': 'Page for AI tools' };
+  const actName = (l) => ACT_RENAME[l] || l;
+  const brief = (ch) => ({ id: ch.id, team: !!(ch.money || ch.irreversible), teamWhy: ch.teamWhy || null, costLabel: ch.costLabel || null, actionLabel: actName(ch.actionLabel), target: `${ch.target.name}${ch.target.conn ? ' · ' + actName(ch.target.object) : ''}`, money: ch.money, amount: ch.amount, scope: ch.scope.map((s) => ({ n: s.n, label: s.label })) });
   // the brief the ShopOS team works from: what, where, exactly what ships, what it costs, what can't be undone, who agreed
   // everything the team needs to act without asking: files, references, links, copy to paste, and what is still to be made
   const assetsFor = (t, ch) => {
@@ -983,7 +989,7 @@ export function createRemix(o) {
   const packageOf = (t, ch) => { if (!ch) return null; ensurePkg(t, ch); const head = headOf(t, ch);
     const fields = fieldsFor(ch.family, ch.action).filter((f) => ch.pkg[f.k] != null && ch.pkg[f.k] !== '' && !(Array.isArray(ch.pkg[f.k]) && !ch.pkg[f.k].length)).map((f) => { const v = ch.pkg[f.k];
       return { label: f.label, pub: !!f.pub, value: f.type === 'rows' ? v.map((r) => f.cols.map((c) => r[c]).filter(Boolean).join(' · ')).join('\n') : Array.isArray(v) ? v.map((x) => typeof x === 'object' ? Object.values(x).filter(Boolean).join(' · ') : x).join('\n') : typeof v === 'object' ? Object.entries(v).map(([k, x]) => `${k}: ${x}`).join(', ') : f.type === 'number' && /₹/.test(f.label) ? inr(v) : String(v) }; });
-    return { id: ch.id, family: FAMILY_NAME[ch.family], action: ch.actionLabel, target: `${ch.target.name}${ch.target.object ? ' · ' + ch.target.object : ''}`, version: head?.n || 1, versions: versionsOf(t, ch.id).length,
+    return { id: ch.id, family: FAMILY_NAME[ch.family], action: actName(ch.actionLabel), target: `${ch.target.name}${ch.target.object ? ' · ' + actName(ch.target.object) : ''}`, version: head?.n || 1, versions: versionsOf(t, ch.id).length,
       money: ch.money ? (ch.amount > 0 ? `About ${inr(ch.amount)} a week` : ch.costLabel || 'Costs money') : 'No spend', undo: ch.irreversible ? `Can’t be undone: ${ch.irreversible}` : `Rollback: ${ch.rollback}`, angle: ch.angle || '',
       fields, assets: assetsFor(t, ch), thread: (ch.thread || []).map((m) => ({ who: m.from === 'you' ? m.by?.name || m.by?.email || 'You' : `${AGENT[ch.agent] || 'AI'} (studio)`, text: m.text, at: m.at, v: m.v || null })),
       notes: (ch.notes || []).map((n) => n.text), checks: (ch.myChecks || []).map((m) => ({ text: m.text, done: !!m.done })), studio: `#remix=${ch.cardId}/${ch.id}` }; };
@@ -1362,7 +1368,7 @@ export function createRemix(o) {
       if (ch.batchKey) { (batches[ch.cardId] ||= { c, items: [] }).items.push(ch); continue; }
       if (!touched(ch)) continue;
       const vs = versionsOf(t, ch.id), head = headOf(t, ch);
-      rows.push({ id: ch.id, cardId: ch.cardId, cardTitle: c.title || '', title: ch.after?.title || ch.actionLabel, action: ch.actionLabel, family: FAMILY_NAME[ch.family] || '', fam: ch.family, agent: ch.agent, state: ch.state,
+      rows.push({ id: ch.id, cardId: ch.cardId, cardTitle: c.title || '', title: ch.after?.title || actName(ch.actionLabel), action: actName(ch.actionLabel), family: FAMILY_NAME[ch.family] || '', fam: ch.family, agent: ch.agent, state: ch.state,
         versions: vs.length, head: head?.n || vs.length, image: ch.pkg?.image || ch.after?.images?.[0] || c.images?.[0] || null, money: !!ch.money, at: atOf(ch), discarded: !!ch.discarded });
     }
     for (const [cardId, { c, items }] of Object.entries(batches)) {

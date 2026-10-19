@@ -30,21 +30,39 @@ const MAKE_LABELS = new Set([...Object.values(MAKE_CTA), 'Draft the post', 'Draf
    and when a saved card is read (feed-service pub) */
 const TOPIC_CTA = {
   'Fix tracking': /\b(?:tracking|track(?:ed|s)?|pixels?|conversions? api|capi|ga4|utms?|tags?|attribution|purchase events?|analytics|measurement)\b/i,
-  'Fix the markup': /\b(?:schema|markup|structured data|json-?ld|rich (?:results?|snippets?))\b/i,
+  'Add the search info': /\b(?:schema|markup|structured data|json-?ld|rich (?:results?|snippets?)|star ratings?|stars? (?:in|on) (?:google|search)|search-friendly|search (?:info|results|snippets?)|google (?:results|search|shopping)|ai (?:answers|search|tools))\b/i,
   'Launch the ad group': /\b(?:google|search ads?|keywords?|ad groups?|amazon|sponsored|ppc|bing|shopping ads?)\b/i,
   'Turn on guest checkout': /\b(?:checkout|guest)\b/i,
   'Pause what points there': /\b(?:out of stock|sold.?out|stock)\b/i,
   'Restart what was paused': /\b(?:back in stock|restock(?:ed)?|paused)\b/i,
   'Send the review ask': /\breviews?\b/i,
   'Update the prices': /\bprices?\b/i,
-  'Fix the links': /\b(?:links?|404s?|broken|redirects?)\b/i
+  'Fix the links': /\b(?:links?|404s?|broken|redirects?)\b/i,
+  /* moving ad money between campaigns: never on a card about Google's "crawl budget" or a shopper's budget (final QA pass 19 Oct) */
+  'Shift budget': /\b(?:ad spend|spend(?:ing)?|campaigns?|ad sets?|ads? budgets?|budget (?:to|from|between|across|on|into) (?:the |our |your )?(?:best|winning|top|campaign|ads?)|roas|return on ad spend|cost per (?:order|sale|purchase|result)|meta ads?|facebook ads?|google ads)\b/i
 };
 const cardWords = (c) => [c.title, c.sub, ...(c.detail?.why || []), ...(c.detail?.how || []), ...(c.rows || []).flat(), c.make?.pieces, ...(c.plan?.steps || [])].filter((x) => typeof x === 'string').join(' ');
 export const topicOk = (c) => { const re = TOPIC_CTA[c?.cta?.label], w = cardWords(c); return !re || !w.trim() || re.test(w); }; /* no words to judge by: the button stays */
+/* a fix-it card (tracking, ad money, links, checkout) asks for no picture or page: an asset its own words never mention is the
+   writer filling the "make" slot (final QA pass 19 Oct: "Fix broken checkout tracking" carried "Review strip under add to
+   cart on <product>", a crawl-budget card a collection banner). The asset counts as mentioned when the card's words name its
+   product or its thing (the words before the colon: "Review strip", "Collection banner") */
+const FIX_CTAS = new Set(['Fix tracking', 'Shift budget', 'Fix the links', 'Turn on guest checkout']);
+const STOP = new Set(['with', 'from', 'your', 'for', 'and', 'the', 'page', 'pages', 'store', 'section', 'under', 'above', 'over', 'into', 'each', 'card', 'product', 'products']);
+const keyWords = (x) => (String(x || '').toLowerCase().match(/[a-z]{4,}/g) || []).filter((w) => !STOP.has(w));
+export const makeMentioned = (c) => { const p = String(c?.make?.pieces || ''); if (!p.trim()) return true;
+  const said = keyWords([c.title, c.sub, ...(c.detail?.why || []), ...(c.detail?.how || [])].filter((x) => typeof x === 'string').join(' ')), has = new Set(said);
+  const thing = keyWords(p.split(/:/)[0]).slice(0, 3), rest = keyWords(p.split(/:/).slice(1).join(':')).slice(0, 4);
+  return thing.some((w) => has.has(w)) || rest.filter((w) => has.has(w)).length >= 2; };
 export function fitCta(card) {
   if (!card || typeof card !== 'object') return card;
   if (card.cta?.label && ctaName(card.cta.label) !== card.cta.label) card.cta = { ...card.cta, label: ctaName(card.cta.label) }; /* a renamed button heals (Publish Campaign, List what points there) */
-  if (card.cta?.label && !topicOk(card)) { const f = card.make?.format || inferMake({ ...card, cta: null })?.format; card.cta = { ...card.cta, label: (f && MAKE_CTA[f]) || 'Agree with the call' }; }
+  const offTopic = card.cta?.label && !topicOk(card);
+  /* an asset the card never talks about goes when its button only fixes or decides (or its button was off-topic anyway) */
+  if (card.make?.format && (FIX_CTAS.has(card.cta?.label) || offTopic) && !makeMentioned(card)) { card.makeDropped = card.make.format; delete card.make; }
+  if (offTopic) { const f = card.make?.format || inferMake({ ...card, cta: null })?.format; card.cta = { ...card.cta, label: (f && MAKE_CTA[f]) || 'Agree with the call' }; }
+  /* a card that pauses spend on something sold out says so on its button, not "Shift budget" (Gully Labs, final QA pass 19 Oct) */
+  if (card.cta?.label === 'Shift budget' && /\bpaus/i.test(card.title || '') && TOPIC_CTA['Pause what points there'].test(cardWords(card))) card.cta = { ...card.cta, label: 'Pause what points there' };
   const want = card?.make?.format && MAKE_CTA[card.make.format], cur = card?.cta?.label;
   /* a Google search button ("Launch the ad group") on a card that makes a Meta or social asset promises the wrong thing: the format's own button */
   const wrongNet = OTHER_NETWORK.has(cur) && MAKES_CREATIVE.test(card?.make?.format || '');
@@ -74,7 +92,7 @@ const MAKE_RE = [
 ];
 const NO_MAKE = /^(build-|statics-batch$|story-|live-|read-|heard-)/;
 /* buttons that decide, fix or open something: such a card is not asking for an asset, whatever its words mention */
-const NOT_MAKING = new Set(['Fix tracking', 'Agree with the call', 'Open the moves', 'Open the scoreboard', 'Shift budget', 'Fix the markup', 'Push the titles', 'Launch the ad group', 'Turn on guest checkout', 'Publish the claims ledger', 'Shortlist creators', 'Draft the buyer deck', 'Brief the shoot', 'Open report', 'Approve the offers']);
+const NOT_MAKING = new Set(['Fix tracking', 'Agree with the call', 'Open the moves', 'Open the scoreboard', 'Shift budget', 'Add the search info', 'Push the titles', 'Launch the ad group', 'Turn on guest checkout', 'Publish the claims ledger', 'Shortlist creators', 'Draft the buyer deck', 'Brief the shoot', 'Open report', 'Approve the offers']);
 /* buttons that ship an asset: the body may say which, and with nothing named the button's own format is used (flows and journeys name theirs) */
 const CTA_DEFAULT = { 'Send the review ask': 'email', 'Make the video': 'reel', 'Generate versions': 'single image ad', 'Make the ad': 'single image ad', 'Rotate creative': 'single image ad', 'Queue the ads': 'single image ad', 'Publish Campaign': 'single image ad', 'Publish the campaign': 'single image ad', 'Make our version': 'single image ad', 'Approve the flows': null, 'Turn on the journey': null, 'Publish the page': 'page section', 'Draft the listing': 'page section' };
 const TALKS_ABOUT = /\b(?:pause|stop|kill|cut|turn off|switch off|audit|check|fix|track|measure|count|confirm|install|restart|rival'?s?|competitor'?s?)\b[^.]{0,30}\bads?\b/i;
