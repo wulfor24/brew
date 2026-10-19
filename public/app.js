@@ -365,6 +365,13 @@
         ${step ? `<ol class="ob2-steps">${all.map((x, i) => `<li class="${i + 1 < at ? 'done' : i + 1 === at ? 'on' : ''}"><i>${i + 1 < at ? ic('check', 's14') : i + 1}</i><span>${x.t}</span></li>`).join('')}</ol>` : ''}
         <div class="ob2-body">${inner}</div></section>
       <aside class="ob2-show" id="ob-show" aria-hidden="true">${show || (step ? pvLast : '')}</aside></main>`; };
+  /* who may run Brew on a store, said once on the landing and the check page (no gate behind it) */
+  const OWN_LINE = 'Run Brew on your own store, or one you work on. Your team claims the workspace; others only see what’s public.';
+  /* is it a website address? { ok } | { name, guess } (a brand name with no dot: one guess, <name>.com) | { bad } */
+  const siteOf = (raw) => { const x = String(raw || '').trim(), host = x.replace(/^[a-z]+:\/\//i, '').replace(/[/?#].*$/, '').replace(/^www\./i, '').toLowerCase();
+    if (/^([a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/.test(host)) return { ok: true };
+    if (!/[./:]/.test(x) && /^[\p{L}\p{N}][\p{L}\p{N} &'’-]{0,60}$/u.test(x)) { const g = x.toLowerCase().normalize('NFKD').replace(/[^a-z0-9-]/g, '').replace(/^-+|-+$/g, ''); return { name: true, guess: g ? `${g}.com` : null }; }
+    return { bad: true }; };
   const start = () => {
     /* v2 keeps this start page; the brand page's read is where v2 begins (setup → OB2.run) */
     document.body.classList.remove('deck-on'); view = 'start';
@@ -375,22 +382,28 @@
         ${UI2 ? `<span class="ob2-mark">${SO()}</span>` : '<span class="ob2-eyebrow">Design partner preview</span>'}
         <h1 class="ob2-h">${UI2 ? 'Your brand’s next marketing moves, each with its sources.' : 'Your store’s marketing team, in one feed.'}</h1>${UI2 && !DEMO_LAND ? '<p class="ob2-ask">Let’s start with your URL.</p>' : ''}
         <p class="ob2-lede">${DEMO_LAND ? 'Pick a real brand below and watch it run. Brew reads' : 'Add your website. Brew reads'} your store, reviews, rivals and AI answers, then five agents bring you ideas you shape together and hand over as one brief.</p>
-        ${DEMO_LAND ? '<div class="ob2-demos" id="demos" aria-busy="true"></div>' : `<form class="ob2-url" id="url-form" autocomplete="off">${ic('link', 's18')}<input id="url-in" value="${LANDING ? '' : B.brand.host}" placeholder="yourbrand.com" aria-label="Your website" inputmode="url" autocapitalize="off" spellcheck="false"${window.BREW_DEMO && !LANDING ? ` readonly aria-readonly="true" title="This demo is set up for ${esc(B.brand.host)}"` : ''}><button class="btn btn-primary" id="go" type="submit">${UI2 ? 'Read my store' : 'Build my feed'} ${ic('right', 's16')}</button></form>`}
+        ${DEMO_LAND ? '<div class="ob2-demos" id="demos" aria-busy="true"></div>' : `<form class="ob2-url" id="url-form" autocomplete="off">${ic('link', 's18')}<input id="url-in" value="${LANDING ? '' : B.brand.host}" placeholder="yourbrand.com" aria-label="Your website" aria-describedby="url-err" inputmode="url" enterkeyhint="go" autocapitalize="off" spellcheck="false"${window.BREW_DEMO && !LANDING ? ` readonly aria-readonly="true" title="This demo is set up for ${esc(B.brand.host)}"` : ''}><button class="btn btn-primary" id="go" type="submit">${UI2 ? 'Read my store' : 'Build my feed'} ${ic('right', 's16')}</button></form>${LANDING ? `<p class="ob2-err" id="url-err" role="alert" hidden></p><p class="ob2-own">${OWN_LINE}</p>` : ''}`}
         <div class="ob2-agents">${['creative', 'performance', 'storefront', 'visibility', 'crm'].map((a) => `<span title="${AGENT[a]}">${face(a)}</span>`).join('')}<small>Creative, ads, storefront, AI answers and retention agents</small></div>
-        <p class="ob2-foot">${LANDING ? `Brew reads the live site, its reviews, rivals and AI answers, then writes its moves. Every number has a source. ${DEMO_LAND ? 'Connected accounts are a demo workspace, and nothing is sent.' : window.LIVE?.me ? `Signed in as ${esc(window.LIVE.me.email)}.` : window.LIVE?.signin ? 'You sign in with Google to start.' : window.LIVE?.dummy === false ? '' : 'Connected accounts are a demo workspace.'}` : `Every idea comes from the Brew × ${esc(B.brand.name)} move documents.${window.LIVE?.dummy === false ? '' : ' Connected numbers are a demo workspace.'}`}</p>${LANDING && !DEMO_LAND ? '<div class="ob2-recent" id="recent"></div>' : ''}${LANDING ? '<p class="ob2-legal">Preview · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></p>' : ''}`, 0,
+        <p class="ob2-foot">${LANDING ? `Brew reads the live site, its reviews, rivals and AI answers, then writes its moves. Every number has a source. ${DEMO_LAND ? 'Connected accounts are a demo workspace, and nothing is sent.' : window.LIVE?.me ? `Signed in as ${esc(window.LIVE.me.email)}.` : window.LIVE?.signin ? 'Sign in with Google. Email sign-in is coming.' : window.LIVE?.dummy === false ? '' : 'Connected accounts are a demo workspace.'}` : `Every idea comes from the Brew × ${esc(B.brand.name)} move documents.${window.LIVE?.dummy === false ? '' : ' Connected numbers are a demo workspace.'}`}</p>${LANDING && !DEMO_LAND ? '<div class="ob2-recent" id="recent"></div>' : ''}${LANDING ? '<p class="ob2-legal">Preview · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></p>' : ''}`, 0,
       `<div class="ob2-wash"></div><div class="ob2-collage">${LANDING ? LAND_CARDS.map((c, i) => `<figure class="cl cl${i} cl-txt" style="--clc:${c[3]}">${face(c[0])}<small>${esc(c[1])}</small><b>${esc(c[2])}</b></figure>`).join('') : art.map((src, i) => `<figure class="cl cl${i}"><img src="${src}" alt=""></figure>`).join('')}
         <div class="cl-chip c1">${face('creative')}<span><b>Creative director</b>12 ads ready for this week</span></div>
         <div class="cl-chip c2">${face('performance')}<span><b>Performance marketer</b>Two ad versions, drafted</span><em>Jam</em></div></div>`);
     // the tap shows at once: the button spins and says what is happening until the brand's page opens
     const going = (on, t) => { const b = $('#go'), i = $('#url-in'); if (!b) return; b.disabled = on; if (i) i.readOnly = on; $('#url-form')?.classList.toggle('is-busy', on);
       if (on) { b.dataset.t ??= b.innerHTML; b.innerHTML = `<span class="spin"></span>${esc(t)}`; } else if (b.dataset.t) b.innerHTML = b.dataset.t; };
+    /* a refusal stays under the field with its reason until they change the address (never a toast that is gone in 3 s);
+       a brand name with no dot gets one suggestion that fills the field, never a read started on a guess */
+    const urlErr = (t, guess) => { const el = $('#url-err'), i = $('#url-in'); if (!el) return; el.hidden = !t; i?.setAttribute('aria-invalid', t ? 'true' : 'false');
+      el.innerHTML = t ? `${ic('info', 's14')}<span>${esc(t)}</span>${guess ? ` <button type="button" class="linkbtn" data-url-guess="${esc(guess)}">Use ${esc(guess)}</button>` : ''}` : '';
+      el.querySelector('[data-url-guess]')?.addEventListener('click', (e) => { i.value = e.currentTarget.dataset.urlGuess; urlErr(''); i.focus(); }); };
     const go = async (e) => { e?.preventDefault(); if ($('#go').disabled) return;
       if (LANDING) { // a new brand: start the real read and open its own page
         const url = $('#url-in').value.trim(); if (!url) return $('#url-in').focus();
-        going(true, 'Opening your store…');
+        const site = siteOf(url); if (!site.ok) { urlErr(site.name ? 'That looks like a name. Paste the website address instead.' : 'That doesn’t look like a website. Try yourbrand.com', site.guess); return $('#url-in').focus(); }
+        urlErr(''); going(true, 'Opening your store…');
         const r = await api('/api/brands', { url }).catch(() => null);
         if (r?.signin) { going(true, 'Taking you to sign in…'); location.href = `/auth/google?next=${encodeURIComponent('/?build=' + encodeURIComponent(url))}`; return; }
-        if (!r?.slug) { going(false); toast(`${ic('info', 's16')}${esc(r?.error || 'That address did not open. Check it and try again.')}`); return; }
+        if (!r?.slug) { going(false); urlErr(r?.error || 'That address did not open. Check it and try again.'); return $('#url-in').focus(); }
         location.href = '/' + r.slug; return; }
       $('#go').disabled = true; await ensureTenant(true); setup(); };
     if (DEMO_LAND) { // the demo site: only the brands that are ready, and a click starts that brand's tour
@@ -404,7 +417,7 @@
           await fetch(`/api/demo/${slug}/start?d=new`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ from: 'onboarding' }) }).catch(() => {});
           location.href = '/' + slug; })); });
       return; }
-    $('#url-form').onsubmit = go;
+    $('#url-form').onsubmit = go; $('#url-in').addEventListener('input', () => urlErr(''));
     // back from Google sign-in with the address they typed: carry on
     const bq = LANDING && new URLSearchParams(location.search).get('build'); if (bq) { $('#url-in').value = bq; history.replaceState(null, '', '/'); setTimeout(go, 150); }
     if (LANDING && new URLSearchParams(location.search).get('signin') === 'failed') { history.replaceState(null, '', '/'); toast(`${ic('info', 's16')}Google sign-in did not finish. Try again.`); }
@@ -604,6 +617,7 @@
       <section class="ck2-card"><h2>Where you show up</h2><div class="ck2-srcs">${D.sources.map(sourceRow).join('')}</div></section>
       ${D.company.length ? `<details class="q-more ck2-co"><summary>Company details (optional)</summary><div class="ck2-grid">${D.company.map((x) => field(x, 'company')).join('')}</div></details>` : ''}
       <p class="q-note">Anything without a source is written as “to confirm”.</p>
+      <p class="q-note">${OWN_LINE}</p>
       <div class="ck2-bar"><button class="btn btn-primary lg" id="ck-go">${D.started ? 'Save my corrections' : 'Looks right, write my moves'} ${ic('right', 's18')}</button></div>
     </div></main>`;
     const paintStars = () => $$('.ck2-p').forEach((el) => { const on = st.hero.has(el.dataset.h); el.classList.toggle('is-hero', on); el.setAttribute('aria-pressed', on); });

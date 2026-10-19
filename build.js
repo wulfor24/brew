@@ -151,7 +151,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   async function start(url, { ip, user = null, fresh = false } = {}) {
     const raw = String(url || '').trim(); const slug = slugOf(raw);
     if (blocked(slug)) return { error: 'This address can’t be read here.' };
-    if (!slug || !/\.[a-z]{2,}/.test(raw.replace(/^[a-z]+:\/\//i, '').split('/')[0])) return { error: 'That doesn’t look like a website address.' };
+    if (!slug || !/\.[a-z]{2,}/.test(raw.replace(/^[a-z]+:\/\//i, '').split('/')[0])) return { error: 'That doesn’t look like a website. Try yourbrand.com' };
     const host = raw.replace(/^[a-z]+:\/\//i, '').replace(/[/?#].*$/, '').replace(/^www\./i, '').toLowerCase();
     const prev = await status(slug);
     if (prev?.cancelled && !fresh) return { error: 'This address was stopped. Ask Brew to restart it.' };

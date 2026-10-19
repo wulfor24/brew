@@ -35,3 +35,25 @@ test('FEED-QA-23: privacy and terms are plain preview pages, linked from the lan
   assert.match(src('public/app.js'), /class="ob2-legal">Preview · <a href="\/privacy">Privacy<\/a> · <a href="\/terms">Terms<\/a>/);
   assert.match(src('public/demo-picker.html'), /href="\/privacy">Privacy<\/a>/);
 });
+
+/* ---------- FEED-QA-04 / 26 / ONB-02, FEED-QA-16, FEED-QA-17: the landing field ---------- */
+const appSrc = () => src('public/app.js');
+const siteOf = (() => { const m = appSrc().match(/const siteOf = (\(raw\)[\s\S]*?return \{ bad: true \}; \});/); return (0, eval)(m[1]); })();
+test('FEED-QA-04: the landing checks the address inline; a brand name gets one guess that only fills the field', () => {
+  for (const ok of ['footshop.com', 'https://www.arata.in/collections/x', 'shop.co.uk', 'WWW.Brand.IN']) assert.equal(siteOf(ok).ok, true, ok);
+  assert.deepEqual(siteOf('Footshop'), { name: true, guess: 'footshop.com' });
+  assert.deepEqual(siteOf('Mama Earth'), { name: true, guess: 'mamaearth.com' });
+  for (const bad of ['foo bar.com', 'http://', 'a.b', 'brand.c0m']) assert.equal(siteOf(bad).bad, true, bad);
+  const a = appSrc(), go = a.slice(a.indexOf('const go = async (e)'), a.indexOf("$('#url-form').onsubmit"));
+  assert.match(go, /urlErr\(r\?\.error \|\|/, 'a server refusal (bad address, the daily limit, anything) stays under the field');
+  assert.doesNotMatch(go, /toast\(/, 'never a toast that is gone in 3 s');
+  assert.match(go, /That doesn’t look like a website\. Try yourbrand\.com/);
+  assert.match(a, /role="alert" hidden><\/p><p class="ob2-own">\$\{OWN_LINE\}/);
+  assert.match(src('build.js'), /That doesn’t look like a website\. Try yourbrand\.com/);
+});
+test('FEED-QA-16 / 17: the landing and the check page say who may run Brew; the landing says Google sign-in only', () => {
+  const a = appSrc();
+  assert.match(a, /const OWN_LINE = 'Run Brew on your own store, or one you work on\. Your team claims the workspace; others only see what’s public\.'/);
+  assert.match(a, /<p class="q-note">\$\{OWN_LINE\}<\/p>/);
+  assert.match(a, /Sign in with Google\. Email sign-in is coming\./);
+});
