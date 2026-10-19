@@ -98,13 +98,14 @@ export function versionLabel(reason = '', { first = false } = {}) {
 /* "Meta ads" → "Meta ad", "markup fixes" → "markup fix", "Instagram Stories" → "Instagram Story": the asset said as one */
 export const one = (x) => String(x || '').replace(/(\S+)$/, (w) => (/ies$/i.test(w) ? w.slice(0, -3) + 'y' : /(?:ch|sh|x|ss)es$/i.test(w) ? w.slice(0, -2) : /[^s]s$/i.test(w) ? w.slice(0, -1) : w));
 /* a count of options in saved words ("Write 3 new hooks per winner", "Draft the two new hook variants") said as one: cards and
-   plans written before the one-version rule heal wherever they are read */
-const COUNT = /\b(?:the\s+)?(?:two|three|four|five|six|[2-6])\s+(new\s+|more\s+|different\s+|fresh\s+)?((?:[a-z-]+\s+)?)(hooks?|versions?|variants?|variations?|cuts?|options?|ads?|scripts?|videos?|reels?|posts?|emails?|messages?|headlines?|captions?|creatives?|angles?|takes?|concepts?|carousels?|statics?)\b/gi;
+   plans written before the one-version rule heal wherever they are read. A ratio or a size is not a count ("4:5 static", "1/2 posts",
+   "2.5 ads"): the asset line read "4:one static" on every 4:5 card (final QA pass 19 Oct) */
+const COUNT = /(?<![\d:/.,×])\b(?:the\s+)?(?:two|three|four|five|six|[2-6])\s+(new\s+|more\s+|different\s+|fresh\s+)?((?:[a-z-]+\s+)?)(hooks?|versions?|variants?|variations?|cuts?|options?|ads?|scripts?|videos?|reels?|posts?|emails?|messages?|headlines?|captions?|creatives?|angles?|takes?|concepts?|carousels?|statics?)\b/gi;
 export const oneOf = (x) => String(x ?? '').replace(COUNT, (m, nw, mid, noun, at) => `${at === 0 ? "One" : "one"} ${nw || ''}${mid}${one(noun)}`);
 /* the card's own prose (title, line, how-steps): only counts of creative takes become one ("three hook variants", "Make three reel
    scripts", "Two fresh versions of each winner"); counts that are the plan itself stay ("Pack of 2", "three featured options",
    "8 ads", "two posts a week") */
-const TAKES = /(?<!\b(?:of|pack|set|buy|get)\s)\b(?:two|three|four|five|six|[2-6])\s+(new\s+|more\s+|different\s+|fresh\s+)?((?:hook|reel|video|ad|caption|headline|creative)\s+)?(hooks|versions|variants|variations|cuts|scripts|takes|concepts|angles)\b/gi;
+const TAKES = /(?<!\b(?:of|pack|set|buy|get)\s)(?<![\d:/.,×])\b(?:two|three|four|five|six|[2-6])\s+(new\s+|more\s+|different\s+|fresh\s+)?((?:hook|reel|video|ad|caption|headline|creative)\s+)?(hooks|versions|variants|variations|cuts|scripts|takes|concepts|angles)\b/gi;
 export const oneTake = (x) => String(x ?? '').replace(TAKES, (m, nw, mid, noun, at) => `${at === 0 || /[.!?]\s*$/.test(String(x).slice(0, at)) ? 'One' : 'one'} ${nw || ''}${mid || ''}${one(noun)}`);
 /* a card said as one (title, line, source, how-steps: oneTake; the asset line: oneOf), for every card wherever it is read:
    the pack load (brand-pack fitCard), every card sent to the page (feed-service pub), the brief (jam-brief). The same card back

@@ -17,7 +17,7 @@ test('dejargon swaps the plumbing words for plain ones, keeps a sentence capital
 
 test('a jam plan is plain: every step, its line and the case summary', () => {
   const c = { id: 'm30-1', title: 'Get named in AI answers', sub: 'Add JSON-LD and llms.txt so GMC reads arata.in/products.json', agent: 'visibility', sector: 'visibility',
-    cta: { label: 'Fix the markup' }, detail: { how: ['Add a webhook', 'Fix the custom pixel sandbox'] }, plan: { by: 'ai', steps: ['Audit products.json', 'Write the JSON-LD', 'Make the schema fix', 'Set a webhook'] } };
+    cta: { label: 'Add the search info' }, detail: { how: ['Add a webhook', 'Fix the custom pixel sandbox'] }, plan: { by: 'ai', steps: ['Audit products.json', 'Write the JSON-LD', 'Make the schema fix', 'Set a webhook'] } };
   const p = planFor(c);
   for (const s of p.steps) { assert.doesNotMatch(s.t, BANNED, s.t); assert.doesNotMatch(s.s || '', BANNED, s.s); }
   assert.doesNotMatch(p.summary.replace(/Next: .*$/, ''), BANNED);
@@ -52,4 +52,23 @@ test('brand-facing labels: source lines, fact rows and the campaign button in pl
   const { recipeOfCard } = await import('../remix.js');
   assert.equal(recipeOfCard({ sector: 'ads', cta: { label: 'Publish the campaign' } }).primary, recipeOfCard({ sector: 'ads', cta: { label: 'Publish Campaign' } }).primary, 'the healed label maps like the old one');
   assert.equal(dejargon('Shopify Custom Web Pixel Sandbox'), 'Shopify tracking code');
+});
+
+/* final QA pass 19 Oct: what was still technical on live cards (Mamaearth, Arata, demo): fact rows, asset lines and the move name under a card */
+test('a card’s fact rows, asset line and source line read plainly, for every brand', () => {
+  const pl = createPlain({ ai: null, store: null });
+  const c = pl.apply('x', { id: 'm64-1', title: 'Remind buyers to reorder', sub: 'x', src: 'Move 64 · Loop 3: SKU-Specific Reorder Clocks',
+    rows: [['Total catalog SKUs', '913'], ['SKUs with Schema', '81'], ['Sitemap files', '7'], ['Headless Platform', 'shopify']], make: { format: 'page section', pieces: 'Homepage title, meta description, H1 and organisation markup' } });
+  assert.equal(c.src, 'Move 64 · Product-Specific Reorder Clocks');
+  assert.deepEqual(c.rows.map((r) => r[0]), ['Total catalog products', 'Products with search-friendly product info', 'Page lists for Google', 'Store platform']);
+  assert.equal(c.make.pieces, 'Homepage title, search snippet, main heading and organisation info for Google');
+  assert.equal(pl.apply('x', { id: 'm1011-1', title: 'a', src: 'Move 1011 · Automation' }).src, 'Weekly move 11 · Automation');
+  assert.equal(dejargon('Hold markup on failing packs'), 'Hold markup on failing packs', 'a price markup is not page code');
+});
+
+test('a ratio is not a count: an asset line keeps 4:5 (final QA pass 19 Oct: "4:one static")', async () => {
+  const { oneOf, oneCard } = await import('../text-fit.js');
+  assert.equal(oneOf('4:5 static: Gully Number 001 – Megh White close-up'), '4:5 static: Gully Number 001 – Megh White close-up');
+  assert.equal(oneCard({ make: { format: 'instagram post', pieces: '4:5 post: the unboxing card' } }).make.pieces, '4:5 post: the unboxing card');
+  assert.equal(oneOf('Make 3 statics of the serum'), 'Make one static of the serum');
 });

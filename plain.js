@@ -26,17 +26,27 @@ const JARGON = [
   [/\bunbranded (?:queries|searches|questions)\b/gi, 'searches that name no brand'], [/\bcold (?:buyers|audiences?|traffic)\b/gi, 'people new to you'],
   [/\bretargeting\b/gi, 'ads to past visitors'], [/\bconversion rate\b/gi, 'share of visitors who buy'], [/\bhero (?:product|SKU)\b/gi, 'best seller'],
   /* the store's plumbing (QA 19 Oct, FEED-ARV-07: jam plans and source lines said GMC, webhook, products.json, JSON-LD) */
-  [/`?(?:\b(?:https?:\/\/)?[\w-]+(?:\.[\w-]+)+)?\/?\bproducts\.json\b`?/gi, 'your product list'],
+  [/(?:\b(?:our|your|the)\s+)?(?:Shopify(?:'s|’s)?\s+)?`?(?:\b(?:https?:\/\/)?[\w-]+(?:\.[\w-]+)+)?\/?\bproducts\.json\b`?/gi, 'your product list'],
   [/\b(?:(?:an?|the|your|structured|root|new)\s+)*`?\/?\bllms\.txt\b`?(?:\s+(?:file|signpost|page))?/gi, 'a page for AI tools'],
   [/\b(?:JSON-LD|schema\.org|structured data)(?:\s+(?:FAQPage|FAQ|Product|Review|Organization))?(?:\s+(?:schema|markup|structured data))*\b/gi, 'search-friendly product info'],
   [/\b(?:(?:FAQPage|FAQ|Product|Review|Organization)\s+)?schema(?:\s+markup)?\b/gi, 'search-friendly product info'],
   [/\b(?:Google Merchant Center|GMC)(?: feeds?)?\b/g, 'Google Shopping feed'], [/\bMerchant Center\b/g, 'Google Shopping'],
   [/\bwebhooks\b/gi, 'automatic alerts'], [/\bwebhook\b/gi, 'automatic alert'], [/\bGTM\b/g, 'Google Tag Manager'],
-  [/\bcustom (?:web )?pixels?(?:\s+sandbox)?\b/gi, 'tracking code']
+  [/\bcustom (?:web )?pixels?(?:\s+sandbox)?\b/gi, 'tracking code'],
+  /* the rest of the page plumbing that reached fact rows, asset lines and move names (final QA pass 19 Oct: "SKUs with Schema",
+     "Sitemap files", "organisation markup", "meta description, H1", "Headless Platform", "crawl budget") */
+  [/\b(rating|review|organi[sz]ation|product|stock|return|price|FAQ|breadcrumb|search|page)\s+markup\b/gi, (m, w) => `${w} info for Google`],
+  [/\bmeta descriptions?\b/gi, 'search snippet'], [/\btitle tags?\b/gi, 'page title'], [/\bH1s?\b/g, 'main heading'],
+  [/\bsitemap (?:pages|urls|links)\b/gi, 'pages listed for Google'], [/\bsitemap files\b/gi, 'page lists for Google'], [/\bsitemaps\b/gi, 'page lists for Google'], [/\bsitemap\b/gi, 'page list for Google'], [/\bcrawl budget\b/gi, 'Google’s visits'], [/\bcrawlers?\b/gi, 'search bots'],
+  [/\bheadless (?:platform|commerce|store(?:front)?)\b/gi, 'store platform'], [/\bscript blocks?\b/gi, 'code snippet'],
+  [/\bstructured (answer|content|FAQ|data block)/gi, (m, w) => w]
 ];
 /* a swap at the start of a sentence starts with a capital, like the words it replaced */
-const cap1 = (to, m, at, all) => (/^[A-Z`/]/.test(m) && /^[a-z]/.test(to) && (at === 0 || /[.!?:]\s+$/.test(all.slice(Math.max(0, at - 3), at))) ? to[0].toUpperCase() + to.slice(1) : to);
-export const dejargon = (s) => { if (typeof s !== 'string' || !s) return s; let x = s; for (const [re, to] of JARGON) x = x.replace(re, (m, ...a) => cap1(to, m, a[a.length - 2], a[a.length - 1])); return moveSay(x); }; /* and "Weekly move 11", never "Move 1011" */
+const cap1 = (to, m, at, all) => (/^[A-Z`/]/.test(m) && /^[a-z]/.test(to) && (at === 0 || /[.!?:·]\s+$/.test(all.slice(Math.max(0, at - 3), at)) || /^-[A-Z]/.test(all.slice(at + m.length, at + m.length + 2))) ? to[0].toUpperCase() + to.slice(1) : to); /* and in a Title-Case compound ("SKU-Specific" → "Product-Specific") */
+export const dejargon = (s) => { if (typeof s !== 'string' || !s) return s; let x = s; for (const [re, to] of JARGON) x = x.replace(re, (m, ...a) => { const at = a[a.length - 2], all = a[a.length - 1]; return cap1(typeof to === 'function' ? to(m, ...a) : to, m, at, all); }); return moveSay(x); }; /* and "Weekly move 11", never "Move 1011" */
+/* the source line under a card ("Move 64 · Loop 3: SKU-Specific Reorder Clocks"): the move's own words, without the plan's
+   internal numbering (Loop 3, Pillar 2, Phase 1) and in plain words */
+export const plainSrc = (s) => (typeof s !== 'string' || !s ? s : dejargon(s.replace(/(·\s*)(?:Loop|Pillar|Phase|Step|Part|Stage|Track|Wave|Tier|Layer|Workstream|Sprint)\s*\d+[a-z]?\s*[:.\-–—]\s*/gi, '$1')));
 
 const sha = (s) => crypto.createHash('sha1').update(s).digest('hex').slice(0, 16);
 export const plainKey = (c) => sha(JSON.stringify([PLAIN_V, c?.title || '', c?.sub || '', c?.detail?.why || [], c?.detail?.how || []]));
@@ -92,6 +102,8 @@ export function createPlain({ ai, store, spend = () => true, isMock = () => fals
     const d = c.detail || {}, out = { ...c, title: dejargon(p?.title || c.title), sub: dejargon(p?.sub || c.sub) };
     if (c.detail) out.detail = { ...d, why: (p?.why?.length ? p.why : d.why || []).map(dejargon), how: (p?.how?.length ? p.how : d.how || []).map(dejargon) };
     if (c.make?.pieces) out.make = { ...c.make, pieces: dejargon(c.make.pieces) }; /* the make chip under the words ("Homepage: JSON-LD …") */
+    if (Array.isArray(c.rows)) out.rows = c.rows.map((r) => (Array.isArray(r) ? r.map((x) => (typeof x === 'string' ? dejargon(x) : x)) : r)); /* the fact rows ("SKUs with Schema", "Sitemap files") */
+    if (c.src) out.src = plainSrc(c.src);
     if (p?.because) out.because = p.because;
     if (p && (p.title !== c.title || p.sub !== c.sub)) out.orig = { title: c.title, sub: c.sub }; /* the words as written, for the proof sheet */
     return out; };
