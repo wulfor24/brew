@@ -61,7 +61,8 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
   };
   const cookies = (req) => Object.fromEntries(String(req.headers.cookie || '').split(/;\s*/).filter(Boolean).map((c) => { const i = c.indexOf('='); return [c.slice(0, i), decodeURIComponent(c.slice(i + 1))]; }));
   const setCookie = (res, name, val, maxAge) => { const prev = res.getHeader('set-cookie') || []; res.setHeader('set-cookie', [...(Array.isArray(prev) ? prev : [prev]), `${name}=${encodeURIComponent(val)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? '; Secure' : ''}`]); };
-  const user = (req) => { const s = verify(cookies(req).fs_s, 'session'); return s?.email ? { email: s.email, name: s.name || null, pic: s.pic || null, sub: s.sub || null } : null; };
+  /* req.brewUser: a person inside the Shopify admin, proved by a session token (shopify-app.js attach), never by a cookie */
+  const user = (req) => { if (req.brewUser) return req.brewUser; const s = verify(cookies(req).fs_s, 'session'); return s?.email ? { email: s.email, name: s.name || null, pic: s.pic || null, sub: s.sub || null } : null; };
   const redirect = (res, to) => { res.writeHead(302, { location: to, 'cache-control': 'no-store' }); res.end(); };
   const json = (res, code, body) => { res.writeHead(code, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(JSON.stringify(body)); };
   const readBody = (req) => new Promise((r) => { let d = ''; req.on('data', (c) => (d += c)); req.on('end', () => { try { r(JSON.parse(d || '{}')); } catch { r({}); } }); });

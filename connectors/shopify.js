@@ -8,7 +8,7 @@ import { exactSite } from '../auth.js';
 import { card, L, n0, pct, has, fmt, getJSON, form, dayISO } from './common.js';
 
 const API = '2026-04';
-const BASE = 'read_products,read_inventory,read_locations';
+const BASE = 'read_products,read_inventory'; /* only what sync reads (App Store requirement 3.2); the same list as docs/shopify.app.toml */
 const PCD = 'read_orders,read_customers';
 // read only: Brew never changes the store (SCOPE.md)
 const scopes = () => [BASE, process.env.SHOPIFY_PCD_APPROVED === '1' && PCD].filter(Boolean).join(',');

@@ -227,7 +227,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
   const avail = () => Object.fromEntries(SIM_IDS.filter((id) => !OFF.has(id)).map((id) => {
     if (simOnly(id)) return [id, SIM_AVAIL];
     const C = REAL[id];
-    return [id, { modes: C.modes, ready: !!C.ready(deps), oauth: C.modes.includes('oauth') && !!C.ready(deps) && (C.oauthOn ? !!C.oauthOn() : true), picks: !!C.picks, multi: !!C.multi, proof: C.proof !== false, every: everyOf(id) / 3600e3, help: C.help?.() || null, email: C.helpEmail?.() || null,
+    return [id, { ...(id === 'shopify' && installUrl() ? { install: true } : {}), modes: C.modes, ready: !!C.ready(deps), oauth: C.modes.includes('oauth') && !!C.ready(deps) && (C.oauthOn ? !!C.oauthOn() : true), picks: !!C.picks, multi: !!C.multi, proof: C.proof !== false, every: everyOf(id) / 3600e3, help: C.help?.() || null, email: C.helpEmail?.() || null,
       fields: (C.keyFields || []).map(({ k, label, hint, secret, optional }) => ({ k, label, hint, secret: !!secret, optional: !!optional })) }];
   }));
   async function liveView(slug, me) {
@@ -269,6 +269,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
   }
 
   /* ---------- routes ---------- */
+  const installUrl = () => (/^https:\/\/(apps\.shopify\.com|admin\.shopify\.com)\//.test(process.env.SHOPIFY_INSTALL_URL || '') ? process.env.SHOPIFY_INSTALL_URL : null);
   const ADMIN_ONLY = 'Only the brand’s admins connect or disconnect accounts. You can sync the ones that are connected.';
   const canConnect = (access) => !access.role || access.role === 'owner' || access.role === 'admin';
   const slugOf = (x) => String(x || '').replace(/[^a-z0-9-]/g, '');
@@ -287,6 +288,8 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
         if (!access.gen) return redirect(res, `/${slug}#v=connectors&cxerr=${encodeURIComponent(noGen(access, access.host))}`), true;
         if (!canConnect(access)) return redirect(res, `/${slug}#v=connectors&cxerr=${encodeURIComponent(ADMIN_ONLY)}`), true;
         if (!C.ready(deps) || (C.oauthOn && !C.oauthOn())) return redirect(res, `/${slug}#v=connectors&cx=${id}&cxerr=${encodeURIComponent(`Signing in to ${C.name} is not switched on yet. Use the key option instead.`)}`), true;
+        /* the public app installs from Shopify (its listing or install link); the store then links to the brand by its domain (shopify-app.js) */
+        if (id === 'shopify' && installUrl()) return redirect(res, installUrl()), true;
         const state = auth.sign({ slug, id, email: me.email, n: crypto.randomBytes(9).toString('base64url') }, 900, 'connect');
         try { return redirect(res, C.authorize({ state, redirect: cbUrl(req, id), shop: u.searchParams.get('shop') || (await ctxOf(slug)).shopifyShop })), true; }
         catch (e) { return redirect(res, `/${slug}#v=connectors&cx=${id}&cxerr=${encodeURIComponent(e.message)}`), true; }
@@ -439,6 +442,14 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     for (const { slug } of await packs.list().catch(() => [])) { const s = (await conns(slug).catch(() => ({})))?.slack; if (s?.account?.id === team && !s.sim && (s.at || 0) >= at) { found = slug; at = s.at || 0; } }
     if (found) teams.set(team, found); return found;
   }
+  /* the brand a Shopify store is connected to (shopify-app.js: webhooks, the embedded app), newest connection wins */
+  const shops = new Map();
+  async function shopSlug(shop) {
+    if (!shop) return null; const hit = shops.get(shop); if (hit && (await conns(hit).catch(() => ({})))?.shopify?.account?.id === shop) return hit;
+    let found = null, at = 0;
+    for (const { slug } of await packs.list().catch(() => [])) { const s = (await conns(slug).catch(() => ({})))?.shopify; if (s?.account?.id === shop && !s.sim && (s.at || 0) >= at) { found = slug; at = s.at || 0; } }
+    if (found) shops.set(shop, found); else shops.delete(shop); return found;
+  }
   /* Slack says the app was removed or its token revoked: the brand's Slack is disconnected */
   async function slackGone(team) { const slug = await slackSlug(team); teams.delete(team); if (slug) await disconnect(slug, 'slack').catch(() => {}); return slug; }
   async function slackRoutes(req, res, u) {
@@ -456,5 +467,5 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     return false;
   }
 
-  return { handle: async (req, res, u) => (await slackRoutes(req, res, u)) || handle(req, res, u), sim: SIM, slackOf, slackPost, slackLink, slackChannels, slackUser, slackSlug, slackGone, liveOf, forViewer, drop: (slug) => cache.delete(sk(slug)), liveView, sync, disconnect, finish, tick, ageCheck, expiryCheck, CONNECTORS };
+  return { handle: async (req, res, u) => (await slackRoutes(req, res, u)) || handle(req, res, u), sim: SIM, slackOf, slackPost, slackLink, slackChannels, slackUser, slackSlug, slackGone, shopSlug, liveOf, forViewer, drop: (slug) => cache.delete(sk(slug)), liveView, sync, disconnect, finish, tick, ageCheck, expiryCheck, CONNECTORS };
 }

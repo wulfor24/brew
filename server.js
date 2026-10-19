@@ -41,6 +41,7 @@ import { createRetire } from './retire.js'; // older revisions stop and exit; br
 import { createFactsDesk } from './facts-desk.js';
 import { createAuth } from './auth.js';
 import { createConnectors } from './connectors/index.js';
+import { createShopifyApp } from './shopify-app.js';
 import { createSlackRoutes } from './slack-routes.js';
 import { DEMO, demoSid, demoEmail, runDemo, sessionOf, guardFetch } from './demo-mode.js'; // Demo Mode: the demo site (DEMO_MODE=1)
 import { createDemoRoutes, simStatus } from './demo-routes.js';
@@ -611,6 +612,8 @@ let connectors = null;
 /* real connected accounts on the live site (read only, tokens in the vault; Slack posts what the team sends); DUMMY: simulated on the demo site (connectors/index.js simOnly) */
 connectors = createConnectors({ packs, auth, builder, treg, log: console, onLive: (slug) => { MEMO.clear(); feedSvc?.refreshLive(slug).catch(() => {}); } });
 const slackRoutes = DEMO ? null : createSlackRoutes({ connectors, feed: () => feedSvc, log: console });
+/* Brew inside the Shopify admin: the public app's install, session tokens, webhooks (shopify-app.js); live site only */
+const shopifyApp = DEMO ? null : createShopifyApp({ auth, connectors, builder, packs, log: console });
 /* a shared jam link: anyone can look; signing in makes a person a guest of that one jam (feed-service guestOk), never a
    member of the brand's team. Team access comes only from an owner's invite or the brand's work email (auth.js) */
 feedSvc = createFeedService({ ai, /* Drop anything here reads PDFs and photos with it (drop-read.js) */ /* tagging an email in a jam invites them to the team, with the tagger's own views (any teammate may invite to their views) */
@@ -905,6 +908,7 @@ process.once('SIGTERM', () => { builder?.stop?.(); /* no new move starts here; t
 async function serve(req, res, u) {
   try {
     if (demoRoutes && await demoRoutes(req, res, u)) return;
+    if (shopifyApp) { await shopifyApp.attach(req, u); if (await shopifyApp.handle(req, res, u)) return; } // a request from inside the Shopify admin carries a session token, not a cookie
     if (await auth.handle(req, res, u)) return;
     if (await slooshHandle(req, res, u)) return;
     if (await jamMail.handle(req, res, u)) return; // the mute / only-tags links in jam emails
@@ -945,7 +949,7 @@ async function serve(req, res, u) {
     if (pg.kind === 'legal') return send(res, 200, LEGAL[pg.page](), 'text/html; charset=utf-8');
     const html = pg.kind === 'landing' ? await pageFor('') : pg.kind === 'slug' ? await pageFor(pg.slug) : null;
     if (html && pg.redirect) { res.writeHead(302, { location: `/${pg.slug}${u.search}` }); return res.end(); }
-    if (html) return send(res, 200, html, 'text/html; charset=utf-8');
+    if (html) return send(res, 200, shopifyApp ? shopifyApp.embed(req, u, res, html) : html, 'text/html; charset=utf-8'); /* inside the Shopify admin: App Bridge first */
     return send(res, 404, notFoundPage(), 'text/html; charset=utf-8');
   } catch (e) { console.error(e); send(res, 500, { error: 'server' }); }
 }

@@ -21,8 +21,10 @@ export const privacyPage = () => shell('Privacy', `<h1>Privacy</h1><span class="
 <ul><li>Your store’s public website: pages, products and prices.</li><li>Public reviews of your brand.</li><li>Your rivals’ public websites, and the ads you and they run in Meta’s public Ad Library.</li><li>What AI assistants answer when shoppers ask about your category.</li></ul>
 <h2>Accounts you connect</h2>
 <p>Only if your team connects them (for example Shopify, Meta Ads, Google Analytics, Klaviyo). Access is read-only: Brew never changes your accounts. Keys are stored encrypted, and only your team sees what they show. Slack posts only to the channel you pick.</p>
+<h2>Brew in your Shopify admin</h2>
+<p>When you install Brew from Shopify, it reads your products, stock, orders and how many orders each customer has placed. It never reads customers’ names, emails, phone numbers or addresses, and it keeps totals and shares, never a record of any one customer. Shopify tells Brew who you are (your name and email) so you join your brand’s team. Uninstalling Brew stops every read and removes Brew’s access to your store; Brew also honours Shopify’s data requests and erasure requests.</p>
 <h2>Signing in</h2>
-<p>You sign in with Google. Brew gets your name, email address and photo, nothing else.</p>
+<p>On the web you sign in with Google. Brew gets your name, email address and photo, nothing else. Inside Shopify, Shopify signs you in.</p>
 <h2>Where it is kept</h2>
 <p>Brew runs on Google Cloud, and your brand’s data is stored there. AI models on Google Cloud write the moves and drafts from what Brew read. Some public data (search results, ads, social posts) is fetched through data providers. A final image or video your team asks for may be made by Sloosh, ShopOS’s studio. Brew’s emails to your team are sent through Resend.</p>
 <h2>Who sees what</h2>

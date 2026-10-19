@@ -1,0 +1,39 @@
+# Brew's public Shopify app (FEED_SHOPIFY_CLIENT_ID). Push it with the Shopify CLI from this folder:
+#   shopify app config link   (pick the Brew app once; it fills client_id)
+#   shopify app deploy        (releases a version with these URLs, scopes and webhooks)
+# Or copy the same values into the app's version in the Dev Dashboard (dev.shopify.com → Brew → Versions → New version).
+# Keep access_scopes in step with connectors/shopify.js and shopify-app.js SCOPES.
+
+client_id = "FILL_FROM_FEED_SHOPIFY_CLIENT_ID"
+name = "Brew"
+application_url = "https://brew.joinsquareup.com/shopify"
+embedded = true
+
+[access_scopes]
+# read only: Brew never changes the store. Orders and customers are protected customer data (Level 1: no names, emails,
+# phones or addresses); Brew reads order totals, dates and how many orders each customer has made, never who they are.
+scopes = "read_products,read_inventory,read_orders,read_customers"
+use_legacy_install_flow = false
+
+[auth]
+redirect_urls = [
+  "https://brew.joinsquareup.com/shopify/callback",
+  "https://brew.joinsquareup.com/connect/shopify/callback"
+]
+
+[webhooks]
+api_version = "2026-04"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "https://brew.joinsquareup.com/shopify/webhooks"
+
+  [[webhooks.subscriptions]]
+  compliance_topics = [ "customers/data_request", "customers/redact", "shop/redact" ]
+  uri = "https://brew.joinsquareup.com/shopify/webhooks"
+
+[pos]
+embedded = false
+
+[build]
+automatically_update_urls_on_dev = false

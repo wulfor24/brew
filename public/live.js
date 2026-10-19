@@ -120,8 +120,8 @@
       else if (!oauth && !key) html = box({ id, title: `Connect ${esc(nm(id))}`, line, body: unlocks(id), status: stat(`Connecting ${esc(nm(id))} is being switched on. Brew’s team will send you a link.`, '', 'clock'), go: goBtn('Got it', 'data-close') });
       else {
         const steps = g.steps.filter((s) => !s.oauth), alt = oauth && key && steps.length;
-        const oauthPane = oauth ? box({ id, title: `Connect ${esc(nm(id))}`, line, body: claimNote() + unlocks(id) + why + (id === 'shopify' ? `<div class="cxb-form">${field({ k: 'shop', label: 'Store address', hint: 'your-store.myshopify.com' }, 'data-shop')}</div>` : ''), status,
-          ghost: alt ? ghostBtn(esc(g.alt), 'data-swap="key"') : ghostBtn('Not now'), go: goBtn(`Continue with ${short}${ic('right', 's16')}`, 'data-oauth') }) : '';
+        const oauthPane = oauth ? box({ id, title: `Connect ${esc(nm(id))}`, line, body: claimNote() + unlocks(id) + why + (id === 'shopify' && !av.install ? `<div class="cxb-form">${field({ k: 'shop', label: 'Store address', hint: 'your-store.myshopify.com' }, 'data-shop')}</div>` : ''), status,
+          ghost: alt ? ghostBtn(esc(g.alt), 'data-swap="key"') : ghostBtn('Not now'), go: goBtn(`${id === 'shopify' && av.install ? 'Install Brew on' : 'Continue with'} ${short}${ic('right', 's16')}`, 'data-oauth') }) : ''; /* Shopify installs from Shopify itself: nobody types a store address (App Store requirement 2.3.1) */
         const keyPane = key && steps.length ? box({ id, title: `Connect ${esc(nm(id))}`, line: esc(g.time), body: (oauth ? '' : claimNote() + why) + stepList(steps) + `<div class="cxb-form">${fieldsOf(id, av)}</div>`, status,
           ghost: alt ? ghostBtn('Back', 'data-swap="oauth"') : ghostBtn('Not now'), go: goBtn('Connect', 'data-key') }) : '';
         html = oauth ? pane('oauth', oauthPane, true) + (alt ? pane('key', keyPane, false) : '') : pane('key', keyPane, true);
@@ -129,7 +129,7 @@
     }
     A().modal(shell(html), (m) => {
       const $ = (q) => m.querySelector(q); keepPlace(m); bindBox(m);
-      $('[data-oauth]')?.addEventListener('click', () => { const shop = $('[data-shop]')?.value?.trim(); if (id === 'shopify' && !shop) { $('[data-shop]').closest('.lc-f')?.classList.add('is-miss'); $('[data-shop]').focus(); return; } leave(`/connect/${id}/start?brand=${slug}${shop ? `&shop=${encodeURIComponent(shop)}` : ''}`); });
+      $('[data-oauth]')?.addEventListener('click', () => { const shop = $('[data-shop]')?.value?.trim(); if (id === 'shopify' && !shop && !av.install) { $('[data-shop]').closest('.lc-f')?.classList.add('is-miss'); $('[data-shop]').focus(); return; } leave(`/connect/${id}/start?brand=${slug}${shop ? `&shop=${encodeURIComponent(shop)}` : ''}`); });
       $('[data-key]')?.addEventListener('click', () => { const ins = [...m.querySelectorAll('[data-k]')], miss = ins.find((i) => i.required && !i.value.trim() && !i.closest('[hidden]'));
         if (miss) { miss.focus(); miss.closest('.lc-f')?.classList.add('is-miss'); return; }
         const fields = Object.fromEntries(ins.map((i) => [i.dataset.k, i.value.trim()]).filter(([, v]) => v)); run(m, id, post(`/api/brands/${slug}/connect/${id}`, { action: 'key', fields }), opts); });
