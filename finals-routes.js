@@ -100,7 +100,7 @@ export function createFinalsRoutes({ on, W, say, meOf, slugOfT, brandOfT, cardOf
 }
 
 /* ---------- the studio: a final is the next version, labelled Final ---------- */
-export function createStudioFinals({ on, C, ensurePkg, sync, version, pubChange, cardOf = () => null, cardPhoto = () => null, catalogOf = () => [], jobs, vidJobs = null, references = null, finals, sloosh, creditsLeft = () => null, rivalOf = async () => null, brandOfT, slugOfT, meOf = () => null, onMedia = () => {}, isVideo = () => false, RATIO = {}, now = () => Date.now(), log = console }) {
+export function createStudioFinals({ headOf = () => null, useVersion = () => {}, versionById = () => null, on, C, ensurePkg, sync, version, pubChange, cardOf = () => null, cardPhoto = () => null, catalogOf = () => [], jobs, vidJobs = null, references = null, finals, sloosh, creditsLeft = () => null, rivalOf = async () => null, brandOfT, slugOfT, meOf = () => null, onMedia = () => {}, isVideo = () => false, RATIO = {}, now = () => Date.now(), log = console }) {
   const sheet = createFinalsSheet({ finals, sloosh, references, creditsLeft, brandOfT, log, now });
   const nameOf = (t) => meOf(t)?.name || meOf(t)?.email || 'Someone';
   const headFinal = (ch) => (ch.versions || []).find?.((v) => v.id === ch.headVersionId)?.final || ch.lastFinal?.versionId === ch.headVersionId ? ch.lastFinal : null;
@@ -110,12 +110,14 @@ export function createStudioFinals({ on, C, ensurePkg, sync, version, pubChange,
   /* the final's file onto the package: into a remade draft (the stage shows it), else the version's own photo or clip */
   /* words: the final has its words set in the picture (Sloosh or Gemini drew them), so the studio lays no overlay on it and the brief
      never asks for them to be set again (pkg.wordsIn names that file; a new photo shows the overlay again) */
+  const grewFrom = (t, ch, v, id) => { for (let x = v, k = 0; x && k < 400; x = x.parentVersionId ? versionById(t, ch, x.parentVersionId) : null, k++) if (x.id === id) return true; return false; };
   const land = (ch, isVid, file, words = false) => { const d = remade(ch);
     ch.pkg = d ? { ...ch.pkg, draft: { ...d, ...(isVid ? { video: file, poster: d.poster || d.images?.[0] || null } : { images: [file, ...(d.images || []).slice(1)] }), pending: false } } : { ...ch.pkg, ...(isVid ? { video: file } : { image: file, wordsIn: words ? file : null }) }; };
   const baseOf = (t, ch) => { const c = cardOf(t, ch) || {}, p = ch.pkg || {}, d = remade(ch); const fin = headFinal(ch);
     if (d) { const vid = d.as === 'video', s0 = (d.slides || [])[0] || {};
       return { kind: vid ? 'video' : 'image', title: d.title || ch.after?.title || c.title || '', visual: [d.imageBrief || s0.visual || (d.script || [])[0]?.shot || p.imageBrief, p.knobs?.scene ? `Scene: ${p.knobs.scene}.` : ''].filter(Boolean).join(' '), scene: sceneOf(c), text: d.overlay || s0.text || (d.script || [])[0]?.line || p.headline || '', copy: p.primaryText || p.copy || '', ratio: d.ratio || (vid ? '9:16' : RATIO[p.format] || '4:5'), motion: d.motion || undefined, script: (d.script || [])[0]?.line || '', beats: vid ? (d.script || []).map((x) => ({ shot: x.shot, line: x.line })) : [], fromFile: (vid ? d.video : null) || d.images?.[0] || p.image || null, revision: fin ? (fin.revision || 0) + 1 : 0, format: vid ? 'reel' : d.as === 'carousel' ? 'carousel ad' : c?.make?.format || p.format || '' }; }
-    return { kind: isVideo(ch) ? 'video' : 'image', title: ch.after?.title || c.title || '', visual: [p.imageBrief, p.knobs?.scene ? `Scene: ${p.knobs.scene}.` : '', p.knobs?.audience ? `For ${p.knobs.audience}.` : ''].filter(Boolean).join(' '), scene: sceneOf(c), text: p.overlay || p.headline || '', copy: p.primaryText || p.copy || '', ratio: RATIO[p.format] || '4:5', script: (p.script || [])[0]?.line || '', fromFile: p.video || p.image || null, revision: fin ? (fin.revision || 0) + 1 : 0, format: c?.make?.format || p.format || '' }; };
+    /* a reel's final gets its whole script as timed beats (it used to get only the first line) */
+    return { kind: isVideo(ch) ? 'video' : 'image', beats: isVideo(ch) ? (p.script || []).filter((x) => x?.shot || x?.line).map((x) => ({ shot: x.shot || '', line: x.line || '' })) : [], title: ch.after?.title || c.title || '', visual: [p.imageBrief, p.knobs?.scene ? `Scene: ${p.knobs.scene}.` : '', p.knobs?.audience ? `For ${p.knobs.audience}.` : ''].filter(Boolean).join(' '), scene: sceneOf(c), text: p.overlay || p.headline || '', copy: p.primaryText || p.copy || '', ratio: RATIO[p.format] || '4:5', script: (p.script || [])[0]?.line || '', fromFile: p.video || p.image || null, revision: fin ? (fin.revision || 0) + 1 : 0, format: c?.make?.format || p.format || '' }; };
   const photos = (t, ch) => { const c = cardOf(t, ch) || {}, p = ch.pkg || {}; return sheet.photosOf(t, c, [...(p.photos || []).filter((u) => !/^gen\//.test(u)), cardPhoto(t, c)]); };
   const draftOf = (t, ch) => { const p = ch.pkg || {}, b = baseOf(t, ch), d = remade(ch); return { id: ch.id, as: b.kind, title: b.title, visual: b.visual, motion: '', text: b.text, ratio: b.ratio, final: !!headFinal(ch), image: d?.images?.[0] || p.image || null, video: d ? d.video || null : p.video || null }; };
 
@@ -124,27 +126,37 @@ export function createStudioFinals({ on, C, ensurePkg, sync, version, pubChange,
 
   on('POST', '/api/changes/:chid/final/quote', async (b, t, p) => { const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (ch.imagePending || ch.videoPending || ch.remakePending) return { error: 'A picture is still being made. One moment.' };
     const base = baseOf(t, ch), rival = await rivalOf(t, ch, ch.pkg || {}).catch(() => null); /* "Make our version": their composition and look, our words where theirs sit */
+    /* one tap (the studio's main button, Param 19 Oct): what the sheet fills by hand. The draft's own product photo as image 1 (label
+       kept exact); a reel runs about 3 seconds a beat (6–15) with sound, so the script's lines are spoken. The quote itself is free */
+    if (b.auto) { const ps = photos(t, ch) || [], lead = ps.find((x) => x.named) || ps[0] || null;
+      b = { ...b, refs: lead ? [{ id: lead.id, url: lead.url, job: 'product', label: lead.label || 'Product', keep: 'keep the label exact', kind: lead.kind }] : [],
+        ...(base.kind === 'video' ? { seconds: Math.max(6, Math.min(15, 3 * Math.max(2, (base.beats || []).length))), sound: true } : {}) }; }
     const spec = sheet.spec(t, rival ? { ...base, rival } : base, b); const q = await finals.quote(slugOfT(t), spec).catch((e) => ({ error: e.message }));
     if (q.error) { ch.finalQuote = null; return { error: q.error, missing: q.missing || null, fields: q.fields || null, inputs: q.inputs || null, filled: q.filled || null, credits: q.credits ?? null }; }
     ch.finalQuote = { spec, quote: q, at: now(), by: nameOf(t) }; sync(t, ch);
     const { raw, ...show } = q; return { quote: { ...show, refs: (q.refs || []).map((r) => ({ id: r.id, url: r.url, job: r.job, label: r.label, keep: r.keep })) } }; });
 
   on('POST', '/api/changes/:chid/final/run', async (b, t, p) => { const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); const fq = ch.finalQuote; if (!fq) return { error: 'Get the quote first.' };
+    /* the main button carries the price it showed (expect): a quote that changed or ran out spends nothing and is asked for again */
+    if (b.expect && fq.quote?.quoteId !== b.expect) return { error: 'The price changed. Tap again to see it.', requote: true };
+    if (b.expect && fq.quote?.expiresAt && fq.quote.expiresAt < now()) { ch.finalQuote = null; return { error: 'The price ran out. Tap again.', requote: true }; }
     const slug = slugOfT(t), by = nameOf(t), { quote: q, spec } = fq; ch.finalQuote = null; const isVid = spec.kind === 'video';
     /* a video final is a video job (vidJobs), so a read while it is made never calls it stopped (C() clears a videoPending it
        can't find there); an earlier video error is cleared as it starts */
     const set = isVid ? vidJobs || jobs : jobs;
-    if (isVid) { ch.videoPending = now(); ch.videoStep = 'Sloosh is making the final'; ch.videoError = null; } else ch.imagePending = true; ch.imageError = null; ch.finalPending = { at: now(), credits: q.credits, model: q.label || q.model || q.space?.name || null, fallback: !!q.fallback, provider: q.provider || 'sloosh' }; set?.add?.(ch.id); sync(t, ch);
-    (async () => { try { const rec = await finals.run(slug, spec, { quote: q, by, target: { chid: ch.id, revision: spec.revision }, land: { tid: t.id || null } });
-        landIn(t, ch, rec, { label: q.label, model: q.model, space: q.space, fallbackWhy: q.fallbackWhy, by, vid: isVid });
+    if (isVid) { ch.videoPending = now(); ch.videoStep = 'Sloosh is making the final'; ch.videoError = null; } else ch.imagePending = true; ch.imageError = null; ch.finalPending = { from: headOf(t, ch)?.id || null /* the option it is made for: it lands there */, at: now(), credits: q.credits, model: q.label || q.model || q.space?.name || null, fallback: !!q.fallback, provider: q.provider || 'sloosh' }; set?.add?.(ch.id); sync(t, ch);
+    (async () => { try { const from = ch.finalPending?.from || null, rec = await finals.run(slug, spec, { quote: q, by, target: { chid: ch.id, revision: spec.revision }, land: { tid: t.id || null, from } });
+        landIn(t, ch, rec, { from, label: q.label, model: q.model, space: q.space, fallbackWhy: q.fallbackWhy, by, vid: isVid });
       } catch (e) { if (isVid) ch.videoError = `The final video didn’t come through (${String(e.message).slice(0, 160)}). Make it again.`; ch.imageError = String(e.message).slice(0, 200); log.warn('[finals] studio run', slug, e.message); }
       finally { if (isVid) { ch.videoPending = null; ch.videoStep = null; } else ch.imagePending = false; ch.finalPending = null; set?.delete?.(ch.id); sync(t, ch); } })();
     return { change: pubChange(t, ch) }; });
 
   /* a run's record as the change's next version, labelled Final */
-  function landIn(t, ch, rec, { label = null, model = null, space = null, fallbackWhy = null, by = null, vid = null } = {}) {
+  function landIn(t, ch, rec, { label = null, model = null, space = null, fallbackWhy = null, by = null, vid = null, from = null } = {}) {
     if (rec.state === 'checkpoint') { ch.finalCheckpoint = { runKey: rec.runKey, checkpoint: rec.checkpoint || null, at: now() }; ch.imageError = 'The Sloosh Space paused for a check. Open Make the final to carry on or stop.'; return; }
     if (rec.state !== 'done') { ch.imageError = String(rec.error || 'The final didn’t come through.').slice(0, 200); return; }
+    /* the final belongs to the option it was made from: if the stage moved to another option meanwhile, it goes back there first */
+    const fromV = (from || rec.land?.from) ? versionById(t, ch, from || rec.land.from) : null; if (fromV && !grewFrom(t, ch, headOf(t, ch), fromV.id)) useVersion(t, ch, fromV);
     const isVid = vid ?? (rec.kind || 'image') === 'video', sp = space || rec.space || null; land(ch, isVid, rec.file, !!rec.words);
     const v = version(t, ch, rec.provider === 'gemini' ? 'gemini' : 'sloosh', `Final: ${rec.dummy ? 'simulated' : rec.provider === 'gemini' ? `made with Gemini (Sloosh not ready: ${fallbackWhy || 'no credits yet'})` : `${rec.charged ?? rec.credits} credits on ${sp ? sp.name || 'a Sloosh Space' : label || model || rec.model}`}`, rec.dummy ? 'Final (Dummy)' : rec.provider === 'gemini' ? 'Final (Gemini)' : 'Final');
     v.final = { credits: rec.charged ?? rec.credits, model: model || rec.model || null, label: label || null, space: sp, dummy: !!rec.dummy, fallback: !!rec.fallback, provider: rec.provider || 'sloosh', link: rec.link || null, assetId: rec.assetId || null, assetKind: rec.assetKind || null, revision: rec.revision || 0, runKey: rec.runKey, by: by || rec.by || null };
