@@ -10,7 +10,7 @@ export const SLOP = /\b(?:4\s?k|8\s?k|ultra[- ]?(?:detailed|realistic|hd)|hyper[
 export const JOBS = ['product', 'scene', 'style', 'person', 'logo', 'layout', 'frame', 'other']; /* layout: the approved draft picture; frame: a video's opening frame (sent as start_frame, never numbered) */
 /* what a reference of each job tells the model, and what must not change from it */
 const JOB_LINE = {
-  product: (r) => `Image ${r.n} is the product${r.label ? `, ${r.label}` : ''}. Keep its shape, proportions, colours, materials and brand mark as shown; its small print may be soft or turned away, never rewritten${r.keep ? `; ${r.keep}` : ''}.`, /* asking for exact small print made garbled labels, and a check that threw good pictures away */
+  product: (r) => `Image ${r.n} is the product${r.label && !/^product( photo)?$/i.test(r.label) ? `, ${r.label}` : ''}. Keep its shape, proportions, colours, materials and brand mark as shown; its small print may be soft or turned away, never rewritten${r.keep ? `; ${r.keep}` : ''}.`, /* asking for exact small print made garbled labels, and a check that threw good pictures away */
   scene: (r) => `Image ${r.n} is the place${r.label ? `, ${r.label}` : ''}: use it as the setting and background${r.keep ? `; ${r.keep}` : ''}.`,
   style: (r) => `Image ${r.n} is the look${r.label ? `, ${r.label}` : ''}: match its light, colours, framing and mood, not its subject${r.keep ? `; ${r.keep}` : ''}.`,
   person: (r) => `Image ${r.n} is ${r.label || 'the person'}: keep their face, hair and build exactly as in that image${r.keep ? `; ${r.keep}` : ''}.`,
@@ -38,13 +38,15 @@ export const textLines = (text = []) => { const xs = (Array.isArray(text) ? text
 export const lookOf = (brand = {}, kind = 'image') => scrub(brand.style || brand.editorial || (kind === 'video' ? 'Natural daylight in a real place, true colours, handheld on a phone' : 'A real moment shot on a phone held slightly above, natural daylight in a real home, office or outdoors, true colours, a little lived-in, not a studio still'));
 export const useOf = (ratio, topSpace = false) => `${USE[ratio] || USE['4:5']}${topSpace ? '; keep the top third calm and simple, the words sit there' : ''}`;
 
+/* planning notes a writer left in a picture brief ("Measure: high watch time…", "Goal: …") are not things to draw */
+export const dropNotes = (s) => String(s || '').split(/(?<=[.!?])\s+/).filter((x) => !/^\s*(measure|metric|kpi|goal|why|hypothesis|test|success|target audience|audience|cta|button)\s*:/i.test(x)).join(' ');
 /* ---------- the normalised brief every renderer reads ---------- */
 export function brief(spec = {}) {
   const brand = spec.brand || {}; const all = (spec.refs || []).map((r) => ({ job: JOBS.includes(r?.job) ? r.job : 'other', label: one(r?.label), keep: one(r?.keep), id: r?.id, url: r?.url, file: r?.file }));
   const frame = all.find((r) => r.job === 'frame') || null, refs = all.filter((r) => r.job !== 'frame').map((r, i) => ({ ...r, n: i + 1 }));
   if (!refs.length && spec.hasSrc) refs.push({ n: 1, job: 'product', label: one(spec.product?.name || `${brand.name || ''} ${brand.noun || ''}`) || '', keep: '' });
   const named = spec.subject || spec.product?.name || [brand.name, brand.noun].filter(Boolean).join(' '), subject = named ? scrub(named) : 'the product'; /* never "The subject is The product." */
-  return { kind: spec.kind || 'image', title: one(spec.title), subject, visual: scrub(spec.visual), scene: scrub(spec.scene), look: lookOf(brand, spec.kind), ratio: spec.ratio || '4:5', use: useOf(spec.ratio || '4:5', !!spec.topSpace),
+  return { kind: spec.kind || 'image', title: one(spec.title), subject, visual: scrub(dropNotes(spec.visual)), scene: scrub(dropNotes(spec.scene)), look: lookOf(brand, spec.kind), ratio: spec.ratio || '4:5', use: useOf(spec.ratio || '4:5', !!spec.topSpace),
     refs, frame, text: spec.text || [], brand, motion: scrub(spec.motion), beats: spec.beats || [], seconds: spec.seconds || 6, sound: spec.sound ?? false, index: spec.index, count: spec.count, people: spec.people !== false, revise: spec.revise || null };
 }
 

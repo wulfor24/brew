@@ -94,7 +94,8 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
   /* every Sloosh refusal is logged with what Brew asked for (model, mode, settings, how many references and their roles, the prompt's
      length; never a URL or the prompt itself) and Sloosh's whole reason, and the last few are kept for the ops page. A quote that fell
      back to Gemini/Veo used to leave no trace at all (19 Oct: a reel's quote_generation refused with owner_invalid_request) */
-  const refusals = [];
+  const refusals = [], tries = []; /* tries: every Sloosh quote this instance asked for (the settings, the price, the hold, the warning), newest first, for the ops page */
+  const noteTry = (slug, ask, q) => { tries.unshift({ at: new Date(now()).toISOString(), slug, ask: shapeOf(ask), credits: creditsOf(q), hold: holdOf(q) || null, warning: pick(q, 'warning') || null }); tries.length = Math.min(tries.length, 20); };
   const shapeOf = (a = {}) => a.prompt == null ? a : { mode: a.mode, model: a.model, ratio: a.ratio, resolution: a.resolution, seconds: a.seconds, sound: a.sound, count: a.count, promptChars: String(a.prompt || '').length, refs: (a.references || []).map((r) => `${r.type}/${r.role}/${r.kind}`) };
   function noteRefusal(slug, tool, ask, e) { const row = { at: new Date(now()).toISOString(), slug, tool, ask: shapeOf(ask), code: e?.code || null, error: String(e?.message || e).slice(0, 900) };
     refusals.unshift(row); refusals.length = Math.min(refusals.length, 12); log.warn('[finals] Sloosh refused', JSON.stringify(row)); return row; }
@@ -138,12 +139,12 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
       const make = (res) => buildFinal({ ...spec, refs: use, forceModel: model, resolution: res }, live);
       const askOf = (b) => ({ mode, prompt: b.prompt, model: b.model, references: uploaded(use), ratio: b.settings.aspect_ratio, resolution: b.settings.resolution, seconds: vid ? b.settings.duration : undefined, sound: vid ? b.settings.sound : undefined, count: spec.count || 1 });
       let b = make(), ask = askOf(b);
-      try { q = await sloosh.quoteGeneration(ask);
+      try { q = await sloosh.quoteGeneration(ask); noteTry(slug, ask, q);
         /* a reel over what is left of the day's limit is asked again one resolution down (never under 720p) before it goes to Veo:
            a 9 s Seedance 2.5 reel is 76.77 credits at 1080p and about a third of that at 720p (19 Oct, the daily limit is 50) */
         for (let res = b.settings.resolution; vid && st.left != null && (holdOf(q) || creditsOf(q)) > st.left;) {
           res = lowerRes(model, res, live); if (!res || !['720p', '768p', '1080p', '1K', '2K', '2k'].includes(res)) break;
-          const b2 = make(res), a2 = askOf(b2); const q2 = await sloosh.quoteGeneration(a2).catch((e) => { noteRefusal(slug, 'quote_generation', a2, e); return null; }); if (!q2) break;
+          const b2 = make(res), a2 = askOf(b2); const q2 = await sloosh.quoteGeneration(a2).catch((e) => { noteRefusal(slug, 'quote_generation', a2, e); return null; }); if (!q2) break; noteTry(slug, a2, q2);
           b = b2; ask = a2; q = q2; }
       } catch (e) { noteRefusal(slug, 'quote_generation', ask, e); if (canFallBack) return geminiQuote(spec, PAY.test(e.message) ? `Sloosh cannot pay for this yet (${e.message.slice(0, 160)}).` : `Sloosh could not quote this (${e.message.slice(0, 160)}).`); return { error: 'Sloosh couldn’t price this final just now. Try again in a minute.', detail: e.message.slice(0, 200) }; }
       refs = use; out = { model: b.model, label: b.label || b.model, why: swapped ? `${b.why}; Sloosh no longer offers ${swapped}` : b.why, prompt: b.prompt, settings: b.settings, space: null }; }
@@ -285,5 +286,5 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
   const busy = () => inflight.size;
   const get = (slug, runKey) => readRec(slug, runKey);
   async function list(slug) { const files = await packs.listFiles(slug, DIR.replace(/\/$/, '')).catch(() => []); const out = []; for (const f of files) { const r = await packs.getJSON(slug, DIR + f, null); if (r) out.push(r); } return out.sort((a, b) => b.at - a.at); }
-  return { refusals: () => refusals.slice(), noteRefusal, probe, status, quote, run, checkpoint, reconcileAll, busy, get, list, assetFor, runKeyOf, forget: () => { statusMemo = null; wsMemo = null; } /* after a connect or disconnect (server.js): the connection and the workspace are read again */ };
+  return { tries: () => tries.slice(), refusals: () => refusals.slice(), noteRefusal, probe, status, quote, run, checkpoint, reconcileAll, busy, get, list, assetFor, runKeyOf, forget: () => { statusMemo = null; wsMemo = null; } /* after a connect or disconnect (server.js): the connection and the workspace are read again */ };
 }

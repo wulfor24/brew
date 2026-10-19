@@ -62,3 +62,10 @@ test('Seedance beats cover the whole clip in whole seconds with no gaps, lines i
   const s = seedanceShots(brief({ kind: 'video', beats: [{ shot: 'a' }, { shot: 'b' }], seconds: 8 })); assert.match(s, /Shot 1: A\.\nShot 2: B\./);
   assert.match(seedanceBeats(brief({ kind: 'video', seconds: 5 })), /0-5s: The camera pushes in slowly on the product\./);
 });
+
+test('a brief never draws a planning note or calls the product by a card title (19 Oct, a Cozy reel)', async () => {
+  const { buildFinal, dropNotes } = await import('../sloosh-prompt.js');
+  assert.equal(dropNotes('Feet in the warmer. Measure: High watch time indicates it resonates. Soft light.'), 'Feet in the warmer. Soft light.');
+  const f = buildFinal({ kind: 'image', visual: 'Measure: watch time. A desk in winter.', refs: [{ url: 'u', job: 'product', label: 'Product photo' }], brand: { name: 'Cozy' } });
+  assert.ok(!/Measure/.test(f.prompt)); assert.match(f.prompt, /Image 1 is the product\. Keep/);
+});

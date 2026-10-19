@@ -24,7 +24,10 @@ export function createFinalsSheet({ finals, sloosh, references = null, creditsLe
     const rels = [...new Set([...extra, named?.img, ...(c?.images || []), c?.img, ...cat.slice(0, 12).map((x) => x.img)].filter((x) => x && typeof x === 'string' && !/^\/?gen\//.test(x) && !/statics\//.test(x)))];
     /* a rival's ad ("Make our version") is never offered: a model given their picture copies it; its composition already
        rides in the draft's brief as words (rival-ad.js) */
-    return rels.filter((rel) => !isResearchImage(rel)).slice(0, 16).map((rel) => { const p = cat.find((x) => x.img === rel); return { url: rel, label: p?.t || p?.title || named?.t || c?.title || 'Product photo', job: 'product', named: rel === named?.img }; }); };
+    /* the product's own name, matched on the photo's path (a ?v= query on a Shopify URL missed it and the card's title, "Fix cold feet
+       for $39", became the product's name in the brief); never the card's title */
+    const bare = (u) => String(u || '').split('?')[0];
+    return rels.filter((rel) => !isResearchImage(rel)).slice(0, 16).map((rel) => { const p = cat.find((x) => bare(x.img) === bare(rel)); return { url: rel, label: p?.t || p?.title || (bare(rel) === bare(named?.img) ? named?.t : '') || named?.t || 'Product photo', job: 'product', named: bare(rel) === bare(named?.img) }; }); };
   async function status(t, { slug, kind = 'image', format = '', photos = [], draft = null, pending = null }) {
     const st = await finals.status(); const fam = familyOf(format, kind);
     const spaces = st.ok && !st.dummy ? matchSpaces(await spacesList(), fam).map((s) => ({ id: s.spaceId || s.id, name: s.title || s.name, about: s.description || '', output: (s.outputTypes || []).join('/') || null, credits: null })) : [];
@@ -47,7 +50,7 @@ export function createFinalsSheet({ finals, sloosh, references = null, creditsLe
     const none = Array.isArray(b.text) && !text.length; /* the sheet's "empty for none" */
     const placed = pic?.text?.length && kind === 'image' && !none ? pic.text.map((x, i) => ({ ...x, words: text[i] ?? x.words })).filter((x) => String(x.words || '').trim()) : text;
     return { kind, title: base.title, visual, scene: base.scene || '', text: placed, refs, rival: !!pic, ratio: base.ratio || (kind === 'video' ? '9:16' : '4:5'), seconds: +b.seconds || base.seconds || 6, sound: !!b.sound, motion: base.motion, beats: base.beats || [],
-      brand, brandName: brand.name, product: base.product ? { name: base.product } : undefined, fromFile: base.fromFile || null, model: b.model || undefined,
+      brand, brandName: brand.name, product: base.product ? { name: base.product } : (() => { const l = refs.find((r) => r.job === 'product' && r.label && !/^product( photo)?$/i.test(r.label))?.label; return l ? { name: l } : undefined; })(), fromFile: base.fromFile || null, model: b.model || undefined,
       space: b.space?.id ? { id: String(b.space.id), name: b.space.name || null, inputs: b.space.inputs || {}, ctx: { productPhoto: refs.find((r) => r.job === 'product') || null, refs, copy: { headline: text[0] || '', script: base.script || '', primaryText: base.copy || '' }, brief: [visual, base.scene].filter(Boolean).join(' '), productName: base.product || '', ratio: base.ratio, seconds: +b.seconds || 6, sound: !!b.sound, brand, language: brandOfT(t)?.config?.language || 'English', country: brandOfT(t)?.config?.countryName || '' } } : null,
       revise: b.revise?.change ? { change: String(b.revise.change).slice(0, 300) } : null, revision: base.revision || 0, format: base.format || '' };
   }
