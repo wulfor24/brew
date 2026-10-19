@@ -44,6 +44,7 @@ test('FEED-QA-04: the landing checks the address inline; a brand name gets one g
   assert.deepEqual(siteOf('Footshop'), { name: true, guess: 'footshop.com' });
   assert.deepEqual(siteOf('Mama Earth'), { name: true, guess: 'mamaearth.com' });
   for (const bad of ['foo bar.com', 'http://', 'a.b', 'brand.c0m']) assert.equal(siteOf(bad).bad, true, bad);
+  assert.equal(siteOf('not a url at all').bad, true, 'a sentence is not a brand name: no .com guess');
   const a = appSrc(), go = a.slice(a.indexOf('const go = async (e)'), a.indexOf("$('#url-form').onsubmit"));
   assert.match(go, /urlErr\(r\?\.error \|\|/, 'a server refusal (bad address, the daily limit, anything) stays under the field');
   assert.doesNotMatch(go, /toast\(/, 'never a toast that is gone in 3 s');

@@ -380,7 +380,7 @@
   /* is it a website address? { ok } | { name, guess } (a brand name with no dot: one guess, <name>.com) | { bad } */
   const siteOf = (raw) => { const x = String(raw || '').trim(), host = x.replace(/^[a-z]+:\/\//i, '').replace(/[/?#].*$/, '').replace(/^www\./i, '').toLowerCase();
     if (/^([a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/.test(host)) return { ok: true };
-    if (!/[./:]/.test(x) && /^[\p{L}\p{N}][\p{L}\p{N} &'’-]{0,60}$/u.test(x)) { const g = x.toLowerCase().normalize('NFKD').replace(/[^a-z0-9-]/g, '').replace(/^-+|-+$/g, ''); return { name: true, guess: g ? `${g}.com` : null }; }
+    if (!/[./:]/.test(x) && /^[\p{L}\p{N}][\p{L}\p{N} &'’-]{0,60}$/u.test(x) && x.split(/\s+/).length <= 2) { /* a brand name is a word or two ("Footshop", "Only Natural"); a sentence is not a site */ const g = x.toLowerCase().normalize('NFKD').replace(/[^a-z0-9-]/g, '').replace(/^-+|-+$/g, ''); return { name: true, guess: g ? `${g}.com` : null }; }
     return { bad: true }; };
   const start = () => {
     /* v2 keeps this start page; the brand page's read is where v2 begins (setup → OB2.run) */
