@@ -92,3 +92,14 @@ test('with Storefront off the agent signs as the Catalog manager, on the server,
   assert.match(s, /thread: sfWho\(w\.thread\)/, 'replies saved before heal on read');
   assert.match(src('public/app.js'), /storefront: \/\[\?&\]storefront=1\\b\/\.test\(location\.search\) \? 'Storefront manager' : 'Catalog manager'/);
 });
+
+/* FEED-ARV-10 / NOT-07: the headline decides the For line; ad-platform news gets its own line and button */
+import { newsForUs, newsCta } from '../for-us.js';
+test('news For lines: ad-platform news, stakes and launches each get their own line, the headline first', () => {
+  const p = 'The launch comes with a new price.';
+  for (const h of ['Google Ads rolls out budget priority controls', 'Meta launches Customer Lifecycle Strategy']) { assert.match(newsForUs({ h, p }, 'Arata'), /how Arata's ads can run/, h); assert.equal(newsCta({ h, p }), 'Start the tests', h); }
+  assert.match(newsForUs({ h: 'HUL eyes stake in WishCare', p }, 'Arata'), /bigger player/);
+  assert.match(newsForUs({ h: 'Rival opens a store in Pune', p }, 'Arata'), /compare this launch/, 'the paragraph decides only when the headline says nothing');
+  assert.equal(newsCta({ h: 'X launches a serum' }), 'Turn into an idea');
+  assert.match(src('feed-service.js'), /cta: \{ label: newsCta\(x\) \}/); assert.match(src('public/app.js'), /esc\(sl\.cta \|\| 'Turn into an idea'\)/);
+});

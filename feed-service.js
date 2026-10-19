@@ -35,7 +35,7 @@ import { shipLine, oneCard, oneTake } from './text-fit.js';
 import { createDrafts, fakeMakers } from './drafts.js';
 import { cardProduct, cardScene, matchProduct } from './product-match.js';
 import { gapFix } from './ai-gap.js';
-import { newsForUs, adForUs } from './for-us.js'; // every rival and news story ends on one line for the brand (QA FEED-ARV-10) // the AI-answers gap card's own fix (QA FEED-ARV-09)
+import { newsForUs, newsCta, adForUs } from './for-us.js'; // every rival and news story ends on one line for the brand (QA FEED-ARV-10) // the AI-answers gap card's own fix (QA FEED-ARV-09)
 import { seedDrafts, draftFor, draftView } from './drafts-bg.js';
 import { planFor, planPrompt, PLAN_V } from './card-plan.js';
 import { createMoves } from './moves.js';
@@ -806,7 +806,7 @@ export function createFeedService(o) {
   const newsCard = (x, at) => ({ id: 'r-' + newsId(x), agent: 'brew', sector: 'signals', type: 'idea', family: 'idea', lane: firstLane(), roles: ['founder', 'growth', 'brand'], kind: 'rows',
     campaign: 'Industry news', title: `What “${short(String(x.h || ''), 60)}” means for ${BN()}`, sub: x.take || newsForUs(x, BN()),
     rows: [['The story', short(String(x.h || ''), 60)], ['Source', x.source || x.domain || 'the web']], detail: { why: [x.p].filter(Boolean), how: ['Brew drafts one idea for an ad or a page.', 'You decide if it goes out.'] },
-    cta: { label: 'Turn into an idea' }, link: x.url ? { label: 'Read the story', url: x.url } : undefined, src: `${x.source || x.domain || 'Web search'} · ${dateIN(at)}`, research: { kind: 'news', id: newsId(x) } });
+    cta: { label: newsCta(x) }, link: x.url ? { label: 'Read the story', url: x.url } : undefined, src: `${x.source || x.domain || 'Web search'} · ${dateIN(at)}`, research: { kind: 'news', id: newsId(x) } });
   const howtoCard = (x, at) => ({ id: 'r-' + x.id, agent: 'creative', sector: 'creatives', type: 'idea', lane: x.lane, roles: ['founder', 'growth', 'brand'], kind: x.img ? 'media' : 'rows', images: x.img ? [x.img] : undefined,
     campaign: 'How to', title: x.card, sub: x.p, rows: x.steps.map((st, i) => [`Step ${i + 1}`, st]),
     detail: { why: [x.p], how: x.steps }, cta: { label: 'Start this' }, src: `How-to playbook · ${dateIN(at)}`, research: { kind: 'howto', id: x.id, ...(x.adId ? { ad: x.adId } : {}) } });
@@ -1135,7 +1135,7 @@ export function createFeedService(o) {
     const where = B()?.config?.countryName || null; /* the brand's own market, never a hard-coded country (QA STO-05/06) */
     const trSlides = (tr?.items || []).map((x) => ({ type: x.kind === 'rising' ? 'rising' : 'trend', ...x, where, rising: x.rising ? x.rising.map((r) => ({ ...r, v: riseLabel(r.v) })) : x.rising, series: x.terms.map((term) => { const s = tr.series[term]; return { term, values: s.values, change: s.change, last: s.last }; }), dates: tr.series[x.terms[0]]?.dates || Object.values(tr.series)[0]?.dates }));
     const batches = t.batches.slice(0, 3).map((b) => ({ type: 'note', c: SEED.brand.wash[1], h: b.t, p: `${b.s}. ${b.st === 'Running' ? b.pct + '% done.' : b.st + '.'}`, from: 'Your work' }));
-    const newsSlides = (nw?.items || []).map((x) => ({ type: 'news', ...x, id: newsId(x), forUs: x.take || newsForUs(x, BN()) }));
+    const newsSlides = (nw?.items || []).map((x) => ({ type: 'news', ...x, id: newsId(x), forUs: x.take || newsForUs(x, BN()), cta: newsCta(x) }));
     const spark = (term) => tr?.series[term]?.values;
     // the brand today: its own most important new things, never outside news.
     // The two top-ranked open cards, then work waiting on you, the latest measured result, and work the team finished.
