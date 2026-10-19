@@ -15,21 +15,23 @@ import { fileURLToPath } from 'node:url';
 const SES = 'private/demo/session.json';
 const MOVE_EVERY_S = 1.8, BRIEF_S = 6; // the replayed build: about 100 seconds from "Looks right" to the last move
 
+/* the build as this session sees it: done for a normal session; replayed from "Looks right" for one started from onboarding.
+   One source (QA FEED-QA-09): the status route and the feed's "Your moves" line both read it (server.js viewStatus) */
+export function simStatus(st, s) {
+  if (!st || s?.flow !== 'onboarding') return st;
+  const N = +st.total || 50, c = s.confirmedAt, t = c ? (Date.now() - c) / 1000 : -1, n = c ? Math.max(0, Math.min(N, Math.floor((t - BRIEF_S) / MOVE_EVERY_S))) : 0;
+  const pdfKeys = Object.keys(st.pdfs || {}).sort((a, b) => +a - +b).slice(0, n);
+  return { ...st, stages: { ...st.stages, confirm: c ? { state: 'done', at: c } : { state: 'waiting' }, brief: t >= BRIEF_S ? { state: 'done', at: c + BRIEF_S * 1e3 } : { state: c ? 'running' : 'waiting' },
+    moves: n >= N ? { state: 'done', at: Date.now() } : { state: c ? 'running' : 'waiting' } }, movesDone: n, pdfs: Object.fromEntries(pdfKeys.map((k) => [k, st.pdfs[k]])),
+    done: n >= N, ready: n >= 10, state: n >= N ? 'Ready' : c ? `Writing the moves: ${n} of ${N}` : 'Read', zips: n >= N ? st.zips : [] };
+}
+
 export function createDemoRoutes({ packs, builder, auth, connectors, readBody, send, loadBrand, social = null, draftsBg = null, log = console }) {
   const session = async (slug) => (await packs.getJSON(slug, SES, null)) || { flow: 'ready' };
   const setSession = (slug, s) => packs.put(slug, SES, { ...s, at: Date.now() });
   const isAdmin = (req) => { const u = auth.user(req); return !!u && !u.demo && auth.isAdmin(u); };
   const base = (req) => process.env.PUBLIC_URL || `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}`;
 
-  /* the build as this session sees it: done for a normal session; replayed from "Looks right" for one started from onboarding */
-  function simStatus(st, s) {
-    if (!st || s?.flow !== 'onboarding') return st;
-    const N = +st.total || 50, c = s.confirmedAt, t = c ? (Date.now() - c) / 1000 : -1, n = c ? Math.max(0, Math.min(N, Math.floor((t - BRIEF_S) / MOVE_EVERY_S))) : 0;
-    const pdfKeys = Object.keys(st.pdfs || {}).sort((a, b) => +a - +b).slice(0, n);
-    return { ...st, stages: { ...st.stages, confirm: c ? { state: 'done', at: c } : { state: 'waiting' }, brief: t >= BRIEF_S ? { state: 'done', at: c + BRIEF_S * 1e3 } : { state: c ? 'running' : 'waiting' },
-      moves: n >= N ? { state: 'done', at: Date.now() } : { state: c ? 'running' : 'waiting' } }, movesDone: n, pdfs: Object.fromEntries(pdfKeys.map((k) => [k, st.pdfs[k]])),
-      done: n >= N, ready: n >= 10, state: n >= N ? 'Ready' : c ? `Writing the moves: ${n} of ${N}` : 'Read', zips: n >= N ? st.zips : [] };
-  }
 
   /* how ready a brand is for a demo: everything slow is made ahead */
   async function readiness(slug) {

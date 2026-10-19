@@ -1228,18 +1228,22 @@
     spend: ['Spend money', 'Budgets, campaigns and the site', 'These change budgets, campaigns or the site. Each opens its jam; nothing goes live until you approve it there.', 'wallet'],
     board: ['On your board', 'Work sent back for your OK', 'Work your team or Brew sent back. Each one waits on you before it can ship.', 'board']
   };
+  /* the greeting's tiles, from the same lists the pages behind them read (gLists: yesOf on the ranked feed). Drawn again on every
+     refresh (counts), so "Need your yes" never drifts from its list (QA FEED-QA-07/21) */
+  const gTile = (k) => { const list = GSTAT[k], n = list.length; if (!n) return ''; /* no zero tiles: an empty list says nothing */
+    return `<button class="gt${k === 'yes' && n ? ' hot' : ''}" data-gstat="${k}" aria-label="${n} ${QHEAD[k][0]}: open the list"><b class="gt-n">${n}</b><span class="gt-l">${QHEAD[k][0]}</span><span class="gt-s">${QHEAD[k][1]}</span><span class="gt-go">${ic('right', 's14')}</span></button>`; };
+  const gTiles = () => { const tiles = ['yes', 'spend', 'board'].map(gTile).filter(Boolean); return tiles.length ? `<div class="g-today" style="--n:${tiles.length}">${tiles.join('')}</div>` : ''; };
+  const paintTiles = () => { const g = $('#col .greet:not(.g2)'); if (!g || view !== 'feed') return; GSTAT = gLists(); const html = gTiles(), cur = $('.g-today', g);
+    if (cur) { if (html) { if (cur.outerHTML !== html) cur.outerHTML = html; } else cur.remove(); } else if (html) g.insertAdjacentHTML('beforeend', html); };
   const greeting = () => {
     const R = ROLE(), part = dayPart();
     GSTAT = gLists();
     const af = affinity(); const tags = [...Object.entries(af.agent).map(([k, n]) => [AGENT[k], n]), ...Object.entries(af.lane).map(([k, n]) => [B.lanes[k]?.name, n])].sort((a, b) => b[1] - a[1]).slice(0, 2).map((x) => x[0]);
     const day = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
-    const tile = (k) => { const list = GSTAT[k], n = list.length; if (!n) return ''; /* no zero tiles: an empty list says nothing */
-      return `<button class="gt${k === 'yes' && n ? ' hot' : ''}" data-gstat="${k}" aria-label="${n} ${QHEAD[k][0]}: open the list"><b class="gt-n">${n}</b><span class="gt-l">${QHEAD[k][0]}</span><span class="gt-s">${QHEAD[k][1]}</span><span class="gt-go">${ic('right', 's14')}</span></button>`; };
     if (UI2) return `<div class="greet g2"><h2>Hello${hiName(R)}.</h2></div>`; /* UI2: the counts live in Deck → Yours */
-    const tiles = ['yes', 'spend', 'board'].map(tile).filter(Boolean);
     return `<div class="greet"><small class="g-day">${esc(day)}</small><h2>${part}${hiName(R)}</h2>
       ${tags.length ? `<p class="g-taste">Tuned to what you like: ${esc(tags.join(' and '))}</p>` : ''}
-      ${tiles.length ? `<div class="g-today" style="--n:${tiles.length}">${tiles.join('')}</div>` : ''}</div>`;
+      ${gTiles()}</div>`;
   };
 
   let FEED = [], RANKED = [], GSTAT = { yes: [], spend: [], board: [] }, QTAB = 'yes';
@@ -1362,7 +1366,7 @@
     $$('.rail [data-nav]').forEach((b) => b.classList.toggle('on', b.dataset.nav === (['jams', 'remixes', 'refs'].includes(view) ? 'saved' : ['move', 'moves'].includes(view) ? 'learned' : view)));
     if (UI2) $$('.r2 [data-nav]').forEach((b) => b.classList.toggle('is-on', b.dataset.nav === (['feed', 'deck', 'saved', 'jams', 'refs', 'work', 'done', 'queue'].includes(view) ? 'feed' : ['learned', 'move', 'moves', 'facts', 'heard', 'rules', 'tune'].includes(view) ? 'learned' : view)));
     { const tp = $('[data-team-pill]'), wt = WORK.withTeam || { n: 0 }, n = wt.n || 0; if (tp) { tp.hidden = !n; tp.querySelector('[data-count="team"]').innerHTML = tp.classList.contains('j1-pill') ? `<b>${n}</b><span class="j1-more">&nbsp;with the team</span>` : `${n} with the team`; tp.classList.toggle('is-ask', !!wt.needsInfo); } }
-    paintTabbar();
+    paintTiles(); paintTabbar();
   };
   /* phones: a native tab bar like Instagram (Feed, Deck, new jam, Work, Library) and the section's name in the header */
   const TABS = [['feed', 'feed', 'Feed'], ['deck', 'deck', 'Deck'], ['+', 'plus', 'New jam'], ['work', 'board', 'Work'], ['saved', 'bookmark', 'Library']];
@@ -1532,7 +1536,7 @@
   /* one count with the feed's own "moves" card: the strip shows only while status says moves are still being written */
   const brewingCard = () => checkWaitCard() || (GEN && BREW && !BREW.done && +BREW.total && (BREW.movesDone || 0) < +BREW.total && !BREW.cancelled ? `<article class="card brew-wait" data-brewing>${brewingInner()}</article>` : '');
   document.addEventListener('click', (e) => { if (e.target.closest('[data-checkread]')) ensureTenant(true).then(checkRead); });
-  const loadMV = async () => { if (!GEN || BREW?.done) return; BREW = await api(`/api/brands/${B.slug || BR}/status`).catch(() => null) || BREW;
+  const loadMV = async () => { if (!GEN || BREW?.done) return; const was = BREW; BREW = await api(`/api/brands/${B.slug || BR}/status`).catch(() => null) || BREW; if (was && BREW && was !== BREW && !BREW.done && was.createdAt === BREW.createdAt && +was.movesDone > +BREW.movesDone) BREW = { ...BREW, movesDone: was.movesDone }; /* the count never goes back within a build (QA FEED-QA-21) */
     clearTimeout(mvT); if (BREW && !BREW.done) mvT = setTimeout(async () => { await loadMV(); const el = $('[data-brewing]'); if (el && !el.contains(document.activeElement)) { const h = brewingCard(); if (h) el.outerHTML = h; else el.remove(); } }, 60e3); };
   document.addEventListener('submit', async (e) => { const f = e.target.closest('[data-bwmail]'); if (!f) return; e.preventDefault(); const em = f.querySelector('input').value.trim(), b = f.querySelector('button'); b.disabled = true;
     const r = await api(`/api/brands/${B.slug || BR}/notify`, { email: em }); b.disabled = false;

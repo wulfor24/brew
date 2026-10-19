@@ -711,7 +711,7 @@ export function createFeedService(o) {
   const STAGE_PCT = { drafting: 20, team: 45, brew: 55, needs_you: 70, ready: 85, deploying: 90, measuring: 95, result: 100 };
   const STAGE_TXT = { drafting: 'Drafting', team: 'With your team', brew: 'With the ShopOS team', needs_you: 'Needs your OK', ready: 'Ready to share', deploying: 'Brief shared', out: 'Brief shared', measuring: 'Brief shared', result: 'Brief shared' }; // Brew never ships or measures: old stages read as shared
   const realBatches = (t) => {
-    const st = builder?.peek?.(B().slug) || {}, out = [];
+    const raw = builder?.peek?.(B().slug) || {}, st = o.viewStatus?.(B().slug, raw) || raw, out = []; /* the demo's replayed build reads the same as its status route (QA FEED-QA-09) */
     const done = st.movesDone || 0, N = +st.total || 50; /* the playbook (not the index, not weekly moves); PDFs are made on download */
     out.push({ id: 'b-moves', t: `Your moves`, s: done >= N ? `All ${N} written` : `${done} of ${N} written`, pct: Math.round(100 * Math.min(done, N) / N), st: done >= N ? 'Done' : 'Running', tone: done >= N ? 'ok' : 'info', agent: 'brew', team: true, real: true });
     if (st.statics) out.push({ id: 'b-statics', t: 'Static ads from Move 21', s: st.statics.state === 'done' ? `${st.statics.n} ads ready for your review` : st.statics.state === 'failed' ? 'Could not be made: ' + (st.statics.err || 'image model error') : 'Making the images from your product photos', pct: st.statics.state === 'done' ? 100 : 40, st: st.statics.state === 'done' ? 'Needs you' : st.statics.state === 'failed' ? 'Stopped' : 'Running', tone: st.statics.state === 'done' ? 'warn' : 'info', agent: 'creative', real: true });

@@ -43,7 +43,8 @@ import { createAuth } from './auth.js';
 import { createConnectors } from './connectors/index.js';
 import { createSlackRoutes } from './slack-routes.js';
 import { DEMO, demoSid, demoEmail, runDemo, sessionOf, guardFetch } from './demo-mode.js'; // Demo Mode: the demo site (DEMO_MODE=1)
-import { createDemoRoutes } from './demo-routes.js';
+import { createDemoRoutes, simStatus } from './demo-routes.js';
+const DEMO_SES = new Map(); /* visitor|slug → the demo tour session, for the feed's view of the build (viewStatus) */
 import { launchBrowser, zipBuffer, withBrowser } from './pdf/render.js';
 import { createImageNorm } from './img-norm.js'; // every picture a model sees is PNG, JPEG or WebP
 import { thinkModel, prefs } from './model-ctx.js';
@@ -85,6 +86,7 @@ if (fs.existsSync(envFile)) {
   }
 }
 const PORT = +process.env.PORT || 4200;
+const WRITTEN_HW = new Map(); /* slug → { k: the build (status.createdAt), n: the most moves written it has shown } */
 guardFetch(console); // Demo Mode only: no write to a real account, no real message
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || '';
 const CLAUDE_MODELS = [process.env.FEED_CLAUDE_MODEL || 'claude-sonnet-5-5', 'claude-sonnet-5'];
@@ -605,6 +607,10 @@ feedSvc = createFeedService({ /* tagging an email in a jam invites them to the t
     return auth.invite(slug, by, email, seats, process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', true); }, liveTeamOnly: () => auth.signinOn() && process.env.DEMO_MODE !== '1', clientIp, jamMail, memory: MEMORY_ON() ? memory : null, isStaff: (email) => auth.isAdmin({ email }), teamOf: (slug) => auth.getMembers(slug), onOpen: (slug) => { social.opened(slug); draftsBg.opened(slug); builder.heal?.(slug).then((ch) => { if (ch?.length) { packs.drop(slug); loadBrand(slug).catch(() => {}); } }).catch(() => {}); }, PUB, claudeJSON,  finals, sloosh, budgetLeft: (slug) => budget.left(slug).credits, globalPacks: packs, claudeTool, cardBrief, mockVariants, geminiImage: imageGen, treg, launchBrowser, zipBuffer, photoAsync, isMock: () => MOCK, spend, BANNED, clean, store, packs: brandPacks, builder, photoFile, learnings,
   /* Demo Mode: a tour session reads the store live while the visitor watches (demo-routes.js session flow) */
   liveReadFor: DEMO ? async (slug) => (await packs.getJSON(slug, 'private/demo/session.json', null))?.flow === 'onboarding' : null,
+  /* one count of the moves written (QA FEED-QA-09): on the demo site a tour session replays the build, and the feed's "Your moves"
+     line reads the same replay as the status route (demo-routes.js simStatus); the session is read in the background */
+  viewStatus: DEMO ? (slug, st) => { const k = `${demoSid() || ''}|${slug}`; /* each visitor's own tour session (demo-mode.js sandboxes the file per visitor) */
+    packs.getJSON(slug, 'private/demo/session.json', null).then((x) => { DEMO_SES.set(k, x); if (DEMO_SES.size > 2000) DEMO_SES.delete(DEMO_SES.keys().next().value); }).catch(() => {}); return simStatus(st, DEMO_SES.get(k)); } : null,
   slack: DEMO ? null : connectors, /* a really connected Slack: jams post to it and its thread replies come back (slack-routes.js) */
   viewerOf, genOk, liveFor: (slug, member) => connectors.forViewer(slug, member),
   /* membership checked from the signed-in user on every request and on the background clock (feed-service.js REQ / bgTeam) */
@@ -734,8 +740,11 @@ const brandRoutes = async (req, res, u) => {
   if (!v.gen && req.method === 'POST' && what !== 'notify' && !v.email && auth.signinOn() && process.env.BUILD_SIGNIN !== '0') return send(res, 401, { error: 'Sign in with your work email to continue.', signin: true }), true;
   if (!v.gen && req.method === 'POST' && what !== 'notify') return send(res, 403, { ...demoErr(v.host), error: v.claimed ? 'Only this brand’s team changes it. Sign in with the email you used to start this read, or ask the owner for an invite.' : `Sign in with the email you used to start this read, or with a work email at ${v.host || 'the brand’s domain'}, or ask the owner for an invite.`, team: true }), true;
   if (what === 'status') { let s = (await builder.status(slug)) || { error: 'unknown brand' };
-    /* one count: never fewer written than the moves on file (pack-numbers.js), and a time left only from the measured pace */
-    const w = packs.peek(slug)?.numbers?.moves?.written; if (!s.error && !s.done && +w > (+s.movesDone || 0)) s = { ...s, movesDone: +w };
+    /* one count: never fewer written than the moves on file (pack-numbers.js), and a time left only from the measured pace.
+       Within one build it never goes down (QA FEED-QA-21: 10 then 9 when the cached pack count fell away): the highest count this
+       build has shown is kept, per brand and build (createdAt), capped at the total */
+    if (!s.error && !s.done) { const w = +packs.peek(slug)?.numbers?.moves?.written || 0, k = String(s.createdAt || ''), hw = WRITTEN_HW.get(slug), was = hw?.k === k ? hw.n : 0;
+      const n = Math.min(Math.max(+s.movesDone || 0, w, was), +s.total || Infinity); WRITTEN_HW.set(slug, { k, n }); if (n !== +s.movesDone) s = { ...s, movesDone: n }; }
     if (!s.error) s = { ...s, etaMin: movesEta(s) };
     /* status stays public (someone signing in mid-read sees where it is), but the move titles, files and spend are the team's */
     if (!(await teamRead(req, slug))) { const { pdfs, zips, statics, usd, proBy, proAt, ...pub } = s; return send(res, 200, pub), true; }
