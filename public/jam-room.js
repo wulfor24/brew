@@ -5,7 +5,7 @@
    Design: the feed system's paper and tokens. No score, no locks, no effects; a quiet list of what's still missing. */
 (() => {
   const A = window.__BREW; if (!A) return;
-  const mvLabel = (n) => (+n > 1000 ? `Weekly move ${+n - 1000}` : `Move ${String(n).padStart(2, '0')}`); /* weekly moves read "Weekly move 11", never "Move 1011" (QA FEED-QA-12) */
+  const mvLabel = (n) => (+n > 1000 ? `Weekly move ${+n - 1000}` : +n >= 100 ? 'Timely move' : `Move ${String(n).padStart(2, '0')}`); /* weekly moves read "Weekly move 11", never "Move 1011" (QA FEED-QA-12) */
   const { $, $$, esc, ic, face, avatar, toast, AGENT } = A;
   const BNAME = () => window.FEED_DATA?.[window.BRAND]?.brand?.name || 'the brand'; // the brand this page is for
   const EARLY = ['drafting', 'team', 'needs_you', 'shared'];

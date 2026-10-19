@@ -305,7 +305,7 @@
   const AGENTS5 = ['creative', 'performance', 'storefront', 'visibility', 'crm'], AGENTS_ON = AGENTS5.filter((a) => a !== 'storefront' || SF_ON);
   /* how a move's number is said (QA FEED-QA-12, move-label.js on the server): weekly moves are numbered from 1001 inside Brew and
      read "Weekly move 11" (badge "W11"), never "Move 1011" */
-  const mvLabel = (n) => (+n > 1000 ? `Weekly move ${+n - 1000}` : `Move ${String(n).padStart(2, '0')}`), mvNum = (n) => (+n > 1000 ? `W${+n - 1000}` : String(n).padStart(2, '0'));
+  const mvLabel = (n) => (+n > 1000 ? `Weekly move ${+n - 1000}` : +n >= 100 ? 'Timely move' : `Move ${String(n).padStart(2, '0')}`), mvNum = (n) => (+n > 1000 ? `W${+n - 1000}` : +n >= 100 ? 'T' : String(n).padStart(2, '0')); /* timely moves (100–999 by hash) carry no number (move-label.js) */
   let GO_LINK = false; /* opened from a Brew email (?go=feed): the feed itself, never the morning stack first */
 
   /* card as the viewer sees it: role copy, then live numbers for connected sources */
