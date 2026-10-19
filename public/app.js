@@ -30,7 +30,17 @@
   /* written copy shown as written: blank lines are paragraphs, a short CAPS or "Label:" line is a small heading (also when the
      label leads its line: "CUSHIONING Look for…"), "- " / "• " lines are a list, a quoted line is a quote. Every stage uses it,
      so formatting never depends on which card it is. */
-  const rich = (text) => {
+  /* code the writer fenced (```json …```) is code, never prose (the same reader as code-md.js on the server) */
+  const splitCode = (s) => { const out = []; let buf = [], code = null;
+    const push = () => { const t = buf.join('\n'); buf = []; if (code) { const x = t.replace(/^\s*\n|\n\s*$/g, ''); if (x.trim()) out.push({ code: true, lang: code.lang, text: x }); } else if (t.trim()) out.push({ code: false, text: t }); };
+    for (const l of String(s ?? '').replace(/\r/g, '').split('\n')) { const m = /^\s*```\s*([\w+#./-]*)/.exec(l); if (m) { push(); code = code ? null : { lang: m[1].toLowerCase() }; continue; } buf.push(l); }
+    push(); return out; };
+  const hasCode = (s) => /(^|\n)\s*```/.test(String(s ?? ''));
+  const codePre = (b) => `<pre class="rx-code"${b.lang ? ` data-lang="${esc(b.lang)}"` : ''}><code>${esc(b.text)}</code></pre>`;
+  const rich = (text) => hasCode(text) ? splitCode(text).map((x) => (x.code ? codePre(x) : richText(x.text))).join('') : richText(text);
+  /* a line or field that may carry code: as written when it's plain, as words and code blocks when it isn't */
+  const txt = (s) => (hasCode(s) ? `<span class="rx">${rich(s)}</span>` : esc(s));
+  const richText = (text) => {
     // a CAPS label run inline after a sentence ("…plain words. CUSHIONING Look for…") starts its own block
     const t = String(text ?? '').replace(/\r/g, '').trim().replace(/([.!?”"])[ \t]+(?=[A-Z][A-Z'’&/?-]{2,}(?:[ \t]+[A-Z'’&/?-]{2,})*[ \t]+(?:[A-Z][a-z]|[“"]))/g, '$1\n\n'); if (!t) return '';
     // a label: a run of CAPS words (3+ letters in all) alone on its line, or leading text that starts like a sentence or a quote
@@ -43,6 +53,7 @@
       const flush = () => { if (list.length) { out.push(`<ul class="rx-ul">${list.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`); list = []; } };
       for (const l of lines) {
         const b = l.match(/^(?:[-•*]|\d{1,2}[.)](?!\d))\s+(.*)$/); if (b) { list.push(b[1]); continue; } flush();
+        const hd = l.match(/^#{1,6}\s+(.+)$/); if (hd) { out.push(`<b class="rx-h">${esc(hd[1].replace(/[*_]{2}/g, ''))}</b>`); continue; } /* a Markdown heading, never "# Title" */
         if (caps(l.replace(/:$/, '')) || /^[^:]{2,36}:$/.test(l)) { out.push(`<b class="rx-h">${esc(l.replace(/:$/, ''))}</b>`); continue; }
         const m = l.match(lead); if (m && caps(m[1])) { out.push(`<b class="rx-h">${esc(m[1])}</b>`, line(m[2])); continue; }
         out.push(line(l));
@@ -3543,14 +3554,14 @@
     if (ch.family === 'vis' && /\.(llms_txt|schema_fix)$/.test(ch.action)) return ''; /* a file (llms.txt, product markup) shows as the file it is, not as an FAQ page */
     if (ch.family === 'vis') { const es = p.entries || [];
       return `<div class="as as-web as-faq lg"><div class="aw-bar"><i></i><i></i><i></i><span>${esc(p.file || `${B.brand.host}/faq`)}</span></div>
-        <div class="faq-b"><h3>Questions people ask</h3>${es.map((e, i) => `<details class="faq-q"${i < 2 ? ' open' : ''}><summary>${esc(e.q)}${ic('chev', 's16')}</summary><p>${esc(e.a)}${e.source ? tipBtn(`Source: ${e.source}`) : ''}</p></details>`).join('')}
+        <div class="faq-b"><h3>Questions people ask</h3>${es.map((e, i) => `<details class="faq-q"${i < 2 ? ' open' : ''}><summary>${esc(e.q)}${ic('chev', 's16')}</summary><p>${txt(e.a)}${e.source ? tipBtn(`Source: ${e.source}`) : ''}</p></details>`).join('')}
         ${p.asOf ? `<small class="faq-asof">Updated ${esc(String(p.asOf).replace(/^as of\s*/i, ''))}</small>` : ''}</div></div>`; }
     if (ch.family === 'meta_ops') { const items = p.items || [];
       return `<div class="as as-pm lg">${quiet(['Meta Ads Manager', ch.actionLabel, p.checkAt])}<div class="pm am2"><table><thead><tr><th>Ad set or ad</th><th>Now</th><th>After</th></tr></thead>
         <tbody>${items.map((r) => `<tr><td><span class="am2-on"></span>${esc(r.name)}</td><td>${esc(r.now)}</td><td><b>${esc(r.next)}</b></td></tr>`).join('')}</tbody></table>
         ${p.rule ? `<p class="am2-rule">${ic('eyeoff', 's14')}<span><b>Rule</b> ${esc(p.rule)}</span></p>` : ''}${p.spendChangeWeek ? `<p class="am2-spend ${p.spendChangeWeek > 0 ? 'up' : 'down'}">${p.spendChangeWeek > 0 ? '+' : '−'}${inrS(Math.abs(p.spendChangeWeek))} a week</p>` : ''}</div></div>`; }
     if (ch.family === 'setup') return `<div class="as as-sheet lg"><small class="sh-k">${esc(p.tool || 'Setup')}</small><h3>${esc(p.what || '')}</h3>
-        <ol class="sh-steps">${(p.steps || []).map((x) => `<li><span class="sh-box"></span><span>${esc(x)}</span></li>`).join('')}</ol>${p.verify ? `<p class="sh-done">${ic('check', 's16')}<span><b>Done when</b> ${esc(p.verify)}</span></p>` : ''}</div>`;
+        <ol class="sh-steps">${(p.steps || []).map((x) => `<li><span class="sh-box"></span><span>${txt(x)}</span></li>`).join('')}</ol>${p.verify ? `<p class="sh-done">${ic('check', 's16')}<span><b>Done when</b> ${esc(p.verify)}</span></p>` : ''}</div>`;
     if (ch.family === 'brief') { const meta = [['Talent', p.talent], ['Where', p.location], ['Due', p.deadline]].filter(([, v]) => v);
       return `<div class="as as-sheet lg"><small class="sh-k">Production brief</small><h3>${esc(p.title || '')}</h3>${(p.deliverables || []).length ? `<div class="sh-chips">${p.deliverables.map((d) => `<span>${esc(d)}</span>`).join('')}</div>` : ''}
         <ol class="sh-shots">${(p.scenes || []).map((s, i) => `<li><span class="sh-n">${i + 1}</span><div><b>${esc(s.shot || '')}</b>${s.line ? `<span>${esc(s.line)}</span>` : ''}</div></li>`).join('')}</ol>
@@ -3574,6 +3585,9 @@
       /* "being made" only while a remake really runs (the server's remakePending); otherwise one tap makes it again, never a dead end */
       const busy = !!ch.remakePending, again = !busy && L && view === 'remix' && !ch.realOnly && ch.state !== 'live';
       return `<div class="as as-draft as-remade is-words${L}"><p class="as-rw-k">${d.as === 'video' ? 'Reel' : d.as === 'carousel' ? 'Carousel' : 'Picture'} · ${busy ? 'the media is being made' : ch.remakeError ? esc(ch.remakeError) : 'words only'}</p>${d.overlay ? `<b>${esc(d.overlay)}</b>` : ''}<ol>${lines.filter(Boolean).map((x) => `<li>${esc(x)}</li>`).join('')}</ol>${again ? `<button type="button" class="btn btn-primary sm as-rw-again" data-j2-remake="${esc(d.as)}">${ic('refresh', 's14')}Make it again</button>` : ''}</div>`; }
+    /* a text draft that is code (product markup, llms.txt, a snippet): the code itself, readable, never the mock's picture of it
+       with a product photo on top; the file it goes in heads it */
+    if (d?.text && d.code) return `<div class="as as-file as-code${size === 'lg' ? ' lg' : ''}"><div class="af-h">${ic('doc', 's14')}${esc(String(p.file || d.title || '').replace(/^page section:\s*/i, ''))}</div><div class="rx">${rich(d.code)}</div></div>`;
     if (d?.text && d.images?.[0]) return `<div class="as as-draft${size === 'lg' ? ' lg' : ''}"><img src="${esc(d.images[0])}" alt="${esc(d.title || 'First draft')}"></div>`;
     let html = assetHtml0(ch, size);
     /* a widget with no picture of its own (a page, a message, a brief) still opens on the card's draft picture */
@@ -3623,7 +3637,7 @@
     if (lg) { const sm = stageMock(ch, p); if (sm) return sm; }
     if (ch.family === 'search') return `<div class="as as-file as-search"><div class="af-h">${ic('link', 's14')}Google Search · ${esc(p.adGroup || '')}</div><div class="srch"><small>Sponsored · ${esc(String(p.finalUrl || `${B.brand.host}`).replace(/^https?:\/\//, ''))}</small><b>${esc((p.headlines || []).slice(0, 3).join(' | '))}</b><p>${esc((p.descriptions || [])[0] || '')}</p></div>
       ${lg ? `<div class="af-e"><b>Keywords</b><p>${esc((p.keywords || []).join(' · '))}</p>${(p.negatives || []).length ? `<small>Not for: ${esc(p.negatives.join(', '))}</small>` : ''}</div>` : ''}</div>`;
-    if (ch.family === 'setup') return `<div class="as as-doc"><small>${esc(p.tool || 'Setup')}</small><h4>${esc(p.what || '')}</h4><ol>${(p.steps || []).slice(0, lg ? 10 : 3).map((x) => `<li><span>${esc(x)}</span></li>`).join('')}</ol>${p.verify ? `<p class="ad-meta">${ic('check', 's14')} Done when: ${esc(p.verify)}</p>` : ''}</div>`;
+    if (ch.family === 'setup') return `<div class="as as-doc"><small>${esc(p.tool || 'Setup')}</small><h4>${esc(p.what || '')}</h4><ol>${(p.steps || []).slice(0, lg ? 10 : 3).map((x) => `<li><span>${txt(x)}</span></li>`).join('')}</ol>${p.verify ? `<p class="ad-meta">${ic('check', 's14')} Done when: ${esc(p.verify)}</p>` : ''}</div>`;
     if (ch.family === 'print') return `<div class="as as-print"><div class="pr-card"><small>Front</small><div class="rx">${rich(p.front)}</div></div>${p.back ? `<div class="pr-card back"><small>Back</small><p>${esc(p.back)}</p>${p.qr ? `<span class="pr-qr">QR · ${esc(p.qr)}</span>` : ''}</div>` : ''}<p class="ad-meta">${esc([p.size, p.quantity && `${p.quantity} cards`, p.goesIn].filter(Boolean).join(' · '))}</p></div>`;
     if (ch.family === 'listing') return `<div class="as as-ops as-listing"><div class="ao-h">${ic('grid', 's14')}Marketplace listings · ${esc(p.product || '')}</div>
       ${p.name ? `<div class="al-name"><small>One name everywhere</small><b>${esc(p.name)}</b></div>` : ''}
@@ -3639,7 +3653,7 @@
     if (ch.family === 'store') return `<div class="as as-web"><div class="aw-bar"><i></i><i></i><i></i><span>${esc((String(p.pages || '').match(/(?:[a-z0-9-]+\.)+[a-z]{2,}\/[^\s,;)]*/i) || [`${B.brand.host}`])[0].replace(/^www\./, ''))}</span></div>
       <div class="aw-body"><small class="aw-where">${esc([String(p.pages || '').replace(/(?:https?:\/\/)?(?:www\.)?(?:[a-z0-9-]+\.)+[a-z]{2,}\/\S*/gi, '').replace(/^[\s,;·-]+|[\s,;·-]+$/g, ''), p.section].filter(Boolean).join(' · '))}</small><h4>${esc(p.heading || '')}</h4><div class="rx">${rich(p.body)}</div>${(p.bullets || []).length ? `<ul>${p.bullets.map((x) => `<li>${ic('check', 's14')}${esc(x)}</li>`).join('')}</ul>` : ''}
       ${p.priceAfter ? `<div class="aw-price">${p.priceBefore ? `<del>${esc(p.priceBefore)}</del>` : ''}<b>${esc(p.priceAfter)}</b></div>` : ''}${p.button ? `<span class="aw-btn">${esc(p.button)}</span>` : ''}</div></div>`;
-    if (ch.family === 'vis') return `<div class="as as-file"><div class="af-h">${ic('link', 's14')}${esc(p.file || `${B.brand.host}/faq`)}${p.asOf ? `<span>${esc(p.asOf)}</span>` : ''}</div>${(p.entries || []).slice(0, lg ? 8 : 2).map((e) => `<div class="af-e"><b>${esc(e.q)}</b><p>${esc(e.a)}</p>${e.source ? `<small>Source: ${esc(e.source)}</small>` : ''}</div>`).join('')}</div>`;
+    if (ch.family === 'vis') return `<div class="as as-file"><div class="af-h">${ic('link', 's14')}${esc(p.file || `${B.brand.host}/faq`)}${p.asOf ? `<span>${esc(p.asOf)}</span>` : ''}</div>${(p.entries || []).slice(0, lg ? 8 : 2).map((e) => `<div class="af-e"><b>${esc(e.q)}</b><p>${txt(e.a)}</p>${e.source ? `<small>Source: ${esc(e.source)}</small>` : ''}</div>`).join('')}</div>`;
     if (ch.family === 'crm') {
       const wa = p.channel !== 'Email';
       return `<div class="as as-phone${wa ? ' wa-ph' : ''}"><div class="ap-h">${wa ? `<span class="av" style="--ac:#25D366;width:22px;height:22px">A</span><b>${B.brand.name}</b><small>${esc(p.channel || 'WhatsApp')}</small>` : `<b>${esc(p.subject || `${B.brand.name}`)}</b><small>from ${B.brand.name}</small>`}</div>

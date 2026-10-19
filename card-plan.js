@@ -177,7 +177,7 @@ export function planFor(c = {}, { draft = null, action: forced = null } = {}) {
   let by = 'rule';
   const ai = !batch && c.plan?.by === 'ai' ? fromAi(c.plan.steps, steps) : null; if (ai) { steps = ai; by = 'ai'; }
   const plan = { v: PLAN_V, action, family, asset: FAMILY_NAME[family] || 'Version', cta, n, batch, by, target: ctx.where,
-    make: { n, what: asset, one: one(asset), kind: family }, steps: steps.map((s, i) => ({ n: i + 1, ...s })), draft: draft ? { as: draft.as, images: draft.images || [], video: draft.video || null, poster: draft.poster || null, ratio: draft.ratio || null, title: draft.title || '', copy: draft.copy || '' } : null,
+    make: { n, what: asset, one: one(asset), kind: family }, steps: steps.map((s, i) => ({ n: i + 1, ...s })), draft: draft ? { as: draft.as, images: draft.images || [], video: draft.video || null, poster: draft.poster || null, ratio: draft.ratio || null, title: draft.title || '', copy: draft.copy || '', ...(draft.code ? { code: draft.code } : {}) } : null,
     conflict: !!recipe.conflict };
   plan.summary = caseSummary(c, plan);
   return plan;

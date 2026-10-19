@@ -541,11 +541,18 @@ export function createRemix(o) {
     const pl = o.planOf?.(t, c); if (pl && !ch.plan) ch.plan = pl;
     const d = pl?.draft; if (!d || !(d.images?.length || d.video) || versionsOf(t, ch.id).length > 1) return false;
     const imgs = d.images || [], text = TEXT_DRAFT.test(d.as || '') && !d.video;
-    ch.pkg = { ...ch.pkg, draft: { as: d.as, images: imgs, video: d.video || null, poster: d.poster || null, ratio: d.ratio || null, title: d.title || '', text } };
+    ch.pkg = { ...ch.pkg, draft: { as: d.as, images: imgs, video: d.video || null, poster: d.poster || null, ratio: d.ratio || null, title: d.title || '', text, ...(text ? { code: d.code || null } : {}) } }; /* code: a draft that is markup or a snippet shows on the stage as code */
     if (!text) { if (imgs[0]) ch.pkg.image = imgs[0]; if (imgs.length > 1) ch.pkg.cardImages = imgs; if (d.video) { ch.pkg.video = d.video; ch.pkg.poster = d.poster || imgs[0] || null; } if (d.ratio && RATIO[d.ratio] && ['meta_ad', 'social'].includes(ch.family)) ch.pkg.format = d.ratio; }
     ch.v0 = 'draft'; sync(t, ch, c);
     const v0 = versionsOf(t, ch.id)[0]; if (v0) { v0.snapshot = snapOf(ch); v0.reason = 'The first draft on the card'; v0.label = 'First draft'; try { mirror(t, ch, v0); } catch {} }
     return true;
+  };
+  /* jams seeded before the stage showed code: their text draft looks its code up once (null = none), and v0 keeps it too */
+  const healDraftCode = (t, ch) => {
+    const dr = ch.pkg?.draft; if (ch.v0 !== 'draft' || !dr?.text || dr.code !== undefined) return;
+    const code = o.planOf?.(t, t.cards.get(ch.cardId))?.draft?.code || null;
+    ch.pkg = { ...ch.pkg, draft: { ...dr, code } };
+    const v0 = versionsOf(t, ch.id)[0]; if (v0?.snapshot?.draft?.text && v0.snapshot.draft.code === undefined) v0.snapshot = { ...v0.snapshot, draft: { ...v0.snapshot.draft, code } };
   };
   // old changes (made before packages) get one built from their copy
   /* the spend a saved change shows, made again from its package (changes saved before the budget floor came out heal on open) */
@@ -556,6 +563,7 @@ export function createRemix(o) {
     if (ch.v0 !== 'draft' && !ch.batchKey && (ch.fromCard || (t.work || []).some((w) => w.changeId === ch.id))) seedV0(t, t.cards.get(ch.cardId), ch); /* 'none' tries again while the jam is untouched: the card's draft may land after the jam opened */
     if (ch.state === 'draft' && !ch.batchKey) { const lf = labelFor(ch.action, t.cards.get(ch.cardId) || {}); /* jams opened before the card-led names heal on read */
       if (lf && lf.label !== ch.actionLabel && ['creative.add_variants', 'creative.short_video'].includes(ch.action)) { ch.actionLabel = lf.label; ch.target = { conn: lf.target.conn, name: lf.target.name || (lf.target.conn ? SEED.connectors[lf.target.conn]?.name : 'A person'), object: lf.target.object }; } }
+    healDraftCode(t, ch);
     const opts = optionsOf(t, ch); /* first: healing an old jam can move its stage */
     const { impact: _imp, packMeta: _pk, ...pub } = ch; /* projections can hold the brand's private account rows: they go out only through /impact, per caller */
     const card0 = t.cards.get(ch.cardId); /* our version of a rival's ad: what Brew read from it, shown in the studio */

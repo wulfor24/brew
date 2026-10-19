@@ -43,14 +43,18 @@
     const out = []; let list = null, head = 'Top';
     const close = () => { if (list) { out.push(`<ul>${list.join('')}</ul>`); list = null; } };
     const mark = () => (flash.includes(head) ? ' class="is-new"' : '');
-    for (const raw of String(md || '').split('\n')) {
+    let code = null; /* a fenced block (```json …```) is code: one <pre> that comes back as the same fence (toMd) */
+    for (const raw of String(md || '').replace(/\r/g, '').split('\n')) {
       const l = raw.trimEnd();
       let m;
+      if ((m = l.match(/^\s*```\s*([\w+#./-]*)/))) { if (code) { out.push(`<pre class="rx-code"${code.lang ? ` data-lang="${esc(code.lang)}"` : ''}><code>${esc(code.lines.join('\n').replace(/^\n+|\n+$/g, ''))}</code></pre>`); code = null; } else { close(); code = { lang: m[1].toLowerCase(), lines: [] }; } continue; }
+      if (code) { code.lines.push(raw); continue; }
       if ((m = l.match(/^#\s+(.*)/))) { close(); head = 'Top'; out.push(`<h1>${inline(m[1])}</h1>`); continue; }
       if ((m = l.match(/^#{2,3}\s+(.*)/))) { close(); head = m[1].trim(); out.push(`<h2${mark()}>${inline(m[1])}</h2>`); continue; }
       if ((m = l.match(/^\s*[-*]\s+(.*)/))) { (list ||= []).push(`<li${mark()}>${inline(m[1])}</li>`); continue; }
       close(); if (l.trim()) out.push(`<p${mark()}>${inline(l)}</p>`);
     }
+    if (code) out.push(`<pre class="rx-code"${code.lang ? ` data-lang="${esc(code.lang)}"` : ''}><code>${esc(code.lines.join('\n').replace(/^\n+|\n+$/g, ''))}</code></pre>`); /* a fence the writer left open */
     close(); return out.join('') || '<p><br></p>';
   };
   const textOf = (el) => { let s = ''; el.childNodes.forEach((n) => { if (n.nodeType === 3) s += n.textContent; else if (n.nodeName === 'BR') s += ''; else if (n.nodeName === 'B' || n.nodeName === 'STRONG') s += `**${textOf(n)}**`; else s += textOf(n); }); return s.replace(/ /g, ' '); };
@@ -59,6 +63,7 @@
     root.childNodes.forEach((n) => {
       if (n.nodeType === 3) { if (n.textContent.trim()) lines.push(n.textContent.trim(), ''); return; }
       const tag = n.nodeName, t = textOf(n).trim();
+      if (tag === 'PRE') { lines.push('```' + (n.dataset?.lang || ''), n.textContent.replace(/\n+$/, ''), '```', ''); return; }
       if (tag === 'H1') lines.push(`# ${t}`, '');
       else if (tag === 'H2' || tag === 'H3') lines.push(`## ${t}`, '');
       else if (tag === 'UL' || tag === 'OL') { $$('li', n).forEach((li) => { const x = textOf(li).trim(); if (x) lines.push(`- ${x}`); }); lines.push(''); }

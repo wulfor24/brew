@@ -32,6 +32,7 @@ import { matchProduct, cardProduct, sceneOf } from './product-match.js';
 import { draftPrompt, imagePrompt, hookBlock, smallOf, DRAFT_SCHEMA, DRAFT_RATIOS, createMakers } from './drafts.js';
 import { cardValue } from './value.js'; // what a card is worth doing: the order drafts are made in
 import { emailHtml, whatsappHtml, pageHtml, collectionHtml } from './draft-mocks.js';
+import { hasCode } from './code-md.js'; // a draft that is code (markup, a snippet) shows as code, with no product photo
 import { inferMake } from './cards-gen.js';
 import { isRivalCard, isResearchImage } from './rival-ad.js'; // a rival's poster is never our product photo
 import { genFlush as genFlush0 } from './gen-store.js';
@@ -122,9 +123,9 @@ export function cardBriefText(c = {}, { moveDocs = {} } = {}) {
 export function draftView(d, c = null) {
   if (!d) return null; const images = d.slides?.length ? d.slides.map((x) => x.image).filter(Boolean) : d.render ? [d.render] : d.image ? [d.image] : [];
   if (!images.length && !d.video) return null;
-  const fallback = [d.photo, ...(isRivalCard(c) ? [] : [...(c?.images || []), c?.img])].find((x) => x && typeof x === 'string' && !images.includes(x) && !isResearchImage(x)) || null; /* never a rival's poster under our draft */
+  const fallback = hasCode(d.copy) ? null : [d.photo, ...(isRivalCard(c) ? [] : [...(c?.images || []), c?.img])].find((x) => x && typeof x === 'string' && !images.includes(x) && !isResearchImage(x)) || null; /* never a rival's poster under our draft */
   const bare = !!d.photoOnly && !d.render && !d.video && !d.slides?.length;
-  return { as: d.as, kind: d.kind || d.as, images, video: d.video || null, poster: d.video ? d.poster || d.render || d.image || images[0] || null : null, ratio: d.video && d.clipStill ? '9:16' : d.ratio || null, title: d.title || '', copy: cut(String(d.copy || '').replace(/[#*_>`]/g, ''), 240),
+  return { as: d.as, kind: d.kind || d.as, images, video: d.video || null, poster: d.video ? d.poster || d.render || d.image || images[0] || null : null, ratio: d.video && d.clipStill ? '9:16' : d.ratio || null, title: d.title || '', copy: cut(String(d.copy || '').replace(/[#*_>`]/g, ''), 240), ...(hasCode(d.copy) ? { code: String(d.copy).slice(0, 6000) } : {}) /* the jam's stage shows code as code, not as the mock's picture */,
     ...(d.headline ? { headline: d.headline } : {}), ...(fallback ? { fallback } : {}), ...(d.imgRetry || bare ? { remaking: true } : {}), ...(bare ? { photoOnly: true } : {}) };
 }
 
@@ -259,10 +260,11 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
           if (e.budget || e.noSlides || /no slide photo came back/i.test(e.message)) throw e;
           words('The slides did not come through; the words are here.'); } }
     } else if (['email', 'whatsapp', 'page', 'catalog'].includes(kind) && launchBrowser) { /* free: the words laid out where they will live, with a real product photo */
-      const ph = src ? dataUri(src) : null, html = kind === 'email' ? emailHtml({ brand, title: d.title, copy: d.copy, photo: ph }) : kind === 'whatsapp' ? whatsappHtml({ brand, title: d.title, copy: d.copy, photo: ph }) : kind === 'page' ? pageHtml({ brand, title: d.title, copy: d.copy, photo: ph }) : null;
-      try { d.render = html ? await render(html, '4:5', `${d.key}|${d.copy}`) : await (async () => { const products = await gridOf(p, named); return products.length >= 2 ? render(collectionHtml({ brand, title: j.title || c.title, products, catalog: true }), '4:5', `${d.key}|${d.title}`) : null; })(); }
+      const code = hasCode(d.copy); if (code) d.photo = null; /* markup has no product: no product photo on it or under it */
+      const ph = src && !code ? dataUri(src) : null, html = kind === 'email' ? emailHtml({ brand, title: d.title, copy: d.copy, photo: ph }) : kind === 'whatsapp' ? whatsappHtml({ brand, title: d.title, copy: d.copy, photo: ph }) : kind === 'page' ? pageHtml({ brand, title: d.title, copy: d.copy, photo: ph }) : null;
+      try { d.render = html ? await render(html, '4:5', `${d.key}|${d.copy}${code ? '|code' : ''}`) : await (async () => { const products = await gridOf(p, named); return products.length >= 2 ? render(collectionHtml({ brand, title: j.title || c.title, products, catalog: true }), '4:5', `${d.key}|${d.title}`) : null; })(); }
       catch (e) { log.warn?.('[drafts-bg] mock', slug, c.id, e.message); }
-      if (!d.render) d.as = 'text';
+      if (!d.render) d.as = 'text'; else if (code) d.codeMock = 1;
     } else if (kind !== 'text') d.as = 'text';
     d.usd = +(box.usd - box.start).toFixed(4);
     return d;
@@ -316,6 +318,18 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
     }
     return n;
   }
+  /* a saved email, chat or page mock whose words are code (a JSON-LD block, a snippet) was shot with a product photo and the
+     code as paragraphs: shot again (free, Chromium) as a code block with no photo. Every brand, once per draft */
+  async function healCodeMocks(p, cache) {
+    if (!launchBrowser) return 0; let n = 0; const brand = brandOf(p);
+    for (const d of Object.values(cache)) {
+      if (!d || d.k !== 2 || d.codeMock || !d.render || !['email', 'whatsapp', 'page'].includes(d.kind) || !hasCode(d.copy)) continue;
+      const html = (d.kind === 'email' ? emailHtml : d.kind === 'whatsapp' ? whatsappHtml : pageHtml)({ brand, title: d.title, copy: d.copy, photo: null });
+      try { d.render = await render(html, '4:5', `${d.key}|${d.copy}|code`); d.photo = null; d.codeMock = 1; n++; log.log?.('[drafts-bg] code mock shot again without the product photo', d.cardId); }
+      catch (e) { log.warn?.('[drafts-bg] code mock', d.cardId, e.message); }
+    }
+    return n;
+  }
   /* pictures that came back as the real photo, were refused by the day's budget, or did not come at all are made again when due,
      from the saved prompt; the headline is set on the new one and the card heals on its next load. A real-photo stand-in keeps
      being tried once a day (it is never left as the packshot); a budget refusal waits for the reset without counting as a try */
@@ -364,6 +378,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
       const cache = await cacheOf(slug), ranked = rankCards(p.seed.posts), top = new Set(ranked.slice(0, cfg.topN).map((c) => c.id)), order = byValue(p, ranked), day = today(now());
       if (await healMissing(slug, cache)) await save(slug, cache).catch(() => {});
       if (healWrongProduct(p, cache)) await save(slug, cache).catch(() => {});
+      if (await healCodeMocks(p, cache)) await save(slug, cache).catch(() => {});
       /* every card that names a format, and the top few others that show a picture (a text-only card with no format is not an
          ask for an asset), best-valued first; then stills that still wait for their clip */
       const todo = (only?.length ? order.filter((c) => only.includes(c.id)) : order.filter((c) => c.make?.format || (top.has(c.id) && draftKind(c) !== 'text'))).filter((c) => needsDraft(c, cache, now()));

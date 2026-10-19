@@ -3,6 +3,8 @@
 // real catalog photos). Pure HTML builders; drafts-bg.js shoots them with Chromium (drafts.js createMakers render).
 // Every word is the draft's own, every photo is the brand's real product photo or the draft's hero, nothing invented.
 
+import { splitCode, hasCode, codePre } from './code-md.js';
+
 const esc = (x) => String(x ?? '').replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
 const hexOk = (c) => /^#[0-9a-f]{6}$/i.test(String(c || ''));
 const lum = (h) => { const n = parseInt(h.slice(1), 16), f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(n >> 16) + 0.7152 * f((n >> 8) & 255) + 0.0722 * f(n & 255); };
@@ -20,10 +22,14 @@ export function splitCopy(copy = '') {
   }
   return { subject, preview, button, body: keep.join('\n').trim() };
 }
+/* code the writer fenced (```json …```) is a code block, never a "```json" paragraph */
 export function mdHtml(md = '', { max = 1400 } = {}) {
+  return splitCode(String(md || '').slice(0, max)).map((x) => (x.code ? codePre(x, esc) : mdText(x.text))).join('');
+}
+function mdText(md = '') {
   const inline = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(^|\W)\*(\S(?:.*?\S)?)\*(?=\W|$)/g, '$1<b>$2</b>').replace(/(^|\W)_(\S(?:.*?\S)?)_(?=\W|$)/g, '$1<i>$2</i>').replace(/\[(.+?)\]\([^)]*\)/g, '<u>$1</u>');
   const out = []; let list = null, n = 0;
-  for (const raw of String(md || '').slice(0, max).split('\n')) {
+  for (const raw of String(md || '').split('\n')) {
     const l = raw.trim(); if (!l) { if (list) { out.push(`</${list}>`); list = null; } continue; }
     const h = /^#{1,6}\s+(.+)$/.exec(l), li = /^[-*•]\s+(.+)$/.exec(l), ol = /^\d+[.)]\s+(.+)$/.exec(l);
     if (li || ol) { const k = li ? 'ul' : 'ol'; if (list !== k) { if (list) out.push(`</${list}>`); out.push(`<${k}>`); list = k; } out.push(`<li>${inline((li || ol)[1])}</li>`); continue; }
@@ -33,11 +39,12 @@ export function mdHtml(md = '', { max = 1400 } = {}) {
   if (list) out.push(`</${list}>`);
   return out.join('');
 }
-const BASE = (w, h, css) => `<!doctype html><html><head><meta charset="utf-8"><style>*{box-sizing:border-box}html,body{margin:0;width:${w}px;height:${h}px;overflow:hidden;font-family:"Helvetica Neue",Helvetica,Inter,Arial,sans-serif;-webkit-font-smoothing:antialiased}${css}</style></head>`;
+const BASE = (w, h, css) => `<!doctype html><html><head><meta charset="utf-8"><style>*{box-sizing:border-box}html,body{margin:0;width:${w}px;height:${h}px;overflow:hidden;font-family:"Helvetica Neue",Helvetica,Inter,Arial,sans-serif;-webkit-font-smoothing:antialiased}pre.code{margin:0 0 14px;padding:20px 22px;border-radius:14px;background:#0f172a;color:#e2e8f0;font:19px/1.42 Menlo,"SF Mono",Consolas,monospace;white-space:pre-wrap;word-break:break-word;text-align:left}pre.code code{font:inherit}${css}</style></head>`;
 const fade = 'mask-image:linear-gradient(180deg,#000 90%,transparent);-webkit-mask-image:linear-gradient(180deg,#000 90%,transparent)';
 
 /* an email as it opens on a phone: sender, subject, the brand's header, a real product photo, the words and the button */
 export function emailHtml({ brand = {}, title = '', copy = '', photo = null, w = 1080, h = 1350 }) {
+  if (hasCode(copy)) photo = null; /* markup or a snippet is not about a product: no product photo over it */
   const { subject, preview, button, body } = splitCopy(copy), ac = accentOf(brand), name = brand.name || brand.host || 'Brand';
   return `${BASE(w, h, `body{background:#eef0f3;padding:56px 70px}.app{height:100%;background:#fff;border-radius:36px;overflow:hidden;box-shadow:0 18px 60px rgba(15,20,30,.14);display:flex;flex-direction:column}
     .top{padding:38px 46px 26px;border-bottom:1px solid #e7e9ee}.from{display:flex;align-items:center;gap:20px}.av{width:72px;height:72px;border-radius:50%;background:${ac};color:#fff;display:grid;place-items:center;font-weight:700;font-size:34px}
@@ -52,6 +59,7 @@ export function emailHtml({ brand = {}, title = '', copy = '', photo = null, w =
 
 /* a WhatsApp message from the brand's business account: the product photo as an image message, the words as a bubble */
 export function whatsappHtml({ brand = {}, title = '', copy = '', photo = null, w = 1080, h = 1350 }) {
+  if (hasCode(copy)) photo = null; /* markup or a snippet is not about a product: no product photo over it */
   const { body, button } = splitCopy(copy), ac = accentOf(brand), name = brand.name || brand.host || 'Brand';
   return `${BASE(w, h, `body{background:#efeae2;display:flex;flex-direction:column}.bar{background:#075e54;color:#fff;display:flex;align-items:center;gap:22px;padding:40px 44px 30px}.av{width:76px;height:76px;border-radius:50%;background:${ac};display:grid;place-items:center;font-weight:700;font-size:34px;border:3px solid rgba(255,255,255,.5)}
     .bar b{display:block;font-size:34px}.bar small{font-size:24px;opacity:.85}.chat{flex:1;padding:36px 40px;overflow:hidden;${fade}}.day{margin:0 auto 26px;width:max-content;background:#fff;border-radius:12px;padding:8px 20px;font-size:22px;color:#54656f}
@@ -63,6 +71,7 @@ export function whatsappHtml({ brand = {}, title = '', copy = '', photo = null, 
 
 /* a page section on a phone: the store's address bar, the section's headline and words over a real product photo */
 export function pageHtml({ brand = {}, title = '', copy = '', photo = null, w = 1080, h = 1350 }) {
+  if (hasCode(copy)) photo = null; /* markup or a snippet is not about a product: no product photo over it */
   const { subject, body, button } = splitCopy(copy), ac = accentOf(brand), name = brand.name || 'Brand', host = brand.host || '';
   return `${BASE(w, h, `body{background:#e9ebef;padding:50px 120px 0}.ph{height:100%;background:#fff;border-radius:52px 52px 0 0;overflow:hidden;box-shadow:0 18px 60px rgba(15,20,30,.16);display:flex;flex-direction:column}
     .url{margin:30px 34px 0;background:#f1f3f5;border-radius:18px;padding:16px 24px;font-size:24px;color:#4b5563;text-align:center}.nav{display:flex;justify-content:space-between;align-items:center;padding:26px 40px;font-weight:800;font-size:32px;color:#111;border-bottom:1px solid #eef0f2}

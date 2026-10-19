@@ -9,12 +9,15 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { emailHtml } from './draft-mocks.js';
+import { splitCode, codeBlocks, codeExt, wordsHtml } from './code-md.js'; // fenced code stays code in every file
 
 const esc = (x) => String(x ?? '').replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
 const csvCell = (x) => { const s = String(x ?? ''); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
 export const csv = (rows) => rows.map((r) => r.map(csvCell).join(',')).join('\n') + '\n';
 const list = (x) => (Array.isArray(x) ? x : x ? String(x).split('\n') : []).map((s) => String(s).trim()).filter(Boolean);
 const lines = (...xs) => xs.flat().filter((x) => x != null && x !== '' && x !== false && x !== 0).join('\n'); // `n && text` parts drop out when n is 0
+/* a checklist step that carries code: the step, then its code as a fenced block under it (never fences inside a "- [ ]" line) */
+const stepMd = (s) => splitCode(s).map((x, i) => (x.code ? `\n\`\`\`${x.lang}\n${x.text}\n\`\`\`\n` : `${i ? '' : '- [ ] '}${x.text.trim()}`)).join('\n').replace(/^(?!- \[ \])/, '- [ ] ');
 const slugOf = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'brew';
 export const SHAPES = { '1:1': 1, '4:5': 4 / 5, '9:16': 9 / 16 };
 const SHAPE_USE = { '1:1': 'feed (square)', '4:5': 'feed (portrait, the most room in the feed)', '9:16': 'Stories and Reels' };
@@ -102,7 +105,7 @@ export async function buildPack({ ch, pkg: p = {}, family, version = 1, brand = 
       where.unshift(`${ch0 === 'Email' ? 'Your email tool' : ch0 === 'SMS' ? 'Your SMS tool' : 'Your WhatsApp Business tool'}${target.name && target.name !== 'A person' ? ` (${target.name})` : ''}: ${ch0 === 'WhatsApp' ? 'whatsapp-template.txt' : ch0 === 'SMS' ? 'sms.txt' : 'email.html (open it in a browser to see it) and email.txt'} hold the message; the other files are the same words for the other channels.`);
       break; }
     case 'store': {
-      const sec = `<section class="brew-section">\n  <h2>${esc(p.heading)}</h2>\n${String(p.body || '').split(/\n{2,}/).filter(Boolean).map((x) => `  <p>${esc(x.trim())}</p>`).join('\n')}${list(p.bullets).length ? `\n  <ul>\n${list(p.bullets).map((b) => `    <li>${esc(b)}</li>`).join('\n')}\n  </ul>` : ''}${p.button ? `\n  <a class="brew-button" href="#">${esc(p.button)}</a>` : ''}\n</section>\n`;
+      const sec = `<section class="brew-section">\n  <h2>${esc(p.heading)}</h2>\n${wordsHtml(p.body, esc).replace(/^(?=<p>|<pre)/gm, '  ')}${list(p.bullets).length ? `\n  <ul>\n${list(p.bullets).map((b) => `    <li>${esc(b)}</li>`).join('\n')}\n  </ul>` : ''}${p.button ? `\n  <a class="brew-button" href="#">${esc(p.button)}</a>` : ''}\n</section>\n`;
       put('section.html', sec);
       put('section.txt', lines(p.pages && `Where: ${p.pages}`, p.section && `Section: ${p.section}`, (p.priceBefore || p.priceAfter) && `Price: ${p.priceBefore || 'now'} → ${p.priceAfter || ''}`, '', p.heading, '', p.body, ...list(p.bullets).map((b) => `• ${b}`), p.button && `[${p.button}]`));
       if (p.image) await addFile(p.image, 'media/section-photo');
@@ -118,7 +121,7 @@ export async function buildPack({ ch, pkg: p = {}, family, version = 1, brand = 
       const es = (p.entries || []).filter((e) => e?.q && e?.a), key = String(ch.action || '').split('.').pop();
       if (key === 'llms_txt') put('llms.txt', lines(`# ${name}`, '', `> ${p.asOf ? `As of ${p.asOf}. ` : ''}Facts about ${name}, with sources.`, '', ...es.map((e) => `## ${e.q}\n${e.a}${e.source ? `\nSource: ${e.source}` : ''}\n`)));
       else if (key === 'schema_fix') put('product-schema.json', JSON.stringify({ '@context': 'https://schema.org', '@type': 'Product', name: p.file && !/\.(txt|json|html?)$/i.test(p.file) ? p.file : (brand.product || name), brand: { '@type': 'Brand', name }, additionalProperty: es.map((e) => ({ '@type': 'PropertyValue', name: e.q, value: e.a })) }, null, 2) + '\n');
-      put('faq.html', `<section class="brew-faq">\n${p.asOf ? `  <p class="as-of">As of ${esc(p.asOf)}</p>\n` : ''}${es.map((e) => `  <details>\n    <summary>${esc(e.q)}</summary>\n    <p>${esc(e.a)}</p>${e.source ? `\n    <p class="source">Source: ${esc(e.source)}</p>` : ''}\n  </details>`).join('\n')}\n</section>\n`);
+      put('faq.html', `<section class="brew-faq">\n${p.asOf ? `  <p class="as-of">As of ${esc(p.asOf)}</p>\n` : ''}${es.map((e) => `  <details>\n    <summary>${esc(e.q)}</summary>\n    ${wordsHtml(e.a, esc) || '<p></p>'}${e.source ? `\n    <p class="source">Source: ${esc(e.source)}</p>` : ''}\n  </details>`).join('\n')}\n</section>\n`);
       put('faq-jsonld.html', `<script type="application/ld+json">\n${JSON.stringify({ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: es.map((e) => ({ '@type': 'Question', name: e.q, acceptedAnswer: { '@type': 'Answer', text: e.a } })) }, null, 2)}\n</script>\n`);
       where.unshift(`${p.file || 'Your site'}: ${key === 'llms_txt' ? 'upload llms.txt to the site root; ' : key === 'schema_fix' ? 'add product-schema.json as JSON-LD on the product page; ' : ''}faq.html is the answers as a page section and faq-jsonld.html the markup AI tools and Google read. Put both on the same page.`);
       break; }
@@ -134,7 +137,7 @@ export async function buildPack({ ch, pkg: p = {}, family, version = 1, brand = 
       where.unshift('Google Ads Editor: Account › Import › From file, pick google-ads-editor.csv, review the changes, then post them from Editor yourself. The campaign comes in paused until you turn it on.');
       break; }
     case 'setup':
-      put('checklist.md', lines(`# ${act}`, '', p.tool && `**Where:** ${p.tool}`, '', p.what && `## What changes\n${p.what}\n`, '## Steps', ...list(p.steps).map((s) => `- [ ] ${s}`), '', p.verify && `## How we know it worked\n${p.verify}\n`, p.customerSees && `## What customers see\n${p.customerSees}\n`));
+      put('checklist.md', lines(`# ${act}`, '', p.tool && `**Where:** ${p.tool}`, '', p.what && `## What changes\n${p.what}\n`, '## Steps', ...list(p.steps).map(stepMd), '', p.verify && `## How we know it worked\n${p.verify}\n`, p.customerSees && `## What customers see\n${p.customerSees}\n`));
       where.unshift(`${p.tool || place}: work down checklist.md and tick each step.`);
       break;
     case 'brief':
@@ -168,6 +171,12 @@ export async function buildPack({ ch, pkg: p = {}, family, version = 1, brand = 
     if (words) put(`${as}.txt`, words);
     if (got.length || words) where.push(`${as === 'draft' ? 'The first draft' : `The ${as} version`}: ${got.length ? `${got.length > 1 ? 'files' : 'file'} media/${as}-*` : 'the media is still being made in the studio'}${words ? ` and its words in ${as}.txt` : ''}. Post it ${as === 'video' ? 'as a Reel, Short or Story' : as === 'carousel' ? 'as a carousel, in order' : 'as a single image'} on ${name}’s own accounts.`);
     if (d.pending) todo.push(`The ${as} is still being made: download the pack again when it’s ready`);
+  }
+  /* a text draft that is code (product markup, llms.txt, a snippet): each block as the file it is, ready to paste */
+  if (d?.text && d.code) {
+    const bs = codeBlocks(d.code), ak = String(ch.action || '').split('.').pop(), names = bs.map((b, i) => `code/${ak === 'schema_fix' || /json-?ld|ld\+json/i.test(`${b.lang} ${b.text.slice(0, 80)}`) || /"@context"/.test(b.text) ? 'markup' : 'snippet'}-${i + 1}.${codeExt(b.lang)}`);
+    bs.forEach((b, i) => put(names[i], b.text.replace(/\n*$/, '\n')));
+    if (bs.length) where.push(`The first draft's code: ${names.join(', ')}, exactly as written.${names.some((n) => n.endsWith('.json') && n.includes('markup')) ? ' A JSON-LD file goes inside <script type="application/ld+json"> on the page.' : ''}`);
   }
   for (const a of assets) if (a.kind === 'link' && a.url && !links.includes(a.url)) links.push(a.url);
   if (links.length) put('links.txt', [...new Set(links)].join('\n') + '\n');

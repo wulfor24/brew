@@ -8,6 +8,7 @@ import { B } from './brand-ctx.js';
 // - text(ctx): the WhatsApp/Slack message, a full summary plus the link to the page
 import crypto from 'node:crypto';
 import { isRivalCard } from './rival-ad.js'; // a rival's ad card: its pictures never go in our brief
+import { splitCode, codePre } from './code-md.js';
 
 /* links are signed with HANDOFF_SECRET; links signed before it was set (with the Anthropic key) still open, so rotating the
    Anthropic key no longer breaks shared briefs once HANDOFF_SECRET is set */
@@ -125,7 +126,8 @@ export function createHandoff({ RMX, pageOf, fillCard, AGENT = {}, SEED = {}, ba
   // the hosted page: readable on a phone, everything in one scroll, every asset downloadable
   const html = (x) => {
     const sec = (h, body) => body ? `<section><h2>${h}</h2>${body}</section>` : '';
-    const md = (s) => String(s || '').split('\n').map((l) => { const e = esc(l).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>'); return /^#\s/.test(l) ? `<h3>${e.slice(2)}</h3>` : /^#{2,3}\s/.test(l) ? `<h4>${e.replace(/^#+\s/, '')}</h4>` : /^\s*[-*]\s/.test(l) ? `<li>${e.replace(/^\s*[-*]\s/, '')}</li>` : l.trim() ? `<p>${e}</p>` : ''; }).join('').replace(/(<li>.*?<\/li>)+/g, (m) => `<ul>${m}</ul>`);
+    const md = (s) => splitCode(s).map((x) => (x.code ? codePre(x, esc) : mdLines(x.text))).join(''); /* fenced code is a code block, never "```json" paragraphs */
+    const mdLines = (s) => String(s || '').split('\n').map((l) => { const e = esc(l).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>'); return /^#\s/.test(l) ? `<h3>${e.slice(2)}</h3>` : /^#{2,3}\s/.test(l) ? `<h4>${e.replace(/^#+\s/, '')}</h4>` : /^\s*[-*]\s/.test(l) ? `<li>${e.replace(/^\s*[-*]\s/, '')}</li>` : l.trim() ? `<p>${e}</p>` : ''; }).join('').replace(/(<li>.*?<\/li>)+/g, (m) => `<ul>${m}</ul>`);
     const msgs = (arr) => arr.map((m) => m.system ? `<div class="sys">${esc(m.text)}</div>` : `<div class="msg${m.who === 'You' ? ' me' : ''}"><small>${esc(m.who)}${m.at ? ` · ${new Date(m.at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}` : ''}</small><p>${esc(m.text)}</p></div>`).join('');
     return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(x.title)} · Brief</title>
 <meta name="robots" content="noindex"><link rel="icon" href="/${x.mark || 'assets/brew-mark.svg'}">
@@ -150,6 +152,7 @@ h3{font-size:18px;margin:.4em 0}h4{font-size:12px;letter-spacing:.08em;text-tran
 .msg{margin:8px 0;max-width:88%}.msg small{font-size:11.5px;color:var(--fg3)}.msg p{margin:2px 0 0;padding:8px 12px;border-radius:12px;background:var(--bg);white-space:pre-wrap}.msg.me{margin-left:auto}.msg.me small{display:block;text-align:right}.msg.me p{background:var(--fg);color:var(--bg)}.sys{font-size:12px;color:var(--fg3);text-align:center;margin:8px 0}
 dl{margin:0}dl div{padding:8px 0;border-top:1px solid var(--line)}dl div:first-child{border-top:0}dt{font-size:12px;color:var(--fg3)}dt em{font-style:normal;color:var(--ok);margin-left:6px}dd{margin:2px 0 0;white-space:pre-wrap}
 pre{white-space:pre-wrap;background:var(--bg);border-radius:10px;padding:10px 12px;font:13px/1.5 ui-monospace,Menlo,monospace;margin:6px 0 0}
+pre.code{background:#0f172a;color:#e2e8f0;word-break:break-word;margin:8px 0}pre.code code{font:inherit}
 .vers{display:flex;flex-direction:column;gap:8px}.ver{display:flex;gap:10px;align-items:flex-start}.ver img{width:64px;border-radius:8px}.ver.cur b::after{content:" · current";color:var(--ok);font-weight:500;font-size:12px}
 .miss{color:var(--warn);font-size:13.5px}.foot{font-size:12px;color:var(--fg3);text-align:center}
 </style></head><body><main>
