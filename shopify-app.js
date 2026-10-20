@@ -247,5 +247,14 @@ export function createShopifyApp({ auth, connectors, builder, packs, log = conso
 <body><main><h1>${esc(title)}</h1>${body}</main>${home ? '<script src="/shopify-home.js"></script>' : ''}</body></html>`;
   }
 
-  return { handle, attach, embeddedReq, embed: (req, u, res, body) => { if (!app().id || !embeddedReq(req, u)) return body; const shop = SHOP.test(u.searchParams.get('shop') || '') ? u.searchParams.get('shop') : null; res.setHeader('content-security-policy', frameAncestors(shop)); return embedHtml(body, shop); } };
+  const shopQ = (u) => (SHOP.test(u.searchParams.get('shop') || '') ? u.searchParams.get('shop') : null);
+  /* a brand page opened inside the admin with the session token in its address (shopify-home.js open, the renew hop below):
+     its seed and facts scripts carry the token too, so they load as the person (a frame's script tags can't send a header) */
+  const withToken = (req, u, body) => { const tk = req.shopify?.raw && u.searchParams.get('id_token') === req.shopify.raw ? req.shopify.raw : null;
+    return tk ? body.replace(/(src="\/b\/[a-z0-9-]+\/(?:seed|facts)\.js)"/g, `$1?id_token=${encodeURIComponent(tk)}"`) : body; };
+  /* a store not open yet keeps its pages to its team (closed-gate.js), and a frame's own load can't say who is looking: inside
+     the admin, a page with no person on it asks App Bridge for a fresh session token and loads again with it (once: fresh=1) */
+  const renew = (req, u, res) => { if (!app().id || !embeddedReq(req, u) || req.brewUser || u.searchParams.get('fresh') === '1') return null;
+    const shop = shopQ(u); res.setHeader('content-security-policy', frameAncestors(shop)); return embedHtml(page('Brew', '<div id="brew-renew">Opening Brew…</div>'), shop); };
+  return { handle, attach, embeddedReq, renew, embed: (req, u, res, body) => { if (!app().id || !embeddedReq(req, u)) return body; const shop = shopQ(u); res.setHeader('content-security-policy', frameAncestors(shop)); return embedHtml(withToken(req, u, body), shop); } };
 }

@@ -2231,6 +2231,7 @@ export function createFeedService(o) {
     const slug = t0?.brandId || (u.pathname === '/api/tenants' ? (u.searchParams.get('brand') || req.headers['x-brand']) : null) || DEFAULT_BRAND;
     const br = await packs.load(slug) || await packs.load(DEFAULT_BRAND);
     if (t0 && !t0.brandId) t0.brandId = br.slug;
+    if (br.kind === 'generated' && o.closedFor && await o.closedFor(req, res, u, br.slug)) return true; /* a store not open yet (closed-gate.js): its workspaces, cards and jams are its team's only */
     const viewer = br.kind === 'generated' ? await viewerOf(req, br.slug).catch(() => null) : null;
     await JAMS.load(br.slug); /* the team's jams are in memory before anything reads t.work */
     /* demo mode: someone who may not make fresh work here (another domain, not invited) keeps the feed, cards and layout, but no

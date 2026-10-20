@@ -6,7 +6,9 @@
   const esc = (x) => String(x ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const say = (h) => { box.innerHTML = h; };
   const call = async (path) => { const r = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }); return r.json().catch(() => ({ error: 'Brew didn’t answer. Try again in a minute.' })); };
-  const open = (slug) => location.replace(`/${encodeURIComponent(slug)}?${keep()}`);
+  /* the brand page loads as this person: a frame's own load can't send the session token, so its address carries it (a store
+     not open yet shows its page to its team only; shopify-embed.js takes the token out of the address once the page is up) */
+  const open = async (slug) => { const k = new URLSearchParams(keep()); try { const t = await window.shopify?.idToken?.(); if (t) k.set('id_token', t); } catch (e) {} location.replace(`/${encodeURIComponent(slug)}?${k}`); };
   async function go() {
     say('Opening Brew…');
     const s = await call('/shopify/api/session');

@@ -59,6 +59,7 @@ import { realRows } from './connectors/common.js'; // simulated account rows are
 import { createLearnings, briefView } from './brand-learnings.js'; // /update-brand-learnings: a pasted call, notes or emails → brief, memory, moves
 import { createDraftsBg } from './drafts-bg.js'; // first drafts on the top cards, in the background
 import { createCardsGen } from './cards-gen.js';
+import { createClosedGate } from './closed-gate.js'; // a store not launched yet (read from its Shopify admin) is its team's only
 import { setMemoryHooks } from './learn.js'; // brand memory
 import { createNotes } from './notes.js'; // margin notes for any brand's cards
 import { createValue } from './value.js'; // move grades for the ranker
@@ -592,6 +593,10 @@ if (!DEMO && process.env.DIGEST_OFF !== '1' && (process.env.K_SERVICE || process
 if (DEMO) { const realUser = auth.user; auth.user = (req) => realUser(req) || (demoSid() ? { email: demoEmail(), name: 'You', demo: true } : null); }
 const memoryRoutes = createMemoryRoutes({ memory, viewerOf: (req, slug) => viewerOf(req, slug), readBody, send, enabled: MEMORY_ON, exists: async (slug) => !blocked(slug) && (!!(await packs.getJSON(slug, 'status.json', null))) }); // brand memory
 const movesRoutes = movesCadence.routes({ viewerOf: (req, slug) => viewerOf(req, slug), readBody, send, exists: async (slug) => !blocked(slug) && slug !== DEFAULT && !!(await packs.getJSON(slug, 'status.json', null)) });
+/* a store behind Shopify's password page, read from its admin (closed-gate.js): its team only, everyone else a plain "not open yet"
+   page, until a heal finds it open. Live only: the demo site and a local server with sign-in off have nobody to tell apart */
+const closedGate = createClosedGate({ status: (slug) => builder.status(slug), profile: (slug) => packs.getJSON(slug, 'profile.json', null), user: (req) => auth.user(req), roleOf: (slug, me) => auth.roleOf(slug, me),
+  on: () => !DEMO && auth.signinOn(), ttl: process.env.CLOSED_GATE_TTL != null ? +process.env.CLOSED_GATE_TTL : 15e3, renew: (req, u, res) => shopifyApp?.renew?.(req, u, res) || null, log: console });
 // is this person on the brand's team, and is the brand claimed (cached a minute: every feed call asks)
 const MEMO = new Map();
 const viewerOf = async (req, slug) => { if (process.env.DEV_MEMBER === '1' && !process.env.K_SERVICE && !auth.user(req)?.sub?.startsWith?.('dev')) return { member: true, claimed: true, gen: true, email: process.env.DEV_EMAIL || 'dev@local', name: process.env.DEV_NAME || 'Dev', seats: process.env.DEV_SEATS != null ? process.env.DEV_SEATS.split(',').filter(Boolean) : null }; // local testing of team-only paths; never on Cloud Run
@@ -625,6 +630,7 @@ feedSvc = createFeedService({ ai, /* Drop anything here reads PDFs and photos wi
      line reads the same replay as the status route (demo-routes.js simStatus); the session is read in the background */
   viewStatus: DEMO ? (slug, st) => { const k = `${demoSid() || ''}|${slug}`; /* each visitor's own tour session (demo-mode.js sandboxes the file per visitor) */
     if (!DEMO_SES.has(k)) packs.getJSON(slug, 'private/demo/session.json', null).then((x) => { if (!DEMO_SES.has(k)) demoSes(slug, x); }).catch(() => {}); return simStatus(st, DEMO_SES.get(k)); } : null, /* demo-routes keeps the copy fresh on every read and write (onSession) */
+  closedFor: (req, res, u, slug) => closedGate.closedFor(req, res, u, slug), /* a workspace, card or jam of a store not open yet: its team only */
   slack: DEMO ? null : connectors, /* a really connected Slack: jams post to it and its thread replies come back (slack-routes.js) */
   viewerOf, genOk, liveFor: (slug, member) => connectors.forViewer(slug, member),
   /* membership checked from the signed-in user on every request and on the background clock (feed-service.js REQ / bgTeam) */
@@ -910,6 +916,7 @@ async function serve(req, res, u) {
     if (demoRoutes && await demoRoutes(req, res, u)) return;
     if (shopifyApp) { await shopifyApp.attach(req, u); if (await shopifyApp.handle(req, res, u)) return; } // a request from inside the Shopify admin carries a session token, not a cookie
     if (await auth.handle(req, res, u)) return;
+    if (await closedGate.gate(req, res, u)) return; // a store not open yet: its team only (pages, /b files, brand routes, x-brand calls)
     if (await slooshHandle(req, res, u)) return;
     if (await jamMail.handle(req, res, u)) return; // the mute / only-tags links in jam emails
     if (slackRoutes && await slackRoutes(req, res, u)) return; // what Slack sends: thread replies, Approve (signed)
