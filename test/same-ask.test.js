@@ -42,6 +42,10 @@ test('the same facts or the brand name alone are not the same ask', () => {
   assert.ok(!sameAsk(askOf(OTHER[2], n), askOf(OTHER[0], n)), 'a finding with a borrowed verb needs shared figures');
   assert.ok(!sameAsk(card('m1-1', 'Publish the comparative landing page'), card('m2-1', 'Publish the safety landing page')), 'a format word is not the ask');
   assert.ok(!sameAsk(card('m1-1', 'Deploy post-purchase review email'), card('m2-1', 'Deploy the post-purchase attribution survey')), 'post-purchase is one word');
+  assert.ok(!sameAsk(card('m1-1', 'Post a serum carousel that tells people to give it time'), card('m2-1', "Post 'which serum first' as a carousel")), 'a channel word is not the ask');
+  assert.ok(!sameAsk(card('m1-1', 'Tell past MitoActive buyers about the 90-day pack first'), card('m2-1', 'Tell buyers when to step up to MitoActive')), 'an audience word is not the ask');
+  assert.ok(!sameAsk(card('m1-1', 'Ask buyers how they heard of us'), card('m2-1', 'Ask buyers what they expect at day 30')), 'pronouns are not the ask');
+  assert.ok(sameAsk(card('m1-1', 'Ask for the second serum bottle at day 21'), card('m2-1', 'Ask for the second serum bottle on WhatsApp')), 'one ask on two channels is still one ask');
 });
 
 test('a ranked feed shows one card per ask, the best-graded, where the first of them ranked; the rest wait at the end', () => {

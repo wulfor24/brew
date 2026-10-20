@@ -7,7 +7,7 @@
 // action and either two of those words, or one of them plus two money or percent figures in the card (the same ₹1,947 pack, ₹20.04 over three singles). A title
 // that states a finding ("The Pack of 3 costs more than three singles") takes its button's action and always needs the figure.
 
-const STOP = new Set('a an the of to for on in at by with and or its it is are be this that these those their your our my every each any all only more most than then into from as so not no one two three four five six seven eight nine ten first today now live new own same what which who how why when where'.split(' '));
+const STOP = new Set('a an the of to for on in at by with and or its it is are be this that these those their your our my every each any all only more most than then into from as so not no one two three four five six seven eight nine ten first today now live new own same what which who how why when where they them we us you he she his her'.split(' '));
 const NOT_VERB = new Set([...STOP, 'none', 'zero', 'there', 'here', 'we', 'you', 'they']);
 const NUMBERY = /^(?:\d|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thir|four|fif|six|seven|eigh|nine|twent|thirt|fort|fift|hundred|thousand)/; /* "Seventeen serum pages…" states a count, not an action */
 const VAGUE = new Set(['agree', 'approve', 'open', 'review', 'see', 'read', 'view', 'decide', 'answer', 'reply', 'start', 'make', 'draft', 'update', 'go', 'get', 'try', 'show', 'tell', 'ask', 'use', 'let', 'do']); /* a button's verb that says how, not what */
@@ -15,7 +15,7 @@ const SAME = { correct: 'fix', repair: 'fix', settle: 'fix', resolve: 'fix', sor
 const stem = (w) => (w.length > 4 && w.endsWith('ies') ? `${w.slice(0, -3)}y` : w.length > 3 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w);
 const words = (s) => String(s || '').toLowerCase().replace(/[’']s\b/g, '').split(/[^a-zÀ-ɏ-]+|-(?![a-z])|(?<![a-z])-/).filter(Boolean).map(stem); /* "post-purchase" stays one word */
 /* where or in what form, not what: two "landing page" cards are not one ask */
-const FORMAT = new Set('page pdp landing listing template ad email mail message post thread sequence campaign flow block product site store shopify website section popup banner'.split(' '));
+const FORMAT = new Set('page pdp landing listing template ad email mail message post thread sequence campaign flow block product site store shopify website section popup banner carousel reel video story static poster whatsapp sms buyer customer shopper visitor people user'.split(' '));
 const verbOf = (w) => SAME[w] || w;
 /* the part of a title that names the thing to do: up to its reason or its colon */
 const headOf = (t) => String(t || '').split(/\s+(?:before|until|so|while|after|then|because|once|ahead of|instead of)\s+|\s*[:;,(—–]\s*|\s+-\s+/i)[0];
