@@ -303,6 +303,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
       } catch (e) { log.warn('[research] rising', e.message); }
     }));
     if (!Object.keys(series).length) throw new Error('no trend data came back');
+    for (const q of Object.keys(rising)) if (!rising[q]?.length) delete rising[q]; /* an empty answer is no rising list: never a story */
     const days = DIWALI ? Math.ceil((DIWALI - now) / D) : null;
     /* a term searched almost never is noise: "0 to 7" is a 700% jump nobody should act on, so only terms with a real base become stories */
     const solid = (s) => s.prev >= 5 && s.last >= 10;
@@ -312,7 +313,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     const ris = Object.entries(rising).map(([q, l]) => `Rising searches related to "${q}": ${l.map((x) => `${x.q} (${rv(x.v)})`).join('; ')}`).join('\n');
     let out = { items: [] };
     try {
-      out = parseJSON((await claude(`${factBrief()}\n\nYou are the Trends agent for ${BN()} (${B().config.category}). Real Google Trends data for ${CTRY()}, last 90 days (index 0-100, comparable only within a group):\n${data}\n${ris}\nCalendar: ${FESTN()} is ${FESTD()}, ${days} days away.\nPick the 5 findings that matter most to ${BN()} this week. Every finding must quote a real number from the data above. Any ${BN()} price or claim must come from the facts list, exactly. Plain, simple words. Do not invent anything.\nJSON: {"items":[{"kind":"term|rising|calendar","terms":["exact term(s) from the data, for a chart; [] for rising or calendar"],"rising":"the related query list key if kind is rising, else null","h":"headline under 52 chars with the number","p":"two sentences, 25 to 35 words: what we saw with the number, then the move and what it gets ${BN()}; no fonts, design notes or file names","card":"a card title under 70 chars that names a number"}]}`, { max: 3000 })).text);
+      out = parseJSON((await claude(`${factBrief()}\n\nYou are the Trends agent for ${BN()} (${B().config.category}). Real Google Trends data for ${CTRY()}, last 90 days (index 0-100, comparable only within a group):\n${data}\n${ris}\n${FESTD() && days != null ? `Calendar: ${FESTN()} is ${FESTD()}, ${days} days away.\n` : ''}Pick the 5 findings that matter most to ${BN()} this week. Every finding must quote a real number from the data above. Any ${BN()} price or claim must come from the facts list, exactly. Plain, simple words. Do not invent anything.\nJSON: {"items":[{"kind":"term|rising|calendar","terms":["exact term(s) from the data, for a chart; [] for rising or calendar"],"rising":"the related query list key if kind is rising, else null","h":"headline under 52 chars with the number","p":"two sentences, 25 to 35 words: what we saw with the number, then the move and what it gets ${BN()}; no fonts, design notes or file names","card":"a card title under 70 chars that names a number"}]}`, { max: 3000 })).text);
     } catch (e) { log.warn('[research] trends claude', e.message); }
     /* no AI (down, out of credit, or it picked nothing): the stories are written from the numbers themselves, so the ring
        still gets today's real movers; nothing is invented, every line is a number from the read above */
@@ -324,6 +325,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     const items = (out.items || []).slice(0, 6).map((x) => { const risingOf = x.kind === 'rising' ? (rising[x.rising] ? x.rising : Object.keys(rising)[0] || null) : null;
       return { kind: x.kind, h: pct(clean(x.h)), p: pct(clean(x.p)), card: pct(clean(x.card || x.h)), terms: (x.terms || []).filter((t) => series[t]).slice(0, 3), risingOf, rising: risingOf ? (rising[risingOf] || []).slice(0, 6) : null, ...(x.by ? { by: x.by } : {}) }; })
       // one story per rising list and per chart: two stories over the same data would be two cards with one widget
+      .filter((x) => !(x.kind === 'rising' && !(x.rising || []).length)) /* a rising story with no rising searches */
       .filter((x) => { const k = KEY.trends(x); if (seenKey.has(k)) return false; seenKey.add(k); return true; })
       // the id comes from what the story is about, so a later read the same day never reuses another story's id
       .map((x) => ({ id: 'tr-' + crypto.createHash('sha1').update(KEY.trends(x)).digest('hex').slice(0, 10), ...x }));
@@ -341,7 +343,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     const [rq, list] = Object.entries(rising).find(([, l]) => l?.length) || [];
     if (rq) items.push({ kind: 'rising', terms: [], rising: rq, h: `Rising searches around "${rq}"`.slice(0, 60),
       p: `People searching "${rq}" in ${CTRY()} now also search ${list.slice(0, 3).map((x) => `"${x.q}"`).join(', ')}. Each is a hook ${BN()} can answer in an ad or a page.`,
-      card: `${list.length} rising searches around "${rq}"` });
+      card: `${list.length} rising search${list.length === 1 ? '' : 'es'} around "${rq}"` });
     if (days != null && days >= 0 && days <= 45) items.push({ kind: 'calendar', terms: [], h: `${FESTN()} is ${days} days away`, p: `${FESTN()} falls on ${FESTD()}, ${days} days from today. Searches climb in the weeks before, so creative and offers for ${BN()} should be live before then.`, card: `${FESTN()} in ${days} days: get creative live first` });
     return items.map((x) => ({ ...x, by: 'data' }));
   }

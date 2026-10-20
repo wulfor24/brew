@@ -826,6 +826,8 @@ export function createFeedService(o) {
     detail: { why: [a.why, `Hook: ${a.hook}`, `${a.brand} runs it as ${a.versions} version${a.versions > 1 ? 's' : ''}, ranked ${a.rank} by Meta for reach.`].filter(Boolean), how: [a.take, `Brew reads how ${a.brand}'s ad is made, then drafts yours on the same angle and style, with your product and your words.`, 'Brew drafts one; make the final (or redo it) and share the brief; your team runs it.'].filter(Boolean) },
     make: { format: a.format === 'video' ? 'reel' : 'single image ad', what: `Our version of ${a.brand}'s ${a.format === 'video' ? 'video' : 'image'} ad`, from: 'rival' }, /* the studio opens on the same kind of creative */
     cta: { label: 'Make our version' }, link: { label: 'See it in the Ad Library', url: a.url }, src: `Meta Ad Library · ${CTRY()} · ${dateIN(at)}`, research: { kind: 'ad', id: a.id }, rivalName: a.brand /* whose ad it is: "Seen on <rival>" (FEED-NOT-02) */ });
+  /* a trend story built on nothing ("0 terms", an empty rising list) is no finding: never a card (QA 20 Oct; quiet rule, no zero tiles) */
+  const emptyTrend = (x) => (x.kind === 'rising' && !(x.rising || []).length) || /\b(?:0|zero|no) (?:terms|rising|listings|searches)\b|\bin 0 of\b/i.test(`${x.card || ''} ${x.h || ''}`);
   const trendCard = (x, at) => ({ id: 'r-' + x.id, agent: 'brew', sector: 'creatives', type: 'competitor', family: 'learning', lane: firstLane(), roles: ['founder', 'growth', 'brand'], kind: 'rows',
     campaign: 'Trends', title: x.card, sub: x.p,
     rows: x.rising ? x.rising.slice(0, 4).map((r) => [r.q.length > 38 ? r.q.slice(0, 36) + '…' : r.q, riseLabel(r.v)]) : x.terms.map((term) => { const s = research.get().trends.series[term]; return [term, s.change == null ? `index ${s.last}` : `${s.change > 0 ? '+' : ''}${s.change}% in 30 days`]; }),
@@ -879,7 +881,7 @@ export function createFeedService(o) {
   const researchCard = (kind, id) => {
     const r = research?.get() || {};
     if (kind === 'ad') { const a = resAll(r.ads).find((x) => x.id === id); return a && adCard(a, a.firstSeen || r.ads.fetchedAt); }
-    if (kind === 'trend') { const x = resAll(r.trends).find((y) => y.id === id); return x && x.terms?.every((term) => r.trends.series?.[term]) && trendCard(x, x.firstSeen || r.trends.fetchedAt); }
+    if (kind === 'trend') { const x = resAll(r.trends).find((y) => y.id === id); return x && !emptyTrend(x) && x.terms?.every((term) => r.trends.series?.[term]) && trendCard(x, x.firstSeen || r.trends.fetchedAt); }
     if (kind === 'howto') { const x = resAll(r.howto).find((y) => y.id === id); return x && howtoCard(x, x.firstSeen || r.howto.fetchedAt); }
     if (kind === 'news') { const x = resAll(r.news).find((y) => newsId(y) === id); return x && newsCard(x, x.firstSeen || r.news.fetchedAt); }
   };

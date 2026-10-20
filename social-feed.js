@@ -48,6 +48,17 @@ export function ideaUsable(i, { now = Date.now(), profile = {} } = {}) {
 }
 
 /* ---------- ideas → cards ---------- */
+/* what an idea's rows say, read by a person (QA 20 Oct): an own channel stored as its id ("@UCbuKp…") is "your YouTube channel"; a
+   thread key ("C1", "T5") is no name; "Backed by" says why, never a bare price; "Post at" is a day and time ahead of today in plain
+   words (no raw ISO stamp, no zone from another market, no "at at"), else nothing */
+const placeName = (w) => { const n = String(w?.name || '').split(':')[0].trim(); return /^@?UC[\w-]{20,}/.test(n) ? `your ${/youtube/i.test(`${w?.name} ${w?.url}`) || /^@?UC/.test(n) ? 'YouTube channel' : 'channel'}` : /^[CT]\d{1,2}$/.test(n) ? '' : n; };
+const backedBy = (e) => { if (!e?.value) return ''; const v = String(e.value).trim(); const bare = !/[a-z]{3,}/i.test(v.replace(/\b(?:rs|inr|usd|eur|gbp)\b/gi, '')); return bare ? (e.label ? cut(`${e.label}: ${v}`, 70) : '') : cut(v, 70); };
+const postAtOf = (x, now) => { let s = String(x || '').trim().replace(/^at\s+/i, ''); if (!s) return '';
+  const iso = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(s); if (iso) { const day = Date.UTC(+iso[1], +iso[2] - 1, +iso[3]); if (!Number.isFinite(day) || day + 864e5 < now) return ''; /* the day and time as written: no zone shift */
+    const d = new Date(day), wd = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).replace(',', ''); return iso[4] ? `${wd}, ${iso[4]}:${iso[5]}` : wd; }
+  const dm = /^(\d{1,2}) ([A-Z][a-z]{2}) (\d{4})/.exec(s); if (dm) { const d = Date.parse(`${dm[1]} ${dm[2]} ${dm[3]}`); if (Number.isFinite(d) && d + 864e5 < now) return ''; }
+  return s.replace(/\s*\b(?:[A-Z][a-z]+\/[A-Za-z_]+|E[SD]T|P[SD]T|C[SD]T|M[SD]T|GMT|UTC|IST|BST|CET)\b/g, '').trim(); };
+const ideaTitle = (t) => String(t || '').replace(/^(?:reddit|quora|x|linkedin)\s+(?:post|reply|answer)\s+(?:in|on)\s+[CT]\d{1,2}:\s*/i, '').split(/\s+\|\s+/)[0].replace(/!+$/, '').trim();
 export function ideaCards(ideas, seed = {}, { now = Date.now() } = {}) {
   const posts = seed?.posts || [];
   const rolesOf = (agent) => posts.find((p) => p.agent === agent)?.roles || ['founder', 'brand', 'growth'];
@@ -65,11 +76,11 @@ export function ideaCards(ideas, seed = {}, { now = Date.now() } = {}) {
     const heard = thread ? `${thread.name.split(':')[0]}${rt ? ` · ${rt}` : ''}` : ev.some((e) => /^Listen|^Reddit/i.test(e.label || '')) ? 'from what Brew heard' : '';
     return { id: i.id, agent: P.agent, sector: P.sector, type: 'idea', kind: imgs.length ? 'media' : 'rows', ...(lane ? { lane } : {}), roles: rolesOf(P.agent), origin: 'ideas', stream: 'ideas',
       src: `Ideas · ${P.label} ${i.format}${heard ? ` · Heard ${heard}` : i.moves?.[0] ? ' · ' + i.moves[0] : ''}`, time: ageText(i.at, now),
-      badge: [`${P.label} ${i.format}`, 'info'], title: cut(i.title, 90), sub: cut(i.hook || i.copy, 220), ...(imgs.length ? { images: imgs } : {}),
-      rows: [['Where', [...new Set(where.map((w) => w.name.split(':')[0]))].slice(0, 2).join(', ') || P.label], ['Post at', i.postAt], ...(ev[0] ? [['Backed by', cut(ev[0].value, 70)]] : []), ['Measure', i.measure?.metric]].filter((r) => r[1]),
-      ...(thread ? { link: { label: 'Open the thread', url: thread.url } } : where[0]?.url ? { link: { label: `Open ${where[0].name.split(':')[0]}`, url: where[0].url } } : {}),
+      badge: [`${P.label} ${i.format}`, 'info'], title: cut(ideaTitle(i.title), 76), sub: cut(i.hook || i.copy, 220), ...(imgs.length ? { images: imgs } : {}),
+      rows: [['Where', [...new Set(where.map(placeName).filter(Boolean))].slice(0, 2).join(', ') || P.label], ['Post at', postAtOf(i.postAt, now)], ['Backed by', backedBy(ev[0])], ['Measure', i.measure?.metric]].filter((r) => r[1]),
+      ...(thread ? { link: { label: 'Open the thread', url: thread.url } } : where[0]?.url ? { link: { label: `Open ${placeName(where[0]) || P.label}`, url: where[0].url } } : {}),
       cta: { label: ctaOf(i) }, detail: { why: [i.why, ...ev.slice(0, 3).map((e) => `${e.label}: ${cut(e.value, 120)}`)].filter(Boolean),
-        how: [`Copy the ${i.platform === 'reddit' && i.format === 'reply' ? 'reply' : 'post'}${hasMedia ? ' and make the ' + i.media.kind : ''}.`, where[0] ? `Open ${where[0].name.split(':')[0]}${where[0].rule ? ' and follow its rule: ' + cut(where[0].rule, 120) : ''}.` : `Post on ${P.label}.`, i.postAt ? `Post ${i.postAt}.` : '', i.measure?.how ? `Measure: ${i.measure.how}` : ''].filter(Boolean) },
+        how: [`Copy the ${i.platform === 'reddit' && i.format === 'reply' ? 'reply' : 'post'}${hasMedia ? ' and make the ' + i.media.kind : ''}.`, where[0] ? `Open ${placeName(where[0]) || P.label}${where[0].rule ? ' and follow its rule: ' + cut(where[0].rule, 120) : ''}.` : `Post on ${P.label}.`, postAtOf(i.postAt, now) ? `Post ${postAtOf(i.postAt, now)}.` : '', i.measure?.how ? `Measure: ${i.measure.how}` : ''].filter(Boolean) },
       post: i };
   });
 }
