@@ -274,7 +274,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
   /* ---------- Viral videos: short videos far above their creator's usual views, in the brand's category (viral.js) ---------- */
   // the jam makes our version of one: a script to film, or a Sloosh video that may take the clip as a reference
   async function refreshViral() {
-    const now = Date.now(), terms = [...new Set([...(cfg.viralTerms || []), ...TERMS.flat(), cfg.category].filter(Boolean).map((t) => String(t).trim()))].slice(0, 4);
+    const now = Date.now(), terms = [...new Map([...(cfg.viralTerms || []), ...TERMS.flat(), cfg.category].filter(Boolean).map((t) => [String(t).trim().toLowerCase(), String(t).trim()])).values()].slice(0, 4);
     if (!terms.length) throw new Error('no category words to search videos with');
     const own = [brand.name, cfg.ownPage, ...Object.values(brand.socials || {}).map((x) => x?.handle || String(x?.url || '').match(/(?:@|instagram\.com\/)([\w.]+)/)?.[1])].filter(Boolean);
     const r = await createViralFinder({ call: (id, o) => treg(id, o), log }).find({ terms, country: GEO, stems: viralStems(brand, terms), own });

@@ -34,7 +34,7 @@ test('gate: fresh, organic, short, on-topic, own account, known score', () => {
 });
 
 test('pick: platforms take turns', () => {
-  const xs = [v({ id: 'a', score: 90 }), v({ id: 'b', score: 80 }), v({ id: 'c', score: 70 }), v({ id: 'd', platform: 'instagram', score: 12 })];
+  const xs = ['a', 'b', 'c', 'd'].map((id, i) => v({ id, score: [90, 80, 70, 12][i], platform: id === 'd' ? 'instagram' : 'tiktok', caption: `coffee video number ${id} with its own words` }));
   assert.deepEqual(pickViral(xs, 3).map((x) => x.id), ['a', 'd', 'b']);
 });
 
@@ -63,4 +63,10 @@ test('finder: searches, scores against the creator, keeps errors, never scores a
 test('normalizers: unknown views stay null', () => {
   assert.equal(NORMV.instagram({ shortcode: 'x', caption: 'a' }, 'q').views, null);
   assert.equal(NORMV.youtube({ id: 'abc', snippet: {}, statistics: {}, contentDetails: { duration: 'PT45S' } }, 'q').durationS, 45);
+});
+
+test('pick: one video cross-posted on two platforms is one pick', () => {
+  const cap = 'Some cleaner coffee options to look for - organic and tested';
+  const xs = [v({ id: 'a', score: 800, caption: cap }), v({ id: 'b', platform: 'instagram', score: 380, caption: cap + ' #coffee' }), v({ id: 'c', platform: 'instagram', score: 50, caption: 'my french press method for coffee mornings' })];
+  assert.deepEqual(pickViral(xs, 3).map((x) => x.id), ['a', 'c']);
 });

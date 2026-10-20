@@ -52,8 +52,11 @@ export function usableViral(v, o = {}) {
 }
 /* topic words from the brand profile, the same stems the community gate uses */
 export const viralStems = (profile = {}, terms = []) => topicStems({ noun: profile.config?.product?.noun || profile.noun || '', terms: [profile.config?.category || profile.category || '', ...terms], products: [] });
+/* one video cross-posted (the same caption on TikTok and Instagram) is one pick: its first words, squashed */
+const capKey = (x) => String(x?.caption || '').toLowerCase().replace(/#\S+/g, '').replace(/[^a-z0-9]+/g, '').slice(0, 60);
 /* best first, platforms taking turns so three picks are not three TikToks */
 export function pickViral(xs, n = 3) {
+  const seen = new Set(); xs = [...xs].sort((a, b) => b.score - a.score).filter((x) => { const k = capKey(x); if (k.length < 20) return true; if (seen.has(k)) return false; seen.add(k); return true; });
   const by = new Map(); for (const x of [...xs].sort((a, b) => b.score * Math.log10(10 + b.views) - a.score * Math.log10(10 + a.views))) { if (!by.has(x.platform)) by.set(x.platform, []); by.get(x.platform).push(x); }
   const out = []; for (let added = true; added && out.length < n;) { added = false; for (const q of by.values()) if (q.length && out.length < n) { out.push(q.shift()); added = true; } }
   return out;
