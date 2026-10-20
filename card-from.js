@@ -67,6 +67,8 @@ export function cardFrom(c, moves = {}) {
   if (/^build-/.test(id) || (c.origin === 'build' && !c.campaign)) return 'From Brew'; // "All 56 moves are written" is Brew's own news; the ad plan keeps its campaign line
   if (/^ow-own/.test(id)) return 'From your ads'; // the brand's own live ads (the Ad Library)
   if (/^r-tr-/.test(id) || c.research?.kind === 'trend') return 'Trending in your category';
+  if (/^r-viral-/.test(id) || c.research?.kind === 'viral') { const p = PLATFORM[c.research?.platform] || (/instagram/i.test(c.src) ? 'Instagram' : /youtube/i.test(c.src) ? 'YouTube' : /tiktok/i.test(c.src) ? 'TikTok' : null); return p ? `Viral on ${p}` : 'Viral in your category'; } // research.js refreshViral
+  if (/^r-ad-/.test(id) || c.research?.kind === 'ad') return 'From your competitors'; // a rival's live ad (the Ad Library)
   if (/^lv-vis-/.test(id)) return 'From AI answers'; // the weekly AI answers check
   if (/^lv-cat-/.test(id)) return 'From your store'; // the catalog watch
   if (/^read-/.test(id)) return readFrom(c); // the first cards, written from the read

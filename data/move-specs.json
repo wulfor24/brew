@@ -2146,7 +2146,7 @@
   "refs": [],
   "exemplar": 23,
   "exemplarAlt": 21,
-  "adapt": "Use the video read lines (video.*: hook, scenes, format, length, the views where given) from the brand's own, rivals' and category videos. Name the patterns that recur in the strongest ones, then write 6 to 10 hooks and two full scripts for the brand in those patterns, each tied to the video line it learns from. Do not copy a video; learn its structure. Cite views and dates only as the lines give them.",
+  "adapt": "Use the video read lines (video.*: hook, scenes, format, length, the views where given) from the brand's own, rivals' and category videos, and the viral ones (a line saying viral, Nx the creator's usual views). Name the patterns that recur in the strongest ones, then write 6 to 10 hooks and two full scripts for the brand in those patterns, each tied to the video line it learns from. Do not copy a video; learn its structure. Cite views and dates only as the lines give them.",
   "timing": "paid_ads",
   "needs": [
    "creative"
