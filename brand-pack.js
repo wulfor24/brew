@@ -22,6 +22,7 @@ import { sentenceCase, oneCard } from './text-fit.js';
 import { withLearned, learnedMoveNs, learnedTerms, learnedItems } from './brand-learnings.js'; // what the team told Brew (pasted into a jam): in every prompt's system text
 import { sandboxName, virtualFile, demoSid } from './demo-mode.js'; // Demo Mode: per-session private files
 import { markMoveClaims, sourceText } from './claims.js'; // saved moves: a claim the store never made is marked as the team's call
+import { pastOf, liveStat } from './festival-past.js'; // a festival move after its festival: marked past, its cards off the feed
 
 /* the raw material of a hook, for every draft plan (drafts.js hookBlock), for every brand: real review lines (top 5, at most
    120 characters, the read's chosen quotes first, no low ratings) and the three rival ads live longest (days, format, their
@@ -226,7 +227,8 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
   const fitCards = (sd, ctx) => { const keep = keepOf(ctx); return { ...sd, posts: (sd.posts || []).map(fitCard(keep, ctx)) }; };
   const fitPools = (pl, keep) => Object.fromEntries(Object.entries(pl).map(([k, v]) => [k, Array.isArray(v) ? v.map(fitCard(keep)) : v]));
   const ipRow = (r) => (Array.isArray(r) && /\(in progress\)$/.test(r[1] || '') ? [r[0], sentenceCase(r[1], [], { force: true }), ...r.slice(2)] : r); // the index's unwritten rows carry skill names
-  const fitMoves = (ms, keep, claimSrc = '') => Object.fromEntries(Object.entries(ms || {}).map(([n, m0]) => { const m = claimSrc ? markMoveClaims(m0, claimSrc) : m0; /* a code or guarantee the store never made reads as the team's call (QA-25) */ return [n, m && typeof m === 'object' && m.title ? { ...m, title: sentenceCase(m.title, keep),
+  const festivalNow = (m) => { const past = pastOf(m), st = !past && liveStat(m); return { ...(past ? { past } : {}), ...(st ? { stat: st } : {}) }; };
+  const fitMoves = (ms, keep, claimSrc = '') => Object.fromEntries(Object.entries(ms || {}).map(([n, m0]) => { const m = claimSrc ? markMoveClaims(m0, claimSrc) : m0; /* a code or guarantee the store never made reads as the team's call (QA-25) */ return [n, m && typeof m === 'object' && m.title ? { ...m, title: sentenceCase(m.title, keep), ...festivalNow(m) /* a festival plan after its festival says so; its countdown counts from today */,
     ...(Array.isArray(m.sections) ? { sections: m.sections.map((sec) => ({ ...sec, blocks: (sec.blocks || []).map((b) => (b?.rows ? { ...b, rows: b.rows.map(ipRow) } : b)) })) } : {}),
     ...(Array.isArray(m.sources) ? { sources: m.sources.map((x) => (x && typeof x === 'object' && x.label ? { ...x, label: dejargon(x.label) } : x)) } : {}) } : m]; })); /* source names in plain words (QA FEED-ARV-06: "catalogue (products.json)") */
   /* a move card says where its move stands: "Being updated" while the evidence has overtaken the move and its rewrite is
@@ -294,6 +296,8 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
     const upFresh = Object.entries(LC.up || {}).filter(([, x]) => Date.now() - (x.at || 0) < 21 * 864e5), teamName = seed.brand?.name || profile?.name || slug;
     if ((LC.add || []).length) { const have = new Set((seed.posts || []).map((x) => x.id)); seed.posts = [...LC.add.filter((x) => x?.id && !have.has(x.id)), ...(seed.posts || [])]; }
     const toldNotes = Object.fromEntries(upFresh.map(([id, x]) => [id, `From what ${teamName}’s team told us: ${x.why}`]));
+    /* a festival plan's cards leave the feed once the festival is over (festival-past.js); the move stays, marked past */
+    if (moves && typeof moves === 'object') seed.posts = (seed.posts || []).filter((c) => { const mm = /^m(\d+)-\d+$/.exec(String(c?.id || '')); return !(mm && moves[mm[1]] && pastOf(moves[mm[1]])); });
     const seedD = moveBadges(fitCards(withDemo(fitPhotos(socialize(visualize(seed, { slug, config, staticText: statics, profile }), social, { profile }), profile), demo), { profile, config, seed, status }), moves, staleMoves);
     return finish({
       slug, kind: 'generated', ready: !!status.ready, status, demo, numbers,

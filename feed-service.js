@@ -116,7 +116,7 @@ export function followMoveCards(cards, { docs = {}, posts = [], at = Date.now(),
   const drop = (id, c) => { if (live(c) && !keep(id)) { expire(c); out.expired.push(id); } };
   for (const [id, c] of cards) {
     const n = moveNoOf(id); if (n == null || c.privateOf != null || c.liveOnly) continue; /* a member's private move cards follow private/cards.json */
-    if (!docs[n]) { drop(id, c); continue; }
+    if (!docs[n] || docs[n].past) { drop(id, c); continue; } /* gone, or a festival plan whose festival is over (brand-pack fitMoves: past) */
     const v = moveVersion(docs, id); if (c.mv == null) { c.mv = v; continue; }
     if (c.mv === v) continue;
     c.mv = v; const p = src.get(id);

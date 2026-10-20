@@ -4641,7 +4641,7 @@
     const live = new Map((b?.inflight || []).map((x) => [x.n, x])), failed = new Map((b?.failed || []).map((x) => [x.n, x]));
     const kick = (m) => String(m?.kicker || '').replace(/\s*·\s*move\s+\d+\s+of\s+\d+\s*$/i, '');
     const card = (m) => `<article class="mv2-c" data-mv="${m.n}" tabindex="0"><div class="mv2-k"><span>${mvNum(m.n)}</span>${kick(m) ? `<i>${esc(kick(m).toLowerCase())}</i>` : ''}</div>
-      <h4>${esc(m.title)}</h4>${m.stat ? `<p class="mv2-st"><b>${esc(m.stat)}</b> ${esc(String(m.statLabel || '').toLowerCase())}</p>` : m.gives ? `<p>${esc(m.gives)}</p>` : ''}
+      <h4>${esc(m.title)}</h4>${m.past ? `<p class="mv2-st is-past"><b>Ended</b> ${esc(m.past.name)} finished ${esc(fmtDay(Date.parse(m.past.end)) || m.past.end)}</p>` /* a festival plan after its festival (festival-past.js) */ : m.stat ? `<p class="mv2-st"><b>${esc(m.stat)}</b> ${esc(String(m.statLabel || '').toLowerCase())}</p>` : m.gives ? `<p>${esc(m.gives)}</p>` : ''}
       ${m.n != null ? `<a class="mv2-pdf" href="${pdfUrl(`move-${m.n}.pdf`)}" target="_blank" rel="noopener" title="Open the PDF" aria-label="Open the PDF" data-stop>${ic('doc', 's14')}</a>` : ''}</article>`;
     const pend = (n) => { const x = live.get(n), f = failed.get(n);
       return `<li class="${x ? 'is-run' : f ? 'is-fail' : ''}"><span class="mv2-n">${mvNum(n)}</span><b>${esc(x?.title || f?.title || (b?.queue || []).find((q) => q.n === n)?.title || '')}</b><em>${x ? `<span class="spin"></span>Writing · ${mins(x.secs)}` : f ? 'Stopped · retries soon' : building ? 'Queued' : 'Not written'}</em></li>`; };
