@@ -1540,7 +1540,17 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const moves = await packs.getJSON(slug, 'moves.json', {}), n = playDone(moves); if (!n) return;
     await setStatus(slug, { total: Math.max(n, +s0.total || 0), movesDone: n, applicable: Object.keys(moves).map(Number).filter((k) => isPlay(k, moves[k])).sort((a, c) => a - c) });
   }
-  async function resumeAll() { for (const sl of String(process.env.OPS_FRESH_RELOAD || '').split(',').map((x) => x.trim()).filter(Boolean)) freshReload(sl).catch((e) => log.error('[ops] fresh', sl, e.message));
+  /* a one-off rewrite of named moves (OPS_REWRITE=<slug>:<n>,<n>;<slug>:<n>), for moves a person asked to have written again (QA 20 Oct:
+     six moves saved without all their sections). A marker per brand (private/ops-rewrite.json) holds what ran, so a restart never pays
+     twice; the moves wait until the brand's build is idle (rewrite queues them otherwise) */
+  async function opsRewrite() {
+    for (const part of String(process.env.OPS_REWRITE || '').split(';').map((x) => x.trim()).filter(Boolean)) {
+      const [sl, list] = part.split(':'); const ns = String(list || '').split(',').map(Number).filter((n) => n >= 1 && n < 1000); if (!sl || !ns.length) continue;
+      try { const mk = (await packs.getJSON(sl, 'private/ops-rewrite.json', null)) || { done: [] }; const todo = ns.filter((n) => !(mk.done || []).includes(n)); if (!todo.length) continue;
+        const r = await rewrite(sl, todo, { via: 'ops' }); log.info?.(`[ops] rewrite ${sl} ${todo.join(',')}: ${JSON.stringify(r)}`);
+        if (r?.ok) await packs.put(sl, 'private/ops-rewrite.json', { done: [...new Set([...(mk.done || []), ...todo])], at: Date.now() }); }
+      catch (e) { log.error('[ops] rewrite', sl, e.message); } } }
+  async function resumeAll() { setTimeout(() => opsRewrite().catch((e) => log.error('[ops] rewrite', e.message)), 30e3); /* after boot settles */ for (const sl of String(process.env.OPS_FRESH_RELOAD || '').split(',').map((x) => x.trim()).filter(Boolean)) freshReload(sl).catch((e) => log.error('[ops] fresh', sl, e.message));
     for (const x of await packs.list()) { if (!x.status.done && !x.status.error && !x.status.capped) resume(x.slug).catch((e) => log.error('[build] resume', x.slug, e.message)); else { if (x.status.done) { rebase(x.slug).catch((e) => log.warn('[build] rebase', x.slug, e.message)); healPdfs(x.slug); healCount(x.slug).catch((e) => log.warn('[build] count', x.slug, e.message)); restartStatics(x.slug).catch((e) => log.warn('[build] statics restart', x.slug, e.message)); } healCards(x.slug).catch((e) => log.warn('[rewrite] heal cards', x.slug, e.message)).then(() => resumeRewrite(x.slug)).catch((e) => log.warn('[rewrite] resume', x.slug, e.message));
       if (x.status.recheck?.at) setTimeout(() => drain(x.slug).catch((e) => log.warn('[check] late', x.slug, e.message)), 60e3); /* a late check a restart cut short: after resumeRewrite has had its turn */
       upd(x.slug).then((u) => { if (u.connectRun) armConnect(x.slug, u.connectRun.due || 0); if ((u.queue || []).some((q) => q.notBefore)) drain(x.slug).catch(() => {});
