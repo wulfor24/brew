@@ -127,7 +127,7 @@ export function draftView(d, c = null) {
   const fallback = hasCode(d.copy) ? null : [d.photo, ...(isRivalCard(c) ? [] : [...(c?.images || []), c?.img])].find((x) => x && typeof x === 'string' && !images.includes(x) && !isResearchImage(x)) || null; /* never a rival's poster under our draft */
   const bare = !!d.photoOnly && !d.render && !d.video && !d.slides?.length;
   return { as: d.as, kind: d.kind || d.as, images, video: d.video || null, poster: d.video ? d.poster || d.render || d.image || images[0] || null : null, ratio: d.video && d.clipStill ? '9:16' : d.ratio || null, title: d.title || '', copy: cut(String(d.copy || '').replace(/[#*_>`]/g, ''), 240), ...(hasCode(d.copy) ? { code: String(d.copy).slice(0, 6000) } : {}) /* the jam's stage shows code as code, not as the mock's picture */,
-    ...(d.headline ? { headline: d.headline } : {}), ...(fallback ? { fallback } : {}), ...(d.imgRetry || bare ? { remaking: true } : {}), ...(bare ? { photoOnly: true } : {}) };
+    ...(d.headline ? { headline: d.headline } : {}), ...(d.render && d.headline && ['image', 'video'].includes(d.kind || d.as) ? { wordsIn: d.render } /* the headline is already set in this picture: the page never lays it on again */ : {}), ...(fallback ? { fallback } : {}), ...(d.imgRetry || bare ? { remaking: true } : {}), ...(bare ? { photoOnly: true } : {}) };
 }
 
 /* ---------- gating and cost ---------- */

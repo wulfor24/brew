@@ -605,7 +605,7 @@ export function createRemix(o) {
     const d = pl?.draft; if (!d || !(d.images?.length || d.video) || versionsOf(t, ch.id).length > 1) return false;
     const imgs = d.images || [], text = TEXT_DRAFT.test(d.as || '') && !d.video;
     ch.pkg = { ...ch.pkg, draft: { as: d.as, images: imgs, video: d.video || null, poster: d.poster || null, ratio: d.ratio || null, title: d.title || '', text, ...(text ? { code: d.code || null } : {}) } }; /* code: a draft that is markup or a snippet shows on the stage as code */
-    if (!text) { if (imgs[0]) ch.pkg.image = imgs[0]; if (imgs.length > 1) ch.pkg.cardImages = imgs; if (d.video) { ch.pkg.video = d.video; ch.pkg.poster = d.poster || imgs[0] || null; } if (d.ratio && RATIO[d.ratio] && ['meta_ad', 'social'].includes(ch.family)) ch.pkg.format = d.ratio; }
+    if (!text) { if (imgs[0]) { ch.pkg.image = imgs[0]; ch.pkg.wordsIn = d.wordsIn && d.wordsIn === imgs[0] ? imgs[0] : null; } if (imgs.length > 1) ch.pkg.cardImages = imgs; if (d.video) { ch.pkg.video = d.video; ch.pkg.poster = d.poster || imgs[0] || null; } if (d.ratio && RATIO[d.ratio] && ['meta_ad', 'social'].includes(ch.family)) ch.pkg.format = d.ratio; }
     ch.v0 = 'draft'; sync(t, ch, c);
     const v0 = versionsOf(t, ch.id)[0]; if (v0) { v0.snapshot = snapOf(ch); v0.reason = 'The first draft on the card'; v0.label = 'First draft'; try { mirror(t, ch, v0); } catch {} }
     return true;
@@ -1092,6 +1092,7 @@ export function createRemix(o) {
     return n; };
   const C = (t, id) => { const ch = changes(t)[id]; if (!ch) return ch;
     if (ch.pkg && ch.pkg.wordsIn === undefined && ch.lastFinal?.versionId && /^gen\/fin-/.test(ch.pkg.image || '') && ch.pkg.overlay) ch.pkg.wordsIn = ch.pkg.image; /* a final made before 18 Oct: its words are set in the picture */
+    if (ch.pkg && ch.pkg.wordsIn === undefined && /^gen\//.test(ch.pkg.image || '') && ch.cardId && o.planOf) { const w = o.planOf(t, t.cards?.get?.(ch.cardId) || {})?.draft?.wordsIn; ch.pkg.wordsIn = w && w === ch.pkg.image ? w : null; } /* a jam opened from a first draft before 20 Oct: its picture may already carry the headline */
     if (ch.imagePending && !IMG_JOBS.has(ch.id)) { ch.imagePending = false; ch.imageError = 'The photo stopped before it finished. Make it again.'; }
     if (ch.videoPending && !VID_JOBS.has(ch.id)) { ch.videoPending = null; ch.videoStep = null; ch.videoError = 'The video stopped before it finished. Make it again.'; }
     if (!REMAKE_JOBS.has(ch.id)) { const as = ch.remakePending?.as || ch.pkg?.draft?.as, was = !!ch.remakePending; ch.remakePending = null;
