@@ -11,6 +11,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createFamilies, timingLine } from './measure-families.js';
+/* the moves' own model: on Gemini, GEMINI_MOVES_MODEL (Pro) writes the moves while the brief, ideas and everything else stay on
+   GEMINI_DEEP_MODEL / GEMINI_FAST_MODEL; on Claude it is Opus */
+const MOVE_MODEL = () => ((process.env.AI_PROVIDER || 'gemini').toLowerCase() !== 'anthropic' && process.env.GEMINI_MOVES_MODEL) || 'opus';
 import { mockAllowed } from './ai.js'; // a [MOCK] placeholder stands in only on a mock run, never after a billing pause
 import { dateCounts } from './pack-numbers.js'; // counts that move day to day say the day they were read
 import { CLAIMS_RULE } from './claims.js'; // the moves promise only what the brand itself says
@@ -463,7 +466,7 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
       const prompt = blocks.join('\n\n');
       const hour = { type: 'ephemeral', ttl: '1h' }; // the system and the brand block: shared by every move of the build
       const messages = [{ role: 'user', content: blocks.map((text, i) => ({ type: 'text', text, ...(i === 0 ? { cache_control: hour } : {}) })) }];
-      const o = { model: 'opus', effort: ctx.effort || 'medium', system: [{ type: 'text', text: SYSTEM, cache_control: hour }], messages, schema: MOVE_SCHEMA, max: +process.env.MOVES_MAX_TOKENS || 48000, tag: `move${pad(n)}`, // thinking counts toward this
+      const o = { model: MOVE_MODEL(), effort: ctx.effort || 'medium', system: [{ type: 'text', text: SYSTEM, cache_control: hour }], messages, schema: MOVE_SCHEMA, max: +process.env.MOVES_MAX_TOKENS || 48000, tag: `move${pad(n)}`, // thinking counts toward this
         ...(searchN ? { search: searchN, location: ctx.profile?.country } : {}) };
       let r;
       try { r = await ai.call(o); }
@@ -636,7 +639,7 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
     const N = list.length, Nw = numWord(N);
     let ov = null;
     if (overview) try {
-      const r = await ai.call({ model: 'opus', effort: 'medium', max: 8000, tag: 'move00', system: SYSTEM,
+      const r = await ai.call({ model: MOVE_MODEL(), effort: 'medium', max: 8000, tag: 'move00', system: SYSTEM,
         prompt: `Write the overview for Move 00, the index of ${Nw} moves for ${name}.\n<brief>\n${ctx.brief?.md || ''}\n</brief>\nThe moves written so far:\n${list.filter((x) => x.m).map((x) => `${pad(x.s.n)} ${x.m.title} | ${x.m.stat} ${x.m.statLabel} | ${x.m.gives}`).join('\n')}\n\nReturn: thread (one or two sentences naming the one idea or number that runs through all the moves for ${name}, from the evidence), today (3 to 4 sentences: "${name} today:" then the sharpest facts from the brief with numbers, ending in what the ${Nw} moves are), live (one sentence: what is live at day 30), boxes (six short 3-4 line labels, one per group, for the end-to-end diagram, each line under 15 characters, specific to ${name}). Only numbers from the brief.`,
         schema: { type: 'object', properties: { thread: S, today: S, live: S, boxes: { type: 'array', items: { type: 'array', items: S } } } } });
       ov = r.json;

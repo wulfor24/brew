@@ -14,7 +14,7 @@ export const RANK = Object.fromEntries(KINDS.map((k, i) => [k, i]));
 export const SHARE = { learnings: 1, event: 0.9, check: 0.8, live: 0.7, low: 0.6, new: 0.5 };
 /* the Gemini deep model (moves, briefs) is Flash while we build and Pro for clients (GEMINI_DEEP_MODEL): a Pro move costs
    about four times a Flash one, so the estimate and the pot follow the model, not just the provider */
-export const deepIsPro = (env = process.env) => /pro/i.test(env.GEMINI_DEEP_MODEL || '');
+export const deepIsPro = (env = process.env) => /pro/i.test(env.GEMINI_MOVES_MODEL || env.GEMINI_DEEP_MODEL || ''); /* a rewrite is a move: the moves' model sets its price */
 /* $ a move, before the brand has moves on today's model (Cozy on Gemini Flash: 65 moves for $6.40; Pro from list price) */
 export const EST = { anthropic: 0.6, gemini: 0.1, 'gemini-pro': 0.4 };
 /* the week's pot by provider: about 80 Opus moves, 100 Flash moves, or 100 Pro moves */

@@ -10,7 +10,7 @@ import { flagKind, potFit, potOf, potLeft, potAdd, perMove, runKind, nextWeek, w
 
 /* the pot's size follows GEMINI_DEEP_MODEL (deepIsPro): these tests pin the Flash numbers, so the shell's model (a Pro deploy
    sets it) must not reach them. The Pro case is tested with an explicit env below. */
-delete process.env.GEMINI_DEEP_MODEL; delete process.env.BRAND_WEEK_CAP_USD;
+delete process.env.GEMINI_DEEP_MODEL; delete process.env.GEMINI_MOVES_MODEL; delete process.env.BRAND_WEEK_CAP_USD;
 const quiet = { log() {}, warn() {}, error() {}, info() {} };
 const settle = (ms = 300) => new Promise((r) => setTimeout(r, ms));
 
@@ -61,6 +61,8 @@ test('cost per move matches the provider: the brand’s own moves on today’s m
   assert.ok(perMove({ moves: [], provider: 'gemini', env: pro }) >= 3 * EST.gemini, 'a Pro move is priced well above a Flash one');
   assert.ok(capOf(pro, 'gemini') >= 3 * capOf({}, 'gemini') && capOf(pro, 'gemini') <= capOf({}, 'anthropic'), 'the Pro pot sits between Flash and Opus');
   assert.equal(capOf({ GEMINI_DEEP_MODEL: 'gemini-3.5-flash' }, 'gemini'), capOf({}, 'gemini'));
+  /* only the moves on Pro (GEMINI_MOVES_MODEL), the rest on Flash: a rewrite is a move, so it is priced as Pro */
+  assert.equal(capOf({ GEMINI_DEEP_MODEL: 'gemini-3.5-flash', GEMINI_MOVES_MODEL: 'gemini-3.1-pro-preview' }, 'gemini'), capOf(pro, 'gemini'));
   assert.equal(capOf(pro, 'anthropic'), capOf({}, 'anthropic'), 'the Gemini model never changes the Anthropic pot');
 });
 
