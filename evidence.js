@@ -137,14 +137,15 @@ export function createEvidence({ factsOf, movesOf, numsOf, adOf = () => null, co
       add({ kind: 'source', label: cut(x.label, 110), value: '', src: hostOf(x.url), url: x.url, at: x.at ? String(x.at).slice(0, 10) : null }); }
     const moves = ns.filter((n) => M[n]).map((n) => ({ n, title: M[n].title || '' })); /* Brew's write-up, linked from the sheet; never counted as proof */
     /* the rows Brew counted, when no fact above already says them */
-    for (const r of c.rows || []) if (Array.isArray(r) && r[0] && r[1] && c.research?.kind !== 'trend' && !items.some((x) => x.value && String(r[1]).includes(x.value))) {
+    for (const r of c.rows || []) if (Array.isArray(r) && r[0] && r[1] && c.research?.kind !== 'trend' && !items.some((x) => x.value && (String(r[1]).includes(x.value) || allNums(String(r[1])).some((n) => allNums(x.value).includes(n))))) { /* "368,000" is "368000": the same number in two formats is one row (QA UI) */
       if (/^(step \d+|where|post at|measure|backed by|move|latest|written)$/i.test(r[0])) continue;
       /* a row is proof only when it is something counted: a number, not a target, a plan setting or an assumption */
       if (!/\d/.test(String(r[1])) || /\b(target|goal|lift|decision|decides|control|guardrail|window|budget|deadline|launch|test|plan|cap|limit|max|min|specification|voltage|power)\b/i.test(r[0]) || /\b(assumption|proposed|target|estimate|goal|to confirm)\b/i.test(r[1])) continue;
       add({ kind: 'row', label: String(r[0]), value: cut(r[1], 120), src: c.src && !/^moves?\s/i.test(c.src) ? cut(c.src, 80) : 'What Brew counted', url: null });
     }
     const rawOf = (n) => (cardText(c).match(/(?:₹|\$|€|£|rs\.?\s?)?\d[\d,.]*\s?(?:%|x|×|k|lakh|crore|cr)?/gi) || []).find((x) => numbersIn(x, { strict: true }).concat(numbersIn(x)).includes(n))?.trim() || n; /* as the card wrote it: ₹5,555, not ₹5555 */
-    const unbacked = gatedOfCard(c).filter((n) => !backed.has(n) && !items.some((x) => x.value && allNums(x.value).includes(n))).map(rawOf);
+    const bare = (n) => String(n).replace(/[^\d.]/g, '').replace(/\.0+$/, ''), shown = new Set(items.flatMap((x) => [...allNums(x.value || ''), ...allNums(x.label || '')].map(bare)));
+    const unbacked = gatedOfCard(c).filter((n) => !backed.has(n) && !items.some((x) => x.value && allNums(x.value).includes(n)) && !shown.has(bare(n)) /* ₹4,490 on a sourced row backs 4,490 */).map(rawOf);
     const sourced = items.filter((x) => x.url || x.kind === 'account' || x.kind === 'team').length; /* the team's own words, with the file they came from, count as sourced */
     /* why Brew suggested it: the plain-words pass's own line when it has one, else the card's own reasons */
     const reasons = (plain?.why?.length ? plain.why : (c.detail?.why || []).filter((x) => x && !isEvRow(x))).slice(0, 3);
