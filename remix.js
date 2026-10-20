@@ -1597,6 +1597,7 @@ export function createRemix(o) {
   on('POST', '/api/changes/:chid/knob', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };
     const knob = knobsFor(ch.family, B()).find((k) => k.k === b.k); if (!knob) return { error: 'no knob' };
+    if (Array.isArray(b.v)) b.v = b.v[0]; /* one version, always (QA J-11): a saved page that still sends several values makes one take */
     // several values on a copy knob: one version per value, side by side. You stay on the version you were on.
     if (Array.isArray(b.v)) {
       const vals = b.v.filter((x) => knob.opts.includes(x)); if (!vals.length) return { error: 'no value' };

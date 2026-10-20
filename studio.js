@@ -509,7 +509,7 @@ const opsPkg = (act, c) => { const st = OPS_ROWS[act]; if (!st) return null; con
   return { summary: ACT_LABEL[act], items, rule: act === 'pause_pointing' ? 'Restart each ad the day its product is back in stock' : act === 'restart_paused' ? 'Only ads paused because the product was sold out' : 'Only the ads and messages that quote this price', checkAt: 'Checked against the live store every day', spendChangeWeek: 0 }; };
 
 // copy knobs can take several values: each value becomes its own version
-export const isMulti = (knob) => knob.kind === 'copy';
+export const isMulti = () => false; /* one version, always (QA J-11): every knob is single-choice */
 
 // the ratio Gemini should paint for a format
 export const RATIO = { '4:5': '4:5', '1:1': '1:1', '9:16': '9:16' };
