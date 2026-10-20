@@ -49,3 +49,22 @@ test('the page reads card.from, and the AI line only rides on AI answers cards',
   assert.doesNotMatch(src, /c\.type === 'idea' \|\| c\.agent === 'creative'/, 'a decision is not an idea');
   assert.match(fs.readFileSync(new URL('../feed-service.js', import.meta.url), 'utf8'), /cardFrom\(c0, /);
 });
+
+test('served cards say their source even though the workspace stores them with origin "seed"', () => {
+  assert.equal(cardFrom({ id: 'idea-412e9b86ba', origin: 'seed', stream: 'ideas', sector: 'visibility' }), 'New idea for you');
+  assert.equal(cardFrom({ id: 'build-moves', origin: 'seed', family: 'result' }), 'From Brew');
+  assert.equal(cardFrom({ id: 'ow-own-long-2026-10-19', origin: 'seed' }), 'From your ads');
+  assert.equal(cardFrom({ id: 'lv-vis-score-2026-10-18' }), 'From AI answers');
+  assert.equal(cardFrom({ id: 'lv-cat-oos-1' }), 'From your store');
+  assert.equal(cardFrom({ id: 'r-tr-38b068178a', research: { kind: 'trend' } }), 'Trending in your category');
+  assert.equal(cardFrom({ id: 'read-4', sector: 'creatives', type: 'report', title: 'Fix missing tracking to win back lost shoppers' }), 'From your ads');
+  assert.equal(cardFrom({ id: 'read-1', sector: 'visibility', title: 'Claim tea time search rankings' }), 'From Google search');
+  assert.equal(cardFrom({ id: 'read-2', sector: 'ads', type: 'competitor', title: 'Maintain lead over competitors on Meta' }), 'From your competitors');
+  assert.equal(cardFrom({ id: 'statics-batch', origin: 'build', campaign: 'From your ad plan' }), null);
+});
+
+test('the page puts the card\'s own source before the generic family label', () => {
+  const src = fs.readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
+  const i = src.indexOf('if (c.from) return c.from;'), j = src.indexOf('if (FROM_FAMILY[c.family]) return FROM_FAMILY[c.family];');
+  assert.ok(i > 0 && j > i);
+});

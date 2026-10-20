@@ -1009,8 +1009,8 @@
     if (isToldCard(c)) return 'From your team'; /* a card made from what the team told Brew: says so once, in the header */
     if (FROM_CAMPAIGN[c.campaign]) return FROM_CAMPAIGN[c.campaign];
     if (c.type === 'competitor') return 'From your competitors';
-    if (FROM_FAMILY[c.family]) return FROM_FAMILY[c.family];
     if (c.from) return c.from; /* what the card rests on (card-from.js, stamped by the server): the move's discipline, where it was heard */
+    if (FROM_FAMILY[c.family]) return FROM_FAMILY[c.family];
     if (c.origin === 'told') return 'From your team';
     if (c.stream === 'heard' || c.origin === 'listen') return c.heard?.kind === 'thread' ? `Asked on ${c.post?.platformLabel || 'Reddit'}` : 'Heard online';
     if (c.origin === 'ideas') return 'New idea for you';

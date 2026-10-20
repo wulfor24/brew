@@ -43,6 +43,16 @@ const PLATFORM = { reddit: 'Reddit', youtube: 'YouTube', quora: 'Quora', instagr
 /* the move a card came from: m11-2, m1001-1-p (a private rewrite of move 1001) */
 export const moveNumOf = (c) => { const m = /^m(\d+)-\d+(?:-p)?$/.exec(String(c?.id || '')); return m ? +m[1] : null; };
 
+/* a card from the first read: one each about AI answers, rivals' ads, the store and what customers say (cards-gen.js) */
+const readFrom = (c) => {
+  const words = `${c.title || ''} ${c.sub || ''}`;
+  if (c.sector === 'visibility') return /\bAI\b|ChatGPT|Gemini|Perplexity|assistants?\b/i.test(words) ? 'From AI answers' : 'From Google search';
+  if (c.type === 'competitor' || /\brivals?\b|competitor/i.test(words)) return 'From your competitors';
+  if (c.sector === 'ads' || c.sector === 'creatives') return 'From your ads';
+  if (c.sector === 'storefront' || c.sector === 'catalog') return 'From your store';
+  if (c.sector === 'signals') return 'From your customers';
+  return null;
+};
 /* the plain "from" line for one card, or null when the card itself says nothing about its source (the page falls back) */
 export function cardFrom(c, moves = {}) {
   if (!c || typeof c !== 'object') return null;
@@ -51,8 +61,15 @@ export function cardFrom(c, moves = {}) {
     if (c.heard?.kind === 'thread') { const p = PLATFORM[String(c.post?.platform || '').toLowerCase()]; return p ? `Asked on ${p}` : 'Asked online'; }
     return 'Heard online';
   }
-  if (c.origin === 'ideas') return 'New idea for you';
-  if (c.origin === 'build') return c.campaign ? null : 'From Brew'; // "All 56 moves are written" is Brew's own news; the ad plan keeps its campaign line
+  /* a workspace keeps its cards with origin "seed" (feed-service), so the card's own id and stream say where it came from */
+  const id = String(c.id || '');
+  if (c.stream === 'ideas' || c.origin === 'ideas' || /^idea-/.test(id)) return 'New idea for you';
+  if (/^build-/.test(id) || (c.origin === 'build' && !c.campaign)) return 'From Brew'; // "All 56 moves are written" is Brew's own news; the ad plan keeps its campaign line
+  if (/^ow-own/.test(id)) return 'From your ads'; // the brand's own live ads (the Ad Library)
+  if (/^r-tr-/.test(id) || c.research?.kind === 'trend') return 'Trending in your category';
+  if (/^lv-vis-/.test(id)) return 'From AI answers'; // the weekly AI answers check
+  if (/^lv-cat-/.test(id)) return 'From your store'; // the catalog watch
+  if (/^read-/.test(id)) return readFrom(c); // the first cards, written from the read
   const n = moveNumOf(c);
   if (n != null) return moveFrom(moves?.[n] || moves?.[String(n)]);
   return null;

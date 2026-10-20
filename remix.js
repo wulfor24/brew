@@ -423,7 +423,11 @@ export function createRemix(o) {
     const evTxt = JSON.stringify([card.post?.evidence || [], card.post?.where || [], card.evidence || [], ...(card.liveOnly || /^live-/.test(card.id || '') ? [card.title, card.sub, card.rows, card.detail, card.liveNums] : [])]).replace(/,(?=\d{3})/g, '');
     const raw = [...new Set(unbackedNums([ch.after.title, ch.after.sub, ...pubT].join(' \n ')))], nums = raw.filter((n) => !evTxt.includes(String(n).replace(/[^\d.%]/g, '').replace(/^\./, '')));
     const qa = qaCheck(copy).filter((x) => x.k !== 'Short title, point first').map((x) => (x.k.startsWith('Every ₹') && nums.length ? { ...x, ok: false, k: `Numbers not in the fact sheet: ${nums.join(', ')} (use a number from the facts or drop it)` } : x.k.startsWith('Every ₹') && !x.ok && raw.length && !nums.length ? { ...x, ok: true, fix: false } : x));
-    const checks = qa.map((x) => (x.k === 'Names a number' ? { ...x, soft: true } : { ...x, fix: true }));
+    /* a failed banned-words check names the word it found ("Uses “regrowth”, a claim this category can’t make"), never the check's own name */
+    const bannedIn = (txt) => { try { const re = new RegExp(BANNED.source, BANNED.flags.includes('g') ? BANNED.flags : `${BANNED.flags}gi`); return [...new Set((String(txt).match(re) || []).map((w) => w.trim().toLowerCase()).filter(Boolean))].slice(0, 3); } catch { return []; } };
+    const qaN = qa.map((x) => { if (x.k !== 'No banned words' || x.ok) return x; const ws = bannedIn([copy.title, copy.sub, ...(copy.detail?.why || [])].join(' '));
+      return { ...x, k: ws.length ? `Uses ${ws.map((w) => `“${w}”`).join(', ')}, ${ws.length > 1 ? 'claims' : 'a claim'} ads in this category can’t make (say what it does instead)` : 'Uses a claim ads in this category can’t make' }; });
+    const checks = qaN.map((x) => (x.k === 'Names a number' ? { ...x, soft: true } : { ...x, fix: true }));
     const trust = trustOf(t, act.agent);
     if (ch.pkg) {
       const miss = missing(ch.family, ch.action, ch.pkg).map((l) => (isAdClip(ch) ? ({ Post: 'Ad text', Title: 'Headline' }[l] || l) : l)); checks.unshift({ k: miss.length ? `Missing: ${miss.join(', ')}` : `${isAdClip(ch) ? 'Meta video ad' : FAMILY_NAME[ch.family]} package complete`, ok: !miss.length, pkg: true, fix: true });
