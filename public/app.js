@@ -3598,7 +3598,7 @@
         return `<article class="xp${i < shown.length - 1 ? ' has-next' : ''}">${pmAv()}<div class="xp-b"><header><b>${esc(name)}</b><span>@${esc(h)}</span></header><p>${pmText(t)}</p>${i === 0 ? pmMedia(ch, p, lg, { ratio: '16/9' }) : ''}
           <div class="xp-f">${pmBar([['reply', ''], ['repost', ''], ['like', ''], ['views', '']])}<small class="xp-cc${n > 280 ? ' over' : ''}" title="Characters in this post">${n}/280</small></div></div></article>`; }).join('')}${!lg && posts.length > 2 ? `<small class="pm-more">+${posts.length - 2} more in the thread</small>` : ''}</div>`;
     } else if (kind === 'reddit_post') {
-      const sub = /^r\//i.test(comm) ? comm : '', reply = !p.title;
+      const sub = /^r\//i.test(comm) ? comm : '', reply = !p.title || /\breply\b/i.test(String(p.platform || '')); /* "Reddit reply": a title an AI fix added is not shown as a new post */
       body = `<div class="pm pm-rd${reply ? ' is-reply' : ''}"><header class="rd-h">${sub ? `<span class="rd-sub">r/</span><b>${esc(sub)}</b><span>· u/${esc(h)}_team</span>` : `${pmAv()}<b>u/${esc(h)}_team</b>`}<span>· now</span></header>
         ${reply ? '<small class="rd-re">Reply in the thread</small>' : `<h3 class="rd-t">${esc(p.title)}</h3>`}<p class="pm-body">${pmText(String(p.copy || '').slice(0, lg ? 6000 : 320))}</p>${pmMedia(ch, p, lg)}
         ${pmBar([['up', 'Vote'], ['reply', reply ? 'Reply' : 'Comment'], ['share', 'Share']]).replace('<span>', '<span class="rd-vote">').replace('<em>Vote</em>', `<em>Vote</em>${pmI('down')}`)}</div>`;
