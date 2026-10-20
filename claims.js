@@ -72,8 +72,37 @@ export function markClaims(text, source = '') {
   const fl = claimFlags(s, src); if (!fl.length) return text;
   return s.split(/(?<=[.!?])(\s+)|(\n)/).map((x) => (x && !/^\s*$/.test(x) && fl.some((f) => x.includes(f.phrase)) && !/proposed \(team decides\)/i.test(x) ? `${x.match(/^\s*/)[0]}${PROPOSED}${x.trimStart()}` : x ?? '')).join('');
 }
-export const markMoveClaims = (m, source = '') => (!m || typeof m !== 'object' || !Array.isArray(m.sections) ? m : { ...m, sections: m.sections.map((sec) => ({ ...sec, blocks: (sec.blocks || []).map((b) => (!b || typeof b !== 'object' ? b : {
-  ...b, ...(typeof b.body === 'string' ? { body: markClaims(b.body, source) } : {}), ...(typeof b.text === 'string' ? { text: markClaims(b.text, source) } : {}), ...(Array.isArray(b.items) ? { items: b.items.map((x) => (typeof x === 'string' ? markClaims(x, source) : x)) } : {}) })) })) });
+/* a banned word the brand would say: never inside quotes (a shopper's question, a rival's ad), never denied ("not a miracle",
+   "no overnight cure"), never in an "avoid" list, never a word the brand's own words carry (a pet store's "treats"), and never
+   "+100%" maths. → the words found (QA J-04, moves audit 20 Oct) */
+export function bannedHits(text, re, source = '') {
+  if (!re || !(re instanceof RegExp) || re.source === '(?!)') return []; const x = String(text || '').replace(/“[^”]*(”|$)/g, ' ').replace(/"[^"\n]*"/g, ' ');
+  if (!re.test(x)) return []; let g; try { g = new RegExp(re.source, [...new Set(`${re.flags}gi`)].join('')); } catch { return []; }
+  const src = srcNorm(source), out = new Set();
+  for (const m of x.matchAll(g)) { const w = m[0].trim(); if (!w) continue; const before = x.slice(Math.max(0, m.index - 40), m.index).toLowerCase(), last = before.split(/\s+/).filter(Boolean).slice(-4).join(' ');
+    if (/\b(?:not|no|never|isn['’]t|aren['’]t|without|nor|zero|neither|avoid(?:ing)?|banned|don['’]t (?:say|use|write)|instead of)\b/.test(last) || /[+±]\s*$/.test(before) || /\bavoid\b|\bnever (?:say|use)\b|\bbanned\b/i.test(x.slice(Math.max(0, m.index - 120), m.index))) continue;
+    if (/%$/.test(w) && /^\s*(?:more|increase|lift|growth|uplift|of|in)\b/i.test(x.slice(m.index + m[0].length))) continue;
+    if (src && src.includes(w.toLowerCase())) continue; out.add(w.toLowerCase()); }
+  return [...out].slice(0, 5); }
+
+/* a move's claims: sentences, list items, table cells, captions, its gives and live lines are marked as the team's call; a
+   claim in the title, the cover stat or its label can't be prefixed, so it (and any banned word) goes to "To confirm"
+   (moves audit 20 Oct: "Guaranteed stash offers…" as a title, "Use code MIYA15" in a draft ad row) */
+const markCell = (x, source) => (typeof x === 'string' ? markClaims(x, source) : x);
+export const markMoveClaims = (m, source = '', { banned = null } = {}) => {
+  if (!m || typeof m !== 'object' || !Array.isArray(m.sections)) return m;
+  const out = { ...m, sections: m.sections.map((sec) => ({ ...sec, blocks: (sec.blocks || []).map((b) => (!b || typeof b !== 'object' ? b : {
+    ...b, ...(typeof b.body === 'string' ? { body: markClaims(b.body, source) } : {}), ...(typeof b.text === 'string' && b.t !== 'diagram' ? { text: markClaims(b.text, source) } : {}),
+    ...(Array.isArray(b.items) ? { items: b.items.map((x) => markCell(x, source)) } : {}), ...(typeof b.caption === 'string' ? { caption: markClaims(b.caption, source) } : {}),
+    ...(Array.isArray(b.rows) ? { rows: b.rows.map((r) => (Array.isArray(r) ? r.map((x) => markCell(x, source)) : r)) } : {}) })) })) };
+  for (const k of ['gives', 'live']) if (typeof m[k] === 'string') out[k] = markClaims(m[k], source);
+  const tc = [...(Array.isArray(m.toConfirm) ? m.toConfirm : [])], has = (x) => tc.some((y) => String(y).toLowerCase() === x.toLowerCase());
+  for (const [k, name] of [['title', 'title'], ['stat', 'cover number'], ['statLabel', 'cover line']]) for (const f of claimFlags(m[k], source)) { const line = `The ${name} says “${f.phrase}”: ${f.why}, so the team decides before it is used`; if (!has(line)) tc.push(line); }
+  if (banned) { const words = new Set(); const walk = (o, d = 0) => { if (d > 6 || o == null) return; if (typeof o === 'string') bannedHits(o, banned, source).forEach((w) => words.add(w)); else if (Array.isArray(o)) o.forEach((x) => walk(x, d + 1)); else if (typeof o === 'object') for (const [k, v] of Object.entries(o)) if (!/^(?:url|src|id|kind|t|n|meta|sources|factsUsed|toConfirm|derived|newFacts)$/.test(k)) walk(v, d + 1); };
+    walk({ title: m.title, stat: m.stat, statLabel: m.statLabel, gives: m.gives, live: m.live, sections: m.sections });
+    for (const w of [...words].slice(0, 5)) { const line = `“${w}” is a word ads in this category can’t use: say what it does instead before any of this ships`; if (!has(line)) tc.push(line); } }
+  if (tc.length !== (m.toConfirm || []).length) out.toConfirm = tc;
+  return out; };
 
 /* a draft the AI wrote with nobody watching (a feed card's first draft, a jam draft: QA-25, "drafts made outside the studio
    are never checked"): every sentence with a code, guarantee, timed result or absolute the brand's own words don't carry is

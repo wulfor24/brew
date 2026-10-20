@@ -585,7 +585,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const brand = { name: profile.name, descriptor: (profile.descriptor || profile.category || '').toUpperCase(), host: profile.host, hero: heroFile(slug, profile), colors: profile.identity?.colors || [], dateLabel: new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }).toUpperCase(), version: 'V1 · FOR DISCUSSION' };
     const out = path.join(packs.dirOf(slug), priv ? 'private/pdf' : 'pdf', pdf.pdfName(move));
     fs.mkdirSync(path.dirname(out), { recursive: true });
-    const moves = move.n === 0 ? Object.values(await packs.getJSON(slug, 'moves.json', {})) : undefined; // the index lists every move
+    const moves = move.n === 0 ? Object.values(packs.peek(slug)?.moveDocs || await packs.getJSON(slug, 'moves.json', {})).filter((m) => m && +m.n > 0 && +m.n < 1000 && !m.past) : undefined; // the index lists every move of the playbook as the page shows it (QA 20 Oct)
     await pdf.renderMove(move, brand, out, { moves });
     if (priv) { await packs.put(slug, 'private/pdf/' + path.basename(out), fs.readFileSync(out), 'application/pdf'); const pp = await packs.getJSON(slug, 'private/pdfs.json', {}); pp[move.n] = path.basename(out); await packs.put(slug, 'private/pdfs.json', pp); emit(slug, { type: 'pdf', n: move.n, private: true }); return; }
     await packs.put(slug, 'pdf/' + path.basename(out), fs.readFileSync(out), 'application/pdf');
@@ -1568,7 +1568,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   }
   /* Saved PDFs heal: when the PDF text rules change (PDF_V) the saved PDFs are forgotten and each is drawn again on its next
      download (pdfOn); entries for moves that no longer exist leave status.pdfs. Nothing is drawn ahead of time. */
-  const PDF_V = 6; // 6: cover line names the move once ("Move 05", "Weekly move 4"), never "OF 50" (QA 20 Oct); 5: ₹ never ‹, claims the store never made marked "Proposed (team decides)" (final QA pass 19 Oct); 2: kickers without "OF N", "What to watch", BREW DRAFTS; 3: no "Brew re-reads / we pause", index without a count; 4: no source-method narration (brew-name.js unSkill) (2026-10-15)
+  const PDF_V = 7; // 7: the page's load-time fixes (claims in tables and covers, banned words to confirm, plain hero lines, the fitted index) (QA 20 Oct); 6: cover line names the move once ("Move 05", "Weekly move 4"), never "OF 50" (QA 20 Oct); 5: ₹ never ‹, claims the store never made marked "Proposed (team decides)" (final QA pass 19 Oct); 2: kickers without "OF N", "What to watch", BREW DRAFTS; 3: no "Brew re-reads / we pause", index without a count; 4: no source-method narration (brew-name.js unSkill) (2026-10-15)
   let pdfHealQ = Promise.resolve();
   const healPdfs = (slug) => (pdfHealQ = pdfHealQ.catch(() => {}).then(async () => {
     if (blocked(slug) || process.env.PDF_HEAL_OFF === '1') return;
@@ -1610,7 +1610,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (!pdfJobs.has(key)) pdfJobs.set(key, (async () => {
       const m = await load(); if (!m.pdf) throw new Error('PDF renderer not installed');
       const profile = await packs.getJSON(slug, 'profile.json'); if (!profile) throw new Error('no profile');
-      await renderPdf(slug, m.pdf, markMoveClaims(mv, await claimSrcOf(slug)) /* a code or guarantee the store never made reads as the team's call, as on the page (QA-25) */, profile, { ver }); const name = m.pdf.pdfName(mv);
+      await renderPdf(slug, m.pdf, (packs.peek(slug)?.fitMove ? packs.peek(slug).fitMove(mv) /* the PDF reads like the page: the same load-time fixes (QA 20 Oct) */ : markMoveClaims(mv, await claimSrcOf(slug))) /* a code or guarantee the store never made reads as the team's call, as on the page (QA-25) */, profile, { ver }); const name = m.pdf.pdfName(mv);
       return { name, buf: await packs.get(slug, 'pdf/' + name) };
     })().finally(() => pdfJobs.delete(key)));
     return pdfJobs.get(key);

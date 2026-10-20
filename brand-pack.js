@@ -11,6 +11,7 @@ import vm from 'node:vm';
 import path from 'node:path';
 import { allowedFrom } from './fact-gate.js';
 import { demoFor, withDemo, DEMO_V } from './demo-data.js';
+import { fitIndex } from './move-index.js'; // the index's tables, counts and diagram follow today's moves
 import { dejargon } from './plain.js'; // plain words on saved source names
 import { brewFile } from './brew-name.js'; // packs written before the rename say ShopOS
 import { socialize, readSocial } from './social-feed.js'; // what listening heard and the ideas stream, as cards
@@ -236,7 +237,10 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
   const linkOf = (u) => { const x = String(u || '').trim(); return /^https?:\/\//i.test(x) ? x : /^(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+(?:[/?#]\S*)?$/i.test(x) ? `https://${x}` : null; };
   const festivalNow = (m) => { const past = pastOf(m), st = !past && liveStat(m); const noStat = m.meta?.verify?.statUnbacked || (m.stat && !/\d/.test(String(m.stat))); /* a cover number the checker couldn't back, or words where the number goes ("TO CONFIRM"), leaves the cover: the summary shows (QA 20 Oct) */
     return { ...(past ? { past } : {}), ...(st ? { stat: st } : {}), ...(noStat && !st ? { stat: '', statLabel: '' } : {}) }; };
-  const fitMoves = (ms, keep, claimSrc = '') => Object.fromEntries(Object.entries(ms || {}).map(([n, m0]) => { const m = claimSrc ? markMoveClaims(m0, claimSrc) : m0; /* a code or guarantee the store never made reads as the team's call (QA-25) */ return [n, m && typeof m === 'object' && m.title ? { ...m, title: sentenceCase(m.title, keep), ...festivalNow(m) /* a festival plan after its festival says so; its countdown counts from today */,
+  /* the hero lines read in plain words like the source labels (moves audit 20 Oct: "Building a ₹660 AOV…", 86 "live" lines with jargon) */
+  const plainLine = (x) => (typeof x === 'string' && x ? dejargon(x) : x);
+  const fitIndexIn = (docs) => (docs?.[0] ? { ...docs, 0: fitIndex(docs[0], docs) } : docs); /* Move 00 rebuilt from the moves as they are now (move-index.js) */
+  const fitMoves = (ms, keep, claimSrc = '', banned = null) => Object.fromEntries(Object.entries(ms || {}).map(([n, m0]) => { const m = claimSrc || banned ? markMoveClaims(m0, claimSrc, { banned }) : m0; /* a code or guarantee the store never made reads as the team's call (QA-25); a claim in a title, cover or table and a banned word go to "To confirm" (QA 20 Oct) */ return [n, m && typeof m === 'object' && m.title ? { ...m, title: sentenceCase(plainLine(m.title), keep), gives: plainLine(m.gives), live: plainLine(m.live), statLabel: plainLine(m.statLabel), ...festivalNow(m) /* a festival plan after its festival says so; its countdown counts from today */,
     ...(Array.isArray(m.sections) ? { sections: m.sections.map((sec) => ({ ...sec, blocks: (sec.blocks || []).map((b) => (b?.rows ? { ...b, rows: b.rows.map(ipRow) } : b)) })) } : {}),
     ...(Array.isArray(m.sources) ? { sources: m.sources.map((x) => (x && typeof x === 'object' && x.label ? { ...x, label: dejargon(x.label), url: linkOf(x.url) } : x)) } : {}),
     ...(Array.isArray(m.meta?.cites) ? { meta: { ...m.meta, cites: m.meta.cites.map((c) => (c && typeof c === 'object' ? { ...c, url: linkOf(c.url) } : c)) } } : {}) } : m]; })); /* source names in plain words (QA FEED-ARV-06: "catalogue (products.json)") */
@@ -311,6 +315,9 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
     const toldNotes = Object.fromEntries(upFresh.map(([id, x]) => [id, `From what ${teamName}’s team told us: ${x.why}`]));
     /* a festival plan's cards leave the feed once the festival is over (festival-past.js); the move stays, marked past */
     if (moves && typeof moves === 'object') seed.posts = (seed.posts || []).filter((c) => { const mm = /^m(\d+)-\d+$/.exec(String(c?.id || '')); return !(mm && moves[mm[1]] && pastOf(moves[mm[1]])); });
+    const moveSrc = sourceText(Object.values(facts || {}).map((f) => [f?.label, f?.v, ...(f?.aliases || [])]), catalogOf(profile), hooks.reviewQuotes, config?.about || '', seed?.brand?.about || '');
+    let bannedRe = null; try { bannedRe = config?.banned ? new RegExp(config.banned, 'i') : null; } catch { bannedRe = null; }
+    const moveDocs = fitIndexIn(fitMoves(moves, keepOf({ profile, config, seed }), moveSrc, bannedRe));
     const seedD = moveBadges(fitCards(withDemo(fitPhotos(socialize(visualize(seed, { slug, config, staticText: statics, profile }), social, { profile }), profile), demo), { profile, config, seed, status }), moves, staleMoves);
     return finish({
       slug, kind: 'generated', ready: !!status.ready, status, demo, numbers,
@@ -318,7 +325,9 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
       system: withLearned(brief?.toString('utf8') || `You write for ${seed.brand.name}.`, learned, { name: seed.brand.name }), /* the brief, with what the team told Brew laid in once (brand-learnings.js) */
       config, pools: fitPools({ trends: [], 'ads-library': [], catalog: [], ads: [], visibility: [], creative: [], ...pools }, keepOf({ profile, config, seed })),
       statics: config.statics || [], lanePhoto: config.lanePhoto || {},
-      moveDocs: fitMoves(moves, keepOf({ profile, config, seed }), sourceText(Object.values(facts || {}).map((f) => [f?.label, f?.v, ...(f?.aliases || [])]), catalogOf(profile), hooks.reviewQuotes, config?.about || '', seed?.brand?.about || '')), labels, pages,
+      moveDocs, labels, pages,
+      /* the team's private moves (private/moves.json) get the same load-time fixes as the shared ones (moves audit 20 Oct) */
+      fitMove: (m) => { if (!m || typeof m !== 'object') return m; const f = fitMoves({ [m.n || 0]: m }, keepOf({ profile, config, seed }), moveSrc, bannedRe)[m.n || 0]; return +m.n === 0 ? fitIndex(f, moveDocs) : f; },
       staticText: statics,
       /* cards that never sat in the seed (the team's private rewrites, private/cards.json; connector cards) get the same fitting
          at load: the photo of the product they name (title, then asset line), the button of the asset they make */

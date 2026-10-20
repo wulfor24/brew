@@ -4758,8 +4758,9 @@
     const secs = (m.sections || []).filter((x) => x.h), legacy = secs.length && !secs[0].blocks, hasSrc = secs.some((x) => /^sources?\b/i.test(x.h));
     const sid = (i) => `rd-s${i}`;
     /* the index is written once, at the start; this part is live: every move written so far, new ones included, by group */
-    const written = (list?.moves || []).filter((x) => x.n > 0).sort((a2, b2) => a2.n - b2.n);
-    const liveIdx = n === 0 && written.length ? `<section id="rd-all" class="rd-all"><h2>Every move so far <small>${written.length}</small></h2>${[...MV_GROUPS, ['new', 'Added since', 51, 9999]].map(([, name, lo, hi]) => { const g = written.filter((x) => x.n >= lo && x.n <= hi); return g.length ? `<h3>${esc(name)}</h3><ol class="rd-all-l">${g.map((x) => `<li><button data-goto="${x.n}"><span>${mvNum(x.n)}</span><b>${esc(x.title || '')}</b>${x.n > 50 ? '<em>New</em>' : ''}</button></li>`).join('')}</ol>` : ''; }).join('')}</section>` : '';
+    const allW = (list?.moves || []).filter((x) => x.n > 0).sort((a2, b2) => a2.n - b2.n);
+    const written = allW.filter((x) => x.n < 1000); /* one count with the Moves page: weekly moves (1001+) are listed but counted apart (QA 20 Oct) */
+    const liveIdx = n === 0 && written.length ? `<section id="rd-all" class="rd-all"><h2>Every move so far <small>${written.length}</small></h2>${[...MV_GROUPS, ['new', 'Added since', 51, 9999]].map(([, name, lo, hi]) => { const g = allW.filter((x) => x.n >= lo && x.n <= hi); return g.length ? `<h3>${esc(name)}</h3><ol class="rd-all-l">${g.map((x) => `<li><button data-goto="${x.n}"><span>${mvNum(x.n)}</span><b>${esc(x.title || '')}</b>${x.n > 50 ? '<em>New</em>' : ''}</button></li>`).join('')}</ol>` : ''; }).join('')}</section>` : '';
     const feedCards = allPosts().filter((p) => new RegExp(`^moves?\\s[^·]*\\b0?${n}\\b`, 'i').test(p.src || '')).slice(0, 4);
     $('#view').innerHTML = `<div class="rd">
       <div class="rd-bar rd2-bar"><button class="rd-back" data-nav="moves">${ic('right', 's16')}<span>All moves</span></button>

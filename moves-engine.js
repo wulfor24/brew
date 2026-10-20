@@ -16,6 +16,7 @@ import { createFamilies, timingLine } from './measure-families.js';
 const MOVE_MODEL = () => ((process.env.AI_PROVIDER || 'gemini').toLowerCase() !== 'anthropic' && process.env.GEMINI_MOVES_MODEL) || 'opus';
 import { mockAllowed } from './ai.js'; // a [MOCK] placeholder stands in only on a mock run, never after a billing pause
 import { dateCounts } from './pack-numbers.js'; // counts that move day to day say the day they were read
+import { INDEX_GROUPS } from './move-index.js';
 import { CLAIMS_RULE } from './claims.js'; // the moves promise only what the brand itself says
 import { promptBlock as creativeBlock } from './creative-catalog.js'; // what can be made, for the creative and social-posts disciplines
 
@@ -53,9 +54,7 @@ const CONTRACT = `
 const SYSTEM = HOUSE + CONTRACT;
 const pad = (n) => String(n).padStart(2, '0');
 const today = () => new Date().toISOString().slice(0, 10);
-const GROUPS = [
-  ['know', 'KNOW THE BRAND', 'FOUNDATION'], ['found', 'BE FOUND', 'ORGANIC'], ['reach', 'REACH PEOPLE', 'PAID, SOCIAL, CREATORS'],
-  ['convert', 'CONVERT THE VISIT', 'SITE AND LISTINGS'], ['keep', 'KEEP THE CUSTOMER', 'RETENTION'], ['expand', 'EXPAND AND OPERATE', 'B2B AND OPS']];
+const GROUPS = INDEX_GROUPS; // move-index.js: the index heals from the same groups at load
 
 // ---------- Move JSON schema (strictSchema in ai.js makes every field required, so unused fields are ""/[]) ----------
 const S = { type: 'string' };
@@ -654,7 +653,7 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
     const p = (text) => ({ t: 'p', text, items: [], ordered: false, head: [], rows: [], caption: '', title: '', label: '', body: '' });
     const counts = GROUPS.map(([g]) => list.filter((x) => x.s.group === g).length);
     const boxes = ov?.boxes?.length === 6 ? ov.boxes : GROUPS.map(([g]) => list.filter((x) => x.s.group === g).slice(0, 4).map((x) => x.s.skill.slice(0, 14)));
-    const W = 11, box = (i, r) => (boxes[i][r] || '').slice(0, W).padEnd(W);
+    const W = 15, box = (i, r) => (boxes[i][r] || '').slice(0, W).padEnd(W);
     const diagram = [GROUPS.map((g) => g[1].slice(0, W + 2).padEnd(W + 4)).join(' '), GROUPS.map(() => '┌' + '─'.repeat(W + 2) + '┐').join('  '),
       ...[0, 1, 2, 3].map((r) => GROUPS.map((_, i) => `│ ${box(i, r)} │`).join(r === 1 ? '─>' : '  ')), GROUPS.map(() => '└' + '─'.repeat(W + 2) + '┘').join('  '),
       GROUPS.map((_, i) => `${counts[i]} moves`.padEnd(W + 4)).join(' ')].join('\n');
