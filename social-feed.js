@@ -122,19 +122,21 @@ export function heardCards(L, seed = {}, { now = Date.now(), name = seed?.brand?
   }
   // themes: how many said it, how they felt, and two of them in their own words
   const total = L?.total || (L?.items || []).filter((x) => x.themes?.length).length || 0;
-  const th = (L?.themes || []).filter((t) => t?.name && t.n >= 3 && (t.brand || 0) > 0);
+  const th = (L?.themes || []).filter((t) => t?.name && t.n >= 3 && (t.brand || 0) > 0 && !/^(?:complaints?|feedback|issues?|problems?|general|discussion|product skepticism|\w+ feedback)$/i.test(String(t.name).trim())); /* a theme named for what it is ("complaint", "sneakers feedback") says nothing (QA 20 Oct) */
   const picks = []; const byN = th[0]; if (byN) picks.push(byN);
   const byNeg = [...th].filter((t) => t !== byN && t.neg >= 3).sort((a, b) => b.neg / b.n - a.neg / a.n || b.neg - a.neg)[0]; if (byNeg) picks.push(byNeg);
   for (const t of th) { if (picks.length >= maxT) break; if (!picks.includes(t)) picks.push(t); }
   for (const t of picks.slice(0, maxT)) {
     const qs2 = [...new Set([...(t.quoteIds || [])])].map((id) => items.get(id)).filter(Boolean).map((x) => ({ text: cut([x.title, x.text].filter(Boolean).join('. '), 200), url: x.link, where: x.sub || x.platform }));
     if (!qs2.length && t.quote) qs2.push({ text: cut(t.quote, 200), url: t.quoteLink, where: (String(t.quoteLink || '').match(/\/r\/[^/]+/) || [''])[0].slice(1) || 'public post' });
+    /* a small count reads as a count ("3 of 4 negative"), a share only from 20 mentions; a share that rounds to 0 reads "under 1%" */
+    const share = (a, b) => (b < 20 ? `${a} of ${b}` : `${pct(a, b)}%`), ofAll = (a, b) => { const p = pct(a, b); return a && !p ? 'under 1%' : `${p}%`; };
     const quotes = qs2.slice(0, 2), negP = pct(t.neg, t.n), posP = pct(t.pos, t.n), mood = t.neg > t.pos ? 'neg' : t.pos > t.neg ? 'pos' : 'neutral';
     const wk = t.wow ? `${t.wow.week} this week vs ${t.wow.lastWeek} the week before` : '';
     out.push({ id: `heard-t-${hash(t.name)}`, agent: 'brew', sector: 'signals', type: 'report', family: 'learning', kind: 'rows', ...(lane ? { lane } : {}), roles: rolesOf('brew'), origin: 'listen', stream: 'heard',
-      src: `Heard · ${t.n} mentions${total ? ` of ${total}` : ''} · ${quotes[0]?.where || 'public posts'}`, time: ageText(at, now), badge: [mood === 'neg' ? `${negP}% negative` : `${posP}% positive`, mood === 'neg' ? 'warn' : 'ok'],
-      title: `People talk about ${t.name}: ${t.n} mentions, ${mood === 'neg' ? `${negP}% negative` : mood === 'pos' ? `${posP}% positive` : 'mostly neutral'}`, sub: quotes[0] ? `“${quotes[0].text}” (${quotes[0].where})` : `${t.n} public posts and comments about ${t.name}.`,
-      rows: [['Mentions', `${t.n}${total ? ` · ${pct(t.n, total)}% of what Brew heard` : ''}`], ['Mood', `${t.pos} positive · ${t.neg} negative · ${t.neutral} neutral`], ...(t.brand ? [[`About ${name}`, String(t.brand)]] : []), ...(wk ? [['Trend', wk]] : [])],
+      src: `Heard · ${t.n} mentions${total ? ` of ${total}` : ''} · ${quotes[0]?.where || 'public posts'}`, time: ageText(at, now), badge: [mood === 'neg' ? `${share(t.neg, t.n)} negative` : `${share(t.pos, t.n)} positive`, mood === 'neg' ? 'warn' : 'ok'],
+      title: `People talk about ${t.name}: ${t.n} mentions, ${mood === 'neg' ? `${share(t.neg, t.n)} negative` : mood === 'pos' ? `${share(t.pos, t.n)} positive` : 'mostly neutral'}`, sub: quotes[0] ? `“${quotes[0].text}” (${quotes[0].where})` : `${t.n} public posts and comments about ${t.name}.`,
+      rows: [['Mentions', `${t.n}${total ? ` · ${ofAll(t.n, total)} of what Brew heard` : ''}`], ['Mood', `${t.pos} positive · ${t.neg} negative · ${t.neutral} neutral`], ...(t.brand ? [[`About ${name}`, String(t.brand)]] : []), ...(wk ? [['Trend', wk]] : [])],
       ...(quotes[0]?.url ? { link: { label: `Read it in ${quotes[0].where}`, url: quotes[0].url } } : {}), cta: { label: mood === 'neg' ? 'Answer it on the product page' : 'Use their words in a post' },
       detail: { why: [...quotes.map((q) => `“${q.text}” (${q.where})`), `Counted from ${total || t.n} tagged public posts, comments and reviews.`], how: [mood === 'neg' ? `Answer the worry where buyers decide: the product page and the FAQ.` : `Use their words in the next post or ad.`, 'Reply in the threads where it comes up.', 'Brew keeps counting, so you see if it moves.'] },
       heard: { kind: 'theme', name: t.name, n: t.n, pos: t.pos, neg: t.neg, neutral: t.neutral, quotes } });
