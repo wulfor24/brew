@@ -323,7 +323,7 @@ const photoAsync = async (rel) => { const r = String(rel || '').trim(); if (!r) 
 const cfgSlug = (req) => { const q = String(new URL(req?.url || '/', 'http://x').searchParams.get('brand') || '').replace(/[^a-z0-9-]/g, ''); return q && !blocked(q) ? q : undefined; };
 const routes = {
   'GET /api/research': async () => { const r = B().research; return { ...r.get(), running: r.running(), spent: r.spent() }; },
-  'POST /api/research/refresh': async (b, req) => { if (!(await genOk(req, B().slug))) return demoErr(); const ok = ['ads', 'trends', 'news', 'howto']; const which = (b.sources || ok).filter((k) => ok.includes(k)); B().research.refresh(which); return { started: which }; },
+  'POST /api/research/refresh': async (b, req) => { if (!(await genOk(req, B().slug))) return demoErr(); const ok = ['ads', 'trends', 'news', 'howto', 'viral']; const which = (b.sources || ok.slice(0, 4)).filter((k) => ok.includes(k)); B().research.refresh(which); return { started: which }; },
     /* paid work running on this instance now: counts by kind, never brand names. Nothing waits on it: deploys go any time
        (the instance that goes saves what it has, the next resumes it) */
   'GET /api/ops/busy': async () => { const by = { ...(builder?.paidWork?.() || {}), drafts: draftsBg?.busy?.() || 0, cadence: movesCadence?.busy?.() || 0, finals: finals?.busy?.() || 0 };
