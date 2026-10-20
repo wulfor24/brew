@@ -688,6 +688,12 @@ export function createFeedService(o) {
   // an idea's title quotes a price its text doesn't ("the ₹399 + ₹399 pair" over "₹399 shampoo with the ₹642.32 serum"): the AI mixed two items up
   const titlePricesMatch = (c) => { const money = (x) => numbersIn(x, { strict: true }).filter((n) => /^[^\d]+\d/.test(n)); const have = money([c.sub, ...(c.detail?.why || [])].join(' '));
     return money(c.title).every((n) => { const i = have.indexOf(n); if (i < 0) return false; have.splice(i, 1); return true; }); };
+  /* a banned claim the brand itself makes: never inside quotes (a shopper's question, a thread title) and never denied ("it's not a
+     miracle", "no overnight cure", "without a guarantee"): QA J-04 */
+  const bannedSaid = (txt) => { const x = String(txt || '').replace(/“[^”]*(”|$)/g, ' ').replace(/"[^"\n]*"/g, ' '); if (!BANNED.test(x)) return false;
+    let re; try { re = new RegExp(BANNED.source, [...new Set(`${BANNED.flags}gi`)].join('')); } catch { return true; }
+    for (const m of x.matchAll(re)) { const before = x.slice(Math.max(0, m.index - 40), m.index).toLowerCase().split(/\s+/).filter(Boolean).slice(-4).join(' '); if (!/\b(?:not|no|never|isn['’]t|aren['’]t|without|nor|zero|neither)\b/.test(before)) return true; }
+    return false; };
   const qaCheck = (c, t = null) => {
     const main = [c.title, c.sub, ...(c.rows || []).flat()].join(' ');
     const all = textOfCard(c) + ' ' + (c.detail?.why || []).join(' ');
@@ -697,7 +703,7 @@ export function createFeedService(o) {
       // a rival ad is quoted as it runs; the banned words apply to what the brand would say
       // a rival ad is quoted as it runs, and a shopper's question is quoted as they asked it: the banned words apply to
       // what the brand would say ("which serum works for hair regrowth?" is the shopper's word, not a claim)
-      { k: 'No banned words', ok: !BANNED.test(c.research?.kind === 'ad' ? [c.title, ...(c.detail?.how || [])].join(' ') : c.q ? all.split(c.q).join(' ').replace(/“[^”]*(”|$)/g, ' ') : all) },
+      { k: 'No banned words', ok: !bannedSaid(c.research?.kind === 'ad' ? [c.title, ...(c.detail?.how || [])].join(' ') : c.q ? all.split(c.q).join(' ') : all) },
       { k: 'Claims keep “up to” and the window', ok: !claim || (/up to/i.test(claim[0]) && /\d+\s*days/i.test(claim[0])) },
       { k: 'No rival named in ad copy', ok: !(c.type === 'idea' && RIVALS.test(c.title + ' ' + c.sub)) },
       { k: 'Short title, point first', ok: String(c.title || '').length <= 76 },

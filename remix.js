@@ -848,10 +848,10 @@ export function createRemix(o) {
   /* what the studio is doing while a reply takes its time (a minute on Flash): the waiting person sees the step and the clock
      (app.js polls the change while it waits), never a bare spinner */
   const think = (ch, step) => { ch.thinking = step ? { step, at: ch.thinking?.at || Date.now(), stepAt: Date.now() } : null; };
-  const iterate = async (t, ch, message, { knob, quiet, show } = {}) => {
+  const iterate = async (t, ch, message, { knob, quiet, show, fix } = {}) => {
     const c = t.cards.get(ch.cardId) || {};
     ANSWERED.delete(ch);
-    if (!knob && !quiet && (isQuestion(message) || EVIDENCE_ASK.test(message))) { think(ch, 'Looking it up in the facts, the moves and this version'); try { return await answerIn(t, ch, message, show); } finally { think(ch, null); } } /* a question never makes a version */
+    if (!knob && !quiet && !fix /* "Fix it with AI" carries the checks' own words ("evidence", "source"): a fix, never a question (QA J-02) */ && (isQuestion(message) || EVIDENCE_ASK.test(message))) { think(ch, 'Looking it up in the facts, the moves and this version'); try { return await answerIn(t, ch, message, show); } finally { think(ch, null); } } /* a question never makes a version */
     const keepPhoto = photoAsk(message) === 'keep';
     if (!quiet) ch.thread.push(youSaid(t, show || message));
     let out = null, nv = null;
@@ -1578,7 +1578,7 @@ export function createRemix(o) {
       return { change: pubChange(t, ch), pickPhotos: true, image: started };
     }
     try {
-      await iterate(t, ch, msg, { show: b.show ? clean(String(b.show)).slice(0, 300) : null });
+      await iterate(t, ch, msg, { show: b.show ? clean(String(b.show)).slice(0, 300) : null, fix: !!b.fix });
       if (ANSWERED.has(ch)) return { change: pubChange(t, ch), answered: true }; /* a question: answered, nothing changed, no version */
       // fixing: re-check, and if anything is still wrong, try again with the exact problems (twice at most)
       for (let i = 0; b.fix && i < 2 && ch.fixes?.length && !isMock(); i++) await iterate(t, ch, `Still not fixed: ${ch.fixes.join('; ')}. Fix exactly these and change nothing else.`, { quiet: true });

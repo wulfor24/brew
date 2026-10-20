@@ -16,7 +16,7 @@ import { brewFile } from './brew-name.js'; // packs written before the rename sa
 import { socialize, readSocial } from './social-feed.js'; // what listening heard and the ideas stream, as cards
 import { fitCta, fillMake, readSrc } from './cards-gen.js';
 import { cleanBrief, renderBrief } from './brief.js'; // a saved brief's "null" cells heal at load
-import { aboutOf, OLD_ABOUT, marketConfig, laneProducts } from './derive.js'; // a saved config.about written by the old rule heals at load
+import { aboutOf, OLD_ABOUT, marketConfig, laneProducts, bannedFor, BANNED_LISTS } from './derive.js'; // a saved config.about written by the old rule heals at load
 import { prototypeConnectors } from './seed-template.js'; // DUMMY: connector copy that promises no action
 import { sentenceCase, oneCard } from './text-fit.js';
 import { withLearned, learnedMoveNs, learnedTerms, learnedItems } from './brand-learnings.js'; // what the team told Brew (pasted into a jam): in every prompt's system text
@@ -284,6 +284,8 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
     if (profile && !profile.country && config && (config.country || config.countryName || (config.markets || []).length || config.festival)) {
       Object.assign(config, marketConfig(profile), { currency: String(profile.currency || '').toUpperCase() || (config.currency === 'USD' ? '' : config.currency || '') }); config.symbol = config.currency ? config.symbol : '';
       await put(slug, 'config.json', config).catch(() => {}); }
+    /* a banned list picked by the old category rule (a pet store got the health list, which bans its own "treats") heals to its category's list; a list the team edited stays */
+    if (profile && config && BANNED_LISTS.has(config.banned) && config.banned !== bannedFor(profile)) { config.banned = bannedFor(profile); await put(slug, 'config.json', config).catch(() => {}); }
     /* lane products saved before test listings were filtered heal at load: a lane that leads with a test or duplicate listing is picked again (QA 20 Oct) */
     if (profile && config?.laneProducts && Object.values(config.laneProducts).some((x) => x?.name && !sellable({ title: x.name }))) { Object.assign(config, laneProducts(seed, profile)); await put(slug, 'config.json', config).catch(() => {}); }
     /* config.about written by the old rule (the first three catalog rows) heals to the brand's own words (derive.js aboutOf) */

@@ -97,20 +97,23 @@ export function cleanDraftClaims(j, source = '') {
    ("ARATA", "USB", "Heated Hand Pillow, Heated Mouse Pad", "Onion Hair Oil with Onion Oil") and `source` its other words
    (a banner in capitals, "FREE SHIPPING ON ALL ORDERS ABOVE ₹299"). A common word is never "theirs" just because the store
    uses it somewhere: "NOT" shouted is still flagged. */
-const ACRO = /^(?:SPF|PA|UV|UVA|UVB|AHA|BHA|USA|UK|EU|UAE|COD|FAQ|DIY|OTP|SMS|GST|MRP|SKU|ML|KG|CEO|AI|HD|NEW|FREE|SALE|OFF|BOGO|DM|IG|FB|USP|PDP|ASAP|OK|ISO|GMP|FDA|BPA|PETA|RSVP|VIP|USB|LED|XL|XXL|PM|AM|TV|PC|DIY)$/;
+const ACRO = /^(?:SPF|PA|UV|UVA|UVB|AHA|BHA|USA|UK|EU|UAE|COD|FAQ|DIY|OTP|SMS|GST|MRP|SKU|ML|KG|CEO|AI|HD|NEW|FREE|SALE|OFF|BOGO|DM|IG|FB|USP|PDP|ASAP|OK|ISO|GMP|FDA|BPA|PETA|RSVP|VIP|USB|LED|XL|XXL|PM|AM|TV|PC|DIY|INR|USD|GBP|EUR|AUD|CAD|SGD|AED|JPY|CHF|NZD|CZK|PLN|SEK|DKK|NOK|HUF|RON|BGN)$/;
 const REPEAT_OK = /^(that|this|with|your|more|very|from|have|what|when|each|week|step|days?|again|over|after|by|and)$/;
 const WORDS = new Map(), wordsOf = (x) => { const h = WORDS.get(x); if (h !== undefined) return h; const w = words(x); if (WORDS.size >= 8) WORDS.delete(WORDS.keys().next().value); WORDS.set(x, w); return w; };
 const words = (x) => norm(x).replace(/[^a-z0-9₹%&' ]+/g, ' ').replace(/\s+/g, ' ').trim();
 export function copyFlags(text, opts = {}) {
   const o = typeof opts === 'string' ? { source: opts } : opts || {};
-  const s = String(text || ''), out = [], src = wordsOf(srcNorm(o.source || ''));
+  /* a quoted span is someone else's words (a shopper's question, a thread title): never flagged as ours (QA J-05) */
+  const s = String(text || '').replace(/“[^”]{0,240}”|"[^"\n]{0,240}"/g, ' '), out = [], src = wordsOf(srcNorm(o.source || ''));
+  const rawSrc = String(o.source || ''), theirs = (w) => /^[A-Z0-9]+$/.test(w) && new RegExp(`(^|[^A-Za-z])${w}([^A-Za-z]|$)`).test(rawSrc); /* an acronym the store itself writes in capitals ("DHT"), never a common word it writes in lower case ("not") */
   const names = (o.names || []).filter((x) => typeof x === 'string' && x.trim()).map(words), nameWords = new Set(names.flatMap((n) => n.split(' ')));
+  const shortName = new Set(names.filter((n) => n.split(' ').length <= 2).flatMap((n) => n.split(' ')));
   const nameStarts = new Set(names.map((n) => n.split(' ').slice(0, 2).join(' ')).filter((x) => x.includes(' ')));
   const inName = (phrase) => { const p = words(phrase); return p.length > 3 && names.some((n) => n.includes(p)); };
   const banner = (run) => { const p = words(run); return p.split(' ').length >= 2 && !!src && src.includes(p); }; /* a run of two words or more the store writes */
   if (/\\n|\\t/.test(s)) out.push('line breaks show as “\\n” in the text');
   const runs = s.match(/\b[A-Z][A-Z0-9₹%&' -]*[A-Z0-9]\b/g) || [];
-  const caps = runs.filter((r) => !banner(r) && !inName(r)).flatMap((r) => r.match(/\b[A-Z]{3,}\b/g) || []).filter((w) => !ACRO.test(w) && !nameWords.has(w.toLowerCase()) && /[a-z]/.test(s.replace(/\b[A-Z]{3,}\b/g, '')));
+  const caps = runs.filter((r) => !banner(r) && !inName(r)).flatMap((r) => r.match(/\b[A-Z]{3,}\b/g) || []).filter((w) => !ACRO.test(w) && !(w.length <= 5 && theirs(w)) && !nameWords.has(w.toLowerCase()) && /[a-z]/.test(s.replace(/\b[A-Z]{3,}\b/g, '')));
   if (caps.length) out.push(`shouting caps (“${caps[0]}”)`);
   if (/\bnot giving\s*[?!.]|\b(?:is|are)\s+(?:not\s+)?giving\s*[?!.]/i.test(s)) out.push('slang that doesn’t read right (“… giving?”)');
   if (/\bup to \d+ days a week\b|\b(?:[8-9]|\d{2,}) days a week\b/i.test(s)) out.push('a time phrase that doesn’t make sense (“days a week”)');
@@ -120,7 +123,8 @@ export function copyFlags(text, opts = {}) {
   const dbl = s.match(/\b([A-Za-z]{2,})\s+\1\b/i); if (dbl && !inName(dbl[0])) out.push(`a repeated word (“${dbl[1].toLowerCase()}”) in one phrase`);
   const startsName = (line, at) => nameStarts.has(words(line.slice(at)).split(' ').slice(0, 2).join(' '));
   for (const line of s.split(/\n|(?<=[.!?])\s+/)) { const ws = [...line.matchAll(/[A-Z][a-z]{3,}/g)];
-    outer: for (let i = 0; i < ws.length; i++) for (let j = i + 1; j < Math.min(ws.length, i + 4); j++) { const w = ws[i][0].toLowerCase(); if (w !== ws[j][0].toLowerCase() || REPEAT_OK.test(w)) continue;
+    const lw = line.match(/\b[A-Za-z]{3,}\b/g) || []; if (lw.length >= 4 && ws.length / lw.length >= 0.6) continue; /* a Title Case headline repeats its words by style */
+    outer: for (let i = 0; i < ws.length; i++) for (let j = i + 1; j < Math.min(ws.length, i + 4); j++) { const w = ws[i][0].toLowerCase(); if (w !== ws[j][0].toLowerCase() || REPEAT_OK.test(w) || shortName.has(w) || names.some((n) => n.includes(w) && ` ${words(line)} `.includes(` ${n} `))) continue; /* the brand's name said twice, or a product named in full beside the same word, reads fine */
       if (inName(line.slice(ws[i].index, ws[j].index + ws[j][0].length)) || (startsName(line, ws[i].index) && startsName(line, ws[j].index))) continue;
       out.push(`a repeated word (“${w}”) in one phrase`); break outer; } }
   return [...new Set(out)];

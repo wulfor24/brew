@@ -12,9 +12,11 @@ const BANNED = {
   health: '\\b(cure[sd]?|heal[sd]?|treat(s|ment)?\\b|regrow\\w*|miracle\\w*|guarantee[sd]?|clinical[- ]strength|chemical[- ]free|doctor[- ]recommended)\\b|100%',
   beauty: '\\b(cure[sd]?|regrow\\w*|miracle\\w*|chemical[- ]free|clinical[- ]strength|anti[- ]ageing cure|permanent(ly)?)\\b|100%',
   food: '\\b(cure[sd]?|prevents? (disease|cancer)|miracle\\w*|detox(es)? your)\\b|100%',
+  /* pets: "treats" is the product (dog treats), never a banned word; health claims about the animal are (QA 20 Oct) */
+  pets: '\\b(cure[sd]?|heal[sd]? (?:your|their|the)|treats? (?:arthritis|anxiety|allerg\\w*|disease\\w*|infections?|cancer)|miracle\\w*|prevents? (disease|cancer)|vet[- ]prescribed|clinically proven)\\b',
   default: '\\b(miracle\\w*|guaranteed results|cure[sd]?)\\b'
 };
-const catKind = (c) => /hair|skin|beauty|cosmetic|serum|derma|makeup|fragrance|personal care/i.test(c) ? 'beauty' : /supplement|vitamin|health|wellness|nutrition|pharma|medical|protein/i.test(c) ? 'health' : /food|snack|beverage|coffee|tea|drink/i.test(c) ? 'food' : 'default';
+export const catKind = (c) => /\bpets?\b|\bdogs?\b|\bcats?\b|pupp|kitten|petcare/i.test(c) ? 'pets' : /hair|skin|beauty|cosmetic|serum|derma|makeup|fragrance|personal care/i.test(c) ? 'beauty' : /food|snack|beverage|coffee|tea|drink/i.test(c) ? 'food' : /supplement|vitamin|health|wellness|nutrition|pharma|medical|protein/i.test(c) ? 'health' : 'default';
 
 /* "what the brand is", for prompts (research.js's news scout, the listening prompts): the brand's own words when the read has
    them (about, the one-liner, the tagline), else the category with a fitting article and the hero products, never the first
@@ -90,3 +92,7 @@ export function laneProducts(seed, profile) {
   }
   return { laneProducts: out, lanePhoto: photo };
 }
+
+/* the banned claim list a brand's category gets (a saved config heals to it at load: brand-pack) */
+export const bannedFor = (p = {}) => { const k = catKind([p.category, p.subcategory].filter(Boolean).join(', ') || 'consumer products'); return BANNED[k] || BANNED.default; };
+export const BANNED_LISTS = new Set(Object.values(BANNED));
