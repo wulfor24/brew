@@ -1,6 +1,7 @@
 // Turn what the reader found (profile + ledger) into the pack files the runtime reads: facts.json, config.json.
 // Only observed values become facts the cards may quote; anything inferred stays out of the fact sheet.
 import { nextFestival } from './calendar.js';
+import { sellable } from './product-match.js';
 const LOC = { IN: 2356, US: 2840, GB: 2826, CA: 2124, AU: 2036, AE: 2784, SG: 2702, DE: 2276, FR: 2250, NL: 2528, IE: 2372, NZ: 2554, SA: 2682, MY: 2458, ID: 2360, PH: 2608, JP: 2392, ES: 2724, IT: 2380, SE: 2752 };
 const CNAME = { IN: 'India', US: 'the US', GB: 'the UK', CA: 'Canada', AU: 'Australia', AE: 'the UAE', SG: 'Singapore', DE: 'Germany', FR: 'France', NL: 'the Netherlands', IE: 'Ireland', NZ: 'New Zealand', SA: 'Saudi Arabia', MY: 'Malaysia', ID: 'Indonesia', PH: 'the Philippines', JP: 'Japan', ES: 'Spain', IT: 'Italy', SE: 'Sweden' };
 const TZ = { IN: [5.5, 'Asia/Kolkata'], US: [-5, 'America/New_York'], GB: [0, 'Europe/London'], CA: [-5, 'America/Toronto'], AU: [10, 'Australia/Sydney'], AE: [4, 'Asia/Dubai'], SG: [8, 'Asia/Singapore'], DE: [1, 'Europe/Berlin'], FR: [1, 'Europe/Paris'] };
@@ -80,7 +81,7 @@ export function configFromProfile(p, extra = {}) {
 
 // the products each lane leads with (studio's offline packages and image prompts read these)
 export function laneProducts(seed, profile) {
-  const prods = profile.catalog?.products || [], out = {}, photo = {};
+  const prods = (profile.catalog?.products || []).filter(sellable), out = {}, photo = {}; /* never a test or duplicate listing */
   for (const [k, l] of Object.entries(seed.lanes || {})) {
     const p = prods.find((x) => l.line.startsWith(x.title)) || prods[0]; if (!p) continue;
     const claim = (p.claims || [])[0] || '';

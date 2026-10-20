@@ -4,14 +4,18 @@
 
 const JUNK = /sold.?out|size.?chart|logo|wordmark|favicon|banner|icon|placeholder|gift.?card|screen.?shot|screen_?capture|\bscr_\d/i; // screenshots and brand marks are never product photos
 // everyday words that are product names only by accident ("Astra DAY DREAM" is not what "every day" means)
-const COMMON = new Set('day days every all new best top more life love time way made make one two our your you the and for with that this from just last lasts wear feel feels look looks fit fits shop buy get comfort comfortable classic everyday collection edition pair pairs shoe shoes sneaker sneakers'.split(' '));
+const COMMON = new Set('day days every all new best top more life love time way made make one two our your you the and for with that this from just last lasts wear feel feels look looks fit fits shop buy get comfort comfortable classic everyday collection edition pair pairs shoe shoes sneaker sneakers product products pack packs combo combos kit kits'.split(' '));
 const words = (s) => String(s || '').toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}\s-]/gu, ' ').split(/[\s-]+/).filter((w) => w.length > 2);
 
 // products: [{ title, img | images[] }] from profile.catalog.products → a compact, photo-bearing list
 export const junkPhoto = (u) => JUNK.test(String(u || '').split('?')[0]);
 /* a product's price as the store shows it: its own label, else the number in its currency */
 const priceOf = (x) => { if (x.priceLabel) return String(x.priceLabel); const n = +x.price; if (!x.price || !Number.isFinite(n)) return ''; try { return new Intl.NumberFormat('en', { style: 'currency', currency: String(x.currency || 'USD').toUpperCase(), maximumFractionDigits: n % 1 ? 2 : 0 }).format(n); } catch { return String(x.price); } };
-export const catalogOf = (profile, max = 400) => (profile?.catalog?.products || [])
+/* a listing a shopper can buy: never the store's test or duplicate listings ("Sunscreen Gel … Test Product", "GL Event test",
+   a "-copy" handle), which became card photos and draft products (QA 20 Oct). A real "test kit" stays */
+const NOT_FOR_SALE = /\b(?:test|dummy|sample|placeholder)\s+(?:product|listing|item|sku)\b|\bdo not (?:buy|use|purchase|order)\b|(?:^|\s)test\s*$|^\s*test\b(?!\s+kits?\b)|\bevent test\b/i;
+export const sellable = (x) => !!x && !NOT_FOR_SALE.test(String(x.title || x.t || '')) && !/-copy(?:-\d+)?\/?$/i.test(String(x.handle || x.url || '').split('?')[0]);
+export const catalogOf = (profile, max = 400) => (profile?.catalog?.products || []).filter(sellable)
   .map((x) => ({ t: String(x.title || ''), img: [x.img, ...(x.images || [])].find((u) => u && !JUNK.test(u)) || null, ...(priceOf(x) ? { price: priceOf(x) } : {}), ...(x.inStock === false ? { out: true } : {}), ...(x.url ? { url: String(x.url) } : {}), ...((x.claims || [])[0] ? { claim: String(x.claims[0]) } : {}), imgs: [...new Set([x.img, ...(x.images || [])].filter((u) => u && typeof u === 'string' && !JUNK.test(u)))].slice(0, 8) /* every photo of it: a listing's photo set where no photo can be made (remix listingFromCatalog) */ })) /* skip a "sold out" placeholder, keep the product; price and stock for a product grid (draft-mocks.js); its page and first claim for the jam's product line (studio productFor) */
   .filter((x) => x.t && x.img && !JUNK.test(x.t)).slice(0, max);
 

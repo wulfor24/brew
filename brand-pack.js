@@ -16,13 +16,14 @@ import { brewFile } from './brew-name.js'; // packs written before the rename sa
 import { socialize, readSocial } from './social-feed.js'; // what listening heard and the ideas stream, as cards
 import { fitCta, fillMake, readSrc } from './cards-gen.js';
 import { cleanBrief, renderBrief } from './brief.js'; // a saved brief's "null" cells heal at load
-import { aboutOf, OLD_ABOUT, marketConfig } from './derive.js'; // a saved config.about written by the old rule heals at load
+import { aboutOf, OLD_ABOUT, marketConfig, laneProducts } from './derive.js'; // a saved config.about written by the old rule heals at load
 import { prototypeConnectors } from './seed-template.js'; // DUMMY: connector copy that promises no action
 import { sentenceCase, oneCard } from './text-fit.js';
 import { withLearned, learnedMoveNs, learnedTerms, learnedItems } from './brand-learnings.js'; // what the team told Brew (pasted into a jam): in every prompt's system text
 import { sandboxName, virtualFile, demoSid } from './demo-mode.js'; // Demo Mode: per-session private files
 import { markMoveClaims, sourceText } from './claims.js'; // saved moves: a claim the store never made is marked as the team's call
 import { pastOf, liveStat } from './festival-past.js'; // a festival move after its festival: marked past, its cards off the feed
+import { sellable } from './product-match.js'; // a listing a shopper can buy (never a test or duplicate listing)
 
 /* the raw material of a hook, for every draft plan (drafts.js hookBlock), for every brand: real review lines (top 5, at most
    120 characters, the read's chosen quotes first, no low ratings) and the three rival ads live longest (days, format, their
@@ -205,7 +206,10 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
       const free = (start) => { for (let k = 0; k < prods.length; k++) { const x = prods[(start + k) % prods.length]; if (!used.has(x.img)) return x; } return prods[start % prods.length]; };
       for (const c of posts) { if (c.kind !== 'media' || (c.images || []).length !== 1 || !(lanePics.has(String(c.images[0]).replace(/^\//, '')) || junkPhoto(c.images[0]))) continue; /* a lane photo, or a screenshot / logo file, gets a real product photo */
         const m = cardProduct(c, prods, { brand: seed.brand?.name || '' }), named = m && prods.find((x) => x.t === m.t); /* the product the card's asset line or words name; else a varied one */
-        const pick = named || free(hash(c.id) % prods.length); /* a named product always gets its own photo */
+        /* a card that names no product never gets one at random (an email card showed onion shampoo, a press-page card body lotion:
+           QA 20 Oct): it keeps the brand's lane photo, and a screenshot or logo goes for the lane photo or no photo */
+        if (!named) { if (junkPhoto(c.images[0])) { const lp = String(seed.laneImg?.[c.lane] || Object.values(seed.laneImg || {})[0] || '').replace(/^\//, ''); c.images = lp && !junkPhoto(lp) ? [lp] : []; if (!c.images.length) c.kind = 'rows'; } continue; }
+        const pick = named; /* a named product always gets its own photo */
         used.set(pick.img, (used.get(pick.img) || 0) + 1); c.images = [pick.img]; } }
     return { ...seed, posts };
   }
@@ -280,6 +284,8 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
     if (profile && !profile.country && config && (config.country || config.countryName || (config.markets || []).length || config.festival)) {
       Object.assign(config, marketConfig(profile), { currency: String(profile.currency || '').toUpperCase() || (config.currency === 'USD' ? '' : config.currency || '') }); config.symbol = config.currency ? config.symbol : '';
       await put(slug, 'config.json', config).catch(() => {}); }
+    /* lane products saved before test listings were filtered heal at load: a lane that leads with a test or duplicate listing is picked again (QA 20 Oct) */
+    if (profile && config?.laneProducts && Object.values(config.laneProducts).some((x) => x?.name && !sellable({ title: x.name }))) { Object.assign(config, laneProducts(seed, profile)); await put(slug, 'config.json', config).catch(() => {}); }
     /* config.about written by the old rule (the first three catalog rows) heals to the brand's own words (derive.js aboutOf) */
     if (profile && config && (!config.about || OLD_ABOUT.test(config.about))) { const a = aboutOf(profile); if (a && a !== config.about) { config.about = a; await put(slug, 'config.json', config).catch(() => {}); } }
     /* listening and the ideas stream (social-feed.js): every brand gets them at load, no rebuild; a brand without them gets nothing */
