@@ -4,6 +4,7 @@
 //   - every Brew link and page keeps ?embedded=1&shop&host, so the next page knows it is inside the admin
 //   - sign-ins that refuse a frame (Google, Meta, Slack) and other sites open in a new tab: a signed hop for Brew's own
 //     sign-in routes, the plain address for everything else
+//   - a brand's PDFs (/b/<slug>/pdf/…) are its team's, and a link or new tab sends no header: their links carry a fresh token
 (() => {
   if (!window.shopify) return;
   /* a store not open yet (closed-gate.js) asks who is looking before it shows its page: a frame's own load can't send the
@@ -22,8 +23,8 @@
   /* the page's own address keeps them too (a reload, or a link built from location) */
   try { const here = withKeep(location.href); if (here !== location.pathname + location.search + location.hash) history.replaceState(history.state, '', here); } catch (e) {}
 
-  let tok = null;
-  const refresh = () => shopify.idToken().then((t) => { tok = t; }).catch(() => {});
+  let tok = null, tokAt = 0;
+  const refresh = () => shopify.idToken().then((t) => { tok = t; tokAt = Date.now(); }).catch(() => {});
   refresh(); setInterval(refresh, 40e3);
   const ES = window.EventSource;
   if (ES) window.EventSource = function (url, init) { try { const u = new URL(url, location.href); if (u.origin === location.origin && tok) u.searchParams.set('id_token', tok); url = u.href; } catch (e) {} return new ES(url, init); };
@@ -32,9 +33,21 @@
   const hop = async (next) => { const w = window.open('', '_blank'); /* opened inside the tap, so no popup blocker */
     try { const r = await fetch('/shopify/api/hop', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ next }) }); const j = await r.json();
       if (j.url && w) w.location = j.url; else { w?.close(); alert(j.error || 'That didn’t open. Try again.'); } } catch (e) { w?.close(); } };
+  /* a PDF link (Open the PDF, the move's PDF icon, Download the PDF): server.js teamRead asks who is looking, and a link sends
+     no header, so the link itself carries the session token (a minute's life). It is set as the link is pressed, right-clicked
+     (Open in new tab) or middle-clicked; a token older than 45 s is asked for again first, in a tab opened inside the tap */
+  const pdfOf = (e) => { const a = e.target.closest?.('a[href]'); if (!a) return null; let u; try { u = new URL(a.getAttribute('href'), location.href); } catch (er) { return null; }
+    return u.origin === location.origin && /^\/b\/[a-z0-9-]+\/pdf\//.test(u.pathname) ? { a, u } : null; };
+  const withTok = (u, t) => { u.searchParams.set('id_token', t); return u.pathname + u.search + u.hash; };
+  for (const ev of ['pointerdown', 'contextmenu', 'auxclick']) document.addEventListener(ev, (e) => { const l = pdfOf(e); if (l && tok) l.a.setAttribute('href', withTok(l.u, tok)); }, true);
+  const pdfClick = (e, { a, u }) => { if (tok && Date.now() - tokAt < 45e3) return a.setAttribute('href', withTok(u, tok));
+    e.preventDefault(); const w = window.open('', '_blank'); /* opened inside the tap, so no popup blocker */
+    shopify.idToken().then((t) => { tok = t; tokAt = Date.now(); const h = withTok(u, t); a.setAttribute('href', h); if (w) w.location = h; else alert('That didn’t open. Try again.'); })
+      .catch(() => { w?.close(); alert('That didn’t open. Try again.'); }); };
   const outside = (u) => /^\/(auth|connect)\//.test(u.pathname) && u.pathname !== '/connect/shopify/start';
   document.addEventListener('click', (e) => {
     const go = e.target.closest?.('button.go[data-next]'); if (go) { e.preventDefault(); return hop(go.dataset.next); }
+    const pdf = !e.defaultPrevented && pdfOf(e); if (pdf) return pdfClick(e, pdf);
     const a = e.target.closest?.('a[href]'); if (!a || e.defaultPrevented || a.target === '_blank' || a.hasAttribute('download')) return;
     let u; try { u = new URL(a.getAttribute('href'), location.href); } catch (er) { return; }
     if (!/^https?:$/.test(u.protocol)) return;
