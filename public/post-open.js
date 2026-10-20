@@ -14,18 +14,21 @@
   /* the X copy: a thread's posts are split by a blank line and "2/" style numbers (app.js pmThread) */
   const xPosts = (copy) => { const parts = String(copy || '').trim().split(/\n\s*\n(?=\s*\d{1,2}\s*[/.)]\s)/); return parts.length > 1 ? parts.map((x) => x.replace(/^\s*\d{1,2}\s*[/.)]\s*/, '').trim()) : [String(copy || '').trim()]; };
 
-  function of(ch, { brandUrl = '', image = '' } = {}) {
+  function of(ch, { brandUrl = '', image = '', card = null } = {}) {
     const p = ch?.pkg || {}; if (ch?.family !== 'post' || ch?.target?.conn === 'meta') return null;
     const kind = kindOf(ch, p); if (!kind) return null;
     const copy = String(p.copy || '').trim(); if (!copy) return null;
     const tags = (p.hashtags || []).filter((t) => t && !copy.toLowerCase().includes(String(t).toLowerCase()));
     const body = tags.length ? `${copy}\n\n${tags.join(' ')}` : copy;
-    const where = (p.where || []).filter((w) => w && (w.name || w.url)), w0 = where.find((w) => http(w.url)) || null;
+    /* the card the jam came from keeps the thread when a rewrite dropped it (an AI fix may write its own "where" and a title) */
+    const cardWhere = [...(card?.post?.where || []), ...(card?.heard?.url ? [{ name: card.heard.where || '', url: card.heard.url, kind: 'thread' }] : [])];
+    const where = [...(p.where || []), ...cardWhere].filter((w) => w && (w.name || w.url)), w0 = where.find((w) => http(w.url)) || null;
     const rule = where.map((w) => w.rule).find(Boolean) || '';
     const out = (label, url, text, filled) => (url ? { kind, label, url, text, filled, rule } : null);
     if (kind === 'reddit_post') {
       const thread = where.find((w) => isThread(w) && http(w.url));
-      const reply = !p.title || /reply|comment/i.test(String(p.format || '')) || (!!thread && !where.some((w) => w.kind === 'community'));
+      /* a reply stays a reply: the card asked to answer a thread ("Reddit reply"), whatever title a rewrite added */
+      const reply = !p.title || /reply|comment/i.test(`${p.format || ''} ${p.platform || ''} ${card?.post?.format || ''}`) || /^heard-q-/.test(String(ch.cardId || card?.id || '')) || (!!thread && !where.some((w) => w.kind === 'community'));
       if (reply) return thread ? out('Copy and open the thread', thread.url, body, false) : w0 ? out('Copy and open Reddit', w0.url, body, false) : null;
       const sub = where.map(subOf).find(Boolean);
       const url = `https://www.reddit.com/${sub ? `r/${sub}/` : ''}submit?type=TEXT&title=${enc(String(p.title).slice(0, 300))}&text=${enc(body.slice(0, 6000))}`;

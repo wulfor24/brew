@@ -3943,7 +3943,7 @@
     if (r?.error) { toast(`${ic('info', 's16')}${esc(r.error)}`); return paintStudio(); }
     if (r?.change) { RX.ch = r.change; putCh(r.change); } toast(`${ic('sparkles', 's16')}Making the final. It lands here when it’s done.`); paintStudio(); };
   /* Copy and open (post-open.js): the post, copied, and the exact place opened in a new tab, filled in where the platform allows */
-  const postOpenOf = (ch) => { try { const im = imgOf(ch) || ch.pkg?.photos?.[0] || null; return window.PostOpen?.of(ch, { brandUrl: B.brand.host ? `https://${String(B.brand.host).replace(/^https?:\/\//, '')}` : '', image: im ? new URL(im, location.href).href : '' }) || null; } catch { return null; } };
+  const postOpenOf = (ch) => { try { const im = imgOf(ch) || ch.pkg?.photos?.[0] || null; return window.PostOpen?.of(ch, { card: RX.p ? cardOf(RX.p) : null, brandUrl: B.brand.host ? `https://${String(B.brand.host).replace(/^https?:\/\//, '')}` : '', image: im ? new URL(im, location.href).href : '' }) || null; } catch { return null; } };
   const PO_WHERE = (po) => ({ x_post: 'X', reddit_post: /thread/.test(po.label) ? 'the thread' : 'Reddit', linkedin_post: 'LinkedIn', quora_answer: 'the question', fb_group_post: 'the group', pinterest_pin: 'Pinterest' })[po.kind] || 'the thread';
   const poBtn = (po, primary) => `<button class="btn ${primary ? 'btn-primary' : 'btn-ghost'} ship-go" data-rx="post-open" title="${esc(po.url.split('?')[0])}">${ic('send', 's16')}${esc(po.label)}</button>`;
   const stepBar = (ch) => {

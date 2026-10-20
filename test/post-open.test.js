@@ -16,6 +16,13 @@ test('a Reddit reply copies and opens the exact thread', () => {
   assert.match(o.text, /90 days/); assert.match(said(o), /^Copied\. Paste it/); assert.match(said(o), /community rules/);
 });
 
+test('a reply stays a reply after an AI fix added a title and dropped the thread', () => {
+  const fixed = ch('reddit_post', { platform: 'Reddit reply', title: 'Asked in r/TeenIndia: Has anyone used it?', copy: 'Honest take.', where: [{ name: 'r/TeenIndia', url: 'https://www.reddit.com/r/TeenIndia/' }] }, { cardId: 'heard-q-5nvegk' });
+  const card = { id: 'heard-q-5nvegk', heard: { kind: 'thread', url: 'https://www.reddit.com/r/TeenIndia/comments/1x8h571/has_anyone_used/', where: 'r/TeenIndia' }, post: { format: 'reply' } };
+  const o = of(fixed, { card });
+  assert.equal(o.url, card.heard.url); assert.equal(o.label, 'Copy and open the thread'); assert.equal(o.filled, false);
+});
+
 test('a new Reddit post opens the subreddit with title and text filled in', () => {
   const o = of(ch('reddit_post', { platform: 'reddit', title: 'What 90 days of serum looked like', copy: 'Week by week.', hashtags: [], where: [{ name: 'r/HairCareIndia', url: 'https://www.reddit.com/r/HairCareIndia/', kind: 'community' }] }));
   assert.equal(new URL(o.url).pathname, '/r/HairCareIndia/submit'); assert.equal(q(o.url).title, 'What 90 days of serum looked like'); assert.equal(q(o.url).text, 'Week by week.'); assert.equal(o.filled, true);
