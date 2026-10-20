@@ -635,7 +635,7 @@ export const IDEA_ACTION = { x: 'x_post', linkedin: 'linkedin_post', reddit: 're
 /* a reply under a video is a comment, not a new video (a YouTube "reply" used to open as "Make the short video") */
 export const ideaAction = (i) => (/^(reply|comment)$/i.test(i?.format || '') && /youtube|tiktok|instagram/.test(i?.platform || '') ? 'creative.comment_reply' : i?.platform === 'instagram' ? (i.media?.kind === 'carousel' ? 'creative.ig_carousel' : i.media?.kind === 'video' ? 'creative.short_video' : 'creative.ig_post') : `creative.${IDEA_ACTION[i?.platform] || 'x_post'}`);
 export const ideaPkg = (i = {}, act = String(ideaAction(i)).split('.').pop(), c = {}) => {
-  const where = (i.where || []).map((w) => ({ name: w.name, url: w.url, rule: w.rule || w.why || '' }));
+  const where = (i.where || []).map((w) => ({ name: w.name, url: w.url, rule: w.rule || w.why || '', ...(w.kind ? { kind: w.kind } : {}) })); /* kind: a thread to reply in or a community to post in (Copy and open, post-open.js) */
   const own = (i.where || []).find((w) => w.kind === 'own'), handle = own ? own.name.split(' ')[0] : `@${String(BN() || '').toLowerCase().replace(/[^a-z0-9]+/g, '')}`;
   const m = i.media || {}, tags = (i.hashtags || []).filter(Boolean);
   if (act === 'ig_post' || act === 'ig_carousel' || act === 'ig_story') {
