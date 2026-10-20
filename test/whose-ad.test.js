@@ -19,6 +19,8 @@ test('a rival ad says it was seen on that rival; our version on it says so; our 
   assert.equal(whoseAd({ id: 'static-1', kind: 'media', images: ['statics/1.png'], make: { format: 'single image ad' } }), 'Made for you');
   assert.equal(whoseAd({ id: 'static-2', kind: 'media', images: ['statics/2.png'] }), 'Made for you', 'a finished static is ours');
   assert.equal(whoseAd({ id: 'm1', kind: 'rows', make: { format: 'email' } }), '', 'not an ad: the card keeps its own source line');
+  assert.equal(whoseAd({ id: 'm30-2', kind: 'media', images: ['/b/x/a/pack.png'], make: { format: 'catalog ad' } }), '', 'a card that only asks for an ad shows a stand-in photo: not made yet');
+  assert.equal(whoseAd({ id: 'm30-2', kind: 'media', images: ['/b/x/a/pack.png'], make: { format: 'catalog ad' }, draft: { images: ['gen/d.png'] } }), 'Made for you', 'a first draft Brew drew is');
   assert.equal(ourVersionOf(''), 'Our version of a rival’s ad');
 });
 

@@ -1000,7 +1000,7 @@
   const oursOn = (c = {}) => !!(c.draft?.images?.length || c.draft?.video || c.take?.image);
   const ourVersionOf = (n) => (n ? `Our version of ${n}’s ad` : 'Our version of a rival’s ad');
   const whoseAd = (c = {}) => { const rv = rivalOf(c); if (rv && (c.research?.kind === 'ad' || c.make?.from === 'rival')) return oursOn(c) ? ourVersionOf(rv.name) : rv.name ? `Seen on ${rv.name}` : 'Seen on a rival’s ads';
-    if (!rv && (AD_FORMATS.has(c.make?.format) || /^static-/.test(String(c.id || '')) /* a finished static from the ad plan */) && (c.kind === 'media' || c.images?.length || oursOn(c))) return 'Made for you'; return ''; };
+    if (!rv && (/^static-/.test(String(c.id || '')) /* a finished static from the ad plan */ || (AD_FORMATS.has(c.make?.format) && oursOn(c)) /* an ad Brew drew; a card that only asks for one shows a stand-in product photo, not ours */)) return 'Made for you'; return ''; };
   const fromLabel = (c = {}) => {
     const r = c.research?.kind, wa = whoseAd(c); if (wa) return wa;
     if (r === 'ad' || (c.type === 'competitor' && c.sector === 'ads')) return 'From your competitors';
@@ -1010,8 +1010,16 @@
     if (FROM_CAMPAIGN[c.campaign]) return FROM_CAMPAIGN[c.campaign];
     if (c.type === 'competitor') return 'From your competitors';
     if (FROM_FAMILY[c.family]) return FROM_FAMILY[c.family];
+    if (c.from) return c.from; /* what the card rests on (card-from.js, stamped by the server): the move's discipline, where it was heard */
+    if (c.origin === 'told') return 'From your team';
+    if (c.stream === 'heard' || c.origin === 'listen') return c.heard?.kind === 'thread' ? `Asked on ${c.post?.platformLabel || 'Reddit'}` : 'Heard online';
+    if (c.origin === 'ideas') return 'New idea for you';
+    /* the sector names the team that handles a card, not its source: it only stands in when the card's words back it */
+    const words = `${c.title || ''} ${c.sub || ''}`;
+    if (c.sector === 'visibility') return /\bAI\b|ChatGPT|Gemini|Perplexity|assistants?\b/i.test(words) ? 'From AI answers' : 'Getting found';
+    if (c.sector === 'signals') return /customer|buyer|shopper|review|order|repeat|people (say|ask)/i.test(words) ? 'From your customers' : c.type === 'idea' ? 'New idea for you' : 'From Brew';
     if (FROM_SECTOR[c.sector]) return FROM_SECTOR[c.sector];
-    if (c.type === 'idea' || c.agent === 'creative') return 'New idea for you';
+    if (c.type === 'idea') return 'New idea for you';
     return 'From Brew';
   };
   /* the campaign line only when it adds something the label does not already say */
@@ -1205,7 +1213,7 @@
     paint(); };
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-ais-proof]'); if (!b) return; e.preventDefault(); e.stopPropagation(); openAiProof(b.dataset.aisProof); }, true);
   /* the one line on an AI answers card: who the answers name, beside the brand */
-  const aisLine = (p) => { if (p.sector !== 'visibility') return ''; const st = aiStand(), nm = aisNamed(st?.named)?.top.length ? aisNamed(st.named) : null; if (!st || st.error || (!st.rivals.length && !nm)) return '';
+  const aisLine = (p) => { if (fromLabel(p) !== 'From AI answers') return ''; const st = aiStand(), nm = aisNamed(st?.named)?.top.length ? aisNamed(st.named) : null; if (!st || st.error || (!st.rivals.length && !nm)) return '';
     const [cnt, of] = aisOf(st), top = st.rivals.filter((r) => cnt(r)).slice(0, 2);
     /* no known rival named: say who the answers do name instead */
     return `<p class="ais-line">${ic('sparkles', 's14')}<span>${top.length ? `AI names ${top.map((r) => `${esc(r.name)} in ${cnt(r)}`).join(', ')} of ${of} answers; ${esc(st.brand.name)} in ${cnt(st.brand)}` : nm ? `AI names ${nm.top.slice(0, 2).map((r) => `${esc(r.name)} in ${nm.c(r)}`).join(', ')} of ${nm.of} answers${nm.of === of ? `; ${esc(st.brand.name)} in ${cnt(st.brand)}` : ''}` : `AI names none of ${esc(st.rivals.slice(0, 3).map((r) => r.name).join(', '))} in ${of} answers; ${esc(st.brand.name)} in ${cnt(st.brand)}`}</span></p>`.replace(/ in (\d+)/g, ' in&nbsp;$1'); }; /* a count never wraps away from its name ("Arata in" / "0") */
