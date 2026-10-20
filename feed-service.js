@@ -551,6 +551,10 @@ export function createFeedService(o) {
   const dupOf = (c) => {
     // two stories written from one rising-searches list show the same widget: one card is enough
     if (c.research?.kind === 'trend' && c.rows?.length) return `one:trend:${JSON.stringify(c.rows)}`;
+    /* a reading taken again on another day (the AI answers score, the own-ads check) is the same news: only the newest stays (QA 20 Oct) */
+    const day = /^(lv-vis-score|ow-own-[a-z]+)-\d{4}-\d\d-\d\d$/.exec(String(c.id || '')); if (day) return `one:day:${day[1]}`;
+    /* two cards of one rival's ads with the same title ("Modivo: live 136 days in 1 version") */
+    if (c.research?.kind === 'ad' && c.title) return `one:ad:${String(c.title).toLowerCase()}`;
     // the scheduled Creative agent pitching the brand's festival again: only its newest idea stays
     const fest = FESTN(); if (c.origin === 'watcher' && c.type === 'idea' && fest && fest !== 'the next sale' && new RegExp(`\\b${fest.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(c.title || '')) return `one:fest`;
     return null; };
@@ -580,7 +584,9 @@ export function createFeedService(o) {
     for (const c of sorted0) { if (asks.sunk.has(c.id)) { sunk.push(c); continue; } const d = dupOf(c); if (d && newestLive.get(d) !== c) continue; const g = groupOf(c); if (g == null) { sorted.push(c); continue; } if (g.startsWith('live:') && newestLive.get(g) !== c) continue; const f = firstOf.get(g);
       if (!f) { firstOf.set(g, c); sorted.push(c); } else if (eng.has(f.id)) sorted.push(c); else later.push(c); } /* a heart or a real jam message lets a second card in, not a mere open */
     for (const c of later) sorted.splice(Math.max(12, sorted.findIndex((x) => scores[x.id].total < scores[c.id].total) >>> 0), 0, c);
-    sorted.push(...sunk);
+    /* cards that ask what a better card already asks are not served again at the end of the feed (ten "fix the pack prices" cards
+       sat back to back: QA 20 Oct); one someone engaged with stays (oneAsk keep), and every card's move keeps it */
+    sorted.push(...sunk.filter((c) => eng.has(c.id) || t.acted.has(c.id)));
     // interleave: no two of a kind together, no agent twice in a row
     const out = []; const rest = [...sorted];
     while (rest.length) {
