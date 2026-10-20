@@ -150,5 +150,10 @@ export function createVideoRead({ packs, treg, ai, log = console, gToken, fetchF
     if (slug && out.length) await packs.put(slug, `video/top-${new Date().toISOString().slice(0, 10)}.json`, { at: new Date().toISOString(), why: why || null, reads: out.map((r) => ({ id: r.id, platform: r.platform, url: r.url, via: r.via, format: r.read?.format, hook: r.read?.hook?.text, whyItWorks: r.read?.whyItWorks, error: r.error })) }).catch(() => {});
     return out;
   }
-  return { read, readTop, parse: parseVideo };
+  /* the file itself (the reference a jam shows, and the clip a Sloosh final may take as a video reference) */
+  async function file({ url, link, platform, id, slug, max = 25e6 } = {}) {
+    const v = parseVideo({ url, link, platform, id }), m = await mediaUrl(v, `video-${slug || GLOBAL}`); if (!m.url) throw new Error('no downloadable file');
+    const f = await download(m.url, `${v.platform}-${v.id}-f`); try { const buf = fs.readFileSync(f); if (buf.length > max) throw new Error('video too big'); return { buf, cover: m.cover || null, durationS: m.durationS ?? null }; } finally { fs.rm(f, { force: true }, () => {}); }
+  }
+  return { read, readTop, file, parse: parseVideo };
 }

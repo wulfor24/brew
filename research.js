@@ -16,13 +16,15 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { adCall } from './reader/adlib.js';
 import { providerNow, GEMINI, GEMINI_PRICE } from './gemini-client.js';
+import { createViralFinder } from './viral.js';
+import { viralStems } from './viral-gate.js';
 
 const D = 24 * 3600e3, H = 3600e3;
 // how often each story source is re-read (hours); STORY_EVERY_<KEY> overrides one
-const EVERY = { ads: 2, own: 12, trends: 6, news: 4, howto: 12 };
+const EVERY = { ads: 2, own: 12, trends: 6, news: 4, howto: 12, viral: 168 }; /* viral: weekly (formats last weeks; ~$0.05 a read) */
 const every = (k) => (+process.env[`STORY_EVERY_${k.toUpperCase()}`] || EVERY[k] || 24) * H;
 // a story's key across re-reads, so one seen again keeps the time it was first seen
-const KEY = { ads: (x) => `ad:${x.id}`, trends: (x) => `tr:${x.kind}:${[...(x.terms || [])].sort().join('|') || (x.kind === 'rising' && x.risingOf) || String(x.h).toLowerCase()}`, news: (x) => `nw:${String(x.url).replace(/[?#].*$/, '').replace(/\/$/, '')}`, howto: (x) => `ht:${String(x.h).toLowerCase()}` };
+const KEY = { ads: (x) => `ad:${x.id}`, viral: (x) => `vr:${x.id}`, trends: (x) => `tr:${x.kind}:${[...(x.terms || [])].sort().join('|') || (x.kind === 'rising' && x.risingOf) || String(x.h).toLowerCase()}`, news: (x) => `nw:${String(x.url).replace(/[?#].*$/, '').replace(/\/$/, '')}`, howto: (x) => `ht:${String(x.h).toLowerCase()}` };
 /* merge a fresh read into the last one: items seen before keep firstSeen; items not in this read stay while they are under
    24 hours old (a story posted today stays up today); older ones fall off */
 /* two trend or how-to stories that say nearly the same thing (most of their words shared) are one story: the ids differ by
@@ -59,7 +61,7 @@ export const noPaise = (s) => String(s ?? '').replace(/((?:₹|\bRs\.?|\bINR)\s?
 const BUCKET = process.env.RESEARCH_BUCKET || 'brew-prototype';
 // One research instance per brand (server.js makes it when the brand pack loads). Its snapshot lives at
 // brands/<slug>/research.json; downloaded media is shared by hash at research-media/<file> (served as /research/<file>).
-export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, geminiImage, gToken, clean, factBrief = () => '', brand, photoFile = (rel) => path.join(PUB, rel), tregClient = null, log = console }) {
+export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, geminiImage, gToken, clean, factBrief = () => '', brand, photoFile = (rel) => path.join(PUB, rel), tregClient = null, videoRead = null, log = console }) {
   const B = () => brand, BN = () => brand.name, BH = () => brand.host, CTRY = () => brand.config.countryName || 'your market', FESTN = () => brand.config.festival?.name || 'the next sale', FESTD = () => brand.config.festival?.label || 'soon';
   const cfg = brand.config, GEO = cfg.country || 'IN', LOC = cfg.locationCode || 2356;
   /* story text never shows paise: "₹499.00" reads "₹499" (rupee prices are whole; a scraped ".00" is noise) */
@@ -73,7 +75,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
   const MEDIA = path.join(PUB, 'research');
   const LOCAL = path.join(ROOT, '.research', brand.slug);
   fs.mkdirSync(MEDIA, { recursive: true }); fs.mkdirSync(LOCAL, { recursive: true });
-  let snap = { ads: null, own: null, trends: null, news: null, howto: null };
+  let snap = { ads: null, own: null, trends: null, news: null, howto: null, viral: null };
   const listeners = [];
   const running = new Set();
   const spent = { treg: 0, claude: 0, images: 0 };
@@ -269,6 +271,31 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     snap.ads = { fetchedAt: now, ...pool(snap.ads, items, 'ads', now), deep, pageIds, brands: [...brands, ...(snap.ads?.brands || []).filter((b) => !brands.some((x) => x.name === b.name))], source: `Meta Ad Library · ${CTRY()} · live ads` };
   }
 
+  /* ---------- Viral videos: short videos far above their creator's usual views, in the brand's category (viral.js) ---------- */
+  // the jam makes our version of one: a script to film, or a Sloosh video that may take the clip as a reference
+  async function refreshViral() {
+    const now = Date.now(), terms = [...new Set([...(cfg.viralTerms || []), ...TERMS.flat(), cfg.category].filter(Boolean).map((t) => String(t).trim()))].slice(0, 4);
+    if (!terms.length) throw new Error('no category words to search videos with');
+    const own = [brand.name, cfg.ownPage, ...Object.values(brand.socials || {}).map((x) => x?.handle || String(x?.url || '').match(/(?:@|instagram\.com\/)([\w.]+)/)?.[1])].filter(Boolean);
+    const r = await createViralFinder({ call: (id, o) => treg(id, o), log }).find({ terms, country: GEO, stems: viralStems(brand, terms), own });
+    const errs = Object.entries(r.errors);
+    if (!r.items.length) throw new Error(errs.length === 3 ? `videos couldn't be read (${errs.map(([p, m]) => `${p}: ${m}`).join('; ')})` : r.seen ? `no video was far enough above its creator's usual views (${r.seen} checked, ${r.scored} scored)` : 'no videos came back');
+    const items = [];
+    for (const x of r.items) {
+      const it = { id: x.id, platform: x.platform, url: x.url, author: x.author, handle: x.handle, views: x.views, usual: x.usual, score: x.score, likes: x.likes, comments: x.comments, postedAt: x.postedAt, days: Math.max(1, Math.round((now - x.postedAt) / D)), durationS: x.durationS, caption: x.caption, q: x.q, poster: null, video: null, read: null };
+      if (videoRead) try { const f = await videoRead('file', { url: x.url, platform: x.platform, id: x.id, slug: brand.slug }); it.video = await saveMedia(f.buf, '.mp4'); if (!x.thumb && f.cover) x.thumb = f.cover; if (it.durationS == null) it.durationS = f.durationS; } catch (e) { it.videoError = e.message.slice(0, 120); log.warn('[research] viral video', x.id, e.message); }
+      if (x.thumb) try { const b = await fetchBuf(x.thumb, 6e6); it.poster = await saveMedia(b, imgExt(b)); } catch (e) { log.warn('[research] viral poster', e.message); }
+      if (videoRead) try { const rd = await videoRead('read', { url: x.url, platform: x.platform, id: x.id, slug: brand.slug, why: `a ${x.platform} video in ${BN()}'s category (${B().config.category}) that got ${x.score}x its creator's usual views; ${BN()} wants to make its own version` }); it.read = rd.read || null; if (!rd.read) it.readError = (rd.notes || []).join('; ').slice(0, 160) || 'read failed'; } catch (e) { it.readError = e.message.slice(0, 160); }
+      if (it.poster || it.video) items.push(it);
+    }
+    if (!items.length) throw new Error("viral videos were found but their files couldn't be saved");
+    /* one short headline and what the brand takes from it, from the read (never the creator's words as ours) */
+    let notes = [];
+    try { notes = parseJSON((await claude([{ type: 'text', text: `${factBrief()}\n\nYou are the Content strategist agent for ${BN()} (${B().config.category}). Below are ${items.length} short videos from the last 90 days that got far more views than their creators usually get.\nFor each return:\n- "title": under 46 chars, names the format, e.g. The 3-second shelf reveal\n- "why": one sentence under 24 words on why it went viral, from the read\n- "take": one sentence under 22 words on how ${BN()} makes its own version with its product, using only ${BN()}'s facts above. Never copy the creator's words.\nJSON: {"videos":[{"i":0,"title":"","why":"","take":""}]}\n\n${items.map((x, i) => `Video ${i} · ${x.platform} · ${x.views} views, ${x.score}x usual · ${x.days} days old\nCaption: ${x.caption.slice(0, 300)}\nHook: ${x.read?.hook?.text || ''} / ${x.read?.hook?.first3s || ''}\nWhy (read): ${x.read?.whyItWorks || ''}\nFormat: ${x.read?.format || ''} · pacing ${x.read?.pacing || ''}`).join('\n\n')}` }], { max: 2500 })).text).videos || []; } catch (e) { log.warn('[research] viral claude', e.message); }
+    items.forEach((x, i) => { const n = notes.find((y) => +y.i === i) || {}; x.title = clean(n.title || `${x.read?.format || 'Short video'} by ${x.author}`).slice(0, 60); x.hook = clean(x.read?.hook?.text || x.caption.split('\n')[0]).slice(0, 120); x.why = clean(n.why || x.read?.whyItWorks || ''); x.take = clean(n.take || ''); });
+    snap.viral = { fetchedAt: now, ...pool(snap.viral, items, 'viral', now), errors: r.errors, source: `TikTok, Instagram and YouTube · ${CTRY()} · last 90 days` };
+  }
+
   /* ---------- Trends ---------- */
   const avg = (a) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0);
   async function refreshTrends() {
@@ -452,7 +479,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
   }
 
   /* ---------- schedule ---------- */
-  const JOBS = { ads: refreshAds, own: refreshOwn, trends: refreshTrends, news: refreshNews, howto: refreshHowTo };
+  const JOBS = { ads: refreshAds, own: refreshOwn, trends: refreshTrends, news: refreshNews, howto: refreshHowTo, viral: refreshViral };
   async function refresh(which = ['ads', 'trends', 'news', 'howto']) {
     const done = [];
     for (const k of which) {
