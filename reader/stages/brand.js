@@ -1,5 +1,6 @@
 // Stage 2 · brand: logo (downloaded), top 3 colours ranked by use in the theme CSS, font families, tagline, descriptor.
 import { meta, attr, tags, abs, clean, stripTags, pathOf, pool, hostOf } from '../util.js';
+import { inlineSprite, drawableSvg } from '../svg-logo.js';
 
 /* the "who you are" fields, from the same places the check page reads them (build.js checkData) */
 export const whoOf = (p) => ({ name: p.name || null, descriptor: p.descriptor || p.tagline || null, category: p.category || null, country: p.country || null, currency: p.currency || null });
@@ -28,7 +29,9 @@ export async function brand(ctx) {
   const og = meta(html, 'og:image:secure_url') || meta(html, 'og:image');
   let logo = null, logoHow = null;
   for (const c of cands) { if (!c.url) continue; const a = await ctx.asset(c.url, 'logo', { max: 3e6 }); if (a) { logo = a; logoHow = `${c.how}: ${c.url}`; break; } }
-  if (!logo && svgLogo) { logo = await ctx.saveAsset(ctx.slug, 'logo.svg', Buffer.from(svgLogo.includes('xmlns') ? svgLogo : svgLogo.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"')), 'image/svg+xml'); logoHow = 'inline <svg> in the header'; }
+  /* a sprite reference is inlined from the page; an svg with nothing to draw is skipped for the site icon or share image (QA 20 Oct) */
+  const svgFile = svgLogo ? inlineSprite(svgLogo, html) : null;
+  if (!logo && svgFile && drawableSvg(svgFile)) { logo = await ctx.saveAsset(ctx.slug, 'logo.svg', Buffer.from(svgFile), 'image/svg+xml'); logoHow = 'inline <svg> in the header'; }
   const mark = touch?.url ? await ctx.asset(touch.url, 'mark', { max: 2e6 }) : null;
   if (!logo && mark) { logo = mark; logoHow = `site icon: ${touch.url}`; }
   if (!logo && og) { const a = await ctx.asset(abs(og, base), 'og-image', { max: 6e6 }); if (a) { logo = a; logoHow = `og:image (a share image, not a clean logo): ${og}`; } }

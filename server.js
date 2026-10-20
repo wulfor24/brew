@@ -74,6 +74,7 @@ import { movesEta } from './pack-numbers.js';
 import { named as namedStage } from './reader/stages/named.js'; // which brands an AI answer names
 import { createAiQuestions, Q_V } from './ai-questions.js'; // the AI answers questions, each earned by real searches or real threads
 import { awaitingCheck, createConfirmRemind } from './confirm-remind.js'; // "Check what we read" waits for a person: hold the watchers, remind by email // the time left on a brand's moves, from the pace the build really kept
+import { drawableSvg } from './reader/svg-logo.js';
 import { markMoveClaims, packSource } from './claims.js'; // the team's private moves read like the shared ones
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -828,7 +829,10 @@ const brandFiles = async (req, res, u) => {
     if (req.headers['if-none-match'] === etag) { res.writeHead(304, { etag, 'cache-control': 'no-cache' }); res.end(); return true; }
     res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-cache', etag }); res.end(body); return true; }
   if (what.startsWith('statics/')) { const b = await packs.get(slug, what); if (!b) return send(res, 404, 'no', 'text/plain'), true; res.writeHead(200, { 'content-type': 'image/jpeg', 'cache-control': 'max-age=300' }); res.end(b); return true; }
-  if (what.startsWith('a/')) { const f = await packs.assetFile(slug, what.slice(2)); if (!f) return send(res, 404, 'no', 'text/plain'), true; return serveFile(req, res, f), true; }
+  if (what.startsWith('a/')) { let f = await packs.assetFile(slug, what.slice(2)); if (!f) return send(res, 404, 'no', 'text/plain'), true;
+    /* a saved svg logo that draws nothing (a sprite reference saved alone): the brand's site icon instead, healed on read (QA 20 Oct) */
+    if (/\.svg$/i.test(what) && !drawableSvg(await fs.promises.readFile(f, 'utf8').catch(() => ''))) { const p0 = await loadBrand(slug).catch(() => null), mk = String(p0?.seed?.brand?.mark || p0?.profile?.identity?.mark || '').match(/\/a\/([\w.-]+)$/)?.[1]; const g = mk && !/\.svg$/i.test(mk) ? await packs.assetFile(slug, mk) : null; if (g) f = g; }
+    return serveFile(req, res, f), true; }
   if (/^refs\/[a-f0-9]{16}\.(png|jpg|webp|mp4)$/.test(what)) { const b = await packs.get(slug, what); if (!b) return send(res, 404, 'no', 'text/plain'), true; res.writeHead(200, { 'content-type': { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp', mp4: 'video/mp4' }[what.split('.').pop()], 'cache-control': 'public, max-age=31536000, immutable' }); res.end(b); return true; } /* References (references.js): hash-named, so forever cacheable */
   /* a brand's PDFs (named or drawn on download) are for its team on live */
   if (!(await teamRead(req, slug))) return send(res, auth.user(req) ? 403 : 401, 'These moves are for the brand’s team. Sign in or ask them to invite you.', 'text/plain'), true;
