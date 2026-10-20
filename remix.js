@@ -339,7 +339,11 @@ export const recipeOfCard = (c) => {
   if (agent === 'creative' && c.kind === 'film') r = { ...r, actions: ['film_brief', 'add_variants'] };
   if (agent === 'creative' && c.kind === 'chat') r = { ...r, actions: ['whatsapp_ad', ...r.actions.filter((x) => x !== 'whatsapp_ad')] };
   if (SECTOR_ACTIONS[c.sector] && !r.conflict && !r.alwaysJam) r = { ...r, actions: SECTOR_ACTIONS[c.sector], cross: false };
-  let actions = r.cross ? byText(c, [...CROSS, 'storefront.listing_titles'].filter((k) => actKey(k))) : r.actions.map((k) => `${agent}.${k}`);
+  /* a sector's actions belong to that sector's agent, not the card's (a brew/told card in the catalog sector made "brew.listing_titles", which
+     is no job, and the jam crashed: QA J-01); keys that name no job are dropped, and with none left the cross-team list stands in */
+  const owner = SECTOR_ACTIONS[c.sector] && r.actions === SECTOR_ACTIONS[c.sector] ? SECTOR_AGENT[c.sector] || agent : agent;
+  let actions = r.cross ? byText(c, [...CROSS, 'storefront.listing_titles'].filter((k) => actKey(k))) : r.actions.map((k) => (String(k).includes('.') ? k : `${owner}.${k}`)).filter((k) => actKey(k));
+  if (!actions.length) actions = byText(c, [...CROSS, 'storefront.listing_titles'].filter((k) => actKey(k)));
   const pk = primaryOf(c); const primary = pk && actKey(pk) ? pk : null;
   const pkey = primary && primary.split('.').pop();
   if (primary && !r.conflict) actions = [primary, ...(SAME_GOAL[pkey] || []).filter((k) => actKey(k) && k !== primary)];
