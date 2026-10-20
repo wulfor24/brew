@@ -147,7 +147,7 @@
 .bar.is-busy .chev,.bar.is-done .chev{opacity:0}
 @keyframes liquid{0%{width:0}35%{width:42%}60%{width:58%}100%{width:100%;border-radius:0}}
 /* the Brew loader: the b mark fills up like a cup, two wisps of steam rise, it drains and brews again. Every wait in the product
-   uses it: <span class="spin"></span> inline (buttons, rows), .bload for a section or a whole sheet. It takes the text colour */
+   uses it: <brew-load class="spin"></brew-load> inline (its own tag, so no rule for a parent's spans reaches it) (buttons, rows), .bload for a section or a whole sheet. It takes the text colour */
 .spin{position:relative;display:inline-block;width:15px;height:15px;flex:0 0 auto;vertical-align:-2px;color:inherit}
 .spin::before,.spin::after{content:'';position:absolute;inset:0;-webkit-mask:var(--bm) center/contain no-repeat;mask:var(--bm) center/contain no-repeat}
 .spin::before{--bm:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='30 20 172 172'%3E%3Cpath fill-rule='evenodd' d='M62 38h26v62.5a50 50 0 1 1-26 43.8zM136 138a24 24 0 1 0-48 0a24 24 0 1 0 48 0z'/%3E%3C/svg%3E");background:linear-gradient(to top,currentColor 50%,color-mix(in srgb,currentColor 30%,transparent) 50%) 0 0/100% 200% no-repeat;animation:brewFill 1.9s cubic-bezier(.55,.1,.3,1) infinite}
@@ -165,8 +165,11 @@
 .bl-wait{cursor:progress}.bl-wait[disabled]{opacity:1}
 :where(.bl-wait)>.bl-a{margin-right:.45em}:where(.btn,.chip,.linkbtn,.is-wait)>.bl-a{margin-right:0}
 .bl-a.is-ico,.icon-btn>.bl-a{margin:0}
-.bl-over{cursor:progress}.bl-over>img,.bl-over>video,.bl-over>:not(.bl-pin) img{filter:brightness(.72)}
+.bl-over{cursor:progress}.bl-over>img,.bl-over>video,.bl-over>:not(.bl-pin):not(.bl-corner) img{filter:brightness(.72)}
 .bl-pin{position:absolute;left:50%;top:50%;width:30px;height:30px;margin:-15px 0 0 -15px;color:#fff;filter:drop-shadow(0 1px 6px rgba(0,0,0,.45));z-index:3;pointer-events:none}
+.bl-hush{color:transparent!important}.bl-hush>:not(.bl-mid){visibility:hidden}
+.bl-mid{position:absolute;left:50%;top:50%;width:16px;height:16px;margin:-8px 0 0 -8px;pointer-events:none}
+.bl-corner{position:absolute;top:10px;right:10px;width:18px;height:18px;z-index:3;pointer-events:none;opacity:.85}
 .is-wait{display:inline-flex;align-items:center;justify-content:center;gap:7px;cursor:progress}
 @keyframes spin{to{transform:rotate(360deg)}}
 

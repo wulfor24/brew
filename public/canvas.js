@@ -43,7 +43,7 @@
   const ph = (H, text, ask) => `<button type="button" class="cv-ph${text ? '' : ' is-row'}" data-cv-ask="${H.esc(ask || `Fill in: ${text}`)}">${H.ic('sparkles', 's12')}${text ? `<em>${H.esc(text)}</em>` : ''}<span>Ask in the chat →</span></button>`; /* in a labelled row the label already says what is missing */
   const media = (x, ratio = '4/5') => {
     const { H, draft, making, img, c } = x;
-    if (making) return `<div class="cv-media is-making" style="aspect-ratio:${ratio}"><span class="spin"></span><span>${H.esc(making.step || 'Making it')}…</span></div>`;
+    if (making) return `<div class="cv-media is-making" style="aspect-ratio:${ratio}"><brew-load class="spin"></brew-load><span>${H.esc(making.step || 'Making it')}…</span></div>`;
     if (draft?.video) return `<video class="cv-media" src="${H.esc(draft.video)}"${draft.image ? ` poster="${H.esc(draft.image)}"` : ''} controls playsinline loop preload="metadata" style="aspect-ratio:${H.esc((draft.ratio || '9:16').replace(':', '/'))}"></video>`;
     if (draft?.slides?.length) return `<div class="cv-slides">${draft.slides.map((s, i) => `<img src="${H.esc(s.image)}" alt="Slide ${i + 1}" loading="lazy">`).join('')}</div>`;
     if (img) return `<img class="cv-media" src="${H.esc(img)}" alt="" style="aspect-ratio:${H.esc((draft?.ratio || '').replace(':', '/') || ratio)}">`;
@@ -120,7 +120,7 @@
     const visual = blocksFor(c, w, ch).some((b) => ['creative', 'message', 'page', 'listing'].includes(b)), drafts = w?.drafts || [], making = drafts.some((d) => d.state === 'making');
     /* one way to the next take (QA UI 20 Oct: "Make another draft" sat beside "Redo it"): the first draft is made, after that Redo it */
     const ready = drafts.some((d) => d.state === 'ready');
-    const make = !visual || ready ? '' : making ? `<span class="chip is-make is-busy"><span class="spin"></span>Making the draft…</span>` : `<button class="chip is-make" data-jm-make="auto">${H.ic('sparkles', 's12')}Make the first draft</button>`;
+    const make = !visual || ready ? '' : making ? `<span class="chip is-make is-busy"><brew-load class="spin"></brew-load>Making the draft…</span>` : `<button class="chip is-make" data-jm-make="auto">${H.ic('sparkles', 's12')}Make the first draft</button>`;
     const redo = visual && !ready ? '' : `<button class="chip is-3" data-cv-ask="Redo it">${H.ic('sparkles', 's12')}Redo it</button>`;
     return `<div class="cv-turns">${make}${chips}${redo}</div>`;
   };

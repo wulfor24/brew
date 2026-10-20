@@ -34,7 +34,7 @@
       <div class="mk-head"><h2>Make it yours.</h2><p>Your words, your call. Or decide together.</p></div>
       <div class="mk-grid"><div class="mk-left" id="mk-left">${cardHtml(p, { ...c, title: '', sub: '' }, { img: pic, fb: pics.slice(1) })}</div>
         <div class="mk-right">
-          <label class="mk-f"><span>The headline <span class="spin mk-sp"></span></span><textarea id="mk-t" rows="2" disabled placeholder="Getting the words…"></textarea></label>
+          <label class="mk-f"><span>The headline <brew-load class="spin mk-sp"></brew-load></span><textarea id="mk-t" rows="2" disabled placeholder="Getting the words…"></textarea></label>
           <label class="mk-f"><span>The words</span><textarea id="mk-b" rows="4" disabled></textarea></label>
           ${why || src ? `<div class="mk-f is-ro"><span>Why it’s here</span><p>${esc(why)}${src ? ` ${srcUrl ? `<a class="mk-src" href="${esc(srcUrl)}" target="_blank" rel="noopener">${esc(String(src).replace(/^https?:\/\//, '').slice(0, 60))}</a>` : `<span class="mk-src">${esc(String(src).slice(0, 60))}</span>`}` : ''}</p></div>` : ''}
           <div class="mks-chips">${chips.map((x) => `<button class="mks-chip" data-chip="${esc(x)}">${esc(x)}</button>`).join('')}</div>
@@ -62,7 +62,7 @@
         note('Done. Save to keep it.'); };
       $$('.mks-chip', w).forEach((b) => (b.onclick = () => ask('', b.dataset.chip, b)));
       $('#mk-ask', w).onsubmit = (e) => { e.preventDefault(); const q = $('#mk-q', w).value.trim(); if (!q) return; $('#mk-q', w).value = ''; ask(q, '', $('#mk-ask button', w)); };
-      $('#mk-save', w).onclick = async () => { if (busy) return; busy = true; const b = $('#mk-save', w); b.disabled = true; b.innerHTML = '<span class="spin"></span>Saving';
+      $('#mk-save', w).onclick = async () => { if (busy) return; busy = true; const b = $('#mk-save', w); b.disabled = true; b.innerHTML = '<brew-load class="spin"></brew-load>Saving';
         let r = { ok: true, versionId: saved };
         if (dirty) r = await A().tapi('POST', `/api/cards/${p.id}/remix`, { words: true, set: { title: words.title, body: words.body } }).catch((e) => ({ error: e.message }));
         busy = false; b.disabled = false; b.textContent = 'Save';

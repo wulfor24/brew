@@ -15,16 +15,29 @@
 
   const busy = new Map(); /* button → { n, timer, shownAt, undo } */
   const owns = (b) => b.matches('.is-wait,[aria-busy="true"]') || !!b.querySelector('.spin');
+  /* the button's leading icon: the first thing in it, before any words. A chevron or a count after the words is not it */
+  const leadIcon = (b) => { const w = document.createTreeWalker(b, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT); let n;
+    while ((n = w.nextNode())) { if (n.nodeType === 3) { if (n.textContent.trim()) return null; continue; }
+      if (n.tagName === 'IMG' || n.tagName === 'VIDEO') return null; if (n.tagName.toLowerCase() === 'svg') { const r = n.getBoundingClientRect(); return r.width && r.width <= 40 ? n : null; } }
+    return null; };
   const show = (b) => {
-    const big = b.querySelector('img,video') || b.offsetHeight > 72, sp = document.createElement('span'), was = b.disabled;
-    sp.className = big ? 'spin bl-pin' : 'spin bl-a'; sp.setAttribute('aria-hidden', 'true');
+    const media = !!b.querySelector('img,video'), big = media || b.offsetHeight > 72, sp = document.createElement('brew-load') /* its own tag: no page rule written for a button's spans or icons ever reaches it */, was = b.disabled;
+    /* a photo tile: the loader over the middle of the picture. A big tile with words: small, in its top corner, clear of them */
+    sp.className = media ? 'spin bl-pin' : big ? 'spin bl-corner' : 'spin bl-a'; sp.setAttribute('aria-hidden', 'true');
     b.classList.add(big ? 'bl-over' : 'bl-wait'); b.setAttribute('aria-busy', 'true');
     if (big && getComputedStyle(b).position === 'static') { b.style.position = 'relative'; sp.dataset.pos = '1'; }
-    const ico = !big && [...b.querySelectorAll('svg')].find((x) => { const r = x.getBoundingClientRect(); return r.width && r.width <= 32; }); /* an icon and words: the loader takes the icon's place, the same size */
-    if (ico) { const r = ico.getBoundingClientRect(); if (r.width) { sp.style.width = `${r.width}px`; sp.style.height = `${r.height}px`; } sp.classList.add('is-ico'); ico.before(sp); ico.hidden = true; }
-    else if (big) b.appendChild(sp); else b.prepend(sp);
+    /* an icon: the loader takes its exact place (same box, same display, same margins), so nothing beside it moves */
+    const ico = big ? null : leadIcon(b), icoDisp = ico?.style.display;
+    if (ico) { const r = ico.getBoundingClientRect(), cs = getComputedStyle(ico);
+      Object.assign(sp.style, { width: `${r.width}px`, height: `${r.height}px`, display: cs.display === 'inline' ? 'inline-block' : cs.display, margin: cs.margin, verticalAlign: cs.verticalAlign, flex: 'none' });
+      sp.classList.add('is-ico'); ico.before(sp); ico.style.display = 'none'; }
+    else if (big) { b.appendChild(sp); const m = media && b.querySelector('img,video'), mr = m?.getBoundingClientRect(), br = b.getBoundingClientRect(); /* centred on the picture, not on the tile with its label */
+      if (mr?.width) Object.assign(sp.style, { left: `${mr.left - br.left + mr.width / 2}px`, top: `${mr.top - br.top + mr.height / 2}px` }); }
+    else { /* words only: the button keeps its exact size; the words fade out under the loader, centred where they were */
+      const col = getComputedStyle(b).color; sp.classList.replace('bl-a', 'bl-mid'); sp.style.color = col; b.classList.add('bl-hush');
+      if (getComputedStyle(b).position === 'static') { b.style.position = 'relative'; sp.dataset.pos = '1'; } b.appendChild(sp); }
     if ('disabled' in b && b.tagName === 'BUTTON') b.disabled = true;
-    return () => { if (sp.dataset.pos) b.style.position = ''; if (ico) ico.hidden = false; sp.remove(); b.classList.remove('bl-over', 'bl-wait'); b.removeAttribute('aria-busy'); if (b.tagName === 'BUTTON' && b.isConnected) b.disabled = was; };
+    return () => { if (sp.dataset.pos) b.style.position = ''; if (ico) ico.style.display = icoDisp || ''; sp.remove(); b.classList.remove('bl-over', 'bl-wait', 'bl-hush'); b.removeAttribute('aria-busy'); if (b.tagName === 'BUTTON' && b.isConnected) b.disabled = was; };
   };
   const done = (b) => {
     const s = busy.get(b); if (!s || --s.n > 0) return;

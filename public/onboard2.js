@@ -34,11 +34,11 @@
   const stepsDone = () => st.steps.filter((s) => s && s.state === 'done').length;
   const elapsed = () => { const s = Math.max(0, Math.round((Date.now() - st.startedAt) / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
   const stepRow = (k, i) => { const s = st.steps[i], on = (!s && readingK === k) || s?.state === 'reading', done = s?.state === 'done';
-    return `<li class="step${done ? ' done' : on ? ' reading' : ''}${s?.empty ? ' empty' : ''}"><span class="dot">${done ? ic(s.empty ? 'minus' : 'check', 's14') : on ? '<span class="spin"></span>' : ''}</span><div><b>${esc(STEP_T[k])}</b><span>${esc(done ? s.done || (s.empty ? 'Nothing found' : 'Done') : on ? 'Reading' : 'Queued')}</span></div></li>`; };
+    return `<li class="step${done ? ' done' : on ? ' reading' : ''}${s?.empty ? ' empty' : ''}"><span class="dot">${done ? ic(s.empty ? 'minus' : 'check', 's14') : on ? '<brew-load class="spin"></brew-load>' : ''}</span><div><b>${esc(STEP_T[k])}</b><span>${esc(done ? s.done || (s.empty ? 'Nothing found' : 'Done') : on ? 'Reading' : 'Queued')}</span></div></li>`; };
   /* the one line under the question: where the read is, in words; never a bar that runs ahead of it */
   const statusLine = () => st.error ? `<p class="ob2-foot v2-status is-bad">${ic('info', 's14')}We couldn’t read ${esc(name())}: ${esc(st.error)}</p>`
     : st.ready ? `<p class="ob2-foot v2-status">${ic('check', 's14')}${esc(name())} is read: ${stepsDone()} of ${STEP_KEYS.length} sources${st.findings.length ? `, ${st.findings.length} findings` : ''}.</p>`
-    : `<p class="ob2-foot v2-status"><span class="spin"></span>Reading ${esc(name())}: ${stepsDone()} of ${STEP_KEYS.length} sources · <time>${elapsed()}</time>${lastSay ? ` · ${esc(lastSay)}` : ''}</p>`;
+    : `<p class="ob2-foot v2-status"><brew-load class="spin"></brew-load>Reading ${esc(name())}: ${stepsDone()} of ${STEP_KEYS.length} sources · <time>${elapsed()}</time>${lastSay ? ` · ${esc(lastSay)}` : ''}</p>`;
   const peekCard = () => peek && !peek.error ? `<article class="scr fc v2-peek"><header><h5>Your site</h5><span class="fc-src">${ic('link', 's14')}${esc(peek.host || brand().host || '')}</span></header>${peek.ogImage ? `<div class="fc-media"><img src="${esc(peek.ogImage)}" alt=""></div>` : ''}<p class="fc-p"><b>${esc(peek.title || '')}</b>${peek.description ? ` ${esc(String(peek.description).slice(0, 140))}` : ''}</p></article>` : '';
   const railHtml = () => `<div class="v2-rail"><div class="host">${brand().mark ? `<img src="${esc(brand().mark)}" alt="">` : `<span class="so-mark">${A().SO()}</span>`}<span>${esc(brand().host || name())}</span></div>
       <ol class="steps">${STEP_KEYS.map(stepRow).join('')}</ol></div>
@@ -263,7 +263,7 @@
   /* ---------- hold: the read is still running; the rail on the right carries it, the left says so ---------- */
   const hold = (b) => {
     if (st.ready || st.error) return finish(b, 'skip');
-    stage(`${kick('Still reading', '<span class="spin"></span>')}<h1 class="ob2-h" id="v2-holdh">${esc(name())}, ${stepsDone()} of ${STEP_KEYS.length} sources.</h1><p class="ob2-lede" id="v2-holdsub">${esc(lastSay || 'Your store, your reviews, your rivals’ ads. It carries on by itself.')}</p>${hint('Your feed opens the moment the read is in.')}`);
+    stage(`${kick('Still reading', '<brew-load class="spin"></brew-load>')}<h1 class="ob2-h" id="v2-holdh">${esc(name())}, ${stepsDone()} of ${STEP_KEYS.length} sources.</h1><p class="ob2-lede" id="v2-holdsub">${esc(lastSay || 'Your store, your reviews, your rivals’ ads. It carries on by itself.')}</p>${hint('Your feed opens the moment the read is in.')}`);
     const t = setInterval(() => { if (!$('#v2-holdsub')) return clearInterval(t); const sub = $('#v2-holdsub'); if (sub && lastSay) sub.textContent = lastSay; const h = $('#v2-holdh'); if (h) h.textContent = `${name()}, ${stepsDone()} of ${STEP_KEYS.length} sources.`;
       if (st.ready || st.error) { clearInterval(t); return finish(b, true); }
       if (beats().some((b2) => b2.kind === 'brand' && !st.done[b2.id] && needsMet(b2) === true)) { clearInterval(t); next(); } }, 1500);
@@ -331,7 +331,7 @@
   /* the onboarding's stack: the first three real cards, then the gate */
   const stack = async () => {
     document.body.classList.add('v2-on'); load(); st.stage = 'stack'; save();
-    shell(`<h1 class="ob2-h v2-h-sm">Your first three.</h1><p class="ob2-lede">Real cards for ${esc(name())}. Keep what fits.</p><div class="v2-stackwrap" id="v2-stack"><div class="card v2-card is-wait"><span class="spin"></span></div></div>`, { noStatus: true, right: keptHtml(st.kept, 'Your first three'), skipLabel: 'Skip to my feed', onSkip: () => gate() });
+    shell(`<h1 class="ob2-h v2-h-sm">Your first three.</h1><p class="ob2-lede">Real cards for ${esc(name())}. Keep what fits.</p><div class="v2-stackwrap" id="v2-stack"><div class="card v2-card is-wait"><brew-load class="spin"></brew-load></div></div>`, { noStatus: true, right: keptHtml(st.kept, 'Your first three'), skipLabel: 'Skip to my feed', onSkip: () => gate() });
     await A().loadFeed(); const queue = firstThree(A().rank());
     if (!queue.length) return gate();
     markDay();
@@ -343,7 +343,7 @@
   const morning = async (o = {}) => {
     const n = Math.max(1, Math.min(50, +V().perDay || 10));
     document.body.classList.add('v2-on');
-    shell(`<div class="v2-stackwrap" id="v2-stack"><div class="card v2-card is-wait"><span class="spin"></span></div></div>`, { noStatus: true, right: keptHtml([], 'Today'), skipLabel: 'Open the feed', onSkip: () => done0() });
+    shell(`<div class="v2-stackwrap" id="v2-stack"><div class="card v2-card is-wait"><brew-load class="spin"></brew-load></div></div>`, { noStatus: true, right: keptHtml([], 'Today'), skipLabel: 'Open the feed', onSkip: () => done0() });
     const done0 = () => { keys(null); document.body.classList.remove('v2-on'); o.onDone?.(); };
     await A().loadFeed().catch(() => null); const cards = mixN(A().rank(), n);
     if (!cards.length) return done0();

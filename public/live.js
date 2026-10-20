@@ -65,7 +65,7 @@
   const kick = (t) => `<p class="cxb-k">${t}</p>`;
   const ticks = (xs) => (xs.length ? `<ul class="cxb-l">${xs.map((t) => `<li>${ic('check', 's14')}<span>${t}</span></li>`).join('')}</ul>` : '');
   const note = (t, icon = 'sparkles') => `<p class="cxb-note">${ic(icon, 's14')}<span>${t}</span></p>`;
-  const stat = (t, kind = '', icon = 'lock') => `<div class="cxb-st${kind ? ` is-${kind}` : ''}" data-st>${icon === 'spin' ? '<span class="spin"></span>' : ic(icon, 's16')}<span>${t}</span></div>`;
+  const stat = (t, kind = '', icon = 'lock') => `<div class="cxb-st${kind ? ` is-${kind}` : ''}" data-st>${icon === 'spin' ? '<brew-load class="spin"></brew-load>' : ic(icon, 's16')}<span>${t}</span></div>`;
   const READONLY = (id) => (id === 'slack' ? stat('Posts the cards and jams your team sends to the channel you pick. Disconnect any time.', '', 'send') : stat('Read-only. Disconnect any time.')); /* Slack posts; every other connector only reads */
   const ghostBtn = (t, attr = 'data-close') => `<button type="button" class="cxb-gh" ${attr}>${t}</button>`;
   const goBtn = (t, attr) => `<button type="button" class="cxb-go" ${attr}>${t}</button>`;
@@ -204,7 +204,7 @@
   // reading the account: busy in place, then what came back
   async function run(m, id0, p, opts = {}) {
     const box0 = m.querySelector('.cxb'), cur = [...m.querySelectorAll('.cxb-p')].find((x) => !x.hidden) || box0, go = cur.querySelector('.cxb-go');
-    if (go) { go.disabled = true; go.innerHTML = '<span class="spin"></span>Connecting…'; }
+    if (go) { go.disabled = true; go.innerHTML = '<brew-load class="spin"></brew-load>Connecting…'; }
     m.querySelectorAll('.cxb-gh').forEach((b) => { b.disabled = true; });
     setStat(cur, stat(`Reading ${esc(nm(id0))}, the last 30 days…`, 'busy', 'spin'));
     const r = await p, id = r?.moved || id0; /* a Google sign-in that only picked GA4 connected Google Analytics instead */
@@ -254,7 +254,7 @@
   async function pick(id) {
     if (!boss()) return A().modal(shell(askAdmin(id)));
     const what = id === 'google' ? 'accounts' : id === 'ga4' ? 'property' : L.avail?.[id]?.multi ? 'ad accounts' : 'ad account', many = id === 'google' || !!L.avail?.[id]?.multi;
-    A().modal(shell(box({ id, title: `Pick the ${what}`, line: `The ${many ? 'ones' : 'one'} that ${many ? 'are' : 'is'} ${poss()}.`, body: '<div class="cxb-opts"><span class="spin"></span></div>', ghost: ghostBtn('Cancel'), go: goBtn('Connect', 'data-go') })), async (m) => {
+    A().modal(shell(box({ id, title: `Pick the ${what}`, line: `The ${many ? 'ones' : 'one'} that ${many ? 'are' : 'is'} ${poss()}.`, body: '<div class="cxb-opts"><brew-load class="spin"></brew-load></div>', ghost: ghostBtn('Cancel'), go: goBtn('Connect', 'data-go') })), async (m) => {
       edges(m);
       const r = await get(`/api/brands/${slug}/connect/${id}/options`), box0 = m.querySelector('.cxb'), opts = r.options || [], go = m.querySelector('[data-go]');
       if (!opts.length) { m.querySelector('.cxb-opts').remove(); setStat(box0, stat(esc(r.error || 'No accounts came back for this login. Try a login that can see them.'), 'bad', 'info')); go.textContent = 'Try again'; go.onclick = () => leave(`/connect/${id}/start?brand=${slug}`); return; }
@@ -286,7 +286,7 @@
     A().modal(shell(box({ id, title: `Disconnect ${esc(nm(id))}?`, line: `For everyone on ${poss()} team.`, body: kick('What happens') + ticks(what), ghost: ghostBtn('Keep it'), go: goBtn('Disconnect', 'data-unlink-go') })), (m) => {
       edges(m);
       const go = m.querySelector('[data-unlink-go]');
-      go.onclick = async () => { go.disabled = true; go.innerHTML = '<span class="spin"></span>Disconnecting…';
+      go.onclick = async () => { go.disabled = true; go.innerHTML = '<brew-load class="spin"></brew-load>Disconnecting…';
         const r = await post(`/api/brands/${slug}/connect/${id}`, { action: 'disconnect' });
         /* stay on the page you were on: the connectors redraw in place, no reload (a reload landed on the feed) */
         if (r.ok) { delete L.conns[id]; A().S.conn[id] = false; A().save(); A().closeModal?.(); A().toast?.(`${ic('check', 's16')}${esc(nm(id))} disconnected`);
