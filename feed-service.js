@@ -17,6 +17,7 @@ import { near, noPaise } from './research.js';
 import { buildRecap, visitTick, sinceLabel } from './recap.js';
 import { B, live as liveView, liveArr, liveRe, runIn, BN, BH, CTRY, FESTN, FESTD } from './brand-ctx.js';
 import { cardValue, moveNo } from './value.js'; // what a card is worth doing (expected value), for the ranker
+import { oneAsk, noiseOf } from './same-ask.js'; // one card per ask: six moves saying "fix the pack prices" show once
 import { moneyParse, safeLocale } from './brand-pack.js';
 import { allowedFrom, unbacked, numbersIn } from './fact-gate.js';
 import { createRemix } from './remix.js';
@@ -566,15 +567,19 @@ export function createFeedService(o) {
     const top = all.filter((c) => visible(t, c) && !c.parentCardId && c.origin === 'user').sort((x, y) => y.createdAt - x.createdAt);
     const pool = all.filter((c) => visible(t, c) && !c.parentCardId && c.origin !== 'user' && c.origin !== 'signal');
     const scores = {}; pool.forEach((c) => (scores[c.id] = score(t, c, a)));
-    const sorted0 = pool.sort((x, y) => scores[y.id].total - scores[x.id].total);
+    /* one card per ask: cards of different moves that ask for the same thing show once, as the best-graded of them, where the first
+       of them ranked; the rest wait at the end of the feed (never dropped). A card someone engaged with or opened stays put */
+    const asks = oneAsk(pool.sort((x, y) => scores[y.id].total - scores[x.id].total), { moveOf: (c) => moveNo(c.id), value: (c) => cardValue(c, B()?.moveValue || {}, now(t)), noise: noiseOf(SEED.brand?.name, BH()), keep: (c) => eng.has(c.id) || t.acted.has(c.id) });
+    const sorted0 = asks.list;
     /* one card per group in the first screen: a move's other cards, a live check's older readings and a second ad from the same
        rival wait until position 12, unless the first was already acted on. A live check that read the same thing again (stock-outs,
        price drift) keeps only its newest reading at all: the older ones are the same news */
     const newestLive = new Map(); for (const c of sorted0) { const d = dupOf(c); if (d) { const h = newestLive.get(d); if (!h || c.createdAt > h.createdAt) newestLive.set(d, c); } const g = groupOf(c); if (g?.startsWith('live:')) { const h = newestLive.get(g); if (!h || c.createdAt > h.createdAt) newestLive.set(g, c); } /* one stock-out card holds the products our cards sell (QA FEED-11): the newest reading wins */ }
-    const sorted = []; const later = []; const firstOf = new Map();
-    for (const c of sorted0) { const d = dupOf(c); if (d && newestLive.get(d) !== c) continue; const g = groupOf(c); if (g == null) { sorted.push(c); continue; } if (g.startsWith('live:') && newestLive.get(g) !== c) continue; const f = firstOf.get(g);
+    const sorted = []; const later = []; const firstOf = new Map(); const sunk = [];
+    for (const c of sorted0) { if (asks.sunk.has(c.id)) { sunk.push(c); continue; } const d = dupOf(c); if (d && newestLive.get(d) !== c) continue; const g = groupOf(c); if (g == null) { sorted.push(c); continue; } if (g.startsWith('live:') && newestLive.get(g) !== c) continue; const f = firstOf.get(g);
       if (!f) { firstOf.set(g, c); sorted.push(c); } else if (eng.has(f.id)) sorted.push(c); else later.push(c); } /* a heart or a real jam message lets a second card in, not a mere open */
     for (const c of later) sorted.splice(Math.max(12, sorted.findIndex((x) => scores[x.id].total < scores[c.id].total) >>> 0), 0, c);
+    sorted.push(...sunk);
     // interleave: no two of a kind together, no agent twice in a row
     const out = []; const rest = [...sorted];
     while (rest.length) {
