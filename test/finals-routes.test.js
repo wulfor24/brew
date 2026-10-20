@@ -57,3 +57,11 @@ test('one tap in the studio: the quote picks the product photo, a reel runs 3 s 
   await routes.get('POST /api/changes/:chid/final/quote')({ auto: true }, t, { chid: 'ch1' });
   const ok = await routes.get('POST /api/changes/:chid/final/run')({ expect: 'q2' }, t, { chid: 'ch1' }); assert.ok(ok.change); await new Promise((r) => setTimeout(r, 10)); assert.equal(ran, 1);
 });
+
+test('a viral clip passes the research filter only when the server set it; a rival video never does', () => {
+  const sheet = createFinalsSheet({ finals: {}, sloosh: {}, brandOfT }), clip = 'research/abcdef0123456789abcd.mp4';
+  const refs = [{ url: 'b/cozy/a/warmer.jpg', job: 'product' }, { url: clip, job: 'motion', kind: 'video' }];
+  assert.equal(sheet.spec({}, { kind: 'video', title: 'x', visual: 'v', viralClip: clip }, { refs }).refs.filter((r) => r.job === 'motion').length, 1);
+  assert.equal(sheet.spec({}, { kind: 'video', title: 'x', visual: 'v' }, { refs }).refs.filter((r) => r.job === 'motion').length, 0);
+  assert.equal(sheet.spec({}, { kind: 'video', title: 'x', visual: 'v', viralClip: 'research/other.mp4' }, { refs }).refs.filter((r) => r.job === 'motion').length, 0);
+});

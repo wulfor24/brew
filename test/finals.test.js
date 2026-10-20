@@ -194,3 +194,15 @@ test('a reel over what is left today is asked again at 720p, then shorter, befor
   assert.deepEqual(asks, [['1080p', 15], ['720p', 15], ['720p', 13]]);
   assert.ok(q.credits > 0 && q.credits <= 50, `fits what is left: ${q.credits}`); /* the rig's own site cap (10) then refuses it, which is the budget's job */
 });
+
+test('a viral remake: the clip goes to Sloosh as a video reference, wins over the opening frame, and never reaches Gemini or Veo', async () => {
+  const R = rig(); const reel = { kind: 'video', title: 'our version', visual: 'A hand picks it up', ratio: '9:16', seconds: 9, sound: true, beats: [{ shot: 'Hand in', line: 'Look' }, { shot: 'Close', line: 'Try it' }], brand: { name: 'Cozy' },
+    refs: [{ job: 'product', label: 'Hush Mask', url: 'b/cozy/a/mask.jpg' }, { job: 'motion', label: 'the viral video this remakes', url: 'research/abcdef0123456789abcd.mp4', kind: 'video' }, { job: 'frame', url: 'gen/frame.png' }] };
+  const q = await R.F.quote('cozy', reel); assert.equal(q.quoteId, 'q1');
+  const sent = R.calls.filter((c) => c[0] === 'quote').at(-1)[1].references;
+  assert.ok(sent.some((r) => r.type === 'video' && r.role === 'reference'));
+  assert.ok(!sent.some((r) => r.role === 'start_frame'));
+  assert.match(q.prompt, /The reference video is the viral video this remakes: follow its format/);
+  const G = rig({ gemini: async () => Buffer.from('x'), video: async () => Buffer.from('v'), connected: false }); const g = await G.F.quote('cozy', reel);
+  assert.ok(!(g.refs || []).some((r) => r.job === 'motion'));
+});

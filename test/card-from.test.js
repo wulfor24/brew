@@ -68,3 +68,9 @@ test('the page puts the card\'s own source before the generic family label', () 
   const i = src.indexOf('if (c.from) return c.from;'), j = src.indexOf('if (FROM_FAMILY[c.family]) return FROM_FAMILY[c.family];');
   assert.ok(i > 0 && j > i);
 });
+
+test('viral and rival-ad research cards say where they came from', () => {
+  assert.equal(cardFrom({ id: 'r-viral-tt-1', research: { kind: 'viral', id: 'tt:1', platform: 'tiktok' } }), 'Viral on TikTok');
+  assert.equal(cardFrom({ id: 'r-viral-ig-1', research: { kind: 'viral', id: 'ig:1' }, src: 'Instagram · 30× usual views' }), 'Viral on Instagram');
+  assert.equal(cardFrom({ id: 'r-ad-9', research: { kind: 'ad', id: '9' } }), 'From your competitors');
+});

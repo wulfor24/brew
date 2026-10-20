@@ -66,3 +66,13 @@ test('a read is kept with the brand: a kept read costs nothing, a new read is sa
   assert.equal(calls, 1); assert.equal(r.angle, 'social proof'); assert.equal(r.proof, 'reviews'); assert.equal(saved.id, 'n1');
   assert.match(rivalBlock(ad, r, 'Cozy'), /Angle: social proof/); assert.match(rivalBlock(ad, r, 'Cozy'), /What stops the scroll: a face/);
 });
+
+test('viral cards are reference cards, never rival cards; the viral block names the format and forbids copying', async () => {
+  const { isReferenceCard, isViralCard, isRivalCard, viralBlock } = await import('../rival-ad.js');
+  const v = { research: { kind: 'viral', id: 'tt:1' } };
+  assert.ok(isViralCard(v) && isReferenceCard(v) && !isRivalCard(v));
+  assert.ok(isReferenceCard({ research: { kind: 'ad', id: '1' } }));
+  const b = viralBlock({ platform: 'tiktok', author: 'maker', views: 900000, score: 30, read: { hook: { first3s: 'A hand slams the jar down' }, format: 'demo', pacing: '4 cuts', whyItWorks: 'Pattern break', scenes: [{ t: '0:00', shot: 'Jar slam', onScreenText: 'wait', voice: '' }] } }, 'Cozy');
+  assert.match(b, /30x their usual/); assert.match(b, /Jar slam/); assert.match(b, /Never reuse the creator's sentences/); assert.match(b, /filming directions/);
+  assert.equal(viralBlock(null), '');
+});
