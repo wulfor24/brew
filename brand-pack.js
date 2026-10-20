@@ -232,10 +232,13 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
   const fitCards = (sd, ctx) => { const keep = keepOf(ctx); return { ...sd, posts: (sd.posts || []).map(fitCard(keep, ctx)) }; };
   const fitPools = (pl, keep) => Object.fromEntries(Object.entries(pl).map(([k, v]) => [k, Array.isArray(v) ? v.map(fitCard(keep)) : v]));
   const ipRow = (r) => (Array.isArray(r) && /\(in progress\)$/.test(r[1] || '') ? [r[0], sentenceCase(r[1], [], { force: true }), ...r.slice(2)] : r); // the index's unwritten rows carry skill names
+  /* a source written as a bare host ("gullylabs.com") opened as a Brew page and 404'd; text that is no address is no link (QA 20 Oct) */
+  const linkOf = (u) => { const x = String(u || '').trim(); return /^https?:\/\//i.test(x) ? x : /^(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+(?:[/?#]\S*)?$/i.test(x) ? `https://${x}` : null; };
   const festivalNow = (m) => { const past = pastOf(m), st = !past && liveStat(m); return { ...(past ? { past } : {}), ...(st ? { stat: st } : {}) }; };
   const fitMoves = (ms, keep, claimSrc = '') => Object.fromEntries(Object.entries(ms || {}).map(([n, m0]) => { const m = claimSrc ? markMoveClaims(m0, claimSrc) : m0; /* a code or guarantee the store never made reads as the team's call (QA-25) */ return [n, m && typeof m === 'object' && m.title ? { ...m, title: sentenceCase(m.title, keep), ...festivalNow(m) /* a festival plan after its festival says so; its countdown counts from today */,
     ...(Array.isArray(m.sections) ? { sections: m.sections.map((sec) => ({ ...sec, blocks: (sec.blocks || []).map((b) => (b?.rows ? { ...b, rows: b.rows.map(ipRow) } : b)) })) } : {}),
-    ...(Array.isArray(m.sources) ? { sources: m.sources.map((x) => (x && typeof x === 'object' && x.label ? { ...x, label: dejargon(x.label) } : x)) } : {}) } : m]; })); /* source names in plain words (QA FEED-ARV-06: "catalogue (products.json)") */
+    ...(Array.isArray(m.sources) ? { sources: m.sources.map((x) => (x && typeof x === 'object' && x.label ? { ...x, label: dejargon(x.label), url: linkOf(x.url) } : x)) } : {}),
+    ...(Array.isArray(m.meta?.cites) ? { meta: { ...m.meta, cites: m.meta.cites.map((c) => (c && typeof c === 'object' ? { ...c, url: linkOf(c.url) } : c)) } } : {}) } : m]; })); /* source names in plain words (QA FEED-ARV-06: "catalogue (products.json)") */
   /* a move card says where its move stands: "Being updated" while the evidence has overtaken the move and its rewrite is
      queued (the ranker keeps it off the first screen), "Updated" for three days after a rewrite lands. Other badges stay */
   const moveBadges = (seed, moves = {}, stale = new Set()) => {
