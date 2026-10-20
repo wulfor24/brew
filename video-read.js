@@ -80,10 +80,11 @@ export function createVideoRead({ packs, treg, ai, log = console, gToken, fetchF
   }
 
   /* ---------- 2. Gemini on Vertex ---------- */
-  async function vertexRead(file, why, id) {
-    const buf = fs.readFileSync(file), tk = await token(), host = location === 'global' ? 'aiplatform.googleapis.com' : `${location}-aiplatform.googleapis.com`;
+  async function vertexRead(file, why, id, ytUrl = null) {
+    const buf = file ? fs.readFileSync(file) : null, tk = await token(), host = location === 'global' ? 'aiplatform.googleapis.com' : `${location}-aiplatform.googleapis.com`;
     let media;
-    if (buf.length <= INLINE_MAX) media = { inlineData: { mimeType: 'video/mp4', data: buf.toString('base64') } };
+    if (!buf) media = { fileData: { mimeType: 'video/*', fileUri: ytUrl } }; /* a public YouTube video Gemini watches itself (its stream URLs refuse our server: 403) */
+    else if (buf.length <= INLINE_MAX) media = { inlineData: { mimeType: 'video/mp4', data: buf.toString('base64') } };
     else { const name = `video-tmp/${id}.mp4`; const r = await fetchFn(`https://storage.googleapis.com/upload/storage/v1/b/${bucket}/o?uploadType=media&name=${encodeURIComponent(name)}`, { method: 'POST', headers: { authorization: `Bearer ${tk}`, 'content-type': 'video/mp4' }, body: buf });
       if (!r.ok) throw new Error(`gcs upload ${r.status}`); media = { fileData: { mimeType: 'video/mp4', fileUri: `gs://${bucket}/${name}` } }; }
     const body = { contents: [{ role: 'user', parts: [media, { text: PROMPT(why) }] }], generationConfig: { temperature: 0.2, maxOutputTokens: 8192, responseMimeType: 'application/json', responseSchema: toVertex(SCHEMA) } };
@@ -130,6 +131,8 @@ export function createVideoRead({ packs, treg, ai, log = console, gToken, fetchF
     catch (e) { out.notes.push(`download: ${e.message}`); }
     if (file && process.env.VIDEO_VERTEX !== '0') try { const r = await (vertex ? vertex(file, why, v) : vertexRead(file, why, `${v.platform}-${v.id}`)); Object.assign(out, { read: r.json, via: 'vertex', model: r.model || model, usd: r.usd ?? null, tokens: r.tokens || null }); }
     catch (e) { out.notes.push(`vertex: ${e.message.slice(0, 200)}`); log.warn?.('[video-read] vertex', e.message.slice(0, 200)); }
+    if (!out.read && !file && v.platform === 'youtube' && !vertex && process.env.VIDEO_VERTEX !== '0') try { const r = await vertexRead(null, why, `${v.platform}-${v.id}`, `https://www.youtube.com/watch?v=${v.id}`); Object.assign(out, { read: r.json, via: 'vertex-youtube', model: r.model || model, usd: r.usd ?? null, tokens: r.tokens || null }); }
+    catch (e) { out.notes.push(`vertex youtube: ${e.message.slice(0, 200)}`); }
     if (!out.read) {
       const tx = await transcript(v, tag); if (tx.via) out.notes.push(`transcript from ${tx.via}`);
       let frames = []; if (file && aiCall && await hasFfmpeg()) try { frames = await keyframes(file, `${v.platform}-${v.id}`); } catch (e) { out.notes.push(`keyframes: ${e.message}`); }

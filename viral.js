@@ -52,7 +52,7 @@ export function createViralFinder({ call, ytKey = process.env.YOUTUBE_API_KEY, f
   async function find({ terms = [], country = 'US', stems = [], own = [], platforms = ['tiktok', 'instagram', 'youtube'], n = 3, lookups = 8, now = Date.now() } = {}) {
     const errors = {}, found = new Map(), checked = {};
     await Promise.all(platforms.map(async (p) => { let ok = 0; checked[p] = 0;
-      for (const q of terms.slice(0, 4)) { try { for (const x of await SEARCH[p](q, { country })) if (!found.has(x.id)) found.set(x.id, x); ok++; checked[p]++; } catch (e) { errors[p] = e.message.slice(0, 160); log.warn?.('[viral] search', p, q, e.message.slice(0, 160)); } }
+      for (const q of terms.slice(0, p === 'youtube' ? 1 : 4)) { /* a YouTube search is 100 of the key's 10,000 daily units (listening shares them): one term a read */ try { for (const x of await SEARCH[p](q, { country })) if (!found.has(x.id)) found.set(x.id, x); ok++; checked[p]++; } catch (e) { errors[p] = e.message.slice(0, 160); log.warn?.('[viral] search', p, q, e.message.slice(0, 160)); } }
       if (ok) delete errors[p]; }));
     const all = [...found.values()], pre = all.filter((x) => preViral(x, { now, country, stems, own }).ok).sort((a, b) => b.views - a.views);
     /* usual views only for the best few per platform (each lookup is a paid call) */

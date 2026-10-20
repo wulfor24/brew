@@ -2909,6 +2909,7 @@ html body.deck-on .topbar{border-bottom:0;box-shadow:none}
 .ref-btn small{color:var(--fg-3);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ref-sheet .ref-b{display:flex;flex-direction:column;gap:10px;overflow:auto;max-height:min(72vh,720px)}
 .ref-sheet .ref-media{display:block;width:100%;max-height:56vh;object-fit:contain;border-radius:12px;background:#000}
+.ref-sheet .ref-yt{border:0;aspect-ratio:9/16;height:56vh;width:auto;margin:0 auto}
 .ref-sheet .ref-tag{margin:0;font-size:13px;color:var(--fg-3)}
 .ref-sheet .ref-dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0}
 .ref-sheet .ref-dl>div{display:contents}.ref-sheet .ref-dl dt{color:var(--fg-3)}.ref-sheet .ref-dl dd{margin:0}
