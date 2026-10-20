@@ -6,7 +6,7 @@ import { createFinals, pick } from '../finals.js';
 import { createBudget } from '../budget.js';
 import { formOf, prefill, matchSpaces, familyOf } from '../sloosh-spaces.js';
 
-function rig({ dummy = false, left = 100, gemini = null, video = null, connected = true, warning = null } = {}) {
+function rig({ dummy = false, left = 100, gemini = null, video = null, connected = true, warning = null, allCap = '10', brandCap = '6' } = {}) {
   const files = new Map(); const packs = { getJSON: async (s, n, d) => files.get(`${s}/${n}`) ?? d, put: async (s, n, v) => { files.set(`${s}/${n}`, JSON.parse(JSON.stringify(v))); }, listFiles: async (s, sub) => [...files.keys()].filter((k) => k.startsWith(`${s}/${sub}/`)).map((k) => k.split('/').pop()) };
   const calls = []; let polls = 0;
   /* the shapes Sloosh really returns (data/sloosh-tools.json outputSchemas, 2026-10-16) */
@@ -20,7 +20,7 @@ function rig({ dummy = false, left = 100, gemini = null, video = null, connected
     stateOf: (x) => (x?.owner?.terminalStatus || (x?.state === 'settled' ? (x.owner?.phase === 'rejected' ? 'rejected' : 'settled') : x?.state || '')), pendingCheckpoint: () => null,
     wait: async (getter) => { for (;;) { const x = await getter(); const s = x?.owner?.terminalStatus || (x?.state === 'settled' ? 'settled' : ''); if (s === 'settled' || s === 'completed') return x; if (/failed|rejected/.test(s)) throw new Error(s); await new Promise((r) => setTimeout(r, 1)); } } };
   const slooshAuth = { status: async () => (connected ? { connected: true, workspace: { name: 'Brew' } } : { connected: false }), setWorkspace: async () => {} };
-  const budget = createBudget({ env: { DAILY_CREDITS_CAP: '10', BRAND_CREDITS_CAP: '6' } });
+  const budget = createBudget({ env: { DAILY_CREDITS_CAP: allCap, BRAND_CREDITS_CAP: brandCap } });
   const saved = []; const fetchImpl = async (url) => new Response(Buffer.from('PNGBYTES' + url), { status: 200, headers: { 'content-type': 'image/png', 'content-length': '20' } });
   const F = createFinals({ sloosh, slooshAuth, packs, budget, saveGen: (n, b) => saved.push([n, b.length]), publicUrl: 'https://brew.test', fetchImpl, slugs: async () => ['cozy'], log: { warn() {}, info() {} }, dummy: () => dummy, geminiImage: gemini, makeVideo: video, photo: async (u) => `/photos/${u}` });
   return { F, files, calls, saved, budget, sloosh, polls: () => polls };
@@ -43,7 +43,8 @@ test('quote imports the references once, sends the brief with the ratio in the s
 
 test('a quote over the workspace’s remaining limit or the brand’s share is refused in plain words', async () => {
   const R = rig({ left: 1 }); const q = await R.F.quote('cozy', spec); assert.match(q.error, /would hold 2.5 credits and Brew’s Sloosh workspace has 1 left today/);
-  const R2 = rig(); R2.budget.spend('credits', 'cozy', 5); const q2 = await R2.F.quote('cozy', spec); assert.match(q2.error, /share for today is used up \(6 a day\)/);
+  const R2 = rig(); R2.budget.spend('credits', 'cozy', 5); const q2 = await R2.F.quote('cozy', spec); assert.match(q2.error, /This costs 3 Sloosh credits and this brand has 1 of 6 left today/);
+  R2.budget.spend('credits', 'cozy', 1); assert.match((await R2.F.quote('cozy', spec)).error, /share for today is used up \(6 a day\)/);
 });
 
 test('run writes the record before paying, counts the credits, polls to the bytes, and the same spec runs once', async () => {
@@ -187,12 +188,12 @@ test('where a final shows (land) rides on the record but never in the run key: a
 });
 
 test('a reel over what is left today is asked again at 720p, then shorter, before it goes to Veo (19 Oct: 15 s was 128 credits at 1080p, 52 at 720p, limit 50)', async () => {
-  const R = rig({ left: 50 }); const per = { '1080p': 8.53, '720p': 3.467 };
+  const R = rig({ left: 50, allCap: '300', brandCap: '200' }); const per = { '1080p': 8.53, '720p': 3.467 };
   R.sloosh.quoteGeneration = async (o) => { R.calls.push(['quote', o]); const c = +(per[o.resolution] * o.seconds).toFixed(3); return { quoteId: 'q' + R.calls.length, credits: c, expiresAt: new Date(Date.now() + 300e3).toISOString(), ...(c > 50 ? { warning: 'This is over the MCP daily limit: 50 credits remain' } : {}) }; };
   const q = await R.F.quote('cozy', { ...spec, kind: 'video', text: [], ratio: '9:16', seconds: 15, sound: true });
   const asks = R.calls.filter((c) => c[0] === 'quote').map((c) => [c[1].resolution, c[1].seconds]);
   assert.deepEqual(asks, [['1080p', 15], ['720p', 15], ['720p', 13]]);
-  assert.ok(q.credits > 0 && q.credits <= 50, `fits what is left: ${q.credits}`); /* the rig's own site cap (10) then refuses it, which is the budget's job */
+  assert.ok(q.credits > 0 && q.credits <= 50, `fits what is left: ${q.credits}`);
 });
 
 test('a viral remake: the clip goes to Sloosh as a video reference, wins over the opening frame, and never reaches Gemini or Veo', async () => {
@@ -205,4 +206,12 @@ test('a viral remake: the clip goes to Sloosh as a video reference, wins over th
   assert.match(q.prompt, /The reference video is the viral video this remakes: follow its format/);
   const G = rig({ gemini: async () => Buffer.from('x'), video: async () => Buffer.from('v'), connected: false }); const g = await G.F.quote('cozy', reel);
   assert.ok(!(g.refs || []).some((r) => r.job === 'motion'));
+});
+
+test('a reel also fits the brand’s own share of Brew’s credits (21 Oct: Sloosh had 200 left, the brand 100, a viral reel was 173)', async () => {
+  const R = rig({ left: 200, allCap: '300', brandCap: '100' }); const per = { '1080p': 11.56, '720p': 6.0 };
+  R.sloosh.quoteGeneration = async (o) => { R.calls.push(['quote', o]); return { quoteId: 'q' + R.calls.length, credits: +(per[o.resolution] * o.seconds).toFixed(3), expiresAt: new Date(Date.now() + 300e3).toISOString() }; };
+  const q = await R.F.quote('cozy', { ...spec, kind: 'video', text: [], ratio: '9:16', seconds: 15, sound: true });
+  assert.ok(!q.error, q.error); assert.ok(q.credits <= 100, `fits the brand's share: ${q.credits}`);
+  assert.deepEqual(R.calls.filter((c) => c[0] === 'quote').map((c) => [c[1].resolution, c[1].seconds]), [['1080p', 15], ['720p', 15]]);
 });
