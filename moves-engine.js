@@ -453,6 +453,7 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
     return { n: sp.n, group: sp.group, skill: sp.skill, kicker: `${sp.kicker} · MOVE ${pad(sp.n)}`, timing: sp.timing || null, ...(sp.dynamic ? { dynamic: sp.id } : {}), ...raw, ...extra };
   }
 
+  const REQUIRED_KINDS = ['why', 'found', 'plan', 'examples', 'measure', 'sources'];
   async function writeMove(n, ctx) {
     const sp = spec(n, ctx); if (!sp || !sp.n) throw new Error(`no spec for move ${n}`);
     const t0 = Date.now();
@@ -479,6 +480,12 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
         r = await ai.call({ ...o, schema: null, json: true, messages: undefined, prompt: prompt + `\n\nReturn one JSON object with this shape:\n${JSON.stringify(MOVE_SCHEMA)}` });
         }
       }
+      /* a move is whole or it isn't saved: the six sections, each with something in it. A short answer (one section, no plan, no
+         sources) is asked for once more; still short, it fails (onFail keeps the last version) rather than saving half a move (QA 20 Oct) */
+      const lacking = (j) => REQUIRED_KINDS.filter((k) => !(j?.sections || []).some((x) => x?.kind === k && (x.blocks || []).some((b) => String(b?.text || b?.body || '').trim() || (b?.items || []).length || (b?.rows || []).length)));
+      if (lacking(r.json).length && !r.mock) { log.warn?.(`[moves] ${n}: missing ${lacking(r.json).join(', ')}, asking again`);
+        const again = await ai.call({ ...o, tag: `move${pad(n)}-whole`, messages: [...o.messages.slice(0, -1), { ...o.messages[o.messages.length - 1], content: [...o.messages[o.messages.length - 1].content, { type: 'text', text: `Your last answer left out these sections: ${lacking(r.json).join(', ')}. Return the whole move with all six sections (why, found, plan, examples, measure, sources), each filled in.` }] }] }).catch(() => null);
+        if (again?.json && !lacking(again.json).length) r = again; else throw new Error(`move ${n} came back without ${lacking(again?.json || r.json).join(', ')}`); }
       const move = finish(sp, r.json, { meta: { model: r.msg?.model || 'claude-opus-5-5', at: new Date().toISOString(), usd: r.usd, usage: r.msg?.usage, secs: Math.round((Date.now() - t0) / 1e3), stop: r.stop, verified: false, issues: [], searched: (r.cites || []).map((c) => ({ ...c, kind: 'web' })), cites: [], lookups: lookups.map(({ id, for: f, at, error }) => ({ id, for: f, at, error })) } }, ctx);
       return dateMove(move, ctx.numbers);
     } catch (e) {
