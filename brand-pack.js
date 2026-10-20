@@ -220,10 +220,10 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
     ...(config?.rivals || []).map((r) => (typeof r === 'string' ? r : r?.name)), ...(profile?.rivals || []).map((r) => (typeof r === 'string' ? r : r?.name))].filter(Boolean);
   /* saved copy heals at load, for every brand: a read card's "Read from <host> today" says the day of the read, and the statics
      batch card says what happens (the batch opens in a jam and downloads for the team; Brew runs nothing) */
-  const OLD_BATCH = /they go out together as one test/;
+  const OLD_BATCH = /they go out together as one test|run (?:them )?as a single test/;
   const healCopy = (c, ctx) => {
     if (c.origin === 'read' && /^Read from \S+ today$/.test(String(c.src || ''))) c = { ...c, src: readSrc(ctx.profile?.host || String(c.src).split(' ')[2], ctx.profile?.meta?.readAt || ctx.status?.stages?.read?.at || null) };
-    if (c.id === 'statics-batch' && (OLD_BATCH.test(String(c.sub || '')) || c.cta?.label === 'Queue the ads')) c = { ...c, sub: String(c.sub || '').replace(OLD_BATCH, 'jam on any of them, and download the batch for your team to run'), cta: { ...(c.cta || {}), label: 'Open the batch' },
+    if (/^statics-batch(?:-p)?$/.test(String(c.id || '')) /* the team's private batch too (QA 20 Oct) */ && (OLD_BATCH.test(String(c.sub || '')) || c.cta?.label === 'Queue the ads' || (c.detail?.how || []).some((h) => /^Queue the kept/.test(h)))) c = { ...c, sub: String(c.sub || '').replace(OLD_BATCH, 'jam on any of them, and download the batch for your team to run'), cta: { ...(c.cta || {}), label: 'Open the batch' },
       detail: { ...(c.detail || {}), how: (c.detail?.how || []).map((h) => h.replace(/^Queue the kept ones as one test\.?$/, 'Download the kept ones for your team to run.').replace(/^Open the set\b/, 'Open the batch')) } };
     return c;
   };
