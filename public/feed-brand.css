@@ -386,6 +386,7 @@ a.ck2-src[href]:hover{color:var(--fg)}
 .wk-ch{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}.wk-ch li{display:flex;gap:10px;font-size:14px}.wk-ch li>span{flex:0 0 22px;font:500 13px/19px var(--font-mono,ui-monospace,monospace);color:var(--fg-3)}
 .wk-ch b{font-weight:600}.wk-ch p{color:var(--fg-2);margin:2px 0 0}.wk-ch .is-gone b{color:var(--fg-3);text-decoration:line-through}
 .bd-log li.is-move-failed span{color:var(--warn)}
+.bd-fin h3{align-items:center;gap:8px;margin:0}.bd-fin p{margin:6px 0 12px;color:var(--fg-2);font-size:15px}.bd-fin-b{display:flex;gap:8px;flex-wrap:wrap}
 .bd-empty{padding:28px;border-radius:20px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line);color:var(--fg-2);font-size:15px}
 @media (max-width:900px){.bd-cols{grid-template-columns:minmax(0,1fr)}}
 
