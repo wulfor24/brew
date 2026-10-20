@@ -231,7 +231,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
     return c;
   };
   const oneMake = oneCard; /* one version, always: saved counts of takes said as one (text-fit oneCard) */
-  const fitCard = (keep, ctx = {}) => (c) => (c && typeof c === 'object' ? fitCta(fillMake(healCopy(oneMake({ ...c, ...(c.title ? { title: sentenceCase(c.title, keep) } : {}) }), ctx))) : c); /* fillMake: a card that names an asset but was written without "make" gets one (cards-gen.js inferMake) */
+  const fitCard = (keep, ctx = {}) => (c) => (c && typeof c === 'object' ? fitCta(fillMake(healCopy(oneMake({ ...c, ...(c.title ? { title: sentenceCase(String(c.title).replace(/\s+\|\s+[^|]{2,60}$/, '').replace(/!+$/, ''), keep) } : {}) /* an SEO title's " | Brand" tail and a shouted "!" go (feed audit #14) */ }), ctx))) : c); /* fillMake: a card that names an asset but was written without "make" gets one (cards-gen.js inferMake) */
   const fitCards = (sd, ctx) => { const keep = keepOf(ctx); return { ...sd, posts: (sd.posts || []).map(fitCard(keep, ctx)) }; };
   const fitPools = (pl, keep) => Object.fromEntries(Object.entries(pl).map(([k, v]) => [k, Array.isArray(v) ? v.map(fitCard(keep)) : v]));
   const ipRow = (r) => (Array.isArray(r) && /\(in progress\)$/.test(r[1] || '') ? [r[0], sentenceCase(r[1], [], { force: true }), ...r.slice(2)] : r); // the index's unwritten rows carry skill names

@@ -11,9 +11,15 @@ const STOP = new Set('a an the of to for on in at by with and or its it is are b
 const NOT_VERB = new Set([...STOP, 'none', 'zero', 'there', 'here', 'we', 'you', 'they']);
 const NUMBERY = /^(?:\d|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thir|four|fif|six|seven|eigh|nine|twent|thirt|fort|fift|hundred|thousand)/; /* "Seventeen serum pages…" states a count, not an action */
 const VAGUE = new Set(['agree', 'approve', 'open', 'review', 'see', 'read', 'view', 'decide', 'answer', 'reply', 'start', 'make', 'draft', 'update', 'go', 'get', 'try', 'show', 'tell', 'ask', 'use', 'let', 'do']); /* a button's verb that says how, not what */
-const SAME = { correct: 'fix', repair: 'fix', settle: 'fix', resolve: 'fix', sort: 'fix', mend: 'fix', remove: 'drop', cut: 'drop', pull: 'drop', kill: 'drop', retire: 'drop', post: 'publish', ship: 'publish' };
+const SAME = { correct: 'fix', repair: 'fix', settle: 'fix', resolve: 'fix', sort: 'fix', mend: 'fix', remove: 'drop', cut: 'drop', pull: 'drop', kill: 'drop', retire: 'drop', post: 'publish', ship: 'publish',
+  /* the same ask worded another way (feed audit 20 Oct: "Run localized ads…" next to six "Launch local trust ads…"; "Turn on" and "Set up" the review flow) */
+  run: 'launch', start: 'launch', roll: 'launch', set: 'setup', turn: 'setup', enable: 'setup', switch: 'setup', automate: 'setup', build: 'setup' };
+/* one word for one thing: localized/local, trust-first/trust, Bulgarian/Bulgaria, post-purchase/post delivery, abandoned checkout/cart */
+const NORM_W = { localized: 'local', localised: 'local', localize: 'local', localise: 'local', locally: 'local', localization: 'local', abandoned: 'cart', abandon: 'cart', checkout: 'cart', automated: 'auto', automatic: 'auto', reviews: 'review' };
+const normW = (w) => { if (NORM_W[w]) return NORM_W[w]; const x = w.replace(/-(?:first|led|based|only)$/, ''); return x.length > 6 && /[^aeiou]ian$/.test(x) ? x.slice(0, -1) : x; };
+const prep = (s) => String(s || '').replace(/\bpost[- ]?(?:purchase|delivery|order)\b|\bafter (?:purchase|delivery)\b/gi, ' postpurchase ');
 const stem = (w) => (w.length > 4 && w.endsWith('ies') ? `${w.slice(0, -3)}y` : w.length > 3 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w);
-const words = (s) => String(s || '').toLowerCase().replace(/[’']s\b/g, '').split(/[^a-zÀ-ɏ-]+|-(?![a-z])|(?<![a-z])-/).filter(Boolean).map(stem); /* "post-purchase" stays one word */
+const words = (s) => prep(s).toLowerCase().replace(/[’']s\b/g, '').split(/[^a-zÀ-ɏ-]+|-(?![a-z])|(?<![a-z])-/).filter(Boolean).map(stem).map(normW); /* "post-purchase" stays one word */
 /* where or in what form, not what: two "landing page" cards are not one ask */
 const FORMAT = new Set('page pdp landing listing template ad email mail message post thread sequence campaign flow block product site store shopify website section popup banner carousel reel video story static poster whatsapp sms buyer customer shopper visitor people user'.split(' '));
 const verbOf = (w) => SAME[w] || w;

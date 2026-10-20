@@ -8,23 +8,31 @@
 const SMALL = new Set(['and', 'or', 'of', 'the', 'for', 'to', 'in', 'on', 'with', 'a', 'an', 'at', 'by', 'from', 'vs', 'into', 'per', 'your', 'our']);
 const PROPER = new Set(['Instagram', 'Facebook', 'Meta', 'Google', 'YouTube', 'TikTok', 'WhatsApp', 'Shopify', 'Klaviyo', 'Amazon', 'Flipkart', 'Nykaa', 'Myntra', 'Reddit', 'Quora', 'Pinterest', 'LinkedIn', 'ChatGPT', 'Gemini', 'Perplexity', 'Claude',
   'India', 'Indian', 'Hindi', 'Hinglish', 'English', 'US', 'UK', 'America', 'American', 'Europe', 'Diwali', 'Christmas', 'Black', 'Friday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Saturday', 'Sunday',
-  'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December', 'Brew', 'GA4', 'Stories', 'Reels']);
+  'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December', 'Brew', 'GA4', 'Stories', 'Reels',
+  'Halloween', 'Thanksgiving', 'Easter', 'Dussehra', 'Durga', 'Puja', 'Navratri', 'Karva', 'Chauth', 'Holi', 'Eid', 'Raksha', 'Bandhan', 'Onam', 'Pongal', 'Valentine’s', "Valentine's", 'Mother’s', "Mother's", 'Father’s', "Father's", 'Cyber', 'Prime', 'Day',
+  'Bulgaria', 'Bulgarian', 'Czech', 'Germany', 'German', 'France', 'French', 'London', 'Bangalore', 'Bengaluru', 'Mumbai', 'Delhi', 'Hyderabad', 'California', 'Judge.me', 'Loox', 'Recharge', 'Etsy', 'Walmart', 'X']);
 const ACRO = new Set(['seo', 'ai', 'cro', 'aeo', 'geo', 'sms', 'aso', 'pr', 'ugc', 'sku', 'cta', 'roas', 'cpa', 'ltv', 'aov', 'b2b', 'd2c', 'dtc', 'faq', 'ppc', 'rto', 'cod', 'llms', 'ga4']);
-const isTitleCased = (words) => {
+/* Title Case: every word capitalised (small joining words too), or 3+ words capitalised; or, with small words left lower case
+   ("Launching the Municipal Fleet Uptime Plan"), 80% or more of the other words capitalised that aren't names kept as they are
+   (moves audit 20 Oct: the most common Title Case style was never fixed). "Comet vs Gully Labs" stays: its capitals are names */
+const isTitleCased = (words, K = new Set()) => {
   const ws = words.filter((w) => /^[A-Za-z]/.test(w));
   if (ws.length < 3) return false;
   const cap = (w) => /^[A-Z]/.test(w);
+  const core = (w) => w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}’'.]+$/gu, '');
   const smallCapped = ws.slice(1).some((w) => SMALL.has(w.toLowerCase()) && cap(w));
   const big = ws.filter((w) => !SMALL.has(w.toLowerCase()));
-  const smallLower = ws.slice(1).some((w) => SMALL.has(w.toLowerCase()) && !cap(w)); // "Comet vs Gully Labs": cased on purpose
-  return big.every(cap) && !smallLower && (smallCapped || big.length >= 3);
+  const smallLower = ws.slice(1).some((w) => SMALL.has(w.toLowerCase()) && !cap(w));
+  if (big.every(cap) && !smallLower && (smallCapped || big.length >= 3)) return true;
+  const plain = ws.slice(1).filter((w) => !SMALL.has(w.toLowerCase())).filter((w) => { const c = core(w); return !K.has(c) && !PROPER.has(c) && !ACRO.has(c.toLowerCase()) && !/\d|[a-z][A-Z]|^[A-Z0-9&]{2,}$/.test(c); });
+  return plain.length >= 3 && plain.filter(cap).length / plain.length >= 0.8;
 };
 export function sentenceCase(s, keep = [], { force = false } = {}) { // force: the source is known to be Title Cased (skill names)
   const str = String(s ?? ''); if (!str.trim()) return str;
   const parts = str.split(/(\s+)/);
-  if (!force && !isTitleCased(str.replace(/\([^)]*\)/g, ' ').split(/\s+/).filter(Boolean))) return str; // a note in brackets doesn't count
   // names to keep, word by word ("Wool Runner", "Gully Labs")
   const K = new Set(); for (const k of keep || []) String(k || '').split(/\s+/).forEach((w) => { const x = w.replace(/[^\p{L}\p{N}'’-]/gu, ''); if (x && /^[A-Z]/.test(x)) K.add(x); });
+  if (!force && !isTitleCased(str.replace(/\([^)]*\)/g, ' ').split(/\s+/).filter(Boolean), K)) return str; // a note in brackets doesn't count
   let first = true;
   return parts.map((p) => {
     if (!p.trim()) return p;

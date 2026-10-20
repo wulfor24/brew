@@ -70,3 +70,13 @@ test('a card someone engaged with stays in place; one move\'s own cards are neve
   const live = [{ id: 'lv-1', title: 'Fix pack prices', sub: '₹1,947 ₹642.32' }, { id: 'lv-2', title: 'Fix pack prices', sub: '₹1,947 ₹642.32' }];
   assert.equal(askLeaders(live, opts).size, 0);
 });
+
+test('the same ask worded another way groups: run/launch, set up/turn on, local/localized, post-purchase/post delivery (feed audit 20 Oct)', () => {
+  const s = (a, b) => sameAsk(askOf({ title: a }), askOf({ title: b }));
+  assert.ok(s('Launch localized trust-first Meta ads in Bulgaria', 'Launch local trust ads in Bulgaria to answer replica worries'));
+  assert.ok(s('Run localized ads to end our digital silence', 'Launch localized trust ads to break our Bulgarian ad silence'));
+  assert.ok(s('Set up post delivery review flows on email and WhatsApp', 'Turn on Klaviyo post-purchase flow for reviews'));
+  assert.ok(s('Fix two odd pack prices before Google reads them', 'Settle three odd prices before pages print them'));
+  assert.ok(!s('Fix the pack prices before ads restart', 'Launch localized trust ads in Bulgaria'));
+  assert.ok(!s('Set up the post-purchase review flow', 'Turn on cart recovery emails'));
+});
