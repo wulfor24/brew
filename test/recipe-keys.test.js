@@ -15,3 +15,10 @@ test('every recipe action is a real job', () => {
           for (const k of r.actionKeys) assert.ok(has(k), `${agent}/${type}/${sector}/${kind}: ${k} is no job`);
         }
 });
+
+test('listening, navigation and sold-out cards open on the right job (QA J-06, J-14)', () => {
+  assert.equal(recipeOfCard({ id: 'heard-r-1', agent: 'brew', sector: 'signals', type: 'report', title: 'What people dislike about The Oodie', cta: { label: 'Win their unhappy buyers' } }).primary, 'creative.add_variants');
+  for (const c of [{ id: 'heard-c-1', agent: 'brew', sector: 'signals', type: 'report', title: 'What buyers complain about in sneakers', cta: { label: 'Show how we solve it' } }, { id: 'told-1', agent: 'brew', sector: 'signals', type: 'idea', title: 'Sell an exclusive pack', cta: { label: 'Work on this' } }])
+    assert.ok(!recipeOfCard(c).actionKeys.slice(0, 1).some((k) => /^performance\./.test(k)), c.title);
+  assert.equal(recipeOfCard({ id: 'm64-2', sector: 'ads', type: 'decision', title: 'Keep out-of-stock products out of your ads and sends', cta: { label: 'Open the moves' } }).primary, 'performance.pause_pointing');
+});

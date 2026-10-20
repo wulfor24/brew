@@ -113,6 +113,8 @@ const CTA_ACTION = {
   'Fix tracking': 'performance.tracking_fix', 'Draft the buyer deck': 'storefront.buyer_deck', 'Build the score': 'storefront.new_section', 'Approve all': 'storefront.new_section', 'Open report': null, 'Agree with the call': 'brew.plan', 'Open the scoreboard': 'brew.plan', 'Ship the five': 'brew.plan',
   'Make our version': 'creative.add_variants', 'Turn into an idea': 'creative.add_variants', 'Start this': 'creative.add_variants', 'Turn on guest checkout': 'storefront.store_setting', 'Launch the ad group': 'performance.search_ad',
   'Reply as the brand': 'creative.reddit_post', 'Answer it on the product page': 'storefront.pdp_block', 'Use their words in a post': 'creative.ig_post',
+  /* listening's own buttons (social-feed.js): a rival's unhappy buyers are won with ads that answer the complaint, a category complaint on the product page (QA J-06) */
+  'Win their unhappy buyers': 'creative.add_variants', 'Show how we solve it': 'storefront.pdp_block',
   'Publish the claims ledger': 'visibility.llms_txt', 'Add the search info': 'visibility.schema_fix', 'Review draft': 'visibility.faq_entry', 'Set the watch': 'visibility.faq_entry',
   // the buttons every brand's cards carry (seed-template CTA, live store events in feed-service liveCard)
   'Push the titles': 'storefront.listing_titles', 'Add the photos': 'storefront.listing_content', 'Draft the replies': 'creative.comment_reply', /* final QA pass 19 Oct: the demo's thin-photos and low-star cards */ 'Approve the offers': 'storefront.bundle_offer', 'Draft the page': 'visibility.faq_entry', 'Open the moves': null,
@@ -137,10 +139,12 @@ const MAKE_ACTION = { 'single image ad': 'creative.add_variants', 'carousel ad':
 const TRACKING = /\b(tracking|pixel|conversions? api|capi|ga4|utms?)\b/i;
 const DECIDE_CTA = new Set(['Agree with the call', 'Open the scoreboard', 'Ship the five', 'Apply the plan']); // a decision stays a decision
 const MAKING = new Set(['Generate versions', 'Make the ad', 'Make the carousel ad', 'Build the collection ad', 'Build the catalog ad', 'Make the video', 'Draft the post', 'Draft the carousel post', 'Draft the stories', 'Approve the flows', 'Update landing page']);
-const STOCK = /\b(out of stock|sold[ -]?out|stock-?outs?|no stock)\b/i;
+const STOCK = /\b(out[ -]of[ -]stock|sold[ -]?out|stock-?outs?|no stock|in stock)\b/i;
 const stockCard = (c) => STOCK.test(`${c.title || ''} ${c.badge?.[0] || ''}`) || (c.liveSrc?.kind === 'catalog' && /stock/i.test(c.badge?.[0] || ''));
 /* a button we have never seen (cards written by the AI): what its verb asks for, in order. Each rule names one job */
 const VERB_RULES = [
+  /* "keep sold-out products out of your ads", "point every ad at a product in stock": pausing the ads on them, never new ads (QA J-14) */
+  [/\bads?\b/i, (c) => (stockCard(c) && /\bads?\b/i.test(c.title || '') && !/\b(new|make|launch|create|restart|back in stock)\b/i.test(c.title || '') ? 'performance.pause_pointing' : null)],
   [/\b(restart|resume|unpause|turn (them |it )?back on|switch (them |it )?back on)\b/i, () => 'performance.restart_paused'],
   [/\b(pause|stop|switch off|turn off|kill)\b/i, (c) => (stockCard(c) ? 'performance.pause_pointing' : 'performance.pause_losers')],
   [/\b(fix|redirect|repair)\b.*\blinks?\b|\bredirects?\b/i, () => 'storefront.fix_links'],
@@ -204,7 +208,7 @@ const primaryOf = (c) => {
   if (label === 'Draft the listing') { if (MARKETPLACE.test(`${c.title || ''} ${c.sub || ''} ${c.make?.pieces || ''}`)) return 'storefront.listing_content'; if (MAKE_ACTION[c.make?.format]) return onChannel(MAKE_ACTION[c.make.format], c); }
   if (MAKE_ACTION[c.make?.format] && MAKING.has(label)) return MAKE_ACTION[c.make.format]; // a making button follows the format the card plans (cards-gen keeps them in step)
   if (byLabel && !GENERIC_CTA.has(label)) return onChannel(refine(byLabel, c), c); // a button that names its job: that job, whatever tool the AI named
-  if (byLabel === null && !GENERIC_CTA.has(label)) return null; // a button that only navigates (Open the moves)
+  if (byLabel === null && !GENERIC_CTA.has(label)) { const v = verbAction(c.title || '', c); return v ? onChannel(refine(v, c), c) : null; } // a button that only navigates (Open the moves): the title's verb, else nothing (QA J-14)
   const made = MAKE_ACTION[c.make?.format]; if (made) return onChannel(made, c);
   const ai = c.mf?.by === 'ai' ? c.mf.tool : null;
   if (ai && TOOL_PRIMARY[ai] && toolOf(byLabel) !== ai) return TOOL_PRIMARY[ai];
@@ -228,7 +232,8 @@ export const labelFor = (key, c = {}) => { const [a, k] = String(key).split('.')
 // the card's area decides which actions make sense, not which agent posted it
 const SECTOR_AGENT = { catalog: 'storefront', ads: 'performance', creatives: 'creative', storefront: 'storefront', visibility: 'visibility', signals: 'crm' };
 const SECTOR_ACTIONS = { catalog: ['listing_titles', 'listing_content', 'page_copy'] };
-const CROSS = ['performance.pause_losers', 'performance.scale_budget', 'creative.add_variants', 'storefront.page_copy', 'storefront.pdp_block', 'visibility.faq_entry', 'crm.flow_timing', 'crm.flow_copy'];
+/* the order breaks ties: a card whose words name no job never lands on a spend or pause (a complaint card opened "Pause the losers": QA J-06) */
+const CROSS = ['creative.add_variants', 'storefront.pdp_block', 'storefront.page_copy', 'visibility.faq_entry', 'crm.flow_copy', 'crm.flow_timing', 'performance.pause_losers', 'performance.scale_budget'];
 // when a card names its action, every package is that action (different cuts of it), plus at most these
 // close alternatives that reach the same goal. Nothing from another job (Param, 2026-10-12: "Push 5 titles"
 // must never offer budget rules).
@@ -329,7 +334,8 @@ const CROSS_WORDS = {
   'crm.flow_copy': /\b(email|whatsapp|sms|flow|win-?back|abandon|cart|customers|subscribers|repeat)\b/g,
 };
 const byText = (c, keys) => { const txt = `${c.title || ''} ${c.title || ''} ${c.sub || ''} ${c.src || ''} ${c.cta?.label || ''}`.toLowerCase();
-  const sc = (k) => (txt.match(CROSS_WORDS[k] || /$^/g) || []).length; return keys.map((k, i) => [k, sc(k), i]).sort((a, b) => b[1] - a[1] || a[2] - b[2]).map((x) => x[0]); };
+  const sc = (k) => (txt.match(CROSS_WORDS[k] || /$^/g) || []).length; const ranked = keys.map((k, i) => [k, sc(k), i]).filter((x) => x[1] > 0 || !/^performance\./.test(x[0]) /* ad money only when the card's words ask for it */);
+  return (ranked.length ? ranked : keys.map((k, i) => [k, 0, i])).sort((a, b) => b[1] - a[1] || a[2] - b[2]).map((x) => x[0]); };
 export const recipeOfCard = (c) => {
   const agent = c.kind === 'conflict' || c.agent === 'brew' ? 'brew' : SECTOR_AGENT[c.sector] || (RECIPES[c.agent] ? c.agent : 'creative');
   const type = RECIPES[agent][c.type] ? c.type : 'idea';
@@ -1340,6 +1346,7 @@ export function createRemix(o) {
   on('POST', '/api/cards/:cid/remix', async (b, t, p) => {
     const c = t.cards.get(p.cid); if (!c) return { error: 'not found' };
     if (b.peek) return v2Peek(t, c); /* v2 sheet: what it opens on */
+    if (/^build-/.test(String(c.id || ''))) return { changes: [], navOnly: true }; /* "Read all 57 plans" goes to the moves, never a page-copy jam (QA J-14) */
     if (b.words || b.queue) return v2Remix(b, t, c); /* v2: words first, the picture in the background (the block above) */
     const r = recipeFor(c); const cv = ensureCardVersion(t, c);
     const intent = String(b.intent || '').slice(0, 60), prompt = String(b.prompt || '').slice(0, 300);
