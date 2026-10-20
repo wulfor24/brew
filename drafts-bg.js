@@ -121,13 +121,15 @@ export function cardBriefText(c = {}, { moveDocs = {} } = {}) {
    fallback: the real product photo the picture was made from, shown by the page if a picture can't load (never a broken image).
    A real-photo stand-in with no ad set on it says so (photoOnly, remaking while a new picture is due): the page shows "New
    picture coming", never "First draft" over a packshot. A clip's poster is its first frame with the headline set */
+/* Brew's own words never carry an em dash (plain.js tidy does the same on cards); saved drafts read so on every serve (QA UI 20 Oct) */
+const undash = (s) => String(s || '').replace(/\s*—\s*/g, ', ').replace(/(\s)–(\s)/g, '$1-$2').replace(/,\s*,/g, ',');
 export function draftView(d, c = null) {
   if (!d) return null; const images = d.slides?.length ? d.slides.map((x) => x.image).filter(Boolean) : d.render ? [d.render] : d.image ? [d.image] : [];
   if (!images.length && !d.video) return null;
   const fallback = hasCode(d.copy) ? null : [d.photo, ...(isRivalCard(c) ? [] : [...(c?.images || []), c?.img])].find((x) => x && typeof x === 'string' && !images.includes(x) && !isResearchImage(x)) || null; /* never a rival's poster under our draft */
   const bare = !!d.photoOnly && !d.render && !d.video && !d.slides?.length;
-  return { as: d.as, kind: d.kind || d.as, images, video: d.video || null, poster: d.video ? d.poster || d.render || d.image || images[0] || null : null, ratio: d.video && d.clipStill ? '9:16' : d.ratio || null, title: d.title || '', copy: cut(String(d.copy || '').replace(/[#*_>`]/g, ''), 240), ...(hasCode(d.copy) ? { code: String(d.copy).slice(0, 6000) } : {}) /* the jam's stage shows code as code, not as the mock's picture */,
-    ...(d.headline ? { headline: d.headline } : {}), ...(d.render && d.headline && ['image', 'video'].includes(d.kind || d.as) ? { wordsIn: d.render } /* the headline is already set in this picture: the page never lays it on again */ : {}), ...(fallback ? { fallback } : {}), ...(d.imgRetry || bare ? { remaking: true } : {}), ...(bare ? { photoOnly: true } : {}) };
+  return { as: d.as, kind: d.kind || d.as, images, video: d.video || null, poster: d.video ? d.poster || d.render || d.image || images[0] || null : null, ratio: d.video && d.clipStill ? '9:16' : d.ratio || null, title: undash(d.title || ''), copy: cut(undash(String(d.copy || '').replace(/[#*_>`]/g, '')), 240), ...(hasCode(d.copy) ? { code: String(d.copy).slice(0, 6000) } : {}) /* the jam's stage shows code as code, not as the mock's picture */,
+    ...(d.headline ? { headline: undash(d.headline) } : {}), ...(d.render && d.headline && ['image', 'video'].includes(d.kind || d.as) ? { wordsIn: d.render } /* the headline is already set in this picture: the page never lays it on again */ : {}), ...(fallback ? { fallback } : {}), ...(d.imgRetry || bare ? { remaking: true } : {}), ...(bare ? { photoOnly: true } : {}) };
 }
 
 /* ---------- gating and cost ---------- */

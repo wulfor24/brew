@@ -481,3 +481,14 @@ p.rd2-trust,.rd2-trust>summary{display:inline-flex;align-items:center;gap:6px}
 .fe-y li button{display:flex;flex-direction:column;align-items:flex-start;gap:1px;width:100%;padding:8px 10px;border-radius:10px;text-align:left;text-decoration:none}
 .fe-y li button:hover{background:var(--surface-2,rgba(127,127,127,.1))}
 .fe-y li b{font-weight:500;font-size:14px;line-height:1.35}.fe-y li small{font-size:12px;opacity:.7}
+/* QA UI 20 Oct (P2): a plain line under each group of moves; the amber count reads (4.8:1, not 2.2:1); on phones the studio's
+   Back comes first, two greeting tiles each take the row, and the Store health ring sits above its rows */
+.mv2-gsub{margin:-2px 0 10px;font-size:13.5px;color:var(--fg-3)}
+.mv2-seg .cnt{background:#b45309;color:#fff}
+@media (max-width:560px){
+  .st-top .st-jamctl{order:2}
+  .g-today .gt:first-child:nth-last-child(2),.g-today .gt:first-child:nth-last-child(2)~.gt{grid-column:1/-1}
+  body .inset .ring-wrap{grid-template-columns:1fr;justify-items:center;gap:10px}
+  body .inset .ring-wrap>svg{width:96px;height:96px}
+  body .inset .ring-wrap .ring-rows{width:100%}
+}

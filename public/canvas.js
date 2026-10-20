@@ -52,13 +52,17 @@
   };
   const avatar = (x) => x.brand.mark ? `<img class="cv-av" src="/${String(x.brand.mark).replace(/^\//, '')}" alt="">` : `<span class="cv-av">${x.H.esc((x.brand.name || 'B')[0])}</span>`;
 
+  /* the note under an ad mock: the draft's words minus what the caption already says (QA UI 20 Oct: the hook line printed twice) */
+  const sents = (t) => String(t || '').split(/(?<=[.!?…])\s+|\n+/).map((y) => y.trim()).filter(Boolean);
+  const noteOf = (x) => { const cap = new Set(sents(`${x.head || ''} ${x.body || ''}`).map((y) => y.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()));
+    return sents(String(x.draft?.copy || '').replace(/[*_#`>]+/g, '')).filter((y) => !cap.has(y.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim())).join(' '); };
   /* ---------- the blocks ---------- */
   const B = {
     creative: (x) => { const { H } = x;
       return `<figure class="cv-b cv-creative"><div class="cv-ig"><div class="cv-ig-top">${avatar(x)}<span><b>${H.esc(x.brand.host || x.brand.name)}</b><small>Sponsored</small></span></div>
         ${media(x)}<div class="cv-ig-cta"><span>${H.esc(x.btn || 'Shop now')}</span>${H.ic('right', 's14')}</div>
         <figcaption class="cv-ig-cap"><b>${H.esc(x.brand.host || x.brand.name)}</b> ${x.head ? H.esc(x.head) : ''}${x.body && x.body !== x.head ? ` <span>${H.esc(x.body)}</span>` : ''}</figcaption></div>
-        ${x.draft?.copy && !x.bp.body ? `<p class="cv-note">${H.esc(String(x.draft.copy).slice(0, 220))}</p>` : ''}</figure>`; },
+        ${x.draft?.copy && !x.bp.body && noteOf(x) ? `<p class="cv-note">${H.esc(noteOf(x).slice(0, 220))}</p>` : ''}</figure>`; },
     message: (x) => { const { H, bp } = x, fmt = String(x.c.make?.format || ''), email = /email|newsletter|klaviyo|mail/i.test(bp.channel || '') || (!/whatsapp|sms|text|push/i.test(`${bp.channel || ''} ${fmt}`) && /email|newsletter|klaviyo|mail/i.test(`${fmt} ${bp.change || ''} ${x.c.title} ${x.c.plan?.target || ''}`)); /* the card's own format first: an email card is an inbox, a WhatsApp card a phone */
       if (email) return `<figure class="cv-b cv-mail"><div class="cv-mail-top"><b>${H.esc(x.brand.name)}</b><small>to you · now</small></div><h4>${x.head ? H.esc(x.head) : ph(H, 'Subject line')}</h4>${x.img ? `<img src="${H.esc(x.img)}" alt="">` : ''}<p>${x.body ? H.esc(x.body) : ph(H, 'The email text')}</p><span class="cv-btn">${H.esc(x.btn || 'Shop now')}</span></figure>`;
       return `<figure class="cv-b cv-phone"><div class="cv-wa-top">${avatar(x)}<b>${H.esc(x.brand.name)}</b><small>Business account</small></div>
@@ -94,7 +98,7 @@
       return `<section class="cv-b cv-tasks"><small>Who does what</small>${list.length ? `<ul>${list.map((s) => `<li><span class="cv-chk${s.state === 'done' ? ' is-done' : ''}"></span><b>${H.esc(s.title)}</b><em>${H.esc(s.owner || 'to assign')}${s.day != null ? ` · day ${H.esc(s.day)}` : ''}</em></li>`).join('')}</ul>` : ph(H, 'Who does what, by when', 'Who on the team does each part, and by when?')}</section>`; },
     doc: (x) => { const { H, bp } = x;
       const rows = [['What changes', bp.change], ['Who it’s for', bp.audience], ['When', bp.when], ['Budget', bp.budget], ['Owner', bp.owner], ['Stop rule', bp.guard]];
-      return `<section class="cv-b cv-doc">${x.img ? `<img class="cv-doc-img" src="${H.esc(x.img)}" alt="">` : ''}${x.head && x.head !== x.c.title ? `<h3>${H.esc(x.head)}</h3>` : ''}${bp.why ? `<p class="cv-why">${H.esc(bp.why)}</p>` : ''}<dl>${rows.map(([k, v], i) => `<div><dt>${H.esc(k)}</dt><dd>${v ? H.esc(v) : i === rows.findIndex((r) => !r[1]) ? ph(H, '', `Fill in: ${k}`) : '<span class="cv-dash">—</span>'}</dd></div>`).join('')}</dl></section>`; }, /* only the first gap invites: six 'ask' rows read as noise */
+      return `<section class="cv-b cv-doc">${x.img ? `<img class="cv-doc-img" src="${H.esc(x.img)}" alt="">` : ''}${x.head && x.head !== x.c.title ? `<h3>${H.esc(x.head)}</h3>` : ''}${bp.why ? `<p class="cv-why">${H.esc(bp.why)}</p>` : ''}<dl>${rows.map(([k, v], i) => `<div><dt>${H.esc(k)}</dt><dd>${v ? H.esc(v) : i === rows.findIndex((r) => !r[1]) ? ph(H, '', `Fill in: ${k}`) : '<span class="cv-dash">–</span>'}</dd></div>`).join('')}</dl></section>`; }, /* only the first gap invites: six 'ask' rows read as noise */
     table: (x) => { const { H, c } = x; return c.rows?.length ? `<section class="cv-b cv-table"><table>${c.rows.map(([k, v]) => `<tr><th>${H.esc(k)}</th><td>${H.esc(v)}</td></tr>`).join('')}</table></section>` : ''; },
     file: (x) => { const { H, c } = x; return c.link ? `<a class="cv-b cv-file" href="${H.esc(c.link.url)}" target="_blank" rel="noopener">${H.ic('doc', 's16')}<b>${H.esc(c.link.label)}</b></a>` : ''; },
     event: (x) => { const { H, bp } = x; return `<section class="cv-b cv-event"><small>The event</small><b>${H.esc(x.head)}</b><dl><div><dt>When</dt><dd>${bp.when ? H.esc(bp.when) : ph(H, '', 'Fill in: the date')}</dd></div><div><dt>Where</dt><dd>${bp.where ? H.esc(bp.where) : ph(H, '', 'Which cities or venues?')}</dd></div><div><dt>Budget</dt><dd>${bp.budget ? H.esc(bp.budget) : ph(H, '', 'Fill in: budget')}</dd></div></dl></section>`; },
@@ -114,8 +118,11 @@
     const chips = knobs.length ? knobs.map((k) => `<span class="cv-knob"><button class="chip" data-cv-knob="${H.esc(k.k)}" aria-expanded="false">${H.esc(k.label)} ${H.ic('chev', 's12')}</button><span class="cv-opts" hidden>${(k.opts || []).map((o) => `<button class="chip" data-cv-knobv="${H.esc(k.k)}" data-v="${H.esc(o)}">${H.esc(o)}</button>`).join('')}</span></span>`).join('')
       : (LIB?.turns?.[isChange(c) ? 'change' : familyOf(c, ch)] || LIB?.turns?.other || []).map((t) => `<button class="chip" data-cv-ask="${H.esc(t)}">${H.esc(t)}</button>`).join('');
     const visual = blocksFor(c, w, ch).some((b) => ['creative', 'message', 'page', 'listing'].includes(b)), drafts = w?.drafts || [], making = drafts.some((d) => d.state === 'making');
-    const make = !visual ? '' : making ? `<span class="chip is-make is-busy"><span class="spin"></span>Making the draft…</span>` : `<button class="chip is-make" data-jm-make="auto">${H.ic('sparkles', 's12')}${drafts.some((d) => d.state === 'ready') ? 'Make another draft' : 'Make the first draft'}</button>`;
-    return `<div class="cv-turns">${make}${chips}<button class="chip is-3" data-cv-ask="Redo it">${H.ic('sparkles', 's12')}Redo it</button></div>`;
+    /* one way to the next take (QA UI 20 Oct: "Make another draft" sat beside "Redo it"): the first draft is made, after that Redo it */
+    const ready = drafts.some((d) => d.state === 'ready');
+    const make = !visual || ready ? '' : making ? `<span class="chip is-make is-busy"><span class="spin"></span>Making the draft…</span>` : `<button class="chip is-make" data-jm-make="auto">${H.ic('sparkles', 's12')}Make the first draft</button>`;
+    const redo = visual && !ready ? '' : `<button class="chip is-3" data-cv-ask="Redo it">${H.ic('sparkles', 's12')}Redo it</button>`;
+    return `<div class="cv-turns">${make}${chips}${redo}</div>`;
   };
   // the jam view: the blocks, the versions, the quick turns
   const linked = new Set();

@@ -1035,7 +1035,7 @@
     if (c.kind === 'answer') return `<div class="inset ans-slot"><div class="ans-q">${ic('chat', 's14')}${esc(c.q)}</div><p>${esc(c.a)}</p><span class="badge bad">${B.brand.name} not named</span></div>`;
     if (c.kind === 'variants') return `${c.images?.length ? mediaSlot(c.images.slice(0, 1), { filter: c.gradeF }) : ''}<div class="inset var-slot">${c.loading ? '<div class="sk" style="height:58px"></div><div class="sk" style="height:58px"></div><div class="sk" style="height:58px"></div>' : (c.variants || []).map((v) => `<div class="var"><span class="chip">${esc(v.angle || 'Version')}</span><b>${esc(v.title)}</b><span>${esc(v.sub)}</span></div>`).join('')}</div>`;
     /* a long value stacks under its label (left, full width) so the label never wraps word by word beside it */
-    return `<div class="inset"><div class="rows">${(c.rows || []).map(([k, v]) => { v = toldRowV(c, k, v); return `<div${String(v).length > 28 ? ' class="is-long"' : ''}><span>${esc(k)}</span><b>${esc(v)}</b></div>`; }).join('')}</div></div>`;
+    return `<div class="inset"><div class="rows">${nonZero(c.rows || []).map(([k, v]) => { v = toldRowV(c, k, v); return `<div${String(v).length > 28 ? ' class="is-long"' : ''}><span>${esc(k)}</span><b>${esc(v)}</b></div>`; }).join('')}</div></div>`;
   };
   /* a told card's "From" names the files the team added, readably (saved cards carry "Upload (Arata-Performance-Audit_compressed.pdf, …)") */
   const isToldCard = (c) => c?.origin === 'told' || /^told-/.test(c?.id || '');
@@ -1069,8 +1069,14 @@
      A clip plays muted and looped only while it is on screen (armDraftVideos); slides use the feed's own carousel */
   const DRAFT_IC = { video: 'vid', carousel: 'grid', collection: 'grid', catalog: 'grid', email: 'send', whatsapp: 'chat', page: 'doc', image: 'pic' };
   /* under the draft, the ad as it would run, like a caption: its headline in bold and the first line of its copy (never the memo) */
+  /* a template variable reads as what it stands for: {first_name} and WhatsApp's {{1}} show as a "first name" chip, never raw (QA UI 20 Oct) */
+  const TOK_N = { 1: 'first name', 2: 'product', 3: 'detail' };
+  const tokSpan = (h) => String(h).replace(/\{\{\s*(\d)\s*\}\}/g, (m, n) => `<span class="tok">${TOK_N[n] || 'detail'}</span>`).replace(/\{\{?\s*([a-z_ ]+?)\s*\}?\}/gi, (m, k) => `<span class="tok">${k.replace(/_/g, ' ')}</span>`);
+  /* a row whose value is only a zero ("Live Meta ads 0", "Cart delay 0 seconds") is a zero tile: it goes; a card of only zeros keeps its rows (QA UI 20 Oct) */
+  const ZERO = /^\s*(?:[₹$€£]\s?)?0(?:\.0+)?\s*(?:%|seconds?|days?|ads?|reviews?|items?|products?|x)?\s*$/i;
+  const nonZero = (rows) => { const xs = (rows || []).filter((r) => Array.isArray(r)); const kept = xs.filter((r) => !ZERO.test(String(r[1] ?? ''))); return kept.length ? kept : xs; };
   const draftCap = (d) => { const h = String(d.headline || d.title || '').trim(), line = String(d.copy || '').split(/\n+/).map((x) => x.trim()).find(Boolean) || '';
-    return h || line ? `<div class="fd-cap">${h ? `<b>${esc(h)}</b>` : ''}${line && line !== h ? `<span>${esc(line)}</span>` : ''}</div>` : ''; };
+    return h || line ? `<div class="fd-cap">${h ? `<b>${tokSpan(esc(h))}</b>` : ''}${line && line !== h ? `<span>${tokSpan(esc(line))}</span>` : ''}</div>` : ''; };
   const draftSlot = (c) => { const d = c.draft; if (!d || !(d.video || d.images?.length)) return '';
     /* a stand-in (the product photo alone, or a picture being made again) says a new one is coming; it is never called a first draft */
     const lab = d.remaking || d.photoOnly ? `<span class="fd-lab is-wait">${ic('refresh', 's12')}New picture coming</span>` : d.takeErr ? `<span class="fd-lab is-wait" title="${esc(d.takeErr)}">${ic('info', 's12')}No new picture</span>` : `<span class="fd-lab">${ic(DRAFT_IC[d.as] || 'sparkles', 's12')}${d.as === 'take' ? 'Another take' : 'First draft'}</span>`, port = d.ratio !== '1:1';
@@ -1227,7 +1233,7 @@
     if (GEN && !HC_MOVES) hcMoves().then(() => { const el = $('.card[data-health] [data-hc-how]'); if (el && hcFix(low)) el.outerHTML = hcCta(low); }).catch(() => {});
     return `<article class="card hc${B.health.dummy ? ' is-dummy' : ''}" data-health>${head('brew', B.health.public ? `From your public site${Object.values(SRV.healthLive || {}).some((x) => x?.what) ? ' and your accounts' : ''}${when ? ` · ${esc(when)}` : ''}` : `Up ${h.delta + Object.keys(S.conn).filter(conn).length} this week`, null, false, 'Store health')}
       <div class="body hc-body"><h3>${esc(head1)}</h3>${sub1 ? `<p>${esc(sub1)}</p>` : ''}</div>
-      <div class="inset"><div class="ring-wrap">${ringSvg(h)}<div class="ring-rows hc-rows">${h.rings.map((r) => `<details class="hc-ring${r === low ? ' is-low' : ''}"><summary><b>${esc(r.k)}</b><em>${r.read === false ? '–' : `${r.v}<small>/100</small>`}</em><span>${esc(hcLine(r))}${r.was != null && r.was !== r.v ? ` <small class="hc-was">Was ${r.was}${r.changed ? `: ${esc(r.changed)}` : ''}</small>` : ''}</span></summary>${(r.parts || []).length ? `<ul class="hc-parts">${r.parts.filter((x) => !(x.real && (x.v === 0 || x.v === '0'))) /* a zero reading from an account stays quiet */.map((x) => `<li><span>${esc(x.k)}</span><b>${esc(String(x.v))}${x.of != null ? `<small>/${x.of}</small>` : x.real ? '<small> from your account</small>' : ''}</b><small>${esc(x.note || '')}${(x.at || r.at) ? ` · checked ${esc(fmtDay(Date.parse(x.at || r.at)) || x.at || r.at)}` : ''}</small></li>`).join('')}</ul>` : ''}${r.k === 'AI answers' && aiStand()?.rivals ? `<div class="ais ais-mini">${aisHtml(aiStand(), { compact: true })}<button class="linkbtn hc-ais" data-ais-proof="${esc(aiStand().src || 'weekly')}">${ic('shield', 's14')}Every question and each AI’s answer</button></div>` : ''}${r.src ? `<p class="hc-src">${ic('link', 's14')}${esc(r.src)}</p>` : ''}</details>`).join('')}</div></div></div>
+      <div class="inset"><div class="ring-wrap">${ringSvg(h)}<div class="ring-rows hc-rows">${h.rings.map((r) => `<details class="hc-ring${r === low ? ' is-low' : ''}"><summary><b>${esc(r.k)}</b><em>${r.read === false ? '–' : `${r.v}<small>/100</small>`}</em><span>${esc(hcLine(r))}${r.was != null && r.was !== r.v ? ` <small class="hc-was">Was ${r.was}${r.changed ? `: ${esc(r.changed)}` : ''}</small>` : ''}</span></summary>${(r.parts || []).length ? `<ul class="hc-parts">${r.parts.filter((x, i, all) => !((x.real || all.some((y) => +y.v)) && (x.v === 0 || x.v === '0'))) /* a zero reading stays quiet; the ring's own score says it once */.map((x) => `<li><span>${esc(x.k)}</span><b>${esc(String(x.v))}${x.of != null ? `<small>/${x.of}</small>` : x.real ? '<small> from your account</small>' : ''}</b><small>${esc(x.note || '')}${(x.at || r.at) ? ` · checked ${esc(fmtDay(Date.parse(x.at || r.at)) || x.at || r.at)}` : ''}</small></li>`).join('')}</ul>` : ''}${r.k === 'AI answers' && aiStand()?.rivals ? `<div class="ais ais-mini">${aisHtml(aiStand(), { compact: true })}<button class="linkbtn hc-ais" data-ais-proof="${esc(aiStand().src || 'weekly')}">${ic('shield', 's14')}Every question and each AI’s answer</button></div>` : ''}${r.src ? `<p class="hc-src">${ic('link', 's14')}${esc(r.src)}</p>` : ''}</details>`).join('')}</div></div></div>
       ${read.length ? hcCta(low) : ''}</article>`; };
 
   const teamCard = () => { const bs = S.batches.filter((b) => !b.roles || b.roles.includes(S.viewer.role) || b.team).slice(0, 4); const need = bs.filter((b) => b.st === 'Needs you').length;
@@ -1830,6 +1836,10 @@
 
   /* ---------- the ··· menu on every card ---------- */
   const closePop = () => $('#pop')?.remove();
+  /* every popover (the account menu, both sign-in states, and #pop) closes on Escape and when the view changes (QA UI 20 Oct) */
+  const closePops = () => { document.getElementById('lc-pop')?.remove(); closePop(); };
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && (document.getElementById('lc-pop') || $('#pop'))) closePops(); });
+  window.addEventListener('hashchange', closePops); window.addEventListener('popstate', closePops);
   document.addEventListener('click', (e) => {
     const m = e.target.closest('[data-more]');
     if (!m) { if (!e.target.closest('#pop') && !e.target.closest('[data-team-pill]')) closePop(); return; }
@@ -2366,7 +2376,7 @@
     const m = w?.measure || c.measure || null;
     const prevScroll = $('.dr-b', dp)?.scrollTop, pageScroll = $('.dp-page', dp)?.scrollTop; if ($('.cp-rank', dp)) DP.rankOpen = $('.cp-rank', dp).open;
     dp.dataset.work = w?.id || '';
-    const rows = c.kind !== 'rows' && c.rows?.length ? `<div class="inset"><div class="rows">${c.rows.map(([k, vv]) => `<div><span>${esc(k)}</span><b>${esc(vv)}</b></div>`).join('')}</div></div>` : '';
+    const rows = c.kind !== 'rows' && nonZero(c.rows || []).length ? `<div class="inset"><div class="rows">${nonZero(c.rows).map(([k, vv]) => `<div><span>${esc(k)}</span><b>${esc(vv)}</b></div>`).join('')}</div></div>` : '';
     const rel = FEED.filter((x) => x.id !== p.id && !x.parentCardId && (x.lane === p.lane || x.agent === p.agent)).slice(0, 3);
     const st = w?.stage, si = st ? STEPS.findIndex(([k]) => k === stepOf(st)) : -1;
     const stepper = w ? `<div class="stepper">${STEPS.map(([k, n], i) => `<span class="${i < si ? 'done' : i === si ? 'on' : ''}">${i < si ? ic('check', 's14') : ''}${n}</span>`).join('')}</div>
@@ -2395,7 +2405,7 @@
     const dhHtml = `<div class="dr-h dh"><button class="q-back dh-back" data-x aria-label="Back">${ic('left', 's16')}<span>Back</span></button><i class="dh-sep"></i>
         <div class="dh-who">${face(c.agent)}<b>${esc(fromLabel(c))}<small>${esc([agoText(c.time), campLine(c)].filter(Boolean).join(' · '))}</small></b></div>
         <span class="dh-pill dp-kind is-${phH}"><i></i>${PHASE[phH]}</span>${c.badge ? `<span class="badge ${c.badge[1]} dh-badge">${esc(c.badge[0])}</span>` : ''}
-        <div class="dh-acts"><button class="dh-share" title="Copy a link to this, as it is now" data-dplink>${ic('link', 's16')}<span>Share</span></button><button class="icon-btn" aria-label="Close" data-x>${ic('x', 's18')}</button></div></div>`;
+        <div class="dh-acts"><button class="dh-share" title="Copy a link to this, as it is now" data-dplink>${ic('link', 's16')}<span>Copy link</span></button><button class="icon-btn" aria-label="Close" data-x>${ic('x', 's18')}</button></div></div>`;
     const before = dp.dataset.pid === String(p.id) + (w?.id || '') ? snapLeft(dp) : null; dp.dataset.pid = String(p.id) + (w?.id || '');
     dp.innerHTML = `<div class="dp-page"><div class="dr-b">${dhHtml}
         ${String(p.id).startsWith('jam-') ? stepper : ''}
@@ -2904,7 +2914,10 @@
     let told = false; try { told = sessionStorage.getItem('brew-share') === out.map((x) => x.join(':')).join(','); sessionStorage.setItem('brew-share', out.map((x) => x.join(':')).join(',')); } catch {}
     if (out.length && !told && !c.paused) { const mine = out.filter(([, w]) => w === 'brand').map(([n]) => n), all = out.filter(([, w]) => w === 'all').map(([n]) => n);
       const sayLater = (f) => (['setup', 'ob'].includes(view) || $('#qfull') ? setTimeout(() => sayLater(f), 4000) : f()); /* never over the read or the questions: it waits for the feed */
-      setTimeout(() => sayLater(() => toastLong(`${ic('info', 's16')}${mine.length ? `This brand’s share of today’s ${mine.join(' and ')} is used up. ` : ''}${all.length ? `Brew’s budget for ${all.join(' and ')} is used up today across all brands. ` : ''}It resets at midnight UTC; everything else still works.`, 12000)), 1800); } }).catch(() => {});
+      /* said when someone goes to make something, not as a 12-second overlay on the first screen (QA UI 20 Oct) */
+      const msg = `${ic('info', 's16')}${mine.length ? `This brand’s share of today’s ${mine.join(' and ')} is used up. ` : ''}${all.length ? `Brew’s budget for ${all.join(' and ')} is used up today across all brands. ` : ''}It resets at midnight UTC; everything else still works.`;
+      const onMake = (e) => { if (!e.target.closest?.('[data-jm-make],[data-cv-ask],[data-cta-make],.jm-go')) return; document.removeEventListener('click', onMake, true); setTimeout(() => toastLong(msg, 7000), 300); };
+      document.addEventListener('click', onMake, true); void sayLater; } }).catch(() => {});
   /* ---------- the demo site (DEMO_MODE): a session per visitor, its accounts are demo accounts the server connects ---------- */
   const DSLUG = () => B.slug || BR;
   const clearLocal = () => { wiping = true; try { Object.keys(localStorage).filter((k) => k.startsWith(LSP())).forEach((k) => ls.del(k)); } catch (e) {} };
@@ -2983,7 +2996,7 @@
     const c = B.connectors[id]; if (!c) return;
     if (conn(id)) { opts.then?.(); return; }
     /* the live site connects real accounts through live.js only: never the sample sign-in sheet, never S.conn set by hand */
-    if (!window.BREW_DEMO) { if (window.LiveConn?.open(id, { ...opts })) return; toast(`${ic('info', 's16')}Couldn’t reach Brew. Reload and try again.`); return; }
+    if (!window.BREW_DEMO) { if (window.LiveConn?.open(id, { ...opts })) return; toast(`${ic('info', 's16')}${window.LiveConn && !window.LiveConn.isReady?.() || window.LIVE?.off ? 'Connecting isn’t available here.' : 'Couldn’t reach Brew. Reload and try again.'}`); return; }
     if (!opts.demo && window.LiveConn?.open(id, { ...opts, demo: () => openConnect(id, { ...opts, demo: true }) })) return;
     const onboarding = view === 'ob';
     modal(`<div class="sheet cx-sheet">
@@ -3046,7 +3059,7 @@
   const JAM_DONE = ['shared'];
   const LIB = { cat: { saved: 'all', jams: 'all', remixes: 'all' }, open: new Set(), scope: null /* jams: mine | team */ };
   const libTabs = (k) => { const tabs = [['saved', 'Saved', S.saved.length], ['jams', window.BREW_DEMO ? 'My jams' : 'Jams', WORK.items.filter((w) => !JAM_DONE.includes(w.stage)).length], ['refs', 'References', REFS.items ? REFS.items.length : '']];
-    return `<div class="lib-seg" role="tablist">${tabs.map(([v, n, c]) => `<button role="tab" data-nav="${v}" aria-selected="${k === v}">${n}${c !== '' ? `<em>${c}</em>` : ''}</button>`).join('')}</div>`; };
+    return `<div class="lib-seg" role="tablist">${tabs.map(([v, n, c]) => `<button role="tab" data-nav="${v}" aria-selected="${k === v}">${n}${c !== '' && +c !== 0 ? `<em>${c}</em>` : ''}</button>`).join('')}</div>`; }; /* no "0" counts on the tabs (quiet rule) */
   const libEmpty = (icon, h, s) => `<div class="lib-empty"><span class="le-ic">${ic(icon)}</span><b>${h}</b><span>${s}</span><button class="btn btn-ghost sm" data-nav="feed">Go to the feed</button></div>`;
   // cats: [{ k, name, hint, items: [html], tone }]; the chips filter, "all" shows every category two rows deep
   const libGrid = (tab, cats, empty, extra = '') => {
@@ -3083,9 +3096,9 @@
       title: c.title, line: esc(plain(c.sub || '')), who: p.cta?.label ? `${ic('right', 's14')}${esc(p.cta.label)}` : '', pill: B.spends.includes(p.cta?.label) ? pillOf('Spends money', 'warn') : '' }); };
     const agents = [...new Set(list.map((p) => p.agent))];
     const cats = agents.map((a) => ({ k: a, name: AGENT[a] || a, items: list.filter((p) => p.agent === a).map(row) }));
-    libPage('saved', 'Cards you kept for later. Open one, jam on them together, or hand the lot to the ShopOS team.',
+    libPage('saved', 'Cards you kept for later. Open one, jam on them together, or send the brief to the ShopOS team.',
       libGrid('saved', cats, libEmpty('bookmark', 'Nothing saved yet', 'Tap the bookmark on any card to keep it here.'),
-        list.length ? `<span class="lib-acts"><button class="btn btn-ghost sm" data-bulk="jam">${ic('hand', 's16')}Jam on all</button><button class="btn btn-primary sm" data-bulk="team">${ic('person', 's16')}Send brief to Brew</button></span>` : ''));
+        list.length ? `<span class="lib-acts"><button class="btn btn-ghost sm" data-bulk="jam">${ic('hand', 's16')}Jam on all</button><button class="btn btn-primary sm" data-bulk="team">${ic('send', 's16')}Send brief</button></span>` : ''));
     $$('[data-bulk]').forEach((b) => b.onclick = () => openJam({ bulk: list, tab: b.dataset.bulk === 'team' ? 'team' : 'ai' }));
     $$('[data-lsaved]').forEach((b) => b.onclick = () => { const p = byId(b.dataset.lsaved); if (p) openDetail(p); });
     if (!REMIXES) pullRemixes().then(() => { if (view === 'saved') $('.lib-seg')?.replaceWith(htmlEl(libTabs('saved'))); });
@@ -3636,7 +3649,7 @@
   /* ---------- the other stages, full size: each looks like the place it will live ----------
      A message is a WhatsApp chat or an inbox email; an FAQ answer is the page; a budget change is an Ads Manager table;
      a decision, a setup and a production brief are a clean sheet of paper. The small previews keep their compact form. */
-  const tokHtml = (s) => esc(s).replace(/\{\{?\s*([a-z_ ]+?)\s*\}?\}/gi, (m, k) => `<span class="tok">${k.replace(/_/g, ' ')}</span>`).replace(/\n/g, '<br>');
+  const tokHtml = (s) => tokSpan(esc(s)).replace(/\n/g, '<br>');
   const stageMock = (ch, p) => {
     const name = esc(B.brand.name), quiet = (xs) => { const t = xs.filter(Boolean).map(esc).join(' · '); return t ? `<p class="pm-line">${t}</p>` : ''; };
     if (ch.family === 'crm') {
@@ -3971,7 +3984,9 @@
     else if (media && !fin) { head = `Draft ${reel ? 'video' : 'photo'} ready${nm}`; tip = `A quick draft made by Brew to check the idea. The final ${reel ? 'reel' : 'picture'} is made on Sloosh, ready to post. Then Send brief.`; main = finalBtn(ch); }
     else if (media) { head = `Final ready${nm}`; tip = 'Send brief: the ShopOS team, Brew’s build crew, gets it by email and posts or runs it. Its status shows in the top bar.'; main = send; }
     else if (po) { head = `Ready${nm}`; tip = `${po.filled ? `Opens ${PO_WHERE(po)} with the post filled in, and copies it too.` : `Copies the post and opens ${PO_WHERE(po)}; paste it there.`} You post it yourself; Brew never posts in communities for you.${po.rule ? ` ${po.rule}` : ''}`; main = poBtn(po, true); }
-    else { head = `Ready${nm}`; tip = ch.family === 'post' && ch.target?.conn !== 'meta' ? 'The brief carries the post and where it goes. You post it yourself; Brew never posts in communities for you.' : 'Send brief: the ShopOS team, Brew’s build crew, gets it by email and runs it. Its status shows in the top bar.'; main = send; }
+    /* a post with no thread to open: its main button copies the post (it said "you post it yourself" over a Send brief button: QA J-20) */
+    else if (ch.family === 'post' && ch.target?.conn !== 'meta' && (p.copy || p.title)) { head = `Ready${nm}`; tip = 'Copy the post and paste it where it goes. You post it yourself; Brew never posts in communities for you. The brief carries it too.'; main = `<button class="btn btn-primary ship-go" data-rx="copy-post">${ic('copy', 's16')}Copy the post</button>`; }
+    else { head = `Ready${nm}`; tip = 'Send brief: the ShopOS team, Brew’s build crew, gets it by email and runs it. Its status shows in the top bar.'; main = send; }
     const items = [];
     if (po && !fix && !job && !/data-rx="post-open"/.test(main)) items.push(['data-rx="post-open"', 'send', po.label, po.filled ? `Opens ${PO_WHERE(po)} with the post filled in.` : `Copies the post and opens ${PO_WHERE(po)}.`]);
     if (!/data-rx="share-shopos"/.test(main)) items.push(['data-rx="share-shopos"', 'send', 'Send the brief now', 'The ShopOS team, Brew’s build crew, gets it by email and makes it.']);
@@ -4122,7 +4137,7 @@
     const val = (s, k) => { const v = s?.[k]; return Array.isArray(v) ? v.map((x) => (typeof x === 'object' ? Object.values(x).join(' · ') : x)).join(' / ') : v ?? ''; };
     const keys = cmp ? ch.fields.map((f) => f.k).concat(['image']).filter((k) => JSON.stringify(cmp[0].snapshot?.[k] ?? '') !== JSON.stringify(cmp[1].snapshot?.[k] ?? '')) : [];
     return `<p class="hs-tip">Tap a version to switch to it. Your next change builds from there; nothing is lost.${RX.cmp.length < 2 ? ' Tick two to compare.' : ''}</p>
-      ${cmp ? `<div class="hs-cmp"><div class="hs-cmp-h"><b>v${cmp[0].n} → v${cmp[1].n}</b><button class="linkbtn" data-cmp-clear>Clear</button></div>${keys.map((k) => `<div class="hs-d"><small>${esc(ch.fields.find((f) => f.k === k)?.label || k)}</small><del>${esc(String(val(cmp[0].snapshot, k)) || '—')}</del><ins>${esc(String(val(cmp[1].snapshot, k)) || '—')}</ins></div>`).join('') || '<p>No differences.</p>'}</div>` : ''}
+      ${cmp ? `<div class="hs-cmp"><div class="hs-cmp-h"><b>v${cmp[0].n} → v${cmp[1].n}</b><button class="linkbtn" data-cmp-clear>Clear</button></div>${keys.map((k) => `<div class="hs-d"><small>${esc(ch.fields.find((f) => f.k === k)?.label || k)}</small><del>${esc(String(val(cmp[0].snapshot, k)) || 'none')}</del><ins>${esc(String(val(cmp[1].snapshot, k)) || 'none')}</ins></div>`).join('') || '<p>No differences.</p>'}</div>` : ''}
       <ol class="hs-list">${ch.versions.slice().reverse().map((v) => { const s = v.snapshot || {}, isHead = v.id === ch.head, isLive = v.id === ch.live, isView = RX.viewing === v.id;
         return `<li class="${isHead ? 'head' : ''}${isView ? ' viewing' : ''}"><input type="checkbox" data-cmp="${v.id}" ${RX.cmp.includes(v.id) ? 'checked' : ''} aria-label="Compare v${v.n}">
           <button class="hs-v" data-v-view="${v.id}">${s.image ? `<img src="${esc(s.image)}" alt="">` : `<span class="hs-n">v${v.n}</span>`}<span class="hs-tx"><b>v${v.n}${isHead ? ' <em>current</em>' : ''}${isLive ? ' <em class="live">live</em>' : ''}</b><span>${esc(vLabel(v))}</span><small>${esc(authorName(v.author))} · ${ago(v.at)}</small></span></button></li>`; }).join('')}</ol>`;
@@ -4271,11 +4286,11 @@
     if (ch.target?.conn === 'meta') return 'Get the Ads Manager files'; /* a Meta ad (or a Meta video ad) is made in Ads Manager, never posted to Instagram */
     return ({ meta_ad: 'Get the Ads Manager files', social: 'Post to Instagram', post: pf ? `Post to ${pf}` : 'Get the post', crm: 'Get the message', store: 'Get the HTML', listing: 'Get the listing sheet', vis: 'Get the FAQ files', search: 'Get the Google Ads sheet', setup: 'Get the checklist', brief: 'Get the shot list', meta_ops: 'Get the change list', print: 'Get the print file' })[ch.family] || 'Get the files'; };
   const J2 = { imp: {}, pack: {} }; /* per change: the projection and the pack, shown in the chat */
-  const j2Sg = (x) => { const v = +x; return Number.isFinite(v) ? `${v > 0 ? '+' : v < 0 ? '−' : ''}${j2Num(Math.abs(v))}` : '—'; };
+  const j2Sg = (x) => { const v = +x; return Number.isFinite(v) ? `${v > 0 ? '+' : v < 0 ? '−' : ''}${j2Num(Math.abs(v))}` : '–'; };
   /* a money unit reads as a money range ($15–$40); anything else as a signed change (+4.3 to +17.3 % better) */
   const j2Range = (im) => { const u = String(im.unit || '').trim(), cur = { usd: '$', inr: '₹', eur: '€', gbp: '£' }[u.toLowerCase()] || (/^[$₹€£¥]$/.test(u) ? u : '');
     return cur ? `${esc(cur)}${j2Num(im.low)}–${esc(cur)}${j2Num(im.high)}` : `${j2Sg(im.low)} to ${j2Sg(im.high)}<small> ${esc(u)}</small>`; };
-  const j2Num = (x) => { const v = +x; return Number.isFinite(v) ? (Math.abs(v) >= 100 ? Math.round(v).toLocaleString('en-IN') : String(+v.toFixed(1))) : '—'; };
+  const j2Num = (x) => { const v = +x; return Number.isFinite(v) ? (Math.abs(v) >= 100 ? Math.round(v).toLocaleString('en-IN') : String(+v.toFixed(1))) : '–'; };
   const j2Key = (ch) => `${ch.id}:${RX.viewing || ch.head || 'v0'}`, j2ImpKey = (ch) => `${ch.id}:${ch.head || 'v0'}`; /* a projection is always of the head version */
   const j2Extra = (ch) => { const im = J2.imp[j2ImpKey(ch)], pk = J2.pack[j2Key(ch)]; let h = '';
     if (pk) h += `<div class="lgm ai">${face(ch.agent)}<div>${pk.busy ? `<p><span class="spin"></span>Putting the files together…</p>` : pk.error ? `<p>${esc(pk.error)}</p>` : `<p>${esc(j2PackLabel(ch))}: your files are ready. The final ${esc((ch.familyName || 'files').toLowerCase())} and its copy, to post yourself. Brew changes nothing in your accounts.</p><div class="j2-pack"><a class="btn btn-ghost sm" href="/${esc(pk.url)}" download="${esc(pk.name)}">${ic('down', 's14')}${esc(pk.name)}</a><small>${(pk.files || []).length} files</small></div>${(pk.todo || []).length ? `<p class="j2-todo">Still to do: ${pk.todo.map(esc).join(' · ')}</p>` : ''}`}</div></div>`;
@@ -4521,6 +4536,7 @@
     if (act === 'images-all') { const r = await tapi('POST', `/api/changes/${id}/image`, { all: true }); if (r.change) { RX.ch = r.change; putCh(r.change); } if (!r.image) toast(esc(r.why || 'No images right now')); return paintStudio(); }
     if (act === 'listing-photos') { const r = await tapi('POST', `/api/changes/${id}/listing-photos`, {}); if (r.change) { RX.ch = r.change; putCh(r.change); } if (!r.image) toast(esc(r.why || 'No photos right now')); return paintStudio(); }
     if (act === 'image') { const r = await tapi('POST', `/api/changes/${id}/image`, {}); if (r.change) { RX.ch = r.change; putCh(r.change); } if (!r.image) toast(esc(r.why || 'No image right now')); return paintStudio(); }
+    if (act === 'copy-post') { const p = ch.pkg || {}; const txt = [p.title, p.copy, (p.hashtags || []).join(' ')].filter(Boolean).join('\n\n'); if (!txt) return toast('Nothing to copy yet.'); return copyText(txt).then((ok) => (ok !== false ? toast(`${ic('check', 's16')}Post copied. Paste it where it goes.`) : toastLong(esc(txt).replace(/\n/g, '<br>'), 10000))); }
     if (act === 'post-open') { const po = postOpenOf(ch); if (!po) return toast('Nothing to post yet.'); const copied = copyText(po.text); const win = window.open(po.url, '_blank', 'noopener');
       const ok = await copied; if (!win) return toast(`${ic('info', 's16')}${ok ? 'Copied. ' : ''}Your browser blocked the new tab. <a href="${esc(po.url)}" target="_blank" rel="noopener">Open it here</a>.`);
       return toast(ok ? `${ic('check', 's16')}${esc(window.PostOpen.said(po))}` : `${ic('info', 's16')}The new tab is open, but copying didn’t work. Copy the post from the stage.`); }
@@ -4634,6 +4650,8 @@
   });
 
   /* ---------- The moves: every plan Brew wrote for the brand, as it is written, with the PDFs ---------- */
+  /* one plain sentence under each group of moves (QA UI 20 Oct) */
+  const MV_SUB = { know: 'Who you are, who buys and who you’re up against.', found: 'Showing up when people search and ask AI.', reach: 'Ads, social and creators that bring new people in.', convert: 'Pages and listings that turn a visit into an order.', keep: 'Messages that bring buyers back.', expand: 'New channels, partners and how the work runs.' };
   const MV_GROUPS = [['know', 'Know the brand', 1, 10], ['found', 'Be found', 11, 19], ['reach', 'Reach people', 20, 28], ['convert', 'Convert the visit', 29, 38], ['keep', 'Keep the customer', 39, 44], ['expand', 'Expand and operate', 45, 50]];
   const MV = { t: null, open: null };
   const mvSlug = () => B.slug || BR;
@@ -4646,7 +4664,7 @@
     const ms = r?.moves || [], by = Object.fromEntries(ms.map((m) => [m.n, m])), pdfs = r?.pdfs || {}, st = r?.status || {}, b = bd && !bd.error ? bd : null;
     const done = ms.filter((m) => m.n >= 1 && m.n < 1000 && !m.cadence).length, extra = ms.length - done, building = !!b && !st.done; // the playbook (status.total): not the index, not weekly moves (1001+)
     const live = new Map((b?.inflight || []).map((x) => [x.n, x])), failed = new Map((b?.failed || []).map((x) => [x.n, x]));
-    const kick = (m) => String(m?.kicker || '').replace(/\s*·\s*move\s+\d+\s+of\s+\d+\s*$/i, '');
+    const kick = (m) => String(m?.kicker || '').replace(/\s*·\s*(?:weekly\s+|timely\s+)?move\s+\d+.*$/i, ''); /* the number shows once, on the left; a timely move's hidden number never shows (QA 20 Oct) */
     const card = (m) => `<article class="mv2-c" data-mv="${m.n}" tabindex="0"><div class="mv2-k"><span>${mvNum(m.n)}</span>${kick(m) ? `<i>${esc(kick(m).toLowerCase())}</i>` : ''}</div>
       <h4>${esc(m.title)}</h4>${m.past ? `<p class="mv2-st is-past"><b>Ended</b> ${esc(m.past.name)} finished ${esc(fmtDay(Date.parse(m.past.end)) || m.past.end)}</p>` /* a festival plan after its festival (festival-past.js) */ : m.stat ? `<p class="mv2-st"><b>${esc(m.stat)}</b> ${esc(String(m.statLabel || '').toLowerCase())}</p>` : m.gives ? `<p>${esc(m.gives)}</p>` : ''}
       ${m.n != null ? `<a class="mv2-pdf" href="${pdfUrl(`move-${m.n}.pdf`)}" target="_blank" rel="noopener" title="Open the PDF" aria-label="Open the PDF" data-stop>${ic('doc', 's14')}</a>` : ''}</article>`;
@@ -4654,7 +4672,7 @@
       return `<li class="${x ? 'is-run' : f ? 'is-fail' : ''}"><span class="mv2-n">${mvNum(n)}</span><b>${esc(x?.title || f?.title || (b?.queue || []).find((q) => q.n === n)?.title || '')}</b><em>${x ? `<span class="spin"></span>Writing · ${mins(x.secs)}` : f ? 'Stopped · retries soon' : building ? 'Queued' : 'Not written'}</em></li>`; };
     const groupsHtml = MV_GROUPS.map(([k, name, a, z]) => { const ns = [...Array.from({ length: z - a + 1 }, (_, i) => a + i), ...ms.filter((m) => m.n > 50 && m.n < 1000 && m.group === k).map((m) => m.n)], w = ns.filter((n) => by[n]), p = ns.filter((n) => !by[n]); /* listening-era (51-65) and dynamic (100+) moves sit in their own group */
       return `<section class="mv2-sec" id="mvg-${k}"><header><h3>${esc(name)}</h3>${p.length ? `<span>${w.length} of ${ns.length}</span>` : ''}</header>
-        ${w.length ? `<div class="mv2-grid">${w.map((n) => card(by[n])).join('')}</div>` : ''}${(() => { const hot = p.filter((n) => live.has(n) || failed.has(n)), rest = p.filter((n) => !live.has(n) && !failed.has(n)), names = rest.map((n) => (b?.queue || []).find((q) => q.n === n)?.title).filter(Boolean);
+        ${MV_SUB[k] ? `<p class="mv2-gsub">${MV_SUB[k]}</p>` : ''}${w.length ? `<div class="mv2-grid${w.length > 6 ? ' mv2-cap' : ''}">${w.map((n) => card(by[n])).join('')}</div>${w.length > 6 ? `<button class="linkbtn mv2-all" data-mvall>Show all ${w.length}</button>` : ''}` : ''}${(() => { const hot = p.filter((n) => live.has(n) || failed.has(n)), rest = p.filter((n) => !live.has(n) && !failed.has(n)), names = rest.map((n) => (b?.queue || []).find((q) => q.n === n)?.title).filter(Boolean);
           return `${hot.length ? `<ul class="mv2-pend">${hot.map(pend).join('')}</ul>` : ''}${rest.length ? `<p class="mv2-later">${rest.length} more ${building ? 'to write' : 'not written yet'}${names.length ? `: ${esc(names.slice(0, 4).join(', '))}${names.length > 4 ? '…' : ''}` : ''}</p>` : ''}`; })()}</section>`; }).join('');
     /* moves written on a cadence (1001+: audit, listening, automation), newest families on top */
     const fam = ms.filter((m) => m.n >= 1000 || (m.n > 50 && m.n < 1000 && !MV_GROUPS.some(([k]) => k === m.group))).sort((a, b) => b.n - a.n);
@@ -4676,7 +4694,7 @@
         ${b.inflight.length ? `<section class="bd-card"><h3>Writing now</h3>${b.inflight.map((x) => `<div class="bd-run"><span class="spin"></span><div><b>${mvLabel(x.n)} · ${esc(x.title)}</b><span>${mins(x.secs)} so far · usually 6 to 9</span></div></div>`).join('')}</section>` : ''}
         ${b.failed.length ? `<section class="bd-card is-fail"><h3>Stopped <small>they get another try</small><button class="btn btn-ghost sm" data-bgretry>Retry now</button></h3>${b.failed.map((x) => `<div class="bd-row"><b>${mvLabel(x.n)} · ${esc(x.title)}</b><span>${esc(x.msg)}</span></div>`).join('')}</section>` : ''}
         ${b.queue.length ? `<section class="bd-card"><h3>Up next</h3><ol class="bd-q">${b.queue.map((x) => `<li><span>${mvNum(x.n)}</span>${esc(x.title)}</li>`).join('')}</ol></section>` : ''}
-        ${b.usd > 0 ? `<p class="q-note">Spent $${b.usd.toFixed(2)} of a $${b.cap} cap on Claude, treg and images for this brand.</p>` : ''}
+        ${b.usd > 0 ? `<p class="q-note">Spent $${b.usd.toFixed(2)} of a $${b.cap} cap on writing, research and images for this brand.</p>` : ''}
         ${b.events.length ? `<details class="q-more"><summary>Activity</summary><ul class="bd-log">${b.events.map((e) => `<li class="is-${e.type}"><time>${new Date(e.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time><span>${esc(e.text)}</span></li>`).join('')}</ul></details>` : ''}
       </div>`;
     const upHtml = !U ? `<div class="bd-empty">${GEN ? 'Updates open once the moves are written.' : `${poss(B.brand.name)} moves were written by hand, so Brew doesn’t refresh them.`}</div>` : (() => {
@@ -4721,7 +4739,7 @@
       box.innerHTML = `<ul class="wk-ch">${(c.rewritten || []).map((m) => `<li><span>${nn(m.n)}</span><div><b>${m.before?.title && m.before.title !== m.title ? `${esc(m.before.title)} → ` : ''}${esc(m.title)}</b><p>${esc(m.because || 'Rewritten')}${m.learnings?.length ? `, with learnings from ${esc(m.learnings.join(', '))}` : ''}.${eng(m.quality)}</p></div></li>`).join('')}
         ${(c.new || []).map((m) => `<li><span>${nn(m.n)}</span><div><b>${esc(m.title)}</b><p>New</p></div></li>`).join('')}${(c.retired || []).map((m) => `<li class="is-gone"><span>${nn(m.n)}</span><div><b>${esc(m.title)}</b><p>Retired</p></div></li>`).join('')}</ul>`;
       box.hidden = false; });
-    $('[data-mvall]')?.addEventListener('click', (e) => { e.currentTarget.previousElementSibling.classList.remove('mv2-cap'); e.currentTarget.remove(); });
+    $$('[data-mvall]').forEach((x) => x.addEventListener('click', (e) => { e.currentTarget.previousElementSibling.classList.remove('mv2-cap'); e.currentTarget.remove(); }));
     $$('[data-mvjump]').forEach((x) => x.onclick = (e) => { e.preventDefault(); $(`#mvg-${x.dataset.mvjump}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
     const upEst = () => { const k = $$('[data-upn]:checked').length, el = $('[data-upest]'); if (el) el.textContent = `${k ? `about $${Math.max(1, Math.round(k * (U?.estMove || 1.7)))}` : 'Tick a move'} · 8 to 10 min`; const bt = $('[data-uprw]'); if (bt) bt.disabled = !k || !U?.canRewrite; };
     $$('[data-upn]').forEach((x) => x.onchange = upEst); if ($('[data-upn]')) upEst();
@@ -4942,7 +4960,7 @@
         <label class="hd-search">${ic('search', 's16')}<input data-hd-q data-nomic type="search" placeholder="Search the words" value="${esc(f.q)}" aria-label="Search what people said"></label>
         <div class="hd-grp"><span class="hd-l">Where</span>${row('src', '', 'Everywhere', all, !f.src, `<span class="hd-stack">${(x.sources || []).slice(0, 3).map((s) => srcMark(s.id, s.name)).join('')}</span>`)}${(x.sources || []).filter((s, i) => HD.allS || i < 6 || f.src === s.id).map((s) => row('src', s.id, s.name, s.n, f.src === s.id, srcMark(s.id, s.name))).join('')}${!HD.allS && (x.sources || []).length > 6 ? `<button class="hd-row is-more" data-hd-alls><span>${x.sources.length - 6} more places</span></button>` : ''}</div>
         ${md.asked || f.mode ? `<div class="hd-grp"><span class="hd-l">How we heard</span>${row('mode', '', 'All of it', (md.heard || 0) + (md.asked || 0), !f.mode)}${row('mode', 'heard', 'Heard without asking', md.heard || 0, f.mode === 'heard')}${row('mode', 'asked', 'Asked in communities', md.asked || 0, f.mode === 'asked')}</div>` : ''}
-        ${th.length ? `<div class="hd-grp"><span class="hd-l">Topic</span><div class="hd-chips">${chip('theme', '', 'Any', null, !f.theme)}${th.slice(0, Math.min(thN, 24)).map((t) => chip('theme', t.name, topicCase(t.name), t.n, f.theme === t.name)).join('')}${th.length > thN ? `<button class="hd-chip is-more" data-hd-allt>${th.length - thN} more</button>` : ''}</div></div>` : ''}
+        ${th.length ? `<div class="hd-grp"><span class="hd-l">Topic</span><div class="hd-chips">${chip('theme', '', 'Any', null, !f.theme)}${th.filter((t) => !sum || !top.includes(t) /* the five in the bar above are not listed twice (QA UI 20 Oct) */).slice(0, Math.min(thN, 24)).map((t) => chip('theme', t.name, topicCase(t.name), t.n, f.theme === t.name)).join('')}${th.length > thN ? `<button class="hd-chip is-more" data-hd-allt>${th.length - thN} more</button>` : ''}</div></div>` : ''}
       </aside><div class="hd-main">${items.length ? `<div class="hd-wall">${items.map(fig).join('')}</div>${x.items.length < x.total ? `<button class="btn btn-ghost sm hd-more" data-hd-more>Show more (${n0(x.total - x.items.length)} left)</button>` : '<p class="hd-end">That’s everything.</p>'}` : '<p class="lx-empty">Nothing matches. Try another filter.</p>'}</div></div>`;
     $$('[data-hd-f]', el).forEach((b) => b.onclick = () => { HD.f[b.dataset.hdF] = b.dataset.v; renderHeard(); });
     const qi = $('[data-hd-q]', el); qi.oninput = () => { clearTimeout(HD.t); HD.t = setTimeout(() => { HD.f.q = qi.value.trim(); renderHeard(); }, 350); };
@@ -5045,7 +5063,7 @@
         ${toldHtml}
         ${moved.length ? `<section class="lx-sec">${lxHead('lx-moved', 'What moved the number', moved.length, '')}${moved.map(movedHtml).join('')}</section>` : ''}
         ${(() => { const you = lessons.filter((x) => x.kind === 'you'), br = lessons.filter((x) => x.kind !== 'you');
-          if (!UI2 && !you.length && !br.length && !moved.length) return `<section class="lx-sec">${lxHead('lx-lessons', 'Lessons', '', '')}<p class="lx-none">${ic('sparkles', 's16')}<span>Nothing yet. Pick, edit and ship from your cards, and each lesson Brew takes from it lands here.</span></p></section>`;
+          if (!UI2 && !you.length && !br.length && !moved.length) return ''; /* no lessons yet: no empty section (quiet rule, QA UI 20 Oct) */
           return `${you.length ? `<section class="lx-sec">${lxHead('lx-lessons', 'How you work', you.length, '')}${you.map(lessonHtml).join('')}</section>` : ''}${br.length ? `<section class="lx-sec">${lxHead('lx-lessons-b', `What it learned about ${esc(B.brand.name)}`, br.length, '')}${br.map(lessonHtml).join('')}</section>` : ''}`; })()}
         <section class="lx-sec">${lxHead('lx-rules', 'Rules', L.rules.length || '', L.rules.length ? '' : `Teach one, or edit the same way ${L.promoteAt} times and it becomes one.`)}
           ${L.rules.map(ruleHtml).join('')}<form class="lx-teach" id="ln-teach">${ic('plus', 's16')}<input id="ln-in" placeholder="Teach a rule, e.g. never say ‘guaranteed’" autocomplete="off" aria-label="Teach a rule"><button class="btn sm">Add</button></form>${forming(L.forming, 'Forming from your edits')}</section>

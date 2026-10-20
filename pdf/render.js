@@ -40,7 +40,8 @@ export async function withBrowser(fn) {
 /** Safe file name: "03 Five competitor dossiers for Acme.pdf". */
 export function pdfName(move) {
   const t = String(move.title || 'Move').replace(/[\/\\:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim();
-  return `${String(move.n ?? 0).padStart(2, '0')} ${t}.pdf`;
+  /* the number as a person reads it (move-label.js): "05 …", "Weekly move 4 …", a timely move by its title only (QA 20 Oct) */
+  const n = +(move.n ?? 0); return `${n > 1000 ? `Weekly move ${n - 1000} ` : n >= 100 && n <= 999 ? '' : `${String(n).padStart(2, '0')} `}${t}.pdf`;
 }
 
 async function htmlToPdf(browser, html, outFile) {

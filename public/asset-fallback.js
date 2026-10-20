@@ -16,9 +16,12 @@
     if (!el.dataset.src0) el.dataset.src0 = src;
     if (src && !el.dataset.retried && OWN.test(src)) {
       el.dataset.retried = '1';
+      /* no broken box while the file is asked for again (QA UI 20 Oct): hidden until it loads */
+      if (el.style) { el.style.visibility = 'hidden'; el.addEventListener?.('load', () => { el.style.visibility = ''; }, { once: true }); }
       later(() => el.setAttribute('src', `${src}${src.includes('?') ? '&' : '?'}r=${Date.now().toString(36)}`));
       return 'retry';
     }
+    if (el.style) el.style.visibility = '';
     const fb = fbOf(el).filter((x) => x !== src && x !== el.dataset.src0);
     if (el.tagName === 'VIDEO') {
       const pic = el.getAttribute('poster') || fb.shift(); if (!pic || !doc) return 'dead';

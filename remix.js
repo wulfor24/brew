@@ -476,7 +476,7 @@ export function createRemix(o) {
     /* a number quoted from the card's own evidence (a real review, a thread's reply count) is backed, not invented */
     /* a connected-account card (live-*) was written from the account's own numbers: they are backed too */
     const evTxt = JSON.stringify([card.post?.evidence || [], card.post?.where || [], card.evidence || [], ...(card.liveOnly || /^live-/.test(card.id || '') ? [card.title, card.sub, card.rows, card.detail, card.liveNums] : [])]).replace(/,(?=\d{3})/g, '');
-    const raw = [...new Set(unbackedNums([ch.after.title, ch.after.sub, ...pubT].join(' \n ')))], nums = raw.filter((n) => !evTxt.includes(String(n).replace(/[^\d.%]/g, '').replace(/^\./, '')));
+    const raw = [...new Set(unbackedNums([copy.title, copy.sub, ...(copy.detail?.why || [])].join(' \n ')))] /* the same text the fact check reads, so a failed check always names its number (QA J-22) */, nums = raw.filter((n) => !evTxt.includes(String(n).replace(/[^\d.%]/g, '').replace(/^\./, '')));
     const qa = qaCheck(copy).filter((x) => x.k !== 'Short title, point first').map((x) => (x.k.startsWith('Every ₹') && nums.length ? { ...x, ok: false, k: `Numbers not in the fact sheet: ${nums.join(', ')} (use a number from the facts or drop it)` } : x.k.startsWith('Every ₹') && !x.ok && raw.length && !nums.length ? { ...x, ok: true, fix: false } : x));
     /* a failed banned-words check names the word it found ("Uses “regrowth”, a claim this category can’t make"), never the check's own name */
     const bannedIn = (txt) => { try { const re = new RegExp(BANNED.source, [...new Set(`${BANNED.flags}gi`)].join('')); return [...new Set((String(txt).match(re) || []).map((w) => w.trim().toLowerCase()).filter(Boolean))].slice(0, 3); } catch { return []; } };
@@ -1087,6 +1087,9 @@ export function createRemix(o) {
      this heal from their cut reasons ("Version A: …", "Variation B: …"), and an old "Video added" copy is folded away. ---------- */
   const CUT_RE = /^(?:Version|Variation) ([A-H]):\s*(.*)$/;
   const shortName = (s) => { const w = String(s || '').replace(/[“”"().!?]/g, '').replace(/^(?:an?|the)\s+/i, '').trim().split(/\s+/).filter(Boolean).slice(0, 3).join(' ').replace(/[,;:–-]+$/, ''); return w ? w[0].toUpperCase() + w.slice(1) : ''; };
+  /* a redo's name, whole: the angle as it is when short, else cut at a word that doesn't leave "Ask for a." (QA J-18) */
+  const redoName = (s) => { const x = String(s || '').replace(/[“”"()]/g, '').replace(/[.!?]+$/, '').trim(); if (x.length <= 40) return x ? x[0].toUpperCase() + x.slice(1) : '';
+    const w = x.slice(0, 41).replace(/\s+\S*$/, '').split(/\s+/); while (w.length > 2 && /^(?:a|an|the|of|for|on|to|with|what|and|or|in|at|by|from|your|our)$/i.test(w[w.length - 1])) w.pop(); const y = w.join(' ').replace(/[,;:–-]+$/, ''); return y[0].toUpperCase() + y.slice(1); };
   const cutNames = (ch, made) => (made.length > 1 ? made.map((v, i) => `${'ABCDEFGH'[i]} (${ch.options?.names?.[v.id] || shortName(CUT_RE.exec(v.reason || '')?.[2]) || 'a different cut'})`).join(', ') : made.map((v) => 'v' + v.n).join(', ')); /* chat names options by letter and angle, never v-numbers */
   const parentsOf = (t, ch) => { const vs = versionsOf(t, ch.id), by = new Map(vs.map((v) => [v.id, v])); return { vs, by }; };
   const descends = (t, ch, v, ancestorId) => { const { by } = parentsOf(t, ch); for (let x = v, k = 0; x && k < 400; x = by.get(x.parentVersionId), k++) if (x.id === ancestorId) return true; return false; };
@@ -1486,7 +1489,7 @@ export function createRemix(o) {
     if (visual) made = genImage(t, ch, 'the new take', { all: rows.length > 1, target: v.id }) ? (rows.length > 1 ? 'Its slides land in a minute.' : 'Its picture lands in a minute.') : '';
     else if (hadClip) made = genVideo(t, ch, 'the new take') ? 'Filming it now, a free draft, about two minutes.' : videoWhy(ch);
     else if (isVideoPost(ch)) made = 'Tap Make the video when you want the clip.';
-    ch.thread.push({ from: 'ai', text: `Redid it${x.angle ? `: ${shortName(x.angle) || x.angle}` : ''}. v${v.n} is on the stage${was ? `; v${was.n} is in History` : ''}. ${made}`.trim(), at: now(t) });
+    ch.thread.push({ from: 'ai', text: `Redid it${x.angle ? `: ${redoName(x.angle)}` : ''}. v${v.n} is on the stage${was ? `; v${was.n} is in History` : ''}. ${made}`.trim(), at: now(t) });
     signal(t, 'pick', { agent: ch.agent, angle: ch.angle, action: ch.action, changeId: ch.id }, now(t));
     return v;
   };
