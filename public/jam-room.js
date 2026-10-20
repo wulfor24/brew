@@ -146,6 +146,7 @@
       ${a ? '<hr><button role="menuitem" data-jm-assignto="">Nobody</button>' : ''}</div>` : '';
     return `<span class="jm-assign"><button class="jm-assign-b${a ? ' is-on' : ''}" data-jm-assign aria-expanded="${!!JM.assign}">${label}</button>${pop}</span>`; };
   const typingHtml = (w) => { const ty = (JM.here?.[w?.id] || []).filter((x) => x.typing); return ty.length ? `<div class="jm-sys jm-typing-who">${esc(ty.map(shortName).join(' and '))} ${ty.length > 1 ? 'are' : 'is'} typing<span class="jm-typing"><i></i><i></i><i></i></span></div>` : ''; };
+  const jmLabel = (l) => (!l ? 'Make it' : /^(?:open|see|agree|approve|publish|shift|pause|restart|launch|turn on|queue|start the tests|fix tracking|fix the links|update the prices|review draft|win their|show how|work on this|send|set the watch|ship|apply|run|lock)\b/i.test(l) ? 'Make the draft' : l); /* the button says what it does, never a saved non-making label (QA J-15) */
   const shipHtml = (w, doc) => {
     if (w && !EARLY.includes(w.stage)) return JM.later ? `<div class="jm-later">${JM.later}</div>` : '';
     /* the team replied: the answer they need is one tap */
@@ -161,7 +162,7 @@
     /* the card's action, before the plan's make step ran: it makes the draft here first */
     if (JM.pick) return `<div class="jm-ship is-split">${two}${share}<button class="linkbtn jm-alt" data-jm-unpick>Not yet</button></div>`; /* "Or share the brief": the two ways, before or after the make step */
     const pl = w?.cardPlan || c?.plan, made = !pl || pl.made || (w?.drafts || []).some((d) => d.state === 'ready' && !d.seeded) || (w && w.stage !== 'drafting');
-    if (pl && !made) { const busy = JM.making || (w?.drafts || []).some((d) => d.state === 'making'); return `<div class="jm-ship is-split"><button class="btn btn-primary jm-go" data-jm-make="auto"${busy ? ' disabled' : ''}>${busy ? '<span class="spin"></span>Making it…' : `${ic('sparkles', 's16')}<span>${esc(pl.cta)}</span>`}</button>${share}<button class="linkbtn jm-alt" data-jm-pick>Or share the brief with the team</button></div>`; }
+    if (pl && !made) { const busy = JM.making || (w?.drafts || []).some((d) => d.state === 'making'); return `<div class="jm-ship is-split"><button class="btn btn-primary jm-go" data-jm-make="auto"${busy ? ' disabled' : ''}>${busy ? '<span class="spin"></span>Making it…' : `${ic('sparkles', 's16')}<span>${esc(jmLabel(pl.cta))}</span>`}</button>${share}<button class="linkbtn jm-alt" data-jm-pick>Or share the brief with the team</button></div>`; }
     if (miss.length) return `<div class="jm-ship is-split"><button class="btn btn-primary jm-go" data-jm-fill="${esc(miss[0])}">${ic('hand', 's16')}<span>Next: ${esc(String(miss[0]).toLowerCase())}${miss.length > 1 ? ` <small>+${miss.length - 1}</small>` : ''}</span></button>${share}<button class="linkbtn jm-alt" data-jm-pick>Or share the brief with the team as it is</button></div>`;
     return `<div class="jm-ship is-split">${two}${share}</div>`;
   };
@@ -214,7 +215,7 @@
     const cut = (x, n) => { x = String(x || '').trim(); return x.length > n ? x.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : x; };
     const why = (c.detail?.why || []).filter((x) => x && !/^[^:]{2,60}:\s*[₹$€£]?[\d.,]+\s*$/.test(x) && !/^[^:“"]{2,90}\([^)]*\):/.test(x) /* evidence rows (label (source): value), not reasons */).slice(0, 2), miss = (w?.doc?.missing || []).map((x) => String(x).toLowerCase());
     const pl = w?.cardPlan || c.plan, made = !pl || pl.made || (w?.drafts || []).some((d) => d.state === 'ready' && !d.seeded) || (w && w.stage !== 'drafting');
-    const next = pl && !made ? `Press “${pl.cta}” below to make the ${pl.make?.one || pl.make?.what || 'version'} here; change it or redo it, then share the brief.`
+    const next = pl && !made ? `Press “${jmLabel(pl.cta)}” below to make the ${pl.make?.one || pl.make?.what || 'version'} here; change it or redo it, then share the brief.`
       : miss.length ? `Tell me in the chat: ${miss.join('; ')}. Then share the brief.`
       : 'Happy with it? Share the brief with the ShopOS team, Brew’s build crew, or your own team from the bottom bar. It copies the brief and a link to everything.';
     return `<div class="case"><small class="case-k">The case${c.src ? ` · ${esc(c.src)}` : ''}</small><b class="case-t">${esc(cut(c.title, 140))}</b>${c.sub ? `<p>${esc(cut(c.sub, 240))}</p>` : ''}

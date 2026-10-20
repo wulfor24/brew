@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { planFor, planMd, NAV_LABELS, actionOfCard } from '../card-plan.js';
+import { planFor, planMd, NAV_LABELS, actionOfCard, NOT_MAKING_LABEL } from '../card-plan.js';
 import { recipeOfCard, ACTIONS } from '../remix.js';
 import { familyOf, FAMILY_NAME } from '../studio.js';
 import { CTA } from '../seed-template.js';
@@ -72,7 +72,7 @@ const checkPlan = (c, pl, why) => {
   assert.equal(pl.steps.filter((s) => s.k === 'make').length, 1, `${why}: exactly one make step`);
   assert.equal(pl.steps[pl.steps.length - 1].k, 'ready', `${why}: ends ready to share the brief`);
   assert.match(pl.steps[pl.steps.length - 1].t, /ready/i);
-  assert.equal(pl.cta, label || pl.cta, `${why}: the plan ends on the card's own button`);
+  assert.equal(pl.cta, label ? (NOT_MAKING_LABEL.test(label) ? 'Make the draft' : label) : pl.cta, `${why}: the plan ends on the card's own button when it makes the thing, else Make the draft`);
   assert.ok(pl.summary.endsWith(`Next: ${pl.cta}.`), `${why}: summary ends on the action: ${pl.summary}`);
   assert.ok(pl.batch ? pl.n === 0 : pl.n >= 1, `${why}: make count`);
 };
@@ -94,7 +94,7 @@ test('every action in the registry makes a correct plan of its own widget', () =
 test('every button the product writes opens a plan, except the ones that are a place to go', () => {
   for (const label of [...Object.keys(CTA), 'Start this', 'Turn into an idea', 'Make our version', 'Post it', 'Use their words in a post', 'Reply in r/Sneakers', 'Send on WhatsApp']) {
     const pl = planFor(K('l', { cta: { label } }));
-    if (NAV_LABELS.has(label)) assert.equal(pl, null, label); else { assert.ok(pl?.steps?.length >= 3, label); assert.equal(pl.cta, label); }
+    if (NAV_LABELS.has(label)) assert.equal(pl, null, label); else { assert.ok(pl?.steps?.length >= 3, label); assert.equal(pl.cta, NOT_MAKING_LABEL.test(label) ? 'Make the draft' : label); }
   }
 });
 
