@@ -12,7 +12,7 @@ import { createMakers } from './drafts.js';
 import { cardProduct, sceneOf } from './product-match.js';
 import { isRivalCard, isResearchImage, readRivalAd, rivalBlock, rivalPicture } from './rival-ad.js'; // "Make our version" of a rival's ad: read it, then remake it in its style
 import { createStudioFinals } from './finals-routes.js';
-import { buildDraft } from './sloosh-prompt.js'; // Make the final on a version: Sloosh, quote first, behind a button
+import { buildDraft, motionOnly, onScreen } from './sloosh-prompt.js'; // Make the final on a version: Sloosh, quote first, behind a button
 import { versionLabel } from './text-fit.js';
 import { ctaName } from './seed-template.js'; /* a renamed button (Publish Campaign, List what points there) maps as its new name */
 import { withSteps } from './card-plan.js';
@@ -28,6 +28,7 @@ import { dejargon } from './plain.js'; // jam names in plain words, like the car
 import { budgetWhy } from './budget.js'; // v2 words/takes: a refused spend is said with its real reason, never a silent fallback
 import { createFamilies } from './measure-families.js';
 import { launchBrowser, zipBuffer, withBrowser } from './pdf/render.js';
+import { fitsRatio } from './vertex-media.js'; // a reused first frame must already be the clip's shape
 import { addV, versionsOf, versionById, signal, answered, autoCheck, outcome, ruleChecks, promptBlock, orderIntents, pickScore, takeNew, trustOf, summary, L, DETECTORS } from './learn.js';
 import { moveLabel } from './move-label.js'; // "Weekly move 11", never "Move 1011"
 
@@ -822,7 +823,7 @@ export function createRemix(o) {
      It lands on the version it was made for (patched into that version, no new version), within DAILY_VIDEO_CAP. ---------- */
   const isVideoPost = (ch) => ch.family === 'post' && /short_video$/.test(String(ch.action || ''));
   const hookOf = (p = {}) => clean(String((p.script || [])[0]?.line || p.title || String(p.copy || '').split('\n')[0] || '')).split(/\s+/).slice(0, 14).join(' ');
-  let MK = null; const makers = () => (MK ||= o.makers || createMakers({ geminiImage, log }));
+  let MK = null; const makers = () => (MK ||= o.makers || createMakers({ geminiImage, launchBrowser, log })); /* launchBrowser: the on-screen words set in exact type over the clip */
   const VID_JOBS = new Set();
   const srcPhoto = async (t, ch, lead = null) => { const c = t.cards.get(ch.cardId) || {}, p = ch.pkg || {};
     const cands = [...refsOf(t, ch), ...(p.photos || []).filter((u) => !/^gen\//.test(u) && !isResearchImage(u)), lead, cardPhoto(t, c), ...(isRivalCard(c) ? [] : c.images || []).filter((u) => !/^gen\//.test(u) && !/statics\//.test(u) && !isResearchImage(u)), LANE_PHOTO[c.lane], ...Object.values(LANE_PHOTO || {}), o.catalogOf?.(t)?.[0]?.img].filter((x) => x && typeof x === 'string'); /* the jam's own photos first */
@@ -840,7 +841,9 @@ export function createRemix(o) {
         /* a new cut opens on its own first shot: the frame made for another script (the first draft's still, kept on the
            package by keepMedia) is not reused for it, so three new hooks are three new videos, not one picture animated thrice */
         const shot0 = String(sc[0]?.shot || '').trim(), reuse = !shot0 || (p.frameFor != null ? p.frameFor === shot0 : !versionsOf(t, ch.id).some((x) => x.id !== target && x.snapshot?.video));
-        let frame = reuse && /^gen\//.test(p.image || '') && (await genFile(p.image.slice(4))) ? p.image.slice(4) : null;
+        /* a reused picture must already be tall: a 4:5 post picture became a reel with black bars above and below (Arata, 20 Oct) */
+        const old = reuse && /^gen\//.test(p.image || '') ? await genFile(p.image.slice(4)) : null;
+        let frame = old && (await fitsRatio(fs.readFileSync(old), '9:16')) ? p.image.slice(4) : null;
         if (!frame) {
           const src = await srcPhoto(t, ch); if (!src) throw new Error('no product photo could be read for the first frame');
           /* our version of a rival's video ad: its first frame's composition and look, in words, with our product */
@@ -852,12 +855,15 @@ export function createRemix(o) {
           frame = key;
         }
         ch.videoStep = 'Animating it, about a minute';
-        const motion = clean(sc.slice(0, 3).map((x) => x.shot).filter(Boolean).join(' Then ')).slice(0, 360) || 'The camera slowly pushes in on the product.';
+        /* the clip is the opening shot only: the next shots joined with "Then" made Veo cut to new scenes with new people. The
+           shot's own words ("Bold text overlay: …") are kept out of Veo's prompt and set in exact type over the first seconds */
+        const motion = motionOnly(clean(shot0)).slice(0, 360) || 'The camera slowly pushes in on the product.';
         let name = await M.video(frame, `Over 6 seconds: ${motion}`, { ratio: '9:16', onStep: (s) => { ch.videoStep = s; } });
         let voiced = false;
         if (hook && spend('voice')) { ch.videoStep = 'Adding the voiceover';
           const au = await M.voice(hook, 'warm and natural, like a creator talking to camera', 'Kore').catch((e) => { log.warn('[short video voice]', e.message); return null; });
           const both = au ? await M.mux(name, au).catch((e) => { log.warn('[short video mux]', e.message); return null; }) : null; if (both) { name = both; voiced = true; } }
+        const words = onScreen(shot0); if (words && M.headClip) { const hv = await M.headClip(name, { text: words }).catch((e) => { log.warn('[short video words]', e.message); return null; }); if (hv) name = hv; }
         const media = { video: 'gen/' + name, poster: 'gen/' + frame, image: 'gen/' + frame, videoHook: hook, frameFor: shot0 };
         const v = versionsOf(t, ch.id).find((x) => x.id === target); if (v) v.snapshot = { ...v.snapshot, ...media };
         /* the clip lands in the option it was made for (Param, 19 Oct: no more "Video added" versions): on the stage when the stage
@@ -1799,9 +1805,10 @@ export function createRemix(o) {
           if (as === 'video') {
             step('Animating it, about a minute');
             let name = await makers().video(key, `Over 6 seconds: ${plan.motion || 'The camera slowly pushes in on the product.'}`, { ratio: '9:16', onStep: step });
-            const hook = plan.script?.[0]?.line;
+            const hook = plan.script?.[0]?.line, words = clean(plan.overlay || '') || onScreen(plan.script?.[0]?.shot);
             if (hook && spend('voice')) { step('Adding the voiceover'); const au = await makers().voice(hook, 'warm and natural, like a creator talking to camera', 'Kore').catch((e) => { log.warn('[remake voice]', e.message); return null; });
               const both = au ? await makers().mux(name, au).catch((e) => { log.warn('[remake mux]', e.message); return null; }) : null; if (both) name = both; }
+            if (words && makers().headClip) { const hv = await makers().headClip(name, { text: words.slice(0, 80) }).catch((e) => { log.warn('[remake words]', e.message); return null; }); if (hv) name = hv; } /* in exact type, never drawn by Veo */
             Object.assign(media, { video: 'gen/' + name, poster: 'gen/' + key });
           }
         }

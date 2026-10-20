@@ -70,7 +70,17 @@ export function fluxHex(b) { const cs = (b.brand.colors || []).filter((c) => /^#
 /* ---------- video renderers ---------- */
 /* a draft clip from a still (Veo on Vertex, image to video): one handheld shot at a natural pace, what moves and who uses the
    product; the product keeps its shape, colours and brand mark (a pinned, still product made clips nobody stopped for) */
-export function veoDraft(b) { return one(`${sentence(b.motion) || 'A hand picks the product up and uses it.'} One continuous handheld phone shot at a natural pace; hands and people may move and use the product; the product keeps its shape, colours and brand mark as in the first frame. ${b.sound ? 'Quiet room tone.' : ''} No new text appears, no captions, no logo.`); }
+/* Veo draws whatever words a prompt mentions, and draws them badly ("Over? Not yeith."): a scripted shot's text overlay, caption,
+   price pop-up or quoted line is taken out of the motion here, and the words go on afterwards in exact type (headClip). A shot
+   list joined with "Then" made Veo cut to new scenes with new people (a son who wasn't in the frame, the father's face changed),
+   so a draft clip is one shot (the caller passes the first shot only) of the people already in its first frame */
+const WORDY = /\b(text|overlay|caption|subtitle|title card|on-?screen|super(?:imposed)?|lower third|price tag|pops? up|typography|headline|words? appear|voice-?over|says?|asks?)\b/i;
+export const motionOnly = (s) => one(String(s || '').replace(/["“”][^"“”]*["“”]/g, '').split(/(?<=[.!?])\s+/).filter((x) => !WORDY.test(x)).join(' ')).replace(/[\s,;:]+$/, '');
+/* the words a scripted shot asks to show on screen ('Bold text overlay in the first second: "Over? Not yet."'), for headClip */
+export const onScreen = (shot) => one(/\b(?:text|overlay|caption|title|super|headline|on-?screen)\b[^"“]{0,60}["“]([^"”]{2,80})["”]/i.exec(String(shot || ''))?.[1] || '');
+export const VEO_NO_TEXT = 'Draw no words anywhere: no text overlays, captions, subtitles, titles, price tags, signs or logos; any words are added afterwards.';
+export const VEO_SAME_PEOPLE = 'Only the people already in the first frame appear, each keeping the same face, hair, build and clothes throughout; no one new enters and no cuts.';
+export function veoDraft(b) { return one(`${sentence(motionOnly(b.motion)) || 'A hand picks the product up and uses it.'} One continuous handheld phone shot at a natural pace that fills the whole frame; hands may move and use the product; the product keeps its shape, colours and brand mark as in the first frame. ${VEO_SAME_PEOPLE} ${b.sound ? 'Quiet room tone.' : ''} ${VEO_NO_TEXT}`); }
 /* Seedance 2.5: references by job, one summary sentence, then timed beats in whole seconds with no gaps; SFX in <>, lines in quotes */
 export function seedanceBeats(b) {
   const S = Math.max(4, Math.min(30, Math.round(b.seconds || 6))); const beats = (b.beats || []).filter((x) => one(typeof x === 'string' ? x : x?.shot || x?.beat || x?.line)).slice(0, 6);

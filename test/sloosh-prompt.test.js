@@ -29,7 +29,7 @@ test('a carousel slide names its place in the set and keeps the top third calm',
 
 test('a video draft is one handheld shot where hands may use the product, which keeps its shape and mark', () => {
   const d = buildDraft({ kind: 'video', motion: 'the camera drifts right as steam rises, epic', ratio: '9:16' });
-  assert.equal(d.prompt, 'The camera drifts right as steam rises. One continuous handheld phone shot at a natural pace; hands and people may move and use the product; the product keeps its shape, colours and brand mark as in the first frame. No new text appears, no captions, no logo.');
+  assert.equal(d.prompt, 'The camera drifts right as steam rises. One continuous handheld phone shot at a natural pace that fills the whole frame; hands may move and use the product; the product keeps its shape, colours and brand mark as in the first frame. Only the people already in the first frame appear, each keeping the same face, hair, build and clothes throughout; no one new enters and no cuts. Draw no words anywhere: no text overlays, captions, subtitles, titles, price tags, signs or logos; any words are added afterwards.');
 });
 
 test('a final with text picks Nano Banana Pro, quotes each line with a place and renders it once; three lines go to Ideogram', () => {

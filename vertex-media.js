@@ -15,6 +15,22 @@ async function pngOrJpeg(buf) {
   if (!fs.existsSync(out)) { fs.writeFileSync(src, buf); await new Promise((res, rej) => execFile('ffmpeg', ['-y', '-v', 'error', '-i', src, '-frames:v', '1', out], { timeout: 60e3 }, (e) => (e ? rej(new Error(`the first frame (${k || 'unknown'}) could not be read: ${e.message}`)) : res()))); }
   return { buf: fs.readFileSync(out) };
 }
+/* a first frame not of the clip's own shape is cropped to it (centred, cover) before Veo sees it: Veo pads a 4:5 picture into a
+   9:16 clip with black bars above and below (an Arata reel, 20 Oct, filled only the middle of the frame) */
+const run = (bin, args) => new Promise((res, rej) => execFile(bin, args, { timeout: 60e3 }, (e, out) => (e ? rej(e) : res(String(out || '')))));
+export async function fitFrame(buf, ratio = '9:16') {
+  const [rw, rh] = ratio === '16:9' ? [16, 9] : [9, 16], id = crypto.createHash('sha1').update(buf).update(ratio).digest('hex').slice(0, 16);
+  const src = path.join(os.tmpdir(), `veo-fit-${id}`), out = path.join(os.tmpdir(), `veo-fit-${id}.png`);
+  try { fs.writeFileSync(src, buf);
+    const m = /(\d+)x(\d+)/.exec(await run('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'csv=p=0:s=x', src])); if (!m) return buf;
+    const w = +m[1], h = +m[2], want = rw / rh; if (Math.abs(w / h - want) / want < 0.02) return buf;
+    const cw = w / h > want ? Math.round((h * want) / 2) * 2 : w, ch = w / h > want ? h : Math.round(w / want / 2) * 2;
+    await run('ffmpeg', ['-y', '-v', 'error', '-i', src, '-vf', `crop=${cw}:${ch}`, '-frames:v', '1', out]); return fs.readFileSync(out); }
+  catch { return buf; } /* without ffmpeg the frame goes as it is (bars, but a clip) */
+  finally { fs.rmSync(src, { force: true }); fs.rmSync(out, { force: true }); }
+}
+/* whether a picture is already the clip's shape (fitFrame leaves it untouched) */
+export const fitsRatio = async (buf, ratio) => (await fitFrame(buf, ratio)) === buf;
 const PROJECT = () => process.env.GOOGLE_CLOUD_PROJECT || 'squareup-492617';
 const VEO_LOC = () => process.env.VEO_LOCATION || 'us-central1';
 let tok = { v: '', exp: 0 };
@@ -47,7 +63,7 @@ export async function vertexVideo(frame, prompt, { model = process.env.VEO_MODEL
   const base = `https://${VEO_LOC()}-aiplatform.googleapis.com/v1/projects/${PROJECT()}/locations/${VEO_LOC()}/publishers/google/models/${model}`;
   /* Veo takes 16:9 or 9:16 only (a 4:5 or 1:1 draft asked for one and got a 400), 4 to 8 seconds, and a PNG or JPEG first frame */
   ratio = ratio === '16:9' ? '16:9' : '9:16'; seconds = Math.max(4, Math.min(8, Math.round(+seconds || 6)));
-  ({ buf: frame } = await pngOrJpeg(frame)); const mimeType = kindOf(frame) === 'png' ? 'image/png' : 'image/jpeg';
+  ({ buf: frame } = await pngOrJpeg(frame)); frame = await fitFrame(frame, ratio); const mimeType = kindOf(frame) === 'png' ? 'image/png' : 'image/jpeg';
   const op = await post(`${base}:predictLongRunning`, { instances: [{ prompt, image: { bytesBase64Encoded: frame.toString('base64'), mimeType } }],
     parameters: { sampleCount: 1, durationSeconds: seconds, aspectRatio: ratio, resolution, generateAudio: false, personGeneration: 'allow_adult' } });
   if (!op.name) throw new Error('video was not started');
