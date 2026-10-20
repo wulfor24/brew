@@ -4542,7 +4542,7 @@
       return toast(ok ? `${ic('check', 's16')}${esc(window.PostOpen.said(po))}` : `${ic('info', 's16')}The new tab is open, but copying didn’t work. Copy the post from the stage.`); }
     if (btn) { btn.disabled = true; btn.classList.add('is-busy'); }
     /* the jam's one exit: Share the brief (share.js). share-shopos / share-team copy it straight away; share asks which */
-    if (/^share/.test(act)) { if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); } window.__shareDone = () => { pullWork(true); if (view === 'remix' && RX.ch?.id === id) paintStudio(); }; return window.Share.open(RX.p, act === 'share-shopos' ? 'shopos' : act === 'share-team' ? 'team' : null); }
+    if (/^share/.test(act)) { if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); } window.__shareDone = () => { pullWork(true); if (view === 'remix' && RX.ch?.id === id) paintStudio(); }; const to = act === 'share-shopos' ? 'shopos' : act === 'share-team' ? 'team' : null; const done = to ? busyBtn(btn, to === 'shopos' ? 'Sending…' : 'Copying…') : () => {}; /* Send brief spins until the email is out */ return Promise.resolve(window.Share.open(RX.p, to)).finally(done); }
     if (act === 'jam') { const r = await tapi('POST', `/api/changes/${id}/jam`, ch._scope ? { scope: ch._scope } : {}); if (r.error) return toast(esc(r.error)); putCh(r.change); putWork(r.work); paintRemix(); showLearned(r.learned); openDetail({ ...RX.p, _work: r.work }, { jam: true }); toast(`${ic('hand', 's16')}Jam opened: ${r.work.plan?.questions.filter((q) => !q.answer).length || 0} questions to answer, then it ships.`); return; }
   };
   document.addEventListener('click', async (e) => {
