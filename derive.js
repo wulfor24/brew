@@ -51,6 +51,18 @@ export function factsFromLedger(ledger = [], { host } = {}) {
 /* the config fields that follow the selling market (market.js): a market that moves patches only these */
 /* a market still "to confirm" (market.js toConfirm) stays unknown: no country, name, markets or sale day, never a quiet US
    (QA 19 Oct). Readers say "your market" or skip the market-only lines; locale, time zone and search location keep a neutral default */
+/* a brand with no saved country whose own words name one place over and over ("a Bangalore grocer", "Fresno, California"):
+   that country. Only the brand's own text (its brief and about), only a clear winner (5+ mentions, 3x the next), and never for a
+   market the read left "to confirm" between several countries (moves audit 20 Oct: firstclub-site got a US calendar) */
+const PLACES = { IN: /\b(?:india|indian|bangalore|bengaluru|mumbai|delhi|new delhi|gurgaon|gurugram|noida|hyderabad|chennai|pune|kolkata|ahmedabad|jaipur|kochi)\b/gi,
+  US: /\b(?:united states|usa|u\.s\.|california|texas|new york|florida|illinois|washington state|fresno|los angeles|san francisco|chicago|seattle|austin|boston)\b/gi,
+  GB: /\b(?:united kingdom|uk|england|scotland|wales|london|manchester|birmingham|leeds|glasgow|edinburgh)\b/gi, AU: /\b(?:australia|sydney|melbourne|brisbane|perth)\b/gi,
+  CA: /\b(?:canada|toronto|vancouver|montreal|ontario)\b/gi, AE: /\b(?:uae|dubai|abu dhabi)\b/gi, SG: /\bsingapore\b/gi };
+export function countryFromText(...texts) {
+  const t = texts.filter((x) => typeof x === 'string').join('\n'); if (!t) return null;
+  const n = Object.entries(PLACES).map(([cc, re]) => [cc, (t.match(re) || []).length]).sort((a, b) => b[1] - a[1]);
+  return n[0][1] >= 5 && n[0][1] >= 3 * (n[1]?.[1] || 0) ? n[0][0] : null; }
+export const CURRENCY_OF = { IN: 'INR', US: 'USD', GB: 'GBP', AU: 'AUD', CA: 'CAD', AE: 'AED', SG: 'SGD' };
 export function marketConfig(p = {}) {
   const cc = String(p.country || '').toUpperCase();
   return { country: cc, countryName: cc ? CNAME[cc] || cc : '', markets: (p.markets || [cc]).filter(Boolean), registeredCountry: p.registeredCountry || null, locale: LOCALE[cc] || 'en-US',

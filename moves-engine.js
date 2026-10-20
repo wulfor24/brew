@@ -17,6 +17,7 @@ const MOVE_MODEL = () => ((process.env.AI_PROVIDER || 'gemini').toLowerCase() !=
 import { mockAllowed } from './ai.js'; // a [MOCK] placeholder stands in only on a mock run, never after a billing pause
 import { dateCounts } from './pack-numbers.js'; // counts that move day to day say the day they were read
 import { INDEX_GROUPS } from './move-index.js';
+import { usdText } from './fx.js';
 import { CLAIMS_RULE } from './claims.js'; // the moves promise only what the brand itself says
 import { promptBlock as creativeBlock } from './creative-catalog.js'; // what can be made, for the creative and social-posts disciplines
 
@@ -264,7 +265,7 @@ export function signalLedger({ themes, items, history, asked, pulse, videos, cal
   }
   // market pulse lines, as they are
   for (const l of (Array.isArray(pulse) ? pulse : pulse?.lines || []).slice(0, 80)) if (l?.key && l.value != null && l.value !== '')
-    add({ key: `pulse.${String(l.key).replace(/^pulse\./, '')}`, n: numOf(l.value), v: `${l.value}${l.unit ? ` ${l.unit}` : ''}`, label: l.label || l.key, src: srcName(l.source, 'Brew market pulse'), url: l.url || '', at: isoOf(l.at) || isoOf(pulse?.at) || td, family: l.family || 'market' });
+    add({ key: `pulse.${String(l.key).replace(/^pulse\./, '')}`, n: numOf(l.value), v: usdText(`${l.value}${l.unit ? ` ${l.unit}` : ''}`, profile?.currency) /* dollars from SEO tools in the brand's currency */, label: l.label || l.key, src: srcName(l.source, 'Brew market pulse'), url: l.url || '', at: isoOf(l.at) || isoOf(pulse?.at) || td, family: l.family || 'market' });
   // video reads: the hook and structure of videos relevant to the brand
   for (const x of (videos || []).filter(Boolean).slice(0, 20)) {
     const id = x.id || slugOf(x.url), hook = x.hook?.text || x.hook?.line || x.hook, scenes = Array.isArray(x.scenes) ? x.scenes.length : null, secs = numOf(x.duration ?? x.length ?? x.secs);

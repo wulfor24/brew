@@ -11,13 +11,14 @@ import vm from 'node:vm';
 import path from 'node:path';
 import { allowedFrom } from './fact-gate.js';
 import { demoFor, withDemo, DEMO_V } from './demo-data.js';
-import { fitIndex } from './move-index.js'; // the index's tables, counts and diagram follow today's moves
+import { fitIndex } from './move-index.js';
+import { usdDeep } from './fx.js'; // SEO tools' dollar estimates in the brand's currency // the index's tables, counts and diagram follow today's moves
 import { dejargon } from './plain.js'; // plain words on saved source names
 import { brewFile } from './brew-name.js'; // packs written before the rename say ShopOS
 import { socialize, readSocial } from './social-feed.js'; // what listening heard and the ideas stream, as cards
 import { fitCta, fillMake, readSrc } from './cards-gen.js';
 import { cleanBrief, renderBrief } from './brief.js'; // a saved brief's "null" cells heal at load
-import { aboutOf, OLD_ABOUT, marketConfig, laneProducts, bannedFor, BANNED_LISTS } from './derive.js'; // a saved config.about written by the old rule heals at load
+import { aboutOf, OLD_ABOUT, marketConfig, laneProducts, bannedFor, BANNED_LISTS, countryFromText, CURRENCY_OF } from './derive.js'; // a saved config.about written by the old rule heals at load
 import { prototypeConnectors } from './seed-template.js'; // DUMMY: connector copy that promises no action
 import { sentenceCase, oneCard } from './text-fit.js';
 import { withLearned, learnedMoveNs, learnedTerms, learnedItems } from './brand-learnings.js'; // what the team told Brew (pasted into a jam): in every prompt's system text
@@ -54,9 +55,10 @@ const CURRENCY = { INR: '₹', USD: '$', GBP: '£', EUR: '€', AUD: 'A$', CAD: 
 // money formatting in the brand's own currency (Indian lakh/crore for INR)
 /* a locale as the read found it ("en_US", "EN-us", "English") must never stop a build: normalise it, else use en-US */
 export const safeLocale = (l) => { const x = String(l || '').trim().replace(/_/g, '-'); try { return x && Intl.NumberFormat.supportedLocalesOf([x]).length ? Intl.getCanonicalLocales(x)[0] : 'en-US'; } catch { return 'en-US'; } };
-export const moneyFmt = (cur = 'INR', locale = 'en-IN') => {
-  locale = safeLocale(locale); cur = String(cur || 'INR').toUpperCase().slice(0, 3);
-  const sym = CURRENCY[cur] || cur + ' ';
+/* no currency known: plain numbers, never ₹ (feed audit #15: a Czech store's money was printed in rupees) */
+export const moneyFmt = (cur = '', locale = 'en-US') => {
+  locale = safeLocale(locale); cur = String(cur || '').toUpperCase().slice(0, 3);
+  const sym = cur ? CURRENCY[cur] || cur + ' ' : '';
   if (cur === 'INR') return (v) => v >= 1e7 ? `₹${+(v / 1e7).toFixed(1)} Cr` : v >= 1e5 ? `₹${+(v / 1e5).toFixed(1)} lakh` : `₹${Math.round(v).toLocaleString('en-IN')}`;
   return (v) => v >= 1e9 ? `${sym}${+(v / 1e9).toFixed(1)}B` : v >= 1e6 ? `${sym}${+(v / 1e6).toFixed(1)}M` : v >= 1e4 ? `${sym}${+(v / 1e3).toFixed(1)}K` : `${sym}${Math.round(v).toLocaleString(locale)}`;
 };
@@ -240,7 +242,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
   /* the hero lines read in plain words like the source labels (moves audit 20 Oct: "Building a ₹660 AOV…", 86 "live" lines with jargon) */
   const plainLine = (x) => (typeof x === 'string' && x ? dejargon(x) : x);
   const fitIndexIn = (docs) => (docs?.[0] ? { ...docs, 0: fitIndex(docs[0], docs) } : docs); /* Move 00 rebuilt from the moves as they are now (move-index.js) */
-  const fitMoves = (ms, keep, claimSrc = '', banned = null) => Object.fromEntries(Object.entries(ms || {}).map(([n, m0]) => { const m = claimSrc || banned ? markMoveClaims(m0, claimSrc, { banned }) : m0; /* a code or guarantee the store never made reads as the team's call (QA-25); a claim in a title, cover or table and a banned word go to "To confirm" (QA 20 Oct) */ return [n, m && typeof m === 'object' && m.title ? { ...m, title: sentenceCase(plainLine(m.title), keep), gives: plainLine(m.gives), live: plainLine(m.live), statLabel: plainLine(m.statLabel), ...festivalNow(m) /* a festival plan after its festival says so; its countdown counts from today */,
+  const fitMoves = (ms, keep, claimSrc = '', banned = null, cur = '') => Object.fromEntries(Object.entries(ms || {}).map(([n, m1]) => { const m0 = cur ? usdDeep(m1, cur) /* SEO tools' dollars read in the brand's currency (QA 20 Oct) */ : m1; const m = claimSrc || banned ? markMoveClaims(m0, claimSrc, { banned }) : m0; /* a code or guarantee the store never made reads as the team's call (QA-25); a claim in a title, cover or table and a banned word go to "To confirm" (QA 20 Oct) */ return [n, m && typeof m === 'object' && m.title ? { ...m, title: sentenceCase(plainLine(m.title), keep), gives: plainLine(m.gives), live: plainLine(m.live), statLabel: plainLine(m.statLabel), ...festivalNow(m) /* a festival plan after its festival says so; its countdown counts from today */,
     ...(Array.isArray(m.sections) ? { sections: m.sections.map((sec) => ({ ...sec, blocks: (sec.blocks || []).map((b) => (b?.rows ? { ...b, rows: b.rows.map(ipRow) } : b)) })) } : {}),
     ...(Array.isArray(m.sources) ? { sources: m.sources.map((x) => (x && typeof x === 'object' && x.label ? { ...x, label: dejargon(x.label), url: linkOf(x.url) } : x)) } : {}),
     ...(Array.isArray(m.meta?.cites) ? { meta: { ...m.meta, cites: m.meta.cites.map((c) => (c && typeof c === 'object' ? { ...c, url: linkOf(c.url) } : c)) } } : {}) } : m]; })); /* source names in plain words (QA FEED-ARV-06: "catalogue (products.json)") */
@@ -293,6 +295,10 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
     if (profile && !profile.country && config && (config.country || config.countryName || (config.markets || []).length || config.festival)) {
       Object.assign(config, marketConfig(profile), { currency: String(profile.currency || '').toUpperCase() || (config.currency === 'USD' ? '' : config.currency || '') }); config.symbol = config.currency ? config.symbol : '';
       await put(slug, 'config.json', config).catch(() => {}); }
+    /* no country saved and none to confirm: the one the brand's own words keep naming (derive.js countryFromText); with none, the
+       market stays unknown and money is printed with no currency, never as ₹ (feed audit #15, 20 Oct) */
+    if (profile && config && !profile.country && !config.country && !profile.market?.toConfirm) { const cc = countryFromText(brief?.toString('utf8') || '', config.about || '', profile.about || '', profile.descriptor || '');
+      if (cc) { Object.assign(config, marketConfig({ ...profile, country: cc }), { currency: String(profile.currency || config.currency || CURRENCY_OF[cc] || '').toUpperCase(), countryFrom: 'brand text' }); config.symbol = CURRENCY[config.currency] || ''; await put(slug, 'config.json', config).catch(() => {}); } }
     /* a banned list picked by the old category rule (a pet store got the health list, which bans its own "treats") heals to its category's list; a list the team edited stays */
     if (profile && config && BANNED_LISTS.has(config.banned) && config.banned !== bannedFor(profile)) { config.banned = bannedFor(profile); await put(slug, 'config.json', config).catch(() => {}); }
     /* lane products saved before test listings were filtered heal at load: a lane that leads with a test or duplicate listing is picked again (QA 20 Oct) */
@@ -317,7 +323,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
     if (moves && typeof moves === 'object') seed.posts = (seed.posts || []).filter((c) => { const mm = /^m(\d+)-\d+$/.exec(String(c?.id || '')); return !(mm && moves[mm[1]] && pastOf(moves[mm[1]])); });
     const moveSrc = sourceText(Object.values(facts || {}).map((f) => [f?.label, f?.v, ...(f?.aliases || [])]), catalogOf(profile), hooks.reviewQuotes, config?.about || '', seed?.brand?.about || '');
     let bannedRe = null; try { bannedRe = config?.banned ? new RegExp(config.banned, 'i') : null; } catch { bannedRe = null; }
-    const moveDocs = fitIndexIn(fitMoves(moves, keepOf({ profile, config, seed }), moveSrc, bannedRe));
+    const moveDocs = fitIndexIn(fitMoves(moves, keepOf({ profile, config, seed }), moveSrc, bannedRe, config?.currency));
     const seedD = moveBadges(fitCards(withDemo(fitPhotos(socialize(visualize(seed, { slug, config, staticText: statics, profile }), social, { profile }), profile), demo), { profile, config, seed, status }), moves, staleMoves);
     return finish({
       slug, kind: 'generated', ready: !!status.ready, status, demo, numbers,
@@ -327,7 +333,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
       statics: config.statics || [], lanePhoto: config.lanePhoto || {},
       moveDocs, labels, pages,
       /* the team's private moves (private/moves.json) get the same load-time fixes as the shared ones (moves audit 20 Oct) */
-      fitMove: (m) => { if (!m || typeof m !== 'object') return m; const f = fitMoves({ [m.n || 0]: m }, keepOf({ profile, config, seed }), moveSrc, bannedRe)[m.n || 0]; return +m.n === 0 ? fitIndex(f, moveDocs) : f; },
+      fitMove: (m) => { if (!m || typeof m !== 'object') return m; const f = fitMoves({ [m.n || 0]: m }, keepOf({ profile, config, seed }), moveSrc, bannedRe, config?.currency)[m.n || 0]; return +m.n === 0 ? fitIndex(f, moveDocs) : f; },
       staticText: statics,
       /* cards that never sat in the seed (the team's private rewrites, private/cards.json; connector cards) get the same fitting
          at load: the photo of the product they name (title, then asset line), the button of the asset they make */

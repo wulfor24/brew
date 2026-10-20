@@ -438,7 +438,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   }
   // prices as the brand writes them, on every product
   function normalizeProfile(p) {
-    const fmt = moneyFmt(p.currency || 'INR', p.locale || 'en-IN');
+    const fmt = moneyFmt(p.currency || '', p.locale || (p.currency === 'INR' ? 'en-IN' : 'en-US')); /* no currency: no ₹ (QA 20 Oct) */
     if (p.catalog?.products) { const gone = new Set(p.catalog.removed || []); p.catalog.products = p.catalog.products.filter((x) => !gone.has(x.handle) && !/gift ?wrap|gift ?card|e-?gift|shipping protection|route protection/i.test(x.title || '')); }
     (p.catalog?.products || []).forEach((x) => { if (x.price != null && !x.priceLabel) x.priceLabel = fmt(+x.price); });
     return p;
