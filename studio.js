@@ -448,7 +448,8 @@ export const afterFromPkg = (family, pkg = {}, base = {}) => {
   if (family === 'setup') { a.title = p.what ? String(p.what).split(/(?<=[.!?])\s/)[0] : p.tool || ''; a.sub = p.verify || ''; a.bullets = p.steps?.length ? p.steps : null; a.rows = [['Where', p.tool]].filter((r) => r[1]); }
   if (family === 'print') { a.title = String(p.front || '').split('\n')[0].slice(0, 80); a.sub = p.back || ''; a.rows = [['Size', p.size], ['Quantity', p.quantity], ['Goes into', p.goesIn]].filter((r) => r[1]); }
   if (family === 'listing') { a.title = p.name || p.items?.[0]?.new || p.product || ''; a.sub = (p.items || []).length ? `${p.items.length} listings: ${p.items.map((r) => r.marketplace).join(', ')}` : p.reason || ''; a.rows = (p.items || []).map((r) => [r.marketplace, r.new]); a.bullets = p.bullets?.length ? p.bullets : null; }
-  if (family === 'outreach') { a.title = p.subject || ''; a.sub = p.body || ''; a.rows = [['To', p.to], ['Company', p.company]].filter((r) => r[1]); }
+  if (family === 'outreach') { const who = outreachTo(c), named = P.name && P.name !== 'the product', line = named ? ` ${P.name}${P.claim ? `: ${P.claim.replace(/[.!]+$/, '')}` : ''}.` : '';
+    return { to: who.to, company: who.company, subject: wcut(`${N} for ${who.company.toLowerCase()}`, 60), body: `Hi,\n\nI work at ${N}${BH() ? ` (${BH()})` : ''}.${line}\n\nWould you be open to a 15-minute call next week to see if it fits your team?\n\nThanks,\n{your_name}, ${N}` }; }
   if (family === 'decision') { a.title = p.decision || ''; a.sub = p.why || ''; a.bullets = p.changes?.length ? p.changes : null; a.rows = [['Who decides', p.owner]].filter((r) => r[1]); }
   a.publicText = null;
   return a;
