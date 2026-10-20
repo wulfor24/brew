@@ -140,6 +140,10 @@ export async function buildPack({ ch, pkg: p = {}, family, version = 1, brand = 
       put('checklist.md', lines(`# ${act}`, '', p.tool && `**Where:** ${p.tool}`, '', p.what && `## What changes\n${p.what}\n`, '## Steps', ...list(p.steps).map(stepMd), '', p.verify && `## How we know it worked\n${p.verify}\n`, p.customerSees && `## What customers see\n${p.customerSees}\n`));
       where.unshift(`${p.tool || place}: work down checklist.md and tick each step.`);
       break;
+    case 'outreach':
+      put('email.txt', lines([p.to, p.company].some(Boolean) && `To: ${[p.to, p.company].filter(Boolean).join(', ')}`, p.subject && `Subject: ${p.subject}`, '', p.body || ''));
+      where.unshift('Your own inbox: email.txt is one email to one person at the business; a person on your team sends it (no list, no flow).');
+      break;
     case 'brief':
       put('shot-list.md', lines(`# ${p.title || act}`, '', list(p.deliverables).length && `## Deliverables\n${list(p.deliverables).map((d) => `- ${d}`).join('\n')}\n`, '## Shots', ...(p.scenes || []).map((x, i) => `${i + 1}. **${x.shot}** — ${x.line}`), '', [['Talent', p.talent], ['Location', p.location], ['Deadline', p.deadline]].filter((x) => x[1]).map(([k, v]) => `**${k}:** ${v}`).join('  \n')));
       where.unshift('Your crew or creator: shot-list.md is the brief to shoot from.');

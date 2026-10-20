@@ -3648,6 +3648,9 @@
       return `<div class="as as-pm lg">${meta}<div class="pm wa2${/sms|text/i.test(chn) ? ' is-sms' : ''}"><div class="wa2-h">${pmAv()}<div><b>${name}</b><small>${/sms|text/i.test(chn) ? 'Text message' : 'Business account'}</small></div></div>
         <div class="wa2-chat"><span class="wa2-day">Today</span><div class="wa2-msg"><p>${tokHtml(p.message || '')}</p><small>10:02</small></div>${btns.length ? `<div class="wa2-btns">${btns.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div></div></div>`;
     }
+    if (ch.family === 'outreach') return `<div class="as as-pm lg">${quiet(['Email', p.company])}<div class="pm ml"><div class="ml-top"><b class="ml-subj">${esc(p.subject || `A note from ${B.brand.name}`)}</b>
+          <div class="ml-from">${pmAv()}<div><b>${name}</b><small>to ${esc(p.to || 'the right person')}</small></div></div></div>
+          <div class="ml-body"><p>${tokHtml(p.body || '')}</p></div></div></div>`;
     if (ch.family === 'vis' && /\.(llms_txt|schema_fix)$/.test(ch.action)) return ''; /* a file (llms.txt, product markup) shows as the file it is, not as an FAQ page */
     if (ch.family === 'vis') { const es = p.entries || [];
       return `<div class="as as-web as-faq lg"><div class="aw-bar"><i></i><i></i><i></i><span>${esc(p.file || `${B.brand.host}/faq`)}</span></div>
@@ -3762,6 +3765,7 @@
       <div class="aw-body"><small class="aw-where">${esc([String(p.pages || '').replace(/(?:https?:\/\/)?(?:www\.)?(?:[a-z0-9-]+\.)+[a-z]{2,}\/\S*/gi, '').replace(/^[\s,;·-]+|[\s,;·-]+$/g, ''), p.section].filter(Boolean).join(' · '))}</small><h4>${esc(p.heading || '')}</h4><div class="rx">${rich(p.body)}</div>${(p.bullets || []).length ? `<ul>${p.bullets.map((x) => `<li>${ic('check', 's14')}${esc(x)}</li>`).join('')}</ul>` : ''}
       ${p.priceAfter ? `<div class="aw-price">${p.priceBefore ? `<del>${esc(p.priceBefore)}</del>` : ''}<b>${esc(p.priceAfter)}</b></div>` : ''}${p.button ? `<span class="aw-btn">${esc(p.button)}</span>` : ''}</div></div>`;
     if (ch.family === 'vis') return `<div class="as as-file"><div class="af-h">${ic('link', 's14')}${esc(p.file || `${B.brand.host}/faq`)}${p.asOf ? `<span>${esc(p.asOf)}</span>` : ''}</div>${(p.entries || []).slice(0, lg ? 8 : 2).map((e) => `<div class="af-e"><b>${esc(e.q)}</b><p>${txt(e.a)}</p>${e.source ? `<small>Source: ${esc(e.source)}</small>` : ''}</div>`).join('')}</div>`;
+    if (ch.family === 'outreach') return `<div class="as as-doc"><small>Email to ${esc([p.to, p.company].filter(Boolean).join(', ') || 'a business')}</small><h4>${esc(p.subject || '')}</h4><p>${esc(String(p.body || '').slice(0, lg ? 2000 : 220))}</p></div>`;
     if (ch.family === 'crm') {
       const wa = p.channel !== 'Email';
       return `<div class="as as-phone${wa ? ' wa-ph' : ''}"><div class="ap-h">${wa ? `<span class="av" style="--ac:#25D366;width:22px;height:22px">A</span><b>${B.brand.name}</b><small>${esc(p.channel || 'WhatsApp')}</small>` : `<b>${esc(p.subject || `${B.brand.name}`)}</b><small>from ${B.brand.name}</small>`}</div>

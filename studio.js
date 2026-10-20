@@ -15,10 +15,10 @@ export const FAMILY_OF = {
   flow_copy: 'crm', flow_timing: 'crm', review_ask: 'crm', new_segment: 'crm', paid_broadcast: 'crm', discount_offer: 'crm',
   film_brief: 'brief', creative_brief: 'brief', resolution: 'decision', plan: 'decision',
   listing_titles: 'listing', listing_content: 'listing', takedown: 'listing',
-  search_ad: 'search', tracking_fix: 'setup', store_setting: 'setup', print_insert: 'print', blog_post: 'store', buyer_deck: 'brief'
+  search_ad: 'search', tracking_fix: 'setup', store_setting: 'setup', print_insert: 'print', blog_post: 'store', buyer_deck: 'brief', outreach_email: 'outreach'
 };
 export const familyOf = (action) => FAMILY_OF[String(action).split('.').pop()] || 'store';
-export const FAMILY_NAME = { search: 'Google Search ad', setup: 'Setup change', print: 'Printed insert', listing: 'Marketplace listing', meta_ad: 'Meta ad', social: 'Instagram post', post: 'Social post', meta_ops: 'Ad account change', store: 'Store change', vis: 'AI answer', crm: 'Customer message', brief: 'Production brief', decision: 'Decision' };
+export const FAMILY_NAME = { search: 'Google Search ad', setup: 'Setup change', print: 'Printed insert', listing: 'Marketplace listing', meta_ad: 'Meta ad', social: 'Instagram post', post: 'Social post', meta_ops: 'Ad account change', store: 'Store change', vis: 'AI answer', crm: 'Customer message', brief: 'Production brief', decision: 'Decision', outreach: 'Outreach email' };
 
 // field types: text · long · list (strings) · rows (objects with `cols`) · select (`opts`) · number
 // pub: shown to customers, so it passes the claims gate. req: needed before it can be commissioned.
@@ -138,6 +138,14 @@ export const FIELDS = {
     { k: 'code', label: 'Code', type: 'text', only: ['discount_offer'] },
     { k: 'expiry', label: 'Expires', type: 'text', only: ['discount_offer'] }
   ],
+  /* a one-off email to a person at a business (a pitch, a partner, wholesale, corporate gifting, press): who it goes to and the
+     words; no segment, no flow, no Klaviyo (QA J-09: a cold pitch opened as a Klaviyo flow message to opted-in buyers) */
+  outreach: [
+    { k: 'to', label: 'To', type: 'text', req: true, hint: 'The role or person it goes to, e.g. "Head of HR" or "Buyer, beauty"' },
+    { k: 'company', label: 'Company', type: 'text', req: true, hint: 'The business or kind of business, as the card names it' },
+    { k: 'subject', label: 'Subject line', type: 'text', pub: true, req: true },
+    { k: 'body', label: 'Email', type: 'long', pub: true, req: true, hint: 'The email as sent: short, one ask, signed by a person at the brand' }
+  ],
   brief: [
     { k: 'title', label: 'Working title', type: 'text', req: true },
     { k: 'deliverables', label: 'Deliverables', type: 'list', req: true },
@@ -215,6 +223,10 @@ export const KNOBS = {
     { k: 'lang', label: 'Language', kind: 'copy', opts: ['English', 'Hindi', 'Hinglish'] },
     { k: 'offer', label: 'Offer', kind: 'copy', opts: ['None', 'Free shipping', 'Free sample'] }
   ],
+  outreach: [
+    { k: 'tone', label: 'Tone', kind: 'copy', opts: ['Warm', 'Direct', 'Formal'] },
+    { k: 'length', label: 'Length', kind: 'copy', opts: ['Short', 'Detailed'] }
+  ],
   brief: [
     { k: 'length', label: 'Length', kind: 'copy', opts: ['15s', '30s', '75s'] },
     { k: 'format', label: 'Format', kind: 'copy', opts: ['9:16', '4:5', '16:9'] },
@@ -240,6 +252,7 @@ export const SUGGEST = {
   vis: ['Answer the top 5 questions', 'Add the source to every line', 'Make it a comparison'],
   crm: ['Make it Hindi', 'Softer, less salesy', 'Send on day 30 instead', 'Add a reorder button'],
   brief: ['Cut it to 15 seconds', 'Founder on camera', 'Open on the number'],
+  outreach: ['Shorter', 'Lead with what they get', 'One clear ask', 'Warmer opening'],
   decision: ['Find a middle ground', 'What would we lose?', 'Smallest step first']
 };
 
@@ -323,6 +336,7 @@ export const ACTION_CHIPS = {
   store_setting: ['Test on one product', 'Roll out to one market first', 'Add a check that it works', 'Show what customers see'],
   blog_post: ['Shorter', 'More sources', 'Answer the question first', 'Add a summary up top'],
   buyer_deck: ['Shorter deck', 'Lead with the numbers', 'One page leave-behind', 'Add the margin'],
+  outreach_email: ['Shorter', 'Lead with what they get', 'One clear ask', 'Warmer opening'],
   listing_titles: ['Same name on every marketplace', 'Claim first, short', 'Add the pack size', 'Start with one listing'],
   listing_content: ['Same images everywhere', 'Bullets only', 'Add more photos', 'Start with one listing'],
   takedown: ['Firm but polite', 'With evidence', 'Shorter request', 'Name the listing exactly'],
@@ -434,6 +448,7 @@ export const afterFromPkg = (family, pkg = {}, base = {}) => {
   if (family === 'setup') { a.title = p.what ? String(p.what).split(/(?<=[.!?])\s/)[0] : p.tool || ''; a.sub = p.verify || ''; a.bullets = p.steps?.length ? p.steps : null; a.rows = [['Where', p.tool]].filter((r) => r[1]); }
   if (family === 'print') { a.title = String(p.front || '').split('\n')[0].slice(0, 80); a.sub = p.back || ''; a.rows = [['Size', p.size], ['Quantity', p.quantity], ['Goes into', p.goesIn]].filter((r) => r[1]); }
   if (family === 'listing') { a.title = p.name || p.items?.[0]?.new || p.product || ''; a.sub = (p.items || []).length ? `${p.items.length} listings: ${p.items.map((r) => r.marketplace).join(', ')}` : p.reason || ''; a.rows = (p.items || []).map((r) => [r.marketplace, r.new]); a.bullets = p.bullets?.length ? p.bullets : null; }
+  if (family === 'outreach') { a.title = p.subject || ''; a.sub = p.body || ''; a.rows = [['To', p.to], ['Company', p.company]].filter((r) => r[1]); }
   if (family === 'decision') { a.title = p.decision || ''; a.sub = p.why || ''; a.bullets = p.changes?.length ? p.changes : null; a.rows = [['Who decides', p.owner]].filter((r) => r[1]); }
   a.publicText = null;
   return a;
@@ -494,6 +509,7 @@ const genericPkg = (family, action, c, i = 0, angle = '', F = {}) => {
   if (family === 'listing') return { product: P.name, name: `${N} ${P.name}`, items: (B().config.marketplaces || ['Amazon']).map((m) => ({ marketplace: m, now: 'As listed today', new: `${N} ${P.name}` })), bullets: [P.claim].filter(Boolean), images: 'The same images on every listing, product first', searchTerms: (B().config.terms?.[0] || []).slice(0, 3).join(', ') };
   if (family === 'brief') return { title: `${hook}: a 30-second film`, deliverables: ['One 30s film, 9:16', 'Two 15s cuts, 9:16 and 4:5'], scenes: [{ shot: 'Close-up: the product in hand', line: hook }, { shot: 'In use', line: P.claim || P.name }, { shot: 'Pack shot with price', line: `${P.name}${P.price ? ', ' + P.price : ''}.` }], talent: 'To confirm', location: 'To confirm', deadline: 'This week' };
   if (family === 'setup') return { tool: 'Store and ad tracking', what: c.title || 'Change a setting', steps: (c.detail?.how || ['Change the setting', 'Test a full order on mobile', 'Watch for 7 days']).slice(0, 4), verify: 'Before and after, the same number', customerSees: 'Nothing changes for customers' };
+  if (family === 'outreach') { const who = outreachTo(c); return { to: who.to, company: who.company, subject: wcut(`${N} x ${who.company}`, 60), body: `Hi,\n\nI work at ${N}${BH() ? ` (${BH()})` : ''}. ${P.name}${P.claim ? `: ${P.claim.replace(/[.!]+$/, '')}` : ''}.\n\nWould you be open to a 15-minute call next week to see if it fits ${who.company}?\n\nThanks,\n{your_name}, ${N}` }; }
   if (family === 'print') return { front: `Thanks for choosing ${N}.`, back: 'Scan for how to get the most from it.', qr: `${BH()}`, size: 'A6 card', quantity: 'To confirm', goesIn: 'Every order' };
   const op = c.options?.[i % (c.options?.length || 1)];
   if (act === 'plan') return { decision: String(c.title || 'The plan'), why: [c.sub, ...(c.detail?.why || [])].filter(Boolean).join(' '), owner: 'Founder', changes: (c.detail?.how || []).slice(0, 5) };
@@ -501,6 +517,11 @@ const genericPkg = (family, action, c, i = 0, angle = '', F = {}) => {
 };
 const linksPkg = (c) => { const names = (c.rows || []).map((r) => r?.[0]).filter(Boolean).slice(0, 6);
   return { tool: `${BH() || "Shopify"} URL redirects`, what: `Send every link to ${names.length > 1 ? 'the removed products' : names[0] || 'the removed product'} to the closest live page`, steps: [...names.map((n) => `${n}: redirect to the closest live product or its collection`), 'Pause any ad that still points there'].slice(0, 6), verify: 'Every old link opens a live page, not an error', customerSees: 'A live page instead of an error' }; };
+/* who an outreach email goes to, from the card's own words ("Pitch luxury hotels…", "Sell gift packs to corporate HR teams") */
+const OUT_WHO = [[/\bhr (?:teams?|leads?|heads?)\b|\bcorporate\b/i, 'Head of HR', 'Corporate teams'], [/\bhotels?\b/i, 'Guest experience manager', 'Hotels'], [/\bsalons?\b/i, 'Salon owner', 'Salons'],
+  [/\b(?:press|op-?ed|journalists?|reporters?|editors?|media)\b/i, 'Editor', 'Press'], [/\bwholesale|distributors?|stockists?|retailers?|stores?\b/i, 'Buyer', 'Retail partners'], [/\bclinics?|doctors?|derm/i, 'Clinic manager', 'Clinics'],
+  [/\bgyms?|studios?\b/i, 'Studio manager', 'Gyms and studios'], [/\bexpo|trade show|fair\b/i, 'Buyer you meet at the show', 'Show visitors'], [/\bproduction|agenc(?:y|ies)\b/i, 'Producer', 'Production companies']];
+export const outreachTo = (c = {}) => { const t = `${c.title || ''} ${c.sub || ''}`; const hit = OUT_WHO.find(([re]) => re.test(t)); return hit ? { to: hit[1], company: hit[2] } : { to: 'The right person at the business', company: 'The business the card names' }; };
 const ACT_LABEL = { pause_losers: 'Pause the weakest ad sets', stop_rule: 'Add a stop rule', scale_budget: 'Scale the winners', shift_budget: 'Shift budget to the winners', pause_pointing: 'Pause the ads on sold-out products', restart_paused: 'Restart the ads paused for stock', price_in_ads: 'Put the new price in the ads' };
 /* the ops changes that follow a store event (stock, price): one row per product the card names, never invented ad sets */
 const OPS_ROWS = { pause_pointing: ['Running', 'Paused until back in stock'], restart_paused: ['Paused for stock', 'Running again'], price_in_ads: ['Quotes the old price', 'Quotes the new price'] };
@@ -522,6 +543,7 @@ export const ACTION_SPEC = {
   print_insert: 'A printed card that goes into the box: front, back, QR, size, quantity.',
   blog_post: 'A blog post on the brand’s own site: heading, the body, key points. Plain words, sourced facts.',
   buyer_deck: 'A short deck for a marketplace or retail buyer: slides with their lines, deliverables, deadline.',
+  outreach_email: 'One email from a named person at the brand to one person at a business (a buyer, a partner, a corporate team, a journalist): who it goes to, the company, a subject line and a short body with one ask. Not a customer flow: no segment, no trigger, no unsubscribe, no discount code.',
   listing_titles: 'New titles for the product on each marketplace, so the same product has ONE name everywhere. Show each listing\'s title now and the new title. Claim first if the card says so.',
   listing_content: 'Bullets, description and image set for the marketplace listings, the same on every marketplace.',
   takedown: 'A takedown request to a marketplace for a listing that misuses the brand.',

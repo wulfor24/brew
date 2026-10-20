@@ -33,7 +33,7 @@ export const namedItems = (c = {}, n = 3) => {
 /* how many finished assets the make step puts on the stage, per widget family */
 /* one, always (Param, 19 Oct: "let's not give 3 options anywhere: lead with only 1 and let them redo it if they don't like it").
    Every family's make step makes ONE finished asset; Redo it (remix /more) makes the next take, the last one stays in History */
-const MAKE_N = { meta_ad: 1, social: 1, post: 1, crm: 1, store: 1, vis: 1, search: 1, listing: 1, print: 1, meta_ops: 1, setup: 1, brief: 1, decision: 1 };
+const MAKE_N = { meta_ad: 1, social: 1, post: 1, crm: 1, outreach: 1, store: 1, vis: 1, search: 1, listing: 1, print: 1, meta_ops: 1, setup: 1, brief: 1, decision: 1 };
 // what the make step makes, in words, per family and per action where the family is too broad
 const ASSET = {
   meta_ad: (k, c) => ({ carousel_ad: 'carousel ads', collection_ad: 'collection ads', catalog_ad: 'catalog ads', whatsapp_ad: 'WhatsApp chat ads' }[k] || (c?.make?.format && /video|reel/i.test(c.make.format) ? 'video ads' : 'Meta ads')),
@@ -46,6 +46,7 @@ const ASSET = {
   meta_ops: (k) => ({ pause_losers: 'pause list', pause_pointing: 'pause list', restart_paused: 'restart list', scale_budget: 'budget change', shift_budget: 'budget change', stop_rule: 'stop rule', price_in_ads: 'price update', swap_copy: 'copy swap' }[k] || 'account change'),
   setup: (k) => ({ fix_links: 'redirect list', tracking_fix: 'tracking fix', store_setting: 'setting change' }[k] || 'change list'),
   brief: (k) => ({ film_brief: 'film brief', buyer_deck: 'buyer deck', creative_brief: 'creative brief' }[k] || 'brief'),
+  outreach: () => 'outreach email',
   decision: () => 'team plan'
 };
 const CONN_NAME = { meta: 'Meta Ads', google: 'Google Ads', ga4: 'Google Analytics', shopify: 'Shopify', klaviyo: 'Klaviyo', whatsapp: 'WhatsApp', marketplaces: 'the marketplaces', loox: 'your reviews app', reviews: 'your reviews app' };
@@ -119,6 +120,12 @@ const STEPS = {
     { k: 'make', t: `Make the ${asset}`, s: 'Each step, in order' },
     { k: 'review', t: 'Review it on the stage', s: 'Change it until it’s right' },
     { k: 'ready', t: `Ready: share the brief so the team applies it on ${where}`, s: 'It copies the brief and a link to everything' }],
+  outreach: ({ c }) => [
+    { k: 'gather', t: 'Name who it goes to', s: c.sub ? cut(c.sub, 90) : 'The person and the business the card names' },
+    { k: 'write', t: 'Write the email, with one clear ask', s: 'Short, from a person at the brand' },
+    { k: 'make', t: 'Make the outreach email', s: 'Redo it if it isn’t right' },
+    { k: 'review', t: 'Review it on the stage', s: 'Change it until it’s right; nothing is lost' },
+    { k: 'ready', t: 'Ready: share the brief, then a person on your team sends it', s: 'One email to one person, from your own inbox' }],
   brief: ({ items, asset, c }) => [
     { k: 'gather', t: `Gather what the team needs${items.length ? `: ${andList(items)}` : ''}`, s: cut(c.sub, 110) },
     { k: 'write', t: `Write the ${asset}`, s: cut((c.detail?.how || [])[0] || 'Deliverables, budget and dates', 110) },

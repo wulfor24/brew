@@ -15,7 +15,7 @@ import { realRows } from '../connectors/common.js';
 const BRAND = { slug: 'acme', name: 'Acme', host: 'acme.com', sym: '$', config: {}, seed: { brand: { name: 'Acme', host: 'acme.com', colors: ['#123456'] } } };
 const ONE = {}; for (const [a, f] of Object.entries(FAMILY_OF)) ONE[f] ||= a; // one action per studio family
 const EXPECT = { meta_ad: ['copy.txt'], social: ['copy.txt'], post: ['copy.txt', 'where.txt'], crm: ['whatsapp-template.txt', 'email.html', 'email.txt', 'sms.txt'], store: ['section.html'], listing: ['listings.csv'],
-  vis: ['faq.html', 'faq-jsonld.html'], search: ['google-ads-editor.csv'], setup: ['checklist.md'], brief: ['shot-list.md'], meta_ops: ['ads-manager-changes.csv', 'do-this-in-ads-manager.txt'], print: ['print.html', 'print-spec.txt'], decision: ['decision.md'] };
+  vis: ['faq.html', 'faq-jsonld.html'], search: ['google-ads-editor.csv'], setup: ['checklist.md'], brief: ['shot-list.md'], outreach: ['email.txt'], meta_ops: ['ads-manager-changes.csv', 'do-this-in-ads-manager.txt'], print: ['print.html', 'print-spec.txt'], decision: ['decision.md'] };
 const chOf = (family, action) => ({ id: 'ch_1', family, action: `x.${action}`, actionLabel: `Do ${action}`, target: { name: 'Somewhere', object: 'Thing' }, rollback: 'Undo it', money: false });
 const pack = (family, action, pkg, extra = {}) => runIn(BRAND, () => buildPack({ ch: chOf(family, action), pkg, family, version: 3, brand: { name: 'Acme', host: 'acme.com', colors: ['#123456'] }, ...extra }));
 const names = (r) => r.entries.map((e) => e.name);

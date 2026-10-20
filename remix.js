@@ -93,9 +93,11 @@ export const ACTIONS = {
     print_insert: { label: 'Print a box insert', target: { conn: null, object: 'Printed card in every box' }, money: true, irreversible: 'Printed cards can’t be changed once printed', rollback: 'Stop putting them in boxes', scope: [[1, 'One print run']], preview: 'print' },
     flow_copy: { label: 'Rewrite a flow message', target: { conn: 'klaviyo', object: 'Flow step' }, money: false, rollback: 'Restore the old message', scope: [[1, 'One step'], [3, 'All 3 steps']], preview: 'chat', settings: [['Audience', 'Same as today'], ['Holdout', '10% get nothing']] },
     flow_timing: { label: 'Change when it sends', target: { conn: 'klaviyo', object: 'Flow timing' }, money: false, rollback: 'Restore the old timing', scope: [[1, 'One flow'], [3, '3 flows']], preview: 'numbers', settings: [['Sends', 'On the reorder day'], ['At most', 'One message in 7 days']] },
-    review_ask: { label: 'Ask for reviews', target: { conn: 'loox', object: 'Review request' }, money: false, irreversible: 'Messages to customers can’t be unsent', rollback: 'Stop the request', scope: [[1, 'One request']], preview: 'chat', settings: [['Sends', 'Day 21 after delivery'], ['To', 'Customers who reordered']] },
+    review_ask: { label: 'Ask for reviews', target: { conn: 'reviews', object: 'Review request' }, money: false, irreversible: 'Messages to customers can’t be unsent', rollback: 'Stop the request', scope: [[1, 'One request']], preview: 'chat', settings: [['Sends', 'Day 21 after delivery'], ['To', 'Customers who reordered']] },
     new_segment: { label: 'New segment', target: { conn: 'klaviyo', object: 'Segment' }, money: false, jam: 'A new audience needs its size and exclusions checked', rollback: 'Delete the segment', scope: [[1, 'One segment']], preview: 'numbers' },
     paid_broadcast: { label: 'WhatsApp broadcast', target: { conn: 'whatsapp', object: 'Broadcast' }, money: true, irreversible: 'A broadcast can’t be unsent once it goes out', rollback: 'Cancel before it sends', scope: [[1, 'One send']], preview: 'chat', settings: [['Cost', 'Paid per message'], ['To', 'Opted-in customers']] },
+    /* one email to a person at a business (pitch, partner, wholesale, corporate, press): a person sends it, no Klaviyo (QA J-09) */
+    outreach_email: { label: 'Write the outreach email', target: { conn: null, object: 'Outreach email', name: 'a person on your team' }, money: false, irreversible: 'An email can’t be unsent once it goes out', rollback: 'Nothing goes out until a person sends it', scope: [[1, 'One email']], preview: 'chat' },
     discount_offer: { label: 'Retention offer', target: { conn: 'shopify', object: 'Discount code' }, money: true, irreversible: 'Orders already placed with the code keep the discount', rollback: 'Expire the code', scope: [[1, 'One code']], preview: 'numbers', settings: [['Changes', 'What a returning customer pays'], ['Expires', 'In 7 days']] }
   },
   brew: {
@@ -119,7 +121,7 @@ const CTA_ACTION = {
   // the buttons every brand's cards carry (seed-template CTA, live store events in feed-service liveCard)
   'Push the titles': 'storefront.listing_titles', 'Add the photos': 'storefront.listing_content', 'Draft the replies': 'creative.comment_reply', /* final QA pass 19 Oct: the demo's thin-photos and low-star cards */ 'Approve the offers': 'storefront.bundle_offer', 'Draft the page': 'visibility.faq_entry', 'Open the moves': null,
   'Pause what points there': 'performance.pause_pointing', 'Pause the ads for these': 'performance.pause_pointing', 'Restart what was paused': 'performance.restart_paused', 'Update the prices': 'performance.price_in_ads', 'Fix the links': 'storefront.fix_links',
-  'Plan the launch': 'performance.new_test', 'Add photos': 'storefront.listing_content'
+  'Plan the launch': 'performance.new_test', 'Add photos': 'storefront.listing_content', 'Draft the pitch': 'crm.outreach_email', 'Write the outreach email': 'crm.outreach_email'
 };
 /* buttons that say "go ahead" without naming a job: the card's planned format or the tool it names decides the package.
    Every other known button names its job, and that job wins over the tool (Param, 2026-10-14: "Pause what points there"
@@ -198,6 +200,31 @@ const onChannel = (k, c) => {
   const made = MAKE_ACTION[c.make?.format]; return made && toolOf(made) === named ? made : TOOL_PRIMARY[named] || k;
 };
 const MARKETPLACE = /\b(?:amazon|flipkart|nykaa|myntra|meesho|ajio|tata cliq|jiomart|blinkit|zepto|swiggy instamart|bigbasket|etsy|ebay|walmart|target\.com|marketplaces?|seller central)\b/i;
+/* what the card's own title names as its job, ahead of a loosely written button or a planned format (QA J-07, J-09): tracking
+   is the tracking fix, a deck the buyer deck, a box card the insert, a marketplace launch the listing, rich results the
+   search info, a pitch to a business an outreach email (a person sends it, never a Klaviyo flow), a review request the review ask */
+const TRACK_T = new RegExp(`${TRACKING.source}|\\btrack\\w*\\b[^.]{0,40}\\b(?:clicks?|events?|conversions?|purchases?|orders?|sales)\\b|\\bgoogle analytics\\b`, 'i');
+const EMAIL_FMT = /^(?:email|whatsapp message)$/;
+const OUTREACH = /\b(?:pitch(?:es|ing)?|partner(?:ship)?s?|wholesale|corporate|b2b|press|op-?ed|journalists?|reporters?|editors?|outreach|cold (?:emails?|outreach|calls?)|distributors?|stockists?|retailers?|hotels?|salons?|clinics?|hr (?:teams?|leads?|heads?)|procurement|expo|trade shows?|production compan(?:y|ies)|agencies)\b/i;
+const REVIEW_ASK = /\breview (?:requests?|asks?|emails?|reminders?|nudges?)\b|\bask(?:s|ing)? (?:\w+ ){0,3}for (?:a |photo |more )?reviews?\b|\breviews? after (?:purchase|delivery)\b|\b(?:judge\.?me|loox|okendo|yotpo)\b/i;
+const DECK = /\b(?:buyer|pitch|sales|wholesale|styling|retail|salon) deck\b|\bleave-behind\b|\blookbook\b/i;
+const INSERT = /\b(?:box inserts?|insert cards?|printed (?:cards?|inserts?)|in-box cards?|cards? in (?:every|the) box)\b/i;
+const RICH = /\b(?:rich (?:results|snippets)|star ratings? in (?:search|google)|review stars (?:in|on) (?:google|search))\b/i;
+const DECIDE_T = /^(?:adopt|lock(?: in)?|agree(?: on)?|decide|choose|pick|settle|commit to|standardi[sz]e|unify|align)\b/i;
+const MAKE_VERB = /^(?:write|draft|make|build|create|add|launch|publish|design|shoot|film|post|run|rewrite|refresh|redo|show|put|send|turn|use|lead|swap)\b/i;
+const REVIEW_IN = { storefront: 'storefront.page_copy', catalog: 'storefront.listing_content', creatives: 'creative.add_variants', ads: 'creative.add_variants', signals: 'crm.flow_copy' };
+const EMAIL_LABELS = new Set(['Approve the flows', 'Draft the email', 'Draft the message', 'Turn on the journey']);
+const OFFER_WORDS = /\b(?:offers?|discounts?|bundles?|codes?|free (?:gift|sample|shipping|delivery|trial)|trials?|referrals?|prices?|deals?|combos?|gifts?|packs?|ladder|sale|% off|save)\b/i;
+const emailish = (c, label) => EMAIL_FMT.test(c.make?.format || '') || EMAIL_LABELS.has(label) || (!c.make?.format && /\b(?:email|message|pitch)\b/i.test(label || ''));
+export const titleJob = (c = {}, label = ctaName(c.cta?.label)) => { const t = String(c.title || ''), hd = `${t} ${c.sub || ''}`;
+  if (TRACK_T.test(t)) return 'performance.tracking_fix';
+  if (REVIEW_ASK.test(t) && !/\b(?:repl(?:y|ies)|respond|answer)\b/i.test(t) && (emailish(c, label) || label === 'Review draft' || GENERIC_CTA.has(label))) return 'crm.review_ask';
+  if (DECK.test(hd)) return 'storefront.buyer_deck';
+  if (OUTREACH.test(t) && (emailish(c, label) || label === 'Review draft' || (!c.make?.format && GENERIC_CTA.has(label)))) return 'crm.outreach_email';
+  if (INSERT.test(t)) return 'crm.print_insert';
+  if (MARKETPLACE.test(t) && !/\b(?:ads?|campaigns?)\b/i.test(t)) return 'storefront.listing_content';
+  if (RICH.test(hd)) return 'visibility.schema_fix';
+  return null; };
 const primaryOf = (c) => {
   if (c.post?.platform) return ideaAction(c.post); // an idea from the stream opens as the post it is, on its own platform
   if (c.kind === 'chat') return 'creative.whatsapp_ad';
@@ -207,6 +234,18 @@ const primaryOf = (c) => {
     const hd = `${c.title || ''} ${c.sub || ''}`, pf = /\breddit\b|\br\/\w/i.test(hd) ? 'creative.reddit_post' : /\bquora\b/i.test(hd) ? 'creative.quora_answer' : /\blinkedin\b/i.test(hd) ? 'creative.linkedin_post' : /\b(?:twitter|on X|X thread|X post)\b/.test(hd) ? 'creative.x_post' : /\bfacebook groups?\b|\bsocial groups?\b|\bforums?\b/i.test(hd) ? 'creative.fb_group_post' : /\bpinterest\b/i.test(hd) ? 'creative.pinterest_pin' : null;
     if (pf && social && actKey(pf) && !/\b(?:ads?|campaigns?)\b/i.test(c.title || '')) return pf; }
   const label = ctaName(c.cta?.label), byLabel = CTA_IN_SECTOR[`${c.sector}:${label}`] ?? CTA_ACTION[label];
+  { const tj = titleJob(c, label);
+    /* an email button on a pitch or a review request: the outreach email or the review ask, never a Klaviyo flow (QA J-09) */
+    if (tj && EMAIL_LABELS.has(label) && /outreach_email|review_ask/.test(tj)) return tj;
+    /* a "go ahead", "review the draft" or offer button on a card whose title names its job: that job (QA J-07) */
+    if (tj && (GENERIC_CTA.has(label) || label === 'Approve the offers')) return onChannel(tj, c);
+    if (label === 'Approve the offers' && !OFFER_WORDS.test(`${c.title || ''} ${c.sub || ''} ${c.make?.pieces || ''}`)) {
+      if (DECIDE_T.test(c.title || '')) return 'brew.plan'; const v = verbAction(c.title || '', c); if (v && v !== 'storefront.bundle_offer') return onChannel(refine(v, c), c);
+      if (MAKE_ACTION[c.make?.format]) return onChannel(MAKE_ACTION[c.make.format], c); }
+    /* a decision button stays a decision unless the card plans something to make and its title says to make it */
+    if (DECIDE_CTA.has(label)) { if (DECIDE_T.test(c.title || '')) return 'brew.plan'; if (MAKE_ACTION[c.make?.format]) return MAKE_VERB.test(c.title || '') ? onChannel(MAKE_ACTION[c.make.format], c) : 'brew.plan'; }
+    /* "Review draft" outside AI answers: the planned format, else the title's verb, else the card's area decides */
+    if (label === 'Review draft' && c.sector !== 'visibility') { if (MAKE_ACTION[c.make?.format]) return onChannel(MAKE_ACTION[c.make.format], c); const v = verbAction(c.title || '', c); return v ? onChannel(refine(v, c), c) : REVIEW_IN[c.sector] || 'visibility.faq_entry'; } }
   if (label && !(label in CTA_ACTION) && !CTA_IN_SECTOR[`${c.sector}:${label}`]) { const v = verbAction(label, c); if (v) return onChannel(refine(v, c), c); } // a button we don't know: its verb
   /* "Draft the listing" is a marketplace listing when the card names a marketplace, else the card's own format (an outreach email
      opened "Change page copy on Shopify", an Amazon launch "Publish an FAQ answer": final QA pass 19 Oct) */
@@ -251,7 +290,7 @@ const SAME_GOAL = {
   add_variants: ['creative.swap_creative', 'creative.carousel_ad'], swap_creative: ['creative.add_variants'], whatsapp_ad: ['creative.add_variants'],
   carousel_ad: ['creative.add_variants', 'creative.ig_carousel'], collection_ad: ['creative.carousel_ad', 'creative.catalog_ad'], catalog_ad: ['creative.collection_ad'], ig_post: ['creative.ig_carousel'], ig_carousel: ['creative.carousel_ad', 'creative.ig_story'], ig_story: ['creative.ig_carousel'], film_brief: [], creative_brief: ['creative.film_brief'],
   faq_entry: ['visibility.llms_txt'], llms_txt: ['visibility.faq_entry'], schema_fix: [], new_claim: ['visibility.faq_entry'],
-  flow_copy: ['crm.flow_timing'], flow_timing: ['crm.flow_copy'], review_ask: [], new_segment: ['crm.flow_copy'], paid_broadcast: ['crm.flow_copy'], print_insert: [], discount_offer: [],
+  flow_copy: ['crm.flow_timing'], flow_timing: ['crm.flow_copy'], review_ask: [], outreach_email: [], new_segment: ['crm.flow_copy'], paid_broadcast: ['crm.flow_copy'], print_insert: [], discount_offer: [],
   x_post: ['creative.linkedin_post'], linkedin_post: ['creative.x_post'], reddit_post: [], quora_answer: [], fb_group_post: [], pinterest_pin: [], short_video: ['creative.film_brief'],
   plan: [], resolution: []
 };
@@ -264,7 +303,7 @@ const ACTION_INTENTS = {
   new_test: ['Smaller budget', 'New audience'], swap_copy: ['Shorter', 'Number first'], search_ad: ['Exact match only', 'Add negatives'], tracking_fix: ['Meta first', 'Google first'],
   add_variants: ['A sharper hook', 'Hindi version'], carousel_ad: ['Five cards', 'One product per card'], collection_ad: ['Best sellers only', 'New arrivals'], catalog_ad: ['Price on the frame', 'Rating on the frame'], ig_post: ['Number first', 'Real review'], ig_carousel: ['Seven slides', 'Myth vs fact'], ig_story: ['Add a poll', 'Three stories'], swap_creative: ['New hook', 'New look'], whatsapp_ad: ['Shorter chat', 'Hinglish'], film_brief: ['Shorter film', 'Phone-shot version'], creative_brief: ['Five angles', 'From real reviews'],
   faq_entry: ['Tighter answer', 'Add the source'], llms_txt: ['Fewer lines', 'Add dates'], schema_fix: ['Price and rating only'], new_claim: ['Softer claim', 'With the study'],
-  flow_copy: ['Softer tone', 'Hinglish'], flow_timing: ['Later send', 'Fewer messages'], review_ask: ['Ask for a photo', 'Shorter ask'], new_segment: ['Tighter segment', 'Leave out new buyers'], paid_broadcast: ['Smaller list first', 'Hinglish'], print_insert: ['Fewer words', 'Bigger QR'], discount_offer: ['Smaller offer', 'Shorter expiry'],
+  flow_copy: ['Softer tone', 'Hinglish'], flow_timing: ['Later send', 'Fewer messages'], review_ask: ['Ask for a photo', 'Shorter ask'], outreach_email: ['Shorter', 'One clear ask'], new_segment: ['Tighter segment', 'Leave out new buyers'], paid_broadcast: ['Smaller list first', 'Hinglish'], print_insert: ['Fewer words', 'Bigger QR'], discount_offer: ['Smaller offer', 'Shorter expiry'],
   x_post: ['Shorter', 'As a thread'], linkedin_post: ['Shorter', 'More personal'], reddit_post: ['Answer first', 'Add an honest downside'], quora_answer: ['Shorter', 'Add a comparison'], fb_group_post: ['Warmer', 'Ask the group'], pinterest_pin: ['More search words'], short_video: ['Shorter', 'Hook in 1 second'],
   plan: ['Owners and dates', 'First step only'], resolution: []
 };
@@ -442,7 +481,8 @@ export function createRemix(o) {
     const bannedIn = (txt) => { try { const re = new RegExp(BANNED.source, [...new Set(`${BANNED.flags}gi`)].join('')); return [...new Set((String(txt).match(re) || []).map((w) => w.trim().toLowerCase()).filter(Boolean))].slice(0, 3); } catch { return []; } };
     const qaN = qa.map((x) => { if (x.k !== 'No banned words' || x.ok) return x; const ws = bannedIn([copy.title, copy.sub, ...(copy.detail?.why || [])].join(' '));
       return { ...x, k: ws.length ? `Uses ${ws.map((w) => `“${w}”`).join(', ')}, ${ws.length > 1 ? 'claims' : 'a claim'} ads in this category can’t make (say what it does instead)` : 'Uses a claim ads in this category can’t make' }; });
-    const checks = qaN.map((x) => (x.k === 'Names a number' ? { ...x, soft: true } : { ...x, fix: true }));
+    /* "Names a number" is a feed-card rule: a reply, a decision or a message needs none, so the jam doesn't list it (QA J-17) */
+    const checks = qaN.filter((x) => x.k !== 'Names a number').map((x) => ({ ...x, fix: true }));
     const trust = trustOf(t, act.agent);
     if (ch.pkg) {
       const miss = missing(ch.family, ch.action, ch.pkg).map((l) => (isAdClip(ch) ? ({ Post: 'Ad text', Title: 'Headline' }[l] || l) : l)); checks.unshift({ k: miss.length ? `Missing: ${miss.join(', ')}` : `${isAdClip(ch) ? 'Meta video ad' : FAMILY_NAME[ch.family]} package complete`, ok: !miss.length, pkg: true, fix: true });
@@ -457,8 +497,9 @@ export function createRemix(o) {
     checks.push({ k: claimCheck(cf), ok: !cf.length, fix: true, claims: cf.map((f) => f.quote) });
     const lf = copyFlags(shopperText, { source: src, names: [BN(), o.SEED?.brand?.name, ...(catalogOf(t) || []).map((x) => x?.t)] }); if (lf.length) checks.push({ k: `Reads wrong: ${lf.join('; ')}`, ok: false, fix: true });
     if (ch.imagePending) checks.push({ k: 'The new creative is still rendering', ok: false, soft: true });
-    checks.push(act.irreversible ? { k: `Can’t be undone: ${act.irreversible}. Whoever ships it from the brief should know.`, ok: true, team: true } : { k: `Can be undone: ${act.rollback}`, ok: !!act.rollback && !/^nothing|^—/i.test(act.rollback), soft: true });
-    if (act.target.conn) checks.push({ k: `${SEED.connectors[act.target.conn]?.name || act.target.conn} connected`, ok: !!t.conn[act.target.conn], soft: true, conn: act.target.conn });
+    checks.push(act.irreversible ? { k: `Can’t be undone: ${act.irreversible}. Whoever ships it from the brief should know.`, ok: true, team: true } : { k: `Can be undone: ${act.rollback}`, ok: !!act.rollback && !/^—/.test(act.rollback), soft: true }); /* "Nothing ships until it is sent" is safe, not a failure (QA J-17) */
+    /* a connector check only for a tool this build can connect (Marketplaces is not one any more: QA J-17) */
+    if (act.target.conn && SEED.connectors?.[act.target.conn] && act.target.conn !== 'marketplaces') checks.push({ k: `${SEED.connectors[act.target.conn]?.name || act.target.conn} connected`, ok: !!t.conn[act.target.conn], soft: true, conn: act.target.conn });
     if (act.money) checks.push({ k: `${ch.amount > 0 ? `Spends about ${inr(ch.amount)} a week` : 'Costs money'}: the brief carries it, the team that runs it sets the budget`, ok: true, money: true });
     checks.push(...ruleChecks(t, act.agent, ch.after));
     L(t).autoChecks.filter((a) => a.on && (JAM_TPL[act.agent] || []).some(([k]) => k === a.k)).forEach((a) => checks.push({ k: `Learned check: ${a.q}`, ok: true, learned: true, auto: true }));
@@ -497,8 +538,8 @@ export function createRemix(o) {
     return x;
   };
   // the field each family leads with, so learned rules reshape the right words
-  const TITLE_F = { meta_ad: 'headline', store: 'heading', meta_ops: 'summary', crm: 'subject', brief: 'title', decision: 'decision' };
-  const SUB_F = { meta_ad: 'primaryText', store: 'body', crm: 'message', decision: 'why', meta_ops: 'rule' };
+  const TITLE_F = { meta_ad: 'headline', store: 'heading', meta_ops: 'summary', crm: 'subject', outreach: 'subject', brief: 'title', decision: 'decision' };
+  const SUB_F = { meta_ad: 'primaryText', store: 'body', crm: 'message', outreach: 'body', decision: 'why', meta_ops: 'rule' };
   const rulePkg = (t, agent, family, pkg) => {
     const tf = TITLE_F[family], sf = SUB_F[family]; if (!tf || !pkg[tf]) return pkg;
     const x = applyRulesMock(t, agent, { title: pkg[tf], sub: pkg[sf] || '' });
@@ -994,6 +1035,7 @@ export function createRemix(o) {
     (c.images || []).slice(0, 2).forEach((u, i) => out.push({ kind: 'image', label: isResearchImage(u) ? 'The rival ad this remakes (their look, not your product)' : i ? 'More from the card' : 'The card this came from', url: u }));
     const urls = [p.utm, p.pages, p.file].filter((x) => x && (String(x).includes(BH()) || /utm_/.test(x)));
     urls.forEach((u) => out.push({ kind: 'link', label: /utm_/.test(u) ? 'Landing page with tracking' : 'Page', url: (/^https?:/.test(u) ? u : 'https://' + u.replace(/^\/*/, '').replace(/\s.*$/, '')) }));
+    if (ch.family === 'outreach' && p.body) out.push({ kind: 'copy', label: `Email to ${[p.to, p.company].filter(Boolean).join(', ') || 'the business'}, a person sends it`, text: [p.subject && `Subject: ${p.subject}`, p.body].filter(Boolean).join('\n\n') });
     if (ch.family === 'crm' && p.message) out.push({ kind: 'copy', label: `${p.channel || 'Message'} template, variables in {curly braces}`, text: [p.subject && `Subject: ${p.subject}`, p.message, (p.buttons || []).length && `Buttons: ${p.buttons.join(' | ')}`].filter(Boolean).join('\n\n') });
     const rows = p.cards || p.slides || [], unit = p.cards ? 'Card' : p.format === '9:16' ? 'Story' : 'Slide';
     rows.forEach((r, i) => { const img = (p.cardImages || [])[i]; if (i && img) out.push({ kind: 'image', label: `${unit} ${i + 1} photo`, url: img }); else if (i && !img) out.push({ kind: 'todo', label: `${unit} ${i + 1} photo still to be made`, text: r.imageBrief || '' }); });

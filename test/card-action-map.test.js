@@ -109,3 +109,28 @@ test('a button we have never seen still reads by its verb; one with no verb stay
   assert.equal(verbAction('Move budget to Reels', {}), 'performance.shift_budget');
   assert.equal(verbAction('Hmm', {}), null);
 });
+
+/* QA J-07, J-09 (20 Oct): the title names the job ahead of a loose button or format; pitches are one outreach email, never a Klaviyo flow */
+test('pitches open as an outreach email; review requests as the review ask; tracking, decks, inserts and decisions as themselves', () => {
+  const C = (title, label, fmt, o = {}) => ({ id: 'm1', agent: 'storefront', sector: 'signals', type: 'decision', title, cta: { label }, ...(fmt ? { make: { format: fmt } } : {}), ...o });
+  const T = [
+    [C('Launch a cold email sequence to Bangalore corporate HR leads', 'Draft the email', 'email'), 'crm.outreach_email'],
+    [C('Pitch a founder op-ed', 'Approve the flows', 'email'), 'crm.outreach_email'],
+    [C('Pitch luxury hotels on our travel razor', 'Review draft'), 'crm.outreach_email'],
+    [C('Partner with salons in Hyderabad and Bengaluru', 'Draft the email', 'email'), 'crm.outreach_email'],
+    [C('Set up a Day 30 review request on Judge.me', 'Publish the page', 'email'), 'crm.review_ask'],
+    [C('Send automatic review emails after purchase', 'Approve the flows', 'email'), 'crm.review_ask'],
+    [C('Set up store tracking to see which flavors sell best', 'Agree with the call', 'page section'), 'performance.tracking_fix'],
+    [C('Track individual color swatch clicks in Google Analytics', 'Publish the page', 'page section'), 'performance.tracking_fix'],
+    [C('Lock the office-friendly core positioning statement', 'Agree with the call', 'page section'), 'brew.plan'],
+    [C('Claim rich star ratings in search engine results', 'Approve the offers'), 'visibility.schema_fix'],
+    [C('Set up a dynamic cancellation flow in Recharge', 'Approve the offers'), 'crm.flow_copy'],
+    [C('Print only the Serum Pack of 3 box insert card', 'Review draft'), 'crm.print_insert'],
+    [C('Build the wholesale buyer deck to pitch salons', 'Review draft', 'page section'), 'storefront.buyer_deck'],
+    [C('Set up our brand on Amazon UK', 'Review draft', 'page section'), 'storefront.listing_content'],
+    [C('Send a day 25 reorder nudge', 'Draft the email', 'email'), 'crm.flow_copy'],
+    [C('Show the bundle saving', 'Approve the offers'), 'storefront.bundle_offer']
+  ];
+  for (const [c, want] of T) assert.equal(recipeOfCard(c).primary, want, c.title);
+  const o = recipeOfCard(T[0][0]).primary; assert.equal(familyOf(o), 'outreach'); assert.equal(ACTIONS.crm.outreach_email.target.conn, null);
+});
