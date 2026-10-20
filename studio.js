@@ -589,7 +589,8 @@ export const cardWords = (c = {}) => [c.title, c.sub, c.make?.pieces, ...(c.deta
    MitoActive serum video hooks weekly", a card about the brand's live Meta video ads, opened as an Instagram Reels and YouTube
    Shorts post). An idea from the stream (c.post) or a card that asks for a reel stays organic */
 const AD_TALK = /\b(?:meta|facebook|instagram)\s+(?:video\s+)?ads?\b|\bvideo\s+ads?\b|\bads?\s+(?:manager|account|costs?|spend|library)\b|\blive\s+ads\b|\bpaid\s+(?:social|video)\b|\b(?:CPM|CTR|ROAS|CPA|hook rate|thumb-?stop)\b/i;
-export const isAdVideo = (c = {}) => !!c && !c.post && (c.make?.format === 'video ad' || (c.make?.format !== 'reel' && AD_TALK.test(cardWords(c))));
+/* our version of a rival's video ad is a paid ad too, whatever format the card carries (it opened as an organic Reel: QA J-10) */
+export const isAdVideo = (c = {}) => !!c && !c.post && (c.make?.format === 'video ad' || c.research?.kind === 'ad' || c.make?.from === 'rival' || (c.make?.format !== 'reel' && AD_TALK.test(cardWords(c))));
 /* "Add to the live test" only when the card is about a test that runs; any other ad idea makes new ads */
 export const namesLiveTest = (c = {}) => /\b(?:live|running|current|existing|ongoing)\s+(?:meta\s+)?(?:ad\s+)?tests?\b|\btest\s+(?:ad\s+set|campaign|budget)\b|META_Test|\b(?:in|to|into)\s+the\s+(?:meta\s+)?test\b|\bA\/B\b/i.test(cardWords(c)) || (c.images || []).length >= 3;
 /* a store claim as the site prints it can carry footnote marks ("growth in 84 days 1 and", "by up to 95% 2 .."): they go, so

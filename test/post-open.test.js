@@ -57,3 +57,10 @@ test('the jam shows it on a ready post and runs it in the same tap', () => {
   assert.match(app, /if \(act === 'post-open'\) \{ const po = postOpenOf\(ch\);[^\n]*const copied = copyText\(po\.text\); const win = window\.open\(po\.url, '_blank', 'noopener'\);/);
   assert.match(fs.readFileSync(new URL('../public/index.html', import.meta.url), 'utf8'), /<script src="post-open\.js"><\/script>\n<script src="app\.js">/);
 });
+
+test('an X thread written on one line splits into its posts (QA J-13)', () => {
+  const o = of(ch('x_post', { platform: 'x', copy: '1/ Anti-dandruff care that works. 2/ It starts at the scalp. 3/ Try it for 4 weeks.' }));
+  assert.equal(q(o.url).text, 'Anti-dandruff care that works.');
+  assert.deepEqual(g.PostOpen.thread('1/ a b 2/ c 3/ d'), ['a b', 'c', 'd']);
+  assert.deepEqual(g.PostOpen.thread('Save 1/2 of the price today'), ['Save 1/2 of the price today'], 'a fraction is not a thread');
+});

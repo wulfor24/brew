@@ -3558,7 +3558,7 @@
     if (PM_NAME[a]) return a;
     return /\b(x|twitter)\b/i.test(pl) ? 'x_post' : /reddit/i.test(pl) ? 'reddit_post' : /linkedin/i.test(pl) ? 'linkedin_post' : /quora/i.test(pl) ? 'quora_answer' : /facebook/i.test(pl) ? 'fb_group_post' : /pinterest/i.test(pl) ? 'pinterest_pin' : /short|tiktok|reel|youtube/i.test(pl) ? 'short_video' : 'post'; };
   const pmHandle = (p) => String(p.account || '').replace(/^@/, '') || String(B.brand.host || B.brand.name).replace(/^www\./, '').split('.')[0].toLowerCase().replace(/[^a-z0-9_]/g, '');
-  const pmThread = (copy) => { const parts = String(copy || '').trim().split(/\n\s*\n(?=\s*\d{1,2}\s*[/.)]\s)/); return parts.length > 1 ? parts.map((x) => x.replace(/^\s*\d{1,2}\s*[/.)]\s*/, '').trim()) : [String(copy || '').trim()]; };
+  const pmThread = (copy) => { if (window.PostOpen?.thread) return window.PostOpen.thread(copy); /* one splitter for the stage and Copy and open */ const parts = String(copy || '').trim().split(/\n\s*\n(?=\s*\d{1,2}\s*[/.)]\s)/); return parts.length > 1 ? parts.map((x) => x.replace(/^\s*\d{1,2}\s*[/.)]\s*/, '').trim()) : [String(copy || '').trim()]; };
   const pmText = (t) => esc(t).replace(/(^|\s)([#@][\p{L}\p{N}_]+)/gu, '$1<span class="pm-tag">$2</span>').replace(/\n/g, '<br>');
   const pmBrief = (m) => { let s = String(m || '').replace(/\s*Use the reference photos? of[\s\S]*$/i, '').replace(/https?:\/\/\S+/g, '').replace(/\(\s*[, ]*\)/g, '').replace(/^\s*(real|vertical|square)[^:.]{0,48}:\s(?!\d)/i, '').trim();
     const ss = s.split(/(?<=\.)\s+/); while (ss.length > 1 && ss[0].length < 70 && /^(real|vertical|square|horizontal|\d)/i.test(ss[0])) ss.shift(); s = ss.join(' '); return s.charAt(0).toUpperCase() + s.slice(1); };

@@ -12,7 +12,13 @@
   const subOf = (w) => { const m = /\/r\/([A-Za-z0-9_]{2,21})(?:\/|$)/.exec(w?.url || '') || /^r\/([A-Za-z0-9_]{2,21})\b/i.exec(String(w?.name || '').trim()); return m ? m[1] : ''; };
   const isThread = (w) => w?.kind === 'thread' || /\/comments\//.test(w?.url || '');
   /* the X copy: a thread's posts are split by a blank line and "2/" style numbers (app.js pmThread) */
-  const xPosts = (copy) => { const parts = String(copy || '').trim().split(/\n\s*\n(?=\s*\d{1,2}\s*[/.)]\s)/); return parts.length > 1 ? parts.map((x) => x.replace(/^\s*\d{1,2}\s*[/.)]\s*/, '').trim()) : [String(copy || '').trim()]; };
+  /* a thread's posts: split on a blank line before "2/", and on inline "2/ 3/ …" markers when they count up from 1 (a thread written on
+     one line opened as one 800-character post: QA J-13). The stage (app.js pmThread) uses the same splitter */
+  const xPosts = (copy) => { const t = String(copy || '').trim();
+    const parts = t.split(/\n\s*\n(?=\s*\d{1,2}\s*[/.)]\s)/); if (parts.length > 1) return parts.map((x) => x.replace(/^\s*\d{1,2}\s*[/.)]\s*/, '').trim());
+    const marks = [...t.matchAll(/(?:^|\s)(\d{1,2})\/(?=\s)/g)];
+    if (marks.length >= 2 && marks.every((m, i) => +m[1] === i + 1)) return marks.map((m, i) => t.slice(m.index, marks[i + 1]?.index ?? t.length).replace(/^\s*\d{1,2}\/\s*/, '').trim()).filter(Boolean);
+    return [t]; };
 
   function of(ch, { brandUrl = '', image = '', card = null } = {}) {
     const p = ch?.pkg || {}; if (ch?.family !== 'post' || ch?.target?.conn === 'meta') return null;
@@ -46,5 +52,5 @@
   }
   /* what the toast says after the tab opens */
   const said = (o) => o.filled ? `Copied too. Check it in the new tab and post.${o.rule ? ` ${o.rule}` : ''}` : `Copied. Paste it in the new tab and post.${o.rule ? ` ${o.rule}` : ''}`;
-  root.PostOpen = { of, said, kindOf };
+  root.PostOpen = { of, said, kindOf, thread: xPosts };
 })(typeof window !== 'undefined' ? window : globalThis);
