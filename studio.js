@@ -99,6 +99,7 @@ export const FIELDS = {
     { k: 'copy', label: 'Post', type: 'long', pub: true, req: true, max: 4000, hint: 'The whole post, ready to paste, in the platform\'s own style. On Reddit, Quora and Facebook groups: useful first, no links, and say you work at the brand' },
     { k: 'hashtags', label: 'Hashtags', type: 'list', pub: true, only: ['x_post', 'linkedin_post', 'pinterest_pin', 'short_video'] },
     { k: 'script', label: 'Script', type: 'rows', cols: ['beat', 'shot', 'line'], only: ['short_video'], hint: '5 beats: the shot and the line said or shown' },
+    { k: 'directions', label: 'How to film it', type: 'list', only: ['short_video'], hint: 'Filming directions, one line each: where to stand, framing and angle, energy, when the first word lands' },
     { k: 'media', label: 'Picture or video', type: 'long', hint: 'What to shoot or make. Real photos only in communities' },
     { k: 'where', label: 'Where to post', type: 'rows', cols: ['name', 'url', 'rule'], hint: 'Real communities, threads or the brand\'s own account only, with the rule that applies' },
     { k: 'postAt', label: 'Goes up', type: 'text', hint: 'Day and time' },

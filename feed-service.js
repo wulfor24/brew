@@ -9,6 +9,7 @@ import { ctaName } from './seed-template.js';
 import { realRows } from './connectors/common.js';
 import { baselineOf, healthReadings } from './on-connect.js'; // the team's own account numbers on cards and the health card
 import fs from 'node:fs';
+import { scoreText } from './viral-gate.js'; // viral cards: "47×" only when the creator's usual views were read
 import { readRivalAd, rivalPicture, isResearchImage, isRivalCard } from './rival-ad.js'; // rival ads read ahead, kept with the brand; a final of our version keeps their composition
 import vm from 'node:vm';
 import path from 'node:path';
@@ -480,7 +481,7 @@ export function createFeedService(o) {
   const inLearned = (k, id) => { const x = B()?.[k]; return !!x && (x.has(id) || x.has(String(id || '').replace(/-p$/, ''))); };
   /* the label is a promise the proof sheet keeps (evidence.js teamOf): a card the learnings made or lifted, or one of a move rewritten on
      them. Never shared words alone, and never a rival's ad or a listening find: what someone else does is not what the team told Brew */
-  const toldCard = (c) => !!c && !(c.research?.kind === 'ad' || c.origin === 'listen' || c.stream === 'heard') && (c.origin === 'told' || c.told === true || inLearned('teamCards', c.id) || inLearned('learnedUp', c.id) || !!B()?.learnedMoves?.has(moveNo(c.id)));
+  const toldCard = (c) => !!c && !(c.research?.kind === 'ad' || c.research?.kind === 'viral' || c.origin === 'listen' || c.stream === 'heard') && (c.origin === 'told' || c.told === true || inLearned('teamCards', c.id) || inLearned('learnedUp', c.id) || !!B()?.learnedMoves?.has(moveNo(c.id)));
   // who may see that a card rests on what the team told Brew: the same people as the told list (server.js /told)
   const toldSeen = (t) => process.env.DEMO_MODE === '1' || !!t?.member || process.env.FEED_SIGNIN === '0';
   const score = (t, c, af) => {
@@ -505,7 +506,7 @@ export function createFeedService(o) {
     const told = toldOf(c) || (B()?.learnedMoves?.has(moveNo(c.id)) ? 6 : 0), /* a move rewritten on the team's strategy: its cards come first */ lift = inLearned('teamCards', c.id) ? 10 : inLearned('learnedUp', c.id) ? 8 : 0;
     const contra = inLearned('learnedHide', c.id) ? -40 : 0; /* the team said it doesn't work for them: off the top until someone says "bring back" (brand-learnings.js) */
     const art = draftView(draftFor(c, B()?.firstDrafts), c); /* a first draft with a picture or clip: the first screen should be things to look at */
-    const look = (art?.images?.length || art?.video ? 3 : 0) + (isStaticCard(c.id) || c.research?.kind === 'ad' ? 2 : 0);
+    const look = (art?.images?.length || art?.video ? 3 : 0) + (isStaticCard(c.id) || c.research?.kind === 'ad' || c.research?.kind === 'viral' ? 2 : 0);
     const extra = told + look + boostNow(t.boost?.[c.id], now(t)) + (c.onlyWhen && connOn(t, c.onlyWhen) ? 3 : 0) + (c.live && Object.keys(c.live).some((k) => connOn(t, k)) ? 2 : 0) + (c.liveOnly ? 2 : 0);
     const behind = B()?.staleMoves?.has(moveNo(c.id)) ? -8 : 0; /* its move is being rewritten: off the first screen until the new card lands */
     /* what they said in setup: a card only for channels they don't run sinks; their ad pace lifts new ads or groundwork (channel-fit.js). 0 with no answers */
@@ -678,6 +679,7 @@ export function createFeedService(o) {
     const pct = (s) => s?.change != null && add(`${Math.abs(s.change)}% ${s.change}%`);
     const adSrc = (a) => a && add([a.headline, a.body, a.hook].join(' '));
     if (c.research.kind === 'ad') adSrc(r.ads?.items.find((a) => a.id === c.research.id));
+    if (c.research.kind === 'viral') { const x = resAll(r.viral).find((y) => y.id === c.research.id); if (x) { add([x.views, x.usual, x.score, x.days, x.likes, x.comments, x.caption, x.hook, x.read?.pacing, x.read?.whyItWorks].join(' ')); add(`${bigN(x.views)} ${bigN(x.usual)} ${scoreText(x.score)}`); } }
     if (c.research.kind === 'trend') { const x = r.trends?.items.find((y) => y.id === c.research.id); (x?.terms || []).forEach((t) => pct(r.trends.series[t])); add(x?.rising || []); }
     if (c.research.kind === 'howto') { (r.ads?.items || []).forEach(adSrc); Object.values(r.trends?.series || {}).forEach(pct); add(r.trends?.rising || {}); }
     return ok;
@@ -832,6 +834,19 @@ export function createFeedService(o) {
     detail: { why: [a.why, `Hook: ${a.hook}`, `${a.brand} runs it as ${a.versions} version${a.versions > 1 ? 's' : ''}, ranked ${a.rank} by Meta for reach.`].filter(Boolean), how: [a.take, `Brew reads how ${a.brand}'s ad is made, then drafts yours on the same angle and style, with your product and your words.`, 'Brew drafts one; make the final (or redo it) and share the brief; your team runs it.'].filter(Boolean) },
     make: { format: a.format === 'video' ? 'reel' : 'single image ad', what: `Our version of ${a.brand}'s ${a.format === 'video' ? 'video' : 'image'} ad`, from: 'rival' }, /* the studio opens on the same kind of creative */
     cta: { label: 'Make our version' }, link: { label: 'See it in the Ad Library', url: a.url }, src: `Meta Ad Library · ${CTRY()} · ${dateIN(at)}`, research: { kind: 'ad', id: a.id }, rivalName: a.brand /* whose ad it is: "Seen on <rival>" (FEED-NOT-02) */ });
+  /* a viral video in the brand's category (research.js refreshViral, viral-gate.js): make our version of the format, as a script to
+     film or a Sloosh video. The numbers are the platform's own; the score shows only when the creator's usual views were read */
+  const PLAT = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube' };
+  const bigN = (n) => (n == null ? '' : n >= 1e6 ? `${+(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}K` : String(n));
+  const viralCardId = (id) => 'r-viral-' + String(id).replace(/[^a-z0-9]+/gi, '-');
+  const viralCard = (x, at) => { const pl = PLAT[x.platform] || 'social', sc = scoreText(x.score);
+    return { id: viralCardId(x.id), agent: 'creative', sector: 'creatives', type: 'idea', family: 'learning', lane: firstLane(), roles: ['founder', 'growth', 'brand'], kind: 'media', images: x.poster ? [x.poster] : [],
+      campaign: 'Viral videos', title: x.title || `A ${pl} format to make our own`, sub: x.why || x.hook,
+      rows: [['Views', bigN(x.views)], ...(sc ? [['Their usual', `${bigN(x.usual)} · this got ${sc}`]] : []), ['Hook', x.hook], ['Posted', `${x.days} day${x.days === 1 ? '' : 's'} ago on ${pl}`]].filter((r) => r[1]),
+      detail: { why: [x.why, sc && `${bigN(x.views)} views where ${x.author} usually gets ${bigN(x.usual)}: ${sc} their normal reach.`, x.read?.pacing && `Pacing: ${x.read.pacing}`].filter(Boolean),
+        how: [x.take, `Brew reads how the video is made, then writes our script on the same format: hook, beats, shot list and how to film it, with ${BN()}'s product and words.`, 'Lock the script, then send the brief to your team or make it with AI.'].filter(Boolean) },
+      make: { format: 'reel', what: `Our version of this ${pl} video`, from: 'viral' },
+      cta: { label: 'Make our version' }, link: { label: `Watch it on ${pl}`, url: x.url }, src: `${pl}${sc ? ` · ${sc} usual views` : ''} · ${dateIN(at)}`, research: { kind: 'viral', id: x.id }, creatorName: x.author }; };
   /* a trend story built on nothing ("0 terms", an empty rising list) is no finding: never a card (QA 20 Oct; quiet rule, no zero tiles) */
   const emptyTrend = (x) => (x.kind === 'rising' && !(x.rising || []).length) || /\b(?:0|zero|no) (?:terms|rising|listings|searches)\b|\bin 0 of\b/i.test(`${x.card || ''} ${x.h || ''}`);
   const trendCard = (x, at) => ({ id: 'r-' + x.id, agent: 'brew', sector: 'creatives', type: 'competitor', family: 'learning', lane: firstLane(), roles: ['founder', 'growth', 'brand'], kind: 'rows',
@@ -884,9 +899,23 @@ export function createFeedService(o) {
     const row = (k) => (c.rows || []).find((x) => x[0] === k)?.[1] || '';
     const poster = (c.images || []).find((u) => /^\/?research\//.test(String(u))) || null; if (!poster && !row('Hook')) return null;
     return { id: c.research.id, brand: String(c.title || '').split(':')[0].trim() || 'the rival', poster, format: /video/i.test(row('Format')) ? 'video' : 'image', hook: row('Hook'), angle: row('Angle'), headline: row('Hook'), body: String(c.sub || ''), cta: '', fromCard: true }; };
+  /* the viral video behind a viral card (research.js refreshViral): the item the read saved, else what the card still carries */
+  const viralOf = (t, c) => { if (c?.research?.kind !== 'viral') return null; const r = (t ? brandOfT(t)?.research : null)?.get?.() || research?.get?.() || {};
+    const x = resAll(r.viral).find((y) => y.id === c.research.id); if (x) return x;
+    const row = (k) => (c.rows || []).find((y) => y[0] === k)?.[1] || ''; const poster = (c.images || []).find((u) => /^\/?research\//.test(String(u))) || null;
+    return { id: c.research.id, platform: /instagram/i.test(c.src) ? 'instagram' : /youtube/i.test(c.src) ? 'youtube' : 'tiktok', author: c.creatorName || 'the creator', url: c.link?.url || null, poster, video: null, views: null, usual: null, score: null, hook: row('Hook'), why: c.sub || '', read: null, fromCard: true }; };
+  /* View references in the jam: the ad or the video "Make our version" remakes, theirs, shown only as a reference */
+  const refSummary = (t, c) => {
+    if (c?.research?.kind === 'viral') { const x = viralOf(t, c); if (!x) return null; const rd = x.read || {};
+      return { kind: 'viral', platform: x.platform, platformName: PLAT[x.platform] || 'Social', author: x.author, handle: x.handle || null, url: x.url, poster: x.poster || null, video: x.video || null, views: x.views ?? null, usual: x.usual ?? null, score: x.score ?? null, scoreText: scoreText(x.score), days: x.days ?? null,
+        hook: x.hook || rd.hook?.text || '', why: x.why || rd.whyItWorks || '', format: rd.format || '', pacing: rd.pacing || '', beats: (rd.scenes || []).slice(0, 8).map((s) => ({ t: s.t, shot: s.shot, text: s.onScreenText || s.voice || '' })) }; }
+    const ad = rivalAd(t, c); if (!ad) return null; const sm = rivalSummary(t, c) || {};
+    return { kind: 'ad', brand: ad.brand, url: ad.url || c.link?.url || null, poster: ad.poster || null, video: ad.video || null, format: ad.format || 'image', hook: ad.hook || '', why: ad.why || '', angle: sm.angle || ad.angle || '', days: ad.days ?? null, versions: ad.versions ?? null,
+      beats: (sm.read?.beats || []).slice(0, 8).map((b) => ({ t: '', shot: typeof b === 'string' ? b : b?.shot || b?.what || '', text: typeof b === 'string' ? '' : b?.line || b?.words || '' })) }; };
   const researchCard = (kind, id) => {
     const r = research?.get() || {};
     if (kind === 'ad') { const a = resAll(r.ads).find((x) => x.id === id); return a && adCard(a, a.firstSeen || r.ads.fetchedAt); }
+    if (kind === 'viral') { const x = resAll(r.viral).find((y) => y.id === id); return x && (x.poster || x.video) && viralCard(x, x.firstSeen || r.viral.fetchedAt); }
     if (kind === 'trend') { const x = resAll(r.trends).find((y) => y.id === id); return x && !emptyTrend(x) && x.terms?.every((term) => r.trends.series?.[term]) && trendCard(x, x.firstSeen || r.trends.fetchedAt); }
     if (kind === 'howto') { const x = resAll(r.howto).find((y) => y.id === id); return x && howtoCard(x, x.firstSeen || r.howto.fetchedAt); }
     if (kind === 'news') { const x = resAll(r.news).find((y) => newsId(y) === id); return x && newsCard(x, x.firstSeen || r.news.fetchedAt); }
@@ -894,19 +923,21 @@ export function createFeedService(o) {
   /* which research becomes a card: live stories and archived ones alike, strongest first (ads: Meta rank, versions, run
      length; trends: size of the move), so a strong story that expired from the ring still reaches the feed, where the
      ranker places it like any other card */
-  const resStrength = (wid, x, r) => wid === 'trends' ? (x.kind === 'rising' ? 40 : Math.max(0, ...(x.terms || []).map((term) => Math.abs(r.trends?.series?.[term]?.change || 0))))
+  const resStrength = (wid, x, r) => wid === 'viral' ? (x.score || 0) * Math.log10(10 + (x.views || 0)) : wid === 'trends' ? (x.kind === 'rising' ? 40 : Math.max(0, ...(x.terms || []).map((term) => Math.abs(r.trends?.series?.[term]?.change || 0))))
     : (30 - (x.rank || 30)) / 3 + Math.log2(1 + (x.versions || 1)) * 4 + Math.min(x.days || 0, 120) / 10;
   const fromResearch = (t, wid, n) => {
     const r = research?.get() || {}; const out = [];
     const src = wid === 'trends' ? resAll(r.trends) : resAll(r.ads), list = src.slice().sort((a, b) => resStrength(wid, b, r) - resStrength(wid, a, r)).map((x) => researchCard(wid === 'trends' ? 'trend' : 'ad', x.id));
     for (const c of list) { if (out.length >= n) break; if (!c || t.used.has(c.id) || t.cards.has(c.id)) continue; t.used.add(c.id); out.push(c); }
+    /* the "make our version" watcher brings one viral video in the category too (research.js refreshViral) */
+    if (wid === 'ads-library') for (const x of resAll(r.viral).slice().sort((a, b) => resStrength('viral', b, r) - resStrength('viral', a, r))) { const c = researchCard('viral', x.id); if (!c || t.used.has(c.id) || t.cards.has(c.id)) continue; t.used.add(c.id); out.push(c); break; }
     return out;
   };
   const wireResearch = (b) => { if (b?.research) setTimeout(() => runIn?.(b, () => prereadRivals(b))?.catch?.(() => {}), 90e3).unref?.(); return b.research?.onRefresh((done) => {
     if (done.includes('ads')) Promise.resolve(runIn ? runIn(b, () => prereadRivals(b)) : prereadRivals(b)).catch((e) => log.warn('[rival preread]', b.slug, e.message));
     for (const t of brandTenants(b)) {
       if (done.includes('trends') && t.watchers.trends) t.watchers.trends.nextRun = now(t) + 15e3;
-      if (done.includes('ads') && t.watchers['ads-library']) t.watchers['ads-library'].nextRun = now(t) + 30e3;
+      if ((done.includes('ads') || done.includes('viral')) && t.watchers['ads-library']) t.watchers['ads-library'].nextRun = now(t) + 30e3;
     }
   }); };
 
@@ -1896,11 +1927,11 @@ export function createFeedService(o) {
     let tm; await Promise.race([go, new Promise((r) => { tm = setTimeout(r, ms); tm.unref?.(); })]); clearTimeout(tm); return made.slice(); };
   /* research the person never saw in the feed, strongest first: a card that expired unseen comes back, one they turned down never */
   const fromArchive = (t, n = 3) => { const r = research?.get() || {}, out = [];
-    const by = (wid, xs) => xs.slice().sort((a, b) => resStrength(wid, b, r) - resStrength(wid, a, r)).map((x) => [wid, x]), A = by('ads-library', resAll(r.ads)), T2 = by('trends', resAll(r.trends));
-    const list = []; for (let i = 0; i < Math.max(A.length, T2.length); i++) { if (A[i]) list.push(A[i]); if (T2[i]) list.push(T2[i]); } /* rival ads and trends in turn, each strongest first */
-    for (const [wid, x] of list) { if (out.length >= n) break; const base = researchCard(wid === 'trends' ? 'trend' : 'ad', x.id); if (!base) continue; const have = t.cards.get(base.id); if (!have && t.used.has(base.id)) continue; /* it was in the feed once */
+    const by = (wid, xs) => xs.slice().sort((a, b) => resStrength(wid, b, r) - resStrength(wid, a, r)).map((x) => [wid, x]), A = by('ads-library', resAll(r.ads)), T2 = by('trends', resAll(r.trends)), V = by('viral', resAll(r.viral));
+    const list = []; for (let i = 0; i < Math.max(A.length, T2.length, V.length); i++) { if (A[i]) list.push(A[i]); if (T2[i]) list.push(T2[i]); if (V[i]) list.push(V[i]); } /* rival ads and trends in turn, each strongest first */
+    for (const [wid, x] of list) { if (out.length >= n) break; const base = researchCard(wid === 'trends' ? 'trend' : wid === 'viral' ? 'viral' : 'ad', x.id); if (!base) continue; const have = t.cards.get(base.id); if (!have && t.used.has(base.id)) continue; /* it was in the feed once */
       if (have) { if (have.state !== 'expired' || (t.shown[base.id] || []).length || t.feedback.some((f) => f.cardId === base.id)) continue; setState(t, have, 'ready'); have.createdAt = now(t); have.expiresAt = now(t) + 3 * D; out.push(have); continue; }
-      t.used.add(base.id); const c = pipeline(t, base, WATCHERS.find((w) => w.id === wid)); if (c?.state === 'ready') out.push(c); }
+      t.used.add(base.id); const c = pipeline(t, base, WATCHERS.find((w) => w.id === (wid === 'viral' ? 'ads-library' : wid))); if (c?.state === 'ready') out.push(c); }
     return out; };
   /* Find more, at the end of the feed: the free watchers run now; what they make (else up to 3 from the research archive) is
      pinned to the top. Nothing new is said plainly */
@@ -2174,7 +2205,7 @@ export function createFeedService(o) {
   on('GET', '/api/cards/:cid/moves', async (b, t, p) => { const c = t.cards.get(p.cid); if (!c) return { error: 'not found' }; return { moves: MOVES.numsOf(c.src).map((n) => ({ ...MOVES.summary(n), passages: MOVES.passages({ ...c, src: `Move ${n}` }, 4) })) }; });
   /* MEDIA_FAKE=1 on a local server: the jam's short video runs end to end for free (drafts.js fakeMakers) */
   const FAKE = process.env.MEDIA_FAKE === '1' && !process.env.K_SERVICE ? fakeMakers() : null;
-  RMX = createRemix({ evidenceOf: (t, c) => proofOfCard(t, c), /* refined like the shield: the studio never lists proof the card's sheet removed (FEED-ARV-01) */ rivalAdOf: rivalAd, rivalStoreOf, rivalSummary, references: (t) => REFS.list(t.brandId || DEFAULT_BRAND), finals: o.finals || null, sloosh: o.sloosh || null, creditsLeft: (slug) => o.budgetLeft?.(slug) || null, brandOfT, slugOfT, meOf, onMedia: (t, ch, m) => studioMedia(t, ch, m), onVersion: (t, ch, v, why) => studioVersion(t, ch, v, why), onShopos: (t, w, x) => shoposMail(t, w, x), askPerson: async (t, w, q, email) => { const [x] = await tagsOf(t, w, [email]); if (!x) return { error: 'They’re not on the team yet. Invite them first.' }; const me0 = meOf(t);
+  RMX = createRemix({ evidenceOf: (t, c) => proofOfCard(t, c), /* refined like the shield: the studio never lists proof the card's sheet removed (FEED-ARV-01) */ rivalAdOf: rivalAd, rivalStoreOf, rivalSummary, viralOf, refSummary, references: (t) => REFS.list(t.brandId || DEFAULT_BRAND), finals: o.finals || null, sloosh: o.sloosh || null, creditsLeft: (slug) => o.budgetLeft?.(slug) || null, brandOfT, slugOfT, meOf, onMedia: (t, ch, m) => studioMedia(t, ch, m), onVersion: (t, ch, v, why) => studioVersion(t, ch, v, why), onShopos: (t, w, x) => shoposMail(t, w, x), askPerson: async (t, w, q, email) => { const [x] = await tagsOf(t, w, [email]); if (!x) return { error: 'They’re not on the team yet. Invite them first.' }; const me0 = meOf(t);
       JAMS.join(w, x, 'asked'); say(t, w, { from: 'system', body: `${nameOf(me0)} asked ${nameOf(x)}: ${q.q}` }); mailEv(t, w, { kind: 'asked', to: [x.email], by: me0, text: q.q, id: `q_${w.id}_${q.id}` }); return x; }, ...(FAKE ? { makers: FAKE.makers, videoImage: FAKE.image, mediaFake: true } : {}), planOf: (t, c) => (c ? planOfCard(c) : null), save: (t) => store?.save(t), catalogOf: (t) => (t ? brandOfT(t)?.catalog : null), photoAsync: o.photoAsync, photoFile, handoffPath, MOVES, seedJam: (t, w) => JB?.seed(t, w), claudeTool, geminiImage, PUB, LANE_PHOTO, FACTS, unbackedNums: (text) => unbacked({ text: String(text).replace(/\b(?:Rs\.?|INR)\s?(?=\d)/gi, '₹') }, FACT_OK).map((x) => x.n), SEED, AGENT, claudeJSON, cardBrief, seatLine, qaCheck, mechanicalFix, clean, BANNED, isMock, spend, uid, now, clone, inr, on, newWork, addVersion, say, move, notify, later, setState, weekKey, curV, measureOf, log  });
   // tenants survive restarts (store.js); a tenant not in memory is read back from disk or GCS before we give up on it
   const getTenant = async (id) => {

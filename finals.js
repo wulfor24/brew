@@ -57,7 +57,7 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
   const productFirst = (refs = []) => [...refs.filter((r) => r?.job === 'product'), ...refs.filter((r) => r?.job !== 'product')];
   const geminiQuote = (spec, why) => { if (spec.space) return { error: `${why} A Space runs on Sloosh only.`.trim() }; const vid = spec.kind === 'video'; if (vid && !makeVideo) return { error: `${why} A video final runs on Sloosh only here.`.trim() };
     if (!(spec.refs || []).some((r) => r?.job === 'product')) return { error: 'Pick a product photo first: Brew makes the final around the real product.' };
-    spec = { ...spec, refs: productFirst((spec.refs || []).filter((r) => r?.job !== 'frame')), ratio: vid ? (spec.ratio === '16:9' ? '16:9' : '9:16') : spec.ratio };
+    spec = { ...spec, refs: productFirst((spec.refs || []).filter((r) => r?.job !== 'frame' && r?.job !== 'motion')), /* Gemini and Veo take no reference video */ ratio: vid ? (spec.ratio === '16:9' ? '16:9' : '9:16') : spec.ratio };
     const b = buildFinal({ ...spec, kind: 'image' }); const settings = vid ? { aspect_ratio: spec.ratio, resolution: '1080p', duration: Math.max(4, Math.min(8, Math.round(spec.seconds || 6))), sound: !!spec.sound } : b.settings;
     return { quoteId: `gemini-${sha(JSON.stringify([spec.kind, spec.visual, spec.text, spec.refs, spec.motion]))}`, provider: 'gemini', fallback: true, why: `on Gemini for now: ${why}`, fallbackWhy: why, credits: 0, hold: 0, model: vid ? 'veo-3.1-fast' : 'gemini-3-pro-image', label: vid ? 'Veo 3.1 Fast (Vertex)' : 'Gemini 3 Pro Image (Vertex)', prompt: b.prompt, motion: vid ? buildDraft({ ...spec, kind: 'video' }).prompt : null, settings, space: null, refs: spec.refs || [], expiresAt: now() + 3600e3, at: now() }; };
 
@@ -106,7 +106,9 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
      start frame (Kling) gets the product photo as one */
   function refsFor(refs = [], o, vid) {
     const frame = refs.find((r) => r.job === 'frame'), rest = productFirst(refs.filter((r) => r.job !== 'frame'));
-    const takesFrame = vid && o?.frames && o.frames.start !== 'none';
+    /* a viral remake's clip (job 'motion') wins over the opening frame on a model that takes one or the other: the format is the point */
+    const motion = vid && (o?.videos ?? MAX_REFS) > 0 && rest.some((r) => r.job === 'motion' && r.asset?.type === 'video');
+    const takesFrame = vid && o?.frames && o.frames.start !== 'none' && !(motion && o.framesAlone);
     if (takesFrame && frame && (o.framesAlone || o.refs === 0)) return [{ ...frame, role: 'start' }];
     const imgs = rest.filter((r) => r.asset?.type !== 'video').slice(0, o?.refs ?? MAX_REFS), vids = rest.filter((r) => r.asset?.type === 'video').slice(0, o?.videos ?? (vid ? MAX_REFS : 0));
     let out = [...imgs, ...vids].map((r) => ({ ...r, role: r.role === 'start' ? undefined : r.role }));

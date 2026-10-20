@@ -36,7 +36,7 @@ export function createFinalsSheet({ finals, sloosh, references = null, creditsLe
   }
   /* base: what the draft or version already says; b: what the sheet sent */
   function spec(t, base, b = {}) { const kind = base.kind === 'video' ? 'video' : 'image';
-    const refs = (Array.isArray(b.refs) ? b.refs : []).filter((r) => r && (r.url || r.file || r.id) && !isResearchImage(r.url || r.file || '') && r.job !== 'frame').slice(0, 20).map((r) => ({ id: r.id, url: r.url || r.file, job: r.job || 'other', label: String(r.label || '').slice(0, 80), keep: String(r.keep || '').slice(0, 160), kind: r.kind }));
+    const refs = (Array.isArray(b.refs) ? b.refs : []).filter((r) => r && (r.url || r.file || r.id) && (!isResearchImage(r.url || r.file || '') || (r.job === 'motion' && base.viralClip && (r.url || r.file) === base.viralClip) /* the viral clip, set by the server only */) && r.job !== 'frame').slice(0, 20).map((r) => ({ id: r.id, url: r.url || r.file, job: r.job || 'other', label: String(r.label || '').slice(0, 80), keep: String(r.keep || '').slice(0, 160), kind: r.kind }));
     /* the draft the team approved rides along: an image final keeps its composition (job 'layout', after the product photos), a reel
        opens on its first frame (job 'frame', sent as start_frame where the model takes one). A revision edits the last final instead */
     const draftPic = !b.revise?.change && isStill(base.still || base.fromFile) && !isResearchImage(base.still || base.fromFile) ? base.still || base.fromFile : null;
@@ -113,7 +113,7 @@ export function createFinalsRoutes({ blockOf = () => null, on, W, say, meOf, slu
 }
 
 /* ---------- the studio: a final is the next version, labelled Final ---------- */
-export function createStudioFinals({ blockOf = () => null, headOf = () => null, useVersion = () => {}, versionById = () => null, on, C, ensurePkg, sync, version, pubChange, cardOf = () => null, cardPhoto = () => null, catalogOf = () => [], jobs, vidJobs = null, references = null, finals, sloosh, creditsLeft = () => null, rivalOf = async () => null, brandOfT, slugOfT, meOf = () => null, onMedia = () => {}, isVideo = () => false, RATIO = {}, now = () => Date.now(), log = console }) {
+export function createStudioFinals({ blockOf = () => null, headOf = () => null, useVersion = () => {}, versionById = () => null, on, C, ensurePkg, sync, version, pubChange, cardOf = () => null, cardPhoto = () => null, catalogOf = () => [], jobs, vidJobs = null, references = null, finals, sloosh, creditsLeft = () => null, rivalOf = async () => null, viralClip = null, brandOfT, slugOfT, meOf = () => null, onMedia = () => {}, isVideo = () => false, RATIO = {}, now = () => Date.now(), log = console }) {
   const sheet = createFinalsSheet({ finals, sloosh, references, creditsLeft, brandOfT, log, now });
   const nameOf = (t) => meOf(t)?.name || meOf(t)?.email || 'Someone';
   const headFinal = (ch) => (ch.versions || []).find?.((v) => v.id === ch.headVersionId)?.final || ch.lastFinal?.versionId === ch.headVersionId ? ch.lastFinal : null;
@@ -143,10 +143,11 @@ export function createStudioFinals({ blockOf = () => null, headOf = () => null, 
     const base = baseOf(t, ch), rival = await rivalOf(t, ch, ch.pkg || {}).catch(() => null); /* "Make our version": their composition and look, our words where theirs sit */
     /* one tap (the studio's main button, Param 19 Oct): what the sheet fills by hand. The draft's own product photo as image 1 (label
        kept exact); a reel runs about 3 seconds a beat (6–15) with sound, so the script's lines are spoken. The quote itself is free */
+    const clip = base.kind === 'video' ? viralClip?.(t, ch) || null : null; /* "Make our version" of a viral video: Sloosh may follow the clip itself (Param, 20 Oct); a rival's ad never */
     if (b.auto) { const ps = photos(t, ch) || [], lead = ps.find((x) => x.named) || ps[0] || null;
-      b = { ...b, refs: lead ? [{ id: lead.id, url: lead.url, job: 'product', label: lead.label || 'Product', keep: '', kind: lead.kind }] : [], /* no "keep the label exact": asking for exact small print garbled labels (sloosh-prompt JOB_LINE.product) */
+      b = { ...b, refs: [...(lead ? [{ id: lead.id, url: lead.url, job: 'product', label: lead.label || 'Product', keep: '', kind: lead.kind }] : []), ...(clip ? [{ url: clip, job: 'motion', label: 'the viral video this remakes', keep: '', kind: 'video' }] : [])], /* no "keep the label exact": asking for exact small print garbled labels (sloosh-prompt JOB_LINE.product) */
         ...(base.kind === 'video' ? { seconds: Math.max(6, Math.min(15, 3 * Math.max(2, (base.beats || []).length))), sound: true } : {}) }; }
-    const spec = sheet.spec(t, rival ? { ...base, rival } : base, b); const q = await finals.quote(slugOfT(t), spec).catch((e) => ({ error: e.message }));
+    const spec = sheet.spec(t, { ...base, ...(rival ? { rival } : {}), ...(clip ? { viralClip: clip } : {}) }, b); const q = await finals.quote(slugOfT(t), spec).catch((e) => ({ error: e.message }));
     if (q.error) { ch.finalQuote = null; return { error: q.error, missing: q.missing || null, fields: q.fields || null, inputs: q.inputs || null, filled: q.filled || null, credits: q.credits ?? null }; }
     ch.finalQuote = { spec, quote: q, at: now(), by: nameOf(t) }; sync(t, ch);
     const { raw, ...show } = q; return { quote: { ...show, refs: (q.refs || []).map((r) => ({ id: r.id, url: r.url, job: r.job, label: r.label, keep: r.keep })) } }; });

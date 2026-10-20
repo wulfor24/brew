@@ -7,7 +7,7 @@
 
 /* words that add noise, not detail: stripped from any sentence a model wrote, refused in the standing lines */
 export const SLOP = /\b(?:4\s?k|8\s?k|ultra[- ]?(?:detailed|realistic|hd)|hyper[- ]?realistic|photo[- ]?realistic|trending(?: on \w+)?|award[- ]winning|masterpiece|cinematic|premium(?:-looking| look| feel)?|luxurious|stunning|breathtaking|gorgeous|magical|epic|aesthetic|vibes?|sparkl\w*|glitter\w*|confetti|lens flares?|bokeh balls?|floating(?: in mid[- ]?air| product)?|levitat\w+|swirl\w*|splash\w* of (?:water|milk|cream)|liquid splash\w*|explod\w+|dramatic (?:smoke|fog|lighting)|neon glow|glowing (?:aura|edges?)|light rays?|god rays?|depth of field|dof|octane|unreal engine|8-bit|high quality|best quality|professional photography|studio quality)\b[,.;: ]*/gi;
-export const JOBS = ['product', 'scene', 'style', 'person', 'logo', 'layout', 'frame', 'other']; /* layout: the approved draft picture; frame: a video's opening frame (sent as start_frame, never numbered) */
+export const JOBS = ['product', 'scene', 'style', 'person', 'logo', 'layout', 'frame', 'motion', 'other']; /* layout: the approved draft picture; frame: a video's opening frame (sent as start_frame, never numbered) */
 /* what a reference of each job tells the model, and what must not change from it */
 const JOB_LINE = {
   product: (r) => `Image ${r.n} is the product${r.label && !/^product( photo)?$/i.test(r.label) ? `, ${r.label}` : ''}. Keep its shape, proportions, colours, materials and brand mark as shown; its small print may be soft or turned away, never rewritten${r.keep ? `; ${r.keep}` : ''}.`, /* asking for exact small print made garbled labels, and a check that threw good pictures away */
@@ -18,6 +18,8 @@ const JOB_LINE = {
      Gemini picture, so its product may be a little off; the photo is the truth) */
   layout: (r) => `Image ${r.n} is the approved draft${r.label ? `, ${r.label}` : ''}: keep its framing, where everything sits, the setting and the light, and make it sharper and more finished; take the product itself only from the product photo, never from this image${r.keep ? `; ${r.keep}` : ''}.`,
   logo: (r) => `Image ${r.n} is the logo${r.label ? `, ${r.label}` : ''}: reproduce it exactly, once, where the text sits${r.keep ? `; ${r.keep}` : ''}.`,
+  /* a viral video the team is making its own version of (viral cards only): its format, never its people or products */
+  motion: (r) => `The reference video${r.label ? ` is ${r.label}` : ''}: follow its format, shot order, pacing, camera moves and energy; never copy its people, faces, products, words or brand${r.keep ? `; ${r.keep}` : ''}.`,
   other: (r) => `Image ${r.n}${r.label ? ` is ${r.label}` : ''}${r.keep ? `: ${r.keep}` : ': use it as a reference for what it shows'}.`
 };
 export const USE = { '4:5': 'a feed ad seen on a phone', '1:1': 'a square post seen on a phone', '9:16': 'a vertical story or reel on a phone; keep the top and bottom sixth free of anything that matters, the app draws its own bars there', '16:9': 'a wide banner', '3:4': 'a portrait post', '21:9': 'a wide site banner' };

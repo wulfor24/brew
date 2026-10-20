@@ -2901,6 +2901,19 @@ html body.deck-on .topbar{border-bottom:0;box-shadow:none}
 @media (max-width:700px){.wb-zero-deck .wb-zero-main{flex:0 0 100vw;width:100vw;min-width:0}}
 
 /* "Make our version": what Brew read from the rival's ad (studio) */
+/* View references (app.js refBtnHtml/openRefs): the ad or video a remake follows, theirs, shown only here */
+.ref-btn{display:flex;gap:10px;align-items:center;width:100%;margin:0 0 12px;padding:8px 12px;border:1px solid var(--line, rgba(127,127,127,.25));border-radius:12px;background:var(--bg-2, transparent);color:inherit;font:inherit;text-align:left;cursor:pointer}
+.ref-btn:hover{border-color:var(--fg-3, currentColor)}
+.ref-btn img,.ref-btn .ref-ic{width:40px;height:40px;object-fit:cover;border-radius:8px;flex:0 0 auto;display:grid;place-items:center;background:var(--bg-3, rgba(127,127,127,.12))}
+.ref-btn>span:not(.ref-ic){display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.ref-btn small{color:var(--fg-3);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ref-sheet .ref-b{display:flex;flex-direction:column;gap:10px;overflow:auto;max-height:min(72vh,720px)}
+.ref-sheet .ref-media{display:block;width:100%;max-height:56vh;object-fit:contain;border-radius:12px;background:#000}
+.ref-sheet .ref-tag{margin:0;font-size:13px;color:var(--fg-3)}
+.ref-sheet .ref-dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0}
+.ref-sheet .ref-dl>div{display:contents}.ref-sheet .ref-dl dt{color:var(--fg-3)}.ref-sheet .ref-dl dd{margin:0}
+.ref-sheet .ref-beats{margin:0;padding-left:20px}.ref-sheet .ref-beats small{color:var(--fg-3)}
+.ref-sheet p{margin:0}
 .rv-read{margin:0 0 12px;border:1px solid var(--line, rgba(127,127,127,.25));border-radius:12px;background:var(--bg-2, transparent)}
 .rv-read summary{display:flex;gap:10px;align-items:center;padding:10px 12px;cursor:pointer;list-style:none}
 .rv-read summary::-webkit-details-marker{display:none}

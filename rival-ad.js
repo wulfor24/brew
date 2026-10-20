@@ -16,6 +16,20 @@ import { kindOf, mimeOf, RASTER } from './img-norm.js';
 /* a research picture (a rival's poster or clip) is never a product photo of ours */
 export const isResearchImage = (rel) => /^\/?research\//.test(String(rel || '')) || /(^|\/)b\/[a-z0-9-]+\/a\/ad-[^/]+$/.test(String(rel || '').split('?')[0]); /* the read's own Ad Library posters (b/<slug>/a/ad-<id>.jpg) too */
 export const isRivalCard = (c) => c?.research?.kind === 'ad' || !!c?.research?.ad; /* a rival's ad card, or a card built on one (a how-to that tests its angle) */
+/* "Make our version" of a viral video (research.js refreshViral): the same remake, from a creator's organic short instead of an ad */
+export const isViralCard = (c) => c?.research?.kind === 'viral';
+/* any card that remakes somebody else's work: the jam shows its references (View references) */
+export const isReferenceCard = (c) => isRivalCard(c) || isViralCard(c);
+/* what every writer gets for a viral remake: how the video is built, never the creator's words or face as ours */
+export function viralBlock(v, brandName = 'the brand') {
+  if (!v) return '';
+  const r = v.read || {}, beats = (r.scenes || []).slice(0, 8).map((x) => `${x.t || ''} ${x.shot || ''}${x.onScreenText ? ` (on screen: ${x.onScreenText})` : ''}${x.voice ? ` (said: ${x.voice})` : ''}`.trim());
+  return [`OUR VERSION OF A VIRAL VIDEO: a ${v.platform} video by ${v.author} got ${v.views ?? 'many'} views${v.score ? `, ${v.score}x their usual` : ''}. ${brandName} makes its own video on the same format.`,
+    r.hook && `Its hook (first 3 seconds): ${r.hook.first3s || ''}${r.hook.visual ? ` Opening shot: ${r.hook.visual}.` : ''}`,
+    r.format && `Format: ${r.format}. Pacing: ${r.pacing || 'not read'}.`, r.whyItWorks && `Why it worked: ${r.whyItWorks}`,
+    beats.length && `Its beats in order:\n- ${beats.join('\n- ')}`,
+    `Follow the same structure, pacing and kind of hook, beat for beat, with ${brandName}'s product, ${brandName}'s facts and new words. Never reuse the creator's sentences, name, face, brand or products. Write the script as beats (shot + line), a caption, and filming directions (where to stand, framing and angle, energy, the first word on the first frame).`].filter(Boolean).join('\n');
+}
 
 export const STYLE_SCHEMA = { type: 'object', required: ['format', 'angle', 'hookPattern', 'stopper', 'audience', 'proof', 'layout', 'look', 'words', 'beats', 'works'], properties: {
   angle: { type: 'string', description: 'The selling angle in a few words, e.g. "pain first, then the fix", "social proof", "price drop", "founder story", "taste test", "routine"' },
