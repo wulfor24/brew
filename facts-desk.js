@@ -62,6 +62,8 @@ export function diffCatalog(ledger = [], items = [], { host, currency = 'USD', l
     const x = by.get(handleOf(e.key));
     if (!x) { changes.push({ kind: 'removed', key: e.key, handle: handleOf(e.key), label: e.label || e.key, was: String(e.v), wasN: e.n, src: e.url || e.src }); continue; }
     const n = e.key.startsWith('mrp.') ? x.mrp : x.price;
+    /* a price 50 times higher or lower in one day is a unit slip in the read (cents for dollars), never a real change: skipped (QA 20 Oct) */
+    if (Number.isFinite(e.n) && e.n > 0 && n > 0 && (n / e.n >= 50 || e.n / n >= 50)) { out.push(e); continue; }
     if (Number.isFinite(e.n) && n > 0 && Math.abs(n - e.n) >= 0.01) { const v = money(n); changes.push({ kind: 'changed', key: e.key, handle: x.handle, label: e.label || e.key, was: String(e.v), wasN: e.n, now: v, nowN: n, src: x.url });
       out.push({ ...e, v, n, at, src: `${hostOf(host)}/products/${x.handle}`, url: x.url, method: e.method && /added by the brand/.test(e.method) ? e.method : 'product list (daily check)' }); }
     else out.push(e);

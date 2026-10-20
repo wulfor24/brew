@@ -792,7 +792,12 @@ const brandRoutes = async (req, res, u) => {
     if (!(await packs.getJSON(slug, 'private/created.json', null))) await packs.put(slug, 'private/created.json', { by: me.email, at: Date.now(), after: 'read' }).catch(() => {}); return null; };
   if (what === 'confirm' && req.method === 'POST') { const g = await signGate(); if (g) return send(res, 401, g), true; const b = await readBody(req); return send(res, 200, await builder.confirm(slug, b.edits || [], b.v2 || null)), true; }
   if (what === 'build') return send(res, 200, await builder.buildInfo(slug)), true;
-  if (what === 'updates' && req.method === 'GET') return send(res, 200, await builder.updates(slug, { member: v.member || !v.claimed })), true;
+  /* an "Out of date" reason that today's store contradicts (a read that took prices in cents: "$59 is now $5,700") is not shown
+     (QA 20 Oct): every price change it names must match the product's price today */
+  const staleTrue = (x, p) => { const ch = (x?.changes || []).map((c) => /^(.*) price: .+? → (.+)$/.exec(String(c))); if (!ch.length || ch.some((m) => !m)) return true;
+    const num = (t) => { const m = /([\d.,]+)\s*([kKmM])?/.exec(String(t)); if (!m) return NaN; return +m[1].replace(/,/g, '') * (m[2] ? (/k/i.test(m[2]) ? 1e3 : 1e6) : 1); };
+    return ch.some(([, name, now]) => { const it = (p?.catalog || []).find((y) => y.t === name.trim()); if (!it?.price) return true; const a = num(it.price), b = num(now); return !Number.isFinite(a) || !Number.isFinite(b) || Math.abs(a - b) / Math.max(a, 1) <= 0.03; }); };
+  if (what === 'updates' && req.method === 'GET') { const u = await builder.updates(slug, { member: v.member || !v.claimed }); if (Array.isArray(u?.stale)) { const pk = await loadBrand(slug); u.stale = u.stale.filter((x) => staleTrue(x, pk)); } return send(res, 200, u), true; }
   if (what === 'updates' && req.method === 'POST') { const b = await readBody(req); // check | rewrite { moves } | auto { on }
     const r = b.action === 'check' ? await builder.checkUpdates(slug) : b.action === 'rewrite' ? await builder.rewrite(slug, b.moves || []) : b.action === 'auto' ? await builder.setAuto(slug, b.on) : { error: 'unknown action' };
     return send(res, 200, r), true; }
@@ -801,7 +806,7 @@ const brandRoutes = async (req, res, u) => {
   if (what === 'check' && req.method === 'GET') return send(res, 200, await builder.checkData(slug, { heal: !auth.signinOn() || !!auth.user(req), opened: !!auth.user(req) && !!(v.member || v.eligible) })), true; // a paid repair of the saved read only for someone signed in; the team opening it gets the full wait from now (build.js checkOpened)
   if (what === 'check' && req.method === 'POST') { const g = await signGate(); if (g) return send(res, 401, g), true; const b = await readBody(req); return send(res, 200, await builder.applyCheck(slug, b)), true; }
   if (what === 'moves') { const p = await loadBrand(slug); const pm = v.member ? await packs.getJSON(slug, 'private/moves.json', {}) : {}, ms = { ...(p?.moveDocs || {}), ...pm };
-    const stale = Object.fromEntries(Object.entries((await packs.getJSON(slug, 'updates.json', null))?.stale || {}).filter(([, x]) => v.member || !x.private)), ppdf = v.member ? await packs.getJSON(slug, 'private/pdfs.json', {}) : {};
+    const stale = Object.fromEntries(Object.entries((await packs.getJSON(slug, 'updates.json', null))?.stale || {}).filter(([, x]) => (v.member || !x.private) && staleTrue(x, p))), ppdf = v.member ? await packs.getJSON(slug, 'private/pdfs.json', {}) : {};
     return send(res, 200, { moves: Object.values(ms).sort((a, b) => a.n - b.n).map((x) => ({ n: x.n, group: x.group, skill: x.skill || null, family: x.family || null, kicker: x.kicker, title: x.title, stat: x.stat, statLabel: x.statLabel, gives: x.gives, live: x.live, verified: !!x.meta?.verified, words: x.meta?.words || null,
       version: x.meta?.version || 1, rewrittenAt: x.meta?.rewrittenAt || null, because: x.meta?.because || null, at: x.meta?.at || null, private: !!pm[x.n], past: x.past || null, stale: stale[x.n] ? { why: stale[x.n].why, priority: stale[x.n].priority } : null })), pdfs: { ...((await builder.status(slug))?.pdfs || {}), ...ppdf }, zips: (await builder.status(slug))?.zips || [], status: await builder.status(slug) }), true; }
   if (what === 'events') { // the build, live (server-sent events), replayed from the start
