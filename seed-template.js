@@ -12,7 +12,7 @@ export const CTA = {
   'Publish the campaign': ['Publishing', 'Campaign is live on Meta'], 'Shift budget': ['Moving budget', 'Budget moved to the winners'], 'Rotate creative': ['Swapping ads', 'Fresh versions are live'],
   'Update landing page': ['Updating pages', 'The pages are updated'], 'Publish the page': ['Publishing', 'The page is live'], 'Make the ad': ['Making', 'The ad is on the way'], 'Generate versions': ['Generating', 'Versions on the way'],
   'Draft the listing': ['Drafting', 'Listing drafted'], 'Fix tracking': ['Fixing tracking', 'Tracking fixes queued'], 'Turn on the journey': ['Turning it on', 'The journey is on'],
-  'Approve the flows': ['Saving', 'Flows saved as drafts'], 'Send the review ask': ['Sending', 'Review ask is going out'], 'Make the video': ['Starting', 'The video is in production'],
+  'Approve the flows': ['Saving', 'Flows saved as drafts'], 'Draft the email': ['Drafting', 'The email is drafted'], 'Draft the message': ['Drafting', 'The message is drafted'], 'Pause the ads for these': ['Pausing', 'Ads on these are paused'], 'Send the review ask': ['Sending', 'Review ask is going out'], 'Make the video': ['Starting', 'The video is in production'],
   'Brief the shoot': ['Briefing', 'Shoot brief sent to the team'], 'Shortlist creators': ['Shortlisting', 'Creators shortlisted'], 'Start the tests': ['Starting tests', 'The tests are running'],
   'Add the search info': ['Adding', 'Search info added'], 'Publish the claims ledger': ['Publishing', 'The claims list and the page for AI tools are public'], 'Launch the ad group': ['Launching', 'The search ads are live'],
   'Turn on guest checkout': ['Turning it on', 'Guest checkout is on'], 'Agree with the call': ['Saving', 'Decision saved'], 'Open the scoreboard': ['Opening', 'Scoreboard is open'],
@@ -23,7 +23,7 @@ export const CTA = {
   'Draft the replies': ['Drafting', 'Replies drafted for your OK'], 'Add the photos': ['Adding', 'The photos are added']
 };
 /* buttons renamed since they were saved: a saved card, jam or work item says the new name, and every map reads it (FEED-QA-20) */
-export const CTA_RENAME = { 'Publish Campaign': 'Publish the campaign', 'Fix the markup': 'Add the search info', 'List what points there': 'Pause what points there', 'Plan the restart': 'Restart what was paused' };
+export const CTA_RENAME = { 'Publish Campaign': 'Publish the campaign', 'Fix the markup': 'Add the search info', 'List what points there': 'Pause the ads for these', 'Pause what points there': 'Pause the ads for these', 'Plan the restart': 'Restart what was paused' };
 export const ctaName = (l) => { const s = String(l ?? '').trim(); return CTA_RENAME[s] || s; };
 export const SPENDS = ['Publish Campaign', 'Publish the campaign', 'Shift budget', 'Launch the ad group', 'Queue the ads'];
 export const PERSON = ['Brief the shoot', 'Draft the buyer deck', 'Open the scoreboard', 'Review draft', 'Open report'];

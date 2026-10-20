@@ -18,13 +18,16 @@ const ROLES = { signals: ['founder', 'crm', 'growth'], ads: ['growth', 'founder'
 const MAKE_FORMATS = catalog.formats(); /* the catalog's families (data/creative-catalog.json): the same 13 names as before, so saved packs still map */
 /* a format the writer names (a family, or a Sloosh Space or model from the catalog) → the family the card carries; null when it is none of them or "other" */
 const toFamily = (f) => { const fam = catalog.familyOf(f); return fam && fam !== 'other' ? fam : null; };
-const MAKE_CTA = { 'single image ad': 'Make the ad', /* one ad, never "versions" (Param, 19 Oct) */ 'carousel ad': 'Make the carousel ad', 'collection ad': 'Build the collection ad', 'catalog ad': 'Build the catalog ad', 'video ad': 'Make the video', reel: 'Make the video', 'instagram post': 'Draft the post', 'instagram carousel': 'Draft the carousel post', 'instagram stories': 'Draft the stories', 'whatsapp message': 'Approve the flows', email: 'Approve the flows', 'page section': 'Update landing page' };
+const MAKE_CTA = { 'single image ad': 'Make the ad', /* one ad, never "versions" (Param, 19 Oct) */ 'carousel ad': 'Make the carousel ad', 'collection ad': 'Build the collection ad', 'catalog ad': 'Build the catalog ad', 'video ad': 'Make the video', reel: 'Make the video', 'instagram post': 'Draft the post', 'instagram carousel': 'Draft the carousel post', 'instagram stories': 'Draft the stories', 'whatsapp message': 'Draft the message', email: 'Draft the email', 'page section': 'Update landing page' };
 /* the button follows what the card asks to be made. Cause of "Draft the post" on a page card: the old rule kept any
    button that mentioned a post, carousel or video, so a page section kept the AI's social-post button. Now a making
    button of another format is replaced by the one for the planned format; a non-making button (a decision, a spend,
    "Publish the page") is the card's own choice and stays. Used when cards are written and when packs load. */
 const OTHER_NETWORK = new Set(['Launch the ad group']);
-const MAKE_LABELS = new Set([...Object.values(MAKE_CTA), 'Draft the post', 'Draft the carousel post', 'Draft the stories', 'Make the video', 'Generate versions', 'Make the ad']);
+const FLOW_WORDS = /\b(?:flows?|sequences?|series|journeys?|automat\w*|auto-?send|every (?:buyer|customer|order|new)|day \d+|\d+ days? after|after (?:purchase|delivery|checkout|the order)|triggered|abandon\w*|win-?back|welcome|post-?purchase|reminders?)\b/i;
+/* buttons that belong to one kind of asset: on a card that makes another kind they are the wrong promise */
+const LABEL_FORMATS = { 'Publish the page': /^page section$/, 'Update landing page': /^page section$/, 'Draft the listing': /^page section$/, 'Approve the flows': /^(email|whatsapp message)$/, 'Turn on the journey': /^(email|whatsapp message)$/, 'Send the review ask': /^(email|whatsapp message)$/, 'Draft the email': /^email$/, 'Draft the message': /^whatsapp message$/, 'Launch the ad group': /(?!)/, 'Approve the offers': /^page section$/ };
+const MAKE_LABELS = new Set([...Object.values(MAKE_CTA), 'Approve the flows', 'Draft the post', 'Draft the carousel post', 'Draft the stories', 'Make the video', 'Generate versions', 'Make the ad']);
 /* a button tied to one topic belongs only on a card about that topic (FEED-QA-20: the AI picked "Fix tracking" for a card
    about bundles). The card's own words (title, body, reasons, steps, rows, asset) must name the topic; if they don't, the
    button becomes the one for what the card makes, else "Agree with the call". Used when cards are written, when packs load
@@ -34,9 +37,13 @@ const TOPIC_CTA = {
   'Add the search info': /\b(?:schema|markup|structured data|json-?ld|rich (?:results?|snippets?)|star ratings?|stars? (?:in|on) (?:google|search)|search-friendly|search (?:info|results|snippets?)|google (?:results|search|shopping)|ai (?:answers|search|tools))\b/i,
   'Launch the ad group': /\b(?:google|search ads?|keywords?|ad groups?|amazon|sponsored|ppc|bing|shopping ads?)\b/i,
   'Turn on guest checkout': /\b(?:checkout|guest)\b/i,
-  'Pause what points there': /\b(?:out of stock|sold.?out|stock)\b/i,
+  'Pause the ads for these': /\b(?:out of stock|sold.?out|stock)\b/i,
   'Restart what was paused': /\b(?:back in stock|restock(?:ed)?|paused)\b/i,
   'Send the review ask': /\breviews?\b/i,
+  /* an offer button only on a card about an offer, a test button only on a test, a photo button only on photos (final QA 20 Oct) */
+  'Approve the offers': /\b(?:offers?|discounts?|bundles?|codes?|free|trial|referrals?|prices?|deals?|combos?|gifts?|packs?|ladder)\b/i,
+  'Start the tests': /\b(?:tests?|testing|a\/b|experiments?|split)\b/i,
+  'Add the photos': /\b(?:photos?|images?|pictures?|gallery|visuals?|shots?)\b/i,
   /* a marketplace listing button only on a card about marketplaces (final QA pass 19 Oct: "Draft the listing" on an outreach email) */
   'Draft the listing': /\b(?:marketplaces?|listings?|amazon|flipkart|nykaa|myntra|meesho|ajio|blinkit|zepto|instamart|swiggy|etsy|walmart|ebay|asins?)\b/i,
   'Update the prices': /\bprices?\b/i,
@@ -45,7 +52,9 @@ const TOPIC_CTA = {
   'Shift budget': /\b(?:ad spend|spend(?:ing)?|campaigns?|ad sets?|ads? budgets?|budget (?:to|from|between|across|on|into) (?:the |our |your )?(?:best|winning|top|campaign|ads?)|roas|return on ad spend|cost per (?:order|sale|purchase|result)|meta ads?|facebook ads?|google ads)\b/i
 };
 const cardWords = (c) => [c.title, c.sub, ...(c.detail?.why || []), ...(c.detail?.how || []), ...(c.rows || []).flat(), c.make?.pieces, ...(c.plan?.steps || [])].filter((x) => typeof x === 'string').join(' ');
-export const topicOk = (c) => { const re = TOPIC_CTA[c?.cta?.label], w = cardWords(c); return !re || !w.trim() || re.test(w); }; /* no words to judge by: the button stays */
+/* some topics must be the card's point, not a passing word in its steps (a reorder card that mentions reviews once is not a review ask) */
+const HEAD_TOPIC = new Set(['Send the review ask', 'Add the photos']);
+export const topicOk = (c) => { const re = TOPIC_CTA[c?.cta?.label], w = HEAD_TOPIC.has(c?.cta?.label) ? [c.title, c.sub, c.make?.pieces].filter((x) => typeof x === 'string').join(' ') : cardWords(c); return !re || !w.trim() || re.test(w); }; /* no words to judge by: the button stays */
 /* a fix-it card (tracking, ad money, links, checkout) asks for no picture or page: an asset its own words never mention is the
    writer filling the "make" slot (final QA pass 19 Oct: "Fix broken checkout tracking" carried "Review strip under add to
    cart on <product>", a crawl-budget card a collection banner). The asset counts as mentioned when the card's words name its
@@ -71,12 +80,16 @@ export function fitCta(card) {
   for (const [l, re, no, to] of SWITCH) if (card.cta?.label === l && re.test(head) && !(no && no.test(head))) card.cta = { ...card.cta, label: to };
   if (offTopic || notRival) { const f = card.make?.format || inferMake({ ...card, cta: null })?.format; card.cta = { ...card.cta, label: (f && MAKE_CTA[f]) || 'Agree with the call' }; }
   /* a card that pauses spend on something sold out says so on its button, not "Shift budget" (Gully Labs, final QA pass 19 Oct) */
-  if (card.cta?.label === 'Shift budget' && /\bpaus/i.test(card.title || '') && TOPIC_CTA['Pause what points there'].test(cardWords(card))) card.cta = { ...card.cta, label: 'Pause what points there' };
-  const want = card?.make?.format && MAKE_CTA[card.make.format], cur = card?.cta?.label;
+  if (card.cta?.label === 'Shift budget' && /\bpaus/i.test(card.title || '') && TOPIC_CTA['Pause the ads for these'].test(cardWords(card))) card.cta = { ...card.cta, label: 'Pause the ads for these' };
+  let want = card?.make?.format && MAKE_CTA[card.make.format], cur = card?.cta?.label;
+  /* an email or message that is a flow (it sends on its own, after an event, every time) keeps the flow button; a one-off send drafts it */
+  if (/^(email|whatsapp message)$/.test(card?.make?.format || '') && FLOW_WORDS.test(`${card.title || ''} ${card.sub || ''} ${card.make?.pieces || ''}`)) want = 'Approve the flows';
+  /* a button tied to another format (a page button on an email, a listing button on a message) gives way to the format's own */
+  const fmtOff = want && LABEL_FORMATS[cur] && !LABEL_FORMATS[cur].test(card.make.format);
   /* a Google search button ("Launch the ad group") on a card that makes a Meta or social asset promises the wrong thing: the format's own button */
   const wrongNet = OTHER_NETWORK.has(cur) && MAKES_CREATIVE.test(card?.make?.format || '');
   if (cur === 'Generate versions') card.cta = { ...(card.cta || {}), label: 'Make the ad' }; /* saved cards: the button makes one ad */
-  if (want && CTA[want] && card.cta?.label !== want && (!cur || MAKE_LABELS.has(cur) || wrongNet || cur === 'Queue the ads' /* nothing made yet to queue: make it first */ || cur === 'Publish the campaign' /* a card that makes something: its button makes it (a video ad card makes the video), Brew never publishes */)) card.cta = { ...(card.cta || {}), label: want };
+  if (want && CTA[want] && card.cta?.label !== want && (!cur || MAKE_LABELS.has(cur) || wrongNet || fmtOff || cur === 'Queue the ads' /* nothing made yet to queue: make it first */ || cur === 'Publish the campaign' /* a card that makes something: its button makes it (a video ad card makes the video), Brew never publishes */)) card.cta = { ...(card.cta || {}), label: want };
   return card;
 }
 /* a card that names an asset carries what to make. Old packs were written before every such card set "make", so cards

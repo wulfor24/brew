@@ -75,7 +75,7 @@ test('Make our version only on rival cards; Draft the listing only about marketp
   const rival = { title: 'Mamaearth runs a routine ad', sub: 'Their ad leads with the routine.', research: { kind: 'ad' }, make: { format: 'single image ad', pieces: '' }, cta: { label: 'Make our version' } };
   assert.equal(fitCta(rival).cta.label, 'Make our version');
   const pitch = { title: 'Pitch Purifit on a shower-kit insert swap', sub: 'Email Purifit an insert swap.', make: { format: 'email', pieces: '1 outreach email to Purifit' }, cta: { label: 'Draft the listing' } };
-  assert.equal(fitCta(pitch).cta.label, 'Approve the flows');
+  assert.equal(fitCta(pitch).cta.label, 'Draft the email');
   assert.equal(fitCta({ title: 'Fix your Amazon listing titles', sub: 'Titles miss the search words.', cta: { label: 'Draft the listing' } }).cta.label, 'Draft the listing');
   const vid = { title: 'Run 10 routine and dandruff videos', sub: 'Lead video spend with routine.', make: { format: 'video ad', pieces: '10 cuts' }, cta: { label: 'Queue the ads' } };
   assert.equal(fitCta(vid).cta.label, 'Make the video');

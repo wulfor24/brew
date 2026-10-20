@@ -15,7 +15,7 @@ test('the out-of-stock card pauses what points there, and that button maps to th
   const src = fs.readFileSync(new URL('../feed-service.js', import.meta.url), 'utf8');
   assert.ok(!/label: 'List what points there'/.test(src), 'the unmapped label is gone'); assert.ok(!/label: 'Plan the restart'/.test(src));
   const oos = card('List what points there', { sector: 'catalog', title: '2 products are out of stock on x.com', rows: [['Blue Tee', 'Out of stock']] });
-  assert.equal(fitCta({ ...oos }).cta.label, 'Pause what points there', 'a saved card heals to the new name');
+  assert.equal(fitCta({ ...oos }).cta.label, 'Pause the ads for these', 'a saved card heals to the new name');
   assert.equal(recipeOfCard(oos).primary, 'performance.pause_pointing', 'even unhealed, the old label opens the pause');
   assert.equal(recipeOfCard(card('Plan the restart', { sector: 'catalog', title: '2 products are back in stock' })).primary, 'performance.restart_paused');
 });
@@ -50,4 +50,14 @@ test('a fix card keeps no asset its words never mention, and Shift budget is onl
   const strip = fitCta(card('Fix tracking', { title: 'Track clicks on the new review strip', sub: 'Add a review strip under add to cart and count its clicks.', make: { format: 'page section', pieces: 'Review strip under add to cart on Ubtan Face Wash' } }));
   assert.equal(strip.make?.format, 'page section', 'an asset the card talks about stays');
   assert.equal(fitCta(card('Fix the markup', { title: 'Show your star ratings in Google', make: { format: 'page section', pieces: 'Homepage: search-friendly product info' } })).cta.label, 'Add the search info', 'renamed, and a plain-worded card keeps it');
+});
+
+test('one-off emails and messages draft; flows approve; buttons of another format or topic give way (QA 20 Oct)', async () => {
+  const { fitCta } = await import('../cards-gen.js');
+  assert.equal(fitCta({ title: 'Pitch a founder op-ed', sub: 'Email ten editors.', make: { format: 'email', pieces: '1 pitch email' }, cta: { label: 'Approve the flows' } }).cta.label, 'Draft the email');
+  assert.equal(fitCta({ title: 'Send a day 25 reorder nudge', sub: 'An automatic email 25 days after purchase.', make: { format: 'email', pieces: 'Reorder email' }, cta: { label: 'Draft the email' } }).cta.label, 'Approve the flows');
+  assert.equal(fitCta({ title: 'Set up a Day 30 review request', sub: 'Ask for a review 30 days after delivery.', make: { format: 'email', pieces: 'Review email' }, cta: { label: 'Publish the page' } }).cta.label, 'Approve the flows');
+  assert.equal(fitCta({ title: 'Message salons a free sample', sub: 'One WhatsApp to each salon.', make: { format: 'whatsapp message', pieces: '1 message' }, cta: { label: 'Draft the listing' } }).cta.label, 'Draft the message');
+  assert.equal(fitCta({ title: 'Invite customers to your Sole Circle', sub: 'A members group on WhatsApp.', cta: { label: 'Approve the offers' } }).cta.label, 'Agree with the call');
+  assert.equal(fitCta({ title: 'Send a day 25 reorder nudge', sub: 'Before the bottle ends.', detail: { how: ['Ask for a review later'] }, cta: { label: 'Send the review ask' } }).cta.label !== 'Send the review ask', true);
 });
