@@ -6,7 +6,7 @@ import { mockAllowed } from './ai.js'; // a mock card stands in only on a mock r
 import { unbacked, allowedFrom, numbersIn, backedNumbers } from './fact-gate.js';
 import { CTA, ctaName } from './seed-template.js';
 import * as catalog from './creative-catalog.js'; /* what can be made: formats, the prompt block, generic and repeat checks */
-import { isRivalCard } from './rival-ad.js'; /* "Make our version" belongs only on a card built on a rival's ad */
+import { isReferenceCard } from './rival-ad.js'; /* "Make our version" belongs only on a card built on a rival's ad or a viral video */
 import { evidenceKinds, claimGaps, gapLine, writerEvidence } from './proof-logic.js'; /* a card says Brew saw only what Brew holds */
 /* the asset line ends on a whole word, never mid-word ("…data and s", 19 Oct) */
 const cutWords = (x, n) => { const s = String(x ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? `${s.slice(0, n - 1).replace(/\S*$/, '').replace(/[\s,;:·.–—-]+$/, '')}…` : s; };
@@ -74,7 +74,7 @@ export function fitCta(card) {
   /* an asset the card never talks about goes when its button only fixes or decides (or its button was off-topic anyway) */
   if (card.make?.format && (FIX_CTAS.has(card.cta?.label) || offTopic) && !makeMentioned(card)) { card.makeDropped = card.make.format; delete card.make; }
   /* "Make our version" is the rival-ad button: on any other card (an email, our own ad) it promises a picture of theirs (final QA pass 19 Oct) */
-  const notRival = card.cta?.label === 'Make our version' && !isRivalCard(card);
+  const notRival = card.cta?.label === 'Make our version' && !isReferenceCard(card);
   /* a button whose words name another job than the card's headline: replying to low stars is not a review ask, thin photos are not titles (demo cards, final QA pass 19 Oct) */
   const head = `${card.title || ''} ${card.sub || ''}`;
   for (const [l, re, no, to] of SWITCH) if (card.cta?.label === l && re.test(head) && !(no && no.test(head))) card.cta = { ...card.cta, label: to };

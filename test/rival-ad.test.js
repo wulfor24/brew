@@ -73,6 +73,13 @@ test('viral cards are reference cards, never rival cards; the viral block names 
   assert.ok(isViralCard(v) && isReferenceCard(v) && !isRivalCard(v));
   assert.ok(isReferenceCard({ research: { kind: 'ad', id: '1' } }));
   const b = viralBlock({ platform: 'tiktok', author: 'maker', views: 900000, score: 30, read: { hook: { first3s: 'A hand slams the jar down' }, format: 'demo', pacing: '4 cuts', whyItWorks: 'Pattern break', scenes: [{ t: '0:00', shot: 'Jar slam', onScreenText: 'wait', voice: '' }] } }, 'Cozy');
-  assert.match(b, /30x their usual/); assert.match(b, /Jar slam/); assert.match(b, /Never reuse the creator's sentences/); assert.match(b, /filming directions/);
+  assert.match(b, /30x their usual/); assert.match(b, /Jar slam/); assert.match(b, /Never reuse the creator's sentences/); assert.match(b, /filming directions/); assert.match(b, /Their words, never to be reused[^\n]*"wait"/);
   assert.equal(viralBlock(null), '');
+});
+
+test('fitCta keeps "Make our version" on a viral card and moves it off any other', async () => {
+  const { fitCta } = await import('../cards-gen.js');
+  const v = { id: 'r-viral-tt-1', title: 'A TikTok format', cta: { label: 'Make our version' }, make: { format: 'reel', from: 'viral' }, research: { kind: 'viral', id: 'tt:1' } };
+  fitCta(v); assert.equal(v.cta.label, 'Make our version');
+  const o = { id: 'm1-1', title: 'Our reel', cta: { label: 'Make our version' }, make: { format: 'reel' } }; fitCta(o); assert.notEqual(o.cta.label, 'Make our version');
 });
