@@ -25,12 +25,12 @@ const JARGON = [
   [/\bPDPs\b/g, 'product pages'], [/\bPDP\b/g, 'product page'], [/\bSKUs\b/g, 'products'], [/\bSKU\b/g, 'product'],
   [/\bUGC\b/g, 'customer-style'], [/\bATC\b/g, 'add to cart'], [/\bSERPs?\b/g, 'Google results'], [/\bCRO\b/g, 'store fixes'],
   [/\bunbranded (?:queries|searches|questions)\b/gi, 'searches that name no brand'], [/\bcold (?:buyers|audiences?|traffic)\b/gi, 'people new to you'],
-  [/\bretargeting\b/gi, 'ads to past visitors'], [/\bconversion rate\b/gi, 'share of visitors who buy'], [/\bhero (?:product|SKU)\b/gi, 'best seller'],
+  [/\bretargeting(?:\s+(?:ads?|campaigns?|audiences?))?\b/gi, 'ads to past visitors'], /* "retargeting ads" said "ads to past visitors ads" (QA 20 Oct) */ [/\bconversion rate\b/gi, 'share of visitors who buy'], [/\bhero (?:product|SKU)\b/gi, 'best seller'],
   /* the store's plumbing (QA 19 Oct, FEED-ARV-07: jam plans and source lines said GMC, webhook, products.json, JSON-LD) */
   [/(?:\b(?:our|your|the)\s+)?(?:Shopify(?:'s|’s)?\s+)?`?(?:\b(?:https?:\/\/)?[\w-]+(?:\.[\w-]+)+)?\/?\b(products|collections|meta)\.json\b`?/gi, (m, f) => ({ products: 'your product list', collections: 'your collection list', meta: 'your store details' })[f.toLowerCase()]],
   [/\b(?:(?:an?|the|your|structured|root|new)\s+)*`?\/?\bllms\.txt\b`?(?:\s+(?:file|signpost|page))?/gi, 'a page for AI tools'],
   /* one pattern for the whole phrase, a leading "structured" included: "Add Product schema structured data" was swapped twice ("search-friendly product info search-friendly product info") and "structured JSON-LD" kept "structured" (final QA pass 19 Oct) */
-  [/\b(?:structured\s+)?(?:(?:FAQPage|FAQ|Product|Review|Organi[sz]ation)\s+)?(?:JSON-LD|schema\.org|structured data|schema)(?:\s+(?:FAQPage|FAQ|Product|Review|Organi[sz]ation))?(?:\s+(?:JSON-LD|schema|markup|structured data))*\b/gi, 'search-friendly product info'],
+  [/\b(?:structured\s+)?(?:(?:FAQPage|FAQ|Product|Review|Organi[sz]ation|LocalBusiness|BreadcrumbList|WebSite|Article|HowTo|Offer|AggregateRating|ItemList)\s+)?(?:JSON-LD|schema\.org|structured data|schemas?)(?:\s+(?:FAQPage|FAQ|Product|Review|Organi[sz]ation))?(?:\s+(?:JSON-LD|schema|markup|structured data))*\b/gi, 'search-friendly product info'],
   [/\brich (?:snippets?|results?)\b/gi, 'star ratings and prices in Google'],
   [/\b(P|p)age sections?\b/g, (m, p) => `${p}age`], /* "Page section: Traya alternative page" reads "Page: …"; the make format on file stays "page section" */
   [/\b(?:Google Merchant Center|GMC)(?: feeds?)?\b/g, 'Google Shopping feed'], [/\bMerchant Center\b/g, 'Google Shopping'],
