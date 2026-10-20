@@ -201,6 +201,11 @@ const MARKETPLACE = /\b(?:amazon|flipkart|nykaa|myntra|meesho|ajio|tata cliq|jio
 const primaryOf = (c) => {
   if (c.post?.platform) return ideaAction(c.post); // an idea from the stream opens as the post it is, on its own platform
   if (c.kind === 'chat') return 'creative.whatsapp_ad';
+  /* a card that names another platform for a post or reply ("Answer authenticity questions on Reddit", "Join LinkedIn conversations")
+     opens as that platform's post, with Copy and open, never an Instagram caption (QA J-08) */
+  { const lab0 = ctaName(c.cta?.label), social = /^(instagram (?:post|carousel|stories)|reel)$/.test(c.make?.format || '') || /^(Draft the (?:post|carousel post|replies)|Reply as the brand|Post it)$/.test(lab0 || '') || (!c.make?.format && !(lab0 in CTA_ACTION));
+    const hd = `${c.title || ''} ${c.sub || ''}`, pf = /\breddit\b|\br\/\w/i.test(hd) ? 'creative.reddit_post' : /\bquora\b/i.test(hd) ? 'creative.quora_answer' : /\blinkedin\b/i.test(hd) ? 'creative.linkedin_post' : /\b(?:twitter|on X|X thread|X post)\b/.test(hd) ? 'creative.x_post' : /\bfacebook groups?\b|\bsocial groups?\b|\bforums?\b/i.test(hd) ? 'creative.fb_group_post' : /\bpinterest\b/i.test(hd) ? 'creative.pinterest_pin' : null;
+    if (pf && social && actKey(pf) && !/\b(?:ads?|campaigns?)\b/i.test(c.title || '')) return pf; }
   const label = ctaName(c.cta?.label), byLabel = CTA_IN_SECTOR[`${c.sector}:${label}`] ?? CTA_ACTION[label];
   if (label && !(label in CTA_ACTION) && !CTA_IN_SECTOR[`${c.sector}:${label}`]) { const v = verbAction(label, c); if (v) return onChannel(refine(v, c), c); } // a button we don't know: its verb
   /* "Draft the listing" is a marketplace listing when the card names a marketplace, else the card's own format (an outreach email
