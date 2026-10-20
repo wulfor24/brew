@@ -124,6 +124,9 @@ test('video read: URL parsing', () => {
   assert.equal(parseVideo({ url: 'https://youtu.be/dQw4w9WgXcQ' }).id, 'dQw4w9WgXcQ');
   assert.equal(parseVideo({ url: 'https://www.youtube.com/shorts/dQw4w9WgXcQ' }).platform, 'youtube');
   assert.throws(() => parseVideo({}));
+  // listening items: link (not url) and a prefixed id
+  assert.deepEqual(parseVideo({ link: 'https://www.instagram.com/reel/DdoWcpmAg89/', platform: 'instagram', id: 'ig:DdoWcpmAg89' }), { platform: 'instagram', id: 'DdoWcpmAg89', url: 'https://www.instagram.com/reel/DdoWcpmAg89/' });
+  assert.equal(parseVideo({ platform: 'tiktok', id: 'tt:7311' }).url, 'https://www.tiktok.com/@i/video/7311');
 });
 
 test('spend ledger: charges booked per brand and month, debounced', async () => {

@@ -446,7 +446,7 @@ social.start();
 /* ---------- evidence in the background: market numbers once a day (only the signals that are due run), and a weekly read of the top
    videos people talk about. Same switches as social (SOCIAL_BG / RESEARCH_OFF / LIVE_OFF, off under AI_MOCK); EVIDENCE_OFF=1 stops it ---------- */
 const EV = { busy: false, last: {} }, evOff = () => process.env.EVIDENCE_OFF === '1' || process.env.AI_MOCK === '1' || process.env.SOCIAL_BG === '0' || (process.env.SOCIAL_BG !== '1' && (!!process.env.RESEARCH_OFF || !!process.env.LIVE_OFF));
-const videoRead = createVideoRead({ packs, treg, ai, log: console, gToken });
+const videoRead = createVideoRead({ packs, treg, ai, log: console, gToken }), VIDEO_V = 2;
 async function evidenceTick() {
   if (EV.busy || evOff()) return; EV.busy = true;
   try { const brands = (await builder.list()).filter((b) => b.state === 'Ready' || /moves/.test(b.state || '')), day = new Date().toISOString().slice(0, 10); let n = 0;
@@ -458,9 +458,9 @@ async function evidenceTick() {
         if (ev.length) builder.signal(b.slug, ev).catch((e) => console.warn('[pulse] signal', e.message)); } catch (e) { console.warn('[pulse]', b.slug, e.message); }
       // once a week: read the most-talked-about videos heard for the brand (hooks for the jam and the creative moves)
       const vs = await packs.getJSON(b.slug, 'video/state.json', null).catch(() => null);
-      if (!vs || Date.now() - (vs.at || 0) > 7 * 864e5) { try { const it = (await packs.getJSON(b.slug, 'listen/items.json', null))?.items || [];
+      if (!vs || vs.v !== VIDEO_V || Date.now() - (vs.at || 0) > 7 * 864e5) { try { /* VIDEO_V: reads before the link/id fix all failed, so every brand reads once more */ const it = (await packs.getJSON(b.slug, 'listen/items.json', null))?.items || [];
         const vids = it.filter((x) => /tiktok|instagram|youtube/.test(x.platform) && x.kind === 'post' && x.link).sort((a, c) => (c.likes || 0) - (a.likes || 0));
-        await videoRead.readTop({ slug: b.slug, items: vids, n: 3, why: 'top talked-about videos' }); await packs.put(b.slug, 'video/state.json', { at: Date.now() }); } catch (e) { console.warn('[video]', b.slug, e.message); } } }
+        await videoRead.readTop({ slug: b.slug, items: vids, n: 3, why: 'top talked-about videos' }); await packs.put(b.slug, 'video/state.json', { at: Date.now(), v: VIDEO_V }); } catch (e) { console.warn('[video]', b.slug, e.message); } } }
     // once a week, for every brand at once: estimated festival and sale dates checked against what organisers have announced
     const cs = await packs.getJSON('_brew', 'calendar/confirm-state.json', null).catch(() => null);
     if (!cs || Date.now() - (cs.at || 0) > 7 * 864e5) { const r = await calendar.confirmDates({ treg }).catch((e) => ({ error: e.message })); await packs.put('_brew', 'calendar/confirm-state.json', { at: Date.now(), last: r }); console.log('[calendar] confirm', JSON.stringify(r).slice(0, 200)); }

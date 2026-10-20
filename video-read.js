@@ -31,15 +31,20 @@ Return JSON: hook (first 3 seconds: what happens, the words, the opening shot), 
 Only describe what is in the video.${why ? `\nWhy we are reading it: ${why}` : ''}`;
 
 // platform + id from a URL (or a platform and id given)
-export function parseVideo({ url, platform, id } = {}) {
+export function parseVideo({ url, link, platform, id } = {}) {
+  url = url || link; id = id == null ? id : String(id).replace(/^(?:tt|ig|yt|fb):/, ''); // listening items carry link + a prefixed id
+  if (url) { const v = fromUrl(url); if (v && (v.platform !== 'web' || !(platform && id))) return v; }
   if (platform && id) return { platform, id: String(id), url: url || ({ tiktok: `https://www.tiktok.com/@i/video/${id}`, instagram: `https://www.instagram.com/reel/${id}/`, youtube: `https://www.youtube.com/watch?v=${id}` })[platform] || null };
+  throw new Error('video-read: need a url, or platform + id');
+}
+function fromUrl(url) {
   const u = String(url || ''); let m;
   if ((m = u.match(/tiktok\.com\/.*\/(?:video|photo)\/(\d+)/))) return { platform: 'tiktok', id: m[1], url: u };
   if ((m = u.match(/instagram\.com\/(?:[\w.]+\/)?(?:reels?|p|tv)\/([\w-]+)/))) return { platform: 'instagram', id: m[1], url: u };
   if ((m = u.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})/))) return { platform: 'youtube', id: m[1], url: u };
   if (/facebook\.com|fb\.watch/.test(u)) return { platform: 'facebook', id: crypto.createHash('sha1').update(u).digest('hex').slice(0, 16), url: u };
   if (/^https?:\/\//.test(u)) return { platform: 'web', id: crypto.createHash('sha1').update(u).digest('hex').slice(0, 16), url: u };
-  throw new Error('video-read: need a url, or platform + id');
+  return null;
 }
 const vtt = (s) => String(s || '').replace(/^WEBVTT.*$/m, '').replace(/^\d+\s*$/gm, '').replace(/^[\d:.]+\s*-->\s*[\d:.]+.*$/gm, '').replace(/<[^>]+>/g, '').split('\n').map((x) => x.trim()).filter(Boolean).filter((x, i, a) => x !== a[i - 1]).join(' ');
 const pick = (j) => j?.output?.data ?? j?.data ?? j; // anyapi wraps {output:{found,data}}
@@ -140,8 +145,8 @@ export function createVideoRead({ packs, treg, ai, log = console, gToken, fetchF
   // the top n videos of a list (by views/likes when given), read one after another; the brand's pack keeps the day's set
   async function readTop({ slug, items = [], n = 3, why } = {}) {
     const score = (x) => +(x.views ?? x.plays ?? x.playCount ?? x.likes ?? 0);
-    const top = [...items].filter((x) => x?.url || (x?.platform && x?.id)).sort((a, b) => score(b) - score(a)).slice(0, n), out = [];
-    for (const x of top) { try { out.push(await read({ url: x.url, platform: x.platform, id: x.id, why: x.why || why, slug })); } catch (e) { out.push({ url: x.url, error: e.message }); } }
+    const top = [...items].filter((x) => x?.url || x?.link || (x?.platform && x?.id)).sort((a, b) => score(b) - score(a)).slice(0, n), out = [];
+    for (const x of top) { try { out.push(await read({ url: x.url || x.link, platform: x.platform, id: x.id, why: x.why || why, slug })); } catch (e) { out.push({ url: x.url || x.link, error: e.message }); } }
     if (slug && out.length) await packs.put(slug, `video/top-${new Date().toISOString().slice(0, 10)}.json`, { at: new Date().toISOString(), why: why || null, reads: out.map((r) => ({ id: r.id, platform: r.platform, url: r.url, via: r.via, format: r.read?.format, hook: r.read?.hook?.text, whyItWorks: r.read?.whyItWorks, error: r.error })) }).catch(() => {});
     return out;
   }
