@@ -1,10 +1,10 @@
-# Brew's public Shopify app (FEED_SHOPIFY_CLIENT_ID). Push it with the Shopify CLI from this folder:
+# Brew's public Shopify app "Brew" in the SquareUp partner org (FEED_SHOPIFY_CLIENT_ID; app 437593374721, made 2026-10-20). Push it with the Shopify CLI from this folder:
 #   shopify app config link   (pick the Brew app once; it fills client_id)
 #   shopify app deploy        (releases a version with these URLs, scopes and webhooks)
 # Or copy the same values into the app's version in the Dev Dashboard (dev.shopify.com → Brew → Versions → New version).
 # Keep access_scopes in step with connectors/shopify.js and shopify-app.js SCOPES.
 
-client_id = "FILL_FROM_FEED_SHOPIFY_CLIENT_ID"
+client_id = "ddb97e1702e58849f5022dff36b88a1f"
 name = "Brew"
 application_url = "https://brew.joinsquareup.com/shopify"
 embedded = true
@@ -22,7 +22,7 @@ redirect_urls = [
 ]
 
 [webhooks]
-api_version = "2026-04"
+api_version = "2026-10"
 
   [[webhooks.subscriptions]]
   topics = [ "app/uninstalled" ]
