@@ -1558,7 +1558,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   }
   /* Saved PDFs heal: when the PDF text rules change (PDF_V) the saved PDFs are forgotten and each is drawn again on its next
      download (pdfOn); entries for moves that no longer exist leave status.pdfs. Nothing is drawn ahead of time. */
-  const PDF_V = 5; // 5: ₹ never ‹, claims the store never made marked "Proposed (team decides)" (final QA pass 19 Oct); 2: kickers without "OF N", "What to watch", BREW DRAFTS; 3: no "Brew re-reads / we pause", index without a count; 4: no source-method narration (brew-name.js unSkill) (2026-10-15)
+  const PDF_V = 6; // 6: cover line names the move once ("Move 05", "Weekly move 4"), never "OF 50" (QA 20 Oct); 5: ₹ never ‹, claims the store never made marked "Proposed (team decides)" (final QA pass 19 Oct); 2: kickers without "OF N", "What to watch", BREW DRAFTS; 3: no "Brew re-reads / we pause", index without a count; 4: no source-method narration (brew-name.js unSkill) (2026-10-15)
   let pdfHealQ = Promise.resolve();
   const healPdfs = (slug) => (pdfHealQ = pdfHealQ.catch(() => {}).then(async () => {
     if (blocked(slug) || process.env.PDF_HEAL_OFF === '1') return;

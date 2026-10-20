@@ -6,6 +6,7 @@
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { coverArt } from './brand-art.js';
+import { moveLabel } from '../move-label.js';
 
 const PDF_DIR = path.dirname(fileURLToPath(import.meta.url));
 export const ASSET_BASE = pathToFileURL(PDF_DIR + path.sep).href;
@@ -57,8 +58,14 @@ function lockup() {
   return `<div class="lockup">${MARK}<div><div class="lk-name">Brew</div><div class="lk-team">DEPLOYMENT TEAM</div></div></div>`;
 }
 
+/* the cover line: the discipline, then the move's own name ("Move 05", "Weekly move 4", "Timely move"), once and with no total
+   (the kicker already ended in "· MOVE NN", so covers read "MOVE 05 · MOVE 05 OF 50": QA 20 Oct) */
+const coverKicker = (move, isIndex) => {
+  const base = String(move.kicker || '').replace(/\s*·\s*(?:MOVE|INDEX)\b.*$/i, '').trim();
+  return isIndex ? `${up(base || 'THE PLAYBOOK')} · INDEX` : `${up(base || 'MOVE')} · ${up(moveLabel(move.n))}`;
+};
 function cover(move, brand, isIndex) {
-  const kicker = isIndex ? `${up(move.kicker || 'THE PLAYBOOK')} · INDEX` : `${up(move.kicker)} · MOVE ${pad2(move.n)}${move.family ? '' : ` OF ${move.of || 50}`}`;
+  const kicker = coverKicker(move, isIndex);
   const sub = move.subtitle || move.gives;
   return `<section class="cover">
 <img class="tex tex-waves" src="${ASSET_BASE}assets/cover-waves.png" alt="">
@@ -199,7 +206,7 @@ ${indexRows(list)}</section>`);
 }
 
 function closing(move, brand, isIndex) {
-  const kicker = isIndex ? up(move.kicker || 'THE PLAYBOOK') : up(move.kicker);
+  const kicker = coverKicker(move, isIndex);
   return `<section class="cover closing">
 <img class="tex tex-close" src="${ASSET_BASE}assets/closing-waves.png" alt="">
 <div class="cl-kicker">${esc(kicker)}</div>
