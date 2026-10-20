@@ -91,7 +91,8 @@ function finish(p) {
   return Object.assign(p, {
     fx, fxDeep,
     name: p.seed.brand.name, host: p.seed.brand.host,
-    factOk: allowedFrom({ ...p.facts, ...cur }),
+    /* the store's own product pages back their numbers too ("3% Redensyl" on the serum's page): drafts quoting the label were failed and told to drop true numbers (QA J-12) */
+    factOk: allowedFrom({ ...p.facts, ...cur, ...Object.fromEntries((p.catalog || []).filter((x) => x?.claim).map((x, i) => [`pdp.${i}`, { v: x.claim }])) }),
     factBrief: 'Facts you may quote (use these exact numbers, no others; a count that changes day to day says the day it was read, e.g. "664 live ads on 14 Oct"):\n' + Object.values(shownFacts).filter((f) => f.kind !== 'demo' && f.label).map((f) => `- ${f.label}: ${f.v}${f.kind === 'proposed' ? ' (proposed, say so)' : ''}`).join('\n'),
     pageFacts: Object.values(shownFacts).filter((f) => f.kind !== 'demo' && f.label).map((f) => `- ${f.label}: ${f.v}`).join('\n'),
     rivalsRe: re(rivals), bannedRe: new RegExp(c.banned || '(?!)', 'i'),
