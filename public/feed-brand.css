@@ -794,7 +794,7 @@ body.has-me-cur .me-cur{display:flex}
 .cxb-go:active:not(:disabled){transform:scale(.97)}
 .cxb-go:disabled{cursor:progress;opacity:.75}
 .cxb-gh:focus-visible,.cxb-go:focus-visible{outline:2px solid var(--fg-3);outline-offset:2px}
-.cxb-go .spin{border-color:color-mix(in srgb,var(--on-fg) 25%,transparent);border-top-color:var(--on-fg)}
+.cxb-go .spin{color:var(--on-fg)}
 /* the guided steps: numbered, joined by a thin line, each with its link or the text to copy */
 .cxb-n{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
 .cxb-n li{position:relative;display:flex;gap:12px;align-items:flex-start;padding-bottom:18px}

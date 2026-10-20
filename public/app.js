@@ -204,6 +204,14 @@
      undo; a button repainted away in the meantime is left alone */
   const busyBtn = (b, label = '') => { if (!b) return () => {}; const html = b.innerHTML; b.disabled = true; b.classList.add('is-wait'); b.setAttribute('aria-busy', 'true'); b.innerHTML = `<span class="spin"></span>${b.matches('.icon-btn') ? '' : esc(label)}`; /* an icon button has no room for words: the spinner alone */
     return () => { if (!b.isConnected) return; b.disabled = false; b.classList.remove('is-wait'); b.removeAttribute('aria-busy'); b.innerHTML = html; }; };
+  /* an area waiting to fill (a sheet, a list, a page): the Brew loader big, one line saying what it is doing, a quieter line under.
+     size: '' (a section), 'sm' (a row or a small box), 'screen' (a whole view) */
+  /* a page that fetches before it paints: after a beat, the old page gives way to the loader, so a tap never reads as nothing.
+     It only paints if nothing else painted there first; the returned cancel stops it */
+  const holdView = (title, sub = '', el = null) => { const box = el || $('#view') || root, was = box?.firstElementChild;
+    const t = setTimeout(() => { if (!box?.isConnected || box.firstElementChild !== was) return; box.innerHTML = box === root ? `<main class="screen">${loader(title, sub, 'screen')}</main>` : loader(title, sub, 'screen'); }, 160);
+    return () => clearTimeout(t); };
+  const loader = (title = '', sub = '', size = '') => `<div class="bload${size ? ` is-${size}` : ''}" role="status" aria-live="polite"><span class="spin"></span>${title ? `<b>${esc(title)}</b>` : ''}${sub ? `<small>${esc(sub)}</small>` : ''}</div>`;
 
   /* =========================================================
      State: one object, kept in localStorage. Reset demo clears it.
@@ -393,7 +401,7 @@
         ${UI2 ? `<span class="ob2-mark">${SO()}</span>` : '<span class="ob2-eyebrow">Design partner preview</span>'}
         <h1 class="ob2-h">${UI2 ? 'Your brand’s next marketing moves, each with its sources.' : 'Your store’s marketing team, in one feed.'}</h1>${UI2 && !DEMO_LAND ? '<p class="ob2-ask">Let’s start with your URL.</p>' : ''}
         <p class="ob2-lede">${DEMO_LAND ? 'Pick a real brand below and watch it run. Brew reads' : 'Add your website. Brew reads'} your store, reviews, rivals and AI answers, then ${SF_ON ? 'five' : 'four'} agents bring you ideas you shape together and hand over as one brief.</p>
-        ${DEMO_LAND ? '<div class="ob2-demos" id="demos" aria-busy="true"></div>' : `<form class="ob2-url" id="url-form" autocomplete="off">${ic('link', 's18')}<input id="url-in" value="${LANDING ? '' : B.brand.host}" placeholder="yourbrand.com" aria-label="Your website" aria-describedby="url-err" inputmode="url" enterkeyhint="go" autocapitalize="off" spellcheck="false"${window.BREW_DEMO && !LANDING ? ` readonly aria-readonly="true" title="This demo is set up for ${esc(B.brand.host)}"` : ''}><button class="btn btn-primary" id="go" type="submit">${UI2 ? 'Read my store' : 'Build my feed'} ${ic('right', 's16')}</button></form>${LANDING ? `<p class="ob2-err" id="url-err" role="alert" hidden></p><p class="ob2-own">${OWN_LINE}</p>` : ''}`}
+        ${DEMO_LAND ? `<div class="ob2-demos" id="demos" aria-busy="true">${loader('Finding the demo brands', '', 'sm')}</div>` : `<form class="ob2-url" id="url-form" autocomplete="off">${ic('link', 's18')}<input id="url-in" value="${LANDING ? '' : B.brand.host}" placeholder="yourbrand.com" aria-label="Your website" aria-describedby="url-err" inputmode="url" enterkeyhint="go" autocapitalize="off" spellcheck="false"${window.BREW_DEMO && !LANDING ? ` readonly aria-readonly="true" title="This demo is set up for ${esc(B.brand.host)}"` : ''}><button class="btn btn-primary" id="go" type="submit">${UI2 ? 'Read my store' : 'Build my feed'} ${ic('right', 's16')}</button></form>${LANDING ? `<p class="ob2-err" id="url-err" role="alert" hidden></p><p class="ob2-own">${OWN_LINE}</p>` : ''}`}
         <div class="ob2-agents">${AGENTS_ON.map((a) => `<span title="${AGENT[a]}">${face(a)}</span>`).join('')}<small>${SF_ON ? 'Creative, ads, storefront, AI answers and retention agents' : 'Creative, ads, AI answers and retention agents'}</small></div>
         <p class="ob2-foot">${LANDING ? `Brew reads the live site, its reviews, rivals and AI answers, then writes its moves. Every number has a source. ${DEMO_LAND ? 'Connected accounts are a demo workspace, and nothing is sent.' : window.LIVE?.me ? `Signed in as ${esc(window.LIVE.me.email)}.` : window.LIVE?.signin ? 'Sign in with Google. Email sign-in is coming.' : window.LIVE?.dummy === false ? '' : 'Connected accounts are a demo workspace.'}` : `Every idea comes from the Brew × ${esc(B.brand.name)} move documents.${window.LIVE?.dummy === false ? '' : ' Connected numbers are a demo workspace.'}`}</p>${LANDING && !DEMO_LAND ? '<div class="ob2-recent" id="recent"></div>' : ''}${LANDING ? '<p class="ob2-legal">Preview · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></p>' : ''}`, 0,
       `<div class="ob2-wash"></div><div class="ob2-collage">${LANDING ? LAND_CARDS.map((c, i) => `<figure class="cl cl${i} cl-txt" style="--clc:${c[3]}">${face(c[0])}<small>${esc(c[1])}</small><b>${esc(c[2])}</b></figure>`).join('') : art.map((src, i) => `<figure class="cl cl${i}"><img src="${src}" alt=""></figure>`).join('')}
@@ -493,7 +501,7 @@
     if (GEN && window.LIVE?.me && window.LIVE?.access && !window.LIVE.access.gen && !(B.steps || []).length && signWall('check')) return; /* signed in from outside the team: the read was kept from them, so no empty replay */
     if (V2 && window.OB2) { view = 'setup'; return window.OB2.run(); } /* v2: the taps, the story and the tutorial while the read runs */
     meCursor();
-    view = 'setup';
+    view = 'setup'; holdView('Opening the read', '', root);
     // the rivals step shows what the Ad Library research really found (research.js), not a canned line
     const res = await fetch('/api/research').then((r) => r.json()).catch(() => null);
     const ra = !GEN && res?.ads?.items?.length ? res.ads : null; // a generated brand's reader already shows its real ads
@@ -603,7 +611,7 @@
   const CURRENCIES = ['INR', 'USD', 'GBP', 'AED', 'CAD', 'AUD', 'SGD', 'EUR', 'CZK', 'PLN'];
   const checkRead = async () => {
     if (signWall('check')) return;
-    view = 'check'; window.scrollTo(0, 0); const slug = B.slug || BR; if (!S.onboarded) obAt('check');
+    view = 'check'; window.scrollTo(0, 0); const slug = B.slug || BR; if (!S.onboarded) obAt('check'); holdView('Opening what we read', '', root);
     const D = await api(`/api/brands/${slug}/check`); if (!D || D.error) { toast(`${ic('info', 's16')}${esc(D?.error || 'Could not load what we read')}`); return waitMoves({ fromCheck: true }); }
     const st = { hero: new Set(D.products.filter((x) => x.hero).map((x) => x.handle)), removed: new Set(), addProducts: [], removeRivals: new Set(), addRivals: [], who: {}, sources: {}, company: {} };
     const srcLine = (x) => x.src ? `<a class="ck2-src" ${x.url ? `href="${esc(x.url)}" target="_blank" rel="noopener"` : ''}>${ic('link', 's14')}${esc(srcShort(x.src))}${x.at ? ` · ${esc(x.at)}` : ''}</a>` : `<span class="ck2-src is-none">Not found on the site</span>`;
@@ -661,7 +669,7 @@
   };
   /* ---------- the moves take a while: show what we have now, and email when they are ready ---------- */
   const waitMoves = async (o = {}) => {
-    view = 'wait'; root.onclick = null; root.onkeydown = null; window.scrollTo(0, 0); const slug = B.slug || BR; clearTimeout(waitMoves.t);
+    view = 'wait'; root.onclick = null; root.onkeydown = null; window.scrollTo(0, 0); const slug = B.slug || BR; clearTimeout(waitMoves.t); if (!$('.wt2')) holdView('Opening', '', root);
     const [st, f] = await Promise.all([api(`/api/brands/${slug}/status`), api(`/api/brands/${slug}/findings`)]);
     if (st?.done && !o.stay) return continueToFeed();
     if (waitsOnCheck(st) && !o.stay && !o.fromCheck) return checkRead(); /* nothing is being written yet: the check is what it waits for */
@@ -3125,6 +3133,7 @@
     view = 'jams';
     const paint = () => {
       if (view !== 'jams') return;
+      if (!WORK.loaded && !WORK.items.length) return libPage('jams', 'Everything you’re planning with AI and your team.', loader('Opening your jams')); /* never "No jams yet" before the list is in */
       const by = (a, b) => b.updatedAt - a.updatedAt, all = [...WORK.items].sort(by);
       if (!window.BREW_DEMO && WORK.me) { /* team jams: mine (started, tagged, asked, given, replied) and the whole team's */
         const me = String(WORK.me.email).toLowerCase(), mine = all.filter((w) => w.mine || w.assignee?.email === me);
@@ -3172,7 +3181,7 @@
         <span class="lt-f"><span class="lt-who">${esc(REF_JOB[r.job] || r.job)}${r.kind === 'video' ? ' · video' : r.w && r.h ? ` · ${r.w}×${r.h}` : ''}</span><button class="linkbtn" data-rf-edit>Edit</button></span>`}</div>`; };
   const refUpload = async (files) => { files = [...files].slice(0, 12); if (!files.length) return; const IMG = /^image\/(png|jpeg|webp)$/; const skipped = []; let n = 0;
     const read = (f) => new Promise((ok) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = () => ok(null); r.readAsDataURL(f); });
-    toast(`${ic('upload', 's16')}Uploading ${files.length === 1 ? esc(files[0].name) : files.length + ' files'}…`);
+    toast(`<span class="spin"></span>Uploading ${files.length === 1 ? esc(files[0].name) : files.length + ' files'}…`);
     for (const f of files) { const img = IMG.test(f.type), vid = f.type === 'video/mp4'; if (!(img || vid) || (img && f.size > 8e6) || (vid && f.size > 25e6)) { skipped.push(f.name); continue; }
       const data = await read(f); if (!data) { skipped.push(f.name); continue; }
       const r = await tapi('POST', `/api/brands/${encodeURIComponent(mvSlug())}/references`, { data, label: f.name.replace(/\.[a-z0-9]+$/i, '').replace(/[-_]+/g, ' ').trim(), job: img ? (REFS.cat && REFS.cat !== 'all' ? REFS.cat : 'other') : 'scene' });
@@ -3453,7 +3462,7 @@
     view = 'deck'; window.scrollTo(0, 0); $('#stk').innerHTML = ''; $('#notes').innerHTML = '';
     document.body.classList.add('deck-on'); colOrder();
     $$('.seg [role=tab]').forEach((t) => t.setAttribute('aria-selected', t.dataset.nav === 'deck'));
-    $('#view').innerHTML = `<div class="deck-wrap"><aside class="deck-side" id="deck-side"></aside><div class="deck-main"><div class="deck-tabs" id="deck-tabs" role="tablist" aria-label="Columns"></div><div class="deck" id="deck"></div></div></div>`;
+    $('#view').innerHTML = `<div class="deck-wrap"><aside class="deck-side" id="deck-side"></aside><div class="deck-main"><div class="deck-tabs" id="deck-tabs" role="tablist" aria-label="Columns"></div><div class="deck" id="deck">${loader('Laying out your deck')}</div></div></div>`;
     buildDeck(); counts();
     deckEl().addEventListener('scroll', () => requestAnimationFrame(markTab), { passive: true });
     ['wheel', 'touchstart', 'keydown'].forEach((ev) => deckEl().addEventListener(ev, (e) => { if (ev !== 'wheel' || Math.abs(e.deltaX) > Math.abs(e.deltaY)) navPin = null; }, { passive: true }));
@@ -3466,8 +3475,8 @@
     const dots = t.closest('.col-dots'); if (dots) { const pop = dots.nextElementSibling, on = pop.classList.contains('on'); $$('.col-pop').forEach((x) => x.classList.remove('on')); pop.classList.toggle('on', !on); return; }
     const act = t.closest('[data-colact]'); $$('.col-pop').forEach((x) => x.classList.remove('on'));
     if (act) { const col = act.closest('.dcol'), k = col.dataset.col;
-      if (act.dataset.colact === 'refresh') { const had = new Set(byCol(k).map(([p]) => p.id)); col.classList.add('is-refreshing');
-        (async () => { await buildDeck(); const c2 = $(`.dcol[data-col="${k}"]`); $('.col-body', c2)?.scrollTo({ top: 0, behavior: 'smooth' });
+      if (act.dataset.colact === 'refresh') { const had = new Set(byCol(k).map(([p]) => p.id)); col.classList.add('is-refreshing'); col.insertAdjacentHTML('beforeend', `<div class="col-wait">${loader('Checking for new cards', '', 'sm')}</div>`);
+        (async () => { await buildDeck(); col.classList.remove('is-refreshing'); col.querySelector('.col-wait')?.remove(); /* a failed fetch leaves the old column */ const c2 = $(`.dcol[data-col="${k}"]`); $('.col-body', c2)?.scrollTo({ top: 0, behavior: 'smooth' });
           const fresh = byCol(k).filter(([p]) => !had.has(p.id)).length; toast(fresh ? `${ic('sparkles', 's16')}${fresh} new in ${SECTORS[k].name}` : `${ic('check', 's16')}${SECTORS[k].name} is up to date`); })(); }
       if (act.dataset.colact === 'hide') { colState[k].hidden = true; saveLayout(); buildDeck(); toast(`${SECTORS[k].name} hidden`); }
       return; }
@@ -4430,7 +4439,7 @@
   };
   const PRE_CH = new Map(); // a package that came back with its jam's work: the studio opens on it without asking again
   const openStudio = async (id, o = {}) => {
-    let ch = findCh(id) || PRE_CH.get(id); PRE_CH.delete(id); if (!ch) { const g = await tapi('GET', `/api/changes/${id}`); ch = g.change; }
+    let ch = findCh(id) || PRE_CH.get(id); PRE_CH.delete(id); if (!ch) { const stop = holdView('Opening the jam'); const g = await tapi('GET', `/api/changes/${id}`); stop(); ch = g.change; }
     /* a link to a jam this browser can't open (another workspace's, or gone): open the card's own jam, never a blank page */
     if (!ch) { if (RX.p && !o.noFallback) { history.replaceState(history.state, '', `${location.pathname}#remix=${RX.p.id}`); return openRemix(RX.p, null, { fromHistory: true, noFallback: true }); } $('#view').innerHTML = `<div class="rxp"><p class="rx-gone">${ic('info', 's16')}This jam can’t be opened here. <button class="linkbtn" data-nav="feed">Back to the feed</button></p></div>`; return; }
     Object.assign(RX, { ch, viewing: null, cmp: [], tab: 'iterate', editing: false, draft: '', knobSel: {}, briefEdit: false, sending: null }); /* a reply still running in another jam never freezes this one */ tapi('POST', `/api/changes/${ch.id}/open`, {}); REMIXES = null; if (!o.fromHistory) nav(`#remix=${RX.p.id}/${ch.id}`, !o.replace, o.deep ? 'rx-deep' : 'rx-ch'); /* from the card page it replaces the card: Back goes to the feed, not round again */
@@ -4658,8 +4667,8 @@
   const pdfUrl = (f, dl) => `/b/${mvSlug()}/pdf/${encodeURIComponent(f)}${dl ? '?dl=1' : ''}`;
   const MVT = { tab: 'moves' };
   const renderMoves = async () => {
-    view = 'moves'; counts(); $('#stk').innerHTML = ''; $('#notes').innerHTML = ''; /* header title and rail match the section on a direct link too */ clearTimeout(MV.t); const slug = mvSlug();
-    const [r, bd, up, hs] = await Promise.all([api(`/api/brands/${slug}/moves`), GEN ? api(`/api/brands/${slug}/build`) : null, GEN ? api(`/api/brands/${slug}/updates`) : null, null /* the weekly history route is not in Brew yet (feed/ work never ported): no 404 on every visit (QA UI) */]); if (view !== 'moves') return;
+    const stop = view !== 'moves' ? holdView('Opening your moves') : () => {}; view = 'moves'; counts(); $('#stk').innerHTML = ''; $('#notes').innerHTML = ''; /* header title and rail match the section on a direct link too */ clearTimeout(MV.t); const slug = mvSlug();
+    const [r, bd, up, hs] = await Promise.all([api(`/api/brands/${slug}/moves`), GEN ? api(`/api/brands/${slug}/build`) : null, GEN ? api(`/api/brands/${slug}/updates`) : null, null /* the weekly history route is not in Brew yet (feed/ work never ported): no 404 on every visit (QA UI) */]); stop(); if (view !== 'moves') return;
     const U = up && !up.error ? up : null, nStale = U?.stale?.length || 0;
     const ms = r?.moves || [], by = Object.fromEntries(ms.map((m) => [m.n, m])), pdfs = r?.pdfs || {}, st = r?.status || {}, b = bd && !bd.error ? bd : null;
     const done = ms.filter((m) => m.n >= 1 && m.n < 1000 && !m.cadence).length, extra = ms.length - done, building = !!b && !st.done; // the playbook (status.total): not the index, not weekly moves (1001+)
@@ -4881,7 +4890,7 @@
   const FS = { open: null, all: new Set() };
   const renderFacts = async (embed = false) => {
     if (!embed) view = 'facts'; counts(); const slug = mvSlug();
-    if (!$('#fs')) { libShell('Fact sheet', `Every number and name Brew may quote for ${esc(B.brand.name)}, and where it came from.`, '<div class="fsx" id="fs"><p class="lx-empty">Opening…</p></div>'); $('#col')?.classList.add('lib-col', 'fs-col'); }
+    if (!$('#fs')) { libShell('Fact sheet', `Every number and name Brew may quote for ${esc(B.brand.name)}, and where it came from.`, `<div class="fsx" id="fs">${loader('Opening the fact sheet')}</div>`); $('#col')?.classList.add('lib-col', 'fs-col'); }
     const D = await api(`/api/brands/${slug}/facts`); if (embed ? !$('#fs') : view !== 'facts') return;
     if (!D || D.error) { $('#fs').innerHTML = `<p class="lx-empty">${esc(D?.error || 'The fact sheet did not open. Try again.')}</p>`; return; }
     paintFacts(D);
@@ -4935,7 +4944,7 @@
   };
   const openHeard = (f = {}) => { HD.f = { src: '', mode: '', theme: '', q: '', ...f }; nav('#v=heard', true, 'view', 'heard'); renderHeard(); };
   const renderHeard = async (more = false) => {
-    view = 'heard'; if (!more) { HD.x = null; libShell('What we heard', `Everything people said about ${esc(B.brand.name)}. Tap a quote to open where it was said.`, '<div class="hd" id="hd"><p class="lx-empty">Opening…</p></div>'); $('#col')?.classList.add('lib-col', 'hd-col'); }
+    view = 'heard'; if (!more) { HD.x = null; libShell('What we heard', `Everything people said about ${esc(B.brand.name)}. Tap a quote to open where it was said.`, `<div class="hd" id="hd">${loader('Gathering what people said')}</div>`); $('#col')?.classList.add('lib-col', 'hd-col'); }
     const off = more ? HD.x?.items.length || 0 : 0, r = await api(`/api/brands/${encodeURIComponent(BR)}/heard/items?${hdQs({ ...HD.f, offset: off, limit: 60 })}`);
     if (view !== 'heard' || !r || r.error) { if (!more && $('#hd')) $('#hd').innerHTML = `<p class="lx-empty">${r?.error ? esc(r.error) : 'Nothing heard yet. Brew listens every day; the first quotes land here within a day.'}</p>`; return; }
     HD.x = more && HD.x ? { ...r, items: [...HD.x.items, ...r.items] } : r; paintHeard(); };
@@ -4982,7 +4991,7 @@
   const lxBuildPoll = async () => { if (view !== 'learned' || !$('[data-lx-build]')) return; const st = await api(`/api/brands/${mvSlug()}/status`); if (view !== 'learned' || !st || st.error) return;
     if (st.done) return renderLearned(); const el = $('[data-lx-build]'); if (!el) return; el.textContent = lxBuildLine(st); const bar = $('.lx-bar b'); if (bar) bar.style.width = `${Math.round((Math.min(51, +st.movesDone || 0) / 51) * 100)}%`; lxBuild.t = setTimeout(lxBuildPoll, 15e3); };
   const renderLearned0 = async () => {
-    view = 'learned';
+    const stop = view !== 'learned' ? holdView('Opening what Brew learned') : () => {}; view = 'learned';
     const bq = encodeURIComponent(BR), [L, HD, MEM, MVS, CAL, UPS, TOLD] = await Promise.all([tapi('GET', '/api/tenants/:t/learning'), api(`/api/brands/${bq}/heard`), api(`/api/brands/${bq}/memory`), api(`/api/brands/${mvSlug()}/moves`), api(`/api/brands/${bq}/calendar?days=120`), GEN ? api(`/api/brands/${mvSlug()}/updates`) : null, api(`/api/brands/${bq}/told`)]); if (L.error || view !== 'learned') return;
     const heard = HD?.heard || null, memLines = (MEM?.facts || []).filter((f) => f.scope === 'brand').sort((a, b) => (b.n || 1) - (a.n || 1) || (b.updatedAt || 0) - (a.updatedAt || 0));
     const agents = Object.keys(L.trust), all = L.lessons || [], on = (xs) => xs.filter((x) => x.on).length;
@@ -5084,7 +5093,7 @@
   /* UI2 Memory: one header (Drop anything here + tabs) over the pages that already exist.
      What we learned = the learned hub with the moves; Rules = its rules and checks plus the fact sheet; Heard; Your feed. */
   const renderLearned = async () => { await renderLearned0(); if (!UI2 || view !== 'learned') return;
-    if (document.body.dataset.m2 === 'rules' && !$('#fs')) { ($('#col') || $('#view')).insertAdjacentHTML('beforeend', `<section class="lx-sec m2-facts">${lxHead('lx-facts', 'Fact sheet', '', `Every number and name Brew may quote for ${esc(B.brand.name)}, and where it came from. Every agent follows it.`)}<div class="fsx" id="fs"><p class="lx-empty">Opening…</p></div></section>`); renderFacts(true); } };
+    if (document.body.dataset.m2 === 'rules' && !$('#fs')) { ($('#col') || $('#view')).insertAdjacentHTML('beforeend', `<section class="lx-sec m2-facts">${lxHead('lx-facts', 'Fact sheet', '', `Every number and name Brew may quote for ${esc(B.brand.name)}, and where it came from. Every agent follows it.`)}<div class="fsx" id="fs">${loader('Opening the fact sheet', '', 'sm')}</div></section>`); renderFacts(true); } };
   const M2TAB = { learned: 'learned', moves: 'learned', move: 'learned', rules: 'rules', facts: 'rules', heard: 'heard', tune: 'tune' };
   /* ui=1: the big drop box on What Brew learned (the whole page still takes a drop) */
   const lxDropBig = () => `<div class="m2-drop lx-drop" data-m2-drop><span class="m2-up">${ic('upload')}</span><b>Drop anything here</b><span>Brand guides, past ads, product sheets, screenshots. Brew reads them and keeps what matters.</span><button class="lx-drop-btn" data-m2-pick>Upload files</button><input type="file" multiple hidden accept=".pdf,.docx,.pptx,.xlsx,.txt,.md,.csv,.tsv,.json,.png,.jpg,.jpeg,.webp,.mp4" data-m2-file></div>`;
@@ -5212,7 +5221,7 @@
   const TU = { d: null };
   const renderTune = async () => { view = 'tune'; const R = ROLE();
     const tuT = UI2 ? '' : 'Your feed', tuS = UI2 ? '' : 'What Brew shows you more and less of. Only you see this.';
-    if (!TU.d) libShell(tuT, tuS, '<p class="lx-empty">Opening…</p>');
+    if (!TU.d) libShell(tuT, tuS, loader('Opening your feed settings'));
     const r = await tapi('GET', '/api/tenants/:t/tuning'); if (view !== 'tune') return; if (r.error) { libShell(tuT, tuS, `<p class="lx-empty">${esc(r.error)}</p>`); return UI2 && $('.lib-head')?.remove(); }
     TU.d = r; const tn = r.tuning || {}, sig = r.signals || [], W = r.weights || ['less', 'normal', 'more'];
     const ign = new Set(tn.ignored || []);
@@ -5293,7 +5302,7 @@
 </div></div>` : `<div class="a2m me"><p>${esc(m.body || m.text || '')}</p></div>`;
   const paintAsk = () => { const el = $('#ask2'); if (!el) return; const b = $('.a2-thread', el), atEnd = !b || b.scrollHeight - b.scrollTop - b.clientHeight < 60;
     const first = !ASK.msgs.length;
-    $('.a2-thread', el).innerHTML = (first ? `<div class="a2-hi"><h3>Hi${hiName(ROLE())}, what should we work on?</h3><div class="a2-starts">${askStarters().map((x) => `<button class="a2-start" data-a2-start="${esc(x)}">${esc(x)}</button>`).join('')}</div></div>` : ASK.msgs.map(askMsg).join(''))
+    $('.a2-thread', el).innerHTML = (first && ASK.loading ? loader('Opening your conversation', '', 'sm') : first ? `<div class="a2-hi"><h3>Hi${hiName(ROLE())}, what should we work on?</h3><div class="a2-starts">${askStarters().map((x) => `<button class="a2-start" data-a2-start="${esc(x)}">${esc(x)}</button>`).join('')}</div></div>` : ASK.msgs.map(askMsg).join(''))
       + (ASK.busy ? `<div class="a2m brew">${SO()}<div><p class="a2-think"><span class="spin"></span>Thinking…</p></div></div>` : '');
     $('.a2-seed', el).innerHTML = ASK.seed ? `<span class="chip">${ic('link', 's14')}${esc(ASK.seed.label || 'About this')}<button class="linkbtn" data-a2-unseed aria-label="Ask without it">${ic('x', 's14')}</button></span>` : '';
     if (atEnd || ASK.busy) { const t = $('.a2-thread', el); t.scrollTop = t.scrollHeight; } };
@@ -5318,8 +5327,8 @@
         const mv = t.closest('[data-a2-move]'); if (mv) { el.remove(); document.body.classList.remove('ask-on'); location.hash = `#v=move&m=${mv.dataset.a2Move}`; return; }
         const ac = t.closest('[data-a2-act]'); if (ac) { let ctx = null; try { ctx = JSON.parse(ac.dataset.a2Act); } catch (x) {} if (!ctx) return; el.remove(); document.body.classList.remove('ask-on');
           if (ctx.post && byId(ctx.post)) return openDetail(byId(ctx.post)); return openJam({ ...ctx, draft: ac.dataset.a2Say || undefined }); } }); }
-    paintAsk(); setTimeout(() => $('#ask2 textarea')?.focus(), 60);
-    const sent0 = ASK.sent || 0; const r = await tapi('GET', '/api/tenants/:t/ask'); if (r && !r.error && !r.teamOnly && gen === ASK.gen && !ASK.busy && (ASK.sent || 0) === sent0) { ASK.msgs = r.msgs || []; paintAsk(); } };
+    ASK.loading = !ASK.msgs?.length; paintAsk(); setTimeout(() => $('#ask2 textarea')?.focus(), 60);
+    const sent0 = ASK.sent || 0; const r = await tapi('GET', '/api/tenants/:t/ask'); if (ASK.loading) { ASK.loading = false; if (!r?.msgs?.length || gen !== ASK.gen || ASK.busy || (ASK.sent || 0) !== sent0) paintAsk(); } /* no history: the starters */ if (r && !r.error && !r.teamOnly && gen === ASK.gen && !ASK.busy && (ASK.sent || 0) === sent0) { ASK.msgs = r.msgs || []; paintAsk(); } };
 
   /* =========================================================
      Stories
@@ -5453,7 +5462,7 @@
     card.addEventListener('click', (e) => { if (card.dataset.justHeld) { e.stopPropagation(); delete card.dataset.justHeld; } }, true);
     $$('.sv-acts', w).forEach((a) => { a.onmouseenter = pause; a.onmouseleave = run; });
     $$('[data-sv-card]', w).forEach((b) => b.onclick = async () => {
-      pause(); b.disabled = true; b.innerHTML = 'Opening…';
+      pause(); b.disabled = true; b.innerHTML = '<span class="spin"></span>Opening…';
       const r = await tapi('POST', '/api/tenants/:t/research-card', { kind: b.dataset.svCard, id: b.dataset.id });
       if (!r.card) { toast('Could not open that one'); run(); return; }
       ALL[r.card.id] = r.card; closeStory();
@@ -5469,7 +5478,7 @@
 
   /* ---------- go ---------- */
   // jam-room.js (the Jam Room) works from these
-  window.__BREW = { shoposWho: 'the ShopOS team, Brew’s build crew', waNeed: (o) => waNeed(o), busyBtn: (b, l) => busyBtn(b, l), putCh: (ch) => putCh(ch), paintStudio: () => paintStudio(), modal: (h, b) => modal(h, b), closeModal: () => closeModal(), refreshAfterConnect: (id) => refreshAfterConnect(id), glyph: (id, n) => glyph(id, n), demoSheet: (h) => demoSheet(h), shareSheet: (p) => shareSheet(p), pageOf: (id) => PAGE[id] || null, studioCard: () => (view === 'remix' ? RX.p : null), studioV: () => (view === 'remix' && RX.ch ? curN(RX.ch) : null) /* the version on the jam's stage, for the sheets */, libAct, cxDone: (id) => $$(`[data-cxrow="${id}"]`).forEach((r) => (r.outerHTML = cxRow(id))), $, $$, esc, wait, ic, face, avatar, podFaces, brewAv, SO, movesTotal: () => +BREW?.total || 0, toast, toastLong, B, AGENT, save, ROLE, colleague, conn, cardOf, byId, tapi, putWork, counts, inrS, openConnect, openDetail, closeDetail, closePop, closeModal, modal, assetHtml, renderView, renderWork, workOfCard, pseudoPost, colleagueForCard,
+  window.__BREW = { shoposWho: 'the ShopOS team, Brew’s build crew', waNeed: (o) => waNeed(o), busyBtn: (b, l) => busyBtn(b, l), loader: (t, s2, z) => loader(t, s2, z), putCh: (ch) => putCh(ch), paintStudio: () => paintStudio(), modal: (h, b) => modal(h, b), closeModal: () => closeModal(), refreshAfterConnect: (id) => refreshAfterConnect(id), glyph: (id, n) => glyph(id, n), demoSheet: (h) => demoSheet(h), shareSheet: (p) => shareSheet(p), pageOf: (id) => PAGE[id] || null, studioCard: () => (view === 'remix' ? RX.p : null), studioV: () => (view === 'remix' && RX.ch ? curN(RX.ch) : null) /* the version on the jam's stage, for the sheets */, libAct, cxDone: (id) => $$(`[data-cxrow="${id}"]`).forEach((r) => (r.outerHTML = cxRow(id))), $, $$, esc, wait, ic, face, avatar, podFaces, brewAv, SO, movesTotal: () => +BREW?.total || 0, toast, toastLong, B, AGENT, save, ROLE, colleague, conn, cardOf, byId, tapi, putWork, counts, inrS, openConnect, openDetail, closeDetail, closePop, closeModal, modal, assetHtml, renderView, renderWork, workOfCard, pseudoPost, colleagueForCard,
     get S() { return S; }, get WORK() { return WORK; }, get view() { return view; }, setChange: (ch) => { if (DP && ch) DP.ch = ch; }, currentDetail: () => DP && (DP.w ? { ...DP.p, _work: DP.w, _ch: DP.ch || null } : DP.p), SPLIT, slotHtml, ago, repaintDetail: () => repaintDetail(true), detailDirty: () => !!DP?.dirty, fitKnobs, fitSuggest,
     /* v2 (onboard2.js, make-sheet.js) */ V2, FEED_STACK, brandClock, UI2, GEN, LANDING, DEMO_LAND, api, ls, LSP, get TID() { return TID; }, signWall, needSignin, ensureTenant, scrCard, seatEntries, defaultWants, loadFeed, rank, openRemix, openPlan, teamStep, finishOnboarding, checkRead, waitMoves, whoFor, continueToFeed, hashParams };
   // #setup replays onboarding (it only plays once otherwise, because finishing it is saved in this browser)

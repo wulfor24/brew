@@ -137,3 +137,4 @@ body.v2-on #inst,body.v2-on .demo-pill{display:none!important}
 .mk-acts{display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap}.mk-acts .sp{flex:1}
 .mk-doors{display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:12px;background:var(--ok-bg);font-size:14px;flex-wrap:wrap}.mk-doors b{font-weight:600}
 .mk-foot{margin:0;font-size:13px;color:var(--fg-3)}
+.mk-sp{width:12px;height:12px;margin-left:4px;vertical-align:-1px}

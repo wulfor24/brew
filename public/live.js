@@ -104,6 +104,7 @@
     if (L.ready) return simId(id) ? openSim(id, opts) : openReal(id, opts);
     /* still loading: open once it answers. The load failed: ask again now, and say so if Brew still can't be reached */
     const again = L.failed ? liveCall().then((r) => { Object.assign(L, r, { user: r.me || r.user || null }); L.me = L.me || L.user || null; L.ready = true; L.failed = false; }).catch(() => null) : window.LIVE_P;
+    window.BrewLoad?.hold(document.activeElement?.closest?.('button,[role="button"]'), again); /* the tapped connector shows the loader meanwhile */
     again.then(() => { if (L.ready) open(id, opts); else A()?.toast?.(`${ic('info', 's16')}Couldn’t reach Brew to connect ${esc(nm(id))}. Check your connection and try again.`); });
     return true; };
   // a real account: sign in with the platform, or paste a read-only key

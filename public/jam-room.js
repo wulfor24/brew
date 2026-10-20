@@ -275,7 +275,7 @@
   // the left column: each card's source moves as chips that open what the move says
   const paintMoves = (p) => {
     const box = $('#dp-moves'); if (!box) return; const ms = JM.moves[p.id];
-    if (!ms) { box.hidden = ms === null ? false : true; return; }
+    if (!ms) { box.hidden = ms === null ? false : true; if (ms === null) $('.dp-moves-l', box).innerHTML = A.loader?.('Finding the moves', '', 'sm') || ''; return; }
     if (!ms.length) { box.hidden = true; return; }
     box.hidden = false; $('.dp-moves-l', box).innerHTML = ms.map((m) => `<button class="dp-move" data-jm-movedoc="${m.n}"><span class="dp-move-n">${mvLabel(m.n)}</span><b>${esc(m.title)}</b>${m.stat ? `<small>${esc(m.stat)} ${esc((m.statLabel || '').toLowerCase())}</small>` : ''}${ic('right', 's14')}</button>`).join('');
   };

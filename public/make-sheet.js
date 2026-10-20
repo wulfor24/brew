@@ -34,7 +34,7 @@
       <div class="mk-head"><h2>Make it yours.</h2><p>Your words, your call. Or decide together.</p></div>
       <div class="mk-grid"><div class="mk-left" id="mk-left">${cardHtml(p, { ...c, title: '', sub: '' }, { img: pic, fb: pics.slice(1) })}</div>
         <div class="mk-right">
-          <label class="mk-f"><span>The headline</span><textarea id="mk-t" rows="2" disabled placeholder="Getting the words…"></textarea></label>
+          <label class="mk-f"><span>The headline <span class="spin mk-sp"></span></span><textarea id="mk-t" rows="2" disabled placeholder="Getting the words…"></textarea></label>
           <label class="mk-f"><span>The words</span><textarea id="mk-b" rows="4" disabled></textarea></label>
           ${why || src ? `<div class="mk-f is-ro"><span>Why it’s here</span><p>${esc(why)}${src ? ` ${srcUrl ? `<a class="mk-src" href="${esc(srcUrl)}" target="_blank" rel="noopener">${esc(String(src).replace(/^https?:\/\//, '').slice(0, 60))}</a>` : `<span class="mk-src">${esc(String(src).slice(0, 60))}</span>`}` : ''}</p></div>` : ''}
           <div class="mks-chips">${chips.map((x) => `<button class="mks-chip" data-chip="${esc(x)}">${esc(x)}</button>`).join('')}</div>
@@ -51,7 +51,7 @@
       /* open on the take's words and picture (read only, nothing spent); on a failure, the card's own words as a start */
       A().tapi('POST', `/api/cards/${p.id}/remix`, { peek: true }).catch(() => null).then((r) => { if (!w.isConnected) return;
         const pw = r && !r.error ? r.words : null; words.title = pw?.title || (isRival(p) ? '' : f(c.title || '')); words.body = pw?.body || (isRival(p) ? '' : f(c.sub || ''));
-        pics = ourPics(p, c, r); pic = pics[0] || null; tIn.value = words.title; bIn.value = words.body; tIn.disabled = bIn.disabled = false; tIn.placeholder = ''; busy = false; dirty = false; paint({ drawing: !!r?.drawing }); });
+        pics = ourPics(p, c, r); pic = pics[0] || null; tIn.value = words.title; bIn.value = words.body; tIn.disabled = bIn.disabled = false; tIn.placeholder = ''; w.querySelector('.mk-sp')?.remove(); busy = false; dirty = false; paint({ drawing: !!r?.drawing }); });
       /* a chip or a prompt: the words come back first and show at once; the picture, if the card has one, is queued and lands later */
       const ask = async (prompt, chip, btn) => { if (busy) return; busy = true; note('Rewriting the words…'); $$('.mks-chip', w).forEach((b) => (b.disabled = true)); const done = A().busyBtn?.(btn, btn?.classList.contains('mks-chip') ? btn.textContent : '') || (() => {});
         const r = await A().tapi('POST', `/api/cards/${p.id}/remix`, { words: true, prompt: prompt || '', chip: chip || '' }).catch((e) => ({ error: e.message }));
