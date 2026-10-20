@@ -73,7 +73,8 @@ It contains:
   loop, architecture or folder tree).
 - Then 3 to 6 h3 sub-blocks: phases, lanes, priorities, cadences, rules. Use **tables** for cadence
   (CADENCE | SCOPE | OUTPUT | OWNER), priorities, budgets, channel rules. Owners are roles
-  ("Brew growth analyst", "<Brand> brand manager"), never invented names.
+  of the brand's own team ("<Brand> brand manager", "<Brand> developer"), never invented names and never Brew people: Brew
+  drafts the pieces in the jam; the brand's team ships them, or sends the brief to the ShopOS team to build.
 - **Decision rules / watch triggers**: "If X, then Y within the week" (a TRIGGER | RESPONSE table works).
 - "What we are not doing, and why" when a tempting option is rejected.
 - Every recommendation names where it comes from in the evidence and the effect expected, and labels

@@ -55,7 +55,7 @@ const MARK = `<svg class="mark" viewBox="0 0 48 48" aria-hidden="true"><circle c
 <path d="M17.2 11.5c-3 4 3 8.2 0 12.4s3 8.4 0 12.6M24 11.5c-3 4 3 8.2 0 12.4s3 8.4 0 12.6M30.8 11.5c-3 4 3 8.2 0 12.4s3 8.4 0 12.6" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg>`;
 
 function lockup() {
-  return `<div class="lockup">${MARK}<div><div class="lk-name">Brew</div><div class="lk-team">DEPLOYMENT TEAM</div></div></div>`;
+  return `<div class="lockup">${MARK}<div><div class="lk-name">Brew</div><div class="lk-team">PLAYBOOK</div></div></div>`;
 }
 
 /* the cover line: the discipline, then the move's own name ("Move 05", "Weekly move 4", "Timely move"), once and with no total
@@ -213,10 +213,10 @@ function closing(move, brand, isIndex) {
 <h1 class="cl-title">DAY 30<br>AT ${esc(up(brand.name))}</h1>
 <div class="cl-flow">
 ${move.live ? `<div class="cl-live"><div class="cl-live-h">WHAT IS LIVE</div><p>${inline(move.live)}</p></div>` : ''}
-<div class="cl-cta">NEXT STEP: A 45-MINUTE WORKING SESSION. WE BRING THE <b>BUILD</b> PLAN, YOU BRING THE DATA WE FLAGGED AS "TO CONFIRM".</div>
-<div class="cl-own">EVERYTHING IN THIS DOCUMENT IS BUILT, RUN AND OWNED BY THE BREW DEPLOYMENT TEAM. ${esc(up(brand.name))} APPROVES, WE <b>SHIP</b>.</div>
+<div class="cl-cta">NEXT STEP: OPEN IT IN BREW, <b>JAM</b> ON THE FIRST PIECE, AND CHECK WHAT IS MARKED "TO CONFIRM".</div>
+<div class="cl-own">BREW <b>DRAFTS</b> EVERY PIECE. ${esc(up(brand.name))}’S TEAM SHIPS IT, OR SENDS THE BRIEF TO THE SHOPOS TEAM TO BUILD.</div>
 </div>
-<div class="cl-foot"><div class="cl-logo">Brew</div><div class="cl-right">DEPLOYMENT TEAM<br>BREW</div></div>
+<div class="cl-foot"><div class="cl-logo">Brew</div><div class="cl-right">DRAFTED IN<br>BREW</div></div>
 </section>`;
 }
 
@@ -391,7 +391,7 @@ export function moveHtml(move, brand, opts = {}) {
   if (!move || typeof move !== 'object') throw new Error('moveHtml: move required');
   brand = { name: 'Brand', ...brand };
   const isIndex = move.n === 0 || move.kind === 'index';
-  const footerLeft = `BREW DEPLOYMENT TEAM × ${up(brand.name)} · ${up(move.title)}`;
+  const footerLeft = `BREW × ${up(brand.name)} · ${up(move.title)}`;
   const sections = (move.sections || []).map((s) => section(s, move)).join('\n');
   const hasSources = (move.sections || []).some((s) => s.kind === 'sources');
   const autoSources = !hasSources && (move.sources || []).length ? `<div class="sec sec-sources"><h2>SOURCES</h2>${sourcesList(move.sources)}</div>` : '';
