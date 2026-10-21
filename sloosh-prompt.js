@@ -88,12 +88,15 @@ export function veoDraft(b) { return one(`${sentence(motionOnly(b.motion)) || 'A
    "(Sound effect) Loud crinkling" or a plain line; a reel final used to send all three as speech, so its joke never showed (21 Oct).
    Emoji go: video models draw them as garbage */
 const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu;
+/* one line can carry several parts: "(Sound effect) Squeaking crunch (On-screen text) Locked in a crunch prison" (Arata, 21 Oct) */
+const TAG = /\(\s*(on-?screen(?: text)?|text overlay|caption|title|super|sound(?: effect)?|sfx|voice-?over|vo|said|voice)\s*\)\s*[:\-–]?\s*|^\s*(on-?screen(?: text)?|sound effect|sfx|voice-?over)\s*:\s*/gi;
 export function beatWords(x = {}) {
-  const raw = one(typeof x === 'string' ? '' : x.line), tag = /^\(?\s*(on-?screen(?: text)?|text overlay|caption|title|super|sound(?: effect)?|sfx|voice-?over|vo|said|voice)\s*\)?\s*[:\-–]?\s*/i.exec(raw);
-  const body = one((tag ? raw.slice(tag[0].length) : raw).replace(EMOJI, '')).replace(/^["“]|["”]$/g, '');
-  const kind = !tag ? 'say' : /sound|sfx/i.test(tag[1]) ? 'sfx' : /voice|vo|said/i.test(tag[1]) ? 'say' : 'show';
-  const shown = kind === 'show' ? body : one(onScreen(typeof x === 'string' ? x : x.shot).replace(EMOJI, ''));
-  return { say: kind === 'say' ? body : '', show: shown, sfx: kind === 'sfx' ? body : '' };
+  const raw = one(typeof x === 'string' ? '' : x.line), out = { say: [], show: [], sfx: [] }, tidy = (t) => one(String(t || '').replace(EMOJI, '')).replace(/^["“]+|["”]+$/g, '');
+  let last = 0, kind = 'say', m; TAG.lastIndex = 0;
+  while ((m = TAG.exec(raw))) { const t = tidy(raw.slice(last, m.index)); if (t) out[kind].push(t); const k = m[1] || m[2]; kind = /sound|sfx/i.test(k) ? 'sfx' : /voice|vo|said/i.test(k) ? 'say' : 'show'; last = TAG.lastIndex; }
+  const t = tidy(raw.slice(last)); if (t) out[kind].push(t);
+  const show = out.show.join(' / ') || tidy(onScreen(typeof x === 'string' ? x : x.shot));
+  return { say: out.say.join(' '), show, sfx: out.sfx.join(', ') };
 }
 /* Seedance 2.5: references by job, one summary sentence, then timed beats in whole seconds with no gaps; SFX in <>, lines in quotes,
    words on screen named exactly with where they sit */
