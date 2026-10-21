@@ -172,7 +172,9 @@ const base = {
   }
 };
 const GA4_SCOPES = 'https://www.googleapis.com/auth/analytics.readonly openid email';
-const authUrl = (scope) => ({ state, redirect }) => `https://accounts.google.com/o/oauth2/v2/auth?${form({ client_id: app().id, redirect_uri: redirect, response_type: 'code', scope, state, access_type: 'offline', prompt: 'consent', include_granted_scopes: 'true' })}`;
+/* no include_granted_scopes: it shows every scope the account ever gave this client (an old cloud-platform grant failed
+   Google's review on 19 Oct), so the consent screen lists only the scopes Brew asks for */
+const authUrl = (scope) => ({ state, redirect }) => `https://accounts.google.com/o/oauth2/v2/auth?${form({ client_id: app().id, redirect_uri: redirect, response_type: 'code', scope, state, access_type: 'offline', prompt: 'consent' })}`;
 const oauthOn = () => process.env.GOOGLE_OAUTH === '1' && !!(app().id && app().secret);
 const ga4Of = (c, ch) => ({ ...c, property: ch.ga4 || null, customer: null, login: null, accountName: ch.ga4Name || null });
 
