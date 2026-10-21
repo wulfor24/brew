@@ -10,7 +10,7 @@ import crypto from 'node:crypto';
 import { saveGen, genFile } from './gen-store.js';
 import { checkVideoText } from './text-check.js'; // a video final's on-screen words, read back
 import { createMakers } from './drafts.js';
-import { cardProduct, sceneOf } from './product-match.js';
+import { cardProduct, sceneOf, matchProduct } from './product-match.js';
 import { isRivalCard, isViralCard, isReferenceCard, isResearchImage, readRivalAd, rivalBlock, rivalPicture, viralBlock } from './rival-ad.js'; // "Make our version" of a rival's ad: read it, then remake it in its style
 import { createStudioFinals } from './finals-routes.js';
 import { beatWords, buildDraft, motionOnly, onScreen } from './sloosh-prompt.js'; // Make the final on a version: Sloosh, quote first, behind a button
@@ -830,8 +830,13 @@ export function createRemix(o) {
   const hookOf = (p = {}) => { const w = (p.script || [])[0] ? beatWords(p.script[0]) : null; return clean(String((w && (w.say || w.show)) || p.title || String(p.copy || '').split('\n')[0] || '')).split(/\s+/).slice(0, 14).join(' '); };
   let MK = null; const makers = () => (MK ||= o.makers || createMakers({ geminiImage, launchBrowser, log })); /* launchBrowser: the on-screen words set in exact type over the clip */
   const VID_JOBS = new Set();
+  /* the product the package itself is about: the script, caption and title name it even when the card does not (a viral remake's
+     card is about the format, "a dermatologist-led hair selection"; its script names the shampoo). Param, 21 Oct: the draft opened
+     on a loofah, the lane photo */
+  const pkgPhoto = (t, ch) => { try { const p = ch.pkg || {}, said = [ch.after?.title, p.title, p.copy, ...(p.script || []).flatMap((x) => [x?.shot, x?.line])].filter(Boolean).join('. ');
+    const cat = catalogOf(t) || []; return (matchProduct(said, cat, { brand: o.SEED?.brand?.name || '', byNameOnly: true }) || matchProduct(said, cat, { brand: o.SEED?.brand?.name || '' }))?.img || null; } catch { return null; } };
   const srcPhoto = async (t, ch, lead = null) => { const c = t.cards.get(ch.cardId) || {}, p = ch.pkg || {};
-    const cands = [...refsOf(t, ch), ...(p.photos || []).filter((u) => !/^gen\//.test(u) && !isResearchImage(u)), lead, cardPhoto(t, c), ...(isReferenceCard(c) ? [] : c.images || []).filter((u) => !/^gen\//.test(u) && !/statics\//.test(u) && !isResearchImage(u)), LANE_PHOTO[c.lane], ...Object.values(LANE_PHOTO || {}), o.catalogOf?.(t)?.[0]?.img].filter((x) => x && typeof x === 'string'); /* the jam's own photos first */
+    const cands = [...refsOf(t, ch), ...(p.photos || []).filter((u) => !/^gen\//.test(u) && !isResearchImage(u)), lead, pkgPhoto(t, ch), cardPhoto(t, c), ...(isReferenceCard(c) ? [] : c.images || []).filter((u) => !/^gen\//.test(u) && !/statics\//.test(u) && !isResearchImage(u)), LANE_PHOTO[c.lane], ...Object.values(LANE_PHOTO || {}), o.catalogOf?.(t)?.[0]?.img].filter((x) => x && typeof x === 'string'); /* the jam's own photos first */
     for (const rel of [...new Set(cands)]) { const f = await readable(rel); if (f) return f; }
     return null; };
   const genVideo = (t, ch, why = 'the script') => {

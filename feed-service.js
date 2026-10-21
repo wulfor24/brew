@@ -845,7 +845,7 @@ export function createFeedService(o) {
       rows: [['Views', bigN(x.views)], ...(sc ? [['Their usual', `${bigN(x.usual)} · this got ${sc}`]] : []), ['Their hook', x.hook], ['Posted', `${x.days} day${x.days === 1 ? '' : 's'} ago on ${pl}`]].filter((r) => r[1]),
       detail: { why: [x.why, sc && `${bigN(x.views)} views where ${x.author} usually gets ${bigN(x.usual)}: ${sc} their normal reach.`, x.read?.pacing && `Pacing: ${x.read.pacing}`].filter(Boolean),
         how: [x.take, `Brew reads how the video is made, then writes our script on the same format: hook, beats, shot list and how to film it, with ${BN()}'s product and words.`, 'Lock the script, then send the brief to your team or make it with AI.'].filter(Boolean) },
-      make: { format: 'reel', what: `Our version of this ${pl} video`, from: 'viral' },
+      make: { format: 'reel', what: `Our version of this ${pl} video`, from: 'viral', pieces: [x.product, x.take].filter(Boolean).join('. ').slice(0, 200) }, /* the product that fits the video: the writer and the first frame use it (cardProduct reads pieces) */
       cta: { label: 'Make our version' }, link: { label: `Watch it on ${pl}`, url: x.url }, src: `${pl}${sc ? ` · ${sc} usual views` : ''} · ${dateIN(at)}`, research: { kind: 'viral', id: x.id, platform: x.platform }, creatorName: x.author }; };
   /* a trend story built on nothing ("0 terms", an empty rising list) is no finding: never a card (QA 20 Oct; quiet rule, no zero tiles) */
   const emptyTrend = (x) => (x.kind === 'rising' && !(x.rising || []).length) || /\b(?:0|zero|no) (?:terms|rising|listings|searches)\b|\bin 0 of\b/i.test(`${x.card || ''} ${x.h || ''}`);
