@@ -55,6 +55,11 @@ const userErr = (m) => Object.assign(new Error(m), { user: true });
 export const siteMatch = (u, ctx) => { const h = bareHost(u); if (!h) return false;
   const hosts = [ctx.host, ctx.shopifyShop, ...(Array.isArray(ctx.hosts) ? ctx.hosts : [])].map(bareHost).filter(Boolean);
   return hosts.some((x) => x === h || exactSite(h, x)); };
+/* a store's other myshopify address (cozysnugglet.myshopify.com next to hnhdsm-mc.myshopify.com) is the brand's when Shopify
+   sends it to the brand's site: only the store's owner sets the primary domain it redirects to */
+export const shopRedirects = async (u, ctx, fetchImpl = fetch) => { const h = bareHost(u); if (!/\.myshopify\.com$/.test(h)) return false;
+  try { const r = await fetchImpl(`https://${h}/`, { method: 'HEAD', redirect: 'manual', signal: AbortSignal.timeout(8e3) });
+    return r.status >= 300 && r.status < 400 && siteMatch(r.headers.get('location'), ctx); } catch { return false; } };
 const rows = (r) => (r?.rows || []).map((x) => ({ d: (x.dimensionValues || []).map((v) => v.value), m: (x.metricValues || []).map((v) => +v.value) }));
 
 /* Google Analytics (ga4) and Google Ads (google) are two connectors on one Google client. They share the reads below;
@@ -109,7 +114,8 @@ const base = {
       let j; try { j = await getJSON(`${ADMIN}/${c.property}/dataStreams`, { headers: auth(c) }, 'ga4 streams'); }
       catch (e) { return { ok: false, error: true, strong: false, why: `Couldn’t read the property’s web streams: ${String(e.message || e).slice(0, 140)}`, account: { id: [c.property, c.customer].filter(Boolean).join(' '), name: c.accountName || 'Google' } }; }
       const streams = j?.dataStreams || [], uris = streams.map((x) => x.webStreamData?.defaultUri).filter(Boolean);
-      const s = streams.find((x) => siteMatch(x.webStreamData?.defaultUri, ctx));
+      let s = streams.find((x) => siteMatch(x.webStreamData?.defaultUri, ctx));
+      for (const x of s ? [] : streams) if (await shopRedirects(x.webStreamData?.defaultUri, ctx)) { s = x; break; }
       if (s) { ok = true; why = `GA4 stream ${s.displayName} is ${ctx.host}`; }
       else why = `The GA4 stream doesn’t point to ${ctx.host} (streams: ${uris.length ? uris.map(bareHost).join(', ') : 'none with a website'})`;
     }

@@ -176,6 +176,10 @@ test('GA4 by property ID: a stream read that fails says the check didn’t go th
   const streams = (uri) => async () => res200({ dataStreams: [{ displayName: 'Web', webStreamData: { defaultUri: uri } }] });
   for (const uri of ['https://www.cozysnugglet.shop/', 'https://cozy-9.myshopify.com', 'http://cozysnugglet.com']) assert.equal((await withFetch(streams(uri), () => ga4.owns(c, ctx))).ok, true, uri);
   const miss = await withFetch(streams('https://elsewhere.com/x'), () => ga4.owns(c, ctx)); assert.equal(miss.ok, false); assert.ok(!miss.error); assert.match(miss.why, /streams: elsewhere\.com/);
+  /* the store's other myshopify address counts when Shopify redirects it to the brand's site, never when it goes elsewhere */
+  const alias = (to) => async (u, o) => (o?.method === 'HEAD' ? { status: 301, headers: { get: (k) => (k === 'location' ? to : null) } } : streams('https://cozysnugglet.myshopify.com')());
+  assert.equal((await withFetch(alias('https://cozysnugglet.shop/'), () => ga4.owns(c, ctx))).ok, true);
+  assert.equal((await withFetch(alias('https://elsewhere.com/'), () => ga4.owns(c, ctx))).ok, false);
   /* through the connect: refused, worded as a check that didn't go through, nothing kept */
   const packs = memPacks(['cozy']), auth = createAuth({ packs, hostOf: async () => 'cozysnugglet.shop', log: quiet }); auth.mail = async () => true;
   await packs.put('cozy', 'profile.json', { name: 'Cozy', host: 'cozysnugglet.shop' });
