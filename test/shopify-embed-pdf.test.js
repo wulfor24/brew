@@ -97,3 +97,19 @@ test('on the server, a PDF address with the token from the admin is the staff me
   assert.equal(await who(jwt(claims)), 'ana@devshop.test');
   assert.equal(await who(jwt(claims, 'forged')), null); assert.equal(await who(jwt({ ...claims, exp: now - 60 })), null, 'expired'); assert.equal(await who(null), null);
 });
+
+test('the "Opening Brew…" hand-off waits for the page body: the script runs in <head>, before the box exists', async () => {
+  const on = {}; let box = null, replaced = null;
+  const location = { origin: 'https://brew.test', href: 'https://brew.test/devshop-myshopify-com?embedded=1&shop=devshop.myshopify.com&host=abc', search: '?embedded=1&shop=devshop.myshopify.com&host=abc', pathname: '/devshop-myshopify-com', hash: '', replace: (u) => { replaced = u; } };
+  const win = { location, history: { state: null, replaceState() {} }, sessionStorage: { getItem: () => null, setItem() {} }, setInterval() {}, URL, URLSearchParams, Date,
+    document: { readyState: 'loading', getElementById: (id) => (id === 'brew-renew' ? box : null), addEventListener: (ev, f) => { (on[ev] ||= []).push(f); } },
+    shopify: { idToken: async () => 'TOKEN' } };
+  win.window = win;
+  vm.runInNewContext(src('public/shopify-embed.js'), win);
+  assert.equal(replaced, null, 'nothing yet: the body is not parsed');
+  box = { textContent: 'Opening Brew…' }; win.document.readyState = 'interactive';
+  for (const f of on.DOMContentLoaded || []) f();
+  await new Promise((r) => setImmediate(r));
+  const u = new URL(replaced, 'https://brew.test');
+  assert.equal(u.searchParams.get('id_token'), 'TOKEN'); assert.equal(u.searchParams.get('fresh'), '1'); assert.equal(u.pathname, '/devshop-myshopify-com');
+});
