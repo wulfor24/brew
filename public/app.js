@@ -1442,10 +1442,10 @@
   // user moments, by what was tapped (navigation stays silent)
   /* the newer actions, on the same cues as the old ones (first match wins, so these specific ones go first): opening a sheet or
      a jam, a pick, making it live, sharing, copying, switching versions, AI fixing, a mention, closing, declining */
-  const SOUND_NEW = [['[data-jm-ship],[data-share-to],[data-share-force]', 'live'],
+  const SOUND_NEW = [['[data-jm-ship],[data-share-to],[data-share-force]', 'live'], ['.ob2-prod [data-x],.v2-rival [data-x]', 'sweep'],
     ['[data-rx^="share"],[data-jm-pick],[data-jm-move],a[href^="https://wa.me"]', 'send'],
     ['[data-share-copy],[data-jm-copyho],[data-jm-drcopy],[data-jm-handoff],[data-dpsave],[data-pm="save"],[data-st-briefsave],[data-ph-pick]', 'tick'],
-    ['[data-sv-card],[data-sv-open],[data-sv-work],[data-ph-use],[data-top^="approve"],[data-add],.ob2-tile,[data-knob],[data-knob-apply]', 'select'],
+    ['[data-sv-card],[data-sv-open],[data-sv-work],[data-ph-use],[data-top^="approve"],[data-add],.ob2-tile,.ob2-prod,[data-knob],[data-knob-apply]', 'select'],
     ['[data-rx="fix"],[data-rx="variants"],[data-rx="image"],[data-rx="plan"],[data-ph-ai],[data-jm-make],[data-cv-ask],[data-act="take"],[data-verb="take"]', 'bubble'],
     ['[data-v-view],[data-ver],[data-cv-chv],[data-vmenu]', 'step'], ['[data-jm-mention]', 'boop'],
     ['[data-open-jam],[data-jam-studio],[data-open-studio],[data-rx="open"],[data-verb="open"]', 'pop'], ['[data-ph-open]', 'sheetUp'], ['[data-svx]', 'sheetDown'],
@@ -1464,7 +1464,7 @@
   { let gx = null; document.addEventListener('pointerdown', (e) => { if (e.target.closest('.grab')) gx = e.clientX; }, true);
     addEventListener('pointermove', (e) => { if (gx == null) return; if (Math.abs(e.clientX - gx) >= 24) { gx = e.clientX; sound('ratchet'); } }, { passive: true });
     addEventListener('pointerup', () => { gx = null; }); }
-  document.addEventListener('submit', (e) => { if (e.target.closest('#dp, .std, .jm, .rxp')) sound('send'); }, true);
+  document.addEventListener('submit', (e) => { if (e.target.closest('#dp, .std, .jm, .rxp, #url-form')) sound('send'); }, true);
   document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && e.target.matches?.('#jm-in, .std textarea, .std input[type="text"]') && String(e.target.value || '').trim() && !$('.jm-mentions:not([hidden])')) sound('send'); }, true);
   /* phones and the keyboard: track the part of the screen the keyboard leaves visible, so pinned inputs sit right above it
      (iOS doesn't shrink the page when the keyboard opens), hide the tab bar while typing, and scroll the field into view */
