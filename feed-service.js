@@ -930,7 +930,11 @@ export function createFeedService(o) {
     const src = wid === 'trends' ? resAll(r.trends) : resAll(r.ads), list = src.slice().sort((a, b) => resStrength(wid, b, r) - resStrength(wid, a, r)).map((x) => researchCard(wid === 'trends' ? 'trend' : 'ad', x.id));
     for (const c of list) { if (out.length >= n) break; if (!c || t.used.has(c.id) || t.cards.has(c.id)) continue; t.used.add(c.id); out.push(c); }
     /* the "make our version" watcher brings one viral video in the category too (research.js refreshViral) */
-    if (wid === 'ads-library') for (const x of resAll(r.viral).slice().sort((a, b) => resStrength('viral', b, r) - resStrength('viral', a, r))) { const c = researchCard('viral', x.id); if (!c || t.used.has(c.id) || t.cards.has(c.id)) continue; t.used.add(c.id); out.push(c); break; }
+    /* audience-interest videos (what the buyers also watch, outside the category) score lower than category hits, so they take
+       every other seat: when the feed holds fewer of them than category ones, the best one comes first */
+    if (wid === 'ads-library') { const vs = resAll(r.viral).slice().sort((a, b) => resStrength('viral', b, r) - resStrength('viral', a, r)), inFeed = vs.filter((x) => t.cards.has(viralCardId(x.id)));
+      const order = inFeed.filter((x) => x.interest).length < inFeed.filter((x) => !x.interest).length ? [...vs.filter((x) => x.interest), ...vs.filter((x) => !x.interest)] : vs;
+      for (const x of order) { const c = researchCard('viral', x.id); if (!c || t.used.has(c.id) || t.cards.has(c.id)) continue; t.used.add(c.id); out.push(c); break; } }
     return out;
   };
   const wireResearch = (b) => { if (b?.research) setTimeout(() => runIn?.(b, () => prereadRivals(b))?.catch?.(() => {}), 90e3).unref?.(); return b.research?.onRefresh((done) => {
