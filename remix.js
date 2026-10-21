@@ -836,7 +836,8 @@ export function createRemix(o) {
   const pkgPhoto = (t, ch) => { try { const p = ch.pkg || {}, said = [ch.after?.title, p.title, p.copy, ...(p.script || []).flatMap((x) => [x?.shot, x?.line])].filter(Boolean).join('. ');
     const cat = catalogOf(t) || []; return (matchProduct(said, cat, { brand: o.SEED?.brand?.name || '', byNameOnly: true }) || matchProduct(said, cat, { brand: o.SEED?.brand?.name || '' }))?.img || null; } catch { return null; } };
   const srcPhoto = async (t, ch, lead = null) => { const c = t.cards.get(ch.cardId) || {}, p = ch.pkg || {};
-    const cands = [...refsOf(t, ch), ...(p.photos || []).filter((u) => !/^gen\//.test(u) && !isResearchImage(u)), lead, pkgPhoto(t, ch), cardPhoto(t, c), ...(isReferenceCard(c) ? [] : c.images || []).filter((u) => !/^gen\//.test(u) && !/statics\//.test(u) && !isResearchImage(u)), LANE_PHOTO[c.lane], ...Object.values(LANE_PHOTO || {}), o.catalogOf?.(t)?.[0]?.img].filter((x) => x && typeof x === 'string'); /* the jam's own photos first */
+    const picked = (p.photos || []).filter((u) => !/^gen\//.test(u) && !isResearchImage(u)), named = pkgPhoto(t, ch); /* an auto-picked photo gives way to the product the script names; the team's own pick never does */
+    const cands = [...refsOf(t, ch), ...(p.photosBy === 'you' ? [...picked, named] : [named, ...picked]), lead, cardPhoto(t, c), ...(isReferenceCard(c) ? [] : c.images || []).filter((u) => !/^gen\//.test(u) && !/statics\//.test(u) && !isResearchImage(u)), LANE_PHOTO[c.lane], ...Object.values(LANE_PHOTO || {}), o.catalogOf?.(t)?.[0]?.img].filter((x) => x && typeof x === 'string'); /* the jam's own photos first */
     for (const rel of [...new Set(cands)]) { const f = await readable(rel); if (f) return f; }
     return null; };
   const genVideo = (t, ch, why = 'the script') => {
@@ -1892,7 +1893,7 @@ export function createRemix(o) {
       const buf = Buffer.from(m[3], 'base64'); if (buf.length > 8e6) return { error: 'That photo is over 8 MB.' };
       const name = `up-${crypto.createHash('sha1').update(buf).digest('hex').slice(0, 16)}.${m[2] === 'jpeg' ? 'jpg' : m[2]}`; saveGen(name, buf); urls = [`gen/${name}`]; }
     if (!urls.length) return { error: 'Pick a photo first.' };
-    ch.pkg = { ...ch.pkg, image: urls[0], photos: urls }; ch.imageError = null; sync(t, ch);
+    ch.pkg = { ...ch.pkg, image: urls[0], photos: urls, photosBy: 'you' /* the team's pick: it wins over the product the script names */ }; ch.imageError = null; sync(t, ch);
     const why = b.upload ? 'Your photo' : urls.length > 1 ? `${urls.length} product photos` : 'Product photo'; const nv = version(t, ch, 'you', why);
     ch.thread.push({ from: 'ai', text: `${why} in: that’s v${nv.n} on the left. The words stay the same.`, at: now(t) });
     signal(t, 'edit', { agent: ch.agent, changeId: ch.id, by: 'you', intent: 'photo' }, now(t));
