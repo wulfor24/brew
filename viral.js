@@ -48,18 +48,26 @@ export function createViralFinder({ call, ytKey = process.env.YOUTUBE_API_KEY, f
     async youtube(v) { if (!v.channelId) return null; const j = await yt('channels', { part: 'statistics', id: v.channelId }); const s = j.items?.[0]?.statistics || {};
       const n = num(s.videoCount), t = num(s.viewCount); return n && n >= 3 && t != null ? Math.max(1, Math.round((t - (v.views || 0)) / Math.max(1, n - 1))) : null; }
   };
-  /* terms: the brand's category words; country: the selling market; stems/own from viral-gate */
-  async function find({ terms = [], country = 'US', stems = [], own = [], platforms = ['tiktok', 'instagram', 'youtube'], n = 3, lookups = 8, now = Date.now() } = {}) {
+  /* terms: the brand's category words; interests: what the brand's buyers also watch (research.js audienceInterests), searched
+     in place of category words so the spend stays the same: 2 category + 2 interest searches on TikTok and Instagram, YouTube's
+     one search on the category; country: the selling market; stems/own from viral-gate */
+  async function find({ terms = [], interests = [], country = 'US', stems = [], own = [], platforms = ['tiktok', 'instagram', 'youtube'], n = 3, lookups = 8, now = Date.now() } = {}) {
+    const qs = (p) => p === 'youtube' ? terms.slice(0, 1) : interests.length ? [...terms.slice(0, Math.max(2, 4 - Math.min(2, interests.length))), ...interests.slice(0, 2)].slice(0, 4) : terms.slice(0, 4), gate = { now, country, stems, own, interests };
     const errors = {}, found = new Map(), checked = {};
     await Promise.all(platforms.map(async (p) => { let ok = 0; checked[p] = 0;
-      for (const q of terms.slice(0, p === 'youtube' ? 1 : 4)) { /* a YouTube search is 100 of the key's 10,000 daily units (listening shares them): one term a read */ try { for (const x of await SEARCH[p](q, { country })) if (!found.has(x.id)) found.set(x.id, x); ok++; checked[p]++; } catch (e) { errors[p] = e.message.slice(0, 160); log.warn?.('[viral] search', p, q, e.message.slice(0, 160)); } }
+      for (const q of qs(p)) { /* a YouTube search is 100 of the key's 10,000 daily units (listening shares them): one term a read */ try { for (const x of await SEARCH[p](q, { country })) if (!found.has(x.id)) found.set(x.id, x); ok++; checked[p]++; } catch (e) { errors[p] = e.message.slice(0, 160); log.warn?.('[viral] search', p, q, e.message.slice(0, 160)); } }
       if (ok) delete errors[p]; }));
-    const all = [...found.values()], pre = all.filter((x) => preViral(x, { now, country, stems, own }).ok).sort((a, b) => b.views - a.views);
+    const all = [...found.values()], pre = all.filter((x) => preViral(x, gate).ok).sort((a, b) => b.views - a.views);
     /* usual views only for the best few per platform (each lookup is a paid call) */
-    const look = []; for (const p of platforms) look.push(...pre.filter((x) => x.platform === p).slice(0, Math.ceil(lookups / platforms.length)));
+    const isAdj = (x) => interests.some((i) => i.toLowerCase() === String(x.q || '').toLowerCase());
+    const look = []; for (const p of platforms) { const k = Math.ceil(lookups / platforms.length), mine = pre.filter((x) => x.platform === p), a = mine.find(isAdj); /* one of the platform's lookups goes to its best audience-interest find */
+      look.push(...(a && !mine.slice(0, k).includes(a) ? [...mine.filter((x) => x !== a).slice(0, k - 1), a] : mine.slice(0, k))); }
     await Promise.all(look.map(async (x) => { try { x.usual = await USUAL[x.platform](x); } catch (e) { x.usual = null; x.usualError = e.message.slice(0, 120); } x.score = scoreOf(x.views, x.usual); }));
-    const ok = look.filter((x) => usableViral(x, { now, country, stems, own }).ok);
-    return { items: pickViral(ok, n), seen: all.length, passed: pre.length, scored: look.filter((x) => x.score != null).length, errors, checked };
+    const ok = look.filter((x) => usableViral(x, gate).ok); ok.forEach((x) => { x.interest = interests.find((i) => i.toLowerCase() === String(x.q || '').toLowerCase()) || null; });
+    /* the best videos win; when none of them came from an audience interest and one passed, it takes the last seat */
+    const items = pickViral(ok, n), adj = !items.some((x) => x.interest) && pickViral(ok.filter((x) => x.interest), 1)[0];
+    if (adj && items.length >= n) items[items.length - 1] = adj; else if (adj) items.push(adj);
+    return { items, seen: all.length, passed: pre.length, scored: look.filter((x) => x.score != null).length, errors, checked };
   }
   return { find };
 }

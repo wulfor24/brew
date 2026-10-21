@@ -6,7 +6,8 @@
 //   fresh    posted in the last FRESH_DAYS (an old format is somebody else's moment)
 //   organic  not a paid post or an ad (those are rival-ads territory), not the brand's own account
 //   short    a short (≤ MAX_SECONDS) the brand can film or make
-//   topic    its caption or the search that found it shares the brand's topic words; in English markets the caption reads English
+//   topic    its caption or the search that found it shares the brand's topic words (a video found by an audience interest: its
+//            caption is about that interest or the brand's topic); in English markets the caption reads English
 import { topicStems, looksEnglish } from './community-gate.js';
 
 export const MIN_SCORE = 10, FRESH_DAYS = 90, MAX_SECONDS = 90;
@@ -31,7 +32,7 @@ const squash = (x) => String(x || '').toLowerCase().replace(/^@/, '').replace(/[
 const words = (s) => new Set((String(s || '').toLowerCase().replace(/["']/g, '').match(/[a-z]{4,}/g) || []).map((w) => w.replace(/(ies)$/, 'y').replace(/(ing|es|s)$/, '').replace(/y$/, '')));
 
 /* the cheap checks, before paying for the creator's usual views: { ok, why[] } */
-export function preViral(v, { now = Date.now(), country = '', stems = [], own = [] } = {}) {
+export function preViral(v, { now = Date.now(), country = '', stems = [], own = [], interests = [] } = {}) {
   const why = [];
   if (v?.views == null) why.push('views unknown');
   else if (v.views < minViewsFor(country)) why.push(`under ${minViewsFor(country) / 1e3}k views`);
@@ -39,7 +40,11 @@ export function preViral(v, { now = Date.now(), country = '', stems = [], own = 
   if (v?.paid) why.push('a paid post');
   if (v?.durationS != null && v.durationS > MAX_SECONDS) why.push(`longer than ${MAX_SECONDS}s`);
   if (own.some((h) => h && squash(h) === squash(v?.handle))) why.push("the brand's own account");
-  if (stems.length) { const w = words(`${v?.caption || ''} ${v?.q || ''}`); if (!stems.some((s) => w.has(s))) why.push('off-topic'); }
+  /* a video found by an audience interest (something the brand's buyers also watch, not its category) is on topic when its own
+     caption is about that interest or the brand's topic; the search words alone never count for it */
+  const adj = !!v?.q && interests.some((i) => squash(i) === squash(v.q));
+  if (adj) { const w = words(v?.caption || ''), st = [...topicStems({ terms: [v.q] }), ...stems]; if (!st.some((s) => w.has(s))) why.push('off-topic'); }
+  else if (stems.length) { const w = words(`${v?.caption || ''} ${v?.q || ''}`); if (!stems.some((s) => w.has(s))) why.push('off-topic'); }
   if (ENGLISH.has(String(country).toUpperCase()) && v?.caption && !looksEnglish(v.caption)) why.push('not in English');
   return { ok: !why.length, why };
 }

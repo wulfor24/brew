@@ -842,7 +842,7 @@ export function createFeedService(o) {
   const viralCard = (x, at) => { const pl = PLAT[x.platform] || 'social', sc = scoreText(x.score);
     return { id: viralCardId(x.id), agent: 'creative', sector: 'creatives', type: 'idea', family: 'learning', lane: firstLane(), roles: ['founder', 'growth', 'brand'], kind: 'media', images: x.poster ? [x.poster] : [],
       campaign: 'Viral videos', title: x.title || `A ${pl} format to make our own`, sub: x.why || x.hook,
-      rows: [['Views', bigN(x.views)], ...(sc ? [['Their usual', `${bigN(x.usual)} · this got ${sc}`]] : []), ['Their hook', x.hook], ['Posted', `${x.days} day${x.days === 1 ? '' : 's'} ago on ${pl}`]].filter((r) => r[1]),
+      rows: [['Views', bigN(x.views)], ...(sc ? [['Their usual', `${bigN(x.usual)} · this got ${sc}`]] : []), ...(x.interest ? [['Your buyers also watch', x.interest]] : []) /* found by an audience interest, outside the category */, ['Their hook', x.hook], ['Posted', `${x.days} day${x.days === 1 ? '' : 's'} ago on ${pl}`]].filter((r) => r[1]),
       detail: { why: [x.why, sc && `${bigN(x.views)} views where ${x.author} usually gets ${bigN(x.usual)}: ${sc} their normal reach.`, x.read?.pacing && `Pacing: ${x.read.pacing}`].filter(Boolean),
         how: [x.take, `Brew reads how the video is made, then writes our script on the same format: hook, beats, shot list and how to film it, with ${BN()}'s product and words.`, 'Lock the script, then send the brief to your team or make it with AI.'].filter(Boolean) },
       make: { format: 'reel', what: `Our version of this ${pl} video`, from: 'viral', pieces: [x.product, x.take].filter(Boolean).join('. ').slice(0, 200) }, /* the product that fits the video: the writer and the first frame use it (cardProduct reads pieces) */

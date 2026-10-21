@@ -70,3 +70,27 @@ test('pick: one video cross-posted on two platforms is one pick', () => {
   const xs = [v({ id: 'a', score: 800, caption: cap }), v({ id: 'b', platform: 'instagram', score: 380, caption: cap + ' #coffee' }), v({ id: 'c', platform: 'instagram', score: 50, caption: 'my french press method for coffee mornings' })];
   assert.deepEqual(pickViral(xs, 3).map((x) => x.id), ['a', 'c']);
 });
+
+test('gate: a video found by an audience interest passes on its own caption, never on the search words alone', () => {
+  const o = { now, country: 'US', stems: ['coffee'], interests: ['morning routine'] };
+  assert.equal(preViral(v({ q: 'morning routine', caption: 'my 5am morning routine that changed everything' }), o).ok, true, 'about the interest');
+  assert.equal(preViral(v({ q: 'morning routine', caption: 'coffee first, always' }), o).ok, true, 'about the brand topic');
+  assert.deepEqual(preViral(v({ q: 'morning routine', caption: 'wait for the end lol' }), o).why, ['off-topic'], 'the search words alone are not enough');
+});
+
+test('finder: same number of searches with audience interests; an interest find gets a lookup and a seat', async () => {
+  const aweme = (id, plays, desc) => ({ aweme_id: id, desc, create_time: (now - 5 * D) / 1e3, statistics: { play_count: plays }, author: { unique_id: 'u' + id, sec_uid: 'S' + id }, video: { duration: 20 } });
+  const qs = [];
+  const call = async (id, o) => {
+    if (id === 'tikhub.tiktok.search.videos') { const q = o.query.keyword; qs.push(q);
+      if (q === 'morning routine') return { data: { search_item_list: [{ aweme_info: aweme('9', 600e3, 'my morning routine as a nurse') }] } };
+      return { data: { search_item_list: [1, 2, 3, 4].map((i) => ({ aweme_info: aweme(q.length + '' + i, 5e6 - i, `best ${q} ever`) })) } }; }
+    if (id === 'tikhub.tiktok.user.videos') return { data: { itemList: [1, 2, 3, 4].map((i) => ({ id: String(i), stats: { playCount: 20e3 } })) } };
+    throw new Error('treg 402'); };
+  const f = createViralFinder({ call, ytKey: '', log: { warn() {} } });
+  const r = await f.find({ terms: ['coffee', 'espresso', 'cold brew', 'latte'], interests: ['morning routine', 'desk setup'], country: 'US', stems: ['coffee', 'espresso', 'brew', 'latte'], now, platforms: ['tiktok'], lookups: 3 });
+  assert.deepEqual(qs, ['coffee', 'espresso', 'morning routine', 'desk setup'], 'four searches: two category, two interests');
+  assert.ok(r.items.some((x) => ['morning routine', 'desk setup'].includes(x.interest)), 'an interest video gets a lookup and a seat');
+  assert.ok(r.items.filter((x) => !x.interest).length >= 1, 'category videos still lead');
+  assert.equal(r.items.length, 3);
+});
