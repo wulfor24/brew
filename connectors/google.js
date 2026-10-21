@@ -8,6 +8,7 @@
 // consent screen and the Ads developer token are set up.
 import crypto from 'node:crypto';
 import { exactSite, bareHost } from '../auth.js';
+import { UA } from '../reader/util.js';
 import { card, L, n0, pct, has, fmt, getJSON, form } from './common.js';
 
 /* Google retires each Ads API version about a year after release, and a retired one answers 404 to every call (v21 did by
@@ -56,9 +57,10 @@ export const siteMatch = (u, ctx) => { const h = bareHost(u); if (!h) return fal
   const hosts = [ctx.host, ctx.shopifyShop, ...(Array.isArray(ctx.hosts) ? ctx.hosts : [])].map(bareHost).filter(Boolean);
   return hosts.some((x) => x === h || exactSite(h, x)); };
 /* a store's other myshopify address (cozysnugglet.myshopify.com next to hnhdsm-mc.myshopify.com) is the brand's when Shopify
-   sends it to the brand's site: only the store's owner sets the primary domain it redirects to */
+   sends it to the brand's site: only the store's owner sets the primary domain it redirects to (Shopify answers 429 to Node's
+   own user agent, so it goes as the reader's browser) */
 export const shopRedirects = async (u, ctx, fetchImpl = fetch) => { const h = bareHost(u); if (!/\.myshopify\.com$/.test(h)) return false;
-  try { const r = await fetchImpl(`https://${h}/`, { method: 'HEAD', redirect: 'manual', signal: AbortSignal.timeout(8e3) });
+  try { const r = await fetchImpl(`https://${h}/`, { method: 'HEAD', redirect: 'manual', headers: { 'user-agent': UA }, signal: AbortSignal.timeout(8e3) });
     return r.status >= 300 && r.status < 400 && siteMatch(r.headers.get('location'), ctx); } catch { return false; } };
 const rows = (r) => (r?.rows || []).map((x) => ({ d: (x.dimensionValues || []).map((v) => v.value), m: (x.metricValues || []).map((v) => +v.value) }));
 
