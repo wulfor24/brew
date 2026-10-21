@@ -85,3 +85,10 @@ test('a reel final shows its on-screen lines as exact words, sounds as sounds, a
   const plain = buildFinal({ kind: 'video', seconds: 6, brand: { name: 'Cozy' }, beats: [{ shot: 'A hand.', line: 'Hi there' }] }).prompt;
   assert.match(plain, /No subtitles, no captions/); assert.match(plain, /"Hi there"/);
 });
+
+test('a brand avoid line saying "No text" never cancels words asked for', async () => {
+  const { keepLine } = await import('../sloosh-prompt.js');
+  const brand = { avoid: 'No text, no before/after, no body parts shown as results.' };
+  assert.doesNotMatch(keepLine({ brand, text: true }), /No text/); assert.match(keepLine({ brand, text: true }), /no before\/after/i);
+  assert.match(keepLine({ brand, text: false }), /No text/);
+});
