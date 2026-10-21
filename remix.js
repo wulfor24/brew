@@ -13,7 +13,7 @@ import { createMakers } from './drafts.js';
 import { cardProduct, sceneOf } from './product-match.js';
 import { isRivalCard, isViralCard, isReferenceCard, isResearchImage, readRivalAd, rivalBlock, rivalPicture, viralBlock } from './rival-ad.js'; // "Make our version" of a rival's ad: read it, then remake it in its style
 import { createStudioFinals } from './finals-routes.js';
-import { buildDraft, motionOnly, onScreen } from './sloosh-prompt.js'; // Make the final on a version: Sloosh, quote first, behind a button
+import { beatWords, buildDraft, motionOnly, onScreen } from './sloosh-prompt.js'; // Make the final on a version: Sloosh, quote first, behind a button
 import { versionLabel } from './text-fit.js';
 import { ctaName } from './seed-template.js'; /* a renamed button (Publish Campaign, List what points there) maps as its new name */
 import { withSteps } from './card-plan.js';
@@ -826,7 +826,8 @@ export function createRemix(o) {
      Vertex account, with the hook line read over it. The script alone is not a video: "Make the short video" makes one.
      It lands on the version it was made for (patched into that version, no new version), within DAILY_VIDEO_CAP. ---------- */
   const isVideoPost = (ch) => ch.family === 'post' && /short_video$/.test(String(ch.action || ''));
-  const hookOf = (p = {}) => clean(String((p.script || [])[0]?.line || p.title || String(p.copy || '').split('\n')[0] || '')).split(/\s+/).slice(0, 14).join(' ');
+  /* the clip's spoken hook: what beat 1 says, else its on-screen words; never the script's own tags ("(On-screen text) …", "(Sound effect: …)") */
+  const hookOf = (p = {}) => { const w = (p.script || [])[0] ? beatWords(p.script[0]) : null; return clean(String((w && (w.say || w.show)) || p.title || String(p.copy || '').split('\n')[0] || '')).split(/\s+/).slice(0, 14).join(' '); };
   let MK = null; const makers = () => (MK ||= o.makers || createMakers({ geminiImage, launchBrowser, log })); /* launchBrowser: the on-screen words set in exact type over the clip */
   const VID_JOBS = new Set();
   const srcPhoto = async (t, ch, lead = null) => { const c = t.cards.get(ch.cardId) || {}, p = ch.pkg || {};
@@ -868,7 +869,7 @@ export function createRemix(o) {
         if (hook && spend('voice')) { ch.videoStep = 'Adding the voiceover';
           const au = await M.voice(hook, 'warm and natural, like a creator talking to camera', 'Kore').catch((e) => { log.warn('[short video voice]', e.message); return null; });
           const both = au ? await M.mux(name, au).catch((e) => { log.warn('[short video mux]', e.message); return null; }) : null; if (both) { name = both; voiced = true; } }
-        const words = onScreen(shot0); if (words && M.headClip) { const hv = await M.headClip(name, { text: words }).catch((e) => { log.warn('[short video words]', e.message); return null; }); if (hv) name = hv; }
+        const words = beatWords(sc[0] || {}).show || onScreen(shot0); if (words && M.headClip) { const hv = await M.headClip(name, { text: words }).catch((e) => { log.warn('[short video words]', e.message); return null; }); if (hv) name = hv; }
         const media = { video: 'gen/' + name, poster: 'gen/' + frame, image: 'gen/' + frame, videoHook: hook, frameFor: shot0 };
         const v = versionsOf(t, ch.id).find((x) => x.id === target); if (v) v.snapshot = { ...v.snapshot, ...media };
         /* the clip lands in the option it was made for (Param, 19 Oct: no more "Video added" versions): on the stage when the stage

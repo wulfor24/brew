@@ -77,6 +77,7 @@ test('a reel final shows its on-screen lines as exact words, sounds as sounds, a
   assert.deepEqual(beatWords({ line: 'Try it tonight.' }), { say: 'Try it tonight.', show: '', sfx: '' });
   assert.deepEqual(beatWords({ line: '(Sound effect) Squeaking crunch sound (On-screen text) Locked in a crunch prison' }), { say: '', show: 'Locked in a crunch prison', sfx: 'Squeaking crunch sound' });
   assert.deepEqual(beatWords({ line: 'Try it. (On-screen text) Only ₹249 🔥' }), { say: 'Try it.', show: 'Only ₹249', sfx: '' });
+  assert.deepEqual(beatWords({ line: "(On-screen text) Doctor's Choice: Stop Shower Hair Fall (Sound effect: Subtle upbeat pop transit)" }), { say: '', show: "Doctor's Choice: Stop Shower Hair Fall", sfx: 'Subtle upbeat pop transit' });
   const p = buildFinal({ kind: 'video', title: 'our version', seconds: 15, sound: true, brand: { name: 'Cozy' }, refs: [{ job: 'product', label: 'Toe Toasters', url: 'x' }, { job: 'motion', label: 'the viral video', url: 'y' }],
     beats: [{ shot: 'Hands wrap foil over a sock.', line: '(On-screen text) Keeping your feet warm in 1996' }, { shot: 'Tighter.', line: '(Sound effect) crinkling' }] }).prompt;
   assert.match(p, /exactly: "Keeping your feet warm in 1996"/); assert.match(p, /<crinkling>/); assert.doesNotMatch(p, /"\(On-screen/);

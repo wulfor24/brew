@@ -3637,7 +3637,10 @@
       body = `<div class="pm pm-pin">${pmMedia(ch, p, lg, { ratio: '2/3' }) || `<div class="pm-media is-slot" style="aspect-ratio:2/3"></div>`}<div class="pin-b"><h3>${esc(p.title || '')}</h3><p class="pm-body">${pmText(String(p.copy || '').slice(0, lg ? 1200 : 160))}</p>${tags.length ? `<p class="pm-body">${pmText(tags.join(' '))}</p>` : ''}
         <footer class="pin-f">${pmAv()}<b>${esc(name)}</b><span class="pin-go">Visit</span></footer></div></div>`;
     } else if (kind === 'short_video') {
-      const sc = p.script || [], hook = sc[0]?.line || p.title || String(p.copy || '').split('\n')[0];
+      /* the words over the phone: beat 1's on-screen text, never the script's tags ("(On-screen text) …", "(Sound effect: …)") */
+      const TAGS = /\(\s*(?:on-?screen(?: text)?|text overlay|caption|sound(?: effect)?|sfx|voice-?over|vo|said|voice)\s*(?::\s*[^)]*)?\)/gi;
+      const shownOf = (l) => { const s0 = String(l || ''), m = /\(\s*on-?screen(?: text)?\s*(?::\s*([^)]*))?\)\s*([^()]*)/i.exec(s0); return (m ? (m[1] || m[2]) : s0.replace(TAGS, ' ')).replace(/\s{2,}/g, ' ').trim(); };
+      const sc = p.script || [], hook = shownOf(sc[0]?.line) || p.title || String(p.copy || '').split('\n')[0];
       /* the clip itself: made on the stage (a first frame of the real product, animated, the hook read over it) */
       const hk = String(hook || '').split(/\s+/).slice(0, 14).join(' '), newHook = p.video && p.videoHook && p.videoHook.trim() !== hk.trim(), newPic = p.video && p.poster && p.image && p.image !== p.poster, stale = newHook || newPic;
       const make = lg && view === 'remix' && !ch.batchKey ? (ch.videoPending ? `<div class="sv-make is-busy"><brew-load class="spin"></brew-load>${esc(ch.videoStep || 'Making the video')}…</div>`

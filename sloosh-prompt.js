@@ -93,7 +93,8 @@ const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu;
 /* one line can carry several parts: "(Sound effect) Squeaking crunch (On-screen text) Locked in a crunch prison" (Arata, 21 Oct) */
 const TAG = /\(\s*(on-?screen(?: text)?|text overlay|caption|title|super|sound(?: effect)?|sfx|voice-?over|vo|said|voice)\s*\)\s*[:\-–]?\s*|^\s*(on-?screen(?: text)?|sound effect|sfx|voice-?over)\s*:\s*/gi;
 export function beatWords(x = {}) {
-  const raw = one(typeof x === 'string' ? '' : x.line), out = { say: [], show: [], sfx: [] }, tidy = (t) => one(String(t || '').replace(EMOJI, '')).replace(/^["“]+|["”]+$/g, '');
+  /* "(Sound effect: soft water)" carries its words inside the brackets (Arata, 21 Oct): read as "(Sound effect) soft water" */
+  const raw = one(typeof x === 'string' ? '' : x.line).replace(/\(\s*(on-?screen(?: text)?|text overlay|caption|sound(?: effect)?|sfx|voice-?over|vo)\s*:\s*([^)]*)\)/gi, '($1) $2 '), out = { say: [], show: [], sfx: [] }, tidy = (t) => one(String(t || '').replace(EMOJI, '')).replace(/^["“]+|["”]+$/g, '');
   let last = 0, kind = 'say', m; TAG.lastIndex = 0;
   while ((m = TAG.exec(raw))) { const t = tidy(raw.slice(last, m.index)); if (t) out[kind].push(t); const k = m[1] || m[2]; kind = /sound|sfx/i.test(k) ? 'sfx' : /voice|vo|said/i.test(k) ? 'say' : 'show'; last = TAG.lastIndex; }
   const t = tidy(raw.slice(last)); if (t) out[kind].push(t);
