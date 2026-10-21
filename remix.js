@@ -1150,7 +1150,10 @@ export function createRemix(o) {
     if (ch.pkg && ch.pkg.wordsIn === undefined && ch.lastFinal?.versionId && /^gen\/fin-/.test(ch.pkg.image || '') && ch.pkg.overlay) ch.pkg.wordsIn = ch.pkg.image; /* a final made before 18 Oct: its words are set in the picture */
     if (ch.pkg && ch.pkg.wordsIn === undefined && /^gen\//.test(ch.pkg.image || '') && ch.cardId && o.planOf) { const w = o.planOf(t, t.cards?.get?.(ch.cardId) || {})?.draft?.wordsIn; ch.pkg.wordsIn = w && w === ch.pkg.image ? w : null; } /* a jam opened from a first draft before 20 Oct: its picture may already carry the headline */
     if (ch.imagePending && !IMG_JOBS.has(ch.id)) { ch.imagePending = false; ch.imageError = 'The photo stopped before it finished. Make it again.'; }
-    if (ch.videoPending && !VID_JOBS.has(ch.id)) { ch.videoPending = null; ch.videoStep = null; ch.videoError = 'The video stopped before it finished. Make it again.'; }
+    /* a Sloosh final is not lost in a restart: finals.reconcileAll picks the run up and lands it (landDone), so it says so instead of
+       "stopped"; one that already landed (its Final version is newer than the wait) clears the wait (Arata, 21 Oct) */
+    if (ch.finalPending && ch.lastFinal?.versionId && (versionById(t, ch.id, ch.lastFinal.versionId)?.at || 0) >= (ch.finalPending.at || 0) && !VID_JOBS.has(ch.id) && !IMG_JOBS.has(ch.id)) { ch.finalPending = null; ch.videoPending = null; ch.videoStep = null; if (/stopped before it finished/.test(ch.videoError || '')) ch.videoError = null; }
+    if (ch.videoPending && !VID_JOBS.has(ch.id)) { if (ch.finalPending && ch.finalPending.provider === 'sloosh' && Date.now() - (ch.finalPending.at || 0) < 40 * 60e3) ch.videoStep = 'Sloosh is still making the final (picked up after a restart)'; else { ch.videoPending = null; ch.videoStep = null; ch.videoError = 'The video stopped before it finished. Make it again.'; } }
     if (!REMAKE_JOBS.has(ch.id)) { const as = ch.remakePending?.as || ch.pkg?.draft?.as, was = !!ch.remakePending; ch.remakePending = null;
       if (unstick(t, ch) || was) { const what = as === 'video' ? 'reel' : as === 'carousel' ? 'carousel' : 'picture';
         ch.remakeError = `The ${what} stopped before it finished (Brew restarted). Tap Make it again.`; ch.thread.push({ from: 'ai', text: ch.remakeError, at: now(t), remakeAgain: as || null }); } }

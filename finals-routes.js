@@ -188,7 +188,12 @@ export function createStudioFinals({ blockOf = () => null, headOf = () => null, 
     const note = textCheckNote(r); if (note) ch.thread.push({ from: 'ai', text: note, at: now(), v: v.n });
     sync(t, ch); return r; }
   /* after a restart (finals.reconcileAll → onDone): the final Sloosh finished while Brew was away becomes the change's next version */
-  function landDone(t, rec) { const ch = C(t, rec?.target?.chid); if (!ch) return false; if (ch.lastFinal?.runKey === rec.runKey) return true; landIn(t, ch, rec); sync(t, ch); return true; }
+  function landDone(t, rec) { const ch = C(t, rec?.target?.chid); if (!ch) return false;
+    /* the run this change was waiting on: its "making" state and the restart's "stopped" message go (Arata, 21 Oct: the final had
+       landed and the stage still said "Sloosh is making the final") */
+    if (rec.state === 'done' || rec.state === 'failed') { ch.finalPending = null; ch.videoPending = null; ch.videoStep = null; if (/stopped before it finished/.test(ch.videoError || '')) ch.videoError = null; if (rec.state === 'done') ch.imageError = null; set0(ch); }
+    if (ch.lastFinal?.runKey === rec.runKey) { sync(t, ch); return true; } landIn(t, ch, rec); sync(t, ch); return true; }
+  const set0 = (ch) => { vidJobs?.delete?.(ch.id); jobs?.delete?.(ch.id); ch.imagePending = !!jobs?.has?.(ch.id); };
 
   /* the spelling check again on the change's last final (free: one vision call, nothing is made) */
   on('POST', '/api/changes/:chid/final/text-check', async (b, t, p) => { const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; const lf = ch.lastFinal; if (!lf?.runKey || !textCheck) return { error: 'No video final to check here.' };
