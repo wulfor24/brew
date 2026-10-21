@@ -32,7 +32,9 @@ test('research: a failure is saved with the snapshot, so a restart waits out the
   process.env.RESEARCH_OFF = '1'; try { await r.start(); } finally { delete process.env.RESEARCH_OFF; r.stop(); }
   assert.ok(!r.due().includes('news'), 'failed 10 minutes ago: not yet');
   // and the failing run writes lastError into the snapshot on disk
-  const r2 = createResearch({ ROOT, PUB, anthropic: null, claudeParams: () => ({}), textOf: () => '', geminiImage: async () => {}, gToken: noBucket, clean: (s) => s, brand: b, log: quiet });
+  /* a treg that can't answer: on a machine whose treg has credit, the free news search would find real news and the read wouldn't fail */
+  const deadTreg = { meter: { usd: 0 }, call: async () => { throw new Error('402 insufficient balance'); } };
+  const r2 = createResearch({ ROOT, PUB, anthropic: null, claudeParams: () => ({}), textOf: () => '', geminiImage: async () => {}, gToken: noBucket, clean: (s) => s, brand: b, tregClient: deadTreg, log: quiet });
   fs.writeFileSync(path.join(local, 'snapshot.json'), JSON.stringify({ news: { fetchedAt: Date.now() - 9 * 3600e3, items: [] } }));
   process.env.RESEARCH_OFF = '1'; try { await r2.start(); } finally { delete process.env.RESEARCH_OFF; r2.stop(); }
   await r2.refresh(['news']);
