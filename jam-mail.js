@@ -125,10 +125,10 @@ export function createJamMail({ mail, packs, sign, verify, base = () => process.
     const body = para(`From ${esc(by?.name || '')}${by?.name && by?.email ? ' · ' : ''}${esc(by?.email || '')}`, { muted: true, small: true }) +
       (parts.where ? para(`<b>Where:</b> ${esc(parts.where)}`) : '') + sec('Deliverables', parts.deliverables) +
       `<h2 style="margin:20px 0 8px;font:700 16px/1.35 ${FONT_};color:#111">The brief</h2>` + mdToEmailHtml(md, { esc, p: para }) +
-      assetsHtml + sec('Rules', parts.rules) + sec('Done when', parts.doneWhen);
+      assetsHtml + ((parts.reference || []).length ? `<h2 style="margin:20px 0 8px;font:700 16px/1.35 ${FONT_};color:#111">How the reference is made</h2>` + parts.reference.map((r) => para(esc(r).replace(/\n/g, '<br>'))).join('') : '') + sec('Rules', parts.rules) + sec('Done when', parts.doneWhen);
     const html = emailHtml({ title, eyebrow: `${brand}${ticket ? ` · ${ticket}` : ''}`, preheader: cut(String(md).replace(/^#.*$/m, '').replace(/[#*_-]+/g, ' '), 140), body, cta: { href: jamUrl || link(slug, w.id), label: 'Open the jam' }, secondary: briefUrl ? { href: briefUrl, label: 'Read the brief (read-only)' } : null, after: para('Move it on from the jam: Received, In progress, Needs info or Delivered. The brand sees each step.', { muted: true, small: true }), base: base() });
     const txt = [subject, '', `From ${by?.name || ''} ${by?.email || ''}`.trim(), parts.where ? `Where: ${parts.where}` : '', parts.deliverables?.length ? `Deliverables:\n${parts.deliverables.map((x) => `- ${x}`).join('\n')}` : '', '', md, '',
-      (parts.assets || []).length ? `Assets:\n${parts.assets.map((a) => `- ${a.label}: ${a.url}`).join('\n')}` : '', parts.rules?.length ? `Rules:\n${parts.rules.map((x) => `- ${x}`).join('\n')}` : '', parts.doneWhen?.length ? `Done when:\n${parts.doneWhen.map((x) => `- ${x}`).join('\n')}` : '',
+      (parts.assets || []).length ? `Assets:\n${parts.assets.map((a) => `- ${a.label}: ${a.url}`).join('\n')}` : '', (parts.reference || []).length ? `How the reference is made:\n${parts.reference.join('\n\n')}` : '', parts.rules?.length ? `Rules:\n${parts.rules.map((x) => `- ${x}`).join('\n')}` : '', parts.doneWhen?.length ? `Done when:\n${parts.doneWhen.map((x) => `- ${x}`).join('\n')}` : '',
       `Open the jam: ${jamUrl || link(slug, w.id)}`, briefUrl ? `The brief (read-only): ${briefUrl}` : ''].filter((x, i, a) => x !== '' || a[i - 1] !== '').join('\n');
     const ok = await send(to, subject, html, txt); if (!ok) briefSentKeys.delete(k); return ok;
   };

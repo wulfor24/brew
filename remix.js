@@ -1051,6 +1051,16 @@ export function createRemix(o) {
     if (ch.family === 'meta_ad' && p.overlay) out.push({ kind: 'copy', label: p.wordsIn && p.wordsIn === p.image ? 'Words already set in the creative' : 'Text to set on the creative', text: p.overlay });
     if (LANE_PHOTO[c.lane]) out.push({ kind: 'image', label: 'Product photo (reference, keep the label exact)', url: LANE_PHOTO[c.lane] });
     (c.images || []).slice(0, 2).forEach((u, i) => out.push({ kind: 'image', label: isResearchImage(u) ? (isViralCard(c) ? 'The viral video this remakes (their format, not your product)' : 'The rival ad this remakes (their look, not your product)') : i ? 'More from the card' : 'The card this came from', url: u }));
+    /* the reference itself, for a team that makes it by hand (Param, 21 Oct: "share the brief along with reference posts/videos"):
+       where to watch it, the saved clip, and Brew's read of how it is made. Theirs: for the format only, never reused */
+    const rf = isReferenceCard(c) ? (() => { try { return o.refSummary?.(t, c) || null; } catch { return null; } })() : null;
+    if (rf) { const who = rf.kind === 'viral' ? `the viral ${rf.platformName || ''} video this remakes${rf.handle ? `, by ${rf.handle}` : ''}`.replace(/\s+,/, ',').replace(/\s+/g, ' ') : `${rf.brand ? `${rf.brand}’s` : 'the rival’s'} ad this remakes`;
+      if (rf.url) out.push({ kind: 'link', label: `Reference: watch ${who}`, url: rf.url, ref: true });
+      if (rf.video) out.push({ kind: 'video', label: `Reference clip: ${who} (their format, not your product)`, url: rf.video, poster: rf.poster || null, ref: true });
+      const lines = [rf.hook && `Their hook: ${rf.hook}`, rf.angle && `Angle: ${rf.angle}`, rf.format && `Format: ${rf.format}`, rf.pacing && `Pacing: ${rf.pacing}`, rf.why && `Why it works: ${rf.why}`,
+        rf.views != null && `Views: ${rf.views.toLocaleString('en-US')}${rf.scoreText ? ` (${rf.scoreText} the creator’s usual)` : ''}`,
+        (rf.beats || []).length && `Beats:\n${rf.beats.map((b, i) => `${i + 1}. ${[b.t, b.shot, b.text && `“${b.text}”`].filter(Boolean).join(' · ')}`).join('\n')}`].filter(Boolean);
+      if (lines.length) out.push({ kind: 'copy', label: 'How the reference is made (Brew’s read; their words are never reused)', text: lines.join('\n'), ref: true }); }
     const urls = [p.utm, p.pages, p.file].filter((x) => x && (String(x).includes(BH()) || /utm_/.test(x)));
     urls.forEach((u) => out.push({ kind: 'link', label: /utm_/.test(u) ? 'Landing page with tracking' : 'Page', url: (/^https?:/.test(u) ? u : 'https://' + u.replace(/^\/*/, '').replace(/\s.*$/, '')) }));
     if (ch.family === 'outreach' && p.body) out.push({ kind: 'copy', label: `Email to ${[p.to, p.company].filter(Boolean).join(', ') || 'the business'}, a person sends it`, text: [p.subject && `Subject: ${p.subject}`, p.body].filter(Boolean).join('\n\n') });

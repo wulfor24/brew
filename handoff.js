@@ -107,9 +107,9 @@ export function createHandoff({ RMX, pageOf, fillCard, AGENT = {}, SEED = {}, ba
       L.push('', `*The package:* ${x.pkg.action} on ${x.pkg.target} (v${x.pkg.version} of ${x.pkg.versions}) · ${x.pkg.money}`);
       x.pkg.fields.filter((f) => f.pub).slice(0, 4).forEach((f) => L.push(`• ${f.label}: ${clip(f.value, 160)}`));
     }
-    const imgs = [...(x.pkg?.assets || []).filter((a) => a.kind === 'video' || a.kind === 'image').map((a) => `${a.label}: ${a.url}`), ...x.card.images.slice(0, 2).map((u) => `Card image: ${u}`), ...x.versions.filter((v) => v.image && v.current).map((v) => `Current version: ${v.image}`)];
+    const imgs = [...(x.pkg?.assets || []).filter((a) => a.kind === 'video' || a.kind === 'image' || (a.kind === 'link' && a.ref)).map((a) => `${a.label}: ${a.url}`), ...x.card.images.slice(0, 2).map((u) => `Card image: ${u}`), ...x.versions.filter((v) => v.image && v.current).map((v) => `Current version: ${v.image}`)];
     const seenU = new Set(); const imgs2 = imgs.filter((l) => { const u = l.slice(l.lastIndexOf(' ') + 1); if (seenU.has(u)) return false; seenU.add(u); return true; });
-    if (imgs2.length) L.push('', '*Assets*', ...imgs2.slice(0, 5));
+    if (imgs2.length) L.push('', '*Assets*', ...imgs2.slice(0, 7));
     const chat = x.jam.filter((m) => !m.system).slice(-6);
     if (chat.length) L.push('', '*Jam so far*', ...chat.map((m) => `${m.who}: ${clip(m.text, 160)}`));
     const st = (x.pkg?.thread || []).slice(-4);

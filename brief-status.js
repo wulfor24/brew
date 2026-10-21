@@ -54,7 +54,9 @@ export function briefParts(x = {}, jb = {}, { banned = [] } = {}) {
   (pkg?.assets || []).forEach((a) => (a.kind === 'image' ? add(a.label, a.url, true) : a.kind === 'link' || a.kind === 'video' ? add(a.kind === 'video' ? `${a.label} (video)` : a.label, a.url, false) : null));
   if (cur?.image && !pkg) add('Current version', cur.image, true); /* with a package its assets are the version on the stage; the jam's own picture may be an older one */
   (x.card?.images || []).slice(0, 3).forEach((u) => add('From the card', u, true));
-  if (x.card?.link) add('The card’s source', x.card.link, false);
+  const lk = x.card?.link; if (lk) add(typeof lk === 'string' ? 'The card’s source' : lk.label || 'The card’s source', typeof lk === 'string' ? lk : lk.url, false); /* a card's link is { label, url } (it showed as [object Object]) */
+  /* the reference a "Make our version" remakes: Brew's read of how it is made, for a team that makes it by hand */
+  const reference = (pkg?.assets || []).filter((a) => a.kind === 'copy' && a.ref && a.text).map((a) => a.text);
   const rules = [];
   if (x.card?.watch) rules.push(x.card.watch);
   if (banned.length) rules.push(`Never use these claim words: ${banned.join(', ')}.`);
@@ -67,7 +69,7 @@ export function briefParts(x = {}, jb = {}, { banned = [] } = {}) {
   if (spec.When) doneWhen.push(`When: ${spec.When}`);
   (jb.missing || []).length && doneWhen.push(`Still open in the brief: ${jb.missing.join(', ').toLowerCase()}`);
   const where = pkg?.target || spec['Where it runs'] || spec['Which pages'] || spec['Which campaigns'] || '';
-  return { deliverables, assets: assets.slice(0, 10), rules, doneWhen, where };
+  return { deliverables, assets: assets.slice(0, 12), rules, doneWhen, where, reference };
 }
 
 /* the brief's Markdown as email-safe HTML: # and ## headings, - bullets and **bold** only, everything escaped */
