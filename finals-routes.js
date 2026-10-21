@@ -3,6 +3,7 @@
 // that quote, and a Space checkpoint's yes or no. Mounted by feed-service.js (jam) and remix.js (studio) with one line each.
 // A final lands as a draft card marked final, or as the next studio version labelled Final, and posts to the thread like
 // every other asset. Chat never reaches these routes: only the button does.
+import { textCheckNote } from './text-check.js'; // a video final's on-screen words read back
 import { isResearchImage } from './rival-ad.js'; // a rival's ad is never a photo a final stands on
 import { sceneOf, cardProduct } from './product-match.js';
 import { familyOf, matchSpaces } from './sloosh-spaces.js';
@@ -113,7 +114,7 @@ export function createFinalsRoutes({ blockOf = () => null, on, W, say, meOf, slu
 }
 
 /* ---------- the studio: a final is the next version, labelled Final ---------- */
-export function createStudioFinals({ blockOf = () => null, headOf = () => null, useVersion = () => {}, versionById = () => null, on, C, ensurePkg, sync, version, pubChange, cardOf = () => null, cardPhoto = () => null, catalogOf = () => [], jobs, vidJobs = null, references = null, finals, sloosh, creditsLeft = () => null, rivalOf = async () => null, viralClip = null, brandOfT, slugOfT, meOf = () => null, onMedia = () => {}, isVideo = () => false, RATIO = {}, now = () => Date.now(), log = console }) {
+export function createStudioFinals({ blockOf = () => null, headOf = () => null, useVersion = () => {}, versionById = () => null, on, C, ensurePkg, sync, version, pubChange, cardOf = () => null, cardPhoto = () => null, catalogOf = () => [], jobs, vidJobs = null, references = null, finals, sloosh, creditsLeft = () => null, rivalOf = async () => null, viralClip = null, textCheck = null, brandOfT, slugOfT, meOf = () => null, onMedia = () => {}, isVideo = () => false, RATIO = {}, now = () => Date.now(), log = console }) {
   const sheet = createFinalsSheet({ finals, sloosh, references, creditsLeft, brandOfT, log, now });
   const nameOf = (t) => meOf(t)?.name || meOf(t)?.email || 'Someone';
   const headFinal = (ch) => (ch.versions || []).find?.((v) => v.id === ch.headVersionId)?.final || ch.lastFinal?.versionId === ch.headVersionId ? ch.lastFinal : null;
@@ -177,9 +178,22 @@ export function createStudioFinals({ blockOf = () => null, headOf = () => null, 
     const v = version(t, ch, rec.provider === 'gemini' ? 'gemini' : 'sloosh', `Final: ${rec.dummy ? 'simulated' : rec.provider === 'gemini' ? `made with Gemini (Sloosh not ready: ${fallbackWhy || 'no credits yet'})` : `${rec.charged ?? rec.credits} credits on ${sp ? sp.name || 'a Sloosh Space' : label || model || rec.model}`}`, rec.dummy ? 'Final (Dummy)' : rec.provider === 'gemini' ? 'Final (Gemini)' : 'Final');
     v.final = { credits: rec.charged ?? rec.credits, model: model || rec.model || null, label: label || null, space: sp, dummy: !!rec.dummy, fallback: !!rec.fallback, provider: rec.provider || 'sloosh', link: rec.link || null, assetId: rec.assetId || null, assetKind: rec.assetKind || null, revision: rec.revision || 0, runKey: rec.runKey, by: by || rec.by || null };
     ch.lastFinal = { versionId: v.id, ...v.final };
-    try { onMedia(t, ch, { kind: isVid ? 'video' : 'image', images: isVid ? [] : [rec.file], video: isVid ? rec.file : null, n: v.n, label: v.label }); } catch {} }
+    try { onMedia(t, ch, { kind: isVid ? 'video' : 'image', images: isVid ? [] : [rec.file], video: isVid ? rec.file : null, n: v.n, label: v.label }); } catch {}
+    if (isVid && textCheck && !rec.dummy) spellCheck(t, ch, v, rec.file, rec.prompt); }
+  /* a video final's on-screen words, read back and compared with what was asked (text-check.js): the jam says what is wrong and
+     where; it never remakes by itself, because a remake costs credits */
+  async function spellCheck(t, ch, v, file, prompt) {
+    const r = await textCheck(file, prompt).catch((e) => ({ ok: null, error: e.message })); if (!r || r.skipped) return r;
+    v.final = { ...(v.final || {}), textCheck: { ok: r.ok, lines: r.lines, at: r.at || now() } }; if (ch.lastFinal?.versionId === v.id) ch.lastFinal.textCheck = v.final.textCheck;
+    const note = textCheckNote(r); if (note) ch.thread.push({ from: 'ai', text: note, at: now(), v: v.n });
+    sync(t, ch); return r; }
   /* after a restart (finals.reconcileAll → onDone): the final Sloosh finished while Brew was away becomes the change's next version */
   function landDone(t, rec) { const ch = C(t, rec?.target?.chid); if (!ch) return false; if (ch.lastFinal?.runKey === rec.runKey) return true; landIn(t, ch, rec); sync(t, ch); return true; }
+
+  /* the spelling check again on the change's last final (free: one vision call, nothing is made) */
+  on('POST', '/api/changes/:chid/final/text-check', async (b, t, p) => { const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; const lf = ch.lastFinal; if (!lf?.runKey || !textCheck) return { error: 'No video final to check here.' };
+    const rec = await finals.get?.(slugOfT(t), lf.runKey).catch(() => null); if (!rec?.file || (rec.kind || 'image') !== 'video') return { error: 'No video final to check here.' };
+    const v = versionById(t, ch, lf.versionId) || { final: {} }; const r = await spellCheck(t, ch, v, rec.file, rec.prompt); return { check: r, note: textCheckNote(r) }; });
 
   on('POST', '/api/changes/:chid/final/checkpoint', async (b, t, p) => { const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; const ck = ch.finalCheckpoint; if (!ck?.runKey) return { error: 'Nothing is waiting here.' };
     const slug = slugOfT(t), by = nameOf(t); ch.finalCheckpoint = null; ch.imagePending = true; ch.imageError = null; jobs?.add?.(ch.id); sync(t, ch);
