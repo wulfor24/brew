@@ -65,3 +65,8 @@ test('a viral clip passes the research filter only when the server set it; a riv
   assert.equal(sheet.spec({}, { kind: 'video', title: 'x', visual: 'v' }, { refs }).refs.filter((r) => r.job === 'motion').length, 0);
   assert.equal(sheet.spec({}, { kind: 'video', title: 'x', visual: 'v', viralClip: 'research/other.mp4' }, { refs }).refs.filter((r) => r.job === 'motion').length, 0);
 });
+
+test('a reel final takes its pictures from its beats, never an image brief left from an earlier take', async () => {
+  const src = (await import('node:fs')).readFileSync(new URL('../finals-routes.js', import.meta.url), 'utf8');
+  assert.match(src, /isVideo\(ch\) && \(p\.script \|\| \[\]\)\.some\(\(x\) => x\?\.shot\) \? '' : p\.imageBrief/);
+});
