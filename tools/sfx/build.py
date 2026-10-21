@@ -1,16 +1,27 @@
 """Render Brew's UI sounds (cues.json) with earshot into public/sfx/<cue>.mp3.
 
 Run through tools/sfx/build.sh, which points at an earshot venv. Each layer is rendered with `earshot sfx render`,
-layered at its offset, levelled to the cue's peak, its silent tail trimmed with a short fade, audited with
-`earshot sfx check`, then encoded to mono 64 kbps mp3 (plays everywhere, iOS Safari included).
+layered at its offset, its silent tail trimmed with a short fade, then set to the cue's level: loudness (LUFS) as a
+phone or laptop speaker plays it (nothing much under ~350 Hz or over ~9 kHz), so the cues sound even next to each
+other and a cue that mostly lives where a small speaker can't play it fails the build. Audited with `earshot sfx check`,
+then encoded to mono 96 kbps mp3 (plays everywhere, iOS Safari included).
 """
 import json, os, subprocess, sys, tempfile
-import numpy as np, soundfile as sf
+import numpy as np, soundfile as sf, pyloudnorm as pyln
+from scipy.signal import butter, sosfilt
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, '..', '..', 'public', 'sfx')
 EARSHOT = os.environ.get('EARSHOT', 'earshot')
 SR = 44100
+METER = pyln.Meter(SR, block_size=0.1)
+SPEAKER = np.vstack([butter(4, 350, 'hp', fs=SR, output='sos'), butter(4, 9000, 'lp', fs=SR, output='sos')])
+CEIL = 10 ** (-1 / 20)  # sample peak at most -1 dBFS
+MAX_LOSS = 6  # dB a cue may lose through a small speaker before it counts as muffled
+
+
+def lufs(y):  # short cues are padded so the meter has a full block
+    return METER.integrated_loudness(np.concatenate([y, np.zeros(int(SR * .5))]))
 
 
 def render(sid, opts, tmp, n):
@@ -34,12 +45,14 @@ def build(name, cue, tmp):
     above = np.nonzero(np.abs(y) > np.abs(y).max() * 10 ** (-60 / 20))[0]
     y = y[:min(len(y), above[-1] + int(SR * .02))]
     f = min(len(y), int(SR * .015)); y[-f:] *= np.linspace(1, 0, f)
-    y *= 10 ** (cue['peak'] / 20) / np.abs(y).max()
+    y /= np.abs(y).max(); loss = lufs(y) - lufs(sosfilt(SPEAKER, y))
+    for _ in range(4):  # the meter's -70 LUFS gate moves with the level, so settle it in a few passes
+        y *= min(10 ** ((cue['level'] - lufs(sosfilt(SPEAKER, y))) / 20), CEIL / np.abs(y).max())
     wav = os.path.join(tmp, f'{name}.wav'); sf.write(wav, y, SR, subtype='PCM_24')
     chk = subprocess.run([EARSHOT, 'sfx', 'check', wav, '--json'], capture_output=True, text=True)
     mp3 = os.path.join(OUT, f'{name}.mp3')
-    subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', wav, '-ac', '1', '-ar', str(SR), '-b:a', '64k', mp3], check=True)
-    return len(y) / SR, os.path.getsize(mp3), chk
+    subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', wav, '-ac', '1', '-ar', str(SR), '-b:a', '96k', mp3], check=True)
+    return len(y) / SR, os.path.getsize(mp3), chk, loss, lufs(sosfilt(SPEAKER, y))
 
 
 def main():
@@ -50,17 +63,19 @@ def main():
     with tempfile.TemporaryDirectory() as tmp:
         for name, cue in cues.items():
             if only and name not in only: continue
-            dur, size, chk = build(name, cue, tmp)
+            dur, size, chk, loss, heard = build(name, cue, tmp)
             total += size
             try:
                 r = json.loads(chk.stdout)
                 faults = [] if r.get('ok') else [str(w) for w in r.get('warnings') or []] or [r.get('summary', 'not clean')]
             except Exception:
                 faults = [chk.stderr.strip()[:120] or 'check failed']
+            if loss > MAX_LOSS: faults.append(f'muffled: loses {loss:.0f} dB through a small speaker')
+            if heard < cue['level'] - 1.5: faults.append(f'only {heard:.0f} LUFS at the peak ceiling')
             if faults: bad.append((name, faults))
-            print(f'{name:10s} {dur:5.2f}s {size / 1024:5.1f} KB {"ok" if not faults else "FAULT " + ", ".join(faults)}')
+            print(f'{name:10s} {dur:5.2f}s {size / 1024:5.1f} KB {heard:6.1f} LUFS  {"ok" if not faults else "FAULT " + ", ".join(faults)}')
     print(f'total {total / 1024:.1f} KB')
-    if total > 160 * 1024: sys.exit('kit is over the 160 KB budget')
+    if total > 200 * 1024: sys.exit('kit is over the 200 KB budget')
     if bad: sys.exit(f'{len(bad)} cue(s) failed the earshot check')
 
 

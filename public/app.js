@@ -1484,26 +1484,34 @@
     keep: [(c) => noise(c, 0, .16, { from: 700, to: 3000, vol: .035 }), 8, 120],
     drop: [(c) => noise(c, 0, .16, { from: 2400, to: 500, vol: .025 }), 0, 120] };
   /* the cues themselves are designed sounds, rendered offline with earshot (tools/sfx: cues.json, build.sh) into public/sfx/<cue>.mp3
-     and decoded once after the first tap; a cue whose file isn't in yet (or failed) plays its synth above instead */
+     and decoded while the page is idle (an offline context decodes without a tap), so even the first tap plays the real cue; a cue
+     whose file isn't in yet (or failed) plays its synth above instead */
   SND.buf = {};
-  const loadSfx = () => { if (SND.loading) return; const c = actx(); if (!c) return; SND.loading = true; SND.out = c.createGain(); SND.out.gain.value = .8; SND.out.connect(c.destination);
-    const go = () => Object.keys(CUES).forEach((k) => fetch(`/sfx/${k}.mp3`).then((r) => r.ok ? r.arrayBuffer() : Promise.reject()).then((a) => new Promise((ok, no) => c.decodeAudioData(a, ok, no))).then((b) => { SND.buf[k] = b; }).catch(() => {}));
-    (window.requestIdleCallback || setTimeout)(go, { timeout: 1500 }); };
-  addEventListener('pointerdown', () => { if (SND.on) loadSfx(); }, { once: true, capture: true });
-  const sound = (k) => { if (!SND.on || !CUES[k] || document.hidden) return; const now = Date.now(); if (now - (SND.last[k] || 0) < (CUES[k][2] ?? 250)) return; SND.last[k] = now;
-    const c = actx(); if (c) try { const b = SND.buf[k]; if (b) { const s = c.createBufferSource(); s.buffer = b; s.playbackRate.value = .97 + Math.random() * .06; s.connect(SND.out); s.start(); } else { loadSfx(); CUES[k][0](c); } } catch (e) {} // a hair of pitch drift, so repeats never sound stamped
+  const loadSfx = () => { if (SND.loading) return; const C = window.OfflineAudioContext || window.webkitOfflineAudioContext; if (!C) return; SND.loading = true; let dc; try { dc = new C(1, 1, 44100); } catch (e) { return; }
+    const go = () => Object.keys(CUES).forEach((k) => fetch(`/sfx/${k}.mp3`).then((r) => r.ok ? r.arrayBuffer() : Promise.reject()).then((a) => new Promise((ok, no) => dc.decodeAudioData(a, ok, no))).then((b) => { SND.buf[k] = b; }).catch(() => {}));
+    (window.requestIdleCallback || setTimeout)(go, { timeout: 2000 }); };
+  const sfxOut = (c) => { if (SND.out?.context !== c) { SND.out = c.createGain(); SND.out.gain.value = .8; SND.out.connect(c.destination); } return SND.out; };
+  if (SND.on) addEventListener('load', () => setTimeout(loadSfx, 800), { once: true });
+  const SOFT = new Set(['sheetUp', 'sheetDown', 'step', 'swish']); // background cues: one tap is one sound, so these give way to any cue just played
+  const sound = (k) => { if (!SND.on || !CUES[k] || document.hidden) return; const now = Date.now(); if (now - (SND.last[k] || 0) < (CUES[k][2] ?? 250)) return; if (SOFT.has(k) && now - (SND.any || 0) < 150) return; SND.last[k] = SND.any = now;
+    const c = actx(); if (c) try { const b = SND.buf[k]; if (b) { const s = c.createBufferSource(); s.buffer = b; s.playbackRate.value = .97 + Math.random() * .06; s.connect(sfxOut(c)); s.start(); } else { loadSfx(); CUES[k][0](c); } } catch (e) {} // a hair of pitch drift, so repeats never sound stamped
     const hz = CUES[k][1]; if (hz && innerWidth <= 760 && navigator.vibrate) try { navigator.vibrate(hz); } catch (e) {} };
-  window.__sound = sound; window.Sound = { play: sound };
+  // was this moment a tap (or a key)? Screens that move on by themselves stay silent
+  ['pointerdown', 'click', 'keydown'].forEach((ev) => addEventListener(ev, () => { SND.tap = Date.now(); }, true));
+  const tapped = (ms = 1500) => Date.now() - (SND.tap || 0) < ms;
+  window.__sound = sound; window.__tapped = tapped; window.Sound = { play: sound };
+  // every copy, wherever it's made (the jam, share, live, menus all write the clipboard themselves): a tick once it has it
+  if (navigator.clipboard?.writeText) try { const wt = navigator.clipboard.writeText.bind(navigator.clipboard); navigator.clipboard.writeText = (s) => wt(s).then((v) => { sound('tick'); return v; }); } catch (e) {}
   // user moments, by what was tapped (navigation stays silent)
   /* the newer actions, on the same cues as the old ones (first match wins, so these specific ones go first): opening a sheet or
      a jam, a pick, making it live, sharing, copying, switching versions, AI fixing, a mention, closing, declining */
   const SOUND_NEW = [['[data-jm-ship],[data-share-to],[data-share-force]', 'live'],
     ['[data-rx^="share"],[data-jm-pick],[data-jm-move],a[href^="https://wa.me"]', 'send'],
     ['[data-share-copy],[data-jm-copyho],[data-jm-drcopy],[data-jm-handoff],[data-dpsave],[data-pm="save"],[data-st-briefsave],[data-ph-pick]', 'tick'],
-    ['[data-sv-card],[data-sv-open],[data-sv-work],[data-ph-use],[data-top^="approve"],[data-add]', 'select'],
-    ['[data-rx="fix"],[data-rx="variants"],[data-rx="image"],[data-ph-ai],[data-jm-make],[data-cv-ask]', 'bubble'],
+    ['[data-sv-card],[data-sv-open],[data-sv-work],[data-ph-use],[data-top^="approve"],[data-add],.ob2-tile,[data-knob],[data-knob-apply]', 'select'],
+    ['[data-rx="fix"],[data-rx="variants"],[data-rx="image"],[data-rx="plan"],[data-ph-ai],[data-jm-make],[data-cv-ask],[data-act="take"],[data-verb="take"]', 'bubble'],
     ['[data-v-view],[data-ver],[data-cv-chv],[data-vmenu]', 'step'], ['[data-jm-mention]', 'boop'],
-    ['[data-open-jam],[data-jam-studio],[data-open-studio],[data-rx="open"]', 'pop'], ['[data-ph-open]', 'sheetUp'], ['[data-svx]', 'sheetDown'],
+    ['[data-open-jam],[data-jam-studio],[data-open-studio],[data-rx="open"],[data-verb="open"]', 'pop'], ['[data-ph-open]', 'sheetUp'], ['[data-svx]', 'sheetDown'],
     ['[data-top^="decline"],[data-jm-discard]', 'sweep']];
   const SOUND_ON = [...SOUND_NEW, ['[data-act="save"],[data-cp-save]', 'tick'], ['[data-cp-go],.cp-go', 'select'], ['[data-approve]', 'approve'],
     ['[data-bt-queue]', 'live'], ['.story,[data-story],.cp-visual img,[data-inst],.so-home', 'pop'], ['[data-npclear],[data-npdel]', 'sweep'],
@@ -3545,11 +3553,11 @@
     });
 
   /* ---------- modal helper ---------- */
-  const modal = (html, bind) => { closeModal(); const w = document.createElement('div'); w.id = 'modal'; w.innerHTML = `<div class="scrim" data-close></div><div class="modal" data-close>${html}</div>`; document.body.appendChild(w); document.body.classList.add('modal-on'); $('.modal', w).addEventListener('click', (e) => { const c = e.target.closest('[data-close]'); if (c && (c === e.target || c.tagName === 'BUTTON')) closeModal(); }); $('.scrim', w).onclick = closeModal; bind?.(w); requestAnimationFrame(() => shadeActs(w)); };
+  const modal = (html, bind) => { const swap = !!$('#modal'); closeModal(true); if (!swap) sound('sheetUp'); /* a sheet rises; one sheet giving way to the next stays quiet */ const w = document.createElement('div'); w.id = 'modal'; w.innerHTML = `<div class="scrim" data-close></div><div class="modal" data-close>${html}</div>`; document.body.appendChild(w); document.body.classList.add('modal-on'); $('.modal', w).addEventListener('click', (e) => { const c = e.target.closest('[data-close]'); if (c && (c === e.target || c.tagName === 'BUTTON')) closeModal(); }); $('.scrim', w).onclick = closeModal; bind?.(w); requestAnimationFrame(() => shadeActs(w)); };
   /* a sheet's sticky buttons draw their top line only while something scrolls under them */
   const shadeActs = (w) => { const bar = w && $('.rv-acts', w); if (!bar) return; let sc = bar.parentElement; while (sc && sc !== w && !/(auto|scroll)/.test(getComputedStyle(sc).overflowY)) sc = sc.parentElement; if (!sc || sc === w) return;
     const set = () => bar.classList.toggle('is-over', sc.scrollHeight - sc.scrollTop - sc.clientHeight > 2); sc.addEventListener('scroll', set, { passive: true }); set(); };
-  const closeModal = () => { $('#modal')?.remove(); document.body.classList.remove('modal-on');
+  const closeModal = (quiet) => { if ($('#modal') && quiet !== true) sound('sheetDown'); $('#modal')?.remove(); document.body.classList.remove('modal-on');
     /* a tray closed with "Not yet" hands the studio's button back; it used to stay disabled until a reload */
     $$('.std .ship [data-rx].is-busy').forEach((b) => { b.disabled = false; b.classList.remove('is-busy'); }); };
   addEventListener('keydown', (e) => { if (e.key === 'Escape' && UI2) { const done = () => { e.stopImmediatePropagation(); e.preventDefault(); }; if ($('#ask2')) { $('#ask2').remove(); document.body.classList.remove('ask-on'); return done(); } if (view === 'remix' && ['details', 'adjust'].includes(RX.tab)) { RX.tab = 'iterate'; paintStudio(); return done(); } if ($('.r2.open')) { $('.r2.open').classList.remove('open'); $('[data-r2-open]')?.setAttribute('aria-expanded', 'false'); return done(); } } }, true);
@@ -4441,7 +4449,9 @@
   document.addEventListener('focusout', (e) => { const el = e.target.closest?.('[data-hl-edit]'); if (el?.isContentEditable) hlSave(el); });
   /* while a job runs, read the change again every few seconds and repaint, until every pending flag has cleared */
   const pollJob = (ch) => { clearTimeout(RX.pollT);
-    if (jobOf(ch)) RX.pollT = setTimeout(async () => { if (view !== 'remix' || RX.ch?.id !== ch.id) return; const q = await tapi('GET', `/api/changes/${ch.id}`).catch(() => ({})); if (q.change) { RX.ch = q.change; putCh(q.change); } paintStudio(); if (ch.copyPending && q.change && !q.change.copyPending) autoImage(q.change); }, ch.copyPending ? 1500 : 3000); };
+    if (jobOf(ch)) RX.pollT = setTimeout(async () => { if (view !== 'remix' || RX.ch?.id !== ch.id) return; const q = await tapi('GET', `/api/changes/${ch.id}`).catch(() => ({})); if (q.change) { RX.ch = q.change; putCh(q.change); const c2 = q.change, err = (c2.imageError || c2.videoError || '') !== (ch.imageError || ch.videoError || '') && (c2.imageError || c2.videoError);
+      /* the job it was making is in (or failed); an ad's first copy is followed by its photo, so that one waits for the photo */
+      if (!jobOf(c2) && !(ch.copyPending && ['meta_ad', 'social'].includes(c2.family) && !err)) sound(err ? 'error' : 'ready'); } paintStudio(); if (ch.copyPending && q.change && !q.change.copyPending) autoImage(q.change); }, ch.copyPending ? 1500 : 3000); };
   /* copy inside the tap: the old copy command runs at once; the clipboard API is the fallback, and never waits forever
      (it can hang on a permission prompt, and the button then looked dead: no copy, no toast) */
   const copyText = async (s) => { try { const ta = document.createElement('textarea'); ta.value = s; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;left:-9999px'; document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); ta.remove(); if (ok) sound('tick'); if (ok) return true; } catch (e) {}
@@ -4574,9 +4584,10 @@
     RX.from = path === 'iterate' ? String(msg || '') : null; /* the chip or box that asked: it spins while RX.sending */
     RX.sending = path === 'variants' || path === 'more' ? 'Writing a new take…' : path === 'plan' ? planBusy(ch) : path === 'knob' ? `Applying ${msg}…` : body?.fix ? 'Fixing it…' : 'Working on it…';
     if (path === 'iterate') { ch.thread = [...(ch.thread || []), { from: 'you', text: msg, at: 9e15 /* last in the timeline until the server's copy lands */ }]; RX.draft = ''; if ($('#st-in')) $('#st-in').value = ''; RX.tab = 'iterate'; }
-    RX.viewing = null; RX.resetScroll = true; paintStudio();
+    RX.viewing = null; RX.resetScroll = true; paintStudio(); if (path === 'iterate') sound('send');
     const r = await tapi('POST', `/api/changes/${ch.id}/${path}`, body || { message: msg });
-    RX.sending = false; if (r.error) { toast(esc(r.error)); return paintStudio(); }
+    RX.sending = false; if (r.error) { sound('error'); toast(esc(r.error)); return paintStudio(); }
+    if (path === 'iterate') sound('reply'); else if (['variants', 'more', 'plan'].includes(path)) sound('ready'); /* the answer, or the new take or plan, is in; a knob stays quiet */
     RX.ch = r.change; putCh(r.change); RX.resetScroll = true; if (Array.isArray(body?.v) || path === 'variants' || path === 'plan') RX.tab = 'iterate'; if (path === 'plan') pullWork(true); paintStudio(); showLearned(r.learned); if (!r.answered) syncBrief(r.change, msg); /* a question changed nothing: no brief rewrite */ if (r.pickPhotos) openPhotos();
   };
   /* a post for X, LinkedIn, Reddit, Quora, a Facebook group or Pinterest: Brew copies it and opens the exact place; you post it.
@@ -4593,10 +4604,10 @@
       const after = RX.ch; if (after && after.verdict !== 'fix') toast(`${ic('check', 's16')}Fixed. ${esc((RXROUTE[after.verdict] || RXROUTE.jam).tag)}: v${curN(after)}`); else toast('Some of it still needs you. Edit it, try again, or jam with your team.');
       return paintStudio();
     }
-    if (act === 'video') { const r = await tapi('POST', `/api/changes/${id}/video`, {}); if (r.change) { RX.ch = r.change; putCh(r.change); } if (!r.video) toast(esc(r.error || 'No video right now')); return paintStudio(); }
-    if (act === 'images-all') { const r = await tapi('POST', `/api/changes/${id}/image`, { all: true }); if (r.change) { RX.ch = r.change; putCh(r.change); } if (!r.image) toast(esc(r.why || 'No images right now')); return paintStudio(); }
+    if (act === 'video') { const r = await tapi('POST', `/api/changes/${id}/video`, {}); if (r.change) { RX.ch = r.change; putCh(r.change); } if (!r.video) { sound('error'); toast(esc(r.error || 'No video right now')); } else if (!jobOf(r.change || {})) sound('ready'); return paintStudio(); }
+    if (act === 'images-all') { const r = await tapi('POST', `/api/changes/${id}/image`, { all: true }); if (r.change) { RX.ch = r.change; putCh(r.change); } if (!r.image) { sound('error'); toast(esc(r.why || 'No images right now')); } else if (!jobOf(r.change || {})) sound('ready'); return paintStudio(); }
     if (act === 'listing-photos') { const r = await tapi('POST', `/api/changes/${id}/listing-photos`, {}); if (r.change) { RX.ch = r.change; putCh(r.change); } if (!r.image) toast(esc(r.why || 'No photos right now')); return paintStudio(); }
-    if (act === 'image') { const r = await tapi('POST', `/api/changes/${id}/image`, {}); if (r.change) { RX.ch = r.change; putCh(r.change); } if (!r.image) toast(esc(r.why || 'No image right now')); return paintStudio(); }
+    if (act === 'image') { const r = await tapi('POST', `/api/changes/${id}/image`, {}); if (r.change) { RX.ch = r.change; putCh(r.change); } if (!r.image) { sound('error'); toast(esc(r.why || 'No image right now')); } else if (!jobOf(r.change || {})) sound('ready'); /* still making: the job poll plays it when it lands */ return paintStudio(); }
     if (act === 'copy-post') { const p = ch.pkg || {}; const txt = [p.title, p.copy, (p.hashtags || []).join(' ')].filter(Boolean).join('\n\n'); if (!txt) return toast('Nothing to copy yet.'); return copyText(txt).then((ok) => (ok !== false ? toast(`${ic('check', 's16')}Post copied. Paste it where it goes.`) : toastLong(esc(txt).replace(/\n/g, '<br>'), 10000))); }
     if (act === 'post-open') { const po = postOpenOf(ch); if (!po) return toast('Nothing to post yet.'); const copied = copyText(po.text); const win = window.open(po.url, '_blank', 'noopener');
       const ok = await copied; if (!win) return toast(`${ic('info', 's16')}${ok ? 'Copied. ' : ''}Your browser blocked the new tab. <a href="${esc(po.url)}" target="_blank" rel="noopener">Open it here</a>.`);
@@ -4693,8 +4704,8 @@
     const ph = b.closest('.img-dead'), cid = b.dataset.imgRedo; if (b.disabled) return;
     b.disabled = true; b.innerHTML = `<brew-load class="spin"></brew-load><span>Making…</span>`;
     const r = await tapi('POST', `/api/cards/${encodeURIComponent(cid)}/image`, { src: ph?.dataset.src });
-    if (r.error || !r.url) { b.disabled = false; b.innerHTML = `${ic('refresh', 's14')}<span>Try again</span>`; return toast(esc(r.error || 'That didn’t work. Try again.')); }
-    if (r.card) { ALL[cid] = r.card; const i = FEED.findIndex((x) => x.id === cid); if (i >= 0) FEED[i] = r.card; if (DP?.p?.id === cid) DP.p = r.card; }
+    if (r.error || !r.url) { b.disabled = false; b.innerHTML = `${ic('refresh', 's14')}<span>Try again</span>`; sound('error'); return toast(esc(r.error || 'That didn’t work. Try again.')); }
+    sound('ready'); if (r.card) { ALL[cid] = r.card; const i = FEED.findIndex((x) => x.id === cid); if (i >= 0) FEED[i] = r.card; if (DP?.p?.id === cid) DP.p = r.card; }
     $$(`.img-dead[data-src="${CSS.escape(ph.dataset.src)}"]`).forEach((x) => { const im = document.createElement('img'); im.src = r.url; im.alt = ''; x.replaceWith(im); });
     pullWork(true);
   }, true);

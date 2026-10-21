@@ -6,5 +6,7 @@
 #   uv pip install --python ~/tools/earshot-venv/bin/python --no-deps -e ~/tools/earshot-main
 # Usage: EARSHOT_VENV=~/tools/earshot-venv tools/sfx/build.sh [cue ...]
 set -euo pipefail
-VENV="${EARSHOT_VENV:-$(cd "$(dirname "$0")/../../.." && pwd)/_tools/.venv}" # set up on Param's Mac at ~/Documents/ChatGPT/_tools
+# default: the nearest _tools/.venv above this folder (set up on Param's Mac at ~/Documents/ChatGPT/_tools)
+d=$(cd "$(dirname "$0")" && pwd); while [ "$d" != / ] && [ ! -x "$d/_tools/.venv/bin/earshot" ]; do d=$(dirname "$d"); done
+VENV="${EARSHOT_VENV:-$d/_tools/.venv}"
 EARSHOT="$VENV/bin/earshot" exec "$VENV/bin/python" "$(dirname "$0")/build.py" "$@"

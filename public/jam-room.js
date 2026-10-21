@@ -373,15 +373,15 @@
   const pollDrafts = () => {
     clearTimeout(JM.pollT); const w = W(); if (!w || !(w.drafts || []).some((d) => d.state === 'making')) return;
     JM.pollT = setTimeout(async () => { const w0 = W(); if (!w0) return; const making = (w0.drafts || []).filter((d) => d.state === 'making').map((d) => d.id); const r = await A.tapi('POST', `/api/work/${w0.id}/jb`, {});
-      if (r.work && W()?.id === w0.id) { if ((r.work.drafts || []).some((d) => making.includes(d.id) && d.state === 'ready' && !d.failed)) A.sound?.('ready'); /* a draft just landed */ A.putWork(r.work); if (isEditing()) { const m = $('.jm-make'); if (m) m.outerHTML = makeHtml(r.work); } else A.repaintDetail(); } pollDrafts(); }, 4000);
+      if (r.work && W()?.id === w0.id) { const landed = (r.work.drafts || []).filter((d) => making.includes(d.id) && d.state !== 'making'); if (landed.some((d) => !d.failed)) A.sound?.('ready'); else if (landed.length) A.sound?.('error'); /* a draft or final just landed, or didn't come through */ A.putWork(r.work); if (isEditing()) { const m = $('.jm-make'); if (m) m.outerHTML = makeHtml(r.work); } else A.repaintDetail(); } pollDrafts(); }, 4000);
   };
   const makeDraft = async (as) => {
     if (JM.making) return; JM.making = true; if (!A.SPLIT) JM.tab = 'brief'; paint(); /* split: the draft shows on the canvas, the chat stays */
     const w = await ensureWork(); if (!w) { JM.making = false; return paint(); }
     const el = $('[data-jm-doc]'); if (el && JM.saveT) await saveDoc(el);
-    const r = await A.tapi('POST', `/api/work/${w.id}/draft`, { as }); JM.making = false;
-    if (r.error && !r.work) { toast(esc(r.error)); return paint(); }
-    if (r.error) toast(esc(r.error));
+    const had = new Set((w.drafts || []).map((d) => d.id)), r = await A.tapi('POST', `/api/work/${w.id}/draft`, { as }); JM.making = false;
+    if (r.error && !r.work) { A.sound?.('error'); toast(esc(r.error)); return paint(); }
+    if (r.error) { A.sound?.('error'); toast(esc(r.error)); } else if ((r.work?.drafts || []).some((d) => !had.has(d.id) && d.state === 'ready' && !d.failed)) A.sound?.('ready'); /* a written draft lands in the answer itself */
     take(r.work); $('.jm-drafts')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); pollDrafts();
   };
 
