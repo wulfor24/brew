@@ -527,9 +527,20 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
   const due = () => Object.keys(JOBS).filter((k) => (!snap[k] || Date.now() - snap[k].fetchedAt > every(k)) && !(Date.now() - failedAt(k) < H));
   /* the first GET after attach waits for the saved snapshot (ready), instead of answering with an all-empty one */
   let loaded = null;
+  /* a viral video saved without its clip (YouTube before 21 Oct, when its files couldn't be fetched) gets it now: the jam plays it,
+     the brief links it and Sloosh takes it as the motion reference. A few a tick, each tried at most once a day */
+  let healing = false;
+  async function healClips() {
+    if (healing || !videoRead || running.has('viral') || process.env.RESEARCH_OFF) return; healing = true;
+    try { const now = Date.now(), todo = [...(snap.viral?.items || []), ...(snap.viral?.archive || [])].filter((x) => x && !x.video && x.platform === 'youtube' && !(now - (x.clipTried || 0) < D)).slice(0, 3); let n = 0;
+      for (const it of todo) { it.clipTried = now;
+        try { const f = await videoRead('file', { url: it.url, platform: it.platform, id: it.id, slug: brand.slug }); it.video = await saveMedia(f.buf, '.mp4'); delete it.videoError; if (it.durationS == null) it.durationS = f.durationS ?? null; n++; }
+        catch (e) { it.videoError = e.message.slice(0, 120); log.warn('[research] viral clip heal', it.id, e.message); } }
+      if (todo.length) { persist(); log.log(`[research] ${brand.slug} viral clips healed ${n} of ${todo.length}`); }
+    } finally { healing = false; } }
   const start = async () => {
     await (loaded = load());
-    const tick = () => { const d = due().filter((k) => k !== 'own' || brand.kind === 'generated'); if (d.length && !process.env.RESEARCH_OFF) refresh(d.includes('howto') ? [...d.filter((k) => k !== 'howto'), 'howto'] : d); };
+    const tick = () => { const d = due().filter((k) => k !== 'own' || brand.kind === 'generated'); if (d.length && !process.env.RESEARCH_OFF) refresh(d.includes('howto') ? [...d.filter((k) => k !== 'howto'), 'howto'] : d); healClips().catch(() => {}); };
     stopped = false; clearTimeout(timers.t); clearInterval(timers.i);
     timers.t = setTimeout(() => { if (!stopped) tick(); }, 5000); timers.i = setInterval(() => { if (!stopped) tick(); }, 30 * 60e3); timers.i.unref?.();
   };

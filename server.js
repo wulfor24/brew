@@ -29,7 +29,7 @@ import { createAI, aiPaused, billingError, noteBilling, realNewlines } from './a
 import { createAlerts, noteVertex, noteAlert } from './alerts.js'; // ops emails: Vertex billing/quota, the AI pause, treg balance, 5xx rate
 import { createBudget } from './budget.js'; // the day's AI budget: a ceiling and a share per brand
 import { createTreg, gcsCache } from './treg.js';
-import { setApifyCache } from './apify.js';
+import { setApifyCache, createApify } from './apify.js';
 import { chain as mediaChain, openaiImage as openaiImageRaw, makeVideo } from './media.js';
 import { createVault } from './vault.js';
 import { createSlooshAuth } from './sloosh-auth.js';
@@ -446,7 +446,7 @@ social.start();
 /* ---------- evidence in the background: market numbers once a day (only the signals that are due run), and a weekly read of the top
    videos people talk about. Same switches as social (SOCIAL_BG / RESEARCH_OFF / LIVE_OFF, off under AI_MOCK); EVIDENCE_OFF=1 stops it ---------- */
 const EV = { busy: false, last: {} }, evOff = () => process.env.EVIDENCE_OFF === '1' || process.env.AI_MOCK === '1' || process.env.SOCIAL_BG === '0' || (process.env.SOCIAL_BG !== '1' && (!!process.env.RESEARCH_OFF || !!process.env.LIVE_OFF));
-const videoRead = createVideoRead({ packs, treg, ai, log: console, gToken }), VIDEO_V = 2;
+const videoRead = createVideoRead({ packs, treg, ai, apify: createApify({ log: console }), log: console, gToken }), VIDEO_V = 2; /* apify: YouTube clips (video-read mediaUrl) */
 async function evidenceTick() {
   if (EV.busy || evOff()) return; EV.busy = true;
   try { const brands = (await builder.list()).filter((b) => b.state === 'Ready' || /moves/.test(b.state || '')), day = new Date().toISOString().slice(0, 10); let n = 0;

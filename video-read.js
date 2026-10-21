@@ -1,6 +1,6 @@
 // Video read: what a short video does, scene by scene, so a move or a jam can borrow what works.
 // 1. a downloadable file through treg (TikTok anyapi.tiktok.video_download, Instagram anyapi.instagram.post.detail,
-//    YouTube tikhub youtube streams; a direct .mp4 URL is fetched as is)
+//    YouTube through an Apify downloader (treg's stream URLs are IP-locked); a direct .mp4 URL is fetched as is)
 // 2. Gemini on our own Vertex AI reads the file (project GOOGLE_CLOUD_PROJECT, location VERTEX_LOCATION, default global,
 //    model VIDEO_MODEL, default gemini-3.5-flash; token from the Cloud Run metadata server, else `gcloud auth print-access-token`)
 // 3. no Vertex: the transcript (treg) + ffmpeg keyframes to Claude (ai.js, image input); no Claude: the transcript alone.
@@ -49,7 +49,7 @@ function fromUrl(url) {
 const vtt = (s) => String(s || '').replace(/^WEBVTT.*$/m, '').replace(/^\d+\s*$/gm, '').replace(/^[\d:.]+\s*-->\s*[\d:.]+.*$/gm, '').replace(/<[^>]+>/g, '').split('\n').map((x) => x.trim()).filter(Boolean).filter((x, i, a) => x !== a[i - 1]).join(' ');
 const pick = (j) => j?.output?.data ?? j?.data ?? j; // anyapi wraps {output:{found,data}}
 
-export function createVideoRead({ packs, treg, ai, log = console, gToken, fetchFn = fetch, vertex, ffmpeg = process.env.FFMPEG || 'ffmpeg',
+export function createVideoRead({ packs, treg, ai, apify = null, log = console, gToken, fetchFn = fetch, vertex, ffmpeg = process.env.FFMPEG || 'ffmpeg',
   project = process.env.GOOGLE_CLOUD_PROJECT || 'squareup-492617', location = process.env.VERTEX_LOCATION || 'global', model = process.env.VIDEO_MODEL || 'gemini-3.5-flash', bucket = process.env.RESEARCH_BUCKET || 'squareup-feed' } = {}) {
   const aiCall = ai ? (typeof ai === 'function' ? ai : ai.call?.bind(ai)) : null;
   const TMP = path.join(os.tmpdir(), 'brew-video'); fs.mkdirSync(TMP, { recursive: true });
@@ -64,11 +64,13 @@ export function createVideoRead({ packs, treg, ai, log = console, gToken, fetchF
   async function mediaUrl(v, tag) {
     if (v.platform === 'tiktok') { const d = pick(await treg.call('anyapi.tiktok.video_download', { body: { url: v.url }, tag })); return { url: d?.videoUrl || d?.watermarkedUrl, cover: d?.image, durationS: d?.durationSeconds ?? null }; }
     if (v.platform === 'instagram') { const d = pick(await treg.call('anyapi.instagram.post.detail', { body: { url: v.url }, tag })); return { url: d?.videoUrl, cover: d?.displayUrl, owner: d?.owner, likes: d?.likes }; }
-    if (v.platform === 'youtube') { const j = await treg.call('tikhub.x.youtube-web-v2-get-video-streams', { query: { video_id: v.id }, tag }); const all = [];
-      (function walk(x, d) { if (!x || typeof x !== 'object' || d > 7) return; if (typeof x.url === 'string' && /video\/mp4|mp4/.test(String(x.mimeType || x.mime_type || x.type || x.ext || ''))) all.push(x); Object.values(x).forEach((y) => walk(y, d + 1)); })(j, 0);
-      const audio = (x) => /mp4a|audio/.test(String(x.mimeType || x.mime_type || '')) || x.audioQuality || x.hasAudio || x.audio_quality;
-      const best = all.filter(audio).sort((a, b) => (+a.height || 999) - (+b.height || 999)).find((x) => (+x.height || 360) >= 360) || all.filter(audio)[0] || all[0];
-      return { url: best?.url || null }; }
+    /* YouTube: every stream URL treg can get is locked to the provider's IP (ip=… in the URL, 403 anywhere else, checked 21 Oct),
+       so an Apify downloader fetches it on its side and keeps the mp4 in its store for ~3 days; we download it at once. About
+       $0.003-0.02 a Short (per MB); the run is cached a day, so saving then reading one video pays once */
+    if (v.platform === 'youtube') { if (!apify?.live) throw new Error('YouTube clips need APIFY_TOKEN');
+      const items = await apify.run('streamers/youtube-video-downloader', { videos: [{ url: `https://www.youtube.com/shorts/${v.id}` }], storeInKVStore: true, preferredQuality: '720p', preferredFormat: 'mp4' }, { tag: `${tag}-yt`, maxItems: 1, timeoutSecs: 180, startUsd: 0, perItemUsd: 0.02, maxUsd: 0.5 });
+      const it = items.find((x) => x?.downloadedFileUrl) || null; if (!it) throw new Error(`youtube download: ${String(items[0]?.note || items[0]?.[' note'] || 'no file came back').slice(0, 120)}`);
+      return { url: it.downloadedFileUrl, durationS: it.durationSeconds ?? null }; }
     if (v.platform === 'web' && /\.(mp4|mov|webm)(\?|$)/i.test(v.url)) return { url: v.url };
     return { url: null };
   }
@@ -127,7 +129,8 @@ export function createVideoRead({ packs, treg, ai, log = console, gToken, fetchF
     if (!fresh) { const c = await packs.getJSON(GLOBAL, key, null); if (c?.read) return { ...c, cached: true }; }
     const out = { id: v.id, platform: v.platform, url: v.url, why: why || null, at: new Date().toISOString(), via: null, read: null, notes: [] };
     let file = null, media = {};
-    try { media = await mediaUrl(v, tag); Object.assign(out, { cover: media.cover || null, durationS: media.durationS ?? null }); if (media.url) file = await download(media.url, `${v.platform}-${v.id}`); else out.notes.push('no downloadable file'); }
+    /* a YouTube video is read by its link (Gemini watches it, free); only saving its clip (file) pays for a download */
+    if (v.platform !== 'youtube' || vertex || process.env.VIDEO_VERTEX === '0') try { media = await mediaUrl(v, tag); Object.assign(out, { cover: media.cover || null, durationS: media.durationS ?? null }); if (media.url) file = await download(media.url, `${v.platform}-${v.id}`); else out.notes.push('no downloadable file'); }
     catch (e) { out.notes.push(`download: ${e.message}`); }
     if (file && process.env.VIDEO_VERTEX !== '0') try { const r = await (vertex ? vertex(file, why, v) : vertexRead(file, why, `${v.platform}-${v.id}`)); Object.assign(out, { read: r.json, via: 'vertex', model: r.model || model, usd: r.usd ?? null, tokens: r.tokens || null }); }
     catch (e) { out.notes.push(`vertex: ${e.message.slice(0, 200)}`); log.warn?.('[video-read] vertex', e.message.slice(0, 200)); }
