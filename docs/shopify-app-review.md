@@ -1,6 +1,21 @@
 # Shopify app review: Brew
 
-Status 2026-10-20. The code side is done and live, including the read of a password-protected store (step 0). The submission
+## Status 2026-10-21: one step from submitting
+
+- **App:** a new public app **Brew** in the SquareUp partner org (app 437593374721, client `ddb97e17…`). squareup-prod is
+  untouched (it still serves the old shop.joinsquareup.com). Version `brew-2` is active: app URL, embedded, 4 read scopes, the
+  uninstall and compliance webhooks (`docs/shopify.app.toml`, pushed with the Shopify CLI from `~/Documents/ChatGPT/_shopify-brew-app`).
+- **Brew's keys:** `FEED_SHOPIFY_CLIENT_ID` / `FEED_SHOPIFY_CLIENT_SECRET` v2 in Secret Manager, live.
+- **Tested:** installed on the SquareUp DevStore; the password-locked store was read from its admin (stopped at 11 moves on
+  purpose) and the full feed opens inside the admin. Shopify's automated checks all passed.
+- **Partner Dashboard:** Public distribution chosen; customer data request filled (Level 1, app functionality + analytics,
+  9 of 9 answers); emergency contact was already set; app icon uploaded (`docs/shopify-listing/app-icon-1200.png`).
+- **Listing (English, draft):** everything is filled, including the screenshots and feature image in `docs/shopify-listing/`.
+  The only thing left is the **screencast URL**.
+- **Param, to finish:** record the screencast (step 4; YouTube unlisted or a direct video link, not Drive or Vimeo), paste
+  its link in the listing, tick "I've reviewed all the App Store Requirements", then press **Submit for review**.
+
+Earlier: 2026-10-20: The code side is done and live, including the read of a password-protected store (step 0). The submission
 needs Param in Shopify's dashboards (steps 1 onwards).
 
 Once approved, Brew is listed in the Shopify App Store and any merchant can install it in one click. Built for Shopify is a
