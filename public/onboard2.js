@@ -134,7 +134,7 @@
     if (mode === 'q') return qEnd();
     return show(bs[bs.length - 1]);
   };
-  const finish = (b, val) => { st.done[b.id] = val ?? true; save(); return next(); };
+  const finish = (b, val) => { st.done[b.id] = val ?? true; save(); window.__sound?.('step'); return next(); };
   const show = (b) => { if (mode === 'q') QO?.onStep?.(beats().findIndex((x) => x.id === b.id), beats().length); return ({ slide, tap, brand: brandTap, tutorial, hold, done }[b.kind] || slide)(b); };
   const back = () => { const bs = beats(); for (let i = st.i - 1; i >= 0; i--) { if (bs[i].kind === 'hold' || bs[i].kind === 'done') continue; delete st.done[bs[i].id]; st.i = i; save(); return show(bs[i]); } };
 
@@ -223,7 +223,7 @@
     return cardHtml({ id: p.id, who: { name: name(), mark: brand().mark || brand().logo }, kind: kindOf(p), img: ours || theirs, theirs: !!theirs, title: f(c.title), body: f(c.sub || c.p || ''), drawing: !!c.take?.drawing }); };
   const openParts = (card, c) => { const body = $('.body', card); if (!body || $('.v2-parts', card)) return; body.insertAdjacentHTML('beforeend', `<div class="inset v2-parts"><div class="rows"><div><span>The move</span><b>${esc(c.title)}</b></div>${c.why ? `<div><span>Why it’s here</span><b>${esc(c.why)}</b></div>` : ''}${c.moves ? `<div><span>What it moves</span><b>${esc(c.moves)}</b></div>` : ''}<div><span>Your call</span><b>Keep, drop, another take, or make it yours</b></div></div></div>`); };
   const nudge = (card, want) => { card.classList.remove('nudge-keep', 'nudge-drop', 'nudge-open'); void card.offsetWidth; card.classList.add(`nudge-${want}`); };
-  const flyOut = (card, verb) => new Promise((r) => { card.classList.add(verb === 'keep' ? 'fly-right' : 'fly-left'); setTimeout(r, reduced() ? 0 : 380); });
+  const flyOut = (card, verb) => new Promise((r) => { window.__sound?.(verb === 'keep' ? 'keep' : 'drop'); card.classList.add(verb === 'keep' ? 'fly-right' : 'fly-left'); setTimeout(r, reduced() ? 0 : 380); });
 
   /* ---------- verbs: keep, not for me, another take, open, make it yours; swipe and buttons mean the same ---------- */
   const verbsHtml = (ex) => `<div class="v2-verbs"><button class="btn btn-ghost" data-verb="drop">${ic('x', 's16')}Not for me</button>${ex ? '' : `<button class="btn btn-ghost" data-verb="take" title="Another take">${ic('refresh', 's16')}Another take</button>`}<button class="btn btn-ghost" data-verb="open">${ic('inf', 's16')}Open</button>${ex ? '' : `<button class="btn btn-ghost" data-verb="make">${ic('sparkles', 's16')}Make it yours</button>`}<button class="btn btn-primary" data-verb="keep">${ic('check', 's16')}Keep</button></div>`;

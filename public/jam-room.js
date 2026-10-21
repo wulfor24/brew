@@ -325,8 +325,8 @@
     if (w.with?.kind === 'team' && w.stage === 'team' && JM.replyTeam) { const r = await A.tapi('POST', `/api/work/${w.id}/message`, { body: text }); return take(r.work); }
     JM.busy = 'ai'; w.thread = [...(w.thread || []), { id: 'tmp', from: 'me', body: text }]; paint();
     const r = await A.tapi('POST', `/api/work/${w.id}/doc/ask`, { text }); JM.busy = '';
-    if (r.error) { toast('That didn’t go through. Try again.'); return paint(); }
-    take(r.work, r.changed); A.counts();
+    if (r.error) { A.sound?.('error'); toast('That didn’t go through. Try again.'); return paint(); }
+    take(r.work, r.changed); A.counts(); A.sound?.('reply');
   };
   const addToBrief = async (text, from) => {
     const w = await ensureWork(); if (!w) return; toast(`${ic('sparkles', 's16')}Adding it to the brief…`);
@@ -372,8 +372,8 @@
   // a draft is made in the background; the jam is polled until it lands (the doc being typed in is never repainted)
   const pollDrafts = () => {
     clearTimeout(JM.pollT); const w = W(); if (!w || !(w.drafts || []).some((d) => d.state === 'making')) return;
-    JM.pollT = setTimeout(async () => { const w0 = W(); if (!w0) return; const r = await A.tapi('POST', `/api/work/${w0.id}/jb`, {});
-      if (r.work && W()?.id === w0.id) { A.putWork(r.work); if (isEditing()) { const m = $('.jm-make'); if (m) m.outerHTML = makeHtml(r.work); } else A.repaintDetail(); } pollDrafts(); }, 4000);
+    JM.pollT = setTimeout(async () => { const w0 = W(); if (!w0) return; const making = (w0.drafts || []).filter((d) => d.state === 'making').map((d) => d.id); const r = await A.tapi('POST', `/api/work/${w0.id}/jb`, {});
+      if (r.work && W()?.id === w0.id) { if ((r.work.drafts || []).some((d) => making.includes(d.id) && d.state === 'ready' && !d.failed)) A.sound?.('ready'); /* a draft just landed */ A.putWork(r.work); if (isEditing()) { const m = $('.jm-make'); if (m) m.outerHTML = makeHtml(r.work); } else A.repaintDetail(); } pollDrafts(); }, 4000);
   };
   const makeDraft = async (as) => {
     if (JM.making) return; JM.making = true; if (!A.SPLIT) JM.tab = 'brief'; paint(); /* split: the draft shows on the canvas, the chat stays */

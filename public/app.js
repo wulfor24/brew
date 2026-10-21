@@ -872,7 +872,7 @@
   const movesInPlan = () => { const n = +BREW?.movesDone || +window.MOVES_WRITTEN || 0, t = +BREW?.total || +window.MOVES_TOTAL || 0; return t ? Math.min(n, t) : n; }; /* the seed's count (pack-numbers.js) until status loads: always a number */
   const finishOnboarding = async () => {
     if ($('#ready') || finishOnboarding.busy) return; // a double-click on Next must not stack a second ready card
-    S.onboarded = true; delete S.obStep; save(); tapi('POST', '/api/tenants/:t/ready'); claimFirst().then(pushVoice); /* the voice tap, if it did not save yet */
+    S.onboarded = true; delete S.obStep; save(); sound('win'); tapi('POST', '/api/tenants/:t/ready'); claimFirst().then(pushVoice); /* the voice tap, if it did not save yet */
     if (V2) return feed(); /* v2 already said good morning, showed the rings and the first three: no second welcome on top of it */
     /* the cards count is the feed's own: before the feed has loaded, load it (a few seconds at most), so it never says 0 */
     finishOnboarding.busy = true; if (!rank().length) await Promise.race([loadFeed().catch(() => null), wait(4000)]); finishOnboarding.busy = false; if ($('#ready')) return;
@@ -1476,11 +1476,24 @@
     sheetUp: [(c) => { noise(c, 0, .18, { from: 400, to: 1900, vol: .022 }); tone(c, 300, 0, .15, { to: 520, vol: .018 }); }, 0],
     sheetDown: [(c) => { noise(c, 0, .18, { from: 1900, to: 400, vol: .022 }); tone(c, 520, 0, .15, { to: 300, vol: .018 }); }, 0],
     ratchet: [(c) => tone(c, 2400, 0, .016, { type: 'square', vol: .01 }), 3, 35],
-    bubble: [(c) => { tone(c, 600, 0, .07, { to: 1200, vol: .04 }); tone(c, 900, .05, .07, { to: 1500, vol: .035 }); tone(c, 760, .1, .06, { to: 1300, vol: .025 }); }, 0] };
-  const sound = (k) => { if (!SND.on || !CUES[k]) return; const now = Date.now(); if (now - (SND.last[k] || 0) < (CUES[k][2] ?? 250)) return; SND.last[k] = now;
-    const c = actx(); if (c) try { CUES[k][0](c); } catch (e) {}
+    bubble: [(c) => { tone(c, 600, 0, .07, { to: 1200, vol: .04 }); tone(c, 900, .05, .07, { to: 1500, vol: .035 }); tone(c, 760, .1, .06, { to: 1300, vol: .025 }); }, 0],
+    // the moments that landed later: a final or a long job ready, a jam reply, a tool connected, a swipe-stack keep or drop
+    ready: [(c) => { tone(c, 1318.5, 0, .4, { vol: .05 }); tone(c, 2637, .05, .5, { vol: .015 }); }, [10, 40, 10]],
+    reply: [(c) => tone(c, 659.25, 0, .3, { type: 'triangle', vol: .04 }), 0, 600],
+    connected: [(c) => { tone(c, 392, 0, .3, { type: 'triangle', vol: .05 }); tone(c, 523.25, .09, .4, { type: 'triangle', vol: .05 }); }, [10, 40, 10]],
+    keep: [(c) => noise(c, 0, .16, { from: 700, to: 3000, vol: .035 }), 8, 120],
+    drop: [(c) => noise(c, 0, .16, { from: 2400, to: 500, vol: .025 }), 0, 120] };
+  /* the cues themselves are designed sounds, rendered offline with earshot (tools/sfx: cues.json, build.sh) into public/sfx/<cue>.mp3
+     and decoded once after the first tap; a cue whose file isn't in yet (or failed) plays its synth above instead */
+  SND.buf = {};
+  const loadSfx = () => { if (SND.loading) return; const c = actx(); if (!c) return; SND.loading = true; SND.out = c.createGain(); SND.out.gain.value = .8; SND.out.connect(c.destination);
+    const go = () => Object.keys(CUES).forEach((k) => fetch(`/sfx/${k}.mp3`).then((r) => r.ok ? r.arrayBuffer() : Promise.reject()).then((a) => new Promise((ok, no) => c.decodeAudioData(a, ok, no))).then((b) => { SND.buf[k] = b; }).catch(() => {}));
+    (window.requestIdleCallback || setTimeout)(go, { timeout: 1500 }); };
+  addEventListener('pointerdown', () => { if (SND.on) loadSfx(); }, { once: true, capture: true });
+  const sound = (k) => { if (!SND.on || !CUES[k] || document.hidden) return; const now = Date.now(); if (now - (SND.last[k] || 0) < (CUES[k][2] ?? 250)) return; SND.last[k] = now;
+    const c = actx(); if (c) try { const b = SND.buf[k]; if (b) { const s = c.createBufferSource(); s.buffer = b; s.playbackRate.value = .97 + Math.random() * .06; s.connect(SND.out); s.start(); } else { loadSfx(); CUES[k][0](c); } } catch (e) {} // a hair of pitch drift, so repeats never sound stamped
     const hz = CUES[k][1]; if (hz && innerWidth <= 760 && navigator.vibrate) try { navigator.vibrate(hz); } catch (e) {} };
-  window.__sound = sound;
+  window.__sound = sound; window.Sound = { play: sound };
   // user moments, by what was tapped (navigation stays silent)
   /* the newer actions, on the same cues as the old ones (first match wins, so these specific ones go first): opening a sheet or
      a jam, a pick, making it live, sharing, copying, switching versions, AI fixing, a mention, closing, declining */
@@ -2998,7 +3011,7 @@
     if (DP?.p) { const fresh = ALL[DP.p.id] || byId(DP.p.id); if (fresh) DP.p = fresh; if (String(DP.p.id).startsWith('work:')) { const w = WORK.items.find((x) => 'work:' + x.id === DP.p.id); if (w) DP.p = pseudoPost(w); } if (DP.w) DP.w = WORK.items.find((x) => x.id === DP.w.id) || DP.w; repaintDetail(true); window.JamRoom?.paint?.(); }
     if (why === 'pro') { const added = FEED.filter((p) => !before.has(p.id)).length; toast(`${ic('sparkles', 's16')}You’re on Pro. ${added ? `${added} more card${added > 1 ? 's' : ''} in your feed, and every agent posts all day.` : 'Every agent now posts all day.'}`); }
     if (id && B.connectors[id]) { const added = FEED.filter((p) => !before.has(p.id)).length, live = FEED.filter((p) => p.live?.[id]).length;
-      toast(`${ic('check', 's16')}${esc(B.connectors[id].name)} connected. Refreshed with ${B.connectors[id].demo ? 'the demo account’s estimated numbers' : 'your real numbers'}${live ? `: ${live} card${live > 1 ? 's' : ''} now live` : ''}${added ? `, ${added} new` : ''}.`); }
+      sound('connected'); toast(`${ic('check', 's16')}${esc(B.connectors[id].name)} connected. Refreshed with ${B.connectors[id].demo ? 'the demo account’s estimated numbers' : 'your real numbers'}${live ? `: ${live} card${live > 1 ? 's' : ''} now live` : ''}${added ? `, ${added} new` : ''}.`); }
   })().finally(() => { refreshing = null; });
   const openConnect = (id, opts = {}) => {
     const c = B.connectors[id]; if (!c) return;
@@ -4431,7 +4444,7 @@
     if (jobOf(ch)) RX.pollT = setTimeout(async () => { if (view !== 'remix' || RX.ch?.id !== ch.id) return; const q = await tapi('GET', `/api/changes/${ch.id}`).catch(() => ({})); if (q.change) { RX.ch = q.change; putCh(q.change); } paintStudio(); if (ch.copyPending && q.change && !q.change.copyPending) autoImage(q.change); }, ch.copyPending ? 1500 : 3000); };
   /* copy inside the tap: the old copy command runs at once; the clipboard API is the fallback, and never waits forever
      (it can hang on a permission prompt, and the button then looked dead: no copy, no toast) */
-  const copyText = async (s) => { try { const ta = document.createElement('textarea'); ta.value = s; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;left:-9999px'; document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); ta.remove(); if (ok) return true; } catch (e) {}
+  const copyText = async (s) => { try { const ta = document.createElement('textarea'); ta.value = s; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;left:-9999px'; document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); ta.remove(); if (ok) sound('tick'); if (ok) return true; } catch (e) {}
     try { return await Promise.race([navigator.clipboard.writeText(s).then(() => true), wait(1500).then(() => false)]); } catch (e) { return false; } };
   /* the jam's own link: this card, this change, the latest version and state, in this workspace (the token opens it for a teammate) */
   const jamLink = async (p, w) => { const t = await shareTok(w?.id).catch(() => null), chId = RX.p?.id === p.id && RX.ch?.id ? RX.ch.id : w?.changeId || '';
@@ -5235,9 +5248,9 @@
           if (!texts.length) { clearInterval(timer); head('Nothing to learn from', ''); paint(notes || '<p class="dz-note">There was nothing in it to read.</p>', `<span></span><button class="btn btn-primary sm" data-close>Done</button>`); if (refs) after(); return; }
           phase = 'learn'; draw();
           const r = await tapi('POST', `/api/brands/${encodeURIComponent(mvSlug())}/drop`, { dest: 'memory', text: texts.join('\n\n'), files: files.map((f) => f.name) }); clearInterval(timer);
-          if (r?.error) { closeModal(); return toast(esc(r.error)); }
+          if (r?.error) { closeModal(); sound('error'); return toast(esc(r.error)); }
           if (!r.learn) { closeModal(); toast(`${ic('check', 's16')}Added to brand memory`); return after(); } /* the demo site: a direct memory note */
-          if (r.draft?.items?.length && !r.saved) return showDraft(r, notes);
+          sound('ready'); if (r.draft?.items?.length && !r.saved) return showDraft(r, notes);
           return answered(r); /* nothing new in it, or already saved */
         }
         /* my preferences and just this once: the words of a PDF, Word, PowerPoint or Excel file; a photo or text file as before */
@@ -5249,11 +5262,11 @@
           else { const x = await dropText(f, d); if (x?.error || !x?.text) { skipped.push(f.name); continue; } body0 = { text: x.text }; }
           r = await tapi('POST', `/api/brands/${encodeURIComponent(mvSlug())}/drop`, { dest: d, name: f.name, ...body0 }); if (r?.error) break; if (r?.cut) cut = true; }
         if (!r && skipped.length) { closeModal(); return toast(`Brew couldn’t read ${esc(skipped.join(', '))}. It reads PDF, Word, PowerPoint, Excel, text files and photos (PNG, JPG, WebP).`); }
-        closeModal(); if (!r || r.error) return toast(esc(r?.error || 'That didn’t save. Try again.'));
-        toast(`${ic('check', 's16')}${d === 'prefs' ? 'Saved to your preferences' : 'Ready for your next ask'}${cut ? '. It was long, so Brew kept the first 4,000 characters' : ''}${skipped.length ? `. Couldn’t read ${esc(skipped.join(', '))}` : ''}`); if (d === 'prefs') { loadFeed().catch(() => {}); after(); } if (d === 'once') openAsk(); })); }); };
+        closeModal(); if (!r || r.error) { sound('error'); return toast(esc(r?.error || 'That didn’t save. Try again.')); }
+        sound('ready'); toast(`${ic('check', 's16')}${d === 'prefs' ? 'Saved to your preferences' : 'Ready for your next ask'}${cut ? '. It was long, so Brew kept the first 4,000 characters' : ''}${skipped.length ? `. Couldn’t read ${esc(skipped.join(', '))}` : ''}`); if (d === 'prefs') { loadFeed().catch(() => {}); after(); } if (d === 'once') openAsk(); })); }); };
   document.addEventListener('click', (e) => { const pk = e.target.closest('[data-m2-pick]'); if (pk) { (pk.closest('.m2-drop') || pk.parentElement)?.querySelector('[data-m2-file]')?.click(); } });
   document.addEventListener('change', (e) => { if (e.target.matches?.('[data-m2-file]')) { m2Drop(e.target.files); e.target.value = ''; } });
-  ['dragover', 'dragleave', 'drop'].forEach((ev) => document.addEventListener(ev, (e) => { const z = e.target.closest?.('[data-m2-drop]'); if (!z) return; e.preventDefault(); z.classList.toggle('is-over', ev === 'dragover'); if (ev === 'drop') m2Drop(e.dataTransfer?.files || []); }));
+  ['dragover', 'dragleave', 'drop'].forEach((ev) => document.addEventListener(ev, (e) => { const z = e.target.closest?.('[data-m2-drop]'); if (!z) return; e.preventDefault(); z.classList.toggle('is-over', ev === 'dragover'); if (ev === 'drop') sound('send'), m2Drop(e.dataTransfer?.files || []); }));
   const renderRules = () => { document.body.dataset.m2 = 'rules'; return renderLearned(); };
   /* Your feed: what Brew picked up from your hearts and saves, your seat, and Tune (per-agent weights land with the tuning API) */
   /* Your feed: what Brew picked up from your choices (each one can be dropped), topics, each agent Less / Normal / More,
@@ -5518,7 +5531,7 @@
 
   /* ---------- go ---------- */
   // jam-room.js (the Jam Room) works from these
-  window.__BREW = { openRefs: (r) => openRefs(r), shoposWho: 'the ShopOS team, Brew’s build crew', waNeed: (o) => waNeed(o), busyBtn: (b, l) => busyBtn(b, l), loader: (t, s2, z) => loader(t, s2, z), putCh: (ch) => putCh(ch), paintStudio: () => paintStudio(), modal: (h, b) => modal(h, b), closeModal: () => closeModal(), refreshAfterConnect: (id) => refreshAfterConnect(id), glyph: (id, n) => glyph(id, n), demoSheet: (h) => demoSheet(h), shareSheet: (p) => shareSheet(p), pageOf: (id) => PAGE[id] || null, studioCard: () => (view === 'remix' ? RX.p : null), studioV: () => (view === 'remix' && RX.ch ? curN(RX.ch) : null) /* the version on the jam's stage, for the sheets */, libAct, cxDone: (id) => $$(`[data-cxrow="${id}"]`).forEach((r) => (r.outerHTML = cxRow(id))), $, $$, esc, wait, ic, face, avatar, podFaces, brewAv, SO, movesTotal: () => +BREW?.total || 0, toast, toastLong, B, AGENT, save, ROLE, colleague, conn, cardOf, byId, tapi, putWork, counts, inrS, openConnect, openDetail, closeDetail, closePop, closeModal, modal, assetHtml, renderView, renderWork, workOfCard, pseudoPost, colleagueForCard,
+  window.__BREW = { sound: (k) => sound(k), openRefs: (r) => openRefs(r), shoposWho: 'the ShopOS team, Brew’s build crew', waNeed: (o) => waNeed(o), busyBtn: (b, l) => busyBtn(b, l), loader: (t, s2, z) => loader(t, s2, z), putCh: (ch) => putCh(ch), paintStudio: () => paintStudio(), modal: (h, b) => modal(h, b), closeModal: () => closeModal(), refreshAfterConnect: (id) => refreshAfterConnect(id), glyph: (id, n) => glyph(id, n), demoSheet: (h) => demoSheet(h), shareSheet: (p) => shareSheet(p), pageOf: (id) => PAGE[id] || null, studioCard: () => (view === 'remix' ? RX.p : null), studioV: () => (view === 'remix' && RX.ch ? curN(RX.ch) : null) /* the version on the jam's stage, for the sheets */, libAct, cxDone: (id) => $$(`[data-cxrow="${id}"]`).forEach((r) => (r.outerHTML = cxRow(id))), $, $$, esc, wait, ic, face, avatar, podFaces, brewAv, SO, movesTotal: () => +BREW?.total || 0, toast, toastLong, B, AGENT, save, ROLE, colleague, conn, cardOf, byId, tapi, putWork, counts, inrS, openConnect, openDetail, closeDetail, closePop, closeModal, modal, assetHtml, renderView, renderWork, workOfCard, pseudoPost, colleagueForCard,
     get S() { return S; }, get WORK() { return WORK; }, get view() { return view; }, setChange: (ch) => { if (DP && ch) DP.ch = ch; }, currentDetail: () => DP && (DP.w ? { ...DP.p, _work: DP.w, _ch: DP.ch || null } : DP.p), SPLIT, slotHtml, ago, repaintDetail: () => repaintDetail(true), detailDirty: () => !!DP?.dirty, fitKnobs, fitSuggest,
     /* v2 (onboard2.js, make-sheet.js) */ V2, FEED_STACK, brandClock, UI2, GEN, LANDING, DEMO_LAND, api, ls, LSP, get TID() { return TID; }, signWall, needSignin, ensureTenant, scrCard, seatEntries, defaultWants, loadFeed, rank, openRemix, openPlan, teamStep, finishOnboarding, checkRead, waitMoves, whoFor, continueToFeed, hashParams };
   // #setup replays onboarding (it only plays once otherwise, because finishing it is saved in this browser)
