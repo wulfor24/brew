@@ -100,7 +100,7 @@ test('register, the staff sign-in, a refreshed token and the MCP session end to 
     const state = url.searchParams.get('state');
     await assert.rejects(A.callback({ headers: {} }, new URL(`http://brew.test/cb?code=good&state=bad`)), /stale/);
     const conn = await A.callback({ headers: {} }, new URL(`http://brew.test/cb?code=good&state=${state}`)); assert.equal(conn.token, 'at1'); assert.equal(conn.connectedBy, 'ops@joinsquareup.com');
-    assert.ok(R.files.get('_brew/private/sloosh-client.json')['http://brew.test/api/ops/sloosh/callback']);
+    assert.ok(Object.keys(R.files.get('_brew/private/sloosh-client.json')).some((k) => k.endsWith('|http://brew.test/api/ops/sloosh/callback')));
     const S = createSloosh({ tokenFor: A.tokenFor, log: { warn() {} } });
     const cx = await S.getConnection(); assert.equal(cx.budget.remainingUnits, 50000);
     const models = await S.listModels('image_gen'); assert.equal(models.mode, 'image_gen'); assert.equal(models.models.image.models[0].id, 'gemini-3-pro-image-preview');
@@ -145,4 +145,12 @@ test('a refused call keeps the code and every word of why (19 Oct: a reel quote 
   assert.equal(errorText({ text: 'owner_invalid_request' }), 'owner_invalid_request');
   assert.match(errorText({ error: { code: 'bad_ratio', message: '4:5 is not offered' } }), /bad_ratio — 4:5 is not offered/); assert.equal(errorCode({ error: { code: 'bad_ratio' } }), 'bad_ratio');
   const two = refused('generate', { isError: true, content: [{ type: 'text', text: 'owner_invalid_request' }, { type: 'text', text: 'start frame required for this model' }] }); assert.match(two.message, /start frame required/);
+});
+
+test('the sign-in server is the one Sloosh names in its metadata (21 Oct: clerk.app.shopos.ai → clerk.sloosh.ai)', async () => {
+  const { authServer } = await import('../sloosh-auth.js'); const pin = process.env.SLOOSH_AUTH_URL, mcp = process.env.SLOOSH_MCP_URL; delete process.env.SLOOSH_AUTH_URL; process.env.SLOOSH_MCP_URL = 'https://mcp.example.test/mcp';
+  try { const asked = []; const f = async (u) => { asked.push(u); return new Response(JSON.stringify({ authorization_servers: ['https://clerk.example.test/'] }), { status: 200 }); };
+    assert.equal(await authServer(f), 'https://clerk.example.test'); assert.equal(asked[0], 'https://mcp.example.test/.well-known/oauth-protected-resource/mcp');
+    process.env.SLOOSH_AUTH_URL = 'https://pinned.test'; assert.equal(await authServer(f), 'https://pinned.test');
+  } finally { if (pin) process.env.SLOOSH_AUTH_URL = pin; else delete process.env.SLOOSH_AUTH_URL; if (mcp) process.env.SLOOSH_MCP_URL = mcp; else delete process.env.SLOOSH_MCP_URL; }
 });
