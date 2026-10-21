@@ -114,7 +114,7 @@ export function createFinalsRoutes({ blockOf = () => null, on, W, say, meOf, slu
 }
 
 /* ---------- the studio: a final is the next version, labelled Final ---------- */
-export function createStudioFinals({ blockOf = () => null, headOf = () => null, useVersion = () => {}, versionById = () => null, on, C, ensurePkg, sync, version, pubChange, cardOf = () => null, cardPhoto = () => null, catalogOf = () => [], jobs, vidJobs = null, references = null, finals, sloosh, creditsLeft = () => null, rivalOf = async () => null, viralClip = null, textCheck = null, brandOfT, slugOfT, meOf = () => null, onMedia = () => {}, isVideo = () => false, RATIO = {}, now = () => Date.now(), log = console }) {
+export function createStudioFinals({ blockOf = () => null, headOf = () => null, useVersion = () => {}, versionById = () => null, on, C, ensurePkg, sync, version, pubChange, cardOf = () => null, cardPhoto = () => null, catalogOf = () => [], jobs, vidJobs = null, references = null, finals, sloosh, creditsLeft = () => null, rivalOf = async () => null, viralClip = null, textCheck = null, brandOfT, slugOfT, meOf = () => null, onMedia = () => {}, onFinal = () => {} /* the bell: ready, paused or failed (Param, 21 Oct: "we'll notify you once ready") */, isVideo = () => false, RATIO = {}, now = () => Date.now(), log = console }) {
   const sheet = createFinalsSheet({ finals, sloosh, references, creditsLeft, brandOfT, log, now });
   const nameOf = (t) => meOf(t)?.name || meOf(t)?.email || 'Someone';
   const headFinal = (ch) => (ch.versions || []).find?.((v) => v.id === ch.headVersionId)?.final || ch.lastFinal?.versionId === ch.headVersionId ? ch.lastFinal : null;
@@ -164,14 +164,15 @@ export function createStudioFinals({ blockOf = () => null, headOf = () => null, 
     if (isVid) { ch.videoPending = now(); ch.videoStep = 'Sloosh is making the final'; ch.videoError = null; } else ch.imagePending = true; ch.imageError = null; ch.finalPending = { from: headOf(t, ch)?.id || null /* the option it is made for: it lands there */, at: now(), credits: q.credits, model: q.label || q.model || q.space?.name || null, fallback: !!q.fallback, provider: q.provider || 'sloosh' }; set?.add?.(ch.id); sync(t, ch);
     (async () => { try { const from = ch.finalPending?.from || null, rec = await finals.run(slug, spec, { quote: q, by, target: { chid: ch.id, revision: spec.revision }, land: { tid: t.id || null, from } });
         landIn(t, ch, rec, { from, label: q.label, model: q.model, space: q.space, fallbackWhy: q.fallbackWhy, by, vid: isVid });
-      } catch (e) { if (isVid) ch.videoError = `The final video didn’t come through (${String(e.message).slice(0, 160)}). Make it again.`; ch.imageError = String(e.message).slice(0, 200); log.warn('[finals] studio run', slug, e.message); }
+      } catch (e) { if (isVid) ch.videoError = `The final video didn’t come through (${String(e.message).slice(0, 160)}). Make it again.`; ch.imageError = String(e.message).slice(0, 200); log.warn('[finals] studio run', slug, e.message); try { onFinal(t, ch, { state: 'failed', vid: isVid }); } catch {} }
       finally { set?.delete?.(ch.id); if (isVid) { ch.videoPending = null; ch.videoStep = null; } else ch.imagePending = !!jobs?.has?.(ch.id) /* another picture still drawing keeps its spinner */; ch.finalPending = null; sync(t, ch); } })();
     return { change: pubChange(t, ch) }; });
 
   /* a run's record as the change's next version, labelled Final */
   function landIn(t, ch, rec, { label = null, model = null, space = null, fallbackWhy = null, by = null, vid = null, from = null } = {}) {
-    if (rec.state === 'checkpoint') { ch.finalCheckpoint = { runKey: rec.runKey, checkpoint: rec.checkpoint || null, at: now() }; ch.imageError = 'The Sloosh Space paused for a check. Open Make the final to carry on or stop.'; return; }
-    if (rec.state !== 'done') { ch.imageError = String(rec.error || 'The final didn’t come through.').slice(0, 200); return; }
+    const vid0 = vid ?? (rec.kind || 'image') === 'video', tell = (state) => { try { onFinal(t, ch, { state, vid: vid0 }); } catch {} };
+    if (rec.state === 'checkpoint') { ch.finalCheckpoint = { runKey: rec.runKey, checkpoint: rec.checkpoint || null, at: now() }; ch.imageError = 'The Sloosh Space paused for a check. Open Make the final to carry on or stop.'; tell('checkpoint'); return; }
+    if (rec.state !== 'done') { ch.imageError = String(rec.error || 'The final didn’t come through.').slice(0, 200); tell('failed'); return; }
     /* the final belongs to the option it was made from: if the stage moved to another option meanwhile, it goes back there first */
     const fromV = (from || rec.land?.from) ? versionById(t, ch, from || rec.land.from) : null; if (fromV && !grewFrom(t, ch, headOf(t, ch), fromV.id)) useVersion(t, ch, fromV);
     const isVid = vid ?? (rec.kind || 'image') === 'video', sp = space || rec.space || null; land(ch, isVid, rec.file, !!rec.words);
@@ -179,6 +180,7 @@ export function createStudioFinals({ blockOf = () => null, headOf = () => null, 
     v.final = { credits: rec.charged ?? rec.credits, model: model || rec.model || null, label: label || null, space: sp, dummy: !!rec.dummy, fallback: !!rec.fallback, provider: rec.provider || 'sloosh', link: rec.link || null, assetId: rec.assetId || null, assetKind: rec.assetKind || null, revision: rec.revision || 0, runKey: rec.runKey, by: by || rec.by || null };
     ch.lastFinal = { versionId: v.id, ...v.final };
     try { onMedia(t, ch, { kind: isVid ? 'video' : 'image', images: isVid ? [] : [rec.file], video: isVid ? rec.file : null, n: v.n, label: v.label }); } catch {}
+    tell('done');
     if (isVid && textCheck && !rec.dummy) spellCheck(t, ch, v, rec.file, rec.prompt); }
   /* a video final's on-screen words, read back and compared with what was asked (text-check.js): the jam says what is wrong and
      where; it never remakes by itself, because a remake costs credits */

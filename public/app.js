@@ -3966,16 +3966,27 @@
     if (f.st === 'err') return `<button class="btn btn-primary ship-go" data-fn-one title="${esc(f.err)}">${ic('sparkles', 's16')}Make the final ${what}</button>`;
     const q = f.q, n = Math.round((q.credits || 0) * 100) / 100, cost = q.dummy ? 'simulated' : q.provider === 'gemini' ? 'with Gemini' : n ? `${n} credits` : 'no credits';
     return `<button class="btn btn-primary ship-go" data-fn-one title="${esc(q.provider === 'gemini' ? `Sloosh isn’t ready (${q.fallbackWhy || 'no credits'}), so Brew makes it with Gemini.` : `Made on Sloosh with ${q.label || q.model || 'its best model'}. Tap once to make it.`)}">${ic('sparkles', 's16')}Make the final ${what} · ${esc(cost)}</button>`; };
+  /* a final the person started here stays "making" on this screen until it lands or fails: a read that left before the tap
+     (the job poll, the jam tick) can come back after it without finalPending, and the button turned clickable again (Param, 21 Oct) */
+  const nFinals = (ch) => (ch.versions || []).filter((v) => v.final).length;
+  const finalGoing = (ch) => { const g = ch && RX.fgo?.[ch.id]; if (!g) return null;
+    const landed = nFinals(ch) > g.nf, failed = !ch.finalPending && (ch.imageError || ch.videoError || '') !== g.err && !!(ch.imageError || ch.videoError);
+    if (landed || failed || Date.now() - g.at > 40 * 60e3) { delete RX.fgo[ch.id]; if (landed && view === 'remix' && RX.ch?.id === ch.id) toast(`${ic('check', 's16')}Your final ${g.what} is ready.`); return null; }
+    return ch.finalPending || g.fp; };
   const fnOne = async (btn) => { const ch = RX.ch; if (!ch) return; const k = fqKey(ch); let f = RX.fq?.[k];
     btn.disabled = true; btn.innerHTML = '<brew-load class="spin"></brew-load>Starting…';
     /* no price yet, or it ran out: ask again; a new price is shown first, never spent unseen */
     if (!f || f.st !== 'ok' || (f.q.expiresAt && f.q.expiresAt < Date.now() + 5e3)) { const was = f?.q?.credits; f = await fqFetch(ch);
       if (f.st !== 'ok') return toast(`${ic('info', 's16')}${esc(f.err)}`); if (was != null && Math.abs((f.q.credits || 0) - was) > 0.001) return toast(`${ic('info', 's16')}The price is now ${Math.round(f.q.credits * 100) / 100} credits. Tap again to make it.`); }
+    const what = isReel(ch) || ch.pkg?.video ? 'reel' : 'picture'; RX.fgo ||= {}; /* locked from the tap on: a repaint while the run is asked never shows the button again */
+    RX.fgo[ch.id] = { at: Date.now(), nf: nFinals(ch), err: ch.imageError || ch.videoError || '', what, fp: { at: Date.now(), fallback: f.q.provider === 'gemini' } };
     const r = await tapi('POST', `/api/changes/${ch.id}/final/run`, { expect: f.q.quoteId }).catch((e) => ({ error: e.message }));
     delete RX.fq[k];
+    if (r?.error) delete RX.fgo[ch.id];
     if (r?.requote) { await fqFetch(ch); return toast(`${ic('info', 's16')}${esc(r.error)}`); }
     if (r?.error) { toast(`${ic('info', 's16')}${esc(r.error)}`); return paintStudio(); }
-    if (r?.change) { RX.ch = r.change; putCh(r.change); } toast(`${ic('sparkles', 's16')}Making the final. It lands here when it’s done.`); paintStudio(); };
+    const c1 = r?.change || ch; RX.fgo[ch.id] = { ...RX.fgo[ch.id], err: c1.imageError || c1.videoError || '', fp: c1.finalPending || RX.fgo[ch.id].fp };
+    if (r?.change) { RX.ch = r.change; putCh(r.change); } toast(`${ic('sparkles', 's16')}Making the final ${what}. It takes a few minutes; we’ll notify you when it’s ready.`); paintStudio(); };
   /* Copy and open (post-open.js): the post, copied, and the exact place opened in a new tab, filled in where the platform allows */
   const postOpenOf = (ch) => { try { const im = imgOf(ch) || ch.pkg?.photos?.[0] || null; return window.PostOpen?.of(ch, { card: RX.p ? cardOf(RX.p) : null, brandUrl: B.brand.host ? `https://${String(B.brand.host).replace(/^https?:\/\//, '')}` : '', image: im ? new URL(im, location.href).href : '' }) || null; } catch { return null; } };
   const PO_WHERE = (po) => ({ x_post: 'X', reddit_post: /thread/.test(po.label) ? 'the thread' : 'Reddit', linkedin_post: 'LinkedIn', quora_answer: 'the question', fb_group_post: 'the group', pinterest_pin: 'Pinterest' })[po.kind] || 'the thread';
@@ -3990,12 +4001,12 @@
     let head, tip, main;
     const po = postOpenOf(ch); /* Reddit, Quora, X, LinkedIn, Pinterest, a group: copy it and open the place (post-open.js) */
     const send = `<button class="btn btn-primary ship-go" data-rx="share-shopos">${ic('send', 's16')}Send brief</button>`;
-    const job = jobOf(ch);
-    if (job && !ch.finalPending) { head = `<brew-load class="spin"></brew-load>${esc(job)}${nm}`; tip = media ? 'Brew makes a quick draft first, so you can check the idea. The final is made after.' : 'It lands here on its own in a moment.'; main = `<button class="btn btn-primary ship-go" disabled>${esc(job)}…</button>`; }
+    const job = jobOf(ch), fp = finalGoing(ch);
+    if (job && !fp) { head = `<brew-load class="spin"></brew-load>${esc(job)}${nm}`; tip = media ? 'Brew makes a quick draft first, so you can check the idea. The final is made after.' : 'It lands here on its own in a moment.'; main = `<button class="btn btn-primary ship-go" disabled>${esc(job)}…</button>`; }
     else if (op && !op.picked) { head = `Pick one of ${op.list.length}`; tip = 'Tap the options above the stage to compare them, then use the one you like. The others stay in History.';
       main = `<button class="btn btn-primary ship-go" ${opt ? `data-opt-use="${esc(opt.id)}"` : 'disabled'}>${ic('check', 's16')}${opt ? `Use ${esc(opt.name)}` : 'Pick one above'}</button>`; }
     else if (fix) { head = `Needs a fix: ${esc((ch.fixes || [])[0] || 'see the checks')}`; tip = `Before it can ship: ${(ch.fixes || []).join('; ')}.`; main = `<button class="btn btn-primary ship-go" data-rx="fix">${ic('sparkles', 's16')}Fix it with AI${freeTag()}</button>`; }
-    else if (ch.finalPending) { head = `<brew-load class="spin"></brew-load>${ch.finalPending.fallback ? 'Brew' : 'Sloosh'} is making the final${nm}`; tip = 'It lands here when it’s done, usually in a minute or two.'; main = `<button class="btn btn-primary ship-go" disabled>Making the final…</button>`; }
+    else if (fp) { head = `<brew-load class="spin"></brew-load>${fp.fallback ? 'Brew' : 'Sloosh'} is making the final${nm}`; tip = 'It takes a few minutes. We’ll notify you when it’s ready; you can leave this page.'; main = `<button class="btn btn-primary ship-go" disabled aria-busy="true"><brew-load class="spin"></brew-load>Making the final ${reel ? 'reel' : 'picture'}…</button>`; }
     else if (media && !fin && isReel(ch) && !p.video) { head = `Script ready${nm}`; tip = 'Make the video to see it moving. It’s a quick draft; the final reel is made after.'; main = `<button class="btn btn-primary ship-go" data-rx="video">${ic('vid', 's16')}Make the video${freeTag(true)}</button>`; }
     else if (media && !fin) { head = `Draft ${reel ? 'video' : 'photo'} ready${nm}`; tip = `A quick draft made by Brew to check the idea. The final ${reel ? 'reel' : 'picture'} is made on Sloosh, ready to post. Then Send brief.`; main = finalBtn(ch); }
     else if (media) { head = `Final ready${nm}`; tip = 'Send brief: the ShopOS team, Brew’s build crew, gets it by email and posts or runs it. Its status shows in the top bar.'; main = send; }
@@ -4007,7 +4018,7 @@
     if (po && !fix && !job && !/data-rx="post-open"/.test(main)) items.push(['data-rx="post-open"', 'send', po.label, po.filled ? `Opens ${PO_WHERE(po)} with the post filled in.` : `Copies the post and opens ${PO_WHERE(po)}.`]);
     if (!/data-rx="share-shopos"/.test(main)) items.push(['data-rx="share-shopos"', 'send', 'Send the brief now', 'The ShopOS team, Brew’s build crew, gets it by email and makes it.']);
     items.push(['data-rx="share-team"', 'copy', 'Share with my team', 'Copy the brief and a link to paste in your team’s chat.']);
-    if (media && (p.image || p.video || p.draft?.images?.length) && !ch.finalPending) items.push([`data-fn-studio="${esc(ch.id)}"`, 'sparkles', fin ? 'Change the final…' : 'Choose how the final is made…', 'Pick the photos, the model or a Sloosh Space yourself.']);
+    if (media && (p.image || p.video || p.draft?.images?.length) && !fp) items.push([`data-fn-studio="${esc(ch.id)}"`, 'sparkles', fin ? 'Change the final…' : 'Choose how the final is made…', 'Pick the photos, the model or a Sloosh Space yourself.']);
     if (dlTool(ch, ch)) items.push(['data-st-dl', 'down', 'Download', 'This version’s files, as they are now.']);
     /* Redo it: one new take beside the one way forward, whenever the version can still change (not while something is being made) */
     const busy = !!job;
@@ -4068,7 +4079,7 @@
      holds it (a short video's clip, an ad's or a post's picture, a written family's words), so the plan's button steps aside */
   /* the one job running on this change right now, in plain words ('' when nothing is): every status line (the step bar, the
      UI2 header, the case's next step, the chips) asks this first, so none says Ready or Draft while something is being made */
-  const jobOf = (ch) => !ch ? '' : ch.finalPending ? `${ch.finalPending.fallback ? 'Brew' : 'Sloosh'} is making the final` : ch.copyPending || ch.ctaQueued ? 'Writing the first draft' : ch.remakePending ? (ch.remakePending.step || 'Making it') : ch.videoPending ? (ch.videoStep || 'Making the video') : ch.ctaPending ? String(ch.ctaPending) : ch.imagePending ? (ch.family === 'listing' ? 'Making the listing photos' : 'Making the photo') : '';
+  const jobOf = (ch) => !ch ? '' : finalGoing(ch) ? `${finalGoing(ch).fallback ? 'Brew' : 'Sloosh'} is making the final` : ch.copyPending || ch.ctaQueued ? 'Writing the first draft' : ch.remakePending ? (ch.remakePending.step || 'Making it') : ch.videoPending ? (ch.videoStep || 'Making the video') : ch.ctaPending ? String(ch.ctaPending) : ch.imagePending ? (ch.family === 'listing' ? 'Making the listing photos' : 'Making the photo') : '';
   const hasDraft = (ch) => { const p = ch?.pkg || {}; return ch?.v0 === 'draft' || !!(p.video || /^\/?gen\//.test(p.image || '') || p.draft?.images?.length || p.draft?.video); };
   const hasMade = (ch) => { if (!ch || ch.copyPending) return false; if (ch.videoPending || ch.imagePending || ch.remakePending || ch.ctaPending) return true; /* being made: the button that makes it steps aside */ const p = ch.pkg || {}, rows = p.cards || p.slides || [];
     if (isReel(ch)) return !!p.video; if (['meta_ad', 'social'].includes(ch.family) && !ch.realOnly) return rows.length > 1 ? rows.every((_, i) => (p.cardImages || [])[i]) : !!(/^\/?gen\//.test(p.image || '') || p.draft?.images?.length); return true; };

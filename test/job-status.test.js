@@ -46,6 +46,18 @@ test('every studio status line asks the job first (jobOf), so no Ready or Draft 
   assert.match(src, /const jobOf = \(ch\) =>/);
   assert.match(src, /const j2Status = [\s\S]{0,300}if \(jobOf\(ch\)\) return \['info'/, 'the UI2 header says the job, not Ready');
   assert.match(src, /jobOf\(ch\)\) return stepBar\(ch\);[^\n]*\n\s*if \(SPLIT && !ch\.batchKey && ch\.state !== 'jam' && !planMade\(ch\)\)/, 'a job beats the First draft bar');
-  assert.match(src, /const job = jobOf\(ch\);\n\s*if \(job && !ch\.finalPending\)/, 'the step bar says the job before Ready or Final ready');
+  assert.match(src, /const job = jobOf\(ch\), fp = finalGoing\(ch\);\n\s*if \(job && !fp\)/, 'the step bar says the job before Ready or Final ready');
   assert.match(src, /if \(formFocus[^\n]*pollJob\(ch\); return; \}/, 'a skipped repaint keeps polling the job');
+});
+
+test('Make the final locks from the tap until the final lands or fails, and the bell says when it is ready', () => {
+  const src = fs.readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
+  assert.match(src, /RX\.fgo\[ch\.id\] = \{[^\n]*\n\s*const r = await tapi\('POST', `\/api\/changes\/\$\{ch\.id\}\/final\/run`/, 'locked before the run is asked, so a repaint meanwhile never shows the button');
+  assert.match(src, /const jobOf = \(ch\) => !ch \? '' : finalGoing\(ch\)/, 'a stale read without finalPending still counts as making');
+  assert.match(src, /else if \(fp\) \{[^\n]*ship-go" disabled/, 'the main button stays disabled while it is made');
+  const fs2 = fs.readFileSync(new URL('../feed-service.js', import.meta.url), 'utf8');
+  assert.match(fs2, /onFinal: \(t, ch, r\) => studioFinal\(t, ch, r\)/);
+  assert.match(fs2, /Your final \$\{what\} is ready/);
+  const fr = fs.readFileSync(new URL('../finals-routes.js', import.meta.url), 'utf8');
+  assert.match(fr, /tell\('done'\)/); assert.match(fr, /onFinal\(t, ch, \{ state: 'failed'/);
 });
