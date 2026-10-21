@@ -26,6 +26,7 @@ const API = '2026-04';
 const SCOPES = 'read_products,read_inventory,read_orders,read_customers'; /* the same list as docs/shopify.app.toml (legacy install only) */
 const app = () => ({ id: process.env.FEED_SHOPIFY_CLIENT_ID || '', secret: process.env.FEED_SHOPIFY_CLIENT_SECRET || '' });
 const SHOP = /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/;
+const REDACT_AFTER = 48 * 3600e3; /* Shopify sends shop/redact this long after an uninstall */
 const esc = (x) => String(x ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const b64u = (b) => Buffer.from(b).toString('base64url');
 const same = (a, b) => { a = Buffer.from(String(a)); b = Buffer.from(String(b)); return a.length === b.length && crypto.timingSafeEqual(a, b); };
@@ -188,7 +189,11 @@ export function createShopifyApp({ auth, connectors, builder, packs, log = conso
     json(res, 200, { ok: true });
     if (topic === 'app/uninstalled' || topic === 'shop/redact') {
       const slug = SHOP.test(shop) ? await connectors.shopSlug?.(shop).catch(() => null) : null;
-      if (slug) await connectors.disconnect(slug, 'shopify').then(() => log.log?.(`[shopify-app] ${slug}: Shopify disconnected (${topic})`)).catch((e) => log.warn('[shopify-app] disconnect', slug, e.message));
+      /* shop/redact comes 48 hours after an uninstall, even when the store has installed Brew again since: a connection made
+         after that uninstall (younger than the 48 hours) belongs to the new install and stays */
+      const since = slug && topic === 'shop/redact' ? (await connectors.liveOf(slug, true).catch(() => null))?.conns?.shopify?.at || 0 : 0;
+      if (slug && since > Date.now() - REDACT_AFTER) log.log?.(`[shopify-app] ${slug}: shop/redact skipped, Brew was installed again since`);
+      else if (slug) await connectors.disconnect(slug, 'shopify').then(() => log.log?.(`[shopify-app] ${slug}: Shopify disconnected (${topic})`)).catch((e) => log.warn('[shopify-app] disconnect', slug, e.message));
     }
     /* customers/data_request, customers/redact: Brew stores order counts and shares, never a customer's record, so nothing to send or erase */
     return true;

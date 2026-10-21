@@ -124,3 +124,14 @@ test('a sign-in that refuses a frame (Google, Meta) is offered in a new tab, and
   const hop = await call(sa, 'POST', '/shopify/api/hop', { headers: { authorization: `Bearer ${jwt(claims())}` }, body: JSON.stringify({ next: '//evil.com' }) });
   const t = new URL(hop.json().url).searchParams.get('t'); assert.equal(JSON.parse(Buffer.from(t.split(':')[1], 'base64url')).next, '/');
 });
+
+test('shop/redact after a reinstall leaves the new connection alone; with no reinstall it disconnects', async () => {
+  const body = JSON.stringify({ shop_domain: 'cozy.myshopify.com' }), sig = crypto.createHmac('sha256', SECRET).update(body).digest('base64');
+  const send = (sa) => call(sa, 'POST', '/shopify/webhooks', { body, headers: { 'x-shopify-hmac-sha256': sig, 'x-shopify-topic': 'shop/redact', 'x-shopify-shop-domain': 'cozy.myshopify.com' } });
+  const fresh = rig({ connected: { 'cozysnugglet-shop': { state: 'live', at: Date.now() - 3600e3, account: { id: 'cozy.myshopify.com' } } } });
+  await send(fresh.sa); await new Promise((r) => setTimeout(r, 10));
+  assert.deepEqual(fresh.disconnected, [], 'installed again an hour ago: kept');
+  const old = rig({ connected: { 'cozysnugglet-shop': { state: 'live', at: Date.now() - 50 * 3600e3, account: { id: 'cozy.myshopify.com' } } } });
+  await send(old.sa); await new Promise((r) => setTimeout(r, 10));
+  assert.deepEqual(old.disconnected, [['cozysnugglet-shop', 'shopify']]);
+});
