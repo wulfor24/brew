@@ -1,6 +1,13 @@
 # Shopify app review: Brew
 
-## Status 2026-10-21: one step from submitting
+## SUBMITTED 2026-10-21 (about 23:15 IST)
+
+Shopify is assigning a reviewer. Any issues come by email to hello@joinsquareup.com: answer quickly to keep the review moving.
+The listing is set to limited visibility (direct URL only) until someone presses "Make fully visible".
+- Screencast (1:55, captioned): https://brew.joinsquareup.com/gen/brew-shopify-review-20261021.mp4
+- After approval: deploy with `SHOPIFY_OAUTH=1 SHOPIFY_INSTALL_URL=<the listing link>`.
+
+## Status before submitting (2026-10-21)
 
 - **App:** a new public app **Brew** in the SquareUp partner org (app 437593374721, client `ddb97e17…`). squareup-prod is
   untouched (it still serves the old shop.joinsquareup.com). Version `brew-2` is active: app URL, embedded, 4 read scopes, the
@@ -12,8 +19,6 @@
   9 of 9 answers); emergency contact was already set; app icon uploaded (`docs/shopify-listing/app-icon-1200.png`).
 - **Listing (English, draft):** everything is filled, including the screenshots and feature image in `docs/shopify-listing/`.
   The only thing left is the **screencast URL**.
-- **Param, to finish:** record the screencast (step 4; YouTube unlisted or a direct video link, not Drive or Vimeo), paste
-  its link in the listing, tick "I've reviewed all the App Store Requirements", then press **Submit for review**.
 
 Earlier: 2026-10-20: The code side is done and live, including the read of a password-protected store (step 0). The submission
 needs Param in Shopify's dashboards (steps 1 onwards).
