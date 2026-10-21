@@ -532,7 +532,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
   let healing = false;
   async function healClips() {
     if (healing || !videoRead || running.has('viral') || process.env.RESEARCH_OFF) return; healing = true;
-    try { const now = Date.now(), todo = [...(snap.viral?.items || []), ...(snap.viral?.archive || [])].filter((x) => x && !x.video && x.platform === 'youtube' && (!(now - (x.clipTried || 0) < D) || (/APIFY_TOKEN/.test(x.videoError || '') && !!process.env.APIFY_TOKEN))).slice(0, 3); /* a missing key is retried as soon as the key is there */ let n = 0;
+    try { const now = Date.now(), todo = [...(snap.viral?.items || []), ...(snap.viral?.archive || [])].filter((x) => x && !x.video && x.platform === 'youtube' && (!(now - (x.clipTried || 0) < D) || (/APIFY_TOKEN/.test(x.videoError || '') && !!process.env.APIFY_TOKEN) || /memory limit/.test(x.videoError || ''))).slice(0, 3); /* a missing key is retried as soon as the key is there; Apify's all-runs memory cap at the next tick */ let n = 0;
       for (const it of todo) { it.clipTried = now;
         try { const f = await videoRead('file', { url: it.url, platform: it.platform, id: it.id, slug: brand.slug }); it.video = await saveMedia(f.buf, '.mp4'); delete it.videoError; if (it.durationS == null) it.durationS = f.durationS ?? null; n++; }
         catch (e) { it.videoError = e.message.slice(0, 120); log.warn('[research] viral clip heal', it.id, e.message); } }

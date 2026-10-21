@@ -33,8 +33,8 @@ export function createApify({ token = process.env.APIFY_TOKEN || cliToken(), log
     inflight.set(k, p); p.finally(() => inflight.delete(k)).catch(() => {});
     return p;
   }
-  async function runLive(actor, input = {}, { timeoutSecs = 240, maxItems = 200, startUsd = 0.005, perItemUsd = 0.003, maxUsd = 0.25, tag } = {}) {
-    const u = `https://api.apify.com/v2/acts/${String(actor).replace('/', '~')}/run-sync-get-dataset-items?format=json&clean=1&timeout=${timeoutSecs}&maxItems=${maxItems}&maxTotalChargeUsd=${maxUsd}`;
+  async function runLive(actor, input = {}, { timeoutSecs = 240, maxItems = 200, startUsd = 0.005, perItemUsd = 0.003, maxUsd = 0.25, memory = null, tag } = {}) {
+    const u = `https://api.apify.com/v2/acts/${String(actor).replace('/', '~')}/run-sync-get-dataset-items?format=json&clean=1&timeout=${timeoutSecs}&maxItems=${maxItems}&maxTotalChargeUsd=${maxUsd}${memory ? `&memory=${memory}` : ''}`; /* memory (MB): the account caps all runs at once */
     const r = await fetchImpl(u, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` }, body: JSON.stringify(input), signal: AbortSignal.timeout((timeoutSecs + 30) * 1e3) });
     const t = await r.text(); let j = null; try { j = JSON.parse(t || '[]'); } catch {}
     // a run that started is paid for even when it fails

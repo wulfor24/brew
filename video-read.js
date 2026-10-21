@@ -68,12 +68,15 @@ export function createVideoRead({ packs, treg, ai, apify = null, log = console, 
        so an Apify downloader fetches it on its side and keeps the mp4 in its store for ~3 days; we download it at once. About
        $0.003-0.02 a Short (per MB); the run is cached a day, so saving then reading one video pays once */
     if (v.platform === 'youtube') { if (!apify?.live) throw new Error('YouTube clips need APIFY_TOKEN');
-      const items = await apify.run('streamers/youtube-video-downloader', { videos: [{ url: `https://www.youtube.com/shorts/${v.id}` }], storeInKVStore: true, preferredQuality: '720p', preferredFormat: 'mp4' }, { tag: `${tag}-yt`, maxItems: 1, timeoutSecs: 180, startUsd: 0, perItemUsd: 0.02, maxUsd: 0.5 });
+      /* one at a time on 1 GB: the Apify account caps the memory of all its runs at once (several brands healing together hit it) */
+      const go = () => apify.run('streamers/youtube-video-downloader', { videos: [{ url: `https://www.youtube.com/shorts/${v.id}` }], storeInKVStore: true, preferredQuality: '720p', preferredFormat: 'mp4' }, { tag: `${tag}-yt`, maxItems: 1, timeoutSecs: 180, startUsd: 0, perItemUsd: 0.02, maxUsd: 0.5, memory: 1024 });
+      const mine = ytQueue.then(go, go); ytQueue = mine.catch(() => {}); const items = await mine;
       const it = items.find((x) => x?.downloadedFileUrl) || null; if (!it) throw new Error(`youtube download: ${String(items[0]?.note || items[0]?.[' note'] || 'no file came back').slice(0, 120)}`);
       return { url: it.downloadedFileUrl, durationS: it.durationSeconds ?? null }; }
     if (v.platform === 'web' && /\.(mp4|mov|webm)(\?|$)/i.test(v.url)) return { url: v.url };
     return { url: null };
   }
+  let ytQueue = Promise.resolve(); /* YouTube downloads, one after another */
   async function download(u, id) {
     const r = await fetchFn(u, { headers: { 'user-agent': UA }, redirect: 'follow', signal: AbortSignal.timeout(120e3) }); if (!r.ok) throw new Error(`download ${r.status}`);
     const len = +(r.headers.get('content-length') || 0); if (len > MAX_BYTES) throw new Error('video too big');
