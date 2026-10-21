@@ -57,7 +57,6 @@ test('3: a failed read drops Skip ahead and "Reading …", and the skip never ru
   const a = app(), err = a.slice(a.indexOf("if (ev.type === 'error') { failed = true;"), a.indexOf("if (ev.type === 'ready') { es.close(); finishRead(); }"));
   assert.match(err, /\$\('#skip'\)\?\.remove\(\)/); assert.match(err, /We couldn’t read \$\{B\.brand\.name\}/);
   assert.match(a, /\$\('#skip'\)\.onclick = \(\) => \{ if \(failed\) return;/);
-  assert.match(src('public/onboard2.js'), /const skipAhead = \(\) => \{ if \(st\.error && mode !== 'q'\) return errorScreen\(\);/);
 });
 
 /* 4. one count */

@@ -1,0 +1,90 @@
+/* Parts the feed shares: the feed's end, Drop anything, the team pop, the jam chips' results, Your feed, and the reading
+   screen's questions. Tokens, type, radii and motion come from feed-system.css. */
+
+/* the feed's end */
+
+.feed-end.fe2{border:1px solid var(--line);border-radius:var(--r-card);padding:48px 32px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+.feed-end.fe2 b{font-size:17px;font-weight:500;color:var(--fg)}
+.feed-end.fe2 span{font-size:14px;line-height:20px;color:var(--fg-2);max-width:340px;margin-bottom:14px}
+.feed-end.fe2 .btn{display:inline-flex;align-items:center;gap:8px}
+
+/* Drop anything here (What Brew learned) and where a dropped file goes */
+
+.m2-drop{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:26px 20px 22px;border:1px dashed var(--line);border-radius:var(--r-card);background:var(--card);transition:border-color .15s,background .15s}
+.m2-drop.is-over{border-color:var(--fg-2);background:var(--surface)}
+.m2-up{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:var(--surface-2);margin-bottom:4px}
+.m2-drop b{font-size:15px;font-weight:600}
+.m2-drop > span:not(.m2-up){max-width:360px;font-size:13px;line-height:18px;color:var(--fg-3);margin-bottom:8px}
+
+
+.m2-chips{display:flex;flex-wrap:wrap;gap:8px}
+.m2-sheet .m2-q{margin:0 0 10px;color:var(--fg-2);font-size:14px}
+.m2-dest{display:flex;align-items:flex-start;gap:12px;width:100%;padding:12px 14px;margin-bottom:8px;border:1px solid var(--line);border-radius:14px;background:var(--glass-row);color:var(--fg);font:inherit;text-align:left;cursor:pointer}
+.m2-dest:hover{background:var(--glass-row-h)}
+.m2-dest.is-busy{opacity:.6}
+.m2-dest b{display:block;font-size:14px;font-weight:600}
+.m2-dest small{display:block;font-size:13px;color:var(--fg-3);margin-top:2px}
+
+/* the top bar's "N with the team" pop, and the jam chips' results (the publish pack, the projected impact) */
+
+.t2-pop{position:fixed;z-index:95;width:340px;max-height:70vh;overflow:auto;padding:8px;border-radius:18px;background:var(--card);border:1px solid var(--line);box-shadow:var(--sh-raised)}
+.t2-pop header{padding:8px 10px 10px}.t2-pop header b{display:block;font-size:14px}.t2-pop header small{color:var(--fg-3);font-size:12.5px}
+.t2-bi{display:flex;align-items:center;gap:10px;width:100%;padding:10px;border:0;border-radius:12px;background:transparent;color:var(--fg);font:inherit;text-align:left;cursor:pointer}
+.t2-bi:hover{background:var(--glass-row-h)}
+.t2-bt{flex:1;min-width:0}.t2-bt b{display:block;font-size:13.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.t2-bt small{font-size:12px;color:var(--fg-3)}
+.t2-bs{flex:0 0 auto;font-size:11.5px;padding:3px 8px;border-radius:999px;background:var(--glass-pill);color:var(--fg-2)}
+.t2-bs.is-received,.t2-bs.is-in_progress{background:var(--info-bg);color:var(--info)}.t2-bs.is-needs_info{background:var(--warn-bg);color:var(--warn)}.t2-bs.is-delivered{background:var(--ok-bg);color:var(--ok)}
+.t2-empty{padding:10px;color:var(--fg-3);font-size:13px}.t2-pop footer{padding:6px 10px 4px}
+
+.j2-pack{display:flex;align-items:center;gap:10px;margin-top:8px}.j2-pack small{color:var(--fg-3)}
+.j2-todo{margin-top:8px;font-size:13px;color:var(--fg-2)}
+.j2-imp{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;margin:10px 0 6px;padding:14px 16px;border-radius:16px;background:var(--surface);border:1px solid var(--line-soft)}
+.j2-imp b{font-size:30px;line-height:34px;font-weight:600;letter-spacing:-.02em}.j2-imp b small{font-size:14px;font-weight:500;color:var(--fg-2)}
+.j2-imp span{flex-basis:100%;font-size:13px;color:var(--fg-2)}
+.j2-conf{font-style:normal;font-size:11.5px;padding:2px 8px;border-radius:999px;background:var(--glass-pill);color:var(--fg-2)}
+.j2-conf.is-high{background:var(--ok-bg);color:var(--ok)}.j2-conf.is-medium{background:var(--info-bg);color:var(--info)}
+.j2-why summary{cursor:pointer;font-size:13px;color:var(--fg-2)}.j2-why ul{margin:6px 0;padding-left:18px;font-size:13px;color:var(--fg-2)}.j2-why small{font-size:12px;color:var(--fg-3)}
+
+/* Your feed */
+.tu-sig,.tu-ag{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line-soft)}
+.tu-sig.is-off{opacity:.5}
+.tu-t{flex:1;min-width:0}.tu-t b{display:block;font-size:14px;font-weight:500}.tu-t small{font-size:12.5px;color:var(--fg-3)}
+.tu-k{display:grid;place-items:center;width:26px;height:26px;border-radius:8px;background:var(--surface)}.tu-k.is-like{color:var(--bad)}
+.tu-seg{display:flex;padding:3px;border-radius:10px;background:var(--surface)}
+.tu-seg button{height:28px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:var(--fg-3);font:inherit;font-size:12.5px;cursor:pointer}
+.tu-seg button[aria-checked="true"]{background:var(--surface-2);color:var(--fg)}
+.tu-add{display:flex;gap:8px;margin-bottom:10px}.tu-add input{flex:1;height:34px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--fg);font:inherit;font-size:14px}
+.m2-chips .chip{display:inline-flex;align-items:center;gap:4px}
+
+.tu-col{width:min(720px,100%)}
+
+/* ---- the reading screen's questions (questions.js), in the onboarding's words and sizes ---- */
+.v2-body{gap:16px}
+.v2-body.is-in>*{animation:rise .36s var(--settle) both}
+.v2-body .ob2-h{font-size:clamp(28px,3.2vw,40px)}
+
+.v2-hint{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.v2-hint kbd,.v2-kbd{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:6px;background:var(--surface);color:var(--fg-2);font:600 11px/1 var(--font-mono)}
+.ob2-tile .v2-kbd{align-self:flex-end;margin-top:auto;padding-top:0;color:var(--fg-3);opacity:.8}
+.ob2-tile .v2-kbd:first-child{margin-top:0;margin-bottom:-6px}
+.ob2-prod .v2-kbd{position:absolute;left:14px;top:14px;z-index:1;background:rgba(255,255,255,.92);color:#111}
+.ob2-tile .ob2-ic img{width:22px;height:22px;object-fit:contain}
+.ob2-tile .ob2-ic .lg{width:34px;height:34px;border-radius:10px}
+.v2-star{display:block;margin-top:2px;font-size:12px;color:var(--fg-3)}
+.ob2-nav #v2-next:disabled{opacity:.45;cursor:not-allowed}
+
+/* products and rivals: the check page's own rows */
+.v2-prods .ob2-prod{min-height:200px}
+.v2-prods .ob2-prod img{aspect-ratio:1;max-height:150px}
+.v2-noimg{display:block;width:100%;aspect-ratio:1;max-height:150px;border-radius:10px;background:var(--surface);margin-bottom:6px}
+.ob2-prod .v2-x{position:absolute;right:10px;bottom:10px;width:28px;height:28px;border-radius:9px;background:var(--surface);color:var(--fg-2)}
+.ob2-prod .v2-x:hover{background:var(--surface-2);color:var(--fg)}
+.ob2-prod b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;padding-right:4px}
+.v2-rows{display:flex;flex-direction:column;gap:10px}
+.v2-rows .lg-row{padding:10px 10px 10px 12px;cursor:default}
+.v2-rows .v2-kbd{flex:0 0 auto}
+.v2-rows .lg-ic img{width:22px;height:22px;border-radius:6px;background:#fff;object-fit:contain}
+.v2-rows .icon-btn{margin-left:auto}
+
+/* phones */
+@media (max-width:980px){.v2-body{padding:24px 0}}

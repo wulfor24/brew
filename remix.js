@@ -1382,42 +1382,19 @@ export function createRemix(o) {
     TAKE_JOBS.set(v.id, { chId: ch.id, run });
     return true;
   };
-  /* what the sheet opens on, read only (nothing built, saved or spent): the words and picture Save writes to, i.e. the card's
-     latest take, else the package a first take would start from. Its picture is ours (a draft or a take), never a rival's poster */
-  const v2Peek = (t, c) => { const ref = isReferenceCard(c) ? o.refSummary?.(t, c) || null : null; /* View references in Make it yours */
-    const out = v2PeekOf(t, c); return ref ? { ...out, ref } : out; };
-  const v2PeekOf = (t, c) => {
-    const r = recipeFor(c), mine = latestTake(t, c, r);
-    if (mine) { ensurePkg(t, mine); const v = headOf(t, mine), img = v?.snapshot?.image || mine.pkg?.image || null;
-      return { words: takeWords(mine), image: img && !isResearchImage(img) ? img : null, drawing: !!v?.drawing, changeId: mine.id }; }
-    const x = mockOptions(t, c, r, '', 1)[0], f = familyOf(x.action), act = actOf(x.action);
-    const a = afterFromPkg(f, rulePkg(t, act.agent, f, cleanPkg(f, x.action, x.pkg || mockPkg(f, x.action, c, 0, '', FACTS), clean)));
-    return { words: { title: String(a.title || ''), body: String(a.sub || '') }, image: null };
-  };
+  /* Another take (the card's own button): the next version answers at once with drawing:true; its words and picture come in the background */
   const v2Remix = async (b, t, c) => {
     healTakes(t);
     const ask = clean(String(b.prompt || '').trim() || String(b.chip || '').trim()).slice(0, 300), take = !!b.take;
     const r = recipeFor(c), cv = ensureCardVersion(t, c), ch = takeChange(t, c, r, cv), before = { ...ch.after };
-    let words = null;
-    const set = b.set && typeof b.set === 'object' ? { title: clean(String(b.set.title ?? '')).trim().slice(0, 160), body: clean(String(b.set.body ?? '')).trim().slice(0, 1200) } : null; /* typed by hand: applied as is, nothing spent */
-    if (set && !set.title && !set.body) return { error: 'Type a title or a body first.', changeId: ch.id };
-    if (set) { const cur = takeWords(ch); words = { title: set.title || cur.title, body: set.body || cur.body, label: 'Your words' }; putWords(t, ch, c, words); }
-    else if (b.words) { try { words = await rewriteWords(t, c, ch, ask); putWords(t, ch, c, words); } catch (e) { log.warn('[v2 words]', e.message); return { error: e.message, changeId: ch.id }; } }
     t.acted.add(c.id);
-    if (b.words) {
-      const v = version(t, ch, set ? 'you' : `ai:${ch.agent}`, set ? 'Your words' : `New words${ask ? `: ${ask.slice(0, 80)}` : ''}`, words.label || 'New words');
-      signal(t, 'edit', { before, after: ch.after, agent: ch.agent, changeId: ch.id, by: set ? 'you' : 'ai-asked' }, now(t));
-      mirrorTake(t, c, ch, v); o.save?.(t);
-      return { ok: true, changeId: ch.id, versionId: v.id, n: v.n, words: takeWords(ch) };
-    }
     const prev = headOf(t, ch); if (take && prev) prev.passed = true;
-    const v = version(t, ch, `ai:${ch.agent}`, take ? `Another take${ask ? `: ${ask.slice(0, 80)}` : ''}` : `New picture${ask ? `: ${ask.slice(0, 80)}` : ''}`, words?.label || (take ? 'Another take' : 'New picture'));
+    const v = version(t, ch, `ai:${ch.agent}`, take ? `Another take${ask ? `: ${ask.slice(0, 80)}` : ''}` : `New picture${ask ? `: ${ask.slice(0, 80)}` : ''}`, take ? 'Another take' : 'New picture');
     v.drawing = true; v.drawingAt = now(t); if (take) v.take = true;
-    if (words) signal(t, 'edit', { before, after: ch.after, agent: ch.agent, changeId: ch.id, by: 'ai-asked' }, now(t));
     mirrorTake(t, c, ch, v);
     /* Another take answers at once: its new words are written in the background (the AI call took minutes on a slow day and the
        button sat still), then its picture is drawn with them. The take is held in TAKE_JOBS meanwhile, so healTakes leaves it be */
-    if (take && !set) { const wj = (async () => {
+    if (take) { const wj = (async () => {
         try { let tm; const w2 = await Promise.race([rewriteWords(t, c, ch, ask), new Promise((_, no) => { tm = setTimeout(() => no(new Error('the words took over 90 s; the take keeps the last words')), 90e3); tm.unref?.(); })]).finally(() => clearTimeout(tm)); if (v.drawing) { putWords(t, ch, c, w2); v.snapshot = { ...v.snapshot, ...snapOf(ch) }; v.label = cleanLabel(w2.label) || v.label;
           signal(t, 'edit', { before, after: ch.after, agent: ch.agent, changeId: ch.id, by: 'ai-asked' }, now(t)); try { mirror(t, ch, v); } catch {} mirrorTake(t, c, ch, v); } }
         catch (e) { log.warn('[take words]', e.message); }
@@ -1425,13 +1402,12 @@ export function createRemix(o) {
       TAKE_JOBS.set(v.id, { chId: ch.id, run: wj }); o.save?.(t);
       return { queued: true, changeId: ch.id, versionId: v.id, n: v.n, drawing: true }; }
     drawTake(t, c, ch, v, ask); o.save?.(t);
-    return { queued: true, changeId: ch.id, versionId: v.id, n: v.n, drawing: !!v.drawing, ...(v.drawError ? { drawError: v.drawError } : {}), ...(words ? { words: takeWords(ch) } : {}) };
+    return { queued: true, changeId: ch.id, versionId: v.id, n: v.n, drawing: !!v.drawing, ...(v.drawError ? { drawError: v.drawError } : {}) };
   };
   on('POST', '/api/cards/:cid/remix', async (b, t, p) => {
     const c = t.cards.get(p.cid); if (!c) return { error: 'not found' };
-    if (b.peek) return v2Peek(t, c); /* v2 sheet: what it opens on */
     if (/^build-/.test(String(c.id || ''))) return { changes: [], navOnly: true }; /* "Read all 57 plans" goes to the moves, never a page-copy jam (QA J-14) */
-    if (b.words || b.queue) return v2Remix(b, t, c); /* v2: words first, the picture in the background (the block above) */
+    if (b.queue) return v2Remix(b, t, c); /* Another take: answers at once, the picture in the background (the block above) */
     const r = recipeFor(c); const cv = ensureCardVersion(t, c);
     const intent = String(b.intent || '').slice(0, 60), prompt = String(b.prompt || '').slice(0, 300);
     /* fast (opening a jam): the package is built at once from the card itself and the AI writes the lead option in the

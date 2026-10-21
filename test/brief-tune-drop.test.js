@@ -1,4 +1,4 @@
-// The UI2 makeover's backend (2026-10-16): Send brief + its status, Ask Brew, Your feed (tuning), Drop anything, and the guest
+// The backend built with the UI2 makeover (2026-10-16), all used by the one version: Send brief + its status, Your feed (tuning), Drop anything, and the guest
 // hole on a studio change's discard. Free: no AI, no network, in-memory packs.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -6,7 +6,6 @@ import fs from 'node:fs';
 import { startStatus, moveStatus, withTeam, briefParts, mdToEmailHtml, STATUSES } from '../brief-status.js';
 import { createJamMail } from '../jam-mail.js';
 import { createJamBrief } from '../jam-brief.js';
-import { answerAsk, createAskBrew, cleanSeed, ctxOf, search } from '../ask-brew.js';
 import { cleanTuning, tuneScore, learnedSignals, withoutIgnored, createTuning, AGENTS } from '../member-tuning.js';
 import { parseDrop } from '../drop.js';
 import { guestAllows, GUEST_DO } from '../feed-service.js';
@@ -105,48 +104,7 @@ test('the feed service wires Send brief: full email, demo never sends, statuses 
   assert.match(src('server.js'), /isStaff: \(email\) => auth\.isAdmin\(\{ email \}\)/);
 });
 
-/* ---------- 2. Ask Brew ---------- */
-const CARDS = [{ id: 'm03-1', title: 'Fix the slow product page', sub: 'Mobile LCP is 4.1s', agent: 'storefront' }, { id: 'm07-1', title: 'Winter gifting reel', sub: 'Lead with the cold hands moment', agent: 'creative' }];
-const MOVES = [{ n: 3, title: 'Speed up the store', gives: 'Faster product pages convert better' }, { n: 7, title: 'Gifting season', gives: 'Winter gift bundles' }];
-test('Ask Brew answers with AI and keeps only real card and move links', async () => {
-  let prompt = '';
-  const r = await answerAsk({ text: 'What should I fix on the product page?', seed: { cardId: 'm03-1' }, ctx: { brand: 'Acme', cards: CARDS, moves: MOVES, facts: '- LCP: 4.1s', seedText: 'the card' },
-    ai: async (p) => { prompt = p; return { answer: 'Speed up the product page first.', cards: ['m03-1', 'made-up'], moves: [3, 99] }; }, route: async () => ({ route: 'ai', intent: 'answer' }) });
-  assert.equal(r.by, 'ai'); assert.equal(r.body, 'Speed up the product page first.');
-  assert.deepEqual(r.links.map((l) => l.kind === 'card' ? l.id : l.n), ['m03-1', 3]); assert.equal(r.action, null);
-  for (const re of [/m03-1 · storefront · Fix the slow product page/, /3 · Speed up the store/, /- LCP: 4\.1s/, /They asked from here:\nthe card/]) assert.match(prompt, re);
-});
-test('Ask Brew with AI off never makes an answer up: it says so and links what mentions the question', async () => {
-  const r = await answerAsk({ text: 'Anything about gifting this winter?', ctx: { cards: CARDS, moves: MOVES }, ai: null, route: async () => ({ route: 'ai', intent: 'answer' }) });
-  assert.equal(r.by, 'search'); assert.match(r.body, /AI is offline/); assert.deepEqual(r.links.map((l) => l.id || l.n), ['m07-1', 7]);
-  const none = await answerAsk({ text: 'What about podcasts?', ctx: { cards: CARDS, moves: MOVES } });
-  assert.match(none.body, /can’t answer that\. Nothing in your feed or moves mentions it/); assert.deepEqual(none.links, []);
-  const failing = await answerAsk({ text: 'gifting', ctx: { cards: CARDS, moves: MOVES }, ai: async () => { throw new Error('down'); } });
-  assert.equal(failing.by, 'search', 'an AI failure falls back to the search, not a canned answer');
-});
-test('Ask Brew turns asks to make something into a jam and asks that need a person into a brief, with the old jam ctx', async () => {
-  const make = await answerAsk({ text: 'Make three versions of this', seed: { cardId: 'm07-1' }, ctx: { cards: CARDS, moves: MOVES }, route: async () => ({ route: 'ai', intent: 'versions' }) });
-  assert.deepEqual(make.action, { kind: 'jam', ctx: { post: 'm07-1' }, say: 'Open a jam to make it.' });
-  const team = await answerAsk({ text: 'Book a shoot', seed: { bulk: ['m03-1', 'm07-1'] }, ctx: { cards: CARDS }, route: async () => ({ route: 'team', label: 'a shoot' }) });
-  assert.equal(team.action.kind, 'brief'); assert.deepEqual(team.action.ctx, { bulk: [{ id: 'm03-1' }, { id: 'm07-1' }] }); assert.match(team.action.say, /a shoot/);
-  assert.deepEqual(cleanSeed({ cardId: 'c1', move: '7', bulk: [{ id: 'a' }, 'b', 'a'], signal: 'x', moves: true, junk: 1 }), { cardId: 'c1', move: 7, bulk: ['a', 'b'], signal: 'x', moves: true });
-  assert.equal(cleanSeed({}), null); assert.deepEqual(ctxOf({ signal: 'Rival dropped prices' }), { signal: 'Rival dropped prices' }); assert.deepEqual(ctxOf(null, 'hi'), { signal: 'hi' });
-  assert.deepEqual(search('', { cards: CARDS }), { cards: [], moves: [] });
-});
-test('the ask thread persists per person, and a photo dropped "just this once" rides on the next ask only', async () => {
-  const packs = memPacks(), A = createAskBrew({ packs, now: () => 5 });
-  await A.append('acme', 'mb_1', { from: 'me', body: 'hi' }, { from: 'brew', body: 'hello', links: [] });
-  assert.equal((await A.load('acme', 'mb_1')).msgs.length, 2); assert.equal((await A.load('acme', 'mb_2')).msgs.length, 0, 'another person’s thread is their own');
-  await A.pend('acme', 'mb_1', { kind: 'image', url: 'gen/ref-1.jpg' });
-  assert.deepEqual((await A.takePending('acme', 'mb_1')).map((f) => f.url), ['gen/ref-1.jpg']); assert.deepEqual(await A.takePending('acme', 'mb_1'), []);
-  await A.clear('acme', 'mb_1'); assert.equal((await A.load('acme', 'mb_1')).msgs.length, 0);
-  const s = src('feed-service.js');
-  assert.match(s, /on\('GET', '\/api\/tenants\/:id\/ask'/); assert.match(s, /on\('POST', '\/api\/tenants\/:id\/ask'/);
-  assert.match(s, /if \(reqOf\(t\)\?\.guest && !reqOf\(t\)\?\.member\) return \{ status: 403/);
-  assert.match(s, /const ai = isMock\(\) \|\| !spend\('text'\) \? null :/, 'mock and demo visitors never spend');
-});
-
-/* ---------- 3. Your feed ---------- */
+/* ---------- 2. Your feed ---------- */
 test('tuning: less / normal / more per agent and topics lift or sink a card; junk is dropped', () => {
   const tu = cleanTuning({ weights: { creative: 'more', crm: 'less', performance: 'loud', hacker: 'more' }, topics: ['Gifting', 'gifting', 'x', 'Winter sale'] });
   assert.equal(tu.weights.creative, 'more'); assert.equal(tu.weights.crm, 'less'); assert.equal(tu.weights.performance, 'normal'); assert.equal(tu.weights.hacker, undefined);
@@ -177,7 +135,7 @@ test('tuning persists per person per brand; the ranker reads it', async () => {
   assert.match(s, /on\('PUT', '\/api\/tenants\/:id\/tuning'/); assert.match(s, /on\('DELETE', '\/api\/tenants\/:id\/tuning\/signals\/:sid'/);
 });
 
-/* ---------- 4. Drop anything ---------- */
+/* ---------- 3. Drop anything ---------- */
 test('a drop takes text up to 4,000 characters or a PNG, JPG or WebP photo up to 8 MB', () => {
   assert.equal(parseDrop({ text: 'We never discount.' }).kind, 'text');
   const long = parseDrop({ text: 'x'.repeat(5000) }); assert.equal(long.text.length, 4000); assert.equal(long.cut, true);
@@ -192,7 +150,7 @@ test('a drop takes text up to 4,000 characters or a PNG, JPG or WebP photo up to
   assert.match(s, /addReference\(t, w, rel, f\.name\)/, 'once on a jam is the jam’s reference photo');
 });
 
-/* ---------- 5. the guest hole ---------- */
+/* ---------- 4. the guest hole ---------- */
 test('a guest of a jam can work in it but never discard or restore its studio change, nor send or move its brief', () => {
   const ctx = { wids: ['wk_1'], changes: { ch_1: { workId: 'wk_1', cardId: 'c1' }, ch_2: { workId: 'wk_9', cardId: 'c9' } }, cards: new Set(['c1']) };
   assert.equal(guestAllows('/api/changes/ch_1/discard', ctx), false); assert.equal(guestAllows('/api/changes/ch_1/restore', ctx), false);
@@ -236,10 +194,10 @@ test('an edited brief sent again does go out, even after a copy for your own tea
   const r = await ship({ to: 'shopos' }); assert.notEqual(r.already, true, 'a changed brief is a real send'); assert.equal(s.calls.sent.length, n1 + 1);
 });
 
-test('outside the team on live, Ask, Your feed and Drop take no writes; the demo allowance list stays as it was', () => {
+test('outside the team on live, Your feed and Drop take no writes; the demo allowance list stays as it was', () => {
   const src = fs.readFileSync(new URL('../feed-service.js', import.meta.url), 'utf8');
   const line = src.split('\n').find((l) => l.includes("if (outside && req.method !== 'GET'")) || '';
-  for (const w of ['ask|tuning', 'drop', '403', 'teamOnly']) assert.ok(line.includes(w), `no writes from outside the team (${w})`);
+  for (const w of ['tuning', 'drop', '403', 'teamOnly']) assert.ok(line.includes(w), `no writes from outside the team (${w})`);
   const demo = /const DEMO_OK = (\/.*\/);/.exec(src)[1]; for (const w of ['|ask', 'tuning', 'brands\\/[^/]+\\/drop']) assert.ok(!demo.includes(w), `${w} is not opened to non-makers`);
 });
 

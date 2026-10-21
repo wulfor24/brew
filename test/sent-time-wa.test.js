@@ -13,7 +13,7 @@ test('the pill items carry when the brief was sent; the client says it in the re
   const sentLine = new Function('SRV', `${src}; return sentLine;`)({ clock: sent + 36e5 });
   assert.match(sentLine(sent), /^Sent \d{1,2}:\d{2} [ap]m$/); assert.equal(sentLine(null), '');
   assert.match(new Function('SRV', `${src}; return sentLine;`)({ clock: sent + 864e5 })(sent), /^Sent yesterday \d{1,2}:\d{2} [ap]m$/);
-  assert.match(app, /Sent to the ShopOS team[^\n]*sentLine\(w0\.jamBrief\.sharedAt\)/, 'the jam’s sent bar'); assert.match(app, /j2-sent[^\n]*sentLine\(jb\.sharedAt\)/, 'the brief sheet');
+  assert.match(app, /Sent to the ShopOS team[^\n]*sentLine\(w0\.jamBrief\.sharedAt\)/, 'the jam’s sent bar');
 });
 
 test('WhatsApp buttons go through the one not-connected sheet', () => {

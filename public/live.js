@@ -323,8 +323,8 @@
   async function claim() { const r = await post(`/api/brands/${slug}/claim`); if (r.ok) { A().toast(`${ic('check', 's16')}${esc(B().brand.name)} is yours. Connect its accounts to see live numbers.`); setTimeout(() => location.reload(), 900); } else A().toastLong(esc(r.error || 'Could not claim'), 7000); }
 
   /* ---------- the account button in the rail ---------- */
-  /* Your feed (tune what the feed shows you) lives here in ui=1; UI2 has it on its own rail */
-  const tuneRow = () => document.body.classList.contains('ui2') ? '' : `<button class="lc-it" data-nav="tune">${ic('sliders', 's16')}<b>Your feed</b><span>Tune it</span></button>`;
+  /* Your feed (tune what the feed shows you) */
+  const tuneRow = () => `<button class="lc-it" data-nav="tune">${ic('sliders', 's16')}<b>Your feed</b><span>Tune it</span></button>`;
   /* ---------- help, privacy and deleting your data: the same rows for everyone (staff, team, visitor, signed out) ---------- */
   const HELLO = 'hello@joinsquareup.com';
   const meMail = () => { const e = L.me?.email; return e && !L.me?.demo && !/@demo\.brew$/i.test(e) ? e : ''; }; /* a demo visitor has no real address */

@@ -82,7 +82,6 @@ test('FEED-QA-05: steps that end empty (a store that did not open) wake no agent
   assert.equal(readFail('We could not open acme.in. Check the address and try again.'), 'We could not open acme.in. Check the address and try again.');
   assert.equal(readFail('The site timed out'), 'The site timed out. Check the address, or try again in a few minutes.');
   assert.equal(readFail(''), 'The store did not open for us. Check the address, or try again in a few minutes.');
-  assert.doesNotMatch(src('public/onboard2.js'), /\$\{esc\(st\.error\)\} Check the address/);
   assert.match(a, /r\.querySelector\('\.st'\)\.textContent = 'Nothing read'/);
 });
 
@@ -109,7 +108,7 @@ test('ONB-15: each setup step is saved per brand and a refresh resumes there (no
   for (const [fn, k] of [['const whoFor', 'who'], ['const wantWhat', 'want'], ['const connectWhat', 'connect'], ['const teamStep', 'team']]) {
     const body = a.slice(a.indexOf(fn), a.indexOf(fn) + 1600); assert.match(body, new RegExp(`obAt\\('${k}'\\)`), `${fn} saves its step`); }
   assert.match(a, /S\.onboarded = true; delete S\.obStep;/, 'finishing setup forgets the step');
-  assert.match(a, /else if \(GEN && !V2 && !askedSetup && OB_AT\[S\.obStep\] && !S\.onboarded\) ensureTenant\(true\)\.then\(resumeOb\)/);
+  assert.match(a, /else if \(GEN && !askedSetup && OB_AT\[S\.obStep\] && !S\.onboarded\) ensureTenant\(true\)\.then\(resumeOb\)/);
   assert.match(a, /const KEY = `\$\{LSP\(\)\}demo-v1`/, 'S (and the step in it) is kept per brand');
 });
 

@@ -1,4 +1,4 @@
-# 13 · Jam chip API (UI2)
+# 13 · Jam chip API
 
 Three routes in `remix.js` back the chips on the new one-page-per-card jam. All three take a change id (`ch.id`, the
 `change.id` the jam already has) and the usual tenant header (`x-tenant`). Errors come back as `{ error }` (HTTP 200,

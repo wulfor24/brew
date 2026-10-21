@@ -203,12 +203,6 @@
     let main = all.filter((d) => !d.take), takes = all.filter((d) => d.take).sort((a, b) => (b.at || 0) - (a.at || 0));
     if (!main.length && takes.length) { main = [takes[0]]; takes = takes.slice(1); }
     return `<section class="jm-drafts" aria-label="Drafts">${main.map((d) => draftHtml(d, w)).join('')}${takes.length ? `<details class="jm-takes"><summary>${ic('clock', 's14')}Earlier takes <span>${takes.length}</span></summary><div class="jm-takes-s">${takes.map(takeThumb).join('')}</div></details>` : ''}</section>`; };
-  const makeHtml = (w) => {
-    if (['deploying', 'measuring', 'result'].includes(w?.stage)) return '';
-    const busy = JM.making || (w?.drafts || []).some((d) => d.state === 'making');
-    return `<div class="jm-make"><button class="btn btn-ghost jm-make-go" data-jm-make="auto"${busy ? ' disabled' : ''}>${busy ? '<brew-load class="spin"></brew-load>Making the draft…' : `${ic('sparkles', 's16')}Make the first draft`}</button>
-      <div class="jm-make-as" role="group" aria-label="Or make it as">${Object.entries(AS).map(([k, [i, l]]) => `<button class="icon-btn" data-jm-make="${k}" title="Make it as ${l.toLowerCase()}" aria-label="Make it as ${l.toLowerCase()}"${busy ? ' disabled' : ''}>${ic(i, 's16')}</button>`).join('')}</div></div>`;
-  };
   /* the card's other ways to play it, as a quiet hint: tapping one puts it in the box to jam on */
   /* an empty chat opens on the case: what we saw, why it matters, the card's plan, and the one thing to press next */
   const caseHtml = (p, w) => { const c = p && A.cardOf ? A.cardOf(p) : null; if (!c?.title) return '';
@@ -237,23 +231,23 @@
         ${w?.doc?.moved ? `<div class="jm-note">The jam is on ${w.doc.moved.to === 'whatsapp' ? 'WhatsApp' : 'Slack'}. When you’re done there, <button class="linkbtn" data-jm-import>paste the chat back</button> and the brief updates.</div>` : ''}
         ${JM.importing ? `<div class="jm-import"><textarea id="jm-imp" rows="5" placeholder="Paste the WhatsApp or Slack chat, or just type what you agreed"></textarea><div><button class="linkbtn" data-jm-imp-x>Cancel</button><button class="btn btn-primary sm" data-jm-imp>${ic('sparkles', 's14')}Update the brief</button></div></div>` : ''}
         ${shipped ? `<div class="jm-shipped">${ic('check', 's14')}<span><b>${w.stage === 'result' ? 'Shipped and measured' : w.stage === 'measuring' ? `Live on ${esc(w.deploy?.target || 'your account')}` : 'Shipping now'}</b> · this is the brief that went out. Ask below to start the next version.</span></div>` : ''}
-        ${A.SPLIT ? briefTop(p, w) : draftsHtml(w)}
+        ${briefTop(p, w)}
         <small class="jm-kind">${esc(doc?.kind || 'Brief')}${w?.doc?.edits?.[0] ? ` · edited by ${esc(w.doc.edits[0].by === 'you' ? 'you' : w.doc.edits[0].by)}` : ' · from the card'}</small>
         ${doc ? `<article class="jm-doc" contenteditable="${shipped || (w?.jamBrief && !EARLY.includes(w.stage)) ? 'false' : 'true'}" spellcheck="true" data-jm-doc aria-label="The brief. Type to edit.">${toHtml(doc.md, JM.flash)}</article>` : '<div class="sk" style="height:320px;border-radius:12px"></div>'}
         ${shipped ? '' : doc?.missing?.length ? `<p class="jm-missing">Still missing: ${doc.missing.map((x) => `<button class="linkbtn" data-jm-fill="${esc(x)}">${esc(x.toLowerCase())}</button>`).join(', ')}</p>` : doc ? `<p class="jm-missing ok">${ic('check', 's14')}Everything the next team needs is in here.</p>` : ''}
-        ${questions(w)}${A.SPLIT ? draftsHtml(w) : ''}`
-      : `<div class="jm-thread" id="jm-thread">${A.SPLIT && caseHtml(p, w) ? `<div class="jm-empty has-case">${caseHtml(p, w)}${msgs.length ? '' : altsHtml(p)}</div>` : ''}${msgs.length ? msgs.map((m) => msgHtml(m, w)).join('') : A.SPLIT && caseHtml(p, w) ? '' : `<div class="jm-empty"><b>What should change?</b><span>Type or talk. ${A.SPLIT ? 'The left side updates as you go.' : 'Everything agreed lands in the brief.'} @ brings in a teammate or the ShopOS team.</span>${altsHtml(p)}</div>`}${typingHtml(w)}${JM.busy ? `<div class="jm-m"><span class="jm-fav">${face(w?.agent || 'creative')}</span><div class="jm-mb"><div class="jm-bub"><span class="jm-typing"><i></i><i></i><i></i></span></div></div></div>` : ''}</div>`}
+        ${questions(w)}${draftsHtml(w)}`
+      : `<div class="jm-thread" id="jm-thread">${caseHtml(p, w) ? `<div class="jm-empty has-case">${caseHtml(p, w)}${msgs.length ? '' : altsHtml(p)}</div>` : ''}${msgs.length ? msgs.map((m) => msgHtml(m, w)).join('') : caseHtml(p, w) ? '' : `<div class="jm-empty"><b>What should change?</b><span>Type or talk. The left side updates as you go. @ brings in a teammate or the ShopOS team.</span>${altsHtml(p)}</div>`}${typingHtml(w)}${JM.busy ? `<div class="jm-m"><span class="jm-fav">${face(w?.agent || 'creative')}</span><div class="jm-mb"><div class="jm-bub"><span class="jm-typing"><i></i><i></i><i></i></span></div></div></div>` : ''}</div>`}
       </div>
       <form class="jm-compose" id="jm-f">${(() => { const ms = mentionMatches(); if (!ms.length) return ''; JM.mi = Math.min(JM.mi || 0, ms.length - 1); return `<div class="jm-mentions" role="listbox">${ms.map((x, i) => `<button type="button" role="option" aria-selected="${i === JM.mi}" class="${i === JM.mi ? 'is-on' : ''}" data-jm-mention="${esc(x.fresh ? x.email : x.name)}">${x.html}<b>${esc(x.name)}</b>${x.sub ? `<small>${esc(x.sub)}</small>` : ''}</button>`).join('')}</div>`; })()}
-        <textarea id="jm-in" rows="1"${A.SPLIT ? ' data-nomic' : ''} placeholder="${shipped ? 'Ask for the next version, or @ someone…' : w?.with?.kind === 'team' ? `Reply to ${esc(w.with.name)}, or ask AI…` : A.SPLIT ? 'What should change?' : 'Ask AI to change the brief, or @ someone…'}" aria-label="Message">${esc(JM.draft)}</textarea>${A.SPLIT && window.Composer?.tools ? `<span class="jm-tools">${window.Composer.tools()}<span class="jm-tools-r">${window.Mic?.supported ? `<button type="button" class="jm-mic" data-cmp-talk aria-label="Talk instead of typing">${ic('mic', 's16')}</button>` : ''}<button class="jm-send${JM.busy ? ' is-wait' : ''}" aria-label="Send" ${JM.busy ? 'disabled aria-busy="true"' : ''}>${JM.busy ? '<brew-load class="spin"></brew-load>' : ic('up', 's16')}</button></span></span>` : `<button class="jm-send${JM.busy ? ' is-wait' : ''}" aria-label="Send" ${JM.busy ? 'disabled aria-busy="true"' : ''}>${JM.busy ? '<brew-load class="spin"></brew-load>' : ic('up', 's16')}</button>`}</form>
-      ${A.SPLIT && window.Composer?.foot ? window.Composer.foot() : ''}${A.SPLIT ? '' : makeHtml(w)}${shipHtml(w, doc)}
+        <textarea id="jm-in" rows="1" data-nomic placeholder="${shipped ? 'Ask for the next version, or @ someone…' : w?.with?.kind === 'team' ? `Reply to ${esc(w.with.name)}, or ask AI…` : 'What should change?'}" aria-label="Message">${esc(JM.draft)}</textarea>${window.Composer?.tools ? `<span class="jm-tools">${window.Composer.tools()}<span class="jm-tools-r">${window.Mic?.supported ? `<button type="button" class="jm-mic" data-cmp-talk aria-label="Talk instead of typing">${ic('mic', 's16')}</button>` : ''}<button class="jm-send${JM.busy ? ' is-wait' : ''}" aria-label="Send" ${JM.busy ? 'disabled aria-busy="true"' : ''}>${JM.busy ? '<brew-load class="spin"></brew-load>' : ic('up', 's16')}</button></span></span>` : `<button class="jm-send${JM.busy ? ' is-wait' : ''}" aria-label="Send" ${JM.busy ? 'disabled aria-busy="true"' : ''}>${JM.busy ? '<brew-load class="spin"></brew-load>' : ic('up', 's16')}</button>`}</form>
+      ${window.Composer?.foot ? window.Composer.foot() : ''}${shipHtml(w, doc)}
     </div>`;
   };
 
   // the card page calls this every time it paints
   const decorateDetail = (dp, DP) => {
     if (!dp || !DP) return; const p = DP.p, w = DP.w;
-    if (JM.cid !== p.id) Object.assign(JM, { cid: p.id, tab: DP.opts?.jamTab || (A.SPLIT ? 'chat' : w?.thread?.length && w.stage !== 'drafting' ? 'chat' : 'brief'), share: false, draft: DP.opts?.draft || '', busy: '', flash: [], confirm: null, menu: false, importing: false });
+    if (JM.cid !== p.id) Object.assign(JM, { cid: p.id, tab: DP.opts?.jamTab || 'chat', share: false, draft: DP.opts?.draft || '', busy: '', flash: [], confirm: null, menu: false, importing: false });
     JM.later = w && !EARLY.includes(w.stage) ? ($('.dp-f', dp)?.innerHTML || '') : '';
     if (!w) loadPreview(p); loadMoves(p); pollDrafts();
     dp.classList.add('has-jm'); paint(dp);
@@ -265,8 +259,6 @@
     const nb = $('.jm-b', side), nt = $('#jm-thread'); const nMsg = nt ? $$('.jm-m', nt).length : 0, seen = JM.nMsg?.[p.id] !== undefined, grew = nMsg > (JM.nMsg?.[p.id] || 0); JM.nMsg = { ...(JM.nMsg || {}), [p.id]: nMsg };
     /* the case stays first in the chat and scrolls up as messages come: a fresh chat is read from its top, a new message brings the chat down to it */
     if (nt && $('.case', nt)) { if (nb) nb.scrollTop = !nMsg ? 0 : grew ? nb.scrollHeight : bs || nb.scrollHeight; } else if (nt && near) nt.scrollTop = nt.scrollHeight; else if (nb && bs) nb.scrollTop = bs;
-    /* UI2 restacks the card page into one column (ui2.css): the page scrolls, not the thread, so a new message is brought into view there */
-    if (grew && seen && nMsg && document.body.classList.contains('ui2') && innerWidth > 900 && dp.classList.contains('dp-full')) { window.__jmGrew = true; requestAnimationFrame(() => { window.__jmGrew = false; }); const pg = dp.querySelector('.dp-page'); if (pg) pg.scrollTop = pg.scrollHeight; } /* app.js repaintDetail keeps it there across the repaint that follows */
     const i = $('#jm-in'); grow(i); if (keep) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
     if (JM.flash.length) { const first = $('.jm-doc .is-new'); if (first && JM.tab === 'brief') first.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); setTimeout(() => { JM.flash = []; $$('.jm-doc .is-new').forEach((x) => x.classList.remove('is-new')); }, 2600); }
   };
@@ -376,7 +368,7 @@
       if (r.work && W()?.id === w0.id) { const landed = (r.work.drafts || []).filter((d) => making.includes(d.id) && d.state !== 'making'); if (landed.some((d) => !d.failed)) A.sound?.('ready'); else if (landed.length) A.sound?.('error'); /* a draft or final just landed, or didn't come through */ A.putWork(r.work); if (isEditing()) { const m = $('.jm-make'); if (m) m.outerHTML = makeHtml(r.work); } else A.repaintDetail(); } pollDrafts(); }, 4000);
   };
   const makeDraft = async (as) => {
-    if (JM.making) return; JM.making = true; if (!A.SPLIT) JM.tab = 'brief'; paint(); /* split: the draft shows on the canvas, the chat stays */
+    if (JM.making) return; JM.making = true; paint(); /* the draft shows on the canvas, the chat stays */
     const w = await ensureWork(); if (!w) { JM.making = false; return paint(); }
     const el = $('[data-jm-doc]'); if (el && JM.saveT) await saveDoc(el);
     const had = new Set((w.drafts || []).map((d) => d.id)), r = await A.tapi('POST', `/api/work/${w.id}/draft`, { as }); JM.making = false;

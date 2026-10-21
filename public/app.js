@@ -66,19 +66,8 @@
   const poss = (n) => `${esc(n)}${/s$/i.test(String(n ?? '').trim()) ? '’' : '’s'}`; // Allbirds’ feed, Comet’s feed
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const ls = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }, del(k) { try { localStorage.removeItem(k); } catch (e) {} } };
-  /* UI2: the designer's makeover (2026-10-16), built behind a flag. ?ui=2 turns it on for this browser, ?ui=1 turns it off.
-     Same data, same API calls; only the markup and styles differ (public/ui2.css). */
-  const UI2 = (() => { const q = new URLSearchParams(location.search).get('ui'); if (q === '2') ls.set('brew-ui', '2'); else if (q === '1') ls.del('brew-ui'); return ls.get('brew-ui') === '2'; })();
-  if (UI2) document.body.classList.add('ui2');
-  /* V2 (2026-10-18): "the morning" onboarding, the review stack, the gate and the Make-it-yours sheet, behind one flag so it is
-     tested on the live site first. ?v=2 turns it on for this browser, ?v=1 turns it off; with neither stored, BREW_V (deploy.sh)
-     decides. public/onboard2.js, public/make-sheet.js, public/v2.css; nothing below changes behaviour while it is off. */
-  const V2 = (() => { const q = new URLSearchParams(location.search).get('v'); if (q === '2') ls.set('brew-v', '2'); else if (q === '1') ls.set('brew-v', '1'); const v = ls.get('brew-v'); return v === '2' || (!v && String(window.BREW_V || '1') === '2'); })();
-  if (V2) document.body.classList.add('v2');
-  /* FEED_STACK (2026-10-18), inside v2 only: the first time the feed opens on a given day (the brand's date, this workspace) the
-     day's top cards come as the swipe stack from onboard2.js before the scroll feed. ?stack=1 turns it on for this browser,
-     ?stack=0 off; with neither stored, FEED_STACK (deploy.sh) decides. Never on ?go=feed, a jam, a card or a studio link. */
-  const FEED_STACK = V2 && (() => { const q = new URLSearchParams(location.search).get('stack'); if (q === '1') ls.set('brew-stack', '1'); else if (q === '0') ls.set('brew-stack', '0'); const v = ls.get('brew-stack'); return v === '1' || (!v && String(window.FEED_STACK || '0') === '1'); })();
+  /* a rival's ad card, or one built on a rival's ad (rival-ad.js isRivalCard): its poster is only ever shown as theirs */
+  const isRival = (p) => p?.research?.kind === 'ad' || !!p?.research?.ad || p?.make?.from === 'rival';
   /* the brand's own date and hour (its zone from the pack; else its offset; else this browser's clock) */
   const brandClock = () => { const z = window.BREW_MONEY || {}, now = new Date(); const pad = (n) => String(n).padStart(2, '0');
     try { if (z.tz) { const P = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: z.tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit' }).formatToParts(now).map((x) => [x.type, x.value])); return { day: `${P.year}-${P.month}-${P.day}`, hour: +P.hour }; } } catch (e) { /* an unknown zone: the offset below */ }
@@ -383,7 +372,6 @@
       <aside class="ob2-show" id="ob-show" aria-hidden="true">${show || (step ? pvLast : '')}</aside></main>`; };
   /* why a read failed, said once: the server's reason when it already tells them what to do, else the reason and what to do */
   const readFail = (msg) => { const m = String(msg || '').trim() || 'The store did not open for us.'; return /try again|check the address/i.test(m) ? m : `${m.replace(/\.?$/, '.')} Check the address, or try again in a few minutes.`; };
-  window.__readFail = readFail; /* onboard2.js says it the same way */
   /* who may run Brew on a store, said once on the landing and the check page (no gate behind it) */
   const OWN_LINE = 'Run Brew on your own store, or one you work on. Your team claims the workspace; others only see what’s public.';
   /* is it a website address? { ok } | { name, guess } (a brand name with no dot: one guess, <name>.com) | { bad } */
@@ -392,16 +380,16 @@
     if (!/[./:]/.test(x) && /^[\p{L}\p{N}][\p{L}\p{N} &'’-]{0,60}$/u.test(x) && x.split(/\s+/).length <= 2) { /* a brand name is a word or two ("Footshop", "Only Natural"); a sentence is not a site */ const g = x.toLowerCase().normalize('NFKD').replace(/[^a-z0-9-]/g, '').replace(/^-+|-+$/g, ''); return { name: true, guess: g ? `${g}.com` : null }; }
     return { bad: true }; };
   const start = () => {
-    /* v2 keeps this start page; the brand page's read is where v2 begins (setup → OB2.run) */
+    /* the start page; a brand page's read begins at setup */
     document.body.classList.remove('deck-on'); view = 'start';
     const art = B.startArt || ['assets/intro-1.jpg', 'assets/intro-2.jpg', 'assets/intro-3.jpg'];
     // the landing page shows what the feed says, for any brand: no one brand's photos, no one country's money
     const LAND_CARDS = [['crm', 'Heard this week', '14 people asked the same sizing question on Reddit. Answer it once, everywhere.', '#1c2a44'], ['visibility', 'AI answers', 'ChatGPT names you in 1 of 4 buyer questions. Here is how to get to 2.', '#2b2440'], ['creative', 'Coming up', 'The next big sale day is in 5 weeks. Planning starts today.', '#3a2a1f']];
     window.scrollTo(0, 0); root.innerHTML = shell(`
-        ${UI2 ? `<span class="ob2-mark">${SO()}</span>` : '<span class="ob2-eyebrow">Design partner preview</span>'}
-        <h1 class="ob2-h">${UI2 ? 'Your brand’s next marketing moves, each with its sources.' : 'Your store’s marketing team, in one feed.'}</h1>${UI2 && !DEMO_LAND ? '<p class="ob2-ask">Let’s start with your URL.</p>' : ''}
+        <span class="ob2-eyebrow">Design partner preview</span>
+        <h1 class="ob2-h">Your store’s marketing team, in one feed.</h1>
         <p class="ob2-lede">${DEMO_LAND ? 'Pick a real brand below and watch it run. Brew reads' : 'Add your website. Brew reads'} your store, reviews, rivals and AI answers, then ${SF_ON ? 'five' : 'four'} agents bring you ideas you shape together and hand over as one brief.</p>
-        ${DEMO_LAND ? `<div class="ob2-demos" id="demos" aria-busy="true">${loader('Finding the demo brands', '', 'sm')}</div>` : `<form class="ob2-url" id="url-form" autocomplete="off">${ic('link', 's18')}<input id="url-in" value="${LANDING ? '' : B.brand.host}" placeholder="yourbrand.com" aria-label="Your website" aria-describedby="url-err" inputmode="url" enterkeyhint="go" autocapitalize="off" spellcheck="false"${window.BREW_DEMO && !LANDING ? ` readonly aria-readonly="true" title="This demo is set up for ${esc(B.brand.host)}"` : ''}><button class="btn btn-primary" id="go" type="submit">${UI2 ? 'Read my store' : 'Build my feed'} ${ic('right', 's16')}</button></form>${LANDING ? `<p class="ob2-err" id="url-err" role="alert" hidden></p><p class="ob2-own">${OWN_LINE}</p>` : ''}`}
+        ${DEMO_LAND ? `<div class="ob2-demos" id="demos" aria-busy="true">${loader('Finding the demo brands', '', 'sm')}</div>` : `<form class="ob2-url" id="url-form" autocomplete="off">${ic('link', 's18')}<input id="url-in" value="${LANDING ? '' : B.brand.host}" placeholder="yourbrand.com" aria-label="Your website" aria-describedby="url-err" inputmode="url" enterkeyhint="go" autocapitalize="off" spellcheck="false"${window.BREW_DEMO && !LANDING ? ` readonly aria-readonly="true" title="This demo is set up for ${esc(B.brand.host)}"` : ''}><button class="btn btn-primary" id="go" type="submit">Build my feed ${ic('right', 's16')}</button></form>${LANDING ? `<p class="ob2-err" id="url-err" role="alert" hidden></p><p class="ob2-own">${OWN_LINE}</p>` : ''}`}
         <div class="ob2-agents">${AGENTS_ON.map((a) => `<span title="${AGENT[a]}">${face(a)}</span>`).join('')}<small>${SF_ON ? 'Creative, ads, storefront, AI answers and retention agents' : 'Creative, ads, AI answers and retention agents'}</small></div>
         <p class="ob2-foot">${LANDING ? `Brew reads the live site, its reviews, rivals and AI answers, then writes its moves. Every number has a source. ${DEMO_LAND ? 'Connected accounts are a demo workspace, and nothing is sent.' : window.LIVE?.me ? `Signed in as ${esc(window.LIVE.me.email)}.` : window.LIVE?.signin ? 'Sign in with Google. Email sign-in is coming.' : window.LIVE?.dummy === false ? '' : 'Connected accounts are a demo workspace.'}` : `Every idea comes from the Brew × ${esc(B.brand.name)} move documents.${window.LIVE?.dummy === false ? '' : ' Connected numbers are a demo workspace.'}`}</p>${LANDING && !DEMO_LAND ? '<div class="ob2-recent" id="recent"></div>' : ''}${LANDING ? '<p class="ob2-legal">Preview · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></p>' : ''}`, 0,
       `<div class="ob2-wash"></div><div class="ob2-collage">${LANDING ? LAND_CARDS.map((c, i) => `<figure class="cl cl${i} cl-txt" style="--clc:${c[3]}">${face(c[0])}<small>${esc(c[1])}</small><b>${esc(c[2])}</b></figure>`).join('') : art.map((src, i) => `<figure class="cl cl${i}"><img src="${src}" alt=""></figure>`).join('')}
@@ -499,7 +487,6 @@
   const setup = async () => {
     if (needSignin() && signWall('team')) return; /* signed out: the read is the team's, so ask them to sign in first */
     if (GEN && window.LIVE?.me && window.LIVE?.access && !window.LIVE.access.gen && !(B.steps || []).length && signWall('check')) return; /* signed in from outside the team: the read was kept from them, so no empty replay */
-    if (V2 && window.OB2) { view = 'setup'; return window.OB2.run(); } /* v2: the taps, the story and the tutorial while the read runs */
     meCursor();
     view = 'setup'; holdView('Opening the read', '', root);
     // the rivals step shows what the Ad Library research really found (research.js), not a canned line
@@ -509,14 +496,14 @@
     const NB = window.BREW_NUMBERS, steps = ra && !NB?.rivalAds ? B.steps.map((x) => x.k === 'ads' ? { ...x, done: `${ra.brands.length} rivals: ${ra.brands.reduce((n, b) => n + (b.live || 0), 0).toLocaleString('en-IN')} live ads` } : x) : B.steps;
     const cards = ra ? B.scrape.map((c) => c.kind === 'ad' ? { ...c, src: `Meta Ad Library · ${B.config?.countryName || 'live'}`, img: ra.items[0].poster, copy: ra.items.slice(0, 3).map((a) => `${a.brand}: ${a.hook}`).join(' · '), foot: `${ra.items[0].brand}'s top ad has run ${ra.items[0].days} days in ${ra.items[0].versions} versions.` } : c) : B.scrape;
     /* v1 (19 Oct, from the prototype): the read shows once, then five questions take the whole screen while the read carries on
-       behind them, then the read comes back with everything that landed meanwhile (OB2.questions, onboard2.js mode q). Once per
+       behind them, then the read comes back with everything that landed meanwhile (OB2.questions, questions.js). Once per
        brand per browser; no tutorial, stack or gate on v1 */
     /* answered before by this signed-in person (another browser, a private window, their phone): the answers come back from the
        server (GET /setup, kept per person per brand) and the questions are not asked again */
-    if (!V2 && GEN && window.OB2?.questions && !window.OB2.qState().qDone) { const sv = (await tapi('GET', '/api/tenants/:t/setup').catch(() => null))?.setup;
+    if (GEN && window.OB2?.questions && !window.OB2.qState().qDone) { const sv = (await tapi('GET', '/api/tenants/:t/setup').catch(() => null))?.setup;
       if (sv?.done) { const done = {}; if (sv.role && B.roles?.[sv.role]) { S.viewer.role = sv.role; done.seat = sv.role; } if (Array.isArray(sv.wants) && sv.wants.length) { S.viewer.wants = sv.wants; S.viewer.wantsTouched = true; done.first = sv.wants; }
         if (Array.isArray(sv.channels)) { S.viewer.channels = sv.channels; done.channels = sv.channels; } save(); ls.set(`${LSP()}q1`, JSON.stringify({ qDone: true, done, fromServer: true })); } }
-    const QM = !V2 && GEN && !!window.OB2?.questions && !window.OB2.qState().qDone;
+    const QM = GEN && !!window.OB2?.questions && !window.OB2.qState().qDone;
     root.innerHTML = `
       <main class="screen setup">
         <aside class="su-rail">
@@ -744,7 +731,7 @@
   /* the voice tap (v1 questions) becomes a brand rule every draft reads; only the team saves it, so after the claim */
   const pushVoice = () => { const v = S.viewer.voice; if (!GEN || !v || S.viewer.voiceSaved === v) return;
     tapi('POST', `/api/brands/${B.slug || BR}/voice`, { voice: v }).then((r) => { if (r && !r.error) { S.viewer.voiceSaved = v; save(); } }).catch(() => {}); };
-  /* what the v1 questions already asked (onboard2.js mode q): those screens are not asked twice */
+  /* what the reading screen's questions already asked (questions.js): those screens are not asked twice */
   const qAns = (id) => { const d = window.OB2?.qState?.().done?.[id]; return d != null && d !== false && d !== 'skip'; }; /* a tap keeps its value, a brand tap true, a skip 'skip' */
   /* the setup step this browser is on (per brand, in S): a refresh opens the same step, never the one before it */
   const OB_AT = { check: () => checkRead(), who: () => whoFor(), want: () => wantWhat(), connect: () => connectWhat(), team: () => teamStep() }; /* check: a refresh on "Is this right?" reopens it, not the whole read (QA 19 Oct) */
@@ -873,7 +860,6 @@
   const finishOnboarding = async () => {
     if ($('#ready') || finishOnboarding.busy) return; // a double-click on Next must not stack a second ready card
     S.onboarded = true; delete S.obStep; save(); sound('win'); tapi('POST', '/api/tenants/:t/ready'); claimFirst().then(pushVoice); /* the voice tap, if it did not save yet */
-    if (V2) return feed(); /* v2 already said good morning, showed the rings and the first three: no second welcome on top of it */
     /* the cards count is the feed's own: before the feed has loaded, load it (a few seconds at most), so it never says 0 */
     finishOnboarding.busy = true; if (!rank().length) await Promise.race([loadFeed().catch(() => null), wait(4000)]); finishOnboarding.busy = false; if ($('#ready')) return;
     const n = rank().length || (B.posts || []).filter((p) => !p.onlyWhen).length, R = ROLE();
@@ -919,7 +905,7 @@
       <button class="icon-btn" data-act="heart" aria-pressed="${!!S.hearts[p.id]}" aria-label="More like this">${ic('heart')}</button>
       <button class="icon-btn" data-act="jam" aria-label="Jam with the team">${ic('hand')}</button>
       ${proofBtn(p)}
-      <button class="icon-btn v2-act" data-act="take" aria-label="Another take, a free draft" title="Another take · Free draft">${ic('refresh')}</button>${V2 ? `<button class="icon-btn v2-act" data-act="make" aria-label="Make it yours" title="Make it yours">${ic('sparkles')}</button>` : ''}
+      <button class="icon-btn" data-act="take" aria-label="Another take, a free draft" title="Another take · Free draft">${ic('refresh')}</button>
       <span class="sp"></span>
       <button class="icon-btn" data-act="save" aria-pressed="${S.saved.includes(p.id)}" aria-label="Save for later">${ic('bookmark')}</button></div>`;
   /* the proof on every card (evidence.js via /api/cards/:cid/evidence): why Brew suggested it, and the hard evidence behind it */
@@ -1088,7 +1074,7 @@
   const draftSlot = (c) => { const d = c.draft; if (!d || !(d.video || d.images?.length)) return '';
     /* a stand-in (the product photo alone, or a picture being made again) says a new one is coming; it is never called a first draft */
     const lab = d.remaking || d.photoOnly ? `<span class="fd-lab is-wait">${ic('refresh', 's12')}New picture coming</span>` : d.takeErr ? `<span class="fd-lab is-wait" title="${esc(d.takeErr)}">${ic('info', 's12')}No new picture</span>` : `<span class="fd-lab">${ic(DRAFT_IC[d.as] || 'sparkles', 's12')}${d.as === 'take' ? 'Another take' : 'First draft'}</span>`, port = d.ratio !== '1:1';
-    const fb = [d.fallback, ...(window.MakeSheet?.isRival?.(c) ? [] : c.images || [])].filter((x) => x && !(d.images || []).includes(x)); /* never a rival's poster under our draft */ /* the real product photo, if the draft's picture can't load */
+    const fb = [d.fallback, ...(isRival(c) ? [] : c.images || [])].filter((x) => x && !(d.images || []).includes(x)); /* never a rival's poster under our draft */ /* the real product photo, if the draft's picture can't load */
     /* a reel (9:16) fills the card's width in a 4:5 frame: the whole reel centred over a blurred copy of itself, never a narrow
        box with an empty side (17 Oct); every other draft keeps its own shape */
     const tall = d.ratio === '9:16' ? ' r916' : '', bgUrl = tall ? d.poster || d.render || d.images?.[0] || '' : '', bgSt = bgUrl ? ` style="--fd-bg:url(&quot;${esc(bgUrl)}&quot;)"` : '';
@@ -1112,7 +1098,7 @@
     const dn = doneText(p, c), rows = fd && c.kind === 'rows' && c.rows?.length ? slotHtml(c) : '';
     /* "New": made since the last visit and not seen before it; "Start here": the first card to open on a first visit */
     const tags = `${NEWSET.has(p.id) && !isNew ? '<span class="new-tag">New</span>' : ''}${p.id === START_ID ? `<button class="start-tag" data-start>${ic('sparkles', 's12')}Start here</button>` : ''}`;
-    const hd = (UI2 ? head(c.agent, sub, c.badge, true, (window.MakeSheet?.isRival?.(c) ? '' : AGENT[c.agent]) || fromLabel(c)) /* a rival's ad says it is theirs, never under our agent's name */ : head(c.agent, sub, c.badge, true, fromLabel(c))).replace('<button class="icon-btn" data-more', `${tags}<button class="icon-btn" data-more`);
+    const hd = head(c.agent, sub, c.badge, true, fromLabel(c)).replace('<button class="icon-btn" data-more', `${tags}<button class="icon-btn" data-more`);
     return `<article class="card${c.liveFrom ? ' is-live' : ''}${p.dummy || p.demo || p.onlyWhen || /^live-/.test(p.id) ? ' is-dummy' : ''}${isNew ? ' is-new' : ''}${fd ? ' has-draft' : ''}${p.id === START_ID ? ' is-start' : ''}" data-post="${i}" data-id="${esc(p.id)}">${hd}${fd || slotHtml(c)}${media ? barHtml(c.cta, dn) + actsHtml(p) + body + rows : actsHtml(p) + body + barHtml(c.cta, dn)}</article>`;
   };
 
@@ -1289,7 +1275,6 @@
     GSTAT = gLists();
     const af = affinity(); const tags = [...Object.entries(af.agent).map(([k, n]) => [AGENT[k], n]), ...Object.entries(af.lane).map(([k, n]) => [B.lanes[k]?.name, n])].sort((a, b) => b[1] - a[1]).slice(0, 2).map((x) => x[0]);
     const day = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
-    if (UI2) return `<div class="greet g2"><h2>Hello${hiName(R)}.</h2></div>`; /* UI2: the counts live in Deck → Yours */
     return `<div class="greet"><small class="g-day">${esc(day)}</small><h2>${part}${hiName(R)}</h2>
       ${tags.length ? `<p class="g-taste">Tuned to what you like: ${esc(tags.join(' and '))}</p>` : ''}
       ${gTiles()}</div>`;
@@ -1329,47 +1314,7 @@
   };
   const openGStat = (k) => renderQueue(k);
   document.addEventListener('click', (e) => { const g = e.target.closest('[data-gstat]'); if (g) openGStat(g.dataset.gstat); });
-  /* UI2 shell: a 60px rail that opens to 236px (Home, Memory, Connectors; Tune, Notifications, Profile at the foot),
-     and a top bar with Feed | Deck, the brief pill ("N with the team"), Ask Brew and the theme switch. Same data-* hooks as the old shell. */
-  const r2Item = (nav, icon, label, extra = '') => `<div class="r2-item"><button class="r2-btn" ${nav} aria-label="${label}">${icon}<span class="r2-label">${label}</span>${extra}</button><span class="r2-tip" aria-hidden="true">${label}</span></div>`;
-  const appShell2 = () => {
-    const me = window.LIVE?.me, live = window.LiveConn && (window.LIVE?.signin || me);
-    const ini = esc(String(me?.name || me?.email || B.brand.name || 'B').trim()[0] || 'B').toUpperCase();
-    root.innerHTML = `
-      <div class="app">
-        <nav class="rail r2" aria-label="Main">
-          <button class="r2-logo" data-r2-open aria-label="Open the menu" aria-expanded="false"><span class="r2-mark">${SO()}</span><span class="r2-word"><span class="r2-mark">${SO()}</span><b>Brew</b></span><span class="r2-swap">${ic('sidebar')}</span></button>
-          <div class="r2-nav">
-            ${r2Item('data-nav="feed"', ic('home'), 'Home')}
-            ${r2Item('data-nav="learned"', ic('book'), 'Memory')}
-            ${r2Item('data-nav="connectors"', ic('plug'), 'Connectors')}
-          </div>
-          <div class="r2-foot">
-            ${r2Item('data-r2-tune', ic('sliders'), 'Tune the feed')}
-            ${r2Item('data-bell', ic('bell'), 'Notifications', '<i class="r2-dot" data-count="bell"></i>')}
-            <div class="r2-item"><button class="r2-btn r2-me" data-menu aria-label="Profile and brand">${me?.pic ? `<img src="${esc(me.pic)}" alt="" referrerpolicy="no-referrer">` : `<span class="r2-ini">${ini}</span>`}<span class="r2-label">${esc(me?.name || B.brand.name)}</span></button><span class="r2-tip" aria-hidden="true">Profile</span></div>
-            ${live ? `<button class="r2-acct" data-lacct hidden aria-hidden="true"></button>` : ''}
-          </div>
-        </nav>
-        <div class="stage" id="stage">
-          <div class="wash" aria-hidden="true"></div>
-          <div class="topbar t2">
-            <button class="icon-btn phone-only" aria-label="Menu" data-phone-menu>${ic('menu')}</button>
-            <div class="seg glass-chrome" role="tablist">
-              <button role="tab" aria-selected="true" data-nav="feed">${ic('feed', 's16')}Feed</button>
-              <button role="tab" aria-selected="false" data-nav="deck">${ic('deck', 's16')}Deck</button>
-            </div>
-            <div class="topbar-r t2-r glass-chrome"><button class="t2-pill" data-team-pill hidden><span class="t2-faces"><span class="r2-mark">${SO()}</span></span><span data-count="team"></span><i class="t2-live" aria-hidden="true"></i></button><button class="t2-ask" data-ask>Ask Brew</button><button class="icon-btn rb phone-only" aria-label="Notifications" data-bell>${ic('bell')}<i data-count="bell"></i></button>${themeBtn()}</div>
-          </div>
-          <div class="m2" id="m2" hidden></div>
-          <div id="view"></div>
-          <div class="stk-layer" id="stk"></div>
-          <div class="notes-layer" id="notes"></div>
-        </div>
-      </div>`;
-  };
   const appShell = () => {
-    if (UI2) return appShell2();
     root.innerHTML = `
       <div class="app">
         <nav class="rail" aria-label="Main">
@@ -1401,11 +1346,7 @@
       </div>
       <button class="fab" aria-label="Jam with the team" data-open-jam>${ic('hand')}</button>`;
   };
-  /* the morning stack is due when: v2 + FEED_STACK, a brand page, this workspace hasn't seen today's stack (the brand's date), and the
-     feed was opened plainly (not from an email, a jam, a card, a studio or a page link) */
-  const morningDue = () => FEED_STACK && GEN && !LANDING && !!window.OB2?.morning && !GO_LINK && !BOOT_RX && !/^#(jam|card|work|v|remix|cx|cxerr|s)=|^#(check|team)$/.test(location.hash) && S.viewer.stackDay !== brandClock().day;
   const feed = async () => { if (signWall('feed')) return endBootRx();
-    if (morningDue()) { view = 'stack'; S.viewer.stackDay = brandClock().day; save(); return window.OB2.morning({ onDone: () => feed() }); }
     appShell(); const rh = location.hash.match(/^#remix=([^&]+)/); const hp = hashParams(); const h = hp.card ? [null, hp.card] : null; pulseT || (pulseT = setTimeout(pulse, 4000)); window.scrollTo(0, 0); await Promise.all([pullWork(true), renderFeed()]); const p = h && byId(h[1]); if (p) openDetail(p); else if (h) { history.replaceState(null, '', location.pathname); toast('That card is no longer in the feed.'); } if (hp.work) { const wk = WORK.items.find((x) => x.id === hp.work); if (wk) openDetail(byId(wk.cardId) ? { ...byId(wk.cardId), _work: wk } : pseudoPost(wk)); } if (location.hash.startsWith('#jam=')) window.JamRoom?.fromHash(); if (hp.v && hp.v !== 'feed' && VIEWS()[hp.v]) VIEWS()[hp.v](); const [rcid, rch] = rh ? decodeURIComponent(rh[1]).split('/') : []; const rp = rcid && byId(rcid); if (rp) await openRemix(rp, rch).catch(() => {}); endBootRx(); };
   const counts = () => {
     const sv = $('[data-count="saved"]'), wk = $('[data-count="work"]');
@@ -1413,25 +1354,21 @@
     $$('[data-count="bell"]').forEach((b) => { b.textContent = WORK.unread || ''; b.classList.toggle('hot', !!WORK.unread); });
     const vb = $('[data-viewing]'); if (vb) vb.innerHTML = `${face(ROLE().face)}<span><i class="va">Viewing as </i><b>${esc(ROLE().name)}</b></span>${ic('chev', 's14')}`;
     $$('.rail [data-nav]').forEach((b) => b.classList.toggle('on', b.dataset.nav === (['jams', 'remixes', 'refs'].includes(view) ? 'saved' : ['move', 'moves'].includes(view) ? 'learned' : view)));
-    if (UI2) $$('.r2 [data-nav]').forEach((b) => b.classList.toggle('is-on', b.dataset.nav === (['feed', 'deck', 'saved', 'jams', 'refs', 'work', 'done', 'queue'].includes(view) ? 'feed' : ['learned', 'move', 'moves', 'facts', 'heard', 'rules', 'tune'].includes(view) ? 'learned' : view)));
     { const tp = $('[data-team-pill]'), wt = WORK.withTeam || { n: 0 }, n = wt.n || 0; if (tp) { tp.hidden = !n; tp.querySelector('[data-count="team"]').innerHTML = tp.classList.contains('j1-pill') ? `<b>${n}</b><span class="j1-more">&nbsp;with the team</span>` : `${n} with the team`; tp.classList.toggle('is-ask', !!wt.needsInfo); } }
     paintTiles(); paintTabbar();
   };
   /* phones: a native tab bar like Instagram (Feed, Deck, new jam, Work, Library) and the section's name in the header */
   const TABS = [['feed', 'feed', 'Feed'], ['deck', 'deck', 'Deck'], ['+', 'plus', 'New jam'], ['work', 'board', 'Work'], ['saved', 'bookmark', 'Library']];
-  /* UI2 phone tabs: Home, Deck, Ask Brew in the middle, Memory, Connectors (Profile and notifications sit in the top bar) */
-  const TABS2 = [['feed', 'home', 'Home'], ['deck', 'deck', 'Deck'], ['+', 'sparkles', 'Ask Brew'], ['learned', 'book', 'Memory'], ['connectors', 'plug', 'Connectors']];
   const TITLES = { feed: `${B.brand.name}`, deck: 'Deck', work: 'Work', saved: 'Library', jams: 'Library', remixes: 'Library', refs: 'Library', learned: 'Learned', moves: 'Moves', move: 'Move', connectors: 'Connectors', tune: 'Your feed', queue: `${B.brand.name}`, remix: 'Remix' };
-  if (UI2) Object.assign(TITLES, { learned: 'Memory', moves: 'Memory', facts: 'Memory', heard: 'Memory', rules: 'Memory', tune: 'Memory', saved: 'Shortlisted', jams: 'Jams', work: 'In progress', done: 'Briefs sent', queue: 'Needs your yes', remix: 'Jam' });
   const paintTabbar = () => {
     document.body.dataset.view = BOOT_RX ? 'remix' : view; /* a studio link is the studio from the first paint, even while the feed boots underneath */
     /* the feed's stickers and margin notes sit in layers outside the page: leaving the feed clears them, or they float over the next page (a brand sticker covered the move page's number) */
     if (view !== 'feed') { const k = $('#stk'); if (k?.firstChild) k.innerHTML = ''; } if (view !== 'feed' && view !== 'saved') { const nl = $('#notes'); if (nl?.firstChild) nl.innerHTML = ''; }
     let bar = $('#tabbar');
     if (!bar) { bar = document.createElement('nav'); bar.id = 'tabbar'; bar.className = 'tabbar'; bar.setAttribute('aria-label', 'Tabs');
-      bar.innerHTML = (UI2 ? TABS2 : TABS).map(([k, icn, n]) => k === '+' ? `<button class="tb-new" data-tbjam aria-label="${n}">${ic(icn, 's18')}</button>` : `<button data-nav="${k}" aria-label="${n}">${ic(icn)}<span>${n}</span>${k === 'work' ? '<i data-count="tbwork"></i>' : ''}</button>`).join('');
-      document.body.appendChild(bar); bar.addEventListener('click', (e) => { if (e.target.closest('[data-tbjam]')) { if (UI2) openAsk(); else openJam({}); } }); }
-    const cur = UI2 ? (['learned', 'moves', 'move', 'facts', 'heard', 'rules', 'tune'].includes(view) ? 'learned' : ['saved', 'jams', 'work', 'done', 'queue'].includes(view) ? 'deck' : view) : ['jams', 'remixes'].includes(view) ? 'saved' : view;
+      bar.innerHTML = TABS.map(([k, icn, n]) => k === '+' ? `<button class="tb-new" data-tbjam aria-label="${n}">${ic(icn, 's18')}</button>` : `<button data-nav="${k}" aria-label="${n}">${ic(icn)}<span>${n}</span>${k === 'work' ? '<i data-count="tbwork"></i>' : ''}</button>`).join('');
+      document.body.appendChild(bar); bar.addEventListener('click', (e) => { if (e.target.closest('[data-tbjam]')) openJam({}); }); }
+    const cur = ['jams', 'remixes'].includes(view) ? 'saved' : view;
     $$('[data-nav]', bar).forEach((b) => b.setAttribute('aria-current', b.dataset.nav === cur ? 'page' : 'false'));
     const n = WORK.items.filter((w) => w.stage === 'needs_you').length, wb = $('[data-count="tbwork"]', bar); if (wb) { wb.textContent = n || ''; wb.hidden = !n; }
     const tb = $('.topbar'); if (tb && !$('.tb-title', tb)) $('.seg', tb)?.insertAdjacentHTML('afterend', '<button class="tb-title" data-nav="feed" aria-label="Home: your feed"></button>');
@@ -1830,12 +1767,7 @@
     }
     if (b.dataset.act === 'save') toggleSave(p, b);
     if (b.dataset.act === 'jam') openDetail(p, { jam: true });
-    /* v2: Make it yours opens the one sheet; Another take passes this card and queues a new one in the background (never a wait) */
-    if (b.dataset.act === 'make') window.MakeSheet?.open(p, { onSaved: () => rerenderKeep(p.id, true) });
     if (b.dataset.act === 'proof') openProof(p);
-    if (b.dataset.act === 'take') { const done = busyBtn(b, 'Starting…'); const r = await tapi('POST', `/api/cards/${p.id}/remix`, { queue: true, take: true }).catch((er) => ({ error: er.message })); done();
-      if (r?.error || !r?.queued) return toast(`${ic('info', 's16')}${esc(r?.error || 'Another take isn’t available yet.')}`);
-      S.dismissed[p.id] = true; save(); card.classList.add('is-gone'); toast(`${ic('refresh', 's16')}Another take is on its way. It lands at the top when ready.`); setTimeout(() => card.remove(), 400); }
   });
   const toggleSave = (p, b) => {
     const on = !S.saved.includes(p.id);
@@ -1855,8 +1787,8 @@
     FEED = was.map((p) => ALL[p.id] || p);
     for (const id of ids) { const el = $(`#col .card[data-id="${CSS.escape(id)}"]`); const i = el ? +el.dataset.post : -1; if (!el || FEED[i]?.id !== id || el.contains(document.activeElement)) continue; el.outerHTML = postCard(FEED[i], i); }
     requestAnimationFrame(() => { placeStickers(); placeNotes(); }); };
-  /* v1: Another take keeps the card in place (v2's handler passes it for the stack); the new take shows on its draft when drawn */
-  document.addEventListener('click', async (e) => { if (V2) return; const b = e.target.closest('.card [data-act="take"]'); if (!b) return; e.stopImmediatePropagation();
+  /* Another take keeps the card in place; the new take shows on its draft when drawn */
+  document.addEventListener('click', async (e) => { const b = e.target.closest('.card [data-act="take"]'); if (!b) return; e.stopImmediatePropagation();
     const p = FEED[+b.closest('.card').dataset.post]; if (!p || b.disabled) return; const done = busyBtn(b, 'Starting…');
     const r = await tapi('POST', `/api/cards/${p.id}/remix`, { queue: true, take: true }).catch((er) => ({ error: er.message })); done();
     if (r?.error || !r?.queued) return toast(`${ic('info', 's16')}${esc(r?.error || 'Another take isn’t available yet.')}`);
@@ -2011,7 +1943,7 @@
   /* history: the card page, the remix options, a package in the studio and each view are entries of their own,
      so the browser's Back and ours walk the same path. route() makes the screen match the URL. */
   const nav = (hash, push, a, v = view) => { const st = { a, v }; hash = typeof hash === 'string' && hash.startsWith('#') ? location.pathname + hash : hash; if (push) history.pushState(st, '', hash); else history.replaceState(st, '', hash); };
-  const VIEWS = () => { const v = VIEWS0(); v.tune = renderTune; if (!UI2) return v; v.rules = renderRules; return Object.fromEntries(Object.entries(v).map(([k, f]) => [k, (...a) => { m2Paint(k); return f(...a); }])); };
+  const VIEWS = () => { const v = VIEWS0(); v.tune = renderTune; return v; };
   const VIEWS0 = () => ({ feed: renderFeed, deck: renderDeck, saved: renderSaved, jams: (f) => renderJams(f !== false), remixes: (f) => renderJams(f !== false), refs: (f) => renderReferences(f !== false), done: renderWork, work: renderWork, connectors: renderConnectors, learned: renderLearned, heard: () => renderHeard(), facts: () => renderFacts(), moves: renderMoves, move: renderMove, queue: () => renderQueue() });
   const route = () => {
     const hp = hashParams(), rm = location.hash.match(/^#remix=([^/&]+)(?:\/([^&]+))?/);
@@ -2049,8 +1981,8 @@
     if (window.JamRoom && (opts.jam || opts.sendBrew || opts.to === 'team' || opts.to === 'brew')) return window.JamRoom.open(p, { mode: opts.to, draft: opts.draft, sendBrew: opts.sendBrew });
     { const w0 = p._work || workOfCard(p.id), late = ['shared', 'team', 'needs_you', 'ready'].includes(w0?.stage);
       /* no in-between page: tapping a card goes straight into its jam (studio, or the canvas jam when it has no package) */
-      if (SPLIT && !opts.noStudio && !opts.fromWork && !late && !jamOn(p, w0) && !String(p.id).startsWith('sig-')) { S.jamOn = { ...(S.jamOn || {}), [p.id]: true }; save(); return openRemix(p, null, { make: opts.fromCta ? cardOf(p).cta?.label || '' : '' }); } }
-    { const w0 = p._work || workOfCard(p.id); if (SPLIT && !opts.noStudio && jamOn(p, w0) && (w0?.changeId || !NOPKG.has(p.id)) && !['shared', 'team', 'needs_you', 'ready'].includes(w0?.stage) && !opts.fromWork) return openRemix(p, w0?.changeId || null, { make: opts.fromCta ? cardOf(p).cta?.label || '' : '' }); } /* a jam from before the studio links its package on the way in; from the card's button it also makes what the button names */
+      if (!opts.noStudio && !opts.fromWork && !late && !jamOn(p, w0) && !String(p.id).startsWith('sig-')) { S.jamOn = { ...(S.jamOn || {}), [p.id]: true }; save(); return openRemix(p, null, { make: opts.fromCta ? cardOf(p).cta?.label || '' : '' }); } }
+    { const w0 = p._work || workOfCard(p.id); if (!opts.noStudio && jamOn(p, w0) && (w0?.changeId || !NOPKG.has(p.id)) && !['shared', 'team', 'needs_you', 'ready'].includes(w0?.stage) && !opts.fromWork) return openRemix(p, w0?.changeId || null, { make: opts.fromCta ? cardOf(p).cta?.label || '' : '' }); } /* a jam from before the studio links its package on the way in; from the card's button it also makes what the button names */
     closePop(); closeModal(); closeJam();
     const wasOpen = !!DP && !!$('#dp');
     const w = p._work || workOfCard(p.id);
@@ -2254,10 +2186,9 @@
       window.JamRoom?.addToBrief?.(`We go with version ${VL[i]} (${v.angle || 'version'}): ${plain(v.title)}. ${plain(v.sub)}`); sound('approve');
       if (typeof setSheet === 'function' && innerWidth <= 760) setSheet(true); toast(`${ic('check', 's16')}Version ${VL[i]} is in the brief`); }
   });
-  /* ---------- the split jam (JAM_SPLIT; ?split=0 shows the old page) ----------
+  /* ---------- the split jam ----------
      A fresh card stays a feed card: the made thing big, the ways to play it as visual tiles, one Jam button.
      Once someone jams, the left side is only the canvas (canvas.js): the thing being made, changing as you jam. */
-  const SPLIT = !/[?&]split=0\b/.test(location.search);
   const CV_H = () => ({ esc, ic, face, slotHtml, B, AGENT, ago });
   const jamOn = (p, w) => !!(S.jamOn?.[p.id] || S.decided?.[p.id] || (w && ((w.thread || []).some((x) => x.from === 'me') || w.decided || w.stage !== 'drafting' || (w.drafts || []).length)));
   const splitJamHtml = (p, c, w, ch, m) => {
@@ -2285,7 +2216,7 @@
   };
   const cardPageHtml = (p, c, w, ch, m) => {
     if (String(p.id).startsWith('jam-')) return jamBoardHtml(p, c, w);
-    if (SPLIT && window.Canvas) return jamOn(p, w) ? splitJamHtml(p, c, w, ch, m) : splitFreshHtml(p, c, w, ch);
+    if (window.Canvas) return jamOn(p, w) ? splitJamHtml(p, c, w, ch, m) : splitFreshHtml(p, c, w, ch);
     loadPage(p);
     const pg = PAGE[p.id] || (PAGE[p.id] === false || String(p.id).startsWith('work:') || String(p.id).startsWith('jam-') ? localPage(c) : null);
     const dec = S.decided?.[p.id] || w?.decided, pick = pg?.options.find((o) => o.pick), ag = c.agent || 'brew', ph = phaseOf(p, w, c), past = PAST.includes(ph);
@@ -2403,7 +2334,7 @@
     const ch = w?.changeId && DP.ch?.id === w.changeId ? DP.ch : null;
     if (w?.changeId && !ch && DP.loadingCh !== w.changeId) { DP.loadingCh = w.changeId; tapi('GET', `/api/changes/${w.changeId}`).then((r) => { if (r.change && DP && DP.w?.changeId === r.change.id) { DP.ch = r.change; repaintDetail(); } }); }
     const m = w?.measure || c.measure || null;
-    const prevScroll = $('.dr-b', dp)?.scrollTop, pageScroll = $('.dp-page', dp)?.scrollTop; if ($('.cp-rank', dp)) DP.rankOpen = $('.cp-rank', dp).open;
+    const prevScroll = $('.dr-b', dp)?.scrollTop; if ($('.cp-rank', dp)) DP.rankOpen = $('.cp-rank', dp).open;
     dp.dataset.work = w?.id || '';
     const rows = c.kind !== 'rows' && nonZero(c.rows || []).length ? `<div class="inset"><div class="rows">${nonZero(c.rows).map(([k, vv]) => `<div><span>${esc(k)}</span><b>${esc(vv)}</b></div>`).join('')}</div></div>` : '';
     const rel = FEED.filter((x) => x.id !== p.id && !x.parentCardId && (x.lane === p.lane || x.agent === p.agent)).slice(0, 3);
@@ -2442,11 +2373,9 @@
       </div>
       <aside class="dp-side"><div class="dp-side-b">${ch && (ch.thread?.length || w?.thread?.length) ? `<section class="dp-thread"><h4>Conversation <small>studio and jam</small></h4>${mergedThread(w, ch)}</section>` : w?.thread?.length ? `<section class="dp-thread"><h4>Conversation</h4>${threadHtml(w)}</section>` : `<div class="dp-side-empty">${ic('hand')}<b>Jam on this card</b><span>Ask AI to change it, pull in a teammate on Slack, or hand it to the ShopOS team. Everything you say and every version lands here.</span></div>`}</div>
       <div class="dr-f dp-f">${footer}</div></aside></div>`;
-    if (UI2 && pageScroll) { const pg = $('.dp-page', dp); if (pg) pg.scrollTop = pageScroll; } /* UI2: the whole page scrolls; a repaint keeps your place */
     window.JamRoom?.decorateDetail(dp, DP);
-    if (UI2 && window.__jmGrew) { window.__jmGrew = false; const pg = $('.dp-page', dp); if (pg) pg.scrollTop = pg.scrollHeight; } /* a new message: the page ends at the conversation */
     if (before) flashLeft(dp, before);
-    jmSheet(dp); dp.classList.toggle('is-fresh', !!SPLIT && !String(p.id).startsWith('jam-') && !jamOn(p, w));
+    jmSheet(dp); dp.classList.toggle('is-fresh', !String(p.id).startsWith('jam-') && !jamOn(p, w));
     const body = $('.dr-b', dp), side = $('.dp-side-b', dp); if (prevScroll) body.scrollTop = prevScroll; if (DP.scrollThread) { side.scrollTop = side.scrollHeight; DP.scrollThread = false; } else if (sideScroll) side.scrollTop = sideScroll;
   };
   const ensureWork = async () => { if (DP.w) return DP.w; const { _work, ...card } = DP.p; const r = await tapi('POST', '/api/work', { cardId: DP.p.id, card }); putWork(r.work); if (DP.p._work) DP.p = { ...DP.p, _work: r.work }; DP.w = r.work; return r.work; };
@@ -2526,9 +2455,9 @@
     if (jg) { const p = DP.p, pg = PAGE[p.id] || localPage(cardOf(p)), id = DP.openOpt?.[p.id] || pg?.options?.find((o) => o.pick)?.id;
       S.jamOn = { ...(S.jamOn || {}), [p.id]: true }; save(); sound('select');
       /* the card's action opens its jam on the plan; nothing is decided or run until someone does it in the jam */
-      if (jg.dataset.cpDoit != null) { if (SPLIT) await openRemix(p); else { repaintDetail(true); $('[data-jm-tab="chat"]')?.click(); } return; }
+      if (jg.dataset.cpDoit != null) { await openRemix(p); return; }
       if (id && !S.decided?.[p.id]) await goWith(p, id); else repaintDetail(true);
-      if (SPLIT) { await openRemix(p); return; }
+      { await openRemix(p); return; }
       if (typeof setSheet === 'function' && PHONE()) setSheet(true);
       $('[data-jm-tab="chat"]')?.click(); setTimeout(() => $('#jm-in')?.focus(), 80);
       return; }
@@ -2556,7 +2485,7 @@
     if (e.target.closest('button, a, input, textarea, select, label, [data-more], .ask')) return;
     const p = FEED[+card.dataset.post]; if (p) openDetail(p);
   });
-  addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('#dp') && !$('#th') && !$('#ask2')) { e.stopImmediatePropagation(); closeDetail(); } }, true);
+  addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('#dp') && !$('#th')) { e.stopImmediatePropagation(); closeDetail(); } }, true);
 
   /* theatre: tap a card's picture to browse every asset full screen. Arrows, keys, swipe, a thumbnail strip, Esc closes */
   const TH = { srcs: [], i: 0, title: '' };
@@ -2754,9 +2683,7 @@
       if (view === 'feed' && pulseSince) { const r = await tapi('GET', `/api/tenants/:t/pulse?since=${pulseSince}`); const pill = $('#newpill');
         const ids = (r.ids || []).filter((id) => !PINNED.has(id));
         if (pill && ids.length) { NEWIDS = ids; pill.hidden = false; pill.innerHTML = `<button data-newcards>${ic('up', 's14')}${ids.length} new card${ids.length > 1 ? 's' : ''} · show</button>`; }
-        /* v2: a take or new words landed in the background (remix.js): the card is drawn again in place, no reload */
-        if (V2 && (r.updated || []).length) { await loadFeed(); for (const id of r.updated) { if ($(`#col .card[data-id="${CSS.escape(id)}"]`)) { await rerenderKeep(id, false); break; } } }
-        else if ((r.updated || []).length) await redrawTakes(r.updated); /* v1: the take landed on the card it was asked from, same place in the feed */ }
+        if ((r.updated || []).length) await redrawTakes(r.updated); /* the take landed on the card it was asked from, same place in the feed */ }
     }
     pulseT = setTimeout(pulse, DP?.w && DP.w.stage === 'team' && window.BREW_DEMO ? 2500 : 10e3);
   };
@@ -2818,21 +2745,18 @@
   const MONEY = window.BREW_MONEY || { cur: 'INR', sym: '₹', locale: 'en-IN' }; if (!B.sym) B.sym = MONEY.sym;
   const inrS = (v) => MONEY.cur === 'INR' ? (v >= 1e7 ? `₹${+(v / 1e7).toFixed(1)} Cr` : v >= 1e5 ? `₹${+(v / 1e5).toFixed(1)} lakh` : `₹${Math.round(v).toLocaleString('en-IN')}`)
     : v >= 1e6 ? `${MONEY.sym}${+(v / 1e6).toFixed(1)}M` : v >= 1e4 ? `${MONEY.sym}${+(v / 1e3).toFixed(1)}K` : `${MONEY.sym}${Math.round(v).toLocaleString(MONEY.locale)}`;
-  const renderView = () => ({ tune: renderTune, ...(UI2 ? { rules: renderRules } : {}), feed: renderFeed, saved: renderSaved, jams: () => renderJams(false), remixes: () => renderJams(false), refs: () => renderReferences(false), done: renderWork, work: renderWork, connectors: renderConnectors, deck: renderDeck, learned: renderLearned, heard: () => renderHeard(), facts: () => renderFacts(), moves: renderMoves, move: renderMove, remix: () => (RX.p ? openRemix(RX.p) : renderFeed()), queue: () => renderQueue() }[view] || renderFeed)();
+  const renderView = () => ({ tune: renderTune, feed: renderFeed, saved: renderSaved, jams: () => renderJams(false), remixes: () => renderJams(false), refs: () => renderReferences(false), done: renderWork, work: renderWork, connectors: renderConnectors, deck: renderDeck, learned: renderLearned, heard: () => renderHeard(), facts: () => renderFacts(), moves: renderMoves, move: renderMove, remix: () => (RX.p ? openRemix(RX.p) : renderFeed()), queue: () => renderQueue() }[view] || renderFeed)();
 
   /* ---------- nav ---------- */
   document.addEventListener('click', (e) => {
     const n = e.target.closest('[data-nav]');
-    if (n) { const v = n.dataset.nav; closePop(); closeModal(); if (UI2) { $('.r2.open')?.classList.remove('open'); $('[data-r2-open]')?.setAttribute('aria-expanded', 'false'); }
-      if (v === 'deck' && !S.pro && !UI2 && PAYWALL) return openPlan('deck'); /* the Pro offer opens over where you are; closing it leaves you there, not on a #v=deck that isn't open */
+    if (n) { const v = n.dataset.nav; closePop(); closeModal();
+      if (v === 'deck' && !S.pro && PAYWALL) return openPlan('deck'); /* the Pro offer opens over where you are; closing it leaves you there, not on a #v=deck that isn't open */
       if (DP) closeDetail(true); $('#rxd')?.remove(); $('#rxd-scrim')?.remove(); RX.ch = null; VIEWS()[v](); const vh = v === 'feed' ? '' : `#v=${v}`; nav(vh || location.pathname, location.hash !== vh, 'view', v); window.scrollTo(0, 0); return; }
     if (e.target.closest('[data-theme-btn]')) { setTheme(curTheme() === 'dark' ? 'light' : 'dark'); return; }
     if (e.target.closest('[data-open-jam]')) { openJam({ tab: 'ai' }); return; }
-    /* UI2 shell: open/close the rail, Tune, Ask Brew (the global jam until Ask Brew lands), the brief pill */
-    const ro = e.target.closest('[data-r2-open]'); if (ro) { const r = ro.closest('.r2'), o = !r.classList.contains('open'); r.classList.toggle('open', o); ro.setAttribute('aria-expanded', String(o)); return; }
-    if (UI2 && !e.target.closest('.r2') && $('.r2.open')) { $('.r2.open').classList.remove('open'); $('[data-r2-open]')?.setAttribute('aria-expanded', 'false'); }
-    if (e.target.closest('[data-r2-tune]')) { $('.r2.open')?.classList.remove('open'); closePop(); closeModal(); $('#vw-pop')?.remove(); whoFor(); return; }
-    const ak = e.target.closest('[data-ask]'); if (ak) { let seed = null; try { seed = ak.dataset.ask ? JSON.parse(ak.dataset.ask) : null; } catch (x) {} openAsk(seed); return; }
+    /* Your seat (Tune): who the feed is for */
+    if (e.target.closest('[data-r2-tune]')) { closePop(); closeModal(); $('#vw-pop')?.remove(); whoFor(); return; }
     /* Find more: the free watchers look now and what they find (else research you had not seen) lands at the top; nothing new is said plainly */
     const fm = e.target.closest('[data-find-more]'); if (fm) { fm.disabled = true; fm.innerHTML = '<brew-load class="spin"></brew-load>Looking'; (async () => { const r = await tapi('POST', '/api/tenants/:t/find-more');
       if (r?.error || r?.fallback) { const ok = await refreshFeed({ force: true }); toast(ok ? 'Pulled in the latest. New cards land at the top as your agents finish.' : 'Already refreshing. New cards land at the top.'); }
@@ -2842,7 +2766,6 @@
       const pop = document.createElement('div'); pop.id = 'pop'; pop.className = 'pop t2-pop'; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Briefs with the ShopOS team');
       pop.innerHTML = `<header><b>With the ShopOS team</b><small>Brew’s build crew: briefs you sent and where each one is</small></header>${it.map((x) => `<button class="t2-bi" data-witem="${esc(x.wid)}"><span class="t2-bt"><b>${esc(x.title || 'Brief')}</b><small>${esc([x.ticket, x.sentAt ? sentLine(x.sentAt) : '', x.at && x.at !== x.sentAt ? `${x.label || 'Updated'} ${ago(x.at)}` : ''].filter(Boolean).join(' · '))}</small></span><span class="t2-bs is-${esc(x.status)}">${esc(x.label || x.status)}</span></button>`).join('') || '<p class="t2-empty">Nothing with the team right now.</p>'}<footer><button class="linkbtn" data-nav="done">All briefs ${ic('right', 's14')}</button></footer>`;
       document.body.appendChild(pop); const r = tpl.getBoundingClientRect(); pop.style.top = `${r.bottom + 8}px`; pop.style.right = `${Math.max(12, innerWidth - r.right)}px`; return; }
-    if (e.target.closest('[data-menu]') || e.target.closest('[data-phone-menu]')) { openMenu(); return; }
     if (e.target.closest('[data-viewing]')) { openViewing(e.target.closest('[data-viewing]')); return; }
     const cx = e.target.closest('[data-cx]'); if (cx) { openConnect(cx.dataset.cx); return; }
     const la = e.target.closest('[data-lacct]'); if (la) { openAcct(la); return; }
@@ -2880,29 +2803,6 @@
   /* ---------- menu: tune, connectors, demo controls, reset ---------- */
   // "3 of 7 connected", or nothing when none is (no zero counts anywhere)
   const cxCount = (short) => { const n = Object.keys(S.conn).filter(conn).length; return n ? `${n} of ${Object.keys(B.connectors).length}${short ? '' : ' connected'}` : ''; };
-  /* UI2 Profile: you and the brand on top, then account and team, your seat, the places that moved (Deck, Memory), and the same settings */
-  const menu2Html = () => { const me = ME(), row = (attr, icon, b, sp, tail = ic('right', 's16')) => `<button class="lg-row" ${attr}><span class="lg-ic">${icon}</span><span class="lg-tx"><b>${b}</b><span>${sp}</span></span>${tail}</button>`;
-    return `<div class="sheet pick-sheet p2-sheet"><div class="p2-me">${me?.pic ? `<img src="${esc(me.pic)}" alt="" referrerpolicy="no-referrer">` : `<span class="r2-ini">${esc(String(me?.name || me?.email || 'Y')[0].toUpperCase())}</span>`}<span><b>${esc(me?.name || (window.LIVE?.signin ? 'Not signed in' : 'You'))}</b><small>${esc(me?.email || ROLE().title || '')}</small></span><i class="bmark"><img src="${B.brand.mark}" alt="" title="${esc(B.brand.name)}"></i></div>
-      ${window.LiveConn && (window.LIVE?.signin || me) ? row('data-m="acct"', ic('person', 's16'), me ? 'Account and team' : 'Sign in', me ? `${esc(B.brand.name)} · invite people, seats, sign out` : 'With Google, to connect and invite') : ''}
-      ${row('data-m="view"', face(ROLE().face), `Viewing as ${esc(ROLE().name)}`, 'Switch seat or tune the feed')}
-      ${UI2 ? row('data-nav="deck"', ic('deck', 's16'), 'Deck', `In progress, shortlisted, jams and briefs · ${WORK.items.filter((w) => w.stage === 'needs_you').length} need you`) : row('data-nav="saved"', ic('bookmark', 's16'), 'Library', `${S.saved.length} saved · your jams`) + row('data-nav="work"', ic('board', 's16'), 'Work', `${WORK.items.length} items · ${WORK.items.filter((w) => w.stage === 'needs_you').length} need you`)}
-      ${UI2 ? row('data-nav="learned"', ic('book', 's16'), 'Memory', 'What Brew learned, the moves, rules and the fact sheet') : row('data-nav="learned"', ic('book', 's16'), 'What Brew learned', 'The moves, rules and checks, all editable') + row('data-nav="facts"', ic('doc', 's16'), 'Fact sheet', 'Every number Brew quotes, with its source') + row('data-nav="tune"', ic('sliders', 's16'), 'Your feed', 'What it shows you more and less of')}
-      ${row('data-nav="connectors"', ic('plug', 's16'), 'Connectors', cxCount() || 'Connect your accounts')}
-      ${isStandalone() ? '' : row('data-m="install"', ic('phone', 's16'), 'Add to home screen', `Open ${esc(B.brand.name)} like an app`)}
-      ${row('data-m="sound"', ic('bell', 's16'), 'Sounds', 'Little cues when things move', `<span class="sw" aria-checked="${SND.on}" aria-hidden="true"><i></i></span>`)}
-      ${row('data-m="setup"', ic('refresh', 's16'), 'Watch the setup again', `Or open ${location.host}/#setup`)}
-      ${demoOk() ? row('data-m="demo"', ic('sliders', 's16'), 'Demo controls', 'Press . anywhere') : ''}
-      ${window.BREW_DEMO ? `<div class="row2"><button class="btn btn-ghost sm" data-m="restart">Start over from the website</button><button class="btn btn-ghost sm" data-m="reset">Reset demo</button></div>` : row('data-m="restart"', ic('link', 's16'), 'Start again', 'Clears what this browser kept for this feed and goes back to the first page. Your saved cards stay with your account')}</div>`; };
-  const openMenu = () => modal(menu2Html(), (m) => {
-    $('[data-m="view"]', m).onclick = () => { closeModal(); openViewing(); };
-    const ac = $('[data-m="acct"]', m); if (ac) ac.onclick = () => { closeModal(); const vis = (el) => el && el.offsetParent !== null ? el : null; window.LiveConn?.menu(vis($('.r2-me')) || vis($('[data-phone-menu]')) || vis($('[data-lacct]')) || document.body); };
-    const dm = $('[data-m="demo"]', m); if (dm) dm.onclick = () => { closeModal(); openDemo(); };
-    $('[data-m="setup"]', m).onclick = () => { closeModal(); start(); };
-    $('[data-m="sound"]', m).onclick = (e) => { SND.on = !SND.on; ls.set(`${LSP()}sound`, SND.on ? 'on' : 'off'); e.currentTarget.querySelector('.sw')?.setAttribute('aria-checked', SND.on); if (SND.on) sound('approve'); };
-    const inst = $('[data-m="install"]', m); if (inst) inst.onclick = () => { closeModal(); openInstall(); };
-    $('[data-m="restart"]', m).onclick = startAgain;
-    const rs = $('[data-m="reset"]', m); if (rs) rs.onclick = resetDemo;
-  });
   /* ui=1 has no brand menu: the account popup holds what it did. Library, Fact sheet, Sounds, Add to home screen, Start again,
      and demo controls (demo site or Brew staff only); What Brew learned and Connectors only on phones (the rail has them on desktop). */
   const acctIt = (attr, icon, label, meta = '', cls = '') => `<button class="lc-it${cls}" ${attr}>${ic(icon, 's16')}<b>${label}</b>${meta ? `<span>${meta}</span>` : ''}</button>`;
@@ -2912,7 +2812,7 @@
   const acctBind = (pop) => pop.addEventListener('click', (e) => { const t = e.target.closest('[data-acct],[data-nav]'); if (!t) return; const k = t.dataset.acct;
     if (k === 'sound') { SND.on = !SND.on; ls.set(`${LSP()}sound`, SND.on ? 'on' : 'off'); t.querySelector('.sw')?.setAttribute('aria-checked', SND.on); if (SND.on) sound('approve'); return; }
     pop.remove(); if (k === 'install') openInstall(); if (k === 'setup') start(); if (k === 'demo') openDemo(); if (k === 'restart') startAgain(); });
-  if (!UI2) window.BrewAcct = { rows: acctRows, bind: acctBind };
+  window.BrewAcct = { rows: acctRows, bind: acctBind };
   const openAcct = (btn) => { if (window.LiveConn && (window.LIVE?.signin || window.LIVE?.me)) return window.LiveConn.menu(btn);
     document.getElementById('lc-pop')?.remove(); const pop = document.createElement('div'); pop.id = 'lc-pop'; pop.className = 'lc-pop';
     const r = btn.getBoundingClientRect(); pop.style.left = (r.right + 10) + 'px'; pop.style.bottom = Math.max(12, innerHeight - r.bottom) + 'px';
@@ -3245,7 +3145,7 @@
       const r = await tapi('POST', kind === 'jam' ? `/api/work/${id}/discard` : `/api/changes/${id}/discard`, {});
       if (r.error) { toast(esc(r.error)); return false; }
       await Promise.all([pullWork(true), pullRemixes()]);
-      if (!o.quiet) { if (kind === 'jam' && DP && (DP.w?.id === id || DP.p?._work?.id === id)) closeDetail(); if (kind === 'remix' && view === 'remix' && RX.ch?.id === id && RX.p) { RX.ch = null; if (SPLIT) leaveRemix(); else openRemix(RX.p); } /* in the split view the studio is the card's jam: discarded, it leaves (reopening would make a new jam) */
+      if (!o.quiet) { if (kind === 'jam' && DP && (DP.w?.id === id || DP.p?._work?.id === id)) closeDetail(); if (kind === 'remix' && view === 'remix' && RX.ch?.id === id && RX.p) { RX.ch = null; leaveRemix(); } /* the studio is the card's jam: discarded, it leaves (reopening would make a new jam) */
         libRepaint(); toastLong(`${ic('check', 's16')}<span>${kind === 'jam' ? 'Jam' : 'Remix'} discarded. It’s under Discarded.</span> <button class="linkbtn" data-lrestore="${kind}:${id}">Undo</button>`, 6000); }
       return true;
     },
@@ -3281,7 +3181,7 @@
     const item = (k, icon, h, sub, cls = '') => `<button data-la="${k}" class="${cls}" role="menuitem"><span class="lp-ic">${ic(icon, 's16')}</span><span class="lp-tx"><b>${h}</b>${sub ? `<small>${sub}</small>` : ''}</span></button>`;
     pop.setAttribute('role', 'menu');
     pop.innerHTML = off ? item('restore', 'refresh', 'Restore', `Back to ${kind === 'jam' ? 'Jams' : 'My remixes'}`)
-      : item('fresh', 'refresh', 'Start fresh', `Begin a clean ${kind === 'jam' || UI2 ? 'jam' : 'remix'} on this card`) + '<hr>' + item('discard', 'minus', 'Discard', 'You can restore it later', 'is-bad');
+      : item('fresh', 'refresh', 'Start fresh', `Begin a clean ${kind === 'jam' ? 'jam' : 'remix'} on this card`) + '<hr>' + item('discard', 'minus', 'Discard', 'You can restore it later', 'is-bad');
     document.body.appendChild(pop);
     pop.onclick = (e) => { const b = e.target.closest('[data-la]'); if (!b) return; closePop(); libAct[b.dataset.la](kind, id); };
   };
@@ -3315,20 +3215,6 @@
         ${(conn(id) && c.demo && c.changedDemo?.length ? c.changedDemo : c.changed || []).length ? `<div class="cn-will"><small>${conn(id) ? 'What it’s doing' : 'What it unlocks'}</small><ul>${(conn(id) && c.demo && c.changedDemo?.length ? c.changedDemo : c.changed).slice(0, 3).map((t) => `<li>${esc(t)}</li>`).join('')}</ul></div>` : ''}</div>
         <footer>${LC?.footer(id) || (conn(id) ? `<span class="cn-acct">${ic('check', 's14')}${esc(c.account)}</span><button class="cn-btn is-ghost" data-unlink="${id}">Disconnect</button>` : `<span class="cn-acct is-muted">${ic(id === 'slack' ? 'send' : 'lock', 's14')}${accessOf(id)}</span><button class="cn-btn" data-cx="${id}">Connect${ic('right', 's14')}</button>`)}</footer></article>`;
     const sec = (name, hint, items) => items.length ? `<section class="cn-sec"><h3>${name}<em>${items.length}</em>${hint ? `<small>${hint}</small>` : ''}</h3><div class="cn-grid">${items.map(card).join('')}</div></section>` : '';
-    if (UI2) { /* the design's list: search, grouped rows, one tap to connect; what it unlocks folds into the row */
-      const STORE = /^(shopify|meta|google|ga4|gads|ads|analytics|amazon|marketplaces|search)/;
-      const row = ([id, c]) => `<details class="c2-row${conn(id) ? ' is-on' : ''}" data-cn="${id}" data-c2-name="${esc(`${c.name} ${c.kind}`.toLowerCase())}"><summary>${glyph(id, 32)}<span class="c2-t"><b>${esc(c.name)}</b><small>${esc(c.kind)}</small></span>${LC?.status(id) || (conn(id) ? `<span class="cn-st is-on"><i></i>${c.demo ? 'Demo' : 'Connected'}</span>` : c.optional ? '<span class="cn-st">Optional</span>' : '')}${conn(id) ? ic('chev', 's16') : `<button class="c2-add" data-cx="${id}" aria-label="Connect ${esc(c.name)}">${ic('plus', 's16')}</button>`}</summary>
-          <div class="c2-more"><small>${conn(id) ? 'What it’s doing' : 'What it unlocks'}</small><ul>${(conn(id) && c.demo && c.changedDemo?.length ? c.changedDemo : c.changed || []).slice(0, 3).map((t) => `<li>${esc(t)}</li>`).join('')}</ul>
-            ${conn(id) && (c.stats || []).length ? `<dl class="cn-stats">${c.stats.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>` : ''}
-            <footer>${LC?.footer(id) || (conn(id) ? `<span class="cn-acct">${ic('check', 's14')}${esc(c.account)}</span><button class="cn-btn is-ghost" data-unlink="${id}">Disconnect</button>` : `<span class="cn-acct is-muted">${ic(id === 'slack' ? 'send' : 'lock', 's14')}${accessOf(id)}</span><button class="cn-btn" data-cx="${id}">Connect${ic('right', 's14')}</button>`)}</footer></div></details>`;
-      const grp = (name, items) => items.length ? `<section class="c2-sec"><h3>${name}</h3><div class="c2-list">${items.map(row).join('')}</div></section>` : '';
-      libShell(`Connectors${LC?.L?.dummy === false ? '' : ' <span class="dummy-tag" title="Connected accounts are simulated in this demo">Dummy</span>'}`, LC?.intro() || `Connect the tools your agents read from. Read-only (Slack posts to the channel you pick), and only ${esc(B.brand.name)}’s team sees them.`,
-        `<label class="c2-search">${ic('search', 's16')}<input type="search" placeholder="Search connectors" data-c2-q autocomplete="off"></label>${grp('Store and ads', list.filter(([id]) => STORE.test(id)))}${grp('Customers and team', list.filter(([id]) => !STORE.test(id)))}${soonSec()}`);
-      $('#col')?.classList.add('lib-col', 'cn-col', 'c2-col'); if (LC && $('#col')) LC.bindPage(document.getElementById('view') || $('#col'));
-      $('[data-c2-q]')?.addEventListener('input', (e) => { const q = e.target.value.trim().toLowerCase(); $$('.c2-row').forEach((r) => (r.hidden = !!q && !r.dataset.c2Name.includes(q))); $$('.c2-sec').forEach((sc) => (sc.hidden = !$$('.c2-row', sc).some((r) => !r.hidden))); });
-      $$('.c2-add').forEach((b) => b.addEventListener('click', (e) => e.preventDefault())); /* the + connects; it never just opens the row */
-      $$('[data-unlink]').forEach((b) => b.onclick = () => { S.conn[b.dataset.unlink] = false; save(); toast(`${esc(B.connectors[b.dataset.unlink].name)} disconnected`); renderConnectors(); refreshAfterConnect(); });
-      return; }
     const pct = Math.round(on.length / list.length * 100);
     libShell(`Connectors${LC?.L?.dummy === false ? '' : ' <span class="dummy-tag" title="Connected accounts are simulated in this demo">Dummy</span>'}`, LC?.intro() || (LC?.L?.dummy === false ? `Every source Brew reads for ${B.brand.name}. Connected accounts are read-only (Slack posts to the channel you pick) and only ${B.brand.name}’s team sees them.` : `Every source Brew reads for ${B.brand.name}. Connected accounts are simulated in this demo (Dummy): connecting shows what would change, and nothing touches a real account.`),
       `<div class="cn-sum">${on.length ? `<div class="cn-sum-n"><b>${on.length}</b><span>of ${list.length} connected</span></div><div class="cn-bar"><i style="width:${pct}%"></i></div>` : '<div class="cn-sum-n"><span>Connect your accounts</span></div>'}<div class="cn-logos">${list.map(([id]) => `<span class="${conn(id) ? '' : 'is-off'}" title="${esc(B.connectors[id].name)}">${glyph(id, 28)}</span>`).join('')}</div></div>
@@ -3410,25 +3296,6 @@
     /* a real Shopify shows only what it really found (those arrive as live cards in this column), never the sample signal */
     return sigStrip() + (sigFake() ? SIGS.map(sigCard).join('') : '');
   };
-  /* UI2 Deck: one column per agent area (same /deck cards, grouped by agent), and "Yours" on the side: the lists that used
-     to be Library, Work and the greeting counts. Each Yours row opens the view that already does that job, so nothing is lost. */
-  const AREAS = { creative: { name: 'Brand', dot: '#f0a3c8' }, performance: { name: 'Performance', dot: '#7fb1ff' }, storefront: { name: 'Storefront', dot: '#f3b26b' }, visibility: { name: 'AEO · GEO · SEO', dot: '#a99bff' }, crm: { name: 'CRM', dot: '#6fd6a8' }, brew: { name: 'Your calls', dot: '#d4d4d4' } };
-  const byArea = (k) => FEED.map((p, i) => [p, i]).filter(([p]) => (AREAS[p.agent] ? p.agent : 'brew') === k);
-  const areaNow = (k) => { const w = WORK.items.find((x) => !x.discarded && !x.archived && (x.agent || 'brew') === k && ['ai', 'drafting'].includes(x.stage));
-    if (w) return `Drafting ${esc(curV(w)?.title || w.title || 'a draft')}`; const n = byArea(k).length; return n ? `${n} card${n === 1 ? '' : 's'}` : 'Nothing new yet'; };
-  const areaColHTML = (k) => { const cards = byArea(k);
-    return `<section class="dcol a2col" data-col="${k}">
-        <div class="col-head"><div class="col-top"><h2>${AREAS[k].name}</h2><span class="a2-now">${ic('sparkles', 's14')}<span>${areaNow(k)}</span></span><span class="col-fill"></span></div></div>
-        <div class="col-body">${cards.map(([p, i]) => postCard(p, i)).join('')}${cards.length ? `<p class="col-end">You are caught up on ${AREAS[k].name}.</p>` : `<p class="col-end">Nothing here yet. Your ${esc(AGENT[k] || 'agents')} posts as it finishes.</p>`}</div>
-        <span class="grab" role="separator" aria-orientation="vertical" aria-label="Column width"></span></section>`; };
-  const yoursSide = () => { const live = WORK.items.filter((w) => !w.archived && !w.discarded), yes = gLists().yes.length;
-    const row = (nav, icon, label, n) => `<button data-nav="${nav}"><span class="y2-i">${ic(icon, 's16')}</span>${label}<span class="n">${n || ''}</span></button>`;
-    return `<div class="side-brand" data-nav="feed" role="button" tabindex="0" title="Home: your feed"><i class="bmark"><img src="${B.brand.mark}" alt=""></i><span><b>${esc(B.brand.name)}</b></span></div>
-      <p class="side-note">Every area your agents work in. Open what you started, sent or saved from Yours.</p>
-      <p class="y2-h">Yours</p>
-      <div class="side-nav y2-nav">${row('work', 'refresh', 'In progress', live.filter((w) => !['shared', 'done'].includes(w.stage)).length)}${yes ? row('queue', 'check', 'Needs your yes', yes) : ''}${row('saved', 'bookmark', 'Shortlisted', S.saved.length)}${row('jams', 'hand', 'Jams', live.length)}${row('done', 'send', 'Briefs sent', live.filter((w) => w.stage === 'shared').length)}</div>
-      <p class="y2-h">Areas</p>
-      <div class="side-nav">${Object.keys(AREAS).map((k) => `<button data-colnav="${k}" aria-current="false"><i class="col-dot" style="background:${AREAS[k].dot}"></i>${AREAS[k].name}<span class="n">${byArea(k).length || ''}</span></button>`).join('')}</div>`; };
   const colHTML = (k) => {
     const cards = byCol(k), sb = k === 'signals' ? sigBody() : k === 'visibility' ? `<article class="sig-lock ais-card"><div class="sig-lock-body ais">${aisHtml(aiStand())}</div></article>` : '';
     return `<section class="dcol" data-col="${k}">
@@ -3461,10 +3328,10 @@
     if (!layoutLoaded) { layoutLoaded = true; (r.layout.hidden || []).forEach((k) => colState[k] && (colState[k].hidden = true)); colW = r.layout.colWidth || colW; }
     const d = deckEl(); if (!d) return;
     const keep = d.scrollLeft, keepY = Object.fromEntries($$('.dcol', d).map((c) => [c.dataset.col, $('.col-body', c)?.scrollTop || 0])); document.body.classList.add('col-dragging');
-    d.innerHTML = UI2 ? Object.keys(AREAS).filter((k) => k !== 'brew' || byArea(k).length).map(areaColHTML).join('') : deckCols().filter((k) => !colState[k].hidden).map(colHTML).join('');
+    d.innerHTML = deckCols().filter((k) => !colState[k].hidden).map(colHTML).join('');
     d.style.setProperty('--col-w', colW + 'px');
-    $('#deck-side').innerHTML = UI2 ? yoursSide() : sideHTML();
-    $('#deck-tabs').innerHTML = $$('.dcol', d).map((c, i) => `<button class="dtab" role="tab" data-i="${i}">${(UI2 ? AREAS : SECTORS)[c.dataset.col].name}</button>`).join('');
+    $('#deck-side').innerHTML = sideHTML();
+    $('#deck-tabs').innerHTML = $$('.dcol', d).map((c, i) => `<button class="dtab" role="tab" data-i="${i}">${SECTORS[c.dataset.col].name}</button>`).join('');
     $$('.dcol', d).forEach((c) => { const b = $('.col-body', c); if (b && keepY[c.dataset.col]) b.scrollTop = keepY[c.dataset.col]; });
     d.scrollLeft = keep; markTab();
     requestAnimationFrame(() => { d.scrollLeft = keep; document.body.classList.remove('col-dragging'); });
@@ -3478,7 +3345,7 @@
     let i = cols.findIndex((c) => { const b = c.getBoundingClientRect(); return b.left <= mid && b.right > mid; }); if (i < 0) i = d.scrollLeft <= 0 ? 0 : cols.length - 1;
     $$('#deck-tabs .dtab').forEach((t, j) => { t.classList.toggle('on', j === i); t.setAttribute('aria-selected', String(j === i)); }); };
   const renderDeck = () => {
-    if (!S.pro && !UI2 && PAYWALL) return openPlan('deck');
+    if (!S.pro && PAYWALL) return openPlan('deck');
     if (!$('#view')) appShell();
     view = 'deck'; window.scrollTo(0, 0); $('#stk').innerHTML = ''; $('#notes').innerHTML = '';
     document.body.classList.add('deck-on'); colOrder();
@@ -3491,7 +3358,7 @@
   document.addEventListener('click', (e) => {
     if (view !== 'deck') return;
     const t = e.target;
-    const nav = t.closest('[data-colnav]'); if (nav) { const k = nav.dataset.colnav; if (UI2 || !colState[k]) { scrollToCol(k); return; } if (colState[k].hidden) { colState[k].hidden = false; saveLayout(); buildDeck(); toast(`${SECTORS[k].name} is back`); } else scrollToCol(k); return; }
+    const nav = t.closest('[data-colnav]'); if (nav) { const k = nav.dataset.colnav; if (!colState[k]) { scrollToCol(k); return; } if (colState[k].hidden) { colState[k].hidden = false; saveLayout(); buildDeck(); toast(`${SECTORS[k].name} is back`); } else scrollToCol(k); return; }
     const tab = t.closest('.dtab'); if (tab) { const c = $$('#deck .dcol')[+tab.dataset.i]; if (c) scrollToCol(c.dataset.col); return; }
     const dots = t.closest('.col-dots'); if (dots) { const pop = dots.nextElementSibling, on = pop.classList.contains('on'); $$('.col-pop').forEach((x) => x.classList.remove('on')); pop.classList.toggle('on', !on); return; }
     const act = t.closest('[data-colact]'); $$('.col-pop').forEach((x) => x.classList.remove('on'));
@@ -3560,7 +3427,6 @@
   const closeModal = (quiet) => { if ($('#modal') && quiet !== true) sound('sheetDown'); $('#modal')?.remove(); document.body.classList.remove('modal-on');
     /* a tray closed with "Not yet" hands the studio's button back; it used to stay disabled until a reload */
     $$('.std .ship [data-rx].is-busy').forEach((b) => { b.disabled = false; b.classList.remove('is-busy'); }); };
-  addEventListener('keydown', (e) => { if (e.key === 'Escape' && UI2) { const done = () => { e.stopImmediatePropagation(); e.preventDefault(); }; if ($('#ask2')) { $('#ask2').remove(); document.body.classList.remove('ask-on'); return done(); } if (view === 'remix' && ['details', 'adjust'].includes(RX.tab)) { RX.tab = 'iterate'; paintStudio(); return done(); } if ($('.r2.open')) { $('.r2.open').classList.remove('open'); $('[data-r2-open]')?.setAttribute('aria-expanded', 'false'); return done(); } } }, true);
   addEventListener('keydown', (e) => { if (e.key === 'Escape') { if ($('#sv')) closeStory(); else if ($('#modal')) closeModal(); else if ($('#jam')) closeJam(); else closePop(); } });
 
   /* =========================================================
@@ -3591,7 +3457,7 @@
   };
   const imgOf = (ch) => ch.pkg?.image || ch.after?.images?.[0] || null;
   /* until a photo is made for it, the jam shows the card's own product photo (never a static: those carry their own words) */
-  const cardPhoto = () => { if (!SPLIT || !RX.p) return null; const im = (RX.p.images || cardOf(RX.p).images || []).find((x) => typeof x === 'string' && !/statics\//.test(x) && !/^\/?research\//.test(x) && !/\/a\/ad-[^/]+$/.test(x.split('?')[0])); return im || null; }; /* a rival's ad is the look of our version, never its picture */
+  const cardPhoto = () => { if (!RX.p) return null; const im = (RX.p.images || cardOf(RX.p).images || []).find((x) => typeof x === 'string' && !/statics\//.test(x) && !/^\/?research\//.test(x) && !/\/a\/ad-[^/]+$/.test(x.split('?')[0])); return im || null; }; /* a rival's ad is the look of our version, never its picture */
 
   /* ---------- a social post, as it will look on its platform ----------
      X: a thread of posts joined by the reply line, with the character count. Reddit, LinkedIn, Quora, a Facebook group,
@@ -3669,7 +3535,7 @@
       /* the clip itself: made on the stage (a first frame of the real product, animated, the hook read over it) */
       const hk = String(hook || '').split(/\s+/).slice(0, 14).join(' '), newHook = p.video && p.videoHook && p.videoHook.trim() !== hk.trim(), newPic = p.video && p.poster && p.image && p.image !== p.poster, stale = newHook || newPic;
       const make = lg && view === 'remix' && !ch.batchKey ? (ch.videoPending ? `<div class="sv-make is-busy"><brew-load class="spin"></brew-load>${esc(ch.videoStep || 'Making the video')}…</div>`
-        : SPLIT && !stale && !ch.videoError ? '' /* the jam's main button makes the first video (stepBar) */ : !p.video || stale ? `<div class="sv-make${SPLIT ? ' is-row' : ''}">${ch.videoError ? `<small>${esc(ch.videoError)}</small>` : ''}<button class="btn ${SPLIT ? 'btn-ghost' : 'btn-primary'} sm" data-rx="video">${ic('vid', 's14')}${stale ? (newPic ? 'Remake the video with this photo' : 'Remake the video for this hook') : ch.videoError ? 'Make it again' : 'Make the video'}${freeTag(true)}</button></div>` : '') : '';
+        : !stale && !ch.videoError ? '' /* the jam's main button makes the first video (stepBar) */ : !p.video || stale ? `<div class="sv-make is-row">${ch.videoError ? `<small>${esc(ch.videoError)}</small>` : ''}<button class="btn btn-ghost sm" data-rx="video">${ic('vid', 's14')}${stale ? (newPic ? 'Remake the video with this photo' : 'Remake the video for this hook') : ch.videoError ? 'Make it again' : 'Make the video'}${freeTag(true)}</button></div>` : '') : '';
       body = `<div class="pm pm-sv"><div class="sv-phone">${pmMedia(ch, p, lg, { ratio: '9/16', video: true }) || '<div class="pm-media is-slot" style="aspect-ratio:9/16"></div>'}${p.video || (p.wordsIn && p.wordsIn === imgOf(ch)) /* the picture already carries its headline: never a second one over it */ ? '' : `<p class="sv-hook">${esc(hook || '')}</p>`}${/is-row/.test(make) ? '' : make}
           <div class="sv-side">${pmI('like')}${pmI('reply')}${pmI('share')}</div><div class="sv-cap"><b>@${esc(h)}</b><span class="sv-cap-t">${esc(String(p.title || String(p.copy || '').split('\n')[0] || '').replace(/["“”]/g, '').replace(/\s{2,}/g, ' ').trim())}</span>${tags.length ? `<span class="pm-tag sv-cap-tags">${esc(tags.slice(0, 4).join(' '))}</span>` : ''}</div></div>${/is-row/.test(make) ? make : ''}${svNote(ch, p, lg)}
         ${lg && sc.length ? `<ol class="sv-beats">${sc.map((x, i) => `<li><small>${esc(x.beat || `Beat ${i + 1}`)}</small><b>${beatLine(x.line)}</b><span>${esc(x.shot || '')}</span></li>`).join('')}</ol>` : ''}</div>`;
@@ -4058,7 +3924,7 @@
     if (RX.sending) { if (!RX.thinkI) thinkStart(ch.id); return `<div class="ship busy"><div class="ship-tx"><b><brew-load class="spin"></brew-load>${esc(RX.sending)}</b><span id="ship-think">${esc(thinkLine())}</span></div><div class="ship-btns"><button class="btn btn-primary ship-go" disabled>${ic('sparkles', 's16')}Working…</button></div></div>`; }
     if (RX.thinkI) thinkStop();
     /* once Share the brief is gone (sent, live), the link can still be copied: a small icon next to what's left */
-    const lnk = SPLIT ? `<button class="icon-btn ship-link" data-st-link aria-label="Copy the link to this jam" title="Copy the link">${ic('link', 's16')}</button>` : '';
+    const lnk = `<button class="icon-btn ship-link" data-st-link aria-label="Copy the link to this jam" title="Copy the link">${ic('link', 's16')}</button>`;
     if (ch.batchKey && ch.state !== 'jam') {
       const N = RX.p?.images?.length || 12, fix = ch.verdict === 'fix', drop = ch.pick === 'drop';
       return `<div class="ship ${fix ? 'warn' : drop ? '' : 'ok'}"><div class="ship-tx"><b>${ic(fix ? 'x' : drop ? 'x' : 'check', 's16')}Ad ${ch.batchIndex + 1} of ${N} · ${drop ? 'Dropped' : fix ? 'Needs a fix' : 'Kept'}: v${curN(ch)}</b><span>${fix ? `Before it can queue: ${esc((ch.fixes || []).join('; '))}.` : 'Every change saves as a new version. It queues with the other ads you keep.'}</span></div>
@@ -4066,17 +3932,17 @@
     }
     /* the jam page: one way out, the tray (it shows exactly what changes, the limit, how we'll know and what's missing) */
     /* sent: the bar says where it is, not how to send it again */
-    if (SPLIT && !ch.batchKey) { const w0 = workOfCard(RX.p?.id); if (w0 && w0.stage === 'needs_you') return `<div class="ship warn"><div class="ship-tx"><b>${ic('hand', 's16')}${esc(w0.with?.name || 'The ShopOS team')} needs your OK${w0.ticket ? `: ${esc(w0.ticket)}` : ''}</b><span>They replied in the conversation. Read it, then approve or change it.</span></div><div class="ship-btns"><button class="btn btn-primary" data-st-convo>${ic('chat', 's16')}Open the conversation</button>${lnk}</div></div>`;
+    if (!ch.batchKey) { const w0 = workOfCard(RX.p?.id); if (w0 && w0.stage === 'needs_you') return `<div class="ship warn"><div class="ship-tx"><b>${ic('hand', 's16')}${esc(w0.with?.name || 'The ShopOS team')} needs your OK${w0.ticket ? `: ${esc(w0.ticket)}` : ''}</b><span>They replied in the conversation. Read it, then approve or change it.</span></div><div class="ship-btns"><button class="btn btn-primary" data-st-convo>${ic('chat', 's16')}Open the conversation</button>${lnk}</div></div>`;
       if (w0 && w0.stage === 'team') return `<div class="ship info"><div class="ship-tx"><b>${ic('send', 's16')}With ${esc(w0.with?.name || 'your team')}</b><span>They look at it in the conversation. Share the brief when it’s ready.</span></div><div class="ship-btns"><button class="btn btn-ghost" data-st-convo>${ic('chat', 's16')}Open the conversation</button>${lnk}</div></div>`;
       if (w0 && w0.stage === 'shared' && w0.jamBrief?.to !== 'team') { const it = (WORK.withTeam?.items || []).find((x) => x.wid === w0.id); /* sent: the ShopOS team has it by email; its status follows in the top bar */
         return `<div class="ship ok"><div class="ship-tx"><b>${ic('check', 's16')}Sent to the ShopOS team${w0.ticket ? ` · ${esc(w0.ticket)}` : ''}${it?.label ? ` · ${esc(it.label)}` : ''}${w0.jamBrief?.sharedAt ? ` · ${esc(sentLine(w0.jamBrief.sharedAt))}` : ''}</b><span>Brew’s build crew takes it from here. Its status shows in the top bar.</span></div><div class="ship-btns"><button class="btn btn-ghost" data-st-brief>${ic('doc', 's16')}The brief</button>${lnk}</div></div>`; }
       if (w0 && w0.stage === 'shared') return `<div class="ship ok"><div class="ship-tx"><b>${ic('check', 's16')}Brief shared${w0.ticket ? `: ${esc(w0.ticket)}` : ''}</b><span>With ${w0.jamBrief?.to === 'team' ? 'your team' : 'the ShopOS team'}. The jam ends here.</span></div><div class="ship-btns"><button class="btn btn-ghost" data-st-brief>${ic('doc', 's16')}The brief</button><button class="btn btn-ghost" data-rx="share-${w0.jamBrief?.to === 'team' ? 'team' : 'shopos'}">${ic('copy', 's16')}Copy it again</button>${lnk}</div></div>`; }
     /* before the plan's make step has run, the jam's main button is the card's own action: it makes the work, it ships nothing */
-    if (SPLIT && !ch.batchKey && ch.state !== 'jam' && jobOf(ch)) return stepBar(ch); /* being made: the bar says what, never Draft or Ready */
-    if (SPLIT && !ch.batchKey && ch.state !== 'jam' && !planMade(ch)) { const pl = planOf(ch);
+    if (!ch.batchKey && ch.state !== 'jam' && jobOf(ch)) return stepBar(ch); /* being made: the bar says what, never Draft or Ready */
+    if (!ch.batchKey && ch.state !== 'jam' && !planMade(ch)) { const pl = planOf(ch);
       return `<div class="ship one ok"><div class="ship-tx"><b>${ic('sparkles', 's16')}<span class="ship-l">${ch.v0 === 'draft' ? 'First draft' : 'Draft'} · v${curN(ch)}</span>${tipBtn(`${planGo(ch, pl).line}. Then share the brief.`)}</b></div>
         <div class="ship-btns">${shipMenu(ch, [['data-rx="share-shopos"', 'send', 'Send the brief now', 'The ShopOS team, Brew’s build crew, gets it by email and makes it.'], ['data-rx="share-team"', 'copy', 'Share with my team', 'Copy the brief and a link to paste in your team’s chat.']])}<button class="btn btn-primary" data-rx="plan">${ic('sparkles', 's16')}${esc(planGo(ch, pl).label)}${freeTag(isReel(ch))}</button></div></div>`; }
-    if (SPLIT && !ch.batchKey && ch.state !== 'jam') return stepBar(ch);
+    if (!ch.batchKey && ch.state !== 'jam') return stepBar(ch);
     if (ch.state === 'jam') return `<div class="ship warn"><div class="ship-tx"><b>${ic('hand', 's16')}Being planned in a jam</b><span>Answer the open questions there, then it ships.</span></div><div class="ship-btns">${postOpenOf(ch) ? poBtn(postOpenOf(ch), false) /* a ready post can still be copied out while the jam plans it */ : ''}<button class="btn btn-primary" data-rx="open">Open the jam</button></div></div>`;
     const R = RXROUTE[ch.verdict] || RXROUTE.jam, blocks = ch.checks.filter((x) => !x.ok && !x.soft);
     const what = ch.verdict === 'confirm' ? `Tick your own checks first: ${esc((ch.confirm || []).join('; '))}.` : ch.verdict === 'fix' ? `Before it can ship: ${esc((ch.fixes || []).join('; '))}.` : ch.verdict === 'live' ? `Brew updates ${esc(ch.target.object.toLowerCase())} on ${esc(ch.target.name)} automatically, watches the result, and can roll it back.` : ch.verdict === 'deploy' ? `${esc(ch.teamWhy || 'It needs a person')}, so the ShopOS team ships it. You send them a brief with everything they need${ch.money && ch.amount > 0 ? `: about ${inrS(ch.amount)} a week` : ''}.` : esc(blocks[0]?.k || ch.reasons[0] || 'A person needs to plan or decide this first.');
@@ -4100,8 +3966,8 @@
   /* one, always (Param, 19 Oct: "let's not give 3 options anywhere: lead with only 1 and let them redo it"): the card's button
      makes the one version on the stage what the card asked for, and Redo it makes the next take. hasMade: the stage already
      holds it (a short video's clip, an ad's or a post's picture, a written family's words), so the plan's button steps aside */
-  /* the one job running on this change right now, in plain words ('' when nothing is): every status line (the step bar, the
-     UI2 header, the case's next step, the chips) asks this first, so none says Ready or Draft while something is being made */
+  /* the one job running on this change right now, in plain words ('' when nothing is): every status line (the step bar,
+     the case’s next step, the chips) asks this first, so none says Ready or Draft while something is being made */
   const jobOf = (ch) => !ch ? '' : finalGoing(ch) ? `${finalGoing(ch).fallback ? 'Brew' : 'Sloosh'} is making the final` : ch.copyPending || ch.ctaQueued ? 'Writing the first draft' : ch.remakePending ? (ch.remakePending.step || 'Making it') : ch.videoPending ? (ch.videoStep || 'Making the video') : ch.ctaPending ? String(ch.ctaPending) : ch.imagePending ? (ch.family === 'listing' ? 'Making the listing photos' : 'Making the photo') : '';
   const hasDraft = (ch) => { const p = ch?.pkg || {}; return ch?.v0 === 'draft' || !!(p.video || /^\/?gen\//.test(p.image || '') || p.draft?.images?.length || p.draft?.video); };
   const hasMade = (ch) => { if (!ch || ch.copyPending) return false; if (ch.videoPending || ch.imagePending || ch.remakePending || ch.ctaPending) return true; /* being made: the button that makes it steps aside */ const p = ch.pkg || {}, rows = p.cards || p.slides || [];
@@ -4134,12 +4000,12 @@
      chip (the photo, Post to…, Projected impact, Make it a reel/carousel, more asks) waits behind More, once per jam */
   const v1Chips = (ch) => { const dis = RX.sending ? ' disabled' : '';
     const asks = fitSuggest(ch.suggest).slice(0, PH_FAM.includes(ch.family) ? 3 : 4).map((x) => `<button type="button" class="chip${RX.sending && RX.from === x ? ' is-wait' : ''}" data-say="${esc(x)}"${dis}>${RX.sending && RX.from === x ? '<brew-load class="spin"></brew-load>' : ''}${esc(x)}</button>`);
-    const rest = [...(PH_FAM.includes(ch.family) && !(SPLIT && phTools(ch, ch, null)) ? [`<button type="button" class="chip chip-ph" data-ph-open>${ic('pic', 's14')}Change the photo</button>`] : []),
+    const rest = [...(PH_FAM.includes(ch.family) && !phTools(ch, ch, null) ? [`<button type="button" class="chip chip-ph" data-ph-open>${ic('pic', 's14')}Change the photo</button>`] : []),
       ...j2Acts(ch, (attr, icon, label, cls = '') => `<button type="button" class="chip j1-chip${cls}" ${attr}${dis}>${icon ? ic(icon, 's14') : ''}${esc(label)}</button>`)];
     const all = [...asks, ...rest], first = all.slice(0, 2), more = all.slice(2), open = RX.moreChips === ch.id;
     return `<div class="it-sugg${open ? ' is-open' : ''}">${first.join('')}${more.length ? (open ? more.join('') : `<button type="button" class="chip it-more" data-chips-more aria-expanded="false">${ic('more', 's14')}More</button>`) : ''}${all.length ? `<small class="it-free" title="Every change here is a draft made by Brew, free. Only the final costs credits.">${FREE}s</small>` : ''}</div>`; };
   const chatTab = (ch, edit) => {
-    const msgs = ch.thread || [], vById = (id) => ch.versions.find((v) => v.id === id), JR = window.JamRoom, w = SPLIT && RX.p ? workOfCard(RX.p.id) : null, me = String(ME()?.email || '').toLowerCase();
+    const msgs = ch.thread || [], vById = (id) => ch.versions.find((v) => v.id === id), JR = window.JamRoom, w = RX.p ? workOfCard(RX.p.id) : null, me = String(ME()?.email || '').toLowerCase();
     const one = (m) => m.from === 'you' ? (me && m.by?.email && String(m.by.email).toLowerCase() !== me && JR?.teamMsg /* a teammate's ask, with their face and name */ ? `<div class="st-jm">${JR.teamMsg({ from: 'me', by: m.by, body: m.text }, w || {})}</div>` : `<div class="lgm you"><p>${esc(m.text)}</p></div>`)
       : `<div class="lgm ai">${face(ch.agent)}<div>${m.proof ? proofMsg(m) : `<p>${esc(m.text)}</p>`}${m.v && ch.versions[m.v - 1] ? madeNote(ch, [ch.versions[m.v - 1]]) : ''}${(m.vs || []).length && !(ch.options && m.vs.every((id) => ch.options.list.some((x) => x.id === id))) /* options show as tabs above the stage */ ? (m.cuts && PH_FAM.includes(ch.family) ? cutsStrip(ch, m.vs.map(vById).filter(Boolean)) : madeNote(ch, m.vs.map(vById).filter(Boolean))) : ''}${m.rewrite && edit ? `<button type="button" class="chip j1-chip" data-say="Rewrite it"${RX.sending ? ' disabled' : ''}>${ic('sparkles', 's14')}Rewrite it</button>` : ''}${m.remakeAgain && edit && !ch.remakePending && !ch.realOnly ? `<button type="button" class="chip j1-chip" data-j2-remake="${esc(m.remakeAgain)}"${RX.sending ? ' disabled' : ''}>${ic('refresh', 's14')}Make it again</button>` : ''}</div></div>`;
     const jam = w && JR?.teamMsg ? (w.thread || []).filter((m) => m && m.id !== 'tmp' && !m.learn && (m.from !== 'system' || m.edited?.length || JAM_SYS.test(m.body || ''))).map((m, i) => ({ at: m.at || 0, i: 1e4 + i, html: `<div class="st-jm" data-st-jam>${JR.teamMsg(m, w)}</div>` })) : [];
@@ -4147,8 +4013,8 @@
     /* the ShopOS team asked for something: what they need sits on the composer until it is answered */
     const ni = w?.jamBrief?.status === 'needs_info' ? (w.jamBrief.history || []).find((h) => h.s === 'needs_info') : null;
     const niHtml = ni ? `<div class="st-needs" role="status">${ic('hand', 's16')}<div><b>${esc(ni.name || 'The ShopOS team')} needs something from you${w.ticket ? ` · ${esc(w.ticket)}` : ''}</b>${ni.note ? `<p>${esc(ni.note)}</p>` : ''}<small>Answer with @ShopOS team in your message: it goes to them by email.</small></div></div>` : '';
-    return `<div class="it-log">${SPLIT && RX.p ? `<div class="it-empty">${face(ch.agent)}${caseBrief(ch)}</div>` : ''}${log || (SPLIT && RX.p ? '' : `<div class="it-empty">${face(ch.agent)}${`<p>${SPLIT ? 'What should change? Each change makes a new version, and you can always go back.' : 'Tell me what to change, in plain words. I’ll rewrite the whole package and save it as a new version. You can always go back.'}</p>`}</div>`)}${j2Extra(ch)}${RX.sending ? `<div class="lgm ai pending">${face(ch.agent)}<p><brew-load class="spin"></brew-load>${esc(RX.sending)}</p></div>` : ''}</div>
-      ${edit ? `<form class="it-ask" id="st-say">${niHtml}${UI2 ? chips2(ch) : v1Chips(ch)}<div class="it-row${SPLIT && window.Composer?.tools ? ' has-cmp' : ''}"><textarea id="st-in" rows="2"${SPLIT ? ' data-nomic' : ''} placeholder="What should change? Or @ someone">${esc(RX.draft || '')}</textarea>${SPLIT && window.Composer?.tools ? `<span class="jm-tools">${window.Composer.tools()}<span class="jm-tools-r">${window.Mic?.supported ? `<button type="button" class="jm-mic" data-cmp-talk aria-label="Talk instead of typing" title="Talk instead of typing">${ic('mic', 's16')}</button>` : ''}<button class="jm-send${RX.sending ? ' is-wait' : ''}" aria-label="Send" ${RX.sending ? 'disabled aria-busy="true"' : ''}>${RX.sending ? '<brew-load class="spin"></brew-load>' : ic('up', 's16')}</button></span></span>` : `<button class="btn btn-primary${RX.sending ? ' is-wait' : ''}" aria-label="Send" ${RX.sending ? 'disabled aria-busy="true"' : ''}>${RX.sending ? '<brew-load class="spin"></brew-load>' : ic('up', 's16')}</button>`}</div></form>${SPLIT && window.Composer?.foot ? window.Composer.foot() : ''}` : UI2 ? `<div class="it-ask"><div class="it-sugg j2-chips"><button type="button" class="chip j2-chip is-brief" data-tab="details">${ic('doc', 's14')}View brief</button><button type="button" class="chip j2-chip" data-rx="open">${ic('hand', 's14')}Open the jam</button></div><p class="it-locked">It’s in a jam. Shape it there.</p></div>` : `<p class="it-locked">It’s in a jam. Shape it there.</p>`}`;
+    return `<div class="it-log">${RX.p ? `<div class="it-empty">${face(ch.agent)}${caseBrief(ch)}</div>` : ''}${log || (RX.p ? '' : `<div class="it-empty">${face(ch.agent)}<p>What should change? Each change makes a new version, and you can always go back.</p></div>`)}${j2Extra(ch)}${RX.sending ? `<div class="lgm ai pending">${face(ch.agent)}<p><brew-load class="spin"></brew-load>${esc(RX.sending)}</p></div>` : ''}</div>
+      ${edit ? `<form class="it-ask" id="st-say">${niHtml}${v1Chips(ch)}<div class="it-row${window.Composer?.tools ? ' has-cmp' : ''}"><textarea id="st-in" rows="2" data-nomic placeholder="What should change? Or @ someone">${esc(RX.draft || '')}</textarea>${window.Composer?.tools ? `<span class="jm-tools">${window.Composer.tools()}<span class="jm-tools-r">${window.Mic?.supported ? `<button type="button" class="jm-mic" data-cmp-talk aria-label="Talk instead of typing" title="Talk instead of typing">${ic('mic', 's16')}</button>` : ''}<button class="jm-send${RX.sending ? ' is-wait' : ''}" aria-label="Send" ${RX.sending ? 'disabled aria-busy="true"' : ''}>${RX.sending ? '<brew-load class="spin"></brew-load>' : ic('up', 's16')}</button></span></span>` : `<button class="btn btn-primary${RX.sending ? ' is-wait' : ''}" aria-label="Send" ${RX.sending ? 'disabled aria-busy="true"' : ''}>${RX.sending ? '<brew-load class="spin"></brew-load>' : ic('up', 's16')}</button>`}</div></form>${window.Composer?.foot ? window.Composer.foot() : ''}` : `<p class="it-locked">It’s in a jam. Shape it there.</p>`}`;
   };
   const adjustTab = (ch, edit) => edit ? `<p class="hs-tip">Turn a knob and the package is rewritten to match. Knobs marked “new photo” make a new creative.</p>
       ${fitKnobs(ch.knobs).map((k) => { const multi = false /* one version, always: a knob makes one new take, never several to pick from (QA J-11) */, sel = (RX.knobSel || {})[k.k] || [], cur = (ch.pkg.knobs || {})[k.k];
@@ -4164,7 +4030,7 @@
       ${(ch.notes || []).map((n) => `<div class="nt"><p>${esc(n.text)}</p><small>${ago(n.at)}${edit ? ` · <button class="linkbtn" data-nt-rm="${n.id}">Remove</button>` : ''}</small></div>`).join('') || '<p class="dt-empty">Notes stay with this package. The AI reads them, and the ShopOS team sees them in the brief.</p>'}
       <form class="mc-add nt-add" id="nt-add"><textarea name="t" rows="2" placeholder="Add a note"></textarea><button class="btn btn-ghost sm">Add note</button></form>
     </section>`;
-  const briefTop2 = (ch) => { if (!SPLIT) return ''; const w = workOfCard(RX.p?.id), bp = w?.doc?.plan || {}, k = w?.contract, kn = RX.p ? cardOf(RX.p).know : null;
+  const briefTop2 = (ch) => { const w = workOfCard(RX.p?.id), bp = w?.doc?.plan || {}, k = w?.contract, kn = RX.p ? cardOf(RX.p).know : null;
     const rows = [['What changes', bp.change], ['Who it’s for', bp.audience], ['When', bp.when], ['Budget', bp.budget], ['Owner', bp.owner], ['Stop rule', bp.guard]].filter(([, v]) => v);
     const know = k ? `${k.metric.name}, ${k.how.toLowerCase()}, grade ${k.plannedGrade}, read after ${k.window} days` : kn ? `${bp.metric || kn.metric}, ${String(kn.bestHow || '').replace(/^./, (x) => x.toLowerCase())}${kn.bestGrade ? `, grade ${kn.bestGrade} at best` : ''}` : '';
     return `<section class="bf-top"><small class="dt-k">The final version · v${curN(ch)}</small>${rows.length ? `<dl class="bf-rows">${rows.map(([kk, v]) => `<div><dt>${esc(kk)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>` : '<p class="dt-empty">Who it’s for, when and the budget fill in as you jam.</p>'}
@@ -4181,7 +4047,7 @@
        ${mineHtml(ch, edit)}
        <h4 class="dt-h">Brew checks</h4><ul class="dt-checks">${ch.checks.filter((x) => !x.mine).map((x) => `<li class="${x.ok ? 'ok' : x.soft ? 'soft' : 'bad'}">${ic(x.ok ? 'check' : 'x', 's14')}<span>${esc(x.k)}</span>${x.learned ? '<em>learned</em>' : ''}</li>`).join('')}</ul>
        <p class="dt-note">${ic('refresh', 's14')}If it goes wrong: ${esc(ch.rollback)}.</p>
-       ${SPLIT ? briefExtra(ch) : ''}`;
+       ${briefExtra(ch)}`;
   const historyTab = (ch) => {
     const cmp = RX.cmp.length === 2 ? RX.cmp.map((id) => ch.versions.find((v) => v.id === id)).filter(Boolean).sort((a, b) => a.n - b.n) : null;
     const val = (s, k) => { const v = s?.[k]; return Array.isArray(v) ? v.map((x) => (typeof x === 'object' ? Object.values(x).join(' · ') : x)).join(' / ') : v ?? ''; };
@@ -4288,21 +4154,6 @@
     for (let i = 0; i < 2 && ad.offsetHeight > roomH && m.offsetHeight > 0; i++) { const rest = ad.offsetHeight - m.offsetHeight, k = (roomH - rest) / m.offsetHeight; if (k >= 1 || k <= 0) break;
       ad.style.width = Math.round(Math.max(320, Math.min(roomW, ad.offsetWidth * k))) + 'px'; } };
   addEventListener('resize', () => { if (view === 'remix') fitAd(); });
-  /* ---------- UI2 jam: one page per card. Header (Back, agent, status), the draft and its versions, the facts
-     (Where / Post at / Backed by / Measure), the chat with option chips, the status band, and the brief and Adjust as overlays.
-     Same RX state, same data-* actions and API calls as the studio; only the layout differs. ---------- */
-  const j2Status = (ch, viewing) => { const w0 = SPLIT ? workOfCard(RX.p?.id) : null;
-    if (viewing) return ['info', `Looking at v${viewing.n}`]; if (RX.sending) return ['info', 'Working…']; if (jobOf(ch)) return ['info', `${jobOf(ch)}…`];
-    if (w0?.stage === 'shared') return ['ok', `Brief sent${w0.ticket ? ' · ' + w0.ticket : ''}`]; if (w0?.stage === 'needs_you') return ['warn', 'Needs your OK'];
-    if (w0?.stage === 'team') return ['info', `With ${w0.with?.name || 'your team'}`]; if (ch.state === 'jam') return ['warn', 'In a jam'];
-    if (ch.verdict === 'fix') return ['warn', 'Needs a fix']; if (!planMade(ch)) return ['', ch.v0 === 'draft' ? 'First draft' : 'Draft']; return ['ok', `Ready · v${curN(ch)}`]; };
-  const j2Facts = (ch, pkgCh) => { const p = pkgCh.pkg || {}, w = SPLIT ? workOfCard(RX.p?.id) : null, bp = w?.doc?.plan || {}, kn = RX.p ? cardOf(RX.p).know : null, one = (v) => Array.isArray(v) ? v.map((x) => (typeof x === 'object' ? x.name || x.label || Object.values(x)[0] : x)).filter(Boolean).join(', ') : typeof v === 'object' && v ? v.name || v.label || '' : v;
-    const where = [ch.target?.name, one(p.where) || one(p.placements) || one(p.channel) || one(p.pages) || one(p.platform) || one(p.account)].filter(Boolean).filter((x, i, a) => a.indexOf(x) === i).join(' · ');
-    const when = one(p.postAt) || one(p.schedule) || one(p.trigger) || one(p.checkAt) || bp.when || '';
-    const backed = (RX.moves || []).slice(0, 3), measure = bp.metric || one(p.measure) || (kn ? kn.metric : '') || '';
-    const budget = one(p.dailyBudget) || bp.budget || '';
-    const rows = [['Where', where && esc(where)], ['Post at', when && esc(when)], ['Budget', budget && esc(budget)], ['Backed by', backed.length ? backed.map((m) => `<button class="linkbtn j2-mv" data-j2-move="${m.n}" title="${esc(m.title)}">${mvLabel(m.n)}</button>`).join(' ') : ''], ['Measure', measure && esc(measure)]].filter(([, v]) => v);
-    return rows.length ? `<dl class="j2-facts">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>` : ''; };
   /* the options under the chat: the card's own next step, the brief, photo, the family's quick asks, more versions, the knobs, the files */
   /* the files, the projection and the remakes: the same three chips in both designs (ui=1 puts them after its quick asks) */
   /* "Make our version": what Brew read from the rival's ad (rival-ad.js), so the team sees the angle, hook and look it is working from */
@@ -4339,17 +4190,6 @@
     out.push(c('data-j2-impact', 'trendup', 'Projected impact'));
     if (['meta_ad', 'social', 'post'].includes(ch.family) && ch.state !== 'live' && !ch.realOnly /* Reddit, Quora, a Facebook group: real photos only, no AI reel or carousel */) { const as = ch.pkg?.draft?.as || (/carousel/.test(String(ch.action)) ? 'carousel' : /short_video|reel/.test(String(ch.action)) ? 'video' : ''), busyMedia = ch.imagePending || ch.videoPending || ch.remakePending; if (busyMedia) out.push(`<button type="button" class="chip j2-chip" disabled>${ic('clock', 's14')}${esc(jobOf(ch) || 'Making it')}…</button>`); else { if (as !== 'video') out.push(c('data-j2-remake="video"', 'film', 'Make it a reel')); if (as !== 'carousel') out.push(c('data-j2-remake="carousel"', 'layers', 'Make it a carousel')); } }
     return out; };
-  const chips2 = (ch) => { const pl = planOf(ch), made = planMade(ch), dis = RX.sending ? ' disabled' : '', c = (attr, icon, label, cls = '') => `<button type="button" class="chip j2-chip${cls}" ${attr}${dis}>${icon ? ic(icon, 's14') : ''}${esc(label)}</button>`;
-    const out = [c('data-tab="details"', 'doc', 'View brief', ' is-brief')];
-    if (!made && pl) out.push(c('data-rx="plan"', 'sparkles', planGo(ch, pl).label, ' is-go'));
-    if (ch.verdict === 'fix') out.push(c('data-rx="fix"', 'sparkles', 'Fix it with AI', ' is-go'));
-    if (PH_FAM.includes(ch.family)) out.push(c('data-ph-open', 'pic', 'Swap the image'));
-    fitSuggest(ch.suggest).slice(0, 3).forEach((x) => out.push(`<button type="button" class="chip j2-chip" data-say="${esc(x)}"${dis}>${esc(x)}</button>`));
-    out.push(...j2Acts(ch, c));
-    out.push(c('data-rx="variants"', 'shuffle', 'Redo it'));
-    if (fitKnobs(ch.knobs).length) out.push(c('data-tab="adjust"', 'sliders', 'Adjust'));
-    if (RX.p) out.push(`<button type="button" class="chip j2-chip" data-ask="${esc(JSON.stringify({ cardId: RX.p.id, label: String(cardOf(RX.p).title || 'This card').slice(0, 60) }))}">${ic('chat', 's14')}Ask Brew about this</button>`);
-    return `<div class="it-sugg j2-chips">${out.join('')}</div>`; };
   /* the publish pack: read-only, the final files and copy to post yourself. Brew writes to no account */
   const j2PackLabel = (ch) => { const pf = String(ch.pkg?.platform || ch.pkg?.where?.[0]?.name || '').trim();
     if (ch.target?.conn === 'meta') return 'Get the Ads Manager files'; /* a Meta ad (or a Meta video ad) is made in Ads Manager, never posted to Instagram */
@@ -4377,13 +4217,6 @@
       if (r.change) putCh(r.change); if (view !== 'remix' || RX.ch?.id !== ch.id) return; /* you moved on: the new version waits in its own jam */
       if (r.error || !r.change) { toast(esc(r.error || 'That didn’t work. Try again.')); return paintStudio(); }
       RX.ch = r.change; RX.viewing = null; if (r.making === false && r.why) toast(esc(r.why)); return paintStudio(); } };
-  const j2Brief = (ch, pkgCh, edit) => `<div class="j2-scrim" data-tab="iterate"></div><aside class="j2-sheet j2-brief" role="dialog" aria-label="The brief"><header class="j2-sh-h"><b>${ic('doc', 's16')}The brief</b><button class="icon-btn" data-tab="iterate" aria-label="Back to the chat">${ic('x', 's18')}</button></header>
-      <div class="j2-sh-b">${(() => { const w = SPLIT ? workOfCard(RX.p?.id) : null, it = (WORK.withTeam?.items || []).find((x) => x.wid === w?.id), me = ME();
-        return `<div class="j2-memo">${it?.label ? `<span class="j2-stamp">${esc(it.label)}</span>` : ''}<dl><div><dt>From</dt><dd>${esc(me?.name || me?.email || `${B.brand.name} team`)}</dd></div><div><dt>To</dt><dd>${w?.jamBrief?.to === 'team' ? 'Your team' : 'ShopOS team'}</dd></div><div><dt>Due</dt><dd>${esc(w?.doc?.plan?.when || 'As agreed')}</dd></div><div><dt>Ref</dt><dd>${esc(w?.ticket || 'On send')}</dd></div></dl><h2>${esc(ch.actionLabel)}</h2></div>`; })()}${detailsTab(ch, pkgCh, edit)}</div>
-      <footer class="j2-sh-f"><button class="btn btn-ghost" data-tab="iterate">Back to chat</button><span class="sp"></span>${(() => { const w = SPLIT ? workOfCard(RX.p?.id) : null, jb = w?.jamBrief, it = (WORK.withTeam?.items || []).find((x) => x.wid === w?.id);
-        return w?.stage === 'shared' && jb?.to !== 'team' ? `<span class="j2-sent">${ic('check', 's16')}Sent to the ShopOS team${w.ticket ? ` · ${esc(w.ticket)}` : ''}${it?.label ? ` · ${esc(it.label)}` : ''}${jb?.sharedAt ? ` · ${esc(sentLine(jb.sharedAt))}` : ''}</span>` : `<button class="btn btn-ghost" data-rx="share-team">Share with my team</button><button class="btn btn-primary" data-rx="share-shopos">${ic('send', 's16')}Send brief</button>`; })()}</footer></aside>`;
-  const j2Adjust = (ch, edit) => `<div class="j2-scrim" data-tab="iterate"></div><aside class="j2-sheet j2-adjust" role="dialog" aria-label="Adjust"><header class="j2-sh-h"><b>${ic('sliders', 's16')}Adjust</b><button class="icon-btn" data-tab="iterate" aria-label="Close">${ic('x', 's18')}</button></header><div class="j2-sh-b">${adjustTab(ch, edit)}</div></aside>`;
-  const j2Moves = async (p) => { if (!p || RX.movesFor === p.id) return; RX.movesFor = p.id; RX.moves = []; const r = await tapi('GET', `/api/cards/${encodeURIComponent(p.id)}/moves`).catch(() => ({})); if (RX.movesFor !== p.id) return; RX.moves = r.moves || []; if (RX.moves.length && view === 'remix') paintStudio(); };
   /* the studio says where its draft came from: a rival's ad → "Our version of <rival>'s ad" (FEED-NOT-02), else the card */
   const studioFrom = (ch) => { const rv = rivalOf(RX.p ? cardOf(RX.p) : {}) || (ch.rival ? { name: ch.rival.brand || '' } : null); if (rv) return esc(ourVersionOf(rv.name || ch.rival?.brand || '')); const c = RX.p ? cardOf(RX.p) : null; return esc((c && (whoseAd(c) || fromLabel(c))) || 'Made for you'); }; /* the feed's own label ("Made for you", "From your ads"), never from “title” (FEED-NOT-02) */
   const paintStudio = () => {
@@ -4399,39 +4232,23 @@
     const keepOpen = RX.keepFor === ch.id ? new Set([...pg.querySelectorAll('details[data-keep][open]')].map((d) => d.dataset.keep)) : new Set(); RX.keepFor = ch.id;
     /* a repaint from the jam's poll (a teammate's line, a version) never takes the box from someone typing in it */
     const typingAt = document.activeElement?.id === 'st-in' ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
-    if (UI2) { j2Moves(RX.p); const [tone, stx] = j2Status(ch, viewing);
-      pg.classList.add('j2');
-      pg.innerHTML = `<header class="st-top j2-top"><button class="q-back" data-st-back>${ic('left', 's16')}${ch.batchKey ? `All ${RX.p?.images?.length || ''} ads` : 'Back'}</button>
-          <div class="j2-who">${face(ch.agent)}<b>${esc(AGENT[ch.agent] || 'Brew')}</b><span class="j2-st ${tone}">${esc(stx)}</span></div>${studioJamCtl()}
-          <div class="st-vwrap"><button class="st-vpill${RX.vmenu ? ' is-open' : ''}" data-vmenu aria-haspopup="dialog" aria-expanded="${!!RX.vmenu}" title="Version history">${ic('clock', 's14')}<b class="st-vcount">v${curN(ch)}${ch.versions.length > 1 ? ` of ${ch.versions.length}` : ''}</b>${ic('chev', 's14')}</button>${RX.vmenu ? `<div class="st-vmenu" role="dialog" aria-label="Version history"><div class="st-vmenu-h"><b>Versions</b><small>${ch.versions.length} saved · nothing is ever lost</small></div><div class="st-vmenu-b">${historyTab(ch)}</div></div>` : ''}</div>${themeBtn()}<button class="icon-btn st-more" aria-label="More" data-lmenu="remix:${esc(ch.id)}">${ic('more', 's16')}</button></header>
-        <div class="st-body j2-body"><aside class="st-panel j2-panel"><div class="st-panel-b is-chat j2-scroll">
-          <section class="j2-draft"><div class="j2-title"><b>${esc(ch.actionLabel)}${ch.target.conn && ch.target.name ? ` <span>on ${esc(ch.target.name)}</span>` : ''}</b><small>${esc(ch.familyName)} · ${studioFrom(ch)}</small></div>
-            <main class="st-canvas j2-canvas"><div class="st-asset${ch.copyPending ? ' is-writing' : ''}">${ch.copyPending ? `<p class="st-writing" role="status"><brew-load class="spin"></brew-load>Writing the first draft from the card…</p>` : ''}${!ch.copyPending && ch.ctaPending ? `<p class="st-writing" role="status"><brew-load class="spin"></brew-load>${esc(ch.ctaPending)}…</p>` : ''}${assetHtml(pkgCh, 'lg')}</div>${phTools(ch, pkgCh, viewing)}${timeline(ch, viewing)}</main>
-            ${refBtnHtml(ch)}${rivalReadHtml(ch)}${j2Facts(ch, pkgCh)}${shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh))}</section>
-          ${chatTab(ch, edit)}</div></aside></div>
-        ${tab === 'details' ? j2Brief(ch, pkgCh, edit) : tab === 'adjust' ? j2Adjust(ch, edit) : ''}`;
-    } else
-    pg.innerHTML = `<header class="st-top"><button class="q-back" data-st-back>${ic('left', 's16')}${ch.batchKey ? `All ${RX.p?.images?.length || ''} ads` : SPLIT ? 'Back' : 'Packages'}</button>
+    pg.innerHTML = `<header class="st-top"><button class="q-back" data-st-back>${ic('left', 's16')}${ch.batchKey ? `All ${RX.p?.images?.length || ''} ads` : 'Back'}</button>
         <div class="st-ttl"><b>${esc(ch.actionLabel)}${ch.target.conn && ch.target.name ? ` <span>on ${esc(ch.target.name)}</span>` : ''}</b><small>${face(ch.agent)}${esc(ch.familyName)} · ${studioFrom(ch)}</small></div>${studioJamCtl()}
         <div class="st-vwrap"><button class="st-vpill${RX.vmenu ? ' is-open' : ''}" data-vmenu aria-haspopup="dialog" aria-expanded="${!!RX.vmenu}" title="Version history">${ic('clock', 's14')}<span>History</span>${ic('chev', 's14')}</button>${RX.vmenu ? `<div class="st-vmenu" role="dialog" aria-label="Version history"><div class="st-vmenu-h"><b>Versions</b><small>${ch.versions.length} saved · nothing is ever lost</small></div><div class="st-vmenu-b">${historyTab(ch)}</div></div>` : ''}</div>${themeBtn()}<button class="icon-btn st-more" aria-label="More" data-lmenu="remix:${esc(ch.id)}">${ic('more', 's16')}</button></header>
       <div class="st-body">
         <main class="st-canvas">${refBtnHtml(ch)}${rivalReadHtml(ch)}${optTabs(ch, viewing)}<div class="st-asset${ch.copyPending ? ' is-writing' : ''}">${ch.copyPending ? `<p class="st-writing" role="status"><brew-load class="spin"></brew-load>Writing the first draft from the card…</p>` : ''}${!ch.copyPending && ch.ctaPending ? `<p class="st-writing" role="status"><brew-load class="spin"></brew-load>${esc(ch.ctaPending)}…</p>` : ''}${assetHtml(pkgCh, 'lg')}</div>${phTools(ch, pkgCh, viewing)}${shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh))}</main>
-        <aside class="st-panel"><div class="st-tabs" role="tablist">${[['iterate', 'Chat'], ['adjust', 'Adjust'], ['details', SPLIT ? 'Brief' : 'Details']].map(([k, n]) => `<button role="tab" data-tab="${k}" aria-selected="${tab === k}">${n}</button>`).join('')}</div>
+        <aside class="st-panel"><div class="st-tabs" role="tablist">${[['iterate', 'Chat'], ['adjust', 'Adjust'], ['details', 'Brief']].map(([k, n]) => `<button role="tab" data-tab="${k}" aria-selected="${tab === k}">${n}</button>`).join('')}</div>
           <div class="st-panel-b${tab === 'iterate' ? ' is-chat' : ''}">${tab === 'iterate' ? chatTab(ch, edit) : tab === 'adjust' ? adjustTab(ch, edit) : tab === 'details' ? detailsTab(ch, pkgCh, edit) : chatTab(ch, edit)}</div></aside>
       </div>`;
     /* Change photo sits on the photo itself, never under the post. A swiping carousel gets a still frame around it, so the
        button stays put while the slides scroll */
-    { const at = SPLIT ? null : $('.st-atools'), m = at && $('.st-asset .pm-media, .st-asset .am-media, .st-asset .as-swipe'); /* the jam keeps its photo tools in one row under the stage, never on the picture */
-      if (m) { let box = m; if (m.classList.contains('as-swipe')) { box = document.createElement('div'); box.className = 'as-swipe-box'; m.before(box); box.appendChild(m); }
-        box.classList.add('has-chg'); box.appendChild(at); } }
     /* a reel's photo and video tools: one quiet row right under the phone */
-    if (SPLIT) { const at = $('.st-atools'), ph = $('.st-asset .sv-phone'), mk = $('.st-asset .sv-make.is-row'); if (ph) { if (at) { ph.after(at); if (mk) { at.append(...mk.children); mk.remove(); } } } }
+    { const at = $('.st-atools'), ph = $('.st-asset .sv-phone'), mk = $('.st-asset .sv-make.is-row'); if (ph) { if (at) { ph.after(at); if (mk) { at.append(...mk.children); mk.remove(); } } } }
     if (keepOpen.size) pg.querySelectorAll('details[data-keep]').forEach((d) => { if (keepOpen.has(d.dataset.keep)) d.open = true; });
     if (typingAt) { const box = $('#st-in'); if (box) { box.focus(); try { box.setSelectionRange(typingAt[0], typingAt[1]); } catch {} } }
     fitAd();
     const pb = $('.st-panel-b'); const nT = (ch.thread || []).length + (RX.sending ? 1 : 0) + Object.keys(J2.imp).length + Object.keys(J2.pack).length;
-    if (UI2) { const grew = nT > (RX.j2n || 0) && RX.j2for === ch.id; RX.j2n = nT; const first = RX.j2for !== ch.id; RX.j2for = ch.id; pb.scrollTop = first ? 0 : grew ? pb.scrollHeight : logScroll || 0; RX.resetScroll = false; } /* opening the brief or Adjust never moves the page */
-    else if (tab === 'iterate') pb.scrollTop = (ch.thread || []).length || RX.sending || j2Extra(ch) ? pb.scrollHeight : 0; /* the case stays first in the chat and scrolls up as it grows; a fresh chat is read from its top */ else if (logScroll && !RX.resetScroll) pb.scrollTop = logScroll; RX.resetScroll = false;
+    if (tab === 'iterate') pb.scrollTop = (ch.thread || []).length || RX.sending || j2Extra(ch) ? pb.scrollHeight : 0; /* the case stays first in the chat and scrolls up as it grows; a fresh chat is read from its top */ else if (logScroll && !RX.resetScroll) pb.scrollTop = logScroll; RX.resetScroll = false;
     pollJob(ch);
   };
   /* the headline in place (hlHtml): click → type → Enter or click away saves a version; Esc cancels */
@@ -4517,9 +4334,9 @@
     // Remix is the jam now: versions and quick turns live on the jam's canvas
     /* the jam page is the studio: one widget on a stage, Chat · Adjust · Details · History, versions. It works on the
        card's own package (made once per jam); a card with no package (a pure decision) keeps the canvas jam */
-    const fromCard = SPLIT && !!DP;
+    const fromCard = !!DP;
     $('#inst')?.remove(); /* the home-screen nudge belongs to the feed, never over the jam's buttons */
-    if (SPLIT) { closePop(); closeModal(); S.jamOn = { ...(S.jamOn || {}), [p.id]: true }; save();
+    { closePop(); closeModal(); S.jamOn = { ...(S.jamOn || {}), [p.id]: true }; save();
       if (!chId) { let w = p._work || workOfCard(p.id);
         /* making the jam's package takes a few seconds the first time: say so at once, never a dead tap */
         const wait = !w?.changeId ? jamWait() : null;
@@ -4558,12 +4375,12 @@
   /* the brief follows the package quietly, so it is always the final version */
   /* the brief follows the package without an AI rewrite on every edit: an edit only notes what was asked (lazy, no AI); the
      brief catches up when it is opened here (syncBriefNow) and when it is sent or shared (the server's doc/ship) */
-  const syncBrief = (ch, said) => { const w = workOfCard(RX.p?.id); if (!SPLIT || !w || !ch?.pkg) return;
+  const syncBrief = (ch, said) => { const w = workOfCard(RX.p?.id); if (!w || !ch?.pkg) return;
     tapi('POST', `/api/work/${w.id}/doc/sync`, { lazy: true, said: String(said || '').slice(0, 200) }).then((r) => { if (r.work) putWork(r.work); }).catch(() => {}); };
-  const syncBriefNow = () => { const w = workOfCard(RX.p?.id); if (!SPLIT || !w || !RX.ch?.pkg || RX.briefSync) return; RX.briefSync = true;
+  const syncBriefNow = () => { const w = workOfCard(RX.p?.id); if (!w || !RX.ch?.pkg || RX.briefSync) return; RX.briefSync = true;
     tapi('POST', `/api/work/${w.id}/doc/sync`, { now: true }).then((r) => { RX.briefSync = false; if (r.work) putWork(r.work); if (view === 'remix' && RX.tab === 'details' && !RX.briefEdit) paintStudio(); }).catch(() => { RX.briefSync = false; }); };
   /* the jam's own controls in the studio's header: Assign / Ask for OK (jam-room.js), who's in it and who's here now */
-  const studioJamCtl = () => { const w = SPLIT && RX.p ? workOfCard(RX.p.id) : null, JR = window.JamRoom; if (!w || !JR?.assignHtml || window.BREW_DEMO) return '<span class="st-jamctl"></span>';
+  const studioJamCtl = () => { const w = RX.p ? workOfCard(RX.p.id) : null, JR = window.JamRoom; if (!w || !JR?.assignHtml || window.BREW_DEMO) return '<span class="st-jamctl"></span>';
     return `<span class="st-jamctl" data-st-jam>${JR.assignHtml(w)}${JR.peopleHtml?.(w) || ''}</span>`; };
   /* the studio's jam moved (jamPoll): a teammate's message or version, an assign, a status. The jam is put in place, the change is
      read again (its versions and chat are the team's), and the studio repaints; presence alone only redraws the header strip */
@@ -4624,14 +4441,12 @@
     if (view !== 'remix') return;
     if (e.target.closest('[data-vmenu]')) { RX.vmenu = !RX.vmenu; return paintStudio(); }
     { const k = e.target.closest('[data-j2-pack],[data-j2-impact],[data-j2-remake]'); if (k && RX.ch) return j2Run(k.hasAttribute('data-j2-pack') ? 'pack' : k.hasAttribute('data-j2-impact') ? 'impact' : 'remake', RX.ch, k.dataset.j2Remake); }
-    const jm2 = e.target.closest('[data-j2-move]'); if (jm2) { const m = (RX.moves || []).find((x) => x.n === +jm2.dataset.j2Move); if (!m) return;
-      return modal(`<div class="sheet j2-move"><header class="sh-h"><b class="sh-t">${mvLabel(m.n)}</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header><h3>${esc(m.title)}</h3>${m.stat ? `<p class="j2-mv-stat"><b>${esc(m.stat)}</b> ${esc(m.statLabel || '')}</p>` : ''}${m.why || m.summary ? `<p>${esc(m.why || m.summary)}</p>` : ''}<div class="cx-btns"><a class="btn btn-ghost" href="${pdfUrl(`move-${m.n}.pdf`)}" target="_blank" rel="noopener">${ic('down', 's16')}PDF</a><button class="btn btn-primary" data-close data-nav-move="${m.n}">Read the move</button></div></div>`); }
     const nm = e.target.closest('[data-nav-move]'); if (nm) { closeModal(); location.hash = `#v=move&m=${nm.dataset.navMove}`; return; }
     if (e.target.closest('[data-ph-open]')) return openPhotos();
     { const dl = e.target.closest('[data-st-dl]'); if (dl && RX.ch) { const ch = RX.ch, v = RX.viewing && RX.viewing !== ch.head ? ch.versions.find((x) => x.id === RX.viewing) : null; return downloadVersion(ch, asPkg(ch, v), dl); } }
     if (RX.vmenu && !e.target.closest('.st-vmenu')) { RX.vmenu = false; paintStudio(); if (!e.target.closest('[data-tab],[data-rx],[data-st-back]')) return; }
     if (e.target.closest('[data-rx-back]')) return leaveRemix();
-    if (e.target.closest('[data-st-back]')) return SPLIT && !RX.batch ? leaveRemix() : history.state?.a === 'rx-ch' ? history.back() : backToOptions();
+    if (e.target.closest('[data-st-back]')) return !RX.batch ? leaveRemix() : history.state?.a === 'rx-ch' ? history.back() : backToOptions();
     const os = e.target.closest('[data-open-studio]'); if (os) return openStudio(os.dataset.openStudio);
     const it = e.target.closest('[data-intent]'); if (it) { RX.intent = RX.intent === it.dataset.intent ? '' : it.dataset.intent; if (RX.intent) runRemix(); else paintStart(); return; }
     const tb = e.target.closest('[data-tab]'); if (tb) { RX.tab = tb.dataset.tab; RX.editing = false; RX.resetScroll = true; if (RX.tab === 'details') syncBriefNow(); /* the Brief opened: it catches up with the version on the stage */ return paintStudio(); }
@@ -4828,7 +4643,6 @@
   // a move opens as its own page: #v=move&m=NN (back returns to the Moves page)
   const openMove = (n) => { MV.n = n; nav(`#v=move&m=${n}`, true, 'view', 'move'); renderMove(); };
   const renderMove = async () => {
-    if (UI2) m2Paint('move'); /* the reader is a page of its own: no Memory header over it, whichever way it was opened */
     view = 'move'; counts(); clearTimeout(MV.t); const n = +(hashParams().m ?? MV.n ?? 0), slug = mvSlug(); MV.n = n;
     $('#view').innerHTML = `<div class="rd"><div class="sk" style="height:60vh;border-radius:24px"></div></div>`; window.scrollTo(0, 0);
     const [m, list, up] = await Promise.all([api(`/api/brands/${slug}/moves/${n}`), api(`/api/brands/${slug}/moves`), GEN ? api(`/api/brands/${slug}/updates`) : null]); if (view !== 'move') return;
@@ -5116,7 +4930,7 @@
     const told = TOLD?.told, toldRows = told ? [['essence', 'Essence'], ['goals', 'Goals and plans'], ['beliefs', 'Beliefs'], ['tried', 'What they tried'], ['facts', 'Facts they stated']].flatMap(([k, h]) => (told[k] || []).map((x) => ({ ...x, h }))) : [];
     // one heading per group (Goals, Beliefs, Facts), each line plain; with more than one source, each line names its own
     const oneSrc = (told?.sources || []).length <= 1, toldList = (xs) => xs.map((x, i) => `${i === 0 || xs[i - 1].h !== x.h ? `<h4>${esc(x.h)}</h4>` : ''}<div class="mem-l"><p>${esc(x.text)}</p>${oneSrc || !x.source ? '' : `<small>${esc(x.source)}</small>`}</div>`).join('');
-    const TOLD_N = UI2 ? 6 : 4;
+    const TOLD_N = 4;
     const toldHtml = toldRows.length ? `<section class="lx-sec mem-g">${lxHead('lx-told', 'What your team told Brew', toldRows.length, `From ${oneSrc ? esc(told.sources?.[0]?.label || 'your team') : `${told.sources.length} calls, notes and emails`}. The moves follow these.`)}
       ${toldList(toldRows.slice(0, TOLD_N))}${toldRows.length > TOLD_N ? `<details class="q-more"><summary>${toldRows.length - TOLD_N} more</summary>${toldList(toldRows.slice(TOLD_N))}</details>` : ''}</section>` : '';
     const anyLearned = moved.length + lessons.length + L.rules.length + L.autoChecks.length + toldRows.length;
@@ -5129,14 +4943,14 @@
         L.rules.length && t('data-lx-jump="lx-rules"', L.rules.length, L.rules.length === 1 ? 'Rule' : 'Rules', 'Every agent follows'),
         ppl && t('data-hd-open', ppl.toLocaleString(), 'Things people said', srcs.slice(0, 2).map((x) => x.name).join(', '))].filter(Boolean);
       return tiles.length ? `<div class="lx-ov">${tiles.join('')}</div>` : ''; };
-    libShell('What Brew learned', UI2 ? 'From what you pick, edit and ship. Edit, pause or forget anything.' : 'From what you pick, edit and ship, and anything you drop on this page. Edit, pause or forget any of it.',
-      `<div class="lx"${UI2 ? '' : ' data-m2-drop'}>${UI2 ? '' : lxDropBig() + lxOverview()}
-        ${UI2 || mvBuilding ? movesHtml : ''}
-        ${anyLearned ? '' : UI2 ? `<p class="lx-zero">${ic('sparkles', 's16')}<span>Nothing learned yet. Pick, edit and ship from your cards, and what Brew learns lands here.</span></p>` : ''}
+    libShell('What Brew learned', 'From what you pick, edit and ship, and anything you drop on this page. Edit, pause or forget any of it.',
+      `<div class="lx" data-m2-drop>${lxDropBig() + lxOverview()}
+        ${mvBuilding ? movesHtml : ''}
+        
         ${toldHtml}
         ${moved.length ? `<section class="lx-sec">${lxHead('lx-moved', 'What moved the number', moved.length, '')}${moved.map(movedHtml).join('')}</section>` : ''}
         ${(() => { const you = lessons.filter((x) => x.kind === 'you'), br = lessons.filter((x) => x.kind !== 'you');
-          if (!UI2 && !you.length && !br.length && !moved.length) return ''; /* no lessons yet: no empty section (quiet rule, QA UI 20 Oct) */
+          if (!you.length && !br.length && !moved.length) return ''; /* no lessons yet: no empty section (quiet rule, QA UI 20 Oct) */
           return `${you.length ? `<section class="lx-sec">${lxHead('lx-lessons', 'How you work', you.length, '')}${you.map(lessonHtml).join('')}</section>` : ''}${br.length ? `<section class="lx-sec">${lxHead('lx-lessons-b', `What it learned about ${esc(B.brand.name)}`, br.length, '')}${br.map(lessonHtml).join('')}</section>` : ''}`; })()}
         <section class="lx-sec">${lxHead('lx-rules', 'Rules', L.rules.length || '', L.rules.length ? '' : `Teach one, or edit the same way ${L.promoteAt} times and it becomes one.`)}
           ${L.rules.map(ruleHtml).join('')}<form class="lx-teach" id="ln-teach">${ic('plus', 's16')}<input id="ln-in" placeholder="Teach a rule, e.g. never say ‘guaranteed’" autocomplete="off" aria-label="Teach a rule"><button class="btn sm">Add</button></form>${forming(L.forming, 'Forming from your edits')}</section>
@@ -5154,20 +4968,10 @@
     $$('[data-hd-theme]').forEach((b) => b.onclick = () => openHeard({ theme: b.dataset.hdTheme }));
     $$('[data-goto-move]').forEach((b) => b.onclick = () => openMove(+b.dataset.gotoMove));
   };
-  /* UI2 Memory: one header (Drop anything here + tabs) over the pages that already exist.
-     What we learned = the learned hub with the moves; Rules = its rules and checks plus the fact sheet; Heard; Your feed. */
-  const renderLearned = async () => { await renderLearned0(); if (!UI2 || view !== 'learned') return;
-    if (document.body.dataset.m2 === 'rules' && !$('#fs')) { ($('#col') || $('#view')).insertAdjacentHTML('beforeend', `<section class="lx-sec m2-facts">${lxHead('lx-facts', 'Fact sheet', '', `Every number and name Brew may quote for ${esc(B.brand.name)}, and where it came from. Every agent follows it.`)}<div class="fsx" id="fs">${loader('Opening the fact sheet', '', 'sm')}</div></section>`); renderFacts(true); } };
-  const M2TAB = { learned: 'learned', moves: 'learned', move: 'learned', rules: 'rules', facts: 'rules', heard: 'heard', tune: 'tune' };
+  const renderLearned = () => renderLearned0();
   /* ui=1: the big drop box on What Brew learned (the whole page still takes a drop) */
   const lxDropBig = () => `<div class="m2-drop lx-drop" data-m2-drop><span class="m2-up">${ic('upload')}</span><b>Drop anything here</b><span>Brand guides, past ads, product sheets, screenshots. Brew reads them and keeps what matters.</span><button class="lx-drop-btn" data-m2-pick>Upload files</button><input type="file" multiple hidden accept=".pdf,.docx,.pptx,.xlsx,.txt,.md,.csv,.tsv,.json,.png,.jpg,.jpeg,.webp,.mp4" data-m2-file></div>`;
-  const m2DropHtml = () => `<div class="m2-drop" data-m2-drop><span class="m2-up">${ic('up', 's18')}</span><b>Drop anything here</b><span>Brand guides, past ads, product sheets, screenshots. Brew reads it and every agent works from it.</span><button class="btn btn-ghost sm" data-m2-pick>Upload files</button><input type="file" multiple hidden accept=".pdf,.docx,.pptx,.xlsx,.txt,.md,.csv,.tsv,.json,.png,.jpg,.jpeg,.webp,.mp4" data-m2-file></div>`;
-  const m2Paint = (k) => { const el = $('#m2'); if (!el) return; const t = M2TAB[k]; el.hidden = !t || k === 'move'; document.body.dataset.m2 = t || ''; if (!t || k === 'move') return;
-    const tab = (key, nav, label) => `<button role="tab" data-nav="${nav}" aria-selected="${t === key}">${label}</button>`;
-    el.innerHTML = `<div class="m2-in"><h1>Memory</h1><p class="m2-sub">What Brew knows and follows for ${esc(B.brand.name)}.</p>
-      ${m2DropHtml()}
-      <nav class="m2-tabs" role="tablist">${tab('learned', 'learned', 'What we learned')}${tab('tune', 'tune', 'Your feed')}${tab('rules', 'rules', 'Rules')}${tab('heard', 'heard', 'Heard')}</nav></div>`; };
-  /* Drop anything here: pick or drop files, then say where they go (brand memory / my preferences / just this once).
+  /* Drop anything here: pick or drop files, then say where they go (brand memory / my preferences).
      Brand memory reads every file (PDF, Word, PowerPoint, Excel and photos through the server, drop-read.js), shows the learnings
      draft to check, and on Save they reach the brief, Brew's memory, the moves they change and the feed (brand-learnings.js) */
   const DROP_TXT = /^text\/|json|csv|markdown/, DROP_IMG = /^image\/(png|jpeg|webp)$/;
@@ -5193,7 +4997,7 @@
   const m2Drop = (files) => { files = [...files].slice(0, 8); if (!files.length) return;
     const dest = (k, icon, t, d) => `<button class="m2-dest" data-m2-dest="${k}">${ic(icon, 's18')}<span><b>${t}</b><small>${d}</small></span></button>`;
     const name1 = files.length === 1 ? files[0].name : `${files.length} files`;
-    modal(`<div class="sheet m2-sheet"><header class="sh-h dz-h"><span class="dz-ht"><b class="sh-t">${esc(name1)}</b><small class="dz-sub">${files.length === 1 ? dzKb(files[0].size) : files.map((f) => esc(f.name)).join(', ')}</small></span><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header><div class="m2-body"><p class="m2-q">Where should this go?</p>${dest('memory', 'book', 'Add to brand memory', 'Brew reads it, you check what it learned, then the brief, moves and feed follow.')}${dest('prefs', 'person', 'Save to my preferences', 'Shapes what the feed shows me, not what the brand says.')}${UI2 ? dest('once', 'clock', 'Use it just this once', 'For the next thing I ask Brew, then forget it.') : ''}</div></div>`, (m) => {
+    modal(`<div class="sheet m2-sheet"><header class="sh-h dz-h"><span class="dz-ht"><b class="sh-t">${esc(name1)}</b><small class="dz-sub">${files.length === 1 ? dzKb(files[0].size) : files.map((f) => esc(f.name)).join(', ')}</small></span><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header><div class="m2-body"><p class="m2-q">Where should this go?</p>${dest('memory', 'book', 'Add to brand memory', 'Brew reads it, you check what it learned, then the brief, moves and feed follow.')}${dest('prefs', 'person', 'Save to my preferences', 'Shapes what the feed shows me, not what the brand says.')}</div></div>`, (m) => {
       const sheet = $('.m2-sheet', m), body = $('.m2-body', m), paint = (html, foot = '') => { body.innerHTML = html; $('.dz-foot', sheet)?.remove(); if (foot) sheet.insertAdjacentHTML('beforeend', `<footer class="dz-foot">${foot}</footer>`); };
       const head = (t, sub) => { $('.sh-t', sheet).textContent = t; $('.dz-sub', sheet).textContent = sub || ''; };
       const after = () => { if (['learned', 'rules'].includes(document.body.dataset.m2) || view === 'learned') renderLearned(); if (view === 'tune') renderTune(); };
@@ -5264,7 +5068,7 @@
           sound('ready'); if (r.draft?.items?.length && !r.saved) return showDraft(r, notes);
           return answered(r); /* nothing new in it, or already saved */
         }
-        /* my preferences and just this once: the words of a PDF, Word, PowerPoint or Excel file; a photo or text file as before */
+        /* my preferences: the words of a PDF, Word, PowerPoint or Excel file; a photo or text file as before */
         let r = null; const skipped = []; let cut = false;
         for (const f of files) { const img = DROP_IMG.test(f.type), txt = isTxtFile(f);
           if (img && f.size > 8e6) { skipped.push(f.name); continue; }
@@ -5274,19 +5078,18 @@
           r = await tapi('POST', `/api/brands/${encodeURIComponent(mvSlug())}/drop`, { dest: d, name: f.name, ...body0 }); if (r?.error) break; if (r?.cut) cut = true; }
         if (!r && skipped.length) { closeModal(); return toast(`Brew couldn’t read ${esc(skipped.join(', '))}. It reads PDF, Word, PowerPoint, Excel, text files and photos (PNG, JPG, WebP).`); }
         closeModal(); if (!r || r.error) { sound('error'); return toast(esc(r?.error || 'That didn’t save. Try again.')); }
-        sound('ready'); toast(`${ic('check', 's16')}${d === 'prefs' ? 'Saved to your preferences' : 'Ready for your next ask'}${cut ? '. It was long, so Brew kept the first 4,000 characters' : ''}${skipped.length ? `. Couldn’t read ${esc(skipped.join(', '))}` : ''}`); if (d === 'prefs') { loadFeed().catch(() => {}); after(); } if (d === 'once') openAsk(); })); }); };
+        sound('ready'); toast(`${ic('check', 's16')}Saved to your preferences${cut ? '. It was long, so Brew kept the first 4,000 characters' : ''}${skipped.length ? `. Couldn’t read ${esc(skipped.join(', '))}` : ''}`); if (d === 'prefs') { loadFeed().catch(() => {}); after(); } })); }); };
   document.addEventListener('click', (e) => { const pk = e.target.closest('[data-m2-pick]'); if (pk) { (pk.closest('.m2-drop') || pk.parentElement)?.querySelector('[data-m2-file]')?.click(); } });
   document.addEventListener('change', (e) => { if (e.target.matches?.('[data-m2-file]')) { m2Drop(e.target.files); e.target.value = ''; } });
   ['dragover', 'dragleave', 'drop'].forEach((ev) => document.addEventListener(ev, (e) => { const z = e.target.closest?.('[data-m2-drop]'); if (!z) return; e.preventDefault(); z.classList.toggle('is-over', ev === 'dragover'); if (ev === 'drop') sound('send'), m2Drop(e.dataTransfer?.files || []); }));
-  const renderRules = () => { document.body.dataset.m2 = 'rules'; return renderLearned(); };
   /* Your feed: what Brew picked up from your hearts and saves, your seat, and Tune (per-agent weights land with the tuning API) */
   /* Your feed: what Brew picked up from your choices (each one can be dropped), topics, each agent Less / Normal / More,
      your saved preferences, and your seat. /api/tenants/:t/tuning; ranking moves an agent ±4 and a topic +2 */
   const TU = { d: null };
   const renderTune = async () => { view = 'tune'; const R = ROLE();
-    const tuT = UI2 ? '' : 'Your feed', tuS = UI2 ? '' : 'What Brew shows you more and less of. Only you see this.';
+    const tuT = 'Your feed', tuS = 'What Brew shows you more and less of. Only you see this.';
     if (!TU.d) libShell(tuT, tuS, loader('Opening your feed settings'));
-    const r = await tapi('GET', '/api/tenants/:t/tuning'); if (view !== 'tune') return; if (r.error) { libShell(tuT, tuS, `<p class="lx-empty">${esc(r.error)}</p>`); return UI2 && $('.lib-head')?.remove(); }
+    const r = await tapi('GET', '/api/tenants/:t/tuning'); if (view !== 'tune') return; if (r.error) { libShell(tuT, tuS, `<p class="lx-empty">${esc(r.error)}</p>`); return; }
     TU.d = r; const tn = r.tuning || {}, sig = r.signals || [], W = r.weights || ['less', 'normal', 'more'];
     const ign = new Set(tn.ignored || []);
     libShell(tuT, tuS, `<section class="lx-sec">${lxHead('lx-picked', 'Picked up from your choices', sig.length || '', sig.length ? 'From your hearts, Not for me and Fewer. Drop any that are wrong.' : 'Heart, save or skip cards; Brew learns what to show you more of.')}
@@ -5297,7 +5100,7 @@
       ${(tn.notes || []).length ? `<section class="lx-sec">${lxHead('lx-prefs', 'My preferences', tn.notes.length, 'From what you dropped into My preferences.')}${tn.notes.map((n) => `<div class="tu-sig"><span class="tu-t"><b>${esc(n.text || n.name || '')}</b></span><button class="icon-btn" data-tu-notex="${esc(n.id)}" aria-label="Remove">${ic('x', 's16')}</button></div>`).join('')}</section>` : ''}
       ${tuSetup()}
       <section class="lx-sec">${lxHead('lx-seat', 'Your seat', '', '')}<button class="lx-heard-row" data-r2-tune>${face(R.face)}<span><b>${esc(R.name)}</b><small>Who the feed is for, what comes first and your focus</small></span>${ic('right', 's16')}</button></section>`);
-    if (UI2) $('.lib-head')?.remove(); $('#col')?.classList.add('lib-col', 'tu-col'); };
+    $('#col')?.classList.add('lib-col', 'tu-col'); };
   /* the reading screen's answers, changeable here (so "change it later" is true): moves a morning, channels, ads last month, and
      the brand's voice (the team's, so only for its people) */
   const TU_SET = { perDay: [[3, '3'], [5, '5'], [10, '10']], adPace: [['none', 'None'], ['few', 'A few'], ['ten', '10+'], ['always', 'Always on']], voice: [['site', 'Like our site'], ['warmer', 'Warmer'], ['sharper', 'Sharper'], ['plainer', 'Plainer']] };
@@ -5355,44 +5158,6 @@
   const colleagueFor = (p) => colleague(p?.sector === 'creatives' || p?.sector === 'visibility' ? 'brandm' : p?.sector === 'ads' ? 'perf' : p?.sector === 'storefront' || p?.sector === 'catalog' ? 'ops' : 'growth');
 
   const openJam = (ctx) => window.JamRoom.openFromCtx(ctx); // the jam room (jam-room.js)
-  /* ---------- Ask Brew (UI2): one thread per person and brand (/api/tenants/:t/ask). It answers across the feed, the moves
-     and the facts, links the cards and moves it used, and when something should be made it offers the jam (the old global
-     jam's contexts: a card, several cards, the moves, a batch, a signal). ---------- */
-  const ASK = { msgs: [], pending: null, seed: null, busy: false };
-  const askStarters = () => [`What should I fix first this week, and why?`, `Draft a reel hook for ${GX.p1}`, `Why are people leaving the checkout?`];
-  const askMsg = (m) => m.from === 'brew' ? `<div class="a2m brew">${SO()}<div><div class="a2-body">${rich(m.body || '')}</div>
-      ${(m.links || []).length ? `<div class="a2-links">${m.links.map((l) => l.kind === 'move' ? `<button class="chip" data-a2-move="${esc(l.n)}">${ic('doc', 's14')}${mvLabel(l.n)}${l.title ? ` · ${esc(String(l.title).slice(0, 40))}` : ''}</button>` : `<button class="chip" data-a2-card="${esc(l.id)}">${l.agent ? face(l.agent) : ''}${esc(String(l.title || 'Open the card').slice(0, 48))}</button>`).join('')}</div>` : ''}
-      ${m.action?.ctx ? `<button class="btn btn-primary sm a2-act" data-a2-act="${esc(JSON.stringify(m.action.ctx))}" data-a2-say="${esc(m.action.say || '')}">${ic(m.action.kind === 'brief' ? 'send' : 'hand', 's14')}${esc(m.action.label || (m.action.kind === 'brief' ? 'Jam, then send the brief' : 'Jam on it'))}</button>` : ''}
-</div></div>` : `<div class="a2m me"><p>${esc(m.body || m.text || '')}</p></div>`;
-  const paintAsk = () => { const el = $('#ask2'); if (!el) return; const b = $('.a2-thread', el), atEnd = !b || b.scrollHeight - b.scrollTop - b.clientHeight < 60;
-    const first = !ASK.msgs.length;
-    $('.a2-thread', el).innerHTML = (first && ASK.loading ? loader('Opening your conversation', '', 'sm') : first ? `<div class="a2-hi"><h3>Hi${hiName(ROLE())}, what should we work on?</h3><div class="a2-starts">${askStarters().map((x) => `<button class="a2-start" data-a2-start="${esc(x)}">${esc(x)}</button>`).join('')}</div></div>` : ASK.msgs.map(askMsg).join(''))
-      + (ASK.busy ? `<div class="a2m brew">${SO()}<div><p class="a2-think"><brew-load class="spin"></brew-load>Thinking…</p></div></div>` : '');
-    $('.a2-seed', el).innerHTML = ASK.seed ? `<span class="chip">${ic('link', 's14')}${esc(ASK.seed.label || 'About this')}<button class="linkbtn" data-a2-unseed aria-label="Ask without it">${ic('x', 's14')}</button></span>` : '';
-    if (atEnd || ASK.busy) { const t = $('.a2-thread', el); t.scrollTop = t.scrollHeight; } };
-  const askSend = async (text) => { text = String(text || '').trim(); if (!text || ASK.busy) return; const seed = ASK.seed ? { ...ASK.seed } : undefined; delete seed?.label;
-    ASK.msgs.push({ from: 'me', body: text }); ASK.busy = true; ASK.seed = null; ASK.sent = (ASK.sent || 0) + 1; paintAsk();
-    const r = await tapi('POST', '/api/tenants/:t/ask', { text, seed }); ASK.busy = false;
-    if (r.error) { ASK.msgs.push({ from: 'brew', body: r.status === 403 ? 'Ask Brew is for the brand’s team. Ask in the jam instead.' : String(r.error) }); } else ASK.msgs = r.msgs || ASK.msgs;
-    paintAsk(); };
-  const openAsk = async (seed) => { ASK.seed = seed || null; ASK.gen = (ASK.gen || 0) + 1; const gen = ASK.gen;
-    if (!$('#ask2')) { const el = document.createElement('aside'); el.id = 'ask2'; el.className = 'ask2'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Ask Brew');
-      el.innerHTML = `<header class="a2-h"><b>${SO()}Ask Brew</b><button class="icon-btn" data-a2-clear title="Start a new thread" aria-label="Start a new thread">${ic('refresh', 's16')}</button><button class="icon-btn" data-a2-x aria-label="Close">${ic('x', 's18')}</button></header>
-        <div class="a2-thread"></div><form class="a2-f"><div class="a2-seed"></div><textarea rows="2" placeholder="Ask anything about ${esc(B.brand.name)}" aria-label="Ask Brew"></textarea><button class="jm-send" aria-label="Send">${ic('up', 's16')}</button></form>`;
-      document.body.appendChild(el); document.body.classList.add('ask-on');
-      $('.a2-f', el).onsubmit = (e) => { e.preventDefault(); const t = $('textarea', el); const v = t.value; t.value = ''; askSend(v); };
-      $('textarea', el).addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('.a2-f', el).requestSubmit(); } });
-      el.addEventListener('click', async (e) => { const t = e.target;
-        if (t.closest('[data-a2-x]')) { el.remove(); document.body.classList.remove('ask-on'); return; }
-        if (t.closest('[data-a2-clear]')) { await tapi('POST', '/api/tenants/:t/ask', { clear: true }); ASK.msgs = []; return paintAsk(); }
-        if (t.closest('[data-a2-unseed]')) { ASK.seed = null; return paintAsk(); }
-        const st = t.closest('[data-a2-start]'); if (st) return askSend(st.dataset.a2Start);
-        const cd = t.closest('[data-a2-card]'); if (cd) { const p = byId(cd.dataset.a2Card); if (p) { el.remove(); document.body.classList.remove('ask-on'); openDetail(p); } else toast('That card isn’t in this feed any more.'); return; }
-        const mv = t.closest('[data-a2-move]'); if (mv) { el.remove(); document.body.classList.remove('ask-on'); location.hash = `#v=move&m=${mv.dataset.a2Move}`; return; }
-        const ac = t.closest('[data-a2-act]'); if (ac) { let ctx = null; try { ctx = JSON.parse(ac.dataset.a2Act); } catch (x) {} if (!ctx) return; el.remove(); document.body.classList.remove('ask-on');
-          if (ctx.post && byId(ctx.post)) return openDetail(byId(ctx.post)); return openJam({ ...ctx, draft: ac.dataset.a2Say || undefined }); } }); }
-    ASK.loading = !ASK.msgs?.length; paintAsk(); setTimeout(() => $('#ask2 textarea')?.focus(), 60);
-    const sent0 = ASK.sent || 0; const r = await tapi('GET', '/api/tenants/:t/ask'); if (ASK.loading) { ASK.loading = false; if (!r?.msgs?.length || gen !== ASK.gen || ASK.busy || (ASK.sent || 0) !== sent0) paintAsk(); } /* no history: the starters */ if (r && !r.error && !r.teamOnly && gen === ASK.gen && !ASK.busy && (ASK.sent || 0) === sent0) { ASK.msgs = r.msgs || []; paintAsk(); } };
 
   /* =========================================================
      Stories
@@ -5543,8 +5308,8 @@
   /* ---------- go ---------- */
   // jam-room.js (the Jam Room) works from these
   window.__BREW = { sound: (k) => sound(k), openRefs: (r) => openRefs(r), shoposWho: 'the ShopOS team, Brew’s build crew', waNeed: (o) => waNeed(o), busyBtn: (b, l) => busyBtn(b, l), loader: (t, s2, z) => loader(t, s2, z), putCh: (ch) => putCh(ch), paintStudio: () => paintStudio(), modal: (h, b) => modal(h, b), closeModal: () => closeModal(), refreshAfterConnect: (id) => refreshAfterConnect(id), glyph: (id, n) => glyph(id, n), demoSheet: (h) => demoSheet(h), shareSheet: (p) => shareSheet(p), pageOf: (id) => PAGE[id] || null, studioCard: () => (view === 'remix' ? RX.p : null), studioV: () => (view === 'remix' && RX.ch ? curN(RX.ch) : null) /* the version on the jam's stage, for the sheets */, libAct, cxDone: (id) => $$(`[data-cxrow="${id}"]`).forEach((r) => (r.outerHTML = cxRow(id))), $, $$, esc, wait, ic, face, avatar, podFaces, brewAv, SO, movesTotal: () => +BREW?.total || 0, toast, toastLong, B, AGENT, save, ROLE, colleague, conn, cardOf, byId, tapi, putWork, counts, inrS, openConnect, openDetail, closeDetail, closePop, closeModal, modal, assetHtml, renderView, renderWork, workOfCard, pseudoPost, colleagueForCard,
-    get S() { return S; }, get WORK() { return WORK; }, get view() { return view; }, setChange: (ch) => { if (DP && ch) DP.ch = ch; }, currentDetail: () => DP && (DP.w ? { ...DP.p, _work: DP.w, _ch: DP.ch || null } : DP.p), SPLIT, slotHtml, ago, repaintDetail: () => repaintDetail(true), detailDirty: () => !!DP?.dirty, fitKnobs, fitSuggest,
-    /* v2 (onboard2.js, make-sheet.js) */ V2, FEED_STACK, brandClock, UI2, GEN, LANDING, DEMO_LAND, api, ls, LSP, get TID() { return TID; }, signWall, needSignin, ensureTenant, scrCard, seatEntries, defaultWants, loadFeed, rank, openRemix, openPlan, teamStep, finishOnboarding, checkRead, waitMoves, whoFor, continueToFeed, hashParams };
+    get S() { return S; }, get WORK() { return WORK; }, get view() { return view; }, setChange: (ch) => { if (DP && ch) DP.ch = ch; }, currentDetail: () => DP && (DP.w ? { ...DP.p, _work: DP.w, _ch: DP.ch || null } : DP.p), slotHtml, ago, repaintDetail: () => repaintDetail(true), detailDirty: () => !!DP?.dirty, fitKnobs, fitSuggest,
+    /* the reading screen's questions (questions.js), canvas.js */ isRival, GEN, LANDING, DEMO_LAND, api, ls, LSP, get TID() { return TID; }, signWall, needSignin, ensureTenant, scrCard, seatEntries, defaultWants, loadFeed, rank, openRemix, openPlan, teamStep, finishOnboarding, checkRead, waitMoves, whoFor, continueToFeed, hashParams };
   // #setup replays onboarding (it only plays once otherwise, because finishing it is saved in this browser)
   const adoptShare = async () => { const tok = hashParams().s; if (!tok) return;
     const own = tok.split('~')[0]; if (own === TID) return;
@@ -5579,13 +5344,13 @@
   if (hashParams().s) adoptShare().then(() => { if (S.onboarded) feed(); else start(); });
   else if (LANDING) start(); // the landing is only ever the paste-a-URL page
   else if (GEN && location.hash === '#check') ensureTenant(true).then(checkRead); // reopen "Is this right?"
-  else if (GEN && location.hash === '#wait') ensureTenant(true).then(V2 && window.OB2 ? () => window.OB2.route('wait') : waitMoves);
-  else if (GEN && cxBack === 'ob') ensureTenant(true).then(V2 && window.OB2 ? () => window.OB2.resume() : () => { view = 'ob'; connectWhat(); }); // back from a platform's sign-in: the step it left from
+  else if (GEN && location.hash === '#wait') ensureTenant(true).then(waitMoves);
+  else if (GEN && cxBack === 'ob') ensureTenant(true).then(() => { view = 'ob'; connectWhat(); }); // back from a platform's sign-in: the step it left from
   else if (GEN && cxBack === 'check') ensureTenant(true).then(checkRead);
-  else if (GEN && cxBack === 'wait') ensureTenant(true).then(V2 && window.OB2 ? () => window.OB2.route('wait') : waitMoves);
+  else if (GEN && cxBack === 'wait') ensureTenant(true).then(waitMoves);
   /* a link from a Brew email (?go=feed) or to a jam or card (#jam=, #card=, #work=, #v=): a signed-in person goes straight there,
      never through the read replay and the setup steps again (those stay at #setup) */
   else if (GEN && location.hash !== '#setup' && (S.onboarded || window.LIVE?.me) && (GO_FEED || /^#(jam|card|work|v)=/.test(location.hash))) { if (!S.onboarded) { S.onboarded = true; save(); } ensureTenant().then(() => { fitSeat(); save(); feed(); }); }
-  else if (S.onboarded && location.hash !== '#setup') feed(); else { const askedSetup = location.hash === '#setup'; if (askedSetup) history.replaceState(null, '', location.pathname); if (GEN && ls.get(`${LSP()}continue`)) { const c0 = ls.get(`${LSP()}continue`); ls.del(`${LSP()}continue`); ensureTenant(true).then(V2 && window.OB2 ? () => window.OB2.route(c0 === 'v2' ? 'continue' : 'run') : afterRead); } else if (GEN && !V2 && !askedSetup && OB_AT[S.obStep] && !S.onboarded) ensureTenant(true).then(resumeOb); /* a refresh mid-setup: the same step */ else if (GEN && !(window.BREW_DEMO && location.hash !== '#setup')) ensureTenant(true).then(setup); else start(); } /* the demo site's tour starts on the address screen */
+  else if (S.onboarded && location.hash !== '#setup') feed(); else { const askedSetup = location.hash === '#setup'; if (askedSetup) history.replaceState(null, '', location.pathname); if (GEN && ls.get(`${LSP()}continue`)) { ls.del(`${LSP()}continue`); ensureTenant(true).then(afterRead); } else if (GEN && !askedSetup && OB_AT[S.obStep] && !S.onboarded) ensureTenant(true).then(resumeOb); /* a refresh mid-setup: the same step */ else if (GEN && !(window.BREW_DEMO && location.hash !== '#setup')) ensureTenant(true).then(setup); else start(); } /* the demo site's tour starts on the address screen */
   if (/[#&]cx(err)?=/.test(location.hash)) setTimeout(() => window.LiveConn?.resume(), 900); });
 })();

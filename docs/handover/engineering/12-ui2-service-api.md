@@ -1,9 +1,9 @@
-# UI2 service API (2026-10-16)
+# Brief, Your feed and Drop service API (2026-10-16)
 
-The backend for the `?ui=2` makeover: Send brief with tracked status, Ask Brew, Your feed (tuning), Drop anything, and one guest fix.
+Built with the UI2 makeover and kept when UI2 was removed (2026-10-21; Brew has one version): Send brief with tracked status, Your feed (tuning), Drop anything, and one guest fix.
 Every route sits behind the feed service (`feed-service.js`): it needs the workspace (`/api/tenants/:t/...` or the `x-tenant`
 header), runs as the signed-in viewer, and answers JSON. Errors come back as `{ error }` (HTTP 200 unless `status` is set).
-Tests: `test/ui2-backend.test.js`.
+Tests: `test/brief-tune-drop.test.js`.
 
 ## 1. Send brief and its status (`brief-status.js`, `jam-brief.js`, `jam-mail.js`)
 
@@ -29,21 +29,7 @@ Tests: `test/ui2-backend.test.js`.
 
 Guests can't call `doc/ship` or `brief/status` (not in `GUEST_DO`).
 
-## 2. Ask Brew (`ask-brew.js`)
-
-One thread per person per brand (members: keyed by email, so every device; anyone else: per workspace).
-- `GET /api/tenants/:t/ask` → `{ msgs, pending }` (last 60 messages).
-- `POST /api/tenants/:t/ask` `{ text, seed? }` → `{ added: [me, brew], msgs, pending }`. `{ clear: true }` empties it.
-- `seed` (all optional), where it was asked from: `{ cardId, move, bulk: [cardIds], signal, moves: true, batch: true }`.
-  These are the old `JamRoom.openFromCtx` contexts.
-- A Brew message: `{ from: 'brew', body, links: [{ kind: 'card', id, title, agent } | { kind: 'move', n, title }], action, by, route }`.
-  - `by`: `ai`, `search` (AI off: says so and links the cards/moves that mention the question, never a made-up answer), `paused`.
-  - `action`: `null`, `{ kind: 'jam', ctx, say }` (something to make), or `{ kind: 'brief', label, ctx, say }` (needs a person:
-    jam, then Send brief). `ctx` is ready for `JamRoom.openFromCtx(ctx)` (`{ post: cardId } | { bulk: [{id}] } | { moves } | { batch } | { signal }`).
-    `action.refImages` lists photos dropped "just this once" for this ask.
-- Guests get 403. Mock, no credit and demo visitors never spend (search answer).
-
-## 3. Your feed (`member-tuning.js`)
+## 2. Your feed (`member-tuning.js`)
 
 - `GET /api/tenants/:t/tuning` → `{ tuning: { weights, topics, notes, ignored, at }, agents: [{ id, name, weight }], weights: ['less','normal','more'], signals, mine }`.
 - `PUT /api/tenants/:t/tuning` `{ weights?: { creative|performance|storefront|visibility|crm: 'less'|'normal'|'more' }, topics?: [string] }` (≤12 topics) → same shape.
@@ -53,7 +39,7 @@ One thread per person per brand (members: keyed by email, so every device; anyon
 - `DELETE /api/tenants/:t/tuning/notes/:nid` removes a "My preferences" note.
 - Ranking: less −4, more +4 per agent; +2 per matching topic (two at most). Each card's score has `tune` (see `/deck`, `/engine`).
 
-## 4. Drop anything (`drop.js`)
+## 3. Drop anything (`drop.js`)
 
 `POST /api/brands/:slug/drop` (send `x-tenant`; `slug` must be the workspace's brand) with `{ dest, text? | data?, name?, wid? }`.
 - Content: `text` (up to 4,000 characters; longer is cut, `cut: true`) or `data` = a `data:image/(png|jpeg|webp);base64,…` URL up to 8 MB
@@ -64,7 +50,7 @@ One thread per person per brand (members: keyed by email, so every device; anyon
   without `wid`, it waits on the next ask (→ `{ ok, pending }`) and rides on it (a photo also lands on the jam of the ask's card).
 - Photos are saved like jam photos (`gen/ref-<hash>.<ext>`, returned as `file`).
 
-## 5. Guest hole closed
+## 4. Guest hole closed
 
 `guestAllows` (exported from `feed-service.js`): a jam guest can no longer call `/api/changes/:id/discard` or `/restore`
 (discarding the change discarded the jam with it, `remix.js`). Everything else a guest could do is unchanged.

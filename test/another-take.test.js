@@ -1,5 +1,5 @@
-// v2 cards never wait on an asset (2026-10-18): POST /api/cards/:cid/remix {words:true} rewrites only the words and makes a version
-// at once, no picture; {queue:true} makes the next version with drawing:true at once and draws in the background, landing the asset
+// Another take never waits on an asset (2026-10-18): POST /api/cards/:cid/remix {queue:true} makes the next version with
+// drawing:true at once and draws in the background, landing the asset
 // (or a drawError) on that version and on the card's `take` mirror, which the feed's pulse reports as `updated`. take:true marks the
 // previous version passed. Free: AI_MOCK words, a stand-in image maker, a temp dir for the gen store, no network.
 import test from 'node:test';
@@ -30,43 +30,8 @@ const studio = (extra = {}) => {
 const tenant = () => ({ id: 't_1', brandId: 'acme', clock: 0, cards: new Map([['c1', { id: 'c1', title: 'Warm paws all winter', sub: 'Cold hands, sorted. One balm, every morning.', agent: 'creative', sector: 'creatives', type: 'idea', lane: 'lane1', detail: { why: ['Searches for hand balm doubled this week'] } }]]), changes: {}, work: [], conn: {}, acted: new Set(), shown: {} });
 const fakeImage = async () => Buffer.from('89504e470d0a1a0a', 'hex');
 
-test('words mode: new words, a new version at once, the why untouched, no asset drawn', async () => {
-  const t = tenant(), { call, RMX } = studio();
-  const r = await call('POST /api/cards/:cid/remix', { words: true, chip: 'Shorter' }, t, { cid: 'c1' });
-  assert.equal(r.ok, true); assert.ok(r.versionId && r.changeId, 'a version of the card’s change');
-  assert.ok(r.words.title && r.words.body, 'the new words come back');
-  assert.notEqual(r.words.body, 'Cold hands, sorted. One balm, every morning.', 'the body was rewritten');
-  const vs = versionsOf(t, r.changeId); assert.equal(vs.length, 2, 'the original, then the new words'); assert.equal(vs.at(-1).id, r.versionId);
-  assert.equal(vs.at(-1).drawing, undefined); assert.equal(vs.at(-1).asset, undefined, 'no picture was made');
-  assert.equal(RMX.v2.jobs.size, 0, 'nothing runs in the background');
-  const c = t.cards.get('c1'); assert.deepEqual(c.detail.why, ['Searches for hand balm doubled this week'], 'the why is not touched');
-  assert.equal(c.take.versionId, r.versionId); assert.equal(c.take.title, r.words.title); assert.equal(c.take.drawing, false, 'the card mirrors the version, so a reload shows the words');
-  const g = await call('GET /api/changes/:chid', {}, t, { chid: r.changeId }); assert.equal(g.change.head, r.versionId); assert.equal(g.change.after.title, r.words.title, 'the studio opens on the same words');
-  /* a chip's instruction is read literally and the words follow it */
-  const lead = await call('POST /api/cards/:cid/remix', { words: true, chip: 'Lead with the balm' }, t, { cid: 'c1' });
-  assert.match(lead.words.title, /^the balm: /i); assert.equal(versionsOf(t, r.changeId).length, 3, 'the same change, one more version');
-  assert.ok(RMX.v2.updatedSince(t, 0).includes('c1'), 'the pulse learns the card changed');
-});
 
-test('words mode with set: words typed by hand land exactly as given, no model call, no spend; set wins over a prompt', async () => {
-  let called = 0; const t = tenant(), { call } = studio({ isMock: () => false, spend: () => { called++; return false; }, claudeTool: async () => { called++; throw new Error('must not be called'); } });
-  const r = await call('POST /api/cards/:cid/remix', { words: true, prompt: 'Shorter', set: { title: 'Hands that stay warm', body: 'One balm in the morning. That is the whole routine.' } }, t, { cid: 'c1' });
-  assert.equal(r.ok, true); assert.deepEqual(r.words, { title: 'Hands that stay warm', body: 'One balm in the morning. That is the whole routine.' });
-  assert.equal(called, 0, 'neither the model nor the budget was asked');
-  const vs = versionsOf(t, r.changeId); assert.equal(vs.length, 2); assert.equal(vs.at(-1).author, 'you'); assert.equal(vs.at(-1).label, 'Your words');
-  const c = t.cards.get('c1'); assert.equal(c.take.title, 'Hands that stay warm'); assert.deepEqual(c.detail.why, ['Searches for hand balm doubled this week']);
-  /* one field alone keeps the other as it was; nothing typed is an error, not a version */
-  const r2 = await call('POST /api/cards/:cid/remix', { words: true, set: { title: 'Warm hands, every morning' } }, t, { cid: 'c1' });
-  assert.equal(r2.words.body, 'One balm in the morning. That is the whole routine.'); assert.equal(versionsOf(t, r.changeId).length, 3);
-  const r3 = await call('POST /api/cards/:cid/remix', { words: true, set: { title: ' ', body: '' } }, t, { cid: 'c1' }); assert.match(r3.error, /Type a title or a body/); assert.equal(versionsOf(t, r.changeId).length, 3);
-});
 
-test('words mode: a refused text spend is an error with its reason, never a silent fallback', async () => {
-  const t = tenant(), { call } = studio({ isMock: () => false, spend: () => false, claudeTool: async () => { throw new Error('must not be called'); } });
-  const r = await call('POST /api/cards/:cid/remix', { words: true, chip: 'Warmer' }, t, { cid: 'c1' });
-  assert.match(r.error, /text budget|share for today|used up/i); assert.equal(r.ok, undefined);
-  assert.equal(versionsOf(t, r.changeId).length, 1, 'no version was made'); assert.equal(t.cards.get('c1').take, undefined);
-});
 
 test('queue mode: returns at once with drawing:true; the picture lands later on that version and the pulse reports the card', async () => {
   const t = tenant(), onMedia = [], { call, RMX } = studio({ geminiImage: fakeImage, mediaFake: true, onMedia: (t2, ch, m) => onMedia.push(m) });
@@ -90,14 +55,14 @@ test('queue mode: returns at once with drawing:true; the picture lands later on 
 
 test('take:true answers at once, marks the previous version passed, then rewrites the words and draws the new take in the background', async () => {
   const t = tenant(), { call, RMX } = studio({ geminiImage: fakeImage, mediaFake: true });
-  const first = await call('POST /api/cards/:cid/remix', { words: true, chip: 'Warmer' }, t, { cid: 'c1' });
+  const first = await call('POST /api/cards/:cid/remix', { queue: true, take: true }, t, { cid: 'c1' }); await RMX.v2.settle();
   const r = await call('POST /api/cards/:cid/remix', { queue: true, take: true, prompt: 'Make it about mittens' }, t, { cid: 'c1' });
   assert.equal(r.queued, true); assert.equal(r.drawing, true); assert.equal(r.words, undefined, 'the reply never waits on the words (an AI call)');
   assert.ok(RMX.v2.jobs.has(r.versionId), 'the take is held while its words are written, so healTakes leaves it be');
   assert.equal(RMX.v2.healTakes(t), 0);
   const vs = versionsOf(t, r.changeId); assert.equal(vs.length, 3, 'one version for the take, not two');
   assert.equal(vs.find((x) => x.id === first.versionId).passed, true, 'the version passed over'); assert.equal(vs.at(-1).passed, undefined); assert.equal(vs.at(-1).take, true);
-  assert.deepEqual(t.cards.get('c1').take.passed, [first.versionId]);
+  assert.equal(t.cards.get('c1').take.passed.at(-1), first.versionId, 'the take passed over is the last one passed');
   const pub = (await call('GET /api/changes/:chid', {}, t, { chid: r.changeId })).change; assert.equal(pub.versions.find((x) => x.id === first.versionId).passed, true);
   await RMX.v2.settle();
   assert.equal(vs.at(-1).drawing, false); assert.ok(vs.at(-1).asset?.url);
@@ -153,17 +118,3 @@ test('the feed’s pulse hands out the updated card ids and heals stale takes (f
   assert.match(route, /ids: fresh\.map/, 'brand-new cards stay in `ids`');
 });
 
-test('peek: Make it yours opens on the words Save writes to, builds and spends nothing, never hands back a rival poster', async () => {
-  const t = tenant(), { call } = studio();
-  const n0 = Object.keys(t.changes || {}).length;
-  const r = await call('POST /api/cards/:cid/remix', { peek: true }, t, { cid: 'c1' });
-  assert.ok(r.words && (r.words.title || r.words.body), 'the words a first take starts from');
-  assert.equal(Object.keys(t.changes || {}).length, n0, 'opening the sheet builds no change');
-  const s = await call('POST /api/cards/:cid/remix', { words: true, set: { title: 'Soft on cold mornings', body: 'Warm paws, all walk long.' } }, t, { cid: 'c1' });
-  const r2 = await call('POST /api/cards/:cid/remix', { peek: true }, t, { cid: 'c1' });
-  assert.deepEqual(r2.words, { title: 'Soft on cold mornings', body: 'Warm paws, all walk long.' }); assert.equal(r2.changeId, s.changeId);
-  /* a picture of theirs on the change (an old one, or a pick) is never what the sheet shows as ours */
-  t.changes[s.changeId].pkg.image = 'research/abc123.jpg'; t.changes[s.changeId].headVersionId = null;
-  const r3 = await call('POST /api/cards/:cid/remix', { peek: true }, t, { cid: 'c1' });
-  assert.ok(!r3.image || !/^research\//.test(r3.image));
-});

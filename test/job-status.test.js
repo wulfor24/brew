@@ -44,8 +44,7 @@ test('two pictures at once: the spinner stays until the last one ends, then clea
 test('every studio status line asks the job first (jobOf), so no Ready or Draft shows beside a spinner', () => {
   const src = fs.readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
   assert.match(src, /const jobOf = \(ch\) =>/);
-  assert.match(src, /const j2Status = [\s\S]{0,300}if \(jobOf\(ch\)\) return \['info'/, 'the UI2 header says the job, not Ready');
-  assert.match(src, /jobOf\(ch\)\) return stepBar\(ch\);[^\n]*\n\s*if \(SPLIT && !ch\.batchKey && ch\.state !== 'jam' && !planMade\(ch\)\)/, 'a job beats the First draft bar');
+  assert.match(src, /jobOf\(ch\)\) return stepBar\(ch\);[^\n]*\n\s*if \(!ch\.batchKey && ch\.state !== 'jam' && !planMade\(ch\)\)/, 'a job beats the First draft bar');
   assert.match(src, /const job = jobOf\(ch\), fp = finalGoing\(ch\);\n\s*if \(job && !fp\)/, 'the step bar says the job before Ready or Final ready');
   assert.match(src, /if \(formFocus[^\n]*pollJob\(ch\); return; \}/, 'a skipped repaint keeps polling the job');
 });

@@ -28,7 +28,6 @@ import { briefParts, withTeam, LABEL as BRIEF_LABEL } from './brief-status.js';
 import { createTuning, tuneScore, learnedSignals, withoutIgnored, noteTopics, noteSides, PREF_SCHEMA, prefPrompt, AGENTS as TUNE_AGENTS, WEIGHT as TUNE_WEIGHT } from './member-tuning.js'; // Your feed: per-member agent weights, topics, learned signals
 import { memberKey, saveVoicePick } from './brand-memory.js';
 import { isQuestion, photoAsk, answerGrounded } from './jam-answer.js'; // jam chat: questions answered from the evidence, "keep the photo" never makes one
-import { createAskBrew, answerAsk, cleanSeed } from './ask-brew.js'; // Ask Brew: one thread per member across feed, moves and facts
 import { parseDrop, DESTS } from './drop.js';
 import { readDrop, dropKind } from './drop-read.js'; // Drop anything here: PDFs, Word, PowerPoint, Excel, text and photos, read for the learnings
 import { createReferences } from './references.js';
@@ -1708,37 +1707,6 @@ export function createFeedService(o) {
   on('DELETE', '/api/tenants/:id/tuning/signals/:sid', async (b, t, p) => { await TUNE.ignore(t.brandId || DEFAULT_BRAND, tuneKey(t), decodeURIComponent(p.sid)); return tuningOut(t); });
   on('POST', '/api/tenants/:id/tuning/signals/:sid/restore', async (b, t, p) => { await TUNE.unignore(t.brandId || DEFAULT_BRAND, tuneKey(t), decodeURIComponent(p.sid)); return tuningOut(t); });
   on('DELETE', '/api/tenants/:id/tuning/notes/:nid', async (b, t, p) => { await TUNE.dropNote(t.brandId || DEFAULT_BRAND, tuneKey(t), p.nid); return tuningOut(t); });
-  /* Ask Brew (ask-brew.js): this person's one thread, across the feed, the moves and the facts, with links to cards and moves.
-     A seed { cardId, move, bulk, signal, moves, batch } says where it was asked from (the old global jam entry points) */
-  const ASK = o.askBrew || createAskBrew({ packs: o.globalPacks || packs, log });
-  const askCtx = (t, seed) => {
-    const { top, ranked } = rank(t), cards = [...top, ...ranked].slice(0, 30).map((c0) => { const c = fillCard(c0, t); return { id: c.id, title: c.title, sub: c.sub, agent: c.agent, campaign: c.campaign }; });
-    const moves = Object.keys(MOVE_DOCS || {}).map(Number).filter((n) => Number.isFinite(n)).sort((a, b) => a - b).map((n) => MOVES.summary(n)).filter(Boolean).map((m) => ({ n: m.n, title: m.title, gives: m.gives }));
-    const parts = [];
-    const sc = seed?.cardId && t.cards.get(seed.cardId); if (sc && seatOk(t, sc)) { const c = fillCard(sc, t); parts.push(cardBrief(c, seatLine(t.viewer))); if (!cards.some((x) => x.id === c.id)) cards.unshift({ id: c.id, title: c.title, sub: c.sub, agent: c.agent }); }
-    if (seed?.move != null && MOVES.has(seed.move)) { const m = MOVES.summary(seed.move); parts.push(`${moveLabel(m.n)}: ${m.title}. ${m.gives || ''} ${m.why || ''}`); }
-    if (seed?.bulk) parts.push(`These cards together:\n${seed.bulk.map((id) => t.cards.get(id)).filter((c) => c && seatOk(t, c)).map((c) => `- ${fillCard(c, t).title}`).join('\n')}`);
-    if (seed?.moves) parts.push('The moves: which lift the brand’s score fastest.'); if (seed?.batch) parts.push('The week-one static ads from the best-selling products.');
-    if (seed?.signal) parts.push(`A signal: ${seed.signal}`);
-    return { brand: BN(), cards, moves, facts: B()?.pageFacts || '', seedText: parts.join('\n\n') };
-  };
-  const askOut = async (t) => { const th = await ASK.load(t.brandId || DEFAULT_BRAND, tuneKey(t)); return { msgs: (th.msgs || []).slice(-60), pending: th.pending || [] }; };
-  on('GET', '/api/tenants/:id/ask', async (b, t) => askOut(t));
-  on('POST', '/api/tenants/:id/ask', async (b, t) => {
-    const slug = t.brandId || DEFAULT_BRAND, key = tuneKey(t);
-    if (reqOf(t)?.guest && !reqOf(t)?.member) return { status: 403, error: 'Ask Brew is for the brand’s team.' };
-    if (b.clear) { await ASK.clear(slug, key); return askOut(t); }
-    const text = String(b.text || '').trim().slice(0, 3000); if (!text) return { error: 'Ask Brew something first.' };
-    const seed = cleanSeed(b.seed), pending = await ASK.takePending(slug, key), th = await ASK.load(slug, key);
-    const ctx = askCtx(t, seed); const notes = pending.filter((f) => f.kind === 'text').map((f) => f.text); if (notes.length) ctx.seedText = [ctx.seedText, `They added this for this question:\n${notes.join('\n')}`].filter(Boolean).join('\n\n');
-    const ai = isMock() || !spend('text') ? null : (prompt, schema) => claudeTool(prompt, schema, 900, 'ask');
-    const r = await answerAsk({ text, seed, ctx, history: th.msgs || [], ai, route: (x) => routeJam(t, x, false) });
-    /* a photo dropped "just this once" goes to the jam on the card it was asked from, when there is one */
-    const imgs = pending.filter((f) => f.kind === 'image'), w = seed?.cardId ? workFor(t, seed.cardId) : null; if (w) imgs.forEach((f) => addReference(t, w, f.url, f.name));
-    if (imgs.length && r.action) r.action.refImages = imgs.map((f) => f.url);
-    const added = await ASK.append(slug, key, { from: 'me', body: text, ...(seed ? { seed } : {}), ...(pending.length ? { files: pending } : {}), by: meOf(t)?.email || null }, { from: 'brew', body: r.body, links: r.links, action: r.action, by: r.by, route: r.route });
-    return { added, ...(await askOut(t)) };
-  });
   /* the voice the team picked in setup: one keyed brand-memory fact (voice.pick), so a new pick replaces the old and every draft
      writer reads it (brand-memory.js puts it first in every prompt block). The team only, like the brand memory itself */
   on('POST', '/api/brands/:slug/voice', async (b, t, p) => {
@@ -1823,12 +1791,11 @@ export function createFeedService(o) {
       if (o.memory && mk && f.kind === 'text') await o.memory.add(slug, f.text, { scope: 'member', memberId: mk, source: { kind: 'drop', label: `my preferences, dropped by team member ${mk}` }, by: `team member ${mk}` }).catch((e) => log.warn?.('[drop] prefs memory', e.message));
       return { ok: true, dest, note: tu.notes[0], cut: !!f.cut, file: rel };
     }
-    /* once: a named jam takes the photo now (the reference path); otherwise it rides on this person's next ask */
+    /* once: a named jam takes the photo or the words now (the reference path) */
     const w = b.wid ? W(t, String(b.wid)) : null; if (b.wid && !w) return { error: 'not found' };
     if (w && f.kind === 'image') { addReference(t, w, rel, f.name); return { ok: true, dest, work: w, file: rel }; }
     if (w) { say(t, w, { from: 'me', body: f.text }); return { ok: true, dest, work: jamOut(t, w) }; }
-    const pending = await ASK.pend(slug, tuneKey(t), f.kind === 'image' ? { kind: 'image', url: rel, name: f.name || null, by: me0?.email || null } : { kind: 'text', text: f.text, by: me0?.email || null });
-    return { ok: true, dest, pending, cut: !!f.cut, file: rel };
+    return { error: 'Open the jam it is for, then drop it there.' };
   });
   /* References (references.js): what the brand uploaded for the generators. Reading is for the team and a jam's guests (the
      picker shows them); adding, editing and removing are the team's, with the same member check as a drop into brand memory */
@@ -2304,7 +2271,7 @@ export function createFeedService(o) {
        team sees an empty feed (the page still loads, and a guest still gets their jam), and only their own jam's card */
     const outside = br.kind === 'generated' && o.liveTeamOnly?.() && !viewer?.member && !viewer?.gen;
     /* Ask, Your feed and Drop are the team's: outside it, on live, no writes either (Ask's answers name the brand's cards) */
-    if (outside && req.method !== 'GET' && /^\/api\/(tenants\/[^/]+\/(ask|tuning)(\/.*)?|brands\/[^/]+\/(?:drop\/read|learnings\/answer)|brands\/[^/]+\/(drop|voice))$/.test(u.pathname)) { send(res, 403, { error: 'This is for the brand’s team.', teamOnly: true }); return true; }
+    if (outside && req.method !== 'GET' && /^\/api\/(tenants\/[^/]+\/tuning(\/.*)?|brands\/[^/]+\/(?:drop\/read|learnings\/answer)|brands\/[^/]+\/(drop|voice))$/.test(u.pathname)) { send(res, 403, { error: 'This is for the brand’s team.', teamOnly: true }); return true; }
     if (outside && req.method === 'GET') {
       if (/^\/api\/tenants\/[^/]+\/feed$/.test(u.pathname)) { send(res, 200, { order: [], cards: {}, scores: {}, pinned: [], limit: { plan: 'free', daily: null, locked: 0 }, teamOnly: true }); return true; }
       if (/^\/api\/tenants\/[^/]+\/stories$/.test(u.pathname)) { send(res, 200, { rings: [], teamOnly: true }); return true; }

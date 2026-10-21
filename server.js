@@ -5,8 +5,7 @@ import { makePhotoFile } from './safe-path.js';
 import { createJamMail } from './jam-mail.js';
 import { configureGen, saveGen, genFile, genFlush, researchFile } from './gen-store.js';
 import http from 'node:http';
-import { safeFetch, normalizeUrl, meta as htmlMeta, titleOf as htmlTitle, tags as htmlTags, attr as tagAttr, abs as absUrl } from './reader/util.js'; // photo links and peeks reach only the public internet
-import net from 'node:net';
+import { safeFetch } from './reader/util.js'; // photo links reach only the public internet
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -651,48 +650,8 @@ const teamGate = async (req, res, u) => {
   const m = u.pathname.match(TEAM_READ), slug = m ? m[1] : u.pathname === '/api/research' ? req.headers['x-brand'] : null;
   if (!slug || await teamRead(req, String(slug))) return false;
   const me = auth.user(req); send(res, me ? 403 : 401, { error: me ? 'This brand’s moves and read are for its team. Ask them to invite you.' : 'Sign in to see this brand.', team: true, signin: !me }); return true; };
-/* ---------- the landing's peek (onboarding v2): the store's name, picture and colour while the person is still deciding ----------
-   GET /api/peek?url= opens only the home page (2.5 s, HTML only, the first 500 KB) and answers { host, title, description, ogImage,
-   favicon, themeColor, ms }, or { host, error: 'did not open' } (HTTP 200: the page shows the line). It writes nothing and never starts
-   a read. Bare addresses, localhost, non-http schemes and blocked brands are refused; 30 peeks per IP an hour; a host's answer is kept
-   for 10 minutes. */
-const PEEK = new Map(), PEEK_CACHE = new Map(); /* ip|hour → count; host → { at, out } */
-const PEEK_MS = 2500, PEEK_MAX = 500e3, PEEK_TTL = 10 * 60e3, PEEK_HOUR = 30;
-const peekTarget = (input) => {
-  const s = String(input || '').trim(); if (!s || s.length > 2048 || (/^[a-z][a-z0-9+.-]*:\/\//i.test(s) && !/^https?:\/\//i.test(s))) return null; /* a scheme that isn't http(s); "acme.in:8443" is a host and a port, not a scheme */
-  let url; try { url = normalizeUrl(s); } catch { return null; }
-  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, '');
-  if (!host.includes('.') || net.isIP(host) || /^(localhost|metadata(\.google\.internal)?)$/.test(host) || /\.(internal|local|localhost)$/.test(host) || url.username || url.password) return null;
-  if (blocked(slugOf(url.href))) return null;
-  return { url, host: host.replace(/^www\./, '') };
-};
-async function peekSite(url) {
-  const t0 = Date.now(), signal = AbortSignal.timeout(PEEK_MS);
-  const r = await safeFetch(url.href, { signal, headers: { 'user-agent': UA, accept: 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.5', 'accept-language': 'en' } });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  if (!/text\/html|application\/xhtml\+xml/i.test(r.headers.get('content-type') || '')) throw new Error('not a web page');
-  const chunks = []; let n = 0; const reader = r.body.getReader(); /* the tags we want sit in <head>: the first 500 KB are enough */
-  while (n < PEEK_MAX) { const { done, value } = await reader.read(); if (done) break; chunks.push(value); n += value.length; }
-  reader.cancel().catch(() => {});
-  const html = Buffer.concat(chunks).toString('utf8').slice(0, PEEK_MAX), base = r.url || url.href, str = (x) => (x ? String(x).trim().slice(0, 300) : null);
-  const icons = htmlTags(html, 'link').filter((t) => /icon/i.test(tagAttr(t, 'rel') || '') && tagAttr(t, 'href')).map((t) => ({ rel: (tagAttr(t, 'rel') || '').toLowerCase(), href: tagAttr(t, 'href'), sizes: tagAttr(t, 'sizes') || '' }));
-  const icon = icons.find((i) => i.rel.includes('apple-touch-icon')) || icons.find((i) => /192|180|512/.test(i.sizes)) || icons[0];
-  const og = htmlMeta(html, 'og:image:secure_url') || htmlMeta(html, 'og:image'), tc = htmlMeta(html, 'theme-color');
-  return { title: str(htmlMeta(html, 'og:title') || htmlTitle(html)), description: str(htmlMeta(html, 'description') || htmlMeta(html, 'og:description')),
-    ogImage: og ? absUrl(og, base) : null, favicon: icon ? absUrl(icon.href, base) : null, themeColor: tc && /^(#[0-9a-f]{3,8}|rgba?\([^)]{1,40}\)|[a-z]{3,20})$/i.test(tc) ? tc : null, ms: Date.now() - t0 };
-}
-async function peek(req, res, u, ip) {
-  const raw = String(u.searchParams.get('url') || '').trim(), t = peekTarget(raw);
-  const fail = (host) => send(res, 200, { host: host || null, error: 'did not open' });
-  if (!t) return fail(raw.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '').replace(/^www\./, '').split(/[/?#:]/)[0].slice(0, 120));
-  const hit = PEEK_CACHE.get(t.host); if (hit && Date.now() - hit.at < PEEK_TTL) return send(res, 200, hit.out);
-  const k = `${ip}|${Math.floor(Date.now() / 3600e3)}`; if ((PEEK.get(k) || 0) >= PEEK_HOUR) return fail(t.host); PEEK.set(k, (PEEK.get(k) || 0) + 1); if (PEEK.size > 5000) PEEK.clear();
-  try { const out = { host: t.host, ...(await peekSite(t.url)) }; if (PEEK_CACHE.size > 2000) PEEK_CACHE.clear(); PEEK_CACHE.set(t.host, { at: Date.now(), out }); return send(res, 200, out); }
-  catch (e) { console.warn('[peek]', t.host, e.message); return fail(t.host); }
-}
 const brandRoutes = async (req, res, u) => {
   const ip = clientIp(req); /* the entry Google's front end appended, not one the client wrote (build.js clientIp) */
-  if (req.method === 'GET' && u.pathname === '/api/peek') return await peek(req, res, u, ip), true; /* onboarding v2's first glance at the store: no read starts here */
   if (req.method === 'POST' && u.pathname === '/api/brands') { const b = await readBody(req), me = auth.user(req);
     /* a read costs about $6 (crawl, Ad Library, AI answers, rivals): it starts only for someone signed in (2026-10-15), who then
        gets BUILD_PER_USER_DAY new brands a day. The page sends them to Google and starts the read when they come back (?build=).
@@ -868,15 +827,12 @@ async function demoBrands() {
 const INDEX = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8');
 // the page names its own scripts and styles by version (app.js?v=<hash>): a repeat visit loads them from the browser's cache
 const versioned = (html) => html.replace(/(<(?:script|link)\b[^>]*?\b(?:src|href)=")([\w./-]+\.(?:js|css))(")/g, (m, a, f, z) => { const v = verOf(path.join(PUB, path.normalize(f).replace(/^(\.\.[/\\])+/, ''))); return v ? `${a}${f}?v=${v}${z}` : m; });
-const flagJson = (v) => JSON.stringify(String(v)).replace(/</g, '\\u003c'); /* a flag's value as a JS string, safe inside <script> */
 const pageFor = async (seg) => {
   const slug = !seg || seg === DEFAULT ? null : seg; // the default context has no page of its own
   let scripts;
   if (!slug) scripts = '<script src="/data/brew.js"></script>';
   else { if (blocked(slug)) return null; const st = await builder.status(slug); if (!st) return null; builder.seen(slug); scripts = `<script src="/b/${slug}/facts.js"></script>\n<script src="/b/${slug}/seed.js"></script>`; }
   if (DEMO) scripts += '\n<script>window.BREW_DEMO = 1;</script>'; // the demo site: demo controls, demo accounts
-  scripts += `\n<script>window.BREW_V=${flagJson(process.env.BREW_V || '1')};window.BREW_GATE=${flagJson(process.env.BREW_GATE || 'trial')};</script>`; // onboarding v2 (?v=2 on the page overrides; deploy.sh sets both)
-  scripts += `\n<script>window.FEED_STACK=${flagJson(process.env.FEED_STACK || '0')};</script>`; // v2 morning stack: the day's top cards as a swipe stack before the feed (?stack=1|0 on the page overrides; off unless set)
   const p = slug && await loadBrand(slug);
   const name = p?.name || 'Brew', mark = p ? '/' + String(p.seed.brand.mark).replace(/^\//, '') : '/assets/brew-mark.svg';
   return versioned(INDEX.replace('<base href="/">', '<base href="/">').replace(/<!--BRAND-SCRIPTS-->[\s\S]*?<!--\/BRAND-SCRIPTS-->/, scripts)

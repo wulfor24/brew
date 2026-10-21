@@ -68,51 +68,30 @@ test('a read waiting on the check shows "Waiting for you" in the feed and opens 
   assert.match(app, /return waitMoves\(\{ fromCheck: true \}\); \}/, 'no loop between the check and the wait screen');
 });
 
-/* v2 (2026-10-18): the onboarding's progress card is driven by the real read, its tutorial cards are tagged Example, and the
-   whole thing sits behind one flag that the demo tour carries */
-test('v2 onboarding invents no timings and tags its example cards', () => {
-  const ob = src('public/onboard2.js'), mk = src('public/make-sheet.js'), idx = src('public/index.html'), demo = src('demo-routes.js');
-  for (const re of [/min(ute)?s? (left|remaining|saved)/i, /you (just )?saved \d+/i, /~\s*\d+\s*min/])
-    assert.doesNotMatch(ob + mk, re, `found ${re}`);
-  assert.match(ob, /EXAMPLE_CARDS/); assert.match(ob, /example: true/); assert.match(ob, /<span class="badge info">Example<\/span>/);
-  assert.doesNotMatch(mk, /\bAI editing\b/, 'the sheet never says "AI editing"');
-  assert.match(idx, /onboard2\.js/); assert.match(idx, /make-sheet\.js/); assert.match(idx, /v2\.css/);
-  assert.match(app, /const V2 = /); assert.match(app, /if \(V2 && window\.OB2\) \{ view = 'setup'; return window\.OB2\.run\(\); \}/);
-  assert.match(demo, /\(v=/, 'the demo tour carries the v= flag');
+/* one version (2026-10-21): the page has no ?ui=, ?v=, ?stack= or ?split= switch; UI2, the v2 onboarding, the morning stack,
+   the Make-it-yours sheet and the old jam page are gone, and the server injects no version flag */
+test('one version: no version switches on the page, no v2 or UI2 files, no version flag from the server', () => {
+  const idx = src('public/index.html'), sv = src('server.js');
+  for (const re of [/get\('ui'\)/, /get\('v'\)/, /get\('stack'\)/, /split=0/, /\bconst (UI2|V2|FEED_STACK|SPLIT) =/, /brew-ui|brew-stack|'brew-v'/]) assert.doesNotMatch(app, re, `found ${re}`);
+  for (const re of [/ui2\.css/, /v2\.css/, /make-sheet\.js/, /onboard2\.js/]) assert.doesNotMatch(idx, re, `found ${re}`);
+  assert.match(idx, /questions\.js/); assert.match(idx, /parts\.css/);
+  for (const re of [/BREW_V/, /BREW_GATE/, /FEED_STACK/]) { assert.doesNotMatch(sv, re); assert.doesNotMatch(src('deploy.sh'), re); assert.doesNotMatch(src('tools/deploy-demo.sh'), re); }
+  for (const f of ['public/ui2.css', 'public/v2.css', 'public/make-sheet.js', 'public/onboard2.js', 'ask-brew.js']) assert.ok(!fs.existsSync(new URL(`../${f}`, import.meta.url)), `${f} is gone`);
 });
 
-/* FEED_STACK (2026-10-18): the morning stack sits behind its own flag inside v2, is keyed by the brand's date, counts honestly
-   ("n of N" from the cards really queued), and never opens on an email, jam, card or studio link */
-test('the morning stack is behind FEED_STACK, keyed by the brand date, honest about its count, never on a deep link', () => {
-  const ob = src('public/onboard2.js'), sv = src('server.js');
-  assert.match(sv, /window\.FEED_STACK=\$\{flagJson\(process\.env\.FEED_STACK \|\| '0'\)\}/, 'injected on every page, off unless set');
-  assert.match(src('deploy.sh'), /\|FEED_STACK=\$\{FEED_STACK:-0\}/); assert.match(src('tools/deploy-demo.sh'), /,FEED_STACK=\$\{FEED_STACK:-0\}/);
-  assert.match(app, /const FEED_STACK = V2 && /, 'inside v2 only'); assert.match(app, /get\('stack'\); if \(q === '1'\) ls\.set\('brew-stack', '1'\); else if \(q === '0'\) ls\.set\('brew-stack', '0'\)/);
-  assert.match(app, /const morningDue = \(\) => FEED_STACK && GEN && !LANDING && !!window\.OB2\?\.morning && !GO_LINK && !BOOT_RX && !\/\^#\(jam\|card\|work\|v\|remix\|cx\|cxerr\|s\)=\|\^#\(check\|team\)\$\/\.test\(location\.hash\) && S\.viewer\.stackDay !== brandClock\(\)\.day/);
-  assert.match(app, /if \(GO_FEED\) \{ GO_LINK = true;/, 'an email link never opens the stack');
-  assert.match(app, /if \(morningDue\(\)\) \{ view = 'stack'; S\.viewer\.stackDay = brandClock\(\)\.day; save\(\); return window\.OB2\.morning\(\{ onDone: \(\) => feed\(\) \}\); \}/, 'marked seen before it opens, then the feed');
-  assert.match(src('brand-pack.js'), /tz: p\.config\?\.timezone && p\.config\.timezone !== 'UTC' \? p\.config\.timezone : null/, 'the brand zone reaches the page');
-  assert.match(ob, /const runStack = \(o\) => \{/); assert.match(ob, /const firstThree = \(ranked\) => mixN\(ranked, 3\);/, 'the onboarding and the morning share one mix');
-  assert.match(ob, /c\.textContent = `\$\{Math\.min\(acted \+ 1, total\)\} of \$\{total\}`/, 'the counter counts the cards really queued');
-  assert.match(ob, /if \(k === 'Escape' && o\.skip && !\$\('#modal'\)\) \{ finish\(\); return true; \}/); assert.match(ob, /skip: 'Open the feed'/);
-  assert.match(ob, /Math\.max\(1, Math\.min\(50, \+V\(\)\.perDay \|\| 10\)\)/, 'N is the person\'s own setting, 10 by default');
-  for (const re of [/\b10 ready moves\b/, /ready moves every morning/, /\d+ moves? (saved|a day guaranteed)/i]) assert.doesNotMatch(ob, re, `found ${re}: the stack shows real cards, it promises no count`);
-  assert.doesNotMatch(ob, /Good morning, \$\{esc\(name\(\)\)\}\.<\/h1>[^]*?10 cards/, 'no fixed ten anywhere');
-});
-
-/* v1 questions (2026-10-19): v1's reading screen asks v2's taps through OB2.questions (mode q), never the tutorial, stack, gate
-   or "Good morning"; a confirm goes up only when a brand tap was answered and never with an empty hero list; lines that name
-   v2-only verbs say what v1 does; screens already asked are not asked again during onboarding */
-test('v1 asks the questions during the read, and only the questions', () => {
-  const ob = src('public/onboard2.js'), idx = src('public/index.html');
+/* the questions (2026-10-19): the reading screen asks five taps through OB2.questions (questions.js), and only those; a confirm
+   goes up only when a brand tap was answered and never with an empty hero list; screens already asked are not asked again */
+test('the reading screen asks the questions during the read, and only the questions', () => {
+  const ob = src('public/questions.js');
   assert.match(ob, /window\.OB2 = \{[^}]*\bquestions, qState \}/);
-  assert.match(ob, /const Q_ORDER = \['seat', 'first', 'channels', 'lead', 'rivals'\];/, 'five questions in mode q: no slides, tutorial, hold or done');
-  assert.match(ob, /channels: \{ multi: 6, optional: true,/, 'every channel they run, and none is an answer');
-  assert.match(ob, /if \(!s && mode === 'q'\) \{ QO\?\.onShow\?\.\(\); s = \$\('#v2-stage'\); \} if \(!s\) return mode === 'q' \? null : shell\(inner, o\);/, 'mode q reopens v1\'s layer, never a v2 shell');
-  assert.match(ob, /if \(mode === 'q'\) \{ const bt = \['lead', 'rivals'\]; if \(!bt\.every\(\(k\) => st\.done\[k\]\)\) return; if \(!bt\.some\(\(k\) => st\.done\[k\] === true\)\) return; \}/);
-  assert.match(ob, /st\.done\.lead === true && \(mode !== 'q' \|\| \(st\.v2\.hero \|\| \[\]\)\.length\)/, 'never an empty hero list from v1');
-  assert.match(ob, /slice\(0, mode === 'q' \? 99 : 4\)/, 'v1 offers every seat, as its seat step did');
-  assert.match(app, /const QM = !V2 && GEN && !!window\.OB2\?\.questions && !window\.OB2\.qState\(\)\.qDone;/);
+  assert.deepEqual([...ob.matchAll(/\{ id: '(\w+)', kind:/g)].map((m) => m[1]), ['seat', 'first', 'channels', 'lead', 'rivals'], 'five questions: no slides, tutorial, hold or done');
+  assert.match(ob, /id: 'channels', kind: 'tap', multi: 6, optional: true,/, 'every channel they run, and none is an answer');
+  assert.match(ob, /if \(!s\) \{ QO\?\.onShow\?\.\(\); s = \$\('#v2-stage'\); \} if \(!s\) return null;/, 'it reopens the reading screen\'s layer, never a shell of its own');
+  assert.match(ob, /const bt = \['lead', 'rivals'\]; if \(!bt\.every\(\(k\) => st\.done\[k\]\)\) return; if \(!bt\.some\(\(k\) => st\.done\[k\] === true\)\) return;/);
+  assert.match(ob, /st\.done\.lead === true && \(st\.v2\.hero \|\| \[\]\)\.length/, 'never an empty hero list');
+  assert.match(ob, /const seatTiles = \(\) => A\(\)\.seatEntries\(\)\.map\(/, 'every seat is offered, as the seat step did');
+  for (const re of [/EXAMPLE_CARDS/, /runStack/, /const gate/, /Good morning/, /EventSource/]) assert.doesNotMatch(ob, re, `found ${re}`);
+  assert.match(app, /const QM = GEN && !!window\.OB2\?\.questions && !window\.OB2\.qState\(\)\.qDone;/);
   assert.match(app, /Promise\.all\(\[readP, qP\]\)\.then\(\(\[, q\]\) => showDone\(q\)\);/, 'the done bar waits for the read and the last question');
   assert.match(app, /if \(posted\) \{ b\.disabled = true; return continueToFeed\(\); \}/);
   assert.match(app, /const noWants = !S\.onboarded && qAns\('first'\), noLane = !S\.onboarded && qAns\('lead'\);/, 'a later Tune still shows everything');
@@ -123,13 +102,14 @@ test('v1 asks the questions during the read, and only the questions', () => {
   assert.match(src('public/brew.css'), /\.qfull\{position:fixed;inset:0;/, 'the questions take the whole screen');
   assert.match(app, /if \(QM\) setTimeout\(askBar, 9000\);/, 'the read shows first, then the questions are offered');
   assert.match(app, /onWait: \(\) => \{ qClose\(\);/, 'answered before the read is done: back to the read');
-  for (const re of [/OB2\.(stack|morning|run)\(/]) assert.doesNotMatch(app.match(/const setup = async[^]*?\n  };\n/)[0].replace(/if \(V2 && window\.OB2\) \{ view = 'setup'; return window\.OB2\.run\(\); \}/, ''), re, 'v1 setup runs no v2 screen');
+  assert.doesNotMatch(app, /OB2\.(stack|morning|run|route|resume)\(/, 'no v2 screen anywhere');
 });
 
-test('Another take is on every card in v1 and v2; Make it yours stays v2; a take shows on its card', () => {
-  assert.match(app, /<button class="icon-btn v2-act" data-act="take" aria-label="Another take, a free draft" title="Another take · Free draft">\$\{ic\('refresh'\)\}<\/button>\$\{V2 \? `<button class="icon-btn v2-act" data-act="make"/);
-  assert.match(app, /document\.addEventListener\('click', async \(e\) => \{ if \(V2\) return; const b = e\.target\.closest\('\.card \[data-act="take"\]'\)/, 'v1 keeps the card in place');
+test('Another take is on every card, and a take shows on its card', () => {
+  assert.match(app, /<button class="icon-btn" data-act="take" aria-label="Another take, a free draft" title="Another take · Free draft">\$\{ic\('refresh'\)\}<\/button>/);
+  assert.doesNotMatch(app, /data-act="make"/, 'no Make it yours sheet');
+  assert.match(app, /document\.addEventListener\('click', async \(e\) => \{ const b = e\.target\.closest\('\.card \[data-act="take"\]'\)/, 'the card stays in place');
   assert.match(app, /if \(p\.take && \(p\.take\.image \|\| p\.take\.drawing \|\| p\.take\.drawError\)\)/, 'cardOf draws the take');
-  assert.match(app, /else if \(\(r\.updated \|\| \[\]\)\.length\) await redrawTakes\(r\.updated\);/, 'the pulse redraws it in place on v1');
+  assert.match(app, /if \(\(r\.updated \|\| \[\]\)\.length\) await redrawTakes\(r\.updated\);/, 'the pulse redraws it in place');
   assert.match(app, /data-ais-proof="\$\{esc\(aiStand\(\)\.src \|\| 'weekly'\)\}">\$\{ic\('shield', 's14'\)\}Every question and each AI’s answer/, 'the health ring opens the AI answers sheet');
 });
