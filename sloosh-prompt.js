@@ -19,7 +19,8 @@ const JOB_LINE = {
   layout: (r) => `Image ${r.n} is the approved draft${r.label ? `, ${r.label}` : ''}: keep its framing, where everything sits, the setting and the light, and make it sharper and more finished; take the product itself only from the product photo, never from this image${r.keep ? `; ${r.keep}` : ''}.`,
   logo: (r) => `Image ${r.n} is the logo${r.label ? `, ${r.label}` : ''}: reproduce it exactly, once, where the text sits${r.keep ? `; ${r.keep}` : ''}.`,
   /* a viral video the team is making its own version of (viral cards only): its format, never its people or products */
-  motion: (r) => `The reference video${r.label ? ` is ${r.label}` : ''}: follow its format, shot order, pacing, camera moves and energy; never copy its people, faces, products, words or brand${r.keep ? `; ${r.keep}` : ''}.`,
+  /* 21 Oct: given only "follow its format", Seedance copied the creator's striped socks and wooden floor: only the timing comes across */
+  motion: (r) => `The reference video${r.label ? ` is ${r.label}` : ''}: take only its pacing, shot order, framing and camera moves. Everything you see in it changes: a different room and background, different floor and furniture, different clothes, socks and shoes, different props and different people. Never copy its people, faces, products, words or brand${r.keep ? `; ${r.keep}` : ''}.`,
   other: (r) => `Image ${r.n}${r.label ? ` is ${r.label}` : ''}${r.keep ? `: ${r.keep}` : ': use it as a reference for what it shows'}.`
 };
 export const USE = { '4:5': 'a feed ad seen on a phone', '1:1': 'a square post seen on a phone', '9:16': 'a vertical story or reel on a phone; keep the top and bottom sixth free of anything that matters, the app draws its own bars there', '16:9': 'a wide banner', '3:4': 'a portrait post', '21:9': 'a wide site banner' };
@@ -83,12 +84,25 @@ export const onScreen = (shot) => one(/\b(?:text|overlay|caption|title|super|hea
 export const VEO_NO_TEXT = 'Draw no words anywhere: no text overlays, captions, subtitles, titles, price tags, signs or logos; any words are added afterwards.';
 export const VEO_SAME_PEOPLE = 'Only the people already in the first frame appear, each keeping the same face, hair, build and clothes throughout; no one new enters and no cuts.';
 export function veoDraft(b) { return one(`${sentence(motionOnly(b.motion)) || 'A hand picks the product up and uses it.'} One continuous handheld phone shot at a natural pace that fills the whole frame; hands may move and use the product; the product keeps its shape, colours and brand mark as in the first frame. ${VEO_SAME_PEOPLE} ${b.sound ? 'Quiet room tone.' : ''} ${VEO_NO_TEXT}`); }
-/* Seedance 2.5: references by job, one summary sentence, then timed beats in whole seconds with no gaps; SFX in <>, lines in quotes */
+/* what a script line is: words shown on screen, a sound, or a line said. The jam writes "(On-screen text) Keeping your feet warm…",
+   "(Sound effect) Loud crinkling" or a plain line; a reel final used to send all three as speech, so its joke never showed (21 Oct).
+   Emoji go: video models draw them as garbage */
+const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu;
+export function beatWords(x = {}) {
+  const raw = one(typeof x === 'string' ? '' : x.line), tag = /^\(?\s*(on-?screen(?: text)?|text overlay|caption|title|super|sound(?: effect)?|sfx|voice-?over|vo|said|voice)\s*\)?\s*[:\-–]?\s*/i.exec(raw);
+  const body = one((tag ? raw.slice(tag[0].length) : raw).replace(EMOJI, '')).replace(/^["“]|["”]$/g, '');
+  const kind = !tag ? 'say' : /sound|sfx/i.test(tag[1]) ? 'sfx' : /voice|vo|said/i.test(tag[1]) ? 'say' : 'show';
+  const shown = kind === 'show' ? body : one(onScreen(typeof x === 'string' ? x : x.shot).replace(EMOJI, ''));
+  return { say: kind === 'say' ? body : '', show: shown, sfx: kind === 'sfx' ? body : '' };
+}
+/* Seedance 2.5: references by job, one summary sentence, then timed beats in whole seconds with no gaps; SFX in <>, lines in quotes,
+   words on screen named exactly with where they sit */
 export function seedanceBeats(b) {
   const S = Math.max(4, Math.min(30, Math.round(b.seconds || 6))); const beats = (b.beats || []).filter((x) => one(typeof x === 'string' ? x : x?.shot || x?.beat || x?.line)).slice(0, 6);
-  const n = beats.length || 1, cut = (i) => Math.round((S * i) / n);
-  const body = beats.length ? beats.map((x, i) => { const shot = scrub(typeof x === 'string' ? x : x.shot || x.beat || ''), line = one(x.line); return `${cut(i)}-${cut(i + 1)}s: ${sentence(shot) || 'The same shot carries on.'}${line ? ` "${line.replace(/"/g, '”')}"` : ''}`; }).join('\n') : `0-${S}s: ${sentence(b.motion) || 'The camera pushes in slowly on the product.'}`;
-  return [b.frame ? FRAME_LINE : `${refLines(b.refs)}`.trim(), one(`A ${b.title ? `${b.title}: ` : ''}${b.subject}${b.visual || b.scene ? `, ${[b.visual, b.scene].filter(Boolean).join(' ')}` : ''}. ${b.look} One camera move per beat, slow and steady.`), body, one(`${b.sound ? 'Quiet ambient sound that fits the room.' : 'No music.'} No subtitles, no captions, no logo, no watermark. ${keepLine({ brand: b.brand, people: b.people })}`)].filter(Boolean).join('\n');
+  const n = beats.length || 1, cut = (i) => Math.round((S * i) / n); let shows = 0;
+  const body = beats.length ? beats.map((x, i) => { const shot = scrub(motionOnly(typeof x === 'string' ? x : x.shot || x.beat || '') || (typeof x === 'string' ? x : x.shot || x.beat || '')), w = beatWords(x); if (w.show) shows++;
+    return `${cut(i)}-${cut(i + 1)}s: ${sentence(shot) || 'The same shot carries on.'}${w.show ? ` On screen, in clean bold white type in the top third, exactly: "${w.show.replace(/"/g, '”')}"` : ''}${w.sfx ? ` <${w.sfx.replace(/[<>]/g, '')}>` : ''}${w.say ? ` "${w.say.replace(/"/g, '”')}"` : ''}`; }).join('\n') : `0-${S}s: ${sentence(b.motion) || 'The camera pushes in slowly on the product.'}`;
+  return [b.frame ? FRAME_LINE : `${refLines(b.refs)}`.trim(), one(`A ${b.title ? `${b.title}: ` : ''}${b.subject}${b.visual || b.scene ? `, ${[b.visual, b.scene].filter(Boolean).join(' ')}` : ''}. ${b.look} One camera move per beat, slow and steady.`), body, one(`${b.sound ? 'Quiet ambient sound that fits the room.' : 'No music.'} ${shows ? 'Only the on-screen words given appear, spelled exactly, one line at a time; no other subtitles or captions, no logo, no watermark.' : 'No subtitles, no captions, no logo, no watermark.'} ${keepLine({ brand: b.brand, text: !!shows, people: b.people })}`)].filter(Boolean).join('\n');
 }
 /* a clip that opens on the approved draft's first frame (sent as start_frame; Seedance takes a frame or references, not both) */
 export const FRAME_LINE = 'The video opens exactly on the start frame given and moves on from it. Keep the product exactly as it appears in that frame: its shape, colours, label and brand mark; never redraw it.';

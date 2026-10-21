@@ -69,3 +69,17 @@ test('a brief never draws a planning note or calls the product by a card title (
   const f = buildFinal({ kind: 'image', visual: 'Measure: watch time. A desk in winter.', refs: [{ url: 'u', job: 'product', label: 'Product photo' }], brand: { name: 'Cozy' } });
   assert.ok(!/Measure/.test(f.prompt)); assert.match(f.prompt, /Image 1 is the product\. Keep/);
 });
+
+test('a reel final shows its on-screen lines as exact words, sounds as sounds, and the viral clip gives only its timing (21 Oct)', async () => {
+  const { beatWords, buildFinal } = await import('../sloosh-prompt.js');
+  assert.deepEqual(beatWords({ line: '(On-screen text) Keeping your feet warm in 1996... 🤢' }), { say: '', show: 'Keeping your feet warm in 1996...', sfx: '' });
+  assert.deepEqual(beatWords({ line: '(Sound effect) Loud crinkling' }), { say: '', show: '', sfx: 'Loud crinkling' });
+  assert.deepEqual(beatWords({ line: 'Try it tonight.' }), { say: 'Try it tonight.', show: '', sfx: '' });
+  const p = buildFinal({ kind: 'video', title: 'our version', seconds: 15, sound: true, brand: { name: 'Cozy' }, refs: [{ job: 'product', label: 'Toe Toasters', url: 'x' }, { job: 'motion', label: 'the viral video', url: 'y' }],
+    beats: [{ shot: 'Hands wrap foil over a sock.', line: '(On-screen text) Keeping your feet warm in 1996' }, { shot: 'Tighter.', line: '(Sound effect) crinkling' }] }).prompt;
+  assert.match(p, /exactly: "Keeping your feet warm in 1996"/); assert.match(p, /<crinkling>/); assert.doesNotMatch(p, /"\(On-screen/);
+  assert.match(p, /take only its pacing, shot order, framing and camera moves/); assert.match(p, /different clothes, socks and shoes/);
+  assert.match(p, /Only the on-screen words given appear/);
+  const plain = buildFinal({ kind: 'video', seconds: 6, brand: { name: 'Cozy' }, beats: [{ shot: 'A hand.', line: 'Hi there' }] }).prompt;
+  assert.match(plain, /No subtitles, no captions/); assert.match(plain, /"Hi there"/);
+});

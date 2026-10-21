@@ -203,7 +203,7 @@ test('a viral remake: the clip goes to Sloosh as a video reference, wins over th
   const sent = R.calls.filter((c) => c[0] === 'quote').at(-1)[1].references;
   assert.ok(sent.some((r) => r.type === 'video' && r.role === 'reference'));
   assert.ok(!sent.some((r) => r.role === 'start_frame'));
-  assert.match(q.prompt, /The reference video is the viral video this remakes: follow its format/);
+  assert.match(q.prompt, /The reference video is the viral video this remakes: take only its pacing/);
   const G = rig({ gemini: async () => Buffer.from('x'), video: async () => Buffer.from('v'), connected: false }); const g = await G.F.quote('cozy', reel);
   assert.ok(!(g.refs || []).some((r) => r.job === 'motion'));
 });
