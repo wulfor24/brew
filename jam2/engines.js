@@ -71,10 +71,11 @@ export function createEngines({ geminiImage, vertexVideo, vertexVoice, vertexMus
         const b = await fetchImpl(out, { signal: AbortSignal.timeout(180e3) }); if (!b.ok) throw new Error(`Higgsfield output could not be fetched (${b.status})`); return { buf: Buffer.from(await b.arrayBuffer()), type: b.headers.get('content-type') || '', id }; } }
     throw Object.assign(new Error('Higgsfield is still working on it; Brew will check again'), { open: true, id });
   };
-  const hfImage = (cap) => ({ quote: () => ({ usd: H.usd.still }), run: async (s) => { const urls = [s.srcUrl, ...(s.refUrls || [])].filter(Boolean).map(pub);
+  /* a shoot is quoted at the ceiling (Gemini's price, the fallback) so falling back never costs more than shown; Higgsfield bills ~$0.08–0.10 */
+  const hfImage = (cap) => ({ quote: () => ({ usd: cap === 'still.shot' ? H.usd.shot ?? H.usd.still : H.usd.still }), run: async (s) => { const urls = [s.srcUrl, ...(s.refUrls || [])].filter(Boolean).map(pub);
     /* Marketing Studio has no 4:5 or 5:4: the nearest frame, and the layout's cover fit trims the rest */
     const out = await hfCall(H.models[cap], { prompt: s.prompt, quality: 'high', resolution: '2k', aspect_ratio: ({ '4:5': '3:4', '5:4': '4:3' })[s.ratio] || s.ratio || 'auto', image_urls: urls, enhance_prompt: false, moderation: 'auto' });
-    return { file: keep(out.buf, /jpe?g/.test(out.type) ? 'jpg' : 'png'), model: H.models[cap], usd: H.usd.still, provider: 'higgsfield' }; } });
+    return { file: keep(out.buf, /jpe?g/.test(out.type) ? 'jpg' : 'png'), model: H.models[cap], usd: cap === 'still.shot' ? 0.1 : H.usd.still, provider: 'higgsfield' }; } });
   const hfVideo = (cap) => ({ quote: (s) => ({ usd: +(H.usd.videoPerSecond * (s.seconds || 5)).toFixed(2) }), run: async (s) => { const urls = [s.srcUrl, ...(s.refUrls || [])].filter(Boolean).map(pub);
     const out = await hfCall(H.models[cap], { prompt: s.prompt, image_url: urls[0], image_urls: urls, duration: s.seconds || 5, aspect_ratio: s.ratio || '9:16' }, { maxMs: 20 * 60e3 });
     return { file: keep(out.buf, 'mp4'), model: H.models[cap], usd: +(H.usd.videoPerSecond * (s.seconds || 5)).toFixed(2), provider: 'higgsfield' }; } });
