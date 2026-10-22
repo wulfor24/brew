@@ -228,14 +228,14 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
     const key = sha(Buffer.from(JSON.stringify([t0.id, cut?.file, t0.timeline.shots.map((x) => [x.see, x.sec, x.camera])])));
     if (board.inflight?.key !== key) board.inflight = { key, shots: {} };
     let lost = 0; const places = await placesOf(ctx, t0.timeline.shots);
-    for (const s of t0.timeline.shots) { const kept = board.inflight.shots[t0.timeline.shots.indexOf(s)]; if (kept?.clip) { shots.push({ ...s, still: kept.still, clip: kept.clip }); continue; } try {
+    for (const s of t0.timeline.shots) { const kept = board.inflight.shots[t0.timeline.shots.indexOf(s)]; if (kept?.clip) { shots.push({ ...s, still: kept.still, clip: kept.clip }); made.push(...(kept.made || [])); continue; } /* paid before the restart: counted in this take's cost */ try {
       /* the scene is only the place: the shot line names products, and an image model asked for them draws its own versions */
       const bg = await scene(ctx, { describe: places[t0.timeline.shots.indexOf(s)] || placeOf(s.see), ratio: '9:16' }); made.push({ cap: 'still.scene', provider: bg.provider, model: bg.model, usd: bg.usd });
       const sc = composeScene({ size: { ...size, w: 1080, h: 1920 }, bgFile: bg.file, cut, words: { headline: '' }, kit: ctx.bbv.kit }); sc.layers = sc.layers.filter((l) => l.kind !== 'text' && l.kind !== 'shape' && l.kind !== 'badge' && l.kind !== 'logo'); for (const l of sc.layers) if (l.kind === 'product') Object.assign(l, { x: 200, y: 640, w: 680, h: 720 }); /* above the caption bar (y 1430) and below the on-screen words */ /* the logo goes on the end shot's still overlay (captionCard), where a camera move can't push it out of frame */
       const still = await render(sc); const sf = await fileOf(still);
       if (!spend('video', ctx.slug)) throw Object.assign(new Error('Today’s video budget is used up.'), { budget: true });
       const clip = await engines.run(q.cap, { srcFile: sf, srcUrl: still, prompt: q.cap === 'video.shot' ? motionOf(s) : `${s.camera || 'static'} camera. ${s.see}. The product stays exactly as in the first frame: same shape, label and colours. Natural motion, no text, no logos added.`, seconds: s.sec, ratio: '9:16', slug: ctx.slug, by: ctx.by?.email, jamId: ctx.jam.id, boardId: board.id });
-      made.push({ cap: q.cap, provider: clip.provider, model: clip.model, usd: clip.usd || 0, credits: clip.credits || 0 }); shots.push({ ...s, still, clip: clip.file }); board.inflight.shots[t0.timeline.shots.indexOf(s)] = { still, clip: clip.file };
+      made.push({ cap: q.cap, provider: clip.provider, model: clip.model, usd: clip.usd || 0, credits: clip.credits || 0 }); shots.push({ ...s, still, clip: clip.file }); board.inflight.shots[t0.timeline.shots.indexOf(s)] = { still, clip: clip.file, made: made.slice(-2) };
     } catch (e) { lost++; log.warn?.('[jam2] shot', e.message); const prev = shots[shots.length - 1]; shots.push({ ...s, still: prev?.still || null, clip: null, failed: tidy(e.message, 120) }); if (e.budget || /budget/i.test(e.message)) break; } }
     if (!shots.some((x) => x.still || x.clip)) throw new Error('No shot came through. Nothing else was made; try again later.');
     const done = await finishVideo(ctx, board, t0, shots, made, { op: 'render' }); board.inflight = null; return done;
