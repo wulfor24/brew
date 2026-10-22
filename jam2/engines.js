@@ -78,7 +78,8 @@ export function createEngines({ geminiImage, vertexVideo, vertexVoice, vertexMus
   const loadImgly = async () => { if (imglyTried) return imgly; imglyTried = true; try { imgly = await import('@imgly/background-removal-node'); } catch { imgly = null; } return imgly; };
   const local = { id: 'local', label: 'Brew (on our server, free)', live: () => true,
     caps: { cutout: { available: async () => !!(await loadImgly()), quote: () => ({ usd: 0 }), run: async (s) => { const m = await loadImgly(); if (!m) throw Object.assign(new Error('the local cut-out is not installed'), { skip: true });
-      const blob = await m.removeBackground(fs.readFileSync(s.srcFile), { output: { format: 'image/png' } }); const buf = Buffer.from(await blob.arrayBuffer()); return { file: keep(buf, 'png'), model: 'imgly-isnet', usd: 0, alpha: true }; } } } };
+      /* a typed Blob: given bare bytes the library sees no format and refuses every photo; octet-stream lets sharp read any format */
+      const blob = await m.removeBackground(new Blob([fs.readFileSync(s.srcFile)], { type: 'application/octet-stream' }), { output: { format: 'image/png' } }); const buf = Buffer.from(await blob.arrayBuffer()); return { file: keep(buf, 'png'), model: 'imgly-isnet', usd: 0, alpha: true }; } } } };
 
   /* not connected yet: listed so the routing table reads true, skipped until their keys exist */
   const off = (id, label, caps, key) => ({ id, label, live: () => !!env[key], caps: Object.fromEntries(caps.map((c) => [c, { quote: () => ({ error: `${label} is not connected yet` }), run: async () => { throw Object.assign(new Error(`${label} is not connected yet`), { skip: true }); } }])) });
