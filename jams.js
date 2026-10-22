@@ -11,6 +11,13 @@ const FILE = 'private/jams.json';
 const OPEN = (w) => !w.archived && !w.discarded && !['out', 'measuring', 'result'].includes(w.stage); // the same as feed-service workFor: a shared brief reopens its jam
 const lc = (e) => (e ? String(e).toLowerCase() : null);
 
+/* Needs you is personal: the newest line where a teammate tagged you, unless you have written in the jam since.
+   The jam's stage stays shared; the Work board reads this per viewer */
+export const askOf = (w, email) => { const me = lc(email); if (!me) return null;
+  for (let i = (w.thread || []).length - 1; i >= 0; i--) { const m = w.thread[i], by = lc(m.by?.email); if (by === me) return null;
+    if (m.from !== 'system' && by && (m.to || []).some((x) => lc(x) === me)) return { id: m.id, who: m.by.name || by.replace(/@.*/, ''), email: by, pic: m.by.pic || null, body: String(m.body || '').slice(0, 300), at: m.at }; }
+  return null; };
+
 export function createJams({ packs, reqOf, bgMember, log = console, enabled = () => process.env.DEMO_MODE !== '1', everyMs = 4000 }) {
   const BR = new Map(); // slug → { work, changes, ready, last }
   const box = (slug) => {

@@ -1266,8 +1266,10 @@
   const todayN = () => +S.viewer.perDay || 14;
   const todayOf = (ranked) => ranked.slice(0, todayN()).filter((p) => !cardOf(p).done);
   const yesOf = (ranked) => todayOf(ranked).filter((p) => p.type === 'decision');
+  /* waits on you: an OK asked of the jam, or a teammate tagged you and you have not replied (askMe, per viewer) */
+  const needsMe = (w) => w.stage === 'needs_you' || !!w.askMe;
   const gLists = () => { const vis = todayOf(RANKED);
-    return { yes: yesOf(RANKED), spend: vis.filter((p) => B.spends.includes(p.cta?.label)), board: WORK.items.filter((w) => w.stage === 'needs_you').sort((a, b) => b.updatedAt - a.updatedAt) }; };
+    return { yes: yesOf(RANKED), spend: vis.filter((p) => B.spends.includes(p.cta?.label)), board: WORK.items.filter(needsMe).sort((a, b) => b.updatedAt - a.updatedAt) }; };
   const QHEAD = {
     yes: ['Need your yes', 'Calls only you can make', 'Calls only you can make. Each opens its jam: the plan, the draft, then your yes.', 'check'],
     spend: ['Spend money', 'Budgets, campaigns and the site', 'These change budgets, campaigns or the site. Each opens its jam; nothing goes live until you approve it there.', 'wallet'],
@@ -1300,8 +1302,8 @@
         ${p.told && !isToldCard(c) ? `<span class="told-tag" title="This card uses what your team told Brew">${ic('book', 's12')}From what your team told Brew</span>` : ''}<h3>${esc(c.title)}</h3><p>${esc(c.sub)}</p></div>
       <div class="q-acts">${barHtml(c.cta || { label: 'Open' }, c.done)}</div></article>`; };
   const wRow = (w) => `<article class="card q-card${w.img ? '' : ' no-img'}">${w.img ? `<span class="q-thumb"><img src="${w.img}" alt=""></span>` : ''}
-      <div class="q-body"><div class="q-meta">${w.with?.kind === 'team' ? avatar(colleague(w.with.id), 22) : face(w.agent || 'brew')}<b>${w.with ? `From ${esc(w.with.name)}` : 'From Brew'}</b><span>· ${ago(w.updatedAt)}</span><span class="badge warn">Needs you</span></div>
-        <h3>${esc(curV(w)?.title || w.title)}</h3><p>${esc(curV(w)?.sub || 'Version ' + w.current + ' is ready for your OK.')}</p></div>
+      <div class="q-body"><div class="q-meta">${w.askMe ? pAv(w.askMe, 22) : w.with?.kind === 'team' ? avatar(colleague(w.with.id), 22) : face(w.agent || 'brew')}<b>${w.askMe ? `From ${esc(w.askMe.who)}` : w.with ? `From ${esc(w.with.name)}` : 'From Brew'}</b><span>· ${ago(w.updatedAt)}</span><span class="badge warn">Needs you</span></div>
+        <h3>${esc(curV(w)?.title || w.title)}</h3><p>${esc(w.askMe ? plain(w.askMe.body) : curV(w)?.sub || 'Version ' + w.current + ' is ready for your OK.')}</p></div>
       <div class="q-acts"><button class="btn btn-primary" data-witem="${w.id}">Review ${ic('right', 's16')}</button></div></article>`;
   const renderQueue = async (k = QTAB) => {
     QTAB = k; view = 'queue'; document.body.classList.remove('deck-on'); $('#stk').innerHTML = ''; $('#notes').innerHTML = '';
@@ -1362,7 +1364,7 @@
     feedOpened(); appShell(); const rh = location.hash.match(/^#remix=([^&]+)/); const hp = hashParams(); const h = hp.card ? [null, hp.card] : null; pulseT || (pulseT = setTimeout(pulse, 4000)); window.scrollTo(0, 0); await Promise.all([pullWork(true), renderFeed()]); const p = h && byId(h[1]); if (p) openDetail(p); else if (h) { history.replaceState(null, '', location.pathname); toast('That card is no longer in the feed.'); } if (hp.work) { const wk = WORK.items.find((x) => x.id === hp.work); if (wk) openDetail(byId(wk.cardId) ? { ...byId(wk.cardId), _work: wk } : pseudoPost(wk)); } if (location.hash.startsWith('#jam=')) window.JamRoom?.fromHash(); if (location.hash.startsWith('#jam2=')) { const j2 = decodeURIComponent(location.hash.slice(6)), go = (n = 0) => (window.Jam2 ? window.Jam2.on() && window.Jam2.openId(j2, tapi) : n < 40 && setTimeout(() => go(n + 1), 100)); go(); } /* Jam v2: a reload or a shared address reopens the jam */ if (hp.v && hp.v !== 'feed' && VIEWS()[hp.v]) VIEWS()[hp.v](); const [rcid, rch] = rh ? decodeURIComponent(rh[1]).split('/') : []; const rp = rcid && byId(rcid); if (rp) await openRemix(rp, rch).catch(() => {}); endBootRx(); };
   const counts = () => {
     const sv = $('[data-count="saved"]'), wk = $('[data-count="work"]');
-    if (sv) sv.textContent = S.saved.length || ''; if (wk) { const n = WORK.items.filter((w) => w.stage === 'needs_you').length; wk.textContent = n || ''; wk.classList.toggle('hot', !!n); }
+    if (sv) sv.textContent = S.saved.length || ''; if (wk) { const n = WORK.items.filter(needsMe).length; wk.textContent = n || ''; wk.classList.toggle('hot', !!n); }
     $$('[data-count="bell"]').forEach((b) => { b.textContent = WORK.unread || ''; b.classList.toggle('hot', !!WORK.unread); });
     const vb = $('[data-viewing]'); if (vb) vb.innerHTML = `${face(ROLE().face)}<span><i class="va">Viewing as </i><b>${esc(ROLE().name)}</b></span>${ic('chev', 's14')}`;
     $$('.rail [data-nav]').forEach((b) => b.classList.toggle('on', b.dataset.nav === (['jams', 'remixes', 'refs'].includes(view) ? 'saved' : ['move', 'moves'].includes(view) ? 'learned' : view)));
@@ -1382,7 +1384,7 @@
       document.body.appendChild(bar); bar.addEventListener('click', (e) => { if (e.target.closest('[data-tbjam]')) openJam({}); }); }
     const cur = ['jams', 'remixes'].includes(view) ? 'saved' : view;
     $$('[data-nav]', bar).forEach((b) => b.setAttribute('aria-current', b.dataset.nav === cur ? 'page' : 'false'));
-    const n = WORK.items.filter((w) => w.stage === 'needs_you').length, wb = $('[data-count="tbwork"]', bar); if (wb) { wb.textContent = n || ''; wb.hidden = !n; }
+    const n = WORK.items.filter(needsMe).length, wb = $('[data-count="tbwork"]', bar); if (wb) { wb.textContent = n || ''; wb.hidden = !n; }
     const tb = $('.topbar'); if (tb && !$('.tb-title', tb)) $('.seg', tb)?.insertAdjacentHTML('afterend', '<button class="tb-title" data-nav="feed" aria-label="Home: your feed"></button>');
     const tt = $('.topbar .tb-title'); if (tt) tt.textContent = TITLES[view] || `${B.brand.name}`;
   };
@@ -2553,28 +2555,29 @@
   const wbCopy = (w) => { const t = String(curV(w)?.title || w.title || '').trim(); return MSGY.test(t) || t.length > 90 ? plain(t).slice(0, 160) : ''; };
   // the status badge in the card head, the way Deck cards carry theirs
   const wbBadge = (w) => {
-    if (w.stage === 'needs_you') return '<span class="badge warn">Your answer</span>';
+    if (needsMe(w)) return '<span class="badge warn">Your answer</span>';
     if (w.stage === 'team') return `<span class="badge info">With ${esc(w.with?.name || 'your team')}</span>`;
     if (w.stage === 'ready') return '<span class="badge ok">Approved</span>';
     if (w.stage === 'shared') return `<span class="badge ok">Shared${w.ticket ? ' · ' + esc(w.ticket) : ''}</span>`;
     return w.versions.length > 1 ? `<span class="badge">v${w.current} of ${w.versions.length}</span>` : ''; };
   // the body under the title: the ask, the reading, the result, or what the draft says
   const wbBody = (w) => {
+    if (w.askMe) return `<div class="wb-say">${pAv(w.askMe, 22)}<div><b>${esc(w.askMe.who)}</b><span>${esc(plain(w.askMe.body).slice(0, 200))}</span></div></div>`;
     const msg = (w.thread || []).filter((x) => x.body && !['system', 'me'].includes(x.from)).slice(-1)[0];
     if (['needs_you', 'team'].includes(w.stage) && msg) { const tm = w.with?.kind === 'team' ? colleague(w.with.id) : null;
       const who = msg.who || w.with?.name || 'Brew';
       return `<div class="wb-say">${tm ? avatar({ ...tm, ini: who.trim().split(/\s+/).slice(0, 2).map((x) => x[0]).join('').toUpperCase() }, 22) : face(msg.from === 'brew' ? 'brew' : w.agent || 'brew')}<div><b>${esc(who)}</b><span>${esc(plain(msg.body).slice(0, 200))}</span></div></div>`; }
     const copy = wbCopy(w); if (copy) return `<blockquote class="wb-copy">${esc(copy)}</blockquote>`;
     const sub = plain(curV(w)?.sub || byId(w.cardId)?.sub || ''); return sub ? `<p>${esc(sub.slice(0, 220))}</p>` : ''; };
-  const wbFoot = (w) => w.stage === 'needs_you' ? `<span class="wb-go is-hot">Answer ${esc(w.with?.name || 'them')}${ic('right', 's16')}</span>`
+  const wbFoot = (w) => needsMe(w) ? `<span class="wb-go is-hot">Answer ${esc(w.askMe?.who || w.with?.name || 'them')}${ic('right', 's16')}</span>`
     : w.stage === 'ready' ? `<span class="wb-go">Share the brief${ic('right', 's16')}</span>`
     : `<span class="wb-go is-quiet">Open${ic('right', 's16')}</span>`;
   const tileHtml = (w) => `<article class="card wb-card${w.unread ? ' is-unread' : ''}" data-witem="${w.id}" tabindex="0">
       <header class="card-head">${face(w.agent || 'brew')}<div class="who"><b>${esc(AGENT[w.agent] || 'Brew')}</b><span>${ago(w.updatedAt)}</span></div>${wbBadge(w)}</header>
       ${w.img ? `<div class="media portrait"><img src="${esc(w.img)}" alt="" loading="lazy"></div>` : ''}
       <div class="body">${(() => { const c = w.whose || w.cardSnap || {}, rv = rivalOf(c), wa = rv ? ourVersionOf(rv.name) : whoseAd({ ...c, images: c.images?.length ? c.images : w.img ? [w.img] : [] }); return wa ? `<small class="wb-whose">${esc(wa)}</small>` : ''; })() /* whose ad it is, like the feed: "Made for you" on our own (FEED-NOT-02) */}<h3>${w.unread ? '<i class="wb-new"></i>' : ''}${esc(wbTitle(w))}</h3>${wbBody(w)}</div>${wbFoot(w)}</article>`;
-  const wbStrip = (w) => { const say = w.stage === 'needs_you' ? `Answer ${esc(w.with?.name || 'them')}` : w.stage === 'team' ? `With ${esc(w.with?.name || 'your team')}` : w.stage === 'ready' ? 'Approved · share the brief' : w.stage === 'shared' ? `Brief shared${w.ticket ? ' · ' + esc(w.ticket) : ''}` : w.versions?.length > 1 ? `Draft v${w.current} of ${w.versions.length}` : 'Draft';
-    return `<div class="wb-strip is-${esc(w.stage)}">${w.unread ? '<i class="wb-new"></i>' : ''}<b>${say}</b><span>${ago(w.updatedAt)}</span>${ic('right', 's14')}</div>`; };
+  const wbStrip = (w) => { const say = needsMe(w) ? `Answer ${esc(w.askMe?.who || w.with?.name || 'them')}` : w.stage === 'team' ? `With ${esc(w.with?.name || 'your team')}` : w.stage === 'ready' ? 'Approved · share the brief' : w.stage === 'shared' ? `Brief shared${w.ticket ? ' · ' + esc(w.ticket) : ''}` : w.versions?.length > 1 ? `Draft v${w.current} of ${w.versions.length}` : 'Draft';
+    return `<div class="wb-strip is-${esc(w.askMe ? 'needs_you' : w.stage)}">${w.unread ? '<i class="wb-new"></i>' : ''}<b>${say}</b><span>${ago(w.updatedAt)}</span>${ic('right', 's14')}</div>`; };
   const workTile = (w) => { const p = w.cardId && byId(w.cardId), i = p ? FEED.indexOf(p) : -1;
     return i < 0 ? tileHtml(w) : `<div class="wb-fc${w.unread ? ' is-unread' : ''}" data-witem="${w.id}">${wbStrip(w)}${postCard(p, i)}</div>`; };
   /* the background lane: many moves written at once read as one row, not one row each */
@@ -2618,7 +2621,7 @@
     /* the AI lane only while AI is doing something; the five lanes only once something is in progress */
     const ai = BG.items.length ? aiCol() : null, cols = ai ? [...WB_COLS, ai] : WB_COLS;
     const nOf = (c) => c.count ?? by(c).length; /* the AI lane counts what is running, else what waits */
-    const by = (c) => c.k === 'ai' ? bgGroup(BG.items) : items.filter((w) => c.stages.includes(w.stage)).sort((a, b) => (b.unread - a.unread) || b.updatedAt - a.updatedAt);
+    const by = (c) => c.k === 'ai' ? bgGroup(BG.items) : items.filter((w) => c.k === 'you' ? needsMe(w) : !w.askMe && c.stages.includes(w.stage)).sort((a, b) => (b.unread - a.unread) || b.updatedAt - a.updatedAt);
     // the board redraws on its own as work moves: keep where you were scrolled, sideways and in every column
     const keep = $('#wb-deck') ? { x: $('#wb-deck').scrollLeft, y: Object.fromEntries($$('.wb-col').map((c) => [c.dataset.bcol, $('.col-body', c)?.scrollTop || 0])) } : null;
     /* an empty lane is its title only: no 0, no placeholder sentence */

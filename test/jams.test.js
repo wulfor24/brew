@@ -58,3 +58,18 @@ test('presence: who has the jam open, and for how long it counts', () => {
   assert.equal(J.here('wk_1')[0].email, 'a@acme.com'); assert.equal(J.here('wk_1')[0].typing, true);
   assert.ok(J.watching('wk_1', 'a@acme.com')); assert.ok(!J.watching('wk_1', 'b@acme.com'));
 });
+
+test('Needs you is personal: a tag waits on the tagged person until they write, never on the one who tagged', async () => {
+  const { askOf } = await import('../jams.js');
+  const P = { email: 'param@acme.com', name: 'Param Jain' }, W2 = { email: 'wulf@acme.com', name: 'Wulf' };
+  const w = { stage: 'drafting', thread: [{ id: 'm1', from: 'ai', body: 'Here is the brief' }, { id: 'm2', from: 'me', by: P, to: ['Wulf@acme.com'], body: '@Wulf should we make the deadline 17th?' }] };
+  assert.equal(askOf(w, 'wulf@acme.com').who, 'Param Jain'); assert.equal(askOf(w, 'wulf@acme.com').id, 'm2');
+  assert.equal(askOf(w, 'param@acme.com'), null, 'the tagger is not waiting on themselves');
+  assert.equal(askOf(w, null), null); assert.equal(askOf({ thread: [] }, 'wulf@acme.com'), null);
+  w.thread.push({ id: 'm3', from: 'ai', body: 'Updated the deadline' });
+  assert.ok(askOf(w, 'wulf@acme.com'), 'an AI line after the tag does not answer it');
+  w.thread.push({ id: 'm4', from: 'me', by: W2, body: 'yes, 17th works' });
+  assert.equal(askOf(w, 'wulf@acme.com'), null, 'their reply answers it');
+  w.thread.push({ id: 'm5', from: 'system', by: P, to: ['wulf@acme.com'], body: 'Param added Wulf' });
+  assert.equal(askOf(w, 'wulf@acme.com'), null, 'a system line is never an ask');
+});
