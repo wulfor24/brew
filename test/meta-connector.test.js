@@ -126,3 +126,25 @@ test('a team-only card, a move written from a disconnected account, and account 
   const rows = { 'meta.cpa': { v: '₹780', n: 780 } };
   assert.deepEqual(acctRows({ member: false, liveLedger: rows }), []); assert.equal(acctRows({ member: true, liveLedger: rows }).length, 1);
 });
+
+test('Meta: the budget card never moves money from a paused campaign or one still learning; mixed windows are said', async () => {
+  const now = Date.now(), day = 864e5;
+  /* five campaigns that spent this week: 101 paused since (the worst), 102 started 5 days ago, 103 active and weak, 104 the best */
+  const camp = [['101', 'Paused one', 9000, 1.1, 'PAUSED', 60], ['102', 'New one', 8000, 1.2, 'ACTIVE', 5], ['103', 'Weak one', 7000, 1.6, 'ACTIVE', 40], ['104', 'Best one', 6000, 2.8, 'ACTIVE', 90], ['105', 'Middle', 5000, 2.0, 'ACTIVE', 90]];
+  const f = async (url) => { const u = new URL(url), p = u.pathname.replace(/^\/v[\d.]+\//, '');
+    if (p === 'act_1') return res200({ name: 'Acct', currency: 'INR' });
+    if (p === 'act_1/promote_pages') return res200({ data: [] });
+    if (p === 'act_1/ads') return res200({ data: camp.map(([id]) => ({ id: `a${id}`, campaign_id: id, effective_status: 'ACTIVE', creative: { object_story_spec: { page_id: OWN } } })) });
+    if (p === 'act_1/campaigns') { const ids = JSON.parse(u.searchParams.get('filtering'))[0].value; return res200({ data: camp.filter(([id]) => ids.includes(id)).map(([id, , , , st, age]) => ({ id, effective_status: st, start_time: new Date(now - age * day).toISOString() })) }); }
+    if (p === 'act_1/insights') { if (u.searchParams.get('fields') === 'attribution_setting') return res200({ data: [{ attribution_setting: 'multiple' }] });
+      return res200({ data: u.searchParams.get('level') === 'ad' ? camp.map(([id, name, s, r]) => ({ ad_id: `a${id}`, ad_name: `Ad ${id}`, campaign_id: id, campaign_name: name, frequency: '1.5', spend: String(s * 7), action_values: [{ action_type: 'purchase', value: String(s * 7 * r) }] }))
+        : [{ spend: '245000', actions: [{ action_type: 'purchase', value: '300' }], action_values: [{ action_type: 'purchase', value: '420000' }] }] }); }
+    return resErr(404, { error: { message: 'no' } }); };
+  const r = await withFetch(f, () => meta.sync(C, CTX)), s = r.cards.find((c) => c.id === 'live-meta-shift');
+  assert.equal(s.shift.from, 'Weak one', 'not the paused campaign, not the one still learning'); assert.equal(s.shift.to, 'Best one');
+  assert.equal(s.shift.perDay, 1400);
+  assert.match(s.sub, /1 campaign that spent this week is paused now and left out/); assert.match(s.sub, /New one started under 14 days ago and is still learning/);
+  assert.match(s.sub, /count purchases over different windows/);
+  const fail = await withFetch(async (url) => (/\/campaigns\?/.test(url) ? resErr(500, { error: { code: 1, message: 'unknown' } }) : f(url)), () => meta.sync(C, CTX));
+  assert.equal(fail.cards.find((c) => c.id === 'live-meta-shift').shift.from, 'Paused one', 'a lookup that fails leaves every campaign judged, as before');
+});

@@ -58,7 +58,7 @@ const ownFromAds = (counts, ctx, min = 1) => (ctx.pageId && (counts.get(String(c
 const countPages = (ads) => { const m = new Map(); for (const x of ads || []) { const p = adPage(x); if (p) m.set(p, (m.get(p) || 0) + 1); } return m; };
 /* a Page that carries a real share of the account's ads is another brand's: creator and partnership Pages (a few ads each,
    run for the brand) are not, so an account that is the brand's own isn't split for them */
-const OTHER_SHARE = 0.15;
+const OTHER_SHARE = 0.15, LEARN_DAYS = 14; /* a campaign younger than LEARN_DAYS is still in Meta's learning phase */
 const otherBrands = (counts, ownId) => { const tot = [...counts.values()].reduce((s, n) => s + n, 0); return [...counts.entries()].filter(([p, n]) => p !== String(ownId) && n >= Math.max(5, tot * OTHER_SHARE)).map(([p]) => p); };
 const sumLabel = (xs) => (xs.length === 1 ? xs[0].name || `act_${xs[0].id}` : `${xs.length} ad accounts`);
 
@@ -152,9 +152,19 @@ const META = {
     for (const x of adWeek.filter(keep)) { const k2 = x.campaign_id || x.campaign_name, c2 = byCamp.get(k2) || { name: x.campaign_name, s: 0, v: 0, valued: false, fw: 0 };
       const s = +x.spend || 0, v = pick(x.action_values, PURCHASE); c2.s += s; if (v != null) { c2.v += v; c2.valued = true; } c2.fw += s * (+x.frequency || 0); byCamp.set(k2, c2); }
     /* a campaign's frequency here is its ads' frequency weighted by spend: close to Meta's own, and the same for a shared account */
-    m.camp = [...byCamp.values()].map((c2) => ({ name: c2.name, spendDay: c2.s / 7, freq: c2.s ? c2.fw / c2.s : 0, roas: c2.valued && c2.s ? c2.v / c2.s : null, account: m.name })).filter((x) => x.spendDay > 0);
+    m.camp = [...byCamp.entries()].map(([id, c2]) => ({ id: String(id), name: c2.name, spendDay: c2.s / 7, freq: c2.s ? c2.fw / c2.s : 0, roas: c2.valued && c2.s ? c2.v / c2.s : null, account: m.name })).filter((x) => x.spendDay > 0);
+    /* each campaign's status and start: a campaign that is paused now (it spent earlier in the week) or started under LEARN_DAYS
+       ago (still in Meta's learning phase) is never judged for a budget move. A lookup that fails leaves them judged, as before */
+    const cids = m.camp.map((x) => x.id).filter((x) => /^\d+$/.test(x)).slice(0, 100);
+    if (cids.length) { const st = await all(`${A}/campaigns`, c.token, { fields: 'id,effective_status,start_time,created_time', filtering: JSON.stringify([{ field: 'id', operator: 'IN', value: cids }]), limit: 100 }, 2).catch(() => null);
+      const by = new Map((st || []).map((x) => [String(x.id), x]));
+      for (const x of m.camp) { const y = by.get(x.id); if (!y) continue; const t = Date.parse(y.start_time || y.created_time || ''); if (Number.isFinite(t)) x.start = t; x.status = y.effective_status || null; } }
+    /* the windows Meta counts purchases over: "multiple" when campaigns differ, so their returns are a guide, not like for like */
+    m.attr = await get(`${A}/insights`, c.token, { date_preset: 'last_30d', fields: 'attribution_setting' }).then((j) => j?.data?.[0]?.attribution_setting || null).catch(() => null);
     m.live = ads ? ads.filter((x) => x.effective_status === 'ACTIVE' && (!shared || mine.has(x.id))).length : null; m.adsFailed = !ads;
-    m.tired = adWeek.filter(keep).filter((x) => +x.frequency >= 3.5 && +x.spend > 0).map((x) => ({ name: x.ad_name, freq: +x.frequency }));
+    /* a tired ad is one still running: an ad paused since (it spent earlier in the week) needs no fresh version */
+    const running = ads ? new Set(ads.filter((x) => x.effective_status === 'ACTIVE').map((x) => String(x.id))) : null;
+    m.tired = adWeek.filter(keep).filter((x) => +x.frequency >= 3.5 && +x.spend > 0 && (!running || running.has(String(x.ad_id)))).map((x) => ({ name: x.ad_name, freq: +x.frequency }));
     return { m, notes };
   },
   /* every picked ad account is read; the numbers are the sum, with each account's own kept on `accounts` for the row */
@@ -192,11 +202,17 @@ const META = {
         rows: [...(hot ? [['Campaign', hot.name], ...(many ? [['Ad account', hot.account]] : []), ['Frequency, 7 days', hot.freq.toFixed(1)], ['Spend a day', F.money(hot.spendDay)]] : []),
           ...m.tired.slice(0, 3).map((x, i) => [m.tired.length === 1 ? 'Tired ad' : `Tired ad ${i + 1}`, `${x.name} · ${x.freq.toFixed(1)} a week`]), ...(m.tired.length > 3 ? [['More tired ads', n0(m.tired.length - 3)]] : [])],
         detail: { why: ['Above 3.5 a week, clicks fall and cost rises.'], how: ['Pick the 3 best ads by cost per order', 'Make 2 new versions of each', 'Pause the tired ones as the new ones go live'] } })); }
-    const ranked = m.camp.filter((x) => x.roas != null && x.spendDay > 0); let shiftRow = null;
+    const young = (x) => x.start && Date.now() - x.start < LEARN_DAYS * 864e5, off = (x) => x.status && x.status !== 'ACTIVE';
+    const learning = m.camp.filter((x) => x.roas != null && young(x) && !off(x)), stopped = m.camp.filter((x) => x.roas != null && off(x));
+    const ranked = m.camp.filter((x) => x.roas != null && x.spendDay > 0 && !young(x) && !off(x)); let shiftRow = null;
+    const mixed = per.some((x) => x.attr === 'multiple') || new Set(per.map((x) => x.attr).filter(Boolean)).size > 1;
+    const caveats = [learning.length && `${learning.length === 1 ? `${learning[0].name} started` : `${learning.length} campaigns started`} under ${LEARN_DAYS} days ago and ${learning.length === 1 ? 'is' : 'are'} still learning, so ${learning.length === 1 ? 'it is' : 'they are'} left out.`,
+      stopped.length && `${stopped.length === 1 ? '1 campaign that spent this week is' : `${stopped.length} campaigns that spent this week are`} paused now and left out.`,
+      mixed && 'Your campaigns count purchases over different windows, so these returns are a guide, not like for like.'].filter(Boolean).join(' ');
     if (ranked.length >= 2) { const best = [...ranked].filter((x) => x.freq < 3.5).sort((p, q) => q.roas - p.roas)[0], worst = [...ranked].sort((p, q) => p.roas - q.roas)[0];
       if (best && best !== worst && best.roas > worst.roas * 1.3) shiftRow = { perDay: Math.round(worst.spendDay * 0.2) };
       if (shiftRow) out.push(card(k, name, lane, 'shift', { agent: 'performance', sector: 'ads', type: 'decision', roles: ['growth', 'founder'], badge: [roasX(best.roas), 'ok'], cta: 'Shift budget',
-        title: `Move ${F.money(worst.spendDay * 0.2)} a day to ${best.name}`, sub: `This week ${best.name} returned ${roasX(best.roas)} and ${worst.name} ${roasX(worst.roas)}. Moving a fifth of the weaker budget in one step keeps learning intact.`,
+        title: `Move ${F.money(worst.spendDay * 0.2)} a day to ${best.name}`, sub: `This week ${best.name} returned ${roasX(best.roas)} and ${worst.name} ${roasX(worst.roas)}. Moving a fifth of the weaker budget in one step keeps learning intact.${caveats ? ` ${caveats}` : ''}`,
         rows: [['From', `${worst.name} · ${roasX(worst.roas)}${many && worst.account !== best.account ? ` (${worst.account})` : ''}`], ['To', `${best.name} · ${roasX(best.roas)}${many && worst.account !== best.account ? ` (${best.account})` : ''}`], ['Move a day', F.money(worst.spendDay * 0.2)], ['Cost per purchase, 30 days', has(m.cpa) ? F.money(m.cpa) : null]],
         shift: { from: worst.name, to: best.name, fromRoas: +worst.roas.toFixed(2), toRoas: +best.roas.toFixed(2), perDay: Math.round(worst.spendDay * 0.2), fromDay: Math.round(worst.spendDay), toDay: Math.round(best.spendDay) },
         detail: { why: ['Returns differ by campaign, so the budget should too.', 'One step of 20% keeps the learning phase.'], how: ['Move the budget tomorrow morning', 'Read it after 7 days', 'Move it back if cost per purchase rises 15%'] } })); }
