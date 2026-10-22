@@ -51,8 +51,11 @@ export async function makeVideo(frame, prompt, o = {}, log = console) {
   /* a filtered clip is tried once more with the plainest motion (Veo's filter mostly reacts to people, words and fast action in
      the prompt): the same first frame, the camera slowly pushing in, nothing else moving */
   const SAFE = 'A slow, steady push-in on the product exactly as it is in the first frame. Soft natural light. Nothing else moves. No people, no words, no new objects.';
-  const r = await chain('video', [[fast, () => vertexVideo(frame, prompt, { ...o, model: fast }).catch((e) => { filtered = /filtered|could not make/i.test(e.message); throw e; })],
+  const r = await chain('video', [[fast, () => vertexVideo(frame, prompt, { ...o, model: fast }).catch((e) => { filtered = /filtered|could not make/i.test(e.message) && !/high load|try again later|quota|resource.?exhausted|unavailable|\b(429|503)\b/i.test(e.message); throw e; })],
     [`${fast} (plain motion)`, () => (filtered ? vertexVideo(frame, SAFE, { ...o, model: fast }) : Promise.reject(Object.assign(new Error('not filtered'), { off: true })))],
-    [full, full !== fast && (() => (filtered ? Promise.reject(Object.assign(new Error('filtered by the first model'), { off: true })) : vertexVideo(frame, prompt, { ...o, model: full })))]], log);
+    /* o.priced (a jam render): the price shown was the fast model's, so a busy fast model is tried once more after a pause
+       instead of moving to the dearer one */
+    o.priced ? [`${fast} (again)`, () => (filtered ? Promise.reject(Object.assign(new Error('filtered'), { off: true })) : new Promise((ok) => setTimeout(ok, 20e3)).then(() => vertexVideo(frame, prompt, { ...o, model: fast })))]
+      : [full, full !== fast && (() => (filtered ? Promise.reject(Object.assign(new Error('filtered by the first model'), { off: true })) : vertexVideo(frame, prompt, { ...o, model: full })))]], log);
   return Object.assign(r.buf, { provider: r.provider });
 }

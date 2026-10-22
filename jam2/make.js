@@ -226,8 +226,10 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
   /* the voice, the music and the captions over the shots, as one take; used by a full render and by a single re-made shot */
   async function finishVideo(ctx, board, t0, shots, made, { op }) {
     const tl = t0.timeline, vo = shots.map((s) => s.vo).filter(Boolean).join(' ');
-    const voice = vo && ctx.bbv.comfort?.aiVoice !== 'no' && spend('voice', ctx.slug) ? await engines.run('voice.tts', { text: vo, voice: tl.voice, slug: ctx.slug }).catch((e) => { log.warn?.('[jam2] voice', e.message); return null; }) : null;
-    if (voice) made.push({ cap: 'voice.tts', provider: voice.provider, model: voice.model, usd: voice.usd || 0 });
+    /* the voice is kept when the words and the narrator are the same (a re-made shot doesn't pay for it again) */
+    const vKey = `${tl.voice}|${vo}`, voice = !vo || ctx.bbv.comfort?.aiVoice === 'no' ? null : tl.voiceFile && tl.voiceKey === vKey ? { file: tl.voiceFile, provider: 'kept', usd: 0 }
+      : spend('voice', ctx.slug) ? await engines.run('voice.tts', { text: vo, voice: tl.voice, slug: ctx.slug }).catch((e) => { log.warn?.('[jam2] voice', e.message); return null; }) : null;
+    if (voice?.usd) made.push({ cap: 'voice.tts', provider: voice.provider, model: voice.model, usd: voice.usd || 0 });
     /* music made for this video (Lyria): instrumental, in the mood the storyboard names; ours to use, no licence question */
     let music = null; const mood = String(tl.music || '').trim();
     if (mood && !/^no music$/i.test(mood) && spend('voice', ctx.slug)) { music = tl.musicFile && tl.musicMood === mood ? { file: tl.musicFile, provider: 'kept', usd: 0 } : await engines.run('music.gen', { prompt: `${mood}, instrumental background music for a short product video by ${ctx.bbv.name || 'a brand'}${ctx.bbv.category ? ` (${ctx.bbv.category})` : ''}, steady, no vocals`, slug: ctx.slug }).catch((e) => { log.warn?.('[jam2] music', e.message); return null; });
@@ -235,7 +237,7 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
     /* captions: each shot's voiceover set in the brand's type, burnt in at the bottom; on-screen words up top */
     const caps = []; if (tl.captions !== false) for (const s of shots) caps.push(s.vo || s.words ? await captionCard(ctx, s) : null);
     const file = await stitch(shots, { voiceFile: voice?.file || null, musicFile: music?.file || null, caps });
-    const take = { op, by: ctx.by, words: t0.words, timeline: { ...tl, shots, musicFile: music?.file || null, musicMood: music ? mood : null }, file, made, cost: { usd: +made.reduce((a, m) => a + (m.usd || 0), 0).toFixed(2), credits: made.reduce((a, m) => a + (m.credits || 0), 0) }, parent: t0.id, how: board.how };
+    const take = { op, by: ctx.by, words: t0.words, timeline: { ...tl, shots, musicFile: music?.file || null, musicMood: music ? mood : null, voiceFile: voice?.file || null, voiceKey: voice ? vKey : null }, file, made, cost: { usd: +made.reduce((a, m) => a + (m.usd || 0), 0).toFixed(2), credits: made.reduce((a, m) => a + (m.credits || 0), 0) }, parent: t0.id, how: board.how };
     const t = addTake(ctx.jam, board, take); t.gate = gate(ctx, t, board); return { take: t };
   }
   /* one shot's caption card: a clear 1080×1920 PNG with the voiceover line at the bottom and the on-screen words at the top */
