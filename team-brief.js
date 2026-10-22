@@ -12,7 +12,7 @@ import { pathToFileURL } from 'node:url';
 import { saveGen, genFile } from './gen-store.js';
 import { withBrowser } from './pdf/render.js';
 
-export const TB_V = 1; // bump when the brief starts being written differently: every saved one is written again
+export const TB_V = 2; // bump when the brief starts being written differently: every saved one is written again
 export const SECTIONS = [['what', 'What to make'], ['why', 'Why we’re doing it'], ['who', 'Who it’s for'], ['words', 'The words · final'], ['creative', 'The creative'],
   ['specs', 'Specs'], ['rules', 'Must-haves and don’ts'], ['when', 'Budget, timing and owner'], ['measure', 'How we measure it'], ['done', 'Done when'], ['open', 'Still to confirm']];
 const AI_KEYS = ['what', 'why', 'who', 'creative', 'specs', 'rules', 'when', 'done'];
@@ -62,9 +62,9 @@ export function createTeamBrief({ claudeTool, isMock = () => true, spend = () =>
     who: { type: 'string', description: 'Who it’s for: the audience, as specific as the materials allow' },
     creative: { type: 'string', description: 'The creative: what the attached picture or video is, what to keep exactly (the real product, its label), the look and the one idea it must land' },
     specs: { type: 'string', description: 'Specs: sizes, lengths, file types, placements; one per line' },
-    rules: { type: 'string', description: 'Must-haves and don’ts: claims allowed only as written, the real product photo, brand rules; one per line' },
+    rules: { type: 'string', description: 'Must-haves and don’ts: rules only (which claims may be made and how, the real product photo, brand do’s and don’ts), one per line. Never restate the copy: it has its own section' },
     when: { type: 'string', description: 'Budget, timing and owner, only as the materials say; "To confirm" for any part they don’t' },
-    done: { type: 'string', description: 'Done when: what the team hands back and how it is approved' },
+    done: { type: 'string', description: 'Done when: what the team hands back (files, sizes, links) and who approves it; not how results are measured' },
     open: { type: 'array', items: { type: 'string' }, description: 'What is still to confirm before it runs, each under 16 words; empty if nothing' },
     evidence: { type: 'array', items: { type: 'object', required: ['say', 'src'], properties: { say: { type: 'string', description: 'One fact that backs this brief, with its number when there is one, under 30 words' }, src: { type: 'string', description: 'Where it comes from, named plainly: the card’s proof, Move 12, Meta Ads account, store reviews, a rival’s live ads…' } } }, description: '3 to 7 facts, the strongest first; only facts in the materials' } } };
 
@@ -128,8 +128,8 @@ export function createTeamBrief({ claudeTool, isMock = () => true, spend = () =>
       <div class="k">A brief for the team that makes it</div><h1>${esc(v.title)}</h1>
       <dl class="memo"><div><dt>From</dt><dd>${esc(v.memo.from || `${v.brand} team`)}</dd></div><div><dt>To</dt><dd>${esc(v.memo.to)}</dd></div><div><dt>Due</dt><dd>${esc(v.memo.due || 'To confirm')}</dd></div><div><dt>Version</dt><dd>${v.version ? `v${v.version}` : '—'}</dd></div></dl>
       ${pics.length ? `<div class="pics">${pics.map((p) => `<figure><img src="${p.src}"><figcaption>${esc(p.label)}${p.video ? ' · video attached' : ' · attached'}</figcaption></figure>`).join('')}</div>` : ''}
-      ${v.sections.map((s) => s.k === 'words' ? `<section><h2>${esc(s.h)}</h2><div class="words">${esc(s.t)}</div></section>` : `<section><h2>${esc(s.h)}</h2>${md(s.t)}</section>`).join('')}
-      ${v.evidence.length ? `<section><h2>The evidence</h2><ul class="ev">${v.evidence.map((e) => `<li>${esc(e.say)}${e.src ? `<span class="src">${esc(e.src)}</span>` : ''}</li>`).join('')}</ul></section>` : ''}
+      ${v.sections.map((s) => (s.k === 'words' ? `<section><h2>${esc(s.h)}</h2><div class="words">${esc(s.t)}</div></section>` : `<section><h2>${esc(s.h)}</h2>${md(s.t)}</section>`)
+        + (s.k === 'why' && v.evidence.length ? `<section><h2>The evidence</h2><ul class="ev">${v.evidence.map((e) => `<li>${esc(e.say)}${e.src ? `<span class="src">${esc(e.src)}</span>` : ''}</li>`).join('')}</ul></section>` : '')).join('')}
       <footer>${esc(v.brand)} · written with Brew from the brand’s own store, accounts and plan. The attached files are the final creatives.</footer>
     </body></html>`; };
   const pdfOf = async (v) => { const html = await pdfHtml(v);
