@@ -1439,7 +1439,10 @@ export function createRemix(o) {
        was offered every action, and a draft for another one was thrown away without a word) */
     if (!opts && fast && spend('text')) writeLater = async () => (await liveOptions(t, c, { ...r, actionKeys: [r.actionKeys[0]] }, intent, prompt, 1)).opts[0] || null;
     else if (!opts && !isMock() && spend('text')) { try { const x = await liveOptions(t, c, r, intent, prompt); if (x.opts.length) { opts = x.opts; line = x.line; live = true; } } catch (e) { log.warn('[remix]', e.message); } }
-    if (!opts) { opts = mockOptions(t, c, r, intent, 1); /* opening a jam builds the one package it opens on, never two orphans beside it */ line = r.conflict ? 'A way to settle it. A person decides, so it opens a jam.' : 'The change from this card: where it goes and who ships it.'; }
+    if (!opts) { opts = mockOptions(t, c, r, intent, 1); /* opening a jam builds the one package it opens on, never two orphans beside it */ line = r.conflict ? 'A way to settle it. A person decides, so it opens a jam.' : 'The change from this card: where it goes and who ships it.';
+      /* no AI writer is coming (it failed, is paused, or today's text budget is spent): the draft says it is a starting point
+         from the brand's own facts, never passed off as written work */
+      if (!writeLater && !isMock()) { line = `${line} Brew’s AI couldn’t write this one just now, so this first draft is built from your own product facts. Redo it for a fresh take.`; opts = opts.map((o) => ({ ...o, fromTemplate: true })); } }
     // the card's own suggestion always leads; the rest are ranked by what this team tends to pick
     const made = opts.map((x) => build(t, c, cv, r, x, { intent, prompt })).sort((a, b) => (b.fromCard - a.fromCard) || (b.score - a.score));
     if (intent) signal(t, 'pick', { agent: made[0]?.agent, intent }, now(t));
