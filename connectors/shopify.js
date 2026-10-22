@@ -135,6 +135,7 @@ export default {
       has(m.products) && L('shopify.products.active', 'Active products (Shopify admin)', n0(m.products), m.products, src), /* beats the public products.json count on the fact sheet (facts-desk.js PRECEDENCE) */
       has(m.oos) && L('shopify.products.out_of_stock', 'Out of stock products (Shopify admin)', n0(m.oos), m.oos, src), /* beats the site's out-of-stock count (facts-desk.js PRECEDENCE) */
       m.top?.length && L('shopify.top.30d', 'Best sellers by units, 30 days', m.top.map((x) => `${x.title} (${x.units})`).join('; '), null, src)].filter(Boolean);
+    if (cur) ledger.push(L('shopify.currency', 'Shop currency (Shopify admin)', cur, null, src)); /* beats the site's /meta.json currency on the fact sheet */
     if (cur) for (const r of ledger) r.cur = cur;
     return { metrics: m, stats, changed, cards: out, ledger, notes };
   }

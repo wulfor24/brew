@@ -29,10 +29,13 @@ test('a member: connected facts take over the site ones they replace (precedence
   assert.equal(t.catalog_count.v, '37'); assert.equal(t.catalog_count.connected, 'shopify'); assert.equal(t.catalog_count.was.v, '42');
   assert.equal(t.catalog_out_of_stock.v, '4');
   assert.equal(t.reviews_judgeme_count.v, '388');
-  assert.ok(!('reviews_total' in t), 'every site key the connected fact replaces leaves, not only the first');
+  assert.equal(t.reviews_total.v, '305', 'the all-platforms total stays when the site has Judge.me\'s own count');
   assert.equal(t.shopify_aov.v, '$48.20'); assert.equal(t.brand_name.v, 'Cozy');
-  assert.ok(!Object.values(t).some((f) => !f.connected && ['42', '9', '305', '310'].includes(f.v)));
-  assert.deepEqual([...replacedKeys(pub, t)].sort(), ['catalog.count', 'catalog.out_of_stock', 'reviews.judgeme.count', 'reviews.total']);
+  assert.ok(!Object.values(t).some((f) => !f.connected && ['42', '9', '310'].includes(f.v)));
+  assert.deepEqual([...replacedKeys(pub, t)].sort(), ['catalog.count', 'catalog.out_of_stock', 'reviews.judgeme.count']);
+  /* a site with only the total: Judge.me replaces it */
+  const { reviews_judgeme_count, ...pub2 } = pub, t2 = truthOf(pub2, connectedFacts(ledger, pub2), { member: true });
+  assert.equal(t2.reviews_total.v, '388'); assert.equal(t2.reviews_total.connected, 'reviews');
 });
 
 test('stale and simulated accounts never count; the site value stays the truth', () => {
@@ -82,4 +85,21 @@ test('factTruth reads the pack and private/facts.json; a visitor never loads the
   assert.equal(v.catalog_count.v, '42'); assert.ok(!read.includes('private/facts.json'));
   const m = await factTruth(packs, 'cozy', { member: true });
   assert.equal(m.catalog_count.v, '37'); assert.equal(m.shopify_aov.v, '$48.20');
+});
+
+test('every connector is the truth, not only Shopify: GA4, Meta, Google Ads, Klaviyo and Judge.me heal a member\'s card rows', () => {
+  const L = [row('ga4.sessions.30d', 'Sessions, last 30 days (GA4)', '200', 200), row('ga4.conversion', 'Purchases per session, 30 days (GA4)', '0.50%', 0.5),
+    row('meta.spend.30d', 'Meta spend, last 30 days', '₹9,860', 9860), row('meta.roas', 'Meta return on ad spend, 30 days', '1.95x', 1.95), row('gads.spend.30d', 'Google Ads spend, last 30 days', '$120', 120),
+    row('klaviyo.list', 'Email list size (largest list)', '1,240', 1240), row('reviews.judgeme.total', 'Judge.me reviews', '388', 388), row('shopify.currency', 'Shop currency (Shopify admin)', 'USD', null)];
+  const pub3 = { ...pub, shop_currency: { key: 'shop.currency', label: 'Shop currency (Shopify /meta.json)', v: 'INR', at: '2026-10-01' } };
+  const t = truthOf(pub3, connectedFacts(L, pub3), { member: true }), counts = countsOf(t, [], 'Cozy');
+  assert.equal(t.shop_currency.v, 'USD'); assert.equal(t.shop_currency.was.v, 'INR');
+  const card = { id: 'm32-1-p', liveOnly: true, title: 'Grow the list', sub: 'Your 1,100 subscribers get nothing yet.', rows: [['Sessions', '197'], ['Conversion rate', '0.4%'], ['Meta ad spend', '₹9,100'], ['ROAS', '2.1x'], ['Google Ads spend', '$90'], ['Subscribers', '1,100'], ['Current reviews', '350'], ['Target reviews', '500'], ['Baseline reviews', '300']] };
+  const out = freshCounts(card, counts, { live: true });
+  assert.deepEqual(out.rows, [['Sessions', '200'], ['Conversion rate', '0.50%'], ['Meta ad spend', '₹9,860'], ['ROAS', '1.95x'], ['Google Ads spend', '$120'], ['Subscribers', '1,240'], ['Current reviews', '388'], ['Target reviews', '500'], ['Baseline reviews', '300']]);
+  assert.match(out.sub, /1,240 subscribers/);
+  /* money in another currency, and the public sheet, never change a row */
+  assert.deepEqual(freshCounts({ id: 'x', rows: [['Meta ad spend', '$90']] }, counts, { live: true }).rows, [['Meta ad spend', '$90']]);
+  const pubCard = { id: 'm10-1', rows: [['Sessions', '197'], ['Meta ad spend', '₹9,100']] };
+  assert.equal(freshCounts(pubCard, countsOf(truthOf(pub3, connectedFacts(L, pub3), { member: false }), [], 'Cozy')), pubCard);
 });

@@ -26,9 +26,28 @@ const SHOWN = (f) => f && f.label && !['demo', 'assumption', 'proposed'].include
 /* ---------- connected accounts: the source of truth for what they measure ---------- */
 export const TOOL = { shopify: 'Shopify', meta: 'Meta Ads', ga4: 'Google Analytics', gads: 'Google Ads', klaviyo: 'Klaviyo', reviews: 'Judge.me', market: 'Marketplaces' };
 export const toolOf = (key) => { const p = String(key).split('.')[0]; return p === 'reviews' && /^reviews\.judgeme\./.test(key) ? 'reviews' : TOOL[p] ? p : null; };
-/* a connected number beats the site read of the same thing; the site's fact is kept as `was` */
-export const PRECEDENCE = { 'meta.ads.live': ['ads.own.live'], 'reviews.judgeme.total': ['reviews.judgeme.count', 'reviews.total'], 'reviews.judgeme.rating.recent': ['reviews.judgeme.rating', 'reviews.rating'],
-  'shopify.products.active': ['catalog.count'], 'shopify.products.out_of_stock': ['catalog.out_of_stock'], 'market.amazon.listings': ['reviews.amazon.listings'] };
+/* a connected number beats the site read of the same thing, for every connector; the site's fact is kept as `was`. A key with
+   '?' is the same measure only when none before it is on the site sheet ("reviews.total" counts every platform when the read
+   also found Judge.me's own count, so Judge.me replaces only its own) */
+export const PRECEDENCE = { 'meta.ads.live': ['ads.own.live'], 'reviews.judgeme.total': ['reviews.judgeme.count', '?reviews.total'], 'reviews.judgeme.rating.recent': ['reviews.judgeme.rating', '?reviews.rating'],
+  'shopify.products.active': ['catalog.count'], 'shopify.products.out_of_stock': ['catalog.out_of_stock'], 'shopify.currency': ['shop.currency'], 'market.amazon.listings': ['reviews.amazon.listings'] };
+/* the site keys a connected key replaces on this sheet: the plain ones, and a '?' one only when no key before it is there */
+export const replacing = (key, has) => { const out = []; let seen = false; for (const x of PRECEDENCE[key] || []) { const k = x.replace(/^\?/, ''); if (x[0] === '?' && seen) continue; if (has(k)) seen = true; out.push(k); } return out; };
+/* the plain names a card row gives each connected measure ("Sessions", "Meta ad spend", "Active flows"): a row named so takes
+   the account's number for a member (card-nums.js). Exact names only, never a target or a baseline */
+export const NAMES = {
+  'shopify.orders.30d': ['orders', 'orders last 30 days', 'completed orders', 'recent orders', 'orders this month'], 'shopify.aov': ['aov', 'average order', 'average order value', 'avg order value'],
+  'shopify.revenue.30d': ['revenue', 'revenue last 30 days', 'monthly revenue', 'recent revenue'], 'shopify.repeat.90d': ['repeat rate', 'repeat customers', 'repeat customer rate', 'customers with 2+ orders'],
+  'shopify.checkout.left': ['checkouts left', 'abandoned checkouts', 'checkouts not finished'], 'shopify.cod.share': ['cod share', 'cash on delivery share', 'cod orders'], 'shopify.cod.failed': ['cod failed', 'failed cod orders'],
+  'shopify.products.active': ['active products', 'active skus', 'products in catalog', 'products in the catalog', 'products on site', 'live products'], 'shopify.products.out_of_stock': ['out of stock', 'out of stock products', 'products out of stock', 'sold out products'],
+  'ga4.sessions.30d': ['sessions', 'recent sessions', 'monthly sessions', 'site sessions', 'sessions last 30 days', 'visits last 30 days', 'monthly visits'], 'ga4.conversion': ['conversion', 'conversion rate', 'store conversion', 'site conversion', 'purchase conversion'],
+  'ga4.mobile.share': ['mobile share', 'mobile traffic', 'visits on phones', 'mobile sessions share'], 'ga4.pdp.to.cart': ['cart rate', 'add to cart rate', 'product page to cart', 'pdp to cart'],
+  'meta.spend.30d': ['meta spend', 'meta ad spend', 'recent meta spend', 'meta spend last 30 days'], 'meta.roas': ['roas', 'meta roas', 'return on ad spend', 'meta return on ad spend'], 'meta.cpa': ['cpa', 'meta cpa', 'cost per purchase', 'cost per order', 'meta cost per purchase'],
+  'meta.ads.live': ['live ads', 'live meta ads', 'active ads', 'active meta ads', 'meta ads live'], 'meta.frequency.max': ['frequency', 'ad frequency', 'highest frequency'],
+  'gads.spend.30d': ['google ads spend', 'search ad spend', 'google spend'], 'gads.roas': ['google ads roas', 'google roas'], 'gads.branded.share': ['branded share', 'branded clicks share', 'branded share of clicks'],
+  'klaviyo.list': ['klaviyo list', 'email list', 'email list size', 'list size', 'subscribers', 'email subscribers'], 'klaviyo.flows.live': ['active flows', 'live flows', 'email flows live', 'flows live'],
+  'reviews.judgeme.total': ['reviews', 'judge.me reviews', 'store reviews', 'review count', 'current reviews', 'total reviews', 'reviews on site'], 'reviews.judgeme.rating.recent': ['rating', 'average rating', 'star rating'], 'reviews.judgeme.open': ['unanswered reviews', 'low-star reviews with no reply']
+};
 /* market.amazon.listings can't fire today: the marketplace connectors are off (SCOPE.md). Kept so they take over when they return */
 /* connected ledger entries → facts (same shape as factsFromLedger). Demo accounts never count as true. */
 export function connectedFacts(entries = [], publicFacts = {}) {
@@ -37,9 +56,9 @@ export function connectedFacts(entries = [], publicFacts = {}) {
     if (!e || simulated(e) || e.v == null || e.v === '') continue; // DUMMY: simulated accounts are never the source of truth
     const tool = toolOf(e.key); if (!tool) continue;
     /* a stale account (it kept failing, or its last read is too old) no longer beats the site's number: shown apart, marked */
-    const over = e.stale ? null : (PRECEDENCE[e.key] || []).map((k) => byKey.get(k)).find(Boolean);
+    const over = e.stale ? null : replacing(e.key, (k) => byKey.has(k)).map((k) => byKey.get(k)).find(Boolean);
     const k = over ? over[0] : keyOf(e.key);
-    F[k] = { v: String(e.v), ...(Number.isFinite(e.n) ? { n: e.n } : {}), label: over ? over[1].label : e.label || e.key, src: `${TOOL[tool]} (connected)`, account: e.src || null, at: e.at, kind: 'connected', connected: tool, key: e.key,
+    F[k] = { v: String(e.v), ...(Number.isFinite(e.n) ? { n: e.n } : {}), label: over ? over[1].label : e.label || e.key, ...(NAMES[e.key] ? { names: NAMES[e.key] } : {}), src: `${TOOL[tool]} (connected)`, account: e.src || null, at: e.at, kind: 'connected', connected: tool, key: e.key,
       ...(over ? { was: { key: over[1].key || over[0], v: over[1].v, src: over[1].src, at: over[1].at } } : {}), ...(e.stale ? { stale: true, staleWhy: e.staleWhy || null } : {}) };
   }
   return F;
@@ -54,9 +73,9 @@ export function truthOf(pub = {}, priv = {}, { member = false } = {}) {
   const out = { ...(pub || {}) }; if (!member) return out;
   for (const [k, f] of Object.entries(priv || {})) {
     if (!f || f.kind !== 'connected' || f.stale || f.demo || simulated(f)) continue;
-    const gone = new Set((PRECEDENCE[f.key] || []).flatMap((x) => [x, keyOf(x)]));
+    const gone = new Set(replacing(f.key, (x) => Object.entries(pub || {}).some(([k2, g]) => g?.key === x || k2 === keyOf(x))).flatMap((x) => [x, keyOf(x)]));
     for (const [k2, g] of Object.entries(out)) if (!g?.connected && (gone.has(g?.key) || gone.has(k2))) delete out[k2];
-    out[k] = f;
+    out[k] = f.names || !NAMES[f.key] ? f : { ...f, names: NAMES[f.key] }; /* a sheet saved before the names gets them */
   }
   return out;
 }
