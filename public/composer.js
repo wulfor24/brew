@@ -28,6 +28,7 @@
   const inBox = () => document.querySelector(inStudio() ? '#st-in' : '#jm-in');
   const pop = (k, body) => (UI.open === k ? `<div class="cmp-pop is-${k}" role="dialog">${body}</div>` : '');
   const plusPop = () => pop('plus', `<button type="button" data-cmp-file>${ic('doc', 's16')}<span><b>A CSV or text file</b><small>Numbers, a list, notes. The AI reads it</small></span></button>
+    ${inStudio() ? `<button type="button" data-cmp-shot>${ic('pic', 's16')}<span><b>A screenshot or image</b><small>Point at what to change. Or paste it with ⌘V</small></span></button><input type="file" data-cmp-shot-in hidden multiple accept="image/png,image/jpeg,image/webp,image/gif">` : ''}
     <button type="button" data-cmp-photo>${ic('pic', 's16')}<span><b>A photo of your product</b><small>Drafts use it as the product shot</small></span></button><input type="file" data-cmp-img hidden accept="image/png,image/jpeg,image/webp">
     <button type="button" data-cmp-link>${ic('link', 's16')}<span><b>A link</b><small>Adds the address to your message (Brew doesn’t open it)</small></span></button>
     <button type="button" data-jm-import>${ic('copy', 's16')}<span><b>Paste a chat</b><small>From WhatsApp or Slack</small></span></button>
@@ -65,6 +66,7 @@
     const im = t.closest('[data-cmp-image]'); if (im) { P.image = im.dataset.cmpImage; save(); return repaint(); }
     if (t.closest('[data-jm-make]') && UI.open) { UI.open = null; } /* the jam pane makes the draft; the menu closes */
     const f = t.closest('[data-cmp-forget]'); if (f) { await A().tapi('PUT', `/api/tenants/:t/learning/lessons/${f.dataset.cmpForget}`, { forget: true }); UI.mem = null; return loadMem(); }
+    if (t.closest('[data-cmp-shot]')) return document.querySelector('[data-cmp-shot-in]')?.click();
     if (t.closest('[data-cmp-file]')) return document.querySelector('[data-cmp-in]')?.click();
     /* in the studio a product photo becomes this version's photo (the Change photo picker takes uploads); in a jam it's the drafts' reference */
     if (t.closest('[data-cmp-photo]')) { if (inStudio() && window.__openPhotos) { UI.open = null; repaint(); return window.__openPhotos(); } return document.querySelector('[data-cmp-img]')?.click(); }
@@ -83,6 +85,7 @@
       if (f.size > 8e6) return A().toast('That photo is over 8 MB.');
       const data = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(f); });
       const x = await A().tapi('POST', `/api/work/${w.id}/reference`, { data, name: f.name }); if (x.error) return A().toast(esc(x.error)); if (x.work) A().putWork(x.work); A().repaintDetail(); A().toast(`${ic('done', 's16')}Photo added. Drafts use it as the product shot.`); return; }
+    if (e.target.matches?.('[data-cmp-shot-in]')) { const fs = [...(e.target.files || [])]; UI.open = null; repaint(); if (fs.length) await window.__stAttach?.(fs); return; }
     if (e.target.matches?.('[data-cmp-in]')) { const f = e.target.files?.[0]; if (!f) return; UI.open = null;
       // a text or CSV file joins the jam as text the AI reads
       const box = inBox(); if (!box) return;

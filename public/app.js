@@ -4010,7 +4010,7 @@
     return `<div class="it-sugg${open ? ' is-open' : ''}">${first.join('')}${more.length ? (open ? more.join('') : `<button type="button" class="chip it-more" data-chips-more aria-expanded="false">${ic('more', 's14')}More</button>`) : ''}${all.length ? `<small class="it-free" title="Every change here is a draft made by Brew, free. Only the final costs credits.">${FREE}s</small>` : ''}</div>`; };
   const chatTab = (ch, edit) => {
     const msgs = ch.thread || [], vById = (id) => ch.versions.find((v) => v.id === id), JR = window.JamRoom, w = RX.p ? workOfCard(RX.p.id) : null, me = String(ME()?.email || '').toLowerCase();
-    const one = (m) => m.from === 'you' ? (me && m.by?.email && String(m.by.email).toLowerCase() !== me && JR?.teamMsg /* a teammate's ask, with their face and name */ ? `<div class="st-jm">${JR.teamMsg({ from: 'me', by: m.by, body: m.text }, w || {})}</div>` : `<div class="lgm you"><p>${esc(m.text)}</p></div>`)
+    const one = (m) => m.from === 'you' ? (me && m.by?.email && String(m.by.email).toLowerCase() !== me && JR?.teamMsg /* a teammate's ask, with their face and name */ ? `<div class="st-jm">${JR.teamMsg({ from: 'me', by: m.by, body: m.text }, w || {})}</div>` : `<div class="lgm you">${(m.imgs || []).length ? `<div class="st-msg-imgs">${m.imgs.map((u) => `<a href="${esc(/^(data:|https?:|\/)/.test(u) ? u : '/' + u)}" target="_blank" rel="noopener"><img src="${esc(/^(data:|https?:|\/)/.test(u) ? u : '/' + u)}" alt="Attached screenshot"></a>`).join('')}</div>` : ''}<p>${esc(m.text)}</p></div>`)
       : `<div class="lgm ai">${face(ch.agent)}<div>${m.proof ? proofMsg(m) : `<p>${esc(m.text)}</p>`}${m.v && ch.versions[m.v - 1] ? madeNote(ch, [ch.versions[m.v - 1]]) : ''}${(m.vs || []).length && !(ch.options && m.vs.every((id) => ch.options.list.some((x) => x.id === id))) /* options show as tabs above the stage */ ? (m.cuts && PH_FAM.includes(ch.family) ? cutsStrip(ch, m.vs.map(vById).filter(Boolean)) : madeNote(ch, m.vs.map(vById).filter(Boolean))) : ''}${m.rewrite && edit ? `<button type="button" class="chip j1-chip" data-say="Rewrite it"${RX.sending ? ' disabled' : ''}>${ic('sparkles', 's14')}Rewrite it</button>` : ''}${m.remakeAgain && edit && !ch.remakePending && !ch.realOnly ? `<button type="button" class="chip j1-chip" data-j2-remake="${esc(m.remakeAgain)}"${RX.sending ? ' disabled' : ''}>${ic('refresh', 's14')}Make it again</button>` : ''}</div></div>`;
     const jam = w && JR?.teamMsg ? (w.thread || []).filter((m) => m && m.id !== 'tmp' && !m.learn && (m.from !== 'system' || m.edited?.length || JAM_SYS.test(m.body || ''))).map((m, i) => ({ at: m.at || 0, i: 1e4 + i, html: `<div class="st-jm" data-st-jam>${JR.teamMsg(m, w)}</div>` })) : [];
     const log = [...msgs.map((m, i) => ({ at: m.at || 0, i, html: one(m) })), ...jam].sort((a, b) => a.at - b.at || a.i - b.i).map((x) => x.html).join('') + (w && JR?.typingHtml ? JR.typingHtml(w) : '');
@@ -4018,7 +4018,7 @@
     const ni = w?.jamBrief?.status === 'needs_info' ? (w.jamBrief.history || []).find((h) => h.s === 'needs_info') : null;
     const niHtml = ni ? `<div class="st-needs" role="status">${ic('hand', 's16')}<div><b>${esc(ni.name || 'The ShopOS team')} needs something from you${w.ticket ? ` · ${esc(w.ticket)}` : ''}</b>${ni.note ? `<p>${esc(ni.note)}</p>` : ''}<small>Answer with @ShopOS team in your message: it goes to them by email.</small></div></div>` : '';
     return `<div class="it-log">${RX.p ? `<div class="it-empty">${face(ch.agent)}${caseBrief(ch)}</div>` : ''}${log || (RX.p ? '' : `<div class="it-empty">${face(ch.agent)}<p>What should change? Each change makes a new version, and you can always go back.</p></div>`)}${j2Extra(ch)}${RX.sending ? `<div class="lgm ai pending">${face(ch.agent)}<p><brew-load class="spin"></brew-load>${esc(RX.sending)}</p></div>` : ''}</div>
-      ${edit ? `<form class="it-ask" id="st-say">${niHtml}${v1Chips(ch)}<div class="it-row${window.Composer?.tools ? ' has-cmp' : ''}"><textarea id="st-in" rows="2" data-nomic placeholder="What should change? Or @ someone">${esc(RX.draft || '')}</textarea>${window.Composer?.tools ? `<span class="jm-tools">${window.Composer.tools()}<span class="jm-tools-r">${window.Mic?.supported ? `<button type="button" class="jm-mic" data-cmp-talk aria-label="Talk instead of typing" title="Talk instead of typing">${ic('mic', 's16')}</button>` : ''}<button class="jm-send${RX.sending ? ' is-wait' : ''}" aria-label="Send" ${RX.sending ? 'disabled aria-busy="true"' : ''}>${RX.sending ? '<brew-load class="spin"></brew-load>' : ic('up', 's16')}</button></span></span>` : `<button class="btn btn-primary${RX.sending ? ' is-wait' : ''}" aria-label="Send" ${RX.sending ? 'disabled aria-busy="true"' : ''}>${RX.sending ? '<brew-load class="spin"></brew-load>' : ic('up', 's16')}</button>`}</div></form>${window.Composer?.foot ? window.Composer.foot() : ''}` : `<p class="it-locked">It’s in a jam. Shape it there.</p>`}`;
+      ${edit ? `<form class="it-ask" id="st-say">${niHtml}${v1Chips(ch)}${stAttHtml()}<div class="it-row${window.Composer?.tools ? ' has-cmp' : ''}"><textarea id="st-in" rows="2" data-nomic placeholder="What should change? Or @ someone">${esc(RX.draft || '')}</textarea>${window.Composer?.tools ? `<span class="jm-tools">${window.Composer.tools()}<span class="jm-tools-r">${window.Mic?.supported ? `<button type="button" class="jm-mic" data-cmp-talk aria-label="Talk instead of typing" title="Talk instead of typing">${ic('mic', 's16')}</button>` : ''}<button class="jm-send${RX.sending ? ' is-wait' : ''}" aria-label="Send" ${RX.sending ? 'disabled aria-busy="true"' : ''}>${RX.sending ? '<brew-load class="spin"></brew-load>' : ic('up', 's16')}</button></span></span>` : `<button class="btn btn-primary${RX.sending ? ' is-wait' : ''}" aria-label="Send" ${RX.sending ? 'disabled aria-busy="true"' : ''}>${RX.sending ? '<brew-load class="spin"></brew-load>' : ic('up', 's16')}</button>`}</div></form>${window.Composer?.foot ? window.Composer.foot() : ''}` : `<p class="it-locked">It’s in a jam. Shape it there.</p>`}`;
   };
   const adjustTab = (ch, edit) => edit ? `<p class="hs-tip">Turn a knob and the package is rewritten to match. Knobs marked “new photo” make a new creative.</p>
       ${fitKnobs(ch.knobs).map((k) => { const multi = false /* one version, always: a knob makes one new take, never several to pick from (QA J-11) */, sel = (RX.knobSel || {})[k.k] || [], cur = (ch.pkg.knobs || {})[k.k];
@@ -4043,7 +4043,41 @@
     return `<section class="bf-doc"><div class="bf-doc-h"><h4 class="dt-h">The brief</h4><span>${RX.briefEdit ? '' : `<button class="linkbtn" data-st-briefedit>Edit</button> · `}<button class="linkbtn" data-st-brief>Full hand-off ${ic('right', 's14')}</button></span></div>
       ${RX.briefSync ? `<p class="dt-empty bf-syncing" role="status"><brew-load class="spin"></brew-load>Bringing the brief up to v${curN(ch)}…</p>` : ''}
       ${RX.briefEdit ? `<textarea class="bf-ed" id="bf-ed" rows="14">${esc(md)}</textarea><div class="dt-actions"><button type="button" class="btn btn-ghost sm" data-st-briefcancel>Cancel</button><button type="button" class="btn btn-primary sm" data-st-briefsave>Save the brief</button></div>`
-        : md ? `<article class="bf-md">${window.JamRoom?.toHtml ? window.JamRoom.toHtml(md) : esc(md)}</article>` : '<p class="dt-empty">The brief is written as you jam.</p>'}</section>`; };
+        : md ? `${bfComments(w)}<article class="bf-md" data-bf-md>${window.JamRoom?.toHtml ? window.JamRoom.toHtml(md) : esc(md)}</article>` : '<p class="dt-empty">The brief is written as you jam.</p>'}</section>`; };
+  /* comments on the brief: select words in it → Comment → say what's wrong; "Fix with AI" rewrites those parts in one pass (doc/fix) */
+  const bfComments = (w) => { const cs = w?.doc?.comments || [], busy = RX.bfFix === w?.id;
+    if (!cs.length) return `<p class="bf-hint">${ic('chat', 's14')}Select any words in the brief to comment. AI fixes them for you.</p>`;
+    return `<div class="bf-cms"><ol>${cs.map((c) => `<li>${c.quote ? `<q>${esc(c.quote.length > 90 ? c.quote.slice(0, 89) + '…' : c.quote)}</q>` : ''}<p>${esc(c.note || 'Make this part right')}</p>${busy ? '' : `<button class="icon-btn" data-bf-cmrm="${esc(c.id)}" aria-label="Remove comment">${ic('x', 's14')}</button>`}</li>`).join('')}</ol>
+      <button class="btn btn-primary sm${busy ? ' is-wait' : ''}" data-bf-fix ${busy ? 'disabled aria-busy="true"' : ''}>${busy ? `<span class="spin"></span>Fixing the brief…` : `${ic('sparkles', 's14')}Fix ${cs.length === 1 ? 'it' : `all ${cs.length}`} with AI`}</button></div>`; };
+  /* each open comment's words are marked in the brief (first match inside one paragraph or bullet) */
+  const bfMark = () => { const art = $('[data-bf-md]'), cs = workOfCard(RX.p?.id)?.doc?.comments || []; if (!art || !cs.length) return;
+    for (const c of cs) { const q = String(c.quote || '').trim(); if (q.length < 2) continue;
+      const tw = document.createTreeWalker(art, NodeFilter.SHOW_TEXT); let n; while ((n = tw.nextNode())) { const i = n.data.indexOf(q); if (i < 0) continue;
+        const r = document.createRange(); r.setStart(n, i); r.setEnd(n, i + q.length); const m = document.createElement('mark'); m.className = 'bf-mk'; m.title = c.note || 'Comment'; try { r.surroundContents(m); } catch {} break; } } };
+  const bfPop = { el: null, quote: '' };
+  const bfPopClose = () => { bfPop.el?.remove(); bfPop.el = null; bfPop.quote = ''; };
+  const bfPopAt = (rect, quote) => { bfPopClose(); bfPop.quote = quote; const el = document.createElement('div'); el.className = 'bf-pop';
+    el.innerHTML = `<button class="btn btn-primary sm" data-bf-cmgo>${ic('chat', 's14')}Comment</button>`; document.body.appendChild(el); bfPop.el = el;
+    const top = Math.min(innerHeight - 60, rect.bottom + 8), left = Math.max(12, Math.min(innerWidth - el.offsetWidth - 12, rect.left + rect.width / 2 - el.offsetWidth / 2));
+    el.style.top = `${top}px`; el.style.left = `${left}px`; };
+  const bfPopForm = () => { const el = bfPop.el; if (!el) return; el.classList.add('is-form');
+    el.innerHTML = `<q>${esc(bfPop.quote.length > 120 ? bfPop.quote.slice(0, 119) + '…' : bfPop.quote)}</q><textarea id="bf-cm-in" rows="3" placeholder="What’s wrong or what should it say?"></textarea><div><button class="btn btn-ghost sm" data-bf-cmadd>Add comment</button><button class="btn btn-primary sm" data-bf-cmfix>${ic('sparkles', 's14')}Fix with AI</button></div>`;
+    const r = el.getBoundingClientRect(); if (r.bottom > innerHeight - 8) el.style.top = `${Math.max(8, innerHeight - r.height - 8)}px`; if (r.right > innerWidth - 8) el.style.left = `${Math.max(8, innerWidth - r.width - 8)}px`; $('#bf-cm-in', el)?.focus(); };
+  const bfSel = () => { if (bfPop.el?.classList.contains('is-form')) return; const s = getSelection(), art = $('[data-bf-md]');
+    if (!s || s.isCollapsed || !art || !s.rangeCount || view !== 'remix') return bfPopClose(); const r = s.getRangeAt(0); if (!art.contains(r.commonAncestorContainer)) return bfPopClose();
+    const q = s.toString().replace(/\s+/g, ' ').trim(); if (q.length < 2) return bfPopClose(); bfPopAt(r.getBoundingClientRect(), q); };
+  { let tm = 0; document.addEventListener('selectionchange', () => { clearTimeout(tm); tm = setTimeout(bfSel, 250); }); }
+  document.addEventListener('mousedown', (e) => { if (bfPop.el && !bfPop.el.contains(e.target) && !e.target.closest?.('[data-bf-md]')) bfPopClose(); });
+  addEventListener('keydown', (e) => { if (e.key === 'Escape' && bfPop.el) { e.stopImmediatePropagation(); bfPopClose(); } }, true);
+  const bfFix = async (w) => { if (!w || RX.bfFix) return; RX.bfFix = w.id; paintStudio();
+    const r = await tapi('POST', `/api/work/${w.id}/doc/fix`, {}).catch((e) => ({ error: e.message })); RX.bfFix = null; if (r.work) putWork(r.work);
+    toast(r.error ? `${ic('info', 's16')}${esc(r.error)}` : `${ic('check', 's16')}${esc(r.reply || `Fixed ${r.fixed === 1 ? 'the comment' : `${r.fixed} comments`}`)}`); if (view === 'remix') paintStudio(); };
+  document.addEventListener('click', async (e) => { if (!bfPop.el?.contains(e.target)) return; const w = workOfCard(RX.p?.id); if (!w) return bfPopClose();
+    if (e.target.closest('[data-bf-cmgo]')) return bfPopForm();
+    const fix = e.target.closest('[data-bf-cmfix]'); if (!fix && !e.target.closest('[data-bf-cmadd]')) return;
+    const note = $('#bf-cm-in')?.value.trim() || '', quote = bfPop.quote; bfPopClose(); getSelection()?.removeAllRanges();
+    const r = await tapi('POST', `/api/work/${w.id}/doc/comment`, { quote, note }).catch((er) => ({ error: er.message })); if (r.work) putWork(r.work);
+    if (r.error) return toast(`${ic('info', 's16')}${esc(r.error)}`); if (fix) return bfFix(r.work || w); toast(`${ic('check', 's16')}Comment added`); paintStudio(); });
   const detailsTab = (ch, pkgCh, edit) => RX.editing && edit
     ? `<form id="st-spec" class="dt-form">${ch.fields.map((f) => fieldEdit(f, ch.pkg)).join('')}<div class="dt-actions"><button type="button" class="btn btn-ghost" data-spec-cancel>Cancel</button><button class="btn btn-primary">Save as v${ch.versions.length + 1}</button></div></form>`
     : `${briefTop2(ch)}<div class="dt-head"><span class="pill ${ch.missing.length ? 'warn' : 'ok'}">${ch.missing.length ? `${ch.missing.length} missing` : 'Complete'}</span>${edit && !RX.viewing ? `<button class="btn btn-ghost sm" data-spec-edit>Edit details</button>` : ''}</div>
@@ -4230,7 +4264,7 @@
     const viewing = RX.viewing && RX.viewing !== ch.head ? ch.versions.find((v) => v.id === RX.viewing) : null; if (!viewing) RX.viewing = null;
     const pkgCh = asPkg(ch, viewing), edit = ch.state !== 'jam', tab = RX.tab && RX.tab !== 'history' ? RX.tab : 'iterate'; /* history is the dropdown on the History button now */
     const formFocus = document.activeElement?.closest?.('#st-spec');
-    if (formFocus || document.activeElement?.id === 'bf-ed' || document.activeElement?.matches?.('[data-hl-edit][contenteditable]')) { pollJob(ch); return; } // never repaint under someone typing in the spec or the brief (the job poll keeps going, so no status is left behind)
+    if (formFocus || document.activeElement?.id === 'bf-ed' || document.activeElement?.id === 'bf-cm-in' || bfPop.el?.classList.contains('is-form') || document.activeElement?.matches?.('[data-hl-edit][contenteditable]')) { pollJob(ch); return; } // never repaint under someone typing in the spec or the brief (the job poll keeps going, so no status is left behind)
     const logScroll = $('.st-panel-b')?.scrollTop;
     /* an open panel stays open through a repaint (the jam's 3-second poll, a video landing): Param, 19 Oct, "What Brew read" closed in 2 s */
     const keepOpen = RX.keepFor === ch.id ? new Set([...pg.querySelectorAll('details[data-keep][open]')].map((d) => d.dataset.keep)) : new Set(); RX.keepFor = ch.id;
@@ -4250,7 +4284,7 @@
     { const at = $('.st-atools'), ph = $('.st-asset .sv-phone'), mk = $('.st-asset .sv-make.is-row'); if (ph) { if (at) { ph.after(at); if (mk) { at.append(...mk.children); mk.remove(); } } } }
     if (keepOpen.size) pg.querySelectorAll('details[data-keep]').forEach((d) => { if (keepOpen.has(d.dataset.keep)) d.open = true; });
     if (typingAt) { const box = $('#st-in'); if (box) { box.focus(); try { box.setSelectionRange(typingAt[0], typingAt[1]); } catch {} } }
-    fitAd();
+    fitAd(); bfMark();
     const pb = $('.st-panel-b'); const nT = (ch.thread || []).length + (RX.sending ? 1 : 0) + Object.keys(J2.imp).length + Object.keys(J2.pack).length;
     if (tab === 'iterate') pb.scrollTop = (ch.thread || []).length || RX.sending || j2Extra(ch) ? pb.scrollHeight : 0; /* the case stays first in the chat and scrolls up as it grows; a fresh chat is read from its top */ else if (logScroll && !RX.resetScroll) pb.scrollTop = logScroll; RX.resetScroll = false;
     pollJob(ch);
@@ -4325,7 +4359,7 @@
     let ch = findCh(id) || PRE_CH.get(id); PRE_CH.delete(id); if (!ch) { const stop = holdView('Opening the jam'); const g = await tapi('GET', `/api/changes/${id}`); stop(); ch = g.change; }
     /* a link to a jam this browser can't open (another workspace's, or gone): open the card's own jam, never a blank page */
     if (!ch) { if (RX.p && !o.noFallback) { history.replaceState(history.state, '', `${location.pathname}#remix=${RX.p.id}`); return openRemix(RX.p, null, { fromHistory: true, noFallback: true }); } $('#view').innerHTML = `<div class="rxp"><p class="rx-gone">${ic('info', 's16')}This jam can’t be opened here. <button class="linkbtn" data-nav="feed">Back to the feed</button></p></div>`; return; }
-    Object.assign(RX, { ch, viewing: null, cmp: [], tab: 'iterate', editing: false, draft: '', knobSel: {}, briefEdit: false, sending: null }); /* a reply still running in another jam never freezes this one */ tapi('POST', `/api/changes/${ch.id}/open`, {}); REMIXES = null; if (!o.fromHistory) nav(`#remix=${RX.p.id}/${ch.id}`, !o.replace, o.deep ? 'rx-deep' : 'rx-ch'); /* from the card page it replaces the card: Back goes to the feed, not round again */
+    Object.assign(RX, { ch, viewing: null, cmp: [], tab: 'iterate', editing: false, draft: '', knobSel: {}, briefEdit: false, sending: null, att: [] }); /* a reply still running in another jam never freezes this one */ tapi('POST', `/api/changes/${ch.id}/open`, {}); REMIXES = null; if (!o.fromHistory) nav(`#remix=${RX.p.id}/${ch.id}`, !o.replace, o.deep ? 'rx-deep' : 'rx-ch'); /* from the card page it replaces the card: Back goes to the feed, not round again */
     $('#view').innerHTML = `<div class="std"></div>`; window.scrollTo(0, 0); paintStudio();
     autoImage(ch);
   };
@@ -4395,6 +4429,21 @@
       if (view === 'remix') paintStudio(); return; }
     if (changedHere) { const el = $('.st-jamctl'); if (el) el.outerHTML = studioJamCtl(); const ty = $('.st-panel-b .jm-typing-who'), w = workOfCard(RX.p?.id); if (w && window.JamRoom?.typingHtml) { const h = window.JamRoom.typingHtml(w); if (ty) ty.outerHTML = h || ''; else if (h) $('.st-panel-b .it-log')?.insertAdjacentHTML('beforeend', h); } }
   };
+  /* screenshots and images in the studio chat: paste (⌘V), drop on the panel, or + → A screenshot. Shrunk here (1600px JPEG),
+     shown as chips above the box, and sent with the next message: the AI sees them (remix.js takeAtts) */
+  const stAttHtml = () => (RX.att || []).length ? `<div class="st-atts">${RX.att.map((u, i) => `<span class="st-att"><img src="${esc(u)}" alt="Screenshot ${i + 1}"><button type="button" data-st-attrm="${i}" aria-label="Remove image">${ic('x', 's14')}</button></span>`).join('')}<small>${RX.att.length === 1 ? 'Goes with your next message' : `${RX.att.length} images go with your next message`}</small></div>` : '';
+  const shrinkImg = (f) => new Promise((res) => { const fr = new FileReader(); fr.onerror = () => res(null); fr.onload = () => { const im = new Image(); im.onerror = () => res(null); im.onload = () => {
+      const k = Math.min(1, 1600 / Math.max(im.width, im.height)), cv = document.createElement('canvas'); cv.width = Math.round(im.width * k); cv.height = Math.round(im.height * k);
+      const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height); g.drawImage(im, 0, 0, cv.width, cv.height); res(cv.toDataURL('image/jpeg', 0.85)); }; im.src = fr.result; }; fr.readAsDataURL(f); });
+  const stAttach = async (files) => { const imgs = [...(files || [])].filter((f) => /^image\//.test(f.type)); if (!imgs.length || view !== 'remix' || !RX.ch) return false;
+    RX.att ||= []; if (RX.att.length >= 4) { toast('Up to 4 images a message.'); return true; }
+    for (const f of imgs.slice(0, 4 - RX.att.length)) { const u = await shrinkImg(f); if (u) RX.att.push(u); }
+    paintStudio(); $('#st-in')?.focus(); return true; };
+  window.__stAttach = stAttach; /* the composer's + → A screenshot */
+  document.addEventListener('paste', (e) => { if (view !== 'remix' || !RX.ch || !e.target.closest?.('#st-say')) return; const fs = [...(e.clipboardData?.files || [])].filter((f) => /^image\//.test(f.type)); if (!fs.length) return; e.preventDefault(); stAttach(fs); });
+  document.addEventListener('dragover', (e) => { if (view === 'remix' && RX.ch && e.target.closest?.('.st-panel') && [...(e.dataTransfer?.types || [])].includes('Files')) { e.preventDefault(); e.target.closest('.st-panel').classList.add('is-drop'); } });
+  document.addEventListener('dragleave', (e) => { if (e.target.closest?.('.st-panel') && !e.relatedTarget?.closest?.('.st-panel')) $('.st-panel.is-drop')?.classList.remove('is-drop'); });
+  document.addEventListener('drop', (e) => { const pn = e.target.closest?.('.st-panel'); if (!pn || view !== 'remix' || !RX.ch) return; pn.classList.remove('is-drop'); const fs = [...(e.dataTransfer?.files || [])]; if (!fs.some((f) => /^image\//.test(f.type))) return; e.preventDefault(); stAttach(fs); });
   const stSay = async (msg, path = 'iterate', body) => {
     const ch = RX.ch; if (!ch || RX.sending) return;
     /* a message that tags someone anywhere in it goes to them and the jam (sendTo: they get an email); the AI hears it only
@@ -4403,12 +4452,13 @@
       const said = String(msg).trim(); RX.draft = ''; if ($('#st-in')) $('#st-in').value = '';
       await window.JamRoom.sendTo(RX.p, said); paintStudio();
       const ask = window.JamRoom.changeAsk?.(said); if (!ask) return; msg = ask; body = undefined; }
+    const att = path === 'iterate' && !body ? (RX.att || []).slice() : []; if (att.length) { RX.att = []; body = { message: msg, images: att }; }
     RX.from = path === 'iterate' ? String(msg || '') : null; /* the chip or box that asked: it spins while RX.sending */
     RX.sending = path === 'variants' || path === 'more' ? 'Writing a new take…' : path === 'plan' ? planBusy(ch) : path === 'knob' ? `Applying ${msg}…` : body?.fix ? 'Fixing it…' : 'Working on it…';
-    if (path === 'iterate') { ch.thread = [...(ch.thread || []), { from: 'you', text: msg, at: 9e15 /* last in the timeline until the server's copy lands */ }]; RX.draft = ''; if ($('#st-in')) $('#st-in').value = ''; RX.tab = 'iterate'; }
+    if (path === 'iterate') { ch.thread = [...(ch.thread || []), { from: 'you', text: msg || 'Look at the screenshot', imgs: att, at: 9e15 /* last in the timeline until the server's copy lands */ }]; RX.draft = ''; if ($('#st-in')) $('#st-in').value = ''; RX.tab = 'iterate'; }
     RX.viewing = null; RX.resetScroll = true; paintStudio(); if (path === 'iterate') sound('send');
     const r = await tapi('POST', `/api/changes/${ch.id}/${path}`, body || { message: msg });
-    RX.sending = false; if (r.error) { sound('error'); toast(esc(r.error)); return paintStudio(); }
+    RX.sending = false; if (r.error) { if (att.length && !RX.att?.length) RX.att = att; /* a failed send keeps its screenshots */ sound('error'); toast(esc(r.error)); return paintStudio(); }
     if (path === 'iterate') sound('reply'); else if (['variants', 'more', 'plan'].includes(path)) sound('ready'); /* the answer, or the new take or plan, is in; a knob stays quiet */
     RX.ch = r.change; putCh(r.change); RX.resetScroll = true; if (Array.isArray(body?.v) || path === 'variants' || path === 'plan') RX.tab = 'iterate'; if (path === 'plan') pullWork(true); paintStudio(); showLearned(r.learned); if (!r.answered) syncBrief(r.change, msg); /* a question changed nothing: no brief rewrite */ if (r.pickPhotos) openPhotos();
   };
@@ -4489,6 +4539,9 @@
     const ar = e.target.closest('[data-addrow]'); if (ar) { const box = $(`[data-rows="${ar.dataset.addrow}"]`); const rows = $$('.fe-row', box); const tpl = rows[rows.length - 1].cloneNode(true); $$('input,textarea', tpl).forEach((x) => (x.value = '')); rows[rows.length - 1].after(tpl); return; }
     const dr = e.target.closest('[data-delrow]'); if (dr) { const box = dr.closest('.fe-rows'); if ($$('.fe-row', box).length > 1) dr.closest('.fe-row').remove(); return; }
     if (e.target.closest('[data-st-convo]')) { const w = workOfCard(RX.p?.id), p0 = RX.p; RX.ch = null; nav(location.pathname, false, 'view'); view = 'feed'; await renderFeed(); return openDetail({ ...p0, ...(w ? { _work: w } : {}) }, { noStudio: true }); }
+    const atr = e.target.closest('[data-st-attrm]'); if (atr) { RX.att = (RX.att || []).filter((_, i) => i !== +atr.dataset.stAttrm); return paintStudio(); }
+    const cmr = e.target.closest('[data-bf-cmrm]'); if (cmr) { const w = workOfCard(RX.p?.id); if (!w) return; const r = await tapi('POST', `/api/work/${w.id}/doc/comment`, { id: cmr.dataset.bfCmrm, remove: true }); if (r.work) putWork(r.work); return paintStudio(); }
+    if (e.target.closest('[data-bf-fix]')) return bfFix(workOfCard(RX.p?.id));
     if (e.target.closest('[data-st-briefedit]')) { RX.briefEdit = true; return paintStudio(); }
     if (e.target.closest('[data-st-briefcancel]')) { RX.briefEdit = false; return paintStudio(); }
     if (e.target.closest('[data-st-briefsave]')) { const w = workOfCard(RX.p?.id), md = $('#bf-ed')?.value || ''; if (!w) return; const r = await tapi('POST', `/api/work/${w.id}/doc`, { md, rev: w.doc?.rev });
@@ -4538,7 +4591,7 @@
     if (e.target.id === 'rx-ask') { e.preventDefault(); runRemix(); }
     if (e.target.id === 'mc-add') { e.preventDefault(); const f = e.target, text = f.t.value.trim(); if (!text) return; const r = await tapi('POST', `/api/changes/${RX.ch.id}/checks`, { text, always: f.always.checked }); if (r.change) { RX.ch = r.change; putCh(r.change); paintStudio(); showLearned(r.learned); } return; }
     if (e.target.id === 'nt-add') { e.preventDefault(); const text = e.target.t.value.trim(); if (!text) return; const r = await tapi('POST', `/api/changes/${RX.ch.id}/notes`, { text }); if (r.change) { RX.ch = r.change; putCh(r.change); paintStudio(); toast(`${ic('check', 's16')}Note saved`); } return; }
-    if (e.target.id === 'st-say') { e.preventDefault(); const v = $('#st-in').value.trim(); if (!v) return; stSay(v); }
+    if (e.target.id === 'st-say') { e.preventDefault(); const v = $('#st-in').value.trim(); if (!v && !RX.att?.length) return; stSay(v); }
     if (e.target.id === 'st-spec') { e.preventDefault(); const ch = RX.ch; const pkg = readSpec(e.target, ch); document.activeElement?.blur?.(); const r = await tapi('POST', `/api/changes/${ch.id}/edit`, { pkg }); if (r.error) return toast(esc(r.error)); RX.ch = r.change; putCh(r.change); RX.editing = false; paintStudio(); toast(`${ic('check', 's16')}Saved as v${curN(r.change)}`); showLearned(r.learned); }
   });
 

@@ -898,9 +898,18 @@ export function createRemix(o) {
   /* a question about the package: one small grounded answer (the card, the package, the moves, the facts, the connected
      numbers), no package rewrite and no version. The answer is checked: a number or a performance claim the evidence
      doesn't hold is cut, and it says what isn't known */
-  const answerIn = async (t, ch, message, show) => {
+  /* screenshots in the studio chat: pasted, dropped or picked, they point at what to change. Each is kept (gen/att-…) so the
+     chat shows it, and the AI sees it with the message (a content array: Claude and Gemini both read image blocks) */
+  const ATT_RE = /^data:(image\/(png|jpe?g|webp|gif));base64,(.+)$/;
+  const takeAtts = (list) => { const imgs = [], blocks = [];
+    for (const d of (Array.isArray(list) ? list : []).slice(0, 4)) { const m = ATT_RE.exec(String(d || '')); if (!m) continue; const buf = Buffer.from(m[3], 'base64'); if (!buf.length || buf.length > 6e6) continue;
+      const name = `att-${crypto.createHash('sha1').update(buf).digest('hex').slice(0, 16)}.${m[2] === 'jpeg' ? 'jpg' : m[2]}`; saveGen(name, buf); imgs.push(`gen/${name}`);
+      blocks.push({ type: 'image', source: { type: 'base64', media_type: m[1] === 'image/jpg' ? 'image/jpeg' : m[1], data: m[3] } }); }
+    return imgs.length ? { imgs, blocks } : null; };
+  const withPics = (prompt, att) => att?.blocks?.length ? [...att.blocks, { type: 'text', text: `${prompt}\n\nThe person attached ${att.blocks.length === 1 ? 'a screenshot or image' : `${att.blocks.length} screenshots or images`} (above) to show what they mean: read it closely, it points at the part of the work to change.` }] : prompt;
+  const answerIn = async (t, ch, message, show, att = null) => {
     const c = t.cards.get(ch.cardId) || {};
-    ch.thread.push(youSaid(t, show || message)); ANSWERED.add(ch);
+    ch.thread.push(youSaid(t, show || message, att?.imgs?.length ? { imgs: att.imgs } : {})); ANSWERED.add(ch);
     if (EVIDENCE_ASK.test(message) && o.evidenceOf) { const pa = proofAnswer(o.evidenceOf(t, c)); if (pa) { ch.thread.push({ from: 'ai', text: pa.text, proof: pa.proof, cardId: c.id, at: now(t), answer: true }); return ch; } }
     if (isMock() || !spend('text')) { ch.thread.push({ from: 'ai', text: 'AI is offline right now, so I can’t answer that. Nothing changed.', at: now(t), offline: true, answer: true }); return ch; }
     const pf = o.evidenceOf ? proofAnswer(o.evidenceOf(t, c)) : null; /* every answer can name where a number came from */
@@ -910,7 +919,7 @@ export function createRemix(o) {
       pf ? `Where the card's numbers come from:\n${pf.text}` : '',
       acct.length ? `Connected accounts, read ${acct[0].at || 'today'}:\n${acct.map((e) => `- ${e.label}: ${e.v}`).join('\n')}` : 'Connected accounts: none with results for this yet.'].filter(Boolean).join('\n\n');
     try {
-      const r = await answerGrounded({ ai: (p, sc, mx, tag) => claudeTool(p, sc, mx, tag), question: message, evidence, history: ch.thread.slice(-7, -1).map((m) => `${m.from === 'you' ? 'Person' : 'Brew'}: ${m.text}`), who: `the ${AGENT[ch.agent] || 'Brew'} agent` });
+      const r = await answerGrounded({ ai: (p, sc, mx, tag) => claudeTool(withPics(p, att), sc, mx, tag), question: message, evidence, history: ch.thread.slice(-7, -1).map((m) => `${m.from === 'you' ? 'Person' : 'Brew'}: ${m.text}`), who: `the ${AGENT[ch.agent] || 'Brew'} agent` });
       ch.thread.push({ from: 'ai', text: clean(r.answer), at: now(t), answer: true, ...(r.known ? {} : { unknown: true }) });
     } catch (e) { log.warn('[studio answer]', e.message); ch.thread.push({ from: 'ai', text: 'That didn’t go through, so nothing changed. Ask again in a minute.', at: now(t), answer: true }); }
     return ch;
@@ -918,19 +927,19 @@ export function createRemix(o) {
   /* what the studio is doing while a reply takes its time (a minute on Flash): the waiting person sees the step and the clock
      (app.js polls the change while it waits), never a bare spinner */
   const think = (ch, step) => { ch.thinking = step ? { step, at: ch.thinking?.at || Date.now(), stepAt: Date.now() } : null; };
-  const iterate = async (t, ch, message, { knob, quiet, show, fix } = {}) => {
+  const iterate = async (t, ch, message, { knob, quiet, show, fix, att = null } = {}) => {
     const c = t.cards.get(ch.cardId) || {};
     ANSWERED.delete(ch);
-    if (!knob && !quiet && !fix /* "Fix it with AI" carries the checks' own words ("evidence", "source"): a fix, never a question (QA J-02) */ && (isQuestion(message) || EVIDENCE_ASK.test(message))) { think(ch, 'Looking it up in the facts, the moves and this version'); try { return await answerIn(t, ch, message, show); } finally { think(ch, null); } } /* a question never makes a version */
+    if (!knob && !quiet && !fix /* "Fix it with AI" carries the checks' own words ("evidence", "source"): a fix, never a question (QA J-02) */ && (isQuestion(message) || EVIDENCE_ASK.test(message))) { think(ch, 'Looking it up in the facts, the moves and this version'); try { return await answerIn(t, ch, message, show, att); } finally { think(ch, null); } } /* a question never makes a version */
     const keepPhoto = photoAsk(message) === 'keep';
-    if (!quiet) ch.thread.push(youSaid(t, show || message));
+    if (!quiet) ch.thread.push(youSaid(t, show || message, att?.imgs?.length ? { imgs: att.imgs } : {}));
     let out = null, nv = null;
     if (!isMock() && spend('text')) {
       try {
         think(ch, quiet ? 'Fixing what the check flagged' : `Reading your note, the current version and the fact sheet, then writing v${versionsOf(t, ch.id).length + 1}`);
         const schema = { type: 'object', required: ['reply', 'pkg', 'newImage', 'next'], properties: { plan: { type: 'array', items: { type: 'string' }, description: 'Only when the person asks to change the plan itself (its steps): the whole updated list of steps, 3 to 6, each under 14 words, ending with the step that makes it ready to deploy or hand to the team; never a step called decided. Otherwise an empty list.' }, reply: { type: 'string', description: 'Under 30 words: what you changed, plainly' }, label: { type: 'string', description: 'A name for this new version in a version list: 2 to 4 words, sentence case, what is different about it (e.g. "As a thread", "Shorter hook", "Price up front"). Not the request repeated.' }, next: { type: 'array', items: { type: 'string' }, description: 'Exactly 4 follow-up requests the person might tap next, each 2 to 6 words, in their voice (e.g. "Shorter, for WhatsApp"). Each one a way to cut THIS change (the card’s own action, named in the prompt), using its words: never a generic writing tip that would fit any widget. Specific to this updated package and this conversation; never repeat something already asked or already true of the package.' }, pkg: kvSchema(allKeys([ch.family])), newImage: { type: 'boolean', description: 'True only if the photo itself should change (scene, mood, subject, ratio)' } } };
         const rvI = await rivalRead(t, c).catch(() => null); /* our version of a rival's ad keeps that ad as the reference through every edit */
-        out = await claudeTool(`${cardBrief(c, seatLine(t.viewer))}${rvI ? `\n\n${rivalBlock(rvI.ad, rvI.style, BN())}\nKeep following that ad's angle, hook pattern and style unless the team asks to move away from it.` : viralOf(t, c) ? `\n${viralLine(t, c)}Keep following that video's format and beats unless the team asks to move away from it.` : ''}\n\nYou are the ${AGENT[ch.agent]} agent in the remix studio, iterating a ${FAMILY_NAME[ch.family]} (${ch.actionLabel} on ${ch.target.name}).${c.cta?.label ? ` The card's own action: "${c.cta.label}"; this package is that action and nothing else.` : ''}\n${promptBlock(t, ch.agent === 'brew' ? 'creative' : ch.agent)}\nIt must stay commission-ready and stay exactly this kind of change: ${specOf(ch.action)}\n${productLine(c)}\nFields:\n${fieldsBrief(ch.family, ch.action)}\nCurrent package (field: value):\n${toKV(ch.family, ch.action, ch.pkg).map((e) => `${e.k}: ${e.v}`).join('\n')}\nKnobs set: ${JSON.stringify(ch.pkg.knobs || {})}\nThe conversation so far:\n${ch.thread.slice(-7, -1).map((m) => `${m.from === 'you' ? 'Person' : 'You'}: ${m.text}`).join('\n') || '(none)'}\n${ch.agent === 'brew' ? promptBlock(t, ch.agent) : '' /* the agent's rules are already above; only the brew agent has a second set */}${(ch.notes || []).length ? `\nThe person's notes on this package (respect them):\n${ch.notes.map((n) => `- ${n.text}`).join('\n')}` : ''}\n\nThe person now asks: "${message}"\nReturn the WHOLE updated package (every field, changed or not). ${factsLine}`, schema, 3000, 'studio_iterate');
+        out = await claudeTool(withPics(`${cardBrief(c, seatLine(t.viewer))}${rvI ? `\n\n${rivalBlock(rvI.ad, rvI.style, BN())}\nKeep following that ad's angle, hook pattern and style unless the team asks to move away from it.` : viralOf(t, c) ? `\n${viralLine(t, c)}Keep following that video's format and beats unless the team asks to move away from it.` : ''}\n\nYou are the ${AGENT[ch.agent]} agent in the remix studio, iterating a ${FAMILY_NAME[ch.family]} (${ch.actionLabel} on ${ch.target.name}).${c.cta?.label ? ` The card's own action: "${c.cta.label}"; this package is that action and nothing else.` : ''}\n${promptBlock(t, ch.agent === 'brew' ? 'creative' : ch.agent)}\nIt must stay commission-ready and stay exactly this kind of change: ${specOf(ch.action)}\n${productLine(c)}\nFields:\n${fieldsBrief(ch.family, ch.action)}\nCurrent package (field: value):\n${toKV(ch.family, ch.action, ch.pkg).map((e) => `${e.k}: ${e.v}`).join('\n')}\nKnobs set: ${JSON.stringify(ch.pkg.knobs || {})}\nThe conversation so far:\n${ch.thread.slice(-7, -1).map((m) => `${m.from === 'you' ? 'Person' : 'You'}: ${m.text}`).join('\n') || '(none)'}\n${ch.agent === 'brew' ? promptBlock(t, ch.agent) : '' /* the agent's rules are already above; only the brew agent has a second set */}${(ch.notes || []).length ? `\nThe person's notes on this package (respect them):\n${ch.notes.map((n) => `- ${n.text}`).join('\n')}` : ''}\n\nThe person now asks: "${message}"\nReturn the WHOLE updated package (every field, changed or not). ${factsLine}`, att), schema, 3000, 'studio_iterate');
       } catch (e) { log.warn('[studio iterate]', e.message); }
     }
     think(ch, out ? 'Checking the words against the facts and the product' : null);
@@ -1626,7 +1635,10 @@ export function createRemix(o) {
   });
   on('POST', '/api/changes/:chid/iterate', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };
-    const msg = clean(String(b.message || '')).slice(0, 400); if (!msg) return { error: 'empty' };
+    const att = takeAtts(b.images); if (Array.isArray(b.images) && b.images.length && !att) return { error: 'Add a PNG, JPG or WebP image under 6 MB.' };
+    const msg = clean(String(b.message || '') || (att ? 'Look at the screenshot: change what it shows.' : '')).slice(0, 400); if (!msg) return { error: 'empty' };
+    /* a message with a screenshot always goes to the AI with its picture (the shortcuts below don't read pictures) */
+    if (att) { try { await iterate(t, ch, msg, { att }); return { change: pubChange(t, ch), learned: learnedOut(t), ...(ANSWERED.has(ch) ? { answered: true } : {}) }; } finally { think(ch, null); } }
     /* "do it", "go ahead", "yes": the card's button, said in words (Param, 19 Oct: "do it" got "I don't know that yet because the
        question is unspecified"). "redo", "another one", "three cuts": one new take, never several options to pick from */
     if (!b.fix && GO_RE.test(msg)) { ch.thread.push(youSaid(t, msg)); const c0 = t.cards.get(ch.cardId) || {};

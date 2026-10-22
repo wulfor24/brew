@@ -186,6 +186,7 @@ export function createJamBrief(o) {
     if (!isMock() && spend('text')) {
       try {
         const task = mode === 'add' ? `${who} picked this from ${from || 'the card'} to add to the brief. Work it into the right section in plain words (a new section only if none fits). Keep everything else as it is.\n"""${String(text).slice(0, 3000)}"""`
+          : mode === 'fix' ? `${who} left comments on parts of the brief. Fix each one right where it points, exactly as asked (a comment with no words means make that part right and specific). Change only what the comments touch; keep the rest word for word.\n${String(text).slice(0, 4000)}`
           : mode === 'hear' ? `${who} said this in the jam. Fold any new decision, fact or answer into the brief where it belongs. If it adds nothing to the brief, return the brief unchanged.\n"""${String(text).slice(0, 3000)}"""`
           : `${who} asks: """${String(text).slice(0, 2000)}"""\nDo exactly what they ask. "Rewrite", "it's wrong", "all details are wrong" mean rewrite those parts properly, not a recap. If it's a question, answer it in the reply and change the brief only if the answer belongs in it.`;
         const multi = MULTI(t, c) || ((w.doc.md.match(/^## Plan \d/gm) || []).length > 1 ? `\nThis brief holds several SEPARATE plans ("## Plan N: ..." sections). Keep them separate and never merge them into one plan unless the person explicitly asks to merge or combine them.` : '');
@@ -197,7 +198,7 @@ export function createJamBrief(o) {
       } catch (e) { log.warn('[jam doc]', e.message); }
     }
     /* a quiet sync (the studio's package changed) is an instruction to the AI, never words for the brief: offline, the brief stays as it is */
-    if (sync) return { reply: '', changed: [] };
+    if (sync || mode === 'fix') return { reply: '', changed: [] }; /* comments stay open offline: never folded in as notes */
     if (mode === 'ask' && /\?\s*$/.test(String(text).trim())) return { reply: 'AI is offline right now, so I can’t answer that. Type the answer into the brief, or ask a teammate with @.', changed: [] };
     const changed = setDoc(t, w, appendNote(w.doc.md, who, text), who === 'You' ? 'you' : who, mode); if (changed) applyPlan(t, w, { ...(w.doc.plan || {}), ...Object.fromEntries(Object.entries(planFromMd(w.doc.md)).filter(([, v]) => v)) }, 'read');
     return { reply: mode === 'add' ? 'Added to the brief under Notes.' : 'Noted in the brief under Notes. (AI is offline, so I didn’t rewrite anything.)', changed: changed ? ['Notes'] : [] };
@@ -279,6 +280,28 @@ export function createJamBrief(o) {
       say(t, w, { from: 'ai', who: AGENT[w.agent] || 'AI', body: r.reply || (r.changed.length ? 'Done.' : 'Nothing to change there.'), edited: r.changed });
       if (!['drafting', 'team', 'shared'].includes(w.stage)) move(t, w, 'drafting', null);
       return { work: w, changed: r.changed };
+    });
+    /* comments on the brief: select words in it, say what's wrong, and AI fixes every open comment in one pass (doc/fix).
+       They live on the jam (w.doc.comments), so a teammate sees them too; a fixed comment leaves the list */
+    const cmOpen = (w) => (w.doc.comments ||= []);
+    on('POST', '/api/work/:wid/doc/comment', async (b, t, p) => {
+      const w = get(t, p.wid); if (!w) return { error: 'not found' };
+      if (b.remove) { w.doc.comments = cmOpen(w).filter((c) => c.id !== b.id); w.updatedAt = now(t); return { work: w }; }
+      const quote = String(b.quote || '').replace(/\s+/g, ' ').trim().slice(0, 600), note = String(b.note || '').trim().slice(0, 1000);
+      if (!quote && !note) return { error: 'empty' };
+      cmOpen(w).push({ id: `cm${now(t).toString(36)}${Math.random().toString(36).slice(2, 5)}`, quote, note, by: o.meOf?.(t)?.name || 'You', at: now(t) });
+      w.doc.comments = w.doc.comments.slice(-30); w.updatedAt = now(t); return { work: w };
+    });
+    on('POST', '/api/work/:wid/doc/fix', async (b, t, p) => {
+      const w = get(t, p.wid); if (!w) return { error: 'not found' };
+      const ids = Array.isArray(b.ids) && b.ids.length ? new Set(b.ids) : null, cms = cmOpen(w).filter((c) => !ids || ids.has(c.id));
+      if (!cms.length) return { error: 'No comments to fix.', work: w };
+      const text = cms.map((c, i) => `${i + 1}. ${c.quote ? `On “${c.quote}”: ` : ''}${c.note || 'Make this part right and specific.'}`).join('\n');
+      const r = await edit(t, w, text, { who: 'You', mode: 'fix' }).catch((e) => ({ error: e.message }));
+      if (!r?.ai) return { error: isMock() ? 'AI is offline right now, so the comments stay. Edit the brief yourself, or try again shortly.' : 'That didn’t go through, so the comments stay. Try again in a minute.', work: w };
+      const done = new Set(cms.map((c) => c.id)); w.doc.comments = cmOpen(w).filter((c) => !done.has(c.id));
+      say(t, w, { from: 'system', body: `AI fixed ${cms.length === 1 ? 'a comment' : `${cms.length} comments`} on the brief${r.changed.length ? `: ${r.changed.join(', ')}` : ''}.`, edited: r.changed });
+      return { work: w, changed: r.changed, reply: r.reply, fixed: cms.length };
     });
     // a selection from the card, a move or the package, added to the brief
     on('POST', '/api/work/:wid/doc/add', async (b, t, p) => {

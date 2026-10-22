@@ -895,3 +895,27 @@ body[data-view="remix"] .fab{display:none}
 .as-landing .lp-ben figcaption{display:flex;flex-direction:column;gap:2px}.as-landing .lp-ben figcaption span{font-weight:400;color:var(--fg-2);font-size:13px;line-height:17px}
 @media (max-width:700px){.std .ship-btns{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} .std .ship-redo .btn-free{display:none}} /* the ship row never runs off a phone; Redo it keeps its tooltip there */
 @media (max-width:860px){.ship.one{flex-wrap:nowrap}.ship.one .ship-steps{flex:0 0 auto;margin:0}} /* stacked on a phone: the steps strip is a row above, never a column beside the buttons (its 100% basis meant full height there) */
+/* comments on the brief: select → Comment → AI fixes them (app.js bfComments) */
+.bf-hint{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--fg-3);margin:4px 0 8px}
+.bf-cms{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:10px 12px;margin:6px 0 12px}
+.bf-cms ol{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:8px}
+.bf-cms li{position:relative;padding-right:28px;font-size:13.5px;line-height:1.45}
+.bf-cms li q{display:block;color:var(--fg-3);border-left:3px solid #f2c94c;padding-left:8px;margin-bottom:2px;quotes:none}
+.bf-cms li p{margin:0;color:var(--fg)}
+.bf-cms li .icon-btn{position:absolute;right:-4px;top:-2px}
+.bf-mk{background:rgba(242,201,76,.35);color:inherit;border-radius:3px;padding:0 1px}
+.bf-pop{position:fixed;z-index:1000;background:var(--surface,#fff);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.18);padding:6px}
+.bf-pop.is-form{width:min(320px,calc(100vw - 24px));padding:10px;display:grid;gap:8px}
+.bf-pop q{display:block;font-size:13px;color:var(--fg-3);border-left:3px solid #f2c94c;padding-left:8px;quotes:none;max-height:4.4em;overflow:hidden}
+.bf-pop textarea{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:10px;background:var(--bg,#fff);color:var(--fg);font:inherit;font-size:14px;line-height:1.45;padding:8px;resize:vertical}
+.bf-pop.is-form>div{display:flex;justify-content:flex-end;gap:8px}
+/* screenshots in the studio chat (app.js stAttach) */
+.st-atts{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 8px}
+.st-atts small{font-size:12px;color:var(--fg-3)}
+.st-att{position:relative;width:56px;height:56px;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--surface)}
+.st-att img{width:100%;height:100%;object-fit:cover;display:block}
+.st-att button{position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;display:grid;place-items:center;padding:0;cursor:pointer}
+.st-msg-imgs{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;margin-bottom:4px}
+.st-msg-imgs img{max-width:160px;max-height:160px;border-radius:10px;border:1px solid var(--line);display:block;object-fit:cover}
+.st-panel.is-drop{outline:2px dashed var(--accent,#3b82f6);outline-offset:-6px}
+.lgm.you:has(.st-msg-imgs){flex-direction:column;align-items:flex-end}
