@@ -73,6 +73,8 @@ export function mountJam2(d) {
     if (!m.resume || Date.now() - m.at > 3 * 3600e3 || (m.tries || 0) >= 3) { m.error = `Brew restarted while this was being made. Press it again${bd.inflight ? ': the shots already made are kept, free' : ''}.`; continue; }
     const tries = (m.tries || 0) + 1, ctx = await ctxOf(t, j);
     if (m.op === 'render') runBg(t, j, bd.id, 'render', async () => { const r = await maker.renderVideo(ctx, bd, { confirmUsd: m.confirmUsd }); if (r.needsConfirm) throw new Error('The price went up; check it and confirm again.'); }, { resume: true, confirmUsd: m.confirmUsd, tries });
+    /* a shot change resumes only on the video it was asked for (a newer take means someone moved on) */
+    else if (m.op === 'reshot' && headOf(bd)?.id === m.head) runBg(t, j, bd.id, 'reshot', async () => { const r = await maker.reshot(ctx, bd, { i: m.i, ask: m.ask, region: m.region, confirmUsd: m.confirmUsd }); if (r.needsConfirm) throw new Error('The price went up; check it and confirm again.'); }, { ...m, tries });
     else if (m.op === 'all' && boardOf(j, bd.allOf)) runBg(t, j, bd.id, 'all', async () => maker.allProducts(ctx, bd, boardOf(j, bd.allOf)), { resume: true, tries });
     else m.error = 'Brew restarted while this was being made. Press it again.'; } };
   on('GET', '/api/jam2/jams/:jid', wrap(async (b, t, p) => { const j = await load(t, p.jid); await resumeCut(t, j).catch((e) => log.warn?.('[jam2] resume', e.message)); return { jam: out(j, t), also: alsoFor(j.boards[0]?.recipe) }; }));
@@ -113,7 +115,7 @@ export function mountJam2(d) {
     const i = Number.isInteger(b.i) ? b.i : -1, ask = String(b.ask || '').slice(0, 300).trim(); if (!ask) return { error: 'Say what should change in this shot.' };
     const region = b.region && [b.region.x, b.region.y, b.region.w, b.region.h].every((v) => Number.isFinite(+v) && +v >= 0 && +v <= 1) ? { x: +b.region.x, y: +b.region.y, w: +b.region.w, h: +b.region.h } : null;
     if (b.confirmUsd == null && !isMock()) { const r = await maker.reshot(ctx, bd, { i, ask, region, confirmUsd: null }); return r.needsConfirm ? { needsConfirm: true, quote: r.quote } : { jam: out(j) }; }
-    const started = runBg(t, j, bd.id, 'reshot', async () => { const r = await maker.reshot(await ctxOf(t, j), bd, { i, ask, region, confirmUsd: b.confirmUsd ?? 0 }); if (r.needsConfirm) throw new Error('The price went up; check it and confirm again.'); });
+    const started = runBg(t, j, bd.id, 'reshot', async () => { const r = await maker.reshot(await ctxOf(t, j), bd, { i, ask, region, confirmUsd: b.confirmUsd ?? 0 }); if (r.needsConfirm) throw new Error('The price went up; check it and confirm again.'); }, { resume: true, confirmUsd: b.confirmUsd ?? 0, i, ask, region, head: headOf(bd)?.id });
     return started ? { jam: out(j) } : { error: 'Brew is still working on this board.', jam: out(j) }; }));
   on('POST', '/api/jam2/jams/:jid/boards/:bid/approve', wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, p.bid), h = headOf(bd); if (!h) return { error: 'Nothing to approve yet.' };
     if (h.gate && !h.gate.pass && !b.anyway) return { error: `Fix this first: ${h.gate.checks.filter((c) => !c.ok && !c.soft).map((c) => c.why).join(' ')}`, gate: h.gate };
