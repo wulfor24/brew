@@ -55,9 +55,9 @@ test('the email: one button into the product, on the check page; says honestly w
   assert.match(m.text, /https:\/\/brew\.example\/gully-com\?go=feed#check/);
   assert.match(m.subject, /Gully is waiting for you to check what Brew read/);
   assert.doesNotMatch(m.html, /never confirms/, 'Brew does go on without the check: the email never says otherwise');
-  assert.match(m.text, /Brew starts writing once someone on the team checks it\./, 'no time limit (a read started signed out)');
+  assert.match(m.text, /Brew starts your brief once someone on the team checks it\./, 'no time limit (a read started signed out)');
   const at = Date.UTC(2026, 9, 15, 9, 30), w = reminderMail({ name: 'Gully', slug: 'g', i: 0, hours: 3, writeAt: at, now: at - 60e3, cfg: { timezone: 'Asia/Kolkata' } });
-  assert.match(w.text, /Brew starts writing at 15:00 \S+ with what it read, unless you check first\./);
+  assert.match(w.text, /Brew starts your brief at 15:00 \S+ with what it read, unless you check first\./);
   assert.match(reminderMail({ name: 'Gully', slug: 'g', i: 1, hours: 26 }).text, /waited 1 day\. This is the last reminder/);
 });
 

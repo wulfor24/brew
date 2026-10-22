@@ -19,11 +19,12 @@ const MOVE_EVERY_S = 1.8, BRIEF_S = 6; // the replayed build: about 100 seconds 
    One source (QA FEED-QA-09): the status route and the feed's "Your moves" line both read it (server.js viewStatus) */
 export function simStatus(st, s) {
   if (!st || s?.flow !== 'onboarding') return st;
-  const N = +st.total || 50, c = s.confirmedAt, t = c ? (Date.now() - c) / 1000 : -1, n = c ? Math.max(0, Math.min(N, Math.floor((t - BRIEF_S) / MOVE_EVERY_S))) : 0;
+  /* as on live (build.js feedGate): the brief after "Looks right", the moves only from the first open of the feed (s.feedOpenAt) */
+  const N = +st.total || 50, c = s.confirmedAt, t = c ? (Date.now() - c) / 1000 : -1, f = c && s.feedOpenAt ? Math.max(c + BRIEF_S * 1e3, s.feedOpenAt) : 0, n = f ? Math.max(0, Math.min(N, Math.floor((Date.now() - f) / 1000 / MOVE_EVERY_S))) : 0;
   const pdfKeys = Object.keys(st.pdfs || {}).sort((a, b) => +a - +b).slice(0, n);
   return { ...st, stages: { ...st.stages, confirm: c ? { state: 'done', at: c } : { state: 'waiting' }, brief: t >= BRIEF_S ? { state: 'done', at: c + BRIEF_S * 1e3 } : { state: c ? 'running' : 'waiting' },
-    moves: n >= N ? { state: 'done', at: Date.now() } : { state: c ? 'running' : 'waiting' } }, movesDone: n, pdfs: Object.fromEntries(pdfKeys.map((k) => [k, st.pdfs[k]])),
-    done: n >= N, ready: n >= 10, state: n >= N ? 'Ready' : c ? `Writing the moves: ${n} of ${N}` : 'Read', zips: n >= N ? st.zips : [] };
+    moves: n >= N ? { state: 'done', at: Date.now() } : { state: f ? 'running' : 'waiting' } }, movesDone: n, pdfs: Object.fromEntries(pdfKeys.map((k) => [k, st.pdfs[k]])),
+    done: n >= N, ready: n >= 10, state: n >= N ? 'Ready' : f ? `Writing the moves: ${n} of ${N}` : c && t >= BRIEF_S ? 'Your moves start when you open your feed' : c ? 'Writing the brand brief' : 'Read', zips: n >= N ? st.zips : [] };
 }
 
 export function createDemoRoutes({ packs, builder, auth, connectors, readBody, send, loadBrand, social = null, draftsBg = null, onSession = () => {}, log = console }) {
@@ -110,10 +111,11 @@ export function createDemoRoutes({ packs, builder, auth, connectors, readBody, s
       if (slug && await packs.getJSON(slug, 'status.json', null)) return send(res, 200, { slug, existing: true, status: await builder.status(slug) }), true;
       return send(res, 200, { error: 'Pick a brand from the list. New brands are prepared by the Brew team before a demo.' }), true; }
     /* the session's own build: replayed status, and confirming only marks the session (the brand's moves already exist) */
-    const bm = p.match(/^\/api\/brands\/([a-z0-9-]+)\/(status|confirm|check|updates|retry)$/);
+    const bm = p.match(/^\/api\/brands\/([a-z0-9-]+)\/(status|confirm|check|updates|retry|feed-open)$/);
     if (bm) { const [, slug, what] = bm;
       if (what === 'status' && req.method === 'GET') { const st = await builder.status(slug); if (!st) return false; return send(res, 200, simStatus(st, await session(slug))), true; }
       if (what === 'confirm' && req.method === 'POST') { await readBody(req); const s = await session(slug); if (s.flow === 'onboarding' && !s.confirmedAt) await setSession(slug, { ...s, confirmedAt: Date.now() }); return send(res, 200, { ok: true }), true; }
+      if (what === 'feed-open' && req.method === 'POST') { await readBody(req); const s = await session(slug), woke = s.flow === 'onboarding' && !s.feedOpenAt; if (woke) await setSession(slug, { ...s, feedOpenAt: Date.now() }); return send(res, 200, { ok: true, started: true, ...(woke ? { woke: true } : {}) }), true; }
       if (what === 'check' && req.method === 'POST') { await readBody(req); return send(res, 200, { ok: true, notes: ['In the demo, what you change here shows on the page but the read stays as it is.'] }), true; }
       if ((what === 'updates' || what === 'retry') && req.method === 'POST' && !isAdmin(req)) { await readBody(req); return send(res, 200, { error: 'Rewriting moves is off in the demo. Connected accounts already flag the moves that would change.' }), true; }
     }

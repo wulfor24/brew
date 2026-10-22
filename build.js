@@ -76,6 +76,7 @@ export const storeOpened = (out) => out?.opened !== false && (out?.findings?.ste
 /* the client address behind Cloud Run: the right-most x-forwarded-for entry is the one Google's front end appended;
    TRUSTED_PROXY_HOPS skips that many more trusted entries (1 behind a Google load balancer) */
 export const clientIp = (req, hops = +process.env.TRUSTED_PROXY_HOPS || 0) => { const xs = String(req?.headers?.['x-forwarded-for'] || '').split(',').map((x) => x.trim()).filter(Boolean); return xs.length ? xs[Math.max(0, xs.length - 1 - hops)] : String(req?.socket?.remoteAddress || ''); };
+const FEED_GATE = process.env.BUILD_FEED_GATE !== '0'; // a brand's first read writes its moves on the first open of its feed after onboarding (feedOpened)
 const CONFIRM_WAIT = +process.env.BUILD_CONFIRM_WAIT_MS || 15 * 60e3; // the brief waits this long for "Check what we read", then goes with what was read
 /* when Brew starts writing without the check: CONFIRM_WAIT after the wait began or after someone on the team last opened the
    check page, from the saved timestamps (status.waitingSince, status.checkOpenAt), so a restart or a deploy never starts the
@@ -196,7 +197,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       user ? packs.put(slug, 'private/created.json', { by: user.email, at: Date.now() }).catch(() => {}) : null, admin ? packs.put(slug, ADMIN_SNAP, admin) : null]);
     await setStatus(slug, { slug, host, url: /^https?:/i.test(raw) ? raw.replace(/^(https?:\/\/)([^/?#]+)/i, (_, a, h) => a.toLowerCase() + h.toLowerCase()) : 'https://' + host, name: host, createdAt: Date.now(), stages: {}, ready: false, done: false, state: 'Reading the site', error: null, cancelled: null, freshRead: !!(prev && fresh),
       /* born: the brand's first read on Brew; a re-read keeps it, a wipe ends it, and a browser that saved another born forgets its onboarding */
-      born: prev?.born || Date.now(), ...(prev?.seenAt ? { seenAt: prev.seenAt } : {}), source: admin ? { kind: 'shopify-admin', shop: admin.shop?.myshopify || null, at: admin.at } : prev?.source || null }); /* a restart keeps reading from the admin */
+      born: prev?.born || Date.now(), feedGate: FEED_GATE && (!prev || (!!prev.feedGate && !prev.feedOpenAt)) ? true : null, /* a re-read of a brand already in use writes at once */ ...(prev?.seenAt ? { seenAt: prev.seenAt } : {}), source: admin ? { kind: 'shopify-admin', shop: admin.shop?.myshopify || null, at: admin.at } : prev?.source || null }); /* a restart keeps reading from the admin */
     packs.drop(slug); await onPack(slug);
     resume(slug).catch((e) => log.error('[build]', slug, e));
     return { slug, status: await status(slug) };
@@ -318,6 +319,13 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       }
 
       await halt(slug); await instant;
+      /* 4a. a brand's first read writes its moves only once someone opens the feed after onboarding (status.feedGate, feedOpened) */
+      if (await waitsOnFeed(slug)) { await setStatus(slug, { state: 'Your moves start when you open your feed' }); await waitForFeed(slug); await halt(slug);
+        /* corrections made on the check page while it waited: the moves are written from them, and from a brief that has them */
+        const p2 = await packs.getJSON(slug, 'profile.json'); if (p2) profile = normalizeProfile(p2); ledger = await packs.getJSON(slug, 'ledger.json', []);
+        const s2 = await status(slug); if (s2?.recheck?.at && +s2.stages?.brief?.at < s2.recheck.at) { if (await budgetPause(slug, 0)) return;
+          await publishBase(slug, profile, ledger, findings); await stage(slug, 'brief', 'running'); await setStatus(slug, { state: 'Writing the brand brief' });
+          brief = await writeBrief(slug, m, profile, ledger); await stage(slug, 'brief', 'done'); packs.drop(slug); await onPack(slug); } }
       /* 4. the moves: wave A (know the brand) first, then the rest; each one becomes cards as it lands */
       if (!m.moves) throw new Error('moves engine not installed');
       const eng = m.moves.createMovesEngine({ ai, treg, log });
@@ -397,6 +405,17 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (told) brief.learned = briefView(told);
     await packs.put(slug, 'brief.md', told ? withLearned(out.md || '', told, { name: profile.name }) : out.md || ''); await packs.put(slug, 'brief.json', brief);
     return brief;
+  }
+  /* the feed gate: set on a brand's first read, lifted by the first open of its feed (feedOpenAt); a feed opened before the brief is done counts */
+  const waitsOnFeed = async (slug) => { const s = await status(slug); return !!s?.feedGate && !s.feedOpenAt; };
+  const waitForFeed = (slug) => new Promise((res) => { const x = st(slug); x.feedOpen = res; waitsOnFeed(slug).then((w) => { if (!w) { x.feedOpen = null; res(); } }, () => {}); });
+  async function feedOpened(slug) {
+    const s = await status(slug); if (!s) return { error: 'unknown brand' };
+    if (!s.feedGate || s.feedOpenAt) return { ok: true, started: !!s.feedOpenAt || !s.feedGate };
+    await setStatus(slug, { feedOpenAt: Date.now() }); emit(slug, { type: 'feed-open' });
+    const x = st(slug), f = x.feedOpen; x.feedOpen = null;
+    if (f) f(); else if (!x.running && !s.done && !s.cancelled) resume(slug).catch((e) => log.error('[build] feed open', slug, e.message)); /* a restart that has not reached the gate yet carries on by itself */
+    return { ok: true, started: true, woke: true };
   }
   /* a read started by someone not signed in (no private/created.json) waits for a signed-in check, with no time limit */
   const anonOf = async (slug) => !!signGate() && !(await packs.getJSON(slug, 'private/created.json', null).catch(() => null));
@@ -1678,5 +1697,5 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (o?.stockWhy) { u.stale[x.n] = { ...o, was: { priority: x.priority, why: x.why, via: x.via }, why: [...Object.values(o.stockWhy), x.why].join(' '), changes: [...new Set([...(o.changes || []), ...(x.changes || [])])].slice(0, 6) }; continue; } /* an out-of-stock mark stays on top */
     u.stale[x.n] = { ...x, at: Date.now(), changes: [...new Set([...(x.changes || []), ...(o?.changes || [])])].slice(0, 6), ...(o && !o.private ? { private: false } : {}) }; } });
   const facts = { pot: potInfo, potSpend, estMove, republish, flagStale, readProduct: async (slug, url) => readProduct(slug, url, (await packs.getJSON(slug, 'profile.json', {})) || {}), readRival, busy: (slug) => !!(st(slug).running || st(slug).checking), setHooks: (h) => Object.assign(hooks, h) };
-  return { ...facts, saveAdmin, paidWork, stop, marketCheck, teamStatics, settleConnect, connectPending, readLive, heal, healPdfs, pdfFor, pdfOn, connected, liveConnected, staleConnected, checkUpdates, rewrite, updates, setAuto, signal, staleSweep, seen, buildInfo, retry, goPro, checkData, applyCheck, liveWeekly, stockSignal, peek: (slug) => st(slug).status, addEmail, start, resume, resumeAll, replayRead, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
+  return { ...facts, saveAdmin, paidWork, stop, marketCheck, teamStatics, settleConnect, connectPending, readLive, heal, healPdfs, pdfFor, pdfOn, connected, liveConnected, staleConnected, checkUpdates, rewrite, updates, setAuto, signal, staleSweep, seen, buildInfo, retry, goPro, checkData, applyCheck, liveWeekly, stockSignal, peek: (slug) => st(slug).status, addEmail, feedOpened, start, resume, resumeAll, replayRead, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
 }

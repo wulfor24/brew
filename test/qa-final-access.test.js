@@ -64,7 +64,7 @@ test('4: the preview counts every card with the ready card’s words; 0 cards ne
   const a = app(), pv = a.slice(a.indexOf('const obPreview = async'), a.indexOf('const LANE_IMG'));
   assert.doesNotMatch(pv, /new ideas/); assert.match(pv, /<b>\$\{all\.length\}<\/b>\$\{all\.length === 1 \? 'card' : 'cards'\}/);
   const fo = a.slice(a.indexOf('const finishOnboarding = async'), a.indexOf("$('#open-feed').onclick"));
-  assert.match(fo, /\$\{n \? `<h3>Your feed is ready/); assert.match(fo, /Your cards are still being written/);
+  assert.match(fo, /\$\{n \? `<h3>Your feed is ready/); assert.match(fo, /Your cards are on their way/);
   assert.match(fo, /\$\{n \? `<div><b class="tnum">\$\{n\}<\/b>\$\{CARDS_WORD\(n\)\}<\/div>` : ''\}/, 'no 0 cards tile');
 });
 

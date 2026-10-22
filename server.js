@@ -714,7 +714,7 @@ const brandRoutes = async (req, res, u) => {
     if (!canEdit) return send(res, 403, { error: 'Only this brand’s team can change its facts. Ask them for access.', team: true }), true;
     const b = await readBody(req), r = await factsDesk.edit(slug, b, { by: fv.email || 'the team' });
     if (r?.data) r.data = await factsDesk.view(slug, { member: fv.member, canEdit }); return send(res, r?.error ? 400 : 200, r), true; }
-  const m = u.pathname.match(/^\/api\/brands\/([a-z0-9-]+)\/(status|summary|confirm|check|build|retry|pro|events|moves|notify|findings|updates)$/); if (!m) return false;
+  const m = u.pathname.match(/^\/api\/brands\/([a-z0-9-]+)\/(status|summary|confirm|check|build|retry|pro|events|moves|notify|findings|updates|feed-open)$/); if (!m) return false;
   const [, slug, what] = m;
   // only the team (or an official email on an unclaimed brand, or SquareUp) changes it: confirm, check, rewrite, retry, auto.
   // Everyone else sees the brand in demo mode
@@ -751,6 +751,9 @@ const brandRoutes = async (req, res, u) => {
     if (v.eligible && !v.member) { await auth.claim(slug, me, 'Confirmed the read'); MEMO.clear(); }
     if (!(await packs.getJSON(slug, 'private/created.json', null))) await packs.put(slug, 'private/created.json', { by: me.email, at: Date.now(), after: 'read' }).catch(() => {}); return null; };
   if (what === 'confirm' && req.method === 'POST') { const g = await signGate(); if (g) return send(res, 401, g), true; const b = await readBody(req); return send(res, 200, await builder.confirm(slug, b.edits || [], b.v2 || null)), true; }
+  /* the first open of the feed after onboarding starts a new brand's moves (build.js feedOpened): the brand's own people only */
+  if (what === 'feed-open' && req.method === 'POST') { if (auth.signinOn() && process.env.BUILD_SIGNIN !== '0' && !(auth.user(req) && (v.member || v.eligible))) return send(res, auth.user(req) ? 403 : 401, { error: 'Only the brand’s team starts its moves.' }), true;
+    return send(res, 200, await builder.feedOpened(slug)), true; }
   if (what === 'build') return send(res, 200, await builder.buildInfo(slug)), true;
   /* an "Out of date" reason that today's store contradicts (a read that took prices in cents: "$59 is now $5,700") is not shown
      (QA 20 Oct): every price change it names must match the product's price today */

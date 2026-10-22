@@ -259,8 +259,8 @@
   const waitsOnCheck = (s) => !!s && !s.done && !s.cancelled && !s.error && !s.confirmedAt && s.stages?.read?.state === 'done' && s.stages?.confirm?.state === 'waiting';
   /* the time left on a brand's moves: only the server's measured pace (status.etaMin), never a guess */
   /* when Brew starts writing on its own if nobody checks the read (status/check writeAt), in the reader's local time */
-  const writeAtLine = (s) => { const t = typeof s?.writeAt === 'number' ? s.writeAt : Date.parse(s?.writeAt || ''); if (!(t > Date.now())) return `Brew starts writing ${Number.isFinite(t) ? 'in a moment' : 'in a few minutes'} with what it read, unless you check first.`;
-    return `Brew starts writing at ${new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} with what it read, unless you check first.`; };
+  const writeAtLine = (s) => { const t = typeof s?.writeAt === 'number' ? s.writeAt : Date.parse(s?.writeAt || ''); if (!(t > Date.now())) return `Brew starts your brief ${Number.isFinite(t) ? 'in a moment' : 'in a few minutes'} with what it read, unless you check first.`;
+    return `Brew starts your brief at ${new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} with what it read, unless you check first.`; };
   const etaOf = (s) => { const m = s?.etaMin; if (!(m > 0)) return ''; return ` · about ${m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 >= 10 ? ` ${m % 60} min` : ''}`} left`; };
   const signWall = (after) => {
     /* signed in, but not with an email at the brand (and not invited): the read is theirs to look at, the moves wait for the team */
@@ -870,8 +870,8 @@
       <span class="so-mark" style="width:30px;height:30px">${SO()}</span>
       ${n ? `<h3>Your feed is ready${myFirst() ? ', ' + esc(myFirst()) : ''}.</h3>
       <p>${n} ${n === 1 ? 'card' : 'cards'}, picked for ${/^[AEIOU]/i.test(R.name) ? 'an' : 'a'} ${esc(R.name.toLowerCase())}. Each comes from a move in your plan. Tap any card to see more.</p>`
-      : `<h3>Your cards are still being written${myFirst() ? ', ' + esc(myFirst()) : ''}.</h3>
-      <p>Brew is writing the moves your cards come from. Each card lands in your feed as its move is done. Open the feed now to see what we read.</p>`}
+      : `<h3>Your cards are on their way${myFirst() ? ', ' + esc(myFirst()) : ''}.</h3>
+      <p>Brew starts writing the moves your cards come from when you open your feed. Each card lands there as its move is done.</p>`}
       <div class="counts">${n ? `<div><b class="tnum">${n}</b>${CARDS_WORD(n)}</div>` : ''}${mvTile()}<div><b class="tnum">5</b>agents</div>${nc ? `<div><b class="tnum">${nc}</b>connected</div>` : ''}</div>
       ${window.BREW_NUMBERS?.storeNote ? `<p class="ready-note">${esc(window.BREW_NUMBERS.storeNote)}</p>` : ''}
       <button class="lm" id="open-feed"><span class="lm-rim"><span class="lm-in">Open my feed ${ic('right', 's18')}</span></span></button>
@@ -1350,8 +1350,10 @@
       </div>
       <button class="fab" aria-label="Jam with the team" data-open-jam>${ic('hand')}</button>`;
   };
+  /* the first open of the feed after onboarding starts a new brand's moves (build.js feedOpened); once per page, a no-op after that */
+  const feedOpened = () => { if (!GEN || LANDING || feedOpened.sent) return; feedOpened.sent = true; api(`/api/brands/${B.slug || BR}/feed-open`, {}).then((r) => { if (r?.woke && BREW && !BREW.done) { BREW = null; loadMV(); } }); };
   const feed = async () => { if (signWall('feed')) return endBootRx();
-    appShell(); const rh = location.hash.match(/^#remix=([^&]+)/); const hp = hashParams(); const h = hp.card ? [null, hp.card] : null; pulseT || (pulseT = setTimeout(pulse, 4000)); window.scrollTo(0, 0); await Promise.all([pullWork(true), renderFeed()]); const p = h && byId(h[1]); if (p) openDetail(p); else if (h) { history.replaceState(null, '', location.pathname); toast('That card is no longer in the feed.'); } if (hp.work) { const wk = WORK.items.find((x) => x.id === hp.work); if (wk) openDetail(byId(wk.cardId) ? { ...byId(wk.cardId), _work: wk } : pseudoPost(wk)); } if (location.hash.startsWith('#jam=')) window.JamRoom?.fromHash(); if (location.hash.startsWith('#jam2=')) { const j2 = decodeURIComponent(location.hash.slice(6)), go = (n = 0) => (window.Jam2 ? window.Jam2.on() && window.Jam2.openId(j2, tapi) : n < 40 && setTimeout(() => go(n + 1), 100)); go(); } /* Jam v2: a reload or a shared address reopens the jam */ if (hp.v && hp.v !== 'feed' && VIEWS()[hp.v]) VIEWS()[hp.v](); const [rcid, rch] = rh ? decodeURIComponent(rh[1]).split('/') : []; const rp = rcid && byId(rcid); if (rp) await openRemix(rp, rch).catch(() => {}); endBootRx(); };
+    feedOpened(); appShell(); const rh = location.hash.match(/^#remix=([^&]+)/); const hp = hashParams(); const h = hp.card ? [null, hp.card] : null; pulseT || (pulseT = setTimeout(pulse, 4000)); window.scrollTo(0, 0); await Promise.all([pullWork(true), renderFeed()]); const p = h && byId(h[1]); if (p) openDetail(p); else if (h) { history.replaceState(null, '', location.pathname); toast('That card is no longer in the feed.'); } if (hp.work) { const wk = WORK.items.find((x) => x.id === hp.work); if (wk) openDetail(byId(wk.cardId) ? { ...byId(wk.cardId), _work: wk } : pseudoPost(wk)); } if (location.hash.startsWith('#jam=')) window.JamRoom?.fromHash(); if (location.hash.startsWith('#jam2=')) { const j2 = decodeURIComponent(location.hash.slice(6)), go = (n = 0) => (window.Jam2 ? window.Jam2.on() && window.Jam2.openId(j2, tapi) : n < 40 && setTimeout(() => go(n + 1), 100)); go(); } /* Jam v2: a reload or a shared address reopens the jam */ if (hp.v && hp.v !== 'feed' && VIEWS()[hp.v]) VIEWS()[hp.v](); const [rcid, rch] = rh ? decodeURIComponent(rh[1]).split('/') : []; const rp = rcid && byId(rcid); if (rp) await openRemix(rp, rch).catch(() => {}); endBootRx(); };
   const counts = () => {
     const sv = $('[data-count="saved"]'), wk = $('[data-count="work"]');
     if (sv) sv.textContent = S.saved.length || ''; if (wk) { const n = WORK.items.filter((w) => w.stage === 'needs_you').length; wk.textContent = n || ''; wk.classList.toggle('hot', !!n); }

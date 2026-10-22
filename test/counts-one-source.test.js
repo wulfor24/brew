@@ -20,7 +20,9 @@ test('the demo replay is one source: the status route and the feed\'s "Your move
   const st = { total: 64, movesDone: 64, done: true, pdfs: {}, stages: {} };
   assert.equal(simStatus(st, { flow: 'ready' }).movesDone, 64);
   assert.equal(simStatus(st, { flow: 'onboarding' }).movesDone, 0);
-  assert.equal(simStatus(st, { flow: 'onboarding', confirmedAt: Date.now() - 600e3 }).movesDone, 64);
+  assert.equal(simStatus(st, { flow: 'onboarding', confirmedAt: Date.now() - 600e3 }).movesDone, 0, 'checked, feed not opened: no moves yet');
+  assert.equal(simStatus(st, { flow: 'onboarding', confirmedAt: Date.now() - 600e3 }).state, 'Your moves start when you open your feed');
+  assert.equal(simStatus(st, { flow: 'onboarding', confirmedAt: Date.now() - 600e3, feedOpenAt: Date.now() - 300e3 }).movesDone, 64);
   assert.match(fsvc, /st = o\.viewStatus\?\.\(B\(\)\.slug, raw\) \|\| raw/);
   assert.match(srv, /viewStatus: DEMO \?/);
 });

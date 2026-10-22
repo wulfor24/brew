@@ -56,7 +56,7 @@ export function reminderMail({ name, slug, i, base = process.env.PUBLIC_URL || '
   const link = `${base}/${slug}?go=feed#check`;
   const subject = i === 0 ? `${name} is waiting for you to check what Brew read` : `Still waiting: check what Brew read for ${name}`;
   const lead = `Brew read ${name}: the store, products, reviews, rivals and ads. The brand brief and the moves are written from what you confirm.`;
-  const when = +writeAt > now ? `Brew starts writing at ${timeLabel(+writeAt, cfg)} with what it read, unless you check first.` : 'Brew starts writing once someone on the team checks it.';
+  const when = +writeAt > now ? `Brew starts your brief at ${timeLabel(+writeAt, cfg)} with what it read, unless you check first.` : 'Brew starts your brief once someone on the team checks it.';
   const since = hours >= 24 ? `It has waited ${Math.floor(hours / 24)} day${hours >= 48 ? 's' : ''}.` : `It has waited ${Math.max(1, Math.round(hours))} hours.`;
   const close = i === 0 ? 'It takes a couple of minutes: fix anything we got wrong, star your hero products, then confirm.' : 'This is the last reminder. The read stays here whenever you’re ready.';
   const html = emailHtml({ title: subject, eyebrow: name, preheader: `${since} One click opens the check page.`, base,
