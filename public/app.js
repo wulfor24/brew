@@ -4276,9 +4276,14 @@
   const TBS = { for: null, brief: null, busy: false, err: null, files: null, filesFor: null };
   const tbWork = () => workOfCard(RX.p?.id);
   const tbSwitch = () => tbWork() ? `<div class="tbm-switch" role="tablist" aria-label="Stage">${[['creative', 'Creative', 'pic'], ['brief', 'Brief', 'doc']].map(([k, n, i]) => `<button role="tab" data-tb-stage="${k}" aria-selected="${(RX.stage || 'creative') === k}">${ic(i, 's14')}${n}</button>`).join('')}</div>` : '';
-  const tbLoad = async (fresh = false) => { const w = tbWork(); if (!w || (TBS.busy && !fresh)) return; if (TBS.for !== w.id) Object.assign(TBS, { brief: null, files: null, filesFor: null }); TBS.for = w.id; TBS.busy = true; TBS.err = null; if (view === 'remix') paintStudio();
+  const tbLoad = async (fresh = false) => { const w = tbWork(); if (!w || (TBS.busy && !fresh)) return; if (TBS.for !== w.id) Object.assign(TBS, { brief: null, files: null, filesFor: null, pdf: null }); TBS.for = w.id; TBS.busy = true; TBS.err = null; if (view === 'remix') paintStudio();
     const r = await tapi('GET', `/api/work/${w.id}/team-brief${fresh ? '?fresh=1' : ''}`).catch((e) => ({ error: e.message })); TBS.busy = false;
-    if (r.brief) TBS.brief = r.brief; else TBS.err = r.error || 'The brief didn’t come together. Try again.'; if (view === 'remix') paintStudio(); };
+    if (r.brief) TBS.brief = r.brief; else TBS.err = r.error || 'The brief didn’t come together. Try again.'; if (view === 'remix') paintStudio();
+    if (r.brief) tbWarm(); };
+  /* the PDF and the files are made ready in the background while the brief is read, so Send opens the email at once (a share
+     sheet only opens straight after the click) */
+  const tbWarm = async () => { if (TBS.warming) return; TBS.warming = true; try { const w = tbWork(); if (!w) return; const r = await tapi('POST', `/api/work/${w.id}/team-brief/pdf`, {}).catch(() => ({}));
+      if (r.pdf && TBS.for === w.id) { TBS.pdf = r.pdf; if (r.brief) TBS.brief = r.brief; await tbFiles(r.pdf).catch(() => {}); } } finally { TBS.warming = false; } };
   const tbOpen = () => { if (!tbWork()) return toast('Open the jam first, then share its brief.'); RX.stage = 'brief'; RX.tbEdit = null; paintStudio(); $('.tbm-scroll')?.scrollTo?.(0, 0); if (!TBS.brief || TBS.for !== tbWork().id || TBS.brief.stale) tbLoad(); };
   const tbText = (s) => { const L = String(s || '').split('\n').map((l) => l.trim()).filter(Boolean); if (!L.length) return '<p class="tbm-none">To confirm.</p>';
     return L.map((l) => /^[-•]\s+/.test(l) ? `<li>${esc(l.replace(/^[-•]\s+/, ''))}</li>` : `<p>${esc(l)}</p>`).join('').replace(/(<li>.*?<\/li>)+/g, (m) => `<ul>${m}</ul>`); };
@@ -4297,8 +4302,8 @@
       <footer class="tbm-f"><button class="linkbtn" data-rx="share-shopos">Or send it to the ShopOS team</button><span class="sp"></span><button class="btn btn-ghost" data-tb-pdf>${ic('down', 's16')}Download PDF</button><button class="btn btn-primary" data-tb-send>${ic('send', 's16')}Send PDF</button></footer>
     </article>`; };
   /* the PDF (made once per state of the brief) and the creatives, as files */
-  const tbPdf = async () => { const w = tbWork(); if (!w) return null; const r = await tapi('POST', `/api/work/${w.id}/team-brief/pdf`, {}).catch((e) => ({ error: e.message }));
-    if (r.brief) TBS.brief = r.brief; if (r.error || !r.pdf) { toast(`${ic('info', 's16')}${esc(r.error || 'The PDF didn’t come together. Try again.')}`); return null; } return r.pdf; };
+  const tbPdf = async () => { const w = tbWork(); if (!w) return null; if (TBS.pdf && TBS.brief?.pdf?.url === TBS.pdf.url) return TBS.pdf; const r = await tapi('POST', `/api/work/${w.id}/team-brief/pdf`, {}).catch((e) => ({ error: e.message }));
+    if (r.brief) TBS.brief = r.brief; if (r.pdf) TBS.pdf = r.pdf; if (r.error || !r.pdf) { toast(`${ic('info', 's16')}${esc(r.error || 'The PDF didn’t come together. Try again.')}`); return null; } return r.pdf; };
   const asciiName = (s) => String(s || 'file').normalize('NFKD').replace(/[^\x20-\x7e]/g, '').replace(/["\\]/g, '').trim() || 'file';
   const tbFiles = async (pdf) => { const key = `${pdf.url}|${(TBS.brief?.creatives || []).map((c) => c.url).join(',')}`; if (TBS.filesFor === key && TBS.files) return TBS.files;
     const get = async (url, name, type) => { const r = await fetch('/' + url); if (!r.ok) return null; const b = await r.blob(); return new File([b], asciiName(name), { type: type || b.type }); };
@@ -4331,8 +4336,8 @@
     const ed = g('[data-tb-ed]'); if (ed && !g('a,button')) { RX.tbEdit = ed.dataset.tbEd; paintStudio(); const ta = $('#tbm-ed'); ta?.focus(); ta?.setSelectionRange(ta.value.length, ta.value.length); return; }
     if (g('[data-tb-cancel]')) { $('#tbm-ed')?.blur(); RX.tbEdit = null; return paintStudio(); }
     const sv = g('[data-tb-save]'), rs = g('[data-tb-reset]'); if (sv || rs) { const w = tbWork(), k = RX.tbEdit, t = rs ? '' : $('#tbm-ed')?.value || ''; $('#tbm-ed')?.blur(); RX.tbEdit = null;
-      const r = await tapi('POST', `/api/work/${w.id}/team-brief/edit`, { k, t }); if (r.brief) TBS.brief = r.brief; if (r.error) toast(esc(r.error)); return paintStudio(); }
-    const ev = g('[data-tb-evrm]'); if (ev) { const r = await tapi('POST', `/api/work/${tbWork().id}/team-brief/evidence`, { i: +ev.dataset.tbEvrm }); if (r.brief) TBS.brief = r.brief; return paintStudio(); }
+      const r = await tapi('POST', `/api/work/${w.id}/team-brief/edit`, { k, t }); if (r.brief) { TBS.brief = r.brief; TBS.pdf = null; tbWarm(); } if (r.error) toast(esc(r.error)); return paintStudio(); }
+    const ev = g('[data-tb-evrm]'); if (ev) { const r = await tapi('POST', `/api/work/${tbWork().id}/team-brief/evidence`, { i: +ev.dataset.tbEvrm }); if (r.brief) { TBS.brief = r.brief; TBS.pdf = null; tbWarm(); } return paintStudio(); }
     const pd = g('[data-tb-pdf]'); if (pd) return tbDownload(pd);
     const sd = g('[data-tb-send]'); if (sd) return tbSend(sd);
     if (g('[data-tb-files]')) { (TBS.brief?.creatives || []).forEach((c, i) => setTimeout(() => dl('/' + c.url, c.name), i * 300)); } });
