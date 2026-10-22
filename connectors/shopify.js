@@ -48,7 +48,13 @@ export default {
     const s = shopOf(shop); if (!s) throw Object.assign(new Error('Enter your store address, like your-store.myshopify.com.'), { user: true });
     if (tk) { if (!/^shp(at|ca|ss|pa)_/.test(tk.trim())) throw Object.assign(new Error('That does not look like an Admin API access token (it starts with shpat_).'), { user: true }); return { shop: s, token: tk.trim(), app: 'token' }; }
     if (!clientId || !clientSecret) throw Object.assign(new Error('Paste the client ID and secret of your app, or an Admin API access token.'), { user: true });
-    return setOf(await token(s, { grant_type: 'client_credentials', client_id: clientId.trim(), client_secret: clientSecret.trim() }), { shop: s, app: 'own', clientId: clientId.trim(), clientSecret: clientSecret.trim() });
+    const t = await token(s, { grant_type: 'client_credentials', client_id: clientId.trim(), client_secret: clientSecret.trim() }).catch((e) => {
+      /* the own-app route only reaches a store in the app's own Shopify organization; say so instead of Shopify's code */
+      if (/shop_not_permitted/i.test(e.message)) throw Object.assign(new Error(`${s} is not in the same Shopify organization as this app. Create the app in the Dev Dashboard while signed in as the store’s owner, then paste its keys.`), { user: true });
+      if (/invalid_client/i.test(e.message)) throw Object.assign(new Error('Shopify did not accept that Client ID and secret. Copy both again from the app’s Settings.'), { user: true });
+      throw e;
+    });
+    return setOf(t, { shop: s, app: 'own', clientId: clientId.trim(), clientSecret: clientSecret.trim() });
   },
   // tokens expire: the public app refreshes with its refresh token, the brand's own app mints a new one
   async fresh(c) {
