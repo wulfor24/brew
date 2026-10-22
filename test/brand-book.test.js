@@ -176,7 +176,7 @@ test('the kit: an AI-ready brand.md, clean JSON, W3C tokens, an .ase palette and
   assert.ok(!unzip(z.buf).get('brand.md').toString().includes('Secret launch voice'));
 });
 
-test('the book keeps itself current: what it is made from changes → rebuilt (not more than every 6 hours), and at least every 14 days', async () => {
+test('the book keeps itself current: what it is made from changes → rebuilt (not more than every 6 hours), and at least every week', async () => {
   const { bookSig } = await import('../brand-book-read.js');
   let t = Date.parse('2026-10-23T00:00:00Z');
   const p = structuredClone(profile), files = new Map([['cozy|profile.json', p], ['cozy|brief.json', brief]]);
@@ -189,6 +189,36 @@ test('the book keeps itself current: what it is made from changes → rebuilt (n
   t += 2 * 36e5; assert.equal(await r.stale('cozy'), false, 'not twice in six hours');
   t += 5 * 36e5; assert.equal(await r.stale('cozy'), true, 'a new ad rewrites it');
   p.ads.own.items.shift(); assert.equal(await r.stale('cozy'), false, 'nothing changed');
-  t += 15 * 864e5; assert.equal(await r.stale('cozy'), true, 'two weeks on, it is refreshed anyway');
+  t += 8 * 864e5; assert.equal(await r.stale('cozy'), true, 'a week on, it is refreshed anyway');
   p.meta.readAt = '2026-11-01T00:00:00Z'; t = Date.parse(b.at) + 1000; assert.equal(await r.stale('cozy'), true, 'a re-read rewrites it at once');
+});
+
+test('enrichment: fresh posts with plays, TikToks and film words; pictures saved once; a failure kept as an error; weekly; capped', async () => {
+  const { createEnricher } = await import('../brand-enrich.js');
+  const p = { host: 'cozy.example', socials: { instagram: { url: 'https://instagram.com/cozy', handle: 'cozy' }, tiktok: { url: 'https://www.tiktok.com/@cozy' }, youtube: { videos: [{ url: 'https://www.youtube.com/watch?v=abcdefghijk', title: 'Meet Cozy' }] } } };
+  const files = new Map([['cozy|profile.json', p]]), calls = [], fetched = [];
+  const packs = { getJSON: async (s, n, d) => (files.has(`${s}|${n}`) ? files.get(`${s}|${n}`) : d), get: async (s, n) => files.get(`${s}|${n}`) || null, put: async (s, n, v) => files.set(`${s}|${n}`, v) };
+  let t = Date.parse('2026-10-23T00:00:00Z');
+  const treg = { live: true, meter: { usd: 0 }, call: async (id, o) => { calls.push(id); treg.meter.usd += 0.002;
+    if (id === 'crawl4ai.instagram.user.posts') return { rows: [{ url: 'https://instagram.com/p/R1/', code: 'R1', caption: 'Toasty toes', likes: 90, kind: 'reel', image: 'https://cdn/r1.jpg', video_url: 'https://cdn/r1.mp4' }] };
+    if (id === 'anyapi.instagram.user.reels') return { output: { data: { reels: [{ shortcode: 'R1', views: 12000 }] } } };
+    if (id === 'crawl4ai.tiktok.user.videos') throw new Error('HTTP 502');
+    if (id === 'crawl4ai.youtube.video.captions') return { rows: [{ text: 'Hi, I am the founder and my feet were always cold.' }] }; } };
+  const e = createEnricher({ packs, treg, now: () => t, log: { info() {}, warn() {} }, fetchFile: async (u) => { fetched.push(u); return { buf: Buffer.from('x'), type: 'image/jpeg' }; } });
+  const a = await e.run('cozy');
+  assert.equal(a.ig.posts[0].views, 12000); assert.equal(a.ig.posts[0].img, '/b/cozy/a/ig-R1.jpg'); assert.equal(a.ig.posts[0].video, '/b/cozy/a/ig-R1-video.mp4');
+  assert.match(a.errors.tiktok, /502/); assert.equal(a.tiktok, null, 'a failed source is an error, never an empty list');
+  assert.match(a.yt.abcdefghijk.text, /feet were always cold/);
+  const n = calls.length; await e.run('cozy'); assert.equal(calls.length, n, 'not again within the week');
+  t += 8 * 864e5; fetched.length = 0; const b = await e.run('cozy');
+  assert.ok(!fetched.length, 'saved pictures and videos are never fetched again'); assert.ok(!calls.slice(n).includes('crawl4ai.youtube.video.captions'), 'a film is transcribed once');
+  assert.ok(b.ig.posts.length);
+  const lib = libraryOf({ ...profile, socials: {} }, { enrich: b });
+  assert.equal(lib['ig-reel'][0].proof, '12,000 plays'); assert.equal(lib['ig-reel'][0].video, '/b/cozy/a/ig-R1-video.mp4');
+  const ev = evidenceOf({ profile: {}, brief: {}, enrich: b }); assert.ok(ev.some((x) => x.kind === 'film-words'));
+  const capped = createEnricher({ packs: { ...packs, getJSON: async (s, n, d) => (n === 'profile.json' ? p : d) }, treg: { live: true, meter: { usd: 0 }, call: async () => { throw new Error('x'); } }, now: () => t, log: { info() {} } });
+  treg.meter.usd = 0; const cTreg = { live: true, meter: { usd: 0 }, call: async (id) => { cTreg.meter.usd += 0.6; return { rows: [] }; } };
+  const c = await createEnricher({ packs: { ...packs, getJSON: async (s, n, d) => (n === 'profile.json' ? p : d), put: async () => {} }, treg: cTreg, now: () => t, log: { info() {} } }).run('cozy');
+  assert.ok(c.capped); assert.ok(c.usd < 1.3, 'stops at the cap');
+  void capped;
 });

@@ -38,7 +38,7 @@ export function familiesFor(kind = '') {
   return ['ad-image', 'ig-post', 'ad-carousel', 'product-photo', 'site-photo'];
 }
 const isAsset = (p) => /^\/b\/[^/]+\/a\//.test(String(p || ''));
-export function libraryOf(profile = {}, { max = 6 } = {}) {
+export function libraryOf(profile = {}, { max = 6, enrich = null } = {}) {
   const fam = {}, push = (f, r) => { if (r.src) (fam[f] ||= []).push(r); };
   for (const a of profile.ads?.own?.items || []) {
     if (!isAsset(a.poster)) continue; /* an expired CDN link is no reference */
@@ -46,13 +46,15 @@ export function libraryOf(profile = {}, { max = 6 } = {}) {
     push(f, { id: `ad:${a.id}`, src: a.poster, video: isAsset(a.video) ? a.video : null, words: tidy([a.hook, a.body].filter(Boolean).join(' — '), 220), cta: a.cta || null, url: a.url || null,
       score: (+a.days || 0) * (1 + Math.log2(+a.versions || 1)), proof: a.days ? `Running ${a.days} days${a.versions > 1 ? `, ${a.versions} versions` : ''}` : null, kind: 'Their ad' });
   }
-  for (const x of profile.socials?.instagram?.posts || []) {
+  /* Instagram from this week's enrichment when there is one (fresh, with plays and saved reel videos), else the read's */
+  for (const x of (enrich?.ig?.posts?.length ? enrich.ig.posts : profile.socials?.instagram?.posts) || []) {
     if (!isAsset(x.img)) continue;
     const f = /reel|video|clip|igtv/i.test(x.kind) ? 'ig-reel' : /carousel|album|sidecar/i.test(x.kind) ? 'ig-carousel' : 'ig-post';
-    push(f, { id: `ig:${x.url}`, src: x.img, words: tidy(x.caption, 220), url: x.url || null, score: +x.likes || 0, proof: x.likes != null ? `${(+x.likes).toLocaleString('en-US')} likes` : null, kind: 'Their Instagram' });
+    push(f, { id: `ig:${x.url}`, src: x.img, video: isAsset(x.video) ? x.video : null, words: tidy(x.caption, 220), url: x.url || null, score: (+x.views || 0) / 20 + (+x.likes || 0),
+      proof: x.views != null ? `${(+x.views).toLocaleString('en-US')} plays` : x.likes != null ? `${(+x.likes).toLocaleString('en-US')} likes` : null, kind: 'Their Instagram' });
   }
   for (const v of profile.socials?.youtube?.videos || []) if (isAsset(v.thumb)) push('youtube', { id: `yt:${v.url}`, src: v.thumb, words: tidy(v.title, 160), url: v.url, score: +v.views || 0, proof: v.views != null ? `${(+v.views).toLocaleString('en-US')} views` : null, kind: 'Their film' });
-  for (const t of profile.socials?.tiktok?.videos || []) if (isAsset(t.thumb)) push('tiktok', { id: `tt:${t.url}`, src: t.thumb, words: tidy(t.caption, 200), url: t.url, score: +t.views || 0, proof: t.views != null ? `${(+t.views).toLocaleString('en-US')} views` : null, kind: 'Their TikTok' });
+  for (const t of enrich?.tiktok?.videos || profile.socials?.tiktok?.videos || []) if (isAsset(t.thumb)) push('tiktok', { id: `tt:${t.url}`, src: t.thumb, words: tidy(t.caption, 200), url: t.url, score: +t.views || 0, proof: t.views != null ? `${(+t.views).toLocaleString('en-US')} views` : null, kind: 'Their TikTok' });
   const prods = profile.catalog?.products || [], hero = new Set(profile.catalog?.hero || []);
   for (const p of [...prods.filter((x) => hero.has(x.handle)), ...prods.filter((x) => !hero.has(x.handle))]) if (isAsset(p.img)) push('product-photo', { id: `pr:${p.handle}`, src: p.img, words: p.title, url: p.url || null, score: hero.has(p.handle) ? 1 : 0, proof: hero.has(p.handle) ? 'Best seller' : null, kind: 'Their product photo' });
   for (const f of Object.keys(fam)) fam[f] = fam[f].sort((a, b) => b.score - a.score).slice(0, max);
@@ -99,17 +101,20 @@ export function freeChapters({ profile = {}, brief = {}, ledger = [], homeText =
 }
 
 /* ---------------- the evidence the writer reads, numbered so every line can say where it came from ---------------- */
-export function evidenceOf({ profile = {}, brief = {}, pages = [] } = {}) {
+export function evidenceOf({ profile = {}, brief = {}, pages = [], enrich = null } = {}) {
   const E = []; const add = (kind, text, src) => { const t = tidy(text, kind === 'page' ? 6000 : 600); if (t.length > 12) E.push({ id: `E${E.length + 1}`, kind, text: t, src: src || null }); };
   if (profile.tagline) add('tagline', profile.tagline, profile.url);
   if (profile.descriptor) add('descriptor', profile.descriptor, profile.url);
   if (profile.about) add('about', profile.about, profile.aboutUrl || profile.url);
   for (const p of pages) add(p.guide ? 'brand-guide' : 'page', p.text, p.url);
   for (const pr of (profile.catalog?.products || []).slice(0, 12)) add('product', [pr.title, pr.type, pr.about, ...(pr.claims || []).slice(0, 3)].filter(Boolean).join(' · '), pr.url);
-  const ig = [...(profile.socials?.instagram?.posts || [])].filter((x) => x.caption).sort((a, b) => (b.likes || 0) - (a.likes || 0)).slice(0, 8);
+  const ig = [...((enrich?.ig?.posts?.length ? enrich.ig.posts : profile.socials?.instagram?.posts) || [])].filter((x) => x.caption).sort((a, b) => (b.likes || 0) - (a.likes || 0)).slice(0, 8);
   for (const x of ig) add('instagram', x.caption, x.url);
   for (const a of (profile.ads?.own?.items || []).slice(0, 8)) add('ad', [a.hook, a.body, a.cta && `CTA: ${a.cta}`].filter(Boolean).join(' — '), a.url);
   for (const v of (profile.socials?.youtube?.videos || []).slice(0, 4)) add('youtube', v.title, v.url);
+  for (const t of (enrich?.tiktok?.videos || []).filter((x) => x.caption).sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5)) add('tiktok', t.caption, t.url);
+  /* what the brand says out loud in its own films: the spoken voice, for scripts and voiceovers */
+  for (const f of Object.values(enrich?.yt || {}).filter((x) => x.text)) E.push({ id: `E${E.length + 1}`, kind: 'film-words', text: tidy(f.text, 2500), src: f.url || null });
   for (const q of (profile.reviews?.quotes || []).slice(0, 8)) add('review', q.text, q.url || null);
   if (brief?.language?.length) add('customer-words', brief.language.join(', '), null);
   for (const c of (brief?.claims || []).slice(0, 8)) add('claim', `${c.claim}${c.basis ? ` (${c.basis})` : ''}`, null);
@@ -209,27 +214,29 @@ async function pictures(slug, profile, library, { packs }) {
 }
 
 /* what the book is made from, as one short hash: when it changes, the book is written again */
-export function bookSig(profile = {}, brief = {}) {
+export function bookSig(profile = {}, brief = {}, enrich = null) {
   const id = profile.identity || {};
   return hash(JSON.stringify([profile.tagline, profile.descriptor, profile.about, id.logo, id.colors, id.fonts,
     (profile.ads?.own?.items || []).map((a) => [a.id, a.poster, a.video]), (profile.socials?.instagram?.posts || []).map((x) => [x.url, x.img]),
     (profile.socials?.youtube?.videos || []).map((v) => v.url), (profile.socials?.tiktok?.videos || []).map((v) => v.url),
-    profile.catalog?.hero, (profile.catalog?.products || []).length, (profile.reviews?.quotes || []).map((q) => q.text?.slice(0, 40)), brief?.at, (brief?.claims || []).length]));
+    profile.catalog?.hero, (profile.catalog?.products || []).length, (profile.reviews?.quotes || []).map((q) => q.text?.slice(0, 40)), brief?.at, (brief?.claims || []).length, enrich?.at || null]));
 }
 
-export function createBookReader({ packs, ai, treg = null, log = console, fetchText = null, now = () => Date.now() }) {
+export function createBookReader({ packs, ai, treg = null, enricher = null, log = console, fetchText = null, now = () => Date.now() }) {
   const running = new Map(), fetch1 = fetchText || fetcherWith(treg);
   async function build(slug, { why = 'read' } = {}) {
     const P = (n, d) => packs.getJSON(slug, n, d).catch(() => d);
     const [profile, brief, ledger, config] = await Promise.all([P('profile.json', null), P('brief.json', null), P('ledger.json', []), P('config.json', {})]);
     if (!profile?.host) return { error: 'The store hasn’t been read yet.', skip: true };
     if (profile.closed) return { error: 'This store isn’t open yet, so there is nothing to build a brand book from.', skip: true };
+    /* this week's fresh posts, reels, TikToks and film words (paid, capped, saved once); else what was saved last time */
+    const enrich = enricher ? await enricher.run(slug).catch((e) => (log.warn?.('[book] enrich', slug, e.message), null)) : await P('enrich.json', null);
     const { pages, guides, errors } = await fetchPages(profile, { fetchText: fetch1, log });
     const home = pages.find((p) => p.home)?.text || '';
     const free = freeChapters({ profile, brief: brief || {}, ledger: Array.isArray(ledger) ? ledger : [], homeText: home, config: config || {} });
-    const library = libraryOf(profile);
-    const E = evidenceOf({ profile, brief: brief || {}, pages });
-    const base = { v: BOOK_V, sig: bookSig(profile, brief), at: new Date(now()).toISOString(), readAt: profile.meta?.readAt || null, why, guides, pageErrors: errors, ...free, library,
+    const library = libraryOf(profile, { enrich });
+    const E = evidenceOf({ profile, brief: brief || {}, pages, enrich });
+    const base = { v: BOOK_V, sig: bookSig(profile, brief, enrich), enrichErrors: enrich?.errors && Object.keys(enrich.errors).length ? enrich.errors : null, at: new Date(now()).toISOString(), readAt: profile.meta?.readAt || null, why, guides, pageErrors: errors, ...free, library,
       evidence: E.map(({ id, kind, src, text }) => ({ id, kind, url: src, text: tidy(text, 240) })) };
     if (!ai?.call) return { ...base, error: 'The AI is off on this server, so the voice, story and look weren’t written.' };
     const pics = await pictures(slug, profile, library, { packs });
@@ -256,16 +263,16 @@ export function createBookReader({ packs, ai, treg = null, log = console, fetchT
   }
   /* built once per read: missing, an older version, older than the read, or an error from more than an hour ago */
   /* kept up to date by itself: rebuilt when anything it is made from changes (a re-read, healed ads, new posts or films, new
-     products, a new brief, a new kit), at most every 6 hours for those, and at least every 14 days. A re-read or a new version
+     products, a new brief, a new kit), at most every 6 hours for those, and at least every week (with fresh posts, reels, TikToks and films). A re-read or a new version
      rebuilds at once; an error retries after an hour. Team edits and uploads never wait: they sit on top and show at once */
   async function stale(slug) {
-    const [b, p, br] = await Promise.all([packs.getJSON(slug, FILE, null).catch(() => null), packs.getJSON(slug, 'profile.json', null).catch(() => null), packs.getJSON(slug, 'brief.json', null).catch(() => null)]);
+    const [b, p, br, en] = await Promise.all([packs.getJSON(slug, FILE, null).catch(() => null), packs.getJSON(slug, 'profile.json', null).catch(() => null), packs.getJSON(slug, 'brief.json', null).catch(() => null), packs.getJSON(slug, 'enrich.json', null).catch(() => null)]);
     if (!p?.host || p.closed) return false;
     if (!b || b.v !== BOOK_V) return true;
     if (p.meta?.readAt && b.readAt !== p.meta.readAt) return true;
     const age = now() - Date.parse(b.at || 0);
     if (b.error) return age > 36e5;
-    return (b.sig !== bookSig(p, br) && age > 6 * 36e5) || age > 14 * 864e5;
+    return (b.sig !== bookSig(p, br, en) && age > 6 * 36e5) || age > 7 * 864e5; /* weekly at least: the enrichment refreshes on the same beat */
   }
   async function ensure(slug, opts = {}) {
     if (running.has(slug)) return running.get(slug);
