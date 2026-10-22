@@ -10,11 +10,14 @@ import { RECIPES, FAMILIES, SIZES, HOW, HOW_LABEL, recipe, recipeFor, alsoFor, p
 import { newJam, newBoard, boardOf, headOf, bumpConcept, fromV1, jamView, note, uid, OWNERS, BRIEF_STATUS } from './core.js';
 import { productFor, productTiles } from './ingredients.js';
 import { withBrowser } from '../pdf/render.js';
+import { answerGrounded } from '../jam-answer.js';
 
 export function mountJam2(d) {
   const { on, packs, slugOfT, brandOfT, meOf, reqOf, cardOf, sourceOf, refsOf, isMock, spend, log = console } = d;
+  /* the team pieces v1 already has, reused as they are: presence (JAMS.beat/here), the team list and invites, the jam emails, Slack, memory */
+  const { presence = null, teamOf = null, inviteTo = null, jamMail = null, slack = null, memoryOf = null } = d;
   const store = createJam2Store({ packs, log }), bb = createBrandbook({ packs, log });
-  const engines = createEngines({ geminiImage: d.geminiImage, vertexVideo: d.vertexVideo, vertexVoice: d.vertexVoice, finals: d.finals, saveGen: d.saveGen, genFile: d.genFile, photo: d.photoAsync, mock: isMock, log });
+  const engines = createEngines({ geminiImage: d.geminiImage, vertexVideo: d.vertexVideo, vertexVoice: d.vertexVoice, vertexMusic: d.vertexMusic, finals: d.finals, saveGen: d.saveGen, genFile: d.genFile, photo: d.photoAsync, mock: isMock, log });
   const maker = createMaker({ engines, brandbook: bb, claudeTool: d.claudeTool, isMock, spend, launchBrowser: d.launchBrowser, withBrowser, shoot: d.shoot, saveGen: d.saveGen, genFile: d.genFile, photoAsync: d.photoAsync, log });
   const ready = createReady({ maker, zipBuffer: d.zipBuffer, log });
   const busy = new Map(); // `${jid}:${bid}` → { op, at, error? }
@@ -24,13 +27,17 @@ export function mountJam2(d) {
     const slug = slugOfT(t), br = brandOfT(t), card = jam.cardId ? cardOf(t, jam.cardId) : null, view = bb.view(await bb.load(slug));
     const refs = await refsOf(slug).catch(() => []), catalog = br?.catalog || [];
     const prod = productFor({ card, catalog, refs, pick: pick || jam.product || null, lanePhoto: null });
-    return { slug, jam, card, bbv: view, catalog, product: prod, by: whoOf(t).me, source: sourceOf(t, card), cuts: jam.cuts || (jam.cuts = {}) };
+    let memory = ''; try { memory = memoryOf ? memoryOf(t, card?.agent && card.agent !== 'brew' ? card.agent : 'creative') || '' : ''; } catch { memory = ''; }
+    return { slug, jam, card, bbv: view, catalog, product: prod, by: whoOf(t).me, source: sourceOf(t, card), cuts: jam.cuts || (jam.cuts = {}), memory, notes: (jam.notes || []).map((n) => n.text) };
   }
   /* run slow work in the background; the board says what it is doing and any error in plain words */
   const runBg = (t, jam, bid, op, fn) => { const k = `${jam.id}:${bid}`; if (busy.get(k)?.op && !busy.get(k).error) return false; busy.set(k, { op, at: Date.now() });
     Promise.resolve().then(fn).then(() => busy.delete(k)).catch((e) => { log.warn?.('[jam2]', op, e.message); busy.set(k, { op, at: Date.now(), error: e.budget ? e.message : e.open ? e.message : `${e.message}`.slice(0, 240) }); })
       .finally(() => { jam.updatedAt = Date.now(); return store.put(slugOfT(t), jam); }).catch((e) => log.warn?.('[jam2] save after', op, e.message)); return true; };
-  const out = (jam) => { const v = jamView(jam); v.busy = Object.fromEntries(jam.boards.map((b) => [b.id, busy.get(`${jam.id}:${b.id}`) || null])); delete v.cuts; return v; };
+  /* a board made with a product whose catalog price has changed since says so (words can follow free) */
+  const priceAlerts = (t, jam) => { const cat = brandOfT(t)?.catalog || []; for (const b of jam.boards) { const m = headOf(b)?.made4; b.priceAlert = null; if (!m?.price) continue;
+    const c = cat.find((x) => (m.handle && x.handle === m.handle) || (m.name && (x.t || x.title) === m.name)); if (c?.price != null && String(c.price) !== m.price) b.priceAlert = { name: m.name, was: m.price, now: String(c.price) }; } };
+  const out = (jam, t = null) => { if (t) try { priceAlerts(t, jam); } catch {} const v = jamView(jam); v.busy = Object.fromEntries(jam.boards.map((b) => [b.id, busy.get(`${jam.id}:${b.id}`) || null])); delete v.cuts; return v; };
   const load = async (t, jid) => { const j = await store.get(slugOfT(t), jid, whoOf(t)); if (!j) throw Object.assign(new Error('not found'), { status: 404 }); return j; };
   const wrap = (fn) => async (b, t, p, q) => { try { return await fn(b, t, p, q); } catch (e) { return { error: e.message, status: e.status || 200 }; } };
 
@@ -57,9 +64,11 @@ export function mountJam2(d) {
       const bd = jam.boards[0]; runBg(t, jam, bd.id, 'first', async () => { const ctx = await ctxOf(t, jam); await maker.first(ctx, bd); }); }
     return { jam: out(jam), also: alsoFor(jam.boards[0]?.recipe) };
   }));
-  on('GET', '/api/jam2/jams/:jid', wrap(async (b, t, p) => { const j = await load(t, p.jid); return { jam: out(j), also: alsoFor(j.boards[0]?.recipe) }; }));
+  on('GET', '/api/jam2/jams/:jid', wrap(async (b, t, p) => { const j = await load(t, p.jid); return { jam: out(j, t), also: alsoFor(j.boards[0]?.recipe) }; }));
   on('POST', '/api/jam2/jams/:jid/concept', wrap(async (b, t, p) => { const j = await load(t, p.jid); const changed = bumpConcept(j, b || {}, whoOf(t).me); await store.put(slugOfT(t), j); return { jam: out(j), changed }; }));
-  on('POST', '/api/jam2/jams/:jid/boards', wrap(async (b, t, p) => { const j = await load(t, p.jid); if (!recipe(b.recipe)) return { error: 'Pick what to make.' }; if (j.boards.length >= 12) return { error: 'This jam has 12 boards. Start a new jam for more.' };
+  on('POST', '/api/jam2/jams/:jid/boards', wrap(async (b, t, p) => { const j = await load(t, p.jid);
+    if (b.fromRecipe) { const rc = ((await bb.load(slugOfT(t))).recipes || []).find((x) => x.id === b.fromRecipe); if (!rc) return { error: 'That recipe is gone.' }; Object.assign(b, { recipe: rc.recipe, label: rc.name, ask: rc.ask, how: rc.how }); }
+    if (!recipe(b.recipe)) return { error: 'Pick what to make.' }; if (j.boards.length >= 12) return { error: 'This jam has 12 boards. Start a new jam for more.' };
     const bd = newBoard(b.recipe, { how: b.how || bb.view(await bb.load(slugOfT(t))).comfort?.how, conceptRev: j.concept.rev, label: b.label || null, ask: b.ask || '' }); j.boards.push(bd); await store.put(slugOfT(t), j);
     runBg(t, j, bd.id, 'first', async () => maker.first(await ctxOf(t, j), bd)); return { jam: out(j) }; }));
   on('POST', '/api/jam2/jams/:jid/boards/:bid/remove', wrap(async (b, t, p) => { const j = await load(t, p.jid); j.boards = j.boards.filter((x) => x.id !== p.bid); await store.put(slugOfT(t), j); return { jam: out(j) }; }));
@@ -88,15 +97,92 @@ export function mountJam2(d) {
     const h = headOf(bd); const q = await maker.videoQuote(ctx, bd, h); if (q.error) return { error: q.error };
     if (!isMock() && !(+b.confirmUsd + 0.01 >= q.usd)) return { needsConfirm: true, quote: q };
     runBg(t, j, bd.id, 'render', async () => { const r = await maker.renderVideo(ctx, bd, { confirmUsd: b.confirmUsd ?? q.usd }); if (r.needsConfirm) throw new Error('The price went up; check it and confirm again.'); }); return { jam: out(j), quote: q }; }));
+  /* one shot of a rendered video: edit its first frame and animate it again (price first), the rest of the video kept */
+  on('POST', '/api/jam2/jams/:jid/boards/:bid/reshot', wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, p.bid); if (!bd) return { error: 'not found' }; const ctx = await ctxOf(t, j);
+    const i = Number.isInteger(b.i) ? b.i : -1, ask = String(b.ask || '').slice(0, 300).trim(); if (!ask) return { error: 'Say what should change in this shot.' };
+    const region = b.region && [b.region.x, b.region.y, b.region.w, b.region.h].every((v) => Number.isFinite(+v) && +v >= 0 && +v <= 1) ? { x: +b.region.x, y: +b.region.y, w: +b.region.w, h: +b.region.h } : null;
+    if (b.confirmUsd == null && !isMock()) { const r = await maker.reshot(ctx, bd, { i, ask, region, confirmUsd: null }); return r.needsConfirm ? { needsConfirm: true, quote: r.quote } : { jam: out(j) }; }
+    const started = runBg(t, j, bd.id, 'reshot', async () => { const r = await maker.reshot(await ctxOf(t, j), bd, { i, ask, region, confirmUsd: b.confirmUsd ?? 0 }); if (r.needsConfirm) throw new Error('The price went up; check it and confirm again.'); });
+    return started ? { jam: out(j) } : { error: 'Brew is still working on this board.', jam: out(j) }; }));
   on('POST', '/api/jam2/jams/:jid/boards/:bid/approve', wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, p.bid), h = headOf(bd); if (!h) return { error: 'Nothing to approve yet.' };
     if (h.gate && !h.gate.pass && !b.anyway) return { error: `Fix this first: ${h.gate.checks.filter((c) => !c.ok && !c.soft).map((c) => c.why).join(' ')}`, gate: h.gate };
     const w = whoOf(t); bd.approved = { takeId: h.id, by: w.email, at: Date.now() }; bd.status = 'approved'; note(j, `approved ${bd.label}`, w.email);
+    if (bd.okAsk?.by && bd.okAsk.by !== w.email) notifyPeople(t, j, { kind: 'approved', to: [bd.okAsk.by], text: `${bd.label} v${h.n}`, id: `okd_${bd.id}_${h.n}` }); bd.okAsk = null;
     bb.taste(slugOfT(t), { kind: 'do', what: `${bd.recipe}:${h.op}`, text: `approved a ${bd.label.toLowerCase()} (${h.op})` }).catch(() => {}); await store.put(slugOfT(t), j); return { jam: out(j) }; }));
   on('POST', '/api/jam2/jams/:jid/boards/:bid/unapprove', wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, p.bid); if (bd) { bd.approved = null; bd.status = 'draft'; } await store.put(slugOfT(t), j); return { jam: out(j) }; }));
+
+  /* the same picture for every product in the catalog: a new board, one slide per product (scene and words kept) */
+  on('POST', '/api/jam2/jams/:jid/boards/:bid/all', wrap(async (b, t, p) => { const j = await load(t, p.jid), src = boardOf(j, p.bid); if (!headOf(src)?.scene) return { error: 'Make the picture first.' };
+    if (j.boards.length >= 12) return { error: 'This jam has 12 boards. Start a new jam for more.' };
+    const nb = newBoard('carousel-ad', { label: 'Every product', conceptRev: j.concept.rev }); j.boards.push(nb); await store.put(slugOfT(t), j);
+    runBg(t, j, nb.id, 'all', async () => maker.allProducts(await ctxOf(t, j), nb, src)); return { jam: out(j) }; }));
+  /* recipes: a board's look and layout saved by name, to start the next one from */
+  on('POST', '/api/jam2/recipes', wrap(async (b, t) => { const w = whoOf(t); if (!w.member && !w.staff) return { error: 'Only the brand’s team can save recipes.' };
+    const j = await load(t, b.jid), bd = boardOf(j, b.bid), h = headOf(bd); if (!h) return { error: 'Make it first.' };
+    const raw = await bb.load(slugOfT(t)); const r = { id: uid('rc'), name: String(b.name || bd.label).slice(0, 60), recipe: bd.recipe, label: bd.label, size: bd.size, how: bd.how,
+      ask: [bd.ask, h.words?.scene && `The look: ${h.words.scene}`, h.words?.headline && `Headline style like: “${h.words.headline}”`].filter(Boolean).join(' ').slice(0, 600), by: w.email, at: Date.now() };
+    raw.recipes = [r, ...(raw.recipes || []).filter((x) => x.name !== r.name)].slice(0, 30); await bb.save(slugOfT(t), raw); return { recipe: r, recipes: raw.recipes }; }));
+  on('POST', '/api/jam2/recipes/:rid/remove', wrap(async (b, t, p) => { const w = whoOf(t); if (!w.member && !w.staff) return { error: 'Only the brand’s team can change recipes.' };
+    const raw = await bb.load(slugOfT(t)); raw.recipes = (raw.recipes || []).filter((x) => x.id !== p.rid); await bb.save(slugOfT(t), raw); return { recipes: raw.recipes }; }));
+  on('GET', '/api/jam2/recipes', wrap(async (b, t) => ({ recipes: (await bb.load(slugOfT(t))).recipes || [] })));
+  /* pick a day: the brand's own best slots from its Instagram posts when there are enough of them; otherwise it says it has no data */
+  on('GET', '/api/jam2/slots', wrap(async (b, t) => { const prof = await packs.getJSON(slugOfT(t), 'profile.json', null).catch(() => null); const posts = (prof?.socials?.instagram?.posts || []).map((x) => ({ at: Date.parse(x.at || x.ts || x.timestamp || x.date || x.taken_at || ''), likes: +(x.likes || x.likesCount || 0), comments: +(x.comments || x.commentsCount || 0) })).filter((x) => Number.isFinite(x.at));
+    if (posts.length < 8) return { slots: [], basis: posts.length ? `Only ${posts.length} dated posts were read; Brew needs at least 8 to suggest a time.` : 'Brew has no dated posts from your Instagram yet, so it can’t suggest a time. Pick a day yourself.' };
+    const tz = 'Asia/Kolkata', key = (ms) => { const d = new Date(ms); const day = d.toLocaleDateString('en-GB', { weekday: 'long', timeZone: tz }); const hr = +d.toLocaleString('en-GB', { hour: '2-digit', hour12: false, timeZone: tz }); return `${day}|${Math.floor(hr / 3) * 3}`; };
+    const g = {}; for (const x of posts) { const k = key(x.at); (g[k] ||= []).push(x.likes + 3 * x.comments); } const avg = Object.entries(g).filter(([, v]) => v.length >= 2).map(([k, v]) => ({ k, n: v.length, score: v.reduce((a, c) => a + c, 0) / v.length })).sort((a, c) => c.score - a.score).slice(0, 3);
+    return { slots: avg.map((x) => { const [day, h0] = x.k.split('|'); return { day, from: +h0, to: +h0 + 3, why: `${x.n} of your posts went up then, with the most likes and comments (${Math.round(x.score)} on average)` }; }), basis: `From ${posts.length} of your Instagram posts (India time).` }; }));
+  on('POST', '/api/jam2/jams/:jid/boards/:bid/schedule', wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, p.bid); if (!bd) return { error: 'not found' };
+    const at = Date.parse(b.at || ''); bd.schedule = Number.isFinite(at) ? { at, by: whoOf(t).email, note: String(b.note || '').slice(0, 120) } : null; await store.put(slugOfT(t), j); return { jam: out(j) }; }));
+
+  /* ---------- the team ---------- */
+  const person = (t) => { const me = meOf(t) || {}; return { email: me.email || null, name: me.name || null, pic: me.pic || null }; };
+  const jamLike = (j) => ({ id: j.id, title: j.title });
+  /* who's here and typing (the same presence v1 uses, keyed by the v2 jam id) */
+  on('GET', '/api/jam2/jams/:jid/here', wrap(async (b, t, p, q) => { await load(t, p.jid); const me = person(t); if (presence && me.email) presence.beat(p.jid, me, q?.get?.('typing') === '1');
+    return { here: presence ? presence.here(p.jid).filter((x) => x.email !== me.email) : [] }; }));
+  /* the brand's team, for @ */
+  on('GET', '/api/jam2/team', wrap(async (b, t) => { const w = whoOf(t); if (!w.member && !w.staff) return { team: [] }; const tm = teamOf ? await teamOf(slugOfT(t)).catch(() => null) : null;
+    return { team: [...(tm?.members || []).map((m) => ({ email: m.email, name: m.name || null, pic: m.pic || null })), ...(tm?.invites || []).map((x) => ({ email: x.email || x, name: null, invited: true }))].filter((x) => x.email) }; }));
+  const notifyPeople = async (t, j, { kind, to, text, id }) => { const slug = slugOfT(t), by = meOf(t) || {}; if (!jamMail) return 0;
+    return jamMail.event(slug, jamLike(j), { kind, to, by: { email: by.email, name: by.name }, text, id }).catch((e) => { log.warn?.('[jam2] mail', e.message); return 0; }); };
+  /* @someone: they get an email with a link straight to this jam; someone not on the team yet is invited first (the team only) */
+  on('POST', '/api/jam2/jams/:jid/mention', wrap(async (b, t, p) => { const j = await load(t, p.jid), w = whoOf(t); if (!w.member && !w.staff) return { error: 'Only the brand’s team can tag people.' };
+    const emails = [...new Set((b.emails || []).map((e) => String(e).toLowerCase().trim()).filter((e) => /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(e)))].slice(0, 8); if (!emails.length) return { error: 'Who should see it? Type @ and their email.' };
+    const tm = teamOf ? await teamOf(slugOfT(t)).catch(() => null) : null, known = new Set([...(tm?.members || []).map((m) => m.email?.toLowerCase()), ...(tm?.invites || []).map((x) => String(x.email || x).toLowerCase())]);
+    const invited = []; for (const e of emails) if (!known.has(e) && inviteTo) { const r = await inviteTo(slugOfT(t), w.email, e).catch((x) => ({ error: x.message })); if (!r?.error) invited.push(e); }
+    const text = String(b.text || '').slice(0, 600), id = uid('mn'); const n = await notifyPeople(t, j, { kind: 'tagged', to: emails, text, id });
+    (j.people ||= []); for (const e of emails) if (!j.people.some((x) => x.email === e)) j.people.push({ email: e, how: 'tagged', at: Date.now() }); await store.put(slugOfT(t), j);
+    return { jam: out(j), mailed: n, invited }; }));
+  /* ask someone for their OK on one piece: they get an email; when it's approved, the person who asked hears back */
+  on('POST', '/api/jam2/jams/:jid/boards/:bid/ask-ok', wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, p.bid), w = whoOf(t); if (!bd) return { error: 'not found' }; if (!w.member && !w.staff) return { error: 'Only the brand’s team can ask for an OK.' };
+    const e = String(b.email || '').toLowerCase().trim(); if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(e)) return { error: 'Whose OK? Pick someone from the team.' };
+    bd.okAsk = { email: e, by: w.email, at: Date.now(), note: String(b.note || '').slice(0, 300) }; const n = await notifyPeople(t, j, { kind: 'approve', to: [e], text: `${bd.label}${b.note ? `: ${b.note}` : ''}`, id: `ok_${bd.id}_${headOf(bd)?.n || 0}` });
+    note(j, `asked ${e} for an OK on ${bd.label}`, w.email); await store.put(slugOfT(t), j); return { jam: out(j), mailed: n }; }));
+  /* Ask Brew: a real answer from the card's evidence and the store's facts, checked against them (jam-answer.js); never invented */
+  on('POST', '/api/jam2/jams/:jid/ask', wrap(async (b, t, p) => { const j = await load(t, p.jid), q0 = String(b.q || '').trim().slice(0, 600); if (!q0) return { error: 'Ask something.' };
+    const card = j.cardId ? cardOf(t, j.cardId) : null, c = j.concept || {};
+    const evidence = [c.spark?.title && `The card: ${c.spark.title}`, c.spark?.says, ...(c.spark?.why || []), ...(c.proof || []).map((x) => `Proof (${x.kind}): ${x.text}`), card?.detail?.why?.length ? `Why: ${card.detail.why.join(' ')}` : '', sourceOf(t, card) ? `Store facts: ${String(sourceOf(t, card)).slice(0, 3000)}` : ''].filter(Boolean).join('\n');
+    if (isMock() || !spend('text', slugOfT(t))) return { answer: 'I can’t answer just now (the writing budget is used up or AI is off). Here is what the card says:\n' + evidence.slice(0, 600), known: false };
+    const r = await answerGrounded({ ai: d.claudeTool, question: q0, evidence, history: (j.chat || []).slice(-6).map((m) => ({ who: m.from === 'brew' ? 'Brew' : m.name || 'Team', text: m.t })) }).catch((e) => ({ answer: `That didn’t go through (${e.message}). Try again in a moment.`, known: false }));
+    (j.chat ||= []).push({ id: uid('m'), from: 'brew', t: String(r.answer || '').slice(0, 1500), at: Date.now(), grounded: !!r.checked }); await store.put(slugOfT(t), j); return { jam: out(j), answer: r.answer, known: r.known }; }));
+  /* a line for this jam only (Drop anything → just this jam): the writer reads it on every board of this jam */
+  on('POST', '/api/jam2/jams/:jid/note', wrap(async (b, t, p) => { const j = await load(t, p.jid), text = String(b.text || '').trim().slice(0, 4000); if (!text) return { error: 'Nothing to add.' };
+    (j.notes ||= []).push({ text, by: whoOf(t).email, at: Date.now() }); if (j.notes.length > 20) j.notes.shift(); await store.put(slugOfT(t), j); return { jam: out(j) }; }));
+  /* Slack: one piece posted to the brand's connected channel with an Approve button; replies in its thread come back here */
+  on('POST', '/api/jam2/jams/:jid/boards/:bid/slack', wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, p.bid), w = whoOf(t), h = headOf(bd); if (!h) return { error: 'Make it first.' };
+    if (!slack?.slackPost) return { error: 'Slack isn’t on here.' }; if (!w.member) return { error: 'Only the brand’s team posts to its Slack.' };
+    const page = `${process.env.PUBLIC_URL || 'https://brew.joinsquareup.com'}/${slugOfT(t)}?v=2&go=feed#jam2=${j.id}`, pic = h.file && !/\.(mp4|wav)$/.test(h.file) ? `${process.env.PUBLIC_URL || 'https://brew.joinsquareup.com'}/${String(h.file).replace(/^\//, '')}` : null;
+    const text = `*${bd.label}* · v${h.n} · ${j.title}\n${String(b.text || h.words?.headline || h.words?.subject || '').slice(0, 500)}`;
+    const blocks = [{ type: 'section', text: { type: 'mrkdwn', text } }, ...(pic ? [{ type: 'image', image_url: pic, alt_text: bd.label }] : []),
+      { type: 'actions', elements: [{ type: 'button', style: 'primary', text: { type: 'plain_text', text: `Approve v${h.n}` }, action_id: 'approve', value: `${slugOfT(t)}|${j.id}|${h.n}` }, { type: 'button', text: { type: 'plain_text', text: 'Open in Brew' }, url: page, action_id: 'open' }] },
+      { type: 'context', elements: [{ type: 'mrkdwn', text: 'Reply in this thread: replies land in the Brew jam.' }] }];
+    const r = await slack.slackPost(slugOfT(t), { text, blocks }); if (r?.error) return { error: r.connect ? 'Connect Slack first (Connectors).' : r.error };
+    j.slack = { ts: r.ts, channel: r.channel, bid: bd.id, n: h.n, page, tid: t.id, at: Date.now() }; note(j, `posted ${bd.label} to Slack`, w.email); await store.put(slugOfT(t), j); return { jam: out(j), channel: r.channelName || null }; }));
 
   /* the jam's chat: the team's lines and Brew's replies, kept with the jam (Slack and @mentions arrive here too) */
   on('POST', '/api/jam2/jams/:jid/say', wrap(async (b, t, p) => { const j = await load(t, p.jid), w = whoOf(t), text = String(b.t || '').trim().slice(0, 1200); if (!text) return { error: 'Say something first.' };
     (j.chat ||= []).push({ id: uid('m'), from: b.from === 'brew' ? 'brew' : 'you', by: w.email, name: w.me?.name || null, t: text, sel: b.sel ? String(b.sel).slice(0, 60) : null, at: Date.now() }); if (j.chat.length > 300) j.chat.splice(0, j.chat.length - 300);
+    if (b.from !== 'brew' && j.slack?.ts && slack?.slackPost) slack.slackPost(slugOfT(t), { channel: j.slack.channel, thread_ts: j.slack.ts, text: `${w.me?.name || w.email || 'Someone'} in Brew: ${text.slice(0, 1500)}` }).catch(() => {});
     await store.put(slugOfT(t), j); return { jam: out(j) }; }));
   /* a board as a brief for a team: who makes it, by when, section edits; send = the brief link goes out and the status starts */
   on('POST', '/api/jam2/jams/:jid/boards/:bid/brief', wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, p.bid); if (!bd) return { error: 'not found' }; const w = whoOf(t);
@@ -141,5 +227,16 @@ export function mountJam2(d) {
     const name = (await bb.load(tok.slug).catch(() => null))?.read?.name || '';
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' }); res.end(ready.page(j, items, { kind, brand: name })); return true;
   }
-  return { publicHandle, store, flush: () => store.flush(), engines, brandbook: bb };
+  /* a reply in a v2 jam's Slack thread, or its Approve pressed (slack-routes.js → feed slackIn, only when no v1 jam has that thread) */
+  async function slackIn({ slug, kind, thread, ts, user = {}, text = '', n = null }) {
+    const box = await store.load(slug).catch(() => null), j = box && Object.values(box.jams).find((x) => x.slack?.ts === thread); if (!j) return null;
+    const bd = boardOf(j, j.slack.bid), h = headOf(bd), shape = { id: j.id, current: h?.n || 0, slack: { page: j.slack.page } };
+    if (kind === 'reply') { const seen = (j.slack.seen ||= []); if (seen.includes(ts)) return { dup: true, w: shape }; seen.push(ts); if (seen.length > 200) seen.splice(0, seen.length - 200);
+      (j.chat ||= []).push({ id: uid('m'), from: 'you', name: `${user.name || 'Someone'} (Slack)`, by: user.email || null, t: String(text).slice(0, 1200), at: Date.now(), via: 'slack' }); await store.put(slug, j); return { w: shape }; }
+    if (kind === 'approve') { if (!bd || !h) return { w: shape, stale: true }; if (n != null && Number.isFinite(n) && n !== h.n) return { w: shape, stale: true };
+      bd.approved = { takeId: h.id, by: user.email || `${user.name || 'Someone'} (Slack)`, at: Date.now(), via: 'slack' }; bd.status = 'approved';
+      (j.chat ||= []).push({ id: uid('m'), from: 'brew', t: `${user.name || 'Someone'} approved ${bd.label} v${h.n} in Slack.`, at: Date.now() }); await store.put(slug, j); return { w: shape }; }
+    return { w: shape };
+  }
+  return { slackIn, publicHandle, store, flush: () => store.flush(), engines, brandbook: bb };
 }

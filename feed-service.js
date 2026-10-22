@@ -38,6 +38,7 @@ import { createDrafts, fakeMakers, createMakers } from './drafts.js';
 import { mountJam2 } from './jam2/routes.js'; // Jam v2 (?v=2): its own routes and data, v1 untouched
 import { makeVideo as jam2Video, makeVoice as jam2Voice } from './media.js';
 import { genFile as jam2GenFile } from './gen-store.js';
+import { vertexMusic as jam2Music } from './vertex-media.js';
 import { cardProduct, cardScene, matchProduct } from './product-match.js';
 import { gapFix } from './ai-gap.js';
 import { newsForUs, newsCta, adForUs } from './for-us.js'; // every rival and news story ends on one line for the brand (QA FEED-ARV-10) // the AI-answers gap card's own fix (QA FEED-ARV-09)
@@ -2189,7 +2190,7 @@ export function createFeedService(o) {
      public pages (/p/<token>, /brief/<token>); nothing in v1 calls it */
   /* Jam v2 is not on the demo site (its jams would be shared across visitors there); on live a card outside the viewer's seats can't be opened */
   if (process.env.DEMO_MODE !== '1') JAM2 = mountJam2({ on, packs: o.globalPacks || packs, slugOfT, brandOfT, meOf, reqOf, cardOf: (t, id) => { const c = t.cards.get(id); return c && seatOk(t, c) ? fillCard(c, t) : null; }, sourceOf: (t, c) => packSource(brandOfT(t), c), refsOf: (slug) => REFS.list(slug), isMock, spend: (k) => spend(k),
-    geminiImage, vertexVideo: (frame, prompt, x) => jam2Video(frame, prompt, x, log), vertexVoice: (text, v) => jam2Voice(text, v, {}, log), finals: o.finals || null, saveGen, genFile: jam2GenFile, photoAsync: o.photoAsync, claudeTool, launchBrowser: o.launchBrowser, shoot: createMakers({ geminiImage, launchBrowser: o.launchBrowser, zipBuffer: o.zipBuffer, log }).shoot, zipBuffer: o.zipBuffer, log });
+    geminiImage, vertexVideo: (frame, prompt, x) => jam2Video(frame, prompt, x, log), vertexVoice: (text, v) => jam2Voice(text, v, {}, log), vertexMusic: (prompt) => jam2Music(prompt), presence: { beat: (id, u, typing) => JAMS.beat(id, u, typing), here: (id) => JAMS.here(id) }, teamOf: o.teamOf || null, inviteTo: o.inviteTo || null, jamMail: o.jamMail || null, slack: o.slack || null, memoryOf: (t, agent) => promptBlock(t, agent), finals: o.finals || null, saveGen, genFile: jam2GenFile, photoAsync: o.photoAsync, claudeTool, launchBrowser: o.launchBrowser, shoot: createMakers({ geminiImage, launchBrowser: o.launchBrowser, zipBuffer: o.zipBuffer, log }).shoot, zipBuffer: o.zipBuffer, log });
   // tenants survive restarts (store.js); a tenant not in memory is read back from disk or GCS before we give up on it
   const getTenant = async (id) => {
     let t = tenants.get(id); if (t || !store || !id) return t;
@@ -2221,7 +2222,7 @@ export function createFeedService(o) {
   /* a reply in a jam's Slack thread, or its Approve button pressed (server.js checked Slack's signature and found the brand) */
   const slackIn = async ({ slug, kind, thread, ts, user = {}, text = '', n = null, pid = null, mention = false }) => {
     const br = await packs.load(slug); if (!br) return null; await JAMS.load(br.slug);
-    const w = (JAMS.peek(br.slug)?.work || []).find((x) => x.slack?.ts === thread); if (!w) return null;
+    const w = (JAMS.peek(br.slug)?.work || []).find((x) => x.slack?.ts === thread); if (!w) return JAM2 ? JAM2.slackIn({ slug: br.slug, kind, thread, ts, user, text, n }) : null; /* not a v1 jam's thread: maybe a Jam v2 one */
     const t = (w.slack.tid && await getTenant(w.slack.tid).catch(() => null)) || brandTenants(br)[0]; if (!t) return null;
     return runIn(br, () => {
       if (kind === 'reply') {

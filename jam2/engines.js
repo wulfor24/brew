@@ -17,7 +17,7 @@ export const ROUTES = JSON.parse(fs.readFileSync(path.join(HERE, '..', 'data', '
 const sha = (b) => crypto.createHash('sha1').update(b).digest('hex').slice(0, 16);
 export const CAPS = Object.keys(ROUTES.route);
 
-export function createEngines({ geminiImage, vertexVideo, vertexVoice, finals = null, saveGen, genFile, publicUrl = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', photo = async () => null,
+export function createEngines({ geminiImage, vertexVideo, vertexVoice, vertexMusic = null, finals = null, saveGen, genFile, publicUrl = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', photo = async () => null,
   fetchImpl = fetch, env = process.env, mock = () => process.env.AI_MOCK === '1', log = console }) {
   const keep = (buf, ext) => { const name = `j2-${sha(buf)}.${ext}`; saveGen(name, buf); return 'gen/' + name; };
   const pub = (rel) => (/^https?:/.test(rel) ? rel : `${publicUrl.replace(/\/$/, '')}/${String(rel).replace(/^\//, '')}`);
@@ -33,6 +33,7 @@ export function createEngines({ geminiImage, vertexVideo, vertexVoice, finals = 
       'still.full': { quote: () => ({ usd: V.stillPro }), run: async (s) => { const buf = await geminiImage({ srcFile: s.srcFile, refFiles: s.refFiles || [], prompt: s.prompt, ratio: s.ratio || '4:5', slug: s.slug, productName: s.product || null, fallback: false, model: 'gemini-3-pro-image' }); return { file: keep(buf, 'png'), model: 'gemini-3-pro-image', usd: V.stillPro, guard: buf.guard || null }; } },
       'cutout': { quote: () => ({ usd: V.still }), run: async (s) => { const buf = await geminiImage({ srcFile: s.srcFile, prompt: 'Image 1 is a product photo. Return the exact same product, unchanged in shape, label, colour and text, alone on a plain pure white (#FFFFFF) background, centred, filling 80% of the frame, soft even light, no shadow, no props, no text added.', ratio: '1:1', slug: s.slug, productName: s.product || null, fallback: false }); return { file: keep(buf, 'png'), model: 'gemini-image', usd: V.still, white: true }; } },
       'video.shot': { quote: (s) => ({ usd: +(V.videoPerSecond * (s.seconds || 6)).toFixed(2) }), run: async (s) => { const frame = fs.readFileSync(s.srcFile); const buf = await vertexVideo(frame, s.prompt, { ratio: s.ratio === '16:9' ? '16:9' : '9:16', seconds: s.seconds || 6 }); return { file: keep(buf, 'mp4'), model: 'veo-3.1-fast', usd: +(V.videoPerSecond * (s.seconds || 6)).toFixed(2) }; } },
+      'music.gen': { quote: () => ({ usd: V.music ?? 0.06 }), run: async (s) => { if (!vertexMusic) throw new Error('music is not set up'); const wav = await vertexMusic(s.prompt); return { file: keep(wav, 'wav'), model: 'lyria', usd: V.music ?? 0.06 }; } },
       'voice.tts': { quote: () => ({ usd: V.voice }), run: async (s) => { const wav = await vertexVoice(s.text, s.voice || 'Kore'); return { file: keep(wav, 'wav'), model: 'gemini-tts', usd: V.voice }; } }
     }
   };

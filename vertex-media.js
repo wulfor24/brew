@@ -58,6 +58,14 @@ export async function vertexVoice(text, voiceName = 'Kore', { model = process.en
   return pcmToWav(raw, +(/rate=(\d+)/.exec(a.mimeType || '')?.[1] || 24000));
 }
 
+/** a text prompt → a 30 s instrumental WAV (Lyria on Vertex, made for us, so it is ours to use in ads) */
+export async function vertexMusic(prompt, { negative = 'vocals, singing, lyrics, speech', model = process.env.LYRIA_MODEL || 'lyria-002', region = 'us-central1' } = {}) {
+  const j = await post(`https://${region}-aiplatform.googleapis.com/v1/projects/${PROJECT()}/locations/${region}/publishers/google/models/${model}:predict`,
+    { instances: [{ prompt: String(prompt).slice(0, 400), negative_prompt: negative }], parameters: { sample_count: 1 } }, 180e3);
+  const b64 = j.predictions?.[0]?.bytesBase64Encoded || j.predictions?.[0]?.audioContent; if (!b64) throw new Error('no music came back');
+  return Buffer.from(b64, 'base64');
+}
+
 /** first frame (jpg/png buffer) + motion prompt → MP4 buffer */
 export async function vertexVideo(frame, prompt, { model = process.env.VEO_MODEL || 'veo-3.1-fast-generate-001', seconds = 6, ratio = '9:16', resolution = '1080p', onWait = () => {}, maxMs = 9 * 60e3 } = {}) {
   const base = `https://${VEO_LOC()}-aiplatform.googleapis.com/v1/projects/${PROJECT()}/locations/${VEO_LOC()}/publishers/google/models/${model}`;

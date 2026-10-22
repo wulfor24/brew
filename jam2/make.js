@@ -72,6 +72,8 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
       r.id === 'ai-faq' ? 'Write body as 3–5 questions people ask AI apps about this product, each on its own line ending in "?", each followed by a two-sentence answer on the next line. Then blocks: "Product schema" (JSON-LD, real price only) and "llms.txt line".' : '',
       r.kind === 'table' ? 'This is a change list someone applies by hand in their own tool. Fill cols (3 short names) and rows (one change per row, 3–8 rows). Use only names, prices and places from the facts given; where a fact is missing write [YOURS]. Put the steps to apply it in blocks: "Where", "Steps", "Done when".' : '',
       board.ask ? `This board: ${board.label}. ${board.ask}` : '',
+      ctx.notes?.length ? `The team added for this jam (follow these):\n${ctx.notes.slice(-6).map((n) => `- ${tidy(n, 600)}`).join('\n')}` : '',
+      ctx.memory ? `What Brew has learned about this brand (memory is on):\n${tidy(ctx.memory, 2500)}` : '',
       ask ? `The team asked: ${ask}` : '',
       'Never invent numbers, discounts, codes, guarantees or reviews. Quote reviews only word for word from the lines given. One version only.'
     ].filter(Boolean).join('\n\n');
@@ -131,13 +133,13 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
      can't start a browser each); the brand's fonts are in place before the shot */
   let slots = 0; const waiting = [];
   const slot = async (fn) => { if (slots >= 2) await new Promise((ok) => waiting.push(ok)); slots++; try { return await fn(); } finally { slots--; waiting.shift()?.(); } };
-  async function render(sc, { ext = 'jpg' } = {}) {
+  async function render(sc, { ext = 'jpg', clear = false } = {}) {
     const srcs = {}; for (const s of [sc.bg?.src, ...(sc.layers || []).map((l) => l.src)].filter(Boolean)) srcs[s] = await dataUri(s);
     const html = sceneHtml(sc, { srcOf: (s) => srcs[s] || '' }), w = Math.min(4000, Math.max(50, +sc.w || 1080)), h = Math.min(4000, Math.max(50, +sc.h || 1350));
     return slot(() => (withBrowser || (async (fn) => { const b = await launchBrowser(); try { return await fn(b); } finally { await b.close?.().catch?.(() => {}); } }))(async (browser) => {
       const page = await browser.newPage();
       try { await page.setViewport({ width: w, height: h, deviceScaleFactor: 1 }); await page.setContent(html, { waitUntil: 'load', timeout: 30e3 }); await page.evaluate(() => document.fonts?.ready).catch(() => {});
-        return keep(await page.screenshot({ type: ext === 'png' ? 'png' : 'jpeg', ...(ext === 'png' ? {} : { quality: 88 }) }), ext); }
+        return keep(await page.screenshot({ type: ext === 'png' ? 'png' : 'jpeg', ...(ext === 'png' ? { omitBackground: clear } : { quality: 88 }) }), ext); }
       finally { await page.close().catch(() => {}); } }));
   }
 
@@ -170,7 +172,7 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
     const r = recipe(board.recipe), size = sizeOf(board), made = [];
     const words = await write(ctx, board, { ask });
     if (!ctx.jam.concept.by || ctx.jam.concept.by === 'card') Object.assign(ctx.jam.concept, { angle: words.angle || ctx.jam.concept.angle, goal: words.goal || ctx.jam.concept.goal, audience: words.audience || ctx.jam.concept.audience, offer: words.offer || '', proof: (words.proof || []).map((t) => ({ kind: 'proof', text: t })), by: 'brew' });
-    const take = { op: 'first', by: ctx.by, words, made, how: board.how };
+    const take = { op: 'first', by: ctx.by, words, made, how: board.how, made4: ctx.product ? { name: ctx.product.name || null, handle: ctx.product.handle || null, price: priceOf(ctx, ctx.product) } : null };
     if (['static', 'carousel'].includes(r.kind) || (r.kind === 'message' && r.est !== 'free')) {
       const cut = await cutout(ctx); if (cut && !cut.raw) made.push({ cap: 'cutout', provider: cut.provider, model: cut.model, usd: cut.usd });
       if (r.kind === 'carousel') {
@@ -207,33 +209,70 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
     let lost = 0;
     for (const s of t0.timeline.shots) { try {
       const bg = await scene(ctx, { describe: s.see, ratio: '9:16' }); made.push({ cap: 'still.scene', provider: bg.provider, model: bg.model, usd: bg.usd });
-      const sc = composeScene({ size: { ...size, w: 1080, h: 1920 }, bgFile: bg.file, cut, words: { headline: '' }, kit: ctx.bbv.kit }); sc.layers = sc.layers.filter((l) => l.kind !== 'text' && l.kind !== 'shape' && l.kind !== 'badge');
+      const sc = composeScene({ size: { ...size, w: 1080, h: 1920 }, bgFile: bg.file, cut, words: { headline: '' }, kit: ctx.bbv.kit }); sc.layers = sc.layers.filter((l) => l.kind !== 'text' && l.kind !== 'shape' && l.kind !== 'badge' && (l.kind !== 'logo' || s === t0.timeline.shots[t0.timeline.shots.length - 1])); /* the logo on the end shot only: captions sit low on the others */
       const still = await render(sc); const sf = await fileOf(still);
       if (!spend('video', ctx.slug)) throw Object.assign(new Error('Today’s video budget is used up.'), { budget: true });
       const clip = await engines.run(q.cap, { srcFile: sf, srcUrl: still, prompt: `${s.camera || 'static'} camera. ${s.see}. The product stays exactly as in the first frame: same shape, label and colours. Natural motion, no text, no logos added.`, seconds: s.sec, ratio: '9:16', slug: ctx.slug, by: ctx.by?.email, jamId: ctx.jam.id, boardId: board.id });
       made.push({ cap: q.cap, provider: clip.provider, model: clip.model, usd: clip.usd || 0, credits: clip.credits || 0 }); shots.push({ ...s, still, clip: clip.file });
     } catch (e) { lost++; log.warn?.('[jam2] shot', e.message); const prev = shots[shots.length - 1]; shots.push({ ...s, still: prev?.still || null, clip: null, failed: tidy(e.message, 120) }); if (e.budget || /budget/i.test(e.message)) break; } }
     if (!shots.some((x) => x.still || x.clip)) throw new Error('No shot came through. Nothing else was made; try again later.');
-    const vo = t0.timeline.shots.map((s) => s.vo).filter(Boolean).join(' ');
-    const voice = vo && ctx.bbv.comfort?.aiVoice !== 'no' ? await engines.run('voice.tts', { text: vo, voice: t0.timeline.voice, slug: ctx.slug }).catch((e) => { log.warn?.('[jam2] voice', e.message); return null; }) : null;
+    return finishVideo(ctx, board, t0, shots, made, { op: 'render' });
+  }
+  /* the voice, the music and the captions over the shots, as one take; used by a full render and by a single re-made shot */
+  async function finishVideo(ctx, board, t0, shots, made, { op }) {
+    const tl = t0.timeline, vo = shots.map((s) => s.vo).filter(Boolean).join(' ');
+    const voice = vo && ctx.bbv.comfort?.aiVoice !== 'no' && spend('voice', ctx.slug) ? await engines.run('voice.tts', { text: vo, voice: tl.voice, slug: ctx.slug }).catch((e) => { log.warn?.('[jam2] voice', e.message); return null; }) : null;
     if (voice) made.push({ cap: 'voice.tts', provider: voice.provider, model: voice.model, usd: voice.usd || 0 });
-    const file = await stitch(shots, voice?.file || null);
-    const take = { op: 'render', by: ctx.by, words: t0.words, timeline: { ...t0.timeline, shots }, file, made, cost: { usd: +made.reduce((a, m) => a + (m.usd || 0), 0).toFixed(2), credits: made.reduce((a, m) => a + (m.credits || 0), 0) }, parent: t0.id, how: board.how };
+    /* music made for this video (Lyria): instrumental, in the mood the storyboard names; ours to use, no licence question */
+    let music = null; const mood = String(tl.music || '').trim();
+    if (mood && !/^no music$/i.test(mood) && spend('voice', ctx.slug)) { music = tl.musicFile && tl.musicMood === mood ? { file: tl.musicFile, provider: 'kept', usd: 0 } : await engines.run('music.gen', { prompt: `${mood}, instrumental background music for a short product video by ${ctx.bbv.name || 'a brand'}${ctx.bbv.category ? ` (${ctx.bbv.category})` : ''}, steady, no vocals`, slug: ctx.slug }).catch((e) => { log.warn?.('[jam2] music', e.message); return null; });
+      if (music?.usd) made.push({ cap: 'music.gen', provider: music.provider, model: music.model, usd: music.usd }); }
+    /* captions: each shot's voiceover set in the brand's type, burnt in at the bottom; on-screen words up top */
+    const caps = []; if (tl.captions !== false) for (const s of shots) caps.push(s.vo || s.words ? await captionCard(ctx, s) : null);
+    const file = await stitch(shots, { voiceFile: voice?.file || null, musicFile: music?.file || null, caps });
+    const take = { op, by: ctx.by, words: t0.words, timeline: { ...tl, shots, musicFile: music?.file || null, musicMood: music ? mood : null }, file, made, cost: { usd: +made.reduce((a, m) => a + (m.usd || 0), 0).toFixed(2), credits: made.reduce((a, m) => a + (m.credits || 0), 0) }, parent: t0.id, how: board.how };
     const t = addTake(ctx.jam, board, take); t.gate = gate(ctx, t, board); return { take: t };
   }
-  /* ffmpeg: the shots end to end at 1080×1920, the voice over them; a shot that has no clip shows its still */
-  async function stitch(shots, voiceFile) {
+  /* one shot's caption card: a clear 1080×1920 PNG with the voiceover line at the bottom and the on-screen words at the top */
+  async function captionCard(ctx, s) {
+    const kit = ctx.bbv.kit || {}, font = kit.fonts?.heading || kit.fonts?.body || null, layers = [];
+    if (s.vo) layers.push({ id: 'cap', kind: 'text', role: 'small', words: tidy(s.vo, 140), x: 90, y: 1430, w: 900, z: 6, style: { font, size: 52, weight: 700, color: '#ffffff', align: 'center', bg: 'rgba(0,0,0,0.55)', pad: 18, radius: 18, lh: 1.2 } });
+    if (s.words) layers.push({ id: 'ost', kind: 'text', role: 'headline', words: tidy(s.words, 60), x: 90, y: 330, w: 900, z: 6, style: { font, size: 70, weight: 800, color: '#ffffff', align: 'center', shadow: true, lh: 1.1 } });
+    return render({ w: 1080, h: 1920, bg: { color: 'transparent' }, kit: { fonts: kit.fonts || {}, colors: [] }, layers }, { ext: 'png', clear: true });
+  }
+  /* edit one shot's first frame (an area or a whole new look), animate that shot again from it, and put the video back together:
+     the other shots, the voice and the music are kept */
+  async function reshot(ctx, board, { i, ask, region = null, confirmUsd = null } = {}) {
+    const t0 = headOf(board), sh = t0?.timeline?.shots?.[i]; if (!t0?.file || !sh) throw new Error('Render the video first, then change one shot.');
+    const qe = await engines.quote('still.edit', { slug: ctx.slug }), qv = await engines.quote('video.shot', { seconds: Math.max(4, sh.sec || 4), slug: ctx.slug }); if (qe.error || qv.error) throw new Error(qe.error || qv.error);
+    const usd = +((qe.usd || 0) + (qv.usd || 0)).toFixed(2); if (!isMock() && (confirmUsd == null || +confirmUsd + 0.01 < usd)) return { needsConfirm: true, quote: { usd, seconds: sh.sec, provider: qv.provider } };
+    if (!spend('image', ctx.slug) || !spend('video', ctx.slug)) throw Object.assign(new Error('Today’s budget for pictures or video is used up.'), { budget: true });
+    const sf = await fileOf(sh.still); if (!sf) throw new Error('That shot has no frame to edit.'); const made = [];
+    const where = region ? `Change only the area from ${Math.round(region.x * 100)}% to ${Math.round((region.x + region.w) * 100)}% across and ${Math.round(region.y * 100)}% to ${Math.round((region.y + region.h) * 100)}% down: ` : '';
+    const ed = await engines.run('still.edit', { srcFile: sf, srcUrl: sh.still, prompt: `${where}${ask}. Keep the product exactly as it is: same shape, label, colours. Keep everything else as it is. No words, no logos.`, ratio: '9:16', slug: ctx.slug }); made.push({ cap: 'still.edit', provider: ed.provider, model: ed.model, usd: ed.usd || 0 });
+    const ef = await fileOf(ed.file); const clip = await engines.run('video.shot', { srcFile: ef, srcUrl: ed.file, prompt: `${sh.camera || 'static'} camera. ${sh.see}. ${ask}. The product stays exactly as in the first frame. Natural motion, no text.`, seconds: sh.sec, ratio: '9:16', slug: ctx.slug, by: ctx.by?.email, jamId: ctx.jam.id, boardId: board.id });
+    made.push({ cap: 'video.shot', provider: clip.provider, model: clip.model, usd: clip.usd || 0, credits: clip.credits || 0 });
+    const shots = t0.timeline.shots.map((x, n) => (n === i ? { ...x, still: ed.file, clip: clip.file, failed: null } : x));
+    return finishVideo(ctx, board, t0, shots, made, { op: `shot ${i + 1} re-made` });
+  }
+  /* ffmpeg: the shots end to end at 1080×1920, each with its caption card; the voice over them and the music under the voice;
+     a shot that has no clip shows its still */
+  async function stitch(shots, { voiceFile = null, musicFile = null, caps = [] } = {}) {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'j2v-')), parts = [];
     const ff = (args) => new Promise((ok, no) => import('node:child_process').then(({ execFile }) => execFile('ffmpeg', ['-y', '-v', 'error', ...args], { timeout: 180e3 }, (e) => (e ? no(e) : ok()))));
+    const V = 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=30,format=yuv420p';
     try {
-      for (const [i, s] of shots.entries()) { const out = path.join(tmp, `p${i}.mp4`); const clip = s.clip ? await fileOf(s.clip) : null, still = await fileOf(s.still);
-        if (clip) await ff(['-i', clip, '-t', String(s.sec), '-vf', 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=30,format=yuv420p', '-an', '-c:v', 'libx264', '-preset', 'veryfast', out]);
-        else if (still) await ff(['-loop', '1', '-i', still, '-t', String(s.sec), '-vf', 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=30,format=yuv420p', '-c:v', 'libx264', '-preset', 'veryfast', out]); else continue;
+      for (const [i, s] of shots.entries()) { const out = path.join(tmp, `p${i}.mp4`); const clip = s.clip ? await fileOf(s.clip) : null, still = s.still ? await fileOf(s.still) : null, cap = caps[i] ? await fileOf(caps[i]) : null;
+        const src = clip ? ['-i', clip] : still ? ['-loop', '1', '-i', still] : null; if (!src) continue; const sec = String(Math.max(2, Math.min(10, +s.sec || 4)));
+        if (cap) await ff([...src, '-loop', '1', '-i', cap, '-t', sec, '-filter_complex', `[0:v]${V}[b];[1:v]scale=1080:1920,format=rgba[c];[b][c]overlay=0:0:format=auto,format=yuv420p`, '-an', '-c:v', 'libx264', '-preset', 'veryfast', '-r', '30', out]);
+        else await ff([...src, '-t', sec, '-vf', V, '-an', '-c:v', 'libx264', '-preset', 'veryfast', out]);
         parts.push(out); }
       if (!parts.length) throw new Error('no shot came through');
       const list = path.join(tmp, 'list.txt'); fs.writeFileSync(list, parts.map((p) => `file '${p}'`).join('\n')); const joined = path.join(tmp, 'joined.mp4'); await ff(['-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', joined]);
-      let final = joined; const vf = voiceFile ? await fileOf(voiceFile) : null;
-      if (vf) { final = path.join(tmp, 'final.mp4'); await ff(['-i', joined, '-i', vf, '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '160k', '-af', 'apad,loudnorm=I=-14', '-shortest', final]); }
+      const vf = voiceFile ? await fileOf(voiceFile) : null, mf = musicFile ? await fileOf(musicFile) : null; let final = joined;
+      if (vf || mf) { final = path.join(tmp, 'final.mp4'); const ins = ['-i', joined, ...(vf ? ['-i', vf] : []), ...(mf ? ['-stream_loop', '-1', '-i', mf] : [])];
+        const fc = vf && mf ? '[1:a]loudnorm=I=-14[v];[2:a]volume=0.16,afade=t=in:d=0.5[m];[v][m]amix=inputs=2:duration=first:dropout_transition=0,apad[a]' : vf ? '[1:a]loudnorm=I=-14,apad[a]' : '[1:a]volume=0.5,afade=t=in:d=0.5,apad[a]';
+        await ff([...ins, '-filter_complex', fc, '-map', '0:v', '-map', '[a]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '160k', '-shortest', final]); }
       return keep(fs.readFileSync(final), 'mp4');
     } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
   }
@@ -329,11 +368,30 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
     const cap = { role: 70, subject: 90, slide: 60, shot: 200, row: 160, block: 1500, sent: 400 }[ctxLine?.kind] || 400;
     return tidy(String(out?.text || text).trim().replace(/^["“”'‘’]+|["“”'‘’]+$/g, ''), cap); }
 
+  /* the catalog price of a product (by handle, then name): what a take was made with, so a later price change can be flagged */
+  function priceOf(ctx, p) { if (!p) return null; const c = (ctx.catalog || []).find((x) => (p.handle && x.handle === p.handle) || (p.name && (x.t || x.title) === p.name)); return c?.price != null ? String(c.price) : null; }
+
+  /* the same picture for every product: the scene and words stay, each real product is cut out and placed in turn (free with
+     the local cut-out; a product whose cut-out falls back to the paid one says so in the take's cost) */
+  async function allProducts(ctx, board, src, { max = 12 } = {}) {
+    const h = headOf(src); if (!h?.scene) throw new Error('Make the picture first.');
+    const tiles = (ctx.catalog || []).filter((p) => p.img || p.images?.[0]).slice(0, max); if (tiles.length < 2) throw new Error('Your catalog has fewer than two products with photos.');
+    const made = [], slides = [];
+    for (const p of tiles) { const c2 = { ...ctx, product: { img: p.img || p.images[0], name: p.t || p.title || null, handle: p.handle || null }, cuts: ctx.cuts };
+      const cut = await cutout(c2); if (!cut || cut.raw) continue; if (cut.usd) made.push({ cap: 'cutout', provider: cut.provider, model: cut.model, usd: cut.usd });
+      const sc = JSON.parse(JSON.stringify(h.scene)); for (const l of sc.layers) if (l.kind === 'product') { l.src = cut.file; l.hidden = false; }
+      slides.push({ scene: sc, file: await render(sc), product: c2.product.name }); }
+    if (!slides.length) throw new Error('None of the product photos could be cut out.');
+    const take = { op: 'all-products', by: ctx.by, words: { ...h.words, slides: slides.map((x) => ({ onSlide: x.product || '', small: '' })) }, slides, scene: slides[0].scene, file: slides[0].file, made, how: board.how,
+      cost: { usd: +made.reduce((a, m) => a + (m.usd || 0), 0).toFixed(3), credits: 0 } };
+    const t = addTake(ctx.jam, board, take); t.gate = gate(ctx, t, board); return t;
+  }
+
   /* what each priced action would cost right now, for the buttons */
   async function prices(ctx) {
     const s = await engines.quote('still.scene', { slug: ctx.slug }), e = await engines.quote('still.edit', { slug: ctx.slug }), hz = await engines.quote('still.harmonize', { slug: ctx.slug });
     const f = await engines.quote('still.full', { slug: ctx.slug }).catch(() => ({}));
     return { background: s.usd ?? null, redo: s.usd ?? null, area: e.usd ?? null, blend: hz.usd ?? null, final: f.usd ?? null, finalCredits: f.credits ?? null, providers: { scene: s.provider || null, edit: e.provider || null } };
   }
-  return { getLine, setLine, sentencesOf, write, first, edit, render, renderVideo, videoQuote, gate, prices, cutout, composeScene, fileOf, dataUri, BRIEF_SECTIONS };
+  return { reshot, allProducts, priceOf, getLine, setLine, sentencesOf, write, first, edit, render, renderVideo, videoQuote, gate, prices, cutout, composeScene, fileOf, dataUri, BRIEF_SECTIONS };
 }

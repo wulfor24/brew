@@ -24,7 +24,7 @@ export function createJamMail({ mail, packs, sign, verify, base = () => process.
   /* does this person want this email: off = none; tags = only being tagged/asked/assigned; a muted jam sends nothing but tags */
   const wants = async (slug, email, wid, kind) => { const x = (await prefsOf(slug))[lc(email)]; if (!x) return true; if (x.mail === 'off') return false; const direct = kind === 'tagged' || kind === 'asked' || kind === 'assigned'; if ((x.muted || []).includes(wid)) return direct && kind === 'tagged'; if (x.mail === 'tags') return direct; return true; };
 
-  const link = (slug, wid) => `${base()}/${slug}?go=feed#jam=${encodeURIComponent(wid)}`; /* ?go=feed: straight into the jam, never the read replay */
+  const link = (slug, wid) => (String(wid).startsWith('j2_') ? `${base()}/${slug}?v=2&go=feed#jam2=${encodeURIComponent(wid)}` : `${base()}/${slug}?go=feed#jam=${encodeURIComponent(wid)}`); /* a Jam v2 jam opens in v2 */ /* ?go=feed: straight into the jam, never the read replay */
   const prefLink = (slug, email, set, wid) => `${base()}/mail/pref?t=${encodeURIComponent(sign({ slug, email: lc(email), set, wid: wid || null }, 180 * 86400, 'mailpref'))}`;
   const footer = (slug, email, wid) => `You’re getting this because you’re in this jam.<br>${footLink(prefLink(slug, email, 'mute', wid), 'Mute this jam')} · ${footLink(prefLink(slug, email, 'tags'), 'Only when I’m tagged')} · ${footLink(prefLink(slug, email, 'off'), 'No emails from Brew')}`;
   const quote = (who, text) => mquote(who, cut(text, 280));

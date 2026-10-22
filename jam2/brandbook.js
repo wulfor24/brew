@@ -49,7 +49,7 @@ export function createBrandbook({ packs, log = console, now = () => Date.now() }
 
   const blank = () => ({ v: 1, voice: { written: 'site', narrator: 'Kore', clones: [] }, music: { moods: ['warm acoustic'], never: ['trending audio we have no rights to'] },
     comfort: { people: 'ai-cast', aiVoice: 'yes', testimonials: 'yes', how: 'ai' }, cast: [], places: [], pinned: { golden: [], styleRefs: [] }, removed: { golden: [], styleRefs: [] },
-    kitEdits: {}, claimsAllowed: [], neverSay: [], taste: { counts: {}, rules: [] }, confirmed: {}, updatedAt: null });
+    kitEdits: {}, claimsAllowed: [], neverSay: [], taste: { counts: {}, rules: [] }, confirmed: {}, recipes: [], updatedAt: null });
 
   async function load(slug, { fresh = false } = {}) {
     if (!fresh && cache.has(slug)) return cache.get(slug);
@@ -70,7 +70,7 @@ export function createBrandbook({ packs, log = console, now = () => Date.now() }
     const golden = [...bb.pinned.golden, ...(r.golden || [])].filter((x) => !bb.removed.golden.includes(x.text)).slice(0, 6);
     return { name: r.name, host: r.host, category: r.category, kit: { ...k, colors, accent, roles: k.colors || [] }, styleRefs, golden,
       claims: [...bb.claimsAllowed, ...(r.claims || [])], never: [...new Set([...(r.never || []), ...bb.neverSay])], neverRe: r.neverRe || null, neverSay: bb.neverSay || [], reviews: r.reviews || [], personas: r.personas || [], language: r.language || [],
-      voice: bb.voice, music: bb.music, comfort: bb.comfort, cast: bb.cast, places: bb.places, taste: bb.taste, confirmed: bb.confirmed, currency: r.currency };
+      recipes: bb.recipes || [], voice: bb.voice, music: bb.music, comfort: bb.comfort, cast: bb.cast, places: bb.places, taste: bb.taste, confirmed: bb.confirmed, currency: r.currency };
   }
 
   /* what each family still needs, in plain words, one ask at a time (the readiness meter) */
