@@ -66,7 +66,7 @@ test('demo copy: run state, reasons, the team’s pages and rewrites go; the can
   for (const x of ['₹780', '₹50.3 L', 'BCA3.0 MitoActive', 'Mito-Preorder']) assert.ok(canary.includes(x), x);
   assert.equal(out.canary, canary.length);
   const sh = fs.readFileSync('tools/demo-sync.sh', 'utf8');
-  assert.match(sh, /demo-strip\.mjs/); assert.match(sh, /grep -F -f "\$W\/canary\.txt"/); assert.match(sh, /grep -vE "\/\$slug\/\(private\|memory\|spend\|demo\)\/"/, 'gen/ is found from public JSON only');
+  assert.match(sh, /demo-strip\.mjs/); assert.match(sh, /grep -F -f "\$W\/canary\.txt"/); assert.match(sh, /rsync -r "\$SRC\/\$slug" "\$W\/src" --exclude='\.\*\/\?\(private\|memory\|spend\|demo\)/, 'gen/ is found from public JSON only'); assert.match(sh, /--exclude='\^raw\//, 'the canary skips scraped pages');
 });
 
 /* ---------- connectors: disconnect, reconnect, retry, Sync now ---------- */
