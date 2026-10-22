@@ -168,8 +168,8 @@ export function createTeamBrief({ claudeTool, isMock = () => true, spend = () =>
     for (const c of changes) setPart(w.teamBrief, c.k, c.t);
     w.teamBrief.pdf = null; w.updatedAt = now(t);
     return { brief: view(w, null), changed: changes.map((c) => c.k), said: said || `Changed in the brief: ${changes.map((c) => NAME[c.k]).join(', ')}.` }; };
-  /* a chat line meant for the brief: on the Brief side every line is; on the Creative side one that names the brief, or sets a
-     plain fact of it (owner, budget, due date, audience, specs) */
+  /* a chat line meant for the brief, from what it says, never from which side is open (Param, 23 Oct: "context-driven"): one
+     that names the brief, or sets a plain fact of it (owner, budget, due date, audience, specs) */
   const BRIEF_ASK = /\b(?:in|on|to|of|the|our|this)\s+(?:team\s+)?brief\b|\bbrief\s*:|\b(?:owner|budget|deadline|due(?:\s+date)?|launch\s+date|timing|start\s+date|placements?|specs?|done\s+when|kpi|audience|approv(?:er|ed\s+by))\b[^?]{0,40}?\b(?:is|are|should\s+be|to|=|:|will\s+be)\b/i;
   const isBriefAsk = (msg) => BRIEF_ASK.test(String(msg || ''));
 
