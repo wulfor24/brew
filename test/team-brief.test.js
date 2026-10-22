@@ -64,3 +64,10 @@ test('a chat line names the brief or sets one of its facts; a creative ask does 
   for (const m of ['owner is Riya', 'budget should be ₹50k', 'in the brief, add the agency', 'brief: due Friday', 'the deadline is 30 Oct']) assert.ok(TB.isBriefAsk(m), m);
   for (const m of ['make the headline shorter', 'warmer photo', 'who is the audience?']) assert.ok(!TB.isBriefAsk(m), m);
 });
+
+test('a follow-up goes to the brief when the chat just before was about it', () => {
+  const TB = make(false), about = [{ text: '@Param should we make the deadline 17th September' }], ad = [{ text: 'Shorten the hook' }];
+  assert.ok(TB.isBriefAsk('yeah, change it to Sep 17th', about));
+  assert.ok(!TB.isBriefAsk('yeah, change it to Sep 17th', ad));
+  assert.ok(!TB.isBriefAsk('make the photo warmer', about));
+});

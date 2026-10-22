@@ -4287,7 +4287,7 @@
   const TBS = { for: null, brief: null, busy: false, err: null, files: null, filesFor: null };
   const tbWork = () => workOfCard(RX.p?.id);
   const tbSwitch = () => tbWork() ? `<div class="tbm-switch" role="tablist" aria-label="Stage">${[['creative', 'Creative', 'pic'], ['brief', 'Brief', 'doc']].map(([k, n, i]) => `<button role="tab" data-tb-stage="${k}" aria-selected="${(RX.stage || 'creative') === k}">${ic(i, 's14')}${n}</button>`).join('')}</div>` : '';
-  const tbLoad = async (fresh = false) => { const w = tbWork(); if (!w || (TBS.busy && !fresh)) return; if (TBS.for !== w.id) Object.assign(TBS, { brief: null, files: null, filesFor: null, pdf: null }); TBS.for = w.id; TBS.busy = true; TBS.err = null; if (view === 'remix') paintStudio();
+  const tbLoad = async (fresh = false) => { const w = tbWork(); if (!w || (TBS.busy && !fresh)) return; if (TBS.for !== w.id) Object.assign(TBS, { brief: null, files: null, filesFor: null, pdf: null }); TBS.for = w.id; TBS.busy = true; TBS.err = null; TBS.head = RX.ch?.head || null; if (view === 'remix') paintStudio();
     const r = await tapi('GET', `/api/work/${w.id}/team-brief${fresh ? '?fresh=1' : ''}`).catch((e) => ({ error: e.message })); TBS.busy = false;
     if (r.brief) TBS.brief = r.brief; else TBS.err = r.error || 'The brief didn’t come together. Try again.'; if (view === 'remix') paintStudio();
     if (r.brief) tbWarm(); };
@@ -4297,7 +4297,8 @@
       if (r.pdf && TBS.for === w.id) { TBS.pdf = r.pdf; if (r.brief) TBS.brief = r.brief; await tbFiles(r.pdf).catch(() => {}); } } finally { TBS.warming = false; } };
   const tbOpen = () => { if (!tbWork()) return toast('Open the jam first, then share its brief.'); RX.stage = 'brief'; RX.tbEdit = null; paintStudio(); $('.tbm-scroll')?.scrollTo?.(0, 0); if (!TBS.brief || TBS.for !== tbWork().id || TBS.brief.stale) tbLoad(); };
   /* the brief starts writing the moment the jam opens (Param, 23 Oct), so Brief is ready when it's tapped; once the first draft is in */
-  const tbAuto = (ch) => { const w = tbWork(); if (!w || ch.copyPending || TBS.busy) return; if (TBS.for !== w.id || (!TBS.brief && !TBS.err)) tbLoad(); };
+  const tbAuto = (ch) => { const w = tbWork(); if (!w || ch.copyPending || TBS.busy) return; if (TBS.for !== w.id || (!TBS.brief && !TBS.err)) return tbLoad();
+    if (TBS.brief && TBS.head && ch.head && TBS.head !== ch.head) tbLoad(); }; /* a new version of the ad: the brief follows it (Param, 23 Oct: it stayed on v1) */
   /* change the brief with AI: a selection, a tapped part or a chat line; the parts it changed light up for a moment */
   const tbAi = async (ask, quote = '') => { const w = tbWork(); if (!w || RX.tbAi) return; RX.tbAi = true; paintStudio();
     const r = await tapi('POST', `/api/work/${w.id}/team-brief/ai`, { ask, quote }).catch((er) => ({ error: er.message })); RX.tbAi = false;
@@ -4311,7 +4312,7 @@
     return `<article class="tbm-doc" aria-label="The team brief">
       <header class="tbm-h"><span class="tbm-brand">${b.mark ? `<img src="${esc(b.mark)}" alt="">` : ''}${esc(b.brand)}</span><span class="tbm-k">Brief${b.memo.ref ? ` · ${esc(b.memo.ref)}` : ''}${b.version ? ` · v${b.version}` : ''}</span></header>
       ${b.stale ? `<p class="tbm-stale">${ic('refresh', 's14')}The ad changed since this was written. <button class="linkbtn" data-tb-retry="fresh">Bring it up to date</button></p>` : ''}
-      ${RX.tbAi ? `<p class="tbm-stale" role="status"><brew-load class="spin"></brew-load>Changing the brief…</p>` : ''}
+      ${RX.tbAi ? `<p class="tbm-stale" role="status"><brew-load class="spin"></brew-load>Changing the brief…</p>` : TBS.busy ? `<p class="tbm-stale" role="status"><brew-load class="spin"></brew-load>Bringing the brief up to the latest version…</p>` : ''}
       <h1 class="tbm-title${(RX.tbNew || []).includes('title') ? ' is-new' : ''}">${esc(b.title)}</h1>
       <dl class="tbm-memo"><div${(RX.tbNew || []).includes('from') ? ' class="is-new"' : ''}><dt>From</dt><dd>${esc(b.memo.from || `${b.brand} team`)}</dd></div><div${(RX.tbNew || []).includes('to') ? ' class="is-new"' : ''}><dt>To</dt><dd>${esc(b.memo.to)}</dd></div><div${(RX.tbNew || []).includes('due') ? ' class="is-new"' : ''}><dt>Due</dt><dd>${esc(b.memo.due || 'To confirm')}</dd></div><div><dt>Files</dt><dd>${cr.length ? `${cr.length} attached` : 'None yet'}</dd></div></dl>
       ${cr.length ? `<div class="tbm-files">${cr.map((c) => `<figure><a href="/${esc(c.url)}" target="_blank" rel="noopener">${c.kind === 'video' ? `<video src="/${esc(c.url)}" ${c.poster ? `poster="/${esc(c.poster)}"` : ''} muted playsinline preload="metadata"></video>` : `<img src="/${esc(c.url)}" alt="">`}</a><figcaption>${esc(c.label)}</figcaption></figure>`).join('')}</div>` : ''}
