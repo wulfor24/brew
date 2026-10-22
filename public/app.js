@@ -453,13 +453,15 @@
     if (c.kind === 'answer') return `Found what AI tools say about ${n}`;
     if (c.kind === 'rows') return /checkout|path/i.test(t) ? `Walked ${n}’s path to checkout` : /catalog|product/i.test(t) ? `Found everything ${n} sells` : `Found ${t.toLowerCase()} for ${n}`;
     return `Found ${t.toLowerCase() || 'something'} for ${n}`; };
+  /* a font's family name only (reader/stages/brand.js fontName): reads saved before 22 Oct can carry Google Fonts weights ("Cormorant:100,100italic,…") */
+  const fontOnly = (v) => { let f = String(v ?? ''); try { f = decodeURIComponent(f); } catch (e) {} f = f.replace(/\+/g, ' ').split(/[|&]/)[0].split(/[:@;]/)[0].replace(/["']/g, '').replace(/\s+/g, ' ').trim(); return f.slice(0, 60).trim(); };
   const scrCard = (c) => {
     let body = '';
     if (c.kind === 'text') body = `<p class="fc-p">${esc(c.p)}</p>`;
-    if (c.kind === 'kit') { const cols = (c.colors || B.brand.colors || []).slice(0, 4), tn = String(c.typeName || B.brand.typeName || '');
+    if (c.kind === 'kit') { const cols = (c.colors || B.brand.colors || []).slice(0, 4), tn = fontOnly(c.typeName || B.brand.typeName), ff = String(c.face || B.brand.face || '').split(',').map((x) => fontOnly(x)).filter(Boolean).map((x) => `'${x.replace(/'/g, '')}'`).concat('sans-serif').join(', ');
       body = `<div class="fc-kit"><div class="fc-logo"><img src="${c.logo || B.brand.logo}" alt="${esc(B.brand.name)} logo"></div>
         <div class="fc-sw">${cols.map((x) => `<span><i style="background:${x}"></i><small>${esc(x)}</small></span>`).join('')}</div>
-        ${tn ? `<div class="fc-type"><b style="font-family:${c.face || B.brand.face}">Aa</b><span>${esc(tn)}</span></div>` : ''}</div>`; }
+        ${tn ? `<div class="fc-type"><b style="font-family:${esc(ff)}">Aa</b><span title="${esc(tn)}">${esc(tn)}</span></div>` : ''}</div>`; }
     if (c.kind === 'quotes') body = `<div class="fc-quotes">${c.quotes.map((q) => `<blockquote>${esc(String(q).replace(/^[“"]|[”"]$/g, ''))}</blockquote>`).join('')}</div>`;
     if (c.kind === 'rows') body = `<dl class="fc-rows">${c.rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>`;
     if (c.kind === 'grid') body = `<div class="fc-grid">${c.imgs.slice(0, 4).map((x) => `<span><img src="${x}" alt="" loading="lazy"></span>`).join('')}</div>`;

@@ -8,6 +8,8 @@ const titleCase = (s) => String(s || '').replace(/[-_]+/g, ' ').replace(/\b\w/g,
 const andList = (xs) => xs.length <= 1 ? xs.join('') : xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1];
 
 // the button vocabulary the remix engine knows (remix.js CTA_ACTION); generated cards pick from these
+import { fontName } from './reader/stages/brand.js';
+
 export const CTA = {
   'Publish the campaign': ['Publishing', 'Campaign is live on Meta'], 'Shift budget': ['Moving budget', 'Budget moved to the winners'], 'Rotate creative': ['Swapping ads', 'Fresh versions are live'],
   'Update landing page': ['Updating pages', 'The pages are updated'], 'Publish the page': ['Publishing', 'The page is live'], 'Make the ad': ['Making', 'The ad is on the way'], 'Generate versions': ['Generating', 'Versions on the way'],
@@ -134,7 +136,7 @@ export function seedFromProfile(slug, profile, findings, extra = {}) {
   const steps = STEPS.map((s) => ({ ...s, done: findings?.steps?.find((x) => x.k === s.k)?.done || '' }));
   const seed = baseSeed({
     slug, host: p.host, name: p.name || titleCase(p.host?.split('.')[0]), tagline: p.descriptor || p.tagline,
-    colors: id.colors || [], logo: id.logo, mark: id.mark, face: id.fonts?.heading || id.fonts?.body, typeName: id.typeName,
+    colors: id.colors || [], logo: id.logo, mark: id.mark, face: fontName(id.fonts?.heading || id.fonts?.body) || undefined, typeName: fontName(id.typeName) || undefined, /* a saved read with weights in the name heals here */
     steps, lanes, laneImg, rivals: (p.rivals || []).map((r) => r.name), marketplaces: extra.marketplaces || [], reviewApp: p.reviews?.platforms?.[0]?.name, art, stack: { platform: p.platform }
   });
   seed.scrape = findings?.cards || [];

@@ -9,6 +9,7 @@ import crypto from 'node:crypto';
 import { adCall } from './reader/adlib.js';
 import { ADS_V } from './reader/stages/ads.js';
 import { SITE_V, speedOn } from './reader/stages/site.js';
+import { fontName } from './reader/stages/brand.js';
 import { namedStale } from './reader/stages/named.js';
 import { wiping } from './retire.js';
 import { sentenceCase } from './text-fit.js';
@@ -457,6 +458,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   }
   // prices as the brand writes them, on every product
   function normalizeProfile(p) {
+    const id = p.identity; if (id) { if (id.typeName) id.typeName = fontName(id.typeName); if (id.fonts) for (const k of ['heading', 'body', 'mono']) if (id.fonts[k]) id.fonts[k] = fontName(id.fonts[k]); } /* weights read into a font name (a Google Fonts link) heal */
     const fmt = moneyFmt(p.currency || '', p.locale || (p.currency === 'INR' ? 'en-IN' : 'en-US')); /* no currency: no ₹ (QA 20 Oct) */
     if (p.catalog?.products) { const gone = new Set(p.catalog.removed || []); p.catalog.products = p.catalog.products.filter((x) => !gone.has(x.handle) && !/gift ?wrap|gift ?card|e-?gift|shipping protection|route protection/i.test(x.title || '')); }
     (p.catalog?.products || []).forEach((x) => { if (x.price != null && !x.priceLabel) x.priceLabel = fmt(+x.price); });

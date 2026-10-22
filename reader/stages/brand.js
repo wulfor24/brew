@@ -76,10 +76,11 @@ export async function brand(ctx) {
   const varFont = (re) => { const m = allCss.match(re); return m ? firstFamily(m[1]) : null; };
   let heading = varFont(/--font-heading-family\s*:\s*([^;}]+)/i) || varFont(/--(?:font-)?heading[\w-]*font[\w-]*\s*:\s*([^;}]+)/i) || selFont(allCss, /(^|[\s,}])h1\b[^{]*\{/i);
   let body = varFont(/--font-body-family\s*:\s*([^;}]+)/i) || varFont(/--(?:font-)?body[\w-]*font[\w-]*\s*:\s*([^;}]+)/i) || selFont(allCss, /(^|[\s,}])body\b[^{]*\{/i) || selFont(allCss, /(^|[\s,}])html\b[^{]*\{/i);
-  const gf = tags(html, 'link').map((t) => attr(t, 'href') || '').filter((h) => /fonts\.googleapis\.com/.test(h)).flatMap((h) => [...h.matchAll(/family=([^:&]+)/g)].map((m) => decodeURIComponent(m[1]).replace(/\+/g, ' ')));
-  const famList = [...new Set([...faces, ...gf].map((f) => f.replace(/["']/g, '').trim()).filter((f) => f && !GENERIC.test(f)))];
+  const gf = tags(html, 'link').map((t) => attr(t, 'href') || '').filter((h) => /fonts\.googleapis\.com/.test(h)).flatMap((h) => [...h.replace(/&amp;/g, '&').matchAll(/family=([^&]+)/g)].flatMap((m) => { let v = m[1]; try { v = decodeURIComponent(v); } catch { /* as it is */ } return v.split('|').map(fontName); }));
+  const famList = [...new Set([...faces, ...gf].map(fontName).filter((f) => f && !GENERIC.test(f)))];
   if (!heading && famList[0]) heading = famList[0];
   if (!body && famList[0]) body = famList[famList.length > 1 ? 1 : 0];
+  heading = heading && fontName(heading); body = body && fontName(body);
   if (heading && GENERIC.test(heading)) heading = null; if (body && GENERIC.test(body)) body = null;
   const mono = famList.find((f) => /mono|code/i.test(f)) || null;
   profile.identity.fonts = { heading: heading || null, body: body || null, mono };
@@ -107,6 +108,10 @@ const normHex = (h) => { h = h.toLowerCase(); if (h.length === 3) h = h.split(''
 const rgbHex = (r, g, b) => (r > 255 || g > 255 || b > 255 ? null : '#' + [r, g, b].map((x) => x.toString(16).padStart(2, '0')).join(''));
 function hsl(hex) { const n = parseInt(hex.slice(1), 16); const r = (n >> 16) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255; const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2; const s = mx === mn ? 0 : (mx - mn) / (1 - Math.abs(2 * l - 1)); return { s, l, r: r * 255, g: g * 255, b: b * 255 }; }
 const dist = (a, b) => Math.hypot(a.r - b.r, a.g - b.g, a.b - b.b);
+/* a font's family name only: a Google Fonts link's family= value can carry its weights ("Cormorant:100,100italic,…", the colon
+   often URL-encoded as %3A), the css2 axes ("Inter:wght@400"), or several families ("A|B"); saved reads heal through it too */
+export const fontName = (s) => { let f = String(s ?? ''); try { f = decodeURIComponent(f); } catch { /* kept as it is */ }
+  f = f.replace(/\+/g, ' ').split(/[|&]/)[0].split(/[:@;]/)[0].replace(/["']/g, '').replace(/\s+/g, ' ').trim(); return f && f.length <= 60 ? f : f ? f.slice(0, 60).trim() : null; };
 const firstFamily = (s) => { const f = String(s).split(',').map((x) => x.replace(/["']/g, '').replace(/!important/, '').trim()).find((x) => x && !GENERIC.test(x) && !/^var\(/.test(x)); return f || null; };
 function selFont(css, selRe) {
   const re = new RegExp(selRe.source + '([^}]*)\\}', 'gi');
