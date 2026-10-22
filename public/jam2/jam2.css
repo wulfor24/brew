@@ -133,3 +133,35 @@
 .j2-soon{display:inline-block;font-size:11px;border-radius:999px;padding:1px 7px;background:var(--warn-bg);color:var(--warn)}
 @media (max-width:820px){.j2-stage{padding:56px 10px 70px}.j2-briefdoc{flex-direction:column}.j2-tb input{width:min(200px,45vw)}#j2-area{width:min(280px,60vw)!important}.j2-sheet{width:100%}.j2-head{flex-wrap:wrap}.j2-head .j2-ghost{padding:4px 6px;font-size:12px}}
 .j2-av{width:24px;height:24px;border-radius:999px;background:var(--info);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex:0 0 auto}
+
+/* ---------- Brew Studio composer ---------- */
+.j2-studio{width:min(760px,100%);background:var(--surface,#fff);border:1px solid var(--line,#e6e6e6);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px;position:relative;box-shadow:0 10px 30px rgba(0,0,0,.06)}
+.j2-studio.over{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:45;max-height:calc(100% - 24px);overflow:auto}
+.j2-st-x{position:absolute;right:10px;top:10px}
+.j2-st-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.j2-st-hint{font-size:12px;color:var(--fg-3)}
+.j2-seg{display:inline-flex;background:var(--surface-2,#f2f2f2);border-radius:999px;padding:3px}
+.j2-seg button{border:0;background:none;padding:6px 14px;border-radius:999px;font-weight:600;font-size:13px;cursor:pointer;color:var(--fg-2,#555)}
+.j2-seg button.on{background:var(--fg,#111);color:var(--on-fg,#fff)}
+.j2-st-styles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.j2-sti{border:2px solid transparent;background:var(--surface-2,#f4f4f4);border-radius:14px;padding:0;overflow:hidden;cursor:pointer;text-align:left;display:flex;flex-direction:column}
+.j2-sti.on{border-color:var(--fg,#111)}
+.j2-sti img,.j2-sti-art{width:100%;aspect-ratio:4/5;object-fit:cover;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:var(--fg-2,#444);background:linear-gradient(135deg,var(--surface-2,#f1f1f1),var(--line,#e2e2e2))}
+.j2-sti-ph{position:relative;display:block}.j2-sti-ph img{opacity:.55;filter:saturate(.7)}
+.j2-sti b{font-size:12.5px;padding:6px 8px 0}.j2-sti small{font-size:11px;color:var(--fg-3);padding:0 8px 8px}
+.j2-st-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;position:relative}
+.j2-st-prod{display:inline-flex;align-items:center;gap:6px}.j2-st-prod img{width:22px;height:22px;border-radius:6px;object-fit:cover}
+.j2-count{display:inline-flex;align-items:center;gap:8px;background:var(--surface-2,#f2f2f2);border-radius:999px;padding:3px 6px}
+.j2-count button{border:0;background:var(--surface,#fff);color:var(--fg,#111);width:26px;height:26px;border-radius:999px;font-size:16px;cursor:pointer}
+.j2-stprod,.j2-stsize{position:absolute;left:0;top:40px;z-index:46;max-height:260px;overflow:auto}
+.j2-stsize{display:flex;flex-direction:column;left:160px}.j2-stsize button.on{font-weight:800}
+#j2-st-ask{border:1px solid var(--line,#e2e2e2);border-radius:12px;padding:10px 12px;font:inherit}
+.j2-st-go{display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap}.j2-st-go span{font-size:13px;color:var(--fg-2,#444);flex:1;min-width:200px}
+.j2-stgal{position:absolute;inset:0;background:var(--surface,#fff);border-radius:18px;display:flex;z-index:47;overflow:hidden}
+.j2-stgal-side{width:170px;border-right:1px solid var(--line,#eee);padding:12px;display:flex;flex-direction:column;gap:4px;overflow:auto}
+.j2-stgal-side button{border:0;background:none;text-align:left;padding:8px 10px;border-radius:10px;cursor:pointer;font-weight:600;font-size:13px}
+.j2-stgal-side button.on{background:var(--surface-2,#f1f1f1)}.j2-stgal-side small{color:var(--fg-3);font-weight:400}
+.j2-stgal-main{flex:1;padding:12px;display:flex;flex-direction:column;gap:10px;overflow:auto}
+#j2-st-search{border:1px solid var(--line,#e2e2e2);border-radius:10px;padding:8px 10px;font:inherit;margin-right:40px}
+.j2-stgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.j2-stgal-x{position:absolute;right:10px;top:10px}
+@media (max-width:820px){.j2-st-styles{grid-template-columns:repeat(2,minmax(0,1fr))}.j2-stgal{flex-direction:column}.j2-stgal-side{width:auto;flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line,#eee)}}
