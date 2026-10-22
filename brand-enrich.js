@@ -6,7 +6,7 @@
 // Saved as brands/<slug>/enrich.json; brand-book-read.js reads it into the library and the evidence.
 import { safeFetch, UA, sha as hash } from './reader/util.js';
 
-export const ENRICH_V = 1, CAP_USD = 0.5, EVERY_MS = 7 * 864e5;
+export const ENRICH_V = 2, /* 2: lists at most 2 hours old, so their signed picture links still open */ CAP_USD = 0.5, EVERY_MS = 7 * 864e5;
 const FILE = 'enrich.json';
 const tidy = (s, n = 500) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
 const handleOf = (u, re) => (String(u || '').match(re) || [])[1] || null;
@@ -27,18 +27,21 @@ export function createEnricher({ packs, treg, log = console, now = () => Date.no
   async function run(slug, { force = false } = {}) {
     const [profile, prev] = await Promise.all([packs.getJSON(slug, 'profile.json', null).catch(() => null), packs.getJSON(slug, FILE, null).catch(() => null)]);
     if (!profile?.host || profile.closed) return prev;
-    if (!force && prev?.v === ENRICH_V && now() - Date.parse(prev.at || 0) < EVERY_MS) return prev;
+    const unsaved = (prev?.ig?.posts || []).length && !(prev.ig.posts.some((p) => p.img)); /* every picture failed last time: try again after a day */
+    if (!force && prev?.v === ENRICH_V && now() - Date.parse(prev.at || 0) < (unsaved ? 864e5 : EVERY_MS)) return prev;
     if (!treg?.live || !treg.call) return prev || null; /* treg off (local, tests): the book uses what the read saved */
     const u0 = treg.meter?.usd || 0, spent = () => (treg.meter?.usd || 0) - u0, over = () => spent() >= CAP_USD;
     const out = { v: ENRICH_V, at: new Date(now()).toISOString(), ig: null, tiktok: null, yt: { ...(prev?.yt || {}) }, errors: {} };
-    const call = (id, body) => treg.call(id, { body, tag: `brandbook:${slug}` });
+    /* picture and video links in these lists are signed and expire within hours: a list from treg's day-long cache (the read or
+       listening asked the same thing that morning) gives links that answer 403, so the lists here are at most 2 hours old */
+    const call = (id, body, fresh = false) => treg.call(id, { body, tag: `brandbook:${slug}`, ...(fresh ? { maxAgeH: 2 } : {}) });
     /* Instagram: the latest posts (pictures saved), plays on the reels, the top two reels' videos saved */
     const ig = profile.socials?.instagram?.handle || handleOf(profile.socials?.instagram?.url, /instagram\.com\/([A-Za-z0-9._]+)/);
     if (ig && !over()) {
       try {
-        const j = await call('crawl4ai.instagram.user.posts', { username: ig, limit: 12 });
+        const j = await call('crawl4ai.instagram.user.posts', { username: ig, limit: 12 }, true);
         const posts = (j?.rows || []).map((p) => ({ url: p.url, code: p.code || handleOf(p.url, /\/(?:p|reel|tv)\/([\w-]+)/), caption: tidy(p.caption), likes: p.likes ?? null, comments: p.comments ?? null, at: p.taken_at ? String(p.taken_at).slice(0, 10) : null, kind: p.kind || 'post', imageSrc: p.image || null, videoSrc: p.video_url || null }));
-        if (!over()) { try { const r = await call('anyapi.instagram.user.reels', { handle: ig }); const plays = new Map((r?.output?.data?.reels || []).map((x) => [x.shortcode, x.views]));
+        if (!over()) { try { const r = await call('anyapi.instagram.user.reels', { handle: ig }, true); const plays = new Map((r?.output?.data?.reels || []).map((x) => [x.shortcode, x.views]));
           for (const p of posts) if (plays.has(p.code)) p.views = plays.get(p.code); } catch (e) { out.errors.reels = tidy(e.message, 120); } }
         for (const p of posts) p.img = await keep(slug, `ig-${p.code || hash(p.url)}.jpg`, p.imageSrc, 4e6, 'image/jpeg');
         for (const p of posts.filter((x) => x.videoSrc && /reel|video|clip/i.test(x.kind)).sort((a, b) => (b.views || b.likes || 0) - (a.views || a.likes || 0)).slice(0, 2)) p.video = await keep(slug, `ig-${p.code}-video.mp4`, p.videoSrc, 30e6, 'video/mp4');
@@ -48,7 +51,7 @@ export function createEnricher({ packs, treg, log = console, now = () => Date.no
     /* TikTok: the latest videos with plays, covers saved */
     const tt = handleOf(profile.socials?.tiktok?.url, /tiktok\.com\/@([\w.-]+)/);
     if (tt && !over()) {
-      try { const j = await call('crawl4ai.tiktok.user.videos', { account: tt, limit: 12 });
+      try { const j = await call('crawl4ai.tiktok.user.videos', { account: tt, limit: 12 }, true);
         const vids = (j?.rows || []).map((v) => ({ url: v.url, id: v.post_id, caption: tidy(v.description), views: v.stats?.plays ?? null, likes: v.stats?.likes ?? null, at: v.created_at ? String(v.created_at).slice(0, 10) : null, coverSrc: v.cover || null }));
         for (const v of vids) v.thumb = await keep(slug, `tt-${v.id || hash(v.url)}.jpg`, v.coverSrc, 3e6, 'image/jpeg');
         out.tiktok = { handle: tt, videos: vids.map(({ coverSrc, ...v }) => v) };
