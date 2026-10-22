@@ -187,9 +187,11 @@ export const voiceOfProfile = (p) => [...(p?.reviews?.quotes || []), ...(p?.revi
 /* the observation a card makes (its body's first sentence, and its title) checked against what Brew holds (proof-logic.js) */
 export const cardGaps = (c, kinds) => { const g = [...claimGaps(String(c.sub || '').split(/(?<=[.!?])\s+/)[0], kinds), ...claimGaps(c.title, kinds)]; return g.filter((x, i) => g.findIndex((y) => y.kind === x.kind) === i); };
 const FIX_SCHEMA = { type: 'object', properties: { cards: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, title: { type: 'string' }, sub: { type: 'string' } }, required: ['id', 'title', 'sub'] } } }, required: ['cards'] };
+/* the Brand Book's words block as the system text: the card's copy and its planned asset follow how the brand sounds */
+const bookSys = (brand, words) => (words ? { system: `You write for ${brand?.name || 'the brand'}. Follow its Brand Book in every word:\n${words}` } : {});
 export function createCardsGen({ ai, log = console }) {
   // move → { cards, label }; facts is the brand fact sheet (factsFromLedger)
-  async function fromMove(move, { brand, facts, lanes, laneImg, spec, ledger = [], profile = null, config = null, learned = null, seen = [], voice = null }) { /* profile, learned (learned.json) and seen (cards already in the feed) are optional: callers that pass them get style-, learning- and repeat-aware cards */
+  async function fromMove(move, { brand, facts, lanes, laneImg, spec, ledger = [], profile = null, config = null, learned = null, seen = [], voice = null, bookWords = '' }) { /* profile, learned (learned.json) and seen (cards already in the feed) are optional: callers that pass them get style-, learning- and repeat-aware cards */
     const [sector0, agent0] = BY_SKILL[spec?.skill] || SECTOR[spec?.group || move.group] || ['signals', 'brew'];
     const ok = allowedFrom(facts), fromLedger = ledgerNums(ledger);
     /* numbers the move states as observed are allowed too (they carry their own citation in the move); a number the
@@ -240,7 +242,7 @@ ${catalog.promptBlock({ product: heroName })}
 - Each asset is backed by the brand's own context and says which in "backedBy": a fact sheet line above, the brand's own style${styleLine}, a team learning${learnLine}, a ledger line or a listening line${listenLine}. An asset nothing backs is left out.
 - Also write the move's short label and one-line summary.`;
     let j;
-    try { j = (await ai.call({ model: 'sonnet', prompt, schema: SCHEMA, max: 4000, tag: 'cards' })).json; }
+    try { j = (await ai.call({ model: 'sonnet', prompt, schema: SCHEMA, max: 4000, tag: 'cards', ...bookSys(brand, bookWords) })).json; }
     catch (e) { if (mockAllowed(e)) return mockCards(move, { sector0, agent0, lanes, laneImg }); throw e; }
     const laneKeys = Object.keys(lanes || {}); const lane = laneKeys[0] || 'core';
     const cards = [];
@@ -300,7 +302,7 @@ Return every card by its id.`;
     return n;
   }
   // the feed's first cards, from the read alone: what we saw on the site, in reviews, ads and AI answers
-  async function fromRead(profile, { brand, facts, lanes, laneImg }) {
+  async function fromRead(profile, { brand, facts, lanes, laneImg, bookWords = '' }) {
     const p = profile, ok = allowedFrom(facts), N = numbersOf({ profile: p }); /* the same counts every other screen shows (pack-numbers.js) */
     const ev = JSON.stringify({ catalog: (p.catalog?.products || []).slice(0, 12).map((x) => ({ t: x.title, price: x.priceLabel, mrp: x.mrp, stock: x.inStock, photos: (x.images || []).length, reviews: x.reviews })), count: N.products.n,
       reviews: { total: N.reviews.n, platforms: N.reviews.platforms, quotes: (p.reviews?.quotes || []).slice(0, 8) }, ads: { own: N.ownAds.n, rivals: N.rivals.map((r) => ({ name: r.name, live: r.live, hooks: ((p.ads?.rivals || []).find((x) => x.name === r.name)?.items || []).slice(0, 3).map((a) => a.hook) })) },
@@ -308,7 +310,7 @@ Return every card by its id.`;
     const SCH = { type: 'object', properties: { cards: { type: 'array', items: SCHEMA.properties.cards.items } } };
     const kinds = evidenceKinds({ voice: voiceOfProfile(p), facts }); /* a first read has no connected account: no visits, carts or sales to claim */
     let j;
-    try { j = (await ai.call({ model: 'sonnet', schema: SCH, max: 5000, tag: 'cards-read', prompt: `You write the first feed cards for ${brand.name} (${brand.host}), from what Brew just read on its live site, reviews, ads and AI answers.\n\nWHAT WE READ (JSON):\n${ev}\n\nFACTS YOU MAY QUOTE:\n${Object.values(facts).slice(0, 100).map((f) => `- ${f.label}: ${f.v}`).join('\n')}\n\n${writerEvidence(kinds, brand.name)}\n\nWrite 4 cards, each a real finding the team can act on today: one about AI answers (named or not, who is named instead), one about rivals' live ads, one about the catalog or checkout, one about what customers say. Only use what is in the JSON above; every number must be in it or in the facts. If a finding is missing from the JSON, skip that card. Plain one-glance words a busy shop owner uses when texting a friend, the point first, no jargon or abbreviations (no ROAS, AOV, CTR, PDP, SKU, SERP, unbranded queries), no em dashes. Pick the button that does what the card asks.\n${catalog.promptBlock({ product: (p.catalog?.products || []).find((x) => x?.title)?.title?.split(/\s+[–—|:-]\s+|,\s/)[0] || null, examples: 1 })}\nWhen a card asks for an asset, "make" names a format from that list and "pieces" reads like its examples (how many, the exact product as the store lists it, the scene, the hook), backed by a line in the JSON; never "a new ad" or "fresh creative", and no two cards share format + product + angle.` })).json; }
+    try { j = (await ai.call({ model: 'sonnet', schema: SCH, max: 5000, tag: 'cards-read', ...bookSys(brand, bookWords), prompt: `You write the first feed cards for ${brand.name} (${brand.host}), from what Brew just read on its live site, reviews, ads and AI answers.\n\nWHAT WE READ (JSON):\n${ev}\n\nFACTS YOU MAY QUOTE:\n${Object.values(facts).slice(0, 100).map((f) => `- ${f.label}: ${f.v}`).join('\n')}\n\n${writerEvidence(kinds, brand.name)}\n\nWrite 4 cards, each a real finding the team can act on today: one about AI answers (named or not, who is named instead), one about rivals' live ads, one about the catalog or checkout, one about what customers say. Only use what is in the JSON above; every number must be in it or in the facts. If a finding is missing from the JSON, skip that card. Plain one-glance words a busy shop owner uses when texting a friend, the point first, no jargon or abbreviations (no ROAS, AOV, CTR, PDP, SKU, SERP, unbranded queries), no em dashes. Pick the button that does what the card asks.\n${catalog.promptBlock({ product: (p.catalog?.products || []).find((x) => x?.title)?.title?.split(/\s+[–—|:-]\s+|,\s/)[0] || null, examples: 1 })}\nWhen a card asks for an asset, "make" names a format from that list and "pieces" reads like its examples (how many, the exact product as the store lists it, the scene, the hook), backed by a line in the JSON; never "a new ad" or "fresh creative", and no two cards share format + product + angle.` })).json; }
     catch (e) { if (mockAllowed(e)) return []; throw e; }
     const nums = readNums(ev); const lane = Object.keys(lanes || {})[0] || 'core'; const out = [];
     const SEC = (t) => /ai answer|chatgpt|gemini|perplexity|named/i.test(t) ? ['visibility', 'visibility'] : /\bads?\b|meta|rival/i.test(t) ? ['ads', 'performance'] : /review|customer|say/i.test(t) ? ['creatives', 'creative'] : ['storefront', 'storefront'];

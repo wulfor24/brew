@@ -6,6 +6,7 @@
 // a Quora answer goes to a real question page; a reply has to be about what its thread asked.
 // Flow: read the pack → discover threads (treg, same-day cache) → slate (opus) → per-idea thread search (treg) → write (opus,
 // in parallel chunks) → gates (numbers, links, disclosure) → check (sonnet) → ideas. next() stores to ideas/ideas.json.
+import { loadView as bookView, promptBlock as bookBlock } from './jam2/brandbook.js'; // ideas follow the Brand Book's voice
 import { marketLine } from './market.js';
 import { promptBlock as creativeBlock } from './creative-catalog.js'; // what can be made, for ideas that make something
 import crypto from 'node:crypto';
@@ -160,7 +161,8 @@ export function createIdeas({ slug, packs, ai, treg, log = console, now = () => 
     // real Quora questions listening's web search found (a question page, never a profile, space or search)
     listen.quora = itemsL.filter((x) => isQuoraQuestion(x.link || x.url)).map((x) => ({ url: x.link || x.url, title: cut(x.title || x.text, 200), platform: 'quora' }));
     const lanes = Object.keys(seed.lanes || {});
-    ctx = { member, accountFacts: acct.length, profile, facts, config, seed, brief, ledger, name, sym, cat, noun, ev, products, movesD, socials, founders, founderRoles, listen, lanes, country: profile.country || config.country || '', countryName: config.countryName || profile.country || '' };
+    const bookWords = bookBlock(await bookView(packs, slug, { scope: member ? 'member' : 'share' }).catch(() => ({})), { kind: 'post' });
+    ctx = { bookWords, member, accountFacts: acct.length, profile, facts, config, seed, brief, ledger, name, sym, cat, noun, ev, products, movesD, socials, founders, founderRoles, listen, lanes, country: profile.country || config.country || '', countryName: config.countryName || profile.country || '' };
     // the allowed numbers: anything that appears in the evidence, facts, ledger, product titles or the threads we hand the writer
     ctx.allowNums = new Set(); ctx.allowMoney = new Set();
     const feed = ctx.feed = (s) => { digitsIn(s).forEach((d) => ctx.allowNums.add(d)); numbersIn(s).forEach((n) => ctx.allowMoney.add(n)); };
@@ -343,7 +345,7 @@ ${(d.quora || []).map((q, i) => `Q${i + 1} "${q.title}"`).join('\n') || 'none fo
 - On Reddit, Quora and Facebook groups: be useful first, disclose the affiliation, no links, no hashtags, no AI images.
 - Write natively for each platform; no "elevate", "game-changer", "unleash", "dive in", em dashes or corporate tone. Indian English where the brand is Indian.
 - Never add disclaimers, "illustrative" labels or fine print.
-- EVIDENCE also holds what moves this week: [trend], [news] (the industry and rivals), [rival-ad] (rivals' ads that keep running) and [pulse] (the market's numbers). Where one fits, tie an idea to it so the post is timely: a rising search, a festival, a rival's move, a complaint about a rival. Answer a rival's long-running ad with ${c.name}'s own angle; never copy its words, offer or picture, and never name or knock the rival in the post.`;
+- EVIDENCE also holds what moves this week: [trend], [news] (the industry and rivals), [rival-ad] (rivals' ads that keep running) and [pulse] (the market's numbers). Where one fits, tie an idea to it so the post is timely: a rising search, a festival, a rival's move, a complaint about a rival. Answer a rival's long-running ad with ${c.name}'s own angle; never copy its words, offer or picture, and never name or knock the rival in the post.${c.bookWords ? `\n\nThe brand's Brand Book (follow it in every word):\n${c.bookWords}` : ''}`;
 
   /* ---------- schemas (strict structured output: no limits, explicit properties) ---------- */
   const S_SLATE = { type: 'object', properties: { items: { type: 'array', items: { type: 'object', properties: {

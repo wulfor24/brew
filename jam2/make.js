@@ -12,6 +12,7 @@ import { recipe, SIZES } from './catalogue.js';
 import { productFor } from './ingredients.js';
 import { addTake, headOf, sizeOf, uid, note } from './core.js';
 import { createCreative } from './creative.js';
+import { refsFor, creativeBlock } from './brandbook.js';
 import { claimFlags, bannedHits } from '../claims.js';
 
 const tidy = (s, n = 240) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
@@ -112,11 +113,11 @@ export function createMaker({ engines, brandbook, claudeTool, ai = null, profile
   const GEM_RATIO = { '3:1': '21:9', '1.91:1': '16:9', A5: '2:3', '2:3': '2:3' };
   async function scene(ctx, { describe, ratio: ratio0, place = null, styleRefs = [] }) { const ratio = GEM_RATIO[ratio0] || ratio0;
     if (!spend('image', ctx.slug)) throw Object.assign(new Error('Today’s picture budget is used up. It resets tonight.'), { budget: true });
-    const look = (ctx.bbv.styleRefs || []).slice(0, 2), refFiles = (await Promise.all([...styleRefs, ...look.map((x) => x.src)].slice(0, 2).map((s) => fileOf(s).catch(() => null)))).filter(Boolean);
+    const look = refsFor(ctx.bbv, ctx.kind || '', 2), refFiles = (await Promise.all([...styleRefs, ...look.map((x) => x.src)].slice(0, 2).map((s) => fileOf(s).catch(() => null)))).filter(Boolean);
     const prompt = [`A real photograph for an ad, ${ratio} frame: ${place?.describe || describe}.`,
       'Leave a clear, empty, well-lit spot in the lower middle of the frame where a product will be placed later: an uncluttered surface, nothing standing there.',
       'No product, no packaging, no bottle, no brand, no logo, no words, no letters, no numbers anywhere in the picture.', 'Natural light, true colours, real textures, shot on a full-frame camera, shallow depth of field in the background.',
-      refFiles.length ? `The attached images are style references only (the brand’s own posts): match their light, colour and mood; copy nothing in them.` : ''].filter(Boolean).join(' ');
+      refFiles.length ? `The attached images are style references only (the brand’s own pictures for this kind of piece): match their light, colour and mood; copy nothing in them.` : '', creativeBlock(ctx.bbv, ctx.kind || '').split('\n').filter((x) => /^(The brand's look|light:|Colours:)/.test(x)).join(' ')].filter(Boolean).join(' ');
     return engines.run('still.scene', { prompt, ratio, refFiles, slug: ctx.slug, product: false });
   }
 
@@ -175,6 +176,7 @@ export function createMaker({ engines, brandbook, claudeTool, ai = null, profile
   /* the creative engine (creative.js): statics are shot around the real product, checked, and set in real type */
   const creative = createCreative({ engines, ai, claudeTool, isMock, spend, fileOf, profileOf, render: (sc) => render(sc), composeScene: (o) => composeScene(o), log });
   async function first(ctx, board, { ask = '' } = {}) {
+    ctx.kind = board.recipe; /* the Brand Book's references and playbook follow the piece being made */
     /* an Every product board is remade from its source picture (free), never as a new paid carousel */
     const src = board.allOf ? ctx.jam.boards.find((x) => x.id === board.allOf) : null; if (src) return allProducts(ctx, board, src);
     const r = recipe(board.recipe), size = sizeOf(board), made = [];
@@ -344,6 +346,7 @@ export function createMaker({ engines, brandbook, claudeTool, ai = null, profile
 
   /* ---------- Edit this: one element, one change ---------- */
   async function edit(ctx, board, { target = null, region = null, ask = '', patch = null, op = null } = {}) {
+    ctx.kind = board.recipe;
     const h = headOf(board); if (!h) throw new Error('Nothing to edit yet.'); const r = recipe(board.recipe);
     const base = JSON.parse(JSON.stringify(h)); delete base.id; delete base.n; delete base.gate; base.parent = h.id; base.by = ctx.by; base.made = []; base.at = Date.now();
     /* free: the canvas's own moves (drag, resize, retype, font, colour, hide, preset, size) arrive as a scene patch */

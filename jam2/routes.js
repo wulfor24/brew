@@ -18,7 +18,7 @@ export function mountJam2(d) {
   const { on, packs, slugOfT, brandOfT, meOf, reqOf, cardOf, sourceOf, refsOf, isMock, spend, log = console } = d;
   /* the team pieces v1 already has, reused as they are: presence (JAMS.beat/here), the team list and invites, the jam emails, Slack, memory */
   const { presence = null, teamOf = null, inviteTo = null, jamMail = null, slack = null, memoryOf = null } = d;
-  const store = createJam2Store({ packs, log }), bb = createBrandbook({ packs, log });
+  const store = createJam2Store({ packs, log }), bb = d.brandbook || createBrandbook({ packs, log }); /* one Brand Book, shared with v1 (feed-service) */
   const engines = createEngines({ geminiImage: d.geminiImage, vertexVideo: d.vertexVideo, vertexVoice: d.vertexVoice, vertexMusic: d.vertexMusic, finals: d.finals, saveGen: d.saveGen, genFile: d.genFile, photo: d.photoAsync, mock: isMock, log });
   const maker = createMaker({ engines, brandbook: bb, claudeTool: d.claudeTool, ai: d.ai || null, profileOf: (slug, p) => profiles.of(slug, p), isMock, spend, spendMany: d.spendMany, launchBrowser: d.launchBrowser, withBrowser, shoot: d.shoot, saveGen: d.saveGen, genFile: d.genFile, photoAsync: d.photoAsync, log });
   /* each product read once by vision and kept (profiles.js): the engine's facts about it, and the Brand Book's product check */

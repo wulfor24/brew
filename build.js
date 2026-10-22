@@ -41,6 +41,7 @@ import { createApify } from './apify.js'; // the reader's Myntra and Flipkart ra
 import { providerNow, geminiModel } from './gemini-client.js';
 import { KINDS, flagKind, runKind, potOf, potLeft, potAdd, potFit, perMove, capOf as potCapOf, nextWeek } from './rewrite-pot.js'; // one weekly rewrite budget a brand
 import { moveLabel, moveNum, moveSay } from './move-label.js'; // weekly moves read "Weekly move 11", never "Move 1011" (QA FEED-QA-12)
+import { createBookReader } from './brand-book-read.js'; // the Brand Book as the read finds it: built after the brief, healed on open
 import { markMoveClaims, sourceText } from './claims.js'; // move PDFs mark a claim the store never made, like the page
 
 const buildCtx = new AsyncLocalStorage(); // which brand's build a paid call belongs to
@@ -412,8 +413,13 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const brief = out.json || {}, told = await packs.getJSON(slug, 'learned.json', null).catch(() => null); /* learnings added before a fresh read stay in the brief */
     if (told) brief.learned = briefView(told);
     await packs.put(slug, 'brief.md', told ? withLearned(out.md || '', told, { name: profile.name }) : out.md || ''); await packs.put(slug, 'brief.json', brief);
+    bookAfter(slug); /* the Brand Book follows the brief (its personas, words and claims are evidence), in the background */
     return brief;
   }
+  /* the Brand Book's read layer: never blocks a build; a new one drops the brand's cached book so makers read it at once */
+  const book = createBookReader({ packs, ai, treg, log });
+  const bookListeners = [];
+  const bookAfter = (slug, opts = {}) => { if (process.env.BOOK_OFF === '1') return null; return book.ensure(slug, opts).then((b) => { if (b && !b.skip) bookListeners.forEach((f) => { try { f(slug, b); } catch {} }); return b; }); };
   /* the feed gate: set on a brand's first read, lifted by the first open of its feed (feedOpenAt); a feed opened before the brief is done counts */
   const waitsOnFeed = async (slug) => { const s = await status(slug); return !!s?.feedGate && !s.feedOpenAt; };
   const waitForFeed = (slug) => new Promise((res) => { const x = st(slug); x.feedOpen = res; waitsOnFeed(slug).then((w) => { if (!w) { x.feedOpen = null; res(); } }, () => {}); });
@@ -504,7 +510,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       await setStatus(slug, { statics: { state: 'running', at: Date.now() } });
       try {
         const p = await packs.load(slug);
-        const { ids } = await createStatics({ ai, image, packs, launchBrowser: mods.pdf.launchBrowser, log }).make(slug, { move, profile, facts: p.facts });
+        const { ids } = await createStatics({ ai, image, packs, launchBrowser: mods.pdf.launchBrowser, log }).make(slug, { move, profile, facts: p.facts, bookWords: p.bookWords });
         await withLock(async () => {
           const cfg = await packs.getJSON(slug, 'config.json', {}); cfg.statics = ids; await packs.put(slug, 'config.json', cfg);
           const seed = await packs.getJSON(slug, 'seed.json', {});
@@ -532,7 +538,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       await packs.put(slug, 'private/statics-state.json', { state: 'running', at: Date.now(), move: move.meta?.rewrittenAt || move.meta?.at || null });
       try {
         const p = await packs.load(slug), facts = await factTruth(packs, slug, { member: true, pack: p });
-        const { ids, text } = await createStatics({ ai, image, packs, launchBrowser: mods.pdf.launchBrowser, log }).make(slug, { move, profile, facts, priv: true });
+        const { ids, text } = await createStatics({ ai, image, packs, launchBrowser: mods.pdf.launchBrowser, log }).make(slug, { move, profile, facts, priv: true, bookWords: p.bookWords });
         await withLock(async () => {
           const seed = await packs.getJSON(slug, 'seed.json', {}), lane = Object.keys(seed.lanes || { core: 1 })[0];
           const cards = teamStaticCards(slug, ids, text, { lane, name: profile.name, titleOf: (h) => (profile.catalog?.products || []).find((x) => x?.handle === h)?.title || '' });
@@ -557,7 +563,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   async function instantCards(slug, profile, ledger) {
     const seed = await packs.getJSON(slug, 'seed.json', {}); if ((seed.posts || []).some((c) => c.origin === 'read')) return;
     const p = await packs.load(slug);
-    const cards = await cardsGen.fromRead(profile, { brand: { name: profile.name, host: profile.host }, facts: p.facts, lanes: p.seed.lanes, laneImg: p.seed.laneImg }).catch((e) => { log.warn('[build] instant cards', e.message); return []; });
+    const cards = await cardsGen.fromRead(profile, { bookWords: p.bookWords, brand: { name: profile.name, host: profile.host }, facts: p.facts, lanes: p.seed.lanes, laneImg: p.seed.laneImg }).catch((e) => { log.warn('[build] instant cards', e.message); return []; });
     if (!cards.length) return;
     seed.posts = [...cards, ...(seed.posts || [])]; await packs.put(slug, 'seed.json', seed); packs.drop(slug); await onPack(slug); onCards(slug, cards);
   }
@@ -587,7 +593,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const facts = priv ? await factTruth(packs, slug, { member: true, pack: p }) : p.facts;
     const retired = retiredSet((await packs.getJSON(slug, 'facts-edits.json', null))?.retired, allowedFrom(facts));
     const learnedJ = await packs.getJSON(slug, 'learned.json', null).catch(() => null); /* the brand's style, the team's learnings and the cards already in the feed make the next cards specific and unrepeated (cards-gen.js) */
-    const { cards, label } = await cardsGen.fromMove(scrubRetired(move, retired), { brand: { name: profile.name, host: profile.host }, profile, config: p.config || null, learned: learnedJ, seen: (p.seed?.posts || []), facts, lanes: p.seed.lanes, laneImg: p.seed.laneImg, spec: Array.isArray(specs) ? specs.find((x) => x.n === move.n) : specs[move.n], ledger: ledger || [] });
+    const { cards, label } = await cardsGen.fromMove(scrubRetired(move, retired), { bookWords: p.bookWords, brand: { name: profile.name, host: profile.host }, profile, config: p.config || null, learned: learnedJ, seen: (p.seed?.posts || []), facts, lanes: p.seed.lanes, laneImg: p.seed.laneImg, spec: Array.isArray(specs) ? specs.find((x) => x.n === move.n) : specs[move.n], ledger: ledger || [] });
     // written from a connected account: the cards go to the team only (private/cards.json), never into the shared seed
     if (priv) { if (!cards.length) return; const own = new RegExp(`^m${String(move.n).padStart(2, '0')}-`), pc = (await packs.getJSON(slug, 'private/cards.json', [])).filter((c) => !own.test(c.id));
       const add = cards.map((c) => ({ ...c, id: privId(c.id), liveOnly: true, privateOf: move.n })); /* its own id: the shared card of the same move stays for everyone else */ await packs.put(slug, 'private/cards.json', [...pc, ...add]);
@@ -729,6 +735,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   const healing = new Set();
   /* the selling market is worked out again first (free: no AI, no fetch), even where the paid repairs below are off */
   async function heal(slug) {
+    if (!healing.has(slug) && !blocked(slug) && !st(slug).running && process.env.AI_MOCK !== '1') bookAfter(slug); /* a missing or stale Brand Book is written once (no-op when current) */
     const mk = healing.has(slug) || blocked(slug) || st(slug).running || st(slug).checking || process.env.HEAL_OFF === '1' ? null : await marketCheck(slug).catch((e) => (log.warn?.('[market] heal', slug, e.message), null));
     const r = await healRead(slug);
     return mk ? ['market', ...(r || [])] : r;
@@ -1721,5 +1728,5 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (o?.stockWhy) { u.stale[x.n] = { ...o, was: { priority: x.priority, why: x.why, via: x.via }, why: [...Object.values(o.stockWhy), x.why].join(' '), changes: [...new Set([...(o.changes || []), ...(x.changes || [])])].slice(0, 6) }; continue; } /* an out-of-stock mark stays on top */
     u.stale[x.n] = { ...x, at: Date.now(), changes: [...new Set([...(x.changes || []), ...(o?.changes || [])])].slice(0, 6), ...(o && !o.private ? { private: false } : {}) }; } });
   const facts = { pot: potInfo, potSpend, estMove, republish, flagStale, readProduct: async (slug, url) => readProduct(slug, url, (await packs.getJSON(slug, 'profile.json', {})) || {}), readRival, busy: (slug) => !!(st(slug).running || st(slug).checking), setHooks: (h) => Object.assign(hooks, h) };
-  return { ...facts, saveAdmin, paidWork, stop, marketCheck, teamStatics, settleConnect, connectPending, readLive, heal, healPdfs, pdfFor, pdfOn, connected, liveConnected, staleConnected, checkUpdates, rewrite, updates, setAuto, signal, staleSweep, seen, buildInfo, retry, goPro, checkData, applyCheck, liveWeekly, stockSignal, peek: (slug) => st(slug).status, addEmail, feedOpened, start, resume, resumeAll, replayRead, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
+  return { ...facts, book, bookAfter, onBook: (f) => bookListeners.push(f), saveAdmin, paidWork, stop, marketCheck, teamStatics, settleConnect, connectPending, readLive, heal, healPdfs, pdfFor, pdfOn, connected, liveConnected, staleConnected, checkUpdates, rewrite, updates, setAuto, signal, staleSweep, seen, buildInfo, retry, goPro, checkData, applyCheck, liveWeekly, stockSignal, peek: (slug) => st(slug).status, addEmail, feedOpened, start, resume, resumeAll, replayRead, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
 }

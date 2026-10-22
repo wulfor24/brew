@@ -213,7 +213,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
     const card = `${p.factBrief || ''}\n\nCard (by the ${c.agent} agent, from ${c.src || 'the move documents'}):\nTitle: ${c.title}\nBody: ${c.sub || ''}\n${(c.rows || []).map((r) => `- ${r[0]}: ${r[1]}`).join('\n')}\nThe person reading is the founder.${hooks ? `\n\n${hooks}` : ''}${scenes.length ? `\n\nSCENES ALREADY IN THIS FEED (use another setting, person and angle):\n${scenes.map((v) => `- ${v}`).join('\n')}` : ''}`;
     const ask = [ASK[kind] || '', take ? `This is today's new take on a draft the team has seen: build the visual as ${take}, with a new headline.` : ''].filter(Boolean).join(' ');
     const prompt = draftPrompt({ card, role: c.agent === 'brew' ? 'creative' : c.agent || 'creative', brief: cardBriefText(c, { moveDocs: p.moveDocs }), mem, as, ask });
-    const r = await ai.call({ model: 'sonnet', prompt, schema: DRAFT_SCHEMA, max: 4500, tag: 'draft-bg' }); box.usd += r.usd || 0; /* 3000 was hit once: a plan cut off mid-JSON */
+    const r = await ai.call({ model: 'sonnet', prompt, schema: DRAFT_SCHEMA, max: 4500, tag: 'draft-bg', ...(p.bookWords ? { system: `You write for ${p.name || 'the brand'}. Follow its Brand Book in every word:\n${p.bookWords}` } : {}) }); box.usd += r.usd || 0; /* 3000 was hit once: a plan cut off mid-JSON */
     const j = r.json || {}; j.as = as;
     const cut0 = cleanDraftClaims(j, packSource(p, c)); if (cut0.length) log.info?.('[drafts-bg] dropped unbacked claims', c.id, cut0.map((f) => f.phrase).join(', ')); /* QA-25: a code, guarantee or timed result the store never made never reaches a first draft */
     /* a clip is 9:16 from its first frame (Veo takes 9:16 or 16:9); Stories too */

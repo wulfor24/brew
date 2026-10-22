@@ -39,7 +39,8 @@ import { createFinalsRoutes } from './finals-routes.js';
 import { buildDraft } from './sloosh-prompt.js'; // one brief for every draft picture // Make the final: Sloosh, quote first, behind a button (finals.js) // References: the brand's uploaded photos, past ads, looks and videos, for the generators // Drop anything: memory, my preferences, just this once // Send brief: the full email and the "N with the team" pill
 import { shipLine, oneCard, oneTake } from './text-fit.js';
 import { createDrafts, fakeMakers, createMakers } from './drafts.js';
-import { mountJam2 } from './jam2/routes.js'; // Jam v2 (?v=2): its own routes and data, v1 untouched
+import { mountJam2 } from './jam2/routes.js';
+import { createBrandbook } from './jam2/brandbook.js'; // Jam v2 (?v=2): its own routes and data, v1 untouched
 import { makeVideo as jam2Video, makeVoice as jam2Voice } from './media.js';
 import { genFile as jam2GenFile } from './gen-store.js';
 import { vertexMusic as jam2Music } from './vertex-media.js';
@@ -292,6 +293,9 @@ export function createFeedService(o) {
   let MOVES = null; // the move documents (moves.js)
   let RMX = null; // the studio (remix.js), wired up once the routes exist
   let JAM2 = null; // Jam v2 (jam2/routes.js), ?v=2 only
+  /* the Brand Book: one store for v1 and Jam v2 (jam2/brandbook.js), its page, uploads and share routes (brand-book-routes.js) */
+  const BOOK = createBrandbook({ packs: o.globalPacks || packs, log: console });
+  builder?.onBook?.((slug) => BOOK.drop(slug)); /* a freshly written read layer reaches every maker at once */
   let JAM_FINALS = null; // the jam's finals (finals-routes.js), for a final that lands after a restart
   let linkChange = null; // a jam's change package for its work item (set with the work routes)
  // the measuring engine (measure-engine.js), behind MEASURE_ENGINE; off = the old simulated loop
@@ -2246,7 +2250,7 @@ export function createFeedService(o) {
   /* Jam v2 (?v=2): the new jam lives beside v1 in jam2/, with its own routes (/api/jam2/*), data (jams-v2.json, brandbook.json) and
      public pages (/p/<token>, /brief/<token>); nothing in v1 calls it */
   /* Jam v2 is not on the demo site (its jams would be shared across visitors there); on live a card outside the viewer's seats can't be opened */
-  if (process.env.DEMO_MODE !== '1') JAM2 = mountJam2({ on, packs: o.globalPacks || packs, slugOfT, brandOfT, meOf, reqOf, cardOf: (t, id) => { const c = t.cards.get(id); return c && seatOk(t, c) ? fillCard(c, t) : null; }, sourceOf: (t, c) => packSource(packFor(t), c), refsOf: (slug) => REFS.list(slug), isMock, spend: (k) => spend(k), spendMany: (k, n) => spend(k, n), ai: o.ai || null,
+  if (process.env.DEMO_MODE !== '1') JAM2 = mountJam2({ brandbook: BOOK, on, packs: o.globalPacks || packs, slugOfT, brandOfT, meOf, reqOf, cardOf: (t, id) => { const c = t.cards.get(id); return c && seatOk(t, c) ? fillCard(c, t) : null; }, sourceOf: (t, c) => packSource(packFor(t), c), refsOf: (slug) => REFS.list(slug), isMock, spend: (k) => spend(k), spendMany: (k, n) => spend(k, n), ai: o.ai || null,
     geminiImage, vertexVideo: (frame, prompt, x) => jam2Video(frame, prompt, { ...x, priced: true }, log), vertexVoice: (text, v) => jam2Voice(text, v, {}, log), vertexMusic: (prompt) => jam2Music(prompt), presence: { beat: (id, u, typing) => JAMS.beat(id, u, typing), here: (id) => JAMS.here(id) }, teamOf: o.teamOf || null, inviteTo: o.inviteTo || null, jamMail: o.jamMail || null, slack: o.slack || null, memoryOf: (t, agent) => promptBlock(t, agent), finals: o.finals || null, saveGen, genFile: jam2GenFile, photoAsync: o.photoAsync, claudeTool, launchBrowser: o.launchBrowser, shoot: createMakers({ geminiImage, launchBrowser: o.launchBrowser, zipBuffer: o.zipBuffer, log }).shoot, zipBuffer: o.zipBuffer, log });
   // tenants survive restarts (store.js); a tenant not in memory is read back from disk or GCS before we give up on it
   const getTenant = async (id) => {
@@ -2430,5 +2434,5 @@ export function createFeedService(o) {
   const syncSocial = (slug) => { const br = packs.peek(slug); if (!br) return; runIn(br, () => { for (const t of brandTenants(br)) { streamSync(t, SEED.posts); store?.save(t); } }); };
   // a cadence move was retired (moves-cadence.js): its cards leave every open workspace, unless someone acted on them
   const dropCards = (slug, ids) => { const br = packs.peek(slug); if (!br || !ids?.length) return; runIn(br, () => { for (const t of brandTenants(br)) { for (const id of ids) { const c = t.cards.get(id); if (c && ['ready', 'shown'].includes(c.state) && !t.acted?.has?.(id) && !(t.work || []).some((w) => w.cardId === id)) setState(t, c, 'expired'); } store?.save(t); } }); };
-  return { handle, slackIn, finalDone, tenants, jams: JAMS, jam2: { flush: () => JAM2?.flush() }, addCards, dropCards, refreshLive, syncSocial, save: (t) => store?.save(t), wire: (b) => { wireResearch(b); wireLive(b); } };
+  return { handle, slackIn, finalDone, tenants, jams: JAMS, jam2: { flush: () => JAM2?.flush() }, brandbook: BOOK, addCards, dropCards, refreshLive, syncSocial, save: (t) => store?.save(t), wire: (b) => { wireResearch(b); wireLive(b); } };
 }

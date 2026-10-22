@@ -22,6 +22,7 @@ import { cleanBrief, renderBrief } from './brief.js'; // a saved brief's "null" 
 import { aboutOf, OLD_ABOUT, marketConfig, laneProducts, bannedFor, BANNED_LISTS, countryFromText, CURRENCY_OF } from './derive.js'; // a saved config.about written by the old rule heals at load
 import { prototypeConnectors, storeConnectors } from './seed-template.js'; // DUMMY: connector copy that promises no action
 import { sentenceCase, oneCard } from './text-fit.js';
+import { readLayer, viewOf, blankBook, promptBlock } from './jam2/brandbook.js'; // the Brand Book: its words block in every prompt, its never-say in the banned list
 import { withLearned, learnedMoveNs, learnedTerms, learnedItems } from './brand-learnings.js'; // what the team told Brew (pasted into a jam): in every prompt's system text
 import { sandboxName, virtualFile, demoSid } from './demo-mode.js'; // Demo Mode: per-session private files
 import { markMoveClaims, sourceText } from './claims.js'; // saved moves: a claim the store never made is marked as the team's call
@@ -73,6 +74,12 @@ export const moneyParse = (s) => {
 };
 const escRe = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+/* the category's banned claims plus the team's never-say words (the Brand Book): one regex every gate and filter already runs */
+export function bannedWith(banned, never = []) {
+  const words = (never || []).map((w) => String(w).trim()).filter((w) => w.length >= 3).map((w) => escRe(w).replace(/\s+/g, '\\s+'));
+  const parts = [banned, words.length ? `\\b(?:${words.join('|')})\\b` : null].filter(Boolean);
+  try { return new RegExp(parts.join('|') || '(?!)', 'i'); } catch { for (const x of [banned, parts[1]]) { try { if (x) return new RegExp(x, 'i'); } catch {} } return /(?!)/; }
+}
 // the {{key}} resolver the seed and cards use, bound to one fact sheet
 const fxFor = (FACTS) => {
   const fx = (s) => typeof s === 'string' ? s.replace(/\{\{(\w+)\}\}/g, (_, k) => FACTS[k] ? FACTS[k].v : '⟨' + k + '?⟩') : s;
@@ -91,7 +98,7 @@ function finish(p) {
     fx, fxDeep,
     name: p.seed.brand.name, host: p.seed.brand.host,
     ...factLines(p, p.facts),
-    rivalsRe: re(rivals), bannedRe: new RegExp(c.banned || '(?!)', 'i'),
+    rivalsRe: re(rivals), bannedRe: bannedWith(c.banned, p.neverSay),
     namedRe: new RegExp(`\\b${escRe(p.seed.brand.name)}\\b`, 'i'),
     festivalAt: c.festival?.date ? Date.parse(c.festival.date) : null,
     money: moneyFmt(c.currency, c.locale), sym: CURRENCY[c.currency] || '',
@@ -292,6 +299,14 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
       getJSON(slug, 'facts.json', {}), getJSON(slug, 'config.json', {}), getJSON(slug, 'status.json', {}), getJSON(slug, 'moves.json', {}), getJSON(slug, 'pools.json', {}),
       getJSON(slug, 'profile.json', null), getJSON(slug, 'statics.json', {}), get(slug, 'brief.md'), getJSON(slug, 'labels.json', {}), getJSON(slug, 'pages.json', {}),
       getJSON(slug, 'brief.json', {}), getJSON(slug, 'move-value.json', {}), getJSON(slug, 'notes.json', null), getFreshJSON(slug, 'drafts/cards.json', {}), getJSON(slug, 'learned.json', null), getJSON(slug, 'rival-reads.json', {}), getJSON(slug, 'pulse/latest.json', null)]);
+    /* the Brand Book's share view (the read plus the team's edits that aren't private): its words block joins the system text and its
+       never-say words join the banned list, so every writer follows it; the view rides on the pack for the picture makers */
+    const [bookRead, bookSaved] = await Promise.all([getJSON(slug, 'brandbook-read.json', null).catch(() => null), getJSON(slug, 'private/brandbook.json', null).catch(() => null)]);
+    const book = viewOf({ ...blankBook(), ...(bookSaved || {}), read: readLayer({ slug, profile, brief: briefJ, config, book: bookRead }) }, { scope: 'share' });
+    const bookWords = promptBlock(book);
+    /* every picture maker reads config.product.style as the brand's look (sloosh-prompt lookOf, finals, drafts): the read's
+       category template ("Premium Apparel product ad photography") gives way to the look Brew saw in the brand's own pictures */
+    if (book.look?.notes && config) config = { ...config, product: { ...(config.product || {}), style: [book.look.notes, book.look.light && `Light: ${book.look.light}.`, book.look.colourUse].filter(Boolean).join(' ').slice(0, 600), styleFrom: 'brand-book' } };
     const hooks = hooksOf(profile, rivalReads || {}); /* real buyers' words and the rival ads that keep running, for the draft plans */
     /* a brief saved with "null" cells (an empty MRP or note the model wrote out) heals at load, for every brand: the cells go
        blank and the page (the AI's system prompt for the brand) is drawn again with what the team told Brew */
@@ -354,12 +369,14 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
     if (moves && typeof moves === 'object') seed.posts = (seed.posts || []).filter((c) => { const mm = /^m(\d+)-\d+$/.exec(String(c?.id || '')); return !(mm && moves[mm[1]] && pastOf(moves[mm[1]])); });
     const moveSrc = sourceText(Object.values(facts || {}).map((f) => [f?.label, f?.v, ...(f?.aliases || [])]), catalogOf(profile), hooks.reviewQuotes, config?.about || '', seed?.brand?.about || '');
     let bannedRe = null; try { bannedRe = config?.banned ? new RegExp(config.banned, 'i') : null; } catch { bannedRe = null; }
+    const neverSay = (book.neverSay || []).filter((w) => String(w).trim().length >= 3);
     const moveDocs = fitIndexIn(fitMoves(moves, keepOf({ profile, config, seed }), moveSrc, bannedRe, config?.currency));
     const seedD = moveBadges(fitCards(withDemo(fitPhotos(socialize(visualize(seed, { slug, config, staticText: statics, profile }), social, { profile }), profile), demo), { profile, config, seed, status }), moves, staleMoves);
     return finish({
       slug, kind: 'generated', ready: !!status.ready, status, demo, numbers,
       seed: fxDeep(seedD), rawSeed: seedD, facts,
-      system: withLearned(brief?.toString('utf8') || `You write for ${seed.brand.name}.`, learned, { name: seed.brand.name }), /* the brief, with what the team told Brew laid in once (brand-learnings.js) */
+      system: withLearned(brief?.toString('utf8') || `You write for ${seed.brand.name}.`, learned, { name: seed.brand.name }) + (bookWords ? `\n\n## The Brand Book (follow it in everything you write)\n${bookWords}` : ''), /* the brief, with what the team told Brew laid in once (brand-learnings.js), then the Brand Book */
+      book, neverSay, bookWords,
       config, pools: fitPools({ trends: [], 'ads-library': [], catalog: [], ads: [], visibility: [], creative: [], ...pools }, keepOf({ profile, config, seed })),
       statics: config.statics || [], lanePhoto: config.lanePhoto || {},
       moveDocs, labels, pages,
