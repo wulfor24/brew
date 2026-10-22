@@ -33,15 +33,14 @@ export function mountJam2(d) {
   }
   /* run slow work in the background; the board says what it is doing and any error in plain words */
   /* a job also leaves a mark on the jam (saved with it): after a restart, a mark with no job running says the job was cut off */
-  const runBg = (t, jam, bid, op, fn) => { const k = `${jam.id}:${bid}`; if (busy.get(k)?.op && !busy.get(k).error) return false; busy.set(k, { op, at: Date.now() }); (jam.running ||= {})[bid] = { op, at: Date.now() };
+  const runBg = (t, jam, bid, op, fn, mark = {}) => { const k = `${jam.id}:${bid}`; if (busy.get(k)?.op && !busy.get(k).error) return false; busy.set(k, { op, at: Date.now() }); (jam.running ||= {})[bid] = { ...mark, op, at: Date.now() };
     Promise.resolve().then(fn).then(() => busy.delete(k)).finally(() => { if (jam.running) delete jam.running[bid]; }).catch((e) => { log.warn?.('[jam2]', op, e.message); busy.set(k, { op, at: Date.now(), error: e.budget ? e.message : e.open ? e.message : `${e.message}`.slice(0, 240) }); })
       .finally(() => { jam.updatedAt = Date.now(); return store.put(slugOfT(t), jam); }).catch((e) => log.warn?.('[jam2] save after', op, e.message)); return true; };
   /* a board made with a product whose catalog price has changed since says so (words can follow free) */
   const priceAlerts = (t, jam) => { const cat = brandOfT(t)?.catalog || []; for (const b of jam.boards) { const m = headOf(b)?.made4; b.priceAlert = null; if (!m?.price) continue;
     const c = cat.find((x) => (m.handle && x.handle === m.handle) || (m.name && (x.t || x.title) === m.name)); if (c?.price != null && String(c.price) !== m.price) b.priceAlert = { name: m.name, was: m.price, now: String(c.price) }; } };
-  const out = (jam, t = null) => { if (t) try { priceAlerts(t, jam); } catch {} const v = jamView(jam); /* a mark left by a job a restart cut off becomes an ordinary error (shown until the next try), and the mark goes */
-    for (const b of jam.boards) { const k = `${jam.id}:${b.id}`, m = jam.running?.[b.id]; if (m && !busy.get(k)) { busy.set(k, { ...m, error: `Brew restarted while this was being made. Press it again${b.inflight ? ': the shots already made are kept, free' : ''}.` }); delete jam.running[b.id]; } }
-    v.busy = Object.fromEntries(jam.boards.map((b) => [b.id, busy.get(`${jam.id}:${b.id}`) || null])); delete v.running; delete v.cuts; return v; };
+  const out = (jam, t = null) => { if (t) try { priceAlerts(t, jam); } catch {} const v = jamView(jam); /* a job a restart cut off: its mark (saved with the jam) shows as the board's state until it is resumed or tried again */
+    v.busy = Object.fromEntries(jam.boards.map((b) => [b.id, busy.get(`${jam.id}:${b.id}`) || (jam.running?.[b.id] ? { op: jam.running[b.id].op, at: jam.running[b.id].at, error: jam.running[b.id].error || 'Brew restarted while this was being made. Press it again.' } : null)])); delete v.running; delete v.cuts; return v; };
   const load = async (t, jid) => { const j = await store.get(slugOfT(t), jid, whoOf(t)); if (!j) throw Object.assign(new Error('not found'), { status: 404 }); return j; };
   const wrap = (fn) => async (b, t, p, q) => { try { return await fn(b, t, p, q); } catch (e) { return { error: e.message, status: e.status || 200 }; } };
 
@@ -68,7 +67,15 @@ export function mountJam2(d) {
       const bd = jam.boards[0]; runBg(t, jam, bd.id, 'first', async () => { const ctx = await ctxOf(t, jam); await maker.first(ctx, bd); }); }
     return { jam: out(jam), also: alsoFor(jam.boards[0]?.recipe) };
   }));
-  on('GET', '/api/jam2/jams/:jid', wrap(async (b, t, p) => { const j = await load(t, p.jid); return { jam: out(j, t), also: alsoFor(j.boards[0]?.recipe) }; }));
+  /* a paid render (already said yes to, at that price) or a free every-product run that a restart cut off picks up again the next
+     time the jam is opened, keeping the shots already made; three tries within 3 hours, then it says so and waits for a press */
+  const resumeCut = async (t, j) => { for (const bd of j.boards) { const m = j.running?.[bd.id]; if (!m || m.error || busy.get(`${j.id}:${bd.id}`)) continue;
+    if (!m.resume || Date.now() - m.at > 3 * 3600e3 || (m.tries || 0) >= 3) { m.error = `Brew restarted while this was being made. Press it again${bd.inflight ? ': the shots already made are kept, free' : ''}.`; continue; }
+    const tries = (m.tries || 0) + 1, ctx = await ctxOf(t, j);
+    if (m.op === 'render') runBg(t, j, bd.id, 'render', async () => { const r = await maker.renderVideo(ctx, bd, { confirmUsd: m.confirmUsd }); if (r.needsConfirm) throw new Error('The price went up; check it and confirm again.'); }, { resume: true, confirmUsd: m.confirmUsd, tries });
+    else if (m.op === 'all' && boardOf(j, bd.allOf)) runBg(t, j, bd.id, 'all', async () => maker.allProducts(ctx, bd, boardOf(j, bd.allOf)), { resume: true, tries });
+    else m.error = 'Brew restarted while this was being made. Press it again.'; } };
+  on('GET', '/api/jam2/jams/:jid', wrap(async (b, t, p) => { const j = await load(t, p.jid); await resumeCut(t, j).catch((e) => log.warn?.('[jam2] resume', e.message)); return { jam: out(j, t), also: alsoFor(j.boards[0]?.recipe) }; }));
   on('POST', '/api/jam2/jams/:jid/concept', wrap(async (b, t, p) => { const j = await load(t, p.jid); const changed = bumpConcept(j, b || {}, whoOf(t).me); await store.put(slugOfT(t), j); return { jam: out(j), changed }; }));
   on('POST', '/api/jam2/jams/:jid/boards', wrap(async (b, t, p) => { const j = await load(t, p.jid);
     if (b.fromRecipe) { const rc = ((await bb.load(slugOfT(t))).recipes || []).find((x) => x.id === b.fromRecipe); if (!rc) return { error: 'That recipe is gone.' }; Object.assign(b, { recipe: rc.recipe, label: rc.name, ask: rc.ask, how: rc.how }); }
@@ -80,7 +87,7 @@ export function mountJam2(d) {
     if (!r.how.includes(b.how)) return { error: `${r.label} can be made: ${r.how.map((h) => HOW_LABEL[h]).join(', ')}.` }; bd.how = b.how; await store.put(slugOfT(t), j); return { jam: out(j) }; }));
   on('POST', '/api/jam2/jams/:jid/boards/:bid/head', wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, p.bid); if (!bd?.takes.some((x) => x.id === b.takeId)) return { error: 'not found' }; bd.head = b.takeId; bd.approved = null; bd.status = 'draft'; await store.put(slugOfT(t), j); return { jam: out(j) }; }));
   /* Edit this / Redo / Blend / swap: free ones finish in the request, priced ones run in the background */
-  on('POST', '/api/jam2/jams/:jid/boards/:bid/op', wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, p.bid); if (!bd) return { error: 'not found' };
+  on('POST', '/api/jam2/jams/:jid/boards/:bid/op', wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, p.bid); if (!bd) return { error: 'not found' }; if (j.running?.[bd.id]?.error) delete j.running[bd.id]; /* any change clears a cut-off note */
     const free = !!b.patch?.scene || !!b.patch?.words || !!b.patch?.timeline || b.patch?.slide != null || b.op === 'resize' || b.op === 'line' || b.op === 'redo-words' && isMock();
     if (bd.status === 'stale' && b.op === 'refresh') { runBg(t, j, bd.id, 'first', async () => maker.first(await ctxOf(t, j), bd)); return { jam: out(j) }; }
     if (b.op === 'first' || (!bd.takes.length && !free)) { runBg(t, j, bd.id, 'first', async () => maker.first(await ctxOf(t, j), bd, { ask: b.ask || '' })); return { jam: out(j) }; }
@@ -100,7 +107,7 @@ export function mountJam2(d) {
   on('POST', '/api/jam2/jams/:jid/boards/:bid/render', wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, p.bid); if (!bd) return { error: 'not found' }; const ctx = await ctxOf(t, j);
     const h = headOf(bd); const q = await maker.videoQuote(ctx, bd, h); if (q.error) return { error: q.error };
     if (!isMock() && !(+b.confirmUsd + 0.01 >= q.usd)) return { needsConfirm: true, quote: q };
-    runBg(t, j, bd.id, 'render', async () => { const r = await maker.renderVideo(ctx, bd, { confirmUsd: b.confirmUsd ?? q.usd }); if (r.needsConfirm) throw new Error('The price went up; check it and confirm again.'); }); return { jam: out(j), quote: q }; }));
+    runBg(t, j, bd.id, 'render', async () => { const r = await maker.renderVideo(ctx, bd, { confirmUsd: b.confirmUsd ?? q.usd }); if (r.needsConfirm) throw new Error('The price went up; check it and confirm again.'); }, { resume: true, confirmUsd: b.confirmUsd ?? q.usd }); return { jam: out(j), quote: q }; }));
   /* one shot of a rendered video: edit its first frame and animate it again (price first), the rest of the video kept */
   on('POST', '/api/jam2/jams/:jid/boards/:bid/reshot', wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, p.bid); if (!bd) return { error: 'not found' }; const ctx = await ctxOf(t, j);
     const i = Number.isInteger(b.i) ? b.i : -1, ask = String(b.ask || '').slice(0, 300).trim(); if (!ask) return { error: 'Say what should change in this shot.' };
@@ -119,7 +126,7 @@ export function mountJam2(d) {
   on('POST', '/api/jam2/jams/:jid/boards/:bid/all', wrap(async (b, t, p) => { const j = await load(t, p.jid), src = boardOf(j, p.bid); if (!headOf(src)?.scene) return { error: 'Make the picture first.' };
     if (j.boards.length >= 12) return { error: 'This jam has 12 boards. Start a new jam for more.' };
     const nb = newBoard('carousel-ad', { label: 'Every product', conceptRev: j.concept.rev }); nb.allOf = src.id; j.boards.push(nb); await store.put(slugOfT(t), j);
-    runBg(t, j, nb.id, 'all', async () => maker.allProducts(await ctxOf(t, j), nb, src)); return { jam: out(j) }; }));
+    runBg(t, j, nb.id, 'all', async () => maker.allProducts(await ctxOf(t, j), nb, src), { resume: true }); return { jam: out(j) }; }));
   /* recipes: a board's look and layout saved by name, to start the next one from */
   on('POST', '/api/jam2/recipes', wrap(async (b, t) => { const w = whoOf(t); if (!w.member && !w.staff) return { error: 'Only the brand’s team can save recipes.' };
     const j = await load(t, b.jid), bd = boardOf(j, b.bid), h = headOf(bd); if (!h) return { error: 'Make it first.' };
