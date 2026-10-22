@@ -200,6 +200,15 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
   const placeOf = (see) => `the setting for this moment, with none of the objects, gifts, boxes or products it mentions and no hands or people: ${tidy(see, 220)}`;
   /* the motion for a shot: the scene moves a little; nothing new appears and the product stays exactly as photographed */
   const motionOf = (s, ask = '') => `${s.camera || 'static'} camera. Gentle natural motion in the setting (light, steam, fabric, leaves).${ask ? ` ${ask}.` : ''} The product stays exactly as in the first frame: same shape, label and colours. Nothing new appears: no hands, no people, no other products, no text, no logos.`;
+  /* each shot line rewritten as an empty setting (one small text call): the image model draws only the place, never its own products */
+  async function placesOf(ctx, shots) {
+    if (isMock() || !shots.length || !spend('text', ctx.slug)) return [];
+    try { const out = await claudeTool([`For each numbered shot of a product video, describe only the empty setting to photograph: the room or surface, light, colours and mood, in under 25 words.`,
+        'Leave out every object someone could buy, hold, wear, give or unbox (products, gifts, boxes, packaging, masks, pillows, clothing, accessories) and any hands or people. Keep a clear empty surface in the lower middle.',
+        ...shots.map((s, i) => `${i + 1}. ${tidy(s.see, 240)}`)].join('\n'), { type: 'object', properties: { places: { type: 'array', items: { type: 'string' } } }, required: ['places'] }, 800, 'jam2_places');
+      return (out?.places || []).map((x) => placeOf(tidy(x, 200)));
+    } catch (e) { log.warn?.('[jam2] places', e.message); return []; }
+  }
   async function videoQuote(ctx, board, take) {
     const r = recipe(board.recipe), cap = r.caps.includes('video.ugc') ? 'video.ugc' : 'video.shot'; let usd = 0, credits = 0, provider = null;
     for (const s of take.timeline?.shots || []) { const q = await engines.quote(cap, { seconds: Math.max(4, s.sec || 4), slug: ctx.slug }); /* Veo bills at least 4 s a clip */ if (q.error) return { error: q.error }; usd += q.usd || 0; credits += q.credits || 0; provider = q.provider; }
@@ -215,11 +224,11 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
     if (!isMock() && (confirmUsd == null || +confirmUsd + 0.01 < q.usd)) return { needsConfirm: true, quote: q };
     const size = sizeOf(board), cut = t0.cut && /^gen\//.test(t0.cut) ? { file: t0.cut } : await cutout(ctx), made = [], shots = [];
     /* each shot on its own: a shot whose clip fails (or whose budget is used up) keeps its still, so nothing already paid for is lost */
-    let lost = 0;
+    let lost = 0; const places = await placesOf(ctx, t0.timeline.shots);
     for (const s of t0.timeline.shots) { try {
       /* the scene is only the place: the shot line names products, and an image model asked for them draws its own versions */
-      const bg = await scene(ctx, { describe: placeOf(s.see), ratio: '9:16' }); made.push({ cap: 'still.scene', provider: bg.provider, model: bg.model, usd: bg.usd });
-      const sc = composeScene({ size: { ...size, w: 1080, h: 1920 }, bgFile: bg.file, cut, words: { headline: '' }, kit: ctx.bbv.kit }); sc.layers = sc.layers.filter((l) => l.kind !== 'text' && l.kind !== 'shape' && l.kind !== 'badge' && l.kind !== 'logo'); /* the logo goes on the end shot's still overlay (captionCard), where a camera move can't push it out of frame */
+      const bg = await scene(ctx, { describe: places[t0.timeline.shots.indexOf(s)] || placeOf(s.see), ratio: '9:16' }); made.push({ cap: 'still.scene', provider: bg.provider, model: bg.model, usd: bg.usd });
+      const sc = composeScene({ size: { ...size, w: 1080, h: 1920 }, bgFile: bg.file, cut, words: { headline: '' }, kit: ctx.bbv.kit }); sc.layers = sc.layers.filter((l) => l.kind !== 'text' && l.kind !== 'shape' && l.kind !== 'badge' && l.kind !== 'logo'); for (const l of sc.layers) if (l.kind === 'product') Object.assign(l, { x: 200, y: 640, w: 680, h: 720 }); /* above the caption bar (y 1430) and below the on-screen words */ /* the logo goes on the end shot's still overlay (captionCard), where a camera move can't push it out of frame */
       const still = await render(sc); const sf = await fileOf(still);
       if (!spend('video', ctx.slug)) throw Object.assign(new Error('Today’s video budget is used up.'), { budget: true });
       const clip = await engines.run(q.cap, { srcFile: sf, srcUrl: still, prompt: q.cap === 'video.shot' ? motionOf(s) : `${s.camera || 'static'} camera. ${s.see}. The product stays exactly as in the first frame: same shape, label and colours. Natural motion, no text, no logos added.`, seconds: s.sec, ratio: '9:16', slug: ctx.slug, by: ctx.by?.email, jamId: ctx.jam.id, boardId: board.id });
