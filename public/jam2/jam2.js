@@ -194,6 +194,8 @@ function chips() {
   if (s?.kind === 'shot') return ['Make the voiceover warmer', 'Shorter'];
   if (s?.kind === 'brief') return ['Send brief', 'Give it to your agency'];
   if (isBrief(b)) return ['Send brief', 'Make it myself instead', 'Why this?'];
+  /* a finished Studio piece: a video, or a designed picture whose words are drawn in, has nothing to render or retype here */
+  const tk = take(b); if (tk?.studio && (tk.studio.kind === 'video' || !(tk.scene?.layers || []).length)) return ['Brief a team instead', 'Why this?'];
   if (b.kind === 'video') return ['Render it', 'Make an image ad from it', 'Brief a team instead', 'Why this?'];
   if (take(b)?.scene) return ['Make the headline shorter', 'Show me 9:16', 'Brief a team instead', 'Why this?'];
   if (b.kind === 'table') return ['Brief a team instead', 'Why this?'];
