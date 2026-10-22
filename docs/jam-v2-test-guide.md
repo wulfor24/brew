@@ -60,7 +60,7 @@ A small toolbar appears over the canvas; free changes land at once as a new vers
 | Reel / video | A shot card | What we see · Voiceover · On-screen words · Voiceover shorter · ⋯ Longer / Shorter / Remove | Storyboard edits are free |
 | | Voice / Music / Captions tracks | pick a narrator / mood / on-off | Free to change. On render: captions are burnt in (brand type) and also come as an SRT; music is made for the video (Lyria, instrumental) and mixed under the voice |
 | | Render the video | — | Shows the price (about $2.50 for 15 s); only renders on your yes; editing after a render shows "Render again with the changes" |
-| | A shot of a rendered video | Change this shot | Price for one shot first; Brew edits that shot's first frame, animates it again and keeps every other shot |
+| | A shot of a rendered video | Change this shot | Price first (about $0.64); only that shot's background changes, your real product is placed on it again and animated; every other shot, the voice and the music are kept |
 | Reddit / Quora reply, email, WhatsApp, page, FAQ | Any sentence (or the email subject) | Type over · Shorter · Warmer · Another way · ⋯ In Hindi · Remove | Only that sentence changes; line breaks stay |
 | | Copy and open the thread (replies) | — | Text copied; the thread opens if the card had a link |
 | Change lists (pause, prices, budget, titles, offers, team plan, timing, checklist) | A row | Change it · Change the action · Remove · ⋯ Add a row | Only that row changes |
@@ -123,6 +123,13 @@ Keyboard: Tab reaches every part of a picture; Enter selects it; Escape closes t
 | A piece made with a product whose catalog price changed since | Says so, with a free "Update the words" |
 | A sent brief | Its status (received → in progress → delivered) shows on the open jam within 15 s |
 
+## If Brew restarts mid-job (deploys happen often)
+| Try | Expect |
+|---|---|
+| Start a render or Do it for every product, then a deploy lands | Open (or keep open) the jam: it carries on by itself at the price you already approved, reusing the shots already made |
+| A first draft or an edit cut off by a restart | The board says "Brew restarted while this was being made. Press it again." |
+| Not enough video budget left today | Render refuses before spending anything: "Today's video budget doesn't cover the 4 shots…" (each brand gets 5 video shots a day; a 15 s reel uses 4) |
+
 ## Costs seen on live (22 Oct, Cozy)
 Words and changes: free to you (they count toward the daily writing budget). Image ad first take: about $0.04 (scene) + free cut-out.
-Do it for every product: free. Video storyboard: free; render: about $2.56 for 15 s with voice, captions and music.
+Do it for every product: free (about 75 s for 12 products). Video storyboard: free; render: quoted $2.62, charged $2.41–2.47 for 15 s with voice, captions and music (10–20 min when Veo is busy). Change this shot: $0.64.
