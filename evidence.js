@@ -85,9 +85,9 @@ export function createEvidence({ factsOf, movesOf, numsOf, adOf = () => null, co
   /* a pulse line is a market number, not the brand's own: a plain count ("100", "30") backs the card only when its move used
      that line; a specific one also needs two words in common with the card (the rival's name, what was counted) */
   const pickPulse = (cands, cw, used, loose) => pick(cands.filter((f) => used.has(f.key) || (!loose && words(`${f.label} ${f.subject || ''}`).filter((w) => !/^\d/.test(w) && cw.has(w)).length >= 2)), cw, used, false);
-  function evidenceOf(c, { liveLedger = null, plain = null, voice = [], team: teamOk = true } = {}) { /* teamOk: what the team told Brew is for its team only, like the told list */
+  function evidenceOf(c, { liveLedger = null, facts: truth = null, plain = null, voice = [], team: teamOk = true } = {}) { /* teamOk: what the team told Brew is for its team only, like the told list */ /* truth: a member's sheet (facts-desk.js truthOf), so a site number a connected one replaced backs nothing; liveLedger only names the account */
     if (!c) return null;
-    const facts = factsOf() || {}, idx = indexOf(facts), pidx = pulseIndex(pulseOf?.()), cw = new Set(words(cardText(c)));
+    const facts = truth || factsOf() || {}, idx = indexOf(facts), pidx = pulseIndex(pulseOf?.()), cw = new Set(words(cardText(c)));
     const ns = (numsOf?.(c.src) || []), M = movesOf() || {};
     const used = new Set(ns.flatMap((n) => M[n]?.factsUsed || []));
     const items = [], seen = new Set();

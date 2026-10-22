@@ -38,8 +38,9 @@ const swapIn = (text, from, to, key) => { if (typeof text !== 'string' || !text)
   return text.split(/(?<=[.!?])\s+/).map((s) => { const sw = words(s); return [...key].filter((k) => sw.has(k)).length >= Math.min(2, key.size) ? s.replace(re, to) : s; }).join(' '); }; /* the sentence names the count (two of its words), not one passing word like "stock" */
 
 /* the card with today's counts: a new object only when a row changed */
-export function freshCounts(card, counts) {
-  if (!card || typeof card !== 'object' || !Array.isArray(card.rows) || !counts?.length || card.liveOnly || card.demo || card.mock) return card;
+/* live: a member's view, whose counts carry their connected accounts, so the team's own cards follow them too */
+export function freshCounts(card, counts, { live = false } = {}) {
+  if (!card || typeof card !== 'object' || !Array.isArray(card.rows) || !counts?.length || (card.liveOnly && !live) || card.demo || card.mock) return card;
   const said = `${card.title || ''} ${card.sub || ''}`.toLowerCase();
   /* a card about someone else's numbers (a rival named in its words) never takes the brand's own count for a row that names no one */
   const others = counts.filter((c) => c.owner).map((c) => c.owner.toLowerCase()).filter((o) => said.includes(o));

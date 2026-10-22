@@ -33,6 +33,7 @@ import { createStatics, teamStaticCards, teamStaticsDue } from './statics.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { mergeLedger, diffLedgers, candidates, triage, changeLine, liveMaterial, handleOfItem, productNames, movesNaming, CONNECTED_MOVES } from './refresh.js';
 import { withLearned, briefView } from './brand-learnings.js';
+import { factTruth } from './facts-desk.js'; // one truth for a member's numbers: stale rows out, replaced site values gone
 import { profileLive, withLive, settleWait, connectTargets } from './on-connect.js'; // what a real connected account corrects in the team's view
 import { briefWithConnected, cleanBrief, renderBrief } from './brief.js'; // what the team told Brew survives a fresh brief; a saved brief heals its "null" cells
 import { aiPaused } from './ai.js';
@@ -486,6 +487,9 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (cfg0.questionsV) Object.assign(cfg, { questions: cfg0.questions, questionsV: cfg0.questionsV, questionsMethod: cfg0.questionsMethod, rivalsAI: cfg0.rivalsAI || cfg.rivalsAI }); /* and the questions sourced from real searches (ai-questions.js), with the team's own */
     await packs.put(slug, 'seed.json', seed); await packs.put(slug, 'facts.json', facts); await packs.put(slug, 'config.json', cfg);
     packs.drop(slug); await onPack(slug);
+    /* a re-read, the daily check or a team edit changed the site's sheet: a brand with a connected account gets its private
+       sheet derived again from it, so the connected truth (and what it replaced) never rests on the old read */
+    if (hooks.connected && realRows(await packs.getJSON(slug, 'private/connected-ledger.json', []).catch(() => [])).length) await hooks.connected(slug, 'reread').catch((e) => log.warn('[facts] connected after read', slug, e.message));
   }
   /* the statics job never finished: nothing saved, a failed set, or a "running" older than an hour (the instance that ran it
      was replaced and the state never resolved) */
@@ -527,7 +531,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       if (capHit(slug)) return;
       await packs.put(slug, 'private/statics-state.json', { state: 'running', at: Date.now(), move: move.meta?.rewrittenAt || move.meta?.at || null });
       try {
-        const p = await packs.load(slug), facts = { ...p.facts, ...((await packs.getJSON(slug, 'private/facts.json', null))?.facts || {}) };
+        const p = await packs.load(slug), facts = await factTruth(packs, slug, { member: true, pack: p });
         const { ids, text } = await createStatics({ ai, image, packs, launchBrowser: mods.pdf.launchBrowser, log }).make(slug, { move, profile, facts, priv: true });
         await withLock(async () => {
           const seed = await packs.getJSON(slug, 'seed.json', {}), lane = Object.keys(seed.lanes || { core: 1 })[0];
@@ -580,7 +584,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     /* a member's cards check their numbers against the same evidence the rewrite used: the read plus the real connected accounts */
     const ledger = priv ? await mergedLedger(slug, ledger0) : ledger0;
     /* a member's rewrite also reads the connected facts (private/facts.json); numbers that stopped being true (facts-edits.json retired) leave the move before it backs a card */
-    const facts = priv ? { ...p.facts, ...((await packs.getJSON(slug, 'private/facts.json', null))?.facts || {}) } : p.facts;
+    const facts = priv ? await factTruth(packs, slug, { member: true, pack: p }) : p.facts;
     const retired = retiredSet((await packs.getJSON(slug, 'facts-edits.json', null))?.retired, allowedFrom(facts));
     const learnedJ = await packs.getJSON(slug, 'learned.json', null).catch(() => null); /* the brand's style, the team's learnings and the cards already in the feed make the next cards specific and unrepeated (cards-gen.js) */
     const { cards, label } = await cardsGen.fromMove(scrubRetired(move, retired), { brand: { name: profile.name, host: profile.host }, profile, config: p.config || null, learned: learnedJ, seen: (p.seed?.posts || []), facts, lanes: p.seed.lanes, laneImg: p.seed.laneImg, spec: Array.isArray(specs) ? specs.find((x) => x.n === move.n) : specs[move.n], ledger: ledger || [] });

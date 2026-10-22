@@ -18,6 +18,7 @@ import { closedLine } from './reader/closed.js';
 import { catalogSourceUrl, catalogTotal, sellsByEnquiry } from './store-facts.js';
 import { evidenceRows, privId } from './connectors/common.js';
 import { mergeLedger } from './refresh.js';
+import { factTruth } from './facts-desk.js'; // a member's numbers rest on one truth (stale rows out, replaced site values gone)
 import { withLive } from './on-connect.js';
 
 const H = 3600e3, DAY = 24 * H;
@@ -481,7 +482,7 @@ export function createMovesScheduler({ packs, ai, memory = null, cardsGen = null
   async function cardsOf(slug, move, profile, gen, { priv = false } = {}) {
     const p = await packs.load(slug, { fresh: true }).catch(() => null); if (!p || !gen) return { cards: [], label: null };
     /* the team's cards check their numbers against the connected facts too (private/facts.json) */
-    const facts = priv ? { ...p.facts, ...((await packs.getJSON(slug, 'private/facts.json', null).catch(() => null))?.facts || {}) } : p.facts;
+    const facts = priv ? await factTruth(packs, slug, { member: true, pack: p }) : p.facts;
     const learnedJ = await packs.getJSON(slug, 'learned.json', null).catch(() => null);
     const { cards, label } = await gen.fromMove(move, { brand: { name: profile.name, host: profile.host }, profile, config: p.config || null, learned: learnedJ, seen: (p.seed?.posts || []), facts, lanes: p.seed?.lanes, laneImg: p.seed?.laneImg, spec: { skill: move.skill, group: AREA_GROUP[move.area] || AREA_GROUP[move.family] || 'know' } });
     return { cards: tagCards(cards.filter((c) => !c.mock), move), label };

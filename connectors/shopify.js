@@ -108,7 +108,9 @@ export default {
     try { const d = await gql(c, 'query($q:String){ abandonedCheckoutsCount(query:$q){ count } }', { q: `created_at:>=${dayISO(30 * 864e5)}` }); m.left = d.abandonedCheckoutsCount?.count ?? null; if (has(m.left, m.orders)) m.started = m.left + m.orders; }
     catch (e) { if (!e.denied) notes.push(`Checkouts: ${e.message.slice(0, 100)}`); }
     try { const d = await gql(c, '{ productsCount(query:"status:active"){ count } products(first:100, sortKey:INVENTORY_TOTAL, query:"status:active"){ nodes{ title totalInventory tracksInventory } } }');
-      m.products = d.productsCount?.count ?? null; m.low = d.products.nodes.filter((p) => p.tracksInventory && p.totalInventory <= 5).map((p) => ({ title: p.title, left: p.totalInventory })); }
+      m.products = d.productsCount?.count ?? null; m.low = d.products.nodes.filter((p) => p.tracksInventory && p.totalInventory <= 5).map((p) => ({ title: p.title, left: p.totalInventory }));
+      /* sold out: tracked products with none left. The list comes lowest stock first, so the count is whole once a product with stock shows (or every product was read) */
+      const ns = d.products.nodes; if (has(m.products) && (m.products <= ns.length || ns.some((p) => p.totalInventory > 0))) m.oos = ns.filter((p) => p.tracksInventory && p.totalInventory <= 0).length; }
     catch (e) { notes.push(`Products: ${e.message.slice(0, 100)}`); }
 
     const src = `Shopify · ${c.shop}`, k = 'shopify', name = 'Shopify', lane = ctx.lane, out = [];
@@ -131,6 +133,7 @@ export default {
       has(m.cod) && L('shopify.cod.share', 'Cash on delivery share of orders, 30 days', pct(m.cod), m.cod, src), has(m.codFail) && L('shopify.cod.failed', 'COD orders cancelled or unpaid after 10 days', pct(m.codFail), m.codFail, src),
       m.shipTo?.length && L('shopify.orders.countries', 'Orders by shipping country, 90 days', m.shipTo.map(([x, s]) => `${x} ${s.toFixed(0)}%`).join('; '), m.shipToN, src),
       has(m.products) && L('shopify.products.active', 'Active products (Shopify admin)', n0(m.products), m.products, src), /* beats the public products.json count on the fact sheet (facts-desk.js PRECEDENCE) */
+      has(m.oos) && L('shopify.products.out_of_stock', 'Out of stock products (Shopify admin)', n0(m.oos), m.oos, src), /* beats the site's out-of-stock count (facts-desk.js PRECEDENCE) */
       m.top?.length && L('shopify.top.30d', 'Best sellers by units, 30 days', m.top.map((x) => `${x.title} (${x.units})`).join('; '), null, src)].filter(Boolean);
     if (cur) for (const r of ledger) r.cur = cur;
     return { metrics: m, stats, changed, cards: out, ledger, notes };

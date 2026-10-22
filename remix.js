@@ -481,7 +481,7 @@ export function createRemix(o) {
     /* a number quoted from the card's own evidence (a real review, a thread's reply count) is backed, not invented */
     /* a connected-account card (live-*) was written from the account's own numbers: they are backed too */
     const evTxt = JSON.stringify([card.post?.evidence || [], card.post?.where || [], card.evidence || [], ...(card.liveOnly || /^live-/.test(card.id || '') ? [card.title, card.sub, card.rows, card.detail, card.liveNums] : [])]).replace(/,(?=\d{3})/g, '');
-    const raw = [...new Set(unbackedNums([copy.title, copy.sub, ...(copy.detail?.why || [])].join(' \n ')))] /* the same text the fact check reads, so a failed check always names its number (QA J-22) */, nums = raw.filter((n) => !evTxt.includes(String(n).replace(/[^\d.%]/g, '').replace(/^\./, '')));
+    const raw = [...new Set(unbackedNums([copy.title, copy.sub, ...(copy.detail?.why || [])].join(' \n '), t))] /* the same text the fact check reads, so a failed check always names its number (QA J-22) */, nums = raw.filter((n) => !evTxt.includes(String(n).replace(/[^\d.%]/g, '').replace(/^\./, '')));
     const qa = qaCheck(copy).filter((x) => x.k !== 'Short title, point first').map((x) => (x.k.startsWith('Every ₹') && nums.length ? { ...x, ok: false, k: `Numbers not in the fact sheet: ${nums.join(', ')} (use a number from the facts or drop it)` } : x.k.startsWith('Every ₹') && !x.ok && raw.length && !nums.length ? { ...x, ok: true, fix: false } : x));
     /* a failed banned-words check names the word it found ("Uses “regrowth”, a claim this category can’t make"), never the check's own name */
     const bannedIn = (txt) => { try { const re = new RegExp(BANNED.source, [...new Set(`${BANNED.flags}gi`)].join('')); return [...new Set((String(txt).match(re) || []).map((w) => w.trim().toLowerCase()).filter(Boolean))].slice(0, 3); } catch { return []; } };
@@ -919,7 +919,7 @@ export function createRemix(o) {
     if (EVIDENCE_ASK.test(message) && o.evidenceOf) { const pa = proofAnswer(o.evidenceOf(t, c)); if (pa) { ch.thread.push({ from: 'ai', text: pa.text, proof: pa.proof, cardId: c.id, at: now(t), answer: true }); return ch; } }
     if (isMock() || !spend('text')) { ch.thread.push({ from: 'ai', text: 'AI is offline right now, so I can’t answer that. Nothing changed.', at: now(t), offline: true, answer: true }); return ch; }
     const pf = o.evidenceOf ? proofAnswer(o.evidenceOf(t, c)) : null; /* every answer can name where a number came from */
-    const acct = acctRows(t).filter((e) => e.label && e.v != null).slice(0, 24); // DUMMY: simulated accounts are never quoted
+    const acct = (o.truthRows ? o.truthRows(t) : acctRows(t)).filter((e) => e.label && e.v != null).slice(0, 24); // DUMMY: simulated accounts are never quoted
     const evidence = [cardBrief(c, seatLine(t.viewer)), `The package (${ch.actionLabel} on ${ch.target.name}):\n${toKV(ch.family, ch.action, ch.pkg).map((e) => `${e.k}: ${e.v}`).join('\n')}`,
       movePassages(c, message, 3).map((x) => `${moveTag(x)}: ${x.text || x.t || ''}`).join('\n'),
       pf ? `Where the card's numbers come from:\n${pf.text}` : '',
@@ -1342,7 +1342,7 @@ export function createRemix(o) {
     const w = { title: clean(String(j.title || '')).slice(0, 160), body: clean(String(j.body || '')).slice(0, 1200), label: j.label };
     if (!w.title && !w.body) throw new Error('The rewrite came back empty. Try another chip.');
     if (BANNED.test(`${w.title} ${w.body}`)) throw new Error('The rewrite used a claim this brand can’t make, so the words stay as they are. Try another chip.');
-    const nums = unbackedNums(`${w.title} ${w.body}`); if (nums.length) throw new Error(`The rewrite used a number the facts don’t back (${nums.slice(0, 3).join(', ')}), so the words stay as they are. Try another chip.`);
+    const nums = unbackedNums(`${w.title} ${w.body}`, t); if (nums.length) throw new Error(`The rewrite used a number the facts don’t back (${nums.slice(0, 3).join(', ')}), so the words stay as they are. Try another chip.`);
     return w;
   };
   /* the card's own package for the sheet: the studio's latest fitting change (so Open the studio lands on it), else built now
@@ -1765,7 +1765,7 @@ export function createRemix(o) {
     let measure = null; try { measure = o.measureOf?.(t, cx) || null; } catch (e) { log.warn('[impact] measure', e.message); }
     const x = impactInputs({ card: c, ch, grade, recipe, measure, ledger: t.member ? realRows(t.liveLedger) : [], connected: t.liveConn || {} });
     const ai = mem && !mock && claudeTool && spend('text') ? (prompt, schema) => claudeTool(prompt, schema, 1500, 'impact') : null;
-    const out = await projectImpact(x, { ai, unbacked: unbackedNums, brand: BN(), log });
+    const out = await projectImpact(x, { ai, unbacked: (s) => unbackedNums(s, t), brand: BN(), log });
     if (!ai && !out.aiError) out.note = mock ? 'Brew’s rule-based range: AI estimates are off here.' : !mem ? 'Brew’s rule-based range: the AI estimate is for the brand’s team.' : 'Brew’s rule-based range: today’s AI budget is used up.';
     if (!out.aiError && (ai || mock || !mem)) { ch.impact[key] = { ...out, at: now(t) }; const ks = Object.keys(ch.impact); if (ks.length > 6) delete ch.impact[ks[0]]; }
     return { impact: out, version: head?.n || 1 };
@@ -1802,7 +1802,7 @@ export function createRemix(o) {
     const c = t.cards.get(ch.cardId) || {}, rv = await rivalRead(t, c).catch(() => null);
     const j = await claudeTool(`${cardBrief(c, seatLine(t.viewer))}${rv ? `\n\n${rivalBlock(rv.ad, rv.style, BN())}${as === 'video' && rv.style?.beats?.length ? '\nFor the video, follow the rival ad\'s beats in the same order, with our product and our words.' : ''}` : viralLine(t, c)}\n\nYou are the ${AGENT[ch.agent] || 'creative'} agent. Remake this ${FAMILY_NAME[ch.family] || 'change'} (${ch.actionLabel}) as ${REMAKE_AS[as]} for ${BN()}'s own channels, keeping its point and its words where they fit.\n${productLine(c, pkgWords(ch))}\nThe package now (field: value):\n${toKV(ch.family, ch.action, ch.pkg).map((e) => `${e.k}: ${e.v}`).join('\n')}\nFill only the part for ${REMAKE_AS[as]}; leave the others empty. ${factsLine}`, REMAKE_SCHEMA, 2000, 'remake');
     const words = [...(j.slides || []).map((x) => x.onSlide), ...(j.script || []).map((x) => x.line), j.overlay].filter(Boolean).join(' ');
-    if (!words || BANNED.test(words) || unbackedNums(words).length) return null; /* a claim the facts don't back: the package's own words instead */
+    if (!words || BANNED.test(words) || unbackedNums(words, t).length) return null; /* a claim the facts don't back: the package's own words instead */
     const out = as === 'carousel' ? { slides: (j.slides || []).slice(0, 6).map((x) => ({ onSlide: short(x.onSlide, 12), visual: clean(x.visual || j.imageBrief || '') })) } : as === 'video' ? { script: (j.script || []).slice(0, 5).map((x) => ({ beat: clean(x.beat), shot: clean(x.shot), line: short(x.line, 14) })), motion: clean(j.motion || '') } : { overlay: short(j.overlay, 7), imageBrief: clean(j.imageBrief || '') };
     if (as === 'carousel' && out.slides.length < 3) return null; if (as === 'video' && out.script.length < 3) return null;
     return { ...out, label: j.label };

@@ -15,7 +15,8 @@
 // The same paste again is recognised by its hash: nothing is learned twice and nothing is spent.
 // Pure helpers are exported so tests run them free; createLearnings wires the store, memory, builder and cadence.
 import crypto from 'node:crypto';
-import { moveLabel, moveNum, moveSay } from './move-label.js'; // weekly moves read "Weekly move 11", never "Move 1011" (QA FEED-QA-12)
+import { moveLabel, moveNum, moveSay } from './move-label.js';
+import { factTruth } from './facts-desk.js'; // a member's numbers rest on one truth (stale rows out, replaced site values gone) // weekly moves read "Weekly move 11", never "Move 1011" (QA FEED-QA-12)
 
 // connected tools by key prefix (the same names as facts-desk.js TOOL; kept here so brand-pack.js can import this file)
 const TOOL = { shopify: 'Shopify', meta: 'Meta Ads', ga4: 'Google Analytics', gads: 'Google Ads', klaviyo: 'Klaviyo', reviews: 'Judge.me', market: 'Marketplaces' };
@@ -422,7 +423,7 @@ export function createLearnings({ ai = null, packs, memory = null, builder = nul
       if (reads.filter((at) => dayOf(at) === dayOf(t0)).length >= DAY_MAX) return { capped: true, reply: `${note ? `${note}\n\n` : ''}${name} has added ${DAY_MAX} sources today, the daily limit. Paste it again tomorrow and Brew learns from it then. Nothing was spent.` };
       const clipped = raw.length > MAX_CHARS ? MAX_CHARS : 0, src = clipped ? raw.slice(0, MAX_CHARS) : raw;
       const kind = kind0 || sourceKind(src), names = files.map((x) => cut(x, 60)).filter(Boolean).slice(0, 6), label = `${kind}${names.length ? ` (${names.join(', ')}${files.length > names.length ? ` and ${files.length - names.length} more` : ''})` : ''}, added by ${by}, ${dayOf(t0)}`;
-      const pf = await packs.getJSON(slug, 'private/facts.json', null).catch(() => null), sheet = { ...(p?.facts || {}), ...(pf?.facts || {}) };
+      const sheet = await factTruth(packs, slug, { member: true, pack: p }); /* the team's truth: live connected facts over the site's (facts-desk.js) */
       // 1. read it
       let items = null, usd = 0, how = 'words';
       if (live()) { try { const r = await extract({ name, host, text: src, kind, sheet }); items = r.items; usd += r.usd; how = 'ai'; } catch (e) { if (!e.mock) log.warn?.('[learn] extract', slug, e.message); } }

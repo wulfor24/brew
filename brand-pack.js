@@ -85,26 +85,40 @@ function finish(p) {
   const c = p.config;
   if (c) c.festival = c.country ? nextFestival(c.country) || c.festival : null; // saved configs carried a fixed 2026 date: always the next one; no market, no sale day (QA 19 Oct)
   const { fx, fxDeep } = fxFor(p.facts);
-  /* today's counts (pack-numbers.js), each with the day it was read, beside the read's facts: the cards, the jam and Ask Brew
-     quote the same number the picker, the read and the check page show, and an older one reads as dated */
-  const haveKeys = new Set(Object.values(p.facts || {}).map((f) => f.key)); /* a fact the team removed stays removed */
-  const cur = Object.fromEntries(numberRows(p.numbers, p.seed?.brand?.name).filter((r) => haveKeys.has(r.key)).map((r) => [`now.${r.key}`, { key: r.key, label: `${r.label} (read ${dayOf(r.at)})`, v: r.v, n: r.n, at: r.at, kind: 'current' }]));
-  const shownFacts = { ...Object.fromEntries(Object.entries(p.facts || {}).filter(([, f]) => !Object.values(cur).some((x) => x.key === f.key))), ...cur };
   const rivals = c.rivals || [];
   const re = (list) => list.length ? new RegExp(`\\b(${list.map((x) => escRe(x).replace(/\\? /g, ' ?')).join('|')})\\b`, 'i') : /(?!)/;
   return Object.assign(p, {
     fx, fxDeep,
     name: p.seed.brand.name, host: p.seed.brand.host,
-    /* the store's own product pages back their numbers too ("3% Redensyl" on the serum's page): drafts quoting the label were failed and told to drop true numbers (QA J-12) */
-    factOk: allowedFrom({ ...p.facts, ...cur, ...Object.fromEntries((p.catalog || []).filter((x) => x?.claim).map((x, i) => [`pdp.${i}`, { v: x.claim }])) }),
-    factBrief: 'Facts you may quote (use these exact numbers, no others; a count that changes day to day says the day it was read, e.g. "664 live ads on 14 Oct"):\n' + Object.values(shownFacts).filter((f) => f.kind !== 'demo' && f.label).map((f) => `- ${f.label}: ${f.v}${f.kind === 'proposed' ? ' (proposed, say so)' : ''}`).join('\n'),
-    pageFacts: Object.values(shownFacts).filter((f) => f.kind !== 'demo' && f.label).map((f) => `- ${f.label}: ${f.v}`).join('\n'),
+    ...factLines(p, p.facts),
     rivalsRe: re(rivals), bannedRe: new RegExp(c.banned || '(?!)', 'i'),
     namedRe: new RegExp(`\\b${escRe(p.seed.brand.name)}\\b`, 'i'),
     festivalAt: c.festival?.date ? Date.parse(c.festival.date) : null,
     money: moneyFmt(c.currency, c.locale), sym: CURRENCY[c.currency] || '',
     tzMs: (c.tzOffsetH ?? 0) * 3600e3
   });
+}
+
+/* what a writer may quote and the fact gate passes, from one fact sheet: the public one on the pack, or a member's truth
+   (facts-desk.js truthOf) through viewerPack */
+function factLines(p, facts = {}) {
+  /* today's counts (pack-numbers.js), each with the day it was read, beside the read's facts: the cards, the jam and Ask Brew
+     quote the same number the picker, the read and the check page show, and an older one reads as dated */
+  const haveKeys = new Set(Object.values(facts || {}).map((f) => f.key)); /* a fact the team removed (or a connected one replaced) stays out */
+  const cur = Object.fromEntries(numberRows(p.numbers, p.seed?.brand?.name).filter((r) => haveKeys.has(r.key)).map((r) => [`now.${r.key}`, { key: r.key, label: `${r.label} (read ${dayOf(r.at)})`, v: r.v, n: r.n, at: r.at, kind: 'current' }]));
+  const shownFacts = { ...Object.fromEntries(Object.entries(facts || {}).filter(([, f]) => !Object.values(cur).some((x) => x.key === f.key))), ...cur };
+  return {
+    /* the store's own product pages back their numbers too ("3% Redensyl" on the serum's page): drafts quoting the label were failed and told to drop true numbers (QA J-12) */
+    factOk: allowedFrom({ ...facts, ...cur, ...Object.fromEntries((p.catalog || []).filter((x) => x?.claim).map((x, i) => [`pdp.${i}`, { v: x.claim }])) }),
+    factBrief: 'Facts you may quote (use these exact numbers, no others; a count that changes day to day says the day it was read, e.g. "664 live ads on 14 Oct"):\n' + Object.values(shownFacts).filter((f) => f.kind !== 'demo' && f.label).map((f) => `- ${f.label}: ${f.v}${f.kind === 'proposed' ? ' (proposed, say so)' : ''}`).join('\n'),
+    pageFacts: Object.values(shownFacts).filter((f) => f.kind !== 'demo' && f.label).map((f) => `- ${f.label}: ${f.v}`).join('\n')
+  };
+}
+/* the pack as one viewer sees it: a member's truth (public facts with their live connected ones over) in place of the public
+   sheet, and every line built from it. Everything else is the pack's own (prototype). `replaced`: the site keys it no longer carries */
+export function viewerPack(p, facts, replaced = new Set()) {
+  if (!p || !facts) return p;
+  return Object.assign(Object.create(p), { facts, ...factLines(p, facts), replacedKeys: replaced, viewer: 'member' });
 }
 
 /* the last word on every picture card, whatever made it (build, idea stream, listening): if the card names a product and

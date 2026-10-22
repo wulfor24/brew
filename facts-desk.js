@@ -6,7 +6,7 @@
 import { keyOf } from './derive.js';
 import { numbersIn, canon } from './fact-gate.js';
 import { moneyFmt } from './brand-pack.js';
-import { simulated } from './connectors/common.js';
+import { simulated, realRows } from './connectors/common.js';
 import { dejargon } from './plain.js';
 import { productFromPage, offeringFromPage } from './reader/products.js';
 
@@ -29,6 +29,7 @@ export const toolOf = (key) => { const p = String(key).split('.')[0]; return p =
 /* a connected number beats the site read of the same thing; the site's fact is kept as `was` */
 export const PRECEDENCE = { 'meta.ads.live': ['ads.own.live'], 'reviews.judgeme.total': ['reviews.judgeme.count', 'reviews.total'], 'reviews.judgeme.rating.recent': ['reviews.judgeme.rating', 'reviews.rating'],
   'shopify.products.active': ['catalog.count'], 'shopify.products.out_of_stock': ['catalog.out_of_stock'], 'market.amazon.listings': ['reviews.amazon.listings'] };
+/* market.amazon.listings can't fire today: the marketplace connectors are off (SCOPE.md). Kept so they take over when they return */
 /* connected ledger entries → facts (same shape as factsFromLedger). Demo accounts never count as true. */
 export function connectedFacts(entries = [], publicFacts = {}) {
   const F = {}, byKey = new Map(Object.entries(publicFacts).map(([k, f]) => [f.key || k, [k, f]]));
@@ -43,8 +44,33 @@ export function connectedFacts(entries = [], publicFacts = {}) {
   }
   return F;
 }
-/* the sheet a member sees: public facts with the connected ones laid over them */
+/* the sheet a member sees: public facts with the connected ones laid over them (stale ones too, marked: the fact sheet view) */
 export const mergeSheet = (pub = {}, priv = {}) => ({ ...pub, ...priv });
+/* The one truth a viewer's numbers rest on (cards, drafts, finals, the fact gate, the proof sheet). A visitor gets the public
+   sheet, never a connected number. A member gets it with every live connected fact laid over: a stale account's rows and a
+   simulated one never count, and every site fact a connected one replaces (PRECEDENCE) leaves, so the site's old number no
+   longer passes. */
+export function truthOf(pub = {}, priv = {}, { member = false } = {}) {
+  const out = { ...(pub || {}) }; if (!member) return out;
+  for (const [k, f] of Object.entries(priv || {})) {
+    if (!f || f.kind !== 'connected' || f.stale || f.demo || simulated(f)) continue;
+    const gone = new Set((PRECEDENCE[f.key] || []).flatMap((x) => [x, keyOf(x)]));
+    for (const [k2, g] of Object.entries(out)) if (!g?.connected && (gone.has(g?.key) || gone.has(k2))) delete out[k2];
+    out[k] = f;
+  }
+  return out;
+}
+/* the connected facts from the team's live rows ({ key: { v, n, at, label } }, connectors forViewer) over the public sheet */
+export const liveTruth = (pub = {}, live = {}) => truthOf(pub, connectedFacts(Object.entries(live || {}).map(([key, e]) => ({ key, ...e })), pub), { member: true });
+/* the site keys a member's truth no longer carries (its count rows go with them) */
+export const replacedKeys = (pub = {}, truth = {}) => new Set(Object.entries(pub || {}).filter(([k]) => !(k in truth) || truth[k]?.connected).map(([k, f]) => f?.key || k));
+/* the truth for a brand, read from its pack and private/facts.json */
+export async function factTruth(packs, slug, { member = false, pack = null } = {}) {
+  const p = pack || await packs.load(slug).catch(() => null), pub = p?.facts || await packs.getJSON(slug, 'facts.json', {}) || {};
+  if (!member) return { ...pub };
+  const pf = await packs.getJSON(slug, 'private/facts.json', null).catch(() => null);
+  return truthOf(pub, pf?.facts || {}, { member: true });
+}
 /* connected facts that moved materially away from the site's number (10% or more, or a different word) */
 export const overrides = (priv = {}) => Object.values(priv).filter((f) => f.was && (() => { const a = numOf(f.was), b = numOf(f); return a != null && b != null ? Math.abs(b - a) / Math.max(Math.abs(a), 1) >= 0.1 : !same(f.was.v, f.v); })());
 
@@ -301,7 +327,7 @@ export function createFactsDesk({ packs, builder, ai = null, onPack = async () =
   /* ---------- connected accounts → private/facts.json ---------- */
   // called after every real connect, sync and disconnect (builder.liveConnected): the whole private sheet is derived again
   async function connected(slug, tool) {
-    const pub = (await packs.load(slug).catch(() => null))?.facts || await packs.getJSON(slug, 'facts.json', {});
+    const pub = (await packs.getJSON(slug, 'facts.json', null).catch(() => null)) || (await packs.load(slug).catch(() => null))?.facts || {}; /* the sheet just written (a re-read, the daily check), never a cached pack */
     const L = await packs.getJSON(slug, 'private/connected-ledger.json', []), before = (await packs.getJSON(slug, 'private/facts.json', null))?.facts || {};
     const facts = connectedFacts(L, pub), tools = {};
     for (const f of Object.values(facts)) tools[f.connected] = Math.max(tools[f.connected] || 0, Date.parse(f.at) || 0);
@@ -315,18 +341,22 @@ export function createFactsDesk({ packs, builder, ai = null, onPack = async () =
   }
   // the numbers a member's cards may use: the public sheet plus the connected facts (never demo accounts)
   async function memberFacts(slug) { const pf = await packs.getJSON(slug, 'private/facts.json', null); return Object.fromEntries(Object.entries(pf?.facts || {}).filter(([, f]) => !f.stale)); } /* a stale account's numbers are not for cards */
+  const truth = (slug, o = {}) => factTruth(packs, slug, o);
 
   /* ---------- schedule: once a day per brand opened in the last 7 days ---------- */
   const T = { busy: false, timers: [] };
+  const liveAccount = async (slug) => realRows(await packs.getJSON(slug, 'private/connected-ledger.json', []).catch(() => [])).some((e) => !e.stale);
   const off = () => process.env.FACTS_DAILY_OFF === '1' || process.env.AI_MOCK === '1' || (!process.env.K_SERVICE && process.env.FACTS_BG !== '1');
   async function tick() {
     if (T.busy || off()) return; T.busy = true;
     try { const all = await packs.list().catch(() => []);
       /* built brands: done, or paused at their spend cap with the moves written so far (their cards quote prices too; this check is free) */
-      const due = all.filter((b) => ((b.status?.done || (b.status?.capped && b.status?.ready)) && !b.status?.cancelled && Date.now() - (b.status.seenAt || 0) < 7 * D)).map((b) => b.slug);
+      const built = all.filter((b) => (b.status?.done || (b.status?.capped && b.status?.ready)) && !b.status?.cancelled);
+      /* opened in the last week, or with a live connected account (its sheet stays the truth even when nobody opens it) */
+      const due = (await Promise.all(built.map(async (b) => (Date.now() - (b.status.seenAt || 0) < 7 * D || await liveAccount(b.slug)) ? b.slug : null))).filter(Boolean);
       for (const slug of due) { try { await daily(slug); } catch (e) { log.warn('[facts] daily', slug, e.message); } } }
     finally { T.busy = false; } }
   const start = () => { if (off()) return; T.timers.push(setTimeout(() => tick().catch(() => {}), 4 * 60e3), setInterval(() => tick().catch(() => {}), 60 * 60e3)); T.timers.forEach((t) => t.unref?.()); };
   const stop = () => T.timers.forEach((t) => { clearTimeout(t); clearInterval(t); });
-  return { view, edit, daily, connected, memberFacts, sheet, start, stop, tick };
+  return { view, edit, daily, connected, memberFacts, truth, sheet, start, stop, tick };
 }
