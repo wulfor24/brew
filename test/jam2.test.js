@@ -159,3 +159,8 @@ test('art direction (photos and UGC films) casts the brand’s own market; a gue
   await m.creative.direct(ctx({ cc: 'US', name: 'United States', guessed: true }), { recipe: 'image-ad' }, { headline: 'h' }, { label: '4:5', ratio: '4:5' });
   assert.doesNotMatch(seen, /sells in/);
 });
+
+test('a jam call right after a restart loads the brand pack first (Studio never refuses the brand’s own product cold)', async () => {
+  const fs = await import('node:fs'), rt = fs.readFileSync(new URL('../jam2/routes.js', import.meta.url), 'utf8'), fsv = fs.readFileSync(new URL('../feed-service.js', import.meta.url), 'utf8');
+  assert.match(rt, /const wrap = [^\n]*if \(t && !brandOfT\(t\) && d\.loadBrandOfT\) await d\.loadBrandOfT\(t\)/); assert.match(fsv, /mountJam2\(\{[^\n]*loadBrandOfT: \(t\) => packs\.load\(/);
+});
