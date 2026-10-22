@@ -160,13 +160,27 @@ test('Google Analytics and Google Ads are two connectors; an old pack heals into
 test('connectors re-read on their own cadence, and new ones get the default', async () => {
   const { everyOf, due } = await import('../connectors/index.js');
   const H = 3600e3, now = Date.now();
-  assert.equal(everyOf('shopify'), 6 * H); assert.equal(everyOf('meta'), 6 * H); assert.equal(everyOf('ga4'), 12 * H);
+  assert.equal(everyOf('shopify'), 3 * H); assert.equal(everyOf('meta'), 3 * H); assert.equal(everyOf('ga4'), 6 * H); assert.equal(everyOf('google'), 6 * H); assert.equal(everyOf('klaviyo'), 12 * H);
   assert.equal(everyOf('some-future-connector'), 12 * H);
   assert.equal(due('shopify', { lastSync: now - 7 * H }, now), true);
   assert.equal(due('shopify', { lastSync: now - 2 * H }, now), false);
-  assert.equal(due('ga4', { lastSync: now - 7 * H }, now), false);
+  assert.equal(due('ga4', { lastSync: now - 5 * H }, now), false);
+  assert.equal(due('klaviyo', { lastSync: now - 7 * H }, now), false);
   assert.equal(due('shopify', { lastSync: now - 7 * H, error: 'x', errorAt: now - H }, now), false, 'a failed read waits 3 hours');
   assert.equal(due('shopify', { lastSync: now - 7 * H, error: 'x', errorAt: now - 4 * H }, now), true);
+});
+
+test('a team visit re-reads what is older than its open window; stale follows each cadence', async () => {
+  const { dueOnOpen, staleHOf, failure } = await import('../connectors/index.js');
+  const H = 3600e3, now = Date.now(), live = (h, x = {}) => ({ state: 'live', lastSync: now - h * H, ...x });
+  assert.equal(dueOnOpen('shopify', live(1.5), now), true); assert.equal(dueOnOpen('shopify', live(0.5), now), false);
+  assert.equal(dueOnOpen('ga4', live(1.5), now), false); assert.equal(dueOnOpen('ga4', live(2.5), now), true);
+  assert.equal(dueOnOpen('meta', live(3, { retryAt: now + H }), now), false, 'a backoff is respected');
+  assert.equal(dueOnOpen('meta', live(3, { needsReconnect: true }), now), false);
+  assert.equal(dueOnOpen('meta', { state: 'syncing', lastSync: now - 3 * H }, now), false, 'one read at a time');
+  assert.equal(staleHOf('shopify'), 24); assert.equal(staleHOf('klaviyo'), 48); assert.equal(staleHOf(null), 72);
+  assert.equal(failure({ lastSync: now - 30 * H }, {}, now, () => 0.5, 'shopify').stale, true, 'Shopify numbers a day and more old are not the truth');
+  assert.equal(failure({ lastSync: now - 30 * H }, {}, now, () => 0.5, 'klaviyo').stale, false);
 });
 
 test('Google Ads: a failed account list says why, never "no account"', async () => {

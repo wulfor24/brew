@@ -28,23 +28,33 @@ const PUBLIC = new Set(['marketplaces']); // a marketplace read is public data, 
 // Marketplaces is switched off for now (2026-10-16): no connect, no daily read, and an earlier connection is ignored. The page shows
 // the marketplaces as Coming soon (DUMMY.md row 7). Take it out of OFF to bring the connector back.
 const OFF = new Set(['marketplaces']);
-/* How often each live account re-reads on its own (the hourly tick below). Reads are free API calls, so the fast-moving
-   accounts go every 6 hours; a connector can set its own `every` (hours) and a new one without it gets 12 hours. A failed
-   read tries again after 3 hours, not every hour. */
-const EVERY_H = { shopify: 6, meta: 6, google: 6, ga4: 12, klaviyo: 12, reviews: 12, marketplaces: 24 /* paid treg read */ };
+/* How often each live account re-reads on its own (the hourly tick below), by how fast its numbers move. Reads are free API
+   calls: the store (orders, stock) and Meta (spend, live ads) move through the day, every 3 hours; Google Ads (its own data
+   lags about 3 hours), GA4 and Judge.me (a low-star review waiting on a reply) every 6; Klaviyo's lists and flows every 12.
+   A connector can set its own `every` (hours) and a new one without it gets 12 hours. A failed read backs off (failure). */
+const EVERY_H = { shopify: 3, meta: 3, google: 6, ga4: 6, klaviyo: 12, reviews: 6, marketplaces: 24 /* paid treg read */ };
+/* the relevant moment: when someone on the team opens the brand, an account last read longer ago than this re-reads in the
+   background (their next screen has it), so what they look at is never older than this while its platform answers */
+const OPEN_H = { shopify: 1, meta: 1, google: 2, ga4: 2, klaviyo: 6, reviews: 2, marketplaces: 24 };
+export const openOf = (id) => (REAL[id]?.openEvery || OPEN_H[id] || Math.min(DEFAULT_H, 3)) * 3600e3;
 const DEFAULT_H = 12, RETRY_H = 3, SYNC_GAP = 10 * 60e3; /* Sync now: one read per account every 10 minutes */
 export const everyOf = (id) => (REAL[id]?.every || EVERY_H[id] || DEFAULT_H) * 3600e3;
 /* a failed read waits until retryAt: the platform's Retry-After on a rate limit, else doubling from 15 minutes up to
    12 hours, with jitter (failure() below). A record saved before retryAt existed keeps the old 3-hour wait */
+const waiting = (s, now) => (s?.retryAt ? now < s.retryAt : s?.error && s?.errorAt && now - s.errorAt < RETRY_H * 3600e3);
 export const due = (id, s, now = Date.now()) => now - (s?.lastSync || 0) >= everyOf(id) - 5 * 60e3 /* an hourly tick may land a few minutes early */
-  && !(s?.retryAt ? now < s.retryAt : s?.error && s?.errorAt && now - s.errorAt < RETRY_H * 3600e3);
+  && !waiting(s, now);
+/* due on a team member's visit: older than its open window, live, not waiting on a backoff, not already reading */
+export const dueOnOpen = (id, s, now = Date.now()) => s?.state === 'live' && !!s.lastSync && !s.needsReconnect && now - s.lastSync >= openOf(id) && !waiting(s, now);
 /* an account's last numbers stay the fact sheet's truth while it fails, but not forever: after STALE_FAILS failures in a
    row, or once its last good read is older than STALE_H hours, they are marked stale and stop being evidence */
 export const STALE_FAILS = +process.env.CONNECT_STALE_FAILS || 3, STALE_H = +process.env.CONNECT_STALE_H || 72, WARN_DAYS = 7;
-export function failure(s = {}, e = {}, now = Date.now(), rnd = Math.random) {
+/* numbers stop being the truth once older than four of their reads, never sooner than a day (CONNECT_STALE_H overrides all) */
+export const staleHOf = (id) => (process.env.CONNECT_STALE_H ? STALE_H : id ? Math.max(24, 4 * everyOf(id) / 3600e3) : STALE_H);
+export function failure(s = {}, e = {}, now = Date.now(), rnd = Math.random, id = null) {
   const fails = (s.fails || 0) + 1, expired = !!e.expired;
   const wait = expired ? 12 * 3600e3 : backoff(fails, { base: e.rateLimited ? 10 * 60e3 : 15 * 60e3, cap: 12 * 3600e3, retryAfter: e.retryAfter, rnd });
-  const old = s.lastSync && now - s.lastSync > STALE_H * 3600e3;
+  const old = s.lastSync && now - s.lastSync > staleHOf(id) * 3600e3;
   const stale = !!s.lastSync && (s.stale || expired || fails >= STALE_FAILS || old);
   const staleWhy = !stale ? null : s.staleWhy || (expired ? 'the sign-in expired' : old ? `no good read for ${Math.round((now - s.lastSync) / 3600e3)} hours` : `${fails} reads in a row failed`);
   return { fails, retryAt: now + wait, stale, staleWhy, ...(expired ? { needsReconnect: true } : {}), ...(e.rateLimited ? { rateLimited: true } : { rateLimited: false }) };
@@ -207,7 +217,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
       log.warn('[connect] sync', slug, id, e.message);
       /* an account that read before keeps its last read and says what went wrong; a new one shows the error */
       let wentStale = null, fx = {};
-      await editC(slug, (c) => { const x = c[id] || {}, f = failure(x, e); fx = f; if (f.stale && !x.stale) wentStale = f.staleWhy;
+      await editC(slug, (c) => { const x = c[id] || {}, f = failure(x, e, Date.now(), Math.random, id); fx = f; if (f.stale && !x.stale) wentStale = f.staleWhy;
         c[id] = { ...x, state: x.lastSync ? 'live' : 'error', error: e.message.slice(0, 200), errorAt: Date.now(), ...f }; });
       cache.delete(sk(slug));
       /* its numbers stay on the fact sheet, marked stale, and stop being evidence for the moves, cards and answers */
@@ -256,7 +266,15 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
   /* a connector card says how long ago its account was read ("3 h"), not "just now" forever */
   const agoShort = (at) => { const m = Math.max(0, Math.round((Date.now() - (+at || Date.now())) / 60e3)); return m < 2 ? 'just now' : m < 60 ? `${m} min` : m < 48 * 60 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} d`; };
   // for feed-service: the connector cards and connected ids a viewer of this brand gets (team only, except marketplaces)
+  /* a team member opened the brand: each live account older than its open window re-reads in the background, at most one
+     look per brand every few minutes, one read per account at a time (sync marks it syncing) */
+  const OPENED = new Map();
+  function freshen(slug, now = Date.now()) {
+    if (DEMO || now - (OPENED.get(slug) || 0) < 5 * 60e3) return; OPENED.set(slug, now);
+    conns(slug).then((cs) => { for (const [id, s] of Object.entries(cs || {})) if (!simOnly(id) && !s?.sim && !OFF.has(id) && dueOnOpen(id, s, now)) sync(slug, id).catch((e) => log.warn('[connect] open sync', slug, id, e.message)); }).catch(() => {});
+  }
   async function forViewer(slug, member) {
+    if (member) freshen(slug);
     const L = await liveOf(slug), cards = [], on = {};
     for (const [id, d] of Object.entries(L.live)) { if (d.gone) continue; if (!member && !PUBLIC.has(id)) continue; on[id] = true;
       cards.push(...(d.cards || []).map((c) => ({ ...c, time: agoShort(d.at), ...(simOnly(id) || d.sim ? { dummy: true } : {}), ...(PUBLIC.has(id) ? { liveOnly: false, publicLive: true } : {}) }))); }
@@ -389,7 +407,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
   }
   /* a last good read older than STALE_H hours goes stale even when no read failed (the tick was off, a platform hung) */
   async function ageCheck(slug, id, now = Date.now()) {
-    const s = (await conns(slug))[id]; if (!s?.lastSync || s.stale || now - s.lastSync <= STALE_H * 3600e3) return false;
+    const s = (await conns(slug))[id]; if (!s?.lastSync || s.stale || now - s.lastSync <= staleHOf(id) * 3600e3) return false;
     const why = `no good read for ${Math.round((now - s.lastSync) / 3600e3)} hours`;
     await editC(slug, (c) => { if (c[id]) c[id] = { ...c[id], stale: true, staleWhy: why }; }); cache.delete(sk(slug));
     await builder.staleConnected?.(slug, id, why, { public: PUBLIC.has(id) }); return true;
