@@ -32,13 +32,16 @@ export function mountJam2(d) {
     return { slug, jam, card, bbv: view, catalog, product: prod, by: whoOf(t).me, source: sourceOf(t, card), cuts: jam.cuts || (jam.cuts = {}), memory, notes: (jam.notes || []).map((n) => n.text) };
   }
   /* run slow work in the background; the board says what it is doing and any error in plain words */
-  const runBg = (t, jam, bid, op, fn) => { const k = `${jam.id}:${bid}`; if (busy.get(k)?.op && !busy.get(k).error) return false; busy.set(k, { op, at: Date.now() });
-    Promise.resolve().then(fn).then(() => busy.delete(k)).catch((e) => { log.warn?.('[jam2]', op, e.message); busy.set(k, { op, at: Date.now(), error: e.budget ? e.message : e.open ? e.message : `${e.message}`.slice(0, 240) }); })
+  /* a job also leaves a mark on the jam (saved with it): after a restart, a mark with no job running says the job was cut off */
+  const runBg = (t, jam, bid, op, fn) => { const k = `${jam.id}:${bid}`; if (busy.get(k)?.op && !busy.get(k).error) return false; busy.set(k, { op, at: Date.now() }); (jam.running ||= {})[bid] = { op, at: Date.now() };
+    Promise.resolve().then(fn).then(() => busy.delete(k)).finally(() => { if (jam.running) delete jam.running[bid]; }).catch((e) => { log.warn?.('[jam2]', op, e.message); busy.set(k, { op, at: Date.now(), error: e.budget ? e.message : e.open ? e.message : `${e.message}`.slice(0, 240) }); })
       .finally(() => { jam.updatedAt = Date.now(); return store.put(slugOfT(t), jam); }).catch((e) => log.warn?.('[jam2] save after', op, e.message)); return true; };
   /* a board made with a product whose catalog price has changed since says so (words can follow free) */
   const priceAlerts = (t, jam) => { const cat = brandOfT(t)?.catalog || []; for (const b of jam.boards) { const m = headOf(b)?.made4; b.priceAlert = null; if (!m?.price) continue;
     const c = cat.find((x) => (m.handle && x.handle === m.handle) || (m.name && (x.t || x.title) === m.name)); if (c?.price != null && String(c.price) !== m.price) b.priceAlert = { name: m.name, was: m.price, now: String(c.price) }; } };
-  const out = (jam, t = null) => { if (t) try { priceAlerts(t, jam); } catch {} const v = jamView(jam); v.busy = Object.fromEntries(jam.boards.map((b) => [b.id, busy.get(`${jam.id}:${b.id}`) || null])); delete v.cuts; return v; };
+  const out = (jam, t = null) => { if (t) try { priceAlerts(t, jam); } catch {} const v = jamView(jam); /* a mark left by a job a restart cut off becomes an ordinary error (shown until the next try), and the mark goes */
+    for (const b of jam.boards) { const k = `${jam.id}:${b.id}`, m = jam.running?.[b.id]; if (m && !busy.get(k)) { busy.set(k, { ...m, error: `Brew restarted while this was being made. Press it again${b.inflight ? ': the shots already made are kept, free' : ''}.` }); delete jam.running[b.id]; } }
+    v.busy = Object.fromEntries(jam.boards.map((b) => [b.id, busy.get(`${jam.id}:${b.id}`) || null])); delete v.running; delete v.cuts; return v; };
   const load = async (t, jid) => { const j = await store.get(slugOfT(t), jid, whoOf(t)); if (!j) throw Object.assign(new Error('not found'), { status: 404 }); return j; };
   const wrap = (fn) => async (b, t, p, q) => { try { return await fn(b, t, p, q); } catch (e) { return { error: e.message, status: e.status || 200 }; } };
 
