@@ -145,7 +145,7 @@
     const last = (t, p) => ({ t, p, last: true });
     if (id === 'meta') return { time: 'About 1 minute', steps: [{ t: 'Sign in with Facebook', p: `Facebook asks which ad accounts Brew may read. Tick ${esc(n)}’s, then pick it here.`, last: true, oauth: true }] };
     if (id === 'shopify') return oauth && !av.fields?.length ? { time: 'About 1 minute', steps: [{ t: 'Sign in with Shopify', last: true, oauth: true }] } : { time: 'Takes about 3 minutes', alt: 'Use your own app', steps: [
-      { t: 'Create an app called Brew', p: 'In the Dev Dashboard: <b>Create app</b> → <b>Start from Dev Dashboard</b>.', go: ['Open the Dev Dashboard', 'https://dev.shopify.com/dashboard'] },
+      { t: 'Create an app called Brew', p: 'In the Dev Dashboard: <b>Create app</b> → <b>Start from Dev Dashboard</b>. Paste this as the <b>App URL</b> and untick <b>Embed app in Shopify admin</b>.', go: ['Open the Dev Dashboard', 'https://dev.shopify.com/dashboard'], copy: location.origin },
       { t: 'Give it read-only access', p: '<b>Versions</b> → <b>Create a version</b>, paste these into <b>Scopes</b>, then <b>Release</b>.', copy: SHOPIFY_SCOPES },
       { t: `Install it on ${shop ? esc(shop) : 'your store'}`, p: 'On the app’s home, click <b>Install app</b>.' },
       last('Paste the app’s keys', 'They’re in the app’s <b>Settings</b>.') ] };
