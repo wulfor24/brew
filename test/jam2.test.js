@@ -109,4 +109,9 @@ test('creative engine: the best candidate that keeps the product wins; none kept
   prompts.length = 0; call = 0; verdicts[0] = { same: true, shot: 8, ad: 8, zone: 'left', why: 'ok' };
   const r3 = await mk().staticAd({ ...ctx, product: null }, { id: 'b1', recipe: 'image-ad', label: 'Image ad' }, { headline: 'x' }, { ratio: '1:1', w: 1080, h: 1080 });
   assert.ok(r3.scene); assert.doesNotMatch(prompts[0], /KEEP UNCHANGED/);
+  /* the Brand Book's own posts ride after the product photos as the look, and the art director hears its rules */
+  prompts.length = 0; call = 0; verdicts[0] = { same: true, shot: 8, ad: 8, zone: 'top', why: 'ok' }; let asked = ''; const specs = [];
+  const eng2 = { run: async (cap, s) => { prompts.push(s.prompt); specs.push(s); return { file: `gen/d${n++}.png`, provider: 'vertex', usd: 0.14 }; } };
+  await mk({ engines: eng2, claudeTool: async (pr) => { asked = pr; return { family: 'product hero', moment: 'm', zone: 'top' }; } }).staticAd({ ...ctx, bbv: { ...ctx.bbv, styleRefs: [{ src: 'https://x/ig1.jpg' }, { src: 'https://x/ig2.jpg' }], comfort: { people: 'hands' } } }, { id: 'b1', recipe: 'image-ad', label: 'Image ad' }, { headline: 'x' }, { ratio: '4:5', w: 1080, h: 1350 });
+  assert.match(prompts[0], /brand's own published photos/); assert.equal(specs[0].refFiles.length, 3); assert.match(asked, /Hands only/);
 });

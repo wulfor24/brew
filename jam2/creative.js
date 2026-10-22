@@ -35,6 +35,18 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
     const c = (ctx.catalog || []).find((x) => (p.handle && x.handle === p.handle) || (p.name && (x.t || x.title) === p.name));
     return [...new Set([p.img, ...((c?.images || []).filter(Boolean))])].slice(0, 3); };
 
+  /* the Brand Book's rules for a photograph: who may be on camera, the brand's own places and cast, and the taste it has learned */
+  const PEOPLE = { none: 'No people at all in the picture.', hands: 'Hands only: no faces or full people.', 'ai-cast': 'People are fine (AI-cast, natural, not models posing).', consented: 'Only the brand\'s own people from its cast may appear.' };
+  function bookLines(v = {}) {
+    const L = [], t = v.taste?.rules || [];
+    if (PEOPLE[v.comfort?.people]) L.push(PEOPLE[v.comfort.people]);
+    if (v.cast?.length && v.comfort?.people !== 'none') L.push(`The brand's cast: ${v.cast.slice(0, 3).map((c) => c.label).join('; ')}.`);
+    if (v.places?.length) L.push(`The brand's own places (prefer one when it fits): ${v.places.slice(0, 4).map((p) => p.describe || p.label).join('; ')}.`);
+    if (v.styleRefs?.length) L.push('The brand\'s own best posts are the look reference: match their light, colour and styling.');
+    const dos = t.filter((r) => r.kind === 'do').slice(0, 4).map((r) => r.text), donts = t.filter((r) => r.kind === 'dont').slice(0, 4).map((r) => r.text);
+    if (dos.length) L.push(`The team likes: ${dos.join('; ')}.`); if (donts.length) L.push(`The team doesn't want: ${donts.join('; ')}.`);
+    return L.map((x) => tidy(x, 400)); }
+
   /* 1. art direction: one moment for this card, this angle and this placement */
   async function direct(ctx, board, words, size) {
     const r = recipe(board.recipe) || {}, c = ctx.jam.concept || {}, p = ctx.product;
@@ -44,14 +56,15 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
       `The piece: ${r.label || board.label} for ${size.label || size.ratio} (${size.ratio}).`, `The card: ${tidy(c.spark?.title || ctx.card?.title, 200)}. ${tidy(c.spark?.says, 300)}`,
       `Angle: ${tidy(c.angle, 200)}. Audience: ${tidy(c.audience, 160)}. Headline that will be set over it: "${tidy(words.headline, 120)}".`,
       p?.img ? `The product: ${tidy(p.name, 140)}. It must be the hero, clearly visible, exactly as in its photos. Never describe its colour, material, pattern or design (you can't see the photos): call it "the product".` : 'There is no product photo: show the moment or the place the brand sells, with people when it helps.',
-      ctx.bbv.look?.notes ? `The brand's look: ${tidy(ctx.bbv.look.notes, 300)}` : '', ctx.notes?.length ? `The team asked: ${tidy(ctx.notes.join(' '), 400)}` : '',
+      ...bookLines(ctx.bbv), ctx.notes?.length ? `The team asked: ${tidy(ctx.notes.join(' '), 400)}` : '',
       'Pick the format family that fits the card. Describe one real, specific moment a photographer could shoot (people, place, props, light, lens). Keep one part of the frame calm (real background, never a blank band) for the headline and say which. No words, signs, screens with text or logos in the picture.'].filter(Boolean).join('\n');
     try { const out = await claudeTool(prompt, DIRECT_SCHEMA, 1200, 'jam2_direct'); return { family: out.family || fallback.family, moment: tidy(out.moment, 900) || fallback.moment, zone: ZONES.includes(out.zone) ? out.zone : 'top' }; }
     catch (e) { log.warn?.('[creative] direct', e.message); return fallback; }
   }
 
   /* 2. the shoot: n candidates around the real product (or the moment alone without one) */
-  const shotPrompt = (d, p) => [p ? `The first image${p.refs > 1 ? `s show` : ' shows'} the real product "${tidy(p.name, 140)}". It is the identity anchor.` : '',
+  const shotPrompt = (d, p, looks = 0) => [p ? `The first image${p.refs > 1 ? `s show` : ' shows'} the real product "${tidy(p.name, 140)}". It is the identity anchor.` : '',
+    looks ? `The last ${looks > 1 ? `${looks} images are` : 'image is'} the brand's own published photo${looks > 1 ? 's' : ''}: match their light, colour grade, styling and mood. Copy nothing from ${looks > 1 ? 'them' : 'it'}: no products, people, text or layout.` : '',
     p ? 'KEEP UNCHANGED: the product\'s exact shape, proportions, colours, materials, details and any labels; the same number of items. Do not redesign, recolour, simplify or add parts.' : '',
     p ? 'CHANGE ONLY: the scene, the people, the light and the camera described below.' : '', d.moment,
     `Leave natural negative space in the ${d.zone} part of the frame for a headline: real background there (wall, sky, floor, soft out-of-focus room), never a blank band, border, panel or frame.`,
@@ -59,7 +72,9 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
     'No text, no letters, no logos, no watermarks anywhere in the picture.'].filter(Boolean).join('\n');
   async function shoot(ctx, d, ratio, n = 2) {
     const photos = photosOf(ctx), files = (await Promise.all(photos.map((u) => fileOf(u).catch(() => null)))).filter(Boolean), p = files.length ? { name: ctx.product?.name, refs: files.length } : null;
-    const spec = { prompt: shotPrompt(d, p), srcFile: files[0] || null, srcUrl: photos[0] || null, refFiles: files.slice(1), refUrls: photos.slice(1), ratio: GEM_RATIO[ratio] || ratio, slug: ctx.slug, product: p ? ctx.product?.name : false, named: p ? { img: photos[0], t: ctx.product?.name || null } : null };
+    /* the Brand Book's look: up to two of the brand's own best posts, after the product photos (never the identity anchor) */
+    const lookSrc = (ctx.bbv.styleRefs || []).map((x) => x.src).filter(Boolean).slice(0, 2), looks = (await Promise.all(lookSrc.map((u) => fileOf(u).then((f) => (f ? { u, f } : null)).catch(() => null)))).filter(Boolean);
+    const spec = { prompt: shotPrompt(d, p, looks.length), srcFile: files[0] || null, srcUrl: photos[0] || null, refFiles: [...files.slice(1), ...looks.map((x) => x.f)], refUrls: [...photos.slice(1), ...looks.map((x) => x.u)], ratio: GEM_RATIO[ratio] || ratio, slug: ctx.slug, product: p ? ctx.product?.name : false, named: p ? { img: photos[0], t: ctx.product?.name || null } : null };
     const outs = await Promise.all(Array.from({ length: n }, () => engines.run('still.shot', spec).catch((e) => ({ error: e }))));
     return { cands: outs.filter((o) => o.file), errors: outs.filter((o) => o.error).map((o) => o.error), refFile: files[0] || null };
   }
