@@ -209,6 +209,13 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
       return (out?.places || []).map((x) => placeOf(tidy(x, 200)));
     } catch (e) { log.warn?.('[jam2] places', e.message); return []; }
   }
+  /* a shot's first frame: the background (only a place) with the real cut-out product placed on it; the logo goes on the end
+     shot's caption overlay instead (captionCard), where a camera move can't push it out of frame */
+  async function shotStill(ctx, size, bgFile, cut) {
+    const sc = composeScene({ size: { ...size, w: 1080, h: 1920 }, bgFile, cut, words: { headline: '' }, kit: ctx.bbv.kit }); sc.layers = sc.layers.filter((l) => l.kind !== 'text' && l.kind !== 'shape' && l.kind !== 'badge' && l.kind !== 'logo');
+    for (const l of sc.layers) if (l.kind === 'product') Object.assign(l, { x: 200, y: 640, w: 680, h: 720 }); /* above the caption bar (y 1430) and below the on-screen words */
+    return render(sc);
+  }
   async function videoQuote(ctx, board, take) {
     const r = recipe(board.recipe), cap = r.caps.includes('video.ugc') ? 'video.ugc' : 'video.shot'; let usd = 0, credits = 0, provider = null;
     for (const s of take.timeline?.shots || []) { const q = await engines.quote(cap, { seconds: Math.max(4, s.sec || 4), slug: ctx.slug }); /* Veo bills at least 4 s a clip */ if (q.error) return { error: q.error }; usd += q.usd || 0; credits += q.credits || 0; provider = q.provider; }
@@ -228,14 +235,13 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
     const key = sha(Buffer.from(JSON.stringify([t0.id, cut?.file, t0.timeline.shots.map((x) => [x.see, x.sec, x.camera])])));
     if (board.inflight?.key !== key) board.inflight = { key, shots: {} };
     let lost = 0; const places = await placesOf(ctx, t0.timeline.shots);
-    for (const s of t0.timeline.shots) { const kept = board.inflight.shots[t0.timeline.shots.indexOf(s)]; if (kept?.clip) { shots.push({ ...s, still: kept.still, clip: kept.clip }); made.push(...(kept.made || [])); continue; } /* paid before the restart: counted in this take's cost */ try {
+    for (const s of t0.timeline.shots) { const kept = board.inflight.shots[t0.timeline.shots.indexOf(s)]; if (kept?.clip) { shots.push({ ...s, still: kept.still, clip: kept.clip, bg: kept.bg || null }); made.push(...(kept.made || [])); continue; } /* paid before the restart: counted in this take's cost */ try {
       /* the scene is only the place: the shot line names products, and an image model asked for them draws its own versions */
       const bg = await scene(ctx, { describe: places[t0.timeline.shots.indexOf(s)] || placeOf(s.see), ratio: '9:16' }); made.push({ cap: 'still.scene', provider: bg.provider, model: bg.model, usd: bg.usd });
-      const sc = composeScene({ size: { ...size, w: 1080, h: 1920 }, bgFile: bg.file, cut, words: { headline: '' }, kit: ctx.bbv.kit }); sc.layers = sc.layers.filter((l) => l.kind !== 'text' && l.kind !== 'shape' && l.kind !== 'badge' && l.kind !== 'logo'); for (const l of sc.layers) if (l.kind === 'product') Object.assign(l, { x: 200, y: 640, w: 680, h: 720 }); /* above the caption bar (y 1430) and below the on-screen words */ /* the logo goes on the end shot's still overlay (captionCard), where a camera move can't push it out of frame */
-      const still = await render(sc); const sf = await fileOf(still);
+      const still = await shotStill(ctx, size, bg.file, cut); const sf = await fileOf(still);
       if (!spend('video', ctx.slug)) throw Object.assign(new Error('Today’s video budget is used up.'), { budget: true });
       const clip = await engines.run(q.cap, { srcFile: sf, srcUrl: still, prompt: q.cap === 'video.shot' ? motionOf(s) : `${s.camera || 'static'} camera. ${s.see}. The product stays exactly as in the first frame: same shape, label and colours. Natural motion, no text, no logos added.`, seconds: s.sec, ratio: '9:16', slug: ctx.slug, by: ctx.by?.email, jamId: ctx.jam.id, boardId: board.id });
-      made.push({ cap: q.cap, provider: clip.provider, model: clip.model, usd: clip.usd || 0, credits: clip.credits || 0 }); shots.push({ ...s, still, clip: clip.file }); board.inflight.shots[t0.timeline.shots.indexOf(s)] = { still, clip: clip.file, made: made.slice(-2) };
+      made.push({ cap: q.cap, provider: clip.provider, model: clip.model, usd: clip.usd || 0, credits: clip.credits || 0 }); shots.push({ ...s, still, clip: clip.file, bg: bg.file }); board.inflight.shots[t0.timeline.shots.indexOf(s)] = { still, clip: clip.file, bg: bg.file, made: made.slice(-2) };
     } catch (e) { lost++; log.warn?.('[jam2] shot', e.message); const prev = shots[shots.length - 1]; shots.push({ ...s, still: prev?.still || null, clip: null, failed: tidy(e.message, 120) }); if (e.budget || /budget/i.test(e.message)) break; } }
     if (!shots.some((x) => x.still || x.clip)) throw new Error('No shot came through. Nothing else was made; try again later.');
     const done = await finishVideo(ctx, board, t0, shots, made, { op: 'render' }); board.inflight = null; return done;
@@ -272,12 +278,17 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
     const qe = await engines.quote('still.edit', { slug: ctx.slug }), qv = await engines.quote('video.shot', { seconds: Math.max(4, sh.sec || 4), slug: ctx.slug }); if (qe.error || qv.error) throw new Error(qe.error || qv.error);
     const usd = +((qe.usd || 0) + (qv.usd || 0)).toFixed(2); if (!isMock() && (confirmUsd == null || +confirmUsd + 0.01 < usd)) return { needsConfirm: true, quote: { usd, seconds: sh.sec, provider: qv.provider } };
     if (!spend('image', ctx.slug) || !spend('video', ctx.slug)) throw Object.assign(new Error('Today’s budget for pictures or video is used up.'), { budget: true });
-    const sf = await fileOf(sh.still); if (!sf) throw new Error('That shot has no frame to edit.'); const made = [];
+    const made = [], cut = t0.cut && /^gen\//.test(t0.cut) ? { file: t0.cut } : await cutout(ctx); if (!cut?.file || cut.raw) throw new Error('Your product photo couldn’t be cut out just now, so the shot wasn’t changed. Try again in a moment.');
     const where = region ? `Change only the area from ${Math.round(region.x * 100)}% to ${Math.round((region.x + region.w) * 100)}% across and ${Math.round(region.y * 100)}% to ${Math.round((region.y + region.h) * 100)}% down: ` : '';
-    const ed = await engines.run('still.edit', { srcFile: sf, srcUrl: sh.still, prompt: `${where}${ask}. Keep the product exactly as it is: same shape, label, colours. Keep everything else as it is. No words, no logos.`, ratio: '9:16', slug: ctx.slug }); made.push({ cap: 'still.edit', provider: ed.provider, model: ed.model, usd: ed.usd || 0 });
-    const ef = await fileOf(ed.file); const clip = await engines.run('video.shot', { srcFile: ef, srcUrl: ed.file, prompt: motionOf(sh, ask), seconds: sh.sec, ratio: '9:16', slug: ctx.slug, by: ctx.by?.email, jamId: ctx.jam.id, boardId: board.id });
+    /* only the background is changed: the image model never sees or draws the product, and the real cut-out is placed on it again */
+    const bf = sh.bg ? await fileOf(sh.bg) : null;
+    const ed = bf ? await engines.run('still.edit', { srcFile: bf, srcUrl: sh.bg, prompt: `${where}${ask}. Keep everything else as it is. No products, no packaging, no hands or people, no words, no logos.`, ratio: '9:16', slug: ctx.slug })
+      : await scene(ctx, { describe: placeOf(`${sh.see}. ${ask}`), ratio: '9:16' });
+    made.push({ cap: bf ? 'still.edit' : 'still.scene', provider: ed.provider, model: ed.model, usd: ed.usd || 0 });
+    const still = await shotStill(ctx, sizeOf(board), ed.file, cut), ef = await fileOf(still);
+    const clip = await engines.run('video.shot', { srcFile: ef, srcUrl: still, prompt: motionOf(sh, ask), seconds: sh.sec, ratio: '9:16', slug: ctx.slug, by: ctx.by?.email, jamId: ctx.jam.id, boardId: board.id });
     made.push({ cap: 'video.shot', provider: clip.provider, model: clip.model, usd: clip.usd || 0, credits: clip.credits || 0 });
-    const shots = t0.timeline.shots.map((x, n) => (n === i ? { ...x, still: ed.file, clip: clip.file, failed: null } : x));
+    const shots = t0.timeline.shots.map((x, n) => (n === i ? { ...x, still, clip: clip.file, bg: ed.file, failed: null } : x));
     return finishVideo(ctx, board, t0, shots, made, { op: `shot ${i + 1} re-made` });
   }
   /* ffmpeg: the shots end to end at 1080×1920, each with its caption card; the voice over them and the music under the voice;
