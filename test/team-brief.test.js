@@ -10,7 +10,7 @@ const X = { title: 'Make the ad', brand: 'Acme', mark: null, memo: { from: 'Ana'
     fields: [{ label: 'Primary text', pub: true, value: 'Cold feet, fixed.' }, { label: 'Ad set', pub: false, value: 'Women 25-45' }],
     assets: [{ kind: 'image', label: 'The final picture', url: '/gen/abcdef123456.jpg' }, { kind: 'image', label: 'The rival ad', url: '/research/x.jpg' }, { kind: 'image', label: 'Pack shot', url: '/b/acme-com/a/hero.png' }] } };
 const make = (ai) => createTeamBrief({ isMock: () => !ai, spend: () => !!ai, now: () => 5, handoff: { build: async () => X },
-  claudeTool: async () => ({ title: 'Cold feet ad', what: 'One Meta ad.', why: 'Offices are cold.', who: 'Women at desks.', creative: 'The attached picture.', specs: '4:5 JPG', rules: 'Real product only.', when: 'To confirm.', done: 'Approved in the jam.', open: ['Budget'], evidence: [{ say: '120 orders last month', src: 'The card' }] }) });
+  claudeTool: async () => ({ title: 'Cold feet ad', what: 'One Meta ad.', why: 'Offices are cold.', who: 'Women at desks.', creative: 'The attached picture.', specs: '4:5 JPG', rules: 'Use the exact primary text: "Cold feet, fixed."\nReal product only.\nPrimary text must be: "Cold feet, fixed."', when: 'To confirm.', done: 'Approved in the jam.', open: ['Budget'], evidence: [{ say: '120 orders last month', src: 'The card' }] }) });
 
 test('the brief keeps the final words verbatim and attaches only the brand’s own files', async () => {
   const TB = make(true), w = { id: 'w1', doc: { rev: 2 } };
@@ -21,6 +21,7 @@ test('the brief keeps the final words verbatim and attaches only the brand’s o
   assert.deepEqual(v.creatives.map((c) => c.url), ['gen/abcdef123456.jpg', 'b/acme-com/a/hero.png']);
   assert.equal(v.evidence[0].src, 'The card');
   assert.equal(v.memo.to, 'Your team');
+  assert.equal(v.sections.find((s) => s.k === 'rules').t, 'Real product only.');
 });
 
 test('offline it still writes a usable brief from the hand-off', async () => {

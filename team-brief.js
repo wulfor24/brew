@@ -12,7 +12,7 @@ import { pathToFileURL } from 'node:url';
 import { saveGen, genFile } from './gen-store.js';
 import { withBrowser } from './pdf/render.js';
 
-export const TB_V = 2; // bump when the brief starts being written differently: every saved one is written again
+export const TB_V = 3; // bump when the brief starts being written differently: every saved one is written again
 export const SECTIONS = [['what', 'What to make'], ['why', 'Why we’re doing it'], ['who', 'Who it’s for'], ['words', 'The words · final'], ['creative', 'The creative'],
   ['specs', 'Specs'], ['rules', 'Must-haves and don’ts'], ['when', 'Budget, timing and owner'], ['measure', 'How we measure it'], ['done', 'Done when'], ['open', 'Still to confirm']];
 const AI_KEYS = ['what', 'why', 'who', 'creative', 'specs', 'rules', 'when', 'done'];
@@ -91,6 +91,9 @@ export function createTeamBrief({ claudeTool, isMock = () => true, spend = () =>
     const x = await handoff.build(t, w, { base: '' }); const key = keyOf(w, x), old = w.teamBrief;
     if (old && old.key === key && !fresh && old.ai) return { tb: old, x };
     const d = await write(t, w, x), m = fmtM(x.measure || w.doc?.measure || null);
+    /* the rules are rules: a line that restates the final words ("Use the exact headline: …") is dropped, the words have their own section */
+    const fv = (x.pkg?.fields || []).map((f) => String(f.value || '').toLowerCase().replace(/\s+/g, ' ').trim()).filter((v) => v.length >= 12);
+    if (d.rules) d.rules = d.rules.split('\n').filter((l) => { const q = l.toLowerCase().replace(/\s+/g, ' '); return !/^\W*(use the exact|.{0,40}\bmust (be|read)\s*:)/i.test(l) && !fv.some((v) => q.includes(v.slice(0, 40))); }).join('\n').trim() || d.rules;
     const auto = { ...Object.fromEntries(AI_KEYS.map((k) => [k, d[k]])), words: wordsOf(x) || 'To confirm.', measure: m || 'To confirm.', open: (d.open || []).length ? d.open.map((s) => `- ${s}`).join('\n') : 'Nothing open.' };
     const edits = old?.edits || {};
     w.teamBrief = { v: TB_V, key, ai: d.ai, at: now(t), title: d.title || x.title, auto, edits, evidence: d.evidence || [], creatives: creativesOf(x), version: x.pkg?.version || null, pdf: null,
