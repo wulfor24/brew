@@ -72,4 +72,16 @@ test('Needs you is personal: a tag waits on the tagged person until they write, 
   assert.equal(askOf(w, 'wulf@acme.com'), null, 'their reply answers it');
   w.thread.push({ id: 'm5', from: 'system', by: P, to: ['wulf@acme.com'], body: 'Param added Wulf' });
   assert.equal(askOf(w, 'wulf@acme.com'), null, 'a system line is never an ask');
+  const w2 = { thread: [{ id: 't1', at: 10, from: 'me', by: P, to: ['wulf@acme.com'], body: '@Wulf 17th?' }] };
+  const studio = [{ from: 'ai', text: 'Added the deadline', at: 5 }, { from: 'you', text: 'yeah, change it to Sep 17th', at: 20, by: W2 }];
+  assert.ok(askOf(w2, 'wulf@acme.com', studio.slice(0, 1)), 'an older studio line does not answer it');
+  assert.equal(askOf(w2, 'wulf@acme.com', studio), null, 'a reply in the studio chat answers it');
+});
+
+test('an OK asked of someone waits on them, not on whoever asked', async () => {
+  const { waitsOn } = await import('../jams.js');
+  const w = { stage: 'needs_you', assignee: { email: 'Wulf@acme.com', ask: 'approve' }, thread: [] };
+  assert.equal(waitsOn(w, 'wulf@acme.com'), true); assert.equal(waitsOn(w, 'param@acme.com'), false);
+  assert.equal(waitsOn({ stage: 'needs_you', thread: [] }, 'param@acme.com'), true, 'an OK asked with nobody named waits on everyone');
+  assert.equal(waitsOn({ stage: 'drafting', thread: [] }, 'param@acme.com'), false);
 });

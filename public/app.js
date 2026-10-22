@@ -1267,7 +1267,7 @@
   const todayOf = (ranked) => ranked.slice(0, todayN()).filter((p) => !cardOf(p).done);
   const yesOf = (ranked) => todayOf(ranked).filter((p) => p.type === 'decision');
   /* waits on you: an OK asked of the jam, or a teammate tagged you and you have not replied (askMe, per viewer) */
-  const needsMe = (w) => w.stage === 'needs_you' || !!w.askMe;
+  const needsMe = (w) => w.waitsOnMe ?? (w.stage === 'needs_you' || !!w.askMe);
   const gLists = () => { const vis = todayOf(RANKED);
     return { yes: yesOf(RANKED), spend: vis.filter((p) => B.spends.includes(p.cta?.label)), board: WORK.items.filter(needsMe).sort((a, b) => b.updatedAt - a.updatedAt) }; };
   const QHEAD = {
@@ -2556,6 +2556,7 @@
   // the status badge in the card head, the way Deck cards carry theirs
   const wbBadge = (w) => {
     if (needsMe(w)) return '<span class="badge warn">Your answer</span>';
+    if (w.stage === 'needs_you') return `<span class="badge info">Waiting on ${esc(w.assignee?.name || 'your team')}</span>`;
     if (w.stage === 'team') return `<span class="badge info">With ${esc(w.with?.name || 'your team')}</span>`;
     if (w.stage === 'ready') return '<span class="badge ok">Approved</span>';
     if (w.stage === 'shared') return `<span class="badge ok">Shared${w.ticket ? ' · ' + esc(w.ticket) : ''}</span>`;
@@ -2576,8 +2577,8 @@
       <header class="card-head">${face(w.agent || 'brew')}<div class="who"><b>${esc(AGENT[w.agent] || 'Brew')}</b><span>${ago(w.updatedAt)}</span></div>${wbBadge(w)}</header>
       ${w.img ? `<div class="media portrait"><img src="${esc(w.img)}" alt="" loading="lazy"></div>` : ''}
       <div class="body">${(() => { const c = w.whose || w.cardSnap || {}, rv = rivalOf(c), wa = rv ? ourVersionOf(rv.name) : whoseAd({ ...c, images: c.images?.length ? c.images : w.img ? [w.img] : [] }); return wa ? `<small class="wb-whose">${esc(wa)}</small>` : ''; })() /* whose ad it is, like the feed: "Made for you" on our own (FEED-NOT-02) */}<h3>${w.unread ? '<i class="wb-new"></i>' : ''}${esc(wbTitle(w))}</h3>${wbBody(w)}</div>${wbFoot(w)}</article>`;
-  const wbStrip = (w) => { const say = needsMe(w) ? `Answer ${esc(w.askMe?.who || w.with?.name || 'them')}` : w.stage === 'team' ? `With ${esc(w.with?.name || 'your team')}` : w.stage === 'ready' ? 'Approved · share the brief' : w.stage === 'shared' ? `Brief shared${w.ticket ? ' · ' + esc(w.ticket) : ''}` : w.versions?.length > 1 ? `Draft v${w.current} of ${w.versions.length}` : 'Draft';
-    return `<div class="wb-strip is-${esc(w.askMe ? 'needs_you' : w.stage)}">${w.unread ? '<i class="wb-new"></i>' : ''}<b>${say}</b><span>${ago(w.updatedAt)}</span>${ic('right', 's14')}</div>`; };
+  const wbStrip = (w) => { const say = needsMe(w) ? `Answer ${esc(w.askMe?.who || w.with?.name || 'them')}` : w.stage === 'needs_you' ? `Waiting on ${esc(w.assignee?.name || 'your team')}` : w.stage === 'team' ? `With ${esc(w.with?.name || 'your team')}` : w.stage === 'ready' ? 'Approved · share the brief' : w.stage === 'shared' ? `Brief shared${w.ticket ? ' · ' + esc(w.ticket) : ''}` : w.versions?.length > 1 ? `Draft v${w.current} of ${w.versions.length}` : 'Draft';
+    return `<div class="wb-strip is-${esc(needsMe(w) ? 'needs_you' : w.stage === 'needs_you' ? 'team' : w.stage)}">${w.unread ? '<i class="wb-new"></i>' : ''}<b>${say}</b><span>${ago(w.updatedAt)}</span>${ic('right', 's14')}</div>`; };
   const workTile = (w) => { const p = w.cardId && byId(w.cardId), i = p ? FEED.indexOf(p) : -1;
     return i < 0 ? tileHtml(w) : `<div class="wb-fc${w.unread ? ' is-unread' : ''}" data-witem="${w.id}">${wbStrip(w)}${postCard(p, i)}</div>`; };
   /* the background lane: many moves written at once read as one row, not one row each */
@@ -2621,7 +2622,7 @@
     /* the AI lane only while AI is doing something; the five lanes only once something is in progress */
     const ai = BG.items.length ? aiCol() : null, cols = ai ? [...WB_COLS, ai] : WB_COLS;
     const nOf = (c) => c.count ?? by(c).length; /* the AI lane counts what is running, else what waits */
-    const by = (c) => c.k === 'ai' ? bgGroup(BG.items) : items.filter((w) => c.k === 'you' ? needsMe(w) : !w.askMe && c.stages.includes(w.stage)).sort((a, b) => (b.unread - a.unread) || b.updatedAt - a.updatedAt);
+    const by = (c) => c.k === 'ai' ? bgGroup(BG.items) : items.filter((w) => c.k === 'you' ? needsMe(w) : !needsMe(w) && (c.stages.includes(w.stage) || (c.k === 'with' && w.stage === 'needs_you'))).sort((a, b) => (b.unread - a.unread) || b.updatedAt - a.updatedAt);
     // the board redraws on its own as work moves: keep where you were scrolled, sideways and in every column
     const keep = $('#wb-deck') ? { x: $('#wb-deck').scrollLeft, y: Object.fromEntries($$('.wb-col').map((c) => [c.dataset.bcol, $('.col-body', c)?.scrollTop || 0])) } : null;
     /* an empty lane is its title only: no 0, no placeholder sentence */
@@ -3087,7 +3088,7 @@
       const items = all;
       const open = items.filter((w) => !JAM_DONE.includes(w.stage) && w.stage !== 'needs_you');
       const cats = [
-        { k: 'you', name: 'Needs you', hint: 'Answer these to keep them moving', tone: 'hot', items: items.filter((w) => w.stage === 'needs_you').map(jamTile) },
+        { k: 'you', name: 'Needs you', hint: 'Answer these to keep them moving', tone: 'hot', items: items.filter(needsMe).map(jamTile) },
         { k: 'team', name: 'With your team', hint: 'On Slack', items: open.filter((w) => withKind(w) === 'team').map(jamTile) },
         { k: 'ai', name: 'Drafting with AI', hint: 'Just you and AI so far', items: open.filter((w) => withKind(w) === 'ai').map(jamTile) },
         { k: 'shipped', name: 'Brief shared', hint: 'With the ShopOS team or your team', items: items.filter((w) => JAM_DONE.includes(w.stage)).map(jamTile) },

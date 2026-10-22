@@ -12,11 +12,18 @@ const OPEN = (w) => !w.archived && !w.discarded && !['out', 'measuring', 'result
 const lc = (e) => (e ? String(e).toLowerCase() : null);
 
 /* Needs you is personal: the newest line where a teammate tagged you, unless you have written in the jam since.
-   The jam's stage stays shared; the Work board reads this per viewer */
-export const askOf = (w, email) => { const me = lc(email); if (!me) return null;
-  for (let i = (w.thread || []).length - 1; i >= 0; i--) { const m = w.thread[i], by = lc(m.by?.email); if (by === me) return null;
-    if (m.from !== 'system' && by && (m.to || []).some((x) => lc(x) === me)) return { id: m.id, who: m.by.name || by.replace(/@.*/, ''), email: by, pic: m.by.pic || null, body: String(m.body || '').slice(0, 300), at: m.at }; }
+   The jam's stage stays shared; the Work board reads this per viewer. `more` is the studio chat (the change's thread),
+   where a reply usually lands, so a reply there answers the tag too */
+export const askOf = (w, email, more = []) => { const me = lc(email); if (!me) return null;
+  const lines = [...(w.thread || []), ...(more || [])].filter(Boolean).map((m, i) => ({ m, i, at: +m.at || 0 })).sort((a, b) => a.at - b.at || a.i - b.i);
+  for (let k = lines.length - 1; k >= 0; k--) { const m = lines[k].m, by = lc(m.by?.email); if (by === me) return null;
+    if (m.from !== 'system' && by && (m.to || []).some((x) => lc(x) === me)) return { id: m.id, who: m.by.name || by.replace(/@.*/, ''), email: by, pic: m.by.pic || null, body: String(m.body || m.text || '').slice(0, 300), at: m.at }; }
   return null; };
+
+/* does this jam wait on this person? A tag they have not answered, or an OK asked of them. An OK asked of someone else
+   waits on them, not on whoever asked (they see it With teammate) */
+export const waitsOn = (w, email, more = []) => { if (askOf(w, email, more)) return true; if (w.stage !== 'needs_you') return false;
+  const to = lc(w.assignee?.email); return !to || !lc(email) || to === lc(email); };
 
 export function createJams({ packs, reqOf, bgMember, log = console, enabled = () => process.env.DEMO_MODE !== '1', everyMs = 4000 }) {
   const BR = new Map(); // slug → { work, changes, ready, last }
