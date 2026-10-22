@@ -379,9 +379,21 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
     const h = headOf(src); if (!h?.scene) throw new Error('Make the picture first.');
     const tiles = (ctx.catalog || []).filter((p) => p.img || p.images?.[0]).slice(0, max); if (tiles.length < 2) throw new Error('Your catalog has fewer than two products with photos.');
     const made = [], slides = [];
+    /* the words were written for the source product: on every other product, a line with a price or that product's name would
+       be a false claim, so it becomes this product's own name and catalog price; store-wide lines (free shipping) stay */
+    const srcName = String(ctx.product?.name || h.product || '').toLowerCase(), same = (p) => !!srcName && String(p.t || p.title || '').toLowerCase() === srcName;
+    const short = (p) => tidy(String(p.t || p.title || '').split(/\s+[–—|-]\s+/)[0], 40), sym = (c) => ({ USD: '$', INR: '₹', EUR: '€', GBP: '£', AUD: 'A$', CAD: 'C$' }[String(c || '').toUpperCase()] || '');
+    const money = (p, v) => (v == null ? '' : `${sym(p.currency || ctx.currency) || ''}${v}${sym(p.currency || ctx.currency) ? '' : ` ${p.currency || ctx.currency || ''}`.trimEnd()}`);
+    const FIG = /[$₹€£]\s?\d|\d[\d,.]*\s?(usd|inr|rs\.?|eur|gbp)\b|\b\d+\s?%\s?off/i, SHIP = /shipping|delivery/i;
+    const srcWords = srcName.split(/\s+[–—|-]\s+/)[0].split(/\s+/).filter((w) => w.length > 3);
+    const names = (t) => srcWords.length && srcWords.filter((w) => String(t).toLowerCase().includes(w)).length >= Math.min(2, srcWords.length);
+    function fitWords(l, p) { if (l.kind !== 'text' && l.kind !== 'badge') return; const t = String(l.words || ''); if (!t || (SHIP.test(t) && !names(t))) return; if (!FIG.test(t) && !names(t)) return;
+      if (l.kind === 'badge') { l.hidden = true; return; }
+      l.words = l.role === 'headline' ? short(p) : `${short(p)}${p.price != null ? ` · ${money(p, p.price)}` : ''}${p.mrp > p.price ? ` (was ${money(p, p.mrp)})` : ''}`; }
     for (const p of tiles) { const c2 = { ...ctx, product: { img: p.img || p.images[0], name: p.t || p.title || null, handle: p.handle || null }, cuts: ctx.cuts };
       const cut = await cutout(c2); if (!cut || cut.raw) continue; if (cut.usd) made.push({ cap: 'cutout', provider: cut.provider, model: cut.model, usd: cut.usd });
       const sc = JSON.parse(JSON.stringify(h.scene)); for (const l of sc.layers) if (l.kind === 'product') { l.src = cut.file; l.hidden = false; }
+      if (!same(p)) for (const l of sc.layers) fitWords(l, p);
       slides.push({ scene: sc, file: await render(sc), product: c2.product.name }); }
     if (!slides.length) throw new Error('None of the product photos could be cut out.');
     const take = { op: 'all-products', by: ctx.by, words: { ...h.words, slides: slides.map((x) => ({ onSlide: x.product || '', small: '' })) }, slides, scene: slides[0].scene, file: slides[0].file, made, how: board.how,
