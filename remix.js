@@ -1645,6 +1645,11 @@ export function createRemix(o) {
     const msg = clean(String(b.message || '') || (att ? 'Look at the screenshot: change what it shows.' : '')).slice(0, 400); if (!msg) return { error: 'empty' };
     /* a message with a screenshot always goes to the AI with its picture (the shortcuts below don't read pictures) */
     if (att) { try { await iterate(t, ch, msg, { att }); return { change: pubChange(t, ch), learned: learnedOut(t), ...(ANSWERED.has(ch) ? { answered: true } : {}) }; } finally { think(ch, null); } }
+    /* a line meant for the team brief (said on the Brief side, or naming a fact of the brief: owner, budget, due…) changes the
+       brief, never the ad (Param, 23 Oct) */
+    if (!b.fix && o.briefEdit && (b.brief || o.isBriefAsk?.(msg))) { const r = await o.briefEdit(t, ch, msg).catch((e) => { log.warn('[brief edit]', e.message); return { error: true }; });
+      if (r && !r.skip) { ch.thread.push(youSaid(t, msg)); ch.thread.push({ from: 'ai', text: r.error ? 'That didn’t go through, so the brief is as it was. Try again.' : r.said, at: now(t), answer: true });
+        return { change: pubChange(t, ch), answered: true, ...(r.brief ? { brief: r.brief, changed: r.changed || [] } : {}) }; } }
     /* "do it", "go ahead", "yes": the card's button, said in words (Param, 19 Oct: "do it" got "I don't know that yet because the
        question is unspecified"). "redo", "another one", "three cuts": one new take, never several options to pick from */
     if (!b.fix && GO_RE.test(msg)) { ch.thread.push(youSaid(t, msg)); const c0 = t.cards.get(ch.cardId) || {};

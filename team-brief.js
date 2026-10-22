@@ -98,12 +98,13 @@ export function createTeamBrief({ claudeTool, isMock = () => true, spend = () =>
     if (d.rules) d.rules = d.rules.split('\n').filter((l) => { const q = l.toLowerCase().replace(/\s+/g, ' '); return !/^\W*(use the exact|.{0,40}\bmust (be|read)\s*:)/i.test(l) && !fv.some((v) => q.includes(v.slice(0, 40))); }).join('\n').trim() || d.rules;
     const auto = { ...Object.fromEntries(AI_KEYS.map((k) => [k, d[k]])), words: wordsOf(x) || 'To confirm.', measure: m || 'To confirm.', open: (d.open || []).length ? d.open.map((s) => `- ${s}`).join('\n') : 'Nothing open.' };
     const edits = old?.edits || {};
-    w.teamBrief = { v: TB_V, key, ai: d.ai, at: now(t), title: d.title || x.title, auto, edits, evidence: d.evidence || [], creatives: creativesOf(x), version: x.pkg?.version || null, pdf: null,
+    w.teamBrief = { v: TB_V, key, over: old?.over || {}, ai: d.ai, at: now(t), title: d.title || x.title, auto, edits, evidence: d.evidence || [], creatives: creativesOf(x), version: x.pkg?.version || null, pdf: null,
       brand: x.brand, mark: x.mark || null, memo: { from: x.memo?.from || null, to: 'Your team' } }; /* a brief to hand over: their own team or agency (Send to the ShopOS team stays its own button) */
     return { tb: w.teamBrief, x }; };
   const view = (w, x) => { const tb = w.teamBrief; if (!tb) return null;
-    return { title: tb.title, at: tb.at, ai: tb.ai, version: tb.version, stale: !!x && keyOf(w, x) !== tb.key, brand: tb.brand || '', mark: tb.mark || null,
-      memo: { from: tb.memo?.from || null, to: tb.memo?.to || 'Your team', due: w.doc?.plan?.when || null, ref: w.ticket || null },
+    const ov = tb.over || {};
+    return { title: ov.title || tb.title, at: tb.at, ai: tb.ai, version: tb.version, stale: !!x && keyOf(w, x) !== tb.key, brand: tb.brand || '', mark: tb.mark || null,
+      memo: { from: ov.from || tb.memo?.from || null, to: ov.to || tb.memo?.to || 'Your team', due: ov.due || w.doc?.plan?.when || null, ref: w.ticket || null },
       sections: SECTIONS.map(([k, h]) => ({ k, h, t: tb.edits[k] ?? tb.auto[k] ?? '', edited: tb.edits[k] != null, locked: k === 'words' })), evidence: tb.evidence, creatives: tb.creatives, pdf: tb.pdf }; };
 
   /* the PDF: Brew's own type, the creatives large on the first page, then every section and the evidence */
@@ -143,7 +144,38 @@ export function createTeamBrief({ claudeTool, isMock = () => true, spend = () =>
     finally { fs.rmSync(tmp, { force: true }); } };
   const fileName = (v) => `${String(`${v.brand ? v.brand + ' brief' : 'Brief'} - ${v.title}`).replace(/[\/\\:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90).replace(/[.\s]+$/, '')}.pdf`;
 
+  /* change the brief with AI (Param, 23 Oct): select any part of it, or say it in the chat, and the AI rewrites only what was
+     asked. The final words stay the ad's (changed on the creative); everything else, the title and the memo line included */
+  const EDIT_KEYS = ['title', 'from', 'to', 'due', ...SECTIONS.map(([k]) => k).filter((k) => k !== 'words')];
+  const NAME = { title: 'title', from: 'From', to: 'To', due: 'Due', ...Object.fromEntries(SECTIONS) };
+  const setPart = (tb, k, v) => { v = String(v ?? '').trim().slice(0, 4000);
+    if (['title', 'from', 'to', 'due'].includes(k)) { tb.over = tb.over || {}; if (v) tb.over[k] = v; else delete tb.over[k]; return; }
+    if (v && v !== tb.auto[k]) tb.edits[k] = v; else delete tb.edits[k]; };
+  const aiEdit = async (t, w, { ask, quote = '' } = {}) => {
+    ask = one(ask, 600); quote = one(quote, 600); if (!ask) return { error: 'Say what should change.' };
+    if (!w.teamBrief) await build(t, w); const v = view(w, null), cur = { title: v.title, from: v.memo.from || `${v.brand} team`, to: v.memo.to, due: v.memo.due || 'To confirm', ...Object.fromEntries(v.sections.map((x) => [x.k, x.t])) };
+    let changes = [], said = '', words = false;
+    if (isMock() || !spend('text')) { /* offline: the selected words are swapped for what was typed; a plain ask is noted as still to confirm */
+      const k = quote ? EDIT_KEYS.find((k) => String(cur[k] || '').includes(quote)) : null;
+      changes = k ? [{ k, t: cur[k].replace(quote, ask) }] : [{ k: 'open', t: `${cur.open === 'Nothing open.' ? '' : cur.open + '\n'}- ${ask}`.trim() }]; said = 'Changed it in the brief.';
+    } else {
+      const j = await claudeTool(`You edit the brief a team works from to make this for ${v.brand}. Change ONLY what the person asks; keep every other part word for word. Plain, short sentences, no new facts or numbers they didn't give.\n\nThe brief now (part: text):\n${EDIT_KEYS.map((k) => `[${k}] ${NAME[k]}: ${cur[k] || ''}`).join('\n')}\n[words] The final words (read-only: they come from the ad itself): ${cur.words || ''}\n${quote ? `\nThe person selected this text in the brief: "${quote}"\n` : ''}\nThe person asks: "${ask}"\n\nReturn each part you change with its WHOLE new text. If the ask is only about the final words of the ad, change nothing and set words_only.`,
+        { type: 'object', required: ['changes', 'said', 'words_only'], properties: { changes: { type: 'array', items: { type: 'object', required: ['k', 't'], properties: { k: { type: 'string', enum: EDIT_KEYS }, t: { type: 'string' } } } },
+          said: { type: 'string', description: 'One short line to the person: what changed in the brief' }, words_only: { type: 'boolean' } } }, 2500, 'team_brief_edit');
+      changes = (j?.changes || []).filter((c) => EDIT_KEYS.includes(c.k)).map((c) => ({ k: c.k, t: clean(String(c.t || '')).trim() })); said = clean(String(j?.said || '')).trim(); words = !!j?.words_only; }
+    changes = changes.filter((c) => c.t && c.t !== cur[c.k]);
+    if (!changes.length) return { brief: view(w, null), changed: [], said: words ? 'The final words come from the ad itself: change them on the Creative side and the brief follows.' : 'Nothing in the brief needed to change for that.' };
+    for (const c of changes) setPart(w.teamBrief, c.k, c.t);
+    w.teamBrief.pdf = null; w.updatedAt = now(t);
+    return { brief: view(w, null), changed: changes.map((c) => c.k), said: said || `Changed in the brief: ${changes.map((c) => NAME[c.k]).join(', ')}.` }; };
+  /* a chat line meant for the brief: on the Brief side every line is; on the Creative side one that names the brief, or sets a
+     plain fact of it (owner, budget, due date, audience, specs) */
+  const BRIEF_ASK = /\b(?:in|on|to|of|the|our|this)\s+(?:team\s+)?brief\b|\bbrief\s*:|\b(?:owner|budget|deadline|due(?:\s+date)?|launch\s+date|timing|start\s+date|placements?|specs?|done\s+when|kpi|audience|approv(?:er|ed\s+by))\b[^?]{0,40}?\b(?:is|are|should\s+be|to|=|:|will\s+be)\b/i;
+  const isBriefAsk = (msg) => BRIEF_ASK.test(String(msg || ''));
+
   const routes = ({ on, W }) => {
+    on('POST', '/api/work/:wid/team-brief/ai', async (b, t, p) => { const w = W(t, p.wid); if (!w) return { error: 'not found' };
+      try { return await aiEdit(t, w, { ask: b.ask, quote: b.quote }); } catch (e) { log.warn?.('[team brief ai]', e.message); return { error: 'That didn’t go through. Try again.' }; } });
     on('GET', '/api/work/:wid/team-brief', async (b, t, p, q) => { const w = W(t, p.wid); if (!w) return { error: 'not found' };
       const { x } = await build(t, w, { fresh: q?.get?.('fresh') === '1' }); return { brief: view(w, x) }; });
     /* a quick edit of one section; an empty text puts the written one back. The final words are the package's: changed in the studio */
@@ -160,5 +192,5 @@ export function createTeamBrief({ claudeTool, isMock = () => true, spend = () =>
         w.teamBrief.pdf = { url: `gen/${name}`, name: fileName(v), bytes: buf.length, at: now(t) }; return { pdf: w.teamBrief.pdf, brief: view(w, x) }; }
       catch (e) { log.warn?.('[team brief pdf]', e.message); return { error: 'The PDF didn’t come together. Try again.' }; } });
   };
-  return { build, view, routes, pdfHtml };
+  return { build, view, routes, pdfHtml, aiEdit, isBriefAsk };
 }

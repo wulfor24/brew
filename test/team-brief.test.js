@@ -37,3 +37,30 @@ test('a quick edit is kept when the brief is written again for a new version', a
   X.pkg.version = 4; const { x } = await TB.build({}, w); X.pkg.version = 3;
   assert.equal(TB.view(w, x).sections.find((s) => s.k === 'who').t, 'Night-shift nurses.');
 });
+
+test('change with AI: only the asked parts change, the memo line too, and the final words stay the ad’s', async () => {
+  let asked = '';
+  const TB = createTeamBrief({ isMock: () => false, spend: () => true, now: () => 5, handoff: { build: async () => X },
+    claudeTool: async (p, sc, mx, name) => { if (name !== 'team_brief_edit') return { title: 'Cold feet ad', what: 'One Meta ad.', why: 'Offices are cold.', who: 'Women at desks.', creative: 'The picture.', specs: '4:5', rules: 'Real product only.', when: 'To confirm.', done: 'Files back.', open: [], evidence: [] };
+      asked = p; return { changes: [{ k: 'to', t: 'Pixel Agency' }, { k: 'when', t: 'Owner: Riya. Due 30 Oct.' }, { k: 'who', t: 'Women at desks.' }], said: 'Sent to Pixel Agency, Riya owns it.', words_only: false }; } });
+  const w = { id: 'w1', doc: { rev: 2 } }; await TB.build({}, w);
+  const r = await TB.aiEdit({}, w, { ask: 'it goes to Pixel Agency, Riya owns it by 30 Oct', quote: 'Your team' });
+  assert.deepEqual(r.changed, ['to', 'when']); /* an unchanged part is not counted */
+  assert.match(asked, /selected this text in the brief: "Your team"/);
+  assert.equal(r.brief.memo.to, 'Pixel Agency');
+  assert.equal(r.brief.sections.find((s) => s.k === 'when').t, 'Owner: Riya. Due 30 Oct.');
+  assert.equal(r.brief.sections.find((s) => s.k === 'words').t, 'Primary text: Cold feet, fixed.');
+  const { x } = await TB.build({}, w); assert.equal(TB.view(w, x).memo.to, 'Pixel Agency'); /* kept through a rewrite */
+});
+
+test('offline: the selected words are swapped for what was typed', async () => {
+  const TB = make(false), w = { id: 'w1', doc: { rev: 2, plan: { audience: 'Women 25-45' } } }; await TB.build({}, w);
+  const r = await TB.aiEdit({}, w, { ask: 'Men 30-50', quote: 'Women 25-45' });
+  assert.equal(r.brief.sections.find((s) => s.k === 'who').t, 'Men 30-50');
+});
+
+test('a chat line names the brief or sets one of its facts; a creative ask does not', () => {
+  const TB = make(false);
+  for (const m of ['owner is Riya', 'budget should be ₹50k', 'in the brief, add the agency', 'brief: due Friday', 'the deadline is 30 Oct']) assert.ok(TB.isBriefAsk(m), m);
+  for (const m of ['make the headline shorter', 'warmer photo', 'who is the audience?']) assert.ok(!TB.isBriefAsk(m), m);
+});

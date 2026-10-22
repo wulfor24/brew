@@ -4033,7 +4033,7 @@
     const ni = w?.jamBrief?.status === 'needs_info' ? (w.jamBrief.history || []).find((h) => h.s === 'needs_info') : null;
     const niHtml = ni ? `<div class="st-needs" role="status">${ic('hand', 's16')}<div><b>${esc(ni.name || 'The ShopOS team')} needs something from you${w.ticket ? ` · ${esc(w.ticket)}` : ''}</b>${ni.note ? `<p>${esc(ni.note)}</p>` : ''}<small>Answer with @ShopOS team in your message: it goes to them by email.</small></div></div>` : '';
     return `<div class="it-log">${RX.p ? `<div class="it-empty">${face(ch.agent)}${caseBrief(ch)}</div>` : ''}${log || (RX.p ? '' : `<div class="it-empty">${face(ch.agent)}<p>What should change? Each change makes a new version, and you can always go back.</p></div>`)}${j2Extra(ch)}${RX.sending ? `<div class="lgm ai pending">${face(ch.agent)}<p><brew-load class="spin"></brew-load>${esc(RX.sending)}</p></div>` : ''}</div>
-      ${edit ? `<form class="it-ask" id="st-say">${niHtml}${v1Chips(ch)}${stAttHtml()}<div class="it-row${window.Composer?.tools ? ' has-cmp' : ''}"><textarea id="st-in" rows="2" data-nomic placeholder="What should change? Or @ someone">${esc(RX.draft || '')}</textarea>${window.Composer?.tools ? `<span class="jm-tools">${window.Composer.tools()}<span class="jm-tools-r">${window.Mic?.supported ? `<button type="button" class="jm-mic" data-cmp-talk aria-label="Talk instead of typing" title="Talk instead of typing">${ic('mic', 's16')}</button>` : ''}<button class="jm-send${RX.sending ? ' is-wait' : ''}" aria-label="Send" ${RX.sending ? 'disabled aria-busy="true"' : ''}>${RX.sending ? '<brew-load class="spin"></brew-load>' : ic('up', 's16')}</button></span></span>` : `<button class="btn btn-primary${RX.sending ? ' is-wait' : ''}" aria-label="Send" ${RX.sending ? 'disabled aria-busy="true"' : ''}>${RX.sending ? '<brew-load class="spin"></brew-load>' : ic('up', 's16')}</button>`}</div></form>${window.Composer?.foot ? window.Composer.foot() : ''}` : `<p class="it-locked">It’s in a jam. Shape it there.</p>`}`;
+      ${edit ? `<form class="it-ask" id="st-say">${niHtml}${v1Chips(ch)}${stAttHtml()}<div class="it-row${window.Composer?.tools ? ' has-cmp' : ''}"><textarea id="st-in" rows="2" data-nomic placeholder="${RX.stage === 'brief' && tbWork() ? 'What should change in the brief?' : 'What should change? Or @ someone'}">${esc(RX.draft || '')}</textarea>${window.Composer?.tools ? `<span class="jm-tools">${window.Composer.tools()}<span class="jm-tools-r">${window.Mic?.supported ? `<button type="button" class="jm-mic" data-cmp-talk aria-label="Talk instead of typing" title="Talk instead of typing">${ic('mic', 's16')}</button>` : ''}<button class="jm-send${RX.sending ? ' is-wait' : ''}" aria-label="Send" ${RX.sending ? 'disabled aria-busy="true"' : ''}>${RX.sending ? '<brew-load class="spin"></brew-load>' : ic('up', 's16')}</button></span></span>` : `<button class="btn btn-primary${RX.sending ? ' is-wait' : ''}" aria-label="Send" ${RX.sending ? 'disabled aria-busy="true"' : ''}>${RX.sending ? '<brew-load class="spin"></brew-load>' : ic('up', 's16')}</button>`}</div></form>${window.Composer?.foot ? window.Composer.foot() : ''}` : `<p class="it-locked">It’s in a jam. Shape it there.</p>`}`;
   };
   const adjustTab = (ch, edit) => edit ? `<p class="hs-tip">Turn a knob and the package is rewritten to match. Knobs marked “new photo” make a new creative.</p>
       ${fitKnobs(ch.knobs).map((k) => { const multi = false /* one version, always: a knob makes one new take, never several to pick from (QA J-11) */, sel = (RX.knobSel || {})[k.k] || [], cur = (ch.pkg.knobs || {})[k.k];
@@ -4069,26 +4069,36 @@
     for (const c of cs) { const q = String(c.quote || '').trim(); if (q.length < 2) continue;
       const tw = document.createTreeWalker(art, NodeFilter.SHOW_TEXT); let n; while ((n = tw.nextNode())) { const i = n.data.indexOf(q); if (i < 0) continue;
         const r = document.createRange(); r.setStart(n, i); r.setEnd(n, i + q.length); const m = document.createElement('mark'); m.className = 'bf-mk'; m.title = c.note || 'Comment'; try { r.surroundContents(m); } catch {} break; } } };
-  const bfPop = { el: null, quote: '' };
-  const bfPopClose = () => { bfPop.el?.remove(); bfPop.el = null; bfPop.quote = ''; };
-  const bfPopAt = (rect, quote) => { bfPopClose(); bfPop.quote = quote; const el = document.createElement('div'); el.className = 'bf-pop';
-    el.innerHTML = `<button class="btn btn-primary sm" data-bf-cmgo>${ic('chat', 's14')}Comment</button>`; document.body.appendChild(el); bfPop.el = el;
+  /* mode 'bf': the jam brief (comment, or fix with AI); mode 'tb': the team brief on the stage, where any selection, or a tap on a
+     part, is changed with AI (Param, 23 Oct: "entire brief should be select and change using AI") */
+  const bfPop = { el: null, quote: '', mode: 'bf', k: null };
+  const bfPopClose = () => { bfPop.el?.remove(); bfPop.el = null; bfPop.quote = ''; bfPop.k = null; };
+  const bfPopAt = (rect, quote, mode = 'bf') => { bfPopClose(); bfPop.quote = quote; bfPop.mode = mode; const el = document.createElement('div'); el.className = 'bf-pop';
+    el.innerHTML = mode === 'tb' ? `<button class="btn btn-primary sm" data-bf-cmgo>${ic('sparkles', 's14')}Change with AI</button>` : `<button class="btn btn-primary sm" data-bf-cmgo>${ic('chat', 's14')}Comment</button>`; document.body.appendChild(el); bfPop.el = el;
     const top = Math.min(innerHeight - 60, rect.bottom + 8), left = Math.max(12, Math.min(innerWidth - el.offsetWidth - 12, rect.left + rect.width / 2 - el.offsetWidth / 2));
     el.style.top = `${top}px`; el.style.left = `${left}px`; };
   const bfPopForm = () => { const el = bfPop.el; if (!el) return; el.classList.add('is-form');
-    el.innerHTML = `<q>${esc(bfPop.quote.length > 120 ? bfPop.quote.slice(0, 119) + '…' : bfPop.quote)}</q><textarea id="bf-cm-in" rows="3" placeholder="What’s wrong or what should it say?"></textarea><div><button class="btn btn-ghost sm" data-bf-cmadd>Add comment</button><button class="btn btn-primary sm" data-bf-cmfix>${ic('sparkles', 's14')}Fix with AI</button></div>`;
+    const tbK = bfPop.mode === 'tb' && bfPop.k ? (TBS.brief?.sections || []).find((x) => x.k === bfPop.k) : null;
+    el.innerHTML = bfPop.mode === 'tb'
+      ? `<q>${esc(bfPop.quote.length > 120 ? bfPop.quote.slice(0, 119) + '…' : bfPop.quote)}</q><textarea id="bf-cm-in" rows="3" placeholder="What should it say instead?"></textarea><div>${tbK?.edited ? '<button class="linkbtn" data-tb-putback>Put Brew’s back</button><span class="sp"></span>' : ''}<button class="btn btn-ghost sm" data-bf-cancel>Cancel</button><button class="btn btn-primary sm" data-tb-aigo>${ic('sparkles', 's14')}Change it</button></div>`
+      : `<q>${esc(bfPop.quote.length > 120 ? bfPop.quote.slice(0, 119) + '…' : bfPop.quote)}</q><textarea id="bf-cm-in" rows="3" placeholder="What’s wrong or what should it say?"></textarea><div><button class="btn btn-ghost sm" data-bf-cmadd>Add comment</button><button class="btn btn-primary sm" data-bf-cmfix>${ic('sparkles', 's14')}Fix with AI</button></div>`;
     const r = el.getBoundingClientRect(); if (r.bottom > innerHeight - 8) el.style.top = `${Math.max(8, innerHeight - r.height - 8)}px`; if (r.right > innerWidth - 8) el.style.left = `${Math.max(8, innerWidth - r.width - 8)}px`; $('#bf-cm-in', el)?.focus(); };
-  const bfSel = () => { if (bfPop.el?.classList.contains('is-form')) return; const s = getSelection(), art = $('[data-bf-md]');
-    if (!s || s.isCollapsed || !art || !s.rangeCount || view !== 'remix') return bfPopClose(); const r = s.getRangeAt(0); if (!art.contains(r.commonAncestorContainer)) return bfPopClose();
-    const q = s.toString().replace(/\s+/g, ' ').trim(); if (q.length < 2) return bfPopClose(); bfPopAt(r.getBoundingClientRect(), q); };
+  const bfSel = () => { if (bfPop.el?.classList.contains('is-form')) return; const s = getSelection(), art = $('[data-bf-md]'), tb = $('.tbm-doc:not(.tbm-wait)');
+    if (!s || s.isCollapsed || (!art && !tb) || !s.rangeCount || view !== 'remix') return bfPopClose(); const r = s.getRangeAt(0); const mode = art?.contains(r.commonAncestorContainer) ? 'bf' : tb?.contains(r.commonAncestorContainer) ? 'tb' : null; if (!mode) return bfPopClose();
+    const q = s.toString().replace(/\s+/g, ' ').trim(); if (q.length < 2) return bfPopClose(); bfPopAt(r.getBoundingClientRect(), q, mode); };
   { let tm = 0; document.addEventListener('selectionchange', () => { clearTimeout(tm); tm = setTimeout(bfSel, 250); }); }
-  document.addEventListener('mousedown', (e) => { if (bfPop.el && !bfPop.el.contains(e.target) && !e.target.closest?.('[data-bf-md]')) bfPopClose(); });
-  addEventListener('keydown', (e) => { if (e.key === 'Escape' && bfPop.el) { e.stopImmediatePropagation(); bfPopClose(); } }, true);
+  document.addEventListener('mousedown', (e) => { if (bfPop.el && !bfPop.el.contains(e.target) && !e.target.closest?.('[data-bf-md],.tbm-doc')) bfPopClose(); });
+  addEventListener('keydown', (e) => { if (e.key === 'Escape' && bfPop.el) { e.stopImmediatePropagation(); bfPopClose(); }
+    if (e.key === 'Enter' && !e.shiftKey && e.target.id === 'bf-cm-in' && bfPop.mode === 'tb') { e.preventDefault(); bfPop.el?.querySelector('[data-tb-aigo]')?.click(); } }, true);
   const bfFix = async (w) => { if (!w || RX.bfFix) return; RX.bfFix = w.id; paintStudio();
     const r = await tapi('POST', `/api/work/${w.id}/doc/fix`, {}).catch((e) => ({ error: e.message })); RX.bfFix = null; if (r.work) putWork(r.work);
     toast(r.error ? `${ic('info', 's16')}${esc(r.error)}` : `${ic('check', 's16')}${esc(r.reply || `Fixed ${r.fixed === 1 ? 'the comment' : `${r.fixed} comments`}`)}`); if (view === 'remix') paintStudio(); };
   document.addEventListener('click', async (e) => { if (!bfPop.el?.contains(e.target)) return; const w = workOfCard(RX.p?.id); if (!w) return bfPopClose();
     if (e.target.closest('[data-bf-cmgo]')) return bfPopForm();
+    if (e.target.closest('[data-bf-cancel]')) return bfPopClose();
+    if (e.target.closest('[data-tb-putback]')) { const k = bfPop.k; bfPopClose(); const r = await tapi('POST', `/api/work/${w.id}/team-brief/edit`, { k, t: '' }); if (r.brief) { TBS.brief = r.brief; TBS.pdf = null; tbWarm(); } return paintStudio(); }
+    if (e.target.closest('[data-tb-aigo]')) { const ask = $('#bf-cm-in')?.value.trim() || '', quote = bfPop.quote, k = bfPop.k; if (!ask) return $('#bf-cm-in')?.focus(); bfPopClose(); getSelection()?.removeAllRanges();
+      const h = k ? (TBS.brief?.sections || []).find((x) => x.k === k)?.h : ''; return tbAi(h ? `In "${h}": ${ask}` : ask, k ? '' : quote); }
     const fix = e.target.closest('[data-bf-cmfix]'); if (!fix && !e.target.closest('[data-bf-cmadd]')) return;
     const note = $('#bf-cm-in')?.value.trim() || '', quote = bfPop.quote; bfPopClose(); getSelection()?.removeAllRanges();
     const r = await tapi('POST', `/api/work/${w.id}/doc/comment`, { quote, note }).catch((er) => ({ error: er.message })); if (r.work) putWork(r.work);
@@ -4288,6 +4298,11 @@
   const tbOpen = () => { if (!tbWork()) return toast('Open the jam first, then share its brief.'); RX.stage = 'brief'; RX.tbEdit = null; paintStudio(); $('.tbm-scroll')?.scrollTo?.(0, 0); if (!TBS.brief || TBS.for !== tbWork().id || TBS.brief.stale) tbLoad(); };
   /* the brief starts writing the moment the jam opens (Param, 23 Oct), so Brief is ready when it's tapped; once the first draft is in */
   const tbAuto = (ch) => { const w = tbWork(); if (!w || ch.copyPending || TBS.busy) return; if (TBS.for !== w.id || (!TBS.brief && !TBS.err)) tbLoad(); };
+  /* change the brief with AI: a selection, a tapped part or a chat line; the parts it changed light up for a moment */
+  const tbAi = async (ask, quote = '') => { const w = tbWork(); if (!w || RX.tbAi) return; RX.tbAi = true; paintStudio();
+    const r = await tapi('POST', `/api/work/${w.id}/team-brief/ai`, { ask, quote }).catch((er) => ({ error: er.message })); RX.tbAi = false;
+    if (r.brief) { TBS.brief = r.brief; TBS.pdf = null; tbWarm(); tbLit(r.changed); } toast(r.error ? `${ic('info', 's16')}${esc(r.error)}` : `${ic('check', 's16')}${esc(r.said || 'Brief changed')}`); if (view === 'remix') paintStudio(); };
+  const tbLit = (ks) => { RX.tbNew = ks || []; clearTimeout(RX.tbNewT); RX.tbNewT = setTimeout(() => { RX.tbNew = []; document.querySelectorAll('.tbm-doc .is-new').forEach((n) => n.classList.remove('is-new')); }, 4000); };
   const tbText = (s) => { const L = String(s || '').split('\n').map((l) => l.trim()).filter(Boolean); if (!L.length) return '<p class="tbm-none">To confirm.</p>';
     return L.map((l) => /^[-•]\s+/.test(l) ? `<li>${esc(l.replace(/^[-•]\s+/, ''))}</li>` : `<p>${esc(l)}</p>`).join('').replace(/(<li>.*?<\/li>)+/g, (m) => `<ul>${m}</ul>`); };
   const tbStage = (ch) => { const b = TBS.for === tbWork()?.id ? TBS.brief : null;
@@ -4296,11 +4311,11 @@
     return `<article class="tbm-doc" aria-label="The team brief">
       <header class="tbm-h"><span class="tbm-brand">${b.mark ? `<img src="${esc(b.mark)}" alt="">` : ''}${esc(b.brand)}</span><span class="tbm-k">Brief${b.memo.ref ? ` · ${esc(b.memo.ref)}` : ''}${b.version ? ` · v${b.version}` : ''}</span></header>
       ${b.stale ? `<p class="tbm-stale">${ic('refresh', 's14')}The ad changed since this was written. <button class="linkbtn" data-tb-retry="fresh">Bring it up to date</button></p>` : ''}
-      <h1 class="tbm-title">${esc(b.title)}</h1>
-      <dl class="tbm-memo"><div><dt>From</dt><dd>${esc(b.memo.from || `${b.brand} team`)}</dd></div><div><dt>To</dt><dd>${esc(b.memo.to)}</dd></div><div><dt>Due</dt><dd>${esc(b.memo.due || 'To confirm')}</dd></div><div><dt>Files</dt><dd>${cr.length ? `${cr.length} attached` : 'None yet'}</dd></div></dl>
+      ${RX.tbAi ? `<p class="tbm-stale" role="status"><brew-load class="spin"></brew-load>Changing the brief…</p>` : ''}
+      <h1 class="tbm-title${(RX.tbNew || []).includes('title') ? ' is-new' : ''}">${esc(b.title)}</h1>
+      <dl class="tbm-memo"><div${(RX.tbNew || []).includes('from') ? ' class="is-new"' : ''}><dt>From</dt><dd>${esc(b.memo.from || `${b.brand} team`)}</dd></div><div${(RX.tbNew || []).includes('to') ? ' class="is-new"' : ''}><dt>To</dt><dd>${esc(b.memo.to)}</dd></div><div${(RX.tbNew || []).includes('due') ? ' class="is-new"' : ''}><dt>Due</dt><dd>${esc(b.memo.due || 'To confirm')}</dd></div><div><dt>Files</dt><dd>${cr.length ? `${cr.length} attached` : 'None yet'}</dd></div></dl>
       ${cr.length ? `<div class="tbm-files">${cr.map((c) => `<figure><a href="/${esc(c.url)}" target="_blank" rel="noopener">${c.kind === 'video' ? `<video src="/${esc(c.url)}" ${c.poster ? `poster="/${esc(c.poster)}"` : ''} muted playsinline preload="metadata"></video>` : `<img src="/${esc(c.url)}" alt="">`}</a><figcaption>${esc(c.label)}</figcaption></figure>`).join('')}</div>` : ''}
-      ${b.sections.map((x) => (RX.tbEdit === x.k ? `<section class="tbm-sec is-ed"><h2>${esc(x.h)}</h2><textarea id="tbm-ed" rows="${Math.min(12, Math.max(3, x.t.split('\n').length + 1))}">${esc(x.t)}</textarea><div class="tbm-ed-a">${x.edited ? '<button type="button" class="linkbtn" data-tb-reset>Put the written one back</button>' : ''}<span class="sp"></span><button type="button" class="btn btn-ghost sm" data-tb-cancel>Cancel</button><button type="button" class="btn btn-primary sm" data-tb-save="${esc(x.k)}">Save</button></div></section>`
-        : `<section class="tbm-sec${x.locked ? ' is-locked' : ''}"${x.locked ? ` title="The final words come from the ad: change them in the chat"` : ` data-tb-ed="${esc(x.k)}" tabindex="0" role="button" aria-label="Edit ${esc(x.h)}"`}><h2>${esc(x.h)}${x.edited ? '<em>edited</em>' : ''}${x.locked ? '<em>from the ad</em>' : `<span class="tbm-pen">${ic('edit', 's14')}</span>`}</h2>${x.k === 'words' ? `<div class="tbm-words">${esc(x.t)}</div>` : tbText(x.t)}</section>`)
+      ${b.sections.map((x) => `<section class="tbm-sec${x.locked ? ' is-locked' : ''}${(RX.tbNew || []).includes(x.k) ? ' is-new' : ''}"${x.locked ? ` title="The final words come from the ad: change them on the Creative side"` : ` data-tb-ai="${esc(x.k)}" tabindex="0" role="button" aria-label="Change ${esc(x.h)} with AI"`}><h2>${esc(x.h)}${x.edited ? '<em>changed</em>' : ''}${x.locked ? '<em>from the ad</em>' : `<span class="tbm-pen">${ic('sparkles', 's14')}</span>`}</h2>${x.k === 'words' ? `<div class="tbm-words">${esc(x.t)}</div>` : tbText(x.t)}</section>`
         + (x.k === 'why' && (b.evidence || []).length ? `<section class="tbm-sec tbm-ev"><h2>The evidence</h2><ul>${b.evidence.map((e, i) => `<li><span>${esc(e.say)}</span>${e.src ? `<small>${esc(e.src)}</small>` : ''}<button class="icon-btn" data-tb-evrm="${i}" aria-label="Leave this out">${ic('x', 's14')}</button></li>`).join('')}</ul></section>` : '')).join('')}
       <footer class="tbm-f"><button class="linkbtn" data-rx="share-shopos">Or send it to the ShopOS team</button><span class="sp"></span><button class="btn btn-ghost" data-tb-pdf>${ic('down', 's16')}Download PDF</button><button class="btn btn-primary" data-tb-send>${ic('send', 's16')}Send PDF</button></footer>
     </article>`; };
@@ -4366,7 +4381,7 @@
     if (g('[data-tb-open]')) { e.preventDefault(); return tbOpen(); }
     const st = g('[data-tb-stage]'); if (st) { if (st.dataset.tbStage === 'brief') return tbOpen(); RX.stage = 'creative'; RX.tbEdit = null; return paintStudio(); }
     const rt = g('[data-tb-retry]'); if (rt) return tbLoad(rt.dataset.tbRetry === 'fresh');
-    const ed = g('[data-tb-ed]'); if (ed && !g('a,button')) { RX.tbEdit = ed.dataset.tbEd; paintStudio(); const ta = $('#tbm-ed'); ta?.focus(); ta?.setSelectionRange(ta.value.length, ta.value.length); return; }
+    const ed = g('[data-tb-ai]'); if (ed && !g('a,button') && getSelection()?.isCollapsed !== false) { const x = (TBS.brief?.sections || []).find((s) => s.k === ed.dataset.tbAi); if (!x) return; bfPopAt(ed.getBoundingClientRect(), x.t, 'tb'); bfPop.k = x.k; bfPop.el.style.top = `${Math.max(8, Math.min(innerHeight - 220, ed.getBoundingClientRect().top + 28))}px`; return bfPopForm(); }
     if (g('[data-tb-cancel]')) { $('#tbm-ed')?.blur(); RX.tbEdit = null; return paintStudio(); }
     const sv = g('[data-tb-save]'), rs = g('[data-tb-reset]'); if (sv || rs) { const w = tbWork(), k = RX.tbEdit, t = rs ? '' : $('#tbm-ed')?.value || ''; $('#tbm-ed')?.blur(); RX.tbEdit = null;
       const r = await tapi('POST', `/api/work/${w.id}/team-brief/edit`, { k, t }); if (r.brief) { TBS.brief = r.brief; TBS.pdf = null; tbWarm(); } if (r.error) toast(esc(r.error)); return paintStudio(); }
@@ -4376,7 +4391,7 @@
     const gm = g('[data-tb-gmail]'); if (gm) return tbGmail(gm);
     const ml = g('[data-tb-mail]'); if (ml) return tbSend(ml);
     if (g('[data-tb-files]')) { (TBS.brief?.creatives || []).forEach((c, i) => setTimeout(() => dl('/' + c.url, c.name), i * 300)); } });
-  addEventListener('keydown', (e) => { if (view !== 'remix' || RX.stage !== 'brief') return; const ed = e.target.closest?.('[data-tb-ed]'); if (ed && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); ed.click(); }
+  addEventListener('keydown', (e) => { if (view !== 'remix' || RX.stage !== 'brief') return; const ed = e.target.closest?.('[data-tb-ai]'); if (ed && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); ed.click(); }
     if (e.target.id === 'tbm-ed') { if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); e.target.blur(); RX.tbEdit = null; paintStudio(); } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); $('[data-tb-save]')?.click(); } } }, true);
   const paintStudio = () => {
     const pg = $('#view .std'); const ch = RX.ch; if (!pg || !ch) return;
@@ -4581,7 +4596,9 @@
     RX.sending = path === 'variants' || path === 'more' ? 'Writing a new take…' : path === 'plan' ? planBusy(ch) : path === 'knob' ? `Applying ${msg}…` : body?.fix ? 'Fixing it…' : 'Working on it…';
     if (path === 'iterate') { ch.thread = [...(ch.thread || []), { from: 'you', text: msg || 'Look at the screenshot', imgs: att, at: 9e15 /* last in the timeline until the server's copy lands */ }]; RX.draft = ''; if ($('#st-in')) $('#st-in').value = ''; RX.tab = 'iterate'; }
     RX.viewing = null; RX.resetScroll = true; paintStudio(); if (path === 'iterate') sound('send');
+    if (path === 'iterate' && !att.length && RX.stage === 'brief' && tbWork()) body = { ...(body || { message: msg }), brief: true };
     const r = await tapi('POST', `/api/changes/${ch.id}/${path}`, body || { message: msg });
+    if (r.brief && TBS.for === tbWork()?.id) { TBS.brief = r.brief; TBS.pdf = null; tbWarm(); tbLit(r.changed); if (RX.stage !== 'brief') toast(`${ic('check', 's16')}Brief changed. <button class="linkbtn" data-tb-open>See it</button>`); }
     RX.sending = false; if (r.error) { if (att.length && !RX.att?.length) RX.att = att; /* a failed send keeps its screenshots */ sound('error'); toast(esc(r.error)); return paintStudio(); }
     if (path === 'iterate') sound('reply'); else if (['variants', 'more', 'plan'].includes(path)) sound('ready'); /* the answer, or the new take or plan, is in; a knob stays quiet */
     RX.ch = r.change; putCh(r.change); RX.resetScroll = true; if (Array.isArray(body?.v) || path === 'variants' || path === 'plan') RX.tab = 'iterate'; if (path === 'plan') pullWork(true); paintStudio(); showLearned(r.learned); if (!r.answered) syncBrief(r.change, msg); /* a question changed nothing: no brief rewrite */ if (r.pickPhotos) openPhotos();
