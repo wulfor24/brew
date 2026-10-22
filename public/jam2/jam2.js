@@ -141,7 +141,9 @@ async function mention(text) { const tm = await team(), toks = [...text.matchAll
   for (const tk of toks) { const hit = tm.find((x) => x.email.toLowerCase() === tk || (x.name || '').toLowerCase().split(/\s+/)[0] === tk || x.email.toLowerCase().startsWith(tk + '@')); if (hit) emails.push(hit.email); else if (/@/.test(tk)) emails.push(tk); }
   if (!emails.length) return say('brew', `I couldn’t find ${toks.map((x) => '@' + x).join(', ')} on the team. Use their email (@name@company.com) to invite them.`);
   const r = await api('POST', `/api/jam2/jams/${S.jam.id}/mention`, { emails, text }); if (!S) return; if (r?.error) return toast(r.error); if (r?.jam) S.jam = r.jam;
-  say('brew', `Emailed ${emails.join(', ')} a link to this jam${r.invited?.length ? `; invited ${r.invited.join(', ')} to the team first` : ''}.`); }
+  /* says only what the server really sent: someone who turned jam emails off, or who has this jam open, isn't emailed */
+  const inv = r.invited?.length ? ` Invited ${r.invited.join(', ')} to the team first.` : '';
+  say('brew', r.mailed > 0 ? `Emailed ${emails.join(', ')} a link to this jam.${inv}` : `Tagged ${emails.join(', ')} here; no email went out (they have this jam open or turned jam emails off).${inv}`); }
 async function askOk(b, email) { const r = await api('POST', `/api/jam2/jams/${S.jam.id}/boards/${b.id}/ask-ok`, { email }); if (!S) return; if (r?.error) return toast(r.error); if (r?.jam) S.jam = r.jam; render(); say('brew', `Asked ${email} for an OK on ${b.label}. They got an email; you hear back when it’s approved.`); }
 async function toSlack(b) { const r = await api('POST', `/api/jam2/jams/${S.jam.id}/boards/${b.id}/slack`, {}); if (!S) return; if (r?.error) return toast(r.error); if (r?.jam) S.jam = r.jam; render(); say('brew', `Posted ${b.label} to Slack${r.channel ? ` (#${String(r.channel).replace(/^#+/, '')})` : ''} with Approve. Replies in its thread show up here.`); }
 const fileData = (f) => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => no(r.error); r.readAsDataURL(f); });
