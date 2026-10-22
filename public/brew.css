@@ -1931,8 +1931,9 @@ body:has(#dp.dp-full) .rail{position:fixed;top:0;left:0;bottom:0;height:auto;wid
 .cn-card .cn-demo{margin:-8px 0 0}
 .cn-card .cn-will{flex:0 0 auto;padding:0;background:none;gap:8px}
 .cn-card .cn-will small{font-size:12.5px;letter-spacing:.02em;text-transform:uppercase}
-.cn-card > footer{margin-top:auto;flex-wrap:nowrap;justify-content:flex-end;gap:2px;padding-top:12px;border-top:1px solid var(--line-soft,var(--line))}
-.cn-card > footer .cn-acct{flex:1 1 auto;margin-right:6px;font-size:13px;color:var(--fg-3)}
+.cn-card > footer{margin-top:auto;flex-wrap:wrap;row-gap:6px;justify-content:flex-end;gap:2px;padding-top:12px;border-top:1px solid var(--line-soft,var(--line))}
+/* the account name keeps room to be read ("SquareUp Ads (India)", not "Squar…"): when the card is narrow the buttons drop to their own line */
+.cn-card > footer .cn-acct{flex:1 1 11em;margin-right:6px;font-size:13px;color:var(--fg-3)}
 .cn-card > footer .cn-btn{height:30px;padding:0 10px;font-size:13.5px}
 .cn-card > footer .cn-btn.is-ghost{box-shadow:none;color:var(--fg-2)}
 .cn-card > footer .cn-btn.is-ghost:hover{background:var(--surface);color:var(--fg)}
