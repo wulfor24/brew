@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "note": "Jam v2 partner routing: capability \u2192 adapters in order of preference. The first one that is connected and can do it runs; the next is the fallback. Change the order here, not in code. Costs are estimates until the partner bench; every priced button asks the adapter for a fresh quote.",
+  "note": "Jam v2 partner routing: capability → adapters in order of preference. The first one that is connected and can do it runs; the next is the fallback. Change the order here, not in code. Costs are estimates until the partner bench; every priced button asks the adapter for a fresh quote.",
   "route": {
     "still.scene": [
       "vertex",
@@ -58,6 +58,13 @@
     ],
     "music.gen": [
       "vertex"
+    ],
+    "still.shot": [
+      "vertex",
+      "higgsfield"
+    ],
+    "still.extend": [
+      "vertex"
     ]
   },
   "higgsfield": {
@@ -68,7 +75,8 @@
       "still.edit": "marketing-studio/image",
       "video.shot": "kling-video/v3.0/std/image-to-video",
       "video.ugc": "bytedance/seedance-2.5/reference-to-video",
-      "cast.create": "higgsfield/ai-influencer"
+      "cast.create": "higgsfield/ai-influencer",
+      "still.shot": "marketing-studio/image/flare"
     },
     "usd": {
       "still": 0.11,

@@ -40,7 +40,10 @@ const say = (from, t, sel = null) => { const s0 = S, jid = S.jam.id; return api(
 async function op(body, done = '', bid = null) {
   const b = (bid && S.jam.boards.find((x) => x.id === bid)) || board(); if (!b || S.working) return; const s0 = S, jid = S.jam.id; S.working = true; S.pend = null; S.more = false; render();
   const r = await api('POST', `/api/jam2/jams/${jid}/boards/${b.id}/op`, body); if (!live(s0, jid)) return; S.working = false;
-  if (r?.jam) S.jam = r.jam; if (r?.error) { toast(r.error); return; }
+  if (r?.jam) S.jam = r.jam;
+  /* a shot in another frame is the same photo extended: priced, so it asks first, then the size follows */
+  if (r?.needsExtend) { const sz = body.patch?.size, lab = S.recipes.__sizes?.[sz]?.label || sz; render(); return priced(`Make the ${lab} version: the same photo, shot ${/9:16|2:3|A5/.test(lab) ? 'taller' : 'wider'}`, usd(S.prices.extend), () => op({ op: 'extend', patch: { size: sz }, confirmUsd: S.prices.extend ?? null }, `Now ${lab}`)); }
+  if (r?.error) { toast(r.error); return; }
   /* a slow change comes back later through the poll: its message says so instead of naming a version it isn't yet */
   const bg = !!S.jam.busy?.[b.id] && !S.jam.busy[b.id].error, nb = S.jam.boards.find((x) => x.id === b.id); render(); if (done) say('brew', bg ? `${done}: on it, it lands here as the next version.` : `${done} · v${take(nb)?.n || ''}`.replace(/ · v$/, ''));
 }
@@ -57,7 +60,8 @@ function patchLayer(fn, label) { const t = take(), b = board(); const slide = b.
   const sc = JSON.parse(JSON.stringify(slide != null ? t.slides[slide].scene : t.scene)); const l = sc.layers.find((x) => x.id === S.sel.id); if (!l) return; fn(l, sc);
   op(slide != null ? { patch: { slide, slideScene: sc } } : { patch: { scene: sc } }, label); }
 function tools() {
-  const s = S.sel, b = board(), P = S.prices || {}; if (!s || !b) return null;
+  const s = S.sel, b = board(); let P = S.prices || {}; if (!s || !b) return null;
+  if (take()?.shot) P = { ...P, redo: P.shot, background: P.shot }; /* a shot is re-shot (two candidates), not a new backdrop */
   const line = (target, label) => [['Shorter', () => op({ op: 'line', target, ask: 'shorter' }, `${label} shorter · free`)], ['Warmer', () => op({ op: 'line', target, ask: 'warmer' }, `${label} warmer · free`)], ['Another way', () => op({ op: 'line', target, ask: 'rewrite' }, `${label} rewritten · free`)], ['In Hindi', () => op({ op: 'line', target, ask: 'hindi' }, `${label} in Hindi · free`)]];
   const typeOver = (label, val, save) => ['Type over it', () => ask(label, val, save)];
   if (b.kind === 'carousel' && ['bg', 'whole', 'area'].includes(s.kind)) return { label: `Slide ${S.slide + 1}`, main: [['New words for every slide', () => op({ op: 'redo-words' }, 'New words')], ['Redo the carousel', () => priced(`Redo the carousel: ${take()?.slides?.length || 4} new slides, same idea`, S.prices.redo != null ? usd(S.prices.redo * (take()?.slides?.length || 4)) : '', () => op({ op: 'first' }, 'New carousel'))]], more: [] };
@@ -106,7 +110,7 @@ async function openPicker() { const bid = board()?.id; const r = await api('GET'
 async function render2(confirmUsd) { const b = board(); if (S.working) return; const s0 = S, jid = S.jam.id; S.working = true; render(); const r = await api('POST', `/api/jam2/jams/${jid}/boards/${b.id}/render`, confirmUsd != null ? { confirmUsd } : {}); if (!live(s0, jid)) return; S.working = false;
   if (r?.error) return toast(r.error); if (r?.needsConfirm) return priced(`Render the ${r.quote.seconds} s video: ${(take()?.timeline?.shots || []).length} shots, voice, captions${/^no music$/i.test(take()?.timeline?.music || '') ? '' : ' and music'}`, r.quote.usd != null ? usd(r.quote.usd) : `${r.quote.credits} credits`, () => render2(r.quote.usd));
   if (r?.jam) S.jam = r.jam; render(); say('brew', 'Rendering the video. It lands here as the next version; you can keep working.'); }
-function redo() { const b = board(); if (b.kind === 'carousel' && take()?.slides?.length) return priced(`Redo the carousel: ${take().slides.length} new slides, same idea`, S.prices.redo != null ? usd(S.prices.redo * take().slides.length) : '', () => op({ op: 'first' }, 'New carousel')); if (isBrief(b) && !ownBrief(b)) return op({ op: 'redo-words' }, 'New words'); if (take()?.scene) return priced('Redo it: one new take, a new scene with the same words and product', usd(S.prices.redo), () => op({ op: 'redo' }, 'New take')); op({ op: 'redo-words' }, 'New take'); }
+function redo() { const b = board(); if (b.kind === 'carousel' && take()?.slides?.length) return priced(`Redo the carousel: ${take().slides.length} new slides, same idea`, S.prices.redo != null ? usd(S.prices.redo * take().slides.length) : '', () => op({ op: 'first' }, 'New carousel')); if (isBrief(b) && !ownBrief(b)) return op({ op: 'redo-words' }, 'New words'); if (take()?.scene) return priced(take()?.shot ? 'Redo it: shoot it again, same words and product' : 'Redo it: one new take, a new scene with the same words and product', usd(take()?.shot ? S.prices.shot : S.prices.redo), () => op({ op: 'redo' }, 'New take')); op({ op: 'redo-words' }, 'New take'); }
 
 /* the idea's settings change every piece made on it: those pieces are marked and offer a remake */
 async function concept(patch) { const s0 = S, jid = S.jam.id; const r = await api('POST', `/api/jam2/jams/${jid}/concept`, patch); if (!live(s0, jid)) return; if (r?.jam) S.jam = r.jam; if (r?.error) return toast(r.error); render();
@@ -177,7 +181,7 @@ async function send(text) {
   if (sz && take()?.scene && recipeOf(b).sizes?.includes(sz)) return op({ op: 'resize', patch: { size: sz } }, `Now ${sz.replace('ig-', '')}`);
   const target = !s ? null : s.kind === 'text' ? (b.kind === 'carousel' ? { kind: 'slide', i: S.slide } : { kind: 'role', role: layerOf(s.id)?.role || 'headline' }) : s.kind === 'sent' ? { kind: 'sent', i: s.i } : s.kind === 'subject' ? { kind: 'subject' } : s.kind === 'block' ? { kind: 'block', i: s.i } : s.kind === 'row' ? { kind: 'row', i: s.i, col: 'b' } : s.kind === 'shot' ? { kind: 'shot', i: s.i, field: 'vo' } : null;
   if (target) return op({ op: 'line', target, ask: t }, 'Done');
-  if (s?.kind === 'bg') return priced(`A new scene: “${t}”`, usd(S.prices.background), () => op({ op: 'background', ask: t }, 'New scene'));
+  if (s?.kind === 'bg') return priced(`A new scene: “${t}”`, usd(take()?.shot ? S.prices.shot : S.prices.background), () => op({ op: 'background', ask: t }, 'New scene'));
   if (s?.kind === 'area' && s.region) return priced(`Change only that area: “${t}”`, usd(S.prices.area), () => op({ op: 'background', target: 'bg', region: s.region, ask: t }, 'Area changed'));
   if (s?.kind === 'brief') return brief({ edit: { i: s.i, t } }, 'Brief changed');
   return op({ ask: t }, 'Done');
@@ -348,7 +352,7 @@ function wire(root) {
     const mt = g('[data-mtool]'); if (mt) return tools().more.filter(Boolean)[+mt.dataset.mtool][1]();
     if (g('[data-pend-no]')) { S.pend = null; return render(); } if (g('[data-pend-yes]')) { const p = S.pend; S.pend = null; return p.run(); }
     if (g('[data-edit-no]')) { S.edit = null; return render(); } if (g('[data-edit-ok]')) { const v = $('#j2-edit').value, ed = S.edit; S.edit = null; render(); return ed.save(v); }
-    const pr = g('[data-prod]'); if (pr) { const p = S.pick.products[+pr.dataset.prod], bid = S.pick.bid; S.pick = null; return op({ op: 'swap-product', patch: { product: { img: p.img, name: p.name } } }, `Now the ${p.name || 'other product'}`, bid); }
+    const pr = g('[data-prod]'); if (pr) { const p = S.pick.products[+pr.dataset.prod], bid = S.pick.bid; S.pick = null; const go = () => op({ op: 'swap-product', patch: { product: { img: p.img, name: p.name } } }, `Now the ${p.name || 'other product'}`, bid); return take()?.shot ? priced(`Shoot it again with the ${p.name || 'other product'}`, usd(S.prices.shot), go) : go(); }
     if (g('[data-pick-no]')) { S.pick = null; return render(); }
     const ap = g('[data-approve]'); if (ap) { const b = S.jam.boards[+ap.dataset.approve]; return approve(b, take(b)?.gate?.pass === false); }
     if (g('[data-share]')) return share();

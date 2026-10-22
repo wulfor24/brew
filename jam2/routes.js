@@ -19,7 +19,7 @@ export function mountJam2(d) {
   const { presence = null, teamOf = null, inviteTo = null, jamMail = null, slack = null, memoryOf = null } = d;
   const store = createJam2Store({ packs, log }), bb = createBrandbook({ packs, log });
   const engines = createEngines({ geminiImage: d.geminiImage, vertexVideo: d.vertexVideo, vertexVoice: d.vertexVoice, vertexMusic: d.vertexMusic, finals: d.finals, saveGen: d.saveGen, genFile: d.genFile, photo: d.photoAsync, mock: isMock, log });
-  const maker = createMaker({ engines, brandbook: bb, claudeTool: d.claudeTool, isMock, spend, spendMany: d.spendMany, launchBrowser: d.launchBrowser, withBrowser, shoot: d.shoot, saveGen: d.saveGen, genFile: d.genFile, photoAsync: d.photoAsync, log });
+  const maker = createMaker({ engines, brandbook: bb, claudeTool: d.claudeTool, ai: d.ai || null, isMock, spend, spendMany: d.spendMany, launchBrowser: d.launchBrowser, withBrowser, shoot: d.shoot, saveGen: d.saveGen, genFile: d.genFile, photoAsync: d.photoAsync, log });
   const ready = createReady({ maker, zipBuffer: d.zipBuffer, log });
   const busy = new Map(); // `${jid}:${bid}` → { op, at, error? }
   const whoOf = (t) => { const r = reqOf(t), me = meOf(t); return { member: !!r?.member, staff: !!me?.staff, tid: t.id, email: me?.email || null, me }; };
@@ -96,7 +96,9 @@ export function mountJam2(d) {
     /* Make the final runs on a partner's paid credits: only with the brand's yes on the price it was shown */
     if (b.op === 'final' && !isMock() && b.confirmUsd == null && b.confirmCredits == null) return { error: 'Confirm the price first.', jam: out(j) };
     if (free && busy.get(`${j.id}:${bd.id}`)?.op && !busy.get(`${j.id}:${bd.id}`).error) return { error: 'Brew is still working on this board. Your change can go in when it lands.', jam: out(j) };
-    if (free) { const ctx = await ctxOf(t, j); await maker.edit(ctx, bd, b); await store.put(slugOfT(t), j); return { jam: out(j) }; }
+    if (free) { const ctx = await ctxOf(t, j); try { await maker.edit(ctx, bd, b); } catch (e) { if (e.needsExtend) return { error: e.message, needsExtend: true, jam: out(j) }; throw e; } await store.put(slugOfT(t), j); return { jam: out(j) }; }
+    /* another placement of a shot is made by extending the photo: priced, so only with the brand's yes */
+    if (b.op === 'extend' && !isMock() && b.confirmUsd == null) return { error: 'Confirm the price first.', jam: out(j) };
     /* a product pick from the page is only ever one of the brand's own catalog photos or References (never a URL of anyone's choosing) */
     if (b.patch?.product) { const want = String(b.patch.product.img || ''), refs = await refsOf(slugOfT(t)).catch(() => []);
       const own = productTiles(brandOfT(t)?.catalog || []).find((x) => x.img === want) || refs.filter((r) => r.kind !== 'video').map((r) => ({ img: r.url || r.file, name: r.label || null })).find((x) => x.img === want);

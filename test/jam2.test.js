@@ -87,3 +87,26 @@ test('Pick a day: date-only posts give best days, never a made-up hour; timed po
   const u = bestSlots(timed, 'US'); assert.equal(u.slots[0].from, 9); assert.match(u.basis, /US Eastern/);
   assert.equal(bestSlots([], 'US').slots.length, 0);
 });
+
+test('creative engine: the best candidate that keeps the product wins; none kept → the caller composites; words never drawn', async () => {
+  const { createCreative } = await import('../jam2/creative.js');
+  const fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path');
+  const f = path.join(os.tmpdir(), 'cr-ref.png'); fs.writeFileSync(f, Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mN8+P9/PQAJYAN0Zx7nPgAAAABJRU5ErkJggg==', 'base64'));
+  let n = 0; const prompts = [];
+  const engines = { run: async (cap, s) => { prompts.push(s.prompt); return { file: `gen/c${n++}.png`, provider: 'vertex', model: 'm', usd: 0.14 }; } };
+  const verdicts = [{ same: false, shot: 9, ad: 9, zone: 'top', why: 'other product' }, { same: true, shot: 7, ad: 8, zone: 'bottom', why: 'ok' }];
+  let call = 0; const ai = { call: async () => ({ json: verdicts[call++ % 2], usd: 0.001 }) };
+  const mk = (over = {}) => createCreative({ engines, ai, claudeTool: async () => ({ family: 'product in use', moment: 'feet under a desk', zone: 'top' }), isMock: () => false, fileOf: async () => f,
+    render: async () => 'gen/out.jpg', composeScene: (o) => ({ preset: o.preset, bg: o.bgFile, layers: [{ kind: 'text', words: o.words.headline }] }), ...over });
+  const ctx = { slug: 'x', jam: { concept: { angle: 'cold feet' } }, card: null, bbv: { kit: {}, name: 'B' }, catalog: [{ t: 'Booties', handle: 'b', img: 'https://x/b1.jpg', images: ['https://x/b1.jpg', 'https://x/b2.jpg'] }], product: { img: 'https://x/b1.jpg', name: 'Booties', handle: 'b' }, notes: [] };
+  const r = await mk().staticAd(ctx, { id: 'b1', recipe: 'image-ad', label: 'Image ad' }, { headline: 'Cold feet? Fixed.' }, { ratio: '4:5', w: 1080, h: 1350 });
+  assert.equal(r.shot.file, 'gen/c1.png'); assert.equal(r.scene.preset, 'bottom-bar'); assert.match(prompts[0], /KEEP UNCHANGED/); assert.match(prompts[0], /No text, no letters/);
+  assert.equal(r.made.length, 2);
+  call = 0; verdicts[1] = { ...verdicts[1], same: false };
+  const r2 = await mk().staticAd(ctx, { id: 'b1', recipe: 'image-ad', label: 'Image ad' }, { headline: 'x' }, { ratio: '4:5', w: 1080, h: 1350 });
+  assert.equal(r2.scene, undefined); assert.match(r2.fail, /product changed/);
+  /* a brand with no product photo: the moment alone, no KEEP list */
+  prompts.length = 0; call = 0; verdicts[0] = { same: true, shot: 8, ad: 8, zone: 'left', why: 'ok' };
+  const r3 = await mk().staticAd({ ...ctx, product: null }, { id: 'b1', recipe: 'image-ad', label: 'Image ad' }, { headline: 'x' }, { ratio: '1:1', w: 1080, h: 1080 });
+  assert.ok(r3.scene); assert.doesNotMatch(prompts[0], /KEEP UNCHANGED/);
+});

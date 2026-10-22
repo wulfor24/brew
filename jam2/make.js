@@ -11,6 +11,7 @@ import { sceneHtml, typePreset, reflow, sentencesOf } from '../public/jam2/scene
 import { recipe, SIZES } from './catalogue.js';
 import { productFor } from './ingredients.js';
 import { addTake, headOf, sizeOf, uid, note } from './core.js';
+import { createCreative } from './creative.js';
 import { claimFlags, bannedHits } from '../claims.js';
 
 const tidy = (s, n = 240) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
@@ -42,7 +43,10 @@ const BRIEF_SECTIONS = {
   act: ['What to change', 'Owner', 'Steps (exactly where in your tools)', 'Assets', 'Done when']
 };
 
-export function createMaker({ engines, brandbook, claudeTool, isMock, spend = () => true, spendMany = null, launchBrowser, withBrowser = null, shoot, saveGen, genFile, photoAsync, publicUrl = process.env.PUBLIC_URL || '', log = console }) {
+/* a frame far enough from the shot's that re-fitting would crop away the picture (more than about 12% either way) */
+const ratioNum = (r) => { const m = /^(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$/.exec(String(r)); return m ? +m[1] / +m[2] : r === 'A5' ? 148 / 210 : 1; };
+const farFrom = (shotRatio, s) => Math.abs(Math.log(ratioNum(shotRatio) / (s.w / s.h))) > 0.12;
+export function createMaker({ engines, brandbook, claudeTool, ai = null, isMock, spend = () => true, spendMany = null, launchBrowser, withBrowser = null, shoot, saveGen, genFile, photoAsync, publicUrl = process.env.PUBLIC_URL || '', log = console }) {
   const keep = (buf, ext) => { const name = `j2-${sha(buf)}.${ext}`; saveGen(name, buf); return 'gen/' + name; };
   /* a stored src ('gen/x', '/b/slug/..', 'https://..') → a local file path */
   const fileOf = async (src) => { if (!src) return null; const s = String(src); if (s.startsWith('data:')) return null;
@@ -168,6 +172,8 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
   }
 
   /* ---------- the first take of a board ---------- */
+  /* the creative engine (creative.js): statics are shot around the real product, checked, and set in real type */
+  const creative = createCreative({ engines, ai, claudeTool, isMock, spend, fileOf, render: (sc) => render(sc), composeScene: (o) => composeScene(o), log });
   async function first(ctx, board, { ask = '' } = {}) {
     /* an Every product board is remade from its source picture (free), never as a new paid carousel */
     const src = board.allOf ? ctx.jam.boards.find((x) => x.id === board.allOf) : null; if (src) return allProducts(ctx, board, src);
@@ -183,8 +189,15 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
           const sc = composeScene({ size, bgFile: bg.file, cut, words: { headline: s.onSlide, sub: s.small }, kit: ctx.bbv.kit, preset: i === 0 ? 'top' : 'bottom-bar' }); take.slides.push({ scene: sc, file: await render(sc) }); }
         take.scene = take.slides[0]?.scene || null; take.file = take.slides[0]?.file || null;
       } else {
-        const bg = await scene(ctx, { describe: words.scene, ratio: size.ratio }); made.push({ cap: 'still.scene', provider: bg.provider, model: bg.model, usd: bg.usd });
-        take.scene = composeScene({ size, bgFile: bg.file, cut, words, kit: ctx.bbv.kit }); take.file = await render(take.scene);
+        /* the shoot first; the real cut-out in a made scene only when no shot kept the product exact (or a message card) */
+        const shot = r.kind === 'static' ? await creative.staticAd(ctx, board, words, size).catch((e) => { if (e.budget) throw e; log.warn?.('[jam2] shoot', e.message); return { made: [], fail: e.message }; }) : null;
+        if (shot) made.push(...shot.made);
+        if (shot?.scene) { take.scene = shot.scene; take.file = shot.file; take.shot = shot.shot; take.direction = shot.direction; }
+        else {
+          if (shot?.fail) take.shotFail = shot.fail;
+          const bg = await scene(ctx, { describe: shot?.direction?.moment || words.scene, ratio: size.ratio }); made.push({ cap: 'still.scene', provider: bg.provider, model: bg.model, usd: bg.usd });
+          take.scene = composeScene({ size, bgFile: bg.file, cut, words, kit: ctx.bbv.kit }); take.file = await render(take.scene);
+        }
       }
     } else if (r.kind === 'video') {
       /* the storyboard is free: one still per shot (the real product in its scene comes on Render); nothing is rendered until the brand confirms the price */
@@ -352,7 +365,21 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
       const fq = await engines.quote('still.full', { slug: ctx.slug }); if (fq.credits && !spend('credits', ctx.slug, fq.credits)) throw new Error('This brand’s Sloosh credits for today are used up.');
       const out = await engines.run('still.full', { srcFile: cf, srcUrl: comp, prompt: `Finish this ad as a premium photograph: keep the layout, the product, its label and every word exactly as they are; lift the light, depth and detail. ${ask || ''}`.trim(), ratio: sizeOf(board).ratio, slug: ctx.slug, product: ctx.product?.name || null, words: [base.words?.headline, base.words?.sub].filter(Boolean), by: ctx.by?.email, jamId: ctx.jam.id, boardId: board.id });
       base.made.push({ cap: 'still.full', provider: out.provider, model: out.model, usd: out.usd || 0, credits: out.credits || 0 }); base.file = out.file; base.final = true; base.op = 'final'; }
-    else if (op === 'resize' && base.scene) { const sk = String(patch?.size || ask || ''), s = Object.hasOwn(SIZES, sk) ? SIZES[sk] : null; if (!s) throw new Error('Pick a size.'); board.size = sk; base.scene = reflow(base.scene, s.w, s.h); base.op = 'resize'; base.file = await render(base.scene); }
+    else if (op === 'resize' && base.scene) { const sk = String(patch?.size || ask || ''), s = Object.hasOwn(SIZES, sk) ? SIZES[sk] : null; if (!s) throw new Error('Pick a size.');
+      /* a shot: another placement is the same photo extended (made once, priced, then kept); a near frame just re-fits */
+      if (base.shot && !base.shot.bgs?.[s.ratio] && farFrom(base.shot.ratio, s)) throw Object.assign(new Error(`The ${s.label} version extends the photo: confirm its price first.`), { needsExtend: true });
+      board.size = sk; if (base.shot?.bgs?.[s.ratio]) { const x = await creative.extend(ctx, base, s); base.scene = x.scene; base.file = x.file; } else { base.scene = reflow(base.scene, s.w, s.h); base.file = await render(base.scene); } base.op = 'resize'; }
+    else if (op === 'extend' && base.shot) { const sk = String(patch?.size || ask || ''), s = Object.hasOwn(SIZES, sk) ? SIZES[sk] : null; if (!s) throw new Error('Pick a size.');
+      const x = await creative.extend(ctx, base, s); base.made.push(...x.made); base.shot = { ...base.shot, bgs: { ...(base.shot.bgs || {}), [s.ratio]: x.bg } }; board.size = sk; base.scene = x.scene; base.file = x.file; base.op = 'extend'; }
+    /* a shot is re-shot, never re-pasted: a new take, a new setting or another product goes back through the engine */
+    else if (base.shot && ['redo', 'background', 'place', 'swap-product'].includes(op)) {
+      if (op === 'swap-product') ctx.product = productFor({ pick: patch?.product, catalog: ctx.catalog });
+      const place = op === 'place' ? (ctx.bbv.places || []).find((p) => p.id === patch?.place) : null, want = place?.describe || ask;
+      if (want) ctx.notes = [...(ctx.notes || []), `For this picture: ${want}`];
+      const x = await creative.staticAd(ctx, board, base.words || {}, sizeOf(board)); base.made.push(...x.made);
+      if (!x.scene) throw new Error(`The new picture didn't keep your product exactly as it is (${x.fail}). Nothing changed; try again.`);
+      base.scene = x.scene; base.file = x.file; base.shot = x.shot; base.direction = x.direction; base.op = op; }
+    else if (base.shot && op === 'blend') throw new Error('This picture was shot with your product in it, so its light already matches.');
     else if (op === 'swap-product') { ctx.product = productFor({ pick: patch?.product, catalog: ctx.catalog }); ctx.cuts = {}; const cut = await cutout(ctx); if (!cut) throw new Error('That product has no photo.');
       for (const l of base.scene?.layers || []) if (l.kind === 'product') l.src = cut.file; base.op = 'swap-product'; base.file = await render(base.scene); }
     else if (op === 'redo-words') { const w = await write(ctx, board, { ask: ask || 'A different angle and new words; same product.' }); base.words = w; base.op = 'redo-words';
@@ -444,7 +471,9 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
   async function prices(ctx) {
     const s = await engines.quote('still.scene', { slug: ctx.slug }), e = await engines.quote('still.edit', { slug: ctx.slug }), hz = await engines.quote('still.harmonize', { slug: ctx.slug });
     const f = await engines.quote('still.full', { slug: ctx.slug }).catch(() => ({}));
-    return { background: s.usd ?? null, redo: s.usd ?? null, area: e.usd ?? null, blend: hz.usd ?? null, final: f.usd ?? null, finalCredits: f.credits ?? null, providers: { scene: s.provider || null, edit: e.provider || null } };
+    const x = await engines.quote('still.extend', { slug: ctx.slug }).catch(() => ({})), sh = await engines.quote('still.shot', { slug: ctx.slug }).catch(() => ({}));
+    /* shot: a re-shoot makes two candidates and keeps the better one */
+    return { extend: x.usd ?? null, shot: sh.usd != null ? +(sh.usd * 2).toFixed(2) : null, background: s.usd ?? null, redo: s.usd ?? null, area: e.usd ?? null, blend: hz.usd ?? null, final: f.usd ?? null, finalCredits: f.credits ?? null, providers: { scene: s.provider || null, edit: e.provider || null } };
   }
   return { reshot, allProducts, priceOf, getLine, setLine, sentencesOf, write, first, edit, render, renderVideo, videoQuote, gate, prices, cutout, composeScene, fileOf, dataUri, BRIEF_SECTIONS };
 }
