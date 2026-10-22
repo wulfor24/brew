@@ -141,7 +141,7 @@ test('gates: kill switches, mock, local servers, the last-open window, once a da
   let d = dueFor(opened, cfg, { now: NOW }); assert.ok(d.listen && d.ideas);
   d = dueFor({}, cfg, { now: NOW }); assert.ok(d.listen && !d.ideas, 'never opened: listen yes, ideas no'); assert.match(d.why.join(), /nobody opened/);
   d = dueFor({ lastOpen: NOW - 4 * DAY }, cfg, { now: NOW }); assert.ok(!d.ideas, 'opened 4 days ago: no ideas');
-  d = dueFor({ ...opened, lastListen: NOW - 2 * H, lastIdeas: NOW - 2 * H }, cfg, { now: NOW }); assert.ok(!d.listen && !d.ideas, 'both ran today');
+  d = dueFor({ ...opened, lastListen: NOW - 2 * H, listen: { at: NOW - 2 * H }, lastIdeas: NOW - 2 * H }, cfg, { now: NOW }); assert.ok(!d.listen && !d.ideas, 'both ran today');
   d = dueFor({ ...opened, lastIdeas: NOW - 25 * H }, cfg, { now: NOW }); assert.ok(d.ideas);
   assert.ok(!dueFor(opened, socialConfig({ ...LIVE_ENV, IDEAS_OFF: '1' }), { now: NOW }).ideas); assert.ok(dueFor(opened, socialConfig({ ...LIVE_ENV, IDEAS_OFF: '1' }), { now: NOW }).listen);
   assert.ok(!dueFor(opened, socialConfig({ ...LIVE_ENV, LISTEN_OFF: '1' }), { now: NOW }).listen);

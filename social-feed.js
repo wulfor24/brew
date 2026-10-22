@@ -287,11 +287,13 @@ export function dueFor(st = {}, cfg, { now = Date.now(), aiLive = true, ready = 
   if (!ready) return { listen: false, ideas: false, why: ['the brand is not built yet'] };
   /* a run that started and never finished (the instance was replaced by a deploy, or it crashed) did not listen: it is due
      again, with the same depth it started with, instead of waiting out the 8 hours its start stamped (Nutrova, 22 Oct) */
-  const killed = st.listen?.state === 'running' && (!!st.listen.killed || now - (st.listen.startedAt || 0) > (cfg.runStaleMin || 20) * 60e3);
+  const killed = st.listen?.state === 'running' && (!!st.listen.killed || now - (st.listen.startedAt || 0) > (cfg.runStaleMin || 20) * 60e3)
+    /* a run stamped before this marker existed that never left a result or an error: cut off the same way */
+    || (!!st.lastListen && !st.listen?.at && !st.listen?.error && !st.listen?.state && now - st.lastListen > (cfg.runStaleMin || 20) * 60e3);
   let listen = !cfg.listenOff && (killed || now - (st.lastListen || 0) >= cfg.listenEveryH * H);
   if (cfg.listenOff) why.push('LISTEN_OFF'); else if (!listen) why.push(st.listen?.state === 'running' ? 'listening now' : `listened in the last ${cfg.listenEveryH} hours`);
   // the full paid sweep once a day; the runs between are light (a run before this field existed counts as not full)
-  const listenFull = (killed && !!st.listen.full) || now - (st.lastFullListen || 0) >= cfg.listenFullEveryH * H, listenEst = listenFull ? cfg.listenEstUsd : cfg.listenLiteEstUsd;
+  const listenFull = (killed && st.listen?.full !== false) || now - (st.lastFullListen || 0) >= cfg.listenFullEveryH * H, listenEst = listenFull ? cfg.listenEstUsd : cfg.listenLiteEstUsd;
   const opened = st.lastOpen && now - st.lastOpen <= cfg.openDays * DAY;
   let ideas = !cfg.ideasOff && opened && now - (st.lastIdeas || 0) >= cfg.ideasEveryH * H && today(st.lastIdeas || 0) !== today(now);
   if (cfg.ideasOff) why.push('IDEAS_OFF'); else if (!opened) why.push(`nobody opened it in the last ${cfg.openDays} days`); else if (!ideas) why.push('ideas already made today');

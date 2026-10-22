@@ -125,6 +125,7 @@ test('listening: a run cut off by a deploy is due again (Nutrova), one in flight
   assert.equal(dueFor({ ...st, listen: { state: 'running', startedAt: now - 60e3, full: true } }, cfg, { now }).listen, false, 'running on this instance: not twice');
   assert.equal(dueFor({ ...st, listen: { state: 'running', startedAt: now - 30 * 60e3, full: true } }, cfg, { now }).listen, true, 'stale after 20 minutes');
   assert.equal(dueFor({ lastListen: now - 60e3, listen: { at: now - 60e3, items: 40 } }, cfg, { now }).listen, false);
+  assert.equal(dueFor({ lastListen: now - 2 * 3600e3, lastFullListen: now - 2 * 3600e3 }, cfg, { now }).listen, true, 'a run stamped before the marker, with no result: cut off');
 });
 
 test('the cards prompt never hears that checkout is broken when only the headless walk stopped', () => {

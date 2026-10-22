@@ -188,12 +188,12 @@ test('cadence: listening every 8 hours, the full paid sweep once a day, light re
   assert.deepEqual([cfg.listenEveryH, cfg.listenFullEveryH, cfg.dayCapUsd, cfg.listenRunCapUsd, cfg.listenLiteCapUsd], [8, 24, 3, 0.6, 0.15]);
   assert.equal(socialConfig({ SOCIAL_BG: '1', LISTEN_LITE_CAP_USD: '0.05', LISTEN_EVERY_H: '12' }).listenLiteCapUsd, 0.05);
   let d = dueFor({}, cfg, { now: NOW }); assert.ok(d.listen && d.listenFull);
-  d = dueFor({ lastListen: NOW - 7 * H, lastFullListen: NOW - 7 * H }, cfg, { now: NOW }); assert.ok(!d.listen); assert.match(d.why.join(), /last 8 hours/);
-  d = dueFor({ lastListen: NOW - 9 * H, lastFullListen: NOW - 9 * H }, cfg, { now: NOW }); assert.ok(d.listen && !d.listenFull, 'a light read');
-  d = dueFor({ lastListen: NOW - 9 * H, lastFullListen: NOW - 25 * H }, cfg, { now: NOW }); assert.ok(d.listen && d.listenFull);
+  d = dueFor({ lastListen: NOW - 7 * H, lastFullListen: NOW - 7 * H, listen: { at: NOW - 7 * H } }, cfg, { now: NOW }); assert.ok(!d.listen); assert.match(d.why.join(), /last 8 hours/);
+  d = dueFor({ lastListen: NOW - 9 * H, lastFullListen: NOW - 9 * H, listen: { at: NOW - 9 * H } }, cfg, { now: NOW }); assert.ok(d.listen && !d.listenFull, 'a light read');
+  d = dueFor({ lastListen: NOW - 9 * H, lastFullListen: NOW - 25 * H, listen: { at: NOW - 9 * H } }, cfg, { now: NOW }); assert.ok(d.listen && d.listenFull);
   const day = new Date(NOW).toISOString().slice(0, 10);
-  d = dueFor({ lastListen: NOW - 9 * H, lastFullListen: NOW - 9 * H, spend: { day, usd: 2.9 } }, cfg, { now: NOW }); assert.ok(d.listen && !d.listenFull, 'a light read fits under what a full read would not');
-  d = dueFor({ lastListen: NOW - 9 * H, lastFullListen: NOW - 25 * H, spend: { day, usd: 2.9 } }, cfg, { now: NOW }); assert.ok(!d.listen);
+  d = dueFor({ lastListen: NOW - 9 * H, lastFullListen: NOW - 9 * H, spend: { day, usd: 2.9 }, listen: { at: NOW - 9 * H } }, cfg, { now: NOW }); assert.ok(d.listen && !d.listenFull, 'a light read fits under what a full read would not');
+  d = dueFor({ lastListen: NOW - 9 * H, lastFullListen: NOW - 25 * H, spend: { day, usd: 2.9 }, listen: { at: NOW - 9 * H } }, cfg, { now: NOW }); assert.ok(!d.listen);
   // the scheduler: full, then light at +8h and +16h, full again at +24h
   let t = NOW; const calls = [];
   const make = { listen: () => ({ run: async (o) => { calls.push(o); return { status: { usd: { total: o.lite ? 0.01 : 0.2 }, items: 3, sources: {} }, themes: [] }; } }), ideas: () => ({ spend: {}, next: async () => ({ ideas: [], usd: {} }) }) };
