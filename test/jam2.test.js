@@ -78,3 +78,12 @@ test('a jam list that couldn’t be read is never written over; a failed write i
   assert.deepEqual(all.map((j) => j.id).sort(), ['j_new', 'j_old']);
   await st.flush(); assert.equal(writes.length, 0, 'first write failed'); await st.flush(); assert.equal(writes.length, 1); assert.ok(writes[0].jams.j_old && writes[0].jams.j_new);
 });
+
+test('Pick a day: date-only posts give best days, never a made-up hour; timed posts use the brand’s time zone', async () => {
+  const { bestSlots } = await import('../jam2/slots.js');
+  const dated = Array.from({ length: 10 }, (_, i) => ({ at: `2026-10-${String(1 + i).padStart(2, '0')}`, likes: i * 10 }));
+  const d = bestSlots(dated, 'IN'); assert.ok(d.slots.length && d.slots.every((x) => x.from === null), JSON.stringify(d)); assert.match(d.basis, /dates only/);
+  const timed = Array.from({ length: 10 }, (_, i) => ({ at: `2026-10-${String(1 + (i % 2) * 7).padStart(2, '0')}T14:30:00Z`, likes: 50 }));
+  const u = bestSlots(timed, 'US'); assert.equal(u.slots[0].from, 9); assert.match(u.basis, /US Eastern/);
+  assert.equal(bestSlots([], 'US').slots.length, 0);
+});

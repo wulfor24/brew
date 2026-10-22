@@ -1,6 +1,7 @@
 // Jam v2 routes (?v=2 only; v1's /api/work and /api/changes are untouched). Mounted by feed-service.js with its own route
 // table (on), so every request runs as the signed-in viewer of that brand, like the rest of the service. Slow work (a picture,
 // a video) runs in the background; the board shows it as busy and the page polls GET /api/jam2/jams/:jid.
+import { bestSlots } from './slots.js';
 import { createJam2Store } from './store.js';
 import { createBrandbook, COMFORT, NARRATORS, MOODS, VOICES } from './brandbook.js';
 import { createEngines } from './engines.js';
@@ -126,11 +127,7 @@ export function mountJam2(d) {
     const raw = await bb.load(slugOfT(t)); raw.recipes = (raw.recipes || []).filter((x) => x.id !== p.rid); await bb.save(slugOfT(t), raw); return { recipes: raw.recipes }; }));
   on('GET', '/api/jam2/recipes', wrap(async (b, t) => ({ recipes: (await bb.load(slugOfT(t))).recipes || [] })));
   /* pick a day: the brand's own best slots from its Instagram posts when there are enough of them; otherwise it says it has no data */
-  on('GET', '/api/jam2/slots', wrap(async (b, t) => { const prof = await packs.getJSON(slugOfT(t), 'profile.json', null).catch(() => null); const posts = (prof?.socials?.instagram?.posts || []).map((x) => ({ at: Date.parse(x.at || x.ts || x.timestamp || x.date || x.taken_at || ''), likes: +(x.likes || x.likesCount || 0), comments: +(x.comments || x.commentsCount || 0) })).filter((x) => Number.isFinite(x.at));
-    if (posts.length < 8) return { slots: [], basis: posts.length ? `Only ${posts.length} dated posts were read; Brew needs at least 8 to suggest a time.` : 'Brew has no dated posts from your Instagram yet, so it can’t suggest a time. Pick a day yourself.' };
-    const tz = 'Asia/Kolkata', key = (ms) => { const d = new Date(ms); const day = d.toLocaleDateString('en-GB', { weekday: 'long', timeZone: tz }); const hr = +d.toLocaleString('en-GB', { hour: '2-digit', hour12: false, timeZone: tz }); return `${day}|${Math.floor(hr / 3) * 3}`; };
-    const g = {}; for (const x of posts) { const k = key(x.at); (g[k] ||= []).push(x.likes + 3 * x.comments); } const avg = Object.entries(g).filter(([, v]) => v.length >= 2).map(([k, v]) => ({ k, n: v.length, score: v.reduce((a, c) => a + c, 0) / v.length })).sort((a, c) => c.score - a.score).slice(0, 3);
-    return { slots: avg.map((x) => { const [day, h0] = x.k.split('|'); return { day, from: +h0, to: +h0 + 3, why: `${x.n} of your posts went up then, with the most likes and comments (${Math.round(x.score)} on average)` }; }), basis: `From ${posts.length} of your Instagram posts (India time).` }; }));
+  on('GET', '/api/jam2/slots', wrap(async (b, t) => { const prof = await packs.getJSON(slugOfT(t), 'profile.json', null).catch(() => null); return bestSlots(prof?.socials?.instagram?.posts, prof?.country || prof?.market?.country); }));
   on('POST', '/api/jam2/jams/:jid/boards/:bid/schedule', wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, p.bid); if (!bd) return { error: 'not found' };
     const at = Date.parse(b.at || ''); bd.schedule = Number.isFinite(at) ? { at, by: whoOf(t).email, note: String(b.note || '').slice(0, 120) } : null; await store.put(slugOfT(t), j); return { jam: out(j) }; }));
 
