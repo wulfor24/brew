@@ -27,7 +27,7 @@ const OTHER_NETWORK = new Set(['Launch the ad group']);
 const FLOW_WORDS = /\b(?:flows?|sequences?|series|journeys?|automat\w*|auto-?send|every (?:buyer|customer|order|new)|day \d+|\d+ days? after|after (?:purchase|delivery|checkout|the order)|triggered|abandon\w*|win-?back|welcome|post-?purchase|reminders?)\b/i;
 /* buttons that belong to one kind of asset: on a card that makes another kind they are the wrong promise */
 const LABEL_FORMATS = { 'Publish the page': /^page section$/, 'Update landing page': /^page section$/, 'Draft the listing': /^page section$/, 'Approve the flows': /^(email|whatsapp message)$/, 'Turn on the journey': /^(email|whatsapp message)$/, 'Send the review ask': /^(email|whatsapp message)$/, 'Draft the email': /^email$/, 'Draft the message': /^whatsapp message$/, 'Launch the ad group': /(?!)/, 'Approve the offers': /^page section$/ };
-const MAKE_LABELS = new Set([...Object.values(MAKE_CTA), 'Approve the flows', 'Draft the post', 'Draft the carousel post', 'Draft the stories', 'Make the video', 'Generate versions', 'Make the ad']);
+export const MAKE_LABELS = new Set([...Object.values(MAKE_CTA), 'Approve the flows', 'Draft the post', 'Draft the carousel post', 'Draft the stories', 'Make the video', 'Generate versions', 'Make the ad']);
 /* a button tied to one topic belongs only on a card about that topic (FEED-QA-20: the AI picked "Fix tracking" for a card
    about bundles). The card's own words (title, body, reasons, steps, rows, asset) must name the topic; if they don't, the
    button becomes the one for what the card makes, else "Agree with the call". Used when cards are written, when packs load
@@ -61,6 +61,13 @@ export const topicOk = (c) => { const re = TOPIC_CTA[c?.cta?.label], w = HEAD_TO
    product or its thing (the words before the colon: "Review strip", "Collection banner") */
 const SWITCH = [['Send the review ask', /\b(?:repl(?:y|ies|ied)|respond|answer(?:ed)?)\b/i, null, 'Draft the replies'], ['Push the titles', /\b(?:photos?|images?|pictures?)\b/i, /\btitles?\b/i, 'Add the photos']];
 const FIX_CTAS = new Set(['Fix tracking', 'Shift budget', 'Fix the links', 'Turn on guest checkout']);
+/* a card about standing rules (alerts, automatic checks, a watch that warns the team) asks for no picture: its button saves the
+   rules as the team plan. Cause of "Make the ad" with a stray "Single image ad" on Arata's ad-fatigue alerts card (22 Oct): the
+   writer filled the asset slot because the card names ads, a later pass dropped the asset, and the making button stayed and
+   brought a generic ad back at load. Read from the title and body only, so a passing "alert" in a step never decides it */
+export const RULES_WORDS = /\b(?:alerts?|alerting|alerted|monitor(?:s|ing)?|(?:standing|stop|alert|automated|automatic|fatigue|stock|stock-out|budget|spend|watch) rules?|rules? (?:that|to|which) (?:alert|warn|watch|pause|flag|catch)|warns? (?:the team|you|us|your team)|flags? (?:it )?when)\b/i; /* about alerting the team: never a bare "rule" (a return rule), "automated" (automated ads, a home automation product), "threshold" (free shipping) or "watch" (a watch brand) */
+export const RULES_CTA = 'Set up the rules';
+export const rulesCard = (c) => RULES_WORDS.test(`${c?.title || ''} ${c?.sub || ''}`);
 const STOP = new Set(['with', 'from', 'your', 'for', 'and', 'the', 'page', 'pages', 'store', 'section', 'under', 'above', 'over', 'into', 'each', 'card', 'product', 'products']);
 const keyWords = (x) => (String(x || '').toLowerCase().match(/[a-z]{4,}/g) || []).filter((w) => !STOP.has(w));
 export const makeMentioned = (c) => { const p = String(c?.make?.pieces || ''); if (!p.trim()) return true;
@@ -70,6 +77,8 @@ export const makeMentioned = (c) => { const p = String(c?.make?.pieces || ''); i
 export function fitCta(card) {
   if (!card || typeof card !== 'object') return card;
   if (card.cta?.label && ctaName(card.cta.label) !== card.cta.label) card.cta = { ...card.cta, label: ctaName(card.cta.label) }; /* a renamed button heals (Publish Campaign, List what points there) */
+  /* an asset filled in at load from the button alone, saved on a feed copy before the rules above: it goes when today's inference gives none */
+  if (card.make?.inferred && !inferMake({ ...card, make: null })) delete card.make;
   const offTopic = card.cta?.label && !topicOk(card);
   /* an asset the card never talks about goes when its button only fixes or decides (or its button was off-topic anyway) */
   if (card.make?.format && (FIX_CTAS.has(card.cta?.label) || offTopic) && !makeMentioned(card)) { card.makeDropped = card.make.format; delete card.make; }
@@ -90,6 +99,9 @@ export function fitCta(card) {
   const wrongNet = OTHER_NETWORK.has(cur) && MAKES_CREATIVE.test(card?.make?.format || '');
   if (cur === 'Generate versions') card.cta = { ...(card.cta || {}), label: 'Make the ad' }; /* saved cards: the button makes one ad */
   if (want && CTA[want] && card.cta?.label !== want && (!cur || MAKE_LABELS.has(cur) || wrongNet || fmtOff || cur === 'Queue the ads' /* nothing made yet to queue: make it first */ || cur === 'Publish the campaign' /* a card that makes something: its button makes it (a video ad card makes the video), Brew never publishes */)) card.cta = { ...(card.cta || {}), label: want };
+  /* a making button on a card with nothing to make (its asset was dropped, or its words name none) promises a picture the card
+     never asked for: a rules card saves its rules, any other card is a call to agree with */
+  if (!card.make?.format && (card.title || card.sub) /* no words to judge by: the button stays */ && inferable(card) && MAKE_LABELS.has(card.cta?.label) && !inferMake(card)) card.cta = { ...card.cta, label: rulesCard(card) ? RULES_CTA : 'Agree with the call' };
   return card;
 }
 /* a card that names an asset carries what to make. Old packs were written before every such card set "make", so cards
@@ -107,23 +119,30 @@ const MAKE_RE = [
   ['collection ad', /\bcollection ads?\b/i],
   ['catalog ad', /\b(?:catalog(?:ue)?|dynamic product|dpa|advantage\+? (?:shopping|catalog))\s+ads?\b/i],
   ['video ad', /\b(?:video|ugc)\s+(?:ads?|cuts?|spots?)\b|\bvideos?\b(?=[\s\S]*\bads?\b)/i],
-  ['reel', /\b(?:videos?|clips?)\b/i],
+  ['reel', /\b(?:videos?|(?:video|short|ugc|demo|film|tiktok|reel|youtube) clips?|clips? (?:of|from|for|showing))\b/i], /* never a bare "clip": a claw clip is a hair product (inhhair, 22 Oct) */
   ['page section', /\b(?:landing|product|collection|sold-?out|comparison|compare|launch|vs)\s+pages?\b|\b(?:pdp|homepage|home page|hero section|faq section|size guide|fit guide|page section|above add to cart)\b/i],
   ['instagram post', /\b(?:instagram|ig|insta|social)\s+posts?\b|\bpost (?:it|this|one) on instagram\b/i],
   ['single image ad', /\b(?:new|an?|one|fresh|static|image|meta|facebook|instagram|ig|cold|paid|test|run|write|make|launch|draft|lead(?:s|ing)? the|hook(?:s)? (?:for|in) the)\s+(?:\w+\s+)?ads?\b(?!\s*(?:spend|account|accounts|budget|library|manager|group|set|sets|platform|tracking|pixel|price))/i]
 ];
 const NO_MAKE = /^(build-|statics-batch$|story-|live-|read-|heard-)/;
 /* buttons that decide, fix or open something: such a card is not asking for an asset, whatever its words mention */
-const NOT_MAKING = new Set(['Fix tracking', 'Agree with the call', 'Open the moves', 'Open the scoreboard', 'Shift budget', 'Add the search info', 'Push the titles', 'Launch the ad group', 'Turn on guest checkout', 'Publish the claims ledger', 'Shortlist creators', 'Draft the buyer deck', 'Brief the shoot', 'Open report', 'Approve the offers']);
+const NOT_MAKING = new Set([RULES_CTA, 'Fix tracking', 'Agree with the call', 'Open the moves', 'Open the scoreboard', 'Shift budget', 'Add the search info', 'Push the titles', 'Launch the ad group', 'Turn on guest checkout', 'Publish the claims ledger', 'Shortlist creators', 'Draft the buyer deck', 'Brief the shoot', 'Open report', 'Approve the offers']);
 /* buttons that ship an asset: the body may say which, and with nothing named the button's own format is used (flows and journeys name theirs) */
 const CTA_DEFAULT = { 'Send the review ask': 'email', 'Make the video': 'reel', 'Generate versions': 'single image ad', 'Make the ad': 'single image ad', 'Rotate creative': 'single image ad', 'Queue the ads': 'single image ad', 'Publish Campaign': 'single image ad', 'Publish the campaign': 'single image ad', 'Make our version': 'single image ad', 'Approve the flows': null, 'Turn on the journey': null, 'Publish the page': 'page section', 'Draft the listing': 'page section' };
+const ASSET_WORDS = /\b(?:ads?|creatives?|hooks?|headlines?|captions?|copy|visuals?|images?|pictures?|photos?|videos?|clips?|reels?|posts?|emails?|messages?|banners?|versions?|variants?|scripts?|stories|carousels?|landing pages?|sections?)\b/i;
+/* the card is there to make something: its words ask for creative, or it is a creative card by birth (the creative agent's ideas,
+   the ideas stream, a picture idea). A rules card or a finding with a generic ad button is not */
+export const intendsAsset = (c = {}) => !rulesCard(c) && (ASSET_WORDS.test(`${c.title || ''} ${c.sub || ''}`) || c.sector === 'creatives' || c.agent === 'creative' || c.stream === 'ideas' || /^(?:static|idea|w-c)[-_]/.test(String(c.id || '')) || (c.type === 'idea' && c.kind === 'media'));
 const TALKS_ABOUT = /\b(?:pause|stop|kill|cut|turn off|switch off|audit|check|fix|track|measure|count|confirm|install|restart|rival'?s?|competitor'?s?)\b[^.]{0,30}\bads?\b/i;
 const formatIn = (text) => { for (const [format, re] of MAKE_RE) { if (!re.test(text)) continue; if (format === 'single image ad' && TALKS_ABOUT.test(text) && !/\b(?:new|write|make|draft|launch)\b/i.test(text)) return null; return format; } return null; };
+/* cards whose asset is never worked out from their words: live account readings, progress, demo and reports (their buttons are set by the code that writes them) */
+export const inferable = (c) => !(NO_MAKE.test(String(c.id || '')) || c.liveOnly || c.mock || c.demo || /^(?:demo|live)-/.test(String(c.id || '')) || ['report', 'competitor'].includes(c.type) || (c.origin === 'listen' && c.heard));
 export function inferMake(c = {}) {
-  if (!c || typeof c !== 'object' || c.make?.format || NO_MAKE.test(String(c.id || '')) || c.liveOnly || c.mock || c.demo || ['report', 'competitor'].includes(c.type) || (c.origin === 'listen' && c.heard)) return null;
+  if (!c || typeof c !== 'object' || c.make?.format || c.makeDropped /* an asset a check took away never comes back from the button */ || !inferable(c)) return null;
+  if (rulesCard(c)) { const f = toFamily(formatIn(c.title || '')); return f ? { format: f, pieces: '', inferred: true } : null; } /* a rules card makes only what its title names (a WhatsApp reminder), never the button's default */
   const cta = ctaName(c.cta?.label || ''); if (CTA_MAKE[cta]) return { format: toFamily(formatIn(c.title || '')) || CTA_MAKE[cta], pieces: '', inferred: true }; /* the title's own format is more exact than a making button */
   if (NOT_MAKING.has(cta)) return null;
-  const f = toFamily(formatIn(c.title || '') || (cta in CTA_DEFAULT ? formatIn(c.sub || '') || CTA_DEFAULT[cta] : null)); /* the title names it; the body only counts under a button that ships something; only a catalog family is ever set */
+  const f = toFamily(formatIn(c.title || '') || (cta in CTA_DEFAULT ? formatIn(c.sub || '') || (!/ad$|reel/.test(CTA_DEFAULT[cta] || '') || intendsAsset(c) ? CTA_DEFAULT[cta] : null) : null)); /* the button's own format only when the card's words ask for something to be made: an ad or video button alone never invents one; a button that names its thing (the review ask, the page) does */ /* the title names it; the body only counts under a button that ships something; only a catalog family is ever set */
   return f ? { format: f, pieces: '', inferred: true } : null;
 }
 /* an ad or a social post reaches every seat that makes or approves creative, the founder included: its roles were set from
@@ -211,9 +230,9 @@ Write 1 or 2 cards. Each card is one thing the team can act on now, taken from t
 - The body's first sentence says what Brew saw only of a kind WHAT BREW HOLDS lists; anything else the move reasons is said as an idea ("buyers may...", "a price this high can...").
 - Never name a rival in ad copy; a card may name a rival only when it reports what that rival does.
 - The card speaks to ${brand.name}'s team (internal), not to customers.
-- Pick the button (cta) that does what the card asks.
+- Pick the button (cta) that does what the card asks. A card about standing rules (alerts, automatic checks, a watch that warns the team when a number crosses a line) makes nothing: its button is "${RULES_CTA}" and it leaves "make" out, even when the rules are about ads.
 - When the move plans a specific asset (a carousel, a set of Stories, a collection or catalog ad, a reel, a post), say so in "make" with the format and the pieces exactly as the move plans them, and pick the button that makes that format (carousel ad: "Make the carousel ad"; Instagram carousel: "Draft the carousel post"; Stories: "Draft the stories"; single post: "Draft the post"; collection ad: "Build the collection ad"; catalog ad: "Build the catalog ad").
-- Any card whose title, body or button names an ad, an email, a reel or video, a post, a carousel, Stories, a WhatsApp message or a page must set "make" to that format, even a decision; Brew drafts it before anyone opens the card. Only a card that reports on an ad (its spend, a rival's ad, pausing one) leaves "make" out.
+- Any card whose title, body or button names an ad, an email, a reel or video, a post, a carousel, Stories, a WhatsApp message or a page must set "make" to that format, even a decision; Brew drafts it before anyone opens the card. Only a card that reports on an ad (its spend, a rival's ad, pausing one) or sets up rules about ads leaves "make" out.
 - The card's words and its asset agree: when "make" names a product or a scene, the title or body names that same product, and "pieces" uses the product's name exactly as the store lists it (Brew drafts the asset from it).
 ${catalog.promptBlock({ product: heroName })}
 - Each asset is specific and makeable: pick a format from the list above and write "pieces" the way its examples read (how many, the exact product as the store lists it, the scene or angle, the hook). Never "a new ad", "fresh creative", "some visuals" or any asset with no product and no scene.
@@ -296,7 +315,7 @@ Return every card by its id.`;
     (j.cards || []).slice(0, 4).forEach((c, i) => {
       const [sector, agent] = SEC(`${c.title} ${c.sub}`);
       const card = { id: `read-${i + 1}`, origin: 'read', agent, sector, type: c.type, lane, roles: ROLES[sector] || ['founder'], src: readSrc(brand.host, p.meta?.readAt), time: `${4 + i * 3} min`,
-        kind: (c.rows || []).filter((r) => r?.length >= 2).length ? 'rows' : 'media', title: String(c.title || '').trim(), sub: String(c.sub || '').trim(), detail: { why: (c.why || []).slice(0, 3), how: (c.how || []).slice(0, 3) }, cta: { label: CTA[c.cta] ? c.cta : 'Make the ad' } };
+        kind: (c.rows || []).filter((r) => r?.length >= 2).length ? 'rows' : 'media', title: String(c.title || '').trim(), sub: String(c.sub || '').trim(), detail: { why: (c.why || []).slice(0, 3), how: (c.how || []).slice(0, 3) }, cta: { label: CTA[c.cta] ? c.cta : 'Agree with the call' /* no button given: never a made-up ad */ } };
       const rows = (c.rows || []).filter((r) => r?.length >= 2).slice(0, 5).map((r) => [String(r[0]).slice(0, 40), String(r[1]).slice(0, 48)]);
       const fam = toFamily(c.make?.format);
       if (fam) { card.make = { format: fam, pieces: cutWords(c.make.pieces, 100) }; fitCta(card); }

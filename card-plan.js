@@ -166,7 +166,7 @@ export const caseSummary = (c = {}, plan) => {
 
 /* the plan for a card. draft: the card's first draft (drafts-bg draftView), which becomes v0 on the jam's stage */
 /* buttons that are a place to go, not an action, and cards that only report progress: no plan */
-export const NOT_MAKING_LABEL = /^(?:open|see|agree|approve|publish|shift|pause|restart|launch|turn on|queue|start the tests|fix tracking|fix the links|update the prices|review draft|win their|show how|work on this|send|set the watch|ship|apply|run|lock)\b/i;
+export const NOT_MAKING_LABEL = /^(?:open|see|agree|approve|publish|shift|pause|restart|launch|turn on|queue|start the tests|fix tracking|fix the links|update the prices|review draft|win their|show how|work on this|send|set the watch|set up the rules|ship|apply|run|lock)\b/i;
 export const NAV_LABELS = new Set(['Open the moves', 'Open the deck', 'See all with Pro', 'See what moves it', 'Start a new batch']);
 export function planFor(c = {}, { draft = null, action: forced = null } = {}) {
   if (!c || !c.title || NAV_LABELS.has(c.cta?.label) || /^build-/.test(c.id || '')) return null;
