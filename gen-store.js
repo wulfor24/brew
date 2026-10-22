@@ -12,7 +12,7 @@ import path from 'node:path';
 let cfg = null; // { dir, bucket, gToken, log }
 export const configureGen = (c) => { cfg = c; fs.mkdirSync(c.dir, { recursive: true }); if (c.researchDir) fs.mkdirSync(c.researchDir, { recursive: true }); };
 const remote = () => (cfg?.remote != null ? !!cfg.remote : !!(process.env.K_SERVICE && cfg?.bucket && cfg?.gToken)); /* remote/gcs can be set in tests */
-const ok = (name) => /^[a-z0-9_-]{6,64}\.(png|jpg|wav|mp4|zip)$/i.test(name);
+const ok = (name) => /^[a-z0-9_-]{6,64}\.(png|jpg|wav|mp4|zip|pdf)$/i.test(name); /* pdf: the team brief (team-brief.js) */
 const CT = { png: 'image/png', jpg: 'image/jpeg', wav: 'audio/wav', mp4: 'video/mp4', zip: 'application/zip' };
 
 const gcs = async (method, name, buf, prefix = 'gen/') => {

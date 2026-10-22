@@ -89,6 +89,7 @@
 
   /* ---------- icons (lucide, 2px) ---------- */
   const P = {
+    edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
     external: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
     paste: '<rect width="8" height="4" x="8" y="2" rx="1"/><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2"/>',
     search: '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/>',
@@ -3897,7 +3898,7 @@
     const nm = opt ? ` · <em>${esc(opt.name)}</em>` : '';
     let head, tip, main;
     const po = postOpenOf(ch); /* Reddit, Quora, X, LinkedIn, Pinterest, a group: copy it and open the place (post-open.js) */
-    const send = `<button class="btn btn-primary ship-go" data-rx="share-shopos">${ic('send', 's16')}Send brief</button>`;
+    const send = `<button class="btn btn-primary ship-go" data-tb-open>${ic('send', 's16')}Send brief</button>`; /* the brief opens on the stage first: read it, edit it, then Download or Send */
     const job = jobOf(ch), fp = finalGoing(ch);
     if (job && !fp) { head = `<brew-load class="spin"></brew-load>${esc(job)}${nm}`; tip = media ? 'Brew makes a quick draft first, so you can check the idea. The final is made after.' : 'It lands here on its own in a moment.'; main = `<button class="btn btn-primary ship-go" disabled>${esc(job)}…</button>`; }
     else if (op && !op.picked) { head = `Pick one of ${op.list.length}`; tip = 'Tap the options above the stage to compare them, then use the one you like. The others stay in History.';
@@ -4084,14 +4085,14 @@
     const note = $('#bf-cm-in')?.value.trim() || '', quote = bfPop.quote; bfPopClose(); getSelection()?.removeAllRanges();
     const r = await tapi('POST', `/api/work/${w.id}/doc/comment`, { quote, note }).catch((er) => ({ error: er.message })); if (r.work) putWork(r.work);
     if (r.error) return toast(`${ic('info', 's16')}${esc(r.error)}`); if (fix) return bfFix(r.work || w); toast(`${ic('check', 's16')}Comment added`); paintStudio(); });
-  const detailsTab = (ch, pkgCh, edit) => RX.editing && edit
+  const detailsTab = (ch, pkgCh, edit) => (RX.editing && edit ? '' : `<div class="tbm-share"><span><b>Hand it to the team</b><small>The brief opens on the stage: check it, then download or send the PDF.</small></span><button class="btn btn-primary sm" data-tb-open>${ic('send', 's14')}Share</button></div>`) + (RX.editing && edit
     ? `<form id="st-spec" class="dt-form">${ch.fields.map((f) => fieldEdit(f, ch.pkg)).join('')}<div class="dt-actions"><button type="button" class="btn btn-ghost" data-spec-cancel>Cancel</button><button class="btn btn-primary">Save as v${ch.versions.length + 1}</button></div></form>`
     : `${briefTop2(ch)}<div class="dt-head"><span class="pill ${ch.missing.length ? 'warn' : 'ok'}">${ch.missing.length ? `${ch.missing.length} missing` : 'Complete'}</span>${edit && !RX.viewing ? `<button class="btn btn-ghost sm" data-spec-edit>Edit details</button>` : ''}</div>
        <dl class="dt-list">${ch.fields.map((f) => fieldView(f, pkgCh.pkg)).join('')}</dl>
        ${mineHtml(ch, edit)}
        <h4 class="dt-h">Brew checks</h4><ul class="dt-checks">${ch.checks.filter((x) => !x.mine).map((x) => `<li class="${x.ok ? 'ok' : x.soft ? 'soft' : 'bad'}">${ic(x.ok ? 'check' : 'x', 's14')}<span>${esc(x.k)}</span>${x.learned ? '<em>learned</em>' : ''}</li>`).join('')}</ul>
        <p class="dt-note">${ic('refresh', 's14')}If it goes wrong: ${esc(ch.rollback)}.</p>
-       ${briefExtra(ch)}`;
+       ${briefExtra(ch)}`);
   const historyTab = (ch) => {
     const cmp = RX.cmp.length === 2 ? RX.cmp.map((id) => ch.versions.find((v) => v.id === id)).filter(Boolean).sort((a, b) => a.n - b.n) : null;
     const val = (s, k) => { const v = s?.[k]; return Array.isArray(v) ? v.map((x) => (typeof x === 'object' ? Object.values(x).join(' · ') : x)).join(' / ') : v ?? ''; };
@@ -4263,6 +4264,73 @@
       RX.ch = r.change; RX.viewing = null; if (r.making === false && r.why) toast(esc(r.why)); return paintStudio(); } };
   /* the studio says where its draft came from: a rival's ad → "Our version of <rival>'s ad" (FEED-NOT-02), else the card */
   const studioFrom = (ch) => { const rv = rivalOf(RX.p ? cardOf(RX.p) : {}) || (ch.rival ? { name: ch.rival.brand || '' } : null); if (rv) return esc(ourVersionOf(rv.name || ch.rival?.brand || '')); const c = RX.p ? cardOf(RX.p) : null; return esc((c && (whoseAd(c) || fromLabel(c))) || 'Made for you'); }; /* the feed's own label ("Made for you", "From your ads"), never from “title” (FEED-NOT-02) */
+  /* ---------- brief mode: the team brief on the stage (team-brief.js). Creative | Brief switch above the stage; each section is
+     a quick edit; Download PDF, or Send PDF as an email draft with the PDF and the creatives attached ---------- */
+  const TBS = { for: null, brief: null, busy: false, err: null, files: null, filesFor: null };
+  const tbWork = () => workOfCard(RX.p?.id);
+  const tbSwitch = () => tbWork() ? `<div class="tbm-switch" role="tablist" aria-label="Stage">${[['creative', 'Creative', 'pic'], ['brief', 'Brief', 'doc']].map(([k, n, i]) => `<button role="tab" data-tb-stage="${k}" aria-selected="${(RX.stage || 'creative') === k}">${ic(i, 's14')}${n}</button>`).join('')}</div>` : '';
+  const tbLoad = async (fresh = false) => { const w = tbWork(); if (!w || (TBS.busy && !fresh)) return; if (TBS.for !== w.id) Object.assign(TBS, { brief: null, files: null, filesFor: null }); TBS.for = w.id; TBS.busy = true; TBS.err = null; if (view === 'remix') paintStudio();
+    const r = await tapi('GET', `/api/work/${w.id}/team-brief${fresh ? '?fresh=1' : ''}`).catch((e) => ({ error: e.message })); TBS.busy = false;
+    if (r.brief) TBS.brief = r.brief; else TBS.err = r.error || 'The brief didn’t come together. Try again.'; if (view === 'remix') paintStudio(); };
+  const tbOpen = () => { if (!tbWork()) return toast('Open the jam first, then share its brief.'); RX.stage = 'brief'; RX.tbEdit = null; paintStudio(); $('.tbm-scroll')?.scrollTo?.(0, 0); if (!TBS.brief || TBS.for !== tbWork().id || TBS.brief.stale) tbLoad(); };
+  const tbText = (s) => { const L = String(s || '').split('\n').map((l) => l.trim()).filter(Boolean); if (!L.length) return '<p class="tbm-none">To confirm.</p>';
+    return L.map((l) => /^[-•]\s+/.test(l) ? `<li>${esc(l.replace(/^[-•]\s+/, ''))}</li>` : `<p>${esc(l)}</p>`).join('').replace(/(<li>.*?<\/li>)+/g, (m) => `<ul>${m}</ul>`); };
+  const tbStage = (ch) => { const b = TBS.for === tbWork()?.id ? TBS.brief : null;
+    if (!b) return `<div class="tbm-doc tbm-wait">${TBS.err ? `<p>${esc(TBS.err)}</p><button class="btn btn-ghost sm" data-tb-retry>Try again</button>` : `<p role="status"><brew-load class="spin"></brew-load>Writing the brief for the team: what to make, why, the evidence and the final files…</p>`}</div>`;
+    const cr = b.creatives || [];
+    return `<article class="tbm-doc" aria-label="The team brief">
+      <header class="tbm-h"><span class="tbm-brand">${b.mark ? `<img src="${esc(b.mark)}" alt="">` : ''}${esc(b.brand)}</span><span class="tbm-k">Brief${b.memo.ref ? ` · ${esc(b.memo.ref)}` : ''}${b.version ? ` · v${b.version}` : ''}</span></header>
+      ${b.stale ? `<p class="tbm-stale">${ic('refresh', 's14')}The ad changed since this was written. <button class="linkbtn" data-tb-retry="fresh">Bring it up to date</button></p>` : ''}
+      <h1 class="tbm-title">${esc(b.title)}</h1>
+      <dl class="tbm-memo"><div><dt>From</dt><dd>${esc(b.memo.from || `${b.brand} team`)}</dd></div><div><dt>To</dt><dd>${esc(b.memo.to)}</dd></div><div><dt>Due</dt><dd>${esc(b.memo.due || 'To confirm')}</dd></div><div><dt>Files</dt><dd>${cr.length ? `${cr.length} attached` : 'None yet'}</dd></div></dl>
+      ${cr.length ? `<div class="tbm-files">${cr.map((c) => `<figure><a href="/${esc(c.url)}" target="_blank" rel="noopener">${c.kind === 'video' ? `<video src="/${esc(c.url)}" ${c.poster ? `poster="/${esc(c.poster)}"` : ''} muted playsinline preload="metadata"></video>` : `<img src="/${esc(c.url)}" alt="">`}</a><figcaption>${esc(c.label)}</figcaption></figure>`).join('')}</div>` : ''}
+      ${b.sections.map((x) => RX.tbEdit === x.k ? `<section class="tbm-sec is-ed"><h2>${esc(x.h)}</h2><textarea id="tbm-ed" rows="${Math.min(12, Math.max(3, x.t.split('\n').length + 1))}">${esc(x.t)}</textarea><div class="tbm-ed-a">${x.edited ? '<button type="button" class="linkbtn" data-tb-reset>Put the written one back</button>' : ''}<span class="sp"></span><button type="button" class="btn btn-ghost sm" data-tb-cancel>Cancel</button><button type="button" class="btn btn-primary sm" data-tb-save="${esc(x.k)}">Save</button></div></section>`
+        : `<section class="tbm-sec${x.locked ? ' is-locked' : ''}"${x.locked ? ` title="The final words come from the ad: change them in the chat"` : ` data-tb-ed="${esc(x.k)}" tabindex="0" role="button" aria-label="Edit ${esc(x.h)}"`}><h2>${esc(x.h)}${x.edited ? '<em>edited</em>' : ''}${x.locked ? '<em>from the ad</em>' : `<span class="tbm-pen">${ic('edit', 's14')}</span>`}</h2>${x.k === 'words' ? `<div class="tbm-words">${esc(x.t)}</div>` : tbText(x.t)}</section>`).join('')}
+      ${(b.evidence || []).length ? `<section class="tbm-sec tbm-ev"><h2>The evidence</h2><ul>${b.evidence.map((e, i) => `<li><span>${esc(e.say)}</span>${e.src ? `<small>${esc(e.src)}</small>` : ''}<button class="icon-btn" data-tb-evrm="${i}" aria-label="Leave this out">${ic('x', 's14')}</button></li>`).join('')}</ul></section>` : ''}
+      <footer class="tbm-f"><button class="linkbtn" data-rx="share-shopos">Or send it to the ShopOS team</button><span class="sp"></span><button class="btn btn-ghost" data-tb-pdf>${ic('down', 's16')}Download PDF</button><button class="btn btn-primary" data-tb-send>${ic('send', 's16')}Send PDF</button></footer>
+    </article>`; };
+  /* the PDF (made once per state of the brief) and the creatives, as files */
+  const tbPdf = async () => { const w = tbWork(); if (!w) return null; const r = await tapi('POST', `/api/work/${w.id}/team-brief/pdf`, {}).catch((e) => ({ error: e.message }));
+    if (r.brief) TBS.brief = r.brief; if (r.error || !r.pdf) { toast(`${ic('info', 's16')}${esc(r.error || 'The PDF didn’t come together. Try again.')}`); return null; } return r.pdf; };
+  const asciiName = (s) => String(s || 'file').normalize('NFKD').replace(/[^\x20-\x7e]/g, '').replace(/["\\]/g, '').trim() || 'file';
+  const tbFiles = async (pdf) => { const key = `${pdf.url}|${(TBS.brief?.creatives || []).map((c) => c.url).join(',')}`; if (TBS.filesFor === key && TBS.files) return TBS.files;
+    const get = async (url, name, type) => { const r = await fetch('/' + url); if (!r.ok) return null; const b = await r.blob(); return new File([b], asciiName(name), { type: type || b.type }); };
+    const out = [await get(pdf.url, pdf.name, 'application/pdf')];
+    for (const c of TBS.brief?.creatives || []) { const f = await get(c.url, c.name); if (f && f.size < 20e6) out.push(f); }
+    TBS.files = out.filter(Boolean); TBS.filesFor = key; return TBS.files; };
+  const dl = (href, name) => { const a = document.createElement('a'); a.href = href; a.download = name; document.body.appendChild(a); a.click(); a.remove(); };
+  /* an email draft: the share sheet (Mail, Outlook…) where the browser can share files, else a .eml that opens as an unsent
+     draft in Mail or Outlook with everything attached. Brew sends nothing itself */
+  const b64 = async (blob) => { const u8 = new Uint8Array(await blob.arrayBuffer()); let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000)); return btoa(s).replace(/.{76}/g, '$&\r\n'); };
+  const utf8b64 = (s) => btoa(unescape(encodeURIComponent(s)));
+  const tbMailText = (b) => { const sec = (k) => b.sections.find((x) => x.k === k)?.t || '';
+    return `Hi,\n\nHere is the brief for ${b.title}. The full brief is in the attached PDF, with the final ${(b.creatives || []).length ? 'creatives attached as files' : 'words in it'}.\n\nWhat to make: ${sec('what')}\n\nWhy: ${sec('why')}\n\nDue: ${b.memo.due || 'to confirm'}\n\nReply here with any questions.\n\nThanks,\n${b.memo.from || `${b.brand} team`}`; };
+  const tbEml = async (b, files) => { const B = `brew-${Math.random().toString(36).slice(2)}`, subj = `Brief: ${b.title}`;
+    const parts = [`--${B}\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n${utf8b64(tbMailText(b)).replace(/.{76}/g, '$&\r\n')}\r\n`];
+    for (const f of files) parts.push(`--${B}\r\nContent-Type: ${f.type || 'application/octet-stream'}; name="${f.name}"\r\nContent-Disposition: attachment; filename="${f.name}"\r\nContent-Transfer-Encoding: base64\r\n\r\n${await b64(f)}\r\n`);
+    return new Blob([`To: \r\nSubject: =?UTF-8?B?${utf8b64(subj)}?=\r\nX-Unsent: 1\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary="${B}"\r\n\r\n${parts.join('')}--${B}--\r\n`], { type: 'message/rfc822' }); };
+  const tbSend = async (btn) => { const done = busyBtn(btn, 'Getting it ready…'); try {
+      const pdf = await tbPdf(); if (!pdf) return; const files = await tbFiles(pdf), b = TBS.brief;
+      if (navigator.canShare?.({ files }) && navigator.share) { try { await navigator.share({ files, title: `Brief: ${b.title}`, text: tbMailText(b) }); toast(`${ic('check', 's16')}Pick your email app: the PDF and files are attached`); return; } catch (e) { if (e?.name === 'AbortError') return; } }
+      dl(URL.createObjectURL(await tbEml(b, files)), `${asciiName(`Brief - ${b.title}`).slice(0, 80)}.eml`);
+      toast(`${ic('check', 's16')}Email draft downloaded: open it and it opens in Mail or Outlook, ready to send, with the PDF${files.length > 1 ? ` and ${files.length - 1} file${files.length > 2 ? 's' : ''}` : ''} attached`);
+    } finally { done(); } };
+  const tbDownload = async (btn) => { const done = busyBtn(btn, 'Making the PDF…'); try { const pdf = await tbPdf(); if (!pdf) return; dl('/' + pdf.url, pdf.name);
+      const cr = TBS.brief?.creatives || []; if (cr.length) toast(`${ic('check', 's16')}PDF downloaded. <button class="linkbtn" data-tb-files>Download the ${cr.length} file${cr.length > 1 ? 's' : ''} too</button>`); } finally { done(); } };
+  document.addEventListener('click', async (e) => { const g = (sel) => e.target.closest?.(sel); if (view !== 'remix' || !RX.ch) return;
+    if (g('[data-tb-open]')) { e.preventDefault(); return tbOpen(); }
+    const st = g('[data-tb-stage]'); if (st) { if (st.dataset.tbStage === 'brief') return tbOpen(); RX.stage = 'creative'; RX.tbEdit = null; return paintStudio(); }
+    const rt = g('[data-tb-retry]'); if (rt) return tbLoad(rt.dataset.tbRetry === 'fresh');
+    const ed = g('[data-tb-ed]'); if (ed && !g('a,button')) { RX.tbEdit = ed.dataset.tbEd; paintStudio(); const ta = $('#tbm-ed'); ta?.focus(); ta?.setSelectionRange(ta.value.length, ta.value.length); return; }
+    if (g('[data-tb-cancel]')) { $('#tbm-ed')?.blur(); RX.tbEdit = null; return paintStudio(); }
+    const sv = g('[data-tb-save]'), rs = g('[data-tb-reset]'); if (sv || rs) { const w = tbWork(), k = RX.tbEdit, t = rs ? '' : $('#tbm-ed')?.value || ''; $('#tbm-ed')?.blur(); RX.tbEdit = null;
+      const r = await tapi('POST', `/api/work/${w.id}/team-brief/edit`, { k, t }); if (r.brief) TBS.brief = r.brief; if (r.error) toast(esc(r.error)); return paintStudio(); }
+    const ev = g('[data-tb-evrm]'); if (ev) { const r = await tapi('POST', `/api/work/${tbWork().id}/team-brief/evidence`, { i: +ev.dataset.tbEvrm }); if (r.brief) TBS.brief = r.brief; return paintStudio(); }
+    const pd = g('[data-tb-pdf]'); if (pd) return tbDownload(pd);
+    const sd = g('[data-tb-send]'); if (sd) return tbSend(sd);
+    if (g('[data-tb-files]')) { (TBS.brief?.creatives || []).forEach((c, i) => setTimeout(() => dl('/' + c.url, c.name), i * 300)); } });
+  addEventListener('keydown', (e) => { if (view !== 'remix' || RX.stage !== 'brief') return; const ed = e.target.closest?.('[data-tb-ed]'); if (ed && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); ed.click(); }
+    if (e.target.id === 'tbm-ed') { if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); e.target.blur(); RX.tbEdit = null; paintStudio(); } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); $('[data-tb-save]')?.click(); } } }, true);
   const paintStudio = () => {
     const pg = $('#view .std'); const ch = RX.ch; if (!pg || !ch) return;
     window.__GR = { Original: 'none', Warm: 'sepia(.25) saturate(1.25) hue-rotate(-8deg)', Quiet: 'saturate(.6) brightness(1.05) contrast(.92)', Vivid: 'saturate(1.6) contrast(1.08)', 'Golden hour': 'sepia(.45) saturate(1.4) brightness(1.05)' };
@@ -4270,17 +4338,17 @@
     const viewing = RX.viewing && RX.viewing !== ch.head ? ch.versions.find((v) => v.id === RX.viewing) : null; if (!viewing) RX.viewing = null;
     const pkgCh = asPkg(ch, viewing), edit = ch.state !== 'jam', tab = RX.tab && RX.tab !== 'history' ? RX.tab : 'iterate'; /* history is the dropdown on the History button now */
     const formFocus = document.activeElement?.closest?.('#st-spec');
-    if (formFocus || document.activeElement?.id === 'bf-ed' || document.activeElement?.id === 'bf-cm-in' || bfPop.el?.classList.contains('is-form') || document.activeElement?.matches?.('[data-hl-edit][contenteditable]')) { pollJob(ch); return; } // never repaint under someone typing in the spec or the brief (the job poll keeps going, so no status is left behind)
-    const logScroll = $('.st-panel-b')?.scrollTop;
+    if (formFocus || document.activeElement?.id === 'bf-ed' || document.activeElement?.id === 'tbm-ed' || document.activeElement?.id === 'bf-cm-in' || bfPop.el?.classList.contains('is-form') || document.activeElement?.matches?.('[data-hl-edit][contenteditable]')) { pollJob(ch); return; } // never repaint under someone typing in the spec or the brief (the job poll keeps going, so no status is left behind)
+    const logScroll = $('.st-panel-b')?.scrollTop, tbmScroll = $('.tbm-scroll')?.scrollTop || 0; /* brief mode keeps its place through a repaint */
     /* an open panel stays open through a repaint (the jam's 3-second poll, a video landing): Param, 19 Oct, "What Brew read" closed in 2 s */
     const keepOpen = RX.keepFor === ch.id ? new Set([...pg.querySelectorAll('details[data-keep][open]')].map((d) => d.dataset.keep)) : new Set(); RX.keepFor = ch.id;
     /* a repaint from the jam's poll (a teammate's line, a version) never takes the box from someone typing in it */
     const typingAt = document.activeElement?.id === 'st-in' ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
     pg.innerHTML = `<header class="st-top"><button class="q-back" data-st-back>${ic('left', 's16')}${ch.batchKey ? `All ${RX.p?.images?.length || ''} ads` : 'Back'}</button>
-        <div class="st-ttl"><b>${esc(ch.actionLabel)}${ch.target.conn && ch.target.name ? ` <span>on ${esc(ch.target.name)}</span>` : ''}</b><small>${face(ch.agent)}${esc(ch.familyName)} · ${studioFrom(ch)}</small></div>${studioJamCtl()}
+        <div class="st-ttl"><b>${esc(ch.actionLabel)}${ch.target.conn && ch.target.name ? ` <span>on ${esc(ch.target.name)}</span>` : ''}</b><small>${face(ch.agent)}${esc(ch.familyName)} · ${studioFrom(ch)}</small></div>${tbSwitch()}${studioJamCtl()}
         <div class="st-vwrap"><button class="st-vpill${RX.vmenu ? ' is-open' : ''}" data-vmenu aria-haspopup="dialog" aria-expanded="${!!RX.vmenu}" title="Version history">${ic('clock', 's14')}<span>History</span>${ic('chev', 's14')}</button>${RX.vmenu ? `<div class="st-vmenu" role="dialog" aria-label="Version history"><div class="st-vmenu-h"><b>Versions</b><small>${ch.versions.length} saved · nothing is ever lost</small></div><div class="st-vmenu-b">${historyTab(ch)}</div></div>` : ''}</div>${themeBtn()}<button class="icon-btn st-more" aria-label="More" data-lmenu="remix:${esc(ch.id)}">${ic('more', 's16')}</button></header>
       <div class="st-body">
-        <main class="st-canvas">${refBtnHtml(ch)}${rivalReadHtml(ch)}${optTabs(ch, viewing)}<div class="st-asset${ch.copyPending ? ' is-writing' : ''}">${ch.copyPending ? `<p class="st-writing" role="status"><brew-load class="spin"></brew-load>Writing the first draft from the card…</p>` : ''}${!ch.copyPending && ch.ctaPending ? `<p class="st-writing" role="status"><brew-load class="spin"></brew-load>${esc(ch.ctaPending)}…</p>` : ''}${assetHtml(pkgCh, 'lg')}</div>${phTools(ch, pkgCh, viewing)}${shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh))}</main>
+        <main class="st-canvas${RX.stage === 'brief' ? ' is-brief' : ''}">${RX.stage === 'brief' ? `<div class="tbm-scroll">${tbStage(ch)}</div>` : `${refBtnHtml(ch)}${rivalReadHtml(ch)}${optTabs(ch, viewing)}<div class="st-asset${ch.copyPending ? ' is-writing' : ''}">${ch.copyPending ? `<p class="st-writing" role="status"><brew-load class="spin"></brew-load>Writing the first draft from the card…</p>` : ''}${!ch.copyPending && ch.ctaPending ? `<p class="st-writing" role="status"><brew-load class="spin"></brew-load>${esc(ch.ctaPending)}…</p>` : ''}${assetHtml(pkgCh, 'lg')}</div>${phTools(ch, pkgCh, viewing)}${shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh))}`}</main>
         <aside class="st-panel"><div class="st-tabs" role="tablist">${[['iterate', 'Chat'], ['adjust', 'Adjust'], ['details', 'Brief']].map(([k, n]) => `<button role="tab" data-tab="${k}" aria-selected="${tab === k}">${n}</button>`).join('')}</div>
           <div class="st-panel-b${tab === 'iterate' ? ' is-chat' : ''}">${tab === 'iterate' ? chatTab(ch, edit) : tab === 'adjust' ? adjustTab(ch, edit) : tab === 'details' ? detailsTab(ch, pkgCh, edit) : chatTab(ch, edit)}</div></aside>
       </div>`;
@@ -4290,7 +4358,7 @@
     { const at = $('.st-atools'), ph = $('.st-asset .sv-phone'), mk = $('.st-asset .sv-make.is-row'); if (ph) { if (at) { ph.after(at); if (mk) { at.append(...mk.children); mk.remove(); } } } }
     if (keepOpen.size) pg.querySelectorAll('details[data-keep]').forEach((d) => { if (keepOpen.has(d.dataset.keep)) d.open = true; });
     if (typingAt) { const box = $('#st-in'); if (box) { box.focus(); try { box.setSelectionRange(typingAt[0], typingAt[1]); } catch {} } }
-    fitAd(); bfMark();
+    fitAd(); bfMark(); { const ts = $('.tbm-scroll'); if (ts && tbmScroll) ts.scrollTop = tbmScroll; }
     const pb = $('.st-panel-b'); const nT = (ch.thread || []).length + (RX.sending ? 1 : 0) + Object.keys(J2.imp).length + Object.keys(J2.pack).length;
     if (tab === 'iterate') pb.scrollTop = (ch.thread || []).length || RX.sending || j2Extra(ch) ? pb.scrollHeight : 0; /* the case stays first in the chat and scrolls up as it grows; a fresh chat is read from its top */ else if (logScroll && !RX.resetScroll) pb.scrollTop = logScroll; RX.resetScroll = false;
     pollJob(ch);
@@ -4365,7 +4433,7 @@
     let ch = findCh(id) || PRE_CH.get(id); PRE_CH.delete(id); if (!ch) { const stop = holdView('Opening the jam'); const g = await tapi('GET', `/api/changes/${id}`); stop(); ch = g.change; }
     /* a link to a jam this browser can't open (another workspace's, or gone): open the card's own jam, never a blank page */
     if (!ch) { if (RX.p && !o.noFallback) { history.replaceState(history.state, '', `${location.pathname}#remix=${RX.p.id}`); return openRemix(RX.p, null, { fromHistory: true, noFallback: true }); } $('#view').innerHTML = `<div class="rxp"><p class="rx-gone">${ic('info', 's16')}This jam can’t be opened here. <button class="linkbtn" data-nav="feed">Back to the feed</button></p></div>`; return; }
-    Object.assign(RX, { ch, viewing: null, cmp: [], tab: 'iterate', editing: false, draft: '', knobSel: {}, briefEdit: false, sending: null, att: [] }); /* a reply still running in another jam never freezes this one */ tapi('POST', `/api/changes/${ch.id}/open`, {}); REMIXES = null; if (!o.fromHistory) nav(`#remix=${RX.p.id}/${ch.id}`, !o.replace, o.deep ? 'rx-deep' : 'rx-ch'); /* from the card page it replaces the card: Back goes to the feed, not round again */
+    Object.assign(RX, { ch, viewing: null, cmp: [], tab: 'iterate', editing: false, draft: '', knobSel: {}, briefEdit: false, sending: null, att: [], stage: 'creative', tbEdit: null }); /* a reply still running in another jam never freezes this one */ tapi('POST', `/api/changes/${ch.id}/open`, {}); REMIXES = null; if (!o.fromHistory) nav(`#remix=${RX.p.id}/${ch.id}`, !o.replace, o.deep ? 'rx-deep' : 'rx-ch'); /* from the card page it replaces the card: Back goes to the feed, not round again */
     $('#view').innerHTML = `<div class="std"></div>`; window.scrollTo(0, 0); paintStudio();
     autoImage(ch);
   };

@@ -26,6 +26,7 @@ import { allowedFrom, unbacked, numbersIn } from './fact-gate.js';
 import { createRemix } from './remix.js';
 import { saveGen } from './gen-store.js';
 import { createJamBrief } from './jam-brief.js';
+import { createTeamBrief } from './team-brief.js';
 import { briefParts, withTeam, LABEL as BRIEF_LABEL } from './brief-status.js';
 import { createTuning, tuneScore, learnedSignals, withoutIgnored, noteTopics, noteSides, PREF_SCHEMA, prefPrompt, AGENTS as TUNE_AGENTS, WEIGHT as TUNE_WEIGHT } from './member-tuning.js'; // Your feed: per-member agent weights, topics, learned signals
 import { memberKey, saveVoicePick } from './brand-memory.js';
@@ -285,6 +286,7 @@ export function createFeedService(o) {
   let JB = null, DR = null; // the living jam brief (jam-brief.js), first drafts (drafts.js)
  // the agent layer's routes and resume clock (agent-runner.js)
   let HO = null; // the full-context handoff (handoff.js)
+  let TB = null; // the team brief (team-brief.js)
   let MOVES = null; // the move documents (moves.js)
   let RMX = null; // the studio (remix.js), wired up once the routes exist
   let JAM2 = null; // Jam v2 (jam2/routes.js), ?v=2 only
@@ -2172,6 +2174,8 @@ export function createFeedService(o) {
     return building.get(key);
   };
   HO = createHandoff({ RMX: { packageOf: (...a) => RMX?.packageOf(...a) }, pageOf, fillCard, AGENT, SEED });
+  /* the team brief: what the people who make it work from, on the studio's stage, as a PDF, or as an email draft (team-brief.js) */
+  TB = createTeamBrief({ claudeTool, isMock, spend, clean, now, log, handoff: HO, proofOf: (t, w) => (w.cardId ? proofSay(t, w.cardId) : null) }); TB.routes({ on, W });
   setupOn();
   // the option you went with on the card page travels with every handoff
   on('POST', '/api/work/:wid/decided', async (b, t, p) => { const w = W(t, p.wid); if (!w) return { error: 'not found' }; w.decided = b.id || null; if (b.id) stepLearn(t, w, 'decided'); if (w.cardId) { t.decided ||= {}; if (b.id) t.decided[w.cardId] = b.id; else delete t.decided[w.cardId]; } return { work: w }; });
