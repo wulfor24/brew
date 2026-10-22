@@ -208,6 +208,15 @@ async function pictures(slug, profile, library, { packs }) {
   return out;
 }
 
+/* what the book is made from, as one short hash: when it changes, the book is written again */
+export function bookSig(profile = {}, brief = {}) {
+  const id = profile.identity || {};
+  return hash(JSON.stringify([profile.tagline, profile.descriptor, profile.about, id.logo, id.colors, id.fonts,
+    (profile.ads?.own?.items || []).map((a) => [a.id, a.poster, a.video]), (profile.socials?.instagram?.posts || []).map((x) => [x.url, x.img]),
+    (profile.socials?.youtube?.videos || []).map((v) => v.url), (profile.socials?.tiktok?.videos || []).map((v) => v.url),
+    profile.catalog?.hero, (profile.catalog?.products || []).length, (profile.reviews?.quotes || []).map((q) => q.text?.slice(0, 40)), brief?.at, (brief?.claims || []).length]));
+}
+
 export function createBookReader({ packs, ai, treg = null, log = console, fetchText = null, now = () => Date.now() }) {
   const running = new Map(), fetch1 = fetchText || fetcherWith(treg);
   async function build(slug, { why = 'read' } = {}) {
@@ -220,7 +229,7 @@ export function createBookReader({ packs, ai, treg = null, log = console, fetchT
     const free = freeChapters({ profile, brief: brief || {}, ledger: Array.isArray(ledger) ? ledger : [], homeText: home, config: config || {} });
     const library = libraryOf(profile);
     const E = evidenceOf({ profile, brief: brief || {}, pages });
-    const base = { v: BOOK_V, at: new Date(now()).toISOString(), readAt: profile.meta?.readAt || null, why, guides, pageErrors: errors, ...free, library,
+    const base = { v: BOOK_V, sig: bookSig(profile, brief), at: new Date(now()).toISOString(), readAt: profile.meta?.readAt || null, why, guides, pageErrors: errors, ...free, library,
       evidence: E.map(({ id, kind, src, text }) => ({ id, kind, url: src, text: tidy(text, 240) })) };
     if (!ai?.call) return { ...base, error: 'The AI is off on this server, so the voice, story and look weren’t written.' };
     const pics = await pictures(slug, profile, library, { packs });
@@ -246,12 +255,17 @@ export function createBookReader({ packs, ai, treg = null, log = console, fetchT
     } catch (e) { log.warn?.('[book] write', slug, e.message); return { ...base, error: e.billing ? 'The AI is paused, so the voice, story and look will be written once it’s back.' : 'The voice, story and look couldn’t be written this time; Brew tries again on the next open.' }; }
   }
   /* built once per read: missing, an older version, older than the read, or an error from more than an hour ago */
+  /* kept up to date by itself: rebuilt when anything it is made from changes (a re-read, healed ads, new posts or films, new
+     products, a new brief, a new kit), at most every 6 hours for those, and at least every 14 days. A re-read or a new version
+     rebuilds at once; an error retries after an hour. Team edits and uploads never wait: they sit on top and show at once */
   async function stale(slug) {
-    const [b, p] = await Promise.all([packs.getJSON(slug, FILE, null).catch(() => null), packs.getJSON(slug, 'profile.json', null).catch(() => null)]);
+    const [b, p, br] = await Promise.all([packs.getJSON(slug, FILE, null).catch(() => null), packs.getJSON(slug, 'profile.json', null).catch(() => null), packs.getJSON(slug, 'brief.json', null).catch(() => null)]);
     if (!p?.host || p.closed) return false;
     if (!b || b.v !== BOOK_V) return true;
     if (p.meta?.readAt && b.readAt !== p.meta.readAt) return true;
-    return !!b.error && now() - Date.parse(b.at || 0) > 36e5;
+    const age = now() - Date.parse(b.at || 0);
+    if (b.error) return age > 36e5;
+    return (b.sig !== bookSig(p, br) && age > 6 * 36e5) || age > 14 * 864e5;
   }
   async function ensure(slug, opts = {}) {
     if (running.has(slug)) return running.get(slug);

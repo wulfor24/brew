@@ -12,6 +12,8 @@ import { zipBuffer } from './pdf/render.js';
 
 const one = (s, n = 400) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
 const famName = { 'ad-image': 'Image ads', 'ad-video': 'Video ads', 'ad-carousel': 'Carousel ads', 'ig-post': 'Instagram posts', 'ig-reel': 'Instagram reels', 'ig-carousel': 'Instagram carousels', tiktok: 'TikTok', youtube: 'YouTube films', 'product-photo': 'Product photos', 'site-photo': 'On their site', email: 'Emails' };
+const end = (s) => String(s ?? '').trim().replace(/[\s.;,:]+$/, ''); /* a sentence the model already ended doesn't get a second full stop */
+const same = (a, b) => String(a || '').toLowerCase().replace(/[^a-z0-9]+/g, '') === String(b || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
 const nameOf = (v) => v.cover?.name || v.name || 'the brand';
 const slugify = (s) => String(s || 'x').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'x';
 
@@ -19,21 +21,22 @@ const slugify = (s) => String(s || 'x').toLowerCase().replace(/[^a-z0-9]+/g, '-'
 export function toMarkdown(v = {}, { url = '' } = {}) {
   const n = nameOf(v), t = v.tone || {}, w = v.words || {}, lk = v.look || {}, k = v.kit || {}, pr = v.products || {}, L = [];
   const H = (h) => L.push('', `## ${h}`), B = (x) => x && L.push(`- ${x}`);
-  L.push(`# ${n} brand book`, '', `Use this for everything you write or design for ${n}.${v.cover?.oneLine ? ` ${n}: ${one(v.cover.oneLine, 160)}.` : ''}${v.story?.positioning ? ` ${one(v.story.positioning, 200)}` : ''}`);
+  const pos = v.story?.positioning && !same(v.story.positioning, v.cover?.oneLine) ? ` ${end(one(v.story.positioning, 200))}.` : '';
+  L.push(`# ${n} brand book`, '', `Use this for everything you write or design for ${n}.${v.cover?.oneLine ? ` ${n}: ${end(one(v.cover.oneLine, 160))}.` : ''}${pos}`);
   const never = [...new Set([...(v.neverSay || []), ...(v.never || [])])];
   H('Rules'); B(never.length ? `Never use these words or claims: ${never.join(', ')}.` : null); B(w.avoid?.length ? `Avoid: ${w.avoid.join(', ')}.` : null);
   B((v.claims || []).length ? `Only make these claims, as written: ${v.claims.slice(0, 8).map((c) => `"${one(c.text, 140)}"`).join('; ')}.` : 'Make no claim the brand hasn’t made itself.');
   B('Quote customers only from the review lines below, word for word. Never invent results, reviews, prices or numbers.');
   if (t.summary || t.traits?.length) { H('Voice'); B(t.summary); for (const x of t.traits || []) B(`${x.trait}${x.sounds ? `: like "${one(x.sounds, 180)}"` : ''}`);
-    for (const x of t.never || []) B(`Never ${x.text.toLowerCase().replace(/^never\s+/, '')}`); B(t.reading ? `Reading level: ${t.reading}.` : null); B(t.language ? `Writes in ${t.language}.` : null);
+    for (const x of t.never || []) B(`Never ${x.text.toLowerCase().replace(/^never\s+/, '')}`); B(t.reading ? `Reading level: ${end(t.reading)}.` : null); B(t.language ? `Writes in ${end(t.language)}.` : null);
     if (t.pairs?.length) { L.push('', 'Say it their way:'); for (const p of t.pairs) L.push(`- Yes: "${one(p.do, 160)}" Not: "${one(p.dont, 160)}"`); }
-    if (t.cta?.style || t.cta?.examples?.length) B(`Calls to action: ${[t.cta.style, t.cta.examples?.length ? `theirs are ${t.cta.examples.map((x) => `"${x}"`).join(', ')}` : ''].filter(Boolean).join('; ')}.`); }
+    if (t.cta?.style || t.cta?.examples?.length) B(`Calls to action: ${[end(t.cta.style), t.cta.examples?.length ? `theirs are ${t.cta.examples.map((x) => `"${x}"`).join(', ')}` : ''].filter(Boolean).join('; ')}.`); }
   if (w.use?.length || w.customers?.length) { H('Words'); B(w.use?.length ? `They say: ${w.use.join(', ')}.` : null); B(w.customers?.length ? `Customers say: ${w.customers.join(', ')}.` : null); }
   if (lk.notes || k.roles?.length || k.fonts?.heading) { H('Look');
-    B(lk.notes); B(lk.light ? `Light: ${lk.light}.` : null); B(lk.people ? `People: ${lk.people}.` : null); B(lk.framing ? `Framing: ${lk.framing}.` : null); B(lk.wordsOnImage ? `Words on pictures: ${lk.wordsOnImage}.` : null); B(lk.logoUse ? `Logo: ${lk.logoUse}.` : null);
+    B(lk.notes); for (const [k, x] of [['Light', lk.light], ['People', lk.people], ['Framing', lk.framing], ['Words on pictures', lk.wordsOnImage], ['Logo', lk.logoUse]]) B(x ? `${k}: ${end(x)}.` : null);
     B((k.roles || []).length ? `Colours: ${k.roles.map((c) => `${c.hex}${c.role ? ` (${c.role}${c.share ? `, ~${c.share}` : ''})` : ''}${c.use ? ` ${one(c.use, 60)}` : ''}`).join('; ')}.` : null);
     B(k.fonts?.heading || k.fonts?.body ? `Type: ${[k.fonts.heading && `headings in ${k.fonts.heading}`, k.fonts.body && `body in ${k.fonts.body}`].filter(Boolean).join(', ')}.` : null); }
-  if ((v.playbooks || []).length) { H('Formats'); for (const p of v.playbooks) B(`${famName[p.family] || p.family}: ${[p.layout, p.headline && `headline ${p.headline}`, p.wordsOnImage && `words ${p.wordsOnImage}`, p.cta && `CTA ${p.cta}`, p.avoid && `never ${p.avoid}`].filter(Boolean).join('; ')}.`); }
+  if ((v.playbooks || []).length) { H('Formats'); for (const p of v.playbooks) B(`${famName[p.family] || p.family}: ${[p.layout && `${end(p.layout)}.`, p.headline && `Headline: ${end(p.headline)}.`, p.wordsOnImage && `Words on it: ${end(p.wordsOnImage)}.`, p.cta && `Call to action: ${end(p.cta)}.`, p.avoid && `Never: ${end(p.avoid)}.`].filter(Boolean).join(' ')}`); }
   if (pr.heroes?.length) { H('Products'); for (const p of pr.heroes.slice(0, 8)) B(`${p.title}${p.price ? `, ${p.price}` : ''}${p.about ? `: ${one(p.about, 140)}` : ''}`); B(pr.offers?.length ? `Offers: ${pr.offers.join('; ')}.` : null); B(pr.guarantee ? `Promise: ${pr.guarantee}.` : null); }
   if ((v.people?.personas || []).length) { H('Who buys'); for (const p of v.people.personas) B(`${p.name}: ${p.who}${p.job ? `; wants ${p.job.toLowerCase()}` : ''}`); }
   if ((v.proof?.quotes || []).length || (v.proof?.ratings || []).length) { H('Proof'); for (const r of v.proof.ratings || []) B(`${r.rating ? `${r.rating}★ from ` : ''}${Number(r.count).toLocaleString('en-US')} reviews on ${r.where}`); for (const q of (v.proof.quotes || []).slice(0, 4)) B(`"${one(q.text, 220)}"`); }

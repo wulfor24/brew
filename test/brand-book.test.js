@@ -175,3 +175,20 @@ test('the kit: an AI-ready brand.md, clean JSON, W3C tokens, an .ase palette and
   for (const f of ['brand.md', 'brand.json', 'tokens.json', 'colors.css', 'palette.ase', 'CLAUDE-PROJECT.md', 'CUSTOM-GPT.md', 'llms.txt', 'logos/logo.png', 'references/ad-image/01.jpg', 'references/ad-image/captions.json']) assert.ok(names.includes(f), f);
   assert.ok(!unzip(z.buf).get('brand.md').toString().includes('Secret launch voice'));
 });
+
+test('the book keeps itself current: what it is made from changes → rebuilt (not more than every 6 hours), and at least every 14 days', async () => {
+  const { bookSig } = await import('../brand-book-read.js');
+  let t = Date.parse('2026-10-23T00:00:00Z');
+  const p = structuredClone(profile), files = new Map([['cozy|profile.json', p], ['cozy|brief.json', brief]]);
+  const packs = { getJSON: async (s, n, d) => (files.has(`${s}|${n}`) ? files.get(`${s}|${n}`) : d), get: async () => null, put: async (s, n, v) => files.set(`${s}|${n}`, v) };
+  const r = createBookReader({ packs, ai: null, now: () => t, fetchText: async () => ({ html: '<p>home</p>' }) });
+  const b = await r.ensure('cozy'); files.set('cozy|brandbook-read.json', { ...b, error: null });
+  assert.equal(await r.stale('cozy'), false);
+  p.ads.own.items.unshift({ id: '9', poster: '/b/cozy/a/ad-9.jpg', format: 'image', days: 2 });
+  assert.notEqual(bookSig(p, brief), b.sig);
+  t += 2 * 36e5; assert.equal(await r.stale('cozy'), false, 'not twice in six hours');
+  t += 5 * 36e5; assert.equal(await r.stale('cozy'), true, 'a new ad rewrites it');
+  p.ads.own.items.shift(); assert.equal(await r.stale('cozy'), false, 'nothing changed');
+  t += 15 * 864e5; assert.equal(await r.stale('cozy'), true, 'two weeks on, it is refreshed anyway');
+  p.meta.readAt = '2026-11-01T00:00:00Z'; t = Date.parse(b.at) + 1000; assert.equal(await r.stale('cozy'), true, 'a re-read rewrites it at once');
+});

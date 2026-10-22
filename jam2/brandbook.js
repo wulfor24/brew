@@ -12,6 +12,7 @@ import { familiesFor, REF_FAMILIES } from '../brand-book-read.js';
 const FILE = 'private/brandbook.json';
 /* the chapters a team edit may change, by dotted path (story.mission, tone.summary, words.use, look.light, …) */
 export const EDITABLE = /^(cover|story|tone|words|products|people|proof|look|naming|pillars|playbooks|markets|rules)(\.[\w-]+){0,2}$/;
+const end = (s) => String(s ?? '').trim().replace(/[\s.;,:]+$/, ''); /* no doubled full stops in the blocks makers read */
 const getPath = (o, p) => p.split('.').reduce((x, k) => (x == null ? x : x[k]), o);
 const setPath = (o, p, v) => { const ks = p.split('.'), last = ks.pop(); let x = o; for (const k of ks) { if (x[k] == null || typeof x[k] !== 'object') x[k] = {}; x = x[k]; } x[last] = v; };
 const cleanVal = (v) => Array.isArray(v) ? v.slice(0, 30).map(cleanVal) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).slice(0, 20).map(([k, x]) => [k, cleanVal(x)])) : typeof v === 'string' ? tidy(v, 1200) : typeof v === 'number' || typeof v === 'boolean' || v == null ? v : String(v);
@@ -47,7 +48,7 @@ export function promptBlock(v = {}, { recipe = null, kind = null } = {}) {
   if (v.never?.length) L.push(`Never use these words or claims: ${v.never.join(', ')}.`);
   if (v.words?.avoid?.length) L.push(`Words this brand avoids: ${v.words.avoid.join(', ')}.`);
   if (v.claims?.length) L.push(`Claims the brand may make (only these, as written): ${v.claims.slice(0, 6).map((c) => `"${c.text}"`).join('; ')}.`);
-  if (t.summary) L.push(`How the brand sounds: ${t.summary}${t.reading ? ` (${t.reading})` : ''}${t.language ? `; writes in ${t.language}` : ''}.`);
+  if (t.summary) L.push(`How the brand sounds: ${end(t.summary)}${t.reading ? ` (${end(t.reading)})` : ''}${t.language ? `; writes in ${end(t.language)}` : ''}.`);
   if (t.traits?.length) L.push(`Voice traits, with their own lines (match the voice, never copy the line):\n${t.traits.map((x) => `- ${x.trait}${x.sounds ? `: "${x.sounds}"` : ''}`).join('\n')}`);
   if (t.never?.length) L.push(`It never sounds: ${t.never.map((x) => x.text).join('; ')}.`);
   if (t.pairs?.length) L.push(`Say it their way:\n${t.pairs.map((p) => `- yes: "${p.do}" / not: "${p.dont}"`).join('\n')}`);
@@ -71,13 +72,13 @@ export function promptBlock(v = {}, { recipe = null, kind = null } = {}) {
 export function creativeBlock(v = {}, kind = '') {
   const L = [], lk = v.look || {}, k = v.kit || {};
   if (lk.notes) L.push(`The brand's look (from its own pictures): ${lk.notes}`);
-  const bits = [lk.light && `light: ${lk.light}`, lk.setting && `settings: ${lk.setting}`, lk.people && `people: ${lk.people}`, lk.props && `props: ${lk.props}`, lk.framing && `framing: ${lk.framing}`].filter(Boolean);
+  const bits = [lk.light && `light: ${end(lk.light)}`, lk.setting && `settings: ${end(lk.setting)}`, lk.people && `people: ${end(lk.people)}`, lk.props && `props: ${end(lk.props)}`, lk.framing && `framing: ${end(lk.framing)}`].filter(Boolean);
   if (bits.length) L.push(bits.join('; ') + '.');
   if (lk.colourUse || k.roles?.length) L.push(`Colours: ${(k.roles || []).filter((c) => c.hex).map((c) => `${c.hex}${c.role ? ` ${c.role}` : ''}${c.share ? ` ~${c.share}` : ''}`).join(', ')}${lk.colourUse ? `. ${lk.colourUse}` : ''}.`);
   if (k.fonts?.heading || k.fonts?.body) L.push(`Type: ${[k.fonts.heading && `headings in ${k.fonts.heading}${v.typeUse?.heading ? ` (${v.typeUse.heading})` : ''}`, k.fonts.body && `body in ${k.fonts.body}`].filter(Boolean).join(', ')}.`);
-  if (lk.wordsOnImage) L.push(`Words on their pictures: ${lk.wordsOnImage}.`);
-  if (lk.logoUse) L.push(`Logo: ${lk.logoUse}.`);
-  if (lk.packaging) L.push(`Packaging: ${lk.packaging}.`);
+  if (lk.wordsOnImage) L.push(`Words on their pictures: ${end(lk.wordsOnImage)}.`);
+  if (lk.logoUse) L.push(`Logo: ${end(lk.logoUse)}.`);
+  if (lk.packaging) L.push(`Packaging: ${end(lk.packaging)}.`);
   const pb = playbookFor(v, kind);
   if (pb) L.push(`For a ${REF_FAMILIES[pb.family] || pb.family}: ${[pb.layout, pb.wordsOnImage && `words ${pb.wordsOnImage}`, pb.logo && `logo ${pb.logo}`, pb.avoid && `never ${pb.avoid}`].filter(Boolean).join('; ')}.`);
   const refs = refsFor(v, kind, 3).filter((r) => r.why);
