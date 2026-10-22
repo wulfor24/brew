@@ -77,6 +77,8 @@
   /* demo mode: new work (moves, drafts, images, jams) is made for the brand's team and SquareUp. Anyone else who tries gets this
      one sheet instead of an error: their work email, or the demo stores */
   const DEMO_STORES = 'https://demo.joinsquareup.com';
+  /* free mailboxes never prove a brand (auth.js FREE): they get their own words on the team wall */
+  const FREE_MAIL = /^(gmail|googlemail|yahoo|ymail|hotmail|outlook|live|msn|icloud|me|mac|aol|proton|protonmail|pm|zoho|gmx|yandex|mail|rediffmail)\.[a-z.]+$/i;
   /* only the access gate's refusal (demo + an error) asks for a work email: a plan or send that merely ran on a demo account
      (no real account connected) also says demo, and the brand's team and Brew's own people must never see this sheet for it */
   const refused = (j) => !!(j?.demo && j.error);
@@ -266,17 +268,19 @@
   const etaOf = (s) => { const m = s?.etaMin; if (!(m > 0)) return ''; return ` · about ${m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 >= 10 ? ` ${m % 60} min` : ''}`} left`; };
   const signWall = (after) => {
     /* signed in, but not with an email at the brand (and not invited): the read is theirs to look at, the moves wait for the team */
-    const A0 = window.LIVE?.access;
-    if (GEN && after === 'check' && window.LIVE?.me && A0 && !A0.gen) {
+    /* on any path (feed, onboarding, check): their feed would be empty, so the demo stores are the way in. A shared jam's guest
+       (a share token, or a jam link) is let through: feed-service guestOk decides what they see */
+    const A0 = window.LIVE?.access, guestLink = !!SHARE || /^#(jam|work)=/.test(location.hash);
+    if (GEN && window.LIVE?.me && A0 && !A0.gen && !A0.full && !guestLink) {
       view = 'signin'; $('#su-done')?.remove(); $('#buddy')?.remove(); window.scrollTo(0, 0);
+      const me = window.LIVE.me.email, h = A0.host || B.brand.host, n = esc(B.brand.name), free = FREE_MAIL.test(String(me).split('@')[1] || '');
       root.innerHTML = `<main class="screen sign-wall"><div class="sw-card">
         <div class="sw-mark"><img src="${B.brand.mark}" alt=""></div>
-        <span class="sw-ok">${ic('check', 's14')}${esc(B.brand.name)} is read</span>
-        <h1>The moves are for ${esc(B.brand.name)}${/s$/i.test(B.brand.name || '') ? '’' : '’s'} team</h1>
-        <p>${A0.claimed ? `${esc(B.brand.name)} is on Brew. Ask its team to invite you.` : `Brew writes the moves once someone signs in with a work email at ${esc(A0.host || B.brand.host)}.`} You’re signed in as ${esc(window.LIVE.me.email)}.</p>
-        <a class="btn btn-primary lg sw-go" href="${workEmailHref()}">Switch to your work email</a>
-        <div class="cx-btns"><button class="btn btn-ghost" data-demofeed>Open the demo feed</button><a class="btn btn-ghost" href="${DEMO_STORES}" target="_blank" rel="noopener">See demo stores</a></div></div></main>`;
-      $('[data-demofeed]').onclick = () => { view = 'feed'; feed(); };
+        <h1>${n} is for ${n}${/s$/i.test(B.brand.name || '') ? '’' : '’s'} team</h1>
+        <p>${free ? `A personal email like ${esc(me)} can’t open a brand.` : `You’re signed in as ${esc(me)}, which isn’t on ${n}${/s$/i.test(B.brand.name || '') ? '’' : '’s'} team.`} ${A0.claimed ? `Sign in with your work email at ${esc(h)}, or ask the team to invite you.` : `Sign in with your work email at ${esc(h)} to open it.`}</p>
+        <p>Just looking around? The demo stores show Brew end to end, with nothing to set up.</p>
+        <a class="btn btn-primary lg sw-go" href="${DEMO_STORES}">See demo stores</a>
+        <div class="cx-btns"><a class="btn btn-ghost" href="${workEmailHref()}">Switch to your work email</a></div></div></main>`;
       return true;
     }
     if (!needSignin()) return false;

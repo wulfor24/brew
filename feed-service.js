@@ -2357,6 +2357,7 @@ export function createFeedService(o) {
       /* the onboarding stream replays the brand's whole read (its findings): outside the team it only says it is ready */
       if (/^\/api\/tenants\/[^/]+\/onboarding$/.test(u.pathname)) { res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store' }); res.end(`data: ${JSON.stringify({ type: 'ready', teamOnly: true })}\n\n`); return true; }
       if (/^\/api\/tenants\/[^/]+\/(deck|pulse|engine|remixes|learning|ask|tuning)$/.test(u.pathname)) { send(res, 200, { teamOnly: true }); return true; }
+      if (/^\/api\/tenants\/[^/]+\/ai-answers$/.test(u.pathname)) { send(res, 200, { ai: null, teamOnly: true }); return true; } /* the AI answers ring is the team's, like stories */
       const bareCard = /^\/api\/cards\/([^/]+)$/.exec(u.pathname), guestCard = bareCard && viewer?.email && (JAMS.peek(br.slug)?.work || []).some((w) => JAMS.guestWids(br.slug, viewer.email).includes(w.id) && w.cardId === decodeURIComponent(bareCard[1]));
       if (/^\/api\/cards\//.test(u.pathname) && !guestJam && !guestCard && !(t0 && viewer?.email && guestOk(t0, viewer.email, u.pathname))) { send(res, viewer?.email ? 403 : 401, { error: 'This brand’s cards are for its team.', team: true, signin: !viewer?.email }); return true; }
     }
