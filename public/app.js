@@ -4301,7 +4301,10 @@
   const tbOpen = () => { if (!tbWork()) return toast('Open the jam first, then share its brief.'); RX.stage = 'brief'; RX.tbEdit = null; paintStudio(); $('.tbm-scroll')?.scrollTo?.(0, 0); if (!TBS.brief || TBS.for !== tbWork().id || TBS.brief.stale) tbLoad(); };
   /* the brief starts writing the moment the jam opens (Param, 23 Oct), so Brief is ready when it's tapped; once the first draft is in */
   const tbAuto = (ch) => { const w = tbWork(); if (!w || ch.copyPending || TBS.busy) return; if (TBS.for !== w.id || (!TBS.brief && !TBS.err)) return tbLoad();
-    if (TBS.brief && TBS.head && ch.head && TBS.head !== ch.head) tbLoad(); }; /* a new version of the ad: the brief follows it (Param, 23 Oct: it stayed on v1) */
+    if (TBS.brief && TBS.head && ch.head && TBS.head !== ch.head) return tbLoad();
+    /* a teammate changed the brief (its stamp moved), or the jam brief moved while the brief is on the stage */
+    if (TBS.brief && w.teamBrief?.rev && TBS.brief.rev && w.teamBrief.rev > TBS.brief.rev) return tbLoad();
+    if (TBS.brief && RX.stage === 'brief' && w.doc?.rev != null && TBS.brief.docRev != null && w.doc.rev !== TBS.brief.docRev) tbLoad(); }; /* a new version of the ad: the brief follows it (Param, 23 Oct: it stayed on v1) */
   /* change the brief with AI: a selection, a tapped part or a chat line; the parts it changed light up for a moment */
   const tbAi = async (ask, quote = '') => { const w = tbWork(); if (!w || RX.tbAi) return; RX.tbAi = true; paintStudio();
     const r = await tapi('POST', `/api/work/${w.id}/team-brief/ai`, { ask, quote }).catch((er) => ({ error: er.message })); RX.tbAi = false;

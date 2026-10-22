@@ -28,7 +28,7 @@ const fmtM = (m) => { if (!m?.metric) return '';
   const u = (v) => (v == null ? '' : /^(₹|\$|£|€)$/.test(m.unit || '') ? `${m.unit}${Math.round(v).toLocaleString(m.unit === '₹' ? 'en-IN' : 'en-US')}` : m.unit === '%' ? `${(+v).toFixed(1)}%` : `${v}${m.unit && m.unit !== 'x' ? ' ' + m.unit : m.unit === 'x' ? 'x' : ''}`);
   return `${m.metric}${m.baseline != null ? `: from ${u(m.baseline)}` : ''}${m.target != null ? `${m.baseline != null ? ' to' : ', target'} ${u(m.target)}` : ''}${m.window ? `, read after ${m.window} days` : ''}.`; };
 
-export function createTeamBrief({ claudeTool, isMock = () => true, spend = () => false, clean = (x) => x, now = () => Date.now(), handoff, proofOf = () => null, log = console }) {
+export function createTeamBrief({ onEdit = null, claudeTool, isMock = () => true, spend = () => false, clean = (x) => x, now = () => Date.now(), handoff, proofOf = () => null, log = console }) {
   /* the files that go with it: the package's own pictures and videos (a rival's are never ours: handoff leaves them out) */
   const creativesOf = (x) => { const seen = new Set();
     return (x.pkg?.assets || []).filter((a) => (a.kind === 'image' || a.kind === 'video') && ownPath(a.url)).filter((a) => { const n = ownPath(a.url); if (seen.has(n)) return false; seen.add(n); return true; })
@@ -103,7 +103,7 @@ export function createTeamBrief({ claudeTool, isMock = () => true, spend = () =>
     return { tb: w.teamBrief, x }; };
   const view = (w, x) => { const tb = w.teamBrief; if (!tb) return null;
     const ov = tb.over || {};
-    return { title: ov.title || tb.title, at: tb.at, ai: tb.ai, version: tb.version, stale: !!x && keyOf(w, x) !== tb.key, brand: tb.brand || '', mark: tb.mark || null,
+    return { rev: tb.rev || tb.at || 0, docRev: w.doc?.rev || 0, title: ov.title || tb.title, at: tb.at, ai: tb.ai, version: tb.version, stale: !!x && keyOf(w, x) !== tb.key, brand: tb.brand || '', mark: tb.mark || null,
       memo: { from: ov.from || tb.memo?.from || null, to: ov.to || tb.memo?.to || 'Your team', due: String(ov.due || '').replace(/^(?:due|deadline)\s*:\s*/i, '') || w.doc?.plan?.when || null, ref: w.ticket || null },
       sections: SECTIONS.map(([k, h]) => ({ k, h, t: tb.edits[k] ?? tb.auto[k] ?? '', edited: tb.edits[k] != null, locked: k === 'words' })), evidence: tb.evidence, creatives: tb.creatives, pdf: tb.pdf }; };
 
@@ -151,6 +151,10 @@ export function createTeamBrief({ claudeTool, isMock = () => true, spend = () =>
   const setPart = (tb, k, v) => { v = String(v ?? '').trim().slice(0, 4000);
     if (['title', 'from', 'to', 'due'].includes(k)) { v = v.replace(/^(?:from|to|due|deadline|title)\s*:\s*/i, ''); tb.over = tb.over || {}; if (v) tb.over[k] = v; else delete tb.over[k]; return; }
     if (v && v !== tb.auto[k]) tb.edits[k] = v; else delete tb.edits[k]; };
+  /* every change stamps the brief: a teammate's open jam sees the new stamp on its next poll and reloads it */
+  const touch = (t, w) => { if (w.teamBrief) w.teamBrief.rev = Math.max(now(t), (w.teamBrief.rev || 0) + 1); w.updatedAt = now(t); };
+  /* the jam brief took the same change: the team brief already holds it, so it follows without being written again */
+  const follow = (t, w) => { const tb = w.teamBrief; if (!tb?.key) return; tb.key = tb.key.replace(/\|\d+$/, `|${w.doc?.rev || 0}`); touch(t, w); };
   const aiEdit = async (t, w, { ask, quote = '', recent = [] } = {}) => {
     ask = one(ask, 600); quote = one(quote, 600); if (!ask) return { error: 'Say what should change.' };
     if (!w.teamBrief) await build(t, w); const v = view(w, null), cur = { title: v.title, from: v.memo.from || `${v.brand} team`, to: v.memo.to, due: v.memo.due || 'To confirm', ...Object.fromEntries(v.sections.map((x) => [x.k, x.t])) };
@@ -166,7 +170,7 @@ export function createTeamBrief({ claudeTool, isMock = () => true, spend = () =>
     changes = changes.filter((c) => c.t && c.t !== cur[c.k]);
     if (!changes.length) return { brief: view(w, null), changed: [], said: words ? 'The final words come from the ad itself: change them on the Creative side and the brief follows.' : 'Nothing in the brief needed to change for that.' };
     for (const c of changes) setPart(w.teamBrief, c.k, c.t);
-    w.teamBrief.pdf = null; w.updatedAt = now(t);
+    w.teamBrief.pdf = null; touch(t, w); onEdit?.(t, w, { ask, quote, recent, said });
     return { brief: view(w, null), changed: changes.map((c) => c.k), said: said || `Changed in the brief: ${changes.map((c) => NAME[c.k]).join(', ')}.` }; };
   /* a chat line meant for the brief, from what it says, never from which side is open (Param, 23 Oct: "context-driven"): one
      that names the brief, or sets a plain fact of it (owner, budget, due date, audience, specs) */
@@ -187,9 +191,9 @@ export function createTeamBrief({ claudeTool, isMock = () => true, spend = () =>
     on('POST', '/api/work/:wid/team-brief/edit', async (b, t, p) => { const w = W(t, p.wid); if (!w?.teamBrief) return { error: 'not found' };
       const k = String(b.k || ''); if (!SECTIONS.some(([s]) => s === k) || k === 'words') return { error: 'That part can’t be edited here.' };
       const tx = String(b.t ?? '').trim().slice(0, 4000); if (tx && tx !== w.teamBrief.auto[k]) w.teamBrief.edits[k] = tx; else delete w.teamBrief.edits[k];
-      w.teamBrief.pdf = null; w.updatedAt = now(t); return { brief: view(w, null) }; });
+      w.teamBrief.pdf = null; touch(t, w); if (tx) onEdit?.(t, w, { ask: `${NAME[k]}: ${tx}` }); return { brief: view(w, null) }; });
     on('POST', '/api/work/:wid/team-brief/evidence', async (b, t, p) => { const w = W(t, p.wid); if (!w?.teamBrief) return { error: 'not found' };
-      const i = +b.i; if (!(i >= 0 && i < w.teamBrief.evidence.length)) return { error: 'not found' }; w.teamBrief.evidence.splice(i, 1); w.teamBrief.pdf = null; return { brief: view(w, null) }; });
+      const i = +b.i; if (!(i >= 0 && i < w.teamBrief.evidence.length)) return { error: 'not found' }; w.teamBrief.evidence.splice(i, 1); w.teamBrief.pdf = null; touch(t, w); return { brief: view(w, null) }; });
     /* the PDF, made once per state of the brief and kept in gen/ */
     on('POST', '/api/work/:wid/team-brief/pdf', async (b, t, p) => { const w = W(t, p.wid); if (!w) return { error: 'not found' };
       const { x } = await build(t, w); const v = view(w, x); if (w.teamBrief.pdf && !b.fresh) return { pdf: w.teamBrief.pdf, brief: v };
@@ -197,5 +201,5 @@ export function createTeamBrief({ claudeTool, isMock = () => true, spend = () =>
         w.teamBrief.pdf = { url: `gen/${name}`, name: fileName(v), bytes: buf.length, at: now(t) }; return { pdf: w.teamBrief.pdf, brief: view(w, x) }; }
       catch (e) { log.warn?.('[team brief pdf]', e.message); return { error: 'The PDF didn’t come together. Try again.' }; } });
   };
-  return { build, view, routes, pdfHtml, aiEdit, isBriefAsk };
+  return { build, view, routes, pdfHtml, aiEdit, isBriefAsk, follow };
 }

@@ -2178,7 +2178,11 @@ export function createFeedService(o) {
   };
   HO = createHandoff({ RMX: { packageOf: (...a) => RMX?.packageOf(...a) }, pageOf, fillCard, AGENT, SEED });
   /* the team brief: what the people who make it work from, on the studio's stage, as a PDF, or as an email draft (team-brief.js) */
-  TB = createTeamBrief({ claudeTool, isMock, spend, clean, now, log, handoff: HO, proofOf: (t, w) => (w.cardId ? proofSay(t, w.cardId) : null) }); TB.routes({ on, W });
+  /* a change to the team brief on the stage goes into the jam brief too (the Brief tab), in the background, so both say the same */
+  const tbToJam = (t, w, { ask, quote, recent, said }) => { if (!JB?.edit) return;
+    const text = `${quote ? `In the part that says "${String(quote).slice(0, 300)}": ` : ''}${ask}${said ? `\n(Already done in the team brief: ${said})` : ''}${recent?.length ? `\nThe chat just before:\n${recent.slice(-3).map((l) => `- ${String(l.text).slice(0, 200)}`).join('\n')}` : ''}`;
+    JB.edit(t, w, text, { who: meOf(t)?.name || 'You', mode: 'hear' }).then((r) => { if (r?.changed?.length) TB.follow(t, w); }).catch((e) => log.warn('[team brief → jam brief]', e.message)); };
+  TB = createTeamBrief({ onEdit: tbToJam, claudeTool, isMock, spend, clean, now, log, handoff: HO, proofOf: (t, w) => (w.cardId ? proofSay(t, w.cardId) : null) }); TB.routes({ on, W });
   setupOn();
   // the option you went with on the card page travels with every handoff
   on('POST', '/api/work/:wid/decided', async (b, t, p) => { const w = W(t, p.wid); if (!w) return { error: 'not found' }; w.decided = b.id || null; if (b.id) stepLearn(t, w, 'decided'); if (w.cardId) { t.decided ||= {}; if (b.id) t.decided[w.cardId] = b.id; else delete t.decided[w.cardId]; } return { work: w }; });

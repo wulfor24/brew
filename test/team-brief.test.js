@@ -71,3 +71,13 @@ test('a follow-up goes to the brief when the chat just before was about it', () 
   assert.ok(!TB.isBriefAsk('yeah, change it to Sep 17th', ad));
   assert.ok(!TB.isBriefAsk('make the photo warmer', about));
 });
+
+test('every change stamps the brief and is handed to the jam brief; the jam brief following it never rewrites the team brief', async () => {
+  const seen = []; let t0 = 10;
+  const TB = createTeamBrief({ isMock: () => true, now: () => t0++, handoff: { build: async () => X }, onEdit: (t, w, e) => seen.push(e.ask) });
+  const w = { id: 'w1', doc: { rev: 2, plan: { audience: 'Women 25-45' } } }; await TB.build({}, w); const r0 = TB.view(w, null).rev;
+  const r = await TB.aiEdit({}, w, { ask: 'Men 30-50', quote: 'Women 25-45' });
+  assert.ok(r.brief.rev > r0); assert.deepEqual(seen, ['Men 30-50']);
+  w.doc.rev = 3; TB.follow({}, w); const { x } = await TB.build({}, w);
+  assert.match(w.teamBrief.key, /\|3$/); assert.equal(TB.view(w, x).sections.find((s) => s.k === 'who').t, 'Men 30-50');
+});
