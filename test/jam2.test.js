@@ -115,3 +115,16 @@ test('creative engine: the best candidate that keeps the product wins; none kept
   await mk({ engines: eng2, claudeTool: async (pr) => { asked = pr; return { family: 'product hero', moment: 'm', zone: 'top' }; } }).staticAd({ ...ctx, bbv: { ...ctx.bbv, styleRefs: [{ src: 'https://x/ig1.jpg' }, { src: 'https://x/ig2.jpg' }], comfort: { people: 'hands' } } }, { id: 'b1', recipe: 'image-ad', label: 'Image ad' }, { headline: 'x' }, { ratio: '4:5', w: 1080, h: 1350 });
   assert.match(prompts[0], /brand's own published photos/); assert.equal(specs[0].refFiles.length, 3); assert.match(asked, /Hands only/);
 });
+
+test('higgsfield layer: inputs fit each workflow schema, the nearest frame is asked for, prices come from estimate or formula', async () => {
+  const { createHiggsfield, fitInput, nearestRatio } = await import('../jam2/higgsfield.js');
+  const f = fitInput('kling-video/v3.0/std/image-to-video', { prompt: 'p', image_url: 'https://x/a.jpg', duration: 99, bogus: 1, sound: 'loud' });
+  assert.equal(f.input.duration, 15); assert.equal(f.input.bogus, undefined); assert.match(f.problems.join(), /sound/);
+  assert.match(fitInput('kling-video/v3.0/std/image-to-video', { prompt: 'p' }).problems.join(), /image_url is required/);
+  assert.equal(nearestRatio('marketing-studio/image/flare', '4:5'), '3:4'); assert.equal(nearestRatio('marketing-studio/image/flare', '9:16'), '9:16');
+  let posted = null; const fetchImpl = async (url, o) => { posted = url; return { ok: true, json: async () => (/kling/.test(url) ? { type: 'estimate', usd: '0.536', discount: { usd: '0.095' } } : { type: 'description' }) }; };
+  const hf = createHiggsfield({ env: { HF_API_KEY_ID: 'a', HF_API_KEY_SECRET: 'b' }, fetchImpl });
+  assert.equal((await hf.estimate('kling-video/v3.0/std/image-to-video', { prompt: 'p', image_url: 'https://x/a.jpg', duration: 5 })).usd, 0.441); assert.match(posted, /\/estimate\/kling-video/);
+  assert.equal((await hf.estimate('marketing-studio/image/flare', { prompt: 'p', resolution: '2k' })).usd, 0.1);
+  assert.equal(hf.pick('product-shot').id, 'marketing-studio/image/flare'); assert.equal(hf.pick('product-motion', 'premium').id, 'kling-video/v3.0/pro/image-to-video');
+});

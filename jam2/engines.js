@@ -7,6 +7,7 @@
 //   higgsfield  api.higgsfield.ai queue: POST /<model> { ...input } → request_id → /requests/<id>/status (HF_API_KEY_ID/SECRET)
 //   local       free: background cut-out (@imgly/background-removal-node when installed)
 //   fal, heygen, elevenlabs   not connected yet (their keys are not set); the router skips them
+import { createHiggsfield } from './higgsfield.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -71,14 +72,27 @@ export function createEngines({ geminiImage, vertexVideo, vertexVoice, vertexMus
         const b = await fetchImpl(out, { signal: AbortSignal.timeout(180e3) }); if (!b.ok) throw new Error(`Higgsfield output could not be fetched (${b.status})`); return { buf: Buffer.from(await b.arrayBuffer()), type: b.headers.get('content-type') || '', id }; } }
     throw Object.assign(new Error('Higgsfield is still working on it; Brew will check again'), { open: true, id });
   };
-  /* a shoot is quoted at the ceiling (Gemini's price, the fallback) so falling back never costs more than shown; Higgsfield bills ~$0.08–0.10 */
-  const hfImage = (cap) => ({ quote: () => ({ usd: cap === 'still.shot' ? H.usd.shot ?? H.usd.still : H.usd.still }), run: async (s) => { const urls = [s.srcUrl, ...(s.refUrls || [])].filter(Boolean).map(pub);
-    /* Marketing Studio has no 4:5 or 5:4: the nearest frame, and the layout's cover fit trims the rest */
-    const out = await hfCall(H.models[cap], { prompt: s.prompt, quality: 'high', resolution: '2k', aspect_ratio: ({ '4:5': '3:4', '5:4': '4:3' })[s.ratio] || s.ratio || 'auto', image_urls: urls, enhance_prompt: false, moderation: 'auto' });
-    return { file: keep(out.buf, /jpe?g/.test(out.type) ? 'jpg' : 'png'), model: H.models[cap], usd: cap === 'still.shot' ? 0.1 : H.usd.still, provider: 'higgsfield' }; } });
-  const hfVideo = (cap) => ({ quote: (s) => ({ usd: +(H.usd.videoPerSecond * (s.seconds || 5)).toFixed(2) }), run: async (s) => { const urls = [s.srcUrl, ...(s.refUrls || [])].filter(Boolean).map(pub);
-    const out = await hfCall(H.models[cap], { prompt: s.prompt, image_url: urls[0], image_urls: urls, duration: s.seconds || 5, aspect_ratio: s.ratio || '9:16' }, { maxMs: 20 * 60e3 });
-    return { file: keep(out.buf, 'mp4'), model: H.models[cap], usd: +(H.usd.videoPerSecond * (s.seconds || 5)).toFixed(2), provider: 'higgsfield' }; } });
+  /* the routed offerings (jam2/higgsfield.js + data/higgsfield-routes.json): each job's best workflow, its input fitted to the
+     workflow's schema and priced by Higgsfield's own estimate before anything runs */
+  const HF = createHiggsfield({ env, fetchImpl, log });
+  const tierOf = (s) => (s.tier === 'premium' || s.tier === 'preview' ? s.tier : 'default');
+  const shotInput = (s) => { const o = HF.pick('product-shot', tierOf(s)); const urls = [s.srcUrl, ...(s.refUrls || [])].filter(Boolean).map(pub);
+    return { o, input: { ...o.input, prompt: s.prompt, image_urls: urls, aspect_ratio: HF.nearestRatio(o.id, s.ratio || '1:1') } }; };
+  const hfImage = (cap) => cap === 'still.shot'
+    ? { quote: async (s) => { const { o, input } = shotInput(s); const e = await HF.estimate(o.id, input); return { usd: e.usd ?? H.usd.shot ?? H.usd.still, model: o.id }; },
+        run: async (s) => { const { o, input } = shotInput(s); const e = await HF.estimate(o.id, input); const out = await HF.run(o.id, input);
+          return { file: keep(out.buf, /jpe?g/.test(out.type) ? 'jpg' : 'png'), model: o.id, usd: e.usd ?? H.usd.shot, provider: 'higgsfield' }; } }
+    : { quote: () => ({ usd: H.usd.still }), run: async (s) => { const urls = [s.srcUrl, ...(s.refUrls || [])].filter(Boolean).map(pub);
+        const out = await hfCall(H.models[cap], { prompt: s.prompt, quality: 'high', resolution: '2k', aspect_ratio: HF.nearestRatio(H.models[cap], s.ratio || '1:1'), image_urls: urls, enhance_prompt: false, moderation: 'auto' });
+        return { file: keep(out.buf, /jpe?g/.test(out.type) ? 'jpg' : 'png'), model: H.models[cap], usd: H.usd.still, provider: 'higgsfield' }; } };
+  /* a video shot: Kling 3.0 from the shot's first frame (product-motion), or a person with the product (ugc-video, Seedance) */
+  const vidInput = (cap, s) => { const job = cap === 'video.ugc' ? 'ugc-video' : 'product-motion', o = HF.pick(job, tierOf(s)); const urls = [s.srcUrl, ...(s.refUrls || [])].filter(Boolean).map(pub);
+    const input = job === 'ugc-video' ? { ...o.input, prompt: s.prompt, image_urls: urls, duration: Math.max(4, Math.round(s.seconds || 8)), aspect_ratio: HF.nearestRatio(o.id, s.ratio || '9:16') }
+      : { ...o.input, prompt: s.prompt, image_url: urls[0], duration: Math.max(3, Math.round(s.seconds || 5)) };
+    return { o, input }; };
+  const hfVideo = (cap) => ({ quote: async (s) => { const { o, input } = vidInput(cap, s); const e = await HF.estimate(o.id, input); return { usd: e.usd ?? +(H.usd.videoPerSecond * (s.seconds || 5)).toFixed(2), model: o.id }; },
+    run: async (s) => { const { o, input } = vidInput(cap, s); const e = await HF.estimate(o.id, input); const out = await HF.run(o.id, input, { maxMs: 20 * 60e3 });
+      return { file: keep(out.buf, 'mp4'), model: o.id, usd: e.usd ?? +(H.usd.videoPerSecond * (s.seconds || 5)).toFixed(2), provider: 'higgsfield' }; } });
   const higgsfield = { id: 'higgsfield', label: 'Higgsfield', live: () => !!hfAuth(),
     caps: { 'still.full': hfImage('still.full'), 'still.shot': hfImage('still.shot'), 'still.scene': hfImage('still.scene'), 'still.edit': hfImage('still.edit'), 'video.shot': hfVideo('video.shot'), 'video.ugc': hfVideo('video.ugc'),
       'cast.create': { quote: () => ({ usd: H.usd.cast }), run: async (s) => { const out = await hfCall(H.models['cast.create'], { tier: 'normal', brief: s.prompt || '', image_url: s.srcUrl ? pub(s.srcUrl) : null, selection: {}, item_image_urls: [], variation_index: 0 }); return { file: keep(out.buf, 'png'), model: H.models['cast.create'], usd: H.usd.cast, provider: 'higgsfield' }; } } } };
