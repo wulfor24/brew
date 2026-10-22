@@ -455,6 +455,8 @@
     return `Found ${t.toLowerCase() || 'something'} for ${n}`; };
   /* a font's family name only (reader/stages/brand.js fontName): reads saved before 22 Oct can carry Google Fonts weights ("Cormorant:100,100italic,…") */
   const fontOnly = (v) => { let f = String(v ?? ''); try { f = decodeURIComponent(f); } catch (e) {} f = f.replace(/\+/g, ' ').split(/[|&]/)[0].split(/[:@;]/)[0].replace(/["']/g, '').replace(/\s+/g, ' ').trim(); return f.slice(0, 60).trim(); };
+  /* a read step's line as saved: the brand step ends with the font, which older reads saved with its Google Fonts weights */
+  const stepLine = (t) => String(t ?? '').replace(/(\b[A-Za-z][\w .-]*?)(?::|%3A)[0-9][0-9a-z,|:%@;+ .-]*$/i, '$1');
   const scrCard = (c) => {
     let body = '';
     if (c.kind === 'text') body = `<p class="fc-p">${esc(c.p)}</p>`;
@@ -560,7 +562,7 @@
       if (ev.type === 'step' && ev.state === 'reading' && li) { li.classList.add('reading'); if (!li.querySelector('.spin')) li.querySelector('.dot').innerHTML = '<brew-load class="spin"></brew-load>'; li.querySelector('span:last-child').textContent = `Reading ${ev.tick}`; }
       if (ev.type === 'finding') { $('#scr').insertAdjacentHTML('beforeend', scrCard(ev.finding)); const el = $('#scr').lastElementChild; el.classList.add('fresh'); $$('#scr .scr.fresh').forEach((x) => x !== el && x.classList.remove('fresh')); if (!$('#qfull')) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); if (ev.say && !$('#qfull')) setTimeout(() => fly(el, ev.say), 350); if ($$('#scr .scr').length >= 6) askBar(); qPaint(); }
       if (ev.type === 'agent') { const row = $(`.agent-row[data-a="${ev.agent}"]`); if (row) { row.classList.add('on'); row.querySelector('.st').textContent = 'Has ideas ready'; } }
-      if (ev.type === 'step' && ev.state === 'done' && li) { li.classList.remove('reading'); li.classList.add('done'); li.classList.toggle('empty', !!ev.empty); li.querySelector('.dot').innerHTML = ic(ev.empty ? 'minus' : 'check', 's14'); li.querySelector('span:last-child').textContent = ev.done; qPaint(); } /* a step that found nothing or could not finish gets a dash, never a tick */
+      if (ev.type === 'step' && ev.state === 'done' && li) { li.classList.remove('reading'); li.classList.add('done'); li.classList.toggle('empty', !!ev.empty); li.querySelector('.dot').innerHTML = ic(ev.empty ? 'minus' : 'check', 's14'); li.querySelector('span:last-child').textContent = stepLine(ev.done); qPaint(); } /* a step that found nothing or could not finish gets a dash, never a tick */
       if (ev.type === 'error') { failed = true; es.close(); buddy.remove(); qClose(); $('#skip')?.remove(); const hd = $('.su-head h2'); if (hd) hd.textContent = `We couldn’t read ${B.brand.name}`; /* no "Reading …", no Skip ahead into an empty feed */ $$('#su-ask,#su-wait').forEach((x) => x.remove()); $$('.step.reading').forEach((el) => { el.classList.remove('reading'); el.querySelector('.dot').innerHTML = ic('minus', 's14'); });
         $$('.agent-row').forEach((r) => { r.classList.remove('on'); r.querySelector('.st').textContent = 'Nothing read'; }); /* nothing was read, so no agent has ideas */
         document.body.insertAdjacentHTML('beforeend', `<div class="su-done" id="su-done"><div><b>We couldn’t read ${esc(B.brand.name)}.</b><span>${esc(readFail(ev.msg))}</span></div><button class="btn btn-primary lg" id="su-next">Back to the start</button></div>`);
@@ -571,7 +573,7 @@
       if (readIn) return; readIn = true; $$('.agent-row').forEach((r) => { r.classList.add('on'); r.querySelector('.st').textContent = 'Has ideas ready'; });
       buddy.style.opacity = 0; await wait(500); if (skipped) return; buddy.remove();
       // a brand read earlier can say "ready" before any step: show what was read, not seven "Queued" rows and 0 findings
-      steps.forEach((x, i) => { const el = $(`.step[data-i="${i}"]`); if (el && !el.classList.contains('done')) { const empty = x.state === 'empty'; el.classList.remove('reading'); el.classList.add('done'); el.classList.toggle('empty', empty); el.querySelector('.dot').innerHTML = ic(empty ? 'minus' : 'check', 's14'); el.querySelector('span:last-child').textContent = x.done || (empty ? 'Nothing found' : 'Done'); } });
+      steps.forEach((x, i) => { const el = $(`.step[data-i="${i}"]`); if (el && !el.classList.contains('done')) { const empty = x.state === 'empty'; el.classList.remove('reading'); el.classList.add('done'); el.classList.toggle('empty', empty); el.querySelector('.dot').innerHTML = ic(empty ? 'minus' : 'check', 's14'); el.querySelector('span:last-child').textContent = stepLine(x.done) || (empty ? 'Nothing found' : 'Done'); } });
       if (!$$('#scr .scr').length && cards.length) $('#scr').innerHTML = cards.map(scrCard).join('');
       qPaint(); askBar(); readyGo();
     };

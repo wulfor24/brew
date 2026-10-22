@@ -21,3 +21,12 @@ test('the kit card cleans what it shows and never lets the name run out of the c
   assert.match(app, /tn = fontOnly\(c\.typeName \|\| B\.brand\.typeName\)/);
   assert.match(css, /\.fc-type span\{[^}]*text-overflow:ellipsis[^}]*white-space:nowrap/); assert.match(css, /\.fc-type\{[^}]*min-width:0/);
 });
+
+test('a read step saved with the weights shows the family only', () => {
+  const app = fs.readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
+  const src = app.match(/const stepLine = (\(t\) => .+?);\n/)[1], stepLine = eval(src);
+  assert.equal(stepLine('1 logo, 3 colours, Cormorant:100,100italic,200,900italic'), '1 logo, 3 colours, Cormorant');
+  assert.equal(stepLine('1 logo, 2 colours, Raleway:100,700italic|Raleway:100,300'), '1 logo, 2 colours, Raleway');
+  assert.equal(stepLine('84 pages, 3 sitemaps, 1 key page'), '84 pages, 3 sitemaps, 1 key page');
+  assert.equal((app.match(/textContent = stepLine\(/g) || []).length, 2, 'both places a step line lands');
+});
