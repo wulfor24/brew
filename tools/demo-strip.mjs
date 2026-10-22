@@ -46,7 +46,7 @@ if (plain) { const bad = new Set(privCards.map(plainKey)); let n = 0;
 
 /* the canary: every real figure a connected account wrote (₹50.3 L, ₹780, 1.95x …) and the names on its cards */
 const canary = new Set();
-for (const e of ledger) if (/^account:/.test(e?.method || '') && typeof e.v === 'string' && /\d/.test(e.v) && e.v.length >= 4) for (const part of e.v.split(/;\s*/)) if (part.length >= 4) canary.add(part.trim());
+for (const e of ledger) if (/^account:/.test(e?.method || '') && typeof e.v === 'string' && /\d/.test(e.v) && e.v.length >= 4) for (const part of e.v.split(/;\s*/)) if (part.length >= 4) { canary.add(part.trim()); const nm = part.split(': ')[0].trim(); if (nm !== part.trim() && nm.length >= 6) canary.add(nm); } /* a campaign row also by its bare name */
 for (const c of live.flatMap((d) => d?.cards || [])) for (const [label, v] of c.rows || []) if (/^(From|To|Campaign|Tired ad)/.test(label) && typeof v === 'string') canary.add(v.split(' · ')[0].trim());
 fs.writeFileSync(path.join(dir, 'canary.txt'), [...canary].filter((x) => x.length >= 4).join('\n') + (canary.size ? '\n' : ''));
 out.canary = canary.size;

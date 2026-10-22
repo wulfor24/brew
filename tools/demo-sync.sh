@@ -27,12 +27,15 @@ for slug in "$@"; do
   # generated images the public pack points at (drafts, statics, studio) live in the bucket's shared gen/ folder: copy the
   # missing ones. Only public JSON is scanned: an image made in a team-only jam never reaches the demo bucket
   SRCB="${SRC%/brands}"; DSTB="${DST%/brands}"
-  for j in $(gcloud storage ls "$SRC/$slug/**.json" 2>/dev/null | grep -vE "/$slug/(private|memory|spend|demo)/"); do gcloud storage cat "$j" 2>/dev/null; done \
+  gcloud storage rsync -r "$SRC/$slug" "$W/src" --exclude='.*/?(private|memory|spend|demo)/.*|.*\.(png|jpg|jpeg|webp|gif|svg|mp4|wav|pdf|zip)$' --quiet 2>/dev/null || true
+  find "$W/src" -name '*.json' -exec cat {} + 2>/dev/null \
     | grep -oE 'gen/[A-Za-z0-9_-]+\.(png|jpg|jpeg|webp|mp4|wav|zip)' | sort -u > "$W/gen.txt" || true
   while read -r g; do [ -n "$g" ] && { gcloud storage cp -n "$SRCB/$g" "$DSTB/$g" --quiet 2>/dev/null || true; }; done < "$W/gen.txt"
   # the canary: none of the team's real numbers or campaign names may be in the demo copy
   if [ -s "$W/canary.txt" ]; then
-    gcloud storage cat "$DST/$slug/**.json" 2>/dev/null > "$W/demo-all.json" || true
+    # scraped pages (raw/) are other sites' own words (a rival's ₹780 price is not ours): every other JSON is checked
+    gcloud storage rsync -r "$DST/$slug" "$W/demo" --exclude='^raw/.*|.*\.(png|jpg|jpeg|webp|gif|svg|mp4|wav|pdf|zip)$' --quiet 2>/dev/null || true
+    find "$W/demo" -name '*.json' -exec cat {} + > "$W/demo-all.json" 2>/dev/null || true
     if grep -F -f "$W/canary.txt" "$W/demo-all.json" > "$W/hits.txt"; then
       echo "the team's numbers are in the demo copy of $slug:"; grep -o -F -f "$W/canary.txt" "$W/demo-all.json" | sort | uniq -c | head -20; exit 1; fi
     echo "canary clean ($(wc -l < "$W/canary.txt" | tr -d ' ') values checked)"
