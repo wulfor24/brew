@@ -69,7 +69,7 @@
 .j2-art .j2-l.sel{outline:4px solid #2563eb;outline-offset:6px}
 .j2-art .j2-shape{pointer-events:none}
 .j2-art.bgsel{outline:3px solid #2563eb;outline-offset:2px}
-.j2-art.area{cursor:crosshair}
+.j2-art.area{cursor:crosshair;touch-action:none}
 .j2-art.area .j2-l{pointer-events:none}
 .j2-box{position:absolute;border:2px dashed #2563eb;background:rgba(37,99,235,.15);pointer-events:none;z-index:50}
 .j2-busy{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.55);z-index:40;font-size:13px;color:#141414;gap:8px}

@@ -54,3 +54,16 @@ test('a video storyboard: timeline edits are free and keep a quote', async () =>
   await m.edit(ctxOf(jam), b, { patch: { timeline: tl } }); assert.equal(headOf(b).timeline.shots[0].vo, 'New line'); assert.equal(headOf(b).timeline.voice, 'Puck'); assert.ok(headOf(b).quote);
 });
 test('every recipe has a kind the page draws', () => { const KNOWN = new Set(['static', 'carousel', 'video', 'post', 'message', 'page', 'script', 'creator', 'shoot', 'act', 'table']); for (const r of RECIPES) assert.ok(KNOWN.has(r.kind), r.id); });
+test('a scene can’t carry script or outside files: styles are whitelisted, page patches keep only the board’s own pictures', async () => {
+  const { sceneBody } = await import('../public/jam2/scene.js');
+  const h = sceneBody({ w: 10, h: 10, bg: { color: 'red" onload="x' }, layers: [{ id: 'a', kind: 'text', words: '<b>', style: { color: 'x" onmouseover="alert(1)', font: 'A;b:url(x)', bg: 'url(http://x)' } }] });
+  assert.doesNotMatch(h, /onmouseover|onload|url\(|<b>/);
+  const m = maker(), jam = newJam({ card: { id: 'c', title: 'Ad' }, owner: 'team', plan: [{ recipe: 'image-ad' }] }), b = jam.boards[0];
+  b.takes.push({ id: 't1', n: 1, words: {}, scene: { w: 100, h: 100, bg: { src: 'gen/bg.jpg' }, kit: {}, layers: [{ id: 'p', kind: 'product', src: 'gen/cut.png', x: 1, y: 1, w: 10, h: 10 }] } }); b.head = 't1';
+  await m.edit(ctxOf(jam), b, { patch: { scene: { w: 9999, h: 1, bg: { src: '/b/other-brand/a/x.jpg' }, layers: [{ id: 'p', kind: 'product', src: 'gen/cut.png', x: 5, y: 1, w: 10, h: 10, onclick: 'x' }, { id: 'q', kind: 'image', src: 'http://169.254.169.254/x' }] } } });
+  const sc = headOf(b).scene; assert.equal(sc.w, 100); assert.equal(sc.bg.src, 'gen/bg.jpg'); assert.deepEqual(sc.layers.map((l) => l.id), ['p']); assert.equal(sc.layers[0].x, 5); assert.equal(sc.layers[0].onclick, undefined);
+});
+test('more button wordings land on the right board; navigation-only buttons make nothing paid', () => {
+  assert.equal(planFor({}, 'Draft the replies')[0].recipe, 'community-post'); assert.equal(planFor({}, 'Draft the pitch')[0].recipe, 'creator-dm');
+  assert.equal(planFor({}, 'Pause those ads')[0].recipe, 'changes'); assert.equal(planFor({}, 'Add the photos')[0].recipe, 'listing');
+});

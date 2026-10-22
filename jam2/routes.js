@@ -52,7 +52,8 @@ export function mountJam2(d) {
       /* a card with a v1 jam brings a copy of what v1 made (read only) */
       const w1 = card ? (t.work || []).find((w) => w.cardId === card.id) : null; if (w1) { const ch = w1.changeId ? t.changes?.[w1.changeId] : null; jam.from = { v1: w1.id, ...fromV1(w1, ch, []) }; }
       await store.put(slug, jam); note(jam, `opened from ${card ? 'a card' : 'Make'}`, who.email);
-      for (const bd of jam.boards) runBg(t, jam, bd.id, 'first', async () => { const ctx = await ctxOf(t, jam); await maker.first(ctx, bd); }); }
+      /* only the button's own board starts now; the others are made when someone opens their tab and taps Make it (nothing is spent unseen) */
+      const bd = jam.boards[0]; runBg(t, jam, bd.id, 'first', async () => { const ctx = await ctxOf(t, jam); await maker.first(ctx, bd); }); }
     return { jam: out(jam), also: alsoFor(jam.boards[0]?.recipe) };
   }));
   on('GET', '/api/jam2/jams/:jid', wrap(async (b, t, p) => { const j = await load(t, p.jid); return { jam: out(j), also: alsoFor(j.boards[0]?.recipe) }; }));
@@ -69,6 +70,7 @@ export function mountJam2(d) {
     const free = !!b.patch?.scene || !!b.patch?.words || !!b.patch?.timeline || b.patch?.slide != null || b.op === 'resize' || b.op === 'line' || b.op === 'redo-words' && isMock();
     if (bd.status === 'stale' && b.op === 'refresh') { runBg(t, j, bd.id, 'first', async () => maker.first(await ctxOf(t, j), bd)); return { jam: out(j) }; }
     if (b.op === 'first' || (!bd.takes.length && !free)) { runBg(t, j, bd.id, 'first', async () => maker.first(await ctxOf(t, j), bd, { ask: b.ask || '' })); return { jam: out(j) }; }
+    if (free && busy.get(`${j.id}:${bd.id}`)?.op && !busy.get(`${j.id}:${bd.id}`).error) return { error: 'Brew is still working on this board. Your change can go in when it lands.', jam: out(j) };
     if (free) { const ctx = await ctxOf(t, j); await maker.edit(ctx, bd, b); await store.put(slugOfT(t), j); return { jam: out(j) }; }
     const started = runBg(t, j, bd.id, b.op || 'edit', async () => { const ctx = await ctxOf(t, j, { pick: b.patch?.product || null }); if (b.op === 'swap-product' && b.patch?.product) j.product = b.patch.product; await maker.edit(ctx, bd, b);
       if (b.why && ['redo', 'redo-words'].includes(b.op)) await bb.taste(slugOfT(t), { kind: 'dont', what: String(b.why).toLowerCase().slice(0, 60), text: b.why }).catch(() => {}); });
@@ -87,7 +89,7 @@ export function mountJam2(d) {
 
   /* the jam's chat: the team's lines and Brew's replies, kept with the jam (Slack and @mentions arrive here too) */
   on('POST', '/api/jam2/jams/:jid/say', wrap(async (b, t, p) => { const j = await load(t, p.jid), w = whoOf(t), text = String(b.t || '').trim().slice(0, 1200); if (!text) return { error: 'Say something first.' };
-    (j.chat ||= []).push({ id: uid('m'), from: b.from === 'brew' ? 'brew' : 'you', by: w.email, name: w.me?.name || null, t: text, sel: b.sel ? String(b.sel).slice(0, 60) : null, at: Date.now() }); if (j.chat.length > 300) j.chat.splice(0, j.chat.length - 300);
+    (j.chat ||= []).push({ id: uid('m'), from: b.from === 'brew' && text.length <= 600 ? 'brew' : 'you', by: w.email, name: w.me?.name || null, t: text, sel: b.sel ? String(b.sel).slice(0, 60) : null, at: Date.now() }); if (j.chat.length > 300) j.chat.splice(0, j.chat.length - 300);
     await store.put(slugOfT(t), j); return { jam: out(j) }; }));
   /* a board as a brief for a team: who makes it, by when, section edits; send = the brief link goes out and the status starts */
   on('POST', '/api/jam2/jams/:jid/boards/:bid/brief', wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, p.bid); if (!bd) return { error: 'not found' }; const w = whoOf(t);
@@ -96,8 +98,9 @@ export function mountJam2(d) {
     if (b.edit && Number.isInteger(b.edit.i)) br.edits[b.edit.i] = String(b.edit.t || '').slice(0, 1200);
     if (b.mode) { const r = recipe(bd.recipe); const how = b.mode === 'brief' ? 'brief' : r.how.find((h) => h !== 'brief') || r.how[0]; if (r.how.includes(how)) bd.how = how; }
     let url = null;
-    if (b.send) { j.brief = j.brief && !j.brief.revoked ? j.brief : { nonce: uid('b').slice(2), at: Date.now(), by: w.email, revoked: false, to: br.owner }; br.status = 'sent'; br.sentAt = Date.now(); br.log.push({ status: 'sent', at: Date.now(), by: w.email });
-      note(j, `sent the ${bd.label} brief to ${br.owner}`, w.email); url = `/brief/${tokenFor('brief', slugOfT(t), j.id, j.brief.nonce)}`; }
+    /* each board's brief has its own link: the team that gets one sees and moves only that brief */
+    if (b.send) { br.nonce ||= uid('b').slice(2); br.revoked = false; if (!br.status) br.status = 'sent'; br.sentAt = Date.now(); br.log.push({ status: 'sent', at: Date.now(), by: w.email });
+      note(j, `sent the ${bd.label} brief to ${br.owner}`, w.email); url = `/brief/${tokenFor('brief', slugOfT(t), j.id, br.nonce)}`; }
     await store.put(slugOfT(t), j); return { jam: out(j), url }; }));
 
   /* ---------- exits ---------- */
@@ -116,16 +119,17 @@ export function mountJam2(d) {
     /* the team that got a brief moves its status: received → in progress → delivered (no sign-in: the link is the key) */
     const sm = /^\/brief\/([\w~-]+)\/status$/.exec(u.pathname);
     if (sm && req.method === 'POST') { const tok = parseToken('brief', sm[1]), j = tok ? await store.getAny(tok.slug, tok.jid) : null; let body = ''; for await (const ch of req) { body += ch; if (body.length > 4000) break; }
-      const q = (() => { try { return JSON.parse(body || '{}'); } catch { return {}; } })(), bd = j && !j.brief?.revoked && j.brief?.nonce === tok.nonce ? boardOf(j, q.board) : null;
-      if (!bd?.brief || !BRIEF_STATUS.includes(q.status)) { res.writeHead(400, { 'content-type': 'application/json' }); res.end('{"error":"not found"}'); return true; }
+      const q = (() => { try { return JSON.parse(body || '{}'); } catch { return {}; } })(), bd = j ? j.boards.find((x) => x.brief?.nonce === tok.nonce && !x.brief.revoked) || null : null;
+      if (!bd?.brief || !BRIEF_STATUS.includes(q.status) || BRIEF_STATUS.indexOf(q.status) <= BRIEF_STATUS.indexOf(bd.brief.status)) { res.writeHead(400, { 'content-type': 'application/json' }); res.end('{"error":"not found"}'); return true; }
       bd.brief.status = q.status; (bd.brief.log ||= []).push({ status: q.status, at: Date.now(), by: 'brief link' }); note(j, `${bd.label} brief: ${q.status}`, 'brief link'); await store.put(tok.slug, j);
       res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ ok: true, status: q.status })); return true; }
     const m = /^\/(p|brief)\/([\w~-]+)$/.exec(u.pathname); if (!m || req.method !== 'GET') return false;
-    const kind = m[1] === 'p' ? 'post' : 'brief', tok = parseToken(kind, m[2]), j = tok ? await store.getAny(tok.slug, tok.jid) : null, link = j?.[kind === 'post' ? 'post' : 'brief'];
+    const kind = m[1] === 'p' ? 'post' : 'brief', tok = parseToken(kind, m[2]), j = tok ? await store.getAny(tok.slug, tok.jid) : null;
+    const one = kind === 'brief' && j ? j.boards.find((x) => x.brief?.nonce === tok.nonce && !x.brief.revoked) : null, link = one ? one.brief : j?.[kind === 'post' ? 'post' : 'brief'];
     if (!j || !link || link.revoked || link.nonce !== tok.nonce) { res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }); res.end('This link is not valid any more.'); return true; }
     if (kind === 'post' && u.searchParams.get('zip') === '1') { const buf = await ready.zip(j); await store.put(tok.slug, j); res.writeHead(200, { 'content-type': 'application/zip', 'content-disposition': `attachment; filename="${j.title.replace(/[^\w -]+/g, '').slice(0, 60) || 'brew'}.zip"`, 'cache-control': 'no-store' }); res.end(buf); return true; }
     let items = await ready.packOf(j); await store.put(tok.slug, j);
-    if (kind === 'brief') { const sent = j.boards.filter((bd) => bd.brief?.status); items = (sent.length ? sent : j.boards).map((bd) => { const h = bd.approved ? bd.takes.find((x) => x.id === bd.approved.takeId) : headOf(bd); return h ? { board: bd.id, label: bd.label, status: bd.brief?.status || null, files: h.file ? [{ label: 'Brew’s draft (reference)', file: h.file }] : [], caption: '', body: '', subject: '', alt: '', hashtags: [], blocks: jamView(j).boards.find((x) => x.id === bd.id).briefView.map((x) => ({ title: x.h, text: x.t })), shots: [] } : null; }).filter(Boolean); }
+    if (kind === 'brief') { const sent = one ? [one] : j.boards.filter((bd) => bd.brief?.status); items = (sent.length ? sent : j.boards).map((bd) => { const h = bd.approved ? bd.takes.find((x) => x.id === bd.approved.takeId) : headOf(bd); return h ? { board: bd.id, label: bd.label, status: bd.brief?.status || null, files: h.file ? [{ label: 'Brew’s draft (reference)', file: h.file }] : [], caption: '', body: '', subject: '', alt: '', hashtags: [], blocks: jamView(j).boards.find((x) => x.id === bd.id).briefView.map((x) => ({ title: x.h, text: x.t })), shots: [] } : null; }).filter(Boolean); }
     const name = (await bb.load(tok.slug).catch(() => null))?.read?.name || '';
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' }); res.end(ready.page(j, items, { kind, brand: name })); return true;
   }

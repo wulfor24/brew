@@ -8,20 +8,23 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 const num = (x, d = 0) => (Number.isFinite(+x) ? +x : d);
 /* single quotes: the stack goes inside a style="…" attribute, where a double quote would end it (and drop the size after it) */
 const SAFE_FONTS = "'Helvetica Neue',Helvetica,Inter,Arial,sans-serif";
-export const fontStack = (name) => (name ? `'${String(name).replace(/["'<>]/g, '')}',${SAFE_FONTS}` : SAFE_FONTS);
+export const fontStack = (name) => { const n = String(name || '').replace(/[^\w \-]/g, '').trim().slice(0, 40); return n ? `'${n}',${SAFE_FONTS}` : SAFE_FONTS; };
 /* Google Fonts link for the kit's fonts (a font that isn't on Google Fonts falls back to the safe stack, which the gate notes) */
 export const fontLink = (kit = {}) => { const fs = [kit.fonts?.heading, kit.fonts?.body].filter(Boolean).map((f) => String(f).replace(/["<>&]/g, '').trim()).filter((f) => /^[\w ]{2,40}$/.test(f));
   return fs.length ? `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?${[...new Set(fs)].map((f) => `family=${encodeURIComponent(f).replace(/%20/g, '+')}:wght@400;600;700;800`).join('&')}&display=block">` : ''; };
 
+/* a style value goes inside style="…": only plain CSS words, numbers, colours and gradients (no quotes, ; < > or url()) */
+const css = (v, d = '') => { const x = String(v ?? '').trim(); return x && x.length < 200 && /^[#\w\s.,%()+-]+$/.test(x) && !/url\s*\(|expression/i.test(x) ? x : d; };
+const pick = (v, ok, d) => (ok.includes(v) ? v : d);
 export function layerStyle(l) {
   const s = l.style || {}, rot = num(l.rot);
   const base = [`left:${num(l.x)}px`, `top:${num(l.y)}px`, `width:${num(l.w, 100)}px`, l.kind === 'text' ? '' : `height:${num(l.h, 100)}px`, `z-index:${num(l.z, 1)}`, rot ? `transform:rotate(${rot}deg)` : '', l.hidden ? 'display:none' : ''];
-  if (l.kind === 'text' || l.kind === 'badge') base.push(`font-family:${fontStack(s.font)}`, `font-size:${num(s.size, 48)}px`, `font-weight:${num(s.weight, 700)}`, `color:${s.color || '#fff'}`, `text-align:${s.align || 'left'}`, `line-height:${s.lh || 1.12}`,
-    s.bg ? `background:${s.bg}` : '', s.pad ? `padding:${num(s.pad)}px` : '', s.radius ? `border-radius:${num(s.radius)}px` : '', s.upper ? 'text-transform:uppercase' : '', s.shadow ? 'text-shadow:0 2px 18px rgba(0,0,0,.35)' : '', 'white-space:pre-wrap', 'overflow-wrap:break-word', 'letter-spacing:-.01em');
-  if (l.kind === 'shape') base.push(`background:${s.bg || 'rgba(0,0,0,.4)'}`, s.radius ? `border-radius:${num(s.radius)}px` : '');
+  if (l.kind === 'text' || l.kind === 'badge') base.push(`font-family:${fontStack(s.font)}`, `font-size:${num(s.size, 48)}px`, `font-weight:${num(s.weight, 700)}`, `color:${css(s.color, '#fff')}`, `text-align:${pick(s.align, ['left', 'center', 'right'], 'left')}`, `line-height:${num(s.lh, 1.12)}`,
+    css(s.bg) ? `background:${css(s.bg)}` : '', s.pad ? `padding:${num(s.pad)}px` : '', s.radius ? `border-radius:${num(s.radius)}px` : '', s.upper ? 'text-transform:uppercase' : '', s.shadow ? 'text-shadow:0 2px 18px rgba(0,0,0,.35)' : '', 'white-space:pre-wrap', 'overflow-wrap:break-word', 'letter-spacing:-.01em');
+  if (l.kind === 'shape') base.push(`background:${css(s.bg, 'rgba(0,0,0,.4)')}`, s.radius ? `border-radius:${num(s.radius)}px` : '');
   return base.filter(Boolean).join(';');
 }
-const imgHtml = (l, srcOf) => { const src = srcOf(l.src); if (!src) return ''; const fit = l.fit || (l.kind === 'bg' ? 'cover' : 'contain');
+const imgHtml = (l, srcOf) => { const src = srcOf(l.src); if (!src) return ''; const fit = pick(l.fit, ['cover', 'contain', 'fill'], l.kind === 'bg' ? 'cover' : 'contain');
   const sh = l.shadow ? `filter:drop-shadow(0 ${Math.round(num(l.h) * 0.03)}px ${Math.round(num(l.h) * 0.04)}px rgba(0,0,0,.35));` : '';
   return `<img src="${esc(src)}" style="width:100%;height:100%;object-fit:${fit};${sh}" draggable="false" alt="">`; };
 
@@ -29,11 +32,11 @@ const imgHtml = (l, srcOf) => { const src = srcOf(l.src); if (!src) return ''; c
    can load (the server passes data: URIs so Chromium needs no network); editable adds data-id for the canvas */
 export function sceneBody(scene, { srcOf = (s) => s, editable = false } = {}) {
   const bg = scene.bg || {}, layers = [...(scene.layers || [])].sort((a, b) => num(a.z, 1) - num(b.z, 1));
-  const bgImg = bg.src ? `<img class="j2-bgimg" src="${esc(srcOf(bg.src))}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:${bg.fit || 'cover'};${bg.filter ? `filter:${esc(bg.filter)};` : ''}" draggable="false" alt="">` : '';
+  const bgImg = bg.src ? `<img class="j2-bgimg" src="${esc(srcOf(bg.src))}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:${pick(bg.fit, ['cover', 'contain', 'fill'], 'cover')};${css(bg.filter) ? `filter:${css(bg.filter)};` : ''}" draggable="false" alt="">` : '';
   const ls = layers.map((l) => { const id = editable ? ` data-id="${esc(l.id)}" data-kind="${esc(l.kind)}"` : '';
     const inner = l.kind === 'text' || l.kind === 'badge' ? esc(l.words || '') : l.kind === 'shape' ? '' : imgHtml(l, srcOf);
     return `<div class="j2-l j2-${esc(l.kind)}${l.locked ? ' j2-locked' : ''}"${id} style="position:absolute;${layerStyle(l)}">${inner}</div>`; }).join('');
-  return `<div class="j2-scene" style="position:relative;width:${num(scene.w, 1080)}px;height:${num(scene.h, 1350)}px;overflow:hidden;background:${esc(bg.color || '#eee')}">${bgImg}${ls}</div>`;
+  return `<div class="j2-scene" style="position:relative;width:${num(scene.w, 1080)}px;height:${num(scene.h, 1350)}px;overflow:hidden;background:${css(bg.color, '#eee')}">${bgImg}${ls}</div>`;
 }
 export function sceneHtml(scene, o = {}) {
   return `<!doctype html><html><head><meta charset="utf-8">${fontLink(scene.kit)}<style>html,body{margin:0;padding:0;background:transparent}*{box-sizing:border-box}</style></head><body>${sceneBody(scene, o)}</body></html>`;

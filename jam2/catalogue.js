@@ -102,10 +102,11 @@ export function recipeFor(c = {}) {
    this list doesn't know falls back to recipeFor. Each board may carry its own label and a line for the writer. */
 const B = (recipe, label = null, ask = '') => ({ recipe, label, ask });
 const PLANS = [
-  [/^(reply|respond)|^answer on|reply in |post in (the group|r\/)|post on reddit/, () => [B('community-post')]],
+  [/^(reply|respond)|repl(y|ies)\b|^answer on|post in (the group|r\/)|post on reddit/, () => [B('community-post')]],
+  [/\bpitch\b|outreach|dm the creator/, () => [B('creator-dm')]],
   [/review ask/, () => [B('email', 'Email · day 10', 'The review ask, 10 days after delivery.'), B('whatsapp', 'WhatsApp · day 12', 'The review ask on WhatsApp, day 12, only to people who have not reviewed.'), B('changes', 'Timing', 'The Klaviyo flow: one row per step (channel, when, stop if).')]],
   [/approve the flows|turn on the journey|plan the flows|open the club|send on whatsapp/, () => [B('email', 'Email'), B('whatsapp', 'WhatsApp'), B('changes', 'Timing', 'The flow: one row per step (channel, when, stop if).')]],
-  [/pause (what|the ads)/, () => [B('changes', 'Pause list', 'Every live ad that points to the product that sold out: ad, where it runs, Pause.'), B('image-ad', 'Ad for what’s in stock', 'An ad for a product that is in stock, to fill in while the other is out.')]],
+  [/pause (what|the ads|those ads|these ads)/, () => [B('changes', 'Pause list', 'Every live ad that points to the product that sold out: ad, where it runs, Pause.'), B('image-ad', 'Ad for what’s in stock', 'An ad for a product that is in stock, to fill in while the other is out.')]],
   [/restart what was paused/, () => [B('changes', 'Restart list', 'The ads paused while it was out of stock: ad, where, Restart; plus the waitlist message.')]],
   [/update the prices/, () => [B('changes', 'Price updates', 'Every ad, page and banner that shows the old price: where, now, change to.')]],
   [/shift budget/, () => [B('changes', 'Budget shift', 'One row per ad set: now, change to, why.')]],
@@ -115,7 +116,7 @@ const PLANS = [
   [/update landing page|publish the page|apply update|start the tests|approve \d* ?popups|build the score/, () => [B('page-section')]],
   [/approve the (offers|ladder|\d+ offers)/, () => [B('changes', 'The offers', 'One row per offer: what is in it, price, the saving. Prices only from the catalog.'), B('banner', 'Store banner')]],
   [/push (the|\d+) titles|apply \d+ edits|draft the listing|generate the sets/, () => [B('changes', 'Titles', 'One row per product: product, new title, characters (marketplace limit).'), B('listing', 'Listing photos')]],
-  [/add photos/, () => [B('listing', 'Listing photos'), B('changes', 'Titles', 'One row per product: product, new title, characters.')]],
+  [/add (the )?photos/, () => [B('listing', 'Listing photos'), B('changes', 'Titles', 'One row per product: product, new title, characters.')]],
   [/request takedown/, () => [B('changes', 'Takedown request', 'One row per listing: listing, seller, reason.')]],
   [/brief the shoot|plan the shoot/, () => [B('shoot-brief')]],
   [/shortlist creators/, () => [B('changes', 'Creator shortlist', 'One row per creator: handle, followers, why they fit.'), B('creator-brief')]],
@@ -125,11 +126,14 @@ const PLANS = [
   [/agree with the call|apply the plan|ship the five|plan the restock|read the reviews|work out/, () => [B('changes', 'Team plan', 'One row per step: step, who, when. Brew never runs it.')]],
   [/carousel post/, () => [B('ig-carousel')]], [/carousel/, () => [B('carousel-ad')]], [/stories/, () => [B('stories')]],
   [/make (the|our) (reel|video)|make the video/, () => [B('reel'), B('video-script', 'How to film it')]],
-  [/draft the post|post it|start this|work on this|use their words/, () => [B('ig-post'), B('stories', 'Story')]],
+  [/draft the post|post it|use their words/, () => [B('ig-post'), B('stories', 'Story')]],
   [/make our version|make the ad|rotate creative|turn into an idea|queue the|generate versions|publish the campaign|lock the|switcher ad|plan the launch|collection ad|catalog ad/, () => [B('image-ad')]]
 ];
+/* labels that only open a page (a report, the moves, the scoreboard) never make anything */
+export const NAV_ONLY = /^(open (the )?(report|moves|scoreboard|batch)|see what changed|run monday decisions|see it all)/i;
 export function planFor(c = {}, label = '') {
   const l = String(label || c.cta?.label || '').toLowerCase().trim(), kind = c.research?.kind;
+  if (NAV_ONLY.test(l) || /^(start this|work on this)$/.test(l)) return [B(recipeFor(c))]; /* generic verbs: the card decides */
   if (kind === 'viral' || (kind === 'ad' && /video|reel/.test(l))) return [B('reel'), B('video-script', 'How to film it')];
   if (kind === 'ad' && /make our version/.test(l)) return [B('remake', 'Our ad')];
   for (const [re, fn] of PLANS) if (re.test(l)) return fn(l);

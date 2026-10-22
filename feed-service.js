@@ -2253,6 +2253,8 @@ export function createFeedService(o) {
   const handle = async (req, res, u) => {
     if (!/^\/(h\/|p\/|brief\/|api\/(share|tenants|cards|jams|jam2|work|changes|brands\/[a-z0-9-]+\/(?:drop\/read|learnings\/answer)$|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?|voice)$))/.test(u.pathname)) return false;
     let tid = null;
+    /* Jam v2's ready-to-post and brief links are signed: the link is the key, so they run before any sign-in, demo or team check (a team that got a brief marks its status without an account) */
+    if (/^\/(p|brief)\//.test(u.pathname)) { if (JAM2 && await JAM2.publicHandle(req, res, u)) return true; send(res, 404, { error: 'not found' }); return true; }
     const hm0 = u.pathname.match(/^\/h\/([\w~-]+)$/), sm0 = u.pathname.match(/^\/api\/share\/([\w~-]+)$/);
     if (hm0) tid = parseToken(hm0[1])?.tid; else if (sm0) tid = parseShare(sm0[1])?.tid; else tid = u.pathname.match(/^\/api\/tenants\/(t_[a-f0-9]+)/)?.[1] || req.headers['x-tenant'];
     const t0 = tid && /^t_[a-f0-9]+$/.test(tid) ? await getTenant(tid) : null;
@@ -2279,6 +2281,8 @@ export function createFeedService(o) {
        team sees an empty feed (the page still loads, and a guest still gets their jam), and only their own jam's card */
     const outside = br.kind === 'generated' && o.liveTeamOnly?.() && !viewer?.member && !viewer?.gen;
     /* Ask, Your feed and Drop are the team's: outside it, on live, no writes either (Ask's answers name the brand's cards) */
+    /* Jam v2's Brand Book and product library hold the brand's reviews, personas and uploads: the team's only */
+    if (outside && /^\/api\/jam2\/(brandbook|products)$/.test(u.pathname)) { send(res, 403, { error: 'This is for the brand’s team.', teamOnly: true }); return true; }
     if (outside && req.method !== 'GET' && /^\/api\/(tenants\/[^/]+\/tuning(\/.*)?|brands\/[^/]+\/(?:drop\/read|learnings\/answer)|brands\/[^/]+\/(drop|voice))$/.test(u.pathname)) { send(res, 403, { error: 'This is for the brand’s team.', teamOnly: true }); return true; }
     if (outside && req.method === 'GET') {
       if (/^\/api\/tenants\/[^/]+\/feed$/.test(u.pathname)) { send(res, 200, { order: [], cards: {}, scores: {}, pinned: [], limit: { plan: 'free', daily: null, locked: 0 }, teamOnly: true }); return true; }
@@ -2301,7 +2305,6 @@ export function createFeedService(o) {
     return SF_CTX.run(sfReq(req, u), () => GEN_CTX.run(gen, () => MC.run(who, t0, () => runIn(br, () => withPrefs(prefsOf(req), () => handleIn(req, res, u, viewer)))))); // the jam's model and memory choice, for this request
   };
   const handleIn = async (req, res, u, viewer) => {
-    if (JAM2 && /^\/(p|brief)\//.test(u.pathname) && await JAM2.publicHandle(req, res, u)) return true; /* Jam v2's ready-to-post and brief links */
     const hm = u.pathname.match(/^\/h\/([\w~-]+)$/);
     if (hm && req.method === 'GET') {
       const tok = parseToken(hm[1]); const t = tok && await getTenant(tok.tid); const w = t && (W(t, tok.wid) || teamJam(t, tok.wid));

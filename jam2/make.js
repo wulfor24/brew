@@ -209,16 +209,29 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
     } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
   }
 
+  /* a scene sent from the page (drag, resize, retype, hide): it keeps only known keys and only pictures this board already has, so
+     the page can never pull in another brand's files or a URL for the renderer to fetch; style values are checked in scene.js */
+  const LAYER_KEYS = ['id', 'kind', 'x', 'y', 'w', 'h', 'rot', 'z', 'hidden', 'locked', 'src', 'fit', 'shadow', 'words', 'role', 'style', 'blend'];
+  function safeScene(sc, base) {
+    const own = new Set([base.scene?.bg?.src, ...(base.scene?.layers || []).map((l) => l.src), ...(base.slides || []).flatMap((x) => [x.scene?.bg?.src, ...(x.scene?.layers || []).map((l) => l.src)])].filter(Boolean));
+    const n = (v, d = 0) => (Number.isFinite(+v) ? Math.max(-20000, Math.min(20000, +v)) : d);
+    const layers = (Array.isArray(sc?.layers) ? sc.layers : []).slice(0, 40).filter((l) => !l.src || own.has(l.src)).map((l) => { const o = {}; for (const k of LAYER_KEYS) if (l[k] !== undefined) o[k] = l[k];
+      for (const k of ['x', 'y', 'w', 'h', 'rot', 'z']) if (o[k] !== undefined) o[k] = n(o[k]); if (o.words != null) o.words = tidy(o.words, 400); o.style = o.style && typeof o.style === 'object' ? { ...o.style } : undefined; return o; });
+    const bg = { ...(base.scene?.bg || {}), ...(sc?.bg && typeof sc.bg === 'object' ? { color: sc.bg.color, fit: sc.bg.fit, filter: sc.bg.filter } : {}) };
+    if (sc?.bg?.src && own.has(sc.bg.src)) bg.src = sc.bg.src;
+    return { w: base.scene.w, h: base.scene.h, bg, kit: base.scene.kit, layers };
+  }
+
   /* ---------- Edit this: one element, one change ---------- */
   async function edit(ctx, board, { target = null, region = null, ask = '', patch = null, op = null } = {}) {
     const h = headOf(board); if (!h) throw new Error('Nothing to edit yet.'); const r = recipe(board.recipe);
     const base = JSON.parse(JSON.stringify(h)); delete base.id; delete base.n; delete base.gate; base.parent = h.id; base.by = ctx.by; base.made = []; base.at = Date.now();
     /* free: the canvas's own moves (drag, resize, retype, font, colour, hide, preset, size) arrive as a scene patch */
-    if (patch?.scene && base.scene) { base.scene = patch.scene; base.op = 'arrange'; base.file = await render(base.scene); base.words = { ...base.words, ...(patch.words || {}) }; }
+    if (patch?.scene && base.scene) { base.scene = safeScene(patch.scene, base); base.op = 'arrange'; base.file = await render(base.scene); base.words = { ...base.words, ...(patch.words || {}) }; }
     else if (patch?.words) { base.words = { ...base.words, ...patch.words }; base.op = 'words';
       if (base.scene) for (const l of base.scene.layers) if (l.role && patch.words[l.role] !== undefined) l.words = patch.words[l.role]; if (base.scene) base.file = await render(base.scene); }
     else if (patch?.timeline && base.timeline) { base.timeline = patch.timeline; base.op = 'timeline'; base.quote = await videoQuote(ctx, board, base); }
-    else if (patch?.slide != null && base.slides?.[patch.slide]) { const sl = base.slides[patch.slide]; if (patch.slideScene) sl.scene = patch.slideScene;
+    else if (patch?.slide != null && base.slides?.[patch.slide]) { const sl = base.slides[patch.slide]; if (patch.slideScene) sl.scene = safeScene(patch.slideScene, base);
       for (const l of sl.scene.layers) if (l.role && patch.slideWords?.[l.role] !== undefined) l.words = patch.slideWords[l.role];
       if (patch.slideWords?.headline !== undefined && base.words?.slides?.[patch.slide]) base.words.slides[patch.slide].onSlide = patch.slideWords.headline;
       sl.file = await render(sl.scene); if (patch.slide === 0) { base.scene = sl.scene; base.file = sl.file; } base.op = 'slide'; }
@@ -227,7 +240,7 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
       if (target?.kind === 'slide' && base.slides?.[target.i]) { const sl = base.slides[target.i]; for (const l of sl.scene.layers) if (l.role === 'headline') l.words = nx; sl.file = await render(sl.scene); if (target.i === 0) { base.scene = sl.scene; base.file = sl.file; } } }
     else if (op === 'final' && base.scene) { const sc = JSON.parse(JSON.stringify(base.scene)); const comp = await render(sc), cf = await fileOf(comp);
       if (!spend('image', ctx.slug)) throw new Error('Today’s picture budget is used up.');
-      const out = await engines.run('still.full', { srcFile: cf, prompt: `Finish this ad as a premium photograph: keep the layout, the product, its label and every word exactly as they are; lift the light, depth and detail. ${ask || ''}`.trim(), ratio: sizeOf(board).ratio, slug: ctx.slug, product: ctx.product?.name || null, words: [base.words?.headline, base.words?.sub].filter(Boolean), by: ctx.by?.email, jamId: ctx.jam.id, boardId: board.id });
+      const out = await engines.run('still.full', { srcFile: cf, srcUrl: comp, prompt: `Finish this ad as a premium photograph: keep the layout, the product, its label and every word exactly as they are; lift the light, depth and detail. ${ask || ''}`.trim(), ratio: sizeOf(board).ratio, slug: ctx.slug, product: ctx.product?.name || null, words: [base.words?.headline, base.words?.sub].filter(Boolean), by: ctx.by?.email, jamId: ctx.jam.id, boardId: board.id });
       base.made.push({ cap: 'still.full', provider: out.provider, model: out.model, usd: out.usd || 0, credits: out.credits || 0 }); base.file = out.file; base.final = true; base.op = 'final'; }
     else if (op === 'resize' && base.scene) { const s = SIZES[patch?.size || ask]; if (!s) throw new Error('Pick a size.'); board.size = patch?.size || ask; base.scene = reflow(base.scene, s.w, s.h); base.op = 'resize'; base.file = await render(base.scene); }
     else if (op === 'swap-product') { ctx.product = productFor({ pick: patch?.product, catalog: ctx.catalog }); ctx.cuts = {}; const cut = await cutout(ctx); if (!cut) throw new Error('That product has no photo.');
@@ -239,7 +252,7 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
       const place = op === 'place' ? (ctx.bbv.places || []).find((p) => p.id === patch?.place) : null, size = sizeOf(board);
       let bg;
       if (region && base.scene?.bg?.src) { const sf = await fileOf(base.scene.bg.src); if (!spend('image', ctx.slug)) throw new Error('Today’s picture budget is used up.');
-        bg = await engines.run('still.edit', { srcFile: sf, prompt: `Change only the area inside the box from ${Math.round(region.x * 100)}% to ${Math.round((region.x + region.w) * 100)}% across and ${Math.round(region.y * 100)}% to ${Math.round((region.y + region.h) * 100)}% down: ${ask}. Keep everything else exactly as it is. No words, no logos.`, ratio: size.ratio, slug: ctx.slug }); }
+        bg = await engines.run('still.edit', { srcFile: sf, srcUrl: base.scene.bg.src, prompt: `Change only the area inside the box from ${Math.round(region.x * 100)}% to ${Math.round((region.x + region.w) * 100)}% across and ${Math.round(region.y * 100)}% to ${Math.round((region.y + region.h) * 100)}% down: ${ask}. Keep everything else exactly as it is. No words, no logos.`, ratio: size.ratio, slug: ctx.slug }); }
       else bg = await scene(ctx, { describe: ask || base.words?.scene, ratio: size.ratio, place });
       base.made.push({ cap: bg.cap || 'still.scene', provider: bg.provider, model: bg.model, usd: bg.usd || 0 }); base.scene.bg.src = bg.file; base.op = region ? 'edit-area' : 'background'; base.file = await render(base.scene); }
     /* priced: blend the real product into the light of the scene (checked against the real photo; a miss keeps the composite) */

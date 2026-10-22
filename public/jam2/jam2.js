@@ -27,19 +27,25 @@ const ownBrief = (b = board()) => !!b && BRIEF_ONLY.has(b.kind);
 const busyOf = (b = board()) => (b ? S.jam?.busy?.[b.id] || null : null);
 const words = (b = board()) => take(b)?.words || {};
 
-async function load() { const r = await api('GET', `/api/jam2/jams/${S.jam.id}`); if (r?.jam) { S.jam = r.jam; render(); } }
+/* a reply is used only if the same jam is still open: a late answer for a jam the person left never lands in the next one */
+const live = (s0, jid) => S && S === s0 && S.jam?.id === jid;
+async function load() { const s0 = S, jid = S.jam.id; const r = await api('GET', `/api/jam2/jams/${jid}`); if (live(s0, jid) && r?.jam && !S.working) { S.jam = r.jam; render(); } }
 function poll() { clearInterval(pollT); pollT = setInterval(() => { if (!$('#j2')) return clearInterval(pollT); const wait = S.jam?.boards?.some((b) => (S.jam.busy?.[b.id] && !S.jam.busy[b.id].error) || !b.takes?.length); if (wait && !S.working) load(); }, 2500); }
 const toast = (t) => { S.toast = t; render(); clearTimeout(toast.t); toast.t = setTimeout(() => { S.toast = null; render(); }, 5200); };
-const say = (from, t, sel = null) => api('POST', `/api/jam2/jams/${S.jam.id}/say`, { from, t, sel }).then((r) => { if (r?.jam) { S.jam = { ...r.jam, busy: S.jam.busy }; render(); } });
+const say = (from, t, sel = null) => { const s0 = S, jid = S.jam.id; return api('POST', `/api/jam2/jams/${jid}/say`, { from, t, sel }).then((r) => { if (live(s0, jid) && r?.jam) { S.jam = r.jam; render(); } }); };
 
 /* one change on the current board: the reply carries the jam; slow ones come back through the poll */
 async function op(body, done = '') {
-  const b = board(); if (!b) return; S.working = true; S.pend = null; S.more = false; render();
-  const r = await api('POST', `/api/jam2/jams/${S.jam.id}/boards/${b.id}/op`, body); S.working = false;
+  const b = board(); if (!b || S.working) return; const s0 = S, jid = S.jam.id; S.working = true; S.pend = null; S.more = false; render();
+  const r = await api('POST', `/api/jam2/jams/${jid}/boards/${b.id}/op`, body); if (!live(s0, jid)) return; S.working = false;
   if (r?.jam) S.jam = r.jam; if (r?.error) { toast(r.error); return; }
-  render(); if (done) say('brew', `${done} · v${(take()?.n) || ''}`.replace(/ · v$/, ''));
+  /* a slow change comes back later through the poll: its message says so instead of naming a version it isn't yet */
+  const bg = !!S.jam.busy?.[b.id] && !S.jam.busy[b.id].error; render(); if (done) say('brew', bg ? `${done}: on it, it lands here as the next version.` : `${done} · v${(take()?.n) || ''}`.replace(/ · v$/, ''));
 }
-const priced = (label, cost, run) => { S.pend = { label, cost, run }; S.more = false; render(); };
+/* a priced step always shows its price before it runs: while prices are still loading it waits for them */
+const priced = async (label, cost, run) => { S.more = false; if (!cost || /\$NaN|^\$?$/.test(cost)) { S.pend = { label, cost: 'checking the price…', run: null }; render(); const s0 = S, jid = S.jam.id;
+  const p = await api('GET', `/api/jam2/jams/${jid}/prices`); if (!live(s0, jid)) return; if (p?.prices) S.prices = p.prices; S.pend = null; render(); return toast('Prices are in. Tap it again to see what it costs.'); }
+  S.pend = { label, cost, run }; render(); };
 const ask = (label, val, save) => { S.edit = { label, val: val || '', save }; S.more = false; render(); setTimeout(() => $('#j2-edit')?.focus(), 30); };
 
 /* ---------- what can be selected, and its tools ---------- */
@@ -58,6 +64,8 @@ function tools() {
   if (s.kind === 'product') return { label: 'Product · your real photo, locked', main: [['Swap product', () => openPicker()], ['Bigger', () => patchLayer((x) => { const k = 1.12; x.x -= x.w * (k - 1) / 2; x.y -= x.h * (k - 1) / 2; x.w *= k; x.h *= k; }, 'Product bigger')], ['Smaller', () => patchLayer((x) => { const k = 0.88; x.x += x.w * (1 - k) / 2; x.y += x.h * (1 - k) / 2; x.w *= k; x.h *= k; }, 'Product smaller')], ['Blend into the light', () => priced('Blend the product into the scene’s light (the label stays exact)', usd(P.blend), () => op({ op: 'blend' }, 'Blended into the scene')), usd(P.blend)]],
     more: [['Move left', () => patchLayer((x) => { x.x -= x.w * 0.15; }, 'Product moved')], ['Move right', () => patchLayer((x) => { x.x += x.w * 0.15; }, 'Product moved')], ['Move up', () => patchLayer((x) => { x.y -= x.h * 0.12; }, 'Product moved')], ['Move down', () => patchLayer((x) => { x.y += x.h * 0.12; }, 'Product moved')]] };
   if (s.kind === 'logo' || s.kind === 'badge' || s.kind === 'image') return { label: s.kind === 'logo' ? 'Logo' : 'Badge', main: [['Hide it', () => patchLayer((x) => { x.hidden = true; }, `${s.kind} hidden`)], ['Bigger', () => patchLayer((x) => { x.w *= 1.15; x.h *= 1.15; if (x.style?.size) x.style.size *= 1.15; }, `${s.kind} bigger`)], ['Smaller', () => patchLayer((x) => { x.w *= 0.87; x.h *= 0.87; if (x.style?.size) x.style.size *= 0.87; }, `${s.kind} smaller`)]], more: [] };
+  if (b.kind === 'carousel' && ['bg', 'whole', 'area'].includes(s.kind)) return { label: `Slide ${S.slide + 1}`, main: [['New words for every slide', () => op({ op: 'redo-words' }, 'New words')], ['Redo the carousel', () => priced(`Redo the carousel: ${take()?.slides?.length || 4} new slides, same idea`, S.prices.redo != null ? usd(S.prices.redo * (take()?.slides?.length || 4)) : '', () => op({ op: 'first' }, 'New carousel'))]], more: [] };
+  if (b.kind === 'carousel' && s.kind === 'product') return { label: `Slide ${S.slide + 1} · product`, main: [['Bigger', () => patchLayer((x) => { const k = 1.12; x.x -= x.w * (k - 1) / 2; x.y -= x.h * (k - 1) / 2; x.w *= k; x.h *= k; }, 'Product bigger')], ['Smaller', () => patchLayer((x) => { const k = 0.88; x.x += x.w * (1 - k) / 2; x.y += x.h * (1 - k) / 2; x.w *= k; x.h *= k; }, 'Product smaller')]], more: [] };
   if (s.kind === 'bg') return { label: 'Scene', main: [['New scene', () => ask('What scene? (or leave it to Brew)', '', (v) => priced('A new scene behind the product, same words', usd(P.background), () => op({ op: 'background', ask: v }, 'New scene'))), usd(P.background)], ['Change an area', () => { S.area = true; S.sel = null; render(); }]], more: [] };
   if (s.kind === 'whole') return { label: `${b.label} · whole picture`, main: [['Redo it', () => priced('One new take: a new scene, same words and product', usd(P.redo), () => op({ op: 'redo' }, 'New take')), usd(P.redo)], ['New words', () => op({ op: 'redo-words' }, 'New words')], ['Make the final', () => priced('Make the final: premium finish, same layout and words', P.final != null ? usd(P.final) : P.finalCredits ? `${P.finalCredits} credits` : 'priced first', () => op({ op: 'final' }, 'Final made')), P.final != null ? usd(P.final) : P.finalCredits ? `${P.finalCredits} credits` : '']],
     more: [['Make it a reel', () => addBoard('reel')], ['Make it a carousel', () => addBoard('carousel-ad')], ['Brief a team instead', () => setMode('brief')]] };
@@ -70,7 +78,7 @@ function tools() {
     if (s.which === 'music') return { label: 'Music', main: MOODS.map((m) => [m, () => { const x = tl(); x.music = m; op({ patch: { timeline: x } }, `Music: ${m}`); }]), more: [] };
     return { label: 'Captions', main: [[take()?.timeline?.captions ? 'Turn off' : 'Turn on', () => { const x = tl(); x.captions = !x.captions; op({ patch: { timeline: x } }, `Captions ${x.captions ? 'on' : 'off'}`); }]], more: [] }; }
   if (s.kind === 'sent') { const parts = sentencesOf(words().body); const set = (v) => { parts[s.i * 2] = v; op({ patch: { words: { body: parts.join('') } } }, 'Sentence changed'); };
-    return { label: `Sentence ${s.i + 1}`, main: [typeOver('This sentence', parts[s.i * 2], set), ...line({ kind: 'sent', i: s.i }, 'Sentence').slice(0, 3)], more: [line({ kind: 'sent', i: s.i }, 'Sentence')[3], ['Remove it', () => { parts[s.i * 2] = ''; S.sel = null; op({ patch: { words: { body: parts.join('').replace(/\s{2,}/g, ' ').trim() } } }, 'Sentence removed'); }]] }; }
+    return { label: `Sentence ${s.i + 1}`, main: [typeOver('This sentence', parts[s.i * 2], set), ...line({ kind: 'sent', i: s.i }, 'Sentence').slice(0, 3)], more: [line({ kind: 'sent', i: s.i }, 'Sentence')[3], ['Remove it', () => { parts[s.i * 2] = ''; S.sel = null; op({ patch: { words: { body: parts.join('').replace(/ {2,}/g, ' ').trim() } } }, 'Sentence removed'); }]] }; }
   if (s.kind === 'subject') return { label: 'Subject line', main: [typeOver('Subject line', words().subject, (v) => op({ patch: { words: { subject: v } } }, 'Subject changed')), ...line({ kind: 'subject' }, 'Subject').slice(0, 3)], more: [] };
   if (s.kind === 'block') { const bl = words().blocks?.[s.i] || {}; return { label: bl.title || 'Section', main: [typeOver(bl.title || 'Section', bl.text, (v) => { const bs = JSON.parse(JSON.stringify(words().blocks)); bs[s.i].text = v; op({ patch: { words: { blocks: bs } } }, `${bl.title || 'Section'} changed`); }), ['Shorter', () => op({ op: 'line', target: { kind: 'block', i: s.i }, ask: 'shorter' }, `${bl.title} shorter`)], ['Another way', () => op({ op: 'line', target: { kind: 'block', i: s.i }, ask: 'rewrite' }, `${bl.title} rewritten`)]], more: [] }; }
   if (s.kind === 'row') { const rw = words().rows?.[s.i] || {}; const rows = () => JSON.parse(JSON.stringify(words().rows || []));
@@ -81,17 +89,17 @@ function tools() {
 }
 
 /* ---------- actions ---------- */
-async function brief(body, done = '', bid = board()?.id) { const r = await api('POST', `/api/jam2/jams/${S.jam.id}/boards/${bid}/brief`, body); if (r?.jam) S.jam = r.jam; if (r?.error) return toast(r.error); render(); if (done) say('brew', done); return r; }
+async function brief(body, done = '', bid = board()?.id) { const s0 = S, jid = S.jam.id; const r = await api('POST', `/api/jam2/jams/${jid}/boards/${bid}/brief`, body); if (!live(s0, jid)) return null; if (r?.jam) S.jam = r.jam; if (r?.error) return toast(r.error); render(); if (done) say('brew', done); return r; }
 async function setMode(m) { S.sel = null; await brief({ mode: m }); toast(m === 'brief' ? 'Now a brief for a team: the words are locked as final, with specs, references, who and when. Tap any part to change it.' : 'Back to making it here, ready to post.'); }
 /* boards are found by id: the jam object is replaced after every reply */
 async function sendBrief(b = board()) { const r = await brief({ send: true, mode: ownBrief(b) ? undefined : 'brief' }, '', b.id);
   if (r?.url) { const nb = r.jam.boards.find((x) => x.id === b.id); S.finUrl = { ...(S.finUrl || {}), brief: location.origin + r.url }; say('brew', `Brief for ${b.label} sent to ${nb?.brief?.owner || OWNERS[0]}. They open it at ${location.origin + r.url} and mark it received, in progress, delivered; you see each step here.`); } }
-async function addBoard(recipe, label = null) { S.add = false; S.more = false; const r = await api('POST', `/api/jam2/jams/${S.jam.id}/boards`, { recipe, label }); if (r?.error) return toast(r.error); S.jam = r.jam; S.tab = S.jam.boards.length - 1; S.sel = null; render(); say('brew', `Making ${(S.recipes[recipe]?.label || recipe).toLowerCase()} on the same idea.`); }
+async function addBoard(recipe, label = null) { S.add = false; S.more = false; const s0 = S, jid = S.jam.id; const r = await api('POST', `/api/jam2/jams/${jid}/boards`, { recipe, label }); if (!live(s0, jid)) return; if (r?.error) return toast(r.error); S.jam = r.jam; S.tab = S.jam.boards.length - 1; S.sel = null; render(); say('brew', `Making ${(S.recipes[recipe]?.label || recipe).toLowerCase()} on the same idea.`); }
 async function openPicker() { const r = await api('GET', '/api/jam2/products'); S.pick = { products: (r?.products || []).slice(0, 12) }; render(); }
-async function render2(confirmUsd) { const b = board(); S.working = true; render(); const r = await api('POST', `/api/jam2/jams/${S.jam.id}/boards/${b.id}/render`, confirmUsd != null ? { confirmUsd } : {}); S.working = false;
+async function render2(confirmUsd) { const b = board(); if (S.working) return; const s0 = S, jid = S.jam.id; S.working = true; render(); const r = await api('POST', `/api/jam2/jams/${jid}/boards/${b.id}/render`, confirmUsd != null ? { confirmUsd } : {}); if (!live(s0, jid)) return; S.working = false;
   if (r?.error) return toast(r.error); if (r?.needsConfirm) return priced(`Render the ${r.quote.seconds} s video: ${(take()?.timeline?.shots || []).length} shots, voice and captions${r.quote.provider ? ` (${r.quote.provider})` : ''}`, r.quote.usd != null ? usd(r.quote.usd) : `${r.quote.credits} credits`, () => render2(r.quote.usd));
   if (r?.jam) S.jam = r.jam; render(); say('brew', 'Rendering the video. It lands here as the next version; you can keep working.'); }
-function redo() { const b = board(); if (isBrief(b) && !ownBrief(b)) return op({ op: 'redo-words' }, 'New words'); if (take()?.scene) return priced('Redo it: one new take, a new scene with the same words and product', usd(S.prices.redo), () => op({ op: 'redo' }, 'New take')); op({ op: 'redo-words' }, 'New take'); }
+function redo() { const b = board(); if (b.kind === 'carousel' && take()?.slides?.length) return priced(`Redo the carousel: ${take().slides.length} new slides, same idea`, S.prices.redo != null ? usd(S.prices.redo * take().slides.length) : '', () => op({ op: 'first' }, 'New carousel')); if (isBrief(b) && !ownBrief(b)) return op({ op: 'redo-words' }, 'New words'); if (take()?.scene) return priced('Redo it: one new take, a new scene with the same words and product', usd(S.prices.redo), () => op({ op: 'redo' }, 'New take')); op({ op: 'redo-words' }, 'New take'); }
 
 /* Finish: check every piece; made pieces get one ready-to-post link, briefs go to their team */
 async function finish() {
@@ -143,8 +151,9 @@ function sceneArt(sc, file, { slide = null } = {}) {
 const busyHtml = (b = board()) => { const bz = busyOf(b); if (S.working) return '<div class="j2-busy"><brew-load class="spin"></brew-load>Working…</div>'; if (!bz || bz.error) return ''; return `<div class="j2-busy"><brew-load class="spin"></brew-load>${esc({ first: 'Making it…', render: 'Rendering the video…', blend: 'Blending…', background: 'Making the scene…', redo: 'Making a new take…', final: 'Making the final…' }[bz.op] || 'Working…')}</div>`; };
 function canvas() {
   const b = board(), t = take(b), bz = busyOf(b); if (!b) return '';
+  if (!t && !bz) return `<div class="j2-doc" style="align-items:center;text-align:center;gap:10px"><b>${esc(b.label)} isn’t made yet.</b><span style="color:var(--fg-3);font-size:13px">${b.how === 'brief' || BRIEF_ONLY.has(b.kind) ? 'Brew writes it from the card and your Brand Book.' : ['static', 'carousel'].includes(b.kind) || b.recipe === 'email' ? 'Words first, then the picture with your real product.' : 'Brew writes it from the card, in your voice.'}</span><button class="j2-pri" data-redo-first>Make it</button></div>`;
   if (!t) return bz?.error ? `<div class="j2-doc"><p class="j2-err">${esc(bz.error)}</p><button class="j2-pri" data-redo-first>Try again</button></div>` : `<div class="j2-doc" style="align-items:center;text-align:center;gap:10px"><brew-load class="spin"></brew-load><b>Making ${esc(b.label.toLowerCase())}…</b><span style="color:var(--fg-3);font-size:13px">Words first, then the picture with your real product. About a minute.</span></div>`;
-  const err = bz?.error ? `<p class="j2-err">${esc(bz.error)}</p>` : '';
+  const err = (bz?.error ? `<p class="j2-err">${esc(bz.error)}</p>` : '') + (b.status === 'stale' ? `<div class="j2-bad" style="margin-top:10px;display:flex;gap:10px;align-items:center">The idea changed since this was made.<button class="j2-chip" data-refresh>Remake it on the new idea</button></div>` : '');
   if (isBrief(b) && !ownBrief(b)) return briefDoc(b, t) + err;
   const w = t.words || {};
   if (b.kind === 'carousel' && t.slides?.length) { const i = Math.min(S.slide, t.slides.length - 1), sl = t.slides[i];
@@ -155,7 +164,7 @@ function canvas() {
   if (b.recipe === 'whatsapp') return `<div class="j2-wa"><div style="text-align:center;font-size:11px;color:#555;margin-bottom:10px">Your business account · approved template</div><div class="j2-bubble">${sents(w.body)}</div></div>${err}`;
   if (b.recipe === 'email') return `<div class="j2-mail"><div class="j2-from">From your brand · to {first_name}</div><div style="padding:12px 18px 2px"><button class="j2-s${S.sel?.kind === 'subject' ? ' sel' : ''}" data-subject style="font-size:18px;font-weight:700">${esc(w.subject || 'Subject')}</button></div>${t.file ? `<div style="padding:8px 18px;position:relative"><img src="${esc(srcOf(t.file))}" alt="" style="width:100%;border-radius:8px;display:block">${busyHtml()}</div>` : ''}<div style="padding:8px 16px 18px;font-size:15px">${sents(w.body)}</div>${w.cta ? `<div style="padding:0 18px 20px"><span style="display:inline-block;background:#1f2d48;color:#fff;border-radius:8px;padding:10px 16px;font-weight:600">${esc(w.cta)}</span></div>` : ''}</div>${err}`;
   if (b.recipe === 'community-post' || b.recipe === 'reply') { const c = S.jam.concept?.spark || {};
-    return `<div class="j2-doc"><div class="j2-meta">${esc(c.kind || 'thread')}${c.link ? ` · ${esc(new URL(c.link, location.href).host)}` : ''}</div><h3>${esc(c.title || S.jam.title)}</h3><div class="j2-meta" style="margin-top:8px">Your reply · tap any sentence</div><div style="font-size:15px">${sents(w.body)}</div><div style="margin-top:12px"><button class="j2-chip" data-copyopen>Copy and open the thread</button></div></div>${err}`; }
+    return `<div class="j2-doc"><div class="j2-meta">${esc(c.kind || 'thread')}${/^https?:\/\//.test(c.link || '') ? ` · ${esc(c.link.replace(/^https?:\/\/(www\.)?/, '').split('/')[0])}` : ''}</div><h3>${esc(c.title || S.jam.title)}</h3><div class="j2-meta" style="margin-top:8px">Your reply · tap any sentence</div><div style="font-size:15px">${sents(w.body)}</div><div style="margin-top:12px"><button class="j2-chip" data-copyopen>Copy and open the thread</button></div></div>${err}`; }
   if (['creator', 'script', 'shoot', 'act'].includes(b.kind)) return blocksDoc(b, w) + err;
   return `<div class="j2-doc"><div class="j2-meta">${esc(b.label)} · tap any sentence</div>${w.headline && b.kind === 'page' ? `<h3>${esc(w.headline)}</h3>` : ''}<div style="font-size:15px">${sents(w.body || w.caption)}</div>${(w.blocks || []).length ? blocks(w) : ''}</div>${err}`;
 }
@@ -177,7 +186,7 @@ function briefDoc(b, t) { const img = t.file && !/\.mp4$/.test(t.file) ? t.file 
 /* ---------- the toolbar, popovers, pill, sheet ---------- */
 function floatHtml() {
   const out = [], tb = !S.area && tools();
-  if (S.pend) out.push(`<div class="j2-tb" style="padding:8px 8px 8px 14px;gap:10px"><span style="font-size:13px">${esc(S.pend.label)}</span>${S.pend.cost ? `<span class="j2-cost" style="font-size:13px;margin:0">${esc(S.pend.cost)}</span>` : ''}<button data-pend-no>Not now</button><button class="j2-pri" data-pend-yes>Make it</button></div>`);
+  if (S.pend) out.push(`<div class="j2-tb" style="padding:8px 8px 8px 14px;gap:10px"><span style="font-size:13px">${esc(S.pend.label)}</span>${S.pend.cost ? `<span class="j2-cost" style="font-size:13px;margin:0">${esc(S.pend.cost)}</span>` : ''}<button data-pend-no>Not now</button>${S.pend.run ? '<button class="j2-pri" data-pend-yes>Make it</button>' : ''}</div>`);
   else if (S.edit) out.push(`<div class="j2-tb" style="padding:6px;gap:6px"><span class="j2-lbl">${esc(S.edit.label)}</span><input id="j2-edit" value="${esc(S.edit.val)}" style="width:min(440px,50vw);border:1px solid var(--line);border-radius:9px"><button class="j2-pri" data-edit-ok>Done</button><button data-edit-no aria-label="Cancel">✕</button></div>`);
   else if (S.sel?.kind === 'area') out.push(`<div class="j2-tb" style="padding:6px 6px 6px 12px;gap:6px"><span class="j2-lbl" style="padding:0">What goes here?</span><input id="j2-area" placeholder="e.g. a eucalyptus sprig in a glass" style="width:280px;border:1px solid var(--line);border-radius:9px"><button class="j2-pri" data-area-go>Make it${S.prices.area != null ? ` · ${usd(S.prices.area)}` : ''}</button><button data-clear aria-label="Cancel">✕</button></div>`);
   else if (tb) { out.push(`<div class="j2-tb"><span class="j2-lbl">${esc(tb.label)}</span>${tb.main.map((x, i) => `<button data-tool="${i}">${esc(x[0])}${x[2] ? `<span class="j2-cost">${esc(x[2])}</span>` : ''}</button>`).join('')}${tb.more.filter(Boolean).length ? '<button data-more aria-label="More tools">⋯</button>' : ''}<input id="j2-desc" placeholder="Describe a change…" aria-label="Describe a change to this part"><button data-clear aria-label="Deselect">✕</button></div>`);
@@ -241,7 +250,7 @@ function wire(root) {
     if (g('[data-why]')) { S.why = !S.why; return render(); }
     if (g('[data-angle]')) return ask('The idea, in one line', S.jam.concept?.angle, async (v) => { const r = await api('POST', `/api/jam2/jams/${S.jam.id}/concept`, { angle: v }); if (r?.jam) S.jam = r.jam; render(); if (r?.changed) say('brew', 'The idea changed. Pieces made on the old idea are marked; refresh them from their tab.'); });
     const tab = g('[data-tab]'); if (tab) { S.tab = +tab.dataset.tab; S.sel = null; S.area = false; S.box = null; S.pend = null; S.edit = null; S.hist = false; S.slide = 0; return render(); }
-    const tt = g('[data-totab]'); if (tt) { S.tab = +tt.dataset.totab; S.fin = false; S.sel = null; return render(); }
+    const tt = g('[data-totab]'); if (tt) { S.tab = +tt.dataset.totab; S.fin = false; S.sel = null; S.area = false; S.box = null; S.pend = null; S.edit = null; S.hist = false; S.slide = 0; S.pick = null; return render(); }
     if (g('[data-add]')) { S.add = !S.add; return render(); }
     const ar = g('[data-addr]'); if (ar) return addBoard(ar.dataset.addr);
     if (g('[data-finish]')) return finish(); if (g('[data-fin-no]')) { S.fin = false; return render(); }
@@ -265,8 +274,9 @@ function wire(root) {
     const hd = g('[data-head]'); if (hd) { S.hist = false; return api('POST', `/api/jam2/jams/${S.jam.id}/boards/${board().id}/head`, { takeId: hd.dataset.head }).then((r) => { if (r?.jam) S.jam = r.jam; render(); }); }
     if (g('[data-redo]')) return redo();
     if (g('[data-redo-first]')) return op({ op: 'first' });
+    if (g('[data-refresh]')) return take()?.scene ? priced('Remake it on the new idea: new words and a new picture', usd(S.prices.redo), () => op({ op: 'refresh' }, 'Remade on the new idea')) : op({ op: 'refresh' }, 'Remade on the new idea');
     if (g('[data-render]')) return render2();
-    if (g('[data-copyopen]')) { const body = words().body || ''; navigator.clipboard?.writeText(body).catch(() => {}); const link = S.jam.concept?.spark?.link; if (link) window.open(link, '_blank', 'noopener'); return toast(link ? 'Copied. The thread opened in a new tab: paste it as your reply.' : 'Copied. Paste it where the question was asked.'); }
+    if (g('[data-copyopen]')) { const body = words().body || ''; navigator.clipboard?.writeText(body).catch(() => {}); const link = /^https?:\/\//.test(S.jam.concept?.spark?.link || '') ? S.jam.concept.spark.link : null; if (link) window.open(link, '_blank', 'noopener'); return toast(link ? 'Copied. The thread opened in a new tab: paste it as your reply.' : 'Copied. Paste it where the question was asked.'); }
     const sl = g('[data-slide]'); if (sl) { S.slide = +sl.dataset.slide; S.sel = null; return render(); }
     if (g('[data-whole]')) { S.sel = { kind: 'whole' }; return render(); }
     const sn = g('[data-sent]'); if (sn) { S.sel = { kind: 'sent', i: +sn.dataset.sent }; return render(); }
@@ -302,12 +312,12 @@ function close() { clearInterval(pollT); $('#j2')?.remove(); document.body.class
 
 /* open a feed card's jam: the card's button decides what gets made */
 async function open(card, cta, tapi) {
-  api = tapi; $('#j2')?.remove(); S = fresh(); const root = document.createElement('div'); root.id = 'j2'; root.tabIndex = -1; document.body.appendChild(root); document.body.classList.add('j2-open'); wire(root); render();
+  api = tapi; $('#j2')?.remove(); S = fresh(); const s0 = S; const root = document.createElement('div'); root.id = 'j2'; root.tabIndex = -1; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', 'Jam'); document.body.appendChild(root); document.body.classList.add('j2-open'); wire(root); render(); root.focus();
   const [r, cat] = await Promise.all([api('POST', '/api/jam2/open', { cardId: card?.id || null, cta: cta || null }), api('GET', '/api/jam2/catalogue')]);
-  if (!S) return; if (!r?.jam) { S.err = r?.error || 'This jam couldn’t open. Try again in a moment.'; return render(); }
+  if (S !== s0) return; if (!r?.jam) { S.err = r?.error || 'This jam couldn’t open. Try again in a moment.'; return render(); }
   S.jam = r.jam; S.also = r.also || []; S.recipes = Object.fromEntries((cat?.recipes || []).map((x) => [x.id, x])); S.recipes.__sizes = cat?.sizes || {};
   history.replaceState(history.state, '', `${location.pathname}${location.search}#jam2=${S.jam.id}`);
-  render(); poll(); api('GET', `/api/jam2/jams/${S.jam.id}/prices`).then((p) => { if (S && p?.prices) { S.prices = p.prices; render(); } });
+  render(); poll(); const jid = S.jam.id; api('GET', `/api/jam2/jams/${jid}/prices`).then((p) => { if (live(s0, jid) && p?.prices) { S.prices = p.prices; render(); } });
 }
 /* ?v=2 turns Jam v2 on for this tab (it stays on while the tab is open); ?v=1 turns it off */
 const on = () => { try { const v = new URLSearchParams(location.search).get('v'); if (v === '2') sessionStorage.setItem('brew-jam-v', '2'); if (v === '1') sessionStorage.removeItem('brew-jam-v'); return sessionStorage.getItem('brew-jam-v') === '2'; } catch { return false; } };
