@@ -77,20 +77,26 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
       const x = await cr.staticAd(ctx, board, words, size, { style: st, noWords: st.type === 'none' }); made.push(...x.made);
       if (!x.scene) throw new Error(x.fail || 'The picture didn’t come out right.');
       Object.assign(take, { scene: x.scene, file: x.file, shot: x.shot, direction: x.direction });
-    } else if (st.preset) { /* Higgsfield's designed ad style: Flare with its preset, the real product photo as image 1, checked */
+    } else if (st.preset || st.kind === 'image') { /* Higgsfield's designed ad style (Flare with its preset, the real product photo as image 1), or a
+      type-led poster / illustration (Ideogram / Recraft): either way the model draws the words, so they are given exactly and read back */
       if (!spend('image', ctx.slug)) throw Object.assign(new Error('Today’s picture budget is used up.'), { budget: true });
       await ensureProfile(ctx);
-      const photos = cr.photosOf(ctx, ctx.profile).slice(0, 1).map((u) => engines.pub(u)), o = hf.pick('product-shot');
-      const input = { ...o.input, enhance_prompt: true, preset_id: st.preset, quality: 'high', image_urls: photos, aspect_ratio: hf.nearestRatio(o.id, size.ratio),
-        prompt: tidy([`An ad for ${ctx.bbv?.name || 'the brand'}: ${words.headline || ctx.jam?.concept?.angle || ''}.`, words.sub, words.cta ? `Button: ${words.cta}.` : '', cr.productLine(ctx.profile), 'Use only these words; no prices or claims beyond them.'].filter(Boolean).join(' '), 4800) };
-      const e = await hf.estimate(o.id, input), out = await hf.run(o.id, input); const file = engines.keep(out.buf, /jpe?g/.test(out.type) ? 'jpg' : 'png'); made.push({ cap: 'still.styled', provider: 'higgsfield', model: o.id, usd: e.usd ?? 0.1 });
-      Object.assign(take, { file, scene: { w: size.w, h: size.h, bg: { src: file }, layers: [] } });
-    } else if (st.kind === 'image') { /* a type-led graphic or illustration: Ideogram / Recraft set the words */
-      if (!spend('image', ctx.slug)) throw Object.assign(new Error('Today’s picture budget is used up.'), { budget: true });
-      const o = hf.pick(st.job), copy = [words.headline, words.sub, words.cta].filter(Boolean).join(' / ');
-      const input = { ...o.input, prompt: tidy(`${st.look} For ${ctx.bbv?.name || 'the brand'}, in its colours ${(ctx.bbv?.kit?.colors || []).join(', ')}. Exact words: "${copy}". Nothing else written.`, 2000), aspect_ratio: hf.nearestRatio(o.id, size.ratio) };
-      const e = await hf.estimate(o.id, input), out = await hf.run(o.id, input); const file = engines.keep(out.buf, /jpe?g/.test(out.type) ? 'jpg' : 'png'); made.push({ cap: 'still.graphic', provider: 'higgsfield', model: o.id, usd: e.usd ?? 0.1 });
-      Object.assign(take, { file, scene: { w: size.w, h: size.h, bg: { src: file }, layers: [] } });
+      const proof = (words.proof || []).filter(Boolean).slice(0, 1), review = /social proof|review/i.test(`${st.group} ${st.label} ${st.look || ''}`) && proof.length;
+      const exact = [words.headline && `Headline: "${words.headline}"`, words.sub && `Line: "${words.sub}"`, review && `Customer review, word for word, with its stars: "${tidy(proof[0], 220)}"`, words.cta && `Button: "${words.cta}"`].filter(Boolean).join('; ');
+      const rules = `The only words on the image: ${exact}${ctx.bbv?.name ? `, and the brand name ${ctx.bbv.name}` : ''}. No other text: no sizes, numbers, prices, percentages, ingredients or claims.${review ? '' : ' Nothing styled as a customer review or star rating.'}`;
+      const job = st.preset ? 'product-shot' : st.job, o = hf.pick(job), photos = st.preset ? cr.photosOf(ctx, ctx.profile).slice(0, 1).map((u) => engines.pub(u)) : [];
+      const base = st.preset ? { ...o.input, enhance_prompt: true, preset_id: st.preset, quality: 'high', image_urls: photos, aspect_ratio: hf.nearestRatio(o.id, size.ratio) } : { ...o.input, aspect_ratio: hf.nearestRatio(o.id, size.ratio) };
+      const promptOf = (fix = '') => tidy([st.preset ? `An ad for ${ctx.bbv?.name || 'the brand'}.` : `${st.look} For ${ctx.bbv?.name || 'the brand'}, in its colours ${(ctx.bbv?.kit?.colors || []).join(', ')}.`, cr.productLine(ctx.profile), rules, fix].filter(Boolean).join(' '), st.preset ? 4800 : 2000);
+      let file = null, check = null;
+      for (let t = 0; t < 2 && !file; t++) {
+        const input = { ...base, prompt: promptOf(t && check ? `The last one was wrong: ${check.same ? '' : 'the product changed. '}${check.invented.length ? `it added "${check.invented.join('", "')}" — leave those out.` : ''}` : '') };
+        const e = await hf.estimate(o.id, input), out = await hf.run(o.id, input); const f = engines.keep(out.buf, /jpe?g/.test(out.type) ? 'jpg' : 'png');
+        made.push({ cap: st.preset ? 'still.styled' : 'still.graphic', provider: 'higgsfield', model: o.id, usd: e.usd ?? 0.1 });
+        check = await cr.checkMade(ctx, f, { ...words, proof: review ? proof : [] }); made.push({ cap: 'check', provider: 'gemini', model: 'made-check', usd: check.usd || 0 });
+        if ((check.same || !st.preset) && !check.invented.length) file = f;
+        else if (t === 0 && !spend('image', ctx.slug)) break; }
+      if (!file) { const err = new Error(`The ${st.label} picture ${check?.same === false ? 'changed the product' : `added words we can’t back up (${(check?.invented || []).join(', ')})`}, twice, so it isn’t shown. Try another style.`); err.made = made; throw err; }
+      Object.assign(take, { file, scene: { w: size.w, h: size.h, bg: { src: file }, layers: [] }, check: { words: check.words, unchecked: !!check.unchecked } });
     } else if (st.job === 'product-motion') { /* a checked product shot (the style's look, no words), then Kling moves it */
       const shot = await cr.staticAd(ctx, board, words, sizeOf('story'), { style: { ...st, people: 'none' }, noWords: true }); made.push(...shot.made); if (!shot.shot) throw new Error(shot.fail || 'The first frame didn’t keep the product.');
       if (!spend('video', ctx.slug)) throw Object.assign(new Error('Today’s video budget is used up.'), { budget: true });

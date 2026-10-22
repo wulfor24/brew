@@ -97,6 +97,25 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
       } catch (e) { log.warn?.('[creative] critic', e.message); return { ...c, same: true, shot: 5, ad: 5, zone: d.zone, why: `check didn't run: ${e.message}`, i, unchecked: true }; } }));
   }
 
+  /* a designed piece (a Higgsfield ad style, a poster, a graphic) draws its own words, so it is read back before anyone sees it:
+     the same product as the photo, and every word on it backed by what we know (the words we wrote, the real reviews, the catalog,
+     the brand's name). A model that adds a size, a number, a claim, or dresses the brand's own line up as a customer review fails.
+     23 Oct, Arata: a review style printed "10ml volume each" (the bottle is 30 ml) and set the tagline as a 5-star review */
+  const MADE_SCHEMA = { type: 'object', additionalProperties: false, required: ['same', 'words', 'invented'], properties: {
+    same: { type: 'boolean', description: 'The product in image 2 is the same as in image 1 (shape, colours, label, count); true when there is no image 1' },
+    words: { type: 'array', items: { type: 'string' }, description: 'Every piece of text printed on image 2' },
+    invented: { type: 'array', items: { type: 'string' }, description: 'Each printed text that states a fact, number, size, claim, result or review NOT backed by the facts given; also any line shown as a customer review or with stars that is not one of the real reviews given word for word' } } };
+  async function checkMade(ctx, file, facts = {}) {
+    if (isMock() || !ai) return { same: true, invented: [], words: [] };
+    const fs = await import('node:fs'), f = await fileOf(file).catch(() => null); if (!f) return { same: false, invented: [], words: [], why: 'file missing' };
+    const img = (x) => { const b = fs.readFileSync(x); return { type: 'image', source: { type: 'base64', media_type: b[0] === 0x89 ? 'image/png' : 'image/jpeg', data: b.toString('base64') } }; };
+    const refSrc = photosOf(ctx, ctx.profile)[0], ref = refSrc ? await fileOf(refSrc).catch(() => null) : null, e = entryOf(ctx);
+    const known = [`Brand: ${ctx.bbv?.name || ''}`, ctx.product?.name ? `Product: ${ctx.product.name}${e?.price ? ` · ${e.price}` : ''}` : '', ctx.profile ? `What it is: ${ctx.profile.what}; label: ${ctx.profile.label || ''}; size: ${ctx.profile.size || ''}` : '',
+      `Our words: ${[facts.headline, facts.sub, facts.badge, facts.cta].filter(Boolean).join(' / ')}`, (facts.proof || []).length ? `Real customer reviews (word for word): ${facts.proof.map((q) => `"${tidy(q, 300)}"`).join(' ')}` : 'There are no customer reviews to quote.'].filter(Boolean).join('\n');
+    try { const r = await ai.call({ model: 'sonnet', tag: 'jam2_made_check', max: 1500, effort: 'low', schema: MADE_SCHEMA, messages: [{ role: 'user', content: [...(ref ? [img(ref)] : []), img(f), { type: 'text', text: `${ref ? 'Image 1 is the real product. Image 2 is an ad made for it.' : 'This is an ad.'} The facts we can back up:\n${known}\nThe product's own printed label is fine. Read every text on the ad and list what is not backed by these facts.` }] }] });
+      const j = r.json || {}; return { same: ref ? !!j.same : true, invented: (j.invented || []).map((x) => tidy(x, 120)).filter(Boolean).slice(0, 6), words: (j.words || []).slice(0, 20), usd: r.usd || 0 };
+    } catch (err) { log.warn?.('[creative] made check', err.message); return { same: true, invented: [], words: [], unchecked: true }; } }
+
   /* a logo's width ÷ height (its box hugs the logo); null when it can't be read */
   const aspects = new Map();
   async function aspectOf(src) { if (!src) return null; if (aspects.has(src)) return aspects.get(src);
@@ -193,5 +212,5 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
     return { scene, file: await render(scene), bg, made };
   }
 
-  return { direct, shoot, critique, staticAd, extend, photosOf, presetFor, productLine, entryOf, layout, aspectOf };
+  return { direct, shoot, critique, checkMade, staticAd, extend, photosOf, presetFor, productLine, entryOf, layout, aspectOf };
 }
