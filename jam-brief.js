@@ -109,7 +109,21 @@ export function createJamBrief(o) {
   /* briefs saved while the AI was off kept the studio's sync instruction as a note ("Brew: The package is now v2 … Make the brief
      match it exactly, keep everything else: …"): it was never meant to be read, so it leaves the brief on load */
   const SYNC_NOTE = /^- (?:Brew: )?The [^\n]{0,80} is now v\d+[^\n]*Make the brief match it exactly, keep everything else:[^\n]*\n?/gm;
+  /* every brief prompt opens with the brand's fact sheet ("# Cozy Snugglet brand brief", its tables and [k:…] source tags).
+     Asked to "make the brief match" the package, the AI once pasted all of it into a jam's brief (Cozy, 22 Oct). The fact sheet is
+     reference only: any of its sections the jam brief didn't already have are cut back out of an AI edit, and a saved brief
+     carrying its source tags is cleaned when it loads */
+  const factOf = () => { try { return String(cardBrief({ title: '', sub: '', agent: '' }, '') || '').split('\n\nCard (by the ')[0]; } catch { return ''; } };
+  const headsOf = (md) => new Set((String(md || '').match(/^#{1,3}[ \t]+.+$/gm) || []).map((h) => h.replace(/^#+[ \t]+/, '').trim().toLowerCase()));
+  const KTAG = /\[k:[^\]\n]{1,120}\]/g;
+  const unleak = (md, before, title) => { const fh = headsOf(factOf()), had = headsOf(before); if (!fh.size) return md;
+    const keep = []; let skip = false;
+    for (const line of String(md).split('\n')) { const m = /^(#{1,3})[ \t]+(.+)$/.exec(line); if (m) { const h = m[2].trim().toLowerCase(); skip = fh.has(h) && !had.has(h); } if (!skip) keep.push(line); }
+    let out = keep.join('\n'); if (!KTAG.test(before || '')) out = out.replace(KTAG, ''); KTAG.lastIndex = 0;
+    out = out.replace(/[ \t]+$/gm, '').replace(/\n{3,}/g, '\n\n').trim();
+    if (title && !/^# /m.test(out)) out = `# ${trim(title, 140)}\n\n${out}`; return out; };
   const seed = (t, w) => {
+    if (w.doc?.md && /\[k:[^\]\n]{1,120}\]/.test(w.doc.md)) { const md = unleak(w.doc.md, '', w.title); if (md !== w.doc.md && md.length > 40) { w.doc.md = md; w.doc.rev = (w.doc.rev || 1) + 1; w.doc.healedLeak = now(t); } }
     /* one, always (Param, 19 Oct): a jam saved with a plan of options (plan v1: "Write 3 new versions", "Draft the two new hook
        variants") rebuilds it from the card, and its brief follows: rewritten when nobody touched it, else its plan section is
        swapped for the new one and any count of takes in it said as one. The case, the brief and the card's button read this */
@@ -190,8 +204,8 @@ export function createJamBrief(o) {
           : mode === 'hear' ? `${who} said this in the jam. Fold any new decision, fact or answer into the brief where it belongs. If it adds nothing to the brief, return the brief unchanged.\n"""${String(text).slice(0, 3000)}"""`
           : `${who} asks: """${String(text).slice(0, 2000)}"""\nDo exactly what they ask. "Rewrite", "it's wrong", "all details are wrong" mean rewrite those parts properly, not a recap. If it's a question, answer it in the reply and change the brief only if the answer belongs in it.`;
         const multi = MULTI(t, c) || ((w.doc.md.match(/^## Plan \d/gm) || []).length > 1 ? `\nThis brief holds several SEPARATE plans ("## Plan N: ..." sections). Keep them separate and never merge them into one plan unless the person explicitly asks to merge or combine them.` : '');
-        const j = await claudeTool(`${cardBrief({ ...c, agent: w.agent }, seatLine(t.viewer))}\n\nYou keep the jam brief for this card at ${BN()}: a free-flowing document the team, AI and the ShopOS team write together. The next people (the ShopOS team, an agency, a teammate) act from it, so it must be specific: who, what, where, when, how much, how we measure, who owns it.${multi}\n${promptBlock(t, w.agent === 'brew' ? 'creative' : w.agent)}${accountLine(t)}\nThe brief now:\n"""\n${w.doc.md}\n"""\n\n${task}\n\nRules: plain short sentences; keep the person's own words where they wrote them; numbers only from the facts list, the card or what people said; no internal jargon; Markdown only (# title once, ## headings, - bullets, **bold**). When someone asks for copy (a headline, caption, message, button, subject line) or to change it, write the finished words customers will see in a ## The copy section (- **Headline:** …, - **Body:** …, - **Button:** …), not a description of them, and fill them in the plan too. Return the whole brief. ${planAsk(t, c)}\n${MEASURE_ASK}`, SCHEMA, 4500, 'jam_doc');
-        const md = clean(String(j.doc || '')).trim();
+        const j = await claudeTool(`${cardBrief({ ...c, agent: w.agent }, seatLine(t.viewer))}\n\nYou keep the jam brief for this card at ${BN()}: a free-flowing document the team, AI and the ShopOS team write together. The next people (the ShopOS team, an agency, a teammate) act from it, so it must be specific: who, what, where, when, how much, how we measure, who owns it.${multi}\n${promptBlock(t, w.agent === 'brew' ? 'creative' : w.agent)}${accountLine(t)}\nThe brand's fact sheet at the very top is reference for facts and numbers only: never copy its title, sections, tables or [k:…] tags into the jam brief.\nThe jam brief now:\n"""\n${w.doc.md}\n"""\n\n${task}\n\nRules: plain short sentences; keep the person's own words where they wrote them; numbers only from the facts list, the card or what people said; no internal jargon; Markdown only (# title once, ## headings, - bullets, **bold**). When someone asks for copy (a headline, caption, message, button, subject line) or to change it, write the finished words customers will see in a ## The copy section (- **Headline:** …, - **Body:** …, - **Button:** …), not a description of them, and fill them in the plan too. Return the whole brief. ${planAsk(t, c)}\n${MEASURE_ASK}`, SCHEMA, 4500, 'jam_doc');
+        const md = unleak(clean(String(j.doc || '')).trim(), w.doc.md, w.title);
         if (md.length > 40) { const changed = setDoc(t, w, md, who === 'You' ? 'you' : who, mode === 'ask' ? String(text).slice(0, 80) : mode);
           if (j.plan) applyPlan(t, w, j.plan, 'ai', j.measure);
           if (Array.isArray(j.next)) { const nx = j.next.map((x) => clean(String(x)).replace(/[.]$/, '')).filter((x) => x && x.length <= 56); if (nx.length >= 2) w.doc.next = nx.slice(0, 3); } return { reply: clean(j.reply || ''), changed: changed ? w.doc.edits[0].changed : [], ai: true }; }
